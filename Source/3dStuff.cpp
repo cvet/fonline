@@ -1544,6 +1544,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
         # endif
 
         GL( glUseProgram( 0 ) );
+        GL( glBindVertexArray( 0 ) );
     }
 
     for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )

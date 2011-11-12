@@ -461,7 +461,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
     int error = ov_open_callbacks( fm, &sound->OggDescriptor, NULL, 0, callbacks );
     if( error )
     {
-        WriteLogF( _FUNC_, " - Open OGG file<%s> fail, error" );
+        WriteLogF( _FUNC_, " - Open OGG file<%s> fail, error:\n", fname );
         switch( error )
         {
         case OV_EREAD:

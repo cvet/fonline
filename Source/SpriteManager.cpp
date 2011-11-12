@@ -390,6 +390,7 @@ bool SpriteManager::InitBuffers()
     GL( glEnableVertexAttribArray( 1 ) );
     GL( glEnableVertexAttribArray( 2 ) );
     GL( glEnableVertexAttribArray( 3 ) );
+    GL( glBindVertexArray( 0 ) );
     #endif
 
     #ifdef FO_D3D
@@ -494,6 +495,7 @@ bool SpriteManager::InitRenderStates()
     // glStencilFunc(GL_EQUAL, 0x00000000, 0x00000001);
     // glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     // glFrontFace(GL_CCW);
+    GL( glDisable( GL_LIGHTING ) );
 
     // glClearColor(1.0, 0.0, 0.0, 0.0);
     // glClearDepth(1.0);
@@ -642,7 +644,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
         {
             // Samples count
             GLint max_samples = 0;
-            GL( glGetIntegerv( GL_MAX_SAMPLES, &max_samples ) );
+            GL( glGetIntegerv( GL_MAX_COLOR_TEXTURE_SAMPLES, &max_samples ) );
             if( GameOpt.MultiSampling < 0 )
                 GameOpt.MultiSampling = 4;
             samples = min( GameOpt.MultiSampling, max_samples );
@@ -688,7 +690,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     {
         tex->Samples = (float) samples;
         GL( glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, tex->Id ) );
-        GL( glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, samples, 4, width, height, TRUE ) );
+        GL( glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGBA, width, height, GL_TRUE ) );
         GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex->Id, 0 ) );
     }
     rt.TargetTexture = tex;
@@ -780,16 +782,15 @@ void SpriteManager::PopRenderTarget()
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
 }
 
-void SpriteManager::DrawRenderTarget( RenderTarget& rt, Rect* region /* = NULL */ )
+void SpriteManager::DrawRenderTarget( RenderTarget& rt, Rect* region_from /* = NULL */, Rect* region_to /* = NULL */ )
 {
     Flush();
 
-    if( !region )
+    if( !region_from && !region_to )
     {
-        uint  mulpos = 0;
         float w = (float) rt.TargetTexture->Width;
         float h = (float) rt.TargetTexture->Height;
-
+        uint  mulpos = 0;
         vBuffer[ mulpos ].x = 0.0f;
         vBuffer[ mulpos ].y = h;
         vBuffer[ mulpos ].tu = 0.0f;
@@ -809,27 +810,29 @@ void SpriteManager::DrawRenderTarget( RenderTarget& rt, Rect* region /* = NULL *
     }
     else
     {
+        RectF regionf = ( region_from ? *region_from :
+                          RectF( 0.0f, 0.0f, (float) rt.TargetTexture->Width, (float) rt.TargetTexture->Height ) );
+        RectF regiont = ( region_to ? *region_to :
+                          RectF( 0.0f, 0.0f, (float) rtStack.back()->TargetTexture->Width, (float) rtStack.back()->TargetTexture->Height ) );
+        float wf = regionf.R - regionf.L;
+        float hf = regionf.B - regionf.T;
         uint  mulpos = 0;
-        RectF regionf = *region;
-        float w = (float) rt.TargetTexture->Width;
-        float h = (float) rt.TargetTexture->Height;
-
-        vBuffer[ mulpos ].x = regionf.L;
-        vBuffer[ mulpos ].y = regionf.B;
-        vBuffer[ mulpos ].tu = regionf.L / w;
-        vBuffer[ mulpos++ ].tv = 1.0f - regionf.B / h;
-        vBuffer[ mulpos ].x = regionf.L;
-        vBuffer[ mulpos ].y = regionf.T;
-        vBuffer[ mulpos ].tu = regionf.L / w;
-        vBuffer[ mulpos++ ].tv = 1.0f - regionf.T / h;
-        vBuffer[ mulpos ].x = regionf.R;
-        vBuffer[ mulpos ].y = regionf.T;
-        vBuffer[ mulpos ].tu = regionf.R / w;
-        vBuffer[ mulpos++ ].tv = 1.0f - regionf.T / h;
-        vBuffer[ mulpos ].x = regionf.R;
-        vBuffer[ mulpos ].y = regionf.B;
-        vBuffer[ mulpos ].tu = regionf.R / w;
-        vBuffer[ mulpos++ ].tv = 1.0f - regionf.B / h;
+        vBuffer[ mulpos ].x = regiont.L;
+        vBuffer[ mulpos ].y = regiont.B;
+        vBuffer[ mulpos ].tu = regionf.L / wf;
+        vBuffer[ mulpos++ ].tv = 1.0f - regionf.B / hf;
+        vBuffer[ mulpos ].x = regiont.L;
+        vBuffer[ mulpos ].y = regiont.T;
+        vBuffer[ mulpos ].tu = regionf.L / wf;
+        vBuffer[ mulpos++ ].tv = 1.0f - regionf.T / hf;
+        vBuffer[ mulpos ].x = regiont.R;
+        vBuffer[ mulpos ].y = regiont.T;
+        vBuffer[ mulpos ].tu = regionf.R / wf;
+        vBuffer[ mulpos++ ].tv = 1.0f - regionf.T / hf;
+        vBuffer[ mulpos ].x = regiont.R;
+        vBuffer[ mulpos ].y = regiont.B;
+        vBuffer[ mulpos ].tu = regionf.R / wf;
+        vBuffer[ mulpos++ ].tv = 1.0f - regionf.B / hf;
     }
 
     curSprCnt = 1;
@@ -3500,6 +3503,7 @@ bool SpriteManager::Flush()
 
     #ifndef FO_D3D
     GL( glUseProgram( 0 ) );
+    GL( glBindVertexArray( 0 ) );
     #endif
 
     return true;
@@ -4569,6 +4573,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     }
 
     // Draw
+    GL( glBindVertexArray( vaMain ) );
     GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
     GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibDirect ) );
     GL( glBufferSubData( GL_ARRAY_BUFFER, 0, count * sizeof( Vertex ), &vBuffer[ 0 ] ) );
@@ -4589,8 +4594,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     }
 
     GL( glUseProgram( 0 ) );
-
-    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibMain ) );
+    GL( glBindVertexArray( 0 ) );
 
     // Finish
     if( stencil )

@@ -23,15 +23,11 @@
 #include "IniParser.h"
 #include "MsgFiles.h"
 
+#ifndef FO_D3D
 // Video
-// #define VIDEO_VMR9 // If comment than used VMR7
-#include <DShow.h>
-#ifdef VIDEO_VMR9
-# include <vmr9.h>
+# include <Theora/theoradec.h>
+# pragma comment( lib, "libtheora_static.lib" )
 #endif
-#pragma warning(disable : 4995) // sprintf in DShow.h
-#undef PlaySound                // PlaySoundA in DShow.h
-#pragma comment(lib,"strmiids.lib")
 
 class FOClient
 {
@@ -356,6 +352,7 @@ public:
 /************************************************************************/
 /* Video                                                                */
 /************************************************************************/
+    #ifndef FO_D3D
     struct ShowVideo
     {
         string FileName;
@@ -364,28 +361,43 @@ public:
     };
     typedef vector< ShowVideo > ShowVideoVec;
 
-    ShowVideoVec            ShowVideos;
-    IGraphBuilder*          GraphBuilder;
-    IMediaControl*          MediaControl;
-    #ifdef VIDEO_VMR9
-    IVMRWindowlessControl9* WindowLess;
-    IVMRFilterConfig9*      FilterConfig;
-    #else
-    IVMRWindowlessControl*  WindowLess;
-    IVMRFilterConfig*       FilterConfig;
-    #endif
-    IMediaSeeking*          MediaSeeking;
-    IBaseFilter*            VMRFilter;
-    IBasicAudio*            BasicAudio;
-    string                  MusicAfterVideo;
-    int                     MusicVolumeRestore;
+    struct VideoContext
+    {
+        th_dec_ctx*     Context;
+        th_info         VideoInfo;
+        th_comment      Comment;
+        th_setup_info*  SetupInfo;
+        th_ycbcr_buffer ColorBuffer;
+        ogg_sync_state  SyncState;
+        ogg_packet      Packet;
+        struct StreamStates
+        {
+            static const uint COUNT = 10;
+            ogg_stream_state  Streams[ COUNT ];
+            bool              StreamsState[ COUNT ];
+            int               MainIndex;
+        } SS;
+        FileManager  RawData;
+        RenderTarget RT;
+        uint         CurFrame;
+        double       StartTime;
+        double       AverageRenderTime;
+    };
 
+    ShowVideoVec  ShowVideos;
+    string        MusicAfterVideo;
+    int           MusicVolumeRestore;
+    VideoContext* CurVideo;
+
+    int  VideoDecodePacket();
+    void RenderVideo();
     bool IsVideoPlayed()  { return !ShowVideos.empty(); }
     bool IsCanStopVideo() { return ShowVideos.size() && ShowVideos[ 0 ].CanStop; }
-    void AddVideo( const char* fname, const char* sound, bool can_stop, bool clear_sequence );
-    void PlayVideo( ShowVideo& video );
+    void AddVideo( const char* video_name, bool can_stop, bool clear_sequence );
+    void PlayVideo();
     void NextVideo();
     void StopVideo();
+    #endif
 
 /************************************************************************/
 /* Animation                                                            */

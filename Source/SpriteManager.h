@@ -297,7 +297,7 @@ public:
     void ClearRenderTargetDS( RenderTarget& rt, bool depth, bool stencil );
     void PushRenderTarget( RenderTarget& rt );
     void PopRenderTarget();
-    void DrawRenderTarget( RenderTarget& rt, Rect* region = NULL );
+    void DrawRenderTarget( RenderTarget& rt, Rect* region_from = NULL, Rect* region_to = NULL );
     #endif
 
     // Surfaces

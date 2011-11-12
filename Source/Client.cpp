@@ -48,16 +48,12 @@ FOClient::FOClient(): Active( false )
     GmapCar.Car = NULL;
     Animations.resize( 10000 );
 
-    GraphBuilder = NULL;
-    MediaControl = NULL;
-    WindowLess = NULL;
-    MediaSeeking = NULL;
-    BasicAudio = NULL;
-    VMRFilter = NULL;
-    FilterConfig = NULL;
+    #ifndef FO_D3D
+    CurVideo = NULL;
     MusicVolumeRestore = -1;
-    UIDFail = false;
+    #endif
 
+    UIDFail = false;
     MoveLastHx = -1;
     MoveLastHy = -1;
 
@@ -484,19 +480,15 @@ bool FOClient::Init()
     {
         LogTryConnect();
     }
-    #ifdef FO_D3D
+    #ifndef FO_D3D
     // Intro
     else if( !strstr( CommandLine, "-SkipIntro" ) )
     {
         if( MsgGame->Count( STR_MUSIC_MAIN_THEME ) )
             MusicAfterVideo = MsgGame->GetStr( STR_MUSIC_MAIN_THEME );
         for( uint i = STR_VIDEO_INTRO_BEGIN; i < STR_VIDEO_INTRO_END; i++ )
-        {
-            if( MsgGame->Count( i ) == 1 )
-                AddVideo( MsgGame->GetStr( i, 0 ), NULL, true, false );
-            else if( MsgGame->Count( i ) == 2 )
-                AddVideo( MsgGame->GetStr( i, 0 ), MsgGame->GetStr( i, 1 ), true, false );
-        }
+            if( MsgGame->Count( i ) )
+                AddVideo( MsgGame->GetStr( i, 0 ), true, false );
 
         if( !IsVideoPlayed() )
         {
@@ -508,6 +500,8 @@ bool FOClient::Init()
             }
         }
     }
+    #else
+    ScreenFadeOut();
     #endif
 
     // Disable dumps if multiple window detected
@@ -836,14 +830,20 @@ int FOClient::MainLoop()
     }
     Script::CollectGarbage( false );
 
+    #ifndef FO_D3D
     // Video
     if( IsVideoPlayed() )
     {
+        # ifdef FO_D3D
         LONGLONG cur, stop;
         if( !MediaSeeking || FAILED( MediaSeeking->GetPositions( &cur, &stop ) ) || cur >= stop )
             NextVideo();
-        return 0;
+        # else
+        RenderVideo();
+        # endif
+        return 1;
     }
+    #endif
 
     CHECK_MULTIPLY_WINDOWS3;
 
@@ -1171,6 +1171,7 @@ void FOClient::ParseKeyboard()
         else if( event == FL_KEYUP )
             dikup = Keyb::MapKey( event_key );
 
+        #ifndef FO_D3D
         if( IsVideoPlayed() )
         {
             if( IsCanStopVideo() && ( dikdw == DIK_ESCAPE || dikdw == DIK_SPACE || dikdw == DIK_RETURN || dikdw == DIK_NUMPADENTER ) )
@@ -1180,6 +1181,7 @@ void FOClient::ParseKeyboard()
             }
             continue;
         }
+        #endif
 
         bool script_result = false;
         if( dikdw && Script::PrepareContext( ClientFunctions.KeyDown, _FUNC_, "Game" ) )
@@ -1788,6 +1790,7 @@ void FOClient::ParseMouse()
         int event_button = events[ i + 1 ];
         int event_dy = -events[ i + 2 ];
 
+        #ifndef FO_D3D
         // Stop video
         if( IsVideoPlayed() )
         {
@@ -1798,6 +1801,7 @@ void FOClient::ParseMouse()
             }
             continue;
         }
+        #endif
 
         // Scripts
         bool script_result = false;
@@ -6449,10 +6453,12 @@ void FOClient::Net_OnLoadMap()
         GmapNullParams();
         ShowMainScreen( SCREEN_GLOBAL_MAP );
         Net_SendLoadMapOk();
+        #ifndef FO_D3D
         if( IsVideoPlayed() )
             MusicAfterVideo = MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) );
         else
             SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
+        #endif
         WriteLog( "Global map loaded.\n" );
         return;
     }
@@ -6481,10 +6487,12 @@ void FOClient::Net_OnLoadMap()
     Net_SendLoadMapOk();
     LookBorders.clear();
     ShootBorders.clear();
+    #ifndef FO_D3D
     if( IsVideoPlayed() )
         MusicAfterVideo = MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) );
     else
         SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
+    #endif
     WriteLog( "Local map loaded.\n" );
 }
 
@@ -9795,152 +9803,123 @@ void FOClient::SoundProcess()
     }
 }
 
-void FOClient::AddVideo( const char* fname, const char* sound, bool can_stop, bool clear_sequence )
+#ifndef FO_D3D
+void FOClient::AddVideo( const char* video_name, bool can_stop, bool clear_sequence )
 {
+    // Stop current
     if( clear_sequence && ShowVideos.size() )
         StopVideo();
 
-    // Concat full path
-    char full_path[ MAX_FOPATH ];
-    FileManager::GetFullPath( fname, PT_VIDEO, full_path );
+    // Show parameters
+    ShowVideo sw;
+
+    // Paths
+    char  str[ MAX_FOPATH ];
+    Str::Copy( str, video_name );
+    char* sound = Str::Substring( str, "|" );
+    if( sound )
+    {
+        *sound = 0;
+        sound++;
+        if( !Str::Substring( sound, "/" ) )
+            sw.SoundName = FileManager::GetPath( PT_VIDEO );
+        sw.SoundName += sound;
+    }
+    if( !Str::Substring( str, "/" ) )
+        sw.FileName = FileManager::GetPath( PT_VIDEO );
+    sw.FileName += str;
 
     // Add video in sequence
-    ShowVideo sw;
-    sw.FileName = full_path;
     sw.CanStop = can_stop;
-    sw.SoundName = ( sound ? sound : "" );
     ShowVideos.push_back( sw );
 
-    // Play
+    // Instant play
     if( ShowVideos.size() == 1 )
     {
-        // Velosaped
-        SprMngr.BeginScene( 0xFF000000 );
-        SprMngr.EndScene();
-        // Instant play
-        PlayVideo( sw );
+        // Clear screen
+        if( SprMngr.BeginScene( 0xFF000000 ) )
+            SprMngr.EndScene();
+
+        // Play
+        PlayVideo();
     }
 }
 
-#define CHECK_VIDEO_HR( expr )           { HRESULT hr = expr; if( FAILED( hr ) ) { WriteLogF( _FUNC_, " - Error<%u>, line<%d>.\n", hr, __LINE__ ); ShowVideos.clear(); StopVideo(); return; } }
-#define CHECK_VIDEO_NULLPTR( contrl )    { if( !( contrl ) ) { WriteLogF( _FUNC_, " - Control nullptr, line<%d>.\n", __LINE__ ); ShowVideos.clear(); StopVideo(); return; } }
-void FOClient::PlayVideo( ShowVideo& video )
+void FOClient::PlayVideo()
 {
-    // Check file exiting
-    WIN32_FIND_DATA fd;
-    HANDLE          f = FindFirstFile( video.FileName.c_str(), &fd );
-    if( f == INVALID_HANDLE_VALUE )
+    // Start new context
+    ShowVideo& video = ShowVideos[ 0 ];
+    CurVideo = new VideoContext();
+    CurVideo->CurFrame = 0;
+    CurVideo->StartTime = Timer::AccurateTick();
+    CurVideo->AverageRenderTime = 0.0;
+
+    // Open file
+    if( !CurVideo->RawData.LoadFile( video.FileName.c_str(), PT_DATA ) )
     {
-        FindClose( f );
+        WriteLogF( _FUNC_, " - Video file<%s> not found.\n", video.FileName.c_str() );
+        SAFEDEL( CurVideo );
         NextVideo();
         return;
     }
-    FindClose( f );
 
-    #ifdef FO_D3D
-    // Workaround, video not showed in fullscreen with direct3d multisampling, on Vista/7
-    /*if( GameOpt.FullScreen && SprMngr.IsMultiSamplingUsed() && ( GetVersion() & 0xFF ) >= 6 )
-       {
-        D3DPRESENT_PARAMETERS pp;
-        memzero( &pp, sizeof( pp ) );
-        SprMngr.GetDevice()->Reset( &pp );
+    // Initialize Theora stuff
+    ogg_sync_init( &CurVideo->SyncState );
 
-        HDC dcscreen = GetDC( NULL );
-        int sw = GetDeviceCaps( dcscreen, HORZRES );
-        int sh = GetDeviceCaps( dcscreen, VERTRES );
-        ReleaseDC( NULL, dcscreen );
+    for( uint i = 0; i < CurVideo->SS.COUNT; i++ )
+        CurVideo->SS.StreamsState[ i ] = false;
+    CurVideo->SS.MainIndex = -1;
 
-        SetWindowPos( Wnd, NULL, -WndBorders.L, -WndBorders.T, sw + WndBorders.L + WndBorders.R, sh + WndBorders.T + WndBorders.B, 0 );
-       }*/
-
-    // Create direct show
-    CHECK_VIDEO_HR( CoInitialize( NULL ) );
-
-    // Create the filter graph manager and query for interfaces.
-    CHECK_VIDEO_HR( CoCreateInstance( CLSID_FilterGraph, NULL, CLSCTX_INPROC, IID_IGraphBuilder, (void**) &GraphBuilder ) );
-    CHECK_VIDEO_NULLPTR( GraphBuilder );
-    CHECK_VIDEO_HR( GraphBuilder->QueryInterface( IID_IMediaControl, (void**) &MediaControl ) );
-    CHECK_VIDEO_NULLPTR( MediaControl );
-    CHECK_VIDEO_HR( GraphBuilder->QueryInterface( IID_IMediaSeeking, (void**) &MediaSeeking ) );
-    CHECK_VIDEO_NULLPTR( MediaSeeking );
-    GraphBuilder->QueryInterface( IID_IBasicAudio, (void**) &BasicAudio );
-
-    # ifdef VIDEO_VMR9
-    // VMR Initialization
-    // Create the VMR.
-    CHECK_VIDEO_HR( CoCreateInstance( CLSID_VideoMixingRenderer9, NULL, CLSCTX_INPROC, IID_IBaseFilter, (void**) &VMRFilter ) );
-    CHECK_VIDEO_NULLPTR( VMRFilter );
-    // Add the VMR to the filter graph.
-    CHECK_VIDEO_HR( GraphBuilder->AddFilter( VMRFilter, L"VMR9" ) );
-    // Set the rendering mode.
-    CHECK_VIDEO_HR( VMRFilter->QueryInterface( IID_IVMRFilterConfig9, (void**) &FilterConfig ) );
-    CHECK_VIDEO_NULLPTR( FilterConfig );
-    CHECK_VIDEO_HR( FilterConfig->SetRenderingMode( VMRMode_Windowless ) );
-    CHECK_VIDEO_HR( VMRFilter->QueryInterface( IID_IVMRWindowlessControl9, (void**) &WindowLess ) );
-    CHECK_VIDEO_NULLPTR( WindowLess );
-    CHECK_VIDEO_HR( WindowLess->SetVideoClippingWindow( Wnd ) );
-    # else
-    // VMR Initialization
-    // Create the VMR.
-    CHECK_VIDEO_HR( CoCreateInstance( CLSID_VideoMixingRenderer, NULL, CLSCTX_INPROC, IID_IBaseFilter, (void**) &VMRFilter ) );
-    CHECK_VIDEO_NULLPTR( VMRFilter );
-    // Add the VMR to the filter graph.
-    CHECK_VIDEO_HR( GraphBuilder->AddFilter( VMRFilter, L"VMR7" ) );
-    // Set the rendering mode.
-    CHECK_VIDEO_HR( VMRFilter->QueryInterface( IID_IVMRFilterConfig, (void**) &FilterConfig ) );
-    CHECK_VIDEO_NULLPTR( FilterConfig );
-    CHECK_VIDEO_HR( FilterConfig->SetRenderingMode( VMRMode_Windowless ) );
-    CHECK_VIDEO_HR( VMRFilter->QueryInterface( IID_IVMRWindowlessControl, (void**) &WindowLess ) );
-    CHECK_VIDEO_NULLPTR( WindowLess );
-    CHECK_VIDEO_HR( WindowLess->SetVideoClippingWindow( fl_xid( MainWindow ) ) );
-    # endif
-
-    // Set the video window.
-    RECT rsrc, rdest;     // Source and destination rectangles.
-    long w, h;
-    WindowLess->GetNativeVideoSize( &w, &h, NULL, NULL );
-    SetRect( &rsrc, 0, 0, w, h );
-    GetClientRect( fl_xid( MainWindow ), &rdest );
-    SetRect( &rdest, 0, 0, rdest.right, rdest.bottom );
-    WindowLess->SetVideoPosition( &rsrc, &rdest );
-
-    // Build the graph.
-    wchar_t fname_[ 1024 ];
-    mbstowcs( fname_, video.FileName.c_str(), 1024 );     // Convert name
-    CHECK_VIDEO_HR( GraphBuilder->RenderFile( fname_, NULL ) );
-
-    // Set soundtrack
-    /*IBaseFilter* splitter;
-       if(SUCCEEDED(CoCreateInstance(CLSID_MMSPLITTER,NULL,CLSCTX_INPROC,IID_IBaseFilter,(void**)&splitter)))
-       {
-            if(SUCCEEDED(GraphBuilder->AddFilter(splitter,L"MPEG-2 Splitter")))
+    th_info_init( &CurVideo->VideoInfo );
+    th_comment_init( &CurVideo->Comment );
+    CurVideo->SetupInfo = NULL;
+    while( true )
+    {
+        int stream_index = VideoDecodePacket();
+        if( stream_index < 0 )
+        {
+            WriteLogF( _FUNC_, " - Decode header packet fail.\n" );
+            SAFEDEL( CurVideo );
+            NextVideo();
+            return;
+        }
+        int r = th_decode_headerin( &CurVideo->VideoInfo, &CurVideo->Comment, &CurVideo->SetupInfo, &CurVideo->Packet );
+        if( !r )
+        {
+            if( stream_index != CurVideo->SS.MainIndex )
             {
-                    IAMStreamSelect* strm=NULL;
-                    if(SUCCEEDED(splitter->QueryInterface(IID_IAMStreamSelect,(void**)&strm)))
+                while( true )
+                {
+                    stream_index = VideoDecodePacket();
+                    if( stream_index == CurVideo->SS.MainIndex )
+                        break;
+                    if( stream_index < 0 )
                     {
-                            IPin* in,*out;
-                            HRESULT hr=splitter->FindPin(L"Output", &out);
-                            WriteLog("0hr<%u>\n",hr);
-                            hr=VMRFilter->FindPin(L"Input", &in);
-                            WriteLog("1hr<%u>\n",hr);
-                            hr=GraphBuilder->Connect(out,in);
-                            WriteLog("2hr<%u>\n",hr);
-
-                    //	strm->Enable(0,0);
-                    //	strm->Enable(1,0);
-                            uint count=9;
-                            hr=strm->Count(&count);
-                    //	if(count>1) strm->Enable(1,0);
-                            WriteLog("hr<%u> count<%u>\n",hr,count);
-                    //	SAFEREL(strm);
+                        WriteLogF( _FUNC_, " - Seek first data packet fail.\n" );
+                        SAFEDEL( CurVideo );
+                        NextVideo();
+                        return;
                     }
+                }
             }
-            //SAFEREL(mpeg1splitter);
-       }*/
+            break;
+        }
+        else
+        {
+            CurVideo->SS.MainIndex = stream_index;
+        }
+    }
 
-    // Run the graph.
-    CHECK_VIDEO_HR( MediaControl->Run() );
-    #endif
+    CurVideo->Context = th_decode_alloc( &CurVideo->VideoInfo, CurVideo->SetupInfo );
+
+    // Create texture
+    if( !SprMngr.CreateRenderTarget( CurVideo->RT, false, false, CurVideo->VideoInfo.pic_width, CurVideo->VideoInfo.pic_height ) )
+    {
+        WriteLogF( _FUNC_, " - Can't create render target.\n" );
+        SAFEDEL( CurVideo );
+        NextVideo();
+        return;
+    }
 
     // Start sound
     if( video.SoundName != "" )
@@ -9951,15 +9930,236 @@ void FOClient::PlayVideo( ShowVideo& video )
     }
 }
 
+int FOClient::VideoDecodePacket()
+{
+    ogg_stream_state* streams = CurVideo->SS.Streams;
+    bool*             initiated_stream = CurVideo->SS.StreamsState;
+    uint              num_streams = CurVideo->SS.COUNT;
+    ogg_packet*       packet = &CurVideo->Packet;
+
+    int               b = 0;
+    int               rv = 0;
+    for( uint i = 0; initiated_stream[ i ] && i < num_streams; i++ )
+    {
+        int a = ogg_stream_packetout( &streams[ i ], packet );
+        switch( a )
+        {
+        case  1:
+            b = i + 1;
+        case  0:
+        case -1:
+            break;
+        }
+    }
+    if( b )
+        return rv = b - 1;
+
+    do
+    {
+        ogg_page op;
+        while( ogg_sync_pageout( &CurVideo->SyncState, &op ) != 1 )
+        {
+            int left = CurVideo->RawData.GetFsize() - CurVideo->RawData.GetCurPos();
+            int bytes = min( 1024, left );
+            if( !bytes )
+                return -2;
+            char* buffer = ogg_sync_buffer( &CurVideo->SyncState, bytes );
+            CurVideo->RawData.CopyMem( buffer, bytes );
+            ogg_sync_wrote( &CurVideo->SyncState, bytes );
+        }
+
+        if( ogg_page_bos( &op ) && rv != 1 )
+        {
+            uint i = 0;
+            while( initiated_stream[ i ] && i < num_streams )
+                i++;
+            if( !initiated_stream[ i ] )
+            {
+                int a = ogg_stream_init( &streams[ i ], ogg_page_serialno( &op ) );
+                initiated_stream[ i ] = true;
+                if( a )
+                    return -1;
+                else
+                    rv = 1;
+            }
+        }
+
+        for( uint i = 0; initiated_stream[ i ] && i < num_streams; i++ )
+        {
+            ogg_stream_pagein( &streams[ i ], &op );
+            int a = ogg_stream_packetout( &streams[ i ], packet );
+            switch( a )
+            {
+            case  1:
+                rv = i;
+                b = i + 1;
+            case  0:
+            case -1:
+                break;
+            }
+        }
+    }
+    while( !b );
+
+    return rv;
+}
+
+void FOClient::RenderVideo()
+{
+    // Count function call time to interpolate output time
+    double render_time = Timer::AccurateTick();
+
+    // Calculate next frame
+    double cur_second = ( render_time - CurVideo->StartTime + CurVideo->AverageRenderTime ) / 1000.0;
+    uint   new_frame = (uint) floor( cur_second * (double) CurVideo->VideoInfo.fps_numerator / (double) CurVideo->VideoInfo.fps_denominator + 0.5 );
+    uint   skip_frames = new_frame - CurVideo->CurFrame;
+    if( !skip_frames )
+        return;
+    bool last_frame = false;
+    CurVideo->CurFrame = new_frame;
+
+    // Process frames
+    for( uint f = 0; f < skip_frames; f++ )
+    {
+        // Decode frame
+        int r = th_decode_packetin( CurVideo->Context, &CurVideo->Packet, NULL );
+        if( r != TH_DUPFRAME )
+        {
+            if( r )
+            {
+                WriteLogF( _FUNC_, " - Frame does not contain encoded video data, error<%d>.\n", r );
+                NextVideo();
+                return;
+            }
+
+            // Decode color
+            r = th_decode_ycbcr_out( CurVideo->Context, CurVideo->ColorBuffer );
+            if( r )
+            {
+                WriteLogF( _FUNC_, " - th_decode_ycbcr_out() fail, error<%d>\n.", r );
+                NextVideo();
+                return;
+            }
+        }
+
+        // Seek next packet
+        do
+        {
+            r = VideoDecodePacket();
+            if( r == -2 )
+            {
+                last_frame = true;
+                break;
+            }
+        }
+        while( r != CurVideo->SS.MainIndex );
+        if( last_frame )
+            break;
+    }
+
+    // Data offsets
+    char di, dj;
+    switch( CurVideo->VideoInfo.pixel_fmt )
+    {
+    case TH_PF_420:
+        di = 2;
+        dj = 2;
+        break;
+    case TH_PF_422:
+        di = 2;
+        dj = 1;
+        break;
+    case TH_PF_444:
+        di = 1;
+        dj = 1;
+        break;
+    default:
+        WriteLogF( _FUNC_, " - Wrong pixel format.\n" );
+        NextVideo();
+        return;
+    }
+
+    // Render
+    uint w = CurVideo->VideoInfo.pic_width;
+    uint h = CurVideo->VideoInfo.pic_height;
+    SprMngr.PushRenderTarget( CurVideo->RT );
+    GL( glViewport( 0, 0, w, h ) );
+    GL( glMatrixMode( GL_PROJECTION ) );
+    GL( glLoadIdentity() );
+    GL( gluOrtho2D( 0, w, h, 0 ) );
+    GL( glMatrixMode( GL_MODELVIEW ) );
+    GL( glLoadIdentity() );
+    GL( glDisable( GL_TEXTURE_2D ) );
+    GL( glDisable( GL_POINT_SMOOTH ) );
+    glBegin( GL_POINTS );
+    for( uint y = 0; y < h; y++ )
+    {
+        for( uint x = 0; x < w; x++ )
+        {
+            // Get YUV
+            th_ycbcr_buffer& cbuf = CurVideo->ColorBuffer;
+            uchar            cy = *( cbuf[ 0 ].data + y * cbuf[ 0 ].stride + x );
+            uchar            cu = *( cbuf[ 1 ].data + y / dj * cbuf[ 1 ].stride + x / di );
+            uchar            cv = *( cbuf[ 2 ].data + y / dj * cbuf[ 2 ].stride + x / di );
+
+            // Convert YUV to RGB
+            float cr = cy + 1.402f * ( cv - 127 );
+            float cg = cy - 0.344f * ( cu - 127 ) - 0.714f * ( cv - 127 );
+            float cb = cy + 1.722f * ( cu - 127 );
+
+            // Draw
+            glColor3f( cr / 255.0f, cg / 255.0f, cb / 255.0f );
+            glVertex2f( (float) x, (float) y + 1.0f );
+        }
+    }
+    GL( glEnd() );
+    GL( glEnable( GL_TEXTURE_2D ) );
+    GL( glEnable( GL_POINT_SMOOTH ) );
+    GL( glViewport( 0, 0, MODE_WIDTH, MODE_HEIGHT ) );
+    SprMngr.PopRenderTarget();
+
+    // Render to window
+    float mw = (float) MODE_WIDTH;
+    float mh = (float) MODE_HEIGHT;
+    float k = min( mw / w, mh / h );
+    w = (uint) ( (float) w * k );
+    h = (uint) ( (float) h * k );
+    int x = ( MODE_WIDTH - w ) / 2;
+    int y = ( MODE_HEIGHT - h ) / 2;
+    if( SprMngr.BeginScene( 0xFF000000 ) )
+    {
+        SprMngr.DrawRenderTarget( CurVideo->RT, NULL, &Rect( x, y, x + w, y + h ) );
+        SprMngr.EndScene();
+    }
+
+    // Store render time
+    render_time = Timer::AccurateTick() - render_time;
+    if( CurVideo->AverageRenderTime > 0.0 )
+        CurVideo->AverageRenderTime = ( CurVideo->AverageRenderTime + render_time ) / 2.0;
+    else
+        CurVideo->AverageRenderTime = render_time;
+
+    // Last frame
+    if( last_frame )
+        NextVideo();
+}
+
 void FOClient::NextVideo()
 {
     if( ShowVideos.size() )
     {
+        // Clear screen
+        if( SprMngr.BeginScene( 0xFF000000 ) )
+            SprMngr.EndScene();
+
+        // Stop current
         StopVideo();
         ShowVideos.erase( ShowVideos.begin() );
+
+        // Manage next
         if( ShowVideos.size() )
         {
-            PlayVideo( ShowVideos[ 0 ] );
+            PlayVideo();
         }
         else
         {
@@ -9975,21 +10175,26 @@ void FOClient::NextVideo()
 
 void FOClient::StopVideo()
 {
-    SAFEREL( BasicAudio );
-    SAFEREL( MediaControl );
-    SAFEREL( WindowLess );
-    SAFEREL( MediaSeeking );
-    SAFEREL( VMRFilter );
-    SAFEREL( FilterConfig );
-    SAFEREL( GraphBuilder );
+    // Video
+    if( CurVideo )
+    {
+        ogg_sync_clear( &CurVideo->SyncState );
+        th_info_clear( &CurVideo->VideoInfo );
+        th_setup_free( CurVideo->SetupInfo );
+        th_decode_free( CurVideo->Context );
+        SprMngr.DeleteRenderTarget( CurVideo->RT );
+        SAFEDEL( CurVideo );
+    }
+
+    // Music
     SndMngr.StopMusic();
     if( MusicVolumeRestore != -1 )
     {
         SndMngr.SetMusicVolume( MusicVolumeRestore );
         MusicVolumeRestore = -1;
     }
-    // CoUninitialize(); // Crashed sometimes
 }
+#endif
 
 uint FOClient::AnimLoad( uint name_hash, uchar dir, int res_type )
 {
@@ -11004,8 +11209,10 @@ bool FOClient::SScriptFunc::Global_PlayMusic( CScriptString& music_name, uint po
 
 void FOClient::SScriptFunc::Global_PlayVideo( CScriptString& video_name, bool can_stop )
 {
+    #ifndef FO_D3D
     SndMngr.StopMusic();
-    Self->AddVideo( video_name.c_str(), NULL, can_stop, true );
+    Self->AddVideo( video_name.c_str(), can_stop, true );
+    #endif
 }
 
 bool FOClient::SScriptFunc::Global_IsTurnBased()
