@@ -989,6 +989,7 @@ void SpriteManager::SaveSufaces()
     #endif
 }
 
+#ifndef FO_D3D
 void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
 {
     // Back buffer
@@ -1012,8 +1013,8 @@ void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
     // Flip image
     if( flip )
     {
-        uint  w = ilGetInteger( IL_IMAGE_WIDTH );
-        uint  h = ilGetInteger( IL_IMAGE_HEIGHT );
+        uint  w = tex->Width;
+        uint  h = tex->Height;
         uint* data4 = (uint*) ilGetData();
         for( uint y = 0; y < h / 2; y++ )
             for( uint x = 0; x < w; x++ )
@@ -1047,6 +1048,7 @@ void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
     if( data != tex->Data )
         delete[] data;
 }
+#endif
 
 uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size )
 {

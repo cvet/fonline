@@ -502,6 +502,8 @@ bool FOClient::Init()
     }
     #else
     ScreenFadeOut();
+    if( MsgGame->Count( STR_MUSIC_MAIN_THEME ) )
+        SndMngr.PlayMusic( MsgGame->GetStr( STR_MUSIC_MAIN_THEME ) );
     #endif
 
     // Disable dumps if multiple window detected
@@ -2836,11 +2838,8 @@ void FOClient::NetDisconnect()
     Sock = INVALID_SOCKET;
     IsConnected = false;
 
-    WriteLog( "Traffic transfered statistics, in bytes:\n"
-              "Send<%u> Receive<%u> Sum<%u>.\n"
-              "ReceiveReal<%u>.\n",
-              BytesSend, BytesReceive, BytesReceive + BytesSend,
-              BytesRealReceive );
+    WriteLog( "Traffic: send<%u>, receive<%u>, whole<%u>, receive real<%u>.\n",
+              BytesSend, BytesReceive, BytesReceive + BytesSend, BytesRealReceive );
 
     SetCurMode( CUR_DEFAULT );
     HexMngr.UnloadMap();
