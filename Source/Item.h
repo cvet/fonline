@@ -227,7 +227,7 @@ public:
     uchar  IndicatorStart;
     uchar  IndicatorMax;
     uint   HolodiskNum;
-    uint   StartValue[ ITEM_MAX_SCRIPT_VALUES ];
+    int    StartValue[ ITEM_MAX_SCRIPT_VALUES ];
     uchar  BlockLines[ ITEM_MAX_BLOCK_LINES ];
     ushort ChildPid[ ITEM_MAX_CHILDS ];
     uchar  ChildLines[ ITEM_MAX_CHILDS ][ ITEM_MAX_CHILD_LINES ];

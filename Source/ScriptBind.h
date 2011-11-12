@@ -115,25 +115,25 @@ if( engine->RegisterObjectProperty( "ProtoItem", "const uint8 IndicatorMax", OFF
     BIND_ERROR;
 if( engine->RegisterObjectProperty( "ProtoItem", "const uint HolodiskNum", OFFSETOF( ProtoItem, HolodiskNum ) ) < 0 )
     BIND_ERROR;
-if( engine->RegisterObjectProperty( "ProtoItem", "const uint StartValue_0", OFFSETOF( ProtoItem, StartValue[ 0 ] ) ) < 0 )
+if( engine->RegisterObjectProperty( "ProtoItem", "const int StartValue_0", OFFSETOF( ProtoItem, StartValue[ 0 ] ) ) < 0 )
     BIND_ERROR;
-if( engine->RegisterObjectProperty( "ProtoItem", "const uint StartValue_1", OFFSETOF( ProtoItem, StartValue[ 1 ] ) ) < 0 )
+if( engine->RegisterObjectProperty( "ProtoItem", "const int StartValue_1", OFFSETOF( ProtoItem, StartValue[ 1 ] ) ) < 0 )
     BIND_ERROR;
-if( engine->RegisterObjectProperty( "ProtoItem", "const uint StartValue_2", OFFSETOF( ProtoItem, StartValue[ 2 ] ) ) < 0 )
+if( engine->RegisterObjectProperty( "ProtoItem", "const int StartValue_2", OFFSETOF( ProtoItem, StartValue[ 2 ] ) ) < 0 )
     BIND_ERROR;
-if( engine->RegisterObjectProperty( "ProtoItem", "const uint StartValue_3", OFFSETOF( ProtoItem, StartValue[ 3 ] ) ) < 0 )
+if( engine->RegisterObjectProperty( "ProtoItem", "const int StartValue_3", OFFSETOF( ProtoItem, StartValue[ 3 ] ) ) < 0 )
     BIND_ERROR;
-if( engine->RegisterObjectProperty( "ProtoItem", "const uint StartValue_4", OFFSETOF( ProtoItem, StartValue[ 4 ] ) ) < 0 )
+if( engine->RegisterObjectProperty( "ProtoItem", "const int StartValue_4", OFFSETOF( ProtoItem, StartValue[ 4 ] ) ) < 0 )
     BIND_ERROR;
-if( engine->RegisterObjectProperty( "ProtoItem", "const uint StartValue_5", OFFSETOF( ProtoItem, StartValue[ 5 ] ) ) < 0 )
+if( engine->RegisterObjectProperty( "ProtoItem", "const int StartValue_5", OFFSETOF( ProtoItem, StartValue[ 5 ] ) ) < 0 )
     BIND_ERROR;
-if( engine->RegisterObjectProperty( "ProtoItem", "const uint StartValue_6", OFFSETOF( ProtoItem, StartValue[ 6 ] ) ) < 0 )
+if( engine->RegisterObjectProperty( "ProtoItem", "const int StartValue_6", OFFSETOF( ProtoItem, StartValue[ 6 ] ) ) < 0 )
     BIND_ERROR;
-if( engine->RegisterObjectProperty( "ProtoItem", "const uint StartValue_7", OFFSETOF( ProtoItem, StartValue[ 7 ] ) ) < 0 )
+if( engine->RegisterObjectProperty( "ProtoItem", "const int StartValue_7", OFFSETOF( ProtoItem, StartValue[ 7 ] ) ) < 0 )
     BIND_ERROR;
-if( engine->RegisterObjectProperty( "ProtoItem", "const uint StartValue_8", OFFSETOF( ProtoItem, StartValue[ 8 ] ) ) < 0 )
+if( engine->RegisterObjectProperty( "ProtoItem", "const int StartValue_8", OFFSETOF( ProtoItem, StartValue[ 8 ] ) ) < 0 )
     BIND_ERROR;
-if( engine->RegisterObjectProperty( "ProtoItem", "const uint StartValue_9", OFFSETOF( ProtoItem, StartValue[ 9 ] ) ) < 0 )
+if( engine->RegisterObjectProperty( "ProtoItem", "const int StartValue_9", OFFSETOF( ProtoItem, StartValue[ 9 ] ) ) < 0 )
     BIND_ERROR;
 if( engine->RegisterObjectProperty( "ProtoItem", "const uint8 BlockLines", OFFSETOF( ProtoItem, BlockLines ) ) < 0 )
     BIND_ERROR;
