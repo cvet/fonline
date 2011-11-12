@@ -9683,13 +9683,11 @@ bool FOClient::SaveLogFile()
     if( MessBox.empty() )
         return false;
 
-    SYSTEMTIME sys_time;
-    GetLocalTime( &sys_time );
-
-    char log_path[ 512 ];
-    sprintf( log_path, "%smessbox_%02d-%02d-%d_%02d-%02d-%02d.txt", PATH_LOG_FILE,
-             sys_time.wDay, sys_time.wMonth, sys_time.wYear,
-             sys_time.wHour, sys_time.wMinute, sys_time.wSecond );
+    DateTime dt;
+    Timer::GetCurrentDateTime( dt );
+    char     log_path[ MAX_FOPATH ];
+    Str::Format( log_path, DIR_SLASH_SD "messbox_%02d-%02d-%d_%02d-%02d-%02d.txt",
+                 dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
 
     if( Script::PrepareContext( ClientFunctions.FilenameLogfile, _FUNC_, "Game" ) )
     {
@@ -9735,20 +9733,11 @@ bool FOClient::SaveScreenshot()
     if( !SprMngr.IsInit() )
         return false;
 
-    #ifdef FO_D3D
-    LPDIRECT3DSURFACE9 surf = NULL;
-    if( FAILED( SprMngr.GetDevice()->GetBackBuffer( 0, 0, D3DBACKBUFFER_TYPE_MONO, &surf ) ) )
-        return false;
-    #endif
-
-    SYSTEMTIME sys_time;
-    GetLocalTime( &sys_time );
-
-    char screen_path[ 512 ];
-    sprintf( screen_path, "%sscreen_%02d-%02d-%d_%02d-%02d-%02d.", PATH_SCREENS_FILE,
-             sys_time.wDay, sys_time.wMonth, sys_time.wYear,
-             sys_time.wHour, sys_time.wMinute, sys_time.wSecond );
-    Str::Append( screen_path, "jpg" );
+    DateTime dt;
+    Timer::GetCurrentDateTime( dt );
+    char     screen_path[ MAX_FOPATH ];
+    Str::Format( screen_path, DIR_SLASH_SD "screen_%02d-%02d-%d_%02d-%02d-%02d.jpg",
+                 dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
 
     if( Script::PrepareContext( ClientFunctions.FilenameScreenshot, _FUNC_, "Game" ) )
     {
@@ -9765,11 +9754,13 @@ bool FOClient::SaveScreenshot()
 
     FileManager::CreateDirectoryTree( FileManager::GetFullPath( screen_path, PT_ROOT ) );
 
-    char* extension = Str::Lower( (char*) FileManager::GetExtension( screen_path ) );
-
     #ifdef FO_D3D
-    D3DXIMAGE_FILEFORMAT format = D3DXIFF_BMP;
+    LPDIRECT3DSURFACE9 surf = NULL;
+    if( FAILED( SprMngr.GetDevice()->GetBackBuffer( 0, 0, D3DBACKBUFFER_TYPE_MONO, &surf ) ) )
+        return false;
 
+    D3DXIMAGE_FILEFORMAT format = D3DXIFF_BMP;
+    char*                extension = Str::Lower( (char*) FileManager::GetExtension( screen_path ) );
     if( Str::Compare( extension, "jpg" ) )
         format = D3DXIFF_JPG;
     else if( Str::Compare( extension, "tga" ) )
@@ -9783,6 +9774,8 @@ bool FOClient::SaveScreenshot()
         return false;
     }
     surf->Release();
+    #else
+    SprMngr.SaveTexture( NULL, screen_path, false );
     #endif
 
     return true;

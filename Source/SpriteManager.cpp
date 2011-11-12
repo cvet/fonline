@@ -976,28 +976,76 @@ void SpriteManager::SaveSufaces()
         cnt++;
     }
     #else
-    int  cnt = 0;
-    char name[ MAX_FOPATH ];
+    int cnt = 0;
     for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
     {
         Surface* surf = *it;
         Texture* tex = surf->TextureOwner;
-        ILuint   img = 0;
-        ilGenImages( 1, &img );
-        ilBindImage( img );
-        ilTexImage( tex->Width, tex->Height, 1, 4, IL_BGRA, IL_UNSIGNED_BYTE, tex->Data );
-        uint   size = ilSaveL( IL_PNG, NULL, 0 );
-        uchar* buf = new uchar[ size ];
-        ilSaveL( IL_PNG, buf, size );
-        ilDeleteImages( 1, &img );
+        char     name[ MAX_FOPATH ];
         Str::Format( name, "%s%d_%d_%ux%u.png", path, surf->Type, cnt, surf->Width, surf->Height );
-        void* f = FileOpen( name, true );
-        FileWrite( f, buf, size );
-        FileClose( f );
-        delete[] buf;
+        SaveTexture( tex, name, true );
         cnt++;
     }
     #endif
+}
+
+void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
+{
+    // Back buffer
+    if( !tex )
+        tex = rtStack[ 0 ]->TargetTexture;
+
+    // Get data
+    uchar* data = (uchar*) tex->Data;
+    if( !data )
+    {
+        data = new uchar[ tex->Width * tex->Height * 4 ];
+        GL( glGetTexImage( GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, data ) );
+    }
+
+    // Load to DevIL
+    ILuint img = 0;
+    ilGenImages( 1, &img );
+    ilBindImage( img );
+    ilTexImage( tex->Width, tex->Height, 1, 4, IL_BGRA, IL_UNSIGNED_BYTE, data );
+
+    // Flip image
+    if( flip )
+    {
+        uint  w = ilGetInteger( IL_IMAGE_WIDTH );
+        uint  h = ilGetInteger( IL_IMAGE_HEIGHT );
+        uint* data4 = (uint*) ilGetData();
+        for( uint y = 0; y < h / 2; y++ )
+            for( uint x = 0; x < w; x++ )
+                std::swap( data4[ y * w + x ], data4[ ( h - y - 1 ) * w + x ] );
+    }
+
+    // Detect file type
+    ILenum file_type = ilTypeFromExt( fname );
+
+    // Save
+    if( file_type != IL_TYPE_UNKNOWN )
+    {
+        // Format specific options
+        if( file_type == IL_JPG )
+            ilSetInteger( IL_JPG_QUALITY, 95 );
+
+        // Save to memory
+        uint   size = ilSaveL( file_type, NULL, 0 );
+        uchar* buf = new uchar[ size ];
+        ilSaveL( file_type, buf, size );
+
+        // Save to hard drive
+        void* f = FileOpen( fname, true );
+        FileWrite( f, buf, size );
+        FileClose( f );
+        delete[] buf;
+    }
+
+    // Clean up
+    ilDeleteImages( 1, &img );
+    if( data != tex->Data )
+        delete[] data;
 }
 
 uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size )

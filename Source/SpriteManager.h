@@ -307,6 +307,9 @@ public:
 
     void FreeSurfaces( int surf_type );
     void SaveSufaces();
+    #ifndef FO_D3D
+    void SaveTexture( Texture* tex, const char* fname, bool flip ); // tex == NULL is back buffer
+    #endif
 
 private:
     int        baseTextureSize;
