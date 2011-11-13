@@ -122,7 +122,7 @@ void* GameThread( void* )
     while( !GameOpt.Quit )
     {
         Mapper->MainLoop();
-        if( GameOpt.Sleep >= 0 )
+        if( GameOpt.Sleep >= 0 && !GameOpt.VSync )
             Sleep( GameOpt.Sleep );
     }
 

@@ -205,7 +205,7 @@ void* GameThread( void* )
     {
         if( !FOEngine->MainLoop() )
             Sleep( 100 );
-        else if( GameOpt.Sleep >= 0 )
+        else if( GameOpt.Sleep >= 0 && !GameOpt.VSync )
             Sleep( GameOpt.Sleep );
     }
 
