@@ -275,7 +275,7 @@ Item* CritterCl::GetItemByPidSlot( ushort item_pid, int slot )
 Item* CritterCl::GetAmmo( uint caliber )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        if( ( *it )->GetType() == ITEM_TYPE_AMMO && ( *it )->Proto->Ammo_Caliber == caliber )
+        if( ( *it )->GetType() == ITEM_TYPE_AMMO && ( *it )->Proto->Ammo_Caliber == (int) caliber )
             return *it;
     return NULL;
 }
@@ -641,7 +641,7 @@ int CritterCl::GetParam( uint index )
 
 void CritterCl::ChangeParam( uint index )
 {
-    if( !ParamsIsChanged[ index ] && ParamLocked != index )
+    if( !ParamsIsChanged[ index ] && ParamLocked != (int) index )
     {
         ParamsChanged.push_back( index );
         ParamsChanged.push_back( Params[ index ] );
@@ -740,7 +740,9 @@ void CritterCl::DrawStay( Rect r )
     {
         Anim3dStay->SetDir( dir );
         Anim3dStay->SetAnimation( anim1, anim2, GetLayers3dData(), IsLife() ? 0 : ANIMATION_STAY | ANIMATION_PERIOD( 100 ) | ANIMATION_NO_SMOOTH );
-        SprMngr.Draw3dSize( RectF( (float) r.L, (float) r.T, (float) r.R, (float) r.B ), false, true, Anim3dStay, &RectF( (float) r.L, (float) r.T, (float) r.R, (float) r.B ), COLOR_IFACE );
+        RectF r1 = RectF( (float) r.L, (float) r.T, (float) r.R, (float) r.B );
+        RectF r2 = RectF( (float) r.L, (float) r.T, (float) r.R, (float) r.B );
+        SprMngr.Draw3dSize( r1, false, true, Anim3dStay, &r2, COLOR_IFACE );
     }
 }
 
@@ -749,7 +751,7 @@ const char* CritterCl::GetMoneyStr()
 {
     static char money_str[ 64 ];
     uint        money_count = CountItemPid( 41 /*PID_BOTTLE_CAPS*/ );
-    sprintf( money_str, "%u$", money_count );
+    Str::Format( money_str, "%u$", money_count );
     return money_str;
 }
 
@@ -1035,19 +1037,19 @@ void CritterCl::Move( int dir )
                 int s2 = CritType::GetWalkFrmCnt( crtype, 2 );
                 int s3 = CritType::GetWalkFrmCnt( crtype, 3 );
 
-                if( curSpr == s0 - 1 && s1 )
+                if( (int) curSpr == s0 - 1 && s1 )
                 {
                     beg_spr = s0;
                     end_spr = s1 - 1;
                     step = 2;
                 }
-                else if( curSpr == s1 - 1 && s2 )
+                else if( (int) curSpr == s1 - 1 && s2 )
                 {
                     beg_spr = s1;
                     end_spr = s2 - 1;
                     step = 3;
                 }
-                else if( curSpr == s2 - 1 && s3 )
+                else if( (int) curSpr == s2 - 1 && s3 )
                 {
                     beg_spr = s2;
                     end_spr = s3 - 1;
@@ -1619,9 +1621,9 @@ void CritterCl::Process()
     // Todo: do same for 2d animations
     if( Anim3d && GameOpt.Anim2CombatIdle && !animSequence.size() && Cond == COND_LIFE && !Anim2Life )
     {
-        if( GameOpt.Anim2CombatBegin && IsCombatMode() && Anim3d->GetAnim2() != GameOpt.Anim2CombatIdle )
+        if( GameOpt.Anim2CombatBegin && IsCombatMode() && Anim3d->GetAnim2() != (int) GameOpt.Anim2CombatIdle )
             Animate( 0, GameOpt.Anim2CombatBegin, NULL );
-        else if( GameOpt.Anim2CombatEnd && !IsCombatMode() && Anim3d->GetAnim2() == GameOpt.Anim2CombatIdle )
+        else if( GameOpt.Anim2CombatEnd && !IsCombatMode() && Anim3d->GetAnim2() == (int) GameOpt.Anim2CombatIdle )
             Animate( 0, GameOpt.Anim2CombatEnd, NULL );
     }
 

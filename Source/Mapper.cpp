@@ -292,10 +292,10 @@ bool FOMapper::Init()
     ChangeGameTime();
     AnyId = 0x7FFFFFFF;
 
-    if( strstr( GetCommandLine(), "-Map" ) )
+    if( Str::Substring( GetCommandLine(), "-Map" ) )
     {
         char map_name[ 256 ];
-        sscanf( strstr( GetCommandLine(), "-Map" ) + strlen( "-Map" ) + 1, "%s", map_name );
+        sscanf( Str::Substring( GetCommandLine(), "-Map" ) + strlen( "-Map" ) + 1, "%s", map_name );
 
         ProtoMap* pmap = new ProtoMap();
         if( pmap->Init( 0xFFFF, map_name, PT_SERVER_MAPS ) && HexMngr.SetProtoMap( *pmap ) )
@@ -1498,11 +1498,11 @@ void FOMapper::MainLoop()
                     char str[ 512 ] = { 0 };
 
                     if( DrawCrExtInfo == 1 )
-                        sprintf( str, "|0xffaabbcc ProtoId...%u\n|0xffff1122 DialogId...%u\n|0xff4433ff BagId...%u\n|0xff55ff77 TeamId...%u\n", mobj->ProtoId, cr->Params[ ST_DIALOG_ID ], cr->Params[ ST_BAG_ID ], cr->Params[ ST_TEAM_ID ] );
+                        Str::Format( str, "|0xffaabbcc ProtoId...%u\n|0xffff1122 DialogId...%u\n|0xff4433ff BagId...%u\n|0xff55ff77 TeamId...%u\n", mobj->ProtoId, cr->Params[ ST_DIALOG_ID ], cr->Params[ ST_BAG_ID ], cr->Params[ ST_TEAM_ID ] );
                     else if( DrawCrExtInfo == 2 )
-                        sprintf( str, "|0xff11ff22 NpcRole...%u\n|0xffccaabb AiPacket...%u (%u)\n|0xffff00ff RespawnTime...%d\n", cr->Params[ ST_NPC_ROLE ], cr->Params[ ST_AI_ID ], pnpc->Params[ ST_AI_ID ], cr->Params[ ST_REPLICATION_TIME ] );
+                        Str::Format( str, "|0xff11ff22 NpcRole...%u\n|0xffccaabb AiPacket...%u (%u)\n|0xffff00ff RespawnTime...%d\n", cr->Params[ ST_NPC_ROLE ], cr->Params[ ST_AI_ID ], pnpc->Params[ ST_AI_ID ], cr->Params[ ST_REPLICATION_TIME ] );
                     else if( DrawCrExtInfo == 3 )
-                        sprintf( str, "|0xff00ff00 ScriptName...%s\n|0xffff0000 FuncName...%s\n", mobj->ScriptName, mobj->FuncName );
+                        Str::Format( str, "|0xff00ff00 ScriptName...%s\n|0xffff0000 FuncName...%s\n", mobj->ScriptName, mobj->FuncName );
 
                     cr->SetText( str, COLOR_TEXT_WHITE, 60000000 );
                     cr->DrawTextOnHead();
@@ -2059,20 +2059,20 @@ void FOMapper::ObjDraw()
     int  dummy = 0;
 
 // ====================================================================================
-    #define DRAW_COMPONENT( name, val, unsign, cnst )                                                               \
-        do {                                                                                                        \
-            char str_[ 256 ];                                                                                       \
-            col = COLOR_TEXT;                                                                                       \
-            if( ObjCurLine == ( y - ObjWWork[ 1 ] - ObjY ) / DRAW_NEXT_HEIGHT )                                     \
-                col = COLOR_TEXT_RED;                                                                               \
-            if( ( cnst ) == true )                                                                                  \
-                col = COLOR_TEXT_WHITE;                                                                             \
-            Str::Copy( str_, name );                                                                                \
-            Str::Append( str_, "...................................................." );                            \
-            SprMngr.DrawStr( Rect( Rect( x, y, x + w / 3, y + h ), 0, 0 ), str_, FT_NOBREAK, col );                 \
-            ( unsign == true ) ? sprintf( str_, "%u (0x%0X)", val, val ) : sprintf( str_, "%d (0x%0X)", val, val ); \
-            SprMngr.DrawStr( Rect( Rect( x + w / 3, y, x + w, y + h ), 0, 0 ), str_, FT_NOBREAK, col );             \
-            y += step;                                                                                              \
+    #define DRAW_COMPONENT( name, val, unsign, cnst )                                                                       \
+        do {                                                                                                                \
+            char str_[ 256 ];                                                                                               \
+            col = COLOR_TEXT;                                                                                               \
+            if( ObjCurLine == ( y - ObjWWork[ 1 ] - ObjY ) / DRAW_NEXT_HEIGHT )                                             \
+                col = COLOR_TEXT_RED;                                                                                       \
+            if( ( cnst ) == true )                                                                                          \
+                col = COLOR_TEXT_WHITE;                                                                                     \
+            Str::Copy( str_, name );                                                                                        \
+            Str::Append( str_, "...................................................." );                                    \
+            SprMngr.DrawStr( Rect( Rect( x, y, x + w / 3, y + h ), 0, 0 ), str_, FT_NOBREAK, col );                         \
+            ( unsign == true ) ? Str::Format( str_, "%u (0x%0X)", val, val ) : Str::Format( str_, "%d (0x%0X)", val, val ); \
+            SprMngr.DrawStr( Rect( Rect( x + w / 3, y, x + w, y + h ), 0, 0 ), str_, FT_NOBREAK, col );                     \
+            y += step;                                                                                                      \
         } while( 0 )
     #define DRAW_COMPONENT_TEXT( name, text, cnst )                                                     \
         do {                                                                                            \
@@ -4822,7 +4822,7 @@ void FOMapper::ParseCommand( const char* cmd )
 
         // Reparse module
         int bind_id;
-        if( strstr( func_name, "@" ) )
+        if( Str::Substring( func_name, "@" ) )
             bind_id = Script::Bind( func_name, "string %s(string)", true );
         else
             bind_id = Script::Bind( "mapper_main", func_name, "string %s(string)", true );
@@ -4896,7 +4896,7 @@ void FOMapper::ParseCommand( const char* cmd )
     // Other
     else if( *cmd == '*' )
     {
-        if( strstr( cmd, "new" ) )
+        if( Str::Substring( cmd, "new" ) )
         {
             ProtoMap* pmap = new ProtoMap();
             pmap->GenNew();
@@ -4913,7 +4913,7 @@ void FOMapper::ParseCommand( const char* cmd )
             CurProtoMap = pmap;
             LoadedProtoMaps.push_back( pmap );
         }
-        else if( strstr( cmd, "unload" ) )
+        else if( Str::Substring( cmd, "unload" ) )
         {
             AddMess( "Unload map." );
 
@@ -4939,7 +4939,7 @@ void FOMapper::ParseCommand( const char* cmd )
                 return;
             }
         }
-        else if( strstr( cmd, "scripts" ) )
+        else if( Str::Substring( cmd, "scripts" ) )
         {
             FinishScriptSystem();
             InitScriptSystem();
@@ -4949,7 +4949,7 @@ void FOMapper::ParseCommand( const char* cmd )
         else if( !CurProtoMap )
             return;
 
-        if( strstr( cmd, "dupl" ) )
+        if( Str::Substring( cmd, "dupl" ) )
         {
             AddMess( "Find duplicates." );
 
@@ -4976,7 +4976,7 @@ void FOMapper::ParseCommand( const char* cmd )
                 }
             }
         }
-        else if( strstr( cmd, "scroll" ) )
+        else if( Str::Substring( cmd, "scroll" ) )
         {
             AddMess( "Find alone scrollblockers." );
 
@@ -5000,7 +5000,7 @@ void FOMapper::ParseCommand( const char* cmd )
                 }
             }
         }
-        else if( strstr( cmd, "pidpos" ) )
+        else if( Str::Substring( cmd, "pidpos" ) )
         {
             AddMess( "Find pid positions." );
 
@@ -5021,7 +5021,7 @@ void FOMapper::ParseCommand( const char* cmd )
                 }
             }
         }
-        else if( strstr( cmd, "size" ) )
+        else if( Str::Substring( cmd, "size" ) )
         {
             AddMess( "Resize map." );
 
@@ -5086,7 +5086,7 @@ void FOMapper::ParseCommand( const char* cmd )
             HexMngr.SetProtoMap( *CurProtoMap );
             HexMngr.FindSetCenter( CurProtoMap->Header.WorkHexX, CurProtoMap->Header.WorkHexY );
         }
-        else if( strstr( cmd, "hex" ) )
+        else if( Str::Substring( cmd, "hex" ) )
         {
             AddMess( "Show hex objects." );
 
@@ -5121,13 +5121,13 @@ void FOMapper::AddMess( const char* message_text )
 {
     // Text
     char str[ MAX_FOTEXT ];
-    sprintf( str, "|%u %c |%u %s\n", COLOR_TEXT, 149, COLOR_TEXT, message_text );
+    Str::Format( str, "|%u %c |%u %s\n", COLOR_TEXT, 149, COLOR_TEXT, message_text );
 
     // Time
     SYSTEMTIME sys_time;
     GetSystemTime( &sys_time );
     char       mess_time[ 64 ];
-    sprintf( mess_time, "%02d:%02d:%02d ", sys_time.wHour, sys_time.wMinute, sys_time.wSecond );
+    Str::Format( mess_time, "%02d:%02d:%02d ", sys_time.wHour, sys_time.wMinute, sys_time.wSecond );
 
     // Add
     MessBox.push_back( MessBoxMessage( 0, str, mess_time ) );
@@ -5142,7 +5142,7 @@ void FOMapper::AddMessFormat( const char* message_text, ... )
     char    str[ MAX_FOTEXT ];
     va_list list;
     va_start( list, message_text );
-    wvsprintf( str, message_text, list );
+    vsprintf( str, message_text, list );
     va_end( list );
     AddMess( str );
 }
@@ -5200,9 +5200,9 @@ bool FOMapper::SaveLogFile()
     GetSystemTime( &sys_time );
 
     char log_path[ 512 ];
-    sprintf( log_path, "%smapper_messbox_%02d-%02d-%d_%02d-%02d-%02d.txt", PATH_LOG_FILE,
-             sys_time.wDay, sys_time.wMonth, sys_time.wYear,
-             sys_time.wHour, sys_time.wMinute, sys_time.wSecond );
+    Str::Format( log_path, "%smapper_messbox_%02d-%02d-%d_%02d-%02d-%02d.txt", PATH_LOG_FILE,
+                 sys_time.wDay, sys_time.wMonth, sys_time.wYear,
+                 sys_time.wHour, sys_time.wMinute, sys_time.wSecond );
 
     HANDLE save_file = CreateFile( log_path, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_FLAG_WRITE_THROUGH, NULL );
     if( save_file == INVALID_HANDLE_VALUE )
@@ -6408,7 +6408,7 @@ CScriptString* FOMapper::SScriptFunc::Global_ReplaceTextInt( CScriptString& text
     if( pos == std::string::npos )
         return new CScriptString( text );
     char   val[ 32 ];
-    sprintf( val, "%d", i );
+    Str::Format( val, "%d", i );
     string str_ = text.c_std_str();
     return new CScriptString( str_.replace( pos, replace.length(), val ) );
 }

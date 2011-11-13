@@ -58,13 +58,6 @@
 		</Build>
 		<Unit filename="Client.ico" />
 		<Unit filename="Client.rc" />
-		<Unit filename="../Source/3dAnimation.cpp" />
-		<Unit filename="../Source/3dAnimation.h" />
-		<Unit filename="../Source/3dLoader.cpp" />
-		<Unit filename="../Source/3dLoader.h" />
-		<Unit filename="../Source/3dMeshHierarchy.cpp" />
-		<Unit filename="../Source/3dMeshHierarchy.h" />
-		<Unit filename="../Source/3dMeshStructures.h" />
 		<Unit filename="../Source/Access.h" />
 		<Unit filename="../Source/Acm/acmstrm.cpp" />
 		<Unit filename="../Source/Acm/acmstrm.h" />

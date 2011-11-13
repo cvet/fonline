@@ -24,7 +24,7 @@ struct Letter
     Letter(): PosX( 0 ), PosY( 0 ), W( 0 ), H( 0 ), OffsX( 0 ), OffsY( 0 ), XAdvance( 0 ) {};
 };
 
-struct Font
+struct FontData
 {
     Texture* FontTex;
     Texture* FontTexBordered;
@@ -37,7 +37,7 @@ struct Font
     RectF    TexBorderedUV[ 256 ];
     Effect*  DrawEffect;
 
-    Font()
+    FontData()
     {
         FontTex = NULL;
         FontTexBordered = NULL;
@@ -54,14 +54,14 @@ struct Font
         DrawEffect = NULL;
     }
 };
-typedef vector< Font* > FontVec;
+typedef vector< FontData* > FontDataVec;
 
-FontVec Fonts;
+FontDataVec Fonts;
 
-int     DefFontIndex = -1;
-uint    DefFontColor = 0;
+int         DefFontIndex = -1;
+uint        DefFontColor = 0;
 
-Font* GetFont( int num )
+FontData* GetFont( int num )
 {
     if( num < 0 )
         num = DefFontIndex;
@@ -72,23 +72,23 @@ Font* GetFont( int num )
 
 struct FontFormatInfo
 {
-    Font*   CurFont;
-    uint    Flags;
-    Rect    Region;
-    char    Str[ FONT_BUF_LEN ];
-    char*   PStr;
-    uint    LinesAll;
-    uint    LinesInRect;
-    int     CurX, CurY, MaxCurX;
-    uint    ColorDots[ FONT_BUF_LEN ];
-    short   LineWidth[ FONT_MAX_LINES ];
-    ushort  LineSpaceWidth[ FONT_MAX_LINES ];
-    uint    OffsColDots;
-    uint    DefColor;
-    StrVec* StrLines;
-    bool    IsError;
+    FontData* CurFont;
+    uint      Flags;
+    Rect      Region;
+    char      Str[ FONT_BUF_LEN ];
+    char*     PStr;
+    uint      LinesAll;
+    uint      LinesInRect;
+    int       CurX, CurY, MaxCurX;
+    uint      ColorDots[ FONT_BUF_LEN ];
+    short     LineWidth[ FONT_MAX_LINES ];
+    ushort    LineSpaceWidth[ FONT_MAX_LINES ];
+    uint      OffsColDots;
+    uint      DefColor;
+    StrVec*   StrLines;
+    bool      IsError;
 
-    void    Init( Font* font, uint flags, Rect& region, const char* str_in )
+    void      Init( FontData* font, uint flags, const Rect& region, const char* str_in )
     {
         CurFont = font;
         Flags = flags;
@@ -138,7 +138,7 @@ void SpriteManager::SetDefaultFont( int index, uint color )
 
 void SpriteManager::SetFontEffect( int index, Effect* effect )
 {
-    Font* font = GetFont( index );
+    FontData* font = GetFont( index );
     if( font )
         font->DrawEffect = effect;
 }
@@ -158,7 +158,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name )
     // Parse data
     istrstream str( (char*) fm.GetBuf() );
     char       key[ MAX_FOTEXT ];
-    Font       font;
+    FontData   font;
     char       image_name[ MAX_FOPATH ] = { 0 };
     int        cur_letter = 0;
     while( !str.eof() && !str.fail() )
@@ -323,7 +323,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name )
     if( index >= (int) Fonts.size() )
         Fonts.resize( index + 1 );
     SAFEDEL( Fonts[ index ] );
-    Fonts[ index ] = new Font( font );
+    Fonts[ index ] = new FontData( font );
 
     return true;
 }
@@ -336,7 +336,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
         return false;
     }
 
-    Font        font;
+    FontData    font;
     FileManager fm;
     FileManager fm_tex;
 
@@ -523,20 +523,20 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
     if( index >= (int) Fonts.size() )
         Fonts.resize( index + 1 );
     SAFEDEL( Fonts[ index ] );
-    Fonts[ index ] = new Font( font );
+    Fonts[ index ] = new FontData( font );
 
     return true;
 }
 
 void FormatText( FontFormatInfo& fi, int fmt_type )
 {
-    char* str = fi.PStr;
-    uint  flags = fi.Flags;
-    Font* font = fi.CurFont;
-    Rect& r = fi.Region;
-    int&  curx = fi.CurX;
-    int&  cury = fi.CurY;
-    uint& offs_col = fi.OffsColDots;
+    char*     str = fi.PStr;
+    uint      flags = fi.Flags;
+    FontData* font = fi.CurFont;
+    Rect&     r = fi.Region;
+    int&      curx = fi.CurX;
+    int&      cury = fi.CurY;
+    uint&     offs_col = fi.OffsColDots;
 
     if( fmt_type != FORMAT_TYPE_DRAW && fmt_type != FORMAT_TYPE_LCOUNT && fmt_type != FORMAT_TYPE_SPLIT )
     {
@@ -895,14 +895,14 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         cury = r.B - ( fi.LinesAll * font->MaxLetterHeight + ( fi.LinesAll - 1 ) * font->YAdvance );
 }
 
-bool SpriteManager::DrawStr( Rect& r, const char* str, uint flags, uint color /* = 0 */, int num_font /* = -1 */ )
+bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint color /* = 0 */, int num_font /* = -1 */ )
 {
     // Check
     if( !str || !str[ 0 ] )
         return false;
 
     // Get font
-    Font* font = GetFont( num_font );
+    FontData* font = GetFont( num_font );
     if( !font )
         return false;
 
@@ -1039,7 +1039,7 @@ bool SpriteManager::DrawStr( Rect& r, const char* str, uint flags, uint color /*
 
 int SpriteManager::GetLinesCount( int width, int height, const char* str, int num_font /* = -1 */ )
 {
-    Font* font = GetFont( num_font );
+    FontData* font = GetFont( num_font );
     if( !font )
         return 0;
 
@@ -1056,7 +1056,7 @@ int SpriteManager::GetLinesCount( int width, int height, const char* str, int nu
 
 int SpriteManager::GetLinesHeight( int width, int height, const char* str, int num_font /* = -1 */ )
 {
-    Font* font = GetFont( num_font );
+    FontData* font = GetFont( num_font );
     if( !font )
         return 0;
     int cnt = GetLinesCount( width, height, str, num_font );
@@ -1067,7 +1067,7 @@ int SpriteManager::GetLinesHeight( int width, int height, const char* str, int n
 
 int SpriteManager::GetLineHeight( int num_font /* = -1 */ )
 {
-    Font* font = GetFont( num_font );
+    FontData* font = GetFont( num_font );
     if( !font )
         return 0;
     return font->MaxLetterHeight;
@@ -1081,7 +1081,7 @@ void SpriteManager::GetTextInfo( int width, int height, const char* str, int num
     if( height <= 0 )
         height = GameOpt.ScreenHeight;
 
-    Font* font = GetFont( num_font );
+    FontData* font = GetFont( num_font );
     if( !font )
         return;
 
@@ -1096,7 +1096,7 @@ void SpriteManager::GetTextInfo( int width, int height, const char* str, int num
     tw = fi.MaxCurX;
 }
 
-int SpriteManager::SplitLines( Rect& r, const char* cstr, int num_font, StrVec& str_vec )
+int SpriteManager::SplitLines( const Rect& r, const char* cstr, int num_font, StrVec& str_vec )
 {
     // Check & Prepare
     str_vec.clear();
@@ -1104,7 +1104,7 @@ int SpriteManager::SplitLines( Rect& r, const char* cstr, int num_font, StrVec& 
         return 0;
 
     // Get font
-    Font* font = GetFont( num_font );
+    FontData* font = GetFont( num_font );
     if( !font )
         return 0;
     static FontFormatInfo fi;

@@ -118,9 +118,9 @@ public:
     void ChangeParam( uint index );
     void ProcessChangedParams();
 
-    bool IsTagSkill( uint index ) { return Params[ TAG_SKILL1 ] == index || Params[ TAG_SKILL2 ] == index || Params[ TAG_SKILL3 ] == index || Params[ TAG_SKILL4 ] == index; }
-    uint GetMaxWeightKg()         { return GetParam( ST_CARRY_WEIGHT ) / 1000; }
-    uint GetMaxVolume()           { return CRITTER_INV_VOLUME; }
+    bool IsTagSkill( int index ) { return Params[ TAG_SKILL1 ] == index || Params[ TAG_SKILL2 ] == index || Params[ TAG_SKILL3 ] == index || Params[ TAG_SKILL4 ] == index; }
+    uint GetMaxWeightKg()        { return GetParam( ST_CARRY_WEIGHT ) / 1000; }
+    uint GetMaxVolume()          { return CRITTER_INV_VOLUME; }
     uint GetCrType();
     bool IsDmgLeg()    { return IsRawParam( DAMAGE_RIGHT_LEG ) || IsRawParam( DAMAGE_LEFT_LEG ); }
     bool IsDmgTwoLeg() { return IsRawParam( DAMAGE_RIGHT_LEG ) && IsRawParam( DAMAGE_LEFT_LEG ); }

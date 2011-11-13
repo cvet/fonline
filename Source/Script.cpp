@@ -1220,7 +1220,7 @@ public:
         #endif
 
         // Detect native dll
-        if( !strstr( module_name, ".dll" ) )
+        if( !Str::Substring( module_name, ".dll" ) )
         {
             // Find module
             asIScriptModule* module = Engine->GetModule( module_name, asGM_ONLY_IF_EXISTS );
@@ -1233,7 +1233,7 @@ public:
 
             // Find function
             char decl_[ 256 ];
-            sprintf( decl_, decl, func_name );
+            Str::Format( decl_, decl, func_name );
             int  result = module->GetFunctionIdByDecl( decl_ );
             if( result <= 0 )
             {
@@ -1358,7 +1358,7 @@ public:
         Str::Copy( script, script_name );
         Str::EraseChars( script, ' ' );
 
-        if( strstr( script, "@" ) )
+        if( Str::Substring( script, "@" ) )
         {
             char* script_ptr = &script[ 0 ];
             Str::CopyWord( module_name, script_ptr, '@' );

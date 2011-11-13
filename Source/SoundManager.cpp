@@ -228,14 +228,14 @@ Sound* SoundManager::Load( const char* fname, int path_type )
     char fname_[ MAX_FOPATH ];
     Str::Copy( fname_, fname );
 
-    if( strstr( fname_, "\\" ) || strstr( fname_, "/" ) )
+    if( Str::Substring( fname_, "\\" ) || Str::Substring( fname_, "/" ) )
         path_type = PT_DATA;
 
     const char* ext = FileManager::GetExtension( fname );
     if( !ext )
     {
         // Default ext
-        ext = fname_ + strlen( fname_ );
+        ext = fname_ + Str::Length( fname_ );
         Str::Append( fname_, SOUND_DEFAULT_EXT );
     }
     else
@@ -395,7 +395,7 @@ bool SoundManager::LoadACM( Sound* sound, const char* fname, int path_type )
     sound->BufSize = samples * sound->SampleSize;
     sound->Buf = new ( nothrow ) unsigned char[ sound->BufSize ];
     int dec_data = acm->readAndDecompress( (ushort*) sound->Buf, sound->BufSize );
-    if( dec_data != sound->BufSize )
+    if( dec_data != (int) sound->BufSize )
     {
         WriteLogF( _FUNC_, " - Decode Acm error.\n" );
         return false;
@@ -506,7 +506,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
     uint decoded = 0;
     while( true )
     {
-        int portion = min( 4096, STREAMING_PORTION - decoded );
+        int portion = min( (uint) 4096, STREAMING_PORTION - decoded );
         result = ov_read( &sound->OggDescriptor, (char*) sound->Buf + decoded, portion, 0, 2, 1, NULL );
         if( result <= 0 )
             break;
@@ -557,7 +557,7 @@ bool SoundManager::StreamingOGG( Sound* sound )
     uint decoded = 0;
     while( true )
     {
-        int portion = min( 4096, STREAMING_PORTION - decoded );
+        int portion = min( (uint) 4096, STREAMING_PORTION - decoded );
         result = ov_read( &sound->OggDescriptor, (char*) sound->Buf + decoded, portion, 0, 2, 1, NULL );
         if( result <= 0 )
             break;

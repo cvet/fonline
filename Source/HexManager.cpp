@@ -257,7 +257,7 @@ void HexManager::ReloadSprites()
     for( int i = 0; i <= 6; i++ )
     {
         char name[ 64 ];
-        sprintf( name, "adrop%d.png", i );
+        Str::Format( name, "adrop%d.png", i );
         picRainDropA[ i ] = SprMngr.LoadAnimation( name, PT_ART_MISC, ANIM_USE_DUMMY );
     }
 }
@@ -3062,7 +3062,7 @@ label_FindOk:
     else
     {
         // Smooth data
-        int switch_count, switch_begin;
+        int switch_count = 0, switch_begin = 0;
         if( GameOpt.MapSmoothPath )
         {
             int x2 = start_x, y2 = start_y;
@@ -3434,7 +3434,7 @@ bool HexManager::LoadMap( ushort map_pid )
 
     // Make name
     char map_name[ 256 ];
-    sprintf( map_name, "map%u", map_pid );
+    Str::Format( map_name, "map%u", map_pid );
 
     // Find in cache
     uint   cache_len;
@@ -3712,7 +3712,7 @@ void HexManager::GetMapHash( ushort map_pid, uint& hash_tiles, uint& hash_walls,
     }
 
     char map_name[ 256 ];
-    sprintf( map_name, "map%u", map_pid );
+    Str::Format( map_name, "map%u", map_pid );
 
     uint   cache_len;
     uchar* cache = Crypt.GetCache( map_name, cache_len );
@@ -3805,7 +3805,7 @@ void HexManager::GetMapHash( ushort map_pid, uint& hash_tiles, uint& hash_walls,
 bool HexManager::GetMapData( ushort map_pid, ItemVec& items, ushort& maxhx, ushort& maxhy )
 {
     char map_name[ 256 ];
-    sprintf( map_name, "map%u", map_pid );
+    Str::Format( map_name, "map%u", map_pid );
 
     uint   cache_len;
     uchar* cache = Crypt.GetCache( map_name, cache_len );

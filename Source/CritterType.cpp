@@ -285,15 +285,15 @@ bool CritType::InitFromFile( FOMsg* fill_msg )
             if( !ct.Enabled )
                 continue;
 
-            sprintf( str, "%s %u %u %u %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %s-", ct.Name,
-                     ct.Alias, ct.Multihex, ct.AnimType, ct.CanWalk, ct.CanRun, ct.CanAim, ct.CanArmor, ct.CanRotate,
-                     ct.Anim1[ 1 ], ct.Anim1[ 2 ], ct.Anim1[ 3 ], ct.Anim1[ 4 ], ct.Anim1[ 5 ], ct.Anim1[ 6 ], ct.Anim1[ 7 ],
-                     ct.Anim1[ 8 ], ct.Anim1[ 9 ], ct.Anim1[ 10 ], ct.Anim1[ 11 ], ct.Anim1[ 12 ], ct.Anim1[ 13 ], ct.Anim1[ 14 ],
-                     ct.Anim1[ 15 ], ct.Anim1[ 16 ], ct.Anim1[ 17 ], ct.Anim1[ 18 ], ct.Anim1[ 19 ], ct.Anim1[ 20 ],
-                     ct.Anim1[ 21 ], ct.Anim1[ 22 ], ct.Anim1[ 23 ], ct.Anim1[ 24 ], ct.Anim1[ 25 ],
-                     MoveWalkReserved[ i ][ 4 ], MoveWalkReserved[ i ][ 5 ],
-                     MoveWalkReserved[ i ][ 0 ], MoveWalkReserved[ i ][ 1 ], MoveWalkReserved[ i ][ 2 ], MoveWalkReserved[ i ][ 3 ],
-                     ct.SoundName );
+            Str::Format( str, "%s %u %u %u %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %s-", ct.Name,
+                         ct.Alias, ct.Multihex, ct.AnimType, ct.CanWalk, ct.CanRun, ct.CanAim, ct.CanArmor, ct.CanRotate,
+                         ct.Anim1[ 1 ], ct.Anim1[ 2 ], ct.Anim1[ 3 ], ct.Anim1[ 4 ], ct.Anim1[ 5 ], ct.Anim1[ 6 ], ct.Anim1[ 7 ],
+                         ct.Anim1[ 8 ], ct.Anim1[ 9 ], ct.Anim1[ 10 ], ct.Anim1[ 11 ], ct.Anim1[ 12 ], ct.Anim1[ 13 ], ct.Anim1[ 14 ],
+                         ct.Anim1[ 15 ], ct.Anim1[ 16 ], ct.Anim1[ 17 ], ct.Anim1[ 18 ], ct.Anim1[ 19 ], ct.Anim1[ 20 ],
+                         ct.Anim1[ 21 ], ct.Anim1[ 22 ], ct.Anim1[ 23 ], ct.Anim1[ 24 ], ct.Anim1[ 25 ],
+                         MoveWalkReserved[ i ][ 4 ], MoveWalkReserved[ i ][ 5 ],
+                         MoveWalkReserved[ i ][ 0 ], MoveWalkReserved[ i ][ 1 ], MoveWalkReserved[ i ][ 2 ], MoveWalkReserved[ i ][ 3 ],
+                         ct.SoundName );
 
             fill_msg->AddStr( STR_INTERNAL_CRTYPE( i ), str );
         }

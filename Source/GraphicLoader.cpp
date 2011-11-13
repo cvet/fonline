@@ -47,16 +47,23 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
     static Assimp::Importer* importer = NULL;
     if( !importer )
     {
+        // Library extension
+        #ifdef FO_WINDOWS
+        # define ASSIMP_EXT    ".dll"
+        #else // FO_LINUX
+        # define ASSIMP_EXT    ".so"
+        #endif
+
         // Check dll availability
-        HMODULE dll = LoadLibrary( "Assimp32.dll" );
+        void* dll = DLL_Load( "Assimp32" ASSIMP_EXT );
         if( !dll )
         {
             if( GameOpt.ClientPath != "" )
-                dll = LoadLibrary( ( GameOpt.ClientPath + "Assimp32.dll" ).c_str() );
+                dll = DLL_Load( ( GameOpt.ClientPath + "Assimp32" + ASSIMP_EXT ).c_str() );
 
             if( !dll )
             {
-                WriteLogF( _FUNC_, " - Assimp32.dll not found.\n" );
+                WriteLogF( _FUNC_, " - Assimp32" ASSIMP_EXT " not found.\n" );
                 return NULL;
             }
         }
@@ -1142,7 +1149,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
                 dxeffect->SetString( param, (LPCSTR) def.Data );
                 break;
             case D3DXEDT_FLOATS:             // pValue points to an array of floats - number of floats is NumBytes / sizeof(float)
-                dxeffect->SetFloatArray( param, (FLOAT*) def.Data, def.Size / sizeof( FLOAT ) );
+                dxeffect->SetFloatArray( param, (float*) def.Data, def.Size / sizeof( float ) );
                 break;
             case D3DXEDT_DWORD:              // pValue points to a uint
                 dxeffect->SetInt( param, *(uint*) def.Data );

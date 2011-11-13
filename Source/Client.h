@@ -89,7 +89,7 @@ public:
     z_stream      ZStream;
     bool          ZStreamOk;
     uint          BytesReceive, BytesRealReceive, BytesSend;
-    SOCKADDR_IN   SockAddr, ProxyAddr;
+    sockaddr_in   SockAddr, ProxyAddr;
     SOCKET        Sock;
     fd_set        SockSet, SockSetErr;
     uint*         UID0;
@@ -100,7 +100,7 @@ public:
     int           InitNetReason;
 
     bool InitNet();
-    bool FillSockAddr( SOCKADDR_IN& saddr, const char* host, ushort port );
+    bool FillSockAddr( sockaddr_in& saddr, const char* host, ushort port );
     bool NetConnect();
     void ParseSocket();
     int  NetInput( bool unpack );
@@ -336,11 +336,11 @@ public:
     typedef vector< ActionEvent > ActionEventVec;
 
     ActionEventVec ChosenAction;
-    void AddAction( bool to_front, ActionEvent& act );
+    void AddAction( bool to_front, ActionEvent act );
     void SetAction( uint type_action, uint param0 = 0, uint param1 = 0, uint param2 = 0, uint param3 = 0, uint param4 = 0, uint param5 = 0 );
-    void SetAction( ActionEvent& act );
+    void SetAction( ActionEvent act );
     void AddActionBack( uint type_action, uint param0 = 0, uint param1 = 0, uint param2 = 0, uint param3 = 0, uint param4 = 0, uint param5 = 0 );
-    void AddActionBack( ActionEvent& act );
+    void AddActionBack( ActionEvent act );
     void AddActionFront( uint type_action, uint param0 = 0, uint param1 = 0, uint param2 = 0, uint param3 = 0, uint param4 = 0, uint param5 = 0 );
     void EraseFrontAction();
     void EraseBackAction();
@@ -673,8 +673,8 @@ public:
     void IfaceLoadArray( IntVec& arr, const char* name );
     void IfaceFreeResources();
 
-    bool IsCurInRect( Rect& rect, int ax, int ay )                      { return !rect.IsZero() && ( GameOpt.MouseX >= rect[ 0 ] + ax && GameOpt.MouseY >= rect[ 1 ] + ay && GameOpt.MouseX <= rect[ 2 ] + ax && GameOpt.MouseY <= rect[ 3 ] + ay ); }
-    bool IsCurInRect( Rect& rect )                                      { return !rect.IsZero() && ( GameOpt.MouseX >= rect[ 0 ] && GameOpt.MouseY >= rect[ 1 ] && GameOpt.MouseX <= rect[ 2 ] && GameOpt.MouseY <= rect[ 3 ] ); }
+    bool IsCurInRect( const Rect& rect, int ax, int ay )                { return !rect.IsZero() && ( GameOpt.MouseX >= rect.L + ax && GameOpt.MouseY >= rect.T + ay && GameOpt.MouseX <= rect.R + ax && GameOpt.MouseY <= rect.B + ay ); }
+    bool IsCurInRect( const Rect& rect )                                { return !rect.IsZero() && ( GameOpt.MouseX >= rect.L && GameOpt.MouseY >= rect.T && GameOpt.MouseX <= rect.R && GameOpt.MouseY <= rect.B ); }
     bool IsCurInRectNoTransp( uint spr_id, Rect& rect, int ax, int ay ) { return IsCurInRect( rect, ax, ay ) && SprMngr.IsPixNoTransp( spr_id, GameOpt.MouseX - rect.L - ax, GameOpt.MouseY - rect.T - ay, false ); }
     int  GetSprCX( uint spr_id )
     {
@@ -698,8 +698,8 @@ public:
     ItemVec BarterCont1o, BarterCont2, BarterCont2o;
     ItemVec PupCont2;
 
-    uint  GetCurContainerItemId( Rect& pos, int height, int scroll, ItemVec& cont );
-    void  ContainerDraw( Rect& pos, int height, int scroll, ItemVec& cont, uint skip_id );
+    uint  GetCurContainerItemId( const Rect& pos, int height, int scroll, ItemVec& cont );
+    void  ContainerDraw( const Rect& pos, int height, int scroll, ItemVec& cont, uint skip_id );
     Item* GetContainerItem( ItemVec& cont, uint id );
     void  CollectContItems();
     void  ProcessItemsCollection( int collection, ItemVec& init_items, ItemVec& result );
@@ -747,7 +747,7 @@ public:
     {
         int   Index;
         char* IniName;
-        Rect  Rect;
+        Rect  Region;
     };
     typedef vector< SlotExt > SlotExtVec;
     SlotExtVec SlotsExt;
@@ -1133,7 +1133,7 @@ public:
         char   Addon[ 64 ];
 
         SwitchElement( uint name, uint desc, ushort pic, uint flags ): NameStrNum( name ), DescStrNum( desc ), DrawFlags( flags ), PictureId( pic ) { memzero( Addon, sizeof( Addon ) ); }
-        SwitchElement( const char* add, uint flags ): NameStrNum( 0 ), DescStrNum( 0 ), PictureId( 0 ), DrawFlags( flags ) { CopyMemory( Addon, add, sizeof( Addon ) ); }
+        SwitchElement( const char* add, uint flags ): NameStrNum( 0 ), DescStrNum( 0 ), PictureId( 0 ), DrawFlags( flags ) { memcpy( Addon, add, sizeof( Addon ) ); }
     };
     typedef vector< SwitchElement > SwitchElementVec;
 
@@ -1650,7 +1650,7 @@ public:
         string   Info;
         string   InfoExt;
         string   FileName;
-        int64    RealTime;
+        uint64   RealTime;
         UCharVec PicData;
     };
     typedef vector< SaveLoadDataSlot > SaveLoadDataSlotVec;

@@ -250,7 +250,7 @@ int CraftItem::SetStr( uint num, const char* str_in )
         SetStrMetadata( NeedToolsOr, pstr_in );
         SetStrMetadata( OutItems, pstr_in );
         SetStrMetadata( OutItemsVal, pstr_in );
-        if( strstr( pstr_in, "script" ) )
+        if( Str::Substring( pstr_in, "script" ) )
             Script = "true";
         else
             Script = "";
@@ -285,14 +285,14 @@ int CraftItem::SetStr( uint num, const char* str_in )
         return num - 50;
 
     // Parse script
-    if( strstr( pstr_in, "script " ) )
-        Script = strstr( pstr_in, "script " ) + Str::Length( "script " );
+    if( Str::Substring( pstr_in, "script " ) )
+        Script = Str::Substring( pstr_in, "script " ) + Str::Length( "script " );
     else
         Script = "";
 
     // Experience
-    if( strstr( pstr_in, "exp " ) )
-        Experience = atoi( strstr( pstr_in, "exp " ) + Str::Length( "exp " ) );
+    if( Str::Substring( pstr_in, "exp " ) )
+        Experience = atoi( Str::Substring( pstr_in, "exp " ) + Str::Length( "exp " ) );
     else
         Experience = 0;
     #endif
@@ -421,7 +421,7 @@ const char* CraftItem::GetStr( bool metadata )
 
     if( metadata )
     {
-        sprintf( str, "%c%s%c%s%c", MRFIXIT_METADATA, Name.c_str(), MRFIXIT_NEXT, Info.c_str(), MRFIXIT_NEXT );
+        Str::Format( str, "%c%s%c%s%c", MRFIXIT_METADATA, Name.c_str(), MRFIXIT_NEXT, Info.c_str(), MRFIXIT_NEXT );
         GetStrMetadata( ShowPNum, str );
         GetStrMetadata( ShowPVal, str );
         GetStrMetadata( ShowPOr, str );
@@ -443,7 +443,7 @@ const char* CraftItem::GetStr( bool metadata )
 
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_MRFIXIT )
     // Name, info
-    sprintf( str, "%s%c%s%c", Name.c_str(), MRFIXIT_NEXT, Info.c_str(), MRFIXIT_NEXT );
+    Str::Format( str, "%s%c%s%c", Name.c_str(), MRFIXIT_NEXT, Info.c_str(), MRFIXIT_NEXT );
 
     // Need params to show
     GetStrParam( str, ShowPNum, ShowPVal, ShowPOr );
@@ -491,7 +491,7 @@ void CraftItem::GetStrParam( char* pstr_out, UIntVec& num_vec, IntVec& val_vec, 
             continue;
 
         char str[ 128 ];
-        sprintf( str, "%s%c%d", s, MRFIXIT_SPACE, val_vec[ i ] );
+        Str::Format( str, "%s%c%d", s, MRFIXIT_SPACE, val_vec[ i ] );
 
         if( i != j - 1 )
         {
@@ -516,7 +516,7 @@ void CraftItem::GetStrItem( char* pstr_out, UShortVec& pid_vec, UIntVec& count_v
             continue;
 
         char str[ 128 ];
-        sprintf( str, "%s%c%u", s, MRFIXIT_SPACE, count_vec[ i ] );
+        Str::Format( str, "%s%c%u", s, MRFIXIT_SPACE, count_vec[ i ] );
 
         if( i != j - 1 )
         {

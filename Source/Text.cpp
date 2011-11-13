@@ -135,11 +135,7 @@ char* Str::Format( char* buf, const char* format, ... )
 {
     va_list list;
     va_start( list, format );
-    #if defined ( FO_MSVC )
     vsprintf( buf, format, list );
-    #else
-    vsprintf( buf, format, list );
-    #endif
     va_end( list );
     return buf;
 }

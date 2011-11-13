@@ -209,9 +209,9 @@ public:
         if( parametersIndex >= MAX_PARAMETERS_ARRAYS ) return false;
 
         char decl_val[ 128 ];
-        sprintf( decl_val, "DataVal %s", name.c_str() );
+        Str::Format( decl_val, "DataVal %s", name.c_str() );
         char decl_ref[ 128 ];
-        sprintf( decl_ref, "DataRef %sBase", name.c_str() );
+        Str::Format( decl_ref, "DataRef %sBase", name.c_str() );
 
         #ifdef FONLINE_SERVER
         // Real registration
@@ -219,7 +219,7 @@ public:
         if( engine->RegisterObjectProperty( "Critter", decl_ref, OFFSETOF( Critter, ThisPtr[ 0 ] ) + sizeof( void* ) * parametersIndex ) < 0 ) return false;
         Critter::ParametersMin[ parametersIndex ] = min;
         Critter::ParametersMax[ parametersIndex ] = max;
-        Critter::ParametersOffset[ parametersIndex ] = ( strstr( text, "+" ) != NULL );
+        Critter::ParametersOffset[ parametersIndex ] = ( Str::Substring( text, "+" ) != NULL );
         #else
         // Fake registration
         if( engine->RegisterObjectProperty( "Critter", decl_val, 10000 + parametersIndex * 4 ) < 0 ) return false;
@@ -244,17 +244,17 @@ public:
         if( parametersIndex >= MAX_PARAMETERS_ARRAYS ) return false;
 
         char decl_val[ 128 ];
-        sprintf( decl_val, "DataVal %s", name.c_str() );
+        Str::Format( decl_val, "DataVal %s", name.c_str() );
         char decl_ref[ 128 ];
-        sprintf( decl_ref, "DataRef %sBase", name.c_str() );
+        Str::Format( decl_ref, "DataRef %sBase", name.c_str() );
 
         #ifdef FONLINE_CLIENT
         // Real registration
-        if( engine->RegisterObjectProperty( "CritterCl", decl_val, OFFSETOF( CritterCl, ThisPtr[ parametersIndex ] ) ) < 0 ) return false;
-        if( engine->RegisterObjectProperty( "CritterCl", decl_ref, OFFSETOF( CritterCl, ThisPtr[ parametersIndex ] ) ) < 0 ) return false;
+        if( engine->RegisterObjectProperty( "CritterCl", decl_val, OFFSETOF( CritterCl, ThisPtr[ 0 ] ) + sizeof( void* ) * parametersIndex ) < 0 ) return false;
+        if( engine->RegisterObjectProperty( "CritterCl", decl_ref, OFFSETOF( CritterCl, ThisPtr[ 0 ] ) + sizeof( void* ) * parametersIndex ) < 0 ) return false;
         CritterCl::ParametersMin[ parametersIndex ] = min;
         CritterCl::ParametersMax[ parametersIndex ] = max;
-        CritterCl::ParametersOffset[ parametersIndex ] = ( strstr( text, "+" ) != NULL );
+        CritterCl::ParametersOffset[ parametersIndex ] = ( Str::Substring( text, "+" ) != NULL );
         #else
         // Fake registration
         if( engine->RegisterObjectProperty( "CritterCl", decl_val, 10000 + parametersIndex * 4 ) < 0 ) return false;

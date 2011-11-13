@@ -1,9 +1,11 @@
 #ifndef __DEFENCE__
 #define __DEFENCE__
 
-#include <Iphlpapi.h>
-#include <intrin.h>
-#pragma comment(lib,"Iphlpapi.lib")
+#ifdef FO_WINDOWS
+# include <Iphlpapi.h>
+# include <intrin.h>
+# pragma comment(lib,"Iphlpapi.lib")
+#endif
 
 uint UIDDUMMY0 = 0xF145668A;
 uint UIDDUMMY1 = 321125;
@@ -22,14 +24,14 @@ uint UIDDUMMY8 = 23423111;
 uint UIDDUMMY9[ 55 ];
 uint UIDDUMMY10 = -1;
 
-#define CHECK_UID0( uid )     ( uid[ 0 ] != *UID0 || uid[ 1 ] != *UID1 || uid[ 2 ] != *UID2 || uid[ 3 ] != *UID3 || uid[ 4 ] != *UID4 )
-#define CHECK_UID1( uid )     ( uid[ 0 ] != UIDCACHE[ 0 ] || uid[ 1 ] != UIDCACHE[ 1 ] || uid[ 2 ] != UIDCACHE[ 2 ] || uid[ 3 ] != UIDCACHE[ 3 ] || uid[ 4 ] != UIDCACHE[ 4 ] )
-#define CHECK_UID2( uid )     ( uid[ 0 ] != UIDCACHE2[ 0 ] || uid[ 1 ] != UIDCACHE2[ 1 ] || uid[ 2 ] != UIDCACHE2[ 2 ] || uid[ 3 ] != UIDCACHE2[ 3 ] || uid[ 4 ] != UIDCACHE2[ 4 ] )
+#define CHECK_UID0( uid )      ( uid[ 0 ] != *UID0 || uid[ 1 ] != *UID1 || uid[ 2 ] != *UID2 || uid[ 3 ] != *UID3 || uid[ 4 ] != *UID4 )
+#define CHECK_UID1( uid )      ( uid[ 0 ] != UIDCACHE[ 0 ] || uid[ 1 ] != UIDCACHE[ 1 ] || uid[ 2 ] != UIDCACHE[ 2 ] || uid[ 3 ] != UIDCACHE[ 3 ] || uid[ 4 ] != UIDCACHE[ 4 ] )
+#define CHECK_UID2( uid )      ( uid[ 0 ] != UIDCACHE2[ 0 ] || uid[ 1 ] != UIDCACHE2[ 1 ] || uid[ 2 ] != UIDCACHE2[ 2 ] || uid[ 3 ] != UIDCACHE2[ 3 ] || uid[ 4 ] != UIDCACHE2[ 4 ] )
 
 #define UID_FLAGS( result, set, unset ) \
     if( result )                        \
         SETFLAG( result, set ); UNSETFLAG( result, unset )
-#define UID_CALC( result )    UIDXOR ^= result; UIDOR |= result; UIDCALC += result
+#define UID_CALC( result )     UIDXOR ^= result; UIDOR |= result; UIDCALC += result
 
 #define UID_DUMMY_CALCS0           for( int i = 0; i < Random( 50, 100 ); i++ ) { UIDDUMMY3[ Random( 5, 25 ) ] ^= UIDDUMMY5; }
 #define UID_DUMMY_CALCS1           UIDDUMMY3[ 16 ] &= UIDDUMMY9[ 44 ]; UID_DUMMY_CALCS3
@@ -51,16 +53,10 @@ uint UIDDUMMY10 = -1;
 #define UID_PREPARE_UID4_5         uid4_str[ 0 ] += 27
 #define UID_PREPARE_UID4_6         uid4_str[ 2 ] += 2
 
-
 #define UID_CHANGE                 ( 0 )
 
-// -
-// +-
-// -
-// -
-// +
-
-#define GET_UID0( result )                                                   \
+#ifdef FO_WINDOWS
+# define GET_UID0( result )                                                  \
     SYSTEM_INFO d_sysinfo;                                                   \
     memzero( &d_sysinfo, sizeof( d_sysinfo ) );                              \
     UID_DUMMY_CALCS0;                                                        \
@@ -83,8 +79,12 @@ uint UIDDUMMY10 = -1;
     UIDCACHE[ 0 ] = *result;                                                 \
     UID_DUMMY_CALCS4;                                                        \
     UIDCACHE2[ 0 ] = *result
+#else
+# define GET_UID0( result )    0xAAAAAAAA
+#endif
 
-#define GET_UID1( result )                                                       \
+#ifdef FO_WINDOWS
+# define GET_UID1( result )                                                      \
     PIP_ADAPTER_INFO d_ainfo = NULL;                                             \
     uint d_retv = 0;                                                             \
     d_ainfo = (IP_ADAPTER_INFO*) malloc( sizeof( IP_ADAPTER_INFO ) );            \
@@ -118,8 +118,12 @@ uint UIDDUMMY10 = -1;
     UIDCACHE[ 1 ] = *result;                                                     \
     UID_DUMMY_CALCS8;                                                            \
     UIDCACHE2[ 1 ] = *result
+#else
+# define GET_UID1( result )    0xBBBBBBBB
+#endif
 
-#define GET_UID2( result )                                                              \
+#ifdef FO_WINDOWS
+# define GET_UID2( result )                                                             \
     UID_DUMMY_CALCS6;                                                                   \
     result = new uint();                                                                \
     UID_DUMMY_CALCS4;                                                                   \
@@ -140,8 +144,12 @@ uint UIDDUMMY10 = -1;
     UID_DUMMY_CALCS1;                                                                   \
     UID_CALC( *result );                                                                \
     UID_DUMMY_CALCS8
+#else
+# define GET_UID2( result )    0xCCCCCCCC
+#endif
 
-#define GET_UID3( result )                        \
+#ifdef FO_WINDOWS
+# define GET_UID3( result )                       \
     int d_cpuid[ 4 ] = { 0, 0, 0, 0 };            \
     __cpuid( d_cpuid, 1 );                        \
     result = new uint();                          \
@@ -157,8 +165,12 @@ uint UIDDUMMY10 = -1;
     UID_DUMMY_CALCS4;                             \
     UID_CALC( *result );                          \
     UID_DUMMY_CALCS8
+#else
+# define GET_UID3( result )    0xDDDDDDDD
+#endif
 
-#define GET_UID4( result )                                                                           \
+#ifdef FO_WINDOWS
+# define GET_UID4( result )                                                                          \
     result = new uint();                                                                             \
     DWORD d_vol = 0 + UID_CHANGE;                                                                    \
     UID_DUMMY_CALCS2;                                                                                \
@@ -178,7 +190,9 @@ uint UIDDUMMY10 = -1;
     UID_CALC( *result );                                                                             \
     UIDCACHE2[ 4 ] = *result;                                                                        \
     UID_DUMMY_CALCS2
-
+#else
+# define GET_UID4( result )    0xEEEEEEEE
+#endif
 
 uint       MulWndArray[ 100 ] = { 0 };
 Randomizer MulWndRandom;

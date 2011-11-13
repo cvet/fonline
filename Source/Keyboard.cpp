@@ -43,6 +43,27 @@ namespace Keyb
     bool        KeyPressed[ 0x100 ] = { 0 };
 }
 
+class ClipboardReceiverWidget: public Fl_Widget
+{
+public:
+    ClipboardReceiverWidget(): Fl_Widget( 0, 0, 0, 0 ) {}
+    virtual ~ClipboardReceiverWidget() {}
+    virtual int handle( int event )
+    {
+        if( event == FL_PASTE )
+        {
+            BufferLocker.Lock();
+            Buffer = Fl::event_text();
+            BufferLocker.Unlock();
+        }
+        return 0;
+    }
+    virtual void draw()
+    {}
+    string Buffer;
+    Mutex  BufferLocker;
+} ClipboardReceiver;
+
 void Keyb::InitKeyb()
 {
     Data.resize( 0x100 );
@@ -156,7 +177,7 @@ void Keyb::GetChar( uchar dik, char* str, int* position, int max, int flags )
         return;
     bool ctrl_shift = ( CtrlDwn || ShiftDwn );
 
-    int  len = (int) strlen( str );
+    int  len = (int) Str::Length( str );
     int  posit_ = len;
     int& posit = ( position ? *position : posit_ );
     if( posit > len )
@@ -209,37 +230,36 @@ void Keyb::GetChar( uchar dik, char* str, int* position, int max, int flags )
         str[ len - 1 ] = '\0';
     }
     // Clipboard
-    else if( CtrlDwn && !ShiftDwn && len > 0 && ( dik == DIK_C || dik == DIK_X ) && OpenClipboard( NULL ) )
+    else if( CtrlDwn && !ShiftDwn && len > 0 && ( dik == DIK_C || dik == DIK_X ) )
     {
-        EmptyClipboard();
-        HGLOBAL hg = GlobalAlloc( GMEM_MOVEABLE, len + 1 );
-        if( hg )
-        {
-            void* p = GlobalLock( hg );
-            memcpy( p, str, len + 1 );
-            GlobalUnlock( hg );
-            SetClipboardData( CF_TEXT, hg );
-        }
-        CloseClipboard();
-
+        char* text = Str::Duplicate( str );
+        char* cb = text;
+        #ifdef FO_WINDOWS
+        cb = fl_locale_to_utf8( cb, Str::Length( cb ), GetACP() );
+        #endif
+        Fl::copy( cb, Str::Length( cb ), 1 );
+        delete[] text;
         if( dik == DIK_X )
         {
             *str = '\0';
             posit = 0;
         }
     }
-    else if( CtrlDwn && !ShiftDwn && dik == DIK_V && len < max && OpenClipboard( NULL ) )
+    else if( CtrlDwn && !ShiftDwn && dik == DIK_V && len < max )
     {
-        HANDLE h = GetClipboardData( CF_OEMTEXT );
-        if( h )
+        Fl::paste( ClipboardReceiver, 1 );
+        ClipboardReceiver.BufferLocker.Lock();
+        char* text = Str::Duplicate( ClipboardReceiver.Buffer.c_str() );
+        ClipboardReceiver.BufferLocker.Unlock();
+        if( Str::Length( text ) > 0 )
         {
-            char* cb = Str::Duplicate( (char*) h );
-            if( !cb )
-                return;
-            OemToChar( cb, cb );
+            char* cb = text;
+            #ifdef FO_WINDOWS
+            cb = fl_utf8_to_locale( cb, Str::Length( cb ), GetACP() );
+            #endif
             EraseInvalidChars( cb, flags );
 
-            int cb_len = (int) strlen( cb );
+            int cb_len = (int) Str::Length( cb );
             if( cb_len > max - len )
                 cb_len = max - len;
 
@@ -253,11 +273,10 @@ void Keyb::GetChar( uchar dik, char* str, int* position, int max, int flags )
             buf[ posit + cb_len + ( len - posit ) ] = 0;
             Str::Copy( str, max + 1, buf );
             delete[] buf;
-            delete[] cb;
 
             posit += cb_len;
         }
-        CloseClipboard();
+        delete[] text;
     }
     // Data
     else

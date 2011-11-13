@@ -942,7 +942,7 @@ bool Animation3d::Draw( int x, int y, float scale, RectF* stencil, uint color )
     {
         struct VertexUP
         {
-            FLOAT x, y, z, rhw;
+            float x, y, z, rhw;
             uint  diffuse;
         } vb[ 6 ] =
         {
@@ -1946,14 +1946,14 @@ bool Animation3dEntity::Load( const char* name )
             if( ( *istr ).fail() )
                 break;
 
-            char* comment = strstr( token, ";" );
+            char* comment = Str::Substring( token, ";" );
             if( !comment )
-                comment = strstr( token, "#" );
+                comment = Str::Substring( token, "#" );
             if( comment )
             {
                 *comment = 0;
                 ( *istr ).getline( line, MAX_FOTEXT );
-                if( !strlen( token ) )
+                if( !Str::Length( token ) )
                     continue;
             }
 
@@ -2013,12 +2013,12 @@ bool Animation3dEntity::Load( const char* name )
                         const char* from = templates[ i ].c_str();
                         const char* to = templates[ i + 1 ].c_str();
 
-                        char*       replace = strstr( pbuf, from );
+                        char*       replace = Str::Substring( pbuf, from );
                         while( replace )
                         {
                             Str::EraseInterval( replace, Str::Length( from ) );
                             Str::Insert( replace, to );
-                            replace = strstr( pbuf, from );
+                            replace = Str::Substring( pbuf, from );
                         }
                     }
                 }
@@ -2027,7 +2027,7 @@ bool Animation3dEntity::Load( const char* name )
                 int pos = (int) ( *istr ).tellg();
                 Str::Insert( &big_buf[ pos ], " " );
                 Str::Insert( &big_buf[ pos + 1 ], pbuf );
-                Str::Insert( &big_buf[ pos + 1 + strlen( pbuf ) ], " " );
+                Str::Insert( &big_buf[ pos + 1 + Str::Length( pbuf ) ], " " );
                 delete[] pbuf;
 
                 // Reinitialize stream
@@ -2356,13 +2356,13 @@ bool Animation3dEntity::Load( const char* name )
                     continue;
 
                 EffectDefault::EType type;
-                char*                data = NULL;
+                uchar*               data = NULL;
                 uint                 data_len = 0;
                 if( Str::CompareCase( buf, "String" ) )
                 {
                     type = EffectDefault::String;
-                    data = Str::Duplicate( def_value );
-                    data_len = Str::Length( data );
+                    data = (uchar*) Str::Duplicate( def_value );
+                    data_len = Str::Length( (char*) data );
                 }
                 else if( Str::CompareCase( buf, "Floats" ) )
                 {
@@ -2372,7 +2372,7 @@ bool Animation3dEntity::Load( const char* name )
                     if( floats.empty() )
                         continue;
                     data_len = (uint) floats.size() * sizeof( float );
-                    data = new ( nothrow ) char[ data_len ];
+                    data = new (nothrow) uchar[ data_len ];
                     for( uint i = 0, j = (uint) floats.size(); i < j; i++ )
                         ( (float*) data )[ i ] = (float) atof( floats[ i ].c_str() );
                 }
@@ -2380,7 +2380,7 @@ bool Animation3dEntity::Load( const char* name )
                 {
                     type = EffectDefault::Dword;
                     data_len = sizeof( uint );
-                    data = new char[ data_len ];
+                    data = new uchar[ data_len ];
                     *( (uint*) data ) = ConstantsManager::GetDefineValue( def_value );
                 }
                 else
@@ -2580,12 +2580,12 @@ void Animation3dEntity::ProcessTemplateDefines( char* str, StrVec& def )
         const char* from = def[ i ].c_str();
         const char* to = def[ i + 1 ].c_str();
 
-        char*       token = strstr( str, from );
+        char*       token = Str::Substring( str, from );
         while( token )
         {
             Str::EraseInterval( token, Str::Length( from ) );
             Str::Insert( token, to );
-            token = strstr( str, from );
+            token = Str::Substring( str, from );
         }
     }
 }

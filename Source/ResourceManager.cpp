@@ -476,17 +476,17 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint an
 
     // Try load fofrm
     const char* name = CritType::GetName( crtype );
-    sprintf( spr_name, "%s%c%c.fofrm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
+    Str::Format( spr_name, "%s%c%c.fofrm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
     AnyFrames* frames = SprMngr.LoadAnimation( spr_name, PT_ART_CRITTERS, ANIM_DIR( dir ) );
 
     // Try load fallout frames
     if( !frames )
     {
-        sprintf( spr_name, "%s%c%c.frm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
+        Str::Format( spr_name, "%s%c%c.frm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
         frames = SprMngr.LoadAnimation( spr_name, PT_ART_CRITTERS, ANIM_DIR( dir ) );
         if( !frames )
         {
-            sprintf( spr_name, "%s%c%c.fr%u", name, frm_ind[ anim1 ], frm_ind[ anim2 ], dir );
+            Str::Format( spr_name, "%s%c%c.fr%u", name, frm_ind[ anim1 ], frm_ind[ anim2 ], dir );
             frames = SprMngr.LoadAnimation( spr_name, PT_ART_CRITTERS, ANIM_DIR( 0 ) );
         }
     }
@@ -692,7 +692,7 @@ Animation3d* ResourceManager::GetCrit3dAnim( uint crtype, uint anim1, uint anim2
     }
 
     char name[ MAX_FOPATH ];
-    sprintf( name, "%s.fo3d", CritType::GetName( crtype ) );
+    Str::Format( name, "%s.fo3d", CritType::GetName( crtype ) );
     Animation3d* anim3d = SprMngr.LoadPure3dAnimation( name, PT_ART_CRITTERS );
     if( !anim3d )
         return NULL;

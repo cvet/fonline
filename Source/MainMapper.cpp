@@ -9,7 +9,7 @@ FOMapper* Mapper = NULL;
 Thread    Game;
 void* GameThread( void* );
 
-int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_line, int cmd_show )
+int main( int argc, char** argv )
 {
     setlocale( LC_ALL, "Russian" );
     RestoreMainDirectory();
@@ -22,12 +22,8 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
     // Exceptions
     CatchExceptions( "FOnlineMapper", MAPPER_VERSION );
 
-    // Send about new instance to already runned mapper
-    if( FindWindow( GetWindowName(), GetWindowName() ) != NULL )
-    {
-        MessageBox( NULL, "FOnline already run.", "FOnline", MB_OK );
-        return 0;
-    }
+    // Make command line
+    SetCommandLine( argc, argv );
 
     // Timer
     Timer::Init();

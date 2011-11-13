@@ -38,6 +38,7 @@ const char* GetLastSocketError();
 # include <sys/socket.h>
 # include <netinet/in.h>
 # include <arpa/inet.h>
+# include <netdb.h>
 # define SOCKET               int
 # define INVALID_SOCKET       ( -1 )
 # define SOCKET_ERROR         ( -1 )
@@ -161,6 +162,7 @@ bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, in
 void RestoreMainDirectory();
 uint GetCurThreadId();
 void ShowMessage( const char* message );
+uint GetDoubleClickTicks();
 
 // Containers comparator template
 template< class T >

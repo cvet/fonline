@@ -61,8 +61,8 @@ typedef vector< MeshOptions > MeshOptionsVec;
 class Animation3d
 {
 private:
-    friend Animation3dEntity;
-    friend Animation3dXFile;
+    friend class Animation3dEntity;
+    friend class Animation3dXFile;
     static Animation3dVec generalAnimations;
 
     Animation3dEntity*    animEntity;
@@ -162,8 +162,8 @@ public:
 class Animation3dEntity
 {
 private:
-    friend Animation3d;
-    friend Animation3dXFile;
+    friend class Animation3d;
+    friend class Animation3dXFile;
     static Animation3dEntityVec allEntities;
 
     string                      fileName;
@@ -198,8 +198,8 @@ public:
 class Animation3dXFile
 {
 private:
-    friend Animation3d;
-    friend Animation3dEntity;
+    friend class Animation3d;
+    friend class Animation3dEntity;
     static Animation3dXFileVec xFiles;
 
     string                     fileName;

@@ -77,7 +77,7 @@ bool FOClient::AppendIfaceIni( const char* ini_name )
     bool founded = false;
     for( uint i = 0, j = (uint) IfaceIniNames.size(); i < j; i++ )
     {
-        if( !_stricmp( IfaceIniNames[ i ].c_str(), ini_name ) )
+        if( Str::CompareCase( IfaceIniNames[ i ].c_str(), ini_name ) )
         {
             founded = true;
             break;
@@ -92,7 +92,7 @@ bool FOClient::AppendIfaceIni( const char* ini_name )
     {
         // Create name
         string file_name = IfaceIniNames[ i ];
-        if( !strstr( ini_name, "\\" ) && !strstr( ini_name, "/" ) )
+        if( !Str::Substring( ini_name, "\\" ) && !Str::Substring( ini_name, "/" ) )
             file_name = string( FileManager::GetPath( PT_ART_INTRFACE ) ) + file_name;
 
         // Data files
@@ -128,7 +128,7 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
 
     int     w = 0, h = 0;
     char*   begin = (char*) data;
-    char*   end = strstr( begin, "\nresolution " );
+    char*   end = Str::Substring( begin, "\nresolution " );
     while( true )
     {
         if( w <= MODE_WIDTH && h <= MODE_HEIGHT )
@@ -140,13 +140,13 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
         if( !end )
             break;
 
-        end += strlen( "\nresolution " );
+        end += Str::Length( "\nresolution " );
         if( sscanf( end, "%d%d", &w, &h ) != 2 )
             break;
         Str::GoTo( end, '\n', true );
 
         begin = end;
-        end = strstr( begin, "\nresolution " );
+        end = Str::Substring( begin, "\nresolution " );
     }
 
     for( auto it = sections.begin(), end = sections.end(); it != end; ++it )
@@ -185,7 +185,7 @@ int FOClient::InitIface()
     InvScroll = 0;
     InvHeightItem = IfaceIni.GetInt( "InvHeightItem", 30 );
     for( int i = 0, j = (uint) SlotsExt.size(); i < j; i++ )
-        IfaceLoadRect( SlotsExt[ i ].Rect, SlotsExt[ i ].IniName );
+        IfaceLoadRect( SlotsExt[ i ].Region, SlotsExt[ i ].IniName );
     InvItemInfo = "";
     InvItemInfoScroll = 0;
     InvItemInfoMaxScroll = 0;
@@ -1368,7 +1368,7 @@ void FOClient::DrawIndicator( Rect& rect, PointVec& points, uint color, int proc
         SprMngr.DrawPoints( points, PRIMITIVE_POINTLIST );
 }
 
-uint FOClient::GetCurContainerItemId( Rect& pos, int height, int scroll, ItemVec& cont )
+uint FOClient::GetCurContainerItemId( const Rect& pos, int height, int scroll, ItemVec& cont )
 {
     if( !IsCurInRect( pos ) )
         return 0;
@@ -1383,7 +1383,7 @@ uint FOClient::GetCurContainerItemId( Rect& pos, int height, int scroll, ItemVec
     return 0;
 }
 
-void FOClient::ContainerDraw( Rect& pos, int height, int scroll, ItemVec& cont, uint skip_id )
+void FOClient::ContainerDraw( const Rect& pos, int height, int scroll, ItemVec& cont, uint skip_id )
 {
     int i = 0, i2 = 0;
     for( auto it = cont.begin(), end = cont.end(); it != end; ++it )
@@ -1604,7 +1604,7 @@ void FOClient::InvDraw()
     for( auto it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
     {
         SlotExt& se = *it;
-        if( se.Rect.IsZero() )
+        if( se.Region.IsZero() )
             continue;
         Item* item = Chosen->GetItemSlot( se.Index );
         if( !item || ( !IsCurMode( CUR_DEFAULT ) && IfaceHold == IFACE_INV_SLOTS_EXT && item->GetId() == InvHoldId ) )
@@ -1612,7 +1612,7 @@ void FOClient::InvDraw()
         AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
         if( !anim )
             continue;
-        SprMngr.DrawSpriteSize( anim->GetCurSprId(), se.Rect[ 0 ] + InvX, se.Rect[ 1 ] + InvY, (float) se.Rect.W(), (float) se.Rect.H(), false, true, item->GetInvColor() );
+        SprMngr.DrawSpriteSize( anim->GetCurSprId(), se.Region[ 0 ] + InvX, se.Region[ 1 ] + InvY, (float) se.Region.W(), (float) se.Region.H(), false, true, item->GetInvColor() );
     }
 
     // Items in inventory
@@ -1696,7 +1696,7 @@ void FOClient::InvLMouseDown()
             for( auto it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
             {
                 SlotExt& se = *it;
-                if( !se.Rect.IsZero() && IsCurInRect( se.Rect, InvX, InvY ) )
+                if( !se.Region.IsZero() && IsCurInRect( se.Region, InvX, InvY ) )
                 {
                     Item* item = Chosen->GetItemSlot( se.Index );
                     if( item )
@@ -1755,7 +1755,7 @@ void FOClient::InvLMouseUp()
             for( auto it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
             {
                 SlotExt& se = *it;
-                if( !se.Rect.IsZero() && IsCurInRect( se.Rect, InvX, InvY ) )
+                if( !se.Region.IsZero() && IsCurInRect( se.Region, InvX, InvY ) )
                 {
                     to_slot = se.Index;
                     break;
@@ -2569,7 +2569,7 @@ void FOClient::GameLMouseDown()
     else if( IsCurMode( CUR_MOVE ) )
     {
         ActionEvent* act = ( IsAction( CHOSEN_MOVE ) ? &ChosenAction[ 0 ] : NULL );
-        if( act && Timer::FastTick() - act->Param[ 5 ] < ( GameOpt.DoubleClickTime ? GameOpt.DoubleClickTime : GetDoubleClickTime() ) )
+        if( act && Timer::FastTick() - act->Param[ 5 ] < ( GameOpt.DoubleClickTime ? GameOpt.DoubleClickTime : GetDoubleClickTicks() ) )
         {
             act->Param[ 2 ] = ( GameOpt.AlwaysRun ? 0 : 1 );
             act->Param[ 4 ] = 0;
@@ -2840,7 +2840,7 @@ void FOClient::IntDraw()
 
     // Hp
     char bin_str[ 32 ];
-    sprintf( bin_str, "%c%03d", bin_str[ 0 ] = '9' + 4, abs( Chosen->GetParam( ST_CURRENT_HP ) ) );
+    Str::Format( bin_str, "%c%03d", bin_str[ 0 ] = '9' + 4, abs( Chosen->GetParam( ST_CURRENT_HP ) ) );
     if( Chosen->GetParam( ST_CURRENT_HP ) < 0 )
         bin_str[ 0 ] = '9' + 3;
 
@@ -3083,15 +3083,15 @@ void FOClient::AddMess( int mess_type, const char* msg )
     const uint str_color[] = { COLOR_TEXT_DGREEN, COLOR_TEXT, COLOR_TEXT_DRED, COLOR_TEXT_DDGREEN };
     static char str[ MAX_FOTEXT ];
     if( mess_type < 0 || mess_type > FOMB_VIEW )
-        sprintf_s( str, MAX_FOTEXT, "%s\n", msg );
+        Str::Format( str, "%s\n", msg );
     else
-        sprintf_s( str, MAX_FOTEXT, "|%u %c |%u %s\n", str_color[ mess_type ], TEXT_SYMBOL_DOT, COLOR_TEXT, msg );
+        Str::Format( str, "|%u %c |%u %s\n", str_color[ mess_type ], TEXT_SYMBOL_DOT, COLOR_TEXT, msg );
 
     // Time
-    SYSTEMTIME sys_time;
-    GetLocalTime( &sys_time );
+    DateTime dt;
+    Timer::GetCurrentDateTime( dt );
     char mess_time[ 64 ];
-    sprintf( mess_time, "%02d:%02d:%02d ", sys_time.wHour, sys_time.wMinute, sys_time.wSecond );
+    Str::Format( mess_time, "%02d:%02d:%02d ", dt.Hour, dt.Minute, dt.Second );
 
     // Add
     MessBox.push_back( MessBoxMessage( mess_type, str, mess_time ) );
@@ -3286,9 +3286,10 @@ void FOClient::LogDraw()
         else
         {
             char mask[ MAX_NAME + 1 ];
-            for( uint i = 0, j = min( MAX_NAME, (uint) Password.length() ); i < j; i++ )
+            uint pass_len = (uint) Password.length();
+            for( uint i = 0, j = min( (uint) MAX_NAME, pass_len ); i < j; i++ )
                 mask[ i ] = '#';
-            mask[ min( MAX_NAME, Password.length() ) ] = '\0';
+            mask[ min( (uint) MAX_NAME, pass_len ) ] = '\0';
             SprMngr.DrawStr( LogWPass, mask, FT_CENTERX | FT_CENTERY | FT_NOBREAK, LogFocus == IFACE_LOG_PASS ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
         }
     }
@@ -3316,11 +3317,11 @@ void FOClient::LogKeyDown( uchar dik )
 
     if( LogFocus == IFACE_LOG_NAME )
     {
-        Keyb::GetChar( dik, GameOpt.Name, NULL, min( GameOpt.MaxNameLength, MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, GameOpt.Name, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
     }
     else if( LogFocus == IFACE_LOG_PASS )
     {
-        Keyb::GetChar( dik, Password, NULL, min( GameOpt.MaxNameLength, MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, Password, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
     }
 }
 
@@ -3481,7 +3482,7 @@ void FOClient::DlgDraw( bool is_dialog )
         for( uint i = 0; i < DlgAnswers.size(); i++ )
         {
             Answer& a = DlgAnswers[ i ];
-            if( i == DlgCurAnsw )
+            if( i == (uint) DlgCurAnsw )
                 SprMngr.DrawStr( Rect( a.Position, DlgX, DlgY ), DlgAnswers[ i ].Text.c_str(), a.AnswerNum < 0 ? FT_CENTERX : 0, IfaceHold == IFACE_DLG_ANSWER && DlgCurAnsw == DlgHoldAnsw ? COLOR_TEXT_DDGREEN : ( IfaceHold != IFACE_DLG_ANSWER ? COLOR_TEXT_DGREEN : COLOR_TEXT ) );
             else
                 SprMngr.DrawStr( Rect( a.Position, DlgX, DlgY ), DlgAnswers[ i ].Text.c_str(), a.AnswerNum < 0 ? FT_CENTERX : 0, COLOR_TEXT );
@@ -3574,9 +3575,9 @@ void FOClient::DlgDraw( bool is_dialog )
             SprMngr.DrawStr( Rect( BarterWCost2, DlgX, DlgY ), Str::FormatBuf( "%u", w2 / 1000 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
         }
         // Overweight, oversize indicate
-        if( Chosen->GetFreeWeight() + w1 < (int) w2 )
+        if( Chosen->GetFreeWeight() + (int) w1 < (int) w2 )
             SprMngr.DrawStr( Rect( DlgWText.L, DlgWText.B - 5, DlgWText.R, DlgWText.B + 10, DlgX, DlgY ), MsgGame->GetStr( STR_OVERWEIGHT_TITLE ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_DDGREEN );
-        else if( Chosen->GetFreeVolume() + v1 < (int) v2 )
+        else if( Chosen->GetFreeVolume() + (int) v1 < (int) v2 )
             SprMngr.DrawStr( Rect( DlgWText.L, DlgWText.B - 5, DlgWText.R, DlgWText.B + 10, DlgX, DlgY ), MsgGame->GetStr( STR_OVERVOLUME_TITLE ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_DDGREEN );
     }
 
@@ -3959,7 +3960,7 @@ void FOClient::DlgRMouseDown( bool is_dialog )
 
 void FOClient::DlgKeyDown( bool is_dialog, uchar dik )
 {
-    int num;
+    int num = -1;
     switch( dik )
     {
     case DIK_ESCAPE:
@@ -4225,7 +4226,7 @@ void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint&
 
 void FOClient::FormatTags( char* text, size_t text_len, CritterCl* player, CritterCl* npc, const char* lexems )
 {
-    if( !_stricmp( text, "error" ) )
+    if( Str::CompareCase( text, "error" ) )
     {
         Str::Copy( text, text_len, "Text not found!" );
         return;
@@ -4258,7 +4259,7 @@ void FOClient::FormatTags( char* text, size_t text_len, CritterCl* player, Critt
                 {
                     if( sex == 1 )
                     {
-                        if( strlen( str ) + strlen( tag ) < text_len )
+                        if( Str::Length( str ) + Str::Length( tag ) < text_len )
                             Str::Insert( &str[ i ], tag );
                         // i+=strlen(tag);
                     }
@@ -4283,33 +4284,33 @@ void FOClient::FormatTags( char* text, size_t text_len, CritterCl* player, Critt
             Str::CopyWord( tag, &str[ i + 1 ], '@', false );
             Str::EraseInterval( &str[ i ], Str::Length( tag ) + 2 );
 
-            if( !strlen( tag ) )
+            if( !Str::Length( tag ) )
                 break;
 
             // Player name
-            if( !_stricmp( tag, "pname" ) )
+            if( Str::CompareCase( tag, "pname" ) )
             {
                 Str::Copy( tag, player ? player->GetName() : "" );
             }
             // Npc name
-            else if( !_stricmp( tag, "nname" ) )
+            else if( Str::CompareCase( tag, "nname" ) )
             {
                 Str::Copy( tag, npc ? npc->GetName() : "" );
             }
             // Sex
-            else if( !_stricmp( tag, "sex" ) )
+            else if( Str::CompareCase( tag, "sex" ) )
             {
                 sex = ( player ? player->GetParam( ST_GENDER ) + 1 : 1 );
                 sex_tags = true;
                 continue;
             }
             // Lexems
-            else if( strlen( tag ) > 4 && tag[ 0 ] == 'l' && tag[ 1 ] == 'e' && tag[ 2 ] == 'x' && tag[ 3 ] == ' ' )
+            else if( Str::Length( tag ) > 4 && tag[ 0 ] == 'l' && tag[ 1 ] == 'e' && tag[ 2 ] == 'x' && tag[ 3 ] == ' ' )
             {
-                const char* s = strstr( lexems ? lexems : "", Str::FormatBuf( "$%s", &tag[ 4 ] ) );
+                const char* s = Str::Substring( lexems ? lexems : "", Str::FormatBuf( "$%s", &tag[ 4 ] ) );
                 if( s )
                 {
-                    s += strlen( &tag[ 4 ] ) + 1;
+                    s += Str::Length( &tag[ 4 ] ) + 1;
                     if( *s == ' ' )
                         s++;
                     Str::CopyWord( tag, s, '$', false );
@@ -4320,7 +4321,7 @@ void FOClient::FormatTags( char* text, size_t text_len, CritterCl* player, Critt
                 }
             }
             // Msg text
-            else if( strlen( tag ) > 4 && tag[ 0 ] == 'm' && tag[ 1 ] == 's' && tag[ 2 ] == 'g' && tag[ 3 ] == ' ' )
+            else if( Str::Length( tag ) > 4 && tag[ 0 ] == 'm' && tag[ 1 ] == 's' && tag[ 2 ] == 'g' && tag[ 3 ] == ' ' )
             {
                 char msg_type_name[ 64 ];
                 uint str_num;
@@ -4342,7 +4343,7 @@ void FOClient::FormatTags( char* text, size_t text_len, CritterCl* player, Critt
                 }
             }
             // Script
-            else if( strlen( tag ) > 7 && tag[ 0 ] == 's' && tag[ 1 ] == 'c' && tag[ 2 ] == 'r' && tag[ 3 ] == 'i' && tag[ 4 ] == 'p' && tag[ 5 ] == 't' && tag[ 6 ] == ' ' )
+            else if( Str::Length( tag ) > 7 && tag[ 0 ] == 's' && tag[ 1 ] == 'c' && tag[ 2 ] == 'r' && tag[ 3 ] == 'i' && tag[ 4 ] == 'p' && tag[ 5 ] == 't' && tag[ 6 ] == ' ' )
             {
                 char func_name[ MAX_FOTEXT ];
                 Str::CopyWord( func_name, &tag[ 7 ], '$', false );
@@ -4370,7 +4371,7 @@ void FOClient::FormatTags( char* text, size_t text_len, CritterCl* player, Critt
                 Str::Copy( tag, "<error>" );
             }
 
-            if( strlen( str ) + strlen( tag ) < text_len )
+            if( Str::Length( str ) + Str::Length( tag ) < text_len )
                 Str::Insert( str + i, tag );
         }
             continue;
@@ -4565,7 +4566,7 @@ void FOClient::LMenuCollect()
                 for( auto it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
                 {
                     SlotExt& se = *it;
-                    if( !se.Rect.IsZero() && IsCurInRect( se.Rect, InvX, InvY ) )
+                    if( !se.Region.IsZero() && IsCurInRect( se.Region, InvX, InvY ) )
                     {
                         Item* item = Chosen->GetItemSlot( se.Index );
                         if( item )
@@ -4885,7 +4886,7 @@ void FOClient::LMenuDraw()
 // ==================================================================================
         #define LMENU_DRAW_CASE( node, pic_up, pic_down )                              \
         case node:                                                                     \
-            if( i == LMenuCurNode && IsLMenu() )                                       \
+            if( i == (uint) LMenuCurNode && IsLMenu() )                                \
                 SprMngr.DrawSprite( pic_down, LMenuX, LMenuY + LMenuNodeHeight * i );  \
             else                                                                       \
                 SprMngr.DrawSprite( pic_up, LMenuX, LMenuY + LMenuNodeHeight * i );    \
@@ -5713,7 +5714,7 @@ void FOClient::LmapPrepareMap()
             Field& f = HexMngr.GetField( i1, i2 );
             if( f.Crit )
             {
-                cur_color = ( f.Crit == Chosen ? 0xFF0000FF : ( f.Crit->Params[ ST_FOLLOW_CRIT ] == Chosen->GetId() ? 0xFFFF00FF : 0xFFFF0000 ) );
+                cur_color = ( f.Crit == Chosen ? 0xFF0000FF : ( f.Crit->Params[ ST_FOLLOW_CRIT ] == (int) Chosen->GetId() ? 0xFFFF00FF : 0xFFFF0000 ) );
                 LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x + ( LmapZoom - 1 ), LmapWMap[ 1 ] + pix_y, cur_color, &LmapX, &LmapY ) );
                 LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x, LmapWMap[ 1 ] + pix_y + ( ( LmapZoom - 1 ) / 2 ), cur_color, &LmapX, &LmapY ) );
             }
@@ -6129,7 +6130,7 @@ void FOClient::GmapDraw()
         SprMngr.DrawSprite( GmapPWTab, cur_tabx, cur_taby );
         SprMngr.DrawSprite( tab_pic, GmapWTabLoc[ 0 ] + cur_tabx, GmapWTabLoc[ 1 ] + cur_taby );
 
-        if( IfaceHold == IFACE_GMAP_TABBTN && GmapCurHoldBLoc == i )   // Button down
+        if( IfaceHold == IFACE_GMAP_TABBTN && GmapCurHoldBLoc == (int) i )   // Button down
             SprMngr.DrawSprite( GmapPBTabLoc, GmapBTabLoc[ 0 ] + cur_tabx, GmapBTabLoc[ 1 ] + cur_taby );
 
         cur_tabx += GmapTabNextX;
@@ -6286,14 +6287,14 @@ void FOClient::GmapTownDraw()
         if( Chosen && Chosen->IsGmapRule() )
         {
             AnyFrames* pic = GmapPTownInPic;
-            if( IfaceHold == IFACE_GMAP_TOWN_BUT && GmapTownCurButton == i )
+            if( IfaceHold == IFACE_GMAP_TOWN_BUT && GmapTownCurButton == (int) i )
                 pic = GmapPTownInPicDn;
             SprMngr.DrawSprite( pic, GmapTownTextPos[ i ][ 0 ] + GmapPTownInOffsX, GmapTownTextPos[ i ][ 1 ] + GmapPTownInOffsY );
         }
 
         // View entrance
         AnyFrames* pic = GmapPTownViewPic;
-        if( IfaceHold == IFACE_GMAP_VIEW_BUT && GmapTownCurButton == i )
+        if( IfaceHold == IFACE_GMAP_VIEW_BUT && GmapTownCurButton == (int) i )
             pic = GmapPTownViewPicDn;
         SprMngr.DrawSprite( pic, GmapTownTextPos[ i ][ 0 ] + GmapPTownViewOffsX, GmapTownTextPos[ i ][ 1 ] + GmapPTownViewOffsY );
     }
@@ -6712,7 +6713,7 @@ void FOClient::SboxDraw()
     #define SBOX_DRAW_SKILL( comp, skill )                                                                                                                                                                                \
         do { SprMngr.DrawStr( Rect( SboxB ## comp, SboxX, SboxY - ( IfaceHold == skill ? 1 : 0 ) ), MsgGame->GetStr( STR_PARAM_NAME_SHORT_( skill ) ), FT_CENTERX | FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT ); \
              int sk_val = ( Chosen ? Chosen->GetRawParam( skill ) : 0 ); if( sk_val < 0 )                                                                                                                                 \
-                 sk_val = -sk_val; sk_val = CLAMP( sk_val, 0, MAX_SKILL_VAL ); char str[ 16 ]; sprintf( str, "%03d", sk_val ); if( Chosen && Chosen->GetRawParam( skill ) < 0 )                                           \
+                 sk_val = -sk_val; sk_val = CLAMP( sk_val, 0, MAX_SKILL_VAL ); char str[ 16 ]; Str::Format( str, "%03d", sk_val ); if( Chosen && Chosen->GetRawParam( skill ) < 0 )                                       \
                  Str::ChangeValue( str, 0x10 );                                                                                                                                                                           \
              SprMngr.DrawStr( Rect( SboxT ## comp, SboxX, SboxY ), str, 0, COLOR_IFACE, FONT_BIG_NUM ); } while( 0 )
 
@@ -7038,7 +7039,7 @@ void FOClient::ChaPrepareSwitch()
     for( uint i = REPUTATION_BEGIN; i <= REPUTATION_END; i++ )
     {
         int val = Chosen->Params[ i ];
-        if( val == 0x80000000 )
+        if( (uint) val == 0x80000000 )
             continue;
 
         // Title
@@ -7964,10 +7965,10 @@ void FOClient::ChaNameKeyDown( uchar dik )
     switch( IfaceHold )
     {
     case IFACE_CHA_NAME_NAME:
-        Keyb::GetChar( dik, RegNewCr->Name, NULL, min( GameOpt.MaxNameLength, MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, RegNewCr->Name, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
         break;
     case IFACE_CHA_NAME_PASS:
-        Keyb::GetChar( dik, RegNewCr->Pass, NULL, min( GameOpt.MaxNameLength, MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, RegNewCr->Pass, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
         break;
     default:
         break;
@@ -7997,7 +7998,7 @@ void FOClient::ChaAgeDraw()
     if( !IsMainScreen( SCREEN_REGISTRATION ) || !RegNewCr )
         return;
     char str[ 16 ];
-    sprintf( str, "%02d", RegNewCr->ParamsReg[ ST_AGE ] );
+    Str::Format( str, "%02d", RegNewCr->ParamsReg[ ST_AGE ] );
     SprMngr.DrawStr( Rect( ChaAgeWAge, ChaAgeX, ChaAgeY ), str, FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
 }
 
@@ -9069,8 +9070,8 @@ AnyFrames* FOClient::AimGetPic( CritterCl* cr, const char* ext )
     // Make names
     char aim_name[ MAX_FOPATH ];
     char aim_name_alias[ MAX_FOPATH ];
-    sprintf( aim_name, "%s%sna.%s", FileManager::GetPath( PT_ART_CRITTERS ), CritType::GetName( cr->GetCrType() ), ext );
-    sprintf( aim_name_alias, "%s%sna.%s", FileManager::GetPath( PT_ART_CRITTERS ), CritType::GetName( cr->GetCrTypeAlias() ), ext );
+    Str::Format( aim_name, "%s%sna.%s", FileManager::GetPath( PT_ART_CRITTERS ), CritType::GetName( cr->GetCrType() ), ext );
+    Str::Format( aim_name_alias, "%s%sna.%s", FileManager::GetPath( PT_ART_CRITTERS ), CritType::GetName( cr->GetCrTypeAlias() ), ext );
 
     // Load
     AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( aim_name ), 0, RES_IFACE_EXT );
@@ -9438,7 +9439,7 @@ CritterCl* FOClient::PupGetLootCrit( int scroll )
 {
     CritVec& loot = PupGetLootCrits();
     for( uint i = 0, j = (uint) loot.size(); i < j; i++ )
-        if( i == scroll )
+        if( i == (uint) scroll )
             return loot[ i ];
     return NULL;
 }
@@ -9572,7 +9573,7 @@ void FOClient::CurDraw()
             break;
 
         char str[ 16 ];
-        sprintf( str, "%d%%", hit );
+        Str::Format( str, "%d%%", hit );
 
         SprMngr.Flush();
         SprMngr.DrawStr( Rect( GameOpt.MouseX + 6, GameOpt.MouseY + 6, x + 500, y + 500 ), str, 0, COLOR_TEXT_RED );
@@ -9872,7 +9873,7 @@ void FOClient::ElevatorDraw()
         for( uint i = 0; i < ElevatorButtonsCount; i++ )
         {
             Rect& r = ElevatorButtons[ i ];
-            if( i == ElevatorSelectedButton && ElevatorButtonPicDown )
+            if( i == (uint) ElevatorSelectedButton && ElevatorButtonPicDown )
                 SprMngr.DrawSprite( ElevatorButtonPicDown, r[ 0 ] + ElevatorX, r[ 1 ] + ElevatorY );
         }
     }
@@ -10131,7 +10132,7 @@ void FOClient::SayLMouseUp()
     case IFACE_SAY_OK:
         if( !IsCurInRect( SayBOk, SayX, SayY ) )
             break;
-        if( !strlen( SayText ) )
+        if( !Str::Length( SayText ) )
             break;
         if( ShowScreenType )
         {
@@ -10182,7 +10183,7 @@ void FOClient::SayKeyDown( uchar dik )
 {
     if( dik == DIK_RETURN || dik == DIK_NUMPADENTER )
     {
-        if( !strlen( SayText ) )
+        if( !Str::Length( SayText ) )
             return;
         if( ShowScreenType )
         {
@@ -10999,7 +11000,7 @@ void FOClient::FixDraw()
             uint col = COLOR_TEXT;
             if( !scraft->IsTrue )
                 col = COLOR_TEXT_DRED;
-            if( i == FixCurCraft )
+            if( i == (uint) FixCurCraft )
             {
                 if( IfaceHold == IFACE_FIX_CHOOSE )
                     col = COLOR_TEXT_DBLUE;
@@ -11012,7 +11013,7 @@ void FOClient::FixDraw()
 
         // Number of page
         char str[ 64 ];
-        sprintf( str, "%u/%u", FixScrollLst + 1, FixCraftLst.size() );
+        Str::Format( str, "%u/%u", FixScrollLst + 1, FixCraftLst.size() );
         SprMngr.DrawStr( Rect( FixWWin[ 2 ] - 30 + FixX, FixWWin[ 3 ] - 15 + FixY, FixWWin[ 2 ] + FixX, FixWWin[ 3 ] + FixY ), str, FT_NOBREAK );
     }
     break;
@@ -11334,124 +11335,107 @@ void FOClient::SaveLoadCollect()
         const string& fname = fnames[ i ];
 
         // Open file
-        HANDLE hf = CreateFile( FileManager::GetFullPath( fname.c_str(), PT_DATA ), FILE_GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL );
-        if( hf == INVALID_HANDLE_VALUE )
+        void* f = FileOpen( FileManager::GetFullPath( fname.c_str(), PT_DATA ), false );
+        if( !f )
             continue;
-        open_handles.push_back( hf );
+        open_handles.push_back( f );
 
         // Get file information
-        BY_HANDLE_FILE_INFORMATION finfo;
-        if( !GetFileInformationByHandle( hf, &finfo ) )
-            continue;
+        uint64 tc, ta, tw;
+        FileGetTime( f, tc, ta, tw );
 
         // Read save data, offsets see SaveGameInfoFile in Server.cpp
-        DWORD dw;
-
         // Check singleplayer data
         uint sp;
-        SetFilePointer( hf, 4, NULL, FILE_BEGIN );
-        if( !ReadFile( hf, &sp, sizeof( sp ), &dw, NULL ) )
+        FileSetPointer( f, 4, SEEK_SET );
+        if( !FileRead( f, &sp, sizeof( sp ) ) )
             continue;
         if( sp != 1 )
             continue;               // Save not contain singleplayer data
 
         // Critter name
         char crname[ MAX_NAME + 1 ];
-        SetFilePointer( hf, 8, NULL, FILE_BEGIN );
-        if( !ReadFile( hf, crname, sizeof( crname ), &dw, NULL ) )
+        FileSetPointer( f, 8, SEEK_SET );
+        if( !FileRead( f, crname, sizeof( crname ) ) )
             continue;
 
         // Map pid
         ushort map_pid;
-        SetFilePointer( hf, 8 + 31 + 68, NULL, FILE_BEGIN );
-        if( !ReadFile( hf, &map_pid, sizeof( map_pid ), &dw, NULL ) )
+        FileSetPointer( f, 8 + 31 + 68, SEEK_SET );
+        if( !FileRead( f, &map_pid, sizeof( map_pid ) ) )
             continue;
 
         // Calculate critter time events size
         uint te_size;
-        SetFilePointer( hf, 8 + 31 + 7404 + 6944, NULL, FILE_BEGIN );
-        if( !ReadFile( hf, &te_size, sizeof( te_size ), &dw, NULL ) )
+        FileSetPointer( f, 8 + 31 + 7404 + 6944, SEEK_SET );
+        if( !FileRead( f, &te_size, sizeof( te_size ) ) )
             continue;
         te_size = te_size * 16 + 4;
 
         // Picture data
         uint pic_data_len;
         UCharVec pic_data;
-        SetFilePointer( hf, 8 + 31 + 7404 + 6944 + te_size, NULL, FILE_BEGIN );
-        if( !ReadFile( hf, &pic_data_len, sizeof( pic_data_len ), &dw, NULL ) )
+        FileSetPointer( f, 8 + 31 + 7404 + 6944 + te_size, SEEK_SET );
+        if( !FileRead( f, &pic_data_len, sizeof( pic_data_len ) ) )
             continue;
         if( pic_data_len )
         {
             pic_data.resize( pic_data_len );
-            if( !ReadFile( hf, &pic_data[ 0 ], pic_data_len, &dw, NULL ) )
+            if( !FileRead( f, &pic_data[ 0 ], pic_data_len ) )
                 continue;
         }
 
         // Game time
         ushort year, month, day, hour, minute;
-        SetFilePointer( hf, 8 + 31 + 7404 + 6944 + te_size + 4 + pic_data_len + 2, NULL, FILE_BEGIN );
-        if( !ReadFile( hf, &year, sizeof( year ), &dw, NULL ) )
+        FileSetPointer( f, 8 + 31 + 7404 + 6944 + te_size + 4 + pic_data_len + 2, SEEK_SET );
+        if( !FileRead( f, &year, sizeof( year ) ) )
             continue;
-        if( !ReadFile( hf, &month, sizeof( month ), &dw, NULL ) )
+        if( !FileRead( f, &month, sizeof( month ) ) )
             continue;
-        if( !ReadFile( hf, &day, sizeof( day ), &dw, NULL ) )
+        if( !FileRead( f, &day, sizeof( day ) ) )
             continue;
-        if( !ReadFile( hf, &hour, sizeof( hour ), &dw, NULL ) )
+        if( !FileRead( f, &hour, sizeof( hour ) ) )
             continue;
-        if( !ReadFile( hf, &minute, sizeof( minute ), &dw, NULL ) )
+        if( !FileRead( f, &minute, sizeof( minute ) ) )
             continue;
 
         // Extract name
         char name[ MAX_FOPATH ];
         FileManager::ExtractFileName( fname.c_str(), name );
-        if( strlen( name ) < 4 )
+        if( Str::Length( name ) < 4 )
             continue;
-        name[ strlen( name ) - 3 ] = 0;
+        name[ Str::Length( name ) - 3 ] = 0;
 
         // Extract full path
-        char fpath_[ MAX_FOPATH ];
         char fpath[ MAX_FOPATH ];
-        Str::Copy( fpath_, FileManager::GetDataPath( PT_DATA ) );
-        Str::Append( fpath_, fname.c_str() );
-        if( !GetFullPathName( fpath_, MAX_FOPATH, fpath, NULL ) )
-            continue;
+        FileManager::GetFullPath( name, PT_SAVE, fpath );
 
         // Convert time
-        union
-        {
-            FILETIME ft;
-            ULARGE_INTEGER ul;
-        } writeft;
-        SYSTEMTIME write_utc, write;
-        writeft.ft = finfo.ftLastWriteTime;
-        if( !FileTimeToSystemTime( &writeft.ft, &write_utc ) )
-            continue;
-        if( !SystemTimeToTzSpecificLocalTime( NULL, &write_utc, &write ) )
-            continue;
+        DateTime dt;
+        Timer::FullTimeToDateTime( tw, dt );
 
         // Fill slot data
         SaveLoadDataSlot slot;
         slot.Name = name;
-        slot.Info = Str::FormatBuf( "%s\n%02d.%02d.%04d %02d:%02d:%02d\n", name,
-                                    write.wDay, write.wMonth, write.wYear, write.wHour, write.wMinute, write.wSecond );
+        slot.Info = Str::FormatBuf( "%s\n%02d.%02d.%04d %02d:%02d:%02d\n", name, dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
         slot.InfoExt = Str::FormatBuf( "%s\n%02d %3s %04d %02d%02d\n%s", crname,
                                        day, MsgGame->GetStr( STR_MONTH( month ) ), year, hour, minute, MsgGM->GetStr( STR_MAP_NAME_( map_pid ) ) );
         slot.FileName = fpath;
-        slot.RealTime = PACKUINT64( writeft.ul.HighPart, writeft.ul.LowPart );
+        slot.RealTime = tw;
         slot.PicData = pic_data;
         SaveLoadDataSlots.push_back( slot );
     }
 
     // Close opened file handles
     for( auto it = open_handles.begin(); it != open_handles.end(); ++it )
-        CloseHandle( *it );
+        FileClose( *it );
 
     // Sort by creation time
     struct SortByTime
     {
-        bool operator()( const SaveLoadDataSlot& l, const SaveLoadDataSlot& r ) { return l.RealTime > r.RealTime; }
+        static bool Do( const SaveLoadDataSlot& l, const SaveLoadDataSlot& r ) { return l.RealTime > r.RealTime; }
     };
-    std::sort( SaveLoadDataSlots.begin(), SaveLoadDataSlots.end(), SortByTime() );
+    std::sort( SaveLoadDataSlots.begin(), SaveLoadDataSlots.end(), SortByTime::Do );
 
     // Set scroll data
     SaveLoadSlotScroll = 0;
@@ -11464,19 +11448,13 @@ void FOClient::SaveLoadCollect()
 void FOClient::SaveLoadSaveGame( const char* name )
 {
     // Get name of new save
-    char fpath_[ MAX_FOPATH ];
     char fpath[ MAX_FOPATH ];
-    Str::Copy( fpath_, FileManager::GetDataPath( PT_SAVE ) );
-    Str::Append( fpath_, FileManager::GetPath( PT_SAVE ) );
-    Str::Append( fpath_, name );
-    Str::Append( fpath_, ".fo" );
-    if( !GetFullPathName( fpath_, MAX_FOPATH, fpath, NULL ) )
-        return;
+    FileManager::GetFullPath( name, PT_SAVE, fpath );
 
     // Delete old files
     if( SaveLoadFileName != "" )
-        DeleteFile( SaveLoadFileName.c_str() );
-    DeleteFile( fpath );
+        FileDelete( SaveLoadFileName.c_str() );
+    FileDelete( fpath );
 
     // Get image data from surface
     UCharVec pic_data;
@@ -11609,7 +11587,7 @@ void FOClient::SaveLoadDraw()
     if( SaveLoadSave && SaveLoadSlotScroll <= (int) SaveLoadDataSlots.size() && cur <= SaveLoadSlotsMax - 1 )
     {
         SprMngr.DrawStr( Rect( SaveLoadSlots, ox, oy + cur * line_height * SAVE_LOAD_LINES_PER_SLOT ),
-                         MsgGame->GetStr( STR_SAVE_LOAD_NEW_RECORD ), FT_NOBREAK_LINE, SaveLoadSlotIndex == SaveLoadDataSlots.size() ? COLOR_TEXT_DDGREEN : COLOR_TEXT );
+                         MsgGame->GetStr( STR_SAVE_LOAD_NEW_RECORD ), FT_NOBREAK_LINE, SaveLoadSlotIndex == (int) SaveLoadDataSlots.size() ? COLOR_TEXT_DDGREEN : COLOR_TEXT );
     }
 
     // Selected slot ext info
@@ -11670,7 +11648,7 @@ void FOClient::SaveLoadLMouseDown()
             SaveLoadSlotIndex = index + SaveLoadSlotScroll;
             SaveLoadShowDraft();
 
-            if( SaveLoadSlotIndex == SaveLoadClickSlotIndex && Timer::FastTick() - SaveLoadClickSlotTick <= GetDoubleClickTime() )
+            if( SaveLoadSlotIndex == SaveLoadClickSlotIndex && Timer::FastTick() - SaveLoadClickSlotTick <= GetDoubleClickTicks() )
             {
                 SaveLoadProcessDone();
             }

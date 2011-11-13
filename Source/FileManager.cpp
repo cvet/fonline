@@ -103,8 +103,8 @@ void FileManager::InitDataFiles( const char* path )
             }
 
             // Cut off comments
-            char* comment1 = strstr( line, "#" );
-            char* comment2 = strstr( line, ";" );
+            char* comment1 = Str::Substring( line, "#" );
+            char* comment2 = Str::Substring( line, ";" );
             if( comment1 )
                 *comment1 = 0;
             if( comment2 )
@@ -783,7 +783,7 @@ void FileManager::FormatPath( char* path, bool first_skipped /* = false */ )
     }
 
     // Erase 'folder/../'
-    char* str = strstr( path, DIR_SLASH_SDD );
+    char* str = Str::Substring( path, DIR_SLASH_SDD );
     if( str )
     {
         // Erase interval
@@ -806,7 +806,7 @@ void FileManager::FormatPath( char* path, bool first_skipped /* = false */ )
     }
 
     // Erase './'
-    str = strstr( path, DIR_SLASH_SD );
+    str = Str::Substring( path, DIR_SLASH_SD );
     if( str )
     {
         // Erase interval
@@ -833,13 +833,13 @@ void FileManager::ExtractPath( const char* fname, char* path )
     Str::Copy( buf, fname );
     FormatPath( buf );
 
-    const char* str = strstr( buf, DIR_SLASH_S );
+    const char* str = Str::Substring( buf, DIR_SLASH_S );
     if( str )
     {
         str++;
         while( true )
         {
-            const char* str_ = strstr( str, DIR_SLASH_S );
+            const char* str_ = Str::Substring( str, DIR_SLASH_S );
             if( str_ )
                 str = str_ + 1;
             else
@@ -862,13 +862,13 @@ void FileManager::ExtractFileName( const char* fname, char* name )
     Str::Copy( buf, fname );
     FormatPath( buf );
 
-    const char* str = strstr( fname, DIR_SLASH_S );
+    const char* str = Str::Substring( fname, DIR_SLASH_S );
     if( str )
     {
         str++;
         while( true )
         {
-            const char* str_ = strstr( str, DIR_SLASH_S );
+            const char* str_ = Str::Substring( str, DIR_SLASH_S );
             if( str_ )
                 str = str_ + 1;
             else
@@ -898,7 +898,7 @@ void FileManager::MakeFilePath( const char* name, const char* path, char* result
         FormatPath( path_ );
     }
 
-    if( strstr( name_, DIR_SLASH_S ) && name_[ 0 ] != '.' )
+    if( Str::Substring( name_, DIR_SLASH_S ) && name_[ 0 ] != '.' )
     {
         // Direct
         Str::Copy( result, MAX_FOPATH, name_ );

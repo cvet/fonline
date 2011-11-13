@@ -27,12 +27,15 @@ public:
     bool  AppendToBegin( const char* fname, int path_type );
     bool  AppendToEnd( const char* fname, int path_type );
     bool  AppendPtrToBegin( const char* buf, uint len );
+    bool  SaveFile( const char* fname, int path_type );
     void  UnloadFile();
     char* GetBuffer();
     int   GetInt( const char* app_name, const char* key_name, int def_val );
     int   GetInt( const char* key_name, int def_val );
     bool  GetStr( const char* app_name, const char* key_name, const char* def_val, char* ret_buf, char end = 0 );
     bool  GetStr( const char* key_name, const char* def_val, char* ret_buf, char end = 0 );
+    void  SetStr( const char* app_name, const char* key_name, const char* val ); // If key not founded than writes to end of file despite app
+    void  SetStr( const char* key_name, const char* val );
     bool  IsApp( const char* app_name );
     bool  IsKey( const char* app_name, const char* key_name );
     bool  IsKey( const char* key_name );

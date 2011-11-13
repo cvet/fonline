@@ -30,7 +30,7 @@ struct Texture
     ~Texture() { SAFEREL( Instance ); }
     #else
     GLuint             Id;
-    void*              Data;
+    uchar*             Data;
     uint               Size;
     uint               Width;
     uint               Height;
@@ -61,10 +61,10 @@ struct Texture
 struct EffectDefault
 {
     enum EType { String, Floats, Dword };
-    char* Name;
-    EType Type;
-    void* Data;
-    uint  Size;
+    char*  Name;
+    EType  Type;
+    uchar* Data;
+    uint   Size;
 };
 
 struct EffectInstance

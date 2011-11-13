@@ -88,7 +88,7 @@ T ResolveProtoValue( const char* str )
 {
     if( Str::IsNumber( str ) )
         return ( T ) Str::AtoI64( str );
-    else if( strstr( str, "\\" ) || strstr( str, "/" ) )
+    else if( Str::Substring( str, "\\" ) || Str::Substring( str, "/" ) )
         return ( T ) Str::GetHash( str );
     return ( T ) ConstantsManager::GetDefineValue( str );
 }

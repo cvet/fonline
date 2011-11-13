@@ -45,7 +45,7 @@ void CatchExceptions( const char* app_name, unsigned int app_ver )
 {
     if( app_name )
         Str::Copy( AppName, app_name );
-    sprintf( AppVer, "%04X", app_ver );
+    Str::Format( AppVer, "%04X", app_ver );
 
     if( app_name )
     # ifndef EXCEPTION_MINIDUMP
@@ -69,7 +69,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     DateTime    dt;
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = except ? "CrashDump" : ManualDumpAppendix;
-    sprintf( dump_path, "%s_%s_%s_%02d%02d_%02d%02d.txt", dump_str, AppName, AppVer, dt.Day, dt.Month, dt.Hour, dt.Minute );
+    Str::Format( dump_path, "%s_%s_%s_%02d%02d_%02d%02d.txt", dump_str, AppName, AppVer, dt.Day, dt.Month, dt.Hour, dt.Minute );
 
     FILE* f = fopen( dump_path, "wt" );
     if( f )
@@ -416,11 +416,11 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         CloseHandle( process );
         fclose( f );
 
-        sprintf( mess, DumpMess, dump_path );
+        Str::Format( mess, DumpMess, dump_path );
     }
     else
     {
-        sprintf( mess, "Error while create dump file - Error create file, path<%s>, err<%d>.", dump_path, GetLastError() );
+        Str::Format( mess, "Error while create dump file - Error create file, path<%s>, err<%d>.", dump_path, GetLastError() );
     }
 
     if( except )
@@ -438,7 +438,7 @@ LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
     DateTime    dt;
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = except ? "CrashDump" : ManualDumpAppendix;
-    sprintf( dump_path, "%s_%s_%s_%02d%02d_%02d%02d.txt", dump_str, AppName, AppVer, dt.Day, dt.Month, dt.Hour, dt.Minute );
+    Str::Format( dump_path, "%s_%s_%s_%02d%02d_%02d%02d.txt", dump_str, AppName, AppVer, dt.Day, dt.Month, dt.Hour, dt.Minute );
 
     HANDLE f = CreateFile( dump_path, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
     if( f != INVALID_HANDLE_VALUE )
@@ -450,19 +450,19 @@ LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
 
         if( MiniDumpWriteDump( GetCurrentProcess(), GetCurrentProcessId(), f, MiniDumpNormal, except ? &ex_info : NULL, NULL, NULL ) )
         {
-            sprintf( mess, DumpMess, dump_path );
+            Str::Format( mess, DumpMess, dump_path );
             retval = EXCEPTION_EXECUTE_HANDLER;
         }
         else
         {
-            sprintf( mess, "Error while create dump file - File save error, path<%s>, err<%d>.", dump_path, GetLastError() );
+            Str::Format( mess, "Error while create dump file - File save error, path<%s>, err<%d>.", dump_path, GetLastError() );
         }
 
         CloseHandle( f );
     }
     else
     {
-        sprintf( mess, "Error while create dump file - Error create file, path<%s>, err<%d>.", dump_path, GetLastError() );
+        Str::Format( mess, "Error while create dump file - Error create file, path<%s>, err<%d>.", dump_path, GetLastError() );
     }
 
     if( except )
@@ -501,7 +501,7 @@ void CatchExceptions( const char* app_name, unsigned int app_ver )
 {
     if( app_name )
         Str::Copy( AppName, app_name );
-    sprintf( AppVer, "%04X", app_ver );
+    Str::Format( AppVer, "%04X", app_ver );
 
     if( app_name && !sigactionsSetted )
     {
@@ -557,7 +557,7 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     DateTime    dt;
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = siginfo ? "CrashDump" : ManualDumpAppendix;
-    sprintf( dump_path, "./%s_%s_%s_%02d%02d_%02d%02d.txt", dump_str, AppName, AppVer, dt.Day, dt.Month, dt.Hour, dt.Minute );
+    Str::Format( dump_path, "./%s_%s_%s_%02d%02d_%02d%02d.txt", dump_str, AppName, AppVer, dt.Day, dt.Month, dt.Hour, dt.Minute );
 
     FILE* f = fopen( dump_path, "wt" );
     if( f )
@@ -616,11 +616,11 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         free( symbols );
         fclose( f );
 
-        sprintf( mess, DumpMess, dump_path );
+        Str::Format( mess, DumpMess, dump_path );
     }
     else
     {
-        sprintf( mess, "Error while create dump file - Error create file, path<%s>.", dump_path );
+        Str::Format( mess, "Error while create dump file - Error create file, path<%s>.", dump_path );
     }
 
     // if( siginfo )

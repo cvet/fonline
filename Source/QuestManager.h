@@ -32,7 +32,7 @@ private:
         char str[ 128 ];
         for( uint i = 0; i < quests.size(); ++i )
         {
-            sprintf( str, msg->GetStr( STR_QUEST_NUMBER ), i + 1 );
+            Str::Format( str, msg->GetStr( STR_QUEST_NUMBER ), i + 1 );
 
             text += str;
             text += quests[ i ].info;
@@ -45,13 +45,13 @@ private:
 
 public:
     bool   IsEmpty() { return quests.empty(); }
-    Quest* AddQuest( ushort num, string& info )
+    Quest* AddQuest( ushort num, string info )
     {
         quests.push_back( Quest( num, info ) );
         return &quests[ quests.size() - 1 ];
         ReparseText();
     }
-    void RefreshQuest( ushort num, string& str )
+    void RefreshQuest( ushort num, string str )
     {
         Quest* quest = GetQuest( num );
         if( !quest ) return;

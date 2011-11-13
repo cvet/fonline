@@ -207,18 +207,18 @@ const char* Debugger::GetMemoryStatistics()
         {
             MemNode& node = MemNodes[ i ];
             # ifdef FO_WINDOWS
-            sprintf( buf, "%s : %12I64d %12I64d %12I64d %12I64d %12I64d\n", MemBlockNames[ i ], node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
+            Str::Format( buf, "%s : %12I64d %12I64d %12I64d %12I64d %12I64d\n", MemBlockNames[ i ], node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
             # else // FO_LINUX
-            sprintf( buf, "%s : %12lld %12lld %12lld %12lld %12lld\n", MemBlockNames[ i ], node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
+            Str::Format( buf, "%s : %12lld %12lld %12lld %12lld %12lld\n", MemBlockNames[ i ], node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
             # endif
             result += buf;
             all_alloc += node.AllocMem;
             all_dealloc += node.DeallocMem;
         }
         # ifdef FO_WINDOWS
-        sprintf( buf, "Whole memory  : %12I64d %12I64d %12I64d\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
+        Str::Format( buf, "Whole memory  : %12I64d %12I64d %12I64d\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
         # else // FO_LINUX
-        sprintf( buf, "Whole memory  : %12lld %12lld %12lld\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
+        Str::Format( buf, "Whole memory  : %12lld %12lld %12lld\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
         # endif
         result += buf;
     }
@@ -231,18 +231,18 @@ const char* Debugger::GetMemoryStatistics()
         {
             MemNodeStr& node = *it;
             # ifdef FO_WINDOWS
-            sprintf( buf, "%-50s : %12I64d %12I64d %12I64d %12I64d %12I64d\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
+            Str::Format( buf, "%-50s : %12I64d %12I64d %12I64d %12I64d %12I64d\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
             # else // FO_LINUX
-            sprintf( buf, "%-50s : %12lld %12lld %12lld %12lld %12lld\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
+            Str::Format( buf, "%-50s : %12lld %12lld %12lld %12lld %12lld\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
             # endif
             result += buf;
             all_alloc += node.AllocMem;
             all_dealloc += node.DeallocMem;
         }
         # ifdef FO_WINDOWS
-        sprintf( buf, "Whole memory                                       : %12I64d %12I64d %12I64d\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
+        Str::Format( buf, "Whole memory                                       : %12I64d %12I64d %12I64d\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
         # else // FO_LINUX
-        sprintf( buf, "Whole memory                                       : %12lld %12lld %12lld\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
+        Str::Format( buf, "Whole memory                                       : %12lld %12lld %12lld\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
         # endif
         result += buf;
     }

@@ -45,7 +45,7 @@ int              GUISizeMod = 0;
 #define GUI_LABEL_BUF_SIZE    ( 128 )
 
 // Windows service
-#if defined ( FO_WINDOWS )
+#ifdef FO_WINDOWS
 void ServiceMain( bool as_service );
 #endif
 
@@ -56,7 +56,7 @@ int main( int argc, char** argv )
     RestoreMainDirectory();
 
     // Pthreads
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     pthread_win32_process_attach_np();
     #endif
 
@@ -86,7 +86,7 @@ int main( int argc, char** argv )
     // Service
     if( strstr( CommandLine, "-service" ) )
     {
-        #if defined ( FO_WINDOWS )
+        #ifdef FO_WINDOWS
         ServiceMain( strstr( CommandLine, "--service" ) != NULL );
         #endif
         return 0;
@@ -95,7 +95,7 @@ int main( int argc, char** argv )
     // Check single player parameters
     if( strstr( CommandLine, "-singleplayer " ) )
     {
-        #if defined ( FO_WINDOWS )
+        #ifdef FO_WINDOWS
         Singleplayer = true;
         Timer::SetGamePause( true );
 
@@ -258,7 +258,7 @@ void GUIInit( IniParser& cfg )
     GuiWindow->label( GetWindowName() );
 
     // Icon
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     GuiWindow->icon( (char*) LoadIcon( fl_display, MAKEINTRESOURCE( 101 ) ) );
     #else // FO_LINUX
     fl_open_display();

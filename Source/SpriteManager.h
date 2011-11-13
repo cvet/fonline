@@ -136,10 +136,10 @@ typedef vector< Surface* > SurfaceVec;
 struct Vertex
 {
     #ifdef FO_D3D
-    FLOAT x, y, z, rhw;
+    float x, y, z, rhw;
     uint  diffuse;
-    FLOAT tu, tv;
-    FLOAT tu2, tv2;
+    float tu, tv;
+    float tu2, tv2;
     Vertex(): x( 0 ), y( 0 ), z( 0 ), rhw( 1 ), tu( 0 ), tv( 0 ), tu2( 0 ), tv2( 0 ), diffuse( 0 ) {}
     # define D3DFVF_MYVERTEX               ( D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX2 )
     #else
@@ -155,7 +155,7 @@ typedef vector< Vertex > VertexVec;
 
 struct MYVERTEX_PRIMITIVE
 {
-    FLOAT x, y, z, rhw;
+    float x, y, z, rhw;
     uint  Diffuse;
 
     MYVERTEX_PRIMITIVE(): x( 0 ), y( 0 ), z( 0 ), rhw( 1 ), Diffuse( 0 ) {}
@@ -297,7 +297,7 @@ public:
     void ClearRenderTargetDS( RenderTarget& rt, bool depth, bool stencil );
     void PushRenderTarget( RenderTarget& rt );
     void PopRenderTarget();
-    void DrawRenderTarget( RenderTarget& rt, Rect* region_from = NULL, Rect* region_to = NULL );
+    void DrawRenderTarget( RenderTarget& rt, const Rect* region_from = NULL, const Rect* region_to = NULL );
     #endif
 
     // Surfaces
@@ -317,7 +317,7 @@ private:
 
     Surface* CreateNewSurface( int w, int h );
     Surface* FindSurfacePlace( SpriteInfo* si, int& x, int& y );
-    uint     FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size );
+    uint     FillSurfaceFromMemory( SpriteInfo* si, uchar* data, uint size );
 
     // Load sprites
 public:
@@ -369,8 +369,6 @@ public:
     bool DrawSprite( uint id, int x, int y, uint color = 0 );
     bool DrawSpriteSize( uint id, int x, int y, float w, float h, bool stretch_up, bool center, uint color = 0 );
     bool DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to );
-    bool DrawPrepared( Surface_& surf, int ox, int oy );
-    bool DrawSurface( Surface_& surf, RECT& dst );
     bool DrawPoints( PointVec& points, int prim, float* zoom = NULL, RectF* stencil = NULL, PointF* offset = NULL );
     bool Draw3d( int x, int y, float scale, Animation3d* anim3d, RectF* stencil, uint color );
     bool Draw3dSize( RectF rect, bool stretch_up, bool center, Animation3d* anim3d, RectF* stencil, uint color );
@@ -459,12 +457,12 @@ public:
     void SetFontEffect( int index, Effect* effect );
     bool LoadFontFO( int index, const char* font_name );
     bool LoadFontBMF( int index, const char* font_name );
-    bool DrawStr( Rect& r, const char* str, uint flags, uint color = 0, int num_font = -1 );
+    bool DrawStr( const Rect& r, const char* str, uint flags, uint color = 0, int num_font = -1 );
     int  GetLinesCount( int width, int height, const char* str, int num_font = -1 );
     int  GetLinesHeight( int width, int height, const char* str, int num_font = -1 );
     int  GetLineHeight( int num_font = -1 );
     void GetTextInfo( int width, int height, const char* str, int num_font, int flags, int& tw, int& th, int& lines );
-    int  SplitLines( Rect& r, const char* cstr, int num_font, StrVec& str_vec );
+    int  SplitLines( const Rect& r, const char* cstr, int num_font, StrVec& str_vec );
 };
 
 extern SpriteManager SprMngr;

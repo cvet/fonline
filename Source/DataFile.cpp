@@ -71,7 +71,7 @@ DataFile* OpenDataFile( const char* fname )
         return NULL;
     }
 
-    const char* ext = strstr( fname, "." );
+    const char* ext = Str::Substring( fname, "." );
     if( !ext )
     {
         WriteLogF( _FUNC_, " - File<%s> extension not found.\n", fname );
@@ -79,7 +79,7 @@ DataFile* OpenDataFile( const char* fname )
     }
 
     const char* ext_ = ext;
-    while( ext_ = strstr( ext_ + 1, "." ) )
+    while( ext_ = Str::Substring( ext_ + 1, "." ) )
         ext = ext_;
 
     if( Str::CompareCase( ext, ".dat" ) ) // Try open DAT

@@ -454,6 +454,16 @@ void ShowMessage( const char* message )
     #endif
 }
 
+uint GetDoubleClickTicks()
+{
+    #ifdef FO_WINDOWS
+    return (uint) GetDoubleClickTime();
+    #else // FO_LINUX
+    // Todo: Linux
+    return 500;
+    #endif
+}
+
 /************************************************************************/
 /* Hex offsets                                                          */
 /************************************************************************/
@@ -809,20 +819,20 @@ uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light )
 void GetClientOptions()
 {
     // Defines
-    # define GETOPTIONS_CMD_LINE_INT( opt, str_id )               \
-        do { char* str = strstr( CommandLine, str_id ); if( str ) \
+    # define GETOPTIONS_CMD_LINE_INT( opt, str_id )                       \
+        do { char* str = Str::Substring( CommandLine, str_id ); if( str ) \
                  opt = atoi( str + Str::Length( str_id ) + 1 ); } while( 0 )
-    # define GETOPTIONS_CMD_LINE_BOOL( opt, str_id )              \
-        do { char* str = strstr( CommandLine, str_id ); if( str ) \
+    # define GETOPTIONS_CMD_LINE_BOOL( opt, str_id )                      \
+        do { char* str = Str::Substring( CommandLine, str_id ); if( str ) \
                  opt = atoi( str + Str::Length( str_id ) + 1 ) != 0; } while( 0 )
-    # define GETOPTIONS_CMD_LINE_BOOL_ON( opt, str_id )           \
-        do { char* str = strstr( CommandLine, str_id ); if( str ) \
+    # define GETOPTIONS_CMD_LINE_BOOL_ON( opt, str_id )                   \
+        do { char* str = Str::Substring( CommandLine, str_id ); if( str ) \
                  opt = true; } while( 0 )
-    # define GETOPTIONS_CMD_LINE_STR( opt, str_id )               \
-        do { char* str = strstr( CommandLine, str_id ); if( str ) \
-                 sscanf_s( str + Str::Length( str_id ) + 1, "%s", opt ); } while( 0 )
-    # define GETOPTIONS_CHECK( val_, min_, max_, def_ ) \
-        do { if( val_ < min_ || val_ > max_ )           \
+    # define GETOPTIONS_CMD_LINE_STR( opt, str_id )                       \
+        do { char* str = Str::Substring( CommandLine, str_id ); if( str ) \
+                 sscanf( str + Str::Length( str_id ) + 1, "%s", opt ); } while( 0 )
+    # define GETOPTIONS_CHECK( val_, min_, max_, def_ )                 \
+        do { int val__ = (int) val_; if( val__ < min_ || val__ > max_ ) \
                  val_ = def_; } while( 0 )
 
     char buf[ MAX_FOTEXT ];
@@ -1040,12 +1050,12 @@ const char* GetLastSocketError()
     int                error = WSAGetLastError();
     # define CASE_SOCK_ERROR( code, message ) \
     case code:                                \
-        sprintf( str, # code ", %d, "message, code ); break
+        Str::Format( str, # code ", %d, "message, code ); break
 
     switch( error )
     {
     default:
-        sprintf( str, "%d, unknown error code.", error );
+        Str::Format( str, "%d, unknown error code.", error );
         break;
         CASE_SOCK_ERROR( WSAEINTR, "A blocking operation was interrupted by a call to WSACancelBlockingCall." );
         CASE_SOCK_ERROR( WSAEBADF, "The file handle supplied is not valid." );
@@ -1145,7 +1155,7 @@ const char* GetLastSocketError()
 const char* GetLastSocketError()
 {
     static THREAD char str[ MAX_FOTEXT ];
-    sprintf( str, "%d", errno );
+    Str::Format( str, "%d", errno );
     return str;
 }
 

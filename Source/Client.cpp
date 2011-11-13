@@ -3,7 +3,6 @@
 #include "Access.h"
 #include "Defence.h"
 #include "Version.h"
-#include <Tlhelp32.h>
 
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR                          \
@@ -125,9 +124,13 @@ bool FOClient::Init()
     #ifndef DEV_VESRION
     if( !Singleplayer )
     {
+        # ifdef FO_WINDOWS
         HANDLE h = CreateEvent( NULL, FALSE, FALSE, "_fosync_" );
         if( !h || h == INVALID_HANDLE_VALUE || GetLastError() == ERROR_ALREADY_EXISTS )
             memset( MulWndArray, 1, sizeof( MulWndArray ) );
+        # else // FO_LINUX
+        // Todo: Linux
+        # endif
     }
     #endif
 
@@ -202,13 +205,13 @@ bool FOClient::Init()
     // Paths
     FileManager::SetDataPath( GameOpt.FoDataPath.c_str() );
     if( Singleplayer )
-        CreateDirectory( FileManager::GetFullPath( "", PT_SAVE ), NULL );
+        FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_SAVE ) );
 
     // Data files
     FileManager::InitDataFiles( ".\\" );
 
     // Cache
-    CreateDirectory( FileManager::GetFullPath( "", PT_CACHE ), NULL );
+    FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_CACHE ) );
     if( !Crypt.SetCacheTable( FileManager::GetFullPath( "default.cache", PT_CACHE ) ) )
     {
         WriteLogF( _FUNC_, " - Can't set default cache.\n" );
@@ -223,9 +226,9 @@ bool FOClient::Init()
     FileManager::GetFullPath( cache_name, PT_CACHE, cache_fname );
     Str::Append( cache_fname, ".cache" );
 
-    bool refresh_cache = ( !Singleplayer && !strstr( CommandLine, "-DefCache" ) && !Crypt.IsCacheTable( cache_fname ) );
+    bool refresh_cache = ( !Singleplayer && !Str::Substring( CommandLine, "-DefCache" ) && !Crypt.IsCacheTable( cache_fname ) );
 
-    if( !Singleplayer && !strstr( CommandLine, "-DefCache" ) && !Crypt.SetCacheTable( cache_fname ) )
+    if( !Singleplayer && !Str::Substring( CommandLine, "-DefCache" ) && !Crypt.SetCacheTable( cache_fname ) )
     {
         WriteLogF( _FUNC_, " - Can't set cache<%s>.\n", cache_fname );
         return false;
@@ -240,9 +243,9 @@ bool FOClient::Init()
     IniParser cfg;     // Also used below
     cfg.LoadFile( GetConfigFileName(), PT_ROOT );
     cfg.GetStr( CLIENT_CONFIG_APP, "UserPass", "", pass );
-    char* cmd_line_pass = strstr( CommandLine, "-UserPass" );
+    char* cmd_line_pass = Str::Substring( CommandLine, "-UserPass" );
     if( cmd_line_pass )
-        sscanf_s( cmd_line_pass + Str::Length( "-UserPass" ) + 1, "%s", pass );
+        sscanf( cmd_line_pass + Str::Length( "-UserPass" ) + 1, "%s", pass );
     Password = pass;
 
     // User and password
@@ -327,7 +330,7 @@ bool FOClient::Init()
     // Language Packs
     char lang_name[ MAX_FOTEXT ];
     cfg.GetStr( CLIENT_CONFIG_APP, "Language", DEFAULT_LANGUAGE, lang_name );
-    if( strlen( lang_name ) != 4 )
+    if( Str::Length( lang_name ) != 4 )
         Str::Copy( lang_name, DEFAULT_LANGUAGE );
     Str::Lower( lang_name );
 
@@ -352,7 +355,7 @@ bool FOClient::Init()
 
     // Lang
     Keyb::Lang = LANG_ENG;
-    if( !_stricmp( lang_name, "russ" ) )
+    if( Str::CompareCase( lang_name, "russ" ) )
         Keyb::Lang = LANG_RUS;
 
     // Resource manager
@@ -476,13 +479,13 @@ bool FOClient::Init()
         InitNetReason = INIT_NET_REASON_CACHE;
     }
     // Begin game
-    else if( strstr( CommandLine, "-Start" ) && !Singleplayer )
+    else if( Str::Substring( CommandLine, "-Start" ) && !Singleplayer )
     {
         LogTryConnect();
     }
     #ifndef FO_D3D
     // Intro
-    else if( !strstr( CommandLine, "-SkipIntro" ) )
+    else if( !Str::Substring( CommandLine, "-SkipIntro" ) )
     {
         if( MsgGame->Count( STR_MUSIC_MAIN_THEME ) )
             MusicAfterVideo = MsgGame->GetStr( STR_MUSIC_MAIN_THEME );
@@ -711,6 +714,7 @@ int FOClient::MainLoop()
     // Singleplayer data synchronization
     if( Singleplayer )
     {
+        #ifdef FO_WINDOWS
         bool pause = SingleplayerData.Pause;
 
         if( !pause )
@@ -728,6 +732,7 @@ int FOClient::MainLoop()
             Timer::SetGamePause( pause );
         }
         SingleplayerData.Unlock();         // Write data
+        #endif
     }
 
     CHECK_MULTIPLY_WINDOWS0;
@@ -1435,12 +1440,8 @@ label_TryChangeLang:
                     static int x, y, w, h, valid = 0;
                     if( !GameOpt.FullScreen )
                     {
-                        # ifdef FO_WINDOWS
-                        HDC dcscreen = GetDC( NULL );
-                        int sw = GetDeviceCaps( dcscreen, HORZRES );
-                        int sh = GetDeviceCaps( dcscreen, VERTRES );
-                        ReleaseDC( NULL, dcscreen );
-                        # endif
+                        int sx, sy, sw, sh;
+                        Fl::screen_xywh( sx, sy, sw, sh );
                         x = MainWindow->x();
                         y = MainWindow->y();
                         w = MainWindow->w();
@@ -2545,12 +2546,14 @@ bool FOClient::InitNet()
     WriteLog( "Network init...\n" );
     IsConnected = false;
 
+    #ifdef FO_WINDOWS
     WSADATA wsa;
     if( WSAStartup( MAKEWORD( 2, 2 ), &wsa ) )
     {
         WriteLog( "WSAStartup error<%s>.\n", GetLastSocketError() );
         return false;
     }
+    #endif
 
     if( !Singleplayer )
     {
@@ -2561,6 +2564,7 @@ bool FOClient::InitNet()
     }
     else
     {
+        #ifdef FO_WINDOWS
         for( int i = 0; i < 60; i++ )     // Wait 1 minute, than abort
         {
             if( !SingleplayerData.Refresh() )
@@ -2574,6 +2578,7 @@ bool FOClient::InitNet()
         SockAddr.sin_family = AF_INET;
         SockAddr.sin_port = SingleplayerData.NetPort;
         SockAddr.sin_addr.s_addr = inet_addr( "127.0.0.1" );
+        #endif
     }
 
     if( !NetConnect() )
@@ -2583,11 +2588,11 @@ bool FOClient::InitNet()
     return true;
 }
 
-bool FOClient::FillSockAddr( SOCKADDR_IN& saddr, const char* host, ushort port )
+bool FOClient::FillSockAddr( sockaddr_in& saddr, const char* host, ushort port )
 {
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons( port );
-    if( ( saddr.sin_addr.s_addr = inet_addr( host ) ) == -1 )
+    if( ( saddr.sin_addr.s_addr = inet_addr( host ) ) == uint( -1 ) )
     {
         hostent* h = gethostbyname( host );
         if( !h )
@@ -2611,24 +2616,30 @@ bool FOClient::NetConnect()
     Bin.SetEncryptKey( 0 );
     Bout.SetEncryptKey( 0 );
 
+    #ifdef FO_WINDOWS
     if( ( Sock = WSASocket( AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, 0 ) ) == INVALID_SOCKET )
+    #else // FO_LINUX
+    if( ( Sock = socket( AF_INET, SOCK_STREAM, 0 ) ) == INVALID_SOCKET )
+    #endif
     {
         WriteLog( "Create socket error<%s>.\n", GetLastSocketError() );
         return false;
     }
 
     // Nagle
+    #ifdef FO_WINDOWS
     if( GameOpt.DisableTcpNagle )
     {
         int optval = 1;
         if( setsockopt( Sock, IPPROTO_TCP, TCP_NODELAY, (char*) &optval, sizeof( optval ) ) )
             WriteLog( "Can't set TCP_NODELAY (disable Nagle) to socket, error<%s>.\n", WSAGetLastError() );
     }
+    #endif
 
     // Direct connect
     if( !GameOpt.ProxyType || Singleplayer )
     {
-        if( connect( Sock, (sockaddr*) &SockAddr, sizeof( SOCKADDR_IN ) ) )
+        if( connect( Sock, (sockaddr*) &SockAddr, sizeof( sockaddr_in ) ) )
         {
             WriteLog( "Can't connect to game server, error<%s>.\n", GetLastSocketError() );
             return false;
@@ -2637,7 +2648,7 @@ bool FOClient::NetConnect()
     // Proxy connect
     else
     {
-        if( connect( Sock, (sockaddr*) &ProxyAddr, sizeof( SOCKADDR_IN ) ) )
+        if( connect( Sock, (sockaddr*) &ProxyAddr, sizeof( sockaddr_in ) ) )
         {
             WriteLog( "Can't connect to Proxy server, error<%s>.\n", GetLastSocketError() );
             return false;
@@ -2795,7 +2806,7 @@ bool FOClient::NetConnect()
                     SEND_RECV;
                     buf=Bin.GetCurData();
                }*/
-            if( !strstr( buf, " 200 " ) )
+            if( !Str::Substring( buf, " 200 " ) )
             {
                 WriteLog( "Proxy connection error, receive message<%s>.\n", buf );
                 return false;
@@ -2901,11 +2912,16 @@ bool FOClient::NetOutput()
     int sendpos = 0;
     while( sendpos < tosend )
     {
+        #ifdef FO_WINDOWS
         DWORD  len;
         WSABUF buf;
         buf.buf = Bout.GetData() + sendpos;
         buf.len = tosend - sendpos;
         if( WSASend( Sock, &buf, 1, &len, 0, NULL, NULL ) == SOCKET_ERROR || len == 0 )
+        #else // FO_LINUX
+        int len = send( Sock, Bout.GetData() + sendpos, tosend - sendpos, 0 );
+        if( len <= 0 )
+        #endif
         {
             WriteLogF( _FUNC_, " - SOCKET_ERROR while send to server, error<%s>.\n", GetLastSocketError() );
             IsConnected = false;
@@ -2935,14 +2951,19 @@ int FOClient::NetInput( bool unpack )
     if( !FD_ISSET( Sock, &SockSet ) )
         return 0;
 
+    #ifdef FO_WINDOWS
     DWORD  len;
     DWORD  flags = 0;
     WSABUF buf;
     buf.buf = ComBuf;
     buf.len = ComLen;
     if( WSARecv( Sock, &buf, 1, &len, &flags, NULL, NULL ) == SOCKET_ERROR )
+    #else // FO_LINUX
+    int len = recv( Sock, ComBuf, ComLen, 0 );
+    if( len < 0 )
+    #endif
     {
-        WriteLogF( _FUNC_, " - SOCKET_ERROR while receive from server, error<%s>.\n", GetLastSocketError() );
+        WriteLogF( _FUNC_, " - Socket error while receive from server, error<%s>.\n", GetLastSocketError() );
         return -1;
     }
     if( len == 0 )
@@ -2961,17 +2982,22 @@ int FOClient::NetInput( bool unpack )
         ComBuf = combuf;
         ComLen = newcomlen;
 
+        #ifdef FO_WINDOWS
         flags = 0;
         buf.buf = ComBuf + pos;
         buf.len = ComLen - pos;
         if( WSARecv( Sock, &buf, 1, &len, &flags, NULL, NULL ) == SOCKET_ERROR )
+        #else // FO_LINUX
+        int len = recv( Sock, ComBuf, ComLen, 0 );
+        if( len < 0 )
+        #endif
         {
-            WriteLogF( _FUNC_, " - SOCKET_ERROR2 while receive from server, error<%s>.\n", GetLastSocketError() );
+            WriteLogF( _FUNC_, " - Socket error (2) while receive from server, error<%s>.\n", GetLastSocketError() );
             return -1;
         }
         if( len == 0 )
         {
-            WriteLogF( _FUNC_, " - Socket is closed2.\n" );
+            WriteLogF( _FUNC_, " - Socket is closed (2).\n" );
             return -2;
         }
 
@@ -2983,9 +3009,9 @@ int FOClient::NetInput( bool unpack )
 
     if( unpack && !GameOpt.DisableZlibCompression )
     {
-        ZStream.next_in = (UCHAR*) ComBuf;
+        ZStream.next_in = (uchar*) ComBuf;
         ZStream.avail_in = pos;
-        ZStream.next_out = (UCHAR*) Bin.GetData() + Bin.GetEndPos();
+        ZStream.next_out = (uchar*) Bin.GetData() + Bin.GetEndPos();
         ZStream.avail_out = Bin.GetLen() - Bin.GetEndPos();
 
         if( inflate( &ZStream, Z_SYNC_FLUSH ) != Z_OK )
@@ -3000,7 +3026,7 @@ int FOClient::NetInput( bool unpack )
         {
             Bin.GrowBuf( 2048 );
 
-            ZStream.next_out = (UCHAR*) Bin.GetData() + Bin.GetEndPos();
+            ZStream.next_out = (uchar*) Bin.GetData() + Bin.GetEndPos();
             ZStream.avail_out = Bin.GetLen() - Bin.GetEndPos();
 
             if( inflate( &ZStream, Z_SYNC_FLUSH ) != Z_OK )
@@ -3615,7 +3641,7 @@ void FOClient::Net_SendCommand( char* str )
         uint   crid;
         ushort hex_x;
         ushort hex_y;
-        if( sscanf( str, "%u%u%u", &crid, &hex_x, &hex_y ) != 3 )
+        if( sscanf( str, "%u%hu%hu", &crid, &hex_x, &hex_y ) != 3 )
         {
             AddMess( FOMB_GAME, "Invalid arguments. Example: <~move crid hx hy>." );
             break;
@@ -3691,7 +3717,7 @@ void FOClient::Net_SendCommand( char* str )
         ushort param_type;
         ushort param_num;
         int    param_val;
-        if( sscanf( str, "%d%d%d", &param_type, &param_num, &param_val ) != 3 )
+        if( sscanf( str, "%hu%hu%d", &param_type, &param_num, &param_val ) != 3 )
             break;
         msg_len += sizeof( ushort ) * 2 + sizeof( int );
 
@@ -3727,7 +3753,7 @@ void FOClient::Net_SendCommand( char* str )
         ushort hex_y;
         ushort pid;
         uint   count;
-        if( sscanf( str, "%u%u%u%u", &hex_x, &hex_y, &pid, &count ) != 4 )
+        if( sscanf( str, "%hu%hu%hu%u", &hex_x, &hex_y, &pid, &count ) != 4 )
         {
             AddMess( FOMB_GAME, "Invalid arguments. Example: <~additem hx hy pid count>." );
             break;
@@ -3747,7 +3773,7 @@ void FOClient::Net_SendCommand( char* str )
     {
         ushort pid;
         uint   count;
-        if( sscanf( str, "%u%u", &pid, &count ) != 2 )
+        if( sscanf( str, "%hu%u", &pid, &count ) != 2 )
         {
             AddMess( FOMB_GAME, "Invalid arguments. Example: <~additemself pid count>." );
             break;
@@ -3767,7 +3793,7 @@ void FOClient::Net_SendCommand( char* str )
         ushort hex_y;
         uchar  dir;
         ushort pid;
-        if( sscanf( str, "%d%d%d%d", &hex_x, &hex_y, &dir, &pid ) != 4 )
+        if( sscanf( str, "%hd%hd%hhd%hd", &hex_x, &hex_y, &dir, &pid ) != 4 )
         {
             AddMess( FOMB_GAME, "Invalid arguments. Example: <~addnpc hx hy dir pid>." );
             break;
@@ -3788,7 +3814,7 @@ void FOClient::Net_SendCommand( char* str )
         ushort wx;
         ushort wy;
         ushort pid;
-        if( sscanf( str, "%d%d%d", &wx, &wy, &pid ) != 3 )
+        if( sscanf( str, "%hd%hd%hd", &wx, &wy, &pid ) != 3 )
         {
             AddMess( FOMB_GAME, "Invalid arguments. Example: <~addloc wx wy pid>." );
             break;
@@ -3868,7 +3894,7 @@ void FOClient::Net_SendCommand( char* str )
     case CMD_LOADLOCATION:
     {
         ushort loc_pid;
-        if( sscanf( str, "%u", &loc_pid ) != 1 )
+        if( sscanf( str, "%hu", &loc_pid ) != 1 )
         {
             AddMess( FOMB_GAME, "Invalid arguments. Example: <~loadlocation pid>." );
             break;
@@ -3891,7 +3917,7 @@ void FOClient::Net_SendCommand( char* str )
     case CMD_LOADMAP:
     {
         ushort map_pid;
-        if( sscanf( str, "%u", &map_pid ) != 1 )
+        if( sscanf( str, "%hu", &map_pid ) != 1 )
         {
             AddMess( FOMB_GAME, "Invalid arguments. Example: <~loadmap pid>." );
             break;
@@ -3958,7 +3984,7 @@ void FOClient::Net_SendCommand( char* str )
         uint   master_id;
         uint   slave_id;
         uchar  full_info;
-        if( sscanf( str, "%u%u%u%u%u", &tid_var, &master_is_npc, &master_id, &slave_id, &full_info ) != 5 )
+        if( sscanf( str, "%hu%hhu%u%u%hhu", &tid_var, &master_is_npc, &master_id, &slave_id, &full_info ) != 5 )
         {
             AddMess( FOMB_GAME, "Invalid arguments. Example: <~checkvar tid_var master_is_npc master_id slave_id full_info>." );
             break;
@@ -3982,7 +4008,7 @@ void FOClient::Net_SendCommand( char* str )
         uint   master_id;
         uint   slave_id;
         int    value;
-        if( sscanf( str, "%u%u%u%u%d", &tid_var, &master_is_npc, &master_id, &slave_id, &value ) != 5 )
+        if( sscanf( str, "%hu%hhu%u%u%d", &tid_var, &master_is_npc, &master_id, &slave_id, &value ) != 5 )
         {
             AddMess( FOMB_GAME, "Invalid arguments. Example: <~setvar tid_var master_is_npc master_id slave_id value>." );
             break;
@@ -4041,7 +4067,7 @@ void FOClient::Net_SendCommand( char* str )
             str_ >> ban_hours;
         if( !str_.fail() )
             Str::Copy( info, str_.str() );
-        if( _stricmp( params, "add" ) && _stricmp( params, "add+" ) && _stricmp( params, "delete" ) && _stricmp( params, "list" ) )
+        if( !Str::CompareCase( params, "add" ) && !Str::CompareCase( params, "add+" ) && !Str::CompareCase( params, "delete" ) && !Str::CompareCase( params, "list" ) )
         {
             AddMess( FOMB_GAME, "Invalid arguments. Example: <~ban [add,add+,delete,list] [user] [hours] [comment]>." );
             break;
@@ -4165,7 +4191,7 @@ uchar FOClient::GetCmdNum( char*& str )
     cmd[ i ] = '\0';
 
     for( int cur_cmd = 0; cur_cmd < CMN_LIST_COUNT; cur_cmd++ )
-        if( !_stricmp( cmd, cmdlist[ cur_cmd ].cmd ) )
+        if( Str::CompareCase( cmd, cmdlist[ cur_cmd ].cmd ) )
             return cmdlist[ cur_cmd ].id;
 
     return 0;
@@ -4630,7 +4656,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     memzero( params, sizeof( params ) );
     ushort count, index;
     Bin >> count;
-    for( int i = 0, j = min( count, MAX_PARAMS ); i < j; i++ )
+    for( uint i = 0, j = min( count, ushort( MAX_PARAMS ) ); i < j; i++ )
     {
         Bin >> index;
         Bin >> params[ index < MAX_PARAMS ? index : 0 ];
@@ -4743,10 +4769,10 @@ void FOClient::Net_OnText()
     Bin >> unsafe_text;
 
     Bin >> len;
-    Bin.Pop( str, min( len, MAX_FOTEXT ) );
+    Bin.Pop( str, min( len, ushort( MAX_FOTEXT ) ) );
     if( len > MAX_FOTEXT )
         Bin.Pop( Str::GetBigBuf(), len - MAX_FOTEXT );
-    str[ min( len, MAX_FOTEXT ) ] = 0;
+    str[ min( len, ushort( MAX_FOTEXT ) ) ] = 0;
 
     CHECK_IN_BUFF_ERROR;
 
@@ -5077,10 +5103,10 @@ void FOClient::Net_OnMapText()
     Bin >> color;
 
     Bin >> len;
-    Bin.Pop( str, min( len, MAX_FOTEXT ) );
+    Bin.Pop( str, min( len, ushort( MAX_FOTEXT ) ) );
     if( len > MAX_FOTEXT )
         Bin.Pop( Str::GetBigBuf(), len - MAX_FOTEXT );
-    str[ min( len, MAX_FOTEXT ) ] = 0;
+    str[ min( len, ushort( MAX_FOTEXT ) ) ] = 0;
 
     Bin >> intellect;
     Bin >> unsafe_text;
@@ -5570,7 +5596,7 @@ void FOClient::Net_OnCritterParam()
     {
         int old_mh = cr->GetMultihex();
         cr->Multihex = value;
-        if( old_mh != cr->GetMultihex() )
+        if( old_mh != (int) cr->GetMultihex() )
         {
             HexMngr.SetMultihex( cr->GetHexX(), cr->GetHexY(), old_mh, false );
             HexMngr.SetMultihex( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), true );
@@ -5764,7 +5790,7 @@ void FOClient::Net_OnChosenParam()
     {
         int old_mh = Chosen->GetMultihex();
         Chosen->Multihex = value;
-        if( old_mh != Chosen->GetMultihex() )
+        if( old_mh != (int) Chosen->GetMultihex() )
         {
             HexMngr.SetMultihex( Chosen->GetHexX(), Chosen->GetHexY(), old_mh, false );
             HexMngr.SetMultihex( Chosen->GetHexX(), Chosen->GetHexY(), Chosen->GetMultihex(), true );
@@ -6383,16 +6409,11 @@ void FOClient::Net_OnGameInfo()
 
     CHECK_IN_BUFF_ERROR;
 
-    SYSTEMTIME st = { GameOpt.YearStart, 1, 0, 1, 0, 0, 0, 0 };
-    union
-    {
-        FILETIME       ft;
-        ULARGE_INTEGER ul;
-    } ft;
-    if( !SystemTimeToFileTime( &st, &ft.ft ) )
-        WriteLogF( _FUNC_, " - FileTimeToSystemTime error<%u>.\n", GetLastError() );
-    GameOpt.YearStartFTLo = ft.ul.LowPart;
-    GameOpt.YearStartFTHi = ft.ul.HighPart;
+    DateTime dt = { GameOpt.YearStart, 1, 0, 1, 0, 0, 0, 0 };
+    uint64   start_ft;
+    Timer::DateTimeToFullTime( dt, start_ft );
+    GameOpt.YearStartFTHi = ( start_ft >> 32 ) & 0xFFFFFFFF;
+    GameOpt.YearStartFTLo = start_ft & 0xFFFFFFFF;
     GameOpt.FullSecond = Timer::GetFullSecond( GameOpt.Year, GameOpt.Month, GameOpt.Day, GameOpt.Hour, GameOpt.Minute, GameOpt.Second );
     GameOpt.FullSecondStart = GameOpt.FullSecond;
     GameOpt.GameTimeTick = Timer::GameTick();
@@ -6512,7 +6533,7 @@ void FOClient::Net_OnMap()
     WriteLog( "%u...", map_pid );
 
     char map_name[ 256 ];
-    sprintf( map_name, "map%u", map_pid );
+    Str::Format( map_name, "map%u", map_pid );
 
     bool  tiles = false;
     char* tiles_data = NULL;
@@ -7391,7 +7412,7 @@ void FOClient::Net_OnRunClientScript()
 
     // Reparse module
     int bind_id;
-    if( strstr( func_name->c_str(), "@" ) )
+    if( Str::Substring( func_name->c_str(), "@" ) )
         bind_id = Script::Bind( func_name->c_str(), "void %s(int,int,int,string@,int[]@)", true );
     else
         bind_id = Script::Bind( "client_main", func_name->c_str(), "void %s(int,int,int,string@,int[]@)", true );
@@ -7533,7 +7554,13 @@ void FOClient::Net_OnMsgData()
     {
         WriteLogF( _FUNC_, " - Received text in another language, set as default.\n" );
         CurLang.Name = lang;
-        WritePrivateProfileString( CLIENT_CONFIG_APP, "Language", CurLang.NameStr, Str::FormatBuf( ".\\%s", GetConfigFileName() ) );
+        IniParser cfg;
+        cfg.LoadFile( GetConfigFileName(), PT_ROOT );
+        if( cfg.IsLoaded() )
+        {
+            cfg.SetStr( CLIENT_CONFIG_APP, "Language", CurLang.NameStr );
+            cfg.SaveFile( GetConfigFileName(), PT_ROOT );
+        }
     }
 
     if( num_msg >= TEXTMSG_COUNT )
@@ -7937,8 +7964,8 @@ bool FOClient::RegCheckData( CritterCl* newcr )
     // Password
     if( !Singleplayer )
     {
-        if( strlen( newcr->Pass ) < MIN_NAME || strlen( newcr->Pass ) < GameOpt.MinNameLength ||
-            strlen( newcr->Pass ) > MAX_NAME || strlen( newcr->Pass ) > GameOpt.MaxNameLength )
+        if( Str::Length( newcr->Pass ) < MIN_NAME || Str::Length( newcr->Pass ) < GameOpt.MinNameLength ||
+            Str::Length( newcr->Pass ) > MAX_NAME || Str::Length( newcr->Pass ) > GameOpt.MaxNameLength )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_WRONG_PASS ) );
             return false;
@@ -8050,7 +8077,7 @@ Item* FOClient::GetTargetContItem()
     return NULL;
 }
 
-void FOClient::AddAction( bool to_front, ActionEvent& act )
+void FOClient::AddAction( bool to_front, ActionEvent act )
 {
     for( auto it = ChosenAction.begin(); it != ChosenAction.end();)
     {
@@ -8072,7 +8099,7 @@ void FOClient::SetAction( uint type_action, uint param0, uint param1, uint param
     SetAction( ActionEvent( type_action, param0, param1, param2, param3, param4, param5 ) );
 }
 
-void FOClient::SetAction( ActionEvent& act )
+void FOClient::SetAction( ActionEvent act )
 {
     ChosenAction.clear();
     AddActionBack( act );
@@ -8083,7 +8110,7 @@ void FOClient::AddActionBack( uint type_action, uint param0, uint param1, uint p
     AddActionBack( ActionEvent( type_action, param0, param1, param2, param3, param4, param5 ) );
 }
 
-void FOClient::AddActionBack( ActionEvent& act )
+void FOClient::AddActionBack( ActionEvent act )
 {
     AddAction( false, act );
 }
@@ -8279,6 +8306,11 @@ void FOClient::CrittersProcess()
         bool   wait_click = act.Param[ 4 ] != 0;
         uint   start_tick = act.Param[ 5 ];
 
+        ushort from_hx = 0;
+        ushort from_hy = 0;
+        int    ap_cost_real = 0;
+        bool   skip_find = false;
+
         if( !HexMngr.IsMapLoaded() )
             break;
 
@@ -8291,8 +8323,8 @@ void FOClient::CrittersProcess()
             hy = cr->GetHexY();
         }
 
-        ushort from_hx = Chosen->GetHexX();
-        ushort from_hy = Chosen->GetHexY();
+        from_hx = Chosen->GetHexX();
+        from_hy = Chosen->GetHexY();
 
         if( Chosen->IsDoubleOverweight() )
         {
@@ -8312,7 +8344,7 @@ void FOClient::CrittersProcess()
             is_run = false;
         else if( Chosen->IsDmgLeg() || Chosen->IsOverweight() )
             is_run = false;
-        else if( wait_click && Timer::GameTick() - start_tick < ( GameOpt.DoubleClickTime ? GameOpt.DoubleClickTime : GetDoubleClickTime() ) )
+        else if( wait_click && Timer::GameTick() - start_tick < ( GameOpt.DoubleClickTime ? GameOpt.DoubleClickTime : GetDoubleClickTicks() ) )
             return;
         else if( is_run && !IsTurnBased && Chosen->GetApCostCritterMove( is_run ) > 0 && Chosen->GetRealAp() < ( GameOpt.RunModMul * Chosen->GetParam( ST_ACTION_POINTS ) * AP_DIVIDER ) / GameOpt.RunModDiv + GameOpt.RunModAdd )
             is_run = false;
@@ -8329,12 +8361,11 @@ void FOClient::CrittersProcess()
             goto label_EndMove;
         }
 
-        int ap_cost_real = Chosen->GetApCostCritterMove( is_run );
+        ap_cost_real = Chosen->GetApCostCritterMove( is_run );
         if( !( IsTurnBasedMyTurn() && Chosen->GetAllAp() >= ap_cost_real / AP_DIVIDER ) )
             CHECK_NEED_REAL_AP( ap_cost_real );
         Chosen->IsRunning = is_run;
 
-        bool skip_find = false;
         if( hx == MoveLastHx && hy == MoveLastHy && MoveDirs.size() )
         {
             ushort hx_ = from_hx;
@@ -8616,7 +8647,7 @@ label_EndMove:
             if( !item->WeapGetMaxAmmoCount() )
                 break;                            // No have holder
 
-            if( target_id == -1 )                 // Unload
+            if( target_id == uint( -1 ) )         // Unload
             {
                 if( item->WeapIsEmpty() )
                     break;                        // Is empty
@@ -8708,9 +8739,10 @@ label_EndMove:
         if( target_item && target_item->IsScenOrGrid() )
             Net_SendUseItem( ap_cost, item_id, item_pid, rate, target_type, ( target_item->GetHexX() << 16 ) | ( target_item->GetHexY() & 0xFFFF ), target_item->GetProtoId(), param );
         else
-            Net_SendUseItem( ap_cost, item_id, item_pid, rate, target_type, target_id, 0, param );            // Item or critter
+            Net_SendUseItem( ap_cost, item_id, item_pid, rate, target_type, target_id, 0, param );  // Item or critter
 
-        if( use >= USE_PRIMARY && use <= USE_THIRD )
+        int usei = use;                                                                             // Avoid 'warning: comparison is always true due to limited range of data type' for GCC
+        if( usei >= USE_PRIMARY && use <= USE_THIRD )
             Chosen->Action( ACTION_USE_WEAPON, rate, item );
         else if( use == USE_RELOAD )
             Chosen->Action( ACTION_RELOAD_WEAPON, 0, item );
@@ -9537,7 +9569,7 @@ void FOClient::ParseIntellectWords( char* words, PCharPairVec& text )
 
         if( *words == ' ' && *( words + 1 ) == ' ' && parse_in )
         {
-            if( !strlen( in ) )
+            if( !Str::Length( in ) )
             {
                 Str::SkipLine( words );
             }
@@ -9560,7 +9592,7 @@ auto FOClient::FindIntellectWord( const char* word, PCharPairVec & text, Randomi
     auto end = text.end();
     for( ; it != end; ++it )
     {
-        if( !_stricmp( word, ( *it ).first ) )
+        if( Str::CompareCase( word, ( *it ).first ) )
             break;
     }
 
@@ -9571,7 +9603,7 @@ auto FOClient::FindIntellectWord( const char* word, PCharPairVec & text, Randomi
         int  cnt = 0;
         for( ; it != end; ++it )
         {
-            if( !_stricmp( ( *it_ ).first, ( *it ).first ) )
+            if( Str::CompareCase( ( *it_ ).first, ( *it ).first ) )
                 cnt++;
             else
                 break;
@@ -9642,7 +9674,7 @@ void FOClient::FmtTextIntellect( char* str, ushort intellect )
             {
                 Str::EraseInterval( str - len, len );
                 Str::Insert( str - len, ( *it ).second );
-                str = str - len + strlen( ( *it ).second );
+                str = str - len + Str::Length( ( *it ).second );
             }
             else
             {
@@ -9703,8 +9735,8 @@ bool FOClient::SaveLogFile()
 
     FileManager::CreateDirectoryTree( FileManager::GetFullPath( log_path, PT_ROOT ) );
 
-    HANDLE save_file = CreateFile( log_path, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_FLAG_WRITE_THROUGH, NULL );
-    if( save_file == INVALID_HANDLE_VALUE )
+    void* f = FileOpen( log_path, true );
+    if( !f )
         return false;
 
     char   cur_mess[ MAX_FOTEXT ];
@@ -9721,9 +9753,8 @@ bool FOClient::SaveLogFile()
         fmt_log += MessBox[ i ].Time + string( cur_mess );
     }
 
-    DWORD bw;
-    WriteFile( save_file, fmt_log.c_str(), (uint) fmt_log.length(), &bw, NULL );
-    CloseHandle( save_file );
+    FileWrite( f, fmt_log.c_str(), (uint) fmt_log.length() );
+    FileClose( f );
     return true;
 }
 
@@ -10120,7 +10151,8 @@ void FOClient::RenderVideo()
     int y = ( MODE_HEIGHT - h ) / 2;
     if( SprMngr.BeginScene( 0xFF000000 ) )
     {
-        SprMngr.DrawRenderTarget( CurVideo->RT, NULL, &Rect( x, y, x + w, y + h ) );
+        Rect r = Rect( x, y, x + w, y + h );
+        SprMngr.DrawRenderTarget( CurVideo->RT, NULL, &r );
         SprMngr.EndScene();
     }
 
@@ -11343,7 +11375,7 @@ CScriptString* FOClient::SScriptFunc::Global_ReplaceTextInt( CScriptString& text
     if( pos == std::string::npos )
         return new CScriptString( text );
     char   val[ 32 ];
-    sprintf( val, "%d", i );
+    Str::Format( val, "%d", i );
     string result = text.c_std_str();
     return new CScriptString( result.replace( pos, replace.length(), val ) );
 }
@@ -11724,9 +11756,12 @@ uint FOClient::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ush
         uint month_day = Timer::GameTimeMonthDay( year, month );
         day = CLAMP( day, 1, month_day );
     }
-    hour = CLAMP( hour, 0, 23 );
-    minute = CLAMP( minute, 0, 59 );
-    second = CLAMP( second, 0, 59 );
+    if( hour > 23 )
+        hour = 23;
+    if( minute > 59 )
+        minute = 59;
+    if( second > 59 )
+        second = 59;
     return Timer::GetFullSecond( year, month, day, hour, minute, second );
 }
 
@@ -11883,16 +11918,16 @@ void FOClient::SScriptFunc::Global_RefreshMap( bool only_tiles, bool only_roof, 
 
 void FOClient::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds )
 {
-    SYSTEMTIME cur_time;
-    GetLocalTime( &cur_time );
-    year = cur_time.wYear;
-    month = cur_time.wMonth;
-    day_of_week = cur_time.wDayOfWeek;
-    day = cur_time.wDay;
-    hour = cur_time.wHour;
-    minute = cur_time.wMinute;
-    second = cur_time.wSecond;
-    milliseconds = cur_time.wMilliseconds;
+    DateTime dt;
+    Timer::GetCurrentDateTime( dt );
+    year = dt.Year;
+    month = dt.Month;
+    day_of_week = dt.DayOfWeek;
+    day = dt.Day;
+    hour = dt.Hour;
+    minute = dt.Minute;
+    second = dt.Second;
+    milliseconds = dt.Milliseconds;
 }
 
 bool FOClient::SScriptFunc::Global_SetParameterGetBehaviour( uint index, CScriptString& func_name )
@@ -11935,7 +11970,7 @@ void FOClient::SScriptFunc::Global_AllowSlot( uchar index, CScriptString& ini_op
     SlotExt se;
     se.Index = index;
     se.IniName = Str::Duplicate( ini_option.c_str() );
-    Self->IfaceLoadRect( se.Rect, se.IniName );
+    Self->IfaceLoadRect( se.Region, se.IniName );
     Self->SlotsExt.push_back( se );
 }
 
@@ -12207,7 +12242,8 @@ void FOClient::SScriptFunc::Global_DrawText( CScriptString& text, int x, int y, 
         w = GameOpt.ScreenWidth - x;
     if( !h && y < GameOpt.ScreenHeight )
         h = GameOpt.ScreenHeight - y;
-    SprMngr.DrawStr( Rect( x, y, x + w, y + h ), text.c_str(), flags, color, font );
+    Rect r = Rect( x, y, x + w, y + h );
+    SprMngr.DrawStr( r, text.c_str(), flags, color, font );
 }
 
 void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArray& data )
@@ -12393,7 +12429,8 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
             anim->SetScale( sx, sy, sz );
             anim->SetSpeed( speed );
             anim->SetAnimation( anim1, anim2, DrawCritter3dLayers, 0 );
-            SprMngr.Draw3d( (int) x, (int) y, 1.0f, anim, stl < str && stt < stb ? &RectF( stl, stt, str, stb ) : NULL, color ? color : COLOR_IFACE );
+            RectF r = RectF( stl, stt, str, stb );
+            SprMngr.Draw3d( (int) x, (int) y, 1.0f, anim, stl < str && stt < stb ? &r : NULL, color ? color : COLOR_IFACE );
         }
     }
 }

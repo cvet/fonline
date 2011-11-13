@@ -142,6 +142,28 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     SetPixelFormat( dcScreen, pixel_format, &pfd );
     HGLRC  rc = wglCreateContext( dcScreen );
     wglMakeCurrent( dcScreen, rc );
+    if( !GameOpt.VSync )
+        wglSwapIntervalEXT( 0 );
+    # else // FO_LINUX
+    GLint        att[] = { GLX_RGBA, GLX_DEPTH_SIZE, 16, GLX_DOUBLEBUFFER, None };
+    // Window root = DefaultRootWindow( fl_display );
+    XVisualInfo* vi = glXChooseVisual( fl_display, 0, att );
+    if( !vi )
+    {
+        WriteLog( " No appropriate visual found\n" );
+        return 0;
+    }
+    /*Colormap cmap = XCreateColormap( fl_display, root, vi->visual, AllocNone );
+       XSetWindowAttributes swa;
+       swa.colormap = cmap;
+       swa.event_mask = ExposureMask | KeyPressMask;
+       Window win = XCreateWindow( fl_display, root, 0, 0, modeWidth, modeHeight, 0,
+                               vi->depth, InputOutput, vi->visual, CWColormap | CWEventMask, &swa );
+       XMapWindow( fl_display, win );
+       XStoreName( fl_display, win, "FOnlineX11" );*/
+
+    GLXContext glc = glXCreateContext( fl_display, vi, NULL, GL_TRUE );
+    glXMakeCurrent( fl_display, fl_window, glc );
     # endif
 
     // OpenGL extensions
@@ -164,9 +186,8 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     GL( gluOrtho2D( 0, modeWidth, modeHeight, 0 ) );
     GL( glGetFloatv( GL_PROJECTION_MATRIX, projectionMatrix ) );
     GL( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
-    if( !GameOpt.VSync )
-        wglSwapIntervalEXT( 0 );
     #endif
+
 
     #ifdef FO_D3D
     // Contours
@@ -286,7 +307,11 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     D3D_HR( d3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET, COLOR_XRGB( 0, 0, 0 ), 1.0f, 0 ) );
     #else
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
+    # ifdef FO_WINDOWS
     SwapBuffers( dcScreen );
+    # else
+    glXSwapBuffers( fl_display, fl_window );
+    # endif
     #endif
 
     // Generate dummy animation
@@ -578,7 +603,11 @@ void SpriteManager::EndScene()
     DrawRenderTarget( rtMain );
     GL( glViewport( 0, 0, modeWidth, modeHeight ) );
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rtMain.FBO ) );
+    # ifdef FO_WINDOWS
     SwapBuffers( dcScreen );
+    # else
+    glXSwapBuffers( fl_display, fl_window );
+    # endif
     #endif
     sceneBeginned = false;
 }
@@ -782,7 +811,7 @@ void SpriteManager::PopRenderTarget()
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
 }
 
-void SpriteManager::DrawRenderTarget( RenderTarget& rt, Rect* region_from /* = NULL */, Rect* region_to /* = NULL */ )
+void SpriteManager::DrawRenderTarget( RenderTarget& rt, const Rect* region_from /* = NULL */, const Rect* region_to /* = NULL */ )
 {
     Flush();
 
@@ -811,9 +840,9 @@ void SpriteManager::DrawRenderTarget( RenderTarget& rt, Rect* region_from /* = N
     else
     {
         RectF regionf = ( region_from ? *region_from :
-                          RectF( 0.0f, 0.0f, (float) rt.TargetTexture->Width, (float) rt.TargetTexture->Height ) );
+                          Rect( 0, 0, rt.TargetTexture->Width, rt.TargetTexture->Height ) );
         RectF regiont = ( region_to ? *region_to :
-                          RectF( 0.0f, 0.0f, (float) rtStack.back()->TargetTexture->Width, (float) rtStack.back()->TargetTexture->Height ) );
+                          Rect( 0, 0, rtStack.back()->TargetTexture->Width, rtStack.back()->TargetTexture->Height ) );
         float wf = regionf.R - regionf.L;
         float hf = regionf.B - regionf.T;
         uint  mulpos = 0;
@@ -1050,7 +1079,7 @@ void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
 }
 #endif
 
-uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, void* data, uint size )
+uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, uchar* data, uint size )
 {
     // Parameters
     uint w, h;
@@ -1627,7 +1656,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type, 
     }
 
     char dir_str[ 16 ];
-    sprintf( dir_str, "dir_%d", dir );
+    Str::Format( dir_str, "dir_%d", dir );
     bool no_app = ( dir == 0 && !fofrm.IsApp( "dir_0" ) );
 
     if( !no_app )
@@ -1638,7 +1667,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type, 
 
     char    frm_fname[ MAX_FOPATH ];
     FileManager::ExtractPath( fname, frm_fname );
-    char*   frm_name = frm_fname + strlen( frm_fname );
+    char*   frm_name = frm_fname + Str::Length( frm_fname );
 
     AnimVec anims;
     IntVec  anims_offs;
@@ -1726,17 +1755,6 @@ AnyFrames* SpriteManager::LoadAnimation3d( const char* fname, int path_type, int
 
     // If not animations available than render just one
     if( period == 0.0f || proc_from == proc_to )
-        goto label_LoadOneSpr;
-
-    // Calculate need information
-    float frame_time = 1.0f / (float) ( GameOpt.Animation3dFPS ? GameOpt.Animation3dFPS : 10 ); // 1 second / fps
-    float period_from = period * (float) proc_from / 100.0f;
-    float period_to = period * (float) proc_to / 100.0f;
-    float period_len = abs( period_to - period_from );
-    float proc_step = (float) ( proc_to - proc_from ) / ( period_len / frame_time );
-    int   frames_count = (int) ceil( period_len / frame_time );
-
-    if( frames_count <= 1 )
     {
 label_LoadOneSpr:
         uint spr_id = Render3dSprite( anim3d, dir, proc_from * 10 );
@@ -1748,6 +1766,17 @@ label_LoadOneSpr:
         anim->Ind[ 0 ] = spr_id;
         return anim;
     }
+
+    // Calculate need information
+    float frame_time = 1.0f / (float) ( GameOpt.Animation3dFPS ? GameOpt.Animation3dFPS : 10 ); // 1 second / fps
+    float period_from = period * (float) proc_from / 100.0f;
+    float period_to = period * (float) proc_to / 100.0f;
+    float period_len = abs( period_to - period_from );
+    float proc_step = (float) ( proc_to - proc_from ) / ( period_len / frame_time );
+    int   frames_count = (int) ceil( period_len / frame_time );
+
+    if( frames_count <= 1 )
+        goto label_LoadOneSpr;
 
     AnyFrames* anim = CreateAnimation( frames_count, (uint) ( period_len * 1000.0f ) );
     if( !anim )
@@ -1820,7 +1849,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
     uint frm_to = 100000;
     Str::Copy( file_name, fname );
 
-    char* delim = strstr( file_name, "$" );
+    char* delim = Str::Substring( file_name, "$" );
     if( delim )
     {
         const char* ext = FileManager::GetExtension( file_name ) - 1;
@@ -2147,7 +2176,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
     // 3 - armor
     int   rgb_offs[ 4 ][ 3 ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-    char* delim = strstr( file_name, "$" );
+    char* delim = Str::Substring( file_name, "$" );
     if( delim )
     {
         // Format: fileName$[1,100,0,0][2,0,0,100]animName.spr
@@ -2159,11 +2188,11 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
             seq_name[ len - 1 ] = 0;
 
             // Parse rgb offsets
-            char* rgb_beg = strstr( seq_name, "[" );
+            char* rgb_beg = Str::Substring( seq_name, "[" );
             while( rgb_beg )
             {
                 // Find end of offsets data
-                char* rgb_end = strstr( rgb_beg + 1, "]" );
+                char* rgb_end = Str::Substring( rgb_beg + 1, "]" );
                 if( !rgb_end )
                     break;
 
@@ -2192,7 +2221,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
 
                 // Erase from name and find again
                 Str::EraseInterval( rgb_beg, (uint) ( rgb_end - rgb_beg + 1 ) );
-                rgb_beg = strstr( seq_name, "[" );
+                rgb_beg = Str::Substring( seq_name, "[" );
             }
         }
         Str::EraseInterval( delim, len );
@@ -2949,7 +2978,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
     uint  need_cycle = 0;
     int   specific_frame = -1;
 
-    char* delim = strstr( file_name, "$" );
+    char* delim = Str::Substring( file_name, "$" );
     if( delim )
     {
         // Format: fileName$5-6.spr
@@ -2962,7 +2991,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
             params[ len - 1 ] = 0;
 
             need_cycle = Str::AtoI( params );
-            const char* next_param = strstr( params, "-" );
+            const char* next_param = Str::Substring( params, "-" );
             if( next_param )
             {
                 specific_frame = Str::AtoI( next_param + 1 );
@@ -4375,7 +4404,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     {
         struct VertexUP
         {
-            FLOAT x, y, z, rhw;
+            float x, y, z, rhw;
             uint  diffuse;
         } vb[ 6 ] =
         {
@@ -4785,7 +4814,7 @@ bool SpriteManager::DrawContours()
     {
         struct VertexUP
         {
-            FLOAT x, y, z, rhw;
+            float x, y, z, rhw;
             float tu, tv;
         } vb[ 6 ] =
         {
@@ -4895,8 +4924,8 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
                      (int) ( ( x + si->Width ) / GameOpt.SpritesZoom ), (int) ( ( y + si->Height ) / GameOpt.SpritesZoom ) );
             struct VertexUP
             {
-                FLOAT x, y, z, rhw;
-                FLOAT tu, tv;
+                float x, y, z, rhw;
+                float tu, tv;
             } vb[ 6 ] =
             {
                 { (float) borders.L, (float) borders.B, 1.0f, 1.0f, si->SprRect.L, si->SprRect.B },
@@ -4971,7 +5000,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         // Render to contours texture
         struct VertexUP
         {
-            FLOAT x, y, z, rhw;
+            float x, y, z, rhw;
             uint  diffuse;
         } vb[ 6 ] =
         {
@@ -5046,7 +5075,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     // Draw contour
     struct VertexUP
     {
-        FLOAT x, y, z, rhw;
+        float x, y, z, rhw;
         float tu, tv;
     } vb[ 6 ] =
     {

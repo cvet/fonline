@@ -2,6 +2,7 @@
 #include "Client.h"
 #include "Exception.h"
 #include "Version.h"
+#include "Keyboard.h"
 #include <locale.h>
 
 FOWindow* MainWindow = NULL;
@@ -9,7 +10,7 @@ FOClient* FOEngine = NULL;
 Thread    Game;
 void* GameThread( void* );
 
-int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd_line, int cmd_show )
+int main( int argc, char** argv )
 {
     setlocale( LC_ALL, "Russian" );
     RestoreMainDirectory();
@@ -22,18 +23,22 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
     // Exception
     CatchExceptions( "FOnline", CLIENT_VERSION );
 
+    // Make command line
+    SetCommandLine( argc, argv );
+
     // Stuff
     Timer::Init();
     LogToFile( "FOnline.log" );
 
     // Singleplayer mode initialization
+    #ifdef FO_WINDOWS
     char full_path[ MAX_FOPATH ] = { 0 };
     char path[ MAX_FOPATH ] = { 0 };
     char name[ MAX_FOPATH ] = { 0 };
     GetModuleFileName( NULL, full_path, MAX_FOPATH );
     FileManager::ExtractPath( full_path, path );
     FileManager::ExtractFileName( full_path, name );
-    if( strstr( name, "Singleplayer" ) || strstr( cmd_line, "Singleplayer" ) )
+    if( Str::Substring( name, "Singleplayer" ) || Str::Substring( CommandLine, "Singleplayer" ) )
     {
         WriteLog( "Singleplayer mode.\n" );
         Singleplayer = true;
@@ -82,7 +87,7 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
         char   command_line[ 2048 ];
 
         // Start server
-        sprintf( command_line, "\"%s%s\" -singleplayer %p %p %s -logpath %s", server_path, server_exe, map_file, client_process, server_cmdline, path );
+        Str::Format( command_line, "\"%s%s\" -singleplayer %p %p %s -logpath %s", server_path, server_exe, map_file, client_process, server_cmdline, path );
         if( !CreateProcess( NULL, command_line, NULL, NULL, TRUE, NORMAL_PRIORITY_CLASS, NULL, server_path, &sui, &server ) )
         {
             WriteLog( "Can't start server process, error<%u>.\n", GetLastError() );
@@ -91,14 +96,21 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
         CloseHandle( server.hProcess );
         CloseHandle( server.hThread );
     }
+    #else // FO_LINUX
+    return 0;
+    #endif
 
     // Check for already runned window
     #ifndef DEV_VESRION
+    # ifdef FO_WINDOWS
     if( !Singleplayer && FindWindow( GetWindowName(), GetWindowName() ) != NULL )
     {
         ShowMessage( "FOnline is running already." );
         return 0;
     }
+    # else // FO_LINUX
+    // Todo: Linux
+    # endif
     #endif
 
     // Options
@@ -137,12 +149,8 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
     #ifndef FO_D3D
     if( GameOpt.FullScreen )
     {
-        # ifdef FO_WINDOWS
-        HDC dcscreen = GetDC( NULL );
-        int sw = GetDeviceCaps( dcscreen, HORZRES );
-        int sh = GetDeviceCaps( dcscreen, VERTRES );
-        ReleaseDC( NULL, dcscreen );
-        # endif
+        int sx, sy, sw, sh;
+        Fl::screen_xywh( sx, sy, sw, sh );
         MainWindow->border( 0 );
         MainWindow->size( sw, sh );
         MainWindow->position( 0, 0 );
@@ -171,8 +179,10 @@ int APIENTRY WinMain( HINSTANCE cur_instance, HINSTANCE prev_instance, LPSTR cmd
     Game.Wait();
 
     // Finish
+    #ifdef FO_WINDOWS
     if( Singleplayer )
         SingleplayerData.Finish();
+    #endif
     WriteLog( "FOnline finished.\n" );
     LogFinish( -1 );
 
@@ -233,6 +243,7 @@ int FOWindow::handle( int event )
         return 1;
     }
 
+    // Focus
     if( event == FL_FOCUS )
         MainWindow->focused = true;
     if( event == FL_UNFOCUS )
@@ -240,120 +251,3 @@ int FOWindow::handle( int event )
 
     return 0;
 }
-
-/*
-   LRESULT APIENTRY WndProc( HWND wnd, UINT message, WPARAM wparam, LPARAM lparam )
-   {
-    switch( message )
-    {
-    case WM_DESTROY:
-        GameOpt.Quit = true;
-        break;
-    case WM_KEYDOWN:
-        if( wparam == VK_F12 )
-        {
-   #ifdef FO_D3D
-            ShowWindow( Wnd, SW_MINIMIZE );
-   #endif
-            return 0;
-        }
-        break;
-    case WM_SHOWWINDOW:
-   #ifdef FO_D3D
-        if( GameOpt.AlwaysOnTop )
-            SetWindowPos( Wnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE );
-   #endif
-        break;
-    case WM_SIZE:
-        if( !GameOpt.GlobalSound && FOEngine && FOEngine->BasicAudio )
-        {
-            if( wparam == SIZE_MINIMIZED )
-                FOEngine->BasicAudio->put_Volume( -10000 );
-            else if( wparam == SIZE_RESTORED )
-                FOEngine->BasicAudio->put_Volume( 0 );
-        }
-        break;
-    case WM_ACTIVATE:
-        if( !GameOpt.GlobalSound && FOEngine && FOEngine->BasicAudio )
-        {
-            if( LOWORD( wparam ) == WA_INACTIVE && !HIWORD( wparam ) )
-                FOEngine->BasicAudio->put_Volume( -10000 );
-            else if( LOWORD( wparam ) == WA_ACTIVE || LOWORD( wparam ) == WA_CLICKACTIVE )
-                FOEngine->BasicAudio->put_Volume( 0 );
-        }
-        break;
-    case WM_FLASH_WINDOW:
-        if( wnd != GetActiveWindow() )
-        {
-   #ifdef FO_D3D
-            if( GameOpt.MessNotify )
-                FlashWindow( Wnd, true );
-            if( GameOpt.SoundNotify )
-                Beep( 100, 200 );
-   #endif
-        }
-        return 0;
-   //      case WM_ERASEBKGND:
-   //              return 0;
-   #ifndef GAME_THREAD
-    case WM_DISPLAYCHANGE:
-        if( FOEngine && FOEngine->WindowLess )
-            FOEngine->WindowLess->DisplayModeChanged();
-        break;
-    case WM_MOVING:
-        if( FOEngine )
-            FOEngine->MainLoop();
-        return TRUE;
-    case WM_PAINT:
-        if( FOEngine )
-        {
-   #ifdef FO_D3D
-            PAINTSTRUCT ps;
-            HDC         hdc = BeginPaint( Wnd, &ps );
-            FOEngine->MainLoop();
-            if( FOEngine->WindowLess )
-                FOEngine->WindowLess->RepaintVideo( wnd, hdc );
-            EndPaint( Wnd, &ps );
-   #endif
-            return 0;
-        }
-
-        / *if(FOEngine && FOEngine->WindowLess)
-           {
-                PAINTSTRUCT ps;
-                HDC         hdc;
-                RECT        rcClient;
-                GetClientRect(wnd, &rcClient);
-                hdc = BeginPaint(wnd, &ps);
-
-                / *HRGN rgnClient = CreateRectRgnIndirect(&rcClient);
-                HRGN rgnVideo  = CreateRectRgnIndirect(&FOEngine->WindowLessRectDest);  // Saved from earlier.
-                //FOEngine->WindowLessRectDest=rcClient;
-                CombineRgn(rgnClient, rgnClient, rgnVideo, RGN_DIFF);  // Paint on this region.
-
-                HBRUSH hbr = GetSysColorBrush(COLOR_BTNFACE);
-                FillRgn(hdc, rgnClient, hbr);
-                DeleteObject(hbr);
-                DeleteObject(rgnClient);
-                DeleteObject(rgnVideo); * /
-
-                // Request the VMR to paint the video.
-                HRESULT hr = FOEngine->WindowLess->RepaintVideo(wnd, hdc);
-                EndPaint(wnd, &ps);
-           }* /
-        break;
-    case WM_WINDOWPOSCHANGING:
-        // Allow size greather than monitor resolution
-        // Used in video playing workaround
-        return 0;
-   #endif
-   / *	case WM_SETCURSOR:
-                // Turn off window cursor
-            SetCursor( NULL );
-            return TRUE; // prevent Windows from setting cursor to window class cursor
-        break;* /
-    }
-
-    return DefWindowProc( wnd, message, wparam, lparam );
-   }
- */

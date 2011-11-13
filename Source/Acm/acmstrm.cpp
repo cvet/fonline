@@ -24,7 +24,7 @@ short Table2 [125] =
 //		000 001 002 003 004  010 011 012 013 014 ...
 //		100 101 102 103 104 ...
 //		200 ...
-//		... 
+//		...
 unsigned char Table3 [121] =
 		{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A,
 		 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A,
@@ -133,7 +133,7 @@ CACMUnpacker::CACMUnpacker (unsigned char* file_buf, int file_len, int &channels
 	}
 	catch(...)
 	{
-		CACMUnpacker::~CACMUnpacker();
+		//CACMUnpacker::~CACMUnpacker();
 	}
 }
 
@@ -229,7 +229,7 @@ int CACMUnpacker::createAmplitudeDictionary()
 void CACMUnpacker::unpackValues()
 {
 	if (!packAttrs) return;
-	
+
 	int counter = packAttrs2;
 	int* someBuffPtr = someBuff;
 
@@ -591,7 +591,7 @@ int CACMUnpacker::t3_7bits (int pass, int ind) {
 }
 
 void sub_4d3fcc (short *decBuff, int *someBuff, int someSize, int blocks) {
-	int row_0, row_1, row_2, row_3, db_0, db_1;
+	int row_0 = 0, row_1 = 0, row_2 = 0, row_3 = 0, db_0 = 0, db_1 = 0;
 	if (blocks == 2) {
 		for (int i=0; i<someSize; i++) {
 			row_0 = someBuff[0];
@@ -675,7 +675,7 @@ void sub_4d3fcc (short *decBuff, int *someBuff, int someSize, int blocks) {
 
 
 void sub_4d420c (int *decBuff, int *someBuff, int someSize, int blocks) {
-	int row_0, row_1, row_2, row_3, db_0, db_1;
+	int row_0 = 0, row_1 = 0, row_2 = 0, row_3 = 0, db_0 = 0, db_1 = 0;
 	if (blocks == 4) {
 		for (int i=0; i<someSize; i++) {
 			row_0 = someBuff[0];
