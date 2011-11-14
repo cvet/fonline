@@ -16,7 +16,7 @@ int main( int argc, char* argv[] )
     setlocale( LC_ALL, "Russian" );
 
     // Help
-    printf( "FOnline save patcher v.1.3\n" );
+    printf( "FOnline save patcher v.1.4\n" );
     printf( "Commands:\n" );
     printf( " setPassword <clientName> <newPassword>\n  - change password for client (use '*' instead spaces)\n" );
     printf( " patchSaves\n  - patch all client files to actual state\n" );
@@ -117,7 +117,7 @@ void patchSaves()
                 if( !( signature[ 0 ] == 'F' && signature[ 1 ] == 'O' && signature[ 2 ] == 0 ) )
                 {
                     // Get data
-                    char* fileData = new char[ fileSize + 1 ];
+                    char* fileData = new char[ fileSize + 2 ];
                     fseek( f, 0, SEEK_SET );
                     fread( fileData, 1, fileSize, f );
                     fclose( f );
