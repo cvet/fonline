@@ -124,32 +124,111 @@ void SetConfigName(AnsiString cfgName, AnsiString appName)
 	CfgAppName = appName;
 }
 
+AnsiString GetString2( const char* key, const char* def_val )
+{
+	char buf[ 2048 ];
+	GetPrivateProfileString( CfgAppName.c_str(), key, def_val, buf, 2048, CfgFileName.c_str() );
+	char* str = buf;
+	while( *str && ( *str == ' ' || *str == '\t' || *str == '\n' || *str == '\r' ) )
+		str++;
+	char* str_begin = str;
+	while( *str && !( *str == ' ' || *str == '\t' || *str == '\n' || *str == '\r' ) )
+		str++;
+	*str = 0;
+	return AnsiString( str_begin );
+}
+
+int GetInt2( const char* key, int def_val )
+{
+	if( CfgFileName.Length() == 0 ) return def_val;
+	char buf[ 32 ];
+	AnsiString str = GetString( key, itoa( def_val, buf, 10 ) );
+	if( !stricmp( str.c_str(), "true" ) )
+		return 1;
+	if( !stricmp( str.c_str(), "false" ) )
+		return 0;
+	return atoi( str.c_str() );
+}
+
+void SetString2( const char* key, const char* val )
+{
+	if( CfgFileName.Length() == 0 ) return;
+	if( GetString( key, "$_$$$$MAGIC$$$$_$" ) == "$_$$$$MAGIC$$$$_$" )
+	{
+		char buf[ 2048 ];
+		strcpy( buf, "  " );
+		strcat( buf, val );
+		WritePrivateProfileString( CfgAppName.c_str(), key, buf, CfgFileName.c_str() );
+		FILE* f = fopen( CfgFileName.c_str(), "rb" );
+		if( f )
+		{
+			fseek( f, 0, SEEK_END );
+			int len = ftell( f );
+			fseek( f, 0, SEEK_SET );
+			char* fbuf = new char[ len ];
+			fread( fbuf, sizeof( char ), len, f );
+			fclose( f );
+
+			strcpy( buf, key );
+			strcat( buf, "= " );
+			char* s = strstr( fbuf, buf );
+			*( s + strlen( key ) + 0 ) = ' ';
+			*( s + strlen( key ) + 1 ) = '=';
+
+			FILE* f = fopen( CfgFileName.c_str(), "wb" );
+			fwrite( fbuf, sizeof( char ), len, f );
+			fclose( f );
+			delete[] fbuf;
+		}
+	}
+	else
+	{
+		char buf[ 2048 ] = { 0 };
+		if( val[ 0 ] )
+		{
+			strcat( buf, " " );
+			strcat( buf, val );
+		}
+		WritePrivateProfileString( CfgAppName.c_str(), key, buf, CfgFileName.c_str() );
+	}
+}
+
+void SetInt2( const char* key, int val, bool as_boolean = false )
+{
+	if( CfgFileName.Length() == 0 ) return;
+	if( as_boolean )
+	{
+		SetString( key, val ? "True" : "False" );
+	}
+	else
+	{
+		char buf[ 32 ];
+		SetString( key, itoa( val, buf, 10 ) );
+	}
+}
+
 AnsiString GetString(AnsiString key, AnsiString defVal)
 {
 	if(CfgFileName.Length() == 0) return defVal;
-	char buf[2048];
-	GetPrivateProfileString(CfgAppName.c_str(), key.c_str(), defVal.c_str(), buf, 2048, CfgFileName.c_str());
-	return AnsiString(buf);
+	return GetString2( key.c_str(), defVal.c_str() );
 }
 
 int GetInt(AnsiString key, int defVal)
 {
 	if(CfgFileName.Length() == 0) return defVal;
-	return GetPrivateProfileInt(CfgAppName.c_str(), key.c_str(), defVal, CfgFileName.c_str());
+	return GetInt2( key.c_str(), defVal );
 }
 
 void SetString(AnsiString key, AnsiString val)
 {
 	if(CfgFileName.Length() == 0) return;
-	WritePrivateProfileString(CfgAppName.c_str(), key.c_str(), val.c_str(), CfgFileName.c_str());
+	SetString2( key.c_str(), val.c_str() );
 }
 
-void SetInt(AnsiString key, int val)
+void SetInt(AnsiString key, int val, bool as_boolean)
 {
 	if(CfgFileName.Length() == 0) return;
-	char buf[32];
-	itoa(val, buf, 10);
-	WritePrivateProfileString(CfgAppName.c_str(), key.c_str(), buf, CfgFileName.c_str());
+	SetInt2( key.c_str(), val, as_boolean );
 }
 
 //---------------------------------------------------------------------------

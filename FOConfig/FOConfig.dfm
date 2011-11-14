@@ -114,13 +114,6 @@ object MainForm: TMainForm
         Height = 168
         Caption = 'GbOther'
         TabOrder = 1
-        object LabelSleep: TLabel
-          Left = 55
-          Top = 143
-          Width = 51
-          Height = 13
-          Caption = 'LabelSleep'
-        end
         object CbWinNotify: TCheckBox
           Left = 3
           Top = 11
@@ -167,7 +160,7 @@ object MainForm: TMainForm
         end
         object CbLoggingTime: TCheckBox
           Left = 3
-          Top = 119
+          Top = 123
           Width = 232
           Height = 18
           Caption = 'CbLoggingTime'
@@ -175,15 +168,6 @@ object MainForm: TMainForm
           ParentColor = False
           TabOrder = 4
           WordWrap = True
-        end
-        object SeSleep: TCSpinEdit
-          Left = 141
-          Top = 140
-          Width = 69
-          Height = 22
-          MaxValue = 100
-          MinValue = -1
-          TabOrder = 5
         end
       end
     end
@@ -644,37 +628,36 @@ object MainForm: TMainForm
           Caption = 'LabelAnimation3dSmoothTime'
           WordWrap = True
         end
+        object LabelFixedFPS: TLabel
+          Left = 86
+          Top = 152
+          Width = 69
+          Height = 13
+          Caption = 'LabelFixedFPS'
+        end
         object CbFullScreen: TCheckBox
           Left = 79
           Top = 96
           Width = 174
-          Height = 17
+          Height = 31
           Caption = 'CbFullScreen'
           TabOrder = 0
         end
-        object CbClearScreen: TCheckBox
-          Left = 79
-          Top = 111
-          Width = 174
-          Height = 17
-          Caption = 'CbClearScreen'
-          TabOrder = 1
-        end
         object CbVSync: TCheckBox
           Left = 79
-          Top = 126
+          Top = 119
           Width = 174
-          Height = 17
+          Height = 18
           Caption = 'CbVSync'
-          TabOrder = 2
+          TabOrder = 1
         end
         object CbAlwaysOnTop: TCheckBox
           Left = 79
-          Top = 142
+          Top = 135
           Width = 174
-          Height = 17
+          Height = 18
           Caption = 'CbAlwaysOnTop'
-          TabOrder = 3
+          TabOrder = 2
         end
         object SeLight: TCSpinEdit
           Left = 7
@@ -682,7 +665,7 @@ object MainForm: TMainForm
           Width = 73
           Height = 22
           MaxValue = 50
-          TabOrder = 4
+          TabOrder = 3
         end
         object SeSprites: TCSpinEdit
           Left = 86
@@ -691,7 +674,7 @@ object MainForm: TMainForm
           Height = 22
           MaxValue = 1000
           MinValue = 1
-          TabOrder = 5
+          TabOrder = 4
           Value = 1
         end
         object SeTexture: TCSpinEdit
@@ -702,16 +685,8 @@ object MainForm: TMainForm
           Increment = 128
           MaxValue = 8192
           MinValue = 128
-          TabOrder = 6
+          TabOrder = 5
           Value = 128
-        end
-        object CbSoftwareSkinning: TCheckBox
-          Left = 79
-          Top = 158
-          Width = 174
-          Height = 17
-          Caption = 'CbSoftwareSkinning'
-          TabOrder = 7
         end
         object CbMultisampling: TComboBox
           Left = 127
@@ -719,7 +694,7 @@ object MainForm: TMainForm
           Width = 111
           Height = 21
           Style = csDropDownList
-          TabOrder = 8
+          TabOrder = 6
           Items.Strings = (
             'Auto'
             'Disable'
@@ -746,7 +721,7 @@ object MainForm: TMainForm
           Width = 65
           Height = 22
           MaxValue = 1000
-          TabOrder = 9
+          TabOrder = 7
         end
         object SeAnimation3dSmoothTime: TCSpinEdit
           Left = 8
@@ -754,7 +729,16 @@ object MainForm: TMainForm
           Width = 65
           Height = 22
           MaxValue = 10000
-          TabOrder = 10
+          TabOrder = 8
+        end
+        object SeFixedFPS: TCSpinEdit
+          Left = 169
+          Top = 155
+          Width = 69
+          Height = 22
+          MaxValue = 100
+          MinValue = -1
+          TabOrder = 9
         end
       end
     end

@@ -270,13 +270,13 @@ int IniParser::GetInt( const char* app_name, const char* key_name, int def_val )
     {
         if( j >= 63 || bufPtr[ iter ] == '\n' || bufPtr[ iter ] == '#' || bufPtr[ iter ] == ';' )
             break;
-        // if(Buffer[iter]<'0' || Buffer[iter]>'9') return def_val;
         num[ j ] = bufPtr[ iter ];
     }
 
     if( !j )
         return def_val;
     num[ j ] = 0;
+    Str::EraseFrontBackSpecificChars( num );
     if( Str::CompareCase( num, "true" ) )
         return 1;
     if( Str::CompareCase( num, "false" ) )

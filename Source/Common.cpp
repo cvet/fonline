@@ -868,6 +868,7 @@ void GetClientOptions()
     // Language
     cfg.GetStr( CLIENT_CONFIG_APP, "Language", "russ", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "Language" );
+    Str::Lower( buf );
     if( Str::Compare( buf, "russ" ) )
         SetExceptionsRussianText();
 
@@ -876,18 +877,15 @@ void GetClientOptions()
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.FullScreen, "-FullScreen" );
     GameOpt.VSync = cfg.GetInt( CLIENT_CONFIG_APP, "VSync", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.VSync, "-VSync" );
-    GameOpt.ScreenClear = cfg.GetInt( CLIENT_CONFIG_APP, "BackGroundClear", false );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.ScreenClear, "-BackGroundClear" );
-    GETOPTIONS_CHECK( GameOpt.ScreenClear, 0, 1, 0 );
     GameOpt.Light = cfg.GetInt( CLIENT_CONFIG_APP, "Light", 20 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.Light, "-Light" );
     GETOPTIONS_CHECK( GameOpt.Light, 0, 100, 20 );
-    GameOpt.ScrollDelay = cfg.GetInt( CLIENT_CONFIG_APP, "ScrollDelay", 4 );
+    GameOpt.ScrollDelay = cfg.GetInt( CLIENT_CONFIG_APP, "ScrollDelay", 10 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ScrollDelay, "-ScrollDelay" );
-    GETOPTIONS_CHECK( GameOpt.ScrollDelay, 1, 32, 4 );
-    GameOpt.ScrollStep = cfg.GetInt( CLIENT_CONFIG_APP, "ScrollStep", 32 );
+    GETOPTIONS_CHECK( GameOpt.ScrollDelay, 0, 100, 10 );
+    GameOpt.ScrollStep = cfg.GetInt( CLIENT_CONFIG_APP, "ScrollStep", 12 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ScrollStep, "-ScrollStep" );
-    GETOPTIONS_CHECK( GameOpt.ScrollStep, 4, 32, 32 );
+    GETOPTIONS_CHECK( GameOpt.ScrollStep, 4, 32, 12 );
     GameOpt.TextDelay = cfg.GetInt( CLIENT_CONFIG_APP, "TextDelay", 3000 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.TextDelay, "-TextDelay" );
     GETOPTIONS_CHECK( GameOpt.TextDelay, 1000, 3000, 30000 );
@@ -903,8 +901,6 @@ void GetClientOptions()
     GameOpt.MultiSampling = cfg.GetInt( CLIENT_CONFIG_APP, "MultiSampling", 0 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.MultiSampling, "-MultiSampling" );
     GETOPTIONS_CHECK( GameOpt.MultiSampling, -1, 16, -1 );
-    GameOpt.SoftwareSkinning = cfg.GetInt( CLIENT_CONFIG_APP, "SoftwareSkinning", 1 ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( GameOpt.SoftwareSkinning, "-SoftwareSkinning" );
     GameOpt.AlwaysOnTop = cfg.GetInt( CLIENT_CONFIG_APP, "AlwaysOnTop", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.AlwaysOnTop, "-AlwaysOnTop" );
     GameOpt.FlushVal = cfg.GetInt( CLIENT_CONFIG_APP, "FlushValue", 50 );
@@ -913,9 +909,9 @@ void GetClientOptions()
     GameOpt.BaseTexture = cfg.GetInt( CLIENT_CONFIG_APP, "BaseTexture", 1024 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.BaseTexture, "-BaseTexture" );
     GETOPTIONS_CHECK( GameOpt.BaseTexture, 128, 8192, 1024 );
-    GameOpt.Sleep = cfg.GetInt( CLIENT_CONFIG_APP, "Sleep", 0 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.Sleep, "-Sleep" );
-    GETOPTIONS_CHECK( GameOpt.Sleep, -1, 100, 0 );
+    GameOpt.FixedFPS = cfg.GetInt( CLIENT_CONFIG_APP, "FixedFPS", 100 );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.FixedFPS, "-FixedFPS" );
+    GETOPTIONS_CHECK( GameOpt.FixedFPS, 0, 10000, 100 );
     GameOpt.MsgboxInvert = cfg.GetInt( CLIENT_CONFIG_APP, "InvertMessBox", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.MsgboxInvert, "-InvertMessBox" );
     GameOpt.ChangeLang = cfg.GetInt( CLIENT_CONFIG_APP, "LangChange", CHANGE_LANG_CTRL_SHIFT );
@@ -1345,9 +1341,8 @@ GameOptions::GameOptions()
     DebugSprites = false;
     FullScreen = false;
     VSync = false;
-    FlushVal = 256;
+    FlushVal = 100;
     BaseTexture = 256;
-    ScreenClear = 0;
     Light = 0;
     Host = "localhost";
     HostRefCounter = 1;
@@ -1362,12 +1357,12 @@ GameOptions::GameOptions()
     ProxyPassRefCounter = 1;
     Name = "";
     NameRefCounter = 1;
-    ScrollDelay = 0;
+    ScrollDelay = 10;
     ScrollStep = 1;
     ScrollCheck = true;
     FoDataPath = "";
     FoDataPathRefCounter = 1;
-    Sleep = 0;
+    FixedFPS = 100;
     MsgboxInvert = false;
     ChangeLang = CHANGE_LANG_CTRL_SHIFT;
     DefaultCombatMode = COMBAT_MODE_ANY;
@@ -1379,7 +1374,6 @@ GameOptions::GameOptions()
     ScreenWidth = 800;
     ScreenHeight = 600;
     MultiSampling = 0;
-    SoftwareSkinning = false;
     MouseScroll = true;
     IndicatorType = INDICATOR_LINES;
     DoubleClickTime = 0;

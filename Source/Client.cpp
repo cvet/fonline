@@ -111,7 +111,7 @@ bool FOClient::Init()
     STATIC_ASSERT( sizeof( Field ) == 76 );
     STATIC_ASSERT( sizeof( CScriptArray ) == 36 );
     STATIC_ASSERT( offsetof( CritterCl, ItemSlotArmor ) == 4260 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1140 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1136 );
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 108 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );
@@ -696,7 +696,10 @@ void FOClient::LookBordersDraw()
 
 int FOClient::MainLoop()
 {
-    // Fps counter
+    // Fixed FPS
+    double start_loop = Timer::AccurateTick();
+
+    // FPS counter
     static uint   last_call = Timer::FastTick();
     static ushort call_cnt = 0;
     if( ( Timer::FastTick() - last_call ) >= 1000 )
@@ -706,10 +709,9 @@ int FOClient::MainLoop()
         last_call = Timer::FastTick();
     }
     else
+    {
         call_cnt++;
-
-    if( !Active )
-        return 0;
+    }
 
     // Singleplayer data synchronization
     if( Singleplayer )
@@ -855,7 +857,7 @@ int FOClient::MainLoop()
     CHECK_MULTIPLY_WINDOWS3;
 
     // Render
-    if( !SprMngr.BeginScene( IsMainScreen( SCREEN_GAME ) ? ( GameOpt.ScreenClear ? COLOR_XRGB( 100, 100, 100 ) : 0 ) : COLOR_XRGB( 0, 0, 0 ) ) )
+    if( !SprMngr.BeginScene( COLOR_XRGB( 0, 0, 0 ) ) )
         return 0;
 
     ProcessScreenEffectQuake();
@@ -949,6 +951,21 @@ int FOClient::MainLoop()
     CHECK_MULTIPLY_WINDOWS5;
 
     SprMngr.EndScene();
+
+    // Fixed FPS
+    if( !GameOpt.VSync && GameOpt.FixedFPS > 0 )
+    {
+        static double balance = 0.0;
+        double        elapsed = Timer::AccurateTick() - start_loop;
+        double        need_elapsed = 1000.0 / (double) GameOpt.FixedFPS;
+        if( need_elapsed > elapsed )
+        {
+            double sleep = need_elapsed - elapsed + balance;
+            balance = fmod ( sleep, 1.0 );
+            Sleep( (uint) floor( sleep) );
+        }
+    }
+
     return 1;
 }
 
@@ -1413,8 +1430,8 @@ label_TryChangeLang:
                     SndMngr.SetSoundVolume( SndMngr.GetSoundVolume() + 2 );
                 else if( Keyb::ShiftDwn )
                     SndMngr.SetMusicVolume( SndMngr.GetMusicVolume() + 2 );
-                else if( Keyb::AltDwn && GameOpt.Sleep < 100 )
-                    GameOpt.Sleep++;
+                else if( Keyb::AltDwn && GameOpt.FixedFPS < 10000 )
+                    GameOpt.FixedFPS++;
                 break;
             case DIK_MINUS:
             case DIK_SUBTRACT:
@@ -1424,8 +1441,8 @@ label_TryChangeLang:
                     SndMngr.SetSoundVolume( SndMngr.GetSoundVolume() - 2 );
                 else if( Keyb::ShiftDwn )
                     SndMngr.SetMusicVolume( SndMngr.GetMusicVolume() - 2 );
-                else if( Keyb::AltDwn && GameOpt.Sleep > -1 )
-                    GameOpt.Sleep--;
+                else if( Keyb::AltDwn && GameOpt.FixedFPS > 0 )
+                    GameOpt.FixedFPS--;
                 break;
             // Escape
             case DIK_ESCAPE:

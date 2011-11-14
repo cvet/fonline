@@ -29,7 +29,7 @@ bool FOMapper::Init()
     #if defined ( FO_X86 )
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 116 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1140 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1136 );
     #endif
 
     // Register dll script data
@@ -102,7 +102,6 @@ bool FOMapper::Init()
 
     // Options
     GameOpt.ScrollCheck = false;
-    GameOpt.ScreenClear = true;
 
     // File manager
     FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
@@ -1388,7 +1387,10 @@ void FOMapper::ParseMouse()
 
 void FOMapper::MainLoop()
 {
-    // Count FPS
+    // Fixed FPS
+    double start_loop = Timer::AccurateTick();
+
+    // FPS counter
     static uint   last_call = Timer::FastTick();
     static ushort call_cnt = 0;
 
@@ -1399,7 +1401,9 @@ void FOMapper::MainLoop()
         last_call = Timer::FastTick();
     }
     else
+    {
         call_cnt++;
+    }
 
     // Script loop
     static uint next_call = 0;
@@ -1546,6 +1550,20 @@ void FOMapper::MainLoop()
     SprMngr.EndScene();
 
     Script::CollectGarbage( true );
+
+    // Fixed FPS
+    if( !GameOpt.VSync && GameOpt.FixedFPS > 0 )
+    {
+        static double balance = 0.0;
+        double        elapsed = Timer::AccurateTick() - start_loop;
+        double        need_elapsed = 1000.0 / (double) GameOpt.FixedFPS;
+        if( need_elapsed > elapsed )
+        {
+            double sleep = need_elapsed - elapsed + balance;
+            balance = fmod ( sleep, 1.0 );
+            Sleep( (uint) floor( sleep) );
+        }
+    }
 }
 
 void FOMapper::RefreshTiles( int tab )
@@ -5124,10 +5142,10 @@ void FOMapper::AddMess( const char* message_text )
     Str::Format( str, "|%u %c |%u %s\n", COLOR_TEXT, 149, COLOR_TEXT, message_text );
 
     // Time
-    SYSTEMTIME sys_time;
-    GetSystemTime( &sys_time );
-    char       mess_time[ 64 ];
-    Str::Format( mess_time, "%02d:%02d:%02d ", sys_time.wHour, sys_time.wMinute, sys_time.wSecond );
+    DateTime dt;
+    Timer::GetCurrentDateTime( dt );
+    char     mess_time[ 64 ];
+    Str::Format( mess_time, "%02d:%02d:%02d ", dt.Hour, dt.Minute, dt.Second );
 
     // Add
     MessBox.push_back( MessBoxMessage( 0, str, mess_time ) );
@@ -5196,17 +5214,16 @@ bool FOMapper::SaveLogFile()
     if( MessBox.empty() )
         return false;
 
-    SYSTEMTIME sys_time;
-    GetSystemTime( &sys_time );
+    DateTime dt;
+    Timer::GetCurrentDateTime( dt );
+    char     log_path[ MAX_FOPATH ];
+    Str::Format( log_path, DIR_SLASH_SD "mapper_messbox_%02d-%02d-%d_%02d-%02d-%02d.txt",
+                 dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
 
-    char log_path[ 512 ];
-    Str::Format( log_path, "%smapper_messbox_%02d-%02d-%d_%02d-%02d-%02d.txt", PATH_LOG_FILE,
-                 sys_time.wDay, sys_time.wMonth, sys_time.wYear,
-                 sys_time.wHour, sys_time.wMinute, sys_time.wSecond );
-
-    HANDLE save_file = CreateFile( log_path, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_FLAG_WRITE_THROUGH, NULL );
-    if( save_file == INVALID_HANDLE_VALUE )
+    void* f = FileOpen( log_path, true );
+    if( !f )
         return false;
+
 
     char   cur_mess[ MAX_FOTEXT ];
     string fmt_log;
@@ -5217,9 +5234,8 @@ bool FOMapper::SaveLogFile()
         fmt_log += MessBox[ i ].Time + string( cur_mess );
     }
 
-    DWORD br;
-    WriteFile( save_file, fmt_log.c_str(), (uint) fmt_log.length(), &br, NULL );
-    CloseHandle( save_file );
+    FileWrite( f, fmt_log.c_str(), (uint) fmt_log.length() );
+    FileClose( f );
     return true;
 }
 

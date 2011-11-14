@@ -72,7 +72,6 @@ __published:	// IDE-managed Components
 	TLabel *LabelSprites;
 	TLabel *LabelTexture;
 	TCheckBox *CbFullScreen;
-	TCheckBox *CbClearScreen;
 	TCheckBox *CbVSync;
 	TCheckBox *CbAlwaysOnTop;
 	TCSpinEdit *SeLight;
@@ -94,9 +93,6 @@ __published:	// IDE-managed Components
 	TRadioButton *RbIndicatorNumbers;
 	TRadioButton *RbIndicatorBoth;
 	TLabel *LabelDamageHitDelay;
-	TCheckBox *CbSoftwareSkinning;
-	TLabel *LabelSleep;
-	TCSpinEdit *SeSleep;
 	TComboBox *CbMultisampling;
 	TLabel *LabelMultisampling;
 	TLabel *LabelAnimation3dFPS;
@@ -107,6 +103,8 @@ __published:	// IDE-managed Components
 	TGroupBox *GbLangSwitch;
 	TRadioButton *RbCtrlShift;
 	TRadioButton *RbAltShift;
+	TCSpinEdit *SeFixedFPS;
+	TLabel *LabelFixedFPS;
 	void __fastcall FormCreate(TObject *Sender);
 	void __fastcall BtnExitClick(TObject *Sender);
 	void __fastcall RbEnglishClick(TObject *Sender);

@@ -632,7 +632,6 @@ struct GameOptions
     bool        VSync;
     int         FlushVal;
     int         BaseTexture;
-    int         ScreenClear;
     int         Light;
     string      Host;
     int         HostRefCounter;
@@ -647,12 +646,12 @@ struct GameOptions
     int         ProxyPassRefCounter;
     string      Name;
     int         NameRefCounter;
-    int         ScrollDelay;
+    uint        ScrollDelay;
     int         ScrollStep;
     bool        ScrollCheck;
     string      FoDataPath;
     int         FoDataPathRefCounter;
-    int         Sleep;
+    uint        FixedFPS;
     bool        MsgboxInvert;
     int         ChangeLang;
     uchar       DefaultCombatMode;
@@ -664,7 +663,6 @@ struct GameOptions
     int         ScreenWidth;
     int         ScreenHeight;
     int         MultiSampling;
-    bool        SoftwareSkinning;
     bool        MouseScroll;
     int         IndicatorType;
     uint        DoubleClickTime;

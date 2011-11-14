@@ -1371,7 +1371,6 @@ struct GameOptions
     int VSync;
     int FlushVal;
     int BaseTexture;
-    int ScreenClear;
     int Light;
     int Host;
     int HostRefCount;
@@ -1397,7 +1396,7 @@ struct GameOptions
     int FoPatchPathRefCount;
     int FoDataPath;
     int FoDataPathRefCount;
-    int Sleep;
+    int FixedFPS;
     int MsgboxInvert;
     int ChangeLang;
     int DefaultCombatMode;
@@ -1409,7 +1408,6 @@ struct GameOptions
     int ScreenWidth;
     int ScreenHeight;
     int MultiSampling;
-    int SoftwareSkinning;
     int MouseScroll;
     int IndicatorType;
     int DoubleClickTime;

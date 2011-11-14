@@ -57,7 +57,9 @@
 			</Target>
 		</Build>
 		<Unit filename="Client.ico" />
-		<Unit filename="Client.rc" />
+		<Unit filename="../Source/3dAnimation.h" />
+		<Unit filename="../Source/3dStuff.cpp" />
+		<Unit filename="../Source/3dStuff.h" />
 		<Unit filename="../Source/Access.h" />
 		<Unit filename="../Source/Acm/acmstrm.cpp" />
 		<Unit filename="../Source/Acm/acmstrm.h" />
@@ -218,6 +220,9 @@
 		<Unit filename="../Source/FileManager.h" />
 		<Unit filename="../Source/FileSystem.cpp" />
 		<Unit filename="../Source/FileSystem.h" />
+		<Unit filename="../Source/GraphicLoader.cpp" />
+		<Unit filename="../Source/GraphicLoader.h" />
+		<Unit filename="../Source/GraphicStructures.h" />
 		<Unit filename="../Source/HexManager.cpp" />
 		<Unit filename="../Source/HexManager.h" />
 		<Unit filename="../Source/IniParser.cpp" />

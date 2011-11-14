@@ -1579,7 +1579,7 @@ bool Animation3d::DrawMeshEffect( MeshSubset* mesh, uint subset, Effect* effect,
     return true;
 }
 
-bool Animation3d::StartUp( Device_ device, bool software_skinning )
+bool Animation3d::StartUp( Device_ device )
 {
     #ifdef FO_D3D
     D3DDevice = device;
@@ -1590,7 +1590,7 @@ bool Animation3d::StartUp( Device_ device, bool software_skinning )
 
     // Get skinning method
     SoftwareSkinning = true;
-    if( !software_skinning && D3DCaps.VertexShaderVersion >= D3DVS_VERSION( 2, 0 ) && D3DCaps.MaxVertexBlendMatrices >= 2 )
+    if( D3DCaps.VertexShaderVersion >= D3DVS_VERSION( 2, 0 ) && D3DCaps.MaxVertexBlendMatrices >= 2 )
         SoftwareSkinning = false;
 
     // Create a directional light

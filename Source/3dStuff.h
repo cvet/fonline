@@ -144,7 +144,7 @@ public:
     Rect GetExtraBorders( Point* pivot = NULL );
     void GetRenderFramesData( float& period, int& proc_from, int& proc_to );
 
-    static bool         StartUp( Device_ device, bool software_skinning );
+    static bool         StartUp( Device_ device );
     static bool         SetScreenSize( int width, int height );
     static void         Finish();
     static void         BeginScene();

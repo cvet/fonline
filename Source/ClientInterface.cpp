@@ -2086,9 +2086,9 @@ void FOClient::ConsoleDraw()
                                  ), FT_CENTERX, COLOR_XRGB( 255, 240, 0 ) );
 
             SprMngr.DrawStr( Rect( 650, 5, 800, 300 ), Str::FormatBuf(
-                                 "Time:%02d:%02d %02d:%02d:%04d x%02d\nSleep:%d\nSound:%d\nMusic:%d",
+                                 "Time:%02d:%02d %02d:%02d:%04d x%02d\nFixedFPS:%d\nSound:%d\nMusic:%d",
                                  GameOpt.Hour, GameOpt.Minute, GameOpt.Day, GameOpt.Month, GameOpt.Year, GameOpt.TimeMultiplier,
-                                 GameOpt.Sleep, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume()
+                                 GameOpt.FixedFPS, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume()
                                  ), FT_CENTERX, COLOR_XRGB( 255, 240, 0 ) );
         }
 
@@ -2102,18 +2102,16 @@ void FOClient::ConsoleDraw()
                              "Sum: %u\n"
                              // "Receive Real: %u\n"
                              "\n"
-                             "FPS: %d\n"
+                             "FPS: %d (%d)\n"
                              "Ping: %d\n"
                              "\n"
                              // "sleep: %d\n"
                              "Sound: %d\n"
-                             "Music: %d\n"
-                             "\n"
-                             "Sleep: %d\n",
+                             "Music: %d\n",
                              Singleplayer ? "Singleplayer" : "",
                              CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF,
                              BytesSend, BytesReceive, BytesReceive + BytesSend, /*BytesRealReceive,*/
-                             FPS, PingTime, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume(), GameOpt.Sleep
+                             FPS, !GameOpt.VSync ? GameOpt.FixedFPS : 0, PingTime, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume()
                              ), 0, COLOR_XRGB( 255, 248, 0 ), FONT_BIG );
 
         SprMngr.DrawStr( Rect( 0, 0, MODE_WIDTH, MODE_HEIGHT ), MsgGame->GetStr( STR_GAME_HELP ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT );

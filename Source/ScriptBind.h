@@ -2603,8 +2603,6 @@ if( engine->RegisterGlobalProperty( "const int __ScreenHeight", &GameOpt.ScreenH
     BIND_ERROR;
 if( engine->RegisterGlobalProperty( "const int __MultiSampling", &GameOpt.MultiSampling ) )
     BIND_ERROR;
-if( engine->RegisterGlobalProperty( "const bool __SoftwareSkinning", &GameOpt.SoftwareSkinning ) )
-    BIND_ERROR;
 if( engine->RegisterGlobalProperty( "bool __DisableLMenu", &GameOpt.DisableLMenu ) )
     BIND_ERROR;
 if( engine->RegisterGlobalProperty( "bool __DisableMouseEvents", &GameOpt.DisableMouseEvents ) )
@@ -2667,11 +2665,9 @@ if( engine->RegisterGlobalProperty( "int __FlushVal", &GameOpt.FlushVal ) )
     BIND_ERROR;
 if( engine->RegisterGlobalProperty( "int __BaseTex", &GameOpt.BaseTexture ) )
     BIND_ERROR;
-if( engine->RegisterGlobalProperty( "int __ScreenClear", &GameOpt.ScreenClear ) )
-    BIND_ERROR;
 if( engine->RegisterGlobalProperty( "int __Light", &GameOpt.Light ) )
     BIND_ERROR;
-if( engine->RegisterGlobalProperty( "int __ScrollDelay", &GameOpt.ScrollDelay ) )
+if( engine->RegisterGlobalProperty( "uint __ScrollDelay", &GameOpt.ScrollDelay ) )
     BIND_ERROR;
 if( engine->RegisterGlobalProperty( "int __ScrollStep", &GameOpt.ScrollStep ) )
     BIND_ERROR;
@@ -2701,7 +2697,7 @@ if( engine->RegisterGlobalProperty( "uint __TextDelay", &GameOpt.TextDelay ) )
     BIND_ERROR;
 if( engine->RegisterGlobalProperty( "bool __AlwaysOnTop", &GameOpt.AlwaysOnTop ) )
     BIND_ERROR;
-if( engine->RegisterGlobalProperty( "int __Sleep", &GameOpt.Sleep ) )
+if( engine->RegisterGlobalProperty( "uint __FixedFPS", &GameOpt.FixedFPS ) )
     BIND_ERROR;
 if( engine->RegisterGlobalProperty( "bool __MsgboxInvert", &GameOpt.MsgboxInvert ) )
     BIND_ERROR;

@@ -304,7 +304,7 @@ char* FixPathSlashes( char* path )
 
 bool ResolvePath( char* path )
 {
-    char path_[ MAX_FOPATH ];
+    char path_[ 4096 ];
     realpath( path, path_ );
     Str::Copy( path, MAX_FOPATH, path_ );
     return true;

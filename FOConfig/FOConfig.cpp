@@ -4,6 +4,7 @@
 #pragma hdrstop
 
 #include "FOConfig.h"
+#include <stdio.h>
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma link "cspin"
@@ -16,28 +17,84 @@ __fastcall TMainForm::TMainForm(TComponent* Owner)
 
 }
 //---------------------------------------------------------------------------
-AnsiString GetString(const char* key, const char* def_val)
+AnsiString GetString( const char* key, const char* def_val )
 {
-	char buf[2048];
-	GetPrivateProfileString(CFG_FILE_APP_NAME,key,def_val,buf,2047,CFG_FILE);
-	return AnsiString(buf);
+	char buf[ 2048 ];
+	GetPrivateProfileString( CFG_FILE_APP_NAME, key, def_val, buf, 2048, CFG_FILE );
+	char* str = buf;
+	while( *str && ( *str == ' ' || *str == '\t' || *str == '\n' || *str == '\r' ) )
+		str++;
+	char* str_begin = str;
+	while( *str && !( *str == ' ' || *str == '\t' || *str == '\n' || *str == '\r' ) )
+		str++;
+	*str = 0;
+	return AnsiString( str_begin );
 }
 //---------------------------------------------------------------------------
-int GetInt(const char* key, int def_val)
+int GetInt( const char* key, int def_val )
 {
-	return GetPrivateProfileInt(CFG_FILE_APP_NAME,key,def_val,CFG_FILE);
+	char buf[ 32 ];
+	AnsiString str = GetString( key, itoa( def_val, buf, 10 ) );
+	if( !stricmp( str.c_str(), "true" ) )
+		return 1;
+	if( !stricmp( str.c_str(), "false" ) )
+		return 0;
+	return atoi( str.c_str() );
 }
 //---------------------------------------------------------------------------
-void SetString(const char* key, const char* val)
+void SetString( const char* key, const char* val )
 {
-	WritePrivateProfileString(CFG_FILE_APP_NAME,key,val,CFG_FILE);
+	if( GetString( key, "$_$$$$MAGIC$$$$_$" ) == "$_$$$$MAGIC$$$$_$" )
+	{
+		char buf[ 2048 ];
+		strcpy( buf, "  " );
+		strcat( buf, val );
+		WritePrivateProfileString( CFG_FILE_APP_NAME, key, buf, CFG_FILE );
+		FILE* f = fopen( CFG_FILE, "rb" );
+		if( f )
+		{
+			fseek( f, 0, SEEK_END );
+			int len = ftell( f );
+			fseek( f, 0, SEEK_SET );
+			char* fbuf = new char[ len ];
+			fread( fbuf, sizeof( char ), len, f );
+			fclose( f );
+
+			strcpy( buf, key );
+			strcat( buf, "= " );
+			char* s = strstr( fbuf, buf );
+			*( s + strlen( key ) + 0 ) = ' ';
+			*( s + strlen( key ) + 1 ) = '=';
+
+			FILE* f = fopen( CFG_FILE, "wb" );
+			fwrite( fbuf, sizeof( char ), len, f );
+			fclose( f );
+			delete[] fbuf;
+		}
+	}
+	else
+	{
+		char buf[ 2048 ] = { 0 };
+		if( val[ 0 ] )
+		{
+			strcat( buf, " " );
+			strcat( buf, val );
+		}
+		WritePrivateProfileString( CFG_FILE_APP_NAME, key, buf, CFG_FILE );
+	}
 }
 //---------------------------------------------------------------------------
-void SetInt(const char* key, int val)
+void SetInt( const char* key, int val, bool as_boolean = false )
 {
-	char buf[32];
-	itoa(val,buf,10);
-	WritePrivateProfileString(CFG_FILE_APP_NAME,key,buf,CFG_FILE);
+	if( as_boolean )
+	{
+		SetString( key, val ? "True" : "False" );
+	}
+	else
+	{
+		char buf[ 32 ];
+		SetString( key, itoa( val, buf, 10 ) );
+	}
 }
 //---------------------------------------------------------------------------
 void __fastcall TMainForm::FormCreate(TObject *Sender)
@@ -48,6 +105,7 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
 //---------------------------------------------------------------------------
 #define SE_STR(comp,key,def_val) if(!save) comp=GetString(key,def_val); else SetString(key,AnsiString(comp).c_str())
 #define SE_INT(comp,key,min_,max_,def_) if(!save){int i=GetInt(key,def_); if(i<min_ || i>max_) i=def_; comp=i;} else SetInt(key,comp)
+#define SE_BOOL(comp,key,min_,max_,def_) if(!save){int i=GetInt(key,def_); if(i<min_ || i>max_) i=def_; comp=i;} else SetInt(key,comp,true)
 #define SE_INTSTR(comp,key,min_,max_,def_) if(!save){int i=GetInt(key,def_); if(i<min_ || i>max_) i=def_; comp=i;} else SetInt(key,atoi(AnsiString(comp).c_str()))
 #define SE_RBTN(comp,key,val,def_val) if(!save){int i=GetInt(key,def_val);comp->Checked=(i==val?true:false);} else if(comp->Checked) SetInt(key,val)
 #define SE_COMBO(comp,key,def_val) do{                                        \
@@ -80,18 +138,18 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
 void TMainForm::Serialize(bool save)
 {
 	SE_STR(Lang,"Language","russ");
-	SE_INT(CbWinNotify->State,"WinNotify",0,1,1);
-	SE_INT(CbSoundNotify->State,"SoundNotify",0,1,0);
-	SE_INT(CbInvertMessBox->State,"InvertMessBox",0,1,0);
-	SE_INT(CbLogging->State,"Logging",0,1,1);
-	SE_INT(CbLoggingTime->State,"LoggingTime",0,1,0);
-	SE_INT(SeSleep->Value,"Sleep",-1,100,0);
-	SE_INT(SeScrollDelay->Value,"ScrollDelay",1,32,4);
-	SE_INT(SeScrollStep->Value,"ScrollStep",4,32,32);
+	SE_BOOL(CbWinNotify->State,"WinNotify",0,1,1);
+	SE_BOOL(CbSoundNotify->State,"SoundNotify",0,1,0);
+	SE_BOOL(CbInvertMessBox->State,"InvertMessBox",0,1,0);
+	SE_BOOL(CbLogging->State,"Logging",0,1,1);
+	SE_BOOL(CbLoggingTime->State,"LoggingTime",0,1,0);
+	SE_INT(SeFixedFPS->Value,"FixedFPS",0,10000,100);
+	SE_INT(SeScrollDelay->Value,"ScrollDelay",0,100,10);
+	SE_INT(SeScrollStep->Value,"ScrollStep",4,32,12);
 	SE_INT(SeTextDelay->Value,"TextDelay",1000,30000,3000);
 	SE_RBTN(RbCtrlShift,"LangChange",0,0);
 	SE_RBTN(RbAltShift,"LangChange",1,0);
-	SE_INT(CbAlwaysRun->State,"AlwaysRun",0,1,0);
+	SE_BOOL(CbAlwaysRun->State,"AlwaysRun",0,1,0);
 	SE_COMBO(CbServerHost,"RemoteHost","localhost");
 	SE_INT(SeServerPort->Value,"RemotePort",0,0xFFFF,4000);
 	SE_RBTN(RbProxyNone,"ProxyType",0,0);
@@ -99,21 +157,19 @@ void TMainForm::Serialize(bool save)
 	SE_RBTN(RbProxySocks5,"ProxyType",2,0);
 	SE_RBTN(RbProxyHttp,"ProxyType",3,0);
 	SE_COMBO(CbProxyHost,"ProxyHost","localhost");
-	SE_INT(SeProxyPort->Value,"ProxyPort",0,0xFFFF,1080);
+	SE_INT(SeProxyPort->Value,"ProxyPort",0,0xFFFF,8080);
 	SE_STR(EditProxyUser->Text,"ProxyUser","");
 	SE_STR(EditProxyPass->Text,"ProxyPass","");
 	SE_INTSTR(CbScreenWidth->Text,"ScreenWidth",100,10000,800);
 	SE_INTSTR(CbScreenHeight->Text,"ScreenHeight",100,10000,600);
-	SE_INT(SeLight->Value,"Light",0,50,20);
+	SE_INT(SeLight->Value,"Light",0,100,20);
 	SE_INT(SeSprites->Value,"FlushValue",1,1000,100);
 	SE_INT(SeTexture->Value,"BaseTexture",128,8192,1024);
-	SE_INT(CbFullScreen->State,"FullScreen",0,1,0);
-	SE_INT(CbClearScreen->State,"BackGroundClear",0,1,0);
-	SE_INT(CbVSync->State,"VSync",0,1,0);
-	SE_INT(CbAlwaysOnTop->State,"AlwaysOnTop",0,1,0);
-	SE_INT(CbSoftwareSkinning->State,"SoftwareSkinning",0,1,0);
-	SE_INT(SeAnimation3dFPS->Value,"Animation3dFPS",0,1000,0);
+	SE_BOOL(CbFullScreen->State,"FullScreen",0,1,0);
+	SE_BOOL(CbVSync->State,"VSync",0,1,0);
+	SE_BOOL(CbAlwaysOnTop->State,"AlwaysOnTop",0,1,0);
 	SE_INT(SeAnimation3dSmoothTime->Value,"Animation3dSmoothTime",0,10000,250);
+	SE_INT(SeAnimation3dFPS->Value,"Animation3dFPS",0,1000,0);
 	SE_INT(TbMusicVolume->Position,"MusicVolume",0,100,100);
 	SE_INT(TbSoundVolume->Position,"SoundVolume",0,100,100);
 	SE_RBTN(RbDefCmbtModeBoth,"DefaultCombatMode",0,0);
@@ -137,7 +193,7 @@ void TMainForm::Translate()
 {
 	if(Lang=="russ") RbRussian->Checked=true;
 	else RbEnglish->Checked=true;
-	TR_(MainForm,"FOnline конфигуратор   v2.4.0","FOnline configurator   v2.4.0");
+	TR_(MainForm,"FOnline конфигуратор   v2.5.0","FOnline configurator   v2.5.0");
 	TR_(BtnExecute,"Играть","Play");
 	TR_(BtnParse,"Сохранить","Save");
 	TR_(BtnExit,"Выход","Exit");
@@ -151,7 +207,7 @@ void TMainForm::Translate()
 	TR_(CbInvertMessBox,"Инвертирование текста\nв окне сообщений.","Invert text\nin messbox.");
 	TR_(CbLogging,"Ведение лога в 'FOnline.log'.","Logging in 'FOnline.log'.");
 	TR_(CbLoggingTime,"Запись в лог с указанием времени.","Logging with time.");
-	TR_(LabelSleep,"Sleep","Sleep");
+	TR_(LabelFixedFPS,"Фиксированный\n         FPS","              Fixed\n               FPS");
 	TR_(TabGame,"Игра","Game");
 	TR_(GbGame,"Игра","Game");
 	TR_(LabelScrollDelay,"Задержка скроллинга","Scroll delay");
@@ -183,10 +239,8 @@ void TMainForm::Translate()
 	TR_(LabelTexture,"Размер текстур","Texture size");
 	TR_(LabelMultisampling,"Мультисэмплинг 3d","Multisampling 3d");
 	TR_(CbFullScreen,"Полноэкранный режим","Fullscreen");
-	TR_(CbClearScreen,"Очистка экрана","Screen clear");
 	TR_(CbVSync,"Вертикальная синхронизация","VSync");
 	TR_(CbAlwaysOnTop,"Поверх всех окон","Always on top");
-	TR_(CbSoftwareSkinning,"Софтварный скиннинг 3d","Software skinning 3d");
 	TR_(LabelAnimation3dFPS,"3d FPS","3d FPS");
 	TR_(LabelAnimation3dSmoothTime,"Сглаживание 3d переходов","3d smooth transition");
 	TR_(TabSound,"Звук","Sound");

@@ -122,7 +122,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     }
 
     int vproc = D3DCREATE_SOFTWARE_VERTEXPROCESSING;
-    if( !GameOpt.SoftwareSkinning && deviceCaps.DevCaps & D3DDEVCAPS_HWTRANSFORMANDLIGHT &&
+    if( deviceCaps.DevCaps & D3DDEVCAPS_HWTRANSFORMANDLIGHT &&
         deviceCaps.VertexShaderVersion >= D3DPS_VERSION( 2, 0 ) && deviceCaps.MaxVertexBlendMatrices >= 2 )
         vproc = D3DCREATE_HARDWARE_VERTEXPROCESSING;
 
@@ -142,8 +142,6 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     SetPixelFormat( dcScreen, pixel_format, &pfd );
     HGLRC  rc = wglCreateContext( dcScreen );
     wglMakeCurrent( dcScreen, rc );
-    if( !GameOpt.VSync )
-        wglSwapIntervalEXT( 0 );
     # else // FO_LINUX
     GLint        att[] = { GLX_RGBA, GLX_DEPTH_SIZE, 16, GLX_DOUBLEBUFFER, None };
     // Window root = DefaultRootWindow( fl_display );
@@ -186,6 +184,12 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     GL( gluOrtho2D( 0, modeWidth, modeHeight, 0 ) );
     GL( glGetFloatv( GL_PROJECTION_MATRIX, projectionMatrix ) );
     GL( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
+    # ifdef FO_WINDOWS
+    if( !GameOpt.VSync )
+        wglSwapIntervalEXT( 0 );
+    # else // FO_LINUX
+    // Todo: Linux
+    # endif
     #endif
 
 
@@ -229,7 +233,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     }
     #endif
 
-    if( !Animation3d::StartUp( d3dDevice, GameOpt.SoftwareSkinning ) )
+    if( !Animation3d::StartUp( d3dDevice ) )
         return false;
     if( !Animation3d::SetScreenSize( modeWidth, modeHeight ) )
         return false;
@@ -651,7 +655,7 @@ bool SpriteManager::Restore()
         return false;
     if( PostRestore )
         ( *PostRestore )( );
-    if( !Animation3d::StartUp( d3dDevice, GameOpt.SoftwareSkinning ) )
+    if( !Animation3d::StartUp( d3dDevice ) )
         return false;
 
     return true;

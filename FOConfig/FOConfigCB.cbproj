@@ -77,7 +77,7 @@
 						<VersionInfo Name="MajorVer">2</VersionInfo>
 						<VersionInfo Name="MinorVer">0</VersionInfo>
 						<VersionInfo Name="Release">2</VersionInfo>
-						<VersionInfo Name="Build">27</VersionInfo>
+						<VersionInfo Name="Build">28</VersionInfo>
 						<VersionInfo Name="Debug">False</VersionInfo>
 						<VersionInfo Name="PreRelease">False</VersionInfo>
 						<VersionInfo Name="Special">False</VersionInfo>
@@ -89,7 +89,7 @@
 					<VersionInfoKeys>
 						<VersionInfoKeys Name="CompanyName">Cvet</VersionInfoKeys>
 						<VersionInfoKeys Name="FileDescription">FOnline Configurator</VersionInfoKeys>
-						<VersionInfoKeys Name="FileVersion">2.0.2.27</VersionInfoKeys>
+						<VersionInfoKeys Name="FileVersion">2.0.2.28</VersionInfoKeys>
 						<VersionInfoKeys Name="InternalName">FOConfigBC</VersionInfoKeys>
 						<VersionInfoKeys Name="LegalCopyright"/>
 						<VersionInfoKeys Name="LegalTrademarks"/>

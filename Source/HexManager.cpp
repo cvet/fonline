@@ -1976,15 +1976,24 @@ bool HexManager::Scroll()
     if( !IsMapLoaded() )
         return false;
 
-    static double last_call = Timer::AccurateTick();
-    if( Timer::AccurateTick() - last_call < GameOpt.ScrollDelay )
-        return false;
-    else
-        last_call = Timer::AccurateTick();
+    // Scroll delay
+    float time_k = 1.0f;
+    if( GameOpt.ScrollDelay )
+    {
+        uint        tick = Timer::FastTick();
+        static uint last_tick = tick;
+        if( tick - last_tick < GameOpt.ScrollDelay / 2 )
+            return false;
+        float time_k = (float) ( tick - last_tick ) / (float) GameOpt.ScrollDelay;
+        last_tick = tick;
+    }
 
-    bool is_scroll = ( GameOpt.ScrollMouseLeft || GameOpt.ScrollKeybLeft || GameOpt.ScrollMouseRight || GameOpt.ScrollKeybRight || GameOpt.ScrollMouseUp || GameOpt.ScrollKeybUp || GameOpt.ScrollMouseDown || GameOpt.ScrollKeybDown );
-    int  scr_ox = GameOpt.ScrOx;
-    int  scr_oy = GameOpt.ScrOy;
+    bool is_scroll = ( GameOpt.ScrollMouseLeft || GameOpt.ScrollKeybLeft ||
+                       GameOpt.ScrollMouseRight || GameOpt.ScrollKeybRight ||
+                       GameOpt.ScrollMouseUp || GameOpt.ScrollKeybUp ||
+                       GameOpt.ScrollMouseDown || GameOpt.ScrollKeybDown );
+    int scr_ox = GameOpt.ScrOx;
+    int scr_oy = GameOpt.ScrOy;
 
     if( is_scroll && AutoScroll.CanStop )
         AutoScroll.Active = false;
@@ -1995,13 +2004,14 @@ bool HexManager::Scroll()
         CritterCl* cr = GetCritter( AutoScroll.LockedCritter );
         if( cr && ( cr->GetHexX() != screenHexX || cr->GetHexY() != screenHexY ) )
             ScrollToHex( cr->GetHexX(), cr->GetHexY(), 0.02, true );
-        // if(cr && DistSqrt(cr->GetHexX(),cr->GetHexY(),screenHexX,screenHexY)>4) ScrollToHex(cr->GetHexX(),cr->GetHexY(),0.5,true);
+        // if( cr && DistSqrt( cr->GetHexX(), cr->GetHexY(), screenHexX, screenHexY ) > 4 )
+        //     ScrollToHex( cr->GetHexX(), cr->GetHexY(), 0.5, true );
     }
 
     if( AutoScroll.Active )
     {
-        AutoScroll.OffsXStep += AutoScroll.OffsX * AutoScroll.Speed;
-        AutoScroll.OffsYStep += AutoScroll.OffsY * AutoScroll.Speed;
+        AutoScroll.OffsXStep += AutoScroll.OffsX * AutoScroll.Speed * time_k;
+        AutoScroll.OffsYStep += AutoScroll.OffsY * AutoScroll.Speed * time_k;
         int xscroll = (int) AutoScroll.OffsXStep;
         int yscroll = (int) AutoScroll.OffsYStep;
         if( xscroll > SCROLL_OX )
@@ -2056,8 +2066,8 @@ bool HexManager::Scroll()
         if( !xscroll && !yscroll )
             return false;
 
-        scr_ox += (int) ( xscroll * GameOpt.ScrollStep * GameOpt.SpritesZoom );
-        scr_oy += (int) ( yscroll * ( GameOpt.ScrollStep * SCROLL_OY / SCROLL_OX ) * GameOpt.SpritesZoom );
+        scr_ox += (int) ( xscroll * GameOpt.ScrollStep * GameOpt.SpritesZoom * time_k );
+        scr_oy += (int) ( yscroll * ( GameOpt.ScrollStep * SCROLL_OY / SCROLL_OX ) * GameOpt.SpritesZoom * time_k );
     }
 
     if( GameOpt.ScrollCheck )

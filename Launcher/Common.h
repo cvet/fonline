@@ -30,7 +30,7 @@ void SetConfigName(AnsiString cfgName, AnsiString appName);
 AnsiString GetString(AnsiString key, AnsiString defVal);
 int GetInt(AnsiString key, int defVal);
 void SetString(AnsiString key, AnsiString val);
-void SetInt(AnsiString key, int val);
+void SetInt(AnsiString key, int val, bool as_boolean = false);
 
 void ShowMessageOK(AnsiString msg);
 void RestoreMainDirectory();
