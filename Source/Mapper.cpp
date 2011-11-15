@@ -733,9 +733,11 @@ void FOMapper::ParseKeyboard()
     // Process events
     for( uint i = 0; i < events.size(); i += 2 )
     {
-        int   event = events[ i ];
-        int   event_key = events[ i + 1 ];
+        // Event data
+        int event = events[ i ];
+        int event_key = events[ i + 1 ];
 
+        // Keys codes mapping
         uchar dikdw = 0;
         uchar dikup = 0;
         if( event == FL_KEYDOWN )
@@ -743,6 +745,7 @@ void FOMapper::ParseKeyboard()
         else if( event == FL_KEYUP )
             dikup = Keyb::MapKey( event_key );
 
+        // Key script event
         bool script_result = false;
         if( dikdw && MapperFunctions.KeyDown && Script::PrepareContext( MapperFunctions.KeyDown, _FUNC_, "Mapper" ) )
         {
@@ -757,24 +760,34 @@ void FOMapper::ParseKeyboard()
                 script_result = Script::GetReturnedBool();
         }
 
+        // Disable keyboard events
+        if( script_result || GameOpt.DisableKeyboardEvents )
+        {
+            if( dikdw == DIK_ESCAPE && Keyb::ShiftDwn )
+                GameOpt.Quit = true;
+            continue;
+        }
+
+        // Keyboard states, to know outside function
+        Keyb::KeyPressed[ dikup ] = false;
+        Keyb::KeyPressed[ dikdw ] = true;
+
+        // Control keys
+        bool try_change_lang = false;
         if( dikdw == DIK_RCONTROL || dikdw == DIK_LCONTROL )
         {
             Keyb::CtrlDwn = true;
-            goto label_TryChangeLang;
+            try_change_lang = true;
         }
         else if( dikdw == DIK_LMENU || dikdw == DIK_RMENU )
         {
             Keyb::AltDwn = true;
-            goto label_TryChangeLang;
+            try_change_lang = true;
         }
         else if( dikdw == DIK_LSHIFT || dikdw == DIK_RSHIFT )
         {
             Keyb::ShiftDwn = true;
-label_TryChangeLang:
-            if( Keyb::ShiftDwn && Keyb::CtrlDwn && GameOpt.ChangeLang == CHANGE_LANG_CTRL_SHIFT )       // Ctrl+Shift
-                Keyb::Lang = ( Keyb::Lang == LANG_RUS ) ? LANG_ENG : LANG_RUS;
-            if( Keyb::ShiftDwn && Keyb::AltDwn && GameOpt.ChangeLang == CHANGE_LANG_ALT_SHIFT )         // Alt+Shift
-                Keyb::Lang = ( Keyb::Lang == LANG_RUS ) ? LANG_ENG : LANG_RUS;
+            try_change_lang = true;
         }
         if( dikup == DIK_RCONTROL || dikup == DIK_LCONTROL )
             Keyb::CtrlDwn = false;
@@ -783,13 +796,18 @@ label_TryChangeLang:
         else if( dikup == DIK_LSHIFT || dikup == DIK_RSHIFT )
             Keyb::ShiftDwn = false;
 
-        if( script_result || GameOpt.DisableKeyboardEvents )
+        // Switch language
+        if( try_change_lang )
         {
-            if( dikdw == DIK_ESCAPE && Keyb::ShiftDwn )
-                GameOpt.Quit = true;
-            continue;
+            // Ctrl + Shift
+            if( Keyb::ShiftDwn && Keyb::CtrlDwn && GameOpt.ChangeLang == CHANGE_LANG_CTRL_SHIFT )
+                Keyb::Lang = ( Keyb::Lang == LANG_RUS ) ? LANG_ENG : LANG_RUS;
+            // Alt + Shift
+            if( Keyb::ShiftDwn && Keyb::AltDwn && GameOpt.ChangeLang == CHANGE_LANG_ALT_SHIFT )
+                Keyb::Lang = ( Keyb::Lang == LANG_RUS ) ? LANG_ENG : LANG_RUS;
         }
 
+        // Hotkeys
         if( !Keyb::AltDwn && !Keyb::CtrlDwn && !Keyb::ShiftDwn )
         {
             switch( dikdw )
@@ -5254,7 +5272,7 @@ void FOMapper::InitScriptSystem()
     asIScriptEngine* engine = Script::GetEngine();
     #define BIND_MAPPER
     #define BIND_CLASS    FOMapper::SScriptFunc::
-    #define BIND_ERROR    do { WriteLogF( _FUNC_, " - Bind error, line<%d>.\n", __LINE__ ); } while( 0 )
+    #define BIND_ASSERT( x )           if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line<%d>.\n", __LINE__ ); }
     #include <ScriptBind.h>
 
     // Load scripts

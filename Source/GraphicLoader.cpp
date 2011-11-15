@@ -11,7 +11,10 @@
 #include "Assimp/Logger.h"
 #include "Assimp/LogStream.h"
 #include "Assimp/DefaultLogger.h"
-#pragma comment (lib, "assimp.lib")
+
+#ifdef FO_WINDOWS
+# pragma comment ( lib, "assimp.lib" )
+#endif
 
 /************************************************************************/
 /* Models                                                               */
@@ -87,8 +90,6 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
                                                               | aiProcess_ConvertToLeftHanded
                                                               #endif
                                                               );
-    // Todo: optional aiProcess_ValidateDataStructure|aiProcess_FindInvalidData
-
     if( !scene )
     {
         WriteLogF( _FUNC_, " - Can't load 3d file, name<%s>, error<%s>.\n", fname, importer->GetErrorString() );

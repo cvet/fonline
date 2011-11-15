@@ -1185,9 +1185,11 @@ void FOClient::ParseKeyboard()
     // Process events
     for( uint i = 0; i < events.size(); i += 2 )
     {
-        int   event = events[ i ];
-        int   event_key = events[ i + 1 ];
+        // Event data
+        int event = events[ i ];
+        int event_key = events[ i + 1 ];
 
+        // Keys codes mapping
         uchar dikdw = 0;
         uchar dikup = 0;
         if( event == FL_KEYDOWN )
@@ -1195,6 +1197,7 @@ void FOClient::ParseKeyboard()
         else if( event == FL_KEYUP )
             dikup = Keyb::MapKey( event_key );
 
+        // Video
         #ifndef FO_D3D
         if( IsVideoPlayed() )
         {
@@ -1207,6 +1210,7 @@ void FOClient::ParseKeyboard()
         }
         #endif
 
+        // Key script event
         bool script_result = false;
         if( dikdw && Script::PrepareContext( ClientFunctions.KeyDown, _FUNC_, "Game" ) )
         {
@@ -1221,27 +1225,34 @@ void FOClient::ParseKeyboard()
                 script_result = Script::GetReturnedBool();
         }
 
+        // Disable keyboard events
+        if( script_result || GameOpt.DisableKeyboardEvents )
+        {
+            if( dikdw == DIK_ESCAPE && Keyb::ShiftDwn )
+                GameOpt.Quit = true;
+            continue;
+        }
+
+        // Keyboard states, to know outside function
         Keyb::KeyPressed[ dikup ] = false;
         Keyb::KeyPressed[ dikdw ] = true;
 
+        // Control keys
+        bool try_change_lang = false;
         if( dikdw == DIK_RCONTROL || dikdw == DIK_LCONTROL )
         {
             Keyb::CtrlDwn = true;
-            goto label_TryChangeLang;
+            try_change_lang = true;
         }
         else if( dikdw == DIK_LMENU || dikdw == DIK_RMENU )
         {
             Keyb::AltDwn = true;
-            goto label_TryChangeLang;
+            try_change_lang = true;
         }
         else if( dikdw == DIK_LSHIFT || dikdw == DIK_RSHIFT )
         {
             Keyb::ShiftDwn = true;
-label_TryChangeLang:
-            if( Keyb::ShiftDwn && Keyb::CtrlDwn && GameOpt.ChangeLang == CHANGE_LANG_CTRL_SHIFT )       // Ctrl+Shift
-                Keyb::Lang = ( Keyb::Lang == LANG_RUS ) ? LANG_ENG : LANG_RUS;
-            if( Keyb::ShiftDwn && Keyb::AltDwn && GameOpt.ChangeLang == CHANGE_LANG_ALT_SHIFT )         // Alt+Shift
-                Keyb::Lang = ( Keyb::Lang == LANG_RUS ) ? LANG_ENG : LANG_RUS;
+            try_change_lang = true;
         }
         if( dikup == DIK_RCONTROL || dikup == DIK_LCONTROL )
             Keyb::CtrlDwn = false;
@@ -1250,11 +1261,15 @@ label_TryChangeLang:
         else if( dikup == DIK_LSHIFT || dikup == DIK_RSHIFT )
             Keyb::ShiftDwn = false;
 
-        if( script_result || GameOpt.DisableKeyboardEvents )
+        // Switch language
+        if( try_change_lang )
         {
-            if( dikdw == DIK_ESCAPE && Keyb::ShiftDwn )
-                GameOpt.Quit = true;
-            continue;
+            // Ctrl + Shift
+            if( Keyb::ShiftDwn && Keyb::CtrlDwn && GameOpt.ChangeLang == CHANGE_LANG_CTRL_SHIFT )
+                Keyb::Lang = ( Keyb::Lang == LANG_RUS ) ? LANG_ENG : LANG_RUS;
+            // Alt + Shift
+            if( Keyb::ShiftDwn && Keyb::AltDwn && GameOpt.ChangeLang == CHANGE_LANG_ALT_SHIFT )
+                Keyb::Lang = ( Keyb::Lang == LANG_RUS ) ? LANG_ENG : LANG_RUS;
         }
 
         // Hotkeys
@@ -10432,10 +10447,7 @@ bool FOClient::ReloadScripts()
     // Bind stuff
     #define BIND_CLIENT
     #define BIND_CLASS    FOClient::SScriptFunc::
-    #define BIND_ERROR                                                       \
-        do { WriteLog( "Bind error, line<%d>.\n", __LINE__ ); bind_errors++; \
-        } while( 0 )
-
+    #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line<%d>.\n", __LINE__ ); bind_errors++; }
     asIScriptEngine* engine = Script::GetEngine();
     int              bind_errors = 0;
     #include <ScriptBind.h>
