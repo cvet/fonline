@@ -178,21 +178,14 @@ void FOServer::Finish()
     // Statistics
     WriteLog( "Server stopped.\n" );
     WriteLog( "Statistics:\n" );
-    WriteLog( "Traffic:\n"
-              "Bytes Send: %u\n"
-              "Bytes Recv: %u\n",
-              Statistics.BytesSend,
-              Statistics.BytesRecv );
-    WriteLog( "Cycles count: %u\n"
-              "Approx cycle period: %u\n"
-              "Min cycle period: %u\n"
-              "Max cycle period: %u\n"
-              "Count of lags (>100ms): %u\n",
-              Statistics.LoopCycles,
-              Statistics.LoopTime / ( Statistics.LoopCycles ? Statistics.LoopCycles : 1 ),
-              Statistics.LoopMin,
-              Statistics.LoopMax,
-              Statistics.LagsCount );
+    WriteLog( "Traffic:\n" );
+    WriteLog( "Bytes Send: %u\n", Statistics.BytesSend );
+    WriteLog( "Bytes Recv: %u\n", Statistics.BytesRecv );
+    WriteLog( "Cycles count: %u\n", Statistics.LoopCycles );
+    WriteLog( "Approx cycle period: %u\n", Statistics.LoopTime / ( Statistics.LoopCycles ? Statistics.LoopCycles : 1 ) );
+    WriteLog( "Min cycle period: %u\n", Statistics.LoopMin );
+    WriteLog( "Max cycle period: %u\n", Statistics.LoopMax );
+    WriteLog( "Count of lags (>100ms): %u\n", Statistics.LagsCount );
 }
 
 string FOServer::GetIngamePlayersStatistics()
@@ -3601,6 +3594,7 @@ bool FOServer::Init()
 
     LogicThreadSetAffinity = cfg.GetInt( "LogicThreadSetAffinity", 0 ) != 0;
     LogicThreadCount = cfg.GetInt( "LogicThreadCount", 0 );
+    WriteLog( "LogicThreadCount %u\n", LogicThreadCount );
     if( !LogicThreadCount )
         LogicThreadCount = CpuCount;
     if( LogicThreadCount == 1 )

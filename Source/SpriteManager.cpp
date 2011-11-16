@@ -19,9 +19,9 @@ SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), S
 #ifdef FO_D3D
                                 spr3dRT( NULL ), spr3dRTEx( NULL ), spr3dDS( NULL ), spr3dRTData( NULL ), spr3dSurfWidth( 256 ), spr3dSurfHeight( 256 ),
 #endif
-                                sceneBeginned( false ), d3dDevice( NULL ), vbMain( NULL ), ibMain( NULL ), PreRestore( NULL ), PostRestore( NULL ), baseTextureSize( 0 ),
+                                sceneBeginned( false ), d3dDevice( 0 ), vbMain( 0 ), ibMain( 0 ), PreRestore( NULL ), PostRestore( NULL ), baseTextureSize( 0 ),
                                 eggValid( false ), eggHx( 0 ), eggHy( 0 ), eggX( 0 ), eggY( 0 ), eggOX( NULL ), eggOY( NULL ), sprEgg( NULL ), eggSurfWidth( 1.0f ), eggSurfHeight( 1.0f ), eggSprWidth( 1 ), eggSprHeight( 1 ),
-                                contoursTexture( NULL ), contoursTextureSurf( NULL ), contoursMidTexture( NULL ), contoursMidTextureSurf( NULL ), contours3dRT( NULL ),
+                                contoursTexture( NULL ), contoursTextureSurf( 0 ), contoursMidTexture( NULL ), contoursMidTextureSurf( 0 ), contours3dRT( 0 ),
                                 contoursPS( NULL ), contoursCT( NULL ), contoursAdded( false ),
                                 modeWidth( 0 ), modeHeight( 0 )
 {
@@ -31,12 +31,12 @@ SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), S
     baseColor = COLOR_ARGB( 255, 128, 128, 128 );
     surfList.reserve( 100 );
     dipQueue.reserve( 1000 );
-    contoursConstWidthStep = NULL;
-    contoursConstHeightStep = NULL;
-    contoursConstSpriteBorders = NULL;
-    contoursConstSpriteBordersHeight = NULL;
-    contoursConstContourColor = NULL;
-    contoursConstContourColorOffs = NULL;
+    contoursConstWidthStep = 0;
+    contoursConstHeightStep = 0;
+    contoursConstSpriteBorders = 0;
+    contoursConstSpriteBordersHeight = 0;
+    contoursConstContourColor = 0;
+    contoursConstContourColorOffs = 0;
     memzero( sprDefaultEffect, sizeof( sprDefaultEffect ) );
     curDefaultEffect = NULL;
 
@@ -45,6 +45,12 @@ SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), S
     vbPoints = NULL;
     vbPointsSize = 0;
     #else
+    # ifdef FO_WINDOWS
+    dcScreen = NULL;
+    # else
+    xDisplay = NULL;
+    xWindow = 0;
+    # endif
     vaMain = 0;
     vbMain = 0;
     ibMain = 0;
@@ -143,38 +149,46 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     HGLRC  rc = wglCreateContext( dcScreen );
     wglMakeCurrent( dcScreen, rc );
     # else // FO_LINUX
+    xDisplay = XOpenDisplay( NULL );
+    if( !xDisplay )
+    {
+        WriteLog( "Can't connect to X server.\n" );
+        return false;
+    }
+    xWindow = fl_xid( MainWindow );
+    // xWindow = DefaultRootWindow( xDisplay );
     GLint        att[] = { GLX_RGBA, GLX_DEPTH_SIZE, 16, GLX_DOUBLEBUFFER, None };
-    // Window root = DefaultRootWindow( fl_display );
-    XVisualInfo* vi = glXChooseVisual( fl_display, 0, att );
+    XVisualInfo* vi = glXChooseVisual( xDisplay, 0, att );
     if( !vi )
     {
-        WriteLog( " No appropriate visual found\n" );
+        WriteLog( "No appropriate visual found\n" );
         return 0;
     }
-    /*Colormap cmap = XCreateColormap( fl_display, root, vi->visual, AllocNone );
+    /*Colormap cmap = XCreateColormap( xDisplay, root, vi->visual, AllocNone );
        XSetWindowAttributes swa;
        swa.colormap = cmap;
        swa.event_mask = ExposureMask | KeyPressMask;
-       Window win = XCreateWindow( fl_display, root, 0, 0, modeWidth, modeHeight, 0,
+       Window win = XCreateWindow( xDisplay, root, 0, 0, modeWidth, modeHeight, 0,
                                vi->depth, InputOutput, vi->visual, CWColormap | CWEventMask, &swa );
-       XMapWindow( fl_display, win );
-       XStoreName( fl_display, win, "FOnlineX11" );*/
-
-    GLXContext glc = glXCreateContext( fl_display, vi, NULL, GL_TRUE );
-    glXMakeCurrent( fl_display, fl_window, glc );
+       XMapWindow( xDisplay, win );
+       XStoreName( xDisplay, win, "FOnlineX11" );*/
+    GLXContext glc = glXCreateContext( xDisplay, vi, NULL, GL_TRUE );
+    glXMakeCurrent( xDisplay, xWindow, glc );
     # endif
-
     // OpenGL extensions
     glewInit();
-    # define CHECK_EXTENSION( ext )                                       \
-        if( !GLEW_ARB_ ## ext )                                           \
-        {                                                                 \
-            WriteLog( " OpenGL extension '" # ext "' not supported.\n" ); \
-            return false;                                                 \
+    # define CHECK_EXTENSION( ext )                                      \
+        if( !GLEW_ARB_ ## ext )                                          \
+        {                                                                \
+            WriteLog( "OpenGL extension '" # ext "' not supported.\n" ); \
+            errors++;                                                    \
         }
+    uint errors = 0;
     CHECK_EXTENSION( vertex_buffer_object );
     CHECK_EXTENSION( vertex_array_object );
     CHECK_EXTENSION( framebuffer_object );
+    if( errors )
+        return false;
     # undef CHECK_EXTENSION
 
     // States
@@ -191,7 +205,6 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     // Todo: Linux
     # endif
     #endif
-
 
     #ifdef FO_D3D
     // Contours
@@ -314,7 +327,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     # ifdef FO_WINDOWS
     SwapBuffers( dcScreen );
     # else
-    glXSwapBuffers( fl_display, fl_window );
+    glXSwapBuffers( xDisplay, xWindow );
     # endif
     #endif
 
@@ -610,7 +623,7 @@ void SpriteManager::EndScene()
     # ifdef FO_WINDOWS
     SwapBuffers( dcScreen );
     # else
-    glXSwapBuffers( fl_display, fl_window );
+    glXSwapBuffers( xDisplay, xWindow );
     # endif
     #endif
     sceneBeginned = false;

@@ -162,7 +162,7 @@ struct Talking
     void   Clear()
     {
         TalkType = TALK_NONE;
-        TalkNpc = NULL;
+        TalkNpc = 0;
         TalkHexMap = 0;
         TalkHexX = 0;
         TalkHexY = 0;

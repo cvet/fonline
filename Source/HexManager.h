@@ -408,7 +408,7 @@ public:
     bool IsIgnorePid( ushort pid );
     void ClearIgnorePids();
 
-    void GetHexesRect( Rect& rect, UShortPairVec& hexes );
+    void GetHexesRect( const Rect& rect, UShortPairVec& hexes );
     void MarkPassedHexes();
     void AffectItem( MapObject* mobj, ItemHex* item );
     void AffectCritter( MapObject* mobj, CritterCl* cr );

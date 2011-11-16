@@ -265,6 +265,9 @@ private:
     #ifndef FO_D3D
     # ifdef FO_WINDOWS
     HDC             dcScreen;
+    # else
+    Display*        xDisplay;
+    Window          xWindow;
     # endif
     RenderTarget    rtMain;
     RenderTarget    rtContours;

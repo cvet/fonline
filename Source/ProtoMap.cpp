@@ -2240,8 +2240,8 @@ bool ProtoMap::Save( const char* fname, int path_type )
     SaveTextFormat( fm );
     Tiles.clear();
 
-    string fname = pmapName + MAP_PROTO_EXT;
-    if( !fm.SaveOutBufToFile( fname.c_str(), pathType ) )
+    string save_fname = pmapName + MAP_PROTO_EXT;
+    if( !fm.SaveOutBufToFile( save_fname.c_str(), pathType ) )
     {
         WriteLogF( _FUNC_, " - Unable write file.\n" );
         fm.ClearOutBuf();

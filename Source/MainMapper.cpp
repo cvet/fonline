@@ -66,12 +66,8 @@ int main( int argc, char** argv )
     #ifndef FO_D3D
     if( GameOpt.FullScreen )
     {
-        # ifdef FO_WINDOWS
-        HDC dcscreen = GetDC( NULL );
-        int sw = GetDeviceCaps( dcscreen, HORZRES );
-        int sh = GetDeviceCaps( dcscreen, VERTRES );
-        ReleaseDC( NULL, dcscreen );
-        # endif
+        int sx, sy, sw, sh;
+        Fl::screen_xywh( sx, sy, sw, sh );
         MainWindow->border( 0 );
         MainWindow->size( sw, sh );
         MainWindow->position( 0, 0 );
@@ -99,8 +95,10 @@ int main( int argc, char** argv )
     Game.Wait();
 
     // Finish
+    #ifdef FO_WINDOWS
     if( Singleplayer )
         SingleplayerData.Finish();
+    #endif
     WriteLog( "FOnline finished.\n" );
     LogFinish( -1 );
 

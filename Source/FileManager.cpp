@@ -244,8 +244,8 @@ bool FileManager::LoadFile( const char* fname, int path_type )
 
         // Make folder path
         Str::Copy( folder_path, GetDataPath( path_type ) );
-        FormatPath( folder_path );
         Str::Append( folder_path, dat_path );
+        FormatPath( folder_path );
 
         // Check for full path
         #if defined ( FO_WINDOWS )

@@ -18,9 +18,11 @@ SoundManager SndMngr;
 // OGG
 #include "Ogg/codec.h"
 #include "Ogg/vorbisfile.h"
-#pragma comment ( lib, "libogg_static.lib" )
-#pragma comment ( lib, "libvorbis_static.lib" )
-#pragma comment ( lib, "libvorbisfile_static.lib" )
+#ifdef FO_WINDOWS
+# pragma comment ( lib, "libogg_static.lib" )
+# pragma comment ( lib, "libvorbis_static.lib" )
+# pragma comment ( lib, "libvorbisfile_static.lib" )
+#endif
 
 // Sound structure
 class Sound

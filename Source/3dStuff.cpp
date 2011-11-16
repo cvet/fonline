@@ -10,7 +10,7 @@
 
 #define CONTOURS_EXTRA_SIZE    ( 20 )
 
-Device_   D3DDevice = NULL;
+Device_   D3DDevice = 0;
 Caps_     D3DCaps;
 int       ModeWidth = 0, ModeHeight = 0;
 float     FixedZ = 0.0f;

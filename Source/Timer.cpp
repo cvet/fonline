@@ -46,9 +46,9 @@ uint Timer::FastTick()
     #if defined ( FO_WINDOWS )
     return timeGetTime();
     #else // FO_LINUX
-    struct timeval tv;
-    gettimeofday( &tv, NULL );
-    return (uint) ( tv.tv_sec * 1000 + tv.tv_usec / 1000 );
+    struct timespec tv;
+    clock_gettime( CLOCK_MONOTONIC_COARSE, &tv );
+    return (uint) ( tv.tv_sec * 1000 + tv.tv_nsec / 1000000 );
     #endif
 }
 

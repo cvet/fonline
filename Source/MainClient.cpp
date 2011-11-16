@@ -96,8 +96,6 @@ int main( int argc, char** argv )
         CloseHandle( server.hProcess );
         CloseHandle( server.hThread );
     }
-    #else // FO_LINUX
-    return 0;
     #endif
 
     // Check for already runned window

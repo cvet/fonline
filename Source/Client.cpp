@@ -56,7 +56,7 @@ FOClient::FOClient(): Active( false )
     MoveLastHx = -1;
     MoveLastHy = -1;
 
-    SaveLoadDraft = NULL;
+    SaveLoadDraft = 0;
 }
 
 void _PreRestore()

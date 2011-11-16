@@ -4294,14 +4294,14 @@ void HexManager::ClearIgnorePids()
     ignorePids.clear();
 }
 
-void HexManager::GetHexesRect( Rect& rect, UShortPairVec& hexes )
+void HexManager::GetHexesRect( const Rect& rect, UShortPairVec& hexes )
 {
     hexes.clear();
 
     if( GameOpt.MapHexagonal )
     {
         int x, y;
-        GetHexInterval( rect[ 0 ], rect[ 1 ], rect[ 2 ], rect[ 3 ], x, y );
+        GetHexInterval( rect.L, rect.T, rect.R, rect.B, x, y );
         x = -x;
 
         int dx = x / HEX_W;
@@ -4314,13 +4314,13 @@ void HexManager::GetHexesRect( Rect& rect, UShortPairVec& hexes )
         {
             if( dy >= 0 )
             {
-                hx = rect[ 0 ] + j / 2 + ( j & 1 );
-                hy = rect[ 1 ] + ( j - ( hx - rect[ 0 ] - ( ( rect[ 0 ] & 1 ) ? 1 : 0 ) ) / 2 );
+                hx = rect.L + j / 2 + ( j & 1 );
+                hy = rect.T + ( j - ( hx - rect.L - ( ( rect.L & 1 ) ? 1 : 0 ) ) / 2 );
             }
             else
             {
-                hx = rect[ 0 ] - j / 2 - ( j & 1 );
-                hy = rect[ 1 ] - ( j - ( rect[ 0 ] - hx - ( ( rect[ 0 ] & 1 ) ? 0 : 1 ) ) / 2 );
+                hx = rect.L - j / 2 - ( j & 1 );
+                hy = rect.T - ( j - ( rect.L - hx - ( ( rect.L & 1 ) ? 0 : 1 ) ) / 2 );
             }
 
             for( int i = 0; i <= adx; i++ )
@@ -4346,7 +4346,7 @@ void HexManager::GetHexesRect( Rect& rect, UShortPairVec& hexes )
     else
     {
         int rw, rh;        // Rect width/height
-        GetHexInterval( rect[ 0 ], rect[ 1 ], rect[ 2 ], rect[ 3 ], rw, rh );
+        GetHexInterval( rect.L, rect.T, rect.R, rect.B, rw, rh );
         if( !rw )
             rw = 1;
         if( !rh )
@@ -4354,8 +4354,8 @@ void HexManager::GetHexesRect( Rect& rect, UShortPairVec& hexes )
 
         int hw = abs( rw / ( HEX_W / 2 ) ) + ( ( rw % ( HEX_W / 2 ) ) ? 1 : 0 ) + ( abs( rw ) >= HEX_W / 2 ? 1 : 0 ); // Hexes width
         int hh = abs( rh / HEX_LINE_H ) + ( ( rh % HEX_LINE_H ) ? 1 : 0 ) + ( abs( rh ) >= HEX_LINE_H ? 1 : 0 );      // Hexes height
-        int shx = rect[ 0 ];
-        int shy = rect[ 1 ];
+        int shx = rect.L;
+        int shy = rect.T;
 
         for( int i = 0; i < hh; i++ )
         {

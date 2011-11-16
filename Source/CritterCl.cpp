@@ -57,7 +57,9 @@ CritterCl::~CritterCl()
         #ifdef FONLINE_CLIENT
         ( (CScriptArray*) Layers3d )->Release();
         #else
-        SAFEDELA( Layers3d );
+        uint* layers = (uint*) Layers3d;
+        SAFEDELA( layers );
+        Layers3d = NULL;
         #endif
     }
 
