@@ -340,9 +340,17 @@ bool CryptManager::SetCacheTable( const char* cache_fname )
 
 void CryptManager::SetCache( const char* data_name, const uchar* data, uint data_len )
 {
+    // Load table
     FILE* f = fopen( CacheTableName.c_str(), "r+b" );
     if( !f )
         return;
+
+    // Fix path
+    char data_name_[ MAX_FOPATH ];
+    Str::Copy( data_name_, data_name );
+    for( uint i = 0; data_name_[ i ]; i++ )
+        if( data_name_[ i ] == '\\' )
+            data_name_[ i ] = '/';
 
     CacheDescriptor desc_;
     int             desc_place = -1;
@@ -353,7 +361,7 @@ void CryptManager::SetCache( const char* data_name, const uchar* data, uint data
         CacheDescriptor& desc = CacheTable[ i ];
         if( !FLAG( desc.Flags, CACHE_DATA_VALID ) )
             continue;
-        if( !Str::Compare( data_name, desc.DataName ) )
+        if( !Str::Compare( data_name_, desc.DataName ) )
             continue;
 
         if( data_len > desc.DataMaxLen )
@@ -385,7 +393,7 @@ void CryptManager::SetCache( const char* data_name, const uchar* data, uint data
 
         SETFLAG( desc.Flags, CACHE_DATA_VALID );
         desc.DataCurLen = data_len;
-        Str::Copy( desc.DataName, data_name );
+        Str::Copy( desc.DataName, data_name_ );
         desc_ = desc;
         desc_place = i;
         goto label_PlaceFound;
@@ -425,7 +433,7 @@ void CryptManager::SetCache( const char* data_name, const uchar* data, uint data
         desc.DataOffset = offset;
         desc.DataCurLen = data_len;
         desc.DataMaxLen = max_len;
-        Str::Copy( desc.DataName, data_name );
+        Str::Copy( desc.DataName, data_name_ );
         desc_ = desc;
         desc_place = i;
         goto label_PlaceFound;
@@ -446,12 +454,20 @@ label_PlaceFound:
 
 uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
 {
+    // Fix path
+    char data_name_[ MAX_FOPATH ];
+    Str::Copy( data_name_, data_name );
+    for( uint i = 0; data_name_[ i ]; i++ )
+        if( data_name_[ i ] == '\\' )
+            data_name_[ i ] = '/';
+
+    // Foeach descriptors
     for( int i = 0; i < MAX_CACHE_DESCRIPTORS; i++ )
     {
         CacheDescriptor& desc = CacheTable[ i ];
         if( !FLAG( desc.Flags, CACHE_DATA_VALID ) )
             continue;
-        if( !Str::Compare( data_name, desc.DataName ) )
+        if( !Str::Compare( data_name_, desc.DataName ) )
             continue;
 
         FILE* f = fopen( CacheTableName.c_str(), "rb" );

@@ -330,7 +330,7 @@ bool CritType::InitFromMsg( FOMsg* msg )
         CritTypeType& ct = CrTypesReserved.Get()[ i ];
 
         // Read as int to avoid gcc warning 'format ‘%d’ expects type ‘int*’, but argument has type ‘bool*’'
-        int canDo[ 4 ];
+        int canDo[ 5 ];
         int anims[ 37 ];
         if( sscanf( str, "%s%u%u%u%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%s", name,
                     &ct.Alias, &ct.Multihex, &ct.AnimType, &canDo[ 0 ], &canDo[ 1 ], &canDo[ 2 ], &canDo[ 3 ], &canDo[ 4 ],

@@ -1851,7 +1851,7 @@ void FOMapper::IntDraw()
             SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), Str::FormatBuf( "%u", proto_item->ProtoId ), FT_NOBREAK, COLOR_TEXT_WHITE );
         }
 
-        if( GetTabIndex() < (int) ( *CurItemProtos ).size() )
+        if( GetTabIndex() < (uint) ( *CurItemProtos ).size() )
         {
             ProtoItem* proto_item = &( *CurItemProtos )[ GetTabIndex() ];
             string     info = MsgItem->GetStr( proto_item->ProtoId * 100 );
@@ -3991,9 +3991,11 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
         ProtoMap::TileVec* ptiles;
         ProtoMap::Tile     ptile;
         bool               roof;
+        TileToMove() {}
         TileToMove( Field* f, Field::Tile& t, ProtoMap::TileVec* pts, ProtoMap::Tile& pt, bool r ): field( f ), tile( t ), ptiles( pts ), ptile( pt ), roof( r ) {}
     };
-    vector< TileToMove > tiles_to_move;
+    TileToMove tiles_to_move[ 1000 ];
+    uint       tiles_to_move_count = 0;
 
     for( uint i = 0, j = (uint) SelectedTile.size(); i < j; i++ )
     {
@@ -4055,8 +4057,8 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
                 {
                     tiles[ k ].HexX = hx;
                     tiles[ k ].HexY = hy;
-                    tiles_to_move.push_back( TileToMove( &HexMngr.GetField( hx, hy ), ftiles[ k ],
-                                                         &CurProtoMap->GetTiles( hx, hy, stile.IsRoof ), tiles[ k ], stile.IsRoof ) );
+                    tiles_to_move[ tiles_to_move_count++ ] = TileToMove( &HexMngr.GetField( hx, hy ), ftiles[ k ],
+                                                                         &CurProtoMap->GetTiles( hx, hy, stile.IsRoof ), tiles[ k ], stile.IsRoof );
                     tiles.erase( tiles.begin() + k );
                     ftiles.erase( ftiles.begin() + k );
                 }
@@ -4068,7 +4070,7 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
         }
     }
 
-    for( uint i = 0, j = (uint) tiles_to_move.size(); i < j; i++ )
+    for( uint i = 0; i < tiles_to_move_count; i++ )
     {
         TileToMove& ttm = tiles_to_move[ i ];
         if( !ttm.roof )

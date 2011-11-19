@@ -3594,7 +3594,6 @@ bool FOServer::Init()
 
     LogicThreadSetAffinity = cfg.GetInt( "LogicThreadSetAffinity", 0 ) != 0;
     LogicThreadCount = cfg.GetInt( "LogicThreadCount", 0 );
-    WriteLog( "LogicThreadCount %u\n", LogicThreadCount );
     if( !LogicThreadCount )
         LogicThreadCount = CpuCount;
     if( LogicThreadCount == 1 )
@@ -3757,7 +3756,7 @@ bool FOServer::Init()
     event_set_log_callback( ELCB::Callback );
     event_set_fatal_callback( EFCB::Callback );
 
-    evthread_enable_lock_debuging();
+    // evthread_enable_lock_debuging();
 
     # ifdef FO_WINDOWS
     evthread_use_windows_threads();

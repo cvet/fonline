@@ -4,17 +4,19 @@
 #include "Text.h"
 #include "Timer.h"
 
-#include "Assimp/aiScene.h"
-#include "Assimp/aiAnim.h"
+#include "Assimp/assimp.h"
 #include "Assimp/aiPostProcess.h"
-#include "Assimp/assimp.hpp"
-#include "Assimp/Logger.h"
-#include "Assimp/LogStream.h"
-#include "Assimp/DefaultLogger.h"
 
-#ifdef FO_WINDOWS
-# pragma comment ( lib, "assimp.lib" )
-#endif
+// Assimp functions
+const aiScene* ( *Ptr_aiImportFileFromMemory )( const char* pBuffer, unsigned int pLength, unsigned int pFlags, const char* pHint );
+void           ( * Ptr_aiReleaseImport )( const aiScene* pScene );
+const char*    ( *Ptr_aiGetErrorString )( );
+void           ( * Ptr_aiEnableVerboseLogging )( aiBool d );
+aiLogStream    ( * Ptr_aiGetPredefinedLogStream )( aiDefaultLogStream pStreams, const char* file );
+void           ( * Ptr_aiAttachLogStream )( const aiLogStream* stream );
+unsigned int   ( * Ptr_aiGetMaterialTextureCount )( const aiMaterial* pMat, aiTextureType type );
+aiReturn       ( * Ptr_aiGetMaterialTexture )( const aiMaterial* mat, aiTextureType type, unsigned int  index, aiString* path, aiTextureMapping* mapping, unsigned int* uvindex, float* blend, aiTextureOp* op, aiTextureMapMode* mapmode, unsigned int* flags );
+aiReturn       ( * Ptr_aiGetMaterialFloatArray )( const aiMaterial* pMat, const char* pKey, unsigned int type, unsigned int index, float* pOut, unsigned int* pMax );
 
 /************************************************************************/
 /* Models                                                               */
@@ -27,6 +29,71 @@ PtrVec   GraphicLoader::loadedAnimations;
 
 Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
 {
+    // Load Assimp dynamic library
+    static bool binded = false;
+    static bool binded_try = false;
+    if( !binded )
+    {
+        // Already try
+        if( binded_try )
+            return NULL;
+        binded_try = true;
+
+        // Library extension
+        #ifdef FO_WINDOWS
+        # define ASSIMP_PATH        ""
+        # define ASSIMP_LIB_NAME    "Assimp32.dll"
+        #else // FO_LINUX
+        # define ASSIMP_PATH        "./"
+        # define ASSIMP_LIB_NAME    "Assimp32.so"
+        #endif
+
+        // Check dll availability
+        void* dll = DLL_Load( ASSIMP_PATH ASSIMP_LIB_NAME );
+        if( !dll )
+        {
+            if( GameOpt.ClientPath != "" )
+                dll = DLL_Load( ( GameOpt.ClientPath + ASSIMP_LIB_NAME ).c_str() );
+            if( !dll )
+            {
+                WriteLogF( _FUNC_, " - '" ASSIMP_LIB_NAME "' not found.\n" );
+                return NULL;
+            }
+        }
+
+        // Bind functions
+        uint errors = 0;
+        #define BIND_ASSIMP_FUNC( f )                                            \
+            Ptr_ ## f = ( decltype( Ptr_ ## f ) )DLL_GetAddress( dll, # f );     \
+            if( !Ptr_ ## f )                                                     \
+            {                                                                    \
+                WriteLogF( _FUNC_, " - Assimp function<" # f "> not found.\n" ); \
+                errors++;                                                        \
+            }
+        BIND_ASSIMP_FUNC( aiImportFileFromMemory );
+        BIND_ASSIMP_FUNC( aiReleaseImport );
+        BIND_ASSIMP_FUNC( aiGetErrorString );
+        BIND_ASSIMP_FUNC( aiEnableVerboseLogging );
+        BIND_ASSIMP_FUNC( aiGetPredefinedLogStream );
+        BIND_ASSIMP_FUNC( aiAttachLogStream );
+        BIND_ASSIMP_FUNC( aiGetMaterialTextureCount );
+        BIND_ASSIMP_FUNC( aiGetMaterialTexture );
+        BIND_ASSIMP_FUNC( aiGetMaterialFloatArray );
+        #undef BIND_ASSIMP_FUNC
+        if( errors )
+            return NULL;
+        binded = true;
+
+        // Logging
+        if( false )
+        {
+            Ptr_aiEnableVerboseLogging( true );
+            static aiLogStream c = Ptr_aiGetPredefinedLogStream( aiDefaultLogStream_FILE, "Assimp.log" );
+            Ptr_aiAttachLogStream( &c );
+        }
+    }
+
+    // Find already loaded
     for( auto it = loadedModels.begin(), end = loadedModels.end(); it != end; ++it )
     {
         Frame* frame = *it;
@@ -34,11 +101,13 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
             return frame;
     }
 
+    // Add to already processed
     for( uint i = 0, j = (uint) processedFiles.size(); i < j; i++ )
         if( Str::CompareCase( processedFiles[ i ], fname ) )
             return NULL;
     processedFiles.push_back( Str::Duplicate( fname ) );
 
+    // Load file
     FileManager fm;
     if( !fm.LoadFile( fname, PT_DATA ) )
     {
@@ -46,53 +115,19 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
         return NULL;
     }
 
-    // Assimp loader
-    static Assimp::Importer* importer = NULL;
-    if( !importer )
-    {
-        // Library extension
-        #ifdef FO_WINDOWS
-        # define ASSIMP_EXT    ".dll"
-        #else // FO_LINUX
-        # define ASSIMP_EXT    ".so"
-        #endif
-
-        // Check dll availability
-        void* dll = DLL_Load( "Assimp32" ASSIMP_EXT );
-        if( !dll )
-        {
-            if( GameOpt.ClientPath != "" )
-                dll = DLL_Load( ( GameOpt.ClientPath + "Assimp32" + ASSIMP_EXT ).c_str() );
-
-            if( !dll )
-            {
-                WriteLogF( _FUNC_, " - Assimp32" ASSIMP_EXT " not found.\n" );
-                return NULL;
-            }
-        }
-
-        // Create importer instance
-        importer = new ( nothrow ) Assimp::Importer();
-        if( !importer )
-            return NULL;
-
-        // Logging
-        if( false )
-            Assimp::DefaultLogger::create( ASSIMP_DEFAULT_LOG_NAME, Assimp::Logger::VERBOSE );
-    }
-
-    aiScene* scene = (aiScene*) importer->ReadFileFromMemory( fm.GetBuf(), fm.GetFsize(),
-                                                              aiProcess_CalcTangentSpace | aiProcess_GenNormals | aiProcess_GenUVCoords |
-                                                              aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
-                                                              aiProcess_SortByPType | aiProcess_SplitLargeMeshes | aiProcess_LimitBoneWeights |
-                                                              aiProcess_ImproveCacheLocality
-                                                              #ifdef FO_D3D
-                                                              | aiProcess_ConvertToLeftHanded
-                                                              #endif
-                                                              );
+    // Load scene
+    aiScene* scene = (aiScene*) Ptr_aiImportFileFromMemory( (const char*) fm.GetBuf(), fm.GetFsize(),
+                                                            aiProcess_CalcTangentSpace | aiProcess_GenNormals | aiProcess_GenUVCoords |
+                                                            aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
+                                                            aiProcess_SortByPType | aiProcess_SplitLargeMeshes | aiProcess_LimitBoneWeights |
+                                                            aiProcess_ImproveCacheLocality
+                                                            #ifdef FO_D3D
+                                                            | aiProcess_ConvertToLeftHanded
+                                                            #endif
+                                                            , "" );
     if( !scene )
     {
-        WriteLogF( _FUNC_, " - Can't load 3d file, name<%s>, error<%s>.\n", fname, importer->GetErrorString() );
+        WriteLogF( _FUNC_, " - Can't load 3d file, name<%s>, error<%s>.\n", fname, Ptr_aiGetErrorString() );
         return NULL;
     }
 
@@ -102,7 +137,7 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
     if( !frame_root )
     {
         WriteLogF( _FUNC_, " - Conversion fail, name<%s>.\n", fname );
-        importer->FreeScene();
+        Ptr_aiReleaseImport( scene );
         return NULL;
     }
     #else
@@ -158,7 +193,7 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
         loadedAnimationsFNames.push_back( Str::Duplicate( fname ) );
     }
 
-    importer->FreeScene();
+    Ptr_aiReleaseImport( scene );
     return frame_root;
 }
 
@@ -214,16 +249,16 @@ Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScen
             memzero( &material, sizeof( material ) );
             aiMaterial*  mtrl = scene->mMaterials[ mesh->mMaterialIndex ];
             aiString     path;
-            if( mtrl->GetTextureCount( aiTextureType_DIFFUSE ) )
+            if( Ptr_aiGetMaterialTextureCount( mtrl, aiTextureType_DIFFUSE ) )
             {
-                mtrl->GetTexture( aiTextureType_DIFFUSE, 0, &path );
+                Ptr_aiGetMaterialTexture( mtrl, aiTextureType_DIFFUSE, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL );
                 material.pTextureFilename = Str::Duplicate( path.data );
             }
 
-            mtrl->Get< float >( AI_MATKEY_COLOR_DIFFUSE, (float*) &material.MatD3D.Diffuse, NULL );
-            mtrl->Get< float >( AI_MATKEY_COLOR_AMBIENT, (float*) &material.MatD3D.Ambient, NULL );
-            mtrl->Get< float >( AI_MATKEY_COLOR_SPECULAR, (float*) &material.MatD3D.Specular, NULL );
-            mtrl->Get< float >( AI_MATKEY_COLOR_EMISSIVE, (float*) &material.MatD3D.Emissive, NULL );
+            Ptr_aiGetMaterialFloatArray( mtrl, AI_MATKEY_COLOR_DIFFUSE, (float*) &material.MatD3D.Diffuse, NULL );
+            Ptr_aiGetMaterialFloatArray( mtrl, AI_MATKEY_COLOR_AMBIENT, (float*) &material.MatD3D.Ambient, NULL );
+            Ptr_aiGetMaterialFloatArray( mtrl, AI_MATKEY_COLOR_SPECULAR, (float*) &material.MatD3D.Specular, NULL );
+            Ptr_aiGetMaterialFloatArray( mtrl, AI_MATKEY_COLOR_EMISSIVE, (float*) &material.MatD3D.Emissive, NULL );
             material.MatD3D.Diffuse.a = 1.0f;
             material.MatD3D.Ambient.a = 1.0f;
             material.MatD3D.Specular.a = 1.0f;
@@ -566,15 +601,15 @@ Frame* GraphicLoader::FillNode( aiScene* scene, aiNode* node )
         // Material
         aiMaterial* material = scene->mMaterials[ aimesh->mMaterialIndex ];
         aiString    path;
-        if( material->GetTextureCount( aiTextureType_DIFFUSE ) )
+        if( Ptr_aiGetMaterialTextureCount( material, aiTextureType_DIFFUSE ) )
         {
-            material->GetTexture( aiTextureType_DIFFUSE, 0, &path );
+            Ptr_aiGetMaterialTexture( material, aiTextureType_DIFFUSE, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL );
             ms.DiffuseTexture = path.data;
         }
-        material->Get< float >( AI_MATKEY_COLOR_DIFFUSE, ms.DiffuseColor, NULL );
-        material->Get< float >( AI_MATKEY_COLOR_AMBIENT, ms.AmbientColor, NULL );
-        material->Get< float >( AI_MATKEY_COLOR_SPECULAR, ms.SpecularColor, NULL );
-        material->Get< float >( AI_MATKEY_COLOR_EMISSIVE, ms.EmissiveColor, NULL );
+        Ptr_aiGetMaterialFloatArray( material, AI_MATKEY_COLOR_DIFFUSE, ms.DiffuseColor, NULL );
+        Ptr_aiGetMaterialFloatArray( material, AI_MATKEY_COLOR_AMBIENT, ms.AmbientColor, NULL );
+        Ptr_aiGetMaterialFloatArray( material, AI_MATKEY_COLOR_SPECULAR, ms.SpecularColor, NULL );
+        Ptr_aiGetMaterialFloatArray( material, AI_MATKEY_COLOR_EMISSIVE, ms.EmissiveColor, NULL );
         ms.DiffuseColor[ 3 ] = 1.0f;
         ms.AmbientColor[ 3 ] = 1.0f;
         ms.SpecularColor[ 3 ] = 1.0f;

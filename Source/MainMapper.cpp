@@ -34,15 +34,13 @@ int main( int argc, char** argv )
 
     WriteLog( "Starting Mapper (%s)...\n", MAPPER_VERSION_STR );
 
-    // Hide cursor
-    #ifdef FO_WINDOWS
-    ShowCursor( FALSE );
-    #else
-    // Todo: Linux
+    // Init window threading
+    #ifdef FO_LINUX
+    XInitThreads();
     #endif
+    Fl::lock();
 
     // Create window
-    Fl::lock();
     MainWindow = new FOWindow();
     MainWindow->label( GetWindowName() );
     MainWindow->position( ( Fl::w() - MODE_WIDTH ) / 2, ( Fl::h() - MODE_HEIGHT ) / 2 );
@@ -52,15 +50,29 @@ int main( int argc, char** argv )
     #ifdef FO_WINDOWS
     MainWindow->icon( (char*) LoadIcon( fl_display, MAKEINTRESOURCE( 101 ) ) );
     #else // FO_LINUX
-    fl_open_display();
     // Todo: Linux
     #endif
 
+    // OpenGL parameters
+    #ifndef FO_D3D
+    Fl::gl_visual( FL_RGB | FL_RGB8 | FL_DOUBLE  );
+    #endif
+
     // Show window
-    char  dummy_argv0[ 2 ] = "";
-    char* dummy_argv[] = { dummy_argv0 };
-    int   dummy_argc = 1;
-    MainWindow->show( dummy_argc, dummy_argv );
+    MainWindow->show();
+
+    // Hide cursor
+    #ifdef FO_WINDOWS
+    ShowCursor( FALSE );
+    #else
+    char   data[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+    XColor black;
+    black.red = black.green = black.blue = 0;
+    Pixmap nodata = XCreateBitmapFromData( fl_display, fl_xid( MainWindow ), data, 8, 8 );
+    Cursor cur = XCreatePixmapCursor( fl_display, nodata, nodata, &black, &black, 0, 0 );
+    XDefineCursor( fl_display, fl_xid( MainWindow ), cur );
+    XFreeCursor( fl_display, cur );
+    #endif
 
     // Fullscreen
     #ifndef FO_D3D

@@ -1,1 +1,0 @@
-*.{lib,a,exe,dll,so,zip,tar,tgz} filter=lfs diff=lfs merge=lfs -text

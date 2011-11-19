@@ -158,7 +158,10 @@ bool FileRead( void* file, void* buf, uint len, uint* rb /* = NULL */ )
 
 bool FileWrite( void* file, const void* buf, uint len )
 {
-    return fwrite( buf, sizeof( char ), len, (FILE*) file ) == len;
+    bool result = ( fwrite( buf, sizeof( char ), len, (FILE*) file ) == len );
+    if( result )
+        fflush( (FILE*) file );
+    return result;
 }
 
 bool FileSetPointer( void* file, int offset, int origin )
@@ -254,7 +257,7 @@ bool FileFindNext( void* descriptor, FIND_DATA& fd )
         return FileFindNext( descriptor, fd );
 
     // Find by extensions
-    if( ff->ext )
+    if( ff->ext[ 0 ] )
     {
         // Skip dirs
         if( dir )

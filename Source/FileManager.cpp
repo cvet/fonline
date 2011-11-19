@@ -68,9 +68,9 @@ char        FileManager::dataPath[ MAX_FOPATH ] = { DIR_SLASH_SD };
 void FileManager::SetDataPath( const char* path )
 {
     Str::Copy( dataPath, path );
-    FormatPath( dataPath );
-    if( dataPath[ Str::Length( path ) - 1 ] != DIR_SLASH_C )
+    if( dataPath[ Str::Length( dataPath ) - 1 ] != DIR_SLASH_C )
         Str::Append( dataPath, DIR_SLASH_S );
+    FormatPath( dataPath );
     MakeDirectory( GetFullPath( "", PT_DATA ) );
 }
 
@@ -241,11 +241,15 @@ bool FileManager::LoadFile( const char* fname, int path_type )
         Str::Copy( dat_path, PathList[ path_type ] );
         Str::Append( dat_path, fname );
         FormatPath( dat_path );
+        #if defined ( FO_LINUX )
+        if( dat_path[ 0 ] == '.' && dat_path[ 1 ] == DIR_SLASH_C )
+            Str::CopyBack( dat_path ), Str::CopyBack( dat_path );
+        #endif
 
         // Make folder path
         Str::Copy( folder_path, GetDataPath( path_type ) );
-        Str::Append( folder_path, dat_path );
         FormatPath( folder_path );
+        Str::Append( folder_path, dat_path );
 
         // Check for full path
         #if defined ( FO_WINDOWS )
@@ -1030,6 +1034,11 @@ void FileManager::GetFolderFileNames( const char* path, bool include_subdirs, co
     char path_[ MAX_FOPATH ];
     Str::Copy( path_, path );
     FormatPath( path_ );
+    #ifdef FO_LINUX
+    // Erase './'
+    Str::CopyBack( path_ );
+    Str::CopyBack( path_ );
+    #endif
 
     // Find in folder files
     RecursiveDirLook( path_, include_subdirs, ext, result );

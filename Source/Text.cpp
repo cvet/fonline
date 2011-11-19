@@ -419,22 +419,26 @@ char* Str::GetBigBuf()
 }
 
 static UIntStrMap NamesHash;
-uint Str::GetHash( const char* str )
+uint Str::FormatForHash( char* name )
 {
-    if( !str )
+    EraseFrontBackSpecificChars( name );
+    Lower( name );
+    uint len = 0;
+    for( char* s = name; *s; s++, len++ )
+        if( *s == '\\' )
+            *s = '/';
+    return len;
+}
+
+uint Str::GetHash( const char* name )
+{
+    if( !name )
         return 0;
 
-    char str_[ MAX_FOPATH ];
-    Str::Copy( str_, str );
-    Lower( str_ );
-    uint len = 0;
-    for( char* s = str_; *s; s++, len++ )
-        if( *s == '/' )
-            *s = '\\';
-
-    EraseFrontBackSpecificChars( str_ );
-
-    return Crypt.Crc32( (uchar*) str_, len );
+    char name_[ MAX_FOPATH ];
+    Str::Copy( name_, name );
+    uint len = FormatForHash( name_ );
+    return Crypt.Crc32( (uchar*) name_, len );
 }
 
 const char* Str::GetName( uint hash )
@@ -448,13 +452,24 @@ const char* Str::GetName( uint hash )
 
 void Str::AddNameHash( const char* name )
 {
-    uint hash = GetHash( name );
+    char name_[ MAX_FOPATH ];
+    Str::Copy( name_, name );
+    uint len = FormatForHash( name_ );
+    uint hash = Crypt.Crc32( (uchar*) name_, len );
 
     auto it = NamesHash.find( hash );
     if( it == NamesHash.end() )
+    {
         NamesHash.insert( PAIR( hash, name ) );
-    else if( !Str::CompareCase( name, ( *it ).second.c_str() ) )
-        WriteLogF( _FUNC_, " - Found equal hash for different names, name1<%s>, name2<%s>, hash<%u>.\n", name, ( *it ).second.c_str(), hash );
+    }
+    else
+    {
+        char name__[ MAX_FOPATH ];
+        Str::Copy( name__, ( *it ).second.c_str() );
+        FormatForHash( name__ );
+        if( !Str::Compare( name_, name__ ) )
+            WriteLogF( _FUNC_, " - Found equal hash for different names, name1<%s>, name2<%s>, hash<%u>.\n", name, ( *it ).second.c_str(), hash );
+    }
 }
 
 const char* Str::ParseLineDummy( const char* str )

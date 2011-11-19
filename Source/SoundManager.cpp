@@ -10,7 +10,9 @@ SoundManager SndMngr;
 
 // PortAudio
 #include "PortAudio/portaudio.h"
-#pragma comment( lib, "portaudio.lib" )
+#ifdef FO_WINDOWS
+# pragma comment( lib, "portaudio.lib" )
+#endif
 
 // ACM
 #include "Acm/acmstrm.h"

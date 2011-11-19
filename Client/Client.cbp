@@ -7,55 +7,47 @@
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="Release Linux">
-				<Option output="../../sf_sdk/Client/FOnline" prefix_auto="1" extension_auto="1" />
+				<Option output="../../sdk/Client/FOnline" prefix_auto="1" extension_auto="1" />
 				<Option object_output="Release_Linux" />
 				<Option type="0" />
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
-					<Add option="-std=gnu++0x" />
-					<Add option="-W" />
-					<Add option="-Wno-invalid-offsetof" />
-					<Add option="-Wno-unused-result" />
-					<Add option="-DFONLINE_CLIENT" />
 					<Add option="-DNDEBUG" />
-					<Add option="-DAS_NO_THREADS" />
-					<Add option="-D_STLP_USE_STATIC_LIB" />
-					<Add directory="../Source/StlPort" />
-					<Add directory="../Source" />
 				</Compiler>
-				<Linker>
-					<Add directory="../Lib" />
-				</Linker>
-			</Target>
-			<Target title="Release Windows">
-				<Option output="../../sf_sdk/Client/FOnlineGCC" prefix_auto="1" extension_auto="1" />
-				<Option object_output="Release_Windows_GCC" />
-				<Option type="0" />
-				<Option compiler="gcc" />
-				<Compiler>
-					<Add option="-DNDEBUG" />
-					<Add option="-D_WINDOWS" />
-					<Add option="-DWIN32" />
-					<Add option="-DFONLINE_CLIENT" />
-					<Add option="-D_CRT_SECURE_NO_WARNINGS" />
-					<Add option="-D_CRT_SECURE_NO_DEPRECATE" />
-					<Add option="-D_HAS_ITERATOR_DEBUGGING=0" />
-					<Add option="-D_SECURE_SCL=0" />
-					<Add option="-D_HAS_EXCEPTIONS=0" />
-					<Add option="-DAS_NO_THREADS" />
-					<Add option="-W" />
-					<Add option="-O2" />
-					<Add directory="../Source/StlPort" />
-					<Add directory="../Source" />
-					<Add directory="../Source/Dx9" />
-				</Compiler>
-				<Linker>
-					<Add directory="../Lib" />
-					<Add directory="../Lib/Dx9/x86" />
-				</Linker>
 			</Target>
 		</Build>
+		<Compiler>
+			<Add option="-std=gnu++0x" />
+			<Add option="-W" />
+			<Add option="-Wno-invalid-offsetof" />
+			<Add option="-Wno-unused-result" />
+			<Add option="-DFONLINE_CLIENT" />
+			<Add option="-DAS_NO_THREADS" />
+			<Add directory="../Source/StlPort" />
+			<Add directory="../Source" />
+		</Compiler>
+		<Linker>
+			<Add option="-rdynamic" />
+			<Add option="-lpthread" />
+			<Add option="-ldl" />
+			<Add option="-lrt" />
+			<Add option="-lstlport" />
+			<Add option="-lX11" />
+			<Add option="-lXft" />
+			<Add option="-lfltk" />
+			<Add option="-lfltk_gl" />
+			<Add option="-lGL" />
+			<Add option="-lGLU" />
+			<Add option="-lGLEW" />
+			<Add option="-lIL" />
+			<Add option="-lportaudio" />
+			<Add option="-logg" />
+			<Add option="-lvorbis" />
+			<Add option="-lvorbisfile" />
+			<Add option="-ltheoradec" />
+			<Add directory="../Lib/Linux" />
+		</Linker>
 		<Unit filename="Client.ico" />
 		<Unit filename="../Source/3dAnimation.h" />
 		<Unit filename="../Source/3dStuff.cpp" />
@@ -289,19 +281,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../Source/Zlib/deflate.h" />
-		<Unit filename="../Source/Zlib/gzclose.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../Source/Zlib/gzguts.h" />
-		<Unit filename="../Source/Zlib/gzlib.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../Source/Zlib/gzread.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../Source/Zlib/gzwrite.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="../Source/Zlib/infback.c">
 			<Option compilerVar="CC" />
 		</Unit>

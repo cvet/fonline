@@ -45,12 +45,6 @@ SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), S
     vbPoints = NULL;
     vbPointsSize = 0;
     #else
-    # ifdef FO_WINDOWS
-    dcScreen = NULL;
-    # else
-    xDisplay = NULL;
-    xWindow = 0;
-    # endif
     vaMain = 0;
     vbMain = 0;
     ibMain = 0;
@@ -134,47 +128,13 @@ bool SpriteManager::Init( SpriteMngrParams& params )
 
     D3D_HR( direct3D->CreateDevice( D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, fl_xid( MainWindow ), vproc, &presentParams, &d3dDevice ) );
     #else
-    # ifdef FO_WINDOWS
-    PIXELFORMATDESCRIPTOR pfd;
-    memzero( &pfd, sizeof( PIXELFORMATDESCRIPTOR ) );
-    pfd.nSize = sizeof( PIXELFORMATDESCRIPTOR );
-    pfd.nVersion = 1;
-    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-    pfd.iPixelType = PFD_TYPE_RGBA;
-    pfd.cColorBits = 32;
-    pfd.cDepthBits = 16;
-    dcScreen = GetDC( fl_xid( MainWindow ) );
-    GLuint pixel_format = ChoosePixelFormat( dcScreen, &pfd );
-    SetPixelFormat( dcScreen, pixel_format, &pfd );
-    HGLRC  rc = wglCreateContext( dcScreen );
-    wglMakeCurrent( dcScreen, rc );
-    # else // FO_LINUX
-    xDisplay = XOpenDisplay( NULL );
-    if( !xDisplay )
-    {
-        WriteLog( "Can't connect to X server.\n" );
-        return false;
-    }
-    xWindow = fl_xid( MainWindow );
-    // xWindow = DefaultRootWindow( xDisplay );
-    GLint        att[] = { GLX_RGBA, GLX_DEPTH_SIZE, 16, GLX_DOUBLEBUFFER, None };
-    XVisualInfo* vi = glXChooseVisual( xDisplay, 0, att );
-    if( !vi )
-    {
-        WriteLog( "No appropriate visual found\n" );
-        return 0;
-    }
-    /*Colormap cmap = XCreateColormap( xDisplay, root, vi->visual, AllocNone );
-       XSetWindowAttributes swa;
-       swa.colormap = cmap;
-       swa.event_mask = ExposureMask | KeyPressMask;
-       Window win = XCreateWindow( xDisplay, root, 0, 0, modeWidth, modeHeight, 0,
-                               vi->depth, InputOutput, vi->visual, CWColormap | CWEventMask, &swa );
-       XMapWindow( xDisplay, win );
-       XStoreName( xDisplay, win, "FOnlineX11" );*/
-    GLXContext glc = glXCreateContext( xDisplay, vi, NULL, GL_TRUE );
-    glXMakeCurrent( xDisplay, xWindow, glc );
-    # endif
+    // Create context
+    Fl::lock();
+    gl_start();
+    Fl::unlock();
+    GL( glDisable( GL_SCISSOR_TEST ) );
+    GL( glDrawBuffer( GL_BACK ) );
+
     // OpenGL extensions
     glewInit();
     # define CHECK_EXTENSION( ext )                                      \
@@ -325,9 +285,9 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     #else
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
     # ifdef FO_WINDOWS
-    SwapBuffers( dcScreen );
+    SwapBuffers( fl_gc );
     # else
-    glXSwapBuffers( xDisplay, xWindow );
+    glXSwapBuffers( fl_display, fl_window );
     # endif
     #endif
 
@@ -582,6 +542,11 @@ void SpriteManager::Finish()
     SAFEREL( contoursCT );
     SAFEREL( contoursPS );
     SAFEREL( direct3D );
+    #else
+    // Finish context
+    // Fl::lock();
+    // gl_finish();
+    // Fl::unlock();
     #endif
 
     isInit = false;
@@ -621,9 +586,9 @@ void SpriteManager::EndScene()
     GL( glViewport( 0, 0, modeWidth, modeHeight ) );
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rtMain.FBO ) );
     # ifdef FO_WINDOWS
-    SwapBuffers( dcScreen );
+    SwapBuffers( fl_gc );
     # else
-    glXSwapBuffers( xDisplay, xWindow );
+    glXSwapBuffers( fl_display, fl_window );
     # endif
     #endif
     sceneBeginned = false;
@@ -3579,8 +3544,6 @@ bool SpriteManager::Flush()
         if( effect->SpriteBorder != -1 )
             GL( glUniform4f( effect->SpriteBorder, dip.SpriteBorder.L, dip.SpriteBorder.T, dip.SpriteBorder.R, dip.SpriteBorder.B ) );
 
-        GLuint  min_index = rpos * 4;
-        GLuint  max_index = min_index + dip.SpritesCount * 4 - 1;
         GLsizei count = 6 * dip.SpritesCount;
         if( effect->IsNeedProcess )
             GraphicLoader::EffectProcessVariables( effect, -1 );
@@ -3588,7 +3551,7 @@ bool SpriteManager::Flush()
         {
             if( effect->IsNeedProcess )
                 GraphicLoader::EffectProcessVariables( effect, pass );
-            GL( glDrawRangeElements( GL_TRIANGLES, min_index, max_index, count, GL_UNSIGNED_SHORT, (void*) ( rpos * 2 ) ) );
+            GL( glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (void*) ( rpos * 2 ) ) );
         }
         #endif
 

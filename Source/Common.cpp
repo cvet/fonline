@@ -844,11 +844,13 @@ void GetClientOptions()
 
     cfg_mapper.GetStr( "ClientPath", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ClientPath" );
+    FileManager::FormatPath( buf );
     GameOpt.ClientPath = buf;
     if( GameOpt.ClientPath.length() && GameOpt.ClientPath[ GameOpt.ClientPath.length() - 1 ] != DIR_SLASH_C )
         GameOpt.ClientPath += DIR_SLASH_S;
     cfg_mapper.GetStr( "ServerPath", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ServerPath" );
+    FileManager::FormatPath( buf );
     GameOpt.ServerPath = buf;
     if( GameOpt.ServerPath.length() && GameOpt.ServerPath[ GameOpt.ServerPath.length() - 1 ] != DIR_SLASH_C )
         GameOpt.ServerPath += DIR_SLASH_S;
@@ -959,6 +961,7 @@ void GetClientOptions()
     // Str
     cfg.GetStr( CLIENT_CONFIG_APP, "FonlineDataPath", DIR_SLASH_SD "data", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-FonlineDataPath" );
+    FileManager::FormatPath( buf );
     GameOpt.FoDataPath = buf;
     cfg.GetStr( CLIENT_CONFIG_APP, "RemoteHost", "localhost", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-RemoteHost" );

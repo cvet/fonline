@@ -272,6 +272,8 @@ bool FOClient::Init()
         {
             GameOpt.Name = "login";
             Password = "password";
+            Crypt.SetCache( "__name", (uchar*) GameOpt.Name.c_str(), (uint) GameOpt.Name.length() + 1 );
+            Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
             refresh_cache = true;
         }
     }
@@ -2682,7 +2684,7 @@ bool FOClient::NetConnect()
     {
         if( connect( Sock, (sockaddr*) &ProxyAddr, sizeof( sockaddr_in ) ) )
         {
-            WriteLog( "Can't connect to Proxy server, error<%s>.\n", GetLastSocketError() );
+            WriteLog( "Can't connect to proxy server, error<%s>.\n", GetLastSocketError() );
             return false;
         }
 
@@ -2819,7 +2821,7 @@ bool FOClient::NetConnect()
                     WriteLog( "Proxy connection error, address type not supported.\n" );
                     break;
                 default:
-                    WriteLog( "Proxy connection error, Unknown error<%u>.\n", b2 );
+                    WriteLog( "Proxy connection error, unknown error<%u>.\n", b2 );
                     break;
                 }
                 return false;
@@ -2933,7 +2935,7 @@ bool FOClient::NetOutput()
     FD_ZERO( &SockSetErr );
     FD_SET( Sock, &SockSet );
     FD_SET( Sock, &SockSetErr );
-    if( select( 0, NULL, &SockSet, &SockSetErr, &tv ) == SOCKET_ERROR )
+    if( select( Sock + 1, NULL, &SockSet, &SockSetErr, &tv ) == SOCKET_ERROR )
         WriteLogF( _FUNC_, " - Select error<%s>.\n", GetLastSocketError() );
     if( FD_ISSET( Sock, &SockSetErr ) )
         WriteLogF( _FUNC_, " - Socket error.\n" );
@@ -2955,7 +2957,7 @@ bool FOClient::NetOutput()
         if( len <= 0 )
         #endif
         {
-            WriteLogF( _FUNC_, " - SOCKET_ERROR while send to server, error<%s>.\n", GetLastSocketError() );
+            WriteLogF( _FUNC_, " - Socket error while send to server, error<%s>.\n", GetLastSocketError() );
             IsConnected = false;
             return false;
         }
@@ -2976,7 +2978,7 @@ int FOClient::NetInput( bool unpack )
     FD_ZERO( &SockSetErr );
     FD_SET( Sock, &SockSet );
     FD_SET( Sock, &SockSetErr );
-    if( select( 0, &SockSet, NULL, &SockSetErr, &tv ) == SOCKET_ERROR )
+    if( select( Sock + 1, &SockSet, NULL, &SockSetErr, &tv ) == SOCKET_ERROR )
         WriteLogF( _FUNC_, " - Select error<%s>.\n", GetLastSocketError() );
     if( FD_ISSET( Sock, &SockSetErr ) )
         WriteLogF( _FUNC_, " - Socket error.\n" );
@@ -3020,7 +3022,7 @@ int FOClient::NetInput( bool unpack )
         buf.len = ComLen - pos;
         if( WSARecv( Sock, &buf, 1, &len, &flags, NULL, NULL ) == SOCKET_ERROR )
         #else // FO_LINUX
-        int len = recv( Sock, ComBuf, ComLen, 0 );
+        int len = recv( Sock, ComBuf + pos, ComLen - pos, 0 );
         if( len < 0 )
         #endif
         {

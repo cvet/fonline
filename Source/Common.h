@@ -27,11 +27,7 @@ const char* GetLastSocketError();
 # include <winsock2.h>
 # define socklen_t            int
 # if defined ( FO_MSVC )
-#  pragma comment(lib,"Ws2_32.lib")
-# elif defined ( FO_GCC )
-// Linker option:
-//  Windows
-//  -lws2_32
+#  pragma comment( lib, "Ws2_32.lib" )
 # endif
 #else // FO_LINUX
 # include <sys/types.h>
@@ -50,23 +46,13 @@ const char* GetLastSocketError();
 
 // FLTK
 #if defined ( FO_MSVC )
-# pragma comment(lib,"fltk.lib")
-# pragma comment(lib,"fltkforms.lib")
-# pragma comment(lib,"fltkgl.lib")
-# pragma comment(lib,"fltkimages.lib")
-# pragma comment(lib,"fltkjpeg.lib")
-# pragma comment(lib,"fltkpng.lib")
-# pragma comment(lib,"fltkzlib.lib")
-#else // FO_GCC
-      // Linker options:.
-      //  Windows / Linux
-      //  -lfltk
-      //  -lfltk_forms
-      //  -lfltk_gl
-      //  -lfltk_images
-      //  -lfltk_jpeg
-      //  -lfltk_png
-      //  -lfltk_z
+# pragma comment( lib, "fltk.lib" )
+# pragma comment( lib, "fltkforms.lib" )
+# pragma comment( lib, "fltkgl.lib" )
+# pragma comment( lib, "fltkimages.lib" )
+# pragma comment( lib, "fltkjpeg.lib" )
+# pragma comment( lib, "fltkpng.lib" )
+# pragma comment( lib, "fltkzlib.lib" )
 #endif
 
 // DLL
@@ -77,7 +63,7 @@ const char* GetLastSocketError();
 # define DLL_Error()                      Str::ItoA( GetLastError() )
 #else // FO_LINUX
 # include <dlfcn.h>
-# define DLL_Load( name )                 (void*) dlopen( name, RTLD_LAZY )
+# define DLL_Load( name )                 (void*) dlopen( name, RTLD_NOW | RTLD_LOCAL )
 # define DLL_Free( h )                    dlclose( h )
 # define DLL_GetAddress( h, pname )       (size_t*) dlsym( h, pname )
 # define DLL_Error()                      dlerror()
@@ -238,6 +224,7 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 # else
 #  include "GL/glxew.h"
 # endif
+# include "Fl/gl.h"
 # define GL( expr )                       { expr; GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X - %s>.\n", err__, gluErrorString( err__ ) ); ExitProcess( 0 ); } }
 # include "Assimp/aiTypes.h"
 
@@ -430,16 +417,7 @@ struct ServerScriptFunctions
 // Net events
 # if defined ( USE_LIBEVENT )
 #  if defined ( FO_MSVC )
-#   pragma comment(lib,"libevent.lib")
-#   pragma comment(lib,"libevent_core.lib")
-#   pragma comment(lib,"libevent_extras.lib")
-#  else       // FO_GCC
-              // Linker options:
-              //  Windows / Linux
-              //  -levent
-              //  -levent_core
-              //  -levent_extras
-              //  -levent_pthreads
+#   pragma comment( lib, "libevent_core.lib" )
 #  endif
 # endif
 
@@ -862,11 +840,7 @@ extern InterprocessData SingleplayerData;
 #endif
 
 #if defined ( FO_MSVC )
-# pragma comment( lib,"pthreadVC2.lib" )
-#elif defined ( FO_GCC )
-// Linker option:
-//  Windows
-//  -lpthreadGC2
+# pragma comment( lib, "pthreadVC2.lib" )
 #endif
 
 class Thread

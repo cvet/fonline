@@ -296,7 +296,7 @@ public:
         void* dll = Script::LoadDynamicLibrary( dll_name.c_str() );
         if( !dll )
         {
-            WriteLog( "Error in 'bindfunc' pragma<%s>, dll not found, error<%u>.\n", text.c_str(), DLL_Error() );
+            WriteLog( "Error in 'bindfunc' pragma<%s>, dll not found, error<%s>.\n", text.c_str(), DLL_Error() );
             return;
         }
 
@@ -304,7 +304,7 @@ public:
         size_t* func = DLL_GetAddress( dll, func_dll_name.c_str() );
         if( !func )
         {
-            WriteLog( "Error in 'bindfunc' pragma<%s>, function not found, error<%u>.\n", text.c_str(), DLL_Error() );
+            WriteLog( "Error in 'bindfunc' pragma<%s>, function not found, error<%s>.\n", text.c_str(), DLL_Error() );
             return;
         }
 

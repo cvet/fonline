@@ -229,7 +229,7 @@ public:
             return NULL;
 
         // Register variables
-        size_t* ptr = DLL_GetAddress( dll, "Game" );
+        size_t* ptr = DLL_GetAddress( dll, "FOnline" );
         if( ptr )
             *ptr = (size_t) &GameOpt;
         ptr = DLL_GetAddress( dll, "ASEngine" );
@@ -1269,7 +1269,7 @@ public:
             if( !dll )
             {
                 if( !disable_log )
-                    WriteLogF( _FUNC_, " - Dll<%s> not found in scripts folder, error<%u>.\n", module_name, DLL_Error() );
+                    WriteLogF( _FUNC_, " - Dll<%s> not found in scripts folder, error<%s>.\n", module_name, DLL_Error() );
                 return 0;
             }
 
@@ -1278,7 +1278,7 @@ public:
             if( !func )
             {
                 if( !disable_log )
-                    WriteLogF( _FUNC_, " - Function<%s> in dll<%s> not found, error<%u>.\n", func_name, module_name, DLL_Error() );
+                    WriteLogF( _FUNC_, " - Function<%s> in dll<%s> not found, error<%s>.\n", func_name, module_name, DLL_Error() );
                 return 0;
             }
 

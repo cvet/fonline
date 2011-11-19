@@ -263,19 +263,13 @@ private:
     int              modeWidth, modeHeight;
     bool             sceneBeginned;
     #ifndef FO_D3D
-    # ifdef FO_WINDOWS
-    HDC             dcScreen;
-    # else
-    Display*        xDisplay;
-    Window          xWindow;
-    # endif
-    RenderTarget    rtMain;
-    RenderTarget    rtContours;
-    RenderTarget    rtContoursMid;
-    RenderTarget    rtPrimitive;
-    RenderTarget    rt3D, rt3DMS;
-    RenderTarget    rt3DSprite, rt3DMSSprite;
-    RenderTargetVec rtStack;
+    RenderTarget     rtMain;
+    RenderTarget     rtContours;
+    RenderTarget     rtContoursMid;
+    RenderTarget     rtPrimitive;
+    RenderTarget     rt3D, rt3DMS;
+    RenderTarget     rt3DSprite, rt3DMSSprite;
+    RenderTargetVec  rtStack;
     #endif
 
 public:
