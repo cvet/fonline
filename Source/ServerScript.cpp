@@ -2573,8 +2573,8 @@ void FOServer::SScriptFunc::Crit_PlaySound( Critter* cr, CScriptString& sound_na
     if( cr->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
 
-    char sound_name_[ 16 ];
-    strncpy( sound_name_, sound_name.c_str(), 16 );
+    char sound_name_[ 50 ];
+    strncpy( sound_name_, sound_name.c_str(), 50 );
     uint crid = cr->GetId();
 
     if( send_self )
@@ -4547,8 +4547,8 @@ void FOServer::SScriptFunc::Map_PlaySound( Map* map, CScriptString& sound_name )
     if( map->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
 
-    char sound_name_[ 16 ];
-    strncpy( sound_name_, sound_name.c_str(), 16 );
+    char sound_name_[ 50 ];
+    strncpy( sound_name_, sound_name.c_str(), 50 );
 
     ClVec players;
     map->GetPlayers( players, false );
@@ -4566,8 +4566,8 @@ void FOServer::SScriptFunc::Map_PlaySoundRadius( Map* map, CScriptString& sound_
     if( hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
         SCRIPT_ERROR_R( "Invalid hexes args." );
 
-    char sound_name_[ 16 ];
-    strncpy( sound_name_, sound_name.c_str(), 16 );
+    char sound_name_[ 50 ];
+    strncpy( sound_name_, sound_name.c_str(), 50 );
 
     ClVec players;
     map->GetPlayers( players, false );

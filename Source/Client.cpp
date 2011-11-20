@@ -6208,11 +6208,10 @@ void FOClient::Net_OnPlaySound( bool by_type )
     if( !by_type )
     {
         uint synchronize_crid;
-        char sound_name[ 17 ];
+        char sound_name[ 51 ];
         Bin >> synchronize_crid;
-        Bin.Pop( sound_name, 16 );
-        sound_name[ 16 ] = 0;
-
+        Bin.Pop( sound_name, 50 );
+        sound_name[ 50 ] = 0;
         SndMngr.PlaySound( sound_name );
     }
     else

@@ -4761,7 +4761,7 @@ void Client::Send_PlaySound( uint crid_synchronize, const char* sound_name )
     BOUT_BEGIN( this );
     Bout << NETMSG_PLAY_SOUND;
     Bout << crid_synchronize;
-    Bout.Push( sound_name, 16 );
+    Bout.Push( sound_name, 50 );
     BOUT_END( this );
 }
 
