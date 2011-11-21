@@ -2,15 +2,26 @@
 #include "Server.h"
 #include "Exception.h"
 #include "Version.h"
+#include "Access.h"
+#include "BufferManager.h"
 #include <locale.h>
-#include "FL/Fl.H"
-#include "FL/Fl_Window.H"
-#include "FL/Fl_Box.H"
-#include "FL/Fl_Text_Display.H"
-#include "FL/Fl_Button.H"
-#include "FL/Fl_Check_Button.H"
-#include "FL/Fl_File_Icon.H"
+#ifndef SERVER_DAEMON
+# include "FL/Fl.H"
+# include "FL/Fl_Window.H"
+# include "FL/Fl_Box.H"
+# include "FL/Fl_Text_Display.H"
+# include "FL/Fl_Button.H"
+# include "FL/Fl_Check_Button.H"
+# include "FL/Fl_File_Icon.H"
+#endif
 
+void InitAdminManager( IniParser* cfg );
+
+/************************************************************************/
+/* GUI & Windows service version                                        */
+/************************************************************************/
+
+#ifndef SERVER_DAEMON
 void  GUIInit( IniParser& cfg );
 void  GUICallback( Fl_Widget* widget, void* data );
 void  UpdateInfo();
@@ -39,15 +50,15 @@ Fl_Check_Button* GuiCBtnScriptDebug, * GuiCBtnLogging, * GuiCBtnLoggingTime,
 Fl_Text_Display* GuiLog, * GuiInfo;
 int              GUISizeMod = 0;
 
-#define GUI_SIZE1( x )                 ( (int) ( x ) * 175 * ( 100 + GUISizeMod ) / 100 / 100 )
-#define GUI_SIZE2( x1, x2 )            GUI_SIZE1( x1 ), GUI_SIZE1( x2 )
-#define GUI_SIZE4( x1, x2, x3, x4 )    GUI_SIZE1( x1 ), GUI_SIZE1( x2 ), GUI_SIZE1( x3 ), GUI_SIZE1( x4 )
-#define GUI_LABEL_BUF_SIZE    ( 128 )
+# define GUI_SIZE1( x )                 ( (int) ( x ) * 175 * ( 100 + GUISizeMod ) / 100 / 100 )
+# define GUI_SIZE2( x1, x2 )            GUI_SIZE1( x1 ), GUI_SIZE1( x2 )
+# define GUI_SIZE4( x1, x2, x3, x4 )    GUI_SIZE1( x1 ), GUI_SIZE1( x2 ), GUI_SIZE1( x3 ), GUI_SIZE1( x4 )
+# define GUI_LABEL_BUF_SIZE    ( 128 )
 
 // Windows service
-#ifdef FO_WINDOWS
+# ifdef FO_WINDOWS
 void ServiceMain( bool as_service );
-#endif
+# endif
 
 // Main
 int main( int argc, char** argv )
@@ -56,9 +67,9 @@ int main( int argc, char** argv )
     RestoreMainDirectory();
 
     // Pthreads
-    #ifdef FO_WINDOWS
+    # ifdef FO_WINDOWS
     pthread_win32_process_attach_np();
-    #endif
+    # endif
 
     // Exceptions catcher
     CatchExceptions( "FOnlineServer", SERVER_VERSION );
@@ -86,16 +97,16 @@ int main( int argc, char** argv )
     // Service
     if( strstr( CommandLine, "-service" ) )
     {
-        #ifdef FO_WINDOWS
+        # ifdef FO_WINDOWS
         ServiceMain( strstr( CommandLine, "--service" ) != NULL );
-        #endif
+        # endif
         return 0;
     }
 
     // Check single player parameters
     if( strstr( CommandLine, "-singleplayer " ) )
     {
-        #ifdef FO_WINDOWS
+        # ifdef FO_WINDOWS
         Singleplayer = true;
         Timer::SetGamePause( true );
 
@@ -120,9 +131,9 @@ int main( int argc, char** argv )
             WriteLog( "Can't attach to mapped file<%p>.\n", map_file );
             return 0;
         }
-        #else
+        # else
         return 0;
-        #endif
+        # endif
     }
 
     // GUI
@@ -168,9 +179,11 @@ int main( int argc, char** argv )
         }
     }
 
+    // Start admin manager
+    InitAdminManager( &cfg );
+
     // Loop
-    SyncManager* sync_mngr = SyncManager::GetForCurThread();
-    sync_mngr->UnlockAll();
+    SyncManager::GetForCurThread()->UnlockAll();
     if( GuiWindow )
     {
         GUIUpdateThread.Start( GUIUpdate );
@@ -192,7 +205,6 @@ int main( int argc, char** argv )
             Sleep( 100 );
     }
 
-    ExitProcess( 0 );
     return 0;
 }
 
@@ -258,12 +270,12 @@ void GUIInit( IniParser& cfg )
     GuiWindow->label( GetWindowName() );
 
     // Icon
-    #ifdef FO_WINDOWS
+    # ifdef FO_WINDOWS
     GuiWindow->icon( (char*) LoadIcon( fl_display, MAKEINTRESOURCE( 101 ) ) );
-    #else // FO_LINUX
+    # else // FO_LINUX
     fl_open_display();
     // Todo: linux
-    #endif
+    # endif
 
     // Labels
     GUISetup.Setup( GuiLabelGameTime    = new Fl_Box( GUI_SIZE4( 5, 6, 128, 8 ), "Time:" ) );
@@ -343,12 +355,12 @@ void GUICallback( Fl_Widget* widget, void* data )
     }
     else if( widget == GuiBtnRlClScript )
     {
-        if( Server.IsInit() )
+        if( Server.Started() )
             Server.RequestReloadClientScripts = true;
     }
     else if( widget == GuiBtnSaveWorld )
     {
-        if( Server.IsInit() )
+        if( Server.Started() )
             Server.SaveWorldNextTick = Timer::FastTick();                       // Force saving time
     }
     else if( widget == GuiBtnSaveLog || widget == GuiBtnSaveInfo )
@@ -368,7 +380,7 @@ void GUICallback( Fl_Widget* widget, void* data )
     {
         FOServer::UpdateIndex = 0;
         FOServer::UpdateLastIndex = 0;
-        if( !Server.IsInit() )
+        if( !Server.Started() )
             UpdateInfo();
     }
     else if( widget == GuiBtnPlayers )
@@ -492,7 +504,7 @@ void UpdateInfo()
         }
     };
 
-    if( Server.IsInit() )
+    if( Server.Started() )
     {
         DateTime st = Timer::GetGameTime( GameOpt.FullSecond );
         Label::Update( GuiLabelGameTime, Str::Format( str, "Time: %02u.%02u.%04u %02u:%02u:%02u x%u", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, GameOpt.TimeMultiplier ) );
@@ -543,31 +555,31 @@ void UpdateInfo()
             UpdateLogName = "Memory";
             break;
         case 1:         // Players
-            if( !Server.IsInit() )
+            if( !Server.Started() )
                 break;
             std_str = Server.GetIngamePlayersStatistics();
             UpdateLogName = "Players";
             break;
         case 2:         // Locations and maps
-            if( !Server.IsInit() )
+            if( !Server.Started() )
                 break;
             std_str = MapMngr.GetLocationsMapsStatistics();
             UpdateLogName = "LocationsAndMaps";
             break;
         case 3:         // Time events
-            if( !Server.IsInit() )
+            if( !Server.Started() )
                 break;
             std_str = Server.GetTimeEventsStatistics();
             UpdateLogName = "TimeEvents";
             break;
         case 4:         // Any data
-            if( !Server.IsInit() )
+            if( !Server.Started() )
                 break;
             std_str = Server.GetAnyDataStatistics();
             UpdateLogName = "AnyData";
             break;
         case 5:         // Items count
-            if( !Server.IsInit() )
+            if( !Server.Started() )
                 break;
             std_str = ItemMngr.GetItemsStatistics();
             UpdateLogName = "ItemsCount";
@@ -576,11 +588,11 @@ void UpdateInfo()
             UpdateLogName = "";
             break;
         }
-        #ifdef FO_WINDOWS
+        # ifdef FO_WINDOWS
         GuiInfo->buffer()->text( fl_locale_to_utf8( std_str.c_str(), (int) std_str.length(), GetACP() ) );
-        #else
+        # else
         GuiInfo->buffer()->text( std_str.c_str() );
-        #endif
+        # endif
         if( !GuiBtnSaveInfo->active() )
             GuiBtnSaveInfo->activate();
         FOServer::UpdateIndex = -1;
@@ -593,11 +605,11 @@ void UpdateLog()
     LogGetBuffer( str );
     if( str.length() )
     {
-        #ifdef FO_WINDOWS
+        # ifdef FO_WINDOWS
         GuiLog->buffer()->append( fl_locale_to_utf8( str.c_str(), (int) str.length(), GetACP() ) );
-        #else // FO_LINUX
+        # else // FO_LINUX
         GuiLog->buffer()->append( str.c_str() );
-        #endif
+        # endif
         if( Fl::focus() != GuiLog )
             GuiLog->scroll( MAX_INT, 0 );
     }
@@ -662,7 +674,6 @@ void* GameLoopThread( void* )
         }
 
         GameInitEvent.Allow();
-
         Server.MainLoop();
         Server.Finish();
         UpdateInfo();
@@ -680,6 +691,8 @@ void* GameLoopThread( void* )
         ExitProcess( 0 );
     return NULL;
 }
+
+#endif // !SERVER_DAEMON
 
 /************************************************************************/
 /* Windows service                                                      */
@@ -782,6 +795,9 @@ VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
     if( !FOServiceStatusHandle )
         return;
 
+    // Start admin manager
+    InitAdminManager( NULL );
+
     // Start game
     SetFOServiceStatus( SERVICE_START_PENDING );
 
@@ -789,7 +805,7 @@ VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
     LoopThread.Start( GameLoopThread );
     GameInitEvent.Wait();
 
-    if( Server.IsInit() )
+    if( Server.Started() )
         SetFOServiceStatus( SERVICE_RUNNING );
     else
         SetFOServiceStatus( SERVICE_STOPPED );
@@ -845,3 +861,516 @@ void SetFOServiceStatus( uint state )
 }
 
 #endif // FO_WINDOWS
+
+/************************************************************************/
+/* Linux daemon                                                         */
+/************************************************************************/
+#ifdef SERVER_DAEMON
+
+# include <sys/stat.h>
+
+void  DaemonLoop();
+void* GameLoopThread( void* );
+FOServer Server;
+Thread   LoopThread;
+
+int main( int argc, char** argv )
+{
+    // Stuff
+    setlocale( LC_ALL, "Russian" );
+    SetCommandLine( argc, argv );
+    RestoreMainDirectory();
+    CatchExceptions( "FOnlineServer", SERVER_VERSION );
+    Timer::Init();
+    LogToFile( "./FOnlineServerDaemon.log" );
+
+    // Config
+    IniParser cfg;
+    cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
+
+    // Logging
+    LogSetThreadName( "Daemon" );
+    LogWithTime( cfg.GetInt( "LoggingTime", 1 ) == 0 ? false : true );
+    LogWithThread( cfg.GetInt( "LoggingThread", 1 ) == 0 ? false : true );
+    if( strstr( CommandLine, "-logdebugoutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
+        LogToDebugOutput();
+
+    // Log version
+    WriteLog( "FOnline server daemon, version %04X-%02X.\n", SERVER_VERSION, FO_PROTOCOL_VERSION & 0xFF );
+    if( CommandLineArgCount > 1 )
+        WriteLog( "Command line<%s>.\n", CommandLine );
+
+    // Start daemon
+    pid_t parpid = fork();
+    if( parpid < 0 )
+    {
+        WriteLog( "Create child process (fork) fail, error<%s>.", ERRORSTR );
+        return 1;
+    }
+    else if( parpid != 0 )
+    {
+        // Close parent process
+        return 0;
+    }
+
+    umask( 0 );
+
+    if( setsid() < 0 )
+    {
+        WriteLog( "Generate process index (setsid) fail, error<%s>.\n", ERRORSTR );
+        return 1;
+    }
+
+    close( STDIN_FILENO );
+    close( STDOUT_FILENO );
+    close( STDERR_FILENO );
+
+    DaemonLoop();
+    return 0;
+}
+
+void DaemonLoop()
+{
+    // Autostart server
+    LoopThread.Start( GameLoopThread );
+
+    // Start admin manager
+    InitAdminManager( NULL );
+
+    // Daemon loop
+    while( true )
+        Sleep( 1000 );
+}
+
+void* GameLoopThread( void* )
+{
+    LogSetThreadName( "Main" );
+    GetServerOptions();
+
+    if( Server.Init() )
+    {
+        FOQuit = false;
+        Server.MainLoop();
+        Server.Finish();
+    }
+    else
+    {
+        WriteLog( "Initialization fail!\n" );
+    }
+
+    return NULL;
+}
+
+#endif // SERVER_DAEMON
+
+/************************************************************************/
+/* Admin panel                                                          */
+/************************************************************************/
+
+#define MAX_SESSION    ( 10 )
+
+struct Session
+{
+    SOCKET      Sock;
+    sockaddr_in From;
+    Thread      WorkThread;
+    DateTime    StartWork;
+    bool        Authorized;
+};
+typedef vector< Session* > SessionVec;
+
+void* AdminWork( void* );
+void* AdminManager( void* );
+Thread AdminManagerThread;
+
+void InitAdminManager( IniParser* cfg )
+{
+    uint port = 0;
+    if( !cfg )
+    {
+        IniParser cfg_;
+        if( !cfg_.LoadFile( GetConfigFileName(), PT_SERVER_ROOT ) )
+        {
+            WriteLogF( _FUNC_, "Can't access to config file.\n" );
+            return;
+        }
+        port = cfg_.GetInt( "AdminPanelPort", 0 );
+    }
+    else
+    {
+        port = cfg->GetInt( "AdminPanelPort", 0 );
+    }
+
+    if( port )
+    {
+        AdminManagerThread.Finish();
+        AdminManagerThread.Start( AdminManager, (void*) port );
+    }
+}
+
+void* AdminManager( void* port_ )
+{
+    // Listen socket
+    #ifdef FO_WINDOWS
+    WSADATA wsa;
+    if( WSAStartup( MAKEWORD( 2, 2 ), &wsa ) )
+    {
+        WriteLog( "WSAStartup fail on creation listen socket for admin manager.\n" );
+        return NULL;
+    }
+    #endif
+    SOCKET listen_sock = socket( AF_INET, SOCK_STREAM, 0 );
+    if( listen_sock == INVALID_SOCKET )
+    {
+        WriteLog( "Can't create listen socket for admin manager.\n" );
+        return NULL;
+    }
+    sockaddr_in sin;
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons( (ushort) (size_t) port_ );
+    sin.sin_addr.s_addr = INADDR_ANY;
+    if( bind( listen_sock, (sockaddr*) &sin, sizeof( sin ) ) == SOCKET_ERROR )
+    {
+        WriteLog( "Can't bind listen socket for admin manager.\n" );
+        closesocket( listen_sock );
+        return NULL;
+    }
+    if( listen( listen_sock, SOMAXCONN ) == SOCKET_ERROR )
+    {
+        WriteLog( "Can't listen listen socket for admin manager.\n" );
+        closesocket( listen_sock );
+        return NULL;
+    }
+
+    // Accept clients
+    SessionVec sessions;
+    while( true )
+    {
+        // Wait connection
+        timeval tv = { 1, 0 };
+        fd_set  sock_set;
+        FD_ZERO( &sock_set );
+        FD_SET( listen_sock, &sock_set );
+        if( select( listen_sock + 1, &sock_set, NULL, NULL, &tv ) > 0 )
+        {
+            sockaddr_in from;
+            socklen_t   len = sizeof( from );
+            SOCKET      sock = accept( listen_sock, (sockaddr*) &from, &len );
+            if( sock != INVALID_SOCKET )
+            {
+                // Found already connected from this IP
+                bool refuse = false;
+                for( auto it = sessions.begin(); it != sessions.end(); ++it )
+                {
+                    Session* s = *it;
+                    if( s->From.sin_addr.s_addr == from.sin_addr.s_addr )
+                    {
+                        refuse = true;
+                        break;
+                    }
+                }
+                if( refuse || sessions.size() > MAX_SESSION )
+                {
+                    shutdown( sock, SD_BOTH );
+                    closesocket( sock );
+                }
+
+                // Add new session
+                if( !refuse )
+                {
+                    Session* s = new Session();
+                    s->Sock = sock;
+                    s->From = from;
+                    Timer::GetCurrentDateTime( s->StartWork );
+                    s->Authorized = false;
+                    s->WorkThread.Start( AdminWork, (void*) s );
+                    sessions.push_back( s );
+                }
+            }
+        }
+
+        // Manage sessions
+        if( !sessions.empty() )
+        {
+            DateTime cur_dt;
+            Timer::GetCurrentDateTime( cur_dt );
+            for( auto it = sessions.begin(); it != sessions.end();)
+            {
+                Session* s = *it;
+                bool     erase = false;
+
+                // Erase closed sessions
+                if( s->Sock == INVALID_SOCKET )
+                    erase = true;
+
+                // Drop long not authorized connections
+                if( !s->Authorized && Timer::GetTimeDifference( cur_dt, s->StartWork ) > 60 ) // 1 minute
+                    erase = true;
+
+                // Erase
+                if( erase )
+                {
+                    if( s->Sock != INVALID_SOCKET )
+                    {
+                        shutdown( s->Sock, SD_BOTH );
+                        closesocket( s->Sock );
+                        s->Sock = INVALID_SOCKET;
+                    }
+                    delete s;
+                    it = sessions.erase( it );
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+        }
+
+        // Sleep to prevent panel DDOS or keys brute force
+        Sleep( 1000 );
+    }
+    return NULL;
+}
+
+#define ADMIN_PREFIX    "Admin panel (%s): "
+#define ADMIN_LOG( format, ... )                                                   \
+    do {                                                                           \
+        WriteLog( ADMIN_PREFIX format, admin_name, ## __VA_ARGS__ );               \
+        char buf[ MAX_FOTEXT ];                                                    \
+        Str::Format( buf, format, ## __VA_ARGS__ );                                \
+        uint buf_len = Str::Length( buf ) + 1;                                     \
+        if( send( s->Sock, buf, buf_len, 0 ) != (int) buf_len )                    \
+        {                                                                          \
+            WriteLog( ADMIN_PREFIX "Send data fail, dissconnect.\n", admin_name ); \
+            goto label_Finish;                                                     \
+        }                                                                          \
+    } while( 0 )
+
+void* AdminWork( void* session_ )
+{
+    // Data
+    Session* s = (Session*) session_;
+    char     admin_name[ MAX_FOTEXT ] = { "Not authorized" };
+
+    // Welcome string
+    char welcome[] = { "Welcome to FOnline admin panel.\nEnter access key: " };
+    uint welcome_len = Str::Length( welcome ) + 1;
+    if( send( s->Sock, welcome, welcome_len, 0 ) != (int) welcome_len )
+    {
+        WriteLog( "Admin connection first send fail, disconnect.\n" );
+        goto label_Finish;
+    }
+
+    // Commands loop
+    while( true )
+    {
+        // Get command
+        char cmd[ MAX_FOTEXT ];
+        memzero( cmd, sizeof( cmd ) );
+        int  len = recv( s->Sock, cmd, sizeof( cmd ), 0 );
+        if( len <= 0 || len == MAX_FOTEXT )
+        {
+            if( !len )
+                WriteLog( ADMIN_PREFIX "Socket closed, disconnect.\n", admin_name );
+            else
+                WriteLog( ADMIN_PREFIX "Socket error, disconnect.\n", admin_name );
+            break;
+        }
+        if( len > 200 )
+            len = 200;
+        cmd[ len ] = 0;
+        Str::EraseFrontBackSpecificChars( cmd );
+
+        // Authorization
+        if( !s->Authorized )
+        {
+            StrVec client, tester, moder, admin, admin_names;
+            FOServer::GetAccesses( client, tester, moder, admin, admin_names );
+            auto   it = std::find( admin.begin(), admin.end(), cmd );
+            if( it != admin.end() )
+            {
+                uint pos = ( it - admin.begin() ) / sizeof( *it );
+                if( pos < admin_names.size() )
+                    Str::Copy( admin_name, admin_names[ pos ].c_str() );
+                else
+                    Str::Format( admin_name, "%u", pos );
+
+                s->Authorized = true;
+                ADMIN_LOG( "Authorized for admin '%s', IP '%s'.\n", admin_name, inet_ntoa( s->From.sin_addr ) );
+                continue;
+            }
+            else
+            {
+                WriteLog( "Wrong access key entered in admin panel from IP '%s', disconnect.\n", inet_ntoa( s->From.sin_addr ) );
+                char failstr[] = { "Wrong access key!\n" };
+                send( s->Sock, failstr, Str::Length( failstr ) + 1, 0 );
+                break;
+            }
+        }
+
+        // Process commands
+        if( Str::CompareCase( cmd, "exit" ) )
+        {
+            ADMIN_LOG( "Disconnect from admin panel.\n" );
+            break;
+        }
+        else if( Str::CompareCase( cmd, "kill" ) )
+        {
+            ADMIN_LOG( "Kill whole process.\n" );
+            ExitProcess( 0 );
+        }
+        else if( Str::CompareCaseCount( cmd, "log ", 4 ) )
+        {
+            if( !Str::CompareCase( &cmd[ 4 ], "disable" ) )
+            {
+                LogToFile( &cmd[ 4 ] );
+                ADMIN_LOG( "Logging to file '%s'.\n", &cmd[ 4 ] );
+            }
+            else
+            {
+                LogFinish( LOG_FILE );
+                ADMIN_LOG( "Logging disabled.\n" );
+            }
+        }
+        else if( Str::CompareCase( cmd, "start" ) )
+        {
+            if( Server.Starting() )
+                ADMIN_LOG( "Server already starting.\n" );
+            else if( Server.Started() )
+                ADMIN_LOG( "Server already started.\n" );
+            else if( Server.Stopping() )
+                ADMIN_LOG( "Server stopping, wait.\n" );
+            else if( Server.Stopped() )
+            {
+                if( !Server.ActiveOnce )
+                {
+                    ADMIN_LOG( "Starting server.\n" );
+                    #ifndef SERVER_DAEMON
+                    if( GuiWindow )
+                    {
+                        GuiBtnStartStop->do_callback();
+                    }
+                    else
+                    #endif
+                    {
+                        LoopThread.Start( GameLoopThread );
+                    }
+                }
+                else
+                {
+                    ADMIN_LOG( "Can't start server more than one time. Restart server process.\n" );
+                    #pragma MESSAGE( "Allow multiple server starting in one process session." )
+                }
+            }
+        }
+        else if( Str::CompareCase( cmd, "stop" ) )
+        {
+            if( Server.Starting() )
+                ADMIN_LOG( "Server starting, wait.\n" );
+            else if( Server.Stopped() )
+                ADMIN_LOG( "Server already stopped.\n" );
+            else if( Server.Stopping() )
+                ADMIN_LOG( "Server already stopping.\n" );
+            else if( Server.Started() )
+            {
+                ADMIN_LOG( "Stopping server.\n" );
+                #ifndef SERVER_DAEMON
+                if( GuiWindow )
+                {
+                    GuiBtnStartStop->do_callback();
+                }
+                else
+                #endif
+                {
+                    FOQuit = true;
+                }
+            }
+        }
+        else if( Str::CompareCase( cmd, "state" ) )
+        {
+            if( Server.Starting() )
+                ADMIN_LOG( "Server starting.\n" );
+            else if( Server.Started() )
+                ADMIN_LOG( "Server started.\n" );
+            else if( Server.Stopping() )
+                ADMIN_LOG( "Server stopping.\n" );
+            else if( Server.Stopped() )
+                ADMIN_LOG( "Server stopped.\n" );
+            else
+                ADMIN_LOG( "Unknown state.\n" );
+        }
+        else if( cmd[ 0 ] == '~' )
+        {
+            if( Server.Started() )
+            {
+                static THREAD char*  admin_name_ptr;
+                static THREAD SOCKET sock;
+                static THREAD bool   send_fail;
+                struct LogCB
+                {
+                    static void Message( const char* str )
+                    {
+                        char buf[ MAX_FOTEXT ];
+                        Str::Copy( buf, str );
+                        uint buf_len = Str::Length( buf );
+                        if( !buf_len || buf[ buf_len - 1 ] != '\n' )
+                        {
+                            buf[ buf_len ] = '\n';
+                            buf[ buf_len + 1 ] = 0;
+                            buf_len++;
+                        }
+                        buf_len++;
+
+                        if( !send_fail && send( sock, buf, buf_len, 0 ) != (int) buf_len )
+                        {
+                            WriteLog( ADMIN_PREFIX "Send data fail, disconnect.\n", admin_name_ptr );
+                            send_fail = true;
+                        }
+                    }
+                };
+                admin_name_ptr = admin_name;
+                sock = s->Sock;
+                send_fail = false;
+
+                BufferManager buf;
+                PackCommand( &cmd[ 1 ], buf, LogCB::Message, NULL );
+                if( !buf.IsEmpty() )
+                {
+                    if( Script::InitThread() )
+                    {
+                        uint msg;
+                        buf >> msg;
+                        WriteLog( ADMIN_PREFIX "Execute command '%s'.\n", admin_name, cmd );
+                        Server.Process_Command( buf, LogCB::Message, NULL, admin_name );
+                        Script::FinishThread();
+                    }
+                    else
+                    {
+                        ADMIN_LOG( "Can't initialize script stuff for thread." );
+                    }
+                }
+
+                if( send_fail )
+                    goto label_Finish;
+            }
+            else
+            {
+                ADMIN_LOG( "Can't run command for not started server.\n" );
+            }
+        }
+        else if( Str::Length( cmd ) > 0 )
+        {
+            ADMIN_LOG( "Unknown command '%s'.\n", cmd );
+        }
+    }
+
+label_Finish:
+    shutdown( s->Sock, SD_BOTH );
+    closesocket( s->Sock );
+    s->Sock = INVALID_SOCKET;
+    return NULL;
+}
+
+/************************************************************************/
+/*                                                                      */
+/************************************************************************/

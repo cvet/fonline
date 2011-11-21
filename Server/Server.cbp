@@ -15,6 +15,24 @@
 					<Add option="-O2" />
 					<Add option="-DNDEBUG" />
 				</Compiler>
+				<Linker>
+					<Add option="-lX11" />
+					<Add option="-lXft" />
+					<Add option="-lfltk" />
+					<Add option="-lfltk_images" />
+					<Add option="-lfltk_png" />
+				</Linker>
+			</Target>
+			<Target title="Release Linux Daemon">
+				<Option output="../../sdk/Server/FOnlineServerDaemon" prefix_auto="1" extension_auto="1" />
+				<Option object_output="Release_LinuxDaemon" />
+				<Option type="0" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-DNDEBUG" />
+					<Add option="-DSERVER_DAEMON" />
+				</Compiler>
 			</Target>
 		</Build>
 		<Compiler>
@@ -33,11 +51,6 @@
 			<Add option="-ldl" />
 			<Add option="-lrt" />
 			<Add option="-lstlport" />
-			<Add option="-lfltk" />
-			<Add option="-lfltk_images" />
-			<Add option="-lfltk_png" />
-			<Add option="-lX11" />
-			<Add option="-lXft" />
 			<Add option="-levent_core" />
 			<Add option="-levent_pthreads" />
 			<Add directory="../Lib/Linux" />

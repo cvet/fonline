@@ -1309,9 +1309,9 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
                     if( param_name )
                     {
                         char str[ 128 ];
-                        sprintf( str, "Critter_ParamIndex%d", i );
+                        Str::Format( str, "Critter_ParamIndex%d", i );
                         fm.SetStr( "%-20s %s\n", str, param_name );
-                        sprintf( str, "Critter_ParamValue%d", i );
+                        Str::Format( str, "Critter_ParamValue%d", i );
                         fm.SetStr( "%-20s %d\n", str, mobj.MCritter.ParamValue[ i ] );
                     }
                 }
@@ -1592,7 +1592,7 @@ void ProtoMap::SaveCache( FileManager& fm )
 
     // Save
     char fname[ MAX_FOPATH ];
-    sprintf( fname, "%s%sb", pmapName.c_str(), MAP_PROTO_EXT );
+    Str::Format( fname, "%s%sb", pmapName.c_str(), MAP_PROTO_EXT );
     fm.SaveOutBufToFile( fname, pathType );
 }
 
@@ -1631,7 +1631,7 @@ void ProtoMap::BindSceneryScript( MapObject* mobj )
     if( mobj->RunTime.BindScriptId <= 0 )
     {
         char map_info[ 128 ];
-        sprintf( map_info, "pid<%u>, name<%s>", GetPid(), pmapName.c_str() );
+        Str::Format( map_info, "pid<%u>, name<%s>", GetPid(), pmapName.c_str() );
         WriteLogF( _FUNC_, " - Map<%s>, Can't bind scenery function<%s> in module<%s>. Scenery hexX<%u>, hexY<%u>.\n", map_info,
                    mobj->FuncName, mobj->ScriptName, mobj->MapX, mobj->MapY );
         mobj->RunTime.BindScriptId = 0;
@@ -1645,7 +1645,7 @@ bool ProtoMap::Refresh()
         return false;
 
     char map_info[ 128 ];
-    sprintf( map_info, "pid<%u>, name<%s>", GetPid(), pmapName.c_str() );
+    Str::Format( map_info, "pid<%u>, name<%s>", GetPid(), pmapName.c_str() );
 
     // Read
     string fname_txt = pmapName + MAP_PROTO_EXT;

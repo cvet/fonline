@@ -407,7 +407,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     bool no_recheck = false;
     bool ret_value = false;
 
-    #define READ_VALUE    if( !deprecated ) { input >> svalue; ivalue = ConstantsManager::GetDefineValue( svalue ); } else { input >> ivalue; sprintf( svalue, "%d", ivalue ); }
+    #define READ_VALUE    if( !deprecated ) { input >> svalue; ivalue = ConstantsManager::GetDefineValue( svalue ); } else { input >> ivalue; Str::Format( svalue, "%d", ivalue ); }
 
     #ifdef FONLINE_NPCEDITOR
     string script_val[ 5 ];

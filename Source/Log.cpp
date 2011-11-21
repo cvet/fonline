@@ -3,7 +3,7 @@
 #include "Timer.h"
 #include <stdarg.h>
 
-#if defined ( FONLINE_SERVER )
+#if defined ( FONLINE_SERVER ) && !defined ( SERVER_DAEMON )
 # include "FL/Fl_Text_Display.H"
 #endif
 
@@ -47,7 +47,7 @@ void LogToFunc( LogFuncPtr func_ptr )
 
 void LogToTextBox( void* text_box )
 {
-    #if !defined ( FONLINE_SERVER )
+    #if !defined ( FONLINE_SERVER ) || defined ( SERVER_DAEMON )
     return;
     #endif
     LogFinish( LOG_TEXT_BOX );
@@ -175,7 +175,7 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
     }
     if( LoggingType & LOG_TEXT_BOX )
     {
-        #if defined ( FONLINE_SERVER )
+        #if defined ( FONLINE_SERVER ) && !defined ( SERVER_DAEMON )
         ( (Fl_Text_Display*) LogTextBox )->buffer()->append( str );
         #endif
     }

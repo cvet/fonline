@@ -371,12 +371,12 @@ bool SpriteManager::InitBuffers()
     }
     GL( glGenBuffers( 1, &ibMain ) );
     GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibMain ) );
-    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, flushSprCnt * 6 * sizeof( ushort ), ind, GL_DYNAMIC_DRAW ) );
+    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, flushSprCnt * 6 * sizeof( ushort ), ind, GL_STATIC_DRAW ) );
     for( int i = 0; i < flushSprCnt * 4; i++ )
         ind[ i ] = i;
     GL( glGenBuffers( 1, &ibDirect ) );
     GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibDirect ) );
-    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, flushSprCnt * 4 * sizeof( ushort ), ind, GL_DYNAMIC_DRAW ) );
+    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, flushSprCnt * 4 * sizeof( ushort ), ind, GL_STATIC_DRAW ) );
     delete[] ind;
 
     // Vertex array
@@ -4607,7 +4607,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
         for( uint i = 0; i < count; i++ )
             ind[ i ] = i;
         GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibDirect ) );
-        GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, count * sizeof( ushort ), ind, GL_DYNAMIC_DRAW ) );
+        GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, count * sizeof( ushort ), ind, GL_STATIC_DRAW ) );
         delete[] ind;
     }
 

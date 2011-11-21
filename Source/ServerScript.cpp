@@ -3,7 +3,12 @@
 #include "AngelScript/Preprocessor/preprocess.h"
 #include "Version.h"
 #include "ScriptPragmas.h"
-#include "FL/Fl_PNG_Image.H" // Global_LoadImage
+
+// Global_LoadImage
+#include "PNG/png.h"
+#ifdef FO_WINDOWS
+# pragma comment( lib, "libpng15.lib" )
+#endif
 
 void* dbg_malloc( size_t size )
 {
@@ -39,7 +44,7 @@ void* dbg_malloc2( size_t size )
         ASDbgMemoryInUse = true;
         const char* module = Script::GetActiveModuleName();
         const char* func = Script::GetActiveFuncName();
-        sprintf( ASDbgMemoryBuf, "AS : %s : %s", module ? module : "<nullptr>", func ? func : "<nullptr>" );
+        Str::Format( ASDbgMemoryBuf, "AS : %s : %s", module ? module : "<nullptr>", func ? func : "<nullptr>" );
         MEMORY_PROCESS_STR( ASDbgMemoryBuf, (int) size );
         ASDbgMemoryPtr.insert( PAIR( ptr, string( ASDbgMemoryBuf ) ) );
         ASDbgMemoryInUse = false;
@@ -172,7 +177,7 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.PlayerRegistration, "player_registration", "bool %s(uint,string&,uint&,uint&)" },
         { &ServerFunctions.PlayerLogin, "player_login", "bool %s(uint,string&,uint,uint&,uint&)" },
         { &ServerFunctions.PlayerGetAccess, "player_getaccess", "bool %s(Critter&,int,string&)" },
-        { &ServerFunctions.PlayerAllowCommand, "player_allowcommand", "bool %s(Critter&,uint8)" },
+        { &ServerFunctions.PlayerAllowCommand, "player_allowcommand", "bool %s(Critter@,string@,uint8)" },
         { &ServerFunctions.CheckTrapLook, "check_trap_look", "bool %s(Map&,Critter&,Item&)" },
     };
     if( !Script::BindReservedFunctions( (char*) scripts_cfg.GetBuf(), "server", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
@@ -2573,8 +2578,8 @@ void FOServer::SScriptFunc::Crit_PlaySound( Critter* cr, CScriptString& sound_na
     if( cr->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
 
-    char sound_name_[ 50 ];
-    strncpy( sound_name_, sound_name.c_str(), 50 );
+    char sound_name_[ 100 ];
+    Str::Copy( sound_name_, sound_name.c_str() );
     uint crid = cr->GetId();
 
     if( send_self )
@@ -4547,8 +4552,8 @@ void FOServer::SScriptFunc::Map_PlaySound( Map* map, CScriptString& sound_name )
     if( map->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
 
-    char sound_name_[ 50 ];
-    strncpy( sound_name_, sound_name.c_str(), 50 );
+    char sound_name_[ 100 ];
+    Str::Copy( sound_name_, sound_name.c_str() );
 
     ClVec players;
     map->GetPlayers( players, false );
@@ -4566,8 +4571,8 @@ void FOServer::SScriptFunc::Map_PlaySoundRadius( Map* map, CScriptString& sound_
     if( hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
         SCRIPT_ERROR_R( "Invalid hexes args." );
 
-    char sound_name_[ 50 ];
-    strncpy( sound_name_, sound_name.c_str(), 50 );
+    char sound_name_[ 100 ];
+    Str::Copy( sound_name_, sound_name.c_str() );
 
     ClVec players;
     map->GetPlayers( players, false );
@@ -6122,6 +6127,8 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, CScriptString* image_n
         return true;
 
     // Check depth
+    static uint image_depth_;
+    image_depth_ = image_depth; // Avoid GCC warning "argument ‘image_depth’ might be clobbered by ‘longjmp’ or ‘vfork’"
     if( image_depth < 1 || image_depth > 4 )
         SCRIPT_ERROR_R0( "Wrong image depth arg." );
 
@@ -6136,25 +6143,97 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, CScriptString* image_n
         SCRIPT_ERROR_R0( "File not found." );
 
     // Load PNG from memory
-    // Use FLTK component for this
-    Fl_PNG_Image* png = new Fl_PNG_Image( NULL, fm.GetBuf(), fm.GetFsize() );
-    if( !png->w() || !png->h() )
-        SCRIPT_ERROR_R0( "Unable to load PNG file." );
-    if( png->d() < 1 || png->d() > 4 )
-        SCRIPT_ERROR_R0( "Invalid depth of PNG file." );
-    if( png->count() != 1 )
-        SCRIPT_ERROR_R0( "Invalid format of PNG file." );
+    png_structp pp = png_create_read_struct( PNG_LIBPNG_VER_STRING, NULL, NULL, NULL );
+    png_infop   info = NULL;
+    if( pp )
+        info = png_create_info_struct( pp );
+    if( !pp || !info )
+    {
+        if( pp )
+            png_destroy_read_struct( &pp, NULL, NULL );
+        SCRIPT_ERROR_R0( "Cannot allocate memory to read PNG data." );
+    }
+
+    if( setjmp( png_jmpbuf( pp ) ) )
+    {
+        png_destroy_read_struct( &pp, &info, NULL );
+        SCRIPT_ERROR_R0( "PNG data contains errors." );
+    }
+
+    struct png_mem_data_
+    {
+        png_structp          pp;
+        const unsigned char* current;
+        const unsigned char* last;
+
+        static void          png_read_data_from_mem( png_structp png_ptr, png_bytep data, png_size_t length )
+        {
+            png_mem_data_* png_mem_data = (png_mem_data_*) png_get_io_ptr( png_ptr );
+            if( png_mem_data->current + length > png_mem_data->last )
+            {
+                png_error( png_mem_data->pp, "Invalid attempt to read row data." );
+                return;
+            }
+            memcpy( data, png_mem_data->current, length );
+            png_mem_data->current += length;
+        }
+    } png_mem_data;
+    png_mem_data.current = fm.GetBuf();
+    png_mem_data.last = fm.GetBuf() + fm.GetFsize();
+    png_mem_data.pp = pp;
+    png_set_read_fn( pp, ( png_voidp ) & png_mem_data, png_mem_data.png_read_data_from_mem );
+
+    png_read_info( pp, info );
+
+    if( png_get_color_type( pp, info ) == PNG_COLOR_TYPE_PALETTE )
+        png_set_expand( pp );
+
+    int channels = 1;
+    if( png_get_color_type( pp, info ) & PNG_COLOR_MASK_COLOR )
+        channels = 3;
+
+    int num_trans = 0;
+    png_get_tRNS( pp, info, 0, &num_trans, 0 );
+    if( ( png_get_color_type( pp, info ) & PNG_COLOR_MASK_ALPHA ) || ( num_trans != 0 ) )
+        channels++;
+
+    int w = (int) png_get_image_width( pp, info );
+    int h = (int) png_get_image_height( pp, info );
+    int d = channels;
+
+    if( png_get_bit_depth( pp, info ) < 8 )
+    {
+        png_set_packing( pp );
+        png_set_expand( pp );
+    }
+    else if( png_get_bit_depth( pp, info ) == 16 )
+        png_set_strip_16( pp );
+
+    if( png_get_valid( pp, info, PNG_INFO_tRNS ) )
+        png_set_tRNS_to_alpha( pp );
+
+    uchar*     data = new uchar[ w * h * d ];
+    png_bytep* rows = new png_bytep[ h ];
+
+    for( int i = 0; i < h; i++ )
+        rows[ i ] = (png_bytep) ( data + i * w * d );
+
+    for( int i = png_set_interlace_handling( pp ); i > 0; i-- )
+        png_read_rows( pp, rows, NULL, h );
+
+    delete[] rows;
+    png_read_end( pp, info );
+    png_destroy_read_struct( &pp, &info, NULL );
 
     // Copy data
     ServerImage* simg = new ServerImage();
-    simg->Width = png->w();
-    simg->Height = png->h();
-    simg->Depth = image_depth;
+    simg->Width = w;
+    simg->Height = h;
+    simg->Depth = image_depth_;
     simg->Data.resize( simg->Width * simg->Height * simg->Depth + 3 ); // +3 padding
 
     const uint argb_offs[ 4 ] = { 2, 1, 0, 3 };
-    uint       png_depth = png->d();
-    uint       min_depth = MIN( png_depth, simg->Depth );
+    uint       min_depth = MIN( (uint) d, simg->Depth );
     uint       data_index = 0;
     uint       png_data_index = 0;
     for( uint y = 0; y < simg->Height; y++ )
@@ -6162,14 +6241,13 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, CScriptString* image_n
         for( uint x = 0; x < simg->Width; x++ )
         {
             memzero( &simg->Data[ data_index ], simg->Depth );
-            for( uint d = 0; d < min_depth; d++ )
-                simg->Data[ data_index + d ] = *(uchar*) ( png->data()[ 0 ] + png_data_index + argb_offs[ d ] );
-            png_data_index += png_depth;
+            for( uint j = 0; j < min_depth; j++ )
+                simg->Data[ data_index + j ] = *( data + png_data_index + argb_offs[ j ] );
+            png_data_index += d;
             data_index += simg->Depth;
         }
-        png_data_index += png->ld();
     }
-    delete png;
+    delete[] data;
 
     ServerImages[ index ] = simg;
     MEMORY_PROCESS( MEMORY_IMAGE, (int) ServerImages[ index ]->Data.capacity() );

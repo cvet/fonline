@@ -18,6 +18,8 @@
 # include <Windows.h>
 #else // FO_LINUX
 # include <errno.h>
+# include <string.h> // strerror
+# define ERRORSTR             strerror( errno )
 # define ExitProcess( code )              exit( code )
 #endif
 

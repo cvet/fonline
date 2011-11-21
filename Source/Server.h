@@ -64,7 +64,7 @@ public:
     static void Process_GiveGlobalInfo( Client* cl );
     static void Process_RuleGlobal( Client* cl );
     static void Process_Text( Client* cl );
-    static void Process_Command( Client* cl );
+    static void Process_Command( BufferManager& buf, void ( * logcb )( const char* ), Client* cl, const char* admin_panel );
     static void Process_Dialog( Client* cl, bool is_say );
     static void Process_Barter( Client* cl );
     static void Process_GiveMap( Client* cl );
@@ -242,7 +242,7 @@ public:
     static uint    CpuCount;
     static int     UpdateIndex, UpdateLastIndex;
     static uint    UpdateLastTick;
-    static bool    Active;
+    static bool    Active, ActiveInProcess, ActiveOnce;
     static ClVec   SaveClients;
     static Mutex   SaveClientsLocker;
     static UIntMap RegIp;
@@ -273,8 +273,12 @@ public:
 
     // Init/Finish
     static bool Init();
+    static bool InitReal();
     static void Finish();
-    static bool IsInit() { return Active; }
+    static bool Starting() { return Active && ActiveInProcess; }
+    static bool Started()  { return Active && !ActiveInProcess; }
+    static bool Stopping() { return !Active && ActiveInProcess; }
+    static bool Stopped()  { return !Active && !ActiveInProcess; }
     static void MainLoop();
 
     static Thread*           LogicThreads;
@@ -360,7 +364,7 @@ public:
     static void* Dump_Work( void* data );
 
     // Access
-    static StrVec AccessClient, AccessTester, AccessModer, AccessAdmin;
+    static void GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names );
 
     // Banned
     #define BANS_FNAME_ACTIVE              "active.txt"

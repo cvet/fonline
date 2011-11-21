@@ -37,14 +37,15 @@
 //    -ldl
 //    -lrt
 //    -lstlport
-//    -lX11
-//    -lXft
-//    -lfltk
+//    -lX11*
+//    -lXft*
+//    -lfltk*
 //   Server
-//    -lfltk_images
-//    -lfltk_png
+//    -lfltk_images*
+//    -lfltk_png*
 //    -levent_core
 //    -levent_pthreads
+//    -lpng
 //   Client / Mapper
 //    -lfltk_gl
 //    -lGL
@@ -57,6 +58,8 @@
 //    -lvorbis
 //    -lvorbisfile
 //    -ltheoradec
+//
+// *not in server daemon version
 //
 
 // Detect operating system
