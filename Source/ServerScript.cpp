@@ -370,7 +370,7 @@ bool FOServer::ReloadClientScripts()
                 bool found = false;
                 for( size_t k = 0, l = pragmas.size(); k < l; k += 2 )
                 {
-                    if( pragmas[ k ] == pr[ i ] && pragmas[ k + 1 ] == pr[ j + 1 ] )
+                    if( pragmas[ k ] == pr[ i ] && pragmas[ k + 1 ] == pr[ i + 1 ] )
                     {
                         found = true;
                         break;
