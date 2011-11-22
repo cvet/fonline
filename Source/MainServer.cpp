@@ -5,6 +5,9 @@
 #include "Access.h"
 #include "BufferManager.h"
 #include <locale.h>
+#ifdef FO_LINUX
+# include <signal.h>
+#endif
 #ifndef SERVER_DAEMON
 # include "FL/Fl.H"
 # include "FL/Fl_Window.H"
@@ -69,6 +72,11 @@ int main( int argc, char** argv )
     // Pthreads
     # ifdef FO_WINDOWS
     pthread_win32_process_attach_np();
+    # endif
+
+    // Disable SIGPIPE signal
+    # ifdef FO_LINUX
+    signal( SIGPIPE, SIG_IGN );
     # endif
 
     // Exceptions catcher
@@ -967,10 +975,11 @@ void* GameLoopThread( void* )
 /* Admin panel                                                          */
 /************************************************************************/
 
-#define MAX_SESSION    ( 10 )
+#define MAX_SESSIONS    ( 10 )
 
 struct Session
 {
+    int         RefCount;
     SOCKET      Sock;
     sockaddr_in From;
     Thread      WorkThread;
@@ -1025,6 +1034,8 @@ void* AdminManager( void* port_ )
         WriteLog( "Can't create listen socket for admin manager.\n" );
         return NULL;
     }
+    const int   opt = 1;
+    setsockopt( listen_sock, SOL_SOCKET, SO_REUSEADDR, (char*) &opt, sizeof( opt ) );
     sockaddr_in sin;
     sin.sin_family = AF_INET;
     sin.sin_port = htons( (ushort) (size_t) port_ );
@@ -1069,7 +1080,7 @@ void* AdminManager( void* port_ )
                         break;
                     }
                 }
-                if( refuse || sessions.size() > MAX_SESSION )
+                if( refuse || sessions.size() > MAX_SESSIONS )
                 {
                     shutdown( sock, SD_BOTH );
                     closesocket( sock );
@@ -1079,6 +1090,7 @@ void* AdminManager( void* port_ )
                 if( !refuse )
                 {
                     Session* s = new Session();
+                    s->RefCount = 2;
                     s->Sock = sock;
                     s->From = from;
                     Timer::GetCurrentDateTime( s->StartWork );
@@ -1111,12 +1123,9 @@ void* AdminManager( void* port_ )
                 if( erase )
                 {
                     if( s->Sock != INVALID_SOCKET )
-                    {
                         shutdown( s->Sock, SD_BOTH );
-                        closesocket( s->Sock );
-                        s->Sock = INVALID_SOCKET;
-                    }
-                    delete s;
+                    if( --s->RefCount == 0 )
+                        delete s;
                     it = sessions.erase( it );
                 }
                 else
@@ -1133,17 +1142,17 @@ void* AdminManager( void* port_ )
 }
 
 #define ADMIN_PREFIX    "Admin panel (%s): "
-#define ADMIN_LOG( format, ... )                                                   \
-    do {                                                                           \
-        WriteLog( ADMIN_PREFIX format, admin_name, ## __VA_ARGS__ );               \
-        char buf[ MAX_FOTEXT ];                                                    \
-        Str::Format( buf, format, ## __VA_ARGS__ );                                \
-        uint buf_len = Str::Length( buf ) + 1;                                     \
-        if( send( s->Sock, buf, buf_len, 0 ) != (int) buf_len )                    \
-        {                                                                          \
-            WriteLog( ADMIN_PREFIX "Send data fail, dissconnect.\n", admin_name ); \
-            goto label_Finish;                                                     \
-        }                                                                          \
+#define ADMIN_LOG( format, ... )                                                  \
+    do {                                                                          \
+        WriteLog( ADMIN_PREFIX format, admin_name, ## __VA_ARGS__ );              \
+        char buf[ MAX_FOTEXT ];                                                   \
+        Str::Format( buf, format, ## __VA_ARGS__ );                               \
+        uint buf_len = Str::Length( buf ) + 1;                                    \
+        if( send( s->Sock, buf, buf_len, 0 ) != (int) buf_len )                   \
+        {                                                                         \
+            WriteLog( ADMIN_PREFIX "Send data fail, disconnect.\n", admin_name ); \
+            goto label_Finish;                                                    \
+        }                                                                         \
     } while( 0 )
 
 void* AdminWork( void* session_ )
@@ -1174,7 +1183,7 @@ void* AdminWork( void* session_ )
                 WriteLog( ADMIN_PREFIX "Socket closed, disconnect.\n", admin_name );
             else
                 WriteLog( ADMIN_PREFIX "Socket error, disconnect.\n", admin_name );
-            break;
+            goto label_Finish;
         }
         if( len > 200 )
             len = 200;
@@ -1204,7 +1213,7 @@ void* AdminWork( void* session_ )
                 WriteLog( "Wrong access key entered in admin panel from IP '%s', disconnect.\n", inet_ntoa( s->From.sin_addr ) );
                 char failstr[] = { "Wrong access key!\n" };
                 send( s->Sock, failstr, Str::Length( failstr ) + 1, 0 );
-                break;
+                goto label_Finish;
             }
         }
 
@@ -1212,7 +1221,7 @@ void* AdminWork( void* session_ )
         if( Str::CompareCase( cmd, "exit" ) )
         {
             ADMIN_LOG( "Disconnect from admin panel.\n" );
-            break;
+            goto label_Finish;
         }
         else if( Str::CompareCase( cmd, "kill" ) )
         {
@@ -1368,6 +1377,8 @@ label_Finish:
     shutdown( s->Sock, SD_BOTH );
     closesocket( s->Sock );
     s->Sock = INVALID_SOCKET;
+    if( --s->RefCount == 0 )
+        delete s;
     return NULL;
 }
 

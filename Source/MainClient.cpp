@@ -4,6 +4,9 @@
 #include "Version.h"
 #include "Keyboard.h"
 #include <locale.h>
+#ifdef FO_LINUX
+# include <signal.h>
+#endif
 
 FOWindow* MainWindow = NULL;
 FOClient* FOEngine = NULL;
@@ -18,6 +21,11 @@ int main( int argc, char** argv )
     // Pthreads
     #ifdef FO_WINDOWS
     pthread_win32_process_attach_np();
+    #endif
+
+    // Disable SIGPIPE signal
+    #ifdef FO_LINUX
+    signal( SIGPIPE, SIG_IGN );
     #endif
 
     // Exception
