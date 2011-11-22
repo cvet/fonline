@@ -2242,15 +2242,17 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         CHECK_ADMIN_PANEL;
 
         Client* cl = cl_;
-        if( FLAG( cl->Access, ACCESS_TESTER ) )            // Free XP
+        if( cl->Access >= ACCESS_TESTER ) // Free XP/RegulatePvp
         {
-            if( param_type == 0 && GameOpt.FreeExp && param_val > 0 && cl->Data.Params[ ST_LEVEL ] < 300 )
+            if( param_type == 1 && GameOpt.FreeExp && param_val > 0 && cl->Data.Params[ ST_LEVEL ] < 300 )
             {
                 cl->ChangeParam( ST_EXPERIENCE );
                 cl->Data.Params[ ST_EXPERIENCE ] += param_val > 10000 ? 10000 : param_val;
+                cl->Send_Text( cl, "Added experience.", SAY_NETMSG );
+                return;
             }
 
-            if( param_type == 1 && GameOpt.RegulatePvP )                 // PvP
+            if( param_type == 2 && GameOpt.RegulatePvP )
             {
                 if( !param_val )
                 {
@@ -2264,19 +2266,21 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
                     cl->Data.Params[ MODE_NO_PVP ] = 1;
                     cl->Send_Text( cl, "No PvP on.", SAY_NETMSG );
                 }
+                return;
             }
-            if( param_type == 2 )
-            {
-                ItemMngr.SetItemCritter( cl, 58 /*PID_HOLODISK*/, 1 );
-                Item* holo = cl->GetItemByPid( 58 /*PID_HOLODISK*/ );
-                if( holo )
-                    holo->HolodiskSetNum( 99999 );
-            }
-            return;
+
+            // if( param_type == 3 )
+            // {
+            //    ItemMngr.SetItemCritter( cl, 58 /*PID_HOLODISK*/, 1 );
+            //    Item* holo = cl->GetItemByPid( 58 /*PID_HOLODISK*/ );
+            //    if( holo )
+            //        holo->HolodiskSetNum( 99999 );
+            // }
+
         }
 
         // Implementor commands
-        if( param_type > 10 && FLAG( cl->Access, ACCESS_ADMIN ) )
+        if( param_type > 10 && cl->Access == ACCESS_ADMIN )
         {
             if( param_type == 255 )
             {
@@ -2505,8 +2509,8 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         cl_->Access = wanted_access;
         logcb( "Access changed." );
 
-        if( cl_->Access == ACCESS_ADMIN )
-            logcb( "Welcome Master." );
+        // if( cl_->Access == ACCESS_ADMIN )
+        //    logcb( "Welcome Master." );
     }
     break;
     case CMD_ADDITEM:
@@ -3324,16 +3328,19 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         auto it = std::find( LogClients.begin(), LogClients.end(), cl_ );
         if( action == 0 && it != LogClients.end() )           // Detach current
         {
+            logcb( "Detached." );
             cl_->Release();
             LogClients.erase( it );
         }
         else if( action == 1 && it == LogClients.end() )           // Attach current
         {
+            logcb( "Attached." );
             cl_->AddRef();
             LogClients.push_back( cl_ );
         }
         else if( action == 2 )             // Detach all
         {
+            logcb( "Detached all." );
             for( auto it_ = LogClients.begin(); it_ < LogClients.end(); ++it_ )
                 ( *it_ )->Release();
             LogClients.clear();
