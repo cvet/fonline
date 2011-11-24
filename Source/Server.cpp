@@ -3793,7 +3793,7 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
     }
 
     WriteLog( "Loading language packs complete, loaded<%u> packs.\n", cur_lang );
-    return true;
+    return cur_lang > 0;
 }
 
 bool FOServer::InitLangPacksDialogs( LangPackVec& lang_packs )
