@@ -886,6 +886,7 @@ int main( int argc, char** argv )
     RestoreMainDirectory();
     CatchExceptions( "FOnlineServer", SERVER_VERSION );
     Timer::Init();
+    Thread::SetCurrentName( "Daemon" );
     LogToFile( "./FOnlineServerDaemon.log" );
 
     // Config
@@ -893,7 +894,6 @@ int main( int argc, char** argv )
     cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
 
     // Logging
-    LogSetThreadName( "Daemon" );
     LogWithTime( cfg.GetInt( "LoggingTime", 1 ) == 0 ? false : true );
     LogWithThread( cfg.GetInt( "LoggingThread", 1 ) == 0 ? false : true );
     if( strstr( CommandLine, "-logdebugoutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
@@ -948,7 +948,6 @@ void DaemonLoop()
 
 void GameLoopThread( void* )
 {
-    LogSetThreadName( "Main" );
     GetServerOptions();
 
     if( Server.Init() )
