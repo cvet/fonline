@@ -32,7 +32,7 @@ class Job
 public:
     int   Type;
     void* Data;
-    int   ThreadId;
+    uint  ThreadId;
 
     Job();
     Job( int type, void* data, bool cur_thread );

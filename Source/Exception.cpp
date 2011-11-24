@@ -168,9 +168,10 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         // Print information about each thread
         for( uint i = 0; i < threads_ids_count; i++ )
         {
-            DWORD  tid = threads_ids[ i ];
-            HANDLE t = OpenThread( THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, tid );
-            fprintf( f, "Thread %d%s\n", tid, !i ? " (current)" : "" );
+            DWORD       tid = threads_ids[ i ];
+            HANDLE      t = OpenThread( THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, tid );
+            const char* tname = Thread::FindName( tid );
+            fprintf( f, "Thread '%s' (%u%s)\n", tname ? tname : "Unknown", tid, !i ? ", current" : "" );
 
             CONTEXT context;
             memset( &context, 0, sizeof( context ) );
@@ -609,7 +610,7 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         int size = backtrace( array, BACKTRACE_BUFFSER_COUNT );
         char** symbols = backtrace_symbols( array, size );
 
-        fprintf( f, "Thread %d%s\n", GetCurThreadId(), " (current)" );
+        fprintf( f, "Thread '%s' (%u%s)\n", Thread::GetCurrentName(), Thread::GetCurrentId(), ", current" );
         for( int i = 0; i < size; i++ )
             fprintf( f, "\t%s\n", symbols[ i ] );
 

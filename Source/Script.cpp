@@ -101,7 +101,7 @@ public:
     uint   RunTimeoutSuspend = 600000; // 10 minutes
     uint   RunTimeoutMessage = 300000; // 5 minutes
     Thread RunTimeoutThread;
-    void* RunTimeout( void* );
+    void RunTimeout( void* );
 
 
     bool Init( bool with_log, Preprocessor::PragmaCallback* pragma_callback )
@@ -128,7 +128,7 @@ public:
         if( !InitThread() )
             return false;
 
-        RunTimeoutThread.Start( RunTimeout );
+        RunTimeoutThread.Start( RunTimeout, "ScriptTimeout" );
         return true;
     }
 
@@ -751,10 +751,8 @@ public:
     }
     #endif
 
-    void* RunTimeout( void* data )
+    void RunTimeout( void* data )
     {
-        LogSetThreadName( "ScriptTimeout" );
-
         while( RunTimeoutSuspend )
         {
             // Check execution time every 1/10 second
@@ -779,7 +777,6 @@ public:
                 }
             }
         }
-        return NULL;
     }
 
     void SetRunTimeout( uint suspend_timeout, uint message_timeout )
@@ -1564,7 +1561,7 @@ public:
                 sync_mngr->PopPriority();
 
                 SynchronizeThreadLocalLocker.Lock();
-                bool sync_not_closed = ( SynchronizeThreadId == GetCurThreadId() );
+                bool sync_not_closed = ( SynchronizeThreadId == Thread::GetCurrentId() );
                 if( sync_not_closed )
                 {
                     SynchronizeThreadId = 0;
@@ -1902,7 +1899,7 @@ endcopy:
 
         if( !SynchronizeThreadId )           // Section is free
         {
-            SynchronizeThreadId = GetCurThreadId();
+            SynchronizeThreadId = Thread::GetCurrentId();
             SynchronizeThreadCounter = 1;
             SynchronizeThreadLocker.Disallow();     // Lock synchronization section
             SynchronizeThreadLocalLocker.Unlock();  // Local unlock
@@ -1910,10 +1907,10 @@ endcopy:
             SyncManager* sync_mngr = SyncManager::GetForCurThread();
             sync_mngr->PushPriority( 10 );
         }
-        else if( SynchronizeThreadId == GetCurThreadId() ) // Section busy by current thread
+        else if( SynchronizeThreadId == Thread::GetCurrentId() ) // Section busy by current thread
         {
             SynchronizeThreadCounter++;
-            SynchronizeThreadLocalLocker.Unlock();         // Local unlock
+            SynchronizeThreadLocalLocker.Unlock();               // Local unlock
         }
         else // Section busy by another thread
         {
@@ -1937,7 +1934,7 @@ endcopy:
 
         SynchronizeThreadLocalLocker.Lock(); // Local lock
 
-        if( SynchronizeThreadId == GetCurThreadId() )
+        if( SynchronizeThreadId == Thread::GetCurrentId() )
         {
             if( --SynchronizeThreadCounter == 0 )
             {

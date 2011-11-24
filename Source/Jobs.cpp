@@ -21,7 +21,7 @@ Job::Job( int type, void* data, bool cur_thread ): Type( type ),
                                                    ThreadId( 0 )
 {
     if( cur_thread )
-        ThreadId = GetCurThreadId();
+        ThreadId = Thread::GetCurrentId();
 }
 
 void Job::PushBack( int type )
@@ -64,7 +64,7 @@ Job Job::PopFront()
     Job job = Jobs.front();
 
     // Check owner
-    int tid = (int) GetCurThreadId();
+    uint tid = Thread::GetCurrentId();
     if( job.ThreadId && job.ThreadId != tid )
     {
         for( auto it = Jobs.begin() + 1; it != Jobs.end(); ++it )

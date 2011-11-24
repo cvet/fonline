@@ -291,17 +291,17 @@ inline void PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     break;
     case CMD_PARAM:
     {
-        ushort param_type;
+        uint   crid;
         ushort param_num;
         int    param_val;
-        if( sscanf( args, "%hu%hu%d", &param_type, &param_num, &param_val ) != 3 )
+        if( sscanf( args, "%u%hu%d", &crid, &param_num, &param_val ) != 3 )
             break;
-        msg_len += sizeof( ushort ) * 2 + sizeof( int );
+        msg_len += sizeof( uint ) + sizeof( ushort ) + sizeof( int );
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf << param_type;
+        buf << crid;
         buf << param_num;
         buf << param_val;
     }

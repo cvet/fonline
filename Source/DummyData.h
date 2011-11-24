@@ -1214,8 +1214,6 @@ struct GameOptions
     int DisableTcpNagle;
     int DisableZlibCompression;
     int FloodSize;
-    int FreeExp;
-    int RegulatePvP;
     int NoAnswerShuffle;
     int DialogDemandRecheck;
     int FixBoyDefaultExperience;

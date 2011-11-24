@@ -19,7 +19,6 @@ void*       LogTextBox = NULL;
 std::string LogBufferStr;
 bool        LoggingWithTime = false;
 bool        LoggingWithThread = false;
-THREAD char LogThreadName[ 64 ] = { 0 };
 uint        StartLogTime = Timer::FastTick();
 void WriteLogInternal( const char* func, const char* frmt, va_list& list );
 
@@ -71,11 +70,6 @@ void LogToDebugOutput()
 {
     LogFinish( LOG_DEBUG_OUTPUT );
     LoggingType |= LOG_DEBUG_OUTPUT;
-}
-
-void LogSetThreadName( const char* name )
-{
-    Str::Copy( LogThreadName, name );
 }
 
 int LogGetType()
@@ -130,10 +124,11 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
     char str_tid[ 64 ] = { 0 };
     if( LoggingWithThread )
     {
-        if( LogThreadName[ 0 ] )
-            Str::Format( str_tid, "[%s]", LogThreadName );
+        const char* name = Thread::GetCurrentName();
+        if( name[ 0 ] )
+            Str::Format( str_tid, "[%s]", name );
         else
-            Str::Format( str_tid, "[%04u]", GetCurThreadId() );
+            Str::Format( str_tid, "[%04u]", Thread::GetCurrentId() );
     }
 
     char str_time[ 64 ] = { 0 };

@@ -285,9 +285,9 @@ public:
     static uint              LogicThreadCount;
     static bool              LogicThreadSetAffinity;
     static MutexSynchronizer LogicThreadSync;
-    static void  SynchronizeLogicThreads();
-    static void  ResynchronizeLogicThreads();
-    static void* Logic_Work( void* data );
+    static void SynchronizeLogicThreads();
+    static void ResynchronizeLogicThreads();
+    static void Logic_Work( void* data );
 
     // Net IO
     static ClVec  ConnectedClients;
@@ -295,25 +295,25 @@ public:
     static SOCKET ListenSock;
     static Thread ListenThread;
 
-    static void* Net_Listen( void* );
+    static void Net_Listen( void* );
 
     #if defined ( USE_LIBEVENT )
     static event_base* NetIOEventHandler;
     static Thread      NetIOThread;
     static uint        NetIOThreadsCount;
 
-    static void* NetIO_Loop( void* );
-    static void  NetIO_Event( bufferevent* bev, short what, void* arg );
-    static void  NetIO_Input( bufferevent* bev, void* arg );
-    static void  NetIO_Output( bufferevent* bev, void* arg );
+    static void NetIO_Loop( void* );
+    static void NetIO_Event( bufferevent* bev, short what, void* arg );
+    static void NetIO_Input( bufferevent* bev, void* arg );
+    static void NetIO_Output( bufferevent* bev, void* arg );
     #else // IOCP
     static HANDLE  NetIOCompletionPort;
     static Thread* NetIOThreads;
     static uint    NetIOThreadsCount;
 
-    static void* NetIO_Work( void* );
-    static void  NetIO_Input( Client::NetIOArg* io );
-    static void  NetIO_Output( Client::NetIOArg* io );
+    static void NetIO_Work( void* );
+    static void NetIO_Input( Client::NetIOArg* io );
+    static void NetIO_Output( Client::NetIOArg* io );
     #endif
 
     // Service
@@ -353,15 +353,15 @@ public:
     static MutexEvent DumpBeginEvent, DumpEndEvent;
     static Thread     DumpThread;
 
-    static bool  SaveClient( Client* cl, bool deferred );
-    static bool  LoadClient( Client* cl );
-    static bool  NewWorld();
-    static void  SaveWorld( const char* name );
-    static bool  LoadWorld( const char* name );
-    static void  UnloadWorld();
-    static void  AddWorldSaveData( void* data, size_t size );
-    static void  AddClientSaveData( Client* cl );
-    static void* Dump_Work( void* data );
+    static bool SaveClient( Client* cl, bool deferred );
+    static bool LoadClient( Client* cl );
+    static bool NewWorld();
+    static void SaveWorld( const char* name );
+    static bool LoadWorld( const char* name );
+    static void UnloadWorld();
+    static void AddWorldSaveData( void* data, size_t size );
+    static void AddClientSaveData( Client* cl );
+    static void Dump_Work( void* data );
 
     // Access
     static void GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names );

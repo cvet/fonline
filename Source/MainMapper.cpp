@@ -7,17 +7,18 @@
 FOWindow* MainWindow = NULL;
 FOMapper* Mapper = NULL;
 Thread    Game;
-void* GameThread( void* );
+void GameThread( void* );
 
 int main( int argc, char** argv )
 {
     setlocale( LC_ALL, "Russian" );
     RestoreMainDirectory();
 
-    // Pthreads
+    // Threading
     #ifdef FO_WINDOWS
     pthread_win32_process_attach_np();
     #endif
+    Thread::SetCurrentName( "GUI" );
 
     // Exceptions
     CatchExceptions( "FOnlineMapper", MAPPER_VERSION );
@@ -98,7 +99,7 @@ int main( int argc, char** argv )
     #endif
 
     // Start
-    Game.Start( GameThread );
+    Game.Start( GameThread, "Main" );
 
     // Loop
     while( !GameOpt.Quit && Fl::wait() )
@@ -117,7 +118,7 @@ int main( int argc, char** argv )
     return 0;
 }
 
-void* GameThread( void* )
+void GameThread( void* )
 {
     // Start
     Mapper = new (nothrow) FOMapper();
@@ -125,7 +126,7 @@ void* GameThread( void* )
     {
         WriteLog( "FOnline engine initialization fail.\n" );
         GameOpt.Quit = true;
-        return NULL;
+        return;
     }
 
     // Loop
@@ -137,7 +138,6 @@ void* GameThread( void* )
     // Finish
     Mapper->Finish();
     delete Mapper;
-    return NULL;
 }
 
 int FOWindow::handle( int event )

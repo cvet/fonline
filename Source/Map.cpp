@@ -118,7 +118,7 @@ typedef map< uint, ItemNpcPtr > UIDtoPtrMap;
 
 bool Map::Generate()
 {
-    char map_info[ 512 ];
+    char map_info[ MAX_FOTEXT ];
     Str::Format( map_info, "Map id<%u>, pid<%u>", GetId(), GetPid() );
     // WriteLog("Generate Map id<%u>, pid<%u>...\n",GetId(),GetProtoId());
 

@@ -197,7 +197,7 @@ bool MapManager::LoadLocationsProtos()
 
     int  errors = 0;
     uint loaded = 0;
-    char res[ 256 ];
+    char res[ MAX_FOTEXT ];
     for( int i = 1; i < MAX_PROTO_LOCATIONS; i++ )
     {
         ProtoLoc[ i ].IsInit = false;
@@ -228,9 +228,9 @@ bool MapManager::LoadLocationsProtos()
 
 bool MapManager::LoadLocationProto( IniParser& city_txt, ProtoLocation& ploc, ushort pid )
 {
-    char key1[ 256 ];
-    char key2[ 256 ];
-    char res[ 512 ];
+    char key1[ MAX_FOTEXT ];
+    char key2[ MAX_FOTEXT ];
+    char res[ MAX_FOTEXT ];
     Str::Format( key1, "Area %u", pid );
 
     ploc.IsInit = false;
@@ -468,7 +468,7 @@ string MapManager::GetLocationsMapsStatistics()
     SCOPE_LOCK( mapLocker );
 
     static string result;
-    char          str[ 512 ];
+    char          str[ MAX_FOTEXT ];
     Str::Format( str, "Locations count: %u\n", allLocations.size() );
     result = str;
     Str::Format( str, "Maps count: %u\n", allMaps.size() );

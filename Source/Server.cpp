@@ -193,9 +193,9 @@ string FOServer::GetIngamePlayersStatistics()
 {
     static string result;
     const char*   cond_states_str[] = { "None", "Life", "Knockout", "Dead" };
-    char          str[ 512 ];
-    char          str_loc[ 256 ];
-    char          str_map[ 256 ];
+    char          str[ MAX_FOTEXT ];
+    char          str_loc[ MAX_FOTEXT ];
+    char          str_map[ MAX_FOTEXT ];
 
     ConnectedClientsLocker.Lock();
     uint conn_count = (uint) ConnectedClients.size();
@@ -424,7 +424,14 @@ void FOServer::MainLoop()
     for( uint i = 0; i < LogicThreadCount; i++ )
     {
         Job::PushBack( JOB_THREAD_SYNCHRONIZE );
-        LogicThreads[ i ].Start( Logic_Work );
+
+        char thread_name[ MAX_FOTEXT ];
+        if( LogicThreadCount > 1 )
+            Str::Format( thread_name, "Logic%u", i );
+        else
+            Str::Format( thread_name, "Logic" );
+
+        LogicThreads[ i ].Start( Logic_Work, thread_name );
 
         if( LogicThreadSetAffinity )
         {
@@ -554,25 +561,13 @@ void FOServer::ResynchronizeLogicThreads()
     LogicThreadSync.Resynchronize();
 }
 
-void* FOServer::Logic_Work( void* data )
+void FOServer::Logic_Work( void* data )
 {
     Sleep( 10 );
 
-    // Set thread name
-    if( LogicThreadCount > 1 )
-    {
-        static int thread_count = 0;
-        LogSetThreadName( Str::FormatBuf( "Logic%d", thread_count ) );
-        thread_count++;
-    }
-    else
-    {
-        LogSetThreadName( "Logic" );
-    }
-
     // Init scripts
     if( !Script::InitThread() )
-        return 0;
+        return;
 
     // Add sleep job for current thread
     Job::PushBack( Job( JOB_THREAD_LOOP, NULL, true ) );
@@ -846,13 +841,10 @@ void* FOServer::Logic_Work( void* data )
 
     sync_mngr->UnlockAll();
     Script::FinishThread();
-    return 0;
 }
 
-void* FOServer::Net_Listen( void* )
+void FOServer::Net_Listen( void* )
 {
-    LogSetThreadName( "NetListen" );
-
     while( true )
     {
         // Blocked
@@ -991,15 +983,12 @@ void* FOServer::Net_Listen( void* )
         // Add job
         Job::PushBack( JOB_CLIENT, cl );
     }
-    return NULL;
 }
 
 #if defined ( USE_LIBEVENT )
 
-void* FOServer::NetIO_Loop( void* )
+void FOServer::NetIO_Loop( void* )
 {
-    LogSetThreadName( "NetLoop" );
-
     while( true )
     {
         event_base* eb = NetIOEventHandler;
@@ -1023,16 +1012,24 @@ void* FOServer::NetIO_Loop( void* )
         // event_base_loopbreak called
         break;
     }
-    return NULL;
 }
 
-# pragma MESSAGE("Set names to libevent threads (NetIO_).")
-// static int thread_count=0;
-// LogSetThreadName(Str::FormatBuf("NetWork%d",thread_count));
-// thread_count++;
+void CheckThreadName()
+{
+    static uint thread_count = 0;
+    const char* cur_name = Thread::GetCurrentName();
+    if( !cur_name[ 0 ] )
+    {
+        char thread_name[ MAX_FOTEXT ];
+        Str::Format( thread_name, "NetWork%u", thread_count++ );
+        Thread::SetCurrentName( thread_name );
+    }
+}
 
 void FOServer::NetIO_Event( bufferevent* bev, short what, void* arg )
 {
+    CheckThreadName();
+
     Client::NetIOArg* arg_ = (Client::NetIOArg*) arg;
     SCOPE_LOCK( arg_->Locker );
     Client*           cl = arg_->PClient;
@@ -1079,6 +1076,8 @@ void FOServer::NetIO_Event( bufferevent* bev, short what, void* arg )
 
 void FOServer::NetIO_Input( bufferevent* bev, void* arg )
 {
+    CheckThreadName();
+
     Client::NetIOArg* arg_ = (Client::NetIOArg*) arg;
     SCOPE_LOCK( arg_->Locker );
     Client*           cl = arg_->PClient;
@@ -1129,6 +1128,8 @@ void FOServer::NetIO_Input( bufferevent* bev, void* arg )
 
 void FOServer::NetIO_Output( bufferevent* bev, void* arg )
 {
+    CheckThreadName();
+
     Client::NetIOArg* arg_ = (Client::NetIOArg*) arg;
     SCOPE_LOCK( arg_->Locker );
     Client*           cl = arg_->PClient;
@@ -1204,12 +1205,8 @@ void FOServer::NetIO_Output( bufferevent* bev, void* arg )
 
 #else // IOCP
 
-void* FOServer::NetIO_Work( void* )
+void FOServer::NetIO_Work( void* )
 {
-    static int thread_count = 0;
-    LogSetThreadName( Str::FormatBuf( "NetWork%d", thread_count ) );
-    thread_count++;
-
     while( true )
     {
         DWORD             bytes;
@@ -1249,7 +1246,6 @@ void* FOServer::NetIO_Work( void* )
 
         cl->Release();
     }
-    return NULL;
 }
 
 void FOServer::NetIO_Input( Client::NetIOArg* io )
@@ -2231,235 +2227,31 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
     break;
     case CMD_PARAM:
     {
-        ushort param_type;
+        uint   crid;
         ushort param_num;
         int    param_val;
-        buf >> param_type;
+        buf >> crid;
         buf >> param_num;
         buf >> param_val;
 
         CHECK_ALLOW_COMMAND;
-        CHECK_ADMIN_PANEL;
 
-        Client* cl = cl_;
-        if( cl->Access >= ACCESS_TESTER ) // Free XP/RegulatePvp
-        {
-            if( param_type == 1 && GameOpt.FreeExp && param_val > 0 && cl->Data.Params[ ST_LEVEL ] < 300 )
-            {
-                cl->ChangeParam( ST_EXPERIENCE );
-                cl->Data.Params[ ST_EXPERIENCE ] += param_val > 10000 ? 10000 : param_val;
-                cl->Send_Text( cl, "Added experience.", SAY_NETMSG );
-                return;
-            }
-
-            if( param_type == 2 && GameOpt.RegulatePvP )
-            {
-                if( !param_val )
-                {
-                    cl->ChangeParam( MODE_NO_PVP );
-                    cl->Data.Params[ MODE_NO_PVP ] = 0;
-                    cl->Send_Text( cl, "No PvP off.", SAY_NETMSG );
-                }
-                else
-                {
-                    cl->ChangeParam( MODE_NO_PVP );
-                    cl->Data.Params[ MODE_NO_PVP ] = 1;
-                    cl->Send_Text( cl, "No PvP on.", SAY_NETMSG );
-                }
-                return;
-            }
-
-            // if( param_type == 3 )
-            // {
-            //    ItemMngr.SetItemCritter( cl, 58 /*PID_HOLODISK*/, 1 );
-            //    Item* holo = cl->GetItemByPid( 58 /*PID_HOLODISK*/ );
-            //    if( holo )
-            //        holo->HolodiskSetNum( 99999 );
-            // }
-
-        }
-
-        // Implementor commands
-        if( param_type > 10 && cl->Access == ACCESS_ADMIN )
-        {
-            if( param_type == 255 )
-            {
-                // Generate params
-                for( uint i = 0; i <= 6; i++ )
-                {
-                    cl->ChangeParam( i );
-                    cl->Data.Params[ i ] = param_num;
-                }
-                for( uint i = SKILL_BEGIN; i <= SKILL_END; i++ )
-                {
-                    cl->ChangeParam( i );
-                    cl->Data.Params[ i ] = param_val;
-                }
-
-                cl->ChangeParam( ST_CURRENT_HP );
-                cl->Data.Params[ ST_CURRENT_HP ] = 99999999;
-                cl->ChangeParam( ST_MAX_LIFE );
-                cl->Data.Params[ ST_MAX_LIFE ] = 99999999;
-                cl->ChangeParam( ST_MELEE_DAMAGE );
-                cl->Data.Params[ ST_MELEE_DAMAGE ] = 30000;
-                cl->ChangeParam( ST_ACTION_POINTS );
-                cl->Data.Params[ ST_ACTION_POINTS ] = 300;
-                cl->ChangeParam( ST_CURRENT_AP );
-                cl->Data.Params[ ST_CURRENT_AP ] = 300 * AP_DIVIDER;
-                cl->ChangeParam( ST_BONUS_LOOK );
-                cl->Data.Params[ ST_BONUS_LOOK ] = 400;
-                cl->ChangeParam( PE_SILENT_RUNNING );
-                cl->Data.Params[ PE_SILENT_RUNNING ] = 1;
-                cl->ChangeParam( SK_SNEAK );
-                cl->Data.Params[ SK_SNEAK ] = 1000;
-
-                // Get locations on global
-                LocVec locs;
-                MapMngr.GetLocations( locs, false );
-                for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
-                {
-                    Location* loc = *it;
-                    cl->AddKnownLoc( loc->GetId() );
-                }
-                cl->GMapFog.Fill( 0xFF );
-                cl->Send_Text( cl, "Lets Rock my Master.", SAY_NETMSG );
-            }
-            else if( param_type == 244 )
-            {
-                cl->Data.BaseType = param_num;
-                cl->Send_Text( cl, "Type changed - please reconnect.", SAY_NETMSG );
-                cl->Disconnect();
-            }
-            else if( param_type == 234 )
-            {
-                for( uint i = TIMEOUT_BEGIN; i <= TIMEOUT_END; i++ )
-                    cl->SetTimeout( i, 0 );
-                cl->Send_Text( cl, "Timeouts clear.", SAY_NETMSG );
-            }
-            else if( param_type == 233 )
-            {
-                cl->ChangeParam( ST_CURRENT_HP );
-                cl->Data.Params[ ST_CURRENT_HP ] = cl->GetParam( ST_MAX_LIFE );
-                for( uint i = DAMAGE_BEGIN; i <= DAMAGE_END; i++ )
-                {
-                    cl->ChangeParam( i );
-                    cl->Data.Params[ i ] = 0;
-                }
-                cl->Send_Text( cl, "Full heal done.", SAY_NETMSG );
-            }
-            else if( param_type == 222 )
-            {
-                GameOpt.FreeExp = ( param_num ? true : false );
-                cl->Send_Text( cl, "OptFreeExp changed.", SAY_NETMSG );
-            }
-            else if( param_type == 210 )
-            {
-                if( param_val > 0 )
-                    cl->Data.Params[ ST_EXPERIENCE ] += param_val;
-            }
-            else if( param_type == 211 )
-            {
-//					cl->Send_AllQuests();
-//					cl->Send_Text(cl,"Local vars clear.",SAY_NETMSG);
-            }
-            else if( param_type == 200 )
-            {
-                PcVec npcs;
-                CrMngr.GetCopyNpcs( npcs, true );
-                for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
-                {
-                    Npc* npc = *it;
-                    if( !npc->VisCr.size() )
-                        continue;
-                    auto it_ = npc->VisCr.begin();
-                    for( int i = 0, j = Random( 0, (int) npc->VisCr.size() - 1 ); i < j; i++ )
-                        ++it_;
-                    npc->SetTarget( -1, *it_, GameOpt.DeadHitPoints, false );
-                }
-            }
-            else if( param_type == 100 )
-            {
-                /*uint len=0;
-                   EnterCriticalSection(&CSConnectedClients);
-                   for(auto it=ConnectedClients.begin(),end=ConnectedClients.end();it!=end;++it)
-                   {
-                        Client* cl_=*it;
-                        len+=buf.GetLen();
-                   }
-                   LeaveCriticalSection(&CSConnectedClients);
-                   cl->Send_Text(cl,Str::FormatBuf("bin/bout len %u (%u)",len,ConnectedClients.size()),SAY_NETMSG);
-                   cl->Send_Text(cl,Str::FormatBuf("AI planes %d",DymmyVar),SAY_NETMSG);
-                   cl->Send_Text(cl,Str::FormatBuf("Clients %d",DummyVar2),SAY_NETMSG);
-                   cl->Send_Text(cl,Str::FormatBuf("Npc %d",DummyVar3),SAY_NETMSG);*/
-            }
-            else if( param_type == 99 )
-            {}
-            else if( param_type == 98 )
-            {
-                char* leak = new char[ param_val * 1000000 ];
-            }
-            else if( param_type == 97 )
-            {
-                PcVec npcs;
-                CrMngr.GetCopyNpcs( npcs, true );
-                for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
-                {
-                    Npc* npc = *it;
-                    memzero( &npc->Data.EnemyStack, sizeof( npc->Data.EnemyStack ) );
-                }
-            }
-            else if( param_type == 96 )
-            {
-                PcVec npcs;
-                CrMngr.GetCopyNpcs( npcs, true );
-                for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
-                {
-                    Npc* npc = *it;
-                    npc->DropPlanes();
-                }
-            }
-            else if( param_type == 95 )
-            {
-                PcVec npcs;
-                CrMngr.GetCopyNpcs( npcs, true );
-                for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
-                {
-                    Npc* npc = *it;
-                    if( npc->IsDead() && npc->GetParam( ST_REPLICATION_TIME ) )
-                        npc->SetTimeout( ST_REPLICATION_TIME, 0 );
-                }
-            }
-            else if( param_type == 93 )
-            {
-                SaveWorldNextTick = Timer::FastTick();
-            }
-            else if( param_type == 90 )
-            {
-                uint   count = VarMngr.GetVarsCount();
-                double tick = Timer::AccurateTick();
-                VarsGarbarger( true );
-                count -= VarMngr.GetVarsCount();
-                tick = Timer::AccurateTick() - tick;
-                cl->Send_Text( cl, Str::FormatBuf( "Erased %u vars in %g ms.", count, tick ), SAY_NETMSG );
-            }
-            return;
-        }
-
-        if( param_type == 0 )
+        Critter* cr = ( !crid ? cl_ : CrMngr.GetCritter( crid, true ) );
+        if( cr )
         {
             if( param_num >= MAX_PARAMS )
             {
-                cl->Send_Text( cl, "Wrong param number.", SAY_NETMSG );
+                logcb( "Wrong param number." );
                 return;
             }
 
-            cl->ChangeParam( param_num );
-            cl->Data.Params[ param_num ] = param_val;
-            cl->Send_Text( cl, "Done.", SAY_NETMSG );
+            cr->ChangeParam( param_num );
+            cr->Data.Params[ param_num ] = param_val;
+            logcb( "Done." );
         }
         else
         {
-            cl->Send_Text( cl, "Wrong param type.", SAY_NETMSG );
+            logcb( "Critter not found." );
         }
     }
     break;
@@ -2508,9 +2300,6 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
 
         cl_->Access = wanted_access;
         logcb( "Access changed." );
-
-        // if( cl_->Access == ACCESS_ADMIN )
-        //    logcb( "Welcome Master." );
     }
     break;
     case CMD_ADDITEM:
@@ -3807,11 +3596,11 @@ bool FOServer::InitReal()
         closesocket( ListenSock );
         return false;
     }
-    NetIOThread.Start( NetIO_Loop );
+    NetIOThread.Start( NetIO_Loop, "NetLoop" );
     WriteLog( "Network IO threads started, count<%u>.\n", NetIOThreadsCount );
 
     // Listen
-    ListenThread.Start( Net_Listen );
+    ListenThread.Start( Net_Listen, "NetListen" );
     WriteLog( "Network listen thread started.\n" );
 
     # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
@@ -3828,12 +3617,20 @@ bool FOServer::InitReal()
     }
 
     WriteLogF( NULL, "Starting net listen thread.\n" );
-    ListenThread.Start( Net_Listen );
+    ListenThread.Start( Net_Listen, "NetListen" );
 
     WriteLogF( NULL, "Starting net work threads, count<%u>.\n", NetIOThreadsCount );
     NetIOThreads = new Thread[ NetIOThreadsCount ];
     for( uint i = 0; i < NetIOThreadsCount; i++ )
-        NetIOThreads[ i ].Start( NetIO_Work );
+    {
+        char thread_name[ MAX_FOTEXT ];
+        if( NetIOThreadsCount > 1 )
+            Str::Format( thread_name, "NetWork%u", i );
+        else
+            Str::Format( thread_name, "NetWork" );
+
+        NetIOThreads[ i ].Start( NetIO_Work, thread_name );
+    }
 
     Client::SendData = &NetIO_Output;
     #endif
@@ -3891,7 +3688,7 @@ bool FOServer::InitReal()
     {
         DumpBeginEvent.Disallow();
         DumpEndEvent.Allow();
-        DumpThread.Start( Dump_Work );
+        DumpThread.Start( Dump_Work, "WorldSaveManager" );
     }
     SaveWorldTime = cfg.GetInt( "WorldSaveTime", 60 ) * 60 * 1000;
     SaveWorldNextTick = Timer::FastTick() + SaveWorldTime;
@@ -3964,8 +3761,8 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
 
     while( true )
     {
-        char cur_str_lang[ 256 ];
-        char lang_name[ 256 ];
+        char cur_str_lang[ MAX_FOTEXT ];
+        char lang_name[ MAX_FOTEXT ];
         Str::Format( cur_str_lang, "Language_%u", cur_lang );
 
         if( !cfg.GetStr( cur_str_lang, "", lang_name ) )
@@ -4745,7 +4542,7 @@ void FOServer::AddClientSaveData( Client* cl )
     ClientsSaveDataCount++;
 }
 
-void* FOServer::Dump_Work( void* data )
+void FOServer::Dump_Work( void* data )
 {
     char fname[ MAX_FOPATH ];
 
@@ -4824,7 +4621,6 @@ void* FOServer::Dump_Work( void* data )
         // Notify about end of processing
         DumpEndEvent.Allow();
     }
-    return NULL;
 }
 
 /************************************************************************/
@@ -5061,8 +4857,8 @@ void FOServer::AddTimeEvent( TimeEvent* te )
 
 uint FOServer::CreateTimeEvent( uint begin_second, const char* script_name, int values, uint val1, CScriptArray* val2, bool save )
 {
-    char module_name[ 256 ];
-    char func_name[ 256 ];
+    char module_name[ MAX_FOTEXT ];
+    char func_name[ MAX_FOTEXT ];
     if( !Script::ReparseScriptName( script_name, module_name, func_name ) )
         return 0;
 
@@ -5116,7 +4912,7 @@ void FOServer::TimeEventEndScriptCallback()
 {
     SCOPE_LOCK( TimeEventsLocker );
 
-    uint tid = GetCurThreadId();
+    uint tid = Thread::GetCurrentId();
     for( auto it = TimeEvents.begin(); it != TimeEvents.end();)
     {
         TimeEvent* te = *it;
@@ -5140,7 +4936,7 @@ bool FOServer::GetTimeEvent( uint num, uint& duration, CScriptArray* values )
     TimeEventsLocker.Lock();
 
     TimeEvent* te = NULL;
-    uint       tid = GetCurThreadId();
+    uint       tid = Thread::GetCurrentId();
 
     // Find event
     while( true )
@@ -5197,7 +4993,7 @@ bool FOServer::SetTimeEvent( uint num, uint duration, CScriptArray* values )
     TimeEventsLocker.Lock();
 
     TimeEvent* te = NULL;
-    uint       tid = GetCurThreadId();
+    uint       tid = Thread::GetCurrentId();
 
     // Find event
     while( true )
@@ -5280,7 +5076,7 @@ void FOServer::ProcessTimeEvents()
         TimeEvent* te = *it;
         if( !te->InProcess && te->FullSecond <= GameOpt.FullSecond )
         {
-            te->InProcess = GetCurThreadId();
+            te->InProcess = Thread::GetCurrentId();
             cur_event = te;
             break;
         }

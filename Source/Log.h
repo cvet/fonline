@@ -26,7 +26,6 @@ void LogToBuffer();                        // Buffer, to get value use LogGetBuf
 void LogToDebugOutput();                   // OutputDebugString
 
 // Other stuff
-void LogSetThreadName( const char* name ); // Set name for current thread
 int  LogGetType();                         // Current types of logging
 void LogFinish( int log_type );            // Finish logging
 void LogWithTime( bool enable );           // Logging with time

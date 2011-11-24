@@ -148,7 +148,6 @@ bool MoveHexByDir( ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy
 void MoveHexByDirUnsafe( int& hx, int& hy, uchar dir );
 bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, int y2 );
 void RestoreMainDirectory();
-uint GetCurThreadId();
 void ShowMessage( const char* message );
 uint GetDoubleClickTicks();
 
@@ -457,8 +456,6 @@ struct GameOptions
     bool        DisableTcpNagle;
     bool        DisableZlibCompression;
     uint        FloodSize;
-    bool        FreeExp;
-    bool        RegulatePvP;
     bool        NoAnswerShuffle;
     bool        DialogDemandRecheck;
     uint        FixBoyDefaultExperience;
@@ -848,40 +845,26 @@ extern InterprocessData SingleplayerData;
 class Thread
 {
 private:
-    bool           isStarted;
-    pthread_t      threadId;
-    pthread_attr_t threadAttr;
+    static THREAD char threadName[ 64 ];
+    static UIntStrMap  threadNames;
+    static Mutex       threadNamesLocker;
+    bool               isStarted;
+    pthread_t          threadId;
+    pthread_attr_t     threadAttr;
 
 public:
-    Thread(): isStarted( false ) { pthread_attr_init( &threadAttr ); }
-    ~Thread() { pthread_attr_destroy( &threadAttr ); }
-    bool Start( void*( *func )(void*) )
-    {
-        isStarted = ( pthread_create( &threadId, &threadAttr, func, NULL ) == 0 );
-        return isStarted;
-    }
-    bool Start( void*( *func )(void*), void* arg )
-    {
-        isStarted = ( pthread_create( &threadId, &threadAttr, func, arg ) == 0 );
-        return isStarted;
-    }
-    void Wait()
-    {
-        if( isStarted ) pthread_join( threadId, NULL );
-        isStarted = false;
-    }
-    void Finish()
-    {
-        if( isStarted ) pthread_cancel( threadId );
-        isStarted = false;
-    }
+    Thread();
+    ~Thread();
+    bool  Start( void ( * func )( void* ), const char* name, void* arg = NULL );
+    void  Wait();
+    void  Finish();
+    uint  GetId();
+    void* GetHandle();
 
-    #if defined ( FO_WINDOWS )
-    uint   GetId()     { GetThreadId( pthread_getw32threadhandle_np( threadId ) ); }
-    HANDLE GetHandle() { return pthread_getw32threadhandle_np( threadId ); }
-    #else // FO_LINUX
-    uint GetId() { return (uint) threadId; }
-    #endif
+    static uint        GetCurrentId();
+    static void        SetCurrentName( const char* name );
+    static const char* GetCurrentName();
+    static const char* FindName( uint thread_id );
 };
 
 /************************************************************************/

@@ -436,15 +436,6 @@ void RestoreMainDirectory()
     // Todo: linux need it?
 }
 
-uint GetCurThreadId()
-{
-    #if defined ( FO_WINDOWS )
-    return (uint) GetCurrentThreadId();
-    #else // FO_LINUX
-    return (uint) pthread_self();
-    #endif
-}
-
 void ShowMessage( const char* message )
 {
     #ifdef FO_WINDOWS
@@ -1181,8 +1172,6 @@ GameOptions::GameOptions()
     DisableTcpNagle = false;
     DisableZlibCompression = false;
     FloodSize = 2048;
-    FreeExp = false;
-    RegulatePvP = false;
     NoAnswerShuffle = false;
     DialogDemandRecheck = false;
     FixBoyDefaultExperience = 50;
@@ -1570,6 +1559,109 @@ void* SingleplayerClientProcess = NULL;
 bool             Singleplayer = false;
 InterprocessData SingleplayerData;
 
+/************************************************************************/
+/* Thread                                                               */
+/************************************************************************/
+
+THREAD char Thread::threadName[ 64 ] = { 0 };
+UIntStrMap  Thread::threadNames;
+Mutex       Thread::threadNamesLocker;
+
+void* ThreadBeginExecution( void* args )
+{
+    void** args_ = (void**) args;
+    void   ( * func )( void* ) = ( void ( * )( void* ) )args_[ 0 ];
+    void*  func_arg = args_[ 1 ];
+    char*  name = (char*) args_[ 2 ];
+    Thread::SetCurrentName( name );
+    delete[] name;
+    free( args );
+    func( func_arg );
+    return NULL;
+}
+
+Thread::Thread()
+{
+    isStarted = false;
+    pthread_attr_init( &threadAttr );
+}
+
+Thread::~Thread()
+{
+    pthread_attr_destroy( &threadAttr );
+}
+
+bool Thread::Start( void ( * func )( void* ), const char* name, void* arg /* = NULL */ )
+{
+    void** args = (void**) malloc( sizeof( void* ) * 3 );
+    char*  name_ = Str::Duplicate( name );
+    args[ 0 ] = (void*) func, args[ 1 ] = arg, args[ 2 ] = name_;
+    isStarted = ( pthread_create( &threadId, &threadAttr, ThreadBeginExecution, args ) == 0 );
+    return isStarted;
+}
+
+void Thread::Wait()
+{
+    if( isStarted )
+        pthread_join( threadId, NULL );
+    isStarted = false;
+}
+
+void Thread::Finish()
+{
+    if( isStarted )
+        pthread_cancel( threadId );
+    isStarted = false;
+}
+
+uint Thread::GetId()
+{
+    #ifdef FO_WINDOWS
+    return GetThreadId( pthread_getw32threadhandle_np( threadId ) );
+    #else
+    return (uint) threadId;
+    #endif
+}
+
+void* Thread::GetHandle()
+{
+    #ifdef FO_WINDOWS
+    return (void*) pthread_getw32threadhandle_np( threadId );
+    #else
+    return (void*) threadId;
+    #endif
+}
+
+uint Thread::GetCurrentId()
+{
+    #if defined ( FO_WINDOWS )
+    return (uint) GetCurrentThreadId();
+    #else // FO_LINUX
+    return (uint) pthread_self();
+    #endif
+}
+
+void Thread::SetCurrentName( const char* name )
+{
+    if( threadName[ 0 ] )
+        return;
+
+    Str::Copy( threadName, name );
+    SCOPE_LOCK( threadNamesLocker );
+    threadNames.insert( PAIR( GetCurrentId(), string( threadName ) ) );
+}
+
+const char* Thread::GetCurrentName()
+{
+    return threadName;
+}
+
+const char* Thread::FindName( uint thread_id )
+{
+    SCOPE_LOCK( threadNamesLocker );
+    auto it = threadNames.find( thread_id );
+    return it != threadNames.end() ? ( *it ).second.c_str() : NULL;
+}
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/

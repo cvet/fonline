@@ -11,17 +11,18 @@
 FOWindow* MainWindow = NULL;
 FOClient* FOEngine = NULL;
 Thread    Game;
-void* GameThread( void* );
+void GameThread( void* );
 
 int main( int argc, char** argv )
 {
     setlocale( LC_ALL, "Russian" );
     RestoreMainDirectory();
 
-    // Pthreads
+    // Threading
     #ifdef FO_WINDOWS
     pthread_win32_process_attach_np();
     #endif
+    Thread::SetCurrentName( "GUI" );
 
     // Disable SIGPIPE signal
     #ifdef FO_LINUX
@@ -188,7 +189,7 @@ int main( int argc, char** argv )
 
     // Start
     WriteLog( "Starting FOnline (version %04X-%02X)...\n\n", CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF );
-    Game.Start( GameThread );
+    Game.Start( GameThread, "Main" );
 
     // Loop
     while( !GameOpt.Quit && Fl::wait() )
@@ -207,7 +208,7 @@ int main( int argc, char** argv )
     return 0;
 }
 
-void* GameThread( void* )
+void GameThread( void* )
 {
     // Start
     FOEngine = new (nothrow) FOClient();
@@ -215,7 +216,7 @@ void* GameThread( void* )
     {
         WriteLog( "FOnline engine initialization fail.\n" );
         GameOpt.Quit = true;
-        return NULL;
+        return;
     }
 
     // Loop
@@ -228,7 +229,6 @@ void* GameThread( void* )
     // Finish
     FOEngine->Finish();
     delete FOEngine;
-    return NULL;
 }
 
 int FOWindow::handle( int event )

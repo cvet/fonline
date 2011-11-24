@@ -25,13 +25,13 @@ void InitAdminManager( IniParser* cfg );
 /************************************************************************/
 
 #ifndef SERVER_DAEMON
-void  GUIInit( IniParser& cfg );
-void  GUICallback( Fl_Widget* widget, void* data );
-void  UpdateInfo();
-void  UpdateLog();
-void  CheckTextBoxSize( bool force );
-void* GameLoopThread( void* );
-void* GUIUpdate( void* );
+void GUIInit( IniParser& cfg );
+void GUICallback( Fl_Widget* widget, void* data );
+void UpdateInfo();
+void UpdateLog();
+void CheckTextBoxSize( bool force );
+void GameLoopThread( void* );
+void GUIUpdate( void* );
 Rect       MainInitRect, LogInitRect, InfoInitRect;
 int        SplitProcent = 90;
 Thread     LoopThread;
@@ -69,10 +69,11 @@ int main( int argc, char** argv )
     setlocale( LC_ALL, "Russian" );
     RestoreMainDirectory();
 
-    // Pthreads
+    // Threading
     # ifdef FO_WINDOWS
     pthread_win32_process_attach_np();
     # endif
+    Thread::SetCurrentName( "GUI" );
 
     // Disable SIGPIPE signal
     # ifdef FO_LINUX
@@ -93,7 +94,6 @@ int main( int argc, char** argv )
     SetCommandLine( argc, argv );
 
     // Logging
-    LogSetThreadName( "GUI" );
     LogWithTime( cfg.GetInt( "LoggingTime", 1 ) == 0 ? false : true );
     LogWithThread( cfg.GetInt( "LoggingThread", 1 ) == 0 ? false : true );
     if( strstr( CommandLine, "-logdebugoutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
@@ -183,7 +183,7 @@ int main( int argc, char** argv )
         else
         {
             FOQuit = false;
-            LoopThread.Start( GameLoopThread );
+            LoopThread.Start( GameLoopThread, "Main" );
         }
     }
 
@@ -194,7 +194,7 @@ int main( int argc, char** argv )
     SyncManager::GetForCurThread()->UnlockAll();
     if( GuiWindow )
     {
-        GUIUpdateThread.Start( GUIUpdate );
+        GUIUpdateThread.Start( GUIUpdate, "GUIUpdate" );
         while( Fl::wait() )
         {
             void* pmsg = Fl::thread_message();
@@ -439,7 +439,7 @@ void GUICallback( Fl_Widget* widget, void* data )
             GuiBtnStartStop->deactivate();
 
             FOQuit = false;
-            LoopThread.Start( GameLoopThread );
+            LoopThread.Start( GameLoopThread, "Main" );
         }
     }
     else if( widget == GuiBtnSplitUp )
@@ -484,7 +484,7 @@ void GUICallback( Fl_Widget* widget, void* data )
     }
 }
 
-void* GUIUpdate( void* )
+void GUIUpdate( void* )
 {
     while( true )
     {
@@ -492,7 +492,6 @@ void* GUIUpdate( void* )
         Fl::awake( &dummy );
         Sleep( 50 );
     }
-    return NULL;
 }
 
 void UpdateInfo()
@@ -657,10 +656,8 @@ void CheckTextBoxSize( bool force )
     }
 }
 
-void* GameLoopThread( void* )
+void GameLoopThread( void* )
 {
-    LogSetThreadName( "Main" );
-
     GetServerOptions();
 
     if( Server.Init() )
@@ -697,7 +694,6 @@ void* GameLoopThread( void* )
     LogFinish( -1 );
     if( Singleplayer )
         ExitProcess( 0 );
-    return NULL;
 }
 
 #endif // !SERVER_DAEMON
@@ -795,8 +791,8 @@ void ServiceMain( bool as_service )
 
 VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
 {
+    Thread::SetCurrentName( "Service" );
     LogToFile( "FOnlineServer.log" );
-    LogSetThreadName( "Service" );
     WriteLog( "FOnline server service, version %04X-%02X.\n", SERVER_VERSION, FO_PROTOCOL_VERSION & 0xFF );
 
     FOServiceStatusHandle = RegisterServiceCtrlHandler( "FOnlineServer", FOServiceCtrlHandler );
@@ -810,7 +806,7 @@ VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
     SetFOServiceStatus( SERVICE_START_PENDING );
 
     FOQuit = false;
-    LoopThread.Start( GameLoopThread );
+    LoopThread.Start( GameLoopThread, "Main" );
     GameInitEvent.Wait();
 
     if( Server.Started() )
@@ -877,8 +873,8 @@ void SetFOServiceStatus( uint state )
 
 # include <sys/stat.h>
 
-void  DaemonLoop();
-void* GameLoopThread( void* );
+void DaemonLoop();
+void GameLoopThread( void* );
 FOServer Server;
 Thread   LoopThread;
 
@@ -940,7 +936,7 @@ int main( int argc, char** argv )
 void DaemonLoop()
 {
     // Autostart server
-    LoopThread.Start( GameLoopThread );
+    LoopThread.Start( GameLoopThread, "Main" );
 
     // Start admin manager
     InitAdminManager( NULL );
@@ -950,7 +946,7 @@ void DaemonLoop()
         Sleep( 1000 );
 }
 
-void* GameLoopThread( void* )
+void GameLoopThread( void* )
 {
     LogSetThreadName( "Main" );
     GetServerOptions();
@@ -965,8 +961,6 @@ void* GameLoopThread( void* )
     {
         WriteLog( "Initialization fail!\n" );
     }
-
-    return NULL;
 }
 
 #endif // SERVER_DAEMON
@@ -988,8 +982,8 @@ struct Session
 };
 typedef vector< Session* > SessionVec;
 
-void* AdminWork( void* );
-void* AdminManager( void* );
+void AdminWork( void* );
+void AdminManager( void* );
 Thread AdminManagerThread;
 
 void InitAdminManager( IniParser* cfg )
@@ -1013,11 +1007,11 @@ void InitAdminManager( IniParser* cfg )
     if( port )
     {
         AdminManagerThread.Finish();
-        AdminManagerThread.Start( AdminManager, (void*) port );
+        AdminManagerThread.Start( AdminManager, "AdminPanelManager", (void*) port );
     }
 }
 
-void* AdminManager( void* port_ )
+void AdminManager( void* port_ )
 {
     // Listen socket
     #ifdef FO_WINDOWS
@@ -1025,14 +1019,14 @@ void* AdminManager( void* port_ )
     if( WSAStartup( MAKEWORD( 2, 2 ), &wsa ) )
     {
         WriteLog( "WSAStartup fail on creation listen socket for admin manager.\n" );
-        return NULL;
+        return;
     }
     #endif
     SOCKET listen_sock = socket( AF_INET, SOCK_STREAM, 0 );
     if( listen_sock == INVALID_SOCKET )
     {
         WriteLog( "Can't create listen socket for admin manager.\n" );
-        return NULL;
+        return;
     }
     const int   opt = 1;
     setsockopt( listen_sock, SOL_SOCKET, SO_REUSEADDR, (char*) &opt, sizeof( opt ) );
@@ -1044,13 +1038,13 @@ void* AdminManager( void* port_ )
     {
         WriteLog( "Can't bind listen socket for admin manager.\n" );
         closesocket( listen_sock );
-        return NULL;
+        return;
     }
     if( listen( listen_sock, SOMAXCONN ) == SOCKET_ERROR )
     {
         WriteLog( "Can't listen listen socket for admin manager.\n" );
         closesocket( listen_sock );
-        return NULL;
+        return;
     }
 
     // Accept clients
@@ -1095,7 +1089,7 @@ void* AdminManager( void* port_ )
                     s->From = from;
                     Timer::GetCurrentDateTime( s->StartWork );
                     s->Authorized = false;
-                    s->WorkThread.Start( AdminWork, (void*) s );
+                    s->WorkThread.Start( AdminWork, "AdminPanel", (void*) s );
                     sessions.push_back( s );
                 }
             }
@@ -1138,7 +1132,6 @@ void* AdminManager( void* port_ )
         // Sleep to prevent panel DDOS or keys brute force
         Sleep( 1000 );
     }
-    return NULL;
 }
 
 #define ADMIN_PREFIX    "Admin panel (%s): "
@@ -1155,7 +1148,7 @@ void* AdminManager( void* port_ )
         }                                                                         \
     } while( 0 )
 
-void* AdminWork( void* session_ )
+void AdminWork( void* session_ )
 {
     // Data
     Session* s = (Session*) session_;
@@ -1262,7 +1255,7 @@ void* AdminWork( void* session_ )
                     else
                     #endif
                     {
-                        LoopThread.Start( GameLoopThread );
+                        LoopThread.Start( GameLoopThread, "Main" );
                     }
                 }
                 else
@@ -1379,7 +1372,6 @@ label_Finish:
     s->Sock = INVALID_SOCKET;
     if( --s->RefCount == 0 )
         delete s;
-    return NULL;
 }
 
 /************************************************************************/
