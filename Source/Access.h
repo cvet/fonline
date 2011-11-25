@@ -188,8 +188,8 @@ inline void PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
             logcb( "Invalid arguments. Example: <~gameinfo type>." );
             break;
         }
-
         msg_len += sizeof( type );
+
         buf << msg;
         buf << msg_len;
         buf << cmd;
@@ -223,8 +223,8 @@ inline void PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
             logcb( "Invalid arguments. Example: <~move crid hx hy>." );
             break;
         }
-
         msg_len += sizeof( crid ) + sizeof( hex_x ) + sizeof( hex_y );
+
         buf << msg;
         buf << msg_len;
         buf << cmd;
@@ -241,8 +241,8 @@ inline void PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
             logcb( "Invalid arguments. Example: <~kill crid>." );
             break;
         }
-
         msg_len += sizeof( crid );
+
         buf << msg;
         buf << msg_len;
         buf << cmd;
@@ -257,7 +257,6 @@ inline void PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
             logcb( "Invalid arguments. Example: <~disconnect crid>." );
             break;
         }
-
         msg_len += sizeof( crid );
 
         buf << msg;
@@ -295,7 +294,10 @@ inline void PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         ushort param_num;
         int    param_val;
         if( sscanf( args, "%u%hu%d", &crid, &param_num, &param_val ) != 3 )
+        {
+            logcb( "Invalid arguments. Example: <~param crid index value>." );
             break;
+        }
         msg_len += sizeof( uint ) + sizeof( ushort ) + sizeof( int );
 
         buf << msg;
