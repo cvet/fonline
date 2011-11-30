@@ -1187,14 +1187,21 @@ void AdminWork( void* session_ )
         {
             StrVec client, tester, moder, admin, admin_names;
             FOServer::GetAccesses( client, tester, moder, admin, admin_names );
-            auto   it = std::find( admin.begin(), admin.end(), cmd );
-            if( it != admin.end() )
+            int    pos = -1;
+            for( size_t i = 0, j = admin.size(); i < j; i++ )
             {
-                uint pos = ( it - admin.begin() ) / sizeof( *it );
-                if( pos < admin_names.size() )
+                if( Str::Compare( admin[ i ].c_str(), cmd ) )
+                {
+                    pos = (int) i;
+                    break;
+                }
+            }
+            if( pos != -1 )
+            {
+                if( pos < (int) admin_names.size() )
                     Str::Copy( admin_name, admin_names[ pos ].c_str() );
                 else
-                    Str::Format( admin_name, "%u", pos );
+                    Str::Format( admin_name, "%d", pos );
 
                 s->Authorized = true;
                 ADMIN_LOG( "Authorized for admin '%s', IP '%s'.\n", admin_name, inet_ntoa( s->From.sin_addr ) );
