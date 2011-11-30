@@ -436,12 +436,12 @@ void FOServer::MainLoop()
         if( LogicThreadSetAffinity )
         {
             #if defined ( FO_WINDOWS )
-            SetThreadAffinityMask( LogicThreads[ i ].GetHandle(), 1 << ( i % CpuCount ) );
+            SetThreadAffinityMask( LogicThreads[ i ].GetWindowsHandle(), 1 << ( i % CpuCount ) );
             #else // FO_LINUX
             cpu_set_t mask;
             CPU_ZERO( &mask );
             CPU_SET( i % CpuCount, &mask );
-            sched_setaffinity( LogicThreads[ i ].GetId(), sizeof( mask ), &mask );
+            sched_setaffinity( LogicThreads[ i ].GetLinuxPid(), sizeof( mask ), &mask );
             #endif
         }
     }

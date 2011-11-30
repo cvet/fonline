@@ -855,11 +855,16 @@ private:
 public:
     Thread();
     ~Thread();
-    bool  Start( void ( * func )( void* ), const char* name, void* arg = NULL );
-    void  Wait();
-    void  Finish();
-    uint  GetId();
-    void* GetHandle();
+    bool Start( void ( * func )( void* ), const char* name, void* arg = NULL );
+    void Wait();
+    void Finish();
+
+    #ifdef FO_WINDOWS
+    HANDLE GetWindowsHandle();
+    #endif
+    #ifdef FO_LINUX
+    pid_t GetLinuxPid();
+    #endif
 
     static uint        GetCurrentId();
     static void        SetCurrentName( const char* name );

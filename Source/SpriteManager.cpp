@@ -582,7 +582,9 @@ void SpriteManager::EndScene()
     #else
     GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
     GL( glViewport( 0, 0, MainWindow->w(), MainWindow->h() ) );
+    GL( glDisable( GL_BLEND ) );
     DrawRenderTarget( rtMain );
+    GL( glEnable( GL_BLEND ) );
     GL( glViewport( 0, 0, modeWidth, modeHeight ) );
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rtMain.FBO ) );
     # ifdef FO_WINDOWS
@@ -1049,8 +1051,15 @@ void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
 
         // Save to hard drive
         void* f = FileOpen( fname, true );
-        FileWrite( f, buf, size );
-        FileClose( f );
+        if( f )
+        {
+            FileWrite( f, buf, size );
+            FileClose( f );
+        }
+        else
+        {
+            WriteLogF( _FUNC_, " - Can't create file<%s>.\n", fname );
+        }
         delete[] buf;
     }
 
@@ -4626,6 +4635,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
         if( offset )
             x += offset->X, y += offset->Y;
 
+        memzero( &vBuffer[ i ], sizeof( Vertex ) );
         vBuffer[ i ].x = x;
         vBuffer[ i ].y = y;
         vBuffer[ i ].diffuse = COLOR_FIX( point.PointColor );

@@ -1614,27 +1614,23 @@ void Thread::Finish()
     isStarted = false;
 }
 
-uint Thread::GetId()
+#ifdef FO_WINDOWS
+HANDLE Thread::GetWindowsHandle()
 {
-    #ifdef FO_WINDOWS
-    return GetThreadId( pthread_getw32threadhandle_np( threadId ) );
-    #else
-    return (uint) threadId;
-    #endif
+    return pthread_getw32threadhandle_np( threadId );
 }
+#endif
 
-void* Thread::GetHandle()
+#ifdef FO_LINUX
+pid_t Thread::GetLinuxPid()
 {
-    #ifdef FO_WINDOWS
-    return (void*) pthread_getw32threadhandle_np( threadId );
-    #else
-    return (void*) threadId;
-    #endif
+    return (pid_t) threadId;
 }
+#endif
 
 uint Thread::GetCurrentId()
 {
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     return (uint) GetCurrentThreadId();
     #else // FO_LINUX
     return (uint) pthread_self();

@@ -1475,7 +1475,9 @@ void FOClient::ParseKeyboard()
                     if( !GameOpt.FullScreen )
                     {
                         int sx, sy, sw, sh;
+                        Fl::lock();
                         Fl::screen_xywh( sx, sy, sw, sh );
+                        Fl::unlock();
                         x = MainWindow->x();
                         y = MainWindow->y();
                         w = MainWindow->w();
@@ -1610,7 +1612,9 @@ void FOClient::ParseMouse()
 {
     // Mouse position
     int mx = 0, my = 0;
+    Fl::lock();
     Fl::get_mouse( mx, my );
+    Fl::unlock();
     #ifdef FO_D3D
     GameOpt.MouseX = mx - ( !GameOpt.FullScreen ? MainWindow->x() : 0 );
     GameOpt.MouseY = my - ( !GameOpt.FullScreen ? MainWindow->y() : 0 );
@@ -8724,7 +8728,9 @@ bool FOClient::IsCurInWindow()
             return true;
 
         int mx = 0, my = 0;
+        Fl::lock();
         Fl::get_mouse( mx, my );
+        Fl::unlock();
         return mx >= MainWindow->x() && mx <= MainWindow->x() + MainWindow->w() &&
                my >= MainWindow->y() && my <= MainWindow->y() + MainWindow->h();
     }
@@ -9046,7 +9052,7 @@ bool FOClient::SaveLogFile()
     DateTime dt;
     Timer::GetCurrentDateTime( dt );
     char     log_path[ MAX_FOPATH ];
-    Str::Format( log_path, DIR_SLASH_SD "messbox_%02d-%02d-%d_%02d-%02d-%02d.txt",
+    Str::Format( log_path, "messbox_%02d-%02d-%d_%02d-%02d-%02d.txt",
                  dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
 
     if( Script::PrepareContext( ClientFunctions.FilenameLogfile, _FUNC_, "Game" ) )
@@ -9062,6 +9068,7 @@ bool FOClient::SaveLogFile()
     if( Str::Compare( log_path, "" ) )
         return ( false );
 
+    FileManager::FormatPath( log_path );
     FileManager::CreateDirectoryTree( FileManager::GetFullPath( log_path, PT_ROOT ) );
 
     void* f = FileOpen( log_path, true );
@@ -9095,7 +9102,7 @@ bool FOClient::SaveScreenshot()
     DateTime dt;
     Timer::GetCurrentDateTime( dt );
     char     screen_path[ MAX_FOPATH ];
-    Str::Format( screen_path, DIR_SLASH_SD "screen_%02d-%02d-%d_%02d-%02d-%02d.jpg",
+    Str::Format( screen_path, "screen_%02d-%02d-%d_%02d-%02d-%02d.jpg",
                  dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
 
     if( Script::PrepareContext( ClientFunctions.FilenameScreenshot, _FUNC_, "Game" ) )
@@ -9111,6 +9118,7 @@ bool FOClient::SaveScreenshot()
     if( Str::Compare( screen_path, "" ) )
         return ( false );
 
+    FileManager::FormatPath( screen_path );
     FileManager::CreateDirectoryTree( FileManager::GetFullPath( screen_path, PT_ROOT ) );
 
     #ifdef FO_D3D

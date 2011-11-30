@@ -225,7 +225,6 @@
 		<Unit filename="../Source/ItemHex.h" />
 		<Unit filename="../Source/ItemManager.cpp" />
 		<Unit filename="../Source/ItemManager.h" />
-		<Unit filename="../Source/ItemPid.h" />
 		<Unit filename="../Source/Keyboard.cpp" />
 		<Unit filename="../Source/Keyboard.h" />
 		<Unit filename="../Source/LineTracer.h" />
