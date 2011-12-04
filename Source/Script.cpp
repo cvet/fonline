@@ -852,13 +852,15 @@ public:
         }
     }
 
-    bool LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_pefix /* = NULL */ )
+    bool LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_prefix /* = NULL */ )
     {
         EngineData*      edata = (EngineData*) Engine->GetUserData();
         ScriptModuleVec& modules = edata->Modules;
 
         // Compute whole version for server, client, mapper
         uint version = ( SERVER_VERSION << 20 ) | ( CLIENT_VERSION << 10 ) | MAPPER_VERSION;
+
+		FileManager::FormatPath( (char *)module_name );
 
         // Get script names
         char fname_real[ MAX_FOPATH ] = { 0 };
@@ -867,9 +869,23 @@ public:
         Str::Append( fname_real, ".fos" );
 
         char fname_script[ MAX_FOPATH ] = { 0 };
-        if( file_pefix )
-            Str::Copy( fname_script, file_pefix );
-        Str::Append( fname_script, module_name );
+        if( file_prefix )
+		{
+			string temp = module_name;
+			int pos = temp.find_last_of( DIR_SLASH_C );
+			if( pos >= 0 )
+			{
+				temp.insert( pos+1, file_prefix );
+				Str::Append( fname_script, temp.c_str() );
+			}
+			else
+			{
+				Str::Append( fname_script, file_prefix );
+				Str::Append( fname_script, module_name );
+			}
+		}
+		else
+			Str::Append( fname_script, module_name );
         Str::Replacement( fname_script, '.', DIR_SLASH_C );
         Str::Append( fname_script, ".fos" );
 

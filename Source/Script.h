@@ -79,7 +79,7 @@ namespace Script
     void  Undefine( const char* def );
     char* Preprocess( const char* fname, bool process_pragmas );
     void  CallPragmas( const StrVec& pragmas );
-    bool  LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_pefix = NULL );
+    bool  LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_prefix = NULL );
     bool  LoadScript( const char* module_name, const uchar* bytecode, uint len );
 
     int  BindImportedFunctions();
