@@ -11,9 +11,6 @@
     <Filter Include="Acm">
       <UniqueIdentifier>{34a675d6-1981-410d-a050-12ab02744642}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Ogg">
-      <UniqueIdentifier>{835f66db-187d-4fe4-9c7b-2e35e9466797}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Client">
       <UniqueIdentifier>{3e6a3e98-d89d-400c-ad0d-64e753d23175}</UniqueIdentifier>
     </Filter>
@@ -31,6 +28,12 @@
     </Filter>
     <Filter Include="SHA2">
       <UniqueIdentifier>{1490fc80-a152-44fc-8f0d-a4c31a49c091}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Ogg">
+      <UniqueIdentifier>{835f66db-187d-4fe4-9c7b-2e35e9466797}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GL">
+      <UniqueIdentifier>{3c9c4398-c2ab-47cd-8251-c2a663963de3}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -503,6 +506,15 @@
     <ClInclude Include="..\Source\3dStuff.h">
       <Filter>Client</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\GL\glew.h">
+      <Filter>GL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\GL\glxew.h">
+      <Filter>GL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\GL\wglew.h">
+      <Filter>GL</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Zlib\adler32.c">
@@ -786,6 +798,9 @@
     </ClCompile>
     <ClCompile Include="..\Source\3dStuff.cpp">
       <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\GL\glew.c">
+      <Filter>GL</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -91,8 +91,6 @@ struct Effect
     EffectValue_   LightDiffuse;
     #else
     GLuint         Program;
-    GLuint         VertexShader;
-    GLuint         FragmentShader;
     uint           Passes;
     GLint          ZoomFactor;
     GLint          ColorMap;

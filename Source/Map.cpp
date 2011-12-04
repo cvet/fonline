@@ -118,10 +118,6 @@ typedef map< uint, ItemNpcPtr > UIDtoPtrMap;
 
 bool Map::Generate()
 {
-    char map_info[ MAX_FOTEXT ];
-    Str::Format( map_info, "Map id<%u>, pid<%u>", GetId(), GetPid() );
-    // WriteLog("Generate Map id<%u>, pid<%u>...\n",GetId(),GetProtoId());
-
     // Map data
     dataLocker.Lock();
     for( int i = 0; i < 4; i++ )
@@ -150,7 +146,7 @@ bool Map::Generate()
             }
             else
             {
-                WriteLog( "Map<%s> empty critter function, pos<%u><%u>, module<%s>.\n", map_info, mobj.MapX, mobj.MapY, mobj.ScriptName );
+                WriteLog( "Map<%s> empty critter function, pos<%u><%u>, module<%s>.\n", Proto->GetName(), mobj.MapX, mobj.MapY, mobj.ScriptName );
             }
         }
 
@@ -172,7 +168,7 @@ bool Map::Generate()
         Npc* npc = CrMngr.CreateNpc( mobj.ProtoId, params_count, params, 0, NULL, script[ 0 ] ? script : NULL, this, mobj.MapX, mobj.MapY, (uchar) mobj.Dir, true );
         if( !npc )
         {
-            WriteLogF( _FUNC_, " - Create npc on map<%s> with pid<%u> failture - continue generate.\n", map_info, mobj.ProtoId );
+            WriteLogF( _FUNC_, " - Create npc on map<%s> with pid<%u> failture - continue generate.\n", Proto->GetName(), mobj.ProtoId );
             continue;
         }
 
@@ -230,7 +226,7 @@ bool Map::Generate()
         ProtoItem* proto = ItemMngr.GetProtoItem( pid );
         if( !proto )
         {
-            WriteLogF( _FUNC_, " - Proto object on map<%s> with pid<%u> not found, continue generate.\n", map_info, pid );
+            WriteLogF( _FUNC_, " - Proto object on map<%s> with pid<%u> not found, continue generate.\n", Proto->GetName(), pid );
             continue;
         }
 
@@ -254,7 +250,7 @@ bool Map::Generate()
         Item* item = ItemMngr.CreateItem( pid, 1 );
         if( !item )
         {
-            WriteLogF( _FUNC_, " - Create item on map<%s> with pid<%u> failture, continue generate.\n", map_info, pid );
+            WriteLogF( _FUNC_, " - Create item on map<%s> with pid<%u> failture, continue generate.\n", Proto->GetName(), pid );
             continue;
         }
 
@@ -350,7 +346,7 @@ bool Map::Generate()
             }
             else
             {
-                WriteLog( "Map<%s> empty item function, pos<%u><%u>, module<%s>.\n", map_info, mobj.MapX, mobj.MapY, mobj.ScriptName );
+                WriteLog( "Map<%s> empty item function, pos<%u><%u>, module<%s>.\n", Proto->GetName(), mobj.MapX, mobj.MapY, mobj.ScriptName );
             }
         }
 
@@ -381,7 +377,7 @@ bool Map::Generate()
         {
             if( !AddItem( item, mobj.MapX, mobj.MapY ) )
             {
-                WriteLogF( _FUNC_, " - Add item to Map<%s> with pid<%u> failture, continue generate.\n", map_info, pid );
+                WriteLogF( _FUNC_, " - Add item to Map<%s> with pid<%u> failture, continue generate.\n", Proto->GetName(), pid );
                 ItemMngr.ItemToGarbage( item );
                 continue;
             }

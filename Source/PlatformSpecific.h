@@ -50,7 +50,6 @@
 //    -lfltk_gl
 //    -lGL
 //    -lGLU
-//    -lGLEW
 //    -lIL
 //   Client
 //    -lportaudio

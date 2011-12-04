@@ -53,6 +53,7 @@
 			<Add option="-lstlport" />
 			<Add option="-levent_core" />
 			<Add option="-levent_pthreads" />
+			<Add option="-lpng" />
 			<Add directory="../Lib/Linux" />
 		</Linker>
 		<Unit filename="Server.ico" />

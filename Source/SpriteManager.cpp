@@ -137,16 +137,19 @@ bool SpriteManager::Init( SpriteMngrParams& params )
 
     // OpenGL extensions
     glewInit();
-    # define CHECK_EXTENSION( ext )                                      \
-        if( !GLEW_ARB_ ## ext )                                          \
-        {                                                                \
-            WriteLog( "OpenGL extension '" # ext "' not supported.\n" ); \
-            errors++;                                                    \
+    # define CHECK_EXTENSION( ext, critical  )                                    \
+        if( !GLEW_ARB_ ## ext )                                                   \
+        {                                                                         \
+            const char* msg = ( critical ? "Critical" : "Not critical" );         \
+            WriteLog( "OpenGL extension '" # ext "' not supported. %s.\n", msg ); \
+            if( critical )                                                        \
+                errors++;                                                         \
         }
     uint errors = 0;
-    CHECK_EXTENSION( vertex_buffer_object );
-    CHECK_EXTENSION( vertex_array_object );
-    CHECK_EXTENSION( framebuffer_object );
+    CHECK_EXTENSION( vertex_buffer_object, true );
+    CHECK_EXTENSION( vertex_array_object, true );
+    CHECK_EXTENSION( framebuffer_object, true );
+    CHECK_EXTENSION( get_program_binary, false );
     if( errors )
         return false;
     # undef CHECK_EXTENSION
@@ -582,9 +585,7 @@ void SpriteManager::EndScene()
     #else
     GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
     GL( glViewport( 0, 0, MainWindow->w(), MainWindow->h() ) );
-    GL( glDisable( GL_BLEND ) );
-    DrawRenderTarget( rtMain );
-    GL( glEnable( GL_BLEND ) );
+    DrawRenderTarget( rtMain, false );
     GL( glViewport( 0, 0, modeWidth, modeHeight ) );
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rtMain.FBO ) );
     # ifdef FO_WINDOWS
@@ -795,7 +796,7 @@ void SpriteManager::PopRenderTarget()
     GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
 }
 
-void SpriteManager::DrawRenderTarget( RenderTarget& rt, const Rect* region_from /* = NULL */, const Rect* region_to /* = NULL */ )
+void SpriteManager::DrawRenderTarget( RenderTarget& rt, bool alpha_blend, const Rect* region_from /* = NULL */, const Rect* region_to /* = NULL */ )
 {
     Flush();
 
@@ -850,7 +851,11 @@ void SpriteManager::DrawRenderTarget( RenderTarget& rt, const Rect* region_from 
 
     curSprCnt = 1;
     dipQueue.push_back( DipData( rt.TargetTexture, rt.DrawEffect ) );
+    if( !alpha_blend )
+        GL( glDisable( GL_BLEND ) );
     Flush();
+    if( !alpha_blend )
+        GL( glEnable( GL_BLEND ) );
 }
 #endif
 
@@ -3325,7 +3330,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     // Copy from multisampled to default rt
     if( rt3DMSSprite.FBO )
     {
-        GL( glDisable( GL_BLEND ) );
+        Flush();
         GL( glMatrixMode( GL_PROJECTION ) );
         GL( glLoadIdentity() );
         GL( gluOrtho2D( 0, rt_width, rt_height, 0 ) );
@@ -3333,10 +3338,9 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
         GL( glViewport( 0, 0, rt_width, rt_height ) );
 
         PushRenderTarget( rt3DMS );
-        DrawRenderTarget( rt3DMS, &fb );
+        DrawRenderTarget( rt3DMS, false, &fb );
         PopRenderTarget();
 
-        GL( glEnable( GL_BLEND ) );
         GL( glMatrixMode( GL_PROJECTION ) );
         GL( glLoadIdentity() );
         GL( gluOrtho2D( 0, modeWidth, modeHeight, 0 ) );
@@ -4711,9 +4715,7 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
     {
         PushRenderTarget( rt3D );
         ClearRenderTarget( rt3D, 0 );
-        GL( glDisable( GL_BLEND ) );
-        DrawRenderTarget( rt3DMS, &borders );
-        GL( glEnable( GL_BLEND ) );
+        DrawRenderTarget( rt3DMS, false, &borders );
         PopRenderTarget();
     }
 
@@ -4783,7 +4785,7 @@ bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, Rect
 {
     Render3d( x, y, scale, anim3d, stencil, color );
     #ifndef FO_D3D
-    DrawRenderTarget( rt3D );
+    DrawRenderTarget( rt3D, true );
     #endif
     return true;
 }
@@ -4792,7 +4794,7 @@ bool SpriteManager::Draw3dSize( RectF rect, bool stretch_up, bool center, Animat
 {
     Render3dSize( rect, stretch_up, center, anim3d, stencil, color );
     #ifndef FO_D3D
-    DrawRenderTarget( rt3D );
+    DrawRenderTarget( rt3D, true );
     #endif
     return true;
 }
@@ -4847,7 +4849,7 @@ bool SpriteManager::DrawContours()
     #else
     if( contoursAdded )
     {
-        DrawRenderTarget( rtContours );
+        DrawRenderTarget( rtContours, true );
         ClearRenderTarget( rtContours, 0 );
         ClearRenderTarget( rtContoursMid, 0 );
         contoursAdded = false;

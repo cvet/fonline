@@ -355,6 +355,9 @@
     <ClInclude Include="..\Source\3dAnimation.h" />
     <ClInclude Include="..\Source\3dStuff.h" />
     <ClInclude Include="..\Source\FileSystem.h" />
+    <ClInclude Include="..\Source\GL\glew.h" />
+    <ClInclude Include="..\Source\GL\glxew.h" />
+    <ClInclude Include="..\Source\GL\wglew.h" />
     <ClInclude Include="..\Source\GraphicLoader.h" />
     <ClInclude Include="..\Source\GraphicStructures.h" />
     <ClInclude Include="..\Source\ResourceClient.h" />
@@ -509,6 +512,10 @@
   <ItemGroup>
     <ClCompile Include="..\Source\3dStuff.cpp" />
     <ClCompile Include="..\Source\FileSystem.cpp" />
+    <ClCompile Include="..\Source\GL\glew.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\Source\GraphicLoader.cpp" />
     <ClCompile Include="..\Source\SpriteManagerFont.cpp" />
     <ClCompile Include="..\Source\Sprites.cpp" />

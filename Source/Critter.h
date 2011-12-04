@@ -618,17 +618,16 @@ public:
         DWORD         Bytes;
     }* NetIOIn, * NetIOOut;
     # define WSA_BUF_SIZE    ( 4096 )
-    # define WSAOP_END       ( 0 )
-    # define WSAOP_FREE      ( 1 )
-    # define WSAOP_SEND      ( 2 )
-    # define WSAOP_RECV      ( 3 )
+    # define WSAOP_FREE      ( 0 )
+    # define WSAOP_SEND      ( 1 )
+    # define WSAOP_RECV      ( 2 )
     typedef void ( *SendCallback )( NetIOArg* );
     static SendCallback SendData;
     # define BIN_BEGIN( cl_ )     cl_->Bin.Lock()
     # define BIN_END( cl_ )       cl_->Bin.Unlock()
     # define BOUT_BEGIN( cl_ )    cl_->Bout.Lock()
-    # define BOUT_END( cl_ )                                                                                  \
-        cl_->Bout.Unlock(); if( InterlockedCompareExchange( &cl_->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE ) \
+    # define BOUT_END( cl_ )                                                                                                                         \
+        cl_->Bout.Unlock(); if( !cl_->IsOffline() && InterlockedCompareExchange( &cl_->NetIOOut->Operation, WSAOP_SEND, WSAOP_FREE ) == WSAOP_FREE ) \
             ( *Client::SendData )( cl_->NetIOOut )
     #endif
     void Shutdown();

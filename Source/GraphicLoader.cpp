@@ -3,6 +3,7 @@
 #include "3dAnimation.h"
 #include "Text.h"
 #include "Timer.h"
+#include "Version.h"
 
 #include "Assimp/assimp.h"
 #include "Assimp/aiPostProcess.h"
@@ -1198,138 +1199,221 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
         effect->Defaults = effect_inst->Defaults;
     }
     #else
-    // Make names
+    // Make name
     char fname[ MAX_FOPATH ];
     Str::Copy( fname, effect_name );
     FileManager::EraseExtension( fname );
     Str::Append( fname, ".glsl" );
 
-    // Load files
+    // Shader program
+    GLuint program = 0;
+
+    // Load text file
     FileManager file;
-    if( !file.LoadFile( fname, PT_EFFECTS ) )
+    if( !file.LoadFile( fname, PT_EFFECTS ) && model_path )
+    {
+        // Try load from model folder
+        char path[ MAX_FOPATH ];
+        FileManager::ExtractPath( model_path, path );
+        Str::Append( path, fname );
+        file.LoadFile( path, PT_DATA );
+    }
+    if( !file.IsLoaded() )
     {
         WriteLogF( _FUNC_, " - Effect file<%s> not found.\n", fname );
         return NULL;
     }
-    char* str = (char*) file.GetBuf();
 
-    // Get version
-    char* ver = Str::Substring( str, "#version" );
-    if( ver )
+    // Load from binary
+    bool        have_binary = ( GLEW_ARB_get_program_binary != 0 );
+    FileManager file_binary;
+    if( have_binary )
     {
-        char* ver_end = Str::Substring( ver, "\n" );
-        if( ver_end )
+        Str::Append( fname, "b" );
+        if( file_binary.LoadFile( fname, PT_CACHE ) )
         {
-            str = ver_end + 1;
-            *ver_end = 0;
+            uint64 last_write, last_write_binary;
+            file.GetTime( NULL, NULL, &last_write );
+            file_binary.GetTime( NULL, NULL, &last_write_binary );
+            if( last_write > last_write_binary )
+                file_binary.UnloadFile();      // Disable loading from this binary, because its outdated
         }
+        fname[ Str::Length( fname ) - 1 ] = 0; // Erase 'b'
     }
-
-    // Create shaders
-    GLuint vs, fs;
-    GL( vs = glCreateShader( GL_VERTEX_SHADER ) );
-    GL( fs = glCreateShader( GL_FRAGMENT_SHADER ) );
-    const char* vs_str[] = { ver ? ver : "", "\n", "#define VERTEX_SHADER\n", defines ? defines : "", "\n", str };
-    GL( glShaderSource( vs, 6, (const GLchar**) vs_str, NULL ) );
-    const char* fs_str[] = { ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", defines ? defines : "", "\n", str };
-    GL( glShaderSource( fs, 6, (const GLchar**) fs_str, NULL ) );
-
-    // Info parser
-    struct ShaderInfo
+    if( file_binary.IsLoaded() )
     {
-        static void Log( const char* shader_name, GLint shader )
+        bool loaded = false;
+        uint version = file_binary.GetBEUInt();
+        if( version == SHADER_PROGRAM_BINARY_VERSION )
         {
-            int len = 0;
-            GL( glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &len ) );
-            if( len > 0 )
+            GLenum  format = file_binary.GetBEUInt();
+            GLsizei length = file_binary.GetBEUInt();
+            if( file_binary.GetFsize() >= length + sizeof( uint ) * 3 )
             {
-                GLchar* str = new GLchar[ len ];
-                int     chars = 0;
-                glGetShaderInfoLog( shader, len, &chars, str );
-                WriteLog( "%s output:\n%s", shader_name, str );
-                delete[] str;
+                GL( program = glCreateProgram() );
+                GL( glProgramBinary( program, format, file_binary.GetCurBuf(), length ) );
+                GLint linked;
+                GL( glGetProgramiv( program, GL_LINK_STATUS, &linked ) );
+                if( linked )
+                {
+                    loaded = true;
+                }
+                else
+                {
+                    WriteLogF( _FUNC_, " - Failed to link binary shader program, effect<%s>.\n", fname );
+                    GL( glDeleteProgram( program ) );
+                }
+            }
+            else
+            {
+                WriteLogF( _FUNC_, " - Binary shader program truncated, effect<%s>.\n", fname );
             }
         }
-        static void LogProgram( GLint program )
+        if( !loaded )
+            file_binary.UnloadFile();
+    }
+
+    // Load from text
+    if( !file_binary.IsLoaded() )
+    {
+        char* str = (char*) file.GetBuf();
+
+        // Get version
+        char* ver = Str::Substring( str, "#version" );
+        if( ver )
         {
-            int len = 0;
-            GL( glGetProgramiv( program, GL_INFO_LOG_LENGTH, &len ) );
-            if( len > 0 )
+            char* ver_end = Str::Substring( ver, "\n" );
+            if( ver_end )
             {
-                GLchar* str = new GLchar[ len ];
-                int     chars = 0;
-                glGetProgramInfoLog( program, len, &chars, str );
-                WriteLog( "Program info output:\n%s", str );
-                delete[] str;
+                str = ver_end + 1;
+                *ver_end = 0;
             }
         }
-    };
 
-    // Compile vs
-    GLint compiled;
-    GL( glCompileShader( vs ) );
-    GL( glGetShaderiv( vs, GL_COMPILE_STATUS, &compiled ) );
-    if( !compiled )
-    {
-        WriteLogF( _FUNC_, " - Vertex shader not compiled, effect<%s>.\n", fname );
-        ShaderInfo::Log( "Vertex shader", vs );
-        GL( glDeleteShader( vs ) );
-        GL( glDeleteShader( fs ) );
-        return NULL;
-    }
+        // Create shaders
+        GLuint vs, fs;
+        GL( vs = glCreateShader( GL_VERTEX_SHADER ) );
+        GL( fs = glCreateShader( GL_FRAGMENT_SHADER ) );
+        const char* vs_str[] = { ver ? ver : "", "\n", "#define VERTEX_SHADER\n", defines ? defines : "", "\n", str };
+        GL( glShaderSource( vs, 6, (const GLchar**) vs_str, NULL ) );
+        const char* fs_str[] = { ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", defines ? defines : "", "\n", str };
+        GL( glShaderSource( fs, 6, (const GLchar**) fs_str, NULL ) );
 
-    // Compile fs
-    GL( glCompileShader( fs ) );
-    GL( glGetShaderiv( fs, GL_COMPILE_STATUS, &compiled ) );
-    if( !compiled )
-    {
-        WriteLogF( _FUNC_, " - Fragment shader not compiled, effect<%s>.\n", fname );
-        ShaderInfo::Log( "Fragment shader", fs );
-        GL( glDeleteShader( vs ) );
-        GL( glDeleteShader( fs ) );
-        return NULL;
-    }
+        // Info parser
+        struct ShaderInfo
+        {
+            static void Log( const char* shader_name, GLint shader )
+            {
+                int len = 0;
+                GL( glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &len ) );
+                if( len > 0 )
+                {
+                    GLchar* str = new GLchar[ len ];
+                    int     chars = 0;
+                    glGetShaderInfoLog( shader, len, &chars, str );
+                    WriteLog( "%s output:\n%s", shader_name, str );
+                    delete[] str;
+                }
+            }
+            static void LogProgram( GLint program )
+            {
+                int len = 0;
+                GL( glGetProgramiv( program, GL_INFO_LOG_LENGTH, &len ) );
+                if( len > 0 )
+                {
+                    GLchar* str = new GLchar[ len ];
+                    int     chars = 0;
+                    glGetProgramInfoLog( program, len, &chars, str );
+                    WriteLog( "Program info output:\n%s", str );
+                    delete[] str;
+                }
+            }
+        };
 
-    // Make program
-    GLuint program;
-    GL( program = glCreateProgram() );
-    GL( glAttachShader( program, vs ) );
-    GL( glAttachShader( program, fs ) );
+        // Compile vs
+        GLint compiled;
+        GL( glCompileShader( vs ) );
+        GL( glGetShaderiv( vs, GL_COMPILE_STATUS, &compiled ) );
+        if( !compiled )
+        {
+            WriteLogF( _FUNC_, " - Vertex shader not compiled, effect<%s>.\n", fname );
+            ShaderInfo::Log( "Vertex shader", vs );
+            GL( glDeleteShader( vs ) );
+            GL( glDeleteShader( fs ) );
+            return NULL;
+        }
 
-    if( use_in_2d )
-    {
-        GL( glBindAttribLocation( program, 0, "InPosition" ) );
-        GL( glBindAttribLocation( program, 1, "InColor" ) );
-        GL( glBindAttribLocation( program, 2, "InTexCoord" ) );
-        GL( glBindAttribLocation( program, 3, "InTexEggCoord" ) );
-    }
-    else
-    {
-        GL( glBindAttribLocation( program, 0, "InPosition" ) );
-        GL( glBindAttribLocation( program, 1, "InNormal" ) );
-        GL( glBindAttribLocation( program, 2, "InColor" ) );
-        GL( glBindAttribLocation( program, 3, "InTexCoord" ) );
-        GL( glBindAttribLocation( program, 4, "InTexCoord2" ) );
-        GL( glBindAttribLocation( program, 5, "InTexCoord3" ) );
-        GL( glBindAttribLocation( program, 6, "InTangent" ) );
-        GL( glBindAttribLocation( program, 7, "InBitangent" ) );
-        GL( glBindAttribLocation( program, 8, "InBlendWeights" ) );
-        GL( glBindAttribLocation( program, 9, "InBlendIndices" ) );
-    }
+        // Compile fs
+        GL( glCompileShader( fs ) );
+        GL( glGetShaderiv( fs, GL_COMPILE_STATUS, &compiled ) );
+        if( !compiled )
+        {
+            WriteLogF( _FUNC_, " - Fragment shader not compiled, effect<%s>.\n", fname );
+            ShaderInfo::Log( "Fragment shader", fs );
+            GL( glDeleteShader( vs ) );
+            GL( glDeleteShader( fs ) );
+            return NULL;
+        }
 
-    GL( glLinkProgram( program ) );
-    GLint linked;
-    GL( glGetProgramiv( program, GL_LINK_STATUS, &linked ) );
-    if( !linked )
-    {
-        WriteLogF( _FUNC_, " - Failed to link shader program, effect<%s>.\n", fname );
-        ShaderInfo::LogProgram( program );
-        GL( glDetachShader( program, vs ) );
-        GL( glDetachShader( program, fs ) );
-        GL( glDeleteShader( vs ) );
-        GL( glDeleteShader( fs ) );
-        GL( glDeleteProgram( program ) );
-        return NULL;
+        // Make program
+        GL( program = glCreateProgram() );
+        GL( glAttachShader( program, vs ) );
+        GL( glAttachShader( program, fs ) );
+
+        if( use_in_2d )
+        {
+            GL( glBindAttribLocation( program, 0, "InPosition" ) );
+            GL( glBindAttribLocation( program, 1, "InColor" ) );
+            GL( glBindAttribLocation( program, 2, "InTexCoord" ) );
+            GL( glBindAttribLocation( program, 3, "InTexEggCoord" ) );
+        }
+        else
+        {
+            GL( glBindAttribLocation( program, 0, "InPosition" ) );
+            GL( glBindAttribLocation( program, 1, "InNormal" ) );
+            GL( glBindAttribLocation( program, 2, "InColor" ) );
+            GL( glBindAttribLocation( program, 3, "InTexCoord" ) );
+            GL( glBindAttribLocation( program, 4, "InTexCoord2" ) );
+            GL( glBindAttribLocation( program, 5, "InTexCoord3" ) );
+            GL( glBindAttribLocation( program, 6, "InTangent" ) );
+            GL( glBindAttribLocation( program, 7, "InBitangent" ) );
+            GL( glBindAttribLocation( program, 8, "InBlendWeights" ) );
+            GL( glBindAttribLocation( program, 9, "InBlendIndices" ) );
+        }
+
+        GL( glLinkProgram( program ) );
+        GLint linked;
+        GL( glGetProgramiv( program, GL_LINK_STATUS, &linked ) );
+        if( !linked )
+        {
+            WriteLogF( _FUNC_, " - Failed to link shader program, effect<%s>.\n", fname );
+            ShaderInfo::LogProgram( program );
+            GL( glDetachShader( program, vs ) );
+            GL( glDetachShader( program, fs ) );
+            GL( glDeleteShader( vs ) );
+            GL( glDeleteShader( fs ) );
+            GL( glDeleteProgram( program ) );
+            return NULL;
+        }
+
+        // Save in binary
+        if( have_binary )
+        {
+            GLsizei  buf_size;
+            GL( glGetProgramiv( program, GL_PROGRAM_BINARY_LENGTH, &buf_size ) );
+            GLsizei  length;
+            GLenum   format;
+            UCharVec buf;
+            buf.resize( buf_size );
+            GL( glGetProgramBinary( program, buf_size, &length, &format, &buf[ 0 ] ) );
+            Str::Append( fname, "b" );
+            file_binary.SetBEUInt( SHADER_PROGRAM_BINARY_VERSION );
+            file_binary.SetBEUInt( format );
+            file_binary.SetBEUInt( length );
+            file_binary.SetData( &buf[ 0 ], length );
+            if( !file_binary.SaveOutBufToFile( fname, PT_CACHE ) )
+                WriteLogF( _FUNC_, " - Can't save effect<%s> in binary.\n", fname );
+        }
     }
 
     // Create effect instance
@@ -1338,8 +1422,6 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     effect->Name = Str::Duplicate( effect_name );
     effect->Defines = Str::Duplicate( defines ? defines : "" );
     effect->Program = program;
-    effect->VertexShader = vs;
-    effect->FragmentShader = fs;
     effect->Defaults = NULL;
     effect->Passes = 1;
 

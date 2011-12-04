@@ -294,7 +294,7 @@ public:
     void ClearRenderTargetDS( RenderTarget& rt, bool depth, bool stencil );
     void PushRenderTarget( RenderTarget& rt );
     void PopRenderTarget();
-    void DrawRenderTarget( RenderTarget& rt, const Rect* region_from = NULL, const Rect* region_to = NULL );
+    void DrawRenderTarget( RenderTarget& rt, bool alpha_blend, const Rect* region_from = NULL, const Rect* region_to = NULL );
     #endif
 
     // Surfaces

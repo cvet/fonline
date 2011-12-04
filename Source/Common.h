@@ -219,7 +219,6 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 # include "GL/glew.h"
 # ifdef FO_WINDOWS
 #  include "GL/wglew.h"
-#  pragma comment( lib, "glew32s.lib" )
 #  pragma comment( lib, "opengl32.lib" )
 #  pragma comment( lib, "glu32.lib" )
 # else

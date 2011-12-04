@@ -1967,7 +1967,7 @@ void HexManager::DrawMap()
     #ifndef FO_D3D
     // Return render target
     SprMngr.PopRenderTarget();
-    SprMngr.DrawRenderTarget( rtMap );
+    SprMngr.DrawRenderTarget( rtMap, false );
     #endif
 }
 

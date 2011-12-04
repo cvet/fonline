@@ -602,9 +602,8 @@ void FOServer::Logic_Work( void* data )
                 if( empty )
                     cl->Shutdown();
                 #else
-                if( InterlockedCompareExchange( &cl->NetIOOut->Operation, WSAOP_END, WSAOP_FREE ) == WSAOP_FREE )
+                if( InterlockedCompareExchange( &cl->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE )
                 {
-                    InterlockedExchange( &cl->NetIOIn->Operation, WSAOP_END );
                     cl->Shutdown();
                 }
                 #endif
@@ -617,7 +616,13 @@ void FOServer::Logic_Work( void* data )
             }
 
             // Check for removing
+            #if defined ( USE_LIBEVENT )
             if( cl->Sock == INVALID_SOCKET )
+            #else
+            if( InterlockedCompareExchange( &cl->NetIOIn->Operation, 0, 0 ) == WSAOP_FREE &&
+                InterlockedCompareExchange( &cl->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE &&
+                cl->Sock == INVALID_SOCKET )
+            #endif
             {
                 DisconnectClient( cl );
 
@@ -1234,7 +1239,9 @@ void FOServer::NetIO_Work( void* )
                 NetIO_Input( io );
                 break;
             default:
-                WriteLogF( _FUNC_, " - Unknown operation<%d>.\n", io->Operation );
+                WriteLogF( _FUNC_, " - Unknown operation<%d>, is send<%d>.\n", io->Operation, io == cl->NetIOOut );
+                InterlockedExchange( &io->Operation, WSAOP_FREE );
+                cl->Disconnect();
                 break;
             }
         }
@@ -1285,8 +1292,9 @@ void FOServer::NetIO_Output( Client::NetIOArg* io )
 {
     Client* cl = (Client*) io->PClient;
 
+    // Nothing to send
     cl->Bout.Lock();
-    if( cl->Bout.IsEmpty() )   // Nothing to send
+    if( cl->Bout.IsEmpty() )
     {
         cl->Bout.Unlock();
         InterlockedExchange( &io->Operation, WSAOP_FREE );
@@ -1300,9 +1308,9 @@ void FOServer::NetIO_Output( Client::NetIOArg* io )
         if( to_compr > WSA_BUF_SIZE )
             to_compr = WSA_BUF_SIZE;
 
-        cl->Zstrm.next_in = (UCHAR*) cl->Bout.GetCurData();
+        cl->Zstrm.next_in = (Bytef*) cl->Bout.GetCurData();
         cl->Zstrm.avail_in = to_compr;
-        cl->Zstrm.next_out = (UCHAR*) io->Buffer.buf;
+        cl->Zstrm.next_out = (Bytef*) io->Buffer.buf;
         cl->Zstrm.avail_out = WSA_BUF_SIZE;
 
         if( deflate( &cl->Zstrm, Z_SYNC_FLUSH ) != Z_OK )
@@ -1339,7 +1347,6 @@ void FOServer::NetIO_Output( Client::NetIOArg* io )
     cl->Bout.Unlock();
 
     // Send
-    InterlockedExchange( &io->Operation, WSAOP_SEND );
     DWORD bytes;
     if( WSASend( cl->Sock, &io->Buffer, 1, &bytes, 0, (LPOVERLAPPED) io, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
     {

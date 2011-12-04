@@ -9197,7 +9197,7 @@ void FOClient::AddVideo( const char* video_name, bool can_stop, bool clear_seque
     if( ShowVideos.size() == 1 )
     {
         // Clear screen
-        if( SprMngr.BeginScene( 0xFF000000 ) )
+        if( SprMngr.BeginScene( COLOR_XRGB( 0, 0, 0 ) ) )
             SprMngr.EndScene();
 
         // Play
@@ -9486,10 +9486,10 @@ void FOClient::RenderVideo()
     h = (uint) ( (float) h * k );
     int x = ( MODE_WIDTH - w ) / 2;
     int y = ( MODE_HEIGHT - h ) / 2;
-    if( SprMngr.BeginScene( 0xFF000000 ) )
+    if( SprMngr.BeginScene( COLOR_XRGB( 0, 0, 0 ) ) )
     {
         Rect r = Rect( x, y, x + w, y + h );
-        SprMngr.DrawRenderTarget( CurVideo->RT, NULL, &r );
+        SprMngr.DrawRenderTarget( CurVideo->RT, false, NULL, &r );
         SprMngr.EndScene();
     }
 
@@ -9510,7 +9510,7 @@ void FOClient::NextVideo()
     if( ShowVideos.size() )
     {
         // Clear screen
-        if( SprMngr.BeginScene( 0xFF000000 ) )
+        if( SprMngr.BeginScene( COLOR_XRGB( 0, 0, 0 ) ) )
             SprMngr.EndScene();
 
         // Stop current

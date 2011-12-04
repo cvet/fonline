@@ -23,6 +23,9 @@
     <Filter Include="AngelScript\Preprocessor">
       <UniqueIdentifier>{33ec6fdf-e233-4666-8a41-621bb6379010}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GL">
+      <UniqueIdentifier>{c107ac11-a3bd-4e17-acf7-00fc62dfb9b5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="Mapper.ico">
@@ -368,6 +371,15 @@
     <ClInclude Include="..\Source\3dStuff.h">
       <Filter>Mapper</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\GL\glew.h">
+      <Filter>GL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\GL\glxew.h">
+      <Filter>GL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\GL\wglew.h">
+      <Filter>GL</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Common.cpp">
@@ -642,6 +654,9 @@
     </ClCompile>
     <ClCompile Include="..\Source\3dStuff.cpp">
       <Filter>Mapper</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\GL\glew.c">
+      <Filter>GL</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

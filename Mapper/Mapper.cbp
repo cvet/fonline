@@ -44,7 +44,6 @@
 			<Add option="-lfltk_gl" />
 			<Add option="-lGL" />
 			<Add option="-lGLU" />
-			<Add option="-lGLEW" />
 			<Add option="-lIL" />
 			<Add directory="../Lib/Linux" />
 		</Linker>
@@ -170,6 +169,12 @@
 		<Unit filename="../Source/FileSystem.cpp" />
 		<Unit filename="../Source/FileSystem.h" />
 		<Unit filename="../Source/FlexRect.h" />
+		<Unit filename="../Source/GL/glew.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../Source/GL/glew.h" />
+		<Unit filename="../Source/GL/glxew.h" />
+		<Unit filename="../Source/GL/wglew.h" />
 		<Unit filename="../Source/GraphicLoader.cpp" />
 		<Unit filename="../Source/GraphicLoader.h" />
 		<Unit filename="../Source/GraphicStructures.h" />
