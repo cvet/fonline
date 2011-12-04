@@ -4931,7 +4931,11 @@ void FOMapper::ParseCommand( const char* cmd )
     // Other
     else if( *cmd == '*' )
     {
-        if( Str::Substring( cmd, "new" ) )
+        char cmd_[ MAX_FOTEXT ];
+        if( sscanf( cmd + 1, "%s", cmd_ ) != 1 )
+            return;
+
+        if( Str::CompareCase( cmd_, "new" ) )
         {
             ProtoMap* pmap = new ProtoMap();
             pmap->GenNew();
@@ -4948,7 +4952,7 @@ void FOMapper::ParseCommand( const char* cmd )
             CurProtoMap = pmap;
             LoadedProtoMaps.push_back( pmap );
         }
-        else if( Str::Substring( cmd, "unload" ) )
+        else if( Str::CompareCase( cmd_, "unload" ) )
         {
             AddMess( "Unload map." );
 
@@ -4974,7 +4978,7 @@ void FOMapper::ParseCommand( const char* cmd )
                 return;
             }
         }
-        else if( Str::Substring( cmd, "scripts" ) )
+        else if( Str::CompareCase( cmd_, "scripts" ) )
         {
             FinishScriptSystem();
             InitScriptSystem();
@@ -4984,7 +4988,7 @@ void FOMapper::ParseCommand( const char* cmd )
         else if( !CurProtoMap )
             return;
 
-        if( Str::Substring( cmd, "dupl" ) )
+        if( Str::CompareCase( cmd_, "dupl" ) )
         {
             AddMess( "Find duplicates." );
 
@@ -5011,9 +5015,9 @@ void FOMapper::ParseCommand( const char* cmd )
                 }
             }
         }
-        else if( Str::Substring( cmd, "scroll" ) )
+        else if( Str::CompareCase( cmd_, "scroll" ) )
         {
-            AddMess( "Find alone scrollblockers." );
+            AddMess( "Find alone scroll blockers." );
 
             for( int hx = 0; hx < HexMngr.GetMaxHexX(); hx++ )
             {
@@ -5031,19 +5035,21 @@ void FOMapper::ParseCommand( const char* cmd )
                         MoveHexByDir( hx_, hy_, i, HexMngr.GetMaxHexX(), HexMngr.GetMaxHexY() );
                     }
                     if( count < 2 )
-                        AddMessFormat( "Alone scrollblocker on %03d:%03d.", hx, hy );
+                        AddMessFormat( "Alone scroll blocker on %03d:%03d.", hx, hy );
                 }
             }
         }
-        else if( Str::Substring( cmd, "pidpos" ) )
+        else if( Str::CompareCase( cmd_, "pidpos" ) )
         {
             AddMess( "Find pid positions." );
 
-            cmd += strlen( "*pidpos" );
+            cmd += Str::Length( "*pidpos" );
             uint pid;
             if( sscanf( cmd, "%u", &pid ) != 1 )
+            {
+                AddMess( "Invalid args." );
                 return;
-
+            }
 
             uint count = 1;
             for( auto it = CurProtoMap->MObjects.begin(), end = CurProtoMap->MObjects.end(); it != end; ++it )
@@ -5056,17 +5062,18 @@ void FOMapper::ParseCommand( const char* cmd )
                 }
             }
         }
-        else if( Str::Substring( cmd, "size" ) )
+        else if( Str::CompareCase( cmd_, "size" ) )
         {
             AddMess( "Resize map." );
 
-            cmd += strlen( "*size" );
+            cmd += Str::Length( "*size" );
             int maxhx, maxhy;
             if( sscanf( cmd, "%d%d", &maxhx, &maxhy ) != 2 )
             {
                 AddMess( "Invalid args." );
                 return;
             }
+
             SelectClear();
             HexMngr.UnloadMap();
             ushort old_maxhx = CurProtoMap->Header.MaxHexX;
@@ -5121,11 +5128,11 @@ void FOMapper::ParseCommand( const char* cmd )
             HexMngr.SetProtoMap( *CurProtoMap );
             HexMngr.FindSetCenter( CurProtoMap->Header.WorkHexX, CurProtoMap->Header.WorkHexY );
         }
-        else if( Str::Substring( cmd, "hex" ) )
+        else if( Str::CompareCase( cmd_, "hex" ) )
         {
             AddMess( "Show hex objects." );
 
-            cmd += strlen( "*hex" );
+            cmd += Str::Length( "*hex" );
             int hx, hy;
             if( sscanf( cmd, "%d%d", &hx, &hy ) != 2 )
             {

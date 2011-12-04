@@ -1279,8 +1279,7 @@ void FOServer::NetIO_Input( Client::NetIOArg* io )
     cl->Bin.Unlock();
 
     io->Flags = 0;
-    DWORD bytes;
-    if( WSARecv( cl->Sock, &io->Buffer, 1, &bytes, &io->Flags, &io->OV, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
+    if( WSARecv( cl->Sock, &io->Buffer, 1, NULL, &io->Flags, &io->OV, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
     {
         WriteLogF( _FUNC_, " - Recv fail, error<%s>.\n", GetLastSocketError() );
         InterlockedExchange( &io->Operation, WSAOP_FREE );
