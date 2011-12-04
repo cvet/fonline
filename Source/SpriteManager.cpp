@@ -138,7 +138,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     // OpenGL extensions
     glewInit();
     # define CHECK_EXTENSION( ext, critical  )                                    \
-        if( !GLEW_ARB_ ## ext )                                                   \
+        if( !GLEW_ ## ext )                                                       \
         {                                                                         \
             const char* msg = ( critical ? "Critical" : "Not critical" );         \
             WriteLog( "OpenGL extension '" # ext "' not supported. %s.\n", msg ); \
@@ -146,10 +146,10 @@ bool SpriteManager::Init( SpriteMngrParams& params )
                 errors++;                                                         \
         }
     uint errors = 0;
-    CHECK_EXTENSION( vertex_buffer_object, true );
-    CHECK_EXTENSION( vertex_array_object, true );
-    CHECK_EXTENSION( framebuffer_object, true );
-    CHECK_EXTENSION( get_program_binary, false );
+    CHECK_EXTENSION( ARB_vertex_buffer_object, true );
+    CHECK_EXTENSION( ARB_vertex_array_object, true );
+    CHECK_EXTENSION( ARB_framebuffer_object, true );
+    CHECK_EXTENSION( ARB_get_program_binary, false );
     if( errors )
         return false;
     # undef CHECK_EXTENSION

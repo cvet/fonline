@@ -619,9 +619,9 @@ void FOServer::Logic_Work( void* data )
             #if defined ( USE_LIBEVENT )
             if( cl->Sock == INVALID_SOCKET )
             #else
-            if( InterlockedCompareExchange( &cl->NetIOIn->Operation, 0, 0 ) == WSAOP_FREE &&
-                InterlockedCompareExchange( &cl->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE &&
-                cl->Sock == INVALID_SOCKET )
+            if( cl->Sock == INVALID_SOCKET &&
+                InterlockedCompareExchange( &cl->NetIOIn->Operation, 0, 0 ) == WSAOP_FREE &&
+                InterlockedCompareExchange( &cl->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE )
             #endif
             {
                 DisconnectClient( cl );
@@ -1347,8 +1347,7 @@ void FOServer::NetIO_Output( Client::NetIOArg* io )
     cl->Bout.Unlock();
 
     // Send
-    DWORD bytes;
-    if( WSASend( cl->Sock, &io->Buffer, 1, &bytes, 0, (LPOVERLAPPED) io, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
+    if( WSASend( cl->Sock, &io->Buffer, 1, NULL, 0, (LPOVERLAPPED) io, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
     {
         WriteLogF( _FUNC_, " - Send fail, error<%s>.\n", GetLastSocketError() );
         InterlockedExchange( &io->Operation, WSAOP_FREE );
