@@ -13,7 +13,9 @@
 #include <locale.h>
 using namespace std;
 
-// #define AS_INTERPRETER
+#ifdef FO_LINUX
+# define _stricmp    strcasecmp
+#endif
 
 typedef int ( __cdecl * BindFunc )( asIScriptEngine* );
 typedef asIScriptEngine* ( __cdecl * ASCreate )();
@@ -26,9 +28,7 @@ bool                                IsMapper = false;
 char*                               Buf = NULL;
 Preprocessor::LineNumberTranslator* LNT = NULL;
 
-#ifdef AS_INTERPRETER
-
-const char* ContextStatesStr[] =
+const char*                         ContextStatesStr[] =
 {
     "Finished",
     "Suspended",
@@ -56,7 +56,7 @@ void PrintContextCallstack( asIScriptContext* ctx )
     if( ctx->GetState() == asEXECUTION_EXCEPTION )
     {
         line = ctx->GetExceptionLineNumber( &column );
-        func = Engine->GetFunctionDescriptorById( ctx->GetExceptionFunction() );
+        func = Engine->GetFunctionById( ctx->GetExceptionFunction() );
     }
     else
     {
@@ -76,21 +76,25 @@ void PrintContextCallstack( asIScriptContext* ctx )
     }
 }
 
-
-void RunMain( asIScriptModule* module )
+void RunMain( asIScriptModule* module, const char* func_str )
 {
-    // Run void main()
+    // Make function declaration
+    char func_decl[ 1024 ];
+    sprintf( func_decl, "void %s()", func_str );
+
+    // Run
+    printf( "Execute '%s'.\n", func_str );
     asIScriptContext* ctx = Engine->CreateContext();
-    int               func = module->GetFunctionIdByDecl( "void main()" );
+    int               func = module->GetFunctionIdByDecl( func_decl );
     if( func < 0 )
     {
-        printf( "No void main() found.\n" );
+        printf( "Function '%s' not found.\n", func_decl );
         return;
     }
     int result = ctx->Prepare( func );
     if( result < 0 )
     {
-        printf( "Context preparation failure, error code <%d>.\n", result );
+        printf( "Context preparation failure, error code<%d>.\n", result );
         return;
     }
 
@@ -115,8 +119,6 @@ void RunMain( asIScriptModule* module )
     }
     printf( "Execution finished.\n" );
 }
-
-#endif
 
 void* GetScriptEngine()
 {
@@ -157,7 +159,12 @@ int _tmain( int argc, _TCHAR* argv[] )
 
     if( argc < 4 )
     {
-        printf( "Not enough parameters. Example:\nASCompiler script_name.fos as.dll fo.dll [preprocessor_output.txt]\n" );
+        printf( "Not enough parameters. Example:\n"
+                "ASCompiler script_name.fos as.dll fo[_client/_mapper].dll\n"
+                " [-p preprocessor_output.txt]\n"
+                " [-d SOME_DEFINE]*\n"
+                " [-run func_name]*\n"
+                "*can be used over and over again" );
         return 0;
     }
 
@@ -169,12 +176,18 @@ int _tmain( int argc, _TCHAR* argv[] )
 
     char*           str_prep = NULL;
     vector< char* > defines;
+    vector< char* > run_func;
     for( int i = 4; i < argc; i++ )
     {
-        if( strstr( argv[ i ], "-p" ) && i + 1 < argc )
-            str_prep = argv[ i + 1 ];
-        else if( strstr( argv[ i ], "-d" ) && i + 1 < argc )
-            defines.push_back( argv[ i + 1 ] );
+        // Preprocessor output
+        if( !_stricmp( argv[ i ], "-p" ) && i + 1 < argc )
+            str_prep = argv[ ++i ];
+        // Define
+        else if( !_stricmp( argv[ i ], "-d" ) && i + 1 < argc )
+            defines.push_back( argv[ ++i ] );
+        // Run function
+        else if( !_stricmp( argv[ i ], "-run" ) && i + 1 < argc && false )
+            run_func.push_back( argv[ ++i ] );
     }
 
     #if defined ( FO_X64 )
@@ -216,10 +229,11 @@ int _tmain( int argc, _TCHAR* argv[] )
         return 0;
     }
 
-    #ifdef AS_INTERPRETER
-    if( Engine->RegisterGlobalFunction( "void asInterpreterLog(string& text)", asFUNCTION( Global_Log ), asCALL_CDECL ) < 0 )
-        printf( "Warning: cannot bind masking Log()." );
-    #endif AS_INTERPRETER
+    if( !run_func.empty() )
+    {
+        if( Engine->RegisterGlobalFunction( "void __CompilerLog(string& text)", asFUNCTION( Global_Log ), asCALL_CDECL ) < 0 )
+            printf( "Warning: cannot bind masking Log()." );
+    }
 
     BindFunc bind_func;
     if( !( bind_func = (BindFunc) GetProcAddress( script_dll, "Bind" ) ) )
@@ -268,9 +282,8 @@ int _tmain( int argc, _TCHAR* argv[] )
 
     for( size_t i = 0; i < defines.size(); i++ )
         Preprocessor::Define( string( defines[ i ] ) );
-    #ifdef AS_INTERPRETER
-    Preprocessor::Define( string( "Log asInterpreterLog" ) );
-    #endif
+    if( !run_func.empty() )
+        Preprocessor::Define( string( "Log __CompilerLog" ) );
     LNT = new Preprocessor::LineNumberTranslator();
     int res = Preprocessor::Preprocess( str_fname, fsrc, vos, true, &vos_err, LNT );
     if( res )
@@ -431,9 +444,8 @@ int _tmain( int argc, _TCHAR* argv[] )
     QueryPerformanceCounter( (PLARGE_INTEGER) &fp2 );
     printf( "Success.\nTime: %.02f ms.\n", double( ( (double) fp2 - (double) fp ) / (double) freq * 1000 ) /*,t2-t1*/ );
 
-    #ifdef AS_INTERPRETER
-    RunMain( module );
-    #endif
+    for( size_t i = 0; i < run_func.size(); i++ )
+        RunMain( module, run_func[ i ] );
 
     Engine->Release();
     FreeLibrary( comp_dll );

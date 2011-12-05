@@ -257,7 +257,6 @@ void FOServer::DisconnectClient( Client* cl )
     Client* cl_ = ( id ? CrMngr.GetPlayer( id, false ) : NULL );
     if( cl_ && cl_ == cl )
     {
-        cl->Disconnect();
         EraseSaveClient( cl->GetId() );
         AddSaveClient( cl );
 
@@ -337,7 +336,6 @@ void FOServer::RemoveClient( Client* cl )
             AddSaveClient( cl );
 
         CrMngr.EraseCritter( cl );
-        cl->Disconnect();
         cl->IsNotValid = true;
 
         // Erase radios from collection
@@ -365,7 +363,6 @@ void FOServer::RemoveClient( Client* cl )
     }
     else
     {
-        cl->Disconnect();
         cl->IsNotValid = true;
     }
 }
@@ -1221,7 +1218,7 @@ void FOServer::NetIO_Work( void* )
         if( key == 1 )
             break;                // End of work
 
-        SCOPE_LOCK( io->Locker );
+        io->Locker.Lock();
         Client* cl = (Client*) io->PClient;
         cl->AddRef();
 
@@ -1251,6 +1248,7 @@ void FOServer::NetIO_Work( void* )
             cl->Disconnect();
         }
 
+        io->Locker.Unlock();
         cl->Release();
     }
 }
@@ -1406,7 +1404,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 break;
             default:
-                // WriteLogF(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_CONNECTED. Skip.\n",msg,cl->GetInfo());
                 cl->Bin.SkipMsg( msg );
                 BIN_END( cl );
                 break;
@@ -1419,7 +1416,7 @@ void FOServer::Process( ClientPtr& cl )
 
         if( cl->GameState == STATE_CONNECTED && cl->ConnectTime && Timer::FastTick() - cl->ConnectTime > PING_CLIENT_LIFE_TIME ) // Kick bot
         {
-            WriteLogF( _FUNC_, " - Connection timeout, client kicked, maybe bot. Ip<%s>, name<%s>.\n", cl->GetIpStr(), cl->GetName() );
+            WriteLogF( _FUNC_, " - Connection timeout, client kicked, maybe bot. Ip<%s>.\n", cl->GetIpStr() );
             cl->Disconnect();
         }
     }
@@ -1455,7 +1452,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 break;
             default:
-                // if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLogF(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_TRANSFERRING. Skip.\n",msg,cl->GetInfo());
                 cl->Bin.SkipMsg( msg );
                 BIN_END( cl );
                 break;
@@ -1705,9 +1701,6 @@ void FOServer::Process( ClientPtr& cl )
                 continue;
             }
             break;
-            //		case NETMSG_SEND_LOAD_MAP_OK:
-            //			Process_MapLoaded(acl);
-            //			break;
             case NETMSG_SEND_GIVE_GLOBAL_INFO:
             {
                 CHECK_IS_GLOBAL;
@@ -1763,14 +1756,12 @@ void FOServer::Process( ClientPtr& cl )
             }
             default:
             {
-                // if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLogF(_FUNC_," - Invalid msg<%u> from client<%s> on STATE_PLAYING. Skip.\n",msg,cl->GetInfo());
                 cl->Bin.SkipMsg( msg );
                 BIN_END( cl );
                 continue;
             }
             }
 
-            // if(msg<NETMSG_SEND_MOVE && msg>NETMSG_CRITTER_XY) WriteLogF(_FUNC_," - Access denied. on msg<%u> for client<%s>. Skip.\n",msg,cl->GetInfo());
             cl->Bin.SkipMsg( msg );
             BIN_END( cl );
         }

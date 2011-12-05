@@ -2,12 +2,31 @@
 #include "AngelScript/angelscript.h"
 
 #ifdef FONLINE_SCRIPT_COMPILER
-# include <Windows.h>
-# include <stdio.h>
-# include <strstream>
+# include "PlatformSpecific.h"
 # include "Defines.h"
 # include "Types.h"
 # include "..\ASCompiler\ASCompiler\ScriptEngine.h"
+# include <stdio.h>
+# include <strstream>
+
+# if defined ( FO_WINDOWS )
+#  include <Windows.h>
+# endif
+
+// DLL
+# if defined ( FO_WINDOWS )
+static char DLLTempBuf[ 64 ];
+#  define DLL_Load( name )              (void*) LoadLibrary( name )
+#  define DLL_Free( h )                 FreeLibrary( (HMODULE) h )
+#  define DLL_GetAddress( h, pname )    (size_t*) GetProcAddress( (HMODULE) h, pname )
+#  define DLL_Error()                   _itoa( GetLastError(), DLLTempBuf, 10 )
+# else // FO_LINUX
+#  include <dlfcn.h>
+#  define DLL_Load( name )              (void*) dlopen( name, RTLD_NOW | RTLD_LOCAL )
+#  define DLL_Free( h )                 dlclose( h )
+#  define DLL_GetAddress( h, pname )    (size_t*) dlsym( h, pname )
+#  define DLL_Error()                   dlerror()
+# endif
 
 namespace Script
 {
@@ -16,16 +35,7 @@ namespace Script
         return (asIScriptEngine*) GetScriptEngine();
     }
 
-    size_t* GetFunctionAddress( void* dll, const char* func_name )
-    {
-        # if defined ( FO_WINDOWS )
-        return (size_t*) GetProcAddress( (HMODULE) dll, func_name );
-        # else // FO_LINUX
-        // Todo: linux
-        # endif
-    }
-
-    HMODULE LoadDynamicLibrary( const char* dll_name )
+    void* LoadDynamicLibrary( const char* dll_name )
     {
         char dll_name_[ MAX_FOPATH ];
         strcpy( dll_name_, dll_name );
@@ -53,7 +63,7 @@ namespace Script
         # endif
 
         // Load dynamic library
-        HMODULE dll = DLL_Load( dll_name_ );
+        void* dll = DLL_Load( dll_name_ );
         if( !dll )
             return NULL;
 
@@ -62,13 +72,13 @@ namespace Script
         if( !alreadyLoadedDll.count( dll_name_ ) )
         {
             // Register AS engine
-            size_t* ptr = (size_t*) GetFunctionAddress( dll, "ASEngine" );
+            size_t* ptr = DLL_GetAddress( dll, "ASEngine" );
             if( ptr )
                 *ptr = (size_t) GetEngine();
 
             // Call init function
             typedef void ( *DllMainEx )( bool );
-            DllMainEx func = (DllMainEx) GetFunctionAddress( dll, "DllMainEx" );
+            DllMainEx func = (DllMainEx) DLL_GetAddress( dll, "DllMainEx" );
             if( func )
                 ( *func )( true );
 
@@ -209,9 +219,9 @@ public:
         if( parametersIndex >= MAX_PARAMETERS_ARRAYS ) return false;
 
         char decl_val[ 128 ];
-        Str::Format( decl_val, "DataVal %s", name.c_str() );
+        sprintf( decl_val, "DataVal %s", name.c_str() );
         char decl_ref[ 128 ];
-        Str::Format( decl_ref, "DataRef %sBase", name.c_str() );
+        sprintf( decl_ref, "DataRef %sBase", name.c_str() );
 
         #ifdef FONLINE_SERVER
         // Real registration
@@ -244,9 +254,9 @@ public:
         if( parametersIndex >= MAX_PARAMETERS_ARRAYS ) return false;
 
         char decl_val[ 128 ];
-        Str::Format( decl_val, "DataVal %s", name.c_str() );
+        sprintf( decl_val, "DataVal %s", name.c_str() );
         char decl_ref[ 128 ];
-        Str::Format( decl_ref, "DataRef %sBase", name.c_str() );
+        sprintf( decl_ref, "DataRef %sBase", name.c_str() );
 
         #ifdef FONLINE_CLIENT
         // Real registration

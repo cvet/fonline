@@ -3583,16 +3583,20 @@ void Client::Shutdown()
     # else
     bufferevent_free( NetIOArgPtr->BEV );
     # endif
-    #endif
 
     shutdown( Sock, SD_BOTH );
     closesocket( Sock );
     Sock = INVALID_SOCKET;
 
-    Disconnect();
-
-    #if defined ( USE_LIBEVENT )
     Release();
+    #else
+    NetIOIn->Locker.Lock();
+    NetIOOut->Locker.Lock();
+    shutdown( Sock, SD_BOTH );
+    closesocket( Sock );
+    Sock = INVALID_SOCKET;
+    NetIOOut->Locker.Unlock();
+    NetIOIn->Locker.Unlock();
     #endif
 }
 
@@ -3615,7 +3619,6 @@ void Client::PingClient()
 {
     if( !pingOk )
     {
-        // WriteLogF(_FUNC_," - Client is drop, disconnect, info<%s>.\n",GetInfo());
         Disconnect();
         Bout.LockReset();
         return;

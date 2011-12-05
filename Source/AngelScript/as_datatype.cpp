@@ -70,6 +70,15 @@ asCDataType::~asCDataType()
 {
 }
 
+bool asCDataType::IsValid() const
+{
+	if( tokenType == ttUnrecognizedToken &&
+		!isObjectHandle )
+		return false;
+
+	return true;
+}
+
 asCDataType asCDataType::CreateObject(asCObjectType *ot, bool isConst)
 {
 	asCDataType dt;
@@ -147,7 +156,7 @@ asCString asCDataType::Format() const
 
 	if( tokenType != ttIdentifier )
 	{
-		str += asGetTokenDefinition(tokenType);
+		str += asCTokenizer::GetDefinition(tokenType);
 	}
 	else if( IsArrayType() && objectType && !objectType->engine->ep.expandDefaultArrayToTemplate )
 	{

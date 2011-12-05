@@ -86,6 +86,11 @@ struct asSSystemFunctionInterface;
 //       also functions/methods that are being called. This could be used to build a 
 //       code database with call graphs, etc.
 
+// TODO: optimize: The GC should only be notified of the script function when the last module
+//                 removes it from the scope. Must make sure it is only added to the GC once
+//                 in case the function is added to another module after the GC already knows 
+//                 about the function.
+
 void RegisterScriptFunction(asCScriptEngine *engine);
 
 class asCScriptFunction : public asIScriptFunction
@@ -109,6 +114,8 @@ public:
 	const char          *GetConfigGroup() const;
 	bool                 IsReadOnly() const;
 	bool                 IsPrivate() const;
+	// TODO: interface: Add IsFinal() and IsOverride() as public methods
+	// TODO: access: Get/Set access mask for function
 
 	asUINT               GetParamCount() const;
 	int                  GetParamTypeId(asUINT index, asDWORD *flags = 0) const;
@@ -144,10 +151,16 @@ public:
 	bool      IsSignatureEqual(const asCScriptFunction *func) const;
 	bool      IsSignatureExceptNameEqual(const asCScriptFunction *func) const;
 
-    void      JITCompile();
+	bool      DoesReturnOnStack() const;
+
+	void      JITCompile();
 
 	void      AddReferences();
 	void      ReleaseReferences();
+
+	bool      IsShared() const;
+	bool      IsFinal() const;
+	bool      IsOverride() const;
 
 	asCGlobalProperty *GetPropertyByGlobalVarPtr(void *gvarPtr);
 
@@ -177,12 +190,16 @@ public:
 	asCArray<asCString *>        defaultArgs;
 	bool                         isReadOnly;
 	bool                         isPrivate;
+	bool                         isFinal;
+	bool                         isOverride;
 	asCObjectType               *objectType;
 	int                          signatureId;
 
 	int                          id;
 
 	asEFuncType                  funcType;
+	asDWORD                      accessMask;
+	bool                         isShared;
 
 	// Used by asFUNC_SCRIPT
 	asCArray<asDWORD>               byteCode;

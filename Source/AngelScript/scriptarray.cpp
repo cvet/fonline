@@ -78,7 +78,7 @@ static bool ScriptArrayTemplateCallback(asIObjectType *ot)
 				int funcId = subtype->GetBehaviourByIndex(n, &beh);
 				if( beh != asBEHAVE_CONSTRUCT ) continue;
 
-				asIScriptFunction *func = ot->GetEngine()->GetFunctionDescriptorById(funcId);
+				asIScriptFunction *func = ot->GetEngine()->GetFunctionById(funcId);
 				if( func->GetParamCount() == 0 )
 				{
 					// Found the default constructor
@@ -95,7 +95,7 @@ static bool ScriptArrayTemplateCallback(asIObjectType *ot)
 			for( asUINT n = 0; n < subtype->GetFactoryCount(); n++ )
 			{
 				int funcId = subtype->GetFactoryIdByIndex(n);
-				asIScriptFunction *func = ot->GetEngine()->GetFunctionDescriptorById(funcId);
+				asIScriptFunction *func = ot->GetEngine()->GetFunctionById(funcId);
 				if( func->GetParamCount() == 0 )
 				{
 					// Found the default factory
@@ -178,6 +178,10 @@ static void RegisterScriptArray_Native(asIScriptEngine *engine)
 	r = engine->RegisterObjectMethod("array<T>", "const T &first() const", asMETHOD(CScriptArray, First), asCALL_THISCALL); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("array<T>", "T &last()", asMETHOD(CScriptArray, Last), asCALL_THISCALL); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("array<T>", "const T &last() const", asMETHOD(CScriptArray, Last), asCALL_THISCALL); assert( r >= 0 );
+
+    // Register virtual properties
+    r = engine->RegisterObjectMethod("array<T>", "uint get_length() const", asMETHOD(CScriptArray, GetSize), asCALL_THISCALL); assert( r >= 0 );
+    r = engine->RegisterObjectMethod("array<T>", "void set_length(uint)", asMETHODPR(CScriptArray, Resize, (asUINT), void), asCALL_THISCALL); assert( r >= 0 );
 
 	// Register GC behaviours in case the array needs to be garbage collected
 	r = engine->RegisterObjectBehaviour("array<T>", asBEHAVE_GETREFCOUNT, "int f()", asMETHOD(CScriptArray, GetRefCount), asCALL_THISCALL); assert( r >= 0 );
@@ -287,7 +291,7 @@ void CScriptArray::SetValue(asUINT index, void *value)
 	else if( subTypeId & asTYPEID_OBJHANDLE )
 	{
 		*(void**)At(index) = *(void**)value;
-		objType->GetEngine()->AddRefScriptObject(*(void**)value, subTypeId);
+		objType->GetEngine()->AddRefScriptObject(*(void**)value, objType->GetSubType());
 	}
 	else if( subTypeId == asTYPEID_BOOL ||
 		subTypeId == asTYPEID_INT8 ||
@@ -591,7 +595,7 @@ void CScriptArray::Destruct(SArrayBuffer *buf, asUINT start, asUINT end)
 		for( ; d < max; d++ )
 		{
 			if( *d )
-				engine->ReleaseScriptObject(*d, subTypeId);
+				engine->ReleaseScriptObject(*d, objType->GetSubType());
 		}
 	}
 }
@@ -935,7 +939,7 @@ void CScriptArray::CopyBuffer(SArrayBuffer *dst, SArrayBuffer *src)
 			{
 				*d = *s;
 				if( *d )
-					engine->AddRefScriptObject(*d, subTypeId);
+					engine->AddRefScriptObject(*d, objType->GetSubType());
 			}
 		}
 	}
@@ -984,7 +988,7 @@ void CScriptArray::Precache()
 		{
 			for( asUINT i = 0; i < subType->GetMethodCount(); i++ )
 			{
-				asIScriptFunction *func = subType->GetMethodDescriptorByIndex(i);
+				asIScriptFunction *func = subType->GetMethodByIndex(i);
 
 				if( func->GetParamCount() == 1 /* && func->IsReadOnly() */ )
 				{

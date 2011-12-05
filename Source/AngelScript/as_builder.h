@@ -50,12 +50,24 @@
 
 BEGIN_AS_NAMESPACE
 
+struct sExplicitSignature
+{
+	sExplicitSignature(int argCount = 0) : argTypes(argCount), argModifiers(argCount), argNames(argCount), defaultArgs(argCount) {}
+
+	asCDataType returnType;
+	asCArray<asCDataType> argTypes;
+	asCArray<asETypeModifiers> argModifiers;
+	asCArray<asCString> argNames;
+	asCArray<asCString *> defaultArgs;
+};
+
 struct sFunctionDescription
 {
 	asCScriptCode *script;
 	asCScriptNode *node;
 	asCString name;
 	asCObjectType *objType;
+	sExplicitSignature *explicitSignature;
 	int funcId;
 };
 
@@ -76,11 +88,15 @@ struct sGlobalVariableDescription
 
 struct sClassDeclaration
 {
+	sClassDeclaration() {script = 0; node = 0; validState = 0; objType = 0; isExistingShared = false; isFinal = false;}
+
 	asCScriptCode *script;
 	asCScriptNode *node;
 	asCString name;
 	int validState;
 	asCObjectType *objType;
+	bool isExistingShared;
+	bool isFinal;
 };
 
 struct sFuncDef
@@ -126,13 +142,15 @@ protected:
 	friend class asCParser;
 
 	asCObjectProperty *GetObjectProperty(asCDataType &obj, const char *prop);
-	asCGlobalProperty *GetGlobalProperty(const char *prop, bool *isCompiled, bool *isPureConstant, asQWORD *constantValue);
+	asCGlobalProperty *GetGlobalProperty(const char *prop, bool *isCompiled, bool *isPureConstant, asQWORD *constantValue, bool *isAppProp);
 
-	asCScriptFunction *GetFunctionDescription(int funcID);
+	asCScriptFunction *GetFunctionDescription(int funcId);
 	void GetFunctionDescriptions(const char *name, asCArray<int> &funcs);
 	void GetObjectMethodDescriptions(const char *name, asCObjectType *objectType, asCArray<int> &methods, bool objIsConst, const asCString &scope = "");
 
 	int RegisterScriptFunction(int funcID, asCScriptNode *node, asCScriptCode *file, asCObjectType *object = 0, bool isInterface = false, bool isGlobalFunction = false);
+	int RegisterScriptFunctionWithSignature(int funcID, asCScriptNode *node, asCScriptCode *file, asCString &name, sExplicitSignature *signature, asCObjectType *object = 0, bool isInterface = false, bool isGlobalFunction = false, bool isPrivate = false, bool isConst = false, bool isFinal = false, bool isOverride = false, bool treatAsProperty = false);
+	int RegisterVirtualProperty(asCScriptNode *node, asCScriptCode *file, asCObjectType *object = 0, bool isInterface = false, bool isGlobalFunction = false);
 	int RegisterImportedFunction(int funcID, asCScriptNode *node, asCScriptCode *file);
 	int RegisterGlobalVar(asCScriptNode *node, asCScriptCode *file);
 	int RegisterClass(asCScriptNode *node, asCScriptCode *file);
@@ -143,10 +161,10 @@ protected:
 	void CompleteFuncDef(sFuncDef *funcDef);
 	void CompileClasses();
 
-	void GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *file, asCObjectType *objType, asCString &name, asCDataType &returnType, asCArray<asCDataType> &parameterTypes, asCArray<asETypeModifiers> &inOutFlags, asCArray<asCString *> &defaultArgs, bool &isConstMethod, bool &isConstructor, bool &isDestructor, bool &isPrivate);
+	void GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *file, asCObjectType *objType, asCString &name, asCDataType &returnType, asCArray<asCDataType> &parameterTypes, asCArray<asETypeModifiers> &inOutFlags, asCArray<asCString *> &defaultArgs, bool &isConstMethod, bool &isConstructor, bool &isDestructor, bool &isPrivate, bool &isOverride, bool &isFinal);
 	int  ValidateDefaultArgs(asCScriptCode *script, asCScriptNode *node, asCScriptFunction *func);
 
-	bool DoesMethodExist(asCObjectType *objType, int methodId);
+	bool DoesMethodExist(asCObjectType *objType, int methodId, asUINT *methodIndex = 0);
 
 	void AddDefaultConstructor(asCObjectType *objType, asCScriptCode *file);
 	asCObjectProperty *AddPropertyToClass(sClassDeclaration *c, const asCString &name, const asCDataType &type, bool isPrivate, asCScriptCode *file = 0, asCScriptNode *node = 0);

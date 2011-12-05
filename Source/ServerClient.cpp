@@ -2102,6 +2102,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         cl_old->Bin = cl->Bin;
         cl_old->Bout = cl->Bout;
         std::swap( cl_old->IsDisconnected, cl->IsDisconnected );
+        std::swap( cl_old->DisconnectTick, cl->DisconnectTick );
         cl_old->GameState = STATE_CONNECTED;
         cl->GameState = STATE_NONE;
         cl_old->Sock = cl->Sock;

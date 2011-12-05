@@ -521,7 +521,7 @@ public:
         if( ctx->GetState() == asEXECUTION_EXCEPTION )
         {
             line = ctx->GetExceptionLineNumber( &column );
-            func = Engine->GetFunctionDescriptorById( ctx->GetExceptionFunction() );
+            func = Engine->GetFunctionById( ctx->GetExceptionFunction() );
         }
         else
         {
@@ -2071,7 +2071,7 @@ endcopy:
     {
         int                line, column;
         line = ctx->GetExceptionLineNumber( &column );
-        asIScriptFunction* func = Engine->GetFunctionDescriptorById( ctx->GetExceptionFunction() );
+        asIScriptFunction* func = Engine->GetFunctionById( ctx->GetExceptionFunction() );
         if( !func )
         {
             LogA( Str::FormatBuf( "Script exception: %s : %s.\n", ctx->GetExceptionString(), ctx->GetUserData() ) );

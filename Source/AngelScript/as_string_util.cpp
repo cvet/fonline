@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2009 Andreas Jonsson
+   Copyright (c) 2003-2011 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -46,6 +46,37 @@
 
 BEGIN_AS_NAMESPACE
 
+int asCompareStrings(const char *str1, size_t len1, const char *str2, size_t len2)
+{
+	if( len1 == 0 ) 
+	{
+		if( str2 == 0 || len2 == 0 ) return 0; // Equal
+
+		return 1; // The other string is larger than this
+	}
+
+	if( str2 == 0 )
+	{
+		if( len1 == 0 ) 
+			return 0; // Equal
+
+		return -1; // The other string is smaller than this
+	}
+
+	if( len2 < len1 )
+	{
+		int result = memcmp(str1, str2, len2);
+		if( result == 0 ) return -1; // The other string is smaller than this
+
+		return result;
+	}
+
+	int result = memcmp(str1, str2, len1);
+	if( result == 0 && len1 < len2 ) return 1; // The other string is larger than this
+
+	return result;
+}
+
 double asStringScanDouble(const char *string, size_t *numScanned)
 {
 	char *end;
@@ -55,7 +86,7 @@ double asStringScanDouble(const char *string, size_t *numScanned)
     // locale is ",".
 #if !defined(_WIN32_WCE) && !defined(ANDROID)
 	// Set the locale to C so that we are guaranteed to parse the float value correctly
-	asCString orig = setlocale(LC_NUMERIC, 0);
+	char *orig = setlocale(LC_NUMERIC, 0);
 	setlocale(LC_NUMERIC, "C");
 #endif
 
@@ -63,7 +94,7 @@ double asStringScanDouble(const char *string, size_t *numScanned)
 
 #if !defined(_WIN32_WCE) && !defined(ANDROID)
 	// Restore the locale
-	setlocale(LC_NUMERIC, orig.AddressOf());
+	setlocale(LC_NUMERIC, orig);
 #endif
 
 	if( numScanned )
