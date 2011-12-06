@@ -860,35 +860,36 @@ public:
         // Compute whole version for server, client, mapper
         uint version = ( SERVER_VERSION << 20 ) | ( CLIENT_VERSION << 10 ) | MAPPER_VERSION;
 
-        FileManager::FormatPath( (char*) module_name );
-
         // Get script names
-        char fname_real[ MAX_FOPATH ] = { 0 };
-        Str::Append( fname_real, module_name );
+        char fname_real[ MAX_FOPATH ];
+        Str::Copy( fname_real, module_name );
         Str::Replacement( fname_real, '.', DIR_SLASH_C );
         Str::Append( fname_real, ".fos" );
+        FileManager::FormatPath( fname_real );
 
-        char fname_script[ MAX_FOPATH ] = { 0 };
+        char fname_script[ MAX_FOPATH ];
         if( file_prefix )
         {
             string temp = module_name;
-            int    pos = temp.find_last_of( DIR_SLASH_C );
-            if( pos >= 0 )
+            size_t pos = temp.find_last_of( DIR_SLASH_C );
+            if( pos != string::npos )
             {
                 temp.insert( pos + 1, file_prefix );
-                Str::Append( fname_script, temp.c_str() );
+                Str::Copy( fname_script, temp.c_str() );
             }
             else
             {
-                Str::Append( fname_script, file_prefix );
+                Str::Copy( fname_script, file_prefix );
                 Str::Append( fname_script, module_name );
             }
         }
         else
-            Str::Append( fname_script, module_name );
-
+        {
+            Str::Copy( fname_script, module_name );
+        }
         Str::Replacement( fname_script, '.', DIR_SLASH_C );
         Str::Append( fname_script, ".fos" );
+        FileManager::FormatPath( fname_script );
 
         // Set current pragmas
         Preprocessor::SetPragmaCallback( edata->PragmaCB );
