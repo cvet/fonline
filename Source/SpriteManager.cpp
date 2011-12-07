@@ -164,7 +164,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     {
         CHECK_EXTENSION( WGLEW_, ARB_pixel_format, true );
         CHECK_EXTENSION( WGLEW_, ARB_pbuffer, true );
-        CHECK_EXTENSION( WGLEW_, ARB_render_texture, true );
+        CHECK_EXTENSION( WGLEW_, ARB_render_texture, false );
     }
     # else
     CHECK_EXTENSION( GLEW_, ARB_framebuffer_object, true );
@@ -900,6 +900,16 @@ void SpriteManager::PopRenderTarget()
 void SpriteManager::DrawRenderTarget( RenderTarget& rt, bool alpha_blend, const Rect* region_from /* = NULL */, const Rect* region_to /* = NULL */ )
 {
     Flush();
+
+    # ifdef FO_WINDOWS
+    if( !GLEW_ARB_framebuffer_object && !WGLEW_ARB_render_texture )
+    {
+        PushRenderTarget( rt );
+        GL( glBindTexture( GL_TEXTURE_2D, rt.TargetTexture->Id ) );
+        GL( glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, rt.TargetTexture->Width, rt.TargetTexture->Height ) );
+        PopRenderTarget();
+    }
+    # endif
 
     if( !region_from && !region_to )
     {
@@ -3722,7 +3732,7 @@ bool SpriteManager::Flush()
             if( effect->ColorMapSize != -1 )
                 GL( glUniform4fv( effect->ColorMapSize, 1, dip.SourceTexture->SizeData ) );
             # ifdef FO_WINDOWS
-            if( dip.SourceTexture->PBuffer )
+            if( dip.SourceTexture->PBuffer && WGLEW_ARB_render_texture )
                 WGL( wglBindTexImageARB( dip.SourceTexture->PBuffer, WGL_FRONT_LEFT_ARB ) );
             # endif
         }
@@ -3748,7 +3758,7 @@ bool SpriteManager::Flush()
         }
 
         # ifdef FO_WINDOWS
-        if( effect->ColorMap != -1 && dip.SourceTexture && dip.SourceTexture->PBuffer )
+        if( effect->ColorMap != -1 && dip.SourceTexture && dip.SourceTexture->PBuffer && WGLEW_ARB_render_texture )
             WGL( wglReleaseTexImageARB( dip.SourceTexture->PBuffer, WGL_FRONT_LEFT_ARB ) );
         # endif
         #endif
