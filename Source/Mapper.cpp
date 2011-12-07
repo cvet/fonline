@@ -20,6 +20,7 @@ FOMapper::FOMapper()
     FPS = 0;
     DrawCrExtInfo = 0;
     IsMapperStarted = false;
+    Animations.resize( 10000 );
 }
 
 bool FOMapper::Init()

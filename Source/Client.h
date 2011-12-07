@@ -1043,8 +1043,10 @@ public:
 
     // Tabs
     Rect GmapWTabs, GmapWTab, GmapWTabLoc, GmapBTabLoc, GmapBTabsScrUp, GmapBTabsScrDn;
-    int  GmapTabNextX, GmapTabNextY, GmapCurHoldBLoc, GmapTabsScrX, GmapTabsScrY;
+    int  GmapTabNextX, GmapTabNextY, GmapTabsScrX, GmapTabsScrY;
+    uint GmapCurHoldBLocId;
     uint GmapTabsLastScr;
+    int  GmapHoldX, GmapHoldY;
 
     void  GmapDraw();
     void  GmapTownDraw();
@@ -1056,6 +1058,7 @@ public:
     void  GmapKeyDown( uchar dik );
     void  GmapChangeZoom( float offs );
     Item* GmapGetCar();
+    uint  GmapGetMouseTabLocId();
     void  GmapFreeResources();
 
     #define GMAP_CHECK_MAPSCR                                                \

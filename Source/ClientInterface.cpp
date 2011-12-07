@@ -5844,7 +5844,8 @@ void FOClient::GmapNullParams()
     GmapGroupSpeed = 0.0f;
     GmapWait = false;
     GmapTabsLastScr = 0;
-    GmapCurHoldBLoc = 0;
+    GmapCurHoldBLocId = 0;
+    GmapHoldX = GmapHoldY = 0;
     GmapLoc.clear();
     SAFEREL( GmapCar.Car );
     GmapCar.MasterId = 0;
@@ -6128,7 +6129,7 @@ void FOClient::GmapDraw()
         SprMngr.DrawSprite( GmapPWTab, cur_tabx, cur_taby );
         SprMngr.DrawSprite( tab_pic, GmapWTabLoc[ 0 ] + cur_tabx, GmapWTabLoc[ 1 ] + cur_taby );
 
-        if( IfaceHold == IFACE_GMAP_TABBTN && GmapCurHoldBLoc == (int) i )   // Button down
+        if( IfaceHold == IFACE_GMAP_TABBTN && GmapCurHoldBLocId == loc.LocId )   // Button down
             SprMngr.DrawSprite( GmapPBTabLoc, GmapBTabLoc[ 0 ] + cur_tabx, GmapBTabLoc[ 1 ] + cur_taby );
 
         cur_tabx += GmapTabNextX;
@@ -6377,49 +6378,22 @@ void FOClient::GmapLMouseDown()
     if( IfaceHold == IFACE_NONE && Chosen && Chosen->IsGmapRule() )
     {
         if( IsCurInRect( GmapBTown ) )
+        {
             IfaceHold = IFACE_GMAP_TOWN;
+        }
         else if( IsCurInRect( GmapWTabs ) )
         {
-            int tab_x = ( GameOpt.MouseX - ( GmapWTabs[ 0 ] - GmapTabsScrX ) ) % GmapWTab.W();
-            int tab_y = ( GameOpt.MouseY - ( GmapWTabs[ 1 ] - GmapTabsScrY ) ) % GmapWTab.H();
-
-            if( tab_x >= GmapBTabLoc[ 0 ] && tab_y >= GmapBTabLoc[ 1 ] && tab_x <= GmapBTabLoc[ 2 ] && tab_y <= GmapBTabLoc[ 3 ] )
-            {
-                if( GmapTabNextX )
-                    GmapCurHoldBLoc = ( GameOpt.MouseX - ( GmapWTabs[ 0 ] - GmapTabsScrX ) ) / GmapWTab.W();
-                else if( GmapTabNextY )
-                    GmapCurHoldBLoc = ( GameOpt.MouseY - ( GmapWTabs[ 1 ] - GmapTabsScrY ) ) / GmapWTab.H();
-                else
-                    GmapCurHoldBLoc = -1;
-
-                int cur_city = 0;
-                for( uint i = 0, j = (uint) GmapLoc.size(); i < j; i++ )
-                {
-                    GmapLocation& loc = GmapLoc[ i ];
-
-                    // Skip na
-                    if( !MsgGM->Count( STR_GM_LABELPIC_( loc.LocPid ) ) )
-                        continue;
-                    AnyFrames* tab_pic = ResMngr.GetIfaceAnim( Str::GetHash( MsgGM->GetStr( STR_GM_LABELPIC_( loc.LocPid ) ) ) );
-                    if( !tab_pic )
-                        continue;
-
-                    // Get
-                    if( GmapCurHoldBLoc == cur_city )
-                    {
-                        GmapCurHoldBLoc = i;
-                        IfaceHold = IFACE_GMAP_TABBTN;
-                        break;
-                    }
-
-                    cur_city++;
-                }
-            }
+            GmapCurHoldBLocId = GmapGetMouseTabLocId();
+            if( GmapCurHoldBLocId )
+                IfaceHold = IFACE_GMAP_TABBTN;
         }
     }
 
     if( IfaceHold == IFACE_NONE && IsCurInRect( GmapWMap ) )
     {
+        GmapHoldX = GameOpt.MouseX;
+        GmapHoldY = GameOpt.MouseY;
+
         if( GmapGroupSpeed == 0.0f )
         {
             SpriteInfo* si = SprMngr.GetSpriteInfo( GmapPStayMask->GetCurSprId() );
@@ -6466,7 +6440,7 @@ void FOClient::GmapLMouseUp()
         return;
     }
 
-    if( ( IfaceHold == IFACE_GMAP_TOLOC || IfaceHold == IFACE_GMAP_MAP ) && IsCurInRect( GmapWMap ) )
+    if( ( IfaceHold == IFACE_GMAP_TOLOC || IfaceHold == IFACE_GMAP_MAP ) && IsCurInRect( GmapWMap ) && DistSqrt( GameOpt.MouseX, GameOpt.MouseY, GmapHoldX, GmapHoldY ) <= 2 )
     {
         if( IfaceHold == IFACE_GMAP_TOLOC )
         {
@@ -6522,10 +6496,18 @@ void FOClient::GmapLMouseUp()
     }
     else if( IfaceHold == IFACE_GMAP_TABBTN && IsCurInRect( GmapWTabs ) )
     {
-        if( GmapCurHoldBLoc < (int) GmapLoc.size() )
+        uint loc_id = GmapGetMouseTabLocId();
+        if( loc_id == GmapCurHoldBLocId )
         {
-            GmapLocation& loc = GmapLoc[ GmapCurHoldBLoc ];
-            Net_SendRuleGlobal( GM_CMD_SETMOVE, loc.LocWx, loc.LocWy );
+            for( uint i = 0, j = (uint) GmapLoc.size(); i < j; i++ )
+            {
+                GmapLocation& loc = GmapLoc[ i ];
+                if( loc.LocId == loc_id )
+                {
+                    Net_SendRuleGlobal( GM_CMD_SETMOVE, loc.LocWx, loc.LocWy );
+                    break;
+                }
+            }
         }
     }
     else if( IfaceHold == IFACE_GMAP_INV && IsCurInRect( GmapBInv ) )
@@ -6665,6 +6647,44 @@ void FOClient::GmapChangeZoom( float offs )
 Item* FOClient::GmapGetCar()
 {
     return GmapCar.Car;
+}
+
+uint FOClient::GmapGetMouseTabLocId()
+{
+    if( IsCurInRect( GmapWTabs ) )
+    {
+        int tab_x = ( GameOpt.MouseX - ( GmapWTabs[ 0 ] - GmapTabsScrX ) ) % GmapWTab.W();
+        int tab_y = ( GameOpt.MouseY - ( GmapWTabs[ 1 ] - GmapTabsScrY ) ) % GmapWTab.H();
+
+        if( tab_x >= GmapBTabLoc[ 0 ] && tab_y >= GmapBTabLoc[ 1 ] && tab_x <= GmapBTabLoc[ 2 ] && tab_y <= GmapBTabLoc[ 3 ] )
+        {
+            int tab_pos = -1;
+            if( GmapTabNextX )
+                tab_pos = ( GameOpt.MouseX - ( GmapWTabs[ 0 ] - GmapTabsScrX ) ) / GmapWTab.W();
+            else if( GmapTabNextY )
+                tab_pos = ( GameOpt.MouseY - ( GmapWTabs[ 1 ] - GmapTabsScrY ) ) / GmapWTab.H();
+
+            int cur_tab = 0;
+            for( uint i = 0, j = (uint) GmapLoc.size(); i < j; i++ )
+            {
+                GmapLocation& loc = GmapLoc[ i ];
+
+                // Skip na
+                if( !MsgGM->Count( STR_GM_LABELPIC_( loc.LocPid ) ) )
+                    continue;
+                AnyFrames* tab_pic = ResMngr.GetIfaceAnim( Str::GetHash( MsgGM->GetStr( STR_GM_LABELPIC_( loc.LocPid ) ) ) );
+                if( !tab_pic )
+                    continue;
+
+                // Get
+                if( tab_pos == cur_tab )
+                    return loc.LocId;
+
+                cur_tab++;
+            }
+        }
+    }
+    return 0;
 }
 
 void FOClient::GmapFreeResources()
