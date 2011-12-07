@@ -6841,7 +6841,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter2d( uint crtype, uint anim1, uint 
 
 Animation3dVec DrawCritter3dAnim;
 UIntVec        DrawCritter3dCrType;
-UIntVec        DrawCritter3dFailToLoad;
+BoolVec        DrawCritter3dFailToLoad;
 int            DrawCritter3dLayers[ LAYERS3D_COUNT ];
 void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, CScriptArray* layers, CScriptArray* position, uint color )
 {
@@ -6865,48 +6865,49 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         Animation3d*& anim = DrawCritter3dAnim[ instance ];
         if( !anim || DrawCritter3dCrType[ instance ] != crtype )
         {
-            SAFEDEL( anim );
-            anim = Animation3d::GetAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( crtype ) ), PT_ART_CRITTERS, false );
+            if( anim )
+                SprMngr.FreePure3dAnimation( anim );
+            char fname[ MAX_FOPATH ];
+            Str::Format( fname, "%s.fo3d", CritType::GetName( crtype ) );
+            anim = SprMngr.LoadPure3dAnimation( fname, PT_ART_CRITTERS );
             DrawCritter3dCrType[ instance ] = crtype;
-            DrawCritter3dFailToLoad[ instance ] = 0;
+            DrawCritter3dFailToLoad[ instance ] = false;
 
             if( !anim )
             {
-                DrawCritter3dFailToLoad[ instance ] = 1;
+                DrawCritter3dFailToLoad[ instance ] = true;
                 return;
             }
             anim->EnableShadow( false );
+            anim->SetTimer( false );
         }
 
-        if( anim )
-        {
-            uint  count = ( position ? position->GetSize() : 0 );
-            float x = ( count > 0 ? *(float*) position->At( 0 ) : 0.0f );
-            float y = ( count > 1 ? *(float*) position->At( 1 ) : 0.0f );
-            float rx = ( count > 2 ? *(float*) position->At( 2 ) : 0.0f );
-            float ry = ( count > 3 ? *(float*) position->At( 3 ) : 0.0f );
-            float rz = ( count > 4 ? *(float*) position->At( 4 ) : 0.0f );
-            float sx = ( count > 5 ? *(float*) position->At( 5 ) : 1.0f );
-            float sy = ( count > 6 ? *(float*) position->At( 6 ) : 1.0f );
-            float sz = ( count > 7 ? *(float*) position->At( 7 ) : 1.0f );
-            float speed = ( count > 8 ? *(float*) position->At( 8 ) : 1.0f );
-            // 9 reserved
-            float stl = ( count > 10 ? *(float*) position->At( 10 ) : 0.0f );
-            float stt = ( count > 11 ? *(float*) position->At( 11 ) : 0.0f );
-            float str = ( count > 12 ? *(float*) position->At( 12 ) : 0.0f );
-            float stb = ( count > 13 ? *(float*) position->At( 13 ) : 0.0f );
+        uint  count = ( position ? position->GetSize() : 0 );
+        float x = ( count > 0 ? *(float*) position->At( 0 ) : 0.0f );
+        float y = ( count > 1 ? *(float*) position->At( 1 ) : 0.0f );
+        float rx = ( count > 2 ? *(float*) position->At( 2 ) : 0.0f );
+        float ry = ( count > 3 ? *(float*) position->At( 3 ) : 0.0f );
+        float rz = ( count > 4 ? *(float*) position->At( 4 ) : 0.0f );
+        float sx = ( count > 5 ? *(float*) position->At( 5 ) : 1.0f );
+        float sy = ( count > 6 ? *(float*) position->At( 6 ) : 1.0f );
+        float sz = ( count > 7 ? *(float*) position->At( 7 ) : 1.0f );
+        float speed = ( count > 8 ? *(float*) position->At( 8 ) : 1.0f );
+        // 9 reserved
+        float stl = ( count > 10 ? *(float*) position->At( 10 ) : 0.0f );
+        float stt = ( count > 11 ? *(float*) position->At( 11 ) : 0.0f );
+        float str = ( count > 12 ? *(float*) position->At( 12 ) : 0.0f );
+        float stb = ( count > 13 ? *(float*) position->At( 13 ) : 0.0f );
 
-            memzero( DrawCritter3dLayers, sizeof( DrawCritter3dLayers ) );
-            for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
-                DrawCritter3dLayers[ i ] = *(int*) layers->At( i );
+        memzero( DrawCritter3dLayers, sizeof( DrawCritter3dLayers ) );
+        for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
+            DrawCritter3dLayers[ i ] = *(int*) layers->At( i );
 
-            anim->SetRotation( rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f );
-            anim->SetScale( sx, sy, sz );
-            anim->SetSpeed( speed );
-            anim->SetAnimation( anim1, anim2, DrawCritter3dLayers, 0 );
-            RectF r = RectF( stl, stt, str, stb );
-            SprMngr.Draw3d( (int) x, (int) y, 1.0f, anim, stl < str && stt < stb ? &r : NULL, color ? color : COLOR_IFACE );
-        }
+        anim->SetRotation( rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f );
+        anim->SetScale( sx, sy, sz );
+        anim->SetSpeed( speed );
+        anim->SetAnimation( anim1, anim2, DrawCritter3dLayers, 0 );
+        RectF r = RectF( stl, stt, str, stb );
+        SprMngr.Draw3d( (int) x, (int) y, 1.0f, anim, stl < str && stt < stb ? &r : NULL, color ? color : COLOR_IFACE );
     }
 }
 

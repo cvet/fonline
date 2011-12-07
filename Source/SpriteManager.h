@@ -239,10 +239,17 @@ struct SpriteMngrParams
 #ifndef FO_D3D
 struct RenderTarget
 {
-    GLuint   FBO;
-    Texture* TargetTexture;
-    GLuint   DepthStencilBuffer;
-    Effect*  DrawEffect;
+    uint        Id;
+    GLuint      FBO;
+    Texture*    TargetTexture;
+    GLuint      DepthStencilBuffer;
+    Effect*     DrawEffect;
+
+    # ifdef FO_WINDOWS
+    HPBUFFERARB PBuffer;
+    HDC         PBufferDC;
+    HGLRC       PBufferGLC;
+    # endif
 };
 typedef vector< RenderTarget* > RenderTargetVec;
 #endif
@@ -270,6 +277,10 @@ private:
     RenderTarget     rt3D, rt3DMS;
     RenderTarget     rt3DSprite, rt3DMSSprite;
     RenderTargetVec  rtStack;
+    # ifdef FO_WINDOWS
+    HDC              deviceContext;
+    HGLRC            glContext;
+    # endif
     #endif
 
 public:
@@ -402,6 +413,11 @@ private:
     #endif
     Effect*       sprDefaultEffect[ DEFAULT_EFFECT_COUNT ];
     Effect*       curDefaultEffect;
+
+    #ifndef FO_D3D
+    void EnableVertexArray( GLuint ib, uint count );
+    void DisableVertexArray();
+    #endif
 
     // Contours
 public:

@@ -50,6 +50,10 @@ SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), S
     ibMain = 0;
     ibDirect = 0;
     memzero( projectionMatrix, sizeof( projectionMatrix ) );
+    # ifdef FO_WINDOWS
+    deviceContext = NULL;
+    glContext = NULL;
+    # endif
     #endif
 }
 
@@ -134,11 +138,15 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     Fl::unlock();
     GL( glDisable( GL_SCISSOR_TEST ) );
     GL( glDrawBuffer( GL_BACK ) );
+    # ifdef FO_WINDOWS
+    deviceContext = wglGetCurrentDC();
+    glContext = wglGetCurrentContext();
+    # endif
 
     // OpenGL extensions
     glewInit();
-    # define CHECK_EXTENSION( ext, critical  )                                    \
-        if( !GLEW_ ## ext )                                                       \
+    # define CHECK_EXTENSION( ext_prefix, ext, critical  )                        \
+        if( !ext_prefix ## ext )                                                  \
         {                                                                         \
             const char* msg = ( critical ? "Critical" : "Not critical" );         \
             WriteLog( "OpenGL extension '" # ext "' not supported. %s.\n", msg ); \
@@ -146,27 +154,25 @@ bool SpriteManager::Init( SpriteMngrParams& params )
                 errors++;                                                         \
         }
     uint errors = 0;
-    CHECK_EXTENSION( ARB_vertex_buffer_object, true );
-    CHECK_EXTENSION( ARB_vertex_array_object, true );
-    CHECK_EXTENSION( ARB_framebuffer_object, true );
-    CHECK_EXTENSION( ARB_get_program_binary, false );
+    CHECK_EXTENSION( GLEW_, VERSION_2_0, true );
+    CHECK_EXTENSION( GLEW_, ARB_vertex_buffer_object, true );
+    CHECK_EXTENSION( GLEW_, ARB_vertex_array_object, false );
+    # ifdef FO_WINDOWS
+    CHECK_EXTENSION( GLEW_, ARB_framebuffer_object, false );
+    if( !GLEW_ARB_framebuffer_object )
+    {
+        CHECK_EXTENSION( WGLEW_, ARB_pixel_format, true );
+        CHECK_EXTENSION( WGLEW_, ARB_pbuffer, true );
+        CHECK_EXTENSION( WGLEW_, ARB_render_texture, true );
+    }
+    # else
+    CHECK_EXTENSION( GLEW_, ARB_framebuffer_object, true );
+    # endif
+    CHECK_EXTENSION( GLEW_, ARB_texture_multisample, false );
+    CHECK_EXTENSION( GLEW_, ARB_get_program_binary, false );
     if( errors )
         return false;
     # undef CHECK_EXTENSION
-
-    // States
-    GL( glViewport( 0, 0, modeWidth, modeHeight ) );
-    GL( glMatrixMode( GL_PROJECTION ) );
-    GL( glLoadIdentity() );
-    GL( gluOrtho2D( 0, modeWidth, modeHeight, 0 ) );
-    GL( glGetFloatv( GL_PROJECTION_MATRIX, projectionMatrix ) );
-    GL( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
-    # ifdef FO_WINDOWS
-    if( !GameOpt.VSync )
-        wglSwapIntervalEXT( 0 );
-    # else // FO_LINUX
-    // Todo: Linux
-    # endif
     #endif
 
     #ifdef FO_D3D
@@ -288,7 +294,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     #else
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
     # ifdef FO_WINDOWS
-    SwapBuffers( fl_gc );
+    SwapBuffers( deviceContext );
     # else
     glXSwapBuffers( fl_display, fl_window );
     # endif
@@ -383,19 +389,22 @@ bool SpriteManager::InitBuffers()
     delete[] ind;
 
     // Vertex array
-    GL( glGenVertexArrays( 1, &vaMain ) );
-    GL( glBindVertexArray( vaMain ) );
-    GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
-    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibMain ) );
-    GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, x ) ) );
-    GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, diffuse ) ) );
-    GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, tu ) ) );
-    GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, tu2 ) ) );
-    GL( glEnableVertexAttribArray( 0 ) );
-    GL( glEnableVertexAttribArray( 1 ) );
-    GL( glEnableVertexAttribArray( 2 ) );
-    GL( glEnableVertexAttribArray( 3 ) );
-    GL( glBindVertexArray( 0 ) );
+    if( GLEW_ARB_vertex_array_object && GLEW_ARB_framebuffer_object )
+    {
+        GL( glGenVertexArrays( 1, &vaMain ) );
+        GL( glBindVertexArray( vaMain ) );
+        GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
+        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibMain ) );
+        GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, x ) ) );
+        GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, diffuse ) ) );
+        GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, tu ) ) );
+        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, tu2 ) ) );
+        GL( glEnableVertexAttribArray( 0 ) );
+        GL( glEnableVertexAttribArray( 1 ) );
+        GL( glEnableVertexAttribArray( 2 ) );
+        GL( glEnableVertexAttribArray( 3 ) );
+        GL( glBindVertexArray( 0 ) );
+    }
     #endif
 
     #ifdef FO_D3D
@@ -473,42 +482,34 @@ bool SpriteManager::InitRenderStates()
     D3D_HR( d3dDevice->SetRenderState( D3DRS_LIGHTING, TRUE ) );
     D3D_HR( d3dDevice->SetRenderState( D3DRS_DITHERENABLE, TRUE ) );
     D3D_HR( d3dDevice->SetRenderState( D3DRS_SPECULARENABLE, FALSE ) );
-    // D3D_HR(d3dDevice->SetRenderState(D3DRS_CULLMODE,D3DCULL_CCW));
     D3D_HR( d3dDevice->SetRenderState( D3DRS_AMBIENT, COLOR_XRGB( 80, 80, 80 ) ) );
     D3D_HR( d3dDevice->SetRenderState( D3DRS_NORMALIZENORMALS, TRUE ) );
     #else
+    GL( glViewport( 0, 0, modeWidth, modeHeight ) );
+    GL( glMatrixMode( GL_PROJECTION ) );
+    GL( glLoadIdentity() );
+    GL( gluOrtho2D( 0, modeWidth, modeHeight, 0 ) );
+    GL( glGetFloatv( GL_PROJECTION_MATRIX, projectionMatrix ) );
+    GL( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
+    # ifdef FO_WINDOWS
+    if( !GameOpt.VSync && WGLEW_EXT_swap_control )
+        wglSwapIntervalEXT( 0 );
+    # else // FO_LINUX
+    if( !GameOpt.VSync && GLXEW_SGI_swap_control )
+        glXSwapIntervalSGI( 0 );
+    else if( !GameOpt.VSync && GLXEW_EXT_swap_control )
+        glXSwapIntervalEXT( glXGetCurrentDisplay(), glXGetCurrentDrawable(), 0 );
+    # endif
     GL( glEnable( GL_TEXTURE_2D ) );
     GL( glEnable( GL_BLEND ) );
     GL( glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA ) );
     GL( glEnable( GL_ALPHA_TEST ) );
     GL( glAlphaFunc( GL_GEQUAL, 1.0f / 255.0f ) );
-
     GL( glShadeModel( GL_SMOOTH ) );
     GL( glEnable( GL_POINT_SMOOTH ) );
     GL( glEnable( GL_LINE_SMOOTH ) );
-    // GL( glCullFace( GL_FRONT ) );
-    // GL( glFrontFace( GL_CW ) );
     GL( glDisable( GL_CULL_FACE ) );
-    // GL( glPolygonMode( GL_FRONT_AND_BACK, GL_FILL ) );
-    // GL( glReadBuffer( GL_BACK ) );
-    // GL( glDrawBuffer( GL_BACK ) );
-    // glEnable(GL_DEPTH_TEST);
-    // glDepthFunc(GL_LEQUAL);
-    // glDepthMask(TRUE);
-    // glDisable(GL_STENCIL_TEST);
-    // glStencilMask(0xFFFFFFFF);
-    // glStencilFunc(GL_EQUAL, 0x00000000, 0x00000001);
-    // glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    // glFrontFace(GL_CCW);
     GL( glDisable( GL_LIGHTING ) );
-
-    // glClearColor(1.0, 0.0, 0.0, 0.0);
-    // glClearDepth(1.0);
-    // glClearStencil(0);
-    // glDisable(GL_BLEND);
-    // glDisable(GL_ALPHA_TEST);
-    // glDisable(GL_DITHER);
-    // glActiveTexture( GL_TEXTURE0 );
     #endif
 
     return true;
@@ -583,13 +584,13 @@ void SpriteManager::EndScene()
     d3dDevice->EndScene();
     d3dDevice->Present( NULL, NULL, NULL, NULL );
     #else
-    GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
+    PopRenderTarget();
     GL( glViewport( 0, 0, MainWindow->w(), MainWindow->h() ) );
     DrawRenderTarget( rtMain, false );
     GL( glViewport( 0, 0, modeWidth, modeHeight ) );
-    GL( glBindFramebuffer( GL_FRAMEBUFFER, rtMain.FBO ) );
+    PushRenderTarget( rtMain );
     # ifdef FO_WINDOWS
-    SwapBuffers( fl_gc );
+    SwapBuffers( deviceContext );
     # else
     glXSwapBuffers( fl_display, fl_window );
     # endif
@@ -652,7 +653,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
 
     // Multisampling
     static int samples = -1;
-    if( multisampling && samples == -1 )
+    if( multisampling && samples == -1 && GLEW_ARB_framebuffer_object )
     {
         if( GLEW_ARB_texture_multisample && GameOpt.MultiSampling != 0 )
         {
@@ -677,9 +678,81 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
         return false;
 
     // Framebuffer
-    GL( glGenFramebuffers( 1, &rt.FBO ) );
-    GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
+    if( GLEW_ARB_framebuffer_object )
+    {
+        GL( glGenFramebuffers( 1, &rt.FBO ) );
+        GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
+    }
 
+    // PBuffer instead FBO (Windows specific)
+    if( !GLEW_ARB_framebuffer_object )
+    {
+        # ifdef FO_WINDOWS
+        // Choose formats
+        int  formats;
+        int  attr[ 32 ] =
+        {
+            WGL_RED_BITS_ARB, 8,
+            WGL_GREEN_BITS_ARB, 8,
+            WGL_BLUE_BITS_ARB, 8,
+            WGL_ALPHA_BITS_ARB, 8,
+            WGL_DRAW_TO_PBUFFER_ARB, GL_TRUE,
+            WGL_BIND_TO_TEXTURE_RGBA_ARB, GL_TRUE,
+            WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+            WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+            WGL_DOUBLE_BUFFER_ARB, GL_FALSE,
+            WGL_DEPTH_BITS_ARB, depth_stencil ? 24 : 0,
+            WGL_STENCIL_BITS_ARB, depth_stencil ? 8 : 0,
+            0
+        };
+        UINT formats_count = 0;
+        if( !wglChoosePixelFormatARB( deviceContext, attr, NULL, 1, &formats, &formats_count ) )
+        {
+            WriteLogF( _FUNC_, " - wglChoosePixelFormatARB fail.\n" );
+            return false;
+        }
+        if( !formats_count )
+        {
+            WriteLogF( _FUNC_, " - PBuffer format not found.\n" );
+            return false;
+        }
+
+        // Create PBuffer
+        const int pbuffer_attr[] =
+        {
+            WGL_TEXTURE_FORMAT_ARB, WGL_TEXTURE_RGBA_ARB,
+            WGL_TEXTURE_TARGET_ARB, WGL_TEXTURE_2D_ARB, 0
+        };
+        rt.PBuffer = wglCreatePbufferARB( deviceContext, formats, width, height, pbuffer_attr );
+        if( !rt.PBuffer )
+        {
+            WriteLogF( _FUNC_, " - Can't create PBuffer.\n" );
+            return false;
+        }
+        rt.PBufferDC = wglGetPbufferDCARB( rt.PBuffer );
+        rt.PBufferGLC = wglCreateContext( rt.PBufferDC );
+
+        // Check created sizes
+        int width_, height_;
+        WGL( wglQueryPbufferARB( rt.PBuffer, WGL_PBUFFER_WIDTH_ARB, &width_ ) );
+        WGL( wglQueryPbufferARB( rt.PBuffer, WGL_PBUFFER_HEIGHT_ARB, &height_ ) );
+        if( width != width_ || height != height_ )
+        {
+            WriteLogF( _FUNC_, " - PBuffer wrong sizes.\n" );
+            return false;
+        }
+
+        // Set render states for new context
+        WGL( wglMakeCurrent( rt.PBufferDC, rt.PBufferGLC ) );
+        InitRenderStates();
+        WGL( wglMakeCurrent( deviceContext, glContext ) );
+
+        // Share textures between contexts
+        WGL( wglShareLists( glContext, rt.PBufferGLC ) );
+        # endif
+    }
+
+    // Texture
     Texture* tex = new Texture();
     tex->Data = NULL;
     tex->Size = width * height * 4;
@@ -689,6 +762,10 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     tex->SizeData[ 1 ] = (float) height;
     tex->SizeData[ 2 ] = 1.0f / tex->SizeData[ 0 ];
     tex->SizeData[ 3 ] = 1.0f / tex->SizeData[ 1 ];
+    # ifdef FO_WINDOWS
+    if( !GLEW_ARB_framebuffer_object )
+        tex->PBuffer = rt.PBuffer;
+    # endif
     GL( glGenTextures( 1, &tex->Id ) );
     if( !multisampling )
     {
@@ -698,7 +775,8 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
-        GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->Id, 0 ) );
+        if( GLEW_ARB_framebuffer_object )
+            GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->Id, 0 ) );
     }
     else
     {
@@ -709,7 +787,8 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     }
     rt.TargetTexture = tex;
 
-    if( depth_stencil )
+    // Depth / stencil
+    if( depth_stencil && GLEW_ARB_framebuffer_object )
     {
         GL( glGenRenderbuffers( 1, &rt.DepthStencilBuffer ) );
         GL( glBindRenderbuffer( GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
@@ -724,17 +803,31 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
         GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
     }
 
-    GLenum status;
-    GL( status = glCheckFramebufferStatus( GL_FRAMEBUFFER ) );
-    if( status != GL_FRAMEBUFFER_COMPLETE )
-        WriteLogF( _FUNC_, "Framebuffer not created.\n" );
+    // Check framebuffer creation status
+    if( GLEW_ARB_framebuffer_object )
+    {
+        GLenum status;
+        GL( status = glCheckFramebufferStatus( GL_FRAMEBUFFER ) );
+        if( status != GL_FRAMEBUFFER_COMPLETE )
+        {
+            WriteLogF( _FUNC_, "Framebuffer not created.\n" );
+            return false;
+        }
+    }
 
+    // Effect
     if( !multisampling )
         rt.DrawEffect = sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ];
     else
         rt.DrawEffect = sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE_MS ];
 
-    GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
+    // Id
+    static uint ids = 0;
+    rt.Id = ++ids;
+
+    // Clear
+    if( GLEW_ARB_framebuffer_object )
+        GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
     ClearRenderTarget( rt, 0 );
     if( depth_stencil )
         ClearRenderTargetDS( rt, true, true );
@@ -743,28 +836,39 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
 
 void SpriteManager::DeleteRenderTarget( RenderTarget& rt )
 {
-    if( rt.DepthStencilBuffer )
-        GL( glDeleteRenderbuffers( 1, &rt.DepthStencilBuffer ) );
-    GL( glDeleteFramebuffers( 1, &rt.FBO ) );
+    if( GLEW_ARB_framebuffer_object )
+    {
+        if( rt.DepthStencilBuffer )
+            GL( glDeleteRenderbuffers( 1, &rt.DepthStencilBuffer ) );
+        GL( glDeleteFramebuffers( 1, &rt.FBO ) );
+    }
+    else
+    {
+        # ifdef FO_WINDOWS
+        WGL( wglDeleteContext( rt.PBufferGLC ) );
+        wglReleasePbufferDCARB( rt.PBuffer, rt.PBufferDC );
+        WGL( wglDestroyPbufferARB( rt.PBuffer ) );
+        # endif
+    }
     SAFEDEL( rt.TargetTexture );
     memzero( &rt, sizeof( rt ) );
 }
 
 void SpriteManager::ClearRenderTarget( RenderTarget& rt, uint color )
 {
-    GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
+    PushRenderTarget( rt );
     float a = (float) ( ( color >> 24 ) & 0xFF ) / 255.0f;
     float r = (float) ( ( color >> 16 ) & 0xFF ) / 255.0f;
     float g = (float) ( ( color >>  8 ) & 0xFF ) / 255.0f;
     float b = (float) ( ( color >>  0 ) & 0xFF ) / 255.0f;
     GL( glClearColor( r, g, b, a ) );
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
-    GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
+    PopRenderTarget();
 }
 
 void SpriteManager::ClearRenderTargetDS( RenderTarget& rt, bool depth, bool stencil )
 {
-    GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
+    PushRenderTarget( rt );
     int depth_stencil_bit = 0;
     depth_stencil_bit |= ( depth ? GL_DEPTH_BUFFER_BIT : 0 );
     depth_stencil_bit |= ( stencil ? GL_STENCIL_BUFFER_BIT : 0 );
@@ -779,21 +883,54 @@ void SpriteManager::ClearRenderTargetDS( RenderTarget& rt, bool depth, bool sten
         GL( glClearStencil( 0 ) );
     }
     GL( glClear( depth_stencil_bit ) );
-    GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
+    PopRenderTarget();
 }
 
 void SpriteManager::PushRenderTarget( RenderTarget& rt )
 {
-    Flush();
+    bool redundant = ( !rtStack.empty() && rtStack.back()->Id == rt.Id );
     rtStack.push_back( &rt );
-    GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
+    if( !redundant )
+    {
+        Flush();
+        if( GLEW_ARB_framebuffer_object )
+        {
+            GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
+        }
+        else
+        {
+            # ifdef FO_WINDOWS
+            WGL( wglMakeCurrent( rt.PBufferDC, rt.PBufferGLC ) );
+            # endif
+        }
+    }
 }
 
 void SpriteManager::PopRenderTarget()
 {
-    Flush();
+    bool redundant = ( rtStack.size() > 2 && rtStack.back()->Id == rtStack[ rtStack.size() - 2 ]->Id );
     rtStack.pop_back();
-    GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
+    if( !redundant )
+    {
+        Flush();
+        if( GLEW_ARB_framebuffer_object )
+        {
+            GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
+        }
+        else
+        {
+            # ifdef FO_WINDOWS
+            if( !rtStack.empty() )
+            {
+                WGL( wglMakeCurrent( rtStack.back()->PBufferDC, rtStack.back()->PBufferGLC ) );
+            }
+            else
+            {
+                WGL( wglMakeCurrent( deviceContext, glContext ) );
+            }
+            # endif
+        }
+    }
 }
 
 void SpriteManager::DrawRenderTarget( RenderTarget& rt, bool alpha_blend, const Rect* region_from /* = NULL */, const Rect* region_to /* = NULL */ )
@@ -828,8 +965,8 @@ void SpriteManager::DrawRenderTarget( RenderTarget& rt, bool alpha_blend, const 
                           Rect( 0, 0, rt.TargetTexture->Width, rt.TargetTexture->Height ) );
         RectF regiont = ( region_to ? *region_to :
                           Rect( 0, 0, rtStack.back()->TargetTexture->Width, rtStack.back()->TargetTexture->Height ) );
-        float wf = regionf.R - regionf.L;
-        float hf = regionf.B - regionf.T;
+        float wf = (float) rt.TargetTexture->Width;
+        float hf = (float) rt.TargetTexture->Height;
         uint  mulpos = 0;
         vBuffer[ mulpos ].x = regiont.L;
         vBuffer[ mulpos ].y = regiont.B;
@@ -851,11 +988,52 @@ void SpriteManager::DrawRenderTarget( RenderTarget& rt, bool alpha_blend, const 
 
     curSprCnt = 1;
     dipQueue.push_back( DipData( rt.TargetTexture, rt.DrawEffect ) );
+
     if( !alpha_blend )
         GL( glDisable( GL_BLEND ) );
     Flush();
     if( !alpha_blend )
         GL( glEnable( GL_BLEND ) );
+}
+
+void SpriteManager::EnableVertexArray( GLuint ib, uint count )
+{
+    if( vaMain )
+    {
+        GL( glBindVertexArray( vaMain ) );
+        GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
+        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ib ) );
+        GL( glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof( Vertex ) * count, &vBuffer[ 0 ] ) );
+    }
+    else
+    {
+        GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
+        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ib ) );
+        GL( glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof( Vertex ) * count, &vBuffer[ 0 ] ) );
+        GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, x ) ) );
+        GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, diffuse ) ) );
+        GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, tu ) ) );
+        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, tu2 ) ) );
+        GL( glEnableVertexAttribArray( 0 ) );
+        GL( glEnableVertexAttribArray( 1 ) );
+        GL( glEnableVertexAttribArray( 2 ) );
+        GL( glEnableVertexAttribArray( 3 ) );
+    }
+}
+
+void SpriteManager::DisableVertexArray()
+{
+    if( vaMain )
+    {
+        GL( glBindVertexArray( 0 ) );
+    }
+    else
+    {
+        GL( glDisableVertexAttribArray( 0 ) );
+        GL( glDisableVertexAttribArray( 1 ) );
+        GL( glDisableVertexAttribArray( 2 ) );
+        GL( glDisableVertexAttribArray( 3 ) );
+    }
 }
 #endif
 
@@ -3128,7 +3306,6 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
     return anim;
 }
 
-
 AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type )
 {
     // Load file
@@ -3338,7 +3515,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
         GL( glViewport( 0, 0, rt_width, rt_height ) );
 
         PushRenderTarget( rt3DMS );
-        DrawRenderTarget( rt3DMS, false, &fb );
+        DrawRenderTarget( rt3DMS, false, &fb, &fb );
         PopRenderTarget();
 
         GL( glMatrixMode( GL_PROJECTION ) );
@@ -3452,8 +3629,6 @@ void SpriteManager::FreePure3dAnimation( Animation3d* anim3d )
 
 bool SpriteManager::Flush()
 {
-    if( !isInit )
-        return false;
     if( !curSprCnt )
         return true;
     int mulpos = 4 * curSprCnt;
@@ -3479,10 +3654,7 @@ bool SpriteManager::Flush()
         Vertex& v = vBuffer[ i ];
         v.diffuse = COLOR_FIX( v.diffuse );
     }
-    GL( glBindVertexArray( vaMain ) );
-    GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
-    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibMain ) );
-    GL( glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof( Vertex ) * mulpos, &vBuffer[ 0 ] ) );
+    EnableVertexArray( ibMain, mulpos );
     #endif
 
     uint rpos = 0;
@@ -3545,6 +3717,10 @@ bool SpriteManager::Flush()
             GL( glUniform1i( effect->ColorMap, 0 ) );
             if( effect->ColorMapSize != -1 )
                 GL( glUniform4fv( effect->ColorMapSize, 1, dip.SourceTexture->SizeData ) );
+            # ifdef FO_WINDOWS
+            if( dip.SourceTexture->PBuffer )
+                WGL( wglBindTexImageARB( dip.SourceTexture->PBuffer, WGL_FRONT_LEFT_ARB ) );
+            # endif
         }
         if( effect->EggMap != -1 )
         {
@@ -3566,6 +3742,11 @@ bool SpriteManager::Flush()
                 GraphicLoader::EffectProcessVariables( effect, pass );
             GL( glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (void*) ( rpos * 2 ) ) );
         }
+
+        # ifdef FO_WINDOWS
+        if( effect->ColorMap != -1 && dip.SourceTexture && dip.SourceTexture->PBuffer )
+            WGL( wglReleaseTexImageARB( dip.SourceTexture->PBuffer, WGL_FRONT_LEFT_ARB ) );
+        # endif
         #endif
 
         rpos += 6 * dip.SpritesCount;
@@ -3575,7 +3756,7 @@ bool SpriteManager::Flush()
 
     #ifndef FO_D3D
     GL( glUseProgram( 0 ) );
-    GL( glBindVertexArray( 0 ) );
+    DisableVertexArray();
     #endif
 
     return true;
@@ -4646,11 +4827,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     }
 
     // Draw
-    GL( glBindVertexArray( vaMain ) );
-    GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
-    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibDirect ) );
-    GL( glBufferSubData( GL_ARRAY_BUFFER, 0, count * sizeof( Vertex ), &vBuffer[ 0 ] ) );
-
+    EnableVertexArray( ibDirect, count );
     Effect* effect = sprDefaultEffect[ DEFAULT_EFFECT_POINT ];
     GL( glUseProgram( effect->Program ) );
 
@@ -4667,7 +4844,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     }
 
     GL( glUseProgram( 0 ) );
-    GL( glBindVertexArray( 0 ) );
+    DisableVertexArray();
 
     // Finish
     if( stencil )
@@ -4715,7 +4892,7 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
     {
         PushRenderTarget( rt3D );
         ClearRenderTarget( rt3D, 0 );
-        DrawRenderTarget( rt3DMS, false, &borders );
+        DrawRenderTarget( rt3DMS, false, &borders, &borders );
         PopRenderTarget();
     }
 

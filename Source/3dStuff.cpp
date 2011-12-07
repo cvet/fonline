@@ -934,6 +934,7 @@ void Animation3d::SetTimer( bool use_game_timer )
     useGameTimer = use_game_timer;
 }
 
+#pragma MESSAGE( "Add stencil for OGL 3d animation." )
 bool Animation3d::Draw( int x, int y, float scale, RectF* stencil, uint color )
 {
     // Apply stencil
@@ -1440,9 +1441,29 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
         MeshSubset& ms = frame->Mesh[ k ];
         Texture**   textures = &mopt->TexSubsets[ k * EFFECT_TEXTURES ];
 
-        GL( glBindVertexArray( ms.VAO ) );
-        GL( glBindBuffer( GL_ARRAY_BUFFER, ms.VBO ) );
-        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ms.IBO ) );
+        if( ms.VAO )
+        {
+            GL( glBindVertexArray( ms.VAO ) );
+            GL( glBindBuffer( GL_ARRAY_BUFFER, ms.VBO ) );
+            GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ms.IBO ) );
+        }
+        else
+        {
+            GL( glBindBuffer( GL_ARRAY_BUFFER, ms.VBO ) );
+            GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ms.IBO ) );
+            GL( glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Position ) ) );
+            GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Normal ) ) );
+            GL( glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Color ) ) );
+            GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord ) ) );
+            GL( glVertexAttribPointer( 4, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord2 ) ) );
+            GL( glVertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord3 ) ) );
+            GL( glVertexAttribPointer( 6, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Tangent ) ) );
+            GL( glVertexAttribPointer( 7, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Bitangent ) ) );
+            GL( glVertexAttribPointer( 8, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendWeights ) ) );
+            GL( glVertexAttribPointer( 9, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendIndices ) ) );
+            for( uint i = 0; i <= 9; i++ )
+                GL( glEnableVertexAttribArray( i ) );
+        }
 
         Effect* effect;
         if( !shadow )
@@ -1544,7 +1565,16 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
         # endif
 
         GL( glUseProgram( 0 ) );
-        GL( glBindVertexArray( 0 ) );
+
+        if( ms.VAO )
+        {
+            GL( glBindVertexArray( 0 ) );
+        }
+        else
+        {
+            for( uint i = 0; i <= 9; i++ )
+                GL( glDisableVertexAttribArray( i ) );
+        }
     }
 
     for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )

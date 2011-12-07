@@ -690,24 +690,29 @@ void GraphicLoader::FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, a
         // OGL buffers
         GL( glGenBuffers( 1, &mesh.VBO ) );
         GL( glBindBuffer( GL_ARRAY_BUFFER, mesh.VBO ) );
-        GL( glBufferData( GL_ARRAY_BUFFER, mesh.Vertices.size() * sizeof( Vertex3D ), &mesh.Vertices[ 0 ], GL_DYNAMIC_DRAW ) );
+        GL( glBufferData( GL_ARRAY_BUFFER, mesh.Vertices.size() * sizeof( Vertex3D ), &mesh.Vertices[ 0 ], GL_STATIC_DRAW ) );
         GL( glGenBuffers( 1, &mesh.IBO ) );
         GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, mesh.IBO ) );
-        GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, mesh.Indicies.size() * sizeof( short ), &mesh.Indicies[ 0 ], GL_DYNAMIC_DRAW ) );
-        GL( glGenVertexArrays( 1, &mesh.VAO ) );
-        GL( glBindVertexArray( mesh.VAO ) );
-        GL( glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Position ) ) );
-        GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Normal ) ) );
-        GL( glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Color ) ) );
-        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord ) ) );
-        GL( glVertexAttribPointer( 4, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord2 ) ) );
-        GL( glVertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord3 ) ) );
-        GL( glVertexAttribPointer( 6, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Tangent ) ) );
-        GL( glVertexAttribPointer( 7, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Bitangent ) ) );
-        GL( glVertexAttribPointer( 8, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendWeights ) ) );
-        GL( glVertexAttribPointer( 9, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendIndices ) ) );
-        for( uint i = 0; i <= 9; i++ )
-            GL( glEnableVertexAttribArray( i ) );
+        GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, mesh.Indicies.size() * sizeof( short ), &mesh.Indicies[ 0 ], GL_STATIC_DRAW ) );
+        mesh.VAO = 0;
+        if( GLEW_ARB_vertex_array_object && GLEW_ARB_framebuffer_object )
+        {
+            GL( glGenVertexArrays( 1, &mesh.VAO ) );
+            GL( glBindVertexArray( mesh.VAO ) );
+            GL( glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Position ) ) );
+            GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Normal ) ) );
+            GL( glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Color ) ) );
+            GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord ) ) );
+            GL( glVertexAttribPointer( 4, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord2 ) ) );
+            GL( glVertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord3 ) ) );
+            GL( glVertexAttribPointer( 6, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Tangent ) ) );
+            GL( glVertexAttribPointer( 7, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Bitangent ) ) );
+            GL( glVertexAttribPointer( 8, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendWeights ) ) );
+            GL( glVertexAttribPointer( 9, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendIndices ) ) );
+            for( uint i = 0; i <= 9; i++ )
+                GL( glEnableVertexAttribArray( i ) );
+            GL( glBindVertexArray( 0 ) );
+        }
     }
 
     for( uint i = 0; i < node->mNumChildren; i++ )
@@ -795,7 +800,8 @@ void GraphicLoader::Free( Frame* frame )
     for( auto it = frame->Mesh.begin(), end = frame->Mesh.end(); it != end; ++it )
     {
         MeshSubset& ms = *it;
-        GL( glDeleteVertexArrays( 1, &ms.VAO ) );
+        if( ms.VAO )
+            GL( glDeleteVertexArrays( 1, &ms.VAO ) );
         GL( glDeleteBuffers( 1, &ms.VBO ) );
         GL( glDeleteBuffers( 1, &ms.IBO ) );
     }

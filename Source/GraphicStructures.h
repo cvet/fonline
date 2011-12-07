@@ -36,7 +36,15 @@ struct Texture
     uint               Height;
     float              SizeData[ 4 ]; // Width, Height, TexelWidth, TexelHeight
     float              Samples;
-    Texture(): Name( NULL ), Id( 0 ), Data( NULL ), Size( 0 ), Width( 0 ), Height( 0 ), Samples( 0.0f ) {}
+    # ifdef FO_WINDOWS
+    HPBUFFERARB        PBuffer;
+    # endif
+    Texture(): Name( NULL ), Id( 0 ), Data( NULL ), Size( 0 ), Width( 0 ), Height( 0 ), Samples( 0.0f )
+    {
+        # ifdef FO_WINDOWS
+        PBuffer = NULL;
+        # endif
+    }
     ~Texture()
     {
         GL( glDeleteTextures( 1, &Id ) );
