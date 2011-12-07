@@ -145,7 +145,7 @@ int main( int argc, char** argv )
 
     // OpenGL parameters
     #ifndef FO_D3D
-    Fl::gl_visual( FL_RGB | FL_RGB8 | FL_DOUBLE  );
+    Fl::gl_visual( FL_RGB | FL_RGB8 | FL_DOUBLE | FL_DEPTH | FL_STENCIL );
     #endif
 
     // Show window

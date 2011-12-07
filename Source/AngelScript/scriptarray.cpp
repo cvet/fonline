@@ -60,12 +60,11 @@ static CScriptArray* ScriptArrayFactory(asIObjectType *ot)
 static bool ScriptArrayTemplateCallback(asIObjectType *ot)
 {
 	// Make sure the subtype can be instanciated with a default factory/constructor, 
-	// otherwise we won't be able to instanciate the elements. Script classes always
-	// have default factories, so we don't have to worry about those.
+	// otherwise we won't be able to instanciate the elements. 
 	int typeId = ot->GetSubTypeId();
 	if( typeId == asTYPEID_VOID )
 		return false;
-	if( (typeId & asTYPEID_MASK_OBJECT) && !(typeId & asTYPEID_OBJHANDLE) && !(typeId & asTYPEID_SCRIPTOBJECT) )
+	if( (typeId & asTYPEID_MASK_OBJECT) && !(typeId & asTYPEID_OBJHANDLE) )
 	{
 		asIObjectType *subtype = ot->GetEngine()->GetObjectTypeById(typeId);
 		asDWORD flags = subtype->GetFlags();
@@ -286,7 +285,7 @@ CScriptArray::CScriptArray(asUINT length, void *defVal, asIObjectType *ot)
 // Internal
 void CScriptArray::SetValue(asUINT index, void *value)
 {
-	if( (subTypeId & ~0x03FFFFFF) && !(subTypeId & asTYPEID_OBJHANDLE) )
+	if( (subTypeId & ~asTYPEID_MASK_SEQNBR) && !(subTypeId & asTYPEID_OBJHANDLE) )
 		objType->GetEngine()->CopyScriptObject(At(index), value, subTypeId);
 	else if( subTypeId & asTYPEID_OBJHANDLE )
 	{
@@ -856,9 +855,9 @@ void CScriptArray::Sort(asUINT index, asUINT count, bool asc)
 		{
 			char tmp[512];
 #if defined(_MSC_VER) && _MSC_VER >= 1500
-			sprintf_s(tmp, 512, "Type '%s' does not have opEquals / opCmp", subType->GetName());
+			sprintf_s(tmp, 512, "Type '%s' does not have opCmp", subType->GetName());
 #else
-			sprintf(tmp, "Type '%s' does not have opEquals / opCmp", subType->GetName());
+			sprintf(tmp, "Type '%s' does not have opCmp", subType->GetName());
 #endif
 			ctx->SetException(tmp);
 		}

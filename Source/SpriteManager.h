@@ -65,8 +65,8 @@
 #define DEFAULT_EFFECT_POINT               ( 5 )
 #define DEFAULT_EFFECT_FLUSH_TEXTURE       ( 6 )
 #define DEFAULT_EFFECT_FLUSH_TEXTURE_MS    ( 7 )
-#define DEFAULT_EFFECT_FLUSH_COLOR         ( 8 )
-#define DEFAULT_EFFECT_FLUSH_FINAL         ( 9 )
+#define DEFAULT_EFFECT_FLUSH_PRIMITIVE     ( 8 )
+#define DEFAULT_EFFECT_FLUSH_MAP           ( 9 )
 #define DEFAULT_EFFECT_COUNT               ( 10 )
 
 // Sprite layers
@@ -243,7 +243,7 @@ struct RenderTarget
     GLuint      FBO;
     Texture*    TargetTexture;
     GLuint      DepthStencilBuffer;
-    Effect*     DrawEffect;
+    uint        DrawEffect;
 
     # ifdef FO_WINDOWS
     HPBUFFERARB PBuffer;
@@ -270,7 +270,6 @@ private:
     int              modeWidth, modeHeight;
     bool             sceneBeginned;
     #ifndef FO_D3D
-    RenderTarget     rtMain;
     RenderTarget     rtContours;
     RenderTarget     rtContoursMid;
     RenderTarget     rtPrimitive;
@@ -301,11 +300,12 @@ public:
     #ifndef FO_D3D
     bool CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling = false, uint width = 0, uint height = 0 );
     void DeleteRenderTarget( RenderTarget& rt );
-    void ClearRenderTarget( RenderTarget& rt, uint color );
-    void ClearRenderTargetDS( RenderTarget& rt, bool depth, bool stencil );
     void PushRenderTarget( RenderTarget& rt );
     void PopRenderTarget();
     void DrawRenderTarget( RenderTarget& rt, bool alpha_blend, const Rect* region_from = NULL, const Rect* region_to = NULL );
+    void ClearCurrentRenderTarget( uint color );
+    void ClearCurrentRenderTargetDS( bool depth, bool stencil );
+    void RefreshViewPort();
     #endif
 
     // Surfaces

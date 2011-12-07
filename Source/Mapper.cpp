@@ -1015,6 +1015,7 @@ void FOMapper::ParseKeyboard()
                 // MainWindow->size_range( 100, 100 );
                 GameOpt.FullScreen = false;
             }
+            SprMngr.RefreshViewPort();
             #endif
             continue;
         }

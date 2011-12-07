@@ -345,6 +345,7 @@ public:
 	asCArray<asCModule *>  scriptModules;
 	asCModule             *lastModule;
 	bool                   isBuilding;
+	bool                   deferValidationOfTemplateTypes;
 
 	// Tokenizer is instanciated once to share resources
 	asCTokenizer tok;

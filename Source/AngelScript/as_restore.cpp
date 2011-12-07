@@ -223,6 +223,8 @@ int asCRestore::Save()
 
 int asCRestore::Restore() 
 {
+	engine->deferValidationOfTemplateTypes = true;
+
 	// Before starting the load, make sure that 
 	// any existing resources have been freed
 	module->InternalReset();
@@ -451,6 +453,25 @@ int asCRestore::Restore()
 	// usedObjectProperties
 	ReadUsedObjectProps();
 
+	// Validate the template types
+	for( i = 0; i < usedTypes.GetLength(); i++ )
+	{
+		if( (usedTypes[i]->flags & asOBJ_TEMPLATE) && 
+			usedTypes[i]->templateSubType.IsValid() &&
+			usedTypes[i]->beh.templateCallback )
+		{
+			asCScriptFunction *callback = engine->scriptFunctions[usedTypes[i]->beh.templateCallback];
+			if( !engine->CallGlobalFunctionRetBool(usedTypes[i], 0, callback->sysFuncIntf, callback) )
+			{
+				asCString str;
+				str.Format(TXT_INSTANCING_INVLD_TMPL_TYPE_s_s, usedTypes[i]->name.AddressOf(), usedTypes[i]->templateSubType.Format().AddressOf());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
+				error = true;
+			}
+		}
+	}
+	engine->deferValidationOfTemplateTypes = false;
+
 	for( i = 0; i < module->scriptFunctions.GetLength(); i++ )
 		TranslateFunction(module->scriptFunctions[i]);
 	for( i = 0; i < module->scriptGlobals.GetLength(); i++ )
@@ -475,6 +496,16 @@ int asCRestore::Restore()
 			int r = module->ResetGlobalVars(0);
 			if( r < 0 ) error = true;
 		}
+	}
+	else
+	{
+		// Make sure none of the loaded functions attempt to release references that have not yet been increased
+		for( i = 0; i < module->scriptFunctions.GetLength(); i++ )
+			if( !dontTranslate.MoveTo(0, module->scriptFunctions[i]) )
+				module->scriptFunctions[i]->byteCode.SetLength(0);
+		for( i = 0; i < module->scriptGlobals.GetLength(); i++ )
+			if( module->scriptGlobals[i]->GetInitFunc() )
+				module->scriptGlobals[i]->GetInitFunc()->byteCode.SetLength(0);
 	}
 
 	return error ? asERROR : asSUCCESS;

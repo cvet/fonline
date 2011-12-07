@@ -418,6 +418,7 @@ asCScriptEngine::asCScriptEngine()
 	configFailed = false;
 	isPrepared = false;
 	isBuilding = false;
+	deferValidationOfTemplateTypes = false;
 	lastModule = 0;
 
 	// User data
@@ -2676,13 +2677,16 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 	if( templateType->beh.templateCallback )
 	{
 		asCScriptFunction *callback = scriptFunctions[templateType->beh.templateCallback];
-		if( !CallGlobalFunctionRetBool(ot, 0, callback->sysFuncIntf, callback) )
+		if( !deferValidationOfTemplateTypes && !CallGlobalFunctionRetBool(ot, 0, callback->sysFuncIntf, callback) )
 		{
 			// The type cannot be instanciated
 			ot->templateSubType = asCDataType();
 			asDELETE(ot, asCObjectType);
 			return 0;
 		}
+
+		ot->beh.templateCallback = templateType->beh.templateCallback;
+		scriptFunctions[ot->beh.templateCallback]->AddRef();
 	}
 
 	ot->methods   = templateType->methods;
@@ -3523,7 +3527,7 @@ void asCScriptEngine::ConstructScriptObjectCopy(void *mem, void *obj, asCObjectT
 	// This function is only meant to be used for value types
 	asASSERT( type->flags & asOBJ_VALUE );
 
-	// TODO: Should use the copy constructor when available
+	// TODO: optimize: Should use the copy constructor when available
 	int funcIndex = type->beh.construct;
 	if( funcIndex )
 		CallObjectMethod(mem, funcIndex);
@@ -3534,8 +3538,6 @@ void asCScriptEngine::ConstructScriptObjectCopy(void *mem, void *obj, asCObjectT
 // TODO: interface: Should deprecate this. The application should be calling the opAssign method directly
 void asCScriptEngine::CopyScriptObject(void *dstObj, void *srcObj, int typeId)
 {
-	// TODO: optimize: Use the copy constructor when available
-
 	// Make sure the type id is for an object type, and not a primitive or a handle
 	if( (typeId & (asTYPEID_MASK_OBJECT | asTYPEID_MASK_SEQNBR)) != typeId ) return;
 	if( (typeId & asTYPEID_MASK_OBJECT) == 0 ) return;
@@ -3547,13 +3549,13 @@ void asCScriptEngine::CopyScriptObject(void *dstObj, void *srcObj, int typeId)
 	if( !dt.IsValid() ) return;
 
 	asCObjectType *objType = dt.GetObjectType();
-	// TODO: beh.copy will be removed, so we need to find the default opAssign method instead
-	// TODO: Must not copy if the opAssign is not available and the object is not a POD object
+
+	// Must not copy if the opAssign is not available and the object is not a POD object
 	if( objType->beh.copy )
 	{
 		CallObjectMethod(dstObj, srcObj, objType->beh.copy);
 	}
-	else if( objType->size )
+	else if( objType->size && (objType->flags & asOBJ_POD) )
 	{
 		memcpy(dstObj, srcObj, objType->size);
 	}

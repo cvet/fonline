@@ -138,6 +138,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     Fl::unlock();
     GL( glDisable( GL_SCISSOR_TEST ) );
     GL( glDrawBuffer( GL_BACK ) );
+    GL( glViewport( 0, 0, MainWindow->w(), MainWindow->h() ) );
     # ifdef FO_WINDOWS
     deviceContext = wglGetCurrentDC();
     glContext = wglGetCurrentContext();
@@ -263,8 +264,8 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     sprDefaultEffect[ DEFAULT_EFFECT_ROOF ] = GraphicLoader::LoadEffect( d3dDevice, "Tile_Default.fx", true );
     sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Texture.fx", true );
     sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE_MS ] = NULL;
-    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_COLOR ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Color.fx", true );
-    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_FINAL ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Final.fx", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_PRIMITIVE ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Primitive.fx", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_MAP ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Map.fx", true );
     for( uint i = 0; i < DEFAULT_EFFECT_COUNT; i++ )
     {
         if( !sprDefaultEffect[ i ] && i != DEFAULT_EFFECT_FLUSH_TEXTURE_MS )
@@ -275,8 +276,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     }
 
     // Render targets
-    if( !CreateRenderTarget( rtMain, true ) ||
-        !CreateRenderTarget( rtContours, false ) ||
+    if( !CreateRenderTarget( rtContours, false ) ||
         !CreateRenderTarget( rtContoursMid, false ) ||
         !CreateRenderTarget( rt3D, true ) )
     {
@@ -284,8 +284,6 @@ bool SpriteManager::Init( SpriteMngrParams& params )
         return false;
     }
     CreateRenderTarget( rt3DMS, true, true );
-    rtMain.DrawEffect = sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_FINAL ];
-    PushRenderTarget( rtMain );
     #endif
 
     // Clear scene
@@ -485,7 +483,6 @@ bool SpriteManager::InitRenderStates()
     D3D_HR( d3dDevice->SetRenderState( D3DRS_AMBIENT, COLOR_XRGB( 80, 80, 80 ) ) );
     D3D_HR( d3dDevice->SetRenderState( D3DRS_NORMALIZENORMALS, TRUE ) );
     #else
-    GL( glViewport( 0, 0, modeWidth, modeHeight ) );
     GL( glMatrixMode( GL_PROJECTION ) );
     GL( glLoadIdentity() );
     GL( gluOrtho2D( 0, modeWidth, modeHeight, 0 ) );
@@ -569,7 +566,7 @@ bool SpriteManager::BeginScene( uint clear_color )
     D3D_HR( d3dDevice->BeginScene() );
     #else
     if( clear_color )
-        ClearRenderTarget( rtMain, clear_color );
+        ClearCurrentRenderTarget( clear_color );
     #endif
 
     Animation3d::BeginScene();
@@ -584,11 +581,6 @@ void SpriteManager::EndScene()
     d3dDevice->EndScene();
     d3dDevice->Present( NULL, NULL, NULL, NULL );
     #else
-    PopRenderTarget();
-    GL( glViewport( 0, 0, MainWindow->w(), MainWindow->h() ) );
-    DrawRenderTarget( rtMain, false );
-    GL( glViewport( 0, 0, modeWidth, modeHeight ) );
-    PushRenderTarget( rtMain );
     # ifdef FO_WINDOWS
     SwapBuffers( deviceContext );
     # else
@@ -817,9 +809,9 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
 
     // Effect
     if( !multisampling )
-        rt.DrawEffect = sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ];
+        rt.DrawEffect = DEFAULT_EFFECT_FLUSH_TEXTURE;
     else
-        rt.DrawEffect = sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE_MS ];
+        rt.DrawEffect = DEFAULT_EFFECT_FLUSH_TEXTURE_MS;
 
     // Id
     static uint ids = 0;
@@ -828,9 +820,11 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     // Clear
     if( GLEW_ARB_framebuffer_object )
         GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
-    ClearRenderTarget( rt, 0 );
+    PushRenderTarget( rt );
+    ClearCurrentRenderTarget( 0 );
     if( depth_stencil )
-        ClearRenderTargetDS( rt, true, true );
+        ClearCurrentRenderTargetDS( true, true );
+    PopRenderTarget();
     return true;
 }
 
@@ -854,38 +848,6 @@ void SpriteManager::DeleteRenderTarget( RenderTarget& rt )
     memzero( &rt, sizeof( rt ) );
 }
 
-void SpriteManager::ClearRenderTarget( RenderTarget& rt, uint color )
-{
-    PushRenderTarget( rt );
-    float a = (float) ( ( color >> 24 ) & 0xFF ) / 255.0f;
-    float r = (float) ( ( color >> 16 ) & 0xFF ) / 255.0f;
-    float g = (float) ( ( color >>  8 ) & 0xFF ) / 255.0f;
-    float b = (float) ( ( color >>  0 ) & 0xFF ) / 255.0f;
-    GL( glClearColor( r, g, b, a ) );
-    GL( glClear( GL_COLOR_BUFFER_BIT ) );
-    PopRenderTarget();
-}
-
-void SpriteManager::ClearRenderTargetDS( RenderTarget& rt, bool depth, bool stencil )
-{
-    PushRenderTarget( rt );
-    int depth_stencil_bit = 0;
-    depth_stencil_bit |= ( depth ? GL_DEPTH_BUFFER_BIT : 0 );
-    depth_stencil_bit |= ( stencil ? GL_STENCIL_BUFFER_BIT : 0 );
-    if( depth )
-    {
-        depth_stencil_bit |= GL_DEPTH_BUFFER_BIT;
-        GL( glClearDepth( 1.0 ) );
-    }
-    if( stencil )
-    {
-        depth_stencil_bit |= GL_STENCIL_BUFFER_BIT;
-        GL( glClearStencil( 0 ) );
-    }
-    GL( glClear( depth_stencil_bit ) );
-    PopRenderTarget();
-}
-
 void SpriteManager::PushRenderTarget( RenderTarget& rt )
 {
     bool redundant = ( !rtStack.empty() && rtStack.back()->Id == rt.Id );
@@ -903,6 +865,7 @@ void SpriteManager::PushRenderTarget( RenderTarget& rt )
             WGL( wglMakeCurrent( rt.PBufferDC, rt.PBufferGLC ) );
             # endif
         }
+        RefreshViewPort();
     }
 }
 
@@ -930,6 +893,7 @@ void SpriteManager::PopRenderTarget()
             }
             # endif
         }
+        RefreshViewPort();
     }
 }
 
@@ -987,13 +951,53 @@ void SpriteManager::DrawRenderTarget( RenderTarget& rt, bool alpha_blend, const 
     }
 
     curSprCnt = 1;
-    dipQueue.push_back( DipData( rt.TargetTexture, rt.DrawEffect ) );
+    dipQueue.push_back( DipData( rt.TargetTexture, sprDefaultEffect[ rt.DrawEffect ] ) );
 
     if( !alpha_blend )
         GL( glDisable( GL_BLEND ) );
     Flush();
     if( !alpha_blend )
         GL( glEnable( GL_BLEND ) );
+}
+
+void SpriteManager::ClearCurrentRenderTarget( uint color )
+{
+    float a = (float) ( ( color >> 24 ) & 0xFF ) / 255.0f;
+    float r = (float) ( ( color >> 16 ) & 0xFF ) / 255.0f;
+    float g = (float) ( ( color >>  8 ) & 0xFF ) / 255.0f;
+    float b = (float) ( ( color >>  0 ) & 0xFF ) / 255.0f;
+    GL( glClearColor( r, g, b, a ) );
+    GL( glClear( GL_COLOR_BUFFER_BIT ) );
+}
+
+void SpriteManager::ClearCurrentRenderTargetDS( bool depth, bool stencil )
+{
+    int depth_stencil_bit = 0;
+    depth_stencil_bit |= ( depth ? GL_DEPTH_BUFFER_BIT : 0 );
+    depth_stencil_bit |= ( stencil ? GL_STENCIL_BUFFER_BIT : 0 );
+    if( depth )
+    {
+        depth_stencil_bit |= GL_DEPTH_BUFFER_BIT;
+        GL( glClearDepth( 1.0 ) );
+    }
+    if( stencil )
+    {
+        depth_stencil_bit |= GL_STENCIL_BUFFER_BIT;
+        GL( glClearStencil( 0 ) );
+    }
+    GL( glClear( depth_stencil_bit ) );
+}
+
+void SpriteManager::RefreshViewPort()
+{
+    if( !rtStack.empty() )
+    {
+        GL( glViewport( 0, 0, rtStack.back()->TargetTexture->Width, rtStack.back()->TargetTexture->Height ) );
+    }
+    else
+    {
+        GL( glViewport( 0, 0, MainWindow->w(), MainWindow->h() ) );
+    }
 }
 
 void SpriteManager::EnableVertexArray( GLuint ib, uint count )
@@ -3492,8 +3496,8 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     anim3d->SetAnimation( 0, time_proc, NULL, ANIMATION_ONE_TIME | ANIMATION_STAY );
 
     PushRenderTarget( rt3DSprite );
-    ClearRenderTarget( rt3DSprite, 0 );
-    ClearRenderTargetDS( rt3DSprite, true, false );
+    ClearCurrentRenderTarget( 0 );
+    ClearCurrentRenderTargetDS( true, false );
     GL( glDisable( GL_BLEND ) );
     anim3d->Draw( rt_width / 2, rt_height - rt_height / 4, 1.0f, NULL, 0 );
     GL( glEnable( GL_BLEND ) );
@@ -4781,7 +4785,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
         GL( glStencilOp( GL_REPLACE, GL_KEEP, GL_KEEP ) );
 
         curSprCnt = 1;
-        dipQueue.push_back( DipData( NULL, sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_COLOR ] ) );
+        dipQueue.push_back( DipData( NULL, sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_PRIMITIVE ] ) );
         Flush();
 
         GL( glStencilFunc( GL_NOTEQUAL, 0, 0xFF ) );
@@ -4849,7 +4853,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     // Finish
     if( stencil )
     {
-        ClearRenderTargetDS( rtMain, false, true );
+        ClearCurrentRenderTargetDS( false, true );
         GL( glDisable( GL_STENCIL_TEST ) );
     }
     #endif
@@ -4867,14 +4871,14 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
     if( rt3DMS.FBO )
     {
         PushRenderTarget( rt3DMS );
-        ClearRenderTarget( rt3DMS, 0 );
-        ClearRenderTargetDS( rt3DMS, true, stencil ? true : false );
+        ClearCurrentRenderTarget( 0 );
+        ClearCurrentRenderTargetDS( true, stencil ? true : false );
     }
     else
     {
         PushRenderTarget( rt3D );
-        ClearRenderTarget( rt3D, 0 );
-        ClearRenderTargetDS( rt3D, true, stencil ? true : false );
+        ClearCurrentRenderTarget( 0 );
+        ClearCurrentRenderTargetDS( true, stencil ? true : false );
     }
 
     // Draw model
@@ -4891,7 +4895,7 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
     if( rt3DMS.FBO )
     {
         PushRenderTarget( rt3D );
-        ClearRenderTarget( rt3D, 0 );
+        ClearCurrentRenderTarget( 0 );
         DrawRenderTarget( rt3DMS, false, &borders, &borders );
         PopRenderTarget();
     }
@@ -5026,9 +5030,16 @@ bool SpriteManager::DrawContours()
     #else
     if( contoursAdded )
     {
+        // Draw collected contours
         DrawRenderTarget( rtContours, true );
-        ClearRenderTarget( rtContours, 0 );
-        ClearRenderTarget( rtContoursMid, 0 );
+
+        // Clean render targets
+        PushRenderTarget( rtContours );
+        ClearCurrentRenderTarget( 0 );
+        PopRenderTarget();
+        PushRenderTarget( rtContoursMid );
+        ClearCurrentRenderTarget( 0 );
+        PopRenderTarget();
         contoursAdded = false;
     }
     #endif

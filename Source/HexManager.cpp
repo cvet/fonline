@@ -183,6 +183,7 @@ bool HexManager::Init()
         WriteLog( "Can't create render target.\n" );
         return false;
     }
+    rtMap.DrawEffect = DEFAULT_EFFECT_FLUSH_MAP;
     #endif
 
     isShowTrack = false;
@@ -1892,7 +1893,7 @@ void HexManager::DrawMap()
     #ifndef FO_D3D
     // Separate render target
     SprMngr.PushRenderTarget( rtMap );
-    SprMngr.ClearRenderTarget( rtMap, 0 );
+    SprMngr.ClearCurrentRenderTarget( 0 );
     #endif
 
     // Rebuild light

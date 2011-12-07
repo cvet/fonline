@@ -1504,6 +1504,7 @@ void FOClient::ParseKeyboard()
                         // MainWindow->size_range( 100, 100 );
                         GameOpt.FullScreen = false;
                     }
+                    SprMngr.RefreshViewPort();
                     #endif
                     continue;
                 }
@@ -9443,7 +9444,6 @@ void FOClient::RenderVideo()
     uint w = CurVideo->VideoInfo.pic_width;
     uint h = CurVideo->VideoInfo.pic_height;
     SprMngr.PushRenderTarget( CurVideo->RT );
-    GL( glViewport( 0, 0, w, h ) );
     GL( glMatrixMode( GL_PROJECTION ) );
     GL( glLoadIdentity() );
     GL( gluOrtho2D( 0, w, h, 0 ) );
@@ -9475,7 +9475,6 @@ void FOClient::RenderVideo()
     GL( glEnd() );
     GL( glEnable( GL_TEXTURE_2D ) );
     GL( glEnable( GL_POINT_SMOOTH ) );
-    GL( glViewport( 0, 0, MODE_WIDTH, MODE_HEIGHT ) );
     SprMngr.PopRenderTarget();
 
     // Render to window
