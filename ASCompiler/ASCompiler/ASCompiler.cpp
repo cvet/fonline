@@ -83,7 +83,7 @@ void RunMain( asIScriptModule* module, const char* func_str )
     sprintf( func_decl, "void %s()", func_str );
 
     // Run
-    printf( "Execute '%s'.\n", func_str );
+    printf( "Executing '%s'.\n", func_str );
     asIScriptContext* ctx = Engine->CreateContext();
     int               func = module->GetFunctionIdByDecl( func_decl );
     if( func < 0 )
@@ -186,7 +186,7 @@ int _tmain( int argc, _TCHAR* argv[] )
         else if( !_stricmp( argv[ i ], "-d" ) && i + 1 < argc )
             defines.push_back( argv[ ++i ] );
         // Run function
-        else if( !_stricmp( argv[ i ], "-run" ) && i + 1 < argc && false )
+        else if( !_stricmp( argv[ i ], "-run" ) && i + 1 < argc )
             run_func.push_back( argv[ ++i ] );
     }
 
@@ -402,7 +402,6 @@ int _tmain( int argc, _TCHAR* argv[] )
                 if( !obj )
                     break;
                 type = obj->GetSubTypeId();
-                obj->Release();
             }
 
             type &= asTYPEID_MASK_SEQNBR;
