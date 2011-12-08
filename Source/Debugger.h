@@ -3,6 +3,9 @@
 
 #ifdef FONLINE_SERVER
 # define MEMORY_DEBUG
+# ifdef FO_WINDOWS
+#  define TRACE_MEMORY
+# endif
 #endif
 
 #ifdef MEMORY_DEBUG
@@ -34,7 +37,6 @@
 #define MEMORY_SCRIPT_STRING    ( 14 )
 #define MEMORY_ANGEL_SCRIPT     ( 15 )
 
-
 namespace Debugger
 {
     void BeginCycle();
@@ -46,6 +48,17 @@ namespace Debugger
     void        Memory( int block, int value );
     void        MemoryStr( const char* block, int value );
     const char* GetMemoryStatistics();
+
+    #ifdef TRACE_MEMORY
+    void   StartTraceMemory();
+    string GetTraceMemory();
+    void*  Malloc( size_t size );
+    void*  Calloc( size_t count, size_t size );
+    void   Free( void* ptr );
+    # define malloc             Debugger::Malloc
+    # define calloc             Debugger::Calloc
+    # define free               Debugger::Free
+    #endif
 };
 
 #endif // __DEBUGGER__

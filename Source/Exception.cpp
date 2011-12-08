@@ -242,7 +242,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                 }
             };
 
-            int frameNum = 0;
+            int frame_num = 0;
             while( StackWalk64( machine_type, process, t, &stack, &context, RPM::Call, SymFunctionTableAccess64, SymGetModuleBase64, NULL ) )
             {
                 struct CSE
@@ -264,16 +264,9 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                         CHAR    loadedImageName[ STACKWALK_MAX_NAMELEN ];
                     };
 
-                    typedef enum CallstackEntryType
+                    static void OnCallstackEntry( FILE* f, int frame_num, CallstackEntry& entry )
                     {
-                        firstEntry,
-                        nextEntry,
-                        lastEntry,
-                    };
-
-                    static void OnCallstackEntry( FILE* f, CallstackEntryType eType, CallstackEntry& entry )
-                    {
-                        if( ( eType != lastEntry ) && ( entry.offset != 0 ) )
+                        if( frame_num >= 0 && entry.offset != 0 )
                         {
                             if( entry.name[ 0 ] == 0 )
                                 strcpy_s( entry.name, "(function-name not available)" );
@@ -294,16 +287,8 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                 };
 
                 CSE::CallstackEntry callstack;
+                memzero( &callstack, sizeof( callstack ) );
                 callstack.offset = stack.AddrPC.Offset;
-                callstack.name[ 0 ] = 0;
-                callstack.undName[ 0 ] = 0;
-                callstack.undFullName[ 0 ] = 0;
-                callstack.offsetFromSmybol = 0;
-                callstack.offsetFromLine = 0;
-                callstack.lineFileName[ 0 ] = 0;
-                callstack.lineNumber = 0;
-                callstack.loadedImageName[ 0 ] = 0;
-                callstack.moduleName[ 0 ] = 0;
 
                 IMAGEHLP_LINE64 line;
                 memset( &line, 0, sizeof( line ) );
@@ -378,19 +363,11 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                     }
                 }
 
-                CSE::CallstackEntryType et = CSE::nextEntry;
-                if( frameNum == 0 )
-                    et = CSE::firstEntry;
-                CSE::OnCallstackEntry( f, et, callstack );
-
+                CSE::OnCallstackEntry( f, frame_num, callstack );
                 if( stack.AddrReturn.Offset == 0 )
-                {
-                    CSE::OnCallstackEntry( f, CSE::lastEntry, callstack );
-                    SetLastError( ERROR_SUCCESS );
                     break;
-                }
 
-                frameNum++;
+                frame_num++;
             }
 
             fprintf( f, "\n" );

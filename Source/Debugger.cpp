@@ -247,9 +247,274 @@ const char* Debugger::GetMemoryStatistics()
         result += buf;
     }
 
+    if( MemoryDebugLevel >= 3 )
+    {
+        result += "\n  Level 3\n";
+        # ifdef TRACE_MEMORY
+        result += GetTraceMemory();
+        # else
+        result += "Not available\n";
+        # endif
+    }
+
     if( MemoryDebugLevel <= 0 )
         result += "\n  Disabled\n";
     #endif
 
     return result.c_str();
 }
+
+// Memory tracing
+#ifdef TRACE_MEMORY
+# undef malloc
+# undef calloc
+# undef free
+# pragma warning( disable : 4748 )
+# include <DbgHelp.h>
+# pragma comment(lib, "Dbghelp.lib")
+# include "FileManager.h"
+
+static bool                                  MemoryTrace = false;
+static bool                                  MemoryTraceExt = false;
+static map< size_t, pair< size_t, size_t > > MemoryBlocks;
+static map< size_t, const char* >            StackWalkHashName;
+static Mutex                                 MemoryAllocLocker;
+static HANDLE                                ProcessHandle;
+
+size_t GetStackInfo()
+{
+    void*  blocks[ 63 ];
+    ULONG  hash;
+    USHORT frames = CaptureStackBackTrace( 1, 60, (void**) blocks, &hash );
+
+    auto   it = StackWalkHashName.find( (size_t) hash );
+    if( it != StackWalkHashName.end() )
+        return (size_t) hash;
+
+    string str;
+    str.reserve( 16384 );
+
+    # define STACKWALK_MAX_NAMELEN    ( 2048 )
+    char         symbol_buffer[ sizeof( SYMBOL_INFO ) + STACKWALK_MAX_NAMELEN ];
+    SYMBOL_INFO* symbol = (SYMBOL_INFO*) symbol_buffer;
+    memset( symbol, 0, sizeof( SYMBOL_INFO ) + STACKWALK_MAX_NAMELEN );
+    symbol->SizeOfStruct = sizeof( SYMBOL_INFO );
+    symbol->MaxNameLen = STACKWALK_MAX_NAMELEN;
+
+    for( int frame_num = 0; frame_num < (int) frames - 1; frame_num++ )
+    {
+        DWORD64 offset = (DWORD64) blocks[ frame_num ];
+        if( !offset )
+            continue;
+
+        struct
+        {
+            CHAR    name[ STACKWALK_MAX_NAMELEN ];
+            CHAR    undName[ STACKWALK_MAX_NAMELEN ];
+            CHAR    undFullName[ STACKWALK_MAX_NAMELEN ];
+            DWORD64 offsetFromSmybol;
+            DWORD   offsetFromLine;
+            DWORD   lineNumber;
+            CHAR    lineFileName[ STACKWALK_MAX_NAMELEN ];
+            CHAR    moduleName[ STACKWALK_MAX_NAMELEN ];
+            DWORD64 baseOfImage;
+            CHAR    loadedImageName[ STACKWALK_MAX_NAMELEN ];
+        } callstack;
+        memzero( &callstack, sizeof( callstack ) );
+
+        if( SymFromAddr( ProcessHandle, offset, &callstack.offsetFromSmybol, symbol ) )
+        {
+            strncpy_s( callstack.name, symbol->Name, STACKWALK_MAX_NAMELEN - 1 );
+            callstack.name[ STACKWALK_MAX_NAMELEN - 1 ] = 0;
+            UnDecorateSymbolName( symbol->Name, callstack.undName, STACKWALK_MAX_NAMELEN, UNDNAME_NAME_ONLY );
+            UnDecorateSymbolName( symbol->Name, callstack.undFullName, STACKWALK_MAX_NAMELEN, UNDNAME_COMPLETE );
+        }
+
+        IMAGEHLP_LINE64 line;
+        memset( &line, 0, sizeof( line ) );
+        line.SizeOfStruct = sizeof( line );
+        if( SymGetLineFromAddr64( ProcessHandle, offset, &callstack.offsetFromLine, &line ) )
+        {
+            callstack.lineNumber = line.LineNumber;
+            strcpy( callstack.lineFileName, line.FileName );
+            FileManager::ExtractFileName( callstack.lineFileName, callstack.lineFileName );
+        }
+
+        IMAGEHLP_MODULE64 module;
+        memset( &module, 0, sizeof( module ) );
+        module.SizeOfStruct = sizeof( module );
+        if( SymGetModuleInfo64( ProcessHandle, offset, &module ) )
+        {
+            strcpy( callstack.moduleName, module.ModuleName );
+            callstack.baseOfImage = module.BaseOfImage;
+            strcpy( callstack.loadedImageName, module.LoadedImageName );
+        }
+
+        if( callstack.name[ 0 ] == 0 )
+            strcpy( callstack.name, "(function-name not available)" );
+        if( callstack.undName[ 0 ] != 0 )
+            strcpy( callstack.name, callstack.undName );
+        if( callstack.undFullName[ 0 ] != 0 )
+            strcpy( callstack.name, callstack.undFullName );
+        if( callstack.moduleName[ 0 ] == 0 )
+            strcpy( callstack.moduleName, "???" );
+
+        char buf[ 64 ];
+        str += "\t";
+        str += callstack.moduleName;
+        str += ", ";
+        str += callstack.name;
+        str += " + ";
+        str += _itoa( (int) callstack.offsetFromSmybol, buf, 10 );
+        if( callstack.lineFileName[ 0 ] )
+        {
+            str += ", ";
+            str += callstack.lineFileName;
+            str += " (";
+            str += _itoa( callstack.lineNumber, buf, 10 );
+            str += ")\n";
+        }
+        else
+        {
+            str += "\n";
+        }
+    }
+    str += "\n";
+
+    StackWalkHashName.insert( PAIR( (size_t) hash, _strdup( str.c_str() ) ) );
+    return (size_t) hash;
+}
+
+# define ALLOCATE_MEMORY                                                           \
+    void* ptr = malloc( size );                                                    \
+    if( MemoryTrace )                                                              \
+    {                                                                              \
+        SCOPE_LOCK( MemoryAllocLocker );                                           \
+        if( !MemoryTraceExt )                                                      \
+        {                                                                          \
+            MemoryTraceExt = true;                                                 \
+            size_t stack_hash = GetStackInfo();                                    \
+            MemoryBlocks.insert( PAIR( (size_t) ptr, PAIR( stack_hash, size ) ) ); \
+            MemoryTraceExt = false;                                                \
+        }                                                                          \
+    }
+# define DEALLOCATE_MEMORY                      \
+    if( MemoryTrace )                           \
+    {                                           \
+        SCOPE_LOCK( MemoryAllocLocker );        \
+        if( !MemoryTraceExt )                   \
+        {                                       \
+            MemoryTraceExt = true;              \
+            MemoryBlocks.erase( (size_t) ptr ); \
+            MemoryTraceExt = false;             \
+        }                                       \
+    }                                           \
+    free( ptr );
+
+void* operator new( size_t size )
+{
+    ALLOCATE_MEMORY;
+    return ptr;
+}
+
+void* operator new[]( size_t size )
+{
+    ALLOCATE_MEMORY;
+    return ptr;
+}
+
+void operator delete( void* ptr )
+{
+    DEALLOCATE_MEMORY;
+}
+
+void operator delete[]( void* ptr )
+{
+    DEALLOCATE_MEMORY;
+}
+
+void* Debugger::Malloc( size_t size )
+{
+    ALLOCATE_MEMORY;
+    return ptr;
+}
+
+void* Debugger::Calloc( size_t count, size_t size )
+{
+    ALLOCATE_MEMORY;
+    memzero( ptr, count * size );
+    return ptr;
+}
+
+void Debugger::Free( void* ptr )
+{
+    DEALLOCATE_MEMORY;
+}
+
+void Debugger::StartTraceMemory()
+{
+    ProcessHandle = OpenProcess( PROCESS_ALL_ACCESS, FALSE, GetCurrentProcessId() );
+    SymInitialize( ProcessHandle, NULL, TRUE );
+    SymSetOptions( SYMOPT_LOAD_LINES | SYMOPT_FAIL_CRITICAL_ERRORS );
+    MemoryTrace = true;
+}
+
+string Debugger::GetTraceMemory()
+{
+    SCOPE_LOCK( MemoryAllocLocker );
+    MemoryTraceExt = true;
+
+    // RetAddr, size, chunks
+    map< size_t, pair< size_t, size_t > > blocks;
+    int64                                 whole_size = 0, whole_chunks = 0;
+    for( auto it = MemoryBlocks.begin(), end = MemoryBlocks.end(); it != end; ++it )
+    {
+        size_t ptr = ( *it ).first;
+        size_t stack_hash = ( *it ).second.first;
+        size_t size = ( *it ).second.second;
+        auto   it_block = blocks.find( stack_hash );
+        if( it_block == blocks.end() )
+            blocks.insert( PAIR( stack_hash, PAIR( size, 1 ) ) );
+        else
+            ( *it_block ).second.first += size, ( *it_block ).second.second++;
+        whole_size += size;
+        whole_chunks++;
+    }
+
+    // Sort by chunks count
+    multimap< size_t, pair< size_t, size_t >, greater< size_t > > blocks_chunks;
+    for( auto it = blocks.begin(), end = blocks.end(); it != end; ++it )
+    {
+        size_t stack_hash = ( *it ).first;
+        size_t size = ( *it ).second.first;
+        size_t chunks = ( *it ).second.second;
+        blocks_chunks.insert( PAIR( chunks, PAIR( stack_hash, size ) ) );
+    }
+
+    // Print
+    string str;
+    str.reserve( 1000000 );
+    char   buf[ MAX_FOTEXT ];
+    str += "Unfreed memory:\n";
+    sprintf( buf, "  Whole blocks %u\n", blocks.size() );
+    str += buf;
+    sprintf( buf, "  Whole size   %I64d\n", whole_size );
+    str += buf;
+    sprintf( buf, "  Whole chunks %I64d\n", whole_chunks );
+    str += buf;
+    str += "\n";
+    uint cur = 0;
+    for( auto it = blocks_chunks.begin(), end = blocks_chunks.end(); it != end; ++it )
+    {
+        size_t chunks = ( *it ).first;
+        size_t stack_hash = ( *it ).second.first;
+        size_t size = ( *it ).second.second;
+        sprintf( buf, "%06u) Size %-10u Chunks %-10u\n", cur++, size, chunks );
+        str += buf;
+        str += StackWalkHashName[ stack_hash ];
+    }
+
+    MemoryTraceExt = false;
+    return str;
+}
+#endif

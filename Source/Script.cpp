@@ -1090,7 +1090,6 @@ public:
                     if( !obj )
                         break;
                     type = obj->GetSubTypeId();
-                    obj->Release();
                 }
 
                 type &= asTYPEID_MASK_SEQNBR;

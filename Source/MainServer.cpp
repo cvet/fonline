@@ -90,6 +90,13 @@ int main( int argc, char** argv )
     IniParser cfg;
     cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
 
+    // Memory debugging
+    MemoryDebugLevel = cfg.GetInt( "MemoryDebugLevel", 0 );
+    # ifdef TRACE_MEMORY
+    if( MemoryDebugLevel >= 3 )
+        Debugger::StartTraceMemory();
+    # endif
+
     // Make command line
     SetCommandLine( argc, argv );
 
@@ -156,8 +163,6 @@ int main( int argc, char** argv )
     WriteLog( "FOnline server, version %04X-%02X.\n", SERVER_VERSION, FO_PROTOCOL_VERSION & 0xFF );
 
     FOQuit = true;
-
-    MemoryDebugLevel = cfg.GetInt( "MemoryDebugLevel", 0 );
     Script::SetLogDebugInfo( true );
 
     if( GuiWindow )
