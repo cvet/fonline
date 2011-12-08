@@ -266,13 +266,14 @@ const char* Debugger::GetMemoryStatistics()
 
 // Memory tracing
 #ifdef TRACE_MEMORY
-# undef malloc
-# undef calloc
-# undef free
 # pragma warning( disable : 4748 )
 # include <DbgHelp.h>
-# pragma comment(lib, "Dbghelp.lib")
+# pragma comment( lib, "Dbghelp.lib" )
 # include "FileManager.h"
+# undef malloc
+# undef calloc
+# undef realloc
+# undef free
 
 static bool                                  MemoryTrace = false;
 static bool                                  MemoryTraceExt = false;
@@ -386,8 +387,7 @@ size_t GetStackInfo()
 }
 
 # define ALLOCATE_MEMORY                                                           \
-    void* ptr = malloc( size );                                                    \
-    if( MemoryTrace )                                                              \
+    if( MemoryTrace && ptr )                                                       \
     {                                                                              \
         SCOPE_LOCK( MemoryAllocLocker );                                           \
         if( !MemoryTraceExt )                                                      \
@@ -399,7 +399,7 @@ size_t GetStackInfo()
         }                                                                          \
     }
 # define DEALLOCATE_MEMORY                      \
-    if( MemoryTrace )                           \
+    if( MemoryTrace && ptr )                    \
     {                                           \
         SCOPE_LOCK( MemoryAllocLocker );        \
         if( !MemoryTraceExt )                   \
@@ -408,17 +408,18 @@ size_t GetStackInfo()
             MemoryBlocks.erase( (size_t) ptr ); \
             MemoryTraceExt = false;             \
         }                                       \
-    }                                           \
-    free( ptr );
+    }
 
 void* operator new( size_t size )
 {
+    void* ptr = malloc( size );
     ALLOCATE_MEMORY;
     return ptr;
 }
 
 void* operator new[]( size_t size )
 {
+    void* ptr = malloc( size );
     ALLOCATE_MEMORY;
     return ptr;
 }
@@ -426,29 +427,41 @@ void* operator new[]( size_t size )
 void operator delete( void* ptr )
 {
     DEALLOCATE_MEMORY;
+    free( ptr );
 }
 
 void operator delete[]( void* ptr )
 {
     DEALLOCATE_MEMORY;
+    free( ptr );
 }
 
 void* Malloc( size_t size )
 {
+    void* ptr = malloc( size );
     ALLOCATE_MEMORY;
     return ptr;
 }
 
 void* Calloc( size_t count, size_t size )
 {
+    void* ptr = calloc( count, size );
     ALLOCATE_MEMORY;
-    memzero( ptr, count * size );
+    return ptr;
+}
+
+void* Realloc( void* ptr, size_t size )
+{
+    DEALLOCATE_MEMORY;
+    ptr = realloc( ptr, size );
+    ALLOCATE_MEMORY;
     return ptr;
 }
 
 void Free( void* ptr )
 {
     DEALLOCATE_MEMORY;
+    free( ptr );
 }
 
 void Debugger::StartTraceMemory()

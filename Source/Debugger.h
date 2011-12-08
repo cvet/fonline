@@ -58,9 +58,11 @@ namespace Debugger
 #ifdef TRACE_MEMORY
 extern void* Malloc( size_t size );
 extern void* Calloc( size_t count, size_t size );
+extern void* Realloc( void* ptr, size_t size );
 extern void  Free( void* ptr );
 # define malloc                 Malloc
 # define calloc                 Calloc
+# define realloc                Realloc
 # define free                   Free
 #endif
 

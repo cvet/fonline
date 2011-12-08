@@ -71,13 +71,6 @@ const char* GetLastSocketError();
 # define DLL_Error()                      dlerror()
 #endif
 
-// Memory debug
-#ifdef _DEBUG
-# define _CRTDBG_MAP_ALLOC
-# include <stdlib.h>
-# include <crtdbg.h>
-#endif
-
 // FOnline stuff
 #include "Types.h"
 #include "Defines.h"
