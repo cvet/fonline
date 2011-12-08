@@ -1479,7 +1479,6 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
             GL( glUniformMatrix4fv( effect->ProjectionMatrix, 1, GL_FALSE, MatrixProj[ 0 ] ) );
         if( effect->ColorMap != -1 && textures[ 0 ] )
         {
-            GL( glActiveTexture( GL_TEXTURE0 ) );
             GL( glBindTexture( GL_TEXTURE_2D, textures[ 0 ]->Id ) );
             GL( glUniform1i( effect->ColorMap, 0 ) );
             if( effect->ColorMapSize != -1 )
@@ -1490,6 +1489,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
         {
             GL( glActiveTexture( GL_TEXTURE1 ) );
             GL( glBindTexture( GL_TEXTURE_2D, DepthTexId ) );
+            GL( glActiveTexture( GL_TEXTURE0 ) );
             GL( glUniform1i( effect->ShadowMap, 1 ) );
             // if( effect->ShadowMapSize != -1 )
             //    GL( glUniform4fv( effect->ColorMapSize, 1, rt3DSM.TargetTexture->SizeData ) );

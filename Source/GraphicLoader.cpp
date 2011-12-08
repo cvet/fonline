@@ -1570,6 +1570,7 @@ void GraphicLoader::EffectProcessVariables( Effect* effect, int pass,  float ani
                     GLuint id = ( textures && textures[ i ] ? textures[ i ]->Id : 0 );
                     GL( glActiveTexture( GL_TEXTURE2 + i ) );
                     GL( glBindTexture( GL_TEXTURE_2D, id ) );
+                    GL( glActiveTexture( GL_TEXTURE0 ) );
                     GL( glUniform1i( effect->Textures[ i ], 2 + i ) );
                     if( effect->TexturesSize[ i ] != -1 && textures && textures[ i ] )
                         GL( glUniform4fv( effect->TexturesSize[ i ], 1, textures[ i ]->SizeData ) );

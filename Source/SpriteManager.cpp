@@ -507,6 +507,7 @@ bool SpriteManager::InitRenderStates()
     GL( glEnable( GL_LINE_SMOOTH ) );
     GL( glDisable( GL_CULL_FACE ) );
     GL( glDisable( GL_LIGHTING ) );
+    GL( glActiveTexture( GL_TEXTURE0 ) );
     #endif
 
     return true;
@@ -3717,7 +3718,6 @@ bool SpriteManager::Flush()
             GL( glUniformMatrix4fv( effect->ProjectionMatrix, 1, GL_FALSE, projectionMatrix ) );
         if( effect->ColorMap != -1 && dip.SourceTexture )
         {
-            GL( glActiveTexture( GL_TEXTURE0 ) );
             if( dip.SourceTexture->Samples == 0.0f )
             {
                 GL( glBindTexture( GL_TEXTURE_2D, dip.SourceTexture->Id ) );
@@ -3740,6 +3740,7 @@ bool SpriteManager::Flush()
         {
             GL( glActiveTexture( GL_TEXTURE1 ) );
             GL( glBindTexture( GL_TEXTURE_2D, sprEgg->Surf->TextureOwner->Id ) );
+            GL( glActiveTexture( GL_TEXTURE0 ) );
             GL( glUniform1i( effect->EggMap, 1 ) );
             if( effect->EggMapSize != -1 )
                 GL( glUniform4fv( effect->EggMapSize, 1, sprEgg->Surf->TextureOwner->SizeData ) );
