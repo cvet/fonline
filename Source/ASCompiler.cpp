@@ -1,11 +1,19 @@
-#include "ScriptEngine.h"
-#include <PlatformSpecific.h>
+#include "../ASCompiler/ScriptEngine.h"
+#include "PlatformSpecific.h"
+#include "ScriptPragmas.h"
+#include "AngelScript/angelscript.h"
+#include "AngelScript/Preprocessor/preprocess.h"
+#include "AngelScript/as_config.h"
+#include "AngelScript/scriptany.h"
+#include "AngelScript/scriptdictionary.h"
+#include "AngelScript/scriptfile.h"
+#include "AngelScript/scriptmath.h"
+#include "AngelScript/scriptmath3d.h"
+#include "AngelScript/scriptstring.h"
+#include "AngelScript/scriptarray.h"
 #include <Windows.h>
 #include <stdio.h>
 #include <tchar.h>
-#include <ScriptPragmas.h>
-#include <AngelScript/angelscript.h>
-#include <AngelScript/Preprocessor/preprocess.h>
 #include <list>
 #include <set>
 #include <strstream>
@@ -17,12 +25,8 @@ using namespace std;
 # define _stricmp    strcasecmp
 #endif
 
-typedef int ( __cdecl * BindFunc )( asIScriptEngine* );
-typedef asIScriptEngine* ( __cdecl * ASCreate )();
-typedef bool ( *PragmaCallbackFunc )( const char* );
-
 asIScriptEngine*                    Engine = NULL;
-bool                                IsServer = false;
+bool                                IsServer = true;
 bool                                IsClient = false;
 bool                                IsMapper = false;
 char*                               Buf = NULL;
@@ -40,7 +44,7 @@ const char*                         ContextStatesStr[] =
     "Error",
 };
 
-void Global_Log( string& str )
+void CompilerLog( string& str )
 {
     printf( "%s\n", str.c_str() );
 }
@@ -150,17 +154,71 @@ void CallBack( const asSMessageInfo* msg, void* param )
     }
 }
 
-int _tmain( int argc, _TCHAR* argv[] )
+// Server
+#define OFFSETOF( type, member )    ( (int) offsetof( type, member ) )
+#define BIND_SERVER
+#define BIND_CLASS    BindClass::
+#define BIND_ASSERT( x )            if( ( x ) < 0 ) { printf( "Bind error, line<%d>.\n", __LINE__ ); bind_errors++; }
+namespace ServerBind
+{
+    #include <DummyData.h>
+    static int Bind( asIScriptEngine* engine )
+    {
+        int bind_errors = 0;
+        #include <ScriptBind.h>
+        return bind_errors;
+    }
+}
+
+// Client
+#undef BIND_SERVER
+#undef BIND_CLASS
+#undef BIND_ASSERT
+#define BIND_CLIENT
+#define BIND_CLASS    BindClass::
+#define BIND_ASSERT( x )            if( ( x ) < 0 ) { printf( "Bind error, line<%d>.\n", __LINE__ ); bind_errors++; }
+namespace ClientBind
+{
+    #include <DummyData.h>
+    static int Bind( asIScriptEngine* engine )
+    {
+        int bind_errors = 0;
+        #include <ScriptBind.h>
+        return bind_errors;
+    }
+}
+
+// Mapper
+#undef BIND_CLIENT
+#undef BIND_CLASS
+#undef BIND_ASSERT
+#define BIND_MAPPER
+#define BIND_CLASS    BindClass::
+#define BIND_ASSERT( x )            if( ( x ) < 0 ) { printf( "Bind error, line<%d>.\n", __LINE__ ); bind_errors++; }
+namespace MapperBind
+{
+    #include <DummyData.h>
+    static int Bind( asIScriptEngine* engine )
+    {
+        int bind_errors = 0;
+        #include <ScriptBind.h>
+        return bind_errors;
+    }
+}
+
+int main( int argc, char* argv[] )
 {
     /************************************************************************/
     /* Parameters                                                           */
     /************************************************************************/
     setlocale( LC_ALL, "Russian" );
 
-    if( argc < 4 )
+    if( argc < 2 )
     {
-        printf( "Not enough parameters. Example:\n"
-                "ASCompiler script_name.fos as.dll fo[_client/_mapper].dll\n"
+        printf( "FOnline AngleScript compiler. Usage:\n"
+                "ASCompiler script_name.fos\n"
+                " [-client] (compile client scripts)\n"
+                " [-mapper] (compile mapper scripts)\n"
                 " [-p preprocessor_output.txt]\n"
                 " [-d SOME_DEFINE]*\n"
                 " [-run func_name]*\n"
@@ -168,19 +226,20 @@ int _tmain( int argc, _TCHAR* argv[] )
         return 0;
     }
 
-    char* str_fname = argv[ 1 ];
-    char  str_comp_dll[ 1024 ];
-    strcpy_s( str_comp_dll, argv[ 2 ] );
-    char  str_script_dll[ 1024 ];
-    strcpy_s( str_script_dll, argv[ 3 ] );
-
+    // Parse args
+    char*           str_fname = argv[ 1 ];
     char*           str_prep = NULL;
     vector< char* > defines;
     vector< char* > run_func;
-    for( int i = 4; i < argc; i++ )
+    for( int i = 2; i < argc; i++ )
     {
+        // Server / Client / Mapper
+        if( !_stricmp( argv[ i ], "-client" ) )
+            IsServer = false, IsClient = true, IsMapper = false;
+        else if( !_stricmp( argv[ i ], "-mapper" ) )
+            IsServer = false, IsClient = false, IsMapper = true;
         // Preprocessor output
-        if( !_stricmp( argv[ i ], "-p" ) && i + 1 < argc )
+        else if( !_stricmp( argv[ i ], "-p" ) && i + 1 < argc )
             str_prep = argv[ ++i ];
         // Define
         else if( !_stricmp( argv[ i ], "-d" ) && i + 1 < argc )
@@ -190,30 +249,20 @@ int _tmain( int argc, _TCHAR* argv[] )
             run_func.push_back( argv[ ++i ] );
     }
 
-    #if defined ( FO_X64 )
-    strcat_s( str_comp_dll, "64" );
-    strcat_s( str_script_dll, "64" );
-    #endif
+    // Set current directory
+    char  path[ 2048 ];
+    char* part = NULL;
+    if( GetFullPathName( str_fname, 2048, path, &part ) && part )
+    {
+        *part = 0;
+        SetCurrentDirectory( path );
+    }
 
     /************************************************************************/
     /* Dll                                                                  */
     /************************************************************************/
     // Engine
-    HINSTANCE comp_dll;
-    if( ( comp_dll = LoadLibrary( str_comp_dll ) ) == NULL )
-    {
-        printf( "AngelScript library<%s> loading fail.\n", str_comp_dll );
-        return 0;
-    }
-
-    ASCreate create_func;
-    if( !( create_func = (ASCreate) GetProcAddress( comp_dll, "Register" ) ) )
-    {
-        printf( "Function Register not found, error<%u>.\n", GetLastError() );
-        return 0;
-    }
-
-    Engine = ( *create_func )( );
+    Engine = asCreateScriptEngine( ANGELSCRIPT_VERSION );
     if( !Engine )
     {
         printf( "Register failed.\n" );
@@ -221,42 +270,33 @@ int _tmain( int argc, _TCHAR* argv[] )
     }
     Engine->SetMessageCallback( asFUNCTION( CallBack ), NULL, asCALL_CDECL );
 
-    // Bind
-    HINSTANCE script_dll;
-    if( ( script_dll = LoadLibrary( str_script_dll ) ) == NULL )
-    {
-        printf( "Script library<%s> load fail.\n", str_script_dll );
-        return 0;
-    }
+    // Extensions
+    RegisterScriptArray( Engine, true );
+    RegisterScriptString( Engine );
+    RegisterScriptStringUtils( Engine );
+    RegisterScriptAny( Engine );
+    RegisterScriptDictionary( Engine );
+    RegisterScriptFile( Engine );
+    RegisterScriptMath( Engine );
+    RegisterScriptMath3D( Engine );
 
+    // Stuff for run func
     if( !run_func.empty() )
     {
-        if( Engine->RegisterGlobalFunction( "void __CompilerLog(string& text)", asFUNCTION( Global_Log ), asCALL_CDECL ) < 0 )
+        if( Engine->RegisterGlobalFunction( "void __CompilerLog(string& text)", asFUNCTION( CompilerLog ), asCALL_CDECL ) < 0 )
             printf( "Warning: cannot bind masking Log()." );
     }
 
-    BindFunc bind_func;
-    if( !( bind_func = (BindFunc) GetProcAddress( script_dll, "Bind" ) ) )
-    {
-        printf( "Function Bind not found, error<%u>.\n", GetLastError() );
-        return 0;
-    }
-    int result = ( *bind_func )( Engine );
-    if( result )
-        printf( "Warning, Bind result: %d.\n", result );
-    FreeLibrary( script_dll );
-
-    int type_count = Engine->GetObjectTypeCount();
-    for( int i = 0; i < type_count; i++ )
-    {
-        asIObjectType* ot = Engine->GetObjectTypeByIndex( i );
-        if( !strcmp( ot->GetName(), "Critter" ) )
-            IsServer = true;
-        else if( !strcmp( ot->GetName(), "CritterCl" ) )
-            IsClient = true;
-        else if( !strcmp( ot->GetName(), "MapperMap" ) )
-            IsMapper = true;
-    }
+    // Bind
+    int bind_errors = 0;
+    if( IsServer )
+        bind_errors = ServerBind::Bind( Engine );
+    else if( IsClient )
+        bind_errors = ClientBind::Bind( Engine );
+    else if( IsMapper )
+        bind_errors = MapperBind::Bind( Engine );
+    if( bind_errors )
+        printf( "Warning, bind result: %d.\n", bind_errors );
 
     /************************************************************************/
     /* Compile                                                              */
@@ -278,12 +318,20 @@ int _tmain( int argc, _TCHAR* argv[] )
         pragma_type = PRAGMA_CLIENT;
     else if( IsMapper )
         pragma_type = PRAGMA_MAPPER;
+
     Preprocessor::SetPragmaCallback( new ScriptPragmaCallback( pragma_type ) );
 
+    if( IsServer )
+        Preprocessor::Define( "__SERVER" );
+    else if( IsClient )
+        Preprocessor::Define( "__CLIENT" );
+    else if( IsMapper )
+        Preprocessor::Define( "__MAPPER" );
     for( size_t i = 0; i < defines.size(); i++ )
         Preprocessor::Define( string( defines[ i ] ) );
     if( !run_func.empty() )
         Preprocessor::Define( string( "Log __CompilerLog" ) );
+
     LNT = new Preprocessor::LineNumberTranslator();
     int res = Preprocessor::Preprocess( str_fname, fsrc, vos, true, &vos_err, LNT );
     if( res )
@@ -447,7 +495,6 @@ int _tmain( int argc, _TCHAR* argv[] )
         RunMain( module, run_func[ i ] );
 
     Engine->Release();
-    FreeLibrary( comp_dll );
     if( Buf )
         delete Buf;
     Buf = NULL;

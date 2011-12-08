@@ -433,20 +433,20 @@ void operator delete[]( void* ptr )
     DEALLOCATE_MEMORY;
 }
 
-void* Debugger::Malloc( size_t size )
+void* Malloc( size_t size )
 {
     ALLOCATE_MEMORY;
     return ptr;
 }
 
-void* Debugger::Calloc( size_t count, size_t size )
+void* Calloc( size_t count, size_t size )
 {
     ALLOCATE_MEMORY;
     memzero( ptr, count * size );
     return ptr;
 }
 
-void Debugger::Free( void* ptr )
+void Free( void* ptr )
 {
     DEALLOCATE_MEMORY;
 }

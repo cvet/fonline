@@ -10,7 +10,7 @@
 # pragma comment( lib, "libpng15.lib" )
 #endif
 
-void* dbg_malloc( size_t size )
+void* ASDebugMalloc( size_t size )
 {
     size += sizeof( size_t );
     MEMORY_PROCESS( MEMORY_ANGEL_SCRIPT, (int) size );
@@ -19,7 +19,7 @@ void* dbg_malloc( size_t size )
     return ++ptr;
 }
 
-void dbg_free( void* ptr )
+void ASDebugFree( void* ptr )
 {
     size_t* ptr_ = (size_t*) ptr;
     size_t  size = *( --ptr_ );
@@ -32,7 +32,8 @@ static THREAD bool          ASDbgMemoryInUse = false;
 static map< void*, string > ASDbgMemoryPtr;
 static char                 ASDbgMemoryBuf[ 1024 ];
 static Mutex                ASDbgMemoryLocker;
-void* dbg_malloc2( size_t size )
+
+void* ASDeepDebugMalloc( size_t size )
 {
     size += sizeof( size_t );
     size_t* ptr = (size_t*) malloc( size );
@@ -54,7 +55,7 @@ void* dbg_malloc2( size_t size )
     return ++ptr;
 }
 
-void dbg_free2( void* ptr )
+void ASDeepDebugFree( void* ptr )
 {
     size_t* ptr_ = (size_t*) ptr;
     size_t  size = *( --ptr_ );
@@ -81,9 +82,9 @@ bool FOServer::InitScriptSystem()
     // Memory debugging
     #ifdef MEMORY_DEBUG
     if( MemoryDebugLevel >= 2 )
-        asSetGlobalMemoryFunctions( dbg_malloc2, dbg_free2 );
+        asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
     else if( MemoryDebugLevel >= 1 )
-        asSetGlobalMemoryFunctions( dbg_malloc, dbg_free );
+        asSetGlobalMemoryFunctions( ASDebugMalloc, ASDebugFree );
     else
         asSetGlobalMemoryFunctions( malloc, free );
     #endif
@@ -305,9 +306,9 @@ bool FOServer::ReloadClientScripts()
 
         #ifdef MEMORY_DEBUG
         if( MemoryDebugLevel >= 2 )
-            asSetGlobalMemoryFunctions( dbg_malloc2, dbg_free2 );
+            asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
         else if( MemoryDebugLevel >= 1 )
-            asSetGlobalMemoryFunctions( dbg_malloc, dbg_free );
+            asSetGlobalMemoryFunctions( ASDebugMalloc, ASDebugFree );
         else
             asSetGlobalMemoryFunctions( malloc, free );
         #endif
@@ -476,9 +477,9 @@ bool FOServer::ReloadClientScripts()
 
     #ifdef MEMORY_DEBUG
     if( MemoryDebugLevel >= 2 )
-        asSetGlobalMemoryFunctions( dbg_malloc2, dbg_free2 );
+        asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
     else if( MemoryDebugLevel >= 1 )
-        asSetGlobalMemoryFunctions( dbg_malloc, dbg_free );
+        asSetGlobalMemoryFunctions( ASDebugMalloc, ASDebugFree );
     else
         asSetGlobalMemoryFunctions( malloc, free );
     #endif

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ASCompiler", "ASCompiler\ASCompiler.vcxproj", "{9FA6BB1D-4365-4C77-B99D-ADEE6007539A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ASCompiler", "ASCompiler.vcxproj", "{9FA6BB1D-4365-4C77-B99D-ADEE6007539A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -5,7 +5,8 @@
 # include "PlatformSpecific.h"
 # include "Defines.h"
 # include "Types.h"
-# include "..\ASCompiler\ASCompiler\ScriptEngine.h"
+# include "../ASCompiler/ScriptEngine.h"
+# include "AngelScript/scriptstring.h"
 # include <stdio.h>
 # include <strstream>
 
@@ -71,10 +72,27 @@ namespace Script
         static set< string > alreadyLoadedDll;
         if( !alreadyLoadedDll.count( dll_name_ ) )
         {
-            // Register AS engine
-            size_t* ptr = DLL_GetAddress( dll, "ASEngine" );
+            // Register variables
+            size_t* ptr = DLL_GetAddress( dll, "FOnline" );
+            if( ptr )
+                *ptr = (size_t) NULL;
+            ptr = DLL_GetAddress( dll, "ASEngine" );
             if( ptr )
                 *ptr = (size_t) GetEngine();
+
+            // Register functions
+            ptr = DLL_GetAddress( dll, "Log" );
+            if( ptr )
+                *ptr = (size_t) NULL;
+            ptr = DLL_GetAddress( dll, "Malloc" );
+            if( ptr )
+                *ptr = (size_t) &malloc;
+            ptr = DLL_GetAddress( dll, "Calloc" );
+            if( ptr )
+                *ptr = (size_t) &calloc;
+            ptr = DLL_GetAddress( dll, "Free" );
+            if( ptr )
+                *ptr = (size_t) &free;
 
             // Call init function
             typedef void ( *DllMainEx )( bool );
@@ -87,13 +105,6 @@ namespace Script
         return dll;
     }
 }
-
-struct CScriptString
-{
-    string Text;
-    int    RefCounter;
-    CScriptString( const string& text ): Text( text ), RefCounter( 0 ) {}
-};
 
 # define WriteLog    printf
 # define int64       __int64

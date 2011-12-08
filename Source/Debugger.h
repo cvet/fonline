@@ -52,13 +52,16 @@ namespace Debugger
     #ifdef TRACE_MEMORY
     void   StartTraceMemory();
     string GetTraceMemory();
-    void*  Malloc( size_t size );
-    void*  Calloc( size_t count, size_t size );
-    void   Free( void* ptr );
-    # define malloc             Debugger::Malloc
-    # define calloc             Debugger::Calloc
-    # define free               Debugger::Free
     #endif
 };
+
+#ifdef TRACE_MEMORY
+extern void* Malloc( size_t size );
+extern void* Calloc( size_t count, size_t size );
+extern void  Free( void* ptr );
+# define malloc                 Malloc
+# define calloc                 Calloc
+# define free                   Free
+#endif
 
 #endif // __DEBUGGER__

@@ -668,7 +668,7 @@ void CraftManager::Finish()
 bool CraftManager::AddCraft( uint num, const char* str )
 {
     // Create new craft item
-    CraftItem* craft = new CraftItem;
+    CraftItem* craft = new CraftItem();
     if( !craft )
     {
         delete craft;
@@ -712,7 +712,7 @@ bool CraftManager::AddCraft( CraftItem* craft, bool make_copy )
 
     if( make_copy )
     {
-        CraftItem* craft2 = new CraftItem;
+        CraftItem* craft2 = new CraftItem();
         *craft2 = *craft;
         craft = craft2;
     }
