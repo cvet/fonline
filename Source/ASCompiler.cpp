@@ -158,7 +158,7 @@ void CallBack( const asSMessageInfo* msg, void* param )
 #define OFFSETOF( type, member )    ( (int) offsetof( type, member ) )
 #define BIND_SERVER
 #define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )            if( ( x ) < 0 ) { printf( "Bind error, line<%d>.\n", __LINE__ ); bind_errors++; }
+#define BIND_ASSERT( x )            if( ( x ) < 0 ) { printf( "Bind error, line<" # x ">.\n" ); bind_errors++; }
 namespace ServerBind
 {
     #include <DummyData.h>
@@ -176,7 +176,7 @@ namespace ServerBind
 #undef BIND_ASSERT
 #define BIND_CLIENT
 #define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )            if( ( x ) < 0 ) { printf( "Bind error, line<%d>.\n", __LINE__ ); bind_errors++; }
+#define BIND_ASSERT( x )            if( ( x ) < 0 ) { printf( "Bind error, line<" # x ">.\n" ); bind_errors++; }
 namespace ClientBind
 {
     #include <DummyData.h>
@@ -194,7 +194,7 @@ namespace ClientBind
 #undef BIND_ASSERT
 #define BIND_MAPPER
 #define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )            if( ( x ) < 0 ) { printf( "Bind error, line<%d>.\n", __LINE__ ); bind_errors++; }
+#define BIND_ASSERT( x )            if( ( x ) < 0 ) { printf( "Bind error, line<" # x ">.\n" ); bind_errors++; }
 namespace MapperBind
 {
     #include <DummyData.h>

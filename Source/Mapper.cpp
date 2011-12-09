@@ -435,7 +435,7 @@ int FOMapper::InitIface()
     NpcDir = 3;
     ListScroll = 0;
 
-    CurMode = CUR_MODE_DEF;
+    CurMode = CUR_MODE_DEFAULT;
 
     SelectHX1 = 0;
     SelectHY1 = 0;
@@ -2682,7 +2682,7 @@ void FOMapper::IntLMouseDown()
         SelectX = GameOpt.MouseX;
         SelectY = GameOpt.MouseY;
 
-        if( CurMode == CUR_MODE_DEF )
+        if( CurMode == CUR_MODE_DEFAULT )
         {
             if( Keyb::ShiftDwn )
             {
@@ -2723,11 +2723,11 @@ void FOMapper::IntLMouseDown()
             // HexMngr.RefreshMap();
             IntHold = INT_SELECT;
         }
-        else if( CurMode == CUR_MODE_MOVE )
+        else if( CurMode == CUR_MODE_MOVE_SELECTION )
         {
             IntHold = INT_SELECT;
         }
-        else if( CurMode == CUR_MODE_DRAW )
+        else if( CurMode == CUR_MODE_PLACE_OBJECT )
         {
             if( IsObjectMode() && ( *CurItemProtos ).size() )
                 ParseProto( ( *CurItemProtos )[ GetTabIndex() ].ProtoId, SelectHX1, SelectHY1, NULL );
@@ -3160,7 +3160,7 @@ void FOMapper::IntLMouseUp()
 {
     if( IntHold == INT_SELECT && HexMngr.GetHexPixel( GameOpt.MouseX, GameOpt.MouseY, SelectHX2, SelectHY2 ) )
     {
-        if( CurMode == CUR_MODE_DEF )
+        if( CurMode == CUR_MODE_DEFAULT )
         {
             if( SelectHX1 != SelectHX2 || SelectHY1 != SelectHY2 )
             {
@@ -3246,7 +3246,7 @@ void FOMapper::IntLMouseUp()
                 }
             }
 
-            //	if(SelectedObj.size() || SelectedTile.size()) CurMode=CUR_MODE_MOVE;
+            //	if(SelectedObj.size() || SelectedTile.size()) CurMode=CUR_MODE_MOVE_SELECTION;
 
             // Crits or item container
             if( SelectedObj.size() && SelectedObj[ 0 ].IsContainer() )
@@ -3274,7 +3274,7 @@ void FOMapper::IntMouseMove()
             return;
         }
 
-        if( CurMode == CUR_MODE_DEF )
+        if( CurMode == CUR_MODE_DEFAULT )
         {
             if( SelectHX1 != SelectHX2 || SelectHY1 != SelectHY2 )
             {
@@ -3301,7 +3301,7 @@ void FOMapper::IntMouseMove()
                 HexMngr.RefreshMap();
             }
         }
-        else if( CurMode == CUR_MODE_MOVE )
+        else if( CurMode == CUR_MODE_MOVE_SELECTION )
         {
             int offs_hx = (int) SelectHX2 - (int) SelectHX1;
             int offs_hy = (int) SelectHY2 - (int) SelectHY1;
@@ -4140,7 +4140,7 @@ void FOMapper::SelectDelete()
     SelectClear();
     HexMngr.RefreshMap();
     IntHold = INT_NONE;
-    CurMode = CUR_MODE_DEF;
+    CurMode = CUR_MODE_DEFAULT;
 }
 
 MapObject* FOMapper::ParseProto( ushort pid, ushort hx, ushort hy, MapObject* owner, bool is_child /* = false */ )
@@ -4217,7 +4217,7 @@ MapObject* FOMapper::ParseProto( ushort pid, ushort hx, ushort hy, MapObject* ow
     {
         SelectAdd( mobj );
         HexMngr.RefreshMap();
-        CurMode = CUR_MODE_DEF;
+        CurMode = CUR_MODE_DEFAULT;
     }
     else
     {
@@ -4235,7 +4235,7 @@ void FOMapper::ParseTile( uint name_hash, ushort hx, ushort hy, short ox, short 
     SelectClear();
 
     HexMngr.SetTile( name_hash, hx, hy, ox, oy, layer, is_roof, false );
-    CurMode = CUR_MODE_DEF;
+    CurMode = CUR_MODE_DEFAULT;
 }
 
 void FOMapper::ParseNpc( ushort pid, ushort hx, ushort hy )
@@ -4292,7 +4292,7 @@ void FOMapper::ParseNpc( ushort pid, ushort hx, ushort hy )
     SelectAdd( mobj );
 
     HexMngr.RefreshMap();
-    CurMode = CUR_MODE_DEF;
+    CurMode = CUR_MODE_DEFAULT;
 }
 
 MapObject* FOMapper::ParseMapObj( MapObject* mobj )
@@ -4466,10 +4466,10 @@ void FOMapper::CurDraw()
 {
     switch( CurMode )
     {
-    case CUR_MODE_DEF:
-    case CUR_MODE_MOVE:
+    case CUR_MODE_DEFAULT:
+    case CUR_MODE_MOVE_SELECTION:
     {
-        AnyFrames* anim = ( CurMode == CUR_MODE_DEF ? CurPDef : CurPHand );
+        AnyFrames* anim = ( CurMode == CUR_MODE_DEFAULT ? CurPDef : CurPHand );
         if( anim )
         {
             SpriteInfo* si = SprMngr.GetSpriteInfo( anim->GetCurSprId() );
@@ -4482,7 +4482,7 @@ void FOMapper::CurDraw()
         }
     }
     break;
-    case CUR_MODE_DRAW:
+    case CUR_MODE_PLACE_OBJECT:
         if( IsObjectMode() && ( *CurItemProtos ).size() )
         {
             ProtoItem& proto_item = ( *CurItemProtos )[ GetTabIndex() ];
@@ -4554,11 +4554,11 @@ void FOMapper::CurDraw()
         }
         else
         {
-            CurMode = CUR_MODE_DEF;
+            CurMode = CUR_MODE_DEFAULT;
         }
         break;
     default:
-        CurMode = CUR_MODE_DEF;
+        CurMode = CUR_MODE_DEFAULT;
         break;
     }
 }
@@ -4567,7 +4567,7 @@ void FOMapper::CurRMouseUp()
 {
     if( IntHold == INT_NONE )
     {
-        if( CurMode == CUR_MODE_MOVE )
+        if( CurMode == CUR_MODE_MOVE_SELECTION )
         {
             /*if(SelectedTile.size())
                {
@@ -4584,18 +4584,18 @@ void FOMapper::CurRMouseUp()
                }
 
                SelectClear();*/
-            CurMode = CUR_MODE_DEF;
+            CurMode = CUR_MODE_DEFAULT;
         }
-        else if( CurMode == CUR_MODE_DRAW )
+        else if( CurMode == CUR_MODE_PLACE_OBJECT )
         {
-            CurMode = CUR_MODE_DEF;
+            CurMode = CUR_MODE_DEFAULT;
         }
-        else if( CurMode == CUR_MODE_DEF )
+        else if( CurMode == CUR_MODE_DEFAULT )
         {
             if( SelectedObj.size() || SelectedTile.size() )
-                CurMode = CUR_MODE_MOVE;
+                CurMode = CUR_MODE_MOVE_SELECTION;
             else if( IsObjectMode() || IsTileMode() || IsCritMode() )
-                CurMode = CUR_MODE_DRAW;
+                CurMode = CUR_MODE_PLACE_OBJECT;
         }
     }
 }
@@ -4628,15 +4628,23 @@ void FOMapper::CurMMouseDown()
     }
 }
 
-bool FOMapper::GetMouseHex( ushort& hx, ushort& hy )
+bool FOMapper::IsCurInInterface()
+{
+    if( IntVisible && SubTabsActive && IsCurInRectNoTransp( SubTabsPic->GetCurSprId(), SubTabsRect, SubTabsX, SubTabsY ) )
+        return true;
+    if( IntVisible && IsCurInRectNoTransp( IntMainPic->GetCurSprId(), IntWMain, IntX, IntY ) )
+        return true;
+    if( ObjVisible && !SelectedObj.empty() && IsCurInRectNoTransp( ObjWMainPic->GetCurSprId(), ObjWMain, ObjX, ObjY ) )
+        return true;
+    // if( ConsoleActive && IsCurInRectNoTransp( ConsolePic, Main, 0, 0 ) ) // Todo: need check console?
+    return false;
+}
+
+bool FOMapper::GetCurHex( ushort& hx, ushort& hy, bool ignore_interface )
 {
     hx = hy = 0;
-    if( IntVisible && IsCurInRectNoTransp( IntMainPic->GetCurSprId(), IntWMain, IntX, IntY ) )
+    if( !ignore_interface && IsCurInInterface() )
         return false;
-    if( ObjVisible && !SelectedObj.empty() && IsCurInRectNoTransp( ObjWMainPic->GetCurSprId(), ObjWMain, 0, 0 ) )
-        return false;
-
-    // if(ConsoleEdit && IsCurInRectNoTransp(ConsolePic,Main,0,0)) //TODO:
     return HexMngr.GetHexPixel( GameOpt.MouseX, GameOpt.MouseY, hx, hy );
 }
 
@@ -6073,7 +6081,7 @@ uint FOMapper::SScriptFunc::Global_GetSelectedObjects( CScriptArray* objects )
 uint FOMapper::SScriptFunc::Global_TabGetTileDirs( int tab, CScriptArray* dir_names, CScriptArray* include_subdirs )
 {
     if( tab < 0 || tab >= TAB_COUNT )
-        return 0;
+        SCRIPT_ERROR_R0( "Wrong tab arg." );
 
     TileTab& ttab = Self->TabsTiles[ tab ];
     if( dir_names )
@@ -6094,7 +6102,7 @@ uint FOMapper::SScriptFunc::Global_TabGetTileDirs( int tab, CScriptArray* dir_na
 uint FOMapper::SScriptFunc::Global_TabGetItemPids( int tab, CScriptString* sub_tab, CScriptArray* item_pids )
 {
     if( tab < 0 || tab >= TAB_COUNT )
-        return 0;
+        SCRIPT_ERROR_R0( "Wrong tab arg." );
     if( sub_tab && sub_tab->length() && !Self->Tabs[ tab ].count( sub_tab->c_std_str() ) )
         return 0;
 
@@ -6107,7 +6115,7 @@ uint FOMapper::SScriptFunc::Global_TabGetItemPids( int tab, CScriptString* sub_t
 uint FOMapper::SScriptFunc::Global_TabGetCritterPids( int tab, CScriptString* sub_tab, CScriptArray* critter_pids )
 {
     if( tab < 0 || tab >= TAB_COUNT )
-        return 0;
+        SCRIPT_ERROR_R0( "Wrong tab arg." );
     if( sub_tab && sub_tab->length() && !Self->Tabs[ tab ].count( sub_tab->c_std_str() ) )
         return 0;
 
@@ -6120,7 +6128,7 @@ uint FOMapper::SScriptFunc::Global_TabGetCritterPids( int tab, CScriptString* su
 void FOMapper::SScriptFunc::Global_TabSetTileDirs( int tab, CScriptArray* dir_names, CScriptArray* include_subdirs )
 {
     if( tab < 0 || tab >= TAB_COUNT )
-        return;
+        SCRIPT_ERROR_R( "Wrong tab arg." );
     if( dir_names && include_subdirs && dir_names->GetSize() != include_subdirs->GetSize() )
         return;
 
@@ -6148,7 +6156,7 @@ void FOMapper::SScriptFunc::Global_TabSetTileDirs( int tab, CScriptArray* dir_na
 void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, CScriptString* sub_tab, CScriptArray* item_pids )
 {
     if( tab < 0 || tab >= TAB_COUNT )
-        return;
+        SCRIPT_ERROR_R( "Wrong tab arg." );
     if( !sub_tab || !sub_tab->length() || sub_tab->c_std_str() == DEFAULT_SUB_TAB )
         return;
 
@@ -6204,7 +6212,7 @@ void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, CScriptString* sub_t
 void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, CScriptString* sub_tab, CScriptArray* critter_pids )
 {
     if( tab < 0 || tab >= TAB_COUNT )
-        return;
+        SCRIPT_ERROR_R( "Wrong tab arg." );
     if( !sub_tab || !sub_tab->length() || sub_tab->c_std_str() == DEFAULT_SUB_TAB )
         return;
 
@@ -6260,17 +6268,21 @@ void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, CScriptString* su
 void FOMapper::SScriptFunc::Global_TabDelete( int tab )
 {
     if( tab < 0 || tab >= TAB_COUNT )
-        return;
+        SCRIPT_ERROR_R( "Wrong tab arg." );
 
     Self->Tabs[ tab ].clear();
     SubTab& stab_default = Self->Tabs[ tab ][ DEFAULT_SUB_TAB ];
     Self->TabsActive[ tab ] = &stab_default;
 }
 
-void FOMapper::SScriptFunc::Global_TabSelect( int tab, CScriptString* sub_tab )
+void FOMapper::SScriptFunc::Global_TabSelect( int tab, CScriptString* sub_tab, bool show )
 {
     if( tab < 0 || tab >= TAB_COUNT )
-        return;
+        SCRIPT_ERROR_R( "Wrong tab arg." );
+
+    if( show )
+        Self->IntSetMode( tab );
+
     auto it = Self->Tabs[ tab ].find( sub_tab && sub_tab->length() ? sub_tab->c_std_str() : DEFAULT_SUB_TAB );
     if( it != Self->Tabs[ tab ].end() )
         Self->TabsActive[ tab ] = &( *it ).second;
@@ -6279,7 +6291,8 @@ void FOMapper::SScriptFunc::Global_TabSelect( int tab, CScriptString* sub_tab )
 void FOMapper::SScriptFunc::Global_TabSetName( int tab, CScriptString* tab_name )
 {
     if( tab < 0 || tab >= INT_MODE_COUNT )
-        return;
+        SCRIPT_ERROR_R( "Wrong tab arg." );
+
     Self->TabsName[ tab ] = ( tab_name ? tab_name->c_std_str() : "" );
 }
 
@@ -6510,16 +6523,42 @@ bool FOMapper::SScriptFunc::Global_GetHexPos( ushort hx, ushort hy, int& x, int&
     return false;
 }
 
-bool FOMapper::SScriptFunc::Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy )
+bool FOMapper::SScriptFunc::Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface )
 {
     ushort hx_ = 0, hy_ = 0;
-    if( Self->GetMouseHex( hx_, hy_ ) )
+    if( Self->GetCurHex( hx_, hy_, ignore_interface ) )
     {
         hx = hx_;
         hy = hy_;
         return true;
     }
     return false;
+}
+
+MapObject* FOMapper::SScriptFunc::Global_GetMonitorObject( int x, int y, bool ignore_interface )
+{
+    if( !Self->HexMngr.IsMapLoaded() )
+        SCRIPT_ERROR_R0( "Map not loaded." );
+
+    if( !ignore_interface && Self->IsCurInInterface() )
+        return NULL;
+
+    ItemHex*   item;
+    CritterCl* cr;
+    Self->HexMngr.GetSmthPixel( GameOpt.MouseX, GameOpt.MouseY, item, cr );
+
+    MapObject* mobj = NULL;
+    if( item )
+    {
+        mobj = Self->FindMapObject( item->GetHexX(), item->GetHexY(), MAP_OBJECT_ITEM, item->GetProtoId(), false );
+        if( !mobj )
+            mobj = Self->FindMapObject( item->GetHexX(), item->GetHexY(), MAP_OBJECT_SCENERY, item->GetProtoId(), false );
+    }
+    else if( cr )
+    {
+        mobj = Self->FindMapObject( cr->GetHexX(), cr->GetHexY(), MAP_OBJECT_CRITTER, cr->Flags, false );
+    }
+    return mobj;
 }
 
 uint FOMapper::SScriptFunc::Global_GetAngelScriptProperty( int property )
@@ -6608,6 +6647,49 @@ bool FOMapper::SScriptFunc::Global_LoadFont( int font_index, CScriptString& font
 void FOMapper::SScriptFunc::Global_SetDefaultFont( int font, uint color )
 {
     SprMngr.SetDefaultFont( font, color );
+}
+
+void FOMapper::SScriptFunc::Global_MouseClick( int x, int y, int button, int cursor )
+{
+    Self->MouseEventsLocker.Lock();
+    IntVec prev_events = Self->MouseEvents;
+    Self->MouseEvents.clear();
+    int    prev_x = GameOpt.MouseX;
+    int    prev_y = GameOpt.MouseY;
+    int    prev_cursor = Self->CurMode;
+    GameOpt.MouseX = x;
+    GameOpt.MouseY = y;
+    Self->CurMode = cursor;
+    Self->MouseEvents.push_back( FL_PUSH );
+    Self->MouseEvents.push_back( button );
+    Self->MouseEvents.push_back( 0 );
+    Self->MouseEvents.push_back( FL_RELEASE );
+    Self->MouseEvents.push_back( button );
+    Self->MouseEvents.push_back( 0 );
+    Self->ParseMouse();
+    Self->MouseEvents = prev_events;
+    GameOpt.MouseX = prev_x;
+    GameOpt.MouseY = prev_y;
+    Self->CurMode = prev_cursor;
+    Self->MouseEventsLocker.Unlock();
+}
+
+void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2 )
+{
+    Self->KeyboardEventsLocker.Lock();
+    IntVec prev_events = Self->KeyboardEvents;
+    Self->KeyboardEvents.clear();
+    Self->KeyboardEvents.push_back( FL_KEYDOWN );
+    Self->KeyboardEvents.push_back( key1 );
+    Self->KeyboardEvents.push_back( FL_KEYDOWN );
+    Self->KeyboardEvents.push_back( key2 );
+    Self->KeyboardEvents.push_back( FL_KEYUP );
+    Self->KeyboardEvents.push_back( key2 );
+    Self->KeyboardEvents.push_back( FL_KEYUP );
+    Self->KeyboardEvents.push_back( key1 );
+    Self->ParseKeyboard();
+    Self->KeyboardEvents = prev_events;
+    Self->KeyboardEventsLocker.Unlock();
 }
 
 uint FOMapper::SScriptFunc::Global_LoadSprite( CScriptString& spr_name, int path_index )

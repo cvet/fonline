@@ -407,10 +407,8 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void DropTimers()", asFUN
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool MoveRandom()", asFUNCTION( BIND_CLASS Crit_MoveRandom ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool MoveToDir(uint8 dir)", asFUNCTION( BIND_CLASS Crit_MoveToDir ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToHex(uint16 hexX, uint16 hexY, uint8 dir)", asFUNCTION( BIND_CLASS Crit_TransitToHex ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToMap(uint mapId, uint16 hexX, uint16 hexY, uint8 dir)", asFUNCTION( BIND_CLASS Crit_TransitToMapHex ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToMap(uint mapId, uint16 hexX, uint16 hexY, uint8 dir, bool withGroup)", asFUNCTION( BIND_CLASS Crit_TransitToMapHexEx ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToMap(uint mapId, int entireNum)", asFUNCTION( BIND_CLASS Crit_TransitToMapEntire ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToMap(uint mapId, int entireNum, bool withGroup)", asFUNCTION( BIND_CLASS Crit_TransitToMapEntireEx ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToMap(uint mapId, uint16 hexX, uint16 hexY, uint8 dir, bool withGroup = false)", asFUNCTION( BIND_CLASS Crit_TransitToMapHex ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToMap(uint mapId, int entireNum, bool withGroup = false)", asFUNCTION( BIND_CLASS Crit_TransitToMapEntire ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToGlobal(bool requestGroup)", asFUNCTION( BIND_CLASS Crit_TransitToGlobal ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToGlobal(Critter@[]& group)", asFUNCTION( BIND_CLASS Crit_TransitToGlobalWithGroup ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToGlobalGroup(uint critterId)", asFUNCTION( BIND_CLASS Crit_TransitToGlobalGroup ), asCALL_CDECL_OBJFIRST ) );
@@ -1029,9 +1027,9 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void GetHardcodedScreenPos(int scr
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawHardcodedScreen(int screen)", asFUNCTION( BIND_CLASS Global_DrawHardcodedScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetKeybLang()", asFUNCTION( BIND_CLASS Global_GetKeybLang ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHexPos ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy)", asFUNCTION( BIND_CLASS Global_GetMonitorHex ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "ItemCl@+ GetMonitorItem(int x, int y)", asFUNCTION( BIND_CLASS Global_GetMonitorItem ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "CritterCl@+ GetMonitorCritter(int x, int y)", asFUNCTION( BIND_CLASS Global_GetMonitorCritter ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorHex ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "ItemCl@+ GetMonitorItem(int x, int y, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorItem ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "CritterCl@+ GetMonitorCritter(int x, int y, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorCritter ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint16 GetMapWidth()", asFUNCTION( BIND_CLASS Global_GetMapWidth ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint16 GetMapHeight()", asFUNCTION( BIND_CLASS Global_GetMapHeight ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetCurrentCursor()", asFUNCTION( BIND_CLASS Global_GetCurrentCursor ), asCALL_CDECL ) );
@@ -1046,6 +1044,8 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadFont(int font, string& fo
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetDefaultFont(int font, uint color)", asFUNCTION( BIND_CLASS Global_SetDefaultFont ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetEffect(int effectType, int effectSubtype, string@+ effectName)", asFUNCTION( BIND_CLASS Global_SetEffect ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RefreshMap(bool onlyTiles, bool onlyRoof, bool onlyLight)", asFUNCTION( BIND_CLASS Global_RefreshMap ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MouseClick(int x, int y, int button, int cursor)", asFUNCTION( BIND_CLASS Global_MouseClick ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void KeyboardPress(uint8 key1, uint8 key2)", asFUNCTION( BIND_CLASS Global_KeyboardPress ), asCALL_CDECL ) );
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ConsoleActive", &BIND_CLASS ConsoleActive ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GmapActive", &BIND_CLASS GmapActive ) );
@@ -1369,7 +1369,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void TabSetTileDirs(int tab, strin
 BIND_ASSERT( engine->RegisterGlobalFunction( "void TabSetItemPids(int tab, string@+ subTab, uint16[]@+ itemPids)", asFUNCTION( BIND_CLASS Global_TabSetItemPids ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void TabSetCritterPids(int tab, string@+ subTab, uint16[]@+ critterPids)", asFUNCTION( BIND_CLASS Global_TabSetCritterPids ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void TabDelete(int tab)", asFUNCTION( BIND_CLASS Global_TabDelete ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void TabSelect(int tab, string@+ subTab)", asFUNCTION( BIND_CLASS Global_TabSelect ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void TabSelect(int tab, string@+ subTab, bool show = false)", asFUNCTION( BIND_CLASS Global_TabSelect ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void TabSetName(int tab, string@+ tabName)", asFUNCTION( BIND_CLASS Global_TabSetName ), asCALL_CDECL ) );
 
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanWalk(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanWalk ), asCALL_CDECL ) );
@@ -1381,6 +1381,53 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "int GetCritterAnimType(uint crType
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCritterAlias(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterAlias ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetCritterTypeName(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterTypeName ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetCritterSoundName(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterSoundName ), asCALL_CDECL ) );
+
+BIND_ASSERT( engine->RegisterGlobalFunction( "void GetHexCoord(uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist)", asFUNCTION( BIND_CLASS Global_GetHexInPath ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)", asFUNCTION( BIND_CLASS Global_GetPathLengthHex ), asCALL_CDECL ) );
+
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(string& text)", asFUNCTION( BIND_CLASS Global_Message ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_MessageMsg ), asCALL_CDECL ) );
+
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MapMessage(string& text, uint16 hx, uint16 hy, uint timeMs, uint color, bool fade, int offsX, int offsY)", asFUNCTION( BIND_CLASS Global_MapMessage ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetMsgStr(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_GetMsgStr ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetMsgStr(int textMsg, uint strNum, uint skipCount)", asFUNCTION( BIND_CLASS Global_GetMsgStrSkip ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetMsgStrNumUpper(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_GetMsgStrNumUpper ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetMsgStrNumLower(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_GetMsgStrNumLower ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetMsgStrCount(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_GetMsgStrCount ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsMsgStr(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_IsMsgStr ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "string@ ReplaceText(const string& text, const string& replace, const string& str)", asFUNCTION( BIND_CLASS Global_ReplaceTextStr ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "string@ ReplaceText(const string& text, const string& replace, int i)", asFUNCTION( BIND_CLASS Global_ReplaceTextInt ), asCALL_CDECL ) );
+
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveScreen(uint16 hexX, uint16 hexY, uint speed)", asFUNCTION( BIND_CLASS Global_MoveScreen ), asCALL_CDECL ) );
+
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(string& name, int pathIndex)", asFUNCTION( BIND_CLASS Global_LoadSprite ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(uint nameHash, uint8 dir)", asFUNCTION( BIND_CLASS Global_LoadSpriteHash ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteWidth(uint sprId, int sprIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteWidth ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteHeight(uint sprId, int sprIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteHeight ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetSpriteCount(uint sprId)", asFUNCTION( BIND_CLASS Global_GetSpriteCount ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void GetTextInfo(string& text, int w, int h, int font, int flags, int& tw, int& th, int& lines)", asFUNCTION( BIND_CLASS Global_GetTextInfo ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color)", asFUNCTION( BIND_CLASS Global_DrawSprite ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color, bool applyOffsets)", asFUNCTION( BIND_CLASS Global_DrawSpriteOffs ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color)", asFUNCTION( BIND_CLASS Global_DrawSpriteSize ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color, bool applyOffsets)", asFUNCTION( BIND_CLASS Global_DrawSpriteSizeOffs ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawText(string& text, int x, int y, int w, int h, uint color, int font, int flags)", asFUNCTION( BIND_CLASS Global_DrawText ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawPrimitive(int primitiveType, int[]& data)", asFUNCTION( BIND_CLASS Global_DrawPrimitive ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSprite(uint16 hx, uint16 hy, uint16 effectPid, uint sprId, int sprIndex, int offsX, int offsY)", asFUNCTION( BIND_CLASS Global_DrawMapSprite ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter2d(uint crType, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter2d ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter3d(uint instance, uint crType, uint anim1, uint anim2, int[]@+ layers, float[]@+ position, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter3d ), asCALL_CDECL ) );
+
+BIND_ASSERT( engine->RegisterGlobalFunction( "int GetKeybLang()", asFUNCTION( BIND_CLASS Global_GetKeybLang ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHexPos ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorHex ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "MapObject@+ GetMonitorObject(int x, int y, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorObject ), asCALL_CDECL ) );
+
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps)", asFUNCTION( BIND_CLASS Global_MoveHexByDir ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetIfaceIniStr(string& key)", asFUNCTION( BIND_CLASS Global_GetIfaceIniStr ), asCALL_CDECL ) );
+
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadFont(int font, string& fontFileName)", asFUNCTION( BIND_CLASS Global_LoadFont ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void SetDefaultFont(int font, uint color)", asFUNCTION( BIND_CLASS Global_SetDefaultFont ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MouseClick(int x, int y, int button, int cursor)", asFUNCTION( BIND_CLASS Global_MouseClick ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void KeyboardPress(uchar key1, uchar key2)", asFUNCTION( BIND_CLASS Global_KeyboardPress ), asCALL_CDECL ) );
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "string __ClientPath", &GameOpt.ClientPath ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "string __ServerPath", &GameOpt.ServerPath ) );
@@ -1479,52 +1526,6 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __CritterFidgetTime", &GameOp
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Anim2CombatBegin", &GameOpt.Anim2CombatBegin ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Anim2CombatIdle", &GameOpt.Anim2CombatIdle ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Anim2CombatEnd", &GameOpt.Anim2CombatEnd ) );
-#endif
-
-#if /*defined(BIND_CLIENT) || */ defined ( BIND_MAPPER )
-BIND_ASSERT( engine->RegisterGlobalFunction( "void GetHexCoord(uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist)", asFUNCTION( BIND_CLASS Global_GetHexInPath ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)", asFUNCTION( BIND_CLASS Global_GetPathLengthHex ), asCALL_CDECL ) );
-
-BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(string& text)", asFUNCTION( BIND_CLASS Global_Message ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_MessageMsg ), asCALL_CDECL ) );
-
-BIND_ASSERT( engine->RegisterGlobalFunction( "void MapMessage(string& text, uint16 hx, uint16 hy, uint timeMs, uint color, bool fade, int offsX, int offsY)", asFUNCTION( BIND_CLASS Global_MapMessage ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetMsgStr(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_GetMsgStr ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetMsgStr(int textMsg, uint strNum, uint skipCount)", asFUNCTION( BIND_CLASS Global_GetMsgStrSkip ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetMsgStrNumUpper(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_GetMsgStrNumUpper ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetMsgStrNumLower(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_GetMsgStrNumLower ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetMsgStrCount(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_GetMsgStrCount ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsMsgStr(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_IsMsgStr ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "string@ ReplaceText(const string& text, const string& replace, const string& str)", asFUNCTION( BIND_CLASS Global_ReplaceTextStr ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "string@ ReplaceText(const string& text, const string& replace, int i)", asFUNCTION( BIND_CLASS Global_ReplaceTextInt ), asCALL_CDECL ) );
-
-BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveScreen(uint16 hexX, uint16 hexY, uint speed)", asFUNCTION( BIND_CLASS Global_MoveScreen ), asCALL_CDECL ) );
-
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(string& name, int pathIndex)", asFUNCTION( BIND_CLASS Global_LoadSprite ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(uint nameHash, uint8 dir)", asFUNCTION( BIND_CLASS Global_LoadSpriteHash ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteWidth(uint sprId, int sprIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteWidth ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteHeight(uint sprId, int sprIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteHeight ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetSpriteCount(uint sprId)", asFUNCTION( BIND_CLASS Global_GetSpriteCount ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void GetTextInfo(string& text, int w, int h, int font, int flags, int& tw, int& th, int& lines)", asFUNCTION( BIND_CLASS Global_GetTextInfo ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color)", asFUNCTION( BIND_CLASS Global_DrawSprite ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color, bool applyOffsets)", asFUNCTION( BIND_CLASS Global_DrawSpriteOffs ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color)", asFUNCTION( BIND_CLASS Global_DrawSpriteSize ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color, bool applyOffsets)", asFUNCTION( BIND_CLASS Global_DrawSpriteSizeOffs ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawText(string& text, int x, int y, int w, int h, uint color, int font, int flags)", asFUNCTION( BIND_CLASS Global_DrawText ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawPrimitive(int primitiveType, int[]& data)", asFUNCTION( BIND_CLASS Global_DrawPrimitive ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSprite(uint16 hx, uint16 hy, uint16 effectPid, uint sprId, int sprIndex, int offsX, int offsY)", asFUNCTION( BIND_CLASS Global_DrawMapSprite ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter2d(uint crType, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter2d ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter3d(uint instance, uint crType, uint anim1, uint anim2, int[]@+ layers, float[]@+ position, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter3d ), asCALL_CDECL ) );
-
-BIND_ASSERT( engine->RegisterGlobalFunction( "int GetKeybLang()", asFUNCTION( BIND_CLASS Global_GetKeybLang ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHexPos ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy)", asFUNCTION( BIND_CLASS Global_GetMonitorHex ), asCALL_CDECL ) );
-
-BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps)", asFUNCTION( BIND_CLASS Global_MoveHexByDir ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetIfaceIniStr(string& key)", asFUNCTION( BIND_CLASS Global_GetIfaceIniStr ), asCALL_CDECL ) );
-
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadFont(int font, string& fontFileName)", asFUNCTION( BIND_CLASS Global_LoadFont ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void SetDefaultFont(int font, uint color)", asFUNCTION( BIND_CLASS Global_SetDefaultFont ), asCALL_CDECL ) );
 #endif
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MapHexagonal", &GameOpt.MapHexagonal ) );

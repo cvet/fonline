@@ -225,11 +225,9 @@ public:
 
     UCharVec MoveDirs;
     ushort   MoveLastHx, MoveLastHy;
-    ushort   TargetX, TargetY;
-    bool GetMouseHex();
 
-    uint PingTime, PingTick, PingCallTick;
-    uint FPS;
+    uint     PingTime, PingTick, PingCallTick;
+    uint     FPS;
 
     // Sound
     void SoundProcess();
@@ -628,9 +626,9 @@ public:
         static void           Global_DrawHardcodedScreen( int screen );
         static int            Global_GetKeybLang() { return Keyb::Lang; }
         static bool           Global_GetHexPos( ushort hx, ushort hy, int& x, int& y );
-        static bool           Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy );
-        static Item*          Global_GetMonitorItem( int x, int y );
-        static CritterCl*     Global_GetMonitorCritter( int x, int y );
+        static bool           Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface );
+        static Item*          Global_GetMonitorItem( int x, int y, bool ignore_interface );
+        static CritterCl*     Global_GetMonitorCritter( int x, int y, bool ignore_interface );
         static ushort         Global_GetMapWidth();
         static ushort         Global_GetMapHeight();
         static int            Global_GetCurrentCursor();
@@ -645,6 +643,8 @@ public:
         static void           Global_SetDefaultFont( int font, uint color );
         static void           Global_SetEffect( int effect_type, int effect_subtype, CScriptString* effect_name );
         static void           Global_RefreshMap( bool only_tiles, bool only_roof, bool only_light );
+        static void           Global_MouseClick( int x, int y, int button, int cursor );
+        static void           Global_KeyboardPress( uchar key1, uchar key2 );
 
         static bool&          ConsoleActive;
         static bool&          GmapActive, & GmapWait;
@@ -676,16 +676,8 @@ public:
     bool IsCurInRect( const Rect& rect, int ax, int ay )                { return !rect.IsZero() && ( GameOpt.MouseX >= rect.L + ax && GameOpt.MouseY >= rect.T + ay && GameOpt.MouseX <= rect.R + ax && GameOpt.MouseY <= rect.B + ay ); }
     bool IsCurInRect( const Rect& rect )                                { return !rect.IsZero() && ( GameOpt.MouseX >= rect.L && GameOpt.MouseY >= rect.T && GameOpt.MouseX <= rect.R && GameOpt.MouseY <= rect.B ); }
     bool IsCurInRectNoTransp( uint spr_id, Rect& rect, int ax, int ay ) { return IsCurInRect( rect, ax, ay ) && SprMngr.IsPixNoTransp( spr_id, GameOpt.MouseX - rect.L - ax, GameOpt.MouseY - rect.T - ay, false ); }
-    int  GetSprCX( uint spr_id )
-    {
-        SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
-        return si ? ( si->Width / 2 ) + si->OffsX : 0;
-    };
-    int GetSprCY( uint spr_id )
-    {
-        SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
-        return si ? ( si->Height / 2 ) + si->OffsY : 0;
-    };
+    bool IsCurInInterface();
+    bool GetCurHex( ushort& hx, ushort& hy, bool ignore_interface );
 
     void DrawIndicator( Rect& rect, PointVec& points, uint color, int procent, uint& tick, bool is_vertical, bool from_top_or_left );
 

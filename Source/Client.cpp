@@ -7224,21 +7224,22 @@ void FOClient::SetGameColor( uint color )
     HexMngr.RefreshMap();
 }
 
-bool FOClient::GetMouseHex()
+bool FOClient::IsCurInInterface()
 {
-    TargetX = 0;
-    TargetY = 0;
+    if( IsCurInRectNoTransp( IntMainPic->GetCurSprId(), IntWMain, 0, 0 ) )
+        return true;
+    if( IntAddMess && IsCurInRectNoTransp( IntPWAddMess->GetCurSprId(), IntWAddMess, 0, 0 ) )
+        return true;
+    // if( ConsoleActive && IsCurInRectNoTransp( ConsolePic, Main, 0, 0 ) ) // Todo: need check console?
+    return false;
+}
 
-    if( IntVisible )
-    {
-        if( IsCurInRectNoTransp( IntMainPic->GetCurSprId(), IntWMain, 0, 0 ) )
-            return false;
-        if( IntAddMess && IsCurInRectNoTransp( IntPWAddMess->GetCurSprId(), IntWAddMess, 0, 0 ) )
-            return false;
-    }
-
-    // if(ConsoleActive && IsCurInRectNoTransp(ConsolePic,Main,0,0)) //TODO:
-    return HexMngr.GetHexPixel( GameOpt.MouseX, GameOpt.MouseY, TargetX, TargetY );
+bool FOClient::GetCurHex( ushort& hx, ushort& hy, bool ignore_interface )
+{
+    hx = hy = 0;
+    if( !ignore_interface && IsCurInInterface() )
+        return false;
+    return HexMngr.GetHexPixel( GameOpt.MouseX, GameOpt.MouseY, hx, hy );
 }
 
 bool FOClient::RegCheckData( CritterCl* newcr )
@@ -11249,6 +11250,49 @@ void FOClient::SScriptFunc::Global_RefreshMap( bool only_tiles, bool only_roof, 
     }
 }
 
+void FOClient::SScriptFunc::Global_MouseClick( int x, int y, int button, int cursor )
+{
+    Self->MouseEventsLocker.Lock();
+    IntVec prev_events = Self->MouseEvents;
+    Self->MouseEvents.clear();
+    int    prev_x = GameOpt.MouseX;
+    int    prev_y = GameOpt.MouseY;
+    int    prev_cursor = Self->CurMode;
+    GameOpt.MouseX = x;
+    GameOpt.MouseY = y;
+    Self->CurMode = cursor;
+    Self->MouseEvents.push_back( FL_PUSH );
+    Self->MouseEvents.push_back( button );
+    Self->MouseEvents.push_back( 0 );
+    Self->MouseEvents.push_back( FL_RELEASE );
+    Self->MouseEvents.push_back( button );
+    Self->MouseEvents.push_back( 0 );
+    Self->ParseMouse();
+    Self->MouseEvents = prev_events;
+    GameOpt.MouseX = prev_x;
+    GameOpt.MouseY = prev_y;
+    Self->CurMode = prev_cursor;
+    Self->MouseEventsLocker.Unlock();
+}
+
+void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2 )
+{
+    Self->KeyboardEventsLocker.Lock();
+    IntVec prev_events = Self->KeyboardEvents;
+    Self->KeyboardEvents.clear();
+    Self->KeyboardEvents.push_back( FL_KEYDOWN );
+    Self->KeyboardEvents.push_back( key1 );
+    Self->KeyboardEvents.push_back( FL_KEYDOWN );
+    Self->KeyboardEvents.push_back( key2 );
+    Self->KeyboardEvents.push_back( FL_KEYUP );
+    Self->KeyboardEvents.push_back( key2 );
+    Self->KeyboardEvents.push_back( FL_KEYUP );
+    Self->KeyboardEvents.push_back( key1 );
+    Self->ParseKeyboard();
+    Self->KeyboardEvents = prev_events;
+    Self->KeyboardEventsLocker.Unlock();
+}
+
 void FOClient::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds )
 {
     DateTime dt;
@@ -12007,39 +12051,38 @@ bool FOClient::SScriptFunc::Global_GetHexPos( ushort hx, ushort hy, int& x, int&
     return false;
 }
 
-bool FOClient::SScriptFunc::Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy )
+bool FOClient::SScriptFunc::Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface )
 {
-    if( Self->GetMouseHex() )
+    ushort hx_, hy_;
+    if( Self->GetCurHex( hx_, hy_, ignore_interface ) )
     {
-        hx = Self->TargetX;
-        hy = Self->TargetY;
+        hx = hx_;
+        hy = hy_;
         return true;
     }
     return false;
 }
 
-Item* FOClient::SScriptFunc::Global_GetMonitorItem( int x, int y )
+Item* FOClient::SScriptFunc::Global_GetMonitorItem( int x, int y, bool ignore_interface )
 {
-    if( Self->GetMouseHex() )
-    {
-        ItemHex*   item;
-        CritterCl* cr;
-        Self->HexMngr.GetSmthPixel( x, y, item, cr );
-        return item;
-    }
-    return NULL;
+    if( !ignore_interface && Self->IsCurInInterface() )
+        return NULL;
+
+    ItemHex*   item;
+    CritterCl* cr;
+    Self->HexMngr.GetSmthPixel( x, y, item, cr );
+    return item;
 }
 
-CritterCl* FOClient::SScriptFunc::Global_GetMonitorCritter( int x, int y )
+CritterCl* FOClient::SScriptFunc::Global_GetMonitorCritter( int x, int y, bool ignore_interface )
 {
-    if( Self->GetMouseHex() )
-    {
-        ItemHex*   item;
-        CritterCl* cr;
-        Self->HexMngr.GetSmthPixel( x, y, item, cr );
-        return cr;
-    }
-    return NULL;
+    if( !ignore_interface && Self->IsCurInInterface() )
+        return NULL;
+
+    ItemHex*   item;
+    CritterCl* cr;
+    Self->HexMngr.GetSmthPixel( x, y, item, cr );
+    return cr;
 }
 
 ushort FOClient::SScriptFunc::Global_GetMapWidth()

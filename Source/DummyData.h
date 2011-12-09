@@ -592,9 +592,7 @@ struct BindClass
     static void Crit_MoveToDir()                {}
     static void Crit_TransitToHex()             {}
     static void Crit_TransitToMapHex()          {}
-    static void Crit_TransitToMapHexEx()        {}
     static void Crit_TransitToMapEntire()       {}
-    static void Crit_TransitToMapEntireEx()     {}
     static void Crit_TransitToGlobal()          {}
     static void Crit_TransitToGlobalWithGroup() {}
     static void Crit_TransitToGlobalGroup()     {}
@@ -1116,6 +1114,8 @@ struct BindClass
     static void Global_GetCritterAlias()     {}
     static void Global_GetCritterTypeName()  {}
     static void Global_GetCritterSoundName() {}
+
+    static void Global_GetMonitorObject() {}
     #endif
 
     #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
@@ -1157,6 +1157,8 @@ struct BindClass
     static void Global_GetMonitorHex()      {}
     static void Global_LoadFont()           {}
     static void Global_SetDefaultFont()     {}
+    static void Global_MouseClick()         {}
+    static void Global_KeyboardPress()      {}
     #endif
 
     static void Global_GetLastError()           {}

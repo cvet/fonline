@@ -560,10 +560,8 @@ public:
         static bool          Crit_MoveRandom( Critter* cr );
         static bool          Crit_MoveToDir( Critter* cr, uchar direction );
         static bool          Crit_TransitToHex( Critter* cr, ushort hx, ushort hy, uchar dir );
-        static bool          Crit_TransitToMapHex( Critter* cr, uint map_id, ushort hx, ushort hy, uchar dir );
-        static bool          Crit_TransitToMapHexEx( Critter* cr, uint map_id, ushort hx, ushort hy, uchar dir, bool with_group );
-        static bool          Crit_TransitToMapEntire( Critter* cr, uint map_id, int entire );
-        static bool          Crit_TransitToMapEntireEx( Critter* cr, uint map_id, int entire, bool with_group );
+        static bool          Crit_TransitToMapHex( Critter* cr, uint map_id, ushort hx, ushort hy, uchar dir, bool with_group );
+        static bool          Crit_TransitToMapEntire( Critter* cr, uint map_id, int entire, bool with_group );
         static bool          Crit_TransitToGlobal( Critter* cr, bool request_group );
         static bool          Crit_TransitToGlobalWithGroup( Critter* cr, CScriptArray& group );
         static bool          Crit_TransitToGlobalGroup( Critter* cr, uint critter_id );

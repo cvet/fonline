@@ -2072,17 +2072,18 @@ void FOClient::ConsoleDraw()
 
         if( GameOpt.DebugInfo )
         {
-            GetMouseHex();
+            ushort hx, hy;
+            GetCurHex( hx, hy, false );
             PointF p = Animation3d::Convert2dTo3d( GameOpt.MouseX, GameOpt.MouseY );
             SprMngr.DrawStr( Rect( 250, 5, 450, 300 ), Str::FormatBuf(
                                  "cr_hx<%u>, cr_hy<%u>,\nhx<%u>, hy<%u>,\ncur_x<%d>, cur_y<%d>\nCond<%u>\nox<%d>, oy<%d>\nFarDir<%d>\n3dXY<%f,%f>",
-                                 Chosen->HexX, Chosen->HexY, TargetX, TargetY, GameOpt.MouseX, GameOpt.MouseY, Chosen->Cond, GameOpt.ScrOx, GameOpt.ScrOy,
-                                 GetFarDir( Chosen->HexX, Chosen->HexY, TargetX, TargetY ), p.X, p.Y
+                                 Chosen->HexX, Chosen->HexY, hx, hy, GameOpt.MouseX, GameOpt.MouseY, Chosen->Cond, GameOpt.ScrOx, GameOpt.ScrOy,
+                                 GetFarDir( Chosen->HexX, Chosen->HexY, hx, hy ), p.X, p.Y
                                  ), FT_CENTERX, COLOR_XRGB( 255, 240, 0 ) );
 
             SprMngr.DrawStr( Rect( 450, 5, 650, 300 ), Str::FormatBuf(
                                  "Anim info: cur_id %d, cur_ox %d, cur_oy %d\nFileld offset: x<%d>, y<%d>",
-                                 Chosen->SprId, Chosen->SprOx, Chosen->SprOy, HexMngr.GetField( TargetX, TargetY ).ScrX, HexMngr.GetField( TargetX, TargetY ).ScrY
+                                 Chosen->SprId, Chosen->SprOx, Chosen->SprOy, HexMngr.GetField( hx, hy ).ScrX, HexMngr.GetField( hx, hy ).ScrY
                                  ), FT_CENTERX, COLOR_XRGB( 255, 240, 0 ) );
 
             SprMngr.DrawStr( Rect( 650, 5, 800, 300 ), Str::FormatBuf(
@@ -2218,8 +2219,11 @@ void FOClient::GameDraw()
     // Move cursor
     if( IsCurMode( CUR_MOVE ) )
     {
-        if( ( GameOpt.ScrollMouseRight || GameOpt.ScrollMouseLeft || GameOpt.ScrollMouseUp || GameOpt.ScrollMouseDown ) || !GetMouseHex() )
+        ushort hx, hy;
+        if( ( GameOpt.ScrollMouseRight || GameOpt.ScrollMouseLeft || GameOpt.ScrollMouseUp || GameOpt.ScrollMouseDown ) || !GetCurHex( hx, hy, false ) )
+        {
             HexMngr.SetCursorVisible( false );
+        }
         else
         {
             HexMngr.SetCursorVisible( true );
@@ -2567,16 +2571,17 @@ void FOClient::GameLMouseDown()
     else if( IsCurMode( CUR_MOVE ) )
     {
         ActionEvent* act = ( IsAction( CHOSEN_MOVE ) ? &ChosenAction[ 0 ] : NULL );
+        ushort hx, hy;
         if( act && Timer::FastTick() - act->Param[ 5 ] < ( GameOpt.DoubleClickTime ? GameOpt.DoubleClickTime : GetDoubleClickTicks() ) )
         {
             act->Param[ 2 ] = ( GameOpt.AlwaysRun ? 0 : 1 );
             act->Param[ 4 ] = 0;
         }
-        else if( GetMouseHex() && Chosen )
+        else if( GetCurHex( hx, hy, false ) && Chosen )
         {
-            uint dist = DistGame( Chosen->GetHexX(), Chosen->GetHexY(), TargetX, TargetY );
+            uint dist = DistGame( Chosen->GetHexX(), Chosen->GetHexY(), hx, hy );
             bool is_run = ( Keyb::ShiftDwn ? ( !GameOpt.AlwaysRun ) : ( GameOpt.AlwaysRun && dist >= GameOpt.AlwaysRunMoveDist ) );
-            SetAction( CHOSEN_MOVE, TargetX, TargetY, is_run, 0, act ? 0 : 1, Timer::FastTick() );
+            SetAction( CHOSEN_MOVE, hx, hy, is_run, 0, act ? 0 : 1, Timer::FastTick() );
         }
     }
     else if( IsCurMode( CUR_USE_ITEM ) || IsCurMode( CUR_USE_WEAPON ) )
@@ -9608,7 +9613,8 @@ void FOClient::CurDraw()
     }
     break;
     case CUR_MOVE:
-        if( GetMouseHex() )
+        ushort hx, hy;
+        if( GetCurHex( hx, hy, false ) )
             break;
     /*{
             Field& f=HexMngr.HexField[TargetY][TargetX];

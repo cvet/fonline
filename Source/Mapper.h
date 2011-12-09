@@ -20,15 +20,15 @@
 #include "IniParser.h"
 
 // Fonts
-#define FONT_FO                 ( 0 )
-#define FONT_NUM                ( 1 )
-#define FONT_BIG_NUM            ( 2 )
-#define FONT_SAND_NUM           ( 3 )
-#define FONT_SPECIAL            ( 4 )
-#define FONT_DEFAULT            ( 5 )
-#define FONT_THIN               ( 6 )
-#define FONT_FAT                ( 7 )
-#define FONT_BIG                ( 8 )
+#define FONT_FO                        ( 0 )
+#define FONT_NUM                       ( 1 )
+#define FONT_BIG_NUM                   ( 2 )
+#define FONT_SAND_NUM                  ( 3 )
+#define FONT_SPECIAL                   ( 4 )
+#define FONT_DEFAULT                   ( 5 )
+#define FONT_THIN                      ( 6 )
+#define FONT_FAT                       ( 7 )
+#define FONT_BIG                       ( 8 )
 
 typedef vector< CritData* > CritDataVec;
 
@@ -56,7 +56,7 @@ public:
     void ParseKeyboard();
     void ParseMouse();
 
-    #define DRAW_CR_INFO_MAX    ( 3 )
+    #define DRAW_CR_INFO_MAX           ( 3 )
     int DrawCrExtInfo;
 
     // Game color
@@ -95,10 +95,10 @@ public:
     };
     typedef vector< IfaceAnim* > IfaceAnimVec;
 
-    #define ANIMRUN_TO_END      ( 0x0001 )
-    #define ANIMRUN_FROM_END    ( 0x0002 )
-    #define ANIMRUN_CYCLE       ( 0x0004 )
-    #define ANIMRUN_STOP        ( 0x0008 )
+    #define ANIMRUN_TO_END             ( 0x0001 )
+    #define ANIMRUN_FROM_END           ( 0x0002 )
+    #define ANIMRUN_CYCLE              ( 0x0004 )
+    #define ANIMRUN_STOP               ( 0x0008 )
     #define ANIMRUN_SET_FRM( frm )    ( ( uint( uchar( ( frm ) + 1 ) ) ) << 16 )
 
     IfaceAnimVec Animations;
@@ -115,10 +115,9 @@ public:
 
     // Cursor
     int CurMode;
-    #define CUR_MODE_DEF        ( 0 )
-    #define CUR_MODE_MOVE       ( 1 )
-    #define CUR_MODE_DRAW       ( 2 )
-    #define MAX_CUR_MODES       ( 3 )
+    #define CUR_MODE_DEFAULT           ( 0 )
+    #define CUR_MODE_MOVE_SELECTION    ( 1 )
+    #define CUR_MODE_PLACE_OBJECT      ( 2 )
 
     AnyFrames* CurPDef, * CurPHand;
 
@@ -126,40 +125,41 @@ public:
     void CurRMouseUp();
     void CurMMouseDown();
 
-    bool GetMouseHex( ushort& hx, ushort& hy );
     bool IsCurInRect( Rect& rect, int ax, int ay )                      { return ( GameOpt.MouseX >= rect[ 0 ] + ax && GameOpt.MouseY >= rect[ 1 ] + ay && GameOpt.MouseX <= rect[ 2 ] + ax && GameOpt.MouseY <= rect[ 3 ] + ay ); }
     bool IsCurInRect( Rect& rect )                                      { return ( GameOpt.MouseX >= rect[ 0 ] && GameOpt.MouseY >= rect[ 1 ] && GameOpt.MouseX <= rect[ 2 ] && GameOpt.MouseY <= rect[ 3 ] ); }
     bool IsCurInRectNoTransp( uint spr_id, Rect& rect, int ax, int ay ) { return IsCurInRect( rect, ax, ay ) && SprMngr.IsPixNoTransp( spr_id, GameOpt.MouseX - rect.L - ax, GameOpt.MouseY - rect.T - ay, false ); }
+    bool IsCurInInterface();
+    bool GetCurHex( ushort& hx, ushort& hy, bool ignore_interface );
 
     int IntMode;
-    #define INT_MODE_CUSTOM0    ( 0 )
-    #define INT_MODE_CUSTOM1    ( 1 )
-    #define INT_MODE_CUSTOM2    ( 2 )
-    #define INT_MODE_CUSTOM3    ( 3 )
-    #define INT_MODE_CUSTOM4    ( 4 )
-    #define INT_MODE_CUSTOM5    ( 5 )
-    #define INT_MODE_CUSTOM6    ( 6 )
-    #define INT_MODE_CUSTOM7    ( 7 )
-    #define INT_MODE_CUSTOM8    ( 8 )
-    #define INT_MODE_CUSTOM9    ( 9 )
-    #define INT_MODE_ITEM       ( 10 )
-    #define INT_MODE_TILE       ( 11 )
-    #define INT_MODE_CRIT       ( 12 )
-    #define INT_MODE_FAST       ( 13 )
-    #define INT_MODE_IGNORE     ( 14 )
-    #define INT_MODE_INCONT     ( 15 )
-    #define INT_MODE_MESS       ( 16 )
-    #define INT_MODE_LIST       ( 17 )
-    #define INT_MODE_COUNT      ( 18 )
-    #define TAB_COUNT           ( 15 )
+    #define INT_MODE_CUSTOM0           ( 0 )
+    #define INT_MODE_CUSTOM1           ( 1 )
+    #define INT_MODE_CUSTOM2           ( 2 )
+    #define INT_MODE_CUSTOM3           ( 3 )
+    #define INT_MODE_CUSTOM4           ( 4 )
+    #define INT_MODE_CUSTOM5           ( 5 )
+    #define INT_MODE_CUSTOM6           ( 6 )
+    #define INT_MODE_CUSTOM7           ( 7 )
+    #define INT_MODE_CUSTOM8           ( 8 )
+    #define INT_MODE_CUSTOM9           ( 9 )
+    #define INT_MODE_ITEM              ( 10 )
+    #define INT_MODE_TILE              ( 11 )
+    #define INT_MODE_CRIT              ( 12 )
+    #define INT_MODE_FAST              ( 13 )
+    #define INT_MODE_IGNORE            ( 14 )
+    #define INT_MODE_INCONT            ( 15 )
+    #define INT_MODE_MESS              ( 16 )
+    #define INT_MODE_LIST              ( 17 )
+    #define INT_MODE_COUNT             ( 18 )
+    #define TAB_COUNT                  ( 15 )
 
     int IntHold;
-    #define INT_NONE            ( 0 )
-    #define INT_BUTTON          ( 1 )
-    #define INT_MAIN            ( 2 )
-    #define INT_SELECT          ( 3 )
-    #define INT_OBJECT          ( 4 )
-    #define INT_SUB_TAB         ( 5 )
+    #define INT_NONE                   ( 0 )
+    #define INT_BUTTON                 ( 1 )
+    #define INT_MAIN                   ( 2 )
+    #define INT_SELECT                 ( 3 )
+    #define INT_OBJECT                 ( 4 )
+    #define INT_SUB_TAB                ( 5 )
 
     AnyFrames* IntMainPic, * IntPTab, * IntPSelect, * IntPShow;
     int        IntX, IntY;
@@ -167,8 +167,8 @@ public:
     ushort     SelectHX1, SelectHY1, SelectHX2, SelectHY2;
     int        SelectX, SelectY;
 
-    #define SELECT_TYPE_OLD     ( 0 )
-    #define SELECT_TYPE_NEW     ( 1 )
+    #define SELECT_TYPE_OLD            ( 0 )
+    #define SELECT_TYPE_NEW            ( 1 )
     int  SelectType;
 
     bool IntVisible, IntFix;
@@ -192,7 +192,7 @@ public:
     ProtoMap*      CurProtoMap;
 
     // Tabs
-    #define DEFAULT_SUB_TAB     "000 - all"
+    #define DEFAULT_SUB_TAB            "000 - all"
     struct SubTab
     {
         ProtoItemVec ItemProtos;
@@ -491,7 +491,7 @@ public:
         static void Global_TabSetItemPids( int tab, CScriptString* sub_tab, CScriptArray* item_pids );
         static void Global_TabSetCritterPids( int tab, CScriptString* sub_tab, CScriptArray* critter_pids );
         static void Global_TabDelete( int tab );
-        static void Global_TabSelect( int tab, CScriptString* sub_tab );
+        static void Global_TabSelect( int tab, CScriptString* sub_tab, bool show );
         static void Global_TabSetName( int tab, CScriptString* tab_name );
 
         static ProtoItem*     Global_GetProtoItem( ushort proto_id );
@@ -510,6 +510,8 @@ public:
         static int            Global_GetKeybLang() { return Keyb::Lang; }
         static bool           Global_LoadFont( int font, CScriptString& font_fname );
         static void           Global_SetDefaultFont( int font, uint color );
+        static void           Global_MouseClick( int x, int y, int button, int cursor );
+        static void           Global_KeyboardPress( uchar key1, uchar key2 );
 
         static CScriptString* Global_GetLastError();
         static void           Global_Log( CScriptString& text );
@@ -527,13 +529,14 @@ public:
         static CScriptString* Global_ReplaceTextStr( CScriptString& text, CScriptString& replace, CScriptString& str );
         static CScriptString* Global_ReplaceTextInt( CScriptString& text, CScriptString& replace, int i );
 
-        static uint  Global_GetDistantion( ushort hex_x1, ushort hex_y1, ushort hex_x2, ushort hex_y2 );
-        static uchar Global_GetDirection( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
-        static uchar Global_GetOffsetDir( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset );
-        static void  Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
-        static uint  Global_GetPathLengthHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
-        static bool  Global_GetHexPos( ushort hx, ushort hy, int& x, int& y );
-        static bool  Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy );
+        static uint       Global_GetDistantion( ushort hex_x1, ushort hex_y1, ushort hex_x2, ushort hex_y2 );
+        static uchar      Global_GetDirection( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
+        static uchar      Global_GetOffsetDir( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset );
+        static void       Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
+        static uint       Global_GetPathLengthHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
+        static bool       Global_GetHexPos( ushort hx, ushort hy, int& x, int& y );
+        static bool       Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface );
+        static MapObject* Global_GetMonitorObject( int x, int y, bool ignore_interface );
 
         static uint Global_LoadSprite( CScriptString& spr_name, int path_index );
         static uint Global_LoadSpriteHash( uint name_hash, uchar dir );

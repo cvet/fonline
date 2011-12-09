@@ -1542,12 +1542,7 @@ bool FOServer::SScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, uint map_id, ushort hx, ushort hy, uchar dir )
-{
-    return Crit_TransitToMapHexEx( cr, map_id, hx, hy, dir, false );
-}
-
-bool FOServer::SScriptFunc::Crit_TransitToMapHexEx( Critter* cr, uint map_id, ushort hx, ushort hy, uchar dir, bool with_group )
+bool FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, uint map_id, ushort hx, ushort hy, uchar dir, bool with_group )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -1564,7 +1559,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHexEx( Critter* cr, uint map_id, us
         if( !with_group )
         {
             MapMngr.GM_LeaveGroup( cr );
-            return Crit_TransitToMapHexEx( cr, map_id, hx, hy, dir, true );
+            return Crit_TransitToMapHex( cr, map_id, hx, hy, dir, true );
         }
         if( dir < DIRS_COUNT && cr->Data.Dir != dir )
             cr->Data.Dir = dir;
@@ -1601,12 +1596,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHexEx( Critter* cr, uint map_id, us
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, uint map_id, int entire )
-{
-    return Crit_TransitToMapEntireEx( cr, map_id, entire, false );
-}
-
-bool FOServer::SScriptFunc::Crit_TransitToMapEntireEx( Critter* cr, uint map_id, int entire, bool with_group )
+bool FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, uint map_id, int entire, bool with_group )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -1628,7 +1618,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapEntireEx( Critter* cr, uint map_id,
         if( !with_group )
         {
             MapMngr.GM_LeaveGroup( cr );
-            return Crit_TransitToMapEntireEx( cr, map_id, entire, true );
+            return Crit_TransitToMapEntire( cr, map_id, entire, true );
         }
         if( !cr->GroupMove )
             SCRIPT_ERROR_R0( "Group nullptr." );
