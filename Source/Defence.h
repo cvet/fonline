@@ -5,6 +5,14 @@
 # include <Iphlpapi.h>
 # include <intrin.h>
 # pragma comment(lib,"Iphlpapi.lib")
+#else // FO_LINUX
+# include <fcntl.h>
+# include <linux/hdreg.h>
+# include <net/if.h>
+# include <sys/ioctl.h>
+# ifndef SIOCGIFADDR
+#  error SIOCGIFADDR
+# endif
 #endif
 
 uint UIDDUMMY0 = 0xF145668A;
@@ -78,12 +86,22 @@ uint UIDDUMMY10 = -1;
     UID_DUMMY_CALCS4;                                                        \
     UIDCACHE2[ 0 ] = *result
 #else
-# define GET_UID0( result )                       \
-    result = new uint();                          \
-    *result = 0xAAAAAAAA;                         \
-    UID_FLAGS( *result, 0x00800000, 0x00000400 ); \
-    UID_CALC( *result );                          \
-    UIDCACHE[ 0 ] = *result;                      \
+# define GET_UID0( result )                             \
+    result = new uint();                                \
+    *result = 0;                                        \
+    int fd;                                             \
+    if( fd = open( "/dev/hda", O_RDONLY ) != -1 )       \
+    {                                                   \
+        struct hd_driveid id;                           \
+        if( ioctl( fd, HDIO_GET_IDENTITY, &id ) != -1 ) \
+        {                                               \
+            id.serial_no;                               \
+        }                                               \
+        close( fd );                                    \
+    }                                                   \
+    UID_FLAGS( *result, 0x00800000, 0x00000400 );       \
+    UID_CALC( *result );                                \
+    UIDCACHE[ 0 ] = *result;                            \
     UIDCACHE2[ 0 ] = *result
 #endif
 
@@ -123,36 +141,80 @@ uint UIDDUMMY10 = -1;
     UID_DUMMY_CALCS8;                                                            \
     UIDCACHE2[ 1 ] = *result
 #else
-# define GET_UID1( result )                       \
-    result = new uint();                          \
-    *result = 0xBBBBBBBB;                         \
-    UID_FLAGS( *result, 0x04000000, 0x00200000 ); \
-    UID_CALC( *result );                          \
-    UIDCACHE[ 1 ] = *result;                      \
-    UIDCACHE2[ 1 ] = *result
+# define GET_UID1( result )                                                                            \
+    result = new uint();                                                                               \
+    *result = 0;                                                                                       \
+    UID_DUMMY_CALCS1;                                                                                  \
+    UID_DUMMY_CALCS2;                                                                                  \
+    int d_sd = socket( PF_INET, SOCK_STREAM, 0 );                                                      \
+    UID_DUMMY_CALCS8;                                                                                  \
+    if( d_sd )                                                                                         \
+    {                                                                                                  \
+        UID_DUMMY_CALCS5;                                                                              \
+        ifreq                d_ifreg;                                                                  \
+        struct if_nameindex* d_iflist = if_nameindex();                                                \
+        UID_DUMMY_CALCS9;                                                                              \
+        struct if_nameindex* d_iflist_init = d_iflist;                                                 \
+        for( d_iflist; *(char*) d_iflist; d_iflist++ )                                                 \
+        {                                                                                              \
+            UID_DUMMY_CALCS1;                                                                          \
+            if( strcmp( d_iflist->if_name, "eth0" ) )                                                  \
+            {                                                                                          \
+                if( *(char*) ( d_iflist + 1 ) )                                                        \
+                    continue;                                                                          \
+                else                                                                                   \
+                    d_iflist = d_iflist_init;                                                          \
+            }                                                                                          \
+            strncpy( d_ifreg.ifr_name, d_iflist->if_name, IF_NAMESIZE );                               \
+            UID_DUMMY_CALCS7;                                                                          \
+            if( ioctl( d_sd, SIOCGIFHWADDR, &d_ifreg ) == -1 )                                         \
+                break;                                                                                 \
+            uchar d_macaddr[ 8 ];                                                                      \
+            UID_DUMMY_CALCS4;                                                                          \
+            memmove( (void*) &d_macaddr[ 0 ], (void*) &d_ifreg.ifr_ifru.ifru_hwaddr.sa_data[ 0 ], 6 ); \
+            uint d_lo = *(uint*) &d_macaddr[ 4 ];                                                      \
+            UID_DUMMY_CALCS8;                                                                          \
+            d_lo |= ( d_lo << 16 );                                                                    \
+            *result = *(uint*) &d_macaddr[ 0 ] + UID_CHANGE;                                           \
+            UID_DUMMY_CALCS9;                                                                          \
+            *result ^= d_lo;                                                                           \
+            break;                                                                                     \
+        }                                                                                              \
+        close( d_sd );                                                                                 \
+        if_freenameindex( d_iflist_init );                                                             \
+    }                                                                                                  \
+    UID_FLAGS( *result, 0x04000000, 0x00200000 );                                                      \
+    UID_DUMMY_CALCS0;                                                                                  \
+    UID_DUMMY_CALCS8;                                                                                  \
+    UID_CALC( *result );                                                                               \
+    UID_DUMMY_CALCS1;                                                                                  \
+    UIDCACHE[ 1 ] = *result;                                                                           \
+    UID_DUMMY_CALCS5;                                                                                  \
+    UID_DUMMY_CALCS6;                                                                                  \
+    UIDCACHE2[ 1 ] = *result;                                                                          \
+    UID_DUMMY_CALCS0
 #endif
 
 #ifdef FO_WINDOWS
-# define GET_UID2( result )                                                             \
-    UID_DUMMY_CALCS6;                                                                   \
-    result = new uint();                                                                \
-    UID_DUMMY_CALCS4;                                                                   \
-    HW_PROFILE_INFO d_hwpi;                                                             \
-    if( GetCurrentHwProfile( &d_hwpi ) )                                                \
-    {                                                                                   \
-        *result = *(uint*) &d_hwpi.szHwProfileGuid[ 0 ];                                \
-        for( int d_i = 1; d_i < HW_PROFILE_GUIDLEN / 4; d_i++ )                         \
-            *result ^= *(uint*) &d_hwpi.szHwProfileGuid[ d_i * 4 ];                     \
-        /*WriteLog("GetCurrentHwProfile <%s><%X>.\n",d_hwpi.szHwProfileGuid,*result);*/ \
-    }                                                                                   \
-    else                                                                                \
-        *result = 0;                                                                    \
-    UID_FLAGS( *result, 0x00000020, 0x00000800 );                                       \
-    UID_DUMMY_CALCS4;                                                                   \
-    UIDCACHE[ 2 ] = *result;                                                            \
-    UIDCACHE2[ 2 ] = *result;                                                           \
-    UID_DUMMY_CALCS1;                                                                   \
-    UID_CALC( *result );                                                                \
+# define GET_UID2( result )                                          \
+    UID_DUMMY_CALCS6;                                                \
+    result = new uint();                                             \
+    UID_DUMMY_CALCS4;                                                \
+    HW_PROFILE_INFO d_hwpi;                                          \
+    if( GetCurrentHwProfile( &d_hwpi ) )                             \
+    {                                                                \
+        *result = *(uint*) &d_hwpi.szHwProfileGuid[ 0 ];             \
+        for( int d_i = 1; d_i < HW_PROFILE_GUIDLEN / 4; d_i++ )      \
+            *result ^= *(uint*) &d_hwpi.szHwProfileGuid[ d_i * 4 ];  \
+    }                                                                \
+    else                                                             \
+        *result = 0;                                                 \
+    UID_FLAGS( *result, 0x00000020, 0x00000800 );                    \
+    UID_DUMMY_CALCS4;                                                \
+    UIDCACHE[ 2 ] = *result;                                         \
+    UIDCACHE2[ 2 ] = *result;                                        \
+    UID_DUMMY_CALCS1;                                                \
+    UID_CALC( *result );                                             \
     UID_DUMMY_CALCS8
 #else
 # define GET_UID2( result )                       \
@@ -255,4 +317,4 @@ Randomizer MulWndRandom;
 #define CHECK_MULTIPLY_WINDOWS8    CHECK_MULTIPLY_WINDOWS( 90, MULTIPLY_WINDOWS_FAIL6, MULTIPLY_WINDOWS_FAIL5, MULTIPLY_WINDOWS_FAIL8 )
 #define CHECK_MULTIPLY_WINDOWS9    CHECK_MULTIPLY_WINDOWS( 45, MULTIPLY_WINDOWS_FAIL5, MULTIPLY_WINDOWS_FAIL6, MULTIPLY_WINDOWS_FAIL7 )
 
-#endif // __DEFENCE__
+#endif  // __DEFENCE__
