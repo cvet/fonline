@@ -22,6 +22,7 @@
 #endif
 
 void* FileOpen( const char* fname, bool write );
+void* FileOpenForAppend( const char* fname );
 void  FileClose( void* file );
 bool  FileRead( void* file, void* buf, uint len, uint* rb = NULL );
 bool  FileWrite( void* file, const void* buf, uint len );
@@ -29,6 +30,8 @@ bool  FileSetPointer( void* file, int offset, int origin );
 void  FileGetTime( void* file, uint64& tc, uint64& ta, uint64& tw );
 uint  FileGetSize( void* file );
 bool  FileDelete( const char* fname );
+bool  FileExist( const char* fname );
+bool  FileRename( const char* fname, const char* new_fname );
 
 struct FIND_DATA
 {

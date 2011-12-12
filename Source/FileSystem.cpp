@@ -2,6 +2,8 @@
 
 #ifdef FO_WINDOWS
 
+# include <io.h>
+
 void* FileOpen( const char* fname, bool write )
 {
     HANDLE file;
@@ -11,6 +13,19 @@ void* FileOpen( const char* fname, bool write )
         file = CreateFile( fname, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY | FILE_FLAG_SEQUENTIAL_SCAN, NULL );
     if( file == INVALID_HANDLE_VALUE )
         return NULL;
+    return file;
+}
+
+void* FileOpenForAppend( const char* fname )
+{
+    HANDLE file = CreateFile( fname, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_WRITE_THROUGH, NULL );
+    if( file == INVALID_HANDLE_VALUE )
+        return NULL;
+    if( !FileSetPointer( file, 0, SEEK_END ) )
+    {
+        FileClose( file );
+        return NULL;
+    }
     return file;
 }
 
@@ -62,6 +77,16 @@ uint FileGetSize( void* file )
 bool FileDelete( const char* fname )
 {
     return DeleteFile( fname ) != FALSE;
+}
+
+bool FileExist( const char* fname )
+{
+    return !_access( fname, 0 );
+}
+
+bool FileRename( const char* fname, const char* new_fname )
+{
+    return !rename( fname, new_fname );
 }
 
 void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd )
@@ -142,6 +167,13 @@ void* FileOpen( const char* fname, bool write )
     return (void*) fopen( fname, write ? "wb" : "rb" );
 }
 
+void* FileOpenForAppend( const char* fname )
+{
+    if( access( fname, 0 ) )
+        return NULL;
+    return (void*) fopen( fname, "ab" );
+}
+
 void FileClose( void* file )
 {
     if( file )
@@ -190,6 +222,16 @@ uint FileGetSize( void* file )
 bool FileDelete( const char* fname )
 {
     return std::remove( fname );
+}
+
+bool FileExist( const char* fname )
+{
+    return !access( fname, 0 );
+}
+
+bool FileRename( const char* fname, const char* new_fname )
+{
+    return !rename( fname, new_fname );
 }
 
 struct FileFind

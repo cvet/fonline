@@ -7226,9 +7226,9 @@ void FOClient::SetGameColor( uint color )
 
 bool FOClient::IsCurInInterface()
 {
-    if( IsCurInRectNoTransp( IntMainPic->GetCurSprId(), IntWMain, 0, 0 ) )
+    if( IntVisible && IsCurInRectNoTransp( IntMainPic->GetCurSprId(), IntWMain, 0, 0 ) )
         return true;
-    if( IntAddMess && IsCurInRectNoTransp( IntPWAddMess->GetCurSprId(), IntWAddMess, 0, 0 ) )
+    if( IntVisible && IntAddMess && IsCurInRectNoTransp( IntPWAddMess->GetCurSprId(), IntWAddMess, 0, 0 ) )
         return true;
     // if( ConsoleActive && IsCurInRectNoTransp( ConsolePic, Main, 0, 0 ) ) // Todo: need check console?
     return false;

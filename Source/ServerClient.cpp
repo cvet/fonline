@@ -1489,7 +1489,6 @@ void FOServer::Process_CreateClient( Client* cl )
     // Check data
     if( !CheckUserName( cl->Name ) )
     {
-        // WriteLogF(_FUNC_," - Error symbols in Name or Password.\n");
         cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
         return;
@@ -1499,7 +1498,6 @@ void FOServer::Process_CreateClient( Client* cl )
     if( name_len < MIN_NAME || name_len < GameOpt.MinNameLength ||
         name_len > MAX_NAME || name_len > GameOpt.MaxNameLength )
     {
-        // WriteLog(_"Name or Password length too small.\n");
         cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
         return;
@@ -1507,7 +1505,6 @@ void FOServer::Process_CreateClient( Client* cl )
 
     if( cl->Name[ 0 ] == ' ' || cl->Name[ name_len - 1 ] == ' ' )
     {
-        // WriteLog("Name begin or end space.\n");
         cl->Send_TextMsg( cl, STR_NET_BEGIN_END_SPACES, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
         return;
@@ -1517,7 +1514,6 @@ void FOServer::Process_CreateClient( Client* cl )
     {
         if( cl->Name[ i ] == ' ' && cl->Name[ i + 1 ] == ' ' )
         {
-            // WriteLog("Name two space.\n");
             cl->Send_TextMsg( cl, STR_NET_TWO_SPACE, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1536,7 +1532,6 @@ void FOServer::Process_CreateClient( Client* cl )
 
     if( letters_eng && letters_rus )
     {
-        // WriteLog("Different language in Name.\n");
         cl->Send_TextMsg( cl, STR_NET_DIFFERENT_LANG, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
         return;
@@ -1545,7 +1540,6 @@ void FOServer::Process_CreateClient( Client* cl )
     int letters_len = letters_eng + letters_rus;
     if( Procent( name_len, letters_len ) < 70 )
     {
-        // WriteLog("Many special symbols in Name.\n");
         cl->Send_TextMsg( cl, STR_NET_MANY_SYMBOLS, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
         return;
@@ -1557,6 +1551,15 @@ void FOServer::Process_CreateClient( Client* cl )
         SaveClientsLocker.Lock();
         bool exist = ( GetClientData( cl->Name ) != NULL );
         SaveClientsLocker.Unlock();
+
+        if( !exist )
+        {
+            // Avoid created files rewriting
+            char fname[ MAX_FOPATH ];
+            FileManager::GetFullPath( cl->Name, PT_SERVER_CLIENTS, fname );
+            Str::Append( fname, ".client" );
+            exist = FileExist( fname );
+        }
 
         if( exist )
         {
@@ -1641,12 +1644,16 @@ void FOServer::Process_CreateClient( Client* cl )
         return;
     }
 
+    // Assign id
     if( Singleplayer )
         cl->Data.Id = 1;
     else
         cl->Data.Id = ++LastClientId;
+
+    // Assign base access
     cl->Access = ACCESS_DEFAULT;
 
+    // Fist save
     if( !SaveClient( cl, false ) )
     {
         WriteLogF( _FUNC_, " - First save fail.\n" );
@@ -1655,6 +1662,34 @@ void FOServer::Process_CreateClient( Client* cl )
         return;
     }
 
+    // Refresh last id
+    char  last_id_fname[ MAX_FOPATH ];
+    FileManager::GetFullPath( "last_id.txt", PT_SERVER_CLIENTS, last_id_fname );
+    void* last_id_file = FileOpen( last_id_fname, true );
+    if( last_id_fname )
+    {
+        char last_id_str[ 128 ];
+        Str::Format( last_id_str, "%u", LastClientId );
+        FileWrite( last_id_file, last_id_str, Str::Length( last_id_str ) );
+        FileClose( last_id_file );
+    }
+
+    // Add name in clients names cache file
+    char  cache_fname[ MAX_FOPATH ];
+    FileManager::GetFullPath( "clients_list.txt", PT_SERVER_CLIENTS, cache_fname );
+    void* cache_file = FileOpenForAppend( cache_fname );
+    if( cache_file )
+    {
+        FileWrite( cache_file, cl->Name, Str::Length( cl->Name ) );
+        FileWrite( cache_file, ".client\n", 8 );
+        FileClose( cache_file );
+    }
+    else
+    {
+        FileClose( FileOpen( "cache_fail", true ) );
+    }
+
+    // Load world
     if( Singleplayer )
     {
         SynchronizeLogicThreads();
@@ -1671,6 +1706,7 @@ void FOServer::Process_CreateClient( Client* cl )
         ResynchronizeLogicThreads();
     }
 
+    // Notify
     if( !Singleplayer )
         cl->Send_TextMsg( cl, STR_NET_REG_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );
     else
@@ -1679,6 +1715,7 @@ void FOServer::Process_CreateClient( Client* cl )
     BOUT_BEGIN( cl );
     cl->Bout << (uint) NETMSG_REGISTER_SUCCESS;
     BOUT_END( cl );
+
     cl->Disconnect();
 
     cl->AddRef();

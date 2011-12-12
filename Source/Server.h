@@ -250,6 +250,7 @@ public:
 
     static void DisconnectClient( Client* cl );
     static void RemoveClient( Client* cl );
+    static void DeleteClientFile( const char* client_name );
     static void AddSaveClient( Client* cl );
     static void EraseSaveClient( uint crid );
     static void Process( ClientPtr& cl );

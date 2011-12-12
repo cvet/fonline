@@ -6277,11 +6277,14 @@ void FOMapper::SScriptFunc::Global_TabDelete( int tab )
 
 void FOMapper::SScriptFunc::Global_TabSelect( int tab, CScriptString* sub_tab, bool show )
 {
-    if( tab < 0 || tab >= TAB_COUNT )
+    if( tab < 0 || tab >= INT_MODE_COUNT )
         SCRIPT_ERROR_R( "Wrong tab arg." );
 
     if( show )
         Self->IntSetMode( tab );
+
+    if( tab < 0 || tab >= TAB_COUNT )
+        return;
 
     auto it = Self->Tabs[ tab ].find( sub_tab && sub_tab->length() ? sub_tab->c_std_str() : DEFAULT_SUB_TAB );
     if( it != Self->Tabs[ tab ].end() )

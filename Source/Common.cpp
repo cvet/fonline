@@ -10,11 +10,6 @@
 #include "Version.h"
 #include <stdarg.h>
 
-#if defined ( FO_WINDOWS )
-# include <io.h>
-# define access    _access
-#endif
-
 #pragma MESSAGE("Add TARGET_HEX.")
 
 /************************************************************************/
@@ -669,7 +664,7 @@ const char* GetConfigFileName()
         Str::Copy( ext, 4, "cfg" );
 
         // Check availability
-        if( access( module_name, 0 ) )
+        if( !FileExist( module_name ) )
             return config_name;
 
         // Get file name

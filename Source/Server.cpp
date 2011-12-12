@@ -357,6 +357,7 @@ void FOServer::RemoveClient( Client* cl )
             SaveClientsLocker.Unlock();
 
             cl->FullClear();
+            DeleteClientFile( cl->Name );
         }
 
         Job::DeferredRelease( cl );
@@ -364,6 +365,35 @@ void FOServer::RemoveClient( Client* cl )
     else
     {
         cl->IsNotValid = true;
+    }
+}
+
+void FOServer::DeleteClientFile( const char* client_name )
+{
+    // Make old name
+    char clients_path[ MAX_FOPATH ];
+    FileManager::GetFullPath( "", PT_SERVER_CLIENTS, clients_path );
+    char old_client_fname[ MAX_FOPATH ];
+    Str::Format( old_client_fname, "%s%s.client", clients_path, client_name );
+
+    // Make new name
+    char new_client_fname[ MAX_FOPATH ];
+    for( uint i = 0; ; i++ )
+    {
+        if( !i )
+            Str::Format( new_client_fname, "%s%s.client_deleted", clients_path, client_name, i );
+        else
+            Str::Format( new_client_fname, "%s%s~%u.client_deleted", clients_path, client_name, i );
+        if( FileExist( new_client_fname ) )
+            continue;
+        break;
+    }
+
+    // Rename
+    if( !FileRename( old_client_fname, new_client_fname ) )
+    {
+        WriteLogF( _FUNC_, " - Fail to rename from<%s> to<%s>.\n", old_client_fname, new_client_fname );
+        FileClose( FileOpen( "cache_fail", true ) );
     }
 }
 
@@ -524,8 +554,12 @@ void FOServer::MainLoop()
             Script::SetArgBool( to_delete );
             Script::RunPrepared();
         }
+
         if( to_delete )
+        {
             cr->FullClear();
+            DeleteClientFile( ( (Client*) cr )->Name );
+        }
     }
 
     // Last process
@@ -4041,61 +4075,168 @@ void FOServer::LoadBans()
 bool FOServer::LoadClientsData()
 {
     WriteLog( "Indexing client data.\n" );
-
     LastClientId = 0;
     ClientsData.reserve( 10000 );
 
+    bool success = false;
+    char client_name[ MAX_FOPATH ];
     char clients_path[ MAX_FOPATH ];
     FileManager::GetFullPath( "", PT_SERVER_CLIENTS, clients_path );
 
-    FIND_DATA fd;
-    void*     h = FileFindFirst( clients_path, "client", fd );
-    if( !h )
+    // Last id
+    char  last_id_fname[ MAX_FOPATH ];
+    Str::Format( last_id_fname, "%slast_id.txt", clients_path );
+    void* last_id_file = FileOpen( last_id_fname, false );
+    if( last_id_file )
     {
-        WriteLog( "Clients data not found.\n" );
-        return true;
+        uint  fsize = FileGetSize( last_id_file );
+        char* buf = new char[ fsize + 1 ];
+        if( FileRead( last_id_file, buf, fsize ) )
+        {
+            buf[ fsize ] = 0;
+            sscanf( buf, "%u", &LastClientId );
+        }
+        FileClose( last_id_file );
+        delete[] buf;
     }
 
-    UIntSet id_already;
-    do
+    // Get cache for clients
+    istrstream* cache_str = NULL;
+    char*       cache_buf = NULL;
+    char        cache_fname[ MAX_FOPATH ];
+    Str::Format( cache_fname, "%sclients_list.txt", clients_path );
+
+    if( FileExist( "cache_fail" ) )
     {
+        FileDelete( "cache_fail" );
+        FileDelete( cache_fname );
+    }
+
+    void* cache_file = FileOpen( cache_fname, false );
+    if( cache_file )
+    {
+        uint  fsize = FileGetSize( cache_file );
+        char* cache_buf = new char[ fsize + 1 ];
+        if( fsize > 0 && FileRead( cache_file, cache_buf, fsize ) )
+        {
+            FileClose( cache_file );
+            cache_buf[ fsize ] = 0;
+            cache_str = new istrstream( cache_buf );
+            cache_str->getline( client_name, sizeof( client_name ) );
+            Str::EraseFrontBackSpecificChars( client_name );
+            if( !client_name[ 0 ] )
+            {
+                SAFEDEL( cache_str );
+                SAFEDELA( cache_buf );
+            }
+        }
+        else
+        {
+            FileClose( cache_file );
+            SAFEDELA( cache_buf );
+        }
+    }
+
+    // Scan folder for names if no cache
+    FIND_DATA   file_find_data;
+    void*       file_find = NULL;
+    FileManager file_cache_write;
+    if( !cache_str )
+    {
+        // Find file
+        file_find = FileFindFirst( clients_path, "client", file_find_data );
+        if( !file_find )
+        {
+            WriteLog( "Clients data not found.\n" );
+            return true;
+        }
+        Str::Copy( client_name, file_find_data.FileName );
+    }
+
+    // Index clients
+    UIntSet id_already;
+    bool    first_iteration = true;
+    while( true )
+    {
+        // Next
+        if( !first_iteration )
+        {
+            if( file_find )
+            {
+                file_cache_write.SetStr( client_name );
+                file_cache_write.SetStr( "\n" );
+
+                if( !FileFindNext( file_find, file_find_data ) )
+                {
+                    success = true;
+                    break;
+                }
+                Str::Copy( client_name, file_find_data.FileName );
+            }
+            else
+            {
+                cache_str->getline( client_name, sizeof( client_name ) );
+                Str::EraseFrontBackSpecificChars( client_name );
+                if( cache_str->eof() || !client_name[ 0 ] )
+                {
+                    success = true;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            first_iteration = false;
+        }
+
         // Take name from file title
-        char name[ MAX_FOPATH ];
-        Str::Copy( name, fd.FileName );
-        *strstr( name, ".client" ) = 0;
+        char        name[ MAX_FOPATH ];
+        const char* ext = FileManager::GetExtension( client_name );
+        if( !ext || !Str::CompareCase( ext, "client" ) )
+        {
+            WriteLog( "Wrong name<%s> of client file in cache. Cache file deleted, restart server.\n", client_name );
+            break;
+        }
+        Str::Copy( name, client_name );
+        name[ Str::Length( name ) - 7 ] = 0; // Erase extension, 7 == ".client"
 
         // Take id and password from file
-        char  fname_[ MAX_FOPATH ];
-        Str::Format( fname_, "%s%s", clients_path, fd.FileName );
-        void* f = FileOpen( fname_, false );
+        char  client_fname[ MAX_FOPATH ];
+        Str::Format( client_fname, "%s%s", clients_path, client_name );
+        void* f = FileOpen( client_fname, false );
         if( !f )
         {
-            WriteLog( "Unable to open client save file<%s>.\n", fname_ );
-            return false;
+            if( !file_find && !FileExist( client_fname ) ) // Client deleted
+                continue;
+            WriteLog( "Unable to open client save file<%s>.\n", client_fname );
+            break;
         }
 
         // Header - signature, password and id
         char header[ 4 + PASS_HASH_SIZE + sizeof( uint ) ];
         if( !FileRead( f, header, sizeof( header ) ) )
         {
-            WriteLog( "Unable to read header of client save file<%s>. Skipped.\n", fname_ );
+            WriteLog( "Unable to read header of client save file<%s>. Skipped.\n", client_fname );
             FileClose( f );
             continue;
         }
         FileClose( f );
 
+        // Check client save version
         int version = header[ 3 ];
         if( !( header[ 0 ] == 'F' && header[ 1 ] == 'O' && header[ 2 ] == 0 && version >= CLIENT_SAVE_V2 ) )
         {
-            WriteLog( "Save file<%s> outdated, please run DataPatcher and type 'patchSaves'.\n", fname_ );
-            return false;
+            WriteLog( "Save file<%s> outdated, please run DataPatcher and type 'patchSaves'.\n", client_fname );
+            break;
         }
 
+        // Get id and password hash
         uint id;
         char pass_hash[ PASS_HASH_SIZE ];
         memcpy( pass_hash, header + 4, PASS_HASH_SIZE );
         memcpy( &id, header + 4 + PASS_HASH_SIZE, sizeof( uint ) );
 
+        // Check id
         if( !IS_USER_ID( id ) )
         {
             WriteLog( "Wrong id<%u> of client<%s>. Skipped.\n", id, name );
@@ -4110,19 +4251,35 @@ bool FOServer::LoadClientsData()
         }
         id_already.insert( id );
 
-        // Add
+        // Add client information, only for non marked as deleted
         ClientData data;
         data.Clear();
         Str::Copy( data.ClientName, name );
         memcpy( data.ClientPassHash, pass_hash, PASS_HASH_SIZE );
         data.ClientId = id;
         ClientsData.push_back( data );
+
+        // Process ids
         if( id > LastClientId )
             LastClientId = id;
     }
-    while( FileFindNext( h, fd ) );
-    FileFindClose( h );
 
+    // Clean up
+    if( file_find )
+        FileFindClose( file_find );
+    SAFEDEL( cache_str );
+    SAFEDELA( cache_buf );
+
+    // Fail
+    if( !success )
+    {
+        FileDelete( cache_fname ); // Next try will be without cache
+        return false;
+    }
+
+    // Success
+    if( file_find )
+        file_cache_write.SaveOutBufToFile( cache_fname, -1 );
     if( ClientsData.size() > 10000 )
         ClientsData.reserve( ClientsData.size() * 2 );
     WriteLog( "Indexing complete, clients found<%u>.\n", ClientsData.size() );
