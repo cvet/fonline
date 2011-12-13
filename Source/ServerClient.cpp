@@ -1666,7 +1666,7 @@ void FOServer::Process_CreateClient( Client* cl )
     char  last_id_fname[ MAX_FOPATH ];
     FileManager::GetFullPath( "last_id.txt", PT_SERVER_CLIENTS, last_id_fname );
     void* last_id_file = FileOpen( last_id_fname, true );
-    if( last_id_fname )
+    if( last_id_file )
     {
         char last_id_str[ 128 ];
         Str::Format( last_id_str, "%u", LastClientId );

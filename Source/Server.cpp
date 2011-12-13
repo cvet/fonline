@@ -4277,11 +4277,24 @@ bool FOServer::LoadClientsData()
         return false;
     }
 
-    // Success
+    // Refresh last id
+    last_id_file = FileOpen( last_id_fname, true );
+    if( last_id_file )
+    {
+        char last_id_str[ 128 ];
+        Str::Format( last_id_str, "%u", LastClientId );
+        FileWrite( last_id_file, last_id_str, Str::Length( last_id_str ) );
+        FileClose( last_id_file );
+    }
+
+    // Save cache
     if( file_find )
         file_cache_write.SaveOutBufToFile( cache_fname, -1 );
+
+    // Reserve memory for future clients data
     if( ClientsData.size() > 10000 )
         ClientsData.reserve( ClientsData.size() * 2 );
+
     WriteLog( "Indexing complete, clients found<%u>.\n", ClientsData.size() );
     return true;
 }
