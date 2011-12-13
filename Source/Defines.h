@@ -453,6 +453,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define ST_SCALE_FACTOR              ( 116 )
 #define ST_WALK_TIME                 ( 117 )
 #define ST_RUN_TIME                  ( 118 )
+#define ST_MAX_TALKERS               ( 119 )
 #define ST_ANIM3D_LAYER_BEGIN        ( 150 )
 #define ST_ANIM3D_LAYER_END          ( 179 )
 

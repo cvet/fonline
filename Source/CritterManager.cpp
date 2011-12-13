@@ -257,8 +257,7 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
             npc->CrTimeEvents = tevents;
 
         npc->NextRefreshBagTick = Timer::GameTick() + ( npc->Data.BagRefreshTime ? npc->Data.BagRefreshTime : GameOpt.BagRefreshTime ) * 60 * 1000;
-        npc->NameStr = "Npc_";
-        npc->NameStr += Str::FormatBuf( "%u", npc->GetId() );
+        npc->RefreshName();
 
         if( version < WORLD_SAVE_V12 )
         {
@@ -459,8 +458,7 @@ Npc* CritterManager::CreateNpc( ushort proto_id, uint params_count, int* params,
     npc->SetMaps( map->GetId(), map->GetPid() );
     npc->Data.HexX = hx;
     npc->Data.HexY = hy;
-    npc->NameStr = "Npc_";
-    npc->NameStr += Str::FormatBuf( "%u", npc->GetId() );
+    npc->RefreshName();
 
     for( uint i = 0; i < params_count; i++ )
     {

@@ -1282,6 +1282,7 @@ struct GameOptions
     int ScriptRunSuspendTimeout;
     int ScriptRunMessageTimeout;
     int TalkDistance;
+    int NpcMaxTalkers;
     int MinNameLength;
     int MaxNameLength;
     int DlgTalkMinTime;

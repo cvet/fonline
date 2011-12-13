@@ -30,7 +30,7 @@ bool FOMapper::Init()
     #if defined ( FO_X86 )
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 116 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1136 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1140 );
     #endif
 
     // Register dll script data

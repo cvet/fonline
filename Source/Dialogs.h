@@ -129,13 +129,12 @@ class DialogPack
 public:
     uint       PackId;
     string     PackName;
-    ushort     MaxTalk;
     DialogsVec Dialogs;
     StrVec     TextsLang;
     FOMsgVec   Texts;
     string     Comment;
 
-    DialogPack( uint id, string name ): PackId( id ), MaxTalk( 1 ), PackName( name ) {}
+    DialogPack( uint id, string name ): PackId( id ), PackName( name ) {}
 };
 typedef map< uint, DialogPack* > DialogPackMap;
 

@@ -1622,7 +1622,7 @@ void FOServer::Process_CreateClient( Client* cl )
     }
 
     // Register
-    cl->NameStr = cl->Name;
+    cl->RefreshName();
     cl->Data.HexX = 0;
     cl->Data.HexY = 0;
     cl->Data.Dir = 0;
@@ -1955,7 +1955,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     // Copy data
     uint id = data.ClientId;
     Str::Copy( cl->Name, data.ClientName );
-    cl->NameStr = cl->Name;
+    cl->RefreshName();
 
     // Check UIDS
     #ifndef DEV_VESRION

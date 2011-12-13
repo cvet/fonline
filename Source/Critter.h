@@ -414,7 +414,8 @@ public:
     uint        GetId()       { return Data.Id; }
     uint        GetMap()      { return Data.MapId; }
     ushort      GetProtoMap() { return Data.MapPid; }
-    const char* GetName()     { return NameStr.c_str(); }
+    void        RefreshName();
+    const char* GetName() { return NameStr.c_str(); }
     const char* GetInfo();
     uint        GetCrType() { return Data.BaseType; }
     ushort      GetHexX()   { return Data.HexX; }

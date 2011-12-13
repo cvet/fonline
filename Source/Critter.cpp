@@ -3114,6 +3114,24 @@ void Critter::SendMessage( int num, int val, int to )
     }
 }
 
+void Critter::RefreshName()
+{
+    if( IsPlayer() )
+    {
+        NameStr = ( (Client*) this )->Name;
+    }
+    else
+    {
+        uint        dlg_pack_id = Data.Params[ ST_DIALOG_ID ];
+        DialogPack* dlg_pack = ( dlg_pack_id > 0 ? DlgMngr.GetDialogPack( dlg_pack_id ) : NULL );
+        char buf[ MAX_FOTEXT ];
+        if( dlg_pack )
+            NameStr = Str::Format( buf, "Npc (%s, %u)", dlg_pack->PackName.c_str(), GetId() );
+        else
+            NameStr = Str::Format( buf, "Npc (%u)", GetId() );
+    }
+}
+
 const char* Critter::GetInfo()
 {
 //	static char buf[1024];
@@ -5724,11 +5742,12 @@ uint Npc::GetBarterPlayers()
 
 bool Npc::IsFreeToTalk()
 {
-    uint        max_talkers = 1;
-    DialogPack* dlg = DlgMngr.GetDialogPack( Data.Params[ ST_DIALOG_ID ] );
-    if( dlg )
-        max_talkers = dlg->MaxTalk;
-    return GetTalkedPlayers() < max_talkers;
+    int max_talkers = GetParam( ST_MAX_TALKERS );
+    if( max_talkers < 0 )
+        return false;
+    else if( !max_talkers )
+        max_talkers = (uint) GameOpt.NpcMaxTalkers;
+    return GetTalkedPlayers() < (uint) max_talkers;
 }
 
 bool Npc::IsPlaneNoTalk()

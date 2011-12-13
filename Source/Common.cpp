@@ -1240,6 +1240,7 @@ GameOptions::GameOptions()
     ScriptRunSuspendTimeout = 30000;
     ScriptRunMessageTimeout = 10000;
     TalkDistance = 3;
+    NpcMaxTalkers = 1;
     MinNameLength = 4;
     MaxNameLength = 12;
     DlgTalkMinTime = 0;
