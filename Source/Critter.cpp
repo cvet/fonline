@@ -3124,7 +3124,7 @@ void Critter::RefreshName()
     {
         uint        dlg_pack_id = Data.Params[ ST_DIALOG_ID ];
         DialogPack* dlg_pack = ( dlg_pack_id > 0 ? DlgMngr.GetDialogPack( dlg_pack_id ) : NULL );
-        char buf[ MAX_FOTEXT ];
+        char        buf[ MAX_FOTEXT ];
         if( dlg_pack )
             NameStr = Str::Format( buf, "Npc (%s, %u)", dlg_pack->PackName.c_str(), GetId() );
         else

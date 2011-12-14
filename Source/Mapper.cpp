@@ -294,7 +294,7 @@ bool FOMapper::Init()
 
     if( Str::Substring( CommandLine, "-Map" ) )
     {
-        char map_name[ 256 ];
+        char map_name[ MAX_FOPATH ];
         sscanf( Str::Substring( CommandLine, "-Map" ) + strlen( "-Map" ) + 1, "%s", map_name );
 
         ProtoMap* pmap = new ProtoMap();

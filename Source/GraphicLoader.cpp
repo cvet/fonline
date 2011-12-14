@@ -695,7 +695,7 @@ void GraphicLoader::FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, a
         GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, mesh.IBO ) );
         GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, mesh.Indicies.size() * sizeof( short ), &mesh.Indicies[ 0 ], GL_STATIC_DRAW ) );
         mesh.VAO = 0;
-        if( GLEW_ARB_vertex_array_object && GLEW_ARB_framebuffer_object )
+        if( GLEW_ARB_vertex_array_object && ( GLEW_ARB_framebuffer_object || GLEW_EXT_framebuffer_object ) )
         {
             GL( glGenVertexArrays( 1, &mesh.VAO ) );
             GL( glBindVertexArray( mesh.VAO ) );
@@ -915,11 +915,11 @@ Texture* GraphicLoader::LoadTexture( Device_ device, const char* texture_name, c
     GL( glGenTextures( 1, &texture->Id ) );
     GL( glBindTexture( GL_TEXTURE_2D, texture->Id ) );
     GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
-    GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, texture->Data ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT ) );
+    GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, texture->Data ) );
     #endif
     texture->Name = Str::Duplicate( texture_name );
     loadedTextures.push_back( texture );

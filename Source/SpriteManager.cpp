@@ -162,9 +162,15 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     CHECK_EXTENSION( GLEW_, ARB_framebuffer_object, false );
     if( !GLEW_ARB_framebuffer_object )
     {
-        CHECK_EXTENSION( WGLEW_, ARB_pixel_format, true );
-        CHECK_EXTENSION( WGLEW_, ARB_pbuffer, true );
-        CHECK_EXTENSION( WGLEW_, ARB_render_texture, false );
+        CHECK_EXTENSION( GLEW_, EXT_framebuffer_object, false );
+        CHECK_EXTENSION( GLEW_, EXT_framebuffer_multisample, false );
+        CHECK_EXTENSION( GLEW_, EXT_packed_depth_stencil, true );
+        if( !GLEW_EXT_framebuffer_object )
+        {
+            CHECK_EXTENSION( WGLEW_, ARB_pixel_format, true );
+            CHECK_EXTENSION( WGLEW_, ARB_pbuffer, true );
+            CHECK_EXTENSION( WGLEW_, ARB_render_texture, false );
+        }
     }
     # else
     CHECK_EXTENSION( GLEW_, ARB_framebuffer_object, true );
@@ -387,7 +393,7 @@ bool SpriteManager::InitBuffers()
     delete[] ind;
 
     // Vertex array
-    if( GLEW_ARB_vertex_array_object && GLEW_ARB_framebuffer_object )
+    if( GLEW_ARB_vertex_array_object && ( GLEW_ARB_framebuffer_object || GLEW_EXT_framebuffer_object ) )
     {
         GL( glGenVertexArrays( 1, &vaMain ) );
         GL( glBindVertexArray( vaMain ) );
@@ -646,7 +652,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
 
     // Multisampling
     static int samples = -1;
-    if( multisampling && samples == -1 && GLEW_ARB_framebuffer_object )
+    if( multisampling && samples == -1 && ( GLEW_ARB_framebuffer_object || ( GLEW_EXT_framebuffer_object && GLEW_EXT_framebuffer_multisample ) ) )
     {
         if( GLEW_ARB_texture_multisample && GameOpt.MultiSampling != 0 )
         {
@@ -676,32 +682,55 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
         GL( glGenFramebuffers( 1, &rt.FBO ) );
         GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
     }
+    else if( GLEW_EXT_framebuffer_object )
+    {
+        GL( glGenFramebuffersEXT( 1, &rt.FBO ) );
+        GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, rt.FBO ) );
+    }
 
     // PBuffer instead FBO (Windows specific)
-    if( !GLEW_ARB_framebuffer_object )
+    if( !GLEW_ARB_framebuffer_object && !GLEW_EXT_framebuffer_object )
     {
         # ifdef FO_WINDOWS
         // Choose formats
         int  formats;
-        int  attr[ 32 ] =
+        int  attr[ 32 ];
+        uint attr_i = 0;
+        attr[ attr_i++ ] = WGL_RED_BITS_ARB;
+        attr[ attr_i++ ] = 8;
+        attr[ attr_i++ ] = WGL_GREEN_BITS_ARB;
+        attr[ attr_i++ ] = 8;
+        attr[ attr_i++ ] = WGL_BLUE_BITS_ARB;
+        attr[ attr_i++ ] = 8;
+        attr[ attr_i++ ] = WGL_ALPHA_BITS_ARB;
+        attr[ attr_i++ ] = 8;
+        attr[ attr_i++ ] = WGL_DRAW_TO_PBUFFER_ARB;
+        attr[ attr_i++ ] = GL_TRUE;
+        attr[ attr_i++ ] = WGL_SUPPORT_OPENGL_ARB;
+        attr[ attr_i++ ] = GL_TRUE;
+        attr[ attr_i++ ] = WGL_ACCELERATION_ARB;
+        attr[ attr_i++ ] = WGL_FULL_ACCELERATION_ARB;
+        attr[ attr_i++ ] = WGL_DOUBLE_BUFFER_ARB;
+        attr[ attr_i++ ] = GL_FALSE;
+        attr[ attr_i++ ] = WGL_PIXEL_TYPE_ARB;
+        attr[ attr_i++ ] = WGL_TYPE_RGBA_ARB;
+        if( WGLEW_ARB_render_texture )
         {
-            WGL_RED_BITS_ARB, 8,
-            WGL_GREEN_BITS_ARB, 8,
-            WGL_BLUE_BITS_ARB, 8,
-            WGL_ALPHA_BITS_ARB, 8,
-            WGL_DRAW_TO_PBUFFER_ARB, GL_TRUE,
-            WGL_BIND_TO_TEXTURE_RGBA_ARB, GL_TRUE,
-            WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
-            WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
-            WGL_DOUBLE_BUFFER_ARB, GL_FALSE,
-            WGL_DEPTH_BITS_ARB, depth_stencil ? 24 : 0,
-            WGL_STENCIL_BITS_ARB, depth_stencil ? 8 : 0,
-            0
-        };
+            attr[ attr_i++ ] = WGL_BIND_TO_TEXTURE_RGBA_ARB;
+            attr[ attr_i++ ] = GL_TRUE;
+        }
+        if( depth_stencil )
+        {
+            attr[ attr_i++ ] = WGL_DEPTH_BITS_ARB;
+            attr[ attr_i++ ] = 24;
+            attr[ attr_i++ ] = WGL_STENCIL_BITS_ARB;
+            attr[ attr_i++ ] = 8;
+        }
+        attr[ attr_i++ ] = 0;
         UINT formats_count = 0;
         if( !wglChoosePixelFormatARB( deviceContext, attr, NULL, 1, &formats, &formats_count ) )
         {
-            WriteLogF( _FUNC_, " - wglChoosePixelFormatARB fail.\n" );
+            WriteLogF( _FUNC_, " - wglChoosePixelFormatARB fail, error<%08X>.\n", GetLastError() );
             return false;
         }
         if( !formats_count )
@@ -711,11 +740,16 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
         }
 
         // Create PBuffer
-        const int pbuffer_attr[] =
+        int  pbuffer_attr[ 32 ];
+        uint pbuffer_attr_i = 0;
+        if( WGLEW_ARB_render_texture )
         {
-            WGL_TEXTURE_FORMAT_ARB, WGL_TEXTURE_RGBA_ARB,
-            WGL_TEXTURE_TARGET_ARB, WGL_TEXTURE_2D_ARB, 0
-        };
+            attr[ pbuffer_attr_i++ ] = WGL_TEXTURE_FORMAT_ARB;
+            attr[ pbuffer_attr_i++ ] = WGL_TEXTURE_RGBA_ARB;
+            attr[ pbuffer_attr_i++ ] = WGL_TEXTURE_TARGET_ARB;
+            attr[ pbuffer_attr_i++ ] = WGL_TEXTURE_2D_ARB;
+        }
+        pbuffer_attr[ pbuffer_attr_i++ ] = 0;
         rt.PBuffer = wglCreatePbufferARB( deviceContext, formats, width, height, pbuffer_attr );
         if( !rt.PBuffer )
         {
@@ -756,44 +790,75 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     tex->SizeData[ 2 ] = 1.0f / tex->SizeData[ 0 ];
     tex->SizeData[ 3 ] = 1.0f / tex->SizeData[ 1 ];
     # ifdef FO_WINDOWS
-    if( !GLEW_ARB_framebuffer_object )
+    if( !GLEW_ARB_framebuffer_object && !GLEW_EXT_framebuffer_object )
         tex->PBuffer = rt.PBuffer;
     # endif
     GL( glGenTextures( 1, &tex->Id ) );
     if( !multisampling )
     {
         GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
-        GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
+        GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
         if( GLEW_ARB_framebuffer_object )
+        {
             GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->Id, 0 ) );
+        }
+        else if( GLEW_EXT_framebuffer_object )
+        {
+            GL( glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, tex->Id, 0 ) );
+        }
     }
     else
     {
         tex->Samples = (float) samples;
         GL( glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, tex->Id ) );
         GL( glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGBA, width, height, GL_TRUE ) );
-        GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex->Id, 0 ) );
+        if( GLEW_ARB_framebuffer_object )
+        {
+            GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex->Id, 0 ) );
+        }
+        else if( GLEW_EXT_framebuffer_object )
+        {
+            GL( glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D_MULTISAMPLE, tex->Id, 0 ) );
+        }
     }
     rt.TargetTexture = tex;
 
     // Depth / stencil
-    if( depth_stencil && GLEW_ARB_framebuffer_object )
+    if( depth_stencil )
     {
-        GL( glGenRenderbuffers( 1, &rt.DepthStencilBuffer ) );
-        GL( glBindRenderbuffer( GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
-        if( !multisampling )
+        if( GLEW_ARB_framebuffer_object )
         {
-            GL( glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height ) );
+            GL( glGenRenderbuffers( 1, &rt.DepthStencilBuffer ) );
+            GL( glBindRenderbuffer( GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
+            if( !multisampling )
+            {
+                GL( glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height ) );
+            }
+            else
+            {
+                GL( glRenderbufferStorageMultisample( GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, width, height ) );
+            }
+            GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
         }
-        else
+        else if( GLEW_EXT_framebuffer_object )
         {
-            GL( glRenderbufferStorageMultisample( GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, width, height ) );
+            GL( glGenRenderbuffersEXT( 1, &rt.DepthStencilBuffer ) );
+            GL( glBindRenderbufferEXT( GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
+            if( !multisampling )
+            {
+                GL( glRenderbufferStorageEXT( GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, width, height ) );
+            }
+            else
+            {
+                GL( glRenderbufferStorageMultisampleEXT( GL_RENDERBUFFER_EXT, samples, GL_DEPTH24_STENCIL8_EXT, width, height ) );
+            }
+            GL( glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
+            GL( glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
         }
-        GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
     }
 
     // Check framebuffer creation status
@@ -803,7 +868,17 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
         GL( status = glCheckFramebufferStatus( GL_FRAMEBUFFER ) );
         if( status != GL_FRAMEBUFFER_COMPLETE )
         {
-            WriteLogF( _FUNC_, "Framebuffer not created.\n" );
+            WriteLogF( _FUNC_, " - Framebuffer not created, status<%08X>.\n", status );
+            return false;
+        }
+    }
+    else if( GLEW_EXT_framebuffer_object )
+    {
+        GLenum status;
+        GL( status = glCheckFramebufferStatusEXT( GL_FRAMEBUFFER_EXT ) );
+        if( status != GL_FRAMEBUFFER_COMPLETE_EXT )
+        {
+            WriteLogF( _FUNC_, " - FramebufferExt not created, status<%08X>.\n", status );
             return false;
         }
     }
@@ -820,7 +895,13 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
 
     // Clear
     if( GLEW_ARB_framebuffer_object )
+    {
         GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
+    }
+    else if( GLEW_EXT_framebuffer_object )
+    {
+        GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, 0 ) );
+    }
     PushRenderTarget( rt );
     ClearCurrentRenderTarget( 0 );
     if( depth_stencil )
@@ -836,6 +917,12 @@ void SpriteManager::DeleteRenderTarget( RenderTarget& rt )
         if( rt.DepthStencilBuffer )
             GL( glDeleteRenderbuffers( 1, &rt.DepthStencilBuffer ) );
         GL( glDeleteFramebuffers( 1, &rt.FBO ) );
+    }
+    else if( GLEW_EXT_framebuffer_object )
+    {
+        if( rt.DepthStencilBuffer )
+            GL( glDeleteRenderbuffersEXT( 1, &rt.DepthStencilBuffer ) );
+        GL( glDeleteFramebuffersEXT( 1, &rt.FBO ) );
     }
     else
     {
@@ -860,6 +947,10 @@ void SpriteManager::PushRenderTarget( RenderTarget& rt )
         {
             GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
         }
+        else if( GLEW_EXT_framebuffer_object )
+        {
+            GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, rt.FBO ) );
+        }
         else
         {
             # ifdef FO_WINDOWS
@@ -880,6 +971,10 @@ void SpriteManager::PopRenderTarget()
         if( GLEW_ARB_framebuffer_object )
         {
             GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
+        }
+        else if( GLEW_EXT_framebuffer_object )
+        {
+            GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
         }
         else
         {
@@ -903,7 +998,7 @@ void SpriteManager::DrawRenderTarget( RenderTarget& rt, bool alpha_blend, const 
     Flush();
 
     # ifdef FO_WINDOWS
-    if( !GLEW_ARB_framebuffer_object && !WGLEW_ARB_render_texture )
+    if( !GLEW_ARB_framebuffer_object && !GLEW_EXT_framebuffer_object && !WGLEW_ARB_render_texture )
     {
         PushRenderTarget( rt );
         GL( glBindTexture( GL_TEXTURE_2D, rt.TargetTexture->Id ) );
@@ -1082,11 +1177,11 @@ Surface* SpriteManager::CreateNewSurface( int w, int h )
     GL( glGenTextures( 1, &tex->Id ) );
     GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
     GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
-    GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, SurfFilterNearest ? GL_NEAREST : GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, SurfFilterNearest ? GL_NEAREST : GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
+    GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
     #endif
 
     Surface* surf = new Surface();
