@@ -1803,11 +1803,11 @@ Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
         #else
         mopt.SubsetsCount = frame->Mesh.size();
         #endif
-        mopt.DisabledSubsets = new ( nothrow ) bool[ mopt.SubsetsCount ];
-        mopt.TexSubsets = new (nothrow) Texture*[ mopt.SubsetsCount * EFFECT_TEXTURES ];
-        mopt.DefaultTexSubsets = new (nothrow) Texture*[ mopt.SubsetsCount * EFFECT_TEXTURES ];
-        mopt.EffectSubsets = new (nothrow) Effect*[ mopt.SubsetsCount ];
-        mopt.DefaultEffectSubsets = new (nothrow) Effect*[ mopt.SubsetsCount ];
+        mopt.DisabledSubsets = new bool[ mopt.SubsetsCount ];
+        mopt.TexSubsets = new Texture*[ mopt.SubsetsCount * EFFECT_TEXTURES ];
+        mopt.DefaultTexSubsets = new Texture*[ mopt.SubsetsCount * EFFECT_TEXTURES ];
+        mopt.EffectSubsets = new Effect*[ mopt.SubsetsCount ];
+        mopt.DefaultEffectSubsets = new Effect*[ mopt.SubsetsCount ];
         memzero( mopt.DisabledSubsets, mopt.SubsetsCount * sizeof( bool ) );
         memzero( mopt.TexSubsets, mopt.SubsetsCount * sizeof( Texture* ) * EFFECT_TEXTURES );
         memzero( mopt.DefaultTexSubsets, mopt.SubsetsCount * sizeof( Texture* ) * EFFECT_TEXTURES );
@@ -2402,7 +2402,7 @@ bool Animation3dEntity::Load( const char* name )
                     if( floats.empty() )
                         continue;
                     data_len = (uint) floats.size() * sizeof( float );
-                    data = new (nothrow) uchar[ data_len ];
+                    data = new uchar[ data_len ];
                     for( uint i = 0, j = (uint) floats.size(); i < j; i++ )
                         ( (float*) data )[ i ] = (float) atof( floats[ i ].c_str() );
                 }
@@ -2710,7 +2710,7 @@ int Animation3dEntity::GetAnimationIndexEx( uint anim1, uint anim2, float* speed
 Animation3d* Animation3dEntity::CloneAnimation()
 {
     // Create instance
-    Animation3d* a3d = new (nothrow) Animation3d();
+    Animation3d* a3d = new Animation3d();
     if( !a3d )
         return NULL;
 
@@ -2743,7 +2743,7 @@ Animation3dEntity* Animation3dEntity::GetEntity( const char* name )
     // Create new instance
     if( !entity )
     {
-        entity = new (nothrow) Animation3dEntity();
+        entity = new Animation3dEntity();
         if( !entity || !entity->Load( name ) )
         {
             SAFEDEL( entity );
@@ -2795,7 +2795,7 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
             return NULL;
         }
 
-        xfile = new (nothrow) Animation3dXFile();
+        xfile = new Animation3dXFile();
         if( !xfile )
         {
             WriteLogF( _FUNC_, " - Allocation fail, x file<%s>.\n", xname );
@@ -2831,7 +2831,7 @@ bool Animation3dXFile::SetupFrames( Animation3dXFile* xfile, Frame* frame, Frame
                 // Get palette size
                 mesh_container->NumPaletteEntries = mesh_container->Skin->GetNumBones();
 
-                uint* new_adjency = new (nothrow) uint[ mesh_container->InitMesh->GetNumFaces() * 3 ];
+                uint* new_adjency = new uint[ mesh_container->InitMesh->GetNumFaces() * 3 ];
                 if( !new_adjency )
                     return false;
 

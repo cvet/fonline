@@ -57,7 +57,7 @@ void Str::Append( char* to, size_t size, const char* from )
 char* Str::Duplicate( const char* str )
 {
     size_t len = Str::Length( str );
-    char*  dup = new ( nothrow ) char[ len + 1 ];
+    char*  dup = new char[ len + 1 ];
     if( !dup )
         return NULL;
     if( len )

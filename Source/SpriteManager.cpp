@@ -1368,7 +1368,7 @@ uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, uchar* data, uint siz
     // Parameters
     uint w, h;
     if( !si )
-        si = new (nothrow) SpriteInfo();
+        si = new SpriteInfo();
 
     // Get width, height
     w = *( (uint*) data + 1 );
@@ -1574,19 +1574,19 @@ AnyFrames* SpriteManager::CreateAnimation( uint frames, uint ticks )
     if( !frames || frames > 10000 )
         return NULL;
 
-    AnyFrames* anim = new (nothrow) AnyFrames();
+    AnyFrames* anim = new AnyFrames();
     if( !anim )
         return NULL;
 
-    anim->Ind = new (nothrow) uint[ frames ];
+    anim->Ind = new uint[ frames ];
     if( !anim->Ind )
         return NULL;
     memzero( anim->Ind, sizeof( uint ) * frames );
-    anim->NextX = new ( nothrow ) short[ frames ];
+    anim->NextX = new short[ frames ];
     if( !anim->NextX )
         return NULL;
     memzero( anim->NextX, sizeof( short ) * frames );
-    anim->NextY = new ( nothrow ) short[ frames ];
+    anim->NextY = new short[ frames ];
     if( !anim->NextY )
         return NULL;
     memzero( anim->NextY, sizeof( short ) * frames );
@@ -1691,7 +1691,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, in
 
     for( int frm = 0; frm < frm_num; frm++ )
     {
-        SpriteInfo* si = new (nothrow) SpriteInfo();      // TODO: Memory leak
+        SpriteInfo* si = new SpriteInfo();      // TODO: Memory leak
         if( !si )
             return NULL;
         fm.SetCurPos( offset );
@@ -1708,7 +1708,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, in
 
         // Data for FillSurfaceFromMemory
         uint   size = 12 + h * w * 4;
-        uchar* data = new (nothrow) uchar[ size ];
+        uchar* data = new uchar[ size ];
         if( !data )
         {
             delete anim;
@@ -1843,13 +1843,13 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, in
                 SAFEDELA( anim->Ind );
                 SAFEDELA( anim->NextX );
                 SAFEDELA( anim->NextY );
-                anim->Ind = new (nothrow) uint[ frm_num ];
+                anim->Ind = new uint[ frm_num ];
                 if( !anim->Ind )
                     return NULL;
-                anim->NextX = new ( nothrow ) short[ frm_num ];
+                anim->NextX = new short[ frm_num ];
                 if( !anim->NextX )
                     return NULL;
-                anim->NextY = new ( nothrow ) short[ frm_num ];
+                anim->NextY = new short[ frm_num ];
                 if( !anim->NextY )
                     return NULL;
                 anim->NextX[ 0 ] = nx;
@@ -1878,7 +1878,7 @@ AnyFrames* SpriteManager::LoadAnimationRix( const char* fname, int path_type )
     if( !fm.LoadFile( fname, path_type ) )
         return NULL;
 
-    SpriteInfo* si = new (nothrow) SpriteInfo();
+    SpriteInfo* si = new SpriteInfo();
     fm.SetCurPos( 0x4 );
     ushort      w;
     fm.CopyMem( &w, 2 );
@@ -1887,7 +1887,7 @@ AnyFrames* SpriteManager::LoadAnimationRix( const char* fname, int path_type )
 
     // Data for FillSurfaceFromMemory
     uint   size = 12 + h * w * 4;
-    uchar* data = new (nothrow) uchar[ size ];
+    uchar* data = new uchar[ size ];
     *( (uint*) data + 1 ) = w;
     *( (uint*) data + 2 ) = h;
     uint*  ptr = (uint*) data + 3;
@@ -2290,7 +2290,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
         fm.SetCurPos( sizeof( ArtHeader ) + sizeof( ArtPalette ) * palette_count +
                       sizeof( ArtFrameInfo ) * dir * frm_count + sizeof( ArtFrameInfo ) * frm );
 
-        SpriteInfo* si = new (nothrow) SpriteInfo();
+        SpriteInfo* si = new SpriteInfo();
         if( !si )
         {
             delete anim;
@@ -2313,7 +2313,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
         uint   w = frame_info.frameWidth;
         uint   h = frame_info.frameHeight;
         uint   size = 12 + h * w * 4;
-        uchar* data = new (nothrow) uchar[ size ];
+        uchar* data = new uchar[ size ];
         if( !data )
         {
             delete si;
@@ -2562,7 +2562,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
                     cached[ i ] = cached[ i + 1 ];
             }
 
-            cached[ index ] = new (nothrow) SprCache();
+            cached[ index ] = new SprCache();
             if( !cached[ index ] )
                 return NULL;
             Str::Copy( cached[ index ]->fileName, file_name );
@@ -2574,7 +2574,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
         {
             index = SPR_CACHED_COUNT;
             if( !cached[ index ] )
-                cached[ index ] = new (nothrow) SprCache();
+                cached[ index ] = new SprCache();
             else
                 cached[ index ]->fm.UnloadFile();
             Str::Copy( cached[ index ]->fileName, file_name );
@@ -2802,7 +2802,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
 
         // Data for FillSurfaceFromMemory
         uint   img_size = 12 + whole_h * whole_w * 4;
-        uchar* img_data = new (nothrow) uchar[ img_size ];
+        uchar* img_data = new uchar[ img_size ];
         if( !img_data )
             return NULL;
         *( (uint*) img_data + 1 ) = whole_w;
@@ -2904,7 +2904,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
             }
         }
 
-        SpriteInfo* si = new (nothrow) SpriteInfo();
+        SpriteInfo* si = new SpriteInfo();
         si->OffsX = bboxes[ frm * dir_cnt * 4 + dir * 4 + 0 ] - center_x + center_x_ex + whole_w / 2;
         si->OffsY = bboxes[ frm * dir_cnt * 4 + dir * 4 + 1 ] - center_y + center_y_ex + whole_h;
         uint result = FillSurfaceFromMemory( si, img_data, img_size );
@@ -2956,7 +2956,7 @@ AnyFrames* SpriteManager::LoadAnimationZar( const char* fname, int path_type )
 
     // Data for FillSurfaceFromMemory
     uint   img_size = 12 + h * w * 4;
-    uchar* img_data = new (nothrow) uchar[ img_size ];
+    uchar* img_data = new uchar[ img_size ];
     if( !img_data )
         return NULL;
     *( (uint*) img_data + 1 ) = w;
@@ -3010,7 +3010,7 @@ AnyFrames* SpriteManager::LoadAnimationZar( const char* fname, int path_type )
     }
 
     // Fill animation
-    SpriteInfo* si = new (nothrow) SpriteInfo();
+    SpriteInfo* si = new SpriteInfo();
     uint        result = FillSurfaceFromMemory( si, img_data, img_size );
     if( !result )
         return NULL;
@@ -3081,7 +3081,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
 
         // Data for FillSurfaceFromMemory
         uint   img_size = 12 + h * w * 4;
-        uchar* img_data = new (nothrow) uchar[ img_size ];
+        uchar* img_data = new uchar[ img_size ];
         if( !img_data )
             return NULL;
         *( (uint*) img_data + 1 ) = w;
@@ -3135,7 +3135,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
         }
 
         // Fill animation
-        SpriteInfo* si = new (nothrow) SpriteInfo();
+        SpriteInfo* si = new SpriteInfo();
         uint        result = FillSurfaceFromMemory( si, img_data, img_size );
         if( !result )
             return NULL;
@@ -3188,7 +3188,7 @@ AnyFrames* SpriteManager::LoadAnimationMos( const char* fname, int path_type )
 
     // Data for FillSurfaceFromMemory
     uint   img_size = 12 + h * w * 4;
-    uchar* img_data = new (nothrow) uchar[ img_size ];
+    uchar* img_data = new uchar[ img_size ];
     if( !img_data )
         return NULL;
     *( (uint*) img_data + 1 ) = w;
@@ -3241,7 +3241,7 @@ AnyFrames* SpriteManager::LoadAnimationMos( const char* fname, int path_type )
     }
 
     // Fill animation
-    SpriteInfo* si = new (nothrow) SpriteInfo();
+    SpriteInfo* si = new SpriteInfo();
     uint        result = FillSurfaceFromMemory( si, img_data, img_size );
     if( !result )
         return NULL;
@@ -3367,7 +3367,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
 
         // Data for FillSurfaceFromMemory
         uint   img_size = 12 + h * w * 4;
-        uchar* img_data = new (nothrow) uchar[ img_size ];
+        uchar* img_data = new uchar[ img_size ];
         if( !img_data )
             return NULL;
         *( (uint*) img_data + 1 ) = w;
@@ -3398,7 +3398,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
         }
 
         // Set in animation sequence
-        SpriteInfo* si = new (nothrow) SpriteInfo();
+        SpriteInfo* si = new SpriteInfo();
         uint        result = FillSurfaceFromMemory( si, img_data, img_size );
         if( !result )
             return NULL;
@@ -3476,7 +3476,7 @@ AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type )
     ilDeleteImage( img );
 
     // Fill data
-    SpriteInfo* si = new (nothrow) SpriteInfo();
+    SpriteInfo* si = new SpriteInfo();
     uint        result = FillSurfaceFromMemory( si, data, size );
     if( !result )
         return NULL;
@@ -3566,7 +3566,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     uint      w = fb.W();
     uint      h = fb.H();
     uint      size = 12 + h * w * 4;
-    uchar*    data = new (nothrow) uchar[ size ];
+    uchar*    data = new uchar[ size ];
     *( (uint*) data + 1 ) = w;
     *( (uint*) data + 2 ) = h;
     for( uint i = 0; i < h; i++ )
@@ -3574,7 +3574,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     D3D_HR( spr3dRTData->UnlockRect() );
 
     // Fill from memory
-    SpriteInfo* si = new (nothrow) SpriteInfo();
+    SpriteInfo* si = new SpriteInfo();
     Point       p;
     anim3d->GetFullBorders( &p );
     si->OffsX = fb.W() / 2 - p.X;
@@ -3672,7 +3672,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     uint   w = fb.W();
     uint   h = fb.H();
     uint   size = 12 + h * w * 4;
-    uchar* data = new (nothrow) uchar[ size ];
+    uchar* data = new uchar[ size ];
     *( (uint*) data + 1 ) = w;
     *( (uint*) data + 2 ) = h;
     PushRenderTarget( rt3DSprite );
@@ -3686,7 +3686,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
             std::swap( data4[ y * w + x ], data4[ ( h - y - 1 ) * w + x ] );
 
     // Fill from memory
-    SpriteInfo* si = new (nothrow) SpriteInfo();
+    SpriteInfo* si = new SpriteInfo();
     Point       p;
     anim3d->GetFullBorders( &p );
     si->OffsX = fb.W() / 2 - p.X;
@@ -3703,7 +3703,7 @@ Animation3d* SpriteManager::LoadPure3dAnimation( const char* fname, int path_typ
         return NULL;
 
     // Add sprite information
-    SpriteInfo* si = new (nothrow) SpriteInfo();
+    SpriteInfo* si = new SpriteInfo();
     uint        index = 1;
     for( uint j = (uint) sprData.size(); index < j; index++ )
         if( !sprData[ index ] )
@@ -5573,7 +5573,7 @@ uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
 
     // Data for FillSurfaceFromMemory
     uint   size = 12 + ih * iw * 4;
-    uchar* data = new (nothrow) uchar[ size ];
+    uchar* data = new uchar[ size ];
     *( (uint*) data + 1 ) = iw;
     *( (uint*) data + 2 ) = ih;
     uint* ptr = (uint*) data + 3 + iw + 1;
@@ -5584,7 +5584,7 @@ uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
     surf->Release();
 
     // End
-    SpriteInfo* contour_si = new (nothrow) SpriteInfo();
+    SpriteInfo* contour_si = new SpriteInfo();
     contour_si->OffsX = si->OffsX;
     contour_si->OffsY = si->OffsY + 1;
     int  st = SurfType;

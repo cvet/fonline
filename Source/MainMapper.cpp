@@ -121,7 +121,7 @@ int main( int argc, char** argv )
 void GameThread( void* )
 {
     // Start
-    Mapper = new (nothrow) FOMapper();
+    Mapper = new FOMapper();
     if( !Mapper || !Mapper->Init() )
     {
         WriteLog( "FOnline engine initialization fail.\n" );

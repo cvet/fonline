@@ -284,7 +284,7 @@ bool FileManager::LoadFile( const char* fname, int path_type )
         FileGetTime( file, timeCreate, timeAccess, timeWrite );
 
         uint   size = FileGetSize( file );
-        uchar* buf = new (nothrow) uchar[ size + 1 ];
+        uchar* buf = new uchar[ size + 1 ];
         if( !buf )
             return false;
 
@@ -336,7 +336,7 @@ bool FileManager::LoadStream( const uchar* stream, uint length )
     if( !length )
         return false;
     fileSize = length;
-    fileBuf = new (nothrow) uchar[ fileSize + 1 ];
+    fileBuf = new uchar[ fileSize + 1 ];
     if( !fileBuf )
         return false;
     memcpy( fileBuf, stream, fileSize );
@@ -557,7 +557,7 @@ bool FileManager::ResizeOutBuf()
 {
     if( !lenOutBuf )
     {
-        dataOutBuf = new (nothrow) uchar[ OUT_BUF_START_SIZE ];
+        dataOutBuf = new uchar[ OUT_BUF_START_SIZE ];
         if( !dataOutBuf )
             return false;
         lenOutBuf = OUT_BUF_START_SIZE;
@@ -566,7 +566,7 @@ bool FileManager::ResizeOutBuf()
     }
 
     uchar* old_obuf = dataOutBuf;
-    dataOutBuf = new (nothrow) uchar[ lenOutBuf * 2 ];
+    dataOutBuf = new uchar[ lenOutBuf * 2 ];
     if( !dataOutBuf )
         return false;
     memzero( (void*) dataOutBuf, lenOutBuf * 2 );

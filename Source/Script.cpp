@@ -1626,7 +1626,7 @@ public:
             return;
 
         if( !EndExecutionCallbacks )
-            EndExecutionCallbacks = new (nothrow) EndExecutionCallbackVec();
+            EndExecutionCallbacks = new EndExecutionCallbackVec();
         auto it = std::find( EndExecutionCallbacks->begin(), EndExecutionCallbacks->end(), func );
         if( it == EndExecutionCallbacks->end() )
             EndExecutionCallbacks->push_back( func );

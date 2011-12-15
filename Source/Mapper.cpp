@@ -554,7 +554,7 @@ uint FOMapper::AnimLoad( uint name_hash, uchar dir, int res_type )
     AnyFrames* anim = ResMngr.GetAnim( name_hash, dir, res_type );
     if( !anim )
         return 0;
-    IfaceAnim* ianim = new (nothrow) IfaceAnim( anim, res_type );
+    IfaceAnim* ianim = new IfaceAnim( anim, res_type );
     if( !ianim )
         return 0;
 
@@ -578,7 +578,7 @@ uint FOMapper::AnimLoad( const char* fname, int path_type, int res_type )
     AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( full_name ), 0, res_type );
     if( !anim )
         return 0;
-    IfaceAnim* ianim = new (nothrow) IfaceAnim( anim, res_type );
+    IfaceAnim* ianim = new IfaceAnim( anim, res_type );
     if( !ianim )
         return 0;
 

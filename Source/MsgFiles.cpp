@@ -164,7 +164,7 @@ const uchar* FOMsg::GetBinary( uint num, uint& len )
 
     static THREAD UCharVec* binary = NULL;
     if( !binary )
-        binary = new (nothrow) UCharVec();
+        binary = new UCharVec();
 
     const char* str = GetStr( num );
     binary->clear();

@@ -116,7 +116,7 @@ void CryptManager::ClientPassHash( const char* name, const char* pass, char* pas
 uchar* CryptManager::Compress( const uchar* data, uint& data_len )
 {
     uLongf              buf_len = data_len * 110 / 100 + 12;
-    AutoPtrArr< uchar > buf( new (nothrow) uchar[ buf_len ] );
+    AutoPtrArr< uchar > buf( new uchar[ buf_len ] );
     if( !buf.IsValid() )
         return NULL;
 
@@ -138,14 +138,14 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
         return NULL;
     }
 
-    AutoPtrArr< uchar > buf( new (nothrow) uchar[ buf_len ] );
+    AutoPtrArr< uchar > buf( new uchar[ buf_len ] );
     if( !buf.IsValid() )
     {
         WriteLog( "Unpack - Bad alloc, size<%u>.\n", buf_len );
         return NULL;
     }
 
-    AutoPtrArr< uchar > data_( new (nothrow) uchar[ data_len ] );
+    AutoPtrArr< uchar > data_( new uchar[ data_len ] );
     if( !data_.IsValid() )
     {
         WriteLog( "Unpack - Bad alloc, size<%u>.\n", data_len );
@@ -171,7 +171,7 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
         if( result == Z_BUF_ERROR )
         {
             buf_len *= 2;
-            buf.Reset( new (nothrow) uchar[ buf_len ] );
+            buf.Reset( new uchar[ buf_len ] );
             if( !buf.IsValid() )
             {
                 WriteLog( "Unpack - Bad alloc, size<%u>.\n", buf_len );
@@ -299,7 +299,7 @@ bool CryptManager::SetCacheTable( const char* cache_fname )
             fseek( fr, 0, SEEK_END );
             uint   len = ftell( fr );
             fseek( fr, 0, SEEK_SET );
-            uchar* buf = new (nothrow) uchar[ len ];
+            uchar* buf = new uchar[ len ];
             if( !buf )
                 return false;
             fread( buf, sizeof( uchar ), len, fr );
@@ -494,7 +494,7 @@ uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
             return NULL;
         }
 
-        uchar* data = new (nothrow) uchar[ desc.DataCurLen ];
+        uchar* data = new uchar[ desc.DataCurLen ];
         if( !data )
         {
             fclose( f );

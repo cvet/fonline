@@ -211,7 +211,7 @@ int main( int argc, char** argv )
 void GameThread( void* )
 {
     // Start
-    FOEngine = new (nothrow) FOClient();
+    FOEngine = new FOClient();
     if( !FOEngine || !FOEngine->Init() )
     {
         WriteLog( "FOnline engine initialization fail.\n" );

@@ -247,7 +247,7 @@ Sound* SoundManager::Load( const char* fname, int path_type )
         --ext;
     }
 
-    Sound* sound = new (nothrow) Sound();
+    Sound* sound = new Sound();
     if( !sound )
     {
         WriteLogF( _FUNC_, " - Allocation error.\n" );
@@ -365,7 +365,7 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname, int path_type )
 
     dw_buf = fm.GetLEUInt();
     sound->BufSize = dw_buf;
-    sound->Buf = new ( nothrow ) unsigned char[ dw_buf ];
+    sound->Buf = new unsigned char[ dw_buf ];
 
     if( !fm.CopyMem( sound->Buf, dw_buf ) )
     {
@@ -385,7 +385,7 @@ bool SoundManager::LoadACM( Sound* sound, const char* fname, int path_type )
     int                     channels = 0;
     int                     freq = 0;
     int                     samples = 0;
-    AutoPtr< CACMUnpacker > acm( new (nothrow) CACMUnpacker( fm.GetBuf(), (int) fm.GetFsize(), channels, freq, samples ) );
+    AutoPtr< CACMUnpacker > acm( new CACMUnpacker( fm.GetBuf(), (int) fm.GetFsize(), channels, freq, samples ) );
     if( !acm.IsValid() )
     {
         WriteLogF( _FUNC_, " - ACMUnpacker init fail.\n" );
@@ -397,7 +397,7 @@ bool SoundManager::LoadACM( Sound* sound, const char* fname, int path_type )
     sound->SampleSize = 2;
 
     sound->BufSize = samples * sound->SampleSize;
-    sound->Buf = new ( nothrow ) unsigned char[ sound->BufSize ];
+    sound->Buf = new unsigned char[ sound->BufSize ];
     int dec_data = acm->readAndDecompress( (ushort*) sound->Buf, sound->BufSize );
     if( dec_data != (int) sound->BufSize )
     {
@@ -449,7 +449,7 @@ long Ogg_tell_func( void* datasource )
 
 bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
 {
-    FileManager* fm = new (nothrow) FileManager();
+    FileManager* fm = new FileManager();
     if( !fm || !fm->LoadFile( fname, path_type ) )
     {
         SAFEDEL( fm );
@@ -502,7 +502,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
     sound->SampleRate = vi->rate;
     sound->SampleSize = 2;
 
-    sound->Buf = new ( nothrow ) unsigned char[ STREAMING_PORTION ];
+    sound->Buf = new unsigned char[ STREAMING_PORTION ];
     if( !sound->Buf )
         return false;
 

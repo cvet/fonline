@@ -439,7 +439,7 @@ bool ProtoMap::ReadHeader( FileManager& fm, int version )
 
 bool ProtoMap::ReadTiles( FileManager& fm, int version )
 {
-    uint* tiles = new (nothrow) uint[ ( ( Header.MaxHexX / 2 ) * ( Header.MaxHexY / 2 ) * sizeof( uint ) * 2 ) / sizeof( uint ) ];
+    uint* tiles = new uint[ ( ( Header.MaxHexX / 2 ) * ( Header.MaxHexY / 2 ) * sizeof( uint ) * 2 ) / sizeof( uint ) ];
     if( !tiles )
         return false;
     fm.SetCurPos( Header.Packed ? 0 : Header.HeaderSize );
@@ -449,7 +449,7 @@ bool ProtoMap::ReadTiles( FileManager& fm, int version )
         // Convert lst offsets to name hashes
         memzero( tiles, ( Header.MaxHexX / 2 ) * ( Header.MaxHexY / 2 ) * sizeof( uint ) * 2 );
         uint  size = ( Header.MaxHexX / 2 ) * ( Header.MaxHexY / 2 ) * sizeof( uint );
-        uint* ptr = new (nothrow) uint[ size / sizeof( uint ) ];
+        uint* ptr = new uint[ size / sizeof( uint ) ];
         if( !fm.CopyMem( ptr, size ) )
             return false;
         for( int x = 0; x < Header.MaxHexX / 2; x++ )

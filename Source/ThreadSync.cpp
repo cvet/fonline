@@ -216,7 +216,7 @@ SyncManager* SyncManager::GetForCurThread()
     static THREAD SyncManager* sync_mngr = NULL;
     if( !sync_mngr )
     {
-        sync_mngr = new (nothrow) SyncManager();
+        sync_mngr = new SyncManager();
         if( !sync_mngr )
             return NULL;
         Managers.push_back( sync_mngr );

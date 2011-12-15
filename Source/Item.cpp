@@ -456,7 +456,7 @@ void Item::SetLexems( const char* lexems )
         if( !PLexems )
         {
             MEMORY_PROCESS( MEMORY_ITEM, LEXEMS_SIZE );
-            PLexems = new ( nothrow ) char[ LEXEMS_SIZE ];
+            PLexems = new char[ LEXEMS_SIZE ];
             if( !PLexems )
                 return;
         }
@@ -488,7 +488,7 @@ void Item::ContAddItem( Item*& item, uint special_id )
     if( !ChildItems )
     {
         MEMORY_PROCESS( MEMORY_ITEM, sizeof( ItemPtrMap ) );
-        ChildItems = new (nothrow) ItemPtrVec();
+        ChildItems = new ItemPtrVec();
         if( !ChildItems )
             return;
     }
@@ -515,7 +515,7 @@ void Item::ContSetItem( Item* item )
     if( !ChildItems )
     {
         MEMORY_PROCESS( MEMORY_ITEM, sizeof( ItemPtrMap ) );
-        ChildItems = new (nothrow) ItemPtrVec();
+        ChildItems = new ItemPtrVec();
         if( !ChildItems )
             return;
     }

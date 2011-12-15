@@ -4981,7 +4981,7 @@ bool FOServer::LoadTimeEventsFile( void* f )
             continue;
         }
 
-        TimeEvent* te = new (nothrow) TimeEvent();
+        TimeEvent* te = new TimeEvent();
         if( !te )
             return false;
         te->FullSecond = begin_second;
@@ -5037,7 +5037,7 @@ uint FOServer::CreateTimeEvent( uint begin_second, const char* script_name, int 
     if( bind_id <= 0 )
         return 0;
 
-    TimeEvent* te = new (nothrow) TimeEvent();
+    TimeEvent* te = new TimeEvent();
     if( !te )
         return 0;
 

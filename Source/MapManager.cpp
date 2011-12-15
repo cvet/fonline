@@ -9,7 +9,7 @@
 MapManager MapMngr;
 
 /************************************************************************/
-/* GlobalMapGroup                                                            */
+/* GlobalMapGroup                                                       */
 /************************************************************************/
 
 bool GlobalMapGroup::IsValid()
@@ -1754,7 +1754,7 @@ int MapManager::FindPath( PathFindData& pfd )
     // Allocate temporary grid
     if( !Grid )
     {
-        Grid = new ( nothrow ) short[ ( FPATH_MAX_PATH * 2 + 2 ) * ( FPATH_MAX_PATH * 2 + 2 ) ];
+        Grid = new short[ ( FPATH_MAX_PATH * 2 + 2 ) * ( FPATH_MAX_PATH * 2 + 2 ) ];
         if( !Grid )
             return FPATH_ALLOC_FAIL;
     }

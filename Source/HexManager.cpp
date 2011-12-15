@@ -2770,7 +2770,7 @@ bool HexManager::FindPath( CritterCl* cr, ushort start_x, ushort start_y, ushort
     // Allocate temporary grid
     if( !grid )
     {
-        grid = new ( nothrow ) short[ ( MAX_FIND_PATH * 2 + 2 ) * ( MAX_FIND_PATH * 2 + 2 ) ];
+        grid = new short[ ( MAX_FIND_PATH * 2 + 2 ) * ( MAX_FIND_PATH * 2 + 2 ) ];
         if( !grid )
             return false;
     }

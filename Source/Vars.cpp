@@ -610,7 +610,7 @@ GameVar* VarManager::GetVar( ushort temp_id, uint master_id, uint slave_id,  boo
 
 GameVar* VarManager::CreateVar( uint master_id, TemplateVar* tvar )
 {
-    GameVar* var = new (nothrow) GameVar( master_id, 0, tvar, tvar->IsRandom() ? Random( tvar->MinVal, tvar->MaxVal ) : tvar->StartVal );
+    GameVar* var = new GameVar( master_id, 0, tvar, tvar->IsRandom() ? Random( tvar->MinVal, tvar->MaxVal ) : tvar->StartVal );
     if( !var )
         return NULL;
 
@@ -643,7 +643,7 @@ GameVar* VarManager::CreateVar( uint master_id, TemplateVar* tvar )
 
 GameVar* VarManager::CreateVarUnicum( uint64 id, uint master_id, uint slave_id, TemplateVar* tvar )
 {
-    GameVar* var = new (nothrow) GameVar( master_id, slave_id, tvar, tvar->IsRandom() ? Random( tvar->MinVal, tvar->MaxVal ) : tvar->StartVal );
+    GameVar* var = new GameVar( master_id, slave_id, tvar, tvar->IsRandom() ? Random( tvar->MinVal, tvar->MaxVal ) : tvar->StartVal );
     if( !var )
         return NULL;
 

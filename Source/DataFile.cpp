@@ -84,7 +84,7 @@ DataFile* OpenDataFile( const char* fname )
 
     if( Str::CompareCase( ext, ".dat" ) ) // Try open DAT
     {
-        FalloutDatFile* dat = new (nothrow) FalloutDatFile();
+        FalloutDatFile* dat = new FalloutDatFile();
         if( !dat || !dat->Init( fname ) )
         {
             WriteLogF( _FUNC_, " - Unable to open DAT file<%s>.\n", fname );
@@ -96,7 +96,7 @@ DataFile* OpenDataFile( const char* fname )
     }
     else if( Str::CompareCase( ext, ".zip" ) || Str::CompareCase( ext, ".bos" ) ) // Try open ZIP, BOS
     {
-        ZipFile* zip = new (nothrow) ZipFile();
+        ZipFile* zip = new ZipFile();
         if( !zip || !zip->Init( fname ) )
         {
             WriteLogF( _FUNC_, " - Unable to open ZIP file<%s>.\n", fname );
@@ -178,7 +178,7 @@ bool FalloutDatFile::ReadTree()
         if( !FileRead( datHandle, &files_total, 4 ) )
             return false;
         tree_size -= 28 + 4;     // Subtract information block and files total
-        if( ( memTree = new (nothrow) uchar[ tree_size ] ) == NULL )
+        if( ( memTree = new uchar[ tree_size ] ) == NULL )
             return false;
         memzero( memTree, tree_size );
         if( !FileRead( datHandle, memTree, tree_size ) )
@@ -241,7 +241,7 @@ bool FalloutDatFile::ReadTree()
     if( !FileRead( datHandle, &files_total, 4 ) )
         return false;
     tree_size -= 4;
-    if( ( memTree = new (nothrow) uchar[ tree_size ] ) == NULL )
+    if( ( memTree = new uchar[ tree_size ] ) == NULL )
         return false;
     memzero( memTree, tree_size );
     if( !FileRead( datHandle, memTree, tree_size ) )
@@ -288,13 +288,13 @@ uchar* FalloutDatFile::OpenFile( const char* fname, uint& len )
 
     CFile* reader = NULL;
     if( !type )
-        reader = new (nothrow) CPlainFile( datHandle, offset, real_size );
+        reader = new CPlainFile( datHandle, offset, real_size );
     else
-        reader = new (nothrow) C_Z_PackedFile( datHandle, offset, real_size, packed_size );
+        reader = new C_Z_PackedFile( datHandle, offset, real_size, packed_size );
     if( !reader )
         return NULL;
 
-    uchar* buf = new (nothrow) uchar[ real_size + 1 ];
+    uchar* buf = new uchar[ real_size + 1 ];
     if( !buf )
     {
         delete reader;
@@ -452,7 +452,7 @@ uchar* ZipFile::OpenFile( const char* fname, uint& len )
     if( unzGoToFilePos( zipHandle, &info.Pos ) != UNZ_OK )
         return NULL;
 
-    uchar* buf = new (nothrow) uchar[ info.UncompressedSize + 1 ];
+    uchar* buf = new uchar[ info.UncompressedSize + 1 ];
     if( !buf )
         return NULL;
 
