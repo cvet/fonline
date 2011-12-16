@@ -1420,6 +1420,37 @@ GameOptions::GameOptions()
     GetNameByHash = NULL;
     GetHashByName = NULL;
 
+    ScriptLoadModule = NULL;
+    ScriptBind = NULL;
+    ScriptPrepare = NULL;
+    ScriptSetArgInt8 = NULL;
+    ScriptSetArgInt16 = NULL;
+    ScriptSetArgInt = NULL;
+    ScriptSetArgInt64 = NULL;
+    ScriptSetArgUInt8 = NULL;
+    ScriptSetArgUInt16 = NULL;
+    ScriptSetArgUInt = NULL;
+    ScriptSetArgUInt64 = NULL;
+    ScriptSetArgBool = NULL;
+    ScriptSetArgFloat = NULL;
+    ScriptSetArgDouble = NULL;
+    ScriptSetArgObject = NULL;
+    ScriptSetArgAddress = NULL;
+    ScriptRunPrepared = NULL;
+    ScriptGetReturnedInt8 = NULL;
+    ScriptGetReturnedInt16 = NULL;
+    ScriptGetReturnedInt = NULL;
+    ScriptGetReturnedInt64 = NULL;
+    ScriptGetReturnedUInt8 = NULL;
+    ScriptGetReturnedUInt16 = NULL;
+    ScriptGetReturnedUInt = NULL;
+    ScriptGetReturnedUInt64 = NULL;
+    ScriptGetReturnedBool = NULL;
+    ScriptGetReturnedFloat = NULL;
+    ScriptGetReturnedDouble = NULL;
+    ScriptGetReturnedObject = NULL;
+    ScriptGetReturnedAddress = NULL;
+
     // Callbacks
     GetUseApCost = NULL;
     GetAttackDistantion = NULL;

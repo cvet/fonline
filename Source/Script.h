@@ -45,8 +45,8 @@ namespace Script
     bool ReloadScripts( const char* config, const char* key, bool skip_binaries, const char* file_pefix = NULL );
     bool BindReservedFunctions( const char* config, const char* key, ReservedScriptFunction* bind_func, uint bind_func_count );
 
-    void AddRef( void* );   // Dummy
-    void Release( void* );  // Dummy
+    void DummyAddRef( void* );
+    void DummyRelease( void* );
 
     asIScriptEngine* GetEngine();
     void             SetEngine( asIScriptEngine* engine );
@@ -99,17 +99,23 @@ namespace Script
     void EndExecution();
     void AddEndExecutionCallback( EndExecutionCallback func );
 
-    bool  PrepareContext( int bind_id, const char* call_func, const char* ctx_info );
-    void  SetArgUShort( ushort value );
-    void  SetArgUInt( uint value );
-    void  SetArgUChar( uchar value );
-    void  SetArgBool( bool value );
-    void  SetArgObject( void* value );
-    void  SetArgAddress( void* value );
-    bool  RunPrepared();
-    uint  GetReturnedUInt();
-    bool  GetReturnedBool();
-    void* GetReturnedObject();
+    bool   PrepareContext( int bind_id, const char* call_func, const char* ctx_info );
+    void   SetArgUChar( uchar value );
+    void   SetArgUShort( ushort value );
+    void   SetArgUInt( uint value );
+    void   SetArgUInt64( uint64 value );
+    void   SetArgBool( bool value );
+    void   SetArgFloat( float value );
+    void   SetArgDouble( double value );
+    void   SetArgObject( void* value );
+    void   SetArgAddress( void* value );
+    bool   RunPrepared();
+    uint   GetReturnedUInt();
+    bool   GetReturnedBool();
+    void*  GetReturnedObject();
+    float  GetReturnedFloat();
+    double GetReturnedDouble();
+    void*  GetReturnedRawAddress();
 
     bool SynchronizeThread();
     bool ResynchronizeThread();

@@ -694,6 +694,37 @@ struct GameOptions
     const char* ( *GetNameByHash )( uint );
     uint        ( * GetHashByName )( const char* );
 
+    bool        ( * ScriptLoadModule )( const char* );
+    uint        ( * ScriptBind )( const char*, const char*, bool );
+    bool        ( * ScriptPrepare )( uint );
+    void        ( * ScriptSetArgInt8 )( char );
+    void        ( * ScriptSetArgInt16 )( short );
+    void        ( * ScriptSetArgInt )( int );
+    void        ( * ScriptSetArgInt64 )( int64 );
+    void        ( * ScriptSetArgUInt8 )( uchar );
+    void        ( * ScriptSetArgUInt16 )( ushort );
+    void        ( * ScriptSetArgUInt )( uint );
+    void        ( * ScriptSetArgUInt64 )( uint64 );
+    void        ( * ScriptSetArgBool )( bool );
+    void        ( * ScriptSetArgFloat )( float );
+    void        ( * ScriptSetArgDouble )( double );
+    void        ( * ScriptSetArgObject )( void* );
+    void        ( * ScriptSetArgAddress )( void* );
+    bool        ( * ScriptRunPrepared )();
+    char        ( * ScriptGetReturnedInt8 )();
+    short       ( * ScriptGetReturnedInt16 )();
+    int         ( * ScriptGetReturnedInt )();
+    int64       ( * ScriptGetReturnedInt64 )();
+    uchar       ( * ScriptGetReturnedUInt8 )();
+    ushort      ( * ScriptGetReturnedUInt16 )();
+    uint        ( * ScriptGetReturnedUInt )();
+    uint64      ( * ScriptGetReturnedUInt64 )();
+    bool        ( * ScriptGetReturnedBool )();
+    float       ( * ScriptGetReturnedFloat )();
+    double      ( * ScriptGetReturnedDouble )();
+    void*       ( *ScriptGetReturnedObject )( );
+    void*       ( *ScriptGetReturnedAddress )( );
+
     // Callbacks
     uint        ( * GetUseApCost )( void*, void*, uchar );
     uint        ( * GetAttackDistantion )( void*, void*, uchar );
