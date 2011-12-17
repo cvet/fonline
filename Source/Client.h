@@ -596,6 +596,7 @@ public:
         static bool           Global_IsCritterCanRun( uint cr_type );
         static bool           Global_IsCritterCanRotate( uint cr_type );
         static bool           Global_IsCritterCanAim( uint cr_type );
+        static bool           Global_IsCritterCanArmor( uint cr_type );
         static bool           Global_IsCritterAnim1( uint cr_type, uint index );
         static int            Global_GetCritterAnimType( uint cr_type );
         static uint           Global_GetCritterAlias( uint cr_type );
@@ -1849,7 +1850,7 @@ public:
 #define CHOSEN_SHOW_ITEM               ( 4 )  // Item id
 #define CHOSEN_HIDE_ITEM               ( 5 )  // Item id
 #define CHOSEN_USE_ITEM                ( 6 )  // Item id, Item pid, Target type, Target id, Item mode, Some param (timer)
-#define CHOSEN_MOVE_ITEM               ( 7 )  // Item id, Item count, To slot
+#define CHOSEN_MOVE_ITEM               ( 7 )  // Item id, Item count, To slot, Is barter container, Is second try
 #define CHOSEN_MOVE_ITEM_CONT          ( 8 )  // From container, Item id, Count
 #define CHOSEN_TAKE_ALL                ( 9 )  //
 #define CHOSEN_USE_SKL_ON_CRITTER      ( 10 ) // Skill, Critter id

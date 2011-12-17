@@ -5143,9 +5143,9 @@ void FOClient::LMenuMouseUp()
             if( !Chosen->IsLife() || !Chosen->IsFree() )
                 break;
             if( cont_item->IsStackable() && cont_item->GetCount() > 1 )
-                SplitStart( cont_item, 0xFF | ( TargetSmth.GetParam() << 16 ) );
+                SplitStart( cont_item, SLOT_GROUND | ( ( TargetSmth.GetParam() ? 1 : 0 ) << 16 ) );
             else
-                AddActionBack( CHOSEN_MOVE_ITEM, cont_item->GetId(), cont_item->GetCount(), 0xFF, TargetSmth.GetParam() );
+                AddActionBack( CHOSEN_MOVE_ITEM, cont_item->GetId(), cont_item->GetCount(), SLOT_GROUND, TargetSmth.GetParam() ? 1 : 0 );
             break;
         case LMENU_NODE_UNLOAD:
             if( !inv_item )

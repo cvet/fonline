@@ -7026,6 +7026,13 @@ bool FOMapper::SScriptFunc::Global_IsCritterCanAim( uint cr_type )
     return CritType::IsCanAim( cr_type );
 }
 
+bool FOMapper::SScriptFunc::Global_IsCritterCanArmor( uint cr_type )
+{
+    if( !CritType::IsEnabled( cr_type ) )
+        SCRIPT_ERROR_R0( "Invalid critter type arg." );
+    return CritType::IsCanArmor( cr_type );
+}
+
 bool FOMapper::SScriptFunc::Global_IsCritterAnim1( uint cr_type, uint index )
 {
     if( !CritType::IsEnabled( cr_type ) )

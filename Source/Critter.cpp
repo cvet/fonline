@@ -1133,7 +1133,7 @@ void Critter::AddItem( Item*& item, bool send )
     }
 
     // Change item
-    if( Script::PrepareContext( ServerFunctions.CritterChangeItem, _FUNC_, GetInfo() ) )
+    if( Script::PrepareContext( ServerFunctions.CritterMoveItem, _FUNC_, GetInfo() ) )
     {
         Script::SetArgObject( this );
         Script::SetArgObject( item );
@@ -1222,7 +1222,7 @@ void Critter::EraseItem( Item* item, bool send )
 
     uchar from_slot = item->ACC_CRITTER.Slot;
     item->ACC_CRITTER.Slot = SLOT_GROUND;
-    if( Script::PrepareContext( ServerFunctions.CritterChangeItem, _FUNC_, GetInfo() ) )
+    if( Script::PrepareContext( ServerFunctions.CritterMoveItem, _FUNC_, GetInfo() ) )
     {
         Script::SetArgObject( this );
         Script::SetArgObject( item );
@@ -1494,11 +1494,35 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         return false;
     }
 
+    if( to_slot != SLOT_GROUND && !SlotEnabled[ to_slot ] )
+    {
+        WriteLogF( _FUNC_, " - Slot<%u> is not allowed, critter<%s>.\n", to_slot, GetInfo() );
+        return false;
+    }
+
+    Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? GetItemSlot( to_slot ) : NULL );
+    bool  allow = false;
+    if( Script::PrepareContext( ServerFunctions.CritterCheckMoveItem, _FUNC_, GetInfo() ) )
+    {
+        Script::SetArgObject( this );
+        Script::SetArgObject( item );
+        Script::SetArgUChar( to_slot );
+        Script::SetArgObject( item_swap );
+        if( Script::RunPrepared() )
+            allow = Script::GetReturnedBool();
+    }
+    if( !allow )
+    {
+        Send_AddItem( item );
+        WriteLogF( _FUNC_, " - Can't move item with pid<%u> to slot<%u>, critter<%s>.\n", item->GetProtoId(), to_slot, GetInfo() );
+        return false;
+    }
+
     if( to_slot == SLOT_GROUND )
     {
         if( !count || count > item->GetCount() )
         {
-            Send_AddItem( item );           // Refresh
+            Send_AddItem( item );
             return false;
         }
 
@@ -1510,7 +1534,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
                 Item* item_ = ItemMngr.SplitItem( item, count );
                 if( !item_ )
                 {
-                    Send_AddItem( item );                   // Refresh
+                    Send_AddItem( item );
                     return false;
                 }
                 SendAA_ItemData( item );
@@ -1528,7 +1552,6 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
             EraseItem( item, false );
             if( !GetMap() )
             {
-                // item->EventDrop(GetScriptContext(),this);
                 ItemMngr.ItemToGarbage( item );
                 item = NULL;
             }
@@ -1554,71 +1577,36 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         return true;
     }
 
-    bool is_castling = ( ( from_slot == SLOT_HAND1 && to_slot == SLOT_HAND2 ) || ( from_slot == SLOT_HAND2 && to_slot == SLOT_HAND1 ) );
-
-    if( !SlotEnabled[ to_slot ] )
+    TakeDefaultItem( from_slot );
+    TakeDefaultItem( to_slot );
+    if( to_slot == SLOT_HAND1 )
+        ItemSlotMain = item;
+    else if( to_slot == SLOT_HAND2 )
+        ItemSlotExt = item;
+    else if( to_slot == SLOT_ARMOR )
+        ItemSlotArmor = item;
+    if( item_swap )
     {
-        WriteLogF( _FUNC_, " - Slot<%u> is not allowed, critter<%s>.\n", to_slot, GetInfo() );
-        return false;
+        if( from_slot == SLOT_HAND1 )
+            ItemSlotMain = item_swap;
+        else if( from_slot == SLOT_HAND2 )
+            ItemSlotExt = item_swap;
+        else if( from_slot == SLOT_ARMOR )
+            ItemSlotArmor = item_swap;
     }
 
-    if( to_slot != SLOT_INV && !is_castling && GetItemSlot( to_slot ) )
-    {
-        WriteLogF( _FUNC_, " - To slot is busy, critter<%s>.\n", GetInfo() );
-        return false;
-    }
+    item->ACC_CRITTER.Slot = to_slot;
+    if( item_swap )
+        item_swap->ACC_CRITTER.Slot = from_slot;
 
-    if( to_slot > SLOT_ARMOR && to_slot != item->Proto->Slot )
+    SendAA_MoveItem( item, ACTION_MOVE_ITEM, from_slot );
+    item->EventMove( this, from_slot );
+    EventMoveItem( item, from_slot );
+    if( item_swap )
     {
-        WriteLogF( _FUNC_, " - Wrong slot<%u> for item pid<%u>, critter<%s>.\n", to_slot, item->GetProtoId(), GetInfo() );
-        return false;
-    }
-
-    if( to_slot == SLOT_HAND1 && item->IsWeapon() && !CritType::IsAnim1( GetCrType(), item->Proto->Weapon_Anim1 ) )
-    {
-        WriteLogF( _FUNC_, " - Critter<%s> not have animations for anim1 index<%u>.\n", GetInfo(), item->Proto->Weapon_Anim1 );
-        return false;
-    }
-
-    if( to_slot == SLOT_ARMOR && ( !item->IsArmor() || item->Proto->Slot || !CritType::IsCanArmor( GetCrType() ) ) )
-    {
-        WriteLogF( _FUNC_, " - Critter<%s> can't change armor.\n", GetInfo() );
-        return false;
-    }
-
-    if( is_castling && ItemSlotMain->GetId() && ItemSlotExt->GetId() )
-    {
-        Item* tmp_item = ItemSlotExt;
-        ItemSlotExt = ItemSlotMain;
-        ItemSlotMain = tmp_item;
-        ItemSlotExt->ACC_CRITTER.Slot = SLOT_HAND2;
-        ItemSlotMain->ACC_CRITTER.Slot = SLOT_HAND1;
-        SendAA_MoveItem( ItemSlotMain, ACTION_SHOW_ITEM, SLOT_HAND2 );
-        ItemSlotMain->EventMove( this, SLOT_HAND2 );
-        // ItemSlotExt->EventMove(this,SLOT_HAND1);
-        EventMoveItem( ItemSlotMain, SLOT_HAND2 );
-        // EventMoveItem(ItemSlotExt,SLOT_HAND1);
-    }
-    else
-    {
-        int action = ACTION_MOVE_ITEM;
-        if( to_slot == SLOT_HAND1 )
-            action = ACTION_SHOW_ITEM;
-        else if( from_slot == SLOT_HAND1 )
-            action = ACTION_HIDE_ITEM;
-
-        TakeDefaultItem( from_slot );
-        if( to_slot == SLOT_HAND1 )
-            ItemSlotMain = item;
-        else if( to_slot == SLOT_HAND2 )
-            ItemSlotExt = item;
-        else if( to_slot == SLOT_ARMOR )
-            ItemSlotArmor = item;
-        item->ACC_CRITTER.Slot = to_slot;
-
-        SendAA_MoveItem( item, action, from_slot );
-        item->EventMove( this, from_slot );
-        EventMoveItem( item, from_slot );
+        SendAA_MoveItem( item, ACTION_MOVE_ITEM_SWAP, to_slot );
+        item->EventMove( this, to_slot );
+        EventMoveItem( item, to_slot );
     }
 
     return true;
@@ -2115,7 +2103,7 @@ void Critter::EventDropItem( Item* item )
 
 void Critter::EventMoveItem( Item* item, uchar from_slot )
 {
-    if( Script::PrepareContext( ServerFunctions.CritterChangeItem, _FUNC_, GetInfo() ) )
+    if( Script::PrepareContext( ServerFunctions.CritterMoveItem, _FUNC_, GetInfo() ) )
     {
         Script::SetArgObject( this );
         Script::SetArgObject( item );

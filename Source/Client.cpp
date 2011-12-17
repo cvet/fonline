@@ -4723,9 +4723,6 @@ void FOClient::Net_OnCritterMoveItem()
     if( !cr )
         return;
 
-    if( action == ACTION_HIDE_ITEM || action == ACTION_MOVE_ITEM )
-        cr->Action( action, prev_slot, is_item ? &SomeItem : NULL, false );
-
     if( cr != Chosen )
     {
         int64 prev_hash_sum = 0;
@@ -4763,8 +4760,7 @@ void FOClient::Net_OnCritterMoveItem()
             HexMngr.RebuildLight();
     }
 
-    if( action == ACTION_SHOW_ITEM || action == ACTION_REFRESH )
-        cr->Action( action, prev_slot, is_item ? &SomeItem : NULL, false );
+    cr->Action( action, prev_slot, is_item ? &SomeItem : NULL, false );
 }
 
 void FOClient::Net_OnCritterItemData()
@@ -7477,10 +7473,10 @@ void FOClient::ChosenChangeSlot()
     if( !Chosen )
         return;
 
-    if( Chosen->ItemSlotMain->GetId() )
-        AddActionBack( CHOSEN_MOVE_ITEM, Chosen->ItemSlotMain->GetId(), Chosen->ItemSlotMain->GetCount(), SLOT_HAND2 );
-    else if( Chosen->ItemSlotExt->GetId() )
+    if( Chosen->ItemSlotExt->GetId() )
         AddActionBack( CHOSEN_MOVE_ITEM, Chosen->ItemSlotExt->GetId(), Chosen->ItemSlotExt->GetCount(), SLOT_HAND1 );
+    else if( Chosen->ItemSlotMain->GetId() )
+        AddActionBack( CHOSEN_MOVE_ITEM, Chosen->ItemSlotMain->GetId(), Chosen->ItemSlotMain->GetCount(), SLOT_HAND2 );
     else
     {
         uchar      tree = Chosen->DefItemSlotHand->Proto->Weapon_UnarmedTree + 1;
@@ -8099,68 +8095,146 @@ label_EndMove:
         uint  item_count = act.Param[ 1 ];
         int   to_slot = act.Param[ 2 ];
         bool  is_barter_cont = ( act.Param[ 3 ] != 0 );
+        bool  is_second_try = ( act.Param[ 4 ] != 0 );
 
         Item* item = Chosen->GetItem( item_id );
         if( !item )
             break;
 
         uchar from_slot = item->ACC_CRITTER.Slot;
-        if( from_slot == to_slot )
+        if( item->ACC_CRITTER.Slot != from_slot || from_slot == to_slot )
             break;
-        bool is_castling = ( from_slot == SLOT_HAND1 && to_slot == SLOT_HAND2 ) || ( from_slot == SLOT_HAND2 && to_slot == SLOT_HAND1 );
-        bool is_light = item->IsLight();
+        if( to_slot != SLOT_GROUND && !CritterCl::SlotEnabled[ to_slot ] )
+            break;
 
-        if( to_slot != SLOT_GROUND )
+        Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? Chosen->GetItemSlot( to_slot ) : NULL );
+        bool  allow = false;
+        if( Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
         {
-            if( !CritterCl::SlotEnabled[ to_slot ] )
-                break;
-            if( to_slot > SLOT_ARMOR && to_slot != item->Proto->Slot )
-                break;
-            if( to_slot == SLOT_HAND1 && item->IsWeapon() && !CritType::IsAnim1( Chosen->GetCrType(), item->Proto->Weapon_Anim1 ) )
-                break;
-            if( to_slot == SLOT_ARMOR && ( !item->IsArmor() || item->Proto->Slot || !CritType::IsCanArmor( Chosen->GetCrType() ) ) )
-                break;
+            Script::SetArgObject( Chosen );
+            Script::SetArgObject( item );
+            Script::SetArgUChar( to_slot );
+            Script::SetArgObject( item_swap );
+            if( Script::RunPrepared() )
+                allow = Script::GetReturnedBool();
+        }
+        if( !allow )
+        {
+            // Gameplay swap workaround
+            if( item_swap && !is_second_try )
+            {
+                // Hindering item to inventory
+                bool allow1 = false;
+                if( Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
+                {
+                    Script::SetArgObject( Chosen );
+                    Script::SetArgObject( item_swap );
+                    Script::SetArgUChar( SLOT_INV );
+                    Script::SetArgObject( NULL );
+                    if( Script::RunPrepared() )
+                        allow1 = Script::GetReturnedBool();
+                }
+
+                // Current item to empty slot
+                bool allow2 = false;
+                if( allow1 && Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
+                {
+                    Script::SetArgObject( Chosen );
+                    Script::SetArgObject( item );
+                    Script::SetArgUChar( to_slot );
+                    Script::SetArgObject( NULL );
+                    if( Script::RunPrepared() )
+                        allow2 = Script::GetReturnedBool();
+                }
+
+                // Add actions
+                if( allow1 && allow2 )
+                {
+                    EraseFrontAction();
+                    AddActionFront( CHOSEN_MOVE_ITEM, item_id, item_count, to_slot, is_barter_cont, true );                        // Second
+                    AddActionFront( CHOSEN_MOVE_ITEM, item_swap->GetId(), item_swap->GetCount(), SLOT_INV, is_barter_cont, true ); // First
+                    return;
+                }
+            }
+            break;
         }
 
+        // Action points
+        bool is_castling = ( ( from_slot == SLOT_HAND1 && to_slot == SLOT_HAND2 ) || ( from_slot == SLOT_HAND2 && to_slot == SLOT_HAND1 ) );
         uint ap_cost = ( is_castling ? 0 : Chosen->GetApCostMoveItemInventory() );
         if( to_slot == SLOT_GROUND )
             ap_cost = Chosen->GetApCostDropItem();
         CHECK_NEED_AP( ap_cost );
 
-        Item* to_slot_item = Chosen->GetItemSlot( to_slot );
-        if( !is_castling && to_slot != SLOT_INV && to_slot != SLOT_GROUND && to_slot_item )
+        // Move
+        if( to_slot == SLOT_GROUND )
         {
-            AddActionFront( CHOSEN_MOVE_ITEM, to_slot_item->GetId(), to_slot_item->GetCount(), SLOT_INV );
+            Chosen->Action( ACTION_DROP_ITEM, from_slot, item );
+            if( item_count < item->GetCount() )
+                item->Count_Sub( item_count );
+            else
+                Chosen->EraseItem( item, true );
         }
         else
         {
-            if( !Chosen->MoveItem( item_id, to_slot, item_count ) )
-                break;
+            if( from_slot == SLOT_HAND1 || to_slot == SLOT_HAND1 )
+                Chosen->ItemSlotMain = Chosen->DefItemSlotHand;
+            if( from_slot == SLOT_HAND2 || to_slot == SLOT_HAND2 )
+                Chosen->ItemSlotExt = Chosen->DefItemSlotHand;
+            if( from_slot == SLOT_ARMOR || to_slot == SLOT_ARMOR )
+                Chosen->ItemSlotArmor = Chosen->DefItemSlotArmor;
 
-            if( to_slot == SLOT_GROUND && is_barter_cont && IsScreenPresent( SCREEN__BARTER ) )
+            if( to_slot == SLOT_HAND1 )
+                Chosen->ItemSlotMain = item;
+            else if( to_slot == SLOT_HAND2 )
+                Chosen->ItemSlotExt = item;
+            else if( to_slot == SLOT_ARMOR )
+                Chosen->ItemSlotArmor = item;
+            if( item_swap )
             {
-                auto it = std::find( BarterCont1oInit.begin(), BarterCont1oInit.end(), item_id );
-                if( it != BarterCont1oInit.end() )
-                {
-                    Item& item_ = *it;
-                    if( item_count >= item_.GetCount() )
-                        BarterCont1oInit.erase( it );
-                    else
-                        item_.Count_Sub( item_count );
-                }
-                CollectContItems();
+                if( from_slot == SLOT_HAND1 )
+                    Chosen->ItemSlotMain = item_swap;
+                else if( from_slot == SLOT_HAND2 )
+                    Chosen->ItemSlotExt = item_swap;
+                else if( from_slot == SLOT_ARMOR )
+                    Chosen->ItemSlotArmor = item_swap;
             }
 
-            if( to_slot == SLOT_HAND1 || from_slot == SLOT_HAND1 )
-                RebuildLookBorders = true;
-            if( is_light && ( to_slot == SLOT_INV || ( from_slot == SLOT_INV && to_slot != SLOT_GROUND ) ) )
-                HexMngr.RebuildLight();
+            item->ACC_CRITTER.Slot = to_slot;
+            if( item_swap )
+                item_swap->ACC_CRITTER.Slot = from_slot;
 
-            Net_SendChangeItem( ap_cost, item_id, from_slot, to_slot, item_count );
-            Chosen->SubAp( ap_cost );
-            break;
+            Chosen->Action( ACTION_MOVE_ITEM, from_slot, item );
+            if( item_swap )
+                Chosen->Action( ACTION_MOVE_ITEM_SWAP, to_slot, item_swap );
         }
-        return;
+
+        // Affect barter screen
+        if( to_slot == SLOT_GROUND && is_barter_cont && IsScreenPresent( SCREEN__BARTER ) )
+        {
+            auto it = std::find( BarterCont1oInit.begin(), BarterCont1oInit.end(), item_id );
+            if( it != BarterCont1oInit.end() )
+            {
+                Item& item_ = *it;
+                if( item_count >= item_.GetCount() )
+                    BarterCont1oInit.erase( it );
+                else
+                    item_.Count_Sub( item_count );
+            }
+            CollectContItems();
+        }
+
+        // Light
+        if( to_slot == SLOT_HAND1 || from_slot == SLOT_HAND1 )
+            RebuildLookBorders = true;
+        if( item->IsLight() && ( to_slot == SLOT_INV || ( from_slot == SLOT_INV && to_slot != SLOT_GROUND ) ) )
+            HexMngr.RebuildLight();
+
+        // Notice server
+        Net_SendChangeItem( ap_cost, item_id, from_slot, to_slot, item_count );
+
+        // Spend AP
+        Chosen->SubAp( ap_cost );
     }
     break;
     case CHOSEN_MOVE_ITEM_CONT:
@@ -9876,6 +9950,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.CritterAnimationFallout, "critter_animation_fallout", "bool %s(uint,uint&,uint&,uint&,uint&,uint&)" },
         { &ClientFunctions.FilenameLogfile, "filename_logfile", "void %s( string& )" },
         { &ClientFunctions.FilenameScreenshot, "filename_screenshot", "void %s( string& )" },
+        { &ClientFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(CritterCl&,ItemCl&,uint8,ItemCl@)" },
     };
     const char*            config = msg_script.GetStr( STR_INTERNAL_SCRIPT_CONFIG );
     if( !Script::BindReservedFunctions( config, "client", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
@@ -11455,6 +11530,13 @@ bool FOClient::SScriptFunc::Global_IsCritterCanAim( uint cr_type )
     if( !CritType::IsEnabled( cr_type ) )
         SCRIPT_ERROR_R0( "Invalid critter type arg." );
     return CritType::IsCanAim( cr_type );
+}
+
+bool FOClient::SScriptFunc::Global_IsCritterCanArmor( uint cr_type )
+{
+    if( !CritType::IsEnabled( cr_type ) )
+        SCRIPT_ERROR_R0( "Invalid critter type arg." );
+    return CritType::IsCanArmor( cr_type );
 }
 
 bool FOClient::SScriptFunc::Global_IsCritterAnim1( uint cr_type, uint index )

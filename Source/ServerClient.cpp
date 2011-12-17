@@ -2818,7 +2818,7 @@ void FOServer::Process_ChangeItem( Client* cl )
 
     bool is_castling = ( ( from_slot == SLOT_HAND1 && to_slot == SLOT_HAND2 ) || ( from_slot == SLOT_HAND2 && to_slot == SLOT_HAND1 ) );
     int  ap_cost = ( is_castling ? 0 : cl->GetApCostMoveItemInventory() );
-    if( to_slot == 0xFF )
+    if( to_slot == SLOT_GROUND )
         ap_cost = cl->GetApCostDropItem();
     if( cl->GetParam( ST_CURRENT_AP ) < ap_cost && !Singleplayer )
     {

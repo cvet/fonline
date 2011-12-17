@@ -328,6 +328,7 @@ struct ClientScriptFunctions
     int CritterAnimationFallout;
     int FilenameLogfile;
     int FilenameScreenshot;
+    int CritterCheckMoveItem;
 } extern ClientFunctions;
 
 struct MapperScriptFunctions
@@ -387,7 +388,8 @@ struct ServerScriptFunctions
     int CritterIdle;
     int CritterDead;
     int CritterRespawn;
-    int CritterChangeItem;
+    int CritterCheckMoveItem;
+    int CritterMoveItem;
     int MapCritterIn;
     int MapCritterOut;
     int NpcPlaneBegin;

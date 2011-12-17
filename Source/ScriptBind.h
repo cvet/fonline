@@ -1074,6 +1074,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanWalk(uint crType)
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanRun(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanRun ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanRotate(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanRotate ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanAim(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanAim ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanArmor(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanArmor ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterAnim1(uint crType, uint anim1)", asFUNCTION( BIND_CLASS Global_IsCritterAnim1 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetCritterAnimType(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterAnimType ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCritterAlias(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterAlias ), asCALL_CDECL ) );
@@ -1377,6 +1378,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanWalk(uint crType)
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanRun(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanRun ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanRotate(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanRotate ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanAim(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanAim ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanArmor(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanArmor ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterAnim1(uint crType, uint anim1)", asFUNCTION( BIND_CLASS Global_IsCritterAnim1 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetCritterAnimType(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterAnimType ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCritterAlias(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterAlias ), asCALL_CDECL ) );

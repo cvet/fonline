@@ -558,6 +558,7 @@ public:
         static bool           Global_IsCritterCanRun( uint cr_type );
         static bool           Global_IsCritterCanRotate( uint cr_type );
         static bool           Global_IsCritterCanAim( uint cr_type );
+        static bool           Global_IsCritterCanArmor( uint cr_type );
         static bool           Global_IsCritterAnim1( uint cr_type, uint index );
         static int            Global_GetCritterAnimType( uint cr_type );
         static uint           Global_GetCritterAlias( uint cr_type );

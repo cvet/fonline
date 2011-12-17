@@ -156,7 +156,6 @@ public:
     void        GetItemsType( int slot, ItemPtrVec& items );
     uint        CountItemPid( ushort item_pid );
     uint        CountItemType( uchar type );
-    bool        MoveItem( uint item_id, uchar to_slot, uint count );
     bool        IsCanSortItems();
     Item*       GetItemHighSortValue();
     Item*       GetItemLowSortValue();
@@ -227,7 +226,7 @@ public:
 public:
     static AnyFrames* DefaultAnim;
     void*             Layers3d;
-    uint GetAnim1();
+    uint GetAnim1( Item* anim_item = NULL );
     uint GetAnim2();
     void ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, Item* item );
     int* GetLayers3dData();

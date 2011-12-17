@@ -159,7 +159,8 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.CritterIdle, "critter_idle", "void %s(Critter&)" },
         { &ServerFunctions.CritterDead, "critter_dead", "void %s(Critter&,Critter@)" },
         { &ServerFunctions.CritterRespawn, "critter_respawn", "void %s(Critter&)" },
-        { &ServerFunctions.CritterChangeItem, "critter_change_item", "void %s(Critter&,Item&,uint8)" },
+        { &ServerFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(Critter&,Item&,uint8,Item@)" },
+        { &ServerFunctions.CritterMoveItem, "critter_move_item", "void %s(Critter&,Item&,uint8)" },
         { &ServerFunctions.MapCritterIn, "map_critter_in", "void %s(Map&,Critter&)" },
         { &ServerFunctions.MapCritterOut, "map_critter_out", "void %s(Map&,Critter&)" },
         { &ServerFunctions.NpcPlaneBegin, "npc_plane_begin", "bool %s(Critter&,NpcPlane&,int,Critter@,Item@)" },
@@ -6058,6 +6059,13 @@ bool FOServer::SScriptFunc::Global_IsCritterCanAim( uint cr_type )
     if( !CritType::IsEnabled( cr_type ) )
         SCRIPT_ERROR_R0( "Invalid critter type arg." );
     return CritType::IsCanAim( cr_type );
+}
+
+bool FOServer::SScriptFunc::Global_IsCritterCanArmor( uint cr_type )
+{
+    if( !CritType::IsEnabled( cr_type ) )
+        SCRIPT_ERROR_R0( "Invalid critter type arg." );
+    return CritType::IsCanArmor( cr_type );
 }
 
 bool FOServer::SScriptFunc::Global_IsCritterAnim1( uint cr_type, uint index )

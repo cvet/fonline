@@ -328,80 +328,6 @@ uint CritterCl::CountItemType( uchar type )
     return res;
 }
 
-bool CritterCl::MoveItem( uint item_id, uchar to_slot, uint count )
-{
-    Item* item = GetItem( item_id );
-    if( !item )
-        return false;
-
-    uchar from_slot = item->ACC_CRITTER.Slot;
-    bool  is_castling = ( ( to_slot == SLOT_HAND1 && from_slot == SLOT_HAND2 ) || ( to_slot == SLOT_HAND2 && from_slot == SLOT_HAND1 ) );
-
-    if( item->ACC_CRITTER.Slot == to_slot )
-        return false;
-
-    if( to_slot == SLOT_GROUND )
-    {
-        Action( ACTION_DROP_ITEM, from_slot, item );
-        if( count < item->GetCount() )
-            item->Count_Sub( count );
-        else
-            EraseItem( item, true );
-        return true;
-    }
-
-    if( !SlotEnabled[ to_slot ] )
-        return false;
-    if( to_slot != SLOT_INV && !is_castling && GetItemSlot( to_slot ) )
-        return false;
-    if( to_slot > SLOT_ARMOR && to_slot != item->Proto->Slot )
-        return false;
-    if( to_slot == SLOT_HAND1 && item->IsWeapon() && !CritType::IsAnim1( GetCrType(), item->Proto->Weapon_Anim1 ) )
-        return false;
-    if( to_slot == SLOT_ARMOR && ( !item->IsArmor() || item->Proto->Slot || !CritType::IsCanArmor( GetCrType() ) ) )
-        return false;
-
-    if( is_castling && ItemSlotMain->GetId() && ItemSlotExt->GetId() )
-    {
-        Item* tmp_item = ItemSlotExt;
-        ItemSlotExt = ItemSlotMain;
-        ItemSlotMain = tmp_item;
-        ItemSlotMain->ACC_CRITTER.Slot = SLOT_HAND1;
-        ItemSlotExt->ACC_CRITTER.Slot = SLOT_HAND2;
-        Action( ACTION_SHOW_ITEM, from_slot, ItemSlotMain );
-    }
-    else
-    {
-        uchar act = ACTION_MOVE_ITEM;
-        if( to_slot == SLOT_HAND1 )
-            act = ACTION_SHOW_ITEM;
-        else if( from_slot == SLOT_HAND1 )
-            act = ACTION_HIDE_ITEM;
-
-        if( to_slot != SLOT_HAND1 )
-            Action( act, from_slot, item );
-
-        if( from_slot == SLOT_HAND1 )
-            ItemSlotMain = DefItemSlotHand;
-        else if( from_slot == SLOT_HAND2 )
-            ItemSlotExt = DefItemSlotHand;
-        else if( from_slot == SLOT_ARMOR )
-            ItemSlotArmor = DefItemSlotArmor;
-        if( to_slot == SLOT_HAND1 )
-            ItemSlotMain = item;
-        else if( to_slot == SLOT_HAND2 )
-            ItemSlotExt = item;
-        else if( to_slot == SLOT_ARMOR )
-            ItemSlotArmor = item;
-        item->ACC_CRITTER.Slot = to_slot;
-
-        if( to_slot == SLOT_HAND1 )
-            Action( act, from_slot, item );
-    }
-
-    return true;
-}
-
 bool CritterCl::IsCanSortItems()
 {
     uint inv_items = 0;
@@ -1263,7 +1189,7 @@ void CritterCl::Animate( uint anim1, uint anim2, Item* item )
     uint  crtype = GetCrType();
     uchar dir = GetDir();
     if( !anim1 )
-        anim1 = GetAnim1();
+        anim1 = GetAnim1( item );
     if( item )
         item = item->Clone();
 
@@ -1277,7 +1203,7 @@ void CritterCl::Animate( uint anim1, uint anim2, Item* item )
             return;
         }
 
-        // Todo: Migrate to scripts
+        #pragma MESSAGE( "Migrate critter on head text moving in scripts." )
         bool move_text = true;
 //			(Cond==COND_DEAD || Cond==COND_KNOCKOUT ||
 //			(anim2!=ANIM2_SHOW_WEAPON && anim2!=ANIM2_HIDE_WEAPON && anim2!=ANIM2_PREPARE_WEAPON && anim2!=ANIM2_TURNOFF_WEAPON &&
@@ -1390,16 +1316,19 @@ uint CritterCl::GetCrTypeAlias()
     return CritType::GetAlias( GetCrType() );
 }
 
-uint CritterCl::GetAnim1()
+uint CritterCl::GetAnim1( Item* anim_item /* = NULL */ )
 {
+    if( !anim_item )
+        anim_item = ItemSlotMain;
+
     switch( Cond )
     {
     case COND_LIFE:
-        return ( Anim1Life ) | ( ItemSlotMain->IsWeapon() ? ItemSlotMain->Proto->Weapon_Anim1 : ANIM1_UNARMED );
+        return ( Anim1Life ) | ( anim_item->IsWeapon() ? anim_item->Proto->Weapon_Anim1 : ANIM1_UNARMED );
     case COND_KNOCKOUT:
-        return ( Anim1Knockout ) | ( ItemSlotMain->IsWeapon() ? ItemSlotMain->Proto->Weapon_Anim1 : ANIM1_UNARMED );
+        return ( Anim1Knockout ) | ( anim_item->IsWeapon() ? anim_item->Proto->Weapon_Anim1 : ANIM1_UNARMED );
     case COND_DEAD:
-        return ( Anim1Dead ) | ( ItemSlotMain->IsWeapon() ? ItemSlotMain->Proto->Weapon_Anim1 : ANIM1_UNARMED );
+        return ( Anim1Dead ) | ( anim_item->IsWeapon() ? anim_item->Proto->Weapon_Anim1 : ANIM1_UNARMED );
     default:
         break;
     }

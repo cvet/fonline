@@ -1030,6 +1030,7 @@ struct BindClass
     static void Global_IsCritterCanRun()                {}
     static void Global_IsCritterCanRotate()             {}
     static void Global_IsCritterCanAim()                {}
+    static void Global_IsCritterCanArmor()              {}
     static void Global_IsCritterAnim1()                 {}
     static void Global_GetCritterAnimType()             {}
     static void Global_GetCritterAlias()                {}
@@ -1109,6 +1110,7 @@ struct BindClass
     static void Global_IsCritterCanRun()     {}
     static void Global_IsCritterCanRotate()  {}
     static void Global_IsCritterCanAim()     {}
+    static void Global_IsCritterCanArmor()   {}
     static void Global_IsCritterAnim1()      {}
     static void Global_GetCritterAnimType()  {}
     static void Global_GetCritterAlias()     {}
