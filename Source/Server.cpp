@@ -972,7 +972,8 @@ void FOServer::Net_Listen( void* )
         }
 
         // First receive queue
-        if( WSARecv( cl->Sock, &cl->NetIOIn->Buffer, 1, NULL, &cl->NetIOIn->Flags, &cl->NetIOIn->OV, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
+        DWORD bytes;
+        if( WSARecv( cl->Sock, &cl->NetIOIn->Buffer, 1, &bytes, &cl->NetIOIn->Flags, &cl->NetIOIn->OV, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
         {
             WriteLogF( _FUNC_, " - First recv fail, error<%s>.\n", GetLastSocketError() );
             closesocket( sock );
@@ -1311,7 +1312,8 @@ void FOServer::NetIO_Input( Client::NetIOArg* io )
     cl->Bin.Unlock();
 
     io->Flags = 0;
-    if( WSARecv( cl->Sock, &io->Buffer, 1, NULL, &io->Flags, &io->OV, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
+    DWORD bytes;
+    if( WSARecv( cl->Sock, &io->Buffer, 1, &bytes, &io->Flags, &io->OV, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
     {
         WriteLogF( _FUNC_, " - Recv fail, error<%s>.\n", GetLastSocketError() );
         InterlockedExchange( &io->Operation, WSAOP_FREE );
@@ -1378,7 +1380,8 @@ void FOServer::NetIO_Output( Client::NetIOArg* io )
     cl->Bout.Unlock();
 
     // Send
-    if( WSASend( cl->Sock, &io->Buffer, 1, NULL, 0, (LPOVERLAPPED) io, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
+    DWORD bytes;
+    if( WSASend( cl->Sock, &io->Buffer, 1, &bytes, 0, (LPOVERLAPPED) io, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
     {
         WriteLogF( _FUNC_, " - Send fail, error<%s>.\n", GetLastSocketError() );
         InterlockedExchange( &io->Operation, WSAOP_FREE );

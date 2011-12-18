@@ -1513,8 +1513,11 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
     }
     if( !allow )
     {
-        Send_AddItem( item );
-        WriteLogF( _FUNC_, " - Can't move item with pid<%u> to slot<%u>, critter<%s>.\n", item->GetProtoId(), to_slot, GetInfo() );
+        if( IsPlayer() )
+        {
+            Send_AddItem( item );
+            WriteLogF( _FUNC_, " - Can't move item with pid<%u> to slot<%u>, player<%s>.\n", item->GetProtoId(), to_slot, GetInfo() );
+        }
         return false;
     }
 

@@ -83,7 +83,7 @@ namespace Script
             // Register functions
             ptr = DLL_GetAddress( dll, "Log" );
             if( ptr )
-                *ptr = (size_t) NULL;
+                *ptr = (size_t) &printf;
             ptr = DLL_GetAddress( dll, "Malloc" );
             if( ptr )
                 *ptr = (size_t) &malloc;

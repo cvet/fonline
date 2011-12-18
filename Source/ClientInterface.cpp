@@ -6623,7 +6623,7 @@ void FOClient::GmapKeyDown( uchar dik )
     }
 }
 
-void FOClient::GmapChangeZoom( float offs )
+void FOClient::GmapChangeZoom( float offs, bool revert /* = false */ )
 {
     if( !GmapActive )
         return;
@@ -6644,9 +6644,12 @@ void FOClient::GmapChangeZoom( float offs )
 
     GMAP_CHECK_MAPSCR;
 
-    if( GmapOffsetX > GmapWMap.L || GmapOffsetY > GmapWMap.T ||
-        GmapOffsetX < GmapWMap.R - GM_MAXX / GmapZoom || GmapOffsetY < GmapWMap.B - GM_MAXY / GmapZoom )
-        GmapChangeZoom( -offs );
+    if( !revert )
+    {
+        if( GmapOffsetX > GmapWMap.L || GmapOffsetY > GmapWMap.T ||
+            GmapOffsetX < GmapWMap.R - GM_MAXX / GmapZoom || GmapOffsetY < GmapWMap.B - GM_MAXY / GmapZoom )
+            GmapChangeZoom( -offs, true );
+    }
 }
 
 Item* FOClient::GmapGetCar()

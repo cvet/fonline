@@ -1049,7 +1049,7 @@ public:
     void  GmapRMouseUp();
     void  GmapMouseMove();
     void  GmapKeyDown( uchar dik );
-    void  GmapChangeZoom( float offs );
+    void  GmapChangeZoom( float offs, bool revert = false );
     Item* GmapGetCar();
     uint  GmapGetMouseTabLocId();
     void  GmapFreeResources();

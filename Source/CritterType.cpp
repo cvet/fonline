@@ -9,7 +9,7 @@ int          MoveWalk[ MAX_CRIT_TYPES ][ 6 ] = { 0 };
 
 bool CritType::IsEnabled( uint cr_type )
 {
-    return cr_type && cr_type < MAX_CRIT_TYPES && CrTypes[ cr_type ].Enabled;
+    return cr_type < MAX_CRIT_TYPES && CrTypes[ cr_type ].Enabled;
 }
 
 CritTypeType& CritType::GetCritType( uint cr_type )
