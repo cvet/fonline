@@ -276,7 +276,12 @@ static char* parseLexem(char* start, char* end, Lexem& out)
 	
 	if (current_char == '#')
 	{
-		start = parseIdentifier(start,end,out);
+		out.value = "#";
+		++start;
+		while (start != end && (*start == ' ' || *start == '\t'))
+			++start;
+		if (start != end && isIdentifierStart(*start))
+			start = parseIdentifier(start,end,out);
 		out.type = PREPROCESSOR;
 		return start;
 	}

@@ -297,6 +297,9 @@ static void parseDefine(DefineTable& define_table, LexemList& def_lexems)
 
 	DefineEntry def;
 
+	while(!def_lexems.empty() && (def_lexems.begin()->type == BACKSLASH || def_lexems.begin()->type == NEWLINE))
+		def_lexems.pop_front();
+
 	if (!def_lexems.empty())
 	{
 		if (def_lexems.begin()->type == PREPROCESSOR && def_lexems.begin()->value == "#")
