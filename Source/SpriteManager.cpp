@@ -2805,6 +2805,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
         uchar* img_data = new uchar[ img_size ];
         if( !img_data )
             return NULL;
+        memzero( img_data, img_size );
         *( (uint*) img_data + 1 ) = whole_w;
         *( (uint*) img_data + 2 ) = whole_h;
 
