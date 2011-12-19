@@ -1198,6 +1198,14 @@ void FOClient::ParseKeyboard()
             dikdw = Keyb::MapKey( event_key );
         else if( event == FL_KEYUP )
             dikup = Keyb::MapKey( event_key );
+        if( !dikdw  && !dikup )
+            continue;
+
+        // Avoid repeating
+        if( dikdw && Keyb::KeyPressed[ dikdw ] )
+            continue;
+        if( dikup && !Keyb::KeyPressed[ dikup ] )
+            continue;
 
         // Video
         #ifndef FO_D3D
