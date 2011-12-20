@@ -57,7 +57,7 @@
     <ClCompile>
       <AdditionalIncludeDirectories>..\Source\StlPort;..\Source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;FONLINE_SCRIPT_COMPILER;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
@@ -83,7 +83,7 @@
     <ClCompile>
       <AdditionalIncludeDirectories>..\..\Source\StlPort;..\..\Source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;FONLINE_SCRIPT_COMPILER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
@@ -154,9 +154,35 @@
     <ClInclude Include="..\Source\AngelScript\scriptmath.h" />
     <ClInclude Include="..\Source\AngelScript\scriptmath3d.h" />
     <ClInclude Include="..\Source\AngelScript\scriptstring.h" />
+    <ClInclude Include="..\Source\Common.h" />
+    <ClInclude Include="..\Source\Crypt.h" />
+    <ClInclude Include="..\Source\DataFile.h" />
+    <ClInclude Include="..\Source\DatFile\cfile.h" />
+    <ClInclude Include="..\Source\DatFile\unlzss.h" />
+    <ClInclude Include="..\Source\Debugger.h" />
     <ClInclude Include="..\Source\DummyData.h" />
+    <ClInclude Include="..\Source\FileManager.h" />
+    <ClInclude Include="..\Source\FileSystem.h" />
+    <ClInclude Include="..\Source\IniParser.h" />
+    <ClInclude Include="..\Source\Log.h" />
     <ClInclude Include="..\Source\ScriptBind.h" />
     <ClInclude Include="..\Source\ScriptPragmas.h" />
+    <ClInclude Include="..\Source\SHA2\sha2.h" />
+    <ClInclude Include="..\Source\Text.h" />
+    <ClInclude Include="..\Source\Timer.h" />
+    <ClInclude Include="..\Source\Zlib\crc32.h" />
+    <ClInclude Include="..\Source\Zlib\deflate.h" />
+    <ClInclude Include="..\Source\Zlib\gzguts.h" />
+    <ClInclude Include="..\Source\Zlib\inffast.h" />
+    <ClInclude Include="..\Source\Zlib\inffixed.h" />
+    <ClInclude Include="..\Source\Zlib\inflate.h" />
+    <ClInclude Include="..\Source\Zlib\inftrees.h" />
+    <ClInclude Include="..\Source\Zlib\ioapi.h" />
+    <ClInclude Include="..\Source\Zlib\trees.h" />
+    <ClInclude Include="..\Source\Zlib\unzip.h" />
+    <ClInclude Include="..\Source\Zlib\zconf.h" />
+    <ClInclude Include="..\Source\Zlib\zlib.h" />
+    <ClInclude Include="..\Source\Zlib\zutil.h" />
     <ClInclude Include="ScriptEngine.h" />
   </ItemGroup>
   <ItemGroup>
@@ -287,7 +313,37 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\ASCompiler.cpp" />
+    <ClCompile Include="..\Source\Common.cpp" />
+    <ClCompile Include="..\Source\Crypt.cpp" />
+    <ClCompile Include="..\Source\DataFile.cpp" />
+    <ClCompile Include="..\Source\DatFile\cfile.cpp" />
+    <ClCompile Include="..\Source\DatFile\unlzss.cpp" />
+    <ClCompile Include="..\Source\Debugger.cpp" />
+    <ClCompile Include="..\Source\FileManager.cpp" />
+    <ClCompile Include="..\Source\FileSystem.cpp" />
+    <ClCompile Include="..\Source\IniParser.cpp" />
+    <ClCompile Include="..\Source\Log.cpp" />
     <ClCompile Include="..\Source\ScriptPragmas.cpp" />
+    <ClCompile Include="..\Source\SHA2\sha2.c" />
+    <ClCompile Include="..\Source\Text.cpp" />
+    <ClCompile Include="..\Source\Timer.cpp" />
+    <ClCompile Include="..\Source\Zlib\adler32.c" />
+    <ClCompile Include="..\Source\Zlib\compress.c" />
+    <ClCompile Include="..\Source\Zlib\crc32.c" />
+    <ClCompile Include="..\Source\Zlib\deflate.c" />
+    <ClCompile Include="..\Source\Zlib\gzclose.c" />
+    <ClCompile Include="..\Source\Zlib\gzlib.c" />
+    <ClCompile Include="..\Source\Zlib\gzread.c" />
+    <ClCompile Include="..\Source\Zlib\gzwrite.c" />
+    <ClCompile Include="..\Source\Zlib\infback.c" />
+    <ClCompile Include="..\Source\Zlib\inffast.c" />
+    <ClCompile Include="..\Source\Zlib\inflate.c" />
+    <ClCompile Include="..\Source\Zlib\inftrees.c" />
+    <ClCompile Include="..\Source\Zlib\ioapi.c" />
+    <ClCompile Include="..\Source\Zlib\trees.c" />
+    <ClCompile Include="..\Source\Zlib\uncompr.c" />
+    <ClCompile Include="..\Source\Zlib\unzip.c" />
+    <ClCompile Include="..\Source\Zlib\zutil.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Source\AngelScript\as_callfunc_x64_msvc.asm" />

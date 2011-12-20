@@ -3,9 +3,6 @@
 
 #ifdef FONLINE_SERVER
 # define MEMORY_DEBUG
-# ifdef FO_WINDOWS
-#  define TRACE_MEMORY
-# endif
 #endif
 
 #ifdef MEMORY_DEBUG
@@ -49,21 +46,10 @@ namespace Debugger
     void        MemoryStr( const char* block, int value );
     const char* GetMemoryStatistics();
 
-    #ifdef TRACE_MEMORY
     void   StartTraceMemory();
     string GetTraceMemory();
-    #endif
-};
 
-#ifdef TRACE_MEMORY
-extern void* Malloc( size_t size );
-extern void* Calloc( size_t count, size_t size );
-extern void* Realloc( void* ptr, size_t size );
-extern void  Free( void* ptr );
-# define malloc                 Malloc
-# define calloc                 Calloc
-# define realloc                Realloc
-# define free                   Free
-#endif
+    void SwapAllocators();
+};
 
 #endif // __DEBUGGER__

@@ -392,18 +392,6 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     ptr = DLL_GetAddress( dll, "Log" );
     if( ptr )
         *ptr = (size_t) &WriteLog;
-    ptr = DLL_GetAddress( dll, "Malloc" );
-    if( ptr )
-        *ptr = (size_t) &malloc;
-    ptr = DLL_GetAddress( dll, "Calloc" );
-    if( ptr )
-        *ptr = (size_t) &calloc;
-    ptr = DLL_GetAddress( dll, "Realloc" );
-    if( ptr )
-        *ptr = (size_t) &realloc;
-    ptr = DLL_GetAddress( dll, "Free" );
-    if( ptr )
-        *ptr = (size_t) &free;
 
     // Call init function
     typedef void ( *DllMainEx )( bool );

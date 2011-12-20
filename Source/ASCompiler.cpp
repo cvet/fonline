@@ -1,6 +1,8 @@
+#include "Common.h"
 #include "../ASCompiler/ScriptEngine.h"
 #include "PlatformSpecific.h"
 #include "ScriptPragmas.h"
+#include "Debugger.h"
 #include "AngelScript/angelscript.h"
 #include "AngelScript/Preprocessor/preprocess.h"
 #include "AngelScript/as_config.h"
@@ -225,6 +227,9 @@ int main( int argc, char* argv[] )
                 "*can be used over and over again" );
         return 0;
     }
+
+    // Memory management
+    Debugger::SwapAllocators();
 
     // Parse args
     char*           str_fname = argv[ 1 ];

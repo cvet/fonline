@@ -83,6 +83,9 @@ int main( int argc, char** argv )
     // Exceptions catcher
     CatchExceptions( "FOnlineServer", SERVER_VERSION );
 
+    // Memory management
+    Debugger::SwapAllocators();
+
     // Timer
     Timer::Init();
 
@@ -92,10 +95,8 @@ int main( int argc, char** argv )
 
     // Memory debugging
     MemoryDebugLevel = cfg.GetInt( "MemoryDebugLevel", 0 );
-    # ifdef TRACE_MEMORY
     if( MemoryDebugLevel >= 3 )
         Debugger::StartTraceMemory();
-    # endif
 
     // Make command line
     SetCommandLine( argc, argv );

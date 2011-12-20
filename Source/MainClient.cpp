@@ -32,6 +32,9 @@ int main( int argc, char** argv )
     // Exception
     CatchExceptions( "FOnline", CLIENT_VERSION );
 
+    // Memory management
+    Debugger::SwapAllocators();
+
     // Make command line
     SetCommandLine( argc, argv );
 

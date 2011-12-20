@@ -250,11 +250,7 @@ const char* Debugger::GetMemoryStatistics()
     if( MemoryDebugLevel >= 3 )
     {
         result += "\n  Level 3\n";
-        # ifdef TRACE_MEMORY
         result += GetTraceMemory();
-        # else
-        result += "Not available\n";
-        # endif
     }
 
     if( MemoryDebugLevel <= 0 )
@@ -265,32 +261,70 @@ const char* Debugger::GetMemoryStatistics()
 }
 
 // Memory tracing
-#ifdef TRACE_MEMORY
+struct StackInfo
+{
+    uint   Hash;
+    char*  Name;
+    size_t Heap;
+    uint   Chunks;
+    uint   Size;
+};
+static bool                         MemoryTrace;
+typedef pair< StackInfo*, size_t > StackInfoSize;
+static map< size_t, StackInfoSize > PtrStackInfoSize;
+static map< size_t, StackInfo* >    StackHashStackInfo;
+static Mutex                        MemoryAllocLocker;
+static uint                         MemoryAllocRecursion;
+
+#define ALLOCATE_PTR( ptr, size, param )                                   \
+    if( ptr )                                                              \
+    {                                                                      \
+        StackInfo* si = GetStackInfo( param );                             \
+        si->Size += size;                                                  \
+        si->Chunks++;                                                      \
+        PtrStackInfoSize.insert( PAIR( (size_t) ptr, PAIR( si, size ) ) ); \
+    }
+#define DEALLOCATE_PTR( ptr )                            \
+    if( ptr )                                            \
+    {                                                    \
+        auto it = PtrStackInfoSize.find( (size_t) ptr ); \
+        if( it != PtrStackInfoSize.end() )               \
+        {                                                \
+            StackInfo* si = ( *it ).second.first;        \
+            si->Size -= ( *it ).second.second;           \
+            si->Chunks--;                                \
+            PtrStackInfoSize.erase( it );                \
+        }                                                \
+    }
+
+#ifdef FO_WINDOWS
+// Stack
 # pragma warning( disable : 4748 )
 # include <DbgHelp.h>
 # pragma comment( lib, "Dbghelp.lib" )
 # include "FileManager.h"
-# undef malloc
-# undef calloc
-# undef realloc
-# undef free
 
-static bool                                  MemoryTrace = false;
-static bool                                  MemoryTraceExt = false;
-static map< size_t, pair< size_t, size_t > > MemoryBlocks;
-static map< size_t, const char* >            StackWalkHashName;
-static Mutex                                 MemoryAllocLocker;
-static HANDLE                                ProcessHandle;
+// Hooks
+# include "NCodeHook/NCodeHookInstantiation.h"
+# ifdef FO_MSVC
+#  pragma comment( lib, "distorm.lib" )
+# endif
 
-size_t GetStackInfo()
+static HANDLE        ProcessHandle;
+static NCodeHookIA32 CodeHooker;
+
+bool PatchWindowsAlloc();
+void PatchWindowsDealloc();
+
+StackInfo* GetStackInfo( HANDLE heap )
 {
     void*  blocks[ 63 ];
     ULONG  hash;
-    USHORT frames = CaptureStackBackTrace( 1, 60, (void**) blocks, &hash );
+    USHORT frames = CaptureStackBackTrace( 2, 60, (void**) blocks, &hash );
 
-    auto   it = StackWalkHashName.find( (size_t) hash );
-    if( it != StackWalkHashName.end() )
-        return (size_t) hash;
+    auto   it = StackHashStackInfo.find( (size_t) hash );
+    if( it != StackHashStackInfo.end() )
+        return ( *it ).second;
 
     string str;
     str.reserve( 16384 );
@@ -382,152 +416,282 @@ size_t GetStackInfo()
     }
     str += "\n";
 
-    StackWalkHashName.insert( PAIR( (size_t) hash, _strdup( str.c_str() ) ) );
-    return (size_t) hash;
+    StackInfo* si = new StackInfo();
+    si->Hash = hash;
+    si->Name = _strdup( str.c_str() );
+    si->Heap = (size_t) heap;
+    si->Chunks = 0;
+    si->Size = 0;
+    StackHashStackInfo.insert( PAIR( (size_t) hash, si ) );
+    return si;
 }
 
-# define ALLOCATE_MEMORY                                                           \
-    if( MemoryTrace && ptr )                                                       \
-    {                                                                              \
-        SCOPE_LOCK( MemoryAllocLocker );                                           \
-        if( !MemoryTraceExt )                                                      \
-        {                                                                          \
-            MemoryTraceExt = true;                                                 \
-            size_t stack_hash = GetStackInfo();                                    \
-            MemoryBlocks.insert( PAIR( (size_t) ptr, PAIR( stack_hash, size ) ) ); \
-            MemoryTraceExt = false;                                                \
-        }                                                                          \
+template< class T >
+class Patch
+{
+public:
+    Patch< T >(): Call( NULL ), PatchFunc( NULL ) {}
+    ~Patch< T >() { Uninstall(); }
+    bool Install( void* orig, void* patch )
+    {
+        if( orig && patch )
+            Call = CodeHooker.createHook( (T) orig, (T) patch );
+        PatchFunc = (T) patch;
+        return Call != NULL;
     }
-# define DEALLOCATE_MEMORY                      \
-    if( MemoryTrace && ptr )                    \
-    {                                           \
-        SCOPE_LOCK( MemoryAllocLocker );        \
-        if( !MemoryTraceExt )                   \
-        {                                       \
-            MemoryTraceExt = true;              \
-            MemoryBlocks.erase( (size_t) ptr ); \
-            MemoryTraceExt = false;             \
-        }                                       \
+    void Uninstall()
+    {
+        if( PatchFunc )
+            CodeHooker.removeHook( PatchFunc );
+        PatchFunc = NULL;
+        Call = NULL;
     }
+    T Call;
+    T PatchFunc;
+};
 
-void* operator new( size_t size )
+# define DECLARE_PATCH( ret, name, args )      \
+    Patch< decltype(& name ) > Patch_ ## name; \
+    ret WINAPI Hooked_ ## name ## args
+# define INSTALL_PATCH( name )                                                                 \
+    if( !Patch_ ## name.Install( GetProcAddress( hkernel32, # name ), &( Hooked_ ## name ) ) ) \
+        return false
+# define UNINSTALL_PATCH( name ) \
+    Patch_ ## name.Uninstall()
+
+DECLARE_PATCH( HANDLE, HeapCreate, ( DWORD flOptions, SIZE_T dwInitialSize, SIZE_T dwMaximumSize ) )
 {
+    HANDLE heap = Patch_HeapCreate.Call( flOptions, dwInitialSize, dwMaximumSize );
+    return heap;
+}
+
+DECLARE_PATCH( BOOL, HeapDestroy, (HANDLE hHeap) )
+{
+    return Patch_HeapDestroy.Call( hHeap );
+}
+
+DECLARE_PATCH( LPVOID, HeapAlloc, ( HANDLE hHeap, DWORD dwFlags, DWORD_PTR dwBytes ) )
+{
+    if( MemoryTrace )
+    {
+        SCOPE_LOCK( MemoryAllocLocker );
+        MemoryAllocRecursion++;
+        void* ptr = Patch_HeapAlloc.Call( hHeap, dwFlags | HEAP_NO_SERIALIZE, dwBytes );
+        MemoryAllocRecursion--;
+        if( !MemoryAllocRecursion )
+        {
+            MemoryAllocRecursion++;
+            ALLOCATE_PTR( ptr, dwBytes, hHeap );
+            MemoryAllocRecursion--;
+        }
+        return ptr;
+    }
+    return Patch_HeapAlloc.Call( hHeap, dwFlags, dwBytes );
+}
+
+DECLARE_PATCH( LPVOID, HeapReAlloc, ( HANDLE hHeap, DWORD dwFlags, LPVOID lpMem, SIZE_T dwBytes ) )
+{
+    if( MemoryTrace )
+    {
+        SCOPE_LOCK( MemoryAllocLocker );
+        MemoryAllocRecursion++;
+        void* ptr = Patch_HeapReAlloc.Call( hHeap, dwFlags | HEAP_NO_SERIALIZE, lpMem, dwBytes );
+        MemoryAllocRecursion--;
+        if( !MemoryAllocRecursion )
+        {
+            MemoryAllocRecursion++;
+            DEALLOCATE_PTR( lpMem );
+            ALLOCATE_PTR( ptr, dwBytes, hHeap );
+            MemoryAllocRecursion--;
+        }
+        return ptr;
+    }
+    return Patch_HeapReAlloc.Call( hHeap, dwFlags, lpMem, dwBytes );
+}
+
+DECLARE_PATCH( BOOL, HeapFree, ( HANDLE hHeap, DWORD dwFlags, LPVOID lpMem ) )
+{
+    if( MemoryTrace )
+    {
+        SCOPE_LOCK( MemoryAllocLocker );
+        MemoryAllocRecursion++;
+        BOOL result = Patch_HeapFree.Call( hHeap, dwFlags | HEAP_NO_SERIALIZE, lpMem );
+        MemoryAllocRecursion--;
+        if( !MemoryAllocRecursion )
+        {
+            MemoryAllocRecursion++;
+            DEALLOCATE_PTR( lpMem );
+            MemoryAllocRecursion--;
+        }
+        return result;
+    }
+    return Patch_HeapFree.Call( hHeap, dwFlags, lpMem );
+}
+
+bool PatchWindowsAlloc()
+{
+    HMODULE hkernel32 = GetModuleHandle( "kernel32" );
+    if( !hkernel32 )
+        return false;
+    INSTALL_PATCH( HeapCreate );
+    INSTALL_PATCH( HeapDestroy );
+    INSTALL_PATCH( HeapAlloc );
+    INSTALL_PATCH( HeapReAlloc );
+    INSTALL_PATCH( HeapFree );
+    return true;
+}
+
+void PatchWindowsDealloc()
+{
+    UNINSTALL_PATCH( HeapCreate );
+    UNINSTALL_PATCH( HeapDestroy );
+    UNINSTALL_PATCH( HeapAlloc );
+    UNINSTALL_PATCH( HeapReAlloc );
+    UNINSTALL_PATCH( HeapFree );
+}
+
+#else // FO_LINUX
+
+# include <malloc.h>
+
+void* malloc_hook( size_t size, const void* caller );
+void* realloc_hook( void* ptr, size_t size, const void* caller );
+void  free_hook( void* ptr, const void* caller );
+void  init_hook( void );
+void ( * __malloc_initialize_hook )( void ) = init_hook;
+
+StackInfo* GetStackInfo( const void* caller )
+{
+    auto it = StackHashStackInfo.find( (size_t) caller );
+    if( it != StackHashStackInfo.end() )
+        return ( *it ).second;
+
+    string str;
+    str.reserve( 16384 );
+
+    char buf[ 64 ];
+    sprintf( buf, "\t0x%08X\n\n", (size_t) caller );
+    str += buf;
+
+    StackInfo* si = new StackInfo();
+    si->Hash = (size_t) caller;
+    si->Name = strdup( str.c_str() );
+    si->Heap = 0;
+    si->Chunks = 0;
+    si->Size = 0;
+    StackHashStackInfo.insert( PAIR( (size_t) caller, si ) );
+    return si;
+}
+
+void init_hook( void )
+{
+    __malloc_hook = malloc_hook;
+    __realloc_hook = realloc_hook;
+    __free_hook = free_hook;
+}
+
+void* malloc_hook( size_t size, const void* caller )
+{
+    __malloc_hook = NULL;
     void* ptr = malloc( size );
-    ALLOCATE_MEMORY;
+    if( MemoryTrace )
+        ALLOCATE_PTR( ptr, size, caller );
+    __malloc_hook = malloc_hook;
     return ptr;
 }
 
-void* operator new[]( size_t size )
+void* realloc_hook( void* ptr, size_t size, const void* caller )
 {
-    void* ptr = malloc( size );
-    ALLOCATE_MEMORY;
-    return ptr;
-}
-
-void operator delete( void* ptr )
-{
-    DEALLOCATE_MEMORY;
-    free( ptr );
-}
-
-void operator delete[]( void* ptr )
-{
-    DEALLOCATE_MEMORY;
-    free( ptr );
-}
-
-void* Malloc( size_t size )
-{
-    void* ptr = malloc( size );
-    ALLOCATE_MEMORY;
-    return ptr;
-}
-
-void* Calloc( size_t count, size_t size )
-{
-    void* ptr = calloc( count, size );
-    ALLOCATE_MEMORY;
-    return ptr;
-}
-
-void* Realloc( void* ptr, size_t size )
-{
-    DEALLOCATE_MEMORY;
+    __realloc_hook = NULL;
+    if( MemoryTrace )
+        DEALLOCATE_PTR( ptr );
     ptr = realloc( ptr, size );
-    ALLOCATE_MEMORY;
+    if( MemoryTrace )
+        ALLOCATE_PTR( ptr, size, caller );
+    __realloc_hook = realloc_hook;
     return ptr;
 }
 
-void Free( void* ptr )
+void free_hook( void* ptr, const void* caller )
 {
-    DEALLOCATE_MEMORY;
+    __free_hook = NULL;
     free( ptr );
+    if( MemoryTrace )
+        DEALLOCATE_PTR( ptr );
+    __free_hook = free_hook;
 }
+
+#endif
 
 void Debugger::StartTraceMemory()
 {
+    #ifdef FO_WINDOWS
+    // Stack symbols unnaming
     ProcessHandle = OpenProcess( PROCESS_ALL_ACCESS, FALSE, GetCurrentProcessId() );
     SymInitialize( ProcessHandle, NULL, TRUE );
     SymSetOptions( SYMOPT_LOAD_LINES | SYMOPT_FAIL_CRITICAL_ERRORS );
+    #endif
+
+    // Begin catching
     MemoryTrace = true;
 }
 
+struct ChunkSorter
+{
+    static bool Compare( StackInfo* a, StackInfo* b )
+    {
+        return a->Chunks > b->Chunks;
+    }
+};
 string Debugger::GetTraceMemory()
 {
     SCOPE_LOCK( MemoryAllocLocker );
-    MemoryTraceExt = true;
-
-    // RetAddr, size, chunks
-    map< size_t, pair< size_t, size_t > > blocks;
-    int64                                 whole_size = 0, whole_chunks = 0;
-    for( auto it = MemoryBlocks.begin(), end = MemoryBlocks.end(); it != end; ++it )
-    {
-        size_t ptr = ( *it ).first;
-        size_t stack_hash = ( *it ).second.first;
-        size_t size = ( *it ).second.second;
-        auto   it_block = blocks.find( stack_hash );
-        if( it_block == blocks.end() )
-            blocks.insert( PAIR( stack_hash, PAIR( size, 1 ) ) );
-        else
-            ( *it_block ).second.first += size, ( *it_block ).second.second++;
-        whole_size += size;
-        whole_chunks++;
-    }
+    MemoryAllocRecursion++;
 
     // Sort by chunks count
-    multimap< size_t, pair< size_t, size_t >, greater< size_t > > blocks_chunks;
-    for( auto it = blocks.begin(), end = blocks.end(); it != end; ++it )
+    int64                whole_chunks = 0, whole_size = 0;
+    vector< StackInfo* > blocks_chunks;
+    for( auto it = StackHashStackInfo.begin(), end = StackHashStackInfo.end(); it != end; ++it )
     {
-        size_t stack_hash = ( *it ).first;
-        size_t size = ( *it ).second.first;
-        size_t chunks = ( *it ).second.second;
-        blocks_chunks.insert( PAIR( chunks, PAIR( stack_hash, size ) ) );
+        StackInfo* si = ( *it ).second;
+        if( si->Size )
+        {
+            blocks_chunks.push_back( si );
+            whole_chunks += (int64) si->Chunks;
+            whole_size += (int64) si->Size;
+        }
     }
+    std::sort( blocks_chunks.begin(), blocks_chunks.end(), ChunkSorter::Compare );
 
     // Print
     string str;
     str.reserve( 1000000 );
     char   buf[ MAX_FOTEXT ];
     str += "Unfreed memory:\n";
-    sprintf( buf, "  Whole blocks %u\n", blocks.size() );
+    sprintf( buf, "  Whole blocks %lld\n", (int64) blocks_chunks.size() );
     str += buf;
-    sprintf( buf, "  Whole size   %I64d\n", whole_size );
+    sprintf( buf, "  Whole size   %lld\n", (int64) whole_size );
     str += buf;
-    sprintf( buf, "  Whole chunks %I64d\n", whole_chunks );
+    sprintf( buf, "  Whole chunks %lld\n", (int64) whole_chunks );
     str += buf;
     str += "\n";
     uint cur = 0;
     for( auto it = blocks_chunks.begin(), end = blocks_chunks.end(); it != end; ++it )
     {
-        size_t chunks = ( *it ).first;
-        size_t stack_hash = ( *it ).second.first;
-        size_t size = ( *it ).second.second;
-        sprintf( buf, "%06u) Size %-10u Chunks %-10u\n", cur++, size, chunks );
+        StackInfo* si = *it;
+        sprintf( buf, "%06u) Size %-10u Chunks %-10u Heap %08X\n", cur++, si->Size, si->Chunks, si->Heap );
         str += buf;
-        str += StackWalkHashName[ stack_hash ];
+        str += si->Name;
     }
 
-    MemoryTraceExt = false;
+    MemoryAllocRecursion--;
     return str;
 }
-#endif
+
+void Debugger::SwapAllocators()
+{
+    #ifdef FO_WINDOWS
+    if( !PatchWindowsAlloc() )
+        ExitProcess( 0 );
+    #endif
+}
