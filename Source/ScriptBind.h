@@ -1265,10 +1265,10 @@ for( int i = 0; i < 40 /*MAPOBJ_CRITTER_PARAMS*/; i++ )
 {
     char str[ 256 ];
     sprintf( str, "int16 Critter_ParamIndex%d", i );
-    BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", str, OFFSETOF( MapObject, MCritter.ParamIndex[ 0 ] ) + sizeof( void* ) * i ) );
+    BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", str, OFFSETOF( MapObject, MCritter.ParamIndex[ 0 ] ) + sizeof( short ) * i ) );
 
     sprintf( str, "int Critter_ParamValue%d", i );
-    BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", str, OFFSETOF( MapObject, MCritter.ParamValue[ 0 ] ) + sizeof( void* ) * i ) );
+    BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", str, OFFSETOF( MapObject, MCritter.ParamValue[ 0 ] ) + sizeof( int ) * i ) );
 
 }
 
