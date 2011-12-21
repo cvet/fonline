@@ -461,8 +461,7 @@ public:
 
 DECLARE_PATCH( HANDLE, HeapCreate, ( DWORD flOptions, SIZE_T dwInitialSize, SIZE_T dwMaximumSize ) )
 {
-    HANDLE heap = Patch_HeapCreate.Call( flOptions, dwInitialSize, dwMaximumSize );
-    return heap;
+    return Patch_HeapCreate.Call( flOptions, dwInitialSize, dwMaximumSize );
 }
 
 DECLARE_PATCH( BOOL, HeapDestroy, (HANDLE hHeap) )
@@ -557,8 +556,6 @@ void PatchWindowsDealloc()
 void* malloc_hook( size_t size, const void* caller );
 void* realloc_hook( void* ptr, size_t size, const void* caller );
 void  free_hook( void* ptr, const void* caller );
-void  init_hook( void );
-void ( * __malloc_initialize_hook )( void ) = init_hook;
 
 StackInfo* GetStackInfo( const void* caller )
 {
@@ -581,13 +578,6 @@ StackInfo* GetStackInfo( const void* caller )
     si->Size = 0;
     StackHashStackInfo.insert( PAIR( (size_t) caller, si ) );
     return si;
-}
-
-void init_hook( void )
-{
-    __malloc_hook = malloc_hook;
-    __realloc_hook = realloc_hook;
-    __free_hook = free_hook;
 }
 
 void* malloc_hook( size_t size, const void* caller )
@@ -630,6 +620,14 @@ void Debugger::StartTraceMemory()
     ProcessHandle = OpenProcess( PROCESS_ALL_ACCESS, FALSE, GetCurrentProcessId() );
     SymInitialize( ProcessHandle, NULL, TRUE );
     SymSetOptions( SYMOPT_LOAD_LINES | SYMOPT_FAIL_CRITICAL_ERRORS );
+
+    // Allocators
+    PatchWindowsAlloc();
+
+    #else // FO_LINUX
+    __malloc_hook = malloc_hook;
+    __realloc_hook = realloc_hook;
+    __free_hook = free_hook;
     #endif
 
     // Begin catching
@@ -686,12 +684,4 @@ string Debugger::GetTraceMemory()
 
     MemoryAllocRecursion--;
     return str;
-}
-
-void Debugger::SwapAllocators()
-{
-    #ifdef FO_WINDOWS
-    if( !PatchWindowsAlloc() )
-        ExitProcess( 0 );
-    #endif
 }

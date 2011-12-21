@@ -131,6 +131,17 @@ void* GetScriptEngine()
     return Engine;
 }
 
+const char* GetDllTarget()
+{
+    if( IsServer )
+        return "SERVER";
+    if( IsClient )
+        return "CLIENT";
+    if( IsMapper )
+        return "MAPPER";
+    return "UNKNOWN";
+}
+
 void CallBack( const asSMessageInfo* msg, void* param )
 {
     const char* type = "ERROR";
@@ -227,9 +238,6 @@ int main( int argc, char* argv[] )
                 "*can be used over and over again" );
         return 0;
     }
-
-    // Memory management
-    Debugger::SwapAllocators();
 
     // Parse args
     char*           str_fname = argv[ 1 ];

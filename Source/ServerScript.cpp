@@ -90,7 +90,7 @@ bool FOServer::InitScriptSystem()
     #endif
 
     // Init
-    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_SERVER ) ) )
+    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_SERVER ), "SERVER" ) )
     {
         WriteLog( "Script System initialization failed.\n" );
         return false;
@@ -287,7 +287,7 @@ bool FOServer::ReloadClientScripts()
     #endif
 
     asIScriptEngine* old_engine = Script::GetEngine();
-    asIScriptEngine* engine = Script::CreateEngine( new ScriptPragmaCallback( PRAGMA_CLIENT ) );
+    asIScriptEngine* engine = Script::CreateEngine( new ScriptPragmaCallback( PRAGMA_CLIENT ), "CLIENT" );
     if( engine )
         Script::SetEngine( engine );
 

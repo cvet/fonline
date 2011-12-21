@@ -123,6 +123,6 @@
 
 // OGL / D3D render WIP
 // Need replace all d3d stuff on ogl
-#define FO_D3D
+// #define FO_D3D
 
 #endif // ___PLATFORM_SPECIFIC___

@@ -83,9 +83,6 @@ int main( int argc, char** argv )
     // Exceptions catcher
     CatchExceptions( "FOnlineServer", SERVER_VERSION );
 
-    // Memory management
-    Debugger::SwapAllocators();
-
     // Timer
     Timer::Init();
 

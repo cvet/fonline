@@ -48,8 +48,6 @@ namespace Debugger
 
     void   StartTraceMemory();
     string GetTraceMemory();
-
-    void SwapAllocators();
 };
 
 #endif // __DEBUGGER__

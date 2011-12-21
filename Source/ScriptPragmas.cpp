@@ -63,36 +63,50 @@ namespace Script
         strcat( dll_name_, ".so" );
         # endif
 
+        // Register global function and vars
+        static map< string, void* > alreadyLoadedDll;
+        string                      dll_name_str = dll_name_;
+        auto it = alreadyLoadedDll.find( dll_name_str );
+        if( it != alreadyLoadedDll.end() )
+            return ( *it ).second;
+        alreadyLoadedDll.insert( PAIR( dll_name_str, (void*) NULL ) );
+
         // Load dynamic library
-        void* dll = DLL_Load( dll_name_ );
+        void* dll = DLL_Load( dll_name_str.c_str() );
         if( !dll )
             return NULL;
 
-        // Register global function and vars
-        static set< string > alreadyLoadedDll;
-        if( !alreadyLoadedDll.count( dll_name_ ) )
+        // Verify compilation target
+        const char* target = GetDllTarget();
+        size_t*     ptr = DLL_GetAddress( dll, target );
+        if( !ptr )
         {
-            // Register variables
-            size_t* ptr = DLL_GetAddress( dll, "FOnline" );
-            if( ptr )
-                *ptr = (size_t) NULL;
-            ptr = DLL_GetAddress( dll, "ASEngine" );
-            if( ptr )
-                *ptr = (size_t) GetEngine();
-
-            // Register functions
-            ptr = DLL_GetAddress( dll, "Log" );
-            if( ptr )
-                *ptr = (size_t) &printf;
-
-            // Call init function
-            typedef void ( *DllMainEx )( bool );
-            DllMainEx func = (DllMainEx) DLL_GetAddress( dll, "DllMainEx" );
-            if( func )
-                ( *func )( true );
-
-            alreadyLoadedDll.insert( dll_name_ );
+            printf( "Wrong script DLL<%s>, expected target<%s>, but found<%s>.\n", dll_name, target,
+                    DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "" );
+            DLL_Free( dll );
+            return NULL;
         }
+
+        // Register variables
+        ptr = DLL_GetAddress( dll, "FOnline" );
+        if( ptr )
+            *ptr = (size_t) NULL;
+        ptr = DLL_GetAddress( dll, "ASEngine" );
+        if( ptr )
+            *ptr = (size_t) GetEngine();
+
+        // Register functions
+        ptr = DLL_GetAddress( dll, "Log" );
+        if( ptr )
+            *ptr = (size_t) &printf;
+
+        // Call init function
+        typedef void ( *DllMainEx )( bool );
+        DllMainEx func = (DllMainEx) DLL_GetAddress( dll, "DllMainEx" );
+        if( func )
+            ( *func )( true );
+
+        alreadyLoadedDll[ dll_name_str ] = dll;
         return dll;
     }
 }

@@ -101,7 +101,7 @@ Thread RunTimeoutThread;
 void RunTimeout( void* );
 
 
-bool Script::Init( bool with_log, Preprocessor::PragmaCallback* pragma_callback )
+bool Script::Init( bool with_log, Preprocessor::PragmaCallback* pragma_callback, const char* dll_target )
 {
     if( with_log && !StartLog() )
     {
@@ -110,7 +110,7 @@ bool Script::Init( bool with_log, Preprocessor::PragmaCallback* pragma_callback 
     }
 
     // Create default engine
-    Engine = CreateEngine( pragma_callback );
+    Engine = CreateEngine( pragma_callback, dll_target );
     if( !Engine )
     {
         WriteLogF( _FUNC_, " - Can't create AS engine.\n" );
@@ -380,8 +380,18 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     if( !dll )
         return NULL;
 
+    // Verify compilation target
+    size_t* ptr = DLL_GetAddress( dll, edata->DllTarget.c_str() );
+    if( !ptr )
+    {
+        WriteLogF( _FUNC_, " - Wrong script DLL<%s>, expected target<%s>, but found<%s%s%s>.\n", dll_name, edata->DllTarget.c_str(),
+                   DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "" );
+        DLL_Free( dll );
+        return NULL;
+    }
+
     // Register variables
-    size_t* ptr = DLL_GetAddress( dll, "FOnline" );
+    ptr = DLL_GetAddress( dll, "FOnline" );
     if( ptr )
         *ptr = (size_t) &GameOpt;
     ptr = DLL_GetAddress( dll, "ASEngine" );
@@ -569,7 +579,7 @@ void Script::SetEngine( asIScriptEngine* engine )
     Engine = engine;
 }
 
-asIScriptEngine* Script::CreateEngine( Preprocessor::PragmaCallback* pragma_callback )
+asIScriptEngine* Script::CreateEngine( Preprocessor::PragmaCallback* pragma_callback, const char* dll_target )
 {
     asIScriptEngine* engine = asCreateScriptEngine( ANGELSCRIPT_VERSION );
     if( !engine )
@@ -590,6 +600,7 @@ asIScriptEngine* Script::CreateEngine( Preprocessor::PragmaCallback* pragma_call
 
     EngineData* edata = new EngineData();
     edata->PragmaCB = pragma_callback;
+    edata->DllTarget = dll_target;
     engine->SetUserData( edata );
     return engine;
 }
