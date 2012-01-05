@@ -250,7 +250,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
                 Script::SetArgAddress( &oy );
                 if( Script::RunPrepared() )
                 {
-                    CScriptString* str = (CScriptString*) Script::GetReturnedObject();
+                    ScriptString* str = (ScriptString*) Script::GetReturnedObject();
                     if( str )
                     {
                         if( str->length() )

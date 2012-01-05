@@ -1227,7 +1227,7 @@ void MapManager::GM_GlobalInvite( GlobalMapGroup* group, int combat_mode )
     }
 }
 
-bool MapManager::GM_CheckEntrance( Location* loc, CScriptArray* arr, uchar entrance )
+bool MapManager::GM_CheckEntrance( Location* loc, ScriptArray* arr, uchar entrance )
 {
     if( !loc->Proto->ScriptBindId )
         return true;
@@ -1243,9 +1243,9 @@ bool MapManager::GM_CheckEntrance( Location* loc, CScriptArray* arr, uchar entra
     return false;
 }
 
-CScriptArray* MapManager::GM_CreateGroupArray( GlobalMapGroup* group )
+ScriptArray* MapManager::GM_CreateGroupArray( GlobalMapGroup* group )
 {
-    CScriptArray* arr = Script::CreateArray( "Critter@[]" );
+    ScriptArray* arr = Script::CreateArray( "Critter@[]" );
     if( !arr )
     {
         WriteLogF( _FUNC_, " - Create script array fail.\n" );
@@ -1588,7 +1588,7 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
 
     if( loc->Proto->ScriptBindId )
     {
-        CScriptArray* arr = GM_CreateGroupArray( rule->GroupMove );
+        ScriptArray* arr = GM_CreateGroupArray( rule->GroupMove );
         if( !arr )
             return false;
         bool result = GM_CheckEntrance( loc, arr, entrance );

@@ -1,101 +1,98 @@
 #ifndef SCRIPTDICTIONARY_H
 #define SCRIPTDICTIONARY_H
 
-// The dictionary class relies on the script string object, thus the script
-// string type must be registered with the engine before registering the
-// dictionary type
-
-#include "AngelScript/angelscript.h"
-#include "AngelScript/scriptarray.h"
+#include "angelscript.h"
+#include "scriptarray.h"
+#include "scriptstring.h"
 #include <string>
-
-#ifdef _MSC_VER
-// Turn off annoying warnings about truncated symbol names
-#pragma warning (disable:4786)
-#endif
-
 #include <map>
 
-BEGIN_AS_NAMESPACE
-
-class CScriptDictionary
+class ScriptDictionary
 {
 public:
-    // Memory management
-    CScriptDictionary(asIScriptEngine *engine);
-    void AddRef() const;
-    void Release() const;
+    #ifdef FONLINE_DLL
+    static ScriptDictionary& Create()
+    {
+        static int        typeId = ASEngine->GetTypeIdByDecl( "dictionary" );
+        ScriptDictionary* scriptDictionary = (ScriptDictionary*) ASEngine->CreateScriptObject( typeId );
+        return *scriptDictionary;
+    }
+protected:
+    #endif
 
-    CScriptDictionary &operator =(const CScriptDictionary &other);
+    ScriptDictionary();
+    ScriptDictionary( const ScriptDictionary& );
+    ScriptDictionary( asIScriptEngine* engine );
+
+public:
+    virtual void AddRef() const;
+    virtual void Release() const;
+
+    ScriptDictionary& operator=( const ScriptDictionary& other )
+    {
+        Assign( other );
+        return *this;
+    }
+    virtual void Assign( const ScriptDictionary& other );
 
     // Sets/Gets a variable type value for a key
-    void Set(const std::string &key, void *value, int typeId);
-    bool Get(const std::string &key, void *value, int typeId) const;
+    virtual void Set( const ScriptString& key, void* value, int typeId );
+    virtual bool Get( const ScriptString& key, void* value, int typeId ) const;
 
     // Sets/Gets an integer number value for a key
-    void Set(const std::string &key, asINT64 &value);
-    bool Get(const std::string &key, asINT64 &value) const;
+    virtual void Set( const ScriptString& key, asINT64& value );
+    virtual bool Get( const ScriptString& key, asINT64& value ) const;
 
     // Sets/Gets a real number value for a key
-    void Set(const std::string &key, double &value);
-    bool Get(const std::string &key, double &value) const;
+    virtual void Set( const ScriptString& key, double& value );
+    virtual bool Get( const ScriptString& key, double& value ) const;
 
     // Returns true if the key is set
-    bool Exists(const std::string &key) const;
+    virtual bool Exists( const ScriptString& key ) const;
 
     // Deletes the key
-    void Delete(const std::string &key);
+    virtual void Delete( const ScriptString& key );
 
     // Deletes all keys
-    void DeleteAll();
+    virtual void DeleteAll();
 
-	// Get all keys
-	unsigned int Keys(CScriptArray* keys);
+    // Get all keys
+    virtual unsigned int Keys( ScriptArray* keys );
 
-	// Garbage collections behaviours
-	int GetRefCount();
-	void SetGCFlag();
-	bool GetGCFlag();
-	void EnumReferences(asIScriptEngine *engine);
-	void ReleaseAllReferences(asIScriptEngine *engine);
+    // Garbage collections behaviours
+    virtual int  GetRefCount();
+    virtual void SetGCFlag();
+    virtual bool GetGCFlag();
+    virtual void EnumReferences( asIScriptEngine* engine );
+    virtual void ReleaseAllReferences( asIScriptEngine* engine );
 
 protected:
-	// The structure for holding the values
+    // The structure for holding the values
     struct valueStruct
     {
         union
         {
             asINT64 valueInt;
             double  valueFlt;
-            void   *valueObj;
+            void*   valueObj;
         };
-        int   typeId;
+        int typeId;
     };
-    
-	// We don't want anyone to call the destructor directly, it should be called through the Release method
-	virtual ~CScriptDictionary();
 
-	// Helper methods
-    void FreeValue(valueStruct &value);
-	
-	// Our properties
-    asIScriptEngine *engine;
-    mutable int refCount;
-    std::map<std::string, valueStruct> dict;
+    // We don't want anyone to call the destructor directly, it should be called through the Release method
+    virtual ~ScriptDictionary();
+
+    // Helper methods
+    virtual void FreeValue( valueStruct& value );
+
+    // Our properties
+    asIScriptEngine*                     engine;
+    mutable int                          refCount;
+    std::map< std::string, valueStruct > dict;
 };
 
-// This function will determine the configuration of the engine
-// and use one of the two functions below to register the dictionary object
-void RegisterScriptDictionary(asIScriptEngine *engine);
-
-// Call this function to register the math functions
-// using native calling conventions
-void RegisterScriptDictionary_Native(asIScriptEngine *engine);
-
-// Use this one instead if native calling conventions
-// are not supported on the target platform
-void RegisterScriptDictionary_Generic(asIScriptEngine *engine);
-
-END_AS_NAMESPACE
+#ifndef FONLINE_DLL
+void RegisterScriptDictionary( asIScriptEngine* engine );
+#endif
 
 #endif

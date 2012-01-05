@@ -529,9 +529,9 @@ bool FOServer::ReloadClientScripts()
 /************************************************************************/
 
 string FOServer::SScriptFunc::ScriptLastError = "No errors.";
-CScriptString* FOServer::SScriptFunc::Global_GetLastError()
+ScriptString* FOServer::SScriptFunc::Global_GetLastError()
 {
-    return new CScriptString( ScriptLastError );
+    return new ScriptString( ScriptLastError );
 }
 
 int SortCritterHx = 0, SortCritterHy = 0;
@@ -621,7 +621,7 @@ AIDataPlane* FOServer::SScriptFunc::NpcPlane_GetChild( AIDataPlane* plane, uint 
     return result;
 }
 
-bool FOServer::SScriptFunc::NpcPlane_Misc_SetScript( AIDataPlane* plane, CScriptString& func_name )
+bool FOServer::SScriptFunc::NpcPlane_Misc_SetScript( AIDataPlane* plane, ScriptString& func_name )
 {
     int bind_id = Script::Bind( func_name.c_str(), "void %s(Critter&)", false );
     if( bind_id <= 0 )
@@ -641,7 +641,7 @@ Item* FOServer::SScriptFunc::Container_AddItem( Item* cont, ushort pid, uint cou
     return ItemMngr.AddItemContainer( cont, pid, count, special_id );
 }
 
-uint FOServer::SScriptFunc::Container_GetItems( Item* cont, uint special_id, CScriptArray* items )
+uint FOServer::SScriptFunc::Container_GetItems( Item* cont, uint special_id, ScriptArray* items )
 {
     if( !items )
         SCRIPT_ERROR_R0( "Items array arg nullptr." );
@@ -680,7 +680,7 @@ bool FOServer::SScriptFunc::Item_IsDeteriorable( Item* item )
     return item->IsDeteriorable();
 }
 
-bool FOServer::SScriptFunc::Item_SetScript( Item* item, CScriptString* script )
+bool FOServer::SScriptFunc::Item_SetScript( Item* item, ScriptString* script )
 {
     if( item->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -703,7 +703,7 @@ uint FOServer::SScriptFunc::Item_GetScriptId( Item* item )
     return item->Data.ScriptId;
 }
 
-bool FOServer::SScriptFunc::Item_SetEvent( Item* item, int event_type, CScriptString* func_name )
+bool FOServer::SScriptFunc::Item_SetEvent( Item* item, int event_type, ScriptString* func_name )
 {
     if( item->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -899,7 +899,7 @@ void FOServer::SScriptFunc::Item_Animate( Item* item, uchar from_frm, uchar to_f
     }
 }
 
-void FOServer::SScriptFunc::Item_SetLexems( Item* item, CScriptString* lexems )
+void FOServer::SScriptFunc::Item_SetLexems( Item* item, ScriptString* lexems )
 {
     if( item->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -1242,7 +1242,7 @@ short FOServer::SScriptFunc::Item_get_TrapValue( Item* item )
     return item->Data.TrapValue;
 }
 
-uint FOServer::SScriptFunc::CraftItem_GetShowParams( CraftItem* craft, CScriptArray* nums, CScriptArray* vals, CScriptArray* ors )
+uint FOServer::SScriptFunc::CraftItem_GetShowParams( CraftItem* craft, ScriptArray* nums, ScriptArray* vals, ScriptArray* ors )
 {
     if( nums )
         Script::AppendVectorToArray( craft->ShowPNum, nums );
@@ -1253,7 +1253,7 @@ uint FOServer::SScriptFunc::CraftItem_GetShowParams( CraftItem* craft, CScriptAr
     return (uint) craft->ShowPNum.size();
 }
 
-uint FOServer::SScriptFunc::CraftItem_GetNeedParams( CraftItem* craft, CScriptArray* nums, CScriptArray* vals, CScriptArray* ors )
+uint FOServer::SScriptFunc::CraftItem_GetNeedParams( CraftItem* craft, ScriptArray* nums, ScriptArray* vals, ScriptArray* ors )
 {
     if( nums )
         Script::AppendVectorToArray( craft->NeedPNum, nums );
@@ -1264,7 +1264,7 @@ uint FOServer::SScriptFunc::CraftItem_GetNeedParams( CraftItem* craft, CScriptAr
     return (uint) craft->NeedPNum.size();
 }
 
-uint FOServer::SScriptFunc::CraftItem_GetNeedTools( CraftItem* craft, CScriptArray* pids, CScriptArray* vals, CScriptArray* ors )
+uint FOServer::SScriptFunc::CraftItem_GetNeedTools( CraftItem* craft, ScriptArray* pids, ScriptArray* vals, ScriptArray* ors )
 {
     if( pids )
         Script::AppendVectorToArray( craft->NeedTools, pids );
@@ -1275,7 +1275,7 @@ uint FOServer::SScriptFunc::CraftItem_GetNeedTools( CraftItem* craft, CScriptArr
     return (uint) craft->NeedTools.size();
 }
 
-uint FOServer::SScriptFunc::CraftItem_GetNeedItems( CraftItem* craft, CScriptArray* pids, CScriptArray* vals, CScriptArray* ors )
+uint FOServer::SScriptFunc::CraftItem_GetNeedItems( CraftItem* craft, ScriptArray* pids, ScriptArray* vals, ScriptArray* ors )
 {
     if( pids )
         Script::AppendVectorToArray( craft->NeedItems, pids );
@@ -1286,7 +1286,7 @@ uint FOServer::SScriptFunc::CraftItem_GetNeedItems( CraftItem* craft, CScriptArr
     return (uint) craft->NeedItems.size();
 }
 
-uint FOServer::SScriptFunc::CraftItem_GetOutItems( CraftItem* craft, CScriptArray* pids, CScriptArray* vals )
+uint FOServer::SScriptFunc::CraftItem_GetOutItems( CraftItem* craft, ScriptArray* pids, ScriptArray* vals )
 {
     if( pids )
         Script::AppendVectorToArray( craft->OutItems, pids );
@@ -1353,7 +1353,7 @@ int FOServer::SScriptFunc::Cl_GetAccess( Critter* cl )
     return ( (Client*) cl )->Access;
 }
 
-bool FOServer::SScriptFunc::Crit_SetEvent( Critter* cr, int event_type, CScriptString* func_name )
+bool FOServer::SScriptFunc::Crit_SetEvent( Critter* cr, int event_type, ScriptString* func_name )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -1370,7 +1370,7 @@ bool FOServer::SScriptFunc::Crit_SetEvent( Critter* cr, int event_type, CScriptS
     return true;
 }
 
-void FOServer::SScriptFunc::Crit_SetLexems( Critter* cr, CScriptString* lexems )
+void FOServer::SScriptFunc::Crit_SetLexems( Critter* cr, ScriptString* lexems )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -1655,7 +1655,7 @@ bool FOServer::SScriptFunc::Crit_TransitToGlobal( Critter* cr, bool request_grou
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToGlobalWithGroup( Critter* cr, CScriptArray& group )
+bool FOServer::SScriptFunc::Crit_TransitToGlobalWithGroup( Critter* cr, ScriptArray& group )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -1915,7 +1915,7 @@ bool FOServer::SScriptFunc::Crit_IsHolodiskInfo( Critter* cr, uint holodisk_num 
     return false;
 }
 
-void FOServer::SScriptFunc::Crit_Say( Critter* cr, uchar how_say, CScriptString& text )
+void FOServer::SScriptFunc::Crit_Say( Critter* cr, uchar how_say, ScriptString& text )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -1945,7 +1945,7 @@ void FOServer::SScriptFunc::Crit_SayMsg( Critter* cr, uchar how_say, ushort text
         cr->SendAA_Msg( cr->VisCr, num_str, how_say, text_msg );
 }
 
-void FOServer::SScriptFunc::Crit_SayMsgLex( Critter* cr, uchar how_say, ushort text_msg, uint num_str, CScriptString& lexems )
+void FOServer::SScriptFunc::Crit_SayMsgLex( Critter* cr, uchar how_say, ushort text_msg, uint num_str, ScriptString& lexems )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -2031,7 +2031,7 @@ ushort FOServer::SScriptFunc::Crit_GetFavoriteItem( Critter* cr, int slot )
     return 0;
 }
 
-uint FOServer::SScriptFunc::Crit_GetCritters( Critter* cr, bool look_on_me, int find_type, CScriptArray* critters )
+uint FOServer::SScriptFunc::Crit_GetCritters( Critter* cr, bool look_on_me, int find_type, ScriptArray* critters )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -2054,7 +2054,7 @@ uint FOServer::SScriptFunc::Crit_GetCritters( Critter* cr, bool look_on_me, int 
     return (uint) cr_vec.size();
 }
 
-uint FOServer::SScriptFunc::Crit_GetFollowGroup( Critter* cr, int find_type, CScriptArray* critters )
+uint FOServer::SScriptFunc::Crit_GetFollowGroup( Critter* cr, int find_type, ScriptArray* critters )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -2087,13 +2087,13 @@ Critter* FOServer::SScriptFunc::Crit_GetFollowLeader( Critter* cr )
     return cr->GetCritSelf( leader_id, true );
 }
 
-CScriptArray* FOServer::SScriptFunc::Crit_GetGlobalGroup( Critter* cr )
+ScriptArray* FOServer::SScriptFunc::Crit_GetGlobalGroup( Critter* cr )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
     if( cr->GetMap() || !cr->GroupMove )
         return NULL;
-    CScriptArray* result = MapMngr.GM_CreateGroupArray( cr->GroupMove );
+    ScriptArray* result = MapMngr.GM_CreateGroupArray( cr->GroupMove );
     if( !result )
         SCRIPT_ERROR_R0( "Fail to create group." );
     return result;
@@ -2124,7 +2124,7 @@ void FOServer::SScriptFunc::Crit_GiveGlobalGroupLead( Critter* cr, Critter* to_c
     MapMngr.GM_GiveRule( cr, to_cr );
 }
 
-uint FOServer::SScriptFunc::Npc_GetTalkedPlayers( Critter* cr, CScriptArray* players )
+uint FOServer::SScriptFunc::Npc_GetTalkedPlayers( Critter* cr, ScriptArray* players )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -2263,7 +2263,7 @@ Item* FOServer::SScriptFunc::Crit_GetItemById( Critter* cr, uint item_id )
     return cr->GetItem( item_id, false );
 }
 
-uint FOServer::SScriptFunc::Crit_GetItems( Critter* cr, int slot, CScriptArray* items )
+uint FOServer::SScriptFunc::Crit_GetItems( Critter* cr, int slot, ScriptArray* items )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -2274,7 +2274,7 @@ uint FOServer::SScriptFunc::Crit_GetItems( Critter* cr, int slot, CScriptArray* 
     return (uint) items_.size();
 }
 
-uint FOServer::SScriptFunc::Crit_GetItemsByType( Critter* cr, int type, CScriptArray* items )
+uint FOServer::SScriptFunc::Crit_GetItemsByType( Critter* cr, int type, ScriptArray* items )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -2434,7 +2434,7 @@ AIDataPlane* FOServer::SScriptFunc::Npc_GetCurPlane( Critter* npc )
     return npc_->GetPlanes()[ 0 ];
 }
 
-uint FOServer::SScriptFunc::Npc_GetPlanes( Critter* npc, CScriptArray* arr )
+uint FOServer::SScriptFunc::Npc_GetPlanes( Critter* npc, ScriptArray* arr )
 {
     if( npc->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -2448,7 +2448,7 @@ uint FOServer::SScriptFunc::Npc_GetPlanes( Critter* npc, CScriptArray* arr )
     return (uint) npc_->GetPlanes().size();
 }
 
-uint FOServer::SScriptFunc::Npc_GetPlanesIdentifier( Critter* npc, int identifier, CScriptArray* arr )
+uint FOServer::SScriptFunc::Npc_GetPlanesIdentifier( Critter* npc, int identifier, ScriptArray* arr )
 {
     if( npc->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -2469,7 +2469,7 @@ uint FOServer::SScriptFunc::Npc_GetPlanesIdentifier( Critter* npc, int identifie
     return (uint) planes.size();
 }
 
-uint FOServer::SScriptFunc::Npc_GetPlanesIdentifier2( Critter* npc, int identifier, uint identifier_ext, CScriptArray* arr )
+uint FOServer::SScriptFunc::Npc_GetPlanesIdentifier2( Critter* npc, int identifier, uint identifier_ext, ScriptArray* arr )
 {
     if( npc->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -2518,7 +2518,7 @@ void FOServer::SScriptFunc::Crit_SendMessage( Critter* cr, int num, int val, int
     cr->SendMessage( num, val, to );
 }
 
-void FOServer::SScriptFunc::Crit_SendCombatResult( Critter* cr, CScriptArray& arr )
+void FOServer::SScriptFunc::Crit_SendCombatResult( Critter* cr, ScriptArray& arr )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -2565,7 +2565,7 @@ void FOServer::SScriptFunc::Crit_SetAnims( Critter* cr, int cond, uint anim1, ui
     cr->SendAA_SetAnims( cond, anim1, anim2 );
 }
 
-void FOServer::SScriptFunc::Crit_PlaySound( Critter* cr, CScriptString& sound_name, bool send_self )
+void FOServer::SScriptFunc::Crit_PlaySound( Critter* cr, ScriptString& sound_name, bool send_self )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -2714,7 +2714,7 @@ void FOServer::SScriptFunc::Cl_ShowContainer( Critter* cl, Critter* cr_cont, Ite
     }
 }
 
-void FOServer::SScriptFunc::Cl_ShowScreen( Critter* cl, int screen_type, uint param, CScriptString* func_name )
+void FOServer::SScriptFunc::Cl_ShowScreen( Critter* cl, int screen_type, uint param, ScriptString* func_name )
 {
     if( cl->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -2734,7 +2734,7 @@ void FOServer::SScriptFunc::Cl_ShowScreen( Critter* cl, int screen_type, uint pa
     cl_->Send_ShowScreen( screen_type, param, bind_id != 0 );
 }
 
-void FOServer::SScriptFunc::Cl_RunClientScript( Critter* cl, CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4 )
+void FOServer::SScriptFunc::Cl_RunClientScript( Critter* cl, ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 )
 {
     if( cl->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -2760,7 +2760,7 @@ void FOServer::SScriptFunc::Cl_Disconnect( Critter* cl )
         cl_->Disconnect();
 }
 
-bool FOServer::SScriptFunc::Crit_SetScript( Critter* cr, CScriptString* script )
+bool FOServer::SScriptFunc::Crit_SetScript( Critter* cr, ScriptString* script )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -2856,7 +2856,7 @@ void FOServer::SScriptFunc::Crit_ChangeEnemyStackSize( Critter* cr, uint new_siz
     cr->Data.EnemyStackCount = new_size;
 }
 
-void FOServer::SScriptFunc::Crit_GetEnemyStack( Critter* cr, CScriptArray& arr )
+void FOServer::SScriptFunc::Crit_GetEnemyStack( Critter* cr, ScriptArray& arr )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -2892,7 +2892,7 @@ void FOServer::SScriptFunc::Crit_ClearEnemyStackNpc( Critter* cr )
     }
 }
 
-bool FOServer::SScriptFunc::Crit_AddTimeEvent( Critter* cr, CScriptString& func_name, uint duration, int identifier )
+bool FOServer::SScriptFunc::Crit_AddTimeEvent( Critter* cr, ScriptString& func_name, uint duration, int identifier )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -2905,7 +2905,7 @@ bool FOServer::SScriptFunc::Crit_AddTimeEvent( Critter* cr, CScriptString& func_
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_AddTimeEventRate( Critter* cr, CScriptString& func_name, uint duration, int identifier, uint rate )
+bool FOServer::SScriptFunc::Crit_AddTimeEventRate( Critter* cr, ScriptString& func_name, uint duration, int identifier, uint rate )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -2918,7 +2918,7 @@ bool FOServer::SScriptFunc::Crit_AddTimeEventRate( Critter* cr, CScriptString& f
     return true;
 }
 
-uint FOServer::SScriptFunc::Crit_GetTimeEvents( Critter* cr, int identifier, CScriptArray* indexes, CScriptArray* durations, CScriptArray* rates )
+uint FOServer::SScriptFunc::Crit_GetTimeEvents( Critter* cr, int identifier, ScriptArray* indexes, ScriptArray* durations, ScriptArray* rates )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -2966,7 +2966,7 @@ uint FOServer::SScriptFunc::Crit_GetTimeEvents( Critter* cr, int identifier, CSc
     return size;
 }
 
-uint FOServer::SScriptFunc::Crit_GetTimeEventsArr( Critter* cr, CScriptArray& find_identifiers, CScriptArray* identifiers, CScriptArray* indexes, CScriptArray* durations, CScriptArray* rates )
+uint FOServer::SScriptFunc::Crit_GetTimeEventsArr( Critter* cr, ScriptArray& find_identifiers, ScriptArray* identifiers, ScriptArray* indexes, ScriptArray* durations, ScriptArray* rates )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -3064,7 +3064,7 @@ uint FOServer::SScriptFunc::Crit_EraseTimeEvents( Critter* cr, int identifier )
     return result;
 }
 
-uint FOServer::SScriptFunc::Crit_EraseTimeEventsArr( Critter* cr, CScriptArray& identifiers )
+uint FOServer::SScriptFunc::Crit_EraseTimeEventsArr( Critter* cr, ScriptArray& identifiers )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -3101,7 +3101,7 @@ uint FOServer::SScriptFunc::Crit_GetBagRefreshTime( Critter* cr )
     return (uint) cr->Data.BagRefreshTime;
 }
 
-void FOServer::SScriptFunc::Crit_SetInternalBag( Critter* cr, CScriptArray& pids, CScriptArray* min_counts, CScriptArray* max_counts, CScriptArray* slots )
+void FOServer::SScriptFunc::Crit_SetInternalBag( Critter* cr, ScriptArray& pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -3144,7 +3144,7 @@ void FOServer::SScriptFunc::Crit_SetInternalBag( Critter* cr, CScriptArray& pids
     cr->Data.BagSize = end_count;
 }
 
-uint FOServer::SScriptFunc::Crit_GetInternalBag( Critter* cr, CScriptArray* pids, CScriptArray* min_counts, CScriptArray* max_counts, CScriptArray* slots )
+uint FOServer::SScriptFunc::Crit_GetInternalBag( Critter* cr, ScriptArray* pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -3645,7 +3645,7 @@ Location* FOServer::SScriptFunc::Map_GetLocation( Map* map )
     return map->GetLocation( true );
 }
 
-bool FOServer::SScriptFunc::Map_SetScript( Map* map, CScriptString* script )
+bool FOServer::SScriptFunc::Map_SetScript( Map* map, ScriptString* script )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -3668,7 +3668,7 @@ uint FOServer::SScriptFunc::Map_GetScriptId( Map* map )
     return map->Data.ScriptId;
 }
 
-bool FOServer::SScriptFunc::Map_SetEvent( Map* map, int event_type, CScriptString* func_name )
+bool FOServer::SScriptFunc::Map_SetEvent( Map* map, int event_type, ScriptString* func_name )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -3816,7 +3816,7 @@ void FOServer::SScriptFunc::Map_EndTurnBased( Map* map )
     map->NeedEndTurnBased = true;
 }
 
-int FOServer::SScriptFunc::Map_GetTurnBasedSequence( Map* map, CScriptArray& critters_ids )
+int FOServer::SScriptFunc::Map_GetTurnBasedSequence( Map* map, ScriptArray& critters_ids )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_RX( "This nullptr.", -1 );
@@ -3860,7 +3860,7 @@ Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, ushort
     return CreateItemOnHex( map, hx, hy, proto_id, count );
 }
 
-uint FOServer::SScriptFunc::Map_GetItemsHex( Map* map, ushort hx, ushort hy, CScriptArray* items )
+uint FOServer::SScriptFunc::Map_GetItemsHex( Map* map, ushort hx, ushort hy, ScriptArray* items )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -3873,7 +3873,7 @@ uint FOServer::SScriptFunc::Map_GetItemsHex( Map* map, ushort hx, ushort hy, CSc
     return (uint) items_.size();
 }
 
-uint FOServer::SScriptFunc::Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, ushort pid, CScriptArray* items )
+uint FOServer::SScriptFunc::Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, ushort pid, ScriptArray* items )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -3886,7 +3886,7 @@ uint FOServer::SScriptFunc::Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, u
     return (uint) items_.size();
 }
 
-uint FOServer::SScriptFunc::Map_GetItemsByPid( Map* map, ushort pid, CScriptArray* items )
+uint FOServer::SScriptFunc::Map_GetItemsByPid( Map* map, ushort pid, ScriptArray* items )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -3897,7 +3897,7 @@ uint FOServer::SScriptFunc::Map_GetItemsByPid( Map* map, ushort pid, CScriptArra
     return (uint) items_.size();
 }
 
-uint FOServer::SScriptFunc::Map_GetItemsByType( Map* map, int type, CScriptArray* items )
+uint FOServer::SScriptFunc::Map_GetItemsByType( Map* map, int type, ScriptArray* items )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -3965,7 +3965,7 @@ MapObject* FOServer::SScriptFunc::Map_GetSceneryHex( Map* map, ushort hx, ushort
     return map->Proto->GetMapScenery( hx, hy, pid );
 }
 
-uint FOServer::SScriptFunc::Map_GetSceneriesHex( Map* map, ushort hx, ushort hy, CScriptArray* sceneries )
+uint FOServer::SScriptFunc::Map_GetSceneriesHex( Map* map, ushort hx, ushort hy, ScriptArray* sceneries )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -3980,7 +3980,7 @@ uint FOServer::SScriptFunc::Map_GetSceneriesHex( Map* map, ushort hx, ushort hy,
     return (uint) mobjs.size();
 }
 
-uint FOServer::SScriptFunc::Map_GetSceneriesHexEx( Map* map, ushort hx, ushort hy, uint radius, ushort pid, CScriptArray* sceneries )
+uint FOServer::SScriptFunc::Map_GetSceneriesHexEx( Map* map, ushort hx, ushort hy, uint radius, ushort pid, ScriptArray* sceneries )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -3995,7 +3995,7 @@ uint FOServer::SScriptFunc::Map_GetSceneriesHexEx( Map* map, ushort hx, ushort h
     return (uint) mobjs.size();
 }
 
-uint FOServer::SScriptFunc::Map_GetSceneriesByPid( Map* map, ushort pid, CScriptArray* sceneries )
+uint FOServer::SScriptFunc::Map_GetSceneriesByPid( Map* map, ushort pid, ScriptArray* sceneries )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -4017,7 +4017,7 @@ Critter* FOServer::SScriptFunc::Map_GetCritterById( Map* map, uint crid )
     return cr;
 }
 
-uint FOServer::SScriptFunc::Map_GetCritters( Map* map, ushort hx, ushort hy, uint radius, int find_type, CScriptArray* critters )
+uint FOServer::SScriptFunc::Map_GetCritters( Map* map, ushort hx, ushort hy, uint radius, int find_type, ScriptArray* critters )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -4033,7 +4033,7 @@ uint FOServer::SScriptFunc::Map_GetCritters( Map* map, ushort hx, ushort hy, uin
     return (uint) cr_vec.size();
 }
 
-uint FOServer::SScriptFunc::Map_GetCrittersByPids( Map* map, ushort pid, int find_type, CScriptArray* critters )
+uint FOServer::SScriptFunc::Map_GetCrittersByPids( Map* map, ushort pid, int find_type, ScriptArray* critters )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -4072,7 +4072,7 @@ uint FOServer::SScriptFunc::Map_GetCrittersByPids( Map* map, ushort pid, int fin
     return (uint) cr_vec.size();
 }
 
-uint FOServer::SScriptFunc::Map_GetCrittersInPath( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, CScriptArray* critters )
+uint FOServer::SScriptFunc::Map_GetCrittersInPath( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -4097,7 +4097,7 @@ uint FOServer::SScriptFunc::Map_GetCrittersInPath( Map* map, ushort from_hx, ush
     return (uint) cr_vec.size();
 }
 
-uint FOServer::SScriptFunc::Map_GetCrittersInPathBlock( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, CScriptArray* critters, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy )
+uint FOServer::SScriptFunc::Map_GetCrittersInPathBlock( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -4129,7 +4129,7 @@ uint FOServer::SScriptFunc::Map_GetCrittersInPathBlock( Map* map, ushort from_hx
     return (uint) cr_vec.size();
 }
 
-uint FOServer::SScriptFunc::Map_GetCrittersWhoViewPath( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, int find_type, CScriptArray* critters )
+uint FOServer::SScriptFunc::Map_GetCrittersWhoViewPath( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, int find_type, ScriptArray* critters )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -4157,7 +4157,7 @@ uint FOServer::SScriptFunc::Map_GetCrittersWhoViewPath( Map* map, ushort from_hx
     return (uint) cr_vec.size();
 }
 
-uint FOServer::SScriptFunc::Map_GetCrittersSeeing( Map* map, CScriptArray& critters, bool look_on_them, int find_type, CScriptArray* result_critters )
+uint FOServer::SScriptFunc::Map_GetCrittersSeeing( Map* map, ScriptArray& critters, bool look_on_them, int find_type, ScriptArray* result_critters )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -4273,7 +4273,7 @@ uint FOServer::SScriptFunc::Map_GetPathLengthCr( Map* map, Critter* cr, ushort t
     return (uint) path.size();
 }
 
-Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, ushort proto_id, ushort hx, ushort hy, uchar dir, CScriptArray* params, CScriptArray* items, CScriptString* script )
+Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, ushort proto_id, ushort hx, ushort hy, uchar dir, ScriptArray* params, ScriptArray* items, ScriptString* script )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -4345,7 +4345,7 @@ uint FOServer::SScriptFunc::Map_CountEntire( Map* map, int entire )
     return map->Proto->CountEntire( entire );
 }
 
-uint FOServer::SScriptFunc::Map_GetEntires( Map* map, int entire, CScriptArray* entires, CScriptArray* hx, CScriptArray* hy )
+uint FOServer::SScriptFunc::Map_GetEntires( Map* map, int entire, ScriptArray* entires, ScriptArray* hx, ScriptArray* hy )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -4451,7 +4451,7 @@ bool FOServer::SScriptFunc::Map_IsHexRaked( Map* map, ushort hex_x, ushort hex_y
     return map->IsHexRaked( hex_x, hex_y );
 }
 
-void FOServer::SScriptFunc::Map_SetText( Map* map, ushort hex_x, ushort hex_y, uint color, CScriptString& text )
+void FOServer::SScriptFunc::Map_SetText( Map* map, ushort hex_x, ushort hex_y, uint color, ScriptString& text )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -4469,7 +4469,7 @@ void FOServer::SScriptFunc::Map_SetTextMsg( Map* map, ushort hex_x, ushort hex_y
     map->SetTextMsg( hex_x, hex_y, color, text_msg, str_num );
 }
 
-void FOServer::SScriptFunc::Map_SetTextMsgLex( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num, CScriptString& lexems )
+void FOServer::SScriptFunc::Map_SetTextMsgLex( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num, ScriptString& lexems )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -4539,7 +4539,7 @@ void FOServer::SScriptFunc::Map_UnblockHex( Map* map, ushort hx, ushort hy )
     map->UnsetHexFlag( hx, hy, FH_NRAKE_ITEM );
 }
 
-void FOServer::SScriptFunc::Map_PlaySound( Map* map, CScriptString& sound_name )
+void FOServer::SScriptFunc::Map_PlaySound( Map* map, ScriptString& sound_name )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -4556,7 +4556,7 @@ void FOServer::SScriptFunc::Map_PlaySound( Map* map, CScriptString& sound_name )
     }
 }
 
-void FOServer::SScriptFunc::Map_PlaySoundRadius( Map* map, CScriptString& sound_name, ushort hx, ushort hy, uint radius )
+void FOServer::SScriptFunc::Map_PlaySoundRadius( Map* map, ScriptString& sound_name, ushort hx, ushort hy, uint radius )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
@@ -4779,7 +4779,7 @@ Map* FOServer::SScriptFunc::Location_GetMapByIndex( Location* loc, uint index )
     return map;
 }
 
-uint FOServer::SScriptFunc::Location_GetMaps( Location* loc, CScriptArray* maps )
+uint FOServer::SScriptFunc::Location_GetMaps( Location* loc, ScriptArray* maps )
 {
     if( loc->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -4838,7 +4838,7 @@ uchar FOServer::SScriptFunc::Global_GetOffsetDir( ushort from_hx, ushort from_hy
     return GetFarDir( from_hx, from_hy, to_hx, to_hy, offset );
 }
 
-void FOServer::SScriptFunc::Global_Log( CScriptString& text )
+void FOServer::SScriptFunc::Global_Log( ScriptString& text )
 {
     Script::Log( text.c_str() );
 }
@@ -4903,7 +4903,7 @@ void FOServer::SScriptFunc::Global_MoveItemCont( Item* item, uint count, Item* t
     ItemMngr.MoveItem( item, count, to_cont, stack_id );
 }
 
-void FOServer::SScriptFunc::Global_MoveItemsCr( CScriptArray& items, Critter* to_cr )
+void FOServer::SScriptFunc::Global_MoveItemsCr( ScriptArray& items, Critter* to_cr )
 {
     if( to_cr->IsNotValid )
         SCRIPT_ERROR_R( "Critter arg nullptr." );
@@ -4916,7 +4916,7 @@ void FOServer::SScriptFunc::Global_MoveItemsCr( CScriptArray& items, Critter* to
     }
 }
 
-void FOServer::SScriptFunc::Global_MoveItemsMap( CScriptArray& items, Map* to_map, ushort to_hx, ushort to_hy )
+void FOServer::SScriptFunc::Global_MoveItemsMap( ScriptArray& items, Map* to_map, ushort to_hx, ushort to_hy )
 {
     if( to_map->IsNotValid )
         SCRIPT_ERROR_R( "Container arg nullptr." );
@@ -4931,7 +4931,7 @@ void FOServer::SScriptFunc::Global_MoveItemsMap( CScriptArray& items, Map* to_ma
     }
 }
 
-void FOServer::SScriptFunc::Global_MoveItemsCont( CScriptArray& items, Item* to_cont, uint stack_id )
+void FOServer::SScriptFunc::Global_MoveItemsCont( ScriptArray& items, Item* to_cont, uint stack_id )
 {
     if( to_cont->IsNotValid )
         SCRIPT_ERROR_R( "Container arg nullptr." );
@@ -4963,7 +4963,7 @@ void FOServer::SScriptFunc::Global_DeleteItem( Item* item )
     ItemMngr.ItemToGarbage( item );
 }
 
-void FOServer::SScriptFunc::Global_DeleteItems( CScriptArray& items )
+void FOServer::SScriptFunc::Global_DeleteItems( ScriptArray& items )
 {
     for( int i = 0, j = items.GetSize(); i < j; i++ )
     {
@@ -4982,7 +4982,7 @@ void FOServer::SScriptFunc::Global_DeleteNpc( Critter* npc )
     CrMngr.CritterToGarbage( npc );
 }
 
-void FOServer::SScriptFunc::Global_RadioMessage( ushort channel, CScriptString& text )
+void FOServer::SScriptFunc::Global_RadioMessage( ushort channel, ScriptString& text )
 {
     ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text.c_str(), (uint) text.length(), 0, false, 0, 0, NULL );
 }
@@ -4992,7 +4992,7 @@ void FOServer::SScriptFunc::Global_RadioMessageMsg( ushort channel, ushort text_
     ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, NULL, 0, 0, false, text_msg, num_str, NULL );
 }
 
-void FOServer::SScriptFunc::Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, CScriptString* lexems )
+void FOServer::SScriptFunc::Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, ScriptString* lexems )
 {
     ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, NULL, 0, 0, false, text_msg, num_str, lexems && lexems->length() ? lexems->c_str() : NULL );
 }
@@ -5035,7 +5035,7 @@ void FOServer::SScriptFunc::Global_GetGameTime( uint full_second, ushort& year, 
     second = dt.Second;
 }
 
-uint FOServer::SScriptFunc::Global_CreateLocation( ushort loc_pid, ushort wx, ushort wy, CScriptArray* critters )
+uint FOServer::SScriptFunc::Global_CreateLocation( ushort loc_pid, ushort wx, ushort wy, ScriptArray* critters )
 {
     if( !MapMngr.IsInitProtoLocation( loc_pid ) )
         SCRIPT_ERROR_R0( "Proto location is not init." );
@@ -5084,7 +5084,7 @@ void FOServer::SScriptFunc::Global_DeleteLocation( uint loc_id )
     MapMngr.RunGarbager();
 }
 
-void FOServer::SScriptFunc::Global_GetProtoCritter( ushort proto_id, CScriptArray& data )
+void FOServer::SScriptFunc::Global_GetProtoCritter( ushort proto_id, ScriptArray& data )
 {
     CritData* data_ = CrMngr.GetProto( proto_id );
     if( !data_ )
@@ -5107,7 +5107,7 @@ Critter* FOServer::SScriptFunc::Global_GetCritter( uint crid )
     return CrMngr.GetCritter( crid, true );
 }
 
-Critter* FOServer::SScriptFunc::Global_GetPlayer( CScriptString& name )
+Critter* FOServer::SScriptFunc::Global_GetPlayer( ScriptString& name )
 {
     uint len = (uint) name.length();
     if( len < MIN_NAME || len < GameOpt.MinNameLength )
@@ -5119,7 +5119,7 @@ Critter* FOServer::SScriptFunc::Global_GetPlayer( CScriptString& name )
     return cl;
 }
 
-uint FOServer::SScriptFunc::Global_GetPlayerId( CScriptString& name )
+uint FOServer::SScriptFunc::Global_GetPlayerId( ScriptString& name )
 {
     uint len = (uint) name.length();
     if( len < MIN_NAME || len < GameOpt.MinNameLength )
@@ -5141,7 +5141,7 @@ uint FOServer::SScriptFunc::Global_GetPlayerId( CScriptString& name )
     return data->ClientId;
 }
 
-CScriptString* FOServer::SScriptFunc::Global_GetPlayerName( uint id )
+ScriptString* FOServer::SScriptFunc::Global_GetPlayerName( uint id )
 {
     if( !id )
         return NULL;         // SCRIPT_ERROR_RX("Id arg is zero.",new CScriptString(""));
@@ -5149,7 +5149,7 @@ CScriptString* FOServer::SScriptFunc::Global_GetPlayerName( uint id )
     if( Singleplayer )
     {
         if( id == 1 )
-            return new CScriptString( SingleplayerSave.CrData.Name );
+            return new ScriptString( SingleplayerSave.CrData.Name );
         return NULL;
     }
 
@@ -5157,10 +5157,10 @@ CScriptString* FOServer::SScriptFunc::Global_GetPlayerName( uint id )
     ClientData* data = GetClientData( id );
     if( !data )
         return NULL;           // SCRIPT_ERROR_RX("Player not found.",new CScriptString(""));
-    return new CScriptString( data->ClientName );
+    return new ScriptString( data->ClientName );
 }
 
-uint FOServer::SScriptFunc::Global_GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type, CScriptArray* critters )
+uint FOServer::SScriptFunc::Global_GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type, ScriptArray* critters )
 {
     CrVec critters_;
     CrMngr.GetGlobalMapCritters( wx, wy, radius, find_type, critters_, true );
@@ -5169,17 +5169,17 @@ uint FOServer::SScriptFunc::Global_GetGlobalMapCritters( ushort wx, ushort wy, u
     return (uint) critters_.size();
 }
 
-uint FOServer::SScriptFunc::Global_CreateTimeEventEmpty( uint begin_second, CScriptString& script_name, bool save )
+uint FOServer::SScriptFunc::Global_CreateTimeEventEmpty( uint begin_second, ScriptString& script_name, bool save )
 {
     return CreateTimeEvent( begin_second, script_name.c_str(), 0, 0, NULL, save );
 }
 
-uint FOServer::SScriptFunc::Global_CreateTimeEventValue( uint begin_second, CScriptString& script_name, uint value, bool save )
+uint FOServer::SScriptFunc::Global_CreateTimeEventValue( uint begin_second, ScriptString& script_name, uint value, bool save )
 {
     return CreateTimeEvent( begin_second, script_name.c_str(), 1, value, NULL, save );
 }
 
-uint FOServer::SScriptFunc::Global_CreateTimeEventValues( uint begin_second, CScriptString& script_name, CScriptArray& values, bool save )
+uint FOServer::SScriptFunc::Global_CreateTimeEventValues( uint begin_second, ScriptString& script_name, ScriptArray& values, bool save )
 {
     return CreateTimeEvent( begin_second, script_name.c_str(), 2, 0, &values, save );
 }
@@ -5189,17 +5189,17 @@ bool FOServer::SScriptFunc::Global_EraseTimeEvent( uint num )
     return EraseTimeEvent( num );
 }
 
-bool FOServer::SScriptFunc::Global_GetTimeEvent( uint num, uint& duration, CScriptArray* values )
+bool FOServer::SScriptFunc::Global_GetTimeEvent( uint num, uint& duration, ScriptArray* values )
 {
     return GetTimeEvent( num, duration, values );
 }
 
-bool FOServer::SScriptFunc::Global_SetTimeEvent( uint num, uint duration, CScriptArray* values )
+bool FOServer::SScriptFunc::Global_SetTimeEvent( uint num, uint duration, ScriptArray* values )
 {
     return SetTimeEvent( num, duration, values );
 }
 
-bool FOServer::SScriptFunc::Global_SetAnyData( CScriptString& name, CScriptArray& data )
+bool FOServer::SScriptFunc::Global_SetAnyData( ScriptString& name, ScriptArray& data )
 {
     if( !name.length() )
         SCRIPT_ERROR_R0( "Name arg length is zero." );
@@ -5207,7 +5207,7 @@ bool FOServer::SScriptFunc::Global_SetAnyData( CScriptString& name, CScriptArray
     return SetAnyData( name.c_std_str(), data_size_bytes ? (uchar*) data.At( 0 ) : NULL, data_size_bytes );
 }
 
-bool FOServer::SScriptFunc::Global_SetAnyDataSize( CScriptString& name, CScriptArray& data, uint data_size )
+bool FOServer::SScriptFunc::Global_SetAnyDataSize( ScriptString& name, ScriptArray& data, uint data_size )
 {
     if( !name.length() )
         SCRIPT_ERROR_R0( "Name arg length is zero." );
@@ -5219,21 +5219,21 @@ bool FOServer::SScriptFunc::Global_SetAnyDataSize( CScriptString& name, CScriptA
     return SetAnyData( name.c_std_str(), data_size_bytes ? (uchar*) data.At( 0 ) : NULL, data_size_bytes );
 }
 
-bool FOServer::SScriptFunc::Global_GetAnyData( CScriptString& name, CScriptArray& data )
+bool FOServer::SScriptFunc::Global_GetAnyData( ScriptString& name, ScriptArray& data )
 {
     if( !name.length() )
         SCRIPT_ERROR_R0( "Name arg length is zero." );
     return GetAnyData( name.c_std_str(), data );
 }
 
-bool FOServer::SScriptFunc::Global_IsAnyData( CScriptString& name )
+bool FOServer::SScriptFunc::Global_IsAnyData( ScriptString& name )
 {
     if( !name.length() )
         SCRIPT_ERROR_R0( "Name arg length is zero." );
     return IsAnyData( name.c_std_str() );
 }
 
-void FOServer::SScriptFunc::Global_EraseAnyData( CScriptString& name )
+void FOServer::SScriptFunc::Global_EraseAnyData( ScriptString& name )
 {
     if( !name.length() )
         SCRIPT_ERROR_R( "Name arg length is zero." );
@@ -5268,7 +5268,7 @@ Location* FOServer::SScriptFunc::Global_GetLocationByPid( ushort loc_pid, uint s
     return MapMngr.GetLocationByPid( loc_pid, skip_count );
 }
 
-uint FOServer::SScriptFunc::Global_GetLocations( ushort wx, ushort wy, uint radius, CScriptArray* locations )
+uint FOServer::SScriptFunc::Global_GetLocations( ushort wx, ushort wy, uint radius, ScriptArray* locations )
 {
     LocVec locs;
     MapMngr.GetLocations( locs, false );
@@ -5290,7 +5290,7 @@ uint FOServer::SScriptFunc::Global_GetLocations( ushort wx, ushort wy, uint radi
     return (uint) locs_.size();
 }
 
-uint FOServer::SScriptFunc::Global_GetVisibleLocations( ushort wx, ushort wy, uint radius, Critter* cr, CScriptArray* locations )
+uint FOServer::SScriptFunc::Global_GetVisibleLocations( ushort wx, ushort wy, uint radius, Critter* cr, ScriptArray* locations )
 {
     LocVec locs;
     MapMngr.GetLocations( locs, false );
@@ -5313,7 +5313,7 @@ uint FOServer::SScriptFunc::Global_GetVisibleLocations( ushort wx, ushort wy, ui
     return (uint) locs_.size();
 }
 
-uint FOServer::SScriptFunc::Global_GetZoneLocationIds( ushort zx, ushort zy, uint zone_radius, CScriptArray* locations )
+uint FOServer::SScriptFunc::Global_GetZoneLocationIds( ushort zx, ushort zy, uint zone_radius, ScriptArray* locations )
 {
     UIntVec loc_ids;
     MapMngr.GetZoneLocations( zx, zy, zone_radius, loc_ids );
@@ -5323,7 +5323,7 @@ uint FOServer::SScriptFunc::Global_GetZoneLocationIds( ushort zx, ushort zy, uin
     return (uint) loc_ids.size();
 }
 
-bool FOServer::SScriptFunc::Global_StrToInt( CScriptString* text, int& result )
+bool FOServer::SScriptFunc::Global_StrToInt( ScriptString* text, int& result )
 {
     if( !text || !text->length() || !Str::IsNumber( text->c_str() ) )
         return false;
@@ -5331,7 +5331,7 @@ bool FOServer::SScriptFunc::Global_StrToInt( CScriptString* text, int& result )
     return true;
 }
 
-bool FOServer::SScriptFunc::Global_StrToFloat( CScriptString* text, float& result )
+bool FOServer::SScriptFunc::Global_StrToFloat( ScriptString* text, float& result )
 {
     if( !text || !text->length() )
         return false;
@@ -5395,7 +5395,7 @@ int64 FOServer::SScriptFunc::Global_WorldItemCount( ushort pid )
     return ItemMngr.GetItemStatistics( pid );
 }
 
-void FOServer::SScriptFunc::Global_SetBestScore( int score, Critter* cl, CScriptString& name )
+void FOServer::SScriptFunc::Global_SetBestScore( int score, Critter* cl, ScriptString& name )
 {
     if( score < 0 )
         SCRIPT_ERROR_R( "Score arg is negative." );
@@ -5412,7 +5412,7 @@ void FOServer::SScriptFunc::Global_SetBestScore( int score, Critter* cl, CScript
     SetScore( score, name.c_str() );
 }
 
-bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, CScriptString& first_str, ushort parameter, CScriptString& script_name )
+bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, ScriptString& first_str, ushort parameter, ScriptString& script_name )
 {
     if( first_str.length() < TEXT_LISTEN_FIRST_STR_MIN_LEN )
         SCRIPT_ERROR_R0( "First string arg length less than minimum." );
@@ -5436,7 +5436,7 @@ bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, CScriptString&
     return true;
 }
 
-void FOServer::SScriptFunc::Global_EraseTextListener( int say_type, CScriptString& first_str, ushort parameter )
+void FOServer::SScriptFunc::Global_EraseTextListener( int say_type, ScriptString& first_str, ushort parameter )
 {
     SCOPE_LOCK( TextListenersLocker );
 
@@ -5456,7 +5456,7 @@ AIDataPlane* FOServer::SScriptFunc::Global_CreatePlane()
     return new AIDataPlane( 0, 0 );
 }
 
-uint FOServer::SScriptFunc::Global_GetBagItems( uint bag_id, CScriptArray* pids, CScriptArray* min_counts, CScriptArray* max_counts, CScriptArray* slots )
+uint FOServer::SScriptFunc::Global_GetBagItems( uint bag_id, ScriptArray* pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots )
 {
     NpcBag& bag = AIMngr.GetBag( bag_id );
     if( bag.empty() )
@@ -5520,7 +5520,7 @@ void FOServer::SScriptFunc::Global_SetSendParameter( int index, bool enabled )
     Global_SetSendParameterFunc( index, enabled, NULL );
 }
 
-void FOServer::SScriptFunc::Global_SetSendParameterFunc( int index, bool enabled, CScriptString* allow_func )
+void FOServer::SScriptFunc::Global_SetSendParameterFunc( int index, bool enabled, ScriptString* allow_func )
 {
     if( index < 0 )
     {
@@ -5775,7 +5775,7 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
     return true;
 }
 
-uint FOServer::SScriptFunc::Global_GetAllItems( ushort pid, CScriptArray* items )
+uint FOServer::SScriptFunc::Global_GetAllItems( ushort pid, ScriptArray* items )
 {
     ItemPtrVec game_items;
     ItemMngr.GetGameItems( game_items );
@@ -5795,7 +5795,7 @@ uint FOServer::SScriptFunc::Global_GetAllItems( ushort pid, CScriptArray* items 
     return (uint) game_items_.size();
 }
 
-uint FOServer::SScriptFunc::Global_GetAllNpc( ushort pid, CScriptArray* npc )
+uint FOServer::SScriptFunc::Global_GetAllNpc( ushort pid, ScriptArray* npc )
 {
     PcVec npcs;
     CrVec npcs_;
@@ -5814,7 +5814,7 @@ uint FOServer::SScriptFunc::Global_GetAllNpc( ushort pid, CScriptArray* npc )
     return (uint) npcs_.size();
 }
 
-uint FOServer::SScriptFunc::Global_GetAllMaps( ushort pid, CScriptArray* maps )
+uint FOServer::SScriptFunc::Global_GetAllMaps( ushort pid, ScriptArray* maps )
 {
     MapVec maps_;
     MapMngr.GetMaps( maps_, false );
@@ -5836,7 +5836,7 @@ uint FOServer::SScriptFunc::Global_GetAllMaps( ushort pid, CScriptArray* maps )
     return (uint) maps__.size();
 }
 
-uint FOServer::SScriptFunc::Global_GetAllLocations( ushort pid, CScriptArray* locations )
+uint FOServer::SScriptFunc::Global_GetAllLocations( ushort pid, ScriptArray* locations )
 {
     LocVec locs;
     MapMngr.GetLocations( locs, false );
@@ -5858,16 +5858,16 @@ uint FOServer::SScriptFunc::Global_GetAllLocations( ushort pid, CScriptArray* lo
     return (uint) locs_.size();
 }
 
-CScriptString* FOServer::SScriptFunc::Global_GetScriptName( uint script_id )
+ScriptString* FOServer::SScriptFunc::Global_GetScriptName( uint script_id )
 {
-    return new CScriptString( Script::GetScriptFuncName( script_id ) );
+    return new ScriptString( Script::GetScriptFuncName( script_id ) );
 }
 
-CScriptArray* FOServer::SScriptFunc::Global_GetItemDataMask( int mask_type )
+ScriptArray* FOServer::SScriptFunc::Global_GetItemDataMask( int mask_type )
 {
     if( mask_type < 0 || mask_type >= ITEM_DATA_MASK_MAX )
         SCRIPT_ERROR_R0( "Invalid mask type arg." );
-    CScriptArray* result = Script::CreateArray( "int8[]" );
+    ScriptArray* result = Script::CreateArray( "int8[]" );
     if( !result )
         return NULL;
     CharVec mask;
@@ -5877,7 +5877,7 @@ CScriptArray* FOServer::SScriptFunc::Global_GetItemDataMask( int mask_type )
     return result;
 }
 
-bool FOServer::SScriptFunc::Global_SetItemDataMask( int mask_type, CScriptArray& mask )
+bool FOServer::SScriptFunc::Global_SetItemDataMask( int mask_type, ScriptArray& mask )
 {
     if( mask_type < 0 || mask_type >= ITEM_DATA_MASK_MAX )
         SCRIPT_ERROR_R0( "Invalid mask type arg." );
@@ -5902,7 +5902,7 @@ void FOServer::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort&
     milliseconds = cur_time.Milliseconds;
 }
 
-bool FOServer::SScriptFunc::Global_SetParameterGetBehaviour( uint index, CScriptString& func_name )
+bool FOServer::SScriptFunc::Global_SetParameterGetBehaviour( uint index, ScriptString& func_name )
 {
     if( index >= MAX_PARAMS )
         SCRIPT_ERROR_R0( "Invalid index arg." );
@@ -5917,7 +5917,7 @@ bool FOServer::SScriptFunc::Global_SetParameterGetBehaviour( uint index, CScript
     return true;
 }
 
-bool FOServer::SScriptFunc::Global_SetParameterChangeBehaviour( uint index, CScriptString& func_name )
+bool FOServer::SScriptFunc::Global_SetParameterChangeBehaviour( uint index, ScriptString& func_name )
 {
     if( index >= MAX_PARAMS )
         SCRIPT_ERROR_R0( "Invalid index arg." );
@@ -5932,7 +5932,7 @@ bool FOServer::SScriptFunc::Global_SetParameterChangeBehaviour( uint index, CScr
     return true;
 }
 
-bool FOServer::SScriptFunc::Global_SetParameterDialogGetBehaviour( uint index, CScriptString& func_name )
+bool FOServer::SScriptFunc::Global_SetParameterDialogGetBehaviour( uint index, ScriptString& func_name )
 {
     if( index >= MAX_PARAMS )
         SCRIPT_ERROR_R0( "Invalid index arg." );
@@ -5947,7 +5947,7 @@ bool FOServer::SScriptFunc::Global_SetParameterDialogGetBehaviour( uint index, C
     return true;
 }
 
-void FOServer::SScriptFunc::Global_AllowSlot( uchar index, CScriptString& ini_option )
+void FOServer::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& ini_option )
 {
     if( index <= SLOT_ARMOR || index == SLOT_GROUND )
         SCRIPT_ERROR_R( "Invalid index arg." );
@@ -5982,14 +5982,14 @@ bool FOServer::SScriptFunc::Global_SetAngelScriptProperty( int property, uint va
     return true;
 }
 
-uint FOServer::SScriptFunc::Global_GetStrHash( CScriptString* str )
+uint FOServer::SScriptFunc::Global_GetStrHash( ScriptString* str )
 {
     if( str )
         return Str::GetHash( str->c_str() );
     return 0;
 }
 
-bool FOServer::SScriptFunc::Global_LoadDataFile( CScriptString& dat_name )
+bool FOServer::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
 {
     if( FileManager::LoadDataFile( dat_name.c_str() ) )
     {
@@ -5999,7 +5999,7 @@ bool FOServer::SScriptFunc::Global_LoadDataFile( CScriptString& dat_name )
     return false;
 }
 
-int FOServer::SScriptFunc::Global_GetConstantValue( int const_collection, CScriptString* name )
+int FOServer::SScriptFunc::Global_GetConstantValue( int const_collection, ScriptString* name )
 {
     if( !ConstantsManager::IsCollectionInit( const_collection ) )
         SCRIPT_ERROR_R0( "Invalid namesFile arg." );
@@ -6008,14 +6008,14 @@ int FOServer::SScriptFunc::Global_GetConstantValue( int const_collection, CScrip
     return ConstantsManager::GetValue( const_collection, name->c_str() );
 }
 
-CScriptString* FOServer::SScriptFunc::Global_GetConstantName( int const_collection, int value )
+ScriptString* FOServer::SScriptFunc::Global_GetConstantName( int const_collection, int value )
 {
     if( !ConstantsManager::IsCollectionInit( const_collection ) )
         SCRIPT_ERROR_R0( "Invalid namesFile arg." );
-    return new CScriptString( ConstantsManager::GetName( const_collection, value ) );
+    return new ScriptString( ConstantsManager::GetName( const_collection, value ) );
 }
 
-void FOServer::SScriptFunc::Global_AddConstant( int const_collection, CScriptString* name, int value )
+void FOServer::SScriptFunc::Global_AddConstant( int const_collection, ScriptString* name, int value )
 {
     if( !ConstantsManager::IsCollectionInit( const_collection ) )
         SCRIPT_ERROR_R( "Invalid namesFile arg." );
@@ -6024,7 +6024,7 @@ void FOServer::SScriptFunc::Global_AddConstant( int const_collection, CScriptStr
     ConstantsManager::AddConstant( const_collection, name->c_str(), value );
 }
 
-bool FOServer::SScriptFunc::Global_LoadConstants( int const_collection, CScriptString* file_name, int path_type )
+bool FOServer::SScriptFunc::Global_LoadConstants( int const_collection, ScriptString* file_name, int path_type )
 {
     if( const_collection < 0 || const_collection > 1000 )
         SCRIPT_ERROR_R0( "Invalid namesFile arg." );
@@ -6089,18 +6089,18 @@ uint FOServer::SScriptFunc::Global_GetCritterAlias( uint cr_type )
     return CritType::GetAlias( cr_type );
 }
 
-CScriptString* FOServer::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
+ScriptString* FOServer::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", new CScriptString( "" ) );
-    return new CScriptString( CritType::GetCritType( cr_type ).Name );
+        SCRIPT_ERROR_RX( "Invalid critter type arg.", new ScriptString( "" ) );
+    return new ScriptString( CritType::GetCritType( cr_type ).Name );
 }
 
-CScriptString* FOServer::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
+ScriptString* FOServer::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", new CScriptString( "" ) );
-    return new CScriptString( CritType::GetSoundName( cr_type ) );
+        SCRIPT_ERROR_RX( "Invalid critter type arg.", new ScriptString( "" ) );
+    return new ScriptString( CritType::GetSoundName( cr_type ) );
 }
 
 struct ServerImage
@@ -6111,7 +6111,7 @@ struct ServerImage
     uint     Depth;
 };
 vector< ServerImage* > ServerImages;
-bool FOServer::SScriptFunc::Global_LoadImage( uint index, CScriptString* image_name, uint image_depth, int path_type )
+bool FOServer::SScriptFunc::Global_LoadImage( uint index, ScriptString* image_name, uint image_depth, int path_type )
 {
     // Delete old
     if( index >= ServerImages.size() )
@@ -6280,7 +6280,7 @@ uint FOServer::SScriptFunc::Global_GetImageColor( uint index, uint x, uint y )
     return result;
 }
 
-uint FOServer::SScriptFunc::Global_GetScriptId( CScriptString& script_name, CScriptString& func_decl )
+uint FOServer::SScriptFunc::Global_GetScriptId( ScriptString& script_name, ScriptString& func_decl )
 {
     return Script::GetScriptFuncNum( script_name.c_str(), func_decl.c_str() );
 }

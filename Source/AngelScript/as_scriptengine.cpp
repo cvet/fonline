@@ -1661,6 +1661,8 @@ int asCScriptEngine::RegisterBehaviourToObjectType(asCObjectType *objectType, as
 			(func.parameterTypes.GetLength() == 0 ||
 			 !func.parameterTypes[0].IsReference()) )
 		{
+			// TODO: Give proper error message that explain that the first parameter is expected to be a reference
+			//       The library should try to avoid having to read the manual as much as possible.
 			return ConfigError(asINVALID_DECLARATION, "RegisterObjectBehaviour", objectType->name.AddressOf(), decl);
 		}
 
@@ -2001,7 +2003,7 @@ void asCScriptEngine::FreeUnusedGlobalProperties()
 // interface
 asUINT asCScriptEngine::GetGlobalPropertyCount() const
 {
-	return registeredGlobalProps.GetLength();
+	return asUINT(registeredGlobalProps.GetLength());
 }
 
 // interface
@@ -2232,7 +2234,7 @@ int asCScriptEngine::RegisterGlobalFunction(const char *declaration, const asSFu
 // interface
 asUINT asCScriptEngine::GetGlobalFunctionCount() const
 {
-	return registeredGlobalFuncs.GetLength();
+	return asUINT(registeredGlobalFuncs.GetLength());
 }
 
 // interface
@@ -2708,13 +2710,11 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 		// The function's refCount was already initialized to 1
 		ot->beh.factories.PushLast(func->id);
 	}
-	if( ot->beh.factories.GetLength() )
+	// If the template has a default factory, then set keep the id
+	if( ot->beh.factories.GetLength() && scriptFunctions[ot->beh.factories[0]]->parameterTypes.GetLength() == 0 )
 		ot->beh.factory = ot->beh.factories[0];
 	else
-	{
-		asASSERT(false);
-		ot->beh.factory = templateType->beh.factory;
-	}
+		ot->beh.factory = 0;
 
 	// Generate stub for the list factory as well
 	if( templateType->beh.listFactory )
@@ -2803,6 +2803,7 @@ asCScriptFunction *asCScriptEngine::GenerateTemplateFactoryStub(asCObjectType *t
 	func->name             = "factstub";
 	func->id               = GetNextScriptFunctionId();
 	func->returnType       = asCDataType::CreateObjectHandle(ot, false);
+	func->isShared         = true;
 
 	// Skip the first parameter as this is the object type pointer that the stub will add
 	func->parameterTypes.SetLength(factory->parameterTypes.GetLength()-1);
@@ -3962,7 +3963,7 @@ int asCScriptEngine::RegisterFuncdef(const char *decl)
 // interface
 asUINT asCScriptEngine::GetFuncdefCount() const
 {
-	return registeredFuncDefs.GetLength();
+	return asUINT(registeredFuncDefs.GetLength());
 }
 
 // interface
@@ -4061,7 +4062,7 @@ int asCScriptEngine::RegisterTypedef(const char *type, const char *decl)
 // interface
 asUINT asCScriptEngine::GetTypedefCount() const
 {
-	return registeredTypeDefs.GetLength();
+	return asUINT(registeredTypeDefs.GetLength());
 }
 
 // interface
@@ -4179,7 +4180,7 @@ int asCScriptEngine::RegisterEnumValue(const char *typeName, const char *valueNa
 // interface
 asUINT asCScriptEngine::GetEnumCount() const
 {
-	return registeredEnums.GetLength();
+	return asUINT(registeredEnums.GetLength());
 }
 
 // interface
@@ -4235,7 +4236,7 @@ const char *asCScriptEngine::GetEnumValueByIndex(int enumTypeId, asUINT index, i
 // interface
 asUINT asCScriptEngine::GetObjectTypeCount() const
 {
-	return registeredObjTypes.GetLength();
+	return asUINT(registeredObjTypes.GetLength());
 }
 
 // interface

@@ -1,883 +1,751 @@
+#include "scriptstring.h"
+#include "scriptarray.h"
 #include <Common.h>
 #include <Debugger.h>
 
-#include <assert.h>
-#include <string.h> // strstr
-#include <stdio.h>  // sprintf
-#include "scriptstring.h"
-using namespace std;
+#define assert( x )
 
-BEGIN_AS_NAMESPACE
-
-//--------------
+// --------------
 // constructors
-//--------------
+// --------------
 
-CScriptString::CScriptString()
+ScriptString::ScriptString()
 {
-	// Count the first reference
-	refCount = 1;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+(uint)buffer.capacity());
+    // Count the first reference
+    refCount = 1;
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, sizeof( ScriptString ) + (uint) buffer.capacity() );
 }
 
-CScriptString::CScriptString(const char *s, unsigned int len)
+ScriptString::ScriptString( const char* s, unsigned int len )
 {
-	refCount = 1;
-	buffer.assign(s, len);
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+(uint)buffer.capacity());
+    refCount = 1;
+    buffer.assign( s, len );
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, sizeof( ScriptString ) + (uint) buffer.capacity() );
 }
 
-CScriptString::CScriptString(const char *s)
+ScriptString::ScriptString( const char* s )
 {
-	refCount = 1;
-	buffer.assign(s, strlen(s));
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+(uint)buffer.capacity());
+    refCount = 1;
+    buffer.assign( s, strlen( s ) );
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, sizeof( ScriptString ) + (uint) buffer.capacity() );
 }
 
-CScriptString::CScriptString(const string &s)
+ScriptString::ScriptString( const string& s )
 {
-	refCount = 1;
-	buffer = s;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+(uint)buffer.capacity());
+    refCount = 1;
+    buffer = s;
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, sizeof( ScriptString ) + (uint) buffer.capacity() );
 }
 
-CScriptString::CScriptString(const CScriptString &s)
+ScriptString::ScriptString( const ScriptString& s )
 {
-	refCount = 1;
-	buffer = s.buffer;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,sizeof(CScriptString)+(uint)buffer.capacity());
+    refCount = 1;
+    buffer = s.buffer;
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, sizeof( ScriptString ) + (uint) buffer.capacity() );
 }
 
-CScriptString::~CScriptString()
+ScriptString::~ScriptString()
 {
-	assert( refCount == 0 );
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)(sizeof(CScriptString)+(uint)buffer.capacity()));
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, -(int) ( sizeof( ScriptString ) + (uint) buffer.capacity() ) );
 }
 
-CScriptString& CScriptString::operator=(const std::string& other)
+void ScriptString::assign( const char* buf, size_t count )
 {
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
-	buffer = other;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
-	return *this;
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, -(int) buffer.capacity() );
+    buffer.assign( buf, count );
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, (uint) buffer.capacity() );
 }
 
-CScriptString& CScriptString::operator+=(const std::string& other)
+void ScriptString::assign( const char* buf )
 {
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
-	buffer += other;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
-	return *this;
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, -(int) buffer.capacity() );
+    buffer.assign( buf );
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, (uint) buffer.capacity() );
 }
 
-CScriptString& CScriptString::operator=(const char* other)
+void ScriptString::append( const char* buf, size_t count )
 {
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
-	buffer = other;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
-	return *this;
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, -(int) buffer.capacity() );
+    buffer.append( buf, count );
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, (uint) buffer.capacity() );
 }
 
-CScriptString& CScriptString::operator+=(const char* other)
+void ScriptString::append( const char* buf )
 {
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
-	buffer += other;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
-	return *this;
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, -(int) buffer.capacity() );
+    buffer.append( buf );
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, (uint) buffer.capacity() );
 }
 
-void CScriptString::assign(const char* buf, size_t count)
+void ScriptString::reserve( size_t count )
 {
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
-	buffer.assign(buf,count);
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, -(int) buffer.capacity() );
+    buffer.reserve( count );
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, (uint) buffer.capacity() );
 }
 
-void CScriptString::assign(const char* buf)
+void ScriptString::resize( size_t count )
 {
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
-	buffer.assign(buf);
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, -(int) buffer.capacity() );
+    buffer.resize( count );
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, (uint) buffer.capacity() );
 }
 
-void CScriptString::append(const char* buf, size_t count)
-{
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
-	buffer.append(buf,count);
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
-}
-
-void CScriptString::reserve(size_t count)
-{
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
-	buffer.reserve(count);
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
-}
-
-void CScriptString::resize(size_t count)
-{
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
-	buffer.resize(count);
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
-}
-
-//--------------------
+// --------------------
 // reference counting
-//--------------------
+// --------------------
 
-void CScriptString::AddRef() const
+void ScriptString::AddRef() const
 {
-	refCount++;
+    refCount++;
 }
 
-static void StringAddRef_Generic(asIScriptGeneric *gen)
+void ScriptString::Release() const
 {
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	thisPointer->AddRef();
+    if( --refCount == 0 )
+        delete this;
 }
 
-void CScriptString::Release() const
+// -----------------
+// string opCmp, opEquals string
+// -----------------
+
+static bool StringEquals( const ScriptString& a, const ScriptString& b )
 {
-	if( --refCount == 0 )
-		delete this;
+    return a.c_std_str() == b.c_std_str();
 }
 
-static void StringRelease_Generic(asIScriptGeneric *gen)
+static int StringCmp( const ScriptString& a, const ScriptString& b )
 {
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	thisPointer->Release();
+    int cmp = 0;
+    if( a.c_std_str() < b.c_std_str() )
+        cmp = -1;
+    else if( a.c_std_str() > b.c_std_str() )
+        cmp = 1;
+    return cmp;
 }
 
-//-----------------
-// string = string
-//-----------------
-
-CScriptString &CScriptString::operator=(const CScriptString &other)
-{
-	// Copy only the buffer, not the reference counter
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
-	buffer = other.buffer;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
-
-	// Return a reference to this object
-	return *this;
-}
-
-static void AssignString_Generic(asIScriptGeneric *gen)
-{
-	CScriptString *a = (CScriptString*)gen->GetArgAddress(0);
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	*thisPointer = *a;
-	gen->SetReturnAddress(thisPointer);
-}
-
-//------------------
-// string += string
-//------------------
-
-CScriptString &CScriptString::operator+=(const CScriptString &other)
-{
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,-(int)buffer.capacity());
-	buffer += other.buffer;
-	MEMORY_PROCESS(MEMORY_SCRIPT_STRING,(uint)buffer.capacity());
-	return *this;
-}
-
-static void AddAssignString_Generic(asIScriptGeneric *gen)
-{
-	CScriptString *a = (CScriptString*)gen->GetArgAddress(0);
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	*thisPointer += *a;
-	gen->SetReturnAddress(thisPointer);
-}
-
-//-----------------
-// string opCmp string
-//-----------------
-
-static int StringCmp(const string &a, const string &b)
-{
-	int cmp = 0;
-	if( a < b ) cmp = -1;
-	else if( a > b ) cmp = 1;
-	return cmp;
-}
-
-static void StringCmp_Generic(asIScriptGeneric * gen) 
-{
-  string * a = static_cast<string *>(gen->GetObject());
-  string * b = static_cast<string *>(gen->GetArgAddress(0));
-
-  int cmp = 0;
-  if( *a < *b ) cmp = -1;
-  else if( *a > *b ) cmp = 1;
-
-  *(int*)gen->GetAddressOfReturnLocation() = cmp;
-}
-
-//-----------------
+// -----------------
 // string + string
-//-----------------
+// -----------------
 
-CScriptString *operator+(const CScriptString &a, const CScriptString &b)
+ScriptString* operator+( const ScriptString& a, const ScriptString& b )
 {
-	// Return a new object as a script handle
-	CScriptString *str = new CScriptString();
+    // Return a new object as a script handle
+    ScriptString* str = new ScriptString();
 
-	// Avoid unnecessary memory copying by first reserving the full memory buffer, then concatenating
-	str->reserve(a.length() + b.length());
-	*str += a;
-	*str += b;
+    // Avoid unnecessary memory copying by first reserving the full memory buffer, then concatenating
+    str->reserve( a.length() + b.length() );
+    *str += a;
+    *str += b;
 
-	return str;
+    return str;
 }
 
-static void ConcatenateStrings_Generic(asIScriptGeneric *gen)
-{
-	CScriptString *a = (CScriptString*)gen->GetObject();
-	CScriptString *b = (CScriptString*)gen->GetArgAddress(0);
-	CScriptString *out = *a + *b;
-	gen->SetReturnAddress(out);
-}
-
-//----------------
+// ----------------
 // string = value
-//----------------
+// ----------------
 
-static CScriptString &AssignUIntToString(unsigned int i, CScriptString &dest)
+static ScriptString& AssignUIntToString( unsigned int i, ScriptString& dest )
 {
-	char buf[100];
-	sprintf(buf, "%u", i);
-	dest = buf;
-	return dest;
+    char buf[ 100 ];
+    sprintf( buf, "%u", i );
+    dest = buf;
+    return dest;
 }
 
-static void AssignUIntToString_Generic(asIScriptGeneric *gen)
+static ScriptString& AssignIntToString( int i, ScriptString& dest )
 {
-	unsigned int i = gen->GetArgDWord(0);
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	AssignUIntToString(i, *thisPointer);
-	gen->SetReturnAddress(thisPointer);
+    char buf[ 100 ];
+    sprintf( buf, "%d", i );
+    dest = buf;
+    return dest;
 }
 
-static CScriptString &AssignIntToString(int i, CScriptString &dest)
+static ScriptString& AssignFloatToString( float f, ScriptString& dest )
 {
-	char buf[100];
-	sprintf(buf, "%d", i);
-	dest = buf;
-	return dest;
+    char buf[ 100 ];
+    sprintf( buf, "%g", f );
+    dest = buf;
+    return dest;
 }
 
-static void AssignIntToString_Generic(asIScriptGeneric *gen)
+static ScriptString& AssignDoubleToString( double f, ScriptString& dest )
 {
-	int i = gen->GetArgDWord(0);
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	AssignIntToString(i, *thisPointer);
-	gen->SetReturnAddress(thisPointer);
+    char buf[ 100 ];
+    sprintf( buf, "%g", f );
+    dest = buf;
+    return dest;
 }
 
-static CScriptString &AssignFloatToString(float f, CScriptString &dest)
+static ScriptString& AssignBoolToString( bool b, ScriptString& dest )
 {
-	char buf[100];
-	sprintf(buf, "%g", f);
-	dest = buf;
-	return dest;
+    char buf[ 100 ];
+    sprintf( buf, "%s", b ? "true" : "false" );
+    dest = buf;
+    return dest;
 }
 
-static void AssignFloatToString_Generic(asIScriptGeneric *gen)
-{
-	float f = gen->GetArgFloat(0);
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	AssignFloatToString(f, *thisPointer);
-	gen->SetReturnAddress(thisPointer);
-}
-
-static CScriptString &AssignDoubleToString(double f, CScriptString &dest)
-{
-	char buf[100];
-	sprintf(buf, "%g", f);
-	dest = buf;
-	return dest;
-}
-
-static void AssignDoubleToString_Generic(asIScriptGeneric *gen)
-{
-	double f = gen->GetArgDouble(0);
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	AssignDoubleToString(f, *thisPointer);
-	gen->SetReturnAddress(thisPointer);
-}
-
-static CScriptString &AssignBoolToString(bool b, CScriptString &dest)
-{
-	char buf[100];
-	sprintf(buf, "%s", b ? "true" : "false");
-	dest = buf;
-	return dest;
-}
-
-static void AssignBoolToString_Generic(asIScriptGeneric *gen)
-{
-	bool b = gen->GetArgByte(0) ? true : false;
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	AssignBoolToString(b, *thisPointer);
-	gen->SetReturnAddress(thisPointer);
-}
-
-//-----------------
+// -----------------
 // string += value
-//-----------------
+// -----------------
 
-static CScriptString &AddAssignUIntToString(unsigned int i, CScriptString &dest)
+static ScriptString& AddAssignUIntToString( unsigned int i, ScriptString& dest )
 {
-	char buf[100];
-	sprintf(buf, "%u", i);
-	dest += buf;
-	return dest;
+    char buf[ 100 ];
+    sprintf( buf, "%u", i );
+    dest += buf;
+    return dest;
 }
 
-static void AddAssignUIntToString_Generic(asIScriptGeneric *gen)
+static ScriptString& AddAssignIntToString( int i, ScriptString& dest )
 {
-	unsigned int i = gen->GetArgDWord(0);
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	AddAssignUIntToString(i, *thisPointer);
-	gen->SetReturnAddress(thisPointer);
+    char buf[ 100 ];
+    sprintf( buf, "%d", i );
+    dest += buf;
+    return dest;
 }
 
-static CScriptString &AddAssignIntToString(int i, CScriptString &dest)
+static ScriptString& AddAssignFloatToString( float f, ScriptString& dest )
 {
-	char buf[100];
-	sprintf(buf, "%d", i);
-	dest += buf;
-	return dest;
+    char buf[ 100 ];
+    sprintf( buf, "%g", f );
+    dest += buf;
+    return dest;
 }
 
-static void AddAssignIntToString_Generic(asIScriptGeneric *gen)
+static ScriptString& AddAssignDoubleToString( double f, ScriptString& dest )
 {
-	int i = gen->GetArgDWord(0);
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	AddAssignIntToString(i, *thisPointer);
-	gen->SetReturnAddress(thisPointer);
+    char buf[ 100 ];
+    sprintf( buf, "%g", f );
+    dest += buf;
+    return dest;
 }
 
-static CScriptString &AddAssignFloatToString(float f, CScriptString &dest)
+static ScriptString& AddAssignBoolToString( bool b, ScriptString& dest )
 {
-	char buf[100];
-	sprintf(buf, "%g", f);
-	dest += buf;
-	return dest;
+    char buf[ 100 ];
+    sprintf( buf, "%s", b ? "true" : "false" );
+    dest += buf;
+    return dest;
 }
 
-static void AddAssignFloatToString_Generic(asIScriptGeneric *gen)
-{
-	float f = gen->GetArgFloat(0);
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	AddAssignFloatToString(f, *thisPointer);
-	gen->SetReturnAddress(thisPointer);
-}
-
-static CScriptString &AddAssignDoubleToString(double f, CScriptString &dest)
-{
-	char buf[100];
-	sprintf(buf, "%g", f);
-	dest += buf;
-	return dest;
-}
-
-static void AddAssignDoubleToString_Generic(asIScriptGeneric *gen)
-{
-	double f = gen->GetArgDouble(0);
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	AddAssignDoubleToString(f, *thisPointer);
-	gen->SetReturnAddress(thisPointer);
-}
-
-static CScriptString &AddAssignBoolToString(bool b, CScriptString &dest)
-{
-	char buf[100];
-	sprintf(buf, "%s", b ? "true" : "false");
-	dest += buf;
-	return dest;
-}
-
-static void AddAssignBoolToString_Generic(asIScriptGeneric *gen)
-{
-	bool b = gen->GetArgByte(0) ? true : false;
-	CScriptString *thisPointer = (CScriptString*)gen->GetObject();
-	AddAssignBoolToString(b, *thisPointer);
-	gen->SetReturnAddress(thisPointer);
-}
-
-//----------------
+// ----------------
 // string + value
-//----------------
+// ----------------
 
-static CScriptString *AddStringUInt(const CScriptString &str, unsigned int i)
+static ScriptString* AddStringUInt( const ScriptString& str, unsigned int i )
 {
-	char buf[100];
-	sprintf(buf, "%u", i);
-	CScriptString* str_ = new CScriptString(str);
-	*str_ += buf;
-	return str_;
+    char          buf[ 100 ];
+    sprintf( buf, "%u", i );
+    ScriptString* str_ = new ScriptString( str );
+    *str_ += buf;
+    return str_;
 }
 
-static void AddStringUInt_Generic(asIScriptGeneric *gen)
+static ScriptString* AddStringInt( const ScriptString& str, int i )
 {
-	CScriptString *str = (CScriptString*)gen->GetObject();
-	unsigned int i = gen->GetArgDWord(0);
-	CScriptString *out = AddStringUInt(*str, i);
-	gen->SetReturnAddress(out);
+    char          buf[ 100 ];
+    sprintf( buf, "%d", i );
+    ScriptString* str_ = new ScriptString( str );
+    *str_ += buf;
+    return str_;
 }
 
-static CScriptString *AddStringInt(const CScriptString &str, int i)
+static ScriptString* AddStringFloat( const ScriptString& str, float f )
 {
-	char buf[100];
-	sprintf(buf, "%d", i);
-	CScriptString* str_ = new CScriptString(str);
-	*str_ += buf;
-	return str_;
+    char          buf[ 100 ];
+    sprintf( buf, "%g", f );
+    ScriptString* str_ = new ScriptString( str );
+    *str_ += buf;
+    return str_;
 }
 
-static void AddStringInt_Generic(asIScriptGeneric *gen)
+static ScriptString* AddStringDouble( const ScriptString& str, double f )
 {
-	CScriptString *str = (CScriptString*)gen->GetObject();
-	int i = gen->GetArgDWord(0);
-	CScriptString *out = AddStringInt(*str, i);
-	gen->SetReturnAddress(out);
+    char          buf[ 100 ];
+    sprintf( buf, "%g", f );
+    ScriptString* str_ = new ScriptString( str );
+    *str_ += buf;
+    return str_;
 }
 
-static CScriptString *AddStringFloat(const CScriptString &str, float f)
+static ScriptString* AddStringBool( const ScriptString& str, bool b )
 {
-	char buf[100];
-	sprintf(buf, "%g", f);
-	CScriptString* str_ = new CScriptString(str);
-	*str_ += buf;
-	return str_;
+    char          buf[ 100 ];
+    sprintf( buf, "%s", b ? "true" : "false" );
+    ScriptString* str_ = new ScriptString( str );
+    *str_ += buf;
+    return str_;
 }
 
-static void AddStringFloat_Generic(asIScriptGeneric *gen)
-{
-	CScriptString *str = (CScriptString*)gen->GetObject();
-	float f = gen->GetArgFloat(0);
-	CScriptString *out = AddStringFloat(*str, f);
-	gen->SetReturnAddress(out);
-}
-
-static CScriptString *AddStringDouble(const CScriptString &str, double f)
-{
-	char buf[100];
-	sprintf(buf, "%g", f);
-	CScriptString* str_ = new CScriptString(str);
-	*str_ += buf;
-	return str_;
-}
-
-static void AddStringDouble_Generic(asIScriptGeneric *gen)
-{
-	CScriptString *str = (CScriptString*)gen->GetObject();
-	double f = gen->GetArgDouble(0);
-	CScriptString *out = AddStringDouble(*str, f);
-	gen->SetReturnAddress(out);
-}
-
-static CScriptString *AddStringBool(const CScriptString &str, bool b)
-{
-	char buf[100];
-	sprintf(buf, "%s", b ? "true" : "false");
-	CScriptString* str_ = new CScriptString(str);
-	*str_ += buf;
-	return str_;
-}
-
-static void AddStringBool_Generic(asIScriptGeneric *gen)
-{
-	CScriptString *str = (CScriptString*)gen->GetObject();
-	bool b = gen->GetArgByte(0) ? true : false;
-	CScriptString *out = AddStringBool(*str, b);
-	gen->SetReturnAddress(out);
-}
-
-//----------------
+// ----------------
 // value + string
-//----------------
+// ----------------
 
-static CScriptString *AddIntString(int i, const CScriptString &str)
+static ScriptString* AddIntString( int i, const ScriptString& str )
 {
-	char buf[100];
-	sprintf(buf, "%d", i);
-	CScriptString* str_ = new CScriptString(buf);
-	*str_ += str;
-	return str_;
+    char          buf[ 100 ];
+    sprintf( buf, "%d", i );
+    ScriptString* str_ = new ScriptString( buf );
+    *str_ += str;
+    return str_;
 }
 
-static void AddIntString_Generic(asIScriptGeneric *gen)
+static ScriptString* AddUIntString( unsigned int i, const ScriptString& str )
 {
-	int i = gen->GetArgDWord(0);
-	CScriptString *str = (CScriptString*)gen->GetObject();
-	CScriptString *out = AddIntString(i, *str);
-	gen->SetReturnAddress(out);
+    char          buf[ 100 ];
+    sprintf( buf, "%u", i );
+    ScriptString* str_ = new ScriptString( buf );
+    *str_ += str;
+    return str_;
 }
 
-static CScriptString *AddUIntString(unsigned int i, const CScriptString &str)
+static ScriptString* AddFloatString( float f, const ScriptString& str )
 {
-	char buf[100];
-	sprintf(buf, "%u", i);
-	CScriptString* str_ = new CScriptString(buf);
-	*str_ += str;
-	return str_;
+    char          buf[ 100 ];
+    sprintf( buf, "%g", f );
+    ScriptString* str_ = new ScriptString( buf );
+    *str_ += str;
+    return str_;
 }
 
-static void AddUIntString_Generic(asIScriptGeneric *gen)
+static ScriptString* AddDoubleString( double f, const ScriptString& str )
 {
-	unsigned int i = gen->GetArgDWord(0);
-	CScriptString *str = (CScriptString*)gen->GetObject();
-	CScriptString *out = AddUIntString(i, *str);
-	gen->SetReturnAddress(out);
+    char          buf[ 100 ];
+    sprintf( buf, "%g", f );
+    ScriptString* str_ = new ScriptString( buf );
+    *str_ += str;
+    return str_;
 }
 
-static CScriptString *AddFloatString(float f, const CScriptString &str)
+static ScriptString* AddBoolString( bool b, const ScriptString& str )
 {
-	char buf[100];
-	sprintf(buf, "%g", f);
-	CScriptString* str_ = new CScriptString(buf);
-	*str_ += str;
-	return str_;
+    char          buf[ 100 ];
+    sprintf( buf, "%s", b ? "true" : "false" );
+    ScriptString* str_ = new ScriptString( buf );
+    *str_ += str;
+    return str_;
 }
 
-static void AddFloatString_Generic(asIScriptGeneric *gen)
-{
-	float f = gen->GetArgFloat(0);
-	CScriptString *str = (CScriptString*)gen->GetObject();
-	CScriptString *out = AddFloatString(f, *str);
-	gen->SetReturnAddress(out);
-}
-
-static CScriptString *AddDoubleString(double f, const CScriptString &str)
-{
-	char buf[100];
-	sprintf(buf, "%g", f);
-	CScriptString* str_ = new CScriptString(buf);
-	*str_ += str;
-	return str_;
-}
-
-static void AddDoubleString_Generic(asIScriptGeneric *gen)
-{
-	double f = gen->GetArgDouble(0);
-	CScriptString *str = (CScriptString*)gen->GetObject();
-	CScriptString *out = AddDoubleString(f, *str);
-	gen->SetReturnAddress(out);
-}
-
-static CScriptString *AddBoolString(bool b, const CScriptString &str)
-{
-	char buf[100];
-	sprintf(buf, "%s", b ? "true" : "false");
-	CScriptString* str_ = new CScriptString(buf);
-	*str_ += str;
-	return str_;
-}
-
-static void AddBoolString_Generic(asIScriptGeneric *gen)
-{
-	bool b = gen->GetArgByte(0) ? true : false;
-	CScriptString *str = (CScriptString*)gen->GetObject();
-	CScriptString *out = AddBoolString(b, *str);
-	gen->SetReturnAddress(out);
-}
-
-//----------
+// ----------
 // string[]
-//----------
+// ----------
 
-static char *StringCharAt(unsigned int i, CScriptString &str)
+static char* StringCharAt( unsigned int i, ScriptString& str )
 {
-	if( i >= str.length() )
-	{
-		// Set a script exception
-		asIScriptContext *ctx = asGetActiveContext();
-		ctx->SetException("Out of range");
+    if( i >= str.length() )
+    {
+        // Set a script exception
+        asIScriptContext* ctx = asGetActiveContext();
+        ctx->SetException( "Out of range" );
 
-		// Return a null pointer
-		return 0;
-	}
+        // Return a null pointer
+        return 0;
+    }
 
-	return (char*)str.c_str(i);
+    return (char*) &str.c_str()[ i ];
 }
 
-static void StringCharAt_Generic(asIScriptGeneric *gen)
-{
-	unsigned int i = gen->GetArgDWord(0);
-	CScriptString *str = (CScriptString*)gen->GetObject();
-	char *ch = StringCharAt(i, *str);
-	gen->SetReturnAddress(ch);
-}
-
-//-----------------------
+// -----------------------
 // AngelScript functions
-//-----------------------
+// -----------------------
 
 // This is the string factory that creates new strings for the script based on string literals
-static CScriptString *StringFactory(asUINT length, const char *s)
+static ScriptString* StringFactory( asUINT length, const char* s )
 {
-	return new CScriptString(s, length);
-}
-
-static void StringFactory_Generic(asIScriptGeneric *gen)
-{
-	asUINT length = gen->GetArgDWord(0);
-	const char *s = (const char*)gen->GetArgAddress(1);
-	CScriptString *str = StringFactory(length, s);
-	gen->SetReturnAddress(str);
+    return new ScriptString( s, length );
 }
 
 // This is the default string factory, that is responsible for creating empty string objects, e.g. when a variable is declared
-static CScriptString *StringDefaultFactory()
+static ScriptString* StringDefaultFactory()
 {
-	// Allocate and initialize with the default constructor
-	return new CScriptString();
+    // Allocate and initialize with the default constructor
+    return new ScriptString();
 }
 
-static CScriptString *StringCopyFactory(const CScriptString &other)
+static ScriptString* StringCopyFactory( const ScriptString& other )
 {
-	// Allocate and initialize with the copy constructor
-	return new CScriptString(other);
-}
-
-static void StringDefaultFactory_Generic(asIScriptGeneric *gen)
-{
-	*(CScriptString**)gen->GetAddressOfReturnLocation() = StringDefaultFactory();
-}
-
-static void StringCopyFactory_Generic(asIScriptGeneric *gen)
-{
-	CScriptString *other = (CScriptString *)gen->GetArgObject(0);
-	*(CScriptString**)gen->GetAddressOfReturnLocation() = StringCopyFactory(*other);
-}
-
-static void StringEqual_Generic(asIScriptGeneric *gen)
-{
-	string *a = (string*)gen->GetArgAddress(0);
-	string *b = (string*)gen->GetArgAddress(1);
-	bool r = *a == *b;
-    *(bool*)gen->GetAddressOfReturnLocation() = r;
-}
-
-static void StringEquals_Generic(asIScriptGeneric * gen) 
-{
-	string * a = static_cast<string *>(gen->GetObject());
-	string * b = static_cast<string *>(gen->GetArgAddress(0));
-	*(bool*)gen->GetAddressOfReturnLocation() = (*a == *b);
-}
-
-static void StringNotEqual_Generic(asIScriptGeneric *gen)
-{
-	string *a = (string*)gen->GetArgAddress(0);
-	string *b = (string*)gen->GetArgAddress(1);
-	bool r = *a != *b;
-    *(bool*)gen->GetAddressOfReturnLocation() = r;
-}
-
-static void StringLesserOrEqual_Generic(asIScriptGeneric *gen)
-{
-	string *a = (string*)gen->GetArgAddress(0);
-	string *b = (string*)gen->GetArgAddress(1);
-	bool r = *a <= *b;
-    *(bool*)gen->GetAddressOfReturnLocation() = r;
-}
-
-static void StringGreaterOrEqual_Generic(asIScriptGeneric *gen)
-{
-	string *a = (string*)gen->GetArgAddress(0);
-	string *b = (string*)gen->GetArgAddress(1);
-	bool r = *a >= *b;
-    *(bool*)gen->GetAddressOfReturnLocation() = r;
-}
-
-static void StringLesser_Generic(asIScriptGeneric *gen)
-{
-	string *a = (string*)gen->GetArgAddress(0);
-	string *b = (string*)gen->GetArgAddress(1);
-	bool r = *a < *b;
-    *(bool*)gen->GetAddressOfReturnLocation() = r;
-}
-
-static void StringGreater_Generic(asIScriptGeneric *gen)
-{
-	string *a = (string*)gen->GetArgAddress(0);
-	string *b = (string*)gen->GetArgAddress(1);
-	bool r = *a > *b;
-    *(bool*)gen->GetAddressOfReturnLocation() = r;
-}
-
-static void StringLength_Generic(asIScriptGeneric *gen)
-{
-	string *s = (string*)gen->GetObject();
-	size_t l = s->size();
-	if( sizeof(size_t) == 4 )
-		gen->SetReturnDWord((asUINT)l);
-	else
-		gen->SetReturnQWord((asQWORD)l);
-}
-
-static void StringResize_Generic(asIScriptGeneric *gen)
-{
-	string *s = (string*)gen->GetObject();
-	size_t v = *(size_t*)gen->GetAddressOfArg(0);
-	s->resize(v);
+    // Allocate and initialize with the copy constructor
+    return new ScriptString( other );
 }
 
 // This is where we register the string type
-void RegisterScriptString_Native(asIScriptEngine *engine)
+void RegisterScriptStringUtils( asIScriptEngine* engine );
+void RegisterScriptString( asIScriptEngine* engine )
 {
-	int r;
+    int r;
 
-	// Register the type
-	r = engine->RegisterObjectType("string", 0, asOBJ_REF); assert( r >= 0 );
+    // Register the type
+    r = engine->RegisterObjectType( "string", 0, asOBJ_REF );
+    assert( r >= 0 );
 
-	// Register the object operator overloads
-	// Note: We don't have to register the destructor, since the object uses reference counting
-	r = engine->RegisterObjectBehaviour("string", asBEHAVE_FACTORY,    "string @f()",                 asFUNCTION(StringDefaultFactory), asCALL_CDECL); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour("string", asBEHAVE_FACTORY,    "string @f(const string &in)", asFUNCTION(StringCopyFactory), asCALL_CDECL); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour("string", asBEHAVE_ADDREF,     "void f()",                    asMETHOD(CScriptString,AddRef), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour("string", asBEHAVE_RELEASE,    "void f()",                    asMETHOD(CScriptString,Release), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAssign(const string &in)", asMETHODPR(CScriptString, operator =, (const CScriptString&), CScriptString&), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAddAssign(const string &in)", asMETHODPR(CScriptString, operator+=, (const CScriptString&), CScriptString&), asCALL_THISCALL); assert( r >= 0 );
+    // Register the object operator overloads
+    // Note: We don't have to register the destructor, since the object uses reference counting
+    r = engine->RegisterObjectBehaviour( "string", asBEHAVE_FACTORY,    "string @f()",                 asFUNCTION( StringDefaultFactory ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectBehaviour( "string", asBEHAVE_FACTORY,    "string @f(const string &in)", asFUNCTION( StringCopyFactory ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectBehaviour( "string", asBEHAVE_ADDREF,     "void f()",                    asMETHOD( ScriptString, AddRef ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectBehaviour( "string", asBEHAVE_RELEASE,    "void f()",                    asMETHOD( ScriptString, Release ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string &opAssign(const string &in)", asMETHODPR( ScriptString, operator=, ( const ScriptString & ), ScriptString & ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string &opAddAssign(const string &in)", asMETHODPR( ScriptString, operator+=, ( const ScriptString & ), ScriptString & ), asCALL_THISCALL );
+    assert( r >= 0 );
 
-	// Register the factory to return a handle to a new string
-	// Note: We must register the string factory after the basic behaviours,
-	// otherwise the library will not allow the use of object handles for this type
-	r = engine->RegisterStringFactory("string@", asFUNCTION(StringFactory), asCALL_CDECL); assert( r >= 0 );
+    // Register the factory to return a handle to a new string
+    // Note: We must register the string factory after the basic behaviours,
+    // otherwise the library will not allow the use of object handles for this type
+    r = engine->RegisterStringFactory( "string@", asFUNCTION( StringFactory ), asCALL_CDECL );
+    assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod("string", "bool opEquals(const string &in) const", asFUNCTIONPR(operator ==, (const string &, const string &), bool), asCALL_CDECL_OBJFIRST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "int opCmp(const string &in) const", asFUNCTION(StringCmp), asCALL_CDECL_OBJFIRST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd(const string &in) const", asFUNCTIONPR(operator +, (const CScriptString &, const CScriptString &), CScriptString*), asCALL_CDECL_OBJFIRST); assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "bool opEquals(const string &in) const", asFUNCTION( StringEquals ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "int opCmp(const string &in) const", asFUNCTION( StringCmp ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string@ opAdd(const string &in) const", asFUNCTIONPR( operator+, ( const ScriptString &, const ScriptString & ), ScriptString* ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
 
-	// Register the index operator, both as a mutator and as an inspector
-	r = engine->RegisterObjectMethod("string", "uint8 &opIndex(uint)", asFUNCTION(StringCharAt), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "const uint8 &opIndex(uint) const", asFUNCTION(StringCharAt), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+    // Register the index operator, both as a mutator and as an inspector
+    r = engine->RegisterObjectMethod( "string", "uint8 &opIndex(uint)", asFUNCTION( StringCharAt ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "const uint8 &opIndex(uint) const", asFUNCTION( StringCharAt ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
 
-	// Register the object methods
-	if( sizeof(size_t) == 4 )
-	{
-		r = engine->RegisterObjectMethod("string", "uint length() const", asMETHOD(string,size), asCALL_THISCALL); assert( r >= 0 );
-		r = engine->RegisterObjectMethod("string", "void resize(uint)", asMETHODPR(string,resize,(size_t),void), asCALL_THISCALL); assert( r >= 0 );
-	}
-	else
-	{
-		r = engine->RegisterObjectMethod("string", "uint64 length() const", asMETHOD(string,size), asCALL_THISCALL); assert( r >= 0 );
-		r = engine->RegisterObjectMethod("string", "void resize(uint64)", asMETHODPR(string,resize,(size_t),void), asCALL_THISCALL); assert( r >= 0 );
-	}
+    // Register the object methods
+    if( sizeof( size_t ) == 4 )
+    {
+        r = engine->RegisterObjectMethod( "string", "uint length() const", asMETHOD( ScriptString, length ), asCALL_THISCALL );
+        assert( r >= 0 );
+        r = engine->RegisterObjectMethod( "string", "void resize(uint)", asMETHODPR( ScriptString, resize, ( size_t ), void ), asCALL_THISCALL );
+        assert( r >= 0 );
+    }
+    else
+    {
+        r = engine->RegisterObjectMethod( "string", "uint64 length() const", asMETHOD( ScriptString, length ), asCALL_THISCALL );
+        assert( r >= 0 );
+        r = engine->RegisterObjectMethod( "string", "void resize(uint64)", asMETHODPR( ScriptString, resize, ( size_t ), void ), asCALL_THISCALL );
+        assert( r >= 0 );
+    }
 
     // TODO: Add factory  string(const string &in str, int repeatCount)
 
-	// TODO: Add explicit type conversion via constructor and value cast
+    // TODO: Add explicit type conversion via constructor and value cast
 
-	// TODO: Add parseInt and parseDouble. Two versions, one without parameter, one with an outparm that returns the number of characters parsed.
+    // TODO: Add parseInt and parseDouble. Two versions, one without parameter, one with an outparm that returns the number of characters parsed.
 
-	// Automatic conversion from values
-	r = engine->RegisterObjectMethod("string", "string &opAssign(double)", asFUNCTION(AssignDoubleToString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAddAssign(double)", asFUNCTION(AddAssignDoubleToString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd(double) const", asFUNCTION(AddStringDouble), asCALL_CDECL_OBJFIRST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(double) const", asFUNCTION(AddDoubleString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+    // Automatic conversion from values
+    r = engine->RegisterObjectMethod( "string", "string &opAssign(double)", asFUNCTION( AssignDoubleToString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string &opAddAssign(double)", asFUNCTION( AddAssignDoubleToString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string@ opAdd(double) const", asFUNCTION( AddStringDouble ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string@ opAdd_r(double) const", asFUNCTION( AddDoubleString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod("string", "string &opAssign(float)", asFUNCTION(AssignFloatToString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAddAssign(float)", asFUNCTION(AddAssignFloatToString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd(float) const", asFUNCTION(AddStringFloat), asCALL_CDECL_OBJFIRST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(float) const", asFUNCTION(AddFloatString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string &opAssign(float)", asFUNCTION( AssignFloatToString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string &opAddAssign(float)", asFUNCTION( AddAssignFloatToString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string@ opAdd(float) const", asFUNCTION( AddStringFloat ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string@ opAdd_r(float) const", asFUNCTION( AddFloatString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod("string", "string &opAssign(int)", asFUNCTION(AssignIntToString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAddAssign(int)", asFUNCTION(AddAssignIntToString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd(int) const", asFUNCTION(AddStringInt), asCALL_CDECL_OBJFIRST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(int) const", asFUNCTION(AddIntString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string &opAssign(int)", asFUNCTION( AssignIntToString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string &opAddAssign(int)", asFUNCTION( AddAssignIntToString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string@ opAdd(int) const", asFUNCTION( AddStringInt ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string@ opAdd_r(int) const", asFUNCTION( AddIntString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod("string", "string &opAssign(uint)", asFUNCTION(AssignUIntToString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAddAssign(uint)", asFUNCTION(AddAssignUIntToString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd(uint) const", asFUNCTION(AddStringUInt), asCALL_CDECL_OBJFIRST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(uint) const", asFUNCTION(AddUIntString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string &opAssign(uint)", asFUNCTION( AssignUIntToString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string &opAddAssign(uint)", asFUNCTION( AddAssignUIntToString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string@ opAdd(uint) const", asFUNCTION( AddStringUInt ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string@ opAdd_r(uint) const", asFUNCTION( AddUIntString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod("string", "string &opAssign(bool)", asFUNCTION(AssignBoolToString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAddAssign(bool)", asFUNCTION(AddAssignBoolToString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd(bool) const", asFUNCTION(AddStringBool), asCALL_CDECL_OBJFIRST); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(bool) const", asFUNCTION(AddBoolString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string &opAssign(bool)", asFUNCTION( AssignBoolToString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string &opAddAssign(bool)", asFUNCTION( AddAssignBoolToString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string@ opAdd(bool) const", asFUNCTION( AddStringBool ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string@ opAdd_r(bool) const", asFUNCTION( AddBoolString ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
+
+    RegisterScriptStringUtils( engine );
 }
 
-void RegisterScriptString_Generic(asIScriptEngine *engine)
+// This function returns a string containing the substring of the input string
+// determined by the starting index and count of characters.
+ScriptString* StringSubString( ScriptString* str, int start, int count )
 {
-	int r;
-
-	// Register the type
-	r = engine->RegisterObjectType("string", 0, asOBJ_REF); assert( r >= 0 );
-
-	// Register the object operator overloads
-	// Note: We don't have to register the destructor, since the object uses reference counting
-	r = engine->RegisterObjectBehaviour("string", asBEHAVE_FACTORY,    "string @f()",                 asFUNCTION(StringDefaultFactory_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour("string", asBEHAVE_FACTORY,    "string @f(const string &in)", asFUNCTION(StringCopyFactory_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour("string", asBEHAVE_ADDREF,     "void f()",                    asFUNCTION(StringAddRef_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour("string", asBEHAVE_RELEASE,    "void f()",                    asFUNCTION(StringRelease_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAssign(const string &in)", asFUNCTION(AssignString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAddAssign(const string &in)", asFUNCTION(AddAssignString_Generic), asCALL_GENERIC); assert( r >= 0 );
-
-	// Register the factory to return a handle to a new string
-	// Note: We must register the string factory after the basic behaviours,
-	// otherwise the library will not allow the use of object handles for this type
-	r = engine->RegisterStringFactory("string@", asFUNCTION(StringFactory_Generic), asCALL_GENERIC); assert( r >= 0 );
-
-	r = engine->RegisterObjectMethod("string", "bool opEquals(const string &in) const", asFUNCTION(StringEquals_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "int opCmp(const string &in) const", asFUNCTION(StringCmp_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd(const string &in) const", asFUNCTION(ConcatenateStrings_Generic), asCALL_GENERIC); assert( r >= 0 );
-
-	// Register the index operator, both as a mutator and as an inspector
-	r = engine->RegisterObjectMethod("string", "uint8 &opIndex(uint)", asFUNCTION(StringCharAt_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "const uint8 &opIndex(uint) const", asFUNCTION(StringCharAt_Generic), asCALL_GENERIC); assert( r >= 0 );
-
-	// Register the object methods
-	if( sizeof(size_t) == 4 )
-	{
-		r = engine->RegisterObjectMethod("string", "uint length() const", asFUNCTION(StringLength_Generic), asCALL_GENERIC); assert( r >= 0 );
-		r = engine->RegisterObjectMethod("string", "void resize(uint)", asFUNCTION(StringResize_Generic), asCALL_GENERIC); assert( r >= 0 );
-	}
-	else
-	{
-		r = engine->RegisterObjectMethod("string", "uint64 length() const", asFUNCTION(StringLength_Generic), asCALL_GENERIC); assert( r >= 0 );
-		r = engine->RegisterObjectMethod("string", "void resize(uint64)", asFUNCTION(StringResize_Generic), asCALL_GENERIC); assert( r >= 0 );
-	}
-
-	// Automatic conversion from values
-	r = engine->RegisterObjectMethod("string", "string &opAssign(double)", asFUNCTION(AssignDoubleToString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAddAssign(double)", asFUNCTION(AddAssignDoubleToString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd(double) const", asFUNCTION(AddStringDouble_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(double) const", asFUNCTION(AddDoubleString_Generic), asCALL_GENERIC); assert( r >= 0 );
-
-	r = engine->RegisterObjectMethod("string", "string &opAssign(float)", asFUNCTION(AssignFloatToString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAddAssign(float)", asFUNCTION(AddAssignFloatToString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd(float) const", asFUNCTION(AddStringFloat_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(float) const", asFUNCTION(AddFloatString_Generic), asCALL_GENERIC); assert( r >= 0 );
-
-	r = engine->RegisterObjectMethod("string", "string &opAssign(int)", asFUNCTION(AssignIntToString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAddAssign(int)", asFUNCTION(AddAssignIntToString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd(int) const", asFUNCTION(AddStringInt_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(int) const", asFUNCTION(AddIntString_Generic), asCALL_GENERIC); assert( r >= 0 );
-
-	r = engine->RegisterObjectMethod("string", "string &opAssign(uint)", asFUNCTION(AssignUIntToString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAddAssign(uint)", asFUNCTION(AddAssignUIntToString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd(uint) const", asFUNCTION(AddStringUInt_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(uint) const", asFUNCTION(AddUIntString_Generic), asCALL_GENERIC); assert( r >= 0 );
-
-	r = engine->RegisterObjectMethod("string", "string &opAssign(bool)", asFUNCTION(AssignBoolToString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string &opAddAssign(bool)", asFUNCTION(AddAssignBoolToString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd(bool) const", asFUNCTION(AddStringBool_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "string@ opAdd_r(bool) const", asFUNCTION(AddBoolString_Generic), asCALL_GENERIC); assert( r >= 0 );
+    return new ScriptString( str->c_std_str().substr( start, count ) );
 }
 
-void RegisterScriptString(asIScriptEngine *engine)
+// This function returns the index of the first position where the substring
+// exists in the input string. If the substring doesn't exist in the input
+// string -1 is returned.
+int StringFindFirst( ScriptString* str, ScriptString* sub, int start )
 {
-	if( strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") )
-		RegisterScriptString_Generic(engine);
-	else
-		RegisterScriptString_Native(engine);
+    return (int) str->c_std_str().find( sub->c_std_str(), start );
 }
 
-END_AS_NAMESPACE
+// This function returns the index of the last position where the substring
+// exists in the input string. If the substring doesn't exist in the input
+// string -1 is returned.
+int StringFindLast( ScriptString* str, ScriptString* sub, int start )
+{
+    return (int) str->c_std_str().rfind( sub->c_std_str(), start );
+}
 
+// This function returns the index of the first character that is in
+// the specified set of characters. If no such character is found -1 is
+// returned.
+int StringFindFirstOf( ScriptString* str, ScriptString* chars, int start )
+{
+    return (int) str->c_std_str().find_first_of( chars->c_std_str(), start );
+}
 
+// This function returns the index of the first character that is not in
+// the specified set of characters. If no such character is found -1 is
+// returned.
+int StringFindFirstNotOf( ScriptString* str, ScriptString* chars, int start )
+{
+    return (int) str->c_std_str().find_first_not_of( chars->c_std_str(), start );
+}
+
+// This function returns the index of the last character that is in
+// the specified set of characters. If no such character is found -1 is
+// returned.
+int StringFindLastOf( ScriptString* str, ScriptString* chars, int start )
+{
+    return (int) str->c_std_str().find_last_of( chars->c_std_str(), start );
+}
+
+// This function returns the index of the last character that is not in
+// the specified set of characters. If no such character is found -1 is
+// returned.
+int StringFindLastNotOf( ScriptString* str, ScriptString* chars, int start )
+{
+    // Find the substring
+    return (int) str->c_std_str().find_last_not_of( chars->c_std_str(), start );
+}
+
+// This function takes an input string and splits it into parts by looking
+// for a specified delimiter. Example:
+//
+// string str = "A|B||D";
+// string@[]@ array = split(str, "|");
+//
+// The resulting array has the following elements:
+//
+// {"A", "B", "", "D"}
+ScriptArray* StringSplit( ScriptString* str, ScriptString* delim )
+{
+    // Obtain a pointer to the engine
+    asIScriptContext* ctx = asGetActiveContext();
+    asIScriptEngine*  engine = ctx->GetEngine();
+
+    // TODO: This should only be done once
+    // TODO: This assumes that CScriptArray was already registered
+    asIObjectType* arrayType = engine->GetObjectTypeById( engine->GetTypeIdByDecl( "array<string@>" ) );
+
+    // Create the array object
+    ScriptArray* array = new ScriptArray( 0, arrayType );
+
+    // Find the existence of the delimiter in the input string
+    int pos = 0, prev = 0, count = 0;
+    while( ( pos = (int) str->c_std_str().find( delim->c_std_str(), prev ) ) != (int) std::string::npos )
+    {
+        // Add the part to the array
+        ScriptString* part = new ScriptString();
+        part->assign( &str->c_str()[ prev ], pos - prev );
+        array->Resize( array->GetSize() + 1 );
+        *(ScriptString**) array->At( count ) = part;
+
+        // Find the next part
+        count++;
+        prev = pos + (int) delim->length();
+    }
+
+    // Add the remaining part
+    ScriptString* part = new ScriptString();
+    part->assign( &str->c_str()[ prev ] );
+    array->Resize( array->GetSize() + 1 );
+    *(ScriptString**) array->At( count ) = part;
+
+    // Return the array by handle
+    return array;
+}
+
+// This function takes an input string and splits it into parts by looking
+// for a specified delimiter. Example:
+//
+// string str = "A| B\t\t||D| E|F   ";
+// string@[]@ array = splitEx(str, "|");
+//
+// The resulting array has the following elements:
+//
+// {"A", "B", "D", "E", "F"}
+ScriptArray* StringSplitEx( ScriptString* str, ScriptString* delim )
+{
+    // Obtain a pointer to the engine
+    asIScriptContext* ctx = asGetActiveContext();
+    asIScriptEngine*  engine = ctx->GetEngine();
+
+    // TODO: This should only be done once
+    // TODO: This assumes that CScriptArray was already registered
+    asIObjectType* arrayType = engine->GetObjectTypeById( engine->GetTypeIdByDecl( "array<string@>" ) );
+
+    // Create the array object
+    ScriptArray* array = new ScriptArray( 0, arrayType );
+
+    // Find the existence of the delimiter in the input string
+    const char* cstr = str->c_str();
+    int         pos = 0, prev = 0, count = 0;
+    while( ( pos = (int) str->c_std_str().find( delim->c_std_str(), prev ) ) != (int) std::string::npos )
+    {
+        // Manage part
+        int pos_ = pos;
+        for( int i = prev; i < pos && ( cstr[ i ] == ' ' || cstr[ i ] == '\t' || cstr[ i ] == '\r' || cstr[ i ] == '\n' ); i++ )
+            prev++;
+        for( int i = pos - 1; i > prev && ( cstr[ i ] == ' ' || cstr[ i ] == '\t' || cstr[ i ] == '\r' || cstr[ i ] == '\n' ); i-- )
+            pos--;
+        if( prev == pos )
+        {
+            prev = pos_ + (int) delim->length();
+            continue;
+        }
+
+        // Add the part to the array
+        ScriptString* part = new ScriptString();
+        part->assign( &str->c_str()[ prev ], pos - prev );
+        array->Resize( array->GetSize() + 1 );
+        *(ScriptString**) array->At( count ) = part;
+
+        // Find the next part
+        count++;
+        prev = pos_ + (int) delim->length();
+    }
+
+    // Add the remaining part
+    ScriptString* part = new ScriptString();
+    part->assign( &str->c_str()[ prev ] );
+    array->Resize( array->GetSize() + 1 );
+    *(ScriptString**) array->At( count ) = part;
+
+    // Return the array by handle
+    return array;
+}
+
+// This function takes as input an array of string handles as well as a
+// delimiter and concatenates the array elements into one delimited string.
+// Example:
+//
+// string@[] array = {"A", "B", "", "D"};
+// string str = join(array, "|");
+//
+// The resulting string is:
+//
+// "A|B||D"
+ScriptString* StringJoin( ScriptArray* array, ScriptString* delim )
+{
+    // Create the new string
+    ScriptString* str = new ScriptString();
+    int           n;
+    for( n = 0; n < (int) array->GetSize() - 1; n++ )
+    {
+        ScriptString* part = *(ScriptString**) array->At( n );
+        *str += *part;
+        *str += *delim;
+    }
+
+    // Add the last part
+    ScriptString* part = *(ScriptString**) array->At( n );
+    *str += *part;
+
+    // Return the string
+    return str;
+}
+
+ScriptString* StringStrLwr( ScriptString* str )
+{
+    std::string str_ = str->c_std_str();
+    #ifdef _WIN32
+    _strlwr( (char*) str_.c_str() );
+    #else
+    for( char* str__ = (char*) str_.c_str(); *str__; ++str__ )
+        *str__ = tolower( *str__ );
+    #endif
+    return new ScriptString( str_ );
+}
+
+ScriptString* StringStrUpr( ScriptString* str )
+{
+    std::string str_ = str->c_std_str();
+    #ifdef _WIN32
+    _strupr( (char*) str_.c_str() );
+    #else
+    for( char* str__ = (char*) str_.c_str(); *str__; ++str__ )
+        *str__ = toupper( *str__ );
+    #endif
+    return new ScriptString( str_ );
+}
+
+// TODO: Implement the following functions
+//
+//       int64    parseInt(const string &in str, int &out bytesParsed);
+//       double   parseDouble(const string &in str, int &out bytesParsed);
+//       string @ formatString(int64, const string &in format);  // should use sprintf to format the string
+//       string @ formatDouble(double, const string &in format);
+//
+//       int16    byteStringToInt16(const string &in str, int start);
+//       int32    byteStringToInt32(const string &in str, int start);
+//       int64    byteStringtoInt64(const string &in str, int start);
+//       float    byteStringToFloat(const string &in str, int start);
+//       double   byteStringToDouble(const string &in str, int start);
+//       string @ int16ToByteString(int16);
+//       string @ int32ToByteString(int32);
+//       string @ int64ToByteString(int64);
+//       string @ floatToByteString(float);
+//       string @ doubleToByteString(double);
+
+void RegisterScriptStringUtils( asIScriptEngine* engine )
+{
+    int r;
+
+    r = engine->RegisterGlobalFunction( "string@ substring(const string &in, int, int)", asFUNCTION( StringSubString ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterGlobalFunction( "int findFirst(const string &in, const string &in, int start = 0)", asFUNCTION( StringFindFirst ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterGlobalFunction( "int findLast(const string &in, const string &in, int start = 0)", asFUNCTION( StringFindLast ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterGlobalFunction( "int findFirstOf(const string &in, const string &in, int start = 0)", asFUNCTION( StringFindFirstOf ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterGlobalFunction( "int findFirstNotOf(const string &in, const string &in, int start = 0)", asFUNCTION( StringFindFirstNotOf ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterGlobalFunction( "int findLastOf(const string &in, const string &in, int start = 0)", asFUNCTION( StringFindLastOf ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterGlobalFunction( "int findLastNotOf(const string &in, const string &in, int start = 0)", asFUNCTION( StringFindLastNotOf ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterGlobalFunction( "array<string@>@ split(const string &in, const string &in)", asFUNCTION( StringSplit ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterGlobalFunction( "array<string@>@ splitEx(const string &in, const string &in)", asFUNCTION( StringSplitEx ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterGlobalFunction( "string@ join(const array<string@> &in, const string &in)", asFUNCTION( StringJoin ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterGlobalFunction( "string@ strlwr(const string &in)", asFUNCTION( StringStrLwr ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterGlobalFunction( "string@ strupr(const string &in)", asFUNCTION( StringStrUpr ), asCALL_CDECL );
+    assert( r >= 0 );
+}

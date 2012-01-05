@@ -1499,7 +1499,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, 
     cl->Talk.Lexems.clear();
     if( cl->Talk.CurDialog.DlgScript > NOT_ANSWER_BEGIN_BATTLE && Script::PrepareContext( cl->Talk.CurDialog.DlgScript, _FUNC_, cl->GetInfo() ) )
     {
-        CScriptString* lexems = new CScriptString();
+        ScriptString* lexems = new ScriptString();
         Script::SetArgObject( cl );
         Script::SetArgObject( npc );
         Script::SetArgObject( lexems );
@@ -1635,7 +1635,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
             if( cur_dialog->DlgScript <= NOT_ANSWER_BEGIN_BATTLE )
                 return;
 
-            CScriptString* str_ = new CScriptString( str );
+            ScriptString* str_ = new ScriptString( str );
             if( !Script::PrepareContext( cur_dialog->DlgScript, _FUNC_, cl->GetInfo() ) )
                 return;
             Script::SetArgObject( cl );
@@ -1789,7 +1789,7 @@ label_Barter:
     cl->Talk.Lexems.clear();
     if( cl->Talk.CurDialog.DlgScript > NOT_ANSWER_BEGIN_BATTLE && Script::PrepareContext( cl->Talk.CurDialog.DlgScript, _FUNC_, cl->GetInfo() ) )
     {
-        CScriptString* lexems = new CScriptString();
+        ScriptString* lexems = new ScriptString();
         Script::SetArgObject( cl );
         Script::SetArgObject( npc );
         Script::SetArgObject( lexems );
@@ -2085,10 +2085,10 @@ void FOServer::Process_Barter( Client* cl )
     bool result = false;
     if( Script::PrepareContext( ServerFunctions.ItemsBarter, _FUNC_, cl->GetInfo() ) )
     {
-        CScriptArray* sale_items_ = Script::CreateArray( "Item@[]" );
-        CScriptArray* sale_items_count_ = Script::CreateArray( "uint[]" );
-        CScriptArray* buy_items_ = Script::CreateArray( "Item@[]" );
-        CScriptArray* buy_items_count_ = Script::CreateArray( "uint[]" );
+        ScriptArray* sale_items_ = Script::CreateArray( "Item@[]" );
+        ScriptArray* sale_items_count_ = Script::CreateArray( "uint[]" );
+        ScriptArray* buy_items_ = Script::CreateArray( "Item@[]" );
+        ScriptArray* buy_items_count_ = Script::CreateArray( "uint[]" );
         Script::AppendVectorToArrayRef( sale_items, sale_items_ );
         Script::AppendVectorToArray( sale_item_count, sale_items_count_ );
         Script::AppendVectorToArrayRef( buy_items, buy_items_ );

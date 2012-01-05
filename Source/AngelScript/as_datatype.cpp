@@ -219,8 +219,9 @@ int asCDataType::MakeHandle(bool b, bool acceptHandleForScope)
 	else if( b && !isObjectHandle )
 	{
 		// Only reference types are allowed to be handles, 
-		// but not nohandle reference types, and not scoped references (except when returned from registered function)
-		// funcdefs are special reference types, and support handles
+		// but not nohandle reference types, and not scoped references 
+		// (except when returned from registered function)
+		// funcdefs are special reference types and support handles
 		// value types with asOBJ_ASHANDLE are treated as a handle
 		if( !funcDef && 
 			(!objectType || 
@@ -231,6 +232,10 @@ int asCDataType::MakeHandle(bool b, bool acceptHandleForScope)
 
 		isObjectHandle = b;
 		isConstHandle = false;
+
+		// ASHANDLE supports being handle, but as it really is a value type it will not be marked as a handle
+		if( (objectType->flags & asOBJ_ASHANDLE) )
+			isObjectHandle = false;
 	}
 
 	return 0;
@@ -301,10 +306,6 @@ bool asCDataType::CanBeInstanciated() const
 		 ((objectType->flags & asOBJ_NOHANDLE) ||  // the ref type doesn't support handles or
 		  (!IsObjectHandle() &&                    // it's not a handle and
 		   objectType->beh.factories.GetLength() == 0))) ) // the ref type cannot be instanciated
-		return false;
-
-	// An ASHANDLE type can only be declared as a handle, even though it is a value type
-	if( IsObject() && (objectType->flags & asOBJ_ASHANDLE) && !IsObjectHandle() )
 		return false;
 
 	return true;
@@ -434,7 +435,13 @@ bool asCDataType::IsEqualExceptInterfaceType(const asCDataType &dt) const
 	if( objectType != dt.objectType )
 	{
 		if( !objectType || !dt.objectType ) return false;
-		if( !objectType->IsInterface() || !dt.objectType->IsInterface() ) return false;
+
+		// If the types are not interfaces or templates with interfaces then the they are not equal
+		if( !objectType->IsInterface() && !((objectType->flags & asOBJ_TEMPLATE) && objectType->templateSubType.GetObjectType() && objectType->templateSubType.GetObjectType()->IsInterface()) ) return false;
+		if( !dt.objectType->IsInterface() && !((dt.objectType->flags & asOBJ_TEMPLATE) && dt.objectType->templateSubType.GetObjectType() && dt.objectType->templateSubType.GetObjectType()->IsInterface()) ) return false;
+
+		// If one is interface and the other is not, then it is not equal
+		if( objectType->IsInterface() != dt.objectType->IsInterface() ) return false;
 	}
 
 	if( funcDef != dt.funcDef ) return false;

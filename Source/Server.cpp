@@ -1924,9 +1924,9 @@ void FOServer::Process_Text( Client* cl )
     SetScore( SCORE_SPEAKER, cl, 1 );
 
     // Text listen
-    int            listen_count = 0;
-    int            licten_func_id[ 100 ]; // 100 calls per one message is enough
-    CScriptString* licten_str[ 100 ];
+    int           listen_count = 0;
+    int           licten_func_id[ 100 ];  // 100 calls per one message is enough
+    ScriptString* licten_str[ 100 ];
 
     TextListenersLocker.Lock();
 
@@ -1939,7 +1939,7 @@ void FOServer::Process_Text( Client* cl )
                 Str::CompareCaseCount( str, tl.FirstStr, tl.FirstStrLen ) )
             {
                 licten_func_id[ listen_count ] = tl.FuncId;
-                licten_str[ listen_count ] = new CScriptString( str );
+                licten_str[ listen_count ] = new ScriptString( str );
                 if( ++listen_count >= 100 )
                     break;
             }
@@ -1954,7 +1954,7 @@ void FOServer::Process_Text( Client* cl )
             if( tl.SayType == how_say && tl.Parameter == pid && Str::CompareCaseCount( str, tl.FirstStr, tl.FirstStrLen ) )
             {
                 licten_func_id[ listen_count ] = tl.FuncId;
-                licten_str[ listen_count ] = new CScriptString( str );
+                licten_str[ listen_count ] = new ScriptString( str );
                 if( ++listen_count >= 100 )
                     break;
             }
@@ -1986,7 +1986,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
     bool allow_command = false;
     if( Script::PrepareContext( ServerFunctions.PlayerAllowCommand, _FUNC_, cl_ ? cl_->GetInfo() : "AdminPanel" ) )
     {
-        CScriptString* sstr = ( cl_ ? NULL : new CScriptString( admin_panel ) );
+        ScriptString* sstr = ( cl_ ? NULL : new ScriptString( admin_panel ) );
         Script::SetArgObject( cl_ );
         Script::SetArgObject( sstr );
         Script::SetArgUChar( cmd );
@@ -2316,7 +2316,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         bool allow = false;
         if( wanted_access != -1 && Script::PrepareContext( ServerFunctions.PlayerGetAccess, _FUNC_, cl_->GetInfo() ) )
         {
-            CScriptString* pass = new CScriptString( pasw_access );
+            ScriptString* pass = new ScriptString( pasw_access );
             Script::SetArgObject( cl_ );
             Script::SetArgUInt( wanted_access );
             Script::SetArgObject( pass );
@@ -3387,15 +3387,15 @@ bool FOServer::InitReal()
     STATIC_ASSERT( sizeof( GameVar ) == 28 );
     STATIC_ASSERT( sizeof( Mutex ) == 24 );
     STATIC_ASSERT( sizeof( MutexSpinlock ) == 4 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1260 );
-    STATIC_ASSERT( sizeof( CScriptArray ) == 36 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1304 );
+    STATIC_ASSERT( sizeof( ScriptArray ) == 36 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );
     STATIC_ASSERT( PROTO_ITEM_USER_DATA_SIZE == 500 );
     STATIC_ASSERT( OFFSETOF( Item, IsNotValid ) == 118 );
     STATIC_ASSERT( OFFSETOF( Critter::CrTimeEvent, Identifier ) == 12 );
-    STATIC_ASSERT( OFFSETOF( Critter, RefCounter ) == 9336 );
-    STATIC_ASSERT( OFFSETOF( Client, LanguageMsg ) == 9404 );
-    STATIC_ASSERT( OFFSETOF( Npc, Reserved ) == 9356 );
+    STATIC_ASSERT( OFFSETOF( Critter, RefCounter ) == 9340 );
+    STATIC_ASSERT( OFFSETOF( Client, LanguageMsg ) == 9408 );
+    STATIC_ASSERT( OFFSETOF( Npc, Reserved ) == 9360 );
     STATIC_ASSERT( OFFSETOF( GameVar, RefCount ) == 22 );
     STATIC_ASSERT( OFFSETOF( TemplateVar, Flags ) == 68 );
     STATIC_ASSERT( OFFSETOF( AIDataPlane, RefCounter ) == 88 );
@@ -4445,7 +4445,7 @@ void FOServer::SaveWorld( const char* name )
     SaveWorldDeleteIndexes.clear();
     if( Script::PrepareContext( ServerFunctions.WorldSave, _FUNC_, "Game" ) )
     {
-        CScriptArray* delete_indexes = Script::CreateArray( "uint[]" );
+        ScriptArray* delete_indexes = Script::CreateArray( "uint[]" );
         Script::SetArgUInt( SaveWorldIndex + 1 );
         Script::SetArgObject( delete_indexes );
         if( Script::RunPrepared() )
@@ -5024,7 +5024,7 @@ void FOServer::AddTimeEvent( TimeEvent* te )
     TimeEvents.push_back( te );
 }
 
-uint FOServer::CreateTimeEvent( uint begin_second, const char* script_name, int values, uint val1, CScriptArray* val2, bool save )
+uint FOServer::CreateTimeEvent( uint begin_second, const char* script_name, int values, uint val1, ScriptArray* val2, bool save )
 {
     char module_name[ MAX_FOTEXT ];
     char func_name[ MAX_FOTEXT ];
@@ -5100,7 +5100,7 @@ void FOServer::TimeEventEndScriptCallback()
     }
 }
 
-bool FOServer::GetTimeEvent( uint num, uint& duration, CScriptArray* values )
+bool FOServer::GetTimeEvent( uint num, uint& duration, ScriptArray* values )
 {
     TimeEventsLocker.Lock();
 
@@ -5157,7 +5157,7 @@ bool FOServer::GetTimeEvent( uint num, uint& duration, CScriptArray* values )
     return true;
 }
 
-bool FOServer::SetTimeEvent( uint num, uint duration, CScriptArray* values )
+bool FOServer::SetTimeEvent( uint num, uint duration, ScriptArray* values )
 {
     TimeEventsLocker.Lock();
 
@@ -5259,8 +5259,8 @@ void FOServer::ProcessTimeEvents()
     uint wait_time = 0;
     if( Script::PrepareContext( cur_event->BindId, _FUNC_, Str::FormatBuf( "Time event<%u>", cur_event->Num ) ) )
     {
-        CScriptArray* values = NULL;
-        uint          size = (uint) cur_event->Values.size();
+        ScriptArray* values = NULL;
+        uint         size = (uint) cur_event->Values.size();
 
         if( size > 0 )
         {
@@ -5483,7 +5483,7 @@ bool FOServer::SetAnyData( const string& name, const uchar* data, uint data_size
     return true;
 }
 
-bool FOServer::GetAnyData( const string& name, CScriptArray& script_array )
+bool FOServer::GetAnyData( const string& name, ScriptArray& script_array )
 {
     SCOPE_LOCK( AnyDataLocker );
 

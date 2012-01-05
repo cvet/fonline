@@ -154,19 +154,19 @@ public:
     bool IsIntersectZone( int wx1, int wy1, int wx1_radius, int wx2, int wy2, int wx2_radius, int zones );
     void GetZoneLocations( int zx, int zy, int zone_radius, UIntVec& loc_ids );
 
-    void          GM_GroupStartMove( Critter* cr );
-    void          GM_AddCritToGroup( Critter* cr, uint rule_id );
-    void          GM_LeaveGroup( Critter* cr );
-    void          GM_GiveRule( Critter* cr, Critter* new_rule );
-    void          GM_StopGroup( Critter* cr );
-    bool          GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, ushort mx, ushort my, uchar mdir );
-    bool          GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool force = false );
-    void          GM_GroupSetMove( GlobalMapGroup* group, float to_x, float to_y, float speed );
-    void          GM_GroupMove( GlobalMapGroup* group );
-    void          GM_GlobalProcess( Critter* cr, GlobalMapGroup* group, int type );
-    void          GM_GlobalInvite( GlobalMapGroup* group, int combat_mode );
-    bool          GM_CheckEntrance( Location* loc, CScriptArray* arr, uchar entrance );
-    CScriptArray* GM_CreateGroupArray( GlobalMapGroup* group );
+    void         GM_GroupStartMove( Critter* cr );
+    void         GM_AddCritToGroup( Critter* cr, uint rule_id );
+    void         GM_LeaveGroup( Critter* cr );
+    void         GM_GiveRule( Critter* cr, Critter* new_rule );
+    void         GM_StopGroup( Critter* cr );
+    bool         GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, ushort mx, ushort my, uchar mdir );
+    bool         GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool force = false );
+    void         GM_GroupSetMove( GlobalMapGroup* group, float to_x, float to_y, float speed );
+    void         GM_GroupMove( GlobalMapGroup* group );
+    void         GM_GlobalProcess( Critter* cr, GlobalMapGroup* group, int type );
+    void         GM_GlobalInvite( GlobalMapGroup* group, int combat_mode );
+    bool         GM_CheckEntrance( Location* loc, ScriptArray* arr, uchar entrance );
+    ScriptArray* GM_CreateGroupArray( GlobalMapGroup* group );
 
     // Locations
 private:

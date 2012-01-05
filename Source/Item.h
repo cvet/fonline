@@ -452,8 +452,7 @@ public:
     SyncObject  Sync;
     #endif
     #ifdef FONLINE_CLIENT
-    string Lexems;
-    int    LexemsRefCounter;
+    ScriptString Lexems;
     #endif
 
     void AddRef()  { RefCounter++; }

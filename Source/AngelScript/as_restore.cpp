@@ -1449,7 +1449,7 @@ void asCRestore::WriteString(asCString* str)
 	stream->Write(str->AddressOf(), (asUINT)len);
 
 	savedStrings.PushLast(*str);
-	stringToIdMap.Insert(asCStringPointer(str), savedStrings.GetLength() - 1);
+	stringToIdMap.Insert(asCStringPointer(str), int(savedStrings.GetLength()) - 1);
 }
 
 void asCRestore::ReadString(asCString* str) 

@@ -109,9 +109,9 @@ bool FOClient::Init()
     STATIC_ASSERT( sizeof( SceneryCl ) == 32 );
     STATIC_ASSERT( sizeof( ProtoItem ) == 908 );
     STATIC_ASSERT( sizeof( Field ) == 76 );
-    STATIC_ASSERT( sizeof( CScriptArray ) == 36 );
-    STATIC_ASSERT( offsetof( CritterCl, ItemSlotArmor ) == 4260 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1260 );
+    STATIC_ASSERT( sizeof( ScriptArray ) == 36 );
+    STATIC_ASSERT( offsetof( CritterCl, ItemSlotArmor ) == 4280 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1304 );
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 108 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );
@@ -249,7 +249,7 @@ bool FOClient::Init()
     Password = pass;
 
     // User and password
-    if( GameOpt.Name.empty() && Password.empty() && !Singleplayer )
+    if( !GameOpt.Name.length() && Password.empty() && !Singleplayer )
     {
         bool  fail = false;
 
@@ -3495,8 +3495,8 @@ void FOClient::Net_SendText( const char* send_str, uchar how_say )
     bool result = false;
     if( Script::PrepareContext( ClientFunctions.OutMessage, _FUNC_, "Game" ) )
     {
-        int            say_type = how_say;
-        CScriptString* sstr = new CScriptString( str );
+        int           say_type = how_say;
+        ScriptString* sstr = new ScriptString( str );
         Script::SetArgObject( sstr );
         Script::SetArgAddress( &say_type );
         if( Script::RunPrepared() )
@@ -4199,7 +4199,7 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
     uint text_delay = GameOpt.TextDelay + len * 100;
     if( Script::PrepareContext( ClientFunctions.InMessage, _FUNC_, "Game" ) )
     {
-        CScriptString* sstr = new CScriptString( fstr );
+        ScriptString* sstr = new ScriptString( fstr );
         Script::SetArgObject( sstr );
         Script::SetArgAddress( &how_say );
         Script::SetArgAddress( &crid );
@@ -4388,9 +4388,9 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
 
 void FOClient::OnMapText( const char* str, ushort hx, ushort hy, uint color, ushort intellect )
 {
-    uint           len = Str::Length( str );
-    uint           text_delay = GameOpt.TextDelay + len * 100;
-    CScriptString* sstr = new CScriptString( str );
+    uint          len = Str::Length( str );
+    uint          text_delay = GameOpt.TextDelay + len * 100;
+    ScriptString* sstr = new ScriptString( str );
     if( Script::PrepareContext( ClientFunctions.MapMessage, _FUNC_, "Game" ) )
     {
         Script::SetArgObject( sstr );
@@ -5420,7 +5420,7 @@ void FOClient::Net_OnCombatResult()
 
     CHECK_IN_BUFF_ERROR;
 
-    CScriptArray* arr = Script::CreateArray( "uint[]" );
+    ScriptArray* arr = Script::CreateArray( "uint[]" );
     if( !arr )
         return;
     arr->Resize( data_count );
@@ -5612,7 +5612,7 @@ void FOClient::Net_OnChosenTalk()
 
     // Avatar
     DlgAvatarPic = NULL;
-    if( npc && !npc->Avatar.empty() )
+    if( npc && npc->Avatar.length() )
         DlgAvatarPic = ResMngr.GetAnim( Str::GetHash( npc->Avatar.c_str() ), 0, RES_IFACE_EXT );
 
     // Main text
@@ -6708,15 +6708,15 @@ void FOClient::Net_OnShowScreen()
 
 void FOClient::Net_OnRunClientScript()
 {
-    char           str[ MAX_FOTEXT ];
-    uint           msg_len;
-    ushort         func_name_len;
-    CScriptString* func_name = new CScriptString();
-    int            p0, p1, p2;
-    ushort         p3len;
-    CScriptString* p3 = NULL;
-    ushort         p4size;
-    CScriptArray*  p4 = NULL;
+    char          str[ MAX_FOTEXT ];
+    uint          msg_len;
+    ushort        func_name_len;
+    ScriptString* func_name = new ScriptString();
+    int           p0, p1, p2;
+    ushort        p3len;
+    ScriptString* p3 = NULL;
+    ushort        p4size;
+    ScriptArray*  p4 = NULL;
     Bin >> msg_len;
     Bin >> func_name_len;
     if( func_name_len && func_name_len < MAX_FOTEXT )
@@ -6733,7 +6733,7 @@ void FOClient::Net_OnRunClientScript()
     {
         Bin.Pop( str, p3len );
         str[ p3len ] = 0;
-        p3 = new CScriptString( str );
+        p3 = new ScriptString( str );
     }
     Bin >> p4size;
     if( p4size )
@@ -7256,7 +7256,7 @@ bool FOClient::RegCheckData( CritterCl* newcr )
         return false;
     }
 
-    if( newcr->Name[ 0 ] == ' ' || newcr->Name[ newcr->Name.length() - 1 ] == ' ' )
+    if( newcr->Name.c_str()[ 0 ] == ' ' || newcr->Name.c_str()[ newcr->Name.length() - 1 ] == ' ' )
     {
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_BEGIN_END_SPACES ) );
         return false;
@@ -7264,7 +7264,7 @@ bool FOClient::RegCheckData( CritterCl* newcr )
 
     for( uint i = 0, j = (uint) newcr->Name.length() - 1; i < j; i++ )
     {
-        if( newcr->Name[ i ] == ' ' && newcr->Name[ i + 1 ] == ' ' )
+        if( newcr->Name.c_str()[ i ] == ' ' && newcr->Name.c_str()[ i + 1 ] == ' ' )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_TWO_SPACE ) );
             return false;
@@ -7274,7 +7274,7 @@ bool FOClient::RegCheckData( CritterCl* newcr )
     uint letters_rus = 0, letters_eng = 0;
     for( uint i = 0, j = (uint) newcr->Name.length(); i < j; i++ )
     {
-        char c = newcr->Name[ i ];
+        char c = newcr->Name.c_str()[ i ];
         if( ( c >= 'a' && c <= 'z' ) || ( c >= 'A' && c <= 'Z' ) )
             letters_eng++;
         else if( ( c >= 'à' && c <= 'ÿ' ) || ( c >= 'À' && c <= 'ß' ) || c == '¸' || c == '¨' )
@@ -7319,7 +7319,7 @@ bool FOClient::RegCheckData( CritterCl* newcr )
 
     if( Script::PrepareContext( ClientFunctions.PlayerGenerationCheck, _FUNC_, "Registration" ) )
     {
-        CScriptArray* arr = Script::CreateArray( "int[]" );
+        ScriptArray* arr = Script::CreateArray( "int[]" );
         if( !arr )
             return false;
 
@@ -8897,7 +8897,7 @@ const char* FOClient::FmtGenericDesc( int desc_type, int& ox, int& oy )
         Script::SetArgAddress( &oy );
         if( Script::RunPrepared() )
         {
-            CScriptString* result = (CScriptString*) Script::GetReturnedObject();
+            ScriptString* result = (ScriptString*) Script::GetReturnedObject();
             if( result )
             {
                 static char str[ MAX_FOTEXT ];
@@ -8918,7 +8918,7 @@ const char* FOClient::FmtCritLook( CritterCl* cr, int look_type )
         Script::SetArgUInt( look_type );
         if( Script::RunPrepared() )
         {
-            CScriptString* result = (CScriptString*) Script::GetReturnedObject();
+            ScriptString* result = (ScriptString*) Script::GetReturnedObject();
             if( result )
             {
                 static char str[ MAX_FOTEXT ];
@@ -8939,7 +8939,7 @@ const char* FOClient::FmtItemLook( Item* item, int look_type )
         Script::SetArgUInt( look_type );
         if( Script::RunPrepared() )
         {
-            CScriptString* result = (CScriptString*) Script::GetReturnedObject();
+            ScriptString* result = (ScriptString*) Script::GetReturnedObject();
             if( result )
             {
                 static char str[ MAX_FOTEXT ];
@@ -9141,8 +9141,8 @@ bool FOClient::SaveLogFile()
 
     if( Script::PrepareContext( ClientFunctions.FilenameLogfile, _FUNC_, "Game" ) )
     {
-        char*          str = log_path;
-        CScriptString* sstr = new CScriptString( str );
+        char*         str = log_path;
+        ScriptString* sstr = new ScriptString( str );
         Script::SetArgObject( sstr );
         if( Script::RunPrepared() )
             Str::Copy( log_path, sstr->c_str() );
@@ -9191,8 +9191,8 @@ bool FOClient::SaveScreenshot()
 
     if( Script::PrepareContext( ClientFunctions.FilenameScreenshot, _FUNC_, "Game" ) )
     {
-        char*          str = screen_path;
-        CScriptString* sstr = new CScriptString( str );
+        char*         str = screen_path;
+        ScriptString* sstr = new ScriptString( str );
         Script::SetArgObject( sstr );
         if( Script::RunPrepared() )
             Str::Copy( screen_path, sstr->c_str() );
@@ -10232,7 +10232,7 @@ Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, ushort proto_id, int s
     return NULL;
 }
 
-uint FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr, int slot, CScriptArray* items )
+uint FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr, int slot, ScriptArray* items )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -10243,7 +10243,7 @@ uint FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr, int slot, CScriptArray
     return (uint) items_.size();
 }
 
-uint FOClient::SScriptFunc::Crit_GetItemsByType( CritterCl* cr, int type, CScriptArray* items )
+uint FOClient::SScriptFunc::Crit_GetItemsByType( CritterCl* cr, int type, ScriptArray* items )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -10433,7 +10433,7 @@ CritterCl* FOClient::SScriptFunc::Global_GetChosen()
     return Self->Chosen;
 }
 
-uint FOClient::SScriptFunc::Global_GetChosenActions( CScriptArray* actions )
+uint FOClient::SScriptFunc::Global_GetChosenActions( ScriptArray* actions )
 {
     if( actions )
         actions->Resize( 0 );
@@ -10457,7 +10457,7 @@ uint FOClient::SScriptFunc::Global_GetChosenActions( CScriptArray* actions )
     return 0;
 }
 
-void FOClient::SScriptFunc::Global_SetChosenActions( CScriptArray* actions )
+void FOClient::SScriptFunc::Global_SetChosenActions( ScriptArray* actions )
 {
     if( actions && actions->GetSize() % 7 )
         SCRIPT_ERROR_R( "Wrong action array size." );
@@ -10511,7 +10511,7 @@ CritterCl* FOClient::SScriptFunc::Global_GetCritter( uint critter_id )
     return cr;
 }
 
-uint FOClient::SScriptFunc::Global_GetCritters( ushort hx, ushort hy, uint radius, int find_type, CScriptArray* critters )
+uint FOClient::SScriptFunc::Global_GetCritters( ushort hx, ushort hy, uint radius, int find_type, ScriptArray* critters )
 {
     if( hx >= Self->HexMngr.GetMaxHexX() || hy >= Self->HexMngr.GetMaxHexY() )
         SCRIPT_ERROR_R0( "Invalid hexes args." );
@@ -10533,7 +10533,7 @@ uint FOClient::SScriptFunc::Global_GetCritters( ushort hx, ushort hy, uint radiu
     return (uint) cr_vec.size();
 }
 
-uint FOClient::SScriptFunc::Global_GetCrittersByPids( ushort pid, int find_type, CScriptArray* critters )
+uint FOClient::SScriptFunc::Global_GetCrittersByPids( ushort pid, int find_type, ScriptArray* critters )
 {
     CritMap& crits = Self->HexMngr.GetCritters();
     CritVec  cr_vec;
@@ -10562,7 +10562,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersByPids( ushort pid, int find_type,
     return (uint) cr_vec.size();
 }
 
-uint FOClient::SScriptFunc::Global_GetCrittersInPath( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, CScriptArray* critters )
+uint FOClient::SScriptFunc::Global_GetCrittersInPath( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters )
 {
     CritVec cr_vec;
     Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, NULL, false, &cr_vec, FIND_LIFE | FIND_KO, NULL, NULL, NULL, true );
@@ -10571,7 +10571,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersInPath( ushort from_hx, ushort fro
     return (uint) cr_vec.size();
 }
 
-uint FOClient::SScriptFunc::Global_GetCrittersInPathBlock( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, CScriptArray* critters, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy )
+uint FOClient::SScriptFunc::Global_GetCrittersInPathBlock( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy )
 {
     CritVec    cr_vec;
     UShortPair block, pre_block;
@@ -10633,7 +10633,7 @@ void FOClient::SScriptFunc::Global_QuakeScreen( uint noise, uint ms )
     Self->ScreenQuake( noise, ms );
 }
 
-bool FOClient::SScriptFunc::Global_PlaySound( CScriptString& sound_name )
+bool FOClient::SScriptFunc::Global_PlaySound( ScriptString& sound_name )
 {
     return SndMngr.PlaySound( sound_name.c_str() );
 }
@@ -10643,12 +10643,12 @@ bool FOClient::SScriptFunc::Global_PlaySoundType( uchar sound_type, uchar sound_
     return SndMngr.PlaySoundType( sound_type, sound_type_ext, sound_id, sound_id_ext );
 }
 
-bool FOClient::SScriptFunc::Global_PlayMusic( CScriptString& music_name, uint pos, uint repeat )
+bool FOClient::SScriptFunc::Global_PlayMusic( ScriptString& music_name, uint pos, uint repeat )
 {
     return SndMngr.PlayMusic( music_name.c_str(), pos, repeat );
 }
 
-void FOClient::SScriptFunc::Global_PlayVideo( CScriptString& video_name, bool can_stop )
+void FOClient::SScriptFunc::Global_PlayVideo( ScriptString& video_name, bool can_stop )
 {
     #ifndef FO_D3D
     SndMngr.StopMusic();
@@ -10675,26 +10675,26 @@ ushort FOClient::SScriptFunc::Global_GetCurrentMapPid()
     return Self->HexMngr.GetCurPidMap();
 }
 
-uint FOClient::SScriptFunc::Global_GetMessageFilters( CScriptArray* filters )
+uint FOClient::SScriptFunc::Global_GetMessageFilters( ScriptArray* filters )
 {
     if( filters )
         Script::AppendVectorToArray( Self->MessBoxFilters, filters );
     return (uint) Self->MessBoxFilters.size();
 }
 
-void FOClient::SScriptFunc::Global_SetMessageFilters( CScriptArray* filters )
+void FOClient::SScriptFunc::Global_SetMessageFilters( ScriptArray* filters )
 {
     Self->MessBoxFilters.clear();
     if( filters )
         Script::AssignScriptArrayInVector( Self->MessBoxFilters, filters );
 }
 
-void FOClient::SScriptFunc::Global_Message( CScriptString& msg )
+void FOClient::SScriptFunc::Global_Message( ScriptString& msg )
 {
     Self->AddMess( FOMB_GAME, msg.c_str() );
 }
 
-void FOClient::SScriptFunc::Global_MessageType( CScriptString& msg, int type )
+void FOClient::SScriptFunc::Global_MessageType( ScriptString& msg, int type )
 {
     if( type < FOMB_GAME || type > FOMB_VIEW )
         type = FOMB_GAME;
@@ -10717,7 +10717,7 @@ void FOClient::SScriptFunc::Global_MessageMsgType( int text_msg, uint str_num, i
     Self->AddMess( type, Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
 }
 
-void FOClient::SScriptFunc::Global_MapMessage( CScriptString& text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy )
+void FOClient::SScriptFunc::Global_MapMessage( ScriptString& text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy )
 {
     FOClient::MapText t;
     t.HexX = hx;
@@ -10735,18 +10735,18 @@ void FOClient::SScriptFunc::Global_MapMessage( CScriptString& text, ushort hx, u
     Self->GameMapTexts.push_back( t );
 }
 
-CScriptString* FOClient::SScriptFunc::Global_GetMsgStr( int text_msg, uint str_num )
+ScriptString* FOClient::SScriptFunc::Global_GetMsgStr( int text_msg, uint str_num )
 {
     if( text_msg >= TEXTMSG_COUNT )
-        SCRIPT_ERROR_RX( "Invalid text msg arg.", new CScriptString( "" ) );
-    return new CScriptString( text_msg == TEXTMSG_HOLO ? Self->GetHoloText( str_num ) : Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
+        SCRIPT_ERROR_RX( "Invalid text msg arg.", new ScriptString( "" ) );
+    return new ScriptString( text_msg == TEXTMSG_HOLO ? Self->GetHoloText( str_num ) : Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
 }
 
-CScriptString* FOClient::SScriptFunc::Global_GetMsgStrSkip( int text_msg, uint str_num, uint skip_count )
+ScriptString* FOClient::SScriptFunc::Global_GetMsgStrSkip( int text_msg, uint str_num, uint skip_count )
 {
     if( text_msg >= TEXTMSG_COUNT )
-        SCRIPT_ERROR_RX( "Invalid text msg arg.", new CScriptString( "" ) );
-    return new CScriptString( text_msg == TEXTMSG_HOLO ? Self->GetHoloText( str_num ) : Self->CurLang.Msg[ text_msg ].GetStr( str_num, skip_count ) );
+        SCRIPT_ERROR_RX( "Invalid text msg arg.", new ScriptString( "" ) );
+    return new ScriptString( text_msg == TEXTMSG_HOLO ? Self->GetHoloText( str_num ) : Self->CurLang.Msg[ text_msg ].GetStr( str_num, skip_count ) );
 }
 
 uint FOClient::SScriptFunc::Global_GetMsgStrNumUpper( int text_msg, uint str_num )
@@ -10777,27 +10777,27 @@ bool FOClient::SScriptFunc::Global_IsMsgStr( int text_msg, uint str_num )
     return Self->CurLang.Msg[ text_msg ].Count( str_num ) > 0;
 }
 
-CScriptString* FOClient::SScriptFunc::Global_ReplaceTextStr( CScriptString& text, CScriptString& replace, CScriptString& str )
+ScriptString* FOClient::SScriptFunc::Global_ReplaceTextStr( ScriptString& text, ScriptString& replace, ScriptString& str )
 {
     size_t pos = text.c_std_str().find( replace.c_std_str(), 0 );
     if( pos == std::string::npos )
-        return new CScriptString( text );
+        return new ScriptString( text );
     string result = text.c_std_str();
-    return new CScriptString( result.replace( pos, replace.length(), str.c_std_str() ) );
+    return new ScriptString( result.replace( pos, replace.length(), str.c_std_str() ) );
 }
 
-CScriptString* FOClient::SScriptFunc::Global_ReplaceTextInt( CScriptString& text, CScriptString& replace, int i )
+ScriptString* FOClient::SScriptFunc::Global_ReplaceTextInt( ScriptString& text, ScriptString& replace, int i )
 {
     size_t pos = text.c_std_str().find( replace.c_std_str(), 0 );
     if( pos == std::string::npos )
-        return new CScriptString( text );
+        return new ScriptString( text );
     char   val[ 32 ];
     Str::Format( val, "%d", i );
     string result = text.c_std_str();
-    return new CScriptString( result.replace( pos, replace.length(), val ) );
+    return new ScriptString( result.replace( pos, replace.length(), val ) );
 }
 
-CScriptString* FOClient::SScriptFunc::Global_FormatTags( CScriptString& text, CScriptString* lexems )
+ScriptString* FOClient::SScriptFunc::Global_FormatTags( ScriptString& text, ScriptString* lexems )
 {
     static char* buf = NULL;
     static uint  buf_len = 0;
@@ -10820,7 +10820,7 @@ CScriptString* FOClient::SScriptFunc::Global_FormatTags( CScriptString& text, CS
 
     Str::Copy( buf, buf_len, text.c_str() );
     Self->FormatTags( buf, buf_len, Self->Chosen, NULL, lexems ? lexems->c_str() : NULL );
-    return new CScriptString( buf );
+    return new ScriptString( buf );
 }
 
 int FOClient::SScriptFunc::Global_GetSomeValue( int var )
@@ -11124,12 +11124,12 @@ void FOClient::SScriptFunc::Global_GetDayColor( uint day_part, uchar& r, uchar& 
     }
 }
 
-CScriptString* FOClient::SScriptFunc::Global_GetLastError()
+ScriptString* FOClient::SScriptFunc::Global_GetLastError()
 {
-    return new CScriptString( ScriptLastError );
+    return new ScriptString( ScriptLastError );
 }
 
-void FOClient::SScriptFunc::Global_Log( CScriptString& text )
+void FOClient::SScriptFunc::Global_Log( ScriptString& text )
 {
     Script::Log( text.c_str() );
 }
@@ -11194,7 +11194,7 @@ void FOClient::SScriptFunc::Global_GetGameTime( uint full_second, ushort& year, 
     second = dt.Second;
 }
 
-bool FOClient::SScriptFunc::Global_StrToInt( CScriptString* text, int& result )
+bool FOClient::SScriptFunc::Global_StrToInt( ScriptString* text, int& result )
 {
     if( !text || !text->length() || !Str::IsNumber( text->c_str() ) )
         return false;
@@ -11202,7 +11202,7 @@ bool FOClient::SScriptFunc::Global_StrToInt( CScriptString* text, int& result )
     return true;
 }
 
-bool FOClient::SScriptFunc::Global_StrToFloat( CScriptString* text, float& result )
+bool FOClient::SScriptFunc::Global_StrToFloat( ScriptString* text, float& result )
 {
     if( !text || !text->length() )
         return false;
@@ -11234,15 +11234,15 @@ bool FOClient::SScriptFunc::Global_AppendIfaceIni( string& ini_name )
     return Self->AppendIfaceIni( ini_name.c_str() );
 }
 
-CScriptString* FOClient::SScriptFunc::Global_GetIfaceIniStr( CScriptString& key )
+ScriptString* FOClient::SScriptFunc::Global_GetIfaceIniStr( ScriptString& key )
 {
     char* big_buf = Str::GetBigBuf();
     if( Self->IfaceIni.GetStr( key.c_str(), "", big_buf ) )
-        return new CScriptString( big_buf );
-    return new CScriptString( "" );
+        return new ScriptString( big_buf );
+    return new ScriptString( "" );
 }
 
-bool FOClient::SScriptFunc::Global_Load3dFile( CScriptString& fname, int path_type )
+bool FOClient::SScriptFunc::Global_Load3dFile( ScriptString& fname, int path_type )
 {
     char fname_[ MAX_FOPATH ];
     Str::Copy( fname_, FileManager::GetPath( path_type ) );
@@ -11256,7 +11256,7 @@ void FOClient::SScriptFunc::Global_WaitPing()
     Self->WaitPing();
 }
 
-bool FOClient::SScriptFunc::Global_LoadFont( int font_index, CScriptString& font_fname )
+bool FOClient::SScriptFunc::Global_LoadFont( int font_index, ScriptString& font_fname )
 {
     if( font_fname.c_str()[ 0 ] == '*' )
         return SprMngr.LoadFontFO( font_index, font_fname.c_str() + 1 );
@@ -11268,7 +11268,7 @@ void FOClient::SScriptFunc::Global_SetDefaultFont( int font, uint color )
     SprMngr.SetDefaultFont( font, color );
 }
 
-void FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtype, CScriptString* effect_name )
+void FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtype, ScriptString* effect_name )
 {
     #define EFFECT_2D            ( 0 )     // 2D_Default.fx
     #define EFFECT_2D_GENERIC    ( 1 )
@@ -11390,7 +11390,7 @@ void FOClient::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort&
     milliseconds = dt.Milliseconds;
 }
 
-bool FOClient::SScriptFunc::Global_SetParameterGetBehaviour( uint index, CScriptString& func_name )
+bool FOClient::SScriptFunc::Global_SetParameterGetBehaviour( uint index, ScriptString& func_name )
 {
     if( index >= MAX_PARAMS )
         SCRIPT_ERROR_R0( "Invalid index arg." );
@@ -11405,7 +11405,7 @@ bool FOClient::SScriptFunc::Global_SetParameterGetBehaviour( uint index, CScript
     return true;
 }
 
-bool FOClient::SScriptFunc::Global_SetParameterChangeBehaviour( uint index, CScriptString& func_name )
+bool FOClient::SScriptFunc::Global_SetParameterChangeBehaviour( uint index, ScriptString& func_name )
 {
     if( index >= MAX_PARAMS )
         SCRIPT_ERROR_R0( "Invalid index arg." );
@@ -11420,7 +11420,7 @@ bool FOClient::SScriptFunc::Global_SetParameterChangeBehaviour( uint index, CScr
     return true;
 }
 
-void FOClient::SScriptFunc::Global_AllowSlot( uchar index, CScriptString& ini_option )
+void FOClient::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& ini_option )
 {
     if( index <= SLOT_ARMOR || index == SLOT_GROUND )
         SCRIPT_ERROR_R( "Invalid index arg." );
@@ -11460,14 +11460,14 @@ bool FOClient::SScriptFunc::Global_SetAngelScriptProperty( int property, uint va
     return true;
 }
 
-uint FOClient::SScriptFunc::Global_GetStrHash( CScriptString* str )
+uint FOClient::SScriptFunc::Global_GetStrHash( ScriptString* str )
 {
     if( str )
         return Str::GetHash( str->c_str() );
     return 0;
 }
 
-bool FOClient::SScriptFunc::Global_LoadDataFile( CScriptString& dat_name )
+bool FOClient::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
 {
     if( FileManager::LoadDataFile( dat_name.c_str() ) )
     {
@@ -11478,7 +11478,7 @@ bool FOClient::SScriptFunc::Global_LoadDataFile( CScriptString& dat_name )
     return false;
 }
 
-int FOClient::SScriptFunc::Global_GetConstantValue( int const_collection, CScriptString* name )
+int FOClient::SScriptFunc::Global_GetConstantValue( int const_collection, ScriptString* name )
 {
     if( !ConstantsManager::IsCollectionInit( const_collection ) )
         SCRIPT_ERROR_R0( "Invalid namesFile arg." );
@@ -11487,14 +11487,14 @@ int FOClient::SScriptFunc::Global_GetConstantValue( int const_collection, CScrip
     return ConstantsManager::GetValue( const_collection, name->c_str() );
 }
 
-CScriptString* FOClient::SScriptFunc::Global_GetConstantName( int const_collection, int value )
+ScriptString* FOClient::SScriptFunc::Global_GetConstantName( int const_collection, int value )
 {
     if( !ConstantsManager::IsCollectionInit( const_collection ) )
         SCRIPT_ERROR_R0( "Invalid namesFile arg." );
-    return new CScriptString( ConstantsManager::GetName( const_collection, value ) );
+    return new ScriptString( ConstantsManager::GetName( const_collection, value ) );
 }
 
-void FOClient::SScriptFunc::Global_AddConstant( int const_collection, CScriptString* name, int value )
+void FOClient::SScriptFunc::Global_AddConstant( int const_collection, ScriptString* name, int value )
 {
     if( !ConstantsManager::IsCollectionInit( const_collection ) )
         SCRIPT_ERROR_R( "Invalid namesFile arg." );
@@ -11503,7 +11503,7 @@ void FOClient::SScriptFunc::Global_AddConstant( int const_collection, CScriptStr
     ConstantsManager::AddConstant( const_collection, name->c_str(), value );
 }
 
-bool FOClient::SScriptFunc::Global_LoadConstants( int const_collection, CScriptString* file_name, int path_type )
+bool FOClient::SScriptFunc::Global_LoadConstants( int const_collection, ScriptString* file_name, int path_type )
 {
     if( const_collection < 0 || const_collection > 1000 )
         SCRIPT_ERROR_R0( "Invalid namesFile arg." );
@@ -11568,21 +11568,21 @@ uint FOClient::SScriptFunc::Global_GetCritterAlias( uint cr_type )
     return CritType::GetAlias( cr_type );
 }
 
-CScriptString* FOClient::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
+ScriptString* FOClient::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", new CScriptString( "" ) );
-    return new CScriptString( CritType::GetCritType( cr_type ).Name );
+        SCRIPT_ERROR_RX( "Invalid critter type arg.", new ScriptString( "" ) );
+    return new ScriptString( CritType::GetCritType( cr_type ).Name );
 }
 
-CScriptString* FOClient::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
+ScriptString* FOClient::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", new CScriptString( "" ) );
-    return new CScriptString( CritType::GetSoundName( cr_type ) );
+        SCRIPT_ERROR_RX( "Invalid critter type arg.", new ScriptString( "" ) );
+    return new ScriptString( CritType::GetSoundName( cr_type ) );
 }
 
-void FOClient::SScriptFunc::Global_RunServerScript( CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4 )
+void FOClient::SScriptFunc::Global_RunServerScript( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 )
 {
     UIntVec dw;
     if( p4 )
@@ -11590,7 +11590,7 @@ void FOClient::SScriptFunc::Global_RunServerScript( CScriptString& func_name, in
     Self->Net_SendRunScript( false, func_name.c_str(), p0, p1, p2, p3 ? p3->c_str() : NULL, dw );
 }
 
-void FOClient::SScriptFunc::Global_RunServerScriptUnsafe( CScriptString& func_name, int p0, int p1, int p2, CScriptString* p3, CScriptArray* p4 )
+void FOClient::SScriptFunc::Global_RunServerScriptUnsafe( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 )
 {
     UIntVec dw;
     if( p4 )
@@ -11598,7 +11598,7 @@ void FOClient::SScriptFunc::Global_RunServerScriptUnsafe( CScriptString& func_na
     Self->Net_SendRunScript( true, func_name.c_str(), p0, p1, p2, p3 ? p3->c_str() : NULL, dw );
 }
 
-uint FOClient::SScriptFunc::Global_LoadSprite( CScriptString& spr_name, int path_index )
+uint FOClient::SScriptFunc::Global_LoadSprite( ScriptString& spr_name, int path_index )
 {
     if( path_index >= PATH_LIST_COUNT )
         SCRIPT_ERROR_R0( "Invalid path index arg." );
@@ -11638,7 +11638,7 @@ uint FOClient::SScriptFunc::Global_GetSpriteCount( uint spr_id )
     return anim ? anim->CntFrm : 0;
 }
 
-void FOClient::SScriptFunc::Global_GetTextInfo( CScriptString& text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
+void FOClient::SScriptFunc::Global_GetTextInfo( ScriptString& text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
 {
     SprMngr.GetTextInfo( w, h, text.c_str(), font, flags, tw, th, lines );
 }
@@ -11701,7 +11701,7 @@ void FOClient::SScriptFunc::Global_DrawSpriteSizeOffs( uint spr_id, int spr_inde
     SprMngr.DrawSpriteSize( spr_id_, x, y, (float) w, (float) h, scratch, center, color );
 }
 
-void FOClient::SScriptFunc::Global_DrawText( CScriptString& text, int x, int y, int w, int h, uint color, int font, int flags )
+void FOClient::SScriptFunc::Global_DrawText( ScriptString& text, int x, int y, int w, int h, uint color, int font, int flags )
 {
     if( !SpritesCanDraw )
         return;
@@ -11713,7 +11713,7 @@ void FOClient::SScriptFunc::Global_DrawText( CScriptString& text, int x, int y, 
     SprMngr.DrawStr( r, text.c_str(), flags, color, font );
 }
 
-void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArray& data )
+void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, ScriptArray& data )
 {
     if( !SpritesCanDraw )
         return;
@@ -11834,7 +11834,7 @@ Animation3dVec DrawCritter3dAnim;
 UIntVec        DrawCritter3dCrType;
 BoolVec        DrawCritter3dFailToLoad;
 int            DrawCritter3dLayers[ LAYERS3D_COUNT ];
-void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, CScriptArray* layers, CScriptArray* position, uint color )
+void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color )
 {
     // x y
     // rx ry rz

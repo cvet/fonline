@@ -359,12 +359,6 @@
     <ClInclude Include="..\Source\AngelScript\scriptmath.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\scriptmath3d.h">
-      <Filter>AngelScript</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\scriptstring.h">
-      <Filter>AngelScript</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\AngelScript\Preprocessor\define_table.h">
       <Filter>AngelScript\Preprocessor</Filter>
     </ClInclude>
@@ -514,6 +508,9 @@
     </ClInclude>
     <ClInclude Include="..\Source\GL\wglew.h">
       <Filter>GL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptstring.h">
+      <Filter>AngelScript</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -757,15 +754,6 @@
     <ClCompile Include="..\Source\AngelScript\scriptmath.cpp">
       <Filter>AngelScript</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptmath3d.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptstring_utils.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
     <ClCompile Include="..\Source\AngelScript\Preprocessor\lex.cpp">
       <Filter>AngelScript\Preprocessor</Filter>
     </ClCompile>
@@ -801,6 +789,9 @@
     </ClCompile>
     <ClCompile Include="..\Source\GL\glew.c">
       <Filter>GL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
+      <Filter>AngelScript</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

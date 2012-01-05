@@ -53,8 +53,8 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
         void* dll = DLL_Load( ASSIMP_PATH ASSIMP_LIB_NAME );
         if( !dll )
         {
-            if( GameOpt.ClientPath != "" )
-                dll = DLL_Load( ( GameOpt.ClientPath + ASSIMP_LIB_NAME ).c_str() );
+            if( GameOpt.ClientPath.c_std_str() != "" )
+                dll = DLL_Load( ( GameOpt.ClientPath.c_std_str() + ASSIMP_LIB_NAME ).c_str() );
             if( !dll )
             {
                 WriteLogF( _FUNC_, " - '" ASSIMP_LIB_NAME "' not found.\n" );

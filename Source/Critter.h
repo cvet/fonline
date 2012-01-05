@@ -112,8 +112,7 @@ public:
     SyncObject       Sync;
     bool             CritterIsNpc;
     uint             Flags;
-    string           NameStr;
-    int              NameStrRefCounter;
+    ScriptString     NameStr;
     C2BitMask        GMapFog;
     bool             IsRuning;
     uint             PrevHexTick;

@@ -66,7 +66,7 @@ namespace Script
         // Register global function and vars
         static map< string, void* > alreadyLoadedDll;
         string                      dll_name_str = dll_name_;
-        auto it = alreadyLoadedDll.find( dll_name_str );
+        auto                        it = alreadyLoadedDll.find( dll_name_str );
         if( it != alreadyLoadedDll.end() )
             return ( *it ).second;
         alreadyLoadedDll.insert( PAIR( dll_name_str, (void*) NULL ) );
@@ -81,8 +81,9 @@ namespace Script
         size_t*     ptr = DLL_GetAddress( dll, target );
         if( !ptr )
         {
-            printf( "Wrong script DLL<%s>, expected target<%s>, but found<%s>.\n", dll_name, target,
-                    DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "" );
+            printf( "Wrong script DLL<%s>, expected target<%s>, but found<%s%s%s%s>.\n", dll_name, target,
+                    DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "",
+                    !DLL_GetAddress( dll, "SERVER" ) && !DLL_GetAddress( dll, "CLIENT" ) && !DLL_GetAddress( dll, "MAPPER" ) ? "Nothing" : "" );
             DLL_Free( dll );
             return NULL;
         }
@@ -132,12 +133,12 @@ namespace Script
 class GlobalVarPragma
 {
 private:
-    list< int >            intArray;
-    list< int64 >          int64Array;
-    list< CScriptString* > stringArray;
-    list< float >          floatArray;
-    list< double >         doubleArray;
-    list< char >           boolArray;
+    list< int >           intArray;
+    list< int64 >         int64Array;
+    list< ScriptString* > stringArray;
+    list< float >         floatArray;
+    list< double >        doubleArray;
+    list< char >          boolArray;
 
 public:
     void Call( const string& text )
@@ -172,7 +173,7 @@ public:
         else if( type == "string" )
         {
             if( value != "" ) value = text.substr( text.find( value ), string::npos );
-            auto it = stringArray.insert( stringArray.begin(), new CScriptString( value ) );
+            auto it = stringArray.insert( stringArray.begin(), new ScriptString( value ) );
             if( engine->RegisterGlobalProperty( name.c_str(), ( *it ) ) < 0 ) WriteLog( "Unable to register string global var, pragma<%s>.\n", text.c_str() );
         }
         else if( type == "float" )

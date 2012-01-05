@@ -10,7 +10,6 @@
 #include "AngelScript/scriptdictionary.h"
 #include "AngelScript/scriptfile.h"
 #include "AngelScript/scriptmath.h"
-#include "AngelScript/scriptmath3d.h"
 #include "AngelScript/scriptstring.h"
 #include "AngelScript/scriptarray.h"
 #include <Windows.h>
@@ -286,12 +285,10 @@ int main( int argc, char* argv[] )
     // Extensions
     RegisterScriptArray( Engine, true );
     RegisterScriptString( Engine );
-    RegisterScriptStringUtils( Engine );
     RegisterScriptAny( Engine );
     RegisterScriptDictionary( Engine );
     RegisterScriptFile( Engine );
     RegisterScriptMath( Engine );
-    RegisterScriptMath3D( Engine );
 
     // Stuff for run func
     if( !run_func.empty() )

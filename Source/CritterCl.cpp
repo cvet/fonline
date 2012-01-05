@@ -26,7 +26,7 @@ CritterCl::CritterCl(): CrDir( 0 ), SprId( 0 ), Id( 0 ), Pid( 0 ), NameColor( 0 
                         tickTextDelay( 0 ), textOnHeadColor( COLOR_TEXT ), Alpha( 0 ),
                         fadingEnable( false ), FadingTick( 0 ), fadeUp( false ), finishingTime( 0 ),
                         staySprDir( 0 ), staySprTick( 0 ), needReSet( false ), reSetTick( 0 ), CurMoveStep( 0 ),
-                        Visible( true ), SprDrawValid( false ), IsNotValid( false ), RefCounter( 1 ), NameRefCounter( 1 ), NameOnHeadRefCounter( 1 ), LexemsRefCounter( 1 ),
+                        Visible( true ), SprDrawValid( false ), IsNotValid( false ), RefCounter( 1 ),
                         OxExtI( 0 ), OyExtI( 0 ), OxExtF( 0 ), OyExtF( 0 ), OxExtSpeed( 0 ), OyExtSpeed( 0 ), OffsExtNextTick( 0 ),
                         Anim3d( NULL ), Anim3dStay( NULL ), Layers3d( NULL ), Multihex( 0 )
 {
@@ -55,7 +55,7 @@ CritterCl::~CritterCl()
     if( Layers3d )
     {
         #ifdef FONLINE_CLIENT
-        ( (CScriptArray*) Layers3d )->Release();
+        ( (ScriptArray*) Layers3d )->Release();
         #else
         uint* layers = (uint*) Layers3d;
         SAFEDELA( layers );
@@ -104,7 +104,7 @@ void CritterCl::GenParams()
     #ifdef FONLINE_CLIENT
     if( Script::PrepareContext( ClientFunctions.PlayerGeneration, _FUNC_, "Registration" ) )
     {
-        CScriptArray* arr = Script::CreateArray( "int[]" );
+        ScriptArray* arr = Script::CreateArray( "int[]" );
         if( !arr )
             return;
         arr->Resize( MAX_PARAMS );
@@ -1369,8 +1369,8 @@ void CritterCl::ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim
 int* CritterCl::GetLayers3dData()
 {
     #ifdef FONLINE_CLIENT
-    static int    layers[ LAYERS3D_COUNT ];
-    CScriptArray* arr = (CScriptArray*) Layers3d;
+    static int   layers[ LAYERS3D_COUNT ];
+    ScriptArray* arr = (ScriptArray*) Layers3d;
     memcpy( layers, arr->At( 0 ), sizeof( layers ) );
     return layers;
     #endif
@@ -1412,9 +1412,9 @@ void CritterCl::SetBaseType( uint type )
         if( !Layers3d )
         {
             Layers3d = Script::CreateArray( "int[]" );
-            ( (CScriptArray*) Layers3d )->Resize( LAYERS3D_COUNT );
+            ( (ScriptArray*) Layers3d )->Resize( LAYERS3D_COUNT );
         }
-        memzero( ( (CScriptArray*) Layers3d )->At( 0 ), LAYERS3D_COUNT * sizeof( int ) );
+        memzero( ( (ScriptArray*) Layers3d )->At( 0 ), LAYERS3D_COUNT * sizeof( int ) );
         #else
         if( !Layers3d )
             Layers3d = new int[ LAYERS3D_COUNT ];

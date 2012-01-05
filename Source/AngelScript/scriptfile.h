@@ -1,115 +1,85 @@
-//
-// CScriptFile
-//
-// This class encapsulates a FILE pointer in a reference counted class for
-// use within AngelScript.
-//
-
 #ifndef SCRIPTFILE_H
 #define SCRIPTFILE_H
 
-//---------------------------
-// Compilation settings
-//
-
-// Set this flag to turn on/off write support
-//  0 = off
-//  1 = on
-
-#ifndef AS_WRITE_OPS
-#define AS_WRITE_OPS 1
-#endif
-
-
-
-
-//---------------------------
-// Declaration
-//
-
+#include "angelscript.h"
+#include "scriptstring.h"
+#include "scriptarray.h"
 #include <string>
 #include <stdio.h>
 
-#include "AngelScript/angelscript.h"
-#include "scriptstring.h"
-#include "scriptarray.h"
-
-BEGIN_AS_NAMESPACE
-
-class CScriptFile
+class ScriptFile
 {
 public:
-    CScriptFile();
+    #ifdef FONLINE_DLL
+    static ScriptFile& Create()
+    {
+        static int  typeId = ASEngine->GetTypeIdByDecl( "file" );
+        ScriptFile* scriptFile = (ScriptFile*) ASEngine->CreateScriptObject( typeId );
+        return *scriptFile;
+    }
+protected:
+    #endif
 
-    void AddRef() const;
-    void Release() const;
+    ScriptFile();
+    ScriptFile( const ScriptFile& );
 
-	// TODO: Implement the "r+", "w+" and "a+" modes
-	// mode = "r" -> open the file for reading
-	//        "w" -> open the file for writing (overwrites existing file)
-	//        "a" -> open the file for appending
-    int  Open(const std::string &filename, const std::string &mode);
-    int  Close();
-    int  GetSize() const;
-    bool IsEOF() const;
+public:
+    virtual void AddRef() const;
+    virtual void Release() const;
+
+    // mode = "r" -> open the file for reading
+    //        "w" -> open the file for writing (overwrites existing file)
+    //        "a" -> open the file for appending
+    virtual int  Open( const ScriptString& filename, const ScriptString& mode );
+    virtual int  Close();
+    virtual int  GetSize() const;
+    virtual bool IsEOF() const;
 
     // Reading
-    int      ReadString(unsigned int length, std::string &str);
-    int      ReadLine(std::string &str);
-    asINT64  ReadInt(asUINT bytes);
-    asQWORD  ReadUInt(asUINT bytes);
-    float    ReadFloat();
-    double   ReadDouble();
+    virtual int     ReadString( unsigned int length, ScriptString& str );
+    virtual int     ReadLine( ScriptString& str );
+    virtual asINT64 ReadInt( asUINT bytes );
+    virtual asQWORD ReadUInt( asUINT bytes );
+    virtual float   ReadFloat();
+    virtual double  ReadDouble();
 
     // Writing
-    int WriteString(const std::string &str);
-    int WriteInt(asINT64 v, asUINT bytes);
-    int WriteUInt(asQWORD v, asUINT bytes);
-    int WriteFloat(float v);
-    int WriteDouble(double v);
+    virtual int WriteString( const ScriptString& str );
+    virtual int WriteInt( asINT64 v, asUINT bytes );
+    virtual int WriteUInt( asQWORD v, asUINT bytes );
+    virtual int WriteFloat( float v );
+    virtual int WriteDouble( double v );
 
     // Cursor
-	int GetPos() const;
-    int SetPos(int pos);
-    int MovePos(int delta);
+    virtual int GetPos() const;
+    virtual int SetPos( int pos );
+    virtual int MovePos( int delta );
 
     // Big-endian = most significant byte first
     bool mostSignificantByteFirst;
 
-    //////////////////////////////////////////////////////////////////////////
-    CScriptString* ReadWord();
-    int ReadNumber();
-    unsigned char ReadUint8();
-    unsigned short ReadUint16();
-    unsigned int ReadUint32();
-    asQWORD ReadUint64();
-    unsigned int ReadData(unsigned int count, CScriptArray& data);
-    bool WriteUint8(unsigned char data);
-    bool WriteUint16(unsigned short data);
-    bool WriteUint32(unsigned int data);
-    bool WriteUint64(asQWORD data);
-    bool WriteData(CScriptArray& data, unsigned int count);
-    //////////////////////////////////////////////////////////////////////////
+    virtual ScriptString*  ReadWord();
+    virtual int            ReadNumber();
+    virtual unsigned char  ReadUint8();
+    virtual unsigned short ReadUint16();
+    virtual unsigned int   ReadUint32();
+    virtual asQWORD        ReadUint64();
+    virtual unsigned int   ReadData( unsigned int count, ScriptArray& data );
+    virtual bool           WriteUint8( unsigned char data );
+    virtual bool           WriteUint16( unsigned short data );
+    virtual bool           WriteUint32( unsigned int data );
+    virtual bool           WriteUint64( asQWORD data );
+    virtual bool           WriteData( ScriptArray& data, unsigned int count );
 
 protected:
-    ~CScriptFile();
+    virtual ~ScriptFile();
 
     mutable int refCount;
-    FILE       *file;
+    FILE*       file;
 };
 
-// This function will determine the configuration of the engine
-// and use one of the two functions below to register the file type
-void RegisterScriptFile(asIScriptEngine *engine);
-
-// Call this function to register the file type
-// using native calling conventions
-void RegisterScriptFile_Native(asIScriptEngine *engine);
-
-// Use this one instead if native calling conventions
-// are not supported on the target platform
-void RegisterScriptFile_Generic(asIScriptEngine *engine);
-
-END_AS_NAMESPACE
+#ifndef FONLINE_DLL
+void RegisterScriptFile( asIScriptEngine* engine );
+#endif
 
 #endif

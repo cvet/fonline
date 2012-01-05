@@ -8,7 +8,6 @@
 #include "AngelScript/scriptdictionary.h"
 #include "AngelScript/scriptfile.h"
 #include "AngelScript/scriptmath.h"
-#include "AngelScript/scriptmath3d.h"
 #include "AngelScript/scriptarray.h"
 #include "AngelScript/Preprocessor/preprocess.h"
 #include <strstream>
@@ -384,8 +383,9 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     size_t* ptr = DLL_GetAddress( dll, edata->DllTarget.c_str() );
     if( !ptr )
     {
-        WriteLogF( _FUNC_, " - Wrong script DLL<%s>, expected target<%s>, but found<%s%s%s>.\n", dll_name, edata->DllTarget.c_str(),
-                   DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "" );
+        WriteLogF( _FUNC_, " - Wrong script DLL<%s>, expected target<%s>, but found<%s%s%s%s>.\n", dll_name, edata->DllTarget.c_str(),
+                   DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "",
+                   !DLL_GetAddress( dll, "SERVER" ) && !DLL_GetAddress( dll, "CLIENT" ) && !DLL_GetAddress( dll, "MAPPER" ) ? "Nothing" : "" );
         DLL_Free( dll );
         return NULL;
     }
@@ -591,12 +591,10 @@ asIScriptEngine* Script::CreateEngine( Preprocessor::PragmaCallback* pragma_call
     engine->SetMessageCallback( asFUNCTION( CallbackMessage ), NULL, asCALL_CDECL );
     RegisterScriptArray( engine, true );
     RegisterScriptString( engine );
-    RegisterScriptStringUtils( engine );
     RegisterScriptAny( engine );
     RegisterScriptDictionary( engine );
     RegisterScriptFile( engine );
     RegisterScriptMath( engine );
-    RegisterScriptMath3D( engine );
 
     EngineData* edata = new EngineData();
     edata->PragmaCB = pragma_callback;
@@ -2306,9 +2304,9 @@ void Script::CallbackException( asIScriptContext* ctx, void* param )
 /* Array                                                                */
 /************************************************************************/
 
-CScriptArray* Script::CreateArray( const char* type )
+ScriptArray* Script::CreateArray( const char* type )
 {
-    return new CScriptArray( 0, Engine->GetObjectTypeById( Engine->GetTypeIdByDecl( type ) ) );
+    return new ScriptArray( 0, Engine->GetObjectTypeById( Engine->GetTypeIdByDecl( type ) ) );
 }
 
 /************************************************************************/

@@ -144,11 +144,8 @@
 		<Unit filename="../Source/AngelScript/scriptfile.h" />
 		<Unit filename="../Source/AngelScript/scriptmath.cpp" />
 		<Unit filename="../Source/AngelScript/scriptmath.h" />
-		<Unit filename="../Source/AngelScript/scriptmath3d.cpp" />
-		<Unit filename="../Source/AngelScript/scriptmath3d.h" />
 		<Unit filename="../Source/AngelScript/scriptstring.cpp" />
 		<Unit filename="../Source/AngelScript/scriptstring.h" />
-		<Unit filename="../Source/AngelScript/scriptstring_utils.cpp" />
 		<Unit filename="../Source/BufferManager.cpp" />
 		<Unit filename="../Source/BufferManager.h" />
 		<Unit filename="../Source/Common.cpp" />

@@ -77,7 +77,7 @@ bool      Critter::SlotEnabled[ 0x100 ] = { true, true, true, true, 0 };
 Item*     Critter::SlotEnabledCacheData[ 0x100 ] = { 0 };
 Item*     Critter::SlotEnabledCacheDataExt[ 0x100 ] = { 0 };
 
-Critter::Critter(): CritterIsNpc( false ), RefCounter( 1 ), IsNotValid( false ), NameStrRefCounter( 0x80000000 ),
+Critter::Critter(): CritterIsNpc( false ), RefCounter( 1 ), IsNotValid( false ),
                     GroupMove( NULL ), PrevHexTick( 0 ), PrevHexX( 0 ), PrevHexY( 0 ),
                     startBreakTime( 0 ), breakTime( 0 ), waitEndTick( 0 ), KnockoutAp( 0 ), CacheValuesNextTick( 0 ), IntellectCacheValue( 0 ),
                     Flags( 0 ), AccessContainerId( 0 ), ItemTransferCount( 0 ),

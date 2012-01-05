@@ -275,30 +275,6 @@
     <ClCompile Include="..\Source\AngelScript\as_variablescope.cpp">
       <Filter>AngelScript</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptany.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptarray.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptdictionary.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptfile.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptmath.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptmath3d.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptstring_utils.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
     <ClCompile Include="..\Source\AngelScript\Preprocessor\lex.cpp">
       <Filter>AngelScript\Preprocessor</Filter>
     </ClCompile>
@@ -319,6 +295,24 @@
     </ClCompile>
     <ClCompile Include="..\Source\FileSystem.cpp">
       <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptany.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptarray.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptdictionary.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptfile.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptmath.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
+      <Filter>AngelScript</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -601,27 +595,6 @@
     <ClInclude Include="..\Source\AngelScript\as_variablescope.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\scriptany.h">
-      <Filter>AngelScript</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\scriptarray.h">
-      <Filter>AngelScript</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\scriptdictionary.h">
-      <Filter>AngelScript</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\scriptfile.h">
-      <Filter>AngelScript</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\scriptmath.h">
-      <Filter>AngelScript</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\scriptmath3d.h">
-      <Filter>AngelScript</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\scriptstring.h">
-      <Filter>AngelScript</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\AngelScript\Preprocessor\define_table.h">
       <Filter>AngelScript\Preprocessor</Filter>
     </ClInclude>
@@ -654,6 +627,24 @@
     </ClInclude>
     <ClInclude Include="..\Source\FileSystem.h">
       <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptstring.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptany.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptarray.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptdictionary.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptfile.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptmath.h">
+      <Filter>AngelScript</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

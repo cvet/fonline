@@ -619,8 +619,7 @@ void *asCModule::GetAddressOfGlobalVar(asUINT index)
 
 	// For object variables it's necessary to dereference the pointer to get the address of the value
 	if( scriptGlobals[index]->type.IsObject() && 
-		(!scriptGlobals[index]->type.IsObjectHandle() || 
-		 (scriptGlobals[index]->type.GetObjectType()->flags & asOBJ_ASHANDLE)) )
+		!scriptGlobals[index]->type.IsObjectHandle() )
 		return *(void**)(scriptGlobals[index]->GetAddressOfValue());
 
 	return (void*)(scriptGlobals[index]->GetAddressOfValue());
@@ -1109,7 +1108,6 @@ void asCModule::ResolveInterfaceIds(asCArray<void*> *substitutions)
 		// Remove the old object type from the engine's class types
 		engine->classTypes.RemoveValue(equals[i].a);
 
-		// Substitute all uses of this object type
 		// Only interfaces in the module is using the type so far
 		for( c = 0; c < classTypes.GetLength(); c++ )
 		{
@@ -1121,13 +1119,57 @@ void asCModule::ResolveInterfaceIds(asCArray<void*> *substitutions)
 					asCScriptFunction *func = engine->GetScriptFunction(intf->methods[m]);
 					if( func )
 					{
+						// Check if it is the same type
 						if( func->returnType.GetObjectType() == equals[i].a )
 							func->returnType.SetObjectType(equals[i].b);
+						// Look for template instances that uses the interface as subtype
+						else if( func->returnType.IsTemplate() && 
+							     func->returnType.GetSubType().GetObjectType() == equals[i].a )
+						{
+							// Find the originating template type
+							asCObjectType *templ = 0;
+							for( asUINT t = 0; t < engine->registeredObjTypes.GetLength(); t++ )
+								if( (engine->registeredObjTypes[t]->flags & asOBJ_TEMPLATE) &&
+									engine->registeredObjTypes[t]->name == func->returnType.GetObjectType()->name &&
+									!engine->templateInstanceTypes.Exists(engine->registeredObjTypes[t]) )
+								{
+									templ = engine->registeredObjTypes[t];
+									break;
+								}
+
+							asASSERT( templ );
+							
+							asCDataType subType = func->returnType.GetSubType();
+							subType.SetObjectType(equals[i].b);
+							func->returnType.SetObjectType(engine->GetTemplateInstanceType(templ, subType));
+						}
 
 						for( asUINT p = 0; p < func->GetParamCount(); p++ )
 						{
+							// Check if it is the same type
 							if( func->parameterTypes[p].GetObjectType() == equals[i].a )
 								func->parameterTypes[p].SetObjectType(equals[i].b);
+							// Look for template instances that uses the interface as subtype
+							else if( func->parameterTypes[p].IsTemplate() &&
+								     func->parameterTypes[p].GetSubType().GetObjectType() == equals[i].a )
+							{
+								// Find the originating template type
+								asCObjectType *templ = 0;
+								for( asUINT t = 0; t < engine->registeredObjTypes.GetLength(); t++ )
+									if( (engine->registeredObjTypes[t]->flags & asOBJ_TEMPLATE) &&
+										engine->registeredObjTypes[t]->name == func->parameterTypes[p].GetObjectType()->name &&
+									    !engine->templateInstanceTypes.Exists(engine->registeredObjTypes[t]) )
+									{
+										templ = engine->registeredObjTypes[t];
+										break;
+									}
+
+								asASSERT( templ );
+
+								asCDataType subType = func->parameterTypes[p].GetSubType();
+								subType.SetObjectType(equals[i].b);
+								func->parameterTypes[p].SetObjectType(engine->GetTemplateInstanceType(templ, subType));
+							}
 						}
 					}
 				}
@@ -1152,6 +1194,17 @@ void asCModule::ResolveInterfaceIds(asCArray<void*> *substitutions)
 					if( substitutions )
 						substitutions->PushLast(scriptFunctions[c]);
 				}
+			}
+		}
+
+		// If there was a template instance, it needs to be removed first
+		for( asUINT n = 0; n < engine->templateTypes.GetLength(); n++ )
+		{
+			if( engine->templateTypes[n]->templateSubType.GetObjectType() == equals[i].a )
+			{
+				// The use of the template has already been exchanged above
+				engine->RemoveTemplateInstanceType(engine->templateTypes[n]);
+				n--;
 			}
 		}
 
@@ -1275,6 +1328,12 @@ bool asCModule::AreTypesEqual(const asCDataType &a, const asCDataType &b, asCArr
 
 	asCObjectType *ai = a.GetObjectType();
 	asCObjectType *bi = b.GetObjectType();
+
+	if( ai && (ai->flags & asOBJ_TEMPLATE) )
+	{
+		ai = ai->templateSubType.GetObjectType();
+		bi = bi->templateSubType.GetObjectType();
+	}
 
 	if( ai && ai->IsInterface() )
 	{

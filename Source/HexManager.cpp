@@ -238,20 +238,20 @@ void HexManager::Finish()
 
 void HexManager::ReloadSprites()
 {
-    curDataPrefix = GameOpt.MapDataPrefix;
+    curDataPrefix = GameOpt.MapDataPrefix.c_std_str();
 
     // Must be valid
-    picHex[ 0 ] = SprMngr.LoadAnimation( ( GameOpt.MapDataPrefix + "hex1.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    picHex[ 1 ] = SprMngr.LoadAnimation( ( GameOpt.MapDataPrefix + "hex2.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    picHex[ 2 ] = SprMngr.LoadAnimation( ( GameOpt.MapDataPrefix + "hex3.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    cursorPrePic = SprMngr.LoadAnimation( ( GameOpt.MapDataPrefix + "move_pre.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    cursorPostPic = SprMngr.LoadAnimation( ( GameOpt.MapDataPrefix + "move_post.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    cursorXPic = SprMngr.LoadAnimation( ( GameOpt.MapDataPrefix + "move_x.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    picTrack1 = SprMngr.LoadAnimation( ( GameOpt.MapDataPrefix + "track1.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    picTrack2 = SprMngr.LoadAnimation( ( GameOpt.MapDataPrefix + "track2.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
+    picHex[ 0 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex1.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
+    picHex[ 1 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex2.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
+    picHex[ 2 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex3.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
+    cursorPrePic = SprMngr.LoadAnimation( ( curDataPrefix + "move_pre.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
+    cursorPostPic = SprMngr.LoadAnimation( ( curDataPrefix + "move_post.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
+    cursorXPic = SprMngr.LoadAnimation( ( curDataPrefix + "move_x.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
+    picTrack1 = SprMngr.LoadAnimation( ( curDataPrefix + "track1.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
+    picTrack2 = SprMngr.LoadAnimation( ( curDataPrefix + "track2.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
 
     // May be nullsdsd
-    picHexMask = SprMngr.LoadAnimation( ( GameOpt.MapDataPrefix + "hex_mask.png" ).c_str(), PT_DATA );
+    picHexMask = SprMngr.LoadAnimation( ( curDataPrefix + "hex_mask.png" ).c_str(), PT_DATA );
 
     // Rain
     picRainDrop = SprMngr.LoadAnimation( "drop.png", PT_ART_MISC, ANIM_USE_DUMMY );
@@ -3440,7 +3440,7 @@ bool HexManager::LoadMap( ushort map_pid )
     UnloadMap();
 
     // Check data sprites reloading
-    if( curDataPrefix != GameOpt.MapDataPrefix )
+    if( curDataPrefix != GameOpt.MapDataPrefix.c_std_str() )
         ReloadSprites();
 
     // Make name
@@ -3981,7 +3981,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     UnloadMap();
     CurProtoMap = NULL;
 
-    if( curDataPrefix != GameOpt.MapDataPrefix )
+    if( curDataPrefix != GameOpt.MapDataPrefix.c_std_str() )
         ReloadSprites();
 
     if( !ResizeField( pmap.Header.MaxHexX, pmap.Header.MaxHexY ) )

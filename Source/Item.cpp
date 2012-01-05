@@ -110,7 +110,6 @@ void Item::Init( ProtoItem* proto )
 
     #ifdef FONLINE_CLIENT
     Lexems = "";
-    LexemsRefCounter = 0x80000000;
     #endif
 }
 
@@ -131,7 +130,6 @@ Item* Item::Clone()
     #endif
     #ifdef FONLINE_CLIENT
     clone->Lexems = Lexems;
-    clone->LexemsRefCounter = LexemsRefCounter;
     #endif
 
     return clone;

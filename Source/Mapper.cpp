@@ -30,7 +30,7 @@ bool FOMapper::Init()
     #if defined ( FO_X86 )
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 116 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1260 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1304 );
     #endif
 
     // Register dll script data
@@ -105,7 +105,7 @@ bool FOMapper::Init()
     GameOpt.ScrollCheck = false;
 
     // File manager
-    FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
+    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
     FileManager::InitDataFiles( GameOpt.ClientPath.c_str() );
     FileManager::InitDataFiles( ".\\" );
 
@@ -161,7 +161,7 @@ bool FOMapper::Init()
     ConstantsManager::Initialize( PT_DATA );
     FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
     ConstantsManager::Initialize( PT_SERVER_DATA );
-    FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
+    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
 
     // Resource manager
     ResMngr.Refresh();
@@ -281,7 +281,7 @@ bool FOMapper::Init()
     TabsName[ INT_MODE_LIST ] = "Maps";
 
     // Restore to client path
-    FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
+    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
 
     // Hex manager
     if( !HexMngr.Init() )
@@ -4712,7 +4712,7 @@ void FOMapper::ConsoleKeyDown( uchar dik )
                 bool process_command = true;
                 if( MapperFunctions.ConsoleMessage && Script::PrepareContext( MapperFunctions.ConsoleMessage, _FUNC_, "Mapper" ) )
                 {
-                    CScriptString* sstr = new CScriptString( ConsoleStr );
+                    ScriptString* sstr = new ScriptString( ConsoleStr );
                     Script::SetArgObject( sstr );
                     if( Script::RunPrepared() && Script::GetReturnedBool() )
                         process_command = false;
@@ -4812,10 +4812,10 @@ void FOMapper::ParseCommand( const char* cmd )
         if( !pmap->Init( 0xFFFF, map_name, PT_SERVER_MAPS ) )
         {
             AddMess( "File not found or truncated." );
-            FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
+            FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
             return;
         }
-        FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
+        FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
 
         SelectClear();
         if( !HexMngr.SetProtoMap( *pmap ) )
@@ -4856,7 +4856,7 @@ void FOMapper::ParseCommand( const char* cmd )
             AddMess( "Save map success." );
         else
             AddMess( "Save map fail, see log." );
-        FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
+        FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
     }
     // Run script
     else if( *cmd == '#' )
@@ -4882,11 +4882,11 @@ void FOMapper::ParseCommand( const char* cmd )
 
         if( bind_id > 0 && Script::PrepareContext( bind_id, _FUNC_, "Mapper" ) )
         {
-            CScriptString* sstr = new CScriptString( str );
+            ScriptString* sstr = new ScriptString( str );
             Script::SetArgObject( sstr );
             if( Script::RunPrepared() )
             {
-                CScriptString* sstr_ = (CScriptString*) Script::GetReturnedObject();
+                ScriptString* sstr_ = (ScriptString*) Script::GetReturnedObject();
                 AddMessFormat( Str::FormatBuf( "Result: %s", sstr_->c_str() ) );
                 sstr_->Release();
             }
@@ -5309,7 +5309,7 @@ void FOMapper::InitScriptSystem()
     if( !scripts_cfg.IsLoaded() )
     {
         WriteLog( "Config file<%s> not found.\n", SCRIPTS_LST );
-        FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
+        FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
         return;
     }
 
@@ -5317,7 +5317,7 @@ void FOMapper::InitScriptSystem()
     Script::Undefine( NULL );
     Script::Define( "__MAPPER" );
     Script::ReloadScripts( (char*) scripts_cfg.GetBuf(), "mapper", false, "MAPPER_" );
-    FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
+    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
 
     // Bind game functions
     ReservedScriptFunction BindGameFunc[] =
@@ -5371,22 +5371,22 @@ void FOMapper::DrawIfaceLayer( uint layer )
 #define SCRIPT_ERROR_R0( error )       do { ScriptLastError = error; Script::LogError( _FUNC_, error ); return 0; } while( 0 )
 static string ScriptLastError;
 
-CScriptString* FOMapper::SScriptFunc::MapperObject_get_ScriptName( MapObject& mobj )
+ScriptString* FOMapper::SScriptFunc::MapperObject_get_ScriptName( MapObject& mobj )
 {
-    return new CScriptString( mobj.ScriptName );
+    return new ScriptString( mobj.ScriptName );
 }
 
-void FOMapper::SScriptFunc::MapperObject_set_ScriptName( MapObject& mobj, CScriptString* str )
+void FOMapper::SScriptFunc::MapperObject_set_ScriptName( MapObject& mobj, ScriptString* str )
 {
     Str::Copy( mobj.ScriptName, str ? str->c_str() : NULL );
 }
 
-CScriptString* FOMapper::SScriptFunc::MapperObject_get_FuncName( MapObject& mobj )
+ScriptString* FOMapper::SScriptFunc::MapperObject_get_FuncName( MapObject& mobj )
 {
-    return new CScriptString( mobj.FuncName );
+    return new ScriptString( mobj.FuncName );
 }
 
-void FOMapper::SScriptFunc::MapperObject_set_FuncName( MapObject& mobj, CScriptString* str )
+void FOMapper::SScriptFunc::MapperObject_set_FuncName( MapObject& mobj, ScriptString* str )
 {
     Str::Copy( mobj.FuncName, str ? str->c_str() : NULL );
 }
@@ -5418,22 +5418,22 @@ void FOMapper::SScriptFunc::MapperObject_set_Critter_Cond( MapObject& mobj, ucha
     mobj.MCritter.Cond = value;
 }
 
-CScriptString* FOMapper::SScriptFunc::MapperObject_get_PicMap( MapObject& mobj )
+ScriptString* FOMapper::SScriptFunc::MapperObject_get_PicMap( MapObject& mobj )
 {
     if( mobj.MapObjType != MAP_OBJECT_ITEM && mobj.MapObjType != MAP_OBJECT_SCENERY )
-        SCRIPT_ERROR_RX( "Map object is not item or scenery.", new CScriptString( "" ) );
+        SCRIPT_ERROR_RX( "Map object is not item or scenery.", new ScriptString( "" ) );
     if( mobj.RunTime.PicMapName[ 0 ] )
-        return new CScriptString( mobj.RunTime.PicMapName );
+        return new ScriptString( mobj.RunTime.PicMapName );
     ProtoItem* proto_item = ItemMngr.GetProtoItem( mobj.ProtoId );
     if( !proto_item )
-        SCRIPT_ERROR_RX( "Proto item not found.", new CScriptString( "" ) );
+        SCRIPT_ERROR_RX( "Proto item not found.", new ScriptString( "" ) );
     const char* name = Str::GetName( proto_item->PicMap );
     if( !name )
-        SCRIPT_ERROR_RX( "Name not found.", new CScriptString( "" ) );
-    return new CScriptString( name );
+        SCRIPT_ERROR_RX( "Name not found.", new ScriptString( "" ) );
+    return new ScriptString( name );
 }
 
-void FOMapper::SScriptFunc::MapperObject_set_PicMap( MapObject& mobj, CScriptString* str )
+void FOMapper::SScriptFunc::MapperObject_set_PicMap( MapObject& mobj, ScriptString* str )
 {
     if( mobj.MapObjType != MAP_OBJECT_ITEM && mobj.MapObjType != MAP_OBJECT_SCENERY )
         SCRIPT_ERROR_R( "Map object is not item or scenery." );
@@ -5441,23 +5441,23 @@ void FOMapper::SScriptFunc::MapperObject_set_PicMap( MapObject& mobj, CScriptStr
     mobj.MItem.PicMapHash = Str::GetHash( mobj.RunTime.PicMapName );
 }
 
-CScriptString* FOMapper::SScriptFunc::MapperObject_get_PicInv( MapObject& mobj )
+ScriptString* FOMapper::SScriptFunc::MapperObject_get_PicInv( MapObject& mobj )
 {
     if( mobj.MapObjType != MAP_OBJECT_ITEM && mobj.MapObjType != MAP_OBJECT_SCENERY )
-        SCRIPT_ERROR_RX( "Map object is not item or scenery.", new CScriptString( "" ) );
-    return new CScriptString( mobj.RunTime.PicInvName );
+        SCRIPT_ERROR_RX( "Map object is not item or scenery.", new ScriptString( "" ) );
+    return new ScriptString( mobj.RunTime.PicInvName );
     if( mobj.RunTime.PicMapName[ 0 ] )
-        return new CScriptString( mobj.RunTime.PicInvName );
+        return new ScriptString( mobj.RunTime.PicInvName );
     ProtoItem* proto_item = ItemMngr.GetProtoItem( mobj.ProtoId );
     if( !proto_item )
-        SCRIPT_ERROR_RX( "Proto item not found.", new CScriptString( "" ) );
+        SCRIPT_ERROR_RX( "Proto item not found.", new ScriptString( "" ) );
     const char* name = Str::GetName( proto_item->PicInv );
     if( !name )
-        SCRIPT_ERROR_RX( "Name not found.", new CScriptString( "" ) );
-    return new CScriptString( name );
+        SCRIPT_ERROR_RX( "Name not found.", new ScriptString( "" ) );
+    return new ScriptString( name );
 }
 
-void FOMapper::SScriptFunc::MapperObject_set_PicInv( MapObject& mobj, CScriptString* str )
+void FOMapper::SScriptFunc::MapperObject_set_PicInv( MapObject& mobj, ScriptString* str )
 {
     if( mobj.MapObjType != MAP_OBJECT_ITEM && mobj.MapObjType != MAP_OBJECT_SCENERY )
         SCRIPT_ERROR_R( "Map object is not item or scenery." );
@@ -5494,7 +5494,7 @@ MapObject* FOMapper::SScriptFunc::MapperObject_AddChild( MapObject& mobj, ushort
     return mobj_;
 }
 
-uint FOMapper::SScriptFunc::MapperObject_GetChilds( MapObject& mobj, CScriptArray* objects )
+uint FOMapper::SScriptFunc::MapperObject_GetChilds( MapObject& mobj, ScriptArray* objects )
 {
     if( !mobj.RunTime.FromMap )
         return 0;
@@ -5617,7 +5617,7 @@ MapObject* FOMapper::SScriptFunc::MapperMap_GetObject( ProtoMap& pmap, ushort hx
     return Self->FindMapObject( pmap, hx, hy, mobj_type, pid, skip );
 }
 
-uint FOMapper::SScriptFunc::MapperMap_GetObjects( ProtoMap& pmap, ushort hx, ushort hy, uint radius, int mobj_type, ushort pid, CScriptArray* objects )
+uint FOMapper::SScriptFunc::MapperMap_GetObjects( ProtoMap& pmap, ushort hx, ushort hy, uint radius, int mobj_type, ushort pid, ScriptArray* objects )
 {
     MapObjectPtrVec objects_;
     Self->FindMapObjects( pmap, hx, hy, radius, mobj_type, pid, objects_ );
@@ -5777,21 +5777,21 @@ void FOMapper::SScriptFunc::MapperMap_AddTileHash( ProtoMap& pmap, ushort hx, us
     }
 }
 
-CScriptString* FOMapper::SScriptFunc::MapperMap_GetTileName( ProtoMap& pmap, ushort hx, ushort hy, bool roof, uint index )
+ScriptString* FOMapper::SScriptFunc::MapperMap_GetTileName( ProtoMap& pmap, ushort hx, ushort hy, bool roof, uint index )
 {
     if( hx >= pmap.Header.MaxHexX )
-        SCRIPT_ERROR_RX( "Invalid hex x arg.", new CScriptString( "" ) );
+        SCRIPT_ERROR_RX( "Invalid hex x arg.", new ScriptString( "" ) );
     if( hy >= pmap.Header.MaxHexY )
-        SCRIPT_ERROR_RX( "Invalid hex y arg.", new CScriptString( "" ) );
+        SCRIPT_ERROR_RX( "Invalid hex y arg.", new ScriptString( "" ) );
 
     ProtoMap::TileVec& tiles = pmap.GetTiles( hx, hy, roof );
     if( index >= tiles.size() )
-        return new CScriptString( "" );
+        return new ScriptString( "" );
     const char* name = Str::GetName( tiles[ index ].NameHash );
-    return new CScriptString( name ? name : "" );
+    return new ScriptString( name ? name : "" );
 }
 
-void FOMapper::SScriptFunc::MapperMap_AddTileName( ProtoMap& pmap, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, CScriptString* pic_name )
+void FOMapper::SScriptFunc::MapperMap_AddTileName( ProtoMap& pmap, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, ScriptString* pic_name )
 {
     if( hx >= pmap.Header.MaxHexX )
         SCRIPT_ERROR_R( "Invalid hex x arg." );
@@ -5874,22 +5874,22 @@ void FOMapper::SScriptFunc::MapperMap_SetDayColor( ProtoMap& pmap, uint day_part
     }
 }
 
-CScriptString* FOMapper::SScriptFunc::MapperMap_get_ScriptModule( ProtoMap& pmap )
+ScriptString* FOMapper::SScriptFunc::MapperMap_get_ScriptModule( ProtoMap& pmap )
 {
-    return new CScriptString( pmap.Header.ScriptModule );
+    return new ScriptString( pmap.Header.ScriptModule );
 }
 
-void FOMapper::SScriptFunc::MapperMap_set_ScriptModule( ProtoMap& pmap, CScriptString* str )
+void FOMapper::SScriptFunc::MapperMap_set_ScriptModule( ProtoMap& pmap, ScriptString* str )
 {
     Str::Copy( pmap.Header.ScriptModule, str ? str->c_str() : "" );
 }
 
-CScriptString* FOMapper::SScriptFunc::MapperMap_get_ScriptFunc( ProtoMap& pmap )
+ScriptString* FOMapper::SScriptFunc::MapperMap_get_ScriptFunc( ProtoMap& pmap )
 {
-    return new CScriptString( pmap.Header.ScriptFunc );
+    return new ScriptString( pmap.Header.ScriptFunc );
 }
 
-void FOMapper::SScriptFunc::MapperMap_set_ScriptFunc( ProtoMap& pmap, CScriptString* str )
+void FOMapper::SScriptFunc::MapperMap_set_ScriptFunc( ProtoMap& pmap, ScriptString* str )
 {
     Str::Copy( pmap.Header.ScriptFunc, str ? str->c_str() : "" );
 }
@@ -5901,7 +5901,7 @@ void FOMapper::SScriptFunc::Global_SetDefaultCritterParam( uint index, int param
     Self->DefaultCritterParam[ index ] = param;
 }
 
-void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, CScriptString& slot_name )
+void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& slot_name )
 {
     if( index <= SLOT_ARMOR || index == SLOT_GROUND )
         SCRIPT_ERROR_R( "Invalid index arg." );
@@ -5913,16 +5913,16 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, CScriptString& slot_n
     Self->SlotsExt.insert( PAIR( index, se ) );
 }
 
-ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( CScriptString& file_name, int path_type )
+ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( ScriptString& file_name, int path_type )
 {
     ProtoMap* pmap = new ProtoMap();
     FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
     if( !pmap->Init( 0xFFFF, file_name.c_str(), path_type ) )
     {
-        FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
+        FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
         return NULL;
     }
-    FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
+    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
     Self->LoadedProtoMaps.push_back( pmap );
     return pmap;
 }
@@ -5944,13 +5944,13 @@ void FOMapper::SScriptFunc::Global_UnloadMap( ProtoMap* pmap )
     pmap->Release();
 }
 
-bool FOMapper::SScriptFunc::Global_SaveMap( ProtoMap* pmap, CScriptString& file_name, int path_type )
+bool FOMapper::SScriptFunc::Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type )
 {
     if( !pmap )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
     FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
     bool result = pmap->Save( file_name.c_str(), path_type );
-    FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
+    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
     return result;
 }
 
@@ -5969,7 +5969,7 @@ bool FOMapper::SScriptFunc::Global_ShowMap( ProtoMap* pmap )
     return true;
 }
 
-int FOMapper::SScriptFunc::Global_GetLoadedMaps( CScriptArray* maps )
+int FOMapper::SScriptFunc::Global_GetLoadedMaps( ScriptArray* maps )
 {
     int index = -1;
     for( int i = 0, j = (int) Self->LoadedProtoMaps.size(); i < j; i++ )
@@ -5983,7 +5983,7 @@ int FOMapper::SScriptFunc::Global_GetLoadedMaps( CScriptArray* maps )
     return index;
 }
 
-uint FOMapper::SScriptFunc::Global_GetMapFileNames( CScriptString* dir, CScriptArray* names )
+uint FOMapper::SScriptFunc::Global_GetMapFileNames( ScriptString* dir, ScriptArray* names )
 {
     FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
     string dir_ = FileManager::GetFullPath( NULL, PT_SERVER_MAPS );
@@ -5995,7 +5995,7 @@ uint FOMapper::SScriptFunc::Global_GetMapFileNames( CScriptString* dir, CScriptA
     void*     h = FileFindFirst( dir_.c_str(), NULL, fd );
     if( !h )
     {
-        FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
+        FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
         return 0;
     }
 
@@ -6011,10 +6011,10 @@ uint FOMapper::SScriptFunc::Global_GetMapFileNames( CScriptString* dir, CScriptA
                 if( ext )
                     *( ext - 1 ) = 0;
 
-                int             len = names->GetSize();
+                int            len = names->GetSize();
                 names->Resize( names->GetSize() + 1 );
-                CScriptString** ptr = (CScriptString**) names->At( len );
-                *ptr = new CScriptString( fname );
+                ScriptString** ptr = (ScriptString**) names->At( len );
+                *ptr = new ScriptString( fname );
             }
             n++;
         }
@@ -6024,7 +6024,7 @@ uint FOMapper::SScriptFunc::Global_GetMapFileNames( CScriptString* dir, CScriptA
     }
     FileFindClose( h );
 
-    FileManager::SetDataPath( ( GameOpt.ClientPath + GameOpt.FoDataPath ).c_str() );
+    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
     return n;
 }
 
@@ -6034,7 +6034,7 @@ void FOMapper::SScriptFunc::Global_DeleteObject( MapObject* mobj )
         Self->DeleteMapObject( mobj );
 }
 
-void FOMapper::SScriptFunc::Global_DeleteObjects( CScriptArray& objects )
+void FOMapper::SScriptFunc::Global_DeleteObjects( ScriptArray& objects )
 {
     for( int i = 0, j = objects.GetSize(); i < j; i++ )
     {
@@ -6055,7 +6055,7 @@ void FOMapper::SScriptFunc::Global_SelectObject( MapObject* mobj, bool set )
     }
 }
 
-void FOMapper::SScriptFunc::Global_SelectObjects( CScriptArray& objects, bool set )
+void FOMapper::SScriptFunc::Global_SelectObjects( ScriptArray& objects, bool set )
 {
     for( int i = 0, j = objects.GetSize(); i < j; i++ )
     {
@@ -6075,7 +6075,7 @@ MapObject* FOMapper::SScriptFunc::Global_GetSelectedObject()
     return Self->SelectedObj.size() ? Self->SelectedObj[ 0 ].MapObj : NULL;
 }
 
-uint FOMapper::SScriptFunc::Global_GetSelectedObjects( CScriptArray* objects )
+uint FOMapper::SScriptFunc::Global_GetSelectedObjects( ScriptArray* objects )
 {
     MapObjectPtrVec objects_;
     objects_.reserve( Self->SelectedObj.size() );
@@ -6086,7 +6086,7 @@ uint FOMapper::SScriptFunc::Global_GetSelectedObjects( CScriptArray* objects )
     return (uint) objects_.size();
 }
 
-uint FOMapper::SScriptFunc::Global_TabGetTileDirs( int tab, CScriptArray* dir_names, CScriptArray* include_subdirs )
+uint FOMapper::SScriptFunc::Global_TabGetTileDirs( int tab, ScriptArray* dir_names, ScriptArray* include_subdirs )
 {
     if( tab < 0 || tab >= TAB_COUNT )
         SCRIPT_ERROR_R0( "Wrong tab arg." );
@@ -6098,8 +6098,8 @@ uint FOMapper::SScriptFunc::Global_TabGetTileDirs( int tab, CScriptArray* dir_na
         dir_names->Resize( dir_names->GetSize() + (uint) ttab.TileDirs.size() );
         for( uint k = 0, l = (uint) ttab.TileDirs.size(); k < l; k++, i++ )
         {
-            CScriptString** p = (CScriptString**) dir_names->At( i );
-            *p = new CScriptString( ttab.TileDirs[ k ] );
+            ScriptString** p = (ScriptString**) dir_names->At( i );
+            *p = new ScriptString( ttab.TileDirs[ k ] );
         }
     }
     if( include_subdirs )
@@ -6107,7 +6107,7 @@ uint FOMapper::SScriptFunc::Global_TabGetTileDirs( int tab, CScriptArray* dir_na
     return (uint) ttab.TileDirs.size();
 }
 
-uint FOMapper::SScriptFunc::Global_TabGetItemPids( int tab, CScriptString* sub_tab, CScriptArray* item_pids )
+uint FOMapper::SScriptFunc::Global_TabGetItemPids( int tab, ScriptString* sub_tab, ScriptArray* item_pids )
 {
     if( tab < 0 || tab >= TAB_COUNT )
         SCRIPT_ERROR_R0( "Wrong tab arg." );
@@ -6120,7 +6120,7 @@ uint FOMapper::SScriptFunc::Global_TabGetItemPids( int tab, CScriptString* sub_t
     return (uint) stab.ItemProtos.size();
 }
 
-uint FOMapper::SScriptFunc::Global_TabGetCritterPids( int tab, CScriptString* sub_tab, CScriptArray* critter_pids )
+uint FOMapper::SScriptFunc::Global_TabGetCritterPids( int tab, ScriptString* sub_tab, ScriptArray* critter_pids )
 {
     if( tab < 0 || tab >= TAB_COUNT )
         SCRIPT_ERROR_R0( "Wrong tab arg." );
@@ -6133,7 +6133,7 @@ uint FOMapper::SScriptFunc::Global_TabGetCritterPids( int tab, CScriptString* su
     return (uint) stab.NpcProtos.size();
 }
 
-void FOMapper::SScriptFunc::Global_TabSetTileDirs( int tab, CScriptArray* dir_names, CScriptArray* include_subdirs )
+void FOMapper::SScriptFunc::Global_TabSetTileDirs( int tab, ScriptArray* dir_names, ScriptArray* include_subdirs )
 {
     if( tab < 0 || tab >= TAB_COUNT )
         SCRIPT_ERROR_R( "Wrong tab arg." );
@@ -6148,7 +6148,7 @@ void FOMapper::SScriptFunc::Global_TabSetTileDirs( int tab, CScriptArray* dir_na
     {
         for( uint i = 0, j = dir_names->GetSize(); i < j; i++ )
         {
-            CScriptString* name = *(CScriptString**) dir_names->At( i );
+            ScriptString* name = *(ScriptString**) dir_names->At( i );
             if( name && name->length() )
             {
                 ttab.TileDirs.push_back( name->c_std_str() );
@@ -6161,7 +6161,7 @@ void FOMapper::SScriptFunc::Global_TabSetTileDirs( int tab, CScriptArray* dir_na
         Self->RefreshTiles( tab );
 }
 
-void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, CScriptString* sub_tab, CScriptArray* item_pids )
+void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, ScriptString* sub_tab, ScriptArray* item_pids )
 {
     if( tab < 0 || tab >= TAB_COUNT )
         SCRIPT_ERROR_R( "Wrong tab arg." );
@@ -6217,7 +6217,7 @@ void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, CScriptString* sub_t
         Self->RefreshCurProtos();
 }
 
-void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, CScriptString* sub_tab, CScriptArray* critter_pids )
+void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, ScriptString* sub_tab, ScriptArray* critter_pids )
 {
     if( tab < 0 || tab >= TAB_COUNT )
         SCRIPT_ERROR_R( "Wrong tab arg." );
@@ -6283,7 +6283,7 @@ void FOMapper::SScriptFunc::Global_TabDelete( int tab )
     Self->TabsActive[ tab ] = &stab_default;
 }
 
-void FOMapper::SScriptFunc::Global_TabSelect( int tab, CScriptString* sub_tab, bool show )
+void FOMapper::SScriptFunc::Global_TabSelect( int tab, ScriptString* sub_tab, bool show )
 {
     if( tab < 0 || tab >= INT_MODE_COUNT )
         SCRIPT_ERROR_R( "Wrong tab arg." );
@@ -6299,7 +6299,7 @@ void FOMapper::SScriptFunc::Global_TabSelect( int tab, CScriptString* sub_tab, b
         Self->TabsActive[ tab ] = &( *it ).second;
 }
 
-void FOMapper::SScriptFunc::Global_TabSetName( int tab, CScriptString* tab_name )
+void FOMapper::SScriptFunc::Global_TabSetName( int tab, ScriptString* tab_name )
 {
     if( tab < 0 || tab >= INT_MODE_COUNT )
         SCRIPT_ERROR_R( "Wrong tab arg." );
@@ -6307,9 +6307,9 @@ void FOMapper::SScriptFunc::Global_TabSetName( int tab, CScriptString* tab_name 
     Self->TabsName[ tab ] = ( tab_name ? tab_name->c_std_str() : "" );
 }
 
-CScriptString* FOMapper::SScriptFunc::Global_GetLastError()
+ScriptString* FOMapper::SScriptFunc::Global_GetLastError()
 {
-    return new CScriptString( ScriptLastError );
+    return new ScriptString( ScriptLastError );
 }
 
 ProtoItem* FOMapper::SScriptFunc::Global_GetProtoItem( ushort proto_id )
@@ -6357,21 +6357,21 @@ void FOMapper::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar d
     hy = hy_;
 }
 
-CScriptString* FOMapper::SScriptFunc::Global_GetIfaceIniStr( CScriptString& key )
+ScriptString* FOMapper::SScriptFunc::Global_GetIfaceIniStr( ScriptString& key )
 {
     char* big_buf = Str::GetBigBuf();
     if( Self->IfaceIni.GetStr( key.c_str(), "", big_buf ) )
-        return new CScriptString( big_buf );
-    return new CScriptString( "" );
+        return new ScriptString( big_buf );
+    return new ScriptString( "" );
 }
 
-void FOMapper::SScriptFunc::Global_Log( CScriptString& text )
+void FOMapper::SScriptFunc::Global_Log( ScriptString& text )
 {
     // Self->AddMessFormat(text.buffer.c_str());
     Script::Log( text.c_str() );
 }
 
-bool FOMapper::SScriptFunc::Global_StrToInt( CScriptString* text, int& result )
+bool FOMapper::SScriptFunc::Global_StrToInt( ScriptString* text, int& result )
 {
     if( !text || !text->length() || !Str::IsNumber( text->c_str() ) )
         return false;
@@ -6379,7 +6379,7 @@ bool FOMapper::SScriptFunc::Global_StrToInt( CScriptString* text, int& result )
     return true;
 }
 
-bool FOMapper::SScriptFunc::Global_StrToFloat( CScriptString* text, float& result )
+bool FOMapper::SScriptFunc::Global_StrToFloat( ScriptString* text, float& result )
 {
     if( !text || !text->length() )
         return false;
@@ -6387,7 +6387,7 @@ bool FOMapper::SScriptFunc::Global_StrToFloat( CScriptString* text, float& resul
     return true;
 }
 
-void FOMapper::SScriptFunc::Global_Message( CScriptString& msg )
+void FOMapper::SScriptFunc::Global_Message( ScriptString& msg )
 {
     Self->AddMess( msg.c_str() );
 }
@@ -6399,7 +6399,7 @@ void FOMapper::SScriptFunc::Global_MessageMsg( int text_msg, uint str_num )
     Self->AddMess( Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
 }
 
-void FOMapper::SScriptFunc::Global_MapMessage( CScriptString& text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy )
+void FOMapper::SScriptFunc::Global_MapMessage( ScriptString& text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy )
 {
     FOMapper::MapText t;
     t.HexX = hx;
@@ -6417,19 +6417,19 @@ void FOMapper::SScriptFunc::Global_MapMessage( CScriptString& text, ushort hx, u
     Self->GameMapTexts.push_back( t );
 }
 
-CScriptString* FOMapper::SScriptFunc::Global_GetMsgStr( int text_msg, uint str_num )
+ScriptString* FOMapper::SScriptFunc::Global_GetMsgStr( int text_msg, uint str_num )
 {
     if( text_msg >= TEXTMSG_COUNT )
         SCRIPT_ERROR_R0( "Invalid text msg arg." );
-    CScriptString* str = new CScriptString( Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
+    ScriptString* str = new ScriptString( Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
     return str;
 }
 
-CScriptString* FOMapper::SScriptFunc::Global_GetMsgStrSkip( int text_msg, uint str_num, uint skip_count )
+ScriptString* FOMapper::SScriptFunc::Global_GetMsgStrSkip( int text_msg, uint str_num, uint skip_count )
 {
     if( text_msg >= TEXTMSG_COUNT )
         SCRIPT_ERROR_R0( "Invalid text msg arg." );
-    CScriptString* str = new CScriptString( Self->CurLang.Msg[ text_msg ].GetStr( str_num, skip_count ) );
+    ScriptString* str = new ScriptString( Self->CurLang.Msg[ text_msg ].GetStr( str_num, skip_count ) );
     return str;
 }
 
@@ -6461,24 +6461,24 @@ bool FOMapper::SScriptFunc::Global_IsMsgStr( int text_msg, uint str_num )
     return Self->CurLang.Msg[ text_msg ].Count( str_num ) > 0;
 }
 
-CScriptString* FOMapper::SScriptFunc::Global_ReplaceTextStr( CScriptString& text, CScriptString& replace, CScriptString& str )
+ScriptString* FOMapper::SScriptFunc::Global_ReplaceTextStr( ScriptString& text, ScriptString& replace, ScriptString& str )
 {
     size_t pos = text.c_std_str().find( replace.c_std_str(), 0 );
     if( pos == std::string::npos )
-        return new CScriptString( text );
+        return new ScriptString( text );
     string str_ = text.c_std_str();
-    return new CScriptString( str_.replace( pos, replace.length(), str_ ) );
+    return new ScriptString( str_.replace( pos, replace.length(), str_ ) );
 }
 
-CScriptString* FOMapper::SScriptFunc::Global_ReplaceTextInt( CScriptString& text, CScriptString& replace, int i )
+ScriptString* FOMapper::SScriptFunc::Global_ReplaceTextInt( ScriptString& text, ScriptString& replace, int i )
 {
     size_t pos = text.c_std_str().find( replace.c_std_str(), 0 );
     if( pos == std::string::npos )
-        return new CScriptString( text );
+        return new ScriptString( text );
     char   val[ 32 ];
     Str::Format( val, "%d", i );
     string str_ = text.c_std_str();
-    return new CScriptString( str_.replace( pos, replace.length(), val ) );
+    return new ScriptString( str_.replace( pos, replace.length(), val ) );
 }
 
 uint FOMapper::SScriptFunc::Global_GetDistantion( ushort hex_x1, ushort hex_y1, ushort hex_x2, ushort hex_y2 )
@@ -6591,16 +6591,16 @@ bool FOMapper::SScriptFunc::Global_SetAngelScriptProperty( int property, uint va
     return true;
 }
 
-uint FOMapper::SScriptFunc::Global_GetStrHash( CScriptString* str )
+uint FOMapper::SScriptFunc::Global_GetStrHash( ScriptString* str )
 {
     if( str )
         return Str::GetHash( str->c_str() );
     return 0;
 }
 
-bool FOMapper::SScriptFunc::Global_LoadDataFile( CScriptString& dat_name )
+bool FOMapper::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
 {
-    if( FileManager::LoadDataFile( dat_name.c_std_str().find( ':' ) == string::npos ? ( GameOpt.ClientPath + dat_name.c_std_str() ).c_str() : dat_name.c_str() ) )
+    if( FileManager::LoadDataFile( dat_name.c_std_str().find( ':' ) == string::npos ? ( GameOpt.ClientPath.c_std_str() + dat_name.c_std_str() ).c_str() : dat_name.c_str() ) )
     {
         // Reload resource manager
         if( Self->IsMapperStarted )
@@ -6614,7 +6614,7 @@ bool FOMapper::SScriptFunc::Global_LoadDataFile( CScriptString& dat_name )
     return false;
 }
 
-int FOMapper::SScriptFunc::Global_GetConstantValue( int const_collection, CScriptString* name )
+int FOMapper::SScriptFunc::Global_GetConstantValue( int const_collection, ScriptString* name )
 {
     if( !ConstantsManager::IsCollectionInit( const_collection ) )
         SCRIPT_ERROR_R0( "Invalid namesFile arg." );
@@ -6623,14 +6623,14 @@ int FOMapper::SScriptFunc::Global_GetConstantValue( int const_collection, CScrip
     return ConstantsManager::GetValue( const_collection, name->c_str() );
 }
 
-CScriptString* FOMapper::SScriptFunc::Global_GetConstantName( int const_collection, int value )
+ScriptString* FOMapper::SScriptFunc::Global_GetConstantName( int const_collection, int value )
 {
     if( !ConstantsManager::IsCollectionInit( const_collection ) )
         SCRIPT_ERROR_R0( "Invalid namesFile arg." );
-    return new CScriptString( ConstantsManager::GetName( const_collection, value ) );
+    return new ScriptString( ConstantsManager::GetName( const_collection, value ) );
 }
 
-void FOMapper::SScriptFunc::Global_AddConstant( int const_collection, CScriptString* name, int value )
+void FOMapper::SScriptFunc::Global_AddConstant( int const_collection, ScriptString* name, int value )
 {
     if( !ConstantsManager::IsCollectionInit( const_collection ) )
         SCRIPT_ERROR_R( "Invalid namesFile arg." );
@@ -6639,7 +6639,7 @@ void FOMapper::SScriptFunc::Global_AddConstant( int const_collection, CScriptStr
     ConstantsManager::AddConstant( const_collection, name->c_str(), value );
 }
 
-bool FOMapper::SScriptFunc::Global_LoadConstants( int const_collection, CScriptString* file_name, int path_type )
+bool FOMapper::SScriptFunc::Global_LoadConstants( int const_collection, ScriptString* file_name, int path_type )
 {
     if( const_collection < 0 || const_collection > 1000 )
         SCRIPT_ERROR_R0( "Invalid namesFile arg." );
@@ -6648,7 +6648,7 @@ bool FOMapper::SScriptFunc::Global_LoadConstants( int const_collection, CScriptS
     return ConstantsManager::AddCollection( const_collection, file_name->c_str(), path_type );
 }
 
-bool FOMapper::SScriptFunc::Global_LoadFont( int font_index, CScriptString& font_fname )
+bool FOMapper::SScriptFunc::Global_LoadFont( int font_index, ScriptString& font_fname )
 {
     if( font_fname.c_str()[ 0 ] == '*' )
         return SprMngr.LoadFontFO( font_index, font_fname.c_str() + 1 );
@@ -6703,7 +6703,7 @@ void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2 )
     Self->KeyboardEventsLocker.Unlock();
 }
 
-uint FOMapper::SScriptFunc::Global_LoadSprite( CScriptString& spr_name, int path_index )
+uint FOMapper::SScriptFunc::Global_LoadSprite( ScriptString& spr_name, int path_index )
 {
     if( path_index >= PATH_LIST_COUNT )
         SCRIPT_ERROR_R0( "Invalid path index arg." );
@@ -6743,7 +6743,7 @@ uint FOMapper::SScriptFunc::Global_GetSpriteCount( uint spr_id )
     return anim ? anim->CntFrm : 0;
 }
 
-void FOMapper::SScriptFunc::Global_GetTextInfo( CScriptString& text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
+void FOMapper::SScriptFunc::Global_GetTextInfo( ScriptString& text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
 {
     SprMngr.GetTextInfo( w, h, text.c_str(), font, flags, tw, th, lines );
 }
@@ -6806,7 +6806,7 @@ void FOMapper::SScriptFunc::Global_DrawSpriteSizeOffs( uint spr_id, int spr_inde
     SprMngr.DrawSpriteSize( spr_id_, x, y, (float) w, (float) h, scratch, true, color );
 }
 
-void FOMapper::SScriptFunc::Global_DrawText( CScriptString& text, int x, int y, int w, int h, uint color, int font, int flags )
+void FOMapper::SScriptFunc::Global_DrawText( ScriptString& text, int x, int y, int w, int h, uint color, int font, int flags )
 {
     if( !SpritesCanDraw )
         return;
@@ -6817,7 +6817,7 @@ void FOMapper::SScriptFunc::Global_DrawText( CScriptString& text, int x, int y, 
     SprMngr.DrawStr( Rect( x, y, x + w, y + h ), text.c_str(), flags, color, font );
 }
 
-void FOMapper::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArray& data )
+void FOMapper::SScriptFunc::Global_DrawPrimitive( int primitive_type, ScriptArray& data )
 {
     if( !SpritesCanDraw )
         return;
@@ -6938,7 +6938,7 @@ Animation3dVec DrawCritter3dAnim;
 UIntVec        DrawCritter3dCrType;
 BoolVec        DrawCritter3dFailToLoad;
 int            DrawCritter3dLayers[ LAYERS3D_COUNT ];
-void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, CScriptArray* layers, CScriptArray* position, uint color )
+void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color )
 {
     // x y
     // rx ry rz
@@ -7062,16 +7062,16 @@ uint FOMapper::SScriptFunc::Global_GetCritterAlias( uint cr_type )
     return CritType::GetAlias( cr_type );
 }
 
-CScriptString* FOMapper::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
+ScriptString* FOMapper::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", new CScriptString( "" ) );
-    return new CScriptString( CritType::GetCritType( cr_type ).Name );
+        SCRIPT_ERROR_RX( "Invalid critter type arg.", new ScriptString( "" ) );
+    return new ScriptString( CritType::GetCritType( cr_type ).Name );
 }
 
-CScriptString* FOMapper::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
+ScriptString* FOMapper::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", new CScriptString( "" ) );
-    return new CScriptString( CritType::GetSoundName( cr_type ) );
+        SCRIPT_ERROR_RX( "Invalid critter type arg.", new ScriptString( "" ) );
+    return new ScriptString( CritType::GetSoundName( cr_type ) );
 }

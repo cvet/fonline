@@ -6,772 +6,645 @@
 #include <stdio.h>
 
 #ifdef _WIN32_WCE
-#include <windows.h> // For GetModuleFileName
-#ifdef GetObject
-#undef GetObject
-#endif
+# include <windows.h> // For GetModuleFileName
+# ifdef GetObject
+#  undef GetObject
+# endif
 #endif
 
 using namespace std;
 
-BEGIN_AS_NAMESPACE
-
-CScriptFile *ScriptFile_Factory()
+ScriptFile* ScriptFile_Factory()
 {
-    return new CScriptFile();
+    return new ScriptFile();
 }
 
-void ScriptFile_Factory_Generic(asIScriptGeneric *gen)
-{
-	*(CScriptFile**)gen->GetAddressOfReturnLocation()	= ScriptFile_Factory();
-}
-
-void ScriptFile_AddRef_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	file->AddRef();
-}
-
-void ScriptFile_Release_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	file->Release();
-}
-
-void ScriptFile_Open_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	std::string *f = (std::string*)gen->GetArgAddress(0);
-	std::string *m = (std::string*)gen->GetArgAddress(1);
-	int r = file->Open(*f, *m);
-	gen->SetReturnDWord(r);
-}
-
-void ScriptFile_Close_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	int r = file->Close();
-	gen->SetReturnDWord(r);
-}
-
-void ScriptFile_GetSize_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	int r = file->GetSize();
-	gen->SetReturnDWord(r);
-}
-
-void ScriptFile_ReadString_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	int len = gen->GetArgDWord(0);
-	std::string *str = (std::string*)gen->GetArgAddress(1);
-	len = file->ReadString(len, *str);
-	gen->SetReturnDWord(len);
-}
-
-void ScriptFile_ReadLine_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	std::string *str = (std::string*)gen->GetArgAddress(0);
-	int len = file->ReadLine(*str);
-	gen->SetReturnDWord(len);
-}
-
-void ScriptFile_ReadInt_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	asUINT bytes = *(asUINT*)gen->GetAddressOfArg(0);
-	*(asINT64*)gen->GetAddressOfReturnLocation() = file->ReadInt(bytes);
-}
-
-void ScriptFile_ReadUInt_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	asUINT bytes = *(asUINT*)gen->GetAddressOfArg(0);
-	*(asQWORD*)gen->GetAddressOfReturnLocation() = file->ReadUInt(bytes);
-}
-
-void ScriptFile_ReadFloat_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	*(float*)gen->GetAddressOfReturnLocation() = file->ReadFloat();
-}
-
-void ScriptFile_ReadDouble_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	*(double*)gen->GetAddressOfReturnLocation() = file->ReadDouble();
-}
-
-void ScriptFile_WriteString_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	std::string *str = (std::string*)gen->GetArgAddress(0);
-	gen->SetReturnDWord(file->WriteString(*str));
-}
-
-void ScriptFile_WriteInt_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	asINT64 val = *(asINT64*)gen->GetAddressOfArg(0);
-	asUINT bytes = *(asUINT*)gen->GetAddressOfArg(1);
-	*(int*)gen->GetAddressOfReturnLocation() = file->WriteInt(val, bytes);
-}
-
-void ScriptFile_WriteUInt_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	asQWORD val = *(asQWORD*)gen->GetAddressOfArg(0);
-	asUINT bytes = *(asUINT*)gen->GetAddressOfArg(1);
-	*(int*)gen->GetAddressOfReturnLocation() = file->WriteUInt(val, bytes);
-}
-
-void ScriptFile_WriteFloat_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	float val = *(float*)gen->GetAddressOfArg(0);
-	*(int*)gen->GetAddressOfReturnLocation() = file->WriteFloat(val);
-}
-
-void ScriptFile_WriteDouble_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	double val = *(double*)gen->GetAddressOfArg(0);
-	*(int*)gen->GetAddressOfReturnLocation() = file->WriteDouble(val);
-}
-
-void ScriptFile_IsEOF_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	bool r = file->IsEOF();
-	gen->SetReturnByte(r);
-}
-
-void ScriptFile_GetPos_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	gen->SetReturnDWord(file->GetPos());
-}
-
-void ScriptFile_SetPos_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	int pos = (int)gen->GetArgDWord(0);
-	gen->SetReturnDWord(file->SetPos(pos));
-}
-
-void ScriptFile_MovePos_Generic(asIScriptGeneric *gen)
-{
-	CScriptFile *file = (CScriptFile*)gen->GetObject();
-	int delta = (int)gen->GetArgDWord(0);
-	gen->SetReturnDWord(file->MovePos(delta));
-}
-
-void RegisterScriptFile_Native(asIScriptEngine *engine)
+void RegisterScriptFile_Native( asIScriptEngine* engine )
 {
     int r;
 
-    r = engine->RegisterObjectType("file", 0, asOBJ_REF); assert( r >= 0 );
-    r = engine->RegisterObjectBehaviour("file", asBEHAVE_FACTORY, "file @f()", asFUNCTION(ScriptFile_Factory), asCALL_CDECL); assert( r >= 0 );
-    r = engine->RegisterObjectBehaviour("file", asBEHAVE_ADDREF, "void f()", asMETHOD(CScriptFile,AddRef), asCALL_THISCALL); assert( r >= 0 );
-    r = engine->RegisterObjectBehaviour("file", asBEHAVE_RELEASE, "void f()", asMETHOD(CScriptFile,Release), asCALL_THISCALL); assert( r >= 0 );
+    r = engine->RegisterObjectType( "file", 0, asOBJ_REF );
+    assert( r >= 0 );
+    r = engine->RegisterObjectBehaviour( "file", asBEHAVE_FACTORY, "file @f()", asFUNCTION( ScriptFile_Factory ), asCALL_CDECL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectBehaviour( "file", asBEHAVE_ADDREF, "void f()", asMETHOD( ScriptFile, AddRef ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectBehaviour( "file", asBEHAVE_RELEASE, "void f()", asMETHOD( ScriptFile, Release ), asCALL_THISCALL );
+    assert( r >= 0 );
 
-    r = engine->RegisterObjectMethod("file", "int open(const string &in, const string &in)", asMETHOD(CScriptFile,Open), asCALL_THISCALL); assert( r >= 0 );
-    r = engine->RegisterObjectMethod("file", "int close()", asMETHOD(CScriptFile,Close), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int getSize() const", asMETHOD(CScriptFile,GetSize), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "bool isEndOfFile() const", asMETHOD(CScriptFile,IsEOF), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int readString(uint, string &out)", asMETHOD(CScriptFile,ReadString), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int readLine(string &out)", asMETHOD(CScriptFile,ReadLine), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int64 readInt(uint)", asMETHOD(CScriptFile,ReadInt), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "uint64 readUInt(uint)", asMETHOD(CScriptFile,ReadUInt), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "float readFloat()", asMETHOD(CScriptFile,ReadFloat), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "double readDouble()", asMETHOD(CScriptFile,ReadDouble), asCALL_THISCALL); assert( r >= 0 );
-#if AS_WRITE_OPS == 1
-	r = engine->RegisterObjectMethod("file", "int writeString(const string &in)", asMETHOD(CScriptFile,WriteString), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int writeInt(int64, uint)", asMETHOD(CScriptFile,WriteInt), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int writeUInt(uint64, uint)", asMETHOD(CScriptFile,WriteUInt), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int writeFloat(float)", asMETHOD(CScriptFile,WriteFloat), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int writeDouble(double)", asMETHOD(CScriptFile,WriteDouble), asCALL_THISCALL); assert( r >= 0 );
-#endif
-	r = engine->RegisterObjectMethod("file", "int getPos() const", asMETHOD(CScriptFile,GetPos), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int setPos(int)", asMETHOD(CScriptFile,SetPos), asCALL_THISCALL); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int movePos(int)", asMETHOD(CScriptFile,MovePos), asCALL_THISCALL); assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int open(const string &in, const string &in)", asMETHOD( ScriptFile, Open ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int close()", asMETHOD( ScriptFile, Close ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int getSize() const", asMETHOD( ScriptFile, GetSize ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "bool isEndOfFile() const", asMETHOD( ScriptFile, IsEOF ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int readString(uint, string &out)", asMETHOD( ScriptFile, ReadString ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int readLine(string &out)", asMETHOD( ScriptFile, ReadLine ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int64 readInt(uint)", asMETHOD( ScriptFile, ReadInt ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "uint64 readUInt(uint)", asMETHOD( ScriptFile, ReadUInt ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "float readFloat()", asMETHOD( ScriptFile, ReadFloat ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "double readDouble()", asMETHOD( ScriptFile, ReadDouble ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int writeString(const string &in)", asMETHOD( ScriptFile, WriteString ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int writeInt(int64, uint)", asMETHOD( ScriptFile, WriteInt ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int writeUInt(uint64, uint)", asMETHOD( ScriptFile, WriteUInt ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int writeFloat(float)", asMETHOD( ScriptFile, WriteFloat ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int writeDouble(double)", asMETHOD( ScriptFile, WriteDouble ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int getPos() const", asMETHOD( ScriptFile, GetPos ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int setPos(int)", asMETHOD( ScriptFile, SetPos ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int movePos(int)", asMETHOD( ScriptFile, MovePos ), asCALL_THISCALL );
+    assert( r >= 0 );
 
-	r = engine->RegisterObjectProperty("file", "bool mostSignificantByteFirst", asOFFSET(CScriptFile, mostSignificantByteFirst)); assert( r >= 0 );
+    r = engine->RegisterObjectProperty( "file", "bool mostSignificantByteFirst", asOFFSET( ScriptFile, mostSignificantByteFirst ) );
+    assert( r >= 0 );
 
-    //////////////////////////////////////////////////////////////////////////
-    r = engine->RegisterObjectMethod("file", "string@ readWord()", asMETHOD(CScriptFile,ReadWord), asCALL_THISCALL); assert( r >= 0 );
-    r = engine->RegisterObjectMethod("file", "int readNumber()", asMETHOD(CScriptFile,ReadNumber), asCALL_THISCALL); assert( r >= 0 );
-    r = engine->RegisterObjectMethod("file", "uint8 readUint8()", asMETHOD(CScriptFile,ReadUint8), asCALL_THISCALL); assert( r >= 0 );
-    r = engine->RegisterObjectMethod("file", "uint16 readUint16()", asMETHOD(CScriptFile,ReadUint16), asCALL_THISCALL); assert( r >= 0 );
-    r = engine->RegisterObjectMethod("file", "uint32 readUint32()", asMETHOD(CScriptFile,ReadUint32), asCALL_THISCALL); assert( r >= 0 );
-    r = engine->RegisterObjectMethod("file", "uint64 readUint64()", asMETHOD(CScriptFile,ReadUint64), asCALL_THISCALL); assert( r >= 0 );
-    r = engine->RegisterObjectMethod("file", "uint readData(uint count, uint8[]& data)", asMETHOD(CScriptFile,ReadData), asCALL_THISCALL); assert( r >= 0 );
-    r = engine->RegisterObjectMethod("file", "bool writeUint8(uint8 data)", asMETHOD(CScriptFile,WriteUint8), asCALL_THISCALL); assert( r >= 0 );
-    r = engine->RegisterObjectMethod("file", "bool writeUint16(uint16 data)", asMETHOD(CScriptFile,WriteUint16), asCALL_THISCALL); assert( r >= 0 );
-    r = engine->RegisterObjectMethod("file", "bool writeUint32(uint32 data)", asMETHOD(CScriptFile,WriteUint32), asCALL_THISCALL); assert( r >= 0 );
-    r = engine->RegisterObjectMethod("file", "bool writeUint64(uint64 data)", asMETHOD(CScriptFile,WriteUint64), asCALL_THISCALL); assert( r >= 0 );
-    r = engine->RegisterObjectMethod("file", "bool writeData(uint8[]& data, uint count)", asMETHOD(CScriptFile,WriteData), asCALL_THISCALL); assert( r >= 0 );
-    //////////////////////////////////////////////////////////////////////////
+    // ////////////////////////////////////////////////////////////////////////
+    r = engine->RegisterObjectMethod( "file", "string@ readWord()", asMETHOD( ScriptFile, ReadWord ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "int readNumber()", asMETHOD( ScriptFile, ReadNumber ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "uint8 readUint8()", asMETHOD( ScriptFile, ReadUint8 ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "uint16 readUint16()", asMETHOD( ScriptFile, ReadUint16 ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "uint32 readUint32()", asMETHOD( ScriptFile, ReadUint32 ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "uint64 readUint64()", asMETHOD( ScriptFile, ReadUint64 ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "uint readData(uint count, uint8[]& data)", asMETHOD( ScriptFile, ReadData ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "bool writeUint8(uint8 data)", asMETHOD( ScriptFile, WriteUint8 ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "bool writeUint16(uint16 data)", asMETHOD( ScriptFile, WriteUint16 ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "bool writeUint32(uint32 data)", asMETHOD( ScriptFile, WriteUint32 ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "bool writeUint64(uint64 data)", asMETHOD( ScriptFile, WriteUint64 ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "file", "bool writeData(uint8[]& data, uint count)", asMETHOD( ScriptFile, WriteData ), asCALL_THISCALL );
+    assert( r >= 0 );
+    // ////////////////////////////////////////////////////////////////////////
 }
 
-//////////////////////////////////////////////////////////////////////////
-CScriptString* CScriptFile::ReadWord()
+// ////////////////////////////////////////////////////////////////////////
+ScriptString* ScriptFile::ReadWord()
 {
     if( file == 0 )
         return 0;
 
     // Read the string
-    char buf[1024];
-    fscanf(file,"%s",buf);
-    return new CScriptString(buf);
+    char buf[ 1024 ];
+    fscanf( file, "%s", buf );
+    return new ScriptString( buf );
 }
 
-int CScriptFile::ReadNumber()
+int ScriptFile::ReadNumber()
 {
     if( file == 0 )
         return 0;
 
     // Read the string
-    int result=0;
-    fscanf(file,"%d",&result);
+    int result = 0;
+    fscanf( file, "%d", &result );
     return result;
 }
 
-unsigned char CScriptFile::ReadUint8()
+unsigned char ScriptFile::ReadUint8()
 {
-    if(!file) return 0;
+    if( !file )
+        return 0;
     unsigned char data;
-    if(!fread(&data,sizeof(data),1,file)) return 0;
+    if( !fread( &data, sizeof( data ), 1, file ) )
+        return 0;
     return data;
 }
 
-unsigned short CScriptFile::ReadUint16()
+unsigned short ScriptFile::ReadUint16()
 {
-    if(!file) return 0;
+    if( !file )
+        return 0;
     unsigned short data;
-    if(!fread(&data,sizeof(data),1,file)) return 0;
+    if( !fread( &data, sizeof( data ), 1, file ) )
+        return 0;
     return data;
 }
 
-unsigned int CScriptFile::ReadUint32()
+unsigned int ScriptFile::ReadUint32()
 {
-    if(!file) return 0;
+    if( !file )
+        return 0;
     unsigned int data;
-    if(!fread(&data,sizeof(data),1,file)) return 0;
+    if( !fread( &data, sizeof( data ), 1, file ) )
+        return 0;
     return data;
 }
 
-asQWORD CScriptFile::ReadUint64()
+asQWORD ScriptFile::ReadUint64()
 {
-    if(!file) return 0;
+    if( !file )
+        return 0;
     asQWORD data;
-    if(!fread(&data,sizeof(data),1,file)) return 0;
+    if( !fread( &data, sizeof( data ), 1, file ) )
+        return 0;
     return data;
 }
 
-unsigned int CScriptFile::ReadData(unsigned int count, CScriptArray& data)
+unsigned int ScriptFile::ReadData( unsigned int count, ScriptArray& data )
 {
-    if(!file) return 0;
+    if( !file )
+        return 0;
 
-    if(!count)
+    if( !count )
     {
-        unsigned int pos=ftell(file);
-        fseek(file,0,SEEK_END);
-        count=ftell(file)-pos;
-        fseek(file,pos,SEEK_SET);
-        if(!count) return 0;
+        unsigned int pos = ftell( file );
+        fseek( file, 0, SEEK_END );
+        count = ftell( file ) - pos;
+        fseek( file, pos, SEEK_SET );
+        if( !count )
+            return 0;
     }
 
-    unsigned int size=data.GetSize();
-    data.Resize(size+count);
-    unsigned int r=(unsigned int)fread(data.At(size),1,count,file);
-    if(r<count) data.Resize(size+r);
+    unsigned int size = data.GetSize();
+    data.Resize( size + count );
+    unsigned int r = (unsigned int) fread( data.At( size ), 1, count, file );
+    if( r < count )
+        data.Resize( size + r );
     return r;
 }
 
-bool CScriptFile::WriteUint8(unsigned char data)
+bool ScriptFile::WriteUint8( unsigned char data )
 {
-    if(!file) return false;
-    return fwrite(&data,sizeof(data),1,file)!=0;
+    if( !file )
+        return false;
+    return fwrite( &data, sizeof( data ), 1, file ) != 0;
 }
 
-bool CScriptFile::WriteUint16(unsigned short data)
+bool ScriptFile::WriteUint16( unsigned short data )
 {
-    if(!file) return false;
-    return fwrite(&data,sizeof(data),1,file)!=0;
+    if( !file )
+        return false;
+    return fwrite( &data, sizeof( data ), 1, file ) != 0;
 }
 
-bool CScriptFile::WriteUint32(unsigned int data)
+bool ScriptFile::WriteUint32( unsigned int data )
 {
-    if(!file) return false;
-    return fwrite(&data,sizeof(data),1,file)!=0;
+    if( !file )
+        return false;
+    return fwrite( &data, sizeof( data ), 1, file ) != 0;
 }
 
-bool CScriptFile::WriteUint64(asQWORD data)
+bool ScriptFile::WriteUint64( asQWORD data )
 {
-    if(!file) return false;
-    return fwrite(&data,sizeof(data),1,file)!=0;
+    if( !file )
+        return false;
+    return fwrite( &data, sizeof( data ), 1, file ) != 0;
 }
 
-bool CScriptFile::WriteData(CScriptArray& data, unsigned int count)
+bool ScriptFile::WriteData( ScriptArray& data, unsigned int count )
 {
-    if(!file) return false;
-    if(!count) count=data.GetSize();
-    else if(count>data.GetSize()) return false;
-    if(!count) return false;
-    return fwrite(data.At(0),count,1,file)!=0;
+    if( !file )
+        return false;
+    if( !count )
+        count = data.GetSize();
+    else if( count > data.GetSize() )
+        return false;
+    if( !count )
+        return false;
+    return fwrite( data.At( 0 ), count, 1, file ) != 0;
 }
-//////////////////////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////////////////////
 
-void RegisterScriptFile_Generic(asIScriptEngine *engine)
+void RegisterScriptFile_Generic( asIScriptEngine* engine )
+{}
+
+void RegisterScriptFile( asIScriptEngine* engine )
 {
-	int r;
-
-	r = engine->RegisterObjectType("file", 0, asOBJ_REF); assert( r >= 0 );
-	r = engine->RegisterObjectBehaviour("file", asBEHAVE_FACTORY, "file @f()", asFUNCTION(ScriptFile_Factory_Generic), asCALL_GENERIC); assert( r >= 0 );
-    r = engine->RegisterObjectBehaviour("file", asBEHAVE_ADDREF, "void f()", asFUNCTION(ScriptFile_AddRef_Generic), asCALL_GENERIC); assert( r >= 0 );
-    r = engine->RegisterObjectBehaviour("file", asBEHAVE_RELEASE, "void f()", asFUNCTION(ScriptFile_Release_Generic), asCALL_GENERIC); assert( r >= 0 );
-
-    r = engine->RegisterObjectMethod("file", "int open(const string &in, const string &in)", asFUNCTION(ScriptFile_Open_Generic), asCALL_GENERIC); assert( r >= 0 );
-    r = engine->RegisterObjectMethod("file", "int close()", asFUNCTION(ScriptFile_Close_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int getSize() const", asFUNCTION(ScriptFile_GetSize_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "bool isEndOfFile() const", asFUNCTION(ScriptFile_IsEOF_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int readString(uint, string &out)", asFUNCTION(ScriptFile_ReadString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int readLine(string &out)", asFUNCTION(ScriptFile_ReadLine_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int64 readInt(uint)", asFUNCTION(ScriptFile_ReadInt_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "uint64 readUInt(uint)", asFUNCTION(ScriptFile_ReadUInt_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "float readFloat()", asFUNCTION(ScriptFile_ReadFloat_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "double readDouble()", asFUNCTION(ScriptFile_ReadDouble_Generic), asCALL_GENERIC); assert( r >= 0 );
-#if AS_WRITE_OPS == 1
-	r = engine->RegisterObjectMethod("file", "int writeString(const string &in)", asFUNCTION(ScriptFile_WriteString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int writeInt(int64, uint)", asFUNCTION(ScriptFile_WriteInt_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int writeUInt(uint64, uint)", asFUNCTION(ScriptFile_WriteUInt_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int writeFloat(float)", asFUNCTION(ScriptFile_WriteFloat_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int writeDouble(double)", asFUNCTION(ScriptFile_WriteDouble_Generic), asCALL_GENERIC); assert( r >= 0 );
-#endif
-	r = engine->RegisterObjectMethod("file", "int getPos() const", asFUNCTION(ScriptFile_GetPos_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int setPos(int)", asFUNCTION(ScriptFile_SetPos_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("file", "int movePos(int)", asFUNCTION(ScriptFile_MovePos_Generic), asCALL_GENERIC); assert( r >= 0 );
-
-	r = engine->RegisterObjectProperty("file", "bool mostSignificantByteFirst", asOFFSET(CScriptFile, mostSignificantByteFirst)); assert( r >= 0 );
+    if( strstr( asGetLibraryOptions(), "AS_MAX_PORTABILITY" ) )
+        RegisterScriptFile_Generic( engine );
+    else
+        RegisterScriptFile_Native( engine );
 }
 
-void RegisterScriptFile(asIScriptEngine *engine)
-{
-	if( strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") )
-		RegisterScriptFile_Generic(engine);
-	else
-		RegisterScriptFile_Native(engine);
-}
-
-CScriptFile::CScriptFile()
+ScriptFile::ScriptFile()
 {
     refCount = 1;
     file = 0;
-	mostSignificantByteFirst = false;
+    mostSignificantByteFirst = false;
 }
 
-CScriptFile::~CScriptFile()
+ScriptFile::~ScriptFile()
 {
     Close();
 }
 
-void CScriptFile::AddRef() const
+void ScriptFile::AddRef() const
 {
     ++refCount;
 }
 
-void CScriptFile::Release() const
+void ScriptFile::Release() const
 {
     if( --refCount == 0 )
         delete this;
 }
 
-int CScriptFile::Open(const std::string &filename, const std::string &mode)
+int ScriptFile::Open( const ScriptString& filename, const ScriptString& mode )
 {
     // Close the previously opened file handle
     if( file )
         Close();
 
-    std::string myFilename = filename;
+    std::string myFilename = filename.c_std_str();
 
     // Validate the mode
-	string m;
-#if AS_WRITE_OPS == 1
-    if( mode != "r" && mode != "w" && mode != "a" )
-#else
-	if( mode != "r" )
-#endif
+    string m;
+    if( mode.c_std_str() != "r" && mode.c_std_str() != "w" && mode.c_std_str() != "a" )
         return -1;
-	else
-		m = mode;
+    else
+        m = mode.c_std_str();
 
-#ifdef _WIN32_WCE
+    #ifdef _WIN32_WCE
     // no relative pathing on CE
-    char buf[MAX_PATH];
-    static TCHAR apppath[MAX_PATH] = TEXT("");
-    if (!apppath[0])
+    char         buf[ MAX_PATH ];
+    static TCHAR apppath[ MAX_PATH ] = TEXT( "" );
+    if( !apppath[ 0 ] )
     {
-        GetModuleFileName(NULL, apppath, MAX_PATH);
-        
-        int appLen = _tcslen(apppath);
-        while (appLen > 1)
+        GetModuleFileName( NULL, apppath, MAX_PATH );
+
+        int appLen = _tcslen( apppath );
+        while( appLen > 1 )
         {
-            if (apppath[appLen-1] == TEXT('\\'))
+            if( apppath[ appLen - 1 ] == TEXT( '\\' ) )
                 break;
             appLen--;
         }
 
         // Terminate the string after the trailing backslash
-        apppath[appLen] = TEXT('\0');
+        apppath[ appLen ] = TEXT( '\0' );
     }
-#ifdef _UNICODE
-    wcstombs(buf, apppath, wcslen(apppath)+1);
-#else
-    memcpy(buf, apppath, strlen(apppath));
-#endif
+    # ifdef _UNICODE
+    wcstombs( buf, apppath, wcslen( apppath ) + 1 );
+    # else
+    memcpy( buf, apppath, strlen( apppath ) );
+    # endif
     myFilename = buf + myFilename;
-#endif
+    #endif
 
 
-	// By default windows translates "\r\n" to "\n", but we want to read the file as-is.
-	m += "b";
+    // By default windows translates "\r\n" to "\n", but we want to read the file as-is.
+    m += "b";
 
     // Open the file
-#if _MSC_VER >= 1400 // MSVC 8.0 / 2005
-	fopen_s(&file, myFilename.c_str(), m.c_str());
-#else
-    file = fopen(myFilename.c_str(), m.c_str());
-#endif
+    #if _MSC_VER >= 1400 // MSVC 8.0 / 2005
+    fopen_s( &file, myFilename.c_str(), m.c_str() );
+    #else
+    file = fopen( myFilename.c_str(), m.c_str() );
+    #endif
     if( file == 0 )
         return -1;
 
     return 0;
 }
 
-int CScriptFile::Close()
+int ScriptFile::Close()
 {
     if( file == 0 )
         return -1;
 
-    fclose(file);
+    fclose( file );
     file = 0;
 
     return 0;
 }
 
-int CScriptFile::GetSize() const
+int ScriptFile::GetSize() const
 {
-	if( file == 0 )
-		return -1;
+    if( file == 0 )
+        return -1;
 
-	int pos = ftell(file);
-	fseek(file, 0, SEEK_END);
-	int size = ftell(file);
-	fseek(file, pos, SEEK_SET);
+    int pos = ftell( file );
+    fseek( file, 0, SEEK_END );
+    int size = ftell( file );
+    fseek( file, pos, SEEK_SET );
 
-	return size;
+    return size;
 }
 
-int CScriptFile::GetPos() const
+int ScriptFile::GetPos() const
 {
-	if( file == 0 )
-		return -1;
+    if( file == 0 )
+        return -1;
 
-	return ftell(file);
-}
- 
-int CScriptFile::SetPos(int pos)
-{
-	if( file == 0 )
-		return -1;
-
-	int r = fseek(file, pos, SEEK_SET);
-
-	// Return -1 on error
-	return r ? -1 : 0;
+    return ftell( file );
 }
 
-int CScriptFile::MovePos(int delta)
+int ScriptFile::SetPos( int pos )
 {
-	if( file == 0 )
-		return -1;
+    if( file == 0 )
+        return -1;
 
-	int r = fseek(file, delta, SEEK_CUR);
+    int r = fseek( file, pos, SEEK_SET );
 
-	// Return -1 on error
-	return r ? -1 : 0;
+    // Return -1 on error
+    return r ? -1 : 0;
 }
 
-int CScriptFile::ReadString(unsigned int length, std::string &str)
+int ScriptFile::MovePos( int delta )
 {
-	if( file == 0 )
-		return 0;
+    if( file == 0 )
+        return -1;
 
-	// Read the string
-	str.resize(length);
-	int size = (int)fread(&str[0], 1, length, file); 
-	str.resize(size);
+    int r = fseek( file, delta, SEEK_CUR );
 
-	return size;
+    // Return -1 on error
+    return r ? -1 : 0;
 }
 
-int CScriptFile::ReadLine(std::string &str)
+int ScriptFile::ReadString( unsigned int length, ScriptString& str )
 {
-	if( file == 0 )
-		return 0;
+    if( file == 0 )
+        return 0;
 
-	// Read until the first new-line character
-	str = "";
-	char buf[256];
+    // Read the string
+    str.resize( length );
+    int size = (int) fread( (char*) str.c_str(), 1, length, file );
+    str.resize( size );
 
-	do
-	{
-		// Get the current position so we can determine how many characters were read
-		int start = ftell(file);
-
-		// Set the last byte to something different that 0, so that we can check if the buffer was filled up
-		buf[255] = 1;
-
-		// Read the line (or first 255 characters, which ever comes first)
-        char *r = fgets(buf, 256, file);
-        if( r == 0 ) break;
-		
-		// Get the position after the read
-		int end = ftell(file);
-
-		// Add the read characters to the output buffer
-		str.append(buf, end-start);
-	}
-	while( !feof(file) && buf[255] == 0 && buf[254] != '\n' );
-
-	return int(str.size());
+    return size;
 }
 
-asINT64 CScriptFile::ReadInt(asUINT bytes)
+int ScriptFile::ReadLine( ScriptString& str )
 {
-	if( file == 0 )
-		return 0;
+    if( file == 0 )
+        return 0;
 
-	if( bytes > 8 ) bytes = 8;
-	if( bytes == 0 ) return 0;
+    // Read until the first new-line character
+    str = "";
+    char buf[ 256 ];
 
-	unsigned char buf[8];
-    size_t r = fread(buf, bytes, 1, file);
-    if( r == 0 ) return 0;
+    do
+    {
+        // Get the current position so we can determine how many characters were read
+        int start = ftell( file );
 
-	asINT64 val = 0;
-	if( mostSignificantByteFirst )
-	{
-		unsigned int n = 0;
-		for( ; n < bytes; n++ )
-			val |= asQWORD(buf[n]) << ((bytes-n-1)*8);
-		if( buf[0] & 0x80 )
-			for( ; n < 8; n++ )
-				val |= asQWORD(0xFF) << (n*8);
-	}
-	else
-	{
-		unsigned int n = 0;
-		for( ; n < bytes; n++ )
-			val |= asQWORD(buf[n]) << (n*8);
-		if( buf[0] & 0x80 )
-			for( ; n < 8; n++ )
-				val |= asQWORD(0xFF) << (n*8);
-	}
+        // Set the last byte to something different that 0, so that we can check if the buffer was filled up
+        buf[ 255 ] = 1;
 
-	return val;
+        // Read the line (or first 255 characters, which ever comes first)
+        char* r = fgets( buf, 256, file );
+        if( r == 0 )
+            break;
+
+        // Get the position after the read
+        int end = ftell( file );
+
+        // Add the read characters to the output buffer
+        str.append( buf, end - start );
+    }
+    while( !feof( file ) && buf[ 255 ] == 0 && buf[ 254 ] != '\n' );
+
+    return int( str.length() );
 }
 
-asQWORD CScriptFile::ReadUInt(asUINT bytes)
+asINT64 ScriptFile::ReadInt( asUINT bytes )
 {
-	if( file == 0 )
-		return 0;
+    if( file == 0 )
+        return 0;
 
-	if( bytes > 8 ) bytes = 8;
-	if( bytes == 0 ) return 0;
+    if( bytes > 8 )
+        bytes = 8;
+    if( bytes == 0 )
+        return 0;
 
-	unsigned char buf[8];
-    size_t r = fread(buf, bytes, 1, file);
-    if( r == 0 ) return 0;
+    unsigned char buf[ 8 ];
+    size_t        r = fread( buf, bytes, 1, file );
+    if( r == 0 )
+        return 0;
 
-	asQWORD val = 0;
-	if( mostSignificantByteFirst )
-	{
-		unsigned int n = 0;
-		for( ; n < bytes; n++ )
-			val |= asQWORD(buf[n]) << ((bytes-n-1)*8);
-	}
-	else
-	{
-		unsigned int n = 0;
-		for( ; n < bytes; n++ )
-			val |= asQWORD(buf[n]) << (n*8);
-	}
+    asINT64 val = 0;
+    if( mostSignificantByteFirst )
+    {
+        unsigned int n = 0;
+        for( ; n < bytes; n++ )
+            val |= asQWORD( buf[ n ] ) << ( ( bytes - n - 1 ) * 8 );
+        if( buf[ 0 ] & 0x80 )
+            for( ; n < 8; n++ )
+                val |= asQWORD( 0xFF ) << ( n * 8 );
+    }
+    else
+    {
+        unsigned int n = 0;
+        for( ; n < bytes; n++ )
+            val |= asQWORD( buf[ n ] ) << ( n * 8 );
+        if( buf[ 0 ] & 0x80 )
+            for( ; n < 8; n++ )
+                val |= asQWORD( 0xFF ) << ( n * 8 );
+    }
 
-	return val;
+    return val;
 }
 
-float CScriptFile::ReadFloat()
+asQWORD ScriptFile::ReadUInt( asUINT bytes )
 {
-	if( file == 0 )
-		return 0;
+    if( file == 0 )
+        return 0;
 
-	unsigned char buf[4];
-    size_t r = fread(buf, 4, 1, file);
-    if( r == 0 ) return 0;
+    if( bytes > 8 )
+        bytes = 8;
+    if( bytes == 0 )
+        return 0;
 
-	asUINT val = 0;
-	if( mostSignificantByteFirst )
-	{
-		unsigned int n = 0;
-		for( ; n < 4; n++ )
-			val |= asUINT(buf[n]) << ((3-n)*8);
-	}
-	else
-	{
-		unsigned int n = 0;
-		for( ; n < 4; n++ )
-			val |= asUINT(buf[n]) << (n*8);
-	}
+    unsigned char buf[ 8 ];
+    size_t        r = fread( buf, bytes, 1, file );
+    if( r == 0 )
+        return 0;
 
-	return *reinterpret_cast<float*>(&val);
+    asQWORD val = 0;
+    if( mostSignificantByteFirst )
+    {
+        unsigned int n = 0;
+        for( ; n < bytes; n++ )
+            val |= asQWORD( buf[ n ] ) << ( ( bytes - n - 1 ) * 8 );
+    }
+    else
+    {
+        unsigned int n = 0;
+        for( ; n < bytes; n++ )
+            val |= asQWORD( buf[ n ] ) << ( n * 8 );
+    }
+
+    return val;
 }
 
-double CScriptFile::ReadDouble()
+float ScriptFile::ReadFloat()
 {
-	if( file == 0 )
-		return 0;
+    if( file == 0 )
+        return 0;
 
-	unsigned char buf[8];
-    size_t r = fread(buf, 8, 1, file);
-    if( r == 0 ) return 0;
+    unsigned char buf[ 4 ];
+    size_t        r = fread( buf, 4, 1, file );
+    if( r == 0 )
+        return 0;
 
-	asQWORD val = 0;
-	if( mostSignificantByteFirst )
-	{
-		unsigned int n = 0;
-		for( ; n < 8; n++ )
-			val |= asQWORD(buf[n]) << ((7-n)*8);
-	}
-	else
-	{
-		unsigned int n = 0;
-		for( ; n < 8; n++ )
-			val |= asQWORD(buf[n]) << (n*8);
-	}
+    asUINT val = 0;
+    if( mostSignificantByteFirst )
+    {
+        unsigned int n = 0;
+        for( ; n < 4; n++ )
+            val |= asUINT( buf[ n ] ) << ( ( 3 - n ) * 8 );
+    }
+    else
+    {
+        unsigned int n = 0;
+        for( ; n < 4; n++ )
+            val |= asUINT( buf[ n ] ) << ( n * 8 );
+    }
 
-	return *reinterpret_cast<double*>(&val);
+    return *reinterpret_cast< float* >( &val );
 }
 
-bool CScriptFile::IsEOF() const
+double ScriptFile::ReadDouble()
 {
-	if( file == 0 )
-		return true;
+    if( file == 0 )
+        return 0;
 
-	return feof(file) ? true : false;
+    unsigned char buf[ 8 ];
+    size_t        r = fread( buf, 8, 1, file );
+    if( r == 0 )
+        return 0;
+
+    asQWORD val = 0;
+    if( mostSignificantByteFirst )
+    {
+        unsigned int n = 0;
+        for( ; n < 8; n++ )
+            val |= asQWORD( buf[ n ] ) << ( ( 7 - n ) * 8 );
+    }
+    else
+    {
+        unsigned int n = 0;
+        for( ; n < 8; n++ )
+            val |= asQWORD( buf[ n ] ) << ( n * 8 );
+    }
+
+    return *reinterpret_cast< double* >( &val );
 }
 
-#if AS_WRITE_OPS == 1
-int CScriptFile::WriteString(const std::string &str)
+bool ScriptFile::IsEOF() const
 {
-	if( file == 0 )
-		return -1;
+    if( file == 0 )
+        return true;
 
-	// Write the entire string
-	size_t r = fwrite(&str[0], 1, str.length(), file);
-
-	return int(r);
+    return feof( file ) ? true : false;
 }
 
-int CScriptFile::WriteInt(asINT64 val, asUINT bytes)
+int ScriptFile::WriteString( const ScriptString& str )
 {
-	if( file == 0 )
-		return 0;
+    if( file == 0 )
+        return -1;
 
-	unsigned char buf[8];
-	if( mostSignificantByteFirst )
-	{
-		for( unsigned int n = 0; n < bytes; n++ )
-			buf[n] = (val >> ((bytes-n-1)*8)) & 0xFF;
-	}
-	else
-	{
-		for( unsigned int n = 0; n < bytes; n++ )
-			buf[n] = (val >> (n*8)) & 0xFF;
-	}
+    // Write the entire string
+    size_t r = fwrite( str.c_str(), 1, str.length(), file );
 
-	size_t r = fwrite(&buf, bytes, 1, file);
-	return int(r);
+    return int(r);
 }
 
-int CScriptFile::WriteUInt(asQWORD val, asUINT bytes)
+int ScriptFile::WriteInt( asINT64 val, asUINT bytes )
 {
-	if( file == 0 )
-		return 0;
+    if( file == 0 )
+        return 0;
 
-	unsigned char buf[8];
-	if( mostSignificantByteFirst )
-	{
-		for( unsigned int n = 0; n < bytes; n++ )
-			buf[n] = (val >> ((bytes-n-1)*8)) & 0xFF;
-	}
-	else
-	{
-		for( unsigned int n = 0; n < bytes; n++ )
-			buf[n] = (val >> (n*8)) & 0xFF;
-	}
+    unsigned char buf[ 8 ];
+    if( mostSignificantByteFirst )
+    {
+        for( unsigned int n = 0; n < bytes; n++ )
+            buf[ n ] = ( val >> ( ( bytes - n - 1 ) * 8 ) ) & 0xFF;
+    }
+    else
+    {
+        for( unsigned int n = 0; n < bytes; n++ )
+            buf[ n ] = ( val >> ( n * 8 ) ) & 0xFF;
+    }
 
-	size_t r = fwrite(&buf, bytes, 1, file);
-	return int(r);
+    size_t r = fwrite( &buf, bytes, 1, file );
+    return int(r);
 }
 
-int CScriptFile::WriteFloat(float f)
+int ScriptFile::WriteUInt( asQWORD val, asUINT bytes )
 {
-	if( file == 0 )
-		return 0;
+    if( file == 0 )
+        return 0;
 
-	unsigned char buf[4];
-	asUINT val = *reinterpret_cast<asUINT*>(&f);
-	if( mostSignificantByteFirst )
-	{
-		for( unsigned int n = 0; n < 4; n++ )
-			buf[n] = (val >> ((3-n)*4)) & 0xFF;
-	}
-	else
-	{
-		for( unsigned int n = 0; n < 4; n++ )
-			buf[n] = (val >> (n*8)) & 0xFF;
-	}
+    unsigned char buf[ 8 ];
+    if( mostSignificantByteFirst )
+    {
+        for( unsigned int n = 0; n < bytes; n++ )
+            buf[ n ] = ( val >> ( ( bytes - n - 1 ) * 8 ) ) & 0xFF;
+    }
+    else
+    {
+        for( unsigned int n = 0; n < bytes; n++ )
+            buf[ n ] = ( val >> ( n * 8 ) ) & 0xFF;
+    }
 
-	size_t r = fwrite(&buf, 4, 1, file);
-	return int(r);
+    size_t r = fwrite( &buf, bytes, 1, file );
+    return int(r);
 }
 
-int CScriptFile::WriteDouble(double d)
+int ScriptFile::WriteFloat( float f )
 {
-	if( file == 0 )
-		return 0;
+    if( file == 0 )
+        return 0;
 
-	unsigned char buf[8];
-	asQWORD val = *reinterpret_cast<asQWORD*>(&d);
-	if( mostSignificantByteFirst )
-	{
-		for( unsigned int n = 0; n < 8; n++ )
-			buf[n] = (val >> ((7-n)*8)) & 0xFF;
-	}
-	else
-	{
-		for( unsigned int n = 0; n < 8; n++ )
-			buf[n] = (val >> (n*8)) & 0xFF;
-	}
+    unsigned char buf[ 4 ];
+    asUINT        val = *reinterpret_cast< asUINT* >( &f );
+    if( mostSignificantByteFirst )
+    {
+        for( unsigned int n = 0; n < 4; n++ )
+            buf[ n ] = ( val >> ( ( 3 - n ) * 4 ) ) & 0xFF;
+    }
+    else
+    {
+        for( unsigned int n = 0; n < 4; n++ )
+            buf[ n ] = ( val >> ( n * 8 ) ) & 0xFF;
+    }
 
-	size_t r = fwrite(&buf, 8, 1, file);
-	return int(r);
+    size_t r = fwrite( &buf, 4, 1, file );
+    return int(r);
 }
-#endif
 
+int ScriptFile::WriteDouble( double d )
+{
+    if( file == 0 )
+        return 0;
 
-END_AS_NAMESPACE
+    unsigned char buf[ 8 ];
+    asQWORD       val = *reinterpret_cast< asQWORD* >( &d );
+    if( mostSignificantByteFirst )
+    {
+        for( unsigned int n = 0; n < 8; n++ )
+            buf[ n ] = ( val >> ( ( 7 - n ) * 8 ) ) & 0xFF;
+    }
+    else
+    {
+        for( unsigned int n = 0; n < 8; n++ )
+            buf[ n ] = ( val >> ( n * 8 ) ) & 0xFF;
+    }
+
+    size_t r = fwrite( &buf, 8, 1, file );
+    return int(r);
+}

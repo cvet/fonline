@@ -191,6 +191,9 @@
     <ResourceCompile Include="Server.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\Source\FileSystem.cpp" />
     <ClCompile Include="..\Source\Zlib\adler32.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -533,24 +536,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptmath3d.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptstring_utils.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\Source\AngelScript\Preprocessor\lex.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
       </PrecompiledHeader>
@@ -589,6 +574,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Source\AngelScript\scriptstring.h" />
     <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\Zlib\crc32.h" />
     <ClInclude Include="..\Source\Zlib\deflate.h" />
@@ -688,8 +674,6 @@
     <ClInclude Include="..\Source\AngelScript\scriptdictionary.h" />
     <ClInclude Include="..\Source\AngelScript\scriptfile.h" />
     <ClInclude Include="..\Source\AngelScript\scriptmath.h" />
-    <ClInclude Include="..\Source\AngelScript\scriptmath3d.h" />
-    <ClInclude Include="..\Source\AngelScript\scriptstring.h" />
     <ClInclude Include="..\Source\AngelScript\Preprocessor\define_table.h" />
     <ClInclude Include="..\Source\AngelScript\Preprocessor\lex.h" />
     <ClInclude Include="..\Source\AngelScript\Preprocessor\lexem_list.h" />

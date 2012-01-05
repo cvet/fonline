@@ -3,88 +3,105 @@
 
 #include "angelscript.h"
 
-BEGIN_AS_NAMESPACE
-
-struct SArrayBuffer;
-
-class CScriptArray
+class ScriptArray
 {
 public:
-	CScriptArray(asUINT length, asIObjectType *ot);
-	CScriptArray(asUINT length, void *defVal, asIObjectType *ot);
-	virtual ~CScriptArray();
+    #ifdef FONLINE_DLL
+    static ScriptArray& Create( const char* type )
+    {
+        static int   typeId = ASEngine->GetTypeIdByDecl( std::string( type ).append( "[]" ).c_str() );
+        ScriptArray* scriptArray = (ScriptArray*) ASEngine->CreateScriptObject( typeId );
+        return *scriptArray;
+    }
+protected:
+    #endif
 
-	void AddRef() const;
-	void Release() const;
+    ScriptArray();
+    ScriptArray( const ScriptArray& );
+    ScriptArray( asUINT length, asIObjectType* ot );
+    ScriptArray( asUINT length, void* defVal, asIObjectType* ot );
+    virtual ~ScriptArray();
 
-	// Type information
-	asIObjectType *GetArrayObjectType() const;
-	int            GetArrayTypeId() const;
-	int            GetElementTypeId() const;
+public:
+    virtual void AddRef() const;
+    virtual void Release() const;
 
-	void   Resize(asUINT numElements);
-	void   Grow(asUINT numElements);
-	void   Reduce(asUINT numElements);
-	asUINT GetSize() const;
-	int    GetElementSize() const;
+    virtual asIObjectType* GetArrayObjectType() const;
+    virtual int            GetArrayTypeId() const;
+    virtual int            GetElementTypeId() const;
 
-	// Get a pointer to an element. Returns 0 if out of bounds
-	void  *At(asUINT index);
-	void  *First();
-	void  *Last();
+    virtual void   Resize( asUINT numElements );
+    virtual void   Grow( asUINT numElements );
+    virtual void   Reduce( asUINT numElements );
+    virtual asUINT GetSize() const;
+    virtual int    GetElementSize() const;
 
-	CScriptArray &operator=(const CScriptArray&);
+    virtual void* At( asUINT index );
+    virtual void* First();
+    virtual void* Last();
 
-	void InsertAt(asUINT index, void *value);
-	void RemoveAt(asUINT index);
-	void InsertFirst(void *value);
-	void RemoveFirst();
-	void InsertLast(void *value);
-	void RemoveLast();
-	void SortAsc();
-	void SortDesc();
-	void SortAsc(asUINT index, asUINT count);
-	void SortDesc(asUINT index, asUINT count);
-	void Sort(asUINT index, asUINT count, bool asc);
-	void Reverse();
-	int  Find(void *value);
-	int  Find(asUINT index, void *value);
+    ScriptArray& operator=( const ScriptArray& other )
+    {
+        Assign( other );
+        return *this;
+    }
+    virtual void Assign( const ScriptArray& other );
 
-	// GC methods
-	int  GetRefCount();
-	void SetFlag();
-	bool GetFlag();
-	void EnumReferences(asIScriptEngine *engine);
-	void ReleaseAllHandles(asIScriptEngine *engine);
+    virtual void InsertAt( asUINT index, void* value );
+    virtual void RemoveAt( asUINT index );
+    virtual void InsertFirst( void* value );
+    virtual void RemoveFirst();
+    virtual void InsertLast( void* value );
+    virtual void RemoveLast();
+    virtual void SortAsc();
+    virtual void SortDesc();
+    virtual void SortAsc( asUINT index, asUINT count );
+    virtual void SortDesc( asUINT index, asUINT count );
+    virtual void Sort( asUINT index, asUINT count, bool asc );
+    virtual void Reverse();
+    virtual int  Find( void* value );
+    virtual int  Find( asUINT index, void* value );
+
+    virtual int  GetRefCount();
+    virtual void SetFlag();
+    virtual bool GetFlag();
+    virtual void EnumReferences( asIScriptEngine* engine );
+    virtual void ReleaseAllHandles( asIScriptEngine* engine );
 
 protected:
-	mutable int       refCount;
-	mutable bool      gcFlag;
-	asIObjectType    *objType;
-	SArrayBuffer     *buffer;
-	int               elementSize;
-	int               cmpFuncId;
-	int               eqFuncId;
-	int               subTypeId;
+    struct ArrayBuffer
+    {
+        asDWORD numElements;
+        asBYTE  data[ 1 ];
+    };
 
-	bool  Less(const void *a, const void *b, bool asc, asIScriptContext *ctx);
-	void *GetArrayItemPointer(int index);
-	void *GetDataPointer(void *buffer);
-	void  Copy(void *dst, void *src);
-	void  Precache();
-	bool  CheckMaxSize(asUINT numElements);
-	void  Resize(int delta, asUINT at);
-	void  SetValue(asUINT index, void *value);
-	void  CreateBuffer(SArrayBuffer **buf, asUINT numElements);
-	void  DeleteBuffer(SArrayBuffer *buf);
-	void  CopyBuffer(SArrayBuffer *dst, SArrayBuffer *src);
-	void  Construct(SArrayBuffer *buf, asUINT start, asUINT end);
-	void  Destruct(SArrayBuffer *buf, asUINT start, asUINT end);
-	bool  Equals(const void *a, const void *b, asIScriptContext *ctx);
+    mutable int    refCount;
+    mutable bool   gcFlag;
+    asIObjectType* objType;
+    ArrayBuffer*   buffer;
+    int            elementSize;
+    int            cmpFuncId;
+    int            eqFuncId;
+    int            subTypeId;
+
+    virtual bool  Less( const void* a, const void* b, bool asc, asIScriptContext* ctx );
+    virtual void* GetArrayItemPointer( int index );
+    virtual void* GetDataPointer( void* buffer );
+    virtual void  Copy( void* dst, void* src );
+    virtual void  Precache();
+    virtual bool  CheckMaxSize( asUINT numElements );
+    virtual void  Resize( int delta, asUINT at );
+    virtual void  SetValue( asUINT index, void* value );
+    virtual void  CreateBuffer( ArrayBuffer** buf, asUINT numElements );
+    virtual void  DeleteBuffer( ArrayBuffer* buf );
+    virtual void  CopyBuffer( ArrayBuffer* dst, ArrayBuffer* src );
+    virtual void  Construct( ArrayBuffer* buf, asUINT start, asUINT end );
+    virtual void  Destruct( ArrayBuffer* buf, asUINT start, asUINT end );
+    virtual bool  Equals( const void* a, const void* b, asIScriptContext* ctx );
 };
 
-void RegisterScriptArray(asIScriptEngine *engine, bool defaultArray);
-
-END_AS_NAMESPACE
+#ifndef FONLINE_DLL
+void RegisterScriptArray( asIScriptEngine* engine, bool defaultArray );
+#endif
 
 #endif

@@ -832,13 +832,13 @@ void GetClientOptions()
     GETOPTIONS_CMD_LINE_STR( buf, "-ClientPath" );
     FileManager::FormatPath( buf );
     GameOpt.ClientPath = buf;
-    if( GameOpt.ClientPath.length() && GameOpt.ClientPath[ GameOpt.ClientPath.length() - 1 ] != DIR_SLASH_C )
+    if( GameOpt.ClientPath.length() && GameOpt.ClientPath.c_str()[ GameOpt.ClientPath.length() - 1 ] != DIR_SLASH_C )
         GameOpt.ClientPath += DIR_SLASH_S;
     cfg_mapper.GetStr( "ServerPath", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ServerPath" );
     FileManager::FormatPath( buf );
     GameOpt.ServerPath = buf;
-    if( GameOpt.ServerPath.length() && GameOpt.ServerPath[ GameOpt.ServerPath.length() - 1 ] != DIR_SLASH_C )
+    if( GameOpt.ServerPath.length() && GameOpt.ServerPath.c_str()[ GameOpt.ServerPath.length() - 1 ] != DIR_SLASH_C )
         GameOpt.ServerPath += DIR_SLASH_S;
 
     FileManager::SetDataPath( GameOpt.ClientPath.c_str() );
@@ -1295,8 +1295,7 @@ GameOptions::GameOptions()
     MapRoofSkipSize = 2;
     MapCameraAngle = 25.7f;
     MapSmoothPath = true;
-    MapDataPrefix = "art/geometry/fallout_";
-    MapDataPrefixRefCounter = 1;
+    MapDataPrefix      = "art/geometry/fallout_";
 
     // Client and Mapper
     Quit = false;
@@ -1332,24 +1331,18 @@ GameOptions::GameOptions()
     FlushVal = 100;
     BaseTexture = 256;
     Light = 0;
-    Host = "localhost";
-    HostRefCounter = 1;
+    Host      = "localhost";
     Port = 0;
     ProxyType = 0;
-    ProxyHost;
-    ProxyHostRefCounter = 1;
+    ProxyHost      = "";
     ProxyPort = 0;
-    ProxyUser;
-    ProxyUserRefCounter = 1;
-    ProxyPass;
-    ProxyPassRefCounter = 1;
-    Name = "";
-    NameRefCounter = 1;
+    ProxyUser      = "";
+    ProxyPass      = "";
+    Name      = "";
     ScrollDelay = 10;
     ScrollStep = 1;
     ScrollCheck = true;
-    FoDataPath = "";
-    FoDataPathRefCounter = 1;
+    FoDataPath      = "";
     FixedFPS = 100;
     MsgboxInvert = false;
     ChangeLang = CHANGE_LANG_CTRL_SHIFT;
@@ -1371,8 +1364,7 @@ GameOptions::GameOptions()
     DisableMouseEvents = false;
     DisableKeyboardEvents = false;
     HidePassword = true;
-    PlayerOffAppendix = "_off";
-    PlayerOffAppendixRefCounter = 1;
+    PlayerOffAppendix      = "_off";
     CombatMessagesType = 0;
     DisableDrawScreens = false;
     Animation3dSmoothTime = 250;
@@ -1387,18 +1379,15 @@ GameOptions::GameOptions()
     AlwaysRun = false;
     AlwaysRunMoveDist = 1;
     AlwaysRunUseDist = 5;
-    KeyboardRemap = "";
-    KeyboardRemapRefCounter = 1;
+    KeyboardRemap      = "";
     CritterFidgetTime = 50000;
     Anim2CombatBegin = 0;
     Anim2CombatIdle = 0;
     Anim2CombatEnd = 0;
 
     // Mapper
-    ClientPath = DIR_SLASH_SD;
-    ClientPathRefCounter = 1;
-    ServerPath = DIR_SLASH_SD;
-    ServerPathRefCounter = 1;
+    ClientPath      = DIR_SLASH_SD;
+    ServerPath      = DIR_SLASH_SD;
     ShowCorners = false;
     ShowSpriteCuts = false;
     ShowDrawOrder = false;

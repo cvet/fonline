@@ -1602,7 +1602,7 @@ void FOServer::Process_CreateClient( Client* cl )
     uint disallow_msg_num = 0, disallow_str_num = 0;
     if( Script::PrepareContext( ServerFunctions.PlayerRegistration, _FUNC_, cl->Name ) )
     {
-        CScriptString* name = new CScriptString( cl->Name );
+        ScriptString* name = new ScriptString( cl->Name );
         Script::SetArgUInt( cl->GetIp() );
         Script::SetArgObject( name );
         Script::SetArgAddress( &disallow_msg_num );
@@ -1932,7 +1932,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     uint disallow_msg_num = 0, disallow_str_num = 0;
     if( Script::PrepareContext( ServerFunctions.PlayerLogin, _FUNC_, data.ClientName ) )
     {
-        CScriptString* name = new CScriptString( data.ClientName );
+        ScriptString* name = new ScriptString( data.ClientName );
         Script::SetArgUInt( cl->GetIp() );
         Script::SetArgObject( name );
         Script::SetArgUInt( data.ClientId );
@@ -4217,7 +4217,7 @@ void FOServer::Process_ScreenAnswer( Client* cl )
         return;
     Script::SetArgObject( cl );
     Script::SetArgUInt( answer_i );
-    CScriptString* lexems = new CScriptString( answer_s );
+    ScriptString* lexems = new ScriptString( answer_s );
     Script::SetArgObject( lexems );
     Script::RunPrepared();
     lexems->Release();
@@ -4261,16 +4261,16 @@ void FOServer::Process_Combat( Client* cl )
 
 void FOServer::Process_RunServerScript( Client* cl )
 {
-    uint           msg_len;
-    bool           unsafe = false;
-    ushort         script_name_len;
-    char           script_name[ MAX_SCRIPT_NAME * 2 + 2 ] = { 0 };
-    int            p0, p1, p2;
-    ushort         p3len;
-    char           p3str[ MAX_FOTEXT ];
-    CScriptString* p3 = NULL;
-    ushort         p4size;
-    CScriptArray*  p4 = NULL;
+    uint          msg_len;
+    bool          unsafe = false;
+    ushort        script_name_len;
+    char          script_name[ MAX_SCRIPT_NAME * 2 + 2 ] = { 0 };
+    int           p0, p1, p2;
+    ushort        p3len;
+    char          p3str[ MAX_FOTEXT ];
+    ScriptString* p3 = NULL;
+    ushort        p4size;
+    ScriptArray*  p4 = NULL;
 
     cl->Bin >> msg_len;
     cl->Bin >> unsafe;
@@ -4309,7 +4309,7 @@ void FOServer::Process_RunServerScript( Client* cl )
     {
         cl->Bin.Pop( p3str, p3len );
         p3str[ p3len ] = 0;
-        p3 = new CScriptString( p3str );
+        p3 = new ScriptString( p3str );
     }
     cl->Bin >> p4size;
     if( p4size )
@@ -4541,9 +4541,9 @@ void FOServer::Process_RuleGlobal( Client* cl )
 
         if( loc->Proto->ScriptBindId > 0 )
         {
-            uchar         count = 0;
-            uchar         show[ 0x100 ];
-            CScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
+            uchar        count = 0;
+            uchar        show[ 0x100 ];
+            ScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
             if( !arr )
                 break;
             for( uchar i = 0, j = (uchar) loc->Proto->Entrance.size(); i < j; i++ )
@@ -4600,7 +4600,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
             break;
         if( loc->Proto->ScriptBindId > 0 )
         {
-            CScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
+            ScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
             if( !arr )
                 break;
             bool result = MapMngr.GM_CheckEntrance( loc, arr, entrance );

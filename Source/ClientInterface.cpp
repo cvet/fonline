@@ -1488,7 +1488,7 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
     if( Script::PrepareContext( ClientFunctions.ItemsCollection, _FUNC_, "Game" ) )
     {
         // Create script array
-        CScriptArray* arr = Script::CreateArray( "ItemCl@[]" );
+        ScriptArray* arr = Script::CreateArray( "ItemCl@[]" );
         if( arr )
         {
             // Clone to script array
@@ -3320,7 +3320,9 @@ void FOClient::LogKeyDown( uchar dik )
 
     if( LogFocus == IFACE_LOG_NAME )
     {
-        Keyb::GetChar( dik, GameOpt.Name, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        string tmp_str = GameOpt.Name.c_std_str();
+        Keyb::GetChar( dik, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        GameOpt.Name = tmp_str;
     }
     else if( LogFocus == IFACE_LOG_PASS )
     {
@@ -3389,10 +3391,12 @@ void FOClient::LogTryConnect()
 {
     if( !Singleplayer )
     {
-        while( !GameOpt.Name.empty() && GameOpt.Name[ 0 ] == ' ' )
-            GameOpt.Name.erase( 0, 1 );
-        while( !GameOpt.Name.empty() && GameOpt.Name[ GameOpt.Name.length() - 1 ] == ' ' )
-            GameOpt.Name.erase( GameOpt.Name.length() - 1, 1 );
+        string tmp_str = GameOpt.Name.c_std_str();
+        while( !tmp_str.empty() && tmp_str[ 0 ] == ' ' )
+            tmp_str.erase( 0, 1 );
+        while( !tmp_str.empty() && tmp_str[ tmp_str.length() - 1 ] == ' ' )
+            tmp_str.erase( tmp_str.length() - 1, 1 );
+        GameOpt.Name = tmp_str;
 
         if( GameOpt.Name.length() < MIN_NAME || GameOpt.Name.length() < GameOpt.MinNameLength ||
             GameOpt.Name.length() > MAX_NAME || GameOpt.Name.length() > GameOpt.MaxNameLength )
@@ -4354,11 +4358,11 @@ void FOClient::FormatTags( char* text, size_t text_len, CritterCl* player, Critt
                 Str::Copy( tag, "<script function not found>" );
                 if( bind_id > 0 && Script::PrepareContext( bind_id, _FUNC_, "Game" ) )
                 {
-                    CScriptString* script_lexems = new CScriptString( lexems ? lexems : "" );
+                    ScriptString* script_lexems = new ScriptString( lexems ? lexems : "" );
                     Script::SetArgObject( script_lexems );
                     if( Script::RunPrepared() )
                     {
-                        CScriptString* result = (CScriptString*) Script::GetReturnedObject();
+                        ScriptString* result = (ScriptString*) Script::GetReturnedObject();
                         if( result )
                         {
                             Str::Copy( tag, result->c_str() );
@@ -5327,7 +5331,7 @@ int FOClient::GetActiveScreen( IntVec** screens /* = NULL */ )
 
     if( Script::PrepareContext( ClientFunctions.GetActiveScreens, _FUNC_, "Game" ) )
     {
-        CScriptArray* arr = Script::CreateArray( "int[]" );
+        ScriptArray* arr = Script::CreateArray( "int[]" );
         if( arr )
         {
             Script::SetArgObject( arr );
@@ -7991,11 +7995,17 @@ void FOClient::ChaNameKeyDown( uchar dik )
     switch( IfaceHold )
     {
     case IFACE_CHA_NAME_NAME:
-        Keyb::GetChar( dik, RegNewCr->Name, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
-        break;
+    {
+        string tmp_str = RegNewCr->Name.c_std_str();
+        Keyb::GetChar( dik, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        RegNewCr->Name = tmp_str;
+    }
+    break;
     case IFACE_CHA_NAME_PASS:
+    {
         Keyb::GetChar( dik, RegNewCr->Pass, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
-        break;
+    }
+    break;
     default:
         break;
     }
@@ -9984,7 +9994,7 @@ void FOClient::ElevatorGenerate( uint param )
 
     if( !Script::PrepareContext( ClientFunctions.GetElevator, _FUNC_, "Game" ) )
         return;
-    CScriptArray* arr = Script::CreateArray( "int[]" );
+    ScriptArray* arr = Script::CreateArray( "int[]" );
     if( !arr )
         return;
     Script::SetArgUInt( param );

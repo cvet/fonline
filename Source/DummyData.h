@@ -1339,7 +1339,6 @@ struct GameOptions
     int MapCameraAngle;
     int MapSmoothPath;
     int MapDataPrefix;
-    int MapDataPrefixRefCounter;
 
     // Client
     int Quit;
@@ -1376,29 +1375,20 @@ struct GameOptions
     int BaseTexture;
     int Light;
     int Host;
-    int HostRefCount;
     int Port;
     int ProxyType;
     int ProxyHost;
-    int ProxyHostRefCount;
     int ProxyPort;
     int ProxyUser;
-    int ProxyUserRefCount;
     int ProxyPass;
-    int ProxyPassRefCount;
     int Name;
-    int NameRefCount;
     int ScrollDelay;
     int ScrollStep;
     int ScrollCheck;
     int MasterPath;
-    int MasterPathRefCount;
     int CritterPath;
-    int CritterPathRefCount;
     int FoPatchPath;
-    int FoPatchPathRefCount;
     int FoDataPath;
-    int FoDataPathRefCount;
     int FixedFPS;
     int MsgboxInvert;
     int ChangeLang;
@@ -1421,7 +1411,6 @@ struct GameOptions
     int DisableKeyboardEvents;
     int HidePassword;
     int PlayerOffAppendix;
-    int PlayerOffAppendixRefCount;
     int CombatMessagesType;
     int DisableDrawScreens;
     int Animation3dSmoothTime;
@@ -1443,9 +1432,7 @@ struct GameOptions
 
     // Mapper
     int ClientPath;
-    int ClientPathRefCount;
     int ServerPath;
-    int ServerPathRefCount;
     int ShowCorners;
     int ShowSpriteCuts;
     int ShowDrawOrder;
