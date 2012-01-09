@@ -6251,7 +6251,6 @@ void FOClient::Net_OnContainerInfo()
         if( item_id && proto_item )
         {
             Item item;
-            memzero( &item, sizeof( item ) );
             item.Init( proto_item );
             item.Id = item_id;
             item.Data = data;
