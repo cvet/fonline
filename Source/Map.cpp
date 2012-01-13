@@ -2249,7 +2249,7 @@ bool SortSequence( Critter* cr1, Critter* cr2 )
             int lk1 = cr1->GetParam( ST_LUCK );
             int lk2 = cr2->GetParam( ST_LUCK );
             if( lk1 == lk2 )
-                return rnd;
+                return cr1->Data.Id * 2654435761 < cr2->Data.Id * 2654435761;
             else
                 return lk1 > lk2;
         }
