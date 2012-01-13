@@ -405,6 +405,7 @@ struct ServerScriptFunctions
     int TurnBasedBegin;
     int TurnBasedEnd;
     int TurnBasedProcess;
+    int TurnBasedSequence;
     int WorldSave;
     int PlayerRegistration;
     int PlayerLogin;

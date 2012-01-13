@@ -922,12 +922,15 @@ int FOClient::InitIface()
     SaveLoadSlotsMax = 0;
     SaveLoadDataSlots.clear();
     // Save/load surface creating
-    if( !SaveLoadDraft && Singleplayer )
+    if( Singleplayer )
     {
         #ifdef FO_D3D
-        if( FAILED( SprMngr.GetDevice()->CreateRenderTarget( SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT,
-                                                             D3DFMT_A8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &SaveLoadDraft, NULL ) ) )
+        if( !SaveLoadDraft && FAILED( SprMngr.GetDevice()->CreateRenderTarget( SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT,
+                                                                               D3DFMT_A8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &SaveLoadDraft, NULL ) ) )
             WriteLog( "Create save/load draft surface fail.\n" );
+        #else
+        if( !SaveLoadDraft.FBO )
+            SprMngr.CreateRenderTarget( SaveLoadDraft, false, false, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, true );
         #endif
     }
     SaveLoadProcessDraft = false;
@@ -11441,11 +11444,13 @@ void FOClient::SaveLoadCollect()
         FileManager::ExtractFileName( fname.c_str(), name );
         if( Str::Length( name ) < 4 )
             continue;
-        name[ Str::Length( name ) - 3 ] = 0;
+        name[ Str::Length( name ) - 3 ] = 0; // Cut '.fo'
 
         // Extract full path
-        char fpath[ MAX_FOPATH ];
-        FileManager::GetFullPath( name, PT_SAVE, fpath );
+        char fname_ex[ MAX_FOPATH ];
+        FileManager::GetFullPath( name, PT_SAVE, fname_ex );
+        ResolvePath( fname_ex );
+        Str::Append( fname_ex, ".fo" );
 
         // Convert time
         DateTime dt;
@@ -11457,7 +11462,7 @@ void FOClient::SaveLoadCollect()
         slot.Info = Str::FormatBuf( "%s\n%02d.%02d.%04d %02d:%02d:%02d\n", name, dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
         slot.InfoExt = Str::FormatBuf( "%s\n%02d %3s %04d %02d%02d\n%s", crname,
                                        day, MsgGame->GetStr( STR_MONTH( month ) ), year, hour, minute, MsgGM->GetStr( STR_MAP_NAME_( map_pid ) ) );
-        slot.FileName = fpath;
+        slot.FileName = fname_ex;
         slot.RealTime = tw;
         slot.PicData = pic_data;
         SaveLoadDataSlots.push_back( slot );
@@ -11485,13 +11490,16 @@ void FOClient::SaveLoadCollect()
 void FOClient::SaveLoadSaveGame( const char* name )
 {
     // Get name of new save
-    char fpath[ MAX_FOPATH ];
-    FileManager::GetFullPath( name, PT_SAVE, fpath );
+    char fname[ MAX_FOPATH ];
+    FileManager::GetFullPath( NULL, PT_SAVE, fname );
+    ResolvePath( fname );
+    Str::Append( fname, name );
+    Str::Append( fname, ".fo" );
 
     // Delete old files
     if( SaveLoadFileName != "" )
         FileDelete( SaveLoadFileName.c_str() );
-    FileDelete( fpath );
+    FileDelete( fname );
 
     // Get image data from surface
     UCharVec pic_data;
@@ -11505,11 +11513,33 @@ void FOClient::SaveLoadSaveGame( const char* name )
             memcpy( &pic_data[ 0 ], img->GetBufferPointer(), img->GetBufferSize() );
         }
         SAFEREL( img );
+        #else
+        // Get data
+        uchar* data = new uchar[ SAVE_LOAD_IMAGE_WIDTH * SAVE_LOAD_IMAGE_HEIGHT * 3 ];
+        GL( glBindTexture( GL_TEXTURE_2D, SaveLoadDraft.TargetTexture->Id ) );
+        GL( glGetTexImage( GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, data ) );
+        GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
+
+        // Load to DevIL
+        ILuint img = 0;
+        ilGenImages( 1, &img );
+        ilBindImage( img );
+        if( ilTexImage( SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, 1, 3, IL_RGB, IL_UNSIGNED_BYTE, data ) )
+        {
+            // Save to memory
+            uint size = ilSaveL( IL_BMP, NULL, 0 );
+            pic_data.resize( size );
+            ilSaveL( IL_BMP, &pic_data[ 0 ], size );
+        }
+
+        // Clean up
+        ilDeleteImages( 1, &img );
+        delete[] data;
         #endif
     }
 
     // Send request
-    Net_SendSaveLoad( true, fpath, &pic_data );
+    Net_SendSaveLoad( true, fname, &pic_data );
 
     // Close save/load screen
     ShowScreen( SCREEN_NONE );
@@ -11517,14 +11547,28 @@ void FOClient::SaveLoadSaveGame( const char* name )
 
 void FOClient::SaveLoadFillDraft()
 {
+    SaveLoadProcessDraft = false;
+    SaveLoadDraftValid = false;
     #ifdef FO_D3D
     // Fill game preview draft
     Device_ device = SprMngr.GetDevice();
     LPDIRECT3DSURFACE9 rt = NULL;
-    SaveLoadDraftValid = ( SUCCEEDED( device->GetRenderTarget( 0, &rt ) ) &&
-                           SUCCEEDED( device->StretchRect( rt, NULL, SaveLoadDraft, NULL, D3DTEXF_LINEAR ) ) );
+    if( SUCCEEDED( device->GetRenderTarget( 0, &rt ) ) && SUCCEEDED( device->StretchRect( rt, NULL, SaveLoadDraft, NULL, D3DTEXF_LINEAR ) ) )
+        SaveLoadDraftValid = true;
     SAFEREL( rt );
-    SaveLoadProcessDraft = false;
+    #else
+    RenderTarget rt;
+    if( SprMngr.CreateRenderTarget( rt, false, false, MainWindow->w(), MainWindow->h(), true ) )
+    {
+        GL( glBindTexture( GL_TEXTURE_2D, rt.TargetTexture->Id ) );
+        GL( glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, MainWindow->w(), MainWindow->h() ) );
+        GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
+        SprMngr.PushRenderTarget( SaveLoadDraft );
+        SprMngr.DrawRenderTarget( rt, false );
+        SprMngr.PopRenderTarget();
+        SprMngr.DeleteRenderTarget( rt );
+        SaveLoadDraftValid = true;
+    }
     #endif
 }
 
@@ -11535,10 +11579,29 @@ void FOClient::SaveLoadShowDraft()
     {
         // Get surface from image data
         SaveLoadDataSlot& slot = SaveLoadDataSlots[ SaveLoadSlotIndex ];
-        #ifdef FO_D3D
-        SaveLoadDraftValid = ( slot.PicData.size() && SUCCEEDED( D3DXLoadSurfaceFromFileInMemory( SaveLoadDraft, NULL, NULL,
-                                                                                                  &slot.PicData[ 0 ], (uint) slot.PicData.size(), NULL, D3DX_FILTER_LINEAR, 0, NULL ) ) );
-        #endif
+        if( !slot.PicData.empty() )
+        {
+            #ifdef FO_D3D
+            if( SUCCEEDED( D3DXLoadSurfaceFromFileInMemory( SaveLoadDraft, NULL, NULL, &slot.PicData[ 0 ], (uint) slot.PicData.size(), NULL, D3DX_FILTER_LINEAR, 0, NULL ) ) )
+                SaveLoadDraftValid = true;
+            #else
+            // Load to DevIL
+            ILuint img = 0;
+            ilGenImages( 1, &img );
+            ilBindImage( img );
+            if( ilLoadL( IL_BMP, &slot.PicData[ 0 ], slot.PicData.size() ) )
+            {
+                // Copy to texture
+                GL( glBindTexture( GL_TEXTURE_2D, SaveLoadDraft.TargetTexture->Id ) );
+                GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, GL_BGR, GL_UNSIGNED_BYTE, ilGetData() ) );
+                GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
+                SaveLoadDraftValid = true;
+            }
+
+            // Clean up
+            ilDeleteImages( 1, &img );
+            #endif
+        }
     }
     else if( SaveLoadSave && SaveLoadSlotIndex == (int) SaveLoadDataSlots.size() )
     {
@@ -11648,6 +11711,9 @@ void FOClient::SaveLoadDraw()
         SprMngr.GetDevice()->GetBackBuffer( 0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuf );
         SprMngr.GetDevice()->StretchRect( SaveLoadDraft, NULL, backbuf, &dst, D3DTEXF_LINEAR );
         backbuf->Release();
+        #else
+        Rect dst( SaveLoadPic.L + ox, SaveLoadPic.T + oy, SaveLoadPic.R + ox, SaveLoadPic.B + oy );
+        SprMngr.DrawRenderTarget( SaveLoadDraft, false, NULL, &dst );
         #endif
     }
 }

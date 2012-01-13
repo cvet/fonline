@@ -1637,8 +1637,13 @@ public:
                SaveLoadInfo, SaveLoadDone, SaveLoadDoneText, SaveLoadBack, SaveLoadBackText;
     int        SaveLoadX, SaveLoadY, SaveLoadCX, SaveLoadCY, SaveLoadVectX, SaveLoadVectY;
     bool       SaveLoadLoginScreen, SaveLoadSave;
-    Surface_   SaveLoadDraft;
     bool       SaveLoadProcessDraft, SaveLoadDraftValid;
+
+    #ifdef FO_D3D
+    Surface_     SaveLoadDraft;
+    #else
+    RenderTarget SaveLoadDraft;
+    #endif
 
     struct SaveLoadDataSlot
     {

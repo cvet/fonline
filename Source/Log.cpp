@@ -28,7 +28,7 @@ void LogToFile( const char* fname )
     if( !fname )
         return;
 
-    LogFileHandle = FileOpen( fname, true );
+    LogFileHandle = FileOpen( fname, true, true );
     if( !LogFileHandle )
     {
         LogFileHandle = NULL;

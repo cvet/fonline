@@ -21,8 +21,8 @@
 # define SEEK_END         ( 2 ) // Set file pointer to EOF plus "offset"
 #endif
 
-void* FileOpen( const char* fname, bool write );
-void* FileOpenForAppend( const char* fname );
+void* FileOpen( const char* fname, bool write, bool write_through = false );
+void* FileOpenForAppend( const char* fname, bool write_through = false );
 void  FileClose( void* file );
 bool  FileRead( void* file, void* buf, uint len, uint* rb = NULL );
 bool  FileWrite( void* file, const void* buf, uint len );

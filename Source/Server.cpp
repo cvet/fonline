@@ -4411,9 +4411,9 @@ bool FOServer::NewWorld()
     return true;
 }
 
-void FOServer::SaveWorld( const char* name )
+void FOServer::SaveWorld( const char* fname )
 {
-    if( !name && Singleplayer )
+    if( !fname && Singleplayer )
         return;                           // Disable autosaving in singleplayer mode
 
     double tick;
@@ -4431,12 +4431,12 @@ void FOServer::SaveWorld( const char* name )
     {
         // Save directly to file
         tick = Timer::AccurateTick();
-        char fname[ 64 ];
-        Str::Format( fname, "%sworld%04d.fo", FileManager::GetFullPath( NULL, PT_SERVER_SAVE ), SaveWorldIndex + 1 );
-        DumpFile = FileOpen( name ? name : fname, true );
+        char auto_fname[ MAX_FOPATH ];
+        Str::Format( auto_fname, "%sworld%04d.fo", FileManager::GetFullPath( NULL, PT_SERVER_SAVE ), SaveWorldIndex + 1 );
+        DumpFile = FileOpen( fname ? fname : auto_fname, true );
         if( !DumpFile )
         {
-            WriteLog( "Can't create dump file<%s>.\n", name ? name : fname );
+            WriteLog( "Can't create dump file<%s>.\n", fname ? fname : auto_fname );
             return;
         }
     }
@@ -4525,21 +4525,21 @@ void FOServer::SaveWorld( const char* name )
     WriteLog( "World saved in %g ms.\n", Timer::AccurateTick() - tick );
 }
 
-bool FOServer::LoadWorld( const char* name )
+bool FOServer::LoadWorld( const char* fname )
 {
     UnloadWorld();
 
     void* f = NULL;
-    if( !name )
+    if( !fname )
     {
         for( int i = WORLD_SAVE_MAX_INDEX; i >= 1; i-- )
         {
-            char fname[ 64 ];
-            Str::Format( fname, "%sworld%04d.fo", FileManager::GetFullPath( NULL, PT_SERVER_SAVE ), i );
-            f = FileOpen( fname, false );
+            char auto_fname[ MAX_FOPATH ];
+            Str::Format( auto_fname, "%sworld%04d.fo", FileManager::GetFullPath( NULL, PT_SERVER_SAVE ), i );
+            f = FileOpen( auto_fname, false );
             if( f )
             {
-                WriteLog( "Begin load world from dump file<%s>.\n", fname );
+                WriteLog( "Begin load world from dump file<%s>.\n", auto_fname );
                 SaveWorldIndex = i;
                 break;
             }
@@ -4554,14 +4554,14 @@ bool FOServer::LoadWorld( const char* name )
     }
     else
     {
-        f = FileOpen( name, false );
+        f = FileOpen( fname, false );
         if( !f )
         {
-            WriteLog( "World dump file<%s> not found.\n", name );
+            WriteLog( "World dump file<%s> not found.\n", fname );
             return false;
         }
 
-        WriteLog( "Begin load world from dump file<%s>.\n", name );
+        WriteLog( "Begin load world from dump file<%s>.\n", fname );
     }
 
     // File begin

@@ -1984,9 +1984,6 @@ void Map::BeginTurnBased( Critter* first_cr )
     if( IsTurnBasedOn )
         return;
 
-    CrVec critters;
-    GetCritters( critters, true );
-
     IsTurnBasedOn = true;
     NeedEndTurnBased = false;
     TurnBasedRound = 0;
@@ -1994,10 +1991,10 @@ void Map::BeginTurnBased( Critter* first_cr )
     TurnBasedWholeTurn = 0;
     TurnBasedBeginSecond = GameOpt.FullSecond;
 
-    if( first_cr && ( !first_cr->IsLife() || !first_cr->IsKnockout() || first_cr->GetParam( ST_CURRENT_AP ) <= 0 ) )
-        first_cr = NULL;
-    GenerateSequence( critters, first_cr );
+    GenerateSequence( first_cr );
 
+    CrVec critters;
+    GetCritters( critters, true );
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = *it;
@@ -2038,9 +2035,6 @@ void Map::BeginTurnBased( Critter* first_cr )
 
 void Map::EndTurnBased()
 {
-    CrVec critters;
-    GetCritters( critters, true );
-
     EventTurnBasedEnd();
     if( Script::PrepareContext( ServerFunctions.TurnBasedEnd, _FUNC_, Str::FormatBuf( "Map id<%u>, pid<%u>", GetId(), GetPid() ) ) )
     {
@@ -2055,6 +2049,8 @@ void Map::EndTurnBased()
     TurnSequenceCur = -1;
     IsTurnBasedTimeout = false;
 
+    CrVec critters;
+    GetCritters( critters, true );
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = *it;
@@ -2148,11 +2144,8 @@ void Map::NextCritterTurn()
     TurnSequenceCur++;
     if( TurnSequenceCur >= (int) TurnSequence.size() ) // Next round
     {
-        CrVec critters;
-        GetCritters( critters, true );
-
         // Next turn
-        GenerateSequence( critters, NULL );
+        GenerateSequence( NULL );
         TurnSequenceCur = -1;
         TurnBasedRound++;
         TurnBasedTurn = 0;
@@ -2235,50 +2228,36 @@ void Map::NextCritterTurn()
     }
 }
 
-bool rnd = true;
-bool SortSequence( Critter* cr1, Critter* cr2 )
+void Map::GenerateSequence( Critter* first_cr )
 {
-    int seq1 = cr1->GetParam( ST_SEQUENCE );
-    int seq2 = cr2->GetParam( ST_SEQUENCE );
-    if( seq1 == seq2 )
-    {
-        int ag1 = cr1->GetParam( ST_AGILITY );
-        int ag2 = cr2->GetParam( ST_AGILITY );
-        if( ag1 == ag2 )
-        {
-            int lk1 = cr1->GetParam( ST_LUCK );
-            int lk2 = cr2->GetParam( ST_LUCK );
-            if( lk1 == lk2 )
-                return cr1->Data.Id * 2654435761 < cr2->Data.Id * 2654435761;
-            else
-                return lk1 > lk2;
-        }
-        else
-            return ag1 > ag2;
-    }
-    return seq1 > seq2;
-}
+    // Collect all critters
+    CrVec        critters;
+    GetCritters( critters, true );
+    ScriptArray* script_critters = Script::CreateArray( "Critter@[]" );
+    Script::AppendVectorToArrayRef( critters, script_critters );
 
-void Map::GenerateSequence( CrVec& critters, Critter* first_cr )
-{
+    // Pass to scripts
+    if( Script::PrepareContext( ServerFunctions.TurnBasedSequence, _FUNC_, Str::FormatBuf( "Map id<%u>, pid<%u>", GetId(), GetPid() ) ) )
+    {
+        Script::SetArgObject( this );
+        Script::SetArgObject( script_critters );
+        Script::SetArgObject( first_cr );
+        Script::RunPrepared();
+    }
+
+    // Fill result
+    Script::AssignScriptArrayInVector( critters, script_critters );
+    script_critters->Release();
+
+    // Add only critters on this map
     TurnSequenceCur = 0;
     TurnSequence.clear();
-
-    CrVec critters_sequence;
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = *it;
-        if( cr == first_cr )
-            continue;
-        if( cr->IsLife() || cr->IsKnockout() )
-            critters_sequence.push_back( cr );
+        if( cr->GetMap() == GetId() )
+            TurnSequence.push_back( cr->GetId() );
     }
-    rnd = Random( 0, 1 ) != 0;
-    std::sort( critters_sequence.begin(), critters_sequence.end(), SortSequence );
-    if( first_cr )
-        TurnSequence.push_back( first_cr->GetId() );
-    for( auto it = critters_sequence.begin(), end = critters_sequence.end(); it != end; ++it )
-        TurnSequence.push_back( ( *it )->GetId() );
 }
 
 /************************************************************************/

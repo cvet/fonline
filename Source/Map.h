@@ -222,7 +222,7 @@ public:
     uint GetCritterTurnTime();
     void EndCritterTurn();
     void NextCritterTurn();
-    void GenerateSequence( CrVec& critters, Critter* first_cr );
+    void GenerateSequence( Critter* first_cr );
 
     // Constructor, destructor
 public:

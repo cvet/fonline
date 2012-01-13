@@ -175,6 +175,7 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.TurnBasedBegin, "turn_based_begin", "void %s(Map&)" },
         { &ServerFunctions.TurnBasedEnd, "turn_based_end", "void %s(Map&)" },
         { &ServerFunctions.TurnBasedProcess, "turn_based_process", "void %s(Map&,Critter&,bool)" },
+        { &ServerFunctions.TurnBasedSequence, "turn_based_sequence", "void %s(Map&,Critter@[]&,Critter@)" },
         { &ServerFunctions.WorldSave, "world_save", "void %s(uint,uint[]&)" },
         { &ServerFunctions.PlayerRegistration, "player_registration", "bool %s(uint,string&,uint&,uint&)" },
         { &ServerFunctions.PlayerLogin, "player_login", "bool %s(uint,string&,uint,uint&,uint&)" },

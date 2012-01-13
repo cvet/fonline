@@ -298,7 +298,7 @@ public:
     void ( * PreRestore )();
     void ( * PostRestore )();
     #ifndef FO_D3D
-    bool CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling = false, uint width = 0, uint height = 0 );
+    bool CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling = false, uint width = 0, uint height = 0, bool tex_linear = false );
     void DeleteRenderTarget( RenderTarget& rt );
     void PushRenderTarget( RenderTarget& rt );
     void PopRenderTarget();

@@ -56,7 +56,9 @@ FOClient::FOClient(): Active( false )
     MoveLastHx = -1;
     MoveLastHy = -1;
 
-    SaveLoadDraft = 0;
+    #ifdef FO_D3D
+    SaveLoadDraft = NULL;
+    #endif
 }
 
 void _PreRestore()

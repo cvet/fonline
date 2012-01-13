@@ -2205,7 +2205,7 @@ bool Script::StartLog()
 {
     if( EngineLogFile )
         return true;
-    EngineLogFile = FileOpen( DIR_SLASH_SD "FOscript.log", true );
+    EngineLogFile = FileOpen( DIR_SLASH_SD "FOscript.log", true, true );
     if( !EngineLogFile )
         return false;
     LogA( "Start logging script system.\n" );

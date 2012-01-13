@@ -643,7 +643,7 @@ bool SpriteManager::Restore()
 }
 
 #ifndef FO_D3D
-bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling /* = false */, uint width /* = 0 */, uint height /* = 0 */ )
+bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling /* = false */, uint width /* = 0 */, uint height /* = 0 */, bool tex_linear /* = false */ )
 {
     // Zero data
     memzero( &rt, sizeof( rt ) );
@@ -797,8 +797,8 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     if( !multisampling )
     {
         GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
-        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST ) );
-        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST ) );
+        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, tex_linear ? GL_LINEAR : GL_NEAREST ) );
+        GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, tex_linear ? GL_LINEAR : GL_NEAREST ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
         GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
@@ -1298,29 +1298,31 @@ void SpriteManager::SaveSufaces()
 #ifndef FO_D3D
 void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
 {
-    // Back buffer
-    if( !tex )
-        tex = rtStack[ 0 ]->TargetTexture;
+    // Size
+    uint w = ( tex ? tex->Width : MainWindow->w() );
+    uint h = ( tex ? tex->Height : MainWindow->h() );
 
     // Get data
-    uchar* data = (uchar*) tex->Data;
-    if( !data )
+    uchar* data;
+    if( tex )
     {
-        data = new uchar[ tex->Width * tex->Height * 4 ];
-        GL( glGetTexImage( GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, data ) );
+        data = (uchar*) tex->Data;
+    }
+    else
+    {
+        data = new uchar[ w * h * 4 ];
+        GL( glReadPixels( 0, 0, MainWindow->w(), MainWindow->h(), GL_BGRA, GL_UNSIGNED_BYTE, data ) );
     }
 
     // Load to DevIL
     ILuint img = 0;
     ilGenImages( 1, &img );
     ilBindImage( img );
-    ilTexImage( tex->Width, tex->Height, 1, 4, IL_BGRA, IL_UNSIGNED_BYTE, data );
+    ilTexImage( w, h, 1, 4, IL_BGRA, IL_UNSIGNED_BYTE, data );
 
     // Flip image
     if( flip )
     {
-        uint  w = tex->Width;
-        uint  h = tex->Height;
         uint* data4 = (uint*) ilGetData();
         for( uint y = 0; y < h / 2; y++ )
             for( uint x = 0; x < w; x++ )
@@ -1358,7 +1360,7 @@ void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
 
     // Clean up
     ilDeleteImages( 1, &img );
-    if( data != tex->Data )
+    if( !tex )
         delete[] data;
 }
 #endif

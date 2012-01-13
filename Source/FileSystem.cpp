@@ -4,11 +4,11 @@
 
 # include <io.h>
 
-void* FileOpen( const char* fname, bool write )
+void* FileOpen( const char* fname, bool write, bool write_through /* = false */ )
 {
     HANDLE file;
     if( write )
-        file = CreateFile( fname, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_FLAG_WRITE_THROUGH, NULL );
+        file = CreateFile( fname, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
     else
         file = CreateFile( fname, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY | FILE_FLAG_SEQUENTIAL_SCAN, NULL );
     if( file == INVALID_HANDLE_VALUE )
@@ -16,9 +16,9 @@ void* FileOpen( const char* fname, bool write )
     return file;
 }
 
-void* FileOpenForAppend( const char* fname )
+void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
 {
-    HANDLE file = CreateFile( fname, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_WRITE_THROUGH, NULL );
+    HANDLE file = CreateFile( fname, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
     if( file == INVALID_HANDLE_VALUE )
         return NULL;
     if( !FileSetPointer( file, 0, SEEK_END ) )
@@ -162,27 +162,48 @@ bool ResolvePath( char* path )
 # include <dirent.h>
 # include <sys/stat.h>
 
-void* FileOpen( const char* fname, bool write )
+struct FileDesc
 {
-    return (void*) fopen( fname, write ? "wb" : "rb" );
+    FILE* f;
+    bool  writeThrough;
+};
+
+void* FileOpen( const char* fname, bool write, bool write_through /* = false */ )
+{
+    FILE* f = fopen( fname, write ? "wb" : "rb" );
+    if( !f )
+        return NULL;
+    FileDesc* fd = new FileDesc();
+    fd->f = f;
+    fd->writeThrough = write_through;
+    return (void*) fd;
 }
 
-void* FileOpenForAppend( const char* fname )
+void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
 {
     if( access( fname, 0 ) )
         return NULL;
-    return (void*) fopen( fname, "ab" );
+    FILE* f = fopen( fname, "ab" );
+    if( !f )
+        return NULL;
+    FileDesc* fd = new FileDesc();
+    fd->f = f;
+    fd->writeThrough = write_through;
+    return (void*) fd;
 }
 
 void FileClose( void* file )
 {
     if( file )
-        fclose( (FILE*) file );
+    {
+        fclose( ( (FileDesc*) file )->f );
+        delete (FileDesc*) file;
+    }
 }
 
 bool FileRead( void* file, void* buf, uint len, uint* rb /* = NULL */ )
 {
-    uint rb_ = fread( buf, sizeof( char ), len, (FILE*) file );
+    uint rb_ = fread( buf, sizeof( char ), len, ( (FileDesc*) file )->f );
     if( rb )
         *rb = rb_;
     return rb_ == len;
@@ -190,20 +211,20 @@ bool FileRead( void* file, void* buf, uint len, uint* rb /* = NULL */ )
 
 bool FileWrite( void* file, const void* buf, uint len )
 {
-    bool result = ( fwrite( buf, sizeof( char ), len, (FILE*) file ) == len );
-    if( result )
-        fflush( (FILE*) file );
+    bool result = ( fwrite( buf, sizeof( char ), len, ( (FileDesc*) file )->f ) == len );
+    if( result && ( (FileDesc*) file )->writeThrough )
+        fflush( ( (FileDesc*) file )->f );
     return result;
 }
 
 bool FileSetPointer( void* file, int offset, int origin )
 {
-    return fseek( (FILE*) file, offset, origin ) == 0;
+    return fseek( ( (FileDesc*) file )->f, offset, origin ) == 0;
 }
 
 void FileGetTime( void* file, uint64& tc, uint64& ta, uint64& tw )
 {
-    int         fd = fileno( (FILE*) file );
+    int         fd = fileno( ( (FileDesc*) file )->f );
     struct stat st;
     fstat( fd, &st );
     tc = (uint64) st.st_mtime;
@@ -213,7 +234,7 @@ void FileGetTime( void* file, uint64& tc, uint64& ta, uint64& tw )
 
 uint FileGetSize( void* file )
 {
-    int         fd = fileno( (FILE*) file );
+    int         fd = fileno( ( (FileDesc*) file )->f );
     struct stat st;
     fstat( fd, &st );
     return (uint) st.st_size;

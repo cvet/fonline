@@ -357,8 +357,8 @@ public:
     static bool SaveClient( Client* cl, bool deferred );
     static bool LoadClient( Client* cl );
     static bool NewWorld();
-    static void SaveWorld( const char* name );
-    static bool LoadWorld( const char* name );
+    static void SaveWorld( const char* fname );
+    static bool LoadWorld( const char* fname );
     static void UnloadWorld();
     static void AddWorldSaveData( void* data, size_t size );
     static void AddClientSaveData( Client* cl );
