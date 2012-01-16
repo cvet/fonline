@@ -636,7 +636,7 @@ public:
         static int           Global_GetLastCursor();
         static void          Global_ChangeCursor( int cursor );
         static void          Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
-        static bool          Global_AppendIfaceIni( string& ini_name );
+        static bool          Global_AppendIfaceIni( ScriptString& ini_name );
         static ScriptString* Global_GetIfaceIniStr( ScriptString& key );
         static bool          Global_Load3dFile( ScriptString& fname, int path_type );
         static void          Global_WaitPing();

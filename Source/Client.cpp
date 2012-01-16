@@ -11230,7 +11230,7 @@ void FOClient::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar d
     }
 }
 
-bool FOClient::SScriptFunc::Global_AppendIfaceIni( string& ini_name )
+bool FOClient::SScriptFunc::Global_AppendIfaceIni( ScriptString& ini_name )
 {
     return Self->AppendIfaceIni( ini_name.c_str() );
 }
