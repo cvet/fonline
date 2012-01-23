@@ -5818,6 +5818,8 @@ void FOClient::Net_OnLoadMap()
             MusicAfterVideo = MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) );
         else
             SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
+        #else
+        SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
         #endif
         WriteLog( "Global map loaded.\n" );
         return;
@@ -5852,6 +5854,8 @@ void FOClient::Net_OnLoadMap()
         MusicAfterVideo = MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) );
     else
         SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
+    #else
+    SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
     #endif
     WriteLog( "Local map loaded.\n" );
 }

@@ -4799,7 +4799,7 @@ void FOMapper::ParseCommand( const char* cmd )
     if( *cmd == '~' )
     {
         cmd++;
-        char map_name[ 256 ];
+        char map_name[ MAX_FOTEXT ];
         Str::CopyWord( map_name, cmd, ' ', false );
         if( !map_name[ 0 ] )
         {
@@ -4835,7 +4835,7 @@ void FOMapper::ParseCommand( const char* cmd )
     {
         cmd++;
 
-        char map_name[ 256 ];
+        char map_name[ MAX_FOTEXT ];
         Str::CopyWord( map_name, cmd, ' ', false );
         if( !map_name[ 0 ] )
         {
@@ -4862,8 +4862,8 @@ void FOMapper::ParseCommand( const char* cmd )
     else if( *cmd == '#' )
     {
         cmd++;
-        char func_name[ 1024 ];
-        char str[ 1024 ] = { 0 };
+        char func_name[ MAX_FOTEXT ];
+        char str[ MAX_FOTEXT ] = { 0 };
         if( sscanf( cmd, "%s", func_name ) != 1 || !strlen( func_name ) )
         {
             AddMess( "Function name not typed." );
@@ -4914,11 +4914,9 @@ void FOMapper::ParseCommand( const char* cmd )
         }
 
         cmd++;
-        char anim[ 512 ];
-        Str::Copy( anim, cmd );
-        Str::Lower( anim );
-        Str::EraseChars( anim, ' ' );
-        if( !strlen( anim ) || strlen( anim ) & 1 )
+        IntVec anims;
+        Str::ParseLine( cmd, ' ', anims, atoi );
+        if( anims.empty() )
             return;
 
         if( SelectedObj.size() )
@@ -4929,8 +4927,8 @@ void FOMapper::ParseCommand( const char* cmd )
                 if( sobj.MapNpc )
                 {
                     sobj.MapNpc->ClearAnim();
-                    for( uint j = 0; j < strlen( anim ) / 2; j++ )
-                        sobj.MapNpc->Animate( anim[ j * 2 ] - 'a' + 1, anim[ j * 2 + 1 ] - 'a' + 1, NULL );
+                    for( uint j = 0; j < anims.size() / 2; j++ )
+                        sobj.MapNpc->Animate( anims[ j * 2 ], anims[ j * 2 + 1 ], NULL );
                 }
             }
         }
@@ -4941,8 +4939,8 @@ void FOMapper::ParseCommand( const char* cmd )
             {
                 CritterCl* cr = ( *it ).second;
                 cr->ClearAnim();
-                for( uint j = 0; j < strlen( anim ) / 2; j++ )
-                    cr->Animate( anim[ j * 2 ] - 'a' + 1, anim[ j * 2 + 1 ] - 'a' + 1, NULL );
+                for( uint j = 0; j < anims.size() / 2; j++ )
+                    cr->Animate( anims[ j * 2 ], anims[ j * 2 + 1 ], NULL );
             }
         }
     }

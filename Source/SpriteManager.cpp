@@ -222,14 +222,22 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     }
     #endif
 
+    // 3d stuff
     if( !Animation3d::StartUp( d3dDevice ) )
         return false;
     if( !Animation3d::SetScreenSize( modeWidth, modeHeight ) )
         return false;
+
+    // Render stuff
     if( !InitRenderStates() )
         return false;
     if( !InitBuffers() )
         return false;
+
+    // DevIL
+    ilEnable( IL_CONV_PAL );
+    ilEnable( IL_ORIGIN_SET );
+    ilOriginFunc( IL_ORIGIN_UPPER_LEFT );
 
     // Sprites buffer
     sprData.resize( SPR_BUFFER_COUNT );
