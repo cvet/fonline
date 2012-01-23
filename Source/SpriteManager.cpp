@@ -235,7 +235,6 @@ bool SpriteManager::Init( SpriteMngrParams& params )
         return false;
 
     // DevIL
-    ilEnable( IL_CONV_PAL );
     ilEnable( IL_ORIGIN_SET );
     ilOriginFunc( IL_ORIGIN_UPPER_LEFT );
 
