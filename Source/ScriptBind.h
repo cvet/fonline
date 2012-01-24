@@ -1090,6 +1090,7 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "const uint16 __Second", &GameOpt.S
 BIND_ASSERT( engine->RegisterGlobalProperty( "const uint16 __TimeMultiplier", &GameOpt.TimeMultiplier ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "const uint __FullSecond", &GameOpt.FullSecond ) );
 
+BIND_ASSERT( engine->RegisterGlobalProperty( "bool __OpenGLDebug", &GameOpt.OpenGLDebug ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __DisableTcpNagle", &GameOpt.DisableTcpNagle ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __DisableZlibCompression", &GameOpt.DisableZlibCompression ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __FloodSize", &GameOpt.FloodSize ) );

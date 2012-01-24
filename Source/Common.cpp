@@ -860,7 +860,9 @@ void GetClientOptions()
     if( Str::Compare( buf, "russ" ) )
         SetExceptionsRussianText();
 
-    // Int
+    // Int / Bool
+    GameOpt.OpenGLDebug = cfg.GetInt( CLIENT_CONFIG_APP, "OpenGLDebug", false ) != 0;
+    GETOPTIONS_CMD_LINE_BOOL( GameOpt.OpenGLDebug, "-OpenGLDebug" );
     GameOpt.FullScreen = cfg.GetInt( CLIENT_CONFIG_APP, "FullScreen", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.FullScreen, "-FullScreen" );
     GameOpt.VSync = cfg.GetInt( CLIENT_CONFIG_APP, "VSync", false ) != 0;
@@ -1164,6 +1166,7 @@ GameOptions::GameOptions()
     TimeMultiplier = 0;
     GameTimeTick = 0;
 
+    OpenGLDebug = false;
     DisableTcpNagle = false;
     DisableZlibCompression = false;
     FloodSize = 2048;

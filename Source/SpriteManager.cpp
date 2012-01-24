@@ -158,13 +158,13 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     CHECK_EXTENSION( GLEW_, VERSION_2_0, true );
     CHECK_EXTENSION( GLEW_, ARB_vertex_buffer_object, true );
     CHECK_EXTENSION( GLEW_, ARB_vertex_array_object, false );
-    # ifdef FO_WINDOWS
     CHECK_EXTENSION( GLEW_, ARB_framebuffer_object, false );
+    # ifdef FO_WINDOWS
     if( !GLEW_ARB_framebuffer_object )
     {
         CHECK_EXTENSION( GLEW_, EXT_framebuffer_object, false );
         CHECK_EXTENSION( GLEW_, EXT_framebuffer_multisample, false );
-        CHECK_EXTENSION( GLEW_, EXT_packed_depth_stencil, true );
+        CHECK_EXTENSION( GLEW_, EXT_packed_depth_stencil, false );
         if( !GLEW_EXT_framebuffer_object )
         {
             CHECK_EXTENSION( WGLEW_, ARB_pixel_format, true );
@@ -172,8 +172,13 @@ bool SpriteManager::Init( SpriteMngrParams& params )
             CHECK_EXTENSION( WGLEW_, ARB_render_texture, false );
         }
     }
-    # else
-    CHECK_EXTENSION( GLEW_, ARB_framebuffer_object, true );
+    # else // FO_LINUX
+    if( !GLEW_ARB_framebuffer_object )
+    {
+        CHECK_EXTENSION( GLEW_, EXT_framebuffer_object, true );
+        CHECK_EXTENSION( GLEW_, EXT_framebuffer_multisample, false );
+        CHECK_EXTENSION( GLEW_, EXT_packed_depth_stencil, false );
+    }
     # endif
     CHECK_EXTENSION( GLEW_, ARB_texture_multisample, false );
     CHECK_EXTENSION( GLEW_, ARB_get_program_binary, false );
@@ -600,6 +605,11 @@ void SpriteManager::EndScene()
     # else
     glXSwapBuffers( fl_display, fl_window );
     # endif
+    if( glGetError() != GL_NO_ERROR )
+    {
+        WriteLogF( _FUNC_, " - OpenGL error. Run 'FOnline.exe -OpenGLDebug 1' to determine exact place of error.\n" );
+        ExitProcess( 0 );
+    }
     #endif
     sceneBeginned = false;
 }
@@ -857,14 +867,29 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
             GL( glBindRenderbufferEXT( GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
             if( !multisampling )
             {
-                GL( glRenderbufferStorageEXT( GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, width, height ) );
+                if( GLEW_EXT_packed_depth_stencil )
+                {
+                    GL( glRenderbufferStorageEXT( GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, width, height ) );
+                }
+                else
+                {
+                    GL( glRenderbufferStorageEXT( GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, width, height ) );
+                }
             }
             else
             {
-                GL( glRenderbufferStorageMultisampleEXT( GL_RENDERBUFFER_EXT, samples, GL_DEPTH24_STENCIL8_EXT, width, height ) );
+                if( GLEW_EXT_packed_depth_stencil )
+                {
+                    GL( glRenderbufferStorageMultisampleEXT( GL_RENDERBUFFER_EXT, samples, GL_DEPTH24_STENCIL8_EXT, width, height ) );
+                }
+                else
+                {
+                    GL( glRenderbufferStorageMultisampleEXT( GL_RENDERBUFFER_EXT, samples, GL_DEPTH_COMPONENT, width, height ) );
+                }
             }
             GL( glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
-            GL( glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
+            if( GLEW_EXT_packed_depth_stencil )
+                GL( glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
         }
     }
 

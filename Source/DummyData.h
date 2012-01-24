@@ -1215,6 +1215,7 @@ struct GameOptions
     int TimeMultiplier;
     int GameTimeTick;
 
+    int OpenGLDebug;
     int DisableTcpNagle;
     int DisableZlibCompression;
     int FloodSize;

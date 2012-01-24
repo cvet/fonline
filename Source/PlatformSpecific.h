@@ -121,8 +121,4 @@
 # define LIBEVENT_TIMEOUTS_WORKAROUND
 #endif
 
-// OGL / D3D render WIP
-// Need replace all d3d stuff on ogl
-// #define FO_D3D
-
 #endif // ___PLATFORM_SPECIFIC___

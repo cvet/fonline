@@ -1231,9 +1231,8 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     }
 
     // Load from binary
-    bool        have_binary = ( GLEW_ARB_get_program_binary != 0 );
     FileManager file_binary;
-    if( have_binary )
+    if( GLEW_ARB_get_program_binary )
     {
         Str::Append( fname, "b" );
         if( file_binary.LoadFile( fname, PT_CACHE ) )
@@ -1387,6 +1386,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
             GL( glBindAttribLocation( program, 9, "InBlendIndices" ) );
         }
 
+        GL( glProgramParameteri( program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE ) );
         GL( glLinkProgram( program ) );
         GLint linked;
         GL( glGetProgramiv( program, GL_LINK_STATUS, &linked ) );
@@ -1403,7 +1403,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
         }
 
         // Save in binary
-        if( have_binary )
+        if( GLEW_ARB_get_program_binary )
         {
             GLsizei  buf_size;
             GL( glGetProgramiv( program, GL_PROGRAM_BINARY_LENGTH, &buf_size ) );

@@ -210,6 +210,7 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  pragma comment(lib,"d3dxof.lib")
 #  define D3D_HR( expr )                  { HRESULT hr__ = expr; if( hr__ != D3D_OK ) { WriteLogF( _FUNC_, " - " # expr ", error<%s - %s>.\n", DXGetErrorString( hr__ ), DXGetErrorDescription( hr__ ) ); return 0; } }
 # endif
+
 # include "GL/glew.h"
 # ifdef FO_WINDOWS
 #  include "GL/wglew.h"
@@ -219,11 +220,11 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 #  include "GL/glxew.h"
 # endif
 # include "Fl/gl.h"
-# define GL( expr )                       { expr; GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X - %s>.\n", err__, gluErrorString( err__ ) ); ExitProcess( 0 ); } }
-# ifdef FO_WINDOWS
-#  define WGL( expr )                     { if( !( expr ) ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X>.\n", GetLastError() ); ExitProcess( 0 ); } }
-# endif
 # include "Assimp/aiTypes.h"
+# define GL( expr )                       { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X - %s>.\n", err__, gluErrorString( err__ ) ); ExitProcess( 0 ); } } }
+# ifdef FO_WINDOWS
+#  define WGL( expr )                     { if( !( expr ) ) { if( GameOpt.OpenGLDebug ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X>.\n", GetLastError() ); ExitProcess( 0 ); } } }
+# endif
 
 # define IL_STATIC_LIB
 # include "IL/il.h"
@@ -452,6 +453,7 @@ struct GameOptions
     ushort       TimeMultiplier;
     uint         GameTimeTick;
 
+    bool         OpenGLDebug;
     bool         DisableTcpNagle;
     bool         DisableZlibCompression;
     uint         FloodSize;
