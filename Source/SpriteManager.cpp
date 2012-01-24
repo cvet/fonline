@@ -5609,6 +5609,7 @@ uint SpriteManager::GetSpriteContour( SpriteInfo* si, Sprite* spr )
     // Data for FillSurfaceFromMemory
     uint   size = 12 + ih * iw * 4;
     uchar* data = new uchar[ size ];
+    memzero( data, size );
     *( (uint*) data + 1 ) = iw;
     *( (uint*) data + 2 ) = ih;
     uint* ptr = (uint*) data + 3 + iw + 1;
