@@ -1386,7 +1386,9 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
             GL( glBindAttribLocation( program, 9, "InBlendIndices" ) );
         }
 
-        GL( glProgramParameteri( program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE ) );
+        if( GLEW_ARB_get_program_binary )
+            GL( glProgramParameteri( program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE ) );
+
         GL( glLinkProgram( program ) );
         GLint linked;
         GL( glGetProgramiv( program, GL_LINK_STATUS, &linked ) );
