@@ -239,10 +239,6 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     if( !InitBuffers() )
         return false;
 
-    // DevIL
-    ilEnable( IL_ORIGIN_SET );
-    ilOriginFunc( IL_ORIGIN_UPPER_LEFT );
-
     // Sprites buffer
     sprData.resize( SPR_BUFFER_COUNT );
     for( auto it = sprData.begin(), end = sprData.end(); it != end; ++it )
@@ -1111,18 +1107,8 @@ void SpriteManager::ClearCurrentRenderTarget( uint color )
 void SpriteManager::ClearCurrentRenderTargetDS( bool depth, bool stencil )
 {
     int depth_stencil_bit = 0;
-    depth_stencil_bit |= ( depth ? GL_DEPTH_BUFFER_BIT : 0 );
-    depth_stencil_bit |= ( stencil ? GL_STENCIL_BUFFER_BIT : 0 );
-    if( depth )
-    {
-        depth_stencil_bit |= GL_DEPTH_BUFFER_BIT;
-        GL( glClearDepth( 1.0 ) );
-    }
-    if( stencil )
-    {
-        depth_stencil_bit |= GL_STENCIL_BUFFER_BIT;
-        GL( glClearStencil( 0 ) );
-    }
+    depth_stencil_bit |= ( depth ? GL_DEPTH_BUFFER_BIT : 0 );     // Clear to value 1
+    depth_stencil_bit |= ( stencil ? GL_STENCIL_BUFFER_BIT : 0 ); // Clear to value 0
     GL( glClear( depth_stencil_bit ) );
 }
 
@@ -1176,6 +1162,41 @@ void SpriteManager::DisableVertexArray()
         GL( glDisableVertexAttribArray( 2 ) );
         GL( glDisableVertexAttribArray( 3 ) );
     }
+}
+
+void SpriteManager::EnableStencil( RectF& stencil )
+{
+    uint mulpos = 0;
+    vBuffer[ mulpos ].x = stencil.L;
+    vBuffer[ mulpos ].y = stencil.B;
+    vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
+    vBuffer[ mulpos ].x = stencil.L;
+    vBuffer[ mulpos ].y = stencil.T;
+    vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
+    vBuffer[ mulpos ].x = stencil.R;
+    vBuffer[ mulpos ].y = stencil.T;
+    vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
+    vBuffer[ mulpos ].x = stencil.R;
+    vBuffer[ mulpos ].y = stencil.B;
+    vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
+
+    GL( glEnable( GL_STENCIL_TEST ) );
+    GL( glStencilFunc( GL_NEVER, 1, 0xFF ) );
+    GL( glStencilOp( GL_REPLACE, GL_KEEP, GL_KEEP ) );
+
+    curSprCnt = 1;
+    dipQueue.push_back( DipData( NULL, sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_PRIMITIVE ] ) );
+    Flush();
+
+    GL( glStencilFunc( GL_NOTEQUAL, 0, 0xFF ) );
+    GL( glStencilOp( GL_REPLACE, GL_KEEP, GL_KEEP ) );
+}
+
+void SpriteManager::DisableStencil( bool clear_stencil )
+{
+    if( clear_stencil )
+        ClearCurrentRenderTargetDS( false, true );
+    GL( glDisable( GL_STENCIL_TEST ) );
 }
 #endif
 
@@ -3467,7 +3488,11 @@ AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type )
     ILuint img = 0;
     ilGenImages( 1, &img );
     ilBindImage( img );
-    if( !ilLoadL( file_type, fm.GetBuf(), fm.GetFsize() ) )
+    ilEnable( IL_ORIGIN_SET );
+    ilOriginFunc( IL_ORIGIN_UPPER_LEFT );
+    ILboolean success = ilLoadL( file_type, fm.GetBuf(), fm.GetFsize() );
+    ilDisable( IL_ORIGIN_SET );
+    if( !success )
     {
         ilDeleteImage( img );
         return NULL;
@@ -4906,32 +4931,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
 
     // Draw stencil
     if( stencil )
-    {
-        uint mulpos = 0;
-        vBuffer[ mulpos ].x = stencil->L;
-        vBuffer[ mulpos ].y = stencil->B;
-        vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
-        vBuffer[ mulpos ].x = stencil->L;
-        vBuffer[ mulpos ].y = stencil->T;
-        vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
-        vBuffer[ mulpos ].x = stencil->R;
-        vBuffer[ mulpos ].y = stencil->T;
-        vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
-        vBuffer[ mulpos ].x = stencil->R;
-        vBuffer[ mulpos ].y = stencil->B;
-        vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
-
-        GL( glEnable( GL_STENCIL_TEST ) );
-        GL( glStencilFunc( GL_NEVER, 1, 0xFF ) );
-        GL( glStencilOp( GL_REPLACE, GL_KEEP, GL_KEEP ) );
-
-        curSprCnt = 1;
-        dipQueue.push_back( DipData( NULL, sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_PRIMITIVE ] ) );
-        Flush();
-
-        GL( glStencilFunc( GL_NOTEQUAL, 0, 0xFF ) );
-        GL( glStencilOp( GL_REPLACE, GL_KEEP, GL_KEEP ) );
-    }
+        EnableStencil( *stencil );
 
     // Resize buffers
     if( vBuffer.size() < count )
@@ -4993,10 +4993,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
 
     // Finish
     if( stencil )
-    {
-        ClearCurrentRenderTargetDS( false, true );
-        GL( glDisable( GL_STENCIL_TEST ) );
-    }
+        DisableStencil( true );
     #endif
     return true;
 }
@@ -5024,7 +5021,11 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
 
     // Draw model
     GL( glDisable( GL_BLEND ) );
+    if( stencil )
+        EnableStencil( *stencil );
     anim3d->Draw( x, y, scale, stencil, rtStack.back()->FBO );
+    if( stencil )
+        DisableStencil( false );
     GL( glEnable( GL_BLEND ) );
 
     // Restore render target

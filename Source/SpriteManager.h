@@ -417,6 +417,8 @@ private:
     #ifndef FO_D3D
     void EnableVertexArray( GLuint ib, uint count );
     void DisableVertexArray();
+    void EnableStencil( RectF& stencil );
+    void DisableStencil( bool clear_stencil );
     #endif
 
     // Contours

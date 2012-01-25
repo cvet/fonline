@@ -8,8 +8,6 @@
 #include "Script.h"
 #include "CritterType.h"
 
-#define CONTOURS_EXTRA_SIZE    ( 20 )
-
 Device_   D3DDevice = 0;
 Caps_     D3DCaps;
 int       ModeWidth = 0, ModeHeight = 0;
@@ -378,7 +376,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
         // End time
         uint tick = GetTick();
         if( FLAG( flags, ANIMATION_ONE_TIME ) )
-            endTick = tick + uint( period / GetSpeed() * 1000.0 );
+            endTick = tick + uint( period / GetSpeed() * 1000.0f );
         else
             endTick = 0;
 
@@ -395,7 +393,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
             if( FLAG( flags, ANIMATION_ONE_TIME ) )
                 calcBordersTick = endTick;
             else
-                calcBordersTick = tick + uint( smooth_time * 1000.0 );
+                calcBordersTick = tick + uint( smooth_time * 1000.0f );
         }
     }
 
@@ -661,17 +659,19 @@ Rect Animation3d::GetFullBorders( Point* pivot /* = NULL */ )
 Rect Animation3d::GetExtraBorders( Point* pivot /* = NULL */ )
 {
     ProcessBorders();
+    float w = (float) fullBorders.W();
+    float h = (float) fullBorders.H();
     if( pivot )
     {
         *pivot = Point( bordersXY.X - fullBorders.L, bordersXY.Y - fullBorders.T );
-        pivot->X += (int) ( CONTOURS_EXTRA_SIZE * 3.0f * drawScale );
-        pivot->Y += (int) ( CONTOURS_EXTRA_SIZE * 4.0f * drawScale );
+        pivot->X += (int) ( w * 1.5f );
+        pivot->Y += (int) ( h * 1.0f );
     }
     Rect result( fullBorders, drawXY.X - bordersXY.X, drawXY.Y - bordersXY.Y );
-    result.L -= (int) ( (float) CONTOURS_EXTRA_SIZE * 3.0f * drawScale );
-    result.T -= (int) ( (float) CONTOURS_EXTRA_SIZE * 4.0f * drawScale );
-    result.R += (int) ( (float) CONTOURS_EXTRA_SIZE * 3.0f * drawScale );
-    result.B += (int) ( (float) CONTOURS_EXTRA_SIZE * 2.0f * drawScale );
+    result.L -= (int) ( w * 1.5f );
+    result.T -= (int) ( h * 1.0f );
+    result.R += (int) ( w * 1.5f );
+    result.B += (int) ( h * 1.0f );
     return result;
 }
 
@@ -934,7 +934,6 @@ void Animation3d::SetTimer( bool use_game_timer )
     useGameTimer = use_game_timer;
 }
 
-#pragma MESSAGE( "Add stencil for OGL 3d animation." )
 bool Animation3d::Draw( int x, int y, float scale, RectF* stencil, uint color )
 {
     // Apply stencil

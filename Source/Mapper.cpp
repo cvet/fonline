@@ -3844,6 +3844,16 @@ void FOMapper::SelectAll()
     HexMngr.RefreshMap();
 }
 
+struct TileToMove
+{
+    Field*             field;
+    Field::Tile        tile;
+    ProtoMap::TileVec* ptiles;
+    ProtoMap::Tile     ptile;
+    bool               roof;
+    TileToMove() {}
+    TileToMove( Field* f, Field::Tile& t, ProtoMap::TileVec* pts, ProtoMap::Tile& pt, bool r ): field( f ), tile( t ), ptiles( pts ), ptile( pt ), roof( r ) {}
+};
 void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
 {
     if( Keyb::ShiftDwn && ( !offs_x && !offs_y ) )
@@ -3994,18 +4004,8 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
     }
 
     // Move tiles
-    struct TileToMove
-    {
-        Field*             field;
-        Field::Tile        tile;
-        ProtoMap::TileVec* ptiles;
-        ProtoMap::Tile     ptile;
-        bool               roof;
-        TileToMove() {}
-        TileToMove( Field* f, Field::Tile& t, ProtoMap::TileVec* pts, ProtoMap::Tile& pt, bool r ): field( f ), tile( t ), ptiles( pts ), ptile( pt ), roof( r ) {}
-    };
-    TileToMove tiles_to_move[ 1000 ];
-    uint       tiles_to_move_count = 0;
+    vector< TileToMove > tiles_to_move;
+    tiles_to_move.reserve( 1000 );
 
     for( uint i = 0, j = (uint) SelectedTile.size(); i < j; i++ )
     {
@@ -4067,8 +4067,7 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
                 {
                     tiles[ k ].HexX = hx;
                     tiles[ k ].HexY = hy;
-                    tiles_to_move[ tiles_to_move_count++ ] = TileToMove( &HexMngr.GetField( hx, hy ), ftiles[ k ],
-                                                                         &CurProtoMap->GetTiles( hx, hy, stile.IsRoof ), tiles[ k ], stile.IsRoof );
+                    tiles_to_move.push_back( TileToMove( &HexMngr.GetField( hx, hy ), ftiles[ k ], &CurProtoMap->GetTiles( hx, hy, stile.IsRoof ), tiles[ k ], stile.IsRoof ) );
                     tiles.erase( tiles.begin() + k );
                     ftiles.erase( ftiles.begin() + k );
                 }
@@ -4080,9 +4079,9 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
         }
     }
 
-    for( uint i = 0; i < tiles_to_move_count; i++ )
+    for( auto it = tiles_to_move.begin(), end = tiles_to_move.end(); it != end; ++it )
     {
-        TileToMove& ttm = tiles_to_move[ i ];
+        TileToMove& ttm = *it;
         if( !ttm.roof )
             ttm.field->Tiles.push_back( ttm.tile );
         else
