@@ -3432,7 +3432,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
 
         // Fill it
         fm.SetCurPos( data_offset );
-        for( uint k = 0, l = w * h; k < l; k++ )
+        for( uint k = 0, l = w * h; k < l;)
         {
             uchar index = fm.GetUChar();
             uint  color = palette[ index ];
@@ -3450,6 +3450,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
             else
             {
                 *ptr++ = color;
+                k++;
             }
         }
 
