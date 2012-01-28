@@ -106,7 +106,7 @@ bool FOClient::Init()
     STATIC_ASSERT( sizeof( char ) == 1 );
     STATIC_ASSERT( sizeof( bool ) == 1 );
     #if defined ( FO_X86 )
-    STATIC_ASSERT( sizeof( Item::ItemData ) == 92 );
+    STATIC_ASSERT( sizeof( Item::ItemData ) == 120 );
     STATIC_ASSERT( sizeof( GmapLocation ) == 16 );
     STATIC_ASSERT( sizeof( SceneryCl ) == 32 );
     STATIC_ASSERT( sizeof( ProtoItem ) == 908 );
@@ -4290,7 +4290,7 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
             {
                 Item* radio = Chosen->GetItem( crid );
                 if( radio )
-                    channel = radio->Data.Radio.Channel;
+                    channel = radio->Data.RadioChannel;
             }
             AddMess( mess_type, FmtGameText( fstr_mb, channel, fstr ) );
         }
@@ -4642,7 +4642,7 @@ void FOClient::Net_OnSomeItem()
     }
 
     SomeItem.Id = item_id;
-    SomeItem.ACC_CRITTER.Slot = slot;
+    SomeItem.AccCritter.Slot = slot;
     SomeItem.Init( proto_item );
     SomeItem.Data = data;
 }
@@ -4755,7 +4755,7 @@ void FOClient::Net_OnCritterMoveItem()
                 item->Id = slots_data_id[ i ];
                 item->Init( proto_item );
                 item->Data = slots_data_data[ i ];
-                item->ACC_CRITTER.Slot = slots_data_slot[ i ];
+                item->AccCritter.Slot = slots_data_slot[ i ];
                 cr->AddItem( item );
             }
         }
@@ -5223,7 +5223,7 @@ void FOClient::Net_OnChosenAddItem()
         item = Chosen->GetItem( item_id );
         if( item )
         {
-            prev_slot = item->ACC_CRITTER.Slot;
+            prev_slot = item->AccCritter.Slot;
             prev_light_hash = item->LightGetHash();
             Chosen->EraseItem( item, false );
             item = NULL;
@@ -5248,7 +5248,7 @@ void FOClient::Net_OnChosenAddItem()
 
     Bin.Pop( (char*) &item->Data, sizeof( item->Data ) );
     item->Accessory = ITEM_ACCESSORY_CRITTER;
-    item->ACC_CRITTER.Slot = slot;
+    item->AccCritter.Slot = slot;
     if( item != Chosen->ItemSlotMain || !item->IsWeapon() )
         item->SetMode( item->Data.Mode );
     Chosen->AddItem( item );
@@ -5292,7 +5292,7 @@ void FOClient::Net_OnChosenEraseItem()
         Script::RunPrepared();
     }
 
-    if( item->IsLight() && item->ACC_CRITTER.Slot != SLOT_INV )
+    if( item->IsLight() && item->AccCritter.Slot != SLOT_INV )
         HexMngr.RebuildLight();
     Chosen->EraseItem( item, true );
     CollectContItems();
@@ -8114,8 +8114,8 @@ label_EndMove:
         if( !item )
             break;
 
-        uchar from_slot = item->ACC_CRITTER.Slot;
-        if( item->ACC_CRITTER.Slot != from_slot || from_slot == to_slot )
+        uchar from_slot = item->AccCritter.Slot;
+        if( item->AccCritter.Slot != from_slot || from_slot == to_slot )
             break;
         if( to_slot != SLOT_GROUND && !CritterCl::SlotEnabled[ to_slot ] )
             break;
@@ -8213,9 +8213,9 @@ label_EndMove:
                     Chosen->ItemSlotArmor = item_swap;
             }
 
-            item->ACC_CRITTER.Slot = to_slot;
+            item->AccCritter.Slot = to_slot;
             if( item_swap )
-                item_swap->ACC_CRITTER.Slot = from_slot;
+                item_swap->AccCritter.Slot = from_slot;
 
             Chosen->Action( ACTION_MOVE_ITEM, from_slot, item );
             if( item_swap )
@@ -10384,7 +10384,7 @@ bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
     {
     case ITEM_ACCESSORY_CRITTER:
     {
-        CritterCl* cr = Self->GetCritter( item->ACC_CRITTER.Id );
+        CritterCl* cr = Self->GetCritter( item->AccCritter.Id );
         if( !cr )
             SCRIPT_ERROR_R0( "CritterCl accessory, CritterCl not found." );
         hx = cr->GetHexX();
@@ -10393,16 +10393,16 @@ bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
     break;
     case ITEM_ACCESSORY_HEX:
     {
-        hx = item->ACC_HEX.HexX;
-        hy = item->ACC_HEX.HexY;
+        hx = item->AccHex.HexX;
+        hy = item->AccHex.HexY;
     }
     break;
     case ITEM_ACCESSORY_CONTAINER:
     {
 
-        if( item->GetId() == item->ACC_CONTAINER.ContainerId )
+        if( item->GetId() == item->AccContainer.ContainerId )
             SCRIPT_ERROR_R0( "Container accessory, Crosslinks." );
-        Item* cont = Self->GetItem( item->ACC_CONTAINER.ContainerId );
+        Item* cont = Self->GetItem( item->AccContainer.ContainerId );
         if( !cont )
             SCRIPT_ERROR_R0( "Container accessory, Container not found." );
         return Item_GetMapPosition( cont, hx, hy );             // Recursion

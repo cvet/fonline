@@ -319,7 +319,6 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
                                 }
                             }
                         }
-                        str->Release();
                     }
 
                     // If pass changed and animation not loaded than try again

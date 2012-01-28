@@ -631,7 +631,7 @@ bool FOServer::SScriptFunc::NpcPlane_Misc_SetScript( AIDataPlane* plane, ScriptS
     return true;
 }
 
-Item* FOServer::SScriptFunc::Container_AddItem( Item* cont, ushort pid, uint count, uint special_id )
+Item* FOServer::SScriptFunc::Container_AddItem( Item* cont, ushort pid, uint count, uint stack_id )
 {
     if( cont->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -639,10 +639,10 @@ Item* FOServer::SScriptFunc::Container_AddItem( Item* cont, ushort pid, uint cou
         SCRIPT_ERROR_R0( "Container item is not container type." );
     if( !ItemMngr.GetProtoItem( pid ) )
         SCRIPT_ERROR_R0( "Invalid proto id arg." );
-    return ItemMngr.AddItemContainer( cont, pid, count, special_id );
+    return ItemMngr.AddItemContainer( cont, pid, count, stack_id );
 }
 
-uint FOServer::SScriptFunc::Container_GetItems( Item* cont, uint special_id, ScriptArray* items )
+uint FOServer::SScriptFunc::Container_GetItems( Item* cont, uint stack_id, ScriptArray* items )
 {
     if( !items )
         SCRIPT_ERROR_R0( "Items array arg nullptr." );
@@ -652,19 +652,19 @@ uint FOServer::SScriptFunc::Container_GetItems( Item* cont, uint special_id, Scr
         SCRIPT_ERROR_R0( "Container item is not container type." );
 
     ItemPtrVec items_;
-    cont->ContGetItems( items_, special_id, items != NULL );
+    cont->ContGetItems( items_, stack_id, items != NULL );
     if( items )
         Script::AppendVectorToArrayRef< Item* >( items_, items );
     return (uint) items_.size();
 }
 
-Item* FOServer::SScriptFunc::Container_GetItem( Item* cont, ushort pid, uint special_id )
+Item* FOServer::SScriptFunc::Container_GetItem( Item* cont, ushort pid, uint stack_id )
 {
     if( cont->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
     if( !cont->IsContainer() )
         SCRIPT_ERROR_R0( "Container item is not container type." );
-    return cont->ContGetItemByPid( pid, special_id );
+    return cont->ContGetItemByPid( pid, stack_id );
 }
 
 bool FOServer::SScriptFunc::Item_IsStackable( Item* item )
@@ -720,9 +720,9 @@ bool FOServer::SScriptFunc::Item_SetEvent( Item* item, int event_type, ScriptStr
 
         if( event_type == ITEM_EVENT_WALK && item->Accessory == ITEM_ACCESSORY_HEX )
         {
-            Map* map = MapMngr.GetMap( item->ACC_HEX.MapId );
+            Map* map = MapMngr.GetMap( item->AccHex.MapId );
             if( map )
-                map->SetHexFlag( item->ACC_HEX.HexX, item->ACC_HEX.HexY, FH_WALK_ITEM );
+                map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_WALK_ITEM );
         }
     }
     return true;
@@ -779,7 +779,7 @@ Map* FOServer::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
     {
     case ITEM_ACCESSORY_CRITTER:
     {
-        Critter* cr = CrMngr.GetCritter( item->ACC_CRITTER.Id, true );
+        Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, true );
         if( !cr )
             SCRIPT_ERROR_R0( "Critter accessory, critter not found." );
         if( !cr->GetMap() )
@@ -797,18 +797,18 @@ Map* FOServer::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
     break;
     case ITEM_ACCESSORY_HEX:
     {
-        map = MapMngr.GetMap( item->ACC_HEX.MapId, true );
+        map = MapMngr.GetMap( item->AccHex.MapId, true );
         if( !map )
             SCRIPT_ERROR_R0( "Hex accessory, map not found." );
-        hx = item->ACC_HEX.HexX;
-        hy = item->ACC_HEX.HexY;
+        hx = item->AccHex.HexX;
+        hy = item->AccHex.HexY;
     }
     break;
     case ITEM_ACCESSORY_CONTAINER:
     {
-        if( item->GetId() == item->ACC_CONTAINER.ContainerId )
+        if( item->GetId() == item->AccContainer.ContainerId )
             SCRIPT_ERROR_R0( "Container accessory, crosslink." );
-        Item* cont = ItemMngr.GetItem( item->ACC_CONTAINER.ContainerId, false );
+        Item* cont = ItemMngr.GetItem( item->AccContainer.ContainerId, false );
         if( !cont )
             SCRIPT_ERROR_R0( "Container accessory, container not found." );
         return Item_GetMapPosition( cont, hx, hy );             // Recursion
@@ -836,7 +836,7 @@ bool FOServer::SScriptFunc::Item_ChangeProto( Item* item, ushort pid )
 
     if( item->Accessory == ITEM_ACCESSORY_CRITTER )
     {
-        Critter* cr = CrMngr.GetCritter( item->ACC_CRITTER.Id, false );
+        Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, false );
         if( !cr )
             return true;
         item->Proto = old_proto_item;
@@ -847,11 +847,11 @@ bool FOServer::SScriptFunc::Item_ChangeProto( Item* item, ushort pid )
     }
     else if( item->Accessory == ITEM_ACCESSORY_HEX )
     {
-        Map* map = MapMngr.GetMap( item->ACC_HEX.MapId, true );
+        Map* map = MapMngr.GetMap( item->AccHex.MapId, true );
         if( !map )
             return true;
-        ushort hx = item->ACC_HEX.HexX;
-        ushort hy = item->ACC_HEX.HexY;
+        ushort hx = item->AccHex.HexX;
+        ushort hy = item->AccHex.HexY;
         item->Proto = old_proto_item;
         map->EraseItem( item->GetId() );
         item->Proto = proto_item;
@@ -882,7 +882,7 @@ void FOServer::SScriptFunc::Item_Animate( Item* item, uchar from_frm, uchar to_f
     break;
     case ITEM_ACCESSORY_HEX:
     {
-        Map* map = MapMngr.GetMap( item->ACC_HEX.MapId );
+        Map* map = MapMngr.GetMap( item->AccHex.MapId );
         if( !map )
         {
             SCRIPT_ERROR( "Map not found." );
@@ -915,7 +915,7 @@ void FOServer::SScriptFunc::Item_SetLexems( Item* item, ScriptString* lexems )
     {
     case ITEM_ACCESSORY_CRITTER:
     {
-        Client* cl = CrMngr.GetPlayer( item->ACC_CRITTER.Id, false );
+        Client* cl = CrMngr.GetPlayer( item->AccCritter.Id, false );
         if( cl && cl->IsOnline() )
         {
             if( item->PLexems )
@@ -927,7 +927,7 @@ void FOServer::SScriptFunc::Item_SetLexems( Item* item, ScriptString* lexems )
     break;
     case ITEM_ACCESSORY_HEX:
     {
-        Map* map = MapMngr.GetMap( item->ACC_HEX.MapId, false );
+        Map* map = MapMngr.GetMap( item->AccHex.MapId, false );
         if( !map )
         {
             SCRIPT_ERROR( "Map not found." );
@@ -977,7 +977,7 @@ bool FOServer::SScriptFunc::Item_LockerOpen( Item* item )
         SCRIPT_ERROR_R0( "Door is not changeble." );
     if( item->LockerIsOpen() )
         return true;
-    SETFLAG( item->Data.Locker.Condition, LOCKER_ISOPEN );
+    SETFLAG( item->Data.LockerCondition, LOCKER_ISOPEN );
     if( item->IsDoor() )
     {
         bool recache_block = false;
@@ -997,15 +997,15 @@ bool FOServer::SScriptFunc::Item_LockerOpen( Item* item )
 
         if( item->Accessory == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
         {
-            Map* map = MapMngr.GetMap( item->ACC_HEX.MapId );
+            Map* map = MapMngr.GetMap( item->AccHex.MapId );
             if( map )
             {
                 if( recache_block && recache_shoot )
-                    map->RecacheHexBlockShoot( item->ACC_HEX.HexX, item->ACC_HEX.HexY );
+                    map->RecacheHexBlockShoot( item->AccHex.HexX, item->AccHex.HexY );
                 else if( recache_block )
-                    map->RecacheHexBlock( item->ACC_HEX.HexX, item->ACC_HEX.HexY );
+                    map->RecacheHexBlock( item->AccHex.HexX, item->AccHex.HexY );
                 else if( recache_shoot )
-                    map->RecacheHexShoot( item->ACC_HEX.HexX, item->ACC_HEX.HexY );
+                    map->RecacheHexShoot( item->AccHex.HexX, item->AccHex.HexY );
             }
         }
     }
@@ -1023,7 +1023,7 @@ bool FOServer::SScriptFunc::Item_LockerClose( Item* item )
         SCRIPT_ERROR_R0( "Door is not changeble." );
     if( item->LockerIsClose() )
         return true;
-    UNSETFLAG( item->Data.Locker.Condition, LOCKER_ISOPEN );
+    UNSETFLAG( item->Data.LockerCondition, LOCKER_ISOPEN );
     if( item->IsDoor() )
     {
         bool recache_block = false;
@@ -1043,13 +1043,13 @@ bool FOServer::SScriptFunc::Item_LockerClose( Item* item )
 
         if( item->Accessory == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
         {
-            Map* map = MapMngr.GetMap( item->ACC_HEX.MapId );
+            Map* map = MapMngr.GetMap( item->AccHex.MapId );
             if( map )
             {
                 if( recache_block )
-                    map->SetHexFlag( item->ACC_HEX.HexX, item->ACC_HEX.HexY, FH_BLOCK_ITEM );
+                    map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_BLOCK_ITEM );
                 if( recache_shoot )
-                    map->SetHexFlag( item->ACC_HEX.HexX, item->ACC_HEX.HexY, FH_NRAKE_ITEM );
+                    map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_NRAKE_ITEM );
             }
         }
     }
@@ -1150,13 +1150,13 @@ void FOServer::SScriptFunc::Item_set_Flags( Item* item, uint value )
         if( item->Accessory == ITEM_ACCESSORY_HEX )
         {
             if( !map )
-                map = MapMngr.GetMap( item->ACC_HEX.MapId );
+                map = MapMngr.GetMap( item->AccHex.MapId );
             if( map )
                 map->ChangeViewItem( item );
         }
         else if( item->Accessory == ITEM_ACCESSORY_CRITTER && ( old & ITEM_HIDDEN ) != ( value & ITEM_HIDDEN ) )
         {
-            Critter* cr = CrMngr.GetCritter( item->ACC_CRITTER.Id, false );
+            Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, false );
             if( cr )
             {
                 if( FLAG( value, ITEM_HIDDEN ) )
@@ -1172,7 +1172,7 @@ void FOServer::SScriptFunc::Item_set_Flags( Item* item, uint value )
     if( ( old & ( ITEM_NO_BLOCK | ITEM_SHOOT_THRU | ITEM_GAG ) ) != ( value & ( ITEM_NO_BLOCK | ITEM_SHOOT_THRU | ITEM_GAG ) ) && item->Accessory == ITEM_ACCESSORY_HEX )
     {
         if( !map )
-            map = MapMngr.GetMap( item->ACC_HEX.MapId );
+            map = MapMngr.GetMap( item->AccHex.MapId );
         if( map )
         {
             bool recache_block = false;
@@ -1181,22 +1181,22 @@ void FOServer::SScriptFunc::Item_set_Flags( Item* item, uint value )
             if( FLAG( value, ITEM_NO_BLOCK ) )
                 recache_block = true;
             else
-                map->SetHexFlag( item->ACC_HEX.HexX, item->ACC_HEX.HexY, FH_BLOCK_ITEM );
+                map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_BLOCK_ITEM );
             if( FLAG( value, ITEM_SHOOT_THRU ) )
                 recache_shoot = true;
             else
-                map->SetHexFlag( item->ACC_HEX.HexX, item->ACC_HEX.HexY, FH_NRAKE_ITEM );
+                map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_NRAKE_ITEM );
             if( !FLAG( value, ITEM_GAG ) )
                 recache_block = true;
             else
-                map->SetHexFlag( item->ACC_HEX.HexX, item->ACC_HEX.HexY, FH_GAG_ITEM );
+                map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_GAG_ITEM );
 
             if( recache_block && recache_shoot )
-                map->RecacheHexBlockShoot( item->ACC_HEX.HexX, item->ACC_HEX.HexY );
+                map->RecacheHexBlockShoot( item->AccHex.HexX, item->AccHex.HexY );
             else if( recache_block )
-                map->RecacheHexBlock( item->ACC_HEX.HexX, item->ACC_HEX.HexY );
+                map->RecacheHexBlock( item->AccHex.HexX, item->AccHex.HexY );
             else if( recache_shoot )
-                map->RecacheHexShoot( item->ACC_HEX.HexX, item->ACC_HEX.HexY );
+                map->RecacheHexShoot( item->AccHex.HexX, item->AccHex.HexY );
         }
     }
 
@@ -1204,7 +1204,7 @@ void FOServer::SScriptFunc::Item_set_Flags( Item* item, uint value )
     if( ( old & ITEM_GECK ) != ( value & ITEM_GECK ) && item->Accessory == ITEM_ACCESSORY_HEX )
     {
         if( !map )
-            map = MapMngr.GetMap( item->ACC_HEX.MapId );
+            map = MapMngr.GetMap( item->AccHex.MapId );
         if( map )
             map->GetLocation( false )->GeckCount += ( FLAG( value, ITEM_GECK ) ? 1 : -1 );
     }
@@ -1232,7 +1232,7 @@ void FOServer::SScriptFunc::Item_set_TrapValue( Item* item, short value )
     item->Data.TrapValue = value;
     if( item->Accessory == ITEM_ACCESSORY_HEX )
     {
-        Map* map = MapMngr.GetMap( item->ACC_HEX.MapId );
+        Map* map = MapMngr.GetMap( item->AccHex.MapId );
         if( map )
             map->ChangeViewItem( item );
     }
@@ -2327,11 +2327,11 @@ bool FOServer::SScriptFunc::Crit_MoveItem( Critter* cr, uint item_id, uint count
         SCRIPT_ERROR_R0( "Item not found." );
     if( !count )
         count = item->GetCount();
-    if( item->ACC_CRITTER.Slot == to_slot )
+    if( item->AccCritter.Slot == to_slot )
         return true;                                    // SCRIPT_ERROR_R0("To slot arg is equal of current item slot.");
     if( count > item->GetCount() )
         SCRIPT_ERROR_R0( "Item count arg is greater than items count." );
-    bool result = cr->MoveItem( item->ACC_CRITTER.Slot, to_slot, item_id, count );
+    bool result = cr->MoveItem( item->AccCritter.Slot, to_slot, item_id, count );
     if( !result )
         return false;             // SCRIPT_ERROR_R0("Fail to move item.");
     cr->Send_AddItem( item );

@@ -21,19 +21,19 @@ const char* ItemEventFuncName[ ITEM_EVENT_MAX ] =
 };
 
 // Item default send data mask
-char Item::ItemData::SendMask[ ITEM_DATA_MASK_MAX ][ 92 ] =
+char Item::ItemData::SendMask[ ITEM_DATA_MASK_MAX ][ 120 ] =
 {
-    // SortValue Info Reserved0 PicMapHash   PicInvHash   AnimWaitBase AnimStay[2] AnimShow[2] AnimHide[2] Flags        Rate LightIntensity LightDistance LightFlags LightColor   ScriptId TrapValue Count        Cost         ScriptValues[10]                                                                 Shared data 8 bytes
+    // SortValue Info Indicator PicMapHash   PicInvHash   AnimWaitBase AnimStay[2] AnimShow[2] AnimHide[2] Flags        Rate               LightIntensity LightDistance LightFlags   LightColor   ScriptId  TrapValue        Count              Cost                    ScriptValues[10]                                                                                                                        Other 36 bytes
     // ITEM_DATA_MASK_CHOSEN                                                                                           ITEM_DATA_MASK_CHOSEN                                                                                                ITEM_DATA_MASK_CHOSEN
-    {  -1, -1,     -1,    0,     -1, -1, -1, -1, -1, -1, -1, -1,      0, 0,       0, 0,        0, 0,        0, 0,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,    -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, },
+    {  -1, -1,     -1,    0,     -1, -1, -1, -1, -1, -1, -1, -1,      0, 0,       0, 0,        0, 0,        0, 0,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,    -1, -1, -1, -1,  -1, -1, -1, -1,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0 },
     // ITEM_DATA_MASK_CRITTER                                                                                          ITEM_DATA_MASK_CRITTER                                                                                               ITEM_DATA_MASK_CRITTER
-    {    0, 0,     -1,    0,         0, 0, 0, 0,     0, 0, 0, 0,      0, 0,       0, 0,        0, 0,        0, 0,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,        0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,         0, 0, 0, 0, 0, 0, 0, 0, },
+    {    0, 0,     -1,    0,         0, 0, 0, 0,     0, 0, 0, 0,      0, 0,       0, 0,        0, 0,        0, 0,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,     0,  0,  0,  0,   0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0 },
     // ITEM_DATA_MASK_CRITTER_EXT                                                                                      ITEM_DATA_MASK_CRITTER_EXT                                                                                           ITEM_DATA_MASK_CRITTER_EXT
-    {    0, 0,     -1,    0,         0, 0, 0, 0,     0, 0, 0, 0,      0, 0,       0, 0,        0, 0,        0, 0,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,    -1, -1, -1, -1,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, },
+    {    0, 0,     -1,    0,         0, 0, 0, 0,     0, 0, 0, 0,      0, 0,       0, 0,        0, 0,        0, 0,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,    -1, -1, -1, -1,   0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0 },
     // ITEM_DATA_MASK_CONTAINER                                                                                        ITEM_DATA_MASK_CONTAINER                                                                                             ITEM_DATA_MASK_CONTAINER
-    {  -1, -1,     -1,    0,         0, 0, 0, 0, -1, -1, -1, -1,      0, 0,       0, 0,        0, 0,        0, 0,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,    -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, },
+    {  -1, -1,     -1,    0,         0, 0, 0, 0, -1, -1, -1, -1,      0, 0,       0, 0,        0, 0,        0, 0,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,    -1, -1, -1, -1,  -1, -1, -1, -1,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0 },
     // ITEM_DATA_MASK_MAP                                                                                              ITEM_DATA_MASK_MAP                                                                                                   ITEM_DATA_MASK_MAP
-    {  -1, -1,     -1,    0,     -1, -1, -1, -1,     0, 0, 0, 0,    -1, -1,     -1, -1,      -1, -1,      -1, -1,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,        0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,         0, 0, 0, 0, 0, 0, 0, 0, },
+    {  -1, -1,     -1,    0,     -1, -1, -1, -1,     0, 0, 0, 0,    -1, -1,     -1, -1,      -1, -1,      -1, -1,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,     0,  0,  0,  0,   0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0 },
 };
 
 void Item::Init( ProtoItem* proto )
@@ -71,8 +71,8 @@ void Item::Init( ProtoItem* proto )
     switch( GetType() )
     {
     case ITEM_TYPE_WEAPON:
-        Data.TechInfo.AmmoCount = Proto->Weapon_MaxAmmoCount;
-        Data.TechInfo.AmmoPid = Proto->Weapon_DefaultAmmoPid;
+        Data.AmmoCount = Proto->Weapon_MaxAmmoCount;
+        Data.AmmoPid = Proto->Weapon_DefaultAmmoPid;
         break;
     case ITEM_TYPE_DOOR:
         SETFLAG( Data.Flags, ITEM_GAG );
@@ -82,10 +82,10 @@ void Item::Init( ProtoItem* proto )
             UNSETFLAG( Data.Flags, ITEM_SHOOT_THRU );
         if( !Proto->Door_NoBlockLight )
             UNSETFLAG( Data.Flags, ITEM_LIGHT_THRU );
-        Data.Locker.Condition = Proto->Locker_Condition;
+        Data.LockerCondition = Proto->Locker_Condition;
         break;
     case  ITEM_TYPE_CONTAINER:
-        Data.Locker.Condition = Proto->Locker_Condition;
+        Data.LockerCondition = Proto->Locker_Condition;
         break;
     default:
         break;
@@ -93,18 +93,18 @@ void Item::Init( ProtoItem* proto )
 
     if( IsRadio() )
     {
-        Data.Radio.Channel = Proto->RadioChannel;
-        Data.Radio.Flags = Proto->RadioFlags;
-        Data.Radio.BroadcastSend = Proto->RadioBroadcastSend;
-        Data.Radio.BroadcastRecv = Proto->RadioBroadcastRecv;
+        Data.RadioChannel = Proto->RadioChannel;
+        Data.RadioFlags = Proto->RadioFlags;
+        Data.RadioBroadcastSend = Proto->RadioBroadcastSend;
+        Data.RadioBroadcastRecv = Proto->RadioBroadcastRecv;
     }
 
     if( IsHolodisk() )
     {
-        Data.Holodisk.Number = Proto->HolodiskNum;
+        Data.HolodiskNumber = Proto->HolodiskNum;
         #ifdef FONLINE_SERVER
-        if( !Data.Holodisk.Number )
-            Data.Holodisk.Number = Random( 1, 42 );
+        if( !Data.HolodiskNumber )
+            Data.HolodiskNumber = Random( 1, 42 );
         #endif
     }
 
@@ -119,7 +119,7 @@ Item* Item::Clone()
     clone->Id = Id;
     clone->Proto = Proto;
     clone->Accessory = Accessory;
-    clone->ACC_BUFFER = ACC_BUFFER;
+    memcpy( clone->AccBuffer, AccBuffer, sizeof( AccBuffer ) );
     clone->Data = Data;
 
     #ifdef FONLINE_SERVER
@@ -347,9 +347,9 @@ void Item::Count_Sub( uint val )
 #ifdef FONLINE_SERVER
 void Item::Repair()
 {
-    uchar&  flags = Data.TechInfo.BrokenFlags;
-    uchar&  broken_count = Data.TechInfo.BrokenCount;
-    ushort& deterioration = Data.TechInfo.Deterioration;
+    uchar&  flags = Data.BrokenFlags;
+    uchar&  broken_count = Data.BrokenCount;
+    ushort& deterioration = Data.Deterioration;
 
     if( FLAG( flags, BI_BROKEN ) )
     {
@@ -425,11 +425,11 @@ uint Item::GetCost1st()
 {
     uint cost = ( Data.Cost ? Data.Cost : Proto->Cost );
     // if(IsDeteriorable()) cost-=cost*GetWearProc()/100;
-    if( IsWeapon() && Data.TechInfo.AmmoCount )
+    if( IsWeapon() && Data.AmmoCount )
     {
-        ProtoItem* ammo = ItemMngr.GetProtoItem( Data.TechInfo.AmmoPid );
+        ProtoItem* ammo = ItemMngr.GetProtoItem( Data.AmmoPid );
         if( ammo )
-            cost += ammo->Cost * Data.TechInfo.AmmoCount;
+            cost += ammo->Cost * Data.AmmoCount;
     }
     if( !cost )
         cost = 1;
@@ -472,13 +472,13 @@ void Item::SetLexems( const char* lexems )
 
 void Item::WeapLoadHolder()
 {
-    if( !Data.TechInfo.AmmoPid )
-        Data.TechInfo.AmmoPid = Proto->Weapon_DefaultAmmoPid;
-    Data.TechInfo.AmmoCount = Proto->Weapon_MaxAmmoCount;
+    if( !Data.AmmoPid )
+        Data.AmmoPid = Proto->Weapon_DefaultAmmoPid;
+    Data.AmmoCount = Proto->Weapon_MaxAmmoCount;
 }
 
 #ifdef FONLINE_SERVER
-void Item::ContAddItem( Item*& item, uint special_id )
+void Item::ContAddItem( Item*& item, uint stack_id )
 {
     if( !IsContainer() || !item )
         return;
@@ -493,7 +493,7 @@ void Item::ContAddItem( Item*& item, uint special_id )
 
     if( item->IsStackable() )
     {
-        Item* item_ = ContGetItemByPid( item->GetProtoId(), special_id );
+        Item* item_ = ContGetItemByPid( item->GetProtoId(), stack_id );
         if( item_ )
         {
             item_->Count_Add( item->GetCount() );
@@ -503,7 +503,7 @@ void Item::ContAddItem( Item*& item, uint special_id )
         }
     }
 
-    item->ACC_CONTAINER.SpecialId = special_id;
+    item->AccContainer.StackId = stack_id;
     item->SetSortValue( *ChildItems );
     ContSetItem( item );
 }
@@ -526,7 +526,7 @@ void Item::ContSetItem( Item* item )
 
     ChildItems->push_back( item );
     item->Accessory = ITEM_ACCESSORY_CONTAINER;
-    item->ACC_CONTAINER.ContainerId = GetId();
+    item->AccContainer.ContainerId = GetId();
 }
 
 void Item::ContEraseItem( Item* item )
@@ -597,7 +597,7 @@ void Item::ContGetAllItems( ItemPtrVec& items, bool skip_hide, bool sync_lock )
 }
 
 # pragma MESSAGE("Add explicit sync lock.")
-Item* Item::ContGetItemByPid( ushort pid, uint special_id )
+Item* Item::ContGetItemByPid( ushort pid, uint stack_id )
 {
     if( !IsContainer() || !ChildItems )
         return NULL;
@@ -605,7 +605,7 @@ Item* Item::ContGetItemByPid( ushort pid, uint special_id )
     for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->GetProtoId() == pid && ( special_id == uint( -1 ) || item->ACC_CONTAINER.SpecialId == special_id ) )
+        if( item->GetProtoId() == pid && ( stack_id == uint( -1 ) || item->AccContainer.StackId == stack_id ) )
         {
             SYNC_LOCK( item );
             return item;
@@ -614,7 +614,7 @@ Item* Item::ContGetItemByPid( ushort pid, uint special_id )
     return NULL;
 }
 
-void Item::ContGetItems( ItemPtrVec& items, uint special_id, bool sync_lock )
+void Item::ContGetItems( ItemPtrVec& items, uint stack_id, bool sync_lock )
 {
     if( !IsContainer() || !ChildItems )
         return;
@@ -622,7 +622,7 @@ void Item::ContGetItems( ItemPtrVec& items, uint special_id, bool sync_lock )
     for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
     {
         Item* item = *it;
-        if( special_id == uint( -1 ) || item->ACC_CONTAINER.SpecialId == special_id )
+        if( stack_id == uint( -1 ) || item->AccContainer.StackId == stack_id )
             items.push_back( item );
     }
 
@@ -632,7 +632,7 @@ void Item::ContGetItems( ItemPtrVec& items, uint special_id, bool sync_lock )
             SYNC_LOCK( *it );
 }
 
-int Item::ContGetFreeVolume( uint special_id )
+int Item::ContGetFreeVolume( uint stack_id )
 {
     if( !IsContainer() )
         return 0;
@@ -645,7 +645,7 @@ int Item::ContGetFreeVolume( uint special_id )
     for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
     {
         Item* item = *it;
-        if( special_id == uint( -1 ) || item->ACC_CONTAINER.SpecialId == special_id )
+        if( stack_id == uint( -1 ) || item->AccContainer.StackId == stack_id )
             cur_volume += item->GetVolume();
     }
     return max_volume - cur_volume;
@@ -663,22 +663,22 @@ Item* Item::GetChild( uint child_index )
 
     if( Accessory == ITEM_ACCESSORY_HEX )
     {
-        Map* map = MapMngr.GetMap( ACC_HEX.MapId );
+        Map* map = MapMngr.GetMap( AccHex.MapId );
         if( !map )
             return NULL;
-        return map->GetItemChild( ACC_HEX.HexX, ACC_HEX.HexY, Proto, child_index );
+        return map->GetItemChild( AccHex.HexX, AccHex.HexY, Proto, child_index );
     }
     else if( Accessory == ITEM_ACCESSORY_CRITTER )
     {
-        Critter* cr = CrMngr.GetCritter( ACC_CRITTER.Id, true );
+        Critter* cr = CrMngr.GetCritter( AccCritter.Id, true );
         if( cr )
             return cr->GetItemByPid( Proto->ChildPid[ child_index ] );
     }
     else if( Accessory == ITEM_ACCESSORY_CONTAINER )
     {
-        Item* cont = ItemMngr.GetItem( ACC_CONTAINER.ContainerId, true );
+        Item* cont = ItemMngr.GetItem( AccContainer.ContainerId, true );
         if( cont )
-            return cont->ContGetItemByPid( Proto->ChildPid[ child_index ], ACC_CONTAINER.SpecialId );
+            return cont->ContGetItemByPid( Proto->ChildPid[ child_index ], AccContainer.StackId );
     }
     return NULL;
 }

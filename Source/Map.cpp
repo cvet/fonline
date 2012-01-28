@@ -262,9 +262,9 @@ bool Map::Generate()
         // Deterioration
         if( item->IsDeteriorable() )
         {
-            item->Data.TechInfo.BrokenFlags = mobj.MItem.BrokenFlags;
-            item->Data.TechInfo.BrokenCount = mobj.MItem.BrokenCount;
-            item->Data.TechInfo.Deterioration = mobj.MItem.Deterioration;
+            item->Data.BrokenFlags = mobj.MItem.BrokenFlags;
+            item->Data.BrokenCount = mobj.MItem.BrokenCount;
+            item->Data.Deterioration = mobj.MItem.Deterioration;
         }
 
         // Stacking
@@ -283,36 +283,22 @@ bool Map::Generate()
             item->Data.TrapValue = mobj.MItem.TrapValue;
 
         // Other values
-        switch( item->GetType() )
+        item->Data.Dir = mobj.Dir;
+        item->Data.OffsetX = mobj.MItem.OffsetX;
+        item->Data.OffsetY = mobj.MItem.OffsetY;
+        item->Data.AmmoPid = mobj.MItem.AmmoPid;
+        item->Data.AmmoCount = mobj.MItem.AmmoCount;
+        item->Data.LockerId = mobj.MItem.LockerDoorId;
+        item->Data.LockerCondition = mobj.MItem.LockerCondition;
+        item->Data.LockerComplexity = mobj.MItem.LockerComplexity;
+        if( item->IsDoor() && FLAG( item->Data.LockerCondition, LOCKER_ISOPEN ) )
         {
-        case ITEM_TYPE_WEAPON:
-            item->Data.TechInfo.AmmoPid = mobj.MItem.AmmoPid;
-            item->Data.TechInfo.AmmoCount = mobj.MItem.AmmoCount;
-            break;
-        case ITEM_TYPE_KEY:
-            item->Data.Locker.DoorId = mobj.MItem.LockerDoorId;
-            break;
-        case ITEM_TYPE_DOOR:
-            item->Data.Locker.DoorId = mobj.MItem.LockerDoorId;
-            item->Data.Locker.Condition = mobj.MItem.LockerCondition;
-            item->Data.Locker.Complexity = mobj.MItem.LockerComplexity;
-            if( FLAG( item->Data.Locker.Condition, LOCKER_ISOPEN ) )
-            {
-                if( !item->Proto->Door_NoBlockMove )
-                    SETFLAG( item->Data.Flags, ITEM_NO_BLOCK );
-                if( !item->Proto->Door_NoBlockShoot )
-                    SETFLAG( item->Data.Flags, ITEM_SHOOT_THRU );
-                if( !item->Proto->Door_NoBlockLight )
-                    SETFLAG( item->Data.Flags, ITEM_LIGHT_THRU );
-            }
-            break;
-        case ITEM_TYPE_CONTAINER:
-            item->Data.Locker.DoorId = mobj.MItem.LockerDoorId;
-            item->Data.Locker.Condition = mobj.MItem.LockerCondition;
-            item->Data.Locker.Complexity = mobj.MItem.LockerComplexity;
-            break;
-        default:
-            break;
+            if( !item->Proto->Door_NoBlockMove )
+                SETFLAG( item->Data.Flags, ITEM_NO_BLOCK );
+            if( !item->Proto->Door_NoBlockShoot )
+                SETFLAG( item->Data.Flags, ITEM_SHOOT_THRU );
+            if( !item->Proto->Door_NoBlockLight )
+                SETFLAG( item->Data.Flags, ITEM_LIGHT_THRU );
         }
 
         // Mapper additional parameters
@@ -709,9 +695,9 @@ void Map::SetItem( Item* item, ushort hx, ushort hy )
     }
 
     item->Accessory = ITEM_ACCESSORY_HEX;
-    item->ACC_HEX.MapId = GetId();
-    item->ACC_HEX.HexX = hx;
-    item->ACC_HEX.HexY = hy;
+    item->AccHex.MapId = GetId();
+    item->AccHex.HexX = hx;
+    item->AccHex.HexY = hy;
 
     hexItems.push_back( item );
     SetHexFlag( hx, hy, FH_ITEM );
@@ -750,8 +736,8 @@ void Map::EraseItem( uint item_id )
     Item* item = *it;
     hexItems.erase( it );
 
-    ushort hx = item->ACC_HEX.HexX;
-    ushort hy = item->ACC_HEX.HexY;
+    ushort hx = item->AccHex.HexX;
+    ushort hy = item->AccHex.HexY;
 
     item->Accessory = 0xd1;
 
@@ -834,7 +820,7 @@ void Map::ChangeViewItem( Item* item )
                 }
                 else
                 {
-                    int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->ACC_HEX.HexX, item->ACC_HEX.HexY );
+                    int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->AccHex.HexX, item->AccHex.HexY );
                     if( item->IsTrap() )
                         dist += item->TrapGetValue();
                     allowed = dist <= cr->GetLook();
@@ -865,7 +851,7 @@ void Map::ChangeViewItem( Item* item )
                 }
                 else
                 {
-                    int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->ACC_HEX.HexX, item->ACC_HEX.HexY );
+                    int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->AccHex.HexX, item->AccHex.HexY );
                     if( item->IsTrap() )
                         dist += item->TrapGetValue();
                     allowed = dist <= cr->GetLook();
@@ -913,7 +899,7 @@ Item* Map::GetItemHex( ushort hx, ushort hy, ushort item_pid, Critter* picker )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->ACC_HEX.HexX == hx && item->ACC_HEX.HexY == hy && ( item_pid == 0 || item->GetProtoId() == item_pid ) &&
+        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && ( item_pid == 0 || item->GetProtoId() == item_pid ) &&
             ( !picker || ( !item->IsHidden() && picker->CountIdVisItem( item->GetId() ) ) ) )
         {
             SYNC_LOCK( item );
@@ -928,7 +914,7 @@ Item* Map::GetItemDoor( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->ACC_HEX.HexX == hx && item->ACC_HEX.HexY == hy && item->IsDoor() )
+        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && item->IsDoor() )
         {
             SYNC_LOCK( item );
             return item;
@@ -942,7 +928,7 @@ Item* Map::GetItemCar( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->ACC_HEX.HexX == hx && item->ACC_HEX.HexY == hy && item->IsCar() )
+        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && item->IsCar() )
         {
             SYNC_LOCK( item );
             return item;
@@ -956,7 +942,7 @@ Item* Map::GetItemContainer( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->ACC_HEX.HexX == hx && item->ACC_HEX.HexY == hy && item->IsContainer() )
+        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && item->IsContainer() )
         {
             SYNC_LOCK( item );
             return item;
@@ -970,7 +956,7 @@ Item* Map::GetItemGag( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->ACC_HEX.HexX == hx && item->ACC_HEX.HexY == hy && item->IsGag() )
+        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && item->IsGag() )
         {
             SYNC_LOCK( item );
             return item;
@@ -984,7 +970,7 @@ void Map::GetItemsHex( ushort hx, ushort hy, ItemPtrVec& items, bool lock )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->ACC_HEX.HexX == hx && item->ACC_HEX.HexY == hy )
+        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy )
             items.push_back( item );
     }
 
@@ -998,7 +984,7 @@ void Map::GetItemsHexEx( ushort hx, ushort hy, uint radius, ushort pid, ItemPtrV
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( ( !pid || item->GetProtoId() == pid ) && DistGame( item->ACC_HEX.HexX, item->ACC_HEX.HexY, hx, hy ) <= radius )
+        if( ( !pid || item->GetProtoId() == pid ) && DistGame( item->AccHex.HexX, item->AccHex.HexY, hx, hy ) <= radius )
             items.push_back( item );
     }
 
@@ -1040,7 +1026,7 @@ void Map::GetItemsTrap( ushort hx, ushort hy, ItemPtrVec& traps, bool lock )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->ACC_HEX.HexX == hx && item->ACC_HEX.HexY == hy && item->FuncId[ ITEM_EVENT_WALK ] > 0 )
+        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && item->FuncId[ ITEM_EVENT_WALK ] > 0 )
             traps.push_back( item );
     }
     if( !traps.size() )
@@ -1060,7 +1046,7 @@ void Map::RecacheHexBlock( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->ACC_HEX.HexX == hx && item->ACC_HEX.HexY == hy )
+        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy )
         {
             if( !is_block && !item->IsPassed() )
                 is_block = true;
@@ -1082,7 +1068,7 @@ void Map::RecacheHexShoot( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->ACC_HEX.HexX == hx && item->ACC_HEX.HexY == hy && !item->IsRaked() )
+        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && !item->IsRaked() )
         {
             SetHexFlag( hx, hy, FH_NRAKE_ITEM );
             break;
@@ -1101,7 +1087,7 @@ void Map::RecacheHexBlockShoot( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->ACC_HEX.HexX == hx && item->ACC_HEX.HexY == hy )
+        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy )
         {
             if( !is_block && !item->IsPassed() )
                 is_block = true;
@@ -1583,8 +1569,8 @@ void Map::GetCritterCar( Critter* cr, Item* car )
         return;
 
     // Car position
-    ushort hx = car->ACC_HEX.HexX;
-    ushort hy = car->ACC_HEX.HexY;
+    ushort hx = car->AccHex.HexX;
+    ushort hy = car->AccHex.HexY;
 
     // Move car from map to inventory
     EraseItem( car->GetId() );

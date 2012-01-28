@@ -106,12 +106,12 @@ void FOServer::ProcessAI( Npc* npc )
             {
                 if( npc->ItemSlotMain->GetId() )
                 {
-                    AI_MoveItem( npc, map, npc->ItemSlotMain->ACC_CRITTER.Slot, SLOT_INV, npc->ItemSlotMain->GetId(), npc->ItemSlotMain->GetCount() );
+                    AI_MoveItem( npc, map, npc->ItemSlotMain->AccCritter.Slot, SLOT_INV, npc->ItemSlotMain->GetId(), npc->ItemSlotMain->GetCount() );
                     return;
                 }
                 else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && ( !favor_item->IsWeapon() || CritType::IsAnim1( npc->GetCrType(), favor_item->Proto->Weapon_Anim1 ) ) )
                 {
-                    AI_MoveItem( npc, map, favor_item->ACC_CRITTER.Slot, SLOT_HAND1, favor_item->GetId(), favor_item->GetCount() );
+                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_HAND1, favor_item->GetId(), favor_item->GetCount() );
                     return;
                 }
             }
@@ -121,12 +121,12 @@ void FOServer::ProcessAI( Npc* npc )
             {
                 if( npc->ItemSlotExt->GetId() )
                 {
-                    AI_MoveItem( npc, map, npc->ItemSlotExt->ACC_CRITTER.Slot, SLOT_INV, npc->ItemSlotExt->GetId(), npc->ItemSlotExt->GetCount() );
+                    AI_MoveItem( npc, map, npc->ItemSlotExt->AccCritter.Slot, SLOT_INV, npc->ItemSlotExt->GetId(), npc->ItemSlotExt->GetCount() );
                     return;
                 }
                 else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) )
                 {
-                    AI_MoveItem( npc, map, favor_item->ACC_CRITTER.Slot, SLOT_HAND2, favor_item->GetId(), favor_item->GetCount() );
+                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_HAND2, favor_item->GetId(), favor_item->GetCount() );
                     return;
                 }
             }
@@ -136,12 +136,12 @@ void FOServer::ProcessAI( Npc* npc )
             {
                 if( npc->ItemSlotArmor->GetId() )
                 {
-                    AI_MoveItem( npc, map, npc->ItemSlotArmor->ACC_CRITTER.Slot, SLOT_INV, npc->ItemSlotArmor->GetId(), npc->ItemSlotArmor->GetCount() );
+                    AI_MoveItem( npc, map, npc->ItemSlotArmor->AccCritter.Slot, SLOT_INV, npc->ItemSlotArmor->GetId(), npc->ItemSlotArmor->GetCount() );
                     return;
                 }
                 else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && favor_item->IsArmor() && !favor_item->Proto->Slot )
                 {
-                    AI_MoveItem( npc, map, favor_item->ACC_CRITTER.Slot, SLOT_ARMOR, favor_item->GetId(), favor_item->GetCount() );
+                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_ARMOR, favor_item->GetId(), favor_item->GetCount() );
                     return;
                 }
             }
@@ -497,7 +497,7 @@ void FOServer::ProcessAI( Npc* npc )
                 // Show new
                 if( weap->GetId() )                       // Is no hands
                 {
-                    AI_MoveItem( npc, map, weap->ACC_CRITTER.Slot, SLOT_HAND1, weap->GetId(), weap->GetCount() );
+                    AI_MoveItem( npc, map, weap->AccCritter.Slot, SLOT_HAND1, weap->GetId(), weap->GetCount() );
                     break;
                 }
             }

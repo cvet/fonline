@@ -581,8 +581,7 @@ void ItemManager::SaveAllItemsFile( void ( * save_func )( void*, size_t ) )
         save_func( &item->Id, sizeof( item->Id ) );
         save_func( &item->Proto->ProtoId, sizeof( item->Proto->ProtoId ) );
         save_func( &item->Accessory, sizeof( item->Accessory ) );
-        save_func( &item->ACC_BUFFER.Buffer[ 0 ], sizeof( item->ACC_BUFFER.Buffer[ 0 ] ) );
-        save_func( &item->ACC_BUFFER.Buffer[ 1 ], sizeof( item->ACC_BUFFER.Buffer[ 1 ] ) );
+        save_func( &item->AccBuffer[ 0 ], sizeof( item->AccBuffer ) );
         save_func( &item->Data, sizeof( item->Data ) );
         if( item->PLexems )
         {
@@ -615,20 +614,102 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
     int errors = 0;
     for( uint i = 0; i < count; ++i )
     {
-        uint           id;
+        uint   id;
         FileRead( f, &id, sizeof( id ) );
-        ushort         pid;
+        ushort pid;
         FileRead( f, &pid, sizeof( pid ) );
-        uchar          acc;
+        uchar  acc;
         FileRead( f, &acc, sizeof( acc ) );
-        uint           acc0;
-        FileRead( f, &acc0, sizeof( acc0 ) );
-        uint           acc1;
-        FileRead( f, &acc1, sizeof( acc1 ) );
+        char   acc_buf[ 8 ];
+        FileRead( f, &acc_buf[ 0 ], sizeof( acc_buf ) );
+
         Item::ItemData data;
-        FileRead( f, &data, sizeof( data ) );
-        uchar          lex_len;
-        char           lexems[ 1024 ] = { 0 };
+        if( version >= WORLD_SAVE_V13 )
+        {
+            FileRead( f, &data, sizeof( data ) );
+        }
+        else
+        {
+            struct // 8
+            {
+                union
+                {
+                    struct
+                    {
+                        uchar  BrokenFlags;
+                        uchar  BrokenCount;
+                        ushort Deterioration;
+                        ushort AmmoPid;
+                        ushort AmmoCount;
+                    } TechInfo;
+                    struct
+                    {
+                        uint   DoorId;
+                        ushort Condition;
+                        ushort Complexity;
+                    } Locker;
+                    struct
+                    {
+                        uint   DoorId;
+                        ushort Fuel;
+                        ushort Deterioration;
+                    } Car;
+                    struct
+                    {
+                        uint Number;
+                    } Holodisk;
+                    struct
+                    {
+                        ushort Channel;
+                        ushort Flags;
+                        uchar  BroadcastSend;
+                        uchar  BroadcastRecv;
+                    } Radio;
+                };
+            } data_old;
+            STATIC_ASSERT( sizeof( data_old ) == 8 );
+            memzero( &data, sizeof( data ) );
+            FileRead( f, &data, 84 );
+            FileRead( f, &data_old, 8 );
+            ProtoItem* proto = GetProtoItem( pid );
+            if( proto && proto->Deteriorable )
+            {
+                data.BrokenFlags = data_old.TechInfo.BrokenFlags;
+                data.BrokenCount = data_old.TechInfo.BrokenCount;
+                data.Deterioration = data_old.TechInfo.Deterioration;
+            }
+            if( proto && proto->Type == ITEM_TYPE_WEAPON )
+            {
+                data.AmmoPid = data_old.TechInfo.AmmoPid;
+                data.AmmoCount = data_old.TechInfo.AmmoCount;
+            }
+            if( proto && ( proto->Type == ITEM_TYPE_DOOR || proto->Type == ITEM_TYPE_CONTAINER ) )
+            {
+                data.LockerId = data_old.Locker.DoorId;
+                data.LockerCondition = data_old.Locker.Condition;
+                data.LockerComplexity = data_old.Locker.Complexity;
+            }
+            if( proto && proto->Type == ITEM_TYPE_CAR )
+            {
+                data.LockerId = data_old.Car.DoorId;
+                data.Charge = data_old.Car.Fuel;
+                data.Deterioration = data_old.Car.Deterioration;
+            }
+            if( FLAG( data.Flags, ITEM_HOLODISK ) )
+            {
+                data.HolodiskNumber = data_old.Holodisk.Number;
+            }
+            if( FLAG( data.Flags, ITEM_RADIO ) )
+            {
+                data.RadioChannel = data_old.Radio.Channel;
+                data.RadioFlags = data_old.Radio.Flags;
+                data.RadioBroadcastSend = data_old.Radio.BroadcastSend;
+                data.RadioBroadcastRecv = data_old.Radio.BroadcastRecv;
+            }
+        }
+
+        uchar lex_len;
+        char  lexems[ 1024 ] = { 0 };
         FileRead( f, &lex_len, sizeof( lex_len ) );
         if( lex_len )
         {
@@ -647,8 +728,7 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
             lastItemId = id;
 
         item->Accessory = acc;
-        item->ACC_BUFFER.Buffer[ 0 ] = acc0;
-        item->ACC_BUFFER.Buffer[ 1 ] = acc1;
+        memcpy( item->AccBuffer, acc_buf, sizeof( acc_buf ) );
         item->Data = data;
         if( lexems[ 0 ] )
             item->SetLexems( lexems );
@@ -725,7 +805,7 @@ void ItemManager::SetCritterItems( Critter* cr )
     for( auto it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
     {
         Item* item = ( *it ).second;
-        if( item->Accessory == ITEM_ACCESSORY_CRITTER && item->ACC_CRITTER.Id == crid )
+        if( item->Accessory == ITEM_ACCESSORY_CRITTER && item->AccCritter.Id == crid )
             items.push_back( item );
     }
     itemLocker.Unlock();
@@ -735,7 +815,7 @@ void ItemManager::SetCritterItems( Critter* cr )
         Item* item = *it;
         SYNC_LOCK( item );
 
-        if( item->Accessory == ITEM_ACCESSORY_CRITTER && item->ACC_CRITTER.Id == crid )
+        if( item->Accessory == ITEM_ACCESSORY_CRITTER && item->AccCritter.Id == crid )
         {
             cr->SetItem( item );
             if( item->IsRadio() )
@@ -946,14 +1026,14 @@ void ItemManager::NotifyChangeItem( Item* item )
     {
     case ITEM_ACCESSORY_CRITTER:
     {
-        Critter* cr = CrMngr.GetCritter( item->ACC_CRITTER.Id, false );
+        Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, false );
         if( cr )
             cr->SendAA_ItemData( item );
     }
     break;
     case ITEM_ACCESSORY_HEX:
     {
-        Map* map = MapMngr.GetMap( item->ACC_HEX.MapId, false );
+        Map* map = MapMngr.GetMap( item->AccHex.MapId, false );
         if( map )
             map->ChangeDataItem( item );
     }
@@ -969,7 +1049,7 @@ void ItemManager::EraseItemHolder( Item* item )
     {
     case ITEM_ACCESSORY_CRITTER:
     {
-        Critter* cr = CrMngr.GetCritter( item->ACC_CRITTER.Id, true );
+        Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, true );
         if( cr )
             cr->EraseItem( item, true );
         else if( item->IsRadio() )
@@ -978,14 +1058,14 @@ void ItemManager::EraseItemHolder( Item* item )
     break;
     case ITEM_ACCESSORY_HEX:
     {
-        Map* map = MapMngr.GetMap( item->ACC_HEX.MapId, true );
+        Map* map = MapMngr.GetMap( item->AccHex.MapId, true );
         if( map )
             map->EraseItem( item->GetId() );
     }
     break;
     case ITEM_ACCESSORY_CONTAINER:
     {
-        Item* cont = ItemMngr.GetItem( item->ACC_CONTAINER.ContainerId, true );
+        Item* cont = ItemMngr.GetItem( item->AccContainer.ContainerId, true );
         if( cont )
             cont->ContEraseItem( item );
     }
@@ -998,7 +1078,7 @@ void ItemManager::EraseItemHolder( Item* item )
 
 void ItemManager::MoveItem( Item* item, uint count, Critter* to_cr )
 {
-    if( item->Accessory == ITEM_ACCESSORY_CRITTER && item->ACC_CRITTER.Id == to_cr->GetId() )
+    if( item->Accessory == ITEM_ACCESSORY_CRITTER && item->AccCritter.Id == to_cr->GetId() )
         return;
 
     if( count >= item->GetCount() || !item->IsStackable() )
@@ -1019,7 +1099,7 @@ void ItemManager::MoveItem( Item* item, uint count, Critter* to_cr )
 
 void ItemManager::MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy )
 {
-    if( item->Accessory == ITEM_ACCESSORY_HEX && item->ACC_HEX.MapId == to_map->GetId() && item->ACC_HEX.HexX == to_hx && item->ACC_HEX.HexY == to_hy )
+    if( item->Accessory == ITEM_ACCESSORY_HEX && item->AccHex.MapId == to_map->GetId() && item->AccHex.HexX == to_hx && item->AccHex.HexY == to_hy )
         return;
 
     if( count >= item->GetCount() || !item->IsStackable() )
@@ -1040,7 +1120,7 @@ void ItemManager::MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, u
 
 void ItemManager::MoveItem( Item* item, uint count, Item* to_cont, uint stack_id )
 {
-    if( item->Accessory == ITEM_ACCESSORY_CONTAINER && item->ACC_CONTAINER.ContainerId == to_cont->GetId() && item->ACC_CONTAINER.SpecialId == stack_id )
+    if( item->Accessory == ITEM_ACCESSORY_CONTAINER && item->AccContainer.ContainerId == to_cont->GetId() && item->AccContainer.StackId == stack_id )
         return;
 
     if( count >= item->GetCount() || !item->IsStackable() )
@@ -1309,7 +1389,7 @@ bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint i
                 return false;
             }
 
-            item_->ACC_CONTAINER.SpecialId = stack_id;
+            item_->AccContainer.StackId = stack_id;
             to_cont->ContSetItem( item_ );
         }
         else
@@ -1436,9 +1516,9 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
     {
         Item* item = *it;
         if( item->IsRadio() && item->RadioIsSendActive() &&
-            std::find( channels.begin(), channels.end(), item->Data.Radio.Channel ) == channels.end() )
+            std::find( channels.begin(), channels.end(), item->Data.RadioChannel ) == channels.end() )
         {
-            channels.push_back( item->Data.Radio.Channel );
+            channels.push_back( item->Data.RadioChannel );
             radios.push_back( item );
 
             if( radios.size() > 100 )
@@ -1449,7 +1529,7 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
     for( uint i = 0, j = (uint) radios.size(); i < j; i++ )
     {
         RadioSendTextEx( channels[ i ],
-                         radios[ i ]->Data.Radio.BroadcastSend, cr->GetMap(), cr->Data.WorldX, cr->Data.WorldY,
+                         radios[ i ]->Data.RadioBroadcastSend, cr->GetMap(), cr->Data.WorldX, cr->Data.WorldY,
                          text, text_len, cr->IntellectCacheValue, unsafe_text, text_msg, num_str, NULL );
     }
 }
@@ -1485,16 +1565,16 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
     {
         Item* radio = *it;
 
-        if( radio->Data.Radio.Channel == channel && radio->RadioIsRecvActive() )
+        if( radio->Data.RadioChannel == channel && radio->RadioIsRecvActive() )
         {
-            if( broadcast_type != RADIO_BROADCAST_FORCE_ALL && radio->Data.Radio.BroadcastRecv != RADIO_BROADCAST_FORCE_ALL )
+            if( broadcast_type != RADIO_BROADCAST_FORCE_ALL && radio->Data.RadioBroadcastRecv != RADIO_BROADCAST_FORCE_ALL )
             {
                 if( broadcast_type == RADIO_BROADCAST_WORLD )
-                    broadcast = radio->Data.Radio.BroadcastRecv;
-                else if( radio->Data.Radio.BroadcastRecv == RADIO_BROADCAST_WORLD )
+                    broadcast = radio->Data.RadioBroadcastRecv;
+                else if( radio->Data.RadioBroadcastRecv == RADIO_BROADCAST_WORLD )
                     broadcast = broadcast_type;
                 else
-                    broadcast = MIN( broadcast_type, radio->Data.Radio.BroadcastRecv );
+                    broadcast = MIN( broadcast_type, radio->Data.RadioBroadcastRecv );
 
                 if( broadcast == RADIO_BROADCAST_WORLD )
                     broadcast = RADIO_BROADCAST_FORCE_ALL;
@@ -1519,7 +1599,7 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
 
             if( radio->Accessory == ITEM_ACCESSORY_CRITTER )
             {
-                Client* cl = CrMngr.GetPlayer( radio->ACC_CRITTER.Id, false );
+                Client* cl = CrMngr.GetPlayer( radio->AccCritter.Id, false );
                 if( cl && cl->RadioMessageSended != msg_count )
                 {
                     if( broadcast != RADIO_BROADCAST_FORCE_ALL )
@@ -1556,10 +1636,10 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
             }
             else if( radio->Accessory == ITEM_ACCESSORY_HEX )
             {
-                if( broadcast == RADIO_BROADCAST_MAP && broadcast_map_id != radio->ACC_HEX.MapId )
+                if( broadcast == RADIO_BROADCAST_MAP && broadcast_map_id != radio->AccHex.MapId )
                     continue;
 
-                Map* map = MapMngr.GetMap( radio->ACC_HEX.MapId, false );
+                Map* map = MapMngr.GetMap( radio->AccHex.MapId, false );
                 if( map )
                 {
                     if( broadcast != RADIO_BROADCAST_FORCE_ALL && broadcast != RADIO_BROADCAST_MAP )
@@ -1581,11 +1661,11 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                     }
 
                     if( text )
-                        map->SetText( radio->ACC_HEX.HexX, radio->ACC_HEX.HexY, 0xFFFFFFFE, text, text_len, intellect, unsafe_text );
+                        map->SetText( radio->AccHex.HexX, radio->AccHex.HexY, 0xFFFFFFFE, text, text_len, intellect, unsafe_text );
                     else if( lexems )
-                        map->SetTextMsgLex( radio->ACC_HEX.HexX, radio->ACC_HEX.HexY, 0xFFFFFFFE, text_msg, num_str, lexems, Str::Length( lexems ) );
+                        map->SetTextMsgLex( radio->AccHex.HexX, radio->AccHex.HexY, 0xFFFFFFFE, text_msg, num_str, lexems, Str::Length( lexems ) );
                     else
-                        map->SetTextMsg( radio->ACC_HEX.HexX, radio->ACC_HEX.HexY, 0xFFFFFFFE, text_msg, num_str );
+                        map->SetTextMsg( radio->AccHex.HexX, radio->AccHex.HexY, 0xFFFFFFFE, text_msg, num_str );
                 }
             }
         }

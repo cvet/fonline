@@ -2,24 +2,20 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="Mapper" />
+		<Option title="ASCompiler" />
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
-			<Target title="Release Linux">
-				<Option output="../../sdk/Tools/Mapper/Mapper" prefix_auto="1" extension_auto="1" />
-				<Option object_output="Release_Linux" />
-				<Option type="0" />
+			<Target title="Release">
+				<Option output="../../sdk/Tools/ASCompiler/ASCompiler" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
 					<Add option="-DNDEBUG" />
-					<Add directory="../Source/StlPort" />
-					<Add directory="../Source" />
+					<Add option="-DFONLINE_SCRIPT_COMPILER" />
 				</Compiler>
-				<Linker>
-					<Add directory="../Lib" />
-				</Linker>
 			</Target>
 		</Build>
 		<Compiler>
@@ -27,30 +23,18 @@
 			<Add option="-W" />
 			<Add option="-Wno-invalid-offsetof" />
 			<Add option="-Wno-unused-result" />
-			<Add option="-DFONLINE_MAPPER" />
-			<Add option="-DAS_NO_THREADS" />
 			<Add directory="../Source/StlPort" />
 			<Add directory="../Source" />
 		</Compiler>
 		<Linker>
 			<Add option="-rdynamic" />
-			<Add option="-lpthread" />
 			<Add option="-ldl" />
 			<Add option="-lrt" />
 			<Add option="-lstlport" />
-			<Add option="-lX11" />
-			<Add option="-lXft" />
-			<Add option="-lfltk" />
-			<Add option="-lfltk_gl" />
-			<Add option="-lGL" />
-			<Add option="-lGLU" />
-			<Add option="-lIL" />
 			<Add directory="../Lib/Linux" />
 		</Linker>
-		<Unit filename="Mapper.ico" />
-		<Unit filename="../Source/3dAnimation.h" />
-		<Unit filename="../Source/3dStuff.cpp" />
-		<Unit filename="../Source/3dStuff.h" />
+		<Unit filename="ScriptEngine.h" />
+		<Unit filename="../Source/ASCompiler.cpp" />
 		<Unit filename="../Source/AngelScript/Preprocessor/define_table.h" />
 		<Unit filename="../Source/AngelScript/Preprocessor/lex.cpp" />
 		<Unit filename="../Source/AngelScript/Preprocessor/lex.h" />
@@ -72,6 +56,7 @@
 		<Unit filename="../Source/AngelScript/as_callfunc.cpp" />
 		<Unit filename="../Source/AngelScript/as_callfunc.h" />
 		<Unit filename="../Source/AngelScript/as_callfunc_x64_gcc.cpp" />
+		<Unit filename="../Source/AngelScript/as_callfunc_x64_msvc.asm" />
 		<Unit filename="../Source/AngelScript/as_callfunc_x64_msvc.cpp" />
 		<Unit filename="../Source/AngelScript/as_callfunc_x86.cpp" />
 		<Unit filename="../Source/AngelScript/as_compiler.cpp" />
@@ -142,89 +127,36 @@
 		<Unit filename="../Source/AngelScript/scriptstring.h" />
 		<Unit filename="../Source/Common.cpp" />
 		<Unit filename="../Source/Common.h" />
-		<Unit filename="../Source/ConstantsManager.cpp" />
-		<Unit filename="../Source/ConstantsManager.h" />
-		<Unit filename="../Source/CritterCl.cpp" />
-		<Unit filename="../Source/CritterCl.h" />
-		<Unit filename="../Source/CritterData.h" />
-		<Unit filename="../Source/CritterManager.cpp" />
-		<Unit filename="../Source/CritterManager.h" />
-		<Unit filename="../Source/CritterType.cpp" />
-		<Unit filename="../Source/CritterType.h" />
 		<Unit filename="../Source/Crypt.cpp" />
 		<Unit filename="../Source/Crypt.h" />
+		<Unit filename="../Source/DatFile/cfile.cpp" />
+		<Unit filename="../Source/DatFile/cfile.h" />
+		<Unit filename="../Source/DatFile/unlzss.cpp" />
+		<Unit filename="../Source/DatFile/unlzss.h" />
 		<Unit filename="../Source/DataFile.cpp" />
 		<Unit filename="../Source/DataFile.h" />
 		<Unit filename="../Source/Debugger.cpp" />
 		<Unit filename="../Source/Debugger.h" />
-		<Unit filename="../Source/Defines.h" />
-		<Unit filename="../Source/Exception.cpp" />
-		<Unit filename="../Source/Exception.h" />
-		<Unit filename="../Source/F2Palette.h" />
+		<Unit filename="../Source/DummyData.h" />
 		<Unit filename="../Source/FileManager.cpp" />
 		<Unit filename="../Source/FileManager.h" />
 		<Unit filename="../Source/FileSystem.cpp" />
 		<Unit filename="../Source/FileSystem.h" />
-		<Unit filename="../Source/FlexRect.h" />
-		<Unit filename="../Source/GL/glew.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../Source/GL/glew.h" />
-		<Unit filename="../Source/GL/glxew.h" />
-		<Unit filename="../Source/GL/wglew.h" />
-		<Unit filename="../Source/GraphicLoader.cpp" />
-		<Unit filename="../Source/GraphicLoader.h" />
-		<Unit filename="../Source/GraphicStructures.h" />
-		<Unit filename="../Source/HexManager.cpp" />
-		<Unit filename="../Source/HexManager.h" />
 		<Unit filename="../Source/IniParser.cpp" />
 		<Unit filename="../Source/IniParser.h" />
-		<Unit filename="../Source/Item.cpp" />
-		<Unit filename="../Source/Item.h" />
-		<Unit filename="../Source/ItemHex.cpp" />
-		<Unit filename="../Source/ItemHex.h" />
-		<Unit filename="../Source/ItemManager.cpp" />
-		<Unit filename="../Source/ItemManager.h" />
-		<Unit filename="../Source/Keyboard.cpp" />
-		<Unit filename="../Source/Keyboard.h" />
-		<Unit filename="../Source/LineTracer.h" />
 		<Unit filename="../Source/Log.cpp" />
 		<Unit filename="../Source/Log.h" />
-		<Unit filename="../Source/MainMapper.cpp" />
-		<Unit filename="../Source/Mapper.cpp" />
-		<Unit filename="../Source/Mapper.h" />
-		<Unit filename="../Source/MsgFiles.cpp" />
-		<Unit filename="../Source/MsgFiles.h" />
-		<Unit filename="../Source/MsgStr.h" />
-		<Unit filename="../Source/PlatformSpecific.h" />
-		<Unit filename="../Source/ProtoMap.cpp" />
-		<Unit filename="../Source/ProtoMap.h" />
-		<Unit filename="../Source/Randomizer.h" />
-		<Unit filename="../Source/ResourceManager.cpp" />
-		<Unit filename="../Source/ResourceManager.h" />
-		<Unit filename="../Source/ResourceMapper.h" />
 		<Unit filename="../Source/SHA2/sha2.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../Source/SHA2/sha2.h" />
-		<Unit filename="../Source/Script.cpp" />
-		<Unit filename="../Source/Script.h" />
 		<Unit filename="../Source/ScriptBind.h" />
 		<Unit filename="../Source/ScriptPragmas.cpp" />
 		<Unit filename="../Source/ScriptPragmas.h" />
-		<Unit filename="../Source/SpriteManager.cpp" />
-		<Unit filename="../Source/SpriteManager.h" />
-		<Unit filename="../Source/SpriteManagerFont.cpp" />
-		<Unit filename="../Source/Sprites.cpp" />
-		<Unit filename="../Source/Sprites.h" />
-		<Unit filename="../Source/StdAfx.cpp" />
-		<Unit filename="../Source/StdAfx.h" />
 		<Unit filename="../Source/Text.cpp" />
 		<Unit filename="../Source/Text.h" />
 		<Unit filename="../Source/Timer.cpp" />
 		<Unit filename="../Source/Timer.h" />
-		<Unit filename="../Source/Types.h" />
-		<Unit filename="../Source/Version.h" />
 		<Unit filename="../Source/Zlib/adler32.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -276,14 +208,8 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../Source/Zlib/zutil.h" />
-		<Unit filename="../Source/datfile/cfile.cpp" />
-		<Unit filename="../Source/datfile/cfile.h" />
-		<Unit filename="../Source/datfile/unlzss.cpp" />
-		<Unit filename="../Source/datfile/unlzss.h" />
 		<Extensions>
-			<envvars />
 			<code_completion />
-			<lib_finder disable_auto="1" />
 			<debugger />
 		</Extensions>
 	</Project>

@@ -620,11 +620,11 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     ProtoItem* ammo = NULL;
     if( weap->WeapGetAmmoCaliber() && weap->WeapGetMaxAmmoCount() )
     {
-        ammo = ItemMngr.GetProtoItem( weap->Data.TechInfo.AmmoPid );
+        ammo = ItemMngr.GetProtoItem( weap->Data.AmmoPid );
         if( !ammo )
         {
-            weap->Data.TechInfo.AmmoPid = weap->Proto->Weapon_DefaultAmmoPid;
-            ammo = ItemMngr.GetProtoItem( weap->Data.TechInfo.AmmoPid );
+            weap->Data.AmmoPid = weap->Proto->Weapon_DefaultAmmoPid;
+            ammo = ItemMngr.GetProtoItem( weap->Data.AmmoPid );
         }
 
         if( !ammo )
@@ -643,7 +643,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     // No ammo
     if( weap->WeapGetMaxAmmoCount() && !cr->IsRawParam( MODE_UNLIMITED_AMMO ) )
     {
-        if( !weap->Data.TechInfo.AmmoCount )
+        if( !weap->Data.AmmoCount )
         {
             WriteLogF( _FUNC_, " - Critter bullets count is zero, critter<%s>.\n", cr->GetInfo() );
             return false;
@@ -884,7 +884,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             return false;
         }
 
-        if( !CheckDist( cr->GetHexX(), cr->GetHexY(), target_item->ACC_HEX.HexX, target_item->ACC_HEX.HexY, cr->GetUseDist() ) )
+        if( !CheckDist( cr->GetHexX(), cr->GetHexY(), target_item->AccHex.HexX, target_item->AccHex.HexY, cr->GetUseDist() ) )
         {
             cr->Send_XY( cr );
             WriteLogF( _FUNC_, " - Target item too far, id<%u>, critter<%s>.\n", target_id, cr->GetInfo() );
@@ -3146,7 +3146,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check map
-            if( cont->ACC_HEX.MapId != cl->GetMap() )
+            if( cont->AccHex.MapId != cl->GetMap() )
             {
                 cl->Send_ContainerInfo();
                 WriteLogF( _FUNC_, " - Attempt to take a subject from the container on other map.\n" );
@@ -3154,7 +3154,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check dist
-            if( !CheckDist( cl->GetHexX(), cl->GetHexY(), cont->ACC_HEX.HexX, cont->ACC_HEX.HexY, cl->GetUseDist() ) )
+            if( !CheckDist( cl->GetHexX(), cl->GetHexY(), cont->AccHex.HexX, cont->AccHex.HexY, cl->GetUseDist() ) )
             {
                 cl->Send_XY( cl );
                 cl->Send_ContainerInfo();
@@ -3321,7 +3321,7 @@ void FOServer::Process_ContainerItem( Client* cl )
         {
             // Get item
             Item* item = cl->GetItem( item_id, true );
-            if( !item || item->ACC_CRITTER.Slot != SLOT_INV )
+            if( !item || item->AccCritter.Slot != SLOT_INV )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_TextMsg( cl, STR_ITEM_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
@@ -3340,7 +3340,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check slot
-            if( item->ACC_CRITTER.Slot != SLOT_INV )
+            if( item->AccCritter.Slot != SLOT_INV )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Cheat detected.", SAY_NETMSG );
@@ -3606,7 +3606,7 @@ void FOServer::Process_ContainerItem( Client* cl )
         {
             // Get item
             Item* item = cl->GetItem( item_id, true );
-            if( !item || item->ACC_CRITTER.Slot != SLOT_INV )
+            if( !item || item->AccCritter.Slot != SLOT_INV )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_TextMsg( cl, STR_ITEM_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
@@ -3625,7 +3625,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check slot
-            if( item->ACC_CRITTER.Slot != SLOT_INV )
+            if( item->AccCritter.Slot != SLOT_INV )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Cheat detected.", SAY_NETMSG );

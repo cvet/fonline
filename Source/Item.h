@@ -356,29 +356,26 @@ public:
             uint   MapId;
             ushort HexX;
             ushort HexY;
-        } ACC_HEX;
+        } AccHex;
 
         struct
         {
             uint  Id;
             uchar Slot;
-        } ACC_CRITTER;
+        } AccCritter;
 
         struct
         {
             uint ContainerId;
-            uint SpecialId;
-        } ACC_CONTAINER;
+            uint StackId;
+        } AccContainer;
 
-        struct
-        {
-            uint Buffer[ 2 ];
-        } ACC_BUFFER;
+        char AccBuffer[ 8 ];
     };
 
-    struct ItemData     // 92, NetProto.h
+    struct ItemData     // 120, size used in NetProto.h
     {
-        static char SendMask[ ITEM_DATA_MASK_MAX ][ 92 ];
+        static char SendMask[ ITEM_DATA_MASK_MAX ][ 120 ];
 
         ushort      SortValue;
         uchar       Info;
@@ -400,45 +397,24 @@ public:
         uint        Count;
         uint        Cost;
         int         ScriptValues[ ITEM_MAX_SCRIPT_VALUES ];
-
-        union         // 8
-        {
-            struct
-            {
-                uchar  BrokenFlags;
-                uchar  BrokenCount;
-                ushort Deterioration;
-                ushort AmmoPid;
-                ushort AmmoCount;
-            } TechInfo;
-
-            struct
-            {
-                uint   DoorId;
-                ushort Condition;
-                ushort Complexity;
-            } Locker;
-
-            struct
-            {
-                uint   DoorId;
-                ushort Fuel;
-                ushort Deterioration;
-            } Car;
-
-            struct
-            {
-                uint Number;
-            } Holodisk;
-
-            struct
-            {
-                ushort Channel;
-                ushort Flags;
-                uchar  BroadcastSend;
-                uchar  BroadcastRecv;
-            } Radio;
-        };
+        uchar       BrokenFlags;
+        uchar       BrokenCount;
+        ushort      Deterioration;
+        ushort      AmmoPid;
+        ushort      AmmoCount;
+        uint        LockerId;
+        ushort      LockerCondition;
+        ushort      LockerComplexity;
+        uint        HolodiskNumber;
+        ushort      RadioChannel;
+        ushort      RadioFlags;
+        uchar       RadioBroadcastSend;
+        uchar       RadioBroadcastRecv;
+        ushort      Charge;
+        short       OffsetX;
+        short       OffsetY;
+        short       Dir;
+        char        Reserved[ 2 ];
     } Data;
 
     short RefCounter;
@@ -543,10 +519,10 @@ public:
     #endif
 
     bool IsDeteriorable() { return Proto->Deteriorable; }
-    bool IsBroken()       { return FLAG( Data.TechInfo.BrokenFlags, BI_BROKEN ); }
+    bool IsBroken()       { return FLAG( Data.BrokenFlags, BI_BROKEN ); }
     int  GetDeteriorationProc()
     {
-        int val = Data.TechInfo.Deterioration * 100 / MAX_DETERIORATION;
+        int val = Data.Deterioration * 100 / MAX_DETERIORATION;
         return CLAMP( val, 0, 100 );
     }
 
@@ -555,10 +531,10 @@ public:
 
     // Weapon
     bool IsWeapon()                  { return GetType() == ITEM_TYPE_WEAPON; }
-    bool WeapIsEmpty()               { return !Data.TechInfo.AmmoCount; }
-    bool WeapIsFull()                { return Data.TechInfo.AmmoCount >= Proto->Weapon_MaxAmmoCount; }
-    uint WeapGetAmmoCount()          { return Data.TechInfo.AmmoCount; }
-    uint WeapGetAmmoPid()            { return Data.TechInfo.AmmoPid; }
+    bool WeapIsEmpty()               { return !Data.AmmoCount; }
+    bool WeapIsFull()                { return Data.AmmoCount >= Proto->Weapon_MaxAmmoCount; }
+    uint WeapGetAmmoCount()          { return Data.AmmoCount; }
+    uint WeapGetAmmoPid()            { return Data.AmmoPid; }
     uint WeapGetMaxAmmoCount()       { return Proto->Weapon_MaxAmmoCount; }
     int  WeapGetAmmoCaliber()        { return Proto->Weapon_Caliber; }
     bool WeapIsUseAviable( int use ) { return use >= USE_PRIMARY && use <= USE_THIRD ? ( ( ( Proto->Weapon_ActiveUses >> use ) & 1 ) != 0 ) : false; }
@@ -571,14 +547,14 @@ public:
     bool ContIsMagicHandsGrnd() { return Proto->Container_MagicHandsGrnd; }
     bool ContIsChangeble()      { return Proto->Container_Changeble; }
     #ifdef FONLINE_SERVER
-    void  ContAddItem( Item*& item, uint special_id );
+    void  ContAddItem( Item*& item, uint stack_id );
     void  ContSetItem( Item* item );
     void  ContEraseItem( Item* item );
     Item* ContGetItem( uint item_id, bool skip_hide );
     void  ContGetAllItems( ItemPtrVec& items, bool skip_hide, bool sync_lock );
-    Item* ContGetItemByPid( ushort pid, uint special_id );
-    void  ContGetItems( ItemPtrVec& items, uint special_id, bool sync_lock );
-    int   ContGetFreeVolume( uint special_id );
+    Item* ContGetItemByPid( ushort pid, uint stack_id );
+    void  ContGetItems( ItemPtrVec& items, uint stack_id, bool sync_lock );
+    int   ContGetFreeVolume( uint stack_id );
     bool  ContIsItems();
     #endif
 
@@ -587,11 +563,11 @@ public:
 
     // Locker
     bool IsHasLocker()       { return IsDoor() || IsContainer(); }
-    uint LockerDoorId()      { return Data.Locker.DoorId; }
-    bool LockerIsOpen()      { return FLAG( Data.Locker.Condition, LOCKER_ISOPEN ); }
+    uint LockerDoorId()      { return Data.LockerId; }
+    bool LockerIsOpen()      { return FLAG( Data.LockerCondition, LOCKER_ISOPEN ); }
     bool LockerIsClose()     { return !LockerIsOpen(); }
     bool LockerIsChangeble() { return Proto->LockerIsChangeble(); }
-    int  LockerComplexity()  { return Data.Locker.Complexity; }
+    int  LockerComplexity()  { return Data.LockerComplexity; }
 
     // Ammo
     bool IsAmmo()         { return Proto->IsAmmo(); }
@@ -599,7 +575,7 @@ public:
 
     // Key
     bool IsKey()     { return Proto->IsKey(); }
-    uint KeyDoorId() { return Data.Locker.DoorId; }
+    uint KeyDoorId() { return Data.LockerId; }
 
     // Drug
     bool IsDrug() { return Proto->IsDrug(); }
@@ -628,8 +604,8 @@ public:
 
     // Radio
     bool IsRadio()           { return FLAG( Data.Flags, ITEM_RADIO ); }
-    bool RadioIsSendActive() { return !FLAG( Data.Radio.Flags, RADIO_DISABLE_SEND ); }
-    bool RadioIsRecvActive() { return !FLAG( Data.Radio.Flags, RADIO_DISABLE_RECV ); }
+    bool RadioIsSendActive() { return !FLAG( Data.RadioFlags, RADIO_DISABLE_SEND ); }
+    bool RadioIsRecvActive() { return !FLAG( Data.RadioFlags, RADIO_DISABLE_RECV ); }
 
     // Car
     bool IsCar() { return Proto->IsCar(); }
@@ -640,8 +616,8 @@ public:
 
     // Holodisk
     bool IsHolodisk()               { return FLAG( Data.Flags, ITEM_HOLODISK ); }
-    uint HolodiskGetNum()           { return Data.Holodisk.Number; }
-    void HolodiskSetNum( uint num ) { Data.Holodisk.Number = num; }
+    uint HolodiskGetNum()           { return Data.HolodiskNumber; }
+    void HolodiskSetNum( uint num ) { Data.HolodiskNumber = num; }
 
     // Trap
     bool IsTrap()                { return FLAG( Data.Flags, ITEM_TRAP ); }

@@ -188,7 +188,7 @@ int main( int argc, char** argv )
     #endif
 
     // Start
-    WriteLog( "Starting FOnline (version %04X-%02X)...\n\n", CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF );
+    WriteLog( "Starting FOnline (version %04X-%02X)...\n", CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF );
     Game.Start( GameThread, "Main" );
 
     // Loop

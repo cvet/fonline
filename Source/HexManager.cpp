@@ -331,22 +331,13 @@ bool HexManager::AddItem( uint id, ushort pid, ushort hx, ushort hy, bool is_add
 
     // Parse
     Field&   f = GetField( hx, hy );
-    ItemHex* item = new ItemHex( id, proto, data, hx, hy, proto->Dir, 0, 0, &f.ScrX, &f.ScrY, 0 );
+    ItemHex* item = new ItemHex( id, proto, data, hx, hy, 0, 0, 0, &f.ScrX, &f.ScrY, 0 );
     if( is_added )
         item->SetShowAnim();
     PushItem( item );
 
     // Check ViewField size
-    if( ProcessHexBorders( item->Anim->GetSprId( 0 ), 0, 0 ) )
-    {
-        // Resize
-        hVisible = VIEW_HEIGHT + hTop + hBottom;
-        wVisible = VIEW_WIDTH + wLeft + wRight;
-        delete[] viewField;
-        viewField = new ViewField[ hVisible * wVisible ];
-        RefreshMap();
-    }
-    else
+    if( !ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetOffsetX(), item->GetOffsetY(), true ) )
     {
         // Draw
         if( GetHexToDraw( hx, hy ) && !item->IsHidden() && !item->IsFullyTransparent() )
@@ -375,16 +366,23 @@ void HexManager::ChangeItem( uint id, const Item::ItemData& data )
     Item::ItemData old_data = item->Data;
     item->Data = data;
 
-    if( old_data.PicMapHash != data.PicMapHash )
+    bool check_borders = false;
+
+    if( old_data.PicMapHash != data.PicMapHash || old_data.Dir != data.Dir )
         item->RefreshAnim();
     if( proto->IsDoor() || proto->IsContainer() )
     {
-        ushort old_cond = old_data.Locker.Condition;
-        ushort new_cond = data.Locker.Condition;
+        ushort old_cond = old_data.LockerCondition;
+        ushort new_cond = data.LockerCondition;
         if( !FLAG( old_cond, LOCKER_ISOPEN ) && FLAG( new_cond, LOCKER_ISOPEN ) )
             item->SetAnimFromStart();
         if( FLAG( old_cond, LOCKER_ISOPEN ) && !FLAG( new_cond, LOCKER_ISOPEN ) )
             item->SetAnimFromEnd();
+    }
+    if( old_data.OffsetX != data.OffsetX || old_data.OffsetY != data.OffsetY )
+    {
+        item->SetAnimOffs();
+        check_borders = true;
     }
 
     item->RefreshAlpha();
@@ -393,6 +391,9 @@ void HexManager::ChangeItem( uint id, const Item::ItemData& data )
     if( item->IsLight() || FLAG( old_data.Flags, ITEM_LIGHT_THRU ) != FLAG( data.Flags, ITEM_LIGHT_THRU ) )
         RebuildLight();
     GetField( item->GetHexX(), item->GetHexY() ).ProcessCache();
+
+    if( check_borders )
+        ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetOffsetX(), item->GetOffsetY(), true );
 }
 
 void HexManager::FinishItem( uint id, bool is_deleted )
@@ -1443,7 +1444,7 @@ void HexManager::CollectLightSources()
         for( auto it_ = cr->InvItems.begin(), end_ = cr->InvItems.end(); it_ != end_; ++it_ )
         {
             Item* item = *it_;
-            if( item->IsLight() && item->ACC_CRITTER.Slot != SLOT_INV )
+            if( item->IsLight() && item->AccCritter.Slot != SLOT_INV )
             {
                 lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags() ) );
                 added = true;
@@ -1465,7 +1466,7 @@ bool HexManager::CheckTilesBorder( Field::Tile& tile, bool is_roof )
 {
     int ox = ( is_roof ? ROOF_OX : TILE_OX ) + tile.OffsX;
     int oy = ( is_roof ? ROOF_OY : TILE_OY ) + tile.OffsY;
-    return ProcessHexBorders( tile.Anim->GetSprId( 0 ), ox, oy );
+    return ProcessHexBorders( tile.Anim->GetSprId( 0 ), ox, oy, false );
 }
 
 void HexManager::RebuildTiles()
@@ -1622,7 +1623,7 @@ bool HexManager::IsVisible( uint spr_id, int ox, int oy )
     return !( top > MODE_HEIGHT * GameOpt.SpritesZoom || bottom < 0 || left > MODE_WIDTH * GameOpt.SpritesZoom || right < 0 );
 }
 
-bool HexManager::ProcessHexBorders( uint spr_id, int ox, int oy )
+bool HexManager::ProcessHexBorders( uint spr_id, int ox, int oy, bool resize_map )
 {
     SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
     if( !si )
@@ -1648,6 +1649,12 @@ bool HexManager::ProcessHexBorders( uint spr_id, int ox, int oy )
         hBottom += bottom / HEX_LINE_H + ( ( bottom % HEX_LINE_H ) ? 1 : 0 );
         wLeft += left / HEX_W + ( ( left % HEX_W ) ? 1 : 0 );
         wRight += right / HEX_W + ( ( right % HEX_W ) ? 1 : 0 );
+
+        if( resize_map )
+        {
+            ResizeView();
+            RefreshMap();
+        }
         return true;
     }
     return false;
@@ -1819,6 +1826,14 @@ void HexManager::InitView( int cx, int cy )
     }
 }
 
+void HexManager::ResizeView()
+{
+    hVisible = VIEW_HEIGHT + hTop + hBottom;
+    wVisible = VIEW_WIDTH + wLeft + wRight;
+    SAFEDELA( viewField );
+    viewField = new ViewField[ hVisible * wVisible ];
+}
+
 void HexManager::ChangeZoom( int zoom )
 {
     if( !IsMapLoaded() )
@@ -1862,10 +1877,7 @@ void HexManager::ChangeZoom( int zoom )
         GameOpt.SpritesZoom = 1.0f;
     }
 
-    wVisible = VIEW_WIDTH + wLeft + wRight;
-    hVisible = VIEW_HEIGHT + hTop + hBottom;
-    delete[] viewField;
-    viewField = new ViewField[ hVisible * wVisible ];
+    ResizeView();
     RefreshMap();
 
     if( zoom == 0 && GameOpt.SpritesZoom != 1.0f )
@@ -3647,10 +3659,7 @@ bool HexManager::LoadMap( ushort map_pid )
     lightPointsCount = 0;
 
     // Visible
-    hVisible = VIEW_HEIGHT + hTop + hBottom;
-    wVisible = VIEW_WIDTH + wLeft + wRight;
-    SAFEDELA( viewField );
-    viewField = new ViewField[ hVisible * wVisible ];
+    ResizeView();
 
     // Finish
     curPidMap = map_pid;
@@ -3875,8 +3884,8 @@ bool HexManager::GetMapData( ushort map_pid, ItemVec& items, ushort& maxhx, usho
             Item item;
             item.Init( proto_item );
             item.Accessory = ITEM_ACCESSORY_NONE;
-            item.ACC_HEX.HexX = scenwall.MapX;
-            item.ACC_HEX.HexY = scenwall.MapY;
+            item.AccHex.HexX = scenwall.MapX;
+            item.AccHex.HexY = scenwall.MapY;
             items.push_back( item );
         }
     }
@@ -3947,7 +3956,7 @@ bool HexManager::ParseScenery( SceneryCl& scen )
         scenery->RefreshAnim();
     PushItem( scenery );
     if( !scenery->IsHidden() && !scenery->IsFullyTransparent() )
-        ProcessHexBorders( scenery->Anim->GetSprId( 0 ), scenery->StartScrX, scenery->StartScrY );
+        ProcessHexBorders( scenery->Anim->GetSprId( 0 ), scen.OffsetX ? scen.OffsetX : proto_item->OffsetX, scen.OffsetY ? scen.OffsetY : proto_item->OffsetY, false );
     return true;
 }
 
@@ -4077,12 +4086,12 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
                 continue;
 
             Field&   f = GetField( o->MapX, o->MapY );
-            ItemHex* item = new ItemHex( ++cur_id, proto, NULL, o->MapX, o->MapY, proto->Dir, 0, 0, &f.ScrX, &f.ScrY, 0 );
+            ItemHex* item = new ItemHex( ++cur_id, proto, NULL, o->MapX, o->MapY, o->Dir, o->MItem.OffsetX, o->MItem.OffsetY, &f.ScrX, &f.ScrY, 0 );
             PushItem( item );
             AffectItem( o, item );
             o->RunTime.MapObjId = cur_id;
 
-            ProcessHexBorders( item->SprId, item->StartScrX, item->StartScrY );
+            ProcessHexBorders( item->SprId, item->GetOffsetX(), item->GetOffsetY(), false );
         }
         else if( o->MapObjType == MAP_OBJECT_CRITTER )
         {
@@ -4127,10 +4136,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
         }
     }
 
-    hVisible = VIEW_HEIGHT + hTop + hBottom;
-    wVisible = VIEW_WIDTH + wLeft + wRight;
-    SAFEDELA( viewField );
-    viewField = new ViewField[ hVisible * wVisible ];
+    ResizeView();
 
     curPidMap = 0xFFFF;
 //	curMapTime=pmap.Time;
@@ -4242,10 +4248,7 @@ void HexManager::SetTile( uint name_hash, ushort hx, ushort hy, short ox, short 
 
     if( CheckTilesBorder( is_roof ? f.Roofs.back() : f.Tiles.back(), is_roof ) )
     {
-        hVisible = VIEW_HEIGHT + hTop + hBottom;
-        wVisible = VIEW_WIDTH + wLeft + wRight;
-        delete[] viewField;
-        viewField = new ViewField[ hVisible * wVisible ];
+        ResizeView();
         RefreshMap();
     }
     else
@@ -4433,8 +4436,8 @@ void HexManager::MarkPassedHexes()
 void HexManager::AffectItem( MapObject* mobj, ItemHex* item )
 {
     uint  old_spr_id = item->SprId;
-    short old_ox = item->StartScrX;
-    short old_oy = item->StartScrY;
+    short old_ox = item->Data.OffsetX;
+    short old_oy = item->Data.OffsetY;
 
     mobj->LightIntensity = CLAMP( mobj->LightIntensity, -100, 100 );
 
@@ -4477,14 +4480,14 @@ void HexManager::AffectItem( MapObject* mobj, ItemHex* item )
     mobj->MItem.PicInvHash = ( mobj->RunTime.PicInvName[ 0 ] ? Str::GetHash( mobj->RunTime.PicInvName ) : 0 );
     item->Data.PicMapHash = mobj->MItem.PicMapHash;
     item->Data.PicInvHash = mobj->MItem.PicInvHash;
-    item->Dir = mobj->Dir;
+    item->Data.Dir = mobj->Dir;
 
     item->Data.Info = mobj->MItem.InfoOffset;
-    item->StartScrX = mobj->MItem.OffsetX;
-    item->StartScrY = mobj->MItem.OffsetY;
+    item->Data.OffsetX = mobj->MItem.OffsetX;
+    item->Data.OffsetY = mobj->MItem.OffsetY;
 
     if( item->IsHasLocker() )
-        item->Data.Locker.Condition = mobj->MItem.LockerCondition;
+        item->Data.LockerCondition = mobj->MItem.LockerCondition;
 
     int cut = ( mobj->MScenery.SpriteCut ? mobj->MScenery.SpriteCut : item->Proto->SpriteCut );
     if( mobj->MapObjType == MAP_OBJECT_SCENERY && item->SpriteCut != cut )
@@ -4495,16 +4498,8 @@ void HexManager::AffectItem( MapObject* mobj, ItemHex* item )
 
     item->RefreshAnim();
 
-    if( ( item->SprId != old_spr_id || item->StartScrX != old_ox || item->StartScrX != old_oy ) &&
-        ProcessHexBorders( item->SprId, item->StartScrX, item->StartScrY ) )
-    {
-        // Resize field
-        hVisible = VIEW_HEIGHT + hTop + hBottom;
-        wVisible = VIEW_WIDTH + wLeft + wRight;
-        delete[] viewField;
-        viewField = new ViewField[ hVisible * wVisible ];
-        RefreshMap();
-    }
+    if( item->SprId != old_spr_id || item->Data.OffsetX != old_ox || item->Data.OffsetX != old_oy )
+        ProcessHexBorders( item->SprId, item->Data.OffsetX, item->Data.OffsetY, true );
 }
 
 void HexManager::AffectCritter( MapObject* mobj, CritterCl* cr )

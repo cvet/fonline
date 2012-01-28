@@ -1795,7 +1795,7 @@ void FOClient::InvLMouseUp()
         {
             Item* item = Chosen->GetItem( InvHoldId );
             if( item )
-                from_slot = item->ACC_CRITTER.Slot;
+                from_slot = item->AccCritter.Slot;
         }
         break;
         }
@@ -1806,13 +1806,13 @@ void FOClient::InvLMouseUp()
 
         Item* item = Chosen->GetItem( InvHoldId );
         InvHoldId = 0;
-        if( !item || item->ACC_CRITTER.Slot != from_slot )
+        if( !item || item->AccCritter.Slot != from_slot )
             return;
 
         // Load weapon
         if( item->IsAmmo() && to_weap )
         {
-            if( item->Proto->Ammo_Caliber == to_weap->Proto->Weapon_Caliber && ( to_weap->Data.TechInfo.AmmoCount < to_weap->Proto->Weapon_MaxAmmoCount || to_weap->Data.TechInfo.AmmoPid != item->GetProtoId() ) )
+            if( item->Proto->Ammo_Caliber == to_weap->Proto->Weapon_Caliber && ( to_weap->Data.AmmoCount < to_weap->Proto->Weapon_MaxAmmoCount || to_weap->Data.AmmoPid != item->GetProtoId() ) )
             {
                 AddActionBack( CHOSEN_USE_ITEM, to_weap->GetId(), 0, TARGET_SELF_ITEM, item->GetId(), USE_RELOAD );
             }
@@ -4367,10 +4367,7 @@ void FOClient::FormatTags( char* text, size_t text_len, CritterCl* player, Critt
                     {
                         ScriptString* result = (ScriptString*) Script::GetReturnedObject();
                         if( result )
-                        {
                             Str::Copy( tag, result->c_str() );
-                            result->Release();
-                        }
                     }
                     script_lexems->Release();
                 }
@@ -4813,7 +4810,7 @@ void FOClient::LMenuSet( uchar set_lmenu )
             if( inv_item->IsCanUse() || inv_item->IsCanUseOnSmth() )
                 LMenuNodes.push_back( LMENU_NODE_USE );
             LMenuNodes.push_back( LMENU_NODE_SKILL );
-            if( inv_item->ACC_CRITTER.Slot == SLOT_INV && Chosen->IsCanSortItems() )
+            if( inv_item->AccCritter.Slot == SLOT_INV && Chosen->IsCanSortItems() )
             {
                 LMenuNodes.push_back( LMENU_NODE_SORT_UP );
                 LMenuNodes.push_back( LMENU_NODE_SORT_DOWN );
@@ -8655,8 +8652,8 @@ void FOClient::PipDraw()
             else
                 continue;
 
-            int x = PipWMonitor.L + maxhx * 2 - item.ACC_HEX.HexX * 2;
-            int y = PipWMonitor.T + item.ACC_HEX.HexY * 2;
+            int x = PipWMonitor.L + maxhx * 2 - item.AccHex.HexX * 2;
+            int y = PipWMonitor.T + item.AccHex.HexY * 2;
 
             AutomapPoints.push_back( PrepPoint( x, y, color ) );
             AutomapPoints.push_back( PrepPoint( x + 1, y + 1, color ) );

@@ -144,10 +144,10 @@ uchar CritterCl::GetFadeAlpha()
 void CritterCl::AddItem( Item* item )
 {
     item->Accessory = ITEM_ACCESSORY_CRITTER;
-    item->ACC_CRITTER.Id = this->Id;
+    item->AccCritter.Id = this->Id;
 
     bool anim_stay = true;
-    switch( item->ACC_CRITTER.Slot )
+    switch( item->AccCritter.Slot )
     {
     case SLOT_HAND1:
         ItemSlotMain = item;
@@ -253,7 +253,7 @@ Item* CritterCl::GetItemByPidInvPriority( ushort item_pid )
             Item* item = *it;
             if( item->GetProtoId() == item_pid )
             {
-                if( item->ACC_CRITTER.Slot == SLOT_INV )
+                if( item->AccCritter.Slot == SLOT_INV )
                     return item;
                 another_slot = item;
             }
@@ -268,7 +268,7 @@ Item* CritterCl::GetItemByPidSlot( ushort item_pid, int slot )
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->GetProtoId() == item_pid && item->ACC_CRITTER.Slot == slot )
+        if( item->GetProtoId() == item_pid && item->AccCritter.Slot == slot )
             return item;
     }
     return NULL;
@@ -285,7 +285,7 @@ Item* CritterCl::GetAmmo( uint caliber )
 Item* CritterCl::GetItemSlot( int slot )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        if( ( *it )->ACC_CRITTER.Slot == slot )
+        if( ( *it )->AccCritter.Slot == slot )
             return *it;
     return NULL;
 }
@@ -295,7 +295,7 @@ void CritterCl::GetItemsSlot( int slot, ItemPtrVec& items )
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( slot == -1 || item->ACC_CRITTER.Slot == slot )
+        if( slot == -1 || item->AccCritter.Slot == slot )
             items.push_back( item );
     }
 }
@@ -333,7 +333,7 @@ bool CritterCl::IsCanSortItems()
     uint inv_items = 0;
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
-        if( ( *it )->ACC_CRITTER.Slot != SLOT_INV )
+        if( ( *it )->AccCritter.Slot != SLOT_INV )
             continue;
         inv_items++;
         if( inv_items > 1 )
@@ -376,7 +376,7 @@ void CritterCl::GetInvItems( ItemVec& items )
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->ACC_CRITTER.Slot == SLOT_INV )
+        if( item->AccCritter.Slot == SLOT_INV )
             items.push_back( *item );
     }
 
@@ -395,7 +395,7 @@ uint CritterCl::GetItemsCountInv()
 {
     uint res = 0;
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        if( ( *it )->ACC_CRITTER.Slot == SLOT_INV )
+        if( ( *it )->AccCritter.Slot == SLOT_INV )
             res++;
     return res;
 }
@@ -880,7 +880,7 @@ ProtoItem* CritterCl::GetUnarmedItem( uchar tree, uchar priority )
 
 Item* CritterCl::GetAmmoAvialble( Item* weap )
 {
-    Item* ammo = GetItemByPid( weap->Data.TechInfo.AmmoPid );
+    Item* ammo = GetItemByPid( weap->Data.AmmoPid );
     if( !ammo && weap->WeapIsEmpty() )
         ammo = GetItemByPid( weap->Proto->Weapon_DefaultAmmoPid );
     if( !ammo && weap->WeapIsEmpty() )

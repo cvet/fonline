@@ -5,28 +5,84 @@
 
 AnyFrames* ItemHex::DefaultAnim = NULL;
 
-ItemHex::ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut ): SprId( 0 ), HexX( hx ), HexY( hy ), StartScrX( scr_x ), StartScrY( scr_y ), ScrX( 0 ), ScrY( 0 ), HexScrX( hex_scr_x ), HexScrY( hex_scr_y ), SpriteCut( cut ),
-                                                                                                                                                                 curSpr( 0 ), begSpr( 0 ), endSpr( 0 ), animBegSpr( 0 ), animEndSpr( 0 ), animTick( 0 ), animNextTick( 0 ),
-                                                                                                                                                                 Alpha( 0 ), maxAlpha( 0xFF ), Dir( dir ), finishing( false ), finishingTime( 0 ), fading( false ), fadingTick( 0 ), fadeUp( false ),
-                                                                                                                                                                 isEffect( false ), effSx( 0 ), effSy( 0 ), EffOffsX( 0 ), EffOffsY( 0 ), effStartX( 0 ), effStartY( 0 ), effDist( 0 ), effLastTick( 0 ), effCurX( 0 ), effCurY( 0 ),
-                                                                                                                                                                 isAnimated( false ), ScenFlags( 0 ) /*,IsFocused(false)*/,
-                                                                                                                                                                 SprDraw( NULL ), SprTemp( NULL ), SprDrawValid( false )
+ItemHex::ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut )
 {
-    Init( proto );
-    Id = id;
-    Accessory = ITEM_ACCESSORY_HEX;
-    ACC_HEX.HexX = hx;
-    ACC_HEX.HexY = hy;
-    if( data )
-        Data = *data;
+    // Hex
+    HexX = hx;
+    HexY = hy;
+    HexScrX = hex_scr_x;
+    HexScrY = hex_scr_y;
 
-    if( !StartScrX )
-        StartScrX = Proto->OffsetX;
-    if( !StartScrY )
-        StartScrY = Proto->OffsetY;
+    // Offsets
+    ScrX = 0;
+    ScrY = 0;
+
+    // Sprite cut
+    SpriteCut = cut;
     if( !SpriteCut )
         SpriteCut = Proto->SpriteCut;
 
+    // Animation
+    SprId = 0;
+    curSpr = 0;
+    begSpr = 0;
+    endSpr = 0;
+    animBegSpr = 0;
+    animEndSpr = 0;
+    isAnimated = false;
+    animTick = 0;
+    animNextTick = 0;
+    SprDraw = NULL;
+    SprTemp = NULL;
+    SprDrawValid = false;
+
+    // Alpha
+    Alpha = 0;
+    maxAlpha = 0xFF;
+
+    // Finishing
+    finishing = false;
+    finishingTime = 0;
+
+    // Fading
+    fading = false;
+    fadingTick = 0;
+    fadeUp = false;
+
+    // Effect
+    isEffect = false;
+    effSx = 0;
+    effSy = 0;
+    EffOffsX = 0;
+    EffOffsY = 0;
+    effStartX = 0;
+    effStartY = 0;
+    effDist = 0;
+    effLastTick = 0;
+    effCurX = 0;
+    effCurY = 0;
+
+    // Scenery
+    ScenFlags = 0;
+
+    // Init parent
+    Init( proto );
+    Id = id;
+    Accessory = ITEM_ACCESSORY_HEX;
+    AccHex.HexX = hx;
+    AccHex.HexY = hy;
+
+    // Data
+    if( data )
+        Data = *data;
+    if( scr_x )
+        Data.OffsetX = scr_x;
+    if( scr_y )
+        Data.OffsetY = scr_y;
+    if( dir )
+        Data.Dir = dir;
+
+    // Refresh item
     RefreshAnim();
     RefreshAlpha();
     if( IsShowAnim() )
@@ -161,7 +217,7 @@ void ItemHex::SetFade( bool fade_up )
 
 void ItemHex::RefreshAnim()
 {
-    int  dir = GetDir();
+    int  dir = ( Data.Dir ? Data.Dir : Proto->Dir );
     uint name_hash = Proto->PicMap;
     if( Data.PicMapHash )
         name_hash = Data.PicMapHash;
@@ -179,7 +235,7 @@ void ItemHex::RefreshAnim()
 
     if( Proto->Type == ITEM_TYPE_CONTAINER || Proto->Type == ITEM_TYPE_DOOR )
     {
-        if( FLAG( Data.Locker.Condition, LOCKER_ISOPEN ) )
+        if( FLAG( Data.LockerCondition, LOCKER_ISOPEN ) )
             SetSprEnd();
         else
             SetSprStart();
@@ -284,8 +340,8 @@ void ItemHex::SetSpr( uint num_spr )
 
 void ItemHex::SetAnimOffs()
 {
-    ScrX = StartScrX;
-    ScrY = StartScrY;
+    ScrX = GetOffsetX();
+    ScrY = GetOffsetY();
     for( int i = 1; i <= curSpr; i++ )
     {
         ScrX += Anim->NextX[ i ];

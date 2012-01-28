@@ -38,8 +38,11 @@ namespace Script
 
     void* LoadDynamicLibrary( const char* dll_name )
     {
-        char dll_name_[ MAX_FOPATH ];
-        strcpy( dll_name_, dll_name );
+        char dll_name_[ MAX_FOPATH ] = { 0 };
+        # ifndef FO_WINDOWS
+        strcat( dll_name_, "./" );
+        # endif
+        strcat( dll_name_, dll_name );
 
         // Erase extension
         char* str = dll_name_;
@@ -113,7 +116,6 @@ namespace Script
 }
 
 # define WriteLog    printf
-# define int64       __int64
 
 #else
 

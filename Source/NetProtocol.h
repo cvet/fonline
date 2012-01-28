@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION                   ( 0xF0E3 ) // FOnline Protocol Version
+#define FO_PROTOCOL_VERSION                   ( 0xF0E4 ) // FOnline Protocol Version
 #define MAKE_NETMSG_HEADER( number )    ( (uint) ( ( 0xDEAD << 17 ) | ( number << 8 ) | ( 0xAA ) ) )
 #define PING_CLIENT_LIFE_TIME                 ( 15000 )  // Time to ping client life
 #define PING_CLIENT_INFO_TIME                 ( 2000 )   // Time to ping client for information
@@ -450,7 +450,7 @@
 #define NETMSG_ADD_ITEM                       MAKE_NETMSG_HEADER( 65 )
 #define NETMSG_ADD_ITEM_SIZE            \
     ( sizeof( uint ) + sizeof( uint ) + \
-      sizeof( ushort ) + sizeof( uchar ) + 92 /*ItemData*/ )
+      sizeof( ushort ) + sizeof( uchar ) + 120 /*ItemData*/ )
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
@@ -484,7 +484,7 @@
 #define NETMSG_ADD_ITEM_ON_MAP                MAKE_NETMSG_HEADER( 71 )
 #define NETMSG_ADD_ITEM_ON_MAP_SIZE     \
     ( sizeof( uint ) + sizeof( uint ) + \
-      sizeof( ushort ) * 3 + sizeof( uchar ) + 92 /*ItemData*/ )
+      sizeof( ushort ) * 3 + sizeof( uchar ) + 120 /*ItemData*/ )
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
@@ -497,7 +497,7 @@
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CHANGE_ITEM_ON_MAP             MAKE_NETMSG_HEADER( 72 )
-#define NETMSG_CHANGE_ITEM_ON_MAP_SIZE        ( sizeof( uint ) + sizeof( uint ) + 92 /*ItemData*/ )
+#define NETMSG_CHANGE_ITEM_ON_MAP_SIZE        ( sizeof( uint ) + sizeof( uint ) + 120 /*ItemData*/ )
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
@@ -637,7 +637,7 @@
 #define NETMSG_SOME_ITEM                      MAKE_NETMSG_HEADER( 90 )
 #define NETMSG_SOME_ITEM_SIZE                              \
     ( sizeof( uint ) + sizeof( uint ) + sizeof( ushort ) + \
-      sizeof( uchar ) + 92 /*ItemData*/ )
+      sizeof( uchar ) + 120 /*ItemData*/ )
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
@@ -682,7 +682,7 @@
 #define NETMSG_CRITTER_ITEM_DATA              MAKE_NETMSG_HEADER( 94 )
 #define NETMSG_CRITTER_ITEM_DATA_SIZE   \
     ( sizeof( uint ) + sizeof( uint ) + \
-      sizeof( uchar ) + 92 /*ItemData*/ )
+      sizeof( uchar ) + 120 /*ItemData*/ )
 // ////////////////////////////////////////////////////////////////////////
 // Item data changed
 // uint crid
@@ -849,7 +849,7 @@
 #define NETMSG_PLAYERS_BARTER_SET_HIDE        MAKE_NETMSG_HEADER( 115 )
 #define NETMSG_PLAYERS_BARTER_SET_HIDE_SIZE \
     ( sizeof( uint ) + sizeof( uint ) +     \
-      sizeof( ushort ) + sizeof( uint ) + 92 /*ItemData*/ )
+      sizeof( ushort ) + sizeof( uint ) + 120 /*ItemData*/ )
 // ////////////////////////////////////////////////////////////////////////
 //
 // uint id

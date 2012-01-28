@@ -743,7 +743,7 @@ void Critter::ProcessVisibleItems()
             }
             else
             {
-                int dist = DistGame( Data.HexX, Data.HexY, item->ACC_HEX.HexX, item->ACC_HEX.HexY );
+                int dist = DistGame( Data.HexX, Data.HexY, item->AccHex.HexX, item->AccHex.HexY );
                 if( item->IsTrap() )
                     dist += item->TrapGetValue();
                 allowed = look >= dist;
@@ -886,7 +886,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
             }
             else
             {
-                int dist = DistGame( hx, hy, item->ACC_HEX.HexX, item->ACC_HEX.HexY );
+                int dist = DistGame( hx, hy, item->AccHex.HexX, item->AccHex.HexY );
                 if( item->IsTrap() )
                     dist += item->TrapGetValue();
                 allowed = look >= dist;
@@ -1090,10 +1090,10 @@ bool Critter::SetDefaultItems( ProtoItem* proto_hand, ProtoItem* proto_armor )
     defItemSlotArmor->Init( proto_armor );
     defItemSlotHand->Accessory = ITEM_ACCESSORY_CRITTER;
     defItemSlotArmor->Accessory = ITEM_ACCESSORY_CRITTER;
-    defItemSlotHand->ACC_CRITTER.Id = GetId();
-    defItemSlotArmor->ACC_CRITTER.Id = GetId();
-    defItemSlotHand->ACC_CRITTER.Slot = SLOT_HAND1;
-    defItemSlotArmor->ACC_CRITTER.Slot = SLOT_ARMOR;
+    defItemSlotHand->AccCritter.Id = GetId();
+    defItemSlotArmor->AccCritter.Id = GetId();
+    defItemSlotHand->AccCritter.Slot = SLOT_HAND1;
+    defItemSlotArmor->AccCritter.Slot = SLOT_ARMOR;
     return true;
 }
 
@@ -1128,7 +1128,7 @@ void Critter::AddItem( Item*& item, bool send )
     if( send )
     {
         Send_AddItem( item );
-        if( item->ACC_CRITTER.Slot != SLOT_INV )
+        if( item->AccCritter.Slot != SLOT_INV )
             SendAA_MoveItem( item, ACTION_REFRESH, 0 );
     }
 
@@ -1153,19 +1153,19 @@ void Critter::SetItem( Item* item )
     if( item->IsCar() && GroupMove && !GroupMove->CarId )
         GroupMove->CarId = item->GetId();
     invItems.push_back( item );
-    item->ACC_CRITTER.Id = GetId();
+    item->AccCritter.Id = GetId();
 
     if( item->Accessory != ITEM_ACCESSORY_CRITTER )
     {
         item->Accessory = ITEM_ACCESSORY_CRITTER;
-        item->ACC_CRITTER.Slot = SLOT_INV;
+        item->AccCritter.Slot = SLOT_INV;
     }
 
-    switch( item->ACC_CRITTER.Slot )
+    switch( item->AccCritter.Slot )
     {
     case SLOT_INV:
 label_InvSlot:
-        item->ACC_CRITTER.Slot = SLOT_INV;
+        item->AccCritter.Slot = SLOT_INV;
         break;
     case SLOT_HAND1:
         if( ItemSlotMain->GetId() )
@@ -1214,14 +1214,14 @@ void Critter::EraseItem( Item* item, bool send )
     }
 
     item->Accessory = 0xd0;
-    TakeDefaultItem( item->ACC_CRITTER.Slot );
+    TakeDefaultItem( item->AccCritter.Slot );
     if( send )
         Send_EraseItem( item );
-    if( item->ACC_CRITTER.Slot != SLOT_INV )
+    if( item->AccCritter.Slot != SLOT_INV )
         SendAA_MoveItem( item, ACTION_REFRESH, 0 );
 
-    uchar from_slot = item->ACC_CRITTER.Slot;
-    item->ACC_CRITTER.Slot = SLOT_GROUND;
+    uchar from_slot = item->AccCritter.Slot;
+    item->AccCritter.Slot = SLOT_GROUND;
     if( Script::PrepareContext( ServerFunctions.CritterMoveItem, _FUNC_, GetInfo() ) )
     {
         Script::SetArgObject( this );
@@ -1258,7 +1258,7 @@ Item* Critter::GetInvItem( uint item_id, int transfer_type )
         return NULL;
 
     Item* item = GetItem( item_id, true );
-    if( !item || item->ACC_CRITTER.Slot != SLOT_INV ||
+    if( !item || item->AccCritter.Slot != SLOT_INV ||
         ( transfer_type == TRANSFER_CRIT_LOOT && item->IsNoLoot() ) ||
         ( transfer_type == TRANSFER_CRIT_STEAL && item->IsNoSteal() ) )
         return NULL;
@@ -1275,7 +1275,7 @@ void Critter::GetInvItems( ItemPtrVec& items, int transfer_type, bool lock )
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->ACC_CRITTER.Slot == SLOT_INV && !item->IsHidden() &&
+        if( item->AccCritter.Slot == SLOT_INV && !item->IsHidden() &&
             !( transfer_type == TRANSFER_CRIT_LOOT && item->IsNoLoot() ) &&
             !( transfer_type == TRANSFER_CRIT_STEAL && item->IsNoSteal() ) )
             items.push_back( item );
@@ -1306,7 +1306,7 @@ Item* Critter::GetItemByPidSlot( ushort item_pid, int slot )
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->GetProtoId() == item_pid && item->ACC_CRITTER.Slot == slot )
+        if( item->GetProtoId() == item_pid && item->AccCritter.Slot == slot )
         {
             SYNC_LOCK( item );
             return item;
@@ -1341,7 +1341,7 @@ Item* Critter::GetItemByPidInvPriority( ushort item_pid )
             Item* item = *it;
             if( item->GetProtoId() == item_pid )
             {
-                if( item->ACC_CRITTER.Slot == SLOT_INV )
+                if( item->AccCritter.Slot == SLOT_INV )
                 {
                     SYNC_LOCK( item );
                     return item;
@@ -1361,7 +1361,7 @@ Item* Critter::GetAmmoForWeapon( Item* weap )
     if( !weap->IsWeapon() )
         return NULL;
 
-    Item* ammo = GetItemByPid( weap->Data.TechInfo.AmmoPid );
+    Item* ammo = GetItemByPid( weap->Data.AmmoPid );
     if( ammo )
         return ammo;
     ammo = GetItemByPid( weap->Proto->Weapon_DefaultAmmoPid );
@@ -1406,7 +1406,7 @@ Item* Critter::GetItemSlot( int slot )
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->ACC_CRITTER.Slot == slot )
+        if( item->AccCritter.Slot == slot )
         {
             SYNC_LOCK( item );
             return item;
@@ -1420,7 +1420,7 @@ void Critter::GetItemsSlot( int slot, ItemPtrVec& items, bool lock )
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( slot < 0 || item->ACC_CRITTER.Slot == slot )
+        if( slot < 0 || item->AccCritter.Slot == slot )
             items.push_back( item );
     }
 
@@ -1488,9 +1488,9 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         return false;
     }
 
-    if( item->ACC_CRITTER.Slot != from_slot || from_slot == to_slot )
+    if( item->AccCritter.Slot != from_slot || from_slot == to_slot )
     {
-        WriteLogF( _FUNC_, " - Wrong slots, from slot<%u>, from slot real<%u>, to slot<%u>, item id<%u>, critter<%s>.\n", from_slot, item->ACC_CRITTER.Slot, to_slot, item_id, GetInfo() );
+        WriteLogF( _FUNC_, " - Wrong slots, from slot<%u>, from slot real<%u>, to slot<%u>, item id<%u>, critter<%s>.\n", from_slot, item->AccCritter.Slot, to_slot, item_id, GetInfo() );
         return false;
     }
 
@@ -1598,9 +1598,9 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
             ItemSlotArmor = item_swap;
     }
 
-    item->ACC_CRITTER.Slot = to_slot;
+    item->AccCritter.Slot = to_slot;
     if( item_swap )
-        item_swap->ACC_CRITTER.Slot = from_slot;
+        item_swap->AccCritter.Slot = from_slot;
 
     SendAA_MoveItem( item, ACTION_MOVE_ITEM, from_slot );
     item->EventMove( this, from_slot );
@@ -2737,7 +2737,7 @@ void Critter::SendAA_ItemData( Item* item )
     if( IsPlayer() )
         Send_AddItem( item );
 
-    uchar slot = item->ACC_CRITTER.Slot;
+    uchar slot = item->AccCritter.Slot;
     if( !VisCr.empty() && slot != SLOT_INV && SlotEnabled[ slot ] )
     {
         if( SlotDataSendEnabled[ slot ] )
@@ -3829,7 +3829,7 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     for( auto it = inv.begin(), end = inv.end(); it != end; ++it )
     {
         Item* item_ = *it;
-        uchar slot = item_->ACC_CRITTER.Slot;
+        uchar slot = item_->AccCritter.Slot;
         if( slot != SLOT_INV && SlotEnabled[ slot ] )
         {
             int script = SlotDataSendScript[ slot ];
@@ -3860,7 +3860,7 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     for( uchar i = 0; i < slots_data_count; i++ )
     {
         Item* item_ = SlotEnabledCacheData[ i ];
-        Bout << item_->ACC_CRITTER.Slot;
+        Bout << item_->AccCritter.Slot;
         Bout << item_->GetId();
         Bout << item_->GetProtoId();
         Bout.Push( (char*) &item_->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_CRITTER ], sizeof( item_->Data ) );
@@ -3868,7 +3868,7 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     for( uchar i = 0; i < slots_data_ext_count; i++ )
     {
         Item* item_ = SlotEnabledCacheDataExt[ i ];
-        Bout << item_->ACC_CRITTER.Slot;
+        Bout << item_->AccCritter.Slot;
         Bout << item_->GetId();
         Bout << item_->GetProtoId();
         Bout.Push( (char*) &item_->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_CRITTER_EXT ], sizeof( item_->Data ) );
@@ -3942,8 +3942,8 @@ void Client::Send_AddItemOnMap( Item* item )
     Bout << NETMSG_ADD_ITEM_ON_MAP;
     Bout << item->GetId();
     Bout << item->GetProtoId();
-    Bout << item->ACC_HEX.HexX;
-    Bout << item->ACC_HEX.HexY;
+    Bout << item->AccHex.HexX;
+    Bout << item->AccHex.HexY;
     Bout << is_added;
     Bout.Push( (char*) &item->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_MAP ], sizeof( item->Data ) );
     BOUT_END( this );
@@ -4003,7 +4003,7 @@ void Client::Send_AddItem( Item* item )
     Bout << NETMSG_ADD_ITEM;
     Bout << item->GetId();
     Bout << item->GetProtoId();
-    Bout << item->ACC_CRITTER.Slot;
+    Bout << item->AccCritter.Slot;
     Bout.Push( (char*) &item->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_CHOSEN ], sizeof( item->Data ) );
     BOUT_END( this );
 
@@ -4209,7 +4209,7 @@ void Client::Send_GlobalInfo( uchar info_flags )
         Bout << wait;
 
         if( car )
-            Bout << car->ACC_CRITTER.Id;
+            Bout << car->AccCritter.Id;
         else
             Bout << (uint) 0;
     }
@@ -4980,7 +4980,7 @@ void Client::Send_SomeItem( Item* item )
     Bout << NETMSG_SOME_ITEM;
     Bout << item->GetId();
     Bout << item->GetProtoId();
-    Bout << item->ACC_CRITTER.Slot;
+    Bout << item->AccCritter.Slot;
     Bout.Push( (char*) &item->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_CRITTER ], sizeof( item->Data ) );
     BOUT_END( this );
 }
@@ -5327,7 +5327,7 @@ void Npc::RefreshBag()
         pids[ item->GetProtoId() ] += item->GetCount();
 
         // Repair/reload item in slots
-        if( item->ACC_CRITTER.Slot != SLOT_INV )
+        if( item->AccCritter.Slot != SLOT_INV )
         {
             if( item->IsDeteriorable() && item->IsBroken() )
                 item->Repair();

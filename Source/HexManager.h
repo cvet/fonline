@@ -199,8 +199,9 @@ private:
     int        wVisible, hVisible;
 
     void InitView( int cx, int cy );
+    void ResizeView();
     bool IsVisible( uint spr_id, int ox, int oy );
-    bool ProcessHexBorders( uint spr_id, int ox, int oy );
+    bool ProcessHexBorders( uint spr_id, int ox, int oy, bool resize_map );
 
 public:
     void ChangeZoom( int zoom );   // <0 in, >0 out, 0 normalize

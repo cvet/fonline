@@ -199,19 +199,19 @@ struct Item
         int MapId;
         int HexX;
         int HexY;
-    } ACC_HEX;
+    } AccHex;
 
     struct
     {
         int Id;
         int Slot;
-    } ACC_CRITTER;
+    } AccCritter;
 
     struct
     {
         int ContainerId;
-        int SpecialId;
-    } ACC_CONTAINER;
+        int StackId;
+    } AccContainer;
 
     struct ItemData
     {
@@ -235,42 +235,24 @@ struct Item
         int Count;
         int Cost;
         int ScriptValues[ 10 ];
-
-        struct
-        {
-            int BrokenFlags;
-            int BrokenCount;
-            int Deterioration;
-            int AmmoPid;
-            int AmmoCount;
-        } TechInfo;
-
-        struct
-        {
-            int DoorId;
-            int Condition;
-            int Complexity;
-        } Locker;
-
-        struct
-        {
-            int DoorId;
-            int Fuel;
-            int Deterioration;
-        } Car;
-
-        struct
-        {
-            int Number;
-        } Holodisk;
-
-        struct
-        {
-            int Channel;
-            int Flags;
-            int BroadcastSend;
-            int BroadcastRecv;
-        } Radio;
+        int BrokenFlags;
+        int BrokenCount;
+        int Deterioration;
+        int AmmoPid;
+        int AmmoCount;
+        int LockerId;
+        int LockerCondition;
+        int LockerComplexity;
+        int HolodiskNumber;
+        int RadioChannel;
+        int RadioFlags;
+        int RadioBroadcastSend;
+        int RadioBroadcastRecv;
+        int Charge;
+        int OffsetX;
+        int OffsetY;
+        int Dir;
+        int Reserved[ 10 ];
     } Data;
 
     int  RefCounter;

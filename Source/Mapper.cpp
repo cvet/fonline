@@ -3949,8 +3949,8 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
 
             obj->MapObj->MItem.OffsetX = ox;
             obj->MapObj->MItem.OffsetY = oy;
-            obj->MapItem->StartScrX = ox;
-            obj->MapItem->StartScrY = oy;
+            obj->MapItem->Data.OffsetX = ox;
+            obj->MapItem->Data.OffsetY = oy;
             obj->MapItem->RefreshAnim();
         }
         else
@@ -4887,7 +4887,6 @@ void FOMapper::ParseCommand( const char* cmd )
             {
                 ScriptString* sstr_ = (ScriptString*) Script::GetReturnedObject();
                 AddMessFormat( Str::FormatBuf( "Result: %s", sstr_->c_str() ) );
-                sstr_->Release();
             }
             else
             {

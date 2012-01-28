@@ -3,6 +3,7 @@
 #include "PlatformSpecific.h"
 #include "ScriptPragmas.h"
 #include "Debugger.h"
+#include "FileManager.h"
 #include "AngelScript/angelscript.h"
 #include "AngelScript/Preprocessor/preprocess.h"
 #include "AngelScript/as_config.h"
@@ -12,14 +13,15 @@
 #include "AngelScript/scriptmath.h"
 #include "AngelScript/scriptstring.h"
 #include "AngelScript/scriptarray.h"
-#include <Windows.h>
 #include <stdio.h>
-#include <tchar.h>
 #include <list>
 #include <set>
 #include <strstream>
 #include <algorithm>
 #include <locale.h>
+#ifdef FO_WINDOWS
+# include <Windows.h>
+#endif
 using namespace std;
 
 #ifdef FO_LINUX
@@ -220,11 +222,11 @@ namespace MapperBind
 
 int main( int argc, char* argv[] )
 {
-    /************************************************************************/
-    /* Parameters                                                           */
-    /************************************************************************/
+    // Initialization
     setlocale( LC_ALL, "Russian" );
+    Timer::Init();
 
+    // Show usage
     if( argc < 2 )
     {
         printf( "FOnline AngleScript compiler. Usage:\n"
@@ -261,18 +263,24 @@ int main( int argc, char* argv[] )
             run_func.push_back( argv[ ++i ] );
     }
 
+    // Fix path
+    FixPathSlashes( str_fname );
+    if( str_prep )
+        FixPathSlashes( str_prep );
+
     // Set current directory
-    char  path[ 2048 ];
-    char* part = NULL;
-    if( GetFullPathName( str_fname, 2048, path, &part ) && part )
+    char path[ 2048 ];
+    Str::Copy( path, str_fname );
+    FileManager::ExtractPath( path, path );
+    if( ResolvePath( path ) )
     {
-        *part = 0;
+        #ifdef FO_WINDOWS
         SetCurrentDirectory( path );
+        #else // FO_LINUX
+        chdir( path );
+        #endif
     }
 
-    /************************************************************************/
-    /* Dll                                                                  */
-    /************************************************************************/
     // Engine
     Engine = asCreateScriptEngine( ANGELSCRIPT_VERSION );
     if( !Engine )
@@ -308,11 +316,9 @@ int main( int argc, char* argv[] )
     if( bind_errors )
         printf( "Warning, bind result: %d.\n", bind_errors );
 
-    /************************************************************************/
-    /* Compile                                                              */
-    /************************************************************************/
-
+    // Start compilation
     printf( "Compiling...\n" );
+    double tick = Timer::AccurateTick();
 
     // Preprocessor
     Preprocessor::VectorOutStream vos;
@@ -357,8 +363,8 @@ int main( int argc, char* argv[] )
 
     if( str_prep )
     {
-        FILE* f = NULL;
-        if( !fopen_s( &f, str_prep, "wt" ) )
+        FILE* f = fopen( str_prep, "wt" );
+        if( f )
         {
             Preprocessor::VectorOutStream vos_formatted;
             vos_formatted << string( vos.GetData(), vos.GetSize() );
@@ -381,11 +387,7 @@ int main( int argc, char* argv[] )
         if( Buf[ i ] == '\n' )
             Buf[ i ] = '\0';
 
-    // Compiler
-    __int64 freq, fp, fp2;
-    QueryPerformanceFrequency( (PLARGE_INTEGER) &freq );
-    QueryPerformanceCounter( (PLARGE_INTEGER) &fp );
-
+    // AS compilation
     asIScriptModule* module = Engine->GetModule( 0, asGM_ALWAYS_CREATE );
     if( !module )
     {
@@ -498,20 +500,20 @@ int main( int argc, char* argv[] )
         }
     }
 
-    QueryPerformanceCounter( (PLARGE_INTEGER) &fp2 );
-    printf( "Success.\nTime: %.02f ms.\n", double( ( (double) fp2 - (double) fp ) / (double) freq * 1000 ) /*,t2-t1*/ );
+    // Print compilation time
+    printf( "Success.\nTime: %g ms.\n", Timer::AccurateTick() - tick );
 
+    // Execute functions
     for( size_t i = 0; i < run_func.size(); i++ )
         RunMain( module, run_func[ i ] );
 
+    // Clean up
     Engine->Release();
     if( Buf )
         delete Buf;
     Buf = NULL;
     if( LNT )
         delete LNT;
-    /************************************************************************/
-    /*                                                                      */
-    /************************************************************************/
+
     return 0;
 }

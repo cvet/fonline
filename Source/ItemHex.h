@@ -19,8 +19,7 @@ public:
 
 public:
     uint              SprId;
-    int               HexX, HexY, Dir;
-    short             StartScrX, StartScrY;
+    int               HexX, HexY;
     short             ScrX, ScrY;
     int*              HexScrX, * HexScrY;
     int               SpriteCut;
@@ -45,7 +44,8 @@ public:
     bool   IsWall()             { return Proto->IsWall(); }
     ushort GetHexX()            { return HexX; }
     ushort GetHexY()            { return HexY; }
-    int    GetDir()             { return Dir; }
+    ushort GetOffsetX()         { return Data.OffsetX ? Data.OffsetX : Proto->OffsetX; }
+    ushort GetOffsetY()         { return Data.OffsetY ? Data.OffsetY : Proto->OffsetY; }
     bool   IsAnimated()         { return isAnimated; }
     bool   IsCanLook()          { return !( Proto->IsGrid() && Proto->Grid_Type == GRID_EXITGRID ); }
     bool   IsUsable()           { return !IsWall() && ( IsCanUse() || IsCanUseOnSmth() || IsCanPickUp() || ( IsScenOrGrid() && FLAG( ScenFlags, SCEN_CAN_USE ) ) ); }

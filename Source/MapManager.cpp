@@ -1449,7 +1449,7 @@ bool MapManager::GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, us
 
     if( car )
     {
-        car_owner = group->GetCritter( car->ACC_CRITTER.Id );
+        car_owner = group->GetCritter( car->AccCritter.Id );
         if( !car_owner )
         {
             WriteLogF( _FUNC_, " - Car owner not found, rule<%s>.\n", rule->GetInfo() );
