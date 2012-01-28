@@ -689,6 +689,10 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
                 data.LockerCondition = data_old.Locker.Condition;
                 data.LockerComplexity = data_old.Locker.Complexity;
             }
+            if( proto && proto->Type == ITEM_TYPE_KEY )
+            {
+                data.LockerId = data_old.Locker.DoorId;
+            }
             if( proto && proto->Type == ITEM_TYPE_CAR )
             {
                 data.LockerId = data_old.Car.DoorId;
