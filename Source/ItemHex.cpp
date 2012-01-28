@@ -7,6 +7,13 @@ AnyFrames* ItemHex::DefaultAnim = NULL;
 
 ItemHex::ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut )
 {
+    // Init parent
+    Init( proto );
+    Id = id;
+    Accessory = ITEM_ACCESSORY_HEX;
+    AccHex.HexX = hx;
+    AccHex.HexY = hy;
+
     // Hex
     HexX = hx;
     HexY = hy;
@@ -64,13 +71,6 @@ ItemHex::ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int h
 
     // Scenery
     ScenFlags = 0;
-
-    // Init parent
-    Init( proto );
-    Id = id;
-    Accessory = ITEM_ACCESSORY_HEX;
-    AccHex.HexX = hx;
-    AccHex.HexY = hy;
 
     // Data
     if( data )

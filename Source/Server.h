@@ -498,9 +498,9 @@ public:
         static AIDataPlane* NpcPlane_GetChild( AIDataPlane* plane, uint index );
         static bool         NpcPlane_Misc_SetScript( AIDataPlane* plane, ScriptString& func_name );
 
-        static Item* Container_AddItem( Item* cont, ushort pid, uint count, uint special_id );
-        static uint  Container_GetItems( Item* cont, uint special_id, ScriptArray* items );
-        static Item* Container_GetItem( Item* cont, ushort pid, uint special_id );
+        static Item* Container_AddItem( Item* cont, ushort pid, uint count, uint stack_id );
+        static uint  Container_GetItems( Item* cont, uint stack_id, ScriptArray* items );
+        static Item* Container_GetItem( Item* cont, ushort pid, uint stack_id );
 
         static bool   Item_IsStackable( Item* item );
         static bool   Item_IsDeteriorable( Item* item );
@@ -827,7 +827,7 @@ public:
         static uchar         Global_GetOffsetDir( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset );
         static void          Global_MoveItemCr( Item* item, uint count, Critter* to_cr );
         static void          Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy );
-        static void          Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint special_id );
+        static void          Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id );
         static void          Global_MoveItemsCr( ScriptArray& items, Critter* to_cr );
         static void          Global_MoveItemsMap( ScriptArray& items, Map* to_map, ushort to_hx, ushort to_hy );
         static void          Global_MoveItemsCont( ScriptArray& items, Item* to_cont, uint stack_id );
