@@ -1230,6 +1230,11 @@ void FOClient::ParseKeyboard()
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
+
+        // Keyboard states, to know outside function
+        Keyb::KeyPressed[ dikup ] = false;
+        Keyb::KeyPressed[ dikdw ] = true;
+
         if( dikup && Script::PrepareContext( ClientFunctions.KeyUp, _FUNC_, "Game" ) )
         {
             Script::SetArgUChar( dikup );
@@ -1244,10 +1249,6 @@ void FOClient::ParseKeyboard()
                 GameOpt.Quit = true;
             continue;
         }
-
-        // Keyboard states, to know outside function
-        Keyb::KeyPressed[ dikup ] = false;
-        Keyb::KeyPressed[ dikdw ] = true;
 
         // Control keys
         bool try_change_lang = false;
@@ -1285,6 +1286,11 @@ void FOClient::ParseKeyboard()
         }
 
         // Hotkeys
+        if( dikdw == DIK_Z )
+            IsZooming = true;
+        else if( dikup == DIK_Z )
+            IsZooming = false;
+
         if( !Keyb::ShiftDwn && !Keyb::AltDwn && !Keyb::CtrlDwn )
         {
             // F Buttons
@@ -1900,7 +1906,7 @@ void FOClient::ParseMouse()
                 script_result = Script::GetReturnedBool();
 
             // Normalize zoom
-            if( !script_result && !GameOpt.DisableMouseEvents && !ConsoleActive && Keyb::KeyPressed[ DIK_Z ] && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
+            if( !script_result && !GameOpt.DisableMouseEvents && !ConsoleActive && IsZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
             {
                 int screen = GetActiveScreen();
                 if( IsMainScreen( SCREEN_GAME ) && ( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW ) )
@@ -2378,7 +2384,7 @@ void FOClient::ProcessMouseWheel( int data )
                     Net_SendRateItem();
             }
 
-            if( !ConsoleActive && Keyb::KeyPressed[ DIK_Z ] && IsMainScreen( SCREEN_GAME ) && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
+            if( !ConsoleActive && IsZooming && IsMainScreen( SCREEN_GAME ) && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
             {
                 HexMngr.ChangeZoom( data > 0 ? -1 : 1 );
                 RebuildLookBorders = true;

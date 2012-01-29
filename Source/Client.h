@@ -698,6 +698,8 @@ public:
     void  ProcessItemsCollection( int collection, ItemVec& init_items, ItemVec& result );
     void  UpdateContLexems( ItemVec& cont, uint item_id, const char* lexems );
 
+    static bool IsZooming;
+
 /************************************************************************/
 /* Console                                                              */
 /************************************************************************/
