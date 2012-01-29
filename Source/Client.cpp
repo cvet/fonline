@@ -113,7 +113,7 @@ bool FOClient::Init()
     STATIC_ASSERT( sizeof( Field ) == 76 );
     STATIC_ASSERT( sizeof( ScriptArray ) == 36 );
     STATIC_ASSERT( offsetof( CritterCl, ItemSlotArmor ) == 4280 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1304 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1308 );
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 108 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );
@@ -1209,6 +1209,10 @@ void FOClient::ParseKeyboard()
         if( dikup && !Keyb::KeyPressed[ dikup ] )
             continue;
 
+        // Keyboard states, to know outside function
+        Keyb::KeyPressed[ dikup ] = false;
+        Keyb::KeyPressed[ dikdw ] = true;
+
         // Video
         #ifndef FO_D3D
         if( IsVideoPlayed() )
@@ -1230,10 +1234,6 @@ void FOClient::ParseKeyboard()
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
-
-        // Keyboard states, to know outside function
-        Keyb::KeyPressed[ dikup ] = false;
-        Keyb::KeyPressed[ dikdw ] = true;
 
         if( dikup && Script::PrepareContext( ClientFunctions.KeyUp, _FUNC_, "Game" ) )
         {
@@ -1286,11 +1286,6 @@ void FOClient::ParseKeyboard()
         }
 
         // Hotkeys
-        if( dikdw == DIK_Z )
-            IsZooming = true;
-        else if( dikup == DIK_Z )
-            IsZooming = false;
-
         if( !Keyb::ShiftDwn && !Keyb::AltDwn && !Keyb::CtrlDwn )
         {
             // F Buttons
@@ -1906,7 +1901,7 @@ void FOClient::ParseMouse()
                 script_result = Script::GetReturnedBool();
 
             // Normalize zoom
-            if( !script_result && !GameOpt.DisableMouseEvents && !ConsoleActive && IsZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
+            if( !script_result && !GameOpt.DisableMouseEvents && !ConsoleActive && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
             {
                 int screen = GetActiveScreen();
                 if( IsMainScreen( SCREEN_GAME ) && ( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW ) )
@@ -2384,7 +2379,7 @@ void FOClient::ProcessMouseWheel( int data )
                     Net_SendRateItem();
             }
 
-            if( !ConsoleActive && IsZooming && IsMainScreen( SCREEN_GAME ) && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
+            if( !ConsoleActive && GameOpt.MapZooming && IsMainScreen( SCREEN_GAME ) && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
             {
                 HexMngr.ChangeZoom( data > 0 ? -1 : 1 );
                 RebuildLookBorders = true;

@@ -30,7 +30,7 @@ bool FOMapper::Init()
     #if defined ( FO_X86 )
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 116 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1304 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1308 );
     #endif
 
     // Register dll script data
@@ -754,6 +754,10 @@ void FOMapper::ParseKeyboard()
         if( dikup && !Keyb::KeyPressed[ dikup ] )
             continue;
 
+        // Keyboard states, to know outside function
+        Keyb::KeyPressed[ dikup ] = false;
+        Keyb::KeyPressed[ dikdw ] = true;
+
         // Key script event
         bool script_result = false;
         if( dikdw && MapperFunctions.KeyDown && Script::PrepareContext( MapperFunctions.KeyDown, _FUNC_, "Mapper" ) )
@@ -776,10 +780,6 @@ void FOMapper::ParseKeyboard()
                 GameOpt.Quit = true;
             continue;
         }
-
-        // Keyboard states, to know outside function
-        Keyb::KeyPressed[ dikup ] = false;
-        Keyb::KeyPressed[ dikdw ] = true;
 
         // Control keys
         bool try_change_lang = false;

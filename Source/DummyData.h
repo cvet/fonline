@@ -1401,6 +1401,7 @@ struct GameOptions
     int RunModMul;
     int RunModDiv;
     int RunModAdd;
+    int MapZooming;
     int SpritesZoom;
     int SpritesZoomMax;
     int SpritesZoomMin;

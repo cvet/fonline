@@ -652,6 +652,7 @@ struct GameOptions
     int          RunModMul;
     int          RunModDiv;
     int          RunModAdd;
+    bool         MapZooming;
     float        SpritesZoom;
     float        SpritesZoomMax;
     float        SpritesZoomMin;

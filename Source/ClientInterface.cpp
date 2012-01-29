@@ -2700,11 +2700,9 @@ void FOClient::GameRMouseUp()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-bool FOClient::IsZooming = false;
-
 void FOClient::IntDraw()
 {
-    if( !ConsoleActive && IsZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
+    if( !ConsoleActive && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
     {
         int screen = GetActiveScreen();
         if( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW )

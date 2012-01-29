@@ -1298,7 +1298,7 @@ GameOptions::GameOptions()
     MapRoofSkipSize = 2;
     MapCameraAngle = 25.7f;
     MapSmoothPath = true;
-    MapDataPrefix      = "art/geometry/fallout_";
+    MapDataPrefix = "art/geometry/fallout_";
 
     // Client and Mapper
     Quit = false;
@@ -1334,18 +1334,18 @@ GameOptions::GameOptions()
     FlushVal = 100;
     BaseTexture = 256;
     Light = 0;
-    Host      = "localhost";
+    Host = "localhost";
     Port = 0;
     ProxyType = 0;
-    ProxyHost      = "";
+    ProxyHost = "";
     ProxyPort = 0;
-    ProxyUser      = "";
-    ProxyPass      = "";
-    Name      = "";
+    ProxyUser = "";
+    ProxyPass = "";
+    Name = "";
     ScrollDelay = 10;
     ScrollStep = 1;
     ScrollCheck = true;
-    FoDataPath      = "";
+    FoDataPath = "";
     FixedFPS = 100;
     MsgboxInvert = false;
     ChangeLang = CHANGE_LANG_CTRL_SHIFT;
@@ -1367,7 +1367,7 @@ GameOptions::GameOptions()
     DisableMouseEvents = false;
     DisableKeyboardEvents = false;
     HidePassword = true;
-    PlayerOffAppendix      = "_off";
+    PlayerOffAppendix = "_off";
     CombatMessagesType = 0;
     DisableDrawScreens = false;
     Animation3dSmoothTime = 250;
@@ -1375,6 +1375,7 @@ GameOptions::GameOptions()
     RunModMul = 1;
     RunModDiv = 3;
     RunModAdd = 0;
+    MapZooming = false;
     SpritesZoom = 1.0f;
     SpritesZoomMax = MAX_ZOOM;
     SpritesZoomMin = MIN_ZOOM;
@@ -1382,15 +1383,15 @@ GameOptions::GameOptions()
     AlwaysRun = false;
     AlwaysRunMoveDist = 1;
     AlwaysRunUseDist = 5;
-    KeyboardRemap      = "";
+    KeyboardRemap = "";
     CritterFidgetTime = 50000;
     Anim2CombatBegin = 0;
     Anim2CombatIdle = 0;
     Anim2CombatEnd = 0;
 
     // Mapper
-    ClientPath      = DIR_SLASH_SD;
-    ServerPath      = DIR_SLASH_SD;
+    ClientPath = DIR_SLASH_SD;
+    ServerPath = DIR_SLASH_SD;
     ShowCorners = false;
     ShowSpriteCuts = false;
     ShowDrawOrder = false;
