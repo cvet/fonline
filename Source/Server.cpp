@@ -3394,8 +3394,8 @@ bool FOServer::InitReal()
     STATIC_ASSERT( OFFSETOF( Item, IsNotValid ) == 146 );
     STATIC_ASSERT( OFFSETOF( Critter::CrTimeEvent, Identifier ) == 12 );
     STATIC_ASSERT( OFFSETOF( Critter, RefCounter ) == 9340 );
-    STATIC_ASSERT( OFFSETOF( Client, LanguageMsg ) == 9408 );
-    STATIC_ASSERT( OFFSETOF( Npc, Reserved ) == 9360 );
+    STATIC_ASSERT( OFFSETOF( Client, LanguageMsg ) == 9412 );
+    STATIC_ASSERT( OFFSETOF( Npc, Reserved ) == 9364 );
     STATIC_ASSERT( OFFSETOF( GameVar, RefCount ) == 22 );
     STATIC_ASSERT( OFFSETOF( TemplateVar, Flags ) == 68 );
     STATIC_ASSERT( OFFSETOF( AIDataPlane, RefCounter ) == 88 );
@@ -3403,7 +3403,7 @@ bool FOServer::InitReal()
     STATIC_ASSERT( OFFSETOF( ProtoMap::MapEntire, Dir ) == 8 );
     STATIC_ASSERT( OFFSETOF( SceneryCl, PicMapHash ) == 24 );
     STATIC_ASSERT( OFFSETOF( ProtoMap, HexFlags ) == 304 );
-    STATIC_ASSERT( OFFSETOF( Map, RefCounter ) == 774 );
+    STATIC_ASSERT( OFFSETOF( Map, RefCounter ) == 830 );
     STATIC_ASSERT( OFFSETOF( ProtoLocation, GeckVisible ) == 76 );
     STATIC_ASSERT( OFFSETOF( Location, RefCounter ) == 282 );
     #else // FO_X64
