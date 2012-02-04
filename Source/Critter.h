@@ -547,7 +547,6 @@ public:
     void AddRef()  { InterlockedIncrement( &RefCounter ); }
     void Release() { if( !InterlockedDecrement( &RefCounter ) ) Delete(); }
     void Delete();
-    ushort MapVisIndex;
 };
 
 class Client: public Critter

@@ -21,34 +21,6 @@ const char* MapEventFuncName[ MAP_EVENT_MAX ] =
 };
 
 /************************************************************************/
-/* Map::VisibilityManager                                               */
-/************************************************************************/
-
-void Map::MapVisibility::AddCritter( Critter* cr )
-{
-    cr->MapVisIndex = matrix.AddIndex();
-}
-
-void Map::MapVisibility::RemoveCritter( Critter* cr )
-{
-    matrix.RemoveIndex( cr->MapVisIndex );
-}
-
-void Map::MapVisibility::ClearVisibility( Critter* cr )
-{
-    for( int i = 0; i < matrix.Size(); i++ )
-    {
-        *matrix.At( i, cr->MapVisIndex ) = 0;
-        *matrix.At( cr->MapVisIndex, i ) = 0;
-    }
-}
-
-void Map::MapVisibility::TryCompactify()
-{
-    // todo
-}
-
-/************************************************************************/
 /* Map                                                                  */
 /************************************************************************/
 
@@ -111,8 +83,6 @@ void Map::Clear( bool full )
     IsNotValid = true;
 
     PcVec del_npc = mapNpcs;
-
-    Visibility.Clear();
     mapCritters.clear();
     mapPlayers.clear();
     mapNpcs.clear();
@@ -585,8 +555,6 @@ void Map::AddCritter( Critter* cr )
             mapNpcs.push_back( (Npc*) cr );
         mapCritters.push_back( cr );
 
-        Visibility.AddCritter( cr );
-
         cr->SetMaps( GetId(), GetPid() );
     }
 
@@ -628,10 +596,7 @@ void Map::EraseCritter( Critter* cr )
 
         auto it = std::find( mapCritters.begin(), mapCritters.end(), cr );
         if( it != mapCritters.end() )
-        {
             mapCritters.erase( it );
-            Visibility.RemoveCritter( *it );
-        }
     }
 
     cr->SetTimeout( TO_BATTLE, 0 );

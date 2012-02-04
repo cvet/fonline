@@ -6,10 +6,6 @@
 #include "Access.h"
 #include "CritterManager.h"
 
-#define assert2( expr ) \
-    if( !( expr ) )     \
-        WriteLog( "%s %d assert fail\n", __FILE__, __LINE__ );
-
 const char* CritterEventFuncName[ CRITTER_EVENT_MAX ] =
 {
     "void %s(Critter&)",                                                          // CRITTER_EVENT_IDLE
@@ -382,15 +378,12 @@ void Critter::ProcessVisibleCritters()
                     allow_opp = Script::GetReturnedBool();
             }
 
-            // Script look
             if( allow_self )
             {
                 if( cr->AddCrIntoVisVec( this ) )
                 {
                     Send_AddCritter( cr );
                     EventShowCritter( cr );
-                    assert2( *( map->Visibility.At( this->MapVisIndex, cr->MapVisIndex ) ) == 0 );
-                    *( map->Visibility.At( this->MapVisIndex, cr->MapVisIndex ) ) = 1;
                 }
             }
             else
@@ -399,8 +392,6 @@ void Critter::ProcessVisibleCritters()
                 {
                     Send_RemoveCritter( cr );
                     EventHideCritter( cr );
-                    assert2( *( map->Visibility.At( this->MapVisIndex, cr->MapVisIndex ) ) == 1 );
-                    *( map->Visibility.At( this->MapVisIndex, cr->MapVisIndex ) ) = 0;
                 }
             }
 
@@ -410,8 +401,6 @@ void Critter::ProcessVisibleCritters()
                 {
                     cr->Send_AddCritter( this );
                     cr->EventShowCritter( this );
-                    assert2( *( map->Visibility.At( cr->MapVisIndex, this->MapVisIndex ) ) == 0 );
-                    *( map->Visibility.At( cr->MapVisIndex, this->MapVisIndex ) ) = 1;
                 }
             }
             else
@@ -420,8 +409,6 @@ void Critter::ProcessVisibleCritters()
                 {
                     cr->Send_RemoveCritter( this );
                     cr->EventHideCritter( this );
-                    assert2( *( map->Visibility.At( cr->MapVisIndex, this->MapVisIndex ) ) == 1 );
-                    *( map->Visibility.At( cr->MapVisIndex, this->MapVisIndex ) ) = 0;
                 }
             }
 
@@ -580,8 +567,6 @@ void Critter::ProcessVisibleCritters()
             {
                 Send_AddCritter( cr );
                 EventShowCritter( cr );
-                assert2( *( map->Visibility.At( this->MapVisIndex, cr->MapVisIndex ) ) == 0 );
-                *( map->Visibility.At( this->MapVisIndex, cr->MapVisIndex ) ) = 1;
             }
         }
         else
@@ -590,8 +575,6 @@ void Critter::ProcessVisibleCritters()
             {
                 Send_RemoveCritter( cr );
                 EventHideCritter( cr );
-                assert2( *( map->Visibility.At( this->MapVisIndex, cr->MapVisIndex ) ) == 1 );
-                *( map->Visibility.At( this->MapVisIndex, cr->MapVisIndex ) ) = 0;
             }
         }
 
@@ -666,8 +649,6 @@ void Critter::ProcessVisibleCritters()
             {
                 cr->Send_AddCritter( this );
                 cr->EventShowCritter( this );
-                assert2( *( map->Visibility.At( cr->MapVisIndex, this->MapVisIndex ) ) == 0 );
-                *( map->Visibility.At( cr->MapVisIndex, this->MapVisIndex ) ) = 1;
             }
         }
         else
@@ -676,8 +657,6 @@ void Critter::ProcessVisibleCritters()
             {
                 cr->Send_RemoveCritter( this );
                 cr->EventHideCritter( this );
-                assert2( *( map->Visibility.At( cr->MapVisIndex, this->MapVisIndex ) ) == 1 );
-                *( map->Visibility.At( cr->MapVisIndex, this->MapVisIndex ) ) = 0;
             }
         }
 
@@ -943,10 +922,6 @@ void Critter::ClearVisible()
             cr->VisCr.erase( it_ );
     }
     VisCrSelf.clear();
-
-    Map* map = MapMngr.GetMap( this->GetMap() );
-    if( map )
-        map->Visibility.ClearVisibility( this );
 
     VisCr1.clear();
     VisCr2.clear();

@@ -1,7 +1,6 @@
 #ifndef __MAP__
 #define __MAP__
 
-#include "DynamicMatrix.h"
 #include "Common.h"
 #include "ProtoMap.h"
 #include "Item.h"
@@ -46,19 +45,6 @@ private:
     Location*  mapLocation;
 
 public:
-    struct MapVisibility
-    {
-        void    AddCritter( Critter* cr );
-        void    RemoveCritter( Critter* cr );
-        void    ClearVisibility( Critter* cr );
-        ushort* At( ushort x, ushort y ) { return matrix.At( x, y ); }
-        void    TryCompactify();
-        void    Clear() { matrix.Clear(); };
-
-private:
-        DynamicMatrix< 16 > matrix;
-    } Visibility;
-
     struct MapData
     {
         uint   MapId;
