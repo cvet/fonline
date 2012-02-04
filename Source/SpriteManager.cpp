@@ -290,7 +290,8 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     }
 
     // Render targets
-    if( !CreateRenderTarget( rtContours, false ) ||
+    if( !CreateRenderTarget( rtMain, true, false, 0, 0, true ) ||
+        !CreateRenderTarget( rtContours, false ) ||
         !CreateRenderTarget( rtContoursMid, false ) ||
         !CreateRenderTarget( rt3D, true ) )
     {
@@ -310,6 +311,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     # else
     glXSwapBuffers( fl_display, fl_window );
     # endif
+    PushRenderTarget( rtMain );
     #endif
 
     // Generate dummy animation
@@ -596,6 +598,9 @@ void SpriteManager::EndScene()
     d3dDevice->EndScene();
     d3dDevice->Present( NULL, NULL, NULL, NULL );
     #else
+    PopRenderTarget();
+    DrawRenderTarget( rtMain, false );
+    PushRenderTarget( rtMain );
     # ifdef FO_WINDOWS
     SwapBuffers( deviceContext );
     # else

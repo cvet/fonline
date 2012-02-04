@@ -270,6 +270,7 @@ private:
     int              modeWidth, modeHeight;
     bool             sceneBeginned;
     #ifndef FO_D3D
+    RenderTarget     rtMain;
     RenderTarget     rtContours;
     RenderTarget     rtContoursMid;
     RenderTarget     rtPrimitive;
