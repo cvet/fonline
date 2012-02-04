@@ -208,6 +208,7 @@ int main( int argc, char** argv )
                 CheckTextBoxSize( false );
             }
         }
+        Fl::unlock();
         GUIUpdateThread.Finish();
     }
     else

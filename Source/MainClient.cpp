@@ -194,6 +194,7 @@ int main( int argc, char** argv )
     // Loop
     while( !GameOpt.Quit && Fl::wait() )
         ;
+    Fl::unlock();
     GameOpt.Quit = true;
     Game.Wait();
 
