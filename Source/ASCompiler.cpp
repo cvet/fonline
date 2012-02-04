@@ -47,7 +47,7 @@ const char*                         ContextStatesStr[] =
     "Error",
 };
 
-void CompilerLog( string& str )
+void CompilerLog( ScriptString& str )
 {
     printf( "%s\n", str.c_str() );
 }
