@@ -1681,6 +1681,7 @@ void HexManager::SetWeather( int time, uchar rain )
 bool HexManager::ResizeField( ushort w, ushort h )
 {
     GameOpt.ClientMap = NULL;
+    GameOpt.ClientMapLight = NULL;
     GameOpt.ClientMapWidth = 0;
     GameOpt.ClientMapHeight = 0;
 
@@ -1710,6 +1711,7 @@ bool HexManager::ResizeField( ushort w, ushort h )
     memzero( hexLight, w * h * 3 * sizeof( uchar ) );
 
     GameOpt.ClientMap = hexField;
+    GameOpt.ClientMapLight = hexLight;
     GameOpt.ClientMapWidth = w;
     GameOpt.ClientMapHeight = h;
     return true;

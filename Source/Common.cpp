@@ -863,6 +863,8 @@ void GetClientOptions()
     // Int / Bool
     GameOpt.OpenGLDebug = cfg.GetInt( CLIENT_CONFIG_APP, "OpenGLDebug", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.OpenGLDebug, "-OpenGLDebug" );
+    GameOpt.AssimpLogging = cfg.GetInt( CLIENT_CONFIG_APP, "AssimpLogging", false ) != 0;
+    GETOPTIONS_CMD_LINE_BOOL( GameOpt.AssimpLogging, "-AssimpLogging" );
     GameOpt.FullScreen = cfg.GetInt( CLIENT_CONFIG_APP, "FullScreen", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.FullScreen, "-FullScreen" );
     GameOpt.VSync = cfg.GetInt( CLIENT_CONFIG_APP, "VSync", false ) != 0;
@@ -1166,7 +1168,6 @@ GameOptions::GameOptions()
     TimeMultiplier = 0;
     GameTimeTick = 0;
 
-    OpenGLDebug = false;
     DisableTcpNagle = false;
     DisableZlibCompression = false;
     FloodSize = 2048;
@@ -1302,6 +1303,8 @@ GameOptions::GameOptions()
 
     // Client and Mapper
     Quit = false;
+    OpenGLDebug = false;
+    AssimpLogging = false;
     MouseX = 0;
     MouseY = 0;
     ScrOx = 0;
@@ -1402,6 +1405,7 @@ GameOptions::GameOptions()
     CritterTypes = NULL;
 
     ClientMap = NULL;
+    ClientMapLight = NULL;
     ClientMapWidth = 0;
     ClientMapHeight = 0;
 

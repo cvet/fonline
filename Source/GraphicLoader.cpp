@@ -86,7 +86,7 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
         binded = true;
 
         // Logging
-        if( false )
+        if( GameOpt.AssimpLogging )
         {
             Ptr_aiEnableVerboseLogging( true );
             static aiLogStream c = Ptr_aiGetPredefinedLogStream( aiDefaultLogStream_FILE, "Assimp.log" );

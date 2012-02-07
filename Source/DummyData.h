@@ -1197,7 +1197,6 @@ struct GameOptions
     int TimeMultiplier;
     int GameTimeTick;
 
-    int OpenGLDebug;
     int DisableTcpNagle;
     int DisableZlibCompression;
     int FloodSize;
@@ -1325,6 +1324,8 @@ struct GameOptions
 
     // Client
     int Quit;
+    int OpenGLDebug;
+    int AssimpLogging;
     int MouseX;
     int MouseY;
     int ScrOx;

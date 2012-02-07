@@ -6028,6 +6028,9 @@ void FOClient::GmapDraw()
         }
     }
 
+    // Script draw
+    DrawIfaceLayer( 100 );
+
     // Global map fog
     int fog_l = 0;
     int fog_r = GameOpt.GlobalMapWidth;
@@ -6116,7 +6119,7 @@ void FOClient::GmapDraw()
     SprMngr.DrawPoints( gt, PRIMITIVE_POINTLIST );
 
     // Script draw
-    DrawIfaceLayer( 100 );
+    DrawIfaceLayer( 101 );
 
     // Cut off map
     SprMngr.DrawPoints( GmapMapCutOff, PRIMITIVE_TRIANGLELIST );

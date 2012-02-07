@@ -113,7 +113,7 @@ bool FOClient::Init()
     STATIC_ASSERT( sizeof( Field ) == 76 );
     STATIC_ASSERT( sizeof( ScriptArray ) == 36 );
     STATIC_ASSERT( offsetof( CritterCl, ItemSlotArmor ) == 4280 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1308 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1312 );
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 108 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );

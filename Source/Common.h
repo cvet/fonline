@@ -453,7 +453,6 @@ struct GameOptions
     ushort       TimeMultiplier;
     uint         GameTimeTick;
 
-    bool         OpenGLDebug;
     bool         DisableTcpNagle;
     bool         DisableZlibCompression;
     uint         FloodSize;
@@ -579,6 +578,8 @@ struct GameOptions
 
     // Client and Mapper
     bool         Quit;
+    bool         OpenGLDebug;
+    bool         AssimpLogging;
     int          MouseX;
     int          MouseY;
     int          ScrOx;
@@ -679,6 +680,7 @@ struct GameOptions
     void*        CritterTypes;
 
     void*        ClientMap;
+    uchar*       ClientMapLight;
     uint         ClientMapWidth;
     uint         ClientMapHeight;
 
