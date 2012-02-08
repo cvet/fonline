@@ -297,10 +297,36 @@ bool FOMapper::Init()
         char map_name[ MAX_FOPATH ];
         sscanf( Str::Substring( CommandLine, "-Map" ) + strlen( "-Map" ) + 1, "%s", map_name );
 
+        FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
+
         ProtoMap* pmap = new ProtoMap();
-        if( pmap->Init( 0xFFFF, map_name, PT_SERVER_MAPS ) && HexMngr.SetProtoMap( *pmap ) )
+        bool      initialized = pmap->Init( 0xFFFF, map_name, PT_SERVER_MAPS );
+
+        FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+
+        if( initialized && HexMngr.SetProtoMap( *pmap ) )
         {
-            HexMngr.FindSetCenter( pmap->Header.WorkHexX, pmap->Header.WorkHexY );
+            #define GETOPTIONS_CMD_LINE_INT( opt, str_id )              \
+                do {                                                    \
+                    char* str = Str::Substring( CommandLine, str_id );  \
+                    if( str )                                           \
+                        opt = atoi( str + Str::Length( str_id ) + 1 );  \
+                }                                                       \
+                while( 0 )
+
+            int hexX = -1, hexY = -1;
+
+            GETOPTIONS_CMD_LINE_INT( hexX, "-HexX" );
+            GETOPTIONS_CMD_LINE_INT( hexY, "-HexY" );
+
+            #undef GETOPTIONS_CMD_LINE_INT
+
+            if( hexX <= 0 || hexX > pmap->Header.MaxHexX )
+                hexX = pmap->Header.WorkHexX;
+            if( hexY <= 0 || hexY > pmap->Header.MaxHexY )
+                hexY = pmap->Header.WorkHexY;
+
+            HexMngr.FindSetCenter( hexX, hexY );
             CurProtoMap = pmap;
             LoadedProtoMaps.push_back( pmap );
         }
@@ -5769,7 +5795,7 @@ void FOMapper::SScriptFunc::MapperMap_AddTileHash( ProtoMap& pmap, ushort hx, us
     {
         ProtoMap::TileVec& tiles = pmap.GetTiles( hx, hy, roof );
         tiles.push_back( ProtoMap::Tile( pic_hash, hx, hy, ox, oy, layer, roof ) );
-        tiles.back().      IsSelected = false;
+        tiles.back().IsSelected = false;
     }
 }
 
@@ -5806,7 +5832,7 @@ void FOMapper::SScriptFunc::MapperMap_AddTileName( ProtoMap& pmap, ushort hx, us
     {
         ProtoMap::TileVec& tiles = pmap.GetTiles( hx, hy, roof );
         tiles.push_back( ProtoMap::Tile( pic_hash, hx, hy, ox, oy, layer, roof ) );
-        tiles.back().      IsSelected = false;
+        tiles.back().IsSelected = false;
     }
 }
 
