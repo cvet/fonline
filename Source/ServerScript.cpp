@@ -96,6 +96,7 @@ bool FOServer::InitScriptSystem()
         return false;
     }
     Script::SetScriptsPath( PT_SERVER_SCRIPTS );
+    Script::Profiler::Init();
 
     // Wrong global objects
     ServerWrongGlobalObjects.push_back( "Critter@" );

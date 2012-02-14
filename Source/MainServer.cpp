@@ -47,7 +47,7 @@ Fl_Box*    GuiLabelGameTime, * GuiLabelClients, * GuiLabelIngame, * GuiLabelNPC,
 * GuiLabelFPS, * GuiLabelDelta, * GuiLabelUptime, * GuiLabelSend, * GuiLabelRecv, * GuiLabelCompress;
 Fl_Button* GuiBtnRlClScript, * GuiBtnSaveWorld, * GuiBtnSaveLog, * GuiBtnSaveInfo,
 * GuiBtnCreateDump, * GuiBtnMemory, * GuiBtnPlayers, * GuiBtnLocsMaps, * GuiBtnTimeEvents,
-* GuiBtnAnyData, * GuiBtnItemsCount, * GuiBtnStartStop, * GuiBtnSplitUp, * GuiBtnSplitDown;
+* GuiBtnAnyData, * GuiBtnItemsCount, * GuiBtnProfiler, * GuiBtnStartStop, * GuiBtnSplitUp, * GuiBtnSplitDown;
 Fl_Check_Button* GuiCBtnScriptDebug, * GuiCBtnLogging, * GuiCBtnLoggingTime,
 * GuiCBtnLoggingThread, * GuiCBtnAutoUpdate;
 Fl_Text_Display* GuiLog, * GuiInfo;
@@ -271,8 +271,8 @@ void GUIInit( IniParser& cfg )
     int wx = cfg.GetInt( "PositionX", 0 );
     int wy = cfg.GetInt( "PositionY", 0 );
     if( !wx && !wy )
-        wx = ( Fl::w() - GUI_SIZE1( 496 ) ) / 2, wy = ( Fl::h() - GUI_SIZE1( 396 ) ) / 2;
-    GuiWindow = new Fl_Window( wx, wy, GUI_SIZE2( 496, 396 ), "FOnline Server" );
+        wx = ( Fl::w() - GUI_SIZE1( 496 ) ) / 2, wy = ( Fl::h() - GUI_SIZE1( 412 ) ) / 2;
+    GuiWindow = new Fl_Window( wx, wy, GUI_SIZE2( 496, 412 ), "FOnline Server" );
     GuiWindow->labelfont( GUISetup.FontType );
     GuiWindow->labelsize( GUISetup.FontSize );
     GuiWindow->callback( GUICallback );
@@ -318,20 +318,21 @@ void GUIInit( IniParser& cfg )
     GUISetup.Setup( GuiBtnTimeEvents = new Fl_Button( GUI_SIZE4( 5, 267, 124, 14 ), "Time events" ) );
     GUISetup.Setup( GuiBtnAnyData   = new Fl_Button( GUI_SIZE4( 5, 283, 124, 14 ), "Any data" ) );
     GUISetup.Setup( GuiBtnItemsCount = new Fl_Button( GUI_SIZE4( 5, 299, 124, 14 ), "Items count" ) );
-    GUISetup.Setup( GuiBtnStartStop = new Fl_Button( GUI_SIZE4( 5, 377, 124, 14 ), "Start server" ) );
-    GUISetup.Setup( GuiBtnSplitUp   = new Fl_Button( GUI_SIZE4( 117, 341, 12, 9 ), "" ) );
-    GUISetup.Setup( GuiBtnSplitDown = new Fl_Button( GUI_SIZE4( 117, 352, 12, 9 ), "" ) );
+    GUISetup.Setup( GuiBtnProfiler = new Fl_Button( GUI_SIZE4( 5, 315, 124, 14 ), "Profiler" ) );
+    GUISetup.Setup( GuiBtnStartStop = new Fl_Button( GUI_SIZE4( 5, 393, 124, 14 ), "Start server" ) );
+    GUISetup.Setup( GuiBtnSplitUp   = new Fl_Button( GUI_SIZE4( 117, 357, 12, 9 ), "" ) );
+    GUISetup.Setup( GuiBtnSplitDown = new Fl_Button( GUI_SIZE4( 117, 368, 12, 9 ), "" ) );
 
     // Check buttons
-    GUISetup.Setup( GuiCBtnAutoUpdate   = new Fl_Check_Button( GUI_SIZE4( 5, 323, 110, 10 ), "Update info every second" ) );
-    GUISetup.Setup( GuiCBtnLogging      = new Fl_Check_Button( GUI_SIZE4( 5, 333, 110, 10 ), "Logging" ) );
-    GUISetup.Setup( GuiCBtnLoggingTime  = new Fl_Check_Button( GUI_SIZE4( 5, 343, 110, 10 ), "Logging with time" ) );
-    GUISetup.Setup( GuiCBtnLoggingThread = new Fl_Check_Button( GUI_SIZE4( 5, 353, 110, 10 ), "Logging with thread" ) );
-    GUISetup.Setup( GuiCBtnScriptDebug  = new Fl_Check_Button( GUI_SIZE4( 5, 363, 110, 10 ), "Script debug info" ) );
+    GUISetup.Setup( GuiCBtnAutoUpdate   = new Fl_Check_Button( GUI_SIZE4( 5, 339, 110, 10 ), "Update info every second" ) );
+    GUISetup.Setup( GuiCBtnLogging      = new Fl_Check_Button( GUI_SIZE4( 5, 349, 110, 10 ), "Logging" ) );
+    GUISetup.Setup( GuiCBtnLoggingTime  = new Fl_Check_Button( GUI_SIZE4( 5, 359, 110, 10 ), "Logging with time" ) );
+    GUISetup.Setup( GuiCBtnLoggingThread = new Fl_Check_Button( GUI_SIZE4( 5, 369, 110, 10 ), "Logging with thread" ) );
+    GUISetup.Setup( GuiCBtnScriptDebug  = new Fl_Check_Button( GUI_SIZE4( 5, 379, 110, 10 ), "Script debug info" ) );
 
     // Text boxes
-    GUISetup.Setup( GuiLog = new Fl_Text_Display( GUI_SIZE4( 133, 7, 358, 191 ) ) );
-    GUISetup.Setup( GuiInfo = new Fl_Text_Display( GUI_SIZE4( 133, 200, 358, 191 ) ) );
+    GUISetup.Setup( GuiLog = new Fl_Text_Display( GUI_SIZE4( 133, 7, 358, 195 ) ) );
+    GUISetup.Setup( GuiInfo = new Fl_Text_Display( GUI_SIZE4( 133, 204, 358, 203 ) ) );
 
     // Disable buttons
     GuiBtnRlClScript->deactivate();
@@ -341,6 +342,7 @@ void GUIInit( IniParser& cfg )
     GuiBtnTimeEvents->deactivate();
     GuiBtnAnyData->deactivate();
     GuiBtnItemsCount->deactivate();
+    GuiBtnProfiler->deactivate();
     GuiBtnSaveInfo->deactivate();
 
     // Give initial focus to Start / Stop
@@ -419,6 +421,11 @@ void GUICallback( Fl_Widget* widget, void* data )
     {
         FOServer::UpdateIndex = 5;
         FOServer::UpdateLastIndex = 5;
+    }
+    else if( widget == GuiBtnProfiler )
+    {
+        FOServer::UpdateIndex = 6;
+        FOServer::UpdateLastIndex = 6;
     }
     else if( widget == GuiBtnStartStop )
     {
@@ -595,6 +602,10 @@ void UpdateInfo()
             std_str = ItemMngr.GetItemsStatistics();
             UpdateLogName = "ItemsCount";
             break;
+        case 6:         // Profiler
+            std_str = Script::Profiler::GetStatistics();
+            UpdateLogName = "Profiler";
+            break;
         default:
             UpdateLogName = "";
             break;
@@ -680,6 +691,7 @@ void GameLoopThread( void* )
             GuiBtnAnyData->activate();
             GuiBtnItemsCount->activate();
             GuiBtnStartStop->activate();
+            GuiBtnProfiler->activate();
         }
 
         GameInitEvent.Allow();

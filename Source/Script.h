@@ -46,6 +46,20 @@ namespace Script
     bool ReloadScripts( const char* config, const char* key, bool skip_binaries, const char* file_pefix = NULL );
     bool BindReservedFunctions( const char* config, const char* key, ReservedScriptFunction* bind_func, uint bind_func_count );
 
+    #ifdef FONLINE_SERVER
+    namespace Profiler
+    {
+        void   SetData( uint sample_time, uint save_time, bool dynamic_display );
+        void   Init();
+        void   AddModule( const char* module_name );
+        void   EndModules();
+        void   SaveFunctionsData();
+        void   Finish();
+        string GetStatistics();
+        bool   IsActive();
+    }
+    #endif
+
     void DummyAddRef( void* );
     void DummyRelease( void* );
 

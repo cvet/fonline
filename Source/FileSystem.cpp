@@ -8,7 +8,7 @@ void* FileOpen( const char* fname, bool write, bool write_through /* = false */ 
 {
     HANDLE file;
     if( write )
-        file = CreateFile( fname, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+        file = CreateFile( fname, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
     else
         file = CreateFile( fname, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY | FILE_FLAG_SEQUENTIAL_SCAN, NULL );
     if( file == INVALID_HANDLE_VALUE )
@@ -18,7 +18,7 @@ void* FileOpen( const char* fname, bool write, bool write_through /* = false */ 
 
 void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
 {
-    HANDLE file = CreateFile( fname, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+    HANDLE file = CreateFile( fname, GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
     if( file == INVALID_HANDLE_VALUE )
         return NULL;
     if( !FileSetPointer( file, 0, SEEK_END ) )

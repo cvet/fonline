@@ -2425,6 +2425,8 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
     case CMD_RELOADSCRIPTS:
     {
         CHECK_ALLOW_COMMAND;
+        if( Script::Profiler::IsActive() )
+            return;
 
         SynchronizeLogicThreads();
 
@@ -2455,6 +2457,8 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         module_name[ MAX_SCRIPT_NAME ] = 0;
 
         CHECK_ALLOW_COMMAND;
+        if( Script::Profiler::IsActive() )
+            return;
 
         if( !Str::Length( module_name ) )
         {
@@ -3444,9 +3448,14 @@ bool FOServer::InitReal()
     TimeEventsLastNum = 0;
     VarsGarbageLastTick = Timer::FastTick();
 
+    uint sample_time = cfg.GetInt( "ProfilerSampleInterval", 0 );
+    uint profiler_mode = cfg.GetInt( "ProfilerMode", 0 );
+    Script::Profiler::SetData( sample_time, ( ( profiler_mode & 1 ) != 0 ) ? 300000 : 0, ( ( profiler_mode & 2 ) != 0 ) );
     LogicThreadSetAffinity = cfg.GetInt( "LogicThreadSetAffinity", 0 ) != 0;
     LogicThreadCount = cfg.GetInt( "LogicThreadCount", 0 );
-    if( !LogicThreadCount )
+    if( sample_time )
+        LogicThreadCount = 1;
+    else if( !LogicThreadCount )
         LogicThreadCount = CpuCount;
     if( LogicThreadCount == 1 )
         Script::SetConcurrentExecution( false );

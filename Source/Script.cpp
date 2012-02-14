@@ -76,6 +76,108 @@ bool            ConcurrentExecution = false;
 Mutex           ConcurrentExecutionLocker;
 #endif
 
+#ifdef FONLINE_SERVER
+Mutex ProfilerLocker;
+Mutex ProfilerCallStacksLocker;
+void* ProfilerFileHandle = NULL;
+
+enum EProfilerStage
+{
+    ProfilerUninitialized = 0,
+    ProfilerDataSet = 1,
+    ProfilerInitialized = 2,
+    ProfilerModulesAdded = 3,
+    ProfilerWorking = 4
+};
+
+EProfilerStage ProfilerStage = ProfilerUninitialized;
+
+uint           ProfilerSampleInterval = 0;
+uint           ScriptTimeoutTime = 0;
+uint           ProfilerTimeoutTime = 0;
+uint           ProfilerSaveInterval = 0;
+bool           ProfilerDynamicDisplay = false;
+
+// extern in AngelScript code
+void CheckProfiler()
+{
+    if( ProfilerSampleInterval )
+    {
+        ProfilerLocker.Unlock();
+        ProfilerLocker.Lock();
+    }
+}
+
+struct Call
+{
+    Call(): Id( 0 ), Line( 0 ) {}
+    Call( int id, uint line )
+    {
+        Id = id;
+        Line = line;
+    }
+    int  Id;
+    uint Line;
+};
+
+struct CallPath
+{
+    uint                  Id;
+    map< int, CallPath* > Children;
+    uint                  Incl;
+    uint                  Excl;
+    CallPath( int id ): Id( id ), Incl( 1 ), Excl( 0 ) {}
+    CallPath*             AddChild( int id )
+    {
+        auto it = Children.find( id );
+        if( it != Children.end() ) return it->second;
+
+        CallPath* child = new CallPath( id );
+        Children[ id ] = child;
+        return child;
+    }
+    void StackEnd()
+    {
+        Excl++;
+    }
+};
+
+typedef map< int, CallPath* > IntCallPathMap;
+IntCallPathMap CallPaths;
+uint           TotalCallPaths = 0;
+
+typedef vector< Call >        CallStack;
+vector< CallStack* > Stacks;
+
+void ProcessStack( CallStack* stack )
+{
+    SCOPE_LOCK( ProfilerCallStacksLocker );
+    TotalCallPaths++;
+    int       top_id = stack->back().Id;
+    CallPath* path;
+
+    auto      itp = CallPaths.find( top_id );
+    if( itp == CallPaths.end() )
+    {
+        path = new CallPath( top_id );
+        CallPaths[ top_id ] = path;
+    }
+    else
+    {
+        path = itp->second;
+        path->Incl++;
+    }
+
+    for( CallStack::reverse_iterator it = stack->rbegin() + 1, end = stack->rend(); it != end; ++it )
+    {
+        path = path->AddChild( it->Id );
+    }
+
+    path->StackEnd();
+}
+
+#endif
+
 bool LoadLibraryCompiler = false;
 
 // Contexts
@@ -289,6 +391,7 @@ void Script::Finish()
         return;
 
     EndLog();
+    Profiler::Finish();
     RunTimeoutSuspend = 0;
     RunTimeoutMessage = 0;
     RunTimeoutThread.Wait();
@@ -487,7 +590,11 @@ bool Script::ReloadScripts( const char* config, const char* key, bool skip_binar
             WriteLog( "Load module fail, name<%s>.\n", value.c_str() );
             errors++;
         }
+
+        Script::Profiler::AddModule( value.c_str() );
     }
+    Script::Profiler::EndModules();
+    Script::Profiler::SaveFunctionsData();
 
     errors += BindImportedFunctions();
     errors += RebindFunctions();
@@ -558,6 +665,233 @@ bool Script::BindReservedFunctions( const char* config, const char* key, Reserve
     WriteLog( "Bind reserved functions complete.\n" );
     return true;
 }
+
+#ifdef FONLINE_SERVER
+void Script::Profiler::SetData( uint sample_time, uint save_time, bool dynamic_display )
+{
+    if( ProfilerStage != ProfilerUninitialized )
+    {
+        WriteLogF( _FUNC_, " - Internal profiler error.\n" );
+        return;
+    }
+    ProfilerStage = ProfilerDataSet;
+    ProfilerSampleInterval = sample_time;
+
+    if( !ProfilerSampleInterval )
+    {
+        ProfilerSaveInterval = 0;
+        ProfilerDynamicDisplay = false;
+        return;
+    }
+    ProfilerSaveInterval = save_time;
+    ProfilerDynamicDisplay = dynamic_display;
+    if( ProfilerSampleInterval && !ProfilerSaveInterval && !ProfilerDynamicDisplay )
+    {
+        WriteLog( "Profiler may not be active with both saving and dynamic display disabled. Disabling profiler.\n" );
+        ProfilerSampleInterval = 0;
+    }
+}
+
+void Script::Profiler::Init()
+{
+    if( !ProfilerSampleInterval )
+        return;
+    if( ProfilerStage != ProfilerDataSet )
+    {
+        WriteLogF( _FUNC_, " - Internal profiler error.\n" );
+        return;
+    }
+    ProfilerStage = ProfilerInitialized;
+
+    ProfilerLocker.Lock();
+    if( !ProfilerSaveInterval )
+        return;
+
+    DateTime dt;
+    Timer::GetCurrentDateTime( dt );
+
+    char dump_file[ MAX_FOTEXT ];
+    Str::Format( dump_file, "FOnlineServer_Profiler_%02u.%02u.%04u_%02u-%02u-%02u.dat",
+                 dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
+
+    ProfilerFileHandle = FileOpen( dump_file, true );
+    if( !ProfilerFileHandle )
+    {
+        WriteLog( "Couldn't open profiler dump file, disabling saving.\n" );
+        ProfilerSaveInterval = 0;
+        if( !ProfilerDynamicDisplay )
+        {
+            WriteLog( "Disabling profiler.\n" );
+            ProfilerSampleInterval = 0;
+            return;
+        }
+    }
+
+    uint dummy = 0x10ADB10B; // "Load blob"
+    FileWrite( ProfilerFileHandle, &dummy, 4 );
+    dummy = 0;               // Version
+    FileWrite( ProfilerFileHandle, &dummy, 4 );
+}
+
+void Script::Profiler::AddModule( const char* module_name )
+{
+    if( !ProfilerSaveInterval )
+        return;
+    if( ProfilerStage != ProfilerInitialized )
+    {
+        WriteLogF( _FUNC_, " - Internal profiler error.\n" );
+        return;
+    }
+    // No stage change
+
+    char fname_real[ MAX_FOPATH ];
+    Str::Copy( fname_real, module_name );
+    Str::Replacement( fname_real, '.', DIR_SLASH_C );
+    Str::Append( fname_real, ".fosp" );
+    FileManager::FormatPath( fname_real );
+
+    FileManager file;
+    file.LoadFile( fname_real, ScriptsPath );
+    if( file.IsLoaded() )
+    {
+        FileWrite( ProfilerFileHandle, module_name, Str::Length( module_name ) + 1 );
+        FileWrite( ProfilerFileHandle, file.GetBuf(), Str::Length( (char*) file.GetBuf() ) + 1 );
+    }
+}
+
+void Script::Profiler::EndModules()
+{
+    if( !ProfilerSampleInterval )
+        return;
+    if( ProfilerStage != ProfilerInitialized )
+    {
+        WriteLogF( _FUNC_, " - Internal profiler error.\n" );
+        return;
+    }
+    ProfilerStage = ProfilerModulesAdded;
+    if( !ProfilerSaveInterval )
+        return;
+
+    int dummy = 0;
+    FileWrite( ProfilerFileHandle, &dummy, 1 );
+}
+
+void Script::Profiler::SaveFunctionsData()
+{
+    if( !ProfilerSampleInterval )
+        return;
+    if( ProfilerStage != ProfilerModulesAdded )
+    {
+        WriteLogF( _FUNC_, " - Internal profiler error.\n" );
+        return;
+    }
+    ProfilerStage = ProfilerWorking;
+    if( !ProfilerSaveInterval )
+        return;
+
+    asIScriptEngine* engine = GetEngine();
+
+    // TODO: Proper way
+    for( int i = 1; i < 1000000; i++ )
+    {
+        asIScriptFunction* func = engine->GetFunctionById( i );
+        if( !func )
+            continue;
+
+        char buf[ MAX_FOTEXT ] = { 0 };
+        FileWrite( ProfilerFileHandle, &i, 4 );
+
+        Str::Format( buf, "%s", func->GetModuleName() );
+        FileWrite( ProfilerFileHandle, buf, Str::Length( buf ) + 1 );
+        Str::Format( buf, "%s", func->GetDeclaration() );
+        FileWrite( ProfilerFileHandle, buf, Str::Length( buf ) + 1 );
+    }
+    int dummy = -1;
+    FileWrite( ProfilerFileHandle, &dummy, 4 );
+}
+
+void Script::Profiler::Finish()
+{
+    if( !ProfilerSampleInterval )
+        return;
+    if( ProfilerStage != ProfilerWorking )
+    {
+        WriteLogF( _FUNC_, " - Internal profiler error.\n" );
+        return;
+    }
+    ProfilerLocker.Unlock();
+    if( ProfilerSaveInterval )
+        FileClose( ProfilerFileHandle );
+}
+
+// Helper
+struct OutputLine
+{
+    string FuncName;
+    uint   Depth;
+    float  Incl;
+    float  Excl;
+    OutputLine( char* text, uint depth, float incl, float excl ): FuncName( text ), Depth( depth ), Incl( incl ), Excl( excl ) {}
+};
+
+void TraverseCallPaths( asIScriptEngine* engine, CallPath* path, vector< OutputLine >& lines, uint depth, uint& max_depth, uint& max_len )
+{
+    asIScriptFunction* func = engine->GetFunctionById( path->Id );
+    char               name[ MAX_FOTEXT ] = { 0 };
+    if( func )
+        Str::Format( name, "%s@%s", func->GetModuleName(), func->GetDeclaration() );
+    else
+        Str::Copy( name, 4, "???\0" );
+
+    lines.push_back( OutputLine( name, depth,
+                                 100.0f * (float) ( path->Incl ) / float(TotalCallPaths),
+                                 100.0f * (float) ( path->Excl ) / float(TotalCallPaths) ) );
+
+    uint len = Str::Length( name ) + depth;
+    if( len > max_len )
+        max_len = len;
+    depth += 2;
+    if( depth > max_depth )
+        max_depth = depth;
+
+    for( auto it = path->Children.begin(), end = path->Children.end(); it != end; ++it )
+        TraverseCallPaths( engine, it->second, lines, depth, max_depth, max_len );
+}
+
+string Script::Profiler::GetStatistics()
+{
+    if( !ProfilerDynamicDisplay )
+        return "Dynamic display is disabled.";
+    SCOPE_LOCK( ProfilerCallStacksLocker );
+    if( !TotalCallPaths )
+        return "No calls recorded.";
+    string               result;
+
+    vector< OutputLine > lines;
+    uint                 max_depth = 0;
+    uint                 max_len = 0;
+    for( auto it = CallPaths.begin(), end = CallPaths.end(); it != end; ++it )
+        TraverseCallPaths( GetEngine(), it->second, lines, 0, max_depth, max_len );
+
+    char buf[ MAX_FOTEXT ] = { 0 };
+    Str::Format( buf, "%-*s Inclusive %%  Exclusive %%\n\n", max_len, "" );
+    result += buf;
+
+    for( uint i = 0; i < lines.size(); i++ )
+    {
+        Str::Format( buf, "%*s%-*s   %6.2f       %6.2f\n", lines[ i ].Depth, "",
+                     max_len - lines[ i ].Depth, lines[ i ].FuncName.c_str(),
+                     lines[ i ].Incl, lines[ i ].Excl );
+        result += buf;
+    }
+    return result;
+}
+
+bool Script::Profiler::IsActive()
+{
+    return ProfilerSampleInterval != 0;
+}
+#endif
 
 void Script::DummyAddRef( void* )
 {
@@ -830,7 +1164,7 @@ void Script::ScriptGarbager()
 
             obj_times[ i ] = ( garbager_time[ i + 1 ] - garbager_time[ i ] ) / ( (double) garbager_count[ i + 1 ] - (double) garbager_count[ i ] );
 
-            if( obj_times[ i ] <= 0.0f )               // Should no happen
+            if( obj_times[ i ] <= 0.0f )               // Should not happen
             {
                 undetermined = true;                   // Too low resolution, break statistics and repeat later
                 break;
@@ -916,12 +1250,96 @@ void RunTimeout( void* data )
 {
     while( RunTimeoutSuspend )
     {
-        // Check execution time every 1/10 second
+        #ifndef FONLINE_SERVER
         Sleep( 100 );
+        #else
+        if( ProfilerSampleInterval )
+        {
+            Sleep( ProfilerSampleInterval );
+            CallStack*                                         stack = NULL;
 
+            volatile MutexLocker< decltype( ProfilerLocker ) > scope_lock__2( ProfilerLocker );
+            SCOPE_LOCK( ActiveGlobalCtxLocker );
+
+            for( auto it = ActiveContexts.begin(), end = ActiveContexts.end(); it != end; ++it )
+            {
+                ActiveContext& actx = *it;
+
+                // Fetch the call stacks
+                for( int i = GLOBAL_CONTEXT_STACK_SIZE - 1; i >= 0; i-- )
+                {
+                    asIScriptContext* ctx = actx.Contexts[ i ];
+                    if( ctx->GetState() == asEXECUTION_ACTIVE )
+                    {
+                        asIScriptFunction* func;
+                        int                line, column = 0;
+                        uint               stack_size = ctx->GetCallstackSize();
+
+                        // Add new entry
+                        if( !stack )
+                            stack = new CallStack();
+
+                        for( uint j = 0; j < stack_size; j++ )
+                        {
+                            func = ctx->GetFunction( j );
+                            if( func )
+                            {
+                                line = ctx->GetLineNumber( j );
+                                stack->push_back( Call( func->GetId(), line ) );
+                                // WriteLog("%d> %i) %s\n", i, j, func->GetName());
+                            }
+                            else
+                                stack->push_back( Call( 0, 0 ) );
+                        }
+                    }
+                }
+            }
+
+            if( stack )
+            {
+                if( ProfilerDynamicDisplay )
+                    ProcessStack( stack );
+                if( ProfilerSaveInterval )
+                    Stacks.push_back( stack );
+                else
+                    delete stack;
+            }
+
+            uint cur_tick = Timer::FastTick();
+
+            if( ProfilerSaveInterval && ProfilerStage == ProfilerWorking && cur_tick >= ProfilerTimeoutTime + ProfilerSaveInterval )
+            {
+
+                uint time = Timer::FastTick();
+                uint size = Stacks.size();
+
+                for( auto it = Stacks.begin(), end = Stacks.end(); it != end; ++it )
+                {
+                    CallStack* stack = *it;
+                    for( auto it2 = stack->begin(), end2 = stack->end(); it2 != end2; ++it2 )
+                    {
+                        FileWrite( ProfilerFileHandle, &( it2->Id ), 4 );
+                        FileWrite( ProfilerFileHandle, &( it2->Line ), 4 );
+                    }
+                    static int dummy = -1;
+                    FileWrite( ProfilerFileHandle, &dummy, 4 );
+                    delete *it;
+                }
+
+                Stacks.clear();
+                ProfilerTimeoutTime = cur_tick;
+            }
+
+            if( cur_tick < ScriptTimeoutTime + 100 )
+                continue;
+            ScriptTimeoutTime = cur_tick;
+        }
+        else
+            Sleep( 100 );
+        #endif
         SCOPE_LOCK( ActiveGlobalCtxLocker );
-
         uint cur_tick = Timer::FastTick();
+
         for( auto it = ActiveContexts.begin(), end = ActiveContexts.end(); it != end; ++it )
         {
             ActiveContext& actx = *it;
