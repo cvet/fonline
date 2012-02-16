@@ -3696,7 +3696,7 @@ bool FOServer::InitReal()
         bool        is_const;
         const char* config_group;
         void*       pointer;
-        if( engine->GetGlobalPropertyByIndex( i, &name, &type_id, &is_const, &config_group, &pointer ) >= 0 )
+        if( engine->GetGlobalPropertyByIndex( i, &name, NULL, &type_id, &is_const, &config_group, &pointer ) >= 0 )
         {
             const char* cmd_name = strstr( cmd_line, name );
             if( cmd_name )

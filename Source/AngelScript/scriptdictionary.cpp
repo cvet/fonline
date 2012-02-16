@@ -20,7 +20,7 @@ ScriptDictionary::ScriptDictionary( asIScriptEngine* engine )
 
     // Notify the garbage collector of this object
     // TODO: The type id should be cached
-    engine->NotifyGarbageCollectorOfNewObject( this, engine->GetTypeIdByDecl( "dictionary" ) );
+    engine->NotifyGarbageCollectorOfNewObject( this, engine->GetObjectTypeByName( "dictionary" ) );
 }
 
 ScriptDictionary::~ScriptDictionary()

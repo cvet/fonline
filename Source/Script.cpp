@@ -391,7 +391,9 @@ void Script::Finish()
         return;
 
     EndLog();
+#ifdef FONLINE_SERVER
     Profiler::Finish();
+#endif
     RunTimeoutSuspend = 0;
     RunTimeoutMessage = 0;
     RunTimeoutThread.Wait();
@@ -590,11 +592,14 @@ bool Script::ReloadScripts( const char* config, const char* key, bool skip_binar
             WriteLog( "Load module fail, name<%s>.\n", value.c_str() );
             errors++;
         }
-
+#ifdef FONLINE_SERVER
         Script::Profiler::AddModule( value.c_str() );
+#endif
     }
+#ifdef FONLINE_SERVER
     Script::Profiler::EndModules();
     Script::Profiler::SaveFunctionsData();
+#endif
 
     errors += BindImportedFunctions();
     errors += RebindFunctions();
@@ -1016,7 +1021,7 @@ void Script::PrintContextCallstack( asIScriptContext* ctx )
     if( ctx->GetState() == asEXECUTION_EXCEPTION )
     {
         line = ctx->GetExceptionLineNumber( &column );
-        func = Engine->GetFunctionById( ctx->GetExceptionFunction() );
+        func = ctx->GetExceptionFunction();
     }
     else
     {
@@ -1661,7 +1666,7 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
         for( int i = 0, j = module->GetGlobalVarCount(); i < j; i++ )
         {
             int type = 0;
-            module->GetGlobalVar( i, NULL, &type, NULL );
+            module->GetGlobalVar( i, NULL, NULL, &type, NULL );
 
             while( type & asTYPEID_TEMPLATE )
             {
@@ -2709,7 +2714,7 @@ void Script::CallbackException( asIScriptContext* ctx, void* param )
 {
     int                line, column;
     line = ctx->GetExceptionLineNumber( &column );
-    asIScriptFunction* func = Engine->GetFunctionById( ctx->GetExceptionFunction() );
+    asIScriptFunction* func = ctx->GetExceptionFunction();
     if( !func )
     {
         LogA( Str::FormatBuf( "Script exception: %s : %s.\n", ctx->GetExceptionString(), ctx->GetUserData() ) );

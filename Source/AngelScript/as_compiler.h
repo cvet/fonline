@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2011 Andreas Jonsson
+   Copyright (c) 2003-2012 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -41,6 +41,9 @@
 #define AS_COMPILER_H
 
 #include "as_config.h"
+
+#ifndef AS_NO_COMPILER
+
 #include "as_builder.h"
 #include "as_scriptfunction.h"
 #include "as_variablescope.h"
@@ -124,7 +127,6 @@ public:
 	int CompileFunction(asCBuilder *builder, asCScriptCode *script, sExplicitSignature *signature, asCScriptNode *func, asCScriptFunction *outFunc);
 	int CompileDefaultConstructor(asCBuilder *builder, asCScriptCode *script, asCScriptNode *node, asCScriptFunction *outFunc);
 	int CompileFactory(asCBuilder *builder, asCScriptCode *script, asCScriptFunction *outFunc);
-	int CompileTemplateFactoryStub(asCBuilder *builder, int trueFactoryId, asCObjectType *objType, asCScriptFunction *outFunc);
 	int CompileGlobalVariable(asCBuilder *builder, asCScriptCode *script, asCScriptNode *expr, sGlobalVariableDescription *gvar, asCScriptFunction *outFunc);
 
 protected:
@@ -211,7 +213,6 @@ protected:
 	void ConvertToTempVariableNotIn(asSExprContext *ctx, asSExprContext *exclude);
 	void ConvertToReference(asSExprContext *ctx);
 	void PushVariableOnStack(asSExprContext *ctx, bool asReference);
-	asCString GetScopeFromNode(asCScriptNode *node);
 	void DestroyVariables(asCByteCode *bc);
 
 	// Returns the cost of the conversion (the sum of the EConvCost performed)
@@ -229,15 +230,12 @@ protected:
 	asUINT ProcessStringConstant(asCString &str, asCScriptNode *node, bool processEscapeSequences = true);
 	void ProcessHeredocStringConstant(asCString &str, asCScriptNode *node);
 	int  GetPrecedence(asCScriptNode *op);
-
 	void Error(const char *msg, asCScriptNode *node);
 	void Warning(const char *msg, asCScriptNode *node);
 	void Information(const char *msg, asCScriptNode *node);
 	void PrintMatchingFuncs(asCArray<int> &funcs, asCScriptNode *node);
-
 	void AddVariableScope(bool isBreakScope = false, bool isContinueScope = false);
 	void RemoveVariableScope();
-
 	void FinalizeFunction();
 
 	asCByteCode byteCode;
@@ -280,5 +278,7 @@ protected:
 };
 
 END_AS_NAMESPACE
+
+#endif // AS_NO_COMPILER
 
 #endif

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2011 Andreas Jonsson
+   Copyright (c) 2003-2012 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -102,10 +102,11 @@ public:
 	// Global properties
 	virtual int    RegisterGlobalProperty(const char *declaration, void *pointer);
 	virtual asUINT GetGlobalPropertyCount() const;
-	// TODO: access: Return the current access mask
-	virtual int    GetGlobalPropertyByIndex(asUINT index, const char **name, int *typeId = 0, bool *isConst = 0, const char **configGroup = 0, void **pointer = 0) const;
-	// TODO: access: Allow changing the access mask
-	
+	// TODO: interface: namespace: Return the namespace
+	virtual int    GetGlobalPropertyByIndex(asUINT index, const char **name, const char **nameSpace = 0, int *typeId = 0, bool *isConst = 0, const char **configGroup = 0, void **pointer = 0, asDWORD *accessMask = 0) const;
+	virtual int    GetGlobalPropertyIndexByName(const char *name) const;
+	virtual int    GetGlobalPropertyIndexByDecl(const char *decl) const;
+
 	// Type registration
 	virtual int            RegisterObjectType(const char *obj, int byteSize, asDWORD flags);
 	virtual int            RegisterObjectProperty(const char *obj, const char *declaration, int byteOffset);
@@ -115,7 +116,8 @@ public:
 	virtual int            RegisterInterfaceMethod(const char *intf, const char *declaration);
 	virtual asUINT         GetObjectTypeCount() const;
 	virtual asIObjectType *GetObjectTypeByIndex(asUINT index) const;
-	
+	virtual asIObjectType *GetObjectTypeByName(const char *name) const;
+
 	// String factory
 	virtual int RegisterStringFactory(const char *datatype, const asSFuncPtr &factoryFunc, asDWORD callConv);
 	virtual int GetStringFactoryReturnTypeId() const;
@@ -128,29 +130,26 @@ public:
 	virtual int         RegisterEnum(const char *type);
 	virtual int         RegisterEnumValue(const char *type, const char *name, int value);
 	virtual asUINT      GetEnumCount() const;
-	virtual const char *GetEnumByIndex(asUINT index, int *enumTypeId, const char **configGroup = 0) const;
+	virtual const char *GetEnumByIndex(asUINT index, int *enumTypeId, const char **nameSpace, const char **configGroup = 0, asDWORD *accessMask = 0) const;
 	virtual int         GetEnumValueCount(int enumTypeId) const;
 	virtual const char *GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const;
 
 	// Funcdefs
 	virtual int                RegisterFuncdef(const char *decl);
 	virtual asUINT             GetFuncdefCount() const;
-	virtual asIScriptFunction *GetFuncdefByIndex(asUINT index, const char **configGroup = 0) const;
+	virtual asIScriptFunction *GetFuncdefByIndex(asUINT index) const;
 
 	// Typedefs
 	virtual int         RegisterTypedef(const char *type, const char *decl);
 	virtual asUINT      GetTypedefCount() const;
-	virtual const char *GetTypedefByIndex(asUINT index, int *typeId, const char **configGroup = 0) const;
+	virtual const char *GetTypedefByIndex(asUINT index, int *typeId, const char **nameSpace, const char **configGroup = 0, asDWORD *accessMask = 0) const;
 
 	// Configuration groups
 	virtual int     BeginConfigGroup(const char *groupName);
 	virtual int     EndConfigGroup();
 	virtual int     RemoveConfigGroup(const char *groupName);
 	virtual asDWORD SetDefaultAccessMask(asDWORD defaultMask);
-#ifdef AS_DEPRECATED
-	// deprecated since 2011-10-04
-	virtual int SetConfigGroupModuleAccess(const char *groupName, const char *module, bool hasAccess);
-#endif
+	virtual int     SetDefaultNamespace(const char *nameSpace);
 
 	// Script modules
 	virtual asIScriptModule *GetModule(const char *module, asEGMFlags flag);
@@ -158,14 +157,11 @@ public:
 
 	// Script functions
 	virtual asIScriptFunction *GetFunctionById(int funcId) const;
-#ifdef AS_DEPRECATED
-	// deprecated since 2011-10-03
-	virtual asIScriptFunction *GetFunctionDescriptorById(int funcId) const;
-#endif
 
 	// Type identification
 	virtual asIObjectType *GetObjectTypeById(int typeId) const;
 	virtual int            GetTypeIdByDecl(const char *decl) const;
+	// TODO: interface: namespace: Add flag to allow including namespace or not in declaration
 	virtual const char    *GetTypeDeclaration(int typeId) const;
 	virtual int            GetSizeOfPrimitiveType(int typeId) const;
 
@@ -186,8 +182,7 @@ public:
 	// Garbage collection
 	virtual int  GarbageCollect(asDWORD flags = asGC_FULL_CYCLE);
 	virtual void GetGCStatistics(asUINT *currentSize, asUINT *totalDestroyed, asUINT *totalDetected, asUINT *newObjects, asUINT *totalNewDestroyed) const;
-	// TODO: interface: Should have a version that takes the asIObjectType pointer
-	virtual void NotifyGarbageCollectorOfNewObject(void *obj, int typeId);
+	virtual void NotifyGarbageCollectorOfNewObject(void *obj, asIObjectType *type);
 	virtual void GCEnumCallback(void *reference);
 
 	// User data
@@ -223,6 +218,7 @@ public:
 
 	void *CallAlloc(asCObjectType *objType) const;
 	void  CallFree(void *obj) const;
+
 	void *CallGlobalFunctionRetPtr(int func);
 	void *CallGlobalFunctionRetPtr(int func, void *param1);
 	void *CallGlobalFunctionRetPtr(asSSystemFunctionInterface *func, asCScriptFunction *desc);
@@ -245,7 +241,7 @@ public:
 	asCConfigGroup *FindConfigGroupForFunction(int funcId) const;
 	asCConfigGroup *FindConfigGroupForGlobalVar(int gvarId) const;
 	asCConfigGroup *FindConfigGroupForObjectType(const asCObjectType *type) const;
-	asCConfigGroup *FindConfigGroupForFuncDef(asCScriptFunction *funcDef) const;
+	asCConfigGroup *FindConfigGroupForFuncDef(const asCScriptFunction *funcDef) const;
 
 	int  RequestBuild();
 	void BuildCompleted();
@@ -372,6 +368,7 @@ public:
 	asCArray<asCConfigGroup*>  configGroups;
 	asCConfigGroup            *currentGroup;
 	asDWORD                    defaultAccessMask;
+	asCString                  defaultNamespace;
 
 	// Message callback
 	bool                        msgCallback;
@@ -393,7 +390,7 @@ public:
 	asCLEANOBJECTTYPEFUNC_t cleanObjectTypeFunc;
 
 	// Critical sections for threads
-	DECLARECRITICALSECTION(engineCritical);
+	DECLARECRITICALSECTION(engineCritical)
 
 	// Engine properties
 	struct

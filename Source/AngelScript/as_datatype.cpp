@@ -195,7 +195,6 @@ asCString asCDataType::Format() const
 	return str;
 }
 
-
 asCDataType &asCDataType::operator =(const asCDataType &dt)
 {
 	tokenType        = dt.tokenType;
