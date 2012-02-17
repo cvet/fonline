@@ -52,6 +52,10 @@
 #pragma warning(disable:4702) // unreachable code
 #endif
 
+#ifdef FONLINE_SERVER
+extern void CheckProfiler();
+#endif
+
 BEGIN_AS_NAMESPACE
 
 // We need at least 2 DWORDs reserved for exception handling
@@ -1362,7 +1366,9 @@ void asCContext::ExecuteNext()
 
 	for(;;)
 	{
-
+#ifdef FONLINE_SERVER
+		CheckProfiler();
+#endif
 #ifdef AS_DEBUG
 	++stats.instrCount[*(asBYTE*)l_bc];
 
