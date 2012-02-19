@@ -65,17 +65,35 @@ namespace {
 	std::vector<std::string> Pragmas;
     std::set<std::string> PragmasAdded;
 
-	void PrintErrorMessage(const std::string& errmsg)
+	void PrintMessage( const std::string& msg )
 	{
 		(*error_stream) << current_file << " (" << lines_this_file
-			<< ") Error : " << errmsg << "\n";
+			<< ") " << msg << "\n";
+	}
+
+	void PrintErrorMessage(const std::string& errmsg)
+	{
+		std::string err = "Error";
+		if( !(errmsg.empty() || errmsg.length() == 0) )
+		{
+			err += ": ";
+			err += errmsg;
+		}
+
+		PrintMessage( err );
 		number_of_errors++;
 	}
 
-	void PrintWarningMessage(const std::string& errmsg)
+	void PrintWarningMessage(const std::string& warnmsg)
 	{
-		(*error_stream) << current_file << " (" << lines_this_file
-			<< ") Warning : " << errmsg << "\n";
+		std::string warn = "Warning";
+		if( !(warnmsg.empty() || warnmsg.length() == 0) )
+		{
+			warn += ": ";
+			warn += warnmsg;
+		}
+
+		PrintMessage( warn );
 	}
 
 	std::string removeQuotes(const std::string& in)
@@ -459,6 +477,27 @@ static void parsePragma(LexemList& args)
     }
 }
 
+static void parseTextLine(LexemList& directive, std::string& message )
+{
+	message = "";
+	directive.pop_front();
+	if( directive.empty() )
+		return;
+	else
+	{
+		bool first = true;
+		while( !directive.empty() )
+		{
+			if( !first )
+				message += " ";
+			else
+				first = false;
+			message += directive.begin()->value;
+			directive.pop_front();
+		}
+	}
+}
+
 static void setLineMacro(DefineTable& define_table, unsigned int line)
 {
 	DefineEntry def;
@@ -607,11 +646,23 @@ static void recursivePreprocess(
 			{
 				parsePragma(directive);
 			}
-			else if (value == "#warning")
+			else if( value == "#message" )
 			{
-				std::string msg;
-				parseIf(directive,msg);
-				PrintWarningMessage(msg);
+				std::string message;
+				parseTextLine( directive, message );
+				PrintMessage(message);
+			}
+			else if(value == "#warning")
+			{
+				std::string warning;
+				parseTextLine(directive,warning);
+				PrintWarningMessage(warning);
+			}
+			else if( value == "#error" )
+			{
+				std::string error;
+				parseTextLine( directive, error );
+				PrintErrorMessage( error );
 			}
 			else
 			{

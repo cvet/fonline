@@ -63,7 +63,7 @@ void PrintContextCallstack( asIScriptContext* ctx )
     if( ctx->GetState() == asEXECUTION_EXCEPTION )
     {
         line = ctx->GetExceptionLineNumber( &column );
-        func = Engine->GetFunctionById( ctx->GetExceptionFunction() );
+        func = ctx->GetExceptionFunction();
     }
     else
     {
@@ -454,7 +454,7 @@ int main( int argc, char* argv[] )
         for( int i = 0, j = module->GetGlobalVarCount(); i < j; i++ )
         {
             int type = 0;
-            module->GetGlobalVar( i, NULL, &type, NULL );
+            module->GetGlobalVar( i, NULL, NULL, &type, NULL );
 
             while( type & asTYPEID_TEMPLATE )
             {
