@@ -391,9 +391,9 @@ void Script::Finish()
         return;
 
     EndLog();
-#ifdef FONLINE_SERVER
+    #ifdef FONLINE_SERVER
     Profiler::Finish();
-#endif
+    #endif
     RunTimeoutSuspend = 0;
     RunTimeoutMessage = 0;
     RunTimeoutThread.Wait();
@@ -508,6 +508,18 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     if( ptr )
         *ptr = (size_t) &WriteLog;
 
+    ptr = DLL_GetAddress( dll, "ScriptGetActiveContext" );
+    if( ptr )
+        *ptr = (size_t) &asGetActiveContext;
+
+    ptr = DLL_GetAddress( dll, "ScriptGetLibraryOptions" );
+    if( ptr )
+        *ptr = (size_t) &asGetLibraryOptions;
+
+    ptr = DLL_GetAddress( dll, "ScriptGetLibraryVersion" );
+    if( ptr )
+        *ptr = (size_t) &asGetLibraryVersion;
+
     // Call init function
     typedef void ( *DllMainEx )( bool );
     DllMainEx func = (DllMainEx) DLL_GetAddress( dll, "DllMainEx" );
@@ -592,14 +604,14 @@ bool Script::ReloadScripts( const char* config, const char* key, bool skip_binar
             WriteLog( "Load module fail, name<%s>.\n", value.c_str() );
             errors++;
         }
-#ifdef FONLINE_SERVER
+        #ifdef FONLINE_SERVER
         Script::Profiler::AddModule( value.c_str() );
-#endif
+        #endif
     }
-#ifdef FONLINE_SERVER
+    #ifdef FONLINE_SERVER
     Script::Profiler::EndModules();
     Script::Profiler::SaveFunctionsData();
-#endif
+    #endif
 
     errors += BindImportedFunctions();
     errors += RebindFunctions();
