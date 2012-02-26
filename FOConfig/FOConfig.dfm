@@ -736,8 +736,8 @@ object MainForm: TMainForm
           Top = 155
           Width = 69
           Height = 22
-          MaxValue = 100
-          MinValue = -1
+          MaxValue = 10000
+          MinValue = -10000
           TabOrder = 9
         end
       end

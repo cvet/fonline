@@ -624,7 +624,7 @@ struct GameOptions
     int          ScrollStep;
     bool         ScrollCheck;
     ScriptString FoDataPath;
-    uint         FixedFPS;
+    int          FixedFPS;
     bool         MsgboxInvert;
     int          ChangeLang;
     uchar        DefaultCombatMode;

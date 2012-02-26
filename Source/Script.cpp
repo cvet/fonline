@@ -507,15 +507,12 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     ptr = DLL_GetAddress( dll, "Log" );
     if( ptr )
         *ptr = (size_t) &WriteLog;
-
     ptr = DLL_GetAddress( dll, "ScriptGetActiveContext" );
     if( ptr )
         *ptr = (size_t) &asGetActiveContext;
-
     ptr = DLL_GetAddress( dll, "ScriptGetLibraryOptions" );
     if( ptr )
         *ptr = (size_t) &asGetLibraryOptions;
-
     ptr = DLL_GetAddress( dll, "ScriptGetLibraryVersion" );
     if( ptr )
         *ptr = (size_t) &asGetLibraryVersion;
@@ -727,9 +724,13 @@ void Script::Profiler::Init()
     DateTime dt;
     Timer::GetCurrentDateTime( dt );
 
-    char dump_file[ MAX_FOTEXT ];
-    Str::Format( dump_file, "FOnlineServer_Profiler_%02u.%02u.%04u_%02u-%02u-%02u.dat",
-                 dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
+    char dump_file_path[ MAX_FOPATH ];
+    FileManager::GetFullPath( NULL, PT_SERVER_PROFILER, dump_file_path );
+    FileManager::CreateDirectoryTree( dump_file_path );
+
+    char dump_file[ MAX_FOPATH ];
+    Str::Format( dump_file, "%sFOnlineServer_Profiler_%04u.%02u.%02u_%02u-%02u-%02u.foprof",
+                 dump_file_path, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
     ProfilerFileHandle = FileOpen( dump_file, true );
     if( !ProfilerFileHandle )

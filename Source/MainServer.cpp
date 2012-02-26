@@ -382,9 +382,11 @@ void GUICallback( Fl_Widget* widget, void* data )
         DateTime         dt;
         Timer::GetCurrentDateTime( dt );
         char             log_name[ MAX_FOTEXT ];
+        char             log_name_dir[ MAX_FOTEXT ];
         Fl_Text_Display* log = ( widget == GuiBtnSaveLog ? GuiLog : GuiInfo );
-        log->buffer()->savefile( Str::Format( log_name, "FOnlineServer_%s_%02u.%02u.%04u_%02u-%02u-%02u.log",
-                                              log == GuiInfo ? UpdateLogName.c_str() : "Log", dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second ) );
+        FileManager::GetFullPath( NULL, PT_SERVER_LOGS, log_name_dir );
+        log->buffer()->savefile( Str::Format( log_name, "%sFOnlineServer_%s_%04u.%02u.%02u_%02u-%02u-%02u.log", log_name_dir,
+                                              log == GuiInfo ? UpdateLogName.c_str() : "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second ) );
     }
     else if( widget == GuiBtnCreateDump )
     {

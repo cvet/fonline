@@ -321,9 +321,9 @@ bool FOMapper::Init()
 
             #undef GETOPTIONS_CMD_LINE_INT
 
-            if( hexX <= 0 || hexX > pmap->Header.MaxHexX )
+            if( hexX < 0 || hexX >= pmap->Header.MaxHexX )
                 hexX = pmap->Header.WorkHexX;
-            if( hexY <= 0 || hexY > pmap->Header.MaxHexY )
+            if( hexY < 0 || hexY >= pmap->Header.MaxHexY )
                 hexY = pmap->Header.WorkHexY;
 
             HexMngr.FindSetCenter( hexX, hexY );

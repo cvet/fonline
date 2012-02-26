@@ -2106,7 +2106,7 @@ void FOClient::ConsoleDraw()
                              "Sum: %u\n"
                              // "Receive Real: %u\n"
                              "\n"
-                             "FPS: %d (%d)\n"
+                             "FPS: %d (%d%s)\n"
                              "Ping: %d\n"
                              "\n"
                              // "sleep: %d\n"
@@ -2115,7 +2115,8 @@ void FOClient::ConsoleDraw()
                              Singleplayer ? "Singleplayer" : "",
                              CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF,
                              BytesSend, BytesReceive, BytesReceive + BytesSend, /*BytesRealReceive,*/
-                             FPS, !GameOpt.VSync ? GameOpt.FixedFPS : 0, PingTime, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume()
+                             FPS, !GameOpt.VSync ? abs( GameOpt.FixedFPS ) : 0, !GameOpt.VSync && GameOpt.FixedFPS < 0 ? ", sleep" : "",
+                             PingTime, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume()
                              ), 0, COLOR_XRGB( 255, 248, 0 ), FONT_BIG );
 
         SprMngr.DrawStr( Rect( 0, 0, MODE_WIDTH, MODE_HEIGHT ), MsgGame->GetStr( STR_GAME_HELP ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT );

@@ -903,7 +903,7 @@ void GetClientOptions()
     GETOPTIONS_CHECK( GameOpt.BaseTexture, 128, 8192, 1024 );
     GameOpt.FixedFPS = cfg.GetInt( CLIENT_CONFIG_APP, "FixedFPS", 100 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.FixedFPS, "-FixedFPS" );
-    GETOPTIONS_CHECK( GameOpt.FixedFPS, 0, 10000, 100 );
+    GETOPTIONS_CHECK( GameOpt.FixedFPS, -10000, 10000, 100 );
     GameOpt.MsgboxInvert = cfg.GetInt( CLIENT_CONFIG_APP, "InvertMessBox", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.MsgboxInvert, "-InvertMessBox" );
     GameOpt.ChangeLang = cfg.GetInt( CLIENT_CONFIG_APP, "LangChange", CHANGE_LANG_CTRL_SHIFT );

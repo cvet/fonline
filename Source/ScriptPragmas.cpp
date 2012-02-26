@@ -103,15 +103,12 @@ namespace Script
         ptr = DLL_GetAddress( dll, "Log" );
         if( ptr )
             *ptr = (size_t) &printf;
-
         ptr = DLL_GetAddress( dll, "ScriptGetActiveContext" );
         if( ptr )
             *ptr = (size_t) &asGetActiveContext;
-
         ptr = DLL_GetAddress( dll, "ScriptGetLibraryOptions" );
         if( ptr )
             *ptr = (size_t) &asGetLibraryOptions;
-
         ptr = DLL_GetAddress( dll, "ScriptGetLibraryVersion" );
         if( ptr )
             *ptr = (size_t) &asGetLibraryVersion;

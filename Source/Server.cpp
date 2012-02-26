@@ -3448,9 +3448,14 @@ bool FOServer::InitReal()
     TimeEventsLastNum = 0;
     VarsGarbageLastTick = Timer::FastTick();
 
+    // Profiler
     uint sample_time = cfg.GetInt( "ProfilerSampleInterval", 0 );
     uint profiler_mode = cfg.GetInt( "ProfilerMode", 0 );
+    if( !profiler_mode )
+        sample_time = 0;
     Script::Profiler::SetData( sample_time, ( ( profiler_mode & 1 ) != 0 ) ? 300000 : 0, ( ( profiler_mode & 2 ) != 0 ) );
+
+    // Threading
     LogicThreadSetAffinity = cfg.GetInt( "LogicThreadSetAffinity", 0 ) != 0;
     LogicThreadCount = cfg.GetInt( "LogicThreadCount", 0 );
     if( sample_time )

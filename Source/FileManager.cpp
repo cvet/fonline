@@ -49,9 +49,9 @@ const char* PathList[ PATH_LIST_COUNT ] =
     "save" DIR_SLASH_S,
     "save" DIR_SLASH_S "clients" DIR_SLASH_S,
     "save" DIR_SLASH_S "bans" DIR_SLASH_S,
-    "",
-    "",
-    "",
+    "logs" DIR_SLASH_S,
+    "dumps" DIR_SLASH_S,
+    "profiler" DIR_SLASH_S,
     "",
 
     // Other

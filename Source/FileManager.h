@@ -43,6 +43,9 @@
 #define PT_SERVER_SAVE            ( 38 )
 #define PT_SERVER_CLIENTS         ( 39 )
 #define PT_SERVER_BANS            ( 40 )
+#define PT_SERVER_LOGS            ( 41 )
+#define PT_SERVER_DUMPS           ( 42 )
+#define PT_SERVER_PROFILER        ( 43 )
 
 // Other
 #define PT_MAPPER_ROOT            ( 45 )

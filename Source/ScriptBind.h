@@ -1482,7 +1482,7 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "string __ProxyPass", &GameOpt.Prox
 BIND_ASSERT( engine->RegisterGlobalProperty( "string __Name", &GameOpt.Name ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __TextDelay", &GameOpt.TextDelay ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __AlwaysOnTop", &GameOpt.AlwaysOnTop ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __FixedFPS", &GameOpt.FixedFPS ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "int __FixedFPS", &GameOpt.FixedFPS ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MsgboxInvert", &GameOpt.MsgboxInvert ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __ChangeLang", &GameOpt.ChangeLang ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint8 __DefaultCombatMode", &GameOpt.DefaultCombatMode ) );

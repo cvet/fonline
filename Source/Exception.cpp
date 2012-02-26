@@ -65,11 +65,14 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     LONG        retval = EXCEPTION_CONTINUE_SEARCH;
     char        mess[ MAX_FOTEXT ];
     char        dump_path[ MAX_FOPATH ];
+    char        dump_path_dir[ MAX_FOPATH ];
 
     DateTime    dt;
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = except ? "CrashDump" : ManualDumpAppendix;
-    Str::Format( dump_path, "%s_%s_%s_%02d%02d_%02d%02d.txt", dump_str, AppName, AppVer, dt.Day, dt.Month, dt.Hour, dt.Minute );
+    FileManager::GetFullPath( NULL, PT_SERVER_DUMPS, dump_path_dir );
+    Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
+                 dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
     FILE* f = fopen( dump_path, "wt" );
     if( f )
@@ -86,7 +89,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             fprintf( f, "\tOS          %d.%d.%d (%s)\n",
                      ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber, ver.szCSDVersion );
         }
-        fprintf( f, "\tTimestamp   %02d.%02d.%04d %02d:%02d:%02d\n", dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
+        fprintf( f, "\tTimestamp   %04d.%02d.%02d %02d:%02d:%02d\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
         fprintf( f, "\n" );
 
         // Exception information
@@ -412,11 +415,14 @@ LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
     LONG       retval = EXCEPTION_CONTINUE_SEARCH;
     char       mess[ MAX_FOTEXT ];
     char       dump_path[ MAX_FOPATH ];
+    char       dump_path_dir[ MAX_FOPATH ];
 
     DateTime    dt;
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = except ? "CrashDump" : ManualDumpAppendix;
-    Str::Format( dump_path, "%s_%s_%s_%02d%02d_%02d%02d.txt", dump_str, AppName, AppVer, dt.Day, dt.Month, dt.Hour, dt.Minute );
+    FileManager::GetFullPath( NULL, PT_SERVER_DUMPS, dump_path_dir );
+    Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
+                 dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
     HANDLE f = CreateFile( dump_path, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
     if( f != INVALID_HANDLE_VALUE )
@@ -462,6 +468,7 @@ void CreateDump( const char* appendix )
 
 #else // FO_LINUX
 
+# include "FileManager.h"
 # include <signal.h>
 # include <execinfo.h>
 # include <cxxabi.h>
@@ -531,11 +538,14 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 {
     char        mess[ MAX_FOTEXT ];
     char        dump_path[ MAX_FOPATH ];
+    char        dump_path_dir[ MAX_FOPATH ];
 
     DateTime    dt;
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = siginfo ? "CrashDump" : ManualDumpAppendix;
-    Str::Format( dump_path, "./%s_%s_%s_%02d%02d_%02d%02d.txt", dump_str, AppName, AppVer, dt.Day, dt.Month, dt.Hour, dt.Minute );
+    FileManager::GetFullPath( NULL, PT_SERVER_DUMPS, dump_path_dir );
+    Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
+                 dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
     FILE* f = fopen( dump_path, "wt" );
     if( f )

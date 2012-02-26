@@ -957,16 +957,23 @@ int FOClient::MainLoop()
     SprMngr.EndScene();
 
     // Fixed FPS
-    if( !GameOpt.VSync && GameOpt.FixedFPS > 0 )
+    if( !GameOpt.VSync && GameOpt.FixedFPS )
     {
-        static double balance = 0.0;
-        double        elapsed = Timer::AccurateTick() - start_loop;
-        double        need_elapsed = 1000.0 / (double) GameOpt.FixedFPS;
-        if( need_elapsed > elapsed )
+        if( GameOpt.FixedFPS > 0 )
         {
-            double sleep = need_elapsed - elapsed + balance;
-            balance = fmod ( sleep, 1.0 );
-            Sleep( (uint) floor( sleep) );
+            static double balance = 0.0;
+            double        elapsed = Timer::AccurateTick() - start_loop;
+            double        need_elapsed = 1000.0 / (double) GameOpt.FixedFPS;
+            if( need_elapsed > elapsed )
+            {
+                double sleep = need_elapsed - elapsed + balance;
+                balance = fmod ( sleep, 1.0 );
+                Sleep( (uint) floor( sleep) );
+            }
+        }
+        else
+        {
+            Sleep( -GameOpt.FixedFPS );
         }
     }
 
@@ -1469,7 +1476,7 @@ void FOClient::ParseKeyboard()
                     SndMngr.SetSoundVolume( SndMngr.GetSoundVolume() - 2 );
                 else if( Keyb::ShiftDwn )
                     SndMngr.SetMusicVolume( SndMngr.GetMusicVolume() - 2 );
-                else if( Keyb::AltDwn && GameOpt.FixedFPS > 0 )
+                else if( Keyb::AltDwn && GameOpt.FixedFPS > -10000 )
                     GameOpt.FixedFPS--;
                 break;
             // Escape
@@ -9142,8 +9149,8 @@ bool FOClient::SaveLogFile()
     DateTime dt;
     Timer::GetCurrentDateTime( dt );
     char     log_path[ MAX_FOPATH ];
-    Str::Format( log_path, "messbox_%02d-%02d-%d_%02d-%02d-%02d.txt",
-                 dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
+    Str::Format( log_path, "messbox_%04d.%02d.%02d_%02d-%02d-%02d.txt",
+                 dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
     if( Script::PrepareContext( ClientFunctions.FilenameLogfile, _FUNC_, "Game" ) )
     {
@@ -9192,8 +9199,8 @@ bool FOClient::SaveScreenshot()
     DateTime dt;
     Timer::GetCurrentDateTime( dt );
     char     screen_path[ MAX_FOPATH ];
-    Str::Format( screen_path, "screen_%02d-%02d-%d_%02d-%02d-%02d.jpg",
-                 dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
+    Str::Format( screen_path, "screen_%04d.%02d.%02d_%02d-%02d-%02d.jpg",
+                 dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
     if( Script::PrepareContext( ClientFunctions.FilenameScreenshot, _FUNC_, "Game" ) )
     {

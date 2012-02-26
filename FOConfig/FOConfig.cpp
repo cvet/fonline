@@ -143,7 +143,7 @@ void TMainForm::Serialize(bool save)
 	SE_BOOL(CbInvertMessBox->State,"InvertMessBox",0,1,0);
 	SE_BOOL(CbLogging->State,"Logging",0,1,1);
 	SE_BOOL(CbLoggingTime->State,"LoggingTime",0,1,0);
-	SE_INT(SeFixedFPS->Value,"FixedFPS",0,10000,100);
+	SE_INT(SeFixedFPS->Value,"FixedFPS",-10000,10000,100);
 	SE_INT(SeScrollDelay->Value,"ScrollDelay",0,100,10);
 	SE_INT(SeScrollStep->Value,"ScrollStep",4,32,12);
 	SE_INT(SeTextDelay->Value,"TextDelay",1000,30000,3000);
@@ -193,7 +193,7 @@ void TMainForm::Translate()
 {
 	if(Lang=="russ") RbRussian->Checked=true;
 	else RbEnglish->Checked=true;
-	TR_(MainForm,"FOnline конфигуратор   v2.5.0","FOnline configurator   v2.5.0");
+	TR_(MainForm,"FOnline конфигуратор   v2.5.1","FOnline configurator   v2.5.1");
 	TR_(BtnExecute,"Играть","Play");
 	TR_(BtnParse,"Сохранить","Save");
 	TR_(BtnExit,"Выход","Exit");
