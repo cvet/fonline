@@ -350,12 +350,18 @@ int main( int argc, char* argv[] )
 
     LNT = new Preprocessor::LineNumberTranslator();
     int res = Preprocessor::Preprocess( str_fname, fsrc, vos, true, &vos_err, LNT );
+    vos_err.PushNull();
     if( res )
     {
-        vos_err.PushNull();
         printf( "Unable to preprocess. Errors:\n%s\n", vos_err.GetData() );
         return 0;
     }
+	else
+	{
+		char* out = Str::Duplicate( vos_err.GetData() );
+		if( strlen(out) > 0 )
+			printf( "%s", out );
+	}
 
     Buf = new char[ vos.GetSize() + 1 ];
     memcpy( Buf, vos.GetData(), vos.GetSize() );
