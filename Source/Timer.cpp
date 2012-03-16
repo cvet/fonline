@@ -47,7 +47,7 @@ uint Timer::FastTick()
     return timeGetTime();
     #else // FO_LINUX
     struct timespec tv;
-    clock_gettime( CLOCK_MONOTONIC_COARSE, &tv );
+    clock_gettime( CLOCK_MONOTONIC, &tv );
     return (uint) ( tv.tv_sec * 1000 + tv.tv_nsec / 1000000 );
     #endif
 }

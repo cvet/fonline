@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "Crypt.h"
-#include "Zlib/zlib.h"
+#include "zlib/zlib.h"
 #include "SHA2/sha2.h"
 
 CryptManager Crypt;

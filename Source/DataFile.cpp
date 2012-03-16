@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "DataFile.h"
 #include "DatFile/cfile.h"
-#include "Zlib/unzip.h"
+#include "zlib/unzip.h"
 
 /************************************************************************/
 /* Dat/Zip loaders                                                      */

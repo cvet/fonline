@@ -13,9 +13,9 @@
 #include "NetProtocol.h"
 
 #if defined ( USE_LIBEVENT )
-# include "Event2/event.h"
-# include "Event2/bufferevent.h"
-# include "Event2/buffer.h"
+# include "event2/event.h"
+# include "event2/bufferevent.h"
+# include "event2/buffer.h"
 #endif
 
 // Events
