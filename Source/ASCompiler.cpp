@@ -356,12 +356,12 @@ int main( int argc, char* argv[] )
         printf( "Unable to preprocess. Errors:\n%s\n", vos_err.GetData() );
         return 0;
     }
-	else
-	{
-		char* out = Str::Duplicate( vos_err.GetData() );
-		if( strlen(out) > 0 )
-			printf( "%s", out );
-	}
+    else
+    {
+        char* out = Str::Duplicate( vos_err.GetData() );
+        if( strlen( out ) > 0 )
+            printf( "%s", out );
+    }
 
     Buf = new char[ vos.GetSize() + 1 ];
     memcpy( Buf, vos.GetData(), vos.GetSize() );

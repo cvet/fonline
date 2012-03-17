@@ -20,6 +20,12 @@ uint  LastGameTick = 0;
 uint  SkipGameTick = 0;
 bool  GameTickPaused = false;
 
+void UpdateTick( void* );
+void SetTimerTick();
+Thread        TimerUpdateThread;
+volatile uint TimerTick = 0;
+volatile bool QuitTick = false;
+
 #define MAX_ACCELERATE_TICK    ( 500 )
 #define MIN_ACCELERATE_TICK    ( 40 )
 int  AcceleratorNum = 0;
@@ -34,6 +40,8 @@ void Timer::Init()
         QPC_error = true;
 
     timeBeginPeriod( 1 );
+    #else
+    TimerUpdateThread.Start( UpdateTick, "UpdateTick" );
     #endif
 
     LastGameTick = FastTick();
@@ -41,14 +49,22 @@ void Timer::Init()
     GameTickPaused = false;
 }
 
+void Timer::Finish()
+{
+    #if defined ( FO_LINUX )
+    InterlockedExchange( &QuitTick, true );
+    TimerUpdateThread.Wait();
+    #endif
+}
+
 uint Timer::FastTick()
 {
     #if defined ( FO_WINDOWS )
     return timeGetTime();
     #else // FO_LINUX
-    struct timespec tv;
-    clock_gettime( CLOCK_MONOTONIC, &tv );
-    return (uint) ( tv.tv_sec * 1000 + tv.tv_nsec / 1000000 );
+    if( !TimerTick )
+        SetTimerTick();
+    return TimerTick;
     #endif
 }
 
@@ -286,3 +302,23 @@ void Timer::ProcessGameTime()
         GameOpt.Second = st.Second;
     }
 }
+
+#if defined ( FO_LINUX )
+// Thread
+void UpdateTick( void* )
+{
+    while( !QuitTick )
+    {
+        SetTimerTick();
+        usleep( 500 );
+    }
+}
+
+void SetTimerTick()
+{
+    struct timespec tv;
+    clock_gettime( CLOCK_MONOTONIC_COARSE, &tv );
+    uint            timer_tick = (uint) ( tv.tv_sec * 1000 + tv.tv_nsec / 1000000 );
+    InterlockedExchange( &TimerTick, timer_tick );
+}
+#endif
