@@ -69,7 +69,10 @@ namespace Script
         // Register global function and vars
         static map< string, void* > alreadyLoadedDll;
         string                      dll_name_str = dll_name_;
-        auto                        it = alreadyLoadedDll.find( dll_name_str );
+        # if defined ( FO_WINDOWS )
+        Str::Lower( dll_name_str );
+        # endif
+        auto it = alreadyLoadedDll.find( dll_name_str );
         if( it != alreadyLoadedDll.end() )
             return ( *it ).second;
         alreadyLoadedDll.insert( PAIR( dll_name_str, (void*) NULL ) );

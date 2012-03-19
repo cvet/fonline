@@ -445,8 +445,11 @@ void Script::FinishThread()
 void* Script::LoadDynamicLibrary( const char* dll_name )
 {
     // Find in already loaded
-    char        dll_name_lower[ MAX_FOPATH ];
+    char dll_name_lower[ MAX_FOPATH ];
     Str::Copy( dll_name_lower, dll_name );
+    #if defined ( FO_WINDOWS )
+    Str::Lower( dll_name_lower );
+    #endif
     EngineData* edata = (EngineData*) Engine->GetUserData();
     auto        it = edata->LoadedDlls.find( dll_name_lower );
     if( it != edata->LoadedDlls.end() )
