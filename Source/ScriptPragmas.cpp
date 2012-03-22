@@ -70,7 +70,8 @@ namespace Script
         static map< string, void* > alreadyLoadedDll;
         string                      dll_name_str = dll_name_;
         # if defined ( FO_WINDOWS )
-        Str::Lower( dll_name_str );
+        for( uint i = 0, j = dll_name_str.length(); i < j; i++ )
+            tolower( dll_name_str[ i ] );
         # endif
         auto it = alreadyLoadedDll.find( dll_name_str );
         if( it != alreadyLoadedDll.end() )
