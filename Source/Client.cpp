@@ -610,7 +610,7 @@ void FOClient::LookBordersPrepare()
         ushort base_hy = Chosen->GetHexY();
         int    hx = base_hx;
         int    hy = base_hy;
-        int    dir = Chosen->GetDir();
+        int    chosen_dir = Chosen->GetDir();
         uint   dist_shoot = Chosen->GetAttackDist();
         ushort maxhx = HexMngr.GetMaxHexX();
         ushort maxhy = HexMngr.GetMaxHexY();
@@ -640,7 +640,7 @@ void FOClient::LookBordersPrepare()
                 if( FLAG( GameOpt.LookChecks, LOOK_CHECK_DIR ) )
                 {
                     int dir_ = GetFarDir( base_hx, base_hy, hx_, hy_ );
-                    int ii = ( dir > dir_ ? dir - dir_ : dir_ - dir );
+                    int ii = ( chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir );
                     if( ii > DIRS_COUNT / 2 )
                         ii = DIRS_COUNT - ii;
                     uint       dist_ = dist - dist * GameOpt.LookDir[ ii ] / 100;
