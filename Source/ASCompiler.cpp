@@ -350,22 +350,20 @@ int main( int argc, char* argv[] )
 
     LNT = new Preprocessor::LineNumberTranslator();
     int res = Preprocessor::Preprocess( str_fname, fsrc, vos, true, &vos_err, LNT );
+
     vos_err.PushNull();
+    Buf = Str::Duplicate( vos_err.GetData() );
+
     if( res )
     {
-        printf( "Unable to preprocess. Errors:\n%s\n", vos_err.GetData() );
+        printf( "Unable to preprocess. Errors:\n%s\n", Buf );
         return 0;
     }
     else
     {
-        char* out = Str::Duplicate( vos_err.GetData() );
-        if( strlen( out ) > 0 )
-            printf( "%s", out );
+        if( Str::Length( Buf ) > 0 )
+            printf( "%s", Buf );
     }
-
-    Buf = new char[ vos.GetSize() + 1 ];
-    memcpy( Buf, vos.GetData(), vos.GetSize() );
-    Buf[ vos.GetSize() ] = '\0';
 
     if( str_prep )
     {
@@ -520,6 +518,7 @@ int main( int argc, char* argv[] )
     Buf = NULL;
     if( LNT )
         delete LNT;
+    LNT = NULL;
 
     return 0;
 }

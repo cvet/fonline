@@ -205,6 +205,7 @@ int main( int argc, char** argv )
     #endif
     WriteLog( "FOnline finished.\n" );
     LogFinish( -1 );
+    Timer::Finish();
 
     return 0;
 }

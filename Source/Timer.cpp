@@ -12,19 +12,21 @@
 # include <sys/time.h>
 #endif
 
-int64 QPC_StartValue = 0;
-int64 QPC_Freq = 0;
-bool  QPC_error = false;
+uint LastGameTick = 0;
+uint SkipGameTick = 0;
+bool GameTickPaused = false;
 
-uint  LastGameTick = 0;
-uint  SkipGameTick = 0;
-bool  GameTickPaused = false;
+#if defined ( FO_WINDOWS )
+int64 QPCStartValue = 0;
+int64 QPCFrequency = 0;
+#endif
 
+#if defined ( FO_LINUX )
 void UpdateTick( void* );
-void SetTimerTick();
 Thread        TimerUpdateThread;
 volatile uint TimerTick = 0;
 volatile bool QuitTick = false;
+#endif
 
 #define MAX_ACCELERATE_TICK    ( 500 )
 #define MIN_ACCELERATE_TICK    ( 40 )
@@ -35,12 +37,10 @@ uint AcceleratorAccelerate = 0;
 void Timer::Init()
 {
     #if defined ( FO_WINDOWS )
-    if( !QueryPerformanceCounter( (LARGE_INTEGER*) &QPC_StartValue ) ||
-        !QueryPerformanceFrequency( (LARGE_INTEGER*) &QPC_Freq ) )
-        QPC_error = true;
-
+    QueryPerformanceCounter( (LARGE_INTEGER*) &QPCStartValue );
+    QueryPerformanceFrequency( (LARGE_INTEGER*) &QPCFrequency );
     timeBeginPeriod( 1 );
-    #else
+    #else // FO_LINUX
     TimerUpdateThread.Start( UpdateTick, "UpdateTick" );
     #endif
 
@@ -51,7 +51,9 @@ void Timer::Init()
 
 void Timer::Finish()
 {
-    #if defined ( FO_LINUX )
+    #if defined ( FO_WINDOWS )
+    timeEndPeriod( 1 );
+    #else // FO_LINUX
     InterlockedExchange( &QuitTick, true );
     TimerUpdateThread.Wait();
     #endif
@@ -62,8 +64,6 @@ uint Timer::FastTick()
     #if defined ( FO_WINDOWS )
     return timeGetTime();
     #else // FO_LINUX
-    if( !TimerTick )
-        SetTimerTick();
     return TimerTick;
     #endif
 }
@@ -73,7 +73,7 @@ double Timer::AccurateTick()
     #if defined ( FO_WINDOWS )
     int64 qpc_value;
     QueryPerformanceCounter( (LARGE_INTEGER*) &qpc_value );
-    return (double) ( (double) ( qpc_value - QPC_StartValue ) / (double) QPC_Freq * 1000.0 );
+    return (double) ( (double) ( qpc_value - QPCStartValue ) / (double) QPCFrequency * 1000.0 );
     #else // FO_LINUX
     struct timeval tv;
     gettimeofday( &tv, NULL );
@@ -304,21 +304,21 @@ void Timer::ProcessGameTime()
 }
 
 #if defined ( FO_LINUX )
-// Thread
-void UpdateTick( void* )
+void UpdateTick( void* ) // Thread
 {
     while( !QuitTick )
     {
-        SetTimerTick();
-        usleep( 500 );
-    }
-}
+        // Update
+        struct timespec tv;
+        clock_gettime( CLOCK_MONOTONIC, &tv );
+        uint            timer_tick = (uint) ( tv.tv_sec * 1000 + tv.tv_nsec / 1000000 );
+        InterlockedExchange( &TimerTick, timer_tick );
 
-void SetTimerTick()
-{
-    struct timespec tv;
-    clock_gettime( CLOCK_MONOTONIC_COARSE, &tv );
-    uint            timer_tick = (uint) ( tv.tv_sec * 1000 + tv.tv_nsec / 1000000 );
-    InterlockedExchange( &TimerTick, timer_tick );
+        // Sleep
+        struct timespec tv_sleep;
+        tv_sleep.tv_sec = 0;
+        tv_sleep.tv_nsec = 500;
+        nanosleep( &tv_sleep, NULL );
+    }
 }
 #endif

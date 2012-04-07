@@ -217,6 +217,9 @@ int main( int argc, char** argv )
             Sleep( 100 );
     }
 
+    // Finish
+    Timer::Finish();
+
     return 0;
 }
 
@@ -947,7 +950,7 @@ int main( int argc, char** argv )
     close( STDOUT_FILENO );
     close( STDERR_FILENO );
 
-    DaemonLoop();
+    DaemonLoop(); // Never out from here
     return 0;
 }
 

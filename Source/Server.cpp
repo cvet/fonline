@@ -173,7 +173,6 @@ void FOServer::Finish()
     FinishScriptSystem();
     FinishLangPacks();
     FileManager::EndOfWork();
-    Timer::Finish();
 
     // Statistics
     WriteLog( "Server stopped.\n" );
