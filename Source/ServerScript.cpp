@@ -640,6 +640,8 @@ Item* FOServer::SScriptFunc::Container_AddItem( Item* cont, ushort pid, uint cou
         SCRIPT_ERROR_R0( "Container item is not container type." );
     if( !ItemMngr.GetProtoItem( pid ) )
         SCRIPT_ERROR_R0( "Invalid proto id arg." );
+    if( !count )
+        count = 1;
     return ItemMngr.AddItemContainer( cont, pid, count, stack_id );
 }
 
@@ -2199,10 +2201,10 @@ Item* FOServer::SScriptFunc::Crit_AddItem( Critter* cr, ushort pid, uint count )
         SCRIPT_ERROR_R0( "This nullptr." );
     if( !pid )
         SCRIPT_ERROR_R0( "Proto id arg is zero." );
-    if( !count )
-        SCRIPT_ERROR_R0( "Count arg is zero." );
     if( !ItemMngr.GetProtoItem( pid ) )
         SCRIPT_ERROR_R0( "Invalid pid." );
+    if( !count )
+        count = 1;
     return ItemMngr.AddItemCritter( cr, pid, count );
 }
 
