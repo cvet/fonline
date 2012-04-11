@@ -3397,9 +3397,9 @@ bool FOServer::InitReal()
     STATIC_ASSERT( PROTO_ITEM_USER_DATA_SIZE == 500 );
     STATIC_ASSERT( OFFSETOF( Item, IsNotValid ) == 146 );
     STATIC_ASSERT( OFFSETOF( Critter::CrTimeEvent, Identifier ) == 12 );
-    STATIC_ASSERT( OFFSETOF( Critter, RefCounter ) == 9340 );
-    STATIC_ASSERT( OFFSETOF( Client, LanguageMsg ) == 9408 );
-    STATIC_ASSERT( OFFSETOF( Npc, Reserved ) == 9360 );
+    STATIC_ASSERT( OFFSETOF( Critter, RefCounter ) == 9388 );
+    STATIC_ASSERT( OFFSETOF( Client, LanguageMsg ) == 9456 );
+    STATIC_ASSERT( OFFSETOF( Npc, Reserved ) == 9408 );
     STATIC_ASSERT( OFFSETOF( GameVar, RefCount ) == 22 );
     STATIC_ASSERT( OFFSETOF( TemplateVar, Flags ) == 68 );
     STATIC_ASSERT( OFFSETOF( AIDataPlane, RefCounter ) == 88 );

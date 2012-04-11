@@ -158,6 +158,8 @@ public:
     // Visible critters and items
     CrVec         VisCr;
     CrVec         VisCrSelf;
+    CrMap         VisCrMap;
+    CrMap         VisCrSelfMap;
     UIntSet       VisCr1, VisCr2, VisCr3;
     UIntSet       VisItem;
     MutexSpinlock VisItemLocker;

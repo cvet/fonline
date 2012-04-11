@@ -909,19 +909,27 @@ void Critter::ClearVisible()
         Critter* cr = *it;
         auto     it_ = std::find( cr->VisCrSelf.begin(), cr->VisCrSelf.end(), this );
         if( it_ != cr->VisCrSelf.end() )
+        {
             cr->VisCrSelf.erase( it_ );
+            cr->VisCrSelfMap.erase( this->GetId() );
+        }
         cr->Send_RemoveCritter( this );
     }
     VisCr.clear();
+    VisCrMap.clear();
 
     for( auto it = VisCrSelf.begin(), end = VisCrSelf.end(); it != end; ++it )
     {
         Critter* cr = *it;
         auto     it_ = std::find( cr->VisCr.begin(), cr->VisCr.end(), this );
         if( it_ != cr->VisCr.end() )
+        {
             cr->VisCr.erase( it_ );
+            cr->VisCrMap.erase( this->GetId() );
+        }
     }
     VisCrSelf.clear();
+    VisCrSelfMap.clear();
 
     VisCr1.clear();
     VisCr2.clear();
@@ -936,15 +944,9 @@ Critter* Critter::GetCritSelf( uint crid, bool sync_lock )
 {
     Critter* cr = NULL;
 
-    for( auto it = VisCrSelf.begin(), end = VisCrSelf.end(); it != end; ++it )
-    {
-        Critter* cr_ = *it;
-        if( cr_->GetId() == crid )
-        {
-            cr = cr_;
-            break;
-        }
-    }
+    auto     it = VisCrSelfMap.find( crid );
+    if( it != VisCrSelfMap.end() )
+        cr = ( *it ).second;
 
     if( cr && sync_lock )
     {
@@ -952,7 +954,8 @@ Critter* Critter::GetCritSelf( uint crid, bool sync_lock )
         SYNC_LOCK( cr );
 
         // Recheck
-        if( std::find( VisCrSelf.begin(), VisCrSelf.end(), cr ) == VisCrSelf.end() )
+        it = VisCrSelfMap.find( crid );
+        if( it == VisCrSelfMap.end() )
             return GetCritSelf( crid, sync_lock );
     }
 
@@ -1001,22 +1004,32 @@ void Critter::GetCrFromVisCr( CrVec& critters, int find_type, bool vis_cr_self, 
 
 bool Critter::AddCrIntoVisVec( Critter* add_cr )
 {
-    if( std::find( VisCr.begin(), VisCr.end(), add_cr ) != VisCr.end() )
+    if( VisCrMap.count( add_cr->GetId() ) )
         return false;
+
     VisCr.push_back( add_cr );
+    VisCrMap.insert( PAIR( add_cr->GetId(), add_cr ) );
+
     add_cr->VisCrSelf.push_back( this );
+    add_cr->VisCrSelfMap.insert( PAIR( this->GetId(), this ) );
     return true;
 }
 
 bool Critter::DelCrFromVisVec( Critter* del_cr )
 {
-    auto it = std::find( VisCr.begin(), VisCr.end(), del_cr );
-    if( it == VisCr.end() )
+    auto it_map = VisCrMap.find( del_cr->GetId() );
+    if( it_map == VisCrMap.end() )
         return false;
-    VisCr.erase( it );
-    it = std::find( del_cr->VisCrSelf.begin(), del_cr->VisCrSelf.end(), this );
+
+    VisCrMap.erase( it_map );
+    VisCr.erase( std::find( VisCr.begin(), VisCr.end(), del_cr ) );
+
+    auto it = std::find( del_cr->VisCrSelf.begin(), del_cr->VisCrSelf.end(), this );
     if( it != del_cr->VisCrSelf.end() )
+    {
         del_cr->VisCrSelf.erase( it );
+        del_cr->VisCrSelfMap.erase( this->GetId() );
+    }
     return true;
 }
 
