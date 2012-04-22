@@ -2641,7 +2641,7 @@ void FOClient::GameLMouseDown()
         }
         else if( item )
         {
-            if( item->IsScenOrGrid() )
+            if( item->IsScenOrGrid() || item->IsWall() )
                 SetAction( CHOSEN_USE_SKL_ON_SCEN, CurSkill, item->GetProtoId(), item->GetHexX(), item->GetHexY() );
             else
                 SetAction( CHOSEN_USE_SKL_ON_ITEM, false, CurSkill, item->GetId() );
@@ -6855,7 +6855,7 @@ void FOClient::SboxLMouseUp()
                     ItemHex* item = GetItem( SboxUseOn.GetId() );
                     if( item )
                     {
-                        if( item->IsScenOrGrid() )
+                        if( item->IsScenOrGrid() || item->IsWall() )
                             SetAction( CHOSEN_USE_SKL_ON_SCEN, CurSkill, item->GetProtoId(), item->GetHexX(), item->GetHexY() );
                         else
                             SetAction( CHOSEN_USE_SKL_ON_ITEM, false, CurSkill, item->GetId() );
