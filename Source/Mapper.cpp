@@ -1602,16 +1602,23 @@ void FOMapper::MainLoop()
     Script::CollectGarbage( true );
 
     // Fixed FPS
-    if( !GameOpt.VSync && GameOpt.FixedFPS > 0 )
+    if( !GameOpt.VSync && GameOpt.FixedFPS )
     {
-        static double balance = 0.0;
-        double        elapsed = Timer::AccurateTick() - start_loop;
-        double        need_elapsed = 1000.0 / (double) GameOpt.FixedFPS;
-        if( need_elapsed > elapsed )
+        if( GameOpt.FixedFPS > 0 )
         {
-            double sleep = need_elapsed - elapsed + balance;
-            balance = fmod ( sleep, 1.0 );
-            Sleep( (uint) floor( sleep) );
+            static double balance = 0.0;
+            double        elapsed = Timer::AccurateTick() - start_loop;
+            double        need_elapsed = 1000.0 / (double) GameOpt.FixedFPS;
+            if( need_elapsed > elapsed )
+            {
+                double sleep = need_elapsed - elapsed + balance;
+                balance = fmod ( sleep, 1.0 );
+                Sleep( (uint) floor( sleep) );
+            }
+        }
+        else
+        {
+            Sleep( -GameOpt.FixedFPS );
         }
     }
 }
