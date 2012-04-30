@@ -60,7 +60,7 @@
 
 // AS_DEBUG
 // This flag can be defined to make the library write some extra output when
-// compiling and executing scripts.
+// compiling and executing scripts. 
 
 // AS_DEPRECATED
 // If this flag is defined then some backwards compatibility is maintained.
@@ -576,7 +576,6 @@
 			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 		#elif defined(__LP64__) && !defined(__ppc__) && !defined(__PPC__)
 			// http://developer.apple.com/library/mac/#documentation/DeveloperTools/Conceptual/LowLevelABI/140-x86-64_Function_Calling_Conventions/x86_64.html#//apple_ref/doc/uid/TP40005035-SW1
-			#define AS_NO_THREADS
 			#define AS_X64_GCC
 			#define HAS_128_BIT_PRIMITIVES
 			#define SPLIT_OBJS_BY_MEMBER_TYPES
@@ -663,7 +662,7 @@
 		#define AS_WINDOWS_THREADS
 
 	// Linux
-	#elif defined(__linux__)
+	#elif defined(__linux__) && !defined(ANDROID)
 		#if defined(i386) && !defined(__LP64__)
 			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
 			#define CDECL_RETURN_SIMPLE_IN_MEMORY

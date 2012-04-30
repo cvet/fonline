@@ -383,13 +383,7 @@ asPWORD asCScriptEngine::GetEngineProperty(asEEngineProp property) const
 
 asCScriptEngine::asCScriptEngine() 
 {
-	// Instanciate the thread manager
-	ENTERCRITICALSECTION(engineCritical);
-	if( threadManager == 0 )
-		threadManager = asNEW(asCThreadManager);
-	else
-		threadManager->AddRef();
-	LEAVECRITICALSECTION(engineCritical);
+	asCThreadManager::AddRef();
 
 	// Engine properties
 	{
@@ -671,8 +665,7 @@ asCScriptEngine::~asCScriptEngine()
 	if( userData && cleanEngineFunc )
 		cleanEngineFunc(this);
 
-	// Release the thread manager
-	threadManager->Release();
+	asCThreadManager::Release();
 }
 
 // interface
@@ -2612,7 +2605,7 @@ int asCScriptEngine::RegisterStringFactory(const char *datatype, const asSFuncPt
 	asCBuilder bld(this, 0);
 
 	asCDataType dt;
-	r = bld.ParseDataType(datatype, &dt, defaultNamespace);
+	r = bld.ParseDataType(datatype, &dt, defaultNamespace, true);
 	if( r < 0 )
 	{
 		// Set as dummy before deleting
@@ -2967,6 +2960,7 @@ asCScriptFunction *asCScriptEngine::GenerateTemplateFactoryStub(asCObjectType *t
 		}
 		func->inOutFlags[p-1] = factory->inOutFlags[p];
 	}
+	func->objVariablesOnHeap = 0;
 
 	SetScriptFunction(func);
 
@@ -3604,13 +3598,12 @@ int asCScriptEngine::GetTypeIdByDecl(const char *decl) const
 }
 
 // interface
-const char *asCScriptEngine::GetTypeDeclaration(int typeId) const
+const char *asCScriptEngine::GetTypeDeclaration(int typeId, bool includeNamespace) const
 {
 	asCDataType dt = GetDataTypeFromTypeId(typeId);
 
-	asASSERT(threadManager);
-	asCString *tempString = &threadManager->GetLocalData()->string;
-	*tempString = dt.Format();
+	asCString *tempString = &asCThreadManager::GetLocalData()->string;
+	*tempString = dt.Format(includeNamespace);
 
 	return tempString->AddressOf();
 }
@@ -3676,7 +3669,7 @@ void asCScriptEngine::ConstructScriptObjectCopy(void *mem, void *obj, asCObjectT
 	// This function is only meant to be used for value types
 	asASSERT( type->flags & asOBJ_VALUE );
 
-	// TODO: optimize: Should use the copy constructor when available
+	// TODO: runtime optimize: Should use the copy constructor when available
 	int funcIndex = type->beh.construct;
 	if( funcIndex )
 		CallObjectMethod(mem, funcIndex);

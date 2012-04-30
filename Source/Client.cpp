@@ -8088,7 +8088,7 @@ label_EndMove:
         // Use
         CHECK_NEED_AP( ap_cost );
 
-        if( target_item && (target_item->IsScenOrGrid() || target_item->IsWall()) )
+        if( target_item && ( target_item->IsScenOrGrid() || target_item->IsWall() ) )
             Net_SendUseItem( ap_cost, item_id, item_pid, rate, target_type, ( target_item->GetHexX() << 16 ) | ( target_item->GetHexY() & 0xFFFF ), target_item->GetProtoId(), param );
         else
             Net_SendUseItem( ap_cost, item_id, item_pid, rate, target_type, target_id, 0, param );  // Item or critter

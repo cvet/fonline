@@ -102,7 +102,6 @@ public:
 	// Global properties
 	virtual int    RegisterGlobalProperty(const char *declaration, void *pointer);
 	virtual asUINT GetGlobalPropertyCount() const;
-	// TODO: interface: namespace: Return the namespace
 	virtual int    GetGlobalPropertyByIndex(asUINT index, const char **name, const char **nameSpace = 0, int *typeId = 0, bool *isConst = 0, const char **configGroup = 0, void **pointer = 0, asDWORD *accessMask = 0) const;
 	virtual int    GetGlobalPropertyIndexByName(const char *name) const;
 	virtual int    GetGlobalPropertyIndexByDecl(const char *decl) const;
@@ -161,8 +160,7 @@ public:
 	// Type identification
 	virtual asIObjectType *GetObjectTypeById(int typeId) const;
 	virtual int            GetTypeIdByDecl(const char *decl) const;
-	// TODO: interface: namespace: Add flag to allow including namespace or not in declaration
-	virtual const char    *GetTypeDeclaration(int typeId) const;
+	virtual const char    *GetTypeDeclaration(int typeId, bool includeNamespace = false) const;
 	virtual int            GetSizeOfPrimitiveType(int typeId) const;
 
 	// Script execution

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2011 Andreas Jonsson
+   Copyright (c) 2003-2012 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -144,7 +144,7 @@ bool asCDataType::IsNullHandle() const
 	return false;
 }
 
-asCString asCDataType::Format() const
+asCString asCDataType::Format(bool includeNamespace) const
 {
 	if( IsNullHandle() )
 		return "<null handle>";
@@ -154,13 +154,21 @@ asCString asCDataType::Format() const
 	if( isReadOnly )
 		str = "const ";
 
+	if( includeNamespace )
+	{
+		if( objectType )
+			str += objectType->nameSpace + "::";
+		else if( funcDef )
+			str += objectType->nameSpace + "::";
+	}
+
 	if( tokenType != ttIdentifier )
 	{
 		str += asCTokenizer::GetDefinition(tokenType);
 	}
 	else if( IsArrayType() && objectType && !objectType->engine->ep.expandDefaultArrayToTemplate )
 	{
-		str += objectType->templateSubType.Format();
+		str += objectType->templateSubType.Format(includeNamespace);
 		str += "[]";
 	}
 	else if( funcDef )
@@ -173,7 +181,7 @@ asCString asCDataType::Format() const
 		if( objectType->flags & asOBJ_TEMPLATE )
 		{
 			str += "<";
-			str += objectType->templateSubType.Format();
+			str += objectType->templateSubType.Format(includeNamespace);
 			str += ">";
 		}
 	}

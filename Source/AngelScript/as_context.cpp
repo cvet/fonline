@@ -52,10 +52,6 @@
 #pragma warning(disable:4702) // unreachable code
 #endif
 
-#ifdef FONLINE_SERVER
-extern void CheckProfiler();
-#endif
-
 BEGIN_AS_NAMESPACE
 
 // We need at least 2 DWORDs reserved for exception handling
@@ -66,12 +62,7 @@ const int RESERVE_STACK = 2*AS_PTR_SIZE;
 const int CALLSTACK_FRAME_SIZE = 5;
 
 
-#ifdef AS_DEBUG
-// Instruction statistics
-int instrCount[256];
-
-int instrCount2[256][256];
-int lastBC;
+#if defined(AS_DEBUG)
 
 class asCDebugStats
 {
@@ -79,47 +70,74 @@ public:
 	asCDebugStats()
 	{
 		memset(instrCount, 0, sizeof(instrCount));
+		memset(instrCount2, 0, sizeof(instrCount2));
+		lastBC = 255;
 	}
 
 	~asCDebugStats()
 	{
-/*
 		// This code writes out some statistics for the VM. 
 		// It's useful for determining what needs to be optimized.
 
 		_mkdir("AS_DEBUG");
-		FILE *f = fopen("AS_DEBUG/total.txt", "at");
+		#if _MSC_VER >= 1500 
+			FILE *f;
+			fopen_s(&f, "AS_DEBUG/stats.txt", "wt");
+		#else
+			FILE *f = fopen("AS_DEBUG/stats.txt", "wt");
+		#endif
 		if( f )
 		{
 			// Output instruction statistics
 			fprintf(f, "\nTotal count\n");
 			int n;
-			for( n = 0; n < BC_MAXBYTECODE; n++ )
+			for( n = 0; n < asBC_MAXBYTECODE; n++ )
 			{
-				if( bcName[n].name && instrCount[n] > 0 )
-					fprintf(f, "%-10.10s : %.0f\n", bcName[n].name, instrCount[n]);
+				if( asBCInfo[n].name && instrCount[n] > 0 )
+					fprintf(f, "%-10.10s : %.0f\n", asBCInfo[n].name, instrCount[n]);
 			}
 
 			fprintf(f, "\nNever executed\n");
-			for( n = 0; n < BC_MAXBYTECODE; n++ )
+			for( n = 0; n < asBC_MAXBYTECODE; n++ )
 			{
-				if( bcName[n].name && instrCount[n] == 0 )
-					fprintf(f, "%-10.10s\n", bcName[n].name);
+				if( asBCInfo[n].name && instrCount[n] == 0 )
+					fprintf(f, "%-10.10s\n", asBCInfo[n].name);
 			}
 
+			fprintf(f, "\nSequences\n");
+			for( n = 0; n < 256; n++ )
+			{
+				if( asBCInfo[n].name )
+				{
+					for( int m = 0; m < 256; m++ )
+					{
+						if( instrCount2[n][m] )
+							fprintf(f, "%-10.10s, %-10.10s : %.0f\n", asBCInfo[n].name, asBCInfo[m].name, instrCount2[n][m]);
+					}
+				}
+			}
 			fclose(f);
 		}
-*/
 	}
 
+	void Instr(asBYTE bc)
+	{
+		++instrCount[bc];
+		++instrCount2[lastBC][bc];
+		lastBC = bc;
+	}
+
+	// Instruction statistics
 	double instrCount[256];
+	double instrCount2[256][256];
+	int lastBC;
 } stats;
+
 #endif
 
 AS_API asIScriptContext *asGetActiveContext()
 {
-	asASSERT(threadManager);
-	asCThreadLocalData *tld = threadManager->GetLocalData();
+	asCThreadLocalData *tld = asCThreadManager::GetLocalData();
 	if( tld->activeContexts.GetLength() == 0 )
 		return 0;
 	return tld->activeContexts[tld->activeContexts.GetLength()-1];
@@ -127,15 +145,13 @@ AS_API asIScriptContext *asGetActiveContext()
 
 void asPushActiveContext(asIScriptContext *ctx)
 {
-	asASSERT(threadManager);
-	asCThreadLocalData *tld = threadManager->GetLocalData();
+	asCThreadLocalData *tld = asCThreadManager::GetLocalData();
 	tld->activeContexts.PushLast(ctx);
 }
 
 void asPopActiveContext(asIScriptContext *ctx)
 {
-	asASSERT(threadManager);
-	asCThreadLocalData *tld = threadManager->GetLocalData();
+	asCThreadLocalData *tld = asCThreadManager::GetLocalData();
 
 	asASSERT(tld->activeContexts.GetLength() > 0);
 	asASSERT(tld->activeContexts[tld->activeContexts.GetLength()-1] == ctx);
@@ -146,14 +162,6 @@ void asPopActiveContext(asIScriptContext *ctx)
 
 asCContext::asCContext(asCScriptEngine *engine, bool holdRef)
 {
-#ifdef AS_DEBUG
-	memset(instrCount, 0, sizeof(instrCount));
-
-	memset(instrCount2, 0, sizeof(instrCount2));
-
-	lastBC = 255;
-#endif
-
 	holdEngineRef = holdRef;
 	if( holdRef )
 		engine->AddRef();
@@ -277,10 +285,20 @@ asIScriptFunction *asCContext::GetSystemFunction()
 int asCContext::Prepare(asIScriptFunction *func)
 {
 	if( func == 0 ) 
+	{
+		asCString str;
+		str.Format(TXT_FAILED_IN_FUNC_s_WITH_s, "Prepare", "null");
+		engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
 		return asNO_FUNCTION;
+	}
 
 	if( status == asEXECUTION_ACTIVE || status == asEXECUTION_SUSPENDED )
+	{
+		asCString str;
+		str.Format(TXT_FAILED_IN_FUNC_s, "Prepare");
+		engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
 		return asCONTEXT_ACTIVE;
+	}
 
 	// Clean the stack if not done before
 	if( status != asEXECUTION_FINISHED && status != asEXECUTION_UNINITIALIZED )
@@ -307,7 +325,7 @@ int asCContext::Prepare(asIScriptFunction *func)
 		initialFunction->AddRef();
 		currentFunction = initialFunction;
 
-		// TODO: optimize: GetSpaceNeededForArguments() should be precomputed
+		// TODO: runtime optimize: GetSpaceNeededForArguments() should be precomputed
 		argumentsSize = currentFunction->GetSpaceNeededForArguments() + (currentFunction->objectType ? AS_PTR_SIZE : 0);
 
 		// Reserve space for the arguments and return value
@@ -354,6 +372,7 @@ int asCContext::Prepare(asIScriptFunction *func)
 		stackIndex              = 0;
 	}
 	status = asEXECUTION_PREPARED;
+	regs.programPointer = 0;
 
 	// Reserve space for the arguments and return value
 	regs.stackFramePointer = stackBlocks[0] + stackBlockSize - argumentsSize - returnValueSize;
@@ -371,22 +390,6 @@ int asCContext::Prepare(asIScriptFunction *func)
 
 		*(void**)ptr = (void*)(stackBlocks[0] + stackBlockSize - returnValueSize);
 	}
-
-	if( currentFunction->funcType == asFUNC_SCRIPT )
-	{
-		regs.programPointer = currentFunction->byteCode.AddressOf();
-
-		// Set all object variables to 0
-		for( asUINT n = 0; n < currentFunction->objVariablePos.GetLength(); n++ )
-		{
-			if( !currentFunction->objVariableIsOnHeap[n] ) continue;
-
-			int pos = currentFunction->objVariablePos[n];
-			*(asPWORD*)&regs.stackFramePointer[-pos] = 0;
-		}
-	}
-	else
-		regs.programPointer = 0;
 
 	return asSUCCESS;
 }
@@ -988,7 +991,12 @@ int asCContext::Execute()
 	asASSERT( engine != 0 );
 
 	if( status != asEXECUTION_SUSPENDED && status != asEXECUTION_PREPARED )
+	{
+		asCString str;
+		str.Format(TXT_FAILED_IN_FUNC_s, "Execute");
+		engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
 		return asERROR;
+	}
 
 	status = asEXECUTION_ACTIVE;
 
@@ -1039,23 +1047,19 @@ int asCContext::Execute()
 				if( realFunc )
 				{
 					if( realFunc->signatureId != currentFunction->signatureId )
-					{
 						SetInternalException(TXT_NULL_POINTER_ACCESS);
-					}
 					else
-					{
 						currentFunction = realFunc;
-						regs.programPointer = currentFunction->byteCode.AddressOf();
-
-						// Set the local objects to 0
-						for( asUINT n = 0; n < currentFunction->objVariablePos.GetLength(); n++ )
-						{
-							int pos = currentFunction->objVariablePos[n];
-							*(asPWORD*)&regs.stackFramePointer[-pos] = 0;
-						}
-					}
 				}
 			}
+		}
+
+		if( currentFunction->funcType == asFUNC_SCRIPT )
+		{
+			regs.programPointer = currentFunction->byteCode.AddressOf();
+
+			// Set up the internal registers for executing the script function
+			PrepareScriptFunction();
 		}
 		else if( currentFunction->funcType == asFUNC_SYSTEM )
 		{
@@ -1085,43 +1089,6 @@ int asCContext::Execute()
 
 	asPopActiveContext((asIScriptContext *)this);
 
-
-#ifdef AS_DEBUG
-/*
-	// Output instruction statistics
-	// This is useful for determining what needs to be optimized.
-
-	_mkdir("AS_DEBUG");
-	FILE *f = fopen("AS_DEBUG/stats.txt", "at");
-	fprintf(f, "\n");
-	asQWORD total = 0;
-	int n;
-	for( n = 0; n < 256; n++ )
-	{
-		if( bcName[n].name && instrCount[n] )
-			fprintf(f, "%-10.10s : %d\n", bcName[n].name, instrCount[n]);
-
-		total += instrCount[n];
-	}
-
-	fprintf(f, "\ntotal      : %I64d\n", total);
-
-	fprintf(f, "\n");
-	for( n = 0; n < 256; n++ )
-	{
-		if( bcName[n].name )
-		{
-			for( int m = 0; m < 256; m++ )
-			{
-				if( instrCount2[n][m] )
-					fprintf(f, "%-10.10s, %-10.10s : %d\n", bcName[n].name, bcName[m].name, instrCount2[n][m]);
-			}
-		}
-	}
-	fclose(f);
-*/
-#endif
-
 	if( status == asEXECUTION_FINISHED )
 	{
 		regs.objectType = initialFunction->returnType.GetObjectType();
@@ -1147,7 +1114,12 @@ int asCContext::Execute()
 
 void asCContext::PushCallState()
 {
-	callStack.SetLength(callStack.GetLength() + CALLSTACK_FRAME_SIZE);
+	if( callStack.GetLength() == callStack.GetCapacity() )
+	{
+		// Allocate space for 10 call states at a time to save time
+		callStack.AllocateNoConstruct(callStack.GetLength() + 10*CALLSTACK_FRAME_SIZE, true);
+	}
+	callStack.SetLengthNoConstruct(callStack.GetLength() + CALLSTACK_FRAME_SIZE);
 
     // Separating the loads and stores limits data cache trash, and with a smart compiler
     // could turn into SIMD style loading/storing if available.
@@ -1245,8 +1217,9 @@ void asCContext::CallScriptFunction(asCScriptFunction *func)
 	// Push the framepointer, function id and programCounter on the stack
 	PushCallState();
 
+	// Update the current function and program position before increasing the stack 
+	// so the exception handler will know what to do if there is a stack overflow
 	currentFunction = func;
-
 	regs.programPointer = currentFunction->byteCode.AddressOf();
 
 	// Verify if there is enough room in the stack block. Allocate new block if not
@@ -1291,17 +1264,34 @@ void asCContext::CallScriptFunction(asCScriptFunction *func)
 		memcpy(regs.stackPointer, oldStackPointer, sizeof(asDWORD)*numDwords);
 	}
 
-	// Update framepointer and programCounter
+	PrepareScriptFunction();
+}
+
+void asCContext::PrepareScriptFunction()
+{
+	// Update framepointer
 	regs.stackFramePointer = regs.stackPointer;
 
-	// TODO: optimize: This can be avoided handling this as is done for value types in the exception handler
-	// Set all object variables to 0
-	for( asUINT n = 0; n < currentFunction->objVariablePos.GetLength(); n++ )
+	// Set all object variables to 0 to guarantee that they are null before they are used
+	// Only variables on the heap should be cleared. The rest will be cleared by calling the constructor
+	asUINT n = currentFunction->objVariablesOnHeap;
+	while( n-- > 0 )
 	{
-		if( !currentFunction->objVariableIsOnHeap[n] ) continue;
-
 		int pos = currentFunction->objVariablePos[n];
 		*(asPWORD*)&regs.stackFramePointer[-pos] = 0;
+	}
+
+	// Initialize the stack pointer with the space needed for local variables
+	regs.stackPointer -= currentFunction->variableSpace;
+
+	// Call the line callback for each script function, to guarantee that infinitely recursive scripts can
+	// be interrupted, even if the scripts have been compiled with asEP_BUILD_WITHOUT_LINE_CUES
+	if( regs.doProcessSuspend )
+	{
+		if( lineCallback )
+			CallLineCallback();
+		if( doSuspend )
+			status = asEXECUTION_SUSPENDED;
 	}
 }
 
@@ -1317,14 +1307,14 @@ void asCContext::CallInterfaceMethod(asCScriptFunction *func)
 
 	asCObjectType *objType = obj->objType;
 
-	// TODO: optimize: The object type should have a list of only those methods that 
-	//                 implement interface methods. This list should be ordered by
-	//                 the signatureId so that a binary search can be made, instead
-	//                 of a linear search.
+	// TODO: runtime optimize: The object type should have a list of only those methods that 
+	//                         implement interface methods. This list should be ordered by
+	//                         the signatureId so that a binary search can be made, instead
+	//                         of a linear search.
 	//
-	//                 When this is done, we must also make sure the signatureId of a 
-	//                 function never changes, e.g. when if the signature functions are
-	//                 released.
+	//                         When this is done, we must also make sure the signatureId of a 
+	//                         function never changes, e.g. when if the signature functions are
+	//                         released.
 
 	// Search the object type for a function that matches the interface function
 	asCScriptFunction *realFunc = 0;
@@ -1366,16 +1356,10 @@ void asCContext::ExecuteNext()
 
 	for(;;)
 	{
-#ifdef FONLINE_SERVER
-		CheckProfiler();
-#endif
+
 #ifdef AS_DEBUG
-	++stats.instrCount[*(asBYTE*)l_bc];
-
-	++instrCount[*(asBYTE*)l_bc];
-
-	++instrCount2[lastBC][*(asBYTE*)l_bc];
-	lastBC = *(asBYTE*)l_bc;
+	// Gather statistics on executed bytecode 
+	stats.Instr(*(asBYTE*)l_bc);
 
 	// Used to verify that the size of the instructions are correct
 	asDWORD *old = l_bc;
@@ -1392,16 +1376,17 @@ void asCContext::ExecuteNext()
 //--------------
 // memory access functions
 
-	// Decrease the stack pointer with n dwords (stack grows downward)
-	case asBC_POP:
-		l_sp += asBC_WORDARG0(l_bc);
+	case asBC_PopPtr:
+		// Pop a pointer from the stack
+		l_sp += AS_PTR_SIZE;
 		l_bc++;
 		break;
 
-	// Increase the stack pointer with n dwords
-	case asBC_PUSH:
-		l_sp -= asBC_WORDARG0(l_bc);
-		l_bc++;
+	case asBC_PshGPtr:
+		// Replaces PGA + RDSPtr
+		l_sp -= AS_PTR_SIZE;
+		*(asPWORD*)l_sp = *(asPWORD*)asBC_PTRARG(l_bc);
+		l_bc += 1 + AS_PTR_SIZE;
 		break;
 
 	// Push a dword value on the stack
@@ -1923,8 +1908,21 @@ void asCContext::ExecuteNext()
 		break;
 
 	case asBC_RDSPtr:
-		// Pop an address from the stack, read a pointer from that address and push it on the stack
-		*(asPWORD*)l_sp = *(asPWORD*)*(asPWORD*)l_sp;
+		{
+			// The pointer must not be null
+			asPWORD a = *(asPWORD*)l_sp;
+			if( a == 0 )
+			{
+				regs.programPointer = l_bc;
+				regs.stackPointer = l_sp;
+				regs.stackFramePointer = l_fp;
+
+				SetInternalException(TXT_NULL_POINTER_ACCESS);
+				return;
+			}
+			// Pop an address from the stack, read a pointer from that address and push it on the stack
+			*(asPWORD*)l_sp = *(asPWORD*)a;
+		}
 		l_bc++;
 		break;
 
@@ -2385,6 +2383,9 @@ void asCContext::ExecuteNext()
 		break;
 
 	case asBC_ClrVPtr:
+		// TODO: optimize: Is this instruction really necessary? 
+		//                 CallScriptFunction() can clear the null handles upon entry, just as is done for 
+		//                 all other object variables
 		// Clear pointer variable
 		*(asPWORD*)(l_fp - asBC_SWORDARG0(l_bc)) = 0;
 		l_bc++;
@@ -2415,7 +2416,21 @@ void asCContext::ExecuteNext()
 		break;
 
 	case asBC_ADDSi:
-		*(asPWORD*)l_sp = asPWORD(*(asPWORD*)l_sp) + asBC_SWORDARG0(l_bc);
+		{
+			// The pointer must not be null
+			asPWORD a = *(asPWORD*)l_sp;
+			if( a == 0 )
+			{
+				regs.programPointer = l_bc;
+				regs.stackPointer = l_sp;
+				regs.stackFramePointer = l_fp;
+
+				SetInternalException(TXT_NULL_POINTER_ACCESS);
+				return;
+			}
+			// Add an offset to the pointer
+			*(asPWORD*)l_sp = a + asBC_SWORDARG0(l_bc);
+		}
 		l_bc += 2;
 		break;
 
@@ -2531,8 +2546,8 @@ void asCContext::ExecuteNext()
 
 	case asBC_CmpPtr:
 		{
-			// TODO: optimize: This instruction should really just be an equals, and return true or false.
-			//                 The instruction is only used for is and !is tests anyway.
+			// TODO: runtime optimize: This instruction should really just be an equals, and return true or false.
+			//                         The instruction is only used for is and !is tests anyway.
 			asPWORD p1 = *(asPWORD*)(l_fp - asBC_SWORDARG0(l_bc));
 			asPWORD p2 = *(asPWORD*)(l_fp - asBC_SWORDARG1(l_bc));
 			if( p1 == p2 )     *(int*)&regs.valueRegister =  0;
@@ -2831,7 +2846,7 @@ void asCContext::ExecuteNext()
 		{
 			// Verify if the pointer on the stack refers to a non-null value
 			// This is used to validate a reference to a handle
-			asDWORD *a = (asDWORD*)*(asPWORD*)l_sp;
+			asPWORD *a = (asPWORD*)*(asPWORD*)l_sp;
 			if( *a == 0 )
 			{
 				regs.programPointer = l_bc;
@@ -3240,7 +3255,7 @@ void asCContext::ExecuteNext()
 			}
 
 			// Not a JIT resume point, treat as nop
-			l_bc++;
+			l_bc += 1+AS_PTR_SIZE;
 		}
 		break;
 
@@ -3301,6 +3316,19 @@ void asCContext::ExecuteNext()
 		{
 			// PshVPtr 0
 			asPWORD tmp = *(asPWORD*)l_fp;
+
+			// Make sure the pointer is not null
+			if( tmp == 0 )
+			{
+				// Need to move the values back to the context
+				regs.programPointer = l_bc;
+				regs.stackPointer = l_sp;
+				regs.stackFramePointer = l_fp;
+
+				// Raise exception
+				SetInternalException(TXT_NULL_POINTER_ACCESS);
+				return;
+			}
 
 			// ADDSi
 			tmp = tmp + asBC_SWORDARG0(l_bc);
@@ -3399,6 +3427,19 @@ void asCContext::ExecuteNext()
 			// PshVPtr x
 			asPWORD tmp = *(asPWORD*)(l_fp - asBC_SWORDARG0(l_bc)); 
 
+			// Make sure the pointer is not null
+			if( tmp == 0 )
+			{
+				// Need to move the values back to the context
+				regs.programPointer = l_bc;
+				regs.stackPointer = l_sp;
+				regs.stackFramePointer = l_fp;
+
+				// Raise exception
+				SetInternalException(TXT_NULL_POINTER_ACCESS);
+				return;
+			}
+
 			// ADDSi y
 			tmp = tmp + asBC_SWORDARG1(l_bc);
 
@@ -3422,11 +3463,56 @@ void asCContext::ExecuteNext()
 		}
 		break;
 
+	case asBC_RefCpyV:
+		// Same as PSF v, REFCPY
+		{
+			asCObjectType *objType = (asCObjectType*)asBC_PTRARG(l_bc);
+			asSTypeBehaviour *beh = &objType->beh;
+
+			// Determine destination from argument
+			void **d = (void**)asPWORD(l_fp - asBC_SWORDARG0(l_bc));
+			
+			// Read wanted pointer from the stack
+			void *s = (void*)*(asPWORD*)l_sp;
+
+			// Need to move the values back to the context as the called functions
+			// may use the debug interface to inspect the registers
+			regs.programPointer = l_bc;
+			regs.stackPointer = l_sp;
+			regs.stackFramePointer = l_fp;
+
+			if( !(objType->flags & asOBJ_NOCOUNT) )
+			{
+				// Release previous object held by destination pointer
+				if( *d != 0 )
+					engine->CallObjectMethod(*d, beh->release);
+				// Increase ref counter of wanted object
+				if( s != 0 )
+					engine->CallObjectMethod(s, beh->addref);
+			}
+
+			// Set the new object in the destination
+			*d = s;
+		}
+		l_bc += 1+AS_PTR_SIZE;
+		break;
+
+	case asBC_JLowZ:
+		if( *(asBYTE*)&regs.valueRegister == 0 )
+			l_bc += asBC_INTARG(l_bc) + 2;
+		else
+			l_bc += 2;
+		break;
+
+	case asBC_JLowNZ:
+		if( *(asBYTE*)&regs.valueRegister != 0 )
+			l_bc += asBC_INTARG(l_bc) + 2;
+		else
+			l_bc += 2;
+		break;
+
 	// Don't let the optimizer optimize for size,
 	// since it requires extra conditions and jumps
-	case 186: l_bc = (asDWORD*)186; break;
-	case 187: l_bc = (asDWORD*)187; break;
-	case 188: l_bc = (asDWORD*)188; break;
 	case 189: l_bc = (asDWORD*)189; break;
 	case 190: l_bc = (asDWORD*)190; break;
 	case 191: l_bc = (asDWORD*)191; break;
@@ -3500,18 +3586,19 @@ void asCContext::ExecuteNext()
 		asASSERT(false);
 		SetInternalException(TXT_UNRECOGNIZED_BYTE_CODE);
 #endif
-/*
+#if defined(_MSC_VER) && !defined(AS_DEBUG)
 	default:
 		// This Microsoft specific code allows the
 		// compiler to optimize the switch case as
 		// it will know that the code will never
 		// reach this point
 		__assume(0);
-*/	}
+#endif
+	}
 
 #ifdef AS_DEBUG
 		asDWORD instr = *(asBYTE*)old;
-		if( instr != asBC_JMP && instr != asBC_JMPP && (instr < asBC_JZ || instr > asBC_JNP) &&
+		if( instr != asBC_JMP && instr != asBC_JMPP && (instr < asBC_JZ || instr > asBC_JNP) && instr != asBC_JLowZ && instr != asBC_JLowNZ &&
 			instr != asBC_CALL && instr != asBC_CALLBND && instr != asBC_CALLINTF && instr != asBC_RET && instr != asBC_ALLOC && instr != asBC_CallPtr && 
 			instr != asBC_JitEntry )
 		{
@@ -3774,7 +3861,7 @@ void asCContext::CleanStackFrame()
 		for( asUINT n = 0; n < currentFunction->objVariablePos.GetLength(); n++ )
 		{
 			int pos = currentFunction->objVariablePos[n];
-			if( currentFunction->objVariableIsOnHeap[n] )
+			if( n < currentFunction->objVariablesOnHeap )
 			{
 				// Check if the pointer is initialized
 				if( *(asPWORD*)&regs.stackFramePointer[-pos] )
@@ -3818,11 +3905,15 @@ void asCContext::CleanStackFrame()
 		// the function has actually been entered
 		if( currentFunction->objectType && regs.programPointer != currentFunction->byteCode.AddressOf() )
 		{
-			asSTypeBehaviour *beh = &currentFunction->objectType->beh;
-			if( beh->release && *(asPWORD*)&regs.stackFramePointer[0] != 0 )
+			// Methods returning a reference or constructors don't add a reference
+			if( !currentFunction->returnType.IsReference() && currentFunction->name != currentFunction->objectType->name )
 			{
-				engine->CallObjectMethod((void*)*(asPWORD*)&regs.stackFramePointer[0], beh->release);
-				*(asPWORD*)&regs.stackFramePointer[0] = 0;
+				asSTypeBehaviour *beh = &currentFunction->objectType->beh;
+				if( beh->release && *(asPWORD*)&regs.stackFramePointer[0] != 0 )
+				{
+					engine->CallObjectMethod((void*)*(asPWORD*)&regs.stackFramePointer[0], beh->release);
+					*(asPWORD*)&regs.stackFramePointer[0] = 0;
+				}
 			}
 		}
 	}
@@ -4156,7 +4247,7 @@ void *asCContext::GetAddressOfVar(asUINT varIndex, asUINT stackLevel)
 			{
 				if( func->objVariablePos[n] == pos )
 				{
-					onHeap = func->objVariableIsOnHeap[n];
+					onHeap = n < func->objVariablesOnHeap;
 
 					if( !onHeap )
 					{

@@ -55,7 +55,7 @@ public:
 
 	int ParseFunctionDefinition(asCScriptCode *script);
 	int ParsePropertyDeclaration(asCScriptCode *script);
-	int ParseDataType(asCScriptCode *script);
+	int ParseDataType(asCScriptCode *script, bool isReturnType);
 	int ParseTemplateDecl(asCScriptCode *script);
 
 #ifndef AS_NO_COMPILER
@@ -78,9 +78,16 @@ protected:
 
 	asCScriptNode *ParseFunctionDefinition();
 	asCScriptNode *ParseParameterList();
+	asCScriptNode *SuperficiallyParseExpression();
 	asCScriptNode *ParseType(bool allowConst, bool allowVariableType = false);
 	asCScriptNode *ParseTypeMod(bool isParam);
 	void           ParseOptionalScope(asCScriptNode *node);
+	asCScriptNode *ParseRealType();
+	asCScriptNode *ParseDataType(bool allowVariableType = false);
+	asCScriptNode *ParseIdentifier();
+
+	bool IsRealType(int tokenType);
+	bool IsDataType(const sToken &token);
 
 #ifndef AS_NO_COMPILER
 	// Statements
@@ -118,7 +125,6 @@ protected:
 	bool IsVarDecl();
 	bool IsVirtualPropertyDecl();
 	bool IsFuncDecl(bool isMethod);
-#endif
 
 	// Expressions
 	asCScriptNode *ParseAssignment();
@@ -131,31 +137,26 @@ protected:
 	asCScriptNode *ParseExprPostOp();
 	asCScriptNode *ParseExprValue();
 	asCScriptNode *ParseArgList();
-	asCScriptNode *ParseDataType(bool allowVariableType = false);
-	asCScriptNode *ParseRealType();
-	asCScriptNode *ParseIdentifier();
-	asCScriptNode *ParseConstant();
-	asCScriptNode *ParseStringConstant();
 	asCScriptNode *ParseFunctionCall();
 	asCScriptNode *ParseVariableAccess();
 	asCScriptNode *ParseConstructCall();
 	asCScriptNode *ParseCast();
+	asCScriptNode *ParseConstant();
+	asCScriptNode *ParseStringConstant();
 
-	asCScriptNode *ParseToken(int token);
-	asCScriptNode *ParseOneOf(int *tokens, int num);
-
-	bool IsRealType(int tokenType);
-	bool IsDataType(const sToken &token);
+	bool IsConstant(int tokenType);
 	bool IsOperator(int tokenType);
 	bool IsPreOperator(int tokenType);
 	bool IsPostOperator(int tokenType);
-	bool IsConstant(int tokenType);
 	bool IsAssignOperator(int tokenType);
 	bool IsFunctionCall();
 
 	bool IdentifierIs(const sToken &t, const char *str);
-
 	bool CheckTemplateType(sToken &t);
+#endif
+
+	asCScriptNode *ParseToken(int token);
+	asCScriptNode *ParseOneOf(int *tokens, int num);
 
 	asCString ExpectedToken(const char *token);
 	asCString ExpectedTokens(const char *token1, const char *token2);

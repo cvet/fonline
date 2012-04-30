@@ -124,8 +124,7 @@ public:
 	virtual asUINT      GetGlobalVarCount() const;
 	virtual int         GetGlobalVarIndexByName(const char *name) const;
 	virtual int         GetGlobalVarIndexByDecl(const char *decl) const;
-	// TODO: interface: Add flag to define whether or not namespace should be included in declaration
-	virtual const char *GetGlobalVarDeclaration(asUINT index) const;
+	virtual const char *GetGlobalVarDeclaration(asUINT index, bool includeNamespace) const;
 	virtual int         GetGlobalVar(asUINT index, const char **name, const char **nameSpace, int *typeId, bool *isConst) const;
 	virtual void       *GetAddressOfGlobalVar(asUINT index);
 	virtual int         RemoveGlobalVar(asUINT index);

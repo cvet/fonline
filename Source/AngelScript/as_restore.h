@@ -67,8 +67,10 @@ protected:
 	void               ReadDataType(asCDataType *dt);
 	asCObjectType *    ReadObjectType();
 	void               ReadObjectTypeDeclaration(asCObjectType *ot, int phase);
-	void               ReadByteCode(asDWORD *bc, int length);
+	void               ReadByteCode(asCScriptFunction *func);
+	asWORD             ReadEncodedUInt16();
 	asUINT             ReadEncodedUInt();
+	asQWORD            ReadEncodedUInt64();
 
 	void ReadUsedTypeIds();
 	void ReadUsedFunctions();
@@ -83,6 +85,11 @@ protected:
 
 	// After loading, each function needs to be translated to update pointers, function ids, etc
 	void TranslateFunction(asCScriptFunction *func);
+	void CalculateAdjustmentByPos(asCScriptFunction *func);
+	int  AdjustStackPosition(int pos);
+	int  AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD programPos);
+	void CalculateStackNeeded(asCScriptFunction *func);
+	asCScriptFunction *GetCalledFunction(asCScriptFunction *func, asDWORD programPos);
 
 	// Temporary storage for persisting variable data
 	asCArray<int>                usedTypeIds;
@@ -95,6 +102,9 @@ protected:
 	asCArray<asCDataType>         savedDataTypes;
 	asCArray<asCString>           savedStrings;
 
+	asCArray<int>                 adjustByPos;
+	asCArray<int>                 adjustNegativeStackByPos;
+
 	struct SObjProp
 	{
 		asCObjectType *objType;
@@ -102,14 +112,7 @@ protected:
 	};
 	asCArray<SObjProp> usedObjectProperties;
 
-	struct SObjChangeSize
-	{
-		asCObjectType *objType;
-		asUINT         oldSize;
-	};
-	asCArray<SObjChangeSize> oldObjectSizes;
-
-	asCMap<void*,bool> existingShared;
+	asCMap<void*,bool>              existingShared;
 	asCMap<asCScriptFunction*,bool> dontTranslate;
 };
 
@@ -137,8 +140,8 @@ protected:
 	void WriteDataType(const asCDataType *dt);
 	void WriteObjectType(asCObjectType *ot);
 	void WriteObjectTypeDeclaration(asCObjectType *ot, int phase);
-	void WriteByteCode(asDWORD *bc, int length);
-	void WriteEncodedUInt(asUINT i);
+	void WriteByteCode(asCScriptFunction *func);
+	void WriteEncodedInt64(asINT64 i);
 
 	// Helper functions for storing variable data
 	int FindObjectTypeIdx(asCObjectType*);
@@ -147,6 +150,11 @@ protected:
 	int FindGlobalPropPtrIndex(void *);
 	int FindStringConstantIndex(int id);
 	int FindObjectPropIndex(short offset, int typeId);
+
+	void CalculateAdjustmentByPos(asCScriptFunction *func);
+	int  AdjustStackPosition(int pos);
+	int  AdjustProgramPosition(int pos);
+	int  AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD programPos);
 
 	// Intermediate data used for storing that which isn't constant, function id's, pointers, etc
 	void WriteUsedTypeIds();
@@ -167,6 +175,9 @@ protected:
 	asCArray<asCDataType>         savedDataTypes;
 	asCArray<asCString>           savedStrings;
 	asCMap<asCStringPointer, int> stringToIdMap;
+	asCArray<int>                 adjustStackByPos;
+	asCArray<int>                 adjustNegativeStackByPos;
+	asCArray<int>                 bytecodeNbrByPos;
 
 	struct SObjProp
 	{

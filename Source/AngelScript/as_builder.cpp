@@ -672,7 +672,7 @@ void asCBuilder::CompileFunctions()
 #endif
 
 // Called from module and engine
-int asCBuilder::ParseDataType(const char *datatype, asCDataType *result, const asCString &implicitNamespace)
+int asCBuilder::ParseDataType(const char *datatype, asCDataType *result, const asCString &implicitNamespace, bool isReturnType)
 {
 	Reset();
 
@@ -680,7 +680,7 @@ int asCBuilder::ParseDataType(const char *datatype, asCDataType *result, const a
 	source.SetCode("", datatype, true);
 
 	asCParser parser(this);
-	int r = parser.ParseDataType(&source);
+	int r = parser.ParseDataType(&source, isReturnType);
 	if( r < 0 )
 		return asINVALID_TYPE;
 
@@ -688,6 +688,8 @@ int asCBuilder::ParseDataType(const char *datatype, asCDataType *result, const a
 	asCScriptNode *dataType = parser.GetScriptNode()->firstChild;
 
 	*result = CreateDataTypeFromNode(dataType, &source, implicitNamespace, true);
+	if( isReturnType )
+		*result = ModifyDataTypeFromNode(*result, dataType->next, &source, 0, 0);
 
 	if( numErrors > 0 )
 		return asINVALID_TYPE;
@@ -1406,7 +1408,7 @@ int asCBuilder::RegisterClass(asCScriptNode *node, asCScriptCode *file, const as
 	decl->objType = st;
 
 	// Add script classes to the GC
-	// TODO: optimize: Only add the class to the GC when the module won't use the type anymore
+	// TODO: runtime optimize: Only add the class to the GC when the module won't use the type anymore
 	engine->gc.AddScriptObjectToGC(st, &engine->objectTypeBehaviours);
 
 	// Use the default script class behaviours
@@ -2292,19 +2294,19 @@ void asCBuilder::CompileClasses()
 			{
 				if( dt.IsObjectHandle() )
 				{
-					// TODO: optimize: If it is known that the handle can't be involved in a circular reference
-					//                 then this object doesn't need to be marked as garbage collected. 
-					//                 - The application could set a flag when registering the object.
-					//                 - The script classes can be marked as final, then the compiler will 
-					//                   be able to determine whether the class is garbage collected or not.
+					// TODO: runtime optimize: If it is known that the handle can't be involved in a circular reference
+					//                         then this object doesn't need to be marked as garbage collected. 
+					//                         - The application could set a flag when registering the object.
+					//                         - The script classes can be marked as final, then the compiler will 
+					//                           be able to determine whether the class is garbage collected or not.
 
 					ot->flags |= asOBJ_GC;
 					break;
 				}
 				else if( dt.GetObjectType()->flags & asOBJ_GC )
 				{
-					// TODO: optimize: Just because the member type is a potential circle doesn't mean that this one is
-					//                 Only if the object is of a type that can reference this type, either directly or indirectly
+					// TODO: runtime optimize: Just because the member type is a potential circle doesn't mean that this one is
+					//                         Only if the object is of a type that can reference this type, either directly or indirectly
 
 					ot->flags |= asOBJ_GC;
 					break;
@@ -2439,35 +2441,66 @@ void asCBuilder::AddDefaultConstructor(asCObjectType *objType, asCScriptCode *fi
 
 int asCBuilder::RegisterEnum(asCScriptNode *node, asCScriptCode *file, const asCString &ns)
 {
-	// Grab the name of the enumeration
+	// Is it a shared enum?
+	bool isShared = false;
+	asCObjectType *existingSharedType = 0;
 	asCScriptNode *tmp = node->firstChild;
-	asASSERT(snDataType == tmp->nodeType);
+	if( tmp->nodeType == snIdentifier && file->TokenEquals(tmp->tokenPos, tmp->tokenLength, SHARED_TOKEN) )
+	{
+		isShared = true;
+		tmp = tmp->next;
+	}
 
+	// Grab the name of the enumeration
 	asCString name;
+	asASSERT(snDataType == tmp->nodeType);
 	asASSERT(snIdentifier == tmp->firstChild->nodeType);
 	name.Assign(&file->code[tmp->firstChild->tokenPos], tmp->firstChild->tokenLength);
+
+	if( isShared )
+	{
+		// Look for a pre-existing shared enum with the same signature
+		for( asUINT n = 0; n < engine->classTypes.GetLength(); n++ )
+		{
+			asCObjectType *o = engine->classTypes[n];
+			if( o &&
+				o->IsShared() &&
+				(o->flags & asOBJ_ENUM) &&
+				o->name == name &&
+				o->nameSpace == ns )
+			{
+				existingSharedType = o;
+				break;
+			}
+		}
+	}
 
 	// Check the name and add the enum
 	int r = CheckNameConflict(name.AddressOf(), tmp->firstChild, file, ns);
 	if( asSUCCESS == r )
 	{
 		asCObjectType *st;
-		asCDataType dataType;
 
-		st = asNEW(asCObjectType)(engine);
-		dataType.CreatePrimitive(ttInt, false);
+		if( existingSharedType )
+			st = existingSharedType;
+		else
+		{
+			st = asNEW(asCObjectType)(engine);
 
-		st->flags     = asOBJ_ENUM;
-		st->size      = 4;
-		st->name      = name;
-		st->nameSpace = ns;
-
+			st->flags     = asOBJ_ENUM;
+			if( isShared )
+				st->flags |= asOBJ_SHARED;
+			st->size      = 4;
+			st->name      = name;
+			st->nameSpace = ns;
+		}
 		module->enumTypes.PushLast(st);
 		st->AddRef();
 
 		// TODO: cleanup: Should the enum type really be stored in the engine->classTypes? 
 		//                http://www.gamedev.net/topic/616912-c-header-file-shared-with-scripts/page__gopid__4895940
-		engine->classTypes.PushLast(st);
+		if( !existingSharedType )
+			engine->classTypes.PushLast(st);
 
 		// Store the location of this declaration for reference in name collisions
 		sClassDeclaration *decl = asNEW(sClassDeclaration);
@@ -2487,68 +2520,96 @@ int asCBuilder::RegisterEnum(asCScriptNode *node, asCScriptCode *file, const asC
 
 			asCString name(&file->code[tmp->tokenPos], tmp->tokenLength);
 
-			// Check for name conflict errors with other values in the enum
-			r = 0;
-			for( size_t n = globVariables.GetLength(); n-- > 0; )
+			if( existingSharedType )
 			{
-				sGlobalVariableDescription *gvar = globVariables[n];
-				if( gvar->datatype != type )
-					break;
+				// If this is a pre-existent shared enum, then just double check 
+				// that the value is already defined in the original declaration
+				bool found = false;
+				for( size_t n = 0; n < st->enumValues.GetLength(); n++ )
+					if( st->enumValues[n]->name == name )
+					{
+						found = true;
+						break;
+					}
 
-				if( gvar->name == name &&
-					gvar->property->nameSpace == ns )
+				if( !found )
 				{
-					r = asNAME_TAKEN;
+					int r, c;
+					file->ConvertPosToRowCol(tmp->tokenPos, &r, &c);
+					WriteError(file->name.AddressOf(), TXT_SHARED_DOESNT_MATCH_ORIGINAL, r, c);
 					break;
 				}
-			}
-			if( asSUCCESS != r )
-			{
-				int r, c;
-				file->ConvertPosToRowCol(tmp->tokenPos, &r, &c);
-
-				asCString str;
-				str.Format(TXT_NAME_CONFLICT_s_ALREADY_USED, name.AddressOf());
-				WriteError(file->name.AddressOf(), str.AddressOf(), r, c);
 
 				tmp = tmp->next;
 				if( tmp && tmp->nodeType == snAssignment )
 					tmp = tmp->next;
 				continue;
 			}
-
-			// Check for assignment
-			asCScriptNode *asnNode = tmp->next;
-			if( asnNode && snAssignment == asnNode->nodeType )
-				asnNode->DisconnectParent();
 			else
-				asnNode = 0;
+			{
+				// Check for name conflict errors with other values in the enum
+				r = 0;
+				for( size_t n = globVariables.GetLength(); n-- > 0; )
+				{
+					sGlobalVariableDescription *gvar = globVariables[n];
+					if( gvar->datatype != type )
+						break;
 
-			// Create the global variable description so the enum value can be evaluated
-			sGlobalVariableDescription *gvar = asNEW(sGlobalVariableDescription);
-			globVariables.PushLast(gvar);
+					if( gvar->name == name &&
+						gvar->property->nameSpace == ns )
+					{
+						r = asNAME_TAKEN;
+						break;
+					}
+				}
+				if( asSUCCESS != r )
+				{
+					int r, c;
+					file->ConvertPosToRowCol(tmp->tokenPos, &r, &c);
 
-			gvar->script		  = file;
-			gvar->idNode          = 0;
-			gvar->nextNode		  = asnNode;
-			gvar->name			  = name;
-			gvar->datatype		  = type;
-			// No need to allocate space on the global memory stack since the values are stored in the asCObjectType
-			gvar->index			  = 0;
-			gvar->isCompiled	  = false;
-			gvar->isPureConstant  = true;
-			gvar->isEnumValue     = true;
-			gvar->constantValue   = 0xdeadbeef;
+					asCString str;
+					str.Format(TXT_NAME_CONFLICT_s_ALREADY_USED, name.AddressOf());
+					WriteError(file->name.AddressOf(), str.AddressOf(), r, c);
 
-			// Allocate dummy property so we can compile the value. 
-			// This will be removed later on so we don't add it to the engine.
-			gvar->property            = asNEW(asCGlobalProperty);
-			gvar->property->name      = name;
-			gvar->property->nameSpace = ns;
-			gvar->property->type      = gvar->datatype;
-			gvar->property->id        = 0;
+					tmp = tmp->next;
+					if( tmp && tmp->nodeType == snAssignment )
+						tmp = tmp->next;
+					continue;
+				}
 
-			tmp = tmp->next;
+				// Check for assignment
+				asCScriptNode *asnNode = tmp->next;
+				if( asnNode && snAssignment == asnNode->nodeType )
+					asnNode->DisconnectParent();
+				else
+					asnNode = 0;
+
+				// Create the global variable description so the enum value can be evaluated
+				sGlobalVariableDescription *gvar = asNEW(sGlobalVariableDescription);
+				globVariables.PushLast(gvar);
+
+				gvar->script		  = file;
+				gvar->idNode          = 0;
+				gvar->nextNode		  = asnNode;
+				gvar->name			  = name;
+				gvar->datatype		  = type;
+				// No need to allocate space on the global memory stack since the values are stored in the asCObjectType
+				gvar->index			  = 0;
+				gvar->isCompiled	  = false;
+				gvar->isPureConstant  = true;
+				gvar->isEnumValue     = true;
+				gvar->constantValue   = 0xdeadbeef;
+
+				// Allocate dummy property so we can compile the value. 
+				// This will be removed later on so we don't add it to the engine.
+				gvar->property            = asNEW(asCGlobalProperty);
+				gvar->property->name      = name;
+				gvar->property->nameSpace = ns;
+				gvar->property->type      = gvar->datatype;
+				gvar->property->id        = 0;
+
+				tmp = tmp->next;
+			}
 		}
 	}
 
@@ -3210,14 +3271,14 @@ int asCBuilder::RegisterVirtualProperty(asCScriptNode *node, asCScriptCode *file
 	asCString emulatedName;
 	asCDataType emulatedType;
 	
+	asCScriptNode *mainNode = node;
+	node = node->firstChild;
+
 	if( !isGlobalFunction && node->tokenType == ttPrivate )
 	{
 		isPrivate = true;
 		node = node->next;
 	}
-
-	asCScriptNode *mainNode = node;
-	node = node->firstChild;
 
 	// TODO: namespace: Use correct implicit namespace
 	emulatedType = CreateDataTypeFromNode(node, file, "");
