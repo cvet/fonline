@@ -39,6 +39,7 @@ private:
     uint  animNextTick;
 
 public:
+    bool   IsCanUseSkill()      { return IsScenOrGrid() || IsItem(); }
     bool   IsScenOrGrid()       { return Proto->IsScen() || Proto->IsGrid(); }
     bool   IsItem()             { return Proto->IsItem(); }
     bool   IsWall()             { return Proto->IsWall(); }

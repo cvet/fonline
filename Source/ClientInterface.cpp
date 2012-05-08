@@ -2639,9 +2639,9 @@ void FOClient::GameLMouseDown()
         {
             SetAction( CHOSEN_USE_SKL_ON_CRITTER, CurSkill, cr->GetId(), Chosen->GetFullRate() );
         }
-        else if( item )
+        else if( item && item->IsCanUseSkill() )
         {
-            if( item->IsScenOrGrid() || item->IsWall() )
+            if( item->IsScenOrGrid() )
                 SetAction( CHOSEN_USE_SKL_ON_SCEN, CurSkill, item->GetProtoId(), item->GetHexX(), item->GetHexY() );
             else
                 SetAction( CHOSEN_USE_SKL_ON_ITEM, false, CurSkill, item->GetId() );
@@ -4787,8 +4787,10 @@ void FOClient::LMenuSet( uchar set_lmenu )
         if( item->IsUsable() )
             LMenuNodes.push_back( LMENU_NODE_PICK );
         LMenuNodes.push_back( LMENU_NODE_LOOK );
-        LMenuNodes.push_back( LMENU_NODE_BAG );
-        LMenuNodes.push_back( LMENU_NODE_SKILL );
+        if( item->IsCanUseSkill() )
+            LMenuNodes.push_back( LMENU_NODE_BAG );
+        if( item->IsCanUseSkill() )
+            LMenuNodes.push_back( LMENU_NODE_SKILL );
         LMenuNodes.push_back( LMENU_NODE_BREAK );
 
         LMenuCurNodes = &LMenuNodes;
@@ -6853,9 +6855,9 @@ void FOClient::SboxLMouseUp()
                 else if( SboxUseOn.IsItem() )
                 {
                     ItemHex* item = GetItem( SboxUseOn.GetId() );
-                    if( item )
+                    if( item && item->IsCanUseSkill() )
                     {
-                        if( item->IsScenOrGrid() || item->IsWall() )
+                        if( item->IsScenOrGrid() )
                             SetAction( CHOSEN_USE_SKL_ON_SCEN, CurSkill, item->GetProtoId(), item->GetHexX(), item->GetHexY() );
                         else
                             SetAction( CHOSEN_USE_SKL_ON_ITEM, false, CurSkill, item->GetId() );
