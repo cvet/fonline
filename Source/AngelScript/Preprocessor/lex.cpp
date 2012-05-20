@@ -278,6 +278,12 @@ static char* parseLexem(char* start, char* end, Lexem& out)
 	{
 		out.value = "#";
 		++start;
+		if( *start == '#' )
+		{
+			out.value = "##";
+			out.type = IGNORE;
+			return( ++start );
+		}
 		while (start != end && (*start == ' ' || *start == '\t'))
 			++start;
 		if (start != end && isIdentifierStart(*start))

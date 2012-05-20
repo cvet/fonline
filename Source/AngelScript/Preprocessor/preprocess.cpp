@@ -372,6 +372,8 @@ static void parseDefine(DefineTable& define_table, LexemList& def_lexems)
 		LLITR DLB = def_lexems.begin();
 		while (DLB != def_lexems.end())
 		{
+			if( DLB->value == "##" && DLB->type == IGNORE )
+				DLB->value = "";
 			DLB = expandDefine(DLB,def_lexems.end(),def_lexems,define_table);
 		}
 	}
