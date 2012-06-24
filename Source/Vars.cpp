@@ -67,7 +67,9 @@ bool VarManager::LoadVarsDataFile( void* f, int version )
     WriteLog( "Load vars..." );
     allQuestVars.reserve( 10000 );   // 40kb
 
-    uint count = 0;
+    UShortUIntMap failed_tvars;
+
+    uint          count = 0;
     FileRead( f, &count, sizeof( count ) );
     for( uint i = 0; i < count; i++ )
     {
@@ -94,7 +96,11 @@ bool VarManager::LoadVarsDataFile( void* f, int version )
         TemplateVar* tvar = GetTemplateVar( temp_id );
         if( !tvar )
         {
-            WriteLog( "Template var not found, tid<%u>.\n", temp_id );
+            uint failed = failed_tvars[ temp_id ]++;
+            if( failed < 8 )
+                WriteLog( "Template var not found, tid<%u>.\n", temp_id );
+            else if( !( failed & ( failed - 1 ) ) )
+                WriteLog( "Template var not found, tid<%u>, total<%u>.\n", temp_id, failed );
             continue;
         }
 
@@ -117,6 +123,13 @@ bool VarManager::LoadVarsDataFile( void* f, int version )
         }
 
         var->VarValue = val;
+    }
+
+    for( auto it = failed_tvars.begin(), end = failed_tvars.end(); it != end; ++it )
+    {
+        uint failed = it->second;
+        if( failed > 7 && ( failed & ( failed - 1 ) ) )
+            WriteLog( "Template var not found, tid<%u>, total<%u>.\n", it->first, failed );
     }
 
     WriteLog( "complete, count<%u>.\n", count );
