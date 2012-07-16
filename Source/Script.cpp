@@ -27,17 +27,17 @@ const char* ContextStatesStr[] =
 class BindFunction
 {
 public:
-    bool   IsScriptCall;
-    int    ScriptFuncId;
-    string ModuleName;
-    string FuncName;
-    string FuncDecl;
-    size_t NativeFuncAddr;
+    bool               IsScriptCall;
+    asIScriptFunction* ScriptFunc;
+    string             ModuleName;
+    string             FuncName;
+    string             FuncDecl;
+    size_t             NativeFuncAddr;
 
-    BindFunction( int func_id, size_t native_func_addr, const char* module_name,  const char* func_name, const char* func_decl )
+    BindFunction( asIScriptFunction* script_func, size_t native_func_addr, const char* module_name,  const char* func_name, const char* func_decl )
     {
         IsScriptCall = ( native_func_addr == 0 );
-        ScriptFuncId = func_id;
+        ScriptFunc = script_func;
         NativeFuncAddr = native_func_addr;
         ModuleName = module_name;
         FuncName = func_name;
@@ -1847,11 +1847,11 @@ int Script::Bind( const char* module_name, const char* func_name, const char* de
             Str::Format( decl_, decl, func_name );
         else
             Str::Copy( decl_, func_name );
-        int result = module->GetFunctionIdByDecl( decl_ );
-        if( result <= 0 )
+        asIScriptFunction* script_func = module->GetFunctionByDecl( decl_ );
+        if( !script_func )
         {
             if( !disable_log )
-                WriteLogF( _FUNC_, " - Function<%s> in module<%s> not found, result<%d>.\n", decl_, module_name, result );
+                WriteLogF( _FUNC_, " - Function<%s> in module<%s> not found.\n", decl_, module_name );
             return 0;
         }
 
@@ -1859,7 +1859,7 @@ int Script::Bind( const char* module_name, const char* func_name, const char* de
         if( is_temp )
         {
             BindedFunctions[ 1 ].IsScriptCall = true;
-            BindedFunctions[ 1 ].ScriptFuncId = result;
+            BindedFunctions[ 1 ].ScriptFunc = script_func;
             BindedFunctions[ 1 ].NativeFuncAddr = 0;
             return 1;
         }
@@ -1868,12 +1868,12 @@ int Script::Bind( const char* module_name, const char* func_name, const char* de
         for( int i = 2, j = (int) BindedFunctions.size(); i < j; i++ )
         {
             BindFunction& bf = BindedFunctions[ i ];
-            if( bf.IsScriptCall && bf.ScriptFuncId == result )
+            if( bf.IsScriptCall && bf.ScriptFunc->GetId() == script_func->GetId() )
                 return i;
         }
 
         // Create new bind
-        BindedFunctions.push_back( BindFunction( result, 0, module_name, func_name, decl ) );
+        BindedFunctions.push_back( BindFunction( script_func, 0, module_name, func_name, decl ) );
     }
     else
     {
@@ -1899,7 +1899,7 @@ int Script::Bind( const char* module_name, const char* func_name, const char* de
         if( is_temp )
         {
             BindedFunctions[ 1 ].IsScriptCall = false;
-            BindedFunctions[ 1 ].ScriptFuncId = 0;
+            BindedFunctions[ 1 ].ScriptFunc = 0;
             BindedFunctions[ 1 ].NativeFuncAddr = func;
             return 1;
         }
@@ -1946,12 +1946,12 @@ int Script::RebindFunctions()
             if( bind_id <= 0 )
             {
                 WriteLogF( _FUNC_, " - Unable to bind function, module<%s>, function<%s>, declaration<%s>.\n", bf.ModuleName.c_str(), bf.FuncName.c_str(), bf.FuncDecl.c_str() );
-                bf.ScriptFuncId = 0;
+                bf.ScriptFunc = 0;
                 errors++;
             }
             else
             {
-                bf.ScriptFuncId = BindedFunctions[ 1 ].ScriptFuncId;
+                bf.ScriptFunc = BindedFunctions[ 1 ].ScriptFunc;
             }
         }
     }
@@ -2155,13 +2155,13 @@ void Script::BeginExecution()
 
 void Script::EndExecution()
 {
+    #ifdef SCRIPT_MULTITHREADING
     if( !LogicMT )
     {
         RunEndExecutionCallbacks();
         return;
     }
 
-    #ifdef SCRIPT_MULTITHREADING
     ExecutionRecursionCounter--;
     if( !ExecutionRecursionCounter )
     {
@@ -2203,6 +2203,7 @@ void Script::EndExecution()
 
 void Script::RunEndExecutionCallbacks()
 {
+    #ifdef SCRIPT_MULTITHREADING
     if( EndExecutionCallbacks && !EndExecutionCallbacks->empty() )
     {
         for( auto it = EndExecutionCallbacks->begin(), end = EndExecutionCallbacks->end(); it != end; ++it )
@@ -2212,15 +2213,18 @@ void Script::RunEndExecutionCallbacks()
         }
         EndExecutionCallbacks->clear();
     }
+    #endif
 }
 
 void Script::AddEndExecutionCallback( EndExecutionCallback func )
 {
+    #ifdef SCRIPT_MULTITHREADING
     if( !EndExecutionCallbacks )
         EndExecutionCallbacks = new EndExecutionCallbackVec();
     auto it = std::find( EndExecutionCallbacks->begin(), EndExecutionCallbacks->end(), func );
     if( it == EndExecutionCallbacks->end() )
         EndExecutionCallbacks->push_back( func );
+    #endif
 }
 
 bool Script::PrepareContext( int bind_id, const char* call_func, const char* ctx_info )
@@ -2240,10 +2244,10 @@ bool Script::PrepareContext( int bind_id, const char* call_func, const char* ctx
         return false;
     }
 
-    BindFunction& bf = BindedFunctions[ bind_id ];
-    bool          is_script = bf.IsScriptCall;
-    int           func_id = bf.ScriptFuncId;
-    size_t        func_addr = bf.NativeFuncAddr;
+    BindFunction&      bf = BindedFunctions[ bind_id ];
+    bool               is_script = bf.IsScriptCall;
+    asIScriptFunction* script_func = bf.ScriptFunc;
+    size_t             func_addr = bf.NativeFuncAddr;
 
     #ifdef SCRIPT_MULTITHREADING
     if( LogicMT )
@@ -2252,7 +2256,7 @@ bool Script::PrepareContext( int bind_id, const char* call_func, const char* ctx
 
     if( is_script )
     {
-        if( func_id <= 0 )
+        if( !script_func )
             return false;
 
         asIScriptContext* ctx = GetGlobalContext();
@@ -2265,10 +2269,10 @@ bool Script::PrepareContext( int bind_id, const char* call_func, const char* ctx
         Str::Append( (char*) ctx->GetUserData(), CONTEXT_BUFFER_SIZE, " : " );
         Str::Append( (char*) ctx->GetUserData(), CONTEXT_BUFFER_SIZE, ctx_info );
 
-        int result = ctx->Prepare( func_id );
+        int result = ctx->Prepare( script_func );
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Prepare error, context name<%s>, bind_id<%d>, func_id<%d>, error<%d>.\n", ctx->GetUserData(), bind_id, func_id, result );
+            WriteLogF( _FUNC_, " - Prepare error, context name<%s>, bind_id<%d>, func_id<%d>, error<%d>.\n", ctx->GetUserData(), bind_id, script_func->GetId(), result );
             GlobalCtxIndex--;
             EndExecution();
             return false;

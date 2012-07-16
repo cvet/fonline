@@ -190,7 +190,7 @@ bool ScriptDictionary::Get( const ScriptString& key, void* value, int typeId ) c
             // Copy the object into the given reference
             if( isCompatible )
             {
-                engine->CopyScriptObject( value, it->second.valueObj, typeId );
+                engine->AssignScriptObject( value, it->second.valueObj, typeId );
 
                 return true;
             }

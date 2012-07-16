@@ -149,6 +149,7 @@ asCScriptFunction::asCScriptFunction(asCScriptEngine *engine, asCModule *mod, as
 	accessMask             = 0xFFFFFFFF;
 	isShared               = false;
 	variableSpace          = 0;
+	nameSpace              = engine->nameSpaces[0];
 
 	// TODO: runtime optimize: The engine could notify the GC just before it wants to
 	//                         discard the function. That way the GC won't waste time
@@ -273,7 +274,7 @@ const char *asCScriptFunction::GetName() const
 // interface
 const char *asCScriptFunction::GetNamespace() const
 {
-	return nameSpace.AddressOf();
+	return nameSpace->name.AddressOf();
 }
 
 // interface
@@ -334,7 +335,7 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName, bool incl
 	if( objectType && includeObjectName )
 	{
 		if( includeNamespace )
-			str += objectType->nameSpace + "::";
+			str += objectType->nameSpace->name + "::";
 			
 		if( objectType->name != "" )
 			str += objectType->name + "::";
@@ -343,7 +344,7 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName, bool incl
 	}
 	else if( includeNamespace )
 	{
-		str += nameSpace + "::";
+		str += nameSpace->name + "::";
 	}
 	if( name == "" )
 		str += "_unnamed_function_(";
@@ -500,6 +501,11 @@ const char *asCScriptFunction::GetVarDecl(asUINT index) const
 void asCScriptFunction::AddVariable(asCString &name, asCDataType &type, int stackOffset)
 {
 	asSScriptVariable *var = asNEW(asSScriptVariable);
+	if( var == 0 )
+	{
+		// Out of memory
+		return;
+	}
 	var->name                 = name;
 	var->type                 = type;
 	var->stackOffset          = stackOffset;

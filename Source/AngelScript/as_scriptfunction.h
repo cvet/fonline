@@ -52,6 +52,7 @@ class asCScriptEngine;
 class asCModule;
 class asCConfigGroup;
 class asCGlobalProperty;
+struct asSNameSpace;
 
 struct asSScriptVariable
 {
@@ -205,9 +206,7 @@ public:
 	asDWORD                      accessMask;
 	bool                         isShared;
 
-	// TODO: optimize: The namespace should be stored as an integer id. This  
-	//                 will use less space and provide quicker comparisons.
-	asCString                    nameSpace;
+	asSNameSpace                *nameSpace;
 
 	// Used by asFUNC_SCRIPT
 	asCArray<asDWORD>               byteCode;

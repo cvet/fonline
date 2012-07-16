@@ -57,6 +57,7 @@ class asCCompiler;
 class asCBuilder;
 class asCContext;
 class asCConfigGroup;
+struct asSNameSpace;
 
 struct sBindInfo
 {
@@ -107,15 +108,19 @@ public:
 
 	// Script functions
 	virtual asUINT             GetFunctionCount() const;
-	// TODO: interface: Deprecate the functions that return the function id
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.24.0 - 2012-05-20
 	virtual int                GetFunctionIdByIndex(asUINT index) const;
 	virtual int                GetFunctionIdByName(const char *name) const;
 	virtual int                GetFunctionIdByDecl(const char *decl) const;
+#endif
 	virtual asIScriptFunction *GetFunctionByIndex(asUINT index) const;
 	virtual asIScriptFunction *GetFunctionByDecl(const char *decl) const;
 	virtual asIScriptFunction *GetFunctionByName(const char *name) const;
-	// TODO: interface: Deprecate RemoveFunction(int)
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.24.0 - 2012-05-20
 	virtual int                RemoveFunction(int funcId);
+#endif
 	virtual int                RemoveFunction(asIScriptFunction *func);
 
 	// Script global variables
@@ -150,7 +155,7 @@ public:
 	virtual int         GetImportedFunctionIndexByDecl(const char *decl) const;
 	virtual const char *GetImportedFunctionDeclaration(asUINT importIndex) const;
 	virtual const char *GetImportedFunctionSourceModule(asUINT importIndex) const;
-	virtual int         BindImportedFunction(asUINT index, int sourceID);
+	virtual int         BindImportedFunction(asUINT index, asIScriptFunction *func);
 	virtual int         UnbindImportedFunction(asUINT importIndex);
 	virtual int         BindAllImportedFunctions();
 	virtual int         UnbindAllImportedFunctions();
@@ -183,25 +188,18 @@ public:
 
 	void JITCompile();
 
-	int  AddScriptFunction(int sectionIdx, int id, const char *name, const asCDataType &returnType, asCDataType *params, asETypeModifiers *inOutFlags, asCString **defaultArgs, int paramCount, bool isInterface, asCObjectType *objType = 0, bool isConstMethod = false, bool isGlobalFunction = false, bool isPrivate = false, bool isFinal = false, bool isOverride = false, bool isShared = false, const asCString &ns = "");
+	int  AddScriptFunction(int sectionIdx, int id, const char *name, const asCDataType &returnType, asCDataType *params, asETypeModifiers *inOutFlags, asCString **defaultArgs, int paramCount, bool isInterface, asCObjectType *objType = 0, bool isConstMethod = false, bool isGlobalFunction = false, bool isPrivate = false, bool isFinal = false, bool isOverride = false, bool isShared = false, asSNameSpace *ns = 0);
 	int  AddScriptFunction(asCScriptFunction *func);
 	int  AddImportedFunction(int id, const char *name, const asCDataType &returnType, asCDataType *params, asETypeModifiers *inOutFlags, int paramCount, const asCString &moduleName);
-	int  AddFuncDef(const char *name, const asCString &ns);
+	int  AddFuncDef(const char *name, asSNameSpace *ns);
 
 	int  GetNextImportedFunctionId();
 
-#ifdef AS_DEPRECATED
-	// Deprecated since 2.23.0 - 2012-01-30
-	void ResolveInterfaceIds(asCArray<void*> *substitutions = 0);
-	bool AreInterfacesEqual(asCObjectType *a, asCObjectType *b, asCArray<sObjectTypePair> &equals);
-	bool AreTypesEqual(const asCDataType &a, const asCDataType &b, asCArray<sObjectTypePair> &equals);
-#endif
-
 	asCScriptFunction *GetImportedFunction(int funcId) const;
 
-	asCObjectType *GetObjectType(const char *type, const asCString &ns);
+	asCObjectType *GetObjectType(const char *type, asSNameSpace *ns);
 
-	asCGlobalProperty *AllocateGlobalProperty(const char *name, const asCDataType &dt, const asCString &ns);
+	asCGlobalProperty *AllocateGlobalProperty(const char *name, const asCDataType &dt, asSNameSpace *ns);
 
 
 	asCString name;
@@ -210,7 +208,7 @@ public:
 	asCBuilder      *builder;
 	void            *userData;
 	asDWORD          accessMask;
-	asCString        defaultNamespace;
+	asSNameSpace    *defaultNamespace;
 
 	// This array holds all functions, class members, factories, etc that were compiled with the module
 	asCArray<asCScriptFunction *>  scriptFunctions;

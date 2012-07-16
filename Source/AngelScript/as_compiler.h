@@ -214,6 +214,7 @@ protected:
 	void ConvertToReference(asSExprContext *ctx);
 	void PushVariableOnStack(asSExprContext *ctx, bool asReference);
 	void DestroyVariables(asCByteCode *bc);
+	asSNameSpace *DetermineNameSpace(const asCString &scope);
 
 	// Returns the cost of the conversion (the sum of the EConvCost performed)
 	asUINT ImplicitConversion(asSExprContext *ctx, const asCDataType &to, asCScriptNode *node, EImplicitConv convType, bool generateCode = true, bool allowObjectConstruct = true);

@@ -30,23 +30,29 @@ public:
     virtual int            GetArrayTypeId() const;
     virtual int            GetElementTypeId() const;
 
+    virtual void   Reserve( asUINT maxElements );
     virtual void   Resize( asUINT numElements );
     virtual void   Grow( asUINT numElements );
     virtual void   Reduce( asUINT numElements );
     virtual asUINT GetSize() const;
     virtual int    GetElementSize() const;
+    virtual bool   IsEmpty() const;
 
-    virtual void* At( asUINT index );
-    virtual void* First();
-    virtual void* Last();
+    virtual void*       At( asUINT index );
+    virtual const void* At( asUINT index ) const;
+    virtual void*       First();
+    virtual void*       Last();
 
     ScriptArray& operator=( const ScriptArray& other )
     {
         Assign( other );
         return *this;
     }
-    virtual void Assign( const ScriptArray& other );
 
+    virtual bool operator==( const ScriptArray& ) const;
+
+    virtual void Assign( const ScriptArray& other );
+    virtual void SetValue( asUINT index, void* value );
     virtual void InsertAt( asUINT index, void* value );
     virtual void RemoveAt( asUINT index );
     virtual void InsertFirst( void* value );
@@ -59,8 +65,8 @@ public:
     virtual void SortDesc( asUINT index, asUINT count );
     virtual void Sort( asUINT index, asUINT count, bool asc );
     virtual void Reverse();
-    virtual int  Find( void* value );
-    virtual int  Find( asUINT index, void* value );
+    virtual int  Find( void* value ) const;
+    virtual int  Find( asUINT index, void* value ) const;
 
     virtual int  GetRefCount();
     virtual void SetFlag();
@@ -71,8 +77,15 @@ public:
 protected:
     struct ArrayBuffer
     {
+        asDWORD maxElements;
         asDWORD numElements;
         asBYTE  data[ 1 ];
+    };
+
+    struct ArrayCache
+    {
+        asIScriptFunction* cmpFunc;
+        asIScriptFunction* eqFunc;
     };
 
     mutable int    refCount;
@@ -80,8 +93,6 @@ protected:
     asIObjectType* objType;
     ArrayBuffer*   buffer;
     int            elementSize;
-    int            cmpFuncId;
-    int            eqFuncId;
     int            subTypeId;
 
     virtual bool  Less( const void* a, const void* b, bool asc, asIScriptContext* ctx );
@@ -91,13 +102,12 @@ protected:
     virtual void  Precache();
     virtual bool  CheckMaxSize( asUINT numElements );
     virtual void  Resize( int delta, asUINT at );
-    virtual void  SetValue( asUINT index, void* value );
     virtual void  CreateBuffer( ArrayBuffer** buf, asUINT numElements );
     virtual void  DeleteBuffer( ArrayBuffer* buf );
     virtual void  CopyBuffer( ArrayBuffer* dst, ArrayBuffer* src );
     virtual void  Construct( ArrayBuffer* buf, asUINT start, asUINT end );
     virtual void  Destruct( ArrayBuffer* buf, asUINT start, asUINT end );
-    virtual bool  Equals( const void* a, const void* b, asIScriptContext* ctx );
+    virtual bool  Equals( const void* a, const void* b, asIScriptContext* ctx, ArrayCache* cache ) const;
 };
 
 #ifndef FONLINE_DLL

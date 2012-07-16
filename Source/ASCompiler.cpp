@@ -91,9 +91,9 @@ void RunMain( asIScriptModule* module, const char* func_str )
 
     // Run
     printf( "Executing '%s'.\n", func_str );
-    asIScriptContext* ctx = Engine->CreateContext();
-    int               func = module->GetFunctionIdByDecl( func_decl );
-    if( func < 0 )
+    asIScriptContext*  ctx = Engine->CreateContext();
+    asIScriptFunction* func = module->GetFunctionByDecl( func_decl );
+    if( !func )
     {
         printf( "Function '%s' not found.\n", func_decl );
         return;
