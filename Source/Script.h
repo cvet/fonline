@@ -112,6 +112,7 @@ namespace Script
     // Script execution
     void BeginExecution();
     void EndExecution();
+    void RunEndExecutionCallbacks();
     void AddEndExecutionCallback( EndExecutionCallback func );
 
     bool   PrepareContext( int bind_id, const char* call_func, const char* ctx_info );

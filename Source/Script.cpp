@@ -2155,10 +2155,13 @@ void Script::BeginExecution()
 
 void Script::EndExecution()
 {
-    #ifdef SCRIPT_MULTITHREADING
     if( !LogicMT )
+    {
+        RunEndExecutionCallbacks();
         return;
+    }
 
+    #ifdef SCRIPT_MULTITHREADING
     ExecutionRecursionCounter--;
     if( !ExecutionRecursionCounter )
     {
@@ -2193,31 +2196,31 @@ void Script::EndExecution()
             }
         }
 
-        if( EndExecutionCallbacks && !EndExecutionCallbacks->empty() )
-        {
-            for( auto it = EndExecutionCallbacks->begin(), end = EndExecutionCallbacks->end(); it != end; ++it )
-            {
-                EndExecutionCallback func = *it;
-                (func) ( );
-            }
-            EndExecutionCallbacks->clear();
-        }
+        RunEndExecutionCallbacks();
     }
     #endif
 }
 
+void Script::RunEndExecutionCallbacks()
+{
+    if( EndExecutionCallbacks && !EndExecutionCallbacks->empty() )
+    {
+        for( auto it = EndExecutionCallbacks->begin(), end = EndExecutionCallbacks->end(); it != end; ++it )
+        {
+            EndExecutionCallback func = *it;
+            (func) ( );
+        }
+        EndExecutionCallbacks->clear();
+    }
+}
+
 void Script::AddEndExecutionCallback( EndExecutionCallback func )
 {
-    #ifdef SCRIPT_MULTITHREADING
-    if( !LogicMT )
-        return;
-
     if( !EndExecutionCallbacks )
         EndExecutionCallbacks = new EndExecutionCallbackVec();
     auto it = std::find( EndExecutionCallbacks->begin(), EndExecutionCallbacks->end(), func );
     if( it == EndExecutionCallbacks->end() )
         EndExecutionCallbacks->push_back( func );
-    #endif
 }
 
 bool Script::PrepareContext( int bind_id, const char* call_func, const char* ctx_info )

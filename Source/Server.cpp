@@ -5164,9 +5164,8 @@ bool FOServer::GetTimeEvent( uint num, uint& duration, ScriptArray* values )
     // Lock for current thread
     te->InProcess = tid;
 
-    // Add end of script execution callback to unlock event if SetTimeEvent not be called
-    if( LogicMT )
-        Script::AddEndExecutionCallback( TimeEventEndScriptCallback );
+    // Add end of script execution callback to unlock the event if SetTimeEvent was not called
+    Script::AddEndExecutionCallback( TimeEventEndScriptCallback );
 
     TimeEventsLocker.Unlock();
     return true;
