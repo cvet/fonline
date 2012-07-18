@@ -196,6 +196,31 @@ int asCReader::ReadInner()
 			ReadObjectTypeDeclaration(module->classTypes[i], 2);
 	}
 
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.23.0 - 2012-01-30
+	asCArray<void*> substitutions;
+	module->ResolveInterfaceIds(&substitutions);
+
+	// The above method may have replaced the interface object types
+	// so we must updated this in the savedDataTypes if it is there.
+	// All the interface methods were also substituted so the 
+	// savedFunctions must also be updated
+	for( i = 0; i < substitutions.GetLength() && !error; i += 2 )
+	{
+		for( asUINT d = 0; d < savedDataTypes.GetLength() && !error; d++ )
+		{
+			if( savedDataTypes[d].GetObjectType() == substitutions[i] )
+				savedDataTypes[d].SetObjectType(reinterpret_cast<asCObjectType*>(substitutions[i+1]));
+		}
+
+		for( asUINT f = 0; f < savedFunctions.GetLength() && !error; f++ )
+		{
+			if( savedFunctions[f] == substitutions[i] )
+				savedFunctions[f] = reinterpret_cast<asCScriptFunction*>(substitutions[i+1]);
+		}
+	}
+#endif
+
 	// Read class methods and behaviours
 	for( i = 0; i < module->classTypes.GetLength() && !error; ++i )
 	{
@@ -493,9 +518,7 @@ void asCReader::ReadFunctionSignature(asCScriptFunction *func)
 	int num;
 
 	ReadString(&func->name);
-	asCString ns;
-	ReadString(&ns);
-	func->nameSpace = engine->AddNameSpace(ns.AddressOf());
+	ReadString(&func->nameSpace);
 	ReadDataType(&func->returnType);
 
 	count = ReadEncodedUInt();
@@ -683,9 +706,7 @@ void asCReader::ReadObjectTypeDeclaration(asCObjectType *ot, int phase)
 		ReadString(&ot->name);
 		ReadData(&ot->flags, 4);
 		ot->size = ReadEncodedUInt();
-		asCString ns;
-		ReadString(&ns);
-		ot->nameSpace = engine->AddNameSpace(ns.AddressOf());
+		ReadString(&ot->nameSpace);
 
 		// Reset the size of script classes, since it will be recalculated as properties are added
 		if( (ot->flags & asOBJ_SCRIPT_OBJECT) && ot->size != 0 )
@@ -1164,14 +1185,11 @@ void asCReader::ReadString(asCString* str)
 void asCReader::ReadGlobalProperty() 
 {
 	asCString name;
+	asCString nameSpace;
 	asCDataType type;
 
 	ReadString(&name);
-
-	asCString ns;
-	ReadString(&ns);
-	asSNameSpace *nameSpace = engine->AddNameSpace(ns.AddressOf());
-
+	ReadString(&nameSpace);
 	ReadDataType(&type);
 
 	asCGlobalProperty *prop = module->AllocateGlobalProperty(name.AddressOf(), type, nameSpace);
@@ -1220,10 +1238,6 @@ void asCReader::ReadDataType(asCDataType *dt)
 		return;
 	}
 
-	// Reserve a spot in the savedDataTypes
-	int saveSlot = savedDataTypes.GetLength();
-	savedDataTypes.PushLast(asCDataType());
-
 	// Read the datatype for the first time
 	asCObjectType *objType = 0;
 	bool isObjectHandle  = false;
@@ -1269,7 +1283,6 @@ void asCReader::ReadDataType(asCDataType *dt)
 			}
 		}
 
-		// Set to dummy to avoid unwanted release of resources
 		func.funcType = asFUNC_DUMMY;
 	}
 
@@ -1287,8 +1300,7 @@ void asCReader::ReadDataType(asCDataType *dt)
 	dt->MakeReadOnly(isReadOnly);
 	dt->MakeReference(isReference);
 
-	// Update the previously saved slot
-	savedDataTypes[saveSlot] = *dt;
+	savedDataTypes.PushLast(*dt);
 }
 
 asCObjectType* asCReader::ReadObjectType() 
@@ -1301,7 +1313,7 @@ asCObjectType* asCReader::ReadObjectType()
 		// Read the name of the template type
 		asCString typeName;
 		ReadString(&typeName);
-		asCObjectType *tmpl = engine->GetObjectType(typeName.AddressOf(), engine->nameSpaces[0]);
+		asCObjectType *tmpl = engine->GetObjectType(typeName.AddressOf(), "");
 		if( tmpl == 0 )
 		{
 			asCString str;
@@ -1314,10 +1326,23 @@ asCObjectType* asCReader::ReadObjectType()
 		ReadData(&ch, 1);
 		if( ch == 's' )
 		{
-			asCDataType dt;
-			ReadDataType(&dt);
+			ot = ReadObjectType();
+			if( ot == 0 )
+			{
+				asCString str;
+				str.Format(TXT_FAILED_READ_SUBTYPE_OF_TEMPLATE_s, typeName.AddressOf());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
+				error = true;
+				return 0;
+			}
 
-			if( tmpl->templateSubType.GetObjectType() == dt.GetObjectType() )
+			asCDataType dt = asCDataType::CreateObject(ot, false);
+
+			ReadData(&ch, 1);
+			if( ch == 'h' )
+				dt.MakeHandle(true);
+
+			if( tmpl->templateSubType.GetObjectType() == ot )
 				ot = tmpl;
 			else
 				ot = engine->GetTemplateInstanceType(tmpl, dt);
@@ -1377,11 +1402,9 @@ asCObjectType* asCReader::ReadObjectType()
 	else if( ch == 'o' )
 	{
 		// Read the object type name
-		asCString typeName, ns;
+		asCString typeName, nameSpace;
 		ReadString(&typeName);
-		ReadString(&ns);
-		asSNameSpace *nameSpace = engine->AddNameSpace(ns.AddressOf());
-
+		ReadString(&nameSpace);
 
 		if( typeName.GetLength() && typeName != "_builtin_object_" && typeName != "_builtin_function_" )
 		{
@@ -1649,16 +1672,14 @@ void asCReader::ReadUsedGlobalProps()
 
 	for( int n = 0; n < c; n++ )
 	{
-		asCString name, ns;
+		asCString name, nameSpace;
 		asCDataType type;
 		char moduleProp;
 
 		ReadString(&name);
-		ReadString(&ns);
+		ReadString(&nameSpace);
 		ReadDataType(&type);
 		ReadData(&moduleProp, 1);
-
-		asSNameSpace *nameSpace = engine->AddNameSpace(ns.AddressOf());
 
 		// Find the real property
 		void *prop = 0;
@@ -2667,7 +2688,7 @@ void asCWriter::WriteFunctionSignature(asCScriptFunction *func)
 	asUINT i, count;
 
 	WriteString(&func->name);
-	WriteString(&func->nameSpace->name);
+	WriteString(&func->nameSpace);
 	WriteDataType(&func->returnType);
 
 	count = (asUINT)func->parameterTypes.GetLength();
@@ -2833,7 +2854,7 @@ void asCWriter::WriteObjectTypeDeclaration(asCObjectType *ot, int phase)
 		}
 
 		// namespace
-		WriteString(&ot->nameSpace->name);
+		WriteString(&ot->nameSpace);
 	}
 	else if( phase == 2 )
 	{
@@ -3020,7 +3041,7 @@ void asCWriter::WriteGlobalProperty(asCGlobalProperty* prop)
 	// TODO: We might be able to avoid storing the name and type of the global 
 	//       properties twice if we merge this with the WriteUsedGlobalProperties. 
 	WriteString(&prop->name);
-	WriteString(&prop->nameSpace->name);
+	WriteString(&prop->nameSpace);
 	WriteDataType(&prop->type);
 
 	// Store the initialization function
@@ -3088,6 +3109,7 @@ void asCWriter::WriteObjectType(asCObjectType* ot)
 {
 	char ch;
 
+	// Only write the object type name
 	if( ot )
 	{
 		// Check for template instances/specializations
@@ -3101,7 +3123,13 @@ void asCWriter::WriteObjectType(asCObjectType* ot)
 			{
 				ch = 's';
 				WriteData(&ch, 1);
-				WriteDataType(&ot->templateSubType);
+				WriteObjectType(ot->templateSubType.GetObjectType());
+
+				if( ot->templateSubType.IsObjectHandle() )
+					ch = 'h';
+				else
+					ch = 'o';
+				WriteData(&ch, 1);
 			}
 			else
 			{
@@ -3122,7 +3150,7 @@ void asCWriter::WriteObjectType(asCObjectType* ot)
 			ch = 'o';
 			WriteData(&ch, 1);
 			WriteString(&ot->name);
-			WriteString(&ot->nameSpace->name);
+			WriteString(&ot->nameSpace);
 		}
 	}
 	else
@@ -3784,7 +3812,7 @@ void asCWriter::WriteUsedGlobalProps()
 
 		// Store the name and type of the property so we can find it again on loading
 		WriteString(&prop->name);
-		WriteString(&prop->nameSpace->name);
+		WriteString(&prop->nameSpace);
 		WriteDataType(&prop->type);
 
 		// Also store whether the property is a module property or a registered property

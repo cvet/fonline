@@ -39,74 +39,39 @@ BEGIN_AS_NAMESPACE
 // This helper function will call the default factory, that is a script function
 asIScriptObject *ScriptObjectFactory(const asCObjectType *objType, asCScriptEngine *engine)
 {
-	asIScriptContext *ctx = 0;
-	int r = 0;
-	bool isNested = false;
+	asIScriptContext *ctx;
 
 	// TODO: optimize: There should be a pool for the context so it doesn't 
 	//                 have to be allocated just for creating the script object
 
 	// TODO: It must be possible for the application to debug the creation of the object too
 
-	// Use nested call in the context if there is an active context
-	ctx = asGetActiveContext();
-	if( ctx )
-	{
-		r = ctx->PushState();
+	// TODO: context: Use nested call in the context if there is an active context
 
-		// It may not always be possible to reuse the current context, 
-		// in which case we'll have to create a new one any way.
-		if( r == asSUCCESS )
-			isNested = true;
-		else
-			ctx = 0;
-	}
-	
-	if( ctx == 0 )
-	{
-		r = engine->CreateContext(&ctx, true);
-		if( r < 0 )
-			return 0;
-	}
+	int r = engine->CreateContext(&ctx, true);
+	if( r < 0 )
+		return 0;
 
 	r = ctx->Prepare(engine->scriptFunctions[objType->beh.factory]);
 	if( r < 0 )
 	{
-		if( isNested )
-			ctx->PopState();
-		else
-			ctx->Release();
+		ctx->Release();
 		return 0;
 	}
 
-	for(;;)
-	{
-		r = ctx->Execute();
-
-		// We can't allow this execution to be suspended 
-		// so resume the execution immediately
-		if( r != asEXECUTION_SUSPENDED )
-			break;
-	}
-
+	r = ctx->Execute();
 	if( r != asEXECUTION_FINISHED )
 	{
-		if( isNested )
-			ctx->PopState();
-		else
-			ctx->Release();
+		ctx->Release();
 		return 0;
 	}
 
 	asIScriptObject *ptr = (asIScriptObject*)ctx->GetReturnAddress();
 
-	// Increase the reference, because the context will release its pointer
+	// Increase the reference, because the context will release it's pointer
 	ptr->AddRef();
 
-	if( isNested )
-		ctx->PopState();
-	else
-		ctx->Release();
+	ctx->Release();
 
 	return ptr;
 }
@@ -314,12 +279,12 @@ int asCScriptObject::Release() const
 
 void asCScriptObject::CallDestructor()
 {
-	asIScriptContext *ctx = 0;
-	bool isNested = false;
-
 	// Make sure the destructor is called once only, even if the  
 	// reference count is increased and then decreased again
 	isDestructCalled = true;
+
+	// TODO: context: Use nested call if there already is an active context
+	asIScriptContext *ctx = 0;
 
 	// Call the destructor for this class and all the super classes
 	asCObjectType *ot = objType;
@@ -330,40 +295,17 @@ void asCScriptObject::CallDestructor()
 		{
 			if( ctx == 0 )
 			{
-				// Check for active context first as it is quicker
-				// to reuse than to set up a new one.
-				ctx = asGetActiveContext();
-				if( ctx )
-				{
-					int r = ctx->PushState();
-					if( r == asSUCCESS )
-						isNested = true;
-					else
-						ctx = 0;
-				}
-
-				if( ctx == 0 )
-				{
-					// Setup a context for calling the default constructor
-					asCScriptEngine *engine = objType->engine;
-					int r = engine->CreateContext(&ctx, true);
-					if( r < 0 ) return;
-				}
+				// Setup a context for calling the default constructor
+				asCScriptEngine *engine = objType->engine;
+				int r = engine->CreateContext(&ctx, true);
+				if( r < 0 ) return;
 			}
 
 			int r = ctx->Prepare(objType->engine->scriptFunctions[funcIndex]);
 			if( r >= 0 )
 			{
 				ctx->SetObject(this);
-
-				for(;;)
-				{
-					r = ctx->Execute();
-
-					// If the script tries to suspend itself just restart it
-					if( r != asEXECUTION_SUSPENDED )
-						break;
-				}
+				ctx->Execute();
 
 				// There's not much to do if the execution doesn't 
 				// finish, so we just ignore the result
@@ -375,10 +317,7 @@ void asCScriptObject::CallDestructor()
 
 	if( ctx )
 	{
-		if( isNested )
-			ctx->PopState();
-		else
-			ctx->Release();
+		ctx->Release();
 	}
 }
 

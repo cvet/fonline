@@ -157,9 +157,9 @@ asCString asCDataType::Format(bool includeNamespace) const
 	if( includeNamespace )
 	{
 		if( objectType )
-			str += objectType->nameSpace->name + "::";
+			str += objectType->nameSpace + "::";
 		else if( funcDef )
-			str += objectType->nameSpace->name + "::";
+			str += objectType->nameSpace + "::";
 	}
 
 	if( tokenType != ttIdentifier )

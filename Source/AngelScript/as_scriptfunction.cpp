@@ -149,7 +149,6 @@ asCScriptFunction::asCScriptFunction(asCScriptEngine *engine, asCModule *mod, as
 	accessMask             = 0xFFFFFFFF;
 	isShared               = false;
 	variableSpace          = 0;
-	nameSpace              = engine->nameSpaces[0];
 
 	// TODO: runtime optimize: The engine could notify the GC just before it wants to
 	//                         discard the function. That way the GC won't waste time
@@ -274,7 +273,7 @@ const char *asCScriptFunction::GetName() const
 // interface
 const char *asCScriptFunction::GetNamespace() const
 {
-	return nameSpace->name.AddressOf();
+	return nameSpace.AddressOf();
 }
 
 // interface
@@ -335,7 +334,7 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName, bool incl
 	if( objectType && includeObjectName )
 	{
 		if( includeNamespace )
-			str += objectType->nameSpace->name + "::";
+			str += objectType->nameSpace + "::";
 			
 		if( objectType->name != "" )
 			str += objectType->name + "::";
@@ -344,7 +343,7 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName, bool incl
 	}
 	else if( includeNamespace )
 	{
-		str += nameSpace->name + "::";
+		str += nameSpace + "::";
 	}
 	if( name == "" )
 		str += "_unnamed_function_(";

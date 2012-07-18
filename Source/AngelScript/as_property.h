@@ -47,8 +47,6 @@
 
 BEGIN_AS_NAMESPACE
 
-struct asSNameSpace;
-
 class asCObjectProperty
 {
 public:
@@ -78,7 +76,7 @@ public:
 	asCString          name;
 	asCDataType        type;
 	asUINT             id;
-	asSNameSpace      *nameSpace;
+	asCString          nameSpace;
 
 	void SetInitFunc(asCScriptFunction *initFunc);
 	asCScriptFunction *GetInitFunc();

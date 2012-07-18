@@ -55,8 +55,6 @@ asCModule::asCModule(const char *name, asCScriptEngine *engine)
 	isGlobalVarInitialized = false;
 
 	accessMask = 1;
-
-	defaultNamespace = engine->nameSpaces[0];
 }
 
 // internal
@@ -123,8 +121,8 @@ int asCModule::SetDefaultNamespace(const char *nameSpace)
 	if( nameSpace == 0 )
 		return asINVALID_ARG;
 
-	asCString ns = nameSpace;
-	if( ns != "" )
+	defaultNamespace = nameSpace;
+	if( defaultNamespace != "" )
 	{
 		// Make sure the namespace is composed of alternating identifier and ::
 		size_t pos = 0;
@@ -132,9 +130,9 @@ int asCModule::SetDefaultNamespace(const char *nameSpace)
 		size_t len;
 		eTokenType t = ttIdentifier;
 
-		for( ; pos < ns.GetLength(); pos += len )
+		for( ; pos < defaultNamespace.GetLength(); pos += len )
 		{
-			t = engine->tok.GetToken(ns.AddressOf() + pos, ns.GetLength() - pos, &len);
+			t = engine->tok.GetToken(defaultNamespace.AddressOf() + pos, defaultNamespace.GetLength() - pos, &len);
 			if( (expectIdentifier && t != ttIdentifier) || (!expectIdentifier && t != ttScope) )
 				return asINVALID_DECLARATION;
 
@@ -143,10 +141,8 @@ int asCModule::SetDefaultNamespace(const char *nameSpace)
 
 		// If the namespace ends with :: then strip it off
 		if( t == ttScope )
-			ns.SetLength(ns.GetLength()-2);
+			defaultNamespace.SetLength(defaultNamespace.GetLength()-2);
 	}
-
-	defaultNamespace = engine->AddNameSpace(ns.AddressOf());
 
 	return 0;
 }
@@ -623,7 +619,7 @@ asIScriptFunction *asCModule::GetFunctionByDecl(const char *decl) const
 	}
 
 	// Use the defaultNamespace implicitly unless an explicit namespace has been provided
-	asSNameSpace *ns = func.nameSpace == engine->nameSpaces[0] ? defaultNamespace : func.nameSpace;
+	asCString ns = func.nameSpace == "" ? defaultNamespace : func.nameSpace;
 
 	// TODO: optimize: Improve linear search
 	// Search script functions for matching interface
@@ -703,8 +699,7 @@ int asCModule::GetGlobalVarIndexByDecl(const char *decl) const
 {
 	asCBuilder bld(engine, const_cast<asCModule*>(this));
 
-	asCString name;
-	asSNameSpace *nameSpace;
+	asCString name, nameSpace;
 	asCDataType dt;
 	bld.ParseVariableDeclaration(decl, defaultNamespace, name, nameSpace, dt);
 
@@ -753,7 +748,7 @@ const char *asCModule::GetGlobalVarDeclaration(asUINT index, bool includeNamespa
 	*tempString = prop->type.Format();
 	*tempString += " ";
 	if( includeNamespace )
-		*tempString += prop->nameSpace->name + "::";
+		*tempString += prop->nameSpace + "::";
 	*tempString += prop->name;
 
 	return tempString->AddressOf();
@@ -770,7 +765,7 @@ int asCModule::GetGlobalVar(asUINT index, const char **name, const char **nameSp
 	if( name )
 		*name = prop->name.AddressOf();
 	if( nameSpace )
-		*nameSpace = prop->nameSpace->name.AddressOf();
+		*nameSpace = prop->nameSpace.AddressOf();
 	if( typeId )
 		*typeId = engine->GetTypeIdFromDataType(prop->type);
 	if( isConst )
@@ -885,7 +880,7 @@ const char *asCModule::GetTypedefByIndex(asUINT index, int *typeId, const char *
 		*typeId = GetTypeIdByDecl(typeDefs[index]->name.AddressOf());
 
 	if( nameSpace )
-		*nameSpace = typeDefs[index]->nameSpace->name.AddressOf();
+		*nameSpace = typeDefs[index]->nameSpace.AddressOf();
 
 	return typeDefs[index]->name.AddressOf();
 }
@@ -902,7 +897,7 @@ int asCModule::GetNextImportedFunctionId()
 }
 
 // internal
-int asCModule::AddScriptFunction(int sectionIdx, int id, const char *name, const asCDataType &returnType, asCDataType *params, asETypeModifiers *inOutFlags, asCString **defaultArgs, int paramCount, bool isInterface, asCObjectType *objType, bool isConstMethod, bool isGlobalFunction, bool isPrivate, bool isFinal, bool isOverride, bool isShared, asSNameSpace *ns)
+int asCModule::AddScriptFunction(int sectionIdx, int id, const char *name, const asCDataType &returnType, asCDataType *params, asETypeModifiers *inOutFlags, asCString **defaultArgs, int paramCount, bool isInterface, asCObjectType *objType, bool isConstMethod, bool isGlobalFunction, bool isPrivate, bool isFinal, bool isOverride, bool isShared, const asCString &ns)
 {
 	asASSERT(id >= 0);
 
@@ -910,9 +905,6 @@ int asCModule::AddScriptFunction(int sectionIdx, int id, const char *name, const
 	asCScriptFunction *func = asNEW(asCScriptFunction)(engine, this, isInterface ? asFUNC_INTERFACE : asFUNC_SCRIPT);
 	if( func == 0 )
 		return asOUT_OF_MEMORY;
-
-	if( ns == 0 )
-		ns = engine->nameSpaces[0];
 
 	func->name             = name;
 	func->nameSpace        = ns;
@@ -1138,7 +1130,7 @@ int asCModule::UnbindAllImportedFunctions()
 }
 
 // internal
-asCObjectType *asCModule::GetObjectType(const char *type, asSNameSpace *ns)
+asCObjectType *asCModule::GetObjectType(const char *type, const asCString &ns)
 {
 	size_t n;
 
@@ -1162,7 +1154,7 @@ asCObjectType *asCModule::GetObjectType(const char *type, asSNameSpace *ns)
 }
 
 // internal
-asCGlobalProperty *asCModule::AllocateGlobalProperty(const char *name, const asCDataType &dt, asSNameSpace *ns)
+asCGlobalProperty *asCModule::AllocateGlobalProperty(const char *name, const asCDataType &dt, const asCString &ns)
 {
 	asCGlobalProperty *prop = engine->AllocateGlobalProperty();
 	prop->name = name;
@@ -1177,6 +1169,366 @@ asCGlobalProperty *asCModule::AllocateGlobalProperty(const char *name, const asC
 
 	return prop;
 }
+
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.23.0 - 2012-01-30
+
+// internal
+void asCModule::ResolveInterfaceIds(asCArray<void*> *substitutions)
+{
+	// For each of the interfaces declared in the script find identical interface in the engine.
+	// If an identical interface was found then substitute the current id for the identical interface's id, 
+	// then remove this interface declaration. If an interface was modified by the declaration, then 
+	// retry the detection of identical interface for it since it may now match another.
+
+	// For an interface to be equal to another the name and methods must match. If the interface
+	// references another interface, then that must be checked as well, which can lead to circular references.
+
+	// Example:
+	//
+	// interface A { void f(B@); }
+	// interface B { void f(A@); void f(C@); }
+	// interface C { void f(A@); }
+	//
+	// A1 equals A2 if and only if B1 equals B2
+	// B1 equals B2 if and only if A1 equals A2 and C1 equals C2
+	// C1 equals C2 if and only if A1 equals A2
+
+
+	unsigned int i;
+
+	// The interface can only be equal to interfaces declared in other modules. 
+	// Interfaces registered by the application will conflict with this one if it has the same name.
+	// This means that we only need to look for the interfaces in the engine->classTypes, but not in engine->objectTypes.
+	asCArray<sObjectTypePair> equals;
+	for( i = 0; i < classTypes.GetLength(); i++ )
+	{
+		asCObjectType *intf1 = classTypes[i];
+		if( !intf1->IsInterface() )
+			continue;
+
+		// The interface may have been determined to be equal to another already
+		bool found = false;
+		for( unsigned int e = 0; e < equals.GetLength(); e++ )
+		{
+			if( equals[e].a == intf1 )
+			{
+				found = true;
+				break;
+			}
+		}
+		
+		if( found )
+			continue;
+
+		for( unsigned int n = 0; n < engine->classTypes.GetLength(); n++ )
+		{
+			// Don't compare against self
+			if( engine->classTypes[n] == intf1 )
+				continue;
+	
+			asCObjectType *intf2 = engine->classTypes[n];
+
+			// Assume the interface are equal, then validate this
+			sObjectTypePair pair = {intf1,intf2};
+			equals.PushLast(pair);
+
+			if( AreInterfacesEqual(intf1, intf2, equals) )
+				break;
+			
+			// Since they are not equal, remove them from the list again
+			equals.PopLast();
+		}
+	}
+
+	// For each of the interfaces that have been found to be equal we need to 
+	// remove the new declaration and instead have the module use the existing one.
+	for( i = 0; i < equals.GetLength(); i++ )
+	{
+		// Substitute the old object type from the module's class types
+		unsigned int c;
+		for( c = 0; c < classTypes.GetLength(); c++ )
+		{
+			if( classTypes[c] == equals[i].a )
+			{
+				if( substitutions )
+				{
+					substitutions->PushLast(equals[i].a);
+					substitutions->PushLast(equals[i].b);
+				}
+
+				classTypes[c] = equals[i].b;
+				equals[i].b->AddRef();
+				break;
+			}
+		}
+
+		// Remove the old object type from the engine's class types
+		engine->classTypes.RemoveValue(equals[i].a);
+
+		// Only interfaces in the module are using the type so far
+		for( c = 0; c < classTypes.GetLength(); c++ )
+		{
+			if( classTypes[c]->IsInterface() )
+			{
+				asCObjectType *intf = classTypes[c];
+				for( asUINT m = 0; m < intf->GetMethodCount(); m++ )
+				{
+					asCScriptFunction *func = engine->GetScriptFunction(intf->methods[m]);
+					if( func )
+					{
+						// Check if it is the same type
+						if( func->returnType.GetObjectType() == equals[i].a )
+							func->returnType.SetObjectType(equals[i].b);
+						// Look for template instances that uses the interface as subtype
+						else if( func->returnType.IsTemplate() && 
+							     func->returnType.GetSubType().GetObjectType() == equals[i].a )
+						{
+							// Find the originating template type
+							asCObjectType *templ = 0;
+							for( asUINT t = 0; t < engine->registeredObjTypes.GetLength(); t++ )
+								if( (engine->registeredObjTypes[t]->flags & asOBJ_TEMPLATE) &&
+									engine->registeredObjTypes[t]->name == func->returnType.GetObjectType()->name &&
+									!engine->templateInstanceTypes.Exists(engine->registeredObjTypes[t]) )
+								{
+									templ = engine->registeredObjTypes[t];
+									break;
+								}
+
+							asASSERT( templ );
+							
+							asCDataType subType = func->returnType.GetSubType();
+							subType.SetObjectType(equals[i].b);
+							func->returnType.SetObjectType(engine->GetTemplateInstanceType(templ, subType));
+						}
+
+						for( asUINT p = 0; p < func->GetParamCount(); p++ )
+						{
+							// Check if it is the same type
+							if( func->parameterTypes[p].GetObjectType() == equals[i].a )
+								func->parameterTypes[p].SetObjectType(equals[i].b);
+							// Look for template instances that uses the interface as subtype
+							else if( func->parameterTypes[p].IsTemplate() &&
+								     func->parameterTypes[p].GetSubType().GetObjectType() == equals[i].a )
+							{
+								// Find the originating template type
+								asCObjectType *templ = 0;
+								for( asUINT t = 0; t < engine->registeredObjTypes.GetLength(); t++ )
+									if( (engine->registeredObjTypes[t]->flags & asOBJ_TEMPLATE) &&
+										engine->registeredObjTypes[t]->name == func->parameterTypes[p].GetObjectType()->name &&
+									    !engine->templateInstanceTypes.Exists(engine->registeredObjTypes[t]) )
+									{
+										templ = engine->registeredObjTypes[t];
+										break;
+									}
+
+								asASSERT( templ );
+
+								asCDataType subType = func->parameterTypes[p].GetSubType();
+								subType.SetObjectType(equals[i].b);
+								func->parameterTypes[p].SetObjectType(engine->GetTemplateInstanceType(templ, subType));
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Substitute all interface methods in the module. Delete all methods for the old interface
+		for( unsigned int m = 0; m < equals[i].a->methods.GetLength(); m++ )
+		{
+			for( c = 0; c < scriptFunctions.GetLength(); c++ )
+			{
+				if( scriptFunctions[c]->id == equals[i].a->methods[m] )
+				{
+					if( substitutions )
+						substitutions->PushLast(scriptFunctions[c]);
+
+					scriptFunctions[c]->Release();
+
+					scriptFunctions[c] = engine->GetScriptFunction(equals[i].b->methods[m]);
+					scriptFunctions[c]->AddRef();
+
+					if( substitutions )
+						substitutions->PushLast(scriptFunctions[c]);
+				}
+			}
+		}
+
+		// If there was a template instance, it needs to be removed first
+		for( asUINT n = 0; n < engine->templateTypes.GetLength(); n++ )
+		{
+			if( engine->templateTypes[n]->templateSubType.GetObjectType() == equals[i].a )
+			{
+				// The use of the template has already been exchanged above
+				engine->RemoveTemplateInstanceType(engine->templateTypes[n]);
+				n--;
+			}
+		}
+
+		// Deallocate the object type
+		asDELETE(equals[i].a, asCObjectType);
+	}
+}
+
+// internal
+bool asCModule::AreInterfacesEqual(asCObjectType *a, asCObjectType *b, asCArray<sObjectTypePair> &equals)
+{
+	// An interface is considered equal to another if the following criterias apply:
+	//
+	// - The interface names are equal
+	// - The number of methods is equal
+	// - All the methods are equal
+	// - The order of the methods is equal
+	// - If a method returns or takes an interface by handle or reference, both interfaces must be equal
+
+
+	// ------------
+	// TODO: Study the possiblity of allowing interfaces where methods are declared in different orders to
+	// be considered equal. The compiler and VM can handle this, but it complicates the comparison of interfaces
+	// where multiple methods take different interfaces as parameters (or return values). Example:
+	// 
+	// interface A
+	// {
+	//    void f(B, C);
+	//    void f(B);
+	//    void f(C);
+	// }
+	//
+	// If 'void f(B)' in module A is compared against 'void f(C)' in module B, then the code will assume
+	// interface B in module A equals interface C in module B. Thus 'void f(B, C)' in module A won't match
+	// 'void f(C, B)' in module B.
+	// ------------
+
+
+	// Are both interfaces?
+	if( !a->IsInterface() || !b->IsInterface() )
+		return false;
+
+	// Are the names equal?
+	if( a->name != b->name )
+		return false;
+
+	// Are the namespaces equal?
+	if( a->nameSpace != b->nameSpace )
+		return false;
+
+	// Are the number of methods equal?
+	if( a->methods.GetLength() != b->methods.GetLength() )
+		return false;
+
+	// Keep the number of equals in the list so we can restore it later if necessary
+	int prevEquals = (int)equals.GetLength();
+
+	// Are the methods equal to each other?
+	bool match = true;
+	for( unsigned int n = 0; n < a->methods.GetLength(); n++ )
+	{
+		match = false;
+
+		asCScriptFunction *funcA = (asCScriptFunction*)engine->GetFunctionById(a->methods[n]);
+		asCScriptFunction *funcB = (asCScriptFunction*)engine->GetFunctionById(b->methods[n]);
+
+		// funcB can be null if the module that created the interface has been  
+		// discarded but the type has not yet been released by the engine.
+		if( funcB == 0 )
+			break;
+
+		// The methods must have the same name and the same number of parameters
+		if( funcA->name != funcB->name ||
+			funcA->parameterTypes.GetLength() != funcB->parameterTypes.GetLength() )
+			break;
+		
+		// The return types must be equal. If the return type is an interface the interfaces must match.
+		if( !AreTypesEqual(funcA->returnType, funcB->returnType, equals) )
+			break;
+
+		match = true;
+		for( unsigned int p = 0; p < funcA->parameterTypes.GetLength(); p++ )
+		{
+			if( !AreTypesEqual(funcA->parameterTypes[p], funcB->parameterTypes[p], equals) ||
+				funcA->inOutFlags[p] != funcB->inOutFlags[p] )
+			{
+				match = false;
+				break;
+			}
+		}
+
+		if( !match )
+			break;
+	}
+
+	// For each of the new interfaces that we're assuming to be equal, we need to validate this
+	if( match )
+	{
+		for( unsigned int n = prevEquals; n < equals.GetLength(); n++ )
+		{
+			if( !AreInterfacesEqual(equals[n].a, equals[n].b, equals) )
+			{
+				match = false;
+				break;
+			}
+		}
+	}
+
+	if( !match )
+	{
+		// The interfaces doesn't match. 
+		// Restore the list of previous equals before we go on, so  
+		// the caller can continue comparing with another interface
+		equals.SetLength(prevEquals);
+	}
+
+	return match;
+}
+
+// internal
+bool asCModule::AreTypesEqual(const asCDataType &a, const asCDataType &b, asCArray<sObjectTypePair> &equals)
+{
+	if( !a.IsEqualExceptInterfaceType(b) )
+		return false;
+
+	asCObjectType *ai = a.GetObjectType();
+	asCObjectType *bi = b.GetObjectType();
+
+	if( ai && (ai->flags & asOBJ_TEMPLATE) )
+	{
+		ai = ai->templateSubType.GetObjectType();
+		bi = bi->templateSubType.GetObjectType();
+	}
+
+	if( ai && ai->IsInterface() )
+	{
+		// If the interface is in the equals list, then the pair must match the pair in the list
+		bool found = false;
+		unsigned int e;
+		for( e = 0; e < equals.GetLength(); e++ )
+		{
+			if( equals[e].a == ai )
+			{
+				found = true;
+				break;
+			}
+		}
+
+		if( found )
+		{
+			// Do the pairs match?
+			if( equals[e].b != bi )
+				return false;
+		}
+		else
+		{
+			// Assume they are equal from now on
+			sObjectTypePair pair = {ai, bi};
+			equals.PushLast(pair);
+		}
+	}
+
+	return true;
+}
+
+#endif // AS_DEPRECATED
 
 // interface
 int asCModule::SaveByteCode(asIBinaryStream *out) const
@@ -1244,6 +1596,7 @@ int asCModule::CompileGlobalVar(const char *sectionName, const char *code, int l
 	// Compile the global variable and add it to the module scope
 	asCBuilder builder(engine, this);
 	asCString str = code;
+	// TODO: namespace: Add the global var to the default namespace
 	r = builder.CompileGlobalVar(sectionName, str.AddressOf(), lineOffset);
 
 	engine->BuildCompleted();
@@ -1278,18 +1631,16 @@ int asCModule::CompileGlobalVar(const char *sectionName, const char *code, int l
 // interface
 int asCModule::CompileFunction(const char *sectionName, const char *code, int lineOffset, asDWORD compileFlags, asIScriptFunction **outFunc)
 {
-	// Make sure the outFunc is null if the function fails, so the 
-	// application doesn't attempt to release a non-existent function
-	if( outFunc )
-		*outFunc = 0;
-
 #ifdef AS_NO_COMPILER
 	UNUSED_VAR(sectionName);
 	UNUSED_VAR(code);
 	UNUSED_VAR(lineOffset);
 	UNUSED_VAR(compileFlags);
+	UNUSED_VAR(outFunc);
 	return asNOT_SUPPORTED;
 #else
+	asASSERT(outFunc == 0 || *outFunc == 0);
+
 	// Validate arguments
 	if( code == 0 || 
 		(compileFlags != 0 && compileFlags != asCOMP_ADD_TO_MODULE) )
@@ -1314,6 +1665,7 @@ int asCModule::CompileFunction(const char *sectionName, const char *code, int li
 	asCBuilder builder(engine, this);
 	asCString str = code;
 	asCScriptFunction *func = 0;
+	// TODO: namespace: Add the function to the default namespace
 	r = builder.CompileFunction(sectionName, str.AddressOf(), lineOffset, compileFlags, &func);
 
 	engine->BuildCompleted();
@@ -1364,7 +1716,7 @@ int asCModule::RemoveFunction(asIScriptFunction *func)
 }
 
 // internal
-int asCModule::AddFuncDef(const char *name, asSNameSpace *ns)
+int asCModule::AddFuncDef(const char *name, const asCString &ns)
 {
 	asCScriptFunction *func = asNEW(asCScriptFunction)(engine, 0, asFUNC_FUNCDEF);
 	if( func == 0 )

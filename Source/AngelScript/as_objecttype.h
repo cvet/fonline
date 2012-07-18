@@ -64,9 +64,9 @@ const asDWORD asOBJ_TEMPLATE_SUBTYPE = 0x20000000;
 // asOBJ_GC is used to indicate that the type can potentially 
 // form circular references, thus is garbage collected.
 
-// The fact that an object is garbage collected doesn't imply that an other object  
-// that can reference it also must be garbage collected, only if the garbage collected 
-// object can reference the other object as well.
+// The fact that an object is garbage collected doesn't imply that an object that 
+// can references it also must be garbage collected, only if the garbage collected 
+// object can reference it as well.
 
 // For registered types however, we set the flag asOBJ_GC if the GC 
 // behaviours are registered. For script types that contain any such type we 
@@ -124,7 +124,6 @@ struct asSEnumValue
 };
 
 class asCScriptEngine;
-struct asSNameSpace;
 
 void RegisterObjectTypeGCBehaviours(asCScriptEngine *engine);
 
@@ -197,6 +196,7 @@ public:
 // Internal
 //===========================================
 public:
+	asCObjectType(); 
 	asCObjectType(asCScriptEngine *engine);
 	~asCObjectType();
 
@@ -214,7 +214,7 @@ public:
 	asCObjectProperty *AddPropertyToClass(const asCString &name, const asCDataType &dt, bool isPrivate);
 
 	asCString                    name;
-	asSNameSpace                *nameSpace;
+	asCString                    nameSpace;
 	int                          size;
 	asCArray<asCObjectProperty*> properties;
 	asCArray<int>                methods;
@@ -237,9 +237,6 @@ public:
 	asCArray<asPWORD> userData;
 
 protected:
-	friend class asCScriptEngine;
-	asCObjectType();
-
 	mutable asCAtomic refCount;
 	mutable bool      gcFlag;
 };

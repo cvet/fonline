@@ -58,8 +58,8 @@ BEGIN_AS_NAMESPACE
 
 // AngelScript version
 
-#define ANGELSCRIPT_VERSION        22401
-#define ANGELSCRIPT_VERSION_STRING "2.24.1 WIP"
+#define ANGELSCRIPT_VERSION        22400
+#define ANGELSCRIPT_VERSION_STRING "2.24.0 WIP"
 
 // Data types
 
@@ -734,7 +734,7 @@ public:
 	virtual asEContextState GetState() const = 0;
 	virtual int             PushState() = 0;
 	virtual int             PopState() = 0;
-	virtual bool            IsNested(asUINT *nestCount = 0) const = 0;
+	virtual bool            IsNested() const = 0;
 
 	// Object pointer for calling class methods
 	virtual int   SetObject(void *obj) = 0;
@@ -1500,7 +1500,7 @@ struct asSBCInfo
 #endif
 
 #define asBCINFO(b,t,s) {asBC_##b, asBCTYPE_##t, s, #b}
-#define asBCINFO_DUMMY(b) {asBC_MAXBYTECODE, asBCTYPE_INFO, 0, "BC_" #b}
+#define asBCINFO_DUMMY(b) {asEBCInstr(b), asBCTYPE_INFO, 0, "BC_" #b}
 
 const asSBCInfo asBCInfo[256] =
 {

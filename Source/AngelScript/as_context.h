@@ -74,7 +74,7 @@ public:
 	asEContextState GetState() const;
 	int             PushState();
 	int             PopState();
-	bool            IsNested(asUINT *nestCount = 0) const;
+	bool            IsNested() const;
 
 	// Object pointer for calling class methods
 	int SetObject(void *obj);
@@ -152,63 +152,58 @@ public:
 
 	void PushCallState();
 	void PopCallState();
+	void PushNestedCallState();
+	int  PopNestedCallState();
 	void CallScriptFunction(asCScriptFunction *func);
 	void CallInterfaceMethod(asCScriptFunction *func);
 	void PrepareScriptFunction();
 
-	bool ReserveStackSpace(asUINT size);
-
 	void SetInternalException(const char *descr);
 
 	// Must be protected for multiple accesses
-	mutable asCAtomic m_refCount;
+	mutable asCAtomic refCount;
 
-	bool             m_holdEngineRef;
-	asCScriptEngine *m_engine;
+	bool holdEngineRef;
+	asCScriptEngine *engine;
 
-	asEContextState m_status;
-	bool            m_doSuspend;
-	bool            m_doAbort;
-	bool            m_externalSuspendRequest;
+	asEContextState status;
+	bool doSuspend;
+	bool doAbort;
+	bool externalSuspendRequest;
 
-	asCScriptFunction *m_currentFunction;
-	asCScriptFunction *m_callingSystemFunction;
+	asCScriptFunction *currentFunction;
+	asCScriptFunction *callingSystemFunction;
+	bool isStackMemoryNotAllocated;
 
-	// The call stack holds program pointer, stack pointer, etc for caller functions
-	asCArray<size_t>    m_callStack;
+	asCArray<size_t> callStack;
+	asCArray<asDWORD *> stackBlocks;
+	int stackBlockSize;
+	int stackIndex;
 
-	// Dynamically growing local stack
-	asCArray<asDWORD *> m_stackBlocks;
-	asUINT              m_stackBlockSize;
-	asUINT              m_stackIndex;
-	asDWORD            *m_originalStackPointer;
+	bool inExceptionHandler;
+	asCString exceptionString;
+	int exceptionFunction;
+	int exceptionLine;
+	int exceptionColumn;
 
-	// Exception handling
-	bool      m_isStackMemoryNotAllocated;
-	bool      m_inExceptionHandler;
-	asCString m_exceptionString;
-	int       m_exceptionFunction;
-	int       m_exceptionLine;
-	int       m_exceptionColumn;
+	int returnValueSize;
+	int argumentsSize;
 
-	// The last prepared function, and some cached values related to it
-	asCScriptFunction *m_initialFunction;
-	int                m_returnValueSize;
-	int                m_argumentsSize;
+	asCScriptFunction *initialFunction;
 
 	// callbacks
-	bool                       m_lineCallback;
-	asSSystemFunctionInterface m_lineCallbackFunc;
-	void *                     m_lineCallbackObj;
+	bool lineCallback;
+	asSSystemFunctionInterface lineCallbackFunc;
+	void *lineCallbackObj;
 
-	bool                       m_exceptionCallback;
-	asSSystemFunctionInterface m_exceptionCallbackFunc;
-	void *                     m_exceptionCallbackObj;
+	bool exceptionCallback;
+	asSSystemFunctionInterface exceptionCallbackFunc;
+	void *exceptionCallbackObj;
 
-	void *m_userData;
+	void *userData;
 
 	// Registers available to JIT compiler functions
-	asSVMRegisters m_regs;
+	asSVMRegisters regs;
 };
 
 END_AS_NAMESPACE

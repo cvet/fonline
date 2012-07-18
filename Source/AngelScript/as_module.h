@@ -57,7 +57,6 @@ class asCCompiler;
 class asCBuilder;
 class asCContext;
 class asCConfigGroup;
-struct asSNameSpace;
 
 struct sBindInfo
 {
@@ -188,18 +187,25 @@ public:
 
 	void JITCompile();
 
-	int  AddScriptFunction(int sectionIdx, int id, const char *name, const asCDataType &returnType, asCDataType *params, asETypeModifiers *inOutFlags, asCString **defaultArgs, int paramCount, bool isInterface, asCObjectType *objType = 0, bool isConstMethod = false, bool isGlobalFunction = false, bool isPrivate = false, bool isFinal = false, bool isOverride = false, bool isShared = false, asSNameSpace *ns = 0);
+	int  AddScriptFunction(int sectionIdx, int id, const char *name, const asCDataType &returnType, asCDataType *params, asETypeModifiers *inOutFlags, asCString **defaultArgs, int paramCount, bool isInterface, asCObjectType *objType = 0, bool isConstMethod = false, bool isGlobalFunction = false, bool isPrivate = false, bool isFinal = false, bool isOverride = false, bool isShared = false, const asCString &ns = "");
 	int  AddScriptFunction(asCScriptFunction *func);
 	int  AddImportedFunction(int id, const char *name, const asCDataType &returnType, asCDataType *params, asETypeModifiers *inOutFlags, int paramCount, const asCString &moduleName);
-	int  AddFuncDef(const char *name, asSNameSpace *ns);
+	int  AddFuncDef(const char *name, const asCString &ns);
 
 	int  GetNextImportedFunctionId();
 
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.23.0 - 2012-01-30
+	void ResolveInterfaceIds(asCArray<void*> *substitutions = 0);
+	bool AreInterfacesEqual(asCObjectType *a, asCObjectType *b, asCArray<sObjectTypePair> &equals);
+	bool AreTypesEqual(const asCDataType &a, const asCDataType &b, asCArray<sObjectTypePair> &equals);
+#endif
+
 	asCScriptFunction *GetImportedFunction(int funcId) const;
 
-	asCObjectType *GetObjectType(const char *type, asSNameSpace *ns);
+	asCObjectType *GetObjectType(const char *type, const asCString &ns);
 
-	asCGlobalProperty *AllocateGlobalProperty(const char *name, const asCDataType &dt, asSNameSpace *ns);
+	asCGlobalProperty *AllocateGlobalProperty(const char *name, const asCDataType &dt, const asCString &ns);
 
 
 	asCString name;
@@ -208,7 +214,7 @@ public:
 	asCBuilder      *builder;
 	void            *userData;
 	asDWORD          accessMask;
-	asSNameSpace    *defaultNamespace;
+	asCString        defaultNamespace;
 
 	// This array holds all functions, class members, factories, etc that were compiled with the module
 	asCArray<asCScriptFunction *>  scriptFunctions;

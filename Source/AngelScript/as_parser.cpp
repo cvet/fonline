@@ -785,10 +785,11 @@ bool asCParser::IsDataType(const sToken &token)
 	{
 		if( checkValidTypes )
 		{
-			// Check if this is an existing type, regardless of namespace
+			// Check if this is a registered type
 			asCString str;
 			str.Assign(&script->code[token.pos], token.length);
-			if( !builder->DoesTypeExist(str.AddressOf()) )
+			// TODO: namespace: Should parser really keep track of namespace?
+			if( !builder->GetObjectType(str.AddressOf(), "") && !builder->GetFuncDef(str.AddressOf()) )
 				return false;
 		}
 		return true;
@@ -873,20 +874,6 @@ bool asCParser::CheckTemplateType(sToken &t)
 		GetToken(&t);
 		if( t.type == ttConst )
 			GetToken(&t);
-
-		// The type may be initiated with the scope operator
-		if( t.type == ttScope )
-			GetToken(&t);
-
-		// There may be multiple levels of scope operators
-		sToken t2;
-		GetToken(&t2);
-		while( t.type == ttIdentifier && t2.type == ttScope )
-		{
-			GetToken(&t);
-			GetToken(&t2);
-		}
-		RewindTo(&t2);
 
 		// Now there must be a data type
 		if( !IsDataType(t) )
@@ -1386,11 +1373,6 @@ asCScriptNode *asCParser::ParseExprPostOp()
 
 		node->UpdateSourcePos(t.pos, t.length);
 	}
-	else if( t.type == ttOpenParanthesis )
-	{
-		RewindTo(&t);
-		node->AddChildLast(ParseArgList());
-	}
 
 	return node;
 }
@@ -1496,11 +1478,10 @@ bool asCParser::IsPreOperator(int tokenType)
 
 bool asCParser::IsPostOperator(int tokenType)
 {
-	if( tokenType == ttInc ||            // post increment
-		tokenType == ttDec ||            // post decrement
-		tokenType == ttDot ||            // member access
-		tokenType == ttOpenBracket ||    // index operator
-		tokenType == ttOpenParanthesis ) // argument list for call on function pointer
+	if( tokenType == ttInc ||
+		tokenType == ttDec ||
+		tokenType == ttDot ||
+		tokenType == ttOpenBracket )
 		return true;
 	return false;
 }
@@ -2544,19 +2525,11 @@ asCScriptNode *asCParser::ParseClass()
 	// Optional list of interfaces that are being implemented and classes that are being inherited
 	if( t.type == ttColon )
 	{
-		asCScriptNode *inherit = CreateNode(snIdentifier);
-		node->AddChildLast(inherit);
-
-		ParseOptionalScope(inherit);
-		inherit->AddChildLast(ParseIdentifier());
+		node->AddChildLast(ParseIdentifier());
 		GetToken(&t);
 		while( t.type == ttListSeparator )
 		{
-			inherit = CreateNode(snIdentifier);
-			node->AddChildLast(inherit);
-
-			ParseOptionalScope(inherit);
-			inherit->AddChildLast(ParseIdentifier());
+			node->AddChildLast(ParseIdentifier());
 			GetToken(&t);
 		}
 	}

@@ -235,23 +235,10 @@ int asCScriptEngine::SetEngineProperty(asEEngineProp property, asPWORD value)
 		break;
 
 	case asEP_MAX_STACK_SIZE:
-		if( value == 0 )
-		{
-			// Restore default: no limit and initially size 4KB
-			ep.maximumContextStackSize = 0;
-			initialContextStackSize    = 1024;
-		}
-		else
-		{
-			// The size is given in bytes, but we only store dwords
-			ep.maximumContextStackSize = (asUINT)value/4;
-			if( initialContextStackSize > ep.maximumContextStackSize )
-			{
-				initialContextStackSize = ep.maximumContextStackSize;
-				if( initialContextStackSize == 0 )
-					initialContextStackSize = 1;
-			}
-		}
+		// The size is given in bytes, but we only store dwords
+		ep.maximumContextStackSize = (int)value/4;
+		if( initialContextStackSize > ep.maximumContextStackSize )
+			initialContextStackSize = ep.maximumContextStackSize;
 		break;
 
 	case asEP_USE_CHARACTER_LITERALS:
@@ -451,17 +438,6 @@ asCScriptEngine::asCScriptEngine()
 	msgCallback = 0;
     jitCompiler = 0;
 
-	// Create the global namespace
-	defaultNamespace = AddNameSpace("");
-
-	// We must set the namespace in the built-in types explicitly as
-	// this wasn't done by the default constructor. If we do not do
-	// this we will get null pointer access in other parts of the code
-	scriptTypeBehaviours.nameSpace     = defaultNamespace;
-	functionBehaviours.nameSpace       = defaultNamespace;
-	objectTypeBehaviours.nameSpace     = defaultNamespace;
-	globalPropertyBehaviours.nameSpace = defaultNamespace;
-
 	// Reserve function id 0 for no function
 	scriptFunctions.PushLast(0);
 
@@ -497,8 +473,12 @@ asCScriptEngine::~asCScriptEngine()
 	// The modules must be deleted first, as they may use
 	// object types from the config groups
 	for( n = (asUINT)scriptModules.GetLength(); n-- > 0; )
+	{
 		if( scriptModules[n] )
+		{
 			asDELETE(scriptModules[n],asCModule);
+		}
+	}
 	scriptModules.SetLength(0);
 
 	GarbageCollect(asGC_FULL_CYCLE);
@@ -512,7 +492,9 @@ asCScriptEngine::~asCScriptEngine()
 
 			// Delete the factory stubs first
 			for( f = 0; f < templateTypes[n]->beh.factories.GetLength(); f++ )
+			{
 				scriptFunctions[templateTypes[n]->beh.factories[f]]->Release();
+			}
 			templateTypes[n]->beh.factories.Allocate(0, false);
 
 			// The list factory is not stored in the list with the rest of the factories
@@ -640,7 +622,9 @@ asCScriptEngine::~asCScriptEngine()
 	for( n = 0; n < templateSubTypes.GetLength(); n++ )
 	{
 		if( templateSubTypes[n] )
+		{
 			asDELETE(templateSubTypes[n], asCObjectType);
+		}
 	}
 	templateSubTypes.SetLength(0);
 	registeredTypeDefs.SetLength(0);
@@ -661,13 +645,17 @@ asCScriptEngine::~asCScriptEngine()
 
 	// Free string constants
 	for( n = 0; n < stringConstants.GetLength(); n++ )
+	{
 		asDELETE(stringConstants[n],asCString);
+	}
 	stringConstants.SetLength(0);
 	stringToIdMap.EraseAll();
 
 	// Free the script section names
 	for( n = 0; n < scriptSectionNames.GetLength(); n++ )
+	{
 		asDELETE(scriptSectionNames[n],asCString);
+	}
 	scriptSectionNames.SetLength(0);
 
 	// Clean the user data
@@ -680,11 +668,6 @@ asCScriptEngine::~asCScriptEngine()
 					cleanEngineFuncs[c].cleanFunc(this);
 		}
 	}
-
-	// Free namespaces
-	for( n = 0; n < nameSpaces.GetLength(); n++ )
-		asDELETE(nameSpaces[n], asSNameSpace);
-	nameSpaces.SetLength(0);
 
 	asCThreadManager::Unprepare();
 }
@@ -709,45 +692,14 @@ int asCScriptEngine::Release() const
 	return r;
 }
 
-// internal
-asSNameSpace *asCScriptEngine::AddNameSpace(const char *name)
-{
-	// First check if it doesn't exist already
-	asSNameSpace *ns = FindNameSpace(name);
-	if( ns ) return ns;
-	
-	ns = asNEW(asSNameSpace);
-	if( ns == 0 )
-	{
-		// Out of memory
-		return 0;
-	}
-	ns->name = name;
-	
-	nameSpaces.PushLast(ns);
-
-	return ns;
-}
-
-// internal
-asSNameSpace *asCScriptEngine::FindNameSpace(const char *name)
-{
-	// TODO: optimize: Improve linear search
-	for( asUINT n = 0; n < nameSpaces.GetLength(); n++ )
-		if( nameSpaces[n]->name == name )
-			return nameSpaces[n];
-
-	return 0;
-}
-
 // interface
 int asCScriptEngine::SetDefaultNamespace(const char *nameSpace)
 {
 	if( nameSpace == 0 )
 		return ConfigError(asINVALID_ARG, "SetDefaultNamespace", nameSpace, 0);
 
-	asCString ns = nameSpace;
-	if( ns != "" )
+	defaultNamespace = nameSpace;
+	if( defaultNamespace != "" )
 	{
 		// Make sure the namespace is composed of alternating identifier and ::
 		size_t pos = 0;
@@ -755,9 +707,9 @@ int asCScriptEngine::SetDefaultNamespace(const char *nameSpace)
 		size_t len;
 		eTokenType t = ttIdentifier;
 
-		for( ; pos < ns.GetLength(); pos += len)
+		for( ; pos < defaultNamespace.GetLength(); pos += len)
 		{
-			t = tok.GetToken(ns.AddressOf() + pos, ns.GetLength() - pos, &len);
+			t = tok.GetToken(defaultNamespace.AddressOf() + pos, defaultNamespace.GetLength() - pos, &len);
 			if( (expectIdentifier && t != ttIdentifier) || (!expectIdentifier && t != ttScope) )
 				return ConfigError(asINVALID_DECLARATION, "SetDefaultNamespace", nameSpace, 0);
 
@@ -766,10 +718,8 @@ int asCScriptEngine::SetDefaultNamespace(const char *nameSpace)
 
 		// If the namespace ends with :: then strip it off
 		if( t == ttScope )
-			ns.SetLength(ns.GetLength()-2);
+			defaultNamespace.SetLength(defaultNamespace.GetLength()-2);
 	}
-
-	defaultNamespace = AddNameSpace(ns.AddressOf());
 
 	return 0;
 }
@@ -1220,7 +1170,7 @@ int asCScriptEngine::RegisterObjectProperty(const char *obj, const char *declara
 	asCDataType type;
 	asCString name;
 
-	if( (r = bld.VerifyProperty(&dt, declaration, name, type, 0)) < 0 )
+	if( (r = bld.VerifyProperty(&dt, declaration, name, type, "")) < 0 )
 		return ConfigError(r, "RegisterObjectProperty", obj, declaration);
 
 	// Store the property info
@@ -1271,7 +1221,8 @@ int asCScriptEngine::RegisterInterface(const char *name)
 	if( token != ttIdentifier || strlen(name) != tokenLen )
 		return ConfigError(asINVALID_NAME, "RegisterInterface", name, 0);
 
-	r = bld.CheckNameConflict(name, 0, 0, defaultNamespace);
+	// TODO: namespace: Allow application to specify namespace. Probably with a SetDefaultNamespace
+	r = bld.CheckNameConflict(name, 0, 0, "");
 	if( r < 0 )
 		return ConfigError(asNAME_TAKEN, "RegisterInterface", name, 0);
 
@@ -1568,7 +1519,8 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asDWORD 
 			if( token != ttIdentifier || typeName.GetLength() != tokenLen )
 				return ConfigError(asINVALID_NAME, "RegisterObjectType", name, 0);
 
-			int r = bld.CheckNameConflict(name, 0, 0, defaultNamespace);
+			// TODO: namespace: Allow application to specify namespace. Probably with a SetDefaultNamespace
+			int r = bld.CheckNameConflict(name, 0, 0, "");
 			if( r < 0 )
 				return ConfigError(asNAME_TAKEN, "RegisterObjectType", name, 0);
 
@@ -2249,7 +2201,7 @@ int asCScriptEngine::GetGlobalPropertyByIndex(asUINT index, const char **name, c
 	if( name )
 		*name = registeredGlobalProps[index]->name.AddressOf();
 	if( nameSpace )
-		*nameSpace = registeredGlobalProps[index]->nameSpace->name.AddressOf();
+		*nameSpace = registeredGlobalProps[index]->nameSpace.AddressOf();
 
 	if( configGroup )
 	{
@@ -2301,8 +2253,7 @@ int asCScriptEngine::GetGlobalPropertyIndexByDecl(const char *decl) const
 	// This const cast is OK. The builder won't modify the engine
 	asCBuilder bld(const_cast<asCScriptEngine*>(this), 0);
 
-	asCString name;
-	asSNameSpace *ns;
+	asCString name, ns;
 	asCDataType dt;
 	bld.ParseVariableDeclaration(decl, defaultNamespace, name, ns, dt);
 
@@ -2611,7 +2562,7 @@ asIScriptFunction *asCScriptEngine::GetGlobalFunctionByDecl(const char *decl) co
 }
 
 
-asCObjectType *asCScriptEngine::GetObjectType(const char *type, asSNameSpace *ns)
+asCObjectType *asCScriptEngine::GetObjectType(const char *type, const asCString &ns)
 {
 	// TODO: optimize: Improve linear search
 	for( asUINT n = 0; n < objectTypes.GetLength(); n++ )
@@ -4093,7 +4044,6 @@ void asCScriptEngine::ReleaseScriptObject(void *obj, const asIObjectType *type)
 	}
 }
 
-// interface
 bool asCScriptEngine::IsHandleCompatibleWithObject(void *obj, int objTypeId, int handleTypeId) const
 {
 	// if equal, then it is obvious they are compatible
@@ -4115,20 +4065,16 @@ bool asCScriptEngine::IsHandleCompatibleWithObject(void *obj, int objTypeId, int
 	}
 	else if( objDt.IsScriptObject() && obj )
 	{
-		// Get the true type from the object instance
+		// There's still a chance the object implements the requested interface
 		asCObjectType *objType = ((asCScriptObject*)obj)->objType;
-
-		// Check if the object implements the interface, or derives from the base class
-		// This will also return true, if the requested handle type is an exact match for the object type
-		if( objType->Implements(hdlDt.GetObjectType()) ||
-		    objType->DerivesFrom(hdlDt.GetObjectType()) )
+		if( objType->Implements(hdlDt.GetObjectType()) )
 			return true;
 	}
 
 	return false;
 }
 
-// interface
+
 int asCScriptEngine::BeginConfigGroup(const char *groupName)
 {
 	// Make sure the group name doesn't already exist
@@ -4153,7 +4099,6 @@ int asCScriptEngine::BeginConfigGroup(const char *groupName)
 	return 0;
 }
 
-// interface
 int asCScriptEngine::EndConfigGroup()
 {
 	// Raise error if trying to end the default config
@@ -4165,7 +4110,6 @@ int asCScriptEngine::EndConfigGroup()
 	return 0;
 }
 
-// interface
 int asCScriptEngine::RemoveConfigGroup(const char *groupName)
 {
 	// It is not allowed to remove a group that is still in use. 
@@ -4354,7 +4298,8 @@ int asCScriptEngine::RegisterFuncdef(const char *decl)
 	}
 
 	// Check name conflicts
-	r = bld.CheckNameConflict(func->name.AddressOf(), 0, 0, defaultNamespace);
+	// TODO: namespace: Allow application to specify namespace. Probably with a SetDefaultNamespace
+	r = bld.CheckNameConflict(func->name.AddressOf(), 0, 0, "");
 	if( r < 0 )
 	{
 		asDELETE(func,asCScriptFunction);
@@ -4455,7 +4400,7 @@ int asCScriptEngine::RegisterTypedef(const char *type, const char *decl)
 		return ConfigError(asINVALID_NAME, "RegisterTypedef", type, decl);
 
 	asCBuilder bld(this, 0);
-	int r = bld.CheckNameConflict(type, 0, 0, defaultNamespace);
+	int r = bld.CheckNameConflict(type, 0, 0, "");
 	if( r < 0 )
 		return ConfigError(asNAME_TAKEN, "RegisterTypedef", type, decl);
 
@@ -4509,7 +4454,7 @@ const char *asCScriptEngine::GetTypedefByIndex(asUINT index, int *typeId, const 
 		*accessMask = registeredTypeDefs[index]->accessMask;
 
 	if( nameSpace )
-		*nameSpace = registeredTypeDefs[index]->nameSpace->name.AddressOf();
+		*nameSpace = registeredTypeDefs[index]->nameSpace.AddressOf();
 
 	return registeredTypeDefs[index]->name.AddressOf();
 }
@@ -4542,7 +4487,8 @@ int asCScriptEngine::RegisterEnum(const char *name)
 	if( token != ttIdentifier || strlen(name) != tokenLen )
 		return ConfigError(asINVALID_NAME, "RegisterEnum", name, 0);
 
-	r = bld.CheckNameConflict(name, 0, 0, defaultNamespace);
+	// TODO: namespace: Allow application to specify namespace. Probably with a SetDefaultNamespace
+	r = bld.CheckNameConflict(name, 0, 0, "");
 	if( r < 0 )
 		return ConfigError(asNAME_TAKEN, "RegisterEnum", name, 0);
 
@@ -4639,7 +4585,7 @@ const char *asCScriptEngine::GetEnumByIndex(asUINT index, int *enumTypeId, const
 		*enumTypeId = GetTypeIdByDecl(registeredEnums[index]->name.AddressOf());
 
 	if( nameSpace )
-		*nameSpace = registeredEnums[index]->nameSpace->name.AddressOf();
+		*nameSpace = registeredEnums[index]->nameSpace.AddressOf();
 
 	return registeredEnums[index]->name.AddressOf();
 }
