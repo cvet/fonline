@@ -1899,7 +1899,7 @@ int Script::Bind( const char* module_name, const char* func_name, const char* de
         if( is_temp )
         {
             BindedFunctions[ 1 ].IsScriptCall = false;
-            BindedFunctions[ 1 ].ScriptFunc = 0;
+            BindedFunctions[ 1 ].ScriptFunc = NULL;
             BindedFunctions[ 1 ].NativeFuncAddr = func;
             return 1;
         }
@@ -1946,7 +1946,7 @@ int Script::RebindFunctions()
             if( bind_id <= 0 )
             {
                 WriteLogF( _FUNC_, " - Unable to bind function, module<%s>, function<%s>, declaration<%s>.\n", bf.ModuleName.c_str(), bf.FuncName.c_str(), bf.FuncDecl.c_str() );
-                bf.ScriptFunc = 0;
+                bf.ScriptFunc = NULL;
                 errors++;
             }
             else
@@ -2157,10 +2157,7 @@ void Script::EndExecution()
 {
     #ifdef SCRIPT_MULTITHREADING
     if( !LogicMT )
-    {
-        RunEndExecutionCallbacks();
         return;
-    }
 
     ExecutionRecursionCounter--;
     if( !ExecutionRecursionCounter )
@@ -2196,22 +2193,15 @@ void Script::EndExecution()
             }
         }
 
-        RunEndExecutionCallbacks();
-    }
-    #endif
-}
-
-void Script::RunEndExecutionCallbacks()
-{
-    #ifdef SCRIPT_MULTITHREADING
-    if( EndExecutionCallbacks && !EndExecutionCallbacks->empty() )
-    {
-        for( auto it = EndExecutionCallbacks->begin(), end = EndExecutionCallbacks->end(); it != end; ++it )
+        if( EndExecutionCallbacks && !EndExecutionCallbacks->empty() )
         {
-            EndExecutionCallback func = *it;
-            (func) ( );
+            for( auto it = EndExecutionCallbacks->begin(), end = EndExecutionCallbacks->end(); it != end; ++it )
+            {
+                EndExecutionCallback func = *it;
+                (func) ( );
+            }
+            EndExecutionCallbacks->clear();
         }
-        EndExecutionCallbacks->clear();
     }
     #endif
 }
@@ -2219,6 +2209,9 @@ void Script::RunEndExecutionCallbacks()
 void Script::AddEndExecutionCallback( EndExecutionCallback func )
 {
     #ifdef SCRIPT_MULTITHREADING
+    if( !LogicMT )
+        return;
+
     if( !EndExecutionCallbacks )
         EndExecutionCallbacks = new EndExecutionCallbackVec();
     auto it = std::find( EndExecutionCallbacks->begin(), EndExecutionCallbacks->end(), func );

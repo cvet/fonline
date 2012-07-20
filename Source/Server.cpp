@@ -5161,11 +5161,13 @@ bool FOServer::GetTimeEvent( uint num, uint& duration, ScriptArray* values )
         Script::AppendVectorToArray( te->Values, values );
     duration = ( te->FullSecond > GameOpt.FullSecond ? te->FullSecond - GameOpt.FullSecond : 0 );
 
-    // Lock for current thread
-    te->InProcess = tid;
-
-    // Add end of script execution callback to unlock the event if SetTimeEvent was not called
-    Script::AddEndExecutionCallback( TimeEventEndScriptCallback );
+    if( LogicMT )
+    {
+        // Lock for current thread
+        te->InProcess = tid;
+        // Add end of script execution callback to unlock the event if SetTimeEvent was not called
+        Script::AddEndExecutionCallback( TimeEventEndScriptCallback );
+    }
 
     TimeEventsLocker.Unlock();
     return true;
@@ -5259,7 +5261,8 @@ void FOServer::ProcessTimeEvents()
         TimeEvent* te = *it;
         if( !te->InProcess && te->FullSecond <= GameOpt.FullSecond )
         {
-            te->InProcess = Thread::GetCurrentId();
+            if( LogicMT )
+                te->InProcess = Thread::GetCurrentId();
             cur_event = te;
             break;
         }
