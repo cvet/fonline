@@ -2415,6 +2415,7 @@ void Critter::EventSmthTurnBasedProcess( Critter* from_cr, Map* map, bool begin_
         Script::SetArgObject( this );
         Script::SetArgObject( from_cr );
         Script::SetArgObject( map );
+        Script::SetArgBool( begin_turn );
         Script::RunPrepared();
     }
 }
