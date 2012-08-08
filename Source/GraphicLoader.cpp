@@ -539,6 +539,7 @@ Frame* GraphicLoader::FillNode( aiScene* scene, aiNode* node )
         // Vertices
         ms.Vertices.resize( aimesh->mNumVertices );
         ms.VerticesTransformed.resize( aimesh->mNumVertices );
+        bool has_tangents_and_bitangents = aimesh->HasTangentsAndBitangents();
         bool has_color0 = aimesh->HasVertexColors( 0 );
         // bool has_color1 = aimesh->HasVertexColors( 1 );
         bool has_tex_coords0 = aimesh->HasTextureCoords( 0 );
@@ -551,8 +552,11 @@ Frame* GraphicLoader::FillNode( aiScene* scene, aiNode* node )
             v.Position = aimesh->mVertices[ i ];
             v.PositionW = 1.0f;
             v.Normal = aimesh->mNormals[ i ];
-            v.Tangent = aimesh->mTangents[ i ];
-            v.Bitangent = aimesh->mBitangents[ i ];
+            if( has_tangents_and_bitangents )
+            {
+                v.Tangent = aimesh->mTangents[ i ];
+                v.Bitangent = aimesh->mBitangents[ i ];
+            }
             if( has_color0 )
             {
                 v.Color[ 2 ] = aimesh->mColors[ 0 ][ i ].r;
@@ -1003,7 +1007,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
         return NULL;
     const char* effect_name = effect_inst->EffectFilename;
 
-    // Try find already loaded texture
+    // Try find already loaded effect
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         Effect* effect = *it;
@@ -1179,13 +1183,20 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
 
     if( effect_inst->DefaultsCount )
     {
-        dxeffect->BeginParameterBlock();
+        bool block_begin = false;
         for( uint d = 0; d < effect_inst->DefaultsCount; d++ )
         {
             EffectDefault& def = effect_inst->Defaults[ d ];
             EffectValue_   param = dxeffect->GetParameterByName( NULL, def.Name );
             if( !param )
                 continue;
+
+            if( !block_begin )
+            {
+                block_begin = true;
+                dxeffect->BeginParameterBlock();
+            }
+
             switch( def.Type )
             {
             case D3DXEDT_STRING:             // pValue points to a null terminated ASCII string
@@ -1201,11 +1212,15 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
                 break;
             }
         }
-        effect->EffectParams = dxeffect->EndParameterBlock();
-        effect->Defaults = effect_inst->Defaults;
+
+        if( block_begin )
+        {
+            effect->EffectParams = dxeffect->EndParameterBlock();
+            effect->Defaults = effect_inst->Defaults;
+        }
     }
     #else
-    // Make name
+    // Make effect file name
     char fname[ MAX_FOPATH ];
     Str::Copy( fname, effect_name );
     FileManager::EraseExtension( fname );
@@ -1230,12 +1245,32 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
         return NULL;
     }
 
+    // Make effect binary file name
+    char binary_fname[ MAX_FOPATH ] = { 0 };
+    if( GLEW_ARB_get_program_binary )
+    {
+        Str::Copy( binary_fname, fname );
+        FileManager::EraseExtension( binary_fname );
+        if( defines )
+        {
+            char binary_fname_defines[ MAX_FOPATH ];
+            Str::Copy( binary_fname_defines, defines );
+            Str::Replacement( binary_fname_defines, '\t', ' ' );       // Tabs to spaces
+            Str::Replacement( binary_fname_defines, ' ', ' ', ' ' );   // Multiple spaces to single
+            Str::Replacement( binary_fname_defines, '\r', '\n', '_' ); // EOL's to '_'
+            Str::Replacement( binary_fname_defines, '\r', '_' );       // EOL's to '_'
+            Str::Replacement( binary_fname_defines, '\n', '_' );       // EOL's to '_'
+            Str::Append( binary_fname, "_" );
+            Str::Append( binary_fname, binary_fname_defines );
+        }
+        Str::Append( binary_fname, ".glslb" );
+    }
+
     // Load from binary
     FileManager file_binary;
     if( GLEW_ARB_get_program_binary )
     {
-        Str::Append( fname, "b" );
-        if( file_binary.LoadFile( fname, PT_CACHE ) )
+        if( file_binary.LoadFile( binary_fname, PT_CACHE ) )
         {
             uint64 last_write, last_write_binary;
             file.GetTime( NULL, NULL, &last_write );
@@ -1243,7 +1278,6 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
             if( last_write > last_write_binary )
                 file_binary.UnloadFile();      // Disable loading from this binary, because its outdated
         }
-        fname[ Str::Length( fname ) - 1 ] = 0; // Erase 'b'
     }
     if( file_binary.IsLoaded() )
     {
@@ -1265,13 +1299,13 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
                 }
                 else
                 {
-                    WriteLogF( _FUNC_, " - Failed to link binary shader program, effect<%s>.\n", fname );
+                    WriteLogF( _FUNC_, " - Failed to link binary shader program<%s>, effect<%s>.\n", binary_fname, fname );
                     GL( glDeleteProgram( program ) );
                 }
             }
             else
             {
-                WriteLogF( _FUNC_, " - Binary shader program truncated, effect<%s>.\n", fname );
+                WriteLogF( _FUNC_, " - Binary shader program<%s> truncated, effect<%s>.\n", binary_fname, fname );
             }
         }
         if( !loaded )
@@ -1419,8 +1453,8 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
             file_binary.SetBEUInt( format );
             file_binary.SetBEUInt( length );
             file_binary.SetData( &buf[ 0 ], length );
-            if( !file_binary.SaveOutBufToFile( fname, PT_CACHE ) )
-                WriteLogF( _FUNC_, " - Can't save effect<%s> in binary.\n", fname );
+            if( !file_binary.SaveOutBufToFile( binary_fname, PT_CACHE ) )
+                WriteLogF( _FUNC_, " - Can't save effect<%s> in binary<%s>.\n", fname, binary_fname );
         }
     }
 

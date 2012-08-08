@@ -218,6 +218,19 @@ void Str::EraseWords( char* str, char begin, char end )
     }
 }
 
+void Str::EraseWords( char* str, const char* word )
+{
+    if( !str || !word )
+        return;
+
+    char* sub_str = Str::Substring( str, word );
+    while( sub_str )
+    {
+        Str::EraseInterval( sub_str, Str::Length( word ) );
+        sub_str = Str::Substring( sub_str, word );
+    }
+}
+
 void Str::EraseChars( char* str, char ch )
 {
     if( !str )
@@ -264,17 +277,6 @@ void Str::CopyBack( char* str )
     }
 }
 
-void Str::Replacement( char* str, char ch )
-{
-    while( *str )
-    {
-        if( *str == ch )
-            CopyBack( str );
-        else
-            ++str;
-    }
-}
-
 void Str::Replacement( char* str, char from, char to )
 {
     while( *str )
@@ -294,7 +296,10 @@ void Str::Replacement( char* str, char from1, char from2, char to )
             CopyBack( str );
             *str = to;
         }
-        ++str;
+        else
+        {
+            ++str;
+        }
     }
 }
 

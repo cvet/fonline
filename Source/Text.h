@@ -36,10 +36,10 @@ namespace Str
     void  EraseInterval( char* str, int len );
     void  Insert( char* to, const char* from );
     void  EraseWords( char* str, char begin, char end );
+    void  EraseWords( char* str, const char* word );
     void  EraseChars( char* str, char ch );
     void  CopyWord( char* to, const char* from, char end, bool include_end = false );
     void  CopyBack( char* str );
-    void  Replacement( char* str, char ch );
     void  Replacement( char* str, char from, char to );
     void  Replacement( char* str, char from1, char from2, char to );
     char* EraseFrontBackSpecificChars( char* str );
