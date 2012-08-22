@@ -34,6 +34,7 @@ bool                                IsClient = false;
 bool                                IsMapper = false;
 char*                               Buf = NULL;
 Preprocessor::LineNumberTranslator* LNT = NULL;
+bool                                CollectGarbage = false;
 
 const char*                         ContextStatesStr[] =
 {
@@ -236,7 +237,8 @@ int main( int argc, char* argv[] )
                 " [-p preprocessor_output.txt]\n"
                 " [-d SOME_DEFINE]*\n"
                 " [-run func_name]*\n"
-                "*can be used over and over again" );
+                " [-gc] (collect garbage after execution)\n"
+                "*can be used multiple times" );
         return 0;
     }
 
@@ -261,6 +263,9 @@ int main( int argc, char* argv[] )
         // Run function
         else if( !_stricmp( argv[ i ], "-run" ) && i + 1 < argc )
             run_func.push_back( argv[ ++i ] );
+        // Collect garbage
+        else if( !_stricmp( argv[ i ], "-gc" ) )
+            CollectGarbage = true;
     }
 
     // Fix path
@@ -510,6 +515,10 @@ int main( int argc, char* argv[] )
     // Execute functions
     for( size_t i = 0; i < run_func.size(); i++ )
         RunMain( module, run_func[ i ] );
+
+    // Collect garbage
+    if( CollectGarbage )
+        Engine->GarbageCollect( asGC_FULL_CYCLE );
 
     // Clean up
     Engine->Release();
