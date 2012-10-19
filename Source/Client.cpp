@@ -113,7 +113,7 @@ bool FOClient::Init()
     STATIC_ASSERT( sizeof( Field ) == 76 );
     STATIC_ASSERT( sizeof( ScriptArray ) == 36 );
     STATIC_ASSERT( offsetof( CritterCl, ItemSlotArmor ) == 4280 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1312 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1332 );
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 108 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );
@@ -11387,6 +11387,11 @@ void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2 )
     Self->ParseKeyboard();
     Self->KeyboardEvents = prev_events;
     Self->KeyboardEventsLocker.Unlock();
+}
+
+void FOClient::SScriptFunc::Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name )
+{
+    Self->HexMngr.SetRainAnimation( fall_anim_name ? fall_anim_name->c_str() : NULL, drop_anim_name ? drop_anim_name->c_str() : NULL );
 }
 
 void FOClient::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds )

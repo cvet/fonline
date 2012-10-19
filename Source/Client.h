@@ -646,6 +646,7 @@ public:
         static void          Global_RefreshMap( bool only_tiles, bool only_roof, bool only_light );
         static void          Global_MouseClick( int x, int y, int button, int cursor );
         static void          Global_KeyboardPress( uchar key1, uchar key2 );
+        static void          Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name );
 
         static bool&         ConsoleActive;
         static bool&         GmapActive, & GmapWait;

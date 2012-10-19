@@ -162,8 +162,10 @@ HexManager::HexManager()
     dayColor[ 9 ] = 128;
     dayColor[ 10 ] = 86;
     dayColor[ 11 ] = 29;
+    picRainFallName = "rain_fall.fofrm";
+    picRainDropName = "rain_drop.fofrm";
+    picRainFall = NULL;
     picRainDrop = NULL;
-    memzero( picRainDropA, sizeof( picRainDropA ) );
     picTrack1 = picTrack2 = picHexMask = NULL;
 }
 
@@ -250,17 +252,11 @@ void HexManager::ReloadSprites()
     picTrack1 = SprMngr.LoadAnimation( ( curDataPrefix + "track1.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
     picTrack2 = SprMngr.LoadAnimation( ( curDataPrefix + "track2.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
 
-    // May be nullsdsd
+    // May be null
     picHexMask = SprMngr.LoadAnimation( ( curDataPrefix + "hex_mask.png" ).c_str(), PT_DATA );
 
     // Rain
-    picRainDrop = SprMngr.LoadAnimation( "drop.png", PT_ART_MISC, ANIM_USE_DUMMY );
-    for( int i = 0; i <= 6; i++ )
-    {
-        char name[ 64 ];
-        Str::Format( name, "adrop%d.png", i );
-        picRainDropA[ i ] = SprMngr.LoadAnimation( name, PT_ART_MISC, ANIM_USE_DUMMY );
-    }
+    SetRainAnimation( NULL, NULL );
 }
 
 void HexManager::PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
@@ -652,36 +648,63 @@ void HexManager::ProcessRain()
 
     static uint last_tick = Timer::GameTick();
     uint        delta = Timer::GameTick() - last_tick;
-    if( delta <= RAIN_TICK )
+    if( delta < GameOpt.RainTick )
         return;
 
     for( auto it = rainData.begin(), end = rainData.end(); it != end; ++it )
     {
         Drop* cur_drop = *it;
 
+        // Fall
         if( cur_drop->DropCnt == -1 )
         {
-            if( ( cur_drop->OffsY += RAIN_SPEED ) >= cur_drop->GroundOffsY )
+            cur_drop->OffsX += GameOpt.RainSpeedX;
+            cur_drop->OffsY += GameOpt.RainSpeedY;
+            if( cur_drop->OffsY >= cur_drop->GroundOffsY )
             {
-                cur_drop->CurSprId = picRainDropA[ cur_drop->DropCnt ]->GetCurSprId();
                 cur_drop->DropCnt = 0;
+                cur_drop->CurSprId = picRainDrop->GetSprId( 0 );
             }
         }
+        // Drop
         else
         {
-            cur_drop->CurSprId = picRainDropA[ cur_drop->DropCnt++ ]->GetCurSprId();
-
-            if( cur_drop->DropCnt > 6 )
+            cur_drop->DropCnt++;
+            if( (uint) cur_drop->DropCnt >= picRainDrop->GetCnt() )
             {
-                cur_drop->CurSprId = picRainDrop->GetCurSprId();
+                cur_drop->CurSprId = picRainFall->GetCurSprId();
                 cur_drop->DropCnt = -1;
-                cur_drop->OffsX = Random( -10, 10 );
-                cur_drop->OffsY = -100 - Random( 0, 100 );
+                if( GameOpt.GetRainOffset )
+                {
+                    GameOpt.GetRainOffset( &cur_drop->OffsX, &cur_drop->OffsY );
+                }
+                else
+                {
+                    cur_drop->OffsX = Random( -10, 10 );
+                    cur_drop->OffsY = -100 - Random( 0, 100 );
+                }
+            }
+            else
+            {
+                cur_drop->CurSprId = picRainDrop->GetSprId( cur_drop->DropCnt );
             }
         }
     }
 
     last_tick = Timer::GameTick();
+}
+
+void HexManager::SetRainAnimation( const char* fall_anim_name, const char* drop_anim_name )
+{
+    if( fall_anim_name )
+        picRainFallName = fall_anim_name;
+    if( drop_anim_name )
+        picRainDropName = drop_anim_name;
+
+    SAFEDEL( picRainFall );
+    SAFEDEL( picRainDrop );
+    picRainFall = SprMngr.LoadAnimation( ( curDataPrefix + picRainFallName ).c_str(), PT_ART_MISC, ANIM_USE_DUMMY );
+    picRainDrop = SprMngr.LoadAnimation( ( curDataPrefix + picRainDropName ).c_str(), PT_ART_MISC, ANIM_USE_DUMMY );
 }
 
 void HexManager::SetCursorPos( int x, int y, bool show_steps, bool refresh )
@@ -877,9 +900,10 @@ void HexManager::RebuildMap( int rx, int ry )
                     if( rofy & 1 )
                         rofy--;
 
+                    Drop* new_drop = NULL;
                     if( GetField( rofx, rofy ).Roofs.empty() )
                     {
-                        Drop* new_drop = new Drop( picRainDrop->GetCurSprId(), Random( -10, 10 ), -Random( 0, 200 ), 0 );
+                        new_drop = new Drop( picRainFall->GetCurSprId(), Random( -10, 10 ), -Random( 0, 200 ), 0 );
                         rainData.push_back( new_drop );
 
                         mainTree.AddSprite( DRAW_ORDER_RAIN, nx, ny, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &new_drop->CurSprId,
@@ -887,12 +911,25 @@ void HexManager::RebuildMap( int rx, int ry )
                     }
                     else if( !roofSkip || roofSkip != GetField( rofx, rofy ).RoofNum )
                     {
-                        Drop* new_drop = new Drop( picRainDrop->GetCurSprId(), Random( -10, 10 ), -100 - Random( 0, 100 ), -100 );
+                        new_drop = new Drop( picRainFall->GetCurSprId(), Random( -10, 10 ), -100 - Random( 0, 100 ), -100 );
                         rainData.push_back( new_drop );
 
                         roofRainTree.AddSprite( DRAW_ORDER_RAIN, nx, ny, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &new_drop->CurSprId,
                                                 &new_drop->OffsX, &new_drop->OffsY, NULL, NULL ).SetLight( hexLight, maxHexX, maxHexY );
-                        ;
+                    }
+                    if( new_drop )
+                    {
+                        if( GameOpt.GetRainOffset )
+                        {
+                            GameOpt.GetRainOffset( &new_drop->OffsX, &new_drop->OffsY );
+                        }
+                        else
+                        {
+                            new_drop->OffsX = Random( -10, 10 );
+                            new_drop->OffsY = -100 - Random( 0, 100 );
+                        }
+                        if( new_drop->OffsY < 0 )
+                            new_drop->OffsY = Random( new_drop->OffsY, 0 );
                     }
                 }
             }

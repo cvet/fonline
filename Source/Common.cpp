@@ -1391,6 +1391,9 @@ GameOptions::GameOptions()
     Anim2CombatBegin = 0;
     Anim2CombatIdle = 0;
     Anim2CombatEnd = 0;
+    RainTick = 60;
+    RainSpeedX = 0;
+    RainSpeedY = 15;
 
     // Mapper
     ClientPath = DIR_SLASH_SD;
@@ -1448,9 +1451,13 @@ GameOptions::GameOptions()
     ScriptGetReturnedObject = NULL;
     ScriptGetReturnedAddress = NULL;
 
+    Random = &::Random;
+    GetTick = &Timer::FastTick;
+
     // Callbacks
     GetUseApCost = NULL;
     GetAttackDistantion = NULL;
+    GetRainOffset = NULL;
 }
 
 /************************************************************************/

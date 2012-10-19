@@ -30,7 +30,7 @@ bool FOMapper::Init()
     #if defined ( FO_X86 )
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 116 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1312 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1332 );
     #endif
 
     // Register dll script data
@@ -6730,6 +6730,11 @@ void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2 )
     Self->ParseKeyboard();
     Self->KeyboardEvents = prev_events;
     Self->KeyboardEventsLocker.Unlock();
+}
+
+void FOMapper::SScriptFunc::Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name )
+{
+    Self->HexMngr.SetRainAnimation( fall_anim_name ? fall_anim_name->c_str() : NULL, drop_anim_name ? drop_anim_name->c_str() : NULL );
 }
 
 uint FOMapper::SScriptFunc::Global_LoadSprite( ScriptString& spr_name, int path_index )

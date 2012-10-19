@@ -512,6 +512,7 @@ public:
         static void          Global_SetDefaultFont( int font, uint color );
         static void          Global_MouseClick( int x, int y, int button, int cursor );
         static void          Global_KeyboardPress( uchar key1, uchar key2 );
+        static void          Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name );
 
         static ScriptString* Global_GetLastError();
         static void          Global_Log( ScriptString& text );

@@ -666,6 +666,9 @@ struct GameOptions
     uint         Anim2CombatBegin;
     uint         Anim2CombatIdle;
     uint         Anim2CombatEnd;
+    uint         RainTick;
+    short        RainSpeedX;
+    short        RainSpeedY;
 
     // Mapper
     ScriptString ClientPath;
@@ -723,9 +726,13 @@ struct GameOptions
     void*        ( *ScriptGetReturnedObject )( );
     void*        ( *ScriptGetReturnedAddress )( );
 
+    int          ( * Random )( int, int );
+    uint         ( * GetTick )();
+
     // Callbacks
     uint         ( * GetUseApCost )( void*, void*, uchar );
     uint         ( * GetAttackDistantion )( void*, void*, uchar );
+    void         ( * GetRainOffset )( short*, short* );
 
     GameOptions();
 } extern GameOpt;

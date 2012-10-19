@@ -1143,6 +1143,7 @@ struct BindClass
     static void Global_SetDefaultFont()     {}
     static void Global_MouseClick()         {}
     static void Global_KeyboardPress()      {}
+    static void Global_SetRainAnimation()   {}
     #endif
 
     static void Global_GetLastError()           {}

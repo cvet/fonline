@@ -105,9 +105,6 @@ struct Field
 /* Rain                                                                 */
 /************************************************************************/
 
-#define RAIN_TICK        ( 60 )
-#define RAIN_SPEED       ( 15 )
-
 struct Drop
 {
     uint  CurSprId;
@@ -359,12 +356,15 @@ public:
 private:
     DropVec    rainData;
     int        rainCapacity;
+    string     picRainFallName;
+    string     picRainDropName;
+    AnyFrames* picRainFall;
     AnyFrames* picRainDrop;
-    AnyFrames* picRainDropA[ 7 ];
     Sprites    roofRainTree;
 
 public:
     void ProcessRain();
+    void SetRainAnimation( const char* fall_anim_name, const char* drop_anim_name );
 
     // Cursor
 public:
