@@ -162,8 +162,8 @@ HexManager::HexManager()
     dayColor[ 9 ] = 128;
     dayColor[ 10 ] = 86;
     dayColor[ 11 ] = 29;
-    picRainFallName = "rain_fall.fofrm";
-    picRainDropName = "rain_drop.fofrm";
+    picRainFallName = "art/misc/rain_fall.fofrm";
+    picRainDropName = "art/misc/rain_drop.fofrm";
     picRainFall = NULL;
     picRainDrop = NULL;
     picTrack1 = picTrack2 = picHexMask = NULL;
@@ -703,8 +703,8 @@ void HexManager::SetRainAnimation( const char* fall_anim_name, const char* drop_
 
     SAFEDEL( picRainFall );
     SAFEDEL( picRainDrop );
-    picRainFall = SprMngr.LoadAnimation( ( curDataPrefix + picRainFallName ).c_str(), PT_ART_MISC, ANIM_USE_DUMMY );
-    picRainDrop = SprMngr.LoadAnimation( ( curDataPrefix + picRainDropName ).c_str(), PT_ART_MISC, ANIM_USE_DUMMY );
+    picRainFall = SprMngr.LoadAnimation( picRainFallName.c_str(), PT_DATA, ANIM_USE_DUMMY );
+    picRainDrop = SprMngr.LoadAnimation( picRainDropName.c_str(), PT_DATA, ANIM_USE_DUMMY );
 }
 
 void HexManager::SetCursorPos( int x, int y, bool show_steps, bool refresh )
