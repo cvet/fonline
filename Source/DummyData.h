@@ -552,6 +552,8 @@ struct BindClass
     static void CraftItem_GetNeedItems()  {}
     static void CraftItem_GetOutItems()   {}
 
+    static void Scen_CallSceneryFunction() {}
+
     static void Crit_IsPlayer()                 {}
     static void Crit_IsNpc()                    {}
     static void Crit_IsCanWalk()                {}
