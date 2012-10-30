@@ -541,6 +541,8 @@ public:
         static uint CraftItem_GetNeedItems( CraftItem* craft, ScriptArray* pids, ScriptArray* vals, ScriptArray* ors );
         static uint CraftItem_GetOutItems( CraftItem* craft, ScriptArray* pids, ScriptArray* vals );
 
+        static bool Scen_CallSceneryFunction( MapObject* scenery, Critter* cr, int skill, Item* item );
+
         static bool         Crit_IsPlayer( Critter* cr );
         static bool         Crit_IsNpc( Critter* cr );
         static bool         Crit_IsCanWalk( Critter* cr );

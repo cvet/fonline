@@ -1299,6 +1299,22 @@ uint FOServer::SScriptFunc::CraftItem_GetOutItems( CraftItem* craft, ScriptArray
     return (uint) craft->OutItems.size();
 }
 
+bool FOServer::SScriptFunc::Scen_CallSceneryFunction( MapObject* scenery, Critter* cr, int skill, Item* item )
+{
+    if( !scenery->RunTime.BindScriptId )
+        return false;
+    if( !Script::PrepareContext( scenery->RunTime.BindScriptId, _FUNC_, cr->GetInfo() ) )
+        return false;
+    Script::SetArgObject( cr );
+    Script::SetArgObject( scenery );
+    Script::SetArgUInt( item ? SKILL_PICK_ON_GROUND : skill );
+    Script::SetArgObject( item );
+    for( int i = 0, j = MIN( scenery->MScenery.ParamsCount, 5 ); i < j; i++ )
+        Script::SetArgUInt( scenery->MScenery.Param[ i ] );
+
+    return Script::RunPrepared() && Script::GetReturnedBool();
+}
+
 bool FOServer::SScriptFunc::Crit_IsPlayer( Critter* cr )
 {
     if( cr->IsNotValid )

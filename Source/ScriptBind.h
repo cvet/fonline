@@ -374,6 +374,8 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint16 ProtoId", 
 BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint16 HexX", OFFSETOF( MapObject, MapX ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint16 HexY", OFFSETOF( MapObject, MapY ) ) );
 
+BIND_ASSERT( engine->RegisterObjectMethod( "Scenery", "bool CallSceneryFunction(Critter& cr, int skill, Item@+ item)", asFUNCTION( BIND_CLASS Scen_CallSceneryFunction ), asCALL_CDECL_OBJFIRST ) );
+
 /************************************************************************/
 /* Critter                                                              */
 /************************************************************************/
