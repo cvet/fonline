@@ -3998,6 +3998,100 @@ bool SpriteManager::DrawSprite( uint id, int x, int y, uint color /* = 0 */ )
     return true;
 }
 
+bool SpriteManager::DrawSpritePattern( uint id, int x, int y, int w, int h, int spr_width /* = 0 */, int spr_height /* = 0 */, uint color /* = 0 */ )
+{
+    if( !id )
+        return false;
+
+    if( !w || !h )
+        return false;
+
+    SpriteInfo* si = sprData[ id ];
+    if( !si )
+        return false;
+
+    if( si->Anim3d )
+        return false;
+
+    float width = (float) si->Width;
+    float height = (float) si->Height;
+
+    if( spr_width && spr_height )
+    {
+        width = (float) spr_width;
+        height = (float) spr_height;
+    }
+    else if( spr_width )
+    {
+        float ratio = (float) spr_width / width;
+        width = (float) spr_width;
+        height *= ratio;
+    }
+    else if( spr_height )
+    {
+        float ratio = (float) spr_height / height;
+        height = (float) spr_height;
+        width *= ratio;
+    }
+
+    if( !color )
+        color = COLOR_IFACE;
+
+    Effect* effect = ( si->DrawEffect ? si->DrawEffect : sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] );
+
+    float   last_right_offs = ( si->SprRect.R - si->SprRect.L ) / width;
+    float   last_bottom_offs = ( si->SprRect.B - si->SprRect.T ) / height;
+
+    for( float yy = (float) y, end_y = (float) y + h; yy < end_y; yy += height )
+    {
+        bool last_y = yy + height >= end_y;
+        for( float xx = (float) x, end_x = (float) x + w; xx < end_x; xx += width )
+        {
+            bool last_x = xx + width >= end_x;
+
+            if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect != effect )
+                dipQueue.push_back( DipData( si->Surf->TextureOwner, effect ) );
+            else
+                dipQueue.back().SpritesCount++;
+
+            int   mulpos = curSprCnt * 4;
+
+            float local_width = last_x ? ( end_x - xx ) : width;
+            float local_height = last_y ? ( end_y - yy ) : height;
+            float local_right = last_x ? si->SprRect.L + last_right_offs * local_width : si->SprRect.R;
+            float local_bottom = last_y ? si->SprRect.T + last_bottom_offs * local_height : si->SprRect.B;
+
+            vBuffer[ mulpos ].x = xx;
+            vBuffer[ mulpos ].y = yy + local_height;
+            vBuffer[ mulpos ].tu = si->SprRect.L;
+            vBuffer[ mulpos ].tv = local_bottom;
+            vBuffer[ mulpos++ ].diffuse = color;
+
+            vBuffer[ mulpos ].x = xx;
+            vBuffer[ mulpos ].y = yy;
+            vBuffer[ mulpos ].tu = si->SprRect.L;
+            vBuffer[ mulpos ].tv = si->SprRect.T;
+            vBuffer[ mulpos++ ].diffuse = color;
+
+            vBuffer[ mulpos ].x = xx + local_width;
+            vBuffer[ mulpos ].y = yy;
+            vBuffer[ mulpos ].tu = local_right;
+            vBuffer[ mulpos ].tv = si->SprRect.T;
+            vBuffer[ mulpos++ ].diffuse = color;
+
+            vBuffer[ mulpos ].x = xx + local_width;
+            vBuffer[ mulpos ].y = yy + local_height;
+            vBuffer[ mulpos ].tu = local_right;
+            vBuffer[ mulpos ].tv = local_bottom;
+            vBuffer[ mulpos ].diffuse = color;
+
+            if( ++curSprCnt == flushSprCnt )
+                Flush();
+        }
+    }
+    return true;
+}
+
 #pragma MESSAGE("Add 3d auto scaling.")
 bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, bool stretch_up, bool center, uint color /* = 0 */ )
 {

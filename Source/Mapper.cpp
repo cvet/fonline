@@ -6811,6 +6811,16 @@ void FOMapper::SScriptFunc::Global_DrawSpriteOffs( uint spr_id, int spr_index, i
     SprMngr.DrawSprite( spr_id_, x, y, color );
 }
 
+void FOMapper::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int spr_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color )
+{
+    if( !SpritesCanDraw || !spr_id )
+        return;
+    AnyFrames* anim = Self->AnimGetFrames( spr_id );
+    if( !anim || spr_index >= (int) anim->GetCnt() )
+        return;
+    SprMngr.DrawSpritePattern( spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ), x, y, w, h, spr_width, spr_height, color );
+}
+
 void FOMapper::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color )
 {
     if( !SpritesCanDraw || !spr_id )
