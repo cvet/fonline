@@ -342,6 +342,7 @@ int main( int argc, char* argv[] )
 
     Preprocessor::SetPragmaCallback( new ScriptPragmaCallback( pragma_type ) );
 
+    Preprocessor::Define( "__ASCOMPILER" );
     if( IsServer )
         Preprocessor::Define( "__SERVER" );
     else if( IsClient )
