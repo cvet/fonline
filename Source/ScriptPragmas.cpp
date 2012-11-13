@@ -143,6 +143,34 @@ namespace Script
 
 #endif
 
+// #pragma ignore "other_pragma"
+// #pragma other_pragma "arguments" <- not processed
+class IgnorePragma
+{
+private:
+    vector< string > ignored;
+
+public:
+    bool IsIgnored( const string& text )
+    {
+        if( text.length() > 0 )
+        {
+            for( uint i = 0, iLen = ignored.size(); i < iLen; i++ )
+            {
+                if( ignored[ i ] == text )
+                    return ( true );
+            }
+        }
+
+        return ( false );
+    }
+
+    void Call( const string& text )
+    {
+        if( text.length() > 0 )
+            ignored.push_back( text );
+    }
+};
 
 // #pragma globalvar "int __MyGlobalVar = 100"
 class GlobalVarPragma
@@ -518,6 +546,7 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
 
     if( pragmaType != PRAGMA_UNKNOWN )
     {
+        ignorePragma = new IgnorePragma();
         globalVarPragma = new GlobalVarPragma();
         crDataPragma = new CrDataPragma( pragmaType );
         bindFuncPragma = new BindFuncPragma();
@@ -541,7 +570,11 @@ void ScriptPragmaCallback::CallPragma( const string& name, const Preprocessor::P
         return;
     alreadyProcessed.insert( name + instance.text );
 
-    if( name == "globalvar" && globalVarPragma )
+    if( ignorePragma && ignorePragma->IsIgnored( name ) )
+        return;
+    else if( name == "ignore" && ignorePragma )
+        ignorePragma->Call( instance.text );
+    else if( name == "globalvar" && globalVarPragma )
         globalVarPragma->Call( instance.text );
     else if( name == "crdata" && crDataPragma )
         crDataPragma->Call( instance.text );

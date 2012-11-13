@@ -12,6 +12,7 @@ using namespace std;
 #define PRAGMA_CLIENT     ( 2 )
 #define PRAGMA_MAPPER     ( 3 )
 
+class IgnorePragma;
 class GlobalVarPragma;
 class CrDataPragma;
 class BindFuncPragma;
@@ -22,6 +23,7 @@ class ScriptPragmaCallback: public Preprocessor::PragmaCallback
 private:
     int              pragmaType;
     set< string >    alreadyProcessed;
+    IgnorePragma*    ignorePragma;
     GlobalVarPragma* globalVarPragma;
     CrDataPragma*    crDataPragma;
     BindFuncPragma*  bindFuncPragma;

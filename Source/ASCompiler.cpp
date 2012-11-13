@@ -291,7 +291,7 @@ int main( int argc, char* argv[] )
     if( !Engine )
     {
         printf( "Register failed.\n" );
-        return 0;
+        return -1;
     }
     Engine->SetMessageCallback( asFUNCTION( CallBack ), NULL, asCALL_CDECL );
 
@@ -363,7 +363,7 @@ int main( int argc, char* argv[] )
     if( res )
     {
         printf( "Unable to preprocess. Errors:\n%s\n", Buf );
-        return 0;
+        return -1;
     }
     else
     {
@@ -402,19 +402,19 @@ int main( int argc, char* argv[] )
     if( !module )
     {
         printf( "Can't create module.\n" );
-        return 0;
+        return -1;
     }
 
     if( module->AddScriptSection( NULL, vos.GetData(), vos.GetSize(), 0 ) < 0 )
     {
         printf( "Unable to add section.\n" );
-        return 0;
+        return -1;
     }
 
     if( module->Build() < 0 )
     {
         printf( "Unable to build.\n" );
-        return 0;
+        return -1;
     }
 
     // Check global not allowed types, only for server
@@ -506,7 +506,7 @@ int main( int argc, char* argv[] )
                 printf( "Erase global variable or class property listed above.\n" );
             printf( "Classes that cannot be stored in global scope: Critter, Item, ProtoItem, Map, Location, GlobalVar.\n" );
             printf( "Hint: store their Ids, instead of pointers.\n" );
-            return 0;
+            return -1;
         }
     }
 
