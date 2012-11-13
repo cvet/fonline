@@ -5261,8 +5261,7 @@ void FOServer::ProcessTimeEvents()
         TimeEvent* te = *it;
         if( !te->InProcess && te->FullSecond <= GameOpt.FullSecond )
         {
-            if( LogicMT )
-                te->InProcess = Thread::GetCurrentId();
+            te->InProcess = Thread::GetCurrentId();
             cur_event = te;
             break;
         }
