@@ -322,7 +322,7 @@ int main( int argc, char* argv[] )
         printf( "Warning, bind result: %d.\n", bind_errors );
 
     // Start compilation
-    printf( "Compiling...\n" );
+    printf( "Compiling %s ...\n", str_fname );
     double tick = Timer::AccurateTick();
 
     // Preprocessor
