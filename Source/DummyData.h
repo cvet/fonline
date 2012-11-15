@@ -886,6 +886,7 @@ struct BindClass
     static void Global_SetSendParameterFunc()   {}
     static void Global_SwapCritters()           {}
     static void Global_GetAllItems()            {}
+    static void Global_GetAllPlayers()          {}
     static void Global_GetAllNpc()              {}
     static void Global_GetAllMaps()             {}
     static void Global_GetAllLocations()        {}

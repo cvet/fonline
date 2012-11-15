@@ -5815,6 +5815,25 @@ uint FOServer::SScriptFunc::Global_GetAllItems( ushort pid, ScriptArray* items )
     return (uint) game_items_.size();
 }
 
+uint FOServer::SScriptFunc::Global_GetAllPlayers( ScriptArray* player )
+{
+    ClVec players;
+    CrVec players_;
+    CrMngr.GetCopyPlayers( players, true );
+    players_.reserve( players.size() );
+    for( auto it = players.begin(), end = players.end(); it != end; ++it )
+    {
+        Critter* player_ = *it;
+        if( !player_->IsNotValid && player_->IsPlayer() )
+            players_.push_back( player_ );
+    }
+    if( !players_.size() )
+        return ( 0 );
+    if( player )
+        Script::AppendVectorToArrayRef< Critter* >( players_, player );
+    return ( (uint) players_.size() );
+}
+
 uint FOServer::SScriptFunc::Global_GetAllNpc( ushort pid, ScriptArray* npc )
 {
     PcVec npcs;
