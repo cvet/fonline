@@ -311,7 +311,7 @@ int FOMsg::LoadMsgFile( const char* fname, int path_type )
     #endif
 
     int result = LoadMsgFileBuf( buf, buf_len );
-    delete[] buf;
+    SAFEDELA( buf );
     return result;
 }
 

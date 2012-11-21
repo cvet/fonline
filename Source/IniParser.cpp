@@ -69,6 +69,7 @@ bool IniParser::AppendToBegin( const char* fname, int path_type )
     grow_buf[ bufLen + len ] = 0;
 
     SAFEDELA( bufPtr );
+    SAFEDELA( buf );
     bufPtr = grow_buf;
     bufLen += len;
     lastApp[ 0 ] = 0;
@@ -91,6 +92,7 @@ bool IniParser::AppendToEnd( const char* fname, int path_type )
     grow_buf[ bufLen + len ] = 0;
 
     SAFEDELA( bufPtr );
+    SAFEDELA( buf );
     bufPtr = grow_buf;
     bufLen += len;
     lastApp[ 0 ] = 0;

@@ -2081,7 +2081,7 @@ bool ProtoMap::Refresh()
 
     for( auto it = MObjects.begin(), end = MObjects.end(); it != end; ++it )
         SAFEREL( *it );
-    MObjects.clear();
+    MapObjectPtrVec().swap( MObjects );
 
     // Generate hashes
     HashTiles = maxhx * maxhy;
@@ -2093,6 +2093,16 @@ bool ProtoMap::Refresh()
     HashScen = maxhx * maxhy;
     if( SceneriesToSend.size() )
         Crypt.Crc32( (uchar*) &SceneriesToSend[ 0 ], (uint) SceneriesToSend.size() * sizeof( SceneryCl ), HashScen );
+
+    // Shrink the vector capacities to fit their contents and reduce memory use
+    SceneryClVec( SceneriesToSend ).swap( SceneriesToSend );
+    SceneryClVec( WallsToSend ).swap( WallsToSend );
+    EntiresVec( mapEntires ).swap( mapEntires );
+    MapObjectPtrVec( CrittersVec ).swap( CrittersVec );
+    MapObjectPtrVec( ItemsVec ).swap( ItemsVec );
+    MapObjectPtrVec( SceneryVec ).swap( SceneryVec );
+    MapObjectPtrVec( GridsVec ).swap( GridsVec );
+    TileVec( Tiles ).swap( Tiles );
 
     MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) SceneriesToSend.capacity() * sizeof( SceneryCl ) );
     MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) WallsToSend.capacity() * sizeof( SceneryCl ) );
