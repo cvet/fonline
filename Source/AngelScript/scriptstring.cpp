@@ -557,7 +557,7 @@ ScriptArray* StringSplit( ScriptString* str, ScriptString* delim )
     asIScriptEngine*  engine = ctx->GetEngine();
 
     // TODO: This should only be done once
-    // TODO: This assumes that CScriptArray was already registered
+    // TODO: This assumes that ScriptArray was already registered
     asIObjectType* arrayType = engine->GetObjectTypeById( engine->GetTypeIdByDecl( "array<string@>" ) );
 
     // Create the array object
@@ -604,7 +604,7 @@ ScriptArray* StringSplitEx( ScriptString* str, ScriptString* delim )
     asIScriptEngine*  engine = ctx->GetEngine();
 
     // TODO: This should only be done once
-    // TODO: This assumes that CScriptArray was already registered
+    // TODO: This assumes that ScriptArray was already registered
     asIObjectType* arrayType = engine->GetObjectTypeById( engine->GetTypeIdByDecl( "array<string@>" ) );
 
     // Create the array object

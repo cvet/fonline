@@ -513,6 +513,7 @@
   <ItemGroup>
     <ClInclude Include="..\Source\3dAnimation.h" />
     <ClInclude Include="..\Source\3dStuff.h" />
+    <ClInclude Include="..\Source\AngelScript\as_symboltable.h" />
     <ClInclude Include="..\Source\AngelScript\scriptstring.h" />
     <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\GL\glew.h" />

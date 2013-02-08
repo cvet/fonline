@@ -3,6 +3,8 @@
 #include "scriptdictionary.h"
 #include "scriptstring.h"
 
+#define AS_USE_STLNAMES    0
+
 using namespace std;
 
 // --------------------------------------------------------------------------
@@ -240,11 +242,22 @@ bool ScriptDictionary::Exists( const ScriptString& key ) const
     map< string, valueStruct >::const_iterator it;
     it = dict.find( key.c_std_str() );
     if( it != dict.end() )
-    {
         return true;
-    }
 
     return false;
+}
+
+bool ScriptDictionary::IsEmpty() const
+{
+    if( dict.size() == 0 )
+        return true;
+
+    return false;
+}
+
+asUINT ScriptDictionary::GetSize() const
+{
+    return asUINT( dict.size() );
 }
 
 void ScriptDictionary::Delete( const ScriptString& key )
@@ -263,14 +276,12 @@ void ScriptDictionary::DeleteAll()
 {
     map< string, valueStruct >::iterator it;
     for( it = dict.begin(); it != dict.end(); it++ )
-    {
         FreeValue( it->second );
-    }
 
     dict.clear();
 }
 
-unsigned int ScriptDictionary::Keys( ScriptArray* keys )
+asUINT ScriptDictionary::Keys( ScriptArray* keys )
 {
     if( keys && !dict.empty() )
     {
@@ -354,12 +365,16 @@ void RegisterScriptDictionary_Native( asIScriptEngine* engine )
 
     r = engine->RegisterObjectMethod( "dictionary", "bool exists(const string &in) const", asMETHOD( ScriptDictionary, Exists ), asCALL_THISCALL );
     assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "dictionary", "bool isEmpty() const", asMETHOD( ScriptDictionary, IsEmpty ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "dictionary", "uint getSize() const", asMETHOD( ScriptDictionary, GetSize ), asCALL_THISCALL );
+    assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dictionary", "void delete(const string &in)", asMETHOD( ScriptDictionary, Delete ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dictionary", "void deleteAll()", asMETHOD( ScriptDictionary, DeleteAll ), asCALL_THISCALL );
     assert( r >= 0 );
 
-    r = engine->RegisterObjectMethod( "dictionary", "uint keys(string@[]@+) const", asMETHOD( ScriptDictionary, Keys ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dictionary", "uint keys(array<string@>@+) const", asMETHOD( ScriptDictionary, Keys ), asCALL_THISCALL );
     assert( r >= 0 );
 
     // Register GC behaviours
@@ -373,6 +388,21 @@ void RegisterScriptDictionary_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectBehaviour( "dictionary", asBEHAVE_RELEASEREFS, "void f(int&in)", asMETHOD( ScriptDictionary, ReleaseAllReferences ), asCALL_THISCALL );
     assert( r >= 0 );
+
+    #if AS_USE_STLNAMES == 1
+    // Same as isEmpty
+    r = engine->RegisterObjectMethod( "dictionary", "bool empty() const", asMETHOD( ScriptDictionary, IsEmpty ), asCALL_THISCALL );
+    assert( r >= 0 );
+    // Same as getSize
+    r = engine->RegisterObjectMethod( "dictionary", "uint size() const", asMETHOD( ScriptDictionary, GetSize ), asCALL_THISCALL );
+    assert( r >= 0 );
+    // Same as delete
+    r = engine->RegisterObjectMethod( "dictionary", "void erase(const string &in)", asMETHOD( ScriptDictionary, Delete ), asCALL_THISCALL );
+    assert( r >= 0 );
+    // Same as deleteAll
+    r = engine->RegisterObjectMethod( "dictionary", "void clear()", asMETHOD( ScriptDictionary, DeleteAll ), asCALL_THISCALL );
+    assert( r >= 0 );
+    #endif
 }
 
 void RegisterScriptDictionary_Generic( asIScriptEngine* engine )

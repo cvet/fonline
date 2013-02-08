@@ -3,6 +3,49 @@
 #include <string.h>
 #include "scriptmath.h"
 
+#ifdef __BORLANDC__
+# include <cmath>
+
+// The C++Builder RTL doesn't pull the *f functions into the global namespace per default.
+using namespace std;
+
+# if __BORLANDC__ < 0x580
+// C++Builder 6 and earlier don't come with any *f variants of the math functions at all.
+inline float cosf( float arg )          { return std::cos( arg ); }
+inline float sinf( float arg )          { return std::sin( arg ); }
+inline float tanf( float arg )          { return std::tan( arg ); }
+inline float atan2f( float y, float x ) { return std::atan2( y, x ); }
+inline float logf( float arg )          { return std::log( arg ); }
+inline float powf( float x, float y )   { return std::pow( x, y ); }
+inline float sqrtf( float arg )         { return std::sqrt( arg ); }
+# endif
+
+// C++Builder doesn't define most of the non-standard float-specific math functions with
+// "*f" suffix; instead it provides overloads for the standard math functions which take
+// "float" arguments.
+inline float acosf( float arg )  { return std::acos( arg ); }
+inline float asinf( float arg )  { return std::asin( arg ); }
+inline float atanf( float arg )  { return std::atan( arg ); }
+inline float coshf( float arg )  { return std::cosh( arg ); }
+inline float sinhf( float arg )  { return std::sinh( arg ); }
+inline float tanhf( float arg )  { return std::tanh( arg ); }
+inline float log10f( float arg ) { return std::log10( arg ); }
+inline float ceilf( float arg )  { return std::ceil( arg ); }
+inline float fabsf( float arg )  { return std::fabs( arg ); }
+inline float floorf( float arg ) { return std::floor( arg ); }
+
+// C++Builder doesn't define a non-standard "modff" function but rather an overload of "modf"
+// for float arguments. However, BCC's float overload of fmod() is broken (QC #74816; fixed
+// in C++Builder 2010).
+inline float modff( float x, float* y )
+{
+    double d;
+    float  f = (float) modf( (double) x, &d );
+    *y = (float) d;
+    return f;
+}
+#endif
+
 // Determine whether the float version should be registered, or the double version
 #ifndef AS_USE_FLOAT
 # if !defined ( _WIN32_WCE ) // WinCE doesn't have the float versions of the math functions

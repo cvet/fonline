@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2012 Andreas Jonsson
+   Copyright (c) 2003-2013 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -93,7 +93,7 @@ public:
     virtual asIJITCompiler *GetJITCompiler() const;
 
 	// Global functions
-	virtual int                RegisterGlobalFunction(const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv);
+	virtual int                RegisterGlobalFunction(const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall = 0);
 	virtual asUINT             GetGlobalFunctionCount() const;
 #ifdef AS_DEPRECATED
 	// Deprecated since 2.24.0 - 2012-05-20
@@ -142,16 +142,18 @@ public:
 	virtual asIScriptFunction *GetFuncdefByIndex(asUINT index) const;
 
 	// Typedefs
+	// TODO: interface: Should perhaps rename this to Alias, since it doesn't really create a new type
 	virtual int         RegisterTypedef(const char *type, const char *decl);
 	virtual asUINT      GetTypedefCount() const;
 	virtual const char *GetTypedefByIndex(asUINT index, int *typeId, const char **nameSpace, const char **configGroup = 0, asDWORD *accessMask = 0) const;
 
 	// Configuration groups
-	virtual int     BeginConfigGroup(const char *groupName);
-	virtual int     EndConfigGroup();
-	virtual int     RemoveConfigGroup(const char *groupName);
-	virtual asDWORD SetDefaultAccessMask(asDWORD defaultMask);
-	virtual int     SetDefaultNamespace(const char *nameSpace);
+	virtual int         BeginConfigGroup(const char *groupName);
+	virtual int         EndConfigGroup();
+	virtual int         RemoveConfigGroup(const char *groupName);
+	virtual asDWORD     SetDefaultAccessMask(asDWORD defaultMask);
+	virtual int         SetDefaultNamespace(const char *nameSpace);
+	virtual const char *GetDefaultNamespace() const;
 
 	// Script modules
 	virtual asIScriptModule *GetModule(const char *module, asEGMFlags flag);
@@ -168,18 +170,28 @@ public:
 
 	// Script execution
 	virtual asIScriptContext *CreateContext();
+	// TODO: interface: Deprecate this, add a method that takes the asIObjectType instead
 	virtual void             *CreateScriptObject(int typeId);
+	// TODO: interface: Deprecate this, add a method that takes the asIObjectType instead
 	virtual void             *CreateScriptObjectCopy(void *obj, int typeId);
+	// TODO: interface: Deprecate this, add a method that takes the asIObjectType instead
 	virtual void             *CreateUninitializedScriptObject(int typeId);
 #ifdef AS_DEPRECATED
 	// Deprecated since 2.24.0 - 2012-06-07
 	virtual void              CopyScriptObject(void *dstObj, void *srcObj, int typeId);
 #endif
+	// TODO: interface: Deprecate this, add a method that takes the asIObjectType instead
 	virtual void              AssignScriptObject(void *dstObj, void *srcObj, int typeId);
+	// TODO: interface: Deprecate this
 	virtual void              ReleaseScriptObject(void *obj, int typeId);
 	virtual void              ReleaseScriptObject(void *obj, const asIObjectType *type);
+	// TODO: interface: Deprecate this
 	virtual void              AddRefScriptObject(void *obj, int typeId);
 	virtual void              AddRefScriptObject(void *obj, const asIObjectType *type);
+	// TODO: interface: Should have a method void *CastObject(void *obj, asIObjectType *fromType, asIObjectType *toType); 
+	//                  For script objects it should simply check if the object implements or derives from the toType
+	//                  For application objects it should look for ref cast behaviours and call the matching one
+	//                  Once implemented the IsHandleCompatibleWithObject should be removed from the engine
 	virtual bool              IsHandleCompatibleWithObject(void *obj, int objTypeId, int handleTypeId) const;
 
 	// String interpretation
@@ -240,7 +252,7 @@ public:
 
 	void ConstructScriptObjectCopy(void *mem, void *obj, asCObjectType *type);
 
-	void ClearUnusedTypes();
+	int  ClearUnusedTypes();
 	void RemoveTemplateInstanceType(asCObjectType *t);
 	void RemoveTypeAndRelatedFromList(asCArray<asCObjectType*> &types, asCObjectType *ot);
 
@@ -257,7 +269,7 @@ public:
 
 	int CreateContext(asIScriptContext **context, bool isInternal);
 
-	asCObjectType *GetObjectType(const char *type, const asCString &ns);
+	asCObjectType *GetObjectType(const char *type, asSNameSpace *ns);
 
 	int AddBehaviourFunction(asCScriptFunction &func, asSSystemFunctionInterface &internal);
 
@@ -286,6 +298,7 @@ public:
 	asCObjectType     *GetTemplateInstanceType(asCObjectType *templateType, asCDataType &subType);
 	asCScriptFunction *GenerateTemplateFactoryStub(asCObjectType *templateType, asCObjectType *templateInstanceType, int origFactoryId);
 	bool               GenerateNewTemplateFunction(asCObjectType *templateType, asCObjectType *templateInstanceType, asCDataType &subType, asCScriptFunction *templateFunc, asCScriptFunction **newFunc);
+	void               OrphanTemplateInstances(asCObjectType *subType);
 
 	// String constants
 	// TODO: Must free unused string constants, thus the ref count for each must be tracked
@@ -298,12 +311,16 @@ public:
 
 	int GetScriptSectionNameIndex(const char *name);
 
+	// Namespace management
+	asSNameSpace *AddNameSpace(const char *name);
+	asSNameSpace *FindNameSpace(const char *name);
+
 //===========================================================
 // internal properties
 //===========================================================
 	asCMemoryMgr memoryMgr;
 
-	int initialContextStackSize;
+	asUINT initialContextStackSize;
 
 	asCObjectType   *defaultArrayObjectType;
 	asCObjectType    scriptTypeBehaviours;
@@ -312,13 +329,13 @@ public:
 	asCObjectType    globalPropertyBehaviours;
 
 	// Registered interface
-	asCArray<asCObjectType *>      registeredObjTypes;
-	asCArray<asCObjectType *>      registeredTypeDefs;
-	asCArray<asCObjectType *>      registeredEnums;
-	asCArray<asCGlobalProperty *>  registeredGlobalProps;
-	asCArray<asCScriptFunction *>  registeredGlobalFuncs;
-	asCArray<asCScriptFunction *>  registeredFuncDefs;
-	asCScriptFunction             *stringFactory;
+	asCArray<asCObjectType *>          registeredObjTypes;
+	asCArray<asCObjectType *>          registeredTypeDefs;
+	asCArray<asCObjectType *>          registeredEnums;
+	asCSymbolTable<asCGlobalProperty>  registeredGlobalProps;
+	asCArray<asCScriptFunction *>      registeredGlobalFuncs;
+	asCArray<asCScriptFunction *>      registeredFuncDefs;
+	asCScriptFunction                 *stringFactory;
 	bool configFailed;
 
 	// Stores all known object types, both application registered, and script declared
@@ -331,6 +348,11 @@ public:
 	// Stores all global properties, both those registered by application, and those declared by scripts.
 	// The id of a global property is the index in this array.
 	asCArray<asCGlobalProperty *> globalProperties;
+
+	// This map is used to quickly find a property by its memory address
+	// It is used principally during building, cleanup, and garbage detection for script functions
+	asCMap<void*, asCGlobalProperty*> varAddressMap;
+
 	asCArray<int>                 freeGlobalPropertyIds;
 
 	// Stores all functions, i.e. registered functions, script functions, class methods, behaviours, etc.
@@ -374,7 +396,7 @@ public:
 	asCArray<asCConfigGroup*>  configGroups;
 	asCConfigGroup            *currentGroup;
 	asDWORD                    defaultAccessMask;
-	asCString                  defaultNamespace;
+	asSNameSpace              *defaultNamespace;
 
 	// Message callback
 	bool                        msgCallback;
@@ -383,7 +405,14 @@ public:
 
     asIJITCompiler              *jitCompiler;
 
+	// Namespaces
+	// These are shared between all entities and are 
+	// only deleted once the engine is destroyed
+	asCArray<asSNameSpace*> nameSpaces;
+
 	// String constants
+	// These are shared between all scripts and are
+	// only deleted once the engine is destroyed
 	asCArray<asCString*>          stringConstants;
 	asCMap<asCStringPointer, int> stringToIdMap;
 
@@ -404,24 +433,24 @@ public:
 	// Engine properties
 	struct
 	{
-		bool allowUnsafeReferences;
-		bool optimizeByteCode;
-		bool copyScriptSections;
-		int  maximumContextStackSize;
-		bool useCharacterLiterals;
-		bool allowMultilineStrings;
-		bool allowImplicitHandleTypes;
-		bool buildWithoutLineCues;
-		bool initGlobalVarsAfterBuild;
-		bool requireEnumScope;
-		int  scanner;
-		bool includeJitInstructions;
-		int  stringEncoding;
-		int  propertyAccessorMode;
-		bool expandDefaultArrayToTemplate;
-		bool autoGarbageCollect;
-		bool disallowGlobalVars;
-		bool alwaysImplDefaultConstruct;
+		bool   allowUnsafeReferences;
+		bool   optimizeByteCode;
+		bool   copyScriptSections;
+		asUINT maximumContextStackSize;
+		bool   useCharacterLiterals;
+		bool   allowMultilineStrings;
+		bool   allowImplicitHandleTypes;
+		bool   buildWithoutLineCues;
+		bool   initGlobalVarsAfterBuild;
+		bool   requireEnumScope;
+		int    scanner;
+		bool   includeJitInstructions;
+		int    stringEncoding;
+		int    propertyAccessorMode;
+		bool   expandDefaultArrayToTemplate;
+		bool   autoGarbageCollect;
+		bool   disallowGlobalVars;
+		bool   alwaysImplDefaultConstruct;
 	} ep;
 };
 

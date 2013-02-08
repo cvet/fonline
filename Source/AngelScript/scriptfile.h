@@ -1,3 +1,10 @@
+//
+// ScriptFile
+//
+// This class encapsulates a FILE pointer in a reference counted class for
+// use within AngelScript.
+//
+
 #ifndef SCRIPTFILE_H
 #define SCRIPTFILE_H
 
@@ -27,6 +34,7 @@ public:
     virtual void AddRef() const;
     virtual void Release() const;
 
+    // TODO: Implement the "r+", "w+" and "a+" modes
     // mode = "r" -> open the file for reading
     //        "w" -> open the file for writing (overwrites existing file)
     //        "a" -> open the file for appending

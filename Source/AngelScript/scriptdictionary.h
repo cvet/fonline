@@ -1,6 +1,10 @@
 #ifndef SCRIPTDICTIONARY_H
 #define SCRIPTDICTIONARY_H
 
+// The dictionary class relies on the script string object, thus the script
+// string type must be registered with the engine before registering the
+// dictionary type
+
 #include "angelscript.h"
 #include "scriptarray.h"
 #include "scriptstring.h"
@@ -25,6 +29,7 @@ protected:
     ScriptDictionary( asIScriptEngine* engine );
 
 public:
+    // Memory management
     virtual void AddRef() const;
     virtual void Release() const;
 
@@ -48,7 +53,9 @@ public:
     virtual bool Get( const ScriptString& key, double& value ) const;
 
     // Returns true if the key is set
-    virtual bool Exists( const ScriptString& key ) const;
+    virtual bool   Exists( const ScriptString& key ) const;
+    virtual bool   IsEmpty() const;
+    virtual asUINT GetSize() const;
 
     // Deletes the key
     virtual void Delete( const ScriptString& key );
@@ -56,8 +63,8 @@ public:
     // Deletes all keys
     virtual void DeleteAll();
 
-    // Get all keys
-    virtual unsigned int Keys( ScriptArray* keys );
+    // Get an array of all keys
+    virtual asUINT Keys( ScriptArray* keys );
 
     // Garbage collections behaviours
     virtual int  GetRefCount();
@@ -86,8 +93,10 @@ protected:
     virtual void FreeValue( valueStruct& value );
 
     // Our properties
-    asIScriptEngine*                     engine;
-    mutable int                          refCount;
+    asIScriptEngine* engine;
+    mutable int      refCount;
+
+    // TODO: optimize: Use C++11 std::unordered_map instead
     std::map< std::string, valueStruct > dict;
 };
 

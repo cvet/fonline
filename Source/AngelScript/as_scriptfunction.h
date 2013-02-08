@@ -52,6 +52,7 @@ class asCScriptEngine;
 class asCModule;
 class asCConfigGroup;
 class asCGlobalProperty;
+struct asSNameSpace;
 
 struct asSScriptVariable
 {
@@ -86,11 +87,6 @@ struct asSSystemFunctionInterface;
 //       also functions/methods that are being called. This could be used to build a 
 //       code database with call graphs, etc.
 
-// TODO: runtime optimize: The GC should only be notified of the script function when the last module
-//                         removes it from the scope. Must make sure it is only added to the GC once
-//                         in case the function is added to another module after the GC already knows 
-//                         about the function.
-
 void RegisterScriptFunction(asCScriptEngine *engine);
 
 class asCScriptFunction : public asIScriptFunction
@@ -103,26 +99,32 @@ public:
 	int AddRef() const;
 	int Release() const;
 
+	// Miscellaneous
 	int                  GetId() const;
 	asEFuncType          GetFuncType() const;
 	const char          *GetModuleName() const;
+	const char          *GetScriptSectionName() const;
+	const char          *GetConfigGroup() const;
+	asDWORD              GetAccessMask() const;
+
+	// Function signature
 	asIObjectType       *GetObjectType() const;
 	const char          *GetObjectName() const;
 	const char          *GetName() const;
 	const char          *GetNamespace() const;
 	const char          *GetDeclaration(bool includeObjectName = true, bool includeNamespace = false) const;
-	const char          *GetScriptSectionName() const;
-	const char          *GetConfigGroup() const;
-	asDWORD              GetAccessMask() const;
 	bool                 IsReadOnly() const;
 	bool                 IsPrivate() const;
 	bool                 IsFinal() const;
 	bool                 IsOverride() const;
 	bool                 IsShared() const;
-
 	asUINT               GetParamCount() const;
 	int                  GetParamTypeId(asUINT index, asDWORD *flags = 0) const;
 	int                  GetReturnTypeId() const;
+
+	// Type id for function pointers 
+	int                  GetTypeId() const;
+	bool                 IsCompatibleWithTypeId(int typeId) const;
 
 	// Debug information
 	asUINT               GetVarCount() const;
@@ -145,17 +147,19 @@ public:
 	~asCScriptFunction();
 
 	void      DestroyInternal();
+	void      Orphan(asIScriptModule *mod);
 
 	void      AddVariable(asCString &name, asCDataType &type, int stackOffset);
 
 	int       GetSpaceNeededForArguments();
 	int       GetSpaceNeededForReturnValue();
 	asCString GetDeclarationStr(bool includeObjectName = true, bool includeNamespace = false) const;
-	int       GetLineNumber(int programPosition);
+	int       GetLineNumber(int programPosition, int *sectionIdx);
 	void      ComputeSignatureId();
 	bool      IsSignatureEqual(const asCScriptFunction *func) const;
 	bool      IsSignatureExceptNameEqual(const asCScriptFunction *func) const;
 	bool      IsSignatureExceptNameEqual(const asCDataType &retType, const asCArray<asCDataType> &paramTypes, const asCArray<asETypeModifiers> &inOutFlags, const asCObjectType *type, bool isReadOnly) const;
+	bool      IsSignatureExceptNameAndReturnTypeEqual(const asCScriptFunction *fun) const;
 	bool      IsSignatureExceptNameAndReturnTypeEqual(const asCArray<asCDataType> &paramTypes, const asCArray<asETypeModifiers> &inOutFlags, const asCObjectType *type, bool isReadOnly) const;
 
 	bool      DoesReturnOnStack() const;
@@ -205,9 +209,7 @@ public:
 	asDWORD                      accessMask;
 	bool                         isShared;
 
-	// TODO: optimize: The namespace should be stored as an integer id. This  
-	//                 will use less space and provide quicker comparisons.
-	asCString                    nameSpace;
+	asSNameSpace                *nameSpace;
 
 	// Used by asFUNC_SCRIPT
 	asCArray<asDWORD>               byteCode;
@@ -232,6 +234,7 @@ public:
 	int                             stackNeeded;
 	asCArray<int>                   lineNumbers;      // debug info
 	int                             scriptSectionIdx; // debug info
+	asCArray<int>                   sectionIdxs;      // debug info. Store position/index pairs if the bytecode is compiled from multiple script sections
 	bool                            dontCleanUpOnException;   // Stub functions don't own the object and parameters
 
 	// Used by asFUNC_VIRTUAL

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2012 Andreas Jonsson
+   Copyright (c) 2003-2013 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -64,9 +64,9 @@ const asDWORD asOBJ_TEMPLATE_SUBTYPE = 0x20000000;
 // asOBJ_GC is used to indicate that the type can potentially 
 // form circular references, thus is garbage collected.
 
-// The fact that an object is garbage collected doesn't imply that an object that 
-// can references it also must be garbage collected, only if the garbage collected 
-// object can reference it as well.
+// The fact that an object is garbage collected doesn't imply that an other object  
+// that can reference it also must be garbage collected, only if the garbage collected 
+// object can reference the other object as well.
 
 // For registered types however, we set the flag asOBJ_GC if the GC 
 // behaviours are registered. For script types that contain any such type we 
@@ -124,6 +124,7 @@ struct asSEnumValue
 };
 
 class asCScriptEngine;
+struct asSNameSpace;
 
 void RegisterObjectTypeGCBehaviours(asCScriptEngine *engine);
 
@@ -149,8 +150,9 @@ public:
 	asDWORD          GetFlags() const;
 	asUINT           GetSize() const;
 	int              GetTypeId() const;
-	int              GetSubTypeId() const;
-	asIObjectType   *GetSubType() const;
+	int              GetSubTypeId(asUINT subtypeIndex = 0) const;
+	asIObjectType   *GetSubType(asUINT subtypeIndex = 0) const;
+	asUINT			 GetSubTypeCount() const;
 
 	// Interfaces
 	asUINT           GetInterfaceCount() const;
@@ -196,10 +198,10 @@ public:
 // Internal
 //===========================================
 public:
-	asCObjectType(); 
 	asCObjectType(asCScriptEngine *engine);
 	~asCObjectType();
 
+	void Orphan(asCModule *module);
 	int  GetRefCount();
 	void SetGCFlag();
 	bool GetGCFlag();
@@ -212,9 +214,10 @@ public:
 	bool IsShared() const;
 
 	asCObjectProperty *AddPropertyToClass(const asCString &name, const asCDataType &dt, bool isPrivate);
+	void ReleaseAllProperties();
 
 	asCString                    name;
-	asCString                    nameSpace;
+	asSNameSpace                *nameSpace;
 	int                          size;
 	asCArray<asCObjectProperty*> properties;
 	asCArray<int>                methods;
@@ -234,9 +237,13 @@ public:
 	bool           acceptRefSubType;
 
 	asCScriptEngine  *engine;
+	asCModule        *module;
 	asCArray<asPWORD> userData;
 
 protected:
+	friend class asCScriptEngine;
+	asCObjectType();
+
 	mutable asCAtomic refCount;
 	mutable bool      gcFlag;
 };

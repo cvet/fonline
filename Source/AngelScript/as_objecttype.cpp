@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2012 Andreas Jonsson
+   Copyright (c) 2003-2013 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -121,21 +121,24 @@ void RegisterObjectTypeGCBehaviours(asCScriptEngine *engine)
 #endif
 }
 
-asCObjectType::asCObjectType()
+asCObjectType::asCObjectType() 
 {
-	engine      = 0; 
+	engine = 0; 
+	module = 0;
 	refCount.set(0); 
 	derivedFrom = 0;
 
 	acceptValueSubType = true;
-	acceptRefSubType   = true;
+	acceptRefSubType = true;
 
 	accessMask = 0xFFFFFFFF;
+	nameSpace = 0;
 }
 
 asCObjectType::asCObjectType(asCScriptEngine *engine) 
 {
 	this->engine = engine; 
+	module = 0;
 	refCount.set(0); 
 	derivedFrom  = 0;
 
@@ -143,6 +146,7 @@ asCObjectType::asCObjectType(asCScriptEngine *engine)
 	acceptRefSubType = true;
 
 	accessMask = 0xFFFFFFFF;
+	nameSpace = engine->nameSpaces[0];
 }
 
 int asCObjectType::AddRef() const
@@ -155,6 +159,26 @@ int asCObjectType::Release() const
 {
 	gcFlag = false;
 	return refCount.atomicDec();
+}
+
+void asCObjectType::Orphan(asCModule *mod)
+{
+	if( mod && mod == module )
+	{
+		module = 0;
+		if( flags & asOBJ_SCRIPT_OBJECT )
+		{
+			// Tell the GC that this type exists so it can resolve potential circular references
+			engine->gc.AddScriptObjectToGC(this, &engine->objectTypeBehaviours);
+
+			// It's necessary to orphan the template instance types that refer to this object type,
+			// otherwise the garbage collector cannot identify the circular references that involve 
+			// the type and the template type
+			engine->OrphanTemplateInstances(this);
+		}
+	}
+
+	Release();
 }
 
 void *asCObjectType::SetUserData(void *data, asPWORD type)
@@ -232,20 +256,8 @@ asCObjectType::~asCObjectType()
 		derivedFrom->Release();
 
 	asUINT n;
-	for( n = 0; n < properties.GetLength(); n++ )
-		if( properties[n] ) 
-		{
-			if( flags & asOBJ_SCRIPT_OBJECT )
-			{
-				// Release the config group for script classes that are being destroyed
-				asCConfigGroup *group = engine->FindConfigGroupForObjectType(properties[n]->type.GetObjectType());
-				if( group != 0 ) group->Release();
-			}
 
-			asDELETE(properties[n],asCObjectProperty);
-		}
-
-	properties.SetLength(0);
+	ReleaseAllProperties();
 
 	ReleaseAllFunctions();
 
@@ -317,7 +329,7 @@ const char *asCObjectType::GetName() const
 // interface
 const char *asCObjectType::GetNamespace() const
 {
-	return nameSpace.AddressOf();
+	return nameSpace->name.AddressOf();
 }
 
 // interface
@@ -344,9 +356,11 @@ int asCObjectType::GetTypeId() const
 }
 
 // interface
-int asCObjectType::GetSubTypeId() const
+int asCObjectType::GetSubTypeId(asUINT subTypeIndex) const
 {
 	// TODO: template: This method should allow indexing multiple template subtypes
+	if( subTypeIndex != 0 )
+		return asINVALID_ARG;
 
 	if( flags & asOBJ_TEMPLATE )
 	{
@@ -358,15 +372,23 @@ int asCObjectType::GetSubTypeId() const
 }
 
 // interface
-asIObjectType *asCObjectType::GetSubType() const
+asIObjectType *asCObjectType::GetSubType(asUINT subTypeIndex) const
 {
 	// TODO: template: This method should allow indexing multiple template subtypes
+	if( subTypeIndex != 0 )
+		return 0;
+
 	if( flags & asOBJ_TEMPLATE )
 	{
 		return templateSubType.GetObjectType();
 	}
 
 	return 0;
+}
+
+asUINT asCObjectType::GetSubTypeCount() const
+{
+	return 1;
 }
 
 asUINT asCObjectType::GetInterfaceCount() const
@@ -775,6 +797,7 @@ asDWORD asCObjectType::GetAccessMask() const
 // internal
 asCObjectProperty *asCObjectType::AddPropertyToClass(const asCString &name, const asCDataType &dt, bool isPrivate)
 {
+	asASSERT( flags & asOBJ_SCRIPT_OBJECT );
 	asASSERT( dt.CanBeInstanciated() );
 	asASSERT( !IsInterface() );
 
@@ -813,13 +836,45 @@ asCObjectProperty *asCObjectType::AddPropertyToClass(const asCString &name, cons
 	asCConfigGroup *group = engine->FindConfigGroupForObjectType(prop->type.GetObjectType());
 	if( group != 0 ) group->AddRef();
 
+	// Add reference to object types
+	asCObjectType *type = prop->type.GetObjectType();
+	if( type )
+		type->AddRef();
+
 	return prop;
+}
+
+// internal
+void asCObjectType::ReleaseAllProperties()
+{
+	for( asUINT n = 0; n < properties.GetLength(); n++ )
+	{
+		if( properties[n] ) 
+		{
+			if( flags & asOBJ_SCRIPT_OBJECT )
+			{
+				// Release the config group for script classes that are being destroyed
+				asCConfigGroup *group = engine->FindConfigGroupForObjectType(properties[n]->type.GetObjectType());
+				if( group != 0 ) group->Release();
+
+				// Release references to objects types
+				asCObjectType *type = properties[n]->type.GetObjectType();
+				if( type )
+					type->Release();
+			}
+
+			asDELETE(properties[n],asCObjectProperty);
+		}
+	}
+
+	properties.SetLength(0);
 }
 
 // internal
 void asCObjectType::ReleaseAllHandles(asIScriptEngine *)
 {
 	ReleaseAllFunctions();
+	ReleaseAllProperties();
 }
 
 // internal
@@ -965,6 +1020,16 @@ void asCObjectType::EnumReferences(asIScriptEngine *)
 	for( asUINT d = 0; d < virtualFunctionTable.GetLength(); d++ )
 		if( virtualFunctionTable[d] )
 			engine->GCEnumCallback(virtualFunctionTable[d]);
+
+	for( asUINT p = 0; p < properties.GetLength(); p++ )
+	{
+		asCObjectType *type = properties[p]->type.GetObjectType();
+		if( type )
+			engine->GCEnumCallback(type);
+	}
+
+	if( templateSubType.GetObjectType() )
+		engine->GCEnumCallback(templateSubType.GetObjectType());
 }
 
 END_AS_NAMESPACE

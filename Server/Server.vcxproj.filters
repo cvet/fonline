@@ -646,6 +646,9 @@
     <ClInclude Include="..\Source\AngelScript\scriptmath.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\as_symboltable.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\Source\AngelScript\as_callfunc_x64_msvc.asm">

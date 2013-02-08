@@ -3,6 +3,8 @@
 
 #include "angelscript.h"
 
+struct SArrayCache;
+
 class ScriptArray
 {
 public:
@@ -26,19 +28,24 @@ public:
     virtual void AddRef() const;
     virtual void Release() const;
 
+    // Type information
     virtual asIObjectType* GetArrayObjectType() const;
     virtual int            GetArrayTypeId() const;
     virtual int            GetElementTypeId() const;
 
+    virtual void   Reserve( asUINT maxElements );
     virtual void   Resize( asUINT numElements );
     virtual void   Grow( asUINT numElements );
     virtual void   Reduce( asUINT numElements );
     virtual asUINT GetSize() const;
     virtual int    GetElementSize() const;
+    virtual bool   IsEmpty() const;
 
-    virtual void* At( asUINT index );
-    virtual void* First();
-    virtual void* Last();
+    // Get a pointer to an element. Returns 0 if out of bounds
+    virtual void*       At( asUINT index );
+    virtual const void* At( asUINT index ) const;
+    virtual void*       First();
+    virtual void*       Last();
 
     ScriptArray& operator=( const ScriptArray& other )
     {
@@ -46,6 +53,8 @@ public:
         return *this;
     }
     virtual void Assign( const ScriptArray& other );
+
+    virtual bool operator==( const ScriptArray& ) const;
 
     virtual void InsertAt( asUINT index, void* value );
     virtual void RemoveAt( asUINT index );
@@ -59,9 +68,10 @@ public:
     virtual void SortDesc( asUINT index, asUINT count );
     virtual void Sort( asUINT index, asUINT count, bool asc );
     virtual void Reverse();
-    virtual int  Find( void* value );
-    virtual int  Find( asUINT index, void* value );
+    virtual int  Find( void* value ) const;
+    virtual int  Find( asUINT index, void* value ) const;
 
+    // GC methods
     virtual int  GetRefCount();
     virtual void SetFlag();
     virtual bool GetFlag();
@@ -71,6 +81,7 @@ public:
 protected:
     struct ArrayBuffer
     {
+        asDWORD maxElements;
         asDWORD numElements;
         asBYTE  data[ 1 ];
     };
@@ -80,8 +91,6 @@ protected:
     asIObjectType* objType;
     ArrayBuffer*   buffer;
     int            elementSize;
-    asIScriptFunction*            cmpFunc;
-    asIScriptFunction*            eqFunc;
     int            subTypeId;
 
     virtual bool  Less( const void* a, const void* b, bool asc, asIScriptContext* ctx );
@@ -97,7 +106,7 @@ protected:
     virtual void  CopyBuffer( ArrayBuffer* dst, ArrayBuffer* src );
     virtual void  Construct( ArrayBuffer* buf, asUINT start, asUINT end );
     virtual void  Destruct( ArrayBuffer* buf, asUINT start, asUINT end );
-    virtual bool  Equals( const void* a, const void* b, asIScriptContext* ctx );
+    virtual bool  Equals( const void* a, const void* b, asIScriptContext* ctx, SArrayCache* cache ) const;
 };
 
 #ifndef FONLINE_DLL

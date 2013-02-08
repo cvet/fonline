@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2012 Andreas Jonsson
+   Copyright (c) 2003-2013 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -58,8 +58,8 @@ BEGIN_AS_NAMESPACE
 
 // AngelScript version
 
-#define ANGELSCRIPT_VERSION        22400
-#define ANGELSCRIPT_VERSION_STRING "2.24.0 WIP"
+#define ANGELSCRIPT_VERSION        22600
+#define ANGELSCRIPT_VERSION_STRING "2.26.0"
 
 // Data types
 
@@ -72,6 +72,7 @@ class asIObjectType;
 class asIScriptFunction;
 class asIBinaryStream;
 class asIJITCompiler;
+class asIThreadManager;
 
 // Enumerations and constants
 
@@ -101,12 +102,13 @@ enum asEEngineProp
 // Calling conventions
 enum asECallConvTypes
 {
-	asCALL_CDECL            = 0,
-	asCALL_STDCALL          = 1,
-	asCALL_THISCALL         = 2,
-	asCALL_CDECL_OBJLAST    = 3,
-	asCALL_CDECL_OBJFIRST   = 4,
-	asCALL_GENERIC          = 5
+	asCALL_CDECL             = 0,
+	asCALL_STDCALL           = 1,
+	asCALL_THISCALL_ASGLOBAL = 2,
+	asCALL_THISCALL          = 3,
+	asCALL_CDECL_OBJLAST     = 4,
+	asCALL_CDECL_OBJFIRST    = 5,
+	asCALL_GENERIC           = 6
 };
 
 // Object type flags
@@ -145,10 +147,12 @@ enum asEObjTypeFlags
 	asOBJ_APP_CLASS_ALLINTS          = 0x8000,
 	asOBJ_APP_CLASS_ALLFLOATS        = 0x10000,
 	asOBJ_NOCOUNT                    = 0x20000,
-	asOBJ_MASK_VALID_FLAGS           = 0x3FFFF,
+	asOBJ_APP_CLASS_ALIGN8           = 0x40000,
+	asOBJ_MASK_VALID_FLAGS           = 0x7FFFF,
 	asOBJ_SCRIPT_OBJECT              = 0x80000,
 	asOBJ_SHARED                     = 0x100000,
-	asOBJ_NOINHERIT                  = 0x200000
+	asOBJ_NOINHERIT                  = 0x200000,
+	asOBJ_SCRIPT_FUNCTION            = 0x400000
 };
 
 // Behaviours
@@ -332,7 +336,7 @@ enum asEFuncType
 typedef unsigned char  asBYTE;
 typedef unsigned short asWORD;
 typedef unsigned int   asUINT;
-#if defined(_MSC_VER) && _MSC_VER <= 1200 // MSVC6 
+#if (defined(_MSC_VER) && _MSC_VER <= 1200) || defined(__S3E__)
 	// size_t is not really correct, since it only guaranteed to be large enough to hold the segment size.
 	// For example, on 16bit systems the size_t may be 16bits only even if pointers are 32bit. But nobody
 	// is likely to use MSVC6 to compile for 16bit systems anymore, so this should be ok.
@@ -353,6 +357,13 @@ typedef unsigned int   asUINT;
     typedef unsigned __int64 asQWORD;
     typedef __int64 asINT64;
   #endif
+#endif
+
+// Is the target a 64bit system?
+#if defined(__LP64__) || defined(__amd64__) || defined(__x86_64__) || defined(_M_X64)
+	#ifndef AS_64BIT_PTR
+		#define AS_64BIT_PTR
+	#endif
 #endif
 
 typedef void (*asFUNCTION_t)();
@@ -387,6 +398,19 @@ typedef void (asCUnknownClass::*asMETHOD_t)();
 
 struct asSFuncPtr
 {
+	asSFuncPtr(asBYTE f)
+	{
+		for( size_t n = 0; n < sizeof(ptr.dummy); n++ )
+			ptr.dummy[n] = 0;
+		flag = f;
+	}
+
+	void CopyMethodPtr(const void *mthdPtr, size_t size)
+	{
+		for( size_t n = 0; n < size; n++ )
+			ptr.dummy[n] = reinterpret_cast<const char *>(mthdPtr)[n];
+	}
+
 	union
 	{
 		// The largest known method point is 20 bytes (MSVC 64bit),
@@ -425,6 +449,13 @@ template <typename T>
 
 struct asSFuncPtr
 {
+	asSFuncPtr(asBYTE f)
+	{
+		for( int n = 0; n < sizeof(ptr.dummy); n++ )
+			ptr.dummy[n] = 0;
+		flag = f;
+	}
+
 	union
 	{
 		char dummy[25]; // largest known class method pointer
@@ -475,21 +506,24 @@ struct asSMessageInfo
 extern "C"
 {
 	// Engine
-	AS_API asIScriptEngine * asCreateScriptEngine(asDWORD version);
-	AS_API const char * asGetLibraryVersion();
-	AS_API const char * asGetLibraryOptions();
+	AS_API asIScriptEngine *asCreateScriptEngine(asDWORD version);
+	AS_API const char      *asGetLibraryVersion();
+	AS_API const char      *asGetLibraryOptions();
 
 	// Context
-	AS_API asIScriptContext * asGetActiveContext();
+	AS_API asIScriptContext *asGetActiveContext();
 
 	// Thread support
-	AS_API void asPrepareMultithread();
-	AS_API void asUnprepareMultithread();
-	AS_API void asAcquireExclusiveLock();
-	AS_API void asReleaseExclusiveLock();
-	AS_API void asAcquireSharedLock();
-	AS_API void asReleaseSharedLock();
-	AS_API int  asThreadCleanup();
+	AS_API int               asPrepareMultithread(asIThreadManager *externalMgr = 0);
+	AS_API void              asUnprepareMultithread();
+	AS_API asIThreadManager *asGetThreadManager();
+	AS_API void              asAcquireExclusiveLock();
+	AS_API void              asReleaseExclusiveLock();
+	AS_API void              asAcquireSharedLock();
+	AS_API void              asReleaseSharedLock();
+	AS_API int               asAtomicInc(int &value);
+	AS_API int               asAtomicDec(int &value);
+	AS_API int               asThreadCleanup();
 
 	// Memory management
 	AS_API int asSetGlobalMemoryFunctions(asALLOCFUNC_t allocFunc, asFREEFUNC_t freeFunc);
@@ -520,7 +554,7 @@ public:
 	virtual asIJITCompiler *GetJITCompiler() const = 0;
 
 	// Global functions
-	virtual int                RegisterGlobalFunction(const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv) = 0;
+	virtual int                RegisterGlobalFunction(const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall = 0) = 0;
 	virtual asUINT             GetGlobalFunctionCount() const = 0;
 #ifdef AS_DEPRECATED
 	// Deprecated since 2.24.0 - 2012-05-20
@@ -574,11 +608,12 @@ public:
 	virtual const char *GetTypedefByIndex(asUINT index, int *typeId, const char **nameSpace = 0, const char **configGroup = 0, asDWORD *accessMask = 0) const = 0;
 
 	// Configuration groups
-	virtual int     BeginConfigGroup(const char *groupName) = 0;
-	virtual int     EndConfigGroup() = 0;
-	virtual int     RemoveConfigGroup(const char *groupName) = 0;
-	virtual asDWORD SetDefaultAccessMask(asDWORD defaultMask) = 0;
-	virtual int     SetDefaultNamespace(const char *nameSpace) = 0;
+	virtual int         BeginConfigGroup(const char *groupName) = 0;
+	virtual int         EndConfigGroup() = 0;
+	virtual int         RemoveConfigGroup(const char *groupName) = 0;
+	virtual asDWORD     SetDefaultAccessMask(asDWORD defaultMask) = 0;
+	virtual int         SetDefaultNamespace(const char *nameSpace) = 0;
+	virtual const char *GetDefaultNamespace() const = 0;
 
 	// Script modules
 	virtual asIScriptModule *GetModule(const char *module, asEGMFlags flag = asGM_ONLY_IF_EXISTS) = 0;
@@ -631,6 +666,12 @@ protected:
 	virtual ~asIScriptEngine() {}
 };
 
+class asIThreadManager
+{
+protected:
+	virtual ~asIThreadManager() {}
+};
+
 class asIScriptModule
 {
 public:
@@ -639,12 +680,13 @@ public:
 	virtual const char      *GetName() const = 0;
 
 	// Compilation
-	virtual int     AddScriptSection(const char *name, const char *code, size_t codeLength = 0, int lineOffset = 0) = 0;
-	virtual int     Build() = 0;
-	virtual int     CompileFunction(const char *sectionName, const char *code, int lineOffset, asDWORD compileFlags, asIScriptFunction **outFunc) = 0;
-	virtual int     CompileGlobalVar(const char *sectionName, const char *code, int lineOffset) = 0;
-	virtual asDWORD SetAccessMask(asDWORD accessMask) = 0;
-	virtual int     SetDefaultNamespace(const char *nameSpace) = 0;
+	virtual int         AddScriptSection(const char *name, const char *code, size_t codeLength = 0, int lineOffset = 0) = 0;
+	virtual int         Build() = 0;
+	virtual int         CompileFunction(const char *sectionName, const char *code, int lineOffset, asDWORD compileFlags, asIScriptFunction **outFunc) = 0;
+	virtual int         CompileGlobalVar(const char *sectionName, const char *code, int lineOffset) = 0;
+	virtual asDWORD     SetAccessMask(asDWORD accessMask) = 0;
+	virtual int         SetDefaultNamespace(const char *nameSpace) = 0;
+	virtual const char *GetDefaultNamespace() const = 0;
 
 	// Functions
 	virtual asUINT             GetFunctionCount() const = 0;
@@ -700,8 +742,8 @@ public:
 	virtual int         UnbindAllImportedFunctions() = 0;
 
 	// Bytecode saving and loading
-	virtual int SaveByteCode(asIBinaryStream *out) const = 0;
-	virtual int LoadByteCode(asIBinaryStream *in) = 0;
+	virtual int SaveByteCode(asIBinaryStream *out, bool stripDebugInfo = false) const = 0;
+	virtual int LoadByteCode(asIBinaryStream *in, bool *wasDebugInfoStripped = 0) = 0;
 
 	// User data
 	virtual void *SetUserData(void *data) = 0;
@@ -734,7 +776,7 @@ public:
 	virtual asEContextState GetState() const = 0;
 	virtual int             PushState() = 0;
 	virtual int             PopState() = 0;
-	virtual bool            IsNested() const = 0;
+	virtual bool            IsNested(asUINT *nestCount = 0) const = 0;
 
 	// Object pointer for calling class methods
 	virtual int   SetObject(void *obj) = 0;
@@ -881,8 +923,9 @@ public:
 	virtual asDWORD          GetFlags() const = 0;
 	virtual asUINT           GetSize() const = 0;
 	virtual int              GetTypeId() const = 0;
-	virtual int              GetSubTypeId() const = 0;
-	virtual asIObjectType   *GetSubType() const = 0;
+	virtual int              GetSubTypeId(asUINT subTypeIndex = 0) const = 0;
+	virtual asIObjectType   *GetSubType(asUINT subTypeIndex = 0) const = 0;
+	virtual asUINT           GetSubTypeCount() const = 0;
 
 	// Interfaces
 	virtual asUINT           GetInterfaceCount() const = 0;
@@ -937,12 +980,15 @@ public:
 	virtual int              AddRef() const = 0;
 	virtual int              Release() const = 0;
 
+	// Miscellaneous
 	virtual int              GetId() const = 0;
 	virtual asEFuncType      GetFuncType() const = 0;
 	virtual const char      *GetModuleName() const = 0;
 	virtual const char      *GetScriptSectionName() const = 0;
 	virtual const char      *GetConfigGroup() const = 0;
 	virtual asDWORD          GetAccessMask() const = 0;
+
+	// Function signature
 	virtual asIObjectType   *GetObjectType() const = 0;
 	virtual const char      *GetObjectName() const = 0;
 	virtual const char      *GetName() const = 0;
@@ -953,10 +999,13 @@ public:
 	virtual bool             IsFinal() const = 0;
 	virtual bool             IsOverride() const = 0;
 	virtual bool             IsShared() const = 0;
-
 	virtual asUINT           GetParamCount() const = 0;
 	virtual int              GetParamTypeId(asUINT index, asDWORD *flags = 0) const = 0;
 	virtual int              GetReturnTypeId() const = 0;
+
+	// Type id for function pointers 
+	virtual int              GetTypeId() const = 0;
+	virtual bool             IsCompatibleWithTypeId(int typeId) const = 0;
 
 	// Debug information
 	virtual asUINT           GetVarCount() const = 0;
@@ -988,37 +1037,23 @@ public:
 //-----------------------------------------------------------------
 // Function pointers
 
-// Use our own memset() and memcpy() implementations for better portability
-inline void asMemClear(void *_p, size_t size)
-{
-	char *p = (char *)_p;
-	const char *e = p + size;
-	for( ; p < e; p++ )
-		*p = 0;
-}
-
-inline void asMemCopy(void *_d, const void *_s, size_t size)
-{
-	char *d = (char *)_d;
-	const char *s = (const char *)_s;
-	const char *e = s + size;
-	for( ; s < e; d++, s++ )
-		*d = *s;
-}
-
 // Template function to capture all global functions,
 // except the ones using the generic calling convention
 template <class T>
 inline asSFuncPtr asFunctionPtr(T func)
 {
-	asSFuncPtr p;
-	asMemClear(&p, sizeof(p));
-
-	// Casting to PWORD to support constant 0 without compiler warnings
-	p.ptr.f.func = (asFUNCTION_t)(asPWORD)func;
-
 	// Mark this as a global function
-	p.flag = 2;
+	asSFuncPtr p(2);
+
+#ifdef AS_64BIT_PTR
+	// The size_t cast is to avoid a compiler warning with asFUNCTION(0) 
+	// on 64bit, as 0 is interpreted as a 32bit int value
+	p.ptr.f.func = reinterpret_cast<asFUNCTION_t>(size_t(func));
+#else
+	// MSVC6 doesn't like the size_t cast above so I
+	// solved this with a separate code for 32bit.
+	p.ptr.f.func = reinterpret_cast<asFUNCTION_t>(func);
+#endif
 
 	return p;
 }
@@ -1027,13 +1062,9 @@ inline asSFuncPtr asFunctionPtr(T func)
 template<>
 inline asSFuncPtr asFunctionPtr<asGENFUNC_t>(asGENFUNC_t func)
 {
-	asSFuncPtr p;
-	asMemClear(&p, sizeof(p));
-	p.ptr.f.func = (asFUNCTION_t)func;
-
 	// Mark this as a generic function
-	p.flag = 1;
-
+	asSFuncPtr p(1);
+	p.ptr.f.func = reinterpret_cast<asFUNCTION_t>(func);
 	return p;
 }
 
@@ -1058,7 +1089,7 @@ struct asSMethodPtr
 
 		int ERROR_UnsupportedMethodPtr[N-100];
 
-		asSFuncPtr p;
+		asSFuncPtr p(0);
 		return p;
 	}
 };
@@ -1070,14 +1101,9 @@ struct asSMethodPtr<SINGLE_PTR_SIZE>
 	template<class M>
 	static asSFuncPtr Convert(M Mthd)
 	{
-		asSFuncPtr p;
-		asMemClear(&p, sizeof(p));
-
-		asMemCopy(&p, &Mthd, SINGLE_PTR_SIZE);
-
 		// Mark this as a class method
-		p.flag = 3;
-
+		asSFuncPtr p(3);
+		p.CopyMethodPtr(&Mthd, SINGLE_PTR_SIZE);
 		return p;
 	}
 };
@@ -1091,14 +1117,9 @@ struct asSMethodPtr<SINGLE_PTR_SIZE+1*sizeof(int)>
 	template <class M>
 	static asSFuncPtr Convert(M Mthd)
 	{
-		asSFuncPtr p;
-		asMemClear(&p, sizeof(p));
-
-		asMemCopy(&p, &Mthd, SINGLE_PTR_SIZE+sizeof(int));
-
 		// Mark this as a class method
-		p.flag = 3;
-
+		asSFuncPtr p(3);
+		p.CopyMethodPtr(&Mthd, SINGLE_PTR_SIZE+sizeof(int));
 		return p;
 	}
 };
@@ -1112,19 +1133,14 @@ struct asSMethodPtr<SINGLE_PTR_SIZE+2*sizeof(int)>
 		// On 32bit platforms with is where a class with virtual inheritance falls.
 		// On 64bit platforms we can also fall here if 8byte data alignments is used.
 
-		asSFuncPtr p;
-		asMemClear(&p, sizeof(p));
-
-		asMemCopy(&p, &Mthd, SINGLE_PTR_SIZE+2*sizeof(int));
-
 		// Mark this as a class method
-		p.flag = 3;
+		asSFuncPtr p(3);
+		p.CopyMethodPtr(&Mthd, SINGLE_PTR_SIZE+2*sizeof(int));
 
 		// Microsoft has a terrible optimization on class methods with virtual inheritance.
 		// They are hardcoding an important offset, which is not coming in the method pointer.
-#ifdef _MSC_VER
-		if( sizeof(void*) == 4 )
-		{
+
+#if defined(_MSC_VER) && !defined(AS_64BIT_PTR)
 			// Method pointers for virtual inheritance is not supported,
 			// as it requires the location of the vbase table, which is 
 			// only available to the C++ compiler, but not in the method
@@ -1142,8 +1158,7 @@ struct asSMethodPtr<SINGLE_PTR_SIZE+2*sizeof(int)>
 
 			// Copy the virtual table index to the 4th dword so that AngelScript
 			// can properly detect and deny the use of methods with virtual inheritance.
-			*(((asDWORD*)&p)+3) = *(((asDWORD*)&p)+2);
-		}
+			*(reinterpret_cast<asDWORD*>(&p)+3) = *(reinterpret_cast<asDWORD*>(&p)+2);
 #endif
 
 		return p;
@@ -1156,14 +1171,9 @@ struct asSMethodPtr<SINGLE_PTR_SIZE+3*sizeof(int)>
 	template <class M>
 	static asSFuncPtr Convert(M Mthd)
 	{
-		asSFuncPtr p;
-		asMemClear(&p, sizeof(p));
-
-		asMemCopy(&p, &Mthd, SINGLE_PTR_SIZE+3*sizeof(int));
-
 		// Mark this as a class method
-		p.flag = 3;
-
+		asSFuncPtr p(3);
+		p.CopyMethodPtr(&Mthd, SINGLE_PTR_SIZE+3*sizeof(int));
 		return p;
 	}
 };
@@ -1177,14 +1187,9 @@ struct asSMethodPtr<SINGLE_PTR_SIZE+4*sizeof(int)>
 		// On 64bit platforms with 8byte data alignment
 		// the unknown class method pointers will come here.
 
-		asSFuncPtr p;
-		asMemClear(&p, sizeof(p));
-
-		asMemCopy(&p, &Mthd, SINGLE_PTR_SIZE+4*sizeof(int));
-
 		// Mark this as a class method
-		p.flag = 3;
-
+		asSFuncPtr p(3);
+		p.CopyMethodPtr(&Mthd, SINGLE_PTR_SIZE+4*sizeof(int));
 		return p;
 	}
 };
@@ -1214,9 +1219,9 @@ class asIJITCompiler
 {
 public:
 	virtual int  CompileFunction(asIScriptFunction *function, asJITFunction *output) = 0;
-    virtual void ReleaseJITFunction(asJITFunction func) = 0;
+	virtual void ReleaseJITFunction(asJITFunction func) = 0;
 public:
-    virtual ~asIJITCompiler() {}
+	virtual ~asIJITCompiler() {}
 };
 
 // Byte code instructions
@@ -1500,7 +1505,7 @@ struct asSBCInfo
 #endif
 
 #define asBCINFO(b,t,s) {asBC_##b, asBCTYPE_##t, s, #b}
-#define asBCINFO_DUMMY(b) {asEBCInstr(b), asBCTYPE_INFO, 0, "BC_" #b}
+#define asBCINFO_DUMMY(b) {asBC_MAXBYTECODE, asBCTYPE_INFO, 0, "BC_" #b}
 
 const asSBCInfo asBCInfo[256] =
 {
@@ -1578,7 +1583,7 @@ const asSBCInfo asBCInfo[256] =
 	asBCINFO(GETOBJREF,	W_ARG,			0),
 	asBCINFO(GETREF,	W_ARG,			0),
 	asBCINFO(PshNull,	NO_ARG,			AS_PTR_SIZE),
-	asBCINFO(ClrVPtr,	rW_ARG,			0),
+	asBCINFO(ClrVPtr,	wW_ARG,			0),
 	asBCINFO(OBJTYPE,	PTR_ARG,		AS_PTR_SIZE),
 	asBCINFO(TYPEID,	DW_ARG,			1),
 	asBCINFO(SetV4,		wW_DW_ARG,		0),
@@ -1757,11 +1762,11 @@ const asSBCInfo asBCInfo[256] =
 	asBCINFO_DUMMY(249),
 	asBCINFO_DUMMY(250),
 
-	asBCINFO(VarDecl,   W_ARG,          0),
-	asBCINFO(Block,     INFO,           0),
-	asBCINFO(ObjInfo,	rW_DW_ARG,		0),
-	asBCINFO(LINE,		INFO,			0),
-	asBCINFO(LABEL,		INFO,			0)
+	asBCINFO(VarDecl,		W_ARG,			0),
+	asBCINFO(Block,			INFO,			0),
+	asBCINFO(ObjInfo,		rW_DW_ARG,		0),
+	asBCINFO(LINE,			INFO,			0),
+	asBCINFO(LABEL,			INFO,			0)
 };
 
 // Macros to access bytecode instruction arguments

@@ -135,6 +135,7 @@
     <ClInclude Include="..\Source\AngelScript\as_scriptobject.h" />
     <ClInclude Include="..\Source\AngelScript\as_string.h" />
     <ClInclude Include="..\Source\AngelScript\as_string_util.h" />
+    <ClInclude Include="..\Source\AngelScript\as_symboltable.h" />
     <ClInclude Include="..\Source\AngelScript\as_texts.h" />
     <ClInclude Include="..\Source\AngelScript\as_thread.h" />
     <ClInclude Include="..\Source\AngelScript\as_tokendef.h" />
