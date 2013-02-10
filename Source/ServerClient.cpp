@@ -2024,7 +2024,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
             if( matches >= 5 )
             {
-                if( ( !cd.UIDEndTick || tick >= cd.UIDEndTick ) && !CrMngr.GetCritter( cd.ClientId, false ) )
+                if( !cd.UIDEndTick || tick >= cd.UIDEndTick )
                 {
                     for( int i = 0; i < 5; i++ )
                         cd.UID[ i ] = 0;
@@ -2048,8 +2048,8 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 {
                     // Set new uids on this account and start play timeout
                     ClientData* data_ = GetClientData( cl->Name );
-                    for( int i = 0; i < 5; i++ )
-                        data_->UID[ i ] = uid[ i ];
+                    for( int j = 0; j < 5; j++ )
+                        data_->UID[ j ] = uid[ j ];
                     data_->UIDEndTick = tick + GameOpt.AccountPlayTime * 1000;
                 }
                 else
