@@ -4030,10 +4030,10 @@ void FOClient::DlgKeyDown( bool is_dialog, uchar dik )
         break;
     case DIK_UP:
         DlgCollectAnswers( false );
-        break;
+        return;
     case DIK_DOWN:
         DlgCollectAnswers( true );
-        break;
+        return;
     default:
         return;
     }
