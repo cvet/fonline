@@ -501,6 +501,8 @@ struct CraftItem
 struct BindClass
 {
     #ifdef BIND_SERVER
+    static void ProtoItem_GetScriptName() {}
+
     static void Synchronizer_Constructor( void* ) {}
     static void Synchronizer_Destructor( void* )  {}
 

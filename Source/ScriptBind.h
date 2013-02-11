@@ -140,6 +140,8 @@ BIND_ASSERT( engine->RegisterObjectProperty( "ProtoItem", "const uint Car_Entran
 BIND_ASSERT( engine->RegisterObjectProperty( "ProtoItem", "const uint Car_MovementType", OFFSETOF( ProtoItem, Car_MovementType ) ) );
 
 #ifdef BIND_SERVER
+BIND_ASSERT( engine->RegisterObjectMethod( "ProtoItem", "string@ GetScriptName() const", asFUNCTION( BIND_CLASS ProtoItem_GetScriptName ), asCALL_CDECL_OBJFIRST ) );
+
 /************************************************************************/
 /* Types                                                                */
 /************************************************************************/

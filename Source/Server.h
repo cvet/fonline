@@ -490,6 +490,8 @@ public:
         static int* DataRef_Index( CritterPtr& cr, uint index );
         static int  DataVal_Index( CritterPtr& cr, uint index );
 
+        static ScriptString* ProtoItem_GetScriptName( ProtoItem* proto );
+
         static void Synchronizer_Constructor( void* memory );
         static void Synchronizer_Destructor( void* memory );
 

@@ -588,6 +588,15 @@ int FOServer::SScriptFunc::DataVal_Index( CritterPtr& cr, uint index )
     return cr->GetParam( index );
 }
 
+ScriptString* FOServer::SScriptFunc::ProtoItem_GetScriptName( ProtoItem* proto )
+{
+    ItemMngr.GetProtoScript( proto->ProtoId );
+    if( !ItemMngr.IsInitProto( proto->ProtoId ) )
+        return ( NULL );
+
+    return new ScriptString( ItemMngr.GetProtoScript( proto->ProtoId ) );
+}
+
 void FOServer::SScriptFunc::Synchronizer_Constructor( void* memory )
 {
     new (memory) SyncObject();
