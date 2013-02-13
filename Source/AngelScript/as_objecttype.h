@@ -232,9 +232,9 @@ public:
 	asSTypeBehaviour beh;
 
 	// Used for template types
-	asCDataType    templateSubType;
-	bool           acceptValueSubType;
-	bool           acceptRefSubType;
+	asCArray<asCDataType> templateSubTypes;
+	bool                  acceptValueSubType;
+	bool                  acceptRefSubType;
 
 	asCScriptEngine  *engine;
 	asCModule        *module;

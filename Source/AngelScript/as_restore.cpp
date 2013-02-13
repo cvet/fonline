@@ -402,10 +402,11 @@ int asCReader::ReadInner()
 		ReadUsedObjectProps();
 
 	// Validate the template types
+	// TODO: template: Support multiple subtypes
 	for( i = 0; i < usedTypes.GetLength() && !error; i++ )
 	{
 		if( (usedTypes[i]->flags & asOBJ_TEMPLATE) && 
-			usedTypes[i]->templateSubType.IsValid() &&
+			usedTypes[i]->templateSubTypes[0].IsValid() &&
 			usedTypes[i]->beh.templateCallback )
 		{
 			bool dontGarbageCollect = false;
@@ -413,7 +414,7 @@ int asCReader::ReadInner()
 			if( !engine->CallGlobalFunctionRetBool(usedTypes[i], &dontGarbageCollect, callback->sysFuncIntf, callback) )
 			{
 				asCString str;
-				str.Format(TXT_INSTANCING_INVLD_TMPL_TYPE_s_s, usedTypes[i]->name.AddressOf(), usedTypes[i]->templateSubType.Format().AddressOf());
+				str.Format(TXT_INSTANCING_INVLD_TMPL_TYPE_s_s, usedTypes[i]->name.AddressOf(), usedTypes[i]->templateSubTypes[0].Format().AddressOf());
 				engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
 				error = true;
 			}
@@ -642,8 +643,6 @@ asCScriptFunction *asCReader::ReadFunction(bool &isNew, bool addToModule, bool a
 
 	ReadFunctionSignature(func);
 
-	func->id = engine->GetNextScriptFunctionId();
-
 	if( func->funcType == asFUNC_SCRIPT )
 	{
 		if( addToGC && !addToModule )
@@ -739,7 +738,10 @@ asCScriptFunction *asCReader::ReadFunction(bool &isNew, bool addToModule, bool a
 		module->scriptFunctions.PushLast(func);
 	}
 	if( addToEngine )
+	{
+		func->id = engine->GetNextScriptFunctionId();
 		engine->SetScriptFunction(func);
+	}
 	if( func->objectType )
 		func->ComputeSignatureId();
 
@@ -834,7 +836,7 @@ void asCReader::ReadObjectTypeDeclaration(asCObjectType *ot, int phase)
 		else if( ot->flags & asOBJ_TYPEDEF )
 		{
 			eTokenType t = (eTokenType)ReadEncodedUInt();
-			ot->templateSubType = asCDataType::CreatePrimitive(t, false);
+			ot->templateSubTypes.PushLast(asCDataType::CreatePrimitive(t, false));
 		}
 		else
 		{
@@ -1459,10 +1461,15 @@ asCObjectType* asCReader::ReadObjectType()
 			asCDataType dt;
 			ReadDataType(&dt);
 
-			if( tmpl->templateSubType.GetObjectType() == dt.GetObjectType() )
+			// TODO: template: Support multiple subtypes
+			if( tmpl->templateSubTypes[0].GetObjectType() == dt.GetObjectType() )
 				ot = tmpl;
 			else
-				ot = engine->GetTemplateInstanceType(tmpl, dt);
+			{
+				asCArray<asCDataType> subTypes;
+				subTypes.PushLast(dt);
+				ot = engine->GetTemplateInstanceType(tmpl, subTypes);
+			}
 			
 			if( ot == 0 )
 			{
@@ -1478,7 +1485,10 @@ asCObjectType* asCReader::ReadObjectType()
 			eTokenType tokenType = (eTokenType)ReadEncodedUInt();
 			asCDataType dt = asCDataType::CreatePrimitive(tokenType, false);
 
-			ot = engine->GetTemplateInstanceType(tmpl, dt);
+			// TODO: template: Support multiple subtypes
+			asCArray<asCDataType> subTypes;
+			subTypes.PushLast(dt);
+			ot = engine->GetTemplateInstanceType(tmpl, subTypes);
 			
 			if( ot == 0 )
 			{
@@ -3055,7 +3065,7 @@ void asCWriter::WriteObjectTypeDeclaration(asCObjectType *ot, int phase)
 		}
 		else if( ot->flags & asOBJ_TYPEDEF )
 		{
-			eTokenType t = ot->templateSubType.GetTokenType();
+			eTokenType t = ot->templateSubTypes[0].GetTokenType();
 			WriteEncodedInt64(t);
 		}
 		else
@@ -3295,23 +3305,24 @@ void asCWriter::WriteObjectType(asCObjectType* ot)
 	if( ot )
 	{
 		// Check for template instances/specializations
-		if( ot->templateSubType.GetTokenType() != ttUnrecognizedToken )
+		// TODO: template: Support multiple subtypes
+		if( ot->templateSubTypes.GetLength() )
 		{
 			ch = 'a';
 			WriteData(&ch, 1);
 			WriteString(&ot->name);
 
-			if( ot->templateSubType.IsObject() || ot->templateSubType.IsEnumType() )
+			if( ot->templateSubTypes[0].IsObject() || ot->templateSubTypes[0].IsEnumType() )
 			{
 				ch = 's';
 				WriteData(&ch, 1);
-				WriteDataType(&ot->templateSubType);
+				WriteDataType(&ot->templateSubTypes[0]);
 			}
 			else
 			{
 				ch = 't';
 				WriteData(&ch, 1);
-				eTokenType t = ot->templateSubType.GetTokenType();
+				eTokenType t = ot->templateSubTypes[0].GetTokenType();
 				WriteEncodedInt64(t);
 			}
 		}

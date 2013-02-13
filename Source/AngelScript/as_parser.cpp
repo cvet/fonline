@@ -195,7 +195,21 @@ int asCParser::ParseTemplateDecl(asCScriptCode *script)
 	scriptNode->AddChildLast(ParseIdentifier());
 	if( isSyntaxError ) return -1;
 
+	// There can be multiple sub types
 	GetToken(&t);
+
+	// Parse template types by list separator
+	while(t.type == ttListSeparator)
+	{
+		GetToken(&t);
+		if( t.type != ttClass )
+			RewindTo(&t);
+		scriptNode->AddChildLast(ParseIdentifier());
+
+		if( isSyntaxError ) return -1;
+		GetToken(&t);
+	}
+
 	if( t.type != ttGreaterThan )
 	{
 		Error(ExpectedToken(asCTokenizer::GetDefinition(ttGreaterThan)), &t);
@@ -378,9 +392,19 @@ asCScriptNode *asCParser::ParseType(bool allowConst, bool allowVariableType)
 		node->AddChildLast(ParseType(true, false));
 		if( isSyntaxError ) return node;
 
+		GetToken(&t);
+
+		// Parse template types by list separator
+		while(t.type == ttListSeparator)
+		{
+			node->AddChildLast(ParseType(true, false));
+
+			if( isSyntaxError ) return node;
+			GetToken(&t);
+		}
+
 		// Accept >> and >>> tokens too. But then force the tokenizer to move 
 		// only 1 character ahead (thus splitting the token in two).
-		GetToken(&t);
 		if( script->code[t.pos] != '>' )
 		{
 			Error(ExpectedToken(asCTokenizer::GetDefinition(ttGreaterThan)), &t);
@@ -708,6 +732,12 @@ asCScriptNode *asCParser::SuperficiallyParseExpression()
 			Error(str, &t);
 			return node;
 		}
+		else if( t.type == ttNonTerminatedStringConstant )
+		{
+			RewindTo(&t);
+			Error(TXT_NONTERMINATED_STRING, &t);
+			return node;
+		}
 		else if( t.type == ttEnd )
 		{
 			// Wrong syntax
@@ -919,45 +949,52 @@ bool asCParser::CheckTemplateType(sToken &t)
 		if( t.type != ttLessThan )
 			return false;
 
-		// There might optionally be a 'const'
-		GetToken(&t);
-		if( t.type == ttConst )
-			GetToken(&t);
-
-		// The type may be initiated with the scope operator
-		if( t.type == ttScope )
-			GetToken(&t);
-
-		// There may be multiple levels of scope operators
-		sToken t2;
-		GetToken(&t2);
-		while( t.type == ttIdentifier && t2.type == ttScope )
+		for(;;)
 		{
+			// There might optionally be a 'const'
 			GetToken(&t);
+			if( t.type == ttConst )
+				GetToken(&t);
+
+			// The type may be initiated with the scope operator
+			if( t.type == ttScope )
+				GetToken(&t);
+
+			// There may be multiple levels of scope operators
+			sToken t2;
 			GetToken(&t2);
-		}
-		RewindTo(&t2);
-
-		// Now there must be a data type
-		if( !IsDataType(t) )
-			return false;
-
-		if( !CheckTemplateType(t) )
-			return false;
-
-		GetToken(&t);
-
-		// Is it a handle or array?
-		while( t.type == ttHandle || t.type == ttOpenBracket )
-		{
-			if( t.type == ttOpenBracket )
+			while( t.type == ttIdentifier && t2.type == ttScope )
 			{
 				GetToken(&t);
-				if( t.type != ttCloseBracket )
-					return false;
+				GetToken(&t2);
 			}
+			RewindTo(&t2);
+
+			// Now there must be a data type
+			if( !IsDataType(t) )
+				return false;
+
+			if( !CheckTemplateType(t) )
+				return false;
 
 			GetToken(&t);
+
+			// Is it a handle or array?
+			while( t.type == ttHandle || t.type == ttOpenBracket )
+			{
+				if( t.type == ttOpenBracket )
+				{
+					GetToken(&t);
+					if( t.type != ttCloseBracket )
+						return false;
+				}
+
+				GetToken(&t);
+			}
+
+			// Was this the last template subtype?
+			if( t.type != ttListSeparator )
+				break;
 		}
 
 		// Accept >> and >>> tokens too. But then force the tokenizer to move 
@@ -2593,14 +2630,13 @@ asCScriptNode *asCParser::ParseInterface()
 	while( t.type != ttEndStatementBlock && t.type != ttEnd )
 	{
 		if( IsVirtualPropertyDecl() )
-		{
 			node->AddChildLast(ParseVirtualPropertyDecl(true, true));
-		}
+		else if( t.type == ttEndStatement )
+			// Skip empty declarations
+			GetToken(&t);
 		else
-		{
 			// Parse the method signature
 			node->AddChildLast(ParseInterfaceMethod());
-		}
 
 		if( isSyntaxError ) return node;
 		
@@ -2726,7 +2762,10 @@ asCScriptNode *asCParser::ParseClass()
 			node->AddChildLast(ParseVirtualPropertyDecl(true, false));
 		else if( IsVarDecl() )
 			node->AddChildLast(ParseDeclaration(true));
-		else
+		else if( t.type == ttEndStatement )
+			// Skip empty declarations
+			GetToken(&t);
+		else 
 		{
 			Error(TXT_EXPECTED_METHOD_OR_PROPERTY, &t);
 			return node;
@@ -2820,6 +2859,11 @@ asCScriptNode *asCParser::SuperficiallyParseVarInit()
 					indent++;
 				else if( t.type == ttEndStatementBlock )
 					indent--;
+				else if( t.type == ttNonTerminatedStringConstant )
+				{
+					Error(TXT_NONTERMINATED_STRING, &t);
+					break;
+				}
 				else if( t.type == ttEnd )
 				{
 					Error(TXT_UNEXPECTED_END_OF_FILE, &t);
@@ -2840,6 +2884,11 @@ asCScriptNode *asCParser::SuperficiallyParseVarInit()
 					indent++;
 				else if( t.type == ttCloseParanthesis )
 					indent--;
+				else if( t.type == ttNonTerminatedStringConstant )
+				{
+					Error(TXT_NONTERMINATED_STRING, &t);
+					break;
+				}
 				else if( t.type == ttEnd )
 				{
 					Error(TXT_UNEXPECTED_END_OF_FILE, &t);
@@ -2866,6 +2915,11 @@ asCScriptNode *asCParser::SuperficiallyParseVarInit()
 				indent++;
 			else if( t.type == ttCloseParanthesis )
 				indent--;
+			else if( t.type == ttNonTerminatedStringConstant )
+			{
+				Error(TXT_NONTERMINATED_STRING, &t);
+				break;
+			}
 			else if( t.type == ttEnd )
 			{
 				Error(TXT_UNEXPECTED_END_OF_FILE, &t);
@@ -2910,6 +2964,11 @@ asCScriptNode *asCParser::SuperficiallyParseStatementBlock()
 			level--;
 		else if( t1.type == ttStartStatementBlock )
 			level++;
+		else if( t1.type == ttNonTerminatedStringConstant )
+		{
+			Error(TXT_NONTERMINATED_STRING, &t1);
+			break;
+		}
 		else if( t1.type == ttEnd )
 		{
 			Error(TXT_UNEXPECTED_END_OF_FILE, &t1);

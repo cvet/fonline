@@ -248,9 +248,12 @@ void asCObjectType::SetGCFlag()
 
 asCObjectType::~asCObjectType()
 {
-	// Release the object type held by the templateSubType
-	if( templateSubType.GetObjectType() )
-		templateSubType.GetObjectType()->Release();
+	// Release the object types held by the templateSubTypes
+	for( asUINT subtypeIndex = 0; subtypeIndex < templateSubTypes.GetLength(); subtypeIndex++ )
+	{
+		if( templateSubTypes[subtypeIndex].GetObjectType() )
+			templateSubTypes[subtypeIndex].GetObjectType()->Release();
+	}
 
 	if( derivedFrom )
 		derivedFrom->Release();
@@ -356,15 +359,14 @@ int asCObjectType::GetTypeId() const
 }
 
 // interface
-int asCObjectType::GetSubTypeId(asUINT subTypeIndex) const
+int asCObjectType::GetSubTypeId(asUINT subtypeIndex) const
 {
-	// TODO: template: This method should allow indexing multiple template subtypes
-	if( subTypeIndex != 0 )
-		return asINVALID_ARG;
-
 	if( flags & asOBJ_TEMPLATE )
 	{
-		return engine->GetTypeIdFromDataType(templateSubType);
+		if( subtypeIndex >= templateSubTypes.GetLength() )
+			return asINVALID_ARG;
+
+		return engine->GetTypeIdFromDataType(templateSubTypes[subtypeIndex]);
 	}
 
 	// Only template types have sub types
@@ -372,15 +374,14 @@ int asCObjectType::GetSubTypeId(asUINT subTypeIndex) const
 }
 
 // interface
-asIObjectType *asCObjectType::GetSubType(asUINT subTypeIndex) const
+asIObjectType *asCObjectType::GetSubType(asUINT subtypeIndex) const
 {
-	// TODO: template: This method should allow indexing multiple template subtypes
-	if( subTypeIndex != 0 )
-		return 0;
-
 	if( flags & asOBJ_TEMPLATE )
 	{
-		return templateSubType.GetObjectType();
+		if( subtypeIndex >= templateSubTypes.GetLength() )
+			return 0;
+
+		return templateSubTypes[subtypeIndex].GetObjectType();
 	}
 
 	return 0;
@@ -388,12 +389,12 @@ asIObjectType *asCObjectType::GetSubType(asUINT subTypeIndex) const
 
 asUINT asCObjectType::GetSubTypeCount() const
 {
-	return 1;
+	return asUINT(templateSubTypes.GetLength());
 }
 
 asUINT asCObjectType::GetInterfaceCount() const
 {
-	return (asUINT)interfaces.GetLength();
+	return asUINT(interfaces.GetLength());
 }
 
 asIObjectType *asCObjectType::GetInterface(asUINT index) const
@@ -1028,8 +1029,9 @@ void asCObjectType::EnumReferences(asIScriptEngine *)
 			engine->GCEnumCallback(type);
 	}
 
-	if( templateSubType.GetObjectType() )
-		engine->GCEnumCallback(templateSubType.GetObjectType());
+	for( asUINT t = 0; t < templateSubTypes.GetLength(); t++ )
+		if( templateSubTypes[t].GetObjectType() )
+			engine->GCEnumCallback(templateSubTypes[t].GetObjectType());
 }
 
 END_AS_NAMESPACE
