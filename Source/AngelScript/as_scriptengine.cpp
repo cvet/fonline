@@ -1746,6 +1746,7 @@ int asCScriptEngine::RegisterBehaviourToObjectType(asCObjectType *objectType, as
 	// Check if the method restricts that use of the template to value types or reference types
 	if( objectType->flags & asOBJ_TEMPLATE )
 	{
+		// TODO: template: Support multiple subtypes
 		if( func.returnType.GetObjectType() == objectType->templateSubTypes[0].GetObjectType() )
 		{
 			if( func.returnType.IsObjectHandle() )
@@ -2436,6 +2437,7 @@ int asCScriptEngine::RegisterMethodToObjectType(asCObjectType *objectType, const
 	// Check if the method restricts that use of the template to value types or reference types
 	if( func->objectType->flags & asOBJ_TEMPLATE )
 	{
+		// TODO: template: Allow multiple template types
 		if( func->returnType.GetObjectType() == func->objectType->templateSubTypes[0].GetObjectType() )
 		{
 			if( func->returnType.IsObjectHandle() )
@@ -3027,30 +3029,26 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 {
 	asUINT n;
 
-	// TODO: template: Support multiple template subtypes
-	if( subTypes.GetLength() > 1 )
-	{
-		asASSERT( false );
-		return 0;
-	}
-
 	// Is there any template instance type or template specialization already with this subtype?
 	for( n = 0; n < templateTypes.GetLength(); n++ )
 	{
 		if( templateTypes[n] &&
 			templateTypes[n]->name == templateType->name &&
-			templateTypes[n]->templateSubTypes[0] == subTypes[0] )
+			templateTypes[n]->templateSubTypes == subTypes )
 			return templateTypes[n];
 	}
 
 	// No previous template instance exists
 
 	// Make sure this template supports the subtype
-	if( !templateType->acceptValueSubType && (subTypes[0].IsPrimitive() || (subTypes[0].GetObjectType()->flags & asOBJ_VALUE)) )
-		return 0;
+	for( n = 0; n < subTypes.GetLength(); n++ )
+	{
+		if( !templateType->acceptValueSubType && (subTypes[n].IsPrimitive() || (subTypes[n].GetObjectType()->flags & asOBJ_VALUE)) )
+			return 0;
 
-	if( !templateType->acceptRefSubType && (subTypes[0].IsObject() && (subTypes[0].GetObjectType()->flags & asOBJ_REF)) )
-		return 0;
+		if( !templateType->acceptRefSubType && (subTypes[n].IsObject() && (subTypes[n].GetObjectType()->flags & asOBJ_REF)) )
+			return 0;
+	}
 
 	// Create a new template instance type based on the templateType
 	asCObjectType *ot = asNEW(asCObjectType)(this);
@@ -3061,17 +3059,23 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 	}
 
 	ot->templateSubTypes = subTypes;
-	ot->flags     = templateType->flags;
-	ot->size      = templateType->size;
-	ot->name      = templateType->name;
+	ot->flags            = templateType->flags;
+	ot->size             = templateType->size;
+	ot->name             = templateType->name;
 
 	// The template instance type will inherit the same module as the subType
 	// This will allow the module to orphan the template instance types afterwards
-	if( subTypes[0].GetObjectType() )
+	for( n = 0; n < subTypes.GetLength(); n++ )
 	{
-		ot->module = subTypes[0].GetObjectType()->module;
-		if( ot->module )
-			ot->AddRef();
+		if( subTypes[n].GetObjectType() )
+		{
+			ot->module = subTypes[n].GetObjectType()->module;
+			if( ot->module )
+			{
+				ot->AddRef();
+				break;
+			}
+		}
 	}
 
 	// Before filling in the methods, call the template instance callback behaviour to validate the type
@@ -3136,39 +3140,37 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 		ot->beh.listFactory = func->id;
 	}
 
-	ot->beh.addref                 = templateType->beh.addref;
+	ot->beh.addref = templateType->beh.addref;
 	if( scriptFunctions[ot->beh.addref] ) scriptFunctions[ot->beh.addref]->AddRef();
-	ot->beh.release                = templateType->beh.release;
+	ot->beh.release = templateType->beh.release;
 	if( scriptFunctions[ot->beh.release] ) scriptFunctions[ot->beh.release]->AddRef();
-	ot->beh.copy                   = templateType->beh.copy;
+	ot->beh.copy = templateType->beh.copy;
 	if( scriptFunctions[ot->beh.copy] ) scriptFunctions[ot->beh.copy]->AddRef();
-	ot->beh.operators              = templateType->beh.operators;
+	ot->beh.operators = templateType->beh.operators;
 	for( n = 1; n < ot->beh.operators.GetLength(); n += 2 )
-	{
 		scriptFunctions[ot->beh.operators[n]]->AddRef();
-	}
-	ot->beh.gcGetRefCount          = templateType->beh.gcGetRefCount;
+	ot->beh.gcGetRefCount = templateType->beh.gcGetRefCount;
 	if( scriptFunctions[ot->beh.gcGetRefCount] ) scriptFunctions[ot->beh.gcGetRefCount]->AddRef();
-	ot->beh.gcSetFlag              = templateType->beh.gcSetFlag;
+	ot->beh.gcSetFlag = templateType->beh.gcSetFlag;
 	if( scriptFunctions[ot->beh.gcSetFlag] ) scriptFunctions[ot->beh.gcSetFlag]->AddRef();
-	ot->beh.gcGetFlag              = templateType->beh.gcGetFlag;
+	ot->beh.gcGetFlag = templateType->beh.gcGetFlag;
 	if( scriptFunctions[ot->beh.gcGetFlag] ) scriptFunctions[ot->beh.gcGetFlag]->AddRef();
-	ot->beh.gcEnumReferences       = templateType->beh.gcEnumReferences;
+	ot->beh.gcEnumReferences = templateType->beh.gcEnumReferences;
 	if( scriptFunctions[ot->beh.gcEnumReferences] ) scriptFunctions[ot->beh.gcEnumReferences]->AddRef();
 	ot->beh.gcReleaseAllReferences = templateType->beh.gcReleaseAllReferences;
 	if( scriptFunctions[ot->beh.gcReleaseAllReferences] ) scriptFunctions[ot->beh.gcReleaseAllReferences]->AddRef();
 
-	// As the new template type is instanciated, the engine should
+	// As the new template type is instanciated the engine should
 	// generate new functions to substitute the ones with the template subtype.
 	for( n = 1; n < ot->beh.operators.GetLength(); n += 2 )
 	{
 		int funcId = ot->beh.operators[n];
 		asCScriptFunction *func = scriptFunctions[funcId];
 
-		if( GenerateNewTemplateFunction(templateType, ot, subTypes, func, &func) )
+		if( GenerateNewTemplateFunction(templateType, ot, func, &func) )
 		{
 			// Release the old function, the new one already has its ref count set to 1
-			scriptFunctions[ot->beh.operators[n]]->Release();
+			scriptFunctions[funcId]->Release();
 			ot->beh.operators[n] = func->id;
 		}
 	}
@@ -3180,16 +3182,18 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 		int funcId = ot->methods[n];
 		asCScriptFunction *func = scriptFunctions[funcId];
 
-		if( GenerateNewTemplateFunction(templateType, ot, subTypes, func, &func) )
+		if( GenerateNewTemplateFunction(templateType, ot, func, &func) )
 		{
 			// Release the old function, the new one already has its ref count set to 1
-			scriptFunctions[ot->methods[n]]->Release();
+			scriptFunctions[funcId]->Release();
 			ot->methods[n] = func->id;
 		}
 	}
 
 	// Increase ref counter for sub type if it is an object type
-	if( ot->templateSubTypes[0].GetObjectType() ) ot->templateSubTypes[0].GetObjectType()->AddRef();
+	for( n = 0; n < ot->templateSubTypes.GetLength(); n++ )
+		if( ot->templateSubTypes[n].GetObjectType() ) 
+			ot->templateSubTypes[n].GetObjectType()->AddRef();
 
 	templateTypes.PushLast(ot);
 
@@ -3227,14 +3231,24 @@ asCScriptFunction *asCScriptEngine::GenerateTemplateFactoryStub(asCObjectType *t
 	func->inOutFlags.SetLength(factory->inOutFlags.GetLength()-1);
 	for( asUINT p = 1; p < factory->parameterTypes.GetLength(); p++ )
 	{
-		// TODO: template: Support multiple subtypes
-		if( factory->parameterTypes[p].GetObjectType() == templateType->templateSubTypes[0].GetObjectType() )
+		// TODO: clean up: This same condition is used twice in GenerateNewTemplateFunction too. It should be moved to a method so all can share the same code
+		if( factory->parameterTypes[p].GetObjectType() && (factory->parameterTypes[p].GetObjectType()->flags & asOBJ_TEMPLATE_SUBTYPE) )
 		{
-			func->parameterTypes[p-1] = ot->templateSubTypes[0];
-			if( factory->parameterTypes[p].IsObjectHandle() )
-				func->parameterTypes[p-1].MakeHandle(true);
-			func->parameterTypes[p-1].MakeReference(factory->parameterTypes[p].IsReference());
-			func->parameterTypes[p-1].MakeReadOnly(factory->parameterTypes[p].IsReference());
+			bool found = false;
+			for( asUINT n = 0; n < templateType->templateSubTypes.GetLength(); n++ )
+			{
+				if( factory->parameterTypes[p].GetObjectType() == templateType->templateSubTypes[n].GetObjectType() )
+				{
+					found = true;
+					func->parameterTypes[p-1] = ot->templateSubTypes[n];
+					if( factory->parameterTypes[p].IsObjectHandle() )
+						func->parameterTypes[p-1].MakeHandle(true);
+					func->parameterTypes[p-1].MakeReference(factory->parameterTypes[p].IsReference());
+					func->parameterTypes[p-1].MakeReadOnly(factory->parameterTypes[p].IsReference());
+					break;
+				}
+			}
+			asASSERT( found );
 		}
 		else if( factory->parameterTypes[p].GetObjectType() == templateType )
 		{
@@ -3247,9 +3261,7 @@ asCScriptFunction *asCScriptEngine::GenerateTemplateFactoryStub(asCObjectType *t
 			func->parameterTypes[p-1].MakeReadOnly(factory->parameterTypes[p].IsReadOnly());
 		}
 		else
-		{
 			func->parameterTypes[p-1] = factory->parameterTypes[p];
-		}
 		func->inOutFlags[p-1] = factory->inOutFlags[p];
 	}
 	func->objVariablesOnHeap = 0;
@@ -3294,18 +3306,17 @@ asCScriptFunction *asCScriptEngine::GenerateTemplateFactoryStub(asCObjectType *t
 	return func;
 }
 
-bool asCScriptEngine::GenerateNewTemplateFunction(asCObjectType *templateType, asCObjectType *ot, asCArray<asCDataType> &subTypes, asCScriptFunction *func, asCScriptFunction **newFunc)
+bool asCScriptEngine::GenerateNewTemplateFunction(asCObjectType *templateType, asCObjectType *ot, asCScriptFunction *func, asCScriptFunction **newFunc)
 {
 	bool needNewFunc = false;
-	// TODO: template: Support multiple subtypes
-	if( func->returnType.GetObjectType() == templateType->templateSubTypes[0].GetObjectType() ||
+	if( (func->returnType.GetObjectType() && (func->returnType.GetObjectType()->flags & asOBJ_TEMPLATE_SUBTYPE)) ||
 		func->returnType.GetObjectType() == templateType )
 		needNewFunc = true;
 	else
 	{
 		for( asUINT p = 0; p < func->parameterTypes.GetLength(); p++ )
 		{
-			if( func->parameterTypes[p].GetObjectType() == templateType->templateSubTypes[0].GetObjectType() ||
+			if( (func->parameterTypes[p].GetObjectType() && (func->parameterTypes[p].GetObjectType()->flags & asOBJ_TEMPLATE_SUBTYPE)) ||
 				func->parameterTypes[p].GetObjectType() == templateType )
 			{
 				needNewFunc = true;
@@ -3314,100 +3325,120 @@ bool asCScriptEngine::GenerateNewTemplateFunction(asCObjectType *templateType, a
 		}
 	}
 
-	if( needNewFunc )
+	if( !needNewFunc )
+		return false;
+
+	asCScriptFunction *func2 = asNEW(asCScriptFunction)(this, 0, func->funcType);
+	if( func2 == 0 )
 	{
-		asCScriptFunction *func2 = asNEW(asCScriptFunction)(this, 0, func->funcType);
-		if( func2 == 0 )
-		{
-			// Out of memory
-			return false;
-		}
-
-		func2->name     = func->name;
-		func2->id       = GetNextScriptFunctionId();
-
-		if( func->returnType.GetObjectType() == templateType->templateSubTypes[0].GetObjectType() )
-		{
-			func2->returnType = subTypes[0];
-			if( func->returnType.IsObjectHandle() && !subTypes[0].IsObjectHandle() )
-			{
-				// The return type is a handle to the subtype
-				func2->returnType.MakeHandle(true, true);
-				func2->returnType.MakeReference(func->returnType.IsReference());
-				func2->returnType.MakeReadOnly(func->returnType.IsReadOnly());
-			}
-			else
-			{
-				// The return type is the subtype directly
-				func2->returnType.MakeReference(func->returnType.IsReference());
-				func2->returnType.MakeReadOnly(subTypes[0].IsReadOnly() || func->returnType.IsReadOnly());
-			}
-		}
-		else if( func->returnType.GetObjectType() == templateType )
-		{
-			if( func2->returnType.IsObjectHandle() )
-				func2->returnType = asCDataType::CreateObjectHandle(ot, false);
-			else
-				func2->returnType = asCDataType::CreateObject(ot, false);
-
-			func2->returnType.MakeReference(func->returnType.IsReference());
-			func2->returnType.MakeReadOnly(func->returnType.IsReadOnly());
-		}
-		else
-			func2->returnType = func->returnType;
-
-		func2->parameterTypes.SetLength(func->parameterTypes.GetLength());
-		for( asUINT p = 0; p < func->parameterTypes.GetLength(); p++ )
-		{
-			if( func->parameterTypes[p].GetObjectType() == templateType->templateSubTypes[0].GetObjectType() )
-			{
-				func2->parameterTypes[p] = subTypes[0];
-				if( func->parameterTypes[p].IsObjectHandle() )
-				{
-					// The parameter is a handle to the subtype
-					func2->parameterTypes[p].MakeHandle(true);
-					func2->parameterTypes[p].MakeReference(func->parameterTypes[p].IsReference());
-					func2->parameterTypes[p].MakeReadOnly(func->parameterTypes[p].IsReadOnly());
-				}
-				else
-				{
-					// The parameter is the subtype directly
-					func2->parameterTypes[p].MakeReference(func->parameterTypes[p].IsReference());
-					func2->parameterTypes[p].MakeReadOnly(subTypes[0].IsReadOnly() || func->parameterTypes[p].IsReference());
-				}
-			}
-			else if( func->parameterTypes[p].GetObjectType() == templateType )
-			{
-				if( func->parameterTypes[p].IsObjectHandle() )
-					func2->parameterTypes[p] = asCDataType::CreateObjectHandle(ot, false);
-				else
-					func2->parameterTypes[p] = asCDataType::CreateObject(ot, false);
-
-				func2->parameterTypes[p].MakeReference(func->parameterTypes[p].IsReference());
-				func2->parameterTypes[p].MakeReadOnly(func->parameterTypes[p].IsReadOnly());
-			}
-			else
-				func2->parameterTypes[p] = func->parameterTypes[p];
-		}
-
-		// TODO: template: Must be careful when instanciating templates for garbage collected types
-		//                 If the template hasn't been registered with the behaviours, it shouldn't
-		//                 permit instanciation of garbage collected types that in turn may refer to
-		//                 this instance.
-
-		func2->inOutFlags = func->inOutFlags;
-		func2->isReadOnly = func->isReadOnly;
-		func2->objectType = ot;
-		func2->stackNeeded = func->stackNeeded;
-		func2->sysFuncIntf = asNEW(asSSystemFunctionInterface)(*func->sysFuncIntf);
-
-		SetScriptFunction(func2);
-
-		// Return the new function
-		*newFunc = func2;
+		// Out of memory
+		return false;
 	}
 
-	return needNewFunc;
+	func2->name     = func->name;
+	func2->id       = GetNextScriptFunctionId();
+
+	if( func->returnType.GetObjectType() && (func->returnType.GetObjectType()->flags & asOBJ_TEMPLATE_SUBTYPE) )
+	{
+		bool found = false;
+		for( asUINT n = 0; n < ot->templateSubTypes.GetLength(); n++ )
+		{
+			if( func->returnType.GetObjectType() == templateType->templateSubTypes[n].GetObjectType() )
+			{
+				found = true;
+				func2->returnType = ot->templateSubTypes[n];
+				if( func->returnType.IsObjectHandle() && !ot->templateSubTypes[n].IsObjectHandle() )
+				{
+					// The return type is a handle to the subtype
+					func2->returnType.MakeHandle(true, true);
+					func2->returnType.MakeReference(func->returnType.IsReference());
+					func2->returnType.MakeReadOnly(func->returnType.IsReadOnly());
+				}
+				else
+				{
+					// The return type is the subtype directly
+					func2->returnType.MakeReference(func->returnType.IsReference());
+					func2->returnType.MakeReadOnly(ot->templateSubTypes[n].IsReadOnly() || func->returnType.IsReadOnly());
+				}
+				break;
+			}
+		}
+		asASSERT( found );
+	}
+	else if( func->returnType.GetObjectType() == templateType )
+	{
+		if( func2->returnType.IsObjectHandle() )
+			func2->returnType = asCDataType::CreateObjectHandle(ot, false);
+		else
+			func2->returnType = asCDataType::CreateObject(ot, false);
+
+		func2->returnType.MakeReference(func->returnType.IsReference());
+		func2->returnType.MakeReadOnly(func->returnType.IsReadOnly());
+	}
+	else
+		func2->returnType = func->returnType;
+
+	func2->parameterTypes.SetLength(func->parameterTypes.GetLength());
+	for( asUINT p = 0; p < func->parameterTypes.GetLength(); p++ )
+	{
+		if( func->parameterTypes[p].GetObjectType() && (func->parameterTypes[p].GetObjectType()->flags & asOBJ_TEMPLATE_SUBTYPE) )
+		{
+			bool found = false;
+			for( asUINT n = 0; n < ot->templateSubTypes.GetLength(); n++ )
+			{
+				if( func->parameterTypes[p].GetObjectType() == templateType->templateSubTypes[n].GetObjectType() )
+				{
+					found = true;
+					func2->parameterTypes[p] = ot->templateSubTypes[n];
+					if( func->parameterTypes[p].IsObjectHandle() )
+					{
+						// The parameter is a handle to the subtype
+						func2->parameterTypes[p].MakeHandle(true);
+						func2->parameterTypes[p].MakeReference(func->parameterTypes[p].IsReference());
+						func2->parameterTypes[p].MakeReadOnly(func->parameterTypes[p].IsReadOnly());
+					}
+					else
+					{
+						// The parameter is the subtype directly
+						func2->parameterTypes[p].MakeReference(func->parameterTypes[p].IsReference());
+						func2->parameterTypes[p].MakeReadOnly(ot->templateSubTypes[n].IsReadOnly() || func->parameterTypes[p].IsReference());
+					}
+					break;
+				}
+			}
+			asASSERT( found );
+		}
+		else if( func->parameterTypes[p].GetObjectType() == templateType )
+		{
+			if( func->parameterTypes[p].IsObjectHandle() )
+				func2->parameterTypes[p] = asCDataType::CreateObjectHandle(ot, false);
+			else
+				func2->parameterTypes[p] = asCDataType::CreateObject(ot, false);
+
+			func2->parameterTypes[p].MakeReference(func->parameterTypes[p].IsReference());
+			func2->parameterTypes[p].MakeReadOnly(func->parameterTypes[p].IsReadOnly());
+		}
+		else
+			func2->parameterTypes[p] = func->parameterTypes[p];
+	}
+
+	// TODO: template: Must be careful when instanciating templates for garbage collected types
+	//                 If the template hasn't been registered with the behaviours, it shouldn't
+	//                 permit instanciation of garbage collected types that in turn may refer to
+	//                 this instance.
+
+	func2->inOutFlags = func->inOutFlags;
+	func2->isReadOnly = func->isReadOnly;
+	func2->objectType = ot;
+	func2->stackNeeded = func->stackNeeded;
+	func2->sysFuncIntf = asNEW(asSSystemFunctionInterface)(*func->sysFuncIntf);
+
+	SetScriptFunction(func2);
+
+	// Return the new function
+	*newFunc = func2;
+
+	return true;
 }
 
 void asCScriptEngine::CallObjectMethod(void *obj, int func)

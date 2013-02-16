@@ -2041,12 +2041,12 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 			asPWORD *arg = (asPWORD*)&bc[n+1];
 			*(asCObjectType**)arg = FindObjectType(*(int*)arg);
 
-			// If the object type is a script class then the constructor id must be translated
-			asCObjectType *ot = *(asCObjectType**)arg;
-			if( ot && (ot->flags & asOBJ_SCRIPT_OBJECT) )
+			// The constructor function id must be translated, unless it is zero
+			int *fid = (int*)&bc[n+1+AS_PTR_SIZE];
+			if( *fid != 0 )
 			{
-				int *fid = (int*)&bc[n+1+AS_PTR_SIZE];
-				asCScriptFunction *f = FindFunction(*fid);
+				// Subtract 1 from the id, as it was incremented during the writing
+				asCScriptFunction *f = FindFunction(*fid-1);
 				if( f )
 					*fid = f->id;
 				else
@@ -3620,9 +3620,12 @@ void asCWriter::WriteByteCode(asCScriptFunction *func)
 			asCObjectType *ot = *(asCObjectType**)(tmp+1);
 			*(asPWORD*)(tmp+1) = FindObjectTypeIdx(ot);
 
-			// Translate the constructor func id, if it is a script class
-			if( ot->flags & asOBJ_SCRIPT_OBJECT )
-				*(int*)&tmp[1+AS_PTR_SIZE] = FindFunctionIndex(engine->scriptFunctions[*(int*)&tmp[1+AS_PTR_SIZE]]);
+			// Translate the constructor func id, unless it is 0
+			if( *(int*)&tmp[1+AS_PTR_SIZE] != 0 )
+			{
+				// Increment 1 to the translated function id, as 0 will be reserved for no function
+				*(int*)&tmp[1+AS_PTR_SIZE] = 1+FindFunctionIndex(engine->scriptFunctions[*(int*)&tmp[1+AS_PTR_SIZE]]);
+			}
 		}
 		else if( c == asBC_FREE    || // wW_PTR_ARG
 			     c == asBC_REFCPY  || // PTR_ARG
