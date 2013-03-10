@@ -41,6 +41,21 @@ char ManualDumpAppendix[ 128 ] = { 0 };
 LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except );
 LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except );
 
+// Old version of the structure, used before Vista
+typedef struct _IMAGEHLP_MODULE64_V2
+{
+    DWORD    SizeOfStruct;           // set to sizeof(IMAGEHLP_MODULE64)
+    DWORD64  BaseOfImage;            // base load address of module
+    DWORD    ImageSize;              // virtual size of the loaded module
+    DWORD    TimeDateStamp;          // date/time stamp from pe header
+    DWORD    CheckSum;               // checksum from the pe header
+    DWORD    NumSyms;                // number of symbols in the symbol table
+    SYM_TYPE SymType;                // type of symbols loaded
+    CHAR     ModuleName[ 32 ];       // module name
+    CHAR     ImageName[ 256 ];       // image name
+    CHAR     LoadedImageName[ 256 ]; // symbol file name
+} IMAGEHLP_MODULE64_V2;
+
 void CatchExceptions( const char* app_name, unsigned int app_ver )
 {
     if( app_name )
@@ -139,7 +154,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         }
 
         // Collect current threads
-        HANDLE process = OpenProcess( PROCESS_ALL_ACCESS, FALSE, GetCurrentProcessId() );
+        HANDLE process = GetCurrentProcess();
         DWORD  threads_ids[ 1024 ] = { GetCurrentThreadId() };
         uint   threads_ids_count = 1;
         HANDLE snapshot = CreateToolhelp32Snapshot( TH32CS_SNAPTHREAD, 0 );
@@ -324,9 +339,11 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                     }
 
                     IMAGEHLP_MODULE64 module;
-                    memset( &module, 0, sizeof( module ) );
-                    module.SizeOfStruct = sizeof( module );
-                    if( SymGetModuleInfo64( process, stack.AddrPC.Offset, &module ) )
+                    memset( &module, 0, sizeof( IMAGEHLP_MODULE64 ) );
+                    module.SizeOfStruct = sizeof( IMAGEHLP_MODULE64 );
+                    if( SymGetModuleInfo64( process, stack.AddrPC.Offset, &module ) ||
+                        ( module.SizeOfStruct = sizeof( IMAGEHLP_MODULE64_V2 ),
+                          SymGetModuleInfo64( process, stack.AddrPC.Offset, &module ) ) )
                     {
                         switch( module.SymType )
                         {
