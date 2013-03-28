@@ -5273,7 +5273,7 @@ void FOServer::ProcessTimeEvents()
         return;
 
     uint wait_time = 0;
-    if( Script::PrepareContext( cur_event->BindId, _FUNC_, Str::FormatBuf( "Time event<%u>", cur_event->Num ) ) )
+    if( Script::PrepareContext( cur_event->BindId, _FUNC_, Str::FormatBuf( "Time event<%u>, name<%s>", cur_event->Num, cur_event->FuncName.c_str() ) ) )
     {
         ScriptArray* values = NULL;
         uint         size = (uint) cur_event->Values.size();

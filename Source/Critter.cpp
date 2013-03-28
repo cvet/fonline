@@ -1768,7 +1768,7 @@ bool Critter::PrepareScriptFunc( int num_scr_func )
         return false;
     if( FuncId[ num_scr_func ] <= 0 )
         return false;
-    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, GetInfo() );
+    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Critter<%s>, event<%u>", GetInfo(), num_scr_func ) );
 }
 
 void Critter::EventIdle()
