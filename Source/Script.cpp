@@ -2001,15 +2001,15 @@ bool Script::ReparseScriptName( const char* script_name, char* module_name, char
     return true;
 }
 
-string Script::GetBindFuncName( uint bind_id )
+string Script::GetBindFuncName( int bind_id )
 {
     #ifdef SCRIPT_MULTITHREADING
     SCOPE_LOCK( BindedFunctionsLocker );
     #endif
 
-    if( bind_id >= (int) BindedFunctions.size() )
+    if( bind_id <= 0 || bind_id >= (int) BindedFunctions.size() )
     {
-        WriteLogF( _FUNC_, " - Bind index<%u> is greater than bind buffer size<%u>.\n", bind_id, BindedFunctions.size() );
+        WriteLogF( _FUNC_, " - Wrong bind id<%d>, bind buffer size<%u>.\n", bind_id, BindedFunctions.size() );
         return "";
     }
 

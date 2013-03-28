@@ -102,7 +102,7 @@ namespace Script
     int    Bind( const char* script_name, const char* decl, bool is_temp, bool disable_log = false );
     int    RebindFunctions();
     bool   ReparseScriptName( const char* script_name, char* module_name, char* func_name, bool disable_log = false );
-    string GetBindFuncName( uint bind_id );
+    string GetBindFuncName( int bind_id );
 
     const StrVec& GetScriptFuncCache();
     void          ResizeCache( uint count );
