@@ -115,6 +115,7 @@
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
       <StripPrivateSymbols>$(OutDir)FOnlineServer.pdb</StripPrivateSymbols>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
