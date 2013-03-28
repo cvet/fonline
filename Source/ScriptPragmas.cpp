@@ -148,27 +148,18 @@ namespace Script
 class IgnorePragma
 {
 private:
-    vector< string > ignored;
+    vector< string > ignoredPragmas;
 
 public:
     bool IsIgnored( const string& text )
     {
-        if( text.length() > 0 )
-        {
-            for( uint i = 0, iLen = ignored.size(); i < iLen; i++ )
-            {
-                if( ignored[ i ] == text )
-                    return ( true );
-            }
-        }
-
-        return ( false );
+        return std::find( ignoredPragmas.begin(), ignoredPragmas.end(), text ) != ignoredPragmas.end();
     }
 
     void Call( const string& text )
     {
         if( text.length() > 0 )
-            ignored.push_back( text );
+            ignoredPragmas.push_back( text );
     }
 };
 
@@ -572,7 +563,8 @@ void ScriptPragmaCallback::CallPragma( const string& name, const Preprocessor::P
 
     if( ignorePragma && ignorePragma->IsIgnored( name ) )
         return;
-    else if( name == "ignore" && ignorePragma )
+
+    if( name == "ignore" && ignorePragma )
         ignorePragma->Call( instance.text );
     else if( name == "globalvar" && globalVarPragma )
         globalVarPragma->Call( instance.text );

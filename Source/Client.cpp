@@ -6742,7 +6742,7 @@ void FOClient::Net_OnRunClientScript()
     Bin >> p1;
     Bin >> p2;
     Bin >> p3len;
-    if( p3len && p3len < MAX_FOTEXT )
+    if( p3len && p3len )
     {
         Bin.Pop( str, p3len );
         str[ p3len ] = 0;

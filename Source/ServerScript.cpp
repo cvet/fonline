@@ -591,8 +591,7 @@ int FOServer::SScriptFunc::DataVal_Index( CritterPtr& cr, uint index )
 ScriptString* FOServer::SScriptFunc::ProtoItem_GetScriptName( ProtoItem* proto )
 {
     if( !ItemMngr.IsInitProto( proto->ProtoId ) )
-        return ( NULL );
-
+        return NULL;
     return new ScriptString( ItemMngr.GetProtoScript( proto->ProtoId ) );
 }
 
@@ -1313,13 +1312,13 @@ bool FOServer::SScriptFunc::Scen_CallSceneryFunction( MapObject* scenery, Critte
         return false;
     if( !Script::PrepareContext( scenery->RunTime.BindScriptId, _FUNC_, cr->GetInfo() ) )
         return false;
+
     Script::SetArgObject( cr );
     Script::SetArgObject( scenery );
     Script::SetArgUInt( item ? SKILL_PICK_ON_GROUND : skill );
     Script::SetArgObject( item );
     for( int i = 0, j = MIN( scenery->MScenery.ParamsCount, 5 ); i < j; i++ )
         Script::SetArgUInt( scenery->MScenery.Param[ i ] );
-
     return Script::RunPrepared() && Script::GetReturnedBool();
 }
 
@@ -5823,23 +5822,23 @@ uint FOServer::SScriptFunc::Global_GetAllItems( ushort pid, ScriptArray* items )
     return (uint) game_items_.size();
 }
 
-uint FOServer::SScriptFunc::Global_GetAllPlayers( ScriptArray* player )
+uint FOServer::SScriptFunc::Global_GetAllPlayers( ScriptArray* players )
 {
-    ClVec players;
-    CrVec players_;
-    CrMngr.GetCopyPlayers( players, true );
-    players_.reserve( players.size() );
-    for( auto it = players.begin(), end = players.end(); it != end; ++it )
+    ClVec players_;
+    CrVec players__;
+    CrMngr.GetCopyPlayers( players_, true );
+    players__.reserve( players_.size() );
+    for( auto it = players_.begin(), end = players_.end(); it != end; ++it )
     {
         Critter* player_ = *it;
         if( !player_->IsNotValid && player_->IsPlayer() )
-            players_.push_back( player_ );
+            players__.push_back( player_ );
     }
-    if( !players_.size() )
-        return ( 0 );
-    if( player )
-        Script::AppendVectorToArrayRef< Critter* >( players_, player );
-    return ( (uint) players_.size() );
+    if( !players__.size() )
+        return 0;
+    if( players )
+        Script::AppendVectorToArrayRef< Critter* >( players__, players );
+    return (uint) players__.size();
 }
 
 uint FOServer::SScriptFunc::Global_GetAllNpc( ushort pid, ScriptArray* npc )

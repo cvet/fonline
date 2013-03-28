@@ -200,9 +200,10 @@ bool SoundManager::ProcessSound( Sound* sound, uchar* output, uint outputSamples
         if( !sound->NextPlay )
         {
             // Set next playing time
-            sound->NextPlay = Timer::GameTick() + sound->RepeatTime;
+            sound->NextPlay = Timer::GameTick() + ( sound->RepeatTime > 1 ? sound->RepeatTime : 0 );
         }
-        else if( Timer::GameTick() >= sound->NextPlay )
+
+        if( Timer::GameTick() >= sound->NextPlay )
         {
             // Set buffer to beginning
             if( sound->Streamable && sound->StreamType == Sound::OGG )
@@ -215,6 +216,9 @@ bool SoundManager::ProcessSound( Sound* sound, uchar* output, uint outputSamples
 
             // Drop timer
             sound->NextPlay = 0;
+
+            // Process without silent
+            return ProcessSound( sound, output, outputSamples );
         }
 
         // Give silent
