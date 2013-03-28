@@ -2001,6 +2001,26 @@ bool Script::ReparseScriptName( const char* script_name, char* module_name, char
     return true;
 }
 
+string Script::GetBindFuncName( uint bind_id )
+{
+    #ifdef SCRIPT_MULTITHREADING
+    SCOPE_LOCK( BindedFunctionsLocker );
+    #endif
+
+    if( bind_id >= (int) BindedFunctions.size() )
+    {
+        WriteLogF( _FUNC_, " - Bind index<%u> is greater than bind buffer size<%u>.\n", bind_id, BindedFunctions.size() );
+        return "";
+    }
+
+    BindFunction& bf = BindedFunctions[ bind_id ];
+    string        result;
+    result += bf.ModuleName;
+    result += "@";
+    result += bf.FuncName;
+    return result;
+}
+
 /************************************************************************/
 /* Functions accord                                                     */
 /************************************************************************/
@@ -2065,43 +2085,7 @@ int Script::GetScriptFuncBindId( uint func_num )
 
 string Script::GetScriptFuncName( uint func_num )
 {
-    #ifdef SCRIPT_MULTITHREADING
-    SCOPE_LOCK( BindedFunctionsLocker );
-    #endif
-
-    func_num--;
-    if( func_num >= ScriptFuncBindId.size() )
-    {
-        WriteLogF( _FUNC_, " - Function index<%u> is greater than bind buffer size<%u>.\n", func_num, ScriptFuncBindId.size() );
-        return "error func index";
-    }
-
-    if( ScriptFuncBindId[ func_num ] >= (int) BindedFunctions.size() )
-    {
-        WriteLogF( _FUNC_, " - Bind index<%u> is greater than bind buffer size<%u>.\n", ScriptFuncBindId[ func_num ], BindedFunctions.size() );
-        return "error bind index";
-    }
-
-    BindFunction& bf = BindedFunctions[ ScriptFuncBindId[ func_num ] ];
-    string        result;
-    result += bf.ModuleName;
-    result += "@";
-    result += bf.FuncName;
-    return result;
-
-    /*BindFunction& bf=BindedFunctions[ScriptFuncBindId[func_num]];
-       string result;
-       char buf[32];
-       result+="(";
-       result+=_itoa(func_num+1,buf,10);
-       result+=") ";
-       result+=bf.ModuleName;
-       result+="@";
-       result+=bf.FuncName;
-       result+="(";
-       result+=bf.FuncDecl;
-       result+=")";
-       return result;*/
+    return GetBindFuncName( GetScriptFuncBindId( func_num ) );
 }
 
 /************************************************************************/
