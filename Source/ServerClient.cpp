@@ -4325,7 +4325,7 @@ void FOServer::Process_RunServerScript( Client* cl )
     CHECK_IN_BUFF_ERROR( cl );
 
     int bind_id = Script::Bind( module_name, func_name, "void %s(Critter&,int,int,int,string@,int[]@)", true );
-    if( bind_id > 0 && Script::PrepareContext( bind_id, _FUNC_, Str::FormatBuf( "Critter<%s>, func<%s>", cl->GetInfo(), func_name ) ) )
+    if( bind_id > 0 && Script::PrepareContext( bind_id, _FUNC_, Str::FormatBuf( "Critter<%s>, func<%s@%s>", cl->GetInfo(), module_name, func_name ) ) )
     {
         Script::SetArgObject( cl );
         Script::SetArgUInt( p0 );

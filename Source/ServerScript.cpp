@@ -223,7 +223,7 @@ bool FOServer::DialogScriptDemand( DemandResult& demand, Critter* master, Critte
 
 uint FOServer::DialogScriptResult( DemandResult& result, Critter* master, Critter* slave )
 {
-    if( !Script::PrepareContext( result.ParamId, _FUNC_, master->GetInfo() ) )
+    if( !Script::PrepareContext( result.ParamId, _FUNC_, Str::FormatBuf( "Critter<%s>, func<%s>", master->GetInfo(), Script::GetBindFuncName( result.ParamId ).c_str() ) ) )
         return 0;
     Script::SetArgObject( master );
     Script::SetArgObject( slave );
