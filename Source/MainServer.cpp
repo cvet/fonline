@@ -901,30 +901,6 @@ Thread   LoopThread;
 
 int main( int argc, char** argv )
 {
-    // Stuff
-    setlocale( LC_ALL, "Russian" );
-    SetCommandLine( argc, argv );
-    RestoreMainDirectory();
-    CatchExceptions( "FOnlineServer", SERVER_VERSION );
-    Timer::Init();
-    Thread::SetCurrentName( "Daemon" );
-    LogToFile( "./FOnlineServerDaemon.log" );
-
-    // Config
-    IniParser cfg;
-    cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
-
-    // Logging
-    LogWithTime( cfg.GetInt( "LoggingTime", 1 ) == 0 ? false : true );
-    LogWithThread( cfg.GetInt( "LoggingThread", 1 ) == 0 ? false : true );
-    if( strstr( CommandLine, "-logdebugoutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
-        LogToDebugOutput();
-
-    // Log version
-    WriteLog( "FOnline server daemon, version %04X-%02X.\n", SERVER_VERSION, FO_PROTOCOL_VERSION & 0xFF );
-    if( CommandLineArgCount > 1 )
-        WriteLog( "Command line<%s>.\n", CommandLine );
-
     // Start daemon
     pid_t parpid = fork();
     if( parpid < 0 )
@@ -949,6 +925,48 @@ int main( int argc, char** argv )
     close( STDIN_FILENO );
     close( STDOUT_FILENO );
     close( STDERR_FILENO );
+
+    // Stuff
+    setlocale( LC_ALL, "Russian" );
+    RestoreMainDirectory();
+
+    // Threading
+    Thread::SetCurrentName( "Daemon" );
+
+    // Disable SIGPIPE signal
+    # ifdef FO_LINUX
+    signal( SIGPIPE, SIG_IGN );
+    # endif
+
+    // Exceptions catcher
+    CatchExceptions( "FOnlineServer", SERVER_VERSION );
+
+    // Timer
+    Timer::Init();
+
+    // Config
+    IniParser cfg;
+    cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
+
+    // Memory debugging
+    MemoryDebugLevel = cfg.GetInt( "MemoryDebugLevel", 0 );
+    if( MemoryDebugLevel >= 3 )
+        Debugger::StartTraceMemory();
+
+    // Make command line
+    SetCommandLine( argc, argv );
+
+    // Logging
+    LogWithTime( cfg.GetInt( "LoggingTime", 1 ) == 0 ? false : true );
+    LogWithThread( cfg.GetInt( "LoggingThread", 1 ) == 0 ? false : true );
+    if( strstr( CommandLine, "-logdebugoutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
+        LogToDebugOutput();
+    LogToFile( "./FOnlineServerDaemon.log" );
+
+    // Log version
+    WriteLog( "FOnline server daemon, version %04X-%02X.\n", SERVER_VERSION, FO_PROTOCOL_VERSION & 0xFF );
+    if( CommandLineArgCount > 1 )
+        WriteLog( "Command line<%s>.\n", CommandLine );
 
     DaemonLoop(); // Never out from here
     return 0;
