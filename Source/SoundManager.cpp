@@ -18,8 +18,8 @@ SoundManager SndMngr;
 #include "Acm/acmstrm.h"
 
 // OGG
-#include "Ogg/codec.h"
-#include "Ogg/vorbisfile.h"
+#include "ogg/codec.h"
+#include "ogg/vorbisfile.h"
 #ifdef FO_WINDOWS
 # pragma comment ( lib, "libogg_static.lib" )
 # pragma comment ( lib, "libvorbis_static.lib" )

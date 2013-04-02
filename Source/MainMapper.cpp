@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "Mapper.h"
 #include "Exception.h"
 #include "Version.h"

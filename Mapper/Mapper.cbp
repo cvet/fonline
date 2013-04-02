@@ -225,61 +225,61 @@
 		<Unit filename="../Source/Timer.h" />
 		<Unit filename="../Source/Types.h" />
 		<Unit filename="../Source/Version.h" />
-		<Unit filename="../Source/Zlib/adler32.c">
+		<Unit filename="../Source/zlib/adler32.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../Source/Zlib/compress.c">
+		<Unit filename="../Source/zlib/compress.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../Source/Zlib/crc32.c">
+		<Unit filename="../Source/zlib/crc32.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../Source/Zlib/crc32.h" />
-		<Unit filename="../Source/Zlib/deflate.c">
+		<Unit filename="../Source/zlib/crc32.h" />
+		<Unit filename="../Source/zlib/deflate.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../Source/Zlib/deflate.h" />
-		<Unit filename="../Source/Zlib/infback.c">
+		<Unit filename="../Source/zlib/deflate.h" />
+		<Unit filename="../Source/zlib/infback.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../Source/Zlib/inffast.c">
+		<Unit filename="../Source/zlib/inffast.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../Source/Zlib/inffast.h" />
-		<Unit filename="../Source/Zlib/inffixed.h" />
-		<Unit filename="../Source/Zlib/inflate.c">
+		<Unit filename="../Source/zlib/inffast.h" />
+		<Unit filename="../Source/zlib/inffixed.h" />
+		<Unit filename="../Source/zlib/inflate.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../Source/Zlib/inflate.h" />
-		<Unit filename="../Source/Zlib/inftrees.c">
+		<Unit filename="../Source/zlib/inflate.h" />
+		<Unit filename="../Source/zlib/inftrees.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../Source/Zlib/inftrees.h" />
-		<Unit filename="../Source/Zlib/ioapi.c">
+		<Unit filename="../Source/zlib/inftrees.h" />
+		<Unit filename="../Source/zlib/ioapi.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../Source/Zlib/ioapi.h" />
-		<Unit filename="../Source/Zlib/trees.c">
+		<Unit filename="../Source/zlib/ioapi.h" />
+		<Unit filename="../Source/zlib/trees.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../Source/Zlib/trees.h" />
-		<Unit filename="../Source/Zlib/uncompr.c">
+		<Unit filename="../Source/zlib/trees.h" />
+		<Unit filename="../Source/zlib/uncompr.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../Source/Zlib/unzip.c">
+		<Unit filename="../Source/zlib/unzip.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../Source/Zlib/unzip.h" />
-		<Unit filename="../Source/Zlib/zconf.h" />
-		<Unit filename="../Source/Zlib/zlib.h" />
-		<Unit filename="../Source/Zlib/zutil.c">
+		<Unit filename="../Source/zlib/unzip.h" />
+		<Unit filename="../Source/zlib/zconf.h" />
+		<Unit filename="../Source/zlib/zlib.h" />
+		<Unit filename="../Source/zlib/zutil.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../Source/Zlib/zutil.h" />
-		<Unit filename="../Source/datfile/cfile.cpp" />
-		<Unit filename="../Source/datfile/cfile.h" />
-		<Unit filename="../Source/datfile/unlzss.cpp" />
-		<Unit filename="../Source/datfile/unlzss.h" />
+		<Unit filename="../Source/zlib/zutil.h" />
+		<Unit filename="../Source/DatFile/cfile.cpp" />
+		<Unit filename="../Source/DatFile/cfile.h" />
+		<Unit filename="../Source/DatFile/unlzss.cpp" />
+		<Unit filename="../Source/DatFile/unlzss.h" />
 		<Extensions>
 			<envvars />
 			<code_completion />
