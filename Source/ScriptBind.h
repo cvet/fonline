@@ -801,6 +801,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void SetSendParameter(int index, b
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SwapCritters(Critter& cr1, Critter& cr2, bool withInventory, bool withVars)", asFUNCTION( BIND_CLASS Global_SwapCritters ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllItems(uint16 pid, Item@[]@+ items)", asFUNCTION( BIND_CLASS Global_GetAllItems ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllPlayers(Critter@[]@+ players)", asFUNCTION( BIND_CLASS Global_GetAllPlayers ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetIndexedPlayers(uint[]& ids, string@[]& names)", asFUNCTION( BIND_CLASS Global_GetIndexedPlayers ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllNpc(uint16 pid, Critter@[]@+ npc)", asFUNCTION( BIND_CLASS Global_GetAllNpc ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllMaps(uint16 pid, Map@[]@+ maps)", asFUNCTION( BIND_CLASS Global_GetAllMaps ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllLocations(uint16 pid, Location@[]@+ locations)", asFUNCTION( BIND_CLASS Global_GetAllLocations ), asCALL_CDECL ) );
@@ -1523,6 +1524,7 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __CritterFidgetTime", &GameOp
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Anim2CombatBegin", &GameOpt.Anim2CombatBegin ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Anim2CombatIdle", &GameOpt.Anim2CombatIdle ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Anim2CombatEnd", &GameOpt.Anim2CombatEnd ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFPS()", asFUNCTION( BIND_CLASS Global_GetFPS ), asCALL_CDECL ) );
 #endif
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MapHexagonal", &GameOpt.MapHexagonal ) );

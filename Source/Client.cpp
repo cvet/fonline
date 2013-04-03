@@ -877,32 +877,39 @@ int FOClient::MainLoop()
                 SaveLoadFillDraft();
             ProcessScreenEffectMirror();
             DrawIfaceLayer( 1 );
-            IntDraw();
+            if( DrawIfaceScreen( SCREEN_GAME ) )
+                IntDraw();
         }
         else
         {
-            WaitDraw();
+            if( DrawIfaceScreen( SCREEN_WAIT ) )
+                WaitDraw();
         }
         break;
     case SCREEN_GLOBAL_MAP:
     {
-        GmapDraw();
+        if( DrawIfaceScreen( SCREEN_GLOBAL_MAP ) )
+            GmapDraw();
         if( SaveLoadProcessDraft )
             SaveLoadFillDraft();
     }
     break;
     case SCREEN_LOGIN:
-        LogDraw();
+        if( DrawIfaceScreen( SCREEN_LOGIN ) )
+            LogDraw();
         break;
     case SCREEN_REGISTRATION:
-        ChaDraw( true );
+        if( DrawIfaceScreen( SCREEN_REGISTRATION ) )
+            ChaDraw( true );
         break;
     case SCREEN_CREDITS:
-        CreditsDraw();
+        if( DrawIfaceScreen( SCREEN_CREDITS ) )
+            CreditsDraw();
         break;
     default:
     case SCREEN_WAIT:
-        WaitDraw();
+        if( DrawIfaceScreen( SCREEN_WAIT ) )
+            WaitDraw();
         break;
     }
 
@@ -9934,6 +9941,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.GetActiveScreens, "get_active_screens", "void %s(int[]&)" },
         { &ClientFunctions.ScreenChange, "screen_change", "void %s(bool,int,int,int,int)" },
         { &ClientFunctions.RenderIface, "render_iface", "void %s(uint)" },
+        { &ClientFunctions.RenderIfaceScreen, "render_iface_screen", "bool %s(uint)" },
         { &ClientFunctions.RenderMap, "render_map", "void %s()" },
         { &ClientFunctions.MouseDown, "mouse_down", "bool %s(int)" },
         { &ClientFunctions.MouseUp, "mouse_up", "bool %s(int)" },
@@ -10026,6 +10034,19 @@ void FOClient::DrawIfaceLayer( uint layer )
         Script::RunPrepared();
         SpritesCanDraw = false;
     }
+}
+
+bool FOClient::DrawIfaceScreen( uint screen )
+{
+    if( Script::PrepareContext( ClientFunctions.RenderIfaceScreen, _FUNC_, "Game" ) )
+    {
+        Script::SetArgUInt( screen );
+        Script::RunPrepared();
+
+        return ( Script::GetReturnedBool() );
+    }
+
+    return ( true );
 }
 
 int SortCritterHx_ = 0, SortCritterHy_ = 0;

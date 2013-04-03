@@ -22,6 +22,8 @@ bool        LoggingWithThread = false;
 uint        StartLogTime = Timer::FastTick();
 void WriteLogInternal( const char* func, const char* frmt, va_list& list );
 
+bool SScriptLogDisabled = false;
+
 void LogToFile( const char* fname )
 {
     LogFinish( LOG_FILE );
@@ -186,6 +188,20 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
         // Todo: linux, syslog ?
         #endif
     }
+
+    SScriptLogDisabled = true;
+    if( ServerFunctions.ServerLog > 0 &&
+        Script::PrepareContext( ServerFunctions.ServerLog, _FUNC_, "Game" ) )
+    {
+        ScriptString* sstr = new ScriptString( str );
+
+        Script::SetArgObject( sstr );
+        Script::RunPrepared();
+
+        sstr->Release();
+    }
+    SScriptLogDisabled = false;
+
 
     LogLocker.Unlock();
 }

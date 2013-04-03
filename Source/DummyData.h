@@ -889,6 +889,7 @@ struct BindClass
     static void Global_SwapCritters()           {}
     static void Global_GetAllItems()            {}
     static void Global_GetAllPlayers()          {}
+    static void Global_GetIndexedPlayers()      {}
     static void Global_GetAllNpc()              {}
     static void Global_GetAllMaps()             {}
     static void Global_GetAllLocations()        {}
@@ -1150,6 +1151,7 @@ struct BindClass
     static void Global_MouseClick()         {}
     static void Global_KeyboardPress()      {}
     static void Global_SetRainAnimation()   {}
+    static void Global_GetFPS()             {}
     #endif
 
     static void Global_GetLastError()           {}

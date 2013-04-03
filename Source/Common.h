@@ -293,6 +293,7 @@ struct ClientScriptFunctions
     int GetActiveScreens;
     int ScreenChange;
     int RenderIface;
+    int RenderIfaceScreen;
     int RenderMap;
     int MouseDown;
     int MouseUp;
@@ -413,6 +414,7 @@ struct ServerScriptFunctions
     int PlayerGetAccess;
     int PlayerAllowCommand;
     int CheckTrapLook;
+    int ServerLog;
 } extern ServerFunctions;
 
 // Net events
