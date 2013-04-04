@@ -219,7 +219,7 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 # else
 #  include "GL/glxew.h"
 # endif
-# include "Fl/gl.h"
+# include "FL/gl.h"
 # include "Assimp/aiTypes.h"
 # define GL( expr )                       { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X - %s>.\n", err__, gluErrorString( err__ ) ); ExitProcess( 0 ); } } }
 # ifdef FO_WINDOWS
