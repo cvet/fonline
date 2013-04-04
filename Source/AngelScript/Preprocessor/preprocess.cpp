@@ -34,6 +34,7 @@
 #include "preprocess.h"
 #include "lexem_list.h"
 #include "define_table.h"
+#include "expressions.h"
 
 #include <list>
 #include <map>
@@ -427,7 +428,7 @@ static LLITR parseIfDef(LLITR ITR, LLITR END)
 				found_end = true;
 				break;
 			}
-			if (ITR->value == "#ifdef" || ITR->value == "#ifndef") depth++;
+			if (ITR->value == "#ifdef" || ITR->value == "#ifndef" || ITR->value == "#if") depth++;
 			if (ITR->value == "#endif" && depth > 0) depth--;
 		}
 		++ITR;
@@ -458,6 +459,175 @@ static void parseIf(LexemList& directive, std::string& name_out)
 	name_out = directive.begin()->value;
 	directive.pop_front();
 	if (!directive.empty()) PrintErrorMessage("Too many arguments.");
+}
+
+bool convertExpression(LexemList& expression, LexemList& output)
+{
+	if (expression.empty())
+	{
+		PrintMessage("Empty expression.");
+		return true;
+	}
+
+	// convert to RPN
+	std::vector<Lexem> stack;
+	for(LLITR it = expression.begin(); it != expression.end(); ++it)
+	{
+		preprocessLexem(it, expression);
+		Lexem& lexem = *it;
+		if(isIdentifier(lexem))
+			output.push_back(lexem);
+		else if(isOperator(lexem))
+		{
+			while(stack.size())
+			{
+				Lexem& lex = stack.back();
+				if(isOperator(lex) &&
+					((operLeftAssoc(lexem) && (operPrecedence(lexem) <= operPrecedence(lex))) ||
+					(operPrecedence(lexem) < operPrecedence(lex))))  
+				{
+					output.push_back(lex);
+					stack.pop_back();
+				}
+				else break;
+			}
+			stack.push_back(lexem);
+		}
+		else if(isLeft(lexem))
+			stack.push_back(lexem);
+		else if(isRight(lexem))
+		{
+			bool foundLeft = false;
+			while(stack.size())
+			{
+				Lexem& lex = stack.back();
+				if(isLeft(lex))
+				{
+					foundLeft = true;
+					break;
+				}
+				else
+				{
+					output.push_back(lex);
+					stack.pop_back();
+				}
+			}
+
+			if(!foundLeft)
+			{
+				PrintErrorMessage("Mismatched parentheses.");
+				return false;
+			}
+
+			stack.pop_back();
+		}
+		else
+		{
+			PrintErrorMessage("Unknown token: " + lexem.value);
+			return false;
+		}
+	}
+
+	// input end, flush the stack
+	while(stack.size())
+	{
+		Lexem& lex = stack.back();
+		if(isLeft(lex) || isRight(lex))
+		{
+			PrintErrorMessage("Mismatched parentheses.");
+			return false;
+		}
+		output.push_back(lex);
+		stack.pop_back();
+	}
+	return true;
+}
+
+int evaluateConvertedExpression(DefineTable& define_table, LexemList& expr)
+{
+	std::vector<int> stack;
+	
+	while(expr.size())
+	{
+		Lexem lexem = expr.front();
+		expr.pop_front();
+
+		if(isIdentifier(lexem))
+		{
+			if(lexem.type == NUMBER)
+				stack.push_back(atoi(lexem.value.c_str()));
+			else
+			{
+				LexemList ll;
+				ll.push_back(lexem);
+				expandDefine(ll.begin(), ll.end(), ll, define_table);
+				LexemList out;
+				bool success = convertExpression(ll, out);
+				if(!success)
+				{
+					PrintErrorMessage("Error while expanding macros.");
+					return 0;
+				}
+				stack.push_back(evaluateConvertedExpression(define_table, out));
+			}
+		}
+		else if(isOperator(lexem))
+		{
+			if(lexem.value == "!")
+			{
+				if(!stack.size())
+				{
+					PrintErrorMessage("Syntax error in #if: no argument for ! operator.");
+					return 0;
+				}
+				stack.back() = stack.back() != 0 ? 0 : 1;
+			}
+			else
+			{
+				if(stack.size() < 2)
+				{
+					PrintErrorMessage("Syntax error in #if: not enough arguments for " + lexem.value + " operator.");
+					return 0;
+				}
+				int rhs = stack.back();
+				stack.pop_back();
+				int lhs = stack.back();
+				stack.pop_back();
+
+				std::string op = lexem.value;
+				if(op == "*")  stack.push_back(lhs *  rhs);
+				if(op == "/")  stack.push_back(lhs /  rhs);
+				if(op == "%")  stack.push_back(lhs %  rhs);
+				if(op == "+")  stack.push_back(lhs +  rhs);
+				if(op == "-")  stack.push_back(lhs -  rhs);
+				if(op == "<")  stack.push_back(lhs <  rhs);
+				if(op == "<=") stack.push_back(lhs <= rhs);
+				if(op == ">")  stack.push_back(lhs >  rhs);
+				if(op == ">=") stack.push_back(lhs >= rhs);
+				if(op == "==") stack.push_back(lhs == rhs);
+				if(op == "!=") stack.push_back(lhs != rhs);
+				if(op == "&&") stack.push_back((lhs != 0 && rhs != 0) ? 1 : 0);
+				if(op == "||") stack.push_back((lhs != 0 || rhs != 0) ? 1 : 0);
+			}
+		}
+		else
+		{
+			PrintErrorMessage("Internal error on lexem " + lexem.value + ".");
+			return 0;
+		}
+	}
+	if(stack.size() == 1) return stack.back();
+	PrintErrorMessage("Invalid #if expression.");
+	return 0;
+}
+
+bool evaluateExpression(DefineTable& define_table, LexemList& directive)
+{
+	LexemList output;
+	directive.pop_front();
+	bool success = convertExpression(directive, output);
+	if(!success) return false;
+	return evaluateConvertedExpression(define_table, output) != 0;
 }
 
 static std::string addPaths(const std::string& first, const std::string& second)
@@ -640,6 +810,15 @@ static void recursivePreprocess(
 				parseIf(directive,def_name);
 				DefineTable::iterator DTI = define_table.find(def_name);
 				if (DTI != define_table.end())
+				{
+					LLITR splice_to = parseIfDef(ITR,END);
+					ITR = lexems.erase(ITR,splice_to);
+				}
+			}
+			else if (value == "#if")
+			{
+				bool satisfied = evaluateExpression(define_table, directive) != 0;
+				if(!satisfied)
 				{
 					LLITR splice_to = parseIfDef(ITR,END);
 					ITR = lexems.erase(ITR,splice_to);
