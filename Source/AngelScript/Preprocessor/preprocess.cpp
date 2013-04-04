@@ -56,6 +56,7 @@ namespace {
 
 	LineNumberTranslator::Table* LNT;
 	std::string root_file;
+	std::string root_path;
 	std::string current_file;
 	unsigned int current_line;
 	unsigned int lines_this_file;
@@ -174,14 +175,42 @@ void Preprocessor::LineNumberTranslator::SetTable(Preprocessor::LineNumberTransl
 	pimple = t;
 }
 
-static LLITR findEndOfLine(LLITR ITR, LLITR END)
+static std::string prependRootPath(const std::string& filename)
 {
+	if(filename == root_file) return root_file;
+	return root_path + filename;
+}
+
+static std::string getPath(const std::string& filename)
+{
+	int n = filename.find_last_of("\\/");
+	if(n == std::string::npos) return "./";
+	return filename.substr(0, n + 1);
+}
+
+static LLITR findEndOfLine(LexemList& lexems, LLITR ITR, LLITR END)
+{
+	unsigned int spaces = 0;
 	LLITR prev = ITR;
 	while(ITR != END)
 	{
-		if(ITR->type == NEWLINE && (prev == ITR || prev->type != BACKSLASH)) break;
+		if(ITR->type == NEWLINE)
+		{
+			if (prev == ITR || prev->type != BACKSLASH) break;
+			ITR->type = IGNORE;
+			ITR->value = "";
+			spaces++;
+		}
 		prev = ITR;
 		++ITR;
+	}
+	if(spaces)
+	{
+		Lexem newline;
+		newline.type = NEWLINE;
+		newline.value = "\n";
+		while(spaces--)
+			ITR = lexems.insert(ITR, newline);
 	}
 	return ITR;
 }
@@ -568,7 +597,7 @@ static void recursivePreprocess(
 		else if (ITR->type == PREPROCESSOR)
 		{
 			LLITR start_of_line = ITR;
-			LLITR end_of_line = findEndOfLine(ITR,END);
+			LLITR end_of_line = findEndOfLine(lexems,ITR,END);
 
 			LexemList directive(start_of_line,end_of_line);
 
@@ -622,7 +651,7 @@ static void recursivePreprocess(
 			}
 			else if (value == "#include")
 			{
-				if (LNT) LNT->AddLineRange(filename,start_line,current_line-lines_this_file);
+				if (LNT) LNT->AddLineRange(prependRootPath(filename),start_line,current_line-lines_this_file);
 				unsigned int save_lines_this_file = lines_this_file;
 				std::string file_name;
 				parseIf(directive,file_name);
@@ -678,7 +707,7 @@ static void recursivePreprocess(
 		else { ++ITR; }
 	}
 
-	if (LNT) LNT->AddLineRange(filename,start_line,current_line-lines_this_file);
+	if (LNT) LNT->AddLineRange(prependRootPath(filename),start_line,current_line-lines_this_file);
 }
 
 int Preprocessor::Preprocess(
@@ -699,10 +728,11 @@ int Preprocessor::Preprocess(
 	error_stream = (err ? err : &null_err);
 	number_of_errors = 0;
 	root_file = source_file;
+	root_path = getPath(source_file);
 	ProcessPragmas = process_pragmas;
 	FileDependencies.clear();
 	Pragmas.clear();
-    PragmasAdded.clear();
+	PragmasAdded.clear();
 
 	recursivePreprocess(source_file,file_source,lexems,define_table);
 	printLexemList(lexems,destination);
