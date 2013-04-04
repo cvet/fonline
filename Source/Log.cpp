@@ -121,6 +121,9 @@ void WriteLogF( const char* func, const char* frmt, ... )
 
 void WriteLogInternal( const char* func, const char* frmt, va_list& list )
 {
+    if( SScriptLogDisabled )
+        return;
+
     LogLocker.Lock();
 
     char str_tid[ 64 ] = { 0 };
@@ -189,6 +192,7 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
         #endif
     }
 
+    #ifdef FONLINE_SERVER
     SScriptLogDisabled = true;
     if( ServerFunctions.ServerLog > 0 &&
         Script::PrepareContext( ServerFunctions.ServerLog, _FUNC_, "Game" ) )
@@ -201,6 +205,7 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
         sstr->Release();
     }
     SScriptLogDisabled = false;
+    #endif
 
 
     LogLocker.Unlock();
