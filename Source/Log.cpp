@@ -22,7 +22,9 @@ bool        LoggingWithThread = false;
 uint        StartLogTime = Timer::FastTick();
 void WriteLogInternal( const char* func, const char* frmt, va_list& list );
 
-bool SScriptLogDisabled = false;
+#ifdef FONLINE_SERVER
+volatile uint CurrentLoggingThread = 0;
+#endif
 
 void LogToFile( const char* fname )
 {
@@ -121,7 +123,7 @@ void WriteLogF( const char* func, const char* frmt, ... )
 
 void WriteLogInternal( const char* func, const char* frmt, va_list& list )
 {
-    if( SScriptLogDisabled )
+    if( CurrentLoggingThread == Thread::GetCurrentId() )
         return;
 
     LogLocker.Lock();
@@ -193,18 +195,18 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
     }
 
     #ifdef FONLINE_SERVER
-    SScriptLogDisabled = true;
     if( ServerFunctions.ServerLog > 0 &&
         Script::PrepareContext( ServerFunctions.ServerLog, _FUNC_, "Game" ) )
     {
+        CurrentLoggingThread = Thread::GetCurrentId();
         ScriptString* sstr = new ScriptString( str );
 
         Script::SetArgObject( sstr );
         Script::RunPrepared();
 
         sstr->Release();
+        CurrentLoggingThread = 0;
     }
-    SScriptLogDisabled = false;
     #endif
 
 

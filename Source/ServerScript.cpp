@@ -75,7 +75,7 @@ void ASDeepDebugFree( void* ptr )
     free( ptr_ );
 }
 
-extern bool SScriptLogDisabled;
+extern volatile uint CurrentLoggingThread;
 
 bool FOServer::InitScriptSystem()
 {
@@ -4870,7 +4870,7 @@ uchar FOServer::SScriptFunc::Global_GetOffsetDir( ushort from_hx, ushort from_hy
 
 void FOServer::SScriptFunc::Global_Log( ScriptString& text )
 {
-    if( ::SScriptLogDisabled )
+    if( ::CurrentLoggingThread == Thread::GetCurrentId() )
         return;
 
     Script::Log( text.c_str() );
