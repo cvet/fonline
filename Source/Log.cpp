@@ -123,8 +123,10 @@ void WriteLogF( const char* func, const char* frmt, ... )
 
 void WriteLogInternal( const char* func, const char* frmt, va_list& list )
 {
+#ifdef FONLINE_SERVER
     if( CurrentLoggingThread == Thread::GetCurrentId() )
         return;
+#endif
 
     LogLocker.Lock();
 
