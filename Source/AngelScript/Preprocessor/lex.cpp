@@ -140,7 +140,7 @@ static char* parseCharacterLiteral(char* start, char* end, Lexem& out)
 	} 
 	else 
 	{
-		out.value = IntToString(*start);
+		out.value = IntToString(*(unsigned char*)start);
 		++start;
 		if (start == end) return start;
 		++start;
