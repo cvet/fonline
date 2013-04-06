@@ -76,9 +76,7 @@ public:
     void SetCurPos( int x, int y );
 
     IntVec KeyboardEvents;
-    Mutex  KeyboardEventsLocker;
     IntVec MouseEvents;
-    Mutex  MouseEventsLocker;
     void ParseKeyboard();
     void ParseMouse();
 
@@ -644,7 +642,7 @@ public:
         static void          Global_WaitPing();
         static bool          Global_LoadFont( int font, ScriptString& font_fname );
         static void          Global_SetDefaultFont( int font, uint color );
-        static void          Global_SetEffect( int effect_type, int effect_subtype, ScriptString* effect_name );
+        static bool          Global_SetEffect( int effect_type, int effect_subtype, ScriptString* effect_name, ScriptString* effect_defines );
         static void          Global_RefreshMap( bool only_tiles, bool only_roof, bool only_light );
         static void          Global_MouseClick( int x, int y, int button, int cursor );
         static void          Global_KeyboardPress( uchar key1, uchar key2 );

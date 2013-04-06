@@ -10,8 +10,6 @@
 
 FOWindow* MainWindow = NULL;
 FOClient* FOEngine = NULL;
-Thread    Game;
-void GameThread( void* );
 
 int main( int argc, char** argv )
 {
@@ -22,7 +20,7 @@ int main( int argc, char** argv )
     #ifdef FO_WINDOWS
     pthread_win32_process_attach_np();
     #endif
-    Thread::SetCurrentName( "GUI" );
+    Thread::SetCurrentName( "Main" );
 
     // Disable SIGPIPE signal
     #ifdef FO_LINUX
@@ -107,18 +105,13 @@ int main( int argc, char** argv )
     }
     #endif
 
-    // Init window threading
-    #ifdef FO_LINUX
-    XInitThreads();
-    #endif
-    Fl::lock();
-
     // Check for already runned window
     #ifndef DEV_VESRION
     # ifdef FO_WINDOWS
-    if( !Singleplayer && FindWindow( GetWindowName(), GetWindowName() ) != NULL )
+    HANDLE h = CreateEvent( NULL, FALSE, FALSE, "fonline_instance" );
+    if( !h || h == INVALID_HANDLE_VALUE || GetLastError() == ERROR_ALREADY_EXISTS )
     {
-        ShowMessage( "FOnline is running already." );
+        ShowMessage( "FOnline engine instance is already running." );
         return 0;
     }
     # else // FO_LINUX
@@ -150,6 +143,7 @@ int main( int argc, char** argv )
 
     // Show window
     MainWindow->show();
+    MainWindow->make_current();
 
     // Hide cursor
     #ifdef FO_WINDOWS
@@ -187,16 +181,29 @@ int main( int argc, char** argv )
         SetWindowPos( fl_xid( MainWindow ), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
     #endif
 
-    // Start
+    // Start message
     WriteLog( "Starting FOnline (version %04X-%02X)...\n", CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF );
-    Game.Start( GameThread, "Main" );
+
+    // Create engine
+    FOEngine = new FOClient();
+    if( !FOEngine || !FOEngine->Init() )
+    {
+        WriteLog( "FOnline engine initialization fail.\n" );
+        GameOpt.Quit = true;
+        return -1;
+    }
 
     // Loop
-    while( !GameOpt.Quit && Fl::wait() )
-        ;
-    Fl::unlock();
+    while( !GameOpt.Quit && Fl::check() )
+    {
+        if( !FOEngine->MainLoop() )
+            Sleep( 100 );
+    }
     GameOpt.Quit = true;
-    Game.Wait();
+
+    // Destroy engine
+    FOEngine->Finish();
+    SAFEDEL( FOEngine );
 
     // Finish
     #ifdef FO_WINDOWS
@@ -210,29 +217,6 @@ int main( int argc, char** argv )
     return 0;
 }
 
-void GameThread( void* )
-{
-    // Start
-    FOEngine = new FOClient();
-    if( !FOEngine || !FOEngine->Init() )
-    {
-        WriteLog( "FOnline engine initialization fail.\n" );
-        GameOpt.Quit = true;
-        return;
-    }
-
-    // Loop
-    while( !GameOpt.Quit )
-    {
-        if( !FOEngine->MainLoop() )
-            Sleep( 100 );
-    }
-
-    // Finish
-    FOEngine->Finish();
-    delete FOEngine;
-}
-
 int FOWindow::handle( int event )
 {
     if( !FOEngine || GameOpt.Quit )
@@ -242,10 +226,8 @@ int FOWindow::handle( int event )
     if( event == FL_KEYDOWN || event == FL_KEYUP )
     {
         int event_key = Fl::event_key();
-        FOEngine->KeyboardEventsLocker.Lock();
         FOEngine->KeyboardEvents.push_back( event );
         FOEngine->KeyboardEvents.push_back( event_key );
-        FOEngine->KeyboardEventsLocker.Unlock();
         return 1;
     }
     // Mouse
@@ -253,11 +235,9 @@ int FOWindow::handle( int event )
     {
         int event_button = Fl::event_button();
         int event_dy = Fl::event_dy();
-        FOEngine->MouseEventsLocker.Lock();
         FOEngine->MouseEvents.push_back( event );
         FOEngine->MouseEvents.push_back( event_button );
         FOEngine->MouseEvents.push_back( event_dy );
-        FOEngine->MouseEventsLocker.Unlock();
         return 1;
     }
 

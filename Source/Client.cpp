@@ -841,7 +841,7 @@ int FOClient::MainLoop()
             wait_tick = Script::GetReturnedUInt();
         next_call = Timer::FastTick() + wait_tick;
     }
-    Script::CollectGarbage( false );
+    Script::ScriptGarbager();
 
     #ifndef FO_D3D
     // Video
@@ -1169,10 +1169,7 @@ void FOClient::ParseKeyboard()
     // Stop processing if window not active
     if( !MainWindow->focused )
     {
-        KeyboardEventsLocker.Lock();
         KeyboardEvents.clear();
-        KeyboardEventsLocker.Unlock();
-
         Keyb::Lost();
         Timer::StartAccelerator( ACCELERATE_NONE );
         if( Script::PrepareContext( ClientFunctions.InputLost, _FUNC_, "Game" ) )
@@ -1190,15 +1187,10 @@ void FOClient::ParseKeyboard()
     }
 
     // Get buffered data
-    KeyboardEventsLocker.Lock();
     if( KeyboardEvents.empty() )
-    {
-        KeyboardEventsLocker.Unlock();
         return;
-    }
     IntVec events = KeyboardEvents;
     KeyboardEvents.clear();
-    KeyboardEventsLocker.Unlock();
 
     // Process events
     for( uint i = 0; i < events.size(); i += 2 )
@@ -1500,9 +1492,7 @@ void FOClient::ParseKeyboard()
                     if( !GameOpt.FullScreen )
                     {
                         int sx, sy, sw, sh;
-                        Fl::lock();
                         Fl::screen_xywh( sx, sy, sw, sh );
-                        Fl::unlock();
                         x = MainWindow->x();
                         y = MainWindow->y();
                         w = MainWindow->w();
@@ -1638,9 +1628,7 @@ void FOClient::ParseMouse()
 {
     // Mouse position
     int mx = 0, my = 0;
-    Fl::lock();
     Fl::get_mouse( mx, my );
-    Fl::unlock();
     #ifdef FO_D3D
     GameOpt.MouseX = mx - ( !GameOpt.FullScreen ? MainWindow->x() : 0 );
     GameOpt.MouseY = my - ( !GameOpt.FullScreen ? MainWindow->y() : 0 );
@@ -1656,10 +1644,7 @@ void FOClient::ParseMouse()
     // Stop processing if window not active
     if( !MainWindow->focused )
     {
-        MouseEventsLocker.Lock();
         MouseEvents.clear();
-        MouseEventsLocker.Unlock();
-
         IfaceHold = IFACE_NONE;
         Timer::StartAccelerator( ACCELERATE_NONE );
         if( Script::PrepareContext( ClientFunctions.InputLost, _FUNC_, "Game" ) )
@@ -1840,15 +1825,10 @@ void FOClient::ParseMouse()
     }
 
     // Get buffered data
-    MouseEventsLocker.Lock();
     if( MouseEvents.empty() )
-    {
-        MouseEventsLocker.Unlock();
         return;
-    }
     IntVec events = MouseEvents;
     MouseEvents.clear();
-    MouseEventsLocker.Unlock();
 
     // Process events
     for( uint i = 0; i < events.size(); i += 3 )
@@ -8832,9 +8812,7 @@ bool FOClient::IsCurInWindow()
             return true;
 
         int mx = 0, my = 0;
-        Fl::lock();
         Fl::get_mouse( mx, my );
-        Fl::unlock();
         return mx >= MainWindow->x() && mx <= MainWindow->x() + MainWindow->w() &&
                my >= MainWindow->y() && my <= MainWindow->y() + MainWindow->h();
     }
@@ -11302,54 +11280,83 @@ void FOClient::SScriptFunc::Global_SetDefaultFont( int font, uint color )
     SprMngr.SetDefaultFont( font, color );
 }
 
-void FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtype, ScriptString* effect_name )
+bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtype, ScriptString* effect_name, ScriptString* effect_defines )
 {
-    #define EFFECT_2D            ( 0 )     // 2D_Default.fx
-    #define EFFECT_2D_GENERIC    ( 1 )
-    #define EFFECT_2D_TILE       ( 2 )
-    #define EFFECT_2D_ROOF       ( 4 )
-    #define EFFECT_3D            ( 1 )     // 3D_Default.fx
-    #define EFFECT_INTERFACE     ( 2 )     // Interface_Default.fx
-    #define EFFECT_FONT          ( 3 )     // Interface_Default.fx
-    #define EFFECT_PRIMITIVE     ( 4 )     // Primitive_Default.fx
+    // Effect types (* - only for OpenGL)
+    #define EFFECT_2D                        ( 0 )
+    #define EFFECT_3D                        ( 1 )
+    #define EFFECT_INTERFACE                 ( 2 )
+    #define EFFECT_FONT                      ( 3 )
+    #define EFFECT_PRIMITIVE                 ( 4 )
+    #define EFFECT_FLUSH                     ( 5 )   // *
 
-    Effect* font_effect = NULL;
+    // Effect subtypes (* - only for OpenGL)
+    #define EFFECT_2D_GENERIC                ( 1 )
+    #define EFFECT_2D_TILE                   ( 2 )   // *
+    #define EFFECT_2D_ROOF                   ( 4 )   // *
+    #define EFFECT_3D_SIMPLE                 ( 1 )
+    #define EFFECT_3D_SKINNED                ( 2 )
+    #define EFFECT_INTERFACE_BASE            ( 1 )
+    #define EFFECT_INTERFACE_CONTOUR         ( 2 )   // *
+    // For font subtype use font type (FONT_*)
+    #define EFFECT_FLUSH_RENDER_TARGET       ( 1 )   // *
+    #define EFFECT_FLUSH_RENDER_TARGET_MS    ( 2 )   // Multisample*
+    #define EFFECT_FLUSH_PRIMITIVE           ( 4 )   // *
+    #define EFFECT_FLUSH_MAP                 ( 8 )   // *
+
+    Effect* effect = NULL;
     if( effect_name && effect_name->length() )
     {
         bool use_in_2d = ( effect_type != EFFECT_3D );
-        font_effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), effect_name->c_str(), use_in_2d );
-        if( !font_effect )
-            SCRIPT_ERROR_R( "Effect not found." );
+        effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), effect_name->c_str(), use_in_2d, effect_defines ? effect_defines->c_str() : NULL );
+        if( !effect )
+            SCRIPT_ERROR_R0( "Effect not found or have some errors, see log file." );
     }
 
     if( effect_type == EFFECT_2D )
     {
         if( effect_subtype & EFFECT_2D_GENERIC )
-            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_GENERIC, font_effect );
+            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_GENERIC, effect );
         if( effect_subtype & EFFECT_2D_TILE )
-            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_TILE, font_effect );
+            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_TILE, effect );
         if( effect_subtype & EFFECT_2D_ROOF )
-            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_ROOF, font_effect );
+            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_ROOF, effect );
     }
     else if( effect_type == EFFECT_3D )
     {
-        Animation3d::SetDefaultEffect( font_effect );
+        if( effect_subtype & EFFECT_3D_SIMPLE )
+            Animation3d::SetDefaultEffects( effect, NULL );
+        if( effect_subtype & EFFECT_3D_SKINNED )
+            Animation3d::SetDefaultEffects( NULL, effect );
     }
     else if( effect_type == EFFECT_INTERFACE )
     {
-        SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_IFACE, font_effect );
+        if( effect_subtype & EFFECT_INTERFACE_BASE )
+            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_IFACE, effect );
+        if( effect_subtype & EFFECT_INTERFACE_CONTOUR )
+            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_CONTOUR, effect );
     }
     else if( effect_type == EFFECT_FONT )
     {
-        SprMngr.SetFontEffect( effect_subtype, font_effect );
+        SprMngr.SetFontEffect( effect_subtype, effect );
     }
     else if( effect_type == EFFECT_PRIMITIVE )
     {
-        SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_POINT, font_effect );
+        SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_POINT, effect );
+    }
+    else if( effect_type == EFFECT_FLUSH )
+    {
+        if( effect_subtype & EFFECT_FLUSH_RENDER_TARGET )
+            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_FLUSH_RENDER_TARGET, effect );
+        if( effect_subtype & EFFECT_FLUSH_RENDER_TARGET_MS )
+            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_FLUSH_RENDER_TARGET_MS, effect );
+        if( effect_subtype & EFFECT_FLUSH_PRIMITIVE )
+            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_FLUSH_PRIMITIVE, effect );
+        if( effect_subtype & EFFECT_FLUSH_MAP )
+            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_FLUSH_MAP, effect );
     }
 
-    if( ( effect_type == EFFECT_2D || effect_type == EFFECT_3D ) && Self->HexMngr.IsMapLoaded() )
-        Self->HexMngr.RefreshMap();
+    return true;
 }
 
 void FOClient::SScriptFunc::Global_RefreshMap( bool only_tiles, bool only_roof, bool only_light )
@@ -11369,7 +11376,6 @@ void FOClient::SScriptFunc::Global_RefreshMap( bool only_tiles, bool only_roof, 
 
 void FOClient::SScriptFunc::Global_MouseClick( int x, int y, int button, int cursor )
 {
-    Self->MouseEventsLocker.Lock();
     IntVec prev_events = Self->MouseEvents;
     Self->MouseEvents.clear();
     int    prev_x = GameOpt.MouseX;
@@ -11389,12 +11395,10 @@ void FOClient::SScriptFunc::Global_MouseClick( int x, int y, int button, int cur
     GameOpt.MouseX = prev_x;
     GameOpt.MouseY = prev_y;
     Self->CurMode = prev_cursor;
-    Self->MouseEventsLocker.Unlock();
 }
 
 void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2 )
 {
-    Self->KeyboardEventsLocker.Lock();
     IntVec prev_events = Self->KeyboardEvents;
     Self->KeyboardEvents.clear();
     Self->KeyboardEvents.push_back( FL_KEYDOWN );
@@ -11407,7 +11411,6 @@ void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2 )
     Self->KeyboardEvents.push_back( key1 );
     Self->ParseKeyboard();
     Self->KeyboardEvents = prev_events;
-    Self->KeyboardEventsLocker.Unlock();
 }
 
 void FOClient::SScriptFunc::Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name )

@@ -50,9 +50,7 @@ public:
     void RefreshTiles( int tab );
 
     IntVec KeyboardEvents;
-    Mutex  KeyboardEventsLocker;
     IntVec MouseEvents;
-    Mutex  MouseEventsLocker;
     void ParseKeyboard();
     void ParseMouse();
 

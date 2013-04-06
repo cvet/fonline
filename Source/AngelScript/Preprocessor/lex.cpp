@@ -2,23 +2,23 @@
    Preprocessor 0.5
    Copyright (c) 2005 Anthony Casteel
 
-   This software is provided 'as-is', without any express or implied 
-   warranty. In no event will the authors be held liable for any 
+   This software is provided 'as-is', without any express or implied
+   warranty. In no event will the authors be held liable for any
    damages arising from the use of this software.
 
-   Permission is granted to anyone to use this software for any 
-   purpose, including commercial applications, and to alter it and 
+   Permission is granted to anyone to use this software for any
+   purpose, including commercial applications, and to alter it and
    redistribute it freely, subject to the following restrictions:
 
-   1. The origin of this software must not be misrepresented; you 
+   1. The origin of this software must not be misrepresented; you
       must not claim that you wrote the original software. If you use
-	  this software in a product, an acknowledgment in the product 
+	  this software in a product, an acknowledgment in the product
 	  documentation would be appreciated but is not required.
 
-   2. Altered source versions must be plainly marked as such, and 
+   2. Altered source versions must be plainly marked as such, and
       must not be misrepresented as being the original software.
 
-   3. This notice may not be removed or altered from any source 
+   3. This notice may not be removed or altered from any source
       distribution.
 
    The original version of this library can be located at:
@@ -56,17 +56,17 @@ std::string trivials = ",;\n\r\t [{(]})";
 
 LexemType trivial_types[] =
 {
-	COMMA, 
-	SEMICOLON, 
-	NEWLINE, 
-	WHITESPACE, 
-	WHITESPACE, 
-	WHITESPACE, 
-	OPEN, 
-	OPEN, 
+	COMMA,
+	SEMICOLON,
+	NEWLINE,
+	WHITESPACE,
+	WHITESPACE,
+	WHITESPACE,
 	OPEN,
-	CLOSE, 
-	CLOSE, 
+	OPEN,
+	OPEN,
+	CLOSE,
+	CLOSE,
 	CLOSE
 };
 
@@ -92,7 +92,7 @@ static char* parseIdentifier(char* start, char* end, Lexem& out)
 		if (isIdentifierBody(*start))
 		{
 			out.value += *start;
-		} 
+		}
 		else
 		{
 			return start;
@@ -112,7 +112,7 @@ static char* parseStringLiteral(char* start, char* end, Lexem& out)
 		//End of string literal?
 		if (*start == '\"') return ++start;
 		//Escape sequence? - Really only need to handle \"
-		if (*start == '\\')	
+		if (*start == '\\')
 		{
 			++start;
 			if (start == end) return start;
@@ -133,12 +133,12 @@ static char* parseCharacterLiteral(char* start, char* end, Lexem& out)
 		if (*start == 'n') out.value = IntToString('\n');
 		if (*start == 't') out.value = IntToString('\t');
 		if (*start == 'r') out.value = IntToString('\r');
-		++start; 
+		++start;
 		if (start == end) return start;
 		++start;
 		return start;
-	} 
-	else 
+	}
+	else
 	{
 		out.value = IntToString(*(unsigned char*)start);
 		++start;
@@ -174,7 +174,7 @@ static char* parseHexConstant(char* start, char* end, Lexem& out)
 {
 	out.value += *start;
 	while (true)
-	{ 
+	{
 		++start;
 		if (start == end) return start;
 		if (isHex(*start))
@@ -225,18 +225,18 @@ static char* parseBlockComment(char* start, char* end, Lexem& out)
 		{
 			++start;
 			if (start == end) break;
-			if (*start == '/') 
+			if (*start == '/')
 			{
 				out.value += *start;
 				++start;
 				break;
-			} else 
+			} else
 			{
 				--start;
 			}
 		}
 	}
-	while (newlines > 0) 
+	while (newlines > 0)
 	{
 		--start;
 		*start = '\n';
@@ -249,7 +249,7 @@ static char* parseLineComment(char* start, char* end, Lexem& out)
 {
 	out.type = COMMENT;
 	out.value += "//";
-	
+
 	while(true)
 	{
 		++start;
@@ -260,20 +260,20 @@ static char* parseLineComment(char* start, char* end, Lexem& out)
 }
 
 
-static char* parseLexem(char* start, char* end, Lexem& out) 
-{	
+static char* parseLexem(char* start, char* end, Lexem& out)
+{
 	if (start == end) return start;
 	char current_char = *start;
-	
-	if (isTrivial(current_char)) 
+
+	if (isTrivial(current_char))
 	{
 		out.value += current_char;
 		out.type = trivial_types[trivials.find_first_of(current_char)];
 		return ++start;
 	}
-	
+
 	if (isIdentifierStart(current_char)) return parseIdentifier(start,end,out);
-	
+
 	if (current_char == '#')
 	{
 		out.value = "#";
@@ -291,10 +291,10 @@ static char* parseLexem(char* start, char* end, Lexem& out)
 		out.type = PREPROCESSOR;
 		return start;
 	}
-	
+
 	if (isNumber(current_char)) return parseNumber(start,end,out);
 	if (current_char == '\"') return parseStringLiteral(start,end,out);
-	if (current_char == '\'') return parseCharacterLiteral(start,end,out);	
+	if (current_char == '\'') return parseCharacterLiteral(start,end,out);
 	if (current_char == '/')
 	{
 		//Need to see if it's a comment.
@@ -310,8 +310,8 @@ static char* parseLexem(char* start, char* end, Lexem& out)
 		out.type = BACKSLASH;
 		return ++start;
 	}
-				
-	out.value = current_char;
+
+	out.value = std::string(1, current_char);
 	out.type = IGNORE;
 	return ++start;
 }

@@ -19,7 +19,7 @@ void*       LogTextBox = NULL;
 std::string LogBufferStr;
 bool        LoggingWithTime = false;
 bool        LoggingWithThread = false;
-uint        StartLogTime = Timer::FastTick();
+uint        StartLogTime = 0;
 void WriteLogInternal( const char* func, const char* frmt, va_list& list );
 
 #ifdef FONLINE_SERVER
@@ -97,6 +97,9 @@ void LogFinish( int log_type )
     if( log_type & LOG_BUFFER )
         LogBufferStr.clear();
     LoggingType ^= log_type;
+
+    if( StartLogTime == 0 )
+        StartLogTime = Timer::FastTick();
 }
 
 void WriteLog( const char* frmt, ... )
@@ -192,7 +195,7 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
         #if defined ( FO_WINDOWS )
         OutputDebugString( str );
         #else
-        // Todo: linux, syslog ?
+        printf( "%s", str );
         #endif
     }
 

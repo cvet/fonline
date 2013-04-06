@@ -285,7 +285,7 @@ Sound* SoundManager::Load( const char* fname, int path_type )
     {
         WriteLog( "Pa_OpenDefaultStream error<%s,%d>, file name<%s>.\n", Pa_GetErrorText( err ), err, fname_ );
         delete sound;
-        return false;
+        return NULL;
     }
     sound->Stream = stream;
 

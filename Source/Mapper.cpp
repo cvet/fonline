@@ -735,10 +735,7 @@ void FOMapper::ParseKeyboard()
     // Stop processing if window not active
     if( !MainWindow->active() )
     {
-        KeyboardEventsLocker.Lock();
         KeyboardEvents.clear();
-        KeyboardEventsLocker.Unlock();
-
         Keyb::Lost();
         IntHold = INT_NONE;
         if( MapperFunctions.InputLost && Script::PrepareContext( MapperFunctions.InputLost, _FUNC_, "Mapper" ) )
@@ -747,15 +744,10 @@ void FOMapper::ParseKeyboard()
     }
 
     // Get buffered data
-    KeyboardEventsLocker.Lock();
     if( KeyboardEvents.empty() )
-    {
-        KeyboardEventsLocker.Unlock();
         return;
-    }
     IntVec events = KeyboardEvents;
     KeyboardEvents.clear();
-    KeyboardEventsLocker.Unlock();
 
     // Process events
     for( uint i = 0; i < events.size(); i += 2 )
@@ -1138,10 +1130,7 @@ void FOMapper::ParseMouse()
     // Stop processing if window not active
     if( !MainWindow->active() )
     {
-        MouseEventsLocker.Lock();
         MouseEvents.clear();
-        MouseEventsLocker.Unlock();
-
         Keyb::Lost();
         IntHold = INT_NONE;
         if( MapperFunctions.InputLost && Script::PrepareContext( MapperFunctions.InputLost, _FUNC_, "Mapper" ) )
@@ -1193,15 +1182,10 @@ void FOMapper::ParseMouse()
     }
 
     // Get buffered data
-    MouseEventsLocker.Lock();
     if( MouseEvents.empty() )
-    {
-        MouseEventsLocker.Unlock();
         return;
-    }
     IntVec events = MouseEvents;
     MouseEvents.clear();
-    MouseEventsLocker.Unlock();
 
     // Process events
     for( uint i = 0; i < events.size(); i += 3 )
@@ -1464,6 +1448,7 @@ void FOMapper::MainLoop()
             wait_tick = Script::GetReturnedUInt();
         next_call = Timer::FastTick() + wait_tick;
     }
+    Script::ScriptGarbager();
 
     // Input
     ConsoleProcess();
@@ -1598,8 +1583,6 @@ void FOMapper::MainLoop()
     CurDraw();
     DrawIfaceLayer( 5 );
     SprMngr.EndScene();
-
-    Script::CollectGarbage( true );
 
     // Fixed FPS
     if( !GameOpt.VSync && GameOpt.FixedFPS )
@@ -6691,7 +6674,6 @@ void FOMapper::SScriptFunc::Global_SetDefaultFont( int font, uint color )
 
 void FOMapper::SScriptFunc::Global_MouseClick( int x, int y, int button, int cursor )
 {
-    Self->MouseEventsLocker.Lock();
     IntVec prev_events = Self->MouseEvents;
     Self->MouseEvents.clear();
     int    prev_x = GameOpt.MouseX;
@@ -6711,12 +6693,10 @@ void FOMapper::SScriptFunc::Global_MouseClick( int x, int y, int button, int cur
     GameOpt.MouseX = prev_x;
     GameOpt.MouseY = prev_y;
     Self->CurMode = prev_cursor;
-    Self->MouseEventsLocker.Unlock();
 }
 
 void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2 )
 {
-    Self->KeyboardEventsLocker.Lock();
     IntVec prev_events = Self->KeyboardEvents;
     Self->KeyboardEvents.clear();
     Self->KeyboardEvents.push_back( FL_KEYDOWN );
@@ -6729,7 +6709,6 @@ void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2 )
     Self->KeyboardEvents.push_back( key1 );
     Self->ParseKeyboard();
     Self->KeyboardEvents = prev_events;
-    Self->KeyboardEventsLocker.Unlock();
 }
 
 void FOMapper::SScriptFunc::Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name )

@@ -1870,9 +1870,12 @@ Point Animation3d::Convert3dTo2d( float x, float y )
     return Point( (int) coords.x, (int) coords.y );
 }
 
-void Animation3d::SetDefaultEffect( Effect* effect )
+void Animation3d::SetDefaultEffects( Effect* effect_simple, Effect* effect_skinned )
 {
-    EffectSkinned = effect;
+    if( effect_simple )
+        EffectSimple = effect_simple;
+    if( effect_skinned )
+        EffectSkinned = effect_skinned;
 }
 
 bool Animation3d::Is2dEmulation()

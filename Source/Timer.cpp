@@ -22,6 +22,7 @@ int64 QPCFrequency = 0;
 #endif
 
 #if defined ( FO_LINUX )
+void SetTick();
 void UpdateTick( void* );
 Thread        TimerUpdateThread;
 volatile uint TimerTick = 0;
@@ -41,6 +42,7 @@ void Timer::Init()
     QueryPerformanceFrequency( (LARGE_INTEGER*) &QPCFrequency );
     timeBeginPeriod( 1 );
     #else // FO_LINUX
+    SetTick();
     TimerUpdateThread.Start( UpdateTick, "UpdateTick" );
     #endif
 
@@ -304,15 +306,20 @@ void Timer::ProcessGameTime()
 }
 
 #if defined ( FO_LINUX )
+void SetTick()
+{
+    struct timespec tv;
+    clock_gettime( CLOCK_MONOTONIC, &tv );
+    uint            timer_tick = (uint) ( tv.tv_sec * 1000 + tv.tv_nsec / 1000000 );
+    InterlockedExchange( &TimerTick, timer_tick );
+}
+
 void UpdateTick( void* ) // Thread
 {
     while( !QuitTick )
     {
         // Update
-        struct timespec tv;
-        clock_gettime( CLOCK_MONOTONIC, &tv );
-        uint            timer_tick = (uint) ( tv.tv_sec * 1000 + tv.tv_nsec / 1000000 );
-        InterlockedExchange( &TimerTick, timer_tick );
+        SetTick();
 
         // Sleep
         struct timespec tv_sleep;

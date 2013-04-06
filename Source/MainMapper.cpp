@@ -6,8 +6,6 @@
 
 FOWindow* MainWindow = NULL;
 FOMapper* Mapper = NULL;
-Thread    Game;
-void GameThread( void* );
 
 int main( int argc, char** argv )
 {
@@ -35,12 +33,6 @@ int main( int argc, char** argv )
 
     WriteLog( "Starting Mapper (%s)...\n", MAPPER_VERSION_STR );
 
-    // Init window threading
-    #ifdef FO_LINUX
-    XInitThreads();
-    #endif
-    Fl::lock();
-
     // Create window
     MainWindow = new FOWindow();
     MainWindow->label( GetWindowName() );
@@ -56,11 +48,12 @@ int main( int argc, char** argv )
 
     // OpenGL parameters
     #ifndef FO_D3D
-    Fl::gl_visual( FL_RGB | FL_RGB8 | FL_DOUBLE  );
+    Fl::gl_visual( FL_RGB | FL_RGB8 | FL_DOUBLE | FL_DEPTH | FL_STENCIL  );
     #endif
 
     // Show window
     MainWindow->show();
+    MainWindow->make_current();
 
     // Hide cursor
     #ifdef FO_WINDOWS
@@ -98,15 +91,23 @@ int main( int argc, char** argv )
         SetWindowPos( fl_xid( MainWindow ), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
     #endif
 
-    // Start
-    Game.Start( GameThread, "Main" );
+    // Create engine
+    Mapper = new FOMapper();
+    if( !Mapper || !Mapper->Init() )
+    {
+        WriteLog( "FOnline engine initialization fail.\n" );
+        GameOpt.Quit = true;
+        return 0;
+    }
 
     // Loop
-    while( !GameOpt.Quit && Fl::wait() )
-        ;
-    Fl::unlock();
+    while( !GameOpt.Quit && Fl::check() )
+        Mapper->MainLoop();
     GameOpt.Quit = true;
-    Game.Wait();
+
+    // Destroy engine
+    Mapper->Finish();
+    SAFEDEL( Mapper );
 
     // Finish
     #ifdef FO_WINDOWS
@@ -119,28 +120,6 @@ int main( int argc, char** argv )
     return 0;
 }
 
-void GameThread( void* )
-{
-    // Start
-    Mapper = new FOMapper();
-    if( !Mapper || !Mapper->Init() )
-    {
-        WriteLog( "FOnline engine initialization fail.\n" );
-        GameOpt.Quit = true;
-        return;
-    }
-
-    // Loop
-    while( !GameOpt.Quit )
-    {
-        Mapper->MainLoop();
-    }
-
-    // Finish
-    Mapper->Finish();
-    delete Mapper;
-}
-
 int FOWindow::handle( int event )
 {
     if( !Mapper || GameOpt.Quit )
@@ -150,10 +129,8 @@ int FOWindow::handle( int event )
     if( event == FL_KEYDOWN || event == FL_KEYUP )
     {
         int event_key = Fl::event_key();
-        Mapper->KeyboardEventsLocker.Lock();
         Mapper->KeyboardEvents.push_back( event );
         Mapper->KeyboardEvents.push_back( event_key );
-        Mapper->KeyboardEventsLocker.Unlock();
         return 1;
     }
     // Mouse
@@ -161,11 +138,9 @@ int FOWindow::handle( int event )
     {
         int event_button = Fl::event_button();
         int event_dy = Fl::event_dy();
-        Mapper->MouseEventsLocker.Lock();
         Mapper->MouseEvents.push_back( event );
         Mapper->MouseEvents.push_back( event_button );
         Mapper->MouseEvents.push_back( event_dy );
-        Mapper->MouseEventsLocker.Unlock();
         return 1;
     }
 

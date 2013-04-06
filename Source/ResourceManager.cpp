@@ -189,7 +189,7 @@ AnyFrames* ResourceManager::GetAnim( uint name_hash, int dir, int res_type )
 
 uint AnimMapId( uint crtype, uint anim1, uint anim2, int dir, bool is_fallout )
 {
-    uint dw[ 5 ] = { crtype, anim1, anim2, dir, is_fallout ? -1 : 1 };
+    uint dw[ 5 ] = { crtype, anim1, anim2, (uint) dir, is_fallout ? uint( -1 ) : 1 };
     return Crypt.Crc32( (uchar*) &dw[ 0 ], sizeof( dw ) );
 }
 

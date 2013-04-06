@@ -52,17 +52,14 @@ int              ScriptsPath = PT_SCRIPTS;
 bool             LogDebugInfo = true;
 StrVec           WrongGlobalObjects;
 
-#ifdef FONLINE_SERVER
-uint   GarbagerCycle = 120000;
-uint   EvaluationCycle = 120000;
-double MaxGarbagerTime = 40.0;
-#else
-uint   GarbageCollectTime = 120000;
-#endif
-
+uint             GarbagerCycle = 120000;
+uint             EvaluationCycle = 120000;
+double           MaxGarbagerTime = 40.0;
 #ifdef SCRIPT_MULTITHREADING
-MutexCode GarbageLocker;
+MutexCode        GarbageLocker;
 #endif
+uint GetGCStatistics();
+void CollectGarbage( asDWORD flags );
 
 BindFunctionVec BindedFunctions;
 #ifdef SCRIPT_MULTITHREADING
@@ -570,7 +567,7 @@ void Script::UnloadScripts()
     }
 
     modules.clear();
-    CollectGarbage();
+    CollectGarbage( asGC_FULL_CYCLE );
 }
 
 bool Script::ReloadScripts( const char* config, const char* key, bool skip_binaries, const char* file_pefix /* = NULL */ )
@@ -940,7 +937,7 @@ asIScriptEngine* Script::CreateEngine( Preprocessor::PragmaCallback* pragma_call
     if( !engine )
     {
         WriteLogF( _FUNC_, " - asCreateScriptEngine fail.\n" );
-        return false;
+        return NULL;
     }
 
     engine->SetMessageCallback( asFUNCTION( CallbackMessage ), NULL, asCALL_CDECL );
@@ -1109,22 +1106,7 @@ asIScriptModule* Script::CreateModule( const char* module_name )
     return module;
 }
 
-#ifndef FONLINE_SERVER
-void Script::SetGarbageCollectTime( uint ticks )
-{
-    GarbageCollectTime = ticks;
-}
-#endif
-
-#ifdef FONLINE_SERVER
-uint Script::GetGCStatistics()
-{
-    asUINT current_size = 0;
-    Engine->GetGCStatistics( &current_size );
-    return (uint) current_size;
-}
-
-void Script::ScriptGarbager()
+void Script::ScriptGarbager( bool collect_now /* = false */ )
 {
     static uchar  garbager_state = 5;
     static uint   last_nongarbage = 0;
@@ -1134,6 +1116,16 @@ void Script::ScriptGarbager()
 
     static uint   garbager_count[ 3 ];     // Uses garbager_state as index
     static double garbager_time[ 3 ];      // Uses garbager_state as index
+
+    if( !Engine )
+        return;
+
+    if( collect_now )
+    {
+        CollectGarbage( asGC_FULL_CYCLE );
+        garbager_state = 5;
+        return;
+    }
 
     switch( garbager_state )
     {
@@ -1230,42 +1222,25 @@ void Script::ScriptGarbager()
     }
 }
 
-void Script::CollectGarbage( asDWORD flags )
+uint GetGCStatistics()
 {
-    # ifdef SCRIPT_MULTITHREADING
+    asUINT current_size = 0;
+    Engine->GetGCStatistics( &current_size );
+    return (uint) current_size;
+}
+
+void CollectGarbage( asDWORD flags )
+{
+    #ifdef SCRIPT_MULTITHREADING
     if( LogicMT )
         GarbageLocker.LockCode();
     Engine->GarbageCollect( flags );
     if( LogicMT )
         GarbageLocker.UnlockCode();
-    # else
+    #else
     Engine->GarbageCollect( flags );
-    # endif
+    #endif
 }
-#endif
-
-#ifndef FONLINE_SERVER
-void Script::CollectGarbage( bool force )
-{
-    static uint last_tick = Timer::FastTick();
-    if( force || ( GarbageCollectTime && Timer::FastTick() - last_tick >= GarbageCollectTime ) )
-    {
-        # ifdef SCRIPT_MULTITHREADING
-        if( LogicMT )
-            GarbageLocker.LockCode();
-        if( Engine )
-            Engine->GarbageCollect( asGC_FULL_CYCLE );
-        if( LogicMT )
-            GarbageLocker.UnlockCode();
-        # else
-        if( Engine )
-            Engine->GarbageCollect( asGC_FULL_CYCLE );
-        # endif
-
-        last_tick = Timer::FastTick();
-    }
-}
-#endif
 
 void RunTimeout( void* data )
 {
@@ -2364,6 +2339,8 @@ uint64 CallCDeclFunction32( const size_t* args, size_t paramSize, size_t func )
 uint64 __attribute( ( __noinline__ ) ) CallCDeclFunction32( const size_t * args, size_t paramSize, size_t func )
 #endif
 {
+    volatile uint64 retQW;
+
     #if defined ( FO_MSVC )
     // Copy the data to the real stack. If we fail to do
     // this we may run into trouble in case of exceptions.
@@ -2395,51 +2372,77 @@ endcopy:
         // Pop arguments from stack
         add  esp, paramSize
 
+        // Copy return value from EAX:EDX
+        lea  ecx, retQW
+            mov[ ecx ], eax
+            mov  4[ ecx ], edx
+
         // Restore registers
         pop  ecx
-
-        // return value in EAX or EAX:EDX
     }
 
     #elif defined ( FO_GCC )
-    args = args;
-    paramSize = paramSize;
-    func = func;
+    // It is not possible to rely on ESP or BSP to refer to variables or arguments on the stack
+    // depending on compiler settings BSP may not even be used, and the ESP is not always on the
+    // same offset from the local variables. Because the code adjusts the ESP register it is not
+    // possible to inform the arguments through symbolic names below.
 
-    asm ( "pushl %ecx           \n"
-          "fninit               \n"
+    // It's not also not possible to rely on the memory layout of the function arguments, because
+    // on some compiler versions and settings the arguments may be copied to local variables with a
+    // different ordering before they are accessed by the rest of the code.
 
-          // Need to align the stack pointer so that it is aligned to 16 bytes when making the function call.
-          // It is assumed that when entering this function, the stack pointer is already aligned, so we need
-          // to calculate how much we will put on the stack during this call.
-          "movl  12(%ebp), %eax \n"     // paramSize
-          "addl  $4, %eax       \n"     // counting esp that we will push on the stack
-          "movl  %esp, %ecx     \n"
-          "subl  %eax, %ecx     \n"
-          "andl  $15, %ecx      \n"
-          "movl  %esp, %eax     \n"
-          "subl  %ecx, %esp     \n"
-          "pushl %eax           \n"     // Store the original stack pointer
+    // I'm copying the arguments into this array where I know the exact memory layout. The address
+    // of this array will then be passed to the inline asm in the EDX register.
+    volatile size_t a[] = { size_t( args ), size_t( paramSize ), size_t( func ) };
 
-          "movl  12(%ebp), %ecx \n"     // paramSize
-          "movl  8(%ebp), %eax  \n"     // args
-          "addl  %ecx, %eax     \n"     // push arguments on the stack
-          "cmp   $0, %ecx       \n"
-          "je    endcopy        \n"
-          "copyloop:            \n"
-          "subl  $4, %eax       \n"
-          "pushl (%eax)         \n"
-          "subl  $4, %ecx       \n"
-          "jne   copyloop       \n"
-          "endcopy:             \n"
-          "call  *16(%ebp)      \n"
-          "addl  12(%ebp), %esp \n"     // pop arguments
+    asm __volatile__ (
+        "fninit                 \n"
+        "pushl %%ebx            \n"
+        "movl  %%edx, %%ebx     \n"
 
-          // Pop the alignment bytes
-          "popl  %esp           \n"
+        // Need to align the stack pointer so that it is aligned to 16 bytes when making the function call.
+        // It is assumed that when entering this function, the stack pointer is already aligned, so we need
+        // to calculate how much we will put on the stack during this call.
+        "movl  4(%%ebx), %%eax  \n"         // paramSize
+        "addl  $4, %%eax        \n"         // counting esp that we will push on the stack
+        "movl  %%esp, %%ecx     \n"
+        "subl  %%eax, %%ecx     \n"
+        "andl  $15, %%ecx       \n"
+        "movl  %%esp, %%eax     \n"
+        "subl  %%ecx, %%esp     \n"
+        "pushl %%eax            \n"         // Store the original stack pointer
 
-          "popl  %ecx           \n" );
+        // Copy all arguments to the stack and call the function
+        "movl  4(%%ebx), %%ecx  \n"         // paramSize
+        "movl  0(%%ebx), %%eax  \n"         // args
+        "addl  %%ecx, %%eax     \n"         // push arguments on the stack
+        "cmp   $0, %%ecx        \n"
+        "je    endcopy          \n"
+        "copyloop:              \n"
+        "subl  $4, %%eax        \n"
+        "pushl (%%eax)          \n"
+        "subl  $4, %%ecx        \n"
+        "jne   copyloop         \n"
+        "endcopy:               \n"
+        "call  *8(%%ebx)        \n"
+        "addl  4(%%ebx), %%esp  \n"         // pop arguments
+
+        // Pop the alignment bytes
+        "popl  %%esp            \n"
+        "popl  %%ebx            \n"
+
+        // Copy EAX:EDX to retQW. As the stack pointer has been
+        // restored it is now safe to access the local variable
+        "leal  %1, %%ecx        \n"
+        "movl  %%eax, 0(%%ecx)  \n"
+        "movl  %%edx, 4(%%ecx)  \n"
+        :                                   // output
+        : "d" ( a ), "m" ( retQW )          // input - pass pointer of args in edx, pass pointer of retQW in memory argument
+        : "%eax", "%ecx"                    // clobber
+        );
     #endif
+
+    return retQW;
 }
 
 bool Script::RunPrepared()

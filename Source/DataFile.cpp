@@ -75,7 +75,7 @@ DataFile* OpenDataFile( const char* fname )
     if( !ext )
     {
         WriteLogF( _FUNC_, " - File<%s> extension not found.\n", fname );
-        return false;
+        return NULL;
     }
 
     const char* ext_ = ext;

@@ -580,6 +580,7 @@ struct GameOptions
 
     // Client and Mapper
     bool         Quit;
+    bool         OpenGLRendering;
     bool         OpenGLDebug;
     bool         AssimpLogging;
     int          MouseX;

@@ -553,6 +553,8 @@ void PatchWindowsDealloc()
 
 # include <malloc.h>
 
+Mutex HookLocker;
+
 void* malloc_hook( size_t size, const void* caller );
 void* realloc_hook( void* ptr, size_t size, const void* caller );
 void  free_hook( void* ptr, const void* caller );
@@ -582,6 +584,8 @@ StackInfo* GetStackInfo( const void* caller )
 
 void* malloc_hook( size_t size, const void* caller )
 {
+    SCOPE_LOCK( HookLocker );
+
     __malloc_hook = NULL;
     void* ptr = malloc( size );
     if( MemoryTrace )
@@ -592,6 +596,8 @@ void* malloc_hook( size_t size, const void* caller )
 
 void* realloc_hook( void* ptr, size_t size, const void* caller )
 {
+    SCOPE_LOCK( HookLocker );
+
     __realloc_hook = NULL;
     if( MemoryTrace )
         DEALLOCATE_PTR( ptr );
@@ -604,6 +610,8 @@ void* realloc_hook( void* ptr, size_t size, const void* caller )
 
 void free_hook( void* ptr, const void* caller )
 {
+    SCOPE_LOCK( HookLocker );
+
     __free_hook = NULL;
     free( ptr );
     if( MemoryTrace )

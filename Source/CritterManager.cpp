@@ -505,7 +505,7 @@ Npc* CritterManager::CreateNpc( ushort proto_id, bool copy_data )
     if( !IsInit() )
     {
         WriteLogF( _FUNC_, " - Critter manager is not initialized.\n" );
-        return false;
+        return NULL;
     }
 
     CritData* data = GetProto( proto_id );

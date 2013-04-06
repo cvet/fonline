@@ -4962,7 +4962,7 @@ void Client::Send_CheckUIDS()
     uint       msg = uid_msg[ Random( 0, 4 ) ];
     uchar      rnd_count = Random( 1, 21 );
     uchar      rnd_count2 = Random( 2, 12 );
-    uint       uidxor[ 5 ] = { Random( 1, 0xFFFFFFFF ), Random( 1, 0xFFFFFFFF ), Random( 1, 0xFFFFFFFF ), Random( 1, 0xFFFFFFFF ), Random( 1, 0xFFFFFFFF ) };
+    uint       uidxor[ 5 ] = { (uint) Random( 1, 0x6FFFFFFF ), (uint) Random( 1, 0x6FFFFFFF ), (uint) Random( 1, 0x6FFFFFFF ), (uint) Random( 1, 0x6FFFFFFF ), (uint) Random( 1, 0x6FFFFFFF ) };
     uint       uid[ 5 ] = { UID[ 0 ] ^ uidxor[ 0 ], UID[ 1 ] ^ uidxor[ 1 ], UID[ 2 ] ^ uidxor[ 2 ], UID[ 3 ] ^ uidxor[ 3 ], UID[ 4 ] ^ uidxor[ 4 ] };
     uint       msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( uid ) + sizeof( uidxor ) + sizeof( rnd_count ) * 2 + rnd_count + rnd_count2;
 

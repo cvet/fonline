@@ -1333,6 +1333,7 @@ struct GameOptions
 
     // Client
     int Quit;
+    int OpenGLRendering;
     int OpenGLDebug;
     int AssimpLogging;
     int MouseX;

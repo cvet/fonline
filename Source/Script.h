@@ -78,14 +78,7 @@ namespace Script
     asIScriptModule* GetModule( const char* name );
     asIScriptModule* CreateModule( const char* module_name );
 
-    #ifdef FONLINE_SERVER
-    uint GetGCStatistics();
-    void ScriptGarbager();
-    void CollectGarbage( asDWORD flags = asGC_FULL_CYCLE );
-    #else
-    void SetGarbageCollectTime( uint ticks );
-    void CollectGarbage( bool force = true );
-    #endif
+    void ScriptGarbager( bool collect_now = false );
 
     void SetRunTimeout( uint suspend_timeout, uint message_timeout );
 

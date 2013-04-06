@@ -133,9 +133,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     D3D_HR( direct3D->CreateDevice( D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, fl_xid( MainWindow ), vproc, &presentParams, &d3dDevice ) );
     #else
     // Create context
-    Fl::lock();
     gl_start();
-    Fl::unlock();
     GL( glDisable( GL_SCISSOR_TEST ) );
     GL( glDrawBuffer( GL_BACK ) );
     GL( glViewport( 0, 0, MainWindow->w(), MainWindow->h() ) );
@@ -144,8 +142,15 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     glContext = wglGetCurrentContext();
     # endif
 
-    // OpenGL extensions
-    glewInit();
+    // Initialize GLEW
+    GLenum glew_result = glewInit();
+    if( glew_result != GLEW_OK )
+    {
+        WriteLog( "GLEW not initialized, result<%u>.\n", glew_result );
+        return false;
+    }
+
+    // Check OpenGL extensions
     # define CHECK_EXTENSION( ext_prefix, ext, critical  )                        \
         if( !ext_prefix ## ext )                                                  \
         {                                                                         \
@@ -273,16 +278,16 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] = GraphicLoader::LoadEffect( d3dDevice, "Interface_Default.fx", true );
     sprDefaultEffect[ DEFAULT_EFFECT_POINT ] = GraphicLoader::LoadEffect( d3dDevice, "Primitive_Default.fx", true );
     #ifndef FO_D3D
-    sprDefaultEffect[ DEFAULT_EFFECT_CONTOUR ] = GraphicLoader::LoadEffect( d3dDevice, "Contour_Default.fx", true );
-    sprDefaultEffect[ DEFAULT_EFFECT_TILE ] = GraphicLoader::LoadEffect( d3dDevice, "Tile_Default.fx", true );
-    sprDefaultEffect[ DEFAULT_EFFECT_ROOF ] = GraphicLoader::LoadEffect( d3dDevice, "Tile_Default.fx", true );
-    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Texture.fx", true );
-    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE_MS ] = NULL;
-    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_PRIMITIVE ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Primitive.fx", true );
-    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_MAP ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Map.fx", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_CONTOUR ] = GraphicLoader::LoadEffect( d3dDevice, "Contour_Default.glsl", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_TILE ] = GraphicLoader::LoadEffect( d3dDevice, "2D_WithoutEgg.glsl", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_ROOF ] = curDefaultEffect;
+    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_RENDER_TARGET ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_RenderTarget.glsl", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_RENDER_TARGET_MS ] = NULL;
+    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_PRIMITIVE ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Primitive.glsl", true );
+    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_MAP ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Map.glsl", true );
     for( uint i = 0; i < DEFAULT_EFFECT_COUNT; i++ )
     {
-        if( !sprDefaultEffect[ i ] && i != DEFAULT_EFFECT_FLUSH_TEXTURE_MS )
+        if( !sprDefaultEffect[ i ] && i != DEFAULT_EFFECT_FLUSH_RENDER_TARGET_MS )
         {
             WriteLog( "Default effects not loaded.\n" );
             return false;
@@ -606,9 +611,9 @@ void SpriteManager::EndScene()
     # else
     glXSwapBuffers( fl_display, fl_window );
     # endif
-    if( glGetError() != GL_NO_ERROR )
+    if( GameOpt.OpenGLDebug && glGetError() != GL_NO_ERROR )
     {
-        WriteLogF( _FUNC_, " - OpenGL error. Run 'FOnline.exe -OpenGLDebug 1' to determine exact place of error.\n" );
+        WriteLogF( _FUNC_, " - Unknown place of OpenGL error.\n" );
         ExitProcess( 0 );
     }
     #endif
@@ -682,8 +687,8 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
             samples = min( GameOpt.MultiSampling, max_samples );
 
             // Flush effect
-            sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE_MS ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_TextureMS.fx", true );
-            if( !sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE_MS ] )
+            sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_RENDER_TARGET_MS ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_RenderTargetMS.glsl", true );
+            if( !sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_RENDER_TARGET_MS ] )
                 samples = 0;
         }
         else
@@ -919,9 +924,9 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
 
     // Effect
     if( !multisampling )
-        rt.DrawEffect = DEFAULT_EFFECT_FLUSH_TEXTURE;
+        rt.DrawEffect = DEFAULT_EFFECT_FLUSH_RENDER_TARGET;
     else
-        rt.DrawEffect = DEFAULT_EFFECT_FLUSH_TEXTURE_MS;
+        rt.DrawEffect = DEFAULT_EFFECT_FLUSH_RENDER_TARGET_MS;
 
     // Id
     static uint ids = 0;
@@ -2712,7 +2717,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
         }
     }
     if( !seq_founded )
-        return false;
+        return NULL;
 
     // Find animation
     fm.SetCurPos( 0 );
@@ -5621,7 +5626,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         vBuffer[ mulpos++ ].tv = sr.B;
 
         curSprCnt = 1;
-        dipQueue.push_back( DipData( texture, sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_TEXTURE ] ) );
+        dipQueue.push_back( DipData( texture, sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_RENDER_TARGET ] ) );
         Flush();
 
         PopRenderTarget();

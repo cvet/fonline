@@ -568,7 +568,7 @@ void FOServer::MainLoop()
     ItemMngr.ItemGarbager();
     CrMngr.CritterGarbager();
     MapMngr.LocationGarbager();
-    Script::CollectGarbage();
+    Script::ScriptGarbager( true );
     Job::SetDeferredReleaseCycle( 0xFFFFFFFF );
     Job::ProcessDeferredReleasing();
 

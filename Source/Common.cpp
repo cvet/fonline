@@ -993,9 +993,6 @@ void GetClientOptions()
     GETOPTIONS_CMD_LINE_BOOL( logging, "-LoggingThread" );
     LogWithThread( logging );
 
-    # ifdef FONLINE_CLIENT
-    Script::SetGarbageCollectTime( 120000 );
-    # endif
     # ifdef FONLINE_MAPPER
     Script::SetRunTimeout( 0, 0 );
     # endif
@@ -1303,6 +1300,11 @@ GameOptions::GameOptions()
 
     // Client and Mapper
     Quit = false;
+    #ifdef FO_D3D
+    OpenGLRendering = false;
+    #else
+    OpenGLRendering = true;
+    #endif
     OpenGLDebug = false;
     AssimpLogging = false;
     MouseX = 0;

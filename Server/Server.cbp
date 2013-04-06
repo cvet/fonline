@@ -20,7 +20,6 @@
 					<Add option="-lXft" />
 					<Add option="-lfltk" />
 					<Add option="-lfltk_images" />
-					<Add option="-lfltk_png" />
 				</Linker>
 			</Target>
 			<Target title="Release Linux Daemon">
@@ -163,6 +162,10 @@
 		<Unit filename="../Source/CritterType.h" />
 		<Unit filename="../Source/Crypt.cpp" />
 		<Unit filename="../Source/Crypt.h" />
+		<Unit filename="../Source/DatFile/cfile.cpp" />
+		<Unit filename="../Source/DatFile/cfile.h" />
+		<Unit filename="../Source/DatFile/unlzss.cpp" />
+		<Unit filename="../Source/DatFile/unlzss.h" />
 		<Unit filename="../Source/DataFile.cpp" />
 		<Unit filename="../Source/DataFile.h" />
 		<Unit filename="../Source/DataMask.h" />
@@ -281,10 +284,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../Source/zlib/zutil.h" />
-		<Unit filename="../Source/DatFile/cfile.cpp" />
-		<Unit filename="../Source/DatFile/cfile.h" />
-		<Unit filename="../Source/DatFile/unlzss.cpp" />
-		<Unit filename="../Source/DatFile/unlzss.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />
