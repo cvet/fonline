@@ -414,7 +414,6 @@ struct ServerScriptFunctions
     int PlayerGetAccess;
     int PlayerAllowCommand;
     int CheckTrapLook;
-    int ServerLog;
 } extern ServerFunctions;
 
 // Net events
@@ -628,6 +627,9 @@ struct GameOptions
     bool         ScrollCheck;
     ScriptString FoDataPath;
     int          FixedFPS;
+    uint         FPS;
+    uint         PingPeriod;
+    uint         Ping;
     bool         MsgboxInvert;
     int          ChangeLang;
     uchar        DefaultCombatMode;
@@ -650,7 +652,6 @@ struct GameOptions
     bool         HidePassword;
     ScriptString PlayerOffAppendix;
     int          CombatMessagesType;
-    bool         DisableDrawScreens;
     uint         Animation3dSmoothTime;
     uint         Animation3dFPS;
     int          RunModMul;
@@ -731,6 +732,7 @@ struct GameOptions
 
     int          ( * Random )( int, int );
     uint         ( * GetTick )();
+    void         ( * SetLogCallback )( void ( * )( const char* str ), bool );
 
     // Callbacks
     uint         ( * GetUseApCost )( void*, void*, uchar );

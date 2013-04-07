@@ -17,7 +17,6 @@ FOMapper* FOMapper::Self = NULL;
 FOMapper::FOMapper()
 {
     Self = this;
-    FPS = 0;
     DrawCrExtInfo = 0;
     IsMapperStarted = false;
     Animations.resize( 10000 );
@@ -30,7 +29,7 @@ bool FOMapper::Init()
     #if defined ( FO_X86 )
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 116 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1332 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1344 );
     #endif
 
     // Register dll script data
@@ -1425,18 +1424,17 @@ void FOMapper::MainLoop()
     double start_loop = Timer::AccurateTick();
 
     // FPS counter
-    static uint   last_call = Timer::FastTick();
-    static ushort call_cnt = 0;
-
+    static uint last_call = Timer::FastTick();
+    static uint call_counter = 0;
     if( ( Timer::FastTick() - last_call ) >= 1000 )
     {
-        FPS = call_cnt;
-        call_cnt = 0;
+        GameOpt.FPS = call_counter;
+        call_counter = 0;
         last_call = Timer::FastTick();
     }
     else
     {
-        call_cnt++;
+        call_counter++;
     }
 
     // Script loop
@@ -2065,7 +2063,7 @@ void FOMapper::IntDraw()
                              HexMngr.CurProtoMap->GetName(),
                              hex_thru ? hx : -1, hex_thru ? hy : -1,
                              DayTime / 60 % 24, DayTime % 60,
-                             FPS,
+                             GameOpt.FPS,
                              TileLayer,
                              GameOpt.ScrollCheck ? "Scroll check" : "" ),
                          FT_NOBREAK_LINE );

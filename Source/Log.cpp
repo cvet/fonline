@@ -11,102 +11,87 @@
 // #include <syslog.h>
 #endif
 
-Mutex       LogLocker;
-int         LoggingType = 0;
-void*       LogFileHandle = NULL;
-LogFuncPtr  LogFunction = NULL;
-void*       LogTextBox = NULL;
-std::string LogBufferStr;
-bool        LoggingWithTime = false;
-bool        LoggingWithThread = false;
-uint        StartLogTime = 0;
+Mutex                LogLocker;
+void*                LogFileHandle = NULL;
+vector< LogFuncPtr > LogFunctions;
+bool                 LogFunctionsInProcess = false;
+void*                LogTextBox = NULL;
+string*              LogBufferStr = NULL;
+bool                 ToDebugOutput = false;
+bool                 LoggingWithTime = false;
+bool                 LoggingWithThread = false;
+uint                 StartLogTime = 0;
 void WriteLogInternal( const char* func, const char* frmt, va_list& list );
-
-#ifdef FONLINE_SERVER
-volatile uint CurrentLoggingThread = 0;
-#endif
 
 void LogToFile( const char* fname )
 {
-    LogFinish( LOG_FILE );
-    if( !fname )
-        return;
+    SCOPE_LOCK( LogLocker );
 
-    LogFileHandle = FileOpen( fname, true, true );
-    if( !LogFileHandle )
-    {
-        LogFileHandle = NULL;
-        return;
-    }
-    LoggingType |= LOG_FILE;
+    if( LogFileHandle )
+        FileClose( LogFileHandle );
+    LogFileHandle = NULL;
+
+    if( fname && fname[ 0 ] )
+        LogFileHandle = FileOpen( fname, true, true );
 }
 
-void LogToFunc( LogFuncPtr func_ptr )
+void LogToFunc( LogFuncPtr func_ptr, bool enable )
 {
-    LogFinish( LOG_FUNC );
-    LogFunction = func_ptr;
-    LoggingType |= LOG_FUNC;
+    SCOPE_LOCK( LogLocker );
+
+    if( func_ptr )
+    {
+        vector< LogFuncPtr >::iterator it = std::find( LogFunctions.begin(), LogFunctions.end(), func_ptr );
+        if( enable && it == LogFunctions.end() )
+            LogFunctions.push_back( func_ptr );
+        else if( !enable && it != LogFunctions.end() )
+            LogFunctions.erase( it );
+    }
+    else if( !enable )
+    {
+        LogFunctions.clear();
+    }
 }
 
 void LogToTextBox( void* text_box )
 {
-    #if !defined ( FONLINE_SERVER ) || defined ( SERVER_DAEMON )
-    return;
-    #endif
-    LogFinish( LOG_TEXT_BOX );
-    if( !text_box )
-        return;
+    SCOPE_LOCK( LogLocker );
+
     LogTextBox = text_box;
-    LoggingType |= LOG_TEXT_BOX;
 }
 
-void LogToBuffer()
+void LogToBuffer( bool enable )
 {
-    #if !defined ( FONLINE_SERVER )
-    return;
-    #endif
-    LogFinish( LOG_BUFFER );
-    LogBufferStr.reserve( MAX_LOGTEXT * 2 );
-    LoggingType |= LOG_BUFFER;
-}
+    SCOPE_LOCK( LogLocker );
 
-void LogToDebugOutput()
-{
-    LogFinish( LOG_DEBUG_OUTPUT );
-    LoggingType |= LOG_DEBUG_OUTPUT;
-}
-
-int LogGetType()
-{
-    return LoggingType;
-}
-
-void LogFinish( int log_type )
-{
-    log_type &= LoggingType;
-    if( log_type & LOG_FILE )
+    SAFEDEL( LogBufferStr );
+    if( enable )
     {
-        if( LogFileHandle )
-            FileClose( LogFileHandle );
-        LogFileHandle = NULL;
+        LogBufferStr = new string();
+        LogBufferStr->reserve( MAX_LOGTEXT * 2 );
     }
-    if( log_type & LOG_FUNC )
-        LogFunction = NULL;
-    if( log_type & LOG_TEXT_BOX )
-        LogTextBox = NULL;
-    if( log_type & LOG_BUFFER )
-        LogBufferStr.clear();
-    LoggingType ^= log_type;
+}
 
-    if( StartLogTime == 0 )
-        StartLogTime = Timer::FastTick();
+void LogToDebugOutput( bool enable )
+{
+    SCOPE_LOCK( LogLocker );
+
+    ToDebugOutput = enable;
+}
+
+void LogFinish()
+{
+    SCOPE_LOCK( LogLocker );
+
+    LogToFile( NULL );
+    LogToFunc( NULL, false );
+    LogToTextBox( NULL );
+    LogToBuffer( false );
+    LogToDebugOutput( false );
 }
 
 void WriteLog( const char* frmt, ... )
 {
-    if( !LoggingType )
-        return;
-
     va_list list;
     va_start( list, frmt );
     WriteLogInternal( NULL, frmt, list );
@@ -115,9 +100,6 @@ void WriteLog( const char* frmt, ... )
 
 void WriteLogF( const char* func, const char* frmt, ... )
 {
-    if( !LoggingType )
-        return;
-
     va_list list;
     va_start( list, frmt );
     WriteLogInternal( func, frmt, list );
@@ -126,12 +108,10 @@ void WriteLogF( const char* func, const char* frmt, ... )
 
 void WriteLogInternal( const char* func, const char* frmt, va_list& list )
 {
-#ifdef FONLINE_SERVER
-    if( CurrentLoggingThread == Thread::GetCurrentId() )
-        return;
-#endif
+    SCOPE_LOCK( LogLocker );
 
-    LogLocker.Lock();
+    if( LogFunctionsInProcess )
+        return;
 
     char str_tid[ 64 ] = { 0 };
     if( LoggingWithThread )
@@ -146,6 +126,9 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
     char str_time[ 64 ] = { 0 };
     if( LoggingWithTime )
     {
+        if( StartLogTime == 0 )
+            StartLogTime = Timer::FastTick();
+
         uint delta = Timer::FastTick() - StartLogTime;
         uint seconds = delta / 1000;
         uint minutes = seconds / 60 % 60;
@@ -172,25 +155,28 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
     vsnprintf( &str[ len ], MAX_LOGTEXT - len, frmt, list );
     str[ MAX_LOGTEXT - 1 ] = 0;
 
-    if( LoggingType & LOG_FILE )
+    if( LogFileHandle )
     {
         FileWrite( LogFileHandle, str, Str::Length( str ) );
     }
-    if( LoggingType & LOG_FUNC )
+    if( !LogFunctions.empty() )
     {
-        ( *LogFunction )( str );
+        LogFunctionsInProcess = true;
+        for( size_t i = 0, j = LogFunctions.size(); i < j; i++ )
+            ( *LogFunctions[ i ] )( str );
+        LogFunctionsInProcess = false;
     }
-    if( LoggingType & LOG_TEXT_BOX )
+    if( LogTextBox )
     {
         #if defined ( FONLINE_SERVER ) && !defined ( SERVER_DAEMON )
         ( (Fl_Text_Display*) LogTextBox )->buffer()->append( str );
         #endif
     }
-    if( LoggingType & LOG_BUFFER )
+    if( LogBufferStr )
     {
-        LogBufferStr += str;
+        *LogBufferStr += str;
     }
-    if( LoggingType & LOG_DEBUG_OUTPUT )
+    if( ToDebugOutput )
     {
         #if defined ( FO_WINDOWS )
         OutputDebugString( str );
@@ -198,40 +184,29 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
         printf( "%s", str );
         #endif
     }
-
-    #ifdef FONLINE_SERVER
-    if( ServerFunctions.ServerLog > 0 &&
-        Script::PrepareContext( ServerFunctions.ServerLog, _FUNC_, "Game" ) )
-    {
-        CurrentLoggingThread = Thread::GetCurrentId();
-        ScriptString* sstr = new ScriptString( str );
-
-        Script::SetArgObject( sstr );
-        Script::RunPrepared();
-
-        sstr->Release();
-        CurrentLoggingThread = 0;
-    }
-    #endif
-
-
-    LogLocker.Unlock();
 }
 
-void LogWithTime( bool enabled )
+void LogWithTime( bool enable )
 {
-    LoggingWithTime = enabled;
+    SCOPE_LOCK( LogLocker );
+
+    LoggingWithTime = enable;
 }
 
-void LogWithThread( bool enabled )
+void LogWithThread( bool enable )
 {
-    LoggingWithThread = enabled;
+    SCOPE_LOCK( LogLocker );
+
+    LoggingWithThread = enable;
 }
 
 void LogGetBuffer( std::string& buf )
 {
     SCOPE_LOCK( LogLocker );
 
-    buf = LogBufferStr;
-    LogBufferStr.clear();
+    if( LogBufferStr )
+    {
+        buf = *LogBufferStr;
+        LogBufferStr->clear();
+    }
 }

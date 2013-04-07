@@ -140,7 +140,7 @@ static char* parseCharacterLiteral(char* start, char* end, Lexem& out)
 	}
 	else
 	{
-		out.value = IntToString(*(unsigned char*)start);
+		out.value = IntToString(*start);
 		++start;
 		if (start == end) return start;
 		++start;
@@ -259,7 +259,6 @@ static char* parseLineComment(char* start, char* end, Lexem& out)
 	}
 }
 
-
 static char* parseLexem(char* start, char* end, Lexem& out)
 {
 	if (start == end) return start;
@@ -328,4 +327,4 @@ int Preprocessor::lex(char* begin, char* end, std::list<Lexem>& results)
 			current_lexem.type != COMMENT ) results.push_back(current_lexem);
 		if (begin == end) return 0;
 	}
-};
+}

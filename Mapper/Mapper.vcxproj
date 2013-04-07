@@ -683,7 +683,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\3dStuff.cpp" />
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\expressions.cpp" />
+    <ClCompile Include="..\Source\AngelScript\Preprocessor\expressions.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\Source\Common.cpp" />
     <ClCompile Include="..\Source\ConstantsManager.cpp" />
     <ClCompile Include="..\Source\CritterCl.cpp" />

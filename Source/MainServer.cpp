@@ -101,8 +101,8 @@ int main( int argc, char** argv )
     // Logging
     LogWithTime( cfg.GetInt( "LoggingTime", 1 ) == 0 ? false : true );
     LogWithThread( cfg.GetInt( "LoggingThread", 1 ) == 0 ? false : true );
-    if( strstr( CommandLine, "-logdebugoutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
-        LogToDebugOutput();
+    if( strstr( CommandLine, "-logdebugoutput" ) || strstr( CommandLine, "-LoggingDebugOutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
+        LogToDebugOutput( true );
 
     // Init event
     GameInitEvent.Disallow();
@@ -154,8 +154,8 @@ int main( int argc, char** argv )
     {
         Fl::lock();         // Begin GUI multi threading
         GUIInit( cfg );
-        LogFinish( LOG_FILE );
-        LogToBuffer();
+        LogToFile( NULL );
+        LogToBuffer( true );
     }
 
     WriteLog( "FOnline server, version %04X-%02X.\n", SERVER_VERSION, FO_PROTOCOL_VERSION & 0xFF );
@@ -479,9 +479,9 @@ void GUICallback( Fl_Widget* widget, void* data )
     else if( widget == GuiCBtnLogging )
     {
         if( GuiCBtnLogging->value() )
-            LogToBuffer();
+            LogToBuffer( true );
         else
-            LogFinish( LOG_BUFFER );
+            LogToBuffer( false );
     }
     else if( widget == GuiCBtnLoggingTime )
     {
@@ -685,7 +685,7 @@ void GameLoopThread( void* )
         if( GuiWindow )
         {
             if( GuiCBtnLogging->value() == 0 )
-                LogFinish( LOG_TEXT_BOX );
+                LogToTextBox( NULL );
 
             // Enable buttons
             GuiBtnRlClScript->activate();
@@ -712,7 +712,7 @@ void GameLoopThread( void* )
 
     if( GuiWindow )
         UpdateLog();
-    LogFinish( -1 );
+    LogFinish();
     if( Singleplayer )
         ExitProcess( 0 );
 }
@@ -959,8 +959,8 @@ int main( int argc, char** argv )
     // Logging
     LogWithTime( cfg.GetInt( "LoggingTime", 1 ) == 0 ? false : true );
     LogWithThread( cfg.GetInt( "LoggingThread", 1 ) == 0 ? false : true );
-    if( strstr( CommandLine, "-logdebugoutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
-        LogToDebugOutput();
+    if( strstr( CommandLine, "-logdebugoutput" ) || strstr( CommandLine, "-LoggingDebugOutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
+        LogToDebugOutput( true );
     LogToFile( "./FOnlineServerDaemon.log" );
 
     // Log version
@@ -1275,7 +1275,7 @@ void AdminWork( void* session_ )
             }
             else
             {
-                LogFinish( LOG_FILE );
+                LogToFile( NULL );
                 ADMIN_LOG( "Logging disabled.\n" );
             }
         }

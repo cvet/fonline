@@ -257,7 +257,7 @@ public:
 
     // Log to client
     static ClVec LogClients;
-    static void LogToClients( char* str );
+    static void LogToClients( const char* str );
 
     // Game time
     static void SaveGameInfoFile();
@@ -888,7 +888,7 @@ public:
         static bool          Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory, bool with_vars );
         static uint          Global_GetAllItems( ushort pid, ScriptArray* items );
         static uint          Global_GetAllPlayers( ScriptArray* players );
-        static uint          Global_GetIndexedPlayers( ScriptArray* ids, ScriptArray* names );
+        static uint          Global_GetRegisteredPlayers( ScriptArray* ids, ScriptArray* names );
         static uint          Global_GetAllNpc( ushort pid, ScriptArray* npc );
         static uint          Global_GetAllMaps( ushort pid, ScriptArray* maps );
         static uint          Global_GetAllLocations( ushort pid, ScriptArray* locations );

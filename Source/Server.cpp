@@ -122,7 +122,7 @@ void FOServer::Finish()
         Script::RunPrepared();
 
     // Logging clients
-    LogFinish( LOG_FUNC );
+    LogToFunc( &FOServer::LogToClients, false );
     for( auto it = LogClients.begin(), end = LogClients.end(); it != end; ++it )
         ( *it )->Release();
     LogClients.clear();
@@ -3150,7 +3150,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
 
         SynchronizeLogicThreads();
 
-        LogFinish( LOG_FUNC );
+        LogToFunc( &FOServer::LogToClients, false );
         auto it = std::find( LogClients.begin(), LogClients.end(), cl_ );
         if( action == 0 && it != LogClients.end() )           // Detach current
         {
@@ -3171,8 +3171,8 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
                 ( *it_ )->Release();
             LogClients.clear();
         }
-        if( LogClients.size() )
-            LogToFunc( &FOServer::LogToClients );
+        if( !LogClients.empty() )
+            LogToFunc( &FOServer::LogToClients, true );
 
         ResynchronizeLogicThreads();
     }
@@ -3391,7 +3391,7 @@ bool FOServer::InitReal()
     STATIC_ASSERT( sizeof( GameVar ) == 28 );
     STATIC_ASSERT( sizeof( Mutex ) == 24 );
     STATIC_ASSERT( sizeof( MutexSpinlock ) == 4 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1332 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1344 );
     STATIC_ASSERT( sizeof( ScriptArray ) == 28 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );
     STATIC_ASSERT( PROTO_ITEM_USER_DATA_SIZE == 500 );
@@ -3937,7 +3937,7 @@ bool FOServer::InitLangCrTypes( LangPackVec& lang_packs )
 }
 
 #pragma MESSAGE("Clients logging may be not thread safe.")
-void FOServer::LogToClients( char* str )
+void FOServer::LogToClients( const char* str )
 {
     ushort str_len = Str::Length( str );
     if( str_len && str[ str_len - 1 ] == '\n' )
@@ -3959,7 +3959,7 @@ void FOServer::LogToClients( char* str )
             }
         }
         if( LogClients.empty() )
-            LogFinish( LOG_FUNC );
+            LogToFunc( &FOServer::LogToClients, false );
     }
 }
 

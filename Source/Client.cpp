@@ -33,8 +33,6 @@ FOClient::FOClient(): Active( false )
     InitNetReason = INIT_NET_REASON_NONE;
 
     Chosen = NULL;
-    FPS = 0;
-    PingTime = 0;
     PingTick = 0;
     PingCallTick = 0;
     IsTurnBased = false;
@@ -113,7 +111,7 @@ bool FOClient::Init()
     STATIC_ASSERT( sizeof( Field ) == 76 );
     STATIC_ASSERT( sizeof( ScriptArray ) == 28 );
     STATIC_ASSERT( offsetof( CritterCl, ItemSlotArmor ) == 4280 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1332 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1344 );
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 108 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );
@@ -704,17 +702,17 @@ int FOClient::MainLoop()
     double start_loop = Timer::AccurateTick();
 
     // FPS counter
-    static uint   last_call = Timer::FastTick();
-    static ushort call_cnt = 0;
+    static uint last_call = Timer::FastTick();
+    static uint call_counter = 0;
     if( ( Timer::FastTick() - last_call ) >= 1000 )
     {
-        FPS = call_cnt;
-        call_cnt = 0;
+        GameOpt.FPS = call_counter;
+        call_counter = 0;
         last_call = Timer::FastTick();
     }
     else
     {
-        call_cnt++;
+        call_counter++;
     }
 
     // Singleplayer data synchronization
@@ -865,97 +863,33 @@ int FOClient::MainLoop()
         return 0;
 
     ProcessScreenEffectQuake();
-    DrawIfaceLayer( 0 );
 
-    switch( GetMainScreen() )
+    DrawIfaceLayer( 1 );
+
+    if( GetMainScreen() == SCREEN_GAME && HexMngr.IsMapLoaded() )
     {
-    case SCREEN_GAME:
-        if( HexMngr.IsMapLoaded() )
-        {
-            GameDraw();
-            if( SaveLoadProcessDraft )
-                SaveLoadFillDraft();
-            ProcessScreenEffectMirror();
-            DrawIfaceLayer( 1 );
-            if( DrawIfaceScreen( SCREEN_GAME ) )
-                IntDraw();
-        }
-        else
-        {
-            if( DrawIfaceScreen( SCREEN_WAIT ) )
-                WaitDraw();
-        }
-        break;
-    case SCREEN_GLOBAL_MAP:
-    {
-        if( DrawIfaceScreen( SCREEN_GLOBAL_MAP ) )
-            GmapDraw();
+        GameDraw();
         if( SaveLoadProcessDraft )
             SaveLoadFillDraft();
-    }
-    break;
-    case SCREEN_LOGIN:
-        if( DrawIfaceScreen( SCREEN_LOGIN ) )
-            LogDraw();
-        break;
-    case SCREEN_REGISTRATION:
-        if( DrawIfaceScreen( SCREEN_REGISTRATION ) )
-            ChaDraw( true );
-        break;
-    case SCREEN_CREDITS:
-        if( DrawIfaceScreen( SCREEN_CREDITS ) )
-            CreditsDraw();
-        break;
-    default:
-    case SCREEN_WAIT:
-        if( DrawIfaceScreen( SCREEN_WAIT ) )
-            WaitDraw();
-        break;
+        ProcessScreenEffectMirror();
     }
 
     DrawIfaceLayer( 2 );
+
+    if( SaveLoadProcessDraft && GetMainScreen() == SCREEN_GLOBAL_MAP )
+        SaveLoadFillDraft();
     ConsoleDraw();
     MessBoxDraw();
-    DrawIfaceLayer( 3 );
 
     CHECK_MULTIPLY_WINDOWS4;
 
-    /*if(!GameOpt.DisableDrawScreens)
-       {
-            for(uint i=0,j=ScreenMode.size();i<j;i++)
-            {
-                    switch(ScreenMode[i])
-                    {
-                    case SCREEN__INVENTORY:  InvDraw(); break;
-                    case SCREEN__PICKUP:     PupDraw(); break;
-                    case SCREEN__MINI_MAP:   LmapDraw(); break;
-                    case SCREEN__DIALOG:     DlgDraw(); break;
-                    case SCREEN__PIP_BOY:    PipDraw(); break;
-                    case SCREEN__FIX_BOY:    FixDraw(); break;
-                    case SCREEN__MENU_OPTION:MoptDraw(); break;
-                    case SCREEN__CHARACTER:  ChaDraw(false); break;
-                    case SCREEN__AIM:        AimDraw(); break;
-                    case SCREEN__SPLIT:      SplitDraw();break;
-                    case SCREEN__TIMER:      TimerDraw();break;
-                    case SCREEN__DIALOGBOX:  DlgboxDraw();break;
-                    case SCREEN__ELEVATOR:   ElevatorDraw();break;
-                    case SCREEN__SAY:        SayDraw();break;
-                    case SCREEN__CHA_NAME:   ChaNameDraw();break;
-                    case SCREEN__CHA_AGE:    ChaAgeDraw();break;
-                    case SCREEN__CHA_SEX:    ChaSexDraw();break;
-                    case SCREEN__GM_TOWN:    GmapTownDraw();break;
-                    case SCREEN__INPUT_BOX:  IboxDraw(); break;
-                    case SCREEN__SKILLBOX:   SboxDraw(); break;
-                    case SCREEN__USE:        UseDraw(); break;
-                    case SCREEN__PERK:       PerkDraw(); break;
-                    default: break;
-                    }
-            }
-       }*/
-    DrawIfaceLayer( 4 );
+    DrawIfaceLayer( 3 );
+
     LMenuDraw();
     CurDraw();
-    DrawIfaceLayer( 5 );
+
+    DrawIfaceLayer( 4 );
+
     SprMngr.Flush();
     ProcessScreenEffectFading();
 
@@ -2920,7 +2854,7 @@ void FOClient::ParseSocket()
     {
         NetProcess();
 
-        if( GameOpt.HelpInfo && Bout.IsEmpty() && !PingTick && Timer::FastTick() >= PingCallTick )
+        if( GameOpt.HelpInfo && Bout.IsEmpty() && !PingTick && GameOpt.PingPeriod && Timer::FastTick() >= PingCallTick )
         {
             Net_SendPing( PING_PING );
             PingTick = Timer::FastTick();
@@ -5554,9 +5488,9 @@ void FOClient::Net_OnPing()
     }
     else if( ping == PING_PING )
     {
-        PingTime = Timer::FastTick() - PingTick;
+        GameOpt.Ping = Timer::FastTick() - PingTick;
         PingTick = 0;
-        PingCallTick = Timer::FastTick() + PING_CLIENT_INFO_TIME;
+        PingCallTick = Timer::FastTick() + GameOpt.PingPeriod;
     }
 
     CHECK_MULTIPLY_WINDOWS8;
@@ -9919,7 +9853,6 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.GetActiveScreens, "get_active_screens", "void %s(int[]&)" },
         { &ClientFunctions.ScreenChange, "screen_change", "void %s(bool,int,int,int,int)" },
         { &ClientFunctions.RenderIface, "render_iface", "void %s(uint)" },
-        { &ClientFunctions.RenderIfaceScreen, "render_iface_screen", "bool %s(uint)" },
         { &ClientFunctions.RenderMap, "render_map", "void %s()" },
         { &ClientFunctions.MouseDown, "mouse_down", "bool %s(int)" },
         { &ClientFunctions.MouseUp, "mouse_up", "bool %s(int)" },
@@ -10012,19 +9945,6 @@ void FOClient::DrawIfaceLayer( uint layer )
         Script::RunPrepared();
         SpritesCanDraw = false;
     }
-}
-
-bool FOClient::DrawIfaceScreen( uint screen )
-{
-    if( Script::PrepareContext( ClientFunctions.RenderIfaceScreen, _FUNC_, "Game" ) )
-    {
-        Script::SetArgUInt( screen );
-        Script::RunPrepared();
-
-        return ( Script::GetReturnedBool() );
-    }
-
-    return ( true );
 }
 
 int SortCritterHx_ = 0, SortCritterHy_ = 0;
@@ -12098,6 +12018,26 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
 {
     switch( screen )
     {
+    case SCREEN_LOGIN:
+        Self->LogDraw();
+        break;
+    case SCREEN_REGISTRATION:
+        Self->ChaDraw( true );
+        break;
+    case SCREEN_CREDITS:
+        Self->CreditsDraw();
+        break;
+    case SCREEN_OPTIONS:
+        break;
+    case SCREEN_GAME:
+        Self->IntDraw();
+        break;
+    case SCREEN_GLOBAL_MAP:
+        Self->GmapDraw();
+        break;
+    case SCREEN_WAIT:
+        Self->WaitDraw();
+        break;
     case SCREEN__INVENTORY:
         Self->InvDraw();
         break;

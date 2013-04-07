@@ -36,7 +36,6 @@ class FOMapper
 {
 public:
     static FOMapper* Self;
-    int              FPS;
     HexManager       HexMngr;
     IniParser        IfaceIni;
     bool             IsMapperStarted;

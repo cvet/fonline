@@ -184,12 +184,12 @@ static std::string prependRootPath(const std::string& filename)
 
 static std::string getPath(const std::string& filename)
 {
-	int n = filename.find_last_of("\\/");
+	size_t n = filename.find_last_of("\\/");
 	if(n == std::string::npos) return "./";
 	return filename.substr(0, n + 1);
 }
 
-static LLITR findEndOfLine(LexemList& lexems, LLITR ITR, LLITR END)
+static LLITR parsePreprocessor(LexemList& lexems, LLITR ITR, LLITR END)
 {
 	unsigned int spaces = 0;
 	LLITR prev = ITR;
@@ -198,8 +198,8 @@ static LLITR findEndOfLine(LexemList& lexems, LLITR ITR, LLITR END)
 		if(ITR->type == NEWLINE)
 		{
 			if (prev == ITR || prev->type != BACKSLASH) break;
-			ITR->type = IGNORE;
-			ITR->value = "";
+			ITR->type = WHITESPACE;
+			ITR->value = " ";
 			spaces++;
 		}
 		prev = ITR;
@@ -210,8 +210,11 @@ static LLITR findEndOfLine(LexemList& lexems, LLITR ITR, LLITR END)
 		Lexem newline;
 		newline.type = NEWLINE;
 		newline.value = "\n";
+		prev = ITR;
+		ITR++;
 		while(spaces--)
-			ITR = lexems.insert(ITR, newline);
+			lexems.insert(ITR, newline);
+		return prev;
 	}
 	return ITR;
 }
@@ -343,11 +346,16 @@ static void parseDefine(DefineTable& define_table, LexemList& def_lexems)
 	}
 	def_lexems.pop_front();
 
+	while(!def_lexems.empty())
+	{
+		LexemType lexem_type = def_lexems.begin()->type;
+		if(lexem_type == BACKSLASH || lexem_type == NEWLINE || lexem_type == WHITESPACE || lexem_type == IGNORE)
+			def_lexems.pop_front();
+		else
+			break;
+	}
+
 	DefineEntry def;
-
-	while(!def_lexems.empty() && (def_lexems.begin()->type == BACKSLASH || def_lexems.begin()->type == NEWLINE))
-		def_lexems.pop_front();
-
 	if (!def_lexems.empty())
 	{
 		if (def_lexems.begin()->type == PREPROCESSOR && def_lexems.begin()->value == "#")
@@ -767,7 +775,7 @@ static void recursivePreprocess(
 		else if (ITR->type == PREPROCESSOR)
 		{
 			LLITR start_of_line = ITR;
-			LLITR end_of_line = findEndOfLine(lexems,ITR,END);
+			LLITR end_of_line = parsePreprocessor(lexems, ITR, END);
 
 			LexemList directive(start_of_line,end_of_line);
 
@@ -876,7 +884,7 @@ static void recursivePreprocess(
 			}
 			else
 			{
-				PrintErrorMessage("Unknown directive.");
+				PrintErrorMessage("Unknown directive '" + value + "'.");
 			}
 		}
 		else if (ITR->type == IDENTIFIER)

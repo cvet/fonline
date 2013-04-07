@@ -211,7 +211,7 @@ int main( int argc, char** argv )
         SingleplayerData.Finish();
     #endif
     WriteLog( "FOnline finished.\n" );
-    LogFinish( -1 );
+    LogFinish();
     Timer::Finish();
 
     return 0;

@@ -889,7 +889,7 @@ struct BindClass
     static void Global_SwapCritters()           {}
     static void Global_GetAllItems()            {}
     static void Global_GetAllPlayers()          {}
-    static void Global_GetIndexedPlayers()      {}
+    static void Global_GetRegisteredPlayers()   {}
     static void Global_GetAllNpc()              {}
     static void Global_GetAllMaps()             {}
     static void Global_GetAllLocations()        {}
@@ -1384,6 +1384,9 @@ struct GameOptions
     int FoPatchPath;
     int FoDataPath;
     int FixedFPS;
+    int FPS;
+    int PingPeriod;
+    int Ping;
     int MsgboxInvert;
     int ChangeLang;
     int DefaultCombatMode;
@@ -1406,7 +1409,6 @@ struct GameOptions
     int HidePassword;
     int PlayerOffAppendix;
     int CombatMessagesType;
-    int DisableDrawScreens;
     int Animation3dSmoothTime;
     int Animation3dFPS;
     int RunModMul;

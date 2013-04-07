@@ -224,8 +224,7 @@ public:
     UCharVec MoveDirs;
     ushort   MoveLastHx, MoveLastHy;
 
-    uint     PingTime, PingTick, PingCallTick;
-    uint     FPS;
+    uint     PingTick, PingCallTick;
 
     // Sound
     void SoundProcess();
@@ -468,7 +467,6 @@ public:
     bool        ReloadScripts();
     int         ScriptGetHitProc( CritterCl* cr, int hit_location );
     void        DrawIfaceLayer( uint layer );
-    bool        DrawIfaceScreen( uint screen );
     static bool PragmaCallbackCrData( const char* text );
 
     struct SScriptFunc
@@ -647,7 +645,6 @@ public:
         static void          Global_MouseClick( int x, int y, int button, int cursor );
         static void          Global_KeyboardPress( uchar key1, uchar key2 );
         static void          Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name );
-        static uint          Global_GetFPS() { return ( Self->FPS ); }
 
         static bool&         ConsoleActive;
         static bool&         GmapActive, & GmapWait;

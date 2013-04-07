@@ -978,13 +978,13 @@ void GetClientOptions()
     if( !logging )
     {
         WriteLog( "File logging off.\n" );
-        LogFinish( -1 );
+        LogToFile( NULL );
     }
 
     logging = cfg.GetInt( CLIENT_CONFIG_APP, "LoggingDebugOutput", 0 ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( logging, "-LoggingDebugOutput" );
     if( logging )
-        LogToDebugOutput();
+        LogToDebugOutput( true );
 
     logging = cfg.GetInt( CLIENT_CONFIG_APP, "LoggingTime", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( logging, "-LoggingTime" );
@@ -1352,6 +1352,9 @@ GameOptions::GameOptions()
     ScrollCheck = true;
     FoDataPath = "";
     FixedFPS = 100;
+    FPS = 0;
+    PingPeriod = 2000;
+    Ping = 0;
     MsgboxInvert = false;
     ChangeLang = CHANGE_LANG_CTRL_SHIFT;
     DefaultCombatMode = COMBAT_MODE_ANY;
@@ -1374,7 +1377,6 @@ GameOptions::GameOptions()
     HidePassword = true;
     PlayerOffAppendix = "_off";
     CombatMessagesType = 0;
-    DisableDrawScreens = false;
     Animation3dSmoothTime = 250;
     Animation3dFPS = 10;
     RunModMul = 1;
@@ -1455,6 +1457,7 @@ GameOptions::GameOptions()
 
     Random = &::Random;
     GetTick = &Timer::FastTick;
+    SetLogCallback = &LogToFunc;
 
     // Callbacks
     GetUseApCost = NULL;

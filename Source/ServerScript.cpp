@@ -75,8 +75,6 @@ void ASDeepDebugFree( void* ptr )
     free( ptr_ );
 }
 
-extern volatile uint CurrentLoggingThread;
-
 bool FOServer::InitScriptSystem()
 {
     WriteLog( "Script system initialization...\n" );
@@ -185,7 +183,6 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.PlayerGetAccess, "player_getaccess", "bool %s(Critter&,int,string&)" },
         { &ServerFunctions.PlayerAllowCommand, "player_allowcommand", "bool %s(Critter@,string@,uint8)" },
         { &ServerFunctions.CheckTrapLook, "check_trap_look", "bool %s(Map&,Critter&,Item&)" },
-        { &ServerFunctions.ServerLog, "server_log", "void %s(string&)" },
     };
     if( !Script::BindReservedFunctions( (char*) scripts_cfg.GetBuf(), "server", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
     {
@@ -4870,9 +4867,6 @@ uchar FOServer::SScriptFunc::Global_GetOffsetDir( ushort from_hx, ushort from_hy
 
 void FOServer::SScriptFunc::Global_Log( ScriptString& text )
 {
-    if( ::CurrentLoggingThread == Thread::GetCurrentId() )
-        return;
-
     Script::Log( text.c_str() );
 }
 
@@ -5847,31 +5841,31 @@ uint FOServer::SScriptFunc::Global_GetAllPlayers( ScriptArray* players )
     return (uint) players__.size();
 }
 
-uint FOServer::SScriptFunc::Global_GetIndexedPlayers( ScriptArray* ids, ScriptArray* names )
+uint FOServer::SScriptFunc::Global_GetRegisteredPlayers( ScriptArray* ids, ScriptArray* names )
 {
-    UIntVec                 ids_;
-    vector< ScriptString* > names_;
-    for( auto it = FOServer::ClientsData.begin(), end = FOServer::ClientsData.end(); it != end; ++it )
+    if( ids || names )
     {
-        FOServer::ClientData data = *it;
+        UIntVec                 ids_;
+        vector< ScriptString* > names_;
+        for( auto it = ClientsData.begin(), end = ClientsData.end(); it != end; ++it )
+        {
+            ClientData data = *it;
+            ids_.push_back( data.ClientId );
+            names_.push_back( new ScriptString( data.ClientName ) );
+        }
 
-        ids_.push_back( data.ClientId );
-        ScriptString* name_ = new ScriptString( data.ClientName );
-        names_.push_back( name_ );
+        if( !ids_.size() )
+            return 0;
+
+        if( ids )
+            Script::AppendVectorToArray< uint >( ids_, ids );
+        if( names )
+            Script::AppendVectorToArrayRef< ScriptString* >( names_, names );
+
+        return ids_.size();
     }
 
-    if( ids_.size() != names_.size() )
-        SCRIPT_ERROR_R0( "ids size != names size" );
-
-    if( !ids_.size() || !names_.size() )
-        return ( 0 );
-
-    if( ids )
-        Script::AppendVectorToArray< uint >( ids_, ids );
-    if( names )
-        Script::AppendVectorToArrayRef< ScriptString* >( names_, names );
-
-    return ( ids_.size() );
+    return ClientsData.size();
 }
 
 uint FOServer::SScriptFunc::Global_GetAllNpc( ushort pid, ScriptArray* npc )
