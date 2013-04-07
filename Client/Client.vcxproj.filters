@@ -515,6 +515,9 @@
     <ClInclude Include="..\Source\AngelScript\as_symboltable.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\Preprocessor\expressions.h">
+      <Filter>AngelScript\Preprocessor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Zlib\adler32.c">
@@ -795,6 +798,9 @@
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
       <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\Preprocessor\expressions.cpp">
+      <Filter>AngelScript\Preprocessor</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

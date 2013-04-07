@@ -55,6 +55,8 @@
 		<Unit filename="../Source/Acm/acmstrm.cpp" />
 		<Unit filename="../Source/Acm/acmstrm.h" />
 		<Unit filename="../Source/AngelScript/Preprocessor/define_table.h" />
+		<Unit filename="../Source/AngelScript/Preprocessor/expressions.cpp" />
+		<Unit filename="../Source/AngelScript/Preprocessor/expressions.h" />
 		<Unit filename="../Source/AngelScript/Preprocessor/lex.cpp" />
 		<Unit filename="../Source/AngelScript/Preprocessor/lex.h" />
 		<Unit filename="../Source/AngelScript/Preprocessor/lexem_list.cpp" />
@@ -195,6 +197,10 @@
 		<Unit filename="../Source/CritterType.h" />
 		<Unit filename="../Source/Crypt.cpp" />
 		<Unit filename="../Source/Crypt.h" />
+		<Unit filename="../Source/DatFile/cfile.cpp" />
+		<Unit filename="../Source/DatFile/cfile.h" />
+		<Unit filename="../Source/DatFile/unlzss.cpp" />
+		<Unit filename="../Source/DatFile/unlzss.h" />
 		<Unit filename="../Source/DataFile.cpp" />
 		<Unit filename="../Source/DataFile.h" />
 		<Unit filename="../Source/DataMask.h" />
@@ -268,6 +274,11 @@
 		<Unit filename="../Source/Timer.h" />
 		<Unit filename="../Source/Types.h" />
 		<Unit filename="../Source/Version.h" />
+		<Unit filename="../Source/ogg/codec.h" />
+		<Unit filename="../Source/ogg/ogg.h" />
+		<Unit filename="../Source/ogg/os_types.h" />
+		<Unit filename="../Source/ogg/vorbisenc.h" />
+		<Unit filename="../Source/ogg/vorbisfile.h" />
 		<Unit filename="../Source/zlib/adler32.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -319,15 +330,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../Source/zlib/zutil.h" />
-		<Unit filename="../Source/DatFile/cfile.cpp" />
-		<Unit filename="../Source/DatFile/cfile.h" />
-		<Unit filename="../Source/DatFile/unlzss.cpp" />
-		<Unit filename="../Source/DatFile/unlzss.h" />
-		<Unit filename="../Source/ogg/codec.h" />
-		<Unit filename="../Source/ogg/ogg.h" />
-		<Unit filename="../Source/ogg/os_types.h" />
-		<Unit filename="../Source/ogg/vorbisenc.h" />
-		<Unit filename="../Source/ogg/vorbisfile.h" />
 		<Extensions>
 			<envvars />
 			<code_completion />

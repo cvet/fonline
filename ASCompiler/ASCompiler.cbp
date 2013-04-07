@@ -36,6 +36,8 @@
 		<Unit filename="ScriptEngine.h" />
 		<Unit filename="../Source/ASCompiler.cpp" />
 		<Unit filename="../Source/AngelScript/Preprocessor/define_table.h" />
+		<Unit filename="../Source/AngelScript/Preprocessor/expressions.cpp" />
+		<Unit filename="../Source/AngelScript/Preprocessor/expressions.h" />
 		<Unit filename="../Source/AngelScript/Preprocessor/lex.cpp" />
 		<Unit filename="../Source/AngelScript/Preprocessor/lex.h" />
 		<Unit filename="../Source/AngelScript/Preprocessor/lexem_list.cpp" />
