@@ -84,6 +84,7 @@ struct EffectInstance
 
 struct Effect
 {
+    int            Id;
     const char*    Name;
     const char*    Defines;
 
@@ -154,6 +155,26 @@ struct Effect
     bool           IsAnimPos;
     EffectValue_   AnimPosProc;
     EffectValue_   AnimPosTime;
+
+    // Default effects
+    static Effect* Contour, * ContourDefault;
+    static Effect* Generic, * GenericDefault;
+    static Effect* Critter, * CritterDefault;
+    static Effect* Tile, * TileDefault;
+    static Effect* Roof, * RoofDefault;
+    static Effect* Rain, * RainDefault;
+    static Effect* Iface, * IfaceDefault;
+    static Effect* Primitive, * PrimitiveDefault;
+    static Effect* Light, * LightDefault;
+    static Effect* FlushRenderTarget, * FlushRenderTargetDefault;
+    static Effect* FlushRenderTargetMS, * FlushRenderTargetMSDefault;
+    static Effect* FlushPrimitive, * FlushPrimitiveDefault;
+    static Effect* FlushMap, * FlushMapDefault;
+    static Effect* Font, * FontDefault;
+    static Effect* Simple3d, * Simple3dDefault;
+    static Effect* Skinned3d, * Skinned3dDefault;
+    static Effect* Simple3dShadow, * Simple3dShadowDefault;
+    static Effect* Skinned3dShadow, * Skinned3dShadowDefault;
 };
 #ifdef FO_D3D
 # define IS_EFFECT_VALUE( pos )                 ( ( pos ) != NULL )

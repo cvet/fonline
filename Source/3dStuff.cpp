@@ -19,8 +19,6 @@ float     GlobalSpeedAdjust = 1.0f;
 ViewPort_ ViewPort;
 MatrixVec BoneMatrices;
 bool      SoftwareSkinning = false;
-Effect*   EffectSimple, * EffectSimpleShadow = NULL;
-Effect*   EffectSkinned, * EffectSkinnedShadow  = NULL;
 uint      AnimDelay = 0;
 
 #ifdef SHADOW_MAP
@@ -1322,7 +1320,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
                         BoneMatrices[ k ] = ( *mesh_container->FrameCombinedMatrixPointer[ matrix_index ] ) * mesh_container->BoneOffsets[ matrix_index ];
                 }
 
-                Effect* effect = ( mopt->EffectSubsets[ attr_id ] ? mopt->EffectSubsets[ attr_id ] : EffectSkinned );
+                Effect* effect = ( mopt->EffectSubsets[ attr_id ] ? mopt->EffectSubsets[ attr_id ] : Effect::Skinned3d );
 
                 if( effect->EffectParams )
                     D3D_HR( effect->DXInstance->ApplyParameterBlock( effect->EffectParams ) );
@@ -1373,7 +1371,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
                 if( mopt->DisabledSubsets[ i ] )
                     continue;
 
-                Effect* effect = ( mopt->EffectSubsets[ i ] ? mopt->EffectSubsets[ i ] : EffectSkinned );
+                Effect* effect = ( mopt->EffectSubsets[ i ] ? mopt->EffectSubsets[ i ] : Effect::Skinned3d );
 
                 if( effect )
                 {
@@ -1466,9 +1464,9 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
 
         Effect* effect;
         if( !shadow )
-            effect = ( ms.BoneInfluences > 0 ? EffectSkinned : EffectSimple );
+            effect = ( ms.BoneInfluences > 0 ? Effect::Skinned3d : Effect::Simple3d );
         else
-            effect = ( ms.BoneInfluences > 0 ? EffectSkinnedShadow : EffectSimpleShadow );
+            effect = ( ms.BoneInfluences > 0 ? Effect::Skinned3dShadow : Effect::Simple3dShadow );
 
         GL( glUseProgram( effect->Program ) );
 
@@ -1632,24 +1630,14 @@ bool Animation3d::StartUp( Device_ device )
     // Create skinning effect
     if( !SoftwareSkinning )
     {
-        EffectSkinned = GraphicLoader::LoadEffect( D3DDevice, "3D_Default.fx", false );
-        if( !EffectSkinned )
+        Effect::Skinned3d = GraphicLoader::LoadEffect( D3DDevice, "3D_Default", false );
+        if( !Effect::Skinned3d )
         {
             WriteLogF( _FUNC_, " - Fail to create effect, skinning switched to software.\n" );
             SoftwareSkinning = true;
         }
     }
     #else
-    // Create skinning effect
-    if( !( EffectSimple = GraphicLoader::LoadEffect( D3DDevice, "3D_Simple.fx", false ) ) ||
-        !( EffectSimpleShadow = GraphicLoader::LoadEffect( D3DDevice, "3D_Simple.fx", false, "#define SHADOW" ) ) ||
-        !( EffectSkinned = GraphicLoader::LoadEffect( D3DDevice, "3D_Skinned.fx", false ) ) ||
-        !( EffectSkinnedShadow = GraphicLoader::LoadEffect( D3DDevice, "3D_Skinned.fx", false, "#define SHADOW" ) ) )
-    {
-        WriteLogF( _FUNC_, " - Fail to create 3d effects.\n" );
-        return false;
-    }
-
     # ifdef SHADOW_MAP
     GL( glHint( GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST ) );
 
@@ -1755,9 +1743,6 @@ void Animation3d::Finish()
     for( auto it = Animation3dXFile::xFiles.begin(), end = Animation3dXFile::xFiles.end(); it != end; ++it )
         delete *it;
     Animation3dXFile::xFiles.clear();
-
-    SAFEDEL( EffectSimple );
-    SAFEDEL( EffectSkinned );
 
     GraphicLoader::FreeTexture( NULL );
 }
@@ -1868,14 +1853,6 @@ Point Animation3d::Convert3dTo2d( float x, float y )
     Vector coords;
     VecProject( Vector( x, y, FixedZ ), MatrixEmpty, coords );
     return Point( (int) coords.x, (int) coords.y );
-}
-
-void Animation3d::SetDefaultEffects( Effect* effect_simple, Effect* effect_skinned )
-{
-    if( effect_simple )
-        EffectSimple = effect_simple;
-    if( effect_skinned )
-        EffectSkinned = effect_skinned;
 }
 
 bool Animation3d::Is2dEmulation()
@@ -2943,7 +2920,7 @@ Texture* Animation3dXFile::GetTexture( const char* tex_name )
 
 Effect* Animation3dXFile::GetEffect( EffectInstance* effect_inst )
 {
-    Effect* effect = GraphicLoader::LoadEffect( D3DDevice, effect_inst, fileName.c_str(), false );
+    Effect* effect = GraphicLoader::LoadEffect( D3DDevice, effect_inst->EffectFilename, false, NULL, fileName.c_str(), effect_inst->Defaults, effect_inst->DefaultsCount );
     if( !effect )
         WriteLogF( _FUNC_, " - Can't load effect<%s>.\n", effect_inst && effect_inst->EffectFilename ? effect_inst->EffectFilename : "nullptr" );
     return effect;

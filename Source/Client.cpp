@@ -110,10 +110,10 @@ bool FOClient::Init()
     STATIC_ASSERT( sizeof( ProtoItem ) == 908 );
     STATIC_ASSERT( sizeof( Field ) == 76 );
     STATIC_ASSERT( sizeof( ScriptArray ) == 28 );
-    STATIC_ASSERT( offsetof( CritterCl, ItemSlotArmor ) == 4280 );
+    STATIC_ASSERT( offsetof( CritterCl, ItemSlotArmor ) == 4284 );
     STATIC_ASSERT( sizeof( GameOptions ) == 1344 );
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
-    STATIC_ASSERT( sizeof( Sprite ) == 108 );
+    STATIC_ASSERT( sizeof( Sprite ) == 112 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );
     #endif
 
@@ -308,19 +308,6 @@ bool FOClient::Init()
     if( !SprMngr.LoadFontFO( FONT_BIG, "Big" ) )
         return false;
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
-    Effect* font_effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), "Font_Default.fx", true );
-    if( font_effect )
-    {
-        SprMngr.SetFontEffect( FONT_FO, font_effect );
-        SprMngr.SetFontEffect( FONT_NUM, font_effect );
-        SprMngr.SetFontEffect( FONT_BIG_NUM, font_effect );
-        SprMngr.SetFontEffect( FONT_SAND_NUM, font_effect );
-        SprMngr.SetFontEffect( FONT_SPECIAL, font_effect );
-        SprMngr.SetFontEffect( FONT_DEFAULT, font_effect );
-        SprMngr.SetFontEffect( FONT_THIN, font_effect );
-        SprMngr.SetFontEffect( FONT_FAT, font_effect );
-        SprMngr.SetFontEffect( FONT_BIG, font_effect );
-    }
 
     // Sound manager
     SndMngr.Init();
@@ -11202,79 +11189,91 @@ void FOClient::SScriptFunc::Global_SetDefaultFont( int font, uint color )
 
 bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtype, ScriptString* effect_name, ScriptString* effect_defines )
 {
-    // Effect types (* - only for OpenGL)
-    #define EFFECT_2D                        ( 0 )
-    #define EFFECT_3D                        ( 1 )
-    #define EFFECT_INTERFACE                 ( 2 )
-    #define EFFECT_FONT                      ( 3 )
-    #define EFFECT_PRIMITIVE                 ( 4 )
-    #define EFFECT_FLUSH                     ( 5 )   // *
-
-    // Effect subtypes (* - only for OpenGL)
-    #define EFFECT_2D_GENERIC                ( 1 )
-    #define EFFECT_2D_TILE                   ( 2 )   // *
-    #define EFFECT_2D_ROOF                   ( 4 )   // *
-    #define EFFECT_3D_SIMPLE                 ( 1 )
-    #define EFFECT_3D_SKINNED                ( 2 )
-    #define EFFECT_INTERFACE_BASE            ( 1 )
-    #define EFFECT_INTERFACE_CONTOUR         ( 2 )   // *
-    // For font subtype use font type (FONT_*)
-    #define EFFECT_FLUSH_RENDER_TARGET       ( 1 )   // *
-    #define EFFECT_FLUSH_RENDER_TARGET_MS    ( 2 )   // Multisample*
-    #define EFFECT_FLUSH_PRIMITIVE           ( 4 )   // *
-    #define EFFECT_FLUSH_MAP                 ( 8 )   // *
+    // Effect types
+    #define EFFECT_2D_GENERIC                ( 0x00000001 ) // Subtype can be item id, zero for all items
+    #define EFFECT_2D_CRITTER                ( 0x00000002 ) // Subtype can be critter id, zero for all critters
+    #define EFFECT_2D_TILE                   ( 0x00000004 )
+    #define EFFECT_2D_ROOF                   ( 0x00000008 )
+    #define EFFECT_2D_RAIN                   ( 0x00000010 )
+    #define EFFECT_3D_SIMPLE                 ( 0x00000100 ) // Only for OpenGL
+    #define EFFECT_3D_SIMPLE_SHADOW          ( 0x00000200 ) // Only for OpenGL
+    #define EFFECT_3D_SKINNED                ( 0x00000400 )
+    #define EFFECT_3D_SKINNED_SHADOW         ( 0x00000800 ) // Only for OpenGL
+    #define EFFECT_INTERFACE_BASE            ( 0x00001000 )
+    #define EFFECT_INTERFACE_CONTOUR         ( 0x00002000 ) // Only for OpenGL
+    #define EFFECT_FONT                      ( 0x00010000 ) // Subtype is FONT_*, -1 default for all fonts
+    #define EFFECT_PRIMITIVE_GENERIC         ( 0x00100000 )
+    #define EFFECT_PRIMITIVE_LIGHT           ( 0x00200000 )
+    #define EFFECT_FLUSH_RENDER_TARGET       ( 0x01000000 ) // Only for OpenGL
+    #define EFFECT_FLUSH_RENDER_TARGET_MS    ( 0x02000000 ) // Multisample, Only for OpenGL
+    #define EFFECT_FLUSH_PRIMITIVE           ( 0x04000000 ) // Only for OpenGL
+    #define EFFECT_FLUSH_MAP                 ( 0x08000000 ) // Only for OpenGL
 
     Effect* effect = NULL;
     if( effect_name && effect_name->length() )
     {
-        bool use_in_2d = ( effect_type != EFFECT_3D );
-        effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), effect_name->c_str(), use_in_2d, effect_defines ? effect_defines->c_str() : NULL );
+        bool use_in_2d = !( effect_type & ( EFFECT_3D_SIMPLE | EFFECT_3D_SKINNED ) );
+        effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), effect_name->c_str(), use_in_2d, false, effect_defines ? effect_defines->c_str() : NULL );
         if( !effect )
             SCRIPT_ERROR_R0( "Effect not found or have some errors, see log file." );
     }
 
-    if( effect_type == EFFECT_2D )
+    if( effect_type & EFFECT_2D_GENERIC && effect_subtype != 0 )
     {
-        if( effect_subtype & EFFECT_2D_GENERIC )
-            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_GENERIC, effect );
-        if( effect_subtype & EFFECT_2D_TILE )
-            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_TILE, effect );
-        if( effect_subtype & EFFECT_2D_ROOF )
-            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_ROOF, effect );
+        ItemHex* item = Self->GetItem( (uint) effect_subtype );
+        if( item )
+            item->DrawEffect = ( effect ? effect : Effect::Generic );
     }
-    else if( effect_type == EFFECT_3D )
+    if( effect_type & EFFECT_2D_CRITTER && effect_subtype != 0 )
     {
-        if( effect_subtype & EFFECT_3D_SIMPLE )
-            Animation3d::SetDefaultEffects( effect, NULL );
-        if( effect_subtype & EFFECT_3D_SKINNED )
-            Animation3d::SetDefaultEffects( NULL, effect );
+        CritterCl* cr = Self->GetCritter( (uint) effect_subtype );
+        if( cr )
+            cr->DrawEffect = ( effect ? effect : Effect::Critter );
     }
-    else if( effect_type == EFFECT_INTERFACE )
-    {
-        if( effect_subtype & EFFECT_INTERFACE_BASE )
-            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_IFACE, effect );
-        if( effect_subtype & EFFECT_INTERFACE_CONTOUR )
-            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_CONTOUR, effect );
-    }
-    else if( effect_type == EFFECT_FONT )
-    {
+
+    if( effect_type & EFFECT_2D_GENERIC && effect_subtype == 0 )
+        *Effect::Generic = ( effect ? *effect : *Effect::GenericDefault );
+    if( effect_type & EFFECT_2D_CRITTER && effect_subtype == 0 )
+        *Effect::Critter = ( effect ? *effect : *Effect::CritterDefault );
+    if( effect_type & EFFECT_2D_TILE )
+        *Effect::Tile = ( effect ? *effect : *Effect::TileDefault );
+    if( effect_type & EFFECT_2D_ROOF )
+        *Effect::Roof = ( effect ? *effect : *Effect::RoofDefault );
+    if( effect_type & EFFECT_2D_RAIN )
+        *Effect::Rain = ( effect ? *effect : *Effect::RainDefault );
+
+    if( effect_type & EFFECT_3D_SIMPLE )
+        *Effect::Simple3d = ( effect ? *effect : *Effect::Simple3dDefault );
+    if( effect_type & EFFECT_3D_SIMPLE_SHADOW )
+        *Effect::Simple3dShadow = ( effect ? *effect : *Effect::Simple3dShadowDefault );
+    if( effect_type & EFFECT_3D_SKINNED )
+        *Effect::Skinned3d = ( effect ? *effect : *Effect::Skinned3dDefault );
+    if( effect_type & EFFECT_3D_SKINNED_SHADOW )
+        *Effect::Skinned3dShadow = ( effect ? *effect : *Effect::Skinned3dShadowDefault );
+
+    if( effect_type & EFFECT_INTERFACE_BASE )
+        *Effect::Iface = ( effect ? *effect : *Effect::IfaceDefault );
+    if( effect_type & EFFECT_INTERFACE_CONTOUR )
+        *Effect::Contour = ( effect ? *effect : *Effect::ContourDefault );
+
+    if( effect_type & EFFECT_FONT && effect_subtype == -1 )
+        *Effect::Font = ( effect ? *effect : *Effect::ContourDefault );
+    if( effect_type & EFFECT_FONT && effect_subtype >= 0 )
         SprMngr.SetFontEffect( effect_subtype, effect );
-    }
-    else if( effect_type == EFFECT_PRIMITIVE )
-    {
-        SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_POINT, effect );
-    }
-    else if( effect_type == EFFECT_FLUSH )
-    {
-        if( effect_subtype & EFFECT_FLUSH_RENDER_TARGET )
-            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_FLUSH_RENDER_TARGET, effect );
-        if( effect_subtype & EFFECT_FLUSH_RENDER_TARGET_MS )
-            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_FLUSH_RENDER_TARGET_MS, effect );
-        if( effect_subtype & EFFECT_FLUSH_PRIMITIVE )
-            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_FLUSH_PRIMITIVE, effect );
-        if( effect_subtype & EFFECT_FLUSH_MAP )
-            SprMngr.SetDefaultEffect2D( DEFAULT_EFFECT_FLUSH_MAP, effect );
-    }
+
+    if( effect_type & EFFECT_PRIMITIVE_GENERIC )
+        *Effect::Primitive = ( effect ? *effect : *Effect::PrimitiveDefault );
+    if( effect_type & EFFECT_PRIMITIVE_LIGHT )
+        *Effect::Light = ( effect ? *effect : *Effect::LightDefault );
+
+    if( effect_type & EFFECT_FLUSH_RENDER_TARGET )
+        *Effect::FlushRenderTarget = ( effect ? *effect : *Effect::FlushRenderTargetDefault );
+    if( effect_type & EFFECT_FLUSH_RENDER_TARGET_MS )
+        *Effect::FlushRenderTargetMS = ( effect ? *effect : *Effect::FlushRenderTargetMSDefault );
+    if( effect_type & EFFECT_FLUSH_PRIMITIVE )
+        *Effect::FlushPrimitive = ( effect ? *effect : *Effect::FlushPrimitiveDefault );
+    if( effect_type & EFFECT_FLUSH_MAP )
+        *Effect::FlushMap = ( effect ? *effect : *Effect::FlushMapDefault );
 
     return true;
 }
@@ -11753,7 +11752,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, ushort p
     Sprites&   tree = Self->HexMngr.GetDrawTree();
     Sprite&    spr = tree.InsertSprite( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ),
                                         hx, hy + ( proto_item ? proto_item->DrawOrderOffsetHexY : 0 ), 0,
-                                        f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ), NULL, NULL, NULL, NULL, NULL );
+                                        f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ), NULL, NULL, NULL, NULL, NULL, NULL );
     if( !no_light )
         spr.SetLight( Self->HexMngr.GetLightHex( 0, 0 ), Self->HexMngr.GetMaxHexX(), Self->HexMngr.GetMaxHexY() );
 

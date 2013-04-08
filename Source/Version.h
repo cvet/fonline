@@ -1,16 +1,16 @@
 #ifndef ___VERSION___
 #define ___VERSION___
 
-#define SERVER_VERSION                   0x00000507
-#define CLIENT_VERSION                   0x00000424
-#define MAPPER_VERSION                   0x00000262
+#define SERVER_VERSION                   0x00000508
+#define CLIENT_VERSION                   0x00000425
+#define MAPPER_VERSION                   0x00000263
 
-#define MAPPER_VERSION_STR               "v.1.30.0"
+#define MAPPER_VERSION_STR               "v.1.30.1"
 #define DIALOG_EDITOR_VERSION_STR        "v.2.18.3"
 #define OBJECT_EDITOR_VERSION_STR        "v.2.14.3"
 
-#define CLIENT_SCRIPT_BINARY_VERSION     ( 52 )
-#define SHADER_PROGRAM_BINARY_VERSION    ( 8 )
+#define CLIENT_SCRIPT_BINARY_VERSION     ( 53 )
+#define SHADER_PROGRAM_BINARY_VERSION    ( 9 )
 
 #define MAJORNO                          0
 #define MINORNO                          0

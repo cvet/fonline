@@ -185,7 +185,7 @@ bool HexManager::Init()
         WriteLog( "Can't create render target.\n" );
         return false;
     }
-    rtMap.DrawEffect = DEFAULT_EFFECT_FLUSH_MAP;
+    rtMap.DrawEffect = Effect::FlushMap;
     #endif
 
     isShowTrack = false;
@@ -339,7 +339,8 @@ bool HexManager::AddItem( uint id, ushort pid, ushort hx, ushort hy, bool is_add
         if( GetHexToDraw( hx, hy ) && !item->IsHidden() && !item->IsFullyTransparent() )
         {
             Sprite& spr = mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), hx, hy + item->Proto->DrawOrderOffsetHexY, item->SpriteCut,
-                                                 f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->SprDrawValid );
+                                                 f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
+                                                 &item->DrawEffect, &item->SprDrawValid );
             if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
                 spr.SetLight( hexLight, maxHexX, maxHexY );
             item->SetSprite( &spr );
@@ -468,7 +469,8 @@ void HexManager::ProcessItems()
                 if( GetHexToDraw( step.first, step.second ) )
                 {
                     item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), step.first, step.second + item->Proto->DrawOrderOffsetHexY, item->SpriteCut,
-                                                            f_.ScrX + HEX_OX, f_.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->SprDrawValid );
+                                                            f_.ScrX + HEX_OX, f_.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
+                                                            &item->DrawEffect, &item->SprDrawValid );
                     if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
                         item->SprDraw->SetLight( hexLight, maxHexX, maxHexY );
                 }
@@ -633,7 +635,8 @@ bool HexManager::RunEffect( ushort eff_pid, ushort from_hx, ushort from_hy, usho
     if( GetHexToDraw( from_hx, from_hy ) )
     {
         item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), from_hx, from_hy + item->Proto->DrawOrderOffsetHexY, item->SpriteCut,
-                                                f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->SprDrawValid );
+                                                f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
+                                                &item->DrawEffect, &item->SprDrawValid );
         if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
             item->SprDraw->SetLight( hexLight, maxHexX, maxHexY );
     }
@@ -865,7 +868,8 @@ void HexManager::RebuildMap( int rx, int ry )
             {
                 uint        spr_id = ( GetHexTrack( nx, ny ) == 1 ? picTrack1->GetCurSprId() : picTrack2->GetCurSprId() );
                 SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
-                mainTree.AddSprite( DRAW_ORDER_TRACK, nx, ny, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY + ( si ? si->Height / 2 : 0 ), spr_id, NULL, NULL, NULL, NULL, NULL );
+                mainTree.AddSprite( DRAW_ORDER_TRACK, nx, ny, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY + ( si ? si->Height / 2 : 0 ), spr_id,
+                                    NULL, NULL, NULL, NULL, NULL, NULL );
             }
 
             // Hex Lines
@@ -885,7 +889,8 @@ void HexManager::RebuildMap( int rx, int ry )
 
                 uint        spr_id = ( thru ? picHex[ 1 ]->GetCurSprId() : picHex[ 0 ]->GetCurSprId() );
                 SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
-                mainTree.AddSprite( DRAW_ORDER_HEX_GRID, nx, ny, 0, f.ScrX + ( si ? si->Width / 2 : 0 ), f.ScrY + ( si ? si->Height : 0 ), spr_id, NULL, NULL, NULL, NULL, NULL );
+                mainTree.AddSprite( DRAW_ORDER_HEX_GRID, nx, ny, 0, f.ScrX + ( si ? si->Width / 2 : 0 ), f.ScrY + ( si ? si->Height : 0 ), spr_id,
+                                    NULL, NULL, NULL, NULL, NULL, NULL );
             }
 
             // Rain
@@ -907,7 +912,7 @@ void HexManager::RebuildMap( int rx, int ry )
                         rainData.push_back( new_drop );
 
                         mainTree.AddSprite( DRAW_ORDER_RAIN, nx, ny, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &new_drop->CurSprId,
-                                            &new_drop->OffsX, &new_drop->OffsY, NULL, NULL ).SetLight( hexLight, maxHexX, maxHexY );
+                                            &new_drop->OffsX, &new_drop->OffsY, NULL, &Effect::Rain, NULL ).SetLight( hexLight, maxHexX, maxHexY );
                     }
                     else if( !roofSkip || roofSkip != GetField( rofx, rofy ).RoofNum )
                     {
@@ -915,7 +920,7 @@ void HexManager::RebuildMap( int rx, int ry )
                         rainData.push_back( new_drop );
 
                         roofRainTree.AddSprite( DRAW_ORDER_RAIN, nx, ny, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &new_drop->CurSprId,
-                                                &new_drop->OffsX, &new_drop->OffsY, NULL, NULL ).SetLight( hexLight, maxHexX, maxHexY );
+                                                &new_drop->OffsX, &new_drop->OffsY, NULL, &Effect::Rain, NULL ).SetLight( hexLight, maxHexX, maxHexY );
                     }
                     if( new_drop )
                     {
@@ -965,7 +970,8 @@ void HexManager::RebuildMap( int rx, int ry )
                     #endif
 
                     Sprite& spr = mainTree.AddSprite( DRAW_ORDER_ITEM_AUTO( item ), nx, ny + item->Proto->DrawOrderOffsetHexY, item->SpriteCut,
-                                                      f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->SprDrawValid );
+                                                      f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
+                                                      &item->DrawEffect, &item->SprDrawValid );
                     if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
                         spr.SetLight( hexLight, maxHexX, maxHexY );
                     item->SetSprite( &spr );
@@ -978,7 +984,7 @@ void HexManager::RebuildMap( int rx, int ry )
             {
                 Sprite& spr = mainTree.AddSprite( DRAW_ORDER_CRIT_AUTO( cr ), nx, ny, 0,
                                                   f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy,
-                                                  &cr->Alpha, &cr->SprDrawValid );
+                                                  &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid );
                 spr.SetLight( hexLight, maxHexX, maxHexY );
                 cr->SprDraw = &spr;
 
@@ -1003,7 +1009,7 @@ void HexManager::RebuildMap( int rx, int ry )
 
                     Sprite& spr = mainTree.AddSprite( DRAW_ORDER_CRIT_AUTO( cr ), nx, ny, 0,
                                                       f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy,
-                                                      &cr->Alpha, &cr->SprDrawValid );
+                                                      &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid );
                     spr.SetLight( hexLight, maxHexX, maxHexY );
                     cr->SprDraw = &spr;
 
@@ -1543,10 +1549,10 @@ void HexManager::RebuildTiles()
                 #ifdef FONLINE_MAPPER
                 {
                     ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, false );
-                    tilesTree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, tiles[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : NULL, NULL );
+                    tilesTree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, tiles[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : NULL, &Effect::Tile, NULL );
                 }
                 #else
-                    tilesTree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, NULL, NULL );
+                    tilesTree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, NULL, &Effect::Tile, NULL );
                 #endif
             }
         }
@@ -1595,10 +1601,10 @@ void HexManager::RebuildRoof()
                     #ifdef FONLINE_MAPPER
                     {
                         ProtoMap::TileVec& roofs = CurProtoMap->GetTiles( hx, hy, true );
-                        roofTree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, roofs[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : &GameOpt.RoofAlpha, NULL ).SetEgg( EGG_ALWAYS );
+                        roofTree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, roofs[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : &GameOpt.RoofAlpha, &Effect::Roof, NULL ).SetEgg( EGG_ALWAYS );
                     }
                     #else
-                        roofTree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, &GameOpt.RoofAlpha, NULL ).SetEgg( EGG_ALWAYS );
+                        roofTree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, &GameOpt.RoofAlpha, &Effect::Roof, NULL ).SetEgg( EGG_ALWAYS );
                     #endif
                 }
             }
@@ -1923,6 +1929,12 @@ void HexManager::ChangeZoom( int zoom )
         ChangeZoom( 0 );
 }
 
+void HexManager::GetScreenHexes( int& sx, int& sy )
+{
+    sx = screenHexX;
+    sy = screenHexY;
+}
+
 void HexManager::GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y )
 {
     ViewField& center_hex = viewField[ hVisible / 2 * wVisible + wVisible / 2 ];
@@ -1957,7 +1969,6 @@ void HexManager::DrawMap()
     // Tiles
     if( GameOpt.ShowTile )
     {
-        SprMngr.SetCurEffect2D( DEFAULT_EFFECT_TILE );
         #ifdef FO_D3D
         Device_ device = SprMngr.GetDevice();
         device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_POINT );
@@ -1971,7 +1982,6 @@ void HexManager::DrawMap()
     }
 
     // Flat sprites
-    SprMngr.SetCurEffect2D( DEFAULT_EFFECT_GENERIC );
     SprMngr.DrawSprites( mainTree, true, false, DRAW_ORDER_FLAT, DRAW_ORDER_LIGHT - 1 );
 
     // Light
@@ -1983,7 +1993,6 @@ void HexManager::DrawMap()
     DrawCursor( cursorPrePic->GetCurSprId() );
 
     // Sprites
-    SprMngr.SetCurEffect2D( DEFAULT_EFFECT_GENERIC );
     SprMngr.DrawSprites( mainTree, true, true, DRAW_ORDER_LIGHT, DRAW_ORDER_LAST );
 
     // Roof
@@ -1994,14 +2003,12 @@ void HexManager::DrawMap()
         device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_POINT );
         device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_POINT );
         #endif
-        SprMngr.SetCurEffect2D( DEFAULT_EFFECT_ROOF );
         SprMngr.DrawSprites( roofTree, false, true, 0, 0 );
         #ifdef FO_D3D
         device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR );
         device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR );
         #endif
 
-        SprMngr.SetCurEffect2D( DEFAULT_EFFECT_GENERIC );
         if( rainCapacity )
             SprMngr.DrawSprites( roofRainTree, false, false, 0, 0 );
     }
@@ -2019,6 +2026,8 @@ void HexManager::DrawMap()
     #ifndef FO_D3D
     // Return render target
     SprMngr.PopRenderTarget();
+
+    // Draw map
     SprMngr.DrawRenderTarget( rtMap, false );
     #endif
 }
@@ -2374,8 +2383,8 @@ void HexManager::SetCrit( CritterCl* cr )
 
     if( GetHexToDraw( hx, hy ) && cr->Visible )
     {
-        Sprite& spr = mainTree.InsertSprite( DRAW_ORDER_CRIT_AUTO( cr ), hx, hy, 0,
-                                             f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->SprDrawValid );
+        Sprite& spr = mainTree.InsertSprite( DRAW_ORDER_CRIT_AUTO( cr ), hx, hy, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY,
+                                             0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid );
         spr.SetLight( hexLight, maxHexX, maxHexY );
         cr->SprDraw = &spr;
 

@@ -29,6 +29,7 @@ public:
     uchar             ScenFlags;
     bool              SprDrawValid;
     Sprite*           SprDraw, * SprTemp;
+    Effect*           DrawEffect;
 
 private:
     int   curSpr, begSpr, endSpr;

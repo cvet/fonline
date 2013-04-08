@@ -104,7 +104,7 @@ void Sprites::ClearPool()
     spritesPool.clear();
 }
 
-Sprite& Sprites::PutSprite( uint index, int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback )
+Sprite& Sprites::PutSprite( uint index, int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback )
 {
     if( index >= spritesTreeSize )
     {
@@ -134,6 +134,7 @@ Sprite& Sprites::PutSprite( uint index, int draw_order, int hx, int hy, int cut,
     spr->ContourColor = 0;
     spr->Color = 0;
     spr->FlashMask = 0;
+    spr->DrawEffect = effect;
     spr->Parent = NULL;
     spr->Child = NULL;
 
@@ -176,7 +177,7 @@ Sprite& Sprites::PutSprite( uint index, int draw_order, int hx, int hy, int cut,
             if( xx + ww > widthf )
                 ww = widthf - xx;
 
-            Sprite& spr_ = ( i != h1 ? PutSprite( spritesTreeSize, draw_order, hor ? i : hx, hor ? hy : i, 0, x, y, id, id_ptr, ox, oy, alpha, NULL ) : *spr );
+            Sprite& spr_ = ( i != h1 ? PutSprite( spritesTreeSize, draw_order, hor ? i : hx, hor ? hy : i, 0, x, y, id, id_ptr, ox, oy, alpha, effect, NULL ) : *spr );
             if( i != h1 )
                 spr_.Parent = parent;
             parent->Child = &spr_;
@@ -213,17 +214,17 @@ Sprite& Sprites::PutSprite( uint index, int draw_order, int hx, int hy, int cut,
     return *spr;
 }
 
-Sprite& Sprites::AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback )
+Sprite& Sprites::AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback )
 {
-    return PutSprite( spritesTreeSize, draw_order, hx, hy, cut, x, y, id, id_ptr, ox, oy, alpha, callback );
+    return PutSprite( spritesTreeSize, draw_order, hx, hy, cut, x, y, id, id_ptr, ox, oy, alpha, effect, callback );
 }
 
-Sprite& Sprites::InsertSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback )
+Sprite& Sprites::InsertSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback )
 {
     // For cutted sprites need resort all tree
     if( cut == SPRITE_CUT_HORIZONTAL || cut == SPRITE_CUT_VERTICAL )
     {
-        Sprite& spr = PutSprite( spritesTreeSize, draw_order, hx, hy, cut, x, y, id, id_ptr, ox, oy, alpha, callback );
+        Sprite& spr = PutSprite( spritesTreeSize, draw_order, hx, hy, cut, x, y, id, id_ptr, ox, oy, alpha, effect, callback );
         SortByMapPos();
         return spr;
     }
@@ -256,7 +257,7 @@ Sprite& Sprites::InsertSprite( int draw_order, int hx, int hy, int cut, int x, i
         spritesTree.pop_back();
     }
 
-    return PutSprite( index, draw_order, hx, hy, cut, x, y, id, id_ptr, ox, oy, alpha, callback );
+    return PutSprite( index, draw_order, hx, hy, cut, x, y, id, id_ptr, ox, oy, alpha, effect, callback );
 }
 
 void Sprites::Resize( uint size )

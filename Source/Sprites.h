@@ -1,32 +1,35 @@
 #ifndef __SPRITES__
 #define __SPRITES__
 
+#include "GraphicStructures.h"
+
 #define SPRITES_POOL_GROW_SIZE    ( 10000 )
 #define SPRITES_RESIZE_COUNT      ( 100 )
 
 class Sprite
 {
 public:
-    int     DrawOrderType;
-    uint    DrawOrderPos;
-    uint    TreeIndex;
-    uint    SprId;
-    uint*   PSprId;
-    int     HexX, HexY;
-    int     ScrX, ScrY;
-    short*  OffsX, * OffsY;
-    int     CutType;
-    Sprite* Parent, * Child;
-    float   CutX, CutW, CutTexL, CutTexR;
-    uchar*  Alpha;
-    uchar*  Light;
-    int     EggType;
-    int     ContourType;
-    uint    ContourColor;
-    uint    Color;
-    uint    FlashMask;
-    bool*   ValidCallback;
-    bool    Valid;
+    int      DrawOrderType;
+    uint     DrawOrderPos;
+    uint     TreeIndex;
+    uint     SprId;
+    uint*    PSprId;
+    int      HexX, HexY;
+    int      ScrX, ScrY;
+    short*   OffsX, * OffsY;
+    int      CutType;
+    Sprite*  Parent, * Child;
+    float    CutX, CutW, CutTexL, CutTexR;
+    uchar*   Alpha;
+    uchar*   Light;
+    int      EggType;
+    int      ContourType;
+    uint     ContourColor;
+    uint     Color;
+    uint     FlashMask;
+    Effect** DrawEffect;
+    bool*    ValidCallback;
+    bool     Valid;
 
     #ifdef FONLINE_MAPPER
     int CutOyL, CutOyR;
@@ -57,7 +60,7 @@ private:
     // Data
     SpriteVec spritesTree;
     uint      spritesTreeSize;
-    Sprite&   PutSprite( uint index, int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback );
+    Sprite&   PutSprite( uint index, int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
 
 public:
     Sprites(): spritesTreeSize( 0 ) {}
@@ -65,8 +68,8 @@ public:
     auto Begin()->SpriteVec::iterator { return spritesTree.begin(); }
     auto End()->SpriteVec::iterator { return spritesTree.begin() + spritesTreeSize; }
     uint    Size() { return spritesTreeSize; }
-    Sprite& AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback );
-    Sprite& InsertSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, bool* callback );
+    Sprite& AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
+    Sprite& InsertSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
     void    Resize( uint size );
     void    Clear() { Resize( 0 ); }
     void    Unvalidate();

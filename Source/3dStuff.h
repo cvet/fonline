@@ -155,7 +155,6 @@ public:
     static void         AnimateSlower();
     static PointF       Convert2dTo3d( int x, int y );
     static Point        Convert3dTo2d( float x, float y );
-    static void         SetDefaultEffects( Effect* effect_simple, Effect* effect_skinned );
     static bool         Is2dEmulation();
 };
 

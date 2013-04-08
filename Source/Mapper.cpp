@@ -28,7 +28,7 @@ bool FOMapper::Init()
 
     #if defined ( FO_X86 )
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
-    STATIC_ASSERT( sizeof( Sprite ) == 116 );
+    STATIC_ASSERT( sizeof( Sprite ) == 120 );
     STATIC_ASSERT( sizeof( GameOptions ) == 1344 );
     #endif
 
@@ -142,19 +142,6 @@ bool FOMapper::Init()
     if( !SprMngr.LoadFontFO( FONT_BIG, "Big" ) )
         return false;
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
-    Effect* font_effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), "Font_Default.fx", true );
-    if( font_effect )
-    {
-        SprMngr.SetFontEffect( FONT_FO, font_effect );
-        SprMngr.SetFontEffect( FONT_NUM, font_effect );
-        SprMngr.SetFontEffect( FONT_BIG_NUM, font_effect );
-        SprMngr.SetFontEffect( FONT_SAND_NUM, font_effect );
-        SprMngr.SetFontEffect( FONT_SPECIAL, font_effect );
-        SprMngr.SetFontEffect( FONT_DEFAULT, font_effect );
-        SprMngr.SetFontEffect( FONT_THIN, font_effect );
-        SprMngr.SetFontEffect( FONT_FAT, font_effect );
-        SprMngr.SetFontEffect( FONT_BIG, font_effect );
-    }
 
     // Names
     ConstantsManager::Initialize( PT_DATA );
@@ -6906,7 +6893,8 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, ushort p
     Sprites&   tree = Self->HexMngr.GetDrawTree();
     Sprite&    spr = tree.InsertSprite( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ),
                                         hx, hy + ( proto_item ? proto_item->DrawOrderOffsetHexY : 0 ), 0,
-                                        f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ), NULL, NULL, NULL, NULL, NULL );
+                                        f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ),
+                                        NULL, NULL, NULL, NULL, NULL, NULL );
     if( !no_light )
         spr.SetLight( Self->HexMngr.GetLightHex( 0, 0 ), Self->HexMngr.GetMaxHexX(), Self->HexMngr.GetMaxHexY() );
 

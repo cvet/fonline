@@ -44,6 +44,7 @@ CritterCl::CritterCl(): CrDir( 0 ), SprId( 0 ), Id( 0 ), Pid( 0 ), NameColor( 0 
     memzero( ParamsIsChanged, sizeof( ParamsIsChanged ) );
     ParamLocked = -1;
     memzero( &stayAnim, sizeof( stayAnim ) );
+    DrawEffect = Effect::Critter;
 }
 
 CritterCl::~CritterCl()

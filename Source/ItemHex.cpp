@@ -82,6 +82,9 @@ ItemHex::ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int h
     if( dir )
         Data.Dir = dir;
 
+    // Draw effect
+    DrawEffect = Effect::Generic;
+
     // Refresh item
     RefreshAnim();
     RefreshAlpha();

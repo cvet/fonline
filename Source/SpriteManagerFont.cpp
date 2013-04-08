@@ -51,7 +51,7 @@ struct FontData
             TexUV[ i ][ 2 ] = 0.0f;
             TexUV[ i ][ 3 ] = 0.0f;
         }
-        DrawEffect = NULL;
+        DrawEffect = Effect::Font;
     }
 };
 typedef vector< FontData* > FontDataVec;
@@ -140,7 +140,7 @@ void SpriteManager::SetFontEffect( int index, Effect* effect )
 {
     FontData* font = GetFont( index );
     if( font )
-        font->DrawEffect = effect;
+        font->DrawEffect = ( effect ? effect : Effect::Font );
 }
 
 bool SpriteManager::LoadFontFO( int index, const char* font_name )

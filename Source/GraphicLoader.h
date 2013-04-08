@@ -43,11 +43,11 @@ private:
 
     // Effects
 public:
-    static Effect* LoadEffect( Device_ device, const char* effect_name, bool use_in_2d, const char* defines = NULL );
-    static Effect* LoadEffect( Device_ device, EffectInstance* effect_inst, const char* model_path, bool use_in_2d, const char* defines = NULL );
+    static Effect* LoadEffect( Device_ device, const char* effect_name, bool use_in_2d, const char* defines = NULL, const char* model_path = NULL, EffectDefault* defaults = NULL, uint defaults_count = 0 );
     static void    EffectProcessVariables( Effect* effect, int pass, float anim_proc = 0.0f, float anim_time = 0.0f, Texture** textures = NULL );
     static bool    EffectsPreRestore();
     static bool    EffectsPostRestore();
+    static bool    LoadDefaultEffects( Device_ device );
 
 private:
     static EffectVec loadedEffects;

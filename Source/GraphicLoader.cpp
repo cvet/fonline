@@ -993,40 +993,37 @@ public:
 
 EffectVec GraphicLoader::loadedEffects;
 
-Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name, bool use_in_2d, const char* defines /* = NULL */ )
+Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name, bool use_in_2d, const char* defines /* = NULL */, const char* model_path /* = NULL */, EffectDefault* defaults /* = NULL */, uint defaults_count /* = 0 */ )
 {
-    EffectInstance effect_inst;
-    memzero( &effect_inst, sizeof( effect_inst ) );
-    effect_inst.EffectFilename = (char*) effect_name;
-    return LoadEffect( device, &effect_inst, NULL, use_in_2d, defines );
-}
+    // Erase extension
+    char fname[ MAX_FOPATH ];
+    Str::Copy( fname, effect_name );
+    FileManager::EraseExtension( fname );
 
-Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, const char* model_path, bool use_in_2d, const char* defines /* = NULL */ )
-{
-    if( !effect_inst || !effect_inst->EffectFilename || !effect_inst->EffectFilename[ 0 ] )
-        return NULL;
-    const char* effect_name = effect_inst->EffectFilename;
+    // Reset defaults to NULL if it's count is zero
+    if( defaults_count == 0 )
+        defaults = NULL;
 
     // Try find already loaded effect
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         Effect* effect = *it;
-        if( Str::CompareCase( effect->Name, effect_name ) && effect->Defaults == effect_inst->Defaults &&
-            Str::Compare( effect->Defines, defines ? defines : "" ) )
-        {
+        if( Str::CompareCase( effect->Name, fname ) && Str::Compare( effect->Defines, defines ? defines : "" ) && effect->Defaults == defaults )
             return effect;
-        }
     }
 
     #ifdef FO_D3D
+    // Add extension
+    Str::Append( fname, ".fx" );
+
     // First try load from effects folder
     FileManager fm;
-    if( !fm.LoadFile( effect_name, PT_EFFECTS ) && model_path )
+    if( !fm.LoadFile( fname, PT_EFFECTS ) && model_path )
     {
         // After try load from file folder
         char path[ MAX_FOPATH ];
         FileManager::ExtractPath( model_path, path );
-        Str::Append( path, effect_name );
+        Str::Append( path, fname );
         fm.LoadFile( path, PT_DATA );
     }
     if( !fm.IsLoaded() )
@@ -1034,7 +1031,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
 
     // Find already compiled effect in cache
     char        cache_name[ MAX_FOPATH ];
-    Str::Format( cache_name, "%s.fxc", effect_name );
+    Str::Format( cache_name, "%s.fxc", fname );
     FileManager fm_cache;
     if( fm_cache.LoadFile( cache_name, PT_CACHE ) )
     {
@@ -1073,12 +1070,12 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
             }
             else
             {
-                WriteLogF( _FUNC_, " - Unable to compile effect, effect<%s>, errors<\n%s>.\n", effect_name, errors ? errors->GetBufferPointer() : "nullptr\n" );
+                WriteLogF( _FUNC_, " - Unable to compile effect, effect<%s>, errors<\n%s>.\n", fname, errors ? errors->GetBufferPointer() : "nullptr\n" );
             }
         }
         else
         {
-            WriteLogF( _FUNC_, " - Unable to create effect compiler, effect<%s>, errors<%s\n%s>, legacy compiler errors<%s\n%s>.\n", effect_name,
+            WriteLogF( _FUNC_, " - Unable to create effect compiler, effect<%s>, errors<%s\n%s>, legacy compiler errors<%s\n%s>.\n", fname,
                        DXGetErrorString( hr ), errors ? errors->GetBufferPointer() : "", DXGetErrorString( hr31 ), errors31 ? errors31->GetBufferPointer() : "" );
         }
 
@@ -1096,7 +1093,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     LPD3DXBUFFER errors = NULL;
     if( FAILED( D3DXCreateEffect( device, fm_cache.GetBuf(), fm_cache.GetFsize(), NULL, NULL, /*D3DXSHADER_SKIPVALIDATION|*/ D3DXFX_NOT_CLONEABLE, NULL, &dxeffect, &errors ) ) )
     {
-        WriteLogF( _FUNC_, " - Unable to create effect, effect<%s>, errors<\n%s>.\n", effect_name, errors ? errors->GetBufferPointer() : "nullptr" );
+        WriteLogF( _FUNC_, " - Unable to create effect, effect<%s>, errors<\n%s>.\n", fname, errors ? errors->GetBufferPointer() : "nullptr" );
         SAFEREL( dxeffect );
         SAFEREL( errors );
         return NULL;
@@ -1104,11 +1101,10 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     SAFEREL( errors );
 
     Effect* effect = new Effect();
-    effect->Name = Str::Duplicate( effect_name );
+    effect->Name = Str::Duplicate( fname );
     effect->Defines = Str::Duplicate( "" );
     effect->DXInstance = dxeffect;
     effect->EffectFlags = D3DXFX_DONOTSAVESTATE;
-    effect->Defaults = NULL;
     effect->EffectParams = NULL;
 
     effect->TechniqueSkinned = dxeffect->GetTechniqueByName( "Skinned" );
@@ -1126,7 +1122,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
 
     if( !effect->TechniqueSimple )
     {
-        WriteLogF( _FUNC_, " - Technique 'Simple' not founded, effect<%s>.\n", effect_name );
+        WriteLogF( _FUNC_, " - Technique 'Simple' not founded, effect<%s>.\n", fname );
         delete effect;
         SAFEREL( dxeffect );
         return NULL;
@@ -1181,12 +1177,13 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     effect->IsNeedProcess = ( effect->PassIndex || effect->IsTime || effect->IsRandomPass || effect->IsRandomEffect ||
                               effect->IsTextures || effect->IsScriptValues || effect->IsAnimPos );
 
-    if( effect_inst->DefaultsCount )
+    effect->Defaults = NULL;
+    if( defaults )
     {
         bool block_begin = false;
-        for( uint d = 0; d < effect_inst->DefaultsCount; d++ )
+        for( uint d = 0; d < defaults_count; d++ )
         {
-            EffectDefault& def = effect_inst->Defaults[ d ];
+            EffectDefault& def = defaults[ d ];
             EffectValue_   param = dxeffect->GetParameterByName( NULL, def.Name );
             if( !param )
                 continue;
@@ -1199,13 +1196,13 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
 
             switch( def.Type )
             {
-            case D3DXEDT_STRING:             // pValue points to a null terminated ASCII string
+            case EffectDefault::String:             // pValue points to a null terminated ASCII string
                 dxeffect->SetString( param, (LPCSTR) def.Data );
                 break;
-            case D3DXEDT_FLOATS:             // pValue points to an array of floats - number of floats is NumBytes / sizeof(float)
+            case EffectDefault::Floats:             // pValue points to an array of floats - number of floats is NumBytes / sizeof(float)
                 dxeffect->SetFloatArray( param, (float*) def.Data, def.Size / sizeof( float ) );
                 break;
-            case D3DXEDT_DWORD:              // pValue points to a uint
+            case EffectDefault::Dword:              // pValue points to a uint
                 dxeffect->SetInt( param, *(uint*) def.Data );
                 break;
             default:
@@ -1216,18 +1213,15 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
         if( block_begin )
         {
             effect->EffectParams = dxeffect->EndParameterBlock();
-            effect->Defaults = effect_inst->Defaults;
+            effect->Defaults = defaults;
         }
     }
     #else
-    // Make effect file name
-    char fname[ MAX_FOPATH ];
-    Str::Copy( fname, effect_name );
-    FileManager::EraseExtension( fname );
-    Str::Append( fname, ".glsl" );
-
     // Shader program
     GLuint program = 0;
+
+    // Add extension
+    Str::Append( fname, ".glsl" );
 
     // Load text file
     FileManager file;
@@ -1461,10 +1455,9 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     // Create effect instance
     Effect* effect = new Effect();
     memzero( effect, sizeof( Effect ) );
-    effect->Name = Str::Duplicate( effect_name );
+    effect->Name = Str::Duplicate( fname );
     effect->Defines = Str::Duplicate( defines ? defines : "" );
     effect->Program = program;
-    effect->Defaults = NULL;
     effect->Passes = 1;
 
     // Get data
@@ -1541,10 +1534,47 @@ Effect* GraphicLoader::LoadEffect( Device_ device, EffectInstance* effect_inst, 
     effect->IsAnimPos = ( effect->AnimPosProc != -1 || effect->AnimPosTime != -1 );
     effect->IsNeedProcess = ( effect->PassIndex != -1 || effect->IsTime || effect->IsRandomPass || effect->IsRandomEffect ||
                               effect->IsTextures || effect->IsScriptValues || effect->IsAnimPos );
+
+    // Defaults
+    effect->Defaults = NULL;
+    if( defaults )
+    {
+        bool something_binded = false;
+        for( uint d = 0; d < defaults_count; d++ )
+        {
+            EffectDefault& def = defaults[ d ];
+
+            GLint          location = -1;
+            GL( location = glGetUniformLocation( program, def.Name ) );
+            if( location == -1 )
+                continue;
+
+            switch( def.Type )
+            {
+            case EffectDefault::String:
+                break;
+            case EffectDefault::Floats:
+                GL( glUniform1fv( location, def.Size / sizeof( GLfloat ), (GLfloat*) def.Data ) );
+                something_binded = true;
+                break;
+            case EffectDefault::Dword:
+                GL( glUniform1i( location, *(GLint*) def.Data ) );
+                something_binded = true;
+                break;
+            default:
+                break;
+            }
+        }
+        if( something_binded )
+            effect->Defaults = defaults;
+    }
     #endif
 
+    static int effect_id = 0;
+    effect->Id = ++effect_id;
+
     loadedEffects.push_back( effect );
-    return loadedEffects.back();
+    return effect;
 }
 
 void GraphicLoader::EffectProcessVariables( Effect* effect, int pass,  float anim_proc /* = 0.0f */, float anim_time /* = 0.0f */, Texture** textures /* = NULL */ )
@@ -1684,6 +1714,64 @@ bool GraphicLoader::EffectsPostRestore()
                 Effect=NULL;
         }
  */
+
+Effect* Effect::Contour, * Effect::ContourDefault;
+Effect* Effect::Generic, * Effect::GenericDefault;
+Effect* Effect::Critter, * Effect::CritterDefault;
+Effect* Effect::Tile, * Effect::TileDefault;
+Effect* Effect::Roof, * Effect::RoofDefault;
+Effect* Effect::Rain, * Effect::RainDefault;
+Effect* Effect::Iface, * Effect::IfaceDefault;
+Effect* Effect::Primitive, * Effect::PrimitiveDefault;
+Effect* Effect::Light, * Effect::LightDefault;
+Effect* Effect::FlushRenderTarget, * Effect::FlushRenderTargetDefault;
+Effect* Effect::FlushRenderTargetMS, * Effect::FlushRenderTargetMSDefault;
+Effect* Effect::FlushPrimitive, * Effect::FlushPrimitiveDefault;
+Effect* Effect::FlushMap, * Effect::FlushMapDefault;
+Effect* Effect::Font, * Effect::FontDefault;
+Effect* Effect::Simple3d, * Effect::Simple3dDefault;
+Effect* Effect::Skinned3d, * Effect::Skinned3dDefault;
+Effect* Effect::Simple3dShadow, * Effect::Simple3dShadowDefault;
+Effect* Effect::Skinned3dShadow, * Effect::Skinned3dShadowDefault;
+
+bool GraphicLoader::LoadDefaultEffects( Device_ device )
+{
+    // Default effects
+    #define LOAD_EFFECT( effect_handle, effect_name, use_in_2d, defines )                 \
+        effect_handle ## Default = LoadEffect( device, effect_name, use_in_2d, defines ); \
+        if( effect_handle ## Default )                                                    \
+            effect_handle = new Effect( *effect_handle ## Default );                      \
+        else                                                                              \
+            effect_errors++
+    uint effect_errors = 0;
+    LOAD_EFFECT( Effect::Generic, "2D_Default", true, NULL );
+    LOAD_EFFECT( Effect::Critter, "2D_Default", true, NULL );
+    LOAD_EFFECT( Effect::Roof, "2D_Default", true, NULL );
+    LOAD_EFFECT( Effect::Rain, "2D_Default", true, NULL );
+    LOAD_EFFECT( Effect::Iface, "Interface_Default", true, NULL );
+    LOAD_EFFECT( Effect::Primitive, "Primitive_Default", true, NULL );
+    LOAD_EFFECT( Effect::Light, "Primitive_Default", true, NULL );
+    LOAD_EFFECT( Effect::Font, "Font_Default", true, NULL );
+    #ifndef FO_D3D
+    LOAD_EFFECT( Effect::Contour, "Contour_Default", true, NULL );
+    LOAD_EFFECT( Effect::Tile, "2D_WithoutEgg", true, NULL );
+    LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, NULL );
+    LOAD_EFFECT( Effect::FlushPrimitive, "Flush_Primitive", true, NULL );
+    LOAD_EFFECT( Effect::FlushMap, "Flush_Map", true, NULL );
+    LOAD_EFFECT( Effect::Simple3d, "3D_Simple", false, NULL );
+    LOAD_EFFECT( Effect::Simple3dShadow, "3D_Simple", false, "#define SHADOW" );
+    LOAD_EFFECT( Effect::Skinned3d, "3D_Skinned", false, NULL );
+    LOAD_EFFECT( Effect::Skinned3dShadow, "3D_Skinned", false, "#define SHADOW" );
+    #else
+    LOAD_EFFECT( Effect::Tile, "2D_Default", true, NULL );
+    #endif
+    if( effect_errors > 0 )
+    {
+        WriteLog( "Default effects not loaded.\n" );
+        return false;
+    }
+    return true;
+}
 
 /************************************************************************/
 /*                                                                      */

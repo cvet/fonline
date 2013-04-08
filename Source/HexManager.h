@@ -202,11 +202,7 @@ private:
 
 public:
     void ChangeZoom( int zoom );   // <0 in, >0 out, 0 normalize
-    void GetScreenHexes( int& sx, int& sy )
-    {
-        sx = screenHexX;
-        sy = screenHexY;
-    }
+    void GetScreenHexes( int& sx, int& sy );
     void GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y );
 
 public:

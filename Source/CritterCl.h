@@ -32,6 +32,8 @@ public:
     uint         BaseType, BaseTypeAlias;
     uint         ApRegenerationTick;
     short        Multihex;
+    Effect*      DrawEffect;
+
     ScriptString Name;
     ScriptString NameOnHead;
     ScriptString Lexems;

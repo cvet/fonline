@@ -37,8 +37,6 @@ SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), S
     contoursConstSpriteBordersHeight = 0;
     contoursConstContourColor = 0;
     contoursConstContourColorOffs = 0;
-    memzero( sprDefaultEffect, sizeof( sprDefaultEffect ) );
-    curDefaultEffect = NULL;
 
     #ifdef FO_D3D
     direct3D = NULL;
@@ -157,9 +155,9 @@ bool SpriteManager::Init( SpriteMngrParams& params )
             const char* msg = ( critical ? "Critical" : "Not critical" );         \
             WriteLog( "OpenGL extension '" # ext "' not supported. %s.\n", msg ); \
             if( critical )                                                        \
-                errors++;                                                         \
+                extension_errors++;                                               \
         }
-    uint errors = 0;
+    uint extension_errors = 0;
     CHECK_EXTENSION( GLEW_, VERSION_2_0, true );
     CHECK_EXTENSION( GLEW_, ARB_vertex_buffer_object, true );
     CHECK_EXTENSION( GLEW_, ARB_vertex_array_object, false );
@@ -187,7 +185,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     # endif
     CHECK_EXTENSION( GLEW_, ARB_texture_multisample, false );
     CHECK_EXTENSION( GLEW_, ARB_get_program_binary, false );
-    if( errors )
+    if( extension_errors )
         return false;
     # undef CHECK_EXTENSION
     #endif
@@ -271,29 +269,10 @@ bool SpriteManager::Init( SpriteMngrParams& params )
     }
 
     // Default effects
-    curDefaultEffect = GraphicLoader::LoadEffect( d3dDevice, "2D_Default.fx", true );
-    sprDefaultEffect[ DEFAULT_EFFECT_GENERIC ] = curDefaultEffect;
-    sprDefaultEffect[ DEFAULT_EFFECT_TILE ] = curDefaultEffect;
-    sprDefaultEffect[ DEFAULT_EFFECT_ROOF ] = curDefaultEffect;
-    sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] = GraphicLoader::LoadEffect( d3dDevice, "Interface_Default.fx", true );
-    sprDefaultEffect[ DEFAULT_EFFECT_POINT ] = GraphicLoader::LoadEffect( d3dDevice, "Primitive_Default.fx", true );
-    #ifndef FO_D3D
-    sprDefaultEffect[ DEFAULT_EFFECT_CONTOUR ] = GraphicLoader::LoadEffect( d3dDevice, "Contour_Default.glsl", true );
-    sprDefaultEffect[ DEFAULT_EFFECT_TILE ] = GraphicLoader::LoadEffect( d3dDevice, "2D_WithoutEgg.glsl", true );
-    sprDefaultEffect[ DEFAULT_EFFECT_ROOF ] = curDefaultEffect;
-    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_RENDER_TARGET ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_RenderTarget.glsl", true );
-    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_RENDER_TARGET_MS ] = NULL;
-    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_PRIMITIVE ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Primitive.glsl", true );
-    sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_MAP ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_Map.glsl", true );
-    for( uint i = 0; i < DEFAULT_EFFECT_COUNT; i++ )
-    {
-        if( !sprDefaultEffect[ i ] && i != DEFAULT_EFFECT_FLUSH_RENDER_TARGET_MS )
-        {
-            WriteLog( "Default effects not loaded.\n" );
-            return false;
-        }
-    }
+    if( !GraphicLoader::LoadDefaultEffects( d3dDevice ) )
+        return false;
 
+    #ifndef FO_D3D
     // Render targets
     if( !CreateRenderTarget( rtMain, true, false, 0, 0, true ) ||
         !CreateRenderTarget( rtContours, false ) ||
@@ -687,8 +666,10 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
             samples = min( GameOpt.MultiSampling, max_samples );
 
             // Flush effect
-            sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_RENDER_TARGET_MS ] = GraphicLoader::LoadEffect( d3dDevice, "Flush_RenderTargetMS.glsl", true );
-            if( !sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_RENDER_TARGET_MS ] )
+            Effect::FlushRenderTargetMSDefault = GraphicLoader::LoadEffect( d3dDevice, "Flush_RenderTargetMS.glsl", true );
+            if( Effect::FlushRenderTargetMSDefault )
+                Effect::FlushRenderTargetMS = new Effect( *Effect::FlushRenderTargetMSDefault );
+            else
                 samples = 0;
         }
         else
@@ -924,9 +905,9 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
 
     // Effect
     if( !multisampling )
-        rt.DrawEffect = DEFAULT_EFFECT_FLUSH_RENDER_TARGET;
+        rt.DrawEffect = Effect::FlushRenderTarget;
     else
-        rt.DrawEffect = DEFAULT_EFFECT_FLUSH_RENDER_TARGET_MS;
+        rt.DrawEffect = Effect::FlushRenderTargetMS;
 
     // Id
     static uint ids = 0;
@@ -1096,7 +1077,7 @@ void SpriteManager::DrawRenderTarget( RenderTarget& rt, bool alpha_blend, const 
     }
 
     curSprCnt = 1;
-    dipQueue.push_back( DipData( rt.TargetTexture, sprDefaultEffect[ rt.DrawEffect ] ) );
+    dipQueue.push_back( DipData( rt.TargetTexture, rt.DrawEffect ) );
 
     if( !alpha_blend )
         GL( glDisable( GL_BLEND ) );
@@ -1196,7 +1177,7 @@ void SpriteManager::EnableStencil( RectF& stencil )
     GL( glStencilOp( GL_REPLACE, GL_KEEP, GL_KEEP ) );
 
     curSprCnt = 1;
-    dipQueue.push_back( DipData( NULL, sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_PRIMITIVE ] ) );
+    dipQueue.push_back( DipData( NULL, Effect::FlushPrimitive ) );
     Flush();
 
     GL( glStencilFunc( GL_NOTEQUAL, 0, 0xFF ) );
@@ -3843,7 +3824,7 @@ bool SpriteManager::Flush()
     for( auto it = dipQueue.begin(), end = dipQueue.end(); it != end; ++it )
     {
         DipData& dip = *it;
-        Effect*  effect = ( dip.SourceEffect ? dip.SourceEffect : curDefaultEffect );
+        Effect*  effect = dip.SourceEffect;
 
         #ifdef FO_D3D
         D3D_HR( d3dDevice->SetTexture( 0, dip.SourceTexture->Instance ) );
@@ -3963,8 +3944,8 @@ bool SpriteManager::DrawSprite( uint id, int x, int y, uint color /* = 0 */ )
         #endif
     }
 
-    Effect* effect = ( si->DrawEffect ? si->DrawEffect : sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] );
-    if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect != effect )
+    Effect* effect = ( si->DrawEffect ? si->DrawEffect : Effect::Iface );
+    if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
         dipQueue.push_back( DipData( si->Surf->TextureOwner, effect ) );
     else
         dipQueue.back().SpritesCount++;
@@ -4042,7 +4023,7 @@ bool SpriteManager::DrawSpritePattern( uint id, int x, int y, int w, int h, int 
     if( !color )
         color = COLOR_IFACE;
 
-    Effect* effect = ( si->DrawEffect ? si->DrawEffect : sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] );
+    Effect* effect = ( si->DrawEffect ? si->DrawEffect : Effect::Iface );
 
     float   last_right_offs = ( si->SprRect.R - si->SprRect.L ) / width;
     float   last_bottom_offs = ( si->SprRect.B - si->SprRect.T ) / height;
@@ -4054,7 +4035,7 @@ bool SpriteManager::DrawSpritePattern( uint id, int x, int y, int w, int h, int 
         {
             bool last_x = xx + width >= end_x;
 
-            if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect != effect )
+            if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
                 dipQueue.push_back( DipData( si->Surf->TextureOwner, effect ) );
             else
                 dipQueue.back().SpritesCount++;
@@ -4143,8 +4124,8 @@ bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, boo
         #endif
     }
 
-    Effect* effect = ( si->DrawEffect ? si->DrawEffect : sprDefaultEffect[ DEFAULT_EFFECT_IFACE ] );
-    if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect != effect )
+    Effect* effect = ( si->DrawEffect ? si->DrawEffect : Effect::Iface );
+    if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
         dipQueue.push_back( DipData( si->Surf->TextureOwner, effect ) );
     else
         dipQueue.back().SpritesCount++;
@@ -4539,9 +4520,14 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             egg_trans = false;
         }
 
+        // Choose effect
+        Effect* effect = ( spr->DrawEffect ? *spr->DrawEffect : NULL );
+        if( !effect )
+            effect = ( si->DrawEffect ? si->DrawEffect : Effect::Generic );
+
         // Choose surface
-        if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect != si->DrawEffect )
-            dipQueue.push_back( DipData( si->Surf->TextureOwner, si->DrawEffect ) );
+        if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
+            dipQueue.push_back( DipData( si->Surf->TextureOwner, effect ) );
         else
             dipQueue.back().SpritesCount++;
 
@@ -4840,11 +4826,14 @@ bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
     return false;
 }
 
-bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NULL */, RectF* stencil /* = NULL */, PointF* offset /* = NULL */ )
+bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NULL */, RectF* stencil /* = NULL */, PointF* offset /* = NULL */, Effect* effect /* = NULL */ )
 {
     if( points.empty() )
         return true;
     Flush();
+
+    if( !effect )
+        effect = Effect::Primitive;
 
     #ifdef FO_D3D
     int count = (int) points.size();
@@ -4960,10 +4949,9 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     D3D_HR( d3dDevice->SetStreamSource( 0, vbPoints, 0, sizeof( MYVERTEX_PRIMITIVE ) ) );
     D3D_HR( d3dDevice->SetFVF( D3DFVF_MYVERTEX_PRIMITIVE ) );
 
-    if( sprDefaultEffect[ DEFAULT_EFFECT_POINT ] )
+    if( effect )
     {
         // Draw with effect
-        Effect*      effect = sprDefaultEffect[ DEFAULT_EFFECT_POINT ];
         LPD3DXEFFECT dxeffect = effect->DXInstance;
 
         if( effect->EffectParams )
@@ -5079,7 +5067,6 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
 
     // Draw
     EnableVertexArray( ibDirect, count );
-    Effect* effect = sprDefaultEffect[ DEFAULT_EFFECT_POINT ];
     GL( glUseProgram( effect->Program ) );
 
     if( effect->ProjectionMatrix != -1 )
@@ -5270,7 +5257,6 @@ bool SpriteManager::DrawContours()
     else if( spriteContours.Size() )
     {
         D3D_HR( d3dDevice->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_POINT ) );   // Zoom In
-        SetCurEffect2D( DEFAULT_EFFECT_GENERIC );
         DrawSprites( spriteContours, false, false, 0, 0 );
         D3D_HR( d3dDevice->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR ) );  // Zoom In
         spriteContours.Unvalidate();
@@ -5304,7 +5290,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
             uint contour_id = GetSpriteContour( si, spr );
             if( contour_id )
             {
-                Sprite& contour_spr = spriteContours.AddSprite( 0, 0, 0, 0, spr->ScrX, spr->ScrY, contour_id, NULL, spr->OffsX, spr->OffsY, NULL, NULL );
+                Sprite& contour_spr = spriteContours.AddSprite( 0, 0, 0, 0, spr->ScrX, spr->ScrY, contour_id, NULL, spr->OffsX, spr->OffsY, NULL, NULL, NULL );
                 if( spr->ContourType == CONTOUR_RED )
                 {
                     contour_spr.SetFlash( 0xFFFF0000 );
@@ -5626,7 +5612,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         vBuffer[ mulpos++ ].tv = sr.B;
 
         curSprCnt = 1;
-        dipQueue.push_back( DipData( texture, sprDefaultEffect[ DEFAULT_EFFECT_FLUSH_RENDER_TARGET ] ) );
+        dipQueue.push_back( DipData( texture, Effect::FlushRenderTarget ) );
         Flush();
 
         PopRenderTarget();
@@ -5676,7 +5662,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     vBuffer[ mulpos++ ].diffuse = contour_color;
 
     curSprCnt = 1;
-    dipQueue.push_back( DipData( texture, sprDefaultEffect[ DEFAULT_EFFECT_CONTOUR ] ) );
+    dipQueue.push_back( DipData( texture, Effect::Contour ) );
     dipQueue.back().SpriteBorder = sprite_border;
     Flush();
 
