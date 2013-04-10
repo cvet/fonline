@@ -48,7 +48,7 @@ void SyncObject::Lock()
             // Wait and try lock all busy objects
             while( true )
             {
-                Sleep( 0 );
+                Thread::Sleep( 0 );
 
                 SyncLocker.Lock();
 

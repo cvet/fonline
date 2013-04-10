@@ -318,14 +318,8 @@ void UpdateTick( void* ) // Thread
 {
     while( !QuitTick )
     {
-        // Update
         SetTick();
-
-        // Sleep
-        struct timespec tv_sleep;
-        tv_sleep.tv_sec = 0;
-        tv_sleep.tv_nsec = 500;
-        nanosleep( &tv_sleep, NULL );
+        Thread::Sleep( 1 );
     }
 }
 #endif

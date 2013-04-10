@@ -214,7 +214,7 @@ int main( int argc, char** argv )
     else
     {
         while( !FOQuit )
-            Sleep( 100 );
+            Thread::Sleep( 100 );
     }
 
     // Finish
@@ -506,7 +506,7 @@ void GUIUpdate( void* )
     {
         static int dummy = 0;
         Fl::awake( &dummy );
-        Sleep( 50 );
+        Thread::Sleep( 50 );
     }
 }
 
@@ -982,7 +982,7 @@ void DaemonLoop()
 
     // Daemon loop
     while( true )
-        Sleep( 1000 );
+        Thread::Sleep( 1000 );
 }
 
 void GameLoopThread( void* )
@@ -1168,7 +1168,7 @@ void AdminManager( void* port_ )
         }
 
         // Sleep to prevent panel DDOS or keys brute force
-        Sleep( 1000 );
+        Thread::Sleep( 1000 );
     }
 }
 

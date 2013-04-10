@@ -1247,11 +1247,11 @@ void RunTimeout( void* data )
     while( RunTimeoutSuspend )
     {
         #ifndef FONLINE_SERVER
-        Sleep( 100 );
+        Thread::Sleep( 100 );
         #else
         if( ProfilerSampleInterval )
         {
-            Sleep( ProfilerSampleInterval );
+            Thread::Sleep( ProfilerSampleInterval );
             CallStack*                                         stack = NULL;
 
             volatile MutexLocker< decltype( ProfilerLocker ) > scope_lock__2( ProfilerLocker );
@@ -1331,7 +1331,7 @@ void RunTimeout( void* data )
             ScriptTimeoutTime = cur_tick;
         }
         else
-            Sleep( 100 );
+            Thread::Sleep( 100 );
         #endif
         SCOPE_LOCK( ActiveGlobalCtxLocker );
         uint cur_tick = Timer::FastTick();

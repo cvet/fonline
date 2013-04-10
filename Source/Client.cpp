@@ -896,12 +896,12 @@ int FOClient::MainLoop()
             {
                 double sleep = need_elapsed - elapsed + balance;
                 balance = fmod ( sleep, 1.0 );
-                Sleep( (uint) floor( sleep) );
+                Thread::Sleep( (uint) floor( sleep) );
             }
         }
         else
         {
-            Sleep( -GameOpt.FixedFPS );
+            Thread::Sleep( -GameOpt.FixedFPS );
         }
     }
 
@@ -2530,13 +2530,13 @@ bool FOClient::InitNet()
     else
     {
         #ifdef FO_WINDOWS
-        for( int i = 0; i < 60; i++ )     // Wait 1 minute, than abort
+        for( int i = 0; i < 60; i++ )     // Wait 1 minute, then abort
         {
             if( !SingleplayerData.Refresh() )
                 return false;
             if( SingleplayerData.NetPort )
                 break;
-            Sleep( 1000 );
+            Thread::Sleep( 1000 );
         }
         if( !SingleplayerData.NetPort )
             return false;
@@ -2643,7 +2643,7 @@ bool FOClient::NetConnect()
                         WriteLog( "Proxy answer timeout.\n" ); \
                         return false;                          \
                     }                                          \
-                    Sleep( 1 );                                \
+                    Thread::Sleep( 1 );                        \
                 }                                              \
             }                                                  \
             while( 0 )

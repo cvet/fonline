@@ -107,12 +107,6 @@
 # undef __DEPRECATED
 #endif
 
-// Linux sleeping
-#if defined ( FO_LINUX )
-# include <unistd.h>
-# define Sleep( ms )    usleep( ( ms ) * 1000 )
-#endif
-
 // Libevent workarounds
 // Was bugged for Windows, need retest
 #if !defined ( FO_WINDOWS )

@@ -6,6 +6,8 @@
 #define DEFAULT_SPIN_COUNT              ( 4000 )
 #define SCOPE_LOCK( mutex )                               volatile MutexLocker< decltype( mutex ) > scope_lock__( mutex )
 
+extern void Thread_Sleep( uint ms ); // Definition in Common.cpp
+
 #if defined ( FO_WINDOWS )
 
 # ifdef FO_MSVC
@@ -146,7 +148,7 @@ public:
     {
         mcLocker.Lock();
         mcEvent.Disallow();
-        while( InterlockedCompareExchange( &mcCounter, 0, 0 ) ) Sleep( 0 );
+        while( InterlockedCompareExchange( &mcCounter, 0, 0 ) ) Thread_Sleep( 0 );
         mcLocker.Unlock();
     }
     void UnlockCode() { mcEvent.Allow(); }
@@ -178,7 +180,7 @@ public:
         msEvent.Wait();
         InterlockedDecrement( &msCounter );
         msEvent.Disallow();
-        while( InterlockedCompareExchange( &msCounter, 0, 0 ) != count ) Sleep( 0 );
+        while( InterlockedCompareExchange( &msCounter, 0, 0 ) != count ) Thread_Sleep( 0 );
         msLocker.Unlock();
     }
     void Resynchronize() { msEvent.Allow(); }

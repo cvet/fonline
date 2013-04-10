@@ -197,7 +197,7 @@ int main( int argc, char** argv )
     while( !GameOpt.Quit && Fl::check() )
     {
         if( !FOEngine->MainLoop() )
-            Sleep( 100 );
+            Thread::Sleep( 100 );
     }
     GameOpt.Quit = true;
 

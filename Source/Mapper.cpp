@@ -1498,7 +1498,7 @@ void FOMapper::MainLoop()
     // Render
     if( !SprMngr.BeginScene( COLOR_XRGB( 100, 100, 100 ) ) )
     {
-        Sleep( 100 );
+        Thread::Sleep( 100 );
         return;
     }
 
@@ -1581,12 +1581,12 @@ void FOMapper::MainLoop()
             {
                 double sleep = need_elapsed - elapsed + balance;
                 balance = fmod ( sleep, 1.0 );
-                Sleep( (uint) floor( sleep) );
+                Thread::Sleep( (uint) floor( sleep) );
             }
         }
         else
         {
-            Sleep( -GameOpt.FixedFPS );
+            Thread::Sleep( -GameOpt.FixedFPS );
         }
     }
 }

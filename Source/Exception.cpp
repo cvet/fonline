@@ -644,7 +644,7 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     //    MessageBox( NULL, mess, "FOnline Error", MB_OK );
 
     if( siginfo )
-        _exit( 1 );
+        ExitProcess( 1 );
 }
 
 #endif

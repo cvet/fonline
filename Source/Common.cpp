@@ -1694,6 +1694,25 @@ const char* Thread::FindName( uint thread_id )
     auto it = threadNames.find( thread_id );
     return it != threadNames.end() ? ( *it ).second.c_str() : NULL;
 }
+
+void Thread::Sleep( uint ms )
+{
+    #if defined ( FO_WINDOWS )
+    ::Sleep( ms );
+    #else // FO_LINUX
+    struct timespec req;
+    req.tv_sec = ms / 1000;
+    req.tv_nsec = ( ms % 1000 ) * 1000000;
+    while( nanosleep( &req, &req ) == -1 && errno == EINTR )
+        continue;
+    #endif
+}
+
+void Thread_Sleep( uint ms ) // Used in Mutex.h as extern function
+{
+    Thread::Sleep( ms );
+}
+
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/

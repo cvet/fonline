@@ -907,6 +907,7 @@ public:
     static void        SetCurrentName( const char* name );
     static const char* GetCurrentName();
     static const char* FindName( uint thread_id );
+    static void        Sleep( uint ms );
 };
 
 /************************************************************************/

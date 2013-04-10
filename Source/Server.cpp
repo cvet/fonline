@@ -524,7 +524,7 @@ void FOServer::MainLoop()
         Statistics.Uptime = ( Timer::FastTick() - Statistics.ServerStartTick ) / 1000;
 
 //		sync_mngr->UnlockAll();
-        Sleep( 100 );
+        Thread::Sleep( 100 );
     }
 
     WriteLog( "***   Finishing game loop  ***\n" );
@@ -594,7 +594,7 @@ void FOServer::ResynchronizeLogicThreads()
 
 void FOServer::Logic_Work( void* data )
 {
-    Sleep( 10 );
+    Thread::Sleep( 10 );
 
     // Init scripts
     if( !Script::InitThread() )
@@ -607,7 +607,7 @@ void FOServer::Logic_Work( void* data )
     SyncManager* sync_mngr = SyncManager::GetForCurThread();
 
     // Wait next threads initialization
-    Sleep( 10 );
+    Thread::Sleep( 10 );
 
     // Cycle time
     uint cycle_tick = Timer::FastTick();
@@ -774,7 +774,7 @@ void FOServer::Logic_Work( void* data )
             // Sleep
             uint sleep_time = Timer::FastTick();
             if( ServerGameSleep >= 0 )
-                Sleep( ServerGameSleep );
+                Thread::Sleep( ServerGameSleep );
             sleep_time = Timer::FastTick() - sleep_time;
 
             // Thread statistics
@@ -851,7 +851,7 @@ void FOServer::Logic_Work( void* data )
         }
         else         // JOB_NOP
         {
-            Sleep( 100 );
+            Thread::Sleep( 100 );
             continue;
         }
 
@@ -1037,7 +1037,7 @@ void FOServer::NetIO_Loop( void* )
         // Return 1 if no events, wait some time and run loop again
         if( result == 1 )
         {
-            Sleep( 10 );
+            Thread::Sleep( 10 );
             continue;
         }
 
@@ -4753,7 +4753,7 @@ void FOServer::Dump_Work( void* data )
                 if( i == WorldSaveDataBufCount - 1 )
                     flush -= WorldSaveDataBufFreeSize;
                 FileWrite( fworld, ptr, flush );
-                Sleep( 1 );
+                Thread::Sleep( 1 );
             }
             FileClose( fworld );
             SaveWorldIndex++;
@@ -4788,7 +4788,7 @@ void FOServer::Dump_Work( void* data )
             if( te_count )
                 FileWrite( fc, &csd.TimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
             FileClose( fc );
-            Sleep( 1 );
+            Thread::Sleep( 1 );
         }
 
         // Clear old dump files
@@ -5146,7 +5146,7 @@ bool FOServer::GetTimeEvent( uint num, uint& duration, ScriptArray* values )
         if( te->InProcess && te->InProcess != tid )
         {
             TimeEventsLocker.Unlock();
-            Sleep( 0 );
+            Thread::Sleep( 0 );
             TimeEventsLocker.Lock();
         }
         else
@@ -5204,7 +5204,7 @@ bool FOServer::SetTimeEvent( uint num, uint duration, ScriptArray* values )
         if( te->InProcess && te->InProcess != tid )
         {
             TimeEventsLocker.Unlock();
-            Sleep( 0 );
+            Thread::Sleep( 0 );
             TimeEventsLocker.Lock();
         }
         else
