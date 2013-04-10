@@ -175,7 +175,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
             CHECK_EXTENSION( WGLEW_, ARB_render_texture, false );
         }
     }
-    # else // FO_LINUX
+    # else
     if( !GLEW_ARB_framebuffer_object )
     {
         CHECK_EXTENSION( GLEW_, EXT_framebuffer_object, true );
@@ -491,7 +491,7 @@ bool SpriteManager::InitRenderStates()
     # ifdef FO_WINDOWS
     if( !GameOpt.VSync && WGLEW_EXT_swap_control )
         wglSwapIntervalEXT( 0 );
-    # else // FO_LINUX
+    # else
     if( !GameOpt.VSync && GLXEW_SGI_swap_control )
         glXSwapIntervalSGI( 0 );
     else if( !GameOpt.VSync && GLXEW_EXT_swap_control )

@@ -44,7 +44,7 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
         #ifdef FO_WINDOWS
         # define ASSIMP_PATH        ""
         # define ASSIMP_LIB_NAME    "Assimp32.dll"
-        #else // FO_LINUX
+        #else
         # define ASSIMP_PATH        "./"
         # define ASSIMP_LIB_NAME    "Assimp32.so"
         #endif

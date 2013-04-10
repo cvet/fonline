@@ -8,7 +8,7 @@
 
 extern void Thread_Sleep( uint ms ); // Definition in Common.cpp
 
-#if defined ( FO_WINDOWS )
+#ifdef FO_WINDOWS
 
 # ifdef FO_MSVC
 #  include <intrin.h>
@@ -22,6 +22,9 @@ class Mutex
 {
 private:
     CRITICAL_SECTION mutexCS;
+    # ifndef FO_MACOSX
+    int              dummyData[ 5 ];
+    # endif
     Mutex( const Mutex& ) {}
     void operator=( const Mutex& ) {}
 
@@ -50,7 +53,9 @@ public:
     void* GetHandle() { return mutexEvent; }
 };
 
-#else // FO_LINUX
+#else
+
+# include <pthread.h>
 
 # define InterlockedCompareExchange( val, exch, comp )    __sync_val_compare_and_swap( val, comp, exch )
 # define InterlockedExchange( val, newval )               __sync_lock_test_and_set( val, newval )
@@ -61,6 +66,9 @@ class Mutex
 {
 private:
     pthread_mutex_t mutexCS;
+    # ifndef FO_MACOSX
+    int             dummyData[ 5 ];
+    # endif
     Mutex( const Mutex& ) {}
     void operator=( const Mutex& ) {}
 

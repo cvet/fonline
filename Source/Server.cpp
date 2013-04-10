@@ -464,11 +464,13 @@ void FOServer::MainLoop()
         {
             #if defined ( FO_WINDOWS )
             SetThreadAffinityMask( LogicThreads[ i ].GetWindowsHandle(), 1 << ( i % CpuCount ) );
-            #else // FO_LINUX
+            #elif defined ( FO_LINUX )
             cpu_set_t mask;
             CPU_ZERO( &mask );
             CPU_SET( i % CpuCount, &mask );
-            sched_setaffinity( LogicThreads[ i ].GetLinuxPid(), sizeof( mask ), &mask );
+            sched_setaffinity( LogicThreads[ i ].GetPid(), sizeof( mask ), &mask );
+            #elif defined ( FO_MACOSX )
+            // Todo: https://developer.apple.com/library/mac/#releasenotes/Performance/RN-AffinityAPI/index.html
             #endif
         }
     }
@@ -888,7 +890,7 @@ void FOServer::Net_Listen( void* )
         #ifdef FO_WINDOWS
         socklen_t   addrsize = sizeof( from );
         SOCKET      sock = WSAAccept( ListenSock, (sockaddr*) &from, &addrsize, NULL, NULL );
-        #else // FO_LINUX
+        #else
         socklen_t   addrsize = sizeof( from );
         SOCKET      sock = accept( ListenSock, (sockaddr*) &from, &addrsize );
         #endif
@@ -899,7 +901,7 @@ void FOServer::Net_Listen( void* )
             int error = WSAGetLastError();
             if( error == WSAEINTR || error == WSAENOTSOCK )
                 break;
-            #else // FO_LINUX
+            #else
             if( errno == EINVAL )
                 break;
             #endif
@@ -3389,7 +3391,7 @@ bool FOServer::InitReal()
     STATIC_ASSERT( sizeof( CritData ) == 7404 );
     STATIC_ASSERT( sizeof( CritDataExt ) == 6944 );
     STATIC_ASSERT( sizeof( GameVar ) == 28 );
-    STATIC_ASSERT( sizeof( Mutex ) == 24 );
+    STATIC_ASSERT( sizeof( Mutex ) == 44 );
     STATIC_ASSERT( sizeof( MutexSpinlock ) == 4 );
     STATIC_ASSERT( sizeof( GameOptions ) == 1344 );
     STATIC_ASSERT( sizeof( ScriptArray ) == 28 );
@@ -3407,7 +3409,7 @@ bool FOServer::InitReal()
     STATIC_ASSERT( OFFSETOF( ProtoMap::MapEntire, Dir ) == 8 );
     STATIC_ASSERT( OFFSETOF( SceneryCl, PicMapHash ) == 24 );
     STATIC_ASSERT( OFFSETOF( ProtoMap, HexFlags ) == 304 );
-    STATIC_ASSERT( OFFSETOF( Map, RefCounter ) == 774 );
+    STATIC_ASSERT( OFFSETOF( Map, RefCounter ) == 794 );
     STATIC_ASSERT( OFFSETOF( ProtoLocation, GeckVisible ) == 76 );
     STATIC_ASSERT( OFFSETOF( Location, RefCounter ) == 282 );
     #else // FO_X64
@@ -3436,7 +3438,7 @@ bool FOServer::InitReal()
     SYSTEM_INFO si;
     GetSystemInfo( &si );
     CpuCount = si.dwNumberOfProcessors;
-    #else // FO_LINUX
+    #else
     CpuCount = sysconf( _SC_NPROCESSORS_ONLN );
     #endif
 
@@ -3559,7 +3561,7 @@ bool FOServer::InitReal()
 
     #ifdef FO_WINDOWS
     ListenSock = WSASocket( AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED );
-    #else // FO_LINUX
+    #else
     ListenSock = socket( AF_INET, SOCK_STREAM, 0 );
     #endif
 
@@ -3626,7 +3628,7 @@ bool FOServer::InitReal()
 
     # ifdef FO_WINDOWS
     evthread_use_windows_threads();
-    # else // FO_LINUX
+    # else
     evthread_use_pthreads();
     # endif
 

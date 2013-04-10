@@ -4,7 +4,7 @@
 #include "Version.h"
 #include "Keyboard.h"
 #include <locale.h>
-#ifdef FO_LINUX
+#ifndef FO_WINDOWS
 # include <signal.h>
 #endif
 
@@ -23,7 +23,7 @@ int main( int argc, char** argv )
     Thread::SetCurrentName( "Main" );
 
     // Disable SIGPIPE signal
-    #ifdef FO_LINUX
+    #ifndef FO_WINDOWS
     signal( SIGPIPE, SIG_IGN );
     #endif
 
@@ -114,7 +114,7 @@ int main( int argc, char** argv )
         ShowMessage( "FOnline engine instance is already running." );
         return 0;
     }
-    # else // FO_LINUX
+    # else
     // Todo: Linux
     # endif
     #endif
@@ -132,7 +132,7 @@ int main( int argc, char** argv )
     // Icon
     #ifdef FO_WINDOWS
     MainWindow->icon( (char*) LoadIcon( fl_display, MAKEINTRESOURCE( 101 ) ) );
-    #else // FO_LINUX
+    #else
     // Todo: Linux
     #endif
 

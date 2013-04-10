@@ -16,7 +16,7 @@
 /*                                                                      */
 /************************************************************************/
 
-#if defined ( FO_LINUX )
+#ifndef FO_WINDOWS
 // Mutex static stuff
 bool                Mutex::attrInitialized = false;
 pthread_mutexattr_t Mutex::mutexAttr;
@@ -412,7 +412,7 @@ bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, in
 
 void RestoreMainDirectory()
 {
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     // Get executable file path
     char path[ MAX_FOPATH ] = { 0 };
     GetModuleFileName( GetModuleHandle( NULL ), path, MAX_FOPATH );
@@ -435,7 +435,7 @@ void ShowMessage( const char* message )
 {
     #ifdef FO_WINDOWS
     MessageBox( NULL, message, "FOnline", MB_OK );
-    #else // FO_LINUX
+    #else
     // Todo: Linux
     #endif
 }
@@ -444,7 +444,7 @@ uint GetDoubleClickTicks()
 {
     #ifdef FO_WINDOWS
     return (uint) GetDoubleClickTime();
-    #else // FO_LINUX
+    #else
     // Todo: Linux
     return 500;
     #endif
@@ -650,11 +650,11 @@ const char* GetConfigFileName()
 
         // Get full path
         char module_name[ MAX_FOPATH ];
-        #if defined ( FO_WINDOWS )
+        #ifdef FO_WINDOWS
         if( !GetModuleFileName( NULL, module_name, sizeof( module_name ) ) )
             return config_name;
-        #else // FO_LINUX
-              // Todo: Linux CommandLineArgValues[0] ?
+        #else
+        // Todo: Linux CommandLineArgValues[0] ?
         #endif
 
         // Change extension
@@ -1028,7 +1028,7 @@ ServerScriptFunctions ServerFunctions;
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
-#if defined ( FO_WINDOWS )
+#ifdef FO_WINDOWS
 
 const char* GetLastSocketError()
 {
@@ -1136,7 +1136,7 @@ const char* GetLastSocketError()
     return str;
 }
 
-#else // FO_LINUX
+#else
 
 const char* GetLastSocketError()
 {
@@ -1500,7 +1500,7 @@ void FileLogger::Write( const char* fmt, ... )
 /* Single player                                                        */
 /************************************************************************/
 
-#if defined ( FO_WINDOWS )
+#ifdef FO_WINDOWS
 
 # define INTERPROCESS_DATA_SIZE    ( OFFSETOF( InterprocessData, mapFileMutex ) )
 
@@ -1657,8 +1657,8 @@ HANDLE Thread::GetWindowsHandle()
 }
 #endif
 
-#ifdef FO_LINUX
-pid_t Thread::GetLinuxPid()
+#ifndef FO_WINDOWS
+pid_t Thread::GetPid()
 {
     return (pid_t) threadId;
 }
@@ -1668,7 +1668,7 @@ uint Thread::GetCurrentId()
 {
     #ifdef FO_WINDOWS
     return (uint) GetCurrentThreadId();
-    #else // FO_LINUX
+    #else
     return (uint) pthread_self();
     #endif
 }
@@ -1697,9 +1697,9 @@ const char* Thread::FindName( uint thread_id )
 
 void Thread::Sleep( uint ms )
 {
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     ::Sleep( ms );
-    #else // FO_LINUX
+    #else
     struct timespec req;
     req.tv_sec = ms / 1000;
     req.tv_nsec = ( ms % 1000 ) * 1000000;

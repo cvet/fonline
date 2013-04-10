@@ -8,30 +8,32 @@
 #include "PlatformSpecific.h"
 
 // Standard API
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <algorithm>
 #include <math.h>
-#if defined ( FO_WINDOWS )
+#ifdef FO_WINDOWS
 # define WINVER               0x0501   // Windows XP
 # define WIN32_LEAN_AND_MEAN
 # include <Windows.h>
-#else // FO_LINUX
+#else
 # include <errno.h>
 # include <string.h> // strerror
+# include <unistd.h>
 # define ERRORSTR             strerror( errno )
 # define ExitProcess( code )              exit( code )
 #endif
 
 // Network
 const char* GetLastSocketError();
-#if defined ( FO_WINDOWS )
+#ifdef FO_WINDOWS
 # include <winsock2.h>
 # define socklen_t            int
 # if defined ( FO_MSVC )
 #  pragma comment( lib, "Ws2_32.lib" )
 # endif
-#else // FO_LINUX
+#else
 # include <sys/types.h>
 # include <sys/socket.h>
 # include <netinet/in.h>
@@ -58,12 +60,12 @@ const char* GetLastSocketError();
 #endif
 
 // DLL
-#if defined ( FO_WINDOWS )
+#ifdef FO_WINDOWS
 # define DLL_Load( name )                 (void*) LoadLibrary( name )
 # define DLL_Free( h )                    FreeLibrary( (HMODULE) h )
 # define DLL_GetAddress( h, pname )       (size_t*) GetProcAddress( (HMODULE) h, pname )
 # define DLL_Error()                      Str::ItoA( GetLastError() )
-#else // FO_LINUX
+#else
 # include <dlfcn.h>
 # define DLL_Load( name )                 (void*) dlopen( name, RTLD_NOW | RTLD_LOCAL )
 # define DLL_Free( h )                    dlclose( h )
@@ -829,7 +831,7 @@ public:
 /* Single player                                                        */
 /************************************************************************/
 
-#if defined ( FO_WINDOWS )
+#ifdef FO_WINDOWS
 class InterprocessData
 {
 public:
@@ -851,8 +853,8 @@ public:
 };
 
 extern HANDLE SingleplayerClientProcess;
-#else // FO_LINUX
-      // Todo: linux
+#else
+// Todo: linux
 class InterprocessData
 {
 public:
@@ -868,10 +870,10 @@ extern InterprocessData SingleplayerData;
 /* Threads                                                              */
 /************************************************************************/
 
-#if defined ( FO_WINDOWS )
+#ifdef FO_WINDOWS
 # define PTW32_STATIC_LIB
 # include "PthreadWnd/pthread.h"
-#else // FO_LINUX
+#else
 # include <pthread.h>
 #endif
 
@@ -898,9 +900,8 @@ public:
 
     #ifdef FO_WINDOWS
     HANDLE GetWindowsHandle();
-    #endif
-    #ifdef FO_LINUX
-    pid_t GetLinuxPid();
+    #else
+    pid_t GetPid();
     #endif
 
     static uint        GetCurrentId();

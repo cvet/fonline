@@ -7,10 +7,6 @@
 # include "FL/Fl_Text_Display.H"
 #endif
 
-#if defined ( FO_LINUX )
-// #include <syslog.h>
-#endif
-
 Mutex                LogLocker;
 void*                LogFileHandle = NULL;
 vector< LogFuncPtr > LogFunctions;
@@ -178,7 +174,7 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
     }
     if( ToDebugOutput )
     {
-        #if defined ( FO_WINDOWS )
+        #ifdef FO_WINDOWS
         OutputDebugString( str );
         #else
         printf( "%s", str );

@@ -241,7 +241,7 @@ bool FileManager::LoadFile( const char* fname, int path_type )
         Str::Copy( dat_path, PathList[ path_type ] );
         Str::Append( dat_path, fname );
         FormatPath( dat_path );
-        #if defined ( FO_LINUX )
+        #ifndef FO_WINDOWS
         if( dat_path[ 0 ] == '.' && dat_path[ 1 ] == DIR_SLASH_C )
             Str::CopyBack( dat_path ), Str::CopyBack( dat_path );
         #endif
@@ -252,10 +252,10 @@ bool FileManager::LoadFile( const char* fname, int path_type )
         Str::Append( folder_path, dat_path );
 
         // Check for full path
-        #if defined ( FO_WINDOWS )
+        #ifdef FO_WINDOWS
         if( dat_path[ 1 ] == ':' )
             only_folder = true;                        // C:/folder/file.ext
-        #else // FO_LINUX
+        #else
         if( dat_path[ 0 ] == DIR_SLASH_C )
             only_folder = true;                        // /folder/file.ext
         #endif
@@ -307,7 +307,7 @@ bool FileManager::LoadFile( const char* fname, int path_type )
     Str::Lower( dat_path );
 
     // Change slashes back to slash, because dat tree use '\'
-    #if !defined ( FO_WINDOWS )
+    #ifndef FO_WINDOWS
     for( char* str = dat_path; *str; str++ )
     {
         if( *str == '/' )
@@ -767,7 +767,7 @@ void FileManager::FormatPath( char* path, bool first_skipped /* = false */ )
     // Change to valid slash
     for( char* str = path; *str; str++ )
     {
-        #if defined ( FO_WINDOWS )
+        #ifdef FO_WINDOWS
         if( *str == '/' )
             *str = '\\';
         #else
@@ -825,7 +825,7 @@ void FileManager::FormatPath( char* path, bool first_skipped /* = false */ )
     }
 
     // Extra dot+slash in beginning
-    #if defined ( FO_LINUX )
+    #ifndef FO_WINDOWS
     if( !first_skipped && path[ 0 ] != DIR_SLASH_C )
         Str::Insert( path, DIR_SLASH_SD );
     #endif
@@ -1034,7 +1034,7 @@ void FileManager::GetFolderFileNames( const char* path, bool include_subdirs, co
     char path_[ MAX_FOPATH ];
     Str::Copy( path_, path );
     FormatPath( path_ );
-    #ifdef FO_LINUX
+    #ifndef FO_WINDOWS
     // Erase './'
     Str::CopyBack( path_ );
     Str::CopyBack( path_ );

@@ -208,7 +208,7 @@ const char* Debugger::GetMemoryStatistics()
             MemNode& node = MemNodes[ i ];
             # ifdef FO_WINDOWS
             Str::Format( buf, "%s : %12I64d %12I64d %12I64d %12I64d %12I64d\n", MemBlockNames[ i ], node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
-            # else // FO_LINUX
+            # else
             Str::Format( buf, "%s : %12lld %12lld %12lld %12lld %12lld\n", MemBlockNames[ i ], node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
             # endif
             result += buf;
@@ -217,7 +217,7 @@ const char* Debugger::GetMemoryStatistics()
         }
         # ifdef FO_WINDOWS
         Str::Format( buf, "Whole memory  : %12I64d %12I64d %12I64d\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
-        # else // FO_LINUX
+        # else
         Str::Format( buf, "Whole memory  : %12lld %12lld %12lld\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
         # endif
         result += buf;
@@ -232,7 +232,7 @@ const char* Debugger::GetMemoryStatistics()
             MemNodeStr& node = *it;
             # ifdef FO_WINDOWS
             Str::Format( buf, "%-50s : %12I64d %12I64d %12I64d %12I64d %12I64d\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
-            # else // FO_LINUX
+            # else
             Str::Format( buf, "%-50s : %12lld %12lld %12lld %12lld %12lld\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
             # endif
             result += buf;
@@ -241,7 +241,7 @@ const char* Debugger::GetMemoryStatistics()
         }
         # ifdef FO_WINDOWS
         Str::Format( buf, "Whole memory                                       : %12I64d %12I64d %12I64d\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
-        # else // FO_LINUX
+        # else
         Str::Format( buf, "Whole memory                                       : %12lld %12lld %12lld\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
         # endif
         result += buf;
@@ -549,15 +549,7 @@ void PatchWindowsDealloc()
     UNINSTALL_PATCH( HeapFree );
 }
 
-#else // FO_LINUX
-
-# include <malloc.h>
-
-Mutex HookLocker;
-
-void* malloc_hook( size_t size, const void* caller );
-void* realloc_hook( void* ptr, size_t size, const void* caller );
-void  free_hook( void* ptr, const void* caller );
+#else
 
 StackInfo* GetStackInfo( const void* caller )
 {
@@ -581,6 +573,18 @@ StackInfo* GetStackInfo( const void* caller )
     StackHashStackInfo.insert( PAIR( (size_t) caller, si ) );
     return si;
 }
+
+#endif
+
+#ifdef FO_LINUX
+
+# include <malloc.h>
+
+Mutex HookLocker;
+
+void* malloc_hook( size_t size, const void* caller );
+void* realloc_hook( void* ptr, size_t size, const void* caller );
+void  free_hook( void* ptr, const void* caller );
 
 void* malloc_hook( size_t size, const void* caller )
 {
@@ -631,8 +635,9 @@ void Debugger::StartTraceMemory()
 
     // Allocators
     PatchWindowsAlloc();
+    #endif
 
-    #else // FO_LINUX
+    #ifdef FO_LINUX
     __malloc_hook = malloc_hook;
     __realloc_hook = realloc_hook;
     __free_hook = free_hook;

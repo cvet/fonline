@@ -3,7 +3,7 @@
 
 #include "Common.h"
 
-#if defined ( FO_WINDOWS )
+#ifdef FO_WINDOWS
 # define DIR_SLASH_C      '\\'
 # define DIR_SLASH_S      "\\"
 # define DIR_SLASH_SD     ".\\"

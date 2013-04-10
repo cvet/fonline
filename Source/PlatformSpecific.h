@@ -5,7 +5,7 @@
 // Operating system
 // FO_WINDOWS
 // FO_LINUX
-// FO_MACOSX - todo
+// FO_MACOSX
 //
 // CPU
 // FO_X86
@@ -41,8 +41,6 @@
 //    -lXft*
 //    -lfltk*
 //   Server
-//    -lfltk_images*
-//    -lfltk_png*
 //    -levent_core
 //    -levent_pthreads
 //    -lpng
@@ -66,6 +64,8 @@
 # define FO_WINDOWS
 #elif defined ( __linux__ )
 # define FO_LINUX
+#elif defined ( __APPLE__ )
+# define FO_MACOSX
 #else
 # error "Unknown operating system."
 #endif
@@ -84,6 +84,7 @@
 # define FO_X86
 #elif ( defined ( FO_MSVC ) && defined ( _M_X64 ) ) || ( defined ( FO_GCC ) && defined ( __LP64__ ) )
 # define FO_X64
+# error "X64 CPU not supported for now."
 #else
 # error "Unknown CPU."
 #endif
@@ -109,7 +110,7 @@
 
 // Libevent workarounds
 // Was bugged for Windows, need retest
-#if !defined ( FO_WINDOWS )
+#ifndef FO_WINDOWS
 # define USE_LIBEVENT
 // Linux don't want call write timeouts, need to know why and fix
 # define LIBEVENT_TIMEOUTS_WORKAROUND

@@ -10,18 +10,18 @@
 # include <stdio.h>
 # include <strstream>
 
-# if defined ( FO_WINDOWS )
+# ifdef FO_WINDOWS
 #  include <Windows.h>
 # endif
 
 // DLL
-# if defined ( FO_WINDOWS )
+# ifdef FO_WINDOWS
 static char DLLTempBuf[ 64 ];
 #  define DLL_Load( name )              (void*) LoadLibrary( name )
 #  define DLL_Free( h )                 FreeLibrary( (HMODULE) h )
 #  define DLL_GetAddress( h, pname )    (size_t*) GetProcAddress( (HMODULE) h, pname )
 #  define DLL_Error()                   _itoa( GetLastError(), DLLTempBuf, 10 )
-# else // FO_LINUX
+# else
 #  include <dlfcn.h>
 #  define DLL_Load( name )              (void*) dlopen( name, RTLD_NOW | RTLD_LOCAL )
 #  define DLL_Free( h )                 dlclose( h )
@@ -60,16 +60,16 @@ namespace Script
         # endif
 
         // DLL extension
-        # if defined ( FO_WINDOWS )
+        # ifdef FO_WINDOWS
         strcat( dll_name_, ".dll" );
-        # else // FO_LINUX
+        # else
         strcat( dll_name_, ".so" );
         # endif
 
         // Register global function and vars
         static map< string, void* > alreadyLoadedDll;
         string                      dll_name_str = dll_name_;
-        # if defined ( FO_WINDOWS )
+        # ifdef FO_WINDOWS
         for( uint i = 0, j = dll_name_str.length(); i < j; i++ )
             tolower( dll_name_str[ i ] );
         # endif

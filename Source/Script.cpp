@@ -444,7 +444,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     // Find in already loaded
     char dll_name_lower[ MAX_FOPATH ];
     Str::Copy( dll_name_lower, dll_name );
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     Str::Lower( dll_name_lower );
     #endif
     EngineData* edata = (EngineData*) Engine->GetUserData();
@@ -463,9 +463,9 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     #endif
 
     // DLL extension
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     Str::Append( dll_path, ".dll" );
-    #else     // FO_LINUX
+    #else
     Str::Append( dll_path, ".so" );
     #endif
 

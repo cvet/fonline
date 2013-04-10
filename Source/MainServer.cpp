@@ -5,7 +5,7 @@
 #include "Access.h"
 #include "BufferManager.h"
 #include <locale.h>
-#ifdef FO_LINUX
+#ifndef FO_WINDOWS
 # include <signal.h>
 #endif
 #ifndef SERVER_DAEMON
@@ -76,7 +76,7 @@ int main( int argc, char** argv )
     Thread::SetCurrentName( "GUI" );
 
     // Disable SIGPIPE signal
-    # ifdef FO_LINUX
+    # ifndef FO_WINDOWS
     signal( SIGPIPE, SIG_IGN );
     # endif
 
@@ -287,7 +287,7 @@ void GUIInit( IniParser& cfg )
     // Icon
     # ifdef FO_WINDOWS
     GuiWindow->icon( (char*) LoadIcon( fl_display, MAKEINTRESOURCE( 101 ) ) );
-    # else // FO_LINUX
+    # else
     fl_open_display();
     // Todo: linux
     # endif
@@ -634,7 +634,7 @@ void UpdateLog()
     {
         # ifdef FO_WINDOWS
         GuiLog->buffer()->append( fl_locale_to_utf8( str.c_str(), (int) str.length(), GetACP() ) );
-        # else // FO_LINUX
+        # else
         GuiLog->buffer()->append( str.c_str() );
         # endif
         if( Fl::focus() != GuiLog )
@@ -934,7 +934,7 @@ int main( int argc, char** argv )
     Thread::SetCurrentName( "Daemon" );
 
     // Disable SIGPIPE signal
-    # ifdef FO_LINUX
+    # ifndef FO_WINDOWS
     signal( SIGPIPE, SIG_IGN );
     # endif
 

@@ -5,9 +5,11 @@
 # include <Iphlpapi.h>
 # include <intrin.h>
 # pragma comment(lib,"Iphlpapi.lib")
-#else // FO_LINUX
+#else
+# ifdef FO_LINUX
+#  include <linux/hdreg.h>
+# endif
 # include <fcntl.h>
-# include <linux/hdreg.h>
 # include <net/if.h>
 # include <sys/ioctl.h>
 # ifndef SIOCGIFADDR
@@ -61,7 +63,7 @@ uint UIDDUMMY10 = -1;
 
 #define UID_CHANGE                 ( 0 )
 
-#ifdef FO_WINDOWS
+#if defined ( FO_WINDOWS )
 # define GET_UID0( result )                                                  \
     SYSTEM_INFO d_sysinfo;                                                   \
     memzero( &d_sysinfo, sizeof( d_sysinfo ) );                              \
@@ -85,7 +87,7 @@ uint UIDDUMMY10 = -1;
     UIDCACHE[ 0 ] = *result;                                                 \
     UID_DUMMY_CALCS4;                                                        \
     UIDCACHE2[ 0 ] = *result
-#else
+#elif defined ( FO_LINUX )
 # define GET_UID0( result )                                                \
     result = new uint();                                                   \
     *result = 0;                                                           \
@@ -106,9 +108,13 @@ uint UIDDUMMY10 = -1;
     UID_CALC( *result );                                                   \
     UIDCACHE[ 0 ] = *result;                                               \
     UIDCACHE2[ 0 ] = *result
+#else
+# define GET_UID0( result ) \
+    result = new uint();    \
+    *result = 0x12345678;
 #endif
 
-#ifdef FO_WINDOWS
+#if defined ( FO_WINDOWS )
 # define GET_UID1( result )                                                      \
     PIP_ADAPTER_INFO d_ainfo = NULL;                                             \
     uint d_retv = 0;                                                             \
@@ -144,7 +150,7 @@ uint UIDDUMMY10 = -1;
     UIDCACHE[ 1 ] = *result;                                                     \
     UID_DUMMY_CALCS8;                                                            \
     UIDCACHE2[ 1 ] = *result
-#else
+#elif defined ( FO_LINUX )
 # define GET_UID1( result )                                                                            \
     result = new uint();                                                                               \
     *result = 0;                                                                                       \
@@ -197,6 +203,10 @@ uint UIDDUMMY10 = -1;
     UID_DUMMY_CALCS6;                                                                                  \
     UIDCACHE2[ 1 ] = *result;                                                                          \
     UID_DUMMY_CALCS0
+#else
+# define GET_UID1( result ) \
+    result = new uint();    \
+    *result = 0x5678ABCD;
 #endif
 
 #ifdef FO_WINDOWS
@@ -230,7 +240,7 @@ uint UIDDUMMY10 = -1;
     if( ( rnd_fd = open( "/dev/random", O_RDONLY ) ) != -1 ) \
     {                                                        \
         char d_rnd[ 32 ];                                    \
-        read( fd, d_rnd, 32 );                               \
+        read( rnd_fd, d_rnd, 32 );                           \
         for( int i = 0; i < 32; i++ )                        \
             *result |= ( ( d_rnd[ i ] % 2 ) ? 1 : 0 ) << i;  \
         close( rnd_fd );                                     \
@@ -325,7 +335,7 @@ uint UIDDUMMY10 = -1;
     if( ( urnd_fd = open( "/dev/urandom", O_RDONLY ) ) != -1 ) \
     {                                                          \
         char d_rnd[ 32 ];                                      \
-        read( fd, d_rnd, 32 );                                 \
+        read( urnd_fd, d_rnd, 32 );                            \
         for( int i = 0; i < 32; i++ )                          \
             *result |= ( ( d_rnd[ i ] % 2 ) ? 1 : 0 ) << i;    \
         close( urnd_fd );                                      \

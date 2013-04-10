@@ -19,7 +19,6 @@
 					<Add option="-lX11" />
 					<Add option="-lXft" />
 					<Add option="-lfltk" />
-					<Add option="-lfltk_images" />
 				</Linker>
 			</Target>
 			<Target title="Release Linux Daemon">
@@ -39,6 +38,7 @@
 			<Add option="-W" />
 			<Add option="-Wno-invalid-offsetof" />
 			<Add option="-Wno-unused-result" />
+			<Add option="-m32" />
 			<Add option="-DFONLINE_SERVER" />
 			<Add option="-DSCRIPT_MULTITHREADING" />
 			<Add directory="../Source/StlPort" />

@@ -23,6 +23,7 @@
 			<Add option="-W" />
 			<Add option="-Wno-invalid-offsetof" />
 			<Add option="-Wno-unused-result" />
+			<Add option="-m32" />
 			<Add directory="../Source/StlPort" />
 			<Add directory="../Source" />
 		</Compiler>

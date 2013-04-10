@@ -68,9 +68,9 @@ char* Str::Duplicate( const char* str )
 
 char* Str::Lower( char* str )
 {
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     _strlwr( str );
-    #else // FO_LINUX
+    #else
     for( ; *str; ++str )
         *str = tolower( *str );
     #endif
@@ -79,9 +79,9 @@ char* Str::Lower( char* str )
 
 char* Str::Upper( char* str )
 {
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     _strupr( str );
-    #else // FO_LINUX
+    #else
     for( ; *str; ++str )
         *str = toupper( *str );
     #endif
@@ -110,9 +110,9 @@ bool Str::Compare( const char* str1, const char* str2 )
 
 bool Str::CompareCase( const char* str1, const char* str2 )
 {
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     return _stricmp( str1, str2 ) == 0;
-    #else // FO_LINUX
+    #else
     return strcasecmp( str1, str2 ) == 0;
     #endif
 }
@@ -124,7 +124,7 @@ bool Str::CompareCount( const char* str1, const char* str2, uint max_count )
 
 bool Str::CompareCaseCount( const char* str1, const char* str2, uint max_count )
 {
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     return _strnicmp( str1, str2, max_count ) == 0;
     #else
     return strncasecmp( str1, str2, max_count ) == 0;
@@ -379,7 +379,7 @@ const char* Str::I64toA( int64 i )
     static THREAD char str[ 128 ];
     #ifdef FO_WINDOWS
     sprintf( str, "%I64d", i );
-    #else // FO_LINUX
+    #else
     sprintf( str, "%lld", i );
     #endif
     return str;
@@ -405,7 +405,7 @@ int64 Str::AtoI64( const char* str )
         return strtol( str + 2, NULL, 16 );
     #ifdef FO_WINDOWS
     return _atoi64( str );
-    #else // FO_LINUX
+    #else
     return strtoll( str, NULL, 10 );
     #endif
 }

@@ -161,7 +161,6 @@ bool ResolvePath( char* path )
 
 # include <dirent.h>
 # include <sys/stat.h>
-# include <unistd.h>
 
 struct FileDesc
 {

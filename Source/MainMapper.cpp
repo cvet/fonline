@@ -42,7 +42,7 @@ int main( int argc, char** argv )
     // Icon
     #ifdef FO_WINDOWS
     MainWindow->icon( (char*) LoadIcon( fl_display, MAKEINTRESOURCE( 101 ) ) );
-    #else // FO_LINUX
+    #else
     // Todo: Linux
     #endif
 

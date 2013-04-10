@@ -491,7 +491,7 @@ void CreateDump( const char* appendix )
     # endif
 }
 
-#else // FO_LINUX
+#else
 
 # include "FileManager.h"
 # include <signal.h>

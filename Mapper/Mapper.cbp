@@ -27,6 +27,7 @@
 			<Add option="-W" />
 			<Add option="-Wno-invalid-offsetof" />
 			<Add option="-Wno-unused-result" />
+			<Add option="-m32" />
 			<Add option="-DFONLINE_MAPPER" />
 			<Add option="-DAS_NO_THREADS" />
 			<Add directory="../Source/StlPort" />

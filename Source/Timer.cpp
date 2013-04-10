@@ -1,14 +1,14 @@
 #include "StdAfx.h"
 #include "Timer.h"
 
-#if defined ( FO_WINDOWS )
+#ifdef FO_WINDOWS
 # include <Mmsystem.h>
 # if defined ( FO_MSVC )
 #  pragma comment(lib,"Winmm.lib")
 # elif defined ( FO_GCC )
 // Linker option: -lwinmm
 # endif
-#else // FO_LINUX
+#else
 # include <sys/time.h>
 #endif
 
@@ -16,17 +16,20 @@ uint LastGameTick = 0;
 uint SkipGameTick = 0;
 bool GameTickPaused = false;
 
-#if defined ( FO_WINDOWS )
+#ifdef FO_WINDOWS
 int64 QPCStartValue = 0;
 int64 QPCFrequency = 0;
 #endif
 
-#if defined ( FO_LINUX )
+#ifndef FO_WINDOWS
 void SetTick();
 void UpdateTick( void* );
 Thread        TimerUpdateThread;
 volatile uint TimerTick = 0;
 volatile bool QuitTick = false;
+# ifdef FO_MACOSX
+double        LastAccurateTick = 0;
+# endif
 #endif
 
 #define MAX_ACCELERATE_TICK    ( 500 )
@@ -37,11 +40,14 @@ uint AcceleratorAccelerate = 0;
 
 void Timer::Init()
 {
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     QueryPerformanceCounter( (LARGE_INTEGER*) &QPCStartValue );
     QueryPerformanceFrequency( (LARGE_INTEGER*) &QPCFrequency );
     timeBeginPeriod( 1 );
-    #else // FO_LINUX
+    #else
+    # ifdef FO_MACOSX
+    LastAccurateTick = AccurateTick();
+    # endif
     SetTick();
     TimerUpdateThread.Start( UpdateTick, "UpdateTick" );
     #endif
@@ -53,9 +59,9 @@ void Timer::Init()
 
 void Timer::Finish()
 {
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     timeEndPeriod( 1 );
-    #else // FO_LINUX
+    #else
     InterlockedExchange( &QuitTick, true );
     TimerUpdateThread.Wait();
     #endif
@@ -63,20 +69,20 @@ void Timer::Finish()
 
 uint Timer::FastTick()
 {
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     return timeGetTime();
-    #else // FO_LINUX
+    #else
     return TimerTick;
     #endif
 }
 
 double Timer::AccurateTick()
 {
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     int64 qpc_value;
     QueryPerformanceCounter( (LARGE_INTEGER*) &qpc_value );
     return (double) ( (double) ( qpc_value - QPCStartValue ) / (double) QPCFrequency * 1000.0 );
-    #else // FO_LINUX
+    #else
     struct timeval tv;
     gettimeofday( &tv, NULL );
     return (double) ( tv.tv_sec * 1000000 + tv.tv_usec ) / 1000.0;
@@ -133,13 +139,13 @@ int Timer::GetAcceleratorNum()
 
 void Timer::GetCurrentDateTime( DateTime& dt )
 {
-    #if defined ( FO_WINDOWS )
+    #ifdef FO_WINDOWS
     SYSTEMTIME st;
     GetLocalTime( &st );
     dt.Year = st.wYear, dt.Month = st.wMonth, dt.DayOfWeek = st.wDayOfWeek,
     dt.Day = st.wDay, dt.Hour = st.wHour, dt.Minute = st.wMinute,
     dt.Second = st.wSecond, dt.Milliseconds = st.wMilliseconds;
-    #else // FO_LINUX
+    #else
     time_t     long_time;
     time( &long_time );
     struct tm* lt = localtime( &long_time );
@@ -305,13 +311,24 @@ void Timer::ProcessGameTime()
     }
 }
 
-#if defined ( FO_LINUX )
+#ifndef FO_WINDOWS
 void SetTick()
 {
+    # ifdef FO_LINUX
     struct timespec tv;
     clock_gettime( CLOCK_MONOTONIC, &tv );
     uint            timer_tick = (uint) ( tv.tv_sec * 1000 + tv.tv_nsec / 1000000 );
     InterlockedExchange( &TimerTick, timer_tick );
+    # else
+    double accurate_tick = AccurateTick();
+    double dt = accurate_tick - LastAccurateTick;
+    if( dt >= 1.0 )
+    {
+        uint timer_tick = (uint) dt;
+        LastAccurateTick = accurate_tick - fmod( dt, 1.0 );
+        InterlockedExchange( &TimerTick, timer_tick );
+    }
+    # endif
 }
 
 void UpdateTick( void* ) // Thread

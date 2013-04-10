@@ -128,7 +128,7 @@ bool FOClient::Init()
         HANDLE h = CreateEvent( NULL, FALSE, FALSE, "_fosync_" );
         if( !h || h == INVALID_HANDLE_VALUE || GetLastError() == ERROR_ALREADY_EXISTS )
             memset( MulWndArray, 1, sizeof( MulWndArray ) );
-        # else // FO_LINUX
+        # else
         // Todo: Linux
         # endif
     }
@@ -2583,7 +2583,7 @@ bool FOClient::NetConnect()
 
     #ifdef FO_WINDOWS
     if( ( Sock = WSASocket( AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, 0 ) ) == INVALID_SOCKET )
-    #else // FO_LINUX
+    #else
     if( ( Sock = socket( AF_INET, SOCK_STREAM, 0 ) ) == INVALID_SOCKET )
     #endif
     {
@@ -2883,7 +2883,7 @@ bool FOClient::NetOutput()
         buf.buf = Bout.GetData() + sendpos;
         buf.len = tosend - sendpos;
         if( WSASend( Sock, &buf, 1, &len, 0, NULL, NULL ) == SOCKET_ERROR || len == 0 )
-        #else // FO_LINUX
+        #else
         int len = send( Sock, Bout.GetData() + sendpos, tosend - sendpos, 0 );
         if( len <= 0 )
         #endif
@@ -2923,7 +2923,7 @@ int FOClient::NetInput( bool unpack )
     buf.buf = ComBuf;
     buf.len = ComLen;
     if( WSARecv( Sock, &buf, 1, &len, &flags, NULL, NULL ) == SOCKET_ERROR )
-    #else // FO_LINUX
+    #else
     int len = recv( Sock, ComBuf, ComLen, 0 );
     if( len < 0 )
     #endif
@@ -2952,7 +2952,7 @@ int FOClient::NetInput( bool unpack )
         buf.buf = ComBuf + pos;
         buf.len = ComLen - pos;
         if( WSARecv( Sock, &buf, 1, &len, &flags, NULL, NULL ) == SOCKET_ERROR )
-        #else // FO_LINUX
+        #else
         int len = recv( Sock, ComBuf + pos, ComLen - pos, 0 );
         if( len < 0 )
         #endif
@@ -8750,7 +8750,7 @@ void FOClient::FlashGameWindow()
         FlashWindow( fl_xid( MainWindow ), true );
     if( GameOpt.SoundNotify )
         Beep( 100, 200 );
-    #else     // FO_LINUX
+    #else
     // Todo: linux
     #endif
 }
