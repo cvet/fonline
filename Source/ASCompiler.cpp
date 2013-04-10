@@ -25,6 +25,7 @@
 using namespace std;
 
 #ifdef FO_LINUX
+# include <unistd.h>
 # define _stricmp    strcasecmp
 #endif
 
