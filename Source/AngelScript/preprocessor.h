@@ -1,0 +1,147 @@
+/*
+   Preprocessor 0.5
+   Copyright (c) 2005 Anthony Casteel
+
+   This software is provided 'as-is', without any express or implied
+   warranty. In no event will the authors be held liable for any
+   damages arising from the use of this software.
+
+   Permission is granted to anyone to use this software for any
+   purpose, including commercial applications, and to alter it and
+   redistribute it freely, subject to the following restrictions:
+
+   1. The origin of this software must not be misrepresented; you
+      must not claim that you wrote the original software. If you use
+      this software in a product, an acknowledgment in the product
+      documentation would be appreciated but is not required.
+
+   2. Altered source versions must be plainly marked as such, and
+      must not be misrepresented as being the original software.
+
+   3. This notice may not be removed or altered from any source
+      distribution.
+
+   The original version of this library can be located at:
+   http://www.angelcode.com/angelscript/
+   under addons & utilities or at
+   http://www.omnisu.com
+
+   Anthony Casteel
+   jm@omnisu.com
+ */
+
+#ifndef PREPROCESSOR_H
+#define PREPROCESSOR_H
+
+#include <stdio.h>
+#include <string>
+#include <sstream>
+#include <vector>
+
+#define PREPROCESSOR_VERSION_STRING    "0.5"
+
+namespace Preprocessor
+{
+    /************************************************************************/
+    /* Preprocess                                                           */
+    /************************************************************************/
+
+    class OutStream;
+    class FileLoader;
+    class PragmaCallback;
+    class LineNumberTranslator;
+
+    // Preprocess
+    int Preprocess( std::string file_path, OutStream& result, OutStream* errors = NULL, FileLoader* loader = NULL, bool skip_pragmas = false );
+
+    // Pre preprocess settings
+    void Define( const std::string& str );
+    void Undef( const std::string& str );
+    void UndefAll();
+    bool IsDefined( const std::string& str );
+    void SetPragmaCallback( PragmaCallback* callback );
+    void CallPragma( const std::string& name, std::string pragma );
+
+    // Post preprocess settings
+    LineNumberTranslator*       GetLineNumberTranslator();
+    std::string                 ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt = NULL );
+    unsigned int                ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt = NULL );
+    std::vector< std::string >& GetFileDependencies();
+    std::vector< std::string >& GetParsedPragmas();
+
+    /************************************************************************/
+    /* Streams                                                              */
+    /************************************************************************/
+
+    class OutStream
+    {
+public:
+        virtual ~OutStream() {}
+        virtual void Write( const char* str, size_t len ) {}
+
+        OutStream& operator<<( const std::string& in )
+        {
+            Write( in.c_str(), in.length() );
+            return *this;
+        }
+        OutStream& operator<<( const char* in )
+        {
+            return operator<<( std::string( in ) );
+        }
+        template< typename T >
+        OutStream& operator<<( const T& in )
+        {
+            std::stringstream strstr;
+            strstr << in;
+            std::string       str;
+            strstr >> str;
+            Write( str.c_str(), str.length() );
+            return *this;
+        }
+    };
+
+    class StringOutStream: public OutStream
+    {
+public:
+        std::string String;
+
+        virtual ~StringOutStream() {}
+        virtual void Write( const char* str, size_t len )
+        {
+            String.append( str, len );
+        }
+    };
+
+    /************************************************************************/
+    /* Loader                                                               */
+    /************************************************************************/
+
+    class FileLoader
+    {
+public:
+        virtual ~FileLoader() {}
+        virtual bool LoadFile( const std::string& dir, const std::string& file_name, std::vector< char >& data );
+    };
+
+    /************************************************************************/
+    /* Pragmas                                                              */
+    /************************************************************************/
+
+    class PragmaInstance
+    {
+public:
+        std::string  Text;
+        std::string  CurrentFile;
+        unsigned int CurrentFileLine;
+        std::string  RootFile;
+        unsigned int GlobalLine;
+    };
+
+    class PragmaCallback
+    {
+public:
+        virtual void CallPragma( const std::string& name, const PragmaInstance& pi ) = 0;
+    };
+};
+
+#endif // PREPROCESSOR_H
