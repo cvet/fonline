@@ -29,34 +29,7 @@
 //   -Wno-unused-result
 // Linker
 //  Directories
-//   ../LibLinux
-//  Libraries
-//   All
-//    -rdynamic
-//    -lpthread
-//    -ldl
-//    -lrt
-//    -lstlport
-//    -lX11*
-//    -lXft*
-//    -lfltk*
-//   Server
-//    -levent_core
-//    -levent_pthreads
-//    -lpng
-//   Client / Mapper
-//    -lfltk_gl
-//    -lGL
-//    -lGLU
-//    -lIL
-//   Client
-//    -lportaudio
-//    -logg
-//    -lvorbis
-//    -lvorbisfile
-//    -ltheoradec
-//
-// *not in server daemon version
+//   ../Lib/Linux or ../Lib/MacOSX
 //
 
 // Detect operating system

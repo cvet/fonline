@@ -57,6 +57,9 @@ const char* GetLastSocketError();
 # pragma comment( lib, "fltkjpeg.lib" )
 # pragma comment( lib, "fltkpng.lib" )
 # pragma comment( lib, "fltkzlib.lib" )
+#elif defined ( FO_MACOSX )
+# define fl_display           glXGetCurrentDisplay()
+# define fl_window            ( (uint) fl_xid( MainWindow ) )
 #endif
 
 // DLL
@@ -923,5 +926,8 @@ public:
 string Deprecated_GetPicName( int pid, int type, ushort pic_num );
 uint   Deprecated_GetPicHash( int pid, int type, ushort pic_num );
 void   Deprecated_CondExtToAnim2( uchar cond, uchar cond_ext, uint& anim2ko, uint& anim2dead );
+
+// Preprocessor output formatting
+void FormatPreprocessorOutput( string& str );
 
 #endif // __COMMON__

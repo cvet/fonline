@@ -20,9 +20,6 @@
     <Filter Include="AngelScript">
       <UniqueIdentifier>{b9b62460-8c97-427a-8e99-bb9484250882}</UniqueIdentifier>
     </Filter>
-    <Filter Include="AngelScript\Preprocessor">
-      <UniqueIdentifier>{33ec6fdf-e233-4666-8a41-621bb6379010}</UniqueIdentifier>
-    </Filter>
     <Filter Include="GL">
       <UniqueIdentifier>{c107ac11-a3bd-4e17-acf7-00fc62dfb9b5}</UniqueIdentifier>
     </Filter>
@@ -329,27 +326,6 @@
     <ClInclude Include="..\Source\AngelScript\scriptstring.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\define_table.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\lex.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\lexem_list.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\line_number_translator.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\pragma.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\preprocess.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\stream.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\FileSystem.h">
       <Filter>Mapper</Filter>
     </ClInclude>
@@ -380,8 +356,8 @@
     <ClInclude Include="..\Source\AngelScript\as_symboltable.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\expressions.h">
-      <Filter>AngelScript\Preprocessor</Filter>
+    <ClInclude Include="..\Source\AngelScript\preprocessor.h">
+      <Filter>AngelScript</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -628,15 +604,6 @@
     <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
       <Filter>AngelScript</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\lex.cpp">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\lexem_list.cpp">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\preprocess.cpp">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClCompile>
     <ClCompile Include="..\Source\FileSystem.cpp">
       <Filter>Mapper</Filter>
     </ClCompile>
@@ -655,8 +622,8 @@
     <ClCompile Include="..\Source\GL\glew.c">
       <Filter>GL</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\expressions.cpp">
-      <Filter>AngelScript\Preprocessor</Filter>
+    <ClCompile Include="..\Source\AngelScript\preprocessor.cpp">
+      <Filter>AngelScript</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

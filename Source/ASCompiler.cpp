@@ -5,7 +5,7 @@
 #include "Debugger.h"
 #include "FileManager.h"
 #include "AngelScript/angelscript.h"
-#include "AngelScript/Preprocessor/preprocess.h"
+#include "AngelScript/preprocessor.h"
 #include "AngelScript/as_config.h"
 #include "AngelScript/scriptany.h"
 #include "AngelScript/scriptdictionary.h"
@@ -29,15 +29,14 @@ using namespace std;
 # define _stricmp    strcasecmp
 #endif
 
-asIScriptEngine*                    Engine = NULL;
-bool                                IsServer = true;
-bool                                IsClient = false;
-bool                                IsMapper = false;
-char*                               Buf = NULL;
-Preprocessor::LineNumberTranslator* LNT = NULL;
-bool                                CollectGarbage = false;
+asIScriptEngine* Engine = NULL;
+bool             IsServer = true;
+bool             IsClient = false;
+bool             IsMapper = false;
+char*            Buf = NULL;
+bool             CollectGarbage = false;
 
-const char*                         ContextStatesStr[] =
+const char*      ContextStatesStr[] =
 {
     "Finished",
     "Suspended",
@@ -157,7 +156,7 @@ void CallBack( const asSMessageInfo* msg, void* param )
     {
         if( msg->row )
         {
-            printf( "%s(%d) : %s : %s.\n", LNT->ResolveOriginalFile( msg->row ).c_str(), LNT->ResolveOriginalLine( msg->row ), type, msg->message );
+            printf( "%s(%d) : %s : %s.\n", Preprocessor::ResolveOriginalFile( msg->row ).c_str(), Preprocessor::ResolveOriginalLine( msg->row ), type, msg->message );
         }
         else
         {
@@ -166,7 +165,7 @@ void CallBack( const asSMessageInfo* msg, void* param )
     }
     else
     {
-        printf( "%s(%d) : %s : %s.\n", LNT->ResolveOriginalFile( msg->row ).c_str(), LNT->ResolveOriginalLine( msg->row ), type, msg->message );
+        printf( "%s(%d) : %s : %s.\n", Preprocessor::ResolveOriginalFile( msg->row ).c_str(), Preprocessor::ResolveOriginalLine( msg->row ), type, msg->message );
     }
 }
 
@@ -327,12 +326,6 @@ int main( int argc, char* argv[] )
     double tick = Timer::AccurateTick();
 
     // Preprocessor
-    Preprocessor::VectorOutStream vos;
-    Preprocessor::VectorOutStream vos_err;
-    Preprocessor::FileSource      fsrc;
-    fsrc.CurrentDir = "";
-    fsrc.Stream = NULL;
-
     int pragma_type = PRAGMA_UNKNOWN;
     if( IsServer )
         pragma_type = PRAGMA_SERVER;
@@ -355,11 +348,11 @@ int main( int argc, char* argv[] )
     if( !run_func.empty() )
         Preprocessor::Define( string( "Log __CompilerLog" ) );
 
-    LNT = new Preprocessor::LineNumberTranslator();
-    int res = Preprocessor::Preprocess( str_fname, fsrc, vos, true, &vos_err, LNT );
+    Preprocessor::StringOutStream result, errors;
+    int                           res;
+    res = Preprocessor::Preprocess( str_fname, result, &errors, NULL, false );
 
-    vos_err.PushNull();
-    Buf = Str::Duplicate( vos_err.GetData() );
+    Buf = Str::Duplicate( errors.String.c_str() );
 
     if( res )
     {
@@ -377,15 +370,10 @@ int main( int argc, char* argv[] )
         FILE* f = fopen( str_prep, "wt" );
         if( f )
         {
-            Preprocessor::VectorOutStream vos_formatted;
-            vos_formatted << string( vos.GetData(), vos.GetSize() );
-            vos_formatted.Format();
-            char* buf_formatted = new char[ vos_formatted.GetSize() + 1 ];
-            memcpy( buf_formatted, vos_formatted.GetData(), vos_formatted.GetSize() );
-            buf_formatted[ vos_formatted.GetSize() ] = '\0';
-            fwrite( buf_formatted, sizeof( char ), strlen( buf_formatted ), f );
+            string result_formatted = result.String;
+            FormatPreprocessorOutput( result_formatted );
+            fwrite( result_formatted.c_str(), sizeof( char ), result_formatted.length(), f );
             fclose( f );
-            delete buf_formatted;
         }
         else
         {
@@ -406,7 +394,7 @@ int main( int argc, char* argv[] )
         return -1;
     }
 
-    if( module->AddScriptSection( NULL, vos.GetData(), vos.GetSize(), 0 ) < 0 )
+    if( module->AddScriptSection( NULL, result.String.c_str() ) < 0 )
     {
         printf( "Unable to add section.\n" );
         return -1;
@@ -527,9 +515,6 @@ int main( int argc, char* argv[] )
     if( Buf )
         delete Buf;
     Buf = NULL;
-    if( LNT )
-        delete LNT;
-    LNT = NULL;
 
     return 0;
 }

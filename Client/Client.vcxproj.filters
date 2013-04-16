@@ -17,9 +17,6 @@
     <Filter Include="AngelScript">
       <UniqueIdentifier>{3fb31d18-c986-431c-a007-0d54747729a2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="AngelScript\Preprocessor">
-      <UniqueIdentifier>{49132780-8bb6-4b4c-82bd-d3ceb4d386c2}</UniqueIdentifier>
-    </Filter>
     <Filter Include="DatFile">
       <UniqueIdentifier>{0266fab2-2894-4151-a4bc-e9d1df42cec5}</UniqueIdentifier>
     </Filter>
@@ -359,27 +356,6 @@
     <ClInclude Include="..\Source\AngelScript\scriptmath.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\define_table.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\lex.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\lexem_list.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\line_number_translator.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\pragma.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\preprocess.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\stream.h">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\datfile\cfile.h">
       <Filter>DatFile</Filter>
     </ClInclude>
@@ -515,8 +491,8 @@
     <ClInclude Include="..\Source\AngelScript\as_symboltable.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\expressions.h">
-      <Filter>AngelScript\Preprocessor</Filter>
+    <ClInclude Include="..\Source\AngelScript\preprocessor.h">
+      <Filter>AngelScript</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -760,15 +736,6 @@
     <ClCompile Include="..\Source\AngelScript\scriptmath.cpp">
       <Filter>AngelScript</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\lex.cpp">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\lexem_list.cpp">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\preprocess.cpp">
-      <Filter>AngelScript\Preprocessor</Filter>
-    </ClCompile>
     <ClCompile Include="..\Source\datfile\cfile.cpp">
       <Filter>DatFile</Filter>
     </ClCompile>
@@ -799,8 +766,8 @@
     <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
       <Filter>AngelScript</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\expressions.cpp">
-      <Filter>AngelScript\Preprocessor</Filter>
+    <ClCompile Include="..\Source\AngelScript\preprocessor.cpp">
+      <Filter>AngelScript</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

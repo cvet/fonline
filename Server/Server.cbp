@@ -6,9 +6,9 @@
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
-			<Target title="Release Linux">
+			<Target title="Linux">
 				<Option output="../../sdk/Server/FOnlineServer" prefix_auto="1" extension_auto="1" />
-				<Option object_output="Release_Linux" />
+				<Option object_output="Linux" />
 				<Option type="0" />
 				<Option compiler="gcc" />
 				<Compiler>
@@ -16,14 +16,18 @@
 					<Add option="-DNDEBUG" />
 				</Compiler>
 				<Linker>
+					<Add option="-rdynamic" />
+					<Add option="-lrt" />
+					<Add option="-lfltk" />
 					<Add option="-lX11" />
 					<Add option="-lXft" />
-					<Add option="-lfltk" />
+					<Add option="-lXinerama" />
+					<Add directory="../Lib/Linux" />
 				</Linker>
 			</Target>
-			<Target title="Release Linux Daemon">
+			<Target title="Linux Daemon">
 				<Option output="../../sdk/Server/FOnlineServerDaemon" prefix_auto="1" extension_auto="1" />
-				<Option object_output="Release_LinuxDaemon" />
+				<Option object_output="LinuxDaemon" />
 				<Option type="0" />
 				<Option compiler="gcc" />
 				<Compiler>
@@ -31,6 +35,31 @@
 					<Add option="-DNDEBUG" />
 					<Add option="-DSERVER_DAEMON" />
 				</Compiler>
+				<Linker>
+					<Add option="-rdynamic" />
+					<Add option="-lrt" />
+					<Add directory="../Lib/Linux" />
+				</Linker>
+			</Target>
+			<Target title="MacOSX">
+				<Option output="../../sdk/Server/FOnlineServerMac" prefix_auto="1" extension_auto="1" />
+				<Option object_output="MacOSX" />
+				<Option type="0" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-DNDEBUG" />
+				</Compiler>
+				<Linker>
+					<Add option="-arch i386" />
+					<Add option="-rdynamic" />
+					<Add option="-lrt" />
+					<Add option="-lfltk" />
+					<Add option="-lX11" />
+					<Add option="-lXft" />
+					<Add option="-lXinerama" />
+					<Add directory="../Lib/MacOSX" />
+				</Linker>
 			</Target>
 		</Build>
 		<Compiler>
@@ -45,32 +74,18 @@
 			<Add directory="../Source" />
 		</Compiler>
 		<Linker>
-			<Add option="-rdynamic" />
-			<Add option="-lpthread" />
+			<Add option="-static-libgcc" />
 			<Add option="-ldl" />
-			<Add option="-lrt" />
+			<Add option="-lpthread" />
 			<Add option="-lstlport" />
 			<Add option="-levent_core" />
 			<Add option="-levent_pthreads" />
-			<Add option="-lpng" />
-			<Add directory="../Lib/Linux" />
+			<Add option="-lpng15" />
 		</Linker>
 		<Unit filename="Server.ico" />
 		<Unit filename="../Source/AI.cpp" />
 		<Unit filename="../Source/AI.h" />
 		<Unit filename="../Source/Access.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/define_table.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/expressions.cpp" />
-		<Unit filename="../Source/AngelScript/Preprocessor/expressions.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/lex.cpp" />
-		<Unit filename="../Source/AngelScript/Preprocessor/lex.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/lexem_list.cpp" />
-		<Unit filename="../Source/AngelScript/Preprocessor/lexem_list.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/line_number_translator.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/pragma.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/preprocess.cpp" />
-		<Unit filename="../Source/AngelScript/Preprocessor/preprocess.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/stream.h" />
 		<Unit filename="../Source/AngelScript/angelscript.h" />
 		<Unit filename="../Source/AngelScript/as_array.h" />
 		<Unit filename="../Source/AngelScript/as_atomic.cpp" />
@@ -135,6 +150,8 @@
 		<Unit filename="../Source/AngelScript/as_typeinfo.h" />
 		<Unit filename="../Source/AngelScript/as_variablescope.cpp" />
 		<Unit filename="../Source/AngelScript/as_variablescope.h" />
+		<Unit filename="../Source/AngelScript/preprocessor.cpp" />
+		<Unit filename="../Source/AngelScript/preprocessor.h" />
 		<Unit filename="../Source/AngelScript/scriptany.cpp" />
 		<Unit filename="../Source/AngelScript/scriptany.h" />
 		<Unit filename="../Source/AngelScript/scriptarray.cpp" />

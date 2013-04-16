@@ -142,14 +142,7 @@
     <ClInclude Include="..\Source\AngelScript\as_tokenizer.h" />
     <ClInclude Include="..\Source\AngelScript\as_typeinfo.h" />
     <ClInclude Include="..\Source\AngelScript\as_variablescope.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\define_table.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\expressions.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\lex.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\lexem_list.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\line_number_translator.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\pragma.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\preprocess.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\stream.h" />
+    <ClInclude Include="..\Source\AngelScript\preprocessor.h" />
     <ClInclude Include="..\Source\AngelScript\scriptany.h" />
     <ClInclude Include="..\Source\AngelScript\scriptarray.h" />
     <ClInclude Include="..\Source\AngelScript\scriptdictionary.h" />
@@ -281,16 +274,7 @@
     <ClCompile Include="..\Source\AngelScript\as_variablescope.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\expressions.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\lex.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\lexem_list.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\preprocess.cpp">
+    <ClCompile Include="..\Source\AngelScript\preprocessor.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\scriptany.cpp">

@@ -11213,7 +11213,7 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     if( effect_name && effect_name->length() )
     {
         bool use_in_2d = !( effect_type & ( EFFECT_3D_SIMPLE | EFFECT_3D_SKINNED ) );
-        effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), effect_name->c_str(), use_in_2d, false, effect_defines ? effect_defines->c_str() : NULL );
+        effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), effect_name->c_str(), use_in_2d, effect_defines ? effect_defines->c_str() : NULL );
         if( !effect )
             SCRIPT_ERROR_R0( "Effect not found or have some errors, see log file." );
     }

@@ -9,7 +9,7 @@
 #include "AngelScript/scriptfile.h"
 #include "AngelScript/scriptmath.h"
 #include "AngelScript/scriptarray.h"
-#include "AngelScript/Preprocessor/preprocess.h"
+#include "AngelScript/preprocessor.h"
 #include <strstream>
 
 const char* ContextStatesStr[] =
@@ -1374,37 +1374,12 @@ void Script::Define( const char* def )
     Preprocessor::Define( def );
 }
 
-void Script::Undefine( const char* def )
+void Script::Undef( const char* def )
 {
     if( def )
-        Preprocessor::Undefine( def );
+        Preprocessor::Undef( def );
     else
         Preprocessor::UndefAll();
-}
-
-char* Script::Preprocess( const char* fname, bool process_pragmas )
-{
-    // Prepare preprocessor
-    Preprocessor::VectorOutStream vos;
-    Preprocessor::FileSource      fsrc;
-    fsrc.CurrentDir = FileManager::GetFullPath( "", ScriptsPath );
-
-    // Set current pragmas
-    EngineData* edata = (EngineData*) Engine->GetUserData();
-    Preprocessor::SetPragmaCallback( edata->PragmaCB );
-
-    // Preprocess
-    if( Preprocessor::Preprocess( fname, fsrc, vos, process_pragmas ) )
-    {
-        WriteLogF( _FUNC_, " - Unable to preprocess<%s> script.\n", fname );
-        return NULL;
-    }
-
-    // Store result
-    char* result = new char[ vos.GetSize() + 1 ];
-    memcpy( result, vos.GetData(), vos.GetSize() );
-    result[ vos.GetSize() ] = 0;
-    return result;
 }
 
 void Script::CallPragmas( const StrVec& pragmas )
@@ -1416,15 +1391,7 @@ void Script::CallPragmas( const StrVec& pragmas )
 
     // Call pragmas
     for( uint i = 0, j = (uint) pragmas.size() / 2; i < j; i++ )
-    {
-        Preprocessor::PragmaInstance pi;
-        pi.text = pragmas[ i * 2 + 1 ];
-        pi.current_file = "";
-        pi.current_file_line = 0;
-        pi.root_file = "";
-        pi.global_line = 0;
-        Preprocessor::CallPragma( pragmas[ i * 2 ], pi );
-    }
+        Preprocessor::CallPragma( pragmas[ i * 2 ], pragmas[ i * 2 + 1 ] );
 }
 
 bool Script::LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_prefix /* = NULL */ )
@@ -1540,22 +1507,14 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
                 if( module )
                 {
                     for( uint i = 0, j = (uint) pragmas.size() / 2; i < j; i++ )
-                    {
-                        Preprocessor::PragmaInstance pi;
-                        pi.text = pragmas[ i * 2 + 1 ];
-                        pi.current_file = "";
-                        pi.current_file_line = 0;
-                        pi.root_file = "";
-                        pi.global_line = 0;
-                        Preprocessor::CallPragma( pragmas[ i * 2 ], pi );
-                    }
+                        Preprocessor::CallPragma( pragmas[ i * 2 ], pragmas[ i * 2 + 1 ] );
 
                     CBytecodeStream binary;
                     binary.Write( file_bin.GetCurBuf(), file_bin.GetFsize() - file_bin.GetCurPos() );
 
                     if( module->LoadByteCode( &binary ) >= 0 )
                     {
-                        Preprocessor::SetParsedPragmas( pragmas );
+                        Preprocessor::GetParsedPragmas() = pragmas;
                         modules.push_back( module );
                         return true;
                     }
@@ -1576,20 +1535,46 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
         file_bin.UnloadFile();
     }
 
-    Preprocessor::VectorOutStream vos;
-    Preprocessor::FileSource      fsrc;
-    Preprocessor::VectorOutStream vos_err;
-    if( source )
-        fsrc.Stream = source;
-    fsrc.CurrentDir = FileManager::GetFullPath( "", ScriptsPath );
-
-    if( Preprocessor::Preprocess( fname_real, fsrc, vos, true, &vos_err ) )
+    class MemoryFileLoader: public Preprocessor::FileLoader
     {
-        vos_err.PushNull();
-        WriteLogF( _FUNC_, " - Unable to preprocess file<%s>, error<%s>.\n", fname_real, vos_err.GetData() );
+protected:
+        const char* source;
+
+public:
+        MemoryFileLoader( const char* s ): source( s ) {}
+        virtual ~MemoryFileLoader() {}
+
+        virtual bool LoadFile( const std::string& dir, const std::string& file_name, std::vector< char >& data )
+        {
+            if( source )
+            {
+                size_t len = strlen( source );
+                data.resize( len );
+                memcpy( &data[ 0 ], source, len );
+                source = NULL;
+                return true;
+            }
+            return Preprocessor::FileLoader::LoadFile( dir, file_name, data );
+        }
+    };
+
+    Preprocessor::StringOutStream result, errors;
+    MemoryFileLoader              loader( source );
+    int                           errors_count;
+    errors_count = Preprocessor::Preprocess( FileManager::GetFullPath( fname_real, ScriptsPath ), result, &errors, &loader );
+
+    if( errors.String != "" )
+    {
+        while( errors.String[ errors.String.length() - 1 ] == '\n' )
+            errors.String.pop_back();
+        WriteLogF( _FUNC_, " - File<%s> preprocessor message<%s>.\n", fname_real, errors.String.c_str() );
+    }
+
+    if( errors_count )
+    {
+        WriteLogF( _FUNC_, " - Unable to preprocess file<%s>.\n", fname_real );
         return false;
     }
-    vos.Format();
 
     // Delete old
     for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
@@ -1611,17 +1596,17 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
         return false;
     }
 
-    int result = module->AddScriptSection( module_name, vos.GetData(), vos.GetSize(), 0 );
-    if( result < 0 )
+    int as_result = module->AddScriptSection( module_name, result.String.c_str() );
+    if( as_result < 0 )
     {
-        WriteLogF( _FUNC_, " - Unable to AddScriptSection module<%s>, result<%d>.\n", module_name, result );
+        WriteLogF( _FUNC_, " - Unable to AddScriptSection module<%s>, result<%d>.\n", module_name, as_result );
         return false;
     }
 
-    result = module->Build();
-    if( result < 0 )
+    as_result = module->Build();
+    if( as_result < 0 )
     {
-        WriteLogF( _FUNC_, " - Unable to Build module<%s>, result<%d>.\n", module_name, result );
+        WriteLogF( _FUNC_, " - Unable to Build module<%s>, result<%d>.\n", module_name, as_result );
         return false;
     }
 
@@ -1729,7 +1714,8 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
         }
 
         FileManager file_prep;
-        file_prep.SetData( (void*) vos.GetData(), vos.GetSize() );
+        FormatPreprocessorOutput( result.String );
+        file_prep.SetData( (void*) result.String.c_str(), result.String.length() );
         if( !file_prep.SaveOutBufToFile( Str::FormatBuf( "%sp", fname_script ), ScriptsPath ) )
             WriteLogF( _FUNC_, " - Can't write preprocessed file, script<%s>.\n", module_name );
     }

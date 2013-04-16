@@ -6,9 +6,9 @@
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
-			<Target title="Release Linux">
+			<Target title="Linux">
 				<Option output="../../sdk/Tools/Mapper/Mapper" prefix_auto="1" extension_auto="1" />
-				<Option object_output="Release_Linux" />
+				<Option object_output="Linux" />
 				<Option type="0" />
 				<Option compiler="gcc" />
 				<Compiler>
@@ -18,7 +18,25 @@
 					<Add directory="../Source" />
 				</Compiler>
 				<Linker>
-					<Add directory="../Lib" />
+					<Add option="-rdynamic" />
+					<Add option="-lrt" />
+					<Add directory="../Lib/Linux" />
+				</Linker>
+			</Target>
+			<Target title="MacOSX">
+				<Option output="../../sdk/Tools/Mapper/MapperMac" prefix_auto="1" extension_auto="1" />
+				<Option object_output="MacOSX" />
+				<Option type="0" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-DNDEBUG" />
+					<Add directory="../Source/StlPort" />
+					<Add directory="../Source" />
+				</Compiler>
+				<Linker>
+					<Add option="-arch i386" />
+					<Add directory="../Lib/MacOSX" />
 				</Linker>
 			</Target>
 		</Build>
@@ -34,36 +52,30 @@
 			<Add directory="../Source" />
 		</Compiler>
 		<Linker>
-			<Add option="-rdynamic" />
-			<Add option="-lpthread" />
+			<Add option="-static-libgcc" />
 			<Add option="-ldl" />
-			<Add option="-lrt" />
+			<Add option="-lpthread" />
 			<Add option="-lstlport" />
-			<Add option="-lX11" />
-			<Add option="-lXft" />
 			<Add option="-lfltk" />
 			<Add option="-lfltk_gl" />
+			<Add option="-lIL" />
+			<Add option="-ljpeg" />
+			<Add option="-lpng12" />
+			<Add option="-ltiff" />
+			<Add option="-ljbig" />
+			<Add option="-llzma" />
+			<Add option="-lmng" />
+			<Add option="-llcms" />
+			<Add option="-lX11" />
+			<Add option="-lXft" />
+			<Add option="-lXinerama" />
 			<Add option="-lGL" />
 			<Add option="-lGLU" />
-			<Add option="-lIL" />
-			<Add directory="../Lib/Linux" />
 		</Linker>
 		<Unit filename="Mapper.ico" />
 		<Unit filename="../Source/3dAnimation.h" />
 		<Unit filename="../Source/3dStuff.cpp" />
 		<Unit filename="../Source/3dStuff.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/define_table.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/expressions.cpp" />
-		<Unit filename="../Source/AngelScript/Preprocessor/expressions.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/lex.cpp" />
-		<Unit filename="../Source/AngelScript/Preprocessor/lex.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/lexem_list.cpp" />
-		<Unit filename="../Source/AngelScript/Preprocessor/lexem_list.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/line_number_translator.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/pragma.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/preprocess.cpp" />
-		<Unit filename="../Source/AngelScript/Preprocessor/preprocess.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/stream.h" />
 		<Unit filename="../Source/AngelScript/angelscript.h" />
 		<Unit filename="../Source/AngelScript/as_array.h" />
 		<Unit filename="../Source/AngelScript/as_atomic.cpp" />
@@ -131,6 +143,8 @@
 		<Unit filename="../Source/AngelScript/as_typeinfo.h" />
 		<Unit filename="../Source/AngelScript/as_variablescope.cpp" />
 		<Unit filename="../Source/AngelScript/as_variablescope.h" />
+		<Unit filename="../Source/AngelScript/preprocessor.cpp" />
+		<Unit filename="../Source/AngelScript/preprocessor.h" />
 		<Unit filename="../Source/AngelScript/scriptany.cpp" />
 		<Unit filename="../Source/AngelScript/scriptany.h" />
 		<Unit filename="../Source/AngelScript/scriptarray.cpp" />

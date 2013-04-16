@@ -35,7 +35,7 @@ public:
     void AddOutput( const char* name, const FloatVec& st, const VectorVec& sv,
                     const FloatVec& rt, const QuaternionVec& rv, const FloatVec& tt, const VectorVec& tv  )
     {
-        outputs.push_back();
+        outputs.push_back( Output() );
         Output& o = outputs.back();
         o.name = name;
         o.scaleTime = st;
@@ -149,7 +149,7 @@ public:
 
     void RegisterAnimationOutput( const char* frame_name, Matrix& output_matrix )
     {
-        outputs->push_back();
+        outputs->push_back( Output() );
         Output& o = outputs->back();
         o.name = frame_name;
         o.matrix = &output_matrix;

@@ -6,9 +6,9 @@
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
-			<Target title="Release">
+			<Target title="Linux">
 				<Option output="../../sdk/Tools/ASCompiler/ASCompiler" prefix_auto="1" extension_auto="1" />
-				<Option object_output="obj/Release/" />
+				<Option object_output="Linux" />
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
@@ -16,6 +16,26 @@
 					<Add option="-DNDEBUG" />
 					<Add option="-DFONLINE_SCRIPT_COMPILER" />
 				</Compiler>
+				<Linker>
+					<Add option="-rdynamic" />
+					<Add option="-lrt" />
+					<Add directory="../Lib/Linux" />
+				</Linker>
+			</Target>
+			<Target title="MacOSX">
+				<Option output="../../sdk/Tools/ASCompiler/ASCompiler" prefix_auto="1" extension_auto="1" />
+				<Option object_output="MacOSX" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-DNDEBUG" />
+					<Add option="-DFONLINE_SCRIPT_COMPILER" />
+				</Compiler>
+				<Linker>
+					<Add option="-arch i386" />
+					<Add directory="../Lib/MacOSX" />
+				</Linker>
 			</Target>
 		</Build>
 		<Compiler>
@@ -28,26 +48,12 @@
 			<Add directory="../Source" />
 		</Compiler>
 		<Linker>
-			<Add option="-rdynamic" />
+			<Add option="-static-libgcc" />
 			<Add option="-ldl" />
-			<Add option="-lrt" />
 			<Add option="-lstlport" />
-			<Add directory="../Lib/Linux" />
 		</Linker>
 		<Unit filename="ScriptEngine.h" />
 		<Unit filename="../Source/ASCompiler.cpp" />
-		<Unit filename="../Source/AngelScript/Preprocessor/define_table.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/expressions.cpp" />
-		<Unit filename="../Source/AngelScript/Preprocessor/expressions.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/lex.cpp" />
-		<Unit filename="../Source/AngelScript/Preprocessor/lex.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/lexem_list.cpp" />
-		<Unit filename="../Source/AngelScript/Preprocessor/lexem_list.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/line_number_translator.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/pragma.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/preprocess.cpp" />
-		<Unit filename="../Source/AngelScript/Preprocessor/preprocess.h" />
-		<Unit filename="../Source/AngelScript/Preprocessor/stream.h" />
 		<Unit filename="../Source/AngelScript/angelscript.h" />
 		<Unit filename="../Source/AngelScript/as_array.h" />
 		<Unit filename="../Source/AngelScript/as_atomic.cpp" />
@@ -116,6 +122,8 @@
 		<Unit filename="../Source/AngelScript/as_typeinfo.h" />
 		<Unit filename="../Source/AngelScript/as_variablescope.cpp" />
 		<Unit filename="../Source/AngelScript/as_variablescope.h" />
+		<Unit filename="../Source/AngelScript/preprocessor.cpp" />
+		<Unit filename="../Source/AngelScript/preprocessor.h" />
 		<Unit filename="../Source/AngelScript/scriptany.cpp" />
 		<Unit filename="../Source/AngelScript/scriptany.h" />
 		<Unit filename="../Source/AngelScript/scriptarray.cpp" />

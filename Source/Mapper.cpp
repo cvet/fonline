@@ -5311,7 +5311,7 @@ void FOMapper::InitScriptSystem()
     }
 
     // Load script modules
-    Script::Undefine( NULL );
+    Script::Undef( NULL );
     Script::Define( "__MAPPER" );
     Script::ReloadScripts( (char*) scripts_cfg.GetBuf(), "mapper", false, "MAPPER_" );
     FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );

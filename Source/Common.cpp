@@ -1881,3 +1881,49 @@ void Deprecated_CondExtToAnim2( uchar cond, uchar cond_ext, uint& anim2ko, uint&
         }
     }
 }
+
+// Preprocessor output formatting
+int InsertTabs( string& str, int cur_pos, int level )
+{
+    if( cur_pos < 0 || cur_pos >= (int) str.length() )
+        return (int) str.size();
+
+    int i = cur_pos;
+    for( ; i < (int) str.length() - 1; i++ )
+    {
+        if( str[ i ] == '\n' )
+        {
+            int k = 0;
+            if( str[ i + 1 ] == '}' )
+                k++;
+            for( ; k < level; ++k )
+            {
+                i++;
+                str.insert( str.begin() + i, '\t' );
+            }
+        }
+        else if( str[ i ] == '{' )
+        {
+            i = InsertTabs( str, i + 1, level + 1 );
+        }
+        else if( str[ i ] == '}' )
+        {
+            return i;
+        }
+    }
+
+    return i;
+}
+
+void FormatPreprocessorOutput( string& str )
+{
+    // Combine long line breaks
+    for( int i = 0; i < (int) str.length() - 2; ++i )
+        if( str[ i ] == '\n' && str[ i + 1 ] == '\n' && str[ i + 2 ] == '\n' )
+            str[ i ] = ' ';
+
+    // Add tabulations for {}
+    for( int i = 0; i < (int) str.length() - 1; ++i )
+        if( str[ i ] == '{' )
+            i = InsertTabs( str, i + 1, 1 );
+}

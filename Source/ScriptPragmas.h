@@ -2,7 +2,7 @@
 #define __SCRIPT_PRAGMAS__
 
 #include "AngelScript/angelscript.h"
-#include "AngelScript/Preprocessor/pragma.h"
+#include "AngelScript/preprocessor.h"
 #include <set>
 #include <string>
 using namespace std;

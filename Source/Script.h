@@ -5,7 +5,7 @@
 #include "AngelScript/angelscript.h"
 #include "AngelScript/scriptarray.h"
 #include "AngelScript/scriptstring.h"
-#include "AngelScript/Preprocessor/pragma.h"
+#include "AngelScript/preprocessor.h"
 #include <vector>
 #include <string>
 
@@ -82,13 +82,12 @@ namespace Script
 
     void SetRunTimeout( uint suspend_timeout, uint message_timeout );
 
-    void  SetScriptsPath( int path_type );
-    void  Define( const char* def );
-    void  Undefine( const char* def );
-    char* Preprocess( const char* fname, bool process_pragmas );
-    void  CallPragmas( const StrVec& pragmas );
-    bool  LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_prefix = NULL );
-    bool  LoadScript( const char* module_name, const uchar* bytecode, uint len );
+    void SetScriptsPath( int path_type );
+    void Define( const char* def );
+    void Undef( const char* def );
+    void CallPragmas( const StrVec& pragmas );
+    bool LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_prefix = NULL );
+    bool LoadScript( const char* module_name, const uchar* bytecode, uint len );
 
     int    BindImportedFunctions();
     int    Bind( const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log = false );

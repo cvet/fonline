@@ -557,23 +557,23 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
 
 void ScriptPragmaCallback::CallPragma( const string& name, const Preprocessor::PragmaInstance& instance )
 {
-    if( alreadyProcessed.count( name + instance.text ) )
+    if( alreadyProcessed.count( name + instance.Text ) )
         return;
-    alreadyProcessed.insert( name + instance.text );
+    alreadyProcessed.insert( name + instance.Text );
 
     if( ignorePragma && ignorePragma->IsIgnored( name ) )
         return;
 
     if( name == "ignore" && ignorePragma )
-        ignorePragma->Call( instance.text );
+        ignorePragma->Call( instance.Text );
     else if( name == "globalvar" && globalVarPragma )
-        globalVarPragma->Call( instance.text );
+        globalVarPragma->Call( instance.Text );
     else if( name == "crdata" && crDataPragma )
-        crDataPragma->Call( instance.text );
+        crDataPragma->Call( instance.Text );
     else if( name == "bindfunc" && bindFuncPragma )
-        bindFuncPragma->Call( instance.text );
+        bindFuncPragma->Call( instance.Text );
     else if( name == "bindfield" && bindFieldPragma )
-        bindFieldPragma->Call( instance.text );
+        bindFieldPragma->Call( instance.Text );
     else
-        WriteLog( "Unknown pragma instance, name<%s> text<%s>.\n", name.c_str(), instance.text.c_str() );
+        WriteLog( "Unknown pragma instance, name<%s> text<%s>.\n", name.c_str(), instance.Text.c_str() );
 }

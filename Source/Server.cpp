@@ -2437,7 +2437,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         if( scripts_cfg.LoadFile( SCRIPTS_LST, PT_SERVER_SCRIPTS ) )
         {
             // Reload script modules
-            Script::Undefine( NULL );
+            Script::Undef( NULL );
             Script::Define( "__SERVER" );
             if( Script::ReloadScripts( (char*) scripts_cfg.GetBuf(), "server", false ) )
                 logcb( "Success." );

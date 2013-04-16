@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "Server.h"
-#include "AngelScript/Preprocessor/preprocess.h"
+#include "AngelScript/preprocessor.h"
 #include "Version.h"
 #include "ScriptPragmas.h"
 
@@ -130,7 +130,7 @@ bool FOServer::InitScriptSystem()
     }
 
     // Load script modules
-    Script::Undefine( NULL );
+    Script::Undef( NULL );
     Script::Define( "__SERVER" );
     if( !Script::ReloadScripts( (char*) scripts_cfg.GetBuf(), "server", false ) )
     {
@@ -319,7 +319,7 @@ bool FOServer::ReloadClientScripts()
     }
 
     // Load script modules
-    Script::Undefine( "__SERVER" );
+    Script::Undef( "__SERVER" );
     Script::Define( "__CLIENT" );
 
     StrVec empty;
@@ -471,7 +471,7 @@ bool FOServer::ReloadClientScripts()
 
     // Finish
     Script::FinishEngine( engine );
-    Script::Undefine( "__CLIENT" );
+    Script::Undef( "__CLIENT" );
     Script::Define( "__SERVER" );
 
     Script::SetWrongGlobalObjects( ServerWrongGlobalObjects );

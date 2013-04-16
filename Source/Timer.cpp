@@ -28,7 +28,7 @@ Thread        TimerUpdateThread;
 volatile uint TimerTick = 0;
 volatile bool QuitTick = false;
 # ifdef FO_MACOSX
-double        LastAccurateTick = 0;
+double        InitialAccurateTick = 0;
 # endif
 #endif
 
@@ -46,7 +46,7 @@ void Timer::Init()
     timeBeginPeriod( 1 );
     #else
     # ifdef FO_MACOSX
-    LastAccurateTick = AccurateTick();
+    InitialAccurateTick = AccurateTick();
     # endif
     SetTick();
     TimerUpdateThread.Start( UpdateTick, "UpdateTick" );
@@ -320,14 +320,8 @@ void SetTick()
     uint            timer_tick = (uint) ( tv.tv_sec * 1000 + tv.tv_nsec / 1000000 );
     InterlockedExchange( &TimerTick, timer_tick );
     # else
-    double accurate_tick = AccurateTick();
-    double dt = accurate_tick - LastAccurateTick;
-    if( dt >= 1.0 )
-    {
-        uint timer_tick = (uint) dt;
-        LastAccurateTick = accurate_tick - fmod( dt, 1.0 );
-        InterlockedExchange( &TimerTick, timer_tick );
-    }
+    uint timer_tick = (uint) ( Timer::AccurateTick() - InitialAccurateTick );
+    InterlockedExchange( &TimerTick, timer_tick );
     # endif
 }
 

@@ -192,7 +192,7 @@
     <ResourceCompile Include="Server.rc" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\expressions.cpp">
+    <ClCompile Include="..\Source\AngelScript\preprocessor.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
@@ -540,24 +540,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\lex.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\lexem_list.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\Preprocessor\preprocess.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\Source\datfile\cfile.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
       </PrecompiledHeader>
@@ -579,7 +561,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Source\AngelScript\as_symboltable.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\expressions.h" />
+    <ClInclude Include="..\Source\AngelScript\preprocessor.h" />
     <ClInclude Include="..\Source\AngelScript\scriptstring.h" />
     <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\Zlib\crc32.h" />
@@ -680,13 +662,6 @@
     <ClInclude Include="..\Source\AngelScript\scriptdictionary.h" />
     <ClInclude Include="..\Source\AngelScript\scriptfile.h" />
     <ClInclude Include="..\Source\AngelScript\scriptmath.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\define_table.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\lex.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\lexem_list.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\line_number_translator.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\pragma.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\preprocess.h" />
-    <ClInclude Include="..\Source\AngelScript\Preprocessor\stream.h" />
     <ClInclude Include="..\Source\datfile\cfile.h" />
     <ClInclude Include="..\Source\datfile\unlzss.h" />
     <ClInclude Include="..\Source\SHA2\sha2.h" />
