@@ -159,10 +159,6 @@ inline bool CompareContainers( const T& a, const T& b ) { return a.size() == b.s
 void GetHexOffsets( bool odd, short*& sx, short*& sy );
 void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y );
 
-// Name / Password
-bool CheckUserName( const char* str );
-bool CheckUserPass( const char* str );
-
 // Config file
 #define CLIENT_CONFIG_APP     "Game Options"
 const char* GetConfigFileName();
@@ -194,10 +190,13 @@ struct ScoreType
 class FOWindow: public Fl_Window
 {
 public:
-    FOWindow(): Fl_Window( 0, 0, "" ), focused( true ) {}
+    FOWindow(): Fl_Window( 0, 0, "" ), Focused( true ) {}
     virtual ~FOWindow() {}
     virtual int handle( int event );
-    bool focused;
+    bool   Focused;
+    IntVec KeyboardEvents;
+    StrVec KeyboardEventsText;
+    IntVec MouseEvents;
 };
 extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / MainMapper.cpp
 
@@ -636,7 +635,6 @@ struct GameOptions
     uint         PingPeriod;
     uint         Ping;
     bool         MsgboxInvert;
-    int          ChangeLang;
     uchar        DefaultCombatMode;
     bool         MessNotify;
     bool         SoundNotify;
@@ -747,16 +745,13 @@ struct GameOptions
     GameOptions();
 } extern GameOpt;
 
-// ChangeLang
-#define CHANGE_LANG_CTRL_SHIFT    ( 0 )
-#define CHANGE_LANG_ALT_SHIFT     ( 1 )
 // IndicatorType
-#define INDICATOR_LINES           ( 0 )
-#define INDICATOR_NUMBERS         ( 1 )
-#define INDICATOR_BOTH            ( 2 )
+#define INDICATOR_LINES      ( 0 )
+#define INDICATOR_NUMBERS    ( 1 )
+#define INDICATOR_BOTH       ( 2 )
 // Zoom
-#define MIN_ZOOM                  ( 0.2f )
-#define MAX_ZOOM                  ( 10.0f )
+#define MIN_ZOOM             ( 0.2f )
+#define MAX_ZOOM             ( 10.0f )
 
 /************************************************************************/
 /* Auto pointers                                                        */

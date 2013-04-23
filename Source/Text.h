@@ -4,30 +4,43 @@
 #include "Common.h"
 #include <strstream>
 
-#define MAX_FOTEXT      ( 2048 )
+#define MAX_FOTEXT      UTF8_BUF_SIZE( 2048 )
 #define BIG_BUF_SIZE    ( 0x100000 )       // 1mb
 
 namespace Str
 {
-    void Copy( char* to, size_t size, const char* from );
+    void Copy( char* to, uint size, const char* from );
     template< int Size >
     inline void Copy( char(&to)[ Size ], const char* from ) { return Copy( to, Size, from ); }
-    void        Append( char* to, size_t size, const char* from );
+    void        Append( char* to, uint size, const char* from );
     template< int Size >
     inline void Append( char(&to)[ Size ], const char* from ) { return Append( to, Size, from ); }
 
     char* Duplicate( const char* str );
-    char* Lower( char* str );
-    char* Upper( char* str );
+
+    void Lower( char* str );
+    uint LowerUTF8( uint ucs );
+    void LowerUTF8( char* str );
+    void Upper( char* str );
+    uint UpperUTF8( uint ucs );
+    void UpperUTF8( char* str );
 
     char*       Substring( char* str, const char* sub_str );
     const char* Substring( const char* str, const char* sub_str );
 
+    bool IsValidUTF8( uint ucs );
+    bool IsValidUTF8( const char* str );
+    uint DecodeUTF8( const char* str, uint* length );
+    uint EncodeUTF8( uint ucs, char* buf );
+
     uint Length( const char* str );
+    uint LengthUTF8( const char* str );
     bool Compare( const char* str1, const char* str2 );
     bool CompareCase( const char* str1, const char* str2 );
+    bool CompareCaseUTF8( const char* str1, const char* str2 );
     bool CompareCount( const char* str1, const char* str2, uint max_count );
     bool CompareCaseCount( const char* str1, const char* str2, uint max_count );
+    bool CompareCaseCountUTF8( const char* str1, const char* str2, uint max_count );
 
     char*       Format( char* buf, const char* format, ... );
     const char* FormatBuf( const char* format, ... );

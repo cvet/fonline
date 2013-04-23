@@ -3665,7 +3665,7 @@ void Client::Send_AddCritter( Critter* cr )
     uint msg = ( is_npc ? NETMSG_ADD_NPC : NETMSG_ADD_PLAYER );
     uint msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( uint ) + sizeof( ushort ) * 2 +
                    sizeof( uchar ) + sizeof( uchar ) + sizeof( uint ) * 6 + sizeof( uint ) + sizeof( short ) +
-                   ( is_npc ? sizeof( ushort ) + sizeof( uint ) : MAX_NAME ) + ParamsSendMsgLen;
+                   ( is_npc ? sizeof( ushort ) + sizeof( uint ) : UTF8_BUF_SIZE( MAX_NAME ) ) + ParamsSendMsgLen;
     int dialog_id = ( is_npc ? cr->Data.Params[ ST_DIALOG_ID ] : 0 );
 
     BOUT_BEGIN( this );
@@ -3695,7 +3695,7 @@ void Client::Send_AddCritter( Critter* cr )
     else
     {
         Client* cl = (Client*) cr;
-        Bout.Push( cl->Name, MAX_NAME );
+        Bout.Push( cl->Name, UTF8_BUF_SIZE( MAX_NAME ) );
     }
 
     Bout << ParamsSendCount;

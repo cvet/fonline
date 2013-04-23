@@ -773,7 +773,7 @@ Client* CritterManager::GetPlayer( const char* name, bool sync_lock )
     for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
-        if( cr->IsPlayer() && Str::CompareCase( name, cr->GetName() ) )
+        if( cr->IsPlayer() && Str::CompareCaseUTF8( name, cr->GetName() ) )
         {
             cl = (Client*) cr;
             break;

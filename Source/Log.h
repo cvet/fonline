@@ -4,7 +4,7 @@
 #include <string>
 
 #define _LOG_          __FUNCTION__ ":" __LINE__ " - "
-#define MAX_LOGTEXT    ( 2048 )
+#define MAX_LOGTEXT    UTF8_BUF_SIZE( 2048 )
 typedef void ( *LogFuncPtr )( const char* str );
 
 // Write formatted text

@@ -554,8 +554,8 @@ public:
 class Client: public Critter
 {
 public:
-    char          Name[ MAX_NAME + 1 ];       // Saved
-    char          PassHash[ PASS_HASH_SIZE ]; // Saved
+    char          Name[ UTF8_BUF_SIZE( MAX_NAME ) ]; // Saved
+    char          PassHash[ PASS_HASH_SIZE ];        // Saved
     uchar         Access;
     uint          LanguageMsg;
     uint          UID[ 5 ];
@@ -571,7 +571,7 @@ public:
     bool          ZstrmInit;
     uint          ConnectTime;
     uint          LastSendedMapTick;
-    char          LastSay[ MAX_NET_TEXT + 1 ];
+    char          LastSay[ UTF8_BUF_SIZE( MAX_CHAT_MESSAGE ) ];
     uint          LastSayEqualCount;
     uint          RadioMessageSended;
 

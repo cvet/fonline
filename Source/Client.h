@@ -75,8 +75,6 @@ public:
     bool IsCurMode( int check_cur ) { return ( check_cur == CurMode ); }
     void SetCurPos( int x, int y );
 
-    IntVec KeyboardEvents;
-    IntVec MouseEvents;
     void ParseKeyboard();
     void ParseMouse();
 
@@ -580,6 +578,8 @@ public:
         static bool          Global_SetParameterGetBehaviour( uint index, ScriptString& func_name );
         static bool          Global_SetParameterChangeBehaviour( uint index, ScriptString& func_name );
         static void          Global_AllowSlot( uchar index, ScriptString& ini_option );
+        static uint          Global_DecodeUTF8( ScriptString& text, uint& length );
+        static ScriptString* Global_EncodeUTF8( uint ucs );
         static void          Global_SetRegistrationParam( uint index, bool enabled );
         static uint          Global_GetAngelScriptProperty( int property );
         static bool          Global_SetAngelScriptProperty( int property, uint value );
@@ -623,7 +623,6 @@ public:
         static void          Global_HideScreen( int screen, int p0, int p1, int p2 );
         static void          Global_GetHardcodedScreenPos( int screen, int& x, int& y );
         static void          Global_DrawHardcodedScreen( int screen );
-        static int           Global_GetKeybLang() { return Keyb::Lang; }
         static bool          Global_GetHexPos( ushort hx, ushort hy, int& x, int& y );
         static bool          Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface );
         static Item*         Global_GetMonitorItem( int x, int y, bool ignore_interface );
@@ -643,7 +642,7 @@ public:
         static bool          Global_SetEffect( int effect_type, int effect_subtype, ScriptString* effect_name, ScriptString* effect_defines );
         static void          Global_RefreshMap( bool only_tiles, bool only_roof, bool only_light );
         static void          Global_MouseClick( int x, int y, int button, int cursor );
-        static void          Global_KeyboardPress( uchar key1, uchar key2 );
+        static void          Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text );
         static void          Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name );
 
         static bool&         ConsoleActive;
@@ -703,14 +702,15 @@ public:
     AnyFrames*  ConsolePic;
     int         ConsolePicX, ConsolePicY, ConsoleTextX, ConsoleTextY;
     static bool ConsoleActive;
-    char        ConsoleStr[ MAX_NET_TEXT + 1 ];
-    int         ConsoleCur;
+    string      ConsoleStr;
+    uint        ConsoleCur;
     StrVec      ConsoleHistory;
     int         ConsoleHistoryCur;
-    int         ConsoleLastKey;
+    uchar       ConsoleLastKey;
+    string      ConsoleLastKeyText;
 
     void ConsoleDraw();
-    void ConsoleKeyDown( uchar dik );
+    void ConsoleKeyDown( uchar dik, const char* dik_text );
     void ConsoleKeyUp( uchar dik );
     void ConsoleProcess();
 
@@ -787,7 +787,7 @@ public:
     uint       GameMouseStay;
 
     void GameDraw();
-    void GameKeyDown( uchar dik );
+    void GameKeyDown( uchar dik, const char* dik_text );
     void GameLMouseDown();
     void GameLMouseUp();
     void GameRMouseDown();
@@ -807,7 +807,7 @@ public:
     Rect       IntBItem, IntWApCost;
     Rect       IntBChangeSlot, IntBInv, IntBMenu, IntBSkill, IntBMap, IntBChar, IntBPip, IntBFix;
     Rect       IntWMess, IntWMessLarge;
-    Rect       IntAP, IntHP, IntAC, IntBreakTime; // 15 зеленых(200мс) 3 желтых(1000мс) 2 красных(10000мс)
+    Rect       IntAP, IntHP, IntAC, IntBreakTime;
     int        IntAPstepX, IntAPstepY, IntAPMax;
     AnyFrames* IntBItemPicDn;
     int        IntBItemOffsX, IntBItemOffsY;
@@ -872,7 +872,7 @@ public:
                LogBReg, LogBRegText, LogBExit, LogBExitText, LogWChat, LogWVersion;
 
     void LogDraw();
-    void LogKeyDown( uchar dik );
+    void LogKeyDown( uchar dik, const char* dik_text );
     void LogLMouseDown();
     void LogLMouseUp();
     void LogTryConnect();
@@ -938,7 +938,7 @@ public:
     void DlgLMouseDown( bool is_dialog );
     void DlgLMouseUp( bool is_dialog );
     void DlgRMouseDown( bool is_dialog );
-    void DlgKeyDown( bool is_dialog, uchar dik );
+    void DlgKeyDown( bool is_dialog, uchar dik, const char* dik_text );
     void DlgCollectAnswers( bool next );
 
 /************************************************************************/
@@ -1047,7 +1047,7 @@ public:
     void  GmapRMouseDown();
     void  GmapRMouseUp();
     void  GmapMouseMove();
-    void  GmapKeyDown( uchar dik );
+    void  GmapKeyDown( uchar dik, const char* dik_text );
     void  GmapChangeZoom( float offs, bool revert = false );
     Item* GmapGetCar();
     uint  GmapGetMouseTabLocId();
@@ -1210,7 +1210,7 @@ public:
 
     void ChaNameDraw();
     void ChaNameLMouseDown();
-    void ChaNameKeyDown( uchar dik );
+    void ChaNameKeyDown( uchar dik, const char* dik_text );
 
 /************************************************************************/
 /* Character age                                                        */
@@ -1448,13 +1448,13 @@ public:
     #define DIALOGSAY_TEXT             ( 1 )
     #define DIALOGSAY_SAVE             ( 2 )
     string SayTitle;
-    char   SayText[ MAX_FOTEXT ];
+    string SayText;
 
     void SayDraw();
     void SayLMouseDown();
     void SayLMouseUp();
     void SayMouseMove();
-    void SayKeyDown( uchar dik );
+    void SayKeyDown( uchar dik, const char* dik_text );
 
 /************************************************************************/
 /* Wait                                                                 */
@@ -1483,7 +1483,7 @@ public:
     void SplitStart( Item* item, int to_cont );
     void SplitClose( bool change );
     void SplitDraw();
-    void SplitKeyDown( uchar dik );
+    void SplitKeyDown( uchar dik, const char* dik_text );
     void SplitLMouseDown();
     void SplitLMouseUp();
     void SplitMouseMove();
@@ -1507,7 +1507,7 @@ public:
     void TimerStart( uint item_id, AnyFrames* pic, uint pic_color );
     void TimerClose( bool done );
     void TimerDraw();
-    void TimerKeyDown( uchar dik );
+    void TimerKeyDown( uchar dik, const char* dik_text );
     void TimerLMouseDown();
     void TimerLMouseUp();
     void TimerMouseMove();
@@ -1610,8 +1610,9 @@ public:
     Rect       IboxWMain, IboxWTitle, IboxWText, IboxBDone, IboxBDoneText, IboxBCancel, IboxBCancelText;
     int        IboxX, IboxY, IboxVectX, IboxVectY;
     string     IboxTitle, IboxText;
-    int        IboxTitleCur, IboxTextCur;
-    uint       IboxLastKey;
+    uint       IboxTitleCur, IboxTextCur;
+    uchar      IboxLastKey;
+    string     IboxLastKeyText;
 
     // Holodisk
     uint IboxHolodiskId;
@@ -1619,7 +1620,7 @@ public:
     void IboxDraw();
     void IboxLMouseDown();
     void IboxLMouseUp();
-    void IboxKeyDown( uchar dik );
+    void IboxKeyDown( uchar dik, const char* dik_text );
     void IboxKeyUp( uchar dik );
     void IboxProcess();
     void IboxMouseMove();

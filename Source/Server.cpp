@@ -1812,14 +1812,14 @@ void FOServer::Process_Text( Client* cl )
     uint   msg_len = 0;
     uchar  how_say = 0;
     ushort len = 0;
-    char   str[ MAX_NET_TEXT + 1 ];
+    char   str[ UTF8_BUF_SIZE( MAX_CHAT_MESSAGE ) ];
 
     cl->Bin >> msg_len;
     cl->Bin >> how_say;
     cl->Bin >> len;
     CHECK_IN_BUFF_ERROR( cl );
 
-    if( !len || len > MAX_NET_TEXT )
+    if( !len || len >= sizeof( str ) )
     {
         WriteLogF( _FUNC_, " - Buffer zero sized or too large, length<%u>. Disconnect.\n", len );
         cl->Disconnect();
@@ -1938,7 +1938,7 @@ void FOServer::Process_Text( Client* cl )
         {
             TextListen& tl = TextListeners[ i ];
             if( tl.SayType == SAY_RADIO && std::find( channels.begin(), channels.end(), tl.Parameter ) != channels.end() &&
-                Str::CompareCaseCount( str, tl.FirstStr, tl.FirstStrLen ) )
+                Str::CompareCaseCountUTF8( str, tl.FirstStr, tl.FirstStrLen ) )
             {
                 licten_func_id[ listen_count ] = tl.FuncId;
                 licten_str[ listen_count ] = new ScriptString( str );
@@ -1953,7 +1953,7 @@ void FOServer::Process_Text( Client* cl )
         for( uint i = 0; i < TextListeners.size(); i++ )
         {
             TextListen& tl = TextListeners[ i ];
-            if( tl.SayType == how_say && tl.Parameter == pid && Str::CompareCaseCount( str, tl.FirstStr, tl.FirstStrLen ) )
+            if( tl.SayType == how_say && tl.Parameter == pid && Str::CompareCaseCountUTF8( str, tl.FirstStr, tl.FirstStrLen ) )
             {
                 licten_func_id[ listen_count ] = tl.FuncId;
                 licten_str[ listen_count ] = new ScriptString( str );
@@ -2113,9 +2113,9 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
     break;
     case CMD_CRITID:
     {
-        char name[ MAX_NAME + 1 ];
-        buf.Pop( name, MAX_NAME );
-        name[ MAX_NAME ] = 0;
+        char name[ UTF8_BUF_SIZE( MAX_NAME ) ];
+        buf.Pop( name, sizeof( name ) );
+        name[ sizeof( name ) - 1 ] = 0;
 
         CHECK_ALLOW_COMMAND;
 
@@ -2292,12 +2292,12 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
     break;
     case CMD_GETACCESS:
     {
-        char name_access[ MAX_NAME + 1 ];
-        char pasw_access[ 128 ];
-        buf.Pop( name_access, MAX_NAME );
-        buf.Pop( pasw_access, 128 );
-        name_access[ MAX_NAME ] = 0;
-        pasw_access[ 127 ] = 0;
+        char name_access[ UTF8_BUF_SIZE( MAX_NAME ) ];
+        char pasw_access[ UTF8_BUF_SIZE( 128 ) ];
+        buf.Pop( name_access, sizeof( name_access ) );
+        buf.Pop( pasw_access, sizeof( pasw_access ) );
+        name_access[ sizeof( name_access ) - 1 ] = 0;
+        pasw_access[ sizeof( pasw_access ) - 1 ] = 0;
 
         CHECK_ALLOW_COMMAND;
         CHECK_ADMIN_PANEL;
@@ -2936,17 +2936,17 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
     break;
     case CMD_BAN:
     {
-        char name[ MAX_NAME + 1 ];
-        char params[ MAX_NAME + 1 ];
+        char name[ UTF8_BUF_SIZE( MAX_NAME ) ];
+        char params[ UTF8_BUF_SIZE( MAX_NAME ) ];
         uint ban_hours;
-        char info[ 128 + 1 ];
-        buf.Pop( name, MAX_NAME );
-        name[ MAX_NAME ] = 0;
-        buf.Pop( params, MAX_NAME );
-        params[ MAX_NAME ] = 0;
+        char info[ UTF8_BUF_SIZE( MAX_CHAT_MESSAGE ) ];
+        buf.Pop( name, sizeof( name ) );
+        name[ sizeof( name - 1 ) ] = 0;
+        buf.Pop( params, sizeof( params ) );
+        params[ sizeof( params ) - 1 ] = 0;
         buf >> ban_hours;
-        buf.Pop( info, 128 );
-        info[ MAX_NAME ] = 0;
+        buf.Pop( info, sizeof( info ) );
+        info[ sizeof( info ) - 1 ] = 0;
 
         CHECK_ALLOW_COMMAND;
 
@@ -2980,7 +2980,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         }
         else if( Str::CompareCase( params, "add" ) || Str::CompareCase( params, "add+" ) )
         {
-            uint name_len = Str::Length( name );
+            uint name_len = Str::LengthUTF8( name );
             if( name_len < MIN_NAME || name_len < GameOpt.MinNameLength || name_len > MAX_NAME || name_len > GameOpt.MaxNameLength || !ban_hours )
             {
                 logcb( "Invalid arguments." );
@@ -3032,14 +3032,16 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
                 for( auto it = Banned.begin(); it != Banned.end();)
                 {
                     ClientBanned& ban = *it;
-                    if( Str::CompareCase( ban.ClientName, name ) )
+                    if( Str::CompareCaseUTF8( ban.ClientName, name ) )
                     {
                         SaveBan( ban, true );
                         it = Banned.erase( it );
                         resave = true;
                     }
                     else
+                    {
                         ++it;
+                    }
                 }
             }
 
@@ -3188,7 +3190,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
 void FOServer::SaveGameInfoFile()
 {
     // Singleplayer info
-    uint sp = ( SingleplayerSave.Valid ? 1 : 0 );
+    uint sp = ( SingleplayerSave.Valid ? 2 : 0 );
     AddWorldSaveData( &sp, sizeof( sp ) );
     if( SingleplayerSave.Valid )
     {
@@ -3231,7 +3233,7 @@ bool FOServer::LoadGameInfoFile( void* f )
     uint sp = 0;
     if( !FileRead( f, &sp, sizeof( sp ) ) )
         return false;
-    if( sp == 1 )
+    if( sp >= 1 )
     {
         WriteLog( "singleplayer..." );
 
@@ -3265,7 +3267,7 @@ bool FOServer::LoadGameInfoFile( void* f )
                 return false;
         }
     }
-    SingleplayerSave.Valid = ( sp == 1 );
+    SingleplayerSave.Valid = ( sp >= 1 );
 
     // Time
     if( !FileRead( f, &GameOpt.YearStart, sizeof( GameOpt.YearStart ) ) )
@@ -3393,14 +3395,14 @@ bool FOServer::InitReal()
     STATIC_ASSERT( sizeof( GameVar ) == 28 );
     STATIC_ASSERT( sizeof( Mutex ) == 44 );
     STATIC_ASSERT( sizeof( MutexSpinlock ) == 4 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1344 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1340 );
     STATIC_ASSERT( sizeof( ScriptArray ) == 28 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );
     STATIC_ASSERT( PROTO_ITEM_USER_DATA_SIZE == 500 );
     STATIC_ASSERT( OFFSETOF( Item, IsNotValid ) == 146 );
     STATIC_ASSERT( OFFSETOF( Critter::CrTimeEvent, Identifier ) == 12 );
     STATIC_ASSERT( OFFSETOF( Critter, RefCounter ) == 9388 );
-    STATIC_ASSERT( OFFSETOF( Client, LanguageMsg ) == 9456 );
+    STATIC_ASSERT( OFFSETOF( Client, LanguageMsg ) == 9548 );
     STATIC_ASSERT( OFFSETOF( Npc, Reserved ) == 9408 );
     STATIC_ASSERT( OFFSETOF( GameVar, RefCount ) == 22 );
     STATIC_ASSERT( OFFSETOF( TemplateVar, Flags ) == 68 );

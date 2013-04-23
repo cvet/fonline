@@ -38,7 +38,7 @@ public:
     ScriptString NameOnHead;
     ScriptString Lexems;
     ScriptString Avatar;
-    char         Pass[ MAX_NAME + 1 ];
+    string       Pass;
 
     ItemPtrVec   InvItems;
     Item*        DefItemSlotHand;
@@ -88,7 +88,7 @@ public:
     int         GetCond() { return Cond; }
     void        DrawStay( Rect r );
     const char* GetName() { return Name.c_str(); }
-    const char* GetPass() { return Pass; }
+    const char* GetPass() { return Pass.c_str(); }
 
     bool IsNpc()      { return FLAG( Flags, FCRIT_NPC ); }
     bool IsPlayer()   { return FLAG( Flags, FCRIT_PLAYER ); }

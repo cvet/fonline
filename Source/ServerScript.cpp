@@ -5136,27 +5136,26 @@ Critter* FOServer::SScriptFunc::Global_GetCritter( uint crid )
 
 Critter* FOServer::SScriptFunc::Global_GetPlayer( ScriptString& name )
 {
-    uint len = (uint) name.length();
-    if( len < MIN_NAME || len < GameOpt.MinNameLength )
+    uint len_utf8 = Str::LengthUTF8( name.c_str() );
+    if( len_utf8 < MIN_NAME || len_utf8 < GameOpt.MinNameLength )
         return NULL;
-    if( len > MAX_NAME || len > GameOpt.MaxNameLength )
+    if( len_utf8 > MAX_NAME || len_utf8 > GameOpt.MaxNameLength )
         return NULL;
 
-    Client* cl = CrMngr.GetPlayer( name.c_str(), true );
-    return cl;
+    return CrMngr.GetPlayer( name.c_str(), true );
 }
 
 uint FOServer::SScriptFunc::Global_GetPlayerId( ScriptString& name )
 {
-    uint len = (uint) name.length();
-    if( len < MIN_NAME || len < GameOpt.MinNameLength )
+    uint len_utf8 = Str::LengthUTF8( name.c_str() );
+    if( len_utf8 < MIN_NAME || len_utf8 < GameOpt.MinNameLength )
         return 0;                                               // SCRIPT_ERROR_R0("Name length is less than minimum.");
-    if( len > MAX_NAME || len > GameOpt.MaxNameLength )
+    if( len_utf8 > MAX_NAME || len_utf8 > GameOpt.MaxNameLength )
         return 0;                                               // SCRIPT_ERROR_R0("Name length is greater than maximum.");
 
     if( Singleplayer )
     {
-        if( Str::CompareCase( name.c_str(), SingleplayerSave.CrData.Name ) )
+        if( Str::CompareCaseUTF8( name.c_str(), SingleplayerSave.CrData.Name ) )
             return 1;
         return 0;
     }
@@ -5470,7 +5469,7 @@ void FOServer::SScriptFunc::Global_EraseTextListener( int say_type, ScriptString
     for( auto it = TextListeners.begin(), end = TextListeners.end(); it != end; ++it )
     {
         TextListen& tl = *it;
-        if( say_type == tl.SayType && Str::CompareCase( first_str.c_str(), tl.FirstStr ) && tl.Parameter == parameter )
+        if( say_type == tl.SayType && Str::CompareCaseUTF8( first_str.c_str(), tl.FirstStr ) && tl.Parameter == parameter )
         {
             TextListeners.erase( it );
             return;
@@ -6029,6 +6028,19 @@ void FOServer::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& ini_opt
     Critter::SlotEnabled[ index ] = true;
 }
 
+uint FOServer::SScriptFunc::Global_DecodeUTF8( ScriptString& text, uint& length )
+{
+    return Str::DecodeUTF8( text.c_str(), &length );
+}
+
+ScriptString* FOServer::SScriptFunc::Global_EncodeUTF8( uint ucs )
+{
+    char buf[ 5 ];
+    uint len = Str::EncodeUTF8( ucs, buf );
+    buf[ len ] = 0;
+    return new ScriptString( buf );
+}
+
 void FOServer::SScriptFunc::Global_SetRegistrationParam( uint index, bool enabled )
 {
     if( index >= MAX_PARAMS )
@@ -6200,7 +6212,7 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, ScriptString* image_na
 
     // Check depth
     static uint image_depth_;
-    image_depth_ = image_depth; // Avoid GCC warning "argument ‘image_depth’ might be clobbered by ‘longjmp’ or ‘vfork’"
+    image_depth_ = image_depth; // Avoid GCC warning "argument 'image_depth' might be clobbered by 'longjmp' or 'vfork'"
     if( image_depth < 1 || image_depth > 4 )
         SCRIPT_ERROR_R0( "Wrong image depth arg." );
 

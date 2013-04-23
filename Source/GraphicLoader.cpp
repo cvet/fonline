@@ -847,7 +847,6 @@ Texture* GraphicLoader::LoadTexture( Device_ device, const char* texture_name, c
             return texture;
     }
 
-
     // First try load from textures folder
     FileManager fm;
     if( !fm.LoadFile( texture_name, PT_TEXTURES ) && model_path )

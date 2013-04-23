@@ -204,13 +204,14 @@ inline void PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
             logcb( "Invalid arguments. Example: <~id name>." );
             break;
         }
-        name[ MAX_NAME ] = 0;
-        msg_len += MAX_NAME;
+        uint name_size_utf8 = UTF8_BUF_SIZE( MAX_NAME );
+        name[ name_size_utf8 - 1 ] = 0;
+        msg_len += name_size_utf8;
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf.Push( name, MAX_NAME );
+        buf.Push( name, name_size_utf8 );
     }
     break;
     case CMD_MOVECRIT:
@@ -310,20 +311,25 @@ inline void PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     break;
     case CMD_GETACCESS:
     {
-        char name_access[ 64 ];
-        char pasw_access[ 128 ];
+        char name_access[ MAX_FOTEXT ];
+        char pasw_access[ MAX_FOTEXT ];
         if( sscanf( args, "%s%s", name_access, pasw_access ) != 2 )
             break;
         Str::Replacement( name_access, '*', ' ' );
         Str::Replacement( pasw_access, '*', ' ' );
-        msg_len += MAX_NAME + 128;
+
+        uint name_size_utf8 = UTF8_BUF_SIZE( MAX_NAME );
+        uint pasw_size_utf8 = UTF8_BUF_SIZE( 128 );
+        msg_len += name_size_utf8 + pasw_size_utf8;
+        name_access[ name_size_utf8 - 1 ] = 0;
+        pasw_access[ pasw_size_utf8 - 1 ] = 0;
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
 
-        buf.Push( name_access, MAX_NAME );
-        buf.Push( pasw_access, 128 );
+        buf.Push( name_access, name_size_utf8 );
+        buf.Push( pasw_access, pasw_size_utf8 );
     }
     break;
     case CMD_ADDITEM:
@@ -655,15 +661,23 @@ inline void PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         Str::Replacement( info, '$', '*' );
         while( info[ 0 ] == ' ' )
             Str::CopyBack( info );
-        msg_len += MAX_NAME * 2 + sizeof( ban_hours ) + 128;
+
+        uint name_size_utf8 = UTF8_BUF_SIZE( MAX_NAME );
+        uint params_size_utf8 = UTF8_BUF_SIZE( MAX_NAME );
+        uint info_size_utf8 = UTF8_BUF_SIZE( MAX_CHAT_MESSAGE );
+        name[ name_size_utf8 - 1 ] = 0;
+        params[ params_size_utf8 - 1 ] = 0;
+        info[ info_size_utf8 - 1 ] = 0;
+
+        msg_len += name_size_utf8 + params_size_utf8 + info_size_utf8 + sizeof( ban_hours );
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf.Push( name, MAX_NAME );
-        buf.Push( params, MAX_NAME );
+        buf.Push( name, name_size_utf8 );
+        buf.Push( params, params_size_utf8 );
         buf << ban_hours;
-        buf.Push( info, 128 );
+        buf.Push( info, info_size_utf8 );
     }
     break;
     case CMD_DELETE_ACCOUNT:
@@ -699,8 +713,8 @@ inline void PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
             break;
         }
 
-        char pass[ 128 ];
-        char new_pass[ 128 ];
+        char pass[ MAX_FOTEXT ];
+        char new_pass[ MAX_FOTEXT ];
         if( sscanf( args, "%s%s", pass, new_pass ) != 2 )
         {
             logcb( "Invalid arguments. Example: <~changepassword current_password new_password>." );
@@ -709,8 +723,8 @@ inline void PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         Str::Replacement( pass, '*', ' ' );
 
         // Check the new password's validity
-        uint pass_len = Str::Length( new_pass );
-        if( pass_len < MIN_NAME || pass_len < GameOpt.MinNameLength || pass_len > MAX_NAME || pass_len > GameOpt.MaxNameLength || !CheckUserPass( new_pass ) )
+        uint pass_len = Str::LengthUTF8( new_pass );
+        if( pass_len < MIN_NAME || pass_len < GameOpt.MinNameLength || pass_len > MAX_NAME || pass_len > GameOpt.MaxNameLength )
         {
             logcb( "Invalid new password." );
             break;

@@ -324,7 +324,7 @@ public:
     // Dump save/load
     struct ClientSaveData
     {
-        char                    Name[ MAX_NAME + 1 ];
+        char                    Name[ UTF8_BUF_SIZE( MAX_NAME ) ];
         char                    PasswordHash[ PASS_HASH_SIZE ];
         CritData                Data;
         CritDataExt             DataExt;
@@ -375,10 +375,10 @@ public:
         DateTime    BeginTime;
         DateTime    EndTime;
         uint        ClientIp;
-        char        ClientName[ MAX_NAME + 1 ];
-        char        BannedBy[ MAX_NAME + 1 ];
-        char        BanInfo[ 128 ];
-        bool operator==( const char* name ) { return Str::CompareCase( name, ClientName ); }
+        char        ClientName[ UTF8_BUF_SIZE( MAX_NAME ) ];
+        char        BannedBy[ UTF8_BUF_SIZE( MAX_NAME ) ];
+        char        BanInfo[ UTF8_BUF_SIZE( 128 ) ];
+        bool operator==( const char* name ) { return Str::CompareCaseUTF8( name, ClientName ); }
         bool operator==( const uint ip )    { return ClientIp == ip; }
 
         const char* GetBanLexems() { return Str::FormatBuf( "$banby%s$time%d$reason%s", BannedBy[ 0 ] ? BannedBy : "?", Timer::GetTimeDifference( EndTime, BeginTime ) / 60 / 60, BanInfo[ 0 ] ? BanInfo : "just for fun" ); }
@@ -406,14 +406,14 @@ public:
     // Clients data
     struct ClientData
     {
-        char ClientName[ MAX_NAME + 1 ];
+        char ClientName[ UTF8_BUF_SIZE( MAX_NAME ) ];
         char ClientPassHash[ PASS_HASH_SIZE ];
         uint ClientId;
         uint SaveIndex;
         uint UID[ 5 ];
         uint UIDEndTick;
         void Clear()                        { memzero( this, sizeof( ClientData ) ); }
-        bool operator==( const char* name ) { return Str::CompareCase( name, ClientName ); }
+        bool operator==( const char* name ) { return Str::CompareCaseUTF8( name, ClientName ); }
         bool operator==( const uint id )    { return ClientId == id; }
         ClientData() { Clear(); }
     };
@@ -902,6 +902,8 @@ public:
         static bool          Global_SetParameterChangeBehaviour( uint index, ScriptString& func_name );
         static bool          Global_SetParameterDialogGetBehaviour( uint index, ScriptString& func_name );
         static void          Global_AllowSlot( uchar index, ScriptString& ini_option );
+        static uint          Global_DecodeUTF8( ScriptString& text, uint& length );
+        static ScriptString* Global_EncodeUTF8( uint ucs );
         static void          Global_SetRegistrationParam( uint index, bool enabled );
         static uint          Global_GetAngelScriptProperty( int property );
         static bool          Global_SetAngelScriptProperty( int property, uint value );

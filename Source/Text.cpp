@@ -1,8 +1,9 @@
 #include "StdAfx.h"
 #include "Text.h"
 #include "Crypt.h"
+#include "Fl/case.h"
 
-void Str::Copy( char* to, size_t size, const char* from )
+void Str::Copy( char* to, uint size, const char* from )
 {
     if( !from )
     {
@@ -10,7 +11,7 @@ void Str::Copy( char* to, size_t size, const char* from )
         return;
     }
 
-    size_t from_len = Str::Length( from );
+    uint from_len = Length( from );
     if( !from_len )
     {
         to[ 0 ] = 0;
@@ -29,14 +30,14 @@ void Str::Copy( char* to, size_t size, const char* from )
     }
 }
 
-void Str::Append( char* to, size_t size, const char* from )
+void Str::Append( char* to, uint size, const char* from )
 {
-    size_t from_len = Str::Length( from );
+    uint from_len = Length( from );
     if( !from_len )
         return;
 
-    size_t to_len = Str::Length( to );
-    size_t to_free = size - to_len;
+    uint to_len = Length( to );
+    uint to_free = size - to_len;
     if( (int) to_free <= 1 )
         return;
 
@@ -56,8 +57,8 @@ void Str::Append( char* to, size_t size, const char* from )
 
 char* Str::Duplicate( const char* str )
 {
-    size_t len = Str::Length( str );
-    char*  dup = new char[ len + 1 ];
+    uint  len = Length( str );
+    char* dup = new char[ len + 1 ];
     if( !dup )
         return NULL;
     if( len )
@@ -66,26 +67,160 @@ char* Str::Duplicate( const char* str )
     return dup;
 }
 
-char* Str::Lower( char* str )
+void Str::Lower( char* str )
 {
-    #ifdef FO_WINDOWS
-    _strlwr( str );
-    #else
-    for( ; *str; ++str )
-        *str = tolower( *str );
-    #endif
-    return str;
+    while( *str )
+    {
+        if( *str >= 'A' && *str <= 'Z' )
+            *str += 0x20;
+        str++;
+    }
 }
 
-char* Str::Upper( char* str )
+uint Str::LowerUTF8( uint ucs )
 {
-    #ifdef FO_WINDOWS
-    _strupr( str );
-    #else
-    for( ; *str; ++str )
-        *str = toupper( *str );
-    #endif
-    return str;
+    // Taked from FLTK
+    uint ret;
+    if( ucs <= 0x02B6 )
+    {
+        if( ucs >= 0x0041 )
+        {
+            ret = ucs_table_0041[ ucs - 0x0041 ];
+            if( ret > 0 )
+                return ret;
+        }
+        return ucs;
+    }
+    if( ucs <= 0x0556 )
+    {
+        if( ucs >= 0x0386 )
+        {
+            ret = ucs_table_0386[ ucs - 0x0386 ];
+            if( ret > 0 )
+                return ret;
+        }
+        return ucs;
+    }
+    if( ucs <= 0x10C5 )
+    {
+        if( ucs >= 0x10A0 )
+        {
+            ret = ucs_table_10A0[ ucs - 0x10A0 ];
+            if( ret > 0 )
+                return ret;
+        }
+        return ucs;
+    }
+    if( ucs <= 0x1FFC )
+    {
+        if( ucs >= 0x1E00 )
+        {
+            ret = ucs_table_1E00[ ucs - 0x1E00 ];
+            if( ret > 0 )
+                return ret;
+        }
+        return ucs;
+    }
+    if( ucs <= 0x2133 )
+    {
+        if( ucs >= 0x2102 )
+        {
+            ret = ucs_table_2102[ ucs - 0x2102 ];
+            if( ret > 0 )
+                return ret;
+        }
+        return ucs;
+    }
+    if( ucs <= 0x24CF )
+    {
+        if( ucs >= 0x24B6 )
+        {
+            ret = ucs_table_24B6[ ucs - 0x24B6 ];
+            if( ret > 0 )
+                return ret;
+        }
+        return ucs;
+    }
+    if( ucs <= 0x33CE )
+    {
+        if( ucs >= 0x33CE )
+        {
+            ret = ucs_table_33CE[ ucs - 0x33CE ];
+            if( ret > 0 )
+                return ret;
+        }
+        return ucs;
+    }
+    if( ucs <= 0xFF3A )
+    {
+        if( ucs >= 0xFF21 )
+        {
+            ret = ucs_table_FF21[ ucs - 0xFF21 ];
+            if( ret > 0 )
+                return ret;
+        }
+        return ucs;
+    }
+    return ucs;
+}
+
+void Str::LowerUTF8( char* str )
+{
+    for( uint length; *str; str += length )
+    {
+        uint ucs = DecodeUTF8( str, &length );
+        ucs = LowerUTF8( ucs );
+        char buf[ 4 ];
+        uint length_ = EncodeUTF8( ucs, buf );
+        if( length_ == length )
+            memcpy( str, buf, length );
+    }
+}
+
+void Str::Upper( char* str )
+{
+    while( *str )
+    {
+        if( *str >= 'a' && *str <= 'z' )
+            *str -= 0x20;
+        str++;
+    }
+}
+
+uint Str::UpperUTF8( uint ucs )
+{
+    // Taked from FLTK
+    static unsigned short* table = NULL;
+    if( !table )
+    {
+        table = (unsigned short*) malloc( sizeof( unsigned short ) * 0x10000 );
+        for( uint i = 0; i < 0x10000; i++ )
+        {
+            table[ i ] = (unsigned short) i;
+        }
+        for( uint i = 0; i < 0x10000; i++ )
+        {
+            uint l = LowerUTF8( i );
+            if( l != i )
+                table[ l ] = (unsigned short) i;
+        }
+    }
+    if( ucs >= 0x10000 )
+        return ucs;
+    return table[ ucs ];
+}
+
+void Str::UpperUTF8( char* str )
+{
+    for( uint length; *str; str += length )
+    {
+        uint ucs = DecodeUTF8( str, &length );
+        ucs = UpperUTF8( ucs );
+        char buf[ 4 ];
+        uint length_ = EncodeUTF8( ucs, buf );
+        if( length_ == length )
+            memcpy( str, buf, length );
+    }
 }
 
 char* Str::Substring( char* str, const char* sub_str )
@@ -98,37 +233,231 @@ const char* Str::Substring( const char* str, const char* sub_str )
     return strstr( str, sub_str );
 }
 
+bool Str::IsValidUTF8( uint ucs )
+{
+    return ucs != 0xFFFD /* Unicode REPLACEMENT CHARACTER */ && ucs <= 0x10FFFF;
+}
+
+bool Str::IsValidUTF8( const char* str )
+{
+    while( *str )
+    {
+        uint length;
+        if( !IsValidUTF8( DecodeUTF8( str, &length ) ) )
+            return false;
+        str += length;
+    }
+    return true;
+}
+
+uint Str::DecodeUTF8( const char* str, uint* length )
+{
+    // Taked from FLTK
+    unsigned char c = *(unsigned char*) str;
+    if( c < 0x80 )
+    {
+        if( length )
+            *length = 1;
+        return c;
+    }
+    else if( c < 0xc2 )
+    {
+        goto FAIL;
+    }
+    if( ( str[ 1 ] & 0xc0 ) != 0x80 )
+    {
+        goto FAIL;
+    }
+    if( c < 0xe0 )
+    {
+        if( length )
+            *length = 2;
+        return ( ( str[ 0 ] & 0x1f ) << 6 ) +
+               ( ( str[ 1 ] & 0x3f ) );
+    }
+    else if( c == 0xe0 )
+    {
+        if( ( (unsigned char*) str )[ 1 ] < 0xa0 )
+            goto FAIL;
+        goto UTF8_3;
+    }
+    else if( c < 0xf0 )
+    {
+UTF8_3:
+        if( ( str[ 2 ] & 0xc0 ) != 0x80 )
+            goto FAIL;
+        if( length )
+            *length = 3;
+        return ( ( str[ 0 ] & 0x0f ) << 12 ) +
+               ( ( str[ 1 ] & 0x3f ) << 6 ) +
+               ( ( str[ 2 ] & 0x3f ) );
+    }
+    else if( c == 0xf0 )
+    {
+        if( ( (unsigned char*) str )[ 1 ] < 0x90 )
+            goto FAIL;
+        goto UTF8_4;
+    }
+    else if( c < 0xf4 )
+    {
+UTF8_4:
+        if( ( str[ 2 ] & 0xc0 ) != 0x80 || ( str[ 3 ] & 0xc0 ) != 0x80 )
+            goto FAIL;
+        if( length )
+            *length = 4;
+        return ( ( str[ 0 ] & 0x07 ) << 18 ) +
+               ( ( str[ 1 ] & 0x3f ) << 12 ) +
+               ( ( str[ 2 ] & 0x3f ) << 6 ) +
+               ( ( str[ 3 ] & 0x3f ) );
+    }
+    else if( c == 0xf4 )
+    {
+        if( ( (unsigned char*) str )[ 1 ] > 0x8f )
+            goto FAIL;                                /* after 0x10ffff */
+        goto UTF8_4;
+    }
+    else
+    {
+FAIL:
+        if( length )
+            *length = 1;
+        return 0xfffd; /* Unicode REPLACEMENT CHARACTER */
+    }
+}
+
+uint Str::EncodeUTF8( uint ucs, char* buf )
+{
+    // Taked from FLTK
+    if( ucs < 0x000080U )
+    {
+        buf[ 0 ] = ucs;
+        return 1;
+    }
+    else if( ucs < 0x000800U )
+    {
+        buf[ 0 ] = 0xc0 | ( ucs >> 6 );
+        buf[ 1 ] = 0x80 | ( ucs & 0x3F );
+        return 2;
+    }
+    else if( ucs < 0x010000U )
+    {
+        buf[ 0 ] = 0xe0 | ( ucs >> 12 );
+        buf[ 1 ] = 0x80 | ( ( ucs >> 6 ) & 0x3F );
+        buf[ 2 ] = 0x80 | ( ucs & 0x3F );
+        return 3;
+    }
+    else if( ucs <= 0x0010ffffU )
+    {
+        buf[ 0 ] = 0xf0 | ( ucs >> 18 );
+        buf[ 1 ] = 0x80 | ( ( ucs >> 12 ) & 0x3F );
+        buf[ 2 ] = 0x80 | ( ( ucs >> 6 ) & 0x3F );
+        buf[ 3 ] = 0x80 | ( ucs & 0x3F );
+        return 4;
+    }
+    else
+    {
+        /* encode 0xfffd: */
+        buf[ 0 ] = 0xefU;
+        buf[ 1 ] = 0xbfU;
+        buf[ 2 ] = 0xbdU;
+        return 3;
+    }
+}
+
 uint Str::Length( const char* str )
 {
-    return (uint) strlen( str );
+    const char* str_ = str;
+    while( *str )
+        str++;
+    return (uint) ( str - str_ );
+}
+
+uint Str::LengthUTF8( const char* str )
+{
+    uint len = 0;
+    while( *str )
+        len += ( ( *str++ & 0xC0 ) != 0x80 );
+    return len;
 }
 
 bool Str::Compare( const char* str1, const char* str2 )
 {
-    return strcmp( str1, str2 ) == 0;
+    while( *str1 && *str2 )
+    {
+        if( *str1 != *str2 )
+            return false;
+        str1++, str2++;
+    }
+    return *str1 == 0 && *str2 == 0;
 }
 
 bool Str::CompareCase( const char* str1, const char* str2 )
 {
-    #ifdef FO_WINDOWS
-    return _stricmp( str1, str2 ) == 0;
-    #else
-    return strcasecmp( str1, str2 ) == 0;
-    #endif
+    while( *str1 && *str2 )
+    {
+        char c1 = *str1;
+        char c2 = *str2;
+        if( c1 >= 'A' && c1 <= 'Z' )
+            c1 += 0x20;
+        if( c2 >= 'A' && c2 <= 'Z' )
+            c2 += 0x20;
+        if( c1 != c2 )
+            return false;
+        str1++, str2++;
+    }
+    return *str1 == 0 && *str2 == 0;
+}
+
+bool Str::CompareCaseUTF8( const char* str1, const char* str2 )
+{
+    static char str1_buf[ MAX_FOTEXT ];
+    static char str2_buf[ MAX_FOTEXT ];
+    Copy( str1_buf, str1 );
+    Copy( str2_buf, str2 );
+    LowerUTF8( str1_buf );
+    LowerUTF8( str2_buf );
+    return Compare( str1_buf, str2_buf );
 }
 
 bool Str::CompareCount( const char* str1, const char* str2, uint max_count )
 {
-    return strncmp( str1, str2, max_count ) == 0;
+    while( *str1 && *str2 && max_count )
+    {
+        if( *str1 != *str2 )
+            return false;
+        str1++, str2++;
+        max_count--;
+    }
+    return max_count == 0;
 }
 
 bool Str::CompareCaseCount( const char* str1, const char* str2, uint max_count )
 {
-    #ifdef FO_WINDOWS
-    return _strnicmp( str1, str2, max_count ) == 0;
-    #else
-    return strncasecmp( str1, str2, max_count ) == 0;
-    #endif
+    while( *str1 && *str2 && max_count )
+    {
+        char c1 = *str1;
+        char c2 = *str2;
+        if( c1 >= 'A' && c1 <= 'Z' )
+            c1 += 0x20;
+        if( c2 >= 'A' && c2 <= 'Z' )
+            c2 += 0x20;
+        if( c1 != c2 )
+            return false;
+        str1++, str2++;
+        max_count--;
+    }
+    return max_count == 0;
+}
+
+bool Str::CompareCaseCountUTF8( const char* str1, const char* str2, uint max_count )
+{
+    static char str1_buf[ MAX_FOTEXT ];
+    static char str2_buf[ MAX_FOTEXT ];
+    Copy( str1_buf, str1 );
+    Copy( str2_buf, str2 );
+    LowerUTF8( str1_buf );
+    LowerUTF8( str2_buf );
+    return CompareCount( str1_buf, str2_buf, max_count );
 }
 
 char* Str::Format( char* buf, const char* format, ... )
@@ -177,7 +506,7 @@ void Str::Insert( char* to, const char* from )
     if( !to || !from )
         return;
 
-    int flen = Str::Length( from );
+    int flen = Length( from );
     if( !flen )
         return;
 
@@ -209,7 +538,7 @@ void Str::EraseWords( char* str, char begin, char end )
             {
                 if( !str[ k ] || str[ k ] == end )
                 {
-                    Str::EraseInterval( &str[ i ], k - i + 1 );
+                    EraseInterval( &str[ i ], k - i + 1 );
                     break;
                 }
             }
@@ -223,11 +552,11 @@ void Str::EraseWords( char* str, const char* word )
     if( !str || !word )
         return;
 
-    char* sub_str = Str::Substring( str, word );
+    char* sub_str = Substring( str, word );
     while( sub_str )
     {
-        Str::EraseInterval( sub_str, Str::Length( word ) );
-        sub_str = Str::Substring( sub_str, word );
+        EraseInterval( sub_str, Length( word ) );
+        sub_str = Substring( sub_str, word );
     }
 }
 
@@ -348,7 +677,7 @@ bool Str::IsNumber( const char* str )
     // Check number it or not
     bool is_number = true;
     uint pos = 0;
-    uint len = Str::Length( str );
+    uint len = Length( str );
     for( uint i = 0, j = len; i < j; i++, pos++ )
         if( str[ i ] != ' ' && str[ i ] != '\t' )
             break;
@@ -441,7 +770,7 @@ uint Str::GetHash( const char* name )
         return 0;
 
     char name_[ MAX_FOPATH ];
-    Str::Copy( name_, name );
+    Copy( name_, name );
     uint len = FormatForHash( name_ );
     return Crypt.Crc32( (uchar*) name_, len );
 }
@@ -458,7 +787,7 @@ const char* Str::GetName( uint hash )
 void Str::AddNameHash( const char* name )
 {
     char name_[ MAX_FOPATH ];
-    Str::Copy( name_, name );
+    Copy( name_, name );
     uint len = FormatForHash( name_ );
     uint hash = Crypt.Crc32( (uchar*) name_, len );
 
@@ -470,9 +799,9 @@ void Str::AddNameHash( const char* name )
     else
     {
         char name__[ MAX_FOPATH ];
-        Str::Copy( name__, ( *it ).second.c_str() );
+        Copy( name__, ( *it ).second.c_str() );
         FormatForHash( name__ );
-        if( !Str::Compare( name_, name__ ) )
+        if( !Compare( name_, name__ ) )
             WriteLogF( _FUNC_, " - Found equal hash for different names, name1<%s>, name2<%s>, hash<%u>.\n", name, ( *it ).second.c_str(), hash );
     }
 }

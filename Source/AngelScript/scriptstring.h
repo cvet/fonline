@@ -71,6 +71,7 @@ public:
 
     const char*        c_str()     const { return buffer.c_str(); }
     size_t             length()    const { return buffer.length(); }
+    size_t             lengthUTF8();
     size_t             capacity()  const { return buffer.capacity(); }
     const std::string& c_std_str() const { return buffer; }
     int                rcount()    const { return refCount; }

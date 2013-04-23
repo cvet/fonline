@@ -4,13 +4,29 @@
 
 # include <io.h>
 
+wchar_t* MBtoWC( const char* mb )
+{
+    static THREAD wchar_t wc[ MAX_FOTEXT ];
+    if( MultiByteToWideChar( CP_UTF8, 0, mb, -1, wc, MAX_FOTEXT - 1 ) == 0 )
+        wc[ 0 ] = 0;
+    return wc;
+}
+
+char* WCtoMB( const wchar_t* wc )
+{
+    static THREAD char mb[ MAX_FOTEXT ];
+    if( WideCharToMultiByte( CP_UTF8, 0, wc, -1, mb, MAX_FOTEXT - 1, NULL, NULL ) == 0 )
+        mb[ 0 ] = 0;
+    return mb;
+}
+
 void* FileOpen( const char* fname, bool write, bool write_through /* = false */ )
 {
     HANDLE file;
     if( write )
-        file = CreateFile( fname, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+        file = CreateFileW( MBtoWC( fname ), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
     else
-        file = CreateFile( fname, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY | FILE_FLAG_SEQUENTIAL_SCAN, NULL );
+        file = CreateFileW( MBtoWC( fname ), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY | FILE_FLAG_SEQUENTIAL_SCAN, NULL );
     if( file == INVALID_HANDLE_VALUE )
         return NULL;
     return file;
@@ -18,7 +34,7 @@ void* FileOpen( const char* fname, bool write, bool write_through /* = false */ 
 
 void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
 {
-    HANDLE file = CreateFile( fname, GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+    HANDLE file = CreateFileW( MBtoWC( fname ), GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
     if( file == INVALID_HANDLE_VALUE )
         return NULL;
     if( !FileSetPointer( file, 0, SEEK_END ) )
@@ -76,17 +92,17 @@ uint FileGetSize( void* file )
 
 bool FileDelete( const char* fname )
 {
-    return DeleteFile( fname ) != FALSE;
+    return DeleteFileW( MBtoWC( fname ) ) != FALSE;
 }
 
 bool FileExist( const char* fname )
 {
-    return !_access( fname, 0 );
+    return !_waccess( MBtoWC( fname ), 0 );
 }
 
 bool FileRename( const char* fname, const char* new_fname )
 {
-    return !rename( fname, new_fname );
+    return MoveFileW( MBtoWC( fname ), MBtoWC( new_fname ) ) != FALSE;
 }
 
 void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd )
@@ -97,12 +113,12 @@ void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd )
     else
         Str::Format( query, "%s*", path );
 
-    WIN32_FIND_DATA wfd;
-    HANDLE          h = FindFirstFile( query, &wfd );
+    WIN32_FIND_DATAW wfd;
+    HANDLE           h = FindFirstFileW( MBtoWC( query ), &wfd );
     if( h == INVALID_HANDLE_VALUE )
         return NULL;
 
-    Str::Copy( fd.FileName, wfd.cFileName );
+    Str::Copy( fd.FileName, WCtoMB( wfd.cFileName ) );
     fd.IsDirectory = ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) != 0;
     if( fd.IsDirectory && ( Str::Compare( fd.FileName, "." ) || Str::Compare( fd.FileName, ".." ) ) )
         if( !FileFindNext( h, fd ) )
@@ -113,11 +129,11 @@ void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd )
 
 bool FileFindNext( void* descriptor, FIND_DATA& fd )
 {
-    WIN32_FIND_DATA wfd;
-    if( !FindNextFile( (HANDLE) descriptor, &wfd ) )
+    WIN32_FIND_DATAW wfd;
+    if( !FindNextFileW( (HANDLE) descriptor, &wfd ) )
         return false;
 
-    Str::Copy( fd.FileName, wfd.cFileName );
+    Str::Copy( fd.FileName, WCtoMB( wfd.cFileName ) );
     fd.IsDirectory = ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) != 0;
     if( fd.IsDirectory && ( Str::Compare( fd.FileName, "." ) || Str::Compare( fd.FileName, ".." ) ) )
         return FileFindNext( (HANDLE) descriptor, fd );
@@ -133,7 +149,7 @@ void FileFindClose( void* descriptor )
 
 bool MakeDirectory( const char* path )
 {
-    return CreateDirectory( path, NULL ) != FALSE;
+    return CreateDirectoryW( MBtoWC( path ), NULL ) != FALSE;
 }
 
 char* FixPathSlashes( char* path )
@@ -150,10 +166,10 @@ char* FixPathSlashes( char* path )
 
 bool ResolvePath( char* path )
 {
-    char path_[ MAX_FOPATH ];
-    if( !GetFullPathName( path, MAX_FOPATH, path_, NULL ) )
+    wchar_t path_[ MAX_FOPATH ];
+    if( !GetFullPathNameW( MBtoWC( path ), MAX_FOPATH, path_, NULL ) )
         return false;
-    Str::Copy( path, MAX_FOPATH, path_ );
+    Str::Copy( path, MAX_FOPATH, WCtoMB( path_ ) );
     return true;
 }
 

@@ -451,6 +451,9 @@ public:
     void EggNotValid() { eggValid = false; }
 
     // Fonts
+private:
+    bool BuildFont( int index, void* pfont, const char* image_name, bool make_gray );
+
 public:
     void SetDefaultFont( int index, uint color );
     void SetFontEffect( int index, Effect* effect );
@@ -462,6 +465,7 @@ public:
     int  GetLineHeight( int num_font = -1 );
     void GetTextInfo( int width, int height, const char* str, int num_font, int flags, int& tw, int& th, int& lines );
     int  SplitLines( const Rect& r, const char* cstr, int num_font, StrVec& str_vec );
+    bool HaveLetter( int num_font, const char* letter );
 };
 
 extern SpriteManager SprMngr;

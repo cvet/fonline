@@ -1446,9 +1446,9 @@ void FOServer::Process_CreateClient( Client* cl )
     cl->Bout.SetEncryptKey( 1234567890 );
 
     // Name
-    char name[ MAX_NAME + 1 ];
-    cl->Bin.Pop( name, MAX_NAME );
-    name[ MAX_NAME ] = 0;
+    char name[ UTF8_BUF_SIZE( MAX_NAME ) ];
+    cl->Bin.Pop( name, sizeof( name ) );
+    name[ sizeof( name ) - 1 ] = 0;
     Str::Copy( cl->Name, name );
 
     // Password hash
@@ -1487,7 +1487,16 @@ void FOServer::Process_CreateClient( Client* cl )
     CHECK_IN_BUFF_ERROR_EX( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ) );
 
     // Check data
-    if( !CheckUserName( cl->Name ) )
+    if( !Str::IsValidUTF8( cl->Name ) )
+    {
+        cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
+        cl->Disconnect();
+        return;
+    }
+
+    uint name_len_utf8 = Str::LengthUTF8( cl->Name );
+    if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
+        name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
     {
         cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
@@ -1495,14 +1504,6 @@ void FOServer::Process_CreateClient( Client* cl )
     }
 
     uint name_len = Str::Length( cl->Name );
-    if( name_len < MIN_NAME || name_len < GameOpt.MinNameLength ||
-        name_len > MAX_NAME || name_len > GameOpt.MaxNameLength )
-    {
-        cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
-        cl->Disconnect();
-        return;
-    }
-
     if( cl->Name[ 0 ] == ' ' || cl->Name[ name_len - 1 ] == ' ' )
     {
         cl->Send_TextMsg( cl, STR_NET_BEGIN_END_SPACES, SAY_NETMSG, TEXTMSG_GAME );
@@ -1520,14 +1521,17 @@ void FOServer::Process_CreateClient( Client* cl )
         }
     }
 
-    int letters_rus = 0, letters_eng = 0;
-    for( int i = 0, j = name_len; i < j; i++ )
+    uint        letters_rus = 0, letters_eng = 0;
+    const char* cl_name = cl->Name;
+    while( *cl_name )
     {
-        char c = cl->Name[ i ];
-        if( ( c >= 'a' && c <= 'z' ) || ( c >= 'A' && c <= 'Z' ) )
+        uint length;
+        uint ucs = Str::DecodeUTF8( cl_name, &length );
+        if( ucs < 128 )
             letters_eng++;
-        else if( ( c >= 'à' && c <= 'ÿ' ) || ( c >= 'À' && c <= 'ß' ) || c == '¸' || c == '¨' )
+        else
             letters_rus++;
+        cl_name += length;
     }
 
     if( letters_eng && letters_rus )
@@ -1538,7 +1542,7 @@ void FOServer::Process_CreateClient( Client* cl )
     }
 
     int letters_len = letters_eng + letters_rus;
-    if( Procent( name_len, letters_len ) < 70 )
+    if( Procent( name_len_utf8, letters_len ) < 70 )
     {
         cl->Send_TextMsg( cl, STR_NET_MANY_SYMBOLS, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
@@ -1775,9 +1779,9 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     cl->Bout.SetEncryptKey( uid[ 4 ] + 12345 );
 
     // Login, password hash
-    char name[ MAX_NAME + 1 ];
-    cl->Bin.Pop( name, MAX_NAME );
-    name[ MAX_NAME ] = 0;
+    char name[ UTF8_BUF_SIZE( MAX_NAME ) ];
+    cl->Bin.Pop( name, sizeof( name ) );
+    name[ sizeof( name ) - 1 ] = 0;
     Str::Copy( cl->Name, name );
     cl->Bin >> uid[ 1 ];
     cl->Bin.Pop( cl->PassHash, PASS_HASH_SIZE );
@@ -1806,6 +1810,8 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     cl->Bin >> uidcalc;
     cl->Bin >> default_combat_mode;
     cl->Bin >> uid[ 0 ];
+    char dummy[ 100 ];
+    cl->Bin.Pop( dummy, 100 );
     CHECK_IN_BUFF_ERROR_EX( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ) );
 
     // Lang packs
@@ -1861,7 +1867,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         if( ban && !Singleplayer )
         {
             cl->Send_TextMsg( cl, STR_NET_BANNED_IP, SAY_NETMSG, TEXTMSG_GAME );
-            if( Str::CompareCase( ban->ClientName, cl->Name ) )
+            if( Str::CompareCaseUTF8( ban->ClientName, cl->Name ) )
                 cl->Send_TextMsgLex( cl, STR_NET_BAN_REASON, SAY_NETMSG, TEXTMSG_GAME, ban->GetBanLexems() );
             cl->Send_TextMsgLex( cl, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, Str::FormatBuf( "$time%u", GetBanTime( *ban ) ) );
             cl->Disconnect();
@@ -1872,15 +1878,15 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     // Check login/password
     if( !Singleplayer )
     {
-        uint name_len = Str::Length( cl->Name );
-        if( name_len < MIN_NAME || name_len < GameOpt.MinNameLength || name_len > MAX_NAME || name_len > GameOpt.MaxNameLength )
+        uint name_len_utf8 = Str::LengthUTF8( cl->Name );
+        if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength || name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
         {
             cl->Send_TextMsg( cl, STR_NET_WRONG_LOGIN, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
         }
 
-        if( !CheckUserName( cl->Name ) )
+        if( !Str::IsValidUTF8( cl->Name ) )
         {
             // WriteLogF(_FUNC_," - Wrong chars: Name or Password, client<%s>.\n",cl->Name);
             cl->Send_TextMsg( cl, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME );

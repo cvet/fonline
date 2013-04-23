@@ -2,6 +2,7 @@
 #include "scriptarray.h"
 #include <Common.h>
 #include <Debugger.h>
+#include <Text.h>
 
 #define assert( x )
 
@@ -89,6 +90,11 @@ void ScriptString::resize( size_t count )
     MEMORY_PROCESS( MEMORY_SCRIPT_STRING, -(int) buffer.capacity() );
     buffer.resize( count );
     MEMORY_PROCESS( MEMORY_SCRIPT_STRING, (uint) buffer.capacity() );
+}
+
+size_t ScriptString::lengthUTF8()
+{
+    return Str::LengthUTF8( buffer.c_str() );
 }
 
 // --------------------
@@ -419,12 +425,16 @@ void RegisterScriptString( asIScriptEngine* engine )
     {
         r = engine->RegisterObjectMethod( "string", "uint length() const", asMETHOD( ScriptString, length ), asCALL_THISCALL );
         assert( r >= 0 );
+        r = engine->RegisterObjectMethod( "string", "uint lengthUTF8() const", asMETHOD( ScriptString, lengthUTF8 ), asCALL_THISCALL );
+        assert( r >= 0 );
         r = engine->RegisterObjectMethod( "string", "void resize(uint)", asMETHODPR( ScriptString, resize, ( size_t ), void ), asCALL_THISCALL );
         assert( r >= 0 );
     }
     else
     {
         r = engine->RegisterObjectMethod( "string", "uint64 length() const", asMETHOD( ScriptString, length ), asCALL_THISCALL );
+        assert( r >= 0 );
+        r = engine->RegisterObjectMethod( "string", "uint64 lengthUTF8() const", asMETHOD( ScriptString, length ), asCALL_THISCALL );
         assert( r >= 0 );
         r = engine->RegisterObjectMethod( "string", "void resize(uint64)", asMETHODPR( ScriptString, resize, ( size_t ), void ), asCALL_THISCALL );
         assert( r >= 0 );
@@ -681,24 +691,14 @@ ScriptString* StringJoin( ScriptArray* array, ScriptString* delim )
 ScriptString* StringStrLwr( ScriptString* str )
 {
     std::string str_ = str->c_std_str();
-    #ifdef _WIN32
-    _strlwr( (char*) str_.c_str() );
-    #else
-    for( char* str__ = (char*) str_.c_str(); *str__; ++str__ )
-        *str__ = tolower( *str__ );
-    #endif
+    Str::LowerUTF8( (char*) str_.c_str() );
     return new ScriptString( str_ );
 }
 
 ScriptString* StringStrUpr( ScriptString* str )
 {
     std::string str_ = str->c_std_str();
-    #ifdef _WIN32
-    _strupr( (char*) str_.c_str() );
-    #else
-    for( char* str__ = (char*) str_.c_str(); *str__; ++str__ )
-        *str__ = toupper( *str__ );
-    #endif
+    Str::UpperUTF8( (char*) str_.c_str() );
     return new ScriptString( str_ );
 }
 

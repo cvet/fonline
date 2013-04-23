@@ -329,7 +329,7 @@ bool CritType::InitFromMsg( FOMsg* msg )
         const char*   str = msg->GetStr( STR_INTERNAL_CRTYPE( i ) );
         CritTypeType& ct = CrTypesReserved.Get()[ i ];
 
-        // Read as int to avoid gcc warning 'format ‘%d’ expects type ‘int*’, but argument has type ‘bool*’'
+        // Read as int to avoid gcc warning 'format '%d' expects type 'int*', but argument has type 'bool*''
         int canDo[ 5 ];
         int anims[ 37 ];
         if( sscanf( str, "%s%u%u%u%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%s", name,

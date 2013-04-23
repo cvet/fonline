@@ -1,139 +1,29 @@
 #include "StdAfx.h"
 #include <strstream>
 
-static uchar KeysMap[ 0x10000 ] = { 0 };
-static uchar KeysMapUser[ 0x100 ] = { 0 };
+static uchar  KeysMap[ 0x10000 ] = { 0 };
+static ushort KeysMapRevert[ 0x100 ] = { 0 };
+static uchar  KeysMapUser[ 0x100 ] = { 0 };
 #define MAKE_KEY_CODE( name, index, code ) \
     const uchar name = index;              \
-    struct name ## _INIT { name ## _INIT() { KeysMap[ code ] = index; } } name ## _INIT_;
+    struct name ## _INIT { name ## _INIT() { KeysMap[ code ] = index; KeysMapRevert[ index ] = code; } } name ## _INIT_;
 
 #include "Keyboard.h"
+#include "SpriteManager.h"
 
 namespace Keyb
 {
-    struct KeybData
-    {
-        bool IsAviable;
-        char Rus, RusShift, Eng, EngShift;
-        bool operator==( const char& ch ) { return IsAviable && ( Rus == ch || RusShift == ch || Eng == ch || EngShift == ch ); }
-        KeybData( char rus, char rus_shift, char eng, char eng_shift )
-        {
-            IsAviable = true;
-            Rus = rus;
-            RusShift = rus_shift;
-            Eng = eng;
-            EngShift = eng_shift;
-        }
-        KeybData()
-        {
-            IsAviable = false;
-            Rus = 0;
-            RusShift = 0;
-            Eng = 0;
-            EngShift = 0;
-        }
-    };
-    typedef vector< KeybData > KeybDataVec;
+    bool ShiftDwn = false;
+    bool CtrlDwn = false;
+    bool AltDwn = false;
+    bool KeyPressed[ 0x100 ] = { 0 };
 
-    KeybDataVec Data;
-    int         Lang = LANG_ENG;
-    bool        ShiftDwn = false;
-    bool        CtrlDwn = false;
-    bool        AltDwn = false;
-    bool        KeyPressed[ 0x100 ] = { 0 };
+    void GetCharInternal( uchar dik, const char* dik_text, char* str, uint* position, uint max, int flags );
+    bool IsInvalidChar( const char* str, uint flags );
 }
-
-class ClipboardReceiverWidget: public Fl_Widget
-{
-public:
-    ClipboardReceiverWidget(): Fl_Widget( 0, 0, 0, 0 ) {}
-    virtual ~ClipboardReceiverWidget() {}
-    virtual int handle( int event )
-    {
-        if( event == FL_PASTE )
-        {
-            BufferLocker.Lock();
-            Buffer = Fl::event_text();
-            BufferLocker.Unlock();
-        }
-        return 0;
-    }
-    virtual void draw()
-    {}
-    string Buffer;
-    Mutex  BufferLocker;
-} ClipboardReceiver;
 
 void Keyb::InitKeyb()
 {
-    Data.resize( 0x100 );
-    Data[ DIK_1 ] =                    KeybData( '1', '!', '1', '!' );
-    Data[ DIK_2 ] =                    KeybData( '2', '"', '2', '@' );
-    Data[ DIK_3 ] =                    KeybData( '3', '¹', '3', '#' );
-    Data[ DIK_4 ] =                    KeybData( '4', ';', '4', '$' );
-    Data[ DIK_5 ] =                    KeybData( '5', '%', '5', '%' );
-    Data[ DIK_6 ] =                    KeybData( '6', ':', '6', '^' );
-    Data[ DIK_7 ] =                    KeybData( '7', '?', '7', '&' );
-    Data[ DIK_8 ] =                    KeybData( '8', '*', '8', '*' );
-    Data[ DIK_9 ] =                    KeybData( '9', '(', '9', '(' );
-    Data[ DIK_0 ] =                    KeybData( '0', ')', '0', ')' );
-    Data[ DIK_MINUS ] =                KeybData( '-', '_', '-', '_' );
-    Data[ DIK_EQUALS ] =               KeybData( '=', '+', '=', '+' );
-    Data[ DIK_Q ] =                    KeybData( 'é', 'É', 'q', 'Q' );
-    Data[ DIK_W ] =                    KeybData( 'ö', 'Ö', 'w', 'W' );
-    Data[ DIK_E ] =                    KeybData( 'ó', 'Ó', 'e', 'E' );
-    Data[ DIK_R ] =                    KeybData( 'ê', 'Ê', 'r', 'R' );
-    Data[ DIK_T ] =                    KeybData( 'å', 'Å', 't', 'T' );
-    Data[ DIK_Y ] =                    KeybData( 'í', 'Í', 'y', 'Y' );
-    Data[ DIK_U ] =                    KeybData( 'ã', 'Ã', 'u', 'U' );
-    Data[ DIK_I ] =                    KeybData( 'ø', 'Ø', 'i', 'I' );
-    Data[ DIK_O ] =                    KeybData( 'ù', 'Ù', 'o', 'O' );
-    Data[ DIK_P ] =                    KeybData( 'ç', 'Ç', 'p', 'P' );
-    Data[ DIK_LBRACKET ] =             KeybData( 'õ', 'Õ', '[', '{' );
-    Data[ DIK_RBRACKET ] =             KeybData( 'ú', 'Ú', ']', '}' );
-    Data[ DIK_A ] =                    KeybData( 'ô', 'Ô', 'a', 'A' );
-    Data[ DIK_S ] =                    KeybData( 'û', 'Û', 's', 'S' );
-    Data[ DIK_D ] =                    KeybData( 'â', 'Â', 'd', 'D' );
-    Data[ DIK_F ] =                    KeybData( 'à', 'À', 'f', 'F' );
-    Data[ DIK_G ] =                    KeybData( 'ï', 'Ï', 'g', 'G' );
-    Data[ DIK_H ] =                    KeybData( 'ð', 'Ð', 'h', 'H' );
-    Data[ DIK_J ] =                    KeybData( 'î', 'Î', 'j', 'J' );
-    Data[ DIK_K ] =                    KeybData( 'ë', 'Ë', 'k', 'K' );
-    Data[ DIK_L ] =                    KeybData( 'ä', 'Ä', 'l', 'L' );
-    Data[ DIK_SEMICOLON ] =            KeybData( 'æ', 'Æ', ';', ':' );
-    Data[ DIK_APOSTROPHE ] =           KeybData( 'ý', 'Ý', '\'', '\"' );
-    Data[ DIK_Z ] =                    KeybData( 'ÿ', 'ß', 'z', 'Z' );
-    Data[ DIK_X ] =                    KeybData( '÷', '×', 'x', 'X' );
-    Data[ DIK_C ] =                    KeybData( 'ñ', 'Ñ', 'c', 'C' );
-    Data[ DIK_V ] =                    KeybData( 'ì', 'Ì', 'v', 'V' );
-    Data[ DIK_B ] =                    KeybData( 'è', 'È', 'b', 'B' );
-    Data[ DIK_N ] =                    KeybData( 'ò', 'Ò', 'n', 'N' );
-    Data[ DIK_M ] =                    KeybData( 'ü', 'Ü', 'm', 'M' );
-    Data[ DIK_COMMA ] =                KeybData( 'á', 'Á', ',', '<' );
-    Data[ DIK_PERIOD ] =               KeybData( 'þ', 'Þ', '.', '>' );
-    Data[ DIK_SLASH ] =                KeybData( '.', ',', '/', '?' );
-    Data[ DIK_MULTIPLY ] =             KeybData( '*', '*', '*', '*' );
-    Data[ DIK_SPACE ] =                KeybData( ' ', ' ', ' ', ' ' );
-    Data[ DIK_GRAVE ] =                KeybData( '¸', '¨', '`', '~' );
-    Data[ DIK_NUMPAD1 ] =              KeybData( '1', '1', '1', '1' );
-    Data[ DIK_NUMPAD2 ] =              KeybData( '2', '2', '2', '2' );
-    Data[ DIK_NUMPAD3 ] =              KeybData( '3', '3', '3', '3' );
-    Data[ DIK_NUMPAD4 ] =              KeybData( '4', '4', '4', '4' );
-    Data[ DIK_NUMPAD5 ] =              KeybData( '5', '5', '5', '5' );
-    Data[ DIK_NUMPAD6 ] =              KeybData( '6', '6', '6', '6' );
-    Data[ DIK_NUMPAD7 ] =              KeybData( '7', '7', '7', '7' );
-    Data[ DIK_NUMPAD8 ] =              KeybData( '8', '8', '8', '8' );
-    Data[ DIK_NUMPAD9 ] =              KeybData( '9', '9', '9', '9' );
-    Data[ DIK_NUMPAD0 ] =              KeybData( '0', '0', '0', '0' );
-    Data[ DIK_SUBTRACT ] =             KeybData( '-', '-', '-', '-' );
-    Data[ DIK_ADD ] =                  KeybData( '+', '+', '+', '+' );
-    Data[ DIK_DECIMAL ] =              KeybData( '.', '.', '.', '.' );
-    Data[ DIK_DIVIDE ] =               KeybData( '/', '/', '/', '/' );
-    Data[ DIK_RETURN ] =               KeybData( '\n', '\n', '\n', '\n' );
-    Data[ DIK_NUMPADENTER ] =          KeybData( '\n', '\n', '\n', '\n' );
-    Data[ DIK_TAB ] =                  KeybData( '\t', '\t', '\t', '\t' );
-    Data[ DIK_BACKSLASH ] =            KeybData( '\\', '\\', '\\', '\\' );
-
     // User keys mapping
     for( uint i = 0; i < 0x100; i++ )
         KeysMapUser[ i ] = i;
@@ -151,9 +41,7 @@ void Keyb::InitKeyb()
 }
 
 void Keyb::Finish()
-{
-    Data.clear();
-}
+{}
 
 void Keyb::Lost()
 {
@@ -163,201 +51,175 @@ void Keyb::Lost()
     memzero( KeyPressed, sizeof( KeyPressed ) );
 }
 
-void Keyb::GetChar( uchar dik, string& str, int* position, int max, int flags )
+void Keyb::GetChar( uchar dik, const char* dik_text, string& str, uint* position, uint max, int flags )
 {
-    char str2[ 0x4000 ];
-    Str::Copy( str2, str.c_str() );
-    Keyb::GetChar( dik, str2, position, max, flags );
-    str = str2;
+    char* big_buf = Str::GetBigBuf();
+    Str::Copy( big_buf, BIG_BUF_SIZE, str.c_str() );
+    GetCharInternal( dik, dik_text, big_buf, position, max, flags );
+    str = big_buf;
 }
 
-void Keyb::GetChar( uchar dik, char* str, int* position, int max, int flags )
+void Keyb::GetChar( uchar dik, const char* dik_text, char* str, uint str_size, uint* position, uint max, int flags )
+{
+    string str_ = str;
+    GetChar( dik, dik_text, str_, position, max, flags );
+    Str::Copy( str, str_size, str_.c_str() );
+}
+
+void Keyb::GetCharInternal( uchar dik, const char* dik_text, char* str, uint* position, uint max, int flags )
 {
     if( AltDwn )
         return;
-    bool ctrl_shift = ( CtrlDwn || ShiftDwn );
 
-    int  len = (int) Str::Length( str );
-    int  posit_ = len;
-    int& posit = ( position ? *position : posit_ );
-    if( posit > len )
-        posit = len;
+    bool  ctrl_shift = ( CtrlDwn || ShiftDwn );
+
+    uint  dik_text_len_utf8 = Str::LengthUTF8( dik_text );
+    uint  dik_text_len = Str::Length( dik_text );
+    uint  str_len_utf8 = Str::LengthUTF8( str );
+    uint  str_len = Str::Length( str );
+
+    uint  position_ = str_len;
+    uint& pos = ( position ? *position : position_ );
+    if( pos > str_len )
+        pos = str_len;
 
     // Controls
     if( dik == DIK_RIGHT && !ctrl_shift )
     {
-        if( str[ posit ] )
-            posit++;
+        if( pos < str_len )
+        {
+            pos++;
+            while( pos < str_len && ( str[ pos ] & 0xC0 ) == 0x80 )
+                pos++;
+        }
     }
     else if( dik == DIK_LEFT && !ctrl_shift )
     {
-        if( posit )
-            posit--;
+        if( pos > 0 )
+        {
+            pos--;
+            while( pos && ( str[ pos ] & 0xC0 ) == 0x80 )
+                pos--;
+        }
     }
     else if( dik == DIK_BACK && !ctrl_shift )
     {
-        if( !len || !posit )
-            return;
-        posit--;
-        for( int i = posit; str[ i ]; i++ )
-            if( str[ i + 1 ] )
-                str[ i ] = str[ i + 1 ];
-        str[ len - 1 ] = '\0';
-    }
-    else if( dik == DIK_HOME && !ctrl_shift )
-    {
-        posit = 0;
-    }
-    else if( dik == DIK_END && !ctrl_shift )
-    {
-        posit = len;
-    }
-    else if( dik == DIK_PAUSE && !ctrl_shift )
-    {
-        PuntoSwitch( str );
-        if( Lang == LANG_RUS )
-            Lang = LANG_ENG;
-        else if( Lang == LANG_ENG )
-            Lang = LANG_RUS;
+        if( pos > 0 )
+        {
+            uint letter_len = 1;
+            pos--;
+            while( pos && ( str[ pos ] & 0xC0 ) == 0x80 )
+                pos--, letter_len++;
+
+            for( uint i = pos; str[ i + letter_len ]; i++ )
+                str[ i ] = str[ i + letter_len ];
+            str[ str_len - letter_len ] = '\0';
+        }
     }
     else if( dik == DIK_DELETE && !ctrl_shift )
     {
-        if( !len || posit == len )
-            return;
-        for( int i = posit; str[ i ]; i++ )
-            if( str[ i + 1 ] )
-                str[ i ] = str[ i + 1 ];
-        str[ len - 1 ] = '\0';
+        if( pos < str_len )
+        {
+            uint letter_len = 1;
+            uint pos_ = pos + 1;
+            while( pos_ < str_len && ( str[ pos_ ] & 0xC0 ) == 0x80 )
+                pos_++, letter_len++;
+
+            for( uint i = pos; str[ i + letter_len ]; i++ )
+                str[ i ] = str[ i + letter_len ];
+            str[ str_len - letter_len ] = '\0';
+        }
+    }
+    else if( dik == DIK_HOME && !ctrl_shift )
+    {
+        pos = 0;
+    }
+    else if( dik == DIK_END && !ctrl_shift )
+    {
+        pos = str_len;
     }
     // Clipboard
-    else if( CtrlDwn && !ShiftDwn && len > 0 && ( dik == DIK_C || dik == DIK_X ) )
+    else if( CtrlDwn && !ShiftDwn && str_len > 0 && ( dik == DIK_C || dik == DIK_X ) )
     {
-        char* text = Str::Duplicate( str );
-        char* cb = text;
-        #ifdef FO_WINDOWS
-        cb = fl_locale_to_utf8( cb, Str::Length( cb ), GetACP() );
-        #endif
-        Fl::copy( cb, Str::Length( cb ), 1 );
-        delete[] text;
+        Fl::copy( str, Str::Length( str ), 1 );
         if( dik == DIK_X )
         {
             *str = '\0';
-            posit = 0;
+            pos = 0;
         }
     }
-    else if( CtrlDwn && !ShiftDwn && dik == DIK_V && len < max )
+    else if( CtrlDwn && !ShiftDwn && dik == DIK_V )
     {
-        Fl::paste( ClipboardReceiver, 1 );
-        ClipboardReceiver.BufferLocker.Lock();
-        char* text = Str::Duplicate( ClipboardReceiver.Buffer.c_str() );
-        ClipboardReceiver.BufferLocker.Unlock();
-        if( Str::Length( text ) > 0 )
+        Fl::paste( *MainWindow, 1 );
+    }
+    else if( dik == DIK_CLIPBOARD_PASTE )
+    {
+        char* text = Str::Duplicate( dik_text );
+        EraseInvalidChars( text, flags );
+        uint  text_len = Str::Length( text );
+        if( text_len != 0 )
         {
-            char* cb = text;
-            #ifdef FO_WINDOWS
-            cb = fl_utf8_to_locale( cb, Str::Length( cb ), GetACP() );
-            #endif
-            EraseInvalidChars( cb, flags );
+            uint text_len_utf8 = Str::LengthUTF8( text );
+            uint erase_len_utf8 = 0;
+            if( str_len_utf8 + text_len_utf8 > max )
+                erase_len_utf8 = str_len_utf8 + text_len_utf8 - max;
 
-            int cb_len = (int) Str::Length( cb );
-            if( cb_len > max - len )
-                cb_len = max - len;
+            uint text_pos = text_len;
+            while( erase_len_utf8 )
+            {
+                text_pos--;
+                while( text_pos && ( text[ text_pos ] & 0xC0 ) == 0x80 )
+                    text_pos--;
+                erase_len_utf8--;
+            }
+            text[ text_pos ] = '\0';
 
-            char* buf = new char[ max + 1 ];
-            if( posit )
-                memcpy( buf, str, posit );
-            if( cb_len )
-                memcpy( buf + posit, cb, cb_len );
-            if( len - posit )
-                memcpy( buf + posit + cb_len, &str[ posit ], len - posit );
-            buf[ posit + cb_len + ( len - posit ) ] = 0;
-            Str::Copy( str, max + 1, buf );
-            delete[] buf;
-
-            posit += cb_len;
+            Str::Insert( &str[ pos ], text );
+            pos += Str::Length( text );
         }
         delete[] text;
     }
-    // Data
+    // Text input
     else
     {
-        if( len >= max )
+        if( dik_text_len_utf8 == 0 )
+            return;
+        if( str_len_utf8 + dik_text_len_utf8 > max )
             return;
         if( CtrlDwn )
             return;
-        KeybData& k = Data[ dik ];
-        if( !k.IsAviable )
+
+        if( IsInvalidChar( dik_text, flags ) )
             return;
 
-        char c;
-        if( Lang == LANG_RUS )
-            c = ( ShiftDwn ? k.RusShift : k.Rus );
-        else
-            c = ( ShiftDwn ? k.EngShift : k.Eng );
-
-        if( IsInvalidSymbol( c, flags ) )
-            return;
-
-        char* str_ = &str[ len ];
-        for( int i = 0, j = len - posit + 1; i < j; i++, str_-- )
-            *( str_ + 1 ) = *str_;
-
-        str[ posit ] = c;
-        posit++;
-    }
-}
-
-void Keyb::PuntoSwitch( char* str )
-{
-    if( !str )
-        return;
-    for( ; *str; str++ )
-    {
-        auto it = std::find( Data.begin() + DIK_0 + 1, Data.end(), *str );
-        if( it != Data.end() )
-        {
-            KeybData& k = *it;
-            if( k.Rus == *str )
-                *str = k.Eng;
-            else if( k.Eng == *str )
-                *str = k.Rus;
-            else if( k.RusShift == *str )
-                *str = k.EngShift;
-            else if( k.EngShift == *str )
-                *str = k.RusShift;
-        }
+        Str::Insert( &str[ pos ], dik_text );
+        pos += dik_text_len;
     }
 }
 
 void Keyb::EraseInvalidChars( char* str, int flags )
 {
-    if( !str )
-        return;
     while( *str )
     {
-        char c = *str;
-        if( IsInvalidSymbol( c, flags ) )
-        {
-            // Copy back
-            for( char* str_ = str; *str_; str_++ )
-                *str_ = *( str_ + 1 );
-        }
-        else
-        {
-            str++;
-        }
+        uint length;
+        int  ch = Str::DecodeUTF8( str, &length );
+        if( ch < 0 || IsInvalidChar( str, flags ) )
+            Str::EraseInterval( str, length );
+        str += length;
     }
 }
 
-bool Keyb::IsInvalidSymbol( char c, uint flags )
+bool Keyb::IsInvalidChar( const char* str, uint flags )
 {
-    if( flags & KIF_NO_SPEC_SYMBOLS && ( c == '\n' || c == '\r' || c == '\t' ) )
+    if( !Str::IsValidUTF8( str ) )
+        return false;
+    if( flags & KIF_NO_SPEC_SYMBOLS && ( *str == '\n' || *str == '\r' || *str == '\t' ) )
         return true;
-    if( flags & KIF_ONLY_NUMBERS && !( c >= '0' && c <= '9' ) )
+    if( flags & KIF_ONLY_NUMBERS && !( *str >= '0' && *str <= '9' ) )
         return true;
     if( flags & KIF_FILE_NAME )
     {
-        switch( c )
+        switch( *str )
         {
         case '\\':
         case '/':
@@ -376,11 +238,15 @@ bool Keyb::IsInvalidSymbol( char c, uint flags )
             break;
         }
     }
-    return std::find( Data.begin(), Data.end(), c ) == Data.end();
+    return !SprMngr.HaveLetter( -1, str );
 }
 
 uchar Keyb::MapKey( ushort code )
 {
-    // Double mapping
     return KeysMapUser[ KeysMap[ code ] ];
+}
+
+ushort Keyb::UnmapKey( uchar key )
+{
+    return KeysMapRevert[ key ];
 }

@@ -1172,6 +1172,8 @@ struct BindClass
     static void Global_AddConstant()            {}
     static void Global_LoadConstants()          {}
     static void Global_AllowSlot()              {}
+    static void Global_DecodeUTF8()             {}
+    static void Global_EncodeUTF8()             {}
 };
 
 #ifdef BIND_CLIENT
@@ -1388,7 +1390,6 @@ struct GameOptions
     int PingPeriod;
     int Ping;
     int MsgboxInvert;
-    int ChangeLang;
     int DefaultCombatMode;
     int MessNotify;
     int SoundNotify;

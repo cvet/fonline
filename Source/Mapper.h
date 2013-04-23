@@ -48,8 +48,6 @@ public:
     void MainLoop();
     void RefreshTiles( int tab );
 
-    IntVec KeyboardEvents;
-    IntVec MouseEvents;
     void ParseKeyboard();
     void ParseMouse();
 
@@ -352,27 +350,28 @@ public:
     bool       ObjToAll;
 
     void ObjDraw();
-    void ObjKeyDown( uchar dik );
-    void ObjKeyDownA( MapObject* o, uchar dik );
+    void ObjKeyDown( uchar dik, const char* dik_text );
+    void ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text );
 
     // Console
     AnyFrames*       ConsolePic;
     int              ConsolePicX, ConsolePicY, ConsoleTextX, ConsoleTextY;
     bool             ConsoleEdit;
-    char             ConsoleStr[ MAX_NET_TEXT + 1 ];
-    int              ConsoleCur;
+    string           ConsoleStr;
+    uint             ConsoleCur;
 
     vector< string > ConsoleHistory;
     int              ConsoleHistoryCur;
 
     #define CONSOLE_KEY_TICK          ( 500 )
     #define CONSOLE_MAX_ACCELERATE    ( 460 )
-    int  ConsoleLastKey;
-    uint ConsoleKeyTick;
-    int  ConsoleAccelerate;
+    int    ConsoleLastKey;
+    string ConsoleLastKeyText;
+    uint   ConsoleKeyTick;
+    int    ConsoleAccelerate;
 
     void ConsoleDraw();
-    void ConsoleKeyDown( uchar dik );
+    void ConsoleKeyDown( uchar dik, const char* dik_text );
     void ConsoleKeyUp( uchar dik );
     void ConsoleProcess();
     void ParseCommand( const char* cmd );
@@ -466,20 +465,22 @@ public:
         static ScriptString* MapperMap_get_ScriptFunc( ProtoMap& pmap );
         static void          MapperMap_set_ScriptFunc( ProtoMap& pmap, ScriptString* str );
 
-        static void       Global_SetDefaultCritterParam( uint index, int param );
-        static void       Global_AllowSlot( uchar index, ScriptString& slot_name );
-        static ProtoMap*  Global_LoadMap( ScriptString& file_name, int path_type );
-        static void       Global_UnloadMap( ProtoMap* pmap );
-        static bool       Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type );
-        static bool       Global_ShowMap( ProtoMap* pmap );
-        static int        Global_GetLoadedMaps( ScriptArray* maps );
-        static uint       Global_GetMapFileNames( ScriptString* dir, ScriptArray* names );
-        static void       Global_DeleteObject( MapObject* mobj );
-        static void       Global_DeleteObjects( ScriptArray& objects );
-        static void       Global_SelectObject( MapObject* mobj, bool set );
-        static void       Global_SelectObjects( ScriptArray& objects, bool set );
-        static MapObject* Global_GetSelectedObject();
-        static uint       Global_GetSelectedObjects( ScriptArray* objects );
+        static void          Global_SetDefaultCritterParam( uint index, int param );
+        static void          Global_AllowSlot( uchar index, ScriptString& slot_name );
+        static uint          Global_DecodeUTF8( ScriptString& text, uint& length );
+        static ScriptString* Global_EncodeUTF8( uint ucs );
+        static ProtoMap*     Global_LoadMap( ScriptString& file_name, int path_type );
+        static void          Global_UnloadMap( ProtoMap* pmap );
+        static bool          Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type );
+        static bool          Global_ShowMap( ProtoMap* pmap );
+        static int           Global_GetLoadedMaps( ScriptArray* maps );
+        static uint          Global_GetMapFileNames( ScriptString* dir, ScriptArray* names );
+        static void          Global_DeleteObject( MapObject* mobj );
+        static void          Global_DeleteObjects( ScriptArray& objects );
+        static void          Global_SelectObject( MapObject* mobj, bool set );
+        static void          Global_SelectObjects( ScriptArray& objects, bool set );
+        static MapObject*    Global_GetSelectedObject();
+        static uint          Global_GetSelectedObjects( ScriptArray* objects );
 
         static uint Global_TabGetTileDirs( int tab, ScriptArray* dir_names, ScriptArray* include_subdirs );
         static uint Global_TabGetItemPids( int tab, ScriptString* sub_tab, ScriptArray* item_pids );
@@ -504,11 +505,10 @@ public:
         static ScriptString* Global_GetConstantName( int const_collection, int value );
         static void          Global_AddConstant( int const_collection, ScriptString* name, int value );
         static bool          Global_LoadConstants( int const_collection, ScriptString* file_name, int path_type );
-        static int           Global_GetKeybLang() { return Keyb::Lang; }
         static bool          Global_LoadFont( int font, ScriptString& font_fname );
         static void          Global_SetDefaultFont( int font, uint color );
         static void          Global_MouseClick( int x, int y, int button, int cursor );
-        static void          Global_KeyboardPress( uchar key1, uchar key2 );
+        static void          Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text );
         static void          Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name );
 
         static ScriptString* Global_GetLastError();

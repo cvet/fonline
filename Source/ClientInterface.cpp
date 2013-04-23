@@ -288,7 +288,8 @@ int FOClient::InitIface()
     ConsoleTextY = IfaceIni.GetInt( "ConsoleTextY", 0 );
     ConsoleActive = false;
     ConsoleLastKey = 0;
-    ConsoleStr[ 0 ] = 0;
+    ConsoleLastKeyText = "";
+    ConsoleStr = "";
     ConsoleCur = 0;
     ConsoleHistoryCur = 0;
 
@@ -811,7 +812,7 @@ int FOClient::InitIface()
     SayVectX = 0;
     SayVectY = 0;
     SayType = DIALOGSAY_NONE;
-    memzero( SayText, sizeof( SayText ) );
+    SayText = "";
 
     // Split
     IfaceLoadRect( SplitWMain, "SplitMain" );
@@ -893,6 +894,7 @@ int FOClient::InitIface()
     IboxTitleCur = 0;
     IboxTextCur = 0;
     IboxLastKey = 0;
+    IboxLastKeyText = "";
     IboxHolodiskId = 0;
 
     // Save/Load
@@ -2060,7 +2062,7 @@ void FOClient::ConsoleDraw()
         if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
             rect = GmapWPanel;
 
-        char* buf = (char*) Str::FormatBuf( "%s", ConsoleStr );
+        char* buf = (char*) Str::FormatBuf( "%s", ConsoleStr.c_str() );
         Str::Insert( &buf[ ConsoleCur ], Timer::FastTick() % 800 < 400 ? "!" : "." );
         SprMngr.DrawStr( rect, buf, FT_NOBREAK );
     }
@@ -2123,7 +2125,7 @@ void FOClient::ConsoleDraw()
     }
 }
 
-void FOClient::ConsoleKeyDown( uchar dik )
+void FOClient::ConsoleKeyDown( uchar dik, const char* dik_text )
 {
     if( !IsMainScreen( SCREEN_GAME ) && !IsMainScreen( SCREEN_GLOBAL_MAP ) )
         return;
@@ -2133,19 +2135,19 @@ void FOClient::ConsoleKeyDown( uchar dik )
         if( !ConsoleActive )
         {
             ConsoleActive = true;
-            ConsoleStr[ 0 ] = 0;
+            ConsoleStr = "";
             ConsoleCur = 0;
             ConsoleHistoryCur = (int) ConsoleHistory.size();
             return;
         }
 
-        if( !ConsoleStr[ 0 ] )
+        if( ConsoleStr.empty() )
         {
             ConsoleActive = false;
             return;
         }
 
-        ConsoleHistory.push_back( string( ConsoleStr ) );
+        ConsoleHistory.push_back( ConsoleStr );
         for( uint i = 0; i < ConsoleHistory.size() - 1; i++ )
         {
             if( ConsoleHistory[ i ] == ConsoleHistory[ ConsoleHistory.size() - 1 ] )
@@ -2157,15 +2159,15 @@ void FOClient::ConsoleKeyDown( uchar dik )
         ConsoleHistoryCur = (int) ConsoleHistory.size();
 
         if( Keyb::CtrlDwn )
-            Net_SendText( ConsoleStr, SAY_SHOUT );
+            Net_SendText( ConsoleStr.c_str(), SAY_SHOUT );
         else if( Keyb::AltDwn )
-            Net_SendText( ConsoleStr, SAY_WHISP );
+            Net_SendText( ConsoleStr.c_str(), SAY_WHISP );
         else if( Keyb::ShiftDwn )
-            Net_SendText( ConsoleStr, SAY_RADIO );
+            Net_SendText( ConsoleStr.c_str(), SAY_RADIO );
         else
-            Net_SendText( ConsoleStr, SAY_NORM );
+            Net_SendText( ConsoleStr.c_str(), SAY_NORM );
 
-        ConsoleStr[ 0 ] = 0;
+        ConsoleStr = "";
         ConsoleCur = 0;
     }
 
@@ -2178,26 +2180,27 @@ void FOClient::ConsoleKeyDown( uchar dik )
         if( ConsoleHistoryCur - 1 < 0 )
             return;
         ConsoleHistoryCur--;
-        Str::Copy( ConsoleStr, ConsoleHistory[ ConsoleHistoryCur ].c_str() );
-        ConsoleCur = (int) Str::Length( ConsoleStr );
+        ConsoleStr = ConsoleHistory[ ConsoleHistoryCur ];
+        ConsoleCur = (uint) ConsoleStr.length();
         return;
     case DIK_DOWN:
         if( ConsoleHistoryCur + 1 >= (int) ConsoleHistory.size() )
         {
             ConsoleHistoryCur = (int) ConsoleHistory.size();
-            Str::Copy( ConsoleStr, "" );
+            ConsoleStr = "";
             ConsoleCur = 0;
             return;
         }
         ConsoleHistoryCur++;
-        Str::Copy( ConsoleStr, ConsoleHistory[ ConsoleHistoryCur ].c_str() );
-        ConsoleCur = (int) Str::Length( ConsoleStr );
+        ConsoleStr = ConsoleHistory[ ConsoleHistoryCur ];
+        ConsoleCur = (uint) ConsoleStr.length();
         return;
     default:
-        Keyb::GetChar( dik, ConsoleStr, &ConsoleCur, MAX_NET_TEXT, KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS );
         if( dik == DIK_PAUSE )
             break;
         ConsoleLastKey = dik;
+        ConsoleLastKeyText = dik_text;
         Timer::StartAccelerator( ACCELERATE_CONSOLE );
         return;
     }
@@ -2211,7 +2214,7 @@ void FOClient::ConsoleKeyUp( uchar key )
 void FOClient::ConsoleProcess()
 {
     if( ConsoleLastKey && Timer::ProcessAccelerator( ACCELERATE_CONSOLE ) )
-        Keyb::GetChar( ConsoleLastKey, ConsoleStr, &ConsoleCur, MAX_NET_TEXT, KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( ConsoleLastKey, ConsoleLastKeyText.c_str(), ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS );
 }
 
 // ==============================================================================================================================
@@ -2308,7 +2311,7 @@ void FOClient::GameDraw()
     }
 }
 
-void FOClient::GameKeyDown( uchar dik )
+void FOClient::GameKeyDown( uchar dik, const char* dik_text )
 {
     if( ConsoleActive )
         return;
@@ -3292,8 +3295,8 @@ void FOClient::LogDraw()
         }
         else
         {
-            char mask[ MAX_NAME + 1 ];
-            uint pass_len = (uint) Password.length();
+            char mask[ UTF8_BUF_SIZE( MAX_NAME ) ];
+            uint pass_len = ( uint ) Str::LengthUTF8( Password.c_str() );
             for( uint i = 0, j = min( (uint) MAX_NAME, pass_len ); i < j; i++ )
                 mask[ i ] = '#';
             mask[ min( (uint) MAX_NAME, pass_len ) ] = '\0';
@@ -3302,7 +3305,7 @@ void FOClient::LogDraw()
     }
 }
 
-void FOClient::LogKeyDown( uchar dik )
+void FOClient::LogKeyDown( uchar dik, const char* dik_text )
 {
     if( Singleplayer )
         return;
@@ -3325,12 +3328,12 @@ void FOClient::LogKeyDown( uchar dik )
     if( LogFocus == IFACE_LOG_NAME )
     {
         string tmp_str = GameOpt.Name.c_std_str();
-        Keyb::GetChar( dik, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
         GameOpt.Name = tmp_str;
     }
     else if( LogFocus == IFACE_LOG_PASS )
     {
-        Keyb::GetChar( dik, Password, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, Password, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
     }
 }
 
@@ -3402,27 +3405,29 @@ void FOClient::LogTryConnect()
             tmp_str.erase( tmp_str.length() - 1, 1 );
         GameOpt.Name = tmp_str;
 
-        if( GameOpt.Name.length() < MIN_NAME || GameOpt.Name.length() < GameOpt.MinNameLength ||
-            GameOpt.Name.length() > MAX_NAME || GameOpt.Name.length() > GameOpt.MaxNameLength )
+        uint name_len_utf8 = Str::LengthUTF8( GameOpt.Name.c_str() );
+        if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
+            name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_WRONG_LOGIN ) );
             return;
         }
 
-        if( !CheckUserName( GameOpt.Name.c_str() ) )
+        if( !Str::IsValidUTF8( GameOpt.Name.c_str() ) )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_NAME_WRONG_CHARS ) );
             return;
         }
 
-        if( Password.length() < MIN_NAME || Password.length() < GameOpt.MinNameLength ||
-            Password.length() > MAX_NAME || Password.length() > GameOpt.MaxNameLength )
+        uint pass_len_utf8 = Str::LengthUTF8( Password.c_str() );
+        if( pass_len_utf8 < MIN_NAME || pass_len_utf8 < GameOpt.MinNameLength ||
+            pass_len_utf8 > MAX_NAME || pass_len_utf8 > GameOpt.MaxNameLength )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_WRONG_PASS ) );
             return;
         }
 
-        if( !CheckUserPass( Password.c_str() ) )
+        if( !Str::IsValidUTF8( Password.c_str() ) )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_PASS_WRONG_CHARS ) );
             return;
@@ -3798,7 +3803,7 @@ void FOClient::DlgLMouseUp( bool is_dialog )
         {
             ShowScreen( SCREEN__SAY );
             SayType = DIALOGSAY_TEXT;
-            SayText[ 0 ] = 0;
+            SayText = "";
         }
     }
     else
@@ -3969,7 +3974,7 @@ void FOClient::DlgRMouseDown( bool is_dialog )
         SetCurCastling( CUR_DEFAULT, CUR_HAND );
 }
 
-void FOClient::DlgKeyDown( bool is_dialog, uchar dik )
+void FOClient::DlgKeyDown( bool is_dialog, uchar dik, const char* dik_text )
 {
     int num = -1;
     switch( dik )
@@ -5363,6 +5368,7 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
 {
     SmthSelected smth = TargetSmth;
     ConsoleLastKey = 0;
+    ConsoleLastKeyText = "";
     ShowScreenType = 0;
     ShowScreenParam = 0;
     ShowScreenNeedAnswer = false;
@@ -6580,7 +6586,7 @@ void FOClient::GmapMouseMove()
     }
 }
 
-void FOClient::GmapKeyDown( uchar dik )
+void FOClient::GmapKeyDown( uchar dik, const char* dik_text )
 {
     if( ConsoleActive )
         return;
@@ -7971,7 +7977,7 @@ void FOClient::ChaNameLMouseDown()
         IfaceHold = IFACE_CHA_NAME_PASS;
 }
 
-void FOClient::ChaNameKeyDown( uchar dik )
+void FOClient::ChaNameKeyDown( uchar dik, const char* dik_text )
 {
     if( !IsMainScreen( SCREEN_REGISTRATION ) || !RegNewCr )
         return;
@@ -8003,13 +8009,13 @@ void FOClient::ChaNameKeyDown( uchar dik )
     case IFACE_CHA_NAME_NAME:
     {
         string tmp_str = RegNewCr->Name.c_std_str();
-        Keyb::GetChar( dik, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
         RegNewCr->Name = tmp_str;
     }
     break;
     case IFACE_CHA_NAME_PASS:
     {
-        Keyb::GetChar( dik, RegNewCr->Pass, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, RegNewCr->Pass, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
     }
     break;
     default:
@@ -9784,9 +9790,6 @@ void FOClient::DlgboxDraw()
         y_offs += DlgboxWMiddle.H();
     }
     SprMngr.DrawSprite( DlgboxWBottomPicNone, DlgboxWTop[ 0 ] + DlgboxX, DlgboxWTop[ 1 ] + DlgboxY + y_offs );
-
-    // static char ftime[32];
-    // sprintf(ftime,"Осталось времени: %d")
 }
 
 void FOClient::DlgboxLMouseDown()
@@ -10147,7 +10150,7 @@ void FOClient::SayDraw()
     SprMngr.DrawStr( Rect( SayWMainText, SayX, SayY ), SayTitle.c_str(), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
     SprMngr.DrawStr( Rect( SayBOkText, SayX, SayY ), MsgGame->GetStr( STR_SAY_OK ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
     SprMngr.DrawStr( Rect( SayBCancelText, SayX, SayY ), MsgGame->GetStr( STR_SAY_CANCEL ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( SayWSay, SayX, SayY ), SayText, FT_NOBREAK | FT_CENTERY );
+    SprMngr.DrawStr( Rect( SayWSay, SayX, SayY ), SayText.c_str(), FT_NOBREAK | FT_CENTERY );
 }
 
 void FOClient::SayLMouseDown()
@@ -10175,19 +10178,19 @@ void FOClient::SayLMouseUp()
     case IFACE_SAY_OK:
         if( !IsCurInRect( SayBOk, SayX, SayY ) )
             break;
-        if( !Str::Length( SayText ) )
+        if( SayText.empty() )
             break;
         if( ShowScreenType )
         {
             if( ShowScreenNeedAnswer )
-                Net_SendScreenAnswer( 0, SayText );
+                Net_SendScreenAnswer( 0, SayText.c_str() );
         }
         else
         {
             if( SayType == DIALOGSAY_TEXT )
-                Net_SendSayNpc( DlgIsNpc, DlgNpcId, SayText );
+                Net_SendSayNpc( DlgIsNpc, DlgNpcId, SayText.c_str() );
             else if( SayType == DIALOGSAY_SAVE )
-                SaveLoadSaveGame( SayText );
+                SaveLoadSaveGame( SayText.c_str() );
         }
         ShowScreen( SCREEN_NONE );
         WaitPing();
@@ -10222,23 +10225,23 @@ void FOClient::SayMouseMove()
     }
 }
 
-void FOClient::SayKeyDown( uchar dik )
+void FOClient::SayKeyDown( uchar dik, const char* dik_text )
 {
     if( dik == DIK_RETURN || dik == DIK_NUMPADENTER )
     {
-        if( !Str::Length( SayText ) )
+        if( SayText.empty() )
             return;
         if( ShowScreenType )
         {
             if( ShowScreenNeedAnswer )
-                Net_SendScreenAnswer( 0, SayText );
+                Net_SendScreenAnswer( 0, SayText.c_str() );
         }
         else
         {
             if( SayType == DIALOGSAY_TEXT )
-                Net_SendSayNpc( DlgIsNpc, DlgNpcId, SayText );
+                Net_SendSayNpc( DlgIsNpc, DlgNpcId, SayText.c_str() );
             else if( SayType == DIALOGSAY_SAVE )
-                SaveLoadSaveGame( SayText );
+                SaveLoadSaveGame( SayText.c_str() );
         }
         ShowScreen( SCREEN_NONE );
         WaitPing();
@@ -10246,9 +10249,9 @@ void FOClient::SayKeyDown( uchar dik )
     }
 
     if( SayType == DIALOGSAY_TEXT )
-        Keyb::GetChar( dik, SayText, NULL, MAX_SAY_NPC_TEXT, SayOnlyNumbers ? KIF_ONLY_NUMBERS : KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, SayText, NULL, MAX_SAY_NPC_TEXT, SayOnlyNumbers ? KIF_ONLY_NUMBERS : KIF_NO_SPEC_SYMBOLS );
     else if( SayType == DIALOGSAY_SAVE )
-        Keyb::GetChar( dik, SayText, NULL, MAX_FOPATH, SayOnlyNumbers ? KIF_ONLY_NUMBERS : KIF_FILE_NAME );
+        Keyb::GetChar( dik, dik_text, SayText, NULL, MAX_FOPATH, SayOnlyNumbers ? KIF_ONLY_NUMBERS : KIF_FILE_NAME );
 }
 
 // ==============================================================================================================================
@@ -10352,7 +10355,7 @@ void FOClient::SplitDraw()
     SprMngr.DrawStr( Rect( SplitWValue, SplitX, SplitY ), Str::FormatBuf( "%05d", SplitValue ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
 }
 
-void FOClient::SplitKeyDown( uchar dik )
+void FOClient::SplitKeyDown( uchar dik, const char* dik_text )
 {
     int add = 0;
 
@@ -10577,7 +10580,7 @@ void FOClient::TimerDraw()
     SprMngr.DrawStr( Rect( TimerWValue, TimerX, TimerY ), Str::FormatBuf( "%d%c%02d", TimerValue / 60, '9' + 3, TimerValue % 60 ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
 }
 
-void FOClient::TimerKeyDown( uchar dik )
+void FOClient::TimerKeyDown( uchar dik, const char* dik_text )
 {
     switch( dik )
     {
@@ -11311,23 +11314,25 @@ void FOClient::IboxLMouseUp()
     IfaceHold = IFACE_NONE;
 }
 
-void FOClient::IboxKeyDown( uchar dik )
+void FOClient::IboxKeyDown( uchar dik, const char* dik_text )
 {
     if( IfaceHold == IFACE_IBOX_TITLE )
-        Keyb::GetChar( dik, IboxTitle, &IboxTitleCur, USER_HOLO_MAX_TITLE_LEN, KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, IboxTitle, &IboxTitleCur, USER_HOLO_MAX_TITLE_LEN, KIF_NO_SPEC_SYMBOLS );
     else if( IfaceHold == IFACE_IBOX_TEXT )
-        Keyb::GetChar( dik, IboxText, &IboxTextCur, USER_HOLO_MAX_LEN, 0 );
+        Keyb::GetChar( dik, dik_text, IboxText, &IboxTextCur, USER_HOLO_MAX_LEN, 0 );
     else
         return;
     if( dik == DIK_PAUSE )
         return;
     IboxLastKey = dik;
+    IboxLastKeyText = dik_text;
     Timer::StartAccelerator( ACCELERATE_IBOX );
 }
 
 void FOClient::IboxKeyUp( uchar dik )
 {
     IboxLastKey = 0;
+    IboxLastKeyText = "";
 }
 
 void FOClient::IboxProcess()
@@ -11335,9 +11340,9 @@ void FOClient::IboxProcess()
     if( IboxLastKey && Timer::ProcessAccelerator( ACCELERATE_IBOX ) )
     {
         if( IfaceHold == IFACE_IBOX_TITLE )
-            Keyb::GetChar( IboxLastKey, IboxTitle, &IboxTitleCur, USER_HOLO_MAX_TITLE_LEN, KIF_NO_SPEC_SYMBOLS );
+            Keyb::GetChar( IboxLastKey, IboxLastKeyText.c_str(), IboxTitle, &IboxTitleCur, USER_HOLO_MAX_TITLE_LEN, KIF_NO_SPEC_SYMBOLS );
         else if( IfaceHold == IFACE_IBOX_TEXT )
-            Keyb::GetChar( IboxLastKey, IboxText, &IboxTextCur, USER_HOLO_MAX_LEN, 0 );
+            Keyb::GetChar( IboxLastKey, IboxLastKeyText.c_str(), IboxText, &IboxTextCur, USER_HOLO_MAX_LEN, 0 );
     }
 }
 
@@ -11393,24 +11398,24 @@ void FOClient::SaveLoadCollect()
         FileSetPointer( f, 4, SEEK_SET );
         if( !FileRead( f, &sp, sizeof( sp ) ) )
             continue;
-        if( sp != 1 )
+        if( sp != 2 )
             continue;               // Save not contain singleplayer data
 
         // Critter name
-        char crname[ MAX_NAME + 1 ];
+        char crname[ UTF8_BUF_SIZE( MAX_NAME ) ];
         FileSetPointer( f, 8, SEEK_SET );
         if( !FileRead( f, crname, sizeof( crname ) ) )
             continue;
 
         // Map pid
         ushort map_pid;
-        FileSetPointer( f, 8 + 31 + 68, SEEK_SET );
+        FileSetPointer( f, 8 + UTF8_BUF_SIZE( MAX_NAME ) + 68, SEEK_SET );
         if( !FileRead( f, &map_pid, sizeof( map_pid ) ) )
             continue;
 
         // Calculate critter time events size
         uint te_size;
-        FileSetPointer( f, 8 + 31 + 7404 + 6944, SEEK_SET );
+        FileSetPointer( f, 8 + UTF8_BUF_SIZE( MAX_NAME ) + 7404 + 6944, SEEK_SET );
         if( !FileRead( f, &te_size, sizeof( te_size ) ) )
             continue;
         te_size = te_size * 16 + 4;
@@ -11418,7 +11423,7 @@ void FOClient::SaveLoadCollect()
         // Picture data
         uint pic_data_len;
         UCharVec pic_data;
-        FileSetPointer( f, 8 + 31 + 7404 + 6944 + te_size, SEEK_SET );
+        FileSetPointer( f, 8 + UTF8_BUF_SIZE( MAX_NAME ) + 7404 + 6944 + te_size, SEEK_SET );
         if( !FileRead( f, &pic_data_len, sizeof( pic_data_len ) ) )
             continue;
         if( pic_data_len )
@@ -11430,7 +11435,7 @@ void FOClient::SaveLoadCollect()
 
         // Game time
         ushort year, month, day, hour, minute;
-        FileSetPointer( f, 8 + 31 + 7404 + 6944 + te_size + 4 + pic_data_len + 2, SEEK_SET );
+        FileSetPointer( f, 8 + UTF8_BUF_SIZE( MAX_NAME ) + 7404 + 6944 + te_size + 4 + pic_data_len + 2, SEEK_SET );
         if( !FileRead( f, &year, sizeof( year ) ) )
             continue;
         if( !FileRead( f, &month, sizeof( month ) ) )
@@ -11622,13 +11627,13 @@ void FOClient::SaveLoadProcessDone()
         ShowScreen( SCREEN__SAY );
         SayType = DIALOGSAY_SAVE;
         SayTitle = MsgGame->GetStr( STR_SAVE_LOAD_TYPE_RECORD_NAME );
-        SayText[ 0 ] = 0;
+        SayText = "";
         SayOnlyNumbers = false;
 
         SaveLoadFileName = "";
         if( SaveLoadSlotIndex >= 0 && SaveLoadSlotIndex < (int) SaveLoadDataSlots.size() )
         {
-            Str::Copy( SayText, SaveLoadDataSlots[ SaveLoadSlotIndex ].Name.c_str() );
+            SayText = SaveLoadDataSlots[ SaveLoadSlotIndex ].Name;
             SaveLoadFileName = SaveLoadDataSlots[ SaveLoadSlotIndex ].FileName;
         }
     }

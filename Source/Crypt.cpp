@@ -95,21 +95,25 @@ void CryptManager::DecryptPassword( char* data, uint len, uint key )
 
 void CryptManager::ClientPassHash( const char* name, const char* pass, char* pass_hash )
 {
-    char* bld = new char[ MAX_NAME + 1 ];
-    memzero( bld, MAX_NAME + 1 );
+    uint  buf_size = UTF8_BUF_SIZE( MAX_NAME );
+    char* bld = new char[ buf_size ];
+    memzero( bld, buf_size );
     uint  pass_len = Str::Length( pass );
     uint  name_len = Str::Length( name );
-    if( pass_len > MAX_NAME )
-        pass_len = MAX_NAME;
-    Str::Copy( bld, MAX_NAME + 1, pass );
-    if( pass_len < MAX_NAME )
+    if( pass_len > buf_size - 1 )
+        pass_len = buf_size - 1;
+    Str::Copy( bld, buf_size, pass );
+    if( pass_len < buf_size - 1 )
         bld[ pass_len++ ] = '*';
     if( name_len )
     {
-        for( ; pass_len < MAX_NAME; pass_len++ )
-            bld[ pass_len ] = tolower( name[ pass_len % name_len ] );
+        char* name_ = Str::Duplicate( name );
+        Str::LowerUTF8( name_ );
+        for( ; pass_len < buf_size - 1; pass_len++ )
+            bld[ pass_len ] = name_[ pass_len % name_len ];
+        delete[] name_;
     }
-    sha256( (const uchar*) bld, MAX_NAME, (uchar*) pass_hash );
+    sha256( (const uchar*) bld, buf_size - 1, (uchar*) pass_hash );
     delete[] bld;
 }
 

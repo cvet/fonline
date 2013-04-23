@@ -1,10 +1,6 @@
 #ifndef __KEYBOARD__
 #define __KEYBOARD__
 
-// Languages
-#define LANG_RUS               ( 0 )
-#define LANG_ENG               ( 1 )
-
 // Keyboard input flags
 #define KIF_NO_SPEC_SYMBOLS    ( 1 )  // Ignore \n \r \t
 #define KIF_ONLY_NUMBERS       ( 2 )  // Only 0..9
@@ -12,21 +8,19 @@
 
 namespace Keyb
 {
-    extern int  Lang;
     extern bool ShiftDwn;
     extern bool CtrlDwn;
     extern bool AltDwn;
     extern bool KeyPressed[ 0x100 ];
 
-    void  InitKeyb();
-    void  Finish();
-    void  Lost();
-    void  GetChar( uchar dik, string& str, int* position, int max, int flags );
-    void  GetChar( uchar dik, char* str, int* position, int max, int flags );
-    void  PuntoSwitch( char* str );
-    void  EraseInvalidChars( char* str, int flags );
-    bool  IsInvalidSymbol( char c, uint flags );
-    uchar MapKey( ushort code );
+    void   InitKeyb();
+    void   Finish();
+    void   Lost();
+    void   GetChar( uchar dik, const char* dik_text, string& str, uint* position, uint max, int flags );
+    void   GetChar( uchar dik, const char* dik_text, char* str, uint str_size, uint* position, uint max, int flags );
+    void   EraseInvalidChars( char* str, int flags );
+    uchar  MapKey( ushort code );
+    ushort UnmapKey( uchar key );
 }
 
 // Key codes
@@ -136,5 +130,6 @@ MAKE_KEY_CODE( DIK_INSERT, 0xD2, 0xFF63 );             /* Insert on arrow keypad
 MAKE_KEY_CODE( DIK_DELETE, 0xD3, 0xFFFF );             /* Delete on arrow keypad */
 MAKE_KEY_CODE( DIK_LWIN, 0xDB, 0xFFE7 );               /* Left Windows key */
 MAKE_KEY_CODE( DIK_RWIN, 0xDC, 0xFFE8 );               /* Right Windows key */
+MAKE_KEY_CODE( DIK_CLIPBOARD_PASTE, 0xFF, 0 );
 
 #endif // __KEYBOARD__

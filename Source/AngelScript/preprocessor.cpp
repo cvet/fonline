@@ -124,7 +124,7 @@ public:
     bool        IsTrivial( char in );
     bool        IsHex( char in );
     char*       ParseIdentifier( char* start, char* end, Lexem& out );
-    char*       ParseStringLiteral( char* start, char* end, Lexem& out );
+    char*       ParseStringLiteral( char* start, char* end, char quote, Lexem& out );
     char*       ParseCharacterLiteral( char* start, char* end, Lexem& out );
     char*       ParseFloatingPoint( char* start, char* end, Lexem& out );
     char*       ParseHexConstant( char* start, char* end, Lexem& out );
@@ -1313,7 +1313,7 @@ char* Preprocessor::ParseIdentifier( char* start, char* end, Lexem& out )
     }
 };
 
-char* Preprocessor::ParseStringLiteral( char* start, char* end, Lexem& out )
+char* Preprocessor::ParseStringLiteral( char* start, char* end, char quote, Lexem& out )
 {
     out.Type = STRING;
     out.Value += *start;
@@ -1324,7 +1324,7 @@ char* Preprocessor::ParseStringLiteral( char* start, char* end, Lexem& out )
             return start;
         out.Value += *start;
         // End of string literal?
-        if( *start == '\"' )
+        if( *start == quote )
             return ++start;
         // Escape sequence? - Really only need to handle \"
         if( *start == '\\' )
@@ -1538,9 +1538,9 @@ char* Preprocessor::ParseLexem( char* start, char* end, Lexem& out )
     if( IsNumber( current_char ) )
         return ParseNumber( start, end, out );
     if( current_char == '\"' )
-        return ParseStringLiteral( start, end, out );
+        return ParseStringLiteral( start, end, '\"', out );
     if( current_char == '\'' )
-        return ParseCharacterLiteral( start, end, out );
+        return ParseStringLiteral( start, end, '\'', out ); // Todo: set optional ParseCharacterLiteral?
     if( current_char == '/' )
     {
         // Need to see if it's a comment.

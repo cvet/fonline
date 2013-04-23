@@ -29,7 +29,7 @@ bool FOMapper::Init()
     #if defined ( FO_X86 )
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 120 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1344 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1340 );
     #endif
 
     // Register dll script data
@@ -493,9 +493,10 @@ int FOMapper::InitIface()
 
     ConsoleEdit = 0;
     ConsoleLastKey = 0;
+    ConsoleLastKeyText = "";
     ConsoleKeyTick = 0;
     ConsoleAccelerate = 0;
-    ConsoleStr[ 0 ] = 0;
+    ConsoleStr = "";
     ConsoleCur = 0;
     ConsoleHistory.clear();
     ConsoleHistoryCur = 0;
@@ -721,7 +722,8 @@ void FOMapper::ParseKeyboard()
     // Stop processing if window not active
     if( !MainWindow->active() )
     {
-        KeyboardEvents.clear();
+        MainWindow->KeyboardEvents.clear();
+        MainWindow->KeyboardEventsText.clear();
         Keyb::Lost();
         IntHold = INT_NONE;
         if( MapperFunctions.InputLost && Script::PrepareContext( MapperFunctions.InputLost, _FUNC_, "Mapper" ) )
@@ -730,17 +732,20 @@ void FOMapper::ParseKeyboard()
     }
 
     // Get buffered data
-    if( KeyboardEvents.empty() )
+    if( MainWindow->KeyboardEvents.empty() )
         return;
-    IntVec events = KeyboardEvents;
-    KeyboardEvents.clear();
+    IntVec events = MainWindow->KeyboardEvents;
+    StrVec events_text = MainWindow->KeyboardEventsText;
+    MainWindow->KeyboardEvents.clear();
+    MainWindow->KeyboardEventsText.clear();
 
     // Process events
     for( uint i = 0; i < events.size(); i += 2 )
     {
         // Event data
-        int event = events[ i ];
-        int event_key = events[ i + 1 ];
+        int         event = events[ i ];
+        int         event_key = events[ i + 1 ];
+        const char* event_text = events_text[ i / 2 ].c_str();
 
         // Keys codes mapping
         uchar dikdw = 0;
@@ -766,15 +771,21 @@ void FOMapper::ParseKeyboard()
         bool script_result = false;
         if( dikdw && MapperFunctions.KeyDown && Script::PrepareContext( MapperFunctions.KeyDown, _FUNC_, "Mapper" ) )
         {
+            ScriptString* event_text_script = new ScriptString( event_text );
             Script::SetArgUChar( dikdw );
+            Script::SetArgObject( event_text_script );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
+            event_text_script->Release();
         }
         if( dikup && MapperFunctions.KeyUp && Script::PrepareContext( MapperFunctions.KeyUp, _FUNC_, "Mapper" ) )
         {
+            ScriptString* event_text_script = new ScriptString( event_text );
             Script::SetArgUChar( dikup );
+            Script::SetArgObject( event_text_script );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
+            event_text_script->Release();
         }
 
         // Disable keyboard events
@@ -786,39 +797,18 @@ void FOMapper::ParseKeyboard()
         }
 
         // Control keys
-        bool try_change_lang = false;
         if( dikdw == DIK_RCONTROL || dikdw == DIK_LCONTROL )
-        {
             Keyb::CtrlDwn = true;
-            try_change_lang = true;
-        }
         else if( dikdw == DIK_LMENU || dikdw == DIK_RMENU )
-        {
             Keyb::AltDwn = true;
-            try_change_lang = true;
-        }
         else if( dikdw == DIK_LSHIFT || dikdw == DIK_RSHIFT )
-        {
             Keyb::ShiftDwn = true;
-            try_change_lang = true;
-        }
         if( dikup == DIK_RCONTROL || dikup == DIK_LCONTROL )
             Keyb::CtrlDwn = false;
         else if( dikup == DIK_LMENU || dikup == DIK_RMENU )
             Keyb::AltDwn = false;
         else if( dikup == DIK_LSHIFT || dikup == DIK_RSHIFT )
             Keyb::ShiftDwn = false;
-
-        // Switch language
-        if( try_change_lang )
-        {
-            // Ctrl + Shift
-            if( Keyb::ShiftDwn && Keyb::CtrlDwn && GameOpt.ChangeLang == CHANGE_LANG_CTRL_SHIFT )
-                Keyb::Lang = ( Keyb::Lang == LANG_RUS ) ? LANG_ENG : LANG_RUS;
-            // Alt + Shift
-            if( Keyb::ShiftDwn && Keyb::AltDwn && GameOpt.ChangeLang == CHANGE_LANG_ALT_SHIFT )
-                Keyb::Lang = ( Keyb::Lang == LANG_RUS ) ? LANG_ENG : LANG_RUS;
-        }
 
         // Hotkeys
         if( !Keyb::AltDwn && !Keyb::CtrlDwn && !Keyb::ShiftDwn )
@@ -1036,7 +1026,7 @@ void FOMapper::ParseKeyboard()
         // Key down
         if( dikdw )
         {
-            ConsoleKeyDown( dikdw );
+            ConsoleKeyDown( dikdw, event_text );
 
             if( !ConsoleEdit )
             {
@@ -1058,7 +1048,7 @@ void FOMapper::ParseKeyboard()
                     break;
                 }
 
-                ObjKeyDown( dikdw );
+                ObjKeyDown( dikdw, event_text );
             }
         }
 
@@ -1116,7 +1106,7 @@ void FOMapper::ParseMouse()
     // Stop processing if window not active
     if( !MainWindow->active() )
     {
-        MouseEvents.clear();
+        MainWindow->MouseEvents.clear();
         Keyb::Lost();
         IntHold = INT_NONE;
         if( MapperFunctions.InputLost && Script::PrepareContext( MapperFunctions.InputLost, _FUNC_, "Mapper" ) )
@@ -1168,10 +1158,10 @@ void FOMapper::ParseMouse()
     }
 
     // Get buffered data
-    if( MouseEvents.empty() )
+    if( MainWindow->MouseEvents.empty() )
         return;
-    IntVec events = MouseEvents;
-    MouseEvents.clear();
+    IntVec events = MainWindow->MouseEvents;
+    MainWindow->MouseEvents.clear();
 
     // Process events
     for( uint i = 0; i < events.size(); i += 3 )
@@ -2277,7 +2267,7 @@ void FOMapper::ObjDraw()
     }
 }
 
-void FOMapper::ObjKeyDown( uchar dik )
+void FOMapper::ObjKeyDown( uchar dik, const char* dik_text )
 {
     if( !ObjVisible )
         return;
@@ -2290,7 +2280,7 @@ void FOMapper::ObjKeyDown( uchar dik )
 
     if( IntMode == INT_MODE_INCONT && InContObject )
     {
-        ObjKeyDownA( InContObject, dik );
+        ObjKeyDownA( InContObject, dik, dik_text );
         return;
     }
 
@@ -2303,7 +2293,7 @@ void FOMapper::ObjKeyDown( uchar dik )
 
         if( o->MapObjType == o2->MapObjType && ( o->MapObjType == MAP_OBJECT_CRITTER || ( proto && proto2 && proto->Type == proto2->Type ) ) )
         {
-            ObjKeyDownA( o2, dik );
+            ObjKeyDownA( o2, dik, dik_text );
 
             if( SelectedObj[ i ].IsItem() )
                 HexMngr.AffectItem( o2, SelectedObj[ i ].MapItem );
@@ -2313,7 +2303,7 @@ void FOMapper::ObjKeyDown( uchar dik )
     }
 }
 
-void FOMapper::ObjKeyDownA( MapObject* o, uchar dik )
+void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
 {
     char*      val_c = NULL;
     uchar*     val_b = NULL;
@@ -2351,10 +2341,10 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik )
             val_s = &o->Dir;
         break;
     case 7:
-        Keyb::GetChar( dik, o->ScriptName, NULL, MAPOBJ_SCRIPT_NAME, KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, o->ScriptName, sizeof( o->ScriptName ), NULL, MAPOBJ_SCRIPT_NAME, KIF_NO_SPEC_SYMBOLS );
         return;
     case 8:
-        Keyb::GetChar( dik, o->FuncName, NULL, MAPOBJ_SCRIPT_NAME, KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, o->FuncName, sizeof( o->FuncName ), NULL, MAPOBJ_SCRIPT_NAME, KIF_NO_SPEC_SYMBOLS );
         return;
     case 9:
         val_c = &o->LightIntensity;
@@ -2409,7 +2399,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik )
             break;
         else
         {
-            Keyb::GetChar( dik, o->RunTime.PicMapName, NULL, sizeof( o->RunTime.PicMapName ), KIF_NO_SPEC_SYMBOLS );
+            Keyb::GetChar( dik, dik_text, o->RunTime.PicMapName, sizeof( o->RunTime.PicMapName ), NULL, sizeof( o->RunTime.PicMapName ), KIF_NO_SPEC_SYMBOLS );
             return;
         }
         break;
@@ -2418,7 +2408,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik )
             break;
         else
         {
-            Keyb::GetChar( dik, o->RunTime.PicInvName, NULL, sizeof( o->RunTime.PicInvName ), KIF_NO_SPEC_SYMBOLS );
+            Keyb::GetChar( dik, dik_text, o->RunTime.PicInvName, sizeof( o->RunTime.PicInvName ), NULL, sizeof( o->RunTime.PicInvName ), KIF_NO_SPEC_SYMBOLS );
             return;
         }
         break;
@@ -4663,42 +4653,25 @@ void FOMapper::ConsoleDraw()
 
     if( ConsoleEdit )
     {
-        char        str_to_edit[ 2048 ];
-        static bool show_cur = true;
-        static uint show_cur_last_time = Timer::FastTick();
-
-        if( Timer::FastTick() > show_cur_last_time + 400 )
-        {
-            show_cur = !show_cur;
-            show_cur_last_time = Timer::FastTick();
-        }
-
-        str_to_edit[ 0 ] = 0;
-        Str::Copy( str_to_edit, ConsoleStr );
-        if( show_cur )
-            str_to_edit[ ConsoleCur ] = '!';
-        else
-            str_to_edit[ ConsoleCur ] = '.';
-
-        str_to_edit[ ConsoleCur + 1 ] = 0;
-        Str::Append( str_to_edit, &ConsoleStr[ ConsoleCur ] );
-        SprMngr.DrawStr( Rect( IntX + ConsoleTextX, ( IntVisible ? IntY : MODE_HEIGHT ) + ConsoleTextY, MODE_WIDTH, MODE_HEIGHT ), str_to_edit, FT_NOBREAK );
+        char* buf = (char*) Str::FormatBuf( "%s", ConsoleStr.c_str() );
+        Str::Insert( &buf[ ConsoleCur ], Timer::FastTick() % 800 < 400 ? "!" : "." );
+        SprMngr.DrawStr( Rect( IntX + ConsoleTextX, ( IntVisible ? IntY : MODE_HEIGHT ) + ConsoleTextY, MODE_WIDTH, MODE_HEIGHT ), buf, FT_NOBREAK );
     }
 }
 
-void FOMapper::ConsoleKeyDown( uchar dik )
+void FOMapper::ConsoleKeyDown( uchar dik, const char* dik_text )
 {
     if( dik == DIK_RETURN || dik == DIK_NUMPADENTER )
     {
         if( ConsoleEdit )
         {
-            if( !ConsoleStr[ 0 ] )
+            if( ConsoleStr.empty() )
             {
                 ConsoleEdit = false;
             }
             else
             {
-                ConsoleHistory.push_back( string( ConsoleStr ) );
+                ConsoleHistory.push_back( ConsoleStr );
                 for( uint i = 0; i < ConsoleHistory.size() - 1; i++ )
                 {
                     if( ConsoleHistory[ i ] == ConsoleHistory[ ConsoleHistory.size() - 1 ] )
@@ -4716,21 +4689,21 @@ void FOMapper::ConsoleKeyDown( uchar dik )
                     Script::SetArgObject( sstr );
                     if( Script::RunPrepared() && Script::GetReturnedBool() )
                         process_command = false;
-                    Str::Copy( ConsoleStr, sstr->c_str() );
+                    ConsoleStr = sstr->c_std_str();
                     sstr->Release();
                 }
 
-                AddMess( ConsoleStr );
+                AddMess( ConsoleStr.c_str() );
                 if( process_command )
-                    ParseCommand( ConsoleStr );
-                ConsoleStr[ 0 ] = 0;
+                    ParseCommand( ConsoleStr.c_str() );
+                ConsoleStr = "";
                 ConsoleCur = 0;
             }
         }
         else
         {
             ConsoleEdit = true;
-            ConsoleStr[ 0 ] = 0;
+            ConsoleStr = "";
             ConsoleCur = 0;
             ConsoleHistoryCur = (int) ConsoleHistory.size();
         }
@@ -4744,25 +4717,25 @@ void FOMapper::ConsoleKeyDown( uchar dik )
         if( ConsoleHistoryCur - 1 < 0 )
             return;
         ConsoleHistoryCur--;
-        Str::Copy( ConsoleStr, ConsoleHistory[ ConsoleHistoryCur ].c_str() );
-        ConsoleCur = (int) Str::Length( ConsoleStr );
+        ConsoleStr = ConsoleHistory[ ConsoleHistoryCur ];
+        ConsoleCur = (int) ConsoleStr.length();
         return;
     case DIK_DOWN:
         if( ConsoleHistoryCur + 1 >= (int) ConsoleHistory.size() )
         {
             ConsoleHistoryCur = (int) ConsoleHistory.size();
-            Str::Copy( ConsoleStr, "" );
+            ConsoleStr = "";
             ConsoleCur = 0;
             return;
         }
         ConsoleHistoryCur++;
-        Str::Copy( ConsoleStr, ConsoleHistory[ ConsoleHistoryCur ].c_str() );
-        ConsoleCur = (int) Str::Length( ConsoleStr );
+        ConsoleStr = ConsoleHistory[ ConsoleHistoryCur ];
+        ConsoleCur = (int) ConsoleStr.length();
         return;
     default:
-        Keyb::GetChar( dik, ConsoleStr, &ConsoleCur, MAX_NET_TEXT, KIF_NO_SPEC_SYMBOLS );
-
+        Keyb::GetChar( dik, dik_text, ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS );
         ConsoleLastKey = dik;
+        ConsoleLastKeyText = dik_text;
         ConsoleKeyTick = Timer::FastTick();
         ConsoleAccelerate = 1;
         return;
@@ -4772,6 +4745,7 @@ void FOMapper::ConsoleKeyDown( uchar dik )
 void FOMapper::ConsoleKeyUp( uchar key )
 {
     ConsoleLastKey = 0;
+    ConsoleLastKeyText = "";
 }
 
 void FOMapper::ConsoleProcess()
@@ -4786,7 +4760,7 @@ void FOMapper::ConsoleProcess()
         ConsoleAccelerate = CONSOLE_MAX_ACCELERATE;
 //		if((ConsoleAccelerate*=4)>=CONSOLE_MAX_ACCELERATE) ConsoleAccelerate=CONSOLE_MAX_ACCELERATE;
 
-        Keyb::GetChar( ConsoleLastKey, ConsoleStr, &ConsoleCur, MAX_NET_TEXT, KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( ConsoleLastKey, ConsoleLastKeyText.c_str(), ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS );
     }
 }
 
@@ -5327,8 +5301,8 @@ void FOMapper::InitScriptSystem()
         { &MapperFunctions.MouseDown, "mouse_down", "bool %s(int)" },
         { &MapperFunctions.MouseUp, "mouse_up", "bool %s(int)" },
         { &MapperFunctions.MouseMove, "mouse_move", "void %s(int,int)" },
-        { &MapperFunctions.KeyDown, "key_down", "bool %s(uint8)" },
-        { &MapperFunctions.KeyUp, "key_up", "bool %s(uint8)" },
+        { &MapperFunctions.KeyDown, "key_down", "bool %s(uint8,string&)" },
+        { &MapperFunctions.KeyUp, "key_up", "bool %s(uint8,string&)" },
         { &MapperFunctions.InputLost, "input_lost", "void %s()" },
         { &MapperFunctions.CritterAnimation, "critter_animation", "string@ %s(int,uint,uint,uint,uint&,uint&,int&,int&)" },
         { &MapperFunctions.CritterAnimationSubstitute, "critter_animation_substitute", "bool %s(int,uint,uint,uint,uint&,uint&,uint&)" },
@@ -5908,6 +5882,19 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& slot_na
     se.Index = index;
     se.SlotName = Str::Duplicate( slot_name.c_str() );
     Self->SlotsExt.insert( PAIR( index, se ) );
+}
+
+uint FOMapper::SScriptFunc::Global_DecodeUTF8( ScriptString& text, uint& length )
+{
+    return Str::DecodeUTF8( text.c_str(), &length );
+}
+
+ScriptString* FOMapper::SScriptFunc::Global_EncodeUTF8( uint ucs )
+{
+    char buf[ 5 ];
+    uint len = Str::EncodeUTF8( ucs, buf );
+    buf[ len ] = 0;
+    return new ScriptString( buf );
 }
 
 ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( ScriptString& file_name, int path_type )
@@ -6659,41 +6646,49 @@ void FOMapper::SScriptFunc::Global_SetDefaultFont( int font, uint color )
 
 void FOMapper::SScriptFunc::Global_MouseClick( int x, int y, int button, int cursor )
 {
-    IntVec prev_events = Self->MouseEvents;
-    Self->MouseEvents.clear();
+    IntVec prev_events = MainWindow->MouseEvents;
+    MainWindow->MouseEvents.clear();
     int    prev_x = GameOpt.MouseX;
     int    prev_y = GameOpt.MouseY;
     int    prev_cursor = Self->CurMode;
     GameOpt.MouseX = x;
     GameOpt.MouseY = y;
     Self->CurMode = cursor;
-    Self->MouseEvents.push_back( FL_PUSH );
-    Self->MouseEvents.push_back( button );
-    Self->MouseEvents.push_back( 0 );
-    Self->MouseEvents.push_back( FL_RELEASE );
-    Self->MouseEvents.push_back( button );
-    Self->MouseEvents.push_back( 0 );
+    MainWindow->MouseEvents.push_back( FL_PUSH );
+    MainWindow->MouseEvents.push_back( button );
+    MainWindow->MouseEvents.push_back( 0 );
+    MainWindow->MouseEvents.push_back( FL_RELEASE );
+    MainWindow->MouseEvents.push_back( button );
+    MainWindow->MouseEvents.push_back( 0 );
     Self->ParseMouse();
-    Self->MouseEvents = prev_events;
+    MainWindow->MouseEvents = prev_events;
     GameOpt.MouseX = prev_x;
     GameOpt.MouseY = prev_y;
     Self->CurMode = prev_cursor;
 }
 
-void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2 )
+void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text )
 {
-    IntVec prev_events = Self->KeyboardEvents;
-    Self->KeyboardEvents.clear();
-    Self->KeyboardEvents.push_back( FL_KEYDOWN );
-    Self->KeyboardEvents.push_back( key1 );
-    Self->KeyboardEvents.push_back( FL_KEYDOWN );
-    Self->KeyboardEvents.push_back( key2 );
-    Self->KeyboardEvents.push_back( FL_KEYUP );
-    Self->KeyboardEvents.push_back( key2 );
-    Self->KeyboardEvents.push_back( FL_KEYUP );
-    Self->KeyboardEvents.push_back( key1 );
+    IntVec prev_events = MainWindow->KeyboardEvents;
+    StrVec prev_events_text = MainWindow->KeyboardEventsText;
+    MainWindow->KeyboardEvents.clear();
+    MainWindow->KeyboardEvents.push_back( FL_KEYDOWN );
+    MainWindow->KeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
+    MainWindow->KeyboardEventsText.push_back( key1_text ? key1_text->c_std_str() : "" );
+    MainWindow->KeyboardEvents.push_back( FL_KEYDOWN );
+    MainWindow->KeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
+    MainWindow->KeyboardEventsText.push_back( key2_text ? key2_text->c_std_str() : "" );
+    MainWindow->KeyboardEvents.push_back( FL_KEYUP );
+    MainWindow->KeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
+    MainWindow->KeyboardEventsText.push_back( key1_text ? key1_text->c_std_str() : "" );
+    MainWindow->KeyboardEvents.push_back( FL_KEYUP );
+    MainWindow->KeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
+    MainWindow->KeyboardEventsText.push_back( key2_text ? key2_text->c_std_str() : "" );
     Self->ParseKeyboard();
-    Self->KeyboardEvents = prev_events;
+    MainWindow->KeyboardEvents = prev_events;
+    MainWindow->KeyboardEventsText = prev_events_text;
+    MainWindow->KeyboardEvents = prev_events;
+    MainWindow->KeyboardEventsText = prev_events_text;
 }
 
 void FOMapper::SScriptFunc::Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name )

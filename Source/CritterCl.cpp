@@ -32,7 +32,7 @@ CritterCl::CritterCl(): CrDir( 0 ), SprId( 0 ), Id( 0 ), Pid( 0 ), NameColor( 0 
 {
     Name = "";
     NameOnHead = "";
-    Str::Copy( Pass, "" );
+    Pass = "";
     memzero( Params, sizeof( Params ) );
     ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item();
     ItemSlotArmor = DefItemSlotArmor = new Item();
@@ -82,7 +82,7 @@ void CritterCl::Init()
 void CritterCl::InitForRegistration()
 {
     Name = "";
-    Str::Copy( Pass, "" );
+    Pass = "";
     BaseType = 0;
 
     memzero( Params, sizeof( Params ) );

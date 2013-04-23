@@ -50,7 +50,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 
 // Generic
 #define WORLD_START_TIME             "07:00 30:10:2246 x00"
-#define MAX_FOPATH                   ( 1024 )
+#define MAX_FOPATH                   UTF8_BUF_SIZE( 1024 )
 #define CRAFT_SEND_TIME              ( 60000 )
 #define LEXEMS_SIZE                  ( 128 )
 #define MAX_HOLO_INFO                ( 250 )
@@ -61,6 +61,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define ABC_SIZE                     ( 26 )
 #define DIRS_COUNT                   ( GameOpt.MapHexagonal ? 6 : 8 )
 #define IS_DIR_CORNER( dir )                  ( ( ( dir ) & 1 ) != 0 ) // 1, 3, 5, 7
+#define UTF8_BUF_SIZE( count )                ( ( count ) * 4 )
 
 // Script pragma bindfield sizes
 #define PROTO_ITEM_USER_DATA_SIZE    ( 500 )
@@ -295,7 +296,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 // Client parameters
 #define MAX_NAME                     ( 30 )
 #define MIN_NAME                     ( 1 )
-#define MAX_NET_TEXT                 ( 100 )
+#define MAX_CHAT_MESSAGE             ( 100 )
 #define MAX_SAY_NPC_TEXT             ( 25 )
 #define MAX_SCENERY                  ( 5000 )
 #define MAX_DIALOG_TEXT              ( MAX_FOTEXT )

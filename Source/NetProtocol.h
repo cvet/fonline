@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION                   ( 0xF0F0 ) // FOnline Protocol Version
+#define FO_PROTOCOL_VERSION                   ( 0xF0F1 ) // FOnline Protocol Version
 #define MAKE_NETMSG_HEADER( number )    ( (uint) ( ( 0xDEAD << 17 ) | ( number << 8 ) | ( 0xAA ) ) )
 #define PING_CLIENT_LIFE_TIME                 ( 15000 )  // Time to ping client life
 
@@ -28,7 +28,7 @@
 #define NETMSG_LOGIN                          MAKE_NETMSG_HEADER( 1 )
 #define NETMSG_LOGIN_SIZE                                               \
     ( sizeof( uint ) + sizeof( ushort ) + sizeof( uint ) * 8 /*UIDs*/ + \
-      MAX_NAME + PASS_HASH_SIZE + sizeof( uint ) + sizeof( uint ) * 10 /*MSG*/ + sizeof( uint ) * 14 /*Proto*/ + sizeof( uchar ) )
+      UTF8_BUF_SIZE( MAX_NAME ) + PASS_HASH_SIZE + sizeof( uint ) + sizeof( uint ) * 10 /*MSG*/ + sizeof( uint ) * 14 /*Proto*/ + sizeof( uchar ) + 100 )
 // ////////////////////////////////////////////////////////////////////////
 // Enter to game
 // Params:
@@ -47,6 +47,7 @@
 // !uint uidcalc
 // uchar default_combat_mode
 // !uint uid0
+// char[100] - reserved
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_LOGIN_SUCCESS                  MAKE_NETMSG_HEADER( 2 )
@@ -186,7 +187,7 @@
 
 #define NETMSG_SEND_COMMAND                   MAKE_NETMSG_HEADER( 21 )
 // ////////////////////////////////////////////////////////////////////////
-// текстовое сообщение
+//
 // Params:
 // uint msg_len
 // uchar cmd (see Commands in Access.h)
@@ -219,7 +220,7 @@
 
 #define NETMSG_SEND_TEXT                      MAKE_NETMSG_HEADER( 31 )
 // ////////////////////////////////////////////////////////////////////////
-// текстовое сообщение
+//
 // Params:
 // uint msg_len
 // uchar how_say (see Say types in FOdefines.h)
@@ -229,7 +230,7 @@
 
 #define NETMSG_CRITTER_TEXT                   MAKE_NETMSG_HEADER( 32 )
 // ////////////////////////////////////////////////////////////////////////
-// текст который надо нарисовать над криттером
+//
 // Params:
 // uint msg_len
 // CrID crid
@@ -245,7 +246,7 @@
     ( sizeof( uint ) + sizeof( uint ) + \
       sizeof( uchar ) + sizeof( ushort ) + sizeof( uint ) )
 // ////////////////////////////////////////////////////////////////////////
-// заготовленна€ строка
+//
 // Params:
 // CrID crid
 // uchar how_say
@@ -255,7 +256,7 @@
 
 #define NETMSG_MSG_LEX                        MAKE_NETMSG_HEADER( 34 )
 // ////////////////////////////////////////////////////////////////////////
-// заготовленна€ строка
+//
 // Params:
 // uint msg_len
 // CrID crid
@@ -283,7 +284,7 @@
     ( sizeof( uint ) + sizeof( ushort ) * 2 + \
       sizeof( uint ) + sizeof( ushort ) + sizeof( uint ) )
 // ////////////////////////////////////////////////////////////////////////
-// заготовленна€ строка
+//
 // Params:
 // ushort hx
 // ushort hy
@@ -294,7 +295,7 @@
 
 #define NETMSG_MAP_TEXT_MSG_LEX               MAKE_NETMSG_HEADER( 37 )
 // ////////////////////////////////////////////////////////////////////////
-// заготовленна€ строка
+//
 // Params:
 // uint msg_len
 // ushort hx
@@ -313,7 +314,7 @@
 #define NETMSG_DIR                            MAKE_NETMSG_HEADER( 41 )
 #define NETMSG_DIR_SIZE                       ( sizeof( uint ) + sizeof( uchar ) )
 // ////////////////////////////////////////////////////////////////////////
-// сообщение направлени€
+//
 // Params:
 // uchar dir
 // ////////////////////////////////////////////////////////////////////////
@@ -321,7 +322,7 @@
 #define NETMSG_CRITTER_DIR                    MAKE_NETMSG_HEADER( 42 )
 #define NETMSG_CRITTER_DIR_SIZE               ( sizeof( uint ) + sizeof( uint ) + sizeof( uchar ) )
 // ////////////////////////////////////////////////////////////////////////
-// направление криттера
+//
 // Params:
 // CrID id
 // uchar dir
@@ -350,7 +351,7 @@
 #define NETMSG_CRITTER_MOVE                   MAKE_NETMSG_HEADER( 45 )
 #define NETMSG_CRITTER_MOVE_SIZE              ( sizeof( uint ) + sizeof( uint ) * 2 + sizeof( ushort ) * 2 )
 // ////////////////////////////////////////////////////////////////////////
-// передача направлени€ дл€ других криттеров
+//
 // Params:
 // uint id
 // uint move_params
@@ -363,7 +364,7 @@
     ( sizeof( uint ) + sizeof( uint ) + \
       sizeof( ushort ) * 2 + sizeof( uchar ) )
 // ////////////////////////////////////////////////////////////////////////
-// сигнал о неверном положении чезена
+//
 // Params:
 // CrID crid
 // ushort hex_x
@@ -378,7 +379,7 @@
 #define NETMSG_ALL_PARAMS                     MAKE_NETMSG_HEADER( 51 )
 #define NETMSG_ALL_PARAMS_SIZE                ( sizeof( uint ) + MAX_PARAMS * sizeof( int ) )
 // ////////////////////////////////////////////////////////////////////////
-// передача параметров
+//
 // Params:
 // parameters[]
 // ////////////////////////////////////////////////////////////////////////
@@ -386,7 +387,7 @@
 #define NETMSG_PARAM                          MAKE_NETMSG_HEADER( 52 )
 #define NETMSG_PARAM_SIZE                     ( sizeof( uint ) + sizeof( ushort ) + sizeof( int ) )
 // ////////////////////////////////////////////////////////////////////////
-// передача отдельного параметра
+//
 // Params:
 // ushort num_param
 // int val
@@ -404,7 +405,7 @@
 
 #define NETMSG_SEND_LEVELUP                   MAKE_NETMSG_HEADER( 60 )
 // ////////////////////////////////////////////////////////////////////////
-// передача отдельного параметра
+//
 // Params:
 // uint msg_len
 // ushort count_skill_up
@@ -581,7 +582,7 @@
     ( sizeof( uint ) + sizeof( uchar ) + sizeof( uint ) * 2 + \
       sizeof( uint ) + sizeof( uchar ) )
 // ////////////////////////////////////////////////////////////////////////
-// берем предмет из контейнера
+//
 // Params:
 // uchar transfer_type (see Transfer types in FOdefines.h)
 // uint cont_id
@@ -651,7 +652,7 @@
     ( sizeof( uint ) + sizeof( uint ) + \
       sizeof( int ) * 2 + sizeof( bool ) )
 // ////////////////////////////////////////////////////////////////////////
-// сигнал о том что криттер производит какоето действие
+//
 // Params:
 // uint crid
 // int action
@@ -664,7 +665,7 @@
     ( sizeof( uint ) + sizeof( uint ) + \
       sizeof( uint ) * 2 + sizeof( ushort ) + sizeof( ushort ) )
 // ////////////////////////////////////////////////////////////////////////
-// сигнал о том что криттер производит какоето действие
+//
 // Params:
 // uint crid
 // uint anim2begin
@@ -786,10 +787,10 @@
     ( sizeof( uint ) + sizeof( uchar ) + \
       sizeof( uint ) + sizeof( uchar ) )
 // ////////////////////////////////////////////////////////////////////////
-// сигнал игрока о беседе
+//
 // uchar is_npc
 // uint id_talk
-// uchar answer - вариант ответа (see Answer in FOdefines.h)
+// uchar answer - see Answer in FOdefines.h
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_SAY_NPC                   MAKE_NETMSG_HEADER( 110 )
@@ -800,18 +801,18 @@
 // say about
 // uchar is_npc
 // uint id_talk
-// char str[MAX_NET_TEXT] - вариант ответа (see Answer in FOdefines.h)
+// char str[MAX_NET_TEXT] - see Answer in FOdefines.h
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_TALK_NPC                       MAKE_NETMSG_HEADER( 111 )
 // ////////////////////////////////////////////////////////////////////////
-// ответ нпц -> игроку
+//
 // uint msg_len
 // uchar is_npc
 // uint crid
-// uchar all_answers - всего вариантов ответа, если 0 - диалог закончен
-// uint main_text - текст Ќѕ÷
-// uint answ_text в кол-ве all_answers - варианты ответа
+// uchar all_answers
+// uint main_text
+// uint answ_text
 // uint talk_time
 // ushort lexems_length
 // char[lexems_length] lexems
@@ -864,7 +865,7 @@
 #define NETMSG_SEND_GET_INFO                  MAKE_NETMSG_HEADER( 116 )
 #define NETMSG_SEND_GET_TIME_SIZE             ( sizeof( uint ) )
 // ////////////////////////////////////////////////////////////////////////
-// запрос на игровое врем€
+//
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_GAME_INFO                      MAKE_NETMSG_HEADER( 117 )
@@ -906,7 +907,7 @@
     ( sizeof( uint ) + sizeof( ushort ) + \
       sizeof( int ) + sizeof( uchar ) + sizeof( uint ) * 3 )
 // ////////////////////////////////////////////////////////////////////////
-// высылаетс€ игроку команда загрузки карты
+//
 // ushort num_pid
 // int map_time
 // uchar map_rain
@@ -1008,13 +1009,13 @@
 #define NETMSG_SEND_GIVE_GLOBAL_INFO          MAKE_NETMSG_HEADER( 134 )
 #define NETMSG_SEND_GIVE_GLOBAL_INFO_SIZE     ( sizeof( uint ) )
 // ////////////////////////////////////////////////////////////////////////
-// запрос инфы по глобалу
+//
 // uchar info_flag; (see GM Info in FOdefines.h)
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_GLOBAL_INFO                    MAKE_NETMSG_HEADER( 135 )
 // ////////////////////////////////////////////////////////////////////////
-// инфа по глобалу, see LocToSend in FOdefines.h
+//
 // uint msg_len
 // uchar info_flag; (see GM info in FOdefines.h)
 // Data
@@ -1025,7 +1026,7 @@
     ( sizeof( uint ) + sizeof( uchar ) + \
       sizeof( uint ) * 2 )
 // ////////////////////////////////////////////////////////////////////////
-// управление группой
+//
 // uchar command; (see GM Rule command in FOdefines.h)
 // uint param1;
 // uint param2;

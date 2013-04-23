@@ -590,43 +590,6 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 }
 
 /************************************************************************/
-/* True chars                                                           */
-/************************************************************************/
-
-bool NameTrueChar[ 0x100 ];
-bool PassTrueChar[ 0x100 ];
-
-class InitializeTrueChar
-{
-public:
-    InitializeTrueChar()
-    {
-        for( int i = 0; i < 0x100; i++ ) NameTrueChar[ i ] = false;
-        for( int i = 0; i < 0x100; i++ ) PassTrueChar[ i ] = false;
-        const uchar name_char[] = " _.-1234567890AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZzÀàÁáÂâÃãÄäÅå¨¸ÆæÇçÈèÉéÊêËëÌìÍíÎîÏïÐðÑñÒòÓóÔôÕõÖö×÷ØøÙùÚúÛûÜüÝýÞþßÿ";
-        const uchar pass_char[] = " _-,.=[]{}?!@#$^&()|`~:;1234567890AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZzÀàÁáÂâÃãÄäÅå¨¸ÆæÇçÈèÉéÊêËëÌìÍíÎîÏïÐðÑñÒòÓóÔôÕõÖö×÷ØøÙùÚúÛûÜüÝýÞþßÿ";
-        for( int i = 0, j = sizeof( name_char ); i < j; i++ ) NameTrueChar[ name_char[ i ] ] = true;
-        for( int i = 0, j = sizeof( pass_char ); i < j; i++ ) PassTrueChar[ pass_char[ i ] ] = true;
-    }
-} InitializeTrueChar_;
-
-bool CheckUserName( const char* str )
-{
-    for( ; *str; str++ )
-        if( !NameTrueChar[ ( uchar ) * str ] )
-            return false;
-    return true;
-}
-
-bool CheckUserPass( const char* str )
-{
-    for( ; *str; str++ )
-        if( !PassTrueChar[ ( uchar ) * str ] )
-            return false;
-    return true;
-}
-
-/************************************************************************/
 /* Config file                                                          */
 /************************************************************************/
 
@@ -906,9 +869,6 @@ void GetClientOptions()
     GETOPTIONS_CHECK( GameOpt.FixedFPS, -10000, 10000, 100 );
     GameOpt.MsgboxInvert = cfg.GetInt( CLIENT_CONFIG_APP, "InvertMessBox", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.MsgboxInvert, "-InvertMessBox" );
-    GameOpt.ChangeLang = cfg.GetInt( CLIENT_CONFIG_APP, "LangChange", CHANGE_LANG_CTRL_SHIFT );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.ChangeLang, "-LangChange" );
-    GETOPTIONS_CHECK( GameOpt.ChangeLang, 0, 1, 0 );
     GameOpt.MessNotify = cfg.GetInt( CLIENT_CONFIG_APP, "WinNotify", true ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.MessNotify, "-WinNotify" );
     GameOpt.SoundNotify = cfg.GetInt( CLIENT_CONFIG_APP, "SoundNotify", false ) != 0;
@@ -1356,7 +1316,6 @@ GameOptions::GameOptions()
     PingPeriod = 2000;
     Ping = 0;
     MsgboxInvert = false;
-    ChangeLang = CHANGE_LANG_CTRL_SHIFT;
     DefaultCombatMode = COMBAT_MODE_ANY;
     MessNotify = true;
     SoundNotify = true;
@@ -1712,6 +1671,52 @@ void Thread_Sleep( uint ms ) // Used in Mutex.h as extern function
 {
     Thread::Sleep( ms );
 }
+
+/************************************************************************/
+/* FOWindow                                                             */
+/************************************************************************/
+
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+
+int FOWindow::handle( int event )
+{
+    // Keyboard
+    if( event == FL_KEYDOWN || event == FL_KEYUP )
+    {
+        KeyboardEvents.push_back( event );
+        KeyboardEvents.push_back( Fl::event_key() );
+        KeyboardEventsText.push_back( Fl::event_text() );
+        return 1;
+    }
+    else if( event == FL_PASTE )
+    {
+        KeyboardEvents.push_back( FL_KEYDOWN );
+        KeyboardEvents.push_back( 0 );
+        KeyboardEventsText.push_back( Fl::event_text() );
+        KeyboardEvents.push_back( FL_KEYUP );
+        KeyboardEvents.push_back( 0 );
+        KeyboardEventsText.push_back( Fl::event_text() );
+        return 1;
+    }
+    // Mouse
+    else if( event == FL_PUSH || event == FL_RELEASE || ( event == FL_MOUSEWHEEL && Fl::event_dy() != 0 ) )
+    {
+        MouseEvents.push_back( event );
+        MouseEvents.push_back( Fl::event_button() );
+        MouseEvents.push_back( Fl::event_dy() );
+        return 1;
+    }
+
+    // Focus
+    if( event == FL_FOCUS )
+        Focused = true;
+    if( event == FL_UNFOCUS )
+        Focused = false;
+
+    return 0;
+}
+
+#endif
 
 /************************************************************************/
 /*                                                                      */

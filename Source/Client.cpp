@@ -110,8 +110,8 @@ bool FOClient::Init()
     STATIC_ASSERT( sizeof( ProtoItem ) == 908 );
     STATIC_ASSERT( sizeof( Field ) == 76 );
     STATIC_ASSERT( sizeof( ScriptArray ) == 28 );
-    STATIC_ASSERT( offsetof( CritterCl, ItemSlotArmor ) == 4284 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1344 );
+    STATIC_ASSERT( offsetof( CritterCl, ItemSlotArmor ) == 4276 );
+    STATIC_ASSERT( sizeof( GameOptions ) == 1340 );
     STATIC_ASSERT( sizeof( SpriteInfo ) == 36 );
     STATIC_ASSERT( sizeof( Sprite ) == 112 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );
@@ -255,14 +255,14 @@ bool FOClient::Init()
 
         uint  len;
         char* str = (char*) Crypt.GetCache( "__name", len );
-        if( str && len <= MAX_NAME + 1 )
+        if( str && len <= UTF8_BUF_SIZE( MAX_NAME ) )
             GameOpt.Name = str;
         else
             fail = true;
         delete[] str;
 
         str = (char*) Crypt.GetCache( "__pass", len );
-        if( str && len <= MAX_NAME + 1 )
+        if( str && len <= UTF8_BUF_SIZE( MAX_NAME ) )
             Password = str;
         else
             fail = true;
@@ -309,6 +309,10 @@ bool FOClient::Init()
         return false;
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
 
+    // BMF to FOFNT convertation
+    if( false )
+        SprMngr.LoadFontBMF( 11111, "DefaultExt" );
+
     // Sound manager
     SndMngr.Init();
     SndMngr.SetSoundVolume( cfg.GetInt( CLIENT_CONFIG_APP, "SoundVolume", 100 ) );
@@ -341,11 +345,6 @@ bool FOClient::Init()
     // CritterCl types
     CritType::InitFromMsg( MsgInternal );
     GET_UID2( UID2 );
-
-    // Lang
-    Keyb::Lang = LANG_ENG;
-    if( Str::CompareCase( lang_name, "russ" ) )
-        Keyb::Lang = LANG_RUS;
 
     // Resource manager
     ResMngr.Refresh();
@@ -1088,9 +1087,10 @@ void FOClient::ProcessScreenEffectMirror()
 void FOClient::ParseKeyboard()
 {
     // Stop processing if window not active
-    if( !MainWindow->focused )
+    if( !MainWindow->Focused )
     {
-        KeyboardEvents.clear();
+        MainWindow->KeyboardEvents.clear();
+        MainWindow->KeyboardEventsText.clear();
         Keyb::Lost();
         Timer::StartAccelerator( ACCELERATE_NONE );
         if( Script::PrepareContext( ClientFunctions.InputLost, _FUNC_, "Game" ) )
@@ -1108,17 +1108,20 @@ void FOClient::ParseKeyboard()
     }
 
     // Get buffered data
-    if( KeyboardEvents.empty() )
+    if( MainWindow->KeyboardEvents.empty() )
         return;
-    IntVec events = KeyboardEvents;
-    KeyboardEvents.clear();
+    IntVec events = MainWindow->KeyboardEvents;
+    StrVec events_text = MainWindow->KeyboardEventsText;
+    MainWindow->KeyboardEvents.clear();
+    MainWindow->KeyboardEventsText.clear();
 
     // Process events
     for( uint i = 0; i < events.size(); i += 2 )
     {
         // Event data
-        int event = events[ i ];
-        int event_key = events[ i + 1 ];
+        int         event = events[ i ];
+        int         event_key = events[ i + 1 ];
+        const char* event_text = events_text[ i / 2 ].c_str();
 
         // Keys codes mapping
         uchar dikdw = 0;
@@ -1157,16 +1160,22 @@ void FOClient::ParseKeyboard()
         bool script_result = false;
         if( dikdw && Script::PrepareContext( ClientFunctions.KeyDown, _FUNC_, "Game" ) )
         {
+            ScriptString* event_text_script = new ScriptString( event_text );
             Script::SetArgUChar( dikdw );
+            Script::SetArgObject( event_text_script );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
+            event_text_script->Release();
         }
 
         if( dikup && Script::PrepareContext( ClientFunctions.KeyUp, _FUNC_, "Game" ) )
         {
+            ScriptString* event_text_script = new ScriptString( event_text );
             Script::SetArgUChar( dikup );
+            Script::SetArgObject( event_text_script );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
+            event_text_script->Release();
         }
 
         // Disable keyboard events
@@ -1178,39 +1187,18 @@ void FOClient::ParseKeyboard()
         }
 
         // Control keys
-        bool try_change_lang = false;
         if( dikdw == DIK_RCONTROL || dikdw == DIK_LCONTROL )
-        {
             Keyb::CtrlDwn = true;
-            try_change_lang = true;
-        }
         else if( dikdw == DIK_LMENU || dikdw == DIK_RMENU )
-        {
             Keyb::AltDwn = true;
-            try_change_lang = true;
-        }
         else if( dikdw == DIK_LSHIFT || dikdw == DIK_RSHIFT )
-        {
             Keyb::ShiftDwn = true;
-            try_change_lang = true;
-        }
         if( dikup == DIK_RCONTROL || dikup == DIK_LCONTROL )
             Keyb::CtrlDwn = false;
         else if( dikup == DIK_LMENU || dikup == DIK_RMENU )
             Keyb::AltDwn = false;
         else if( dikup == DIK_LSHIFT || dikup == DIK_RSHIFT )
             Keyb::ShiftDwn = false;
-
-        // Switch language
-        if( try_change_lang )
-        {
-            // Ctrl + Shift
-            if( Keyb::ShiftDwn && Keyb::CtrlDwn && GameOpt.ChangeLang == CHANGE_LANG_CTRL_SHIFT )
-                Keyb::Lang = ( Keyb::Lang == LANG_RUS ) ? LANG_ENG : LANG_RUS;
-            // Alt + Shift
-            if( Keyb::ShiftDwn && Keyb::AltDwn && GameOpt.ChangeLang == CHANGE_LANG_ALT_SHIFT )
-                Keyb::Lang = ( Keyb::Lang == LANG_RUS ) ? LANG_ENG : LANG_RUS;
-        }
 
         // Hotkeys
         if( !Keyb::ShiftDwn && !Keyb::AltDwn && !Keyb::CtrlDwn )
@@ -1453,7 +1441,7 @@ void FOClient::ParseKeyboard()
         // Wait mode
         if( IsCurMode( CUR_WAIT ) )
         {
-            ConsoleKeyDown( dikdw );
+            ConsoleKeyDown( dikdw, event_text );
             continue;
         }
 
@@ -1471,30 +1459,30 @@ void FOClient::ParseKeyboard()
                 switch( active )
                 {
                 case SCREEN__SPLIT:
-                    SplitKeyDown( dikdw );
+                    SplitKeyDown( dikdw, event_text );
                     break;
                 case SCREEN__TIMER:
-                    TimerKeyDown( dikdw );
+                    TimerKeyDown( dikdw, event_text );
                     break;
                 case SCREEN__CHA_NAME:
-                    ChaNameKeyDown( dikdw );
+                    ChaNameKeyDown( dikdw, event_text );
                     break;
                 case SCREEN__SAY:
-                    SayKeyDown( dikdw );
+                    SayKeyDown( dikdw, event_text );
                     break;
                 case SCREEN__INPUT_BOX:
-                    IboxKeyDown( dikdw );
+                    IboxKeyDown( dikdw, event_text );
                     break;
                 case SCREEN__DIALOG:
-                    DlgKeyDown( true, dikdw );
-                    ConsoleKeyDown( dikdw );
+                    DlgKeyDown( true, dikdw, event_text );
+                    ConsoleKeyDown( dikdw, event_text );
                     break;
                 case SCREEN__BARTER:
-                    DlgKeyDown( false, dikdw );
-                    ConsoleKeyDown( dikdw );
+                    DlgKeyDown( false, dikdw, event_text );
+                    ConsoleKeyDown( dikdw, event_text );
                     break;
                 default:
-                    ConsoleKeyDown( dikdw );
+                    ConsoleKeyDown( dikdw, event_text );
                     break;
                 }
             }
@@ -1503,21 +1491,21 @@ void FOClient::ParseKeyboard()
                 switch( GetMainScreen() )
                 {
                 case SCREEN_LOGIN:
-                    LogKeyDown( dikdw );
+                    LogKeyDown( dikdw, event_text );
                     break;
                 case SCREEN_CREDITS:
                     TryExit();
                     break;
                 case SCREEN_GAME:
-                    GameKeyDown( dikdw );
+                    GameKeyDown( dikdw, event_text );
                     break;
                 case SCREEN_GLOBAL_MAP:
-                    GmapKeyDown( dikdw );
+                    GmapKeyDown( dikdw, event_text );
                     break;
                 default:
                     break;
                 }
-                ConsoleKeyDown( dikdw );
+                ConsoleKeyDown( dikdw, event_text );
             }
 
             ProcessKeybScroll( true, dikdw );
@@ -1563,9 +1551,9 @@ void FOClient::ParseMouse()
     GameOpt.MouseY = CLAMP( GameOpt.MouseY, 0, MODE_HEIGHT - 1 );
 
     // Stop processing if window not active
-    if( !MainWindow->focused )
+    if( !MainWindow->Focused )
     {
-        MouseEvents.clear();
+        MainWindow->MouseEvents.clear();
         IfaceHold = IFACE_NONE;
         Timer::StartAccelerator( ACCELERATE_NONE );
         if( Script::PrepareContext( ClientFunctions.InputLost, _FUNC_, "Game" ) )
@@ -1746,10 +1734,10 @@ void FOClient::ParseMouse()
     }
 
     // Get buffered data
-    if( MouseEvents.empty() )
+    if( MainWindow->MouseEvents.empty() )
         return;
-    IntVec events = MouseEvents;
-    MouseEvents.clear();
+    IntVec events = MainWindow->MouseEvents;
+    MainWindow->MouseEvents.clear();
 
     // Process events
     for( uint i = 0; i < events.size(); i += 3 )
@@ -3276,8 +3264,8 @@ void FOClient::NetProcess()
 
 void FOClient::Net_SendLogIn( const char* name, const char* pass )
 {
-    char name_[ MAX_NAME + 1 ] = { 0 };
-    char pass_[ MAX_NAME + 1 ] = { 0 };
+    char name_[ UTF8_BUF_SIZE( MAX_NAME ) ] = { 0 };
+    char pass_[ UTF8_BUF_SIZE( MAX_NAME ) ] = { 0 };
     if( name )
         Str::Copy( name_, name );
     if( pass )
@@ -3294,7 +3282,7 @@ void FOClient::Net_SendLogIn( const char* name, const char* pass )
     Bout.SetEncryptKey( *UID4 + 12345 );
     Bin.SetEncryptKey( *UID4 + 12345 );
 
-    Bout.Push( name_, MAX_NAME );
+    Bout.Push( name_, sizeof( name_ ) );
     Bout << uid1;
     uid4 ^= uid1 * Random( 0, 432157 ) + *UID3;                                                                                                 // UID1
     char pass_hash[ PASS_HASH_SIZE ];
@@ -3324,6 +3312,9 @@ void FOClient::Net_SendLogIn( const char* name, const char* pass )
     uid3 ^= uid1 + uid3;
     uid1 |= uid3;                                                                                       // UID0
 
+    char dummy[ 100 ];
+    Bout.Push( dummy, 100 );
+
     if( !Singleplayer && name )
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_CONN_SUCCESS ) );
 }
@@ -3343,7 +3334,7 @@ void FOClient::Net_SendCreatePlayer( CritterCl* newcr )
         if( newcr->ParamsReg[ i ] && CritterCl::ParamsRegEnabled[ i ] )
             count++;
 
-    uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( ushort ) + MAX_NAME + PASS_HASH_SIZE + sizeof( count ) + ( sizeof( ushort ) + sizeof( int ) ) * count;
+    uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( ushort ) + UTF8_BUF_SIZE( MAX_NAME ) + PASS_HASH_SIZE + sizeof( count ) + ( sizeof( ushort ) + sizeof( int ) ) * count;
 
     Bout << NETMSG_CREATE_CLIENT;
     Bout << msg_len;
@@ -3354,7 +3345,7 @@ void FOClient::Net_SendCreatePlayer( CritterCl* newcr )
     Bout.SetEncryptKey( 1234567890 );
     Bin.SetEncryptKey( 1234567890 );
 
-    Bout.Push( newcr->GetName(), MAX_NAME );
+    Bout.Push( Str::FormatBuf( "%s", newcr->GetName() ), UTF8_BUF_SIZE( MAX_NAME ) );
     char pass_hash[ PASS_HASH_SIZE ];
     Crypt.ClientPassHash( newcr->GetName(), newcr->GetPass(), pass_hash );
     Bout.Push( pass_hash, PASS_HASH_SIZE );
@@ -3435,9 +3426,7 @@ void FOClient::Net_SendText( const char* send_str, uchar how_say )
     }
 
     ushort len = Str::Length( str );
-    if( len >= MAX_NET_TEXT )
-        len = MAX_NET_TEXT;
-    uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( how_say ) + sizeof( len ) + len;
+    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( how_say ) + sizeof( len ) + len;
 
     Bout << NETMSG_SEND_TEXT;
     Bout << msg_len;
@@ -3905,11 +3894,11 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     }
 
     // Player
-    char cl_name[ MAX_NAME + 1 ];
+    char cl_name[ UTF8_BUF_SIZE( MAX_NAME ) ];
     if( !is_npc )
     {
-        Bin.Pop( cl_name, MAX_NAME );
-        cl_name[ MAX_NAME ] = 0;
+        Bin.Pop( cl_name, sizeof( cl_name ) );
+        cl_name[ sizeof( cl_name ) - 1 ] = 0;
     }
 
     // Parameters
@@ -4154,7 +4143,7 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
         fstr_mb = STR_MBSHOUT;
     case SAY_SHOUT_ON_HEAD:
         fstr_cr = STR_CRSHOUT;
-        Str::Upper( fstr );
+        Str::UpperUTF8( fstr );
         break;
     case SAY_EMOTE:
         fstr_mb = STR_MBEMOTE;
@@ -4165,7 +4154,7 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
         fstr_mb = STR_MBWHISP;
     case SAY_WHISP_ON_HEAD:
         fstr_cr = STR_CRWHISP;
-        Str::Lower( fstr );
+        Str::LowerUTF8( fstr );
         break;
     case SAY_SOCIAL:
         fstr_cr = STR_CRSOCIAL;
@@ -4299,7 +4288,7 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
     if( how_say == SAY_SAY_TITLE )
         SayTitle = fstr;
     else if( how_say == SAY_SAY_TEXT )
-        Str::Copy( SayText, fstr );
+        SayText = fstr;
 
     FlashGameWindow();
 }
@@ -6277,7 +6266,7 @@ void FOClient::Net_OnFollow()
     Str::Copy( cr_name, cr ? cr->GetName() : MsgGame->GetStr( STR_FOLLOW_UNKNOWN_CRNAME ) );
     // Find map
     char map_name[ 64 ];
-    Str::Copy( map_name, map_pid ? "локальную карту" : MsgGame->GetStr( STR_FOLLOW_GMNAME ) );
+    Str::Copy( map_name, map_pid ? "local map" : MsgGame->GetStr( STR_FOLLOW_GMNAME ) );
 
     switch( FollowType )
     {
@@ -6593,7 +6582,7 @@ void FOClient::Net_OnShowScreen()
     case SHOW_SCREEN_SAY:
         ShowScreen( SCREEN__SAY );
         SayType = DIALOGSAY_TEXT;
-        SayText[ 0 ] = 0;
+        SayText = "";
         if( param )
             SayOnlyNumbers = true;
         break;
@@ -7170,8 +7159,9 @@ bool FOClient::GetCurHex( ushort& hx, ushort& hy, bool ignore_interface )
 bool FOClient::RegCheckData( CritterCl* newcr )
 {
     // Name
-    if( newcr->Name.length() < MIN_NAME || newcr->Name.length() < GameOpt.MinNameLength ||
-        newcr->Name.length() > MAX_NAME || newcr->Name.length() > GameOpt.MaxNameLength )
+    uint name_len_utf8 = Str::LengthUTF8( newcr->Name.c_str() );
+    if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
+        name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
     {
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_WRONG_NAME ) );
         return false;
@@ -7192,14 +7182,23 @@ bool FOClient::RegCheckData( CritterCl* newcr )
         }
     }
 
-    uint letters_rus = 0, letters_eng = 0;
-    for( uint i = 0, j = (uint) newcr->Name.length(); i < j; i++ )
+    if( !Str::IsValidUTF8( newcr->Name.c_str() ) )
     {
-        char c = newcr->Name.c_str()[ i ];
-        if( ( c >= 'a' && c <= 'z' ) || ( c >= 'A' && c <= 'Z' ) )
+        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_NAME_WRONG_CHARS ) );
+        return false;
+    }
+
+    uint        letters_rus = 0, letters_eng = 0;
+    const char* name = newcr->Name.c_str();
+    while( *name )
+    {
+        uint length;
+        int  ch = Str::DecodeUTF8( name, &length );
+        if( ch < 128 )
             letters_eng++;
-        else if( ( c >= 'а' && c <= 'я' ) || ( c >= 'А' && c <= 'Я' ) || c == 'ё' || c == 'Ё' )
+        else
             letters_rus++;
+        name += length;
     }
 
     if( letters_eng && letters_rus )
@@ -7209,29 +7208,24 @@ bool FOClient::RegCheckData( CritterCl* newcr )
     }
 
     uint letters_len = letters_eng + letters_rus;
-    if( Procent( (int) newcr->Name.length(), (int) letters_len ) < 70 )
+    if( Procent( (int) Str::LengthUTF8( newcr->Name.c_str() ), (int) letters_len ) < 70 )
     {
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_MANY_SYMBOLS ) );
-        return false;
-    }
-
-    if( !CheckUserName( newcr->Name.c_str() ) )
-    {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_NAME_WRONG_CHARS ) );
         return false;
     }
 
     // Password
     if( !Singleplayer )
     {
-        if( Str::Length( newcr->Pass ) < MIN_NAME || Str::Length( newcr->Pass ) < GameOpt.MinNameLength ||
-            Str::Length( newcr->Pass ) > MAX_NAME || Str::Length( newcr->Pass ) > GameOpt.MaxNameLength )
+        uint pass_len_utf8 = Str::LengthUTF8( newcr->Pass.c_str() );
+        if( pass_len_utf8 < MIN_NAME || pass_len_utf8 < GameOpt.MinNameLength ||
+            pass_len_utf8 > MAX_NAME || pass_len_utf8 > GameOpt.MaxNameLength )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_WRONG_PASS ) );
             return false;
         }
 
-        if( !CheckUserPass( newcr->Pass ) )
+        if( !Str::IsValidUTF8( newcr->Pass.c_str() ) )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_PASS_WRONG_CHARS ) );
             return false;
@@ -8607,10 +8601,10 @@ void FOClient::TryExit()
             Net_SendRefereshMe();
             break;
         case SCREEN__DIALOG:
-            DlgKeyDown( true, DIK_ESCAPE );
+            DlgKeyDown( true, DIK_ESCAPE, "" );
             break;
         case SCREEN__BARTER:
-            DlgKeyDown( false, DIK_ESCAPE );
+            DlgKeyDown( false, DIK_ESCAPE, "" );
             break;
         case SCREEN__DIALOGBOX:
             if( DlgboxType >= DIALOGBOX_ENCOUNTER_ANY && DlgboxType <= DIALOGBOX_ENCOUNTER_TB )
@@ -8724,7 +8718,7 @@ void FOClient::DropScroll()
 
 bool FOClient::IsCurInWindow()
 {
-    if( !MainWindow->focused )
+    if( !MainWindow->Focused )
         return false;
 
     if( !GameOpt.FullScreen )
@@ -8742,7 +8736,7 @@ bool FOClient::IsCurInWindow()
 
 void FOClient::FlashGameWindow()
 {
-    if( MainWindow->focused )
+    if( MainWindow->Focused )
         return;
 
     #ifdef FO_WINDOWS
@@ -8876,8 +8870,8 @@ void FOClient::ParseIntellectWords( char* words, PCharPairVec& text )
     Str::SkipLine( words );
 
     bool parse_in = true;
-    char in[ 128 ] = { 0 };
-    char out[ 128 ] = { 0 };
+    char in[ MAX_FOTEXT ] = { 0 };
+    char out[ MAX_FOTEXT ] = { 0 };
 
     while( true )
     {
@@ -8930,7 +8924,7 @@ auto FOClient::FindIntellectWord( const char* word, PCharPairVec & text, Randomi
     auto end = text.end();
     for( ; it != end; ++it )
     {
-        if( Str::CompareCase( word, ( *it ).first ) )
+        if( Str::CompareCaseUTF8( word, ( *it ).first ) )
             break;
     }
 
@@ -8941,7 +8935,7 @@ auto FOClient::FindIntellectWord( const char* word, PCharPairVec & text, Randomi
         int  cnt = 0;
         for( ; it != end; ++it )
         {
-            if( Str::CompareCase( ( *it_ ).first, ( *it ).first ) )
+            if( Str::CompareCaseUTF8( ( *it_ ).first, ( *it ).first ) )
                 cnt++;
             else
                 break;
@@ -8995,9 +8989,7 @@ void FOClient::FmtTextIntellect( char* str, ushort intellect )
     char       word[ 1024 ] = { 0 };
     while( true )
     {
-        if( ( *str >= 'a' && *str <= 'z' ) || ( *str >= 'A' && *str <= 'Z' ) ||
-            ( *str >= 'а' && *str <= 'я' ) || ( *str >= 'А' && *str <= 'Я' ) ||
-            *str == 'ё' || *str == 'Ё' )
+        if( *str && ( *str < 0 || *str == 128 || ( *str >= 'a' && *str <= 'z' ) || ( *str >= 'A' && *str <= 'Z' ) ) )
         {
             strncat( word, str, 1 );
             str++;
@@ -9016,26 +9008,28 @@ void FOClient::FmtTextIntellect( char* str, ushort intellect )
             }
             else
             {
-                for( char* s = str - len; s < str; s++ )
+                for( char* s = str - len; s < str;)
                 {
                     if( rnd.Random( 1, 100 ) > symbol_proc )
                         continue;
 
-                    word[ 0 ] = *s;
-                    word[ 1 ] = 0;
+                    uint length;
+                    Str::DecodeUTF8( s, &length );
+                    strncpy( word, s, length );
+                    word[ length ] = 0;
 
                     it = FindIntellectWord( word, IntellectSymbols, rnd );
-                    if( it == IntellectSymbols.end() )
-                        continue;
+                    if( it != IntellectSymbols.end() )
+                    {
+                        uint f_len = Str::Length( ( *it ).first );
+                        uint s_len = Str::Length( ( *it ).second );
+                        Str::EraseInterval( s, f_len );
+                        Str::Insert( s, ( *it ).second );
+                        str -= f_len;
+                        str += s_len;
+                    }
 
-                    uint f_len = Str::Length( ( *it ).first );
-                    uint s_len = Str::Length( ( *it ).second );
-                    Str::EraseInterval( s, f_len );
-                    Str::Insert( s, ( *it ).second );
-                    s -= f_len;
-                    str -= f_len;
-                    s += s_len;
-                    str += s_len;
+                    s += length;
                 }
             }
             word[ 0 ] = 0;
@@ -9130,7 +9124,8 @@ bool FOClient::SaveScreenshot()
         return false;
 
     D3DXIMAGE_FILEFORMAT format = D3DXIFF_BMP;
-    char*                extension = Str::Lower( (char*) FileManager::GetExtension( screen_path ) );
+    char*                extension = (char*) FileManager::GetExtension( screen_path );
+    Str::Lower( extension );
     if( Str::Compare( extension, "jpg" ) )
         format = D3DXIFF_JPG;
     else if( Str::Compare( extension, "tga" ) )
@@ -9844,8 +9839,8 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.MouseDown, "mouse_down", "bool %s(int)" },
         { &ClientFunctions.MouseUp, "mouse_up", "bool %s(int)" },
         { &ClientFunctions.MouseMove, "mouse_move", "void %s(int,int)" },
-        { &ClientFunctions.KeyDown, "key_down", "bool %s(uint8)" },
-        { &ClientFunctions.KeyUp, "key_up", "bool %s(uint8)" },
+        { &ClientFunctions.KeyDown, "key_down", "bool %s(uint8,string&)" },
+        { &ClientFunctions.KeyUp, "key_up", "bool %s(uint8,string&)" },
         { &ClientFunctions.InputLost, "input_lost", "void %s()" },
         { &ClientFunctions.CritterIn, "critter_in", "void %s(CritterCl&)" },
         { &ClientFunctions.CritterOut, "critter_out", "void %s(CritterCl&)" },
@@ -11295,41 +11290,47 @@ void FOClient::SScriptFunc::Global_RefreshMap( bool only_tiles, bool only_roof, 
 
 void FOClient::SScriptFunc::Global_MouseClick( int x, int y, int button, int cursor )
 {
-    IntVec prev_events = Self->MouseEvents;
-    Self->MouseEvents.clear();
+    IntVec prev_events = MainWindow->MouseEvents;
+    MainWindow->MouseEvents.clear();
     int    prev_x = GameOpt.MouseX;
     int    prev_y = GameOpt.MouseY;
     int    prev_cursor = Self->CurMode;
     GameOpt.MouseX = x;
     GameOpt.MouseY = y;
     Self->CurMode = cursor;
-    Self->MouseEvents.push_back( FL_PUSH );
-    Self->MouseEvents.push_back( button );
-    Self->MouseEvents.push_back( 0 );
-    Self->MouseEvents.push_back( FL_RELEASE );
-    Self->MouseEvents.push_back( button );
-    Self->MouseEvents.push_back( 0 );
+    MainWindow->MouseEvents.push_back( FL_PUSH );
+    MainWindow->MouseEvents.push_back( button );
+    MainWindow->MouseEvents.push_back( 0 );
+    MainWindow->MouseEvents.push_back( FL_RELEASE );
+    MainWindow->MouseEvents.push_back( button );
+    MainWindow->MouseEvents.push_back( 0 );
     Self->ParseMouse();
-    Self->MouseEvents = prev_events;
+    MainWindow->MouseEvents = prev_events;
     GameOpt.MouseX = prev_x;
     GameOpt.MouseY = prev_y;
     Self->CurMode = prev_cursor;
 }
 
-void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2 )
+void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text )
 {
-    IntVec prev_events = Self->KeyboardEvents;
-    Self->KeyboardEvents.clear();
-    Self->KeyboardEvents.push_back( FL_KEYDOWN );
-    Self->KeyboardEvents.push_back( key1 );
-    Self->KeyboardEvents.push_back( FL_KEYDOWN );
-    Self->KeyboardEvents.push_back( key2 );
-    Self->KeyboardEvents.push_back( FL_KEYUP );
-    Self->KeyboardEvents.push_back( key2 );
-    Self->KeyboardEvents.push_back( FL_KEYUP );
-    Self->KeyboardEvents.push_back( key1 );
+    IntVec prev_events = MainWindow->KeyboardEvents;
+    StrVec prev_events_text = MainWindow->KeyboardEventsText;
+    MainWindow->KeyboardEvents.clear();
+    MainWindow->KeyboardEvents.push_back( FL_KEYDOWN );
+    MainWindow->KeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
+    MainWindow->KeyboardEventsText.push_back( key1_text ? key1_text->c_std_str() : "" );
+    MainWindow->KeyboardEvents.push_back( FL_KEYDOWN );
+    MainWindow->KeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
+    MainWindow->KeyboardEventsText.push_back( key2_text ? key2_text->c_std_str() : "" );
+    MainWindow->KeyboardEvents.push_back( FL_KEYUP );
+    MainWindow->KeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
+    MainWindow->KeyboardEventsText.push_back( key1_text ? key1_text->c_std_str() : "" );
+    MainWindow->KeyboardEvents.push_back( FL_KEYUP );
+    MainWindow->KeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
+    MainWindow->KeyboardEventsText.push_back( key2_text ? key2_text->c_std_str() : "" );
     Self->ParseKeyboard();
-    Self->KeyboardEvents = prev_events;
+    MainWindow->KeyboardEvents = prev_events;
+    MainWindow->KeyboardEventsText = prev_events_text;
 }
 
 void FOClient::SScriptFunc::Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name )
@@ -11393,6 +11394,19 @@ void FOClient::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& ini_opt
     se.IniName = Str::Duplicate( ini_option.c_str() );
     Self->IfaceLoadRect( se.Region, se.IniName );
     Self->SlotsExt.push_back( se );
+}
+
+uint FOClient::SScriptFunc::Global_DecodeUTF8( ScriptString& text, uint& length )
+{
+    return Str::DecodeUTF8( text.c_str(), &length );
+}
+
+ScriptString* FOClient::SScriptFunc::Global_EncodeUTF8( uint ucs )
+{
+    char buf[ 5 ];
+    uint len = Str::EncodeUTF8( ucs, buf );
+    buf[ len ] = 0;
+    return new ScriptString( buf );
 }
 
 void FOClient::SScriptFunc::Global_SetRegistrationParam( uint index, bool enabled )

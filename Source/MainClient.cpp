@@ -13,7 +13,6 @@ FOClient* FOEngine = NULL;
 
 int main( int argc, char** argv )
 {
-    setlocale( LC_ALL, "Russian" );
     RestoreMainDirectory();
 
     // Threading
@@ -213,39 +212,6 @@ int main( int argc, char** argv )
     WriteLog( "FOnline finished.\n" );
     LogFinish();
     Timer::Finish();
-
-    return 0;
-}
-
-int FOWindow::handle( int event )
-{
-    if( !FOEngine || GameOpt.Quit )
-        return 0;
-
-    // Keyboard
-    if( event == FL_KEYDOWN || event == FL_KEYUP )
-    {
-        int event_key = Fl::event_key();
-        FOEngine->KeyboardEvents.push_back( event );
-        FOEngine->KeyboardEvents.push_back( event_key );
-        return 1;
-    }
-    // Mouse
-    else if( event == FL_PUSH || event == FL_RELEASE || ( event == FL_MOUSEWHEEL && Fl::event_dy() != 0 ) )
-    {
-        int event_button = Fl::event_button();
-        int event_dy = Fl::event_dy();
-        FOEngine->MouseEvents.push_back( event );
-        FOEngine->MouseEvents.push_back( event_button );
-        FOEngine->MouseEvents.push_back( event_dy );
-        return 1;
-    }
-
-    // Focus
-    if( event == FL_FOCUS )
-        MainWindow->focused = true;
-    if( event == FL_UNFOCUS )
-        MainWindow->focused = false;
 
     return 0;
 }
