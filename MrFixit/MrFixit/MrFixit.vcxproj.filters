@@ -122,6 +122,9 @@
     <ClCompile Include="..\..\Source\MsgFiles.cpp">
       <Filter>MrFixit</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\FileSystem.cpp">
+      <Filter>MrFixit</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Source\DatFile\cfile.h">
@@ -215,6 +218,9 @@
       <Filter>SHA2</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\MsgFiles.h">
+      <Filter>MrFixit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\FileSystem.h">
       <Filter>MrFixit</Filter>
     </ClInclude>
   </ItemGroup>

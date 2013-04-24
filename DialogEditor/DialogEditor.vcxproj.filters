@@ -137,6 +137,9 @@
     <ClCompile Include="..\Source\MsgFiles.cpp">
       <Filter>DialogEditor</Filter>
     </ClCompile>
+    <ClCompile Include="..\Source\FileSystem.cpp">
+      <Filter>DialogEditor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Source\Common.h">
@@ -149,9 +152,6 @@
       <Filter>DialogEditor</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\Defines.h">
-      <Filter>DialogEditor</Filter>
-    </ClInclude>
-    <ClInclude Include="DialogEditor.h">
       <Filter>DialogEditor</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\Dialogs.h">
@@ -253,9 +253,18 @@
     <ClInclude Include="..\Source\MsgFiles.h">
       <Filter>DialogEditor</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\FileSystem.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="DialogEditor.h">
+      <Filter>DialogEditor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="DialogEditor.ico">
+      <Filter>Resource</Filter>
+    </None>
+    <None Include="$this.Icon.ico">
       <Filter>Resource</Filter>
     </None>
   </ItemGroup>
@@ -265,9 +274,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="DialogEditor.resx">
-      <Filter>Resource</Filter>
-    </EmbeddedResource>
     <EmbeddedResource Include="EditAnswerNode.resx">
       <Filter>Resource</Filter>
     </EmbeddedResource>
@@ -278,6 +284,9 @@
       <Filter>Resource</Filter>
     </EmbeddedResource>
     <EmbeddedResource Include="MessBox.resx">
+      <Filter>Resource</Filter>
+    </EmbeddedResource>
+    <EmbeddedResource Include="DialogEditor.resx">
       <Filter>Resource</Filter>
     </EmbeddedResource>
   </ItemGroup>

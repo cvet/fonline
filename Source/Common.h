@@ -50,13 +50,15 @@ const char* GetLastSocketError();
 
 // FLTK
 #if defined ( FO_MSVC )
-# pragma comment( lib, "fltk.lib" )
-# pragma comment( lib, "fltkforms.lib" )
-# pragma comment( lib, "fltkgl.lib" )
-# pragma comment( lib, "fltkimages.lib" )
-# pragma comment( lib, "fltkjpeg.lib" )
-# pragma comment( lib, "fltkpng.lib" )
-# pragma comment( lib, "fltkzlib.lib" )
+# if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
+#  pragma comment( lib, "fltk.lib" )
+#  pragma comment( lib, "fltkforms.lib" )
+#  pragma comment( lib, "fltkgl.lib" )
+#  pragma comment( lib, "fltkimages.lib" )
+#  pragma comment( lib, "fltkjpeg.lib" )
+#  pragma comment( lib, "fltkpng.lib" )
+#  pragma comment( lib, "fltkzlib.lib" )
+# endif
 #elif defined ( FO_MACOSX )
 # define fl_display           glXGetCurrentDisplay()
 # define fl_window            ( (uint) fl_xid( MainWindow ) )
@@ -429,7 +431,7 @@ struct ServerScriptFunctions
 
 #endif
 /************************************************************************/
-/* Npc editor                                                           */
+/* Tools                                                                */
 /************************************************************************/
 #ifdef FONLINE_NPCEDITOR
 # include <strstream>
@@ -437,6 +439,11 @@ struct ServerScriptFunctions
 
 # define _CRT_SECURE_NO_DEPRECATE
 # define MAX_TEXT_DIALOG    ( 1000 )
+
+# define ScriptString       string
+#endif
+#ifdef FONLINE_MRFIXIT
+# define ScriptString       string
 #endif
 /************************************************************************/
 /* Game options                                                         */
@@ -868,16 +875,18 @@ extern InterprocessData SingleplayerData;
 /* Threads                                                              */
 /************************************************************************/
 
-#ifdef FO_WINDOWS
-# define PTW32_STATIC_LIB
-# include "PthreadWnd/pthread.h"
-#else
-# include <pthread.h>
-#endif
+#if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
 
-#if defined ( FO_MSVC )
-# pragma comment( lib, "pthreadVC2.lib" )
-#endif
+# ifdef FO_WINDOWS
+#  define PTW32_STATIC_LIB
+#  include "PthreadWnd/pthread.h"
+# else
+#  include <pthread.h>
+# endif
+
+# if defined ( FO_MSVC )
+#  pragma comment( lib, "pthreadVC2.lib" )
+# endif
 
 class Thread
 {
@@ -896,11 +905,11 @@ public:
     void Wait();
     void Finish();
 
-    #ifdef FO_WINDOWS
+    # ifdef FO_WINDOWS
     HANDLE GetWindowsHandle();
-    #else
+    # else
     pid_t GetPid();
-    #endif
+    # endif
 
     static uint        GetCurrentId();
     static void        SetCurrentName( const char* name );
@@ -908,6 +917,8 @@ public:
     static const char* FindName( uint thread_id );
     static void        Sleep( uint ms );
 };
+
+#endif
 
 /************************************************************************/
 /*                                                                      */

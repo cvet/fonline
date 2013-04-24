@@ -1558,6 +1558,8 @@ InterprocessData SingleplayerData;
 /* Thread                                                               */
 /************************************************************************/
 
+#if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
+
 THREAD char Thread::threadName[ 64 ] = { 0 };
 UIntStrMap  Thread::threadNames;
 Mutex       Thread::threadNamesLocker;
@@ -1609,27 +1611,27 @@ void Thread::Finish()
     isStarted = false;
 }
 
-#ifdef FO_WINDOWS
+# ifdef FO_WINDOWS
 HANDLE Thread::GetWindowsHandle()
 {
     return pthread_getw32threadhandle_np( threadId );
 }
-#endif
+# endif
 
-#ifndef FO_WINDOWS
+# ifndef FO_WINDOWS
 pid_t Thread::GetPid()
 {
     return (pid_t) threadId;
 }
-#endif
+# endif
 
 uint Thread::GetCurrentId()
 {
-    #ifdef FO_WINDOWS
+    # ifdef FO_WINDOWS
     return (uint) GetCurrentThreadId();
-    #else
+    # else
     return (uint) pthread_self();
-    #endif
+    # endif
 }
 
 void Thread::SetCurrentName( const char* name )
@@ -1656,21 +1658,23 @@ const char* Thread::FindName( uint thread_id )
 
 void Thread::Sleep( uint ms )
 {
-    #ifdef FO_WINDOWS
+    # ifdef FO_WINDOWS
     ::Sleep( ms );
-    #else
+    # else
     struct timespec req;
     req.tv_sec = ms / 1000;
     req.tv_nsec = ( ms % 1000 ) * 1000000;
     while( nanosleep( &req, &req ) == -1 && errno == EINTR )
         continue;
-    #endif
+    # endif
 }
 
 void Thread_Sleep( uint ms ) // Used in Mutex.h as extern function
 {
     Thread::Sleep( ms );
 }
+
+#endif
 
 /************************************************************************/
 /* FOWindow                                                             */

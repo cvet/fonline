@@ -110,6 +110,7 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
         return;
 
     char str_tid[ 64 ] = { 0 };
+    #if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
     if( LoggingWithThread )
     {
         const char* name = Thread::GetCurrentName();
@@ -118,6 +119,7 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
         else
             Str::Format( str_tid, "[%04u]", Thread::GetCurrentId() );
     }
+    #endif
 
     char str_time[ 64 ] = { 0 };
     if( LoggingWithTime )

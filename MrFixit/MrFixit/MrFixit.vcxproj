@@ -27,7 +27,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\sdk\Tools\MrFixit</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
@@ -41,7 +41,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>..\..\Source\StlPort\;..\..\Source\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\Source\</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4793;4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -86,6 +87,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
       </PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\..\Source\FileSystem.cpp" />
     <ClCompile Include="..\..\Source\IniParser.cpp" />
     <ClCompile Include="..\..\Source\MsgFiles.cpp" />
     <ClCompile Include="..\..\Source\SHA2\sha2.c">
@@ -201,6 +203,7 @@
     <ClInclude Include="..\..\Source\DataFile.h" />
     <ClInclude Include="..\..\Source\Defines.h" />
     <ClInclude Include="..\..\Source\FileManager.h" />
+    <ClInclude Include="..\..\Source\FileSystem.h" />
     <ClInclude Include="..\..\Source\IniParser.h" />
     <ClInclude Include="..\..\Source\MsgFiles.h" />
     <ClInclude Include="..\..\Source\SHA2\sha2.h" />
