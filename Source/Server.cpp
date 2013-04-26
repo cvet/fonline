@@ -3190,7 +3190,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
 void FOServer::SaveGameInfoFile()
 {
     // Singleplayer info
-    uint sp = ( SingleplayerSave.Valid ? 2 : 0 );
+    uint sp = ( SingleplayerSave.Valid ? SINGLEPLAYER_SAVE_LAST : 0 );
     AddWorldSaveData( &sp, sizeof( sp ) );
     if( SingleplayerSave.Valid )
     {
@@ -3233,15 +3233,27 @@ bool FOServer::LoadGameInfoFile( void* f )
     uint sp = 0;
     if( !FileRead( f, &sp, sizeof( sp ) ) )
         return false;
-    if( sp >= 1 )
+    if( sp != 0 )
     {
         WriteLog( "singleplayer..." );
 
         // Critter data
         ClientSaveData& csd = SingleplayerSave.CrData;
         csd.Clear();
-        if( !FileRead( f, csd.Name, sizeof( csd.Name ) ) )
-            return false;
+
+        if( sp >= SINGLEPLAYER_SAVE_V2 )
+        {
+            if( !FileRead( f, csd.Name, sizeof( csd.Name ) ) )
+                return false;
+        }
+        else
+        {
+            if( !FileRead( f, csd.Name, MAX_NAME + 1 ) )
+                return false;
+            for( char* name = csd.Name; *name; name++ )
+                *name = ( ( ( *name >= 'A' && *name <= 'Z' ) || ( *name >= 'a' && *name <= 'z' ) ) ? *name : 'X' );
+        }
+
         if( !FileRead( f, &csd.Data, sizeof( csd.Data ) ) )
             return false;
         if( !FileRead( f, &csd.DataExt, sizeof( csd.DataExt ) ) )
@@ -3267,7 +3279,7 @@ bool FOServer::LoadGameInfoFile( void* f )
                 return false;
         }
     }
-    SingleplayerSave.Valid = ( sp >= 1 );
+    SingleplayerSave.Valid = ( sp != 0 );
 
     // Time
     if( !FileRead( f, &GameOpt.YearStart, sizeof( GameOpt.YearStart ) ) )
