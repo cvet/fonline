@@ -77,7 +77,7 @@ object MainForm: TMainForm
     Top = 5
     Width = 260
     Height = 270
-    ActivePage = TabOther
+    ActivePage = TabGame
     TabOrder = 2
     object TabOther: TTabSheet
       Caption = 'TabOther'
@@ -241,30 +241,6 @@ object MainForm: TMainForm
           Height = 21
           Caption = 'CbAlwaysRun'
           TabOrder = 3
-        end
-      end
-      object GbLangSwitch: TGroupBox
-        Left = 3
-        Top = 124
-        Width = 246
-        Height = 43
-        Caption = 'GbLangSwitch'
-        TabOrder = 1
-        object RbCtrlShift: TRadioButton
-          Left = 13
-          Top = 17
-          Width = 102
-          Height = 17
-          Caption = 'RbCtrlShift'
-          TabOrder = 0
-        end
-        object RbAltShift: TRadioButton
-          Left = 133
-          Top = 19
-          Width = 102
-          Height = 14
-          Caption = 'RbAltShift'
-          TabOrder = 1
         end
       end
     end

@@ -100,9 +100,6 @@ __published:	// IDE-managed Components
 	TCSpinEdit *SeAnimation3dFPS;
 	TCSpinEdit *SeAnimation3dSmoothTime;
 	TCheckBox *CbAlwaysRun;
-	TGroupBox *GbLangSwitch;
-	TRadioButton *RbCtrlShift;
-	TRadioButton *RbAltShift;
 	TCSpinEdit *SeFixedFPS;
 	TLabel *LabelFixedFPS;
 	void __fastcall FormCreate(TObject *Sender);

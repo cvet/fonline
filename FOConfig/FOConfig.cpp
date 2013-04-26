@@ -147,8 +147,6 @@ void TMainForm::Serialize(bool save)
 	SE_INT(SeScrollDelay->Value,"ScrollDelay",0,100,10);
 	SE_INT(SeScrollStep->Value,"ScrollStep",4,32,12);
 	SE_INT(SeTextDelay->Value,"TextDelay",1000,30000,3000);
-	SE_RBTN(RbCtrlShift,"LangChange",0,0);
-	SE_RBTN(RbAltShift,"LangChange",1,0);
 	SE_BOOL(CbAlwaysRun->State,"AlwaysRun",0,1,0);
 	SE_COMBO(CbServerHost,"RemoteHost","localhost");
 	SE_INT(SeServerPort->Value,"RemotePort",0,0xFFFF,4000);
@@ -193,7 +191,7 @@ void TMainForm::Translate()
 {
 	if(Lang=="russ") RbRussian->Checked=true;
 	else RbEnglish->Checked=true;
-	TR_(MainForm,"FOnline конфигуратор   v2.5.1","FOnline configurator   v2.5.1");
+	TR_(MainForm,"FOnline конфигуратор   v2.5.2","FOnline configurator   v2.5.2");
 	TR_(BtnExecute,"Играть","Play");
 	TR_(BtnParse,"Сохранить","Save");
 	TR_(BtnExit,"Выход","Exit");
@@ -214,9 +212,6 @@ void TMainForm::Translate()
 	TR_(LabelScrollStep,"Шаг скроллинга","Scroll step");
 	TR_(LabelTextDelay,"Время задержки текста (мс)","Text delay (ms)");
 	TR_(CbAlwaysRun,"Постоянный бег","Always run");
-	TR_(GbLangSwitch,"Переключение раскладки","Keyboard language switch");
-	TR_(RbCtrlShift,"Ctrl + Shift","Ctrl + Shift");
-	TR_(RbAltShift,"Alt + Shift","Alt + Shift");
 	TR_(TabNet,"Сеть","Net");
 	TR_(GbServer,"Игровой сервер","Game server");
 	TR_(LabelServerHost,"Хост","Host");
