@@ -35,14 +35,17 @@ struct AnimParams
     int*            DisabledLayers;
     uint            DisabledLayersCount;
     int*            DisabledSubsets;
+    int*            DisabledSubsetsMesh;
     uint            DisabledSubsetsCount;
-    char**          TextureNames;
-    int*            TextureSubsets;
+    char**          TextureName;
+    int*            TextureMesh;
+    int*            TextureSubset;
     int*            TextureNum;
-    uint            TextureNamesCount;
+    uint            TextureCount;
     EffectInstance* EffectInst;
-    int*            EffectInstSubsets;
-    uint            EffectInstSubsetsCount;
+    int*            EffectInstMesh;
+    int*            EffectInstSubset;
+    uint            EffectInstCount;
 };
 typedef vector< AnimParams > AnimParamsVec;
 

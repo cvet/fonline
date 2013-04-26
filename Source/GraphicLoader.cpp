@@ -1004,10 +1004,12 @@ Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name, bool
         defaults = NULL;
 
     // Try find already loaded effect
+    char loaded_fname[ MAX_FOPATH ];
+    Str::Copy( loaded_fname, fname );
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         Effect* effect = *it;
-        if( Str::CompareCase( effect->Name, fname ) && Str::Compare( effect->Defines, defines ? defines : "" ) && effect->Defaults == defaults )
+        if( Str::CompareCase( effect->Name, loaded_fname ) && Str::Compare( effect->Defines, defines ? defines : "" ) && effect->Defaults == defaults )
             return effect;
     }
 
@@ -1100,7 +1102,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name, bool
     SAFEREL( errors );
 
     Effect* effect = new Effect();
-    effect->Name = Str::Duplicate( fname );
+    effect->Name = Str::Duplicate( loaded_fname );
     effect->Defines = Str::Duplicate( "" );
     effect->DXInstance = dxeffect;
     effect->EffectFlags = D3DXFX_DONOTSAVESTATE;
@@ -1454,7 +1456,7 @@ Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name, bool
     // Create effect instance
     Effect* effect = new Effect();
     memzero( effect, sizeof( Effect ) );
-    effect->Name = Str::Duplicate( fname );
+    effect->Name = Str::Duplicate( loaded_fname );
     effect->Defines = Str::Duplicate( defines ? defines : "" );
     effect->Program = program;
     effect->Passes = 1;

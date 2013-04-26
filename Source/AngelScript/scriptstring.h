@@ -4,6 +4,8 @@
 #include "angelscript.h"
 #include <string>
 
+typedef unsigned int uint;
+
 class ScriptString
 {
 public:
@@ -21,7 +23,7 @@ protected:
 
     ScriptString();
     ScriptString( const ScriptString& other );
-    ScriptString( const char* s, unsigned int len );
+    ScriptString( const char* s, uint len );
     ScriptString( const char* s );
     ScriptString( const std::string& s );
 
@@ -62,19 +64,30 @@ public:
         return *this;
     }
 
-    virtual void assign( const char* buf, size_t count );
+    virtual void assign( const char* buf, uint count );
     virtual void assign( const char* buf );
-    virtual void append( const char* buf, size_t count );
+    virtual void append( const char* buf, uint count );
     virtual void append( const char* buf );
-    virtual void reserve( size_t count );
-    virtual void resize( size_t count );
+    virtual void reserve( uint count );
+    virtual void rawResize( uint count );
+    virtual uint lengthUTF8() const;
+    virtual bool indexByteToUTF8( int& index, uint* length = NULL, uint offset = 0 );
 
     const char*        c_str()     const { return buffer.c_str(); }
-    size_t             length()    const { return buffer.length(); }
-    size_t             lengthUTF8();
-    size_t             capacity()  const { return buffer.capacity(); }
+    uint               length()    const { return buffer.length(); }
+    uint               capacity()  const { return buffer.capacity(); }
     const std::string& c_std_str() const { return buffer; }
     int                rcount()    const { return refCount; }
+
+    char rawGet( uint index )
+    {
+        return index < buffer.length() ? buffer[ index ] : 0;
+    }
+    void rawSet( uint index, char value )
+    {
+        if( index < buffer.length() )
+            buffer[ index ] = value;
+    }
 
 protected:
     std::string buffer;

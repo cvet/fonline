@@ -198,10 +198,19 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                     }
                     for( uint j = 0; j < link.DisabledSubsetsCount; j++ )
                     {
-                        uint mesh_ss = link.DisabledSubsets[ j ] % 100;
-                        uint mesh_num = link.DisabledSubsets[ j ] / 100;
-                        if( mesh_num < meshOpt.size() && mesh_ss < meshOpt[ mesh_num ].SubsetsCount )
-                            meshOpt[ mesh_num ].DisabledSubsets[ mesh_ss ] = true;
+                        int disabled_subsets_mesh = link.DisabledSubsetsMesh[ j ];
+                        int disabled_subsets = link.DisabledSubsets[ j ];
+                        if( disabled_subsets_mesh < 0 )
+                        {
+                            for( auto it_ = meshOpt.begin(), end_ = meshOpt.end(); it_ != end_; ++it_ )
+                                if( (uint) disabled_subsets < ( *it_ ).SubsetsCount )
+                                    ( *it_ ).DisabledSubsets[ disabled_subsets ] = true;
+                        }
+                        else if( (uint) disabled_subsets_mesh < meshOpt.size() )
+                        {
+                            if( (uint) disabled_subsets < meshOpt[ disabled_subsets_mesh ].SubsetsCount )
+                                meshOpt[ disabled_subsets_mesh ].DisabledSubsets[ disabled_subsets ] = true;
+                        }
                     }
                 }
             }
@@ -215,10 +224,19 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
             }
             for( uint j = 0; j < animLink.DisabledSubsetsCount; j++ )
             {
-                uint mesh_ss = animLink.DisabledSubsets[ j ] % 100;
-                uint mesh_num = animLink.DisabledSubsets[ j ] / 100;
-                if( mesh_num < meshOpt.size() && mesh_ss < meshOpt[ mesh_num ].SubsetsCount )
-                    meshOpt[ mesh_num ].DisabledSubsets[ mesh_ss ] = true;
+                int disabled_subsets_mesh = animLink.DisabledSubsetsMesh[ j ];
+                int disabled_subsets = animLink.DisabledSubsets[ j ];
+                if( disabled_subsets_mesh < 0 )
+                {
+                    for( auto it_ = meshOpt.begin(), end_ = meshOpt.end(); it_ != end_; ++it_ )
+                        if( (uint) disabled_subsets < ( *it_ ).SubsetsCount )
+                            ( *it_ ).DisabledSubsets[ disabled_subsets ] = true;
+                }
+                else if( (uint) disabled_subsets_mesh < meshOpt.size() )
+                {
+                    if( (uint) disabled_subsets < meshOpt[ disabled_subsets_mesh ].SubsetsCount )
+                        meshOpt[ disabled_subsets_mesh ].DisabledSubsets[ disabled_subsets ] = true;
+                }
             }
         }
 
@@ -768,20 +786,19 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
         }
     }
 
-    if( data.TextureNamesCount )
+    if( data.TextureCount )
     {
-        for( uint i = 0; i < data.TextureNamesCount; i++ )
+        for( uint i = 0; i < data.TextureCount; i++ )
         {
-            uint     mesh_num = data.TextureSubsets[ i ] / 100;
-            uint     mesh_ss = data.TextureSubsets[ i ] % 100;
             Texture* texture = NULL;
 
-            if( Str::CompareCaseCount( data.TextureNames[ i ], "Parent", 6 ) )     // ParentX-Y, X mesh number, Y mesh subset, optional
+            // Get texture
+            if( Str::CompareCaseCount( data.TextureName[ i ], "Parent", 6 ) )     // ParentX-Y, X mesh number, Y mesh subset, optional
             {
                 uint        parent_mesh_num = 0;
                 uint        parent_mesh_ss = 0;
 
-                const char* parent = data.TextureNames[ i ] + 6;
+                const char* parent = data.TextureName[ i ] + 6;
                 if( *parent && *parent != '-' )
                     parent_mesh_num = atoi( parent );
                 while( *parent && *parent != '-' )
@@ -798,23 +815,38 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
             }
             else
             {
-                texture = anim3d->animEntity->xFile->GetTexture( data.TextureNames[ i ] );
+                texture = anim3d->animEntity->xFile->GetTexture( data.TextureName[ i ] );
             }
 
-            if( data.TextureSubsets[ i ] < 0 )
+            // Assign it
+            if( data.TextureMesh[ i ] < 0 )
             {
                 for( auto it = anim3d->meshOpt.begin(), end = anim3d->meshOpt.end(); it != end; ++it )
                 {
                     MeshOptions& mopt = *it;
+                    if( data.TextureSubset[ i ] < 0 )
+                    {
+                        for( uint j = 0; j < mopt.SubsetsCount; j++ )
+                            mopt.TexSubsets[ j * EFFECT_TEXTURES + data.TextureNum[ i ] ] = texture;
+                    }
+                    else if( (uint) data.TextureSubset[ i ] < mopt.SubsetsCount )
+                    {
+                        mopt.TexSubsets[ data.TextureSubset[ i ] * EFFECT_TEXTURES + data.TextureNum[ i ] ] = texture;
+                    }
+                }
+            }
+            else if( (uint) data.TextureMesh[ i ] < anim3d->meshOpt.size() )
+            {
+                MeshOptions& mopt = anim3d->meshOpt[ data.TextureMesh[ i ] ];
+                if( data.TextureSubset[ i ] < 0 )
+                {
                     for( uint j = 0; j < mopt.SubsetsCount; j++ )
                         mopt.TexSubsets[ j * EFFECT_TEXTURES + data.TextureNum[ i ] ] = texture;
                 }
-            }
-            else if( mesh_num < anim3d->meshOpt.size() )
-            {
-                MeshOptions& mopt = anim3d->meshOpt[ mesh_num ];
-                if( mesh_ss < mopt.SubsetsCount )
-                    mopt.TexSubsets[ mesh_ss * EFFECT_TEXTURES + data.TextureNum[ i ] ] = texture;
+                else if( (uint) data.TextureSubset[ i ] < mopt.SubsetsCount )
+                {
+                    mopt.TexSubsets[ data.TextureSubset[ i ] * EFFECT_TEXTURES + data.TextureNum[ i ] ] = texture;
+                }
             }
         }
     }
@@ -829,14 +861,13 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
         }
     }
 
-    if( data.EffectInstSubsetsCount )
+    if( data.EffectInstCount )
     {
-        for( uint i = 0; i < data.EffectInstSubsetsCount; i++ )
+        for( uint i = 0; i < data.EffectInstCount; i++ )
         {
-            uint    mesh_ss = data.EffectInstSubsets[ i ] % 100;
-            uint    mesh_num = data.EffectInstSubsets[ i ] / 100;
             Effect* effect = NULL;
 
+            // Get effect
             if( Str::CompareCaseCount( data.EffectInst[ i ].EffectFilename, "Parent", 6 ) )
             {
                 uint        parent_mesh_num = 0;
@@ -862,20 +893,35 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
                 effect = anim3d->animEntity->xFile->GetEffect( &data.EffectInst[ i ] );
             }
 
-            if( data.EffectInstSubsets[ i ] < 0 )
+            // Assign it
+            if( data.EffectInstMesh[ i ] < 0 )
             {
                 for( auto it = anim3d->meshOpt.begin(), end = anim3d->meshOpt.end(); it != end; ++it )
                 {
                     MeshOptions& mopt = *it;
-                    for( uint i = 0; i < mopt.SubsetsCount; i++ )
-                        mopt.EffectSubsets[ i ] = effect;
+                    if( data.EffectInstSubset[ i ] < 0 )
+                    {
+                        for( uint j = 0; j < mopt.SubsetsCount; j++ )
+                            mopt.EffectSubsets[ j ] = effect;
+                    }
+                    else if( (uint) data.EffectInstSubset[ i ] < mopt.SubsetsCount )
+                    {
+                        mopt.EffectSubsets[ data.EffectInstSubset[ i ] ] = effect;
+                    }
                 }
             }
-            else if( mesh_num < anim3d->meshOpt.size() )
+            else if( (uint) data.EffectInstMesh[ i ] < anim3d->meshOpt.size() )
             {
-                MeshOptions& mopt = anim3d->meshOpt[ mesh_num ];
-                if( mesh_ss < mopt.SubsetsCount )
-                    mopt.EffectSubsets[ mesh_ss ] = effect;
+                MeshOptions& mopt = anim3d->meshOpt[ data.EffectInstMesh[ i ] ];
+                if( data.EffectInstSubset[ i ] < 0 )
+                {
+                    for( uint j = 0; j < mopt.SubsetsCount; j++ )
+                        mopt.EffectSubsets[ j ] = effect;
+                }
+                else if( (uint) data.EffectInstSubset[ i ] < mopt.SubsetsCount )
+                {
+                    mopt.EffectSubsets[ data.EffectInstSubset[ i ] ] = effect;
+                }
             }
         }
     }
@@ -1464,9 +1510,15 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
 
         Effect* effect;
         if( !shadow )
-            effect = ( ms.BoneInfluences > 0 ? Effect::Skinned3d : Effect::Simple3d );
+        {
+            effect = mopt->EffectSubsets[ k ];
+            if( !effect )
+                effect = ( ms.BoneInfluences > 0 ? Effect::Skinned3d : Effect::Simple3d );
+        }
         else
+        {
             effect = ( ms.BoneInfluences > 0 ? Effect::Skinned3dShadow : Effect::Simple3dShadow );
+        }
 
         GL( glUseProgram( effect->Program ) );
 
@@ -1546,7 +1598,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
             GL( glUniform3fv( effect->GroundPosition, 1, (float*) &groundPos ) );
 
         if( effect->IsNeedProcess )
-            GraphicLoader::EffectProcessVariables( effect, -1 );
+            GraphicLoader::EffectProcessVariables( effect, -1, animPosProc, animPosTime, textures );
         for( uint pass = 0; pass < effect->Passes; pass++ )
         {
             if( effect->IsNeedProcess )
@@ -1884,12 +1936,14 @@ Animation3dEntity::~Animation3dEntity()
         SAFEDELA( link.ChildFName );
         SAFEDELA( link.DisabledLayers );
         SAFEDELA( link.DisabledSubsets );
-        for( uint i = 0; i < link.TextureNamesCount; i++ )
-            SAFEDELA( link.TextureNames[ i ] );
-        SAFEDELA( link.TextureNames );
-        SAFEDELA( link.TextureSubsets );
+        SAFEDELA( link.DisabledSubsetsMesh );
+        for( uint i = 0; i < link.TextureCount; i++ )
+            SAFEDELA( link.TextureName[ i ] );
+        SAFEDELA( link.TextureName );
+        SAFEDELA( link.TextureMesh );
+        SAFEDELA( link.TextureSubset );
         SAFEDELA( link.TextureNum );
-        for( uint i = 0; i < link.EffectInstSubsetsCount; i++ )
+        for( uint i = 0; i < link.EffectInstCount; i++ )
         {
             for( uint j = 0; j < link.EffectInst[ i ].DefaultsCount; j++ )
             {
@@ -2062,7 +2116,7 @@ bool Animation3dEntity::Load( const char* name )
                     link->LayerValue = layer_val;
                 }
 
-                mesh = 0;
+                mesh = -1;
                 subset = -1;
             }
             else if( Str::CompareCase( token, "Mesh" ) )
@@ -2084,7 +2138,7 @@ bool Animation3dEntity::Load( const char* name )
                     layer_val = ConstantsManager::GetDefineValue( buf );
 
                 link = &dummy_link;
-                mesh = 0;
+                mesh = -1;
                 subset = -1;
             }
             else if( Str::CompareCase( token, "Attach" ) )
@@ -2104,7 +2158,7 @@ bool Animation3dEntity::Load( const char* name )
                 FileManager::MakeFilePath( buf, path, fname );
                 link->ChildFName = Str::Duplicate( fname );
 
-                mesh = 0;
+                mesh = -1;
                 subset = -1;
             }
             else if( Str::CompareCase( token, "Link" ) )
@@ -2266,8 +2320,7 @@ bool Animation3dEntity::Load( const char* name )
                         link->DisabledLayers = new int[ link->DisabledLayersCount + 1 ];
                         for( uint h = 0; h < link->DisabledLayersCount; h++ )
                             link->DisabledLayers[ h ] = tmp[ h ];
-                        if( tmp )
-                            delete[] tmp;
+                        SAFEDELA( tmp );
                         link->DisabledLayers[ link->DisabledLayersCount ] = layer;
                         link->DisabledLayersCount++;
                     }
@@ -2283,13 +2336,19 @@ bool Animation3dEntity::Load( const char* name )
                     int ss = ConstantsManager::GetDefineValue( subsets[ m ].c_str() );
                     if( ss >= 0 )
                     {
-                        int* tmp = link->DisabledSubsets;
+                        int* tmp1 = link->DisabledSubsets;
+                        int* tmp2 = link->DisabledSubsetsMesh;
                         link->DisabledSubsets = new int[ link->DisabledSubsetsCount + 1 ];
+                        link->DisabledSubsetsMesh = new int[ link->DisabledSubsetsCount + 1 ];
                         for( uint h = 0; h < link->DisabledSubsetsCount; h++ )
-                            link->DisabledSubsets[ h ] = tmp[ h ];
-                        if( tmp )
-                            delete[] tmp;
-                        link->DisabledSubsets[ link->DisabledSubsetsCount ] = mesh * 100 + ss;
+                        {
+                            link->DisabledSubsets[ h ] = tmp1[ h ];
+                            link->DisabledSubsetsMesh[ h ] = tmp2[ h ];
+                        }
+                        SAFEDELA( tmp1 );
+                        SAFEDELA( tmp2 );
+                        link->DisabledSubsets[ link->DisabledSubsetsCount ] = ss;
+                        link->DisabledSubsetsMesh[ link->DisabledSubsetsCount ] = mesh;
                         link->DisabledSubsetsCount++;
                     }
                 }
@@ -2301,29 +2360,30 @@ bool Animation3dEntity::Load( const char* name )
                 ( *istr ) >> buf;
                 if( index >= 0 && index < EFFECT_TEXTURES )
                 {
-                    char** tmp1 = link->TextureNames;
-                    int*   tmp2 = link->TextureSubsets;
-                    int*   tmp3 = link->TextureNum;
-                    link->TextureNames = new char*[ link->TextureNamesCount + 1 ];
-                    link->TextureSubsets = new int[ link->TextureNamesCount + 1 ];
-                    link->TextureNum = new int[ link->TextureNamesCount + 1 ];
-                    for( uint h = 0; h < link->TextureNamesCount; h++ )
+                    char** tmp1 = link->TextureName;
+                    int*   tmp2 = link->TextureMesh;
+                    int*   tmp3 = link->TextureSubset;
+                    int*   tmp4 = link->TextureNum;
+                    link->TextureName = new char*[ link->TextureCount + 1 ];
+                    link->TextureMesh = new int[ link->TextureCount + 1 ];
+                    link->TextureSubset = new int[ link->TextureCount + 1 ];
+                    link->TextureNum = new int[ link->TextureCount + 1 ];
+                    for( uint h = 0; h < link->TextureCount; h++ )
                     {
-                        link->TextureNames[ h ] = tmp1[ h ];
-                        link->TextureSubsets[ h ] = tmp2[ h ];
-                        link->TextureNum[ h ] = tmp3[ h ];
+                        link->TextureName[ h ] = tmp1[ h ];
+                        link->TextureMesh[ h ] = tmp2[ h ];
+                        link->TextureSubset[ h ] = tmp3[ h ];
+                        link->TextureNum[ h ] = tmp4[ h ];
                     }
-                    if( tmp1 )
-                        delete[] tmp1;
-                    if( tmp2 )
-                        delete[] tmp2;
-                    if( tmp3 )
-                        delete[] tmp3;
-
-                    link->TextureNames[ link->TextureNamesCount ] = Str::Duplicate( buf );
-                    link->TextureSubsets[ link->TextureNamesCount ] = mesh * 100 + subset;
-                    link->TextureNum[ link->TextureNamesCount ] = index;
-                    link->TextureNamesCount++;
+                    SAFEDELA( tmp1 );
+                    SAFEDELA( tmp2 );
+                    SAFEDELA( tmp3 );
+                    SAFEDELA( tmp4 );
+                    link->TextureName[ link->TextureCount ] = Str::Duplicate( buf );
+                    link->TextureMesh[ link->TextureCount ] = mesh;
+                    link->TextureSubset[ link->TextureCount ] = subset;
+                    link->TextureNum[ link->TextureCount ] = index;
+                    link->TextureCount++;
                 }
             }
             else if( Str::CompareCase( token, "Effect" ) )
@@ -2334,24 +2394,26 @@ bool Animation3dEntity::Load( const char* name )
                 effect_inst->EffectFilename = Str::Duplicate( buf );
 
                 EffectInstance* tmp1 = link->EffectInst;
-                int*            tmp2 = link->EffectInstSubsets;
-                link->EffectInst = new EffectInstance[ link->EffectInstSubsetsCount + 1 ];
-                link->EffectInstSubsets = new int[ link->EffectInstSubsetsCount + 1 ];
-                for( uint h = 0; h < link->EffectInstSubsetsCount; h++ )
+                int*            tmp2 = link->EffectInstMesh;
+                int*            tmp3 = link->EffectInstSubset;
+                link->EffectInst = new EffectInstance[ link->EffectInstCount + 1 ];
+                link->EffectInstMesh = new int[ link->EffectInstCount + 1 ];
+                link->EffectInstSubset = new int[ link->EffectInstCount + 1 ];
+                for( uint h = 0; h < link->EffectInstCount; h++ )
                 {
                     link->EffectInst[ h ] = tmp1[ h ];
-                    link->EffectInstSubsets[ h ] = tmp2[ h ];
+                    link->EffectInstMesh[ h ] = tmp2[ h ];
+                    link->EffectInstSubset[ h ] = tmp3[ h ];
                 }
-                if( tmp1 )
-                    delete[] tmp1;
-                if( tmp2 )
-                    delete[] tmp2;
+                SAFEDELA( tmp1 );
+                SAFEDELA( tmp2 );
+                SAFEDELA( tmp3 );
+                link->EffectInst[ link->EffectInstCount ] = *effect_inst;
+                link->EffectInstMesh[ link->EffectInstCount ] = mesh;
+                link->EffectInstSubset[ link->EffectInstCount ] = subset;
+                link->EffectInstCount++;
 
-                link->EffectInst[ link->EffectInstSubsetsCount ] = *effect_inst;
-                link->EffectInstSubsets[ link->EffectInstSubsetsCount ] = mesh * 100 + subset;
-                link->EffectInstSubsetsCount++;
-
-                cur_effect = &link->EffectInst[ link->EffectInstSubsetsCount - 1 ];
+                cur_effect = &link->EffectInst[ link->EffectInstCount - 1 ];
             }
             else if( Str::CompareCase( token, "EffDef" ) )
             {

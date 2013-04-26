@@ -398,9 +398,9 @@ int ScriptFile::ReadString( unsigned int length, ScriptString& str )
         return 0;
 
     // Read the string
-    str.resize( length );
+    str.rawResize( length );
     int size = (int) fread( (char*) str.c_str(), 1, length, file );
-    str.resize( size );
+    str.rawResize( size );
 
     return size;
 }
