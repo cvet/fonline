@@ -8989,11 +8989,14 @@ void FOClient::FmtTextIntellect( char* str, ushort intellect )
     char       word[ 1024 ] = { 0 };
     while( true )
     {
-        if( *str && ( *str < 0 || *str == 128 || ( *str >= 'a' && *str <= 'z' ) || ( *str >= 'A' && *str <= 'Z' ) ) )
+        while( *str )
         {
-            strncat( word, str, 1 );
-            str++;
-            continue;
+            uint length;
+            Str::DecodeUTF8( str, &length );
+            if( length == 1 && !( ( *str >= 'a' && *str <= 'z' ) || ( *str >= 'A' && *str <= 'Z' ) ) )
+                break;
+            strncat( word, str, length );
+            str += length;
         }
 
         uint len = Str::Length( word );
@@ -9037,7 +9040,10 @@ void FOClient::FmtTextIntellect( char* str, ushort intellect )
 
         if( *str == 0 )
             break;
-        str++;
+
+        uint length;
+        Str::DecodeUTF8( str, &length );
+        str += length;
     }
 }
 
