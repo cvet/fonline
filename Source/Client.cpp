@@ -7167,50 +7167,9 @@ bool FOClient::RegCheckData( CritterCl* newcr )
         return false;
     }
 
-    if( newcr->Name.c_str()[ 0 ] == ' ' || newcr->Name.c_str()[ newcr->Name.length() - 1 ] == ' ' )
-    {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_BEGIN_END_SPACES ) );
-        return false;
-    }
-
-    for( uint i = 0, j = (uint) newcr->Name.length() - 1; i < j; i++ )
-    {
-        if( newcr->Name.c_str()[ i ] == ' ' && newcr->Name.c_str()[ i + 1 ] == ' ' )
-        {
-            AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_TWO_SPACE ) );
-            return false;
-        }
-    }
-
     if( !Str::IsValidUTF8( newcr->Name.c_str() ) || Str::Substring( newcr->Name.c_str(), "*" ) )
     {
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_NAME_WRONG_CHARS ) );
-        return false;
-    }
-
-    uint        letters_rus = 0, letters_eng = 0;
-    const char* name = newcr->Name.c_str();
-    while( *name )
-    {
-        uint length;
-        int  ch = Str::DecodeUTF8( name, &length );
-        if( ch < 128 )
-            letters_eng++;
-        else
-            letters_rus++;
-        name += length;
-    }
-
-    if( letters_eng && letters_rus )
-    {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_DIFFERENT_LANG ) );
-        return false;
-    }
-
-    uint letters_len = letters_eng + letters_rus;
-    if( Procent( (int) Str::LengthUTF8( newcr->Name.c_str() ), (int) letters_len ) < 70 )
-    {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_MANY_SYMBOLS ) );
         return false;
     }
 
@@ -7234,17 +7193,19 @@ bool FOClient::RegCheckData( CritterCl* newcr )
 
     if( Script::PrepareContext( ClientFunctions.PlayerGenerationCheck, _FUNC_, "Registration" ) )
     {
-        ScriptArray* arr = Script::CreateArray( "int[]" );
-        if( !arr )
-            return false;
+        ScriptString* name = new ScriptString( newcr->Name );
+        ScriptArray*  arr = Script::CreateArray( "int[]" );
 
         arr->Resize( MAX_PARAMS );
         for( int i = 0; i < MAX_PARAMS; i++ )
             ( *(int*) arr->At( i ) ) = newcr->ParamsReg[ i ];
+
         bool result = false;
+        Script::SetArgObject( name );
         Script::SetArgObject( arr );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
+        name->Release();
 
         if( !result )
         {
@@ -9868,7 +9829,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.ItemCost, "item_cost", "uint %s(ItemCl&,CritterCl&,CritterCl&,bool)" },
         { &ClientFunctions.PerkCheck, "check_perk", "bool %s(CritterCl&,uint)" },
         { &ClientFunctions.PlayerGeneration, "player_data_generate", "void %s(int[]&)" },
-        { &ClientFunctions.PlayerGenerationCheck, "player_data_check", "bool %s(int[]&)" },
+        { &ClientFunctions.PlayerGenerationCheck, "player_data_check", "bool %s(string&, int[]&)" },
         { &ClientFunctions.CritterAction, "critter_action", "void %s(bool,CritterCl&,int,int,ItemCl@)" },
         { &ClientFunctions.Animation2dProcess, "animation2d_process", "void %s(bool,CritterCl&,uint,uint,ItemCl@)" },
         { &ClientFunctions.Animation3dProcess, "animation3d_process", "void %s(bool,CritterCl&,uint,uint,ItemCl@)" },

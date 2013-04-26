@@ -212,7 +212,7 @@ bool VarManager::LoadTemplateVars( const char* str, TempVarVec& vars )
     uint   var_flags;
 
     char*  buf_begin = Str::Duplicate( str );
-    Str::Replacement( buf_begin, '\r', '\n', '\n' );
+    Str::Replacement( buf_begin, '\r', ' ' );
     char*  buf = buf_begin;
 
     for( ; *buf; buf++ )

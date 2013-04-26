@@ -1503,52 +1503,6 @@ void FOServer::Process_CreateClient( Client* cl )
         return;
     }
 
-    uint name_len = Str::Length( cl->Name );
-    if( cl->Name[ 0 ] == ' ' || cl->Name[ name_len - 1 ] == ' ' )
-    {
-        cl->Send_TextMsg( cl, STR_NET_BEGIN_END_SPACES, SAY_NETMSG, TEXTMSG_GAME );
-        cl->Disconnect();
-        return;
-    }
-
-    for( int i = 0, j = name_len - 1; i < j; i++ )
-    {
-        if( cl->Name[ i ] == ' ' && cl->Name[ i + 1 ] == ' ' )
-        {
-            cl->Send_TextMsg( cl, STR_NET_TWO_SPACE, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-        }
-    }
-
-    uint        letters_rus = 0, letters_eng = 0;
-    const char* cl_name = cl->Name;
-    while( *cl_name )
-    {
-        uint length;
-        uint ucs = Str::DecodeUTF8( cl_name, &length );
-        if( ucs < 128 )
-            letters_eng++;
-        else
-            letters_rus++;
-        cl_name += length;
-    }
-
-    if( letters_eng && letters_rus )
-    {
-        cl->Send_TextMsg( cl, STR_NET_DIFFERENT_LANG, SAY_NETMSG, TEXTMSG_GAME );
-        cl->Disconnect();
-        return;
-    }
-
-    int letters_len = letters_eng + letters_rus;
-    if( Procent( name_len_utf8, letters_len ) < 70 )
-    {
-        cl->Send_TextMsg( cl, STR_NET_MANY_SYMBOLS, SAY_NETMSG, TEXTMSG_GAME );
-        cl->Disconnect();
-        return;
-    }
-
     // Check for exist
     if( !Singleplayer )
     {

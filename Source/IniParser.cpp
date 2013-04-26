@@ -34,7 +34,7 @@ bool IniParser::LoadFile( const char* fname, int path_type )
         return false;
 
     bufPtr = (char*) fm.ReleaseBuffer();
-    Str::Replacement( bufPtr, '\r', '\n', '\n' );
+    Str::Replacement( bufPtr, '\r', ' ' );
     bufLen = Str::Length( bufPtr );
     return true;
 }
@@ -49,7 +49,7 @@ bool IniParser::LoadFilePtr( const char* buf, uint len )
 
     memcpy( bufPtr, buf, len );
     bufPtr[ len ] = 0;
-    Str::Replacement( bufPtr, '\r', '\n', '\n' );
+    Str::Replacement( bufPtr, '\r', ' ' );
     bufLen = Str::Length( bufPtr );
     return true;
 }
@@ -60,7 +60,7 @@ bool IniParser::AppendToBegin( const char* fname, int path_type )
     if( !fm.LoadFile( fname, path_type ) )
         return false;
     char* buf = (char*) fm.ReleaseBuffer();
-    Str::Replacement( buf, '\r', '\n', '\n' );
+    Str::Replacement( buf, '\r', ' ' );
     uint  len = Str::Length( buf );
 
     char* grow_buf = new char[ bufLen + len + 1 ];
@@ -83,7 +83,7 @@ bool IniParser::AppendToEnd( const char* fname, int path_type )
     if( !fm.LoadFile( fname, path_type ) )
         return false;
     char* buf = (char*) fm.ReleaseBuffer();
-    Str::Replacement( buf, '\r', '\n', '\n' );
+    Str::Replacement( buf, '\r', ' ' );
     uint  len = Str::Length( buf );
 
     char* grow_buf = new char[ bufLen + len + 1 ];
@@ -105,7 +105,7 @@ bool IniParser::AppendPtrToBegin( const char* buf, uint len )
     char* grow_buf = new char[ bufLen + len + 1 ];
     memcpy( grow_buf, buf, len );
     grow_buf[ len ] = 0;
-    Str::Replacement( grow_buf, '\r', '\n', '\n' );
+    Str::Replacement( grow_buf, '\r', ' ' );
     len = Str::Length( grow_buf );
     memcpy( grow_buf + len, bufPtr, bufLen );
     grow_buf[ bufLen + len ] = 0;
