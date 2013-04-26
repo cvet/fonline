@@ -7182,7 +7182,7 @@ bool FOClient::RegCheckData( CritterCl* newcr )
         }
     }
 
-    if( !Str::IsValidUTF8( newcr->Name.c_str() ) )
+    if( !Str::IsValidUTF8( newcr->Name.c_str() ) || Str::Substring( newcr->Name.c_str(), "*" ) )
     {
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_NAME_WRONG_CHARS ) );
         return false;
@@ -7225,7 +7225,7 @@ bool FOClient::RegCheckData( CritterCl* newcr )
             return false;
         }
 
-        if( !Str::IsValidUTF8( newcr->Pass.c_str() ) )
+        if( !Str::IsValidUTF8( newcr->Pass.c_str() ) || Str::Substring( newcr->Pass.c_str(), "*" ) )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_PASS_WRONG_CHARS ) );
             return false;

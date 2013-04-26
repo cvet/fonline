@@ -93,27 +93,60 @@ void CryptManager::DecryptPassword( char* data, uint len, uint key )
     data[ len - 1 ] = 0;
 }
 
+char* ConvertUTF8ToCP1251( const char* str, uchar* buf, uint buf_len, bool to_lower )
+{
+    memzero( buf, buf_len );
+    for( uint i = 0; *str; i++ )
+    {
+        uint length;
+        uint ch = Str::DecodeUTF8( str, &length );
+        if( ch >= 1072 && 1072 <= 1103 )
+            buf[ i ] = 224 + ( ch - 1072 );
+        else if( ch >= 1040 && 1072 <= 1071 )
+            buf[ i ] = ( to_lower ? 224 : 192 ) + ( ch - 1040 );
+        else if( ch == 1105 )
+            buf[ i ] = 184;
+        else if( ch == 1025 )
+            buf[ i ] = ( to_lower ? 184 : 168 );
+        else if( length >= 4 )
+            buf[ i ] = *str ^ *( str + 1 ) ^ *( str + 2 ) ^ *( str + 3 );
+        else if( length == 3 )
+            buf[ i ] = *str ^ *( str + 1 ) ^ *( str + 2 );
+        else if( length == 2 )
+            buf[ i ] = *str ^ *( str + 1 );
+        else
+            buf[ i ] = ( to_lower ? tolower( *str ) : *str );
+        if( !buf[ i ] )
+            buf[ i ] = 0xAA;
+        str += length;
+    }
+    return (char*) buf;
+}
+
 void CryptManager::ClientPassHash( const char* name, const char* pass, char* pass_hash )
 {
-    uint  buf_size = UTF8_BUF_SIZE( MAX_NAME );
-    char* bld = new char[ buf_size ];
-    memzero( bld, buf_size );
+    // Convert utf8 to cp1251, for backward compatability with older client saves
+    uchar name_[ MAX_NAME + 1 ];
+    name = ConvertUTF8ToCP1251( name, name_, sizeof( name_ ), true );
+    uchar pass_[ MAX_NAME + 1 ];
+    pass = ConvertUTF8ToCP1251( pass, pass_, sizeof( pass_ ), false );
+
+    // Calculate hash
+    char* bld = new char[ MAX_NAME + 1 ];
+    memzero( bld, MAX_NAME + 1 );
     uint  pass_len = Str::Length( pass );
     uint  name_len = Str::Length( name );
-    if( pass_len > buf_size - 1 )
-        pass_len = buf_size - 1;
-    Str::Copy( bld, buf_size, pass );
-    if( pass_len < buf_size - 1 )
+    if( pass_len > MAX_NAME )
+        pass_len = MAX_NAME;
+    Str::Copy( bld, MAX_NAME + 1, pass );
+    if( pass_len < MAX_NAME )
         bld[ pass_len++ ] = '*';
     if( name_len )
     {
-        char* name_ = Str::Duplicate( name );
-        Str::LowerUTF8( name_ );
-        for( ; pass_len < buf_size - 1; pass_len++ )
-            bld[ pass_len ] = name_[ pass_len % name_len ];
-        delete[] name_;
+        for( ; pass_len < MAX_NAME; pass_len++ )
+            bld[ pass_len ] = name[ pass_len % name_len ];
     }
-    sha256( (const uchar*) bld, buf_size - 1, (uchar*) pass_hash );
+    sha256( (const uchar*) bld, MAX_NAME, (uchar*) pass_hash );
     delete[] bld;
 }
 

@@ -1487,7 +1487,7 @@ void FOServer::Process_CreateClient( Client* cl )
     CHECK_IN_BUFF_ERROR_EX( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ) );
 
     // Check data
-    if( !Str::IsValidUTF8( cl->Name ) )
+    if( !Str::IsValidUTF8( cl->Name ) || Str::Substring( cl->Name, "*" ) )
     {
         cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
@@ -1886,7 +1886,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             return;
         }
 
-        if( !Str::IsValidUTF8( cl->Name ) )
+        if( !Str::IsValidUTF8( cl->Name ) || Str::Substring( cl->Name, "*" ) )
         {
             // WriteLogF(_FUNC_," - Wrong chars: Name or Password, client<%s>.\n",cl->Name);
             cl->Send_TextMsg( cl, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME );

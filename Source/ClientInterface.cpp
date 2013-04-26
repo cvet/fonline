@@ -3413,7 +3413,7 @@ void FOClient::LogTryConnect()
             return;
         }
 
-        if( !Str::IsValidUTF8( GameOpt.Name.c_str() ) )
+        if( !Str::IsValidUTF8( GameOpt.Name.c_str() ) || Str::Substring( GameOpt.Name.c_str(), "*" ) )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_NAME_WRONG_CHARS ) );
             return;
@@ -3427,7 +3427,7 @@ void FOClient::LogTryConnect()
             return;
         }
 
-        if( !Str::IsValidUTF8( Password.c_str() ) )
+        if( !Str::IsValidUTF8( Password.c_str() ) || Str::Substring( Password.c_str(), "*" ) )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_PASS_WRONG_CHARS ) );
             return;
