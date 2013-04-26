@@ -77,7 +77,7 @@ object MainForm: TMainForm
     Top = 5
     Width = 260
     Height = 270
-    ActivePage = TabGame
+    ActivePage = TabOther
     TabOrder = 2
     object TabOther: TTabSheet
       Caption = 'TabOther'
