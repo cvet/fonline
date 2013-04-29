@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Tree_Item.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Tree_Item.H 9706 2012-11-06 20:46:14Z matt $"
 //
 
 #ifndef FL_TREE_ITEM_H
@@ -56,19 +56,35 @@ class FL_EXPORT Fl_Tree_Item {
   Fl_Font                 _labelfont;		// label's font face
   Fl_Fontsize             _labelsize;		// label's font size
   Fl_Color                _labelfgcolor;	// label's fg color
-  Fl_Color                _labelbgcolor;	// label's bg color
+  Fl_Color                _labelbgcolor;	// label's bg color (0xffffffff is 'transparent')
+  enum {
+    OPEN                = 1<<0,		///> item is open
+    VISIBLE             = 1<<1,		///> item is visible
+    ACTIVE              = 1<<2,		///> item is active
+    SELECTED            = 1<<3,		///> item is selected
+  };
+#if FLTK_ABI_VERSION >= 10301
+  // NEW
+  unsigned short _flags;		// misc flags
+#else /*FLTK_ABI_VERSION*/
+  // OLD: this will go away after 1.3.x
   char                    _open;		// item is open?
   char                    _visible;		// item is visible?
   char                    _active;		// item activated?
   char                    _selected;		// item selected?
+#endif /*FLTK_ABI_VERSION*/
   int                     _xywh[4];		// xywh of this widget (if visible)
-  int                     _collapse_xywh[4];	// xywh of collapse icon (if any)
+  int                     _collapse_xywh[4];	// xywh of collapse icon (if visible)
   int                     _label_xywh[4];	// xywh of label
   Fl_Widget              *_widget;		// item's label widget (optional)
   Fl_Image               *_usericon;		// item's user-specific icon (optional)
   Fl_Tree_Item_Array      _children;		// array of child items
   Fl_Tree_Item           *_parent;		// parent item (=0 if root)
   void                   *_userdata;    	// user data that can be associated with an item
+#if FLTK_ABI_VERSION >= 10301
+  Fl_Tree_Item           *_prev_sibling;	// previous sibling (same level)
+  Fl_Tree_Item           *_next_sibling;	// next sibling (same level)
+#endif /*FLTK_ABI_VERSION*/
 protected:
   void show_widgets();
   void hide_widgets();
@@ -82,6 +98,7 @@ public:
   int y() const { return(_xywh[1]); }
   int w() const { return(_xywh[2]); }
   int h() const { return(_xywh[3]); }
+  int calc_item_height(const Fl_Tree_Prefs &prefs) const;
   void draw(int X, int &Y, int W, Fl_Widget *tree, Fl_Tree_Item *itemfocus, const Fl_Tree_Prefs &prefs, int lastchild=1);
   void show_self(const char *indent = "") const;
   void label(const char *val);
@@ -126,10 +143,12 @@ public:
     return(_labelfgcolor); 
   }
   /// Set item's label background color.
+  /// A special case is made for color 0xffffffff which is treated as 'transparent'.
   void labelbgcolor(Fl_Color val) {
     _labelbgcolor = val; 
   }
   /// Return item's background text color.
+  /// If the color is 0xffffffff, it is 'transparent'.
   Fl_Color labelbgcolor() const {
     return(_labelbgcolor); 
   }
@@ -178,6 +197,7 @@ public:
   Fl_Tree_Item *next();
   Fl_Tree_Item *next_sibling();
   Fl_Tree_Item *prev_sibling();
+  void update_prev_next(int index);
   Fl_Tree_Item *next_displayed(Fl_Tree_Prefs &prefs);
   Fl_Tree_Item *prev_displayed(Fl_Tree_Prefs &prefs);
   
@@ -202,31 +222,31 @@ public:
   void close();
   /// See if the item is 'open'.
   int is_open() const {
-    return(_open?1:0);
+    return(is_flag(OPEN));
   }
   /// See if the item is 'closed'.
   int is_close() const {
-    return(_open?0:1);
+    return(is_flag(OPEN)?0:1);
   }
   /// Toggle the item's open/closed state.
   void open_toggle() {
-    _open?close():open();
+    is_open()?close():open();
   }
   /// Change the item's selection state to the optionally specified 'val'.
   /// If 'val' is not specified, the item will be selected.
   ///
   void select(int val=1) {
-    _selected = val;
+    set_flag(SELECTED, val);
   }
   /// Toggle the item's selection state.
   void select_toggle() {
     if ( is_selected() ) {
-      deselect();		// deselect if selected
+      deselect();	// deselect if selected
     } else {
       select();		// select if deselected
     }
   }
-  /// Select self and all children
+  /// Select item and all its children.
   ///     Returns count of how many items were in the 'deselected' state,
   ///     ie. how many items were "changed".
   ///
@@ -243,9 +263,9 @@ public:
   }
   /// Disable the item's selection state.
   void deselect() {
-    _selected = 0;
+    set_flag(SELECTED, 0);
   }
-  /// Deselect self and all children
+  /// Deselect item and all its children.
   ///     Returns count of how many items were in the 'selected' state,
   ///     ie. how many items were "changed".
   ///
@@ -262,7 +282,7 @@ public:
   }
   /// See if the item is selected.
   char is_selected() const {
-    return(_selected);
+    return(is_flag(SELECTED));
   }
   /// Change the item's activation state to the optionally specified 'val'.
   ///
@@ -274,7 +294,7 @@ public:
   /// If 'val' is not specified, the item will be activated.
   ///
   void activate(int val=1) {
-    _active = val;
+    set_flag(ACTIVE,val);
     if ( _widget && val != (int)_widget->active() ) {
       if ( val ) {
 	_widget->activate();
@@ -292,23 +312,27 @@ public:
   }
   /// See if the item is activated.
   char is_activated() const {
-    return(_active);
+    return(is_flag(ACTIVE));
   }
   /// See if the item is activated.
   char is_active() const {
-    return(_active);
+    return(is_activated());
+  }
+  /// See if the item is visible. Alias for is_visible().
+  int visible() const {
+    return(is_visible());
   }
   /// See if the item is visible.
-  int visible() const {
-    return(_visible ? 1 : 0);
+  int is_visible() const {
+    return(is_flag(VISIBLE));
   }
   int visible_r() const;
 
-  /// Set the user icon's image. '0' will disable.
+  /// Set the item's user icon to an Fl_Image. '0' will disable.
   void usericon(Fl_Image *val) {
     _usericon = val;
   }
-  /// Get the user icon. Returns '0' if disabled.
+  /// Get the item's user icon as an Fl_Image. Returns '0' if disabled.
   Fl_Image *usericon() const {
     return(_usericon);
   }
@@ -323,10 +347,44 @@ public:
   int is_root() const {
     return(_parent==0?1:0);
   }
+
+  // Protected methods
+protected:
+#if FLTK_ABI_VERSION >= 10301
+  /// Set a flag to an on or off value. val is 0 or 1.
+  inline void set_flag(unsigned short flag,int val) {
+    if ( val ) _flags |= flag; else _flags &= ~flag;
+  }
+  /// See if flag set. Returns 0 or 1.
+  inline int is_flag(unsigned short val) const {
+    return(_flags & val ? 1 : 0);
+  }
+#else /*FLTK_ABI_VERSION*/
+  /// Set a flag to an on or off value. val is 0 or 1.
+  void set_flag(unsigned short flag,int val) {
+    switch (flag) {
+      case     OPEN: _open     = val; break;
+      case  VISIBLE: _visible  = val; break;
+      case   ACTIVE: _active   = val; break;
+      case SELECTED: _selected = val; break;
+    }
+  }
+  /// See if flag set. Returns 0 or 1.
+  int is_flag(unsigned short flag) const {
+    switch (flag) {
+      case     OPEN: return(_open ? 1 : 0);
+      case  VISIBLE: return(_visible ? 1 : 0);
+      case   ACTIVE: return(_active ? 1 : 0);
+      case SELECTED: return(_selected ? 1 : 0);
+      default:       return(0);
+    }
+  }
+#endif /*FLTK_ABI_VERSION*/
+
 };
 
 #endif /*FL_TREE_ITEM_H*/
 
 //
-// End of "$Id: Fl_Tree_Item.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Tree_Item.H 9706 2012-11-06 20:46:14Z matt $".
 //

@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Hold_Browser.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Hold_Browser.H 9637 2012-07-24 04:37:22Z matt $"
 //
 // Hold browser header file for the Fast Light Tool Kit (FLTK).
 //
@@ -41,16 +41,11 @@ public:
     The constructor specializes Fl_Browser() by setting the type to FL_HOLD_BROWSER.
     The destructor destroys the widget and frees all memory that has been allocated.
  */
-#if defined(FL_DLL)	// implementation in src/Fl_Browser.cxx
   Fl_Hold_Browser(int X,int Y,int W,int H,const char *L=0);
-#else
-  Fl_Hold_Browser(int X,int Y,int W,int H,const char *L=0)
-	: Fl_Browser(X,Y,W,H,L) {type(FL_HOLD_BROWSER);}
-#endif
 };
 
 #endif
 
 //
-// End of "$Id: Fl_Hold_Browser.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Hold_Browser.H 9637 2012-07-24 04:37:22Z matt $".
 //

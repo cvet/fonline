@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Hor_Value_Slider.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Hor_Value_Slider.H 9637 2012-07-24 04:37:22Z matt $"
 //
 // Horizontal value slider header file for the Fast Light Tool Kit (FLTK).
 //
@@ -26,12 +26,11 @@
 
 class FL_EXPORT Fl_Hor_Value_Slider : public Fl_Value_Slider {
 public:
-    Fl_Hor_Value_Slider(int X,int Y,int W,int H,const char *l=0)
-	: Fl_Value_Slider(X,Y,W,H,l) {type(FL_HOR_SLIDER);}
+  Fl_Hor_Value_Slider(int X,int Y,int W,int H,const char *l=0);
 };
 
 #endif
 
 //
-// End of "$Id: Fl_Hor_Value_Slider.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Hor_Value_Slider.H 9637 2012-07-24 04:37:22Z matt $".
 //

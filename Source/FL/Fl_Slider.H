@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Slider.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Slider.H 9553 2012-05-28 15:39:12Z greg.ercolano $"
 //
 // Slider header file for the Fast Light Tool Kit (FLTK).
 //
@@ -35,7 +35,7 @@
 #define FL_HOR_NICE_SLIDER	5
 
 /**
-  The Fl_Slider widget contains a sliding knob inside a box. It if
+  The Fl_Slider widget contains a sliding knob inside a box. It is
   often used as a scrollbar.  Moving the box all the way to the
   top/left sets it to the minimum(), and to the bottom/right to the
   maximum().  The minimum() may be greater than the maximum() to
@@ -107,5 +107,5 @@ public:
 #endif
 
 //
-// End of "$Id: Fl_Slider.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Slider.H 9553 2012-05-28 15:39:12Z greg.ercolano $".
 //

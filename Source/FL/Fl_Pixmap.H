@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Pixmap.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Pixmap.H 9706 2012-11-06 20:46:14Z matt $"
 //
 // Pixmap header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2012 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -22,6 +22,9 @@
 #ifndef Fl_Pixmap_H
 #define Fl_Pixmap_H
 #  include "Fl_Image.H"
+#if defined(WIN32)
+#  include "x.H"
+#endif
 
 class Fl_Widget;
 struct Fl_Menu_Item;
@@ -38,10 +41,13 @@ struct Fl_Menu_Item;
 class FL_EXPORT Fl_Pixmap : public Fl_Image {
   friend class Fl_Quartz_Graphics_Driver;
   friend class Fl_GDI_Graphics_Driver;
+  friend class Fl_GDI_Printer_Graphics_Driver;
   friend class Fl_Xlib_Graphics_Driver;
   void copy_data();
   void delete_data();
   void set_data(const char * const *p);
+  int prepare(int XP, int YP, int WP, int HP, int &cx, int &cy,
+			 int &X, int &Y, int &W, int &H);
 
   protected:
 
@@ -53,6 +59,12 @@ class FL_EXPORT Fl_Pixmap : public Fl_Image {
   
   private:
 
+#if defined(WIN32)
+#if FLTK_ABI_VERSION < 10301
+  static // a static member is needed for ABI compatibility
+#endif
+  UINT pixmap_bg_color; // RGB color used for pixmap background
+#endif // WIN32
 #if defined(__APPLE__) || defined(WIN32)
   void *id_; // for internal use
   void *mask_; // for internal use (mask bitmap)
@@ -86,5 +98,5 @@ class FL_EXPORT Fl_Pixmap : public Fl_Image {
 #endif
 
 //
-// End of "$Id: Fl_Pixmap.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Pixmap.H 9706 2012-11-06 20:46:14Z matt $".
 //

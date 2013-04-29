@@ -1,9 +1,9 @@
 //
-// "$Id: x.H 9116 2011-10-02 06:25:13Z matt $"
+// "$Id: x.H 9299 2012-03-23 16:47:53Z manolo $"
 //
 // X11 header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2011 by Bill Spitzak and others.
+// Copyright 1998-2012 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -86,7 +86,7 @@ extern FL_EXPORT ulong fl_event_time;
 typedef ulong Fl_Offscreen;
 #   define fl_create_offscreen(w,h) \
   XCreatePixmap(fl_display, \
-	      (Fl_Surface_Device::surface()->class_name() == Fl_Display_Device::class_id ? \
+	      (Fl_Surface_Device::surface() == Fl_Display_Device::display_device() ? \
 	      fl_window : fl_xid(Fl::first_window()) ) , \
 	      w, h, fl_visual->depth)
 // begin/end are macros that save the old state in local variables:
@@ -160,6 +160,7 @@ public:
   void flush() {w->flush();}
   static void x(Fl_Window* wi, int X) {wi->x(X);}
   static void y(Fl_Window* wi, int Y) {wi->y(Y);}
+  static int ewmh_supported();
 };
 
 extern FL_EXPORT char fl_override_redirect; // hack into Fl_X::make_xid()
@@ -186,5 +187,5 @@ extern FL_EXPORT int fl_parse_color(const char* p, uchar& r, uchar& g, uchar& b)
 #endif
 
 //
-// End of "$Id: x.H 9116 2011-10-02 06:25:13Z matt $".
+// End of "$Id: x.H 9299 2012-03-23 16:47:53Z manolo $".
 //

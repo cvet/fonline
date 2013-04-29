@@ -1,5 +1,5 @@
 //
-// "$Id: fl_draw.H 9116 2011-10-02 06:25:13Z matt $"
+// "$Id: fl_draw.H 9463 2012-05-08 16:15:34Z greg.ercolano $"
 //
 // Portable drawing function header file for the Fast Light Tool Kit (FLTK).
 //
@@ -528,6 +528,8 @@ inline double fl_width(unsigned int c)  {return fl_graphics_driver->width(c);}
   such that a bounding box that exactly fits around the text could be drawn with
   fl_rect(x+dx, y+dy, wo, ho). Note the dx, dy values hold the offset of the first
   "colored in" pixel of the string, from the draw origin.
+
+  No FLTK symbol expansion will be performed.
 */
 FL_EXPORT void fl_text_extents(const char*, int& dx, int& dy, int& w, int& h); // NO fltk symbol expansion will be performed
 /** Determines the minimum pixel dimensions of a sequence of \p n characters.
@@ -772,5 +774,5 @@ FL_EXPORT int fl_add_symbol(const char* name, void (*drawit)(Fl_Color), int scal
 #endif
 
 //
-// End of "$Id: fl_draw.H 9116 2011-10-02 06:25:13Z matt $".
+// End of "$Id: fl_draw.H 9463 2012-05-08 16:15:34Z greg.ercolano $".
 //

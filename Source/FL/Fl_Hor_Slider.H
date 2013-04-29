@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Hor_Slider.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Hor_Slider.H 9637 2012-07-24 04:37:22Z matt $"
 //
 // Horizontal slider header file for the Fast Light Tool Kit (FLTK).
 //
@@ -35,17 +35,11 @@ public:
     Creates a new Fl_Hor_Slider widget using the given position,
     size, and label string.
   */
-
-#if defined(FL_DLL)	// implementation in src/Fl_Slider.cxx
   Fl_Hor_Slider(int X,int Y,int W,int H,const char *l=0);
-#else
-  Fl_Hor_Slider(int X,int Y,int W,int H,const char *l=0)
-    : Fl_Slider(X,Y,W,H,l) { type(FL_HOR_SLIDER); }
-#endif
 };
 
 #endif
 
 //
-// End of "$Id: Fl_Hor_Slider.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Hor_Slider.H 9637 2012-07-24 04:37:22Z matt $".
 //

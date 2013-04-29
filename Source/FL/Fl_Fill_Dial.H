@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Fill_Dial.H 9127 2011-10-04 16:42:53Z greg.ercolano $"
+// "$Id: Fl_Fill_Dial.H 9637 2012-07-24 04:37:22Z matt $"
 //
 // Filled dial header file for the Fast Light Tool Kit (FLTK).
 //
@@ -27,13 +27,12 @@
 /** Draws a dial with a filled arc */
 class FL_EXPORT Fl_Fill_Dial : public Fl_Dial {
 public:
-    /** Creates a filled dial, also setting its type to FL_FILL_DIAL. */
-    Fl_Fill_Dial(int X,int Y,int W,int H, const char *L = 0)
-	: Fl_Dial(X,Y,W,H,L) {type(FL_FILL_DIAL);}
+  /** Creates a filled dial, also setting its type to FL_FILL_DIAL. */
+  Fl_Fill_Dial(int X,int Y,int W,int H, const char *L);
 };
 
 #endif
 
 //
-// End of "$Id: Fl_Fill_Dial.H 9127 2011-10-04 16:42:53Z greg.ercolano $".
+// End of "$Id: Fl_Fill_Dial.H 9637 2012-07-24 04:37:22Z matt $".
 //

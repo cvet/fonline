@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Single_Window.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Single_Window.H 9637 2012-07-24 04:37:22Z matt $"
 //
 // Single-buffered window header file for the Fast Light Tool Kit (FLTK).
 //
@@ -40,19 +40,19 @@ public:
     Creates a new Fl_Single_Window widget using the given
     size, and label (title) string.
   */
-  Fl_Single_Window(int W, int H, const char *l=0)
-    : Fl_Window(W,H,l) {}
+  Fl_Single_Window(int W, int H, const char *l=0);
+
   /**
     Creates a new Fl_Single_Window widget using the given
     position, size, and label (title) string.
   */
-  Fl_Single_Window(int X, int Y, int W, int H, const char *l=0)
-    : Fl_Window(X,Y,W,H,l) {}
+  Fl_Single_Window(int X, int Y, int W, int H, const char *l=0);
+  
   int make_current();
 };
 
 #endif
 
 //
-// End of "$Id: Fl_Single_Window.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Single_Window.H 9637 2012-07-24 04:37:22Z matt $".
 //

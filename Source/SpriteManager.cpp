@@ -84,7 +84,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
 
     memzero( &presentParams, sizeof( presentParams ) );
     presentParams.BackBufferCount = 1;
-    presentParams.Windowed = ( GameOpt.FullScreen ? FALSE : TRUE );
+    presentParams.Windowed = TRUE;
     presentParams.SwapEffect = D3DSWAPEFFECT_DISCARD;
     presentParams.EnableAutoDepthStencil = TRUE;
     presentParams.AutoDepthStencilFormat = D3DFMT_D24S8;

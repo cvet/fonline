@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Menu_Bar.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Menu_Bar.H 9637 2012-07-24 04:37:22Z matt $"
 //
 // Menu bar header file for the Fast Light Tool Kit (FLTK).
 //
@@ -69,12 +69,11 @@ public:
     <P>The destructor removes the Fl_Menu_Bar widget and all of its
     menu items.
   */
-    Fl_Menu_Bar(int X, int Y, int W, int H,const char *l=0)
-      : Fl_Menu_(X,Y,W,H,l) {}
+  Fl_Menu_Bar(int X, int Y, int W, int H,const char *l=0);
 };
 
 #endif
 
 //
-// End of "$Id: Fl_Menu_Bar.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Menu_Bar.H 9637 2012-07-24 04:37:22Z matt $".
 //

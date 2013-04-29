@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Paged_Device.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Paged_Device.H 9706 2012-11-06 20:46:14Z matt $"
 //
 // Printing support for the Fast Light Tool Kit (FLTK).
 //
@@ -106,10 +106,16 @@ protected:
   /** \brief vertical offset to the origin of graphics coordinates */
   int y_offset;
   /** \brief The constructor */
-  Fl_Paged_Device() : Fl_Surface_Device(NULL) {};
+  Fl_Paged_Device() : Fl_Surface_Device(NULL), x_offset(0), y_offset(0) {};
+#if FLTK_ABI_VERSION >= 10301
+public:
+  /** \brief The destructor */
+  virtual ~Fl_Paged_Device() {};
+#else
   /** \brief The destructor */
   virtual ~Fl_Paged_Device() {};
 public:
+#endif // FLTK_ABI_VERSION
   static const char *class_id;
   const char *class_name() {return class_id;};
   virtual int start_job(int pagecount, int *frompage = NULL, int *topage = NULL);
@@ -139,6 +145,6 @@ public:
 #endif // Fl_Paged_Device_H
 
 //
-// End of "$Id: Fl_Paged_Device.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// End of "$Id: Fl_Paged_Device.H 9706 2012-11-06 20:46:14Z matt $"
 //
 

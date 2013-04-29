@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Sys_Menu_Bar.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Sys_Menu_Bar.H 9637 2012-07-24 04:37:22Z matt $"
 //
 // MacOS system menu bar header file for the Fast Light Tool Kit (FLTK).
 //
@@ -28,6 +28,9 @@
  @brief A class to create, modify and delete menus that appear on Mac OS X in the menu bar at the top of the screen.
  *
  * On other than Mac OS X platforms, Fl_Sys_Menu_Bar is a synonym of class Fl_Menu_Bar.
+ *
+ * You can configure a callback for the 'About' menu item to invoke your own code with fl_mac_set_about().
+ *
  */
 class FL_EXPORT Fl_Sys_Menu_Bar : public Fl_Menu_Bar {
 protected:
@@ -38,11 +41,8 @@ public:
    *
    * On Mac OS X, all arguments are unused. On other platforms they are used as by Fl_Menu_Bar::Fl_Menu_Bar().
    */
-  Fl_Sys_Menu_Bar(int x,int y,int w,int h,const char *l=0)
-      : Fl_Menu_Bar(x,y,w,h,l) {
-    deactivate();			// don't let the old area take events
-    fl_sys_menu_bar = this;
-  }
+  Fl_Sys_Menu_Bar(int x,int y,int w,int h,const char *l=0);
+  const Fl_Menu_Item *menu() const {return Fl_Menu_::menu();}
   void menu(const Fl_Menu_Item *m);
   int add(const char* label, int shortcut, Fl_Callback*, void *user_data=0, int flags=0);
   int insert(int index, const char* label, int shortcut, Fl_Callback *cb, void *user_data=0, int flags=0);
@@ -52,7 +52,7 @@ public:
   int clear_submenu(int index);
 #if ! defined(FL_DOXYGEN)
   enum menuOrItemOperation { itemAtIndex, setKeyEquivalent, setKeyEquivalentModifierMask, setState, initWithTitle,
-    numberOfItems, setSubmenu, setEnabled, addSeparatorItem, setTitle, removeItem, addNewItem, renameItem };
+    numberOfItems, setSubmenu, setEnabled, addSeparatorItem, setTitle, removeItem, addNewItem };
   // function doMenuOrItemOperation is in file Fl_cocoa.mm because it contains objective-c code
   static void *doMenuOrItemOperation( menuOrItemOperation operation, ...);
 #endif
@@ -67,5 +67,5 @@ typedef Fl_Menu_Bar Fl_Sys_Menu_Bar;
 #endif // Fl_Sys_Menu_Bar_H
 
 //
-// End of "$Id: Fl_Sys_Menu_Bar.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Sys_Menu_Bar.H 9637 2012-07-24 04:37:22Z matt $".
 //

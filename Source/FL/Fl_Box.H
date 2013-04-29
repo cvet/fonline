@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Box.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Box.H 9672 2012-08-17 09:18:06Z manolo $"
 //
 // Box header file for the Fast Light Tool Kit (FLTK).
 //
@@ -27,7 +27,7 @@
 #endif
 
 /**
-  This widget simply draws its box, and possibly it's label.  Putting it
+  This widget simply draws its box, and possibly its label.  Putting it
   before some other widgets and making it big enough to surround them
   will let you draw a frame around them.
 */
@@ -44,11 +44,10 @@ public:
     type.
     <P>The destructor removes the box.
   */
-    Fl_Box(int X, int Y, int W, int H, const char *l=0)
-	: Fl_Widget(X,Y,W,H,l) {}
+  Fl_Box(int X, int Y, int W, int H, const char *l=0);
+  
   /**    See Fl_Box::Fl_Box(int x, int y, int w, int h, const char * = 0)   */
-    Fl_Box(Fl_Boxtype b, int X, int Y, int W, int H, const char *l)
-	: Fl_Widget(X,Y,W,H,l) {box(b);}
+  Fl_Box(Fl_Boxtype b, int X, int Y, int W, int H, const char *l);
 
   virtual int handle(int);
 };
@@ -56,5 +55,5 @@ public:
 #endif
 
 //
-// End of "$Id: Fl_Box.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Box.H 9672 2012-08-17 09:18:06Z manolo $".
 //

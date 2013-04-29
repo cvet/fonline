@@ -1,5 +1,5 @@
 //
-// "$Id: mac.H 9101 2011-09-30 13:09:06Z manolo $"
+// "$Id: mac.H 9885 2013-04-16 14:02:42Z manolo $"
 //
 // Mac header file for the Fast Light Tool Kit (FLTK).
 //
@@ -25,7 +25,12 @@
 #  error "Never use <FL/mac.H> directly; include <FL/x.H> instead."
 #endif // !Fl_X_H
 
-typedef void* Window;	    // this is really a pointer to the subclass FLWindow of NSWindow
+#ifdef __OBJC__
+@class FLWindow; // a subclass of the NSWindow Cocoa class
+typedef FLWindow *Window;
+#else
+typedef class FLWindow_opaque *Window; // pointer to the FLWindow objective-c class
+#endif // __OBJC__
 
 #if !(defined(FL_LIBRARY) || defined(FL_INTERNALS)) // this part is used when compiling an application program
 #  include <FL/Fl_Widget.H>
@@ -78,7 +83,6 @@ inline void XDestroyRegion(Fl_Region r) {
     free(r);
   }
 }
-extern void *fl_system_menu;
 extern void *fl_default_cursor;
 
 // This object contains all mac-specific stuff about a window:
@@ -126,15 +130,13 @@ public:
   static CGContextRef none_cursor_image(void);
   static void *get_carbon_function(const char *name);
   static void screen_work_area(int &X, int &Y, int &W, int &H, int n); // compute work area of a given screen
+  static int next_marked_length; // next length of marked text after current marked text will have been replaced
+  static int insertion_point_location(int *px, int *py, int *pheight); // computes window coordinates & height of insertion point
 private:
   static void relink(Fl_Window*, Fl_Window*);
   bool subwindow;
 };
 
-extern struct Fl_XMap {
-  RGBColor rgb;
-  ulong pen;
-} *fl_current_xmap;
 extern Window fl_window;
 
 #endif // FL_LIBRARY || FL_INTERNALS
@@ -147,6 +149,12 @@ extern Window fl_window;
 #endif
 #ifndef MAC_OS_X_VERSION_10_6
 #define MAC_OS_X_VERSION_10_6 1060
+#endif
+#ifndef MAC_OS_X_VERSION_10_7
+#define MAC_OS_X_VERSION_10_7 1070
+#endif
+#ifndef MAC_OS_X_VERSION_10_8
+#define MAC_OS_X_VERSION_10_8 1080
 #endif
 
 typedef CGImageRef Fl_Bitmask;
@@ -171,9 +179,13 @@ extern int fl_parse_color(const char* p, uchar& r, uchar& g, uchar& b);
 extern void fl_open_display();
 
 #endif // FL_DOXYGEN
+/** \file
+ Mac OS X-specific symbols.
+ */
 
 /** \defgroup group_macosx Mac OS X-specific symbols
  Mac OS X-specific symbols declared in <FL/x.H> or <FL/gl.h>
+ \sa \ref osissues_macos
  @{ */
 
 /** @brief Register a function called for each file dropped onto an application icon.
@@ -220,6 +232,6 @@ public:
 /** @} */
 
 //
-// End of "$Id: mac.H 9101 2011-09-30 13:09:06Z manolo $".
+// End of "$Id: mac.H 9885 2013-04-16 14:02:42Z manolo $".
 //
 

@@ -52,12 +52,7 @@ const char* GetLastSocketError();
 #if defined ( FO_MSVC )
 # if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
 #  pragma comment( lib, "fltk.lib" )
-#  pragma comment( lib, "fltkforms.lib" )
 #  pragma comment( lib, "fltkgl.lib" )
-#  pragma comment( lib, "fltkimages.lib" )
-#  pragma comment( lib, "fltkjpeg.lib" )
-#  pragma comment( lib, "fltkpng.lib" )
-#  pragma comment( lib, "fltkzlib.lib" )
 # endif
 #elif defined ( FO_MACOSX )
 # define fl_display           glXGetCurrentDisplay()
@@ -192,7 +187,7 @@ struct ScoreType
 class FOWindow: public Fl_Window
 {
 public:
-    FOWindow(): Fl_Window( 0, 0, "" ), Focused( true ) {}
+    FOWindow();
     virtual ~FOWindow() {}
     virtual int handle( int event );
     bool   Focused;
@@ -236,6 +231,7 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 # include "IL/il.h"
 # pragma comment( lib, "IL.lib" )
 # pragma comment( lib, "jpeg.lib" )
+# pragma comment( lib, "libpng15.lib" )
 
 # ifdef FO_D3D
 #  define COLOR_FIX( c )                  ( c )

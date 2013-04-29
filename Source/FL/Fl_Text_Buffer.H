@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Text_Buffer.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Text_Buffer.H 9366 2012-04-21 15:05:00Z fabien $"
 //
 // Header file for Fl_Text_Buffer class.
 //
@@ -188,7 +188,7 @@ public:
   
   /**  
    Replaces the entire contents of the text buffer.
-   \param text Text must be valid utf8.
+   \param text Text must be valid utf8. if null an empty string is substituted.
    */
   void text(const char* text);
   
@@ -766,5 +766,5 @@ protected:
 #endif
 
 //
-// End of "$Id: Fl_Text_Buffer.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Text_Buffer.H 9366 2012-04-21 15:05:00Z fabien $".
 //

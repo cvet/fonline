@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Fill_Slider.H 9127 2011-10-04 16:42:53Z greg.ercolano $"
+// "$Id: Fl_Fill_Slider.H 9637 2012-07-24 04:37:22Z matt $"
 //
 // Filled slider header file for the Fast Light Tool Kit (FLTK).
 //
@@ -26,13 +26,12 @@
 /** Widget that draws a filled horizontal  slider,  useful as a progress or value meter*/
 class FL_EXPORT Fl_Fill_Slider : public Fl_Slider {
 public:
-    /** Creates the slider from its position,size and optional title. */
-    Fl_Fill_Slider(int X,int Y,int W,int H,const char *L=0)
-	: Fl_Slider(X,Y,W,H,L) {type(FL_VERT_FILL_SLIDER);}
+  /** Creates the slider from its position,size and optional title. */
+  Fl_Fill_Slider(int X,int Y,int W,int H,const char *L=0);
 };
 
 #endif
 
 //
-// End of "$Id: Fl_Fill_Slider.H 9127 2011-10-04 16:42:53Z greg.ercolano $".
+// End of "$Id: Fl_Fill_Slider.H 9637 2012-07-24 04:37:22Z matt $".
 //

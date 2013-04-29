@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Widget.H 9126 2011-10-04 13:10:55Z manolo $"
+// "$Id: Fl_Widget.H 9872 2013-04-10 21:16:16Z greg.ercolano $"
 //
 // Widget header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2012 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -170,6 +170,8 @@ protected:
         NO_OVERLAY      = 1<<15,  ///< window not using a hardware overlay plane (Fl_Menu_Window)
         GROUP_RELATIVE  = 1<<16,  ///< position this widget relative to the parent group, not to the window
         COPIED_TOOLTIP  = 1<<17,  ///< the widget tooltip is internally copied, its destruction is handled by the widget
+        FULLSCREEN      = 1<<18,  ///< a fullscreen window (Fl_Window)
+        MAC_USE_ACCENTS_MENU = 1<<19, ///< On the Mac OS platform, pressing and holding a key on the keyboard opens an accented-character menu window (Fl_Input_, Fl_Text_Editor)
         // (space for more flags)
         USERFLAG3       = 1<<29,  ///< reserved for 3rd party extensions
         USERFLAG2       = 1<<30,  ///< reserved for 3rd party extensions
@@ -843,6 +845,9 @@ public:
   static unsigned int label_shortcut(const char *t);
   /* Internal use only. */
   static int test_shortcut(const char*, const bool require_alt = false);
+  /* Internal use only. */
+  void _set_fullscreen() {flags_ |= FULLSCREEN;}
+  void _clear_fullscreen() {flags_ &= ~FULLSCREEN;}
 
   /** Checks if w is a child of this widget.
       \param[in] w potential child widget
@@ -914,12 +919,9 @@ public:
    */
   void measure_label(int& ww, int& hh) const {label_.measure(ww, hh);}
 
-  /** Returns a pointer to the primary Fl_Window widget.
-      \retval  NULL if no window is associated with this widget.  
-      \note for an Fl_Window widget, this returns its <I>parent</I> window 
-            (if any), not <I>this</I> window.
-   */
   Fl_Window* window() const ;
+  Fl_Window* top_window() const;
+  Fl_Window* top_window_offset(int& xoff, int& yoff) const;
 
   /** Returns an Fl_Group pointer if this widget is an Fl_Group.
 
@@ -972,6 +974,10 @@ public:
    */
   virtual class Fl_Gl_Window* as_gl_window() {return 0;}
   
+  /** Returns non zero if MAC_USE_ACCENTS_MENU flag is set, 0 otherwise. 
+   */
+  int use_accents_menu() { return flags() & MAC_USE_ACCENTS_MENU; }
+  
   /** For back compatibility only.
       \deprecated Use selection_color() instead.
   */
@@ -993,5 +999,5 @@ public:
 #endif
 
 //
-// End of "$Id: Fl_Widget.H 9126 2011-10-04 13:10:55Z manolo $".
+// End of "$Id: Fl_Widget.H 9872 2013-04-10 21:16:16Z greg.ercolano $".
 //

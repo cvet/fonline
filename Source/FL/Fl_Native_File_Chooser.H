@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Native_File_Chooser.H 9099 2011-09-30 10:34:42Z matt $"
+// "$Id: Fl_Native_File_Chooser.H 9825 2013-02-19 15:19:58Z manolo $"
 //
 // FLTK native OS file chooser widget
 //
@@ -38,7 +38,6 @@
 
 // Use Apple's chooser
 #ifdef __APPLE__
-#include <FL/filename.H>
 #define MAXFILTERS	80
 #endif
 
@@ -46,6 +45,8 @@
 #if ! defined(__APPLE__) && !defined(WIN32)
 #include <FL/Fl_File_Chooser.H>
 #include <unistd.h>		// _POSIX_NAME_MAX
+#else
+#include <FL/filename.H>	// FL_EXPORT
 #endif
 
 
@@ -82,6 +83,12 @@
  }
  \endcode
  
+ The Fl_Native_File_Chooser widget transmits UTF-8 encoded filenames to its user. It is
+ recommended to open files that may have non-ASCII names with the fl_fopen() or
+ fl_open() utility functions that handle these names in a cross-platform way 
+ (whereas the standard fopen()/open() functions fail on the MSWindows platform 
+ to open files with a non-ASCII name).
+ 
  <B>Platform Specific Caveats</B>
  
  - Under X windows, it's best if you call Fl_File_Icon::load_system_icons()
@@ -109,7 +116,8 @@ public:
     NO_OPTIONS     = 0x0000,		///< no options enabled
     SAVEAS_CONFIRM = 0x0001,		///< Show native 'Save As' overwrite confirm dialog (if supported)
     NEW_FOLDER     = 0x0002,		///< Show 'New Folder' icon (if supported)
-    PREVIEW        = 0x0004		///< enable preview mode
+    PREVIEW        = 0x0004,		///< enable preview mode
+    USE_FILTER_EXT = 0x0008		///< Chooser filter pilots the output file extension
   };
   /** Localizable message */
   static const char *file_exists_message;
@@ -163,7 +171,7 @@ private:
   void set_single_pathname(const char *s);
   void add_pathname(const char *s);
   
-  void FreePIDL(ITEMIDLIST *pidl);
+  void FreePIDL(LPITEMIDLIST pidl);
   void ClearOFN();
   void ClearBINF();
   void Win2Unix(char *s);
@@ -212,6 +220,7 @@ private:
   void add_filter(const char *, const char *);
   void parse_filter(const char *from);
   int post();
+  int runmodal();
 #endif
 
 #if ! defined(__APPLE__) && !defined(WIN32)
@@ -241,5 +250,5 @@ private:
 #endif /*FL_NATIVE_FILE_CHOOSER_H*/
 
 //
-// End of "$Id: Fl_Native_File_Chooser.H 9099 2011-09-30 10:34:42Z matt $".
+// End of "$Id: Fl_Native_File_Chooser.H 9825 2013-02-19 15:19:58Z manolo $".
 //

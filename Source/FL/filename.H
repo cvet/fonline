@@ -1,5 +1,5 @@
 /*
- * "$Id: filename.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+ * "$Id: filename.H 9704 2012-10-19 11:23:51Z manolo $"
  *
  * Filename header file for the Fast Light Tool Kit (FLTK).
  *
@@ -14,6 +14,9 @@
  * Please report all bugs and problems on the following page:
  *
  *     http://www.fltk.org/str.php
+ */
+/** \file
+ File names and URI utility functions.
  */
 
 /* Xcode on OS X includes files by recursing down into directories.
@@ -70,7 +73,7 @@ inline int fl_filename_relative(char *to, const char *from) { return fl_filename
 #  endif /* __cplusplus */
 
 
-#  if defined(WIN32) && !defined(__CYGWIN__) && !defined(__WATCOMC__)
+#  if defined(WIN32) && !defined(__MINGW32__) && !defined(__CYGWIN__) && !defined(__WATCOMC__)
 
 struct dirent {char d_name[1];};
 
@@ -131,6 +134,8 @@ FL_EXPORT void fl_filename_free_list(struct dirent ***l, int n);
 FL_EXPORT int	fl_open_uri(const char *uri, char *msg = (char *)0,
 		            int msglen = 0);
 
+FL_EXPORT void fl_decode_uri(char *uri);
+
 #    ifndef FL_DOXYGEN
 /*
  * _fl_filename_isdir_quick() is a private function that checks for a
@@ -167,5 +172,5 @@ int _fl_filename_isdir_quick(const char *name);
 /** @} */
 
 /*
- * End of "$Id: filename.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+ * End of "$Id: filename.H 9704 2012-10-19 11:23:51Z manolo $".
  */

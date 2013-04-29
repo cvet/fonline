@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Window.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Window.H 9872 2013-04-10 21:16:16Z greg.ercolano $"
 //
 // Window header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2012 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -49,6 +49,25 @@ class Fl_X;
 class FL_EXPORT Fl_Window : public Fl_Group {
 
   static char *default_xclass_;
+  // Note: we must use separate statements for each of the following 4 variables,
+  // with the static attribute, otherwise MS VC++ 2008/2010 complains :-(
+  // AlbrechtS 04/2012
+#if FLTK_ABI_VERSION < 10301
+  static // when these members are static, ABI compatibility with 1.3.0 is respected
+#endif
+  int no_fullscreen_x;
+#if FLTK_ABI_VERSION < 10301
+  static // when these members are static, ABI compatibility with 1.3.0 is respected
+#endif
+  int no_fullscreen_y;
+#if FLTK_ABI_VERSION < 10301
+  static // when these members are static, ABI compatibility with 1.3.0 is respected
+#endif
+  int no_fullscreen_w;
+#if FLTK_ABI_VERSION < 10301
+  static // when these members are static, ABI compatibility with 1.3.0 is respected
+#endif
+  int no_fullscreen_h;
 
   friend class Fl_X;
   Fl_X *i; // points at the system-specific stuff
@@ -65,6 +84,8 @@ class FL_EXPORT Fl_Window : public Fl_Group {
   Fl_Color cursor_fg, cursor_bg;
   void size_range_();
   void _Fl_Window(); // constructor innards
+  void fullscreen_x(); // platform-specific part of sending a window to full screen
+  void fullscreen_off_x(int X, int Y, int W, int H);// platform-specific part of leaving full screen
 
   // unimplemented copy ctor and assignment operator
   Fl_Window(const Fl_Window&);
@@ -164,7 +185,7 @@ public:
     dimensions. It is up to the application developer to verify window 
     parameters after the resize request.
   */
-  virtual void resize(int,int,int,int);
+  virtual void resize(int X,int Y,int W,int H);
   /**
     Sets whether or not the window manager border is around the
     window.  The default value is true. void border(int) can be
@@ -270,17 +291,17 @@ public:
     Sets the allowable range the user can resize this window to.
     This only works for top-level windows.
     <UL>
-    <LI>minw and minh are the smallest the window can be.
+    <LI>\p minw and \p minh are the smallest the window can be.
 	Either value must be greater than 0.</LI>
-    <LI>maxw and maxh are the largest the window can be. If either is
+    <LI>\p maxw and \p maxh are the largest the window can be. If either is
 	<I>equal</I> to the minimum then you cannot resize in that direction.
 	If either is zero  then FLTK picks a maximum size in that direction
 	such that the window will fill the screen.</LI>
-    <LI>dw and dh are size increments.  The  window will be constrained
+    <LI>\p dw and \p dh are size increments.  The  window will be constrained
 	to widths of minw + N * dw,  where N is any non-negative integer.
 	If these are less or equal to 1 they are ignored (this is ignored
 	on WIN32).</LI>
-    <LI>aspect is a flag that indicates that the window should preserve its
+    <LI>\p aspect is a flag that indicates that the window should preserve its
 	aspect ratio.  This only works if both the maximum and minimum have
 	the same aspect ratio (ignored on WIN32 and by many X window managers).
 	</LI>
@@ -302,8 +323,16 @@ public:
     It is undefined what happens if the current size does not fit in the
     constraints passed to size_range().
   */
-  void size_range(int a, int b, int c=0, int d=0, int e=0, int f=0, int g=0) {
-    minw=a; minh=b; maxw=c; maxh=d; dw=e; dh=f; aspect=g; size_range_();}
+  void size_range(int minw, int minh, int maxw=0, int maxh=0, int dw=0, int dh=0, int aspect=0) {
+    this->minw   = minw;
+    this->minh   = minh;
+    this->maxw   = maxw;
+    this->maxh   = maxh;
+    this->dw     = dw;
+    this->dh     = dh;
+    this->aspect = aspect;
+    size_range_();
+  }
 
   /** See void Fl_Window::label(const char*)   */
   const char* label() const	{return Fl_Widget::label();}
@@ -375,14 +404,26 @@ public:
   /**
     Makes the window completely fill the screen, without any window
     manager border visible.  You must use fullscreen_off() to undo
-    this. This may not work with all window managers.
+    this. 
+
+    \note On some platforms, this can result in the keyboard being
+    grabbed. The window may also be recreated, meaning hide() and
+    show() will be called.
   */
   void fullscreen();
+  /**
+    Turns off any side effects of fullscreen()
+  */
+  void fullscreen_off();
   /**
     Turns off any side effects of fullscreen() and does 
     resize(x,y,w,h).
   */
-  void fullscreen_off(int,int,int,int);
+  void fullscreen_off(int X,int Y,int W,int H);
+  /**
+    Returns non zero if FULLSCREEN flag is set, 0 otherwise. 
+  */
+  unsigned int fullscreen_active() const { return flags() & FULLSCREEN; }
   /**
     Iconifies the window.  If you call this when shown() is false
     it will show() it as an icon.  If the window is already
@@ -452,5 +493,5 @@ public:
 #endif
 
 //
-// End of "$Id: Fl_Window.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Window.H 9872 2013-04-10 21:16:16Z greg.ercolano $".
 //

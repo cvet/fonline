@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Repeat_Button.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Repeat_Button.H 9637 2012-07-24 04:37:22Z matt $"
 //
 // Repeat button header file for the Fast Light Tool Kit (FLTK).
 //
@@ -39,8 +39,8 @@ public:
     position, size, and label string. The default boxtype is FL_UP_BOX.
     Deletes the button.
   */
-  Fl_Repeat_Button(int X,int Y,int W,int H,const char *l=0)
-    : Fl_Button(X,Y,W,H,l) {}
+  Fl_Repeat_Button(int X,int Y,int W,int H,const char *l=0);
+
   void deactivate() {
     Fl::remove_timeout(repeat_callback,this);
     Fl_Button::deactivate();
@@ -50,5 +50,5 @@ public:
 #endif
 
 //
-// End of "$Id: Fl_Repeat_Button.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Repeat_Button.H 9637 2012-07-24 04:37:22Z matt $".
 //

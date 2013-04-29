@@ -1,5 +1,5 @@
 //
-// "$Id: glut.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: glut.H 9373 2012-04-22 02:45:09Z fabien $"
 //
 // GLUT emulation header file for the Fast Light Tool Kit (FLTK).
 //
@@ -233,7 +233,11 @@ FL_EXPORT void glutIdleFunc(void (*f)());
 
 // Warning: this cast may not work on all machines:
 inline void glutTimerFunc(unsigned int msec, void (*f)(int), int value) {
+#if defined(__LP64__)
+  Fl::add_timeout(msec*.001, (void (*)(void *))f, (void *) (long long) value);
+#else
   Fl::add_timeout(msec*.001, (void (*)(void *))f, (void *)value);
+#endif
 }
 
 inline void glutMenuStateFunc(void (*f)(int state)) {
@@ -478,5 +482,5 @@ FL_EXPORT void glutSolidIcosahedron();
 #endif // !Fl_glut_H
 
 //
-// End of "$Id: glut.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: glut.H 9373 2012-04-22 02:45:09Z fabien $".
 //

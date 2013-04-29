@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Browser.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Browser.H 9682 2012-09-17 22:44:54Z greg.ercolano $"
 //
 // Browser header file for the Fast Light Tool Kit (FLTK).
 //
@@ -257,7 +257,7 @@ public:
     Example:
     \code
   Fl_Browser *b = new Fl_Browser(..);
-  int widths[] = { 50, 50, 50, 70, 70, 40, 40, 70, 70, 50, 0 };  // widths for each column
+  static int widths[] = { 50, 50, 50, 70, 70, 40, 40, 70, 70, 50, 0 };  // widths for each column
   b->column_widths(widths); // assign array to widget
   b->column_char('\t');     // use tab as the column character
   b->add("USER\tPID\tCPU\tMEM\tVSZ\tRSS\tTTY\tSTAT\tSTART\tTIME\tCOMMAND");
@@ -311,5 +311,5 @@ public:
 #endif
 
 //
-// End of "$Id: Fl_Browser.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Browser.H 9682 2012-09-17 22:44:54Z greg.ercolano $".
 //

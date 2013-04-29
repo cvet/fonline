@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Multiline_Input.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Multiline_Input.H 9637 2012-07-24 04:37:22Z matt $"
 //
 // Multiline input header file for the Fast Light Tool Kit (FLTK).
 //
@@ -50,16 +50,11 @@ public:
 
     Inherited destructor destroys the widget and any value associated with it.
   */
-#if defined(FL_DLL)	// implementation in src/Fl_Input.cxx
   Fl_Multiline_Input(int X,int Y,int W,int H,const char *l = 0);
-#else
-  Fl_Multiline_Input(int X,int Y,int W,int H,const char *l = 0)
-    : Fl_Input(X,Y,W,H,l) {type(FL_MULTILINE_INPUT);}
-#endif
 };
 
 #endif
 
 //
-// End of "$Id: Fl_Multiline_Input.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Multiline_Input.H 9637 2012-07-24 04:37:22Z matt $".
 //

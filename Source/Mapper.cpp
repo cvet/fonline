@@ -986,38 +986,23 @@ void FOMapper::ParseKeyboard()
         // Switch fullscreen
         if( Keyb::AltDwn && dikdw == DIK_RETURN )
         {
-            #ifndef FO_D3D
-            static int x, y, w, h, valid = 0;
             if( !GameOpt.FullScreen )
             {
-                int sx, sy, sw, sh;
-                Fl::screen_xywh( sx, sy, sw, sh );
-                x = MainWindow->x();
-                y = MainWindow->y();
-                w = MainWindow->w();
-                h = MainWindow->h();
-                valid = 1;
-                MainWindow->border( 0 );
-                MainWindow->size( sw, sh );
-                MainWindow->position( 0, 0 );
+                #ifndef FO_WINDOWS
+                MainWindow->size_range( MODE_WIDTH, MODE_HEIGHT );
+                #endif
+                MainWindow->fullscreen();
                 GameOpt.FullScreen = true;
             }
             else
             {
-                MainWindow->border( 1 );
-                if( valid )
-                {
-                    MainWindow->size( w, h );
-                    MainWindow->position( x, y );
-                }
-                else
-                {
-                    MainWindow->size( MODE_WIDTH, MODE_HEIGHT );
-                    MainWindow->position( ( Fl::w() - MODE_WIDTH ) / 2, ( Fl::h() - MODE_HEIGHT ) / 2 );
-                }
-                // MainWindow->size_range( 100, 100 );
+                MainWindow->fullscreen_off();
+                #ifndef FO_WINDOWS
+                MainWindow->size_range( MODE_WIDTH, MODE_HEIGHT, MODE_WIDTH, MODE_HEIGHT );
+                #endif
                 GameOpt.FullScreen = false;
             }
+            #ifndef FO_D3D
             SprMngr.RefreshViewPort();
             #endif
             continue;

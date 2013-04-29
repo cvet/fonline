@@ -1,9 +1,9 @@
 //
-// "$Id: Enumerations.H 9087 2011-09-30 08:03:22Z manolo $"
+// "$Id: Enumerations.H 9856 2013-04-02 16:47:57Z greg.ercolano $"
 //
 // Enumerations for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2011 by Bill Spitzak and others.
+// Copyright 1998-2012 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -22,6 +22,12 @@
 
 #ifndef Fl_Enumerations_H
 #define Fl_Enumerations_H
+
+/* Uncomment the following FLTK_ABI_VERSION line to enable ABI breaking fixes
+ * in the current patch release of FLTK. ** Use for static builds only! **
+ * For more info on this macro, see: http://fltk.org/cmp.php#FLTK_ABI_VERSION
+ */
+//#define FLTK_ABI_VERSION 10303
 
 #  include "Fl_Export.H"
 #  include "fl_types.h"
@@ -53,7 +59,7 @@
 
    FLTK remains binary compatible between patches.
  */
-#define FL_PATCH_VERSION	0
+#define FL_PATCH_VERSION	2
 
 /**
     The FLTK version number as a \em double.
@@ -287,7 +293,10 @@ enum Fl_Event {	// events
   /** The screen configuration (number, positions) was changed.
    Use Fl::add_handler() to be notified of this event.
    */
-  FL_SCREEN_CONFIGURATION_CHANGED = 24
+  FL_SCREEN_CONFIGURATION_CHANGED = 24,
+  /** The fullscreen state of the window has changed
+   */
+   FL_FULLSCREEN         = 25
 };
 
 /** \name When Conditions */
@@ -328,10 +337,15 @@ enum Fl_When { // Fl_Widget::when():
 #define FL_Button	0xfee8	///< A mouse button; use Fl_Button + n for mouse button n.
 #define FL_BackSpace	0xff08	///< The backspace key.
 #define FL_Tab		0xff09	///< The tab key.
+#define FL_Iso_Key	0xff0c  ///< The additional key of ISO keyboards.
 #define FL_Enter	0xff0d	///< The enter key. 
 #define FL_Pause	0xff13	///< The pause key.
 #define FL_Scroll_Lock	0xff14	///< The scroll lock key.
 #define FL_Escape	0xff1b	///< The escape key.
+#define FL_Kana         0xff2e  ///< The Kana key of JIS keyboards.
+#define FL_Eisu         0xff2f  ///< The Eisu key of JIS keyboards.
+#define FL_Yen          0xff30  ///< The Yen key of JIS keyboards.
+#define FL_JIS_Underscore 0xff31 ///< The underscore key of JIS keyboards.
 #define FL_Home		0xff50	///< The home key.
 #define FL_Left		0xff51	///< The left arrow key.
 #define FL_Up		0xff52	///< The up arrow key.
@@ -345,7 +359,7 @@ enum Fl_When { // Fl_Widget::when():
 #define FL_Menu		0xff67	///< The menu key.
 #define FL_Help		0xff68	///< The 'help' key on Mac keyboards
 #define FL_Num_Lock	0xff7f	///< The num lock key.
-#define FL_KP		0xff80	///< One of the keypad numbers; use FL_KP + n for number n.
+#define FL_KP		0xff80	///< One of the keypad numbers; use FL_KP + 'n' for digit n.
 #define FL_KP_Enter	0xff8d	///< The enter key on the keypad, same as Fl_KP+'\\r'.
 #define FL_KP_Last	0xffbd	///< The last keypad key; use to range-check keypad.
 #define FL_F		0xffbd	///< One of the function keys; use FL_F + n for function key n.
@@ -741,7 +755,7 @@ extern FL_EXPORT Fl_Fontsize FL_NORMAL_SIZE;	///< normal font size
     The Fl_Color type holds an FLTK color value.
 
     Colors are either 8-bit indexes into a virtual colormap
-    or 24-bit RGB color values.
+    or 24-bit RGB color values. (See \ref drawing_colors for the default FLTK colormap)
 
     Color indices occupy the lower 8 bits of the value, while
     RGB colors occupy the upper 24 bits, for a byte organization of RGBI.
@@ -749,7 +763,7 @@ extern FL_EXPORT Fl_Fontsize FL_NORMAL_SIZE;	///< normal font size
 <pre>
  Fl_Color => 0xrrggbbii
                 | | | |
-                | | | +--- index between 0 and 255
+                | | | +--- \ref drawing_colors "index" between 0 and 255
                 | | +----- blue color component (8 bit)
                 | +------- green component (8 bit)
                 +--------- red component (8 bit)
@@ -760,7 +774,7 @@ extern FL_EXPORT Fl_Fontsize FL_NORMAL_SIZE;	///< normal font size
 
  */
 /*@{*/
-/** an FLTK color value */
+/** An FLTK color value; see also \ref drawing_colors  */
 typedef unsigned int Fl_Color;
 
 // Standard colors. These are used as default colors in widgets and altered as necessary
@@ -950,5 +964,5 @@ enum Fl_Damage {
 #endif
 
 //
-// End of "$Id: Enumerations.H 9087 2011-09-30 08:03:22Z manolo $".
+// End of "$Id: Enumerations.H 9856 2013-04-02 16:47:57Z greg.ercolano $".
 //

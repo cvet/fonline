@@ -1,10 +1,11 @@
 //
-// "$Id: Fl_Tree_Item_Array.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Tree_Item_Array.H 9706 2012-11-06 20:46:14Z matt $"
 //
 
 #ifndef _FL_TREE_ITEM_ARRAY_H
 #define _FL_TREE_ITEM_ARRAY_H
 
+#include <FL/Fl.H>
 #include "Fl_Export.H"
 
 class FL_EXPORT Fl_Tree_Item;	// forward decl must *precede* first doxygen comment block
@@ -66,11 +67,17 @@ public:
     return(_total);
   }
   /// Swap the two items at index positions \p ax and \p bx.
+#if FLTK_ABI_VERSION >= 10301
+  // NEW -- code moved to .cxx
+  void swap(int ax, int bx);
+#else /*FLTK_ABI_VERSION*/
+  // OLD
   void swap(int ax, int bx) {
     Fl_Tree_Item *asave = _items[ax];
     _items[ax] = _items[bx];
     _items[bx] = asave;
   }
+#endif /*FLTK_ABI_VERSION*/
   void clear();
   void add(Fl_Tree_Item *val);
   void insert(int pos, Fl_Tree_Item *new_item);
@@ -81,5 +88,5 @@ public:
 #endif /*_FL_TREE_ITEM_ARRAY_H*/
 
 //
-// End of "$Id: Fl_Tree_Item_Array.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Tree_Item_Array.H 9706 2012-11-06 20:46:14Z matt $".
 //

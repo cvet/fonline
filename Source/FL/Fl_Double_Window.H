@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Double_Window.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Double_Window.H 9637 2012-07-24 04:37:22Z matt $"
 //
 // Double-buffered window header file for the Fast Light Tool Kit (FLTK).
 //
@@ -52,21 +52,22 @@ public:
   void resize(int,int,int,int);
   void hide();
   ~Fl_Double_Window();
+  
   /**
-    Creates a new Fl_Double_Window widget using the given
-    position, size, and label (title) string.
+   Creates a new Fl_Double_Window widget using the given
+   position, size, and label (title) string.
   */
-  Fl_Double_Window(int W, int H, const char *l = 0) 
-    : Fl_Window(W,H,l), force_doublebuffering_(0) { type(FL_DOUBLE_WINDOW); }
-   /**
-    See  Fl_Double_Window::Fl_Double_Window(int w, int h, const char *label = 0)
+  Fl_Double_Window(int W, int H, const char *l = 0);
+  
+  /**
+   See  Fl_Double_Window::Fl_Double_Window(int w, int h, const char *label = 0)
   */
-  Fl_Double_Window(int X, int Y, int W, int H, const char *l = 0)
-    : Fl_Window(X,Y,W,H,l), force_doublebuffering_(0) { type(FL_DOUBLE_WINDOW); }
+  Fl_Double_Window(int X, int Y, int W, int H, const char *l = 0);
+
 };
 
 #endif
 
 //
-// End of "$Id: Fl_Double_Window.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Double_Window.H 9637 2012-07-24 04:37:22Z matt $".
 //

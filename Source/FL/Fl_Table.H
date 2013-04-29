@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Table.H 9116 2011-10-02 06:25:13Z matt $"
+// "$Id: Fl_Table.H 9843 2013-03-23 08:14:08Z greg.ercolano $"
 //
 // Fl_Table -- A table widget
 //
@@ -15,13 +15,6 @@
 // Please report all bugs and problems on the following page:
 //
 //     http://www.fltk.org/str.php
-//
-
-//
-// TODO:
-//    o Auto scroll during dragged selection
-//    o Keyboard navigation (up/down/left/right arrow)
-//    o Add scrollbar_size() method and integer [breaks ABI]
 //
 
 #ifndef _FL_TABLE_H
@@ -214,7 +207,15 @@ private:
   
   int _auto_drag;
   int _selecting;
-  //int _scrollbar_size;		// TODO: BREAKS ABI
+#if FLTK_ABI_VERSION >= 10301
+  int _scrollbar_size;
+#endif
+#if FLTK_ABI_VERSION >= 10303
+  enum {
+    TABCELLNAV = 1<<0,			///> tab cell navigation flag
+  };
+  unsigned int flags_;
+#endif
   
   // An STL-ish vector without templates
   class FL_EXPORT IntVector {
@@ -483,11 +484,11 @@ public:
   ~Fl_Table();
   
   /**
-   Clears the table to zero rows, zero columns.
-   Same as rows(0); cols(0);
+   Clears the table to zero rows (rows(0)), zero columns (cols(0)), and clears
+   any widgets (table->clear()) that were added with begin()/end() or add()/insert()/etc.
    \see rows(int), cols(int)
    */
-  virtual void clear() { rows(0); cols(0); }
+  virtual void clear() { rows(0); cols(0); table->clear(); }
   
   // \todo: add topline(), middleline(), bottomline()
   
@@ -828,6 +829,7 @@ public:
   int is_selected(int r, int c);		// selected cell
   void get_selection(int &row_top, int &col_left, int &row_bot, int &col_right);
   void set_selection(int row_top, int col_left, int row_bot, int col_right);
+  int move_cursor(int R, int C, int shiftselect);
   int move_cursor(int R, int C);
   
   /**
@@ -1074,12 +1076,78 @@ public:
    */
   void callback(Fl_Widget*, void*);
 #endif
-  //int scrollbar_size() const {		// TODO: BREAKS ABI
-  //void scrollbar_size(int size) {		// TODO: BREAKS ABI
+
+#if FLTK_ABI_VERSION >= 10301
+  // NEW
+  /**
+    Gets the current size of the scrollbars' troughs, in pixels.
+
+    If this value is zero (default), this widget will use the 
+    Fl::scrollbar_size() value as the scrollbar's width.
+  
+    \returns Scrollbar size in pixels, or 0 if the global Fl::scrollsize() is being used.
+    \see Fl::scrollbar_size(int)
+  */
+  int scrollbar_size() const {
+      return(_scrollbar_size);
+  }
+  /**
+    Sets the pixel size of the scrollbars' troughs to \p newSize, in pixels.
+
+    Normally you should not need this method, and should use
+    Fl::scrollbar_size(int) instead to manage the size of ALL your
+    widgets' scrollbars. This ensures your application has a consistent
+    UI, is the default behavior, and is normally what you want.
+
+    Only use THIS method if you really need to override the global
+    scrollbar size. The need for this should be rare.
+
+    Setting \p newSize to the special value of 0 causes the widget to
+    track the global Fl::scrollbar_size(), which is the default.
+    
+    \param[in] newSize Sets the scrollbar size in pixels.\n
+                    If 0 (default), scrollbar size tracks the global Fl::scrollbar_size()
+    \see Fl::scrollbar_size()
+  */
+  void scrollbar_size(int newSize) {
+      if ( newSize != _scrollbar_size ) redraw();
+      _scrollbar_size = newSize;
+  }   
+#endif
+#if FLTK_ABI_VERSION >= 10303
+  /**
+    Flag to control if Tab navigates table cells or not.
+
+    If on, Tab key navigates table cells.
+    If off, Tab key navigates fltk widget focus. (default)
+
+    As of fltk 1.3, the default behavior of the Tab key is to navigate focus off
+    of the current widget, and on to the next one.  But in some applications,
+    it's useful for Tab to be used to navigate cells in the Fl_Table.
+
+    \param [in] val If \p val is 1, Tab key navigates cells in table, not fltk widgets.<BR>
+                    If \p val is 0, Tab key will advance focus to the next fltk widget (default), and does not navigate cells in table.
+  */
+  void tab_cell_nav(int val) {
+    if ( val ) flags_ |=  TABCELLNAV;
+    else       flags_ &= ~TABCELLNAV;
+  }
+
+  /**
+    Get state of table's 'Tab' key cell navigation flag.
+
+    \returns 1 if Tab configured to navigate cells in table<br>0 to navigate widget focus (default)
+
+    \see tab_cell_nav(int)
+  */
+  int tab_cell_nav() const {
+    return(flags_ & TABCELLNAV ? 1 : 0);
+  }
+#endif
 };
 
 #endif /*_FL_TABLE_H*/
 
 //
-// End of "$Id: Fl_Table.H 9116 2011-10-02 06:25:13Z matt $".
+// End of "$Id: Fl_Table.H 9843 2013-03-23 08:14:08Z greg.ercolano $".
 //

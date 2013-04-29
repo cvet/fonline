@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Secret_Input.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Secret_Input.H 9774 2012-12-24 11:45:07Z manolo $"
 //
 // Secret input header file for the Fast Light Tool Kit (FLTK).
 //
@@ -40,16 +40,12 @@ public:
 
     Inherited destructor destroys the widget and any value associated with it.
   */
-#if defined(FL_DLL)	// implementation in src/Fl_Input.cxx
   Fl_Secret_Input(int X,int Y,int W,int H,const char *l = 0);
-#else
-  Fl_Secret_Input(int X,int Y,int W,int H,const char *l = 0)
-    : Fl_Input(X,Y,W,H,l) {type(FL_SECRET_INPUT);}
-#endif
+  int handle(int);
 };
 
 #endif
 
 //
-// End of "$Id: Fl_Secret_Input.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Secret_Input.H 9774 2012-12-24 11:45:07Z manolo $".
 //

@@ -1,5 +1,5 @@
 //
-// "$Id: Fl.H 9101 2011-09-30 13:09:06Z manolo $"
+// "$Id: Fl.H 9816 2013-02-08 11:58:19Z manolo $"
 //
 // Main header file for the Fast Light Tool Kit (FLTK).
 //
@@ -43,6 +43,16 @@ class Fl_Window;
 class Fl_Image;
 struct Fl_Label;
 
+// Keep avoiding having the socket deps at that level but mke sure it will work in both 32 & 64 bit builds
+#if defined(WIN32) && !defined(__CYGWIN__)
+# if defined(_WIN64)
+#  define FL_SOCKET unsigned __int64
+# else
+#  define FL_SOCKET int
+# endif
+#else
+# define FL_SOCKET int
+#endif
 
 /** \defgroup  callback_functions Callback function typedefs
  \brief Typedefs defined in <FL/Fl.H> for callback or handler functions passed as function parameters.
@@ -81,7 +91,7 @@ typedef void (*Fl_Idle_Handler)(void *data);
 typedef void (*Fl_Old_Idle_Handler)();
 
 /** Signature of add_fd functions passed as parameters */
-typedef void (*Fl_FD_Handler)(int fd, void *data);
+typedef void (*Fl_FD_Handler)(FL_SOCKET fd, void *data);
 
 /** Signature of add_handler functions passed as parameters */
 typedef int (*Fl_Event_Handler)(int event);
@@ -132,8 +142,12 @@ public: // should be private!
   static Fl_Widget* selection_owner_;
   static Fl_Window* modal_;
   static Fl_Window* grab_;
-  static int compose_state;
+  static int compose_state; // used for dead keys (WIN32) or marked text (MacOS)
   static void call_screen_init(); // recompute screen number and dimensions
+#ifdef __APPLE__
+  static void reset_marked_text(); // resets marked text
+  static void insertion_point_location(int x, int y, int height); // sets window coordinates & height of insertion point
+#endif
 #endif
   /**
     If true then flush() will do something.
@@ -637,7 +651,7 @@ public:
     \li All other keys on the keypad have a symbol: FL_Escape,
 	FL_BackSpace, FL_Tab, FL_Enter, FL_Print, FL_Scroll_Lock, FL_Pause,
 	FL_Insert, FL_Home, FL_Page_Up, FL_Delete, FL_End, FL_Page_Down,
-	FL_Left, FL_Up, FL_Right, FL_Down, FL_Shift_L, FL_Shift_R,
+	FL_Left, FL_Up, FL_Right, FL_Down, FL_Iso_Key, FL_Shift_L, FL_Shift_R,
 	FL_Control_L, FL_Control_R, FL_Caps_Lock, FL_Alt_L, FL_Alt_R,
 	FL_Meta_L, FL_Meta_R, FL_Menu, FL_Num_Lock, FL_KP_Enter.  Be
 	careful not to confuse these with the very similar, but all-caps,
@@ -656,13 +670,13 @@ public:
   static int get_key(int key); // platform dependent
   /** 
     Returns the text associated with the current event, including FL_PASTE or FL_DND_RELEASE events.
-    This can be used in response to FL_KEYUP, FL_KEYDOWN, FL_PASTE, FL_DND_RELEASE.
+    This can be used in response to FL_KEYUP, FL_KEYDOWN, FL_PASTE, and FL_DND_RELEASE.
 
     When responding to FL_KEYUP/FL_KEYDOWN, use this function instead of Fl::event_key()
     to get the text equivalent of keystrokes suitable for inserting into strings 
     and text widgets.
 
-    The returned string is guaranteed to be be NULL terminated.
+    The returned string is guaranteed to be NULL terminated.
     However, see Fl::event_length() for the actual length of the string,
     in case the string itself contains NULLs that are part of the text data.
 
@@ -775,7 +789,9 @@ public:
       \see void screen_xywh(int &x, int &y, int &w, int &h, int mx, int my) 
   */
   static void screen_xywh(int &X, int &Y, int &W, int &H) {
-    screen_xywh(X, Y, W, H, e_x_root, e_y_root);
+    int x, y;
+    Fl::get_mouse(x, y);
+    screen_xywh(X, Y, W, H, x, y);
   }
   static void screen_xywh(int &X, int &Y, int &W, int &H, int mx, int my);
   static void screen_xywh(int &X, int &Y, int &W, int &H, int n); 
@@ -789,7 +805,9 @@ public:
    \see void screen_work_area(int &x, int &y, int &w, int &h, int mx, int my) 
    */
   static void screen_work_area(int &X, int &Y, int &W, int &H) {
-    screen_work_area(X, Y, W, H, e_x_root, e_y_root);
+    int x, y;
+    Fl::get_mouse(x, y);
+    screen_work_area(X, Y, W, H, x, y);
   }
 
   /**   @} */
@@ -1172,5 +1190,5 @@ public:
 #endif // !Fl_H
 
 //
-// End of "$Id: Fl.H 9101 2011-09-30 13:09:06Z manolo $".
+// End of "$Id: Fl.H 9816 2013-02-08 11:58:19Z manolo $".
 //

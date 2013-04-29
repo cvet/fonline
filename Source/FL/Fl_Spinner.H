@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Spinner.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Spinner.H 9706 2012-11-06 20:46:14Z matt $"
 //
 // Spinner widget for the Fast Light Tool Kit (FLTK).
 //
@@ -38,6 +38,9 @@
   This widget is a combination of the input
   widget and repeat buttons. The user can either type into the
   input area or use the buttons to change the value.
+
+  \image html Fl_Spinner.png "Fl_Spinner widget"
+  \image latex Fl_Spinner.png "Fl_Spinner widget" width=6cm
 */
 class FL_EXPORT Fl_Spinner : public Fl_Group {
   
@@ -47,12 +50,16 @@ class FL_EXPORT Fl_Spinner : public Fl_Group {
   double	step_;			// Amount to add/subtract for up/down
   const char	*format_;		// Format string
 
+#if FLTK_ABI_VERSION >= 10301
+// NEW
+protected:
+#endif
   Fl_Input	input_;			// Input field for the value
   Fl_Repeat_Button
 		up_button_,		// Up button
 		down_button_;		// Down button
 
-
+private:
   static void	sb_cb(Fl_Widget *w, Fl_Spinner *sb) {
 		  double v;		// New value
 
@@ -114,31 +121,7 @@ class FL_EXPORT Fl_Spinner : public Fl_Group {
 		  and label string.
 		  <P>Inherited destructor Destroys the widget and any value associated with it.
 		*/
-		Fl_Spinner(int X, int Y, int W, int H, const char *L = 0)
-		  : Fl_Group(X, Y, W, H, L),
-		    input_(X, Y, W - H / 2 - 2, H),
-		    up_button_(X + W - H / 2 - 2, Y, H / 2 + 2, H / 2, "@-42<"),
-		    down_button_(X + W - H / 2 - 2, Y + H - H / 2,
-		                 H / 2 + 2, H / 2, "@-42>") {
-		  end();
-
-		  value_   = 1.0;
-		  minimum_ = 1.0;
-		  maximum_ = 100.0;
-		  step_    = 1.0;
-		  format_  = "%g";
-
-		  align(FL_ALIGN_LEFT);
-
-		  input_.value("1");
-		  input_.type(FL_INT_INPUT);
-		  input_.when(FL_WHEN_ENTER_KEY | FL_WHEN_RELEASE);
-		  input_.callback((Fl_Callback *)sb_cb, this);
-
-		  up_button_.callback((Fl_Callback *)sb_cb, this);
-
-		  down_button_.callback((Fl_Callback *)sb_cb, this);
-		}
+  Fl_Spinner(int X, int Y, int W, int H, const char *L = 0);
 
   /** Sets or returns the format string for the value. */
   const char	*format() { return (format_); }
@@ -250,10 +233,18 @@ class FL_EXPORT Fl_Spinner : public Fl_Group {
     type() should be changed to floating point. 
   */
   void		value(double v) { value_ = v; update(); }
+  /**
+    Change the background color of the spinner widget's input field.
+  */
+  void		color(Fl_Color v) { input_.color(v); }
+  /**
+    Return the background color of the spinner widget's input field.
+  */
+  Fl_Color	color() const { return(input_.color()); }
 };
 
 #endif // !Fl_Spinner_H
 
 //
-// End of "$Id: Fl_Spinner.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Spinner.H 9706 2012-11-06 20:46:14Z matt $".
 //
