@@ -851,14 +851,30 @@ void FOMapper::ParseKeyboard()
             case DIK_F10:
                 HexMngr.SwitchShowHex();
                 break;
+
+            // Fullscreen
             case DIK_F11:
-                HexMngr.SwitchShowRain();
-                break;
-            case DIK_F12:
-                #ifdef FO_WINDOWS
-                ShowWindow( fl_xid( MainWindow ), SW_MINIMIZE );
+                if( !GameOpt.FullScreen )
+                {
+                    MainWindow->size_range( MODE_WIDTH, MODE_HEIGHT );
+                    MainWindow->fullscreen();
+                    GameOpt.FullScreen = true;
+                }
+                else
+                {
+                    MainWindow->fullscreen_off();
+                    MainWindow->size_range( MODE_WIDTH, MODE_HEIGHT, MODE_WIDTH, MODE_HEIGHT );
+                    GameOpt.FullScreen = false;
+                }
+                #ifndef FO_D3D
+                SprMngr.RefreshViewPort();
                 #endif
-                break;
+                continue;
+            // Minimize
+            case DIK_F12:
+                MainWindow->iconize();
+                continue;
+
             case DIK_DELETE:
                 SelectDelete();
                 break;
@@ -893,6 +909,9 @@ void FOMapper::ParseKeyboard()
                 break;
             case DIK_F9:
                 ObjFix = !ObjFix;
+                break;
+            case DIK_F10:
+                HexMngr.SwitchShowRain();
                 break;
             case DIK_F11:
                 SprMngr.SaveSufaces();

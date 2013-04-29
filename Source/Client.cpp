@@ -1255,15 +1255,28 @@ void FOClient::ParseKeyboard()
                     HexMngr.SwitchShowHex();
                 break;
 
+            // Fullscreen
             case DIK_F11:
-                if( GameOpt.DebugInfo )
-                    SprMngr.SaveSufaces();
-                break;
-            case DIK_F12:
-                #ifdef FO_WINDOWS
-                ShowWindow( fl_xid( MainWindow ), SW_MINIMIZE );
+                if( !GameOpt.FullScreen )
+                {
+                    MainWindow->size_range( MODE_WIDTH, MODE_HEIGHT );
+                    MainWindow->fullscreen();
+                    GameOpt.FullScreen = true;
+                }
+                else
+                {
+                    MainWindow->fullscreen_off();
+                    MainWindow->size_range( MODE_WIDTH, MODE_HEIGHT, MODE_WIDTH, MODE_HEIGHT );
+                    GameOpt.FullScreen = false;
+                }
+                #ifndef FO_D3D
+                SprMngr.RefreshViewPort();
                 #endif
-                break;
+                continue;
+            // Minimize
+            case DIK_F12:
+                MainWindow->iconize();
+                continue;
 
             // Exit buttons
             case DIK_TAB:
@@ -1360,7 +1373,7 @@ void FOClient::ParseKeyboard()
                     GameOpt.ShowCritId = !GameOpt.ShowCritId;
                 break;
             case DIK_F11:
-                if( Keyb::ShiftDwn )
+                if( GameOpt.DebugInfo && Keyb::ShiftDwn )
                     SprMngr.SaveSufaces();
                 break;
 
@@ -1391,32 +1404,6 @@ void FOClient::ParseKeyboard()
             case DIK_ESCAPE:
                 if( Keyb::ShiftDwn )
                     GameOpt.Quit = true;
-                break;
-            // Switch fullscreen
-            case DIK_RETURN:
-                if( Keyb::AltDwn )
-                {
-                    if( !GameOpt.FullScreen )
-                    {
-                        #ifndef FO_WINDOWS
-                        MainWindow->size_range( MODE_WIDTH, MODE_HEIGHT );
-                        #endif
-                        MainWindow->fullscreen();
-                        GameOpt.FullScreen = true;
-                    }
-                    else
-                    {
-                        MainWindow->fullscreen_off();
-                        #ifndef FO_WINDOWS
-                        MainWindow->size_range( MODE_WIDTH, MODE_HEIGHT, MODE_WIDTH, MODE_HEIGHT );
-                        #endif
-                        GameOpt.FullScreen = false;
-                    }
-                    #ifndef FO_D3D
-                    SprMngr.RefreshViewPort();
-                    #endif
-                    continue;
-                }
                 break;
             default:
                 break;

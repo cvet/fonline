@@ -1689,16 +1689,16 @@ FOWindow::FOWindow(): Fl_Window( 0, 0, "" ), Focused( true )
     size( MODE_WIDTH, MODE_HEIGHT );
 
     // Icon
-    #ifdef FO_WINDOWS
+    # ifdef FO_WINDOWS
     icon( (char*) LoadIcon( fl_display, MAKEINTRESOURCE( 101 ) ) );
-    #else
+    # else
     // Todo: Linux
-    #endif
+    # endif
 
     // OpenGL parameters
-    #ifndef FO_D3D
+    # ifndef FO_D3D
     Fl::gl_visual( FL_RGB | FL_RGB8 | FL_DOUBLE | FL_DEPTH | FL_STENCIL );
-    #endif
+    # endif
 
     // Fullscreen
     if( GameOpt.FullScreen )
@@ -1709,9 +1709,9 @@ FOWindow::FOWindow(): Fl_Window( 0, 0, "" ), Focused( true )
     make_current();
 
     // Hide cursor
-    #ifdef FO_WINDOWS
+    # ifdef FO_WINDOWS
     ShowCursor( FALSE );
-    #else
+    # else
     char   data[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
     XColor black;
     black.red = black.green = black.blue = 0;
@@ -1719,18 +1719,18 @@ FOWindow::FOWindow(): Fl_Window( 0, 0, "" ), Focused( true )
     Cursor cur = XCreatePixmapCursor( fl_display, nodata, nodata, &black, &black, 0, 0 );
     XDefineCursor( fl_display, fl_xid( this ), cur );
     XFreeCursor( fl_display, cur );
-    #endif
+    # endif
 
     // Hide menu
-    #ifdef FO_WINDOWS
+    # ifdef FO_WINDOWS
     SetWindowLong( fl_xid( this ), GWL_STYLE, GetWindowLong( fl_xid( this ), GWL_STYLE ) & ( ~WS_SYSMENU ) );
-    #endif
+    # endif
 
     // Place on top
-    #ifdef FO_WINDOWS
+    # ifdef FO_WINDOWS
     if( GameOpt.AlwaysOnTop )
         SetWindowPos( fl_xid( this ), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
-    #endif
+    # endif
 }
 
 int FOWindow::handle( int event )
