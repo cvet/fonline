@@ -224,7 +224,6 @@ namespace MapperBind
 int main( int argc, char* argv[] )
 {
     // Initialization
-    setlocale( LC_ALL, "Russian" );
     Timer::Init();
 
     // Show usage
@@ -281,7 +280,7 @@ int main( int argc, char* argv[] )
     {
         #ifdef FO_WINDOWS
         SetCurrentDirectory( path );
-        #else // FO_LINUX
+        #else
         chdir( path );
         #endif
     }

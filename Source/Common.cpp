@@ -426,9 +426,21 @@ void RestoreMainDirectory()
 
     // Set executable directory
     SetCurrentDirectory( path );
+    #else
+    // Read symlink to executable
+    char buf[ MAX_FOPATH ];
+    if( readlink( "/proc/self/exe", buf, MAX_FOPATH ) != -1 ||    // Linux
+        readlink( "/proc/curproc/file", buf, MAX_FOPATH ) != -1 ) // FreeBSD
+    {
+        string            sbuf = buf;
+        string::size_type pos = sbuf.find_last_of( DIR_SLASH_C );
+        if( pos != string::npos )
+        {
+            buf[ pos ] = 0;
+            chdir( buf );
+        }
+    }
     #endif
-
-    // Todo: linux need it?
 }
 
 void ShowMessage( const char* message )
