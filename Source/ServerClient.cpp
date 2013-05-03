@@ -2014,7 +2014,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 }
                 else
                 {
-                    WriteLogF( _FUNC_, " - Different UID, client<%s>.\n", cl->Name );
+                    WriteLogF( _FUNC_, " - Different UID<%d>, client<%s>.\n", i, cl->Name );
                     cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
                     cl->Disconnect();
                     return;

@@ -287,10 +287,10 @@ bool SpriteManager::BuildFont( int index, void* pfont, const char* image_name, b
         float   y = (float) l.PosY;
         float   w = (float) l.W;
         float   h = (float) l.H;
-        l.TexBorderedUV[ 0 ] = ( image_x + x - 1.f ) / tex_w;
-        l.TexBorderedUV[ 1 ] = ( image_y + y - 1.f ) / tex_h;
-        l.TexBorderedUV[ 2 ] = ( image_x + x + w + 1.f ) / tex_w;
-        l.TexBorderedUV[ 3 ] = ( image_y + y + h + 1.f ) / tex_h;
+        l.TexBorderedUV[ 0 ] = ( image_x + x - 1.0f ) / tex_w;
+        l.TexBorderedUV[ 1 ] = ( image_y + y - 1.0f ) / tex_h;
+        l.TexBorderedUV[ 2 ] = ( image_x + x + w + 1.0f ) / tex_w;
+        l.TexBorderedUV[ 3 ] = ( image_y + y + h + 1.0f ) / tex_h;
     }
 
     // Register
