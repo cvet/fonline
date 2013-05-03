@@ -1285,7 +1285,8 @@ Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name, bool
             if( file_binary.GetFsize() >= length + sizeof( uint ) * 3 )
             {
                 GL( program = glCreateProgram() );
-                GL( glProgramBinary( program, format, file_binary.GetCurBuf(), length ) );
+                glProgramBinary( program, format, file_binary.GetCurBuf(), length );
+                glGetError(); // Skip error from glProgramBinary, if it has
                 GLint linked;
                 GL( glGetProgramiv( program, GL_LINK_STATUS, &linked ) );
                 if( linked )
