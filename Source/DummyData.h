@@ -996,6 +996,8 @@ struct BindClass
     static void Global_WaitPing()               {}
     static void Global_SetEffect()              {}
     static void Global_RefreshMap()             {}
+    static void Global_SaveScreenshot()         {}
+    static void Global_SaveLogFile()            {}
 
     static int  ConsoleActive;
     static int  GmapActive, GmapWait;

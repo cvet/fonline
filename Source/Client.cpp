@@ -12148,6 +12148,16 @@ void FOClient::SScriptFunc::Global_ChangeCursor( int cursor )
     Self->SetCurMode( cursor );
 }
 
+bool FOClient::SScriptFunc::Global_SaveScreenshot()
+{
+    return ( Self->SaveScreenshot() );
+}
+
+bool FOClient::SScriptFunc::Global_SaveLogFile()
+{
+    return ( Self->SaveLogFile() );
+}
+
 bool&  FOClient::SScriptFunc::ConsoleActive = FOClient::ConsoleActive;
 bool&  FOClient::SScriptFunc::GmapActive = FOClient::GmapActive;
 bool&  FOClient::SScriptFunc::GmapWait = FOClient::GmapWait;
