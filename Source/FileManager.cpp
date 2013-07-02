@@ -987,8 +987,20 @@ void FileManager::GetTime( uint64* create, uint64* access, uint64* write )
 
 void FileManager::RecursiveDirLook( const char* init_dir, bool include_subdirs, const char* ext, StrVec& result )
 {
-    char      path[ MAX_FOPATH ];
+    char path[ MAX_FOPATH ];
+    char short_init_dir[ MAX_FOPATH ];
     Str::Format( path, "%s%s", dataPath, init_dir );
+
+    // Short init dir name, no initial segment of the file name
+    Str::Copy( short_init_dir, init_dir );
+    int i = Str::Length( short_init_dir );
+    while( i-- )
+        if( short_init_dir[ i ] == DIR_SLASH_C )
+        {
+            short_init_dir[ i + 1 ] = '\0';
+            break;
+        }
+
     FIND_DATA fd;
     void*     h = FileFindFirst( path, NULL, fd );
     while( h )
@@ -1008,14 +1020,14 @@ void FileManager::RecursiveDirLook( const char* init_dir, bool include_subdirs, 
                 const char* ext_ = GetExtension( fd.FileName );
                 if( ext_ && Str::CompareCase( ext, ext_ ) )
                 {
-                    Str::Copy( path, init_dir );
+                    Str::Copy( path, short_init_dir );
                     Str::Append( path, fd.FileName );
                     result.push_back( path );
                 }
             }
             else
             {
-                Str::Copy( path, init_dir );
+                Str::Copy( path, short_init_dir );
                 Str::Append( path, fd.FileName );
                 result.push_back( path );
             }
