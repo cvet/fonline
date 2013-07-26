@@ -815,12 +815,16 @@ public:
 
         static uint   Location_GetId( Location* loc );
         static ushort Location_GetProtoId( Location* loc );
+        static bool   Location_SetEvent( Location* loc, int event_type, ScriptString* func_name );
         static uint   Location_GetMapCount( Location* loc );
         static Map*   Location_GetMap( Location* loc, ushort map_pid );
         static Map*   Location_GetMapByIndex( Location* loc, uint index );
         static uint   Location_GetMaps( Location* loc, ScriptArray* maps );
         static bool   Location_Reload( Location* loc );
         static void   Location_Update( Location* loc );
+
+        static void Location_EventFinish( Location* loc, bool deleted );
+        static bool Location_EventEnter( Location* loc, ScriptArray& group, uchar entrance );
 
         static void          Global_Log( ScriptString& text );
         static ProtoItem*    Global_GetProtoItem( ushort pid );

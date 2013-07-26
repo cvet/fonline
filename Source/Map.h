@@ -263,6 +263,13 @@ public:
 };
 typedef vector< ProtoLocation > ProtoLocVec;
 
+// Script events
+#define LOCATION_EVENT_FINISH           ( 0 )
+#define LOCATION_EVENT_ENTER            ( 1 )
+#define LOCATION_EVENT_MAX              ( 2 )
+
+extern const char* LocationEventFuncName[ LOCATION_EVENT_MAX ];
+
 class Location
 {
 public:
@@ -290,6 +297,8 @@ public:
     ProtoLocation* Proto;
     volatile int   GeckCount;
 
+    uint      FuncId[ LOCATION_EVENT_MAX ];
+
     bool       Init( ProtoLocation* proto, ushort wx, ushort wy );
     void       Clear( bool full );
     void       Update();
@@ -313,6 +322,15 @@ public:
     bool IsNoNpc();
     bool IsCanDelete();
 
+// Events
+private:
+    bool PrepareScriptFunc( int num_scr_func );
+
+public:
+    void EventFinish( bool to_delete );
+    bool EventEnter( ScriptArray* group, uchar entrance );
+
+public:
     bool  IsNotValid;
     short RefCounter;
     void AddRef() { RefCounter++; }

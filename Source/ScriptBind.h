@@ -696,12 +696,16 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedWholeTu
 /* Location                                                             */
 /************************************************************************/
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "uint16 GetProtoId() const", asFUNCTION( BIND_CLASS Location_GetProtoId ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool SetEvent(int eventType, string@+ funcName)", asFUNCTION( BIND_CLASS Location_SetEvent ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "uint GetMapCount() const", asFUNCTION( BIND_CLASS Location_GetMapCount ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "Map@+ GetMap(uint16 mapPid) const", asFUNCTION( BIND_CLASS Location_GetMap ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "Map@+ GetMapByIndex(uint index) const", asFUNCTION( BIND_CLASS Location_GetMapByIndex ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "uint GetMaps(Map@[]@+ maps) const", asFUNCTION( BIND_CLASS Location_GetMaps ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool Reload()", asFUNCTION( BIND_CLASS Location_Reload ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "void Update()", asFUNCTION( BIND_CLASS Location_Update ), asCALL_CDECL_OBJFIRST ) );
+
+BIND_ASSERT( engine->RegisterObjectMethod( "Location", "void EventFinish(bool deleted)", asFUNCTION( BIND_CLASS Location_EventFinish ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool EventEnter(Critter@[]& group, uint8 entrance)", asFUNCTION( BIND_CLASS Location_EventEnter ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectProperty( "Location", "const uint Id", OFFSETOF( Location, Data.LocId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Location", "uint16 WorldX", OFFSETOF( Location, Data.WX ) ) );

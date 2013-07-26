@@ -2250,12 +2250,19 @@ void Map::GenerateSequence( Critter* first_cr )
 /* Location                                                             */
 /************************************************************************/
 
+const char* LocationEventFuncName[ LOCATION_EVENT_MAX ] =
+{
+    "void %s(Location&,bool)",                      // LOCATION_EVENT_FINISH
+    "bool %s(Location&,Critter@[]&,uint8)"          // LOCATION_EVENT_ENTER
+};
+
 bool Location::Init( ProtoLocation* proto, ushort wx, ushort wy )
 {
     if( !proto )
         return false;
     Proto = proto;
     memzero( &Data, sizeof( Data ) );
+    memzero( FuncId, sizeof( FuncId ) );
     Data.LocPid = Proto->LocPid;
     Data.WX = wx;
     Data.WY = wy;
@@ -2269,6 +2276,8 @@ bool Location::Init( ProtoLocation* proto, ushort wx, ushort wy )
 
 void Location::Clear( bool full )
 {
+    EventFinish( full );
+
     IsNotValid = true;
 
     MapVec maps = locMaps;
@@ -2434,5 +2443,37 @@ bool Location::IsCanDelete()
                 return false;
         }
     }
+    return true;
+}
+
+bool Location::PrepareScriptFunc( int num_scr_func )
+{
+    if( FuncId[ num_scr_func ] <= 0 )
+        return false;
+    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Location id<%u>, pid<%u>", GetId(), GetPid() ) );
+}
+
+void Location::EventFinish( bool to_delete )
+{
+    if( PrepareScriptFunc( LOCATION_EVENT_FINISH ) )
+    {
+        Script::SetArgObject( this );
+        Script::SetArgBool( to_delete );
+        Script::RunPrepared();
+    }
+}
+
+bool Location::EventEnter( ScriptArray* group, uchar entrance )
+{
+    if ( PrepareScriptFunc( LOCATION_EVENT_ENTER ) )
+    {
+        Script::SetArgObject( this );
+        Script::SetArgObject( group );
+        Script::SetArgUChar( entrance );
+        if( Script::RunPrepared() )
+            return Script::GetReturnedBool();
+    }
+
+    // no event specified, we are good to enter
     return true;
 }

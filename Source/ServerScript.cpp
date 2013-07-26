@@ -4770,6 +4770,22 @@ ushort FOServer::SScriptFunc::Location_GetProtoId( Location* loc )
     return loc->GetPid();
 }
 
+bool FOServer::SScriptFunc::Location_SetEvent( Location* loc, int event_type, ScriptString* func_name )
+{
+    if( loc->IsNotValid )
+        SCRIPT_ERROR_R0( "Location nullptr." );
+    if( event_type < 0 || event_type >= LOCATION_EVENT_MAX )
+        SCRIPT_ERROR_R0( "Invalid event type arg for location." );
+    if( !func_name || !func_name->length() )
+        loc->FuncId[ event_type ] = 0;
+    else
+    loc->FuncId[ event_type ] = Script::Bind( func_name->c_str(), LocationEventFuncName[ event_type ], false );
+
+    if( func_name && func_name->length() && loc->FuncId[ event_type ] <= 0 )
+        SCRIPT_ERROR_R0( "Function not found." );
+    return true;
+}
+
 uint FOServer::SScriptFunc::Location_GetMapCount( Location* loc )
 {
     if( loc->IsNotValid )
@@ -4837,6 +4853,20 @@ void FOServer::SScriptFunc::Location_Update( Location* loc )
     if( loc->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
     loc->Update();
+}
+
+void FOServer::SScriptFunc::Location_EventFinish( Location* loc, bool deleted )
+{
+    if( loc->IsNotValid )
+        SCRIPT_ERROR_R( "Location nullptr." );
+    loc->EventFinish( deleted );
+}
+
+bool FOServer::SScriptFunc::Location_EventEnter( Location* loc, ScriptArray& group, uchar entrance )
+{
+    if( loc->IsNotValid )
+        SCRIPT_ERROR_RX( "Location nullptr.", false );
+    return loc->EventEnter( &group, entrance );
 }
 
 uint FOServer::SScriptFunc::Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 )

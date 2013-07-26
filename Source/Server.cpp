@@ -3425,7 +3425,7 @@ bool FOServer::InitReal()
     STATIC_ASSERT( OFFSETOF( ProtoMap, HexFlags ) == 304 );
     STATIC_ASSERT( OFFSETOF( Map, RefCounter ) == 794 );
     STATIC_ASSERT( OFFSETOF( ProtoLocation, GeckVisible ) == 76 );
-    STATIC_ASSERT( OFFSETOF( Location, RefCounter ) == 282 );
+    STATIC_ASSERT( OFFSETOF( Location, RefCounter ) == 290 );
     #else // FO_X64
     STATIC_ASSERT( sizeof( size_t ) == 8 );
     #endif

@@ -1600,6 +1600,15 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
         }
     }
 
+    ScriptArray* group = GM_CreateGroupArray( rule->GroupMove );
+    if( group )
+    {
+        bool result = loc->EventEnter( group, entrance );
+        group->Release();
+        if( !result )
+            return false; //group is not allowed to enter
+    }
+
     uint count = loc->Proto->Entrance[ entrance ].first;
     uint entire = loc->Proto->Entrance[ entrance ].second;
 
