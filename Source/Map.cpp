@@ -2253,7 +2253,7 @@ void Map::GenerateSequence( Critter* first_cr )
 const char* LocationEventFuncName[ LOCATION_EVENT_MAX ] =
 {
     "void %s(Location&,bool)",                      // LOCATION_EVENT_FINISH
-    "bool %s(Location&,Critter@[]&,uint8)"          // LOCATION_EVENT_ENTER
+    "bool %s(Location&,Critter@[]&,uint8)",         // LOCATION_EVENT_ENTER
 };
 
 bool Location::Init( ProtoLocation* proto, ushort wx, ushort wy )
@@ -2465,7 +2465,7 @@ void Location::EventFinish( bool to_delete )
 
 bool Location::EventEnter( ScriptArray* group, uchar entrance )
 {
-    if ( PrepareScriptFunc( LOCATION_EVENT_ENTER ) )
+    if( PrepareScriptFunc( LOCATION_EVENT_ENTER ) )
     {
         Script::SetArgObject( this );
         Script::SetArgObject( group );
@@ -2474,6 +2474,6 @@ bool Location::EventEnter( ScriptArray* group, uchar entrance )
             return Script::GetReturnedBool();
     }
 
-    // no event specified, we are good to enter
+    // No event specified, we are good to enter
     return true;
 }

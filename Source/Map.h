@@ -62,7 +62,7 @@ public:
     ProtoMap* Proto;
 
     bool      NeedProcess;
-    uint      FuncId[ MAP_EVENT_MAX ];
+    int       FuncId[ MAP_EVENT_MAX ];
     uint      LoopEnabled[ MAP_LOOP_FUNC_MAX ];
     uint      LoopLastTick[ MAP_LOOP_FUNC_MAX ];
     uint      LoopWaitTick[ MAP_LOOP_FUNC_MAX ];
@@ -264,10 +264,9 @@ public:
 typedef vector< ProtoLocation > ProtoLocVec;
 
 // Script events
-#define LOCATION_EVENT_FINISH           ( 0 )
-#define LOCATION_EVENT_ENTER            ( 1 )
-#define LOCATION_EVENT_MAX              ( 2 )
-
+#define LOCATION_EVENT_FINISH    ( 0 )
+#define LOCATION_EVENT_ENTER     ( 1 )
+#define LOCATION_EVENT_MAX       ( 2 )
 extern const char* LocationEventFuncName[ LOCATION_EVENT_MAX ];
 
 class Location
@@ -296,8 +295,7 @@ public:
 
     ProtoLocation* Proto;
     volatile int   GeckCount;
-
-    uint      FuncId[ LOCATION_EVENT_MAX ];
+    int            FuncId[ LOCATION_EVENT_MAX ];
 
     bool       Init( ProtoLocation* proto, ushort wx, ushort wy );
     void       Clear( bool full );

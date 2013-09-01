@@ -4779,7 +4779,7 @@ bool FOServer::SScriptFunc::Location_SetEvent( Location* loc, int event_type, Sc
     if( !func_name || !func_name->length() )
         loc->FuncId[ event_type ] = 0;
     else
-    loc->FuncId[ event_type ] = Script::Bind( func_name->c_str(), LocationEventFuncName[ event_type ], false );
+        loc->FuncId[ event_type ] = Script::Bind( func_name->c_str(), LocationEventFuncName[ event_type ], false );
 
     if( func_name && func_name->length() && loc->FuncId[ event_type ] <= 0 )
         SCRIPT_ERROR_R0( "Function not found." );
@@ -4858,14 +4858,14 @@ void FOServer::SScriptFunc::Location_Update( Location* loc )
 void FOServer::SScriptFunc::Location_EventFinish( Location* loc, bool deleted )
 {
     if( loc->IsNotValid )
-        SCRIPT_ERROR_R( "Location nullptr." );
+        SCRIPT_ERROR_R( "This nullptr." );
     loc->EventFinish( deleted );
 }
 
 bool FOServer::SScriptFunc::Location_EventEnter( Location* loc, ScriptArray& group, uchar entrance )
 {
     if( loc->IsNotValid )
-        SCRIPT_ERROR_RX( "Location nullptr.", false );
+        SCRIPT_ERROR_R0( "This nullptr." );
     return loc->EventEnter( &group, entrance );
 }
 

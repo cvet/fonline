@@ -831,9 +831,9 @@ struct BindClass
     static void Location_GetMaps()       {}
     static void Location_Reload()        {}
     static void Location_Update()        {}
-	
-    static void Location_EventFinish()   {}
-    static void Location_EventEnter()    {}
+
+    static void Location_EventFinish() {}
+    static void Location_EventEnter()  {}
 
     static void Global_GetItem()                {}
     static void Global_GetCrittersDistantion()  {}

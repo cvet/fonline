@@ -995,11 +995,13 @@ void FileManager::RecursiveDirLook( const char* init_dir, bool include_subdirs, 
     Str::Copy( short_init_dir, init_dir );
     int i = Str::Length( short_init_dir );
     while( i-- )
+    {
         if( short_init_dir[ i ] == DIR_SLASH_C )
         {
             short_init_dir[ i + 1 ] = '\0';
             break;
         }
+    }
 
     FIND_DATA fd;
     void*     h = FileFindFirst( path, NULL, fd );

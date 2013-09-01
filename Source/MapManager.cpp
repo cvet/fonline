@@ -1588,11 +1588,11 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
 
     if( loc->Proto->ScriptBindId )
     {
-        ScriptArray* arr = GM_CreateGroupArray( rule->GroupMove );
-        if( !arr )
+        ScriptArray* group = GM_CreateGroupArray( rule->GroupMove );
+        if( !group )
             return false;
-        bool result = GM_CheckEntrance( loc, arr, entrance );
-        arr->Release();
+        bool result = GM_CheckEntrance( loc, group, entrance );
+        group->Release();
         if( !result )
         {
             WriteLogF( _FUNC_, " - Can't enter in entrance, critter<%s>.\n", rule->GetInfo() );
@@ -1601,13 +1601,12 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
     }
 
     ScriptArray* group = GM_CreateGroupArray( rule->GroupMove );
-    if( group )
-    {
-        bool result = loc->EventEnter( group, entrance );
-        group->Release();
-        if( !result )
-            return false; //group is not allowed to enter
-    }
+    if( !group )
+        return false;
+    bool result = loc->EventEnter( group, entrance );
+    group->Release();
+    if( !result )
+        return false;  // Group is not allowed to enter
 
     uint count = loc->Proto->Entrance[ entrance ].first;
     uint entire = loc->Proto->Entrance[ entrance ].second;
