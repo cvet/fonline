@@ -102,7 +102,9 @@ bool FileExist( const char* fname )
 
 bool FileRename( const char* fname, const char* new_fname )
 {
-    return MoveFileW( MBtoWC( fname ), MBtoWC( new_fname ) ) != FALSE;
+    wchar_t fname_wc[ MAX_FOTEXT ];
+    wcscpy( fname_wc, MBtoWC( fname ) );
+    return MoveFileW( fname_wc, MBtoWC( new_fname ) ) != FALSE;
 }
 
 void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd )

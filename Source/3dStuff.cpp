@@ -1119,7 +1119,6 @@ bool Animation3d::Draw( int x, int y, float scale, RectF* stencil, uint color )
     # endif
     #endif
 
-
     #ifdef FO_D3D
     if( stencil )
         D3D_HR( D3DDevice->SetRenderState( D3DRS_STENCILENABLE, FALSE ) );

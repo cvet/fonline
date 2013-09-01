@@ -2175,7 +2175,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             if( cl_->GetId() == id )
             {
                 cl_saved = cl_;
-                SaveClients.erase( it );
                 break;
             }
         }
@@ -2212,8 +2211,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 cl->CrTimeEvents.resize( te_count );
                 memcpy( &cl->CrTimeEvents[ 0 ], &cl_saved->CrTimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
             }
-
-            cl_saved->Release();
         }
 
         // Unarmed
@@ -2274,6 +2271,9 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             cl->SetMaps( 0, 0 );
             return;
         }
+
+        if( cl_saved )
+            EraseSaveClient( id );
 
         // Map event
         if( map )
