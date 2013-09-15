@@ -378,10 +378,20 @@ bool ZipFile::Init( const char* fname )
 
     FileClose( file );
 
+    #ifdef FO_WINDOWS
+    wchar_t path_wc[ MAX_FOPATH ];
+    if( MultiByteToWideChar( CP_UTF8, 0, path, -1, path_wc, MAX_FOPATH ) == 0 ||
+        WideCharToMultiByte( GetACP(), 0, path_wc, -1, path, MAX_FOPATH, NULL, NULL ) == 0 )
+    {
+        WriteLogF( _FUNC_, " - Code page conversion fail.\n" );
+        return false;
+    }
+    #endif
+
     zipHandle = unzOpen( path );
     if( !zipHandle )
     {
-        WriteLogF( _FUNC_, " - Cannot open file.\n" );
+        WriteLogF( _FUNC_, " - Cannot open ZIP file.\n" );
         return false;
     }
 

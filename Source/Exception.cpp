@@ -150,6 +150,24 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             fprintf( f, "\n" );
             fprintf( f, "\tAddress   0x%p\n", except->ExceptionRecord->ExceptionAddress );
             fprintf( f, "\tFlags     0x%0X\n", except->ExceptionRecord->ExceptionFlags );
+            if( except->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION || except->ExceptionRecord->ExceptionCode == EXCEPTION_IN_PAGE_ERROR )
+            {
+                int readWrite = (int) except->ExceptionRecord->ExceptionInformation[ 0 ];
+                if( readWrite == 0 )
+                    fprintf( f, "\tInfo      Attempted to read to an 0x%p", except->ExceptionRecord->ExceptionInformation[ 1 ] );
+                else if( readWrite == 1 )
+                    fprintf( f, "\tInfo      Attempted to write to an 0x%p", except->ExceptionRecord->ExceptionInformation[ 1 ] );
+                else // readWrite == 8
+                    fprintf( f, "\tInfo      Data execution prevention to an 0x%p", except->ExceptionRecord->ExceptionInformation[ 1 ] );
+                if( except->ExceptionRecord->ExceptionCode == EXCEPTION_IN_PAGE_ERROR )
+                    fprintf( f, ", NTSTATUS %p", except->ExceptionRecord->ExceptionInformation[ 2 ] );
+                fprintf( f, "\n" );
+            }
+            else
+            {
+                for( DWORD i = 0; i < except->ExceptionRecord->NumberParameters; i++ )
+                    fprintf( f, "\tInfo %u    0x%p\n", i, except->ExceptionRecord->ExceptionInformation[ i ] );
+            }
             fprintf( f, "\n" );
         }
 
