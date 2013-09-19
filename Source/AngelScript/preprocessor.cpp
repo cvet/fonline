@@ -467,7 +467,7 @@ void Preprocessor::ParseDefine( DefineTable& define_table, LexemList& def_lexems
     while( !def_lexems.empty() )
     {
         LexemType lexem_type = def_lexems.begin()->Type;
-        if( lexem_type == BACKSLASH || lexem_type == NEWLINE || lexem_type == WHITESPACE || lexem_type == IGNORE )
+        if( lexem_type == BACKSLASH || lexem_type == NEWLINE || lexem_type == WHITESPACE )
             def_lexems.pop_front();
         else
             break;
