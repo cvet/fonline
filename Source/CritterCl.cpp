@@ -1692,6 +1692,41 @@ void CritterCl::SetText( const char* str, uint color, uint text_delay )
     textOnHeadColor = color;
 }
 
+void CritterCl::GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int& h, int& lines )
+{
+    nameVisible = false;
+
+    char str[ MAX_FOTEXT ];
+    if( strTextOnHead.empty() )
+    {
+        if( IsPlayer() && !GameOpt.ShowPlayerNames )
+            return;
+        if( IsNpc() && !GameOpt.ShowNpcNames )
+            return;
+
+        nameVisible = true;
+
+        if( NameOnHead.length() )
+            Str::Copy( str, NameOnHead.c_str() );
+        else
+            Str::Copy( str, Name.c_str() );
+        if( GameOpt.ShowCritId )
+            Str::Append( str, Str::FormatBuf( " <%u>", GetId() ) );
+        if( FLAG( Flags, FCRIT_DISCONNECT ) )
+            Str::Append( str, GameOpt.PlayerOffAppendix.c_str() );
+    }
+    else
+        Str::Copy( str, strTextOnHead.c_str() );
+
+    Rect tr = GetTextRect();
+    x = (int) ( (float) ( tr.L + tr.W() / 2 + GameOpt.ScrOx ) / GameOpt.SpritesZoom - 100.0f );
+    y = (int) ( (float) ( tr.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom - 70.0f );
+
+    SprMngr.GetTextInfo( 200, 70, str, -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines );
+    x += 100 - ( w / 2 );
+    y += 70 - h;
+}
+
 void CritterCl::DrawTextOnHead()
 {
     if( strTextOnHead.empty() )

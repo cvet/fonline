@@ -938,6 +938,7 @@ struct BindClass
     static void Crit_get_ContourColor() {}
     static void Crit_GetMultihex()      {}
     static void Crit_IsTurnBasedTurn()  {}
+    static void Crit_GetNameTextInfo()  {}
 
     static void Item_IsStackable()    {}
     static void Item_IsDeteriorable() {}

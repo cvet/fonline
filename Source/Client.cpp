@@ -10180,6 +10180,14 @@ bool FOClient::SScriptFunc::Crit_IsTurnBasedTurn( CritterCl* cr )
     return Self->IsTurnBased && cr->GetId() == Self->TurnBasedCurCritterId;
 }
 
+void FOClient::SScriptFunc::Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines )
+{
+    if( cr->IsNotValid )
+        SCRIPT_ERROR_R( "This nullptr." );
+
+    cr->GetNameTextInfo( nameVisible, x, y, w, h, lines );
+}
+
 bool FOClient::SScriptFunc::Item_IsStackable( Item* item )
 {
     if( item->IsNotValid )

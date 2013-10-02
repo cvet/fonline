@@ -504,6 +504,7 @@ public:
         static uint       Crit_get_ContourColor( CritterCl* cr );
         static uint       Crit_GetMultihex( CritterCl* cr );
         static bool       Crit_IsTurnBasedTurn( CritterCl* cr );
+        static void       Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines );
 
         static bool   Item_IsStackable( Item* item );
         static bool   Item_IsDeteriorable( Item* item );

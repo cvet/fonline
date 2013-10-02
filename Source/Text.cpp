@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "Text.h"
 #include "Crypt.h"
-#include "Fl/case.h"
+#include "FL/case.h"
 
 void Str::Copy( char* to, uint size, const char* from )
 {

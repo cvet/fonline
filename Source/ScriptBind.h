@@ -861,6 +861,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "void set_ContourColor(u
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "uint get_ContourColor() const", asFUNCTION( BIND_CLASS Crit_get_ContourColor ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "uint GetMultihex() const", asFUNCTION( BIND_CLASS Crit_GetMultihex ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "bool IsTurnBasedTurn() const", asFUNCTION( BIND_CLASS Crit_IsTurnBasedTurn ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "void GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int& h, int& lines )", asFUNCTION( BIND_CLASS Crit_GetNameTextInfo ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "const uint Id", OFFSETOF( CritterCl, Id ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "const uint16 Pid", OFFSETOF( CritterCl, Pid ) ) );
