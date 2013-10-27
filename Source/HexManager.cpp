@@ -704,8 +704,15 @@ void HexManager::SetRainAnimation( const char* fall_anim_name, const char* drop_
     if( drop_anim_name )
         picRainDropName = drop_anim_name;
 
-    SAFEDEL( picRainFall );
-    SAFEDEL( picRainDrop );
+    if( picRainFall == SpriteManager::DummyAnimation )
+        picRainFall = NULL;
+    else
+        SAFEDEL( picRainFall );
+    if( picRainDrop == SpriteManager::DummyAnimation )
+        picRainDrop = NULL;
+    else
+        SAFEDEL( picRainDrop );
+
     picRainFall = SprMngr.LoadAnimation( picRainFallName.c_str(), PT_DATA, ANIM_USE_DUMMY );
     picRainDrop = SprMngr.LoadAnimation( picRainDropName.c_str(), PT_DATA, ANIM_USE_DUMMY );
 }
