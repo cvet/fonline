@@ -1,17 +1,6 @@
 #include "StdAfx.h"
 #include "Mapper.h"
 
-void _PreRestore()
-{
-    FOMapper::Self->HexMngr.PreRestore();
-}
-
-void _PostRestore()
-{
-    FOMapper::Self->HexMngr.PostRestore();
-    FOMapper::Self->ChangeGameTime();
-}
-
 bool      FOMapper::SpritesCanDraw = false;
 FOMapper* FOMapper::Self = NULL;
 FOMapper::FOMapper()
@@ -116,10 +105,7 @@ bool FOMapper::Init()
     FileManager::SetCacheName( cache_name );
 
     // Sprite manager
-    SpriteMngrParams params;
-    params.PreRestoreFunc = &_PreRestore;
-    params.PostRestoreFunc = &_PostRestore;
-    if( !SprMngr.Init( params ) )
+    if( !SprMngr.Init() )
         return false;
 
     // Fonts
@@ -866,9 +852,7 @@ void FOMapper::ParseKeyboard()
                     MainWindow->size_range( MODE_WIDTH, MODE_HEIGHT, MODE_WIDTH, MODE_HEIGHT );
                     GameOpt.FullScreen = false;
                 }
-                #ifndef FO_D3D
                 SprMngr.RefreshViewPort();
-                #endif
                 continue;
             // Minimize
             case DIK_F12:
@@ -1021,9 +1005,7 @@ void FOMapper::ParseKeyboard()
                 #endif
                 GameOpt.FullScreen = false;
             }
-            #ifndef FO_D3D
             SprMngr.RefreshViewPort();
-            #endif
             continue;
         }
 
@@ -1097,13 +1079,8 @@ void FOMapper::ParseMouse()
     // Mouse position
     int mx = 0, my = 0;
     Fl::get_mouse( mx, my );
-    #ifdef FO_D3D
-    GameOpt.MouseX = mx - ( !GameOpt.FullScreen ? MainWindow->x() : 0 );
-    GameOpt.MouseY = my - ( !GameOpt.FullScreen ? MainWindow->y() : 0 );
-    #else
     GameOpt.MouseX = mx - MainWindow->x();
     GameOpt.MouseY = my - MainWindow->y();
-    #endif
     GameOpt.MouseX = CLAMP( GameOpt.MouseX, 0, MODE_WIDTH - 1 );
     GameOpt.MouseY = CLAMP( GameOpt.MouseY, 0, MODE_HEIGHT - 1 );
 

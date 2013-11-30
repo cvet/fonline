@@ -106,7 +106,6 @@ private:
     bool         FrameMove( float elapsed, int x, int y, float scale, bool transform );
     void         UpdateFrameMatrices( Frame* frame, const Matrix* parent_matrix );
     bool         DrawFrame( Frame* frame, bool shadow );
-    bool         DrawMeshEffect( MeshSubset* mesh, uint subset, Effect* effect, Texture** textures, EffectValue_ technique );
     bool         IsIntersectFrame( Frame* frame, const Vector& ray_origin, const Vector& ray_dir, float x, float y );
     bool         SetupBordersFrame( Frame* frame, RectF& borders );
     void         ProcessBorders();
@@ -147,7 +146,7 @@ public:
     Rect GetExtraBorders( Point* pivot = NULL );
     void GetRenderFramesData( float& period, int& proc_from, int& proc_to );
 
-    static bool         StartUp( Device_ device );
+    static bool         StartUp();
     static bool         SetScreenSize( int width, int height );
     static void         Finish();
     static void         BeginScene();

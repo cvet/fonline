@@ -23,11 +23,9 @@
 #include "IniParser.h"
 #include "MsgFiles.h"
 
-#ifndef FO_D3D
 // Video
-# include <Theora/theoradec.h>
-# pragma comment( lib, "libtheora_static.lib" )
-#endif
+#include <Theora/theoradec.h>
+#pragma comment( lib, "libtheora_static.lib" )
 
 class FOClient
 {
@@ -345,7 +343,6 @@ public:
 /************************************************************************/
 /* Video                                                                */
 /************************************************************************/
-    #ifndef FO_D3D
     struct ShowVideo
     {
         string FileName;
@@ -390,7 +387,6 @@ public:
     void PlayVideo();
     void NextVideo();
     void StopVideo();
-    #endif
 
 /************************************************************************/
 /* Animation                                                            */
@@ -1634,19 +1630,15 @@ public:
     #define SAVE_LOAD_IMAGE_WIDTH      ( 400 )
     #define SAVE_LOAD_IMAGE_HEIGHT     ( 300 )
 
-    AnyFrames* SaveLoadMainPic, * SaveLoadScrUpPicDown, * SaveLoadScrDownPicDown,
+    AnyFrames*   SaveLoadMainPic, * SaveLoadScrUpPicDown, * SaveLoadScrDownPicDown,
     * SaveLoadDonePicDown, * SaveLoadBackPicDown;
-    Rect       SaveLoadMain, SaveLoadText, SaveLoadScrUp, SaveLoadScrDown, SaveLoadSlots, SaveLoadPic,
-               SaveLoadInfo, SaveLoadDone, SaveLoadDoneText, SaveLoadBack, SaveLoadBackText;
-    int        SaveLoadX, SaveLoadY, SaveLoadCX, SaveLoadCY, SaveLoadVectX, SaveLoadVectY;
-    bool       SaveLoadLoginScreen, SaveLoadSave;
-    bool       SaveLoadProcessDraft, SaveLoadDraftValid;
+    Rect         SaveLoadMain, SaveLoadText, SaveLoadScrUp, SaveLoadScrDown, SaveLoadSlots, SaveLoadPic,
+                 SaveLoadInfo, SaveLoadDone, SaveLoadDoneText, SaveLoadBack, SaveLoadBackText;
+    int          SaveLoadX, SaveLoadY, SaveLoadCX, SaveLoadCY, SaveLoadVectX, SaveLoadVectY;
+    bool         SaveLoadLoginScreen, SaveLoadSave;
+    bool         SaveLoadProcessDraft, SaveLoadDraftValid;
 
-    #ifdef FO_D3D
-    Surface_     SaveLoadDraft;
-    #else
     RenderTarget SaveLoadDraft;
-    #endif
 
     struct SaveLoadDataSlot
     {

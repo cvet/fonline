@@ -28,7 +28,7 @@ FrameVec GraphicLoader::loadedModels;
 PCharVec GraphicLoader::loadedAnimationsFNames;
 PtrVec   GraphicLoader::loadedAnimations;
 
-Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
+Frame* GraphicLoader::LoadModel( const char* fname )
 {
     // Load Assimp dynamic library
     static bool binded = false;
@@ -121,11 +121,7 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
                                                             aiProcess_CalcTangentSpace | aiProcess_GenNormals | aiProcess_GenUVCoords |
                                                             aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
                                                             aiProcess_SortByPType | aiProcess_SplitLargeMeshes | aiProcess_LimitBoneWeights |
-                                                            aiProcess_ImproveCacheLocality
-                                                            #ifdef FO_D3D
-                                                            | aiProcess_ConvertToLeftHanded
-                                                            #endif
-                                                            , "" );
+                                                            aiProcess_ImproveCacheLocality, "" );
     if( !scene )
     {
         WriteLogF( _FUNC_, " - Can't load 3d file, name<%s>, error<%s>.\n", fname, Ptr_aiGetErrorString() );
@@ -133,18 +129,8 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
     }
 
     // Extract frames
-    #ifdef FO_D3D
-    Frame* frame_root = FillNode( device, scene->mRootNode, scene );
-    if( !frame_root )
-    {
-        WriteLogF( _FUNC_, " - Conversion fail, name<%s>.\n", fname );
-        Ptr_aiReleaseImport( scene );
-        return NULL;
-    }
-    #else
     Frame* frame_root = FillNode( scene, scene->mRootNode );
     FixFrame( frame_root, frame_root, scene, scene->mRootNode );
-    #endif
     frame_root->Name = Str::Duplicate( fname );
     loadedModels.push_back( frame_root );
 
@@ -198,330 +184,6 @@ Frame* GraphicLoader::LoadModel( Device_ device, const char* fname )
     return frame_root;
 }
 
-#ifdef FO_D3D
-Frame* GraphicLoader::FillNode( Device_ device, const aiNode* node, const aiScene* scene )
-{
-    // Create frame
-    Frame* frame = new Frame();
-    memzero( frame, sizeof( Frame ) );
-    frame->Name = Str::Duplicate( node->mName.data );
-    frame->DrawMesh = NULL;
-    frame->Sibling = NULL;
-    frame->FirstChild = NULL;
-    frame->TransformationMatrix = node->mTransformation;
-    MATRIX_TRANSPOSE( frame->TransformationMatrix );
-    frame->CombinedTransformationMatrix = Matrix();
-
-    // Merge meshes, because Assimp split subsets
-    if( node->mNumMeshes )
-    {
-        // Calculate whole data
-        uint                   faces_count = 0;
-        uint                   vertices_count = 0;
-        vector< aiBone* >      all_bones;
-        vector< D3DXMATERIAL > materials;
-        for( unsigned int m = 0; m < node->mNumMeshes; m++ )
-        {
-            aiMesh* mesh = scene->mMeshes[ node->mMeshes[ m ] ];
-
-            // Faces and vertices
-            faces_count += mesh->mNumFaces;
-            vertices_count += mesh->mNumVertices;
-
-            // Shared bones
-            for( unsigned int i = 0; i < mesh->mNumBones; i++ )
-            {
-                aiBone* bone = mesh->mBones[ i ];
-                bool    bone_aviable = false;
-                for( uint b = 0, bb = (uint) all_bones.size(); b < bb; b++ )
-                {
-                    if( Str::Compare( all_bones[ b ]->mName.data, bone->mName.data ) )
-                    {
-                        bone_aviable = true;
-                        break;
-                    }
-                }
-                if( !bone_aviable )
-                    all_bones.push_back( bone );
-            }
-
-            // Material
-            D3DXMATERIAL material;
-            memzero( &material, sizeof( material ) );
-            aiMaterial*  mtrl = scene->mMaterials[ mesh->mMaterialIndex ];
-            aiString     path;
-            if( Ptr_aiGetMaterialTextureCount( mtrl, aiTextureType_DIFFUSE ) )
-            {
-                Ptr_aiGetMaterialTexture( mtrl, aiTextureType_DIFFUSE, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL );
-                material.pTextureFilename = Str::Duplicate( path.data );
-            }
-
-            Ptr_aiGetMaterialFloatArray( mtrl, AI_MATKEY_COLOR_DIFFUSE, (float*) &material.MatD3D.Diffuse, NULL );
-            Ptr_aiGetMaterialFloatArray( mtrl, AI_MATKEY_COLOR_AMBIENT, (float*) &material.MatD3D.Ambient, NULL );
-            Ptr_aiGetMaterialFloatArray( mtrl, AI_MATKEY_COLOR_SPECULAR, (float*) &material.MatD3D.Specular, NULL );
-            Ptr_aiGetMaterialFloatArray( mtrl, AI_MATKEY_COLOR_EMISSIVE, (float*) &material.MatD3D.Emissive, NULL );
-            material.MatD3D.Diffuse.a = 1.0f;
-            material.MatD3D.Ambient.a = 1.0f;
-            material.MatD3D.Specular.a = 1.0f;
-            material.MatD3D.Emissive.a = 1.0f;
-
-            materials.push_back( material );
-        }
-
-        // Mesh declarations
-        D3DVERTEXELEMENT9 declaration[] =
-        {
-            { 0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0 },
-            { 0, 12, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL, 0 },
-            { 0, 24, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0 },
-            { 0, 32, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TANGENT, 0 },
-            { 0, 44, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_BINORMAL, 0 },
-            D3DDECL_END()
-        };
-
-        // Create mesh
-        D3DXMESHDATA dxmesh;
-        dxmesh.Type = D3DXMESHTYPE_MESH;
-        D3D_HR( D3DXCreateMesh( faces_count, vertices_count, D3DXMESH_MANAGED, declaration, device, &dxmesh.pMesh ) );
-
-        // Skinning
-        ID3DXSkinInfo* skin_info = NULL;
-
-        // Fill data
-        struct Vertex
-        {
-            float x, y, z;
-            float nx, ny, nz;
-            float u, v;
-            float tx, ty, tz;
-            float bx, by, bz;
-        }* vb;
-        int    vsize = 56;
-        WORD*  ib;
-        DWORD* att;
-        D3D_HR( dxmesh.pMesh->LockVertexBuffer( 0, (void**) &vb ) );
-        D3D_HR( dxmesh.pMesh->LockIndexBuffer( 0, (void**) &ib ) );
-        D3D_HR( dxmesh.pMesh->LockAttributeBuffer( 0, &att ) );
-
-        uint cur_vertices = 0;
-        uint cur_faces = 0;
-        for( unsigned int m = 0; m < node->mNumMeshes; m++ )
-        {
-            aiMesh* mesh = scene->mMeshes[ node->mMeshes[ m ] ];
-
-            for( unsigned int i = 0; i < mesh->mNumVertices; i++ )
-            {
-                Vertex& v = *vb;
-                vb = (Vertex*) ( ( (char*) vb ) + vsize );
-                memzero( &v, vsize );
-
-                // Vertices data
-                v.x = mesh->mVertices[ i ].x;
-                v.y = mesh->mVertices[ i ].y;
-                v.z = mesh->mVertices[ i ].z;
-
-                if( mesh->mTextureCoords && mesh->mTextureCoords[ 0 ] )
-                {
-                    v.u = mesh->mTextureCoords[ 0 ][ i ].x;
-                    v.v = mesh->mTextureCoords[ 0 ][ i ].y;
-                }
-                if( mesh->mNormals )
-                {
-                    v.nx = mesh->mNormals[ i ].x;
-                    v.ny = mesh->mNormals[ i ].y;
-                    v.nz = mesh->mNormals[ i ].z;
-                }
-                if( false && mesh->mTangents )
-                {
-                    v.tx = mesh->mTangents[ i ].x;
-                    v.ty = mesh->mTangents[ i ].y;
-                    v.tz = mesh->mTangents[ i ].z;
-                    v.bx = mesh->mBitangents[ i ].x;
-                    v.by = mesh->mBitangents[ i ].y;
-                    v.bz = mesh->mBitangents[ i ].z;
-                }
-            }
-
-            // Indices
-            for( unsigned int i = 0; i < mesh->mNumFaces; i++ )
-            {
-                aiFace& face = mesh->mFaces[ i ];
-                for( unsigned int j = 0; j < face.mNumIndices; j++ )
-                {
-                    *ib = face.mIndices[ j ] + cur_vertices;
-                    ib++;
-                }
-
-                *( att + cur_faces + i ) = m;
-            }
-
-            cur_vertices += mesh->mNumVertices;
-            cur_faces += mesh->mNumFaces;
-        }
-
-        // Skin info
-        if( all_bones.size() )
-        {
-            D3D_HR( D3DXCreateSkinInfo( vertices_count, declaration, (uint) all_bones.size(), &skin_info ) );
-
-            vector< vector< DWORD > > vertices( all_bones.size() );
-            vector< FloatVec >        weights( all_bones.size() );
-
-            for( uint b = 0, bb = (uint) all_bones.size(); b < bb; b++ )
-            {
-                aiBone* bone = all_bones[ b ];
-
-                // Bone options
-                skin_info->SetBoneName( b, bone->mName.data );
-                skin_info->SetBoneOffsetMatrix( b, (D3DXMATRIX*) &bone->mOffsetMatrix );
-
-                // Reserve memory
-                vertices.reserve( vertices_count );
-                weights.reserve( vertices_count );
-            }
-
-            cur_vertices = 0;
-            for( unsigned int m = 0; m < node->mNumMeshes; m++ )
-            {
-                aiMesh* mesh = scene->mMeshes[ node->mMeshes[ m ] ];
-
-                for( unsigned int i = 0; i < mesh->mNumBones; i++ )
-                {
-                    aiBone* bone = mesh->mBones[ i ];
-
-                    // Get bone id
-                    uint bone_id = 0;
-                    for( uint b = 0, bb = (uint) all_bones.size(); b < bb; b++ )
-                    {
-                        if( Str::Compare( all_bones[ b ]->mName.data, bone->mName.data ) )
-                        {
-                            bone_id = b;
-                            break;
-                        }
-                    }
-
-                    // Fill weights
-                    if( bone->mNumWeights )
-                    {
-                        for( unsigned int j = 0; j < bone->mNumWeights; j++ )
-                        {
-                            aiVertexWeight& vw = bone->mWeights[ j ];
-                            vertices[ bone_id ].push_back( vw.mVertexId + cur_vertices );
-                            weights[ bone_id ].push_back( vw.mWeight );
-                        }
-                    }
-                }
-
-                cur_vertices += mesh->mNumVertices;
-            }
-
-            // Set influences
-            for( uint b = 0, bb = (uint) all_bones.size(); b < bb; b++ )
-            {
-                if( vertices[ b ].size() )
-                    skin_info->SetBoneInfluence( b, (uint) vertices[ b ].size(), &vertices[ b ][ 0 ], &weights[ b ][ 0 ] );
-            }
-        }
-
-        D3D_HR( dxmesh.pMesh->UnlockVertexBuffer() );
-        D3D_HR( dxmesh.pMesh->UnlockIndexBuffer() );
-        D3D_HR( dxmesh.pMesh->UnlockAttributeBuffer() );
-
-        MeshContainer* mesh_container = new MeshContainer();
-        memzero( mesh_container, sizeof( MeshContainer ) );
-
-        // Adjacency data - holds information about triangle adjacency, required by the ID3DMESH object
-        uint faces = dxmesh.pMesh->GetNumFaces();
-        mesh_container->Adjacency = new uint[ faces * 3 ];
-        dxmesh.pMesh->GenerateAdjacency( 0.0000125f, (DWORD*) mesh_container->Adjacency );
-
-        // Changed 24/09/07 - can just assign pointer and add a ref rather than need to clone
-        mesh_container->InitMesh = dxmesh.pMesh;
-        mesh_container->InitMesh->AddRef();
-
-        // Create material and texture arrays. Note that I always want to have at least one
-        mesh_container->NumMaterials = max( materials.size(), 1 );
-        mesh_container->Materials = new Material_[ mesh_container->NumMaterials ];
-        mesh_container->TextureNames = new char*[ mesh_container->NumMaterials ];
-        mesh_container->Effects = new EffectInstance[ mesh_container->NumMaterials ];
-
-        if( materials.size() > 0 )
-        {
-            // Load all the textures and copy the materials over
-            for( uint i = 0; i < materials.size(); i++ )
-            {
-                if( materials[ i ].pTextureFilename )
-                    mesh_container->TextureNames[ i ] = Str::Duplicate( materials[ i ].pTextureFilename );
-                else
-                    mesh_container->TextureNames[ i ] = NULL;
-                mesh_container->Materials[ i ] = materials[ i ].MatD3D;
-                memzero( &mesh_container->Effects[ i ], sizeof( EffectInstance ) );
-            }
-        }
-        else
-        {
-            // Make a default material in the case where the mesh did not provide one
-            memzero( &mesh_container->Materials[ 0 ], sizeof( Material_ ) );
-            mesh_container->Materials[ 0 ].Diffuse.a = 1.0f;
-            mesh_container->Materials[ 0 ].Diffuse.r = 0.5f;
-            mesh_container->Materials[ 0 ].Diffuse.g = 0.5f;
-            mesh_container->Materials[ 0 ].Diffuse.b = 0.5f;
-            mesh_container->Materials[ 0 ].Specular = mesh_container->Materials[ 0 ].Diffuse;
-            mesh_container->TextureNames[ 0 ] = NULL;
-            memzero( &mesh_container->Effects[ 0 ], sizeof( EffectInstance ) );
-        }
-
-        // If there is skin data associated with the mesh copy it over
-        if( skin_info )
-        {
-            // Save off the SkinInfo
-            mesh_container->Skin = skin_info;
-            skin_info->AddRef();
-
-            // Need an array of offset matrices to move the vertices from the figure space to the bone's space
-            UINT numBones = skin_info->GetNumBones();
-            mesh_container->BoneOffsets = new Matrix[ numBones ];
-
-            // Create the arrays for the bones and the frame matrices
-            mesh_container->FrameCombinedMatrixPointer = new Matrix*[ numBones ];
-            memzero( mesh_container->FrameCombinedMatrixPointer, sizeof( Matrix* ) * numBones );
-
-            // get each of the bone offset matrices so that we don't need to get them later
-            for( UINT i = 0; i < numBones; i++ )
-                mesh_container->BoneOffsets[ i ] = *( (Matrix*) mesh_container->Skin->GetBoneOffsetMatrix( i ) );
-        }
-        else
-        {
-            // No skin info so NULL all the pointers
-            mesh_container->Skin = NULL;
-            mesh_container->BoneOffsets = NULL;
-            mesh_container->FrameCombinedMatrixPointer = NULL;
-            mesh_container->SkinMesh = NULL;
-        }
-
-        dxmesh.pMesh->Release();
-        if( skin_info )
-            skin_info->Release();
-
-        frame->DrawMesh = mesh_container;
-    }
-
-    // Childs
-    Frame* frame_last = NULL;
-    for( unsigned int i = 0; i < node->mNumChildren; i++ )
-    {
-        aiNode* node_child = node->mChildren[ i ];
-        Frame*  frame_child = FillNode( device, node_child, scene );
-        if( !i )
-            frame->FirstChild = frame_child;
-        else
-            frame_last->Sibling = frame_child;
-        frame_last = frame_child;
-    }
-
-    return frame;
-}
-#else
 Frame* GraphicLoader::FillNode( aiScene* scene, aiNode* node )
 {
     Frame* frame = new Frame();
@@ -722,9 +384,8 @@ void GraphicLoader::FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, a
     for( uint i = 0; i < node->mNumChildren; i++ )
         FixFrame( root_frame, frame->Children[ i ], scene, node->mChildren[ i ] );
 }
-#endif
 
-AnimSet* GraphicLoader::LoadAnimation( Device_ device, const char* anim_fname, const char* anim_name )
+AnimSet* GraphicLoader::LoadAnimation( const char* anim_fname, const char* anim_name )
 {
     // Find in already loaded
     for( uint i = 0, j = (uint) loadedAnimations.size(); i < j; i++ )
@@ -741,66 +402,14 @@ AnimSet* GraphicLoader::LoadAnimation( Device_ device, const char* anim_fname, c
             return NULL;
 
     // File not processed, load and recheck animations
-    if( LoadModel( device, anim_fname ) )
-        return LoadAnimation( device, anim_fname, anim_name );
+    if( LoadModel( anim_fname ) )
+        return LoadAnimation( anim_fname, anim_name );
 
     return NULL;
 }
 
 void GraphicLoader::Free( Frame* frame )
 {
-    #ifdef FO_D3D
-    // Free frame
-    if( frame )
-    {
-        SAFEDELA( frame->Name );
-        MeshContainer* mesh_container = frame->DrawMesh;
-        if( mesh_container )
-        {
-            // Materials array
-            SAFEDELA( mesh_container->Materials );
-            // Release the textures before deleting the array
-            if( mesh_container->TextureNames )
-            {
-                for( uint i = 0; i < mesh_container->NumMaterials; i++ )
-                    SAFEDELA( mesh_container->TextureNames[ i ] );
-            }
-            SAFEDELA( mesh_container->TextureNames );
-            // Delete effect
-            if( mesh_container->Effects )
-            {
-                for( uint i = 0; i < mesh_container->NumMaterials; i++ )
-                {
-                    for( uint j = 0; j < mesh_container->Effects[ i ].DefaultsCount; j++ )
-                        SAFEDELA( mesh_container->Effects[ i ].Defaults[ j ].Data );
-                    SAFEDELA( mesh_container->Effects[ i ].Defaults );
-                }
-            }
-            SAFEDEL( mesh_container->Effects );
-            // Adjacency data
-            SAFEDELA( mesh_container->Adjacency );
-            // Bone parts
-            SAFEDELA( mesh_container->BoneOffsets );
-            // Frame matrices
-            SAFEDELA( mesh_container->FrameCombinedMatrixPointer );
-            // Release skin mesh
-            SAFEREL( mesh_container->InitMesh );
-            // Release the main mesh
-            SAFEREL( mesh_container->SkinMesh );
-            // Release blend mesh
-            SAFEREL( mesh_container->SkinMeshBlended );
-            // Release skin information
-            SAFEREL( mesh_container->Skin );
-            // Finally delete the mesh container itself
-            delete mesh_container;
-        }
-        if( frame->Sibling )
-            Free( frame->Sibling );
-        if( frame->FirstChild )
-            Free( frame->FirstChild );
-        delete frame;
-    }
-    #else
     for( auto it = frame->Mesh.begin(), end = frame->Mesh.end(); it != end; ++it )
     {
         MeshSubset& ms = *it;
@@ -811,7 +420,6 @@ void GraphicLoader::Free( Frame* frame )
     }
     for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
         Free( *it );
-    #endif
 }
 
 bool GraphicLoader::IsExtensionSupported( const char* ext )
@@ -834,7 +442,7 @@ bool GraphicLoader::IsExtensionSupported( const char* ext )
 /************************************************************************/
 TextureVec GraphicLoader::loadedTextures;
 
-Texture* GraphicLoader::LoadTexture( Device_ device, const char* texture_name, const char* model_path )
+Texture* GraphicLoader::LoadTexture( const char* texture_name, const char* model_path )
 {
     if( !texture_name || !texture_name[ 0 ] )
         return NULL;
@@ -858,14 +466,6 @@ Texture* GraphicLoader::LoadTexture( Device_ device, const char* texture_name, c
         fm.LoadFile( path, PT_DATA );
     }
 
-    #ifdef FO_D3D
-    // Create texture
-    LPDIRECT3DTEXTURE9 dxtex = NULL;
-    if( !fm.IsLoaded() || FAILED( D3DXCreateTextureFromFileInMemory( device, fm.GetBuf(), fm.GetFsize(), &dxtex ) ) )
-        return NULL;
-    Texture* texture = new Texture();
-    texture->Instance = dxtex;
-    #else
     // Detect type
     ILenum file_type = ilTypeFromExt( texture_name );
     if( file_type == IL_TYPE_UNKNOWN )
@@ -923,7 +523,6 @@ Texture* GraphicLoader::LoadTexture( Device_ device, const char* texture_name, c
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT ) );
     GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, texture->Data ) );
-    #endif
     texture->Name = Str::Duplicate( texture_name );
     loadedTextures.push_back( texture );
     return loadedTextures.back();
@@ -931,7 +530,6 @@ Texture* GraphicLoader::LoadTexture( Device_ device, const char* texture_name, c
 
 void GraphicLoader::FreeTexture( Texture* texture )
 {
-    #ifdef FO_D3D
     if( texture )
     {
         for( auto it = loadedTextures.begin(), end = loadedTextures.end(); it != end; ++it )
@@ -945,7 +543,7 @@ void GraphicLoader::FreeTexture( Texture* texture )
         }
 
         SAFEDELA( texture->Name );
-        SAFEREL( texture->Instance );
+        SAFEDELA( texture->Data );
         SAFEDEL( texture );
     }
     else
@@ -954,45 +552,15 @@ void GraphicLoader::FreeTexture( Texture* texture )
         for( auto it = textures.begin(), end = textures.end(); it != end; ++it )
             FreeTexture( *it );
     }
-    #endif
 }
 
 /************************************************************************/
 /* Effects                                                              */
 /************************************************************************/
-#ifdef FO_D3D
-class IncludeParser: public ID3DXInclude
-{
-public:
-    char* RootPath;
-
-    STDMETHOD( Open ) ( THIS_ D3DXINCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID * ppData, UINT * pBytes )
-    {
-        FileManager fm;
-        if( !fm.LoadFile( pFileName, PT_EFFECTS ) )
-        {
-            if( !RootPath ) return S_FALSE;
-            char path[ MAX_FOPATH ];
-            FileManager::ExtractPath( RootPath, path );
-            Str::Append( path, pFileName );
-            if( !fm.LoadFile( path, PT_DATA ) ) return S_FALSE;
-        }
-        *pBytes = fm.GetFsize();
-        *ppData = fm.ReleaseBuffer();
-        return S_OK;
-    }
-
-    STDMETHOD( Close ) ( THIS_ LPCVOID pData )
-    {
-        if( pData ) delete[] pData;
-        return S_OK;
-    }
-} includeParser;
-#endif
 
 EffectVec GraphicLoader::loadedEffects;
 
-Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name, bool use_in_2d, const char* defines /* = NULL */, const char* model_path /* = NULL */, EffectDefault* defaults /* = NULL */, uint defaults_count /* = 0 */ )
+Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, const char* defines /* = NULL */, const char* model_path /* = NULL */, EffectDefault* defaults /* = NULL */, uint defaults_count /* = 0 */ )
 {
     // Erase extension
     char fname[ MAX_FOPATH ];
@@ -1013,211 +581,6 @@ Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name, bool
             return effect;
     }
 
-    #ifdef FO_D3D
-    // Add extension
-    Str::Append( fname, ".fx" );
-
-    // First try load from effects folder
-    FileManager fm;
-    if( !fm.LoadFile( fname, PT_EFFECTS ) && model_path )
-    {
-        // After try load from file folder
-        char path[ MAX_FOPATH ];
-        FileManager::ExtractPath( model_path, path );
-        Str::Append( path, fname );
-        fm.LoadFile( path, PT_DATA );
-    }
-    if( !fm.IsLoaded() )
-        return NULL;
-
-    // Find already compiled effect in cache
-    char        cache_name[ MAX_FOPATH ];
-    Str::Format( cache_name, "%s.fxc", fname );
-    FileManager fm_cache;
-    if( fm_cache.LoadFile( cache_name, PT_CACHE ) )
-    {
-        uint64 last_write, last_write_cache;
-        fm.GetTime( NULL, NULL, &last_write );
-        fm_cache.GetTime( NULL, NULL, &last_write_cache );
-        if( last_write > last_write_cache )
-            fm_cache.UnloadFile();
-    }
-
-    // Load and cache effect
-    if( !fm_cache.IsLoaded() )
-    {
-        char*                buf = (char*) fm.GetBuf();
-        uint                 size = fm.GetFsize();
-
-        LPD3DXEFFECTCOMPILER ef_comp = NULL;
-        LPD3DXBUFFER         ef_buf = NULL;
-        LPD3DXBUFFER         errors = NULL;
-        LPD3DXBUFFER         errors31 = NULL;
-        HRESULT              hr = 0, hr31 = 0;
-
-        includeParser.RootPath = (char*) model_path;
-        hr = D3DXCreateEffectCompiler( buf, size, NULL, &includeParser, 0, &ef_comp, &errors );
-        if( FAILED( hr ) )
-            hr31 = D3DXCreateEffectCompiler( buf, size, NULL, &includeParser, D3DXSHADER_USE_LEGACY_D3DX9_31_DLL, &ef_comp, &errors31 );
-
-        if( SUCCEEDED( hr ) || SUCCEEDED( hr31 ) )
-        {
-            SAFEREL( errors );
-            if( SUCCEEDED( ef_comp->CompileEffect( 0, &ef_buf, &errors ) ) )
-            {
-                fm_cache.SetData( ef_buf->GetBufferPointer(), ef_buf->GetBufferSize() );
-                fm_cache.SaveOutBufToFile( cache_name, PT_CACHE );
-                fm_cache.SwitchToRead();
-            }
-            else
-            {
-                WriteLogF( _FUNC_, " - Unable to compile effect, effect<%s>, errors<\n%s>.\n", fname, errors ? errors->GetBufferPointer() : "nullptr\n" );
-            }
-        }
-        else
-        {
-            WriteLogF( _FUNC_, " - Unable to create effect compiler, effect<%s>, errors<%s\n%s>, legacy compiler errors<%s\n%s>.\n", fname,
-                       DXGetErrorString( hr ), errors ? errors->GetBufferPointer() : "", DXGetErrorString( hr31 ), errors31 ? errors31->GetBufferPointer() : "" );
-        }
-
-        SAFEREL( ef_comp );
-        SAFEREL( ef_buf );
-        SAFEREL( errors );
-        SAFEREL( errors31 );
-
-        if( !fm_cache.IsLoaded() )
-            return NULL;
-    }
-
-    // Create effect
-    LPD3DXEFFECT dxeffect = NULL;
-    LPD3DXBUFFER errors = NULL;
-    if( FAILED( D3DXCreateEffect( device, fm_cache.GetBuf(), fm_cache.GetFsize(), NULL, NULL, /*D3DXSHADER_SKIPVALIDATION|*/ D3DXFX_NOT_CLONEABLE, NULL, &dxeffect, &errors ) ) )
-    {
-        WriteLogF( _FUNC_, " - Unable to create effect, effect<%s>, errors<\n%s>.\n", fname, errors ? errors->GetBufferPointer() : "nullptr" );
-        SAFEREL( dxeffect );
-        SAFEREL( errors );
-        return NULL;
-    }
-    SAFEREL( errors );
-
-    Effect* effect = new Effect();
-    effect->Name = Str::Duplicate( loaded_fname );
-    effect->Defines = Str::Duplicate( "" );
-    effect->DXInstance = dxeffect;
-    effect->EffectFlags = D3DXFX_DONOTSAVESTATE;
-    effect->EffectParams = NULL;
-
-    effect->TechniqueSkinned = dxeffect->GetTechniqueByName( "Skinned" );
-    effect->TechniqueSkinnedWithShadow = dxeffect->GetTechniqueByName( "SkinnedWithShadow" );
-    effect->TechniqueSimple = dxeffect->GetTechniqueByName( "Simple" );
-    effect->TechniqueSimpleWithShadow = dxeffect->GetTechniqueByName( "SimpleWithShadow" );
-    effect->BoneInfluences = dxeffect->GetParameterByName( NULL, "BonesInfluences" );
-    effect->GroundPosition = dxeffect->GetParameterByName( NULL, "GroundPosition" );
-    effect->LightDir = dxeffect->GetParameterByName( NULL, "LightDir" );
-    effect->LightDiffuse = dxeffect->GetParameterByName( NULL, "LightDiffuse" );
-    effect->MaterialAmbient = dxeffect->GetParameterByName( NULL, "MaterialAmbient" );
-    effect->MaterialDiffuse = dxeffect->GetParameterByName( NULL, "MaterialDiffuse" );
-    effect->WorldMatrices = dxeffect->GetParameterByName( NULL, "WorldMatrices" );
-    effect->ProjectionMatrix = dxeffect->GetParameterByName( NULL, "ViewProjMatrix" );
-
-    if( !effect->TechniqueSimple )
-    {
-        WriteLogF( _FUNC_, " - Technique 'Simple' not founded, effect<%s>.\n", fname );
-        delete effect;
-        SAFEREL( dxeffect );
-        return NULL;
-    }
-
-    if( !effect->TechniqueSimpleWithShadow )
-        effect->TechniqueSimpleWithShadow = effect->TechniqueSimple;
-    if( !effect->TechniqueSkinned )
-        effect->TechniqueSkinned = effect->TechniqueSimple;
-    if( !effect->TechniqueSkinnedWithShadow )
-        effect->TechniqueSkinnedWithShadow = effect->TechniqueSkinned;
-
-    effect->PassIndex = dxeffect->GetParameterByName( NULL, "PassIndex" );
-    effect->Time = dxeffect->GetParameterByName( NULL, "Time" );
-    effect->TimeCurrent = 0.0f;
-    effect->TimeLastTick = Timer::AccurateTick();
-    effect->TimeGame = dxeffect->GetParameterByName( NULL, "TimeGame" );
-    effect->TimeGameCurrent = 0.0f;
-    effect->TimeGameLastTick = Timer::AccurateTick();
-    effect->IsTime = ( effect->Time || effect->TimeGame );
-    effect->Random1Pass = dxeffect->GetParameterByName( NULL, "Random1Pass" );
-    effect->Random2Pass = dxeffect->GetParameterByName( NULL, "Random2Pass" );
-    effect->Random3Pass = dxeffect->GetParameterByName( NULL, "Random3Pass" );
-    effect->Random4Pass = dxeffect->GetParameterByName( NULL, "Random4Pass" );
-    effect->IsRandomPass = ( effect->Random1Pass || effect->Random2Pass || effect->Random3Pass || effect->Random4Pass );
-    effect->Random1Effect = dxeffect->GetParameterByName( NULL, "Random1Effect" );
-    effect->Random2Effect = dxeffect->GetParameterByName( NULL, "Random2Effect" );
-    effect->Random3Effect = dxeffect->GetParameterByName( NULL, "Random3Effect" );
-    effect->Random4Effect = dxeffect->GetParameterByName( NULL, "Random4Effect" );
-    effect->IsRandomEffect = ( effect->Random1Effect || effect->Random2Effect || effect->Random3Effect || effect->Random4Effect );
-    effect->IsTextures = false;
-    for( int i = 0; i < EFFECT_TEXTURES; i++ )
-    {
-        char tex_name[ 32 ];
-        Str::Format( tex_name, "Texture%d", i );
-        effect->Textures[ i ] = dxeffect->GetParameterByName( NULL, tex_name );
-        if( effect->Textures[ i ] )
-            effect->IsTextures = true;
-    }
-    effect->IsScriptValues = false;
-    for( int i = 0; i < EFFECT_SCRIPT_VALUES; i++ )
-    {
-        char val_name[ 32 ];
-        Str::Format( val_name, "EffectValue%d", i );
-        effect->ScriptValues[ i ] = dxeffect->GetParameterByName( NULL, val_name );
-        if( effect->ScriptValues[ i ] )
-            effect->IsScriptValues = true;
-    }
-    effect->AnimPosProc = dxeffect->GetParameterByName( NULL, "AnimPosProc" );
-    effect->AnimPosTime = dxeffect->GetParameterByName( NULL, "AnimPosTime" );
-    effect->IsAnimPos = ( effect->AnimPosProc || effect->AnimPosTime );
-    effect->IsNeedProcess = ( effect->PassIndex || effect->IsTime || effect->IsRandomPass || effect->IsRandomEffect ||
-                              effect->IsTextures || effect->IsScriptValues || effect->IsAnimPos );
-
-    effect->Defaults = NULL;
-    if( defaults )
-    {
-        bool block_begin = false;
-        for( uint d = 0; d < defaults_count; d++ )
-        {
-            EffectDefault& def = defaults[ d ];
-            EffectValue_   param = dxeffect->GetParameterByName( NULL, def.Name );
-            if( !param )
-                continue;
-
-            if( !block_begin )
-            {
-                block_begin = true;
-                dxeffect->BeginParameterBlock();
-            }
-
-            switch( def.Type )
-            {
-            case EffectDefault::String:             // pValue points to a null terminated ASCII string
-                dxeffect->SetString( param, (LPCSTR) def.Data );
-                break;
-            case EffectDefault::Floats:             // pValue points to an array of floats - number of floats is NumBytes / sizeof(float)
-                dxeffect->SetFloatArray( param, (float*) def.Data, def.Size / sizeof( float ) );
-                break;
-            case EffectDefault::Dword:              // pValue points to a uint
-                dxeffect->SetInt( param, *(uint*) def.Data );
-                break;
-            default:
-                break;
-            }
-        }
-
-        if( block_begin )
-        {
-            effect->EffectParams = dxeffect->EndParameterBlock();
-            effect->Defaults = defaults;
-        }
-    }
-    #else
     // Shader program
     GLuint program = 0;
 
@@ -1476,12 +839,12 @@ Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name, bool
     GL( effect->ColorMapSamples = glGetUniformLocation( program, "ColorMapSamples" ) );
     GL( effect->EggMap = glGetUniformLocation( program, "EggMap" ) );
     GL( effect->EggMapSize = glGetUniformLocation( program, "EggMapSize" ) );
-    # ifdef SHADOW_MAP
+    #ifdef SHADOW_MAP
     GL( effect->ShadowMap = glGetUniformLocation( program, "ShadowMap" ) );
     GL( effect->ShadowMapSize = glGetUniformLocation( program, "ShadowMapSize" ) );
     GL( effect->ShadowMapSamples = glGetUniformLocation( program, "ShadowMapSamples" ) );
     GL( effect->ShadowMapMatrix = glGetUniformLocation( program, "ShadowMapMatrix" ) );
-    # endif
+    #endif
     GL( effect->SpriteBorder = glGetUniformLocation( program, "SpriteBorder" ) );
 
     GL( effect->BoneInfluences = glGetUniformLocation( program, "BoneInfluences" ) );
@@ -1570,7 +933,6 @@ Effect* GraphicLoader::LoadEffect( Device_ device, const char* effect_name, bool
         if( something_binded )
             effect->Defaults = defaults;
     }
-    #endif
 
     static int effect_id = 0;
     effect->Id = ++effect_id;
@@ -1632,9 +994,6 @@ void GraphicLoader::EffectProcessVariables( Effect* effect, int pass,  float ani
             {
                 if( IS_EFFECT_VALUE( effect->Textures[ i ] ) )
                 {
-                    #ifdef FO_D3D
-                    effect->DXInstance->SetTexture( effect->Textures[ i ], textures && textures[ i ] ? textures[ i ]->Instance : NULL );
-                    #else
                     GLuint id = ( textures && textures[ i ] ? textures[ i ]->Id : 0 );
                     GL( glActiveTexture( GL_TEXTURE2 + i ) );
                     GL( glBindTexture( GL_TEXTURE_2D, id ) );
@@ -1642,7 +1001,6 @@ void GraphicLoader::EffectProcessVariables( Effect* effect, int pass,  float ani
                     GL( glUniform1i( effect->Textures[ i ], 2 + i ) );
                     if( effect->TexturesSize[ i ] != -1 && textures && textures[ i ] )
                         GL( glUniform4fv( effect->TexturesSize[ i ], 1, textures[ i ]->SizeData ) );
-                    #endif
                 }
             }
         }
@@ -1682,30 +1040,6 @@ void GraphicLoader::EffectProcessVariables( Effect* effect, int pass,  float ani
     }
 }
 
-bool GraphicLoader::EffectsPreRestore()
-{
-    #ifdef FO_D3D
-    for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
-    {
-        Effect* effect = *it;
-        D3D_HR( effect->DXInstance->OnLostDevice() );
-    }
-    #endif
-    return true;
-}
-
-bool GraphicLoader::EffectsPostRestore()
-{
-    #ifdef FO_D3D
-    for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
-    {
-        Effect* effect = *it;
-        D3D_HR( effect->DXInstance->OnResetDevice() );
-    }
-    #endif
-    return true;
-}
-
 /*
    Todo:
         if(Name) delete Name;
@@ -1736,14 +1070,14 @@ Effect* Effect::Skinned3d, * Effect::Skinned3dDefault;
 Effect* Effect::Simple3dShadow, * Effect::Simple3dShadowDefault;
 Effect* Effect::Skinned3dShadow, * Effect::Skinned3dShadowDefault;
 
-bool GraphicLoader::LoadDefaultEffects( Device_ device )
+bool GraphicLoader::LoadDefaultEffects()
 {
     // Default effects
-    #define LOAD_EFFECT( effect_handle, effect_name, use_in_2d, defines )                 \
-        effect_handle ## Default = LoadEffect( device, effect_name, use_in_2d, defines ); \
-        if( effect_handle ## Default )                                                    \
-            effect_handle = new Effect( *effect_handle ## Default );                      \
-        else                                                                              \
+    #define LOAD_EFFECT( effect_handle, effect_name, use_in_2d, defines )         \
+        effect_handle ## Default = LoadEffect( effect_name, use_in_2d, defines ); \
+        if( effect_handle ## Default )                                            \
+            effect_handle = new Effect( *effect_handle ## Default );              \
+        else                                                                      \
             effect_errors++
     uint effect_errors = 0;
     LOAD_EFFECT( Effect::Generic, "2D_Default", true, NULL );
@@ -1754,7 +1088,6 @@ bool GraphicLoader::LoadDefaultEffects( Device_ device )
     LOAD_EFFECT( Effect::Primitive, "Primitive_Default", true, NULL );
     LOAD_EFFECT( Effect::Light, "Primitive_Default", true, NULL );
     LOAD_EFFECT( Effect::Font, "Font_Default", true, NULL );
-    #ifndef FO_D3D
     LOAD_EFFECT( Effect::Contour, "Contour_Default", true, NULL );
     LOAD_EFFECT( Effect::Tile, "2D_WithoutEgg", true, NULL );
     LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, NULL );
@@ -1764,9 +1097,6 @@ bool GraphicLoader::LoadDefaultEffects( Device_ device )
     LOAD_EFFECT( Effect::Simple3dShadow, "3D_Simple", false, "#define SHADOW" );
     LOAD_EFFECT( Effect::Skinned3d, "3D_Skinned", false, NULL );
     LOAD_EFFECT( Effect::Skinned3dShadow, "3D_Skinned", false, "#define SHADOW" );
-    #else
-    LOAD_EFFECT( Effect::Tile, "2D_Default", true, NULL );
-    #endif
     if( effect_errors > 0 )
     {
         WriteLog( "Default effects not loaded.\n" );

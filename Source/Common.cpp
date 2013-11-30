@@ -1272,11 +1272,7 @@ GameOptions::GameOptions()
 
     // Client and Mapper
     Quit = false;
-    #ifdef FO_D3D
-    OpenGLRendering = false;
-    #else
     OpenGLRendering = true;
-    #endif
     OpenGLDebug = false;
     AssimpLogging = false;
     MouseX = 0;
@@ -1708,9 +1704,7 @@ FOWindow::FOWindow(): Fl_Window( 0, 0, "" ), Focused( true )
     # endif
 
     // OpenGL parameters
-    # ifndef FO_D3D
     Fl::gl_visual( FL_RGB | FL_RGB8 | FL_DOUBLE | FL_DEPTH | FL_STENCIL );
-    # endif
 
     // Fullscreen
     if( GameOpt.FullScreen )

@@ -45,50 +45,12 @@ FOClient::FOClient(): Active( false )
     GmapCar.Car = NULL;
     Animations.resize( 10000 );
 
-    #ifndef FO_D3D
     CurVideo = NULL;
     MusicVolumeRestore = -1;
-    #endif
 
     UIDFail = false;
     MoveLastHx = -1;
     MoveLastHy = -1;
-
-    #ifdef FO_D3D
-    SaveLoadDraft = NULL;
-    #endif
-}
-
-void _PreRestore()
-{
-    FOClient::Self->HexMngr.PreRestore();
-
-    // Save/load surface
-    if( Singleplayer )
-    {
-        #ifdef FO_D3D
-        SAFEREL( FOClient::Self->SaveLoadDraft );
-        #endif
-        FOClient::Self->SaveLoadDraftValid = false;
-    }
-}
-
-void _PostRestore()
-{
-    FOClient::Self->HexMngr.PostRestore();
-    FOClient::Self->SetDayTime( true );
-
-    // Save/load surface
-    if( Singleplayer )
-    {
-        #ifdef FO_D3D
-        SAFEREL( FOClient::Self->SaveLoadDraft );
-        if( FAILED( SprMngr.GetDevice()->CreateRenderTarget( SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT,
-                                                             D3DFMT_A8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &FOClient::Self->SaveLoadDraft, NULL ) ) )
-            WriteLog( "Create save/load draft surface fail.\n" );
-        #endif
-        FOClient::Self->SaveLoadDraftValid = false;
-    }
 }
 
 uint* UID1;
@@ -281,10 +243,7 @@ bool FOClient::Init()
     UID_PREPARE_UID4_2;
 
     // Sprite manager
-    SpriteMngrParams params;
-    params.PreRestoreFunc = &_PreRestore;
-    params.PostRestoreFunc = &_PostRestore;
-    if( !SprMngr.Init( params ) )
+    if( !SprMngr.Init() )
         return false;
     GET_UID1( UID1 );
 
@@ -432,10 +391,6 @@ bool FOClient::Init()
 
     // Other
     SetGameColor( COLOR_IFACE );
-    #ifdef FO_D3D
-    if( GameOpt.FullScreen )
-        SetCurPos( MODE_WIDTH / 2, MODE_HEIGHT / 2 );
-    #endif
     ScreenOffsX = 0;
     ScreenOffsY = 0;
     ScreenOffsXf = 0.0f;
@@ -471,7 +426,6 @@ bool FOClient::Init()
     {
         LogTryConnect();
     }
-    #ifndef FO_D3D
     // Intro
     else if( !Str::Substring( CommandLine, "-SkipIntro" ) )
     {
@@ -491,11 +445,6 @@ bool FOClient::Init()
             }
         }
     }
-    #else
-    ScreenFadeOut();
-    if( MsgGame->Count( STR_MUSIC_MAIN_THEME ) )
-        SndMngr.PlayMusic( MsgGame->GetStr( STR_MUSIC_MAIN_THEME ) );
-    #endif
 
     // Disable dumps if multiple window detected
     if( MulWndArray[ 11 ] )
@@ -507,10 +456,6 @@ bool FOClient::Init()
 void FOClient::Finish()
 {
     WriteLog( "Engine finish...\n" );
-
-    #ifdef FO_D3D
-    SAFEREL( SaveLoadDraft );
-    #endif
 
     Keyb::Finish();
     NetDisconnect();
@@ -827,20 +772,12 @@ int FOClient::MainLoop()
     }
     Script::ScriptGarbager();
 
-    #ifndef FO_D3D
     // Video
     if( IsVideoPlayed() )
     {
-        # ifdef FO_D3D
-        LONGLONG cur, stop;
-        if( !MediaSeeking || FAILED( MediaSeeking->GetPositions( &cur, &stop ) ) || cur >= stop )
-            NextVideo();
-        # else
         RenderVideo();
-        # endif
         return 1;
     }
-    #endif
 
     CHECK_MULTIPLY_WINDOWS3;
 
@@ -1144,7 +1081,6 @@ void FOClient::ParseKeyboard()
         Keyb::KeyPressed[ dikdw ] = true;
 
         // Video
-        #ifndef FO_D3D
         if( IsVideoPlayed() )
         {
             if( IsCanStopVideo() && ( dikdw == DIK_ESCAPE || dikdw == DIK_SPACE || dikdw == DIK_RETURN || dikdw == DIK_NUMPADENTER ) )
@@ -1154,7 +1090,6 @@ void FOClient::ParseKeyboard()
             }
             continue;
         }
-        #endif
 
         // Key script event
         bool script_result = false;
@@ -1269,9 +1204,7 @@ void FOClient::ParseKeyboard()
                     MainWindow->size_range( MODE_WIDTH, MODE_HEIGHT, MODE_WIDTH, MODE_HEIGHT );
                     GameOpt.FullScreen = false;
                 }
-                #ifndef FO_D3D
                 SprMngr.RefreshViewPort();
-                #endif
                 continue;
             // Minimize
             case DIK_F12:
@@ -1510,13 +1443,8 @@ void FOClient::ParseMouse()
     // Mouse position
     int mx = 0, my = 0;
     Fl::get_mouse( mx, my );
-    #ifdef FO_D3D
-    GameOpt.MouseX = mx - ( !GameOpt.FullScreen ? MainWindow->x() : 0 );
-    GameOpt.MouseY = my - ( !GameOpt.FullScreen ? MainWindow->y() : 0 );
-    #else
     GameOpt.MouseX = mx - MainWindow->x();
     GameOpt.MouseY = my - MainWindow->y();
-    #endif
     GameOpt.MouseX = GameOpt.MouseX * MODE_WIDTH / MainWindow->w();
     GameOpt.MouseY = GameOpt.MouseY * MODE_HEIGHT / MainWindow->h();
     GameOpt.MouseX = CLAMP( GameOpt.MouseX, 0, MODE_WIDTH - 1 );
@@ -1718,7 +1646,6 @@ void FOClient::ParseMouse()
         int event_button = events[ i + 1 ];
         int event_dy = -events[ i + 2 ];
 
-        #ifndef FO_D3D
         // Stop video
         if( IsVideoPlayed() )
         {
@@ -1729,7 +1656,6 @@ void FOClient::ParseMouse()
             }
             continue;
         }
-        #endif
 
         // Scripts
         bool script_result = false;
@@ -5690,14 +5616,10 @@ void FOClient::Net_OnLoadMap()
         GmapNullParams();
         ShowMainScreen( SCREEN_GLOBAL_MAP );
         Net_SendLoadMapOk();
-        #ifndef FO_D3D
         if( IsVideoPlayed() )
             MusicAfterVideo = MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) );
         else
             SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
-        #else
-        SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
-        #endif
         WriteLog( "Global map loaded.\n" );
         return;
     }
@@ -5726,14 +5648,10 @@ void FOClient::Net_OnLoadMap()
     Net_SendLoadMapOk();
     LookBorders.clear();
     ShootBorders.clear();
-    #ifndef FO_D3D
     if( IsVideoPlayed() )
         MusicAfterVideo = MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) );
     else
         SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
-    #else
-    SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
-    #endif
     WriteLog( "Local map loaded.\n" );
 }
 
@@ -9057,30 +8975,7 @@ bool FOClient::SaveScreenshot()
     FileManager::FormatPath( screen_path );
     FileManager::CreateDirectoryTree( FileManager::GetFullPath( screen_path, PT_ROOT ) );
 
-    #ifdef FO_D3D
-    LPDIRECT3DSURFACE9 surf = NULL;
-    if( FAILED( SprMngr.GetDevice()->GetBackBuffer( 0, 0, D3DBACKBUFFER_TYPE_MONO, &surf ) ) )
-        return false;
-
-    D3DXIMAGE_FILEFORMAT format = D3DXIFF_BMP;
-    char*                extension = (char*) FileManager::GetExtension( screen_path );
-    Str::Lower( extension );
-    if( Str::Compare( extension, "jpg" ) )
-        format = D3DXIFF_JPG;
-    else if( Str::Compare( extension, "tga" ) )
-        format = D3DXIFF_TGA;
-    else if( Str::Compare( extension, "png" ) )
-        format = D3DXIFF_PNG;
-
-    if( FAILED( D3DXSaveSurfaceToFile( screen_path, format, surf, NULL, NULL ) ) )
-    {
-        surf->Release();
-        return false;
-    }
-    surf->Release();
-    #else
     SprMngr.SaveTexture( NULL, screen_path, false );
-    #endif
 
     return true;
 }
@@ -9100,7 +8995,6 @@ void FOClient::SoundProcess()
     }
 }
 
-#ifndef FO_D3D
 void FOClient::AddVideo( const char* video_name, bool can_stop, bool clear_sequence )
 {
     // Stop current
@@ -9490,7 +9384,6 @@ void FOClient::StopVideo()
         MusicVolumeRestore = -1;
     }
 }
-#endif
 
 uint FOClient::AnimLoad( uint name_hash, uchar dir, int res_type )
 {
@@ -10511,10 +10404,8 @@ bool FOClient::SScriptFunc::Global_PlayMusic( ScriptString& music_name, uint pos
 
 void FOClient::SScriptFunc::Global_PlayVideo( ScriptString& video_name, bool can_stop )
 {
-    #ifndef FO_D3D
     SndMngr.StopMusic();
     Self->AddVideo( video_name.c_str(), can_stop, true );
-    #endif
 }
 
 bool FOClient::SScriptFunc::Global_IsTurnBased()
@@ -11155,7 +11046,7 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     if( effect_name && effect_name->length() )
     {
         bool use_in_2d = !( effect_type & ( EFFECT_3D_SIMPLE | EFFECT_3D_SKINNED ) );
-        effect = GraphicLoader::LoadEffect( SprMngr.GetDevice(), effect_name->c_str(), use_in_2d, effect_defines ? effect_defines->c_str() : NULL );
+        effect = GraphicLoader::LoadEffect( effect_name->c_str(), use_in_2d, effect_defines ? effect_defines->c_str() : NULL );
         if( !effect )
             SCRIPT_ERROR_R0( "Effect not found or have some errors, see log file." );
     }

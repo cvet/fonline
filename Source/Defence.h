@@ -363,11 +363,11 @@ Randomizer MulWndRandom;
 #define MULTIPLY_WINDOWS_FAIL0     NetDisconnect();
 #define MULTIPLY_WINDOWS_FAIL1     CritterCl::DefaultAnim = NULL;
 #define MULTIPLY_WINDOWS_FAIL2     HexMngr.UnloadMap();
-#define MULTIPLY_WINDOWS_FAIL3     SprMngr.Restore();
+#define MULTIPLY_WINDOWS_FAIL3     SprMngr.Init();
 #define MULTIPLY_WINDOWS_FAIL4     ResMngr.FreeResources( RES_IFACE );
 #define MULTIPLY_WINDOWS_FAIL5     HexMngr.Init();
 #define MULTIPLY_WINDOWS_FAIL6     SprMngr.Finish();
-#define MULTIPLY_WINDOWS_FAIL7     GraphicLoader::LoadModel( 0, NULL );
+#define MULTIPLY_WINDOWS_FAIL7     GraphicLoader::LoadModel( NULL );
 #define MULTIPLY_WINDOWS_FAIL8     Finish();
 #define MULTIPLY_WINDOWS_FAIL9     SndMngr.ClearSounds(); SndMngr.Finish();
 #define CHECK_MULTIPLY_WINDOWS( num, f1, f2, f3 )                             \

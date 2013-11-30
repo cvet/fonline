@@ -179,14 +179,12 @@ bool HexManager::Init()
         return false;
     }
 
-    #ifndef FO_D3D
     if( !SprMngr.CreateRenderTarget( rtMap, false ) )
     {
         WriteLog( "Can't create render target.\n" );
         return false;
     }
     rtMap.DrawEffect = Effect::FlushMap;
-    #endif
 
     isShowTrack = false;
     curPidMap = 0;
@@ -1960,11 +1958,9 @@ void HexManager::GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y )
 
 void HexManager::DrawMap()
 {
-    #ifndef FO_D3D
     // Separate render target
     SprMngr.PushRenderTarget( rtMap );
     SprMngr.ClearCurrentRenderTarget( 0 );
-    #endif
 
     // Rebuild light
     if( requestRebuildLight )
@@ -1975,18 +1971,7 @@ void HexManager::DrawMap()
 
     // Tiles
     if( GameOpt.ShowTile )
-    {
-        #ifdef FO_D3D
-        Device_ device = SprMngr.GetDevice();
-        device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_POINT );
-        device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_POINT );
-        #endif
         SprMngr.DrawSprites( tilesTree, false, false, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
-        #ifdef FO_D3D
-        device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR );
-        device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR );
-        #endif
-    }
 
     // Flat sprites
     SprMngr.DrawSprites( mainTree, true, false, DRAW_ORDER_FLAT, DRAW_ORDER_LIGHT - 1 );
@@ -2005,17 +1990,7 @@ void HexManager::DrawMap()
     // Roof
     if( GameOpt.ShowRoof )
     {
-        #ifdef FO_D3D
-        Device_ device = SprMngr.GetDevice();
-        device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_POINT );
-        device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_POINT );
-        #endif
         SprMngr.DrawSprites( roofTree, false, true, 0, 0 );
-        #ifdef FO_D3D
-        device->SetSamplerState( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR );
-        device->SetSamplerState( 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR );
-        #endif
-
         if( rainCapacity )
             SprMngr.DrawSprites( roofRainTree, false, false, 0, 0 );
     }
@@ -2030,13 +2005,11 @@ void HexManager::DrawMap()
     else if( drawCursorX > 0 )
         DrawCursor( Str::FormatBuf( "%u", drawCursorX ) );
 
-    #ifndef FO_D3D
     // Return render target
     SprMngr.PopRenderTarget();
 
     // Draw map
     SprMngr.DrawRenderTarget( rtMap, false );
-    #endif
 }
 
 bool HexManager::Scroll()
@@ -2352,14 +2325,6 @@ void HexManager::ScrollToHex( int hx, int hy, double speed, bool can_stop )
     AutoScroll.OffsXStep = 0.0;
     AutoScroll.OffsYStep = 0.0;
     AutoScroll.Speed = speed;
-}
-
-void HexManager::PreRestore()
-{}
-
-void HexManager::PostRestore()
-{
-    RefreshMap();
 }
 
 void HexManager::SetCrit( CritterCl* cr )

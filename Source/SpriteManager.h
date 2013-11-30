@@ -122,21 +122,12 @@ typedef vector< Surface* > SurfaceVec;
 
 struct Vertex
 {
-    #ifdef FO_D3D
-    float x, y, z, rhw;
-    uint  diffuse;
-    float tu, tv;
-    float tu2, tv2;
-    Vertex(): x( 0 ), y( 0 ), z( 0 ), rhw( 1 ), tu( 0 ), tv( 0 ), tu2( 0 ), tv2( 0 ), diffuse( 0 ) {}
-    # define D3DFVF_MYVERTEX         ( D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX2 )
-    #else
     float x, y;
     uint  diffuse;
     float tu, tv;
     float tu2, tv2;
     float padding;
     Vertex(): x( 0 ), y( 0 ), diffuse( 0 ), tu( 0 ), tv( 0 ), tu2( 0 ), tv2( 0 ) {}
-    #endif
 };
 typedef vector< Vertex > VertexVec;
 
@@ -168,9 +159,7 @@ struct DipData
     Texture* SourceTexture;
     Effect*  SourceEffect;
     uint     SpritesCount;
-    #ifndef FO_D3D
     RectF    SpriteBorder;
-    #endif
     DipData( Texture* tex, Effect* effect ): SourceTexture( tex ), SourceEffect( effect ), SpritesCount( 1 ) {}
 };
 typedef vector< DipData > DipDataVec;
@@ -217,13 +206,6 @@ struct PrepPoint
 typedef vector< PrepPoint > PointVec;
 typedef vector< PointVec >  PointVecVec;
 
-struct SpriteMngrParams
-{
-    void ( * PreRestoreFunc )();
-    void ( * PostRestoreFunc )();
-};
-
-#ifndef FO_D3D
 struct RenderTarget
 {
     uint        Id;
@@ -232,60 +214,44 @@ struct RenderTarget
     GLuint      DepthStencilBuffer;
     Effect*     DrawEffect;
 
-    # ifdef FO_WINDOWS
+    #ifdef FO_WINDOWS
     HPBUFFERARB PBuffer;
     HDC         PBufferDC;
     HGLRC       PBufferGLC;
-    # endif
+    #endif
 };
 typedef vector< RenderTarget* > RenderTargetVec;
-#endif
 
 class SpriteManager
 {
 private:
-    bool             isInit;
-    SpriteMngrParams mngrParams;
-    #ifdef FO_D3D
-    LPDIRECT3D9      direct3D;
-    #else
-    float            projectionMatrix[ 16 ];
-    #endif
-    Device_          d3dDevice;
-    PresentParams_   presentParams;
-    Caps_            deviceCaps;
-    int              modeWidth, modeHeight;
-    bool             sceneBeginned;
-    #ifndef FO_D3D
-    RenderTarget     rtMain;
-    RenderTarget     rtContours;
-    RenderTarget     rtContoursMid;
-    RenderTarget     rtPrimitive;
-    RenderTarget     rt3D, rt3DMS;
-    RenderTarget     rt3DSprite, rt3DMSSprite;
-    RenderTargetVec  rtStack;
-    # ifdef FO_WINDOWS
-    HDC              deviceContext;
-    HGLRC            glContext;
-    # endif
+    bool            isInit;
+    float           projectionMatrix[ 16 ];
+    int             modeWidth, modeHeight;
+    bool            sceneBeginned;
+    RenderTarget    rtMain;
+    RenderTarget    rtContours;
+    RenderTarget    rtContoursMid;
+    RenderTarget    rtPrimitive;
+    RenderTarget    rt3D, rt3DMS;
+    RenderTarget    rt3DSprite, rt3DMSSprite;
+    RenderTargetVec rtStack;
+    #ifdef FO_WINDOWS
+    HDC             deviceContext;
+    HGLRC           glContext;
     #endif
 
 public:
     static AnyFrames* DummyAnimation;
 
     SpriteManager();
-    bool    Init( SpriteMngrParams& params );
-    bool    InitBuffers();
-    bool    InitRenderStates();
-    bool    IsInit() { return isInit; }
-    void    Finish();
-    Device_ GetDevice() { return d3dDevice; }
-    bool    BeginScene( uint clear_color );
-    void    EndScene();
-    bool    Restore();
-    void ( * PreRestore )();
-    void ( * PostRestore )();
-    #ifndef FO_D3D
+    bool Init();
+    bool InitBuffers();
+    bool InitRenderStates();
+    bool IsInit() { return isInit; }
+    void Finish();
+    bool BeginScene( uint clear_color );
+    void EndScene();
     bool CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling = false, uint width = 0, uint height = 0, bool tex_linear = false );
     void DeleteRenderTarget( RenderTarget& rt );
     void PushRenderTarget( RenderTarget& rt );
@@ -294,7 +260,6 @@ public:
     void ClearCurrentRenderTarget( uint color );
     void ClearCurrentRenderTargetDS( bool depth, bool stencil );
     void RefreshViewPort();
-    #endif
 
     // Surfaces
 public:
@@ -303,9 +268,7 @@ public:
 
     void FreeSurfaces( int surf_type );
     void SaveSufaces();
-    #ifndef FO_D3D
     void SaveTexture( Texture* tex, const char* fname, bool flip ); // tex == NULL is back buffer
-    #endif
 
 private:
     int        baseTextureSize;
@@ -324,10 +287,6 @@ public:
 
 private:
     SprInfoVec sprData;
-    #ifdef FO_D3D
-    Surface_   spr3dRT, spr3dRTEx, spr3dDS, spr3dRTData;
-    int        spr3dSurfWidth, spr3dSurfHeight;
-    #endif
 
     AnyFrames* CreateAnimation( uint frames, uint ticks );
     AnyFrames* LoadAnimationFrm( const char* fname, int path_type, int dir, bool anim_pix );
@@ -359,7 +318,7 @@ public:
 
     void PrepareSquare( PointVec& points, Rect r, uint color );
     void PrepareSquare( PointVec& points, Point lt, Point rt, Point lb, Point rb, uint color );
-    bool PrepareBuffer( Sprites& dtree, Surface_ surf, int ox, int oy, uchar alpha );
+    bool PrepareBuffer( Sprites& dtree, GLuint surf, int ox, int oy, uchar alpha );
     bool Flush();
 
     bool DrawSprite( uint id, int x, int y, uint color = 0 );
@@ -372,38 +331,32 @@ public:
 
     inline bool DrawSprite( AnyFrames* frames, int x, int y, uint color = 0 )
     {
-        if( frames && frames != DummyAnimation ) return DrawSprite( frames->GetCurSprId(), x, y, color );
+        if( frames && frames != DummyAnimation )
+            return DrawSprite( frames->GetCurSprId(), x, y, color );
         return false;
     }
     inline bool DrawSpriteSize( AnyFrames* frames, int x, int y, float w, float h, bool stretch_up, bool center, uint color = 0 )
     {
-        if( frames && frames != DummyAnimation ) return DrawSpriteSize( frames->GetCurSprId(), x, y, w, h, stretch_up, center, color );
+        if( frames && frames != DummyAnimation )
+            return DrawSpriteSize( frames->GetCurSprId(), x, y, w, h, stretch_up, center, color );
         return false;
     }
 
 private:
-    #ifndef FO_D3D
-    GLuint        vaMain;
-    #endif
-    VertexBuffer_ vbMain;
-    IndexBuffer_  ibMain;
-    IndexBuffer_  ibDirect;
-    VertexVec     vBuffer;
-    DipDataVec    dipQueue;
-    uint          baseColor;
-    int           flushSprCnt;           // Max sprites to flush
-    int           curSprCnt;             // Current sprites to flush
-    #ifdef FO_D3D
-    VertexBuffer_ vbPoints;
-    int           vbPointsSize;
-    #endif
+    GLuint     vaMain;
+    GLuint     vbMain;
+    GLuint     ibMain;
+    GLuint     ibDirect;
+    VertexVec  vBuffer;
+    DipDataVec dipQueue;
+    uint       baseColor;
+    int        flushSprCnt;              // Max sprites to flush
+    int        curSprCnt;                // Current sprites to flush
 
-    #ifndef FO_D3D
     void EnableVertexArray( GLuint ib, uint count );
     void DisableVertexArray();
     void EnableStencil( RectF& stencil );
     void DisableStencil( bool clear_stencil );
-    #endif
 
     // Contours
 public:
@@ -411,29 +364,19 @@ public:
     void ClearSpriteContours() { createdSpriteContours.clear(); }
 
 private:
-    Texture*        contoursTexture;
-    Surface_        contoursTextureSurf;
-    Texture*        contoursMidTexture;
-    Surface_        contoursMidTextureSurf;
-    Surface_        contours3dRT;
-    PixelShader_*   contoursPS;
-    ConstantTable_* contoursCT;
-    EffectValue_    contoursConstWidthStep, contoursConstHeightStep,
-                    contoursConstSpriteBorders, contoursConstSpriteBordersHeight,
-                    contoursConstContourColor, contoursConstContourColorOffs;
+    Texture* contoursTexture;
+    GLuint   contoursTextureSurf;
+    Texture* contoursMidTexture;
+    GLuint   contoursMidTextureSurf;
+    GLuint   contours3dRT;
+    GLint    contoursConstWidthStep, contoursConstHeightStep,
+             contoursConstSpriteBorders, contoursConstSpriteBordersHeight,
+             contoursConstContourColor, contoursConstContourColorOffs;
     bool    contoursAdded;
     UIntMap createdSpriteContours;
     Sprites spriteContours;
 
     bool CollectContour( int x, int y, SpriteInfo* si, Sprite* spr );
-    #ifdef FO_D3D
-    uint GetSpriteContour( SpriteInfo* si, Sprite* spr );
-    #endif
-
-    #ifdef FO_D3D
-    void WriteContour4( uint* buf, uint buf_w, LockRect_& r, uint w, uint h, uint color );
-    void WriteContour8( uint* buf, uint buf_w, LockRect_& r, uint w, uint h, uint color );
-    #endif
 
     // Transparent egg
 private:

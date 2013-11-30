@@ -355,7 +355,6 @@ public:
                 mr = Matrix( o.rotation[ 0 ].GetMatrix() );
                 Matrix::Translation( o.translation[ 0 ], mt );
                 Matrix m = mt * mr * ms;
-                MATRIX_TRANSPOSE( m );
                 *o.matrix = m;
             }
             else
@@ -369,7 +368,6 @@ public:
                         mr = Matrix( o.rotation[ k ].GetMatrix() );
                         Matrix::Translation( o.translation[ k ], mt );
                         Matrix m = mt * mr * ms;
-                        MATRIX_TRANSPOSE( m );
                         *o.matrix = m;
                         break;
                     }

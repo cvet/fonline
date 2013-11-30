@@ -2,10 +2,6 @@
 #include "SpriteManager.h"
 #include "Crypt.h"
 
-#ifdef FO_D3D
-# define SURF_POINT( lr, x, y )    ( *( (uint*) ( (uchar*) lr.pBits + lr.Pitch * ( y ) + ( x ) * 4 ) ) )
-#endif
-
 #define FONT_BUF_LEN          ( 0x5000 )
 #define FONT_MAX_LINES        ( 1000 )
 #define FORMAT_TYPE_DRAW      ( 0 )
@@ -191,7 +187,6 @@ bool SpriteManager::BuildFont( int index, void* pfont, const char* image_name, b
     font.FontTexBordered = si_bordered->Surf->TextureOwner;
 
     // Normalize color to gray
-    #ifndef FO_D3D
     uint normal_ox = (uint) ( tex_w * si->SprRect.L );
     uint normal_oy = (uint) ( tex_h * si->SprRect.T );
     uint bordered_ox = (uint) ( (float) si_bordered->Surf->Width * si_bordered->SprRect.L );
@@ -218,40 +213,8 @@ bool SpriteManager::BuildFont( int index, void* pfont, const char* image_name, b
         Rect r = Rect( normal_ox, normal_oy, normal_ox + si->Width - 1, normal_oy + si->Height - 1 );
         si->Surf->TextureOwner->Update( r );
     }
-    #endif
 
     // Fill border
-    #ifdef FO_D3D
-    int                x1 = (int) ( (float) si->Surf->Width * si->SprRect.L );
-    int                y1 = (int) ( (float) si->Surf->Height * si->SprRect.T );
-    int                x2 = (int) ( (float) si_bordered->Surf->Width * si_bordered->SprRect.L );
-    int                y2 = (int) ( (float) si_bordered->Surf->Height * si_bordered->SprRect.T );
-    RECT               to_lock1 = { x1, y1, x1 + si->Width, y1 + si->Height };
-    RECT               to_lock2 = { x2, y2, x2 + si_bordered->Width, y2 + si_bordered->Height };
-    LPDIRECT3DTEXTURE9 tex;
-    uint               bw = si_bordered->Width;
-    uint               bh = si_bordered->Height;
-    D3D_HR( D3DXCreateTexture( d3dDevice, bw, bh, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex ) );
-    LockRect_          lr, lrb;
-    D3D_HR( font.FontTex->Instance->LockRect( 0, &lr, &to_lock1, 0 ) );
-    D3D_HR( tex->LockRect( 0, &lrb, NULL, 0 ) );
-    for( uint i = 0; i < bh; i++ )
-        memcpy( (uchar*) lrb.pBits + lrb.Pitch * i, (uchar*) lr.pBits + lr.Pitch * i, bw * 4 );
-    for( uint y = 0; y < bh; y++ )
-        for( uint x = 0; x < bw; x++ )
-            if( SURF_POINT( lr, x, y ) )
-                for( int xx = -1; xx <= 1; xx++ )
-                    for( int yy = -1; yy <= 1; yy++ )
-                        if( !SURF_POINT( lrb, x + xx, y + yy ) )
-                            SURF_POINT( lrb, x + xx, y + yy ) = 0xFF000000;
-    D3D_HR( font.FontTex->Instance->UnlockRect( 0 ) );
-    D3D_HR( font.FontTexBordered->Instance->LockRect( 0, &lr, &to_lock2, 0 ) );
-    for( uint i = 0; i < bh; i++ )
-        memcpy( (uchar*) lr.pBits + lr.Pitch * i, (uchar*) lrb.pBits + lrb.Pitch * i, bw * 4 );
-    D3D_HR( font.FontTexBordered->Instance->UnlockRect( 0 ) );
-    D3D_HR( tex->UnlockRect( 0 ) );
-    tex->Release();
-    #else
     for( uint y = 0; y < (uint) si_bordered->Height; y++ )
     {
         for( uint x = 0; x < (uint) si_bordered->Width; x++ )
@@ -273,7 +236,6 @@ bool SpriteManager::BuildFont( int index, void* pfont, const char* image_name, b
     }
     Rect r_bordered = Rect( bordered_ox, bordered_oy, bordered_ox + si_bordered->Width - 1, bordered_oy + si_bordered->Height - 1 );
     si_bordered->Surf->TextureOwner->Update( r_bordered );
-    #endif
 
     // Fix texture coordinates on bordered texture
     tex_w = (float) si_bordered->Surf->Width;
