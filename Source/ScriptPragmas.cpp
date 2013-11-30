@@ -9,6 +9,7 @@
 # include "AngelScript/scriptstring.h"
 # include <stdio.h>
 # include <strstream>
+# include <algorithm>
 
 # ifdef FO_WINDOWS
 #  include <Windows.h>

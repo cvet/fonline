@@ -302,7 +302,7 @@ void Sprites::Resize( uint size )
 
 void Sprites::Unvalidate()
 {
-    for( auto it = spritesTree.begin(), end = spritesTree.begin() + spritesTreeSize; it != end; ++it )
+    for( SpriteVec::iterator it = spritesTree.begin(), end = spritesTree.begin() + spritesTreeSize; it != end; ++it )
         ( *it )->Unvalidate();
     spritesTreeSize = 0;
 }

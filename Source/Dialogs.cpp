@@ -582,12 +582,8 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         }
         else
         {
-            #if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
-            char ch = *input.rdbuf()->_M_gptr();
-            #else
             char ch = *input.str();
             input.rdbuf()->freeze( false );
-            #endif
             if( ch == ' ' )
             {
                 #ifdef FONLINE_NPCEDITOR
