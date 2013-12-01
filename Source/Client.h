@@ -24,8 +24,10 @@
 #include "MsgFiles.h"
 
 // Video
-#include <Theora/theoradec.h>
-#pragma comment( lib, "libtheora_static.lib" )
+#include "Theora/theoradec.h"
+#ifdef FO_MSVC
+# pragma comment( lib, "libtheora_static.lib" )
+#endif
 
 class FOClient
 {

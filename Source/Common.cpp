@@ -23,18 +23,13 @@ pthread_mutexattr_t Mutex::mutexAttr;
 #endif
 
 // Command line
-char   CommandLine[ MAX_FOTEXT ] = { 0 };
-char** CommandLineArgValues = NULL;
-uint   CommandLineArgCount = 0;
+char CommandLine[ MAX_FOTEXT ] = { 0 };
 void SetCommandLine( uint argc, char** argv )
 {
-    CommandLineArgCount = argc;
-    CommandLineArgValues = new char*[ CommandLineArgCount ];
     for( uint i = 0; i < argc; i++ )
     {
         Str::Append( CommandLine, argv[ i ] );
         Str::Append( CommandLine, " " );
-        CommandLineArgValues[ i ] = Str::Duplicate( argv[ i ] );
     }
 }
 
@@ -446,7 +441,9 @@ void RestoreMainDirectory()
 void ShowMessage( const char* message )
 {
     #ifdef FO_WINDOWS
-    MessageBox( NULL, message, "FOnline", MB_OK );
+    wchar_t message_wc[ MAX_FOTEXT ];
+    MultiByteToWideChar( CP_UTF8, 0, message, -1, message_wc, MAX_FOPATH );
+    MessageBoxW( NULL, message_wc, L"FOnline", MB_OK );
     #else
     // Todo: Linux
     #endif
@@ -1696,9 +1693,9 @@ void Thread_Sleep( uint ms ) // Used in Mutex.h as extern function
 /************************************************************************/
 
 // Deprecated stuff
-#include <FileManager.h>
-#include <Text.h>
-#include <Item.h>
+#include "FileManager.h"
+#include "Text.h"
+#include "Item.h"
 
 bool     ListsLoaded = false;
 PCharVec LstNames[ PATH_LIST_COUNT ];

@@ -264,7 +264,7 @@ uint UIDDUMMY10 = -1;
     UID_DUMMY_CALCS8
 #endif
 
-#ifdef FO_WINDOWS
+#if defined ( FO_WINDOWS )
 # define GET_UID3( result )                       \
     int d_cpuid[ 4 ] = { 0, 0, 0, 0 };            \
     __cpuid( d_cpuid, 1 );                        \
@@ -285,7 +285,7 @@ uint UIDDUMMY10 = -1;
     UID_DUMMY_CALCS9;                             \
     UID_DUMMY_CALCS4;                             \
     UID_DUMMY_CALCS8
-#else
+#elif !defined ( FO_OSX_IOS )
 # define GET_UID3( result )                                              \
     unsigned int d_cpuid[ 4 ] = { 0, 0, 0, 0 };                          \
     {                                                                    \
@@ -318,6 +318,21 @@ uint UIDDUMMY10 = -1;
     UID_DUMMY_CALCS9;                                                    \
     UID_DUMMY_CALCS4;                                                    \
     UID_DUMMY_CALCS8
+#else
+# define GET_UID3( result )                       \
+    result = new uint();                          \
+    *result = 0xEE789911;                         \
+    UID_DUMMY_CALCS6;                             \
+    *result += UID_CHANGE;                        \
+    UID_DUMMY_CALCS6;                             \
+    UID_FLAGS( *result, 0x80000000, 0x40000000 ); \
+    UID_DUMMY_CALCS7;                             \
+    UID_CALC( *result );                          \
+    UIDCACHE[ 3 ] = *result;                      \
+    UID_DUMMY_CALCS8;                             \
+    UIDCACHE[ 3 ] = *result;                      \
+    UIDCACHE2[ 3 ] = *result;                     \
+    UID_DUMMY_CALCS2
 #endif
 
 #ifdef FO_WINDOWS

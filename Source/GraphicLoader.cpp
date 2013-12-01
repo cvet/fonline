@@ -1140,6 +1140,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         return NULL;
     }
 
+    #ifndef FO_OSX_IOS
     // Make effect binary file name
     char binary_fname[ MAX_FOPATH ] = { 0 };
     if( GL_HAS( ARB_get_program_binary ) )
@@ -1207,6 +1208,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
 
     // Load from text
     if( !file_binary.IsLoaded() )
+    #endif
     {
         char* str = (char*) file.GetBuf();
 
@@ -1313,8 +1315,10 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             GL( glBindAttribLocation( program, 9, "InBlendIndices" ) );
         }
 
+        #ifndef FO_OSX_IOS
         if( GL_HAS( ARB_get_program_binary ) )
             GL( glProgramParameteri( program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE ) );
+        #endif
 
         GL( glLinkProgram( program ) );
         GLint linked;
@@ -1331,6 +1335,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             return NULL;
         }
 
+        #ifndef FO_OSX_IOS
         // Save in binary
         if( GL_HAS( ARB_get_program_binary ) )
         {
@@ -1349,6 +1354,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             if( !file_binary.SaveOutBufToFile( binary_fname, PT_CACHE ) )
                 WriteLogF( _FUNC_, " - Can't save effect<%s> in binary<%s>.\n", fname, binary_fname );
         }
+        #endif
     }
 
     // Create effect instance

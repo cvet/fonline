@@ -469,7 +469,7 @@ void FOServer::MainLoop()
             CPU_ZERO( &mask );
             CPU_SET( i % CpuCount, &mask );
             sched_setaffinity( LogicThreads[ i ].GetPid(), sizeof( mask ), &mask );
-            #elif defined ( FO_MACOSX )
+            #elif defined ( FO_OSX )
             // Todo: https://developer.apple.com/library/mac/#releasenotes/Performance/RN-AffinityAPI/index.html
             #endif
         }

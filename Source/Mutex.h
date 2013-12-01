@@ -22,7 +22,7 @@ class Mutex
 {
 private:
     CRITICAL_SECTION mutexCS;
-    # ifndef FO_MACOSX
+    # ifndef FO_OSX
     int              dummyData[ 5 ];
     # endif
     Mutex( const Mutex& ) {}
@@ -66,7 +66,7 @@ class Mutex
 {
 private:
     pthread_mutex_t mutexCS;
-    # ifndef FO_MACOSX
+    # ifndef FO_OSX
     int             dummyData[ 5 ];
     # endif
     Mutex( const Mutex& ) {}

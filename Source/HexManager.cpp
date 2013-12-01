@@ -179,7 +179,7 @@ bool HexManager::Init()
         return false;
     }
 
-    if( !SprMngr.CreateRenderTarget( rtMap, false ) )
+    if( !SprMngr.CreateRenderTarget( rtMap, true ) )
     {
         WriteLog( "Can't create render target.\n" );
         return false;

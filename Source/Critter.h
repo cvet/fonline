@@ -101,7 +101,7 @@ class Critter
 {
 private:
     Critter( const Critter& ) {}
-    Critter& operator=( const Critter& ) {}
+    Critter& operator=( const Critter& ) { return *this; }
 
 public:
     Critter();

@@ -8,6 +8,8 @@
 #include "3dStuff.h"
 #include "GraphicLoader.h"
 
+// #define RENDER_3D_TO_2D
+
 // Font flags
 #define FT_NOBREAK                   ( 0x0001 )
 #define FT_NOBREAK_LINE              ( 0x0002 )

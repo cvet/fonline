@@ -175,7 +175,7 @@ int main( int argc, char** argv )
     }
 
     // Command line
-    if( CommandLineArgCount > 1 )
+    if( Str::Length( CommandLine ) > 0 )
         WriteLog( "Command line<%s>.\n", CommandLine );
 
     // Autostart

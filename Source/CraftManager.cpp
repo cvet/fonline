@@ -542,7 +542,7 @@ bool CraftManager::operator==( const CraftManager& r )
     }
 
     auto it = itemCraft.begin(), end = itemCraft.end();
-    auto it_ = const_cast< CraftManager& >( r ).itemCraft.begin(), end_ = const_cast< CraftManager& >( r ).itemCraft.end();
+    auto it_ = const_cast< CraftManager& >( r ).itemCraft.begin();
     for( ; it != end; ++it, ++it_ )
     {
         CraftItem* craft = ( *it ).second;

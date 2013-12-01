@@ -9,7 +9,6 @@
 #include "ItemManager.h"
 #include "3dStuff.h"
 
-
 class CritterCl
 {
 public:

@@ -79,6 +79,7 @@ bool SpriteManager::Init()
     GL( glViewport( 0, 0, modeWidth, modeHeight ) );
 
     // Initialize GLEW
+    #ifndef FO_OSX_IOS
     GLenum glew_result = glewInit();
     if( glew_result != GLEW_OK )
     {
@@ -87,7 +88,7 @@ bool SpriteManager::Init()
     }
 
     // Check OpenGL extensions
-    #define CHECK_EXTENSION( ext, critical  )                                     \
+    # define CHECK_EXTENSION( ext, critical  )                                    \
         if( !GL_HAS( ext ) )                                                      \
         {                                                                         \
             const char* msg = ( critical ? "Critical" : "Not critical" );         \
@@ -110,7 +111,7 @@ bool SpriteManager::Init()
     CHECK_EXTENSION( ARB_get_program_binary, false );
     if( extension_errors )
         return false;
-    #undef CHECK_EXTENSION
+    #endif
 
     // 3d stuff
     if( !Animation3d::StartUp() )
@@ -158,12 +159,17 @@ bool SpriteManager::Init()
     if( !CreateRenderTarget( rtMain, true, false, 0, 0, true ) ||
         !CreateRenderTarget( rtContours, false ) ||
         !CreateRenderTarget( rtContoursMid, false ) ||
-        !CreateRenderTarget( rt3D, true ) )
+        #ifdef RENDER_3D_TO_2D
+        !CreateRenderTarget( rt3D, true )
+        #endif
+        false )
     {
         WriteLog( "Can't create render targets.\n" );
         return false;
     }
+    #ifdef RENDER_3D_TO_2D
     CreateRenderTarget( rt3DMS, true, true );
+    #endif
 
     // Clear scene
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
@@ -251,16 +257,20 @@ bool SpriteManager::InitBuffers()
 bool SpriteManager::InitRenderStates()
 {
     GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) modeWidth, (float) modeHeight, 0.0f, -1.0f, 1.0f ) );
-    projectionMatrixCM.Transpose();         // Convert to column major order
+    projectionMatrixCM.Transpose();     // Convert to column major order
     GL( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
     if( !GameOpt.VSync )
         SDL_GL_SetSwapInterval( 0 );
+
+    #ifndef FO_OSX_IOS
     GL( glEnable( GL_ALPHA_TEST ) );
     GL( glAlphaFunc( GL_GEQUAL, 1.0f / 255.0f ) );
     GL( glShadeModel( GL_SMOOTH ) );
     GL( glEnable( GL_POINT_SMOOTH ) );
     GL( glEnable( GL_LINE_SMOOTH ) );
     GL( glDisable( GL_LIGHTING ) );
+    #endif
+
     GL( glEnable( GL_TEXTURE_2D ) );
     GL( glEnable( GL_BLEND ) );
     GL( glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA ) );
@@ -329,6 +339,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
 
     // Multisampling
     static int samples = -1;
+    #ifndef FO_OSX_IOS
     if( multisampling && samples == -1 && ( GL_HAS( ARB_framebuffer_object ) || ( GL_HAS( EXT_framebuffer_object ) && GL_HAS( EXT_framebuffer_multisample ) ) ) )
     {
         if( GL_HAS( ARB_texture_multisample ) && GameOpt.MultiSampling != 0 )
@@ -352,6 +363,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
             samples = 0;
         }
     }
+    #endif
     if( multisampling && samples <= 1 )
         return false;
 
@@ -385,7 +397,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, tex_linear ? GL_LINEAR : GL_NEAREST ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
-        GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
+        GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
         if( GL_HAS( ARB_framebuffer_object ) )
         {
             GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->Id, 0 ) );
@@ -395,6 +407,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
             GL( glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, tex->Id, 0 ) );
         }
     }
+    #ifndef FO_OSX_IOS
     else
     {
         tex->Samples = (float) samples;
@@ -409,6 +422,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
             GL( glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D_MULTISAMPLE, tex->Id, 0 ) );
         }
     }
+    #endif
     rt.TargetTexture = tex;
 
     // Depth / stencil
@@ -422,10 +436,12 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
             {
                 GL( glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height ) );
             }
+            #ifndef FO_OSX_IOS
             else
             {
                 GL( glRenderbufferStorageMultisample( GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, width, height ) );
             }
+            #endif
             GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
             GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
         }
@@ -444,6 +460,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
                     GL( glRenderbufferStorageEXT( GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, width, height ) );
                 }
             }
+            #ifndef FO_OSX_IOS
             else
             {
                 if( GL_HAS( EXT_packed_depth_stencil ) )
@@ -455,6 +472,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
                     GL( glRenderbufferStorageMultisampleEXT( GL_RENDERBUFFER_EXT, samples, GL_DEPTH_COMPONENT, width, height ) );
                 }
             }
+            #endif
             GL( glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
             if( GL_HAS( EXT_packed_depth_stencil ) )
                 GL( glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
@@ -472,7 +490,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
             return false;
         }
     }
-    else if( GL_HAS( EXT_framebuffer_object ) )
+    else // EXT_framebuffer_object
     {
         GLenum status;
         GL( status = glCheckFramebufferStatusEXT( GL_FRAMEBUFFER_EXT ) );
@@ -486,8 +504,10 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     // Effect
     if( !multisampling )
         rt.DrawEffect = Effect::FlushRenderTarget;
+    #ifndef FO_OSX_IOS
     else
         rt.DrawEffect = Effect::FlushRenderTargetMS;
+    #endif
 
     // Id
     static uint ids = 0;
@@ -498,7 +518,7 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
     {
         GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
     }
-    else if( GL_HAS( EXT_framebuffer_object ) )
+    else // EXT_framebuffer_object
     {
         GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, 0 ) );
     }
@@ -767,7 +787,7 @@ Surface* SpriteManager::CreateNewSurface( int w, int h )
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, SurfFilterNearest ? GL_NEAREST : GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
-    GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
+    GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
 
     Surface* surf = new Surface();
     surf->Type = SurfType;
@@ -1557,7 +1577,7 @@ label_LoadOneSpr:
     float frame_time = 1.0f / (float) ( GameOpt.Animation3dFPS ? GameOpt.Animation3dFPS : 10 ); // 1 second / fps
     float period_from = period * (float) proc_from / 100.0f;
     float period_to = period * (float) proc_to / 100.0f;
-    float period_len = abs( period_to - period_from );
+    float period_len = fabs( period_to - period_from );
     float proc_step = (float) ( proc_to - proc_from ) / ( period_len / frame_time );
     int   frames_count = (int) ceil( period_len / frame_time );
 
@@ -3152,12 +3172,14 @@ bool SpriteManager::Flush()
             {
                 GL( glBindTexture( GL_TEXTURE_2D, dip.SourceTexture->Id ) );
             }
+            #ifndef FO_OSX_IOS
             else
             {
                 GL( glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, dip.SourceTexture->Id ) );
                 if( effect->ColorMapSamples != -1 )
                     GL( glUniform1f( effect->ColorMapSamples, dip.SourceTexture->Samples ) );
             }
+            #endif
             GL( glUniform1i( effect->ColorMap, 0 ) );
             if( effect->ColorMapSize != -1 )
                 GL( glUniform4fv( effect->ColorMapSize, 1, dip.SourceTexture->SizeData ) );
@@ -3205,7 +3227,12 @@ bool SpriteManager::DrawSprite( uint id, int x, int y, uint color /* = 0 */ )
         return false;
 
     if( si->Anim3d )
+    {
         Render3d( x, y, 1.0f, si->Anim3d, NULL, color );
+        #ifndef RENDER_3D_TO_2D
+        return true;
+        #endif
+    }
 
     Effect* effect = ( si->DrawEffect ? si->DrawEffect : Effect::Iface );
     if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
@@ -3378,7 +3405,12 @@ bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, boo
     }
 
     if( si->Anim3d )
+    {
         Render3d( x, y, 1.0f, si->Anim3d, NULL, color );
+        #ifndef RENDER_3D_TO_2D
+        return true;
+        #endif
+    }
 
     Effect* effect = ( si->DrawEffect ? si->DrawEffect : Effect::Iface );
     if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
@@ -3655,6 +3687,9 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             x = (int) ( (float) x / zoom );
             y = (int) ( (float) y / zoom );
             Render3d( x, y, 1.0f / zoom, si->Anim3d, NULL, 0  );
+            #ifndef RENDER_3D_TO_2D
+            continue;
+            #endif
             x -= si->Width / 2 - si->OffsX;
             y -= si->Height - si->OffsY;
             zoom = 1.0f;
@@ -4076,6 +4111,19 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
 
 bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, RectF* stencil, uint color )
 {
+    #ifndef RENDER_3D_TO_2D
+    // Draw model
+    Flush();
+    if( stencil )
+    {
+        EnableStencil( *stencil );
+        ClearCurrentRenderTargetDS( false, true );
+    }
+    anim3d->EnableShadow( false );
+    anim3d->Draw( x, y, scale, stencil, rtStack.back()->FBO );
+    if( stencil )
+        DisableStencil( false );
+    #else
     // Set render target
     if( rt3DMS.FBO )
     {
@@ -4133,7 +4181,7 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
         1.0f - (float) borders.B / rt3D.TargetTexture->SizeData[ 1 ] );
     si->OffsX = si->Width / 2 - pivot.X + pivx;
     si->OffsY = si->Height - pivot.Y + pivy;
-
+    #endif
     return true;
 }
 
@@ -4162,14 +4210,18 @@ bool SpriteManager::Render3dSize( RectF rect, bool stretch_up, bool center, Anim
 bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, RectF* stencil, uint color )
 {
     Render3d( x, y, scale, anim3d, stencil, color );
+    #ifdef RENDER_3D_TO_2D
     DrawRenderTarget( rt3D, true );
+    #endif
     return true;
 }
 
 bool SpriteManager::Draw3dSize( RectF rect, bool stretch_up, bool center, Animation3d* anim3d, RectF* stencil, uint color )
 {
     Render3dSize( rect, stretch_up, center, anim3d, stencil, color );
+    #ifdef RENDER_3D_TO_2D
     DrawRenderTarget( rt3D, true );
+    #endif
     return true;
 }
 

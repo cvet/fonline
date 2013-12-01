@@ -9153,6 +9153,7 @@ void FOClient::PlayVideo()
         NextVideo();
         return;
     }
+    CurVideo->RT.TargetTexture->Data = new uchar[ CurVideo->RT.TargetTexture->Size ];
 
     // Start sound
     if( video.SoundName != "" )
@@ -9312,22 +9313,9 @@ void FOClient::RenderVideo()
         return;
     }
 
-    // Render
+    // Fill render texture
     uint w = CurVideo->VideoInfo.pic_width;
     uint h = CurVideo->VideoInfo.pic_height;
-    SprMngr.PushRenderTarget( CurVideo->RT );
-
-    Matrix m;
-    GL( gluStuffOrtho( m[ 0 ], 0.0f, (float) w, (float) h, 0.0f, -1.0f, 1.0f ) );
-    m.Transpose();                 // Convert to column major order
-
-    GL( glMatrixMode( GL_PROJECTION ) );
-    GL( glLoadMatrixf( m[ 0 ] ) );
-    GL( glMatrixMode( GL_MODELVIEW ) );
-    GL( glLoadIdentity() );
-    GL( glDisable( GL_TEXTURE_2D ) );
-    GL( glDisable( GL_POINT_SMOOTH ) );
-    glBegin( GL_POINTS );
     for( uint y = 0; y < h; y++ )
     {
         for( uint x = 0; x < w; x++ )
@@ -9343,15 +9331,18 @@ void FOClient::RenderVideo()
             float cg = cy - 0.344f * ( cu - 127 ) - 0.714f * ( cv - 127 );
             float cb = cy + 1.722f * ( cu - 127 );
 
-            // Draw
-            glColor3f( cr / 255.0f, cg / 255.0f, cb / 255.0f );
-            glVertex2f( (float) x, (float) y + 1.0f );
+            // Set on texture
+            uchar* data = CurVideo->RT.TargetTexture->Data + ( ( h - y - 1 ) * w * 4 + x * 4 );
+            data[ 0 ] = (uchar) cr;
+            data[ 1 ] = (uchar) cg;
+            data[ 2 ] = (uchar) cb;
+            data[ 3 ] = 0xFF;
         }
     }
-    GL( glEnd() );
-    GL( glEnable( GL_TEXTURE_2D ) );
-    GL( glEnable( GL_POINT_SMOOTH ) );
-    SprMngr.PopRenderTarget();
+
+    // Update texture and draw it
+    CurVideo->RT.TargetTexture->Update();
+    SprMngr.DrawRenderTarget( CurVideo->RT, false );
 
     // Render to window
     float mw = (float) MODE_WIDTH;
@@ -9629,7 +9620,7 @@ bool FOClient::ReloadScripts()
     #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line<%d>.\n", __LINE__ ); bind_errors++; }
     asIScriptEngine* engine = Script::GetEngine();
     int              bind_errors = 0;
-    #include <ScriptBind.h>
+    #include "ScriptBind.h"
 
     if( bind_errors )
     {

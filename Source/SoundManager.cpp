@@ -10,7 +10,7 @@ SoundManager SndMngr;
 
 // PortAudio
 #include "PortAudio/portaudio.h"
-#ifdef FO_WINDOWS
+#ifdef FO_MSVC
 # pragma comment( lib, "portaudio.lib" )
 #endif
 
@@ -20,7 +20,7 @@ SoundManager SndMngr;
 // OGG
 #include "ogg/codec.h"
 #include "ogg/vorbisfile.h"
-#ifdef FO_WINDOWS
+#ifdef FO_MSVC
 # pragma comment ( lib, "libogg_static.lib" )
 # pragma comment ( lib, "libvorbis_static.lib" )
 # pragma comment ( lib, "libvorbisfile_static.lib" )
@@ -430,7 +430,7 @@ int Ogg_seek_func( void* datasource, ogg_int64_t offset, int whence )
         fm->GoForward( (uint) offset );
         break;
     case SEEK_END:
-        fm->SetCurPos( fm->GetFsize() );
+        fm->SetCurPos( fm->GetFsize() - (uint) offset );
         break;
     default:
         return -1;

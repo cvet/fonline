@@ -23,7 +23,7 @@ public:
 private:
     static PCharVec processedFiles;
     static FrameVec loadedModels;
-    static PtrVec   loadedAnimations;       // Pointers of AnimSet
+    static PtrVec   loadedAnimations;   // Pointers of AnimSet
 
     // Textures
 public:
