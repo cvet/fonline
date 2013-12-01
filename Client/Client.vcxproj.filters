@@ -643,12 +643,6 @@
     <ClCompile Include="..\Source\AngelScript\as_callfunc.cpp">
       <Filter>AngelScript</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\as_callfunc_x64_gcc.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\as_callfunc_x64_msvc.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
     <ClCompile Include="..\Source\AngelScript\as_callfunc_x86.cpp">
       <Filter>AngelScript</Filter>
     </ClCompile>
@@ -775,10 +769,5 @@
     <ClCompile Include="..\Source\GL\glu_stuff.cpp">
       <Filter>GL</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="..\Source\AngelScript\as_callfunc_x64_msvc.asm">
-      <Filter>AngelScript</Filter>
-    </CustomBuild>
   </ItemGroup>
 </Project>
