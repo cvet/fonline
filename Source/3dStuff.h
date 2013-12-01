@@ -71,7 +71,6 @@ private:
     Animation3dEntity*    animEntity;
     AnimController*       animController;
     int                   currentLayers[ LAYERS3D_COUNT + 1 ];     // +1 for actions
-    uint                  numAnimationSets;
     uint                  currentTrack;
     uint                  lastTick;
     uint                  endTick;
@@ -183,7 +182,6 @@ private:
     bool                        calcualteTangetSpace;
 
     void ProcessTemplateDefines( char* str, StrVec& def );
-    int  GetAnimationIndex( const char* anim_name );
     int  GetAnimationIndex( uint& anim1, uint& anim2, float* speed );
     int  GetAnimationIndexEx( uint anim1, uint anim2, float* speed );
 

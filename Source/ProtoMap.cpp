@@ -1676,9 +1676,8 @@ bool ProtoMap::Refresh()
         bool load_cache = true;
         if( fm.IsLoaded() )
         {
-            uint64 last_write, last_write_cache;
-            fm.GetTime( NULL, NULL, &last_write );
-            cached.GetTime( NULL, NULL, &last_write_cache );
+            uint64 last_write = fm.GetWriteTime();
+            uint64 last_write_cache = cached.GetWriteTime();
             if( last_write > last_write_cache )
                 load_cache = false;
         }

@@ -4,6 +4,7 @@
 #include "Defines.h"
 #include "Assimp/aiTypes.h"
 #include "Assimp/aiScene.h"
+#include "FileManager.h"
 
 typedef aiMatrix4x4          Matrix;
 typedef aiVector3D           Vector;
@@ -24,15 +25,8 @@ struct Texture
     uint        Height;
     float       SizeData[ 4 ];        // Width, Height, TexelWidth, TexelHeight
     float       Samples;
-    #ifdef FO_WINDOWS
-    HPBUFFERARB PBuffer;
-    #endif
     Texture(): Name( NULL ), Id( 0 ), Data( NULL ), Size( 0 ), Width( 0 ), Height( 0 ), Samples( 0.0f )
-    {
-        #ifdef FO_WINDOWS
-        PBuffer = NULL;
-        #endif
-    }
+    {}
     ~Texture()
     {
         GL( glDeleteTextures( 1, &Id ) );
@@ -42,13 +36,13 @@ struct Texture
     bool         Update()
     {
         GL( glBindTexture( GL_TEXTURE_2D, Id ) );
-        GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_BGRA, GL_UNSIGNED_BYTE, Data ) );
+        GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Data ) );
         return true;
     }
     bool Update( const Rect& r )
     {
         GL( glBindTexture( GL_TEXTURE_2D, Id ) );
-        GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, r.T, Width, r.H(), GL_BGRA, GL_UNSIGNED_BYTE, (uint*) Data + r.T * Width ) );
+        GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, r.T, Width, r.H(), GL_BGRA_EXT, GL_UNSIGNED_BYTE, (uint*) Data + r.T * Width ) );
         return true;
     }
 };
@@ -174,9 +168,6 @@ typedef vector< Vertex3DVec > Vertex3DVecVec;
 struct MeshSubset
 {
     Vertex3DVec    Vertices;
-    Vertex3DVec    VerticesTransformed;
-    bool           VerticesTransformedValid;
-    uint           FacesCount;
     UShortVec      Indicies;
     string         DiffuseTexture;
     float          DiffuseColor[ 4 ];
@@ -185,9 +176,108 @@ struct MeshSubset
     float          EmissiveColor[ 4 ];
     uint           BoneInfluences;
     MatrixVec      BoneOffsets;
+    StrVec         BoneNames;
+
+    // Runtime data
+    Vertex3DVec    VerticesTransformed;
+    bool           VerticesTransformedValid;
     MatrixPtrVec   FrameCombinedMatrixPointer;
     EffectInstance DrawEffect;
     GLuint         VAO, VBO, IBO;
+
+    // Methods
+    void           CreateBuffers()
+    {
+        GL( glGenBuffers( 1, &VBO ) );
+        GL( glBindBuffer( GL_ARRAY_BUFFER, VBO ) );
+        GL( glBufferData( GL_ARRAY_BUFFER, Vertices.size() * sizeof( Vertex3D ), &Vertices[ 0 ], GL_STATIC_DRAW ) );
+        GL( glGenBuffers( 1, &IBO ) );
+        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, IBO ) );
+        GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, Indicies.size() * sizeof( short ), &Indicies[ 0 ], GL_STATIC_DRAW ) );
+        VAO = 0;
+        if( GL_HAS( ARB_vertex_array_object ) && ( GL_HAS( ARB_framebuffer_object ) || GL_HAS( EXT_framebuffer_object ) ) )
+        {
+            GL( glGenVertexArrays( 1, &VAO ) );
+            GL( glBindVertexArray( VAO ) );
+            GL( glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Position ) ) );
+            GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Normal ) ) );
+            GL( glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Color ) ) );
+            GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord ) ) );
+            GL( glVertexAttribPointer( 4, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord2 ) ) );
+            GL( glVertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord3 ) ) );
+            GL( glVertexAttribPointer( 6, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Tangent ) ) );
+            GL( glVertexAttribPointer( 7, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Bitangent ) ) );
+            GL( glVertexAttribPointer( 8, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendWeights ) ) );
+            GL( glVertexAttribPointer( 9, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendIndices ) ) );
+            for( uint i = 0; i <= 9; i++ )
+                GL( glEnableVertexAttribArray( i ) );
+            GL( glBindVertexArray( 0 ) );
+        }
+    }
+
+    void Save( FileManager& file )
+    {
+        uint len = Vertices.size();
+        file.SetData( &len, sizeof( len ) );
+        file.SetData( &Vertices[ 0 ], len * sizeof( Vertices[ 0 ] ) );
+        len = Indicies.size();
+        file.SetData( &len, sizeof( len ) );
+        file.SetData( &Indicies[ 0 ], len * sizeof( Indicies[ 0 ] ) );
+        len = DiffuseTexture.length();
+        file.SetData( &len, sizeof( len ) );
+        file.SetData( &DiffuseTexture[ 0 ], len );
+        file.SetData( DiffuseColor, sizeof( DiffuseColor ) );
+        file.SetData( AmbientColor, sizeof( AmbientColor ) );
+        file.SetData( SpecularColor, sizeof( SpecularColor ) );
+        file.SetData( EmissiveColor, sizeof( EmissiveColor ) );
+        file.SetData( &BoneInfluences, sizeof( BoneInfluences ) );
+        len = BoneOffsets.size();
+        file.SetData( &len, sizeof( len ) );
+        file.SetData( &BoneOffsets[ 0 ], len * sizeof( BoneOffsets[ 0 ] ) );
+        len = BoneNames.size();
+        file.SetData( &len, sizeof( len ) );
+        for( uint i = 0, j = len; i < j; i++ )
+        {
+            len = BoneNames[ i ].length();
+            file.SetData( &len, sizeof( len ) );
+            file.SetData( &BoneNames[ i ][ 0 ], len );
+        }
+    }
+
+    void Load( FileManager& file )
+    {
+        uint len = 0;
+        file.CopyMem( &len, sizeof( len ) );
+        Vertices.resize( len );
+        file.CopyMem( &Vertices[ 0 ], len * sizeof( Vertices[ 0 ] ) );
+        file.CopyMem( &len, sizeof( len ) );
+        Indicies.resize( len );
+        file.CopyMem( &Indicies[ 0 ], len * sizeof( Indicies[ 0 ] ) );
+        file.CopyMem( &len, sizeof( len ) );
+        DiffuseTexture.resize( len );
+        file.CopyMem( &DiffuseTexture[ 0 ], len );
+        file.CopyMem( DiffuseColor, sizeof( DiffuseColor ) );
+        file.CopyMem( AmbientColor, sizeof( AmbientColor ) );
+        file.CopyMem( SpecularColor, sizeof( SpecularColor ) );
+        file.CopyMem( EmissiveColor, sizeof( EmissiveColor ) );
+        file.CopyMem( &BoneInfluences, sizeof( BoneInfluences ) );
+        file.CopyMem( &len, sizeof( len ) );
+        BoneOffsets.resize( len );
+        file.CopyMem( &BoneOffsets[ 0 ], len * sizeof( BoneOffsets[ 0 ] ) );
+        file.CopyMem( &len, sizeof( len ) );
+        BoneNames.resize( len );
+        for( uint i = 0, j = len; i < j; i++ )
+        {
+            file.CopyMem( &len, sizeof( len ) );
+            BoneNames[ i ].resize( len );
+            file.CopyMem( &BoneNames[ i ][ 0 ], len );
+        }
+        VerticesTransformed = Vertices;
+        VerticesTransformedValid = false;
+        FrameCombinedMatrixPointer.resize( BoneOffsets.size() );
+        memzero( &DrawEffect, sizeof( DrawEffect ) );
+        VAO = VBO = IBO = 0;
+    }
 };
 typedef vector< MeshSubset > MeshSubsetVec;
 
@@ -197,9 +287,12 @@ struct Frame
 {
     string        Name;
     Matrix        TransformationMatrix;
-    Matrix        CombinedTransformationMatrix;
     MeshSubsetVec Mesh;
+
+    // Runtime data
     FrameVec      Children;
+    Matrix        CombinedTransformationMatrix;
+    uint          ParticleEmitter;
 
     const char*   GetName()
     {
@@ -218,6 +311,63 @@ struct Frame
                 return frame;
         }
         return NULL;
+    }
+
+    void Save( FileManager& file )
+    {
+        uint len = Name.length();
+        file.SetData( &len, sizeof( len ) );
+        file.SetData( &Name[ 0 ], len );
+        file.SetData( &TransformationMatrix, sizeof( TransformationMatrix ) );
+        len = Mesh.size();
+        file.SetData( &len, sizeof( len ) );
+        for( uint i = 0, j = len; i < j; i++ )
+            Mesh[ i ].Save( file );
+        len = Children.size();
+        file.SetData( &len, sizeof( len ) );
+        for( uint i = 0, j = len; i < j; i++ )
+            Children[ i ]->Save( file );
+    }
+
+    void Load( FileManager& file )
+    {
+        uint len = 0;
+        file.CopyMem( &len, sizeof( len ) );
+        Name.resize( len );
+        file.CopyMem( &Name[ 0 ], len );
+        file.CopyMem( &TransformationMatrix, sizeof( TransformationMatrix ) );
+        file.CopyMem( &len, sizeof( len ) );
+        Mesh.resize( len );
+        for( uint i = 0, j = len; i < j; i++ )
+            Mesh[ i ].Load( file );
+        file.CopyMem( &len, sizeof( len ) );
+        Children.resize( len );
+        for( uint i = 0, j = len; i < j; i++ )
+        {
+            Children[ i ] = new Frame();
+            Children[ i ]->Load( file );
+        }
+        CombinedTransformationMatrix = Matrix();
+    }
+
+    void FixAfterLoad( Frame* root_frame )
+    {
+        for( auto it = Mesh.begin(), end = Mesh.end(); it != end; ++it )
+        {
+            MeshSubset& mesh = *it;
+            for( uint i = 0, j = mesh.BoneNames.size(); i < j; i++ )
+            {
+                Frame* bone_frame = root_frame->Find( mesh.BoneNames[ i ].c_str() );
+                if( bone_frame )
+                    mesh.FrameCombinedMatrixPointer[ i ] = &bone_frame->CombinedTransformationMatrix;
+                else
+                    mesh.FrameCombinedMatrixPointer[ i ] = NULL;
+            }
+            mesh.CreateBuffers();
+        }
+
+        for( uint i = 0, j = (uint) Children.size(); i < j; i++ )
+            Children[ i ]->FixAfterLoad( root_frame );
     }
 };
 

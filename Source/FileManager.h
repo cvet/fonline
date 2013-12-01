@@ -63,7 +63,7 @@ public:
     static bool LoadDataFile( const char* path );
     static void EndOfWork();
 
-    bool   LoadFile( const char* fname, int path_type );
+    bool   LoadFile( const char* fname, int path_type, bool no_read_data = false );
     bool   LoadStream( const uchar* stream, uint length );
     void   UnloadFile();
     uchar* ReleaseBuffer();
@@ -114,13 +114,13 @@ public:
     static const char* GetExtension( const char* fname ); // EXT without dot
     static char*       EraseExtension( char* fname );     // Erase EXT with dot
 
-    bool   IsLoaded()  { return fileBuf != NULL; }
-    uchar* GetBuf()    { return fileBuf; }
-    uchar* GetCurBuf() { return fileBuf + curPos; }
-    uint   GetCurPos() { return curPos; }
-    uint   GetFsize()  { return fileSize; }
-    bool   IsEOF()     { return curPos >= fileSize; }
-    void   GetTime( uint64* create, uint64* access, uint64* write );
+    bool   IsLoaded()     { return fileBuf != NULL; }
+    uchar* GetBuf()       { return fileBuf; }
+    uchar* GetCurBuf()    { return fileBuf + curPos; }
+    uint   GetCurPos()    { return curPos; }
+    uint   GetFsize()     { return fileSize; }
+    bool   IsEOF()        { return curPos >= fileSize; }
+    uint64 GetWriteTime() { return timeWrite; }
     int    ParseLinesInt( const char* fname, int path_type, IntVec& lines );
 
     static DataFileVec& GetDataFiles() { return dataFiles; }

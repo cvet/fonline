@@ -26,6 +26,7 @@ public:
     ~FalloutDatFile();
 
     const string& GetPackName() { return fileName; }
+    bool          IsFilePresent( const char* fname );
     uchar*        OpenFile( const char* fname, uint& len );
     void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
     void          GetTime( uint64* create, uint64* access, uint64* write );
@@ -54,6 +55,7 @@ public:
     ~ZipFile();
 
     const string& GetPackName() { return fileName; }
+    bool          IsFilePresent( const char* fname );
     uchar*        OpenFile( const char* fname, uint& len );
     void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
     void          GetTime( uint64* create, uint64* access, uint64* write );
@@ -79,7 +81,7 @@ DataFile* OpenDataFile( const char* fname )
     }
 
     const char* ext_ = ext;
-    while( ext_ = Str::Substring( ext_ + 1, "." ) )
+    while( ( ext_ = Str::Substring( ext_ + 1, "." ) ) )
         ext = ext_;
 
     if( Str::CompareCase( ext, ".dat" ) ) // Try open DAT
@@ -271,6 +273,14 @@ bool FalloutDatFile::ReadTree()
     return true;
 }
 
+bool FalloutDatFile::IsFilePresent( const char* fname )
+{
+    if( !datHandle )
+        return false;
+
+    return filesTree.find( fname ) != filesTree.end();
+}
+
 uchar* FalloutDatFile::OpenFile( const char* fname, uint& len )
 {
     if( !datHandle )
@@ -446,6 +456,14 @@ bool ZipFile::ReadTree()
     }
 
     return true;
+}
+
+bool ZipFile::IsFilePresent( const char* fname )
+{
+    if( !zipHandle )
+        return false;
+
+    return filesTree.find( fname ) != filesTree.end();
 }
 
 uchar* ZipFile::OpenFile( const char* fname, uint& len )

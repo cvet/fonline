@@ -10,7 +10,7 @@
 
 int       ModeWidth = 0, ModeHeight = 0;
 float     FixedZ = 0.0f;
-Matrix    MatrixProj, MatrixView, MatrixEmpty, MatrixViewProj;
+Matrix    MatrixProjRM, MatrixEmptyRM, MatrixProjCM, MatrixEmptyCM; // Row or Column major order
 float     MoveTransitionTime = 0.25f;
 float     GlobalSpeedAdjust = 1.0f;
 MatrixVec BoneMatrices;
@@ -22,40 +22,26 @@ GLuint FBODepth = 0;
 GLuint DepthTexId = 0;
 #endif
 
-void VecProject( const Vector& v, Matrix& world, Vector& out )
+void VecProject( const Vector& v, Vector& out )
 {
-    double modelview[ 16 ];
-    for( uint i = 0; i < 16; i++ )
-        modelview[ i ] = *( world[ 0 ] + i );
-    double projection[ 16 ];
-    for( uint i = 0; i < 16; i++ )
-        projection[ i ] = *( MatrixProj[ 0 ] + i );
-    int    viewport[ 4 ] = { 0, 0, ModeWidth, ModeHeight };
-
-    double x = 0.0, y = 0.0, z = 0.0;
-    gluProject( v.x, v.y, v.z, modelview, projection, viewport, &x, &y, &z );
-
-    out.x = (float) x;
-    out.y = (float) y;
-    out.z = (float) z;
+    int   viewport[ 4 ] = { 0, 0, ModeWidth, ModeHeight };
+    float x = 0.0f, y = 0.0f, z = 0.0f;
+    gluStuffProject( v.x, v.y, v.z, MatrixEmptyCM[ 0 ], MatrixProjCM[ 0 ], viewport, &x, &y, &z );
+    out.x = x;
+    out.y = y;
+    out.z = z;
+    out.z = 0.0f;
 }
 
 void VecUnproject( const Vector& v, Vector& out )
 {
-    double modelview[ 16 ];
-    for( uint i = 0; i < 16; i++ )
-        modelview[ i ] = *( MatrixEmpty[ 0 ] + i );
-    double projection[ 16 ];
-    for( uint i = 0; i < 16; i++ )
-        projection[ i ] = *( MatrixProj[ 0 ] + i );
-    int    viewport[ 4 ] = { 0, 0, ModeWidth, ModeHeight };
-
-    double x = 0.0, y = 0.0, z = 0.0;
-    gluUnProject( v.x, (float) ModeHeight - v.y, v.z, modelview, projection, viewport, &x, &y, &z );
-
-    out.x = (float) x;
-    out.y = (float) y;
-    out.z = (float) z;
+    int   viewport[ 4 ] = { 0, 0, ModeWidth, ModeHeight };
+    float x = 0.0f, y = 0.0f, z = 0.0f;
+    gluStuffUnProject( v.x, (float) ModeHeight - v.y, v.z, MatrixEmptyCM[ 0 ], MatrixProjCM[ 0 ], viewport, &x, &y, &z );
+    out.x = x;
+    out.y = y;
+    out.z = z;
+    out.z = 0.0f;
 }
 
 /************************************************************************/
@@ -64,7 +50,7 @@ void VecUnproject( const Vector& v, Vector& out )
 
 Animation3dVec Animation3d::generalAnimations;
 
-Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ), numAnimationSets( 0 ),
+Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ),
                             currentTrack( 0 ), lastTick( 0 ), endTick( 0 ), speedAdjustBase( 1.0f ), speedAdjustCur( 1.0f ), speedAdjustLink( 1.0f ),
                             shadowDisabled( false ), dirAngle( GameOpt.MapHexagonal ? 150.0f : 135.0f ), sprId( 0 ),
                             drawScale( 0.0f ), bordersDisabled( false ), calcBordersTick( 0 ), noDraw( true ), parentAnimation( NULL ), parentFrame( NULL ),
@@ -1059,7 +1045,7 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool tran
                     {
                         Vertex3D& v = ms.Vertices[ i ];
                         Vertex3D& vt = ms.VerticesTransformed[ i ];
-                        vt.Position = MatrixProj * frame->CombinedTransformationMatrix * v.Position;
+                        vt.Position = MatrixProjRM * frame->CombinedTransformationMatrix * v.Position;
                         vt.Position.x = ( ( vt.Position.x - 1.0f ) * 0.5f + 0.5f ) * wf;
                         vt.Position.y = ( ( 1.0f - vt.Position.y ) * 0.5f + 0.5f ) * hf;
                     }
@@ -1078,7 +1064,7 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool tran
                     {
                         Vertex3D& v = ms.Vertices[ i ];
                         Vertex3D& vt = ms.VerticesTransformed[ i ];
-                        vt.Position = MatrixProj * v.Position;
+                        vt.Position = MatrixProjRM * v.Position;
 
                         Vector position = Vector();
                         for( int b = 0; b < int(ms.BoneInfluences); b++ )
@@ -1087,7 +1073,7 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool tran
                             position += m * v.Position * v.BlendWeights[ b ];
                         }
 
-                        vt.Position = MatrixProj * position;
+                        vt.Position = MatrixProjRM * position;
                         vt.Position.x = ( ( vt.Position.x - 1.0f ) * 0.5f + 0.5f ) * wf;
                         vt.Position.y = ( ( 1.0f - vt.Position.y ) * 0.5f + 0.5f ) * hf;
                     }
@@ -1167,7 +1153,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
         if( effect->ZoomFactor != -1 )
             GL( glUniform1f( effect->ZoomFactor, GameOpt.SpritesZoom ) );
         if( effect->ProjectionMatrix != -1 )
-            GL( glUniformMatrix4fv( effect->ProjectionMatrix, 1, GL_FALSE, MatrixProj[ 0 ] ) );
+            GL( glUniformMatrix4fv( effect->ProjectionMatrix, 1, GL_FALSE, MatrixProjCM[ 0 ] ) );
         if( effect->ColorMap != -1 && textures[ 0 ] )
         {
             GL( glBindTexture( GL_TEXTURE_2D, textures[ 0 ]->Id ) );
@@ -1225,17 +1211,26 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
                 {
                     Matrix* m = ms.FrameCombinedMatrixPointer[ i ];
                     if( m )
+                    {
                         BoneMatrices[ i ] = ( *m ) * ms.BoneOffsets[ i ];
+                        BoneMatrices[ i ].Transpose();                         // Convert to column major order
+                    }
                 }
-                GL( glUniformMatrix4fv( effect->WorldMatrices, mcount, GL_TRUE, (float*) &BoneMatrices[ 0 ] ) );
+                GL( glUniformMatrix4fv( effect->WorldMatrices, mcount, GL_FALSE, (float*) &BoneMatrices[ 0 ] ) );
             }
             else
             {
-                GL( glUniformMatrix4fv( effect->WorldMatrices, mcount, GL_TRUE, frame->CombinedTransformationMatrix[ 0 ] ) );
+                BoneMatrices[ 0 ] = frame->CombinedTransformationMatrix;
+                BoneMatrices[ 0 ].Transpose();                 // Convert to column major order
+                GL( glUniformMatrix4fv( effect->WorldMatrices, mcount, GL_FALSE, BoneMatrices[ 0 ][ 0 ] ) );
             }
         }
         if( effect->WorldMatrix != -1 )
-            GL( glUniformMatrix4fv( effect->WorldMatrix, 1, GL_TRUE, frame->CombinedTransformationMatrix[ 0 ] ) );
+        {
+            BoneMatrices[ 0 ] = frame->CombinedTransformationMatrix;
+            BoneMatrices[ 0 ].Transpose();             // Convert to column major order
+            GL( glUniformMatrix4fv( effect->WorldMatrix, 1, GL_FALSE, BoneMatrices[ 0 ][ 0 ] ) );
+        }
         if( effect->GroundPosition != -1 )
             GL( glUniform3fv( effect->GroundPosition, 1, (float*) &groundPos ) );
 
@@ -1304,9 +1299,6 @@ bool Animation3d::StartUp()
     GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
     #endif
 
-    // Identity matrix
-    MatrixEmpty = Matrix();
-
     // FPS & Smooth
     if( GameOpt.Animation3dSmoothTime )
     {
@@ -1335,17 +1327,12 @@ bool Animation3d::SetScreenSize( int width, int height )
 
     // Projection
     float k = (float) ModeHeight / 768.0f;
-    GL( glMatrixMode( GL_PROJECTION ) );
-    GL( glLoadIdentity() );
-    GL( glOrtho( 0, 18.65 * k * (float) ModeWidth / ModeHeight, 0, 18.65 * k, -20.0, 20.0 ) );
-    GL( glGetFloatv( GL_PROJECTION_MATRIX, MatrixProj[ 0 ] ) );
-
-    // View
-    GL( glMatrixMode( GL_MODELVIEW ) );
-    GL( glLoadIdentity() );
-    GL( gluLookAt( 0.0, 0.0, FixedZ, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0 ) );
-    GL( glGetFloatv( GL_MODELVIEW_MATRIX, MatrixView[ 0 ] ) );
-    MatrixViewProj = MatrixProj * MatrixView;
+    gluStuffOrtho( MatrixProjRM[ 0 ], 0.0f, 18.65f * k * (float) ModeWidth / ModeHeight, 0.0f, 18.65f * k, -200.0f, 200.0f );
+    MatrixProjCM = MatrixProjRM;
+    MatrixProjCM.Transpose();
+    MatrixEmptyRM = Matrix();
+    MatrixEmptyCM = MatrixEmptyRM;
+    MatrixEmptyCM.Transpose();
 
     // View port
     GL( glViewport( 0, 0, ModeWidth, ModeHeight ) );
@@ -1451,7 +1438,7 @@ PointF Animation3d::Convert2dTo3d( int x, int y )
 Point Animation3d::Convert3dTo2d( float x, float y )
 {
     Vector coords;
-    VecProject( Vector( x, y, FixedZ ), MatrixEmpty, coords );
+    VecProject( Vector( x, y, FixedZ ), coords );
     return Point( (int) coords.x, (int) coords.y );
 }
 
@@ -2107,73 +2094,63 @@ bool Animation3dEntity::Load( const char* name )
         fileName = name;
         xFile = xfile;
 
-        // Parse animations
-        AnimSetVec animations;
-        uint       max_matrices = 0;
-        for( uint i = 0, j = (uint) anim_indexes.size(); i < j; i += 3 )
+        // Single frame render
+        if( render_fname[ 0 ] && render_anim[ 0 ] )
         {
-            char* anim_fname = (char*) anim_indexes[ i + 1 ];
-            char* anim_name = (char*) anim_indexes[ i + 2 ];
-
-            char  anim_path[ MAX_FOPATH ];
-            if( Str::CompareCase( anim_fname, "ModelFile" ) )
-                Str::Copy( anim_path, model );
-            else
-                FileManager::MakeFilePath( anim_fname, path, anim_path );
-
-            AnimSet* set = GraphicLoader::LoadAnimation( anim_path, anim_name );
-            if( set )
-            {
-                animations.push_back( set );
-                max_matrices = max( max_matrices, set->GetOutputCount() );
-            }
+            anim_indexes.push_back( -1 );
+            anim_indexes.push_back( ( size_t ) Str::Duplicate( render_fname ) );
+            anim_indexes.push_back( ( size_t ) Str::Duplicate( render_anim ) );
         }
 
-        if( animations.size() )
+        // Create animation controller
+        if( !anim_indexes.empty() )
         {
             animController = AnimController::Create( 2 );
-            if( animController )
-            {
-                numAnimationSets = (uint) animations.size();
-                for( uint i = 0, j = (uint) animations.size(); i < j; i++ )
-                    animController->RegisterAnimationSet( animations[ i ] );
-            }
-            else
-            {
+            if( !animController )
                 WriteLogF( _FUNC_, " - Unable to create animation controller, file<%s>.\n", name );
-            }
         }
 
-        for( uint i = 0, j = (uint) anim_indexes.size(); i < j; i += 3 )
-        {
-            int   anim_index = (int) anim_indexes[ i + 0 ];
-            char* anim_fname = (char*) anim_indexes[ i + 1 ];
-            char* anim_name = (char*) anim_indexes[ i + 2 ];
-
-            if( anim_index && animController )
-            {
-                int anim_set = abs( atoi( anim_name ) );
-                if( !Str::IsNumber( anim_name ) )
-                    anim_set = GetAnimationIndex( anim_name[ 0 ] != '-' ? anim_name : &anim_name[ 1 ] );
-                if( anim_set >= 0 && anim_set < (int) numAnimationSets )
-                    animIndexes.insert( PAIR( anim_index, anim_set ) );
-            }
-
-            delete[] anim_fname;
-            delete[] anim_name;
-        }
-
-        if( render_fname[ 0 ] && render_anim[ 0 ] && animController )
-        {
-            int anim_set = abs( atoi( render_anim ) );
-            if( !Str::IsNumber( render_anim ) )
-                anim_set = GetAnimationIndex( render_anim[ 0 ] != '-' ? render_anim : &render_anim[ 1 ] );
-            if( anim_set >= 0 && anim_set < (int) numAnimationSets )
-                renderAnim = anim_set;
-        }
-
+        // Parse animations
         if( animController )
-            Animation3dXFile::SetupAnimationOutput( xFile->frameRoot, animController );
+        {
+            for( uint i = 0, j = (uint) anim_indexes.size(); i < j; i += 3 )
+            {
+                int anim_index = (int) anim_indexes[ i + 0 ];
+                char* anim_fname = (char*) anim_indexes[ i + 1 ];
+                char* anim_name = (char*) anim_indexes[ i + 2 ];
+
+                char  anim_path[ MAX_FOPATH ];
+                if( Str::CompareCase( anim_fname, "ModelFile" ) )
+                    Str::Copy( anim_path, model );
+                else
+                    FileManager::MakeFilePath( anim_fname, path, anim_path );
+
+                AnimSet* set = GraphicLoader::LoadAnimation( anim_path, anim_name );
+                if( set )
+                {
+                    animController->RegisterAnimationSet( set );
+                    uint set_index = animController->GetNumAnimationSets() - 1;
+
+                    if( anim_index == -1 )
+                        renderAnim = set_index;
+                    else if( anim_index )
+                        animIndexes.insert( PAIR( anim_index, set_index ) );
+                }
+                else
+                {
+                    WriteLogF( _FUNC_, " - Unable to find animation<%s><%s>, file<%s>.\n", anim_path, anim_name, name );
+                }
+
+                delete[] anim_fname;
+                delete[] anim_name;
+            }
+
+            numAnimationSets = animController->GetNumAnimationSets();
+            if( numAnimationSets > 0 )
+                Animation3dXFile::SetupAnimationOutput( xFile->frameRoot, animController );
+            else
+                SAFEDEL( animController );
+        }
     }
     // Load just x file
     else
@@ -2207,28 +2184,6 @@ void Animation3dEntity::ProcessTemplateDefines( char* str, StrVec& def )
             token = Str::Substring( str, from );
         }
     }
-}
-
-int Animation3dEntity::GetAnimationIndex( const char* anim_name )
-{
-    if( !animController )
-        return -1;
-
-    AnimSet* set = animController->GetAnimationSetByName( anim_name );
-    if( !set )
-        return -1;
-
-    int result = 0;
-    for( uint i = 0; i < numAnimationSets; i++ )
-    {
-        AnimSet* set_ = animController->GetAnimationSet( i );
-        if( Str::Compare( set->GetName(), set_->GetName() ) )
-        {
-            result = i;
-            break;
-        }
-    }
-    return result;
 }
 
 int Animation3dEntity::GetAnimationIndex( uint& anim1, uint& anim2, float* speed )
@@ -2307,10 +2262,7 @@ Animation3d* Animation3dEntity::CloneAnimation()
     a3d->lastTick = Timer::GameTick();
 
     if( animController )
-    {
-        a3d->numAnimationSets = animController->GetMaxNumAnimationSets();
         a3d->animController = animController->Clone();
-    }
 
     return a3d;
 }

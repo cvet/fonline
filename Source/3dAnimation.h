@@ -2,12 +2,13 @@
 #define __3D_ANIMATION__
 
 #include "GraphicStructures.h"
+#include "FileManager.h"
 
 class AnimSet
 {
 private:
     friend class AnimController;
-    struct Output
+    struct BoneOutput
     {
         string        name;
         FloatVec      scaleTime;
@@ -17,26 +18,28 @@ private:
         FloatVec      translationTime;
         VectorVec     translationValue;
     };
-    typedef vector< Output > OutputVec;
+    typedef vector< BoneOutput > BoneOutputVec;
 
-    string    animName;
-    float     durationTicks;
-    float     ticksPerSecond;
-    OutputVec outputs;
+    string        animFileName;
+    string        animName;
+    float         durationTicks;
+    float         ticksPerSecond;
+    BoneOutputVec boneOutputs;
 
 public:
-    void SetData( const char* name, float ticks, float tps )
+    void SetData( const char* fname, const char* name, float ticks, float tps )
     {
+        animFileName = fname;
         animName = name;
         durationTicks = ticks;
         ticksPerSecond = tps;
     }
 
-    void AddOutput( const char* name, const FloatVec& st, const VectorVec& sv,
-                    const FloatVec& rt, const QuaternionVec& rv, const FloatVec& tt, const VectorVec& tv  )
+    void AddBoneOutput( const char* name, const FloatVec& st, const VectorVec& sv,
+                        const FloatVec& rt, const QuaternionVec& rv, const FloatVec& tt, const VectorVec& tv  )
     {
-        outputs.push_back( Output() );
-        Output& o = outputs.back();
+        boneOutputs.push_back( BoneOutput() );
+        BoneOutput& o = boneOutputs.back();
         o.name = name;
         o.scaleTime = st;
         o.scaleValue = sv;
@@ -46,19 +49,94 @@ public:
         o.translationValue = tv;
     }
 
+    const char* GetFileName()
+    {
+        return animFileName.c_str();
+    }
+
     const char* GetName()
     {
         return animName.c_str();
     }
 
-    uint GetOutputCount()
+    uint GetBoneOutputCount()
     {
-        return outputs.size();
+        return boneOutputs.size();
     }
 
     float GetDuration()
     {
         return durationTicks / ticksPerSecond;
+    }
+
+    void Save( FileManager& file )
+    {
+        uint len = animFileName.length();
+        file.SetData( &len, sizeof( len ) );
+        file.SetData( &animFileName[ 0 ], len );
+        len = animName.length();
+        file.SetData( &len, sizeof( len ) );
+        file.SetData( &animName[ 0 ], len );
+        file.SetData( &durationTicks, sizeof( durationTicks ) );
+        file.SetData( &ticksPerSecond, sizeof( ticksPerSecond ) );
+        len = boneOutputs.size();
+        file.SetData( &len, sizeof( len ) );
+        for( auto it = boneOutputs.begin(), end = boneOutputs.end(); it != end; ++it )
+        {
+            BoneOutput& o = *it;
+            uint        len = o.name.length();
+            file.SetData( &len, sizeof( len ) );
+            file.SetData( &o.name[ 0 ], len );
+            len = o.scaleTime.size();
+            file.SetData( &len, sizeof( len ) );
+            file.SetData( &o.scaleTime[ 0 ], len * sizeof( o.scaleTime[ 0 ] ) );
+            file.SetData( &o.scaleValue[ 0 ], len * sizeof( o.scaleValue[ 0 ] ) );
+            len = o.rotationTime.size();
+            file.SetData( &len, sizeof( len ) );
+            file.SetData( &o.rotationTime[ 0 ], len * sizeof( o.rotationTime[ 0 ] ) );
+            file.SetData( &o.rotationValue[ 0 ], len * sizeof( o.rotationValue[ 0 ] ) );
+            len = o.translationTime.size();
+            file.SetData( &len, sizeof( len ) );
+            file.SetData( &o.translationTime[ 0 ], len * sizeof( o.translationTime[ 0 ] ) );
+            file.SetData( &o.translationValue[ 0 ], len * sizeof( o.translationValue[ 0 ] ) );
+        }
+    }
+
+    void Load( FileManager& file )
+    {
+        uint len = 0;
+        file.CopyMem( &len, sizeof( len ) );
+        animFileName.resize( len );
+        file.CopyMem( &animFileName[ 0 ], len );
+        file.CopyMem( &len, sizeof( len ) );
+        animName.resize( len );
+        file.CopyMem( &animName[ 0 ], len );
+        file.CopyMem( &durationTicks, sizeof( durationTicks ) );
+        file.CopyMem( &ticksPerSecond, sizeof( ticksPerSecond ) );
+        file.CopyMem( &len, sizeof( len ) );
+        boneOutputs.resize( len );
+        for( uint i = 0, j = len; i < j; i++ )
+        {
+            BoneOutput& o = boneOutputs[ i ];
+            file.CopyMem( &len, sizeof( len ) );
+            o.name.resize( len );
+            file.CopyMem( &o.name[ 0 ], len );
+            file.CopyMem( &len, sizeof( len ) );
+            o.scaleTime.resize( len );
+            o.scaleValue.resize( len );
+            file.CopyMem( &o.scaleTime[ 0 ], len * sizeof( o.scaleTime[ 0 ] ) );
+            file.CopyMem( &o.scaleValue[ 0 ], len * sizeof( o.scaleValue[ 0 ] ) );
+            file.CopyMem( &len, sizeof( len ) );
+            o.rotationTime.resize( len );
+            o.rotationValue.resize( len );
+            file.CopyMem( &o.rotationTime[ 0 ], len * sizeof( o.rotationTime[ 0 ] ) );
+            file.CopyMem( &o.rotationValue[ 0 ], len * sizeof( o.rotationValue[ 0 ] ) );
+            file.CopyMem( &len, sizeof( len ) );
+            o.translationTime.resize( len );
+            o.translationValue.resize( len );
+            file.CopyMem( &o.translationTime[ 0 ], len * sizeof( o.translationTime[ 0 ] ) );
+            file.CopyMem( &o.translationValue[ 0 ], len * sizeof( o.translationValue[ 0 ] ) );
+        }
     }
 };
 typedef vector< AnimSet* > AnimSetVec;
@@ -187,7 +265,7 @@ public:
         return tracks[ track ].position;
     }
 
-    uint GetMaxNumAnimationSets()
+    uint GetNumAnimationSets()
     {
         return sets->size();
     }
@@ -196,11 +274,11 @@ public:
     {
         // Set and link animation
         tracks[ track ].anim = anim;
-        uint count = anim->GetOutputCount();
+        uint count = anim->GetBoneOutputCount();
         tracks[ track ].animOutput.resize( count );
         for( uint i = 0; i < count; i++ )
         {
-            const string& link_name = anim->outputs[ i ].name;
+            const string& link_name = anim->boneOutputs[ i ].name;
             Output*       output = NULL;
             for( uint j = 0; j < outputs->size(); j++ )
             {
@@ -322,14 +400,14 @@ public:
             if( !track.enabled || track.weight <= 0.0f || !track.anim )
                 continue;
 
-            for( uint k = 0, l = track.anim->outputs.size(); k < l; k++ )
+            for( uint k = 0, l = track.anim->boneOutputs.size(); k < l; k++ )
             {
                 if( !track.animOutput[ k ] )
                     continue;
 
-                AnimSet::Output& o = track.anim->outputs[ k ];
+                AnimSet::BoneOutput& o = track.anim->boneOutputs[ k ];
 
-                float            time = fmod( track.position * track.anim->ticksPerSecond, track.anim->durationTicks );
+                float                time = fmod( track.position * track.anim->ticksPerSecond, track.anim->durationTicks );
                 FindSRTValue< Vector >( time, o.scaleTime, o.scaleValue, track.animOutput[ k ]->scale[ i ] );
                 FindSRTValue< Quaternion >( time, o.rotationTime, o.rotationValue, track.animOutput[ k ]->rotation[ i ] );
                 FindSRTValue< Vector >( time, o.translationTime, o.translationValue, track.animOutput[ k ]->translation[ i ] );

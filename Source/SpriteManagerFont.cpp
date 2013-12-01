@@ -282,8 +282,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name )
     uint     font_cache_len;
     uchar*   font_cache_init = Crypt.GetCache( fname, font_cache_len );
     uchar*   font_cache = font_cache_init;
-    uint64   write_time;
-    fm.GetTime( NULL, NULL, &write_time );
+    uint64   write_time = fm.GetWriteTime();
     if( !font_cache || write_time > *(uint64*) font_cache )
     {
         SAFEDELA( font_cache_init );

@@ -1,8 +1,8 @@
 #ifndef _GAP_FDAT_CFILE_H
 #define _GAP_FDAT_CFILE_H
 
-#include <Common.h>
-#include <zlib/zlib.h>
+#include "Common.h"
+#include "../zlib/zlib.h"
 #include "unlzss.h"
 
 // Since no audio plugin for Fallout performs backward seek and large

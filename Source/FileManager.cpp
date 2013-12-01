@@ -224,7 +224,7 @@ uchar* FileManager::ReleaseBuffer()
     return tmp;
 }
 
-bool FileManager::LoadFile( const char* fname, int path_type )
+bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data /* = false */  )
 {
     UnloadFile();
 
@@ -283,6 +283,12 @@ bool FileManager::LoadFile( const char* fname, int path_type )
     {
         FileGetTime( file, timeCreate, timeAccess, timeWrite );
 
+        if( no_read_data )
+        {
+            FileClose( file );
+            return true;
+        }
+
         uint   size = FileGetSize( file );
         uchar* buf = new uchar[ size + 1 ];
         if( !buf )
@@ -318,12 +324,23 @@ bool FileManager::LoadFile( const char* fname, int path_type )
     for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
     {
         DataFile* dat = *it;
-        fileBuf = dat->OpenFile( dat_path, fileSize );
-        if( fileBuf )
+        if( !no_read_data )
         {
-            curPos = 0;
-            dat->GetTime( &timeCreate, &timeAccess, &timeWrite );
-            return true;
+            fileBuf = dat->OpenFile( dat_path, fileSize );
+            if( fileBuf )
+            {
+                curPos = 0;
+                dat->GetTime( &timeCreate, &timeAccess, &timeWrite );
+                return true;
+            }
+        }
+        else
+        {
+            if( dat->IsFilePresent( dat_path ) )
+            {
+                dat->GetTime( &timeCreate, &timeAccess, &timeWrite );
+                return true;
+            }
         }
     }
 
@@ -650,7 +667,7 @@ void FileManager::SetStr( const char* fmt, ... )
     vsprintf( str, fmt, list );
     va_end( list );
 
-    SetData( str, Str::Length( str ) );
+    SetData( str, Str::Length( str ) + 1 );
 }
 
 void FileManager::SetUChar( uchar data )
@@ -973,16 +990,6 @@ int FileManager::ParseLinesInt( const char* fname, int path_type, IntVec& lines 
         lines.push_back( atoi( cur_line ) );
     UnloadFile();
     return (int) lines.size();
-}
-
-void FileManager::GetTime( uint64* create, uint64* access, uint64* write )
-{
-    if( create )
-        *create = timeCreate;
-    if( access )
-        *access = timeAccess;
-    if( write )
-        *write = timeWrite;
 }
 
 void FileManager::RecursiveDirLook( const char* init_dir, bool include_subdirs, const char* ext, StrVec& result )

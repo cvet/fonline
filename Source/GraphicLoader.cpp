@@ -8,6 +8,11 @@
 #include "Assimp/assimp.h"
 #include "Assimp/aiPostProcess.h"
 
+#include "fbxsdk/fbxsdk.h"
+#ifdef FO_WINDOWS
+# pragma comment( lib, "libfbxsdk-mt.lib" )
+#endif
+
 #include "PNG/png.h"
 #ifdef FO_MSVC
 # pragma comment( lib, "libpng16.lib" )
@@ -24,81 +29,129 @@ unsigned int   ( * Ptr_aiGetMaterialTextureCount )( const aiMaterial* pMat, aiTe
 aiReturn       ( * Ptr_aiGetMaterialTexture )( const aiMaterial* mat, aiTextureType type, unsigned int  index, aiString* path, aiTextureMapping* mapping, unsigned int* uvindex, float* blend, aiTextureOp* op, aiTextureMapMode* mapmode, unsigned int* flags );
 aiReturn       ( * Ptr_aiGetMaterialFloatArray )( const aiMaterial* pMat, const char* pKey, unsigned int type, unsigned int index, float* pOut, unsigned int* pMax );
 
+static Frame* FillNode( aiScene* scene, aiNode* node );
+static void   FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, aiNode* node );
+
+// FBX stuff
+class FbxStreamImpl: public FbxStream
+{
+private:
+    FileManager* fm;
+    EState       curState;
+
+public:
+    FbxStreamImpl(): FbxStream()
+    {
+        fm = NULL;
+        curState = FbxStream::eClosed;
+    }
+
+    virtual EState GetState()
+    {
+        return curState;
+    }
+
+    virtual bool Open( void* stream )
+    {
+        fm = (FileManager*) stream;
+        fm->SetCurPos( 0 );
+        curState = FbxStream::eOpen;
+        return true;
+    }
+
+    virtual bool Close()
+    {
+        fm->SetCurPos( 0 );
+        fm = NULL;
+        curState = FbxStream::eClosed;
+        return true;
+    }
+
+    virtual bool Flush()
+    {
+        return true;
+    }
+
+    virtual int Write( const void* data, int size )
+    {
+        return 0;
+    }
+
+    virtual int Read( void* data, int size ) const
+    {
+        return fm->CopyMem( data, size ) ? size : 0;
+    }
+
+    virtual char* ReadString( char* buffer, int max_size, bool stop_at_first_white_space = false )
+    {
+        const char* str = (char*) fm->GetCurBuf();
+        int         len = 0;
+        while( *str && len < max_size - 1 )
+        {
+            str++;
+            len++;
+            if( *str == '\n' || ( stop_at_first_white_space && *str == ' ' ) )
+                break;
+        }
+        if( len )
+            fm->CopyMem( buffer, len );
+        buffer[ len ] = 0;
+        return buffer;
+    }
+
+    virtual int GetReaderID() const
+    {
+        return 0;
+    }
+
+    virtual int GetWriterID() const
+    {
+        return -1;
+    }
+
+    virtual void Seek( const FbxInt64& offset, const FbxFile::ESeekPos& seek_pos )
+    {
+        if( seek_pos == FbxFile::eBegin )
+            fm->SetCurPos( (uint) offset );
+        else if( seek_pos == FbxFile::eCurrent )
+            fm->GoForward( (uint) offset );
+        else if( seek_pos == FbxFile::eEnd )
+            fm->SetCurPos( fm->GetFsize() - (uint) offset );
+    }
+
+    virtual long GetPosition() const
+    {
+        return fm->GetCurPos();
+    }
+
+    virtual void SetPosition( long position )
+    {
+        fm->SetCurPos( position );
+    }
+
+    virtual int GetError() const
+    {
+        return 0;
+    }
+
+    virtual void ClearError()
+    {}
+};
+
+Frame* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& bones );
+void   FixFrameFbx( Frame* root_frame, Frame* frame, FbxScene* fbx_scene, FbxNode* fbx_node );
+Matrix ConvertFbxMatrix( const FbxAMatrix& m );
+
 /************************************************************************/
 /* Models                                                               */
 /************************************************************************/
 
 PCharVec GraphicLoader::processedFiles;
 FrameVec GraphicLoader::loadedModels;
-PCharVec GraphicLoader::loadedAnimationsFNames;
 PtrVec   GraphicLoader::loadedAnimations;
 
 Frame* GraphicLoader::LoadModel( const char* fname )
 {
-    // Load Assimp dynamic library
-    static bool binded = false;
-    static bool binded_try = false;
-    if( !binded )
-    {
-        // Already try
-        if( binded_try )
-            return NULL;
-        binded_try = true;
-
-        // Library extension
-        #ifdef FO_WINDOWS
-        # define ASSIMP_PATH        ""
-        # define ASSIMP_LIB_NAME    "Assimp32.dll"
-        #else
-        # define ASSIMP_PATH        "./"
-        # define ASSIMP_LIB_NAME    "Assimp32.so"
-        #endif
-
-        // Check dll availability
-        void* dll = DLL_Load( ASSIMP_PATH ASSIMP_LIB_NAME );
-        if( !dll )
-        {
-            if( GameOpt.ClientPath.c_std_str() != "" )
-                dll = DLL_Load( ( GameOpt.ClientPath.c_std_str() + ASSIMP_LIB_NAME ).c_str() );
-            if( !dll )
-            {
-                WriteLogF( _FUNC_, " - '" ASSIMP_LIB_NAME "' not found.\n" );
-                return NULL;
-            }
-        }
-
-        // Bind functions
-        uint errors = 0;
-        #define BIND_ASSIMP_FUNC( f )                                            \
-            Ptr_ ## f = ( decltype( Ptr_ ## f ) )DLL_GetAddress( dll, # f );     \
-            if( !Ptr_ ## f )                                                     \
-            {                                                                    \
-                WriteLogF( _FUNC_, " - Assimp function<" # f "> not found.\n" ); \
-                errors++;                                                        \
-            }
-        BIND_ASSIMP_FUNC( aiImportFileFromMemory );
-        BIND_ASSIMP_FUNC( aiReleaseImport );
-        BIND_ASSIMP_FUNC( aiGetErrorString );
-        BIND_ASSIMP_FUNC( aiEnableVerboseLogging );
-        BIND_ASSIMP_FUNC( aiGetPredefinedLogStream );
-        BIND_ASSIMP_FUNC( aiAttachLogStream );
-        BIND_ASSIMP_FUNC( aiGetMaterialTextureCount );
-        BIND_ASSIMP_FUNC( aiGetMaterialTexture );
-        BIND_ASSIMP_FUNC( aiGetMaterialFloatArray );
-        #undef BIND_ASSIMP_FUNC
-        if( errors )
-            return NULL;
-        binded = true;
-
-        // Logging
-        if( GameOpt.AssimpLogging )
-        {
-            Ptr_aiEnableVerboseLogging( true );
-            static aiLogStream c = Ptr_aiGetPredefinedLogStream( aiDefaultLogStream_FILE, "Assimp.log" );
-            Ptr_aiAttachLogStream( &c );
-        }
-    }
-
     // Find already loaded
     for( auto it = loadedModels.begin(), end = loadedModels.end(); it != end; ++it )
     {
@@ -113,83 +166,328 @@ Frame* GraphicLoader::LoadModel( const char* fname )
             return NULL;
     processedFiles.push_back( Str::Duplicate( fname ) );
 
-    // Load file
-    FileManager fm;
-    if( !fm.LoadFile( fname, PT_DATA ) )
+    // Load file write time
+    FileManager file;
+    if( !file.LoadFile( fname, PT_DATA, true ) )
     {
         WriteLogF( _FUNC_, " - 3d file not found, name<%s>.\n", fname );
         return NULL;
     }
 
-    // Load scene
-    aiScene* scene = (aiScene*) Ptr_aiImportFileFromMemory( (const char*) fm.GetBuf(), fm.GetFsize(),
-                                                            aiProcess_CalcTangentSpace | aiProcess_GenNormals | aiProcess_GenUVCoords |
-                                                            aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
-                                                            aiProcess_SortByPType | aiProcess_SplitLargeMeshes | aiProcess_LimitBoneWeights |
-                                                            aiProcess_ImproveCacheLocality, "" );
-    if( !scene )
+    // Try load from cache
+    char fname_cache[ MAX_FOPATH ] = { 0 };
+    Str::Copy( fname_cache, fname );
+    Str::Replacement( fname_cache, '/', '_' );
+    Str::Replacement( fname_cache, '\\', '_' );
+    Str::Append( fname_cache, "b" );
+    FileManager file_cache;
+    if( file_cache.LoadFile( fname_cache, PT_CACHE ) )
     {
-        WriteLogF( _FUNC_, " - Can't load 3d file, name<%s>, error<%s>.\n", fname, Ptr_aiGetErrorString() );
+        uint version = file_cache.GetBEUInt();
+        if( version != MODELS_BINARY_VERSION || file.GetWriteTime() > file_cache.GetWriteTime() )
+            file_cache.UnloadFile();                  // Disable loading from this binary, because its outdated
+    }
+    if( file_cache.IsLoaded() )
+    {
+        // Load frames
+        Frame* root_frame = new Frame();
+        root_frame->Load( file_cache );
+        root_frame->FixAfterLoad( root_frame );
+
+        // Load animations
+        uint anim_sets_count = file_cache.GetBEUInt();
+        for( uint i = 0; i < anim_sets_count; i++ )
+        {
+            AnimSet* anim_set = new AnimSet();
+            anim_set->Load( file_cache );
+            loadedAnimations.push_back( anim_set );
+        }
+        return root_frame;
+    }
+
+    // Load file data
+    if( !file.LoadFile( fname, PT_DATA ) )
+    {
+        WriteLogF( _FUNC_, " - 3d file not found, name<%s>.\n", fname );
         return NULL;
     }
 
-    // Extract frames
-    Frame* frame_root = FillNode( scene, scene->mRootNode );
-    FixFrame( frame_root, frame_root, scene, scene->mRootNode );
-    frame_root->Name = Str::Duplicate( fname );
-    loadedModels.push_back( frame_root );
+    // Result frame
+    Frame* root_frame = NULL;
+    uint   loaded_anim_sets = 0;
 
-    // Extract animations
-    FloatVec      st;
-    VectorVec     sv;
-    FloatVec      rt;
-    QuaternionVec rv;
-    FloatVec      tt;
-    VectorVec     tv;
-    for( unsigned int i = 0; i < scene->mNumAnimations; i++ )
+    // FBX loader
+    const char* ext = FileManager::GetExtension( fname );
+    if( Str::CompareCase( ext, "fbx" ) )
     {
-        aiAnimation* anim = scene->mAnimations[ i ];
-        AnimSet*     anim_set = new AnimSet();
-
-        for( unsigned int j = 0; j < anim->mNumChannels; j++ )
+        // Create manager
+        static FbxManager* fbx_manager = NULL;
+        if( !fbx_manager )
         {
-            aiNodeAnim* na = anim->mChannels[ j ];
-
-            st.resize( na->mNumScalingKeys );
-            sv.resize( na->mNumScalingKeys );
-            for( unsigned int k = 0; k < na->mNumScalingKeys; k++ )
+            fbx_manager = FbxManager::Create();
+            if( !fbx_manager )
             {
-                st[ k ] = (float) na->mScalingKeys[ k ].mTime;
-                sv[ k ] = na->mScalingKeys[ k ].mValue;
-            }
-            rt.resize( na->mNumRotationKeys );
-            rv.resize( na->mNumRotationKeys );
-            for( unsigned int k = 0; k < na->mNumRotationKeys; k++ )
-            {
-                rt[ k ] = (float) na->mRotationKeys[ k ].mTime;
-                rv[ k ] = na->mRotationKeys[ k ].mValue;
-            }
-            tt.resize( na->mNumPositionKeys );
-            tv.resize( na->mNumPositionKeys );
-            for( unsigned int k = 0; k < na->mNumPositionKeys; k++ )
-            {
-                tt[ k ] = (float) na->mPositionKeys[ k ].mTime;
-                tv[ k ] = na->mPositionKeys[ k ].mValue;
+                WriteLogF( _FUNC_, " - Unable to create FBX Manager.\n" );
+                return NULL;
             }
 
-            anim_set->AddOutput( na->mNodeName.data, st, sv, rt, rv, tt, tv );
+            // Create an IOSettings object. This object holds all import/export settings.
+            FbxIOSettings* ios = FbxIOSettings::Create( fbx_manager, IOSROOT );
+            fbx_manager->SetIOSettings( ios );
+
+            // Load plugins from the executable directory (optional)
+            fbx_manager->LoadPluginsDirectory( FbxGetApplicationDirectory().Buffer() );
         }
 
-        anim_set->SetData( anim->mName.data, (float) anim->mDuration, (float) anim->mTicksPerSecond );
-        loadedAnimations.push_back( anim_set );
-        loadedAnimationsFNames.push_back( Str::Duplicate( fname ) );
+        // Create an FBX scene
+        FbxScene* fbx_scene = FbxScene::Create( fbx_manager, "My Scene" );
+        if( !fbx_scene )
+        {
+            WriteLogF( _FUNC_, " - Unable to create FBX scene.\n" );
+            return NULL;
+        }
+
+        // Create an importer
+        FbxImporter* fbx_importer = FbxImporter::Create( fbx_manager, "" );
+        if( !fbx_importer )
+        {
+            WriteLogF( _FUNC_, " - Unable to create FBX importer.\n" );
+            return NULL;
+        }
+
+        // Initialize the importer
+        FbxStreamImpl fbx_stream;
+        if( !fbx_importer->Initialize( &fbx_stream, &file, -1, fbx_manager->GetIOSettings() ) )
+        {
+            WriteLogF( _FUNC_, " - Call to FbxImporter::Initialize() failed, error<%s>.\n", fbx_importer->GetStatus().GetErrorString() );
+            if( fbx_importer->GetStatus().GetCode() == FbxStatus::eInvalidFileVersion )
+            {
+                int file_major, file_minor, file_revision;
+                int sdk_major,  sdk_minor,  sdk_revision;
+                FbxManager::GetFileFormatVersion( sdk_major, sdk_minor, sdk_revision );
+                fbx_importer->GetFileVersion( file_major, file_minor, file_revision );
+                WriteLogF( _FUNC_, " - FBX file format version for this FBX SDK is %d.%d.%d.\n", sdk_major, sdk_minor, sdk_revision );
+                WriteLogF( _FUNC_, " - FBX file format version for file<%s> is %d.%d.%d.\n", fname, file_major, file_minor, file_revision );
+            }
+            return NULL;
+        }
+
+        // Import the scene
+        if( !fbx_importer->Import( fbx_scene ) )
+        {
+            // Todo: Password
+            /*if (fbx_importer->GetStatus().GetCode() == FbxStatus::ePasswordError)
+                        {
+                                char password[MAX_FOTEXT];
+                                IOS_REF.SetStringProp(IMP_FBX_PASSWORD, FbxString(password));
+                                IOS_REF.SetBoolProp(IMP_FBX_PASSWORD_ENABLE, true);
+                                if(!fbx_importer->Import(pScene) && lImporter->GetStatus().GetCode() == FbxStatus::ePasswordError)
+                                        return NULL;
+                        }*/
+            WriteLogF( _FUNC_, " - Can't import scene, file<%s>.\n", fname );
+            return NULL;
+        }
+
+        // Load hierarchy
+        vector< FbxNode* > bones;
+        root_frame = FillNodeFbx( fbx_scene, fbx_scene->GetRootNode(), bones );
+        FixFrameFbx( root_frame, root_frame, fbx_scene, fbx_scene->GetRootNode() );
+        root_frame->Name = Str::Duplicate( fname );
+        loadedModels.push_back( root_frame );
+
+        // Extract animations
+        FloatVec          times;
+        VectorVec         sv;
+        QuaternionVec     rv;
+        VectorVec         tv;
+        FbxAnimEvaluator* fbx_anim_evaluator = fbx_manager->GetAnimationEvaluator();
+        for( int i = 0; i < fbx_scene->GetMemberCount< FbxAnimStack >(); i++ )
+        {
+            FbxAnimStack* fbx_anim_stack = fbx_scene->GetMember< FbxAnimStack >( i );
+            fbx_anim_evaluator->SetContext( fbx_anim_stack );
+
+            FbxTakeInfo* take_info = fbx_importer->GetTakeInfo( i );
+            int          frames_count = (int) take_info->mLocalTimeSpan.GetDuration().GetFrameCount() + 1;
+            float        frame_rate = (float) ( frames_count - 1 ) / (float) take_info->mLocalTimeSpan.GetDuration().GetSecondDouble();
+
+            times.resize( frames_count );
+            sv.resize( frames_count );
+            rv.resize( frames_count );
+            tv.resize( frames_count );
+
+            AnimSet* anim_set = new AnimSet();
+            for( uint n = 0; n < (uint) bones.size(); n++ )
+            {
+                FbxTime cur_time;
+                for( int f = 0; f < frames_count; f++ )
+                {
+                    float time = (float) f;
+                    cur_time.SetFrame( f );
+
+                    times[ f ] = time;
+
+                    Matrix m = ConvertFbxMatrix( fbx_anim_evaluator->GetNodeLocalTransform( bones[ n ], cur_time ) );
+                    m.Decompose( sv[ f ], rv[ f ], tv[ f ] );
+                }
+                anim_set->AddBoneOutput( bones[ n ]->GetName(), times, sv, times, rv, times, tv );
+            }
+
+            anim_set->SetData( fname, take_info->mName.Buffer(), (float) frames_count, frame_rate );
+            loadedAnimations.push_back( anim_set );
+            loaded_anim_sets++;
+        }
+
+        // Release importer and scene
+        fbx_importer->Destroy( true );
+        fbx_scene->Destroy( true );
+    }
+    // Assimp loader
+    else
+    {
+        // Load Assimp dynamic library
+        static bool binded = false;
+        static bool binded_try = false;
+        if( !binded )
+        {
+            // Already try
+            if( binded_try )
+                return NULL;
+            binded_try = true;
+
+            // Library extension
+            #ifdef FO_WINDOWS
+            # define ASSIMP_PATH        ""
+            # define ASSIMP_LIB_NAME    "Assimp32.dll"
+            #else
+            # define ASSIMP_PATH        "./"
+            # define ASSIMP_LIB_NAME    "Assimp32.so"
+            #endif
+
+            // Check dll availability
+            void* dll = DLL_Load( ASSIMP_PATH ASSIMP_LIB_NAME );
+            if( !dll )
+            {
+                if( GameOpt.ClientPath.c_std_str() != "" )
+                    dll = DLL_Load( ( GameOpt.ClientPath.c_std_str() + ASSIMP_LIB_NAME ).c_str() );
+                if( !dll )
+                {
+                    WriteLogF( _FUNC_, " - '" ASSIMP_LIB_NAME "' not found.\n" );
+                    return NULL;
+                }
+            }
+
+            // Bind functions
+            uint errors = 0;
+            #define BIND_ASSIMP_FUNC( f )                                            \
+                Ptr_ ## f = ( decltype( Ptr_ ## f ) )DLL_GetAddress( dll, # f );     \
+                if( !Ptr_ ## f )                                                     \
+                {                                                                    \
+                    WriteLogF( _FUNC_, " - Assimp function<" # f "> not found.\n" ); \
+                    errors++;                                                        \
+                }
+            BIND_ASSIMP_FUNC( aiImportFileFromMemory );
+            BIND_ASSIMP_FUNC( aiReleaseImport );
+            BIND_ASSIMP_FUNC( aiGetErrorString );
+            BIND_ASSIMP_FUNC( aiEnableVerboseLogging );
+            BIND_ASSIMP_FUNC( aiGetPredefinedLogStream );
+            BIND_ASSIMP_FUNC( aiAttachLogStream );
+            BIND_ASSIMP_FUNC( aiGetMaterialTextureCount );
+            BIND_ASSIMP_FUNC( aiGetMaterialTexture );
+            BIND_ASSIMP_FUNC( aiGetMaterialFloatArray );
+            #undef BIND_ASSIMP_FUNC
+            if( errors )
+                return NULL;
+            binded = true;
+
+            // Logging
+            if( GameOpt.AssimpLogging )
+            {
+                Ptr_aiEnableVerboseLogging( true );
+                static aiLogStream c = Ptr_aiGetPredefinedLogStream( aiDefaultLogStream_FILE, "Assimp.log" );
+                Ptr_aiAttachLogStream( &c );
+            }
+        }
+
+        // Load scene
+        aiScene* scene = (aiScene*) Ptr_aiImportFileFromMemory( (const char*) file.GetBuf(), file.GetFsize(),
+                                                                aiProcess_CalcTangentSpace | aiProcess_GenNormals | aiProcess_GenUVCoords |
+                                                                aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
+                                                                aiProcess_SortByPType | aiProcess_SplitLargeMeshes | aiProcess_LimitBoneWeights |
+                                                                aiProcess_ImproveCacheLocality, "" );
+        if( !scene )
+        {
+            WriteLogF( _FUNC_, " - Can't load 3d file, name<%s>, error<%s>.\n", fname, Ptr_aiGetErrorString() );
+            return NULL;
+        }
+
+        // Extract frames
+        root_frame = FillNode( scene, scene->mRootNode );
+        FixFrame( root_frame, root_frame, scene, scene->mRootNode );
+        root_frame->Name = Str::Duplicate( fname );
+        loadedModels.push_back( root_frame );
+
+        // Extract animations
+        FloatVec      st;
+        VectorVec     sv;
+        FloatVec      rt;
+        QuaternionVec rv;
+        FloatVec      tt;
+        VectorVec     tv;
+        for( unsigned int i = 0; i < scene->mNumAnimations; i++ )
+        {
+            aiAnimation* anim = scene->mAnimations[ i ];
+            AnimSet*     anim_set = new AnimSet();
+
+            for( unsigned int j = 0; j < anim->mNumChannels; j++ )
+            {
+                aiNodeAnim* na = anim->mChannels[ j ];
+
+                st.resize( na->mNumScalingKeys );
+                sv.resize( na->mNumScalingKeys );
+                for( unsigned int k = 0; k < na->mNumScalingKeys; k++ )
+                {
+                    st[ k ] = (float) na->mScalingKeys[ k ].mTime;
+                    sv[ k ] = na->mScalingKeys[ k ].mValue;
+                }
+                rt.resize( na->mNumRotationKeys );
+                rv.resize( na->mNumRotationKeys );
+                for( unsigned int k = 0; k < na->mNumRotationKeys; k++ )
+                {
+                    rt[ k ] = (float) na->mRotationKeys[ k ].mTime;
+                    rv[ k ] = na->mRotationKeys[ k ].mValue;
+                }
+                tt.resize( na->mNumPositionKeys );
+                tv.resize( na->mNumPositionKeys );
+                for( unsigned int k = 0; k < na->mNumPositionKeys; k++ )
+                {
+                    tt[ k ] = (float) na->mPositionKeys[ k ].mTime;
+                    tv[ k ] = na->mPositionKeys[ k ].mValue;
+                }
+
+                anim_set->AddBoneOutput( na->mNodeName.data, st, sv, rt, rv, tt, tv );
+            }
+
+            anim_set->SetData( fname, anim->mName.data, (float) anim->mDuration, (float) anim->mTicksPerSecond );
+            loadedAnimations.push_back( anim_set );
+            loaded_anim_sets++;
+        }
+
+        Ptr_aiReleaseImport( scene );
     }
 
-    Ptr_aiReleaseImport( scene );
-    return frame_root;
+    // Save to cache
+    file_cache.SwitchToWrite();
+    file_cache.SetBEUInt( MODELS_BINARY_VERSION );
+    root_frame->Save( file_cache );
+    file_cache.SetBEUInt( loaded_anim_sets );
+    for( uint i = 0; i < loaded_anim_sets; i++ )
+        ( (AnimSet*) loadedAnimations[ loadedAnimations.size() - i - 1 ] )->Save( file_cache );
+    file_cache.SaveOutBufToFile( fname_cache, PT_CACHE );
+
+    return root_frame;
 }
 
-Frame* GraphicLoader::FillNode( aiScene* scene, aiNode* node )
+Frame* FillNode( aiScene* scene, aiNode* node )
 {
     Frame* frame = new Frame();
     frame->Name = node->mName.data;
@@ -260,8 +558,7 @@ Frame* GraphicLoader::FillNode( aiScene* scene, aiNode* node )
         }
 
         // Faces
-        ms.FacesCount = aimesh->mNumFaces;
-        ms.Indicies.resize( ms.FacesCount * 3 );
+        ms.Indicies.resize( aimesh->mNumFaces * 3 );
         for( uint i = 0; i < aimesh->mNumFaces; i++ )
         {
             aiFace& face = aimesh->mFaces[ i ];
@@ -300,7 +597,7 @@ Frame* GraphicLoader::FillNode( aiScene* scene, aiNode* node )
     return frame;
 }
 
-void GraphicLoader::FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, aiNode* node )
+void FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, aiNode* node )
 {
     for( uint m = 0; m < node->mNumMeshes; m++ )
     {
@@ -310,6 +607,7 @@ void GraphicLoader::FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, a
         // Bones
         mesh.BoneInfluences = 0;
         mesh.BoneOffsets.resize( aimesh->mNumBones );
+        mesh.BoneNames.resize( aimesh->mNumBones );
         mesh.FrameCombinedMatrixPointer.resize( aimesh->mNumBones );
         for( uint i = 0; i < aimesh->mNumBones; i++ )
         {
@@ -317,6 +615,7 @@ void GraphicLoader::FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, a
 
             // Matrices
             mesh.BoneOffsets[ i ] = bone->mOffsetMatrix;
+            mesh.BoneNames[ i ] = bone->mName.data;
             Frame* bone_frame = root_frame->Find( bone->mName.data );
             if( bone_frame )
                 mesh.FrameCombinedMatrixPointer[ i ] = &bone_frame->CombinedTransformationMatrix;
@@ -359,45 +658,304 @@ void GraphicLoader::FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, a
         }
 
         // OGL buffers
-        GL( glGenBuffers( 1, &mesh.VBO ) );
-        GL( glBindBuffer( GL_ARRAY_BUFFER, mesh.VBO ) );
-        GL( glBufferData( GL_ARRAY_BUFFER, mesh.Vertices.size() * sizeof( Vertex3D ), &mesh.Vertices[ 0 ], GL_STATIC_DRAW ) );
-        GL( glGenBuffers( 1, &mesh.IBO ) );
-        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, mesh.IBO ) );
-        GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, mesh.Indicies.size() * sizeof( short ), &mesh.Indicies[ 0 ], GL_STATIC_DRAW ) );
-        mesh.VAO = 0;
-        if( GLEW_ARB_vertex_array_object && ( GLEW_ARB_framebuffer_object || GLEW_EXT_framebuffer_object ) )
-        {
-            GL( glGenVertexArrays( 1, &mesh.VAO ) );
-            GL( glBindVertexArray( mesh.VAO ) );
-            GL( glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Position ) ) );
-            GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Normal ) ) );
-            GL( glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Color ) ) );
-            GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord ) ) );
-            GL( glVertexAttribPointer( 4, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord2 ) ) );
-            GL( glVertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord3 ) ) );
-            GL( glVertexAttribPointer( 6, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Tangent ) ) );
-            GL( glVertexAttribPointer( 7, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Bitangent ) ) );
-            GL( glVertexAttribPointer( 8, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendWeights ) ) );
-            GL( glVertexAttribPointer( 9, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendIndices ) ) );
-            for( uint i = 0; i <= 9; i++ )
-                GL( glEnableVertexAttribArray( i ) );
-            GL( glBindVertexArray( 0 ) );
-        }
+        mesh.CreateBuffers();
     }
 
     for( uint i = 0; i < node->mNumChildren; i++ )
         FixFrame( root_frame, frame->Children[ i ], scene, node->mChildren[ i ] );
 }
 
+Frame* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& bones )
+{
+    Frame* frame = new Frame();
+    frame->Name = fbx_node->GetName();
+    frame->TransformationMatrix = ConvertFbxMatrix( fbx_node->EvaluateLocalTransform() );
+    frame->CombinedTransformationMatrix = Matrix();
+    frame->Children.resize( fbx_node->GetChildCount() );
+
+    if( fbx_node->GetSkeleton() != NULL )
+        bones.push_back( fbx_node );
+
+    FbxMesh* fbx_mesh = fbx_node->GetMesh();
+    if( fbx_mesh && fbx_node->Show && fbx_mesh->GetPolygonVertexCount() == fbx_mesh->GetPolygonCount() * 3 && fbx_mesh->GetPolygonCount() > 0 )
+    {
+        frame->Mesh.resize( 1 );
+        MeshSubset& ms = frame->Mesh[ 0 ];
+
+        // Vertices
+        int*        vertices = fbx_mesh->GetPolygonVertices();
+        int         vertices_count = fbx_mesh->GetPolygonVertexCount();
+
+        FbxVector4* vertices_data = fbx_mesh->GetControlPoints();
+        ms.Vertices.resize( vertices_count );
+        ms.VerticesTransformed.resize( vertices_count );
+
+        FbxGeometryElementNormal*   fbx_normals = fbx_mesh->GetElementNormal();
+        FbxGeometryElementTangent*  fbx_tangents = fbx_mesh->GetElementTangent();
+        FbxGeometryElementBinormal* fbx_binormals = fbx_mesh->GetElementBinormal();
+        FbxLayerElementVertexColor* fbx_colors = fbx_mesh->GetElementVertexColor();
+        FbxGeometryElementUV*       fbx_uvs0 = fbx_mesh->GetElementUV( 0 );
+        FbxGeometryElementUV*       fbx_uvs1 = fbx_mesh->GetElementUV( 1 );
+        FbxGeometryElementUV*       fbx_uvs2 = fbx_mesh->GetElementUV( 2 );
+        for( int i = 0; i < vertices_count; i++ )
+        {
+            Vertex3D&   v = ms.Vertices[ i ];
+            FbxVector4& fbx_v = vertices_data[ vertices[ i ] ];
+
+            memzero( &v, sizeof( v ) );
+            v.Position = Vector( (float) fbx_v.mData[ 0 ], (float) fbx_v.mData[ 1 ], (float) fbx_v.mData[ 2 ] );
+            v.PositionW = 1.0f;
+
+            #define FBX_GET_ELEMENT( elements, index )                                                                                                                     \
+                ( elements->GetMappingMode() == FbxGeometryElement::eByPolygonVertex ?                                                                                     \
+                  ( elements->GetReferenceMode() == FbxGeometryElement::eDirect ?                                                                                          \
+                    elements->GetDirectArray().GetAt( index ) : elements->GetDirectArray().GetAt( elements->GetIndexArray().GetAt( index ) ) ) :                           \
+                  ( elements->GetMappingMode() == FbxGeometryElement::eByControlPoint ?                                                                                    \
+                    ( elements->GetReferenceMode() == FbxGeometryElement::eDirect ?                                                                                        \
+                      elements->GetDirectArray().GetAt( vertices[ index ] ) : elements->GetDirectArray().GetAt( elements->GetIndexArray().GetAt( vertices[ index ] ) ) ) : \
+                    elements->GetDirectArray().GetAt( -1 ) ) )
+
+            if( fbx_normals )
+            {
+                const FbxVector4& fbx_normal = FBX_GET_ELEMENT( fbx_normals, i );
+                v.Normal = Vector( (float) fbx_normal[ 0 ], (float) fbx_normal[ 1 ], (float) fbx_normal[ 2 ] );
+            }
+            if( fbx_tangents )
+            {
+                const FbxVector4& fbx_tangent = FBX_GET_ELEMENT( fbx_tangents, i );
+                v.Tangent = Vector( (float) fbx_tangent[ 0 ], (float) fbx_tangent[ 1 ], (float) fbx_tangent[ 2 ] );
+            }
+            if( fbx_binormals )
+            {
+                const FbxVector4& fbx_binormal = FBX_GET_ELEMENT( fbx_binormals, i );
+                v.Bitangent = Vector( (float) fbx_binormal[ 0 ], (float) fbx_binormal[ 1 ], (float) fbx_binormal[ 2 ] );
+            }
+            if( fbx_colors )
+            {
+                const FbxColor& fbx_color = FBX_GET_ELEMENT( fbx_colors, i );
+                v.Color[ 2 ] = (float) fbx_color.mRed;
+                v.Color[ 1 ] = (float) fbx_color.mGreen;
+                v.Color[ 0 ] = (float) fbx_color.mBlue;
+                v.Color[ 3 ] = (float) fbx_color.mAlpha;
+            }
+            if( fbx_uvs0 )
+            {
+                const FbxVector2& fbx_uv0 = FBX_GET_ELEMENT( fbx_uvs0, i );
+                v.TexCoord[ 0 ] = (float) fbx_uv0[ 0 ];
+                v.TexCoord[ 1 ] = (float) fbx_uv0[ 1 ];
+            }
+            if( fbx_uvs1 )
+            {
+                const FbxVector2& fbx_uv1 = FBX_GET_ELEMENT( fbx_uvs1, i );
+                v.TexCoord2[ 0 ] = (float) fbx_uv1[ 0 ];
+                v.TexCoord2[ 1 ] = (float) fbx_uv1[ 1 ];
+            }
+            if( fbx_uvs2 )
+            {
+                const FbxVector2& fbx_uv2 = FBX_GET_ELEMENT( fbx_uvs2, i );
+                v.TexCoord3[ 0 ] = (float) fbx_uv2[ 0 ];
+                v.TexCoord3[ 1 ] = (float) fbx_uv2[ 1 ];
+            }
+            #undef FBX_GET_ELEMENT
+
+            v.BlendIndices[ 0 ] = -1.0f;
+            v.BlendIndices[ 1 ] = -1.0f;
+            v.BlendIndices[ 2 ] = -1.0f;
+            v.BlendIndices[ 3 ] = -1.0f;
+        }
+
+        // Faces
+        ms.Indicies.resize( vertices_count );
+        for( int i = 0; i < vertices_count; i++ )
+            ms.Indicies[ i ] = i;
+
+        // Material
+        for( int i = 0; i < 4; i++ )
+        {
+            ms.DiffuseColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
+            ms.AmbientColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
+            ms.SpecularColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
+            ms.EmissiveColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
+        }
+
+        FbxGeometryElementMaterial* fbx_material_element = fbx_mesh->GetElementMaterial( 0 );
+        if( fbx_material_element )
+        {
+            int                 mat_id = fbx_material_element->GetIndexArray().GetAt( 0 );
+            FbxSurfaceMaterial* fbx_material = fbx_mesh->GetNode()->GetMaterial( mat_id );
+
+            FbxProperty         prop_diffuse = fbx_material->FindProperty( FbxSurfaceMaterial::sDiffuse );
+            FbxProperty         prop_diffuse_factor = fbx_material->FindProperty( FbxSurfaceMaterial::sDiffuseFactor );
+            if( prop_diffuse.IsValid() )
+            {
+                char tex_fname[ MAX_FOPATH ];
+                FileManager::ExtractFileName( prop_diffuse.GetSrcObject< FbxFileTexture >()->GetFileName(), tex_fname );
+                ms.DiffuseTexture = tex_fname;
+
+                if( prop_diffuse_factor.IsValid() )
+                {
+                    FbxDouble3 color = prop_diffuse.Get< FbxDouble3 >();
+                    FbxDouble  factor = prop_diffuse_factor.Get< FbxDouble >();
+                    ms.DiffuseColor[ 0 ] = (float) ( color.mData[ 0 ] * factor );
+                    ms.DiffuseColor[ 1 ] = (float) ( color.mData[ 1 ] * factor );
+                    ms.DiffuseColor[ 2 ] = (float) ( color.mData[ 2 ] * factor );
+                }
+            }
+
+            FbxProperty prop_ambient = fbx_material->FindProperty( FbxSurfaceMaterial::sAmbient );
+            FbxProperty prop_ambient_factor = fbx_material->FindProperty( FbxSurfaceMaterial::sAmbientFactor );
+            if( prop_ambient.IsValid() && prop_ambient_factor.IsValid() )
+            {
+                FbxDouble3 color = prop_ambient.Get< FbxDouble3 >();
+                FbxDouble  factor = prop_ambient_factor.Get< FbxDouble >();
+                ms.AmbientColor[ 0 ] = (float) ( color.mData[ 0 ] * factor );
+                ms.AmbientColor[ 1 ] = (float) ( color.mData[ 1 ] * factor );
+                ms.AmbientColor[ 2 ] = (float) ( color.mData[ 2 ] * factor );
+            }
+
+            FbxProperty prop_specular = fbx_material->FindProperty( FbxSurfaceMaterial::sSpecular );
+            FbxProperty prop_specular_factor = fbx_material->FindProperty( FbxSurfaceMaterial::sSpecularFactor );
+            if( prop_specular.IsValid() && prop_specular_factor.IsValid() )
+            {
+                FbxDouble3 color = prop_specular.Get< FbxDouble3 >();
+                FbxDouble  factor = prop_specular_factor.Get< FbxDouble >();
+                ms.SpecularColor[ 0 ] = (float) ( color.mData[ 0 ] * factor );
+                ms.SpecularColor[ 1 ] = (float) ( color.mData[ 1 ] * factor );
+                ms.SpecularColor[ 2 ] = (float) ( color.mData[ 2 ] * factor );
+            }
+
+            FbxProperty prop_emissive = fbx_material->FindProperty( FbxSurfaceMaterial::sEmissive );
+            FbxProperty prop_emissive_factor = fbx_material->FindProperty( FbxSurfaceMaterial::sEmissiveFactor );
+            if( prop_emissive.IsValid() && prop_emissive_factor.IsValid() )
+            {
+                FbxDouble3 color = prop_emissive.Get< FbxDouble3 >();
+                FbxDouble  factor = prop_emissive_factor.Get< FbxDouble >();
+                ms.EmissiveColor[ 0 ] = (float) ( color.mData[ 0 ] * factor );
+                ms.EmissiveColor[ 1 ] = (float) ( color.mData[ 1 ] * factor );
+                ms.EmissiveColor[ 2 ] = (float) ( color.mData[ 2 ] * factor );
+            }
+        }
+
+        // Effect
+        ms.DrawEffect.EffectFilename = NULL;
+
+        // Transformed vertices position
+        ms.VerticesTransformed = ms.Vertices;
+        ms.VerticesTransformedValid = false;
+    }
+
+    for( int i = 0; i < fbx_node->GetChildCount(); i++ )
+        frame->Children[ i ] = FillNodeFbx( scene, fbx_node->GetChild( i ), bones );
+    return frame;
+}
+
+void FixFrameFbx( Frame* root_frame, Frame* frame, FbxScene* fbx_scene, FbxNode* fbx_node )
+{
+    if( frame->Mesh.size() > 0 )
+    {
+        FbxMesh*    fbx_mesh = fbx_node->GetMesh();
+        MeshSubset& mesh = frame->Mesh[ 0 ];
+        mesh.BoneInfluences = 0;
+
+        if( fbx_mesh->GetDeformerCount( FbxDeformer::eSkin ) )
+        {
+            FbxSkin* fbx_skin = (FbxSkin*) fbx_mesh->GetDeformer( 0, FbxDeformer::eSkin );
+
+            // Bones
+            int num_bones = fbx_skin->GetClusterCount();
+            mesh.BoneOffsets.resize( num_bones );
+            mesh.BoneNames.resize( num_bones );
+            mesh.FrameCombinedMatrixPointer.resize( num_bones );
+            for( int i = 0; i < num_bones; i++ )
+            {
+                FbxCluster* fbx_cluster = fbx_skin->GetCluster( i );
+
+                // Matrices
+                FbxAMatrix link_matrix;
+                fbx_cluster->GetTransformLinkMatrix( link_matrix );
+                FbxAMatrix cur_matrix;
+                fbx_cluster->GetTransformMatrix( cur_matrix );
+                mesh.BoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix );
+                mesh.BoneNames[ i ] = fbx_cluster->GetLink()->GetName();
+
+                Frame* bone_frame = root_frame->Find( fbx_cluster->GetLink()->GetName() );
+                if( bone_frame )
+                    mesh.FrameCombinedMatrixPointer[ i ] = &bone_frame->CombinedTransformationMatrix;
+                else
+                    mesh.FrameCombinedMatrixPointer[ i ] = NULL;
+
+                // Blend data
+                int     num_weights = fbx_cluster->GetControlPointIndicesCount();
+                int*    indicies = fbx_cluster->GetControlPointIndices();
+                double* weights = fbx_cluster->GetControlPointWeights();
+                int     vertices_count = fbx_mesh->GetPolygonVertexCount();
+                int*    vertices = fbx_mesh->GetPolygonVertices();
+                for( int j = 0; j < num_weights; j++ )
+                {
+                    for( int k = 0; k < vertices_count; k++ )
+                    {
+                        if( vertices[ k ] != indicies[ j ] )
+                            continue;
+
+                        Vertex3D& v = mesh.Vertices[ k ];
+                        uint      index;
+                        if( v.BlendIndices[ 0 ] < 0.0f )
+                            index = 0;
+                        else if( v.BlendIndices[ 1 ] < 0.0f )
+                            index = 1;
+                        else if( v.BlendIndices[ 2 ] < 0.0f )
+                            index = 2;
+                        else
+                            index = 3;
+
+                        v.BlendWeights[ index ] = (float) weights[ j ];
+                        v.BlendIndices[ index ] = (float) i;
+
+                        if( mesh.BoneInfluences <= index )
+                            mesh.BoneInfluences = index + 1;
+                    }
+                }
+            }
+
+            // Drop not filled indices
+            for( int i = 0; i < (int) mesh.Vertices.size(); i++ )
+            {
+                Vertex3D& v = mesh.Vertices[ i ];
+                if( v.BlendIndices[ 0 ] < 0.0f )
+                    v.BlendIndices[ 0 ] = 0.0f;
+                if( v.BlendIndices[ 1 ] < 0.0f )
+                    v.BlendIndices[ 1 ] = 0.0f;
+                if( v.BlendIndices[ 2 ] < 0.0f )
+                    v.BlendIndices[ 2 ] = 0.0f;
+                if( v.BlendIndices[ 3 ] < 0.0f )
+                    v.BlendIndices[ 3 ] = 0.0f;
+            }
+        }
+
+        // OGL buffers
+        mesh.CreateBuffers();
+    }
+
+    for( int i = 0; i < fbx_node->GetChildCount(); i++ )
+        FixFrameFbx( root_frame, frame->Children[ i ], fbx_scene, fbx_node->GetChild( i ) );
+}
+
+Matrix ConvertFbxMatrix( const FbxAMatrix& m )
+{
+    return Matrix( (float) m.Get( 0, 0 ), (float) m.Get( 1, 0 ), (float) m.Get( 2, 0 ), (float) m.Get( 3, 0 ),
+                   (float) m.Get( 0, 1 ), (float) m.Get( 1, 1 ), (float) m.Get( 2, 1 ), (float) m.Get( 3, 1 ),
+                   (float) m.Get( 0, 2 ), (float) m.Get( 1, 2 ), (float) m.Get( 2, 2 ), (float) m.Get( 3, 2 ),
+                   (float) m.Get( 0, 3 ), (float) m.Get( 1, 3 ), (float) m.Get( 2, 3 ), (float) m.Get( 3, 3 ) );
+}
+
 AnimSet* GraphicLoader::LoadAnimation( const char* anim_fname, const char* anim_name )
 {
     // Find in already loaded
+    bool take_first = Str::CompareCase( anim_name, "Base" );
     for( uint i = 0, j = (uint) loadedAnimations.size(); i < j; i++ )
     {
         AnimSet* anim = (AnimSet*) loadedAnimations[ i ];
-        if( Str::CompareCase( loadedAnimationsFNames[ i ], anim_fname ) &&
-            Str::CompareCase( anim->GetName(), anim_name ) )
+        if( Str::CompareCase( anim->GetFileName(), anim_fname ) && ( Str::CompareCase( anim->GetName(), anim_name ) || take_first ) )
             return anim;
     }
 
@@ -431,9 +989,9 @@ bool GraphicLoader::IsExtensionSupported( const char* ext )
 {
     static const char* arr[] =
     {
-        "fo3d", "x", "3ds", "obj", "dae", "blend", "ase", "ply", "dxf", "lwo", "lxo", "stl", "ac", "ms3d",
+        "fo3d", "fbx", "x", "3ds", "obj", "dae", "blend", "ase", "ply", "dxf", "lwo", "lxo", "stl", "ms3d",
         "scn", "smd", "vta", "mdl", "md2", "md3", "pk3", "mdc", "md5", "bvh", "csm", "b3d", "q3d", "cob",
-        "q3s", "mesh", "xml", "irrmesh", "irr", "nff", "nff", "off", "raw", "ter", "mdl", "hmp", "ndo"
+        "q3s", "mesh", "xml", "irrmesh", "irr", "nff", "nff", "off", "raw", "ter", "mdl", "hmp", "ndo", "ac"
     };
 
     for( int i = 0, j = sizeof( arr ) / sizeof( arr[ 0 ] ); i < j; i++ )
@@ -501,7 +1059,7 @@ Texture* GraphicLoader::LoadTexture( const char* texture_name, const char* model
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT ) );
-    GL( glTexImage2D( GL_TEXTURE_2D, 0, 4, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, texture->Data ) );
+    GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, texture->Data ) );
     texture->Name = Str::Duplicate( texture_name );
     loadedTextures.push_back( texture );
     return loadedTextures.back();
@@ -584,7 +1142,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
 
     // Make effect binary file name
     char binary_fname[ MAX_FOPATH ] = { 0 };
-    if( GLEW_ARB_get_program_binary )
+    if( GL_HAS( ARB_get_program_binary ) )
     {
         Str::Copy( binary_fname, fname );
         FileManager::EraseExtension( binary_fname );
@@ -605,14 +1163,11 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
 
     // Load from binary
     FileManager file_binary;
-    if( GLEW_ARB_get_program_binary )
+    if( GL_HAS( ARB_get_program_binary ) )
     {
         if( file_binary.LoadFile( binary_fname, PT_CACHE ) )
         {
-            uint64 last_write, last_write_binary;
-            file.GetTime( NULL, NULL, &last_write );
-            file_binary.GetTime( NULL, NULL, &last_write_binary );
-            if( last_write > last_write_binary )
+            if( file.GetWriteTime() > file_binary.GetWriteTime() )
                 file_binary.UnloadFile();      // Disable loading from this binary, because its outdated
         }
     }
@@ -758,7 +1313,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             GL( glBindAttribLocation( program, 9, "InBlendIndices" ) );
         }
 
-        if( GLEW_ARB_get_program_binary )
+        if( GL_HAS( ARB_get_program_binary ) )
             GL( glProgramParameteri( program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE ) );
 
         GL( glLinkProgram( program ) );
@@ -777,7 +1332,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         }
 
         // Save in binary
-        if( GLEW_ARB_get_program_binary )
+        if( GL_HAS( ARB_get_program_binary ) )
         {
             GLsizei  buf_size;
             GL( glGetProgramiv( program, GL_PROGRAM_BINARY_LENGTH, &buf_size ) );

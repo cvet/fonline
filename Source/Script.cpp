@@ -1465,18 +1465,17 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
             }
 
             // Check for outdated
-            uint64 last_write, last_write_bin;
-            file_bin.GetTime( NULL, NULL, &last_write_bin );
+            uint64 last_write_bin = file_bin.GetWriteTime();
             // Main file
-            file.GetTime( NULL, NULL, &last_write );
-            bool no_all_files = !file.IsLoaded();
-            bool outdated = ( file.IsLoaded() && last_write > last_write_bin );
+            uint64 last_write = file.GetWriteTime();
+            bool   no_all_files = !file.IsLoaded();
+            bool   outdated = ( file.IsLoaded() && last_write > last_write_bin );
             // Include files
             for( uint i = 0, j = (uint) dependencies.size(); i < j; i++ )
             {
                 FileManager file_dep;
                 file_dep.LoadFile( dependencies[ i ].c_str(), ScriptsPath );
-                file_dep.GetTime( NULL, NULL, &last_write );
+                last_write = file_dep.GetWriteTime();
                 if( !no_all_files )
                     no_all_files = !file_dep.IsLoaded();
                 if( !outdated )

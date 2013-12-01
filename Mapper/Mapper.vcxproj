@@ -390,6 +390,7 @@
     <ClInclude Include="..\Source\AngelScript\preprocessor.h" />
     <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\GL\glew.h" />
+    <ClInclude Include="..\Source\GL\glu_stuff.h" />
     <ClInclude Include="..\Source\GL\glxew.h" />
     <ClInclude Include="..\Source\GL\wglew.h" />
     <ClInclude Include="..\Source\GraphicLoader.h" />
@@ -511,6 +512,10 @@
     <ClCompile Include="..\Source\FileManager.cpp" />
     <ClCompile Include="..\Source\FileSystem.cpp" />
     <ClCompile Include="..\Source\GL\glew.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Source\GL\glu_stuff.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>

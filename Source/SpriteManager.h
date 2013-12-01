@@ -208,17 +208,11 @@ typedef vector< PointVec >  PointVecVec;
 
 struct RenderTarget
 {
-    uint        Id;
-    GLuint      FBO;
-    Texture*    TargetTexture;
-    GLuint      DepthStencilBuffer;
-    Effect*     DrawEffect;
-
-    #ifdef FO_WINDOWS
-    HPBUFFERARB PBuffer;
-    HDC         PBufferDC;
-    HGLRC       PBufferGLC;
-    #endif
+    uint     Id;
+    GLuint   FBO;
+    Texture* TargetTexture;
+    GLuint   DepthStencilBuffer;
+    Effect*  DrawEffect;
 };
 typedef vector< RenderTarget* > RenderTargetVec;
 
@@ -226,7 +220,7 @@ class SpriteManager
 {
 private:
     bool            isInit;
-    float           projectionMatrix[ 16 ];
+    Matrix          projectionMatrixCM;
     int             modeWidth, modeHeight;
     bool            sceneBeginned;
     RenderTarget    rtMain;

@@ -197,7 +197,10 @@ public:
 };
 extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / MainMapper.cpp
 
+# define GLEW_NO_GLU
 # include "GL/glew.h"
+# include "GL/glu_stuff.h"
+# define GL_HAS( extension )              ( GLEW_ ## extension )
 # ifdef FO_WINDOWS
 #  include "GL/wglew.h"
 #  pragma comment( lib, "opengl32.lib" )
@@ -207,10 +210,7 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 # endif
 # include "FL/gl.h"
 # include "Assimp/aiTypes.h"
-# define GL( expr )                       { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X - %s>.\n", err__, gluErrorString( err__ ) ); ExitProcess( 0 ); } } }
-# ifdef FO_WINDOWS
-#  define WGL( expr )                     { if( !( expr ) ) { if( GameOpt.OpenGLDebug ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X>.\n", GetLastError() ); ExitProcess( 0 ); } } }
-# endif
+# define GL( expr )                       { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X>.\n", err__ ); ExitProcess( 0 ); } } }
 
 # define COLOR_FIX( c )                   COLOR_ARGB( ( (uchar*) &( c ) )[ 3 ], ( (uchar*) &( c ) )[ 0 ], ( (uchar*) &( c ) )[ 1 ], ( (uchar*) &( c ) )[ 2 ] )
 

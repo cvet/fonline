@@ -9266,9 +9266,13 @@ void FOClient::RenderVideo()
     uint w = CurVideo->VideoInfo.pic_width;
     uint h = CurVideo->VideoInfo.pic_height;
     SprMngr.PushRenderTarget( CurVideo->RT );
-    GL( glMatrixMode( GL_PROJECTION ) );
-    GL( glLoadIdentity() );
-    GL( gluOrtho2D( 0, w, h, 0 ) );
+
+	Matrix m;
+	GL( gluStuffOrtho( m[ 0 ], 0.0f, (float) w, (float) h, 0.0f, -1.0f, 1.0f ) );
+	m.Transpose();             // Convert to column major order
+
+	GL( glMatrixMode( GL_PROJECTION ) );
+	GL( glLoadMatrixf( m[ 0 ] ) );
     GL( glMatrixMode( GL_MODELVIEW ) );
     GL( glLoadIdentity() );
     GL( glDisable( GL_TEXTURE_2D ) );
