@@ -6083,9 +6083,9 @@ void FOClient::GmapDraw()
         if( GmapGroupSpeed != 0.0f )
         {
             SpriteInfo* si;
-            if( si = SprMngr.GetSpriteInfo( GmapPGr->GetCurSprId() ) )
+            if( ( si = SprMngr.GetSpriteInfo( GmapPGr->GetCurSprId() ) ) )
                 SprMngr.DrawSprite( GmapPGr, (int) ( GmapGroupCurX / GmapZoom ) + GmapOffsetX - si->Width / 2, (int) ( GmapGroupCurY / GmapZoom ) + GmapOffsetY - si->Height / 2 );
-            if( si = SprMngr.GetSpriteInfo( GmapPTarg->GetCurSprId() ) )
+            if( ( si = SprMngr.GetSpriteInfo( GmapPTarg->GetCurSprId() ) ) )
                 SprMngr.DrawSprite( GmapPTarg, (int) ( GmapGroupToX / GmapZoom ) + GmapOffsetX - si->Width / 2, (int) ( GmapGroupToY / GmapZoom ) + GmapOffsetY - si->Height / 2 );
         }
         else
@@ -6093,12 +6093,12 @@ void FOClient::GmapDraw()
             SpriteInfo* si;
             if( IfaceHold == IFACE_GMAP_TOLOC )
             {
-                if( si = SprMngr.GetSpriteInfo( GmapPStayDn->GetCurSprId() ) )
+                if( ( si = SprMngr.GetSpriteInfo( GmapPStayDn->GetCurSprId() ) ) )
                     SprMngr.DrawSprite( GmapPStayDn, (int) ( GmapGroupCurX / GmapZoom ) + GmapOffsetX - si->Width / 2, (int) ( GmapGroupCurY / GmapZoom ) + GmapOffsetY - si->Height / 2 );
             }
             else
             {
-                if( si = SprMngr.GetSpriteInfo( GmapPStay->GetCurSprId() ) )
+                if( ( si = SprMngr.GetSpriteInfo( GmapPStay->GetCurSprId() ) ) )
                     SprMngr.DrawSprite( GmapPStay, (int) ( GmapGroupCurX / GmapZoom ) + GmapOffsetX - si->Width / 2, (int) ( GmapGroupCurY / GmapZoom ) + GmapOffsetY - si->Height / 2 );
             }
         }
@@ -6267,8 +6267,6 @@ void FOClient::GmapTownDraw()
         return;
     }
 
-    ushort loc_pid = GmapTownLoc.LocPid;
-
     if( DistSqrt( GmapTownLoc.LocWx, GmapTownLoc.LocWy, GmapGroupCurX, GmapGroupCurY ) > GmapTownLoc.Radius )
     {
         ShowScreen( SCREEN_NONE );
@@ -6369,11 +6367,9 @@ void FOClient::GmapLMouseDown()
     }
     else
     {
-        int pos = 0;
-        for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++, pos++ )
+        for( int i = 0; i < HexMngr.GetCritters().size(); i++ )
         {
-            CritterCl* cr = ( *it ).second;
-            if( !IsCurInRect( Rect( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ) ) )
+            if( !IsCurInRect( Rect( GmapWName, GmapWNameStepX * i, GmapWNameStepY * i ) ) )
                 continue;
             LMenuTryActivate();
             return;
@@ -7203,7 +7199,6 @@ void FOClient::ChaDraw( bool is_reg )
     if( !is_reg )
     {
         int sw = ( ChaBSwitch[ 2 ] - ChaBSwitch[ 0 ] ) / 3;
-        int sh = ChaBSwitch[ 3 ] - ChaBSwitch[ 1 ];
         SprMngr.DrawStr( Rect( Rect( ChaBSwitch[ 0 ], ChaBSwitch[ 1 ], ChaBSwitch[ 0 ] + sw, ChaBSwitch[ 3 ] ), ChaX, ChaY - ( ChaCurSwitch == CHA_SWITCH_PERKS ? 2 : 0 ) ), MsgGame->GetStr( STR_SWITCH_PERKS_NAME ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
         SprMngr.DrawStr( Rect( Rect( ChaBSwitch[ 0 ] + sw, ChaBSwitch[ 1 ], ChaBSwitch[ 0 ] + sw + sw, ChaBSwitch[ 3 ] ), ChaX, ChaY - ( ChaCurSwitch == CHA_SWITCH_KARMA ? 2 : 0 ) ), MsgGame->GetStr( STR_SWITCH_KARMA_NAME ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
         SprMngr.DrawStr( Rect( Rect( ChaBSwitch[ 0 ] + sw + sw, ChaBSwitch[ 1 ], ChaBSwitch[ 2 ], ChaBSwitch[ 3 ] ), ChaX, ChaY - ( ChaCurSwitch == CHA_SWITCH_KILLS ? 2 : 0 ) ), MsgGame->GetStr( STR_SWITCH_KILLS_NAME ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
@@ -9491,7 +9486,7 @@ void FOClient::CurDraw()
     // Wait
     if( IsCurMode( CUR_WAIT ) )
     {
-        if( si = SprMngr.GetSpriteInfo( CurPWait->GetCurSprId() ) )
+        if( ( si = SprMngr.GetSpriteInfo( CurPWait->GetCurSprId() ) ) )
         {
             x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
             y = GameOpt.MouseY - si->Height + si->OffsY;
@@ -9577,7 +9572,7 @@ void FOClient::CurDraw()
         AnyFrames* anim = IntPBScrDnDn;
         if( IsCurInRect( Rect( rmb.L, rmb.T, rmb.R, rmb.CY() ) ) )
             anim = IntPBScrUpDn;
-        if( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) )
+        if( ( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) ) )
             SprMngr.DrawSprite( anim, GameOpt.MouseX - si->Width / 2, GameOpt.MouseY - si->Height / 2 );
         return;
     }

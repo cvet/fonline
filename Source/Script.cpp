@@ -2425,6 +2425,8 @@ endcopy:
         : "d" ( a ), "m" ( retQW )          // input - pass pointer of args in edx, pass pointer of retQW in memory argument
         : "%eax", "%ecx"                    // clobber
         );
+    #else
+    retQW = 0;
     #endif
 
     return retQW;

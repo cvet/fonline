@@ -1212,7 +1212,7 @@ bool Preprocessor::IsOperator( const Lexem& lexem )
 
 bool Preprocessor::IsIdentifier( const Lexem& lexem )
 {
-    return !IsOperator( lexem ) && lexem.Type == IDENTIFIER || lexem.Type == NUMBER;
+    return ( !IsOperator( lexem ) && lexem.Type == IDENTIFIER ) || lexem.Type == NUMBER;
 }
 
 bool Preprocessor::IsLeft( const Lexem& lexem )

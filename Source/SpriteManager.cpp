@@ -2116,6 +2116,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
 
     float dimension_left = (float) fm.GetUChar() * 6.7f;
     float dimension_up = (float) fm.GetUChar() * 7.6f;
+    UNUSED_VARIABLE( dimension_up );
     float dimension_right = (float) fm.GetUChar() * 6.7f;
     int   center_x = fm.GetLEUInt();
     int   center_y = fm.GetLEUInt();
@@ -2347,6 +2348,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
 
             uint   w = fm_images.GetLEUInt();
             uint   h = fm_images.GetLEUInt();
+            UNUSED_VARIABLE( h );
             uchar  palette_present = fm_images.GetUChar();
             uint   rle_size = fm_images.GetLEUInt();
             uchar* rle_buf = fm_images.GetCurBuf();
@@ -2560,7 +2562,9 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
         ;
     fm.GoForward( 7 + 4 ); // Unknown
     uint w = fm.GetLEUInt();
+    UNUSED_VARIABLE( w );
     uint h = fm.GetLEUInt();
+    UNUSED_VARIABLE( h );
 
     if( !fm.FindFragment( (uchar*) "<tiledata>", 10, fm.GetCurPos() ) )
         return NULL;
@@ -2705,6 +2709,7 @@ AnyFrames* SpriteManager::LoadAnimationMos( const char* fname, int path_type )
     uint col = fm.GetLEUShort();          // Columns (blocks)
     uint row = fm.GetLEUShort();          // Rows (blocks)
     uint block_size = fm.GetLEUInt();     // Block size (pixels)
+    UNUSED_VARIABLE( block_size );
     uint palette_offset = fm.GetLEUInt(); // Offset (from start of file) to palettes
     uint tiles_offset = palette_offset + col * row * 256 * 4;
     uint data_offset = tiles_offset + col * row * 4;
@@ -2993,7 +2998,6 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     // Create render targets
     if( !rt3DSprite.FBO )
     {
-        static const uint init_size = 512;
         if( !CreateRenderTarget( rt3DSprite, true, false, 512, 512 ) )
             return 0;
         CreateRenderTarget( rt3DMSSprite, true, true, 512, 512 );
@@ -3561,6 +3565,7 @@ void SpriteManager::SetEgg( ushort hx, ushort hy, Sprite* spr )
     {
         Rect bb = si->Anim3d->GetFullBorders();
         int  w = (int) ( (float) bb.W() * GameOpt.SpritesZoom );
+        UNUSED_VARIABLE( w );
         int  h = (int) ( (float) bb.H() * GameOpt.SpritesZoom );
         eggX = spr->ScrX - sprEgg->Width / 2 + *spr->OffsX;
         eggY = spr->ScrY - h / 2 - sprEgg->Height / 2 + *spr->OffsY;

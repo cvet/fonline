@@ -140,6 +140,7 @@ public:
     class PragmaCallback
     {
 public:
+		virtual ~PragmaCallback() {}
         virtual void CallPragma( const std::string& name, const PragmaInstance& pi ) = 0;
     };
 };

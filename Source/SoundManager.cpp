@@ -174,7 +174,6 @@ bool SoundManager::ProcessSound( Sound* sound )
     uint samples = SoundSpec.samples;
     uint sample_size = SoundSpec.size / samples / SoundSpec.channels;
     uint channels = SoundSpec.channels;
-    uint freq = SoundSpec.freq;
     if( sound->ConvertedBufCur < sound->ConvertedBufSize )
     {
         uint whole = samples * sample_size * channels;

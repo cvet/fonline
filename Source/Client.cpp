@@ -4416,8 +4416,6 @@ void FOClient::Net_OnCritterMove()
     if( !cr )
         return;
 
-    ushort last_hx = cr->GetHexX();
-    ushort last_hy = cr->GetHexY();
     cr->IsRunning = FLAG( move_params, MOVE_PARAM_RUN );
 
     if( cr != Chosen )
@@ -11631,7 +11629,6 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, ushort p
     ProtoItem* proto_item = ItemMngr.GetProtoItem( proto_id );
     bool       is_flat = ( proto_item ? FLAG( proto_item->Flags, ITEM_FLAT ) : false );
     bool       is_item = ( proto_item ? proto_item->IsItem() : false );
-    bool       is_wall = ( proto_item ? proto_item->IsWall() : false );
     bool       no_light = ( is_flat && !is_item );
 
     Field&     f = Self->HexMngr.GetField( hx, hy );

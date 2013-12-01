@@ -1031,7 +1031,7 @@ Texture* GraphicLoader::LoadTexture( const char* texture_name, const char* model
 
     // Load
     uint        size, w, h;
-    uchar*      data;
+    uchar*      data = NULL;
     const char* ext = FileManager::GetExtension( texture_name );
     if( Str::CompareCase( ext, "png" ) )
         data = LoadPNG( fm.GetBuf(), fm.GetFsize(), size, w, h );
@@ -1674,7 +1674,7 @@ uchar* GraphicLoader::LoadPNG( const uchar* data, uint data_size, uint& result_s
     {
         static void Read( png_structp png_ptr, png_bytep png_data, png_size_t length )
         {
-            (void) png_ptr;
+            UNUSED_VARIABLE( png_ptr );
             memcpy( png_data, data_, length );
             data_ += length;
         }
@@ -1757,13 +1757,13 @@ void GraphicLoader::SavePNG( const char* fname, uchar* data, uint width, uint he
     {
         static void Write( png_structp png_ptr, png_bytep png_data, png_size_t length )
         {
-            (void) png_ptr;
+            UNUSED_VARIABLE( png_ptr );
             for( png_size_t i = 0; i < length; i++ )
                 result_png.push_back( png_data[ i ] );
         }
         static void Flush( png_structp png_ptr )
         {
-            (void) png_ptr;
+            UNUSED_VARIABLE( png_ptr );
         }
     };
     result_png.clear();

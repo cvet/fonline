@@ -6894,7 +6894,6 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, ushort p
     ProtoItem* proto_item = ItemMngr.GetProtoItem( proto_id );
     bool       is_flat = ( proto_item ? FLAG( proto_item->Flags, ITEM_FLAT ) : false );
     bool       is_item = ( proto_item ? proto_item->IsItem() : false );
-    bool       is_wall = ( proto_item ? proto_item->IsWall() : false );
     bool       no_light = ( is_flat && !is_item );
 
     Field&     f = Self->HexMngr.GetField( hx, hy );
