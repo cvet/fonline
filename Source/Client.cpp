@@ -45,8 +45,10 @@ FOClient::FOClient(): Active( false )
     GmapCar.Car = NULL;
     Animations.resize( 10000 );
 
+    #ifndef FO_OSX
     CurVideo = NULL;
     MusicVolumeRestore = -1;
+    #endif
 
     UIDFail = false;
     MoveLastHx = -1;
@@ -426,6 +428,7 @@ bool FOClient::Init()
         LogTryConnect();
     }
     // Intro
+    #ifndef FO_OSX
     else if( !Str::Substring( CommandLine, "-SkipIntro" ) )
     {
         if( MsgGame->Count( STR_MUSIC_MAIN_THEME ) )
@@ -443,6 +446,13 @@ bool FOClient::Init()
                 MusicAfterVideo = "";
             }
         }
+    }
+    #endif
+    else
+    {
+        ScreenFadeOut();
+        if( MsgGame->Count( STR_MUSIC_MAIN_THEME ) )
+            SndMngr.PlayMusic( MsgGame->GetStr( STR_MUSIC_MAIN_THEME ) );
     }
 
     // Disable dumps if multiple window detected
@@ -816,11 +826,13 @@ int FOClient::MainLoop()
     Script::ScriptGarbager();
 
     // Video
+    #ifndef FO_OSX
     if( IsVideoPlayed() )
     {
         RenderVideo();
         return 1;
     }
+    #endif
 
     CHECK_MULTIPLY_WINDOWS3;
 
@@ -1124,6 +1136,7 @@ void FOClient::ParseKeyboard()
         Keyb::KeyPressed[ dikdw ] = true;
 
         // Video
+        #ifndef FO_OSX
         if( IsVideoPlayed() )
         {
             if( IsCanStopVideo() && ( dikdw == DIK_ESCAPE || dikdw == DIK_SPACE || dikdw == DIK_RETURN || dikdw == DIK_NUMPADENTER ) )
@@ -1133,6 +1146,7 @@ void FOClient::ParseKeyboard()
             }
             continue;
         }
+        #endif
 
         // Key script event
         bool script_result = false;
@@ -1688,6 +1702,7 @@ void FOClient::ParseMouse()
         int event_dy = -events[ i + 2 ];
 
         // Stop video
+        #ifndef FO_OSX
         if( IsVideoPlayed() )
         {
             if( IsCanStopVideo() && ( event == SDL_MOUSEBUTTONDOWN && ( event_button == SDL_BUTTON_LEFT || event_button == SDL_BUTTON_RIGHT ) ) )
@@ -1697,6 +1712,7 @@ void FOClient::ParseMouse()
             }
             continue;
         }
+        #endif
 
         // Scripts
         bool script_result = false;
@@ -5655,10 +5671,14 @@ void FOClient::Net_OnLoadMap()
         GmapNullParams();
         ShowMainScreen( SCREEN_GLOBAL_MAP );
         Net_SendLoadMapOk();
+        #ifndef FO_OSX
         if( IsVideoPlayed() )
             MusicAfterVideo = MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) );
         else
             SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
+        #else
+        SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
+        #endif
         WriteLog( "Global map loaded.\n" );
         return;
     }
@@ -5687,10 +5707,14 @@ void FOClient::Net_OnLoadMap()
     Net_SendLoadMapOk();
     LookBorders.clear();
     ShootBorders.clear();
+    #ifndef FO_OSX
     if( IsVideoPlayed() )
         MusicAfterVideo = MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) );
     else
         SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
+    #else
+    SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
+    #endif
     WriteLog( "Local map loaded.\n" );
 }
 
@@ -9032,6 +9056,7 @@ void FOClient::SoundProcess()
     }
 }
 
+#ifndef FO_OSX
 void FOClient::AddVideo( const char* video_name, bool can_stop, bool clear_sequence )
 {
     // Stop current
@@ -9416,6 +9441,7 @@ void FOClient::StopVideo()
         MusicVolumeRestore = -1;
     }
 }
+#endif
 
 uint FOClient::AnimLoad( uint name_hash, uchar dir, int res_type )
 {
@@ -10436,8 +10462,10 @@ bool FOClient::SScriptFunc::Global_PlayMusic( ScriptString& music_name, uint pos
 
 void FOClient::SScriptFunc::Global_PlayVideo( ScriptString& video_name, bool can_stop )
 {
+    #ifndef FO_OSX
     SndMngr.StopMusic();
     Self->AddVideo( video_name.c_str(), can_stop, true );
+    #endif
 }
 
 bool FOClient::SScriptFunc::Global_IsTurnBased()

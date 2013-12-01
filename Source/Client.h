@@ -24,9 +24,11 @@
 #include "MsgFiles.h"
 
 // Video
-#include "Theora/theoradec.h"
-#ifdef FO_MSVC
-# pragma comment( lib, "libtheora_static.lib" )
+#ifndef FO_OSX
+# include "Theora/theoradec.h"
+# ifdef FO_MSVC
+#  pragma comment( lib, "libtheora_static.lib" )
+# endif
 #endif
 
 class FOClient
@@ -345,6 +347,7 @@ public:
 /************************************************************************/
 /* Video                                                                */
 /************************************************************************/
+    #ifndef FO_OSX
     struct ShowVideo
     {
         string FileName;
@@ -389,6 +392,7 @@ public:
     void PlayVideo();
     void NextVideo();
     void StopVideo();
+    #endif
 
 /************************************************************************/
 /* Animation                                                            */
