@@ -20,14 +20,8 @@
     <Filter Include="DatFile">
       <UniqueIdentifier>{0266fab2-2894-4151-a4bc-e9d1df42cec5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Assimp">
-      <UniqueIdentifier>{0998c299-c656-4a80-afa0-7b9fc188113c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="SHA2">
       <UniqueIdentifier>{1490fc80-a152-44fc-8f0d-a4c31a49c091}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Ogg">
-      <UniqueIdentifier>{835f66db-187d-4fe4-9c7b-2e35e9466797}</UniqueIdentifier>
     </Filter>
     <Filter Include="GL">
       <UniqueIdentifier>{3c9c4398-c2ab-47cd-8251-c2a663963de3}</UniqueIdentifier>
@@ -85,21 +79,6 @@
     </ClInclude>
     <ClInclude Include="..\Source\Acm\acmstrm.h">
       <Filter>Acm</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\ogg\codec.h">
-      <Filter>Ogg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\ogg\ogg.h">
-      <Filter>Ogg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\ogg\os_types.h">
-      <Filter>Ogg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\ogg\vorbisenc.h">
-      <Filter>Ogg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\ogg\vorbisfile.h">
-      <Filter>Ogg</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\Access.h">
       <Filter>Client</Filter>
@@ -361,99 +340,6 @@
     </ClInclude>
     <ClInclude Include="..\Source\datfile\unlzss.h">
       <Filter>DatFile</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiAnim.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiAssert.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiCamera.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiColor4D.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiConfig.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiDefines.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiFileIO.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiLight.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiMaterial.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiMatrix3x3.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiMatrix4x4.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiMesh.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiPostProcess.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiQuaternion.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiScene.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiTexture.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiTypes.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiVector2D.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiVector3D.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\aiVersion.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\assimp.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\assimp.hpp">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\DefaultLogger.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\export.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\export.hpp">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\IOStream.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\IOSystem.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\Logger.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\LogStream.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\NullLogger.h">
-      <Filter>Assimp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Assimp\ProgressHandler.h">
-      <Filter>Assimp</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\SHA2\sha2.h">
       <Filter>SHA2</Filter>

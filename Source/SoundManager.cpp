@@ -8,12 +8,6 @@
 // Manager instance
 SoundManager SndMngr;
 
-// PortAudio
-#include "PortAudio/portaudio.h"
-#ifdef FO_MSVC
-# pragma comment( lib, "portaudio.lib" )
-#endif
-
 // ACM
 #include "Acm/acmstrm.h"
 
@@ -26,43 +20,58 @@ SoundManager SndMngr;
 # pragma comment ( lib, "libvorbisfile_static.lib" )
 #endif
 
+SDL_AudioDeviceID DeviceID = 0;
+SDL_AudioSpec     SoundSpec;
+
 // Sound structure
 class Sound
 {
 public:
-    PaStream* Stream;
+    uchar* BaseBuf;
+    uint   BaseBufSize;
 
-    uchar*    Buf;
-    uint      BufSize;
-    uint      BufCur;
+    uchar* ConvertedBuf;
+    uint   ConvertedBufSize;
+    uint   ConvertedBufCur;
 
-    uint      SampleSize;
-    uint      Channels;
-    uint      SampleRate;
+    uchar* OutputBuf;
 
-    bool      IsMusic;
-    uint      NextPlay;
-    uint      RepeatTime;
+    int    OriginalFormat;
+    int    OriginalChannels;
+    int    OriginalRate;
 
-    bool      Streamable;
+    bool   IsMusic;
+    uint   NextPlay;
+    uint   RepeatTime;
+
+    bool   Streamable;
     enum { WAV, ACM, OGG } StreamType;
 
     OggVorbis_File OggDescriptor;
 
-    Sound(): Stream( NULL ),
-             Buf( NULL ), BufSize( 0 ), BufCur( 0 ),
-             SampleSize( 0 ), Channels( 0 ), SampleRate( 0 ),
+    Sound(): BaseBuf( NULL ), BaseBufSize( 0 ), ConvertedBuf( NULL ),
+             ConvertedBufSize( 0 ), ConvertedBufCur( 0 ), OutputBuf( NULL ),
+             OriginalFormat( 0 ), OriginalChannels( 0 ), OriginalRate( 0 ),
              IsMusic( false ), NextPlay( 0 ), RepeatTime( 0 ),
-             Streamable( false ), StreamType( WAV ) {}
+             Streamable( false ), StreamType( WAV )
+    {
+        OutputBuf = new uchar[ SoundSpec.size ];
+    }
     ~Sound()
     {
-        SAFEDELA( Buf );
+        if( ConvertedBuf != BaseBuf )
+            SAFEDELA( ConvertedBuf );
+        SAFEDELA( BaseBuf );
+        SAFEDELA( OutputBuf );
         if( Streamable && StreamType == OGG )
             ov_clear( &OggDescriptor );
-        if( Stream )
-            Pa_CloseStream( Stream );
     }
 };
+
+void AudioCallback( void* userdata, Uint8* stream, int len )
+{
+    SndMngr.ProcessSounds( stream );
+}
 
 // SoundManager
 bool SoundManager::Init()
@@ -72,12 +81,26 @@ bool SoundManager::Init()
 
     WriteLog( "Sound manager initialization...\n" );
 
-    PaError err = Pa_Initialize();
-    if( err != paNoError )
+    // Create audio device
+    SDL_AudioSpec desired;
+    desired.freq = 22050;              // DSP frequency -- samples per second
+    desired.format = AUDIO_S16;        // Audio data format
+    desired.channels = 2;              // Number of channels: 1 mono, 2 stereo
+    desired.silence = 0;               // Audio buffer silence value (calculated)
+    desired.samples = 0;               // Audio buffer size in samples (power of 2)
+    desired.padding = 0;               // Necessary for some compile environments
+    desired.size = 0;                  // Audio buffer size in bytes (calculated)
+    desired.callback = AudioCallback;
+    desired.userdata = NULL;
+    DeviceID = SDL_OpenAudioDevice( NULL, 0, &desired, &SoundSpec, SDL_AUDIO_ALLOW_ANY_CHANGE );
+    if( DeviceID < 2 )
     {
-        WriteLog( "PortAudio initialization error<%s,%d>.\n", Pa_GetErrorText( err ), err );
+        WriteLog( "SDL Open audio device fail, error<%s>.\n", SDL_GetError() );
         return false;
     }
+
+    // Start playing
+    SDL_PauseAudioDevice( DeviceID, 0 );
 
     isActive = true;
     WriteLog( "Sound manager initialization complete.\n" );
@@ -87,38 +110,22 @@ bool SoundManager::Init()
 void SoundManager::Finish()
 {
     WriteLog( "Sound manager finish.\n" );
+
     ClearSounds();
-    Pa_Terminate();
+    SDL_CloseAudioDevice( DeviceID );
+    DeviceID = 0;
+
     isActive = false;
     WriteLog( "Sound manager finish complete.\n" );
 }
 
-void SoundManager::Process()
-{
-    for( auto it = soundsActive.begin(); it != soundsActive.end();)
-    {
-        Sound* sound = *it;
-        if( !Pa_IsStreamActive( sound->Stream ) )
-        {
-            delete sound;
-            it = soundsActive.erase( it );
-        }
-        else
-        {
-            ++it;
-        }
-    }
-}
-
 void SoundManager::ClearSounds()
 {
+    SDL_LockAudioDevice( DeviceID );
     for( auto it = soundsActive.begin(); it != soundsActive.end(); ++it )
-    {
-        Sound* sound = *it;
-        Pa_AbortStream( sound->Stream );
-        delete sound;
-    }
+        delete *it;
     soundsActive.clear();
+    SDL_UnlockAudioDevice( DeviceID );
 }
 
 int SoundManager::GetSoundVolume()
@@ -141,56 +148,70 @@ void SoundManager::SetMusicVolume( int volume )
     musicVolume = CLAMP( volume, 0, 100 );
 }
 
-bool SoundManager::ProcessSound( Sound* sound, uchar* output, uint outputSamples )
+void SoundManager::ProcessSounds( uchar* output )
+{
+    memzero( output, SoundSpec.size );
+    for( auto it = soundsActive.begin(); it != soundsActive.end();)
+    {
+        Sound* sound = *it;
+        if( SndMngr.ProcessSound( sound ) )
+        {
+            int volume = ( sound->IsMusic ? musicVolume : soundVolume ) * SDL_MIX_MAXVOLUME / 100;
+            SDL_MixAudioFormat( output, sound->OutputBuf, SoundSpec.format, SoundSpec.size, volume );
+            ++it;
+        }
+        else
+        {
+            delete sound;
+            it = soundsActive.erase( it );
+        }
+    }
+}
+
+bool SoundManager::ProcessSound( Sound* sound )
 {
     // Playing
-    if( sound->BufCur < sound->BufSize )
+    uint samples = SoundSpec.samples;
+    uint sample_size = SoundSpec.size / samples / SoundSpec.channels;
+    uint channels = SoundSpec.channels;
+    uint freq = SoundSpec.freq;
+    if( sound->ConvertedBufCur < sound->ConvertedBufSize )
     {
-        uint whole = outputSamples * sound->SampleSize * sound->Channels;
-        if( whole > sound->BufSize - sound->BufCur )
+        uint whole = samples * sample_size * channels;
+        if( whole > sound->ConvertedBufSize - sound->ConvertedBufCur )
         {
             // Flush last part of buffer
-            uint offset = sound->BufSize - sound->BufCur;
-            memcpy( output, sound->Buf + sound->BufCur, offset );
-            sound->BufCur += offset;
+            uint offset = sound->ConvertedBufSize - sound->ConvertedBufCur;
+            memcpy( sound->OutputBuf, sound->ConvertedBuf + sound->ConvertedBufCur, offset );
+            sound->ConvertedBufCur += offset;
 
             // Stream new parts
             while( offset < whole && sound->Streamable && Streaming( sound ) )
             {
-                uint write = sound->BufSize - sound->BufCur;
+                uint write = sound->ConvertedBufSize - sound->ConvertedBufCur;
                 if( offset + write > whole )
                     write = whole - offset;
-                memcpy( output + offset, sound->Buf + sound->BufCur, write );
-                sound->BufCur += write;
+                memcpy( sound->OutputBuf + offset, sound->ConvertedBuf + sound->ConvertedBufCur, write );
+                sound->ConvertedBufCur += write;
                 offset += write;
             }
 
             // Cut off end
             if( offset < whole )
-                memzero( output + offset, whole - offset );
+                memzero( sound->OutputBuf + offset, whole - offset );
         }
         else
         {
             // Copy
-            memcpy( output, sound->Buf + sound->BufCur, whole );
-            sound->BufCur += whole;
+            memcpy( sound->OutputBuf, sound->ConvertedBuf + sound->ConvertedBufCur, whole );
+            sound->ConvertedBufCur += whole;
         }
 
         // Stream empty buffer
-        if( sound->BufCur == sound->BufSize && sound->Streamable )
-            Streaming( sound );
+        if( sound->ConvertedBufCur == sound->ConvertedBufSize && sound->Streamable )
+            return Streaming( sound );
 
-        // Volume
-        int volume = ( sound->IsMusic ? musicVolume : soundVolume );
-        if( volume < 100 )
-        {
-            for( uint i = 0, j = outputSamples * sound->Channels; i < j; i++ )
-            {
-                short& s = *( (short*) output + i );
-                s = (int) s * volume / 100;
-            }
-        }
-
+        // Continue processing
         return true;
     }
 
@@ -208,7 +229,6 @@ bool SoundManager::ProcessSound( Sound* sound, uchar* output, uint outputSamples
             // Set buffer to beginning
             if( sound->Streamable && sound->StreamType == Sound::OGG )
                 ov_raw_seek( &sound->OggDescriptor, 0 );
-            sound->BufCur = 0;
 
             // Stream
             if( sound->Streamable )
@@ -218,16 +238,16 @@ bool SoundManager::ProcessSound( Sound* sound, uchar* output, uint outputSamples
             sound->NextPlay = 0;
 
             // Process without silent
-            return ProcessSound( sound, output, outputSamples );
+            return ProcessSound( sound );
         }
 
         // Give silent
-        memzero( output, outputSamples * sound->SampleSize * sound->Channels );
+        memzero( sound->OutputBuf, samples * sample_size * channels );
         return true;
     }
 
     // Give silent
-    memzero( output, outputSamples * sound->SampleSize * sound->Channels );
+    memzero( sound->OutputBuf, samples * sample_size * channels );
     return false;
 }
 
@@ -266,30 +286,9 @@ Sound* SoundManager::Load( const char* fname, int path_type )
         return NULL;
     }
 
-    struct PaStreamProcessor
-    {
-        static int Process( const void* input, void* output,
-                            unsigned long frameCount, const PaStreamCallbackTimeInfo* timeInfo,
-                            PaStreamCallbackFlags statusFlags, void* userData )
-        {
-            if( SndMngr.ProcessSound( (Sound*) userData, (uchar*) output, frameCount ) )
-                return paContinue;
-            return paComplete;
-        }
-    };
-
-    PaStream* stream;
-    PaError   err = Pa_OpenDefaultStream( &stream, 0, sound->Channels, paInt16,
-                                          sound->SampleRate, paFramesPerBufferUnspecified, PaStreamProcessor::Process, sound );
-    if( err != paNoError )
-    {
-        WriteLog( "Pa_OpenDefaultStream error<%s,%d>, file name<%s>.\n", Pa_GetErrorText( err ), err, fname_ );
-        delete sound;
-        return NULL;
-    }
-    sound->Stream = stream;
-
+    SDL_LockAudioDevice( DeviceID );
     soundsActive.push_back( sound );
+    SDL_UnlockAudioDevice( DeviceID );
     return sound;
 }
 
@@ -341,9 +340,6 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname, int path_type )
     } waveformatex;
 
     fm.CopyMem( &waveformatex, 16 );
-    sound->Channels = waveformatex.nChannels;
-    sound->SampleRate = waveformatex.nSamplesPerSec;
-    sound->SampleSize = waveformatex.wBitsPerSample / 8;
 
     if( waveformatex.wFormatTag != 1 )
     {
@@ -368,16 +364,33 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname, int path_type )
     }
 
     dw_buf = fm.GetLEUInt();
-    sound->BufSize = dw_buf;
-    sound->Buf = new unsigned char[ dw_buf ];
+    sound->BaseBufSize = dw_buf;
 
-    if( !fm.CopyMem( sound->Buf, dw_buf ) )
+    // Check format
+    sound->OriginalChannels = waveformatex.nChannels;
+    sound->OriginalRate = waveformatex.nSamplesPerSec;
+    switch( waveformatex.wBitsPerSample )
+    {
+    case 8:
+        sound->OriginalFormat = AUDIO_U8;
+        break;
+    case 16:
+        sound->OriginalFormat = AUDIO_S16;
+        break;
+    default:
+        WriteLogF( _FUNC_, " - Unknown format.\n" );
+        return false;
+    }
+
+    // Convert
+    sound->BaseBuf = new unsigned char[ sound->BaseBufSize ];
+    if( !fm.CopyMem( sound->BaseBuf, sound->BaseBufSize ) )
     {
         WriteLogF( _FUNC_, " - File truncated.\n" );
         return false;
     }
 
-    return true;
+    return ConvertData( sound );
 }
 
 bool SoundManager::LoadACM( Sound* sound, const char* fname, int path_type )
@@ -396,20 +409,20 @@ bool SoundManager::LoadACM( Sound* sound, const char* fname, int path_type )
         return false;
     }
 
-    sound->Channels = ( path_type == PT_SND_MUSIC ? 2 : 1 );
-    sound->SampleRate = 22050;
-    sound->SampleSize = 2;
+    sound->OriginalFormat = AUDIO_S16;
+    sound->OriginalChannels = ( path_type == PT_SND_MUSIC ? 2 : 1 );
+    sound->OriginalRate = 22050;
 
-    sound->BufSize = samples * sound->SampleSize;
-    sound->Buf = new unsigned char[ sound->BufSize ];
-    int dec_data = acm->readAndDecompress( (ushort*) sound->Buf, sound->BufSize );
-    if( dec_data != (int) sound->BufSize )
+    sound->BaseBufSize = samples * 2;
+    sound->BaseBuf = new unsigned char[ sound->BaseBufSize ];
+    int dec_data = acm->readAndDecompress( (ushort*) sound->BaseBuf, sound->BaseBufSize );
+    if( dec_data != (int) sound->BaseBufSize )
     {
         WriteLogF( _FUNC_, " - Decode Acm error.\n" );
         return false;
     }
 
-    return true;
+    return ConvertData( sound );
 }
 
 size_t Ogg_read_func( void* ptr, size_t size, size_t nmemb, void* datasource )
@@ -502,12 +515,12 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
         return false;
     }
 
-    sound->Channels = vi->channels;
-    sound->SampleRate = vi->rate;
-    sound->SampleSize = 2;
+    sound->OriginalFormat = AUDIO_S16;
+    sound->OriginalChannels = vi->channels;
+    sound->OriginalRate = vi->rate;
 
-    sound->Buf = new unsigned char[ STREAMING_PORTION ];
-    if( !sound->Buf )
+    sound->BaseBuf = new unsigned char[ STREAMING_PORTION ];
+    if( !sound->BaseBuf )
         return false;
 
     int  result = 0;
@@ -515,7 +528,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
     while( true )
     {
         int portion = min( (uint) 4096, STREAMING_PORTION - decoded );
-        result = ov_read( &sound->OggDescriptor, (char*) sound->Buf + decoded, portion, 0, 2, 1, NULL );
+        result = ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, NULL );
         if( result <= 0 )
             break;
         decoded += result;
@@ -525,7 +538,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
     if( result < 0 )
         return false;
 
-    sound->BufSize = decoded;
+    sound->BaseBufSize = decoded;
 
     if( !result )
     {
@@ -537,7 +550,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
         sound->Streamable = true;
         sound->StreamType = Sound::OGG;
     }
-    return true;
+    return ConvertData( sound );
 }
 
 bool SoundManager::Streaming( Sound* sound )
@@ -566,7 +579,7 @@ bool SoundManager::StreamingOGG( Sound* sound )
     while( true )
     {
         int portion = min( (uint) 4096, STREAMING_PORTION - decoded );
-        result = ov_read( &sound->OggDescriptor, (char*) sound->Buf + decoded, portion, 0, 2, 1, NULL );
+        result = ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, NULL );
         if( result <= 0 )
             break;
         decoded += result;
@@ -576,8 +589,42 @@ bool SoundManager::StreamingOGG( Sound* sound )
     if( result < 0 || !decoded )
         return false;
 
-    sound->BufCur = 0;
-    sound->BufSize = decoded;
+    sound->BaseBufSize = decoded;
+    return ConvertData( sound );
+}
+
+bool SoundManager::ConvertData( Sound* sound )
+{
+    SDL_AudioCVT cvt;
+    int          r = SDL_BuildAudioCVT( &cvt, sound->OriginalFormat, sound->OriginalChannels, sound->OriginalRate,
+                                        SoundSpec.format, SoundSpec.channels, SoundSpec.freq );
+    if( r == -1 )
+    {
+        WriteLogF( _FUNC_, " - SDL_BuildAudioCVT fail, error<%s>.\n", SDL_GetError() );
+        return false;
+    }
+    if( r == 1 )
+    {
+        cvt.len = sound->BaseBufSize;
+        cvt.buf = (Uint8*) SDL_malloc( cvt.len * cvt.len_mult );
+        memcpy( cvt.buf, sound->BaseBuf, sound->BaseBufSize );
+        if( SDL_ConvertAudio( &cvt ) )
+        {
+            WriteLogF( _FUNC_, " - SDL_ConvertAudio fail, error<%s>.\n", SDL_GetError() );
+            return false;
+        }
+        sound->ConvertedBufCur = 0;
+        sound->ConvertedBufSize = cvt.len_cvt;
+        sound->ConvertedBuf = new unsigned char[ sound->ConvertedBufSize ];
+        memcpy( sound->ConvertedBuf, cvt.buf, sound->ConvertedBufSize );
+        SDL_free( cvt.buf );
+    }
+    else
+    {
+        sound->ConvertedBufCur = 0;
+        sound->ConvertedBufSize = sound->BaseBufSize;
+        sound->ConvertedBuf = sound->BaseBuf;
+    }
     return true;
 }
 
@@ -586,10 +633,7 @@ bool SoundManager::PlaySound( const char* name )
     if( !isActive || !GetSoundVolume() )
         return true;
     Sound* sound = Load( name, PT_SND_SFX );
-    if( !sound )
-        return false;
-    Pa_StartStream( sound->Stream );
-    return true;
+    return sound != NULL;
 }
 
 bool SoundManager::PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext )
@@ -669,19 +713,18 @@ bool SoundManager::PlayMusic( const char* fname, uint pos, uint repeat )
 
     sound->IsMusic = true;
     sound->RepeatTime = repeat;
-    Pa_StartStream( sound->Stream );
     return true;
 }
 
 void SoundManager::StopMusic()
 {
     // Find and erase old music
+    SDL_LockAudioDevice( DeviceID );
     for( auto it = soundsActive.begin(); it != soundsActive.end();)
     {
         Sound* sound = *it;
         if( sound->IsMusic )
         {
-            Pa_AbortStream( sound->Stream );
             delete sound;
             it = soundsActive.erase( it );
         }
@@ -690,6 +733,7 @@ void SoundManager::StopMusic()
             ++it;
         }
     }
+    SDL_UnlockAudioDevice( DeviceID );
 }
 
 void SoundManager::PlayAmbient( const char* str )

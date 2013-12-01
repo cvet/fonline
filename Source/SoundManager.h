@@ -17,7 +17,6 @@ public:
 
     bool Init();
     void Finish();
-    void Process();
     void ClearSounds();
 
     int  GetSoundVolume();
@@ -31,8 +30,10 @@ public:
     void StopMusic();
     void PlayAmbient( const char* str );
 
+    void ProcessSounds( uchar* output );
+
 private:
-    bool   ProcessSound( Sound* sound, uchar* output, uint outputSamples );
+    bool   ProcessSound( Sound* sound );
     Sound* Load( const char* fname, int path_type );
     bool   LoadWAV( Sound* sound, const char* fname, int path_type );
     bool   LoadACM( Sound* sound, const char* fname, int path_type );
@@ -41,6 +42,7 @@ private:
     bool   StreamingWAV( Sound* sound );
     bool   StreamingACM( Sound* sound );
     bool   StreamingOGG( Sound* sound );
+    bool   ConvertData( Sound* sound );
 
     bool     isActive;
     int      soundVolume;
