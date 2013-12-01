@@ -1004,7 +1004,7 @@ void SpriteManager::SaveSufaces()
         Texture* tex = surf->TextureOwner;
         char     name[ MAX_FOPATH ];
         Str::Format( name, "%s%d_%d_%ux%u.png", path, surf->Type, cnt, surf->Width, surf->Height );
-        SaveTexture( tex, name, true );
+        SaveTexture( tex, name, false );
         cnt++;
     }
 }
@@ -1024,55 +1024,22 @@ void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
     else
     {
         data = new uchar[ w * h * 4 ];
-        GL( glReadPixels( 0, 0, MainWindow->w(), MainWindow->h(), GL_BGRA, GL_UNSIGNED_BYTE, data ) );
+        GL( glReadPixels( 0, 0, w, h, GL_BGRA, GL_UNSIGNED_BYTE, data ) );
     }
-
-    // Load to DevIL
-    ILuint img = 0;
-    ilGenImages( 1, &img );
-    ilBindImage( img );
-    ilTexImage( w, h, 1, 4, IL_BGRA, IL_UNSIGNED_BYTE, data );
 
     // Flip image
     if( flip )
     {
-        uint* data4 = (uint*) ilGetData();
+        uint* data4 = (uint*) data;
         for( uint y = 0; y < h / 2; y++ )
             for( uint x = 0; x < w; x++ )
                 std::swap( data4[ y * w + x ], data4[ ( h - y - 1 ) * w + x ] );
     }
 
-    // Detect file type
-    ILenum file_type = ilTypeFromExt( fname );
-
     // Save
-    if( file_type != IL_TYPE_UNKNOWN )
-    {
-        // Format specific options
-        if( file_type == IL_JPG )
-            ilSetInteger( IL_JPG_QUALITY, 95 );
-
-        // Save to memory
-        uint   size = ilSaveL( file_type, NULL, 0 );
-        uchar* buf = new uchar[ size ];
-        ilSaveL( file_type, buf, size );
-
-        // Save to hard drive
-        void* f = FileOpen( fname, true );
-        if( f )
-        {
-            FileWrite( f, buf, size );
-            FileClose( f );
-        }
-        else
-        {
-            WriteLogF( _FUNC_, " - Can't create file<%s>.\n", fname );
-        }
-        delete[] buf;
-    }
+    GraphicLoader::SavePNG( fname, data, w, h );
 
     // Clean up
-    ilDeleteImages( 1, &img );
     if( !tex )
         delete[] data;
 }
@@ -1180,7 +1147,11 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, int path_type, int f
     int        dir = ( flags & 0xFF );
 
     AnyFrames* result = NULL;
-    if( Str::CompareCaseCount( ext, "fr", 2 ) )
+    if( Str::CompareCase( ext, "png" ) )
+        result = LoadAnimationOther( fname, path_type, &GraphicLoader::LoadPNG );
+    else if( Str::CompareCase( ext, "tga" ) )
+        result = LoadAnimationOther( fname, path_type, &GraphicLoader::LoadTGA );
+    else if( Str::CompareCaseCount( ext, "fr", 2 ) )
         result = LoadAnimationFrm( fname, path_type, dir, FLAG( flags, ANIM_FRM_ANIM_PIX ) );
     else if( Str::CompareCase( ext, "rix" ) )
         result = LoadAnimationRix( fname, path_type );
@@ -1201,7 +1172,7 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, int path_type, int f
     else if( GraphicLoader::IsExtensionSupported( ext ) )
         result = LoadAnimation3d( fname, path_type, dir );
     else
-        result = LoadAnimationOther( fname, path_type );
+        WriteLogF( _FUNC_, " - Unsupported image file format<%s>, file<%s>.\n", ext, fname );
 
     return result ? result : dummy;
 }
@@ -3091,47 +3062,18 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
     return anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type )
+AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type, uchar* ( *loader )( const uchar *, uint, uint &, uint &, uint & ) )
 {
     // Load file
     FileManager fm;
     if( !fm.LoadFile( fname, path_type ) )
         return NULL;
 
-    // Detect type
-    ILenum file_type = ilTypeFromExt( fname );
-    if( file_type == IL_TYPE_UNKNOWN )
+    // Load
+    uint   image_size, w, h;
+    uchar* image_data = loader( fm.GetBuf(), fm.GetFsize(), image_size, w, h );
+    if( !image_data )
         return NULL;
-
-    // Load image from memory
-    ILuint img = 0;
-    ilGenImages( 1, &img );
-    ilBindImage( img );
-    ilEnable( IL_ORIGIN_SET );
-    ilOriginFunc( IL_ORIGIN_UPPER_LEFT );
-    ILboolean success = ilLoadL( file_type, fm.GetBuf(), fm.GetFsize() );
-    ilDisable( IL_ORIGIN_SET );
-    if( !success )
-    {
-        ilDeleteImage( img );
-        return NULL;
-    }
-
-    // Get image data
-    uint w = ilGetInteger( IL_IMAGE_WIDTH );
-    uint h = ilGetInteger( IL_IMAGE_HEIGHT );
-    int  format = ilGetInteger( IL_IMAGE_FORMAT );
-    int  type = ilGetInteger( IL_IMAGE_TYPE );
-
-    // Convert data
-    if( format != IL_BGRA || type != IL_UNSIGNED_BYTE )
-    {
-        if( !ilConvertImage( IL_BGRA, IL_UNSIGNED_BYTE ) )
-        {
-            ilDeleteImage( img );
-            return NULL;
-        }
-    }
 
     // Data for FillSurfaceFromMemory
     uint   size = 12 + h * w * 4;
@@ -3140,7 +3082,7 @@ AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type )
     *( (uint*) data + 2 ) = h;
 
     // Copy data, also swap blue color to transparent
-    uint* from = (uint*) ilGetData();
+    uint* from = (uint*) image_data;
     uint* to = (uint*) data + 3;
     for( uint i = 0, j = w * h; i < j; i++ )
     {
@@ -3151,8 +3093,8 @@ AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type )
         ++to;
     }
 
-    // Delete image
-    ilDeleteImage( img );
+    // Delete png data
+    delete[] image_data;
 
     // Fill data
     SpriteInfo* si = new SpriteInfo();

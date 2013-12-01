@@ -8,6 +8,11 @@
 #include "Assimp/assimp.h"
 #include "Assimp/aiPostProcess.h"
 
+#include "PNG/png.h"
+#ifdef FO_MSVC
+# pragma comment( lib, "libpng16.lib" )
+#endif
+
 // Assimp functions
 const aiScene* ( *Ptr_aiImportFileFromMemory )( const char* pBuffer, unsigned int pLength, unsigned int pFlags, const char* pHint );
 void           ( * Ptr_aiReleaseImport )( const aiScene* pScene );
@@ -466,44 +471,18 @@ Texture* GraphicLoader::LoadTexture( const char* texture_name, const char* model
         fm.LoadFile( path, PT_DATA );
     }
 
-    // Detect type
-    ILenum file_type = ilTypeFromExt( texture_name );
-    if( file_type == IL_TYPE_UNKNOWN )
+    // Load
+    uint        size, w, h;
+    uchar*      data;
+    const char* ext = FileManager::GetExtension( texture_name );
+    if( Str::CompareCase( ext, "png" ) )
+        data = LoadPNG( fm.GetBuf(), fm.GetFsize(), size, w, h );
+    else if( Str::CompareCase( ext, "tga" ) )
+        data = LoadTGA( fm.GetBuf(), fm.GetFsize(), size, w, h );
+    else
+        WriteLogF( _FUNC_, " - File format<%s> not supported, file<%s>.\n", ext, texture_name );
+    if( !data )
         return NULL;
-
-    // Load image from memory
-    ILuint img = 0;
-    ilGenImages( 1, &img );
-    ilBindImage( img );
-    if( !ilLoadL( file_type, fm.GetBuf(), fm.GetFsize() ) )
-    {
-        ilDeleteImage( img );
-        return NULL;
-    }
-
-    // Get image data
-    uint w = ilGetInteger( IL_IMAGE_WIDTH );
-    uint h = ilGetInteger( IL_IMAGE_HEIGHT );
-    int  format = ilGetInteger( IL_IMAGE_FORMAT );
-    int  type = ilGetInteger( IL_IMAGE_TYPE );
-
-    // Convert data
-    if( format != IL_BGRA || type != IL_UNSIGNED_BYTE )
-    {
-        if( !ilConvertImage( IL_BGRA, IL_UNSIGNED_BYTE ) )
-        {
-            ilDeleteImage( img );
-            return NULL;
-        }
-    }
-
-    // Copy data
-    uint   size = ilGetInteger( IL_IMAGE_SIZE_OF_DATA );
-    uchar* data = new uchar[ size ];
-    memcpy( data, ilGetData(), size );
-
-    // Delete image
-    ilDeleteImage( img );
 
     // Create texture
     Texture* texture = new Texture();
@@ -1108,3 +1087,287 @@ bool GraphicLoader::LoadDefaultEffects()
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
+
+uchar* GraphicLoader::LoadPNG( const uchar* data, uint data_size, uint& result_size, uint& result_width, uint& result_height )
+{
+    // Setup PNG reader
+    png_structp png_ptr = png_create_read_struct( PNG_LIBPNG_VER_STRING, NULL, NULL, NULL );
+    if( !png_ptr )
+        return NULL;
+
+    png_infop info_ptr = png_create_info_struct( png_ptr );
+    if( !info_ptr )
+    {
+        png_destroy_read_struct( &png_ptr, NULL, NULL );
+        return NULL;
+    }
+
+    if( setjmp( png_jmpbuf( png_ptr ) ) )
+    {
+        png_destroy_read_struct( &png_ptr, &info_ptr, NULL );
+        return NULL;
+    }
+
+    static const uchar* data_;
+    struct PNGReader
+    {
+        static void Read( png_structp png_ptr, png_bytep png_data, png_size_t length )
+        {
+            (void) png_ptr;
+            memcpy( png_data, data_, length );
+            data_ += length;
+        }
+    };
+    data_ = data;
+    png_set_read_fn( png_ptr, NULL, &PNGReader::Read );
+    png_read_info( png_ptr, info_ptr );
+
+    if( setjmp( png_jmpbuf( png_ptr ) ) )
+    {
+        png_destroy_read_struct( &png_ptr, &info_ptr, NULL );
+        return NULL;
+    }
+
+    // Get information
+    png_uint_32 width, height;
+    int         bit_depth;
+    int         color_type;
+    png_get_IHDR( png_ptr, info_ptr, (png_uint_32*) &width, (png_uint_32*) &height, &bit_depth, &color_type, NULL, NULL, NULL );
+
+    // Settings
+    png_set_strip_16( png_ptr );
+    png_set_packing( png_ptr );
+    if( color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8 )
+        png_set_expand( png_ptr );
+    if( color_type == PNG_COLOR_TYPE_PALETTE )
+        png_set_expand( png_ptr );
+    if( png_get_valid( png_ptr, info_ptr, PNG_INFO_tRNS ) )
+        png_set_expand( png_ptr );
+    png_set_filler( png_ptr, 0x000000ff, PNG_FILLER_AFTER );
+    png_read_update_info( png_ptr, info_ptr );
+
+    // Allocate row pointers
+    png_bytepp row_pointers = (png_bytepp) malloc( height * sizeof( png_bytep ) );
+    if( !row_pointers )
+    {
+        png_destroy_read_struct( &png_ptr, &info_ptr, NULL );
+        return NULL;
+    }
+
+    // Set the individual row_pointers to point at the correct offsets
+    uchar* result = new uchar[ width * height * 4 ];
+    for( uint i = 0; i < height; i++ )
+        row_pointers[ i ] = result + i * width * 4;
+
+    // Read image
+    png_read_image( png_ptr, row_pointers );
+
+    // Clean up
+    png_read_end( png_ptr, info_ptr );
+    png_destroy_read_struct( &png_ptr, &info_ptr, (png_infopp) NULL );
+    free( row_pointers );
+
+    // Swap Red and Blue
+    uint* result4 = (uint*) result;
+    for( uint i = 0, j = width * height; i < j; i++ )
+        result4[ i ] = COLOR_FIX( result4[ i ] );
+
+    // Convert to RGBA
+    result_size = width * height * 4;
+    result_width = width;
+    result_height = height;
+    return result;
+}
+
+void GraphicLoader::SavePNG( const char* fname, uchar* data, uint width, uint height )
+{
+    // Initialize stuff
+    png_structp png_ptr = png_create_write_struct( PNG_LIBPNG_VER_STRING, NULL, NULL, NULL );
+    if( !png_ptr )
+        return;
+    png_infop info_ptr = png_create_info_struct( png_ptr );
+    if( !info_ptr )
+        return;
+    if( setjmp( png_jmpbuf( png_ptr ) ) )
+        return;
+
+    static UCharVec result_png;
+    struct PNGWriter
+    {
+        static void Write( png_structp png_ptr, png_bytep png_data, png_size_t length )
+        {
+            (void) png_ptr;
+            for( png_size_t i = 0; i < length; i++ )
+                result_png.push_back( png_data[ i ] );
+        }
+        static void Flush( png_structp png_ptr )
+        {
+            (void) png_ptr;
+        }
+    };
+    result_png.clear();
+    png_set_write_fn( png_ptr, NULL, &PNGWriter::Write, &PNGWriter::Flush );
+
+    // Write header
+    if( setjmp( png_jmpbuf( png_ptr ) ) )
+        return;
+    png_byte color_type = PNG_COLOR_TYPE_RGB_ALPHA;
+    png_byte bit_depth = 8;
+    png_set_IHDR( png_ptr, info_ptr, width, height, bit_depth, color_type, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE );
+    png_write_info( png_ptr, info_ptr );
+
+    // Swap Red and Blue
+    uchar* save_data = new uchar[ width * height * 4 ];
+    memcpy( save_data, data, width * height * 4 );
+    uint*  save_data4 = (uint*) save_data;
+    for( uint i = 0, j = width * height; i < j; i++ )
+        save_data4[ i ] = COLOR_FIX( save_data4[ i ] );
+
+    // Write pointers
+    uchar** row_pointers = new uchar*[ height ];
+    for( uint y = 0; y < height; y++ )
+        row_pointers[ y ] = &save_data[ y * width * 4 ];
+
+    // Write bytes
+    if( setjmp( png_jmpbuf( png_ptr ) ) )
+        return;
+    png_write_image( png_ptr, row_pointers );
+
+    // End write
+    if( setjmp( png_jmpbuf( png_ptr ) ) )
+        return;
+    png_write_end( png_ptr, NULL );
+
+    // Clean up
+    delete[] row_pointers;
+    delete[] save_data;
+
+    // Write to disk
+    FileManager fm;
+    fm.SetData( &result_png[ 0 ], result_png.size() );
+    fm.SaveOutBufToFile( fname, PT_ROOT );
+}
+
+uchar* GraphicLoader::LoadTGA( const uchar* data, uint data_size, uint& result_size, uint& result_width, uint& result_height )
+{
+    // Reading macros
+    bool read_error = false;
+    uint cur_pos = 0;
+    #define READ_TGA( x, len )                          \
+        if( !read_error && cur_pos + len <= data_size ) \
+        {                                               \
+            memcpy( x, data + cur_pos, len );           \
+            cur_pos += len;                             \
+        }                                               \
+        else                                            \
+        {                                               \
+            read_error = true;                          \
+        }
+
+    // Load header
+    unsigned char type, pixel_depth;
+    short int     width, height;
+    unsigned char unused_char;
+    short int     unused_short;
+    READ_TGA( &unused_char, 1 );
+    READ_TGA( &unused_char, 1 );
+    READ_TGA( &type, 1 );
+    READ_TGA( &unused_short, 2 );
+    READ_TGA( &unused_short, 2 );
+    READ_TGA( &unused_char, 1 );
+    READ_TGA( &unused_short, 2 );
+    READ_TGA( &unused_short, 2 );
+    READ_TGA( &width, 2 );
+    READ_TGA( &height, 2 );
+    READ_TGA( &pixel_depth, 1 );
+    READ_TGA( &unused_char, 1 );
+
+    // Check for errors when loading the header
+    if( read_error )
+        return NULL;
+
+    // Check if the image is color indexed
+    if( type == 1 )
+        return NULL;
+
+    // Check for TrueColor
+    if( type != 2 && type != 10 )
+        return NULL;
+
+    // Check for RGB(A)
+    if( pixel_depth != 24 && pixel_depth != 32 )
+        return NULL;
+
+    // Read
+    int    bpp = pixel_depth / 8;
+    uint   read_size = height * width * bpp;
+    uchar* read_data = new uchar[ read_size ];
+    if( type == 2 )
+    {
+        READ_TGA( read_data, read_size );
+    }
+    else
+    {
+        uint  bytes_read = 0, run_len, i, to_read;
+        uchar header, color[ 4 ];
+        int   c;
+        while( bytes_read < read_size )
+        {
+            READ_TGA( &header, 1 );
+            if( header & 0x00000080 )
+            {
+                header &= ~0x00000080;
+                READ_TGA( color, bpp );
+                if( read_error )
+                {
+                    delete[] read_data;
+                    return NULL;
+                }
+                run_len = ( header + 1 ) * bpp;
+                for( i = 0; i < run_len; i += bpp )
+                    for( c = 0; c < bpp && bytes_read + i + c < read_size; c++ )
+                        read_data[ bytes_read + i + c ] = color[ c ];
+                bytes_read += run_len;
+            }
+            else
+            {
+                run_len = ( header + 1 ) * bpp;
+                if( bytes_read + run_len > read_size )
+                    to_read = read_size - bytes_read;
+                else
+                    to_read = run_len;
+                READ_TGA( read_data + bytes_read, to_read );
+                if( read_error )
+                {
+                    delete[] read_data;
+                    return NULL;
+                }
+                bytes_read += run_len;
+                if( bytes_read + run_len > read_size )
+                    cur_pos += run_len - to_read;
+            }
+        }
+    }
+    if( read_error )
+    {
+        delete[] read_data;
+        return NULL;
+    }
+
+    // Copy data
+    result_size = width * height * 4;
+    uchar* result = new uchar[ result_size ];
+    for( int i = 0, j = width * height; i < j; i++ )
+    {
+        result[ i * 4 + 0 ] = read_data[ i * bpp + 0 ];
+        result[ i * 4 + 1 ] = read_data[ i * bpp + 1 ];
+        result[ i * 4 + 2 ] = read_data[ i * bpp + 2 ];
+        result[ i * 4 + 3 ] = ( bpp == 4 ? read_data[ i * bpp + 3 ] : 0xFF );
+    }
+    delete[] read_data;
+
+    // Return data
+    result_width = width;
+    result_height = height;
+    return result;
+}

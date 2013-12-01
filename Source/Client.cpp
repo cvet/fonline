@@ -58,18 +58,18 @@ bool FOClient::Init()
 {
     WriteLog( "Engine initialization...\n" );
 
-	// Check the sizes of base types
-	STATIC_ASSERT( sizeof( char ) == 1 );
-	STATIC_ASSERT( sizeof( short ) == 2 );
-	STATIC_ASSERT( sizeof( int ) == 4 );
-	STATIC_ASSERT( sizeof( int64 ) == 8 );
-	STATIC_ASSERT( sizeof( uchar ) == 1 );
-	STATIC_ASSERT( sizeof( ushort ) == 2 );
-	STATIC_ASSERT( sizeof( uint ) == 4 );
-	STATIC_ASSERT( sizeof( uint64 ) == 8 );
-	STATIC_ASSERT( sizeof( bool ) == 1 );
-	STATIC_ASSERT( sizeof( size_t ) == 4 );
-	STATIC_ASSERT( sizeof( void* ) == 4 );
+    // Check the sizes of base types
+    STATIC_ASSERT( sizeof( char ) == 1 );
+    STATIC_ASSERT( sizeof( short ) == 2 );
+    STATIC_ASSERT( sizeof( int ) == 4 );
+    STATIC_ASSERT( sizeof( int64 ) == 8 );
+    STATIC_ASSERT( sizeof( uchar ) == 1 );
+    STATIC_ASSERT( sizeof( ushort ) == 2 );
+    STATIC_ASSERT( sizeof( uint ) == 4 );
+    STATIC_ASSERT( sizeof( uint64 ) == 8 );
+    STATIC_ASSERT( sizeof( bool ) == 1 );
+    STATIC_ASSERT( sizeof( size_t ) == 4 );
+    STATIC_ASSERT( sizeof( void* ) == 4 );
 
     GET_UID0( UID0 );
     UID_PREPARE_UID4_0;
@@ -8967,7 +8967,7 @@ bool FOClient::SaveScreenshot()
     FileManager::FormatPath( screen_path );
     FileManager::CreateDirectoryTree( FileManager::GetFullPath( screen_path, PT_ROOT ) );
 
-    SprMngr.SaveTexture( NULL, screen_path, false );
+    SprMngr.SaveTexture( NULL, screen_path, true );
 
     return true;
 }

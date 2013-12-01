@@ -101,7 +101,7 @@ const char* GetLastSocketError();
     { if( x )         \
           delete[] ( x ); ( x ) = NULL; }
 
-#define STATIC_ASSERT( a )                static_assert( a, #a )
+#define STATIC_ASSERT( a )                static_assert( a, # a )
 
 #define PI_FLOAT              ( 3.14159265f )
 #define PIBY2_FLOAT           ( 1.5707963f )
@@ -211,12 +211,6 @@ extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / Main
 # ifdef FO_WINDOWS
 #  define WGL( expr )                     { if( !( expr ) ) { if( GameOpt.OpenGLDebug ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X>.\n", GetLastError() ); ExitProcess( 0 ); } } }
 # endif
-
-# define IL_STATIC_LIB
-# include "IL/il.h"
-# pragma comment( lib, "IL.lib" )
-# pragma comment( lib, "jpeg.lib" )
-# pragma comment( lib, "libpng15.lib" )
 
 # define COLOR_FIX( c )                   COLOR_ARGB( ( (uchar*) &( c ) )[ 3 ], ( (uchar*) &( c ) )[ 0 ], ( (uchar*) &( c ) )[ 1 ], ( (uchar*) &( c ) )[ 2 ] )
 

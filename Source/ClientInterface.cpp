@@ -11515,26 +11515,10 @@ void FOClient::SaveLoadSaveGame( const char* name )
     if( SaveLoadDraftValid )
     {
         // Get data
-        uchar* data = new uchar[ SAVE_LOAD_IMAGE_WIDTH * SAVE_LOAD_IMAGE_HEIGHT * 3 ];
+        pic_data.resize( SAVE_LOAD_IMAGE_WIDTH * SAVE_LOAD_IMAGE_HEIGHT * 3 );
         GL( glBindTexture( GL_TEXTURE_2D, SaveLoadDraft.TargetTexture->Id ) );
-        GL( glGetTexImage( GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, data ) );
+        GL( glGetTexImage( GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, &pic_data[ 0 ] ) );
         GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
-
-        // Load to DevIL
-        ILuint img = 0;
-        ilGenImages( 1, &img );
-        ilBindImage( img );
-        if( ilTexImage( SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, 1, 3, IL_RGB, IL_UNSIGNED_BYTE, data ) )
-        {
-            // Save to memory
-            uint size = ilSaveL( IL_BMP, NULL, 0 );
-            pic_data.resize( size );
-            ilSaveL( IL_BMP, &pic_data[ 0 ], size );
-        }
-
-        // Clean up
-        ilDeleteImages( 1, &img );
-        delete[] data;
     }
 
     // Send request
@@ -11569,23 +11553,13 @@ void FOClient::SaveLoadShowDraft()
     {
         // Get surface from image data
         SaveLoadDataSlot& slot = SaveLoadDataSlots[ SaveLoadSlotIndex ];
-        if( !slot.PicData.empty() )
+        if( slot.PicData.size() == SAVE_LOAD_IMAGE_WIDTH * SAVE_LOAD_IMAGE_HEIGHT * 3 )
         {
-            // Load to DevIL
-            ILuint img = 0;
-            ilGenImages( 1, &img );
-            ilBindImage( img );
-            if( ilLoadL( IL_BMP, &slot.PicData[ 0 ], slot.PicData.size() ) )
-            {
-                // Copy to texture
-                GL( glBindTexture( GL_TEXTURE_2D, SaveLoadDraft.TargetTexture->Id ) );
-                GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, GL_BGR, GL_UNSIGNED_BYTE, ilGetData() ) );
-                GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
-                SaveLoadDraftValid = true;
-            }
-
-            // Clean up
-            ilDeleteImages( 1, &img );
+            // Copy to texture
+            GL( glBindTexture( GL_TEXTURE_2D, SaveLoadDraft.TargetTexture->Id ) );
+            GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, &slot.PicData[ 0 ] ) );
+            GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
+            SaveLoadDraftValid = true;
         }
     }
     else if( SaveLoadSave && SaveLoadSlotIndex == (int) SaveLoadDataSlots.size() )

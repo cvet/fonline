@@ -253,7 +253,8 @@ Sprite& Sprites::InsertSprite( int draw_order, int hx, int hy, int cut, int x, i
         Resize( spritesTreeSize + SPRITES_RESIZE_COUNT );
     if( index < spritesTreeSize - 1 )
     {
-        spritesTree.insert( spritesTree.begin() + index, spritesTree.back() );
+        Sprite* back = spritesTree.back();
+        spritesTree.insert( spritesTree.begin() + index, back );
         spritesTree.pop_back();
     }
 
@@ -274,7 +275,8 @@ void Sprites::Resize( uint size )
         // spritesPool.erase(spritesPool.begin()+tree_size-diff,spritesPool.end());
         for( uint i = 0; i < diff; i++ )
         {
-            spritesTree.push_back( spritesPool.back() );
+            Sprite* back = spritesPool.back();
+            spritesTree.push_back( back );
             spritesPool.pop_back();
         }
     }
@@ -294,7 +296,8 @@ void Sprites::Resize( uint size )
         // spritesTree.erase(spritesTree.begin()+tree_size-diff,spritesTree.end());
         for( uint i = 0; i < diff; i++ )
         {
-            spritesPool.push_back( spritesTree.back() );
+            Sprite* back = spritesTree.back();
+            spritesPool.push_back( back );
             spritesTree.pop_back();
         }
     }
