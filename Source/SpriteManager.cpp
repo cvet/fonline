@@ -32,10 +32,6 @@ SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), S
     vbMain = 0;
     ibMain = 0;
     ibDirect = 0;
-    #ifdef FO_WINDOWS
-    deviceContext = NULL;
-    glContext = NULL;
-    #endif
 }
 
 bool SpriteManager::Init()
@@ -51,15 +47,36 @@ bool SpriteManager::Init()
     modeHeight = GameOpt.ScreenHeight;
     curSprCnt = 0;
 
+    // Initialize window
+    MainWindow = SDL_CreateWindow( GetWindowName(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, modeWidth, modeHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
+    if( !MainWindow )
+    {
+        WriteLog( "SDL Window not created, error<%s>.\n", SDL_GetError() );
+        return false;
+    }
+    Renderer = SDL_CreateRenderer( MainWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE );
+    if( !Renderer )
+    {
+        WriteLog( "SDL Renderer not created, error<%s>.\n", SDL_GetError() );
+        return false;
+    }
+    GLContext = SDL_GL_CreateContext( MainWindow );
+    if( !GLContext )
+    {
+        WriteLog( "SDL Context not created, error<%s>.\n", SDL_GetError() );
+        return false;
+    }
+
+    SDL_ShowCursor( 0 );
+    if( GameOpt.FullScreen )
+        SDL_SetWindowFullscreen( MainWindow, 1 );
+
+    SDL_GL_MakeCurrent( MainWindow, GLContext );
+
     // Create context
-    gl_start();
     GL( glDisable( GL_SCISSOR_TEST ) );
     GL( glDrawBuffer( GL_BACK ) );
-    GL( glViewport( 0, 0, MainWindow->w(), MainWindow->h() ) );
-    #ifdef FO_WINDOWS
-    deviceContext = wglGetCurrentDC();
-    glContext = wglGetCurrentContext();
-    #endif
+    GL( glViewport( 0, 0, modeWidth, modeHeight ) );
 
     // Initialize GLEW
     GLenum glew_result = glewInit();
@@ -150,11 +167,7 @@ bool SpriteManager::Init()
 
     // Clear scene
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
-    #ifdef FO_WINDOWS
-    SwapBuffers( deviceContext );
-    #else
-    glXSwapBuffers( fl_display, fl_window );
-    #endif
+    SDL_GL_SwapWindow( MainWindow );
     PushRenderTarget( rtMain );
 
     // Generate dummy animation
@@ -240,25 +253,18 @@ bool SpriteManager::InitRenderStates()
     GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) modeWidth, (float) modeHeight, 0.0f, -1.0f, 1.0f ) );
     projectionMatrixCM.Transpose();         // Convert to column major order
     GL( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
-    #ifdef FO_WINDOWS
-    if( !GameOpt.VSync && WGLEW_EXT_swap_control )
-        wglSwapIntervalEXT( 0 );
-    #else
-    if( !GameOpt.VSync && GLXEW_SGI_swap_control )
-        glXSwapIntervalSGI( 0 );
-    else if( !GameOpt.VSync && GLXEW_EXT_swap_control )
-        glXSwapIntervalEXT( glXGetCurrentDisplay(), glXGetCurrentDrawable(), 0 );
-    #endif
-    GL( glEnable( GL_TEXTURE_2D ) );
-    GL( glEnable( GL_BLEND ) );
-    GL( glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA ) );
+    if( !GameOpt.VSync )
+        SDL_GL_SetSwapInterval( 0 );
     GL( glEnable( GL_ALPHA_TEST ) );
     GL( glAlphaFunc( GL_GEQUAL, 1.0f / 255.0f ) );
     GL( glShadeModel( GL_SMOOTH ) );
     GL( glEnable( GL_POINT_SMOOTH ) );
     GL( glEnable( GL_LINE_SMOOTH ) );
-    GL( glDisable( GL_CULL_FACE ) );
     GL( glDisable( GL_LIGHTING ) );
+    GL( glEnable( GL_TEXTURE_2D ) );
+    GL( glEnable( GL_BLEND ) );
+    GL( glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA ) );
+    GL( glDisable( GL_CULL_FACE ) );
     GL( glActiveTexture( GL_TEXTURE0 ) );
 
     return true;
@@ -303,11 +309,9 @@ void SpriteManager::EndScene()
     PopRenderTarget();
     DrawRenderTarget( rtMain, false );
     PushRenderTarget( rtMain );
-    #ifdef FO_WINDOWS
-    SwapBuffers( deviceContext );
-    #else
-    glXSwapBuffers( fl_display, fl_window );
-    #endif
+
+    SDL_GL_SwapWindow( MainWindow );
+
     if( GameOpt.OpenGLDebug && glGetError() != GL_NO_ERROR )
     {
         WriteLogF( _FUNC_, " - Unknown place of OpenGL error.\n" );
@@ -651,7 +655,9 @@ void SpriteManager::RefreshViewPort()
     }
     else
     {
-        GL( glViewport( 0, 0, MainWindow->w(), MainWindow->h() ) );
+        int w = 0, h = 0;
+        SDL_GetWindowSize( MainWindow, &w, &h );
+        GL( glViewport( 0, 0, w, h ) );
     }
 }
 
@@ -862,8 +868,10 @@ void SpriteManager::SaveSufaces()
 void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
 {
     // Size
-    uint w = ( tex ? tex->Width : MainWindow->w() );
-    uint h = ( tex ? tex->Height : MainWindow->h() );
+    int w = ( tex ? tex->Width : 0 );
+    int h = ( tex ? tex->Height : 0 );
+    if( !tex )
+        SDL_GetWindowSize( MainWindow, &w, &h );
 
     // Get data
     uchar* data;
@@ -881,8 +889,8 @@ void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
     if( flip )
     {
         uint* data4 = (uint*) data;
-        for( uint y = 0; y < h / 2; y++ )
-            for( uint x = 0; x < w; x++ )
+        for( int y = 0; y < h / 2; y++ )
+            for( int x = 0; x < w; x++ )
                 std::swap( data4[ y * w + x ], data4[ ( h - y - 1 ) * w + x ] );
     }
 

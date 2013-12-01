@@ -48,17 +48,6 @@ const char* GetLastSocketError();
 # define SD_BOTH              SHUT_RDWR
 #endif
 
-// FLTK
-#if defined ( FO_MSVC )
-# if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
-#  pragma comment( lib, "fltk.lib" )
-#  pragma comment( lib, "fltkgl.lib" )
-# endif
-#elif defined ( FO_MACOSX )
-# define fl_display           glXGetCurrentDisplay()
-# define fl_window            ( (uint) fl_xid( MainWindow ) )
-#endif
-
 // DLL
 #ifdef FO_WINDOWS
 # define DLL_Load( name )                 (void*) LoadLibrary( name )
@@ -180,37 +169,32 @@ struct ScoreType
 # define COLOR_ARGB( a, r, g, b )         ( (uint) ( ( ( ( a ) & 0xff ) << 24 ) | ( ( ( r ) & 0xff ) << 16 ) | ( ( ( g ) & 0xff ) << 8 ) | ( ( b ) & 0xff ) ) )
 # define COLOR_XRGB( r, g, b )            COLOR_ARGB( 0xff, r, g, b )
 
-# include "FL/Fl.H"
-# include "FL/Fl_Window.H"
-# include "FL/x.H"
-
-class FOWindow: public Fl_Window
-{
-public:
-    FOWindow();
-    virtual ~FOWindow() {}
-    virtual int handle( int event );
-    bool   Focused;
-    IntVec KeyboardEvents;
-    StrVec KeyboardEventsText;
-    IntVec MouseEvents;
-};
-extern FOWindow* MainWindow; // Initialized and handled in MainClient.cpp / MainMapper.cpp
-
-# define GLEW_NO_GLU
-# include "GL/glew.h"
+# include "SDL/SDL.h"
+# if SDL_VIDEO_OPENGL
+#  define GLEW_NO_GLU
+#  include "GL/glew.h"
+#  include "SDL/SDL_opengl.h"
+#  define GL_HAS( extension )             ( GLEW_ ## extension )
+# endif
 # include "GL/glu_stuff.h"
-# define GL_HAS( extension )              ( GLEW_ ## extension )
-# ifdef FO_WINDOWS
-#  include "GL/wglew.h"
+# ifdef FO_MSVC
 #  pragma comment( lib, "opengl32.lib" )
 #  pragma comment( lib, "glu32.lib" )
-# else
-#  include "GL/glxew.h"
+#  pragma comment( lib, "SDL2_static.lib" )
+#  pragma comment( lib, "Version.lib" )
+#  pragma comment( lib, "Winmm.lib" )
+#  pragma comment( lib, "Imm32.lib" )
 # endif
-# include "FL/gl.h"
-# include "Assimp/aiTypes.h"
 # define GL( expr )                       { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X>.\n", err__ ); ExitProcess( 0 ); } } }
+
+extern SDL_Window*   MainWindow;
+extern SDL_Renderer* Renderer;
+extern SDL_GLContext GLContext;
+extern IntVec        MainWindowKeyboardEvents;
+extern StrVec        MainWindowKeyboardEventsText;
+extern IntVec        MainWindowMouseEvents;
+
+# include "Assimp/aiTypes.h"
 
 # define COLOR_FIX( c )                   COLOR_ARGB( ( (uchar*) &( c ) )[ 3 ], ( (uchar*) &( c ) )[ 0 ], ( (uchar*) &( c ) )[ 1 ], ( (uchar*) &( c ) )[ 2 ] )
 

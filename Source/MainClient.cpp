@@ -8,9 +8,6 @@
 # include <signal.h>
 #endif
 
-FOWindow* MainWindow = NULL;
-FOClient* FOEngine = NULL;
-
 int main( int argc, char** argv )
 {
     RestoreMainDirectory();
@@ -121,15 +118,12 @@ int main( int argc, char** argv )
     // Options
     GetClientOptions();
 
-    // Create window
-    MainWindow = new FOWindow();
-
     // Start message
     WriteLog( "Starting FOnline (version %04X-%02X)...\n", CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF );
 
     // Create engine
-    FOEngine = new FOClient();
-    if( !FOEngine || !FOEngine->Init() )
+    FOClient* engine = new FOClient();
+    if( !engine || !engine->Init() )
     {
         WriteLog( "FOnline engine initialization fail.\n" );
         GameOpt.Quit = true;
@@ -137,16 +131,15 @@ int main( int argc, char** argv )
     }
 
     // Loop
-    while( !GameOpt.Quit && Fl::check() )
+    while( !GameOpt.Quit )
     {
-        if( !FOEngine->MainLoop() )
+        if( !engine->MainLoop() )
             Thread::Sleep( 100 );
     }
-    GameOpt.Quit = true;
 
     // Destroy engine
-    FOEngine->Finish();
-    SAFEDEL( FOEngine );
+    engine->Finish();
+    SAFEDEL( engine );
 
     // Finish
     #ifdef FO_WINDOWS
@@ -159,3 +152,12 @@ int main( int argc, char** argv )
 
     return 0;
 }
+
+#ifdef FO_WINDOWS
+int CALLBACK WinMain( HINSTANCE instance, HINSTANCE prev_instance, char* cmd_line, int cmd_show )
+{
+    char** argv = new char*[ 1 ];
+    argv[ 0 ] = cmd_line;
+    return main( 1, argv );
+}
+#endif

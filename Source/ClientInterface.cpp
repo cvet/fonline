@@ -5673,12 +5673,7 @@ void FOClient::SetCurPos( int x, int y )
 {
     GameOpt.MouseX = x;
     GameOpt.MouseY = y;
-    #ifdef FO_WINDOWS
-    WINDOWINFO wi;
-    wi.cbSize = sizeof( wi );
-    GetWindowInfo( fl_xid( MainWindow ), &wi );
-    SetCursorPos( wi.rcClient.left + GameOpt.MouseX, wi.rcClient.top + GameOpt.MouseY );
-    #endif
+    SDL_WarpMouseInWindow( MainWindow, x, y );
 }
 
 // ==============================================================================================================================
@@ -11532,11 +11527,13 @@ void FOClient::SaveLoadFillDraft()
 {
     SaveLoadProcessDraft = false;
     SaveLoadDraftValid = false;
+    int w = 0, h = 0;
+    SDL_GetWindowPosition( MainWindow, &w, &h );
     RenderTarget rt;
-    if( SprMngr.CreateRenderTarget( rt, false, false, MainWindow->w(), MainWindow->h(), true ) )
+    if( SprMngr.CreateRenderTarget( rt, false, false, w, h, true ) )
     {
         GL( glBindTexture( GL_TEXTURE_2D, rt.TargetTexture->Id ) );
-        GL( glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, MainWindow->w(), MainWindow->h() ) );
+        GL( glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h ) );
         GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
         SprMngr.PushRenderTarget( SaveLoadDraft );
         SprMngr.DrawRenderTarget( rt, false );

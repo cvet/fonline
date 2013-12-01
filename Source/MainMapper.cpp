@@ -4,9 +4,6 @@
 #include "Version.h"
 #include <locale.h>
 
-FOWindow* MainWindow = NULL;
-FOMapper* Mapper = NULL;
-
 int main( int argc, char** argv )
 {
     setlocale( LC_ALL, "Russian" );
@@ -33,12 +30,9 @@ int main( int argc, char** argv )
 
     WriteLog( "Starting Mapper (%s)...\n", MAPPER_VERSION_STR );
 
-    // Create window
-    MainWindow = new FOWindow();
-
     // Create engine
-    Mapper = new FOMapper();
-    if( !Mapper || !Mapper->Init() )
+    FOMapper* mapper = new FOMapper();
+    if( !mapper || !mapper->Init() )
     {
         WriteLog( "FOnline engine initialization fail.\n" );
         GameOpt.Quit = true;
@@ -46,21 +40,24 @@ int main( int argc, char** argv )
     }
 
     // Loop
-    while( !GameOpt.Quit && Fl::check() )
-        Mapper->MainLoop();
-    GameOpt.Quit = true;
+    while( !GameOpt.Quit )
+        mapper->MainLoop();
 
     // Destroy engine
-    Mapper->Finish();
-    SAFEDEL( Mapper );
+    mapper->Finish();
+    SAFEDEL( mapper );
 
-    // Finish
-    #ifdef FO_WINDOWS
-    if( Singleplayer )
-        SingleplayerData.Finish();
-    #endif
     WriteLog( "FOnline finished.\n" );
     LogFinish();
 
     return 0;
 }
+
+#ifdef FO_WINDOWS
+int CALLBACK WinMain( HINSTANCE instance, HINSTANCE prev_instance, char* cmd_line, int cmd_show )
+{
+	char** argv = new char*[ 1 ];
+	argv[ 0 ] = cmd_line;
+	return main( 1, argv );
+}
+#endif

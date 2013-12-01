@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include <strstream>
 
-static uchar  KeysMap[ 0x10000 ] = { 0 };
+static uchar  KeysMap[ 0x200 ] = { 0 };
 static ushort KeysMapRevert[ 0x100 ] = { 0 };
 static uchar  KeysMapUser[ 0x100 ] = { 0 };
 #define MAKE_KEY_CODE( name, index, code ) \
@@ -141,7 +141,7 @@ void Keyb::GetCharInternal( uchar dik, const char* dik_text, char* str, uint* po
     // Clipboard
     else if( CtrlDwn && !ShiftDwn && str_len > 0 && ( dik == DIK_C || dik == DIK_X ) )
     {
-        Fl::copy( str, Str::Length( str ), 1 );
+        SDL_SetClipboardText( str );
         if( dik == DIK_X )
         {
             *str = '\0';
@@ -150,7 +150,12 @@ void Keyb::GetCharInternal( uchar dik, const char* dik_text, char* str, uint* po
     }
     else if( CtrlDwn && !ShiftDwn && dik == DIK_V )
     {
-        Fl::paste( *MainWindow, 1 );
+        MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
+        MainWindowKeyboardEvents.push_back( 0 );
+        MainWindowKeyboardEventsText.push_back( SDL_GetClipboardText() );
+        MainWindowKeyboardEvents.push_back( SDL_KEYUP );
+        MainWindowKeyboardEvents.push_back( 0 );
+        MainWindowKeyboardEventsText.push_back( "" );
     }
     else if( dik == DIK_CLIPBOARD_PASTE )
     {

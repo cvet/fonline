@@ -230,10 +230,6 @@ private:
     RenderTarget    rt3D, rt3DMS;
     RenderTarget    rt3DSprite, rt3DMSSprite;
     RenderTargetVec rtStack;
-    #ifdef FO_WINDOWS
-    HDC             deviceContext;
-    HGLRC           glContext;
-    #endif
 
 public:
     static AnyFrames* DummyAnimation;
