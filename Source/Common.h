@@ -169,7 +169,7 @@ struct ScoreType
 # define COLOR_XRGB( r, g, b )            COLOR_ARGB( 0xff, r, g, b )
 
 # include "SDL/SDL.h"
-# if SDL_VIDEO_OPENGL
+# if !defined ( FO_OSX_IOS )
 #  define GLEW_NO_GLU
 #  include "GL/glew.h"
 #  include "SDL/SDL_opengl.h"

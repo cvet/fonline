@@ -161,3 +161,16 @@ int CALLBACK WinMain( HINSTANCE instance, HINSTANCE prev_instance, char* cmd_lin
     return main( 1, argv );
 }
 #endif
+
+#ifdef FO_OSX
+extern "C" int osx_fonline_entry()
+{
+    char** argv = new char*[ 1 ];
+    # ifdef FO_OSX_IOS
+    argv[ 0 ] = strdup( "-iOS 1" );
+    # else
+    argv[ 0 ] = strdup( "-OSX 1" );
+    # endif
+    return main( 1, argv );
+}
+#endif
