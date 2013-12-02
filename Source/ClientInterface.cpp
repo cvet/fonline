@@ -6367,7 +6367,7 @@ void FOClient::GmapLMouseDown()
     }
     else
     {
-        for( int i = 0; i < HexMngr.GetCritters().size(); i++ )
+        for( int i = 0; i < (int) HexMngr.GetCritters().size(); i++ )
         {
             if( !IsCurInRect( Rect( GmapWName, GmapWNameStepX * i, GmapWNameStepY * i ) ) )
                 continue;

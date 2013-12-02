@@ -209,6 +209,7 @@ struct ScoreType
 #  pragma comment( lib, "opengl32.lib" )
 #  pragma comment( lib, "glu32.lib" )
 #  pragma comment( lib, "SDL2_static.lib" )
+#  pragma comment( lib, "SDL2main.lib" )
 #  pragma comment( lib, "Version.lib" )
 #  pragma comment( lib, "Winmm.lib" )
 #  pragma comment( lib, "Imm32.lib" )
