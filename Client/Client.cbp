@@ -51,20 +51,8 @@
 			<Add option="-static-libgcc" />
 			<Add option="-ldl" />
 			<Add option="-lpthread" />
-			<Add option="-lstlport" />
-			<Add option="-lfltk" />
-			<Add option="-lfltk_gl" />
-			<Add option="-lIL" />
-			<Add option="-ljpeg" />
-			<Add option="-lpng12" />
-			<Add option="-ltiff" />
-			<Add option="-ljbig" />
-			<Add option="-llzma" />
-			<Add option="-lmng" />
-			<Add option="-llcms" />
-			<Add option="-lportaudio" />
-			<Add option="-lasound" />
-			<Add option="-ljack" />
+			<Add option="-lSDL2" />
+			<Add option="-lpng16" />
 			<Add option="-lvorbisfile" />
 			<Add option="-lvorbis" />
 			<Add option="-ltheoradec" />
@@ -73,7 +61,6 @@
 			<Add option="-lXft" />
 			<Add option="-lXinerama" />
 			<Add option="-lGL" />
-			<Add option="-lGLU" />
 		</Linker>
 		<Unit filename="Client.ico" />
 		<Unit filename="../Source/3dAnimation.h" />

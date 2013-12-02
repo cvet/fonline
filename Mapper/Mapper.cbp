@@ -55,22 +55,12 @@
 			<Add option="-static-libgcc" />
 			<Add option="-ldl" />
 			<Add option="-lpthread" />
-			<Add option="-lstlport" />
-			<Add option="-lfltk" />
-			<Add option="-lfltk_gl" />
-			<Add option="-lIL" />
-			<Add option="-ljpeg" />
-			<Add option="-lpng12" />
-			<Add option="-ltiff" />
-			<Add option="-ljbig" />
-			<Add option="-llzma" />
-			<Add option="-lmng" />
-			<Add option="-llcms" />
+			<Add option="-lSDL2" />
+			<Add option="-lpng16" />
 			<Add option="-lX11" />
 			<Add option="-lXft" />
 			<Add option="-lXinerama" />
 			<Add option="-lGL" />
-			<Add option="-lGLU" />
 		</Linker>
 		<Unit filename="Mapper.ico" />
 		<Unit filename="../Source/3dAnimation.h" />

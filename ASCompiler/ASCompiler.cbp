@@ -50,7 +50,6 @@
 		<Linker>
 			<Add option="-static-libgcc" />
 			<Add option="-ldl" />
-			<Add option="-lstlport" />
 		</Linker>
 		<Unit filename="ScriptEngine.h" />
 		<Unit filename="../Source/ASCompiler.cpp" />

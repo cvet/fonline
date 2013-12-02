@@ -77,10 +77,9 @@
 			<Add option="-static-libgcc" />
 			<Add option="-ldl" />
 			<Add option="-lpthread" />
-			<Add option="-lstlport" />
 			<Add option="-levent_core" />
 			<Add option="-levent_pthreads" />
-			<Add option="-lpng15" />
+			<Add option="-lpng16" />
 		</Linker>
 		<Unit filename="Server.ico" />
 		<Unit filename="../Source/AI.cpp" />
