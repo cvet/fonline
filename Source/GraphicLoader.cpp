@@ -1223,6 +1223,10 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
                 *ver_end = 0;
             }
         }
+        #ifdef FO_OSX_IOS
+        char ios_data[] = { "precision mediump float;\n" };
+        ver = ios_data;
+        #endif
 
         // Create shaders
         GLuint vs, fs;
@@ -1651,10 +1655,26 @@ bool GraphicLoader::LoadDefaultEffects()
 
 uchar* GraphicLoader::LoadPNG( const uchar* data, uint data_size, uint& result_size, uint& result_width, uint& result_height )
 {
+    struct PNGMessage
+    {
+        static void Error( png_structp png_ptr, png_const_charp error_msg )
+        {
+            UNUSED_VARIABLE( png_ptr );
+            WriteLogF( _FUNC_, " - PNG error<%s>.\n", error_msg );
+        }
+        static void Warning( png_structp png_ptr, png_const_charp error_msg )
+        {
+            UNUSED_VARIABLE( png_ptr );
+            // WriteLogF( _FUNC_, " - PNG warning<%s>.\n", error_msg );
+        }
+    };
+
     // Setup PNG reader
     png_structp png_ptr = png_create_read_struct( PNG_LIBPNG_VER_STRING, NULL, NULL, NULL );
     if( !png_ptr )
         return NULL;
+
+    png_set_error_fn( png_ptr, png_get_error_ptr( png_ptr ), &PNGMessage::Error, &PNGMessage::Warning );
 
     png_infop info_ptr = png_create_info_struct( png_ptr );
     if( !info_ptr )

@@ -407,7 +407,7 @@ bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, in
 
 void RestoreMainDirectory()
 {
-    #ifdef FO_WINDOWS
+    #if defined ( FO_WINDOWS )
     // Get executable file path
     char path[ MAX_FOPATH ] = { 0 };
     GetModuleFileName( GetModuleHandle( NULL ), path, MAX_FOPATH );
@@ -421,7 +421,7 @@ void RestoreMainDirectory()
 
     // Set executable directory
     SetCurrentDirectory( path );
-    #else
+    #elif defined ( FO_LINUX )
     // Read symlink to executable
     char buf[ MAX_FOPATH ];
     if( readlink( "/proc/self/exe", buf, MAX_FOPATH ) != -1 ||    // Linux
@@ -435,6 +435,15 @@ void RestoreMainDirectory()
             chdir( buf );
         }
     }
+    #elif defined ( FO_OSX )
+    // Temporary hack
+    char path[ MAX_FOPATH ] = { 0 };
+    getcwd( path, MAX_FOPATH );
+    printf( "Cur path<%s>.\n", path );
+    chdir( "/Users/admin/Documents/sdk/Client" );
+    path[ 0 ] = 0;
+    getcwd( path, MAX_FOPATH );
+    printf( "New path<%s>.\n", path );
     #endif
 }
 
