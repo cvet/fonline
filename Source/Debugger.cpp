@@ -263,11 +263,11 @@ const char* Debugger::GetMemoryStatistics()
 // Memory tracing
 struct StackInfo
 {
-    uint   Hash;
+    size_t Hash;
     char*  Name;
     size_t Heap;
-    uint   Chunks;
-    uint   Size;
+    size_t Chunks;
+    size_t Size;
 };
 static bool                         MemoryTrace;
 typedef pair< StackInfo*, size_t > StackInfoSize;
@@ -561,7 +561,7 @@ StackInfo* GetStackInfo( const void* caller )
     str.reserve( 16384 );
 
     char buf[ 64 ];
-    sprintf( buf, "\t0x%08X\n\n", (uint) caller );
+    sprintf( buf, "\t%p\n\n", caller );
     str += buf;
 
     StackInfo* si = new StackInfo();
@@ -690,7 +690,7 @@ string Debugger::GetTraceMemory()
     for( auto it = blocks_chunks.begin(), end = blocks_chunks.end(); it != end; ++it )
     {
         StackInfo* si = *it;
-        sprintf( buf, "%06u) Size %-10u Chunks %-10u Heap %08X\n", cur++, si->Size, si->Chunks, (uint) si->Heap );
+        sprintf( buf, "%06u) Size %-10zu Chunks %-10zu Heap %zu\n", cur++, si->Size, si->Chunks, si->Heap );
         str += buf;
         str += si->Name;
     }

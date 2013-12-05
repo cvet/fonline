@@ -61,7 +61,7 @@ public:
 
     uint GetBoneOutputCount()
     {
-        return boneOutputs.size();
+        return (uint) boneOutputs.size();
     }
 
     float GetDuration()
@@ -71,31 +71,31 @@ public:
 
     void Save( FileManager& file )
     {
-        uint len = animFileName.length();
+        uint len = (uint) animFileName.length();
         file.SetData( &len, sizeof( len ) );
         file.SetData( &animFileName[ 0 ], len );
-        len = animName.length();
+        len = (uint) animName.length();
         file.SetData( &len, sizeof( len ) );
         file.SetData( &animName[ 0 ], len );
         file.SetData( &durationTicks, sizeof( durationTicks ) );
         file.SetData( &ticksPerSecond, sizeof( ticksPerSecond ) );
-        len = boneOutputs.size();
+        len = (uint) boneOutputs.size();
         file.SetData( &len, sizeof( len ) );
         for( auto it = boneOutputs.begin(), end = boneOutputs.end(); it != end; ++it )
         {
             BoneOutput& o = *it;
-            uint        len = o.name.length();
+            uint        len = (uint) o.name.length();
             file.SetData( &len, sizeof( len ) );
             file.SetData( &o.name[ 0 ], len );
-            len = o.scaleTime.size();
+            len = (uint) o.scaleTime.size();
             file.SetData( &len, sizeof( len ) );
             file.SetData( &o.scaleTime[ 0 ], len * sizeof( o.scaleTime[ 0 ] ) );
             file.SetData( &o.scaleValue[ 0 ], len * sizeof( o.scaleValue[ 0 ] ) );
-            len = o.rotationTime.size();
+            len = (uint) o.rotationTime.size();
             file.SetData( &len, sizeof( len ) );
             file.SetData( &o.rotationTime[ 0 ], len * sizeof( o.rotationTime[ 0 ] ) );
             file.SetData( &o.rotationValue[ 0 ], len * sizeof( o.rotationValue[ 0 ] ) );
-            len = o.translationTime.size();
+            len = (uint) o.translationTime.size();
             file.SetData( &len, sizeof( len ) );
             file.SetData( &o.translationTime[ 0 ], len * sizeof( o.translationTime[ 0 ] ) );
             file.SetData( &o.translationValue[ 0 ], len * sizeof( o.translationValue[ 0 ] ) );
@@ -267,7 +267,7 @@ public:
 
     uint GetNumAnimationSets()
     {
-        return sets->size();
+        return (uint) sets->size();
     }
 
     void SetTrackAnimationSet( uint track, AnimSet* anim )
@@ -335,7 +335,7 @@ public:
         curTime += time;
 
         // Track events
-        for( uint i = 0, j = tracks.size(); i < j; i++ )
+        for( uint i = 0, j = (uint) tracks.size(); i < j; i++ )
         {
             Track& track = tracks[ i ];
 
@@ -390,17 +390,17 @@ public:
         }
 
         // Track animation
-        for( uint i = 0, j = tracks.size(); i < j; i++ )
+        for( uint i = 0, j = (uint) tracks.size(); i < j; i++ )
         {
             Track& track = tracks[ i ];
 
-            for( uint k = 0, l = outputs->size(); k < l; k++ )
+            for( uint k = 0, l = (uint) outputs->size(); k < l; k++ )
                 ( *outputs )[ k ].valid[ i ] = false;
 
             if( !track.enabled || track.weight <= 0.0f || !track.anim )
                 continue;
 
-            for( uint k = 0, l = track.anim->boneOutputs.size(); k < l; k++ )
+            for( uint k = 0, l = (uint) track.anim->boneOutputs.size(); k < l; k++ )
             {
                 if( !track.animOutput[ k ] )
                     continue;
@@ -417,7 +417,7 @@ public:
         }
 
         // Blend tracks
-        for( uint i = 0, j = outputs->size(); i < j; i++ )
+        for( uint i = 0, j = (uint) outputs->size(); i < j; i++ )
         {
             Output& o = ( *outputs )[ i ];
 
@@ -437,7 +437,7 @@ public:
             }
             else
             {
-                for( uint k = 0, l = tracks.size(); k < l; k++ )
+                for( uint k = 0, l = (uint) tracks.size(); k < l; k++ )
                 {
                     if( o.valid[ k ] )
                     {
@@ -458,7 +458,7 @@ private:
     template< class T >
     void FindSRTValue( float time, FloatVec& times, vector< T >& values, T& result )
     {
-        for( uint n = 0, m = times.size(); n < m; n++ )
+        for( uint n = 0, m = (uint) times.size(); n < m; n++ )
         {
             if( n + 1 < m )
             {

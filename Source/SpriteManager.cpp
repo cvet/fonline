@@ -48,6 +48,7 @@ bool SpriteManager::Init()
     curSprCnt = 0;
 
     // Initialize window
+    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
     MainWindow = SDL_CreateWindow( GetWindowName(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, modeWidth, modeHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
     if( !MainWindow )
     {
@@ -240,10 +241,10 @@ bool SpriteManager::InitBuffers()
         GL( glBindVertexArray( vaMain ) );
         GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
         GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibMain ) );
-        GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, x ) ) );
-        GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, diffuse ) ) );
-        GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, tu ) ) );
-        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, tu2 ) ) );
+        GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, x ) ) );
+        GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, diffuse ) ) );
+        GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, tu ) ) );
+        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, tu2 ) ) );
         GL( glEnableVertexAttribArray( 0 ) );
         GL( glEnableVertexAttribArray( 1 ) );
         GL( glEnableVertexAttribArray( 2 ) );
@@ -695,10 +696,10 @@ void SpriteManager::EnableVertexArray( GLuint ib, uint count )
         GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
         GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ib ) );
         GL( glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof( Vertex ) * count, &vBuffer[ 0 ] ) );
-        GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, x ) ) );
-        GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, diffuse ) ) );
-        GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, tu ) ) );
-        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) OFFSETOF( Vertex, tu2 ) ) );
+        GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, x ) ) );
+        GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, diffuse ) ) );
+        GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, tu ) ) );
+        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, tu2 ) ) );
         GL( glEnableVertexAttribArray( 0 ) );
         GL( glEnableVertexAttribArray( 1 ) );
         GL( glEnableVertexAttribArray( 2 ) );
@@ -3207,7 +3208,7 @@ bool SpriteManager::Flush()
         {
             if( effect->IsNeedProcess )
                 GraphicLoader::EffectProcessVariables( effect, pass );
-            GL( glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (void*) ( rpos * 2 ) ) );
+            GL( glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (void*) (size_t) ( rpos * 2 ) ) );
         }
 
         rpos += 6 * dip.SpritesCount;
@@ -4013,7 +4014,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
         effect = Effect::Primitive;
 
     // Check primitives
-    uint   count = points.size();
+    uint   count = (uint) points.size();
     int    prim_count = (int) count;
     GLenum prim_type;
     switch( prim )

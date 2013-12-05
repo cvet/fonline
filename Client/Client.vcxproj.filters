@@ -17,9 +17,6 @@
     <Filter Include="AngelScript">
       <UniqueIdentifier>{3fb31d18-c986-431c-a007-0d54747729a2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="DatFile">
-      <UniqueIdentifier>{0266fab2-2894-4151-a4bc-e9d1df42cec5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="SHA2">
       <UniqueIdentifier>{1490fc80-a152-44fc-8f0d-a4c31a49c091}</UniqueIdentifier>
     </Filter>
@@ -141,9 +138,6 @@
       <Filter>Client</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\ItemManager.h">
-      <Filter>Client</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\ItemPid.h">
       <Filter>Client</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\Keyboard.h">
@@ -334,12 +328,6 @@
     </ClInclude>
     <ClInclude Include="..\Source\AngelScript\scriptmath.h">
       <Filter>AngelScript</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\datfile\cfile.h">
-      <Filter>DatFile</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\datfile\unlzss.h">
-      <Filter>DatFile</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\SHA2\sha2.h">
       <Filter>SHA2</Filter>
@@ -619,12 +607,6 @@
     <ClCompile Include="..\Source\AngelScript\scriptmath.cpp">
       <Filter>AngelScript</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\datfile\cfile.cpp">
-      <Filter>DatFile</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\datfile\unlzss.cpp">
-      <Filter>DatFile</Filter>
-    </ClCompile>
     <ClCompile Include="..\Source\SHA2\sha2.c">
       <Filter>SHA2</Filter>
     </ClCompile>
@@ -655,5 +637,13 @@
     <ClCompile Include="..\Source\GL\glu_stuff.cpp">
       <Filter>GL</Filter>
     </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_callfunc_x64_msvc.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\Source\AngelScript\as_callfunc_x64_msvc_asm.asm">
+      <Filter>AngelScript</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

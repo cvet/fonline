@@ -936,7 +936,7 @@ public:
     void BarterTryOffer();
     void BarterTransfer( uint item_id, int item_cont, uint item_count );
     void ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint& volume, int barter_k, bool sell );
-    void FormatTags( char* text, size_t text_len, CritterCl* player, CritterCl* npc, const char* lexems );
+    void FormatTags( char* text, uint text_len, CritterCl* player, CritterCl* npc, const char* lexems );
 
     void DlgDraw( bool is_dialog );
     void DlgMouseMove( bool is_dialog );

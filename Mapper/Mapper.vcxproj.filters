@@ -11,9 +11,6 @@
     <Filter Include="Zlib">
       <UniqueIdentifier>{817a654a-f437-4dba-94ab-2f6a6d60786c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="DatFile">
-      <UniqueIdentifier>{101ad924-5921-4e6a-8014-a94b87cae38e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="SHA2">
       <UniqueIdentifier>{fdb65ec5-cac0-4bc3-9a5c-8c83c1d6219b}</UniqueIdentifier>
     </Filter>
@@ -190,12 +187,6 @@
     </ClInclude>
     <ClInclude Include="..\Source\Zlib\zutil.h">
       <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\datfile\cfile.h">
-      <Filter>DatFile</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\datfile\unlzss.h">
-      <Filter>DatFile</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\SHA2\sha2.h">
       <Filter>SHA2</Filter>
@@ -486,12 +477,6 @@
     </ClCompile>
     <ClCompile Include="..\Source\Zlib\zutil.c">
       <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\datfile\cfile.cpp">
-      <Filter>DatFile</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\datfile\unlzss.cpp">
-      <Filter>DatFile</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\SHA2\sha2.c">
       <Filter>SHA2</Filter>

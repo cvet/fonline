@@ -90,7 +90,7 @@ bool FOServer::InitScriptSystem()
     #endif
 
     // Init
-    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_SERVER ), "SERVER" ) )
+    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_SERVER ), "SERVER", AllowServerNativeCalls ) )
     {
         WriteLog( "Script System initialization failed.\n" );
         return false;
@@ -289,7 +289,7 @@ bool FOServer::ReloadClientScripts()
     #endif
 
     asIScriptEngine* old_engine = Script::GetEngine();
-    asIScriptEngine* engine = Script::CreateEngine( new ScriptPragmaCallback( PRAGMA_CLIENT ), "CLIENT" );
+    asIScriptEngine* engine = Script::CreateEngine( new ScriptPragmaCallback( PRAGMA_CLIENT ), "CLIENT", AllowClientNativeCalls );
     if( engine )
         Script::SetEngine( engine );
 
@@ -5891,10 +5891,10 @@ uint FOServer::SScriptFunc::Global_GetRegisteredPlayers( ScriptArray* ids, Scrip
         if( names )
             Script::AppendVectorToArrayRef< ScriptString* >( names_, names );
 
-        return ids_.size();
+        return (uint) ids_.size();
     }
 
-    return ClientsData.size();
+    return (uint) ClientsData.size();
 }
 
 uint FOServer::SScriptFunc::Global_GetAllNpc( ushort pid, ScriptArray* npc )

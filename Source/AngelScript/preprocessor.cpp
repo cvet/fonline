@@ -1162,7 +1162,7 @@ bool Preprocessor::FileLoader::LoadFile( const std::string& dir, const std::stri
         return false;
 
     fseek( fs, 0, SEEK_END );
-    int len = ftell( fs );
+    int len = (int) ftell( fs );
     fseek( fs, 0, SEEK_SET );
 
     data.resize( len );

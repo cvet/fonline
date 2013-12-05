@@ -64,7 +64,7 @@ Job Job::PopFront()
     Job job = Jobs.front();
 
     // Check owner
-    uint tid = Thread::GetCurrentId();
+    size_t tid = Thread::GetCurrentId();
     if( job.ThreadId && job.ThreadId != tid )
     {
         for( auto it = Jobs.begin() + 1; it != Jobs.end(); ++it )

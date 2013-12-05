@@ -117,7 +117,7 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
         if( name[ 0 ] )
             Str::Format( str_tid, "[%s]", name );
         else
-            Str::Format( str_tid, "[%04u]", Thread::GetCurrentId() );
+            Str::Format( str_tid, "[%zu]", Thread::GetCurrentId() );
     }
     #endif
 

@@ -8,9 +8,6 @@
     <Filter Include="AngelScript">
       <UniqueIdentifier>{b74489d1-9081-4a2b-bc85-8faa85f671d0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="DatFile">
-      <UniqueIdentifier>{896554e4-4857-4352-80ec-cb99d0698a78}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Zlib">
       <UniqueIdentifier>{b694b7a0-8c44-464f-866f-a94d4570dc5e}</UniqueIdentifier>
     </Filter>
@@ -183,12 +180,6 @@
     </ClInclude>
     <ClInclude Include="..\Source\IniParser.h">
       <Filter>ASCompiler</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\DatFile\cfile.h">
-      <Filter>DatFile</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\DatFile\unlzss.h">
-      <Filter>DatFile</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\DataFile.h">
       <Filter>ASCompiler</Filter>
@@ -386,12 +377,6 @@
     </ClCompile>
     <ClCompile Include="..\Source\IniParser.cpp">
       <Filter>ASCompiler</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\DatFile\cfile.cpp">
-      <Filter>DatFile</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\DatFile\unlzss.cpp">
-      <Filter>DatFile</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\DataFile.cpp">
       <Filter>ASCompiler</Filter>

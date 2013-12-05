@@ -199,7 +199,7 @@ Thread RunTimeoutThread;
 void RunTimeout( void* );
 
 
-bool Script::Init( bool with_log, Preprocessor::PragmaCallback* pragma_callback, const char* dll_target )
+bool Script::Init( bool with_log, Preprocessor::PragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls )
 {
     if( with_log && !StartLog() )
     {
@@ -208,7 +208,7 @@ bool Script::Init( bool with_log, Preprocessor::PragmaCallback* pragma_callback,
     }
 
     // Create default engine
-    Engine = CreateEngine( pragma_callback, dll_target );
+    Engine = CreateEngine( pragma_callback, dll_target, allow_native_calls );
     if( !Engine )
     {
         WriteLogF( _FUNC_, " - Can't create AS engine.\n" );
@@ -441,14 +441,21 @@ void Script::FinishThread()
 
 void* Script::LoadDynamicLibrary( const char* dll_name )
 {
+    // Check for disabled client native calls
+    EngineData* edata = (EngineData*) Engine->GetUserData();
+    if( !edata->AllowNativeCalls )
+    {
+        WriteLogF( _FUNC_, " - Unable to load dll<%s>, native calls not allowed.\n", dll_name );
+        return NULL;
+    }
+
     // Find in already loaded
     char dll_name_lower[ MAX_FOPATH ];
     Str::Copy( dll_name_lower, dll_name );
     #ifdef FO_WINDOWS
     Str::Lower( dll_name_lower );
     #endif
-    EngineData* edata = (EngineData*) Engine->GetUserData();
-    auto        it = edata->LoadedDlls.find( dll_name_lower );
+    auto it = edata->LoadedDlls.find( dll_name_lower );
     if( it != edata->LoadedDlls.end() )
         return ( *it ).second.second;
 
@@ -931,7 +938,7 @@ void Script::SetEngine( asIScriptEngine* engine )
     Engine = engine;
 }
 
-asIScriptEngine* Script::CreateEngine( Preprocessor::PragmaCallback* pragma_callback, const char* dll_target )
+asIScriptEngine* Script::CreateEngine( Preprocessor::PragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls )
 {
     asIScriptEngine* engine = asCreateScriptEngine( ANGELSCRIPT_VERSION );
     if( !engine )
@@ -951,6 +958,7 @@ asIScriptEngine* Script::CreateEngine( Preprocessor::PragmaCallback* pragma_call
     EngineData* edata = new EngineData();
     edata->PragmaCB = pragma_callback;
     edata->DllTarget = dll_target;
+    edata->AllowNativeCalls = allow_native_calls;
     engine->SetUserData( edata );
     return engine;
 }
@@ -1305,9 +1313,8 @@ void RunTimeout( void* data )
 
             if( ProfilerSaveInterval && ProfilerStage == ProfilerWorking && cur_tick >= ProfilerTimeoutTime + ProfilerSaveInterval )
             {
-
                 uint time = Timer::FastTick();
-                uint size = Stacks.size();
+                uint size = (uint) Stacks.size();
 
                 for( auto it = Stacks.begin(), end = Stacks.end(); it != end; ++it )
                 {
@@ -1714,7 +1721,7 @@ public:
 
         FileManager file_prep;
         FormatPreprocessorOutput( result.String );
-        file_prep.SetData( (void*) result.String.c_str(), result.String.length() );
+        file_prep.SetData( (void*) result.String.c_str(), (uint) result.String.length() );
         if( !file_prep.SaveOutBufToFile( Str::FormatBuf( "%sp", fname_script ), ScriptsPath ) )
             WriteLogF( _FUNC_, " - Can't write preprocessed file, script<%s>.\n", module_name );
     }
@@ -2061,7 +2068,7 @@ THREAD size_t            CurrentArg = 0;
 THREAD int               ExecutionRecursionCounter = 0;
 
 #ifdef SCRIPT_MULTITHREADING
-uint       SynchronizeThreadId = 0;
+size_t     SynchronizeThreadId = 0;
 int        SynchronizeThreadCounter = 0;
 MutexEvent SynchronizeThreadLocker;
 Mutex      SynchronizeThreadLocalLocker;
@@ -2324,9 +2331,9 @@ uint64 CallCDeclFunction32( const size_t* args, size_t paramSize, size_t func )
 uint64 __attribute( ( __noinline__ ) ) CallCDeclFunction32( const size_t * args, size_t paramSize, size_t func )
 #endif
 {
-    volatile uint64 retQW;
+    volatile uint64 retQW = 0;
 
-    #if defined ( FO_MSVC )
+    #if defined ( FO_MSVC ) && defined ( FO_X86 )
     // Copy the data to the real stack. If we fail to do
     // this we may run into trouble in case of exceptions.
     __asm
@@ -2426,7 +2433,7 @@ endcopy:
         : "%eax", "%ecx"                    // clobber
         );
     #else
-    retQW = 0;
+    UNUSED_VARIABLE( retQW );
     #endif
 
     return retQW;
@@ -2515,7 +2522,7 @@ void* Script::GetReturnedObject()
 float Script::GetReturnedFloat()
 {
     float            f;
-    #if defined ( FO_MSVC )
+    #if defined ( FO_MSVC ) && defined ( FO_X86 )
     __asm fstp dword ptr[ f ]
     #elif defined ( FO_GCC ) && !defined ( FO_OSX_IOS )
     asm ( "fstps %0 \n" : "=m" ( f ) );
@@ -2528,7 +2535,7 @@ float Script::GetReturnedFloat()
 double Script::GetReturnedDouble()
 {
     double           d;
-    #if defined ( FO_MSVC )
+    #if defined ( FO_MSVC ) && defined ( FO_X86 )
     __asm fstp qword ptr[ d ]
     #elif defined ( FO_GCC ) && !defined ( FO_OSX_IOS )
     asm ( "fstpl %0 \n" : "=m" ( d ) );

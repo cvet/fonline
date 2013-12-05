@@ -35,22 +35,22 @@ public:
 
     ScriptString& operator=( const ScriptString& other )
     {
-        assign( other.c_str(), other.length() );
+        assign( other.c_str(), (uint) other.length() );
         return *this;
     }
     ScriptString& operator+=( const ScriptString& other )
     {
-        append( other.c_str(), other.length() );
+        append( other.c_str(), (uint) other.length() );
         return *this;
     }
     ScriptString& operator=( const std::string& other )
     {
-        assign( other.c_str(), other.length() );
+        assign( other.c_str(), (uint) other.length() );
         return *this;
     }
     ScriptString& operator+=( const std::string& other )
     {
-        append( other.c_str(), other.length() );
+        append( other.c_str(), (uint) other.length() );
         return *this;
     }
     ScriptString& operator=( const char* other )
@@ -74,8 +74,8 @@ public:
     virtual bool indexByteToUTF8( int& index, uint* length = NULL, uint offset = 0 );
 
     const char*        c_str()     const { return buffer.c_str(); }
-    uint               length()    const { return buffer.length(); }
-    uint               capacity()  const { return buffer.capacity(); }
+    uint               length()    const { return (uint) buffer.length(); }
+    uint               capacity()  const { return (uint) buffer.capacity(); }
     const std::string& c_std_str() const { return buffer; }
     int                rcount()    const { return refCount; }
 

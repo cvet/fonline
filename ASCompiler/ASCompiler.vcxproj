@@ -61,7 +61,7 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -88,7 +88,7 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)$(ProjectName)64.exe</OutputFile>
@@ -152,8 +152,6 @@
     <ClInclude Include="..\Source\Common.h" />
     <ClInclude Include="..\Source\Crypt.h" />
     <ClInclude Include="..\Source\DataFile.h" />
-    <ClInclude Include="..\Source\DatFile\cfile.h" />
-    <ClInclude Include="..\Source\DatFile\unlzss.h" />
     <ClInclude Include="..\Source\Debugger.h" />
     <ClInclude Include="..\Source\DummyData.h" />
     <ClInclude Include="..\Source\FileManager.h" />
@@ -299,8 +297,6 @@
     <ClCompile Include="..\Source\Common.cpp" />
     <ClCompile Include="..\Source\Crypt.cpp" />
     <ClCompile Include="..\Source\DataFile.cpp" />
-    <ClCompile Include="..\Source\DatFile\cfile.cpp" />
-    <ClCompile Include="..\Source\DatFile\unlzss.cpp" />
     <ClCompile Include="..\Source\Debugger.cpp" />
     <ClCompile Include="..\Source\FileManager.cpp" />
     <ClCompile Include="..\Source\FileSystem.cpp" />

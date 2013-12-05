@@ -182,9 +182,9 @@ unsigned int ScriptFile::ReadData( unsigned int count, ScriptArray& data )
 
     if( !count )
     {
-        unsigned int pos = ftell( file );
+        long pos = ftell( file );
         fseek( file, 0, SEEK_END );
-        count = ftell( file ) - pos;
+        count = (unsigned int) ( ftell( file ) - pos );
         fseek( file, pos, SEEK_SET );
         if( !count )
             return 0;
@@ -354,9 +354,9 @@ int ScriptFile::GetSize() const
     if( file == 0 )
         return -1;
 
-    int pos = ftell( file );
+    long pos = ftell( file );
     fseek( file, 0, SEEK_END );
-    int size = ftell( file );
+    int size = (int) ftell( file );
     fseek( file, pos, SEEK_SET );
 
     return size;
@@ -367,7 +367,7 @@ int ScriptFile::GetPos() const
     if( file == 0 )
         return -1;
 
-    return ftell( file );
+    return (int) ftell( file );
 }
 
 int ScriptFile::SetPos( int pos )
@@ -417,7 +417,7 @@ int ScriptFile::ReadLine( ScriptString& str )
     do
     {
         // Get the current position so we can determine how many characters were read
-        int start = ftell( file );
+        long start = ftell( file );
 
         // Set the last byte to something different that 0, so that we can check if the buffer was filled up
         buf[ 255 ] = 1;
@@ -428,10 +428,10 @@ int ScriptFile::ReadLine( ScriptString& str )
             break;
 
         // Get the position after the read
-        int end = ftell( file );
+        long end = ftell( file );
 
         // Add the read characters to the output buffer
-        str.append( buf, end - start );
+        str.append( buf, (uint) ( end - start ) );
     }
     while( !feof( file ) && buf[ 255 ] == 0 && buf[ 254 ] != '\n' );
 

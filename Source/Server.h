@@ -138,7 +138,7 @@ public:
         UIntVec Values;
         bool    SignedValues;
         bool    IsSaved;
-        uint    InProcess;
+        size_t  InProcess;
         bool    EraseMe;
     };
     typedef vector< TimeEvent* > TimeEventVec;

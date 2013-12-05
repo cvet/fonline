@@ -644,7 +644,7 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         int size = backtrace( array, BACKTRACE_BUFFSER_COUNT );
         char** symbols = backtrace_symbols( array, size );
 
-        fprintf( f, "Thread '%s' (%u%s)\n", Thread::GetCurrentName(), Thread::GetCurrentId(), ", current" );
+        fprintf( f, "Thread '%s' (%zu%s)\n", Thread::GetCurrentName(), Thread::GetCurrentId(), ", current" );
         for( int i = 0; i < size; i++ )
             fprintf( f, "\t%s\n", symbols[ i ] );
 

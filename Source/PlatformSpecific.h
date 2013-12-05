@@ -62,7 +62,6 @@
 # define FO_X86
 #elif ( defined ( FO_MSVC ) && defined ( _M_X64 ) ) || ( defined ( FO_GCC ) && defined ( __LP64__ ) )
 # define FO_X64
-# error "X64 CPU not supported for now."
 #else
 # error "Unknown CPU."
 #endif

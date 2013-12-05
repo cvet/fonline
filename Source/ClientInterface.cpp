@@ -133,7 +133,7 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
     {
         if( w <= MODE_WIDTH && h <= MODE_HEIGHT )
         {
-            uint l = end ? (uint) end - (uint) begin : (uint) ( data + len ) - (uint) begin;
+            uint l = (uint) ( end ? (size_t) end - (size_t) begin : (size_t) ( data + len ) - (size_t) begin );
             sections.insert( PAIR( w, PAIR( begin, l ) ) );
         }
 
@@ -4234,7 +4234,7 @@ void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint&
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::FormatTags( char* text, size_t text_len, CritterCl* player, CritterCl* npc, const char* lexems )
+void FOClient::FormatTags( char* text, uint text_len, CritterCl* player, CritterCl* npc, const char* lexems )
 {
     if( Str::CompareCase( text, "error" ) )
     {

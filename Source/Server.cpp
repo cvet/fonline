@@ -3390,8 +3390,13 @@ bool FOServer::InitReal()
     STATIC_ASSERT( sizeof( uint ) == 4 );
     STATIC_ASSERT( sizeof( uint64 ) == 8 );
     STATIC_ASSERT( sizeof( bool ) == 1 );
+    #if defined ( FO_X86 )
     STATIC_ASSERT( sizeof( size_t ) == 4 );
     STATIC_ASSERT( sizeof( void* ) == 4 );
+    #elif defined ( FO_X64 )
+    STATIC_ASSERT( sizeof( size_t ) == 8 );
+    STATIC_ASSERT( sizeof( void* ) == 8 );
+    #endif
 
     // Critters parameters
     Critter::ParamsSendMsgLen = sizeof( Critter::ParamsSendCount );
@@ -4660,7 +4665,7 @@ void FOServer::AddWorldSaveData( void* data, size_t size )
 {
     if( !WorldSaveManager )
     {
-        FileWrite( DumpFile, data, size );
+        FileWrite( DumpFile, data, (uint) size );
         return;
     }
 
@@ -4731,7 +4736,7 @@ void FOServer::Dump_Work( void* data )
                 size_t flush = WORLD_SAVE_DATA_BUFFER_SIZE;
                 if( i == WorldSaveDataBufCount - 1 )
                     flush -= WorldSaveDataBufFreeSize;
-                FileWrite( fworld, ptr, flush );
+                FileWrite( fworld, ptr, (uint) flush );
                 Thread::Sleep( 1 );
             }
             FileClose( fworld );
@@ -5075,7 +5080,7 @@ void FOServer::TimeEventEndScriptCallback()
 {
     SCOPE_LOCK( TimeEventsLocker );
 
-    uint tid = Thread::GetCurrentId();
+    size_t tid = Thread::GetCurrentId();
     for( auto it = TimeEvents.begin(); it != TimeEvents.end();)
     {
         TimeEvent* te = *it;
@@ -5099,7 +5104,7 @@ bool FOServer::GetTimeEvent( uint num, uint& duration, ScriptArray* values )
     TimeEventsLocker.Lock();
 
     TimeEvent* te = NULL;
-    uint       tid = Thread::GetCurrentId();
+    size_t     tid = Thread::GetCurrentId();
 
     // Find event
     while( true )
@@ -5157,7 +5162,7 @@ bool FOServer::SetTimeEvent( uint num, uint duration, ScriptArray* values )
     TimeEventsLocker.Lock();
 
     TimeEvent* te = NULL;
-    uint       tid = Thread::GetCurrentId();
+    size_t     tid = Thread::GetCurrentId();
 
     // Find event
     while( true )

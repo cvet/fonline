@@ -76,6 +76,11 @@ void AudioCallback( void* userdata, Uint8* stream, int len )
 // SoundManager
 bool SoundManager::Init()
 {
+    UNUSED_VARIABLE( OV_CALLBACKS_DEFAULT );
+    UNUSED_VARIABLE( OV_CALLBACKS_NOCLOSE );
+    UNUSED_VARIABLE( OV_CALLBACKS_STREAMONLY );
+    UNUSED_VARIABLE( OV_CALLBACKS_STREAMONLY_NOCLOSE );
+
     if( isActive )
         return true;
 
@@ -516,7 +521,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
 
     sound->OriginalFormat = AUDIO_S16;
     sound->OriginalChannels = vi->channels;
-    sound->OriginalRate = vi->rate;
+    sound->OriginalRate = (int) vi->rate;
 
     sound->BaseBuf = new unsigned char[ STREAMING_PORTION ];
     if( !sound->BaseBuf )
@@ -527,7 +532,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
     while( true )
     {
         int portion = min( (uint) 4096, STREAMING_PORTION - decoded );
-        result = ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, NULL );
+        result = (int) ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, NULL );
         if( result <= 0 )
             break;
         decoded += result;
@@ -578,7 +583,7 @@ bool SoundManager::StreamingOGG( Sound* sound )
     while( true )
     {
         int portion = min( (uint) 4096, STREAMING_PORTION - decoded );
-        result = ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, NULL );
+        result = (int) ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, NULL );
         if( result <= 0 )
             break;
         decoded += result;

@@ -388,7 +388,7 @@ void IniParser::SetStr( const char* app_name, const char* key_name, const char* 
         if( comment && comment < end_str )
             end_str = comment;
 
-        count = (uint) end_str - ( uint ) & bufPtr[ start ];
+        count = (uint) ( (size_t) end_str - (size_t) ( &bufPtr[ start ] ) );
 
         uint val_len = Str::Length( val );
         if( val_len > count )

@@ -1,6 +1,5 @@
 #include "StdAfx.h"
 #include "DataFile.h"
-#include "DatFile/cfile.h"
 #include "zlib/unzip.h"
 
 /************************************************************************/
@@ -38,7 +37,7 @@ private:
     struct ZipFileInfo
     {
         unz_file_pos Pos;
-        uLong        UncompressedSize;
+        int          UncompressedSize;
     };
     typedef map< string, ZipFileInfo > IndexMap;
 
@@ -296,35 +295,72 @@ uchar* FalloutDatFile::OpenFile( const char* fname, uint& len )
     uint   packed_size = *(uint*) ( ptr + 5 );
     uint   offset = *(uint*) ( ptr + 9 );
 
-    CFile* reader = NULL;
+    if( !FileSetPointer( datHandle, offset, SEEK_SET ) )
+        return NULL;
+
+    len = real_size;
+    uchar* buf = new uchar[ len ];
+
     if( !type )
-        reader = new CPlainFile( datHandle, offset, real_size );
-    else
-        reader = new C_Z_PackedFile( datHandle, offset, real_size, packed_size );
-    if( !reader )
-        return NULL;
-
-    uchar* buf = new uchar[ real_size + 1 ];
-    if( !buf )
     {
-        delete reader;
-        return NULL;
-    }
-
-    if( real_size )
-    {
-        uint br;
-        reader->read( buf, real_size, (long*) &br );
-        delete reader;
-        if( real_size != br )
+        // Plane data
+        if( !FileRead( datHandle, buf, len ) )
         {
             delete[] buf;
             return NULL;
         }
     }
+    else
+    {
+        // Packed data
+        z_stream stream;
+        stream.zalloc = Z_NULL;
+        stream.zfree = Z_NULL;
+        stream.opaque = Z_NULL;
+        stream.next_in = Z_NULL;
+        stream.avail_in = 0;
+        if( inflateInit( &stream ) != Z_OK )
+        {
+            delete[] buf;
+            return NULL;
+        }
 
-    len = real_size;
-    buf[ len ] = 0;
+        stream.next_out = buf;
+        stream.avail_out = real_size;
+
+        int left = packed_size;
+        while( stream.avail_out )
+        {
+            if( !stream.avail_in && left > 0 )
+            {
+                #ifdef SHOW_RACE_CONDITIONS
+                # pragma MESSAGE("SHOW_RACE_CONDITIONS: read_buf")
+                #endif
+                static uchar read_buf[ 0x40000 ];
+
+                stream.next_in = read_buf;
+                uint rb;
+                if( !FileRead( datHandle, read_buf, left > sizeof( read_buf ) ? sizeof( read_buf ) : left, &rb ) )
+                {
+                    delete[] buf;
+                    return NULL;
+                }
+                stream.avail_in = rb;
+                left -= rb;
+            }
+            int r = inflate( &stream, Z_NO_FLUSH );
+            if( r != Z_OK && r != Z_STREAM_END )
+            {
+                delete[] buf;
+                return NULL;
+            }
+            if( r == Z_STREAM_END )
+                break;
+        }
+
+        inflateEnd( &stream );
+    }
+
     return buf;
 }
 
@@ -334,7 +370,7 @@ void FalloutDatFile::GetFileNames( const char* path, bool include_subdirs, const
     for( auto it = filesTree.begin(), end = filesTree.end(); it != end; ++it )
     {
         const string& fname = ( *it ).first;
-        if( !fname.compare( 0, path_len, path ) && ( include_subdirs || (int) fname.find_last_of( '\\' ) < (int) path_len ) )
+        if( !fname.compare( 0, path_len, path ) && ( include_subdirs || fname.find_last_of( '\\' ) < path_len ) )
         {
             if( ext && *ext )
             {
@@ -447,7 +483,7 @@ bool ZipFile::ReadTree()
                 if( *str == '/' )
                     *str = '\\';
             zip_info.Pos = pos;
-            zip_info.UncompressedSize = info.uncompressed_size;
+            zip_info.UncompressedSize = (int) info.uncompressed_size;
             filesTree.insert( PAIR( string( name ), zip_info ) );
         }
 
@@ -491,7 +527,7 @@ uchar* ZipFile::OpenFile( const char* fname, uint& len )
     }
 
     int read = unzReadCurrentFile( zipHandle, buf, info.UncompressedSize );
-    if( unzCloseCurrentFile( zipHandle ) != UNZ_OK || read != (int) info.UncompressedSize )
+    if( unzCloseCurrentFile( zipHandle ) != UNZ_OK || read != info.UncompressedSize )
     {
         delete[] buf;
         return NULL;
@@ -508,7 +544,7 @@ void ZipFile::GetFileNames( const char* path, bool include_subdirs, const char* 
     for( auto it = filesTree.begin(), end = filesTree.end(); it != end; ++it )
     {
         const string& fname = ( *it ).first;
-        if( !fname.compare( 0, path_len, path ) && ( include_subdirs || (int) fname.find_last_of( '\\' ) < (int) path_len ) )
+        if( !fname.compare( 0, path_len, path ) && ( include_subdirs || fname.find_last_of( '\\' ) < path_len ) )
         {
             if( ext && *ext )
             {

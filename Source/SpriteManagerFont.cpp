@@ -384,7 +384,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name )
         // Save cache
         uint image_name_len = Str::Length( image_name );
         uint font_cache_len = sizeof( uint64 ) + sizeof( uint ) + image_name_len + sizeof( int ) * 2 +
-                              sizeof( uint ) + ( sizeof( uint ) + sizeof( short ) * 7 ) * font.Letters.size();
+                              sizeof( uint ) + ( sizeof( uint ) + sizeof( short ) * 7 ) * (uint) font.Letters.size();
         font_cache_init = new uchar[ font_cache_len ];
         font_cache = font_cache_init;
         *(uint64*) font_cache = write_time;
@@ -572,32 +572,32 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
             else
                 f = FileOpenForAppend( "./export.txt" );
             const char* s = Str::FormatBuf( "Letter '%s'\n", buf );
-            FileWrite( f, s, strlen( s ) );
+            FileWrite( f, s, Str::Length( s ) );
             s = Str::FormatBuf( "  PositionX %d\n", 256 + let.PosX  );
-            FileWrite( f, s, strlen( s ) );
+            FileWrite( f, s, Str::Length( s ) );
             s = Str::FormatBuf( "  PositionY %d\n", let.PosY );
-            FileWrite( f, s, strlen( s ) );
+            FileWrite( f, s, Str::Length( s ) );
             s = Str::FormatBuf( "  Width     %d\n", let.W );
-            FileWrite( f, s, strlen( s ) );
+            FileWrite( f, s, Str::Length( s ) );
             s = Str::FormatBuf( "  Height    %d\n", let.H );
-            FileWrite( f, s, strlen( s ) );
+            FileWrite( f, s, Str::Length( s ) );
             if( let.OffsX )
             {
                 s = Str::FormatBuf( "  OffsetX   %d\n", let.OffsX );
-                FileWrite( f, s, strlen( s ) );
+                FileWrite( f, s, Str::Length( s ) );
             }
             if( let.OffsY )
             {
                 s = Str::FormatBuf( "  OffsetY   %d\n", let.OffsY );
-                FileWrite( f, s, strlen( s ) );
+                FileWrite( f, s, Str::Length( s ) );
             }
             if( let.XAdvance )
             {
                 s = Str::FormatBuf( "  XAdvance  %d\n", let.XAdvance );
-                FileWrite( f, s, strlen( s ) );
+                FileWrite( f, s, Str::Length( s ) );
             }
             s = Str::FormatBuf( "\n" );
-            FileWrite( f, s, strlen( s ) );
+            FileWrite( f, s, Str::Length( s ) );
             FileClose( f );
         }
     }
@@ -653,10 +653,10 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         // if(!_str[0] && !*s1) break;
         if( dots )
         {
-            uint d_len = (uint) s2 - (uint) s1 + 1;
-            uint d = strtoul( s1 + 1, NULL, 0 );
+            size_t d_len = (uint) ( (size_t) s2 - (size_t) s1 ) + 1;
+            uint   d = (uint) strtoul( s1 + 1, NULL, 0 );
 
-            dots[ (uint) s1 - (uint) str - d_offs ] = d;
+            dots[ (uint) ( (size_t) s1 - (size_t) str ) - d_offs ] = d;
             d_offs += d_len;
         }
 

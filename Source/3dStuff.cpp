@@ -1122,16 +1122,16 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
         {
             GL( glBindBuffer( GL_ARRAY_BUFFER, ms.VBO ) );
             GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ms.IBO ) );
-            GL( glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Position ) ) );
-            GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Normal ) ) );
-            GL( glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Color ) ) );
-            GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord ) ) );
-            GL( glVertexAttribPointer( 4, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord2 ) ) );
-            GL( glVertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord3 ) ) );
-            GL( glVertexAttribPointer( 6, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Tangent ) ) );
-            GL( glVertexAttribPointer( 7, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Bitangent ) ) );
-            GL( glVertexAttribPointer( 8, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendWeights ) ) );
-            GL( glVertexAttribPointer( 9, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendIndices ) ) );
+            GL( glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Position ) ) );
+            GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Normal ) ) );
+            GL( glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Color ) ) );
+            GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord ) ) );
+            GL( glVertexAttribPointer( 4, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord2 ) ) );
+            GL( glVertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord3 ) ) );
+            GL( glVertexAttribPointer( 6, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Tangent ) ) );
+            GL( glVertexAttribPointer( 7, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Bitangent ) ) );
+            GL( glVertexAttribPointer( 8, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, BlendWeights ) ) );
+            GL( glVertexAttribPointer( 9, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, BlendIndices ) ) );
             for( uint i = 0; i <= 9; i++ )
                 GL( glEnableVertexAttribArray( i ) );
         }
@@ -1204,10 +1204,10 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
             GL( glUniform1f( effect->BoneInfluences, (float) ms.BoneInfluences ) );
         if( effect->WorldMatrices != -1 )
         {
-            size_t mcount = ms.FrameCombinedMatrixPointer.size();
+            uint mcount = (uint) ms.FrameCombinedMatrixPointer.size();
             if( mcount )
             {
-                for( size_t i = 0; i < mcount; i++ )
+                for( uint i = 0; i < mcount; i++ )
                 {
                     Matrix* m = ms.FrameCombinedMatrixPointer[ i ];
                     if( m )
@@ -1240,7 +1240,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
         {
             if( effect->IsNeedProcess )
                 GraphicLoader::EffectProcessVariables( effect, pass );
-            GL( glDrawElements( GL_TRIANGLES, ms.Indicies.size(), GL_UNSIGNED_SHORT, (void*) 0 ) );
+            GL( glDrawElements( GL_TRIANGLES, (uint) ms.Indicies.size(), GL_UNSIGNED_SHORT, (void*) 0 ) );
         }
 
         #ifdef SHADOW_MAP
@@ -1386,7 +1386,7 @@ Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
         MeshOptions& mopt = anim3d->meshOpt[ i ];
         Frame*       frame = entity->xFile->allDrawFrames[ i ];
         mopt.FramePtr = frame;
-        mopt.SubsetsCount = frame->Mesh.size();
+        mopt.SubsetsCount = (uint) frame->Mesh.size();
         mopt.DisabledSubsets = new bool[ mopt.SubsetsCount ];
         mopt.TexSubsets = new Texture*[ mopt.SubsetsCount * EFFECT_TEXTURES ];
         mopt.DefaultTexSubsets = new Texture*[ mopt.SubsetsCount * EFFECT_TEXTURES ];

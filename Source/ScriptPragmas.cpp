@@ -392,7 +392,8 @@ public:
             func_name.erase( i, j - i + 2 );
             result = engine->RegisterObjectMethod( class_name.c_str(), func_name.c_str(), asFUNCTION( func ), asCALL_CDECL_OBJFIRST );
         }
-        if( result < 0 ) WriteLog( "Error in 'bindfunc' pragma<%s>, script registration fail, error<%d>.\n", text.c_str(), result );
+        if( result < 0 )
+            WriteLog( "Error in 'bindfunc' pragma<%s>, script registration fail, error<%d>.\n", text.c_str(), result );
     }
 };
 

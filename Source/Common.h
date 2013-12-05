@@ -1,8 +1,9 @@
 #ifndef __COMMON__
 #define __COMMON__
 
-// For debugging
+// Debugging
 // #define DEV_VESRION
+// #define SHOW_RACE_CONDITIONS // All known places with race conditions, not use in multithreading
 
 // Some platform specific definitions
 #include "PlatformSpecific.h"
@@ -91,7 +92,7 @@ const char* GetLastSocketError();
           delete[] ( x ); ( x ) = NULL; }
 
 #define STATIC_ASSERT( a )                static_assert( a, # a )
-#define OFFSETOF( s, m )                  ( (size_t) ( &reinterpret_cast< s* >( 100000 )->m ) - 100000 )
+#define OFFSETOF( s, m )                  ( (int) (size_t) ( &reinterpret_cast< s* >( 100000 )->m ) - 100000 )
 #define UNUSED_VARIABLE( x )              (void) ( x )
 #define memzero( ptr, size )              memset( ptr, 0, size )
 
@@ -330,6 +331,8 @@ extern int  MemoryDebugLevel;
 extern uint VarsGarbageTime;
 extern bool WorldSaveManager;
 extern bool LogicMT;
+extern bool AllowServerNativeCalls;
+extern bool AllowClientNativeCalls;
 
 void GetServerOptions();
 
@@ -836,19 +839,18 @@ extern InterprocessData SingleplayerData;
 # ifdef FO_WINDOWS
 #  define PTW32_STATIC_LIB
 #  include "PthreadWnd/pthread.h"
+#  if defined ( FO_MSVC )
+#   pragma comment( lib, "pthread.lib" )
+#  endif
 # else
 #  include <pthread.h>
-# endif
-
-# if defined ( FO_MSVC )
-#  pragma comment( lib, "pthreadVC2.lib" )
 # endif
 
 class Thread
 {
 private:
     static THREAD char threadName[ 64 ];
-    static UIntStrMap  threadNames;
+    static SizeTStrMap threadNames;
     static Mutex       threadNamesLocker;
     bool               isStarted;
     pthread_t          threadId;
@@ -861,13 +863,13 @@ public:
     void Wait();
     void Finish();
 
-    # ifdef FO_WINDOWS
+    # if defined ( FO_WINDOWS )
     HANDLE GetWindowsHandle();
-    # else
+    # elif defined ( FO_LINUX )
     pid_t GetPid();
     # endif
 
-    static uint        GetCurrentId();
+    static size_t      GetCurrentId();
     static void        SetCurrentName( const char* name );
     static const char* GetCurrentName();
     static const char* FindName( uint thread_id );

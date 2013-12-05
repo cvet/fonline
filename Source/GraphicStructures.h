@@ -199,16 +199,16 @@ struct MeshSubset
         {
             GL( glGenVertexArrays( 1, &VAO ) );
             GL( glBindVertexArray( VAO ) );
-            GL( glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Position ) ) );
-            GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Normal ) ) );
-            GL( glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Color ) ) );
-            GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord ) ) );
-            GL( glVertexAttribPointer( 4, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord2 ) ) );
-            GL( glVertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, TexCoord3 ) ) );
-            GL( glVertexAttribPointer( 6, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Tangent ) ) );
-            GL( glVertexAttribPointer( 7, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, Bitangent ) ) );
-            GL( glVertexAttribPointer( 8, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendWeights ) ) );
-            GL( glVertexAttribPointer( 9, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) OFFSETOF( Vertex3D, BlendIndices ) ) );
+            GL( glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Position ) ) );
+            GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Normal ) ) );
+            GL( glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Color ) ) );
+            GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord ) ) );
+            GL( glVertexAttribPointer( 4, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord2 ) ) );
+            GL( glVertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord3 ) ) );
+            GL( glVertexAttribPointer( 6, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Tangent ) ) );
+            GL( glVertexAttribPointer( 7, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Bitangent ) ) );
+            GL( glVertexAttribPointer( 8, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, BlendWeights ) ) );
+            GL( glVertexAttribPointer( 9, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, BlendIndices ) ) );
             for( uint i = 0; i <= 9; i++ )
                 GL( glEnableVertexAttribArray( i ) );
             GL( glBindVertexArray( 0 ) );
@@ -217,13 +217,13 @@ struct MeshSubset
 
     void Save( FileManager& file )
     {
-        uint len = Vertices.size();
+        uint len = (uint) Vertices.size();
         file.SetData( &len, sizeof( len ) );
         file.SetData( &Vertices[ 0 ], len * sizeof( Vertices[ 0 ] ) );
-        len = Indicies.size();
+        len = (uint) Indicies.size();
         file.SetData( &len, sizeof( len ) );
         file.SetData( &Indicies[ 0 ], len * sizeof( Indicies[ 0 ] ) );
-        len = DiffuseTexture.length();
+        len = (uint) DiffuseTexture.length();
         file.SetData( &len, sizeof( len ) );
         file.SetData( &DiffuseTexture[ 0 ], len );
         file.SetData( DiffuseColor, sizeof( DiffuseColor ) );
@@ -231,14 +231,14 @@ struct MeshSubset
         file.SetData( SpecularColor, sizeof( SpecularColor ) );
         file.SetData( EmissiveColor, sizeof( EmissiveColor ) );
         file.SetData( &BoneInfluences, sizeof( BoneInfluences ) );
-        len = BoneOffsets.size();
+        len = (uint) BoneOffsets.size();
         file.SetData( &len, sizeof( len ) );
         file.SetData( &BoneOffsets[ 0 ], len * sizeof( BoneOffsets[ 0 ] ) );
-        len = BoneNames.size();
+        len = (uint) BoneNames.size();
         file.SetData( &len, sizeof( len ) );
         for( uint i = 0, j = len; i < j; i++ )
         {
-            len = BoneNames[ i ].length();
+            len = (uint) BoneNames[ i ].length();
             file.SetData( &len, sizeof( len ) );
             file.SetData( &BoneNames[ i ][ 0 ], len );
         }
@@ -315,15 +315,15 @@ struct Frame
 
     void Save( FileManager& file )
     {
-        uint len = Name.length();
+        uint len = (uint) Name.length();
         file.SetData( &len, sizeof( len ) );
         file.SetData( &Name[ 0 ], len );
         file.SetData( &TransformationMatrix, sizeof( TransformationMatrix ) );
-        len = Mesh.size();
+        len = (uint) Mesh.size();
         file.SetData( &len, sizeof( len ) );
         for( uint i = 0, j = len; i < j; i++ )
             Mesh[ i ].Save( file );
-        len = Children.size();
+        len = (uint) Children.size();
         file.SetData( &len, sizeof( len ) );
         for( uint i = 0, j = len; i < j; i++ )
             Children[ i ]->Save( file );
@@ -355,7 +355,7 @@ struct Frame
         for( auto it = Mesh.begin(), end = Mesh.end(); it != end; ++it )
         {
             MeshSubset& mesh = *it;
-            for( uint i = 0, j = mesh.BoneNames.size(); i < j; i++ )
+            for( uint i = 0, j = (uint) mesh.BoneNames.size(); i < j; i++ )
             {
                 Frame* bone_frame = root_frame->Find( mesh.BoneNames[ i ].c_str() );
                 if( bone_frame )

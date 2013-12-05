@@ -20,6 +20,7 @@ struct EngineData
     ScriptModuleVec                      Modules;
     Preprocessor::PragmaCallback*        PragmaCB;
     string                               DllTarget;
+    bool                                 AllowNativeCalls;
     map< string, pair< string, void* > > LoadedDlls;
 };
 
@@ -32,7 +33,7 @@ struct ReservedScriptFunction
 
 namespace Script
 {
-    bool Init( bool with_log, Preprocessor::PragmaCallback* pragma_callback, const char* dll_target );
+    bool Init( bool with_log, Preprocessor::PragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls );
     void Finish();
     bool InitThread();
     void FinishThread();
@@ -65,7 +66,7 @@ namespace Script
 
     asIScriptEngine* GetEngine();
     void             SetEngine( asIScriptEngine* engine );
-    asIScriptEngine* CreateEngine( Preprocessor::PragmaCallback* pragma_callback, const char* dll_target );
+    asIScriptEngine* CreateEngine( Preprocessor::PragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls );
     void             FinishEngine( asIScriptEngine*& engine );
 
     asIScriptContext* CreateContext();

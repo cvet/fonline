@@ -997,6 +997,8 @@ int  MemoryDebugLevel = 10;
 uint VarsGarbageTime = 3600000;
 bool WorldSaveManager = true;
 bool LogicMT = false;
+bool AllowServerNativeCalls = false;
+bool AllowClientNativeCalls = false;
 
 void GetServerOptions()
 {
@@ -1004,7 +1006,9 @@ void GetServerOptions()
     cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
     ServerGameSleep = cfg.GetInt( "GameSleep", 10 );
     Script::SetConcurrentExecution( cfg.GetInt( "ScriptConcurrentExecution", 0 ) != 0 );
-    WorldSaveManager = ( cfg.GetInt( "WorldSaveManager", 1 ) == 1 );
+    WorldSaveManager = ( cfg.GetInt( "WorldSaveManager", 1 ) != 0 );
+    AllowServerNativeCalls = ( cfg.GetInt( "AllowServerNativeCalls", 1 ) != 0 );
+    AllowClientNativeCalls = ( cfg.GetInt( "AllowClientNativeCalls", 0 ) != 0 );
 }
 
 ServerScriptFunctions ServerFunctions;
@@ -1582,7 +1586,7 @@ InterprocessData SingleplayerData;
 #if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
 
 THREAD char Thread::threadName[ 64 ] = { 0 };
-UIntStrMap  Thread::threadNames;
+SizeTStrMap Thread::threadNames;
 Mutex       Thread::threadNamesLocker;
 
 void* ThreadBeginExecution( void* args )
@@ -1632,26 +1636,24 @@ void Thread::Finish()
     isStarted = false;
 }
 
-# ifdef FO_WINDOWS
+# if defined ( FO_WINDOWS )
 HANDLE Thread::GetWindowsHandle()
 {
     return pthread_getw32threadhandle_np( threadId );
 }
-# endif
-
-# ifndef FO_WINDOWS
+# elif defined ( FO_LINUX )
 pid_t Thread::GetPid()
 {
     return (pid_t) threadId;
 }
 # endif
 
-uint Thread::GetCurrentId()
+size_t Thread::GetCurrentId()
 {
     # ifdef FO_WINDOWS
-    return (uint) GetCurrentThreadId();
+    return (size_t) GetCurrentThreadId();
     # else
-    return (uint) pthread_self();
+    return (size_t) pthread_self();
     # endif
 }
 

@@ -30,9 +30,9 @@ class GameVar;
 class Job
 {
 public:
-    int   Type;
-    void* Data;
-    uint  ThreadId;
+    int    Type;
+    void*  Data;
+    size_t ThreadId;
 
     Job();
     Job( int type, void* data, bool cur_thread );

@@ -159,10 +159,10 @@ uchar* CryptManager::Compress( const uchar* data, uint& data_len )
 
     if( compress( buf.Get(), &buf_len, data, data_len ) != Z_OK )
         return NULL;
-    XOR( (char*) buf.Get(), buf_len, (char*) &crcTable[ 1 ], sizeof( crcTable ) - 4 );
+    XOR( (char*) buf.Get(), (uint) buf_len, (char*) &crcTable[ 1 ], sizeof( crcTable ) - 4 );
     XOR( (char*) buf.Get(), 4, (char*) buf.Get() + 4, 4 );
 
-    data_len = buf_len;
+    data_len = (uint) buf_len;
     return buf.Release();
 }
 
@@ -224,7 +224,7 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
             break;
     }
 
-    data_len = buf_len;
+    data_len = (uint) buf_len;
     return buf.Release();
 }
 
@@ -334,7 +334,7 @@ bool CryptManager::SetCacheTable( const char* cache_fname )
 
             CacheTableName = cache_fname;
             fseek( fr, 0, SEEK_END );
-            uint   len = ftell( fr );
+            uint   len = (uint) ftell( fr );
             fseek( fr, 0, SEEK_SET );
             uchar* buf = new uchar[ len ];
             if( !buf )
@@ -353,7 +353,7 @@ bool CryptManager::SetCacheTable( const char* cache_fname )
     }
 
     fseek( f, 0, SEEK_END );
-    uint len = ftell( f );
+    uint len = (uint) ftell( f );
     fseek( f, 0, SEEK_SET );
 
     if( len < sizeof( CacheTable ) )
@@ -446,7 +446,7 @@ void CryptManager::SetCache( const char* data_name, const uchar* data, uint data
             continue;
 
         fseek( f, 0, SEEK_END );
-        int offset = ftell( f ) - sizeof( CacheTable );
+        int offset = (int) ( ftell( f ) - sizeof( CacheTable ) );
         if( offset < 0 )
         {
             fclose( f );
@@ -520,7 +520,7 @@ uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
         }
 
         fseek( f, 0, SEEK_END );
-        uint file_len = ftell( f ) + 1;
+        uint file_len = (uint) ftell( f ) + 1;
         fseek( f, 0, SEEK_SET );
 
         if( file_len < sizeof( CacheTable ) + desc.DataOffset + desc.DataCurLen )

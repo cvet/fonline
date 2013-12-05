@@ -70,8 +70,13 @@ bool FOClient::Init()
     STATIC_ASSERT( sizeof( uint ) == 4 );
     STATIC_ASSERT( sizeof( uint64 ) == 8 );
     STATIC_ASSERT( sizeof( bool ) == 1 );
+    #if defined ( FO_X86 )
     STATIC_ASSERT( sizeof( size_t ) == 4 );
     STATIC_ASSERT( sizeof( void* ) == 4 );
+    #elif defined ( FO_X64 )
+    STATIC_ASSERT( sizeof( size_t ) == 8 );
+    STATIC_ASSERT( sizeof( void* ) == 8 );
+    #endif
 
     GET_UID0( UID0 );
     UID_PREPARE_UID4_0;
@@ -689,6 +694,10 @@ int FOClient::MainLoop()
             MainWindowMouseEvents.push_back( event.type );
             MainWindowMouseEvents.push_back( SDL_BUTTON_MIDDLE );
             MainWindowMouseEvents.push_back( -event.wheel.y );
+        }
+        else if( event.type == SDL_QUIT )
+        {
+            GameOpt.Quit = true;
         }
         prev_event = event;
     }
@@ -2809,7 +2818,7 @@ bool FOClient::NetOutput()
     FD_ZERO( &SockSetErr );
     FD_SET( Sock, &SockSet );
     FD_SET( Sock, &SockSetErr );
-    if( select( Sock + 1, NULL, &SockSet, &SockSetErr, &tv ) == SOCKET_ERROR )
+    if( select( (int) Sock + 1, NULL, &SockSet, &SockSetErr, &tv ) == SOCKET_ERROR )
         WriteLogF( _FUNC_, " - Select error<%s>.\n", GetLastSocketError() );
     if( FD_ISSET( Sock, &SockSetErr ) )
         WriteLogF( _FUNC_, " - Socket error.\n" );
@@ -2827,7 +2836,7 @@ bool FOClient::NetOutput()
         buf.len = tosend - sendpos;
         if( WSASend( Sock, &buf, 1, &len, 0, NULL, NULL ) == SOCKET_ERROR || len == 0 )
         #else
-        int len = send( Sock, Bout.GetData() + sendpos, tosend - sendpos, 0 );
+        int len = (int) send( Sock, Bout.GetData() + sendpos, tosend - sendpos, 0 );
         if( len <= 0 )
         #endif
         {
@@ -2852,7 +2861,7 @@ int FOClient::NetInput( bool unpack )
     FD_ZERO( &SockSetErr );
     FD_SET( Sock, &SockSet );
     FD_SET( Sock, &SockSetErr );
-    if( select( Sock + 1, &SockSet, NULL, &SockSetErr, &tv ) == SOCKET_ERROR )
+    if( select( (int) Sock + 1, &SockSet, NULL, &SockSetErr, &tv ) == SOCKET_ERROR )
         WriteLogF( _FUNC_, " - Select error<%s>.\n", GetLastSocketError() );
     if( FD_ISSET( Sock, &SockSetErr ) )
         WriteLogF( _FUNC_, " - Socket error.\n" );
@@ -2867,7 +2876,7 @@ int FOClient::NetInput( bool unpack )
     buf.len = ComLen;
     if( WSARecv( Sock, &buf, 1, &len, &flags, NULL, NULL ) == SOCKET_ERROR )
     #else
-    int len = recv( Sock, ComBuf, ComLen, 0 );
+    int len = (int) recv( Sock, ComBuf, ComLen, 0 );
     if( len < 0 )
     #endif
     {
@@ -2896,7 +2905,7 @@ int FOClient::NetInput( bool unpack )
         buf.len = ComLen - pos;
         if( WSARecv( Sock, &buf, 1, &len, &flags, NULL, NULL ) == SOCKET_ERROR )
         #else
-        int len = recv( Sock, ComBuf + pos, ComLen - pos, 0 );
+        int len = (int) recv( Sock, ComBuf + pos, ComLen - pos, 0 );
         if( len < 0 )
         #endif
         {
@@ -9628,7 +9637,7 @@ bool FOClient::ReloadScripts()
 
     // Reinitialize engine
     Script::Finish();
-    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_CLIENT ), "CLIENT" ) )
+    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_CLIENT ), "CLIENT", false ) )
     {
         WriteLog( "Unable to start script engine.\n" );
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
@@ -9850,7 +9859,7 @@ int* FOClient::SScriptFunc::DataRef_Index( CritterClPtr& cr, uint index )
         SCRIPT_ERROR_RX( "This nulltptr.", &dummy );
     if( index >= MAX_PARAMS )
         SCRIPT_ERROR_RX( "Invalid index arg.", &dummy );
-    uint data_index = ( ( uint ) & cr - ( uint ) & cr->ThisPtr[ 0 ] ) / sizeof( cr->ThisPtr[ 0 ] );
+    uint data_index = (uint) ( ( (size_t) &cr - (size_t) &cr->ThisPtr[ 0 ] ) / sizeof( cr->ThisPtr[ 0 ] ) );
     if( CritterCl::ParametersOffset[ data_index ] )
         index += CritterCl::ParametersMin[ data_index ];
     if( index < CritterCl::ParametersMin[ data_index ] )
@@ -9866,7 +9875,7 @@ int FOClient::SScriptFunc::DataVal_Index( CritterClPtr& cr, uint index )
         SCRIPT_ERROR_R0( "This nulltptr." );
     if( index >= MAX_PARAMS )
         SCRIPT_ERROR_R0( "Invalid index arg." );
-    uint data_index = ( ( uint ) & cr - ( uint ) & cr->ThisPtr[ 0 ] ) / sizeof( cr->ThisPtr[ 0 ] );
+    uint data_index = (uint) ( ( (size_t) &cr - (size_t) &cr->ThisPtr[ 0 ] ) / sizeof( cr->ThisPtr[ 0 ] ) );
     if( CritterCl::ParametersOffset[ data_index ] )
         index += CritterCl::ParametersMin[ data_index ];
     if( index < CritterCl::ParametersMin[ data_index ] )

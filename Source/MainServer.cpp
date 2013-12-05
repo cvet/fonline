@@ -1088,7 +1088,7 @@ void AdminManager( void* port_ )
         fd_set  sock_set;
         FD_ZERO( &sock_set );
         FD_SET( listen_sock, &sock_set );
-        if( select( listen_sock + 1, &sock_set, NULL, NULL, &tv ) > 0 )
+        if( select( (int) listen_sock + 1, &sock_set, NULL, NULL, &tv ) > 0 )
         {
             sockaddr_in from;
             socklen_t   len = sizeof( from );

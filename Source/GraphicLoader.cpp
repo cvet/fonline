@@ -126,7 +126,7 @@ public:
 
     virtual void SetPosition( long position )
     {
-        fm->SetCurPos( position );
+        fm->SetCurPos( (uint) position );
     }
 
     virtual int GetError() const
@@ -1825,7 +1825,7 @@ void GraphicLoader::SavePNG( const char* fname, uchar* data, uint width, uint he
 
     // Write to disk
     FileManager fm;
-    fm.SetData( &result_png[ 0 ], result_png.size() );
+    fm.SetData( &result_png[ 0 ], (uint) result_png.size() );
     fm.SaveOutBufToFile( fname, PT_ROOT );
 }
 

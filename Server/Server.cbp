@@ -41,26 +41,6 @@
 					<Add directory="../Lib/Linux" />
 				</Linker>
 			</Target>
-			<Target title="MacOSX">
-				<Option output="../../sdk/Server/FOnlineServerMac" prefix_auto="1" extension_auto="1" />
-				<Option object_output="MacOSX" />
-				<Option type="0" />
-				<Option compiler="gcc" />
-				<Compiler>
-					<Add option="-O2" />
-					<Add option="-DNDEBUG" />
-				</Compiler>
-				<Linker>
-					<Add option="-arch i386" />
-					<Add option="-rdynamic" />
-					<Add option="-lrt" />
-					<Add option="-lfltk" />
-					<Add option="-lX11" />
-					<Add option="-lXft" />
-					<Add option="-lXinerama" />
-					<Add directory="../Lib/MacOSX" />
-				</Linker>
-			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-std=gnu++0x" />
@@ -70,7 +50,6 @@
 			<Add option="-m32" />
 			<Add option="-DFONLINE_SERVER" />
 			<Add option="-DSCRIPT_MULTITHREADING" />
-			<Add directory="../Source/StlPort" />
 			<Add directory="../Source" />
 		</Compiler>
 		<Linker>
@@ -180,10 +159,6 @@
 		<Unit filename="../Source/CritterType.h" />
 		<Unit filename="../Source/Crypt.cpp" />
 		<Unit filename="../Source/Crypt.h" />
-		<Unit filename="../Source/DatFile/cfile.cpp" />
-		<Unit filename="../Source/DatFile/cfile.h" />
-		<Unit filename="../Source/DatFile/unlzss.cpp" />
-		<Unit filename="../Source/DatFile/unlzss.h" />
 		<Unit filename="../Source/DataFile.cpp" />
 		<Unit filename="../Source/DataFile.h" />
 		<Unit filename="../Source/DataMask.h" />

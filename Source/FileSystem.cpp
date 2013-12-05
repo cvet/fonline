@@ -221,7 +221,7 @@ void FileClose( void* file )
 
 bool FileRead( void* file, void* buf, uint len, uint* rb /* = NULL */ )
 {
-    uint rb_ = fread( buf, sizeof( char ), len, ( (FileDesc*) file )->f );
+    uint rb_ = (uint) fread( buf, sizeof( char ), len, ( (FileDesc*) file )->f );
     if( rb )
         *rb = rb_;
     return rb_ == len;
@@ -229,7 +229,7 @@ bool FileRead( void* file, void* buf, uint len, uint* rb /* = NULL */ )
 
 bool FileWrite( void* file, const void* buf, uint len )
 {
-    bool result = ( fwrite( buf, sizeof( char ), len, ( (FileDesc*) file )->f ) == len );
+    bool result = ( (uint) fwrite( buf, sizeof( char ), len, ( (FileDesc*) file )->f ) == len );
     if( result && ( (FileDesc*) file )->writeThrough )
         fflush( ( (FileDesc*) file )->f );
     return result;

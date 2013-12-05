@@ -724,14 +724,14 @@ const char* Str::UItoA( uint dw )
 int Str::AtoI( const char* str )
 {
     if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
-        return strtol( str + 2, NULL, 16 );
+        return (int) strtol( str + 2, NULL, 16 );
     return atoi( str );
 }
 
 int64 Str::AtoI64( const char* str )
 {
     if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
-        return strtol( str + 2, NULL, 16 );
+        return (int64) strtol( str + 2, NULL, 16 );
     #ifdef FO_WINDOWS
     return _atoi64( str );
     #else
@@ -742,8 +742,8 @@ int64 Str::AtoI64( const char* str )
 uint Str::AtoUI( const char* str )
 {
     if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
-        return strtoul( str + 2, NULL, 16 );
-    return strtoul( str, NULL, 10 );
+        return (uint) strtoul( str + 2, NULL, 16 );
+    return (uint) strtoul( str, NULL, 10 );
 }
 
 static char BigBuf[ BIG_BUF_SIZE ] = { 0 };

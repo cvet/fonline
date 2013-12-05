@@ -14,9 +14,6 @@
     <Filter Include="AngelScript">
       <UniqueIdentifier>{cd23e8be-7814-40bb-abfc-1c9435799d92}</UniqueIdentifier>
     </Filter>
-    <Filter Include="DatFile">
-      <UniqueIdentifier>{960c475d-d612-4611-9555-338a8865b1de}</UniqueIdentifier>
-    </Filter>
     <Filter Include="SHA2">
       <UniqueIdentifier>{d7d82959-84ad-4bf1-bb52-634f2505a610}</UniqueIdentifier>
     </Filter>
@@ -191,9 +188,6 @@
     <ClCompile Include="..\Source\AngelScript\as_callfunc.cpp">
       <Filter>AngelScript</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\as_callfunc_x64_gcc.cpp">
-      <Filter>AngelScript</Filter>
-    </ClCompile>
     <ClCompile Include="..\Source\AngelScript\as_callfunc_x64_msvc.cpp">
       <Filter>AngelScript</Filter>
     </ClCompile>
@@ -271,12 +265,6 @@
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\as_variablescope.cpp">
       <Filter>AngelScript</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\datfile\cfile.cpp">
-      <Filter>DatFile</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\datfile\unlzss.cpp">
-      <Filter>DatFile</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\SHA2\sha2.c">
       <Filter>SHA2</Filter>
@@ -586,12 +574,6 @@
     <ClInclude Include="..\Source\AngelScript\as_variablescope.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\datfile\cfile.h">
-      <Filter>DatFile</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\datfile\unlzss.h">
-      <Filter>DatFile</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\SHA2\sha2.h">
       <Filter>SHA2</Filter>
     </ClInclude>
@@ -624,8 +606,8 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\Source\AngelScript\as_callfunc_x64_msvc.asm">
+    <MASM Include="..\Source\AngelScript\as_callfunc_x64_msvc_asm.asm">
       <Filter>AngelScript</Filter>
-    </CustomBuild>
+    </MASM>
   </ItemGroup>
 </Project>

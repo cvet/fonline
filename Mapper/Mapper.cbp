@@ -23,22 +23,6 @@
 					<Add directory="../Lib/Linux" />
 				</Linker>
 			</Target>
-			<Target title="MacOSX">
-				<Option output="../../sdk/Tools/Mapper/MapperMac" prefix_auto="1" extension_auto="1" />
-				<Option object_output="MacOSX" />
-				<Option type="0" />
-				<Option compiler="gcc" />
-				<Compiler>
-					<Add option="-O2" />
-					<Add option="-DNDEBUG" />
-					<Add directory="../Source/StlPort" />
-					<Add directory="../Source" />
-				</Compiler>
-				<Linker>
-					<Add option="-arch i386" />
-					<Add directory="../Lib/MacOSX" />
-				</Linker>
-			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-std=gnu++0x" />
@@ -48,7 +32,6 @@
 			<Add option="-m32" />
 			<Add option="-DFONLINE_MAPPER" />
 			<Add option="-DAS_NO_THREADS" />
-			<Add directory="../Source/StlPort" />
 			<Add directory="../Source" />
 		</Compiler>
 		<Linker>
@@ -160,10 +143,6 @@
 		<Unit filename="../Source/CritterType.h" />
 		<Unit filename="../Source/Crypt.cpp" />
 		<Unit filename="../Source/Crypt.h" />
-		<Unit filename="../Source/DatFile/cfile.cpp" />
-		<Unit filename="../Source/DatFile/cfile.h" />
-		<Unit filename="../Source/DatFile/unlzss.cpp" />
-		<Unit filename="../Source/DatFile/unlzss.h" />
 		<Unit filename="../Source/DataFile.cpp" />
 		<Unit filename="../Source/DataFile.h" />
 		<Unit filename="../Source/Debugger.cpp" />
