@@ -8,7 +8,7 @@
 // GCC
 // BORLAND (complains about 'pack state changed but not reverted', but works)
 // ===============================================================================
-
+/*
 #ifndef AI_PUSHPACK_IS_DEFINED
 #	error pushpack1.h must be included after poppack1.h
 #endif
@@ -20,3 +20,6 @@
 #undef PACK_STRUCT
 
 #undef AI_PUSHPACK_IS_DEFINED
+*/
+
+#undef PACK_STRUCT

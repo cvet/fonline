@@ -27,9 +27,17 @@ const char* PathList[ PATH_LIST_COUNT ] =
     "scripts" DIR_SLASH_S,
     "video" DIR_SLASH_S,
     "text" DIR_SLASH_S,
+    #ifndef FO_OSX_IOS
     "save" DIR_SLASH_S,
+    #else
+    "../../../Documents/save/",
+    #endif
     "fonts" DIR_SLASH_S,
+    #ifndef FO_OSX_IOS
     "cache" DIR_SLASH_S,
+    #else
+    "../../../Documents/cache/",
+    #endif
     "",
     "",
     "",
@@ -77,7 +85,7 @@ void FileManager::SetDataPath( const char* path )
 void FileManager::SetCacheName( const char* name )
 {
     char cache_path[ MAX_FOPATH ];
-    Str::Format( cache_path, "cache%s%s%s", DIR_SLASH_S, name && name[ 0 ] ? name : "dummy", DIR_SLASH_S );
+    Str::Format( cache_path, "%s%s%s", PathList[ PT_CACHE ], name && name[ 0 ] ? name : "dummy", DIR_SLASH_S );
     PathList[ PT_CACHE ] = Str::Duplicate( cache_path );
     MakeDirectory( GetFullPath( "", PT_CACHE ) );
 }
@@ -793,14 +801,21 @@ void FileManager::FormatPath( char* path, bool first_skipped /* = false */ )
         #endif
     }
 
-    // Skip first '../'
-    if( !first_skipped )
+    // Erase first './'
+    while( path[ 0 ] == '.' && path[ 1 ] == DIR_SLASH_C )
     {
-        while( path[ 0 ] == '.' && path[ 1 ] == '.' && path[ 2 ] == DIR_SLASH_C )
-        {
-            path += 3;
-            first_skipped = true;
-        }
+        char* str = path;
+        char* str_ = str + 2;
+        for( ; *str_; str++, str_++ )
+            *str = *str_;
+        *str = 0;
+    }
+
+    // Skip first '../'
+    while( path[ 0 ] == '.' && path[ 1 ] == '.' && path[ 2 ] == DIR_SLASH_C )
+    {
+        path += 3;
+        first_skipped = true;
     }
 
     // Erase 'folder/../'
@@ -977,6 +992,34 @@ char* FileManager::EraseExtension( char* fname )
     if( ext )
         *( ext - 1 ) = 0;
     return fname;
+}
+
+bool FileManager::CopyFile( const char* from, const char* to )
+{
+    void* f_from = FileOpen( from, false );
+    if( !f_from )
+        return false;
+
+    CreateDirectoryTree( to );
+
+    void* f_to = FileOpen( to, true );
+    if( !f_to )
+    {
+        FileClose( f_from );
+        return false;
+    }
+
+    uint   size = FileGetSize( f_from );
+    uchar* buf = new uchar[ size ];
+    bool   ok = ( FileRead( f_from, buf, size ) && FileWrite( f_to, buf, size ) );
+    delete[] buf;
+
+    FileClose( f_to );
+    FileClose( f_from );
+
+    if( !ok )
+        FileDelete( to );
+    return ok;
 }
 
 int FileManager::ParseLinesInt( const char* fname, int path_type, IntVec& lines )

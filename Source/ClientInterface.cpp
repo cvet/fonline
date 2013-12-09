@@ -36,11 +36,9 @@ void FOClient::IfaceLoadSpr( AnyFrames*& comp, const char* name )
     char res[ MAX_FOTEXT ];
     if( !IfaceIni.GetStr( name, "none.png", res ) )
         WriteLog( "Signature<%s> not found.\n", name );
-    SprMngr.SurfType = RES_IFACE;
     comp = SprMngr.LoadAnimation( res, PT_ART_INTRFACE, ANIM_USE_DUMMY );
     if( comp == SpriteManager::DummyAnimation )
         WriteLog( "File<%s> not found.\n", res );
-    SprMngr.SurfType = RES_NONE;
 }
 
 void FOClient::IfaceLoadAnim( uint& comp, const char* name )
@@ -48,7 +46,7 @@ void FOClient::IfaceLoadAnim( uint& comp, const char* name )
     char res[ MAX_FOTEXT ];
     if( !IfaceIni.GetStr( name, "none.png", res ) )
         WriteLog( "Signature<%s> not found.\n", name );
-    if( !( comp = AnimLoad( res, PT_ART_INTRFACE, RES_IFACE ) ) )
+    if( !( comp = AnimLoad( res, PT_ART_INTRFACE, RES_ATLAS_STATIC ) ) )
         WriteLog( "Can't load animation<%s>.\n", res );
 }
 
@@ -59,12 +57,6 @@ void FOClient::IfaceLoadArray( IntVec& arr, const char* name )
         Str::ParseLine( res, ' ', arr, Str::AtoI );
     else
         WriteLog( "Signature<%s> not found.\n", name );
-}
-
-void FOClient::IfaceFreeResources()
-{
-    AnimFree( RES_IFACE );   // Also free sprites from IfaceLoad*
-    ResMngr.FreeResources( RES_IFACE_EXT );
 }
 
 bool FOClient::AppendIfaceIni( const char* ini_name )
@@ -154,6 +146,67 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
 }
 
 int FOClient::InitIface()
+{
+    // Recreate static atlas
+    ResMngr.FreeResources( RES_ATLAS_STATIC );
+    SprMngr.AccumulateAtlasData();
+    SprMngr.PushAtlasType( RES_ATLAS_STATIC );
+
+    // Initialize main interface
+    int result = InitIfaceExt();
+
+    // Load fonts
+    if( !SprMngr.LoadFontFO( FONT_FO, "OldDefault", false ) )
+        return -1;
+    if( !SprMngr.LoadFontFO( FONT_NUM, "Numbers", true ) )
+        return -2;
+    if( !SprMngr.LoadFontFO( FONT_BIG_NUM, "BigNumbers", true ) )
+        return -3;
+    if( !SprMngr.LoadFontFO( FONT_SAND_NUM, "SandNumbers", false ) )
+        return -4;
+    if( !SprMngr.LoadFontFO( FONT_SPECIAL, "Special", false ) )
+        return -5;
+    if( !SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false ) )
+        return -6;
+    if( !SprMngr.LoadFontFO( FONT_THIN, "Thin", false ) )
+        return -7;
+    if( !SprMngr.LoadFontFO( FONT_FAT, "Fat", false ) )
+        return -8;
+    if( !SprMngr.LoadFontFO( FONT_BIG, "Big", false ) )
+        return -9;
+
+    // BMF to FOFNT convertation
+    if( false )
+        SprMngr.LoadFontBMF( 11111, "DefaultExt" );
+
+    // Start script
+    if( !Script::PrepareContext( ClientFunctions.Start, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
+    {
+        WriteLog( "Execute start script fail.\n" );
+        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
+        return -10;
+    }
+
+    // Flush atlas data
+    SprMngr.PopAtlasType();
+    SprMngr.FlushAccumulatedAtlasData();
+
+    // Build fonts
+    SprMngr.BuildFont( FONT_FO );
+    SprMngr.BuildFont( FONT_NUM );
+    SprMngr.BuildFont( FONT_BIG_NUM );
+    SprMngr.BuildFont( FONT_SAND_NUM );
+    SprMngr.BuildFont( FONT_SPECIAL );
+    SprMngr.BuildFont( FONT_DEFAULT );
+    SprMngr.BuildFont( FONT_THIN );
+    SprMngr.BuildFont( FONT_FAT );
+    SprMngr.BuildFont( FONT_BIG );
+    SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
+
+    return result;
+}
+
+int FOClient::InitIfaceExt()
 {
     WriteLog( "Interface initialization.\n" );
 
@@ -657,10 +710,10 @@ int FOClient::InitIface()
     GmapVectX = 0;
     GmapVectY = 0;
     GmapMapCutOff.clear();
-    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, 0, MODE_WIDTH, GmapWMap.T ), COLOR_XRGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, GmapWMap.T, GmapWMap.L, GmapWMap.B ), COLOR_XRGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, Rect( GmapWMap.R, GmapWMap.T, MODE_WIDTH, GmapWMap.B ), COLOR_XRGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, GmapWMap.B, MODE_WIDTH, MODE_HEIGHT ), COLOR_XRGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, 0, MODE_WIDTH, GmapWMap.T ), COLOR_RGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, GmapWMap.T, GmapWMap.L, GmapWMap.B ), COLOR_RGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, Rect( GmapWMap.R, GmapWMap.T, MODE_WIDTH, GmapWMap.B ), COLOR_RGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, GmapWMap.B, MODE_WIDTH, MODE_HEIGHT ), COLOR_RGB( 0, 0, 0 ) );
     GmapNextShowEntrancesTick = 0;
     GmapShowEntrancesLocId = 0;
     memzero( GmapShowEntrances, sizeof( GmapShowEntrances ) );
@@ -926,8 +979,8 @@ int FOClient::InitIface()
     // Save/load surface creating
     if( Singleplayer )
     {
-        if( !SaveLoadDraft.FBO )
-            SprMngr.CreateRenderTarget( SaveLoadDraft, false, false, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, true );
+        if( !SaveLoadDraft )
+            SaveLoadDraft = SprMngr.CreateRenderTarget( false, false, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, true );
     }
     SaveLoadProcessDraft = false;
     SaveLoadDraftValid = false;
@@ -936,12 +989,9 @@ int FOClient::InitIface()
 /* Sprites                                                              */
 /************************************************************************/
     WriteLog( "Load sprites.\n" );
-    IfaceFreeResources();
 
     // Hex field sprites
-    SprMngr.SurfType = RES_IFACE;
     HexMngr.ReloadSprites();
-    SprMngr.SurfType = RES_NONE;
 
     // Interface
     IfaceLoadSpr( IntPWAddMess, "IntAddMessWindowPic" );
@@ -974,12 +1024,6 @@ int FOClient::InitIface()
     // Console
     IfaceLoadSpr( ConsolePic, "ConsoleMainPic" );
 
-    // Default animations
-    SprMngr.SurfType = RES_IFACE;
-    ItemHex::DefaultAnim = SprMngr.LoadAnimation( "art\\items\\reserved.frm", PT_DATA, ANIM_USE_DUMMY | ANIM_FRM_ANIM_PIX );
-    CritterCl::DefaultAnim = SprMngr.LoadAnimation( "art\\critters\\reservaa.frm", PT_DATA, ANIM_USE_DUMMY | ANIM_FRM_ANIM_PIX );
-    SprMngr.SurfType = RES_NONE;
-
     // Inventory
     IfaceLoadSpr( InvPWMain, "InvMainPic" );
     IfaceLoadSpr( InvPBOkUp, "InvOkPic" );
@@ -1003,7 +1047,8 @@ int FOClient::InitIface()
 
     // Login/Password
     IfaceLoadSpr( LogPMain, "LogMainPic" );
-    IfaceLoadSpr( LogPSingleplayerMain, "LogSingleplayerMainPic" );
+    if( Singleplayer )
+        IfaceLoadSpr( LogPSingleplayerMain, "LogSingleplayerMainPic" );
     if( !LogPSingleplayerMain )
         LogPSingleplayerMain = LogPMain;
     IfaceLoadSpr( LogPBLogin, "LogPlayPicDn" );
@@ -1032,7 +1077,6 @@ int FOClient::InitIface()
     IfaceLoadSpr( BarterPBC2oScrDnDn, "BarterCont2oScrDnPicDn" );
 
     // Cursors
-    SprMngr.SurfType = RES_IFACE;
     CurPMove = SprMngr.LoadAnimation( "msef001.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
     CurPMoveBlock = SprMngr.LoadAnimation( "msef002.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
     CurPUseItem = SprMngr.LoadAnimation( "acttohit.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
@@ -1048,7 +1092,6 @@ int FOClient::InitIface()
     CurPScrLU = SprMngr.LoadAnimation( "scrnwest.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
     CurPScrRD = SprMngr.LoadAnimation( "scrseast.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
     CurPScrLD = SprMngr.LoadAnimation( "scrswest.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    SprMngr.SurfType = RES_NONE;
     if( !CurPMove )
         return __LINE__;
     if( !CurPMoveBlock )
@@ -1127,9 +1170,7 @@ int FOClient::InitIface()
     IfaceLoadSpr( LmapPBOkDw, "LmapOkPicDn" );
     IfaceLoadSpr( LmapPBScanDw, "LmapScanPicDn" );
     IfaceLoadSpr( LmapPBLoHiDw, "LmapLoHiPicDn" );
-    SprMngr.SurfType = RES_IFACE;
     LmapPPix = SprMngr.LoadAnimation( "green_pix.png", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    SprMngr.SurfType = RES_NONE;
     if( !LmapPPix )
         return __LINE__;
 
@@ -1147,7 +1188,8 @@ int FOClient::InitIface()
 
     // Menu option
     IfaceLoadSpr( MoptMainPic, "MoptMainPic" );
-    IfaceLoadSpr( MoptSingleplayerMainPic, "MoptSingleplayerMainPic" );
+    if( Singleplayer )
+        IfaceLoadSpr( MoptSingleplayerMainPic, "MoptSingleplayerMainPic" );
     if( !MoptSingleplayerMainPic )
         MoptSingleplayerMainPic = MoptMainPic;
     IfaceLoadSpr( MoptSaveGamePicDown, "MoptSaveGamePicDn" );
@@ -1191,7 +1233,8 @@ int FOClient::InitIface()
 
     // ChaName
     IfaceLoadSpr( ChaNameMainPic, "ChaNameMainPic" );
-    IfaceLoadSpr( ChaNameSingleplayerMainPic, "ChaNameSingleplayerMainPic" );
+    if( Singleplayer )
+        IfaceLoadSpr( ChaNameSingleplayerMainPic, "ChaNameSingleplayerMainPic" );
     if( !ChaNameSingleplayerMainPic )
         ChaNameSingleplayerMainPic = ChaNameMainPic;
 
@@ -2078,18 +2121,18 @@ void FOClient::ConsoleDraw()
                                  "cr_hx<%u>, cr_hy<%u>,\nhx<%u>, hy<%u>,\ncur_x<%d>, cur_y<%d>\nCond<%u>\nox<%d>, oy<%d>\nFarDir<%d>\n3dXY<%f,%f>",
                                  Chosen->HexX, Chosen->HexY, hx, hy, GameOpt.MouseX, GameOpt.MouseY, Chosen->Cond, GameOpt.ScrOx, GameOpt.ScrOy,
                                  GetFarDir( Chosen->HexX, Chosen->HexY, hx, hy ), p.X, p.Y
-                                 ), FT_CENTERX, COLOR_XRGB( 255, 240, 0 ) );
+                                 ), FT_CENTERX, COLOR_RGB( 255, 240, 0 ) );
 
             SprMngr.DrawStr( Rect( 450, 5, 650, 300 ), Str::FormatBuf(
                                  "Anim info: cur_id %d, cur_ox %d, cur_oy %d\nFileld offset: x<%d>, y<%d>",
                                  Chosen->SprId, Chosen->SprOx, Chosen->SprOy, HexMngr.GetField( hx, hy ).ScrX, HexMngr.GetField( hx, hy ).ScrY
-                                 ), FT_CENTERX, COLOR_XRGB( 255, 240, 0 ) );
+                                 ), FT_CENTERX, COLOR_RGB( 255, 240, 0 ) );
 
             SprMngr.DrawStr( Rect( 650, 5, 800, 300 ), Str::FormatBuf(
                                  "Time:%02d:%02d %02d:%02d:%04d x%02d\nFixedFPS:%d\nSound:%d\nMusic:%d",
                                  GameOpt.Hour, GameOpt.Minute, GameOpt.Day, GameOpt.Month, GameOpt.Year, GameOpt.TimeMultiplier,
                                  GameOpt.FixedFPS, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume()
-                                 ), FT_CENTERX, COLOR_XRGB( 255, 240, 0 ) );
+                                 ), FT_CENTERX, COLOR_RGB( 255, 240, 0 ) );
         }
 
         SprMngr.DrawStr( Rect( 10, 10, MODE_WIDTH, MODE_HEIGHT ), Str::FormatBuf(
@@ -2113,7 +2156,7 @@ void FOClient::ConsoleDraw()
                              BytesSend, BytesReceive, BytesReceive + BytesSend, /*BytesRealReceive,*/
                              GameOpt.FPS, !GameOpt.VSync ? abs( GameOpt.FixedFPS ) : 0, !GameOpt.VSync && GameOpt.FixedFPS < 0 ? ", sleep" : "",
                              GameOpt.Ping, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume()
-                             ), 0, COLOR_XRGB( 255, 248, 0 ), FONT_BIG );
+                             ), 0, COLOR_RGB( 255, 248, 0 ), FONT_BIG );
 
         SprMngr.DrawStr( Rect( 0, 0, MODE_WIDTH, MODE_HEIGHT ), MsgGame->GetStr( STR_GAME_HELP ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT );
     }
@@ -5469,6 +5512,7 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
             break;
         AimTargetId = cr->GetId();
         SetCurMode( CUR_DEFAULT );
+        SAFEDEL( AimPic );
         AimPic = AimGetPic( cr, "frm" );
         if( !AimPic )
             AimPic = AimGetPic( cr, "png" );
@@ -5979,11 +6023,7 @@ void FOClient::GmapDraw()
                 continue;
 
             if( !GmapPic[ index ] )
-            {
-                SprMngr.SurfType = RES_GLOBAL_MAP;
-                GmapPic[ index ] = SprMngr.LoadAnimation( Str::FormatBuf( GmapTilesPic, index ), PT_ART_INTRFACE, ANIM_USE_DUMMY );
-                SprMngr.SurfType = RES_NONE;
-            }
+                GmapPic[ index ] = ResMngr.GetAnim( Str::GetHash( FileManager::GetFullPath( Str::FormatBuf( GmapTilesPic, index ), PT_ART_INTRFACE ) ), 0, RES_ATLAS_DYNAMIC );
             if( !GmapPic[ index ] )
                 continue;
 
@@ -6037,11 +6077,11 @@ void FOClient::GmapDraw()
             int val = GmapFog.Get2Bit( zx, zy );
             if( val == GM_FOG_NONE )
                 continue;
-            uint color = COLOR_ARGB( 0xFF, 0, 0, 0 );      // GM_FOG_FULL
+            uint color = COLOR_RGBA( 0xFF, 0, 0, 0 );      // GM_FOG_FULL
             if( val == GM_FOG_HALF )
-                color = COLOR_ARGB( 0x7F, 0, 0, 0 );
+                color = COLOR_RGBA( 0x7F, 0, 0, 0 );
             else if( val == GM_FOG_HALF_EX )
-                color = COLOR_ARGB( 0x3F, 0, 0, 0 );
+                color = COLOR_RGBA( 0x3F, 0, 0, 0 );
             float l = float(zx * GM_ZONE_LEN) / GmapZoom + GmapOffsetX;
             float t = float(zy * GM_ZONE_LEN) / GmapZoom + GmapOffsetY;
             float r = l + GM_ZONE_LEN / GmapZoom;
@@ -6066,7 +6106,7 @@ void FOClient::GmapDraw()
         {
             SprMngr.DrawSpriteSize( GmapLocPic, loc_pic_x1, loc_pic_y1,
                                     (float) ( loc_pic_x2 - loc_pic_x1 ), (float) ( loc_pic_y2 - loc_pic_y1 ),
-                                    true, false, loc.Color ? loc.Color : COLOR_ARGB( GMAP_LOC_ALPHA, 0, 255, 0 ) );
+                                    true, false, loc.Color ? loc.Color : COLOR_RGBA( GMAP_LOC_ALPHA, 0, 255, 0 ) );
         }
     }
 
@@ -6689,13 +6729,6 @@ uint FOClient::GmapGetMouseTabLocId()
         }
     }
     return 0;
-}
-
-void FOClient::GmapFreeResources()
-{
-    for( uint i = 0, j = (uint) GmapPic.size(); i < j; i++ )
-        GmapPic[ i ] = 0;
-    SprMngr.FreeSurfaces( RES_GLOBAL_MAP );
 }
 
 // ==============================================================================================================================
@@ -9101,9 +9134,9 @@ AnyFrames* FOClient::AimGetPic( CritterCl* cr, const char* ext )
     Str::Format( aim_name_alias, "%s%sna.%s", FileManager::GetPath( PT_ART_CRITTERS ), CritType::GetName( cr->GetCrTypeAlias() ), ext );
 
     // Load
-    AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( aim_name ), 0, RES_IFACE_EXT );
+    AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( aim_name ), 0, RES_ATLAS_DYNAMIC );
     if( !anim )
-        anim = ResMngr.GetAnim( Str::GetHash( aim_name_alias ), 0, RES_IFACE_EXT );
+        anim = ResMngr.GetAnim( Str::GetHash( aim_name_alias ), 0, RES_ATLAS_DYNAMIC );
     return anim;
 }
 
@@ -10066,7 +10099,7 @@ void FOClient::ElevatorGenerate( uint param )
         return;
     if( button_pic && !( ElevatorButtonPicDown = ResMngr.GetIfaceAnim( button_pic ) ) )
         return;
-    if( ElevatorIndicatorAnim && !( ElevatorIndicatorAnim = AnimLoad( ElevatorIndicatorAnim, 0, RES_IFACE ) ) )
+    if( ElevatorIndicatorAnim && !( ElevatorIndicatorAnim = AnimLoad( ElevatorIndicatorAnim, 0, RES_ATLAS_STATIC ) ) )
         return;
 
     AnimRun( ElevatorIndicatorAnim, ANIMRUN_SET_FRM( AnimGetSprCount( ElevatorIndicatorAnim ) * Procent( ElevatorLevelsCount - 1, ElevatorCurrentLevel - ElevatorStartLevel ) / 100 ) | ANIMRUN_STOP );
@@ -11506,7 +11539,7 @@ void FOClient::SaveLoadSaveGame( const char* name )
     {
         // Get data
         pic_data.resize( SAVE_LOAD_IMAGE_WIDTH * SAVE_LOAD_IMAGE_HEIGHT * 3 );
-        GL( glBindTexture( GL_TEXTURE_2D, SaveLoadDraft.TargetTexture->Id ) );
+        GL( glBindTexture( GL_TEXTURE_2D, SaveLoadDraft->TargetTexture->Id ) );
         GL( glGetTexImage( GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, &pic_data[ 0 ] ) );
         GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
     }
@@ -11523,11 +11556,11 @@ void FOClient::SaveLoadFillDraft()
     SaveLoadProcessDraft = false;
     SaveLoadDraftValid = false;
     int w = 0, h = 0;
-    SDL_GetWindowPosition( MainWindow, &w, &h );
-    RenderTarget rt;
-    if( SprMngr.CreateRenderTarget( rt, false, false, w, h, true ) )
+    SDL_GetWindowSize( MainWindow, &w, &h );
+    RenderTarget* rt = SprMngr.CreateRenderTarget( false, false, w, h, true );
+    if( rt )
     {
-        GL( glBindTexture( GL_TEXTURE_2D, rt.TargetTexture->Id ) );
+        GL( glBindTexture( GL_TEXTURE_2D, rt->TargetTexture->Id ) );
         GL( glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h ) );
         GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
         SprMngr.PushRenderTarget( SaveLoadDraft );
@@ -11548,7 +11581,7 @@ void FOClient::SaveLoadShowDraft()
         if( slot.PicData.size() == SAVE_LOAD_IMAGE_WIDTH * SAVE_LOAD_IMAGE_HEIGHT * 3 )
         {
             // Copy to texture
-            GL( glBindTexture( GL_TEXTURE_2D, SaveLoadDraft.TargetTexture->Id ) );
+            GL( glBindTexture( GL_TEXTURE_2D, SaveLoadDraft->TargetTexture->Id ) );
             GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, &slot.PicData[ 0 ] ) );
             GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
             SaveLoadDraftValid = true;

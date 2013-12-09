@@ -22,7 +22,7 @@ namespace Keyb
     bool IsInvalidChar( const char* str, uint flags );
 }
 
-void Keyb::InitKeyb()
+void Keyb::Init()
 {
     // User keys mapping
     for( uint i = 0; i < 0x100; i++ )
@@ -39,9 +39,6 @@ void Keyb::InitKeyb()
         KeysMapUser[ from ] = to;
     }
 }
-
-void Keyb::Finish()
-{}
 
 void Keyb::Lost()
 {
@@ -150,12 +147,13 @@ void Keyb::GetCharInternal( uchar dik, const char* dik_text, char* str, uint* po
     }
     else if( CtrlDwn && !ShiftDwn && dik == DIK_V )
     {
+        const char* cb_text = SDL_GetClipboardText();
         MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
-        MainWindowKeyboardEvents.push_back( 0 );
-        MainWindowKeyboardEventsText.push_back( SDL_GetClipboardText() );
+        MainWindowKeyboardEvents.push_back( 511 );
+        MainWindowKeyboardEventsText.push_back( cb_text );
         MainWindowKeyboardEvents.push_back( SDL_KEYUP );
-        MainWindowKeyboardEvents.push_back( 0 );
-        MainWindowKeyboardEventsText.push_back( "" );
+        MainWindowKeyboardEvents.push_back( 511 );
+        MainWindowKeyboardEventsText.push_back( cb_text );
     }
     else if( dik == DIK_CLIPBOARD_PASTE )
     {
@@ -193,7 +191,6 @@ void Keyb::GetCharInternal( uchar dik, const char* dik_text, char* str, uint* po
             return;
         if( CtrlDwn )
             return;
-
         if( IsInvalidChar( dik_text, flags ) )
             return;
 

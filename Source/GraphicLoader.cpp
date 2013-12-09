@@ -10,7 +10,7 @@
 
 #include "fbxsdk/fbxsdk.h"
 #ifdef FO_WINDOWS
-# pragma comment( lib, "libfbxsdk-mt.lib" )
+# pragma comment( lib, "libfbxsdk.lib" )
 #endif
 
 #include "PNG/png.h"
@@ -216,8 +216,15 @@ Frame* GraphicLoader::LoadModel( const char* fname )
     Frame* root_frame = NULL;
     uint   loaded_anim_sets = 0;
 
-    // FBX loader
+    // Check extension
     const char* ext = FileManager::GetExtension( fname );
+    if( !ext )
+    {
+        WriteLogF( _FUNC_, " - Extension not found, file<%s>.\n", fname );
+        return NULL;
+    }
+
+    // FBX loader
     if( Str::CompareCase( ext, "fbx" ) )
     {
         // Create manager
@@ -301,9 +308,10 @@ Frame* GraphicLoader::LoadModel( const char* fname )
         QuaternionVec     rv;
         VectorVec         tv;
         FbxAnimEvaluator* fbx_anim_evaluator = fbx_manager->GetAnimationEvaluator();
-        for( int i = 0; i < fbx_scene->GetMemberCount< FbxAnimStack >(); i++ )
+        FbxCriteria       fbx_anim_stack_criteria = FbxCriteria::ObjectType( fbx_anim_evaluator->GetContext()->GetClassId() );
+        for( int i = 0, j = fbx_scene->GetSrcObjectCount( fbx_anim_stack_criteria ); i < j; i++ )
         {
-            FbxAnimStack* fbx_anim_stack = fbx_scene->GetMember< FbxAnimStack >( i );
+            FbxAnimStack* fbx_anim_stack = (FbxAnimStack*) fbx_scene->GetSrcObject( fbx_anim_stack_criteria, i );
             fbx_anim_evaluator->SetContext( fbx_anim_stack );
 
             FbxTakeInfo* take_info = fbx_importer->GetTakeInfo( i );
@@ -784,13 +792,17 @@ Frame* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& bone
             int                 mat_id = fbx_material_element->GetIndexArray().GetAt( 0 );
             FbxSurfaceMaterial* fbx_material = fbx_mesh->GetNode()->GetMaterial( mat_id );
 
-            FbxProperty         prop_diffuse = fbx_material->FindProperty( FbxSurfaceMaterial::sDiffuse );
-            FbxProperty         prop_diffuse_factor = fbx_material->FindProperty( FbxSurfaceMaterial::sDiffuseFactor );
+            FbxProperty         prop_diffuse = fbx_material->FindProperty( "Diffuse" );
+            FbxProperty         prop_diffuse_factor = fbx_material->FindProperty( "DiffuseFactor" );
             if( prop_diffuse.IsValid() )
             {
-                char tex_fname[ MAX_FOPATH ];
-                FileManager::ExtractFileName( prop_diffuse.GetSrcObject< FbxFileTexture >()->GetFileName(), tex_fname );
-                ms.DiffuseTexture = tex_fname;
+                if( prop_diffuse.GetSrcObjectCount() > 0 )
+                {
+                    char tex_fname[ MAX_FOPATH ];
+                    FbxFileTexture* fbx_file_texture = (FbxFileTexture*) prop_diffuse.GetSrcObject();
+                    FileManager::ExtractFileName( fbx_file_texture->GetFileName(), tex_fname );
+                    ms.DiffuseTexture = tex_fname;
+                }
 
                 if( prop_diffuse_factor.IsValid() )
                 {
@@ -802,8 +814,8 @@ Frame* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& bone
                 }
             }
 
-            FbxProperty prop_ambient = fbx_material->FindProperty( FbxSurfaceMaterial::sAmbient );
-            FbxProperty prop_ambient_factor = fbx_material->FindProperty( FbxSurfaceMaterial::sAmbientFactor );
+            FbxProperty prop_ambient = fbx_material->FindProperty( "Ambient" );
+            FbxProperty prop_ambient_factor = fbx_material->FindProperty( "AmbientFactor" );
             if( prop_ambient.IsValid() && prop_ambient_factor.IsValid() )
             {
                 FbxDouble3 color = prop_ambient.Get< FbxDouble3 >();
@@ -813,8 +825,8 @@ Frame* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& bone
                 ms.AmbientColor[ 2 ] = (float) ( color.mData[ 2 ] * factor );
             }
 
-            FbxProperty prop_specular = fbx_material->FindProperty( FbxSurfaceMaterial::sSpecular );
-            FbxProperty prop_specular_factor = fbx_material->FindProperty( FbxSurfaceMaterial::sSpecularFactor );
+            FbxProperty prop_specular = fbx_material->FindProperty( "Specular" );
+            FbxProperty prop_specular_factor = fbx_material->FindProperty( "SpecularFactor" );
             if( prop_specular.IsValid() && prop_specular_factor.IsValid() )
             {
                 FbxDouble3 color = prop_specular.Get< FbxDouble3 >();
@@ -824,8 +836,8 @@ Frame* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& bone
                 ms.SpecularColor[ 2 ] = (float) ( color.mData[ 2 ] * factor );
             }
 
-            FbxProperty prop_emissive = fbx_material->FindProperty( FbxSurfaceMaterial::sEmissive );
-            FbxProperty prop_emissive_factor = fbx_material->FindProperty( FbxSurfaceMaterial::sEmissiveFactor );
+            FbxProperty prop_emissive = fbx_material->FindProperty( "Emissive" );
+            FbxProperty prop_emissive_factor = fbx_material->FindProperty( "EmissiveFactor" );
             if( prop_emissive.IsValid() && prop_emissive_factor.IsValid() )
             {
                 FbxDouble3 color = prop_emissive.Get< FbxDouble3 >();
@@ -1033,7 +1045,9 @@ Texture* GraphicLoader::LoadTexture( const char* texture_name, const char* model
     uint        size, w, h;
     uchar*      data = NULL;
     const char* ext = FileManager::GetExtension( texture_name );
-    if( Str::CompareCase( ext, "png" ) )
+    if( !ext )
+        WriteLogF( _FUNC_, " - Extension not found, file<%s>.\n", texture_name );
+    else if( Str::CompareCase( ext, "png" ) )
         data = LoadPNG( fm.GetBuf(), fm.GetFsize(), size, w, h );
     else if( Str::CompareCase( ext, "tga" ) )
         data = LoadTGA( fm.GetBuf(), fm.GetFsize(), size, w, h );
@@ -1059,7 +1073,7 @@ Texture* GraphicLoader::LoadTexture( const char* texture_name, const char* model
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT ) );
-    GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, texture->Data ) );
+    GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture->Data ) );
     texture->Name = Str::Duplicate( texture_name );
     loadedTextures.push_back( texture );
     return loadedTextures.back();
@@ -1140,10 +1154,9 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         return NULL;
     }
 
-    #ifndef FO_OSX_IOS
     // Make effect binary file name
     char binary_fname[ MAX_FOPATH ] = { 0 };
-    if( GL_HAS( ARB_get_program_binary ) )
+    if( GL_HAS( get_program_binary ) )
     {
         Str::Copy( binary_fname, fname );
         FileManager::EraseExtension( binary_fname );
@@ -1164,7 +1177,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
 
     // Load from binary
     FileManager file_binary;
-    if( GL_HAS( ARB_get_program_binary ) )
+    if( GL_HAS( get_program_binary ) )
     {
         if( file_binary.LoadFile( binary_fname, PT_CACHE ) )
         {
@@ -1179,6 +1192,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         if( version == SHADER_PROGRAM_BINARY_VERSION )
         {
             GLenum  format = file_binary.GetBEUInt();
+            UNUSED_VARIABLE( format ); // OGL ES
             GLsizei length = file_binary.GetBEUInt();
             if( file_binary.GetFsize() >= length + sizeof( uint ) * 3 )
             {
@@ -1208,7 +1222,6 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
 
     // Load from text
     if( !file_binary.IsLoaded() )
-    #endif
     {
         char* str = (char*) file.GetBuf();
 
@@ -1223,7 +1236,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
                 *ver_end = 0;
             }
         }
-        #ifdef FO_OSX_IOS
+        #ifdef FO_OGL_ES
         char ios_data[] = { "precision mediump float;\n" };
         ver = ios_data;
         #endif
@@ -1303,7 +1316,9 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             GL( glBindAttribLocation( program, 0, "InPosition" ) );
             GL( glBindAttribLocation( program, 1, "InColor" ) );
             GL( glBindAttribLocation( program, 2, "InTexCoord" ) );
+            #ifndef DISABLE_EGG
             GL( glBindAttribLocation( program, 3, "InTexEggCoord" ) );
+            #endif
         }
         else
         {
@@ -1319,10 +1334,8 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             GL( glBindAttribLocation( program, 9, "InBlendIndices" ) );
         }
 
-        #ifndef FO_OSX_IOS
-        if( GL_HAS( ARB_get_program_binary ) )
+        if( GL_HAS( get_program_binary ) )
             GL( glProgramParameteri( program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE ) );
-        #endif
 
         GL( glLinkProgram( program ) );
         GLint linked;
@@ -1339,9 +1352,8 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             return NULL;
         }
 
-        #ifndef FO_OSX_IOS
         // Save in binary
-        if( GL_HAS( ARB_get_program_binary ) )
+        if( GL_HAS( get_program_binary ) )
         {
             GLsizei  buf_size;
             GL( glGetProgramiv( program, GL_PROGRAM_BINARY_LENGTH, &buf_size ) );
@@ -1358,7 +1370,6 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             if( !file_binary.SaveOutBufToFile( binary_fname, PT_CACHE ) )
                 WriteLogF( _FUNC_, " - Can't save effect<%s> in binary<%s>.\n", fname, binary_fname );
         }
-        #endif
     }
 
     // Create effect instance
@@ -1624,10 +1635,17 @@ bool GraphicLoader::LoadDefaultEffects()
         else                                                                      \
             effect_errors++
     uint effect_errors = 0;
+    #ifndef DISABLE_EGG
     LOAD_EFFECT( Effect::Generic, "2D_Default", true, NULL );
     LOAD_EFFECT( Effect::Critter, "2D_Default", true, NULL );
     LOAD_EFFECT( Effect::Roof, "2D_Default", true, NULL );
     LOAD_EFFECT( Effect::Rain, "2D_Default", true, NULL );
+    #else
+    LOAD_EFFECT( Effect::Generic, "2D_WithoutEgg", true, NULL );
+    LOAD_EFFECT( Effect::Critter, "2D_WithoutEgg", true, NULL );
+    LOAD_EFFECT( Effect::Roof, "2D_WithoutEgg", true, NULL );
+    LOAD_EFFECT( Effect::Rain, "2D_WithoutEgg", true, NULL );
+    #endif
     LOAD_EFFECT( Effect::Iface, "Interface_Default", true, NULL );
     LOAD_EFFECT( Effect::Primitive, "Primitive_Default", true, NULL );
     LOAD_EFFECT( Effect::Light, "Primitive_Default", true, NULL );
@@ -1748,12 +1766,7 @@ uchar* GraphicLoader::LoadPNG( const uchar* data, uint data_size, uint& result_s
     png_destroy_read_struct( &png_ptr, &info_ptr, (png_infopp) NULL );
     free( row_pointers );
 
-    // Swap Red and Blue
-    uint* result4 = (uint*) result;
-    for( uint i = 0, j = width * height; i < j; i++ )
-        result4[ i ] = COLOR_FIX( result4[ i ] );
-
-    // Convert to RGBA
+    // Return
     result_size = width * height * 4;
     result_width = width;
     result_height = height;
@@ -1797,17 +1810,10 @@ void GraphicLoader::SavePNG( const char* fname, uchar* data, uint width, uint he
     png_set_IHDR( png_ptr, info_ptr, width, height, bit_depth, color_type, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE );
     png_write_info( png_ptr, info_ptr );
 
-    // Swap Red and Blue
-    uchar* save_data = new uchar[ width * height * 4 ];
-    memcpy( save_data, data, width * height * 4 );
-    uint*  save_data4 = (uint*) save_data;
-    for( uint i = 0, j = width * height; i < j; i++ )
-        save_data4[ i ] = COLOR_FIX( save_data4[ i ] );
-
     // Write pointers
     uchar** row_pointers = new uchar*[ height ];
     for( uint y = 0; y < height; y++ )
-        row_pointers[ y ] = &save_data[ y * width * 4 ];
+        row_pointers[ y ] = &data[ y * width * 4 ];
 
     // Write bytes
     if( setjmp( png_jmpbuf( png_ptr ) ) )
@@ -1821,7 +1827,6 @@ void GraphicLoader::SavePNG( const char* fname, uchar* data, uint width, uint he
 
     // Clean up
     delete[] row_pointers;
-    delete[] save_data;
 
     // Write to disk
     FileManager fm;
@@ -1940,9 +1945,9 @@ uchar* GraphicLoader::LoadTGA( const uchar* data, uint data_size, uint& result_s
     uchar* result = new uchar[ result_size ];
     for( int i = 0, j = width * height; i < j; i++ )
     {
-        result[ i * 4 + 0 ] = read_data[ i * bpp + 0 ];
+        result[ i * 4 + 0 ] = read_data[ i * bpp + 2 ];
         result[ i * 4 + 1 ] = read_data[ i * bpp + 1 ];
-        result[ i * 4 + 2 ] = read_data[ i * bpp + 2 ];
+        result[ i * 4 + 2 ] = read_data[ i * bpp + 0 ];
         result[ i * 4 + 3 ] = ( bpp == 4 ? read_data[ i * bpp + 3 ] : 0xFF );
     }
     delete[] read_data;

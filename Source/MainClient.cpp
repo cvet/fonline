@@ -126,12 +126,25 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
     // Create engine
     FOClient* engine = new FOClient();
-    if( !engine || !engine->Init() )
+    if( !engine->Init() )
     {
         WriteLog( "FOnline engine initialization fail.\n" );
         GameOpt.Quit = true;
         return -1;
     }
+
+    // iOS loop
+    #ifdef FO_OSX_IOS
+    struct App
+    {
+        static void ShowFrame( void* engine )
+        {
+            ( (FOClient*) engine )->MainLoop();
+        }
+    };
+    SDL_iPhoneSetAnimationCallback( MainWindow, 1, App::ShowFrame, engine );
+    return 0;
+    #endif
 
     // Loop
     while( !GameOpt.Quit )

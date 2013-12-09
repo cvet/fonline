@@ -7,21 +7,24 @@
 // FO_LINUX
 // FO_OSX
 // FO_OSX_IOS
+// FO_ANDROID - todo
 //
 // CPU
 // FO_X86
-// FO_X64 - todo
+// FO_X64
 //
 // Compiler
 // FO_GCC
 // FO_MSVC
+//
+// Render
+// FO_OGL_ES
 //
 
 //
 // GCC options
 // Compiler
 //  Directories
-//   ../Source/StlPort
 //   ../Source
 //  Options
 //   -std=gnu++0x
@@ -30,7 +33,7 @@
 //   -Wno-unused-result
 // Linker
 //  Directories
-//   ../Lib/Linux or ../Lib/MacOSX
+//   ../Lib/Linux or ../Lib/OSX
 //
 
 // Detect operating system
@@ -43,6 +46,7 @@
 # define FO_OSX
 # if defined ( TARGET_OS_IPHONE ) && TARGET_OS_IPHONE == 1
 #  define FO_OSX_IOS
+#  define FO_OGL_ES
 # endif
 #else
 # error "Unknown operating system."

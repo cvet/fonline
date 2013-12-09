@@ -27,14 +27,18 @@ typedef map< uint, Letter >::iterator LetterMapIt;
 
 struct FontData
 {
-    Texture*  FontTex;
-    Texture*  FontTexBordered;
+    Texture*   FontTex;
+    Texture*   FontTexBordered;
 
-    LetterMap Letters;
-    int       SpaceWidth;
-    int       LineHeight;
-    int       YAdvance;
-    Effect*   DrawEffect;
+    LetterMap  Letters;
+    int        SpaceWidth;
+    int        LineHeight;
+    int        YAdvance;
+    Effect*    DrawEffect;
+
+    AnyFrames* ImageNormal;
+    AnyFrames* ImageBordered;
+    bool       MakeGray;
 
     FontData()
     {
@@ -44,6 +48,9 @@ struct FontData
         LineHeight = 0;
         YAdvance = 0;
         DrawEffect = Effect::Font;
+        ImageNormal = NULL;
+        ImageBordered = NULL;
+        MakeGray = false;
     }
 };
 typedef vector< FontData* > FontDataVec;
@@ -135,22 +142,14 @@ void SpriteManager::SetFontEffect( int index, Effect* effect )
         font->DrawEffect = ( effect ? effect : Effect::Font );
 }
 
-bool SpriteManager::BuildFont( int index, void* pfont, const char* image_name, bool make_gray )
+void SpriteManager::BuildFont( int index )
 {
-    FontData& font = *(FontData*) pfont;
-
-    // Load image
-    AnyFrames* image = LoadAnimation( image_name, PT_FONTS );
-    if( !image )
-    {
-        WriteLogF( _FUNC_, " - Image file<%s> not found.\n", image_name );
-        return false;
-    }
+    FontData& font = *Fonts[ index ];
 
     // Fix texture coordinates
-    SpriteInfo* si = SprMngr.GetSpriteInfo( image->GetSprId( 0 ) );
-    float       tex_w = (float) si->Surf->Width;
-    float       tex_h = (float) si->Surf->Height;
+    SpriteInfo* si = GetSpriteInfo( font.ImageNormal->GetSprId( 0 ) );
+    float       tex_w = (float) si->Atlas->Width;
+    float       tex_h = (float) si->Atlas->Height;
     float       image_x = tex_w * si->SprRect.L;
     float       image_y = tex_h * si->SprRect.T;
     int         max_h = 0;
@@ -170,101 +169,91 @@ bool SpriteManager::BuildFont( int index, void* pfont, const char* image_name, b
     }
 
     // Fill data
-    font.FontTex = si->Surf->TextureOwner;
+    font.FontTex = si->Atlas->TextureOwner;
     if( font.LineHeight == 0 )
         font.LineHeight = max_h;
     if( font.Letters.count( ' ' ) )
         font.SpaceWidth = font.Letters[ ' ' ].XAdvance;
 
-    // Create bordered instance
-    AnyFrames* image_bordered = LoadAnimation( image_name, PT_FONTS );
-    if( !image_bordered )
-    {
-        WriteLogF( _FUNC_, " - Can't load twice file<%s>.\n", image_name );
-        return false;
-    }
-    SpriteInfo* si_bordered = SprMngr.GetSpriteInfo( image_bordered->GetSprId( 0 ) );
-    font.FontTexBordered = si_bordered->Surf->TextureOwner;
+    SpriteInfo* si_bordered = ( font.ImageBordered ? GetSpriteInfo( font.ImageBordered->GetSprId( 0 ) ) : NULL );
+    font.FontTexBordered = ( si_bordered ? si_bordered->Atlas->TextureOwner : NULL );
 
     // Normalize color to gray
     uint normal_ox = (uint) ( tex_w * si->SprRect.L );
     uint normal_oy = (uint) ( tex_h * si->SprRect.T );
-    uint bordered_ox = (uint) ( (float) si_bordered->Surf->Width * si_bordered->SprRect.L );
-    uint bordered_oy = (uint) ( (float) si_bordered->Surf->Height * si_bordered->SprRect.T );
-    if( make_gray )
+    uint bordered_ox = ( si_bordered ? (uint) ( (float) si_bordered->Atlas->Width * si_bordered->SprRect.L ) : 0 );
+    uint bordered_oy = ( si_bordered ? (uint) ( (float) si_bordered->Atlas->Height * si_bordered->SprRect.T ) : 0 );
+    if( font.MakeGray )
     {
         for( uint y = 0; y < (uint) si->Height; y++ )
         {
             for( uint x = 0; x < (uint) si->Width; x++ )
             {
-                uchar a = ( (uchar*) &si->Surf->TextureOwner->Pixel( normal_ox + x, normal_oy + y ) )[ 3 ];
+                uchar a = ( (uchar*) &si->Atlas->TextureOwner->Pixel( normal_ox + x, normal_oy + y ) )[ 3 ];
                 if( a )
                 {
-                    si->Surf->TextureOwner->Pixel( normal_ox + x, normal_oy + y ) = COLOR_ARGB( a, 128, 128, 128 );
-                    si_bordered->Surf->TextureOwner->Pixel( bordered_ox + x, bordered_oy + y ) = COLOR_ARGB( a, 128, 128, 128 );
+                    si->Atlas->TextureOwner->Pixel( normal_ox + x, normal_oy + y ) = COLOR_RGBA( a, 128, 128, 128 );
+                    if( si_bordered )
+                        si_bordered->Atlas->TextureOwner->Pixel( bordered_ox + x, bordered_oy + y ) = COLOR_RGBA( a, 128, 128, 128 );
                 }
                 else
                 {
-                    si->Surf->TextureOwner->Pixel( normal_ox + x, normal_oy + y ) = COLOR_ARGB( 0, 0, 0, 0 );
-                    si_bordered->Surf->TextureOwner->Pixel( bordered_ox + x, bordered_oy + y ) = COLOR_ARGB( 0, 0, 0, 0 );
+                    si->Atlas->TextureOwner->Pixel( normal_ox + x, normal_oy + y ) = COLOR_RGBA( 0, 0, 0, 0 );
+                    if( si_bordered )
+                        si_bordered->Atlas->TextureOwner->Pixel( bordered_ox + x, bordered_oy + y ) = COLOR_RGBA( 0, 0, 0, 0 );
                 }
             }
         }
         Rect r = Rect( normal_ox, normal_oy, normal_ox + si->Width - 1, normal_oy + si->Height - 1 );
-        si->Surf->TextureOwner->Update( r );
+        si->Atlas->TextureOwner->Update( r );
     }
 
     // Fill border
-    for( uint y = 0; y < (uint) si_bordered->Height; y++ )
+    if( si_bordered )
     {
-        for( uint x = 0; x < (uint) si_bordered->Width; x++ )
+        for( uint y = 0; y < (uint) si_bordered->Height; y++ )
         {
-            if( si->Surf->TextureOwner->Pixel( normal_ox + x, normal_oy + y ) )
+            for( uint x = 0; x < (uint) si_bordered->Width; x++ )
             {
-                for( int xx = -1; xx <= 1; xx++ )
+                if( si->Atlas->TextureOwner->Pixel( normal_ox + x, normal_oy + y ) )
                 {
-                    for( int yy = -1; yy <= 1; yy++ )
+                    for( int xx = -1; xx <= 1; xx++ )
                     {
-                        uint ox = bordered_ox + x + xx;
-                        uint oy = bordered_oy + y + yy;
-                        if( !si_bordered->Surf->TextureOwner->Pixel( ox, oy ) )
-                            si_bordered->Surf->TextureOwner->Pixel( ox, oy ) = COLOR_XRGB( 0, 0, 0 );
+                        for( int yy = -1; yy <= 1; yy++ )
+                        {
+                            uint ox = bordered_ox + x + xx;
+                            uint oy = bordered_oy + y + yy;
+                            if( !si_bordered->Atlas->TextureOwner->Pixel( ox, oy ) )
+                                si_bordered->Atlas->TextureOwner->Pixel( ox, oy ) = COLOR_RGB( 0, 0, 0 );
+                        }
                     }
                 }
             }
         }
+        Rect r_bordered = Rect( bordered_ox, bordered_oy, bordered_ox + si_bordered->Width - 1, bordered_oy + si_bordered->Height - 1 );
+        si_bordered->Atlas->TextureOwner->Update( r_bordered );
+
+        // Fix texture coordinates on bordered texture
+        tex_w = (float) si_bordered->Atlas->Width;
+        tex_h = (float) si_bordered->Atlas->Height;
+        image_x = tex_w * si_bordered->SprRect.L;
+        image_y = tex_h * si_bordered->SprRect.T;
+        for( LetterMapIt it = font.Letters.begin(), end = font.Letters.end(); it != end; ++it )
+        {
+            Letter& l = ( *it ).second;
+            float   x = (float) l.PosX;
+            float   y = (float) l.PosY;
+            float   w = (float) l.W;
+            float   h = (float) l.H;
+            l.TexBorderedUV[ 0 ] = ( image_x + x - 1.0f ) / tex_w;
+            l.TexBorderedUV[ 1 ] = ( image_y + y - 1.0f ) / tex_h;
+            l.TexBorderedUV[ 2 ] = ( image_x + x + w + 1.0f ) / tex_w;
+            l.TexBorderedUV[ 3 ] = ( image_y + y + h + 1.0f ) / tex_h;
+        }
     }
-    Rect r_bordered = Rect( bordered_ox, bordered_oy, bordered_ox + si_bordered->Width - 1, bordered_oy + si_bordered->Height - 1 );
-    si_bordered->Surf->TextureOwner->Update( r_bordered );
-
-    // Fix texture coordinates on bordered texture
-    tex_w = (float) si_bordered->Surf->Width;
-    tex_h = (float) si_bordered->Surf->Height;
-    image_x = tex_w * si_bordered->SprRect.L;
-    image_y = tex_h * si_bordered->SprRect.T;
-    for( LetterMapIt it = font.Letters.begin(), end = font.Letters.end(); it != end; ++it )
-    {
-        Letter& l = ( *it ).second;
-        float   x = (float) l.PosX;
-        float   y = (float) l.PosY;
-        float   w = (float) l.W;
-        float   h = (float) l.H;
-        l.TexBorderedUV[ 0 ] = ( image_x + x - 1.0f ) / tex_w;
-        l.TexBorderedUV[ 1 ] = ( image_y + y - 1.0f ) / tex_h;
-        l.TexBorderedUV[ 2 ] = ( image_x + x + w + 1.0f ) / tex_w;
-        l.TexBorderedUV[ 3 ] = ( image_y + y + h + 1.0f ) / tex_h;
-    }
-
-    // Register
-    if( index >= (int) Fonts.size() )
-        Fonts.resize( index + 1 );
-    SAFEDEL( Fonts[ index ] );
-    Fonts[ index ] = new FontData( font );
-
-    return true;
 }
 
-bool SpriteManager::LoadFontFO( int index, const char* font_name )
+bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_bordered )
 {
     // Load font data
     char        fname[ MAX_FOPATH ];
@@ -466,8 +455,36 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name )
         make_gray = true;
         image_name[ Str::Length( image_name ) - 1 ] = 0;
     }
+    font.MakeGray = make_gray;
 
-    return BuildFont( index, &font, image_name, make_gray );
+    // Load image
+    AnyFrames* image_normal = LoadAnimation( image_name, PT_FONTS );
+    if( !image_normal )
+    {
+        WriteLogF( _FUNC_, " - Image file<%s> not found.\n", image_name );
+        return false;
+    }
+    font.ImageNormal = image_normal;
+
+    // Create bordered instance
+    if( !not_bordered )
+    {
+        AnyFrames* image_bordered = LoadAnimation( image_name, PT_FONTS );
+        if( !image_bordered )
+        {
+            WriteLogF( _FUNC_, " - Can't load twice file<%s>.\n", image_name );
+            return false;
+        }
+        font.ImageBordered = image_bordered;
+    }
+
+    // Register
+    if( index >= (int) Fonts.size() )
+        Fonts.resize( index + 1 );
+    SAFEDEL( Fonts[ index ] );
+    Fonts[ index ] = new FontData( font );
+
+    return true;
 }
 
 bool SpriteManager::LoadFontBMF( int index, const char* font_name )
@@ -604,8 +621,33 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
 
     font.YAdvance = 1;
     font.LineHeight = base_height;
+    font.MakeGray = true;
 
-    return BuildFont( index, &font, image_name, true );
+    // Load image
+    AnyFrames* image_normal = LoadAnimation( image_name, PT_FONTS );
+    if( !image_normal )
+    {
+        WriteLogF( _FUNC_, " - Image file<%s> not found.\n", image_name );
+        return false;
+    }
+    font.ImageNormal = image_normal;
+
+    // Create bordered instance
+    AnyFrames* image_bordered = LoadAnimation( image_name, PT_FONTS );
+    if( !image_bordered )
+    {
+        WriteLogF( _FUNC_, " - Can't load twice file<%s>.\n", image_name );
+        return false;
+    }
+    font.ImageBordered = image_bordered;
+
+    // Register
+    if( index >= (int) Fonts.size() )
+        Fonts.resize( index + 1 );
+    SAFEDEL( Fonts[ index ] );
+    Fonts[ index ] = new FontData( font );
+
+    return true;
 }
 
 void FormatText( FontFormatInfo& fi, int fmt_type )
@@ -655,6 +697,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         {
             size_t d_len = (uint) ( (size_t) s2 - (size_t) s1 ) + 1;
             uint   d = (uint) strtoul( s1 + 1, NULL, 0 );
+            std::swap( ( (uchar*) &d )[ 0 ], ( (uchar*) &d )[ 2 ] );
 
             dots[ (uint) ( (size_t) s1 - (size_t) str ) - d_offs ] = d;
             d_offs += d_len;
@@ -1025,9 +1068,9 @@ bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint co
     int      curx = fi.CurX;
     int      cury = fi.CurY;
     int      curstr = 0;
-    Texture* texture = ( FLAG( flags, FT_BORDERED ) ? font->FontTexBordered : font->FontTex );
+    Texture* texture = ( FLAG( flags, FT_BORDERED ) && font->FontTexBordered ? font->FontTexBordered : font->FontTex );
 
-    if( curSprCnt )
+    if( curDrawQuad )
         Flush();
 
     if( !FLAG( flags, FT_NO_COLORIZE ) )
@@ -1091,7 +1134,7 @@ bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint co
 
             Letter& l = ( *it ).second;
 
-            int     mulpos = curSprCnt * 4;
+            int     pos = curDrawQuad * 4;
             int     x = curx - l.OffsX - 1;
             int     y = cury - l.OffsY - 1;
             int     w = l.W + 2;
@@ -1103,34 +1146,34 @@ bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint co
             float   x2 = texture_uv[ 2 ];
             float   y2 = texture_uv[ 3 ];
 
-            vBuffer[ mulpos ].x = (float) x;
-            vBuffer[ mulpos ].y = (float) y + h;
-            vBuffer[ mulpos ].tu = x1;
-            vBuffer[ mulpos ].tv = y2;
-            vBuffer[ mulpos++ ].diffuse = color;
+            vBuffer[ pos ].x = (float) x;
+            vBuffer[ pos ].y = (float) y + h;
+            vBuffer[ pos ].tu = x1;
+            vBuffer[ pos ].tv = y2;
+            vBuffer[ pos++ ].diffuse = color;
 
-            vBuffer[ mulpos ].x = (float) x;
-            vBuffer[ mulpos ].y = (float) y;
-            vBuffer[ mulpos ].tu = x1;
-            vBuffer[ mulpos ].tv = y1;
-            vBuffer[ mulpos++ ].diffuse = color;
+            vBuffer[ pos ].x = (float) x;
+            vBuffer[ pos ].y = (float) y;
+            vBuffer[ pos ].tu = x1;
+            vBuffer[ pos ].tv = y1;
+            vBuffer[ pos++ ].diffuse = color;
 
-            vBuffer[ mulpos ].x = (float) x + w;
-            vBuffer[ mulpos ].y = (float) y;
-            vBuffer[ mulpos ].tu = x2;
-            vBuffer[ mulpos ].tv = y1;
-            vBuffer[ mulpos++ ].diffuse = color;
+            vBuffer[ pos ].x = (float) x + w;
+            vBuffer[ pos ].y = (float) y;
+            vBuffer[ pos ].tu = x2;
+            vBuffer[ pos ].tv = y1;
+            vBuffer[ pos++ ].diffuse = color;
 
-            vBuffer[ mulpos ].x = (float) x + w;
-            vBuffer[ mulpos ].y = (float) y + h;
-            vBuffer[ mulpos ].tu = x2;
-            vBuffer[ mulpos ].tv = y2;
-            vBuffer[ mulpos ].diffuse = color;
+            vBuffer[ pos ].x = (float) x + w;
+            vBuffer[ pos ].y = (float) y + h;
+            vBuffer[ pos ].tu = x2;
+            vBuffer[ pos ].tv = y2;
+            vBuffer[ pos ].diffuse = color;
 
-            if( ++curSprCnt == flushSprCnt )
+            if( ++curDrawQuad == drawQuadCount )
             {
                 dipQueue.push_back( DipData( texture, font->DrawEffect ) );
-                dipQueue.back().SpritesCount = curSprCnt;
+                dipQueue.back().SpritesCount = curDrawQuad;
                 Flush();
             }
 
@@ -1139,10 +1182,10 @@ bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint co
         }
     }
 
-    if( curSprCnt )
+    if( curDrawQuad )
     {
         dipQueue.push_back( DipData( texture, font->DrawEffect ) );
-        dipQueue.back().SpritesCount = curSprCnt;
+        dipQueue.back().SpritesCount = curDrawQuad;
         Flush();
     }
 

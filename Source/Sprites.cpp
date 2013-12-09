@@ -319,7 +319,7 @@ void Sprites::SortBySurfaces()
         {
             SpriteInfo* si1 = ( *SortSpritesSurfSprData )[ spr1->PSprId ? *spr1->PSprId : spr1->SprId ];
             SpriteInfo* si2 = ( *SortSpritesSurfSprData )[ spr2->PSprId ? *spr2->PSprId : spr2->SprId ];
-            return si1 && si2 && si1->Surf && si2->Surf && si1->Surf->TextureOwner < si2->Surf->TextureOwner;
+            return si1 && si2 && si1->Atlas && si2->Atlas && si1->Atlas->TextureOwner < si2->Atlas->TextureOwner;
         }
     };
     SortSpritesSurfSprData = &SprMngr.GetSpritesInfo();

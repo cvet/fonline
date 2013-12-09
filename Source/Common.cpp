@@ -436,14 +436,11 @@ void RestoreMainDirectory()
         }
     }
     #elif defined ( FO_OSX )
-    // Temporary hack
-    char path[ MAX_FOPATH ] = { 0 };
-    getcwd( path, MAX_FOPATH );
-    printf( "Cur path<%s>.\n", path );
-    chdir( "/Users/admin/Documents/sdk/Client" );
-    path[ 0 ] = 0;
-    getcwd( path, MAX_FOPATH );
-    printf( "New path<%s>.\n", path );
+    # ifdef FO_OSX_IOS
+    chdir( "./Client" );
+    # else
+    chdir( "./Client_OSX.app/Contents/Resources/Client" );
+    # endif
     #endif
 }
 
@@ -725,7 +722,6 @@ const char* GetWindowName()
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 
 SDL_Window*   MainWindow = NULL;
-SDL_Renderer* Renderer = NULL;
 SDL_GLContext GLContext = NULL;
 IntVec        MainWindowKeyboardEvents;
 StrVec        MainWindowKeyboardEventsText;
@@ -883,12 +879,6 @@ void GetClientOptions()
     GETOPTIONS_CHECK( GameOpt.MultiSampling, -1, 16, -1 );
     GameOpt.AlwaysOnTop = cfg.GetInt( CLIENT_CONFIG_APP, "AlwaysOnTop", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.AlwaysOnTop, "-AlwaysOnTop" );
-    GameOpt.FlushVal = cfg.GetInt( CLIENT_CONFIG_APP, "FlushValue", 50 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.FlushVal, "-FlushValue" );
-    GETOPTIONS_CHECK( GameOpt.FlushVal, 1, 1000, 50 );
-    GameOpt.BaseTexture = cfg.GetInt( CLIENT_CONFIG_APP, "BaseTexture", 1024 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.BaseTexture, "-BaseTexture" );
-    GETOPTIONS_CHECK( GameOpt.BaseTexture, 128, 8192, 1024 );
     GameOpt.FixedFPS = cfg.GetInt( CLIENT_CONFIG_APP, "FixedFPS", 100 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.FixedFPS, "-FixedFPS" );
     GETOPTIONS_CHECK( GameOpt.FixedFPS, -10000, 10000, 100 );
@@ -980,6 +970,12 @@ void GetClientOptions()
 
     # ifdef FONLINE_MAPPER
     Script::SetRunTimeout( 0, 0 );
+    # endif
+
+    # ifdef FO_OSX_IOS
+    GameOpt.ScreenWidth = 800;
+    GameOpt.ScreenHeight = 600;
+    GameOpt.FixedFPS = 0;
     # endif
 }
 
@@ -1321,8 +1317,6 @@ GameOptions::GameOptions()
     DebugSprites = false;
     FullScreen = false;
     VSync = false;
-    FlushVal = 100;
-    BaseTexture = 256;
     Light = 0;
     Host = "localhost";
     Port = 0;

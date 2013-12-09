@@ -221,8 +221,7 @@ public:
 
     // Animation
 public:
-    static AnyFrames* DefaultAnim;
-    void*             Layers3d;
+    void* Layers3d;
     uint GetAnim1( Item* anim_item = NULL );
     uint GetAnim2();
     void ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, Item* item );

@@ -5,14 +5,9 @@
 #include "SpriteManager.h"
 #include "FileManager.h"
 
-#define RES_NONE                   ( 0 )
-#define RES_IFACE                  ( 1 )
-#define RES_CRITTERS               ( 2 )
-#define RES_ITEMS                  ( 3 )
-#define RES_SCRIPT                 ( 4 )
-#define RES_SPLASH                 ( 5 )
-#define RES_GLOBAL_MAP             ( 6 )
-#define RES_IFACE_EXT              ( 7 )
+#define RES_ATLAS_STATIC           ( 1 )
+#define RES_ATLAS_DYNAMIC          ( 2 )
+#define RES_ATLAS_SPLASH           ( 3 )
 
 class SpriteManager;
 struct SpriteInfo;
@@ -42,16 +37,20 @@ private:
     AnyFrames* LoadFalloutAnimSpr( uint crtype, uint anim1, uint anim2, int dir );
 
 public:
+    AnyFrames* ItemHexDefaultAnim;
+    AnyFrames* CritterDefaultAnim;
+
     void Refresh();
     void Finish();
     void FreeResources( int type );
+    void ReinitializeDynamicAtlas();
 
     AnyFrames* GetAnim( uint name_hash, int dir, int res_type );
-    AnyFrames* GetIfaceAnim( uint name_hash )         { return GetAnim( name_hash, 0, RES_IFACE ); }
-    AnyFrames* GetInvAnim( uint name_hash )           { return GetAnim( name_hash, 0, RES_IFACE_EXT ); }
-    AnyFrames* GetSkDxAnim( uint name_hash )          { return GetAnim( name_hash, 0, RES_IFACE_EXT ); }
-    AnyFrames* GetItemAnim( uint name_hash )          { return GetAnim( name_hash, 0, RES_ITEMS ); }
-    AnyFrames* GetItemAnim( uint name_hash, int dir ) { return GetAnim( name_hash, dir, RES_ITEMS ); }
+    AnyFrames* GetIfaceAnim( uint name_hash )         { return GetAnim( name_hash, 0, RES_ATLAS_STATIC ); }
+    AnyFrames* GetInvAnim( uint name_hash )           { return GetAnim( name_hash, 0, RES_ATLAS_STATIC ); }
+    AnyFrames* GetSkDxAnim( uint name_hash )          { return GetAnim( name_hash, 0, RES_ATLAS_STATIC ); }
+    AnyFrames* GetItemAnim( uint name_hash )          { return GetAnim( name_hash, 0, RES_ATLAS_DYNAMIC ); }
+    AnyFrames* GetItemAnim( uint name_hash, int dir ) { return GetAnim( name_hash, dir, RES_ATLAS_DYNAMIC ); }
 
     AnyFrames*   GetCrit2dAnim( uint crtype, uint anim1, uint anim2, int dir );
     Animation3d* GetCrit3dAnim( uint crtype, uint anim1, uint anim2, int dir, int* layers3d = NULL );

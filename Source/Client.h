@@ -372,11 +372,11 @@ public:
             bool              StreamsState[ COUNT ];
             int               MainIndex;
         } SS;
-        FileManager  RawData;
-        RenderTarget RT;
-        uint         CurFrame;
-        double       StartTime;
-        double       AverageRenderTime;
+        FileManager   RawData;
+        RenderTarget* RT;
+        uint          CurFrame;
+        double        StartTime;
+        double        AverageRenderTime;
     };
 
     ShowVideoVec  ShowVideos;
@@ -425,7 +425,6 @@ public:
     AnyFrames* AnimGetFrames( uint anim_id );
     void       AnimRun( uint anim_id, uint flags );
     void       AnimProcess();
-    void       AnimFree( int res_type );
 
 /************************************************************************/
 /* Screen effects                                                       */
@@ -452,8 +451,8 @@ public:
     uint            ScreenMirrorEndTick;
     bool            ScreenMirrorStart;
 
-    void ScreenFadeIn()  { ScreenFade( 1000, COLOR_ARGB( 0, 0, 0, 0 ), COLOR_ARGB( 255, 0, 0, 0 ), false ); }
-    void ScreenFadeOut() { ScreenFade( 1000, COLOR_ARGB( 255, 0, 0, 0 ), COLOR_ARGB( 0, 0, 0, 0 ), false ); }
+    void ScreenFadeIn()  { ScreenFade( 1000, COLOR_RGBA( 0, 0, 0, 0 ), COLOR_RGBA( 255, 0, 0, 0 ), false ); }
+    void ScreenFadeOut() { ScreenFade( 1000, COLOR_RGBA( 255, 0, 0, 0 ), COLOR_RGBA( 0, 0, 0, 0 ), false ); }
     void ScreenFade( uint time, uint from_color, uint to_color, bool push_back );
     void ScreenQuake( int noise, uint time );
     void ScreenMirror();
@@ -670,12 +669,12 @@ public:
     bool AppendIfaceIni( const char* ini_name );
     void AppendIfaceIni( uchar* data, uint len );
     int  InitIface();
+    int  InitIfaceExt();
     bool IfaceLoadRect( Rect& comp, const char* name );
     void IfaceLoadRect2( Rect& comp, const char* name, int ox, int oy );
     void IfaceLoadSpr( AnyFrames*& comp, const char* name );
     void IfaceLoadAnim( uint& comp, const char* name );
     void IfaceLoadArray( IntVec& arr, const char* name );
-    void IfaceFreeResources();
 
     bool IsCurInRect( const Rect& rect, int ax, int ay )                { return !rect.IsZero() && ( GameOpt.MouseX >= rect.L + ax && GameOpt.MouseY >= rect.T + ay && GameOpt.MouseX <= rect.R + ax && GameOpt.MouseY <= rect.B + ay ); }
     bool IsCurInRect( const Rect& rect )                                { return !rect.IsZero() && ( GameOpt.MouseX >= rect.L && GameOpt.MouseY >= rect.T && GameOpt.MouseX <= rect.R && GameOpt.MouseY <= rect.B ); }
@@ -1056,7 +1055,6 @@ public:
     void  GmapChangeZoom( float offs, bool revert = false );
     Item* GmapGetCar();
     uint  GmapGetMouseTabLocId();
-    void  GmapFreeResources();
 
     #define GMAP_CHECK_MAPSCR                                                \
         do {                                                                 \
@@ -1636,15 +1634,15 @@ public:
     #define SAVE_LOAD_IMAGE_WIDTH      ( 400 )
     #define SAVE_LOAD_IMAGE_HEIGHT     ( 300 )
 
-    AnyFrames*   SaveLoadMainPic, * SaveLoadScrUpPicDown, * SaveLoadScrDownPicDown,
+    AnyFrames*    SaveLoadMainPic, * SaveLoadScrUpPicDown, * SaveLoadScrDownPicDown,
     * SaveLoadDonePicDown, * SaveLoadBackPicDown;
-    Rect         SaveLoadMain, SaveLoadText, SaveLoadScrUp, SaveLoadScrDown, SaveLoadSlots, SaveLoadPic,
-                 SaveLoadInfo, SaveLoadDone, SaveLoadDoneText, SaveLoadBack, SaveLoadBackText;
-    int          SaveLoadX, SaveLoadY, SaveLoadCX, SaveLoadCY, SaveLoadVectX, SaveLoadVectY;
-    bool         SaveLoadLoginScreen, SaveLoadSave;
-    bool         SaveLoadProcessDraft, SaveLoadDraftValid;
+    Rect          SaveLoadMain, SaveLoadText, SaveLoadScrUp, SaveLoadScrDown, SaveLoadSlots, SaveLoadPic,
+                  SaveLoadInfo, SaveLoadDone, SaveLoadDoneText, SaveLoadBack, SaveLoadBackText;
+    int           SaveLoadX, SaveLoadY, SaveLoadCX, SaveLoadCY, SaveLoadVectX, SaveLoadVectY;
+    bool          SaveLoadLoginScreen, SaveLoadSave;
+    bool          SaveLoadProcessDraft, SaveLoadDraftValid;
 
-    RenderTarget SaveLoadDraft;
+    RenderTarget* SaveLoadDraft;
 
     struct SaveLoadDataSlot
     {

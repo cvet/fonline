@@ -11,148 +11,158 @@
 // #define RENDER_3D_TO_2D
 
 // Font flags
-#define FT_NOBREAK                   ( 0x0001 )
-#define FT_NOBREAK_LINE              ( 0x0002 )
-#define FT_CENTERX                   ( 0x0004 )
-#define FT_CENTERY                   ( 0x0008 )
-#define FT_CENTERR                   ( 0x0010 )
-#define FT_BOTTOM                    ( 0x0020 )
-#define FT_UPPER                     ( 0x0040 )
-#define FT_NO_COLORIZE               ( 0x0080 )
-#define FT_ALIGN                     ( 0x0100 )
-#define FT_BORDERED                  ( 0x0200 )
+#define FT_NOBREAK                 ( 0x0001 )
+#define FT_NOBREAK_LINE            ( 0x0002 )
+#define FT_CENTERX                 ( 0x0004 )
+#define FT_CENTERY                 ( 0x0008 )
+#define FT_CENTERR                 ( 0x0010 )
+#define FT_BOTTOM                  ( 0x0020 )
+#define FT_UPPER                   ( 0x0040 )
+#define FT_NO_COLORIZE             ( 0x0080 )
+#define FT_ALIGN                   ( 0x0100 )
+#define FT_BORDERED                ( 0x0200 )
 #define FT_SKIPLINES( l )             ( 0x0400 | ( ( l ) << 16 ) )
 #define FT_SKIPLINES_END( l )         ( 0x0800 | ( ( l ) << 16 ) )
 
 // Animation loading
 #define ANIM_DIR( d )                 ( ( d ) & 0xFF )
-#define ANIM_USE_DUMMY               ( 0x100 )
-#define ANIM_FRM_ANIM_PIX            ( 0x200 )
+#define ANIM_USE_DUMMY             ( 0x100 )
+#define ANIM_FRM_ANIM_PIX          ( 0x200 )
 
 // Colors
 #define COLOR_CHANGE_ALPHA( v, a )    ( ( ( ( v ) | 0xFF000000 ) ^ 0xFF000000 ) | ( (uint) ( a ) & 0xFF ) << 24 )
-#define COLOR_IFACE_FIX              COLOR_XRGB( 103, 95, 86 )
-#define COLOR_IFACE                  SpriteManager::PackColor( ( ( COLOR_IFACE_FIX >> 16 ) & 0xFF ) + GameOpt.Light, ( ( COLOR_IFACE_FIX >> 8 ) & 0xFF ) + GameOpt.Light, ( COLOR_IFACE_FIX & 0xFF ) + GameOpt.Light )
+#define COLOR_IFACE_FIX            COLOR_GAME_RGB( 103, 95, 86 )
+#define COLOR_IFACE                SpriteManager::PackColor( ( COLOR_IFACE_FIX & 0xFF ) + GameOpt.Light, ( ( COLOR_IFACE_FIX >> 8 ) & 0xFF ) + GameOpt.Light, ( ( COLOR_IFACE_FIX >> 16 ) & 0xFF ) + GameOpt.Light )
 #define COLOR_IFACE_A( a )            ( ( COLOR_IFACE ^ 0xFF000000 ) | ( ( a ) << 24 ) )
 #define COLOR_GAME_RGB( r, g, b )     SpriteManager::PackColor( ( r ) + GameOpt.Light, ( g ) + GameOpt.Light, ( b ) + GameOpt.Light )
-#define COLOR_IFACE_RED              ( COLOR_IFACE | ( 0xFF << 16 ) )
-#define COLOR_IFACE_GREEN            ( COLOR_IFACE | ( 0xFF << 8 ) )
-#define COLOR_CRITTER_NAME           COLOR_XRGB( 0xAD, 0xAD, 0xB9 )
-#define COLOR_TEXT                   COLOR_XRGB( 60, 248, 0 )
-#define COLOR_TEXT_WHITE             COLOR_XRGB( 0xFF, 0xFF, 0xFF )
-#define COLOR_TEXT_DWHITE            COLOR_XRGB( 0xBF, 0xBF, 0xBF )
-#define COLOR_TEXT_RED               COLOR_XRGB( 0xC8, 0, 0 )
-#define COLOR_TEXT_DRED              COLOR_XRGB( 0xAA, 0, 0 )
-#define COLOR_TEXT_DDRED             COLOR_XRGB( 0x66, 0, 0 )
-#define COLOR_TEXT_LRED              COLOR_XRGB( 0xFF, 0, 0 )
-#define COLOR_TEXT_BLUE              COLOR_XRGB( 0, 0, 0xC8 )
-#define COLOR_TEXT_DBLUE             COLOR_XRGB( 0, 0, 0xAA )
-#define COLOR_TEXT_LBLUE             COLOR_XRGB( 0, 0, 0xFF )
-#define COLOR_TEXT_GREEN             COLOR_XRGB( 0, 0xC8, 0 )
-#define COLOR_TEXT_DGREEN            COLOR_XRGB( 0, 0xAA, 0 )
-#define COLOR_TEXT_DDGREEN           COLOR_XRGB( 0, 0x66, 0 )
-#define COLOR_TEXT_LGREEN            COLOR_XRGB( 0, 0xFF, 0 )
-#define COLOR_TEXT_BLACK             COLOR_XRGB( 0, 0, 0 )
-#define COLOR_TEXT_SBLACK            COLOR_XRGB( 0x10, 0x10, 0x10 )
-#define COLOR_TEXT_DARK              COLOR_XRGB( 0x30, 0x30, 0x30 )
-#define COLOR_TEXT_GREEN_RED         COLOR_XRGB( 0, 0xC8, 0xC8 )
-#define COLOR_TEXT_SAND              COLOR_XRGB( 0x8F, 0x6F, 0 )
+#define COLOR_IFACE_RED            ( COLOR_IFACE | ( 0xFF << 16 ) )
+#define COLOR_IFACE_GREEN          ( COLOR_IFACE | ( 0xFF << 8 ) )
+#define COLOR_CRITTER_NAME         COLOR_GAME_RGB( 0xAD, 0xAD, 0xB9 )
+#define COLOR_TEXT                 COLOR_GAME_RGB( 60, 248, 0 )
+#define COLOR_TEXT_WHITE           COLOR_GAME_RGB( 0xFF, 0xFF, 0xFF )
+#define COLOR_TEXT_DWHITE          COLOR_GAME_RGB( 0xBF, 0xBF, 0xBF )
+#define COLOR_TEXT_RED             COLOR_GAME_RGB( 0xC8, 0, 0 )
+#define COLOR_TEXT_DRED            COLOR_GAME_RGB( 0xAA, 0, 0 )
+#define COLOR_TEXT_DDRED           COLOR_GAME_RGB( 0x66, 0, 0 )
+#define COLOR_TEXT_LRED            COLOR_GAME_RGB( 0xFF, 0, 0 )
+#define COLOR_TEXT_BLUE            COLOR_GAME_RGB( 0, 0, 0xC8 )
+#define COLOR_TEXT_DBLUE           COLOR_GAME_RGB( 0, 0, 0xAA )
+#define COLOR_TEXT_LBLUE           COLOR_GAME_RGB( 0, 0, 0xFF )
+#define COLOR_TEXT_GREEN           COLOR_GAME_RGB( 0, 0xC8, 0 )
+#define COLOR_TEXT_DGREEN          COLOR_GAME_RGB( 0, 0xAA, 0 )
+#define COLOR_TEXT_DDGREEN         COLOR_GAME_RGB( 0, 0x66, 0 )
+#define COLOR_TEXT_LGREEN          COLOR_GAME_RGB( 0, 0xFF, 0 )
+#define COLOR_TEXT_BLACK           COLOR_GAME_RGB( 0, 0, 0 )
+#define COLOR_TEXT_SBLACK          COLOR_GAME_RGB( 0x10, 0x10, 0x10 )
+#define COLOR_TEXT_DARK            COLOR_GAME_RGB( 0x30, 0x30, 0x30 )
+#define COLOR_TEXT_GREEN_RED       COLOR_GAME_RGB( 0, 0xC8, 0xC8 )
+#define COLOR_TEXT_SAND            COLOR_GAME_RGB( 0x8F, 0x6F, 0 )
 
 // Sprite layers
-#define DRAW_ORDER_FLAT              ( 0 )
-#define DRAW_ORDER                   ( 20 )
-#define DRAW_ORDER_TILE              ( DRAW_ORDER_FLAT + 0 )
-#define DRAW_ORDER_TILE_END          ( DRAW_ORDER_FLAT + 4 )
-#define DRAW_ORDER_HEX_GRID          ( DRAW_ORDER_FLAT + 5 )
-#define DRAW_ORDER_FLAT_SCENERY      ( DRAW_ORDER_FLAT + 8 )
-#define DRAW_ORDER_LIGHT             ( DRAW_ORDER_FLAT + 9 )
-#define DRAW_ORDER_DEAD_CRITTER      ( DRAW_ORDER_FLAT + 10 )
-#define DRAW_ORDER_FLAT_ITEM         ( DRAW_ORDER_FLAT + 13 )
-#define DRAW_ORDER_TRACK             ( DRAW_ORDER_FLAT + 16 )
-#define DRAW_ORDER_SCENERY           ( DRAW_ORDER + 3 )
-#define DRAW_ORDER_ITEM              ( DRAW_ORDER + 6 )
-#define DRAW_ORDER_CRITTER           ( DRAW_ORDER + 9 )
-#define DRAW_ORDER_RAIN              ( DRAW_ORDER + 12 )
-#define DRAW_ORDER_LAST              ( 39 )
+#define DRAW_ORDER_FLAT            ( 0 )
+#define DRAW_ORDER                 ( 20 )
+#define DRAW_ORDER_TILE            ( DRAW_ORDER_FLAT + 0 )
+#define DRAW_ORDER_TILE_END        ( DRAW_ORDER_FLAT + 4 )
+#define DRAW_ORDER_HEX_GRID        ( DRAW_ORDER_FLAT + 5 )
+#define DRAW_ORDER_FLAT_SCENERY    ( DRAW_ORDER_FLAT + 8 )
+#define DRAW_ORDER_LIGHT           ( DRAW_ORDER_FLAT + 9 )
+#define DRAW_ORDER_DEAD_CRITTER    ( DRAW_ORDER_FLAT + 10 )
+#define DRAW_ORDER_FLAT_ITEM       ( DRAW_ORDER_FLAT + 13 )
+#define DRAW_ORDER_TRACK           ( DRAW_ORDER_FLAT + 16 )
+#define DRAW_ORDER_SCENERY         ( DRAW_ORDER + 3 )
+#define DRAW_ORDER_ITEM            ( DRAW_ORDER + 6 )
+#define DRAW_ORDER_CRITTER         ( DRAW_ORDER + 9 )
+#define DRAW_ORDER_RAIN            ( DRAW_ORDER + 12 )
+#define DRAW_ORDER_LAST            ( 39 )
 #define DRAW_ORDER_ITEM_AUTO( i )     ( i->IsFlat() ? ( i->IsItem() ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( i->IsItem() ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ) )
 #define DRAW_ORDER_CRIT_AUTO( c )     ( c->IsDead() && !c->IsRawParam( MODE_NO_FLATTEN ) ? DRAW_ORDER_DEAD_CRITTER : DRAW_ORDER_CRITTER )
 
 // Sprites cutting
-#define SPRITE_CUT_HORIZONTAL        ( 1 )
-#define SPRITE_CUT_VERTICAL          ( 2 )
-#define SPRITE_CUT_CUSTOM            ( 3 )             // Todo
+#define SPRITE_CUT_HORIZONTAL      ( 1 )
+#define SPRITE_CUT_VERTICAL        ( 2 )
+#define SPRITE_CUT_CUSTOM          ( 3 )               // Todo
 
 // Egg types
-#define EGG_ALWAYS                   ( 1 )
-#define EGG_X                        ( 2 )
-#define EGG_Y                        ( 3 )
-#define EGG_X_AND_Y                  ( 4 )
-#define EGG_X_OR_Y                   ( 5 )
+#define EGG_ALWAYS                 ( 1 )
+#define EGG_X                      ( 2 )
+#define EGG_Y                      ( 3 )
+#define EGG_X_AND_Y                ( 4 )
+#define EGG_X_OR_Y                 ( 5 )
 
 // Egg types
-#define EGG_ALWAYS                   ( 1 )
-#define EGG_X                        ( 2 )
-#define EGG_Y                        ( 3 )
-#define EGG_X_AND_Y                  ( 4 )
-#define EGG_X_OR_Y                   ( 5 )
+#define EGG_ALWAYS                 ( 1 )
+#define EGG_X                      ( 2 )
+#define EGG_Y                      ( 3 )
+#define EGG_X_AND_Y                ( 4 )
+#define EGG_X_OR_Y                 ( 5 )
 
 // Contour types
-#define CONTOUR_RED                  ( 1 )
-#define CONTOUR_YELLOW               ( 2 )
-#define CONTOUR_CUSTOM               ( 3 )
+#define CONTOUR_RED                ( 1 )
+#define CONTOUR_YELLOW             ( 2 )
+#define CONTOUR_CUSTOM             ( 3 )
 
 // Primitives
-#define PRIMITIVE_POINTLIST          ( 1 )
-#define PRIMITIVE_LINELIST           ( 2 )
-#define PRIMITIVE_LINESTRIP          ( 3 )
-#define PRIMITIVE_TRIANGLELIST       ( 4 )
-#define PRIMITIVE_TRIANGLESTRIP      ( 5 )
-#define PRIMITIVE_TRIANGLEFAN        ( 6 )
+#define PRIMITIVE_POINTLIST        ( 1 )
+#define PRIMITIVE_LINELIST         ( 2 )
+#define PRIMITIVE_LINESTRIP        ( 3 )
+#define PRIMITIVE_TRIANGLELIST     ( 4 )
+#define PRIMITIVE_TRIANGLESTRIP    ( 5 )
+#define PRIMITIVE_TRIANGLEFAN      ( 6 )
 
-struct Surface
+struct TextureAtlas
 {
-    int      Type;
-    Texture* TextureOwner;
-    uint     Width, Height;           // Texture size
-    uint     BusyH;                   // Height point position
-    uint     FreeX, FreeY;            // Busy positions on current surface
+    struct SpaceNode
+    {
+private:
+        bool       busy;
+        int        posX, posY;
+        int        width, height;
+        SpaceNode* child1, * child2;
 
-    Surface(): Type( 0 ), TextureOwner( NULL ), Width( 0 ), Height( 0 ), BusyH( 0 ), FreeX( 0 ), FreeY( 0 ) {}
-    ~Surface() { SAFEDEL( TextureOwner ); }
+public:
+        SpaceNode( int x, int y, int w, int h );
+        ~SpaceNode();
+        bool FindPosition( int w, int h, int& x, int& y );
+    };
+
+    int        Type;
+    bool       Finalized;
+    Texture*   TextureOwner;
+    uint       Width, Height;
+    SpaceNode* RootNode;                              // Packer 1
+    uint       CurX, CurY, LineMaxH, LineCurH, LineW; // Packer 2
+
+    TextureAtlas();
+    ~TextureAtlas();
 };
-typedef vector< Surface* > SurfaceVec;
+typedef vector< TextureAtlas* > TextureAtlasVec;
 
 struct Vertex
 {
     float x, y;
     uint  diffuse;
     float tu, tv;
+    #ifndef DISABLE_EGG
     float tu2, tv2;
-    float padding;
-    Vertex(): x( 0 ), y( 0 ), diffuse( 0 ), tu( 0 ), tv( 0 ), tu2( 0 ), tv2( 0 ) {}
+    #endif
 };
 typedef vector< Vertex > VertexVec;
 
-struct MYVERTEX_PRIMITIVE
-{
-    float x, y, z, rhw;
-    uint  Diffuse;
-
-    MYVERTEX_PRIMITIVE(): x( 0 ), y( 0 ), z( 0 ), rhw( 1 ), Diffuse( 0 ) {}
-};
-#define D3DFVF_MYVERTEX_PRIMITIVE    ( D3DFVF_XYZRHW | D3DFVF_DIFFUSE )
-
 struct SpriteInfo
 {
-    Surface*     Surf;
-    RectF        SprRect;
-    short        Width;
-    short        Height;
-    short        OffsX;
-    short        OffsY;
-    Effect*      DrawEffect;
-    Animation3d* Anim3d;
-    SpriteInfo(): Surf( NULL ), Width( 0 ), Height( 0 ), OffsX( 0 ), OffsY( 0 ), DrawEffect( NULL ), Anim3d( NULL ) {}
+    TextureAtlas* Atlas;
+    RectF         SprRect;
+    short         Width;
+    short         Height;
+    short         OffsX;
+    short         OffsY;
+    Effect*       DrawEffect;
+    Animation3d*  Anim3d;
+    uchar*        Data;
+    uint          DataSize;
+    int           DataAtlasType;
+    bool          DataAtlasOneImage;
+    SpriteInfo() { memzero( this, sizeof( SpriteInfo ) ); }
 };
 typedef vector< SpriteInfo* > SprInfoVec;
 
@@ -210,7 +220,6 @@ typedef vector< PointVec >  PointVecVec;
 
 struct RenderTarget
 {
-    uint     Id;
     GLuint   FBO;
     Texture* TargetTexture;
     GLuint   DepthStencilBuffer;
@@ -221,54 +230,64 @@ typedef vector< RenderTarget* > RenderTargetVec;
 class SpriteManager
 {
 private:
-    bool            isInit;
     Matrix          projectionMatrixCM;
     int             modeWidth, modeHeight;
     bool            sceneBeginned;
-    RenderTarget    rtMain;
-    RenderTarget    rtContours;
-    RenderTarget    rtContoursMid;
-    RenderTarget    rtPrimitive;
-    RenderTarget    rt3D, rt3DMS;
-    RenderTarget    rt3DSprite, rt3DMSSprite;
+    RenderTarget*   rtMain;
+    RenderTarget*   rtContours, * rtContoursMid;
+    RenderTarget*   rt3DSprite, * rt3DMSSprite;
+    #ifdef RENDER_3D_TO_2D
+    RenderTarget*   rt3D, * rt3DMS;
+    #endif
     RenderTargetVec rtStack;
+    GLint           baseFBO;
 
 public:
     static AnyFrames* DummyAnimation;
 
     SpriteManager();
     bool Init();
-    bool InitBuffers();
-    bool InitRenderStates();
-    bool IsInit() { return isInit; }
     void Finish();
     bool BeginScene( uint clear_color );
     void EndScene();
-    bool CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling = false, uint width = 0, uint height = 0, bool tex_linear = false );
-    void DeleteRenderTarget( RenderTarget& rt );
-    void PushRenderTarget( RenderTarget& rt );
-    void PopRenderTarget();
-    void DrawRenderTarget( RenderTarget& rt, bool alpha_blend, const Rect* region_from = NULL, const Rect* region_to = NULL );
-    void ClearCurrentRenderTarget( uint color );
-    void ClearCurrentRenderTargetDS( bool depth, bool stencil );
-    void RefreshViewPort();
 
-    // Surfaces
+    // Render targets
+    bool          IsRenderTargetSupported();
+    RenderTarget* CreateRenderTarget( bool depth_stencil, bool multisampling = false, uint width = 0, uint height = 0, bool tex_linear = false );
+    void          DeleteRenderTarget( RenderTarget*& rt );
+    void          PushRenderTarget( RenderTarget* rt );
+    void          PopRenderTarget();
+    void          DrawRenderTarget( RenderTarget* rt, bool alpha_blend, const Rect* region_from = NULL, const Rect* region_to = NULL );
+    void          ClearCurrentRenderTarget( uint color );
+    void          ClearCurrentRenderTargetDS( bool depth, bool stencil );
+    void          RefreshViewPort();
+
+    // Texture atlases
 public:
-    int  SurfType;
-    bool SurfFilterNearest;
-
-    void FreeSurfaces( int surf_type );
-    void SaveSufaces();
-    void SaveTexture( Texture* tex, const char* fname, bool flip ); // tex == NULL is back buffer
+    void PushAtlasType( int atlas_type, bool one_image = false );
+    void PopAtlasType();
+    void AccumulateAtlasData();
+    void FlushAccumulatedAtlasData();
+    void FinalizeAtlas( int atlas_type );
+    void AutofinalizeAtlases( int atlas_type );
+    void DestroyAtlases( int atlas_type );
+    void DumpAtlases();
+    void SaveTexture( Texture* tex, const char* fname, bool flip );   // tex == NULL is back buffer
 
 private:
-    int        baseTextureSize;
-    SurfaceVec surfList;
+    int             atlasWidth, atlasHeight;
+    IntVec          atlasTypeStack;
+    BoolVec         atlasOneImageStack;
+    TextureAtlasVec allAtlases;
+    bool            accumulatorActive;
+    SprInfoVec      accumulatorSprInfo;
+    IntVec          autofinalizeAtlases;
+    PtrVec          atlasDataPool;
 
-    Surface* CreateNewSurface( int w, int h );
-    Surface* FindSurfacePlace( SpriteInfo* si, int& x, int& y );
-    uint     FillSurfaceFromMemory( SpriteInfo* si, uchar* data, uint size );
+    TextureAtlas* CreateAtlas( int w, int h );
+    TextureAtlas* FindAtlasPlace( SpriteInfo* si, int& x, int& y );
+    uint          RequestFillAtlas( SpriteInfo* si, uchar* data, uint size );
+    void          FillAtlas( SpriteInfo* si );
 
     // Load sprites
 public:
@@ -310,7 +329,7 @@ public:
 
     void PrepareSquare( PointVec& points, Rect r, uint color );
     void PrepareSquare( PointVec& points, Point lt, Point rt, Point lb, Point rb, uint color );
-    bool PrepareBuffer( Sprites& dtree, GLuint surf, int ox, int oy, uchar alpha );
+    bool PrepareBuffer( Sprites& dtree, GLuint atlas, int ox, int oy, uchar alpha );
     bool Flush();
 
     bool DrawSprite( uint id, int x, int y, uint color = 0 );
@@ -335,38 +354,38 @@ public:
     }
 
 private:
-    GLuint     vaMain;
-    GLuint     vbMain;
-    GLuint     ibMain;
-    GLuint     ibDirect;
-    VertexVec  vBuffer;
-    DipDataVec dipQueue;
-    uint       baseColor;
-    int        flushSprCnt;              // Max sprites to flush
-    int        curSprCnt;                // Current sprites to flush
+    struct VertexArray
+    {
+        GLuint       VAO;
+        GLuint       VBO;
+        GLuint       IBO;
+        uint         VCount;
+        uint         ICount;
+        VertexArray* Next;
+    };
+    VertexArray* quadsVertexArray;
+    VertexArray* pointsVertexArray;
+    UShortVec    quadsIndicies;
+    UShortVec    pointsIndicies;
+    VertexVec    vBuffer;
+    DipDataVec   dipQueue;
+    uint         baseColor;
+    int          drawQuadCount;
+    int          curDrawQuad;
 
-    void EnableVertexArray( GLuint ib, uint count );
-    void DisableVertexArray();
+    void InitVertexArray( VertexArray* va, bool quads, uint count );
+    void BindVertexArray( VertexArray* va );
+    void EnableVertexArray( VertexArray* va, uint vertices_count );
+    void DisableVertexArray( VertexArray*& va );
     void EnableStencil( RectF& stencil );
     void DisableStencil( bool clear_stencil );
 
     // Contours
 public:
     bool DrawContours();
-    void ClearSpriteContours() { createdSpriteContours.clear(); }
 
 private:
-    Texture* contoursTexture;
-    GLuint   contoursTextureSurf;
-    Texture* contoursMidTexture;
-    GLuint   contoursMidTextureSurf;
-    GLuint   contours3dRT;
-    GLint    contoursConstWidthStep, contoursConstHeightStep,
-             contoursConstSpriteBorders, contoursConstSpriteBordersHeight,
-             contoursConstContourColor, contoursConstContourColorOffs;
-    bool    contoursAdded;
-    UIntMap createdSpriteContours;
-    Sprites spriteContours;
+    bool contoursAdded;
 
     bool CollectContour( int x, int y, SpriteInfo* si, Sprite* spr );
 
@@ -375,25 +394,23 @@ private:
     bool        eggValid;
     ushort      eggHx, eggHy;
     int         eggX, eggY;
-    short*      eggOX, * eggOY;
     SpriteInfo* sprEgg;
     int         eggSprWidth, eggSprHeight;
-    float       eggSurfWidth, eggSurfHeight;
+    float       eggAtlasWidth, eggAtlasHeight;
 
 public:
+    void InitializeEgg( const char* egg_name );
     bool CompareHexEgg( ushort hx, ushort hy, int egg_type );
     void SetEgg( ushort hx, ushort hy, Sprite* spr );
     void EggNotValid() { eggValid = false; }
 
     // Fonts
-private:
-    bool BuildFont( int index, void* pfont, const char* image_name, bool make_gray );
-
 public:
     void SetDefaultFont( int index, uint color );
     void SetFontEffect( int index, Effect* effect );
-    bool LoadFontFO( int index, const char* font_name );
+    bool LoadFontFO( int index, const char* font_name, bool not_bordered );
     bool LoadFontBMF( int index, const char* font_name );
+    void BuildFont( int index );
     bool DrawStr( const Rect& r, const char* str, uint flags, uint color = 0, int num_font = -1 );
     int  GetLinesCount( int width, int height, const char* str, int num_font = -1 );
     int  GetLinesHeight( int width, int height, const char* str, int num_font = -1 );

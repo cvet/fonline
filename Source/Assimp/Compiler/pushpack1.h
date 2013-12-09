@@ -16,7 +16,7 @@
 // } PACK_STRUCT;
 //
 // ===============================================================================
-
+/*
 #ifdef AI_PUSHPACK_IS_DEFINED
 #	error poppack1.h must be included after pushpack1.h
 #endif
@@ -39,3 +39,6 @@
 #define AI_PUSHPACK_IS_DEFINED
 
 
+*/
+
+#define PACK_STRUCT

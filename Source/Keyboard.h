@@ -13,8 +13,7 @@ namespace Keyb
     extern bool AltDwn;
     extern bool KeyPressed[ 0x100 ];
 
-    void   InitKeyb();
-    void   Finish();
+    void   Init();
     void   Lost();
     void   GetChar( uchar dik, const char* dik_text, string& str, uint* position, uint max, int flags );
     void   GetChar( uchar dik, const char* dik_text, char* str, uint str_size, uint* position, uint max, int flags );
@@ -130,6 +129,7 @@ MAKE_KEY_CODE( DIK_INSERT, 0xD2, SDL_SCANCODE_INSERT );        /* Insert on arro
 MAKE_KEY_CODE( DIK_DELETE, 0xD3, SDL_SCANCODE_DELETE );        /* Delete on arrow keypad */
 MAKE_KEY_CODE( DIK_LWIN, 0xDB, SDL_SCANCODE_LGUI );            // ?               /* Left Windows key */
 MAKE_KEY_CODE( DIK_RWIN, 0xDC, SDL_SCANCODE_RGUI );            // ?               /* Right Windows key */
-MAKE_KEY_CODE( DIK_CLIPBOARD_PASTE, 0xFF, 0 );
+MAKE_KEY_CODE( DIK_TEXT, 0xFE, 510 );
+MAKE_KEY_CODE( DIK_CLIPBOARD_PASTE, 0xFF, 511 );
 
 #endif // __KEYBOARD__

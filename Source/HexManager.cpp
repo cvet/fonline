@@ -179,12 +179,9 @@ bool HexManager::Init()
         return false;
     }
 
-    if( !SprMngr.CreateRenderTarget( rtMap, true ) )
-    {
-        WriteLog( "Can't create render target.\n" );
-        return false;
-    }
-    rtMap.DrawEffect = Effect::FlushMap;
+    rtMap = SprMngr.CreateRenderTarget( true );
+    if( rtMap )
+        rtMap->DrawEffect = Effect::FlushMap;
 
     isShowTrack = false;
     curPidMap = 0;
@@ -1317,7 +1314,7 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
     if( color == 0 )
         color = 0xFFFFFF;
     int alpha = MAX_LIGHT_ALPHA * LightCapacity / 100 * inten / MAX_LIGHT_VALUE;
-    color = COLOR_ARGB( alpha, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
+    color = COLOR_RGBA( alpha, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
     LightProcentR = ( ( color >> 16 ) & 0xFF ) * 100 / 0xFF;
     LightProcentG = ( ( color >> 8 ) & 0xFF ) * 100 / 0xFF;
     LightProcentB = ( color & 0xFF ) * 100 / 0xFF;
@@ -1336,7 +1333,7 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
     points.clear();
     points.reserve( 3 + dist * DIRS_COUNT );
     points.push_back( PrepPoint( base_x, base_y, color, (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) ); // Center of light
-    color = COLOR_ARGB( 0, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
+    color = COLOR_RGBA( 0, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
 
     int    hx_far = hx, hy_far = hy;
     bool   seek_start = true;
@@ -1380,10 +1377,10 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
                 {
                     int a = alpha - DistGame( hx, hy, hx_, hy_ ) * alpha / dist;
                     a = CLAMP( a, 0, alpha );
-                    color = COLOR_ARGB( a, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
+                    color = COLOR_RGBA( a, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
                 }
                 else
-                    color = COLOR_ARGB( 0, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
+                    color = COLOR_RGBA( 0, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
                 int x, y;
                 GetHexInterval( hx, hy, hx_, hy_, x, y );
                 points.push_back( PrepPoint( base_x + x, base_y + y, color, (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
@@ -1954,8 +1951,12 @@ void HexManager::GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y )
 void HexManager::DrawMap()
 {
     // Separate render target
-    SprMngr.PushRenderTarget( rtMap );
-    SprMngr.ClearCurrentRenderTarget( 0 );
+    if( rtMap )
+    {
+        SprMngr.PushRenderTarget( rtMap );
+        SprMngr.ClearCurrentRenderTarget( 0 );
+        SprMngr.ClearCurrentRenderTargetDS( true, false );
+    }
 
     // Rebuild light
     if( requestRebuildLight )
@@ -2000,11 +2001,12 @@ void HexManager::DrawMap()
     else if( drawCursorX > 0 )
         DrawCursor( Str::FormatBuf( "%u", drawCursorX ) );
 
-    // Return render target
-    SprMngr.PopRenderTarget();
-
-    // Draw map
-    SprMngr.DrawRenderTarget( rtMap, false );
+    // Draw map from render target
+    if( rtMap )
+    {
+        SprMngr.PopRenderTarget();
+        SprMngr.DrawRenderTarget( rtMap, false );
+    }
 }
 
 bool HexManager::Scroll()
@@ -3561,8 +3563,6 @@ bool HexManager::LoadMap( ushort map_pid )
     fm.SetCurPos( 0x2C );
     curHashTiles = maxhx * maxhy;
     Crypt.Crc32( fm.GetCurBuf(), tiles_len, curHashTiles );
-
-    SprMngr.SurfFilterNearest = true;
     for( uint i = 0; i < tiles_count; i++ )
     {
         ProtoMap::Tile tile;
@@ -3586,7 +3586,6 @@ bool HexManager::LoadMap( ushort map_pid )
             CheckTilesBorder( tile.IsRoof ? f.Roofs.back() : f.Tiles.back(), tile.IsRoof );
         }
     }
-    SprMngr.SurfFilterNearest = false;
 
     // Roof indexes
     int roof_num = 1;

@@ -1478,8 +1478,6 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowGroups", &GameOpt.ShowG
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __HelpInfo", &GameOpt.HelpInfo ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __FullScr", &GameOpt.FullScreen ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __VSync", &GameOpt.VSync ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __FlushVal", &GameOpt.FlushVal ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __BaseTex", &GameOpt.BaseTexture ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __Light", &GameOpt.Light ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ScrollDelay", &GameOpt.ScrollDelay ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __ScrollStep", &GameOpt.ScrollStep ) );

@@ -18,18 +18,17 @@ public:
     bool operator==( const ushort& _right ) { return ( GetProtoId() == _right ); }
 
 public:
-    uint              SprId;
-    int               HexX, HexY;
-    short             ScrX, ScrY;
-    int*              HexScrX, * HexScrY;
-    int               SpriteCut;
-    uchar             Alpha;
-    AnyFrames*        Anim;
-    static AnyFrames* DefaultAnim;
-    uchar             ScenFlags;
-    bool              SprDrawValid;
-    Sprite*           SprDraw, * SprTemp;
-    Effect*           DrawEffect;
+    uint       SprId;
+    int        HexX, HexY;
+    short      ScrX, ScrY;
+    int*       HexScrX, * HexScrY;
+    int        SpriteCut;
+    uchar      Alpha;
+    AnyFrames* Anim;
+    uchar      ScenFlags;
+    bool       SprDrawValid;
+    Sprite*    SprDraw, * SprTemp;
+    Effect*    DrawEffect;
 
 private:
     int   curSpr, begSpr, endSpr;

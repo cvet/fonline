@@ -3,8 +3,6 @@
 #include "Common.h"
 #include "ResourceManager.h"
 
-AnyFrames* ItemHex::DefaultAnim = NULL;
-
 ItemHex::ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut )
 {
     // Init parent
@@ -230,7 +228,7 @@ void ItemHex::RefreshAnim()
     if( name_hash && !Anim && dir )
         Anim = ResMngr.GetItemAnim( name_hash, 0 );
     if( !Anim )
-        Anim = DefaultAnim;
+        Anim = ResMngr.ItemHexDefaultAnim;
 
     SetStayAnim();
     animBegSpr = begSpr;

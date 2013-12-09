@@ -185,13 +185,13 @@ public:
 
     // Init, finish, restore
 private:
-    RenderTarget rtMap;
-    Sprites      mainTree;
-    ViewField*   viewField;
+    RenderTarget* rtMap;
+    Sprites       mainTree;
+    ViewField*    viewField;
 
-    int          screenHexX, screenHexY;
-    int          hTop, hBottom, wLeft, wRight;
-    int          wVisible, hVisible;
+    int           screenHexX, screenHexY;
+    int           hTop, hBottom, wLeft, wRight;
+    int           wVisible, hVisible;
 
     void InitView( int cx, int cy );
     void ResizeView();

@@ -143,7 +143,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>libfbxsdk.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <GenerateMapFile>false</GenerateMapFile>
@@ -206,7 +206,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\Lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>libfbxsdk.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <GenerateMapFile>false</GenerateMapFile>
@@ -269,7 +269,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>libfbxsdk.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AssemblyDebug>
       </AssemblyDebug>
@@ -337,7 +337,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\Lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>libfbxsdk.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AssemblyDebug>
       </AssemblyDebug>

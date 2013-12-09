@@ -7,89 +7,160 @@
 SpriteManager SprMngr;
 AnyFrames*    SpriteManager::DummyAnimation = NULL;
 
-#define TEX_FRMT             D3DFMT_A8R8G8B8
-#define SPR_BUFFER_COUNT     ( 10000 )
-#define SURF_SPRITES_OFFS    ( 2 )
+#define SPRITES_BUFFER_SIZE      ( 10000 )
+#define ATLAS_SPRITES_PADDING    ( 1 )
+#define ARRAY_BUFFERS_COUNT      ( 300 )
 
-SpriteManager::SpriteManager(): isInit( 0 ), flushSprCnt( 0 ), curSprCnt( 0 ), SurfType( 0 ), SurfFilterNearest( false ),
-                                sceneBeginned( false ), vbMain( 0 ), ibMain( 0 ), baseTextureSize( 0 ),
-                                eggValid( false ), eggHx( 0 ), eggHy( 0 ), eggX( 0 ), eggY( 0 ), eggOX( NULL ), eggOY( NULL ),
-                                sprEgg( NULL ), eggSurfWidth( 1.0f ), eggSurfHeight( 1.0f ), eggSprWidth( 1 ), eggSprHeight( 1 ),
-                                contoursTexture( NULL ), contoursTextureSurf( 0 ), contoursMidTexture( NULL ), contoursMidTextureSurf( 0 ), contours3dRT( 0 ),
-                                contoursAdded( false ), modeWidth( 0 ), modeHeight( 0 )
+bool OGL_version_2_0 = false;
+bool OGL_vertex_buffer_object = false;
+bool OGL_framebuffer_object = false;
+bool OGL_framebuffer_object_ext = false;
+bool OGL_framebuffer_multisample = false;
+bool OGL_packed_depth_stencil = false;
+bool OGL_texture_multisample = false;
+bool OGL_vertex_array_object = false;
+bool OGL_get_program_binary = false;
+bool DisableRenderTargets = false;
+
+SpriteManager::SpriteManager()
 {
-    baseColor = COLOR_ARGB( 255, 128, 128, 128 );
-    surfList.reserve( 100 );
-    dipQueue.reserve( 1000 );
-    contoursConstWidthStep = 0;
-    contoursConstHeightStep = 0;
-    contoursConstSpriteBorders = 0;
-    contoursConstSpriteBordersHeight = 0;
-    contoursConstContourColor = 0;
-    contoursConstContourColorOffs = 0;
+    drawQuadCount = 0;
+    curDrawQuad = 0;
+    sceneBeginned = false;
 
-    vaMain = 0;
-    vbMain = 0;
-    ibMain = 0;
-    ibDirect = 0;
+    sprEgg = NULL;
+    eggValid = false;
+    eggHx = eggHy = eggX = eggY = 0;
+    eggAtlasWidth = 0;
+    eggAtlasHeight = 0;
+    eggSprWidth = 0;
+    eggSprHeight = 0;
+
+    contoursAdded = false;
+    modeWidth = 0;
+    modeHeight = 0;
+
+    baseColor = COLOR_RGBA( 255, 128, 128, 128 );
+    allAtlases.reserve( 100 );
+    dipQueue.reserve( 1000 );
+
+    rtMain = NULL;
+    rtContours = rtContoursMid = NULL;
+    rt3DSprite = rt3DMSSprite = NULL;
+    #ifdef RENDER_3D_TO_2D
+    rt3D = rt3DMS = NULL;
+    #endif
+
+    quadsVertexArray = NULL;
+    pointsVertexArray = NULL;
+
+    for( uint i = 0; i < sizeof( FoPalette ); i += 4 )
+        std::swap( FoPalette[ i ], FoPalette[ i + 2 ] );
+
+    atlasWidth = atlasHeight = 0;
+    accumulatorActive = false;
 }
 
 bool SpriteManager::Init()
 {
-    if( isInit )
-        return true;
-
     WriteLog( "Sprite manager initialization...\n" );
 
-    flushSprCnt = GameOpt.FlushVal;
-    baseTextureSize = GameOpt.BaseTexture;
+    drawQuadCount = 1024;
+    curDrawQuad = 0;
     modeWidth = GameOpt.ScreenWidth;
     modeHeight = GameOpt.ScreenHeight;
-    curSprCnt = 0;
 
     // Initialize window
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-    MainWindow = SDL_CreateWindow( GetWindowName(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, modeWidth, modeHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
+    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, DisableRenderTargets ? 24 : 0 );
+    SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, DisableRenderTargets ? 8 : 0 );
+    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 8 );
+    SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
+    SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
+    SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
+    uint window_create_flags = ( SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
+    window_create_flags |= ( GameOpt.FullScreen ? SDL_WINDOW_FULLSCREEN : 0 );
+    #ifdef FO_OSX_IOS
+    window_create_flags |= SDL_WINDOW_FULLSCREEN;
+    window_create_flags |= SDL_WINDOW_BORDERLESS;
+    #endif
+    #ifdef FO_OGL_ES
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
+    #endif
+    MainWindow = SDL_CreateWindow( GetWindowName(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, modeWidth, modeHeight, window_create_flags );
     if( !MainWindow )
     {
         WriteLog( "SDL Window not created, error<%s>.\n", SDL_GetError() );
         return false;
     }
-    Renderer = SDL_CreateRenderer( MainWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE );
-    if( !Renderer )
-    {
-        WriteLog( "SDL Renderer not created, error<%s>.\n", SDL_GetError() );
-        return false;
-    }
+
+    #ifdef FO_OSX_IOS
+    GLContext = SDL_GL_CreateContext( MainWindow );     // Strange workaround, does not wont work without it
+    #endif
     GLContext = SDL_GL_CreateContext( MainWindow );
     if( !GLContext )
     {
-        WriteLog( "SDL Context not created, error<%s>.\n", SDL_GetError() );
+        WriteLog( "OpenGL context not created, error<%s>.\n", SDL_GetError() );
+        return false;
+    }
+    if( SDL_GL_MakeCurrent( MainWindow, GLContext ) < 0 )
+    {
+        WriteLog( "Can't set current context, error<%s>.\n", SDL_GetError() );
         return false;
     }
 
     SDL_ShowCursor( 0 );
     if( GameOpt.FullScreen )
         SDL_SetWindowFullscreen( MainWindow, 1 );
+    SDL_GL_SetSwapInterval( GameOpt.VSync ? 1 : 0 );
+    GL( glGetIntegerv( GL_FRAMEBUFFER_BINDING, &baseFBO ) );
 
-    SDL_GL_MakeCurrent( MainWindow, GLContext );
+    // Calculate atlas size
+    GLint max_texture_size;
+    GL( glGetIntegerv( GL_MAX_TEXTURE_SIZE, &max_texture_size ) );
+    atlasWidth = min( max_texture_size, 4096 );
+    atlasHeight = min( max_texture_size, 4096 );
 
-    // Create context
-    GL( glDisable( GL_SCISSOR_TEST ) );
-    GL( glDrawBuffer( GL_BACK ) );
-    GL( glViewport( 0, 0, modeWidth, modeHeight ) );
+    // Atlas pool
+    atlasDataPool.push_back( new uchar[ atlasWidth * atlasHeight * 4 ] );
+    atlasDataPool.push_back( new uchar[ atlasWidth * atlasHeight * 4 ] );
 
     // Initialize GLEW
-    #ifndef FO_OSX_IOS
+    #ifndef FO_OGL_ES
     GLenum glew_result = glewInit();
     if( glew_result != GLEW_OK )
     {
         WriteLog( "GLEW not initialized, result<%u>.\n", glew_result );
         return false;
     }
+    OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
+    OGL_vertex_buffer_object = GLEW_ARB_vertex_buffer_object != 0;
+    OGL_framebuffer_object = GLEW_ARB_framebuffer_object != 0;
+    OGL_framebuffer_object_ext = GLEW_EXT_framebuffer_object != 0;
+    OGL_framebuffer_multisample = GLEW_EXT_framebuffer_multisample != 0;
+    OGL_packed_depth_stencil = GLEW_EXT_packed_depth_stencil != 0;
+    OGL_texture_multisample = GLEW_ARB_texture_multisample != 0;
+    OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0;
+    OGL_get_program_binary = GLEW_ARB_get_program_binary != 0;
+    #endif
+
+    // OpenGL ES extensions
+    #ifdef FO_OGL_ES
+    OGL_version_2_0 = true;
+    OGL_vertex_buffer_object = true;
+    OGL_framebuffer_object = true;       // GL_OES_framebuffer_object
+    OGL_framebuffer_object_ext = false;
+    OGL_framebuffer_multisample = false; // APPLE_framebuffer_multisample
+    OGL_packed_depth_stencil = false;
+    OGL_texture_multisample = false;
+    OGL_vertex_array_object = true;      // OES_vertex_array_object
+    OGL_get_program_binary = false;      // GL_OES_get_program_binary
+    #endif
 
     // Check OpenGL extensions
-    # define CHECK_EXTENSION( ext, critical  )                                    \
+    #define CHECK_EXTENSION( ext, critical  )                                     \
         if( !GL_HAS( ext ) )                                                      \
         {                                                                         \
             const char* msg = ( critical ? "Critical" : "Not critical" );         \
@@ -98,21 +169,33 @@ bool SpriteManager::Init()
                 extension_errors++;                                               \
         }
     uint extension_errors = 0;
-    CHECK_EXTENSION( VERSION_2_0, true );
-    CHECK_EXTENSION( ARB_vertex_buffer_object, true );
-    CHECK_EXTENSION( ARB_vertex_array_object, false );
-    CHECK_EXTENSION( ARB_framebuffer_object, false );
-    if( !GL_HAS( ARB_framebuffer_object ) )
+    CHECK_EXTENSION( version_2_0, true );
+    CHECK_EXTENSION( vertex_buffer_object, true );
+    CHECK_EXTENSION( vertex_array_object, false );
+    if( IsRenderTargetSupported() )
     {
-        CHECK_EXTENSION( EXT_framebuffer_object, true );
-        CHECK_EXTENSION( EXT_framebuffer_multisample, false );
-        CHECK_EXTENSION( EXT_packed_depth_stencil, false );
+        CHECK_EXTENSION( framebuffer_object, false );
+        if( !GL_HAS( framebuffer_object ) )
+        {
+            CHECK_EXTENSION( framebuffer_object_ext, true );
+            CHECK_EXTENSION( framebuffer_multisample, false );
+            CHECK_EXTENSION( packed_depth_stencil, false );
+        }
+        CHECK_EXTENSION( texture_multisample, false );
     }
-    CHECK_EXTENSION( ARB_texture_multisample, false );
-    CHECK_EXTENSION( ARB_get_program_binary, false );
+    else
+    {
+        OGL_framebuffer_object = false;
+        OGL_framebuffer_object_ext = false;
+    }
+    CHECK_EXTENSION( get_program_binary, false );
+    #undef CHECK_EXTENSION
     if( extension_errors )
         return false;
-    #endif
+
+    // Default effects
+    if( !GraphicLoader::LoadDefaultEffects() )
+        return false;
 
     // 3d stuff
     if( !Animation3d::StartUp() )
@@ -120,62 +203,60 @@ bool SpriteManager::Init()
     if( !Animation3d::SetScreenSize( modeWidth, modeHeight ) )
         return false;
 
-    // Render stuff
-    if( !InitRenderStates() )
-        return false;
-    if( !InitBuffers() )
-        return false;
+    // Render states
+    GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) modeWidth, (float) modeHeight, 0.0f, -1.0f, 1.0f ) );
+    projectionMatrixCM.Transpose();         // Convert to column major order
+    GL( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
+    GL( glDisable( GL_DEPTH_TEST ) );
+    GL( glEnable( GL_BLEND ) );
+    GL( glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA ) );
+    GL( glDisable( GL_CULL_FACE ) );
+    GL( glActiveTexture( GL_TEXTURE0 ) );
+    GL( glPixelStorei( GL_PACK_ALIGNMENT, 1 ) );
+    GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
+    #ifndef FO_OGL_ES
+    GL( glEnable( GL_POINT_SMOOTH ) );
+    GL( glEnable( GL_LINE_SMOOTH ) );
+    #endif
+
+    // Vertex arrays
+    quadsVertexArray = new VertexArray[ ARRAY_BUFFERS_COUNT ];
+    pointsVertexArray = new VertexArray[ ARRAY_BUFFERS_COUNT ];
+    for( uint i = 0; i <  ARRAY_BUFFERS_COUNT; i++ )
+    {
+        VertexArray* qva = &quadsVertexArray[ i ];
+        memzero( qva, sizeof( VertexArray ) );
+        qva->Next = &quadsVertexArray[ i + 1 < ARRAY_BUFFERS_COUNT ? i + 1 : 0 ];
+        InitVertexArray( qva, true, drawQuadCount );
+
+        VertexArray* dva = &pointsVertexArray[ i ];
+        memzero( dva, sizeof( VertexArray ) );
+        dva->Next = &pointsVertexArray[ i + 1 < ARRAY_BUFFERS_COUNT ? i + 1 : 0 ];
+        InitVertexArray( dva, false, drawQuadCount );
+    }
+
+    // Vertex buffer
+    vBuffer.resize( drawQuadCount * 4 );
 
     // Sprites buffer
-    sprData.resize( SPR_BUFFER_COUNT );
+    sprData.resize( SPRITES_BUFFER_SIZE );
     for( auto it = sprData.begin(), end = sprData.end(); it != end; ++it )
         ( *it ) = NULL;
 
-    // Transparent egg
-    isInit = true;
-    eggValid = false;
-    sprEgg = NULL;
-    eggHx = eggHy = eggX = eggY = 0;
-
-    AnyFrames* egg_spr = LoadAnimation( "egg.png", PT_ART_MISC );
-    if( egg_spr )
-    {
-        sprEgg = GetSpriteInfo( egg_spr->Ind[ 0 ] );
-        delete egg_spr;
-        eggSurfWidth = (float) surfList[ 0 ]->Width;    // First added surface
-        eggSurfHeight = (float) surfList[ 0 ]->Height;
-        eggSprWidth = sprEgg->Width;
-        eggSprHeight = sprEgg->Height;
-    }
-    else
-    {
-        WriteLog( "Load sprite 'egg.png' fail. Egg disabled.\n" );
-    }
-
-    // Default effects
-    if( !GraphicLoader::LoadDefaultEffects() )
-        return false;
-
     // Render targets
-    if( !CreateRenderTarget( rtMain, true, false, 0, 0, true ) ||
-        !CreateRenderTarget( rtContours, false ) ||
-        !CreateRenderTarget( rtContoursMid, false ) ||
-        #ifdef RENDER_3D_TO_2D
-        !CreateRenderTarget( rt3D, true )
-        #endif
-        false )
-    {
-        WriteLog( "Can't create render targets.\n" );
-        return false;
-    }
+    rtMain = CreateRenderTarget( true, false, 0, 0, true );
+    rtContours = CreateRenderTarget( false );
+    rtContoursMid = CreateRenderTarget( false );
     #ifdef RENDER_3D_TO_2D
-    CreateRenderTarget( rt3DMS, true, true );
+    rt3D = CreateRenderTarget( true );
+    rt3DMS = CreateRenderTarget( true, true );
     #endif
 
     // Clear scene
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
     SDL_GL_SwapWindow( MainWindow );
-    PushRenderTarget( rtMain );
+    if( rtMain )
+        PushRenderTarget( rtMain );
 
     // Generate dummy animation
     if( !DummyAnimation )
@@ -192,102 +273,13 @@ bool SpriteManager::Init()
     return true;
 }
 
-bool SpriteManager::InitBuffers()
-{
-    if( vaMain )
-        GL( glDeleteVertexArrays( 1, &vaMain ) );
-    vaMain = 0;
-    if( vbMain )
-        GL( glDeleteBuffers( 1, &vbMain ) );
-    vbMain = 0;
-    if( ibMain )
-        GL( glDeleteBuffers( 1, &ibMain ) );
-    ibMain = 0;
-    if( ibDirect )
-        GL( glDeleteBuffers( 1, &ibDirect ) );
-    ibDirect = 0;
-
-    // Vertex buffer
-    vBuffer.resize( flushSprCnt * 4 );
-    GL( glGenBuffers( 1, &vbMain ) );
-    GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
-    GL( glBufferData( GL_ARRAY_BUFFER, flushSprCnt * 4 * sizeof( Vertex ), NULL, GL_DYNAMIC_DRAW ) );
-
-    // Index buffers
-    ushort* ind = new ushort[ 6 * flushSprCnt ];
-    for( int i = 0; i < flushSprCnt; i++ )
-    {
-        ind[ 6 * i + 0 ] = 4 * i + 0;
-        ind[ 6 * i + 1 ] = 4 * i + 1;
-        ind[ 6 * i + 2 ] = 4 * i + 3;
-        ind[ 6 * i + 3 ] = 4 * i + 1;
-        ind[ 6 * i + 4 ] = 4 * i + 2;
-        ind[ 6 * i + 5 ] = 4 * i + 3;
-    }
-    GL( glGenBuffers( 1, &ibMain ) );
-    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibMain ) );
-    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, flushSprCnt * 6 * sizeof( ushort ), ind, GL_STATIC_DRAW ) );
-    for( int i = 0; i < flushSprCnt * 4; i++ )
-        ind[ i ] = i;
-    GL( glGenBuffers( 1, &ibDirect ) );
-    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibDirect ) );
-    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, flushSprCnt * 4 * sizeof( ushort ), ind, GL_STATIC_DRAW ) );
-    delete[] ind;
-
-    // Vertex array
-    if( GL_HAS( ARB_vertex_array_object ) && ( GL_HAS( ARB_framebuffer_object ) || GL_HAS( EXT_framebuffer_object ) ) )
-    {
-        GL( glGenVertexArrays( 1, &vaMain ) );
-        GL( glBindVertexArray( vaMain ) );
-        GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
-        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibMain ) );
-        GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, x ) ) );
-        GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, diffuse ) ) );
-        GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, tu ) ) );
-        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, tu2 ) ) );
-        GL( glEnableVertexAttribArray( 0 ) );
-        GL( glEnableVertexAttribArray( 1 ) );
-        GL( glEnableVertexAttribArray( 2 ) );
-        GL( glEnableVertexAttribArray( 3 ) );
-        GL( glBindVertexArray( 0 ) );
-    }
-
-    return true;
-}
-
-bool SpriteManager::InitRenderStates()
-{
-    GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) modeWidth, (float) modeHeight, 0.0f, -1.0f, 1.0f ) );
-    projectionMatrixCM.Transpose();     // Convert to column major order
-    GL( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
-    if( !GameOpt.VSync )
-        SDL_GL_SetSwapInterval( 0 );
-
-    #ifndef FO_OSX_IOS
-    GL( glEnable( GL_ALPHA_TEST ) );
-    GL( glAlphaFunc( GL_GEQUAL, 1.0f / 255.0f ) );
-    GL( glShadeModel( GL_SMOOTH ) );
-    GL( glEnable( GL_POINT_SMOOTH ) );
-    GL( glEnable( GL_LINE_SMOOTH ) );
-    GL( glDisable( GL_LIGHTING ) );
-    #endif
-
-    GL( glEnable( GL_TEXTURE_2D ) );
-    GL( glEnable( GL_BLEND ) );
-    GL( glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA ) );
-    GL( glDisable( GL_CULL_FACE ) );
-    GL( glActiveTexture( GL_TEXTURE0 ) );
-
-    return true;
-}
-
 void SpriteManager::Finish()
 {
     WriteLog( "Sprite manager finish...\n" );
 
-    for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
+    for( auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it )
         SAFEDEL( *it );
-    surfList.clear();
+    allAtlases.clear();
     for( auto it = sprData.begin(), end = sprData.end(); it != end; ++it )
         SAFEDEL( *it );
     sprData.clear();
@@ -295,12 +287,6 @@ void SpriteManager::Finish()
 
     Animation3d::Finish();
 
-    // Finish context
-    // Fl::lock();
-    // gl_finish();
-    // Fl::unlock();
-
-    isInit = false;
     WriteLog( "Sprite manager finish complete.\n" );
 }
 
@@ -308,6 +294,7 @@ bool SpriteManager::BeginScene( uint clear_color )
 {
     if( clear_color )
         ClearCurrentRenderTarget( clear_color );
+    ClearCurrentRenderTargetDS( true, false );
 
     Animation3d::BeginScene();
     sceneBeginned = true;
@@ -317,9 +304,14 @@ bool SpriteManager::BeginScene( uint clear_color )
 void SpriteManager::EndScene()
 {
     Flush();
-    PopRenderTarget();
-    DrawRenderTarget( rtMain, false );
-    PushRenderTarget( rtMain );
+
+
+    if( rtMain )
+    {
+        PopRenderTarget();
+        DrawRenderTarget( rtMain, false );
+        PushRenderTarget( rtMain );
+    }
 
     SDL_GL_SwapWindow( MainWindow );
 
@@ -331,19 +323,27 @@ void SpriteManager::EndScene()
     sceneBeginned = false;
 }
 
-bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bool multisampling /* = false */, uint width /* = 0 */, uint height /* = 0 */, bool tex_linear /* = false */ )
+bool SpriteManager::IsRenderTargetSupported()
 {
+    return !DisableRenderTargets && ( GL_HAS( framebuffer_object ) || GL_HAS( framebuffer_object ) );
+}
+
+RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multisampling /* = false */, uint width /* = 0 */, uint height /* = 0 */, bool tex_linear /* = false */ )
+{
+    if( !IsRenderTargetSupported() )
+        return NULL;
+
     // Zero data
-    memzero( &rt, sizeof( rt ) );
+    RenderTarget* rt = new RenderTarget();
+    memzero( rt, sizeof( RenderTarget ) );
     width = ( width ? width : modeWidth );
     height = ( height ? height : modeHeight );
 
     // Multisampling
     static int samples = -1;
-    #ifndef FO_OSX_IOS
-    if( multisampling && samples == -1 && ( GL_HAS( ARB_framebuffer_object ) || ( GL_HAS( EXT_framebuffer_object ) && GL_HAS( EXT_framebuffer_multisample ) ) ) )
+    if( multisampling && samples == -1 && ( GL_HAS( framebuffer_object ) || ( GL_HAS( framebuffer_object_ext ) && GL_HAS( framebuffer_multisample ) ) ) )
     {
-        if( GL_HAS( ARB_texture_multisample ) && GameOpt.MultiSampling != 0 )
+        if( GL_HAS( texture_multisample ) && GameOpt.MultiSampling != 0 )
         {
             // Samples count
             GLint max_samples = 0;
@@ -364,20 +364,19 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
             samples = 0;
         }
     }
-    #endif
     if( multisampling && samples <= 1 )
-        return false;
+        return NULL;
 
     // Framebuffer
-    if( GL_HAS( ARB_framebuffer_object ) )
+    if( GL_HAS( framebuffer_object ) )
     {
-        GL( glGenFramebuffers( 1, &rt.FBO ) );
-        GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
+        GL( glGenFramebuffers( 1, &rt->FBO ) );
+        GL( glBindFramebuffer( GL_FRAMEBUFFER, rt->FBO ) );
     }
-    else // EXT_framebuffer_object
+    else // framebuffer_object_ext
     {
-        GL( glGenFramebuffersEXT( 1, &rt.FBO ) );
-        GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, rt.FBO ) );
+        GL( glGenFramebuffersEXT( 1, &rt->FBO ) );
+        GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, rt->FBO ) );
     }
 
     // Texture
@@ -398,61 +397,57 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, tex_linear ? GL_LINEAR : GL_NEAREST ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
-        GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
-        if( GL_HAS( ARB_framebuffer_object ) )
+        GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex->Data ) );
+        if( GL_HAS( framebuffer_object ) )
         {
             GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->Id, 0 ) );
         }
-        else // EXT_framebuffer_object
+        else // framebuffer_object_ext
         {
             GL( glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, tex->Id, 0 ) );
         }
     }
-    #ifndef FO_OSX_IOS
     else
     {
         tex->Samples = (float) samples;
         GL( glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, tex->Id ) );
         GL( glTexImage2DMultisample( GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGBA, width, height, GL_TRUE ) );
-        if( GL_HAS( ARB_framebuffer_object ) )
+        if( GL_HAS( framebuffer_object ) )
         {
             GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, tex->Id, 0 ) );
         }
-        else // EXT_framebuffer_object
+        else // framebuffer_object_ext
         {
             GL( glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D_MULTISAMPLE, tex->Id, 0 ) );
         }
     }
-    #endif
-    rt.TargetTexture = tex;
+    rt->TargetTexture = tex;
 
     // Depth / stencil
     if( depth_stencil )
     {
-        if( GL_HAS( ARB_framebuffer_object ) )
+        if( GL_HAS( framebuffer_object ) )
         {
-            GL( glGenRenderbuffers( 1, &rt.DepthStencilBuffer ) );
-            GL( glBindRenderbuffer( GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
+            GL( glGenRenderbuffers( 1, &rt->DepthStencilBuffer ) );
+            GL( glBindRenderbuffer( GL_RENDERBUFFER, rt->DepthStencilBuffer ) );
             if( !multisampling )
             {
                 GL( glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height ) );
             }
-            #ifndef FO_OSX_IOS
             else
             {
                 GL( glRenderbufferStorageMultisample( GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, width, height ) );
             }
-            #endif
-            GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
-            GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rt.DepthStencilBuffer ) );
+            GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rt->DepthStencilBuffer ) );
+            GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rt->DepthStencilBuffer ) );
         }
-        else // EXT_framebuffer_object
+        else // framebuffer_object_ext
         {
-            GL( glGenRenderbuffersEXT( 1, &rt.DepthStencilBuffer ) );
-            GL( glBindRenderbufferEXT( GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
+            GL( glGenRenderbuffersEXT( 1, &rt->DepthStencilBuffer ) );
+            GL( glBindRenderbufferEXT( GL_RENDERBUFFER_EXT, rt->DepthStencilBuffer ) );
             if( !multisampling )
             {
-                if( GL_HAS( EXT_packed_depth_stencil ) )
+                if( GL_HAS( packed_depth_stencil ) )
                 {
                     GL( glRenderbufferStorageEXT( GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, width, height ) );
                 }
@@ -461,10 +456,9 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
                     GL( glRenderbufferStorageEXT( GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, width, height ) );
                 }
             }
-            #ifndef FO_OSX_IOS
             else
             {
-                if( GL_HAS( EXT_packed_depth_stencil ) )
+                if( GL_HAS( packed_depth_stencil ) )
                 {
                     GL( glRenderbufferStorageMultisampleEXT( GL_RENDERBUFFER_EXT, samples, GL_DEPTH24_STENCIL8_EXT, width, height ) );
                 }
@@ -473,96 +467,96 @@ bool SpriteManager::CreateRenderTarget( RenderTarget& rt, bool depth_stencil, bo
                     GL( glRenderbufferStorageMultisampleEXT( GL_RENDERBUFFER_EXT, samples, GL_DEPTH_COMPONENT, width, height ) );
                 }
             }
-            #endif
-            GL( glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
-            if( GL_HAS( EXT_packed_depth_stencil ) )
-                GL( glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rt.DepthStencilBuffer ) );
+            GL( glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rt->DepthStencilBuffer ) );
+            if( GL_HAS( packed_depth_stencil ) )
+                GL( glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rt->DepthStencilBuffer ) );
         }
     }
 
     // Check framebuffer creation status
-    if( GL_HAS( ARB_framebuffer_object ) )
+    if( GL_HAS( framebuffer_object ) )
     {
         GLenum status;
         GL( status = glCheckFramebufferStatus( GL_FRAMEBUFFER ) );
         if( status != GL_FRAMEBUFFER_COMPLETE )
         {
             WriteLogF( _FUNC_, " - Framebuffer not created, status<%08X>.\n", status );
-            return false;
+            return NULL;
         }
     }
-    else // EXT_framebuffer_object
+    else // framebuffer_object_ext
     {
         GLenum status;
         GL( status = glCheckFramebufferStatusEXT( GL_FRAMEBUFFER_EXT ) );
         if( status != GL_FRAMEBUFFER_COMPLETE_EXT )
         {
             WriteLogF( _FUNC_, " - FramebufferExt not created, status<%08X>.\n", status );
-            return false;
+            return NULL;
         }
     }
 
     // Effect
     if( !multisampling )
-        rt.DrawEffect = Effect::FlushRenderTarget;
-    #ifndef FO_OSX_IOS
+        rt->DrawEffect = Effect::FlushRenderTarget;
     else
-        rt.DrawEffect = Effect::FlushRenderTargetMS;
-    #endif
-
-    // Id
-    static uint ids = 0;
-    rt.Id = ++ids;
+        rt->DrawEffect = Effect::FlushRenderTargetMS;
 
     // Clear
-    if( GL_HAS( ARB_framebuffer_object ) )
+    if( GL_HAS( framebuffer_object ) )
     {
-        GL( glBindFramebuffer( GL_FRAMEBUFFER, 0 ) );
+        GL( glBindFramebuffer( GL_FRAMEBUFFER, baseFBO ) );
     }
-    else // EXT_framebuffer_object
+    else // framebuffer_object_ext
     {
-        GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, 0 ) );
+        GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, baseFBO ) );
     }
     PushRenderTarget( rt );
     ClearCurrentRenderTarget( 0 );
     if( depth_stencil )
         ClearCurrentRenderTargetDS( true, true );
     PopRenderTarget();
-    return true;
+
+    return rt;
 }
 
-void SpriteManager::DeleteRenderTarget( RenderTarget& rt )
+void SpriteManager::DeleteRenderTarget( RenderTarget*& rt )
 {
-    if( GL_HAS( ARB_framebuffer_object ) )
+    if( !IsRenderTargetSupported() )
+        return;
+
+    if( GL_HAS( framebuffer_object ) )
     {
-        if( rt.DepthStencilBuffer )
-            GL( glDeleteRenderbuffers( 1, &rt.DepthStencilBuffer ) );
-        GL( glDeleteFramebuffers( 1, &rt.FBO ) );
+        if( rt->DepthStencilBuffer )
+            GL( glDeleteRenderbuffers( 1, &rt->DepthStencilBuffer ) );
+        GL( glDeleteFramebuffers( 1, &rt->FBO ) );
     }
-    else // EXT_framebuffer_object
+    else // framebuffer_object_ext
     {
-        if( rt.DepthStencilBuffer )
-            GL( glDeleteRenderbuffersEXT( 1, &rt.DepthStencilBuffer ) );
-        GL( glDeleteFramebuffersEXT( 1, &rt.FBO ) );
+        if( rt->DepthStencilBuffer )
+            GL( glDeleteRenderbuffersEXT( 1, &rt->DepthStencilBuffer ) );
+        GL( glDeleteFramebuffersEXT( 1, &rt->FBO ) );
     }
-    SAFEDEL( rt.TargetTexture );
-    memzero( &rt, sizeof( rt ) );
+    SAFEDEL( rt->TargetTexture );
+    SAFEDEL( rt );
 }
 
-void SpriteManager::PushRenderTarget( RenderTarget& rt )
+void SpriteManager::PushRenderTarget( RenderTarget* rt )
 {
-    bool redundant = ( !rtStack.empty() && rtStack.back()->Id == rt.Id );
-    rtStack.push_back( &rt );
+    if( !IsRenderTargetSupported() )
+        return;
+
+    bool redundant = ( !rtStack.empty() && rtStack.back() == rt );
+    rtStack.push_back( rt );
     if( !redundant )
     {
         Flush();
-        if( GL_HAS( ARB_framebuffer_object ) )
+        if( GL_HAS( framebuffer_object ) )
         {
-            GL( glBindFramebuffer( GL_FRAMEBUFFER, rt.FBO ) );
+            GL( glBindFramebuffer( GL_FRAMEBUFFER, rt->FBO ) );
         }
-        else // EXT_framebuffer_object
+        else // framebuffer_object_ext
         {
-            GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, rt.FBO ) );
+            GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, rt->FBO ) );
         }
         RefreshViewPort();
     }
@@ -570,78 +564,84 @@ void SpriteManager::PushRenderTarget( RenderTarget& rt )
 
 void SpriteManager::PopRenderTarget()
 {
-    bool redundant = ( rtStack.size() > 2 && rtStack.back()->Id == rtStack[ rtStack.size() - 2 ]->Id );
+    if( !IsRenderTargetSupported() )
+        return;
+
+    bool redundant = ( rtStack.size() > 2 && rtStack.back() == rtStack[ rtStack.size() - 2 ] );
     rtStack.pop_back();
     if( !redundant )
     {
         Flush();
-        if( GL_HAS( ARB_framebuffer_object ) )
+        if( GL_HAS( framebuffer_object ) )
         {
-            GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
+            GL( glBindFramebuffer( GL_FRAMEBUFFER, rtStack.empty() ? baseFBO : rtStack.back()->FBO ) );
         }
-        else // EXT_framebuffer_object
+        else // framebuffer_object_ext
         {
-            GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, rtStack.empty() ? 0 : rtStack.back()->FBO ) );
+            GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, rtStack.empty() ? baseFBO : rtStack.back()->FBO ) );
         }
         RefreshViewPort();
     }
 }
 
-void SpriteManager::DrawRenderTarget( RenderTarget& rt, bool alpha_blend, const Rect* region_from /* = NULL */, const Rect* region_to /* = NULL */ )
+void SpriteManager::DrawRenderTarget( RenderTarget* rt, bool alpha_blend, const Rect* region_from /* = NULL */, const Rect* region_to /* = NULL */ )
 {
+    if( !IsRenderTargetSupported() )
+        return;
+
     Flush();
 
     if( !region_from && !region_to )
     {
-        float w = (float) rt.TargetTexture->Width;
-        float h = (float) rt.TargetTexture->Height;
-        uint  mulpos = 0;
-        vBuffer[ mulpos ].x = 0.0f;
-        vBuffer[ mulpos ].y = h;
-        vBuffer[ mulpos ].tu = 0.0f;
-        vBuffer[ mulpos++ ].tv = 0.0f;
-        vBuffer[ mulpos ].x = 0.0f;
-        vBuffer[ mulpos ].y = 0.0f;
-        vBuffer[ mulpos ].tu = 0.0f;
-        vBuffer[ mulpos++ ].tv = 1.0f;
-        vBuffer[ mulpos ].x = w;
-        vBuffer[ mulpos ].y = 0.0f;
-        vBuffer[ mulpos ].tu = 1.0f;
-        vBuffer[ mulpos++ ].tv = 1.0f;
-        vBuffer[ mulpos ].x = w;
-        vBuffer[ mulpos ].y = h;
-        vBuffer[ mulpos ].tu = 1.0f;
-        vBuffer[ mulpos++ ].tv = 0.0f;
+        float w = (float) rt->TargetTexture->Width;
+        float h = (float) rt->TargetTexture->Height;
+        uint  pos = 0;
+        vBuffer[ pos ].x = 0.0f;
+        vBuffer[ pos ].y = h;
+        vBuffer[ pos ].tu = 0.0f;
+        vBuffer[ pos++ ].tv = 0.0f;
+        vBuffer[ pos ].x = 0.0f;
+        vBuffer[ pos ].y = 0.0f;
+        vBuffer[ pos ].tu = 0.0f;
+        vBuffer[ pos++ ].tv = 1.0f;
+        vBuffer[ pos ].x = w;
+        vBuffer[ pos ].y = 0.0f;
+        vBuffer[ pos ].tu = 1.0f;
+        vBuffer[ pos++ ].tv = 1.0f;
+        vBuffer[ pos ].x = w;
+        vBuffer[ pos ].y = h;
+        vBuffer[ pos ].tu = 1.0f;
+        vBuffer[ pos++ ].tv = 0.0f;
     }
     else
     {
         RectF regionf = ( region_from ? *region_from :
-                          Rect( 0, 0, rt.TargetTexture->Width, rt.TargetTexture->Height ) );
+                          Rect( 0, 0, rt->TargetTexture->Width, rt->TargetTexture->Height ) );
         RectF regiont = ( region_to ? *region_to :
                           Rect( 0, 0, rtStack.back()->TargetTexture->Width, rtStack.back()->TargetTexture->Height ) );
-        float wf = (float) rt.TargetTexture->Width;
-        float hf = (float) rt.TargetTexture->Height;
-        uint  mulpos = 0;
-        vBuffer[ mulpos ].x = regiont.L;
-        vBuffer[ mulpos ].y = regiont.B;
-        vBuffer[ mulpos ].tu = regionf.L / wf;
-        vBuffer[ mulpos++ ].tv = 1.0f - regionf.B / hf;
-        vBuffer[ mulpos ].x = regiont.L;
-        vBuffer[ mulpos ].y = regiont.T;
-        vBuffer[ mulpos ].tu = regionf.L / wf;
-        vBuffer[ mulpos++ ].tv = 1.0f - regionf.T / hf;
-        vBuffer[ mulpos ].x = regiont.R;
-        vBuffer[ mulpos ].y = regiont.T;
-        vBuffer[ mulpos ].tu = regionf.R / wf;
-        vBuffer[ mulpos++ ].tv = 1.0f - regionf.T / hf;
-        vBuffer[ mulpos ].x = regiont.R;
-        vBuffer[ mulpos ].y = regiont.B;
-        vBuffer[ mulpos ].tu = regionf.R / wf;
-        vBuffer[ mulpos++ ].tv = 1.0f - regionf.B / hf;
+        float wf = (float) rt->TargetTexture->Width;
+        float hf = (float) rt->TargetTexture->Height;
+        uint  pos = 0;
+        vBuffer[ pos ].x = regiont.L;
+        vBuffer[ pos ].y = regiont.B;
+        vBuffer[ pos ].tu = regionf.L / wf;
+        vBuffer[ pos++ ].tv = 1.0f - regionf.B / hf;
+        vBuffer[ pos ].x = regiont.L;
+        vBuffer[ pos ].y = regiont.T;
+        vBuffer[ pos ].tu = regionf.L / wf;
+        vBuffer[ pos++ ].tv = 1.0f - regionf.T / hf;
+        vBuffer[ pos ].x = regiont.R;
+        vBuffer[ pos ].y = regiont.T;
+        vBuffer[ pos ].tu = regionf.R / wf;
+        vBuffer[ pos++ ].tv = 1.0f - regionf.T / hf;
+        vBuffer[ pos ].x = regiont.R;
+        vBuffer[ pos ].y = regiont.B;
+        vBuffer[ pos ].tu = regionf.R / wf;
+        vBuffer[ pos++ ].tv = 1.0f - regionf.B / hf;
     }
 
-    curSprCnt = 1;
-    dipQueue.push_back( DipData( rt.TargetTexture, rt.DrawEffect ) );
+    curDrawQuad = 1;
+    dipQueue.push_back( DipData( rt->TargetTexture, rt->DrawEffect ) );
 
     if( !alpha_blend )
         GL( glDisable( GL_BLEND ) );
@@ -682,34 +682,93 @@ void SpriteManager::RefreshViewPort()
     }
 }
 
-void SpriteManager::EnableVertexArray( GLuint ib, uint count )
+void SpriteManager::InitVertexArray( VertexArray* va, bool quads, uint count )
 {
-    if( vaMain )
+    // Resize indicies
+    UShortVec& indicies = ( quads ? quadsIndicies : pointsIndicies );
+    uint       indicies_count = ( quads ? count * 6 : count );
+    uint       max_indicies_count = (uint) indicies.size();
+    if( indicies_count > max_indicies_count )
     {
-        GL( glBindVertexArray( vaMain ) );
-        GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
-        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ib ) );
-        GL( glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof( Vertex ) * count, &vBuffer[ 0 ] ) );
+        indicies.resize( indicies_count );
+        if( quads )
+        {
+            for( uint i = max_indicies_count / 6, j = indicies_count / 6; i < j; i++ )
+            {
+                indicies[ i * 6 + 0 ] = i * 4 + 0;
+                indicies[ i * 6 + 1 ] = i * 4 + 1;
+                indicies[ i * 6 + 2 ] = i * 4 + 3;
+                indicies[ i * 6 + 3 ] = i * 4 + 1;
+                indicies[ i * 6 + 4 ] = i * 4 + 2;
+                indicies[ i * 6 + 5 ] = i * 4 + 3;
+            }
+        }
+        else
+        {
+            for( uint i = max_indicies_count; i < indicies_count; i++ )
+                indicies[ i ] = i;
+        }
     }
-    else
+
+    // Vertex buffer
+    uint vertices_count = ( quads ? count * 4 : count );
+    if( !va->VBO )
+        GL( glGenBuffers( 1, &va->VBO ) );
+    GL( glBindBuffer( GL_ARRAY_BUFFER, va->VBO ) );
+    GL( glBufferData( GL_ARRAY_BUFFER, vertices_count * sizeof( Vertex ), NULL, GL_DYNAMIC_DRAW ) );
+    va->VCount = vertices_count;
+
+    // Index buffer
+    if( !va->IBO )
+        GL( glGenBuffers( 1, &va->IBO ) );
+    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, va->IBO ) );
+    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, indicies_count * sizeof( ushort ), &indicies[ 0 ], GL_STATIC_DRAW ) );
+    va->ICount = indicies_count;
+
+    // Vertex array
+    if( !va->VAO && GL_HAS( vertex_array_object ) && ( GL_HAS( framebuffer_object ) || GL_HAS( framebuffer_object_ext ) ) )
     {
-        GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
-        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ib ) );
-        GL( glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof( Vertex ) * count, &vBuffer[ 0 ] ) );
-        GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, x ) ) );
-        GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, diffuse ) ) );
-        GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, tu ) ) );
-        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, tu2 ) ) );
-        GL( glEnableVertexAttribArray( 0 ) );
-        GL( glEnableVertexAttribArray( 1 ) );
-        GL( glEnableVertexAttribArray( 2 ) );
-        GL( glEnableVertexAttribArray( 3 ) );
+        GL( glGenVertexArrays( 1, &va->VAO ) );
+        GL( glBindVertexArray( va->VAO ) );
+        BindVertexArray( va );
+        GL( glBindVertexArray( 0 ) );
     }
 }
 
-void SpriteManager::DisableVertexArray()
+void SpriteManager::BindVertexArray( VertexArray* va )
 {
-    if( vaMain )
+    GL( glBindBuffer( GL_ARRAY_BUFFER, va->VBO ) );
+    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, va->IBO ) );
+    GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, x ) ) );
+    GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, diffuse ) ) );
+    GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, tu ) ) );
+    GL( glEnableVertexAttribArray( 0 ) );
+    GL( glEnableVertexAttribArray( 1 ) );
+    GL( glEnableVertexAttribArray( 2 ) );
+    #ifndef DISABLE_EGG
+    GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, tu2 ) ) );
+    GL( glEnableVertexAttribArray( 3 ) );
+    #endif
+}
+
+void SpriteManager::EnableVertexArray( VertexArray* va, uint vertices_count )
+{
+    if( va->VAO )
+    {
+        GL( glBindVertexArray( va->VAO ) );
+        GL( glBindBuffer( GL_ARRAY_BUFFER, va->VBO ) );
+        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, va->IBO ) );
+    }
+    else
+    {
+        BindVertexArray( va );
+    }
+    GL( glBufferSubData( GL_ARRAY_BUFFER, 0, vertices_count * sizeof( Vertex ), &vBuffer[ 0 ] ) );
+}
+
+void SpriteManager::DisableVertexArray( VertexArray*& va )
+{
+    if( va->VAO )
     {
         GL( glBindVertexArray( 0 ) );
     }
@@ -720,29 +779,31 @@ void SpriteManager::DisableVertexArray()
         GL( glDisableVertexAttribArray( 2 ) );
         GL( glDisableVertexAttribArray( 3 ) );
     }
+    if( va->Next )
+        va = va->Next;
 }
 
 void SpriteManager::EnableStencil( RectF& stencil )
 {
-    uint mulpos = 0;
-    vBuffer[ mulpos ].x = stencil.L;
-    vBuffer[ mulpos ].y = stencil.B;
-    vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
-    vBuffer[ mulpos ].x = stencil.L;
-    vBuffer[ mulpos ].y = stencil.T;
-    vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
-    vBuffer[ mulpos ].x = stencil.R;
-    vBuffer[ mulpos ].y = stencil.T;
-    vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
-    vBuffer[ mulpos ].x = stencil.R;
-    vBuffer[ mulpos ].y = stencil.B;
-    vBuffer[ mulpos++ ].diffuse = 0xFFFFFFFF;
+    uint pos = 0;
+    vBuffer[ pos ].x = stencil.L;
+    vBuffer[ pos ].y = stencil.B;
+    vBuffer[ pos++ ].diffuse = 0xFFFFFFFF;
+    vBuffer[ pos ].x = stencil.L;
+    vBuffer[ pos ].y = stencil.T;
+    vBuffer[ pos++ ].diffuse = 0xFFFFFFFF;
+    vBuffer[ pos ].x = stencil.R;
+    vBuffer[ pos ].y = stencil.T;
+    vBuffer[ pos++ ].diffuse = 0xFFFFFFFF;
+    vBuffer[ pos ].x = stencil.R;
+    vBuffer[ pos ].y = stencil.B;
+    vBuffer[ pos++ ].diffuse = 0xFFFFFFFF;
 
     GL( glEnable( GL_STENCIL_TEST ) );
     GL( glStencilFunc( GL_NEVER, 1, 0xFF ) );
     GL( glStencilOp( GL_REPLACE, GL_KEEP, GL_KEEP ) );
 
-    curSprCnt = 1;
+    curDrawQuad = 1;
     dipQueue.push_back( DipData( NULL, Effect::FlushPrimitive ) );
     Flush();
 
@@ -757,23 +818,129 @@ void SpriteManager::DisableStencil( bool clear_stencil )
     GL( glDisable( GL_STENCIL_TEST ) );
 }
 
-Surface* SpriteManager::CreateNewSurface( int w, int h )
+void SpriteManager::PushAtlasType( int atlas_type, bool one_image /* = false */ )
 {
-    if( !isInit )
-        return NULL;
+    atlasTypeStack.push_back( atlas_type );
+    atlasOneImageStack.push_back( one_image );
+}
 
-    // Check power of two
-    int ww = w + SURF_SPRITES_OFFS * 2;
-    w = baseTextureSize;
-    int hh = h + SURF_SPRITES_OFFS * 2;
-    h = baseTextureSize;
-    while( w < ww )
-        w *= 2;
-    while( h < hh )
-        h *= 2;
+void SpriteManager::PopAtlasType()
+{
+    atlasTypeStack.pop_back();
+    atlasOneImageStack.pop_back();
+}
+
+void SpriteManager::AccumulateAtlasData()
+{
+    accumulatorActive = true;
+}
+
+void SpriteManager::FlushAccumulatedAtlasData()
+{
+    struct Sorter
+    {
+        static bool SortBySize( SpriteInfo* si1, SpriteInfo* si2 )
+        {
+            return si1->Width * si1->Height > si2->Width * si2->Height;
+        }
+    };
+    std::sort( accumulatorSprInfo.begin(), accumulatorSprInfo.end(), Sorter::SortBySize );
+
+    for( auto it = accumulatorSprInfo.begin(), end = accumulatorSprInfo.end(); it != end; ++it )
+        FillAtlas( *it );
+    accumulatorSprInfo.clear();
+    accumulatorActive = false;
+}
+
+void SpriteManager::FinalizeAtlas( int atlas_type )
+{
+    for( auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it )
+    {
+        TextureAtlas* atlas = *it;
+        if( atlas->Finalized || atlas->Type != atlas_type )
+            continue;
+        if( atlas->Width == atlasWidth && atlas->Height == atlasHeight )
+            atlasDataPool.push_back( atlas->TextureOwner->Data );
+        else
+            delete[] atlas->TextureOwner->Data;
+        atlas->TextureOwner->Data = NULL;
+        atlas->Finalized = true;
+    }
+}
+
+TextureAtlas::SpaceNode::SpaceNode( int x, int y, int w, int h )
+{
+    busy = false;
+    posX = x;
+    posY = y;
+    width = w;
+    height = h;
+    child1 = child2 = NULL;
+}
+
+TextureAtlas::SpaceNode::~SpaceNode()
+{
+    SAFEDEL( child1 );
+    SAFEDEL( child2 );
+}
+
+bool TextureAtlas::SpaceNode::FindPosition( int w, int h, int& x, int& y )
+{
+    bool result = false;
+    if( child1 )
+        result = child1->FindPosition( w, h, x, y );
+    if( !result && child2 )
+        result = child2->FindPosition( w, h, x, y );
+    if( !result && !busy && width >= w && height >= h )
+    {
+        result = true;
+        busy = true;
+        x = posX;
+        y = posY;
+        if( width == w && height > h )
+        {
+            child1 = new SpaceNode( posX, posY + h, width, height - h );
+        }
+        else if( height == h && width > w )
+        {
+            child1 = new SpaceNode( posX + w, posY, width - w, height );
+        }
+        else if( width > w && height > h )
+        {
+            child1 = new SpaceNode( posX + w, posY, width - w, h );
+            child2 = new SpaceNode( posX, posY + h, width, height - h );
+        }
+    }
+    return result;
+}
+
+TextureAtlas::TextureAtlas()
+{
+    memzero( this, sizeof( TextureAtlas ) );
+}
+
+TextureAtlas::~TextureAtlas()
+{
+    SAFEDEL( TextureOwner );
+    SAFEDEL( RootNode );
+}
+
+TextureAtlas* SpriteManager::CreateAtlas( int w, int h )
+{
+    uchar* data = NULL;
+
+    if( !atlasOneImageStack.back() )
+    {
+        w = atlasWidth;
+        h = atlasHeight;
+        if( atlasDataPool.empty() )
+            atlasDataPool.push_back( new uchar[ atlasWidth * atlasHeight * 4 ] );
+        data = (uchar*) atlasDataPool.back();
+        atlasDataPool.pop_back();
+    }
 
     Texture* tex = new Texture();
-    tex->Data = new uchar[ w * h * 4 ];
+    tex->Data = ( data ? data : new uchar[ w * h * 4 ] );
     tex->Size = w * h * 4;
     tex->Width = w;
     tex->Height = h;
@@ -784,104 +951,161 @@ Surface* SpriteManager::CreateNewSurface( int w, int h )
     GL( glGenTextures( 1, &tex->Id ) );
     GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
     GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, SurfFilterNearest ? GL_NEAREST : GL_LINEAR ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, SurfFilterNearest ? GL_NEAREST : GL_LINEAR ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR ) );
+    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
-    GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, tex->Data ) );
+    GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex->Data ) );
 
-    Surface* surf = new Surface();
-    surf->Type = SurfType;
-    surf->TextureOwner = tex;
-    surf->Width = w;
-    surf->Height = h;
-    surf->BusyH = SURF_SPRITES_OFFS;
-    surf->FreeX = SURF_SPRITES_OFFS;
-    surf->FreeY = SURF_SPRITES_OFFS;
-    surfList.push_back( surf );
-    return surf;
+    TextureAtlas* atlas = new TextureAtlas();
+    atlas->Type = atlasTypeStack.back();
+    atlas->TextureOwner = tex;
+    atlas->Width = w;
+    atlas->Height = h;
+    atlas->RootNode = ( accumulatorActive ? new TextureAtlas::SpaceNode( 0, 0, w, h ) : NULL );
+    allAtlases.push_back( atlas );
+    return atlas;
 }
 
-Surface* SpriteManager::FindSurfacePlace( SpriteInfo* si, int& x, int& y )
+TextureAtlas* SpriteManager::FindAtlasPlace( SpriteInfo* si, int& x, int& y )
 {
-    // Find place in already created surface
-    uint w = si->Width + SURF_SPRITES_OFFS * 2;
-    uint h = si->Height + SURF_SPRITES_OFFS * 2;
-    for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
+    // Find place in already created atlas
+    TextureAtlas* atlas = NULL;
+    int           atlas_type = atlasTypeStack.back();
+    uint          w = si->Width + ATLAS_SPRITES_PADDING * 2;
+    uint          h = si->Height + ATLAS_SPRITES_PADDING * 2;
+    for( auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it )
     {
-        Surface* surf = *it;
-        if( surf->Type == SurfType )
+        TextureAtlas* a = *it;
+        if( a->Finalized || a->Type != atlas_type )
+            continue;
+
+        if( a->RootNode  )
         {
-            if( surf->Width - surf->FreeX >= w && surf->Height - surf->FreeY >= h )
+            if( a->RootNode->FindPosition( w, h, x, y ) )
+                atlas = a;
+        }
+        else
+        {
+            if( w <= a->LineW && a->LineCurH + h <= a->LineMaxH )
             {
-                x = surf->FreeX + SURF_SPRITES_OFFS;
-                y = surf->FreeY;
-                return surf;
+                x = a->CurX - a->LineW;
+                y = a->CurY + a->LineCurH;
+                a->LineCurH += h;
+                atlas = a;
             }
-            else if( surf->Width >= w && surf->Height - surf->BusyH >= h )
+            else if( a->Width - a->CurX >= w && a->Height - a->CurY >= h )
             {
-                x = SURF_SPRITES_OFFS;
-                y = surf->BusyH + SURF_SPRITES_OFFS;
-                return surf;
+                x = a->CurX;
+                y = a->CurY;
+                a->CurX += w;
+                a->LineW = w;
+                a->LineCurH = h;
+                a->LineMaxH = max( a->LineMaxH, h );
+                atlas = a;
+            }
+            else if( a->Width >= w && a->Height - a->CurY - a->LineMaxH >= h )
+            {
+                x = 0;
+                y = a->CurY + a->LineMaxH;
+                a->CurX = w;
+                a->CurY = y;
+                a->LineW = w;
+                a->LineCurH = h;
+                a->LineMaxH = h;
+                atlas = a;
             }
         }
+
+        if( atlas )
+            break;
     }
 
     // Create new
-    Surface* surf = CreateNewSurface( si->Width, si->Height );
-    if( !surf )
-        return NULL;
-    x = surf->FreeX;
-    y = surf->FreeY;
-    return surf;
+    if( !atlas )
+    {
+        if( std::find( autofinalizeAtlases.begin(), autofinalizeAtlases.end(), atlas_type ) != autofinalizeAtlases.end() )
+            FinalizeAtlas( atlas_type );
+
+        atlas = CreateAtlas( w, h );
+        if( atlas->RootNode )
+        {
+            atlas->RootNode->FindPosition( w, h, x, y );
+        }
+        else
+        {
+            x = atlas->CurX;
+            y = atlas->CurY;
+            atlas->CurX += w;
+            atlas->LineMaxH = h;
+            atlas->LineCurH = h;
+            atlas->LineW = w;
+        }
+    }
+
+    // Return parameters
+    x += ATLAS_SPRITES_PADDING;
+    y += ATLAS_SPRITES_PADDING;
+    return atlas;
 }
 
-void SpriteManager::FreeSurfaces( int surf_type )
+void SpriteManager::AutofinalizeAtlases( int atlas_type )
 {
-    for( auto it = surfList.begin(); it != surfList.end();)
+    autofinalizeAtlases.push_back( atlas_type );
+}
+
+void SpriteManager::DestroyAtlases( int atlas_type )
+{
+    FinalizeAtlas( atlas_type );
+    for( auto it = allAtlases.begin(); it != allAtlases.end();)
     {
-        Surface* surf = *it;
-        if( surf->Type == surf_type )
+        TextureAtlas* atlas = *it;
+        if( atlas->Type == atlas_type )
         {
             for( auto it_ = sprData.begin(), end_ = sprData.end(); it_ != end_; ++it_ )
             {
                 SpriteInfo* si = *it_;
-                if( si && si->Surf == surf )
+                if( si && si->Atlas == atlas )
                 {
                     delete si;
                     ( *it_ ) = NULL;
                 }
             }
 
-            delete surf;
-            it = surfList.erase( it );
+            delete atlas;
+            it = allAtlases.erase( it );
         }
         else
+        {
             ++it;
+        }
     }
 }
 
-void SpriteManager::SaveSufaces()
+void SpriteManager::DumpAtlases()
 {
-    uint surf_size = 0;
-    for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
+    uint atlases_memory_size = 0;
+    for( auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it )
     {
-        Surface* surf = *it;
-        surf_size += surf->Width * surf->Height * 4;
+        TextureAtlas* atlas = *it;
+        if( !atlas->Finalized )
+            atlases_memory_size += atlas->Width * atlas->Height * 4;
     }
 
     char path[ MAX_FOPATH ];
-    Str::Format( path, DIR_SLASH_SD "%u_%u.%03umb" DIR_SLASH_S, (uint) time( NULL ), surf_size / 1000000, surf_size % 1000000 / 1000 );
+    Str::Format( path, DIR_SLASH_SD "%u_%u.%03umb" DIR_SLASH_S, (uint) time( NULL ), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000 );
     FileManager::CreateDirectoryTree( path );
 
     int cnt = 0;
-    for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
+    for( auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it )
     {
-        Surface* surf = *it;
-        Texture* tex = surf->TextureOwner;
-        char     name[ MAX_FOPATH ];
-        Str::Format( name, "%s%d_%d_%ux%u.png", path, surf->Type, cnt, surf->Width, surf->Height );
-        SaveTexture( tex, name, false );
+        TextureAtlas* atlas = *it;
+        char          fname[ MAX_FOPATH ];
+        Str::Format( fname, "%s%d_%d_%ux%u%s.png", path, cnt, atlas->Type, atlas->Width, atlas->Height, atlas->Finalized ? "_finalized" : "" );
+        if( !atlas->Finalized )
+            SaveTexture( atlas->TextureOwner, fname, false );
+        else
+            FileClose( FileOpen( fname, true ) );
         cnt++;
     }
 }
@@ -903,7 +1127,7 @@ void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
     else
     {
         data = new uchar[ w * h * 4 ];
-        GL( glReadPixels( 0, 0, w, h, GL_BGRA, GL_UNSIGNED_BYTE, data ) );
+        GL( glReadPixels( 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data ) );
     }
 
     // Flip image
@@ -923,30 +1147,54 @@ void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
         delete[] data;
 }
 
-uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, uchar* data, uint size )
+uint SpriteManager::RequestFillAtlas( SpriteInfo* si, uchar* data, uint size )
 {
-    // Parameters
-    uint w, h;
+    // Sprite info
     if( !si )
         si = new SpriteInfo();
 
     // Get width, height
-    w = *( (uint*) data + 1 );
-    h = *( (uint*) data + 2 );
+    si->Data = data;
+    si->DataSize = size;
+    si->DataAtlasType = atlasTypeStack.back();
+    si->DataAtlasOneImage = atlasOneImageStack.back();
+    si->Width = *( (uint*) data + 1 );
+    si->Height = *( (uint*) data + 2 );
 
-    // Find place on surface
-    si->Width = w;
-    si->Height = h;
-    int      x, y;
-    Surface* surf = FindSurfacePlace( si, x, y );
-    if( !surf )
-    {
-        delete[] data;
-        return 0;
-    }
+    // Find place on atlas
+    if( accumulatorActive )
+        accumulatorSprInfo.push_back( si );
+    else
+        FillAtlas( si );
 
-    Texture* tex = surf->TextureOwner;
+    // Store sprite
+    uint index = 1;
+    for( uint j = (uint) sprData.size(); index < j; index++ )
+        if( !sprData[ index ] )
+            break;
+    if( index < (uint) sprData.size() )
+        sprData[ index ] = si;
+    else
+        sprData.push_back( si );
+    return index;
+}
 
+void SpriteManager::FillAtlas( SpriteInfo* si )
+{
+    uchar* data = si->Data;
+    uint   size = si->DataSize;
+    uint   w = si->Width;
+    uint   h = si->Height;
+
+    si->Data = NULL;
+    si->DataSize = 0;
+
+    PushAtlasType( si->DataAtlasType, si->DataAtlasOneImage );
+    int           x, y;
+    TextureAtlas* atlas = FindAtlasPlace( si, x, y );
+    PopAtlasType();
+
+    Texture* tex = atlas->TextureOwner;
     uint*    ptr_from = (uint*) data + 3;
     uint*    ptr_to = (uint*) tex->Data + ( y - 1 ) * tex->Width + x - 1;
     for( uint i = 0; i < h; i++ )
@@ -954,7 +1202,7 @@ uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, uchar* data, uint siz
 
     if( GameOpt.DebugSprites )
     {
-        uint rnd_color = COLOR_XRGB( Random( 0, 255 ), Random( 0, 255 ), Random( 0, 255 ) );
+        uint rnd_color = COLOR_RGB( Random( 0, 255 ), Random( 0, 255 ), Random( 0, 255 ) );
         for( uint yy = 1; yy < h + 1; yy++ )
         {
             for( uint xx = 1; xx < w + 1; xx++ )
@@ -972,48 +1220,33 @@ uint SpriteManager::FillSurfaceFromMemory( SpriteInfo* si, uchar* data, uint siz
 
     // 1px border for correct linear interpolation
     for( uint i = 0; i < h + 2; i++ )
-        tex->Pixel( x + 0 - 1, y + i - 1 ) = tex->Pixel( x + 1 - 1, y + i - 1 );               // Left
+        tex->Pixel( x + 0 - 1, y + i - 1 ) = tex->Pixel( x + 1 - 1, y + i - 1 );                       // Left
     for( uint i = 0; i < h + 2; i++ )
-        tex->Pixel( x + w + 1 - 1, y + i - 1 ) = tex->Pixel( x + w - 1, y + i - 1 );           // Right
+        tex->Pixel( x + w + 1 - 1, y + i - 1 ) = tex->Pixel( x + w - 1, y + i - 1 );                   // Right
     for( uint i = 0; i < w + 2; i++ )
-        tex->Pixel( x + i - 1, y + 0 - 1 ) = tex->Pixel( x + i - 1, y + 1 - 1 );               // Top
+        tex->Pixel( x + i - 1, y + 0 - 1 ) = tex->Pixel( x + i - 1, y + 1 - 1 );                       // Top
     for( uint i = 0; i < w + 2; i++ )
-        tex->Pixel( x + i - 1, y + h + 1 - 1 ) = tex->Pixel( x + i - 1, y + h - 1 );           // Bottom
+        tex->Pixel( x + i - 1, y + h + 1 - 1 ) = tex->Pixel( x + i - 1, y + h - 1 );                   // Bottom
 
     // Refresh texture
     tex->Update( Rect( x - 1, y - 1, x + w + 1, y + h + 1 ) );
 
+    // Set parameters
+    si->Atlas = atlas;
+    si->SprRect.L = float(x) / float(atlas->Width);
+    si->SprRect.T = float(y) / float(atlas->Height);
+    si->SprRect.R = float(x + w) / float(atlas->Width);
+    si->SprRect.B = float(y + h) / float(atlas->Height);
+
     // Delete data
     delete[] data;
-
-    // Set parameters
-    si->Surf = surf;
-    surf->FreeX = x + w;
-    surf->FreeY = y;
-    if( y + h > surf->BusyH )
-        surf->BusyH = y + h;
-    si->SprRect.L = float(x) / float(surf->Width);
-    si->SprRect.T = float(y) / float(surf->Height);
-    si->SprRect.R = float(x + w) / float(surf->Width);
-    si->SprRect.B = float(y + h) / float(surf->Height);
-
-    // Store sprite
-    uint index = 1;
-    for( uint j = (uint) sprData.size(); index < j; index++ )
-        if( !sprData[ index ] )
-            break;
-    if( index < (uint) sprData.size() )
-        sprData[ index ] = si;
-    else
-        sprData.push_back( si );
-    return index;
 }
 
 AnyFrames* SpriteManager::LoadAnimation( const char* fname, int path_type, int flags )
 {
     AnyFrames* dummy = ( FLAG( flags, ANIM_USE_DUMMY ) ? DummyAnimation : NULL );
 
-    if( !isInit || !fname || !fname[ 0 ] )
+    if( !fname || !fname[ 0 ] )
         return dummy;
 
     const char* ext = FileManager::GetExtension( fname );
@@ -1058,8 +1291,6 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, int path_type, int f
 
 AnyFrames* SpriteManager::ReloadAnimation( AnyFrames* anim, const char* fname, int path_type )
 {
-    if( !isInit )
-        return anim;
     if( !fname || !fname[ 0 ] )
         return anim;
 
@@ -1069,22 +1300,9 @@ AnyFrames* SpriteManager::ReloadAnimation( AnyFrames* anim, const char* fname, i
         for( uint i = 0; i < anim->CntFrm; i++ )
         {
             SpriteInfo* si = GetSpriteInfo( anim->Ind[ i ] );
-            if( !si )
-                continue;
-
-            for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
-            {
-                Surface* surf = *it;
-                if( si->Surf == surf )
-                {
-                    delete surf;
-                    surfList.erase( it );
-                    break;
-                }
-            }
-            SAFEDEL( sprData[ anim->Ind[ i ] ] );
+            if( si )
+                DestroyAtlases( si->Atlas->Type );
         }
-
         delete anim;
     }
 
@@ -1196,7 +1414,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, in
             uchar r = fm_palette.GetUChar() * 4;
             uchar g = fm_palette.GetUChar() * 4;
             uchar b = fm_palette.GetUChar() * 4;
-            palette_entry[ i ] = COLOR_XRGB( r, g, b );
+            palette_entry[ i ] = COLOR_RGB( r, g, b );
         }
         palette = palette_entry;
     }
@@ -1229,7 +1447,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, in
         anim->NextX[ frm ] = fm.GetBEUShort();
         anim->NextY[ frm ] = fm.GetBEUShort();
 
-        // Data for FillSurfaceFromMemory
+        // Data for RequestFillAtlas
         uint   size = 12 + h * w * 4;
         uchar* data = new uchar[ size ];
         if( !data )
@@ -1286,7 +1504,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, in
                     }
                     else
                     {
-                        *( ptr + i ) = COLOR_XRGB( blinking_red_vals[ frm % 10 ], 0, 0 );
+                        *( ptr + i ) = COLOR_RGB( blinking_red_vals[ frm % 10 ], 0, 0 );
                         continue;
                     }
                 }
@@ -1383,7 +1601,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, in
         if( !anim_pix_type )
             offset += w * h + 12;
 
-        uint result = FillSurfaceFromMemory( si, data, size );
+        uint result = RequestFillAtlas( si, data, size );
         if( !result )
         {
             delete anim;
@@ -1408,7 +1626,7 @@ AnyFrames* SpriteManager::LoadAnimationRix( const char* fname, int path_type )
     ushort      h;
     fm.CopyMem( &h, 2 );
 
-    // Data for FillSurfaceFromMemory
+    // Data for RequestFillAtlas
     uint   size = 12 + h * w * 4;
     uchar* data = new uchar[ size ];
     *( (uint*) data + 1 ) = w;
@@ -1423,10 +1641,10 @@ AnyFrames* SpriteManager::LoadAnimationRix( const char* fname, int path_type )
         uint r = *( palette + index * 3 + 0 ) * 4;
         uint g = *( palette + index * 3 + 1 ) * 4;
         uint b = *( palette + index * 3 + 2 ) * 4;
-        *( ptr + i ) = COLOR_XRGB( r, g, b );
+        *( ptr + i ) = COLOR_RGB( r, g, b );
     }
 
-    uint result = FillSurfaceFromMemory( si, data, size );
+    uint result = RequestFillAtlas( si, data, size );
     if( !result )
         return NULL;
 
@@ -1832,7 +2050,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
         anim->NextX[ frm_cur ] = 0;    // frame_info.deltaX;
         anim->NextY[ frm_cur ] = 0;    // frame_info.deltaY;
 
-        // Data for FillSurfaceFromMemory
+        // Data for RequestFillAtlas
         uint   w = frame_info.frameWidth;
         uint   h = frame_info.frameHeight;
         uint   size = 12 + h * w * 4;
@@ -1913,7 +2131,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type, in
         }
 
         // Fill
-        uint result = FillSurfaceFromMemory( si, data, size );
+        uint result = RequestFillAtlas( si, data, size );
         if( !result )
         {
             delete anim;
@@ -2324,7 +2542,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
         if( !whole_h )
             whole_h = 1;
 
-        // Data for FillSurfaceFromMemory
+        // Data for RequestFillAtlas
         uint   img_size = 12 + whole_h * whole_w * 4;
         uchar* img_data = new uchar[ img_size ];
         if( !img_data )
@@ -2433,7 +2651,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type, in
         SpriteInfo* si = new SpriteInfo();
         si->OffsX = bboxes[ frm * dir_cnt * 4 + dir * 4 + 0 ] - center_x + center_x_ex + whole_w / 2;
         si->OffsY = bboxes[ frm * dir_cnt * 4 + dir * 4 + 1 ] - center_y + center_y_ex + whole_h;
-        uint result = FillSurfaceFromMemory( si, img_data, img_size );
+        uint result = RequestFillAtlas( si, img_data, img_size );
         if( !result )
         {
             delete anim;
@@ -2480,7 +2698,7 @@ AnyFrames* SpriteManager::LoadAnimationZar( const char* fname, int path_type )
     uchar* rle_buf = fm.GetCurBuf();
     fm.GoForward( rle_size );
 
-    // Data for FillSurfaceFromMemory
+    // Data for RequestFillAtlas
     uint   img_size = 12 + h * w * 4;
     uchar* img_data = new uchar[ img_size ];
     if( !img_data )
@@ -2537,7 +2755,7 @@ AnyFrames* SpriteManager::LoadAnimationZar( const char* fname, int path_type )
 
     // Fill animation
     SpriteInfo* si = new SpriteInfo();
-    uint        result = FillSurfaceFromMemory( si, img_data, img_size );
+    uint        result = RequestFillAtlas( si, img_data, img_size );
     if( !result )
         return NULL;
 
@@ -2607,7 +2825,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
         uchar* rle_buf = fm.GetCurBuf();
         fm.GoForward( rle_size );
 
-        // Data for FillSurfaceFromMemory
+        // Data for RequestFillAtlas
         uint   img_size = 12 + h * w * 4;
         uchar* img_data = new uchar[ img_size ];
         if( !img_data )
@@ -2664,7 +2882,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
 
         // Fill animation
         SpriteInfo* si = new SpriteInfo();
-        uint        result = FillSurfaceFromMemory( si, img_data, img_size );
+        uint        result = RequestFillAtlas( si, img_data, img_size );
         if( !result )
             return NULL;
 
@@ -2715,7 +2933,7 @@ AnyFrames* SpriteManager::LoadAnimationMos( const char* fname, int path_type )
     uint tiles_offset = palette_offset + col * row * 256 * 4;
     uint data_offset = tiles_offset + col * row * 4;
 
-    // Data for FillSurfaceFromMemory
+    // Data for RequestFillAtlas
     uint   img_size = 12 + h * w * 4;
     uchar* img_data = new uchar[ img_size ];
     if( !img_data )
@@ -2771,7 +2989,7 @@ AnyFrames* SpriteManager::LoadAnimationMos( const char* fname, int path_type )
 
     // Fill animation
     SpriteInfo* si = new SpriteInfo();
-    uint        result = FillSurfaceFromMemory( si, img_data, img_size );
+    uint        result = RequestFillAtlas( si, img_data, img_size );
     if( !result )
         return NULL;
 
@@ -2894,7 +3112,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
         bool rle = ( data_offset & 0x80000000 ? false : true );
         data_offset &= 0x7FFFFFFF;
 
-        // Data for FillSurfaceFromMemory
+        // Data for RequestFillAtlas
         uint   img_size = 12 + h * w * 4;
         uchar* img_data = new uchar[ img_size ];
         if( !img_data )
@@ -2929,7 +3147,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
 
         // Set in animation sequence
         SpriteInfo* si = new SpriteInfo();
-        uint        result = FillSurfaceFromMemory( si, img_data, img_size );
+        uint        result = RequestFillAtlas( si, img_data, img_size );
         if( !result )
             return NULL;
         si->OffsX = -ox + w / 2;
@@ -2959,7 +3177,7 @@ AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type, 
     if( !image_data )
         return NULL;
 
-    // Data for FillSurfaceFromMemory
+    // Data for RequestFillAtlas
     uint   size = 12 + h * w * 4;
     uchar* data = new uchar[ size ];
     *( (uint*) data + 1 ) = w;
@@ -2968,9 +3186,10 @@ AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type, 
     // Copy data, also swap blue color to transparent
     uint* from = (uint*) image_data;
     uint* to = (uint*) data + 3;
+    uint  transparent_color = COLOR_RGB( 0, 0, 0xFF );
     for( uint i = 0, j = w * h; i < j; i++ )
     {
-        if( *from == 0xFF0000FF )
+        if( *from == transparent_color )
             *from = 0;
         *to = *from;
         ++from;
@@ -2982,7 +3201,7 @@ AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type, 
 
     // Fill data
     SpriteInfo* si = new SpriteInfo();
-    uint        result = FillSurfaceFromMemory( si, data, size );
+    uint        result = RequestFillAtlas( si, data, size );
     if( !result )
         return NULL;
 
@@ -2997,16 +3216,17 @@ AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type, 
 uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc )
 {
     // Create render targets
-    if( !rt3DSprite.FBO )
+    if( !rt3DSprite )
     {
-        if( !CreateRenderTarget( rt3DSprite, true, false, 512, 512 ) )
+        rt3DSprite = CreateRenderTarget( true, false, 512, 512 );
+        if( !rt3DSprite )
             return 0;
-        CreateRenderTarget( rt3DMSSprite, true, true, 512, 512 );
+        rt3DMSSprite = CreateRenderTarget( true, true, 512, 512 );
     }
 
     // Prepare and render
-    int rt_width = rt3DSprite.TargetTexture->Width;
-    int rt_height = rt3DSprite.TargetTexture->Height;
+    int rt_width = rt3DSprite->TargetTexture->Width;
+    int rt_height = rt3DSprite->TargetTexture->Height;
     Animation3d::SetScreenSize( rt_width, rt_height );
     anim3d->EnableSetupBorders( false );
     if( dir < 0 || dir >= DIRS_COUNT )
@@ -3029,15 +3249,15 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     Rect fb = anim3d->GetFullBorders();
 
     // Copy from multisampled to default rt
-    if( rt3DMSSprite.FBO )
+    if( rt3DMSSprite )
     {
         Flush();
         GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) rt_width, (float) rt_height, 0.0f, -1.0f, 1.0f ) );
         projectionMatrixCM.Transpose();             // Convert to column major order
         GL( glViewport( 0, 0, rt_width, rt_height ) );
 
-        PushRenderTarget( rt3DMS );
-        DrawRenderTarget( rt3DMS, false, &fb, &fb );
+        PushRenderTarget( rt3DMSSprite );
+        DrawRenderTarget( rt3DSprite, false, &fb, &fb );
         PopRenderTarget();
 
         GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) modeWidth, (float) modeHeight, 0.0f, -1.0f, 1.0f ) );
@@ -3045,7 +3265,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
         GL( glViewport( 0, 0, modeWidth, modeHeight ) );
     }
 
-    // Grow surfaces while sprite not fitted in it
+    // Grow render targets while sprite not fitted in it
     if( fb.L < 0 || fb.R >= rt_width || fb.T < 0 || fb.B >= rt_height )
     {
         // Grow x2
@@ -3055,14 +3275,20 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
             rt_height *= 2;
 
         // Recreate
-        RenderTarget old_rt = rt3DSprite;
-        RenderTarget old_rtms = rt3DMSSprite;
-        bool         result;
-        if( rt3DMSSprite.FBO )
-            result = CreateRenderTarget( rt3DSprite, true, false, rt_width, rt_height ) &&
-                     CreateRenderTarget( rt3DMSSprite, true, true, rt_width, rt_height );
+        RenderTarget* old_rt = rt3DSprite;
+        RenderTarget* old_rtms = rt3DMSSprite;
+        bool          result;
+        if( rt3DMSSprite )
+        {
+            rt3DSprite = CreateRenderTarget( true, false, rt_width, rt_height );
+            rt3DMSSprite = CreateRenderTarget( true, true, rt_width, rt_height );
+            result = ( rt3DSprite && rt3DMSSprite );
+        }
         else
-            result = CreateRenderTarget( rt3DSprite, true, false, rt_width, rt_height );
+        {
+            rt3DSprite = CreateRenderTarget( true, false, rt_width, rt_height );
+            result = ( rt3DSprite != NULL );
+        }
         if( !result )
         {
             WriteLogF( _FUNC_, " - Size of model is too big.\n" );
@@ -3071,7 +3297,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
             return 0;
         }
         DeleteRenderTarget( old_rt );
-        if( old_rtms.FBO )
+        if( old_rtms )
             DeleteRenderTarget( old_rtms );
 
         // Try load again
@@ -3086,7 +3312,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     *( (uint*) data + 1 ) = w;
     *( (uint*) data + 2 ) = h;
     PushRenderTarget( rt3DSprite );
-    GL( glReadPixels( fb.L, rt_height - fb.B, w, h, GL_BGRA, GL_UNSIGNED_BYTE, data + 12 ) );
+    GL( glReadPixels( fb.L, rt_height - fb.B, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data + 12 ) );
     PopRenderTarget();
 
     // Flip
@@ -3101,7 +3327,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     anim3d->GetFullBorders( &p );
     si->OffsX = fb.W() / 2 - p.X;
     si->OffsY = fb.H() - p.Y;
-    return FillSurfaceFromMemory( si, data, size );
+    return RequestFillAtlas( si, data, size );
 }
 
 Animation3d* SpriteManager::LoadPure3dAnimation( const char* fname, int path_type )
@@ -3122,8 +3348,10 @@ Animation3d* SpriteManager::LoadPure3dAnimation( const char* fname, int path_typ
     else
         sprData.push_back( si );
 
-    // Fake surface, filled after rendering
-    si->Surf = new Surface();
+    // Fake atlas, filled after rendering
+    #ifdef RENDER_3D_TO_2D
+    si->Atlas = new TextureAtlas();
+    #endif
 
     // Cross links
     anim3d->SetSprId( index );
@@ -3138,8 +3366,11 @@ void SpriteManager::FreePure3dAnimation( Animation3d* anim3d )
         uint spr_id = anim3d->GetSprId();
         if( spr_id )
         {
-            sprData[ spr_id ]->Surf->TextureOwner = NULL;
-            SAFEDEL( sprData[ spr_id ]->Surf );
+            if( sprData[ spr_id ]->Atlas )
+            {
+                sprData[ spr_id ]->Atlas->TextureOwner = NULL;
+                SAFEDEL( sprData[ spr_id ]->Atlas );
+            }
             SAFEDEL( sprData[ spr_id ] );
         }
         SAFEDEL( anim3d );
@@ -3148,18 +3379,12 @@ void SpriteManager::FreePure3dAnimation( Animation3d* anim3d )
 
 bool SpriteManager::Flush()
 {
-    if( !curSprCnt )
+    if( !curDrawQuad )
         return true;
-    int mulpos = 4 * curSprCnt;
 
-    for( int i = 0; i < mulpos; i++ )
-    {
-        Vertex& v = vBuffer[ i ];
-        v.diffuse = COLOR_FIX( v.diffuse );
-    }
-    EnableVertexArray( ibMain, mulpos );
+    EnableVertexArray( quadsVertexArray, 4 * curDrawQuad );
 
-    uint rpos = 0;
+    uint pos = 0;
     for( auto it = dipQueue.begin(), end = dipQueue.end(); it != end; ++it )
     {
         DipData& dip = *it;
@@ -3177,26 +3402,24 @@ bool SpriteManager::Flush()
             {
                 GL( glBindTexture( GL_TEXTURE_2D, dip.SourceTexture->Id ) );
             }
-            #ifndef FO_OSX_IOS
             else
             {
                 GL( glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, dip.SourceTexture->Id ) );
                 if( effect->ColorMapSamples != -1 )
                     GL( glUniform1f( effect->ColorMapSamples, dip.SourceTexture->Samples ) );
             }
-            #endif
             GL( glUniform1i( effect->ColorMap, 0 ) );
             if( effect->ColorMapSize != -1 )
                 GL( glUniform4fv( effect->ColorMapSize, 1, dip.SourceTexture->SizeData ) );
         }
-        if( effect->EggMap != -1 )
+        if( effect->EggMap != -1 && sprEgg )
         {
             GL( glActiveTexture( GL_TEXTURE1 ) );
-            GL( glBindTexture( GL_TEXTURE_2D, sprEgg->Surf->TextureOwner->Id ) );
+            GL( glBindTexture( GL_TEXTURE_2D, sprEgg->Atlas->TextureOwner->Id ) );
             GL( glActiveTexture( GL_TEXTURE0 ) );
             GL( glUniform1i( effect->EggMap, 1 ) );
             if( effect->EggMapSize != -1 )
-                GL( glUniform4fv( effect->EggMapSize, 1, sprEgg->Surf->TextureOwner->SizeData ) );
+                GL( glUniform4fv( effect->EggMapSize, 1, sprEgg->Atlas->TextureOwner->SizeData ) );
         }
         if( effect->SpriteBorder != -1 )
             GL( glUniform4f( effect->SpriteBorder, dip.SpriteBorder.L, dip.SpriteBorder.T, dip.SpriteBorder.R, dip.SpriteBorder.B ) );
@@ -3208,16 +3431,16 @@ bool SpriteManager::Flush()
         {
             if( effect->IsNeedProcess )
                 GraphicLoader::EffectProcessVariables( effect, pass );
-            GL( glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (void*) (size_t) ( rpos * 2 ) ) );
+            GL( glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (void*) (size_t) ( pos * 2 ) ) );
         }
 
-        rpos += 6 * dip.SpritesCount;
+        pos += 6 * dip.SpritesCount;
     }
     dipQueue.clear();
-    curSprCnt = 0;
+    curDrawQuad = 0;
 
     GL( glUseProgram( 0 ) );
-    DisableVertexArray();
+    DisableVertexArray( quadsVertexArray );
 
     return true;
 }
@@ -3240,41 +3463,41 @@ bool SpriteManager::DrawSprite( uint id, int x, int y, uint color /* = 0 */ )
     }
 
     Effect* effect = ( si->DrawEffect ? si->DrawEffect : Effect::Iface );
-    if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
-        dipQueue.push_back( DipData( si->Surf->TextureOwner, effect ) );
+    if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
+        dipQueue.push_back( DipData( si->Atlas->TextureOwner, effect ) );
     else
         dipQueue.back().SpritesCount++;
 
-    int mulpos = curSprCnt * 4;
+    int pos = curDrawQuad * 4;
 
     if( !color )
         color = COLOR_IFACE;
 
-    vBuffer[ mulpos ].x = (float) x;
-    vBuffer[ mulpos ].y = (float) y + si->Height;
-    vBuffer[ mulpos ].tu = si->SprRect.L;
-    vBuffer[ mulpos ].tv = si->SprRect.B;
-    vBuffer[ mulpos++ ].diffuse = color;
+    vBuffer[ pos ].x = (float) x;
+    vBuffer[ pos ].y = (float) y + si->Height;
+    vBuffer[ pos ].tu = si->SprRect.L;
+    vBuffer[ pos ].tv = si->SprRect.B;
+    vBuffer[ pos++ ].diffuse = color;
 
-    vBuffer[ mulpos ].x = (float) x;
-    vBuffer[ mulpos ].y = (float) y;
-    vBuffer[ mulpos ].tu = si->SprRect.L;
-    vBuffer[ mulpos ].tv = si->SprRect.T;
-    vBuffer[ mulpos++ ].diffuse = color;
+    vBuffer[ pos ].x = (float) x;
+    vBuffer[ pos ].y = (float) y;
+    vBuffer[ pos ].tu = si->SprRect.L;
+    vBuffer[ pos ].tv = si->SprRect.T;
+    vBuffer[ pos++ ].diffuse = color;
 
-    vBuffer[ mulpos ].x = (float) x + si->Width;
-    vBuffer[ mulpos ].y = (float) y;
-    vBuffer[ mulpos ].tu = si->SprRect.R;
-    vBuffer[ mulpos ].tv = si->SprRect.T;
-    vBuffer[ mulpos++ ].diffuse = color;
+    vBuffer[ pos ].x = (float) x + si->Width;
+    vBuffer[ pos ].y = (float) y;
+    vBuffer[ pos ].tu = si->SprRect.R;
+    vBuffer[ pos ].tv = si->SprRect.T;
+    vBuffer[ pos++ ].diffuse = color;
 
-    vBuffer[ mulpos ].x = (float) x + si->Width;
-    vBuffer[ mulpos ].y = (float) y + si->Height;
-    vBuffer[ mulpos ].tu = si->SprRect.R;
-    vBuffer[ mulpos ].tv = si->SprRect.B;
-    vBuffer[ mulpos ].diffuse = color;
+    vBuffer[ pos ].x = (float) x + si->Width;
+    vBuffer[ pos ].y = (float) y + si->Height;
+    vBuffer[ pos ].tu = si->SprRect.R;
+    vBuffer[ pos ].tv = si->SprRect.B;
+    vBuffer[ pos ].diffuse = color;
 
-    if( ++curSprCnt == flushSprCnt )
+    if( ++curDrawQuad == drawQuadCount )
         Flush();
     return true;
 }
@@ -3330,43 +3553,43 @@ bool SpriteManager::DrawSpritePattern( uint id, int x, int y, int w, int h, int 
         {
             bool last_x = xx + width >= end_x;
 
-            if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
-                dipQueue.push_back( DipData( si->Surf->TextureOwner, effect ) );
+            if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
+                dipQueue.push_back( DipData( si->Atlas->TextureOwner, effect ) );
             else
                 dipQueue.back().SpritesCount++;
 
-            int   mulpos = curSprCnt * 4;
+            int   pos = curDrawQuad * 4;
 
             float local_width = last_x ? ( end_x - xx ) : width;
             float local_height = last_y ? ( end_y - yy ) : height;
             float local_right = last_x ? si->SprRect.L + last_right_offs * local_width : si->SprRect.R;
             float local_bottom = last_y ? si->SprRect.T + last_bottom_offs * local_height : si->SprRect.B;
 
-            vBuffer[ mulpos ].x = xx;
-            vBuffer[ mulpos ].y = yy + local_height;
-            vBuffer[ mulpos ].tu = si->SprRect.L;
-            vBuffer[ mulpos ].tv = local_bottom;
-            vBuffer[ mulpos++ ].diffuse = color;
+            vBuffer[ pos ].x = xx;
+            vBuffer[ pos ].y = yy + local_height;
+            vBuffer[ pos ].tu = si->SprRect.L;
+            vBuffer[ pos ].tv = local_bottom;
+            vBuffer[ pos++ ].diffuse = color;
 
-            vBuffer[ mulpos ].x = xx;
-            vBuffer[ mulpos ].y = yy;
-            vBuffer[ mulpos ].tu = si->SprRect.L;
-            vBuffer[ mulpos ].tv = si->SprRect.T;
-            vBuffer[ mulpos++ ].diffuse = color;
+            vBuffer[ pos ].x = xx;
+            vBuffer[ pos ].y = yy;
+            vBuffer[ pos ].tu = si->SprRect.L;
+            vBuffer[ pos ].tv = si->SprRect.T;
+            vBuffer[ pos++ ].diffuse = color;
 
-            vBuffer[ mulpos ].x = xx + local_width;
-            vBuffer[ mulpos ].y = yy;
-            vBuffer[ mulpos ].tu = local_right;
-            vBuffer[ mulpos ].tv = si->SprRect.T;
-            vBuffer[ mulpos++ ].diffuse = color;
+            vBuffer[ pos ].x = xx + local_width;
+            vBuffer[ pos ].y = yy;
+            vBuffer[ pos ].tu = local_right;
+            vBuffer[ pos ].tv = si->SprRect.T;
+            vBuffer[ pos++ ].diffuse = color;
 
-            vBuffer[ mulpos ].x = xx + local_width;
-            vBuffer[ mulpos ].y = yy + local_height;
-            vBuffer[ mulpos ].tu = local_right;
-            vBuffer[ mulpos ].tv = local_bottom;
-            vBuffer[ mulpos ].diffuse = color;
+            vBuffer[ pos ].x = xx + local_width;
+            vBuffer[ pos ].y = yy + local_height;
+            vBuffer[ pos ].tu = local_right;
+            vBuffer[ pos ].tv = local_bottom;
+            vBuffer[ pos ].diffuse = color;
 
-            if( ++curSprCnt == flushSprCnt )
+            if( ++curDrawQuad == drawQuadCount )
                 Flush();
         }
     }
@@ -3418,41 +3641,41 @@ bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, boo
     }
 
     Effect* effect = ( si->DrawEffect ? si->DrawEffect : Effect::Iface );
-    if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
-        dipQueue.push_back( DipData( si->Surf->TextureOwner, effect ) );
+    if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
+        dipQueue.push_back( DipData( si->Atlas->TextureOwner, effect ) );
     else
         dipQueue.back().SpritesCount++;
 
-    int mulpos = curSprCnt * 4;
+    int pos = curDrawQuad * 4;
 
     if( !color )
         color = COLOR_IFACE;
 
-    vBuffer[ mulpos ].x = (float) x;
-    vBuffer[ mulpos ].y = (float) y + hf;
-    vBuffer[ mulpos ].tu = si->SprRect.L;
-    vBuffer[ mulpos ].tv = si->SprRect.B;
-    vBuffer[ mulpos++ ].diffuse = color;
+    vBuffer[ pos ].x = (float) x;
+    vBuffer[ pos ].y = (float) y + hf;
+    vBuffer[ pos ].tu = si->SprRect.L;
+    vBuffer[ pos ].tv = si->SprRect.B;
+    vBuffer[ pos++ ].diffuse = color;
 
-    vBuffer[ mulpos ].x = (float) x;
-    vBuffer[ mulpos ].y = (float) y;
-    vBuffer[ mulpos ].tu = si->SprRect.L;
-    vBuffer[ mulpos ].tv = si->SprRect.T;
-    vBuffer[ mulpos++ ].diffuse = color;
+    vBuffer[ pos ].x = (float) x;
+    vBuffer[ pos ].y = (float) y;
+    vBuffer[ pos ].tu = si->SprRect.L;
+    vBuffer[ pos ].tv = si->SprRect.T;
+    vBuffer[ pos++ ].diffuse = color;
 
-    vBuffer[ mulpos ].x = (float) x + wf;
-    vBuffer[ mulpos ].y = (float) y;
-    vBuffer[ mulpos ].tu = si->SprRect.R;
-    vBuffer[ mulpos ].tv = si->SprRect.T;
-    vBuffer[ mulpos++ ].diffuse = color;
+    vBuffer[ pos ].x = (float) x + wf;
+    vBuffer[ pos ].y = (float) y;
+    vBuffer[ pos ].tu = si->SprRect.R;
+    vBuffer[ pos ].tv = si->SprRect.T;
+    vBuffer[ pos++ ].diffuse = color;
 
-    vBuffer[ mulpos ].x = (float) x + wf;
-    vBuffer[ mulpos ].y = (float) y + hf;
-    vBuffer[ mulpos ].tu = si->SprRect.R;
-    vBuffer[ mulpos ].tv = si->SprRect.B;
-    vBuffer[ mulpos ].diffuse = color;
+    vBuffer[ pos ].x = (float) x + wf;
+    vBuffer[ pos ].y = (float) y + hf;
+    vBuffer[ pos ].tu = si->SprRect.R;
+    vBuffer[ pos ].tv = si->SprRect.B;
+    vBuffer[ pos ].diffuse = color;
 
-    if( ++curSprCnt == flushSprCnt )
+    if( ++curDrawQuad == drawQuadCount )
         Flush();
     return true;
 }
@@ -3482,7 +3705,7 @@ uint SpriteManager::PackColor( int r, int g, int b )
     r = CLAMP( r, 0, 255 );
     g = CLAMP( g, 0, 255 );
     b = CLAMP( b, 0, 255 );
-    return COLOR_XRGB( r, g, b );
+    return COLOR_RGB( r, g, b );
 }
 
 void SpriteManager::GetDrawRect( Sprite* prep, Rect& rect )
@@ -3515,6 +3738,28 @@ void SpriteManager::GetDrawRect( Sprite* prep, Rect& rect )
         rect.R = (int) ( (float) rect.R * GameOpt.SpritesZoom );
         rect.B = (int) ( (float) rect.B * GameOpt.SpritesZoom );
     }
+}
+
+void SpriteManager::InitializeEgg( const char* egg_name )
+{
+    #ifndef DISABLE_EGG
+    eggValid = false;
+    eggHx = eggHy = eggX = eggY = 0;
+    AnyFrames* egg_frames = LoadAnimation( egg_name, PT_ART_MISC );
+    if( egg_frames )
+    {
+        sprEgg = GetSpriteInfo( egg_frames->Ind[ 0 ] );
+        delete egg_frames;
+        eggSprWidth = sprEgg->Width;
+        eggSprHeight = sprEgg->Height;
+        eggAtlasWidth = (float) atlasWidth;
+        eggAtlasHeight = (float) atlasHeight;
+    }
+    else
+    {
+        WriteLogF( _FUNC_, " - Load sprite<%s> fail. Egg disabled.\n", egg_name );
+    }
+    #endif
 }
 
 bool SpriteManager::CompareHexEgg( ushort hx, ushort hy, int egg_type )
@@ -3583,7 +3828,6 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
 
     if( !eggValid )
         use_egg = false;
-    bool egg_trans = false;
     int  ex = eggX + GameOpt.ScrOx;
     int  ey = eggY + GameOpt.ScrOy;
     uint cur_tick = Timer::FastTick();
@@ -3707,6 +3951,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
 
         // 2d sprite
         // Egg process
+        #ifndef DISABLE_EGG
         bool egg_added = false;
         if( use_egg && spr->EggType && CompareHexEgg( spr->HexX, spr->HexY, spr->EggType ) )
         {
@@ -3723,50 +3968,39 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
 
             if( !( x1 >= eggSprWidth || y1 >= eggSprHeight || x2 < 0 || y2 < 0 ) )
             {
-                if( !egg_trans )
-                {
-                    Flush();
-                    egg_trans = true;
-                }
-
                 x1 = max( x1, 0 );
                 y1 = max( y1, 0 );
                 x2 = min( x2, eggSprWidth );
                 y2 = min( y2, eggSprHeight );
 
-                float x1f = (float) ( x1 + SURF_SPRITES_OFFS );
-                float x2f = (float) ( x2 + SURF_SPRITES_OFFS );
-                float y1f = (float) ( y1 + SURF_SPRITES_OFFS );
-                float y2f = (float) ( y2 + SURF_SPRITES_OFFS );
+                float x1f = (float) ( x1 + ATLAS_SPRITES_PADDING );
+                float x2f = (float) ( x2 + ATLAS_SPRITES_PADDING );
+                float y1f = (float) ( y1 + ATLAS_SPRITES_PADDING );
+                float y2f = (float) ( y2 + ATLAS_SPRITES_PADDING );
 
-                int   mulpos = curSprCnt * 4;
-                vBuffer[ mulpos + 0 ].tu2 = x1f / eggSurfWidth;
-                vBuffer[ mulpos + 0 ].tv2 = y2f / eggSurfHeight;
-                vBuffer[ mulpos + 1 ].tu2 = x1f / eggSurfWidth;
-                vBuffer[ mulpos + 1 ].tv2 = y1f / eggSurfHeight;
-                vBuffer[ mulpos + 2 ].tu2 = x2f / eggSurfWidth;
-                vBuffer[ mulpos + 2 ].tv2 = y1f / eggSurfHeight;
-                vBuffer[ mulpos + 3 ].tu2 = x2f / eggSurfWidth;
-                vBuffer[ mulpos + 3 ].tv2 = y2f / eggSurfHeight;
+                int   pos = curDrawQuad * 4;
+                vBuffer[ pos + 0 ].tu2 = x1f / eggAtlasWidth;
+                vBuffer[ pos + 0 ].tv2 = y2f / eggAtlasHeight;
+                vBuffer[ pos + 1 ].tu2 = x1f / eggAtlasWidth;
+                vBuffer[ pos + 1 ].tv2 = y1f / eggAtlasHeight;
+                vBuffer[ pos + 2 ].tu2 = x2f / eggAtlasWidth;
+                vBuffer[ pos + 2 ].tv2 = y1f / eggAtlasHeight;
+                vBuffer[ pos + 3 ].tu2 = x2f / eggAtlasWidth;
+                vBuffer[ pos + 3 ].tv2 = y2f / eggAtlasHeight;
 
                 egg_added = true;
             }
         }
-
-        if( !egg_added && egg_trans )
-        {
-            Flush();
-            egg_trans = false;
-        }
+        #endif
 
         // Choose effect
         Effect* effect = ( spr->DrawEffect ? *spr->DrawEffect : NULL );
         if( !effect )
             effect = ( si->DrawEffect ? si->DrawEffect : Effect::Generic );
 
-        // Choose surface
-        if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Surf->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
-            dipQueue.push_back( DipData( si->Surf->TextureOwner, effect ) );
+        // Choose atlas
+        if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
+            dipQueue.push_back( DipData( si->Atlas->TextureOwner, effect ) );
         else
             dipQueue.back().SpritesCount++;
 
@@ -3777,62 +4011,60 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         float hf = (float) si->Height / zoom;
 
         // Fill buffer
-        int mulpos = curSprCnt * 4;
+        int pos = curDrawQuad * 4;
 
-        vBuffer[ mulpos ].x = xf;
-        vBuffer[ mulpos ].y = yf + hf;
-        vBuffer[ mulpos ].tu = si->SprRect.L;
-        vBuffer[ mulpos ].tv = si->SprRect.B;
-        vBuffer[ mulpos++ ].diffuse = cur_color;
+        vBuffer[ pos ].x = xf;
+        vBuffer[ pos ].y = yf + hf;
+        vBuffer[ pos ].tu = si->SprRect.L;
+        vBuffer[ pos ].tv = si->SprRect.B;
+        vBuffer[ pos++ ].diffuse = cur_color;
 
-        vBuffer[ mulpos ].x = xf;
-        vBuffer[ mulpos ].y = yf;
-        vBuffer[ mulpos ].tu = si->SprRect.L;
-        vBuffer[ mulpos ].tv = si->SprRect.T;
-        vBuffer[ mulpos++ ].diffuse = cur_color;
+        vBuffer[ pos ].x = xf;
+        vBuffer[ pos ].y = yf;
+        vBuffer[ pos ].tu = si->SprRect.L;
+        vBuffer[ pos ].tv = si->SprRect.T;
+        vBuffer[ pos++ ].diffuse = cur_color;
 
-        vBuffer[ mulpos ].x = xf + wf;
-        vBuffer[ mulpos ].y = yf;
-        vBuffer[ mulpos ].tu = si->SprRect.R;
-        vBuffer[ mulpos ].tv = si->SprRect.T;
-        vBuffer[ mulpos++ ].diffuse = cur_color;
+        vBuffer[ pos ].x = xf + wf;
+        vBuffer[ pos ].y = yf;
+        vBuffer[ pos ].tu = si->SprRect.R;
+        vBuffer[ pos ].tv = si->SprRect.T;
+        vBuffer[ pos++ ].diffuse = cur_color;
 
-        vBuffer[ mulpos ].x = xf + wf;
-        vBuffer[ mulpos ].y = yf + hf;
-        vBuffer[ mulpos ].tu = si->SprRect.R;
-        vBuffer[ mulpos ].tv = si->SprRect.B;
-        vBuffer[ mulpos++ ].diffuse = cur_color;
+        vBuffer[ pos ].x = xf + wf;
+        vBuffer[ pos ].y = yf + hf;
+        vBuffer[ pos ].tu = si->SprRect.R;
+        vBuffer[ pos ].tv = si->SprRect.B;
+        vBuffer[ pos++ ].diffuse = cur_color;
 
         // Cutted sprite
         if( spr->CutType )
         {
             xf = (float) ( x + spr->CutX ) / zoom;
             wf = spr->CutW / zoom;
-            vBuffer[ mulpos - 4 ].x = xf;
-            vBuffer[ mulpos - 4 ].tu = spr->CutTexL;
-            vBuffer[ mulpos - 3 ].x = xf;
-            vBuffer[ mulpos - 3 ].tu = spr->CutTexL;
-            vBuffer[ mulpos - 2 ].x = xf + wf;
-            vBuffer[ mulpos - 2 ].tu = spr->CutTexR;
-            vBuffer[ mulpos - 1 ].x = xf + wf;
-            vBuffer[ mulpos - 1 ].tu = spr->CutTexR;
+            vBuffer[ pos - 4 ].x = xf;
+            vBuffer[ pos - 4 ].tu = spr->CutTexL;
+            vBuffer[ pos - 3 ].x = xf;
+            vBuffer[ pos - 3 ].tu = spr->CutTexL;
+            vBuffer[ pos - 2 ].x = xf + wf;
+            vBuffer[ pos - 2 ].tu = spr->CutTexR;
+            vBuffer[ pos - 1 ].x = xf + wf;
+            vBuffer[ pos - 1 ].tu = spr->CutTexR;
         }
 
         // Set default texture coordinates for egg texture
-        if( !egg_added )
+        #ifndef DISABLE_EGG
+        if( !egg_added && vBuffer[ pos - 1 ].tu2 != -1.0f )
         {
-            vBuffer[ mulpos - 1 ].tu2 = 0.0f;
-            vBuffer[ mulpos - 1 ].tv2 = 0.0f;
-            vBuffer[ mulpos - 2 ].tu2 = 0.0f;
-            vBuffer[ mulpos - 2 ].tv2 = 0.0f;
-            vBuffer[ mulpos - 3 ].tu2 = 0.0f;
-            vBuffer[ mulpos - 3 ].tv2 = 0.0f;
-            vBuffer[ mulpos - 4 ].tu2 = 0.0f;
-            vBuffer[ mulpos - 4 ].tv2 = 0.0f;
+            vBuffer[ pos - 1 ].tu2 = -1.0f;
+            vBuffer[ pos - 2 ].tu2 = -1.0f;
+            vBuffer[ pos - 3 ].tu2 = -1.0f;
+            vBuffer[ pos - 4 ].tu2 = -1.0f;
         }
+        #endif
 
         // Draw
-        if( ++curSprCnt == flushSprCnt || si->Anim3d )
+        if( ++curDrawQuad == drawQuadCount )
             Flush();
 
         #ifdef FONLINE_MAPPER
@@ -3980,9 +4212,9 @@ uint SpriteManager::GetPixColor( uint spr_id, int offs_x, int offs_y, bool with_
         offs_y = (int) ( offs_y * GameOpt.SpritesZoom );
     }
 
-    offs_x += (int) ( si->Surf->TextureOwner->SizeData[ 0 ] * si->SprRect.L );
-    offs_y += (int) ( si->Surf->TextureOwner->SizeData[ 1 ] * si->SprRect.T );
-    return si->Surf->TextureOwner->Pixel( offs_x, offs_y );
+    offs_x += (int) ( si->Atlas->TextureOwner->SizeData[ 0 ] * si->SprRect.L );
+    offs_y += (int) ( si->Atlas->TextureOwner->SizeData[ 1 ] * si->SprRect.T );
+    return si->Atlas->TextureOwner->Pixel( offs_x, offs_y );
 }
 
 bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
@@ -3995,13 +4227,13 @@ bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
     int ox = pix_x - (int) ( ex / GameOpt.SpritesZoom );
     int oy = pix_y - (int) ( ey / GameOpt.SpritesZoom );
 
-    if( ox < 0 || oy < 0 || ox >= int(eggSurfWidth / GameOpt.SpritesZoom) || oy >= int(eggSurfHeight / GameOpt.SpritesZoom) )
+    if( ox < 0 || oy < 0 || ox >= int(eggAtlasWidth / GameOpt.SpritesZoom) || oy >= int(eggAtlasHeight / GameOpt.SpritesZoom) )
         return false;
 
     ox = (int) ( ox * GameOpt.SpritesZoom );
     oy = (int) ( oy * GameOpt.SpritesZoom );
 
-    return sprEgg->Surf->TextureOwner->Pixel( ox, oy ) < 170;
+    return sprEgg->Atlas->TextureOwner->Pixel( ox, oy ) < 170;
 }
 
 bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NULL */, RectF* stencil /* = NULL */, PointF* offset /* = NULL */, Effect* effect /* = NULL */ )
@@ -4054,20 +4286,9 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
 
     // Resize buffers
     if( vBuffer.size() < count )
-    {
-        // Vertex buffer
         vBuffer.resize( count );
-        GL( glBindBuffer( GL_ARRAY_BUFFER, vbMain ) );
-        GL( glBufferData( GL_ARRAY_BUFFER, count * sizeof( Vertex ), NULL, GL_DYNAMIC_DRAW ) );
-
-        // Index buffers
-        ushort* ind = new ushort[ count ];
-        for( uint i = 0; i < count; i++ )
-            ind[ i ] = i;
-        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibDirect ) );
-        GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, count * sizeof( ushort ), ind, GL_STATIC_DRAW ) );
-        delete[] ind;
-    }
+    if( pointsVertexArray->VCount < (uint) vBuffer.size() )
+        InitVertexArray( pointsVertexArray, false, (uint) vBuffer.size() );
 
     // Collect data
     for( uint i = 0; i < count; i++ )
@@ -4087,11 +4308,11 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
         memzero( &vBuffer[ i ], sizeof( Vertex ) );
         vBuffer[ i ].x = x;
         vBuffer[ i ].y = y;
-        vBuffer[ i ].diffuse = COLOR_FIX( point.PointColor );
+        vBuffer[ i ].diffuse = point.PointColor;
     }
 
     // Draw
-    EnableVertexArray( ibDirect, count );
+    EnableVertexArray( pointsVertexArray, count );
     GL( glUseProgram( effect->Program ) );
 
     if( effect->ProjectionMatrix != -1 )
@@ -4107,7 +4328,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     }
 
     GL( glUseProgram( 0 ) );
-    DisableVertexArray();
+    DisableVertexArray( pointsVertexArray );
 
     // Finish
     if( stencil )
@@ -4125,13 +4346,12 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
         EnableStencil( *stencil );
         ClearCurrentRenderTargetDS( false, true );
     }
-    anim3d->EnableShadow( false );
     anim3d->Draw( x, y, scale, stencil, rtStack.back()->FBO );
     if( stencil )
         DisableStencil( false );
     #else
     // Set render target
-    if( rt3DMS.FBO )
+    if( rt3DMS )
     {
         PushRenderTarget( rt3DMS );
         ClearCurrentRenderTarget( 0 );
@@ -4169,9 +4389,9 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
 
     // Fill sprite info
     SpriteInfo* si = sprData[ anim3d->GetSprId() ];
-    si->Surf->TextureOwner = rt3D.TargetTexture;
-    si->Surf->Width = rt3D.TargetTexture->Width;
-    si->Surf->Height = rt3D.TargetTexture->Height;
+    si->Atlas->TextureOwner = rt3D.TargetTexture;
+    si->Atlas->Width = rt3D.TargetTexture->Width;
+    si->Atlas->Height = rt3D.TargetTexture->Height;
     int pivx = ( borders.L < 0 ? -borders.L : 0 );
     int pivy = ( borders.T < 0 ? -borders.T : 0 );
     borders.L = CLAMP( borders.L, 0, modeWidth );
@@ -4233,7 +4453,7 @@ bool SpriteManager::Draw3dSize( RectF rect, bool stretch_up, bool center, Animat
 
 bool SpriteManager::DrawContours()
 {
-    if( contoursAdded )
+    if( contoursAdded && rtContours && rtContoursMid )
     {
         // Draw collected contours
         DrawRenderTarget( rtContours, true );
@@ -4252,8 +4472,11 @@ bool SpriteManager::DrawContours()
 
 bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
 {
+    if( !rtContours || !rtContoursMid )
+        return true;
+
     Rect     borders = Rect( x - 1, y - 1, x + si->Width + 1, y + si->Height + 1 );
-    Texture* texture = si->Surf->TextureOwner;
+    Texture* texture = si->Atlas->TextureOwner;
     RectF    textureuv, sprite_border;
     float    zoom = ( si->Anim3d ? 1.0f : GameOpt.SpritesZoom );
 
@@ -4291,35 +4514,35 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         borders( (int) ( x / zoom ), (int) ( y / zoom ),
                  (int) ( ( x + si->Width ) / zoom ), (int) ( ( y + si->Height ) / zoom ) );
         RectF bordersf( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
-        float mid_height = rtContoursMid.TargetTexture->SizeData[ 1 ];
+        float mid_height = rtContoursMid->TargetTexture->SizeData[ 1 ];
 
         PushRenderTarget( rtContoursMid );
 
-        uint mulpos = 0;
-        vBuffer[ mulpos ].x = bordersf.L;
-        vBuffer[ mulpos ].y = mid_height - bordersf.B;
-        vBuffer[ mulpos ].tu = sr.L;
-        vBuffer[ mulpos++ ].tv = sr.B;
-        vBuffer[ mulpos ].x = bordersf.L;
-        vBuffer[ mulpos ].y = mid_height - bordersf.T;
-        vBuffer[ mulpos ].tu = sr.L;
-        vBuffer[ mulpos++ ].tv = sr.T;
-        vBuffer[ mulpos ].x = bordersf.R;
-        vBuffer[ mulpos ].y = mid_height - bordersf.T;
-        vBuffer[ mulpos ].tu = sr.R;
-        vBuffer[ mulpos++ ].tv = sr.T;
-        vBuffer[ mulpos ].x = bordersf.R;
-        vBuffer[ mulpos ].y = mid_height - bordersf.B;
-        vBuffer[ mulpos ].tu = sr.R;
-        vBuffer[ mulpos++ ].tv = sr.B;
+        uint pos = 0;
+        vBuffer[ pos ].x = bordersf.L;
+        vBuffer[ pos ].y = mid_height - bordersf.B;
+        vBuffer[ pos ].tu = sr.L;
+        vBuffer[ pos++ ].tv = sr.B;
+        vBuffer[ pos ].x = bordersf.L;
+        vBuffer[ pos ].y = mid_height - bordersf.T;
+        vBuffer[ pos ].tu = sr.L;
+        vBuffer[ pos++ ].tv = sr.T;
+        vBuffer[ pos ].x = bordersf.R;
+        vBuffer[ pos ].y = mid_height - bordersf.T;
+        vBuffer[ pos ].tu = sr.R;
+        vBuffer[ pos++ ].tv = sr.T;
+        vBuffer[ pos ].x = bordersf.R;
+        vBuffer[ pos ].y = mid_height - bordersf.B;
+        vBuffer[ pos ].tu = sr.R;
+        vBuffer[ pos++ ].tv = sr.B;
 
-        curSprCnt = 1;
+        curDrawQuad = 1;
         dipQueue.push_back( DipData( texture, Effect::FlushRenderTarget ) );
         Flush();
 
         PopRenderTarget();
 
-        texture = rtContoursMid.TargetTexture;
+        texture = rtContoursMid->TargetTexture;
         float tw = texture->SizeData[ 0 ];
         float th = texture->SizeData[ 1 ];
         borders.L--, borders.T--, borders.R++, borders.B++;
@@ -4337,33 +4560,33 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     else
         contour_color = 0xFFAFAFAF;
 
-    RectF pos( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
+    RectF borders_pos( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
 
     PushRenderTarget( rtContours );
 
-    uint mulpos = 0;
-    vBuffer[ mulpos ].x = pos.L;
-    vBuffer[ mulpos ].y = pos.B;
-    vBuffer[ mulpos ].tu = textureuv.L;
-    vBuffer[ mulpos ].tv = textureuv.B;
-    vBuffer[ mulpos++ ].diffuse = contour_color;
-    vBuffer[ mulpos ].x = pos.L;
-    vBuffer[ mulpos ].y = pos.T;
-    vBuffer[ mulpos ].tu = textureuv.L;
-    vBuffer[ mulpos ].tv = textureuv.T;
-    vBuffer[ mulpos++ ].diffuse = contour_color;
-    vBuffer[ mulpos ].x = pos.R;
-    vBuffer[ mulpos ].y = pos.T;
-    vBuffer[ mulpos ].tu = textureuv.R;
-    vBuffer[ mulpos ].tv = textureuv.T;
-    vBuffer[ mulpos++ ].diffuse = contour_color;
-    vBuffer[ mulpos ].x = pos.R;
-    vBuffer[ mulpos ].y = pos.B;
-    vBuffer[ mulpos ].tu = textureuv.R;
-    vBuffer[ mulpos ].tv = textureuv.B;
-    vBuffer[ mulpos++ ].diffuse = contour_color;
+    uint pos = 0;
+    vBuffer[ pos ].x = borders_pos.L;
+    vBuffer[ pos ].y = borders_pos.B;
+    vBuffer[ pos ].tu = textureuv.L;
+    vBuffer[ pos ].tv = textureuv.B;
+    vBuffer[ pos++ ].diffuse = contour_color;
+    vBuffer[ pos ].x = borders_pos.L;
+    vBuffer[ pos ].y = borders_pos.T;
+    vBuffer[ pos ].tu = textureuv.L;
+    vBuffer[ pos ].tv = textureuv.T;
+    vBuffer[ pos++ ].diffuse = contour_color;
+    vBuffer[ pos ].x = borders_pos.R;
+    vBuffer[ pos ].y = borders_pos.T;
+    vBuffer[ pos ].tu = textureuv.R;
+    vBuffer[ pos ].tv = textureuv.T;
+    vBuffer[ pos++ ].diffuse = contour_color;
+    vBuffer[ pos ].x = borders_pos.R;
+    vBuffer[ pos ].y = borders_pos.B;
+    vBuffer[ pos ].tu = textureuv.R;
+    vBuffer[ pos ].tv = textureuv.B;
+    vBuffer[ pos++ ].diffuse = contour_color;
 
-    curSprCnt = 1;
+    curDrawQuad = 1;
     dipQueue.push_back( DipData( texture, Effect::Contour ) );
     dipQueue.back().SpriteBorder = sprite_border;
     Flush();

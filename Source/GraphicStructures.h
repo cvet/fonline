@@ -36,13 +36,13 @@ struct Texture
     bool         Update()
     {
         GL( glBindTexture( GL_TEXTURE_2D, Id ) );
-        GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Data ) );
+        GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_RGBA, GL_UNSIGNED_BYTE, Data ) );
         return true;
     }
     bool Update( const Rect& r )
     {
         GL( glBindTexture( GL_TEXTURE_2D, Id ) );
-        GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, r.T, Width, r.H(), GL_BGRA_EXT, GL_UNSIGNED_BYTE, (uint*) Data + r.T * Width ) );
+        GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, r.T, Width, r.H(), GL_RGBA, GL_UNSIGNED_BYTE, (uint*) Data + r.T * Width ) );
         return true;
     }
 };
@@ -195,7 +195,7 @@ struct MeshSubset
         GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, IBO ) );
         GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, Indicies.size() * sizeof( short ), &Indicies[ 0 ], GL_STATIC_DRAW ) );
         VAO = 0;
-        if( GL_HAS( ARB_vertex_array_object ) && ( GL_HAS( ARB_framebuffer_object ) || GL_HAS( EXT_framebuffer_object ) ) )
+        if( GL_HAS( vertex_array_object ) && ( GL_HAS( framebuffer_object ) || GL_HAS( framebuffer_object_ext ) ) )
         {
             GL( glGenVertexArrays( 1, &VAO ) );
             GL( glBindVertexArray( VAO ) );

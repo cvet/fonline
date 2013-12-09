@@ -108,62 +108,32 @@ void ResourceManager::Finish()
 
 void ResourceManager::FreeResources( int type )
 {
-    if( type == RES_IFACE )
+    SprMngr.DestroyAtlases( type );
+    for( auto it = loadedAnims.begin(); it != loadedAnims.end();)
     {
-        SprMngr.FreeSurfaces( RES_IFACE );
-        for( auto it = loadedAnims.begin(); it != loadedAnims.end();)
-        {
-            int res_type = ( *it ).second.ResType;
-            if( res_type == RES_IFACE )
-                loadedAnims.erase( it++ );
-            else
-                ++it;
-        }
+        int res_type = ( *it ).second.ResType;
+        if( res_type == type )
+            loadedAnims.erase( it++ );
+        else
+            ++it;
     }
-    else if( type == RES_IFACE_EXT )
-    {
-        SprMngr.FreeSurfaces( RES_IFACE_EXT );
-        for( auto it = loadedAnims.begin(); it != loadedAnims.end();)
-        {
-            int res_type = ( *it ).second.ResType;
-            if( res_type == RES_IFACE_EXT )
-                loadedAnims.erase( it++ );
-            else
-                ++it;
-        }
-    }
-    else if( type == RES_CRITTERS )
+
+    if( type == RES_ATLAS_DYNAMIC )
     {
         for( auto it = critterFrames.begin(), end = critterFrames.end(); it != end; ++it )
             SAFEDEL( ( *it ).second );
         critterFrames.clear();
-        SprMngr.FreeSurfaces( RES_CRITTERS );
-        SprMngr.ClearSpriteContours();
     }
-    else if( type == RES_ITEMS )
-    {
-        SprMngr.FreeSurfaces( RES_ITEMS );
-        for( auto it = loadedAnims.begin(); it != loadedAnims.end();)
-        {
-            int res_type = ( *it ).second.ResType;
-            if( res_type == RES_ITEMS )
-                loadedAnims.erase( it++ );
-            else
-                ++it;
-        }
-    }
-    else if( type == RES_SCRIPT )
-    {
-        SprMngr.FreeSurfaces( RES_SCRIPT );
-        for( auto it = loadedAnims.begin(); it != loadedAnims.end();)
-        {
-            int res_type = ( *it ).second.ResType;
-            if( res_type == RES_SCRIPT )
-                loadedAnims.erase( it++ );
-            else
-                ++it;
-        }
-    }
+}
+
+void ResourceManager::ReinitializeDynamicAtlas()
+{
+    FreeResources( RES_ATLAS_DYNAMIC );
+    SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+    SprMngr.InitializeEgg( "egg.png" );
+    CritterDefaultAnim = SprMngr.LoadAnimation( "art\\critters\\reservaa.frm", PT_DATA, ANIM_USE_DUMMY | ANIM_FRM_ANIM_PIX );
+    ItemHexDefaultAnim = SprMngr.LoadAnimation( "art\\items\\reserved.frm", PT_DATA, ANIM_USE_DUMMY | ANIM_FRM_ANIM_PIX );
+    SprMngr.PopAtlasType();
 }
 
 AnyFrames* ResourceManager::GetAnim( uint name_hash, int dir, int res_type )
@@ -179,9 +149,9 @@ AnyFrames* ResourceManager::GetAnim( uint name_hash, int dir, int res_type )
     if( !fname )
         return NULL;
 
-    SprMngr.SurfType = res_type;
+    SprMngr.PushAtlasType( res_type );
     AnyFrames* anim = SprMngr.LoadAnimation( fname, PT_DATA, ANIM_DIR( dir ) | ANIM_FRM_ANIM_PIX );
-    SprMngr.SurfType = RES_NONE;
+    SprMngr.PopAtlasType();
 
     loadedAnims.insert( PAIR( id, LoadedAnim( res_type, anim ) ) );
     return anim;
@@ -255,11 +225,11 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
                     {
                         if( str->length() )
                         {
-                            SprMngr.SurfType = RES_CRITTERS;
+                            SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
                             anim = SprMngr.LoadAnimation( str->c_str(), PT_DATA, ANIM_DIR( dir ) );
                             if( !anim )
                                 anim = SprMngr.LoadAnimation( str->c_str(), PT_DATA, ANIM_DIR( 0 ) );
-                            SprMngr.SurfType = RES_NONE;
+                            SprMngr.PopAtlasType();
 
                             // Process flags
                             if( anim && flags )
@@ -471,7 +441,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint an
     // Load file
     static char frm_ind[] = "_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     char spr_name[ MAX_FOPATH ];
-    SprMngr.SurfType = RES_CRITTERS;
+    SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
 
     // Try load fofrm
     const char* name = CritType::GetName( crtype );
@@ -489,7 +459,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint an
             frames = SprMngr.LoadAnimation( spr_name, PT_ART_CRITTERS, ANIM_DIR( 0 ) );
         }
     }
-    SprMngr.SurfType = RES_NONE;
+    SprMngr.PopAtlasType();
 
     critterFrames.insert( PAIR( AnimMapId( crtype, anim1, anim2, dir, true ), frames ) );
     if( !frames )
@@ -727,8 +697,9 @@ AnyFrames* ResourceManager::GetRandomSplash()
         return 0;
     int rnd = Random( 0, (int) splashNames.size() - 1 );
     static AnyFrames* splash = NULL;
-    SprMngr.SurfType = RES_SPLASH;
+    SprMngr.PushAtlasType( RES_ATLAS_SPLASH, true );
     splash = SprMngr.ReloadAnimation( splash, splashNames[ rnd ].c_str(), PT_DATA );
-    SprMngr.SurfType = RES_NONE;
+    SprMngr.PopAtlasType();
+    SprMngr.FinalizeAtlas( RES_ATLAS_SPLASH );
     return splash;
 }

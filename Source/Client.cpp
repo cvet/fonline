@@ -15,6 +15,44 @@
 void* zlib_alloc_( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
 void  zlib_free_( void* opaque, void* address )                          { free( address ); }
 
+#ifdef FO_OSX_IOS
+int HandleAppEvents( void* userdata, SDL_Event* event )
+{
+    switch( event->type )
+    {
+    case SDL_APP_TERMINATING:
+        // Terminate the app.
+        // Shut everything down before returning from this function.
+        return 0;
+    case SDL_APP_LOWMEMORY:
+        // You will get this when your app is paused and iOS wants more memory.
+        // Release as much memory as possible.
+        return 0;
+    case SDL_APP_WILLENTERBACKGROUND:
+        // Prepare your app to go into the background.  Stop loops, etc.
+        // This gets called when the user hits the home button, or gets a call.
+        return 0;
+    case SDL_APP_DIDENTERBACKGROUND:
+        // This will get called if the user accepted whatever sent your app to the background.
+        // If the user got a phone call and canceled it, you'll instead get an SDL_APP_DIDENTERFOREGROUND event and restart your loops.
+        // When you get this, you have 5 seconds to save all your state or the app will be terminated.
+        // Your app is NOT active at this point.
+        return 0;
+    case SDL_APP_WILLENTERFOREGROUND:
+        // This call happens when your app is coming back to the foreground.
+        // Restore all your state here.
+        return 0;
+    case SDL_APP_DIDENTERFOREGROUND:
+        // Restart your loops here.
+        // Your app is interactive and getting CPU again.
+        return 0;
+    default:
+        // No special processing, add it to the event queue.
+        return 1;
+    }
+}
+#endif
+
 FOClient*    FOClient::Self = NULL;
 bool         FOClient::SpritesCanDraw = false;
 static uint* UID4 = NULL;
@@ -102,6 +140,11 @@ bool FOClient::Init()
         return false;
     }
 
+    // SDL events
+    #ifdef FO_OSX_IOS
+    SDL_SetEventFilter( HandleAppEvents, NULL );
+    #endif
+
     // Register dll script data
     struct CritterChangeParameter_
     {
@@ -168,7 +211,7 @@ bool FOClient::Init()
     GameOpt.GetHashByName = &GetHashByName_::GetHashByName;
 
     // Input
-    Keyb::InitKeyb();
+    Keyb::Init();
 
     // Paths
     FileManager::SetDataPath( GameOpt.FoDataPath.c_str() );
@@ -177,6 +220,26 @@ bool FOClient::Init()
 
     // Data files
     FileManager::InitDataFiles( ".\\" );
+
+    // Prepare cache on iOS
+    // Copy '*.cache' from 'home/app/Client/data/cache/ to 'home/Documents/cache'
+    #ifdef FO_OSX_IOS
+    StrVec cache_files;
+    FileManager::GetFolderFileNames( "cache" DIR_SLASH_S, false, NULL, cache_files );
+    for( size_t i = 0; i < cache_files.size(); i++ )
+    {
+        char fpath_from[ MAX_FOPATH ];
+        FileManager::GetFullPath( cache_files[ i ].c_str(), PT_DATA, fpath_from );
+
+        char fname[ MAX_FOPATH ];
+        FileManager::ExtractFileName( fpath_from, fname );
+        char fpath_to[ MAX_FOPATH ];
+        FileManager::GetFullPath( fname, PT_CACHE, fpath_to );
+
+        if( !FileExist( fpath_to ) )
+            FileManager::CopyFile( fpath_from, fpath_to );
+    }
+    #endif
 
     // Cache
     FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_CACHE ) );
@@ -251,32 +314,8 @@ bool FOClient::Init()
     // Sprite manager
     if( !SprMngr.Init() )
         return false;
+    SprMngr.AutofinalizeAtlases( RES_ATLAS_DYNAMIC );
     GET_UID1( UID1 );
-
-    // Fonts
-    if( !SprMngr.LoadFontFO( FONT_FO, "OldDefault" ) )
-        return false;
-    if( !SprMngr.LoadFontFO( FONT_NUM, "Numbers" ) )
-        return false;
-    if( !SprMngr.LoadFontFO( FONT_BIG_NUM, "BigNumbers" ) )
-        return false;
-    if( !SprMngr.LoadFontFO( FONT_SAND_NUM, "SandNumbers" ) )
-        return false;
-    if( !SprMngr.LoadFontFO( FONT_SPECIAL, "Special" ) )
-        return false;
-    if( !SprMngr.LoadFontFO( FONT_DEFAULT, "Default" ) )
-        return false;
-    if( !SprMngr.LoadFontFO( FONT_THIN, "Thin" ) )
-        return false;
-    if( !SprMngr.LoadFontFO( FONT_FAT, "Fat" ) )
-        return false;
-    if( !SprMngr.LoadFontFO( FONT_BIG, "Big" ) )
-        return false;
-    SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
-
-    // BMF to FOFNT convertation
-    if( false )
-        SprMngr.LoadFontBMF( 11111, "DefaultExt" );
 
     // Sound manager
     SndMngr.Init();
@@ -320,7 +359,7 @@ bool FOClient::Init()
     ScreenModeMain = SCREEN_WAIT;
     CurMode = CUR_WAIT;
     WaitPic = ResMngr.GetRandomSplash();
-    if( SprMngr.BeginScene( COLOR_XRGB( 0, 0, 0 ) ) )
+    if( SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) ) )
     {
         WaitDraw();
         SprMngr.EndScene();
@@ -471,7 +510,6 @@ void FOClient::Finish()
 {
     WriteLog( "Engine finish...\n" );
 
-    Keyb::Finish();
     NetDisconnect();
     ResMngr.Finish();
     HexMngr.Finish();
@@ -612,8 +650,8 @@ void FOClient::LookBordersPrepare()
                 int x, y, x_, y_;
                 HexMngr.GetHexCurrentPosition( hx_, hy_, x, y );
                 HexMngr.GetHexCurrentPosition( hx__, hy__, x_, y_ );
-                LookBorders.push_back( PrepPoint( x + HEX_OX, y + HEX_OY, COLOR_ARGB( 80, 0, 255, 0 ), (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
-                ShootBorders.push_back( PrepPoint( x_ + HEX_OX, y_ + HEX_OY, COLOR_ARGB( 80, 255, 0, 0 ), (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
+                LookBorders.push_back( PrepPoint( x + HEX_OX, y + HEX_OY, COLOR_RGBA( 80, 0, 255, 0 ), (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
+                ShootBorders.push_back( PrepPoint( x_ + HEX_OX, y_ + HEX_OY, COLOR_RGBA( 80, 255, 0, 0 ), (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
             }
         }
 
@@ -661,33 +699,46 @@ int FOClient::MainLoop()
     }
 
     // Input events
-    SDL_Event event, prev_event;
-    event.type = prev_event.type = SDL_FIRSTEVENT;
+    SDL_Event event;
     while( SDL_PollEvent( &event ) )
     {
-        if( event.type == SDL_TEXTINPUT && prev_event.type == SDL_KEYDOWN )
+        if( event.type == SDL_MOUSEMOTION )
         {
-            MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
-            MainWindowKeyboardEvents.push_back( prev_event.key.keysym.scancode );
-            MainWindowKeyboardEventsText.push_back( event.text.text );
+            int sw = 0, sh = 0;
+            SDL_GetWindowSize( MainWindow, &sw, &sh );
+            int x = (int) ( event.motion.x / (float) sw * (float) GameOpt.ScreenWidth );
+            int y = (int) ( event.motion.y / (float) sh * (float) GameOpt.ScreenHeight );
+            GameOpt.MouseX = CLAMP( x, 0, MODE_WIDTH - 1 );
+            GameOpt.MouseY = CLAMP( y, 0, MODE_HEIGHT - 1 );
         }
-        else if( event.type != SDL_KEYDOWN && prev_event.type == SDL_KEYDOWN )
+        else if( event.type == SDL_KEYDOWN || event.type == SDL_KEYUP )
         {
-            MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
-            MainWindowKeyboardEvents.push_back( prev_event.key.keysym.scancode );
-            MainWindowKeyboardEventsText.push_back( "" );
-        }
-        else if( event.type == SDL_KEYUP )
-        {
-            MainWindowKeyboardEvents.push_back( SDL_KEYUP );
+            MainWindowKeyboardEvents.push_back( event.type );
             MainWindowKeyboardEvents.push_back( event.key.keysym.scancode );
             MainWindowKeyboardEventsText.push_back( "" );
+        }
+        else if( event.type == SDL_TEXTINPUT )
+        {
+            MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
+            MainWindowKeyboardEvents.push_back( 510 );
+            MainWindowKeyboardEventsText.push_back( event.text.text );
+            MainWindowKeyboardEvents.push_back( SDL_KEYUP );
+            MainWindowKeyboardEvents.push_back( 510 );
+            MainWindowKeyboardEventsText.push_back( event.text.text );
         }
         else if( event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP )
         {
             MainWindowMouseEvents.push_back( event.type );
             MainWindowMouseEvents.push_back( event.button.button );
             MainWindowMouseEvents.push_back( 0 );
+        }
+        else if( event.type == SDL_FINGERDOWN || event.type == SDL_FINGERUP )
+        {
+            MainWindowMouseEvents.push_back( event.type == SDL_FINGERDOWN ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP );
+            MainWindowMouseEvents.push_back( SDL_BUTTON_LEFT );
+            MainWindowMouseEvents.push_back( 0 );
+            GameOpt.MouseX = (int) ( event.tfinger.x * (float) GameOpt.ScreenWidth );
+            GameOpt.MouseY = (int) ( event.tfinger.y * (float) GameOpt.ScreenHeight );
         }
         else if( event.type == SDL_MOUSEWHEEL )
         {
@@ -699,13 +750,6 @@ int FOClient::MainLoop()
         {
             GameOpt.Quit = true;
         }
-        prev_event = event;
-    }
-    if( event.type == SDL_KEYDOWN )
-    {
-        MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
-        MainWindowKeyboardEvents.push_back( event.key.keysym.scancode );
-        MainWindowKeyboardEventsText.push_back( "" );
     }
 
     // Singleplayer data synchronization
@@ -846,7 +890,7 @@ int FOClient::MainLoop()
     CHECK_MULTIPLY_WINDOWS3;
 
     // Render
-    if( !SprMngr.BeginScene( COLOR_XRGB( 0, 0, 0 ) ) )
+    if( !SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) ) )
         return 0;
 
     ProcessScreenEffectQuake();
@@ -968,7 +1012,7 @@ void FOClient::ProcessScreenEffectFading()
                 res[ i ] = sc + dc * proc / 100;
             }
 
-            uint color = COLOR_ARGB( res[ 3 ], res[ 2 ], res[ 1 ], res[ 0 ] );
+            uint color = COLOR_RGBA( res[ 3 ], res[ 2 ], res[ 1 ], res[ 0 ] );
             for( int i = 0; i < 6; i++ )
                 six_points[ i ].PointColor = color;
 
@@ -1369,9 +1413,9 @@ void FOClient::ParseKeyboard()
                 if( GameOpt.DebugInfo && Keyb::CtrlDwn )
                     GameOpt.ShowCritId = !GameOpt.ShowCritId;
                 break;
-            case DIK_F11:
-                if( GameOpt.DebugInfo && Keyb::ShiftDwn )
-                    SprMngr.SaveSufaces();
+            case DIK_F10:
+                if( /*GameOpt.DebugInfo &&*/ Keyb::ShiftDwn )
+                    SprMngr.DumpAtlases();
                 break;
 
             // Num Pad
@@ -1504,16 +1548,6 @@ void FOClient::ParseKeyboard()
 #define MOUSE_CLICK_EXT4          ( 9 )
 void FOClient::ParseMouse()
 {
-    // Mouse position
-    int mx = 0, my = 0;
-    SDL_GetMouseState( &mx, &my );
-    int w = 0, h = 0;
-    SDL_GetWindowPosition( MainWindow, &w, &h );
-    GameOpt.MouseX = mx;
-    GameOpt.MouseY = my;
-    GameOpt.MouseX = CLAMP( GameOpt.MouseX, 0, MODE_WIDTH - 1 );
-    GameOpt.MouseY = CLAMP( GameOpt.MouseY, 0, MODE_HEIGHT - 1 );
-
     // Stop processing if window not active
     if( !( SDL_GetWindowFlags( MainWindow ) & SDL_WINDOW_INPUT_FOCUS ) )
     {
@@ -3806,10 +3840,6 @@ void FOClient::Net_OnLoginSuccess()
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_LOGINOK ) );
     WriteLog( "Auntification success.\n" );
 
-    GmapFreeResources();
-    ResMngr.FreeResources( RES_ITEMS );
-    ResMngr.FreeResources( RES_CRITTERS );
-
     uint bin_seed, bout_seed;     // Server bin/bout == client bout/bin
     Bin >> bin_seed;
     Bin >> bout_seed;
@@ -5482,7 +5512,7 @@ void FOClient::Net_OnChosenTalk()
     // Avatar
     DlgAvatarPic = NULL;
     if( npc && npc->Avatar.length() )
-        DlgAvatarPic = ResMngr.GetAnim( Str::GetHash( npc->Avatar.c_str() ), 0, RES_IFACE_EXT );
+        DlgAvatarPic = ResMngr.GetAnim( Str::GetHash( npc->Avatar.c_str() ), 0, RES_ATLAS_DYNAMIC );
 
     // Main text
     Bin >> text_id;
@@ -5659,17 +5689,8 @@ void FOClient::Net_OnLoadMap()
     FlashGameWindow();
     ShowMainScreen( SCREEN_WAIT );
     ClearCritters();
-
-    ResMngr.FreeResources( RES_IFACE_EXT );
-    if( map_pid )     // Free global map resources
-    {
-        GmapFreeResources();
-    }
-    else     // Free local map resources
-    {
-        ResMngr.FreeResources( RES_ITEMS );
-        ResMngr.FreeResources( RES_CRITTERS );
-    }
+    ResMngr.ReinitializeDynamicAtlas();
+    GmapPic.clear();
 
     DropScroll();
     IsTurnBased = false;
@@ -6808,7 +6829,6 @@ void FOClient::Net_OnMsgData()
     case TEXTMSG_INTERNAL:
         // Reload critter types
         CritType::InitFromMsg( MsgInternal );
-        ResMngr.FreeResources( RES_CRITTERS );       // Free animations, maybe critters table is changed
 
         // Reload scripts
         if( !ReloadScripts() )
@@ -8643,18 +8663,6 @@ bool FOClient::IsCurInWindow()
 {
     if( !( SDL_GetWindowFlags( MainWindow ) & SDL_WINDOW_INPUT_FOCUS ) )
         return false;
-
-    if( !GameOpt.FullScreen )
-    {
-        if( IsLMenu() )
-            return true;
-
-        int mx = 0, my = 0;
-        SDL_GetMouseState( &mx, &my );
-        int w = 0, h = 0;
-        SDL_GetWindowPosition( MainWindow, &w, &h );
-        return mx >= 0 && mx <= w && my >= 0 && my <= h;
-    }
     return true;
 }
 
@@ -9023,9 +9031,6 @@ bool FOClient::SaveLogFile()
 
 bool FOClient::SaveScreenshot()
 {
-    if( !SprMngr.IsInit() )
-        return false;
-
     DateTime dt;
     Timer::GetCurrentDateTime( dt );
     char     screen_path[ MAX_FOPATH ];
@@ -9099,7 +9104,7 @@ void FOClient::AddVideo( const char* video_name, bool can_stop, bool clear_seque
     if( ShowVideos.size() == 1 )
     {
         // Clear screen
-        if( SprMngr.BeginScene( COLOR_XRGB( 0, 0, 0 ) ) )
+        if( SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) ) )
             SprMngr.EndScene();
 
         // Play
@@ -9175,14 +9180,15 @@ void FOClient::PlayVideo()
     CurVideo->Context = th_decode_alloc( &CurVideo->VideoInfo, CurVideo->SetupInfo );
 
     // Create texture
-    if( !SprMngr.CreateRenderTarget( CurVideo->RT, false, false, CurVideo->VideoInfo.pic_width, CurVideo->VideoInfo.pic_height ) )
+    CurVideo->RT = SprMngr.CreateRenderTarget( false, false, CurVideo->VideoInfo.pic_width, CurVideo->VideoInfo.pic_height );
+    if( !CurVideo->RT )
     {
         WriteLogF( _FUNC_, " - Can't create render target.\n" );
         SAFEDEL( CurVideo );
         NextVideo();
         return;
     }
-    CurVideo->RT.TargetTexture->Data = new uchar[ CurVideo->RT.TargetTexture->Size ];
+    CurVideo->RT->TargetTexture->Data = new uchar[ CurVideo->RT->TargetTexture->Size ];
 
     // Start sound
     if( video.SoundName != "" )
@@ -9361,7 +9367,7 @@ void FOClient::RenderVideo()
             float cb = cy + 1.722f * ( cu - 127 );
 
             // Set on texture
-            uchar* data = CurVideo->RT.TargetTexture->Data + ( ( h - y - 1 ) * w * 4 + x * 4 );
+            uchar* data = CurVideo->RT->TargetTexture->Data + ( ( h - y - 1 ) * w * 4 + x * 4 );
             data[ 0 ] = (uchar) cr;
             data[ 1 ] = (uchar) cg;
             data[ 2 ] = (uchar) cb;
@@ -9370,7 +9376,7 @@ void FOClient::RenderVideo()
     }
 
     // Update texture and draw it
-    CurVideo->RT.TargetTexture->Update();
+    CurVideo->RT->TargetTexture->Update();
     SprMngr.DrawRenderTarget( CurVideo->RT, false );
 
     // Render to window
@@ -9381,7 +9387,7 @@ void FOClient::RenderVideo()
     h = (uint) ( (float) h * k );
     int x = ( MODE_WIDTH - w ) / 2;
     int y = ( MODE_HEIGHT - h ) / 2;
-    if( SprMngr.BeginScene( COLOR_XRGB( 0, 0, 0 ) ) )
+    if( SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) ) )
     {
         Rect r = Rect( x, y, x + w, y + h );
         SprMngr.DrawRenderTarget( CurVideo->RT, false, NULL, &r );
@@ -9405,7 +9411,7 @@ void FOClient::NextVideo()
     if( ShowVideos.size() )
     {
         // Clear screen
-        if( SprMngr.BeginScene( COLOR_XRGB( 0, 0, 0 ) ) )
+        if( SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) ) )
             SprMngr.EndScene();
 
         // Stop current
@@ -9593,20 +9599,6 @@ void FOClient::AnimProcess()
     }
 }
 
-void FOClient::AnimFree( int res_type )
-{
-    ResMngr.FreeResources( res_type );
-    for( auto it = Animations.begin(), end = Animations.end(); it != end; ++it )
-    {
-        IfaceAnim* anim = *it;
-        if( anim && anim->ResType == res_type )
-        {
-            delete anim;
-            ( *it ) = NULL;
-        }
-    }
-}
-
 /************************************************************************/
 /* Scripts                                                              */
 /************************************************************************/
@@ -9779,15 +9771,6 @@ bool FOClient::ReloadScripts()
 
     if( errors )
     {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
-        return false;
-    }
-
-    AnimFree( RES_SCRIPT );
-
-    if( !Script::PrepareContext( ClientFunctions.Start, _FUNC_, "Game" ) || !Script::RunPrepared() || Script::GetReturnedBool() == false )
-    {
-        WriteLog( "Execute start script fail.\n" );
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
         return false;
     }
@@ -11079,9 +11062,17 @@ void FOClient::SScriptFunc::Global_WaitPing()
 
 bool FOClient::SScriptFunc::Global_LoadFont( int font_index, ScriptString& font_fname )
 {
-    if( font_fname.c_str()[ 0 ] == '*' )
-        return SprMngr.LoadFontFO( font_index, font_fname.c_str() + 1 );
-    return SprMngr.LoadFontBMF( font_index, font_fname.c_str() );
+    return true;
+    SprMngr.PushAtlasType( RES_ATLAS_STATIC );
+    bool result;
+    if( font_fname.length() > 0 && font_fname.c_str()[ 0 ] == '*' )
+        result = SprMngr.LoadFontFO( font_index, font_fname.c_str() + 1, false );
+    else
+        result = SprMngr.LoadFontBMF( font_index, font_fname.c_str() );
+    if( result )
+        SprMngr.BuildFont( font_index );
+    SprMngr.PopAtlasType();
+    return result;
 }
 
 void FOClient::SScriptFunc::Global_SetDefaultFont( int font, uint color )
@@ -11484,12 +11475,12 @@ uint FOClient::SScriptFunc::Global_LoadSprite( ScriptString& spr_name, int path_
 {
     if( path_index >= PATH_LIST_COUNT )
         SCRIPT_ERROR_R0( "Invalid path index arg." );
-    return Self->AnimLoad( spr_name.c_str(), path_index, RES_SCRIPT );
+    return Self->AnimLoad( spr_name.c_str(), path_index, RES_ATLAS_STATIC );
 }
 
 uint FOClient::SScriptFunc::Global_LoadSpriteHash( uint name_hash, uchar dir )
 {
-    return Self->AnimLoad( name_hash, dir, RES_SCRIPT );
+    return Self->AnimLoad( name_hash, dir, RES_ATLAS_STATIC );
 }
 
 int FOClient::SScriptFunc::Global_GetSpriteWidth( uint spr_id, int spr_index )

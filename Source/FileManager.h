@@ -113,6 +113,7 @@ public:
     static void        CreateDirectoryTree( const char* path );
     static const char* GetExtension( const char* fname ); // EXT without dot
     static char*       EraseExtension( char* fname );     // Erase EXT with dot
+    static bool        CopyFile( const char* from, const char* to );
 
     bool   IsLoaded()     { return fileBuf != NULL; }
     uchar* GetBuf()       { return fileBuf; }

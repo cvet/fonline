@@ -4,6 +4,8 @@
 // Debugging
 // #define DEV_VESRION
 // #define SHOW_RACE_CONDITIONS // All known places with race conditions, not use in multithreading
+// #define DISABLE_EGG
+// #define SHADOW_MAP
 
 // Some platform specific definitions
 #include "PlatformSpecific.h"
@@ -15,14 +17,14 @@
 #include <algorithm>
 #include <math.h>
 #ifdef FO_WINDOWS
-# define WINVER                           0x0501  // Windows XP
+# define WINVER                                  0x0501 // Windows XP
 # define WIN32_LEAN_AND_MEAN
 # include <Windows.h>
 #else
 # include <errno.h>
 # include <string.h> // strerror
 # include <unistd.h>
-# define ERRORSTR                         strerror( errno )
+# define ERRORSTR                                strerror( errno )
 # define ExitProcess( code )              exit( code )
 #endif
 
@@ -30,7 +32,7 @@
 const char* GetLastSocketError();
 #ifdef FO_WINDOWS
 # include <winsock2.h>
-# define socklen_t                        int
+# define socklen_t                               int
 # if defined ( FO_MSVC )
 #  pragma comment( lib, "Ws2_32.lib" )
 # endif
@@ -40,13 +42,13 @@ const char* GetLastSocketError();
 # include <netinet/in.h>
 # include <arpa/inet.h>
 # include <netdb.h>
-# define SOCKET                           int
-# define INVALID_SOCKET                   ( -1 )
-# define SOCKET_ERROR                     ( -1 )
-# define closesocket                      close
-# define SD_RECEIVE                       SHUT_RD
-# define SD_SEND                          SHUT_WR
-# define SD_BOTH                          SHUT_RDWR
+# define SOCKET                                  int
+# define INVALID_SOCKET                          ( -1 )
+# define SOCKET_ERROR                            ( -1 )
+# define closesocket                             close
+# define SD_RECEIVE                              SHUT_RD
+# define SD_SEND                                 SHUT_WR
+# define SD_BOTH                                 SHUT_RDWR
 #endif
 
 // DLL
@@ -96,12 +98,12 @@ const char* GetLastSocketError();
 #define UNUSED_VARIABLE( x )              (void) ( x )
 #define memzero( ptr, size )              memset( ptr, 0, size )
 
-#define PI_FLOAT                          ( 3.14159265f )
-#define PIBY2_FLOAT                       ( 1.5707963f )
-#define SQRT3T2_FLOAT                     ( 3.4641016151f )
-#define SQRT3_FLOAT                       ( 1.732050807568877f )
-#define BIAS_FLOAT                        ( 0.02f )
-#define RAD2DEG                           ( 57.29577951f )
+#define PI_FLOAT                                 ( 3.14159265f )
+#define PIBY2_FLOAT                              ( 1.5707963f )
+#define SQRT3T2_FLOAT                            ( 3.4641016151f )
+#define SQRT3_FLOAT                              ( 1.732050807568877f )
+#define BIAS_FLOAT                               ( 0.02f )
+#define RAD2DEG                                  ( 57.29577951f )
 
 #define MAX( a, b )                       ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #define MIN( a, b )                       ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
@@ -141,12 +143,12 @@ template< class T >
 inline bool CompareContainers( const T& a, const T& b ) { return a.size() == b.size() && ( a.empty() || !memcmp( &a[ 0 ], &b[ 0 ], a.size() * sizeof( a[ 0 ] ) ) ); }
 
 // Hex offsets
-#define MAX_HEX_OFFSET                    ( 50 )  // Must be not odd
+#define MAX_HEX_OFFSET                           ( 50 ) // Must be not odd
 void GetHexOffsets( bool odd, short*& sx, short*& sy );
 void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y );
 
 // Config file
-#define CLIENT_CONFIG_APP                 "Game Options"
+#define CLIENT_CONFIG_APP                        "Game Options"
 const char* GetConfigFileName();
 
 // Window name
@@ -165,45 +167,52 @@ struct ScoreType
 /************************************************************************/
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 
-# define PI_VALUE                         ( 3.141592654f )
-# define COLOR_ARGB( a, r, g, b )         ( (uint) ( ( ( ( a ) & 0xff ) << 24 ) | ( ( ( r ) & 0xff ) << 16 ) | ( ( ( g ) & 0xff ) << 8 ) | ( ( b ) & 0xff ) ) )
-# define COLOR_XRGB( r, g, b )            COLOR_ARGB( 0xff, r, g, b )
+# define PI_VALUE                                ( 3.141592654f )
+# define COLOR_RGBA( a, r, g, b )         ( (uint) ( ( ( ( a ) & 0xff ) << 24 ) | ( ( ( b ) & 0xff ) << 16 ) | ( ( ( g ) & 0xff ) << 8 ) | ( ( r ) & 0xff ) ) )
+# define COLOR_RGB( r, g, b )             COLOR_RGBA( 0xff, r, g, b )
 
 # include "SDL/SDL.h"
-# if !defined ( FO_OSX_IOS )
+# ifndef FO_OGL_ES
 #  define GLEW_NO_GLU
 #  include "GL/glew.h"
 #  include "SDL/SDL_opengl.h"
-#  define GL_HAS( extension )             ( GLEW_ ## extension )
 # else
 #  include "SDL/SDL_opengles2.h"
-#  define GL_HAS( extension )             ( true )
-#  define glGenVertexArrays               glGenVertexArraysOES
-#  define glBindVertexArray               glBindVertexArrayOES
-#  define glBindVertexArray               glBindVertexArrayOES
-#  define glDeleteVertexArrays            glDeleteVertexArraysOES
-#  define glGenFramebuffersEXT            glGenFramebuffers
-#  define glBindFramebufferEXT            glBindFramebuffer
-#  define glFramebufferTexture2DEXT       glFramebufferTexture2D
-#  define glRenderbufferStorageEXT        glRenderbufferStorage
-#  define glGenRenderbuffersEXT           glGenRenderbuffers
-#  define glBindRenderbufferEXT           glBindRenderbuffer
-#  define glFramebufferRenderbufferEXT    glFramebufferRenderbuffer
-#  define glCheckFramebufferStatusEXT     glCheckFramebufferStatus
-#  define glDeleteRenderbuffersEXT        glDeleteRenderbuffers
-#  define glDeleteFramebuffersEXT         glDeleteFramebuffers
-#  define GL_FRAMEBUFFER_COMPLETE_EXT     GL_FRAMEBUFFER_COMPLETE
-#  define GL_FRAMEBUFFER_EXT              GL_FRAMEBUFFER
-#  define GL_COLOR_ATTACHMENT0_EXT        GL_COLOR_ATTACHMENT0
-#  define GL_RENDERBUFFER_EXT             GL_RENDERBUFFER
-#  define GL_DEPTH_ATTACHMENT_EXT         GL_DEPTH_ATTACHMENT
-#  define GL_CLAMP                        GL_CLAMP_TO_EDGE
-#  define GL_DEPTH24_STENCIL8             GL_DEPTH24_STENCIL8_OES
-#  define GL_DEPTH24_STENCIL8_EXT         GL_DEPTH24_STENCIL8_OES
-#  define GL_STENCIL_ATTACHMENT_EXT       GL_STENCIL_ATTACHMENT
+#  define glGenVertexArrays                      glGenVertexArraysOES
+#  define glBindVertexArray                      glBindVertexArrayOES
+#  define glBindVertexArray                      glBindVertexArrayOES
+#  define glDeleteVertexArrays                   glDeleteVertexArraysOES
+#  define glGenFramebuffersEXT                   glGenFramebuffers
+#  define glBindFramebufferEXT                   glBindFramebuffer
+#  define glFramebufferTexture2DEXT              glFramebufferTexture2D
+#  define glRenderbufferStorageEXT               glRenderbufferStorage
+#  define glGenRenderbuffersEXT                  glGenRenderbuffers
+#  define glBindRenderbufferEXT                  glBindRenderbuffer
+#  define glFramebufferRenderbufferEXT           glFramebufferRenderbuffer
+#  define glCheckFramebufferStatusEXT            glCheckFramebufferStatus
+#  define glDeleteRenderbuffersEXT               glDeleteRenderbuffers
+#  define glDeleteFramebuffersEXT                glDeleteFramebuffers
+#  define glProgramBinary( a, b, c, d )
+#  define glGetProgramBinary( a, b, c, d, e )
+#  define glProgramParameteri                    glProgramParameteriEXT
+#  define GL_PROGRAM_BINARY_RETRIEVABLE_HINT     0
+#  define GL_PROGRAM_BINARY_LENGTH               0
+#  define GL_FRAMEBUFFER_COMPLETE_EXT            GL_FRAMEBUFFER_COMPLETE
+#  define GL_FRAMEBUFFER_EXT                     GL_FRAMEBUFFER
+#  define GL_COLOR_ATTACHMENT0_EXT               GL_COLOR_ATTACHMENT0
+#  define GL_RENDERBUFFER_EXT                    GL_RENDERBUFFER
+#  define GL_DEPTH_ATTACHMENT_EXT                GL_DEPTH_ATTACHMENT
+#  define GL_CLAMP                               GL_CLAMP_TO_EDGE
+#  define GL_DEPTH24_STENCIL8                    GL_DEPTH24_STENCIL8_OES
+#  define GL_DEPTH24_STENCIL8_EXT                GL_DEPTH24_STENCIL8_OES
+#  define GL_STENCIL_ATTACHMENT_EXT              GL_STENCIL_ATTACHMENT
 #  define glGetTexImage( a, b, c, d, e )
 #  define glDrawBuffer( a )
-#  define GL_BGR                          GL_BGRA
+#  define GL_MAX_COLOR_TEXTURE_SAMPLES           0
+#  define GL_TEXTURE_2D_MULTISAMPLE              0
+#  define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleAPPLE
+#  define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
+#  define glTexImage2DMultisample( a, b, c, d, e, f )
 # endif
 # include "GL/glu_stuff.h"
 # ifdef FO_MSVC
@@ -217,8 +226,18 @@ struct ScoreType
 # endif
 # define GL( expr )                       { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X>.\n", err__ ); ExitProcess( 0 ); } } }
 
+extern bool OGL_version_2_0;
+extern bool OGL_vertex_buffer_object;
+extern bool OGL_framebuffer_object;
+extern bool OGL_framebuffer_object_ext;
+extern bool OGL_framebuffer_multisample;
+extern bool OGL_packed_depth_stencil;
+extern bool OGL_texture_multisample;
+extern bool OGL_vertex_array_object;
+extern bool OGL_get_program_binary;
+# define GL_HAS( extension )              ( OGL_ ## extension )
+
 extern SDL_Window*   MainWindow;
-extern SDL_Renderer* Renderer;
 extern SDL_GLContext GLContext;
 extern IntVec        MainWindowKeyboardEvents;
 extern StrVec        MainWindowKeyboardEventsText;
@@ -226,25 +245,20 @@ extern IntVec        MainWindowMouseEvents;
 
 # include "Assimp/aiTypes.h"
 
-# define COLOR_FIX( c )                   COLOR_ARGB( ( (uchar*) &( c ) )[ 3 ], ( (uchar*) &( c ) )[ 0 ], ( (uchar*) &( c ) )[ 1 ], ( (uchar*) &( c ) )[ 2 ] )
-
-// Todo: Complete shadow maps
-// # define SHADOW_MAP
-
-# define MODE_WIDTH                       ( GameOpt.ScreenWidth )
-# define MODE_HEIGHT                      ( GameOpt.ScreenHeight )
+# define MODE_WIDTH                              ( GameOpt.ScreenWidth )
+# define MODE_HEIGHT                             ( GameOpt.ScreenHeight )
 
 # ifdef FONLINE_CLIENT
 #  include "ResourceClient.h"
-#  define CFG_DEF_INT_FILE                "default800x600.ini"
+#  define CFG_DEF_INT_FILE                       "default800x600.ini"
 # else // FONLINE_MAPPER
 #  include "ResourceMapper.h"
 const uchar SELECT_ALPHA    = 100;
-#  define CFG_DEF_INT_FILE                "mapper_default.ini"
+#  define CFG_DEF_INT_FILE                       "mapper_default.ini"
 # endif
 
-# define PATH_MAP_FLAGS                   DIR_SLASH_SD "Data" DIR_SLASH_S "maps" DIR_SLASH_S ""
-# define PATH_TEXT_FILES                  DIR_SLASH_SD "Data" DIR_SLASH_S "text" DIR_SLASH_S ""
+# define PATH_MAP_FLAGS                          DIR_SLASH_SD "Data" DIR_SLASH_S "maps" DIR_SLASH_S ""
+# define PATH_TEXT_FILES                         DIR_SLASH_SD "Data" DIR_SLASH_S "text" DIR_SLASH_S ""
 
 uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light );
 void GetClientOptions();
@@ -581,8 +595,6 @@ struct GameOptions
     bool         DebugSprites;
     bool         FullScreen;
     bool         VSync;
-    int          FlushVal;
-    int          BaseTexture;
     int          Light;
     ScriptString Host;
     uint         Port;
