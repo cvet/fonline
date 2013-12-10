@@ -792,7 +792,7 @@ Frame* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& bone
             int                 mat_id = fbx_material_element->GetIndexArray().GetAt( 0 );
             FbxSurfaceMaterial* fbx_material = fbx_mesh->GetNode()->GetMaterial( mat_id );
 
-            FbxProperty         prop_diffuse = fbx_material->FindProperty( "Diffuse" );
+            FbxProperty         prop_diffuse = fbx_material->FindProperty( "DiffuseColor" );
             FbxProperty         prop_diffuse_factor = fbx_material->FindProperty( "DiffuseFactor" );
             if( prop_diffuse.IsValid() )
             {
@@ -814,7 +814,7 @@ Frame* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& bone
                 }
             }
 
-            FbxProperty prop_ambient = fbx_material->FindProperty( "Ambient" );
+            FbxProperty prop_ambient = fbx_material->FindProperty( "AmbientColor" );
             FbxProperty prop_ambient_factor = fbx_material->FindProperty( "AmbientFactor" );
             if( prop_ambient.IsValid() && prop_ambient_factor.IsValid() )
             {
@@ -825,7 +825,7 @@ Frame* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& bone
                 ms.AmbientColor[ 2 ] = (float) ( color.mData[ 2 ] * factor );
             }
 
-            FbxProperty prop_specular = fbx_material->FindProperty( "Specular" );
+            FbxProperty prop_specular = fbx_material->FindProperty( "SpecularColor" );
             FbxProperty prop_specular_factor = fbx_material->FindProperty( "SpecularFactor" );
             if( prop_specular.IsValid() && prop_specular_factor.IsValid() )
             {
@@ -836,7 +836,7 @@ Frame* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& bone
                 ms.SpecularColor[ 2 ] = (float) ( color.mData[ 2 ] * factor );
             }
 
-            FbxProperty prop_emissive = fbx_material->FindProperty( "Emissive" );
+            FbxProperty prop_emissive = fbx_material->FindProperty( "EmissiveColor" );
             FbxProperty prop_emissive_factor = fbx_material->FindProperty( "EmissiveFactor" );
             if( prop_emissive.IsValid() && prop_emissive_factor.IsValid() )
             {
