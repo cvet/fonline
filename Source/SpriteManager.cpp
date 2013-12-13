@@ -3170,16 +3170,6 @@ AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type, 
     if( !data )
         return NULL;
 
-    // Copy data, also swap blue color to transparent
-    uint* ptr = (uint*) data;
-    uint  transparent_color = COLOR_RGB( 0, 0, 0xFF );
-    for( uint i = 0, j = w * h; i < j; i++ )
-    {
-        if( *ptr == transparent_color )
-            *ptr = 0;
-        ++ptr;
-    }
-
     // Fill data
     SpriteInfo* si = new SpriteInfo();
     uint        result = RequestFillAtlas( si, w, h, data );
