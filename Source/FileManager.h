@@ -78,6 +78,7 @@ public:
     void   GetStr( char* str );
     uchar  GetUChar();
     ushort GetBEUShort();
+    ushort GetBEShort() { return (short) GetBEUShort(); }
     ushort GetLEUShort();
     uint   GetBEUInt();
     uint   GetLEUInt();
@@ -98,6 +99,7 @@ public:
     void SetStr( const char* fmt, ... );
     void SetUChar( uchar data );
     void SetBEUShort( ushort data );
+    void SetBEShort( short data ) { SetBEUShort( (ushort) data ); }
     void SetLEUShort( ushort data );
     void SetBEUInt( uint data );
     void SetLEUInt( uint data );

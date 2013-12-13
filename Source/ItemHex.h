@@ -13,7 +13,7 @@ struct AnyFrames;
 class ItemHex: public Item
 {
 public:
-    ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut );
+    ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut );
     // ~ItemHex() Destructor not been called because Item not have virtual destructor
     bool operator==( const ushort& _right ) { return ( GetProtoId() == _right ); }
 
@@ -83,13 +83,14 @@ private:
     float effCurX, effCurY;
     uint  effDist;
     uint  effLastTick;
+    int   effDir;
 
 public:
     float EffOffsX, EffOffsY;
 
     bool       IsEffect()        { return isEffect; }
     bool       IsDynamicEffect() { return IsEffect() && ( effSx || effSy ); }
-    void       SetEffect( float sx, float sy, uint dist );
+    void       SetEffect( float sx, float sy, uint dist, int dir );
     UShortPair GetEffectStep();
 
     // Fade

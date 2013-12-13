@@ -33,8 +33,9 @@ private:
     StrMap         soundNames;
 
     void       AddNamesHash( StrVec& names );
-    AnyFrames* LoadFalloutAnim( uint crtype, uint anim1, uint anim2, int dir );
-    AnyFrames* LoadFalloutAnimSpr( uint crtype, uint anim1, uint anim2, int dir );
+    void       RegisterCritterAnim( AnyFrames* anim, uint crtype, int anim1, int anim2, bool fallout_spr );
+    AnyFrames* LoadFalloutAnim( uint crtype, uint anim1, uint anim2 );
+    AnyFrames* LoadFalloutAnimSpr( uint crtype, uint anim1, uint anim2 );
 
 public:
     AnyFrames* ItemHexDefaultAnim;
@@ -45,12 +46,11 @@ public:
     void FreeResources( int type );
     void ReinitializeDynamicAtlas();
 
-    AnyFrames* GetAnim( uint name_hash, int dir, int res_type );
-    AnyFrames* GetIfaceAnim( uint name_hash )         { return GetAnim( name_hash, 0, RES_ATLAS_STATIC ); }
-    AnyFrames* GetInvAnim( uint name_hash )           { return GetAnim( name_hash, 0, RES_ATLAS_STATIC ); }
-    AnyFrames* GetSkDxAnim( uint name_hash )          { return GetAnim( name_hash, 0, RES_ATLAS_STATIC ); }
-    AnyFrames* GetItemAnim( uint name_hash )          { return GetAnim( name_hash, 0, RES_ATLAS_DYNAMIC ); }
-    AnyFrames* GetItemAnim( uint name_hash, int dir ) { return GetAnim( name_hash, dir, RES_ATLAS_DYNAMIC ); }
+    AnyFrames* GetAnim( uint name_hash, int res_type );
+    AnyFrames* GetIfaceAnim( uint name_hash ) { return GetAnim( name_hash, RES_ATLAS_STATIC ); }
+    AnyFrames* GetInvAnim( uint name_hash )   { return GetAnim( name_hash, RES_ATLAS_STATIC ); }
+    AnyFrames* GetSkDxAnim( uint name_hash )  { return GetAnim( name_hash, RES_ATLAS_STATIC ); }
+    AnyFrames* GetItemAnim( uint name_hash )  { return GetAnim( name_hash, RES_ATLAS_DYNAMIC ); }
 
     AnyFrames*   GetCrit2dAnim( uint crtype, uint anim1, uint anim2, int dir );
     Animation3d* GetCrit3dAnim( uint crtype, uint anim1, uint anim2, int dir, int* layers3d = NULL );

@@ -45,9 +45,9 @@ private:
     // Images
     // All input/output data is in RGBA format
 public:
-    static uchar* LoadPNG( const uchar* data, uint data_size, uint& result_size, uint& result_width, uint& result_height );
+    static uchar* LoadPNG( const uchar* data, uint data_size, uint& result_width, uint& result_height );
     static void   SavePNG( const char* fname, uchar* data, uint width, uint height );
-    static uchar* LoadTGA( const uchar* data, uint data_size, uint& result_size, uint& result_width, uint& result_height );
+    static uchar* LoadTGA( const uchar* data, uint data_size, uint& result_width, uint& result_height );
 };
 
 #endif // __GRAPHIC_LOADER__

@@ -197,7 +197,6 @@ public:
     bool   Deteriorable;
     bool   GroundLevel;
     int    Corner;
-    int    Dir;
     uchar  Slot;
     uint   Weight;
     uint   Volume;
@@ -413,8 +412,7 @@ public:
         ushort      Charge;
         short       OffsetX;
         short       OffsetY;
-        short       Dir;
-        char        Reserved[ 2 ];
+        char        Reserved[ 4 ];
     } Data;
 
     short RefCounter;

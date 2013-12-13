@@ -98,7 +98,7 @@ public:
 
     IfaceAnimVec Animations;
 
-    uint       AnimLoad( uint name_hash, uchar dir, int res_type );
+    uint       AnimLoad( uint name_hash, int res_type );
     uint       AnimLoad( const char* fname, int path_type, int res_type );
     uint       AnimGetCurSpr( uint anim_id );
     uint       AnimGetCurSprCnt( uint anim_id );
@@ -537,7 +537,7 @@ public:
         static MapObject* Global_GetMonitorObject( int x, int y, bool ignore_interface );
 
         static uint Global_LoadSprite( ScriptString& spr_name, int path_index );
-        static uint Global_LoadSpriteHash( uint name_hash, uchar dir );
+        static uint Global_LoadSpriteHash( uint name_hash );
         static int  Global_GetSpriteWidth( uint spr_id, int spr_index );
         static int  Global_GetSpriteHeight( uint spr_id, int spr_index );
         static uint Global_GetSpriteCount( uint spr_id );

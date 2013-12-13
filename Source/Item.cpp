@@ -690,7 +690,7 @@ Item* Item::GetChild( uint child_index )
 
 uint ProtoItem::GetCurSprId()
 {
-    AnyFrames* anim = ResMngr.GetItemAnim( PicMap, Dir );
+    AnyFrames* anim = ResMngr.GetItemAnim( PicMap );
     if( !anim )
         return 0;
 
@@ -716,7 +716,7 @@ uint ProtoItem::GetCurSprId()
 
 uint Item::GetCurSprId()
 {
-    AnyFrames* anim = ResMngr.GetItemAnim( GetPicMap(), Proto->Dir );
+    AnyFrames* anim = ResMngr.GetItemAnim( GetPicMap() );
     if( !anim )
         return 0;
 

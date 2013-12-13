@@ -27,6 +27,8 @@ typedef map< uint, Letter >::iterator LetterMapIt;
 
 struct FontData
 {
+    bool       Builded;
+
     Texture*   FontTex;
     Texture*   FontTexBordered;
 
@@ -42,6 +44,7 @@ struct FontData
 
     FontData()
     {
+        Builded = false;
         FontTex = NULL;
         FontTexBordered = NULL;
         SpaceWidth = 0;
@@ -142,9 +145,17 @@ void SpriteManager::SetFontEffect( int index, Effect* effect )
         font->DrawEffect = ( effect ? effect : Effect::Font );
 }
 
+void SpriteManager::BuildFonts()
+{
+    for( size_t i = 0; i < Fonts.size(); i++ )
+        if( Fonts[ i ] && !Fonts[ i ]->Builded )
+            BuildFont( i );
+}
+
 void SpriteManager::BuildFont( int index )
 {
     FontData& font = *Fonts[ index ];
+    font.Builded = true;
 
     // Fix texture coordinates
     SpriteInfo* si = GetSpriteInfo( font.ImageNormal->GetSprId( 0 ) );

@@ -25,8 +25,13 @@ bool FOMapper::Init()
     STATIC_ASSERT( sizeof( uint ) == 4 );
     STATIC_ASSERT( sizeof( uint64 ) == 8 );
     STATIC_ASSERT( sizeof( bool ) == 1 );
+    #if defined ( FO_X86 )
     STATIC_ASSERT( sizeof( size_t ) == 4 );
     STATIC_ASSERT( sizeof( void* ) == 4 );
+    #elif defined ( FO_X64 )
+    STATIC_ASSERT( sizeof( size_t ) == 8 );
+    STATIC_ASSERT( sizeof( void* ) == 8 );
+    #endif
 
     // SDL
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
@@ -101,7 +106,7 @@ bool FOMapper::Init()
     GameOpt.GetHashByName = &GetHashByName_::GetHashByName;
 
     // Input
-    Keyb::InitKeyb();
+    Keyb::Init();
 
     // Options
     GameOpt.ScrollCheck = false;
@@ -121,26 +126,29 @@ bool FOMapper::Init()
     // Sprite manager
     if( !SprMngr.Init() )
         return false;
+    SprMngr.PushAtlasType( RES_ATLAS_STATIC );
+    SprMngr.AutofinalizeAtlases( RES_ATLAS_STATIC );
 
     // Fonts
-    if( !SprMngr.LoadFontFO( FONT_FO, "OldDefault" ) )
+    if( !SprMngr.LoadFontFO( FONT_FO, "OldDefault", false ) )
         return false;
-    if( !SprMngr.LoadFontFO( FONT_NUM, "Numbers" ) )
+    if( !SprMngr.LoadFontFO( FONT_NUM, "Numbers", true ) )
         return false;
-    if( !SprMngr.LoadFontFO( FONT_BIG_NUM, "BigNumbers" ) )
+    if( !SprMngr.LoadFontFO( FONT_BIG_NUM, "BigNumbers", true ) )
         return false;
-    if( !SprMngr.LoadFontFO( FONT_SAND_NUM, "SandNumbers" ) )
+    if( !SprMngr.LoadFontFO( FONT_SAND_NUM, "SandNumbers", false ) )
         return false;
-    if( !SprMngr.LoadFontFO( FONT_SPECIAL, "Special" ) )
+    if( !SprMngr.LoadFontFO( FONT_SPECIAL, "Special", false ) )
         return false;
-    if( !SprMngr.LoadFontFO( FONT_DEFAULT, "Default" ) )
+    if( !SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false ) )
         return false;
-    if( !SprMngr.LoadFontFO( FONT_THIN, "Thin" ) )
+    if( !SprMngr.LoadFontFO( FONT_THIN, "Thin", false ) )
         return false;
-    if( !SprMngr.LoadFontFO( FONT_FAT, "Fat" ) )
+    if( !SprMngr.LoadFontFO( FONT_FAT, "Fat", false ) )
         return false;
-    if( !SprMngr.LoadFontFO( FONT_BIG, "Big" ) )
+    if( !SprMngr.LoadFontFO( FONT_BIG, "Big", false ) )
         return false;
+    SprMngr.BuildFonts();
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
 
     // Names
@@ -152,7 +160,7 @@ bool FOMapper::Init()
     // Resource manager
     ResMngr.Refresh();
 
-    if( SprMngr.BeginScene( COLOR_XRGB( 100, 100, 100 ) ) )
+    if( SprMngr.BeginScene( COLOR_RGB( 100, 100, 100 ) ) )
         SprMngr.EndScene();
 
     int res = InitIface();
@@ -501,40 +509,40 @@ int FOMapper::InitIface()
     ConsoleHistory.clear();
     ConsoleHistoryCur = 0;
 
-    ItemHex::DefaultAnim = SprMngr.LoadAnimation( "art\\items\\reserved.frm", PT_DATA, ANIM_USE_DUMMY | ANIM_FRM_ANIM_PIX );
-    CritterCl::DefaultAnim = SprMngr.LoadAnimation( "art\\critters\\reservaa.frm", PT_DATA, ANIM_USE_DUMMY | ANIM_FRM_ANIM_PIX );
+    ResMngr.ItemHexDefaultAnim = SprMngr.LoadAnimation( "art\\items\\reserved.frm", PT_DATA, true );
+    ResMngr.CritterDefaultAnim = SprMngr.LoadAnimation( "art\\critters\\reservaa.frm", PT_DATA, true );
 
     // Messbox
     MessBoxScroll = 0;
 
     // Cursor
-    CurPDef = SprMngr.LoadAnimation( "actarrow.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPHand = SprMngr.LoadAnimation( "hand.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
+    CurPDef = SprMngr.LoadAnimation( "actarrow.frm", PT_ART_INTRFACE, true );
+    CurPHand = SprMngr.LoadAnimation( "hand.frm", PT_ART_INTRFACE, true );
 
     // Iface
     char f_name[ 1024 ];
     ini.GetStr( "IntMainPic", "error", f_name );
-    IntMainPic = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, ANIM_USE_DUMMY );
+    IntMainPic = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
     ini.GetStr( "IntTabPic", "error", f_name );
-    IntPTab = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, ANIM_USE_DUMMY );
+    IntPTab = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
     ini.GetStr( "IntSelectPic", "error", f_name );
-    IntPSelect = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, ANIM_USE_DUMMY );
+    IntPSelect = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
     ini.GetStr( "IntShowPic", "error", f_name );
-    IntPShow = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, ANIM_USE_DUMMY );
+    IntPShow = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
 
     // Object
     ini.GetStr( "ObjMainPic", "error", f_name );
-    ObjWMainPic = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, ANIM_USE_DUMMY );
+    ObjWMainPic = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
     ini.GetStr( "ObjToAllPicDn", "error", f_name );
-    ObjPBToAllDn = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, ANIM_USE_DUMMY );
+    ObjPBToAllDn = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
 
     // Sub tabs
     ini.GetStr( "SubTabsPic", "error", f_name );
-    SubTabsPic = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, ANIM_USE_DUMMY );
+    SubTabsPic = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
 
     // Console
     ini.GetStr( "ConsolePic", "error", f_name );
-    ConsolePic = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, ANIM_USE_DUMMY );
+    ConsolePic = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
 
     WriteLog( "Init interface complete.\n" );
     return 0;
@@ -543,7 +551,6 @@ int FOMapper::InitIface()
 void FOMapper::Finish()
 {
     WriteLog( "Mapper finish...\n" );
-    Keyb::Finish();
     ResMngr.Finish();
     HexMngr.Finish();
     SprMngr.Finish();
@@ -562,9 +569,9 @@ void FOMapper::ChangeGameTime()
     HexMngr.RefreshMap();
 }
 
-uint FOMapper::AnimLoad( uint name_hash, uchar dir, int res_type )
+uint FOMapper::AnimLoad( uint name_hash, int res_type )
 {
-    AnyFrames* anim = ResMngr.GetAnim( name_hash, dir, res_type );
+    AnyFrames* anim = ResMngr.GetAnim( name_hash, res_type );
     if( !anim )
         return 0;
     IfaceAnim* ianim = new IfaceAnim( anim, res_type );
@@ -588,7 +595,7 @@ uint FOMapper::AnimLoad( const char* fname, int path_type, int res_type )
     Str::Copy( full_name, FileManager::GetPath( path_type ) );
     Str::Append( full_name, fname );
 
-    AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( full_name ), 0, res_type );
+    AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( full_name ), res_type );
     if( !anim )
         return 0;
     IfaceAnim* ianim = new IfaceAnim( anim, res_type );
@@ -910,7 +917,7 @@ void FOMapper::ParseKeyboard()
                 HexMngr.SwitchShowRain();
                 break;
             case DIK_F11:
-                SprMngr.SaveSufaces();
+                SprMngr.DumpAtlases();
                 break;
             case DIK_ESCAPE:
                 ExitProcess( 0 );
@@ -1386,27 +1393,32 @@ void FOMapper::MainLoop()
     }
 
     // Input events
-    SDL_Event event, prev_event;
-    event.type = prev_event.type = SDL_FIRSTEVENT;
+    SDL_Event event;
     while( SDL_PollEvent( &event ) )
     {
-        if( event.type == SDL_TEXTINPUT && prev_event.type == SDL_KEYDOWN )
+        if( event.type == SDL_MOUSEMOTION )
         {
-            MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
-            MainWindowKeyboardEvents.push_back( prev_event.key.keysym.scancode );
-            MainWindowKeyboardEventsText.push_back( event.text.text );
+            int sw = 0, sh = 0;
+            SDL_GetWindowSize( MainWindow, &sw, &sh );
+            int x = (int) ( event.motion.x / (float) sw * (float) GameOpt.ScreenWidth );
+            int y = (int) ( event.motion.y / (float) sh * (float) GameOpt.ScreenHeight );
+            GameOpt.MouseX = CLAMP( x, 0, MODE_WIDTH - 1 );
+            GameOpt.MouseY = CLAMP( y, 0, MODE_HEIGHT - 1 );
         }
-        else if( event.type != SDL_KEYDOWN && prev_event.type == SDL_KEYDOWN )
+        else if( event.type == SDL_KEYDOWN || event.type == SDL_KEYUP )
         {
-            MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
-            MainWindowKeyboardEvents.push_back( prev_event.key.keysym.scancode );
-            MainWindowKeyboardEventsText.push_back( "" );
-        }
-        else if( event.type == SDL_KEYUP )
-        {
-            MainWindowKeyboardEvents.push_back( SDL_KEYUP );
+            MainWindowKeyboardEvents.push_back( event.type );
             MainWindowKeyboardEvents.push_back( event.key.keysym.scancode );
             MainWindowKeyboardEventsText.push_back( "" );
+        }
+        else if( event.type == SDL_TEXTINPUT )
+        {
+            MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
+            MainWindowKeyboardEvents.push_back( 510 );
+            MainWindowKeyboardEventsText.push_back( event.text.text );
+            MainWindowKeyboardEvents.push_back( SDL_KEYUP );
+            MainWindowKeyboardEvents.push_back( 510 );
+            MainWindowKeyboardEventsText.push_back( event.text.text );
         }
         else if( event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP )
         {
@@ -1414,19 +1426,24 @@ void FOMapper::MainLoop()
             MainWindowMouseEvents.push_back( event.button.button );
             MainWindowMouseEvents.push_back( 0 );
         }
+        else if( event.type == SDL_FINGERDOWN || event.type == SDL_FINGERUP )
+        {
+            MainWindowMouseEvents.push_back( event.type == SDL_FINGERDOWN ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP );
+            MainWindowMouseEvents.push_back( SDL_BUTTON_LEFT );
+            MainWindowMouseEvents.push_back( 0 );
+            GameOpt.MouseX = (int) ( event.tfinger.x * (float) GameOpt.ScreenWidth );
+            GameOpt.MouseY = (int) ( event.tfinger.y * (float) GameOpt.ScreenHeight );
+        }
         else if( event.type == SDL_MOUSEWHEEL )
         {
             MainWindowMouseEvents.push_back( event.type );
             MainWindowMouseEvents.push_back( SDL_BUTTON_MIDDLE );
             MainWindowMouseEvents.push_back( -event.wheel.y );
         }
-        prev_event = event;
-    }
-    if( event.type == SDL_KEYDOWN )
-    {
-        MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
-        MainWindowKeyboardEvents.push_back( event.key.keysym.scancode );
-        MainWindowKeyboardEventsText.push_back( "" );
+        else if( event.type == SDL_QUIT )
+        {
+            GameOpt.Quit = true;
+        }
     }
 
     // Script loop
@@ -1473,7 +1490,7 @@ void FOMapper::MainLoop()
                     cr->MoveSteps.erase( cr->MoveSteps.begin() );
                     mobj->MapX = cr->GetHexX();
                     mobj->MapY = cr->GetHexY();
-                    mobj->Dir = cr->GetDir();
+                    mobj->MCritter.Dir = cr->GetDir();
 
                     // Move inventory items
                     for( uint i = 0, j = (uint) CurProtoMap->MObjects.size(); i < j; i++ )
@@ -1501,7 +1518,7 @@ void FOMapper::MainLoop()
     }
 
     // Render
-    if( !SprMngr.BeginScene( COLOR_XRGB( 100, 100, 100 ) ) )
+    if( !SprMngr.BeginScene( COLOR_RGB( 100, 100, 100 ) ) )
     {
         Thread::Sleep( 100 );
         return;
@@ -1887,7 +1904,7 @@ void FOMapper::IntDraw()
         {
             AnyFrames* anim = ResMngr.GetItemAnim( ( *CurTileHashes )[ i ] );
             if( !anim )
-                anim = ItemHex::DefaultAnim;
+                anim = ResMngr.ItemHexDefaultAnim;
 
             uint col = ( i == (int) GetTabIndex() ? COLOR_IFACE_RED : COLOR_IFACE );
             SprMngr.DrawSpriteSize( anim->GetCurSprId(), x, y, (float) w, (float) ( h / 2 ), false, true, col );
@@ -2089,9 +2106,9 @@ void FOMapper::ObjDraw()
 
     if( proto )
     {
-        AnyFrames* anim = ResMngr.GetItemAnim( o->MItem.PicMapHash ? o->MItem.PicMapHash : proto->PicMap, o->Dir );
+        AnyFrames* anim = ResMngr.GetItemAnim( o->MItem.PicMapHash ? o->MItem.PicMapHash : proto->PicMap );
         if( !anim )
-            anim = ItemHex::DefaultAnim;
+            anim = ResMngr.ItemHexDefaultAnim;
         SprMngr.DrawSpriteSize( anim->GetCurSprId(), x + w - ProtoWidth, y, (float) ProtoWidth, (float) ProtoWidth, false, true );
 
         if( proto->IsItem() )
@@ -2159,7 +2176,7 @@ void FOMapper::ObjDraw()
     DRAW_COMPONENT( "ProtoId", o->ProtoId, true, true );                                    // 3
     DRAW_COMPONENT( "MapX", o->MapX, true, true );                                          // 4
     DRAW_COMPONENT( "MapY", o->MapY, true, true );                                          // 5
-    DRAW_COMPONENT( "Dir", o->Dir, false, o->MapObjType == MAP_OBJECT_CRITTER );            // 6
+    y += step;                                                                              // 6
     DRAW_COMPONENT_TEXT( "ScriptName", o->ScriptName, false );                              // 7
     DRAW_COMPONENT_TEXT( "FuncName", o->FuncName, false );                                  // 8
     DRAW_COMPONENT( "LightIntensity", o->LightIntensity, false, false );                    // 9
@@ -2171,10 +2188,12 @@ void FOMapper::ObjDraw()
 
     if( o->MapObjType == MAP_OBJECT_CRITTER )
     {
-        DRAW_COMPONENT( "Cond", o->MCritter.Cond, true, false );                                // 15
-        DRAW_COMPONENT( "Anim1", o->MCritter.Anim1, true, false );                              // 16
-        DRAW_COMPONENT( "Anim2", o->MCritter.Anim2, true, false );                              // 17
-        for( int i = 0; i < MAPOBJ_CRITTER_PARAMS; i++ )                                        // 18..57
+        DRAW_COMPONENT( "Dir", o->MCritter.Dir, true, o->MapObjType == MAP_OBJECT_CRITTER );    // 15
+        DRAW_COMPONENT( "Cond", o->MCritter.Cond, true, false );                                // 16
+        DRAW_COMPONENT( "Anim1", o->MCritter.Anim1, true, false );                              // 17
+        DRAW_COMPONENT( "Anim2", o->MCritter.Anim2, true, false );                              // 18
+        y += step;                                                                              // 19
+        for( int i = 0; i < MAPOBJ_CRITTER_PARAMS; i++ )                                        // 20..59
         {
             if( o->MCritter.ParamIndex[ i ] >= 0 && o->MCritter.ParamIndex[ i ] < MAX_PARAMS )
             {
@@ -2332,9 +2351,9 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
     if( o->MapObjType != MAP_OBJECT_CRITTER && !proto )
         return;
 
-    if( o->MapObjType == MAP_OBJECT_CRITTER && ObjCurLine >= 18 && ObjCurLine <= 18 + MAPOBJ_CRITTER_PARAMS - 1 )
+    if( o->MapObjType == MAP_OBJECT_CRITTER && ObjCurLine >= 20 && ObjCurLine <= 20 + MAPOBJ_CRITTER_PARAMS - 1 )
     {
-        int pos = ObjCurLine - 18;
+        int pos = ObjCurLine - 20;
         for( int i = 0; i < MAPOBJ_CRITTER_PARAMS; i++ )
         {
             if( o->MCritter.ParamIndex[ i ] >= 0 && o->MCritter.ParamIndex[ i ] < MAX_PARAMS )
@@ -2351,10 +2370,6 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
 
     switch( ObjCurLine )
     {
-    case 6:
-        if( o->MapObjType != MAP_OBJECT_CRITTER )
-            val_s = &o->Dir;
-        break;
     case 7:
         Keyb::GetChar( dik, dik_text, o->ScriptName, sizeof( o->ScriptName ), NULL, MAPOBJ_SCRIPT_NAME, KIF_NO_SPEC_SYMBOLS );
         return;
@@ -2381,25 +2396,25 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
 
     case 15:
         if( o->MapObjType == MAP_OBJECT_CRITTER )
-            val_b = &o->MCritter.Cond;
+            val_b = &o->MCritter.Dir;
         else
             val_s = &o->MItem.OffsetX;
         break;
     case 16:
         if( o->MapObjType == MAP_OBJECT_CRITTER )
-            val_dw = &o->MCritter.Anim1;
+            val_b = &o->MCritter.Cond;
         else
             val_s = &o->MItem.OffsetY;
         break;
     case 17:
         if( o->MapObjType == MAP_OBJECT_CRITTER )
-            val_dw = &o->MCritter.Anim2;
+            val_dw = &o->MCritter.Anim1;
         else
             val_b = &o->MItem.AnimStayBegin;
         break;
     case 18:
         if( o->MapObjType == MAP_OBJECT_CRITTER )
-            break;
+            val_dw = &o->MCritter.Anim2;
         else
             val_b = &o->MItem.AnimStayEnd;
         break;
@@ -4181,7 +4196,6 @@ MapObject* FOMapper::ParseProto( ushort pid, ushort hx, ushort hy, MapObject* ow
     mobj->ProtoId = pid;
     mobj->MapX = hx;
     mobj->MapY = hy;
-    mobj->Dir = proto_item->Dir;
     mobj->LightDistance = proto_item->LightDistance;
     mobj->LightIntensity = proto_item->LightIntensity;
 
@@ -4275,7 +4289,7 @@ void FOMapper::ParseNpc( ushort pid, ushort hx, ushort hy )
     mobj->ProtoId = pid;
     mobj->MapX = hx;
     mobj->MapY = hy;
-    mobj->Dir = NpcDir;
+    mobj->MCritter.Dir = NpcDir;
     mobj->MCritter.Cond = COND_LIFE;
     CurProtoMap->MObjects.push_back( mobj );
 
@@ -4332,7 +4346,7 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
         cr->DefItemSlotArmor->Init( ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
         cr->HexX = mobj->MapX;
         cr->HexY = mobj->MapY;
-        cr->SetDir( (uchar) mobj->Dir );
+        cr->SetDir( (uchar) mobj->MCritter.Dir );
         cr->Cond = COND_LIFE;
         cr->Flags = mobj->ProtoId;
         memcpy( cr->Params, pnpc->Params, sizeof( pnpc->Params ) );
@@ -4519,7 +4533,7 @@ void FOMapper::CurDraw()
         {
             AnyFrames* anim = ResMngr.GetItemAnim( ( *CurTileHashes )[ GetTabIndex() ] );
             if( !anim )
-                anim = ItemHex::DefaultAnim;
+                anim = ResMngr.ItemHexDefaultAnim;
 
             ushort hx, hy;
             if( !HexMngr.GetHexPixel( GameOpt.MouseX, GameOpt.MouseY, hx, hy ) )
@@ -4549,7 +4563,7 @@ void FOMapper::CurDraw()
         {
             uint spr_id = ResMngr.GetCritSprId( ( *CurNpcProtos )[ GetTabIndex() ]->BaseType, 1, 1, NpcDir );
             if( !spr_id )
-                spr_id = ItemHex::DefaultAnim->GetSprId( 0 );
+                spr_id = ResMngr.ItemHexDefaultAnim->GetSprId( 0 );
 
             ushort hx, hy;
             if( !HexMngr.GetHexPixel( GameOpt.MouseX, GameOpt.MouseY, hx, hy ) )
@@ -4635,7 +4649,7 @@ void FOMapper::CurMMouseDown()
                 if( dir >= DIRS_COUNT )
                     dir = 0;
                 o->MapNpc->SetDir( dir );
-                o->MapObj->Dir = dir;
+                o->MapObj->MCritter.Dir = dir;
             }
         }
     }
@@ -6649,9 +6663,14 @@ bool FOMapper::SScriptFunc::Global_LoadConstants( int const_collection, ScriptSt
 
 bool FOMapper::SScriptFunc::Global_LoadFont( int font_index, ScriptString& font_fname )
 {
-    if( font_fname.c_str()[ 0 ] == '*' )
-        return SprMngr.LoadFontFO( font_index, font_fname.c_str() + 1 );
-    return SprMngr.LoadFontBMF( font_index, font_fname.c_str() );
+    bool result;
+    if( font_fname.length() > 0 && font_fname.c_str()[ 0 ] == '*' )
+        result = SprMngr.LoadFontFO( font_index, font_fname.c_str() + 1, false );
+    else
+        result = SprMngr.LoadFontBMF( font_index, font_fname.c_str() );
+    if( result )
+        SprMngr.BuildFonts();
+    return result;
 }
 
 void FOMapper::SScriptFunc::Global_SetDefaultFont( int font, uint color )
@@ -6713,12 +6732,12 @@ uint FOMapper::SScriptFunc::Global_LoadSprite( ScriptString& spr_name, int path_
 {
     if( path_index >= PATH_LIST_COUNT )
         SCRIPT_ERROR_R0( "Invalid path index arg." );
-    return Self->AnimLoad( spr_name.c_str(), path_index, RES_SCRIPT );
+    return Self->AnimLoad( spr_name.c_str(), path_index, RES_ATLAS_STATIC );
 }
 
-uint FOMapper::SScriptFunc::Global_LoadSpriteHash( uint name_hash, uchar dir )
+uint FOMapper::SScriptFunc::Global_LoadSpriteHash( uint name_hash )
 {
-    return Self->AnimLoad( name_hash, dir, RES_SCRIPT );
+    return Self->AnimLoad( name_hash, RES_ATLAS_STATIC );
 }
 
 int FOMapper::SScriptFunc::Global_GetSpriteWidth( uint spr_id, int spr_index )

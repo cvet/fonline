@@ -534,7 +534,7 @@ bool ProtoMap::ReadObjects( FileManager& fm, int version )
             obj_v6.ProtoId = obj_v5.ProtoId;
             obj_v6.MapX = obj_v5.MapX;
             obj_v6.MapY = obj_v5.MapY;
-            obj_v6.Dir = obj_v5.Dir;
+            obj_v6.MCritter.Dir = obj_v5.Dir;
             obj_v6.LightColor = obj_v5.LightRGB;
             obj_v6.LightDay = obj_v5.LightDay;
             obj_v6.LightDirOff = obj_v5.LightDirOff;
@@ -663,7 +663,7 @@ bool ProtoMap::ReadObjects( FileManager& fm, int version )
             mobj->ProtoId = mobj_v9.ProtoId;
             mobj->MapX = mobj_v9.MapX;
             mobj->MapY = mobj_v9.MapY;
-            mobj->Dir = mobj_v9.Dir;
+            mobj->MCritter.Dir = (uchar) mobj_v9.Dir;
             mobj->LightColor = mobj_v9.LightColor;
             mobj->LightDay = mobj_v9.LightDay;
             mobj->LightDirOff = mobj_v9.LightDirOff;
@@ -984,8 +984,6 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                         mobj.MapX = ivalue;
                     else if( field == "MapY" )
                         mobj.MapY = ivalue;
-                    else if( field == "Dir" )
-                        mobj.Dir = ivalue;
                     else if( field == "UID" )
                         mobj.UID = ivalue;
                     else if( field == "ContainerUID" )
@@ -1031,7 +1029,9 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                     // Critter
                     else if( mobj.MapObjType == MAP_OBJECT_CRITTER )
                     {
-                        if( field == "Critter_Cond" )
+                        if( field == "Critter_Dir" || field == "Dir" )
+                            mobj.MCritter.Dir = ivalue;
+                        else if( field == "Critter_Cond" )
                             mobj.MCritter.Cond = ivalue;
                         else if( field == "Critter_Anim1" )
                             mobj.MCritter.Anim1 = ivalue;
@@ -1251,8 +1251,6 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
             fm.SetStr( "%-20s %d\n", "MapX", mobj.MapX );
         if( mobj.MapY )
             fm.SetStr( "%-20s %d\n", "MapY", mobj.MapY );
-        if( mobj.Dir )
-            fm.SetStr( "%-20s %d\n", "Dir", mobj.Dir );
         if( mobj.UID )
             fm.SetStr( "%-20s %d\n", "UID", mobj.UID );
         if( mobj.ContainerUID )
@@ -1298,6 +1296,7 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
         // Critter
         if( mobj.MapObjType == MAP_OBJECT_CRITTER )
         {
+            fm.SetStr( "%-20s %d\n", "Critter_Dir", mobj.MCritter.Dir );
             fm.SetStr( "%-20s %d\n", "Critter_Cond", mobj.MCritter.Cond );
             fm.SetStr( "%-20s %d\n", "Critter_Anim1", mobj.MCritter.Anim1 );
             fm.SetStr( "%-20s %d\n", "Critter_Anim2", mobj.MCritter.Anim2 );
@@ -1956,7 +1955,6 @@ bool ProtoMap::Refresh()
             cur_wall.ProtoId = mobj.ProtoId;
             cur_wall.MapX = mobj.MapX;
             cur_wall.MapY = mobj.MapY;
-            cur_wall.Dir = mobj.Dir;
             cur_wall.OffsetX = mobj.MScenery.OffsetX;
             cur_wall.OffsetY = mobj.MScenery.OffsetY;
             cur_wall.LightColor = mobj.LightColor;
@@ -2056,7 +2054,6 @@ bool ProtoMap::Refresh()
             cur_scen.ProtoId = mobj.ProtoId;
             cur_scen.MapX = mobj.MapX;
             cur_scen.MapY = mobj.MapY;
-            cur_scen.Dir = mobj.Dir;
             cur_scen.OffsetX = mobj.MScenery.OffsetX;
             cur_scen.OffsetY = mobj.MScenery.OffsetY;
             cur_scen.LightColor = mobj.LightColor;

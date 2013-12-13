@@ -165,7 +165,7 @@ bool Map::Generate()
         }
 
         // Create npc
-        Npc* npc = CrMngr.CreateNpc( mobj.ProtoId, params_count, params, 0, NULL, script[ 0 ] ? script : NULL, this, mobj.MapX, mobj.MapY, (uchar) mobj.Dir, true );
+        Npc* npc = CrMngr.CreateNpc( mobj.ProtoId, params_count, params, 0, NULL, script[ 0 ] ? script : NULL, this, mobj.MapX, mobj.MapY, (uchar) mobj.MCritter.Dir, true );
         if( !npc )
         {
             WriteLogF( _FUNC_, " - Create npc on map<%s> with pid<%u> failture - continue generate.\n", Proto->GetName(), mobj.ProtoId );
@@ -283,7 +283,6 @@ bool Map::Generate()
             item->Data.TrapValue = mobj.MItem.TrapValue;
 
         // Other values
-        item->Data.Dir = mobj.Dir;
         item->Data.OffsetX = mobj.MItem.OffsetX;
         item->Data.OffsetY = mobj.MItem.OffsetY;
         item->Data.AmmoPid = mobj.MItem.AmmoPid;

@@ -3,7 +3,7 @@
 #include "Common.h"
 #include "ResourceManager.h"
 
-ItemHex::ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, int dir, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut )
+ItemHex::ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut )
 {
     // Init parent
     Init( proto );
@@ -77,8 +77,6 @@ ItemHex::ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int h
         Data.OffsetX = scr_x;
     if( scr_y )
         Data.OffsetY = scr_y;
-    if( dir )
-        Data.Dir = dir;
 
     // Draw effect
     DrawEffect = Effect::Generic;
@@ -180,7 +178,7 @@ void ItemHex::Process()
     }
 }
 
-void ItemHex::SetEffect( float sx, float sy, uint dist )
+void ItemHex::SetEffect( float sx, float sy, uint dist, int dir )
 {
     // Init effect
     effSx = sx;
@@ -190,6 +188,7 @@ void ItemHex::SetEffect( float sx, float sy, uint dist )
     effStartY = ScrY;
     effCurX = ScrX;
     effCurY = ScrY;
+    effDir = dir;
     effLastTick = Timer::GameTick();
     isEffect = true;
     // Check off fade
@@ -218,15 +217,12 @@ void ItemHex::SetFade( bool fade_up )
 
 void ItemHex::RefreshAnim()
 {
-    int  dir = ( Data.Dir ? Data.Dir : Proto->Dir );
     uint name_hash = Proto->PicMap;
     if( Data.PicMapHash )
         name_hash = Data.PicMapHash;
     Anim = NULL;
     if( name_hash )
-        Anim = ResMngr.GetItemAnim( name_hash, dir );
-    if( name_hash && !Anim && dir )
-        Anim = ResMngr.GetItemAnim( name_hash, 0 );
+        Anim = ResMngr.GetItemAnim( name_hash );
     if( !Anim )
         Anim = ResMngr.ItemHexDefaultAnim;
 

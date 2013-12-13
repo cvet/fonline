@@ -24,11 +24,6 @@
 #define FT_SKIPLINES( l )             ( 0x0400 | ( ( l ) << 16 ) )
 #define FT_SKIPLINES_END( l )         ( 0x0800 | ( ( l ) << 16 ) )
 
-// Animation loading
-#define ANIM_DIR( d )                 ( ( d ) & 0xFF )
-#define ANIM_USE_DUMMY             ( 0x100 )
-#define ANIM_FRM_ANIM_PIX          ( 0x200 )
-
 // Colors
 #define COLOR_CHANGE_ALPHA( v, a )    ( ( ( ( v ) | 0xFF000000 ) ^ 0xFF000000 ) | ( (uint) ( a ) & 0xFF ) << 24 )
 #define COLOR_IFACE_FIX            COLOR_GAME_RGB( 103, 95, 86 )
@@ -176,16 +171,17 @@ struct DipData
 };
 typedef vector< DipData > DipDataVec;
 
+#define MAX_FRAMES                 ( 50 )
 struct AnyFrames
 {
-    uint*  Ind;    // Sprite Ids
-    short* NextX;  // Offsets
-    short* NextY;  // Offsets
-    uint   CntFrm; // Frames count
-    uint   Ticks;  // Time of playing animation
-    uint   Anim1;
-    uint   Anim2;
-
+    // Data
+    uint  Ind[ MAX_FRAMES ];   // Sprite Ids
+    short NextX[ MAX_FRAMES ]; // Offsets
+    short NextY[ MAX_FRAMES ]; // Offsets
+    uint  CntFrm;              // Frames count
+    uint  Ticks;               // Time of playing animation
+    uint  Anim1;
+    uint  Anim2;
     uint  GetSprId( uint num_frm ) { return Ind[ num_frm % CntFrm ]; }
     short GetNextX( uint num_frm ) { return NextX[ num_frm % CntFrm ]; }
     short GetNextY( uint num_frm ) { return NextY[ num_frm % CntFrm ]; }
@@ -193,13 +189,21 @@ struct AnyFrames
     uint  GetCurSprId()            { return CntFrm > 1 ? Ind[ ( ( Timer::GameTick() % Ticks ) * 100 / Ticks ) * CntFrm / 100 ] : Ind[ 0 ]; }
     uint  GetCurSprIndex()         { return CntFrm > 1 ? ( ( Timer::GameTick() % Ticks ) * 100 / Ticks ) * CntFrm / 100 : 0; }
 
-    AnyFrames(): Ind( NULL ), NextX( NULL ), NextY( NULL ), CntFrm( 0 ), Ticks( 0 ), Anim1( 0 ), Anim2( 0 ) {};
-    ~AnyFrames()
-    {
-        SAFEDELA( Ind );
-        SAFEDELA( NextX );
-        SAFEDELA( NextY );
-    }
+    // Dir animations
+    bool              HaveDirs;
+    AnyFrames*        Dirs[ 7 ]; // 7 additional for square hexes, 5 for hexagonal
+    int        DirCount()        { return HaveDirs ? DIRS_COUNT : 1; }
+    AnyFrames* GetDir( int dir ) { return dir == 0 || !HaveDirs ? this : Dirs[ dir - 1 ]; }
+    void       CreateDirAnims();
+
+    // Creation in pool
+    static AnyFrames* Create( uint frames, uint ticks );
+    static void       Destroy( AnyFrames* anim );
+
+    // Disable constructors to avoid unnecessary calls
+private:
+    AnyFrames() {}
+    ~AnyFrames() {}
 };
 typedef map< uint, AnyFrames*, less< uint > > AnimMap;
 typedef vector< AnyFrames* >                  AnimVec;
@@ -268,6 +272,7 @@ public:
     void PopAtlasType();
     void AccumulateAtlasData();
     void FlushAccumulatedAtlasData();
+    bool IsAccumulateAtlasActive();
     void FinalizeAtlas( int atlas_type );
     void AutofinalizeAtlases( int atlas_type );
     void DestroyAtlases( int atlas_type );
@@ -286,31 +291,33 @@ private:
 
     TextureAtlas* CreateAtlas( int w, int h );
     TextureAtlas* FindAtlasPlace( SpriteInfo* si, int& x, int& y );
-    uint          RequestFillAtlas( SpriteInfo* si, uchar* data, uint size );
+    uint          RequestFillAtlas( SpriteInfo* si, uint w, uint h, uchar* data );
     void          FillAtlas( SpriteInfo* si );
 
     // Load sprites
 public:
-    AnyFrames*   LoadAnimation( const char* fname, int path_type, int flags = 0 );
+    AnyFrames*   LoadAnimation( const char* fname, int path_type, bool use_dummy = false, bool frm_anim_pix = false );
     AnyFrames*   ReloadAnimation( AnyFrames* anim, const char* fname, int path_type );
     Animation3d* LoadPure3dAnimation( const char* fname, int path_type );
     void         FreePure3dAnimation( Animation3d* anim3d );
+    bool         SaveAnimationInFastFormat( AnyFrames* anim, const char* fname, int path_type );
+    bool         TryLoadAnimationInFastFormat( const char* fname, int path_type, FileManager& fm, AnyFrames*& anim );
 
 private:
     SprInfoVec sprData;
 
     AnyFrames* CreateAnimation( uint frames, uint ticks );
-    AnyFrames* LoadAnimationFrm( const char* fname, int path_type, int dir, bool anim_pix );
+    AnyFrames* LoadAnimationFrm( const char* fname, int path_type, bool anim_pix );
     AnyFrames* LoadAnimationRix( const char* fname, int path_type );
-    AnyFrames* LoadAnimationFofrm( const char* fname, int path_type, int dir );
-    AnyFrames* LoadAnimation3d( const char* fname, int path_type, int dir );
-    AnyFrames* LoadAnimationArt( const char* fname, int path_type, int dir );
-    AnyFrames* LoadAnimationSpr( const char* fname, int path_type, int dir );
+    AnyFrames* LoadAnimationFofrm( const char* fname, int path_type );
+    AnyFrames* LoadAnimation3d( const char* fname, int path_type );
+    AnyFrames* LoadAnimationArt( const char* fname, int path_type );
+    AnyFrames* LoadAnimationSpr( const char* fname, int path_type );
     AnyFrames* LoadAnimationZar( const char* fname, int path_type );
     AnyFrames* LoadAnimationTil( const char* fname, int path_type );
     AnyFrames* LoadAnimationMos( const char* fname, int path_type );
     AnyFrames* LoadAnimationBam( const char* fname, int path_type );
-    AnyFrames* LoadAnimationOther( const char* fname, int path_type, uchar * ( *loader )( const uchar *, uint, uint &, uint &, uint & ) );
+    AnyFrames* LoadAnimationOther( const char* fname, int path_type, uchar * ( *loader )( const uchar *, uint, uint &, uint & ) );
     bool Render3d( int x, int y, float scale, Animation3d* anim3d, RectF* stencil, uint color );
     bool Render3dSize( RectF rect, bool stretch_up, bool center, Animation3d* anim3d, RectF* stencil, uint color );
     uint Render3dSprite( Animation3d* anim3d, int dir, int time_proc );
@@ -405,12 +412,15 @@ public:
     void EggNotValid() { eggValid = false; }
 
     // Fonts
+private:
+    void BuildFont( int index );
+
 public:
     void SetDefaultFont( int index, uint color );
     void SetFontEffect( int index, Effect* effect );
     bool LoadFontFO( int index, const char* font_name, bool not_bordered );
     bool LoadFontBMF( int index, const char* font_name );
-    void BuildFont( int index );
+    void BuildFonts();
     bool DrawStr( const Rect& r, const char* str, uint flags, uint color = 0, int num_font = -1 );
     int  GetLinesCount( int width, int height, const char* str, int num_font = -1 );
     int  GetLinesHeight( int width, int height, const char* str, int num_font = -1 );

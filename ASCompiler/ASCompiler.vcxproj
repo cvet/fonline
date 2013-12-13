@@ -165,7 +165,6 @@
     <ClInclude Include="..\Source\Timer.h" />
     <ClInclude Include="..\Source\Zlib\crc32.h" />
     <ClInclude Include="..\Source\Zlib\deflate.h" />
-    <ClInclude Include="..\Source\Zlib\gzguts.h" />
     <ClInclude Include="..\Source\Zlib\inffast.h" />
     <ClInclude Include="..\Source\Zlib\inffixed.h" />
     <ClInclude Include="..\Source\Zlib\inflate.h" />
@@ -310,10 +309,6 @@
     <ClCompile Include="..\Source\Zlib\compress.c" />
     <ClCompile Include="..\Source\Zlib\crc32.c" />
     <ClCompile Include="..\Source\Zlib\deflate.c" />
-    <ClCompile Include="..\Source\Zlib\gzclose.c" />
-    <ClCompile Include="..\Source\Zlib\gzlib.c" />
-    <ClCompile Include="..\Source\Zlib\gzread.c" />
-    <ClCompile Include="..\Source\Zlib\gzwrite.c" />
     <ClCompile Include="..\Source\Zlib\infback.c" />
     <ClCompile Include="..\Source\Zlib\inffast.c" />
     <ClCompile Include="..\Source\Zlib\inflate.c" />

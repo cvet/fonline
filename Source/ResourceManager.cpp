@@ -113,15 +113,20 @@ void ResourceManager::FreeResources( int type )
     {
         int res_type = ( *it ).second.ResType;
         if( res_type == type )
+        {
+            AnyFrames::Destroy( ( *it ).second.Anim );
             loadedAnims.erase( it++ );
+        }
         else
+        {
             ++it;
+        }
     }
 
     if( type == RES_ATLAS_DYNAMIC )
     {
         for( auto it = critterFrames.begin(), end = critterFrames.end(); it != end; ++it )
-            SAFEDEL( ( *it ).second );
+            AnyFrames::Destroy( ( *it ).second );
         critterFrames.clear();
     }
 }
@@ -131,16 +136,17 @@ void ResourceManager::ReinitializeDynamicAtlas()
     FreeResources( RES_ATLAS_DYNAMIC );
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
     SprMngr.InitializeEgg( "egg.png" );
-    CritterDefaultAnim = SprMngr.LoadAnimation( "art\\critters\\reservaa.frm", PT_DATA, ANIM_USE_DUMMY | ANIM_FRM_ANIM_PIX );
-    ItemHexDefaultAnim = SprMngr.LoadAnimation( "art\\items\\reserved.frm", PT_DATA, ANIM_USE_DUMMY | ANIM_FRM_ANIM_PIX );
+    AnyFrames::Destroy( CritterDefaultAnim );
+    AnyFrames::Destroy( ItemHexDefaultAnim );
+    CritterDefaultAnim = SprMngr.LoadAnimation( "art\\critters\\reservaa.frm", PT_DATA, true );
+    ItemHexDefaultAnim = SprMngr.LoadAnimation( "art\\items\\reserved.frm", PT_DATA, true );
     SprMngr.PopAtlasType();
 }
 
-AnyFrames* ResourceManager::GetAnim( uint name_hash, int dir, int res_type )
+AnyFrames* ResourceManager::GetAnim( uint name_hash, int res_type )
 {
     // Find already loaded
-    uint id = name_hash + dir;
-    auto it = loadedAnims.find( id );
+    auto it = loadedAnims.find( name_hash );
     if( it != loadedAnims.end() )
         return ( *it ).second.Anim;
 
@@ -150,16 +156,16 @@ AnyFrames* ResourceManager::GetAnim( uint name_hash, int dir, int res_type )
         return NULL;
 
     SprMngr.PushAtlasType( res_type );
-    AnyFrames* anim = SprMngr.LoadAnimation( fname, PT_DATA, ANIM_DIR( dir ) | ANIM_FRM_ANIM_PIX );
+    AnyFrames* anim = SprMngr.LoadAnimation( fname, PT_DATA, false, true );
     SprMngr.PopAtlasType();
 
-    loadedAnims.insert( PAIR( id, LoadedAnim( res_type, anim ) ) );
+    loadedAnims.insert( PAIR( name_hash, LoadedAnim( res_type, anim ) ) );
     return anim;
 }
 
-uint AnimMapId( uint crtype, uint anim1, uint anim2, int dir, bool is_fallout )
+uint AnimMapId( uint crtype, uint anim1, uint anim2, bool is_fallout )
 {
-    uint dw[ 5 ] = { crtype, anim1, anim2, (uint) dir, is_fallout ? uint( -1 ) : 1 };
+    uint dw[ 4 ] = { crtype, anim1, anim2, is_fallout ? uint( -1 ) : 1 };
     return Crypt.Crc32( (uchar*) &dw[ 0 ], sizeof( dw ) );
 }
 
@@ -176,12 +182,12 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
         dir = 0;
 
     // Make animation id
-    uint id = AnimMapId( crtype, anim1, anim2, dir, false );
+    uint id = AnimMapId( crtype, anim1, anim2, false );
 
     // Check already loaded
     auto it = critterFrames.find( id );
     if( it != critterFrames.end() )
-        return ( *it ).second;
+        return ( *it ).second ? ( *it ).second->GetDir( dir ) : NULL;
 
     // Process loading
     uint       crtype_base = crtype, anim1_base = anim1, anim2_base = anim2;
@@ -192,7 +198,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
         if( anim_type == ANIM_TYPE_FALLOUT )
         {
             // Hardcoded
-            anim = LoadFalloutAnim( crtype, anim1, anim2, dir );
+            anim = LoadFalloutAnim( crtype, anim1, anim2 );
         }
         else
         {
@@ -226,65 +232,60 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
                         if( str->length() )
                         {
                             SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-                            anim = SprMngr.LoadAnimation( str->c_str(), PT_DATA, ANIM_DIR( dir ) );
-                            if( !anim )
-                                anim = SprMngr.LoadAnimation( str->c_str(), PT_DATA, ANIM_DIR( 0 ) );
+                            anim = SprMngr.LoadAnimation( str->c_str(), PT_DATA );
                             SprMngr.PopAtlasType();
 
-                            // Process flags
-                            if( anim && flags )
+                            // Fix by dirs
+                            for( int d = 0; anim && d < anim->DirCount(); d++ )
                             {
-                                if( FLAG( flags, ANIM_FLAG_FIRST_FRAME ) || FLAG( flags, ANIM_FLAG_LAST_FRAME ) )
+                                AnyFrames* dir_anim = anim->GetDir( d );
+
+                                // Process flags
+                                if( flags )
                                 {
-                                    bool first = FLAG( flags, ANIM_FLAG_FIRST_FRAME );
-
-                                    // Append offsets
-                                    if( !first )
+                                    if( FLAG( flags, ANIM_FLAG_FIRST_FRAME ) || FLAG( flags, ANIM_FLAG_LAST_FRAME ) )
                                     {
-                                        for( uint i = 0; i < anim->CntFrm - 1; i++ )
-                                        {
-                                            anim->NextX[ anim->CntFrm - 1 ] += anim->NextX[ i ];
-                                            anim->NextY[ anim->CntFrm - 1 ] += anim->NextY[ i ];
-                                        }
-                                    }
+                                        bool first = FLAG( flags, ANIM_FLAG_FIRST_FRAME );
 
-                                    // Change size
-                                    uint  spr_id = ( first ? anim->Ind[ 0 ] : anim->Ind[ anim->CntFrm - 1 ] );
-                                    short nx = ( first ? anim->NextX[ 0 ] : anim->NextX[ anim->CntFrm - 1 ] );
-                                    short ny = ( first ? anim->NextY[ 0 ] : anim->NextY[ anim->CntFrm - 1 ] );
-                                    delete[] anim->Ind;
-                                    delete[] anim->NextX;
-                                    delete[] anim->NextY;
-                                    anim->Ind = new uint[ 1 ];
-                                    anim->NextX = new short[ 1 ];
-                                    anim->NextY = new short[ 1 ];
-                                    anim->Ind[ 0 ] = spr_id;
-                                    anim->NextX[ 0 ] = nx;
-                                    anim->NextY[ 0 ] = ny;
-                                    anim->CntFrm = 1;
+                                        // Append offsets
+                                        if( !first )
+                                        {
+                                            for( uint i = 0; i < dir_anim->CntFrm - 1; i++ )
+                                            {
+                                                dir_anim->NextX[ dir_anim->CntFrm - 1 ] += dir_anim->NextX[ i ];
+                                                dir_anim->NextY[ dir_anim->CntFrm - 1 ] += dir_anim->NextY[ i ];
+                                            }
+                                        }
+
+                                        // Change size
+                                        dir_anim->Ind[ 0 ] = ( first ? dir_anim->Ind[ 0 ] : dir_anim->Ind[ dir_anim->CntFrm - 1 ] );
+                                        dir_anim->NextX[ 0 ] = ( first ? dir_anim->NextX[ 0 ] : dir_anim->NextX[ dir_anim->CntFrm - 1 ] );
+                                        dir_anim->NextY[ 0 ] = ( first ? dir_anim->NextY[ 0 ] : dir_anim->NextY[ dir_anim->CntFrm - 1 ] );
+                                        dir_anim->CntFrm = 1;
+                                    }
                                 }
-                            }
 
-                            // Add offsets
-                            if( anim && ( ox || oy ) && false )
-                            {
-                                for( uint i = 0; i < anim->CntFrm; i++ )
+                                // Add offsets
+                                if( ( ox || oy ) && false )
                                 {
-                                    uint spr_id = anim->Ind[ i ];
-                                    bool fixed = false;
-                                    for( uint j = 0; j < i; j++ )
+                                    for( uint i = 0; i < dir_anim->CntFrm; i++ )
                                     {
-                                        if( anim->Ind[ j ] == spr_id )
+                                        uint spr_id = dir_anim->Ind[ i ];
+                                        bool fixed = false;
+                                        for( uint j = 0; j < i; j++ )
                                         {
-                                            fixed = true;
-                                            break;
+                                            if( dir_anim->Ind[ j ] == spr_id )
+                                            {
+                                                fixed = true;
+                                                break;
+                                            }
                                         }
-                                    }
-                                    if( !fixed )
-                                    {
-                                        SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
-                                        si->OffsX += ox;
-                                        si->OffsY += oy;
+                                        if( !fixed )
+                                        {
+                                            SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
+                                            si->OffsX += ox;
+                                            si->OffsY += oy;
+                                        }
                                     }
                                 }
                             }
@@ -331,16 +332,19 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
     // Store resulted animation indices
     if( anim )
     {
-        anim->Anim1 = anim1;
-        anim->Anim2 = anim2;
+        for( int d = 0; d < anim->DirCount(); d++ )
+        {
+            anim->GetDir( d )->Anim1 = anim1;
+            anim->GetDir( d )->Anim2 = anim2;
+        }
     }
 
     // Store
     critterFrames.insert( PAIR( id, anim ) );
-    return anim;
+    return anim ? anim->GetDir( dir ) : NULL;
 }
 
-AnyFrames* ResourceManager::LoadFalloutAnim( uint crtype, uint anim1, uint anim2, int dir )
+AnyFrames* ResourceManager::LoadFalloutAnim( uint crtype, uint anim1, uint anim2 )
 {
     // Convert from common to fallout specific
     #ifdef FONLINE_CLIENT
@@ -359,82 +363,138 @@ AnyFrames* ResourceManager::LoadFalloutAnim( uint crtype, uint anim1, uint anim2
         if( Script::RunPrepared() && Script::GetReturnedBool() )
         {
             // Load
-            AnyFrames* anim = LoadFalloutAnimSpr( crtype, anim1, anim2, dir );
+            AnyFrames* anim = LoadFalloutAnimSpr( crtype, anim1, anim2 );
             if( !anim )
                 return NULL;
 
             // Merge
             if( anim1ex && anim2ex )
             {
-                AnyFrames* animex = LoadFalloutAnimSpr( crtype, anim1ex, anim2ex, dir );
+                AnyFrames* animex = LoadFalloutAnimSpr( crtype, anim1ex, anim2ex );
                 if( !animex )
                     return NULL;
 
-                AnyFrames* anim_ = new AnyFrames();
-                anim_->CntFrm = anim->CntFrm + animex->CntFrm;
-                anim_->Ticks = anim->Ticks + animex->Ticks;
-                anim_->Ind = new uint[ anim_->CntFrm ];
-                anim_->NextX = new short[ anim_->CntFrm ];
-                anim_->NextY = new short[ anim_->CntFrm ];
-                memcpy( anim_->Ind, anim->Ind, anim->CntFrm * sizeof( uint ) );
-                memcpy( anim_->NextX, anim->NextX, anim->CntFrm * sizeof( short ) );
-                memcpy( anim_->NextY, anim->NextY, anim->CntFrm * sizeof( short ) );
-                memcpy( anim_->Ind + anim->CntFrm, animex->Ind, animex->CntFrm * sizeof( uint ) );
-                memcpy( anim_->NextX + anim->CntFrm, animex->NextX, animex->CntFrm * sizeof( short ) );
-                memcpy( anim_->NextY + anim->CntFrm, animex->NextY, animex->CntFrm * sizeof( short ) );
-                short ox = 0, oy = 0;
-                for( uint i = 0; i < anim->CntFrm; i++ )
+                AnyFrames* anim_merge_base = AnyFrames::Create( anim->CntFrm + animex->CntFrm, anim->Ticks + animex->Ticks );
+                for( int d = 0; d < anim->DirCount(); d++ )
                 {
-                    ox += anim->NextX[ i ];
-                    oy += anim->NextY[ i ];
+                    if( d == 1 )
+                        anim_merge_base->CreateDirAnims();
+                    AnyFrames* anim_merge = anim_merge_base->GetDir( d );
+                    AnyFrames* anim_ = anim->GetDir( d );
+                    AnyFrames* animex_ = animex->GetDir( d );
+                    memcpy( anim_merge->Ind, anim_->Ind, anim_->CntFrm * sizeof( uint ) );
+                    memcpy( anim_merge->NextX, anim_->NextX, anim_->CntFrm * sizeof( short ) );
+                    memcpy( anim_merge->NextY, anim_->NextY, anim_->CntFrm * sizeof( short ) );
+                    memcpy( anim_merge->Ind + anim_->CntFrm, animex_->Ind, animex_->CntFrm * sizeof( uint ) );
+                    memcpy( anim_merge->NextX + anim_->CntFrm, animex_->NextX, animex_->CntFrm * sizeof( short ) );
+                    memcpy( anim_merge->NextY + anim_->CntFrm, animex_->NextY, animex_->CntFrm * sizeof( short ) );
+                    short ox = 0, oy = 0;
+                    for( uint i = 0; i < anim_->CntFrm; i++ )
+                    {
+                        ox += anim_->NextX[ i ];
+                        oy += anim_->NextY[ i ];
+                    }
+                    anim_merge->NextX[ anim_->CntFrm ] -= ox;
+                    anim_merge->NextY[ anim_->CntFrm ] -= oy;
                 }
-                anim_->NextX[ anim->CntFrm ] -= ox;
-                anim_->NextY[ anim->CntFrm ] -= oy;
-                return anim_;
+                return anim_merge_base;
             }
 
             // Clone
             if( anim )
             {
-                AnyFrames* anim_ = new AnyFrames();
-                anim_->CntFrm = ( !FLAG( flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME ) ? anim->CntFrm : 1 );
-                anim_->Ticks = anim->Ticks;
-                anim_->Ind = new uint[ anim_->CntFrm ];
-                anim_->NextX = new short[ anim_->CntFrm ];
-                anim_->NextY = new short[ anim_->CntFrm ];
-                if( !FLAG( flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME ) )
+                AnyFrames* anim_clone_base = AnyFrames::Create( !FLAG( flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME ) ? anim->CntFrm : 1, anim->Ticks );
+                for( int d = 0; d < anim->DirCount(); d++ )
                 {
-                    memcpy( anim_->Ind, anim->Ind, anim->CntFrm * sizeof( uint ) );
-                    memcpy( anim_->NextX, anim->NextX, anim->CntFrm * sizeof( short ) );
-                    memcpy( anim_->NextY, anim->NextY, anim->CntFrm * sizeof( short ) );
-                }
-                else
-                {
-                    anim_->Ind[ 0 ] = anim->Ind[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim->CntFrm - 1 ];
-                    anim_->NextX[ 0 ] = anim->NextX[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim->CntFrm - 1 ];
-                    anim_->NextY[ 0 ] = anim->NextY[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim->CntFrm - 1 ];
-
-                    // Append offsets
-                    if( FLAG( flags, ANIM_FLAG_LAST_FRAME ) )
+                    if( d == 1 )
+                        anim_clone_base->CreateDirAnims();
+                    AnyFrames* anim_clone = anim_clone_base->GetDir( d );
+                    AnyFrames* anim_ = anim->GetDir( d );
+                    if( !FLAG( flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME ) )
                     {
-                        for( uint i = 0; i < anim->CntFrm - 1; i++ )
+                        memcpy( anim_clone->Ind, anim_->Ind, anim_->CntFrm * sizeof( uint ) );
+                        memcpy( anim_clone->NextX, anim_->NextX, anim_->CntFrm * sizeof( short ) );
+                        memcpy( anim_clone->NextY, anim_->NextY, anim_->CntFrm * sizeof( short ) );
+                    }
+                    else
+                    {
+                        anim_clone->Ind[ 0 ] = anim_->Ind[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim_->CntFrm - 1 ];
+                        anim_clone->NextX[ 0 ] = anim_->NextX[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim_->CntFrm - 1 ];
+                        anim_clone->NextY[ 0 ] = anim_->NextY[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim_->CntFrm - 1 ];
+
+                        // Append offsets
+                        if( FLAG( flags, ANIM_FLAG_LAST_FRAME ) )
                         {
-                            anim_->NextX[ 0 ] += anim->NextX[ i ];
-                            anim_->NextY[ 0 ] += anim->NextY[ i ];
+                            for( uint i = 0; i < anim_->CntFrm - 1; i++ )
+                            {
+                                anim_clone->NextX[ 0 ] += anim_->NextX[ i ];
+                                anim_clone->NextY[ 0 ] += anim_->NextY[ i ];
+                            }
                         }
                     }
                 }
-                anim = anim_;
+                return anim_clone_base;
             }
-            return anim;
+            return NULL;
         }
     }
     return NULL;
 }
 
-AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint anim2, int dir )
+void FixAnimOffs( AnyFrames* frames_base, AnyFrames* stay_frm_base )
 {
-    auto it = critterFrames.find( AnimMapId( crtype, anim1, anim2, dir, true ) );
+    if( !stay_frm_base )
+        return;
+    for( int d = 0; d < stay_frm_base->DirCount(); d++ )
+    {
+        AnyFrames* frames = frames_base->GetDir( d );
+        AnyFrames* stay_frm = stay_frm_base->GetDir( d );
+        SpriteInfo* stay_si = SprMngr.GetSpriteInfo( stay_frm->Ind[ 0 ] );
+        if( !stay_si )
+            return;
+        for( uint i = 0; i < frames->CntFrm; i++ )
+        {
+            SpriteInfo* si = SprMngr.GetSpriteInfo( frames->Ind[ i ] );
+            if( !si )
+                continue;
+            si->OffsX += stay_si->OffsX;
+            si->OffsY += stay_si->OffsY;
+        }
+    }
+}
+
+void FixAnimOffsNext( AnyFrames* frames_base, AnyFrames* stay_frm_base )
+{
+    if( !stay_frm_base )
+        return;
+    for( int d = 0; d < stay_frm_base->DirCount(); d++ )
+    {
+        AnyFrames* frames = frames_base->GetDir( d );
+        AnyFrames* stay_frm = stay_frm_base->GetDir( d );
+        SpriteInfo* stay_si = SprMngr.GetSpriteInfo( stay_frm->Ind[ 0 ] );
+        if( !stay_si )
+            return;
+        short ox = 0;
+        short oy = 0;
+        for( uint i = 0; i < stay_frm->CntFrm; i++ )
+        {
+            ox += stay_frm->NextX[ i ];
+            oy += stay_frm->NextY[ i ];
+        }
+        for( uint i = 0; i < frames->CntFrm; i++ )
+        {
+            SpriteInfo* si = SprMngr.GetSpriteInfo( frames->Ind[ i ] );
+            if( !si )
+                continue;
+            si->OffsX += ox;
+            si->OffsY += oy;
+        }
+    }
+}
+
+AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint anim2 )
+{
+    auto it = critterFrames.find( AnimMapId( crtype, anim1, anim2, true ) );
     if( it != critterFrames.end() )
         return ( *it ).second;
 
@@ -446,70 +506,23 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint an
     // Try load fofrm
     const char* name = CritType::GetName( crtype );
     Str::Format( spr_name, "%s%c%c.fofrm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
-    AnyFrames* frames = SprMngr.LoadAnimation( spr_name, PT_ART_CRITTERS, ANIM_DIR( dir ) );
+    AnyFrames* frames = SprMngr.LoadAnimation( spr_name, PT_ART_CRITTERS );
 
     // Try load fallout frames
     if( !frames )
     {
         Str::Format( spr_name, "%s%c%c.frm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
-        frames = SprMngr.LoadAnimation( spr_name, PT_ART_CRITTERS, ANIM_DIR( dir ) );
-        if( !frames )
-        {
-            Str::Format( spr_name, "%s%c%c.fr%u", name, frm_ind[ anim1 ], frm_ind[ anim2 ], dir );
-            frames = SprMngr.LoadAnimation( spr_name, PT_ART_CRITTERS, ANIM_DIR( 0 ) );
-        }
+        frames = SprMngr.LoadAnimation( spr_name, PT_ART_CRITTERS );
     }
     SprMngr.PopAtlasType();
 
-    critterFrames.insert( PAIR( AnimMapId( crtype, anim1, anim2, dir, true ), frames ) );
+    critterFrames.insert( PAIR( AnimMapId( crtype, anim1, anim2, true ), frames ) );
     if( !frames )
         return NULL;
 
-// ////////////////////////////////////////////////////////////////////////
-    #define LOADSPR_ADDOFFS( a1, a2 )                                          \
-        do {                                                                   \
-            AnyFrames* stay_frm = LoadFalloutAnimSpr( crtype, a1, a2, dir );   \
-            if( !stay_frm )                                                    \
-                break;                                                         \
-            AnyFrames* frm = frames;                                           \
-            SpriteInfo* stay_si = SprMngr.GetSpriteInfo( stay_frm->Ind[ 0 ] ); \
-            if( !stay_si )                                                     \
-                break;                                                         \
-            for( uint i = 0; i < frm->CntFrm; i++ )                            \
-            {                                                                  \
-                SpriteInfo* si = SprMngr.GetSpriteInfo( frm->Ind[ i ] );       \
-                if( !si )                                                      \
-                    continue;                                                  \
-                si->OffsX += stay_si->OffsX;                                   \
-                si->OffsY += stay_si->OffsY;                                   \
-            }                                                                  \
-        } while( 0 )
-    #define LOADSPR_ADDOFFS_NEXT( a1, a2 )                                     \
-        do {                                                                   \
-            AnyFrames* stay_frm = LoadFalloutAnimSpr( crtype, a1, a2, dir );   \
-            if( !stay_frm )                                                    \
-                break;                                                         \
-            AnyFrames* frm = frames;                                           \
-            SpriteInfo* stay_si = SprMngr.GetSpriteInfo( stay_frm->Ind[ 0 ] ); \
-            if( !stay_si )                                                     \
-                break;                                                         \
-            short ox = 0;                                                      \
-            short oy = 0;                                                      \
-            for( uint i = 0; i < stay_frm->CntFrm; i++ )                       \
-            {                                                                  \
-                ox += stay_frm->NextX[ i ];                                    \
-                oy += stay_frm->NextY[ i ];                                    \
-            }                                                                  \
-            for( uint i = 0; i < frm->CntFrm; i++ )                            \
-            {                                                                  \
-                SpriteInfo* si = SprMngr.GetSpriteInfo( frm->Ind[ i ] );       \
-                if( !si )                                                      \
-                    continue;                                                  \
-                si->OffsX += ox;                                               \
-                si->OffsY += oy;                                               \
-            }                                                                  \
-        } while( 0 )
-// ////////////////////////////////////////////////////////////////////////
+    #define LOADSPR_ADDOFFS( a1, a2 )         FixAnimOffs( frames, LoadFalloutAnimSpr( crtype, a1, a2 ) )
+    #define LOADSPR_ADDOFFS_NEXT( a1, a2 )    FixAnimOffsNext( frames, LoadFalloutAnimSpr( crtype, a1, a2 ) )
+
     // Fallout animations
     #define ANIM1_FALLOUT_UNARMED               ( 1 )
     #define ANIM1_FALLOUT_DEAD                  ( 2 )

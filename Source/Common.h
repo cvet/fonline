@@ -891,6 +891,51 @@ public:
 #endif
 
 /************************************************************************/
+/* Memory pool                                                          */
+/************************************************************************/
+
+template< int StructSize, int PoolSize >
+class MemoryPool
+{
+private:
+    vector< char* > allocatedData;
+
+    void Grow()
+    {
+        allocatedData.reserve( allocatedData.size() + PoolSize );
+        for( int i = 0; i < PoolSize; i++ )
+            allocatedData.push_back( new char[ StructSize ] );
+    }
+
+public:
+    MemoryPool()
+    {
+        Grow();
+    }
+
+    ~MemoryPool()
+    {
+        for( auto it = allocatedData.begin(); it != allocatedData.end(); ++it )
+            delete[] *it;
+        allocatedData.clear();
+    }
+
+    void* Get()
+    {
+        if( allocatedData.empty() )
+            Grow();
+        void* result = allocatedData.back();
+        allocatedData.pop_back();
+        return result;
+    }
+
+    void Put( void* t )
+    {
+        allocatedData.push_back( (char*) t );
+    }
+};
+
+/************************************************************************/
 /*                                                                      */
 /************************************************************************/
 

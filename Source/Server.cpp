@@ -2941,7 +2941,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         uint ban_hours;
         char info[ UTF8_BUF_SIZE( MAX_CHAT_MESSAGE ) ];
         buf.Pop( name, sizeof( name ) );
-        name[ sizeof( name - 1 ) ] = 0;
+        name[ sizeof( name ) - 1 ] = 0;
         buf.Pop( params, sizeof( params ) );
         params[ sizeof( params ) - 1 ] = 0;
         buf >> ban_hours;

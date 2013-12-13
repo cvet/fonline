@@ -238,14 +238,14 @@ void HexManager::ReloadSprites()
     curDataPrefix = GameOpt.MapDataPrefix.c_std_str();
 
     // Must be valid
-    picHex[ 0 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex1.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    picHex[ 1 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex2.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    picHex[ 2 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex3.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    cursorPrePic = SprMngr.LoadAnimation( ( curDataPrefix + "move_pre.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    cursorPostPic = SprMngr.LoadAnimation( ( curDataPrefix + "move_post.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    cursorXPic = SprMngr.LoadAnimation( ( curDataPrefix + "move_x.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    picTrack1 = SprMngr.LoadAnimation( ( curDataPrefix + "track1.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
-    picTrack2 = SprMngr.LoadAnimation( ( curDataPrefix + "track2.png" ).c_str(), PT_DATA, ANIM_USE_DUMMY );
+    picHex[ 0 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex1.png" ).c_str(), PT_DATA, true );
+    picHex[ 1 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex2.png" ).c_str(), PT_DATA, true );
+    picHex[ 2 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex3.png" ).c_str(), PT_DATA, true );
+    cursorPrePic = SprMngr.LoadAnimation( ( curDataPrefix + "move_pre.png" ).c_str(), PT_DATA, true );
+    cursorPostPic = SprMngr.LoadAnimation( ( curDataPrefix + "move_post.png" ).c_str(), PT_DATA, true );
+    cursorXPic = SprMngr.LoadAnimation( ( curDataPrefix + "move_x.png" ).c_str(), PT_DATA, true );
+    picTrack1 = SprMngr.LoadAnimation( ( curDataPrefix + "track1.png" ).c_str(), PT_DATA, true );
+    picTrack2 = SprMngr.LoadAnimation( ( curDataPrefix + "track2.png" ).c_str(), PT_DATA, true );
 
     // May be null
     picHexMask = SprMngr.LoadAnimation( ( curDataPrefix + "hex_mask.png" ).c_str(), PT_DATA );
@@ -321,7 +321,7 @@ bool HexManager::AddItem( uint id, ushort pid, ushort hx, ushort hy, bool is_add
 
     // Parse
     Field&   f = GetField( hx, hy );
-    ItemHex* item = new ItemHex( id, proto, data, hx, hy, 0, 0, 0, &f.ScrX, &f.ScrY, 0 );
+    ItemHex* item = new ItemHex( id, proto, data, hx, hy, 0, 0, &f.ScrX, &f.ScrY, 0 );
     if( is_added )
         item->SetShowAnim();
     PushItem( item );
@@ -359,7 +359,7 @@ void HexManager::ChangeItem( uint id, const Item::ItemData& data )
 
     bool check_borders = false;
 
-    if( old_data.PicMapHash != data.PicMapHash || old_data.Dir != data.Dir )
+    if( old_data.PicMapHash != data.PicMapHash )
         item->RefreshAnim();
     if( proto->IsDoor() || proto->IsContainer() )
     {
@@ -601,7 +601,7 @@ bool HexManager::RunEffect( ushort eff_pid, ushort from_hx, ushort from_hy, usho
     }
 
     Field&   f = GetField( from_hx, from_hy );
-    ItemHex* item = new ItemHex( 0, proto, NULL, from_hx, from_hy, GetFarDir( from_hx, from_hy, to_hx, to_hy ), 0, 0, &f.ScrX, &f.ScrY, 0 );
+    ItemHex* item = new ItemHex( 0, proto, NULL, from_hx, from_hy, 0, 0, &f.ScrX, &f.ScrY, 0 );
     item->SetAnimFromStart();
 
     float sx = 0;
@@ -619,7 +619,7 @@ bool HexManager::RunEffect( ushort eff_pid, ushort from_hx, ushort from_hy, usho
         dist = DistSqrt( 0, 0, x, y );
     }
 
-    item->SetEffect( sx, sy, dist );
+    item->SetEffect( sx, sy, dist, GetFarDir( from_hx, from_hy, to_hx, to_hy ) );
 
     f.AddItem( item );
     hexItems.push_back( item );
@@ -699,14 +699,14 @@ void HexManager::SetRainAnimation( const char* fall_anim_name, const char* drop_
     if( picRainFall == SpriteManager::DummyAnimation )
         picRainFall = NULL;
     else
-        SAFEDEL( picRainFall );
+        AnyFrames::Destroy( picRainFall );
     if( picRainDrop == SpriteManager::DummyAnimation )
         picRainDrop = NULL;
     else
-        SAFEDEL( picRainDrop );
+        AnyFrames::Destroy( picRainDrop );
 
-    picRainFall = SprMngr.LoadAnimation( picRainFallName.c_str(), PT_DATA, ANIM_USE_DUMMY );
-    picRainDrop = SprMngr.LoadAnimation( picRainDropName.c_str(), PT_DATA, ANIM_USE_DUMMY );
+    picRainFall = SprMngr.LoadAnimation( picRainFallName.c_str(), PT_DATA, true );
+    picRainDrop = SprMngr.LoadAnimation( picRainDropName.c_str(), PT_DATA, true );
 }
 
 void HexManager::SetCursorPos( int x, int y, bool show_steps, bool refresh )
@@ -3927,7 +3927,7 @@ bool HexManager::ParseScenery( SceneryCl& scen )
     static uint scen_id = 0;
     scen_id--;
 
-    ItemHex* scenery = new ItemHex( scen_id, proto_item, NULL, hx, hy, scen.Dir,
+    ItemHex* scenery = new ItemHex( scen_id, proto_item, NULL, hx, hy,
                                     scen.OffsetX, scen.OffsetY, &GetField( hx, hy ).ScrX, &GetField( hx, hy ).ScrY,
                                     scen.SpriteCut );
     scenery->ScenFlags = scen.Flags;
@@ -4078,7 +4078,6 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             s.LightDistance = o->LightDistance;
             s.LightFlags = o->LightDirOff | ( ( o->LightDay & 3 ) << 6 );
             s.LightIntensity = o->LightIntensity;
-            s.Dir = o->Dir;
             s.SpriteCut = o->MScenery.SpriteCut;
             s.PicMapHash = o->MScenery.PicMapHash;
 
@@ -4098,7 +4097,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
                 continue;
 
             Field&   f = GetField( o->MapX, o->MapY );
-            ItemHex* item = new ItemHex( ++cur_id, proto, NULL, o->MapX, o->MapY, o->Dir, o->MItem.OffsetX, o->MItem.OffsetY, &f.ScrX, &f.ScrY, 0 );
+            ItemHex* item = new ItemHex( ++cur_id, proto, NULL, o->MapX, o->MapY, o->MItem.OffsetX, o->MItem.OffsetY, &f.ScrX, &f.ScrY, 0 );
             PushItem( item );
             AffectItem( o, item );
             o->RunTime.MapObjId = cur_id;
@@ -4139,7 +4138,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             cr->HexX = o->MapX;
             cr->HexY = o->MapY;
             cr->Flags = o->ProtoId;
-            cr->SetDir( (uchar) o->Dir );
+            cr->SetDir( (uchar) o->MCritter.Dir );
             cr->Id = ++cur_id;
             cr->Init();
             AffectCritter( o, cr );
@@ -4235,11 +4234,9 @@ void HexManager::SetTile( uint name_hash, ushort hx, ushort hy, short ox, short 
 {
     if( hx >= maxHexX || hy >= maxHexY )
         return;
-    Field& f = GetField( hx, hy );
+    Field&     f = GetField( hx, hy );
 
-    SprMngr.SurfFilterNearest = true;
     AnyFrames* anim = ResMngr.GetItemAnim( name_hash );
-    SprMngr.SurfFilterNearest = false;
     if( !anim )
         return;
 
@@ -4492,7 +4489,6 @@ void HexManager::AffectItem( MapObject* mobj, ItemHex* item )
     mobj->MItem.PicInvHash = ( mobj->RunTime.PicInvName[ 0 ] ? Str::GetHash( mobj->RunTime.PicInvName ) : 0 );
     item->Data.PicMapHash = mobj->MItem.PicMapHash;
     item->Data.PicInvHash = mobj->MItem.PicInvHash;
-    item->Data.Dir = mobj->Dir;
 
     item->Data.Info = mobj->MItem.InfoOffset;
     item->Data.OffsetX = mobj->MItem.OffsetX;

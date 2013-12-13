@@ -378,11 +378,13 @@ bool FOClient::Init()
 
     // Load interface
     int res = InitIface();
-    if( res != 0 )
+    if( res != 0 && res != -100 )
     {
         WriteLog( "Init interface fail, error<%d>.\n", res );
         return false;
     }
+    if( res != 0 )
+        refresh_cache = true;
 
     // Quest Manager
     QuestMngr.Init( MsgQuest );
@@ -5512,7 +5514,7 @@ void FOClient::Net_OnChosenTalk()
     // Avatar
     DlgAvatarPic = NULL;
     if( npc && npc->Avatar.length() )
-        DlgAvatarPic = ResMngr.GetAnim( Str::GetHash( npc->Avatar.c_str() ), 0, RES_ATLAS_DYNAMIC );
+        DlgAvatarPic = ResMngr.GetAnim( Str::GetHash( npc->Avatar.c_str() ), RES_ATLAS_DYNAMIC );
 
     // Main text
     Bin >> text_id;
@@ -9458,9 +9460,9 @@ void FOClient::StopVideo()
 }
 #endif
 
-uint FOClient::AnimLoad( uint name_hash, uchar dir, int res_type )
+uint FOClient::AnimLoad( uint name_hash, int res_type )
 {
-    AnyFrames* anim = ResMngr.GetAnim( name_hash, dir, res_type );
+    AnyFrames* anim = ResMngr.GetAnim( name_hash, res_type );
     if( !anim )
         return 0;
     IfaceAnim* ianim = new IfaceAnim( anim, res_type );
@@ -9484,7 +9486,7 @@ uint FOClient::AnimLoad( const char* fname, int path_type, int res_type )
     Str::Copy( full_name, FileManager::GetPath( path_type ) );
     Str::Append( full_name, fname );
 
-    AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( full_name ), 0, res_type );
+    AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( full_name ), res_type );
     if( !anim )
         return 0;
     IfaceAnim* ianim = new IfaceAnim( anim, res_type );
@@ -11062,15 +11064,14 @@ void FOClient::SScriptFunc::Global_WaitPing()
 
 bool FOClient::SScriptFunc::Global_LoadFont( int font_index, ScriptString& font_fname )
 {
-    return true;
     SprMngr.PushAtlasType( RES_ATLAS_STATIC );
     bool result;
     if( font_fname.length() > 0 && font_fname.c_str()[ 0 ] == '*' )
         result = SprMngr.LoadFontFO( font_index, font_fname.c_str() + 1, false );
     else
         result = SprMngr.LoadFontBMF( font_index, font_fname.c_str() );
-    if( result )
-        SprMngr.BuildFont( font_index );
+    if( result && !SprMngr.IsAccumulateAtlasActive() )
+        SprMngr.BuildFonts();
     SprMngr.PopAtlasType();
     return result;
 }
@@ -11478,9 +11479,9 @@ uint FOClient::SScriptFunc::Global_LoadSprite( ScriptString& spr_name, int path_
     return Self->AnimLoad( spr_name.c_str(), path_index, RES_ATLAS_STATIC );
 }
 
-uint FOClient::SScriptFunc::Global_LoadSpriteHash( uint name_hash, uchar dir )
+uint FOClient::SScriptFunc::Global_LoadSpriteHash( uint name_hash )
 {
-    return Self->AnimLoad( name_hash, dir, RES_ATLAS_STATIC );
+    return Self->AnimLoad( name_hash, RES_ATLAS_STATIC );
 }
 
 int FOClient::SScriptFunc::Global_GetSpriteWidth( uint spr_id, int spr_index )

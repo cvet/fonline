@@ -32,7 +32,6 @@ BIND_ASSERT( engine->RegisterObjectProperty( "ProtoItem", "const bool Stackable"
 BIND_ASSERT( engine->RegisterObjectProperty( "ProtoItem", "const bool Deteriorable", OFFSETOF( ProtoItem, Deteriorable ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ProtoItem", "const bool GroundLevel", OFFSETOF( ProtoItem, GroundLevel ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ProtoItem", "const int Corner", OFFSETOF( ProtoItem, Corner ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ProtoItem", "const int Dir", OFFSETOF( ProtoItem, Dir ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ProtoItem", "const uint8 Slot", OFFSETOF( ProtoItem, Slot ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ProtoItem", "const uint Weight", OFFSETOF( ProtoItem, Weight ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ProtoItem", "const uint Volume", OFFSETOF( ProtoItem, Volume ) ) );
@@ -347,7 +346,6 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 RadioBroadcastRecv",
 BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint HolodiskNumber", OFFSETOF( Item, Data.HolodiskNumber ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int16 OffsetX", OFFSETOF( Item, Data.OffsetX ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int16 OffsetY", OFFSETOF( Item, Data.OffsetY ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int16 Dir", OFFSETOF( Item, Data.Dir ) ) );
 
 /************************************************************************/
 /* CraftItem
@@ -951,7 +949,6 @@ BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 RadioBroadca
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint HolodiskNumber", OFFSETOF( Item, Data.HolodiskNumber ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int16 OffsetX", OFFSETOF( Item, Data.OffsetX ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int16 OffsetY", OFFSETOF( Item, Data.OffsetY ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int16 Dir", OFFSETOF( Item, Data.Dir ) ) );
 
 BIND_ASSERT( engine->RegisterGlobalFunction( "CritterCl@+ GetChosen()", asFUNCTION( BIND_CLASS Global_GetChosen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetChosenActions(uint[]@+ actions)", asFUNCTION( BIND_CLASS Global_GetChosenActions ), asCALL_CDECL ) );
@@ -1003,7 +1000,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void GetDayColor(uint dayPart, uin
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RunServerScript(string& funcName, int p0, int p1, int p2, string@+ p3, int[]@+ p4)", asFUNCTION( BIND_CLASS Global_RunServerScript ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RunServerScriptUnsafe(string& funcName, int p0, int p1, int p2, string@+ p3, int[]@+ p4)", asFUNCTION( BIND_CLASS Global_RunServerScriptUnsafe ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(string& name, int pathIndex)", asFUNCTION( BIND_CLASS Global_LoadSprite ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(uint nameHash, uint8 dir)", asFUNCTION( BIND_CLASS Global_LoadSpriteHash ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(uint nameHash)", asFUNCTION( BIND_CLASS Global_LoadSpriteHash ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteWidth(uint sprId, int sprIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteWidth ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteHeight(uint sprId, int sprIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteHeight ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetSpriteCount(uint sprId)", asFUNCTION( BIND_CLASS Global_GetSpriteCount ), asCALL_CDECL ) );
@@ -1236,7 +1233,6 @@ BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint8 MapObj
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint16 ProtoId", OFFSETOF( MapObject, ProtoId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint16 MapX", OFFSETOF( MapObject, MapX ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint16 MapY", OFFSETOF( MapObject, MapY ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Dir", OFFSETOF( MapObject, Dir ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint UID", OFFSETOF( MapObject, UID ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint ContainerUID", OFFSETOF( MapObject, ContainerUID ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint ParentUID", OFFSETOF( MapObject, ParentUID ) ) );
@@ -1258,6 +1254,8 @@ BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int UserData8", OF
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int UserData9", OFFSETOF( MapObject, UserData[ 9 ] ) ) );
 
 // Critter
+BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Critter_Dir", OFFSETOF( MapObject, MCritter.Dir ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Critter_Cond", OFFSETOF( MapObject, MCritter.Cond ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Critter_Anim1", OFFSETOF( MapObject, MCritter.Anim1 ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Critter_Anim2", OFFSETOF( MapObject, MCritter.Anim2 ) ) );
 for( int i = 0; i < 40 /*MAPOBJ_CRITTER_PARAMS*/; i++ )
@@ -1403,7 +1401,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "string@ ReplaceText(const string& 
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveScreen(uint16 hexX, uint16 hexY, uint speed)", asFUNCTION( BIND_CLASS Global_MoveScreen ), asCALL_CDECL ) );
 
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(string& name, int pathIndex)", asFUNCTION( BIND_CLASS Global_LoadSprite ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(uint nameHash, uint8 dir)", asFUNCTION( BIND_CLASS Global_LoadSpriteHash ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(uint nameHash)", asFUNCTION( BIND_CLASS Global_LoadSpriteHash ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteWidth(uint sprId, int sprIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteWidth ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteHeight(uint sprId, int sprIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteHeight ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetSpriteCount(uint sprId)", asFUNCTION( BIND_CLASS Global_GetSpriteCount ), asCALL_CDECL ) );

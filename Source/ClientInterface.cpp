@@ -36,7 +36,7 @@ void FOClient::IfaceLoadSpr( AnyFrames*& comp, const char* name )
     char res[ MAX_FOTEXT ];
     if( !IfaceIni.GetStr( name, "none.png", res ) )
         WriteLog( "Signature<%s> not found.\n", name );
-    comp = SprMngr.LoadAnimation( res, PT_ART_INTRFACE, ANIM_USE_DUMMY );
+    comp = SprMngr.LoadAnimation( res, PT_ART_INTRFACE, true );
     if( comp == SpriteManager::DummyAnimation )
         WriteLog( "File<%s> not found.\n", res );
 }
@@ -184,23 +184,15 @@ int FOClient::InitIface()
     {
         WriteLog( "Execute start script fail.\n" );
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
-        return -10;
+        result = -100;
     }
 
     // Flush atlas data
     SprMngr.PopAtlasType();
     SprMngr.FlushAccumulatedAtlasData();
 
-    // Build fonts
-    SprMngr.BuildFont( FONT_FO );
-    SprMngr.BuildFont( FONT_NUM );
-    SprMngr.BuildFont( FONT_BIG_NUM );
-    SprMngr.BuildFont( FONT_SAND_NUM );
-    SprMngr.BuildFont( FONT_SPECIAL );
-    SprMngr.BuildFont( FONT_DEFAULT );
-    SprMngr.BuildFont( FONT_THIN );
-    SprMngr.BuildFont( FONT_FAT );
-    SprMngr.BuildFont( FONT_BIG );
+    // Finish fonts
+    SprMngr.BuildFonts();
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
 
     return result;
@@ -1077,21 +1069,21 @@ int FOClient::InitIfaceExt()
     IfaceLoadSpr( BarterPBC2oScrDnDn, "BarterCont2oScrDnPicDn" );
 
     // Cursors
-    CurPMove = SprMngr.LoadAnimation( "msef001.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPMoveBlock = SprMngr.LoadAnimation( "msef002.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPUseItem = SprMngr.LoadAnimation( "acttohit.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPUseSkill = SprMngr.LoadAnimation( "crossuse.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPWait = SprMngr.LoadAnimation( "wait2.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPHand = SprMngr.LoadAnimation( "hand.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPDef = SprMngr.LoadAnimation( "actarrow.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPScrRt = SprMngr.LoadAnimation( "screast.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPScrLt = SprMngr.LoadAnimation( "scrwest.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPScrUp = SprMngr.LoadAnimation( "scrnorth.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPScrDw = SprMngr.LoadAnimation( "scrsouth.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPScrRU = SprMngr.LoadAnimation( "scrneast.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPScrLU = SprMngr.LoadAnimation( "scrnwest.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPScrRD = SprMngr.LoadAnimation( "scrseast.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
-    CurPScrLD = SprMngr.LoadAnimation( "scrswest.frm", PT_ART_INTRFACE, ANIM_USE_DUMMY );
+    CurPMove = SprMngr.LoadAnimation( "msef001.frm", PT_ART_INTRFACE, true );
+    CurPMoveBlock = SprMngr.LoadAnimation( "msef002.frm", PT_ART_INTRFACE, true );
+    CurPUseItem = SprMngr.LoadAnimation( "acttohit.frm", PT_ART_INTRFACE, true );
+    CurPUseSkill = SprMngr.LoadAnimation( "crossuse.frm", PT_ART_INTRFACE, true );
+    CurPWait = SprMngr.LoadAnimation( "wait2.frm", PT_ART_INTRFACE, true );
+    CurPHand = SprMngr.LoadAnimation( "hand.frm", PT_ART_INTRFACE, true );
+    CurPDef = SprMngr.LoadAnimation( "actarrow.frm", PT_ART_INTRFACE, true );
+    CurPScrRt = SprMngr.LoadAnimation( "screast.frm", PT_ART_INTRFACE, true );
+    CurPScrLt = SprMngr.LoadAnimation( "scrwest.frm", PT_ART_INTRFACE, true );
+    CurPScrUp = SprMngr.LoadAnimation( "scrnorth.frm", PT_ART_INTRFACE, true );
+    CurPScrDw = SprMngr.LoadAnimation( "scrsouth.frm", PT_ART_INTRFACE, true );
+    CurPScrRU = SprMngr.LoadAnimation( "scrneast.frm", PT_ART_INTRFACE, true );
+    CurPScrLU = SprMngr.LoadAnimation( "scrnwest.frm", PT_ART_INTRFACE, true );
+    CurPScrRD = SprMngr.LoadAnimation( "scrseast.frm", PT_ART_INTRFACE, true );
+    CurPScrLD = SprMngr.LoadAnimation( "scrswest.frm", PT_ART_INTRFACE, true );
     if( !CurPMove )
         return __LINE__;
     if( !CurPMoveBlock )
@@ -1170,7 +1162,7 @@ int FOClient::InitIfaceExt()
     IfaceLoadSpr( LmapPBOkDw, "LmapOkPicDn" );
     IfaceLoadSpr( LmapPBScanDw, "LmapScanPicDn" );
     IfaceLoadSpr( LmapPBLoHiDw, "LmapLoHiPicDn" );
-    LmapPPix = SprMngr.LoadAnimation( "green_pix.png", PT_ART_INTRFACE, ANIM_USE_DUMMY );
+    LmapPPix = SprMngr.LoadAnimation( "green_pix.png", PT_ART_INTRFACE, true );
     if( !LmapPPix )
         return __LINE__;
 
@@ -5512,7 +5504,7 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
             break;
         AimTargetId = cr->GetId();
         SetCurMode( CUR_DEFAULT );
-        SAFEDEL( AimPic );
+        AnyFrames::Destroy( AimPic );
         AimPic = AimGetPic( cr, "frm" );
         if( !AimPic )
             AimPic = AimGetPic( cr, "png" );
@@ -6023,7 +6015,7 @@ void FOClient::GmapDraw()
                 continue;
 
             if( !GmapPic[ index ] )
-                GmapPic[ index ] = ResMngr.GetAnim( Str::GetHash( FileManager::GetFullPath( Str::FormatBuf( GmapTilesPic, index ), PT_ART_INTRFACE ) ), 0, RES_ATLAS_DYNAMIC );
+                GmapPic[ index ] = ResMngr.GetAnim( Str::GetHash( FileManager::GetFullPath( Str::FormatBuf( GmapTilesPic, index ), PT_ART_INTRFACE ) ), RES_ATLAS_DYNAMIC );
             if( !GmapPic[ index ] )
                 continue;
 
@@ -9134,9 +9126,9 @@ AnyFrames* FOClient::AimGetPic( CritterCl* cr, const char* ext )
     Str::Format( aim_name_alias, "%s%sna.%s", FileManager::GetPath( PT_ART_CRITTERS ), CritType::GetName( cr->GetCrTypeAlias() ), ext );
 
     // Load
-    AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( aim_name ), 0, RES_ATLAS_DYNAMIC );
+    AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( aim_name ), RES_ATLAS_DYNAMIC );
     if( !anim )
-        anim = ResMngr.GetAnim( Str::GetHash( aim_name_alias ), 0, RES_ATLAS_DYNAMIC );
+        anim = ResMngr.GetAnim( Str::GetHash( aim_name_alias ), RES_ATLAS_DYNAMIC );
     return anim;
 }
 
@@ -9157,7 +9149,7 @@ void FOClient::PupDraw()
         ProtoItem* proto_item = ItemMngr.GetProtoItem( PupContPid );
         if( proto_item )
         {
-            AnyFrames* anim = ResMngr.GetItemAnim( proto_item->PicMap, proto_item->Dir );
+            AnyFrames* anim = ResMngr.GetItemAnim( proto_item->PicMap );
             if( anim )
                 SprMngr.DrawSpriteSize( anim->GetSprId( anim->GetCnt() - 1 ), PupWInfo[ 0 ] + PupX, PupWInfo[ 1 ] + PupY, (float) PupWInfo.W(), (float) PupWInfo.H(), false, true );
         }
@@ -10099,7 +10091,7 @@ void FOClient::ElevatorGenerate( uint param )
         return;
     if( button_pic && !( ElevatorButtonPicDown = ResMngr.GetIfaceAnim( button_pic ) ) )
         return;
-    if( ElevatorIndicatorAnim && !( ElevatorIndicatorAnim = AnimLoad( ElevatorIndicatorAnim, 0, RES_ATLAS_STATIC ) ) )
+    if( ElevatorIndicatorAnim && !( ElevatorIndicatorAnim = AnimLoad( ElevatorIndicatorAnim, RES_ATLAS_STATIC ) ) )
         return;
 
     AnimRun( ElevatorIndicatorAnim, ANIMRUN_SET_FRM( AnimGetSprCount( ElevatorIndicatorAnim ) * Procent( ElevatorLevelsCount - 1, ElevatorCurrentLevel - ElevatorStartLevel ) / 100 ) | ANIMRUN_STOP );

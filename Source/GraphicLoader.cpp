@@ -1042,15 +1042,15 @@ Texture* GraphicLoader::LoadTexture( const char* texture_name, const char* model
     }
 
     // Load
-    uint        size, w, h;
+    uint        w, h;
     uchar*      data = NULL;
     const char* ext = FileManager::GetExtension( texture_name );
     if( !ext )
         WriteLogF( _FUNC_, " - Extension not found, file<%s>.\n", texture_name );
     else if( Str::CompareCase( ext, "png" ) )
-        data = LoadPNG( fm.GetBuf(), fm.GetFsize(), size, w, h );
+        data = LoadPNG( fm.GetBuf(), fm.GetFsize(), w, h );
     else if( Str::CompareCase( ext, "tga" ) )
-        data = LoadTGA( fm.GetBuf(), fm.GetFsize(), size, w, h );
+        data = LoadTGA( fm.GetBuf(), fm.GetFsize(), w, h );
     else
         WriteLogF( _FUNC_, " - File format<%s> not supported, file<%s>.\n", ext, texture_name );
     if( !data )
@@ -1059,7 +1059,7 @@ Texture* GraphicLoader::LoadTexture( const char* texture_name, const char* model
     // Create texture
     Texture* texture = new Texture();
     texture->Data = data;
-    texture->Size = size;
+    texture->Size = w * h * 4;
     texture->Width = w;
     texture->Height = h;
     texture->SizeData[ 0 ] = (float) w;
@@ -1671,7 +1671,7 @@ bool GraphicLoader::LoadDefaultEffects()
 /*                                                                      */
 /************************************************************************/
 
-uchar* GraphicLoader::LoadPNG( const uchar* data, uint data_size, uint& result_size, uint& result_width, uint& result_height )
+uchar* GraphicLoader::LoadPNG( const uchar* data, uint data_size, uint& result_width, uint& result_height )
 {
     struct PNGMessage
     {
@@ -1767,7 +1767,6 @@ uchar* GraphicLoader::LoadPNG( const uchar* data, uint data_size, uint& result_s
     free( row_pointers );
 
     // Return
-    result_size = width * height * 4;
     result_width = width;
     result_height = height;
     return result;
@@ -1834,7 +1833,7 @@ void GraphicLoader::SavePNG( const char* fname, uchar* data, uint width, uint he
     fm.SaveOutBufToFile( fname, PT_ROOT );
 }
 
-uchar* GraphicLoader::LoadTGA( const uchar* data, uint data_size, uint& result_size, uint& result_width, uint& result_height )
+uchar* GraphicLoader::LoadTGA( const uchar* data, uint data_size, uint& result_width, uint& result_height )
 {
     // Reading macros
     bool read_error = false;
@@ -1941,8 +1940,7 @@ uchar* GraphicLoader::LoadTGA( const uchar* data, uint data_size, uint& result_s
     }
 
     // Copy data
-    result_size = width * height * 4;
-    uchar* result = new uchar[ result_size ];
+    uchar* result = new uchar[ width * height * 4 ];
     for( int i = 0, j = width * height; i < j; i++ )
     {
         result[ i * 4 + 0 ] = read_data[ i * bpp + 2 ];

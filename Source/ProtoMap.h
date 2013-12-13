@@ -21,7 +21,6 @@ public:
     ushort ProtoId;
     ushort MapX;
     ushort MapY;
-    short  Dir;
 
     uint   UID;
     uint   ContainerUID;
@@ -44,6 +43,7 @@ public:
     {
         struct
         {
+            uchar Dir;
             uchar Cond;
             uint  Anim1;
             uint  Anim2;
@@ -162,8 +162,6 @@ struct SceneryCl
     uchar  AnimStayEnd;
     ushort AnimWait;
     uint   PicMapHash;
-    short  Dir;
-    ushort Reserved1;
 };
 typedef vector< SceneryCl > SceneryClVec;
 

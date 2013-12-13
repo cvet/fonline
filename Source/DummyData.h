@@ -1374,8 +1374,6 @@ struct GameOptions
     int DebugSprites;
     int FullScreen;
     int VSync;
-    int FlushVal;
-    int BaseTexture;
     int Light;
     int Host;
     int Port;

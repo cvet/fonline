@@ -140,11 +140,12 @@
       <AdditionalLibraryDirectories>..\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>$(IntDir)Mapper.intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>libfbxsdk.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <GenerateMapFile>false</GenerateMapFile>
-      <MapFileName>$(IntDir)Mapper.map</MapFileName>
+      <MapFileName>
+      </MapFileName>
       <SubSystem>Windows</SubSystem>
       <ProfileGuidedDatabase>
       </ProfileGuidedDatabase>
@@ -152,7 +153,8 @@
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
-      <StripPrivateSymbols>$(OutDir)Mapper.pdb</StripPrivateSymbols>
+      <StripPrivateSymbols>
+      </StripPrivateSymbols>
     </Link>
     <Manifest>
       <OutputManifestFile>$(IntDir)Mapper.embed.manifest</OutputManifestFile>
@@ -213,7 +215,7 @@
       <AdditionalLibraryDirectories>..\Lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>$(IntDir)Mapper.intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <DelayLoadDLLs>Assimp64.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>libfbxsdk.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <GenerateMapFile>false</GenerateMapFile>
@@ -285,11 +287,12 @@
       <AdditionalLibraryDirectories>..\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>$(IntDir)Mapper.intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>libfbxsdk.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <GenerateMapFile>false</GenerateMapFile>
-      <MapFileName>$(IntDir)MapperDbg.map</MapFileName>
+      <MapFileName>
+      </MapFileName>
       <SubSystem>Windows</SubSystem>
       <ProfileGuidedDatabase>
       </ProfileGuidedDatabase>
@@ -297,7 +300,8 @@
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
-      <StripPrivateSymbols>$(OutDir)MapperDbg.pdb</StripPrivateSymbols>
+      <StripPrivateSymbols>
+      </StripPrivateSymbols>
     </Link>
     <Manifest>
       <OutputManifestFile>$(IntDir)Mapper.embed.manifest</OutputManifestFile>
@@ -356,7 +360,7 @@
       <AdditionalLibraryDirectories>..\Lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>$(IntDir)Mapper.intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <DelayLoadDLLs>Assimp64.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>libfbxsdk.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <GenerateMapFile>false</GenerateMapFile>
