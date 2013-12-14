@@ -376,7 +376,7 @@ struct Frame
     // Runtime data
     FrameVec      Children;
     Matrix        CombinedTransformationMatrix;
-    uint          ParticleEmitter;
+    Vector        ScreenPos;
 
     const char* GetName();
     Frame*      Find( const char* name );

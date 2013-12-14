@@ -4,6 +4,8 @@
 #include "Common.h"
 #include "GraphicStructures.h"
 
+#define BORDERS_OFFSET         ( 50.0f )
+
 #define LAYERS3D_COUNT         ( 30 )
 
 #define ANIMATION_STAY         ( 0x01 )
@@ -80,13 +82,10 @@ private:
     bool                  shadowDisabled;
     float                 dirAngle;
     uint                  sprId;
-    Point                 drawXY, bordersXY;
+    Point                 drawXY;
     float                 drawScale;
     Vector                groundPos;
-    bool                  bordersDisabled;
-    Rect                  baseBorders, fullBorders;
-    uint                  calcBordersTick;
-    VectorVec             bordersResult;
+    RectF                 bonesBorder;
     bool                  noDraw;
     MeshOptionsVec        meshOpt;
     bool                  useGameTimer;
@@ -106,8 +105,7 @@ private:
     void         UpdateFrameMatrices( Frame* frame, const Matrix* parent_matrix );
     bool         DrawFrame( Frame* frame, bool shadow );
     bool         IsIntersectFrame( Frame* frame, const Vector& ray_origin, const Vector& ray_dir, float x, float y );
-    bool         SetupBordersFrame( Frame* frame, RectF& borders );
-    void         ProcessBorders();
+    void         SetupBordersFrame( Frame* frame, RectF& borders );
     float        GetSpeed();
     uint         GetTick();
     MeshOptions* GetMeshOptions( Frame* frame );
@@ -128,22 +126,20 @@ public:
     #ifdef SHADOW_MAP
     void SetPitch( float angle );
     #endif
-    void SetScale( float sx, float sy, float sz );
-    void SetSpeed( float speed );
-    void SetTimer( bool use_game_timer );
-    void EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
-    bool Draw( int x, int y, float scale, RectF* stencil, uint color );
-    void SetDrawPos( int x, int y );
-    bool IsAnimationPlaying();
-    bool IsIntersect( int x, int y );
-    void SetSprId( uint value )             { sprId = value; }
-    uint GetSprId()                         { return sprId; }
-    void EnableSetupBorders( bool enabled ) { bordersDisabled = !enabled; }
-    void SetupBorders();
-    Rect GetBaseBorders( Point* pivot = NULL );
-    Rect GetFullBorders( Point* pivot = NULL );
-    Rect GetExtraBorders( Point* pivot = NULL );
-    void GetRenderFramesData( float& period, int& proc_from, int& proc_to );
+    void  SetScale( float sx, float sy, float sz );
+    void  SetSpeed( float speed );
+    void  SetTimer( bool use_game_timer );
+    void  EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
+    bool  Draw( int x, int y, float scale, RectF* stencil, uint color );
+    void  SetDrawPos( int x, int y );
+    bool  IsAnimationPlaying();
+    bool  IsIntersect( int x, int y );
+    void  SetSprId( uint value ) { sprId = value; }
+    uint  GetSprId()             { return sprId; }
+    Point GetGroundPos();
+    Rect  GetBonesBorder( bool add_offsets = false );
+    Point GetBonesBorderPivot();
+    void  GetRenderFramesData( float& period, int& proc_from, int& proc_to );
 
     static bool         StartUp();
     static bool         SetScreenSize( int width, int height );
@@ -207,7 +203,7 @@ private:
     FrameVec                   allDrawFrames;
 
     static Animation3dXFile* GetXFile( const char* xname );
-    static bool              SetupFrames( Animation3dXFile* xfile, Frame* frame, Frame* frame_root );
+    static void              SetupFrames( Animation3dXFile* xfile, Frame* frame, Frame* frame_root );
     static void              SetupAnimationOutput( Frame* frame, AnimController* anim_controller );
 
     MeshTexture* GetTexture( const char* tex_name );

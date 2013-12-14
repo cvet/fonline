@@ -9,6 +9,7 @@
 #include "CritterType.h"
 
 int       ModeWidth = 0, ModeHeight = 0;
+float     ModeWidthF = 0, ModeHeightF = 0;
 float     FixedZ = 0.0f;
 Matrix    MatrixProjRM, MatrixEmptyRM, MatrixProjCM, MatrixEmptyCM; // Row or Column major order
 float     MoveTransitionTime = 0.25f;
@@ -44,6 +45,13 @@ void VecUnproject( const Vector& v, Vector& out )
     out.z = 0.0f;
 }
 
+void ProjectPosition( Vector& v )
+{
+    v *= MatrixProjRM;
+    v.x = ( ( v.x - 1.0f ) * 0.5f + 1.0f ) * ModeWidthF;
+    v.y = ( ( 1.0f - v.y ) * 0.5f ) * ModeHeightF;
+}
+
 /************************************************************************/
 /* Animation3d                                                          */
 /************************************************************************/
@@ -53,7 +61,7 @@ Animation3dVec Animation3d::generalAnimations;
 Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ),
                             currentTrack( 0 ), lastTick( 0 ), endTick( 0 ), speedAdjustBase( 1.0f ), speedAdjustCur( 1.0f ), speedAdjustLink( 1.0f ),
                             shadowDisabled( false ), dirAngle( GameOpt.MapHexagonal ? 150.0f : 135.0f ), sprId( 0 ),
-                            drawScale( 0.0f ), bordersDisabled( false ), calcBordersTick( 0 ), noDraw( true ), parentAnimation( NULL ), parentFrame( NULL ),
+                            drawScale( 0.0f ), noDraw( true ), parentAnimation( NULL ), parentFrame( NULL ),
                             childChecker( true ), useGameTimer( true ), animPosProc( 0.0f ), animPosTime( 0.0f ), animPosPeriod( 0.0f )
 {
     memzero( currentLayers, sizeof( currentLayers ) );
@@ -372,15 +380,6 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
             lastTick = tick;
             animController->AdvanceTime( 0.0f );
         }
-
-        // Borders
-        if( !parentAnimation )
-        {
-            if( FLAG( flags, ANIMATION_ONE_TIME ) )
-                calcBordersTick = endTick;
-            else
-                calcBordersTick = tick + uint( smooth_time * 1000.0f );
-        }
     }
 
     // Set animation for children
@@ -389,9 +388,6 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
         Animation3d* child = *it;
         child->SetAnimation( anim1, anim2, layers, flags );
     }
-
-    // Calculate borders
-    SetupBorders();
 }
 
 bool Animation3d::IsAnimation( uint anim1, uint anim2 )
@@ -431,7 +427,8 @@ bool Animation3d::IsIntersect( int x, int y )
 {
     if( noDraw )
         return false;
-    Rect borders = GetExtraBorders();
+
+    Rect borders = GetBonesBorder( true );
     if( x < borders.L || x > borders.R || y < borders.T || y > borders.B )
         return false;
 
@@ -443,6 +440,7 @@ bool Animation3d::IsIntersect( int x, int y )
     FrameMove( 0.0, drawXY.X, drawXY.Y, drawScale, true );
     if( IsIntersectFrame( animEntity->xFile->frameRoot, ray_origin, ray_dir, (float) x, (float) y ) )
         return true;
+
     // Children
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
     {
@@ -485,117 +483,29 @@ bool Animation3d::IsIntersectFrame( Frame* frame, const Vector& ray_origin, cons
     return false;
 }
 
-void Animation3d::SetupBorders()
+Point Animation3d::GetGroundPos()
 {
-    if( bordersDisabled )
-        return;
-
-    RectF borders( 1000000.0f, 1000000.0f, -1000000.0f, -1000000.0f );
-
-    // Root
-    FrameMove( 0.0, drawXY.X, drawXY.Y, drawScale, true );
-    SetupBordersFrame( animEntity->xFile->frameRoot, borders );
-    baseBorders.L = (int) borders.L;
-    baseBorders.R = (int) borders.R;
-    baseBorders.T = (int) borders.T;
-    baseBorders.B = (int) borders.B;
-
-    // Children
-    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
-    {
-        Animation3d* child = *it;
-        child->FrameMove( 0.0, drawXY.X, drawXY.Y, 1.0f, true );
-        SetupBordersFrame( child->animEntity->xFile->frameRoot, borders );
-    }
-
-    // Store result
-    fullBorders.L = (int) borders.L;
-    fullBorders.R = (int) borders.R;
-    fullBorders.T = (int) borders.T;
-    fullBorders.B = (int) borders.B;
-    bordersXY = drawXY;
-
-    // Grow borders
-    baseBorders.L -= 1;
-    baseBorders.R += 2;
-    baseBorders.T -= 1;
-    baseBorders.B += 2;
-    fullBorders.L -= 1;
-    fullBorders.R += 2;
-    fullBorders.T -= 1;
-    fullBorders.B += 2;
+    if( noDraw )
+        return Point();
+    Vector pos = groundPos;
+    ProjectPosition( pos );
+    return PointF( pos.x, pos.y );
 }
 
-bool Animation3d::SetupBordersFrame( Frame* frame, RectF& borders )
+Rect Animation3d::GetBonesBorder( bool add_offsets /* = false */ )
 {
-    for( auto it = frame->Mesh.begin(), end = frame->Mesh.end(); it != end; ++it )
-    {
-        MeshSubset& ms = *it;
-        if( !ms.VerticesTransformedValid )
-            continue;
-
-        for( size_t i = 0, j = ms.Vertices.size(); i < j; i++ )
-        {
-            Vector& pos = ms.VerticesTransformed[ i ].Position;
-            if( pos.x < borders.L )
-                borders.L = pos.x;
-            if( pos.x > borders.R )
-                borders.R = pos.x;
-            if( pos.y < borders.T )
-                borders.T = pos.y;
-            if( pos.y > borders.B )
-                borders.B = pos.y;
-        }
-    }
-
-    for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
-        SetupBordersFrame( *it, borders );
-
-    return true;
+    if( noDraw )
+        return Rect();
+    if( add_offsets )
+        return RectF( bonesBorder.L - BORDERS_OFFSET, bonesBorder.T - BORDERS_OFFSET, bonesBorder.R + BORDERS_OFFSET, bonesBorder.B + BORDERS_OFFSET );
+    return bonesBorder;
 }
 
-void Animation3d::ProcessBorders()
+Point Animation3d::GetBonesBorderPivot()
 {
-    if( calcBordersTick && GetTick() >= calcBordersTick )
-    {
-        SetupBorders();
-        calcBordersTick = 0;
-    }
-}
-
-Rect Animation3d::GetBaseBorders( Point* pivot /* = NULL */ )
-{
-    ProcessBorders();
-    if( pivot )
-        *pivot = Point( bordersXY.X - baseBorders.L, bordersXY.Y - baseBorders.T );
-    return Rect( baseBorders, drawXY.X - bordersXY.X, drawXY.Y - bordersXY.Y );
-}
-
-Rect Animation3d::GetFullBorders( Point* pivot /* = NULL */ )
-{
-    ProcessBorders();
-    if( pivot )
-        *pivot = Point( bordersXY.X - fullBorders.L, bordersXY.Y - fullBorders.T );
-    return Rect( fullBorders, drawXY.X - bordersXY.X, drawXY.Y - bordersXY.Y );
-}
-
-Rect Animation3d::GetExtraBorders( Point* pivot /* = NULL */ )
-{
-    ProcessBorders();
-    float w = (float) fullBorders.W();
-    float h = (float) fullBorders.H();
-    if( pivot )
-    {
-        *pivot = Point( bordersXY.X - fullBorders.L, bordersXY.Y - fullBorders.T );
-        pivot->X += (int) ( w * 1.5f );
-        pivot->Y += (int) ( h * 1.0f );
-    }
-    Rect result( fullBorders, drawXY.X - bordersXY.X, drawXY.Y - bordersXY.Y );
-    result.L -= (int) ( w * 1.5f );
-    result.T -= (int) ( h * 1.0f );
-    result.R += (int) ( w * 1.5f );
-    result.B += (int) ( h * 1.0f );
-    return result;
+    if( noDraw )
+        return Point();
+    return Point( drawXY.X - (int) bonesBorder.L, drawXY.Y - (int) bonesBorder.T );
 }
 
 void Animation3d::GetRenderFramesData( float& period, int& proc_from, int& proc_to )
@@ -830,20 +740,14 @@ void Animation3d::SetDir( int dir )
 {
     float angle = (float) ( GameOpt.MapHexagonal ? 150 - dir * 60 : 135 - dir * 45 );
     if( angle != dirAngle )
-    {
         dirAngle = angle;
-        SetupBorders();
-    }
 }
 
 void Animation3d::SetDirAngle( int dir_angle )
 {
     float angle = (float) dir_angle;
     if( angle != dirAngle )
-    {
         dirAngle = angle;
-        SetupBorders();
-    }
 }
 
 void Animation3d::SetRotation( float rx, float ry, float rz )
@@ -900,6 +804,7 @@ bool Animation3d::Draw( int x, int y, float scale, RectF* stencil, uint color )
     }
 
     bool shadow_disabled = ( shadowDisabled || animEntity->shadowDisabled );
+    bonesBorder( 1000000.0f, 1000000.0f, -1000000.0f, -1000000.0f );
 
     #ifdef SHADOW_MAP
     drawXY.X = x;
@@ -936,9 +841,9 @@ bool Animation3d::Draw( int x, int y, float scale, RectF* stencil, uint color )
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
         ( *it )->DrawFrame( ( *it )->animEntity->xFile->frameRoot, false );
     #else
-    FrameMove( elapsed, x, y, scale, true );
+    FrameMove( elapsed, x, y, scale, false );
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
-        ( *it )->FrameMove( elapsed, x, y, 1.0f, true );
+        ( *it )->FrameMove( elapsed, x, y, 1.0f, false );
     if( !shadow_disabled )
     {
         GL( glDisable( GL_DEPTH_TEST ) );
@@ -960,9 +865,6 @@ bool Animation3d::Draw( int x, int y, float scale, RectF* stencil, uint color )
     drawScale = scale;
     drawXY.X = x;
     drawXY.Y = y;
-
-    if( scale != old_scale )
-        SetupBorders();
     return true;
 }
 
@@ -1020,8 +922,6 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool tran
 
     if( transform )
     {
-        float wf = (float) ModeWidth;
-        float hf = (float) ModeHeight;
         for( auto it = animEntity->xFile->allDrawFrames.begin(), end = animEntity->xFile->allDrawFrames.end(); it != end; ++it )
         {
             Frame* frame = *it;
@@ -1045,9 +945,8 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool tran
                     {
                         Vertex3D& v = ms.Vertices[ i ];
                         Vertex3D& vt = ms.VerticesTransformed[ i ];
-                        vt.Position = MatrixProjRM * frame->CombinedTransformationMatrix * v.Position;
-                        vt.Position.x = ( ( vt.Position.x - 1.0f ) * 0.5f + 0.5f ) * wf;
-                        vt.Position.y = ( ( 1.0f - vt.Position.y ) * 0.5f + 0.5f ) * hf;
+                        vt.Position = frame->CombinedTransformationMatrix * v.Position;
+                        ProjectPosition( vt.Position );
                     }
                 }
                 // Skinned
@@ -1073,9 +972,8 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool tran
                             position += m * v.Position * v.BlendWeights[ b ];
                         }
 
-                        vt.Position = MatrixProjRM * position;
-                        vt.Position.x = ( ( vt.Position.x - 1.0f ) * 0.5f + 0.5f ) * wf;
-                        vt.Position.y = ( ( 1.0f - vt.Position.y ) * 0.5f + 0.5f ) * hf;
+                        vt.Position = position;
+                        ProjectPosition( vt.Position );
                     }
                 }
             }
@@ -1097,6 +995,23 @@ void Animation3d::UpdateFrameMatrices( Frame* frame, const Matrix* parent_matrix
     // If parent matrix exists multiply our frame matrix by it
     frame->CombinedTransformationMatrix = ( *parent_matrix ) * frame->TransformationMatrix;
 
+    // Calculate bone screen position
+    Matrix& m = frame->CombinedTransformationMatrix;
+    frame->ScreenPos.Set( m[ 0 ][ 3 ], m[ 1 ][ 3 ], m[ 2 ][ 3 ] );
+    ProjectPosition( frame->ScreenPos );
+
+    // Update borders
+    Vector& pos = frame->ScreenPos;
+    if( pos.x < bonesBorder.L )
+        bonesBorder.L = pos.x;
+    if( pos.x > bonesBorder.R )
+        bonesBorder.R = pos.x;
+    if( pos.y < bonesBorder.T )
+        bonesBorder.T = pos.y;
+    if( pos.y > bonesBorder.B )
+        bonesBorder.B = pos.y;
+
+    // Update child
     for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
         UpdateFrameMatrices( *it, &frame->CombinedTransformationMatrix );
 }
@@ -1325,11 +1240,13 @@ bool Animation3d::SetScreenSize( int width, int height )
     // Build orthogonal projection
     ModeWidth = width;
     ModeHeight = height;
+    ModeWidthF = (float) ModeWidth;
+    ModeHeightF = (float) ModeHeight;
     FixedZ = 500.0f;
 
     // Projection
     float k = (float) ModeHeight / 768.0f;
-    gluStuffOrtho( MatrixProjRM[ 0 ], 0.0f, 18.65f * k * (float) ModeWidth / ModeHeight, 0.0f, 18.65f * k, -200.0f, 200.0f );
+    gluStuffOrtho( MatrixProjRM[ 0 ], 0.0f, 18.65f * k * ModeWidthF / ModeHeightF, 0.0f, 18.65f * k, -200.0f, 200.0f );
     MatrixProjCM = MatrixProjRM;
     MatrixProjCM.Transpose();
     MatrixEmptyRM = Matrix();
@@ -2353,7 +2270,7 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
     return xfile;
 }
 
-bool Animation3dXFile::SetupFrames( Animation3dXFile* xfile, Frame* frame, Frame* frame_root )
+void Animation3dXFile::SetupFrames( Animation3dXFile* xfile, Frame* frame, Frame* frame_root )
 {
     xfile->allFrames.push_back( frame );
     if( !frame->Mesh.empty() )
@@ -2368,8 +2285,6 @@ bool Animation3dXFile::SetupFrames( Animation3dXFile* xfile, Frame* frame, Frame
 
     for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
         SetupFrames( xfile, *it, frame_root );
-
-    return true;
 }
 
 void Animation3dXFile::SetupAnimationOutput( Frame* frame, AnimController* anim_controller )

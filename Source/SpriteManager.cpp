@@ -3136,7 +3136,6 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     int rt_width = rt3DSprite->TargetTexture->Width;
     int rt_height = rt3DSprite->TargetTexture->Height;
     Animation3d::SetScreenSize( rt_width, rt_height );
-    anim3d->EnableSetupBorders( false );
     if( dir < 0 || dir >= DIRS_COUNT )
         anim3d->SetDirAngle( dir );
     else
@@ -3151,10 +3150,8 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     GL( glEnable( GL_BLEND ) );
     PopRenderTarget();
 
-    anim3d->EnableSetupBorders( true );
-    anim3d->SetupBorders();
     Animation3d::SetScreenSize( modeWidth, modeHeight );
-    Rect fb = anim3d->GetFullBorders();
+    Rect fb = anim3d->GetBonesBorder( true );
 
     // Copy from multisampled to default rt
     if( rt3DMSSprite )
@@ -3228,8 +3225,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
 
     // Fill from memory
     SpriteInfo* si = new SpriteInfo();
-    Point       p;
-    anim3d->GetFullBorders( &p );
+    Point       p = anim3d->GetBonesBorderPivot();
     si->OffsX = fb.W() / 2 - p.X;
     si->OffsY = fb.H() - p.Y;
     return RequestFillAtlas( si, w, h, data );
@@ -3720,7 +3716,9 @@ void SpriteManager::GetDrawRect( Sprite* prep, Rect& rect )
     }
     else
     {
-        rect = si->Anim3d->GetBaseBorders();
+        Point ground_pos = si->Anim3d->GetGroundPos();
+        Rect bones_border = si->Anim3d->GetBonesBorder();
+        rect = Rect( 0, 0, bones_border.W(), bones_border.H(), ground_pos.X - bones_border.W() / 2, ground_pos.Y - (int) ( 60.0f / GameOpt.SpritesZoom ) );
         rect.L = (int) ( (float) rect.L * GameOpt.SpritesZoom );
         rect.T = (int) ( (float) rect.T * GameOpt.SpritesZoom );
         rect.R = (int) ( (float) rect.R * GameOpt.SpritesZoom );
@@ -3797,7 +3795,7 @@ void SpriteManager::SetEgg( ushort hx, ushort hy, Sprite* spr )
     }
     else
     {
-        Rect bb = si->Anim3d->GetFullBorders();
+        Rect bb = si->Anim3d->GetBonesBorder();
         int  w = (int) ( (float) bb.W() * GameOpt.SpritesZoom );
         UNUSED_VARIABLE( w );
         int  h = (int) ( (float) bb.H() * GameOpt.SpritesZoom );
@@ -4402,8 +4400,8 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
 bool SpriteManager::Render3dSize( RectF rect, bool stretch_up, bool center, Animation3d* anim3d, RectF* stencil, uint color )
 {
     // Data
-    Point xy;
-    Rect  borders = anim3d->GetBaseBorders( &xy );
+    Point xy = anim3d->GetBonesBorderPivot();
+    Rect  borders = anim3d->GetBonesBorder();
     float w_real = (float) borders.W();
     float h_real = (float) borders.H();
     float scale = min( rect.W() / w_real, rect.H() / h_real );
@@ -4483,7 +4481,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         }
         else
         {
-            Rect r = si->Anim3d->GetFullBorders();
+            Rect r = si->Anim3d->GetBonesBorder( true );
             r.L -= 5, r.T -= 5, r.R += 5, r.B += 5;
             r.L = CLAMP( r.L, -1, modeWidth + 1 );
             r.T = CLAMP( r.T, -1, modeHeight + 1 );
