@@ -679,7 +679,7 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
             MeshOptions& mopt = *it;
             if( mopt.SubsetsCount )
             {
-                memcpy( mopt.TexSubsets, mopt.DefaultTexSubsets, mopt.SubsetsCount * sizeof( Texture* ) * EFFECT_TEXTURES );
+                memcpy( mopt.TexSubsets, mopt.DefaultTexSubsets, mopt.SubsetsCount * sizeof( MeshTexture* ) * EFFECT_TEXTURES );
                 memset( mopt.DisabledSubsets, 0, mopt.SubsetsCount * sizeof( bool ) );
             }
         }
@@ -689,7 +689,7 @@ void Animation3d::SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear
     {
         for( uint i = 0; i < data.TextureCount; i++ )
         {
-            Texture* texture = NULL;
+            MeshTexture* texture = NULL;
 
             // Get texture
             if( Str::CompareCaseCount( data.TextureName[ i ], "Parent", 6 ) )     // ParentX-Y, X mesh number, Y mesh subset, optional
@@ -1110,7 +1110,7 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
             continue;
 
         MeshSubset& ms = frame->Mesh[ k ];
-        Texture**   textures = &mopt->TexSubsets[ k * EFFECT_TEXTURES ];
+        MeshTexture**   textures = &mopt->TexSubsets[ k * EFFECT_TEXTURES ];
 
         if( ms.VAO )
         {
@@ -1160,6 +1160,8 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
             GL( glUniform1i( effect->ColorMap, 0 ) );
             if( effect->ColorMapSize != -1 )
                 GL( glUniform4fv( effect->ColorMapSize, 1, textures[ 0 ]->SizeData ) );
+            if( effect->ColorMapAtlasOffset != -1 )
+                GL( glUniform4fv( effect->ColorMapAtlasOffset, 1, textures[ 0 ]->AtlasOffsetData ) );
         }
         #ifdef SHADOW_MAP
         if( effect->ShadowMap != -1 )
@@ -1348,8 +1350,6 @@ void Animation3d::Finish()
     for( auto it = Animation3dXFile::xFiles.begin(), end = Animation3dXFile::xFiles.end(); it != end; ++it )
         delete *it;
     Animation3dXFile::xFiles.clear();
-
-    GraphicLoader::FreeTexture( NULL );
 }
 
 void Animation3d::BeginScene()
@@ -1388,13 +1388,13 @@ Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
         mopt.FramePtr = frame;
         mopt.SubsetsCount = (uint) frame->Mesh.size();
         mopt.DisabledSubsets = new bool[ mopt.SubsetsCount ];
-        mopt.TexSubsets = new Texture*[ mopt.SubsetsCount * EFFECT_TEXTURES ];
-        mopt.DefaultTexSubsets = new Texture*[ mopt.SubsetsCount * EFFECT_TEXTURES ];
+        mopt.TexSubsets = new MeshTexture*[ mopt.SubsetsCount * EFFECT_TEXTURES ];
+        mopt.DefaultTexSubsets = new MeshTexture*[ mopt.SubsetsCount * EFFECT_TEXTURES ];
         mopt.EffectSubsets = new Effect*[ mopt.SubsetsCount ];
         mopt.DefaultEffectSubsets = new Effect*[ mopt.SubsetsCount ];
         memzero( mopt.DisabledSubsets, mopt.SubsetsCount * sizeof( bool ) );
-        memzero( mopt.TexSubsets, mopt.SubsetsCount * sizeof( Texture* ) * EFFECT_TEXTURES );
-        memzero( mopt.DefaultTexSubsets, mopt.SubsetsCount * sizeof( Texture* ) * EFFECT_TEXTURES );
+        memzero( mopt.TexSubsets, mopt.SubsetsCount * sizeof( MeshTexture* ) * EFFECT_TEXTURES );
+        memzero( mopt.DefaultTexSubsets, mopt.SubsetsCount * sizeof( MeshTexture* ) * EFFECT_TEXTURES );
         memzero( mopt.EffectSubsets, mopt.SubsetsCount * sizeof( Effect* ) );
         memzero( mopt.DefaultEffectSubsets, mopt.SubsetsCount * sizeof( Effect* ) );
         // Set default textures and effects
@@ -2381,9 +2381,9 @@ void Animation3dXFile::SetupAnimationOutput( Frame* frame, AnimController* anim_
         SetupAnimationOutput( *it, anim_controller );
 }
 
-Texture* Animation3dXFile::GetTexture( const char* tex_name )
+MeshTexture* Animation3dXFile::GetTexture( const char* tex_name )
 {
-    Texture* texture = GraphicLoader::LoadTexture( tex_name, fileName.c_str() );
+    MeshTexture* texture = GraphicLoader::LoadTexture( tex_name, fileName.c_str() );
     if( !texture )
         WriteLogF( _FUNC_, " - Can't load texture<%s>.\n", tex_name ? tex_name : "nullptr" );
     return texture;

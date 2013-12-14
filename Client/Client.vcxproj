@@ -510,6 +510,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\GraphicLoader.cpp" />
+    <ClCompile Include="..\Source\GraphicStructures.cpp" />
     <ClCompile Include="..\Source\SpriteManagerFont.cpp" />
     <ClCompile Include="..\Source\Sprites.cpp" />
     <ClCompile Include="..\Source\Zlib\adler32.c">

@@ -4,6 +4,8 @@
 #include "Text.h"
 #include "Timer.h"
 #include "Version.h"
+#include "SpriteManager.h"
+#include "ResourceManager.h"
 
 #include "Assimp/assimp.h"
 #include "Assimp/aiPostProcess.h"
@@ -17,6 +19,8 @@
 #ifdef FO_MSVC
 # pragma comment( lib, "libpng16.lib" )
 #endif
+
+static void CreateBuffers( Frame* frame );
 
 // Assimp functions
 const aiScene* ( *Ptr_aiImportFileFromMemory )( const char* pBuffer, unsigned int pLength, unsigned int pFlags, const char* pHint );
@@ -193,6 +197,7 @@ Frame* GraphicLoader::LoadModel( const char* fname )
         Frame* root_frame = new Frame();
         root_frame->Load( file_cache );
         root_frame->FixAfterLoad( root_frame );
+        CreateBuffers( root_frame );
 
         // Load animations
         uint anim_sets_count = file_cache.GetBEUInt();
@@ -483,6 +488,9 @@ Frame* GraphicLoader::LoadModel( const char* fname )
         Ptr_aiReleaseImport( scene );
     }
 
+    // Fix frames
+    CreateBuffers( root_frame );
+
     // Save to cache
     file_cache.SwitchToWrite();
     file_cache.SetBEUInt( MODELS_BINARY_VERSION );
@@ -664,9 +672,6 @@ void FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, aiNode* node )
             if( v.BlendIndices[ 3 ] < 0.0f )
                 v.BlendIndices[ 3 ] = 0.0f;
         }
-
-        // OGL buffers
-        mesh.CreateBuffers();
     }
 
     for( uint i = 0; i < node->mNumChildren; i++ )
@@ -943,13 +948,48 @@ void FixFrameFbx( Frame* root_frame, Frame* frame, FbxScene* fbx_scene, FbxNode*
                     v.BlendIndices[ 3 ] = 0.0f;
             }
         }
-
-        // OGL buffers
-        mesh.CreateBuffers();
     }
 
     for( int i = 0; i < fbx_node->GetChildCount(); i++ )
         FixFrameFbx( root_frame, frame->Children[ i ], fbx_scene, fbx_node->GetChild( i ) );
+}
+
+void CreateBuffers( Frame* frame )
+{
+    for( size_t m = 0; m < frame->Mesh.size(); m++ )
+    {
+        MeshSubset& ms = frame->Mesh[ m ];
+
+        // Generate OGL buffers
+        GL( glGenBuffers( 1, &ms.VBO ) );
+        GL( glBindBuffer( GL_ARRAY_BUFFER, ms.VBO ) );
+        GL( glBufferData( GL_ARRAY_BUFFER, ms.Vertices.size() * sizeof( Vertex3D ), &ms.Vertices[ 0 ], GL_STATIC_DRAW ) );
+        GL( glGenBuffers( 1, &ms.IBO ) );
+        GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ms.IBO ) );
+        GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, ms.Indicies.size() * sizeof( short ), &ms.Indicies[ 0 ], GL_STATIC_DRAW ) );
+        ms.VAO = 0;
+        if( GL_HAS( vertex_array_object ) && ( GL_HAS( framebuffer_object ) || GL_HAS( framebuffer_object_ext ) ) )
+        {
+            GL( glGenVertexArrays( 1, &ms.VAO ) );
+            GL( glBindVertexArray( ms.VAO ) );
+            GL( glVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Position ) ) );
+            GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Normal ) ) );
+            GL( glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Color ) ) );
+            GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord ) ) );
+            GL( glVertexAttribPointer( 4, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord2 ) ) );
+            GL( glVertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord3 ) ) );
+            GL( glVertexAttribPointer( 6, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Tangent ) ) );
+            GL( glVertexAttribPointer( 7, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Bitangent ) ) );
+            GL( glVertexAttribPointer( 8, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, BlendWeights ) ) );
+            GL( glVertexAttribPointer( 9, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, BlendIndices ) ) );
+            for( uint i = 0; i <= 9; i++ )
+                GL( glEnableVertexAttribArray( i ) );
+            GL( glBindVertexArray( 0 ) );
+        }
+    }
+
+    for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
+        CreateBuffers( *it );
 }
 
 Matrix ConvertFbxMatrix( const FbxAMatrix& m )
@@ -1015,94 +1055,58 @@ bool GraphicLoader::IsExtensionSupported( const char* ext )
 /************************************************************************/
 /* Textures                                                             */
 /************************************************************************/
-TextureVec GraphicLoader::loadedTextures;
+MeshTextureVec GraphicLoader::loadedMeshTextures;
 
-Texture* GraphicLoader::LoadTexture( const char* texture_name, const char* model_path )
+MeshTexture* GraphicLoader::LoadTexture( const char* texture_name, const char* model_path )
 {
     if( !texture_name || !texture_name[ 0 ] )
         return NULL;
 
     // Try find already loaded texture
-    for( auto it = loadedTextures.begin(), end = loadedTextures.end(); it != end; ++it )
+    for( auto it = loadedMeshTextures.begin(), end = loadedMeshTextures.end(); it != end; ++it )
     {
-        Texture* texture = *it;
-        if( Str::CompareCase( texture->Name, texture_name ) )
-            return texture;
+        MeshTexture* texture = *it;
+        if( Str::CompareCase( texture->Name.c_str(), texture_name ) )
+            return texture && texture->Id ? texture : NULL;
     }
 
+    // Allocate structure
+    MeshTexture* mesh_tex = new MeshTexture();
+    mesh_tex->Name = texture_name;
+    mesh_tex->Id = 0;
+    loadedMeshTextures.push_back( mesh_tex );
+
     // First try load from textures folder
-    FileManager fm;
-    if( !fm.LoadFile( texture_name, PT_TEXTURES ) && model_path )
+    SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+    AnyFrames* anim = SprMngr.LoadAnimation( texture_name, PT_TEXTURES );
+    if( !anim && model_path )
     {
         // After try load from file folder
         char path[ MAX_FOPATH ];
         FileManager::ExtractPath( model_path, path );
         Str::Append( path, texture_name );
-        fm.LoadFile( path, PT_DATA );
+        anim = SprMngr.LoadAnimation( texture_name, PT_DATA );
     }
-
-    // Load
-    uint        w, h;
-    uchar*      data = NULL;
-    const char* ext = FileManager::GetExtension( texture_name );
-    if( !ext )
-        WriteLogF( _FUNC_, " - Extension not found, file<%s>.\n", texture_name );
-    else if( Str::CompareCase( ext, "png" ) )
-        data = LoadPNG( fm.GetBuf(), fm.GetFsize(), w, h );
-    else if( Str::CompareCase( ext, "tga" ) )
-        data = LoadTGA( fm.GetBuf(), fm.GetFsize(), w, h );
-    else
-        WriteLogF( _FUNC_, " - File format<%s> not supported, file<%s>.\n", ext, texture_name );
-    if( !data )
+    SprMngr.PopAtlasType();
+    if( !anim )
         return NULL;
 
-    // Create texture
-    Texture* texture = new Texture();
-    texture->Data = data;
-    texture->Size = w * h * 4;
-    texture->Width = w;
-    texture->Height = h;
-    texture->SizeData[ 0 ] = (float) w;
-    texture->SizeData[ 1 ] = (float) h;
-    texture->SizeData[ 2 ] = 1.0f / texture->SizeData[ 0 ];
-    texture->SizeData[ 3 ] = 1.0f / texture->SizeData[ 1 ];
-    GL( glGenTextures( 1, &texture->Id ) );
-    GL( glBindTexture( GL_TEXTURE_2D, texture->Id ) );
-    GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT ) );
-    GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture->Data ) );
-    texture->Name = Str::Duplicate( texture_name );
-    loadedTextures.push_back( texture );
-    return loadedTextures.back();
+    SpriteInfo* si = SprMngr.GetSpriteInfo( anim->Ind[ 0 ] );
+    mesh_tex->Id = si->Atlas->TextureOwner->Id;
+    memcpy( mesh_tex->SizeData, si->Atlas->TextureOwner->SizeData, sizeof( mesh_tex->SizeData ) );
+    mesh_tex->AtlasOffsetData[ 0 ] = si->SprRect[ 0 ];
+    mesh_tex->AtlasOffsetData[ 1 ] = si->SprRect[ 1 ];
+    mesh_tex->AtlasOffsetData[ 2 ] = si->SprRect[ 2 ] - si->SprRect[ 0 ];
+    mesh_tex->AtlasOffsetData[ 3 ] = si->SprRect[ 3 ] - si->SprRect[ 1 ];
+    AnyFrames::Destroy( anim );
+    return mesh_tex;
 }
 
-void GraphicLoader::FreeTexture( Texture* texture )
+void GraphicLoader::DestroyTextures()
 {
-    if( texture )
-    {
-        for( auto it = loadedTextures.begin(), end = loadedTextures.end(); it != end; ++it )
-        {
-            Texture* texture_ = *it;
-            if( texture_ == texture )
-            {
-                loadedTextures.erase( it );
-                break;
-            }
-        }
-
-        SAFEDELA( texture->Name );
-        SAFEDELA( texture->Data );
-        SAFEDEL( texture );
-    }
-    else
-    {
-        TextureVec textures = loadedTextures;
-        for( auto it = textures.begin(), end = textures.end(); it != end; ++it )
-            FreeTexture( *it );
-    }
+    for( auto it = loadedMeshTextures.begin(), end = loadedMeshTextures.end(); it != end; ++it )
+        delete *it;
+    loadedMeshTextures.clear();
 }
 
 /************************************************************************/
@@ -1391,6 +1395,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     GL( effect->ZoomFactor = glGetUniformLocation( program, "ZoomFactor" ) );
     GL( effect->ColorMap = glGetUniformLocation( program, "ColorMap" ) );
     GL( effect->ColorMapSize = glGetUniformLocation( program, "ColorMapSize" ) );
+    GL( effect->ColorMapAtlasOffset = glGetUniformLocation( program, "ColorMapAtlasOffset" ) );
     GL( effect->ColorMapSamples = glGetUniformLocation( program, "ColorMapSamples" ) );
     GL( effect->EggMap = glGetUniformLocation( program, "EggMap" ) );
     GL( effect->EggMapSize = glGetUniformLocation( program, "EggMapSize" ) );
@@ -1438,6 +1443,8 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             effect->IsTextures = true;
             Str::Format( tex_name, "Texture%dSize", i );
             GL( effect->TexturesSize[ i ] = glGetUniformLocation( program, tex_name ) );
+            Str::Format( tex_name, "Texture%dAtlasOffset", i );
+            GL( effect->TexturesAtlasOffset[ i ] = glGetUniformLocation( program, tex_name ) );
         }
     }
     effect->IsScriptValues = false;
@@ -1496,7 +1503,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     return effect;
 }
 
-void GraphicLoader::EffectProcessVariables( Effect* effect, int pass,  float anim_proc /* = 0.0f */, float anim_time /* = 0.0f */, Texture** textures /* = NULL */ )
+void GraphicLoader::EffectProcessVariables( Effect* effect, int pass,  float anim_proc /* = 0.0f */, float anim_time /* = 0.0f */, MeshTexture** textures /* = NULL */ )
 {
     // Process effect
     if( pass == -1 )
@@ -1556,6 +1563,8 @@ void GraphicLoader::EffectProcessVariables( Effect* effect, int pass,  float ani
                     GL( glUniform1i( effect->Textures[ i ], 2 + i ) );
                     if( effect->TexturesSize[ i ] != -1 && textures && textures[ i ] )
                         GL( glUniform4fv( effect->TexturesSize[ i ], 1, textures[ i ]->SizeData ) );
+                    if( effect->TexturesAtlasOffset[ i ] != -1 && textures && textures[ i ] )
+                        GL( glUniform4fv( effect->TexturesAtlasOffset[ i ], 1, textures[ i ]->AtlasOffsetData ) );
                 }
             }
         }

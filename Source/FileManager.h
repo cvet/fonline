@@ -107,6 +107,7 @@ public:
     static const char* GetFullPath( const char* fname, int path_type );
     static void        GetFullPath( const char* fname, int path_type, char* get_path );
     static const char* GetPath( int path_type );
+    static uint        GetFileHash( const char* fname, int path_type );
     static const char* GetDataPath( int path_type );
     static void        FormatPath( char* path, bool first_skipped = false );
     static void        ExtractPath( const char* fname, char* path );

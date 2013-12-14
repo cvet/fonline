@@ -51,13 +51,13 @@ typedef vector< AnimParams > AnimParamsVec;
 
 struct MeshOptions
 {
-    Frame*    FramePtr;
-    uint      SubsetsCount;
-    bool*     DisabledSubsets;
-    Texture** TexSubsets;
-    Texture** DefaultTexSubsets;
-    Effect**  EffectSubsets;
-    Effect**  DefaultEffectSubsets;
+    Frame*        FramePtr;
+    uint          SubsetsCount;
+    bool*         DisabledSubsets;
+    MeshTexture** TexSubsets;
+    MeshTexture** DefaultTexSubsets;
+    Effect**      EffectSubsets;
+    Effect**      DefaultEffectSubsets;
 };
 typedef vector< MeshOptions > MeshOptionsVec;
 
@@ -210,8 +210,8 @@ private:
     static bool              SetupFrames( Animation3dXFile* xfile, Frame* frame, Frame* frame_root );
     static void              SetupAnimationOutput( Frame* frame, AnimController* anim_controller );
 
-    Texture* GetTexture( const char* tex_name );
-    Effect*  GetEffect( EffectInstance* effect_inst );
+    MeshTexture* GetTexture( const char* tex_name );
+    Effect*      GetEffect( EffectInstance* effect_inst );
 
 public:
     Animation3dXFile();

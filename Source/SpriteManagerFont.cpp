@@ -216,7 +216,7 @@ void SpriteManager::BuildFont( int index )
             }
         }
         Rect r = Rect( normal_ox, normal_oy, normal_ox + si->Width - 1, normal_oy + si->Height - 1 );
-        si->Atlas->TextureOwner->Update( r );
+        si->Atlas->TextureOwner->UpdateRegion( r );
     }
 
     // Fill border
@@ -242,7 +242,7 @@ void SpriteManager::BuildFont( int index )
             }
         }
         Rect r_bordered = Rect( bordered_ox, bordered_oy, bordered_ox + si_bordered->Width - 1, bordered_oy + si_bordered->Height - 1 );
-        si_bordered->Atlas->TextureOwner->Update( r_bordered );
+        si_bordered->Atlas->TextureOwner->UpdateRegion( r_bordered );
 
         // Fix texture coordinates on bordered texture
         tex_w = (float) si_bordered->Atlas->Width;

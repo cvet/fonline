@@ -10,23 +10,20 @@ AnyFrames*    SpriteManager::DummyAnimation = NULL;
 #define SPRITES_BUFFER_SIZE      ( 10000 )
 #define ATLAS_SPRITES_PADDING    ( 1 )
 #define ARRAY_BUFFERS_COUNT      ( 300 )
-#define ANY_FRAMES_POOL_SIZE     ( 2000 )
 
 #define FAST_FORMAT_SIGNATURE    ( 0xDEADBEEF ) // Must be really unique
 #define FAST_FORMAT_VERSION      ( 1 )
 
-bool                                                    OGL_version_2_0 = false;
-bool                                                    OGL_vertex_buffer_object = false;
-bool                                                    OGL_framebuffer_object = false;
-bool                                                    OGL_framebuffer_object_ext = false;
-bool                                                    OGL_framebuffer_multisample = false;
-bool                                                    OGL_packed_depth_stencil = false;
-bool                                                    OGL_texture_multisample = false;
-bool                                                    OGL_vertex_array_object = false;
-bool                                                    OGL_get_program_binary = false;
-bool                                                    DisableRenderTargets = false;
-
-MemoryPool< sizeof( AnyFrames ), ANY_FRAMES_POOL_SIZE > AnyFramesPool;
+bool OGL_version_2_0 = false;
+bool OGL_vertex_buffer_object = false;
+bool OGL_framebuffer_object = false;
+bool OGL_framebuffer_object_ext = false;
+bool OGL_framebuffer_multisample = false;
+bool OGL_packed_depth_stencil = false;
+bool OGL_texture_multisample = false;
+bool OGL_vertex_array_object = false;
+bool OGL_get_program_binary = false;
+bool DisableRenderTargets = false;
 
 SpriteManager::SpriteManager()
 {
@@ -872,63 +869,6 @@ void SpriteManager::FinalizeAtlas( int atlas_type )
     }
 }
 
-TextureAtlas::SpaceNode::SpaceNode( int x, int y, int w, int h )
-{
-    busy = false;
-    posX = x;
-    posY = y;
-    width = w;
-    height = h;
-    child1 = child2 = NULL;
-}
-
-TextureAtlas::SpaceNode::~SpaceNode()
-{
-    SAFEDEL( child1 );
-    SAFEDEL( child2 );
-}
-
-bool TextureAtlas::SpaceNode::FindPosition( int w, int h, int& x, int& y )
-{
-    bool result = false;
-    if( child1 )
-        result = child1->FindPosition( w, h, x, y );
-    if( !result && child2 )
-        result = child2->FindPosition( w, h, x, y );
-    if( !result && !busy && width >= w && height >= h )
-    {
-        result = true;
-        busy = true;
-        x = posX;
-        y = posY;
-        if( width == w && height > h )
-        {
-            child1 = new SpaceNode( posX, posY + h, width, height - h );
-        }
-        else if( height == h && width > w )
-        {
-            child1 = new SpaceNode( posX + w, posY, width - w, height );
-        }
-        else if( width > w && height > h )
-        {
-            child1 = new SpaceNode( posX + w, posY, width - w, h );
-            child2 = new SpaceNode( posX, posY + h, width, height - h );
-        }
-    }
-    return result;
-}
-
-TextureAtlas::TextureAtlas()
-{
-    memzero( this, sizeof( TextureAtlas ) );
-}
-
-TextureAtlas::~TextureAtlas()
-{
-    SAFEDEL( TextureOwner );
-    SAFEDEL( RootNode );
-}
-
 TextureAtlas* SpriteManager::CreateAtlas( int w, int h )
 {
     uchar* data = NULL;
@@ -954,7 +894,6 @@ TextureAtlas* SpriteManager::CreateAtlas( int w, int h )
     tex->SizeData[ 3 ] = 1.0f / tex->SizeData[ 1 ];
     GL( glGenTextures( 1, &tex->Id ) );
     GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
-    GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ) );
     GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
@@ -1233,7 +1172,7 @@ void SpriteManager::FillAtlas( SpriteInfo* si )
         tex->Pixel( x + i - 1, y + h + 1 - 1 ) = tex->Pixel( x + i - 1, y + h - 1 );                   // Bottom
 
     // Refresh texture
-    tex->Update( Rect( x - 1, y - 1, x + w + 1, y + h + 1 ) );
+    tex->UpdateRegion( Rect( x - 1, y - 1, x + w, y + h ) );
 
     // Set parameters
     si->Atlas = atlas;
@@ -4643,30 +4582,4 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     PopRenderTarget();
     contoursAdded = true;
     return true;
-}
-
-AnyFrames* AnyFrames::Create( uint frames, uint ticks )
-{
-    AnyFrames* anim = (AnyFrames*) AnyFramesPool.Get();
-    memzero( anim, sizeof( AnyFrames ) );
-    anim->CntFrm = min( frames, MAX_FRAMES );
-    anim->Ticks = ( ticks ? ticks : frames * 100 );
-    anim->HaveDirs = false;
-    return anim;
-}
-
-void AnyFrames::Destroy( AnyFrames* anim )
-{
-    if( !anim )
-        return;
-    for( int dir = 1; dir < anim->DirCount(); dir++ )
-        AnyFramesPool.Put( anim->GetDir( dir ) );
-    AnyFramesPool.Put( anim );
-}
-
-void AnyFrames::CreateDirAnims()
-{
-    HaveDirs = true;
-    for( int dir = 0; dir < DIRS_COUNT - 1; dir++ )
-        Dirs[ dir ] = Create( CntFrm, Ticks );
 }

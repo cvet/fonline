@@ -610,5 +610,8 @@
     <ClCompile Include="..\Source\GL\glu_stuff.cpp">
       <Filter>GL</Filter>
     </ClCompile>
+    <ClCompile Include="..\Source\GraphicStructures.cpp">
+      <Filter>Mapper</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

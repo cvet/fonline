@@ -9556,6 +9556,7 @@ void FOClient::AnimRun( uint anim_id, uint flags )
 
 void FOClient::AnimProcess()
 {
+    uint cur_tick = Timer::GameTick();
     for( auto it = Animations.begin(), end = Animations.end(); it != end; ++it )
     {
         IfaceAnim* anim = *it;
@@ -9570,7 +9571,6 @@ void FOClient::AnimProcess()
 
         if( FLAG( anim->Flags, ANIMRUN_TO_END ) || FLAG( anim->Flags, ANIMRUN_FROM_END ) )
         {
-            uint cur_tick = Timer::GameTick();
             if( cur_tick - anim->LastTick < anim->Frames->Ticks / anim->Frames->CntFrm )
                 continue;
 

@@ -534,6 +534,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\GraphicLoader.cpp" />
+    <ClCompile Include="..\Source\GraphicStructures.cpp" />
     <ClCompile Include="..\Source\HexManager.cpp" />
     <ClCompile Include="..\Source\IniParser.cpp" />
     <ClCompile Include="..\Source\Item.cpp" />

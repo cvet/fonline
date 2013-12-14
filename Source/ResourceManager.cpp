@@ -125,9 +125,13 @@ void ResourceManager::FreeResources( int type )
 
     if( type == RES_ATLAS_DYNAMIC )
     {
+        // 2D critters
         for( auto it = critterFrames.begin(), end = critterFrames.end(); it != end; ++it )
             AnyFrames::Destroy( ( *it ).second );
         critterFrames.clear();
+
+        // 3D textures
+        GraphicLoader::DestroyTextures();
     }
 }
 

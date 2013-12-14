@@ -769,6 +769,14 @@ const char* FileManager::GetPath( int path_type )
     return (uint) path_type >= PATH_LIST_COUNT ? any : PathList[ path_type ];
 }
 
+uint FileManager::GetFileHash( const char* fname, int path_type )
+{
+    char fpath[ MAX_FOPATH ];
+    Str::Copy( fpath, GetPath( path_type ) );
+    Str::Append( fpath, fname );
+    return Str::GetHash( fpath );
+}
+
 const char* FileManager::GetDataPath( int path_type )
 {
     static const char root_path[] = DIR_SLASH_SD;

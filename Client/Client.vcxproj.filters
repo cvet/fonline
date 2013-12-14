@@ -640,6 +640,9 @@
     <ClCompile Include="..\Source\AngelScript\as_callfunc_x64_msvc.cpp">
       <Filter>AngelScript</Filter>
     </ClCompile>
+    <ClCompile Include="..\Source\GraphicStructures.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="..\Source\AngelScript\as_callfunc_x64_msvc_asm.asm">
