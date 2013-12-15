@@ -186,35 +186,34 @@ void MeshSubset::Load( FileManager& file )
     }
     VerticesTransformed = Vertices;
     VerticesTransformedValid = false;
-    FrameCombinedMatrixPointer.resize( BoneOffsets.size() );
+    BoneCombinedMatrices.resize( BoneOffsets.size() );
     memzero( &DrawEffect, sizeof( DrawEffect ) );
     VAO = VBO = IBO = 0;
 }
 
 //
-// Frame
+// Node
 //
 
-const char* Frame::GetName()
+const char* Node::GetName()
 {
     return Name.c_str();
 }
 
-Frame* Frame::Find( const char* name )
+Node* Node::Find( const char* name )
 {
-    const char* frame_name = Name.c_str();
-    if( Str::Compare( frame_name, name ) )
+    if( Str::Compare( Name.c_str(), name ) )
         return this;
     for( uint i = 0; i < Children.size(); i++ )
     {
-        Frame* frame = Children[ i ]->Find( name );
-        if( frame )
-            return frame;
+        Node* node = Children[ i ]->Find( name );
+        if( node )
+            return node;
     }
     return NULL;
 }
 
-void Frame::Save( FileManager& file )
+void Node::Save( FileManager& file )
 {
     uint len = (uint) Name.length();
     file.SetData( &len, sizeof( len ) );
@@ -230,7 +229,7 @@ void Frame::Save( FileManager& file )
         Children[ i ]->Save( file );
 }
 
-void Frame::Load( FileManager& file )
+void Node::Load( FileManager& file )
 {
     uint len = 0;
     file.CopyMem( &len, sizeof( len ) );
@@ -245,27 +244,27 @@ void Frame::Load( FileManager& file )
     Children.resize( len );
     for( uint i = 0, j = len; i < j; i++ )
     {
-        Children[ i ] = new Frame();
+        Children[ i ] = new Node();
         Children[ i ]->Load( file );
     }
     CombinedTransformationMatrix = Matrix();
 }
 
-void Frame::FixAfterLoad( Frame* root_frame )
+void Node::FixAfterLoad( Node* root_node )
 {
     for( auto it = Mesh.begin(), end = Mesh.end(); it != end; ++it )
     {
         MeshSubset& mesh = *it;
         for( uint i = 0, j = (uint) mesh.BoneNames.size(); i < j; i++ )
         {
-            Frame* bone_frame = root_frame->Find( mesh.BoneNames[ i ].c_str() );
-            if( bone_frame )
-                mesh.FrameCombinedMatrixPointer[ i ] = &bone_frame->CombinedTransformationMatrix;
+            Node* bone_node = root_node->Find( mesh.BoneNames[ i ].c_str() );
+            if( bone_node )
+                mesh.BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
             else
-                mesh.FrameCombinedMatrixPointer[ i ] = NULL;
+                mesh.BoneCombinedMatrices[ i ] = NULL;
         }
     }
 
     for( uint i = 0, j = (uint) Children.size(); i < j; i++ )
-        Children[ i ]->FixAfterLoad( root_frame );
+        Children[ i ]->FixAfterLoad( root_node );
 }

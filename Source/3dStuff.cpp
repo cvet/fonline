@@ -61,7 +61,7 @@ Animation3dVec Animation3d::generalAnimations;
 Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ),
                             currentTrack( 0 ), lastTick( 0 ), endTick( 0 ), speedAdjustBase( 1.0f ), speedAdjustCur( 1.0f ), speedAdjustLink( 1.0f ),
                             shadowDisabled( false ), dirAngle( GameOpt.MapHexagonal ? 150.0f : 135.0f ), sprId( 0 ),
-                            drawScale( 0.0f ), noDraw( true ), parentAnimation( NULL ), parentFrame( NULL ),
+                            drawScale( 0.0f ), noDraw( true ), parentAnimation( NULL ), parentNode( NULL ),
                             childChecker( true ), useGameTimer( true ), animPosProc( 0.0f ), animPosTime( 0.0f ), animPosPeriod( 0.0f )
 {
     memzero( currentLayers, sizeof( currentLayers ) );
@@ -151,7 +151,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
         SetAnimData( this, animEntity->animDataDefault, true );
 
         // Append linked data
-        if( parentFrame )
+        if( parentNode )
             SetAnimData( this, animLink, false );
 
         // Mark animations as unused
@@ -194,7 +194,7 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
             }
         }
 
-        if( parentFrame )
+        if( parentNode )
         {
             for( uint j = 0; j < animLink.DisabledLayersCount; j++ )
             {
@@ -251,17 +251,17 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                     {
                         Animation3d* anim3d = NULL;
 
-                        // Link to main frame
+                        // Link to main node
                         if( link.LinkBone )
                         {
-                            Frame* to_frame = animEntity->xFile->frameRoot->Find( link.LinkBone );
-                            if( to_frame )
+                            Node* to_node = animEntity->xFile->rootNode->Find( link.LinkBone );
+                            if( to_node )
                             {
                                 anim3d = Animation3d::GetAnimation( link.ChildFName, true );
                                 if( anim3d )
                                 {
                                     anim3d->parentAnimation = this;
-                                    anim3d->parentFrame = to_frame;
+                                    anim3d->parentNode = to_node;
                                     anim3d->animLink = link;
                                     SetAnimData( anim3d, link, false );
                                     childAnimations.push_back( anim3d );
@@ -274,23 +274,23 @@ void Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                             anim3d = Animation3d::GetAnimation( link.ChildFName, true );
                             if( anim3d )
                             {
-                                for( auto it = anim3d->animEntity->xFile->allFrames.begin(), end = anim3d->animEntity->xFile->allFrames.end(); it != end; ++it )
+                                for( auto it = anim3d->animEntity->xFile->allNodes.begin(), end = anim3d->animEntity->xFile->allNodes.end(); it != end; ++it )
                                 {
-                                    Frame*      child_frame = *it;
-                                    const char* child_name = child_frame->GetName();
+                                    Node*       child_node = *it;
+                                    const char* child_name = child_node->GetName();
                                     if( child_name && child_name[ 0 ] )
                                     {
-                                        Frame* root_frame = animEntity->xFile->frameRoot->Find( child_name );
-                                        if( root_frame )
+                                        Node* root_node = animEntity->xFile->rootNode->Find( child_name );
+                                        if( root_node )
                                         {
-                                            anim3d->linkFrames.push_back( root_frame );
-                                            anim3d->linkFrames.push_back( child_frame );
+                                            anim3d->linkNodes.push_back( root_node );
+                                            anim3d->linkNodes.push_back( child_node );
                                         }
                                     }
                                 }
 
                                 anim3d->parentAnimation = this;
-                                anim3d->parentFrame = animEntity->xFile->frameRoot;
+                                anim3d->parentNode = animEntity->xFile->rootNode;
                                 anim3d->animLink = link;
                                 SetAnimData( anim3d, link, false );
                                 childAnimations.push_back( anim3d );
@@ -437,24 +437,24 @@ bool Animation3d::IsIntersect( int x, int y )
     VecUnproject( Vector( (float) x, (float) y, FixedZ ), ray_dir );
 
     // Main
-    FrameMove( 0.0, drawXY.X, drawXY.Y, drawScale, true );
-    if( IsIntersectFrame( animEntity->xFile->frameRoot, ray_origin, ray_dir, (float) x, (float) y ) )
+    MoveNode( 0.0, drawXY.X, drawXY.Y, drawScale, true );
+    if( IsIntersectNode( animEntity->xFile->rootNode, ray_origin, ray_dir, (float) x, (float) y ) )
         return true;
 
     // Children
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
     {
         Animation3d* child = *it;
-        child->FrameMove( 0.0, drawXY.X, drawXY.Y, 1.0f, true );
-        if( IsIntersectFrame( child->animEntity->xFile->frameRoot, ray_origin, ray_dir, (float) x, (float) y ) )
+        child->MoveNode( 0.0, drawXY.X, drawXY.Y, 1.0f, true );
+        if( IsIntersectNode( child->animEntity->xFile->rootNode, ray_origin, ray_dir, (float) x, (float) y ) )
             return true;
     }
     return false;
 }
 
-bool Animation3d::IsIntersectFrame( Frame* frame, const Vector& ray_origin, const Vector& ray_dir, float x, float y )
+bool Animation3d::IsIntersectNode( Node* node, const Vector& ray_origin, const Vector& ray_dir, float x, float y )
 {
-    for( auto it = frame->Mesh.begin(), end = frame->Mesh.end(); it != end; ++it )
+    for( auto it = node->Mesh.begin(), end = node->Mesh.end(); it != end; ++it )
     {
         MeshSubset& ms = *it;
         if( !ms.VerticesTransformedValid )
@@ -476,8 +476,8 @@ bool Animation3d::IsIntersectFrame( Frame* frame, const Vector& ray_origin, cons
         }
     }
 
-    for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
-        if( IsIntersectFrame( *it, ray_origin, ray_dir, x, y ) )
+    for( auto it = node->Children.begin(), end = node->Children.end(); it != end; ++it )
+        if( IsIntersectNode( *it, ray_origin, ray_dir, x, y ) )
             return true;
 
     return false;
@@ -534,12 +534,12 @@ uint Animation3d::GetTick()
     return Timer::FastTick();
 }
 
-MeshOptions* Animation3d::GetMeshOptions( Frame* frame )
+MeshOptions* Animation3d::GetMeshOptions( Node* node )
 {
     for( auto it = meshOpt.begin(), end = meshOpt.end(); it != end; ++it )
     {
         MeshOptions& mopt = *it;
-        if( mopt.FramePtr == frame )
+        if( mopt.NodePtr == node )
             return &mopt;
     }
     return NULL;
@@ -811,9 +811,9 @@ bool Animation3d::Draw( int x, int y, float scale, RectF* stencil, uint color )
     drawXY.Y = y;
 
     SetPitch( 75.7f );
-    FrameMove( elapsed, x, y, scale, false );
+    MoveNode( elapsed, x, y, scale, false );
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
-        ( *it )->FrameMove( elapsed, x, y, 1.0f, false );
+        ( *it )->MoveNode( elapsed, x, y, 1.0f, false );
 
     // glViewport(0,0,ModeWidth*8,ModeWidth*8);
     GL( glBindFramebuffer( GL_FRAMEBUFFER, FBODepth ) );
@@ -823,9 +823,9 @@ bool Animation3d::Draw( int x, int y, float scale, RectF* stencil, uint color )
     GL( glCullFace( GL_FRONT ) );
     glEnable( GL_POLYGON_OFFSET_FILL );
     glPolygonOffset( 2.0, 500.0 );
-    DrawFrame( animEntity->xFile->frameRoot, true );
+    DrawNode( animEntity->xFile->rootNode, true );
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
-        ( *it )->DrawFrame( ( *it )->animEntity->xFile->frameRoot, true );
+        ( *it )->DrawNode( ( *it )->animEntity->xFile->rootNode, true );
     GL( glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE ) );
     GL( glCullFace( GL_BACK ) );
     glDisable( GL_POLYGON_OFFSET_FILL );
@@ -834,27 +834,27 @@ bool Animation3d::Draw( int x, int y, float scale, RectF* stencil, uint color )
     GL( glBindFramebuffer( GL_FRAMEBUFFER, cur_fbo ) );
 
     SetPitch( GameOpt.MapCameraAngle );
-    FrameMove( -1.0f, x, y, scale, false );
+    MoveNode( -1.0f, x, y, scale, false );
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
-        ( *it )->FrameMove( -1.0f, x, y, 1.0f, false );
-    DrawFrame( animEntity->xFile->frameRoot, false );
+        ( *it )->MoveNode( -1.0f, x, y, 1.0f, false );
+    DrawNode( animEntity->xFile->rootNode, false );
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
-        ( *it )->DrawFrame( ( *it )->animEntity->xFile->frameRoot, false );
+        ( *it )->DrawNode( ( *it )->animEntity->xFile->rootNode, false );
     #else
-    FrameMove( elapsed, x, y, scale, false );
+    MoveNode( elapsed, x, y, scale, false );
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
-        ( *it )->FrameMove( elapsed, x, y, 1.0f, false );
+        ( *it )->MoveNode( elapsed, x, y, 1.0f, false );
     if( !shadow_disabled )
     {
         GL( glDisable( GL_DEPTH_TEST ) );
-        DrawFrame( animEntity->xFile->frameRoot, true );
+        DrawNode( animEntity->xFile->rootNode, true );
         for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
-            ( *it )->DrawFrame( ( *it )->animEntity->xFile->frameRoot, true );
+            ( *it )->DrawNode( ( *it )->animEntity->xFile->rootNode, true );
         GL( glEnable( GL_DEPTH_TEST ) );
     }
-    DrawFrame( animEntity->xFile->frameRoot, false );
+    DrawNode( animEntity->xFile->rootNode, false );
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
-        ( *it )->DrawFrame( ( *it )->animEntity->xFile->frameRoot, false );
+        ( *it )->DrawNode( ( *it )->animEntity->xFile->rootNode, false );
     #endif
 
     GL( glDisable( GL_DEPTH_TEST ) );
@@ -874,10 +874,10 @@ void Animation3d::SetDrawPos( int x, int y )
     drawXY.Y = y;
 }
 
-bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool transform )
+bool Animation3d::MoveNode( float elapsed, int x, int y, float scale, bool transform )
 {
     // Update world matrix, only for root
-    if( !parentFrame )
+    if( !parentNode )
     {
         PointF p3d = Convert2dTo3d( x, y );
         Matrix   mat_rot_y, mat_scale, mat_trans;
@@ -909,27 +909,27 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool tran
     }
 
     // Update matrices
-    UpdateFrameMatrices( animEntity->xFile->frameRoot, &parentMatrix );
+    UpdateNodeMatrices( animEntity->xFile->rootNode, &parentMatrix );
 
     // Update linked matrices
-    if( parentFrame && linkFrames.size() )
+    if( parentNode && linkNodes.size() )
     {
-        for( uint i = 0, j = (uint) linkFrames.size() / 2; i < j; i++ )
-            // UpdateFrameMatrices(linkFrames[i*2+1],&linkMatricles[i]);
-            // linkFrames[i*2+1]->exCombinedTransformationMatrix=linkMatricles[i];
-            linkFrames[ i * 2 + 1 ]->CombinedTransformationMatrix = linkFrames[ i * 2 ]->CombinedTransformationMatrix;
+        for( uint i = 0, j = (uint) linkNodes.size() / 2; i < j; i++ )
+            // UpdateNodeMatrices(linkNodes[i*2+1],&linkMatricles[i]);
+            // linkNodes[i*2+1]->exCombinedTransformationMatrix=linkMatricles[i];
+            linkNodes[ i * 2 + 1 ]->CombinedTransformationMatrix = linkNodes[ i * 2 ]->CombinedTransformationMatrix;
     }
 
     if( transform )
     {
-        for( auto it = animEntity->xFile->allDrawFrames.begin(), end = animEntity->xFile->allDrawFrames.end(); it != end; ++it )
+        for( auto it = animEntity->xFile->allDrawNodes.begin(), end = animEntity->xFile->allDrawNodes.end(); it != end; ++it )
         {
-            Frame* frame = *it;
+            Node* node = *it;
 
-            MeshOptions* mopt = GetMeshOptions( frame );
-            for( uint k = 0, l = (uint) frame->Mesh.size(); k < l; k++ )
+            MeshOptions* mopt = GetMeshOptions( node );
+            for( uint k = 0, l = (uint) node->Mesh.size(); k < l; k++ )
             {
-                MeshSubset& ms = frame->Mesh[ k ];
+                MeshSubset& ms = node->Mesh[ k ];
                 if( mopt->DisabledSubsets[ k ] )
                 {
                     ms.VerticesTransformedValid = false;
@@ -938,14 +938,14 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool tran
                 ms.VerticesTransformedValid = true;
 
                 // Simple
-                size_t mcount = ms.FrameCombinedMatrixPointer.size();
+                size_t mcount = ms.BoneCombinedMatrices.size();
                 if( !ms.BoneInfluences || !mcount )
                 {
                     for( size_t i = 0, j = ms.Vertices.size(); i < j; i++ )
                     {
                         Vertex3D& v = ms.Vertices[ i ];
                         Vertex3D& vt = ms.VerticesTransformed[ i ];
-                        vt.Position = frame->CombinedTransformationMatrix * v.Position;
+                        vt.Position = node->CombinedTransformationMatrix * v.Position;
                         ProjectPosition( vt.Position );
                     }
                 }
@@ -954,7 +954,7 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool tran
                 {
                     for( size_t i = 0; i < mcount; i++ )
                     {
-                        Matrix* m = ms.FrameCombinedMatrixPointer[ i ];
+                        Matrix* m = ms.BoneCombinedMatrices[ i ];
                         if( m )
                             BoneMatrices[ i ] = ( *m ) * ms.BoneOffsets[ i ];
                     }
@@ -985,23 +985,23 @@ bool Animation3d::FrameMove( float elapsed, int x, int y, float scale, bool tran
     {
         Animation3d* child = *it;
         child->groundPos = groundPos;
-        child->parentMatrix = child->parentFrame->CombinedTransformationMatrix * child->matTransBase * child->matRotBase * child->matScaleBase;
+        child->parentMatrix = child->parentNode->CombinedTransformationMatrix * child->matTransBase * child->matRotBase * child->matScaleBase;
     }
     return true;
 }
 
-void Animation3d::UpdateFrameMatrices( Frame* frame, const Matrix* parent_matrix )
+void Animation3d::UpdateNodeMatrices( Node* node, const Matrix* parent_matrix )
 {
-    // If parent matrix exists multiply our frame matrix by it
-    frame->CombinedTransformationMatrix = ( *parent_matrix ) * frame->TransformationMatrix;
+    // If parent matrix exists multiply our node matrix by it
+    node->CombinedTransformationMatrix = ( *parent_matrix ) * node->TransformationMatrix;
 
     // Calculate bone screen position
-    Matrix& m = frame->CombinedTransformationMatrix;
-    frame->ScreenPos.Set( m[ 0 ][ 3 ], m[ 1 ][ 3 ], m[ 2 ][ 3 ] );
-    ProjectPosition( frame->ScreenPos );
+    Matrix& m = node->CombinedTransformationMatrix;
+    node->ScreenPos.Set( m[ 0 ][ 3 ], m[ 1 ][ 3 ], m[ 2 ][ 3 ] );
+    ProjectPosition( node->ScreenPos );
 
     // Update borders
-    Vector& pos = frame->ScreenPos;
+    Vector& pos = node->ScreenPos;
     if( pos.x < bonesBorder.L )
         bonesBorder.L = pos.x;
     if( pos.x > bonesBorder.R )
@@ -1012,19 +1012,19 @@ void Animation3d::UpdateFrameMatrices( Frame* frame, const Matrix* parent_matrix
         bonesBorder.B = pos.y;
 
     // Update child
-    for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
-        UpdateFrameMatrices( *it, &frame->CombinedTransformationMatrix );
+    for( auto it = node->Children.begin(), end = node->Children.end(); it != end; ++it )
+        UpdateNodeMatrices( *it, &node->CombinedTransformationMatrix );
 }
 
-bool Animation3d::DrawFrame( Frame* frame, bool shadow )
+bool Animation3d::DrawNode( Node* node, bool shadow )
 {
-    MeshOptions* mopt = GetMeshOptions( frame );
-    for( uint k = 0, l = (uint) frame->Mesh.size(); k < l; k++ )
+    MeshOptions* mopt = GetMeshOptions( node );
+    for( uint k = 0, l = (uint) node->Mesh.size(); k < l; k++ )
     {
         if( mopt->DisabledSubsets[ k ] )
             continue;
 
-        MeshSubset& ms = frame->Mesh[ k ];
+        MeshSubset& ms = node->Mesh[ k ];
         MeshTexture**   textures = &mopt->TexSubsets[ k * EFFECT_TEXTURES ];
 
         if( ms.VAO )
@@ -1121,12 +1121,12 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
             GL( glUniform1f( effect->BoneInfluences, (float) ms.BoneInfluences ) );
         if( effect->WorldMatrices != -1 )
         {
-            uint mcount = (uint) ms.FrameCombinedMatrixPointer.size();
+            uint mcount = (uint) ms.BoneCombinedMatrices.size();
             if( mcount )
             {
                 for( uint i = 0; i < mcount; i++ )
                 {
-                    Matrix* m = ms.FrameCombinedMatrixPointer[ i ];
+                    Matrix* m = ms.BoneCombinedMatrices[ i ];
                     if( m )
                     {
                         BoneMatrices[ i ] = ( *m ) * ms.BoneOffsets[ i ];
@@ -1137,14 +1137,14 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
             }
             else
             {
-                BoneMatrices[ 0 ] = frame->CombinedTransformationMatrix;
+                BoneMatrices[ 0 ] = node->CombinedTransformationMatrix;
                 BoneMatrices[ 0 ].Transpose();                 // Convert to column major order
                 GL( glUniformMatrix4fv( effect->WorldMatrices, mcount, GL_FALSE, BoneMatrices[ 0 ][ 0 ] ) );
             }
         }
         if( effect->WorldMatrix != -1 )
         {
-            BoneMatrices[ 0 ] = frame->CombinedTransformationMatrix;
+            BoneMatrices[ 0 ] = node->CombinedTransformationMatrix;
             BoneMatrices[ 0 ].Transpose();             // Convert to column major order
             GL( glUniformMatrix4fv( effect->WorldMatrix, 1, GL_FALSE, BoneMatrices[ 0 ][ 0 ] ) );
         }
@@ -1180,8 +1180,8 @@ bool Animation3d::DrawFrame( Frame* frame, bool shadow )
         }
     }
 
-    for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
-        DrawFrame( *it, shadow );
+    for( auto it = node->Children.begin(), end = node->Children.end(); it != end; ++it )
+        DrawNode( *it, shadow );
 
     return true;
 }
@@ -1297,13 +1297,13 @@ Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
         return NULL;
 
     // Set mesh options
-    anim3d->meshOpt.resize( entity->xFile->allDrawFrames.size() );
-    for( uint i = 0, j = (uint) entity->xFile->allDrawFrames.size(); i < j; i++ )
+    anim3d->meshOpt.resize( entity->xFile->allDrawNodes.size() );
+    for( uint i = 0, j = (uint) entity->xFile->allDrawNodes.size(); i < j; i++ )
     {
         MeshOptions& mopt = anim3d->meshOpt[ i ];
-        Frame*       frame = entity->xFile->allDrawFrames[ i ];
-        mopt.FramePtr = frame;
-        mopt.SubsetsCount = (uint) frame->Mesh.size();
+        Node*       node = entity->xFile->allDrawNodes[ i ];
+        mopt.NodePtr = node;
+        mopt.SubsetsCount = (uint) node->Mesh.size();
         mopt.DisabledSubsets = new bool[ mopt.SubsetsCount ];
         mopt.TexSubsets = new MeshTexture*[ mopt.SubsetsCount * EFFECT_TEXTURES ];
         mopt.DefaultTexSubsets = new MeshTexture*[ mopt.SubsetsCount * EFFECT_TEXTURES ];
@@ -1318,10 +1318,10 @@ Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
         for( uint k = 0; k < mopt.SubsetsCount; k++ )
         {
             uint        tex_num = k * EFFECT_TEXTURES;
-            const char* tex_name = ( frame->Mesh[ k ].DiffuseTexture.length() ? frame->Mesh[ k ].DiffuseTexture.c_str() : NULL );
+            const char* tex_name = ( node->Mesh[ k ].DiffuseTexture.length() ? node->Mesh[ k ].DiffuseTexture.c_str() : NULL );
             mopt.DefaultTexSubsets[ tex_num ] = ( tex_name ? entity->xFile->GetTexture( tex_name ) : NULL );
             mopt.TexSubsets[ tex_num ] = mopt.DefaultTexSubsets[ tex_num ];
-            mopt.DefaultEffectSubsets[ k ] = ( frame->Mesh[ k ].DrawEffect.EffectFilename ? entity->xFile->GetEffect( &frame->Mesh[ k ].DrawEffect ) : NULL );
+            mopt.DefaultEffectSubsets[ k ] = ( node->Mesh[ k ].DrawEffect.EffectFilename ? entity->xFile->GetEffect( &node->Mesh[ k ].DrawEffect ) : NULL );
             mopt.EffectSubsets[ k ] = mopt.DefaultEffectSubsets[ k ];
         }
     }
@@ -2064,7 +2064,7 @@ bool Animation3dEntity::Load( const char* name )
 
             numAnimationSets = animController->GetNumAnimationSets();
             if( numAnimationSets > 0 )
-                Animation3dXFile::SetupAnimationOutput( xFile->frameRoot, animController );
+                Animation3dXFile::SetupAnimationOutput( xFile->rootNode, animController );
             else
                 SAFEDEL( animController );
         }
@@ -2220,13 +2220,13 @@ Animation3dEntity* Animation3dEntity::GetEntity( const char* name )
 
 Animation3dXFileVec Animation3dXFile::xFiles;
 
-Animation3dXFile::Animation3dXFile(): frameRoot( NULL )
+Animation3dXFile::Animation3dXFile(): rootNode( NULL )
 {}
 
 Animation3dXFile::~Animation3dXFile()
 {
-    GraphicLoader::Free( frameRoot );
-    frameRoot = NULL;
+    GraphicLoader::Free( rootNode );
+    rootNode = NULL;
 }
 
 Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
@@ -2246,8 +2246,8 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
     if( !xfile )
     {
         // Load
-        Frame* frame_root = GraphicLoader::LoadModel( xname );
-        if( !frame_root )
+        Node* root_node = GraphicLoader::LoadModel( xname );
+        if( !root_node )
         {
             WriteLogF( _FUNC_, " - Unable to load 3d file<%s>.\n", xname );
             return NULL;
@@ -2261,8 +2261,8 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
         }
 
         xfile->fileName = xname;
-        xfile->frameRoot = frame_root;
-        xfile->SetupFrames( xfile, xfile->frameRoot, xfile->frameRoot );
+        xfile->rootNode = root_node;
+        xfile->SetupNodes( xfile, xfile->rootNode, xfile->rootNode );
 
         xFiles.push_back( xfile );
     }
@@ -2270,29 +2270,29 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
     return xfile;
 }
 
-void Animation3dXFile::SetupFrames( Animation3dXFile* xfile, Frame* frame, Frame* frame_root )
+void Animation3dXFile::SetupNodes( Animation3dXFile* xfile, Node* node, Node* root_node )
 {
-    xfile->allFrames.push_back( frame );
-    if( !frame->Mesh.empty() )
-        xfile->allDrawFrames.push_back( frame );
+    xfile->allNodes.push_back( node );
+    if( !node->Mesh.empty() )
+        xfile->allDrawNodes.push_back( node );
 
-    for( auto it = frame->Mesh.begin(), end = frame->Mesh.end(); it != end; ++it )
+    for( auto it = node->Mesh.begin(), end = node->Mesh.end(); it != end; ++it )
     {
         MeshSubset& ms = *it;
-        if( BoneMatrices.size() < ms.FrameCombinedMatrixPointer.size() )
-            BoneMatrices.resize( ms.FrameCombinedMatrixPointer.size() );
+        if( BoneMatrices.size() < ms.BoneCombinedMatrices.size() )
+            BoneMatrices.resize( ms.BoneCombinedMatrices.size() );
     }
 
-    for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
-        SetupFrames( xfile, *it, frame_root );
+    for( auto it = node->Children.begin(), end = node->Children.end(); it != end; ++it )
+        SetupNodes( xfile, *it, root_node );
 }
 
-void Animation3dXFile::SetupAnimationOutput( Frame* frame, AnimController* anim_controller )
+void Animation3dXFile::SetupAnimationOutput( Node* node, AnimController* anim_controller )
 {
-    if( frame->Name.length() > 0 )
-        anim_controller->RegisterAnimationOutput( frame->Name.c_str(), frame->TransformationMatrix );
+    if( node->Name.length() > 0 )
+        anim_controller->RegisterAnimationOutput( node->Name.c_str(), node->TransformationMatrix );
 
-    for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
+    for( auto it = node->Children.begin(), end = node->Children.end(); it != end; ++it )
         SetupAnimationOutput( *it, anim_controller );
 }
 

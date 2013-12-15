@@ -20,7 +20,7 @@
 # pragma comment( lib, "libpng16.lib" )
 #endif
 
-static void CreateBuffers( Frame* frame );
+static void CreateBuffers( Node* node );
 
 // Assimp functions
 const aiScene* ( *Ptr_aiImportFileFromMemory )( const char* pBuffer, unsigned int pLength, unsigned int pFlags, const char* pHint );
@@ -33,8 +33,8 @@ unsigned int   ( * Ptr_aiGetMaterialTextureCount )( const aiMaterial* pMat, aiTe
 aiReturn       ( * Ptr_aiGetMaterialTexture )( const aiMaterial* mat, aiTextureType type, unsigned int  index, aiString* path, aiTextureMapping* mapping, unsigned int* uvindex, float* blend, aiTextureOp* op, aiTextureMapMode* mapmode, unsigned int* flags );
 aiReturn       ( * Ptr_aiGetMaterialFloatArray )( const aiMaterial* pMat, const char* pKey, unsigned int type, unsigned int index, float* pOut, unsigned int* pMax );
 
-static Frame* FillNode( aiScene* scene, aiNode* node );
-static void   FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, aiNode* node );
+static Node* FillNode( aiScene* scene, aiNode* ai_node );
+static void  FixNode( Node* root_node, Node* node, aiScene* scene, aiNode* ai_node );
 
 // FBX stuff
 class FbxStreamImpl: public FbxStream
@@ -142,8 +142,8 @@ public:
     {}
 };
 
-Frame* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& bones );
-void   FixFrameFbx( Frame* root_frame, Frame* frame, FbxScene* fbx_scene, FbxNode* fbx_node );
+Node*  FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& fbx_bones );
+void   FixNodeFbx( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode* fbx_node );
 Matrix ConvertFbxMatrix( const FbxAMatrix& m );
 
 /************************************************************************/
@@ -151,17 +151,17 @@ Matrix ConvertFbxMatrix( const FbxAMatrix& m );
 /************************************************************************/
 
 PCharVec GraphicLoader::processedFiles;
-FrameVec GraphicLoader::loadedModels;
+NodeVec  GraphicLoader::loadedModels;
 PtrVec   GraphicLoader::loadedAnimations;
 
-Frame* GraphicLoader::LoadModel( const char* fname )
+Node* GraphicLoader::LoadModel( const char* fname )
 {
     // Find already loaded
     for( auto it = loadedModels.begin(), end = loadedModels.end(); it != end; ++it )
     {
-        Frame* frame = *it;
-        if( Str::CompareCase( frame->GetName(), fname ) )
-            return frame;
+        Node* node = *it;
+        if( Str::CompareCase( node->GetName(), fname ) )
+            return node;
     }
 
     // Add to already processed
@@ -193,11 +193,11 @@ Frame* GraphicLoader::LoadModel( const char* fname )
     }
     if( file_cache.IsLoaded() )
     {
-        // Load frames
-        Frame* root_frame = new Frame();
-        root_frame->Load( file_cache );
-        root_frame->FixAfterLoad( root_frame );
-        CreateBuffers( root_frame );
+        // Load nodes
+        Node* root_node = new Node();
+        root_node->Load( file_cache );
+        root_node->FixAfterLoad( root_node );
+        CreateBuffers( root_node );
 
         // Load animations
         uint anim_sets_count = file_cache.GetBEUInt();
@@ -207,7 +207,7 @@ Frame* GraphicLoader::LoadModel( const char* fname )
             anim_set->Load( file_cache );
             loadedAnimations.push_back( anim_set );
         }
-        return root_frame;
+        return root_node;
     }
 
     // Load file data
@@ -217,9 +217,9 @@ Frame* GraphicLoader::LoadModel( const char* fname )
         return NULL;
     }
 
-    // Result frame
-    Frame* root_frame = NULL;
-    uint   loaded_anim_sets = 0;
+    // Result node
+    Node* root_node = NULL;
+    uint  loaded_anim_sets = 0;
 
     // Check extension
     const char* ext = FileManager::GetExtension( fname );
@@ -301,11 +301,11 @@ Frame* GraphicLoader::LoadModel( const char* fname )
         }
 
         // Load hierarchy
-        vector< FbxNode* > bones;
-        root_frame = FillNodeFbx( fbx_scene, fbx_scene->GetRootNode(), bones );
-        FixFrameFbx( root_frame, root_frame, fbx_scene, fbx_scene->GetRootNode() );
-        root_frame->Name = Str::Duplicate( fname );
-        loadedModels.push_back( root_frame );
+        vector< FbxNode* > fbx_bones;
+        root_node = FillNodeFbx( fbx_scene, fbx_scene->GetRootNode(), fbx_bones );
+        FixNodeFbx( root_node, root_node, fbx_scene, fbx_scene->GetRootNode() );
+        root_node->Name = Str::Duplicate( fname );
+        loadedModels.push_back( root_node );
 
         // Extract animations
         FloatVec          times;
@@ -329,7 +329,7 @@ Frame* GraphicLoader::LoadModel( const char* fname )
             tv.resize( frames_count );
 
             AnimSet* anim_set = new AnimSet();
-            for( uint n = 0; n < (uint) bones.size(); n++ )
+            for( uint n = 0; n < (uint) fbx_bones.size(); n++ )
             {
                 FbxTime cur_time;
                 for( int f = 0; f < frames_count; f++ )
@@ -339,10 +339,10 @@ Frame* GraphicLoader::LoadModel( const char* fname )
 
                     times[ f ] = time;
 
-                    Matrix m = ConvertFbxMatrix( fbx_anim_evaluator->GetNodeLocalTransform( bones[ n ], cur_time ) );
+                    Matrix m = ConvertFbxMatrix( fbx_anim_evaluator->GetNodeLocalTransform( fbx_bones[ n ], cur_time ) );
                     m.Decompose( sv[ f ], rv[ f ], tv[ f ] );
                 }
-                anim_set->AddBoneOutput( bones[ n ]->GetName(), times, sv, times, rv, times, tv );
+                anim_set->AddBoneOutput( fbx_bones[ n ]->GetName(), times, sv, times, rv, times, tv );
             }
 
             anim_set->SetData( fname, take_info->mName.Buffer(), (float) frames_count, frame_rate );
@@ -433,11 +433,11 @@ Frame* GraphicLoader::LoadModel( const char* fname )
             return NULL;
         }
 
-        // Extract frames
-        root_frame = FillNode( scene, scene->mRootNode );
-        FixFrame( root_frame, root_frame, scene, scene->mRootNode );
-        root_frame->Name = Str::Duplicate( fname );
-        loadedModels.push_back( root_frame );
+        // Extract nodes
+        root_node = FillNode( scene, scene->mRootNode );
+        FixNode( root_node, root_node, scene, scene->mRootNode );
+        root_node->Name = Str::Duplicate( fname );
+        loadedModels.push_back( root_node );
 
         // Extract animations
         FloatVec      st;
@@ -488,62 +488,62 @@ Frame* GraphicLoader::LoadModel( const char* fname )
         Ptr_aiReleaseImport( scene );
     }
 
-    // Fix frames
-    CreateBuffers( root_frame );
+    // Fix nodes
+    CreateBuffers( root_node );
 
     // Save to cache
     file_cache.SwitchToWrite();
     file_cache.SetBEUInt( MODELS_BINARY_VERSION );
-    root_frame->Save( file_cache );
+    root_node->Save( file_cache );
     file_cache.SetBEUInt( loaded_anim_sets );
     for( uint i = 0; i < loaded_anim_sets; i++ )
         ( (AnimSet*) loadedAnimations[ loadedAnimations.size() - i - 1 ] )->Save( file_cache );
     file_cache.SaveOutBufToFile( fname_cache, PT_CACHE );
 
-    return root_frame;
+    return root_node;
 }
 
-Frame* FillNode( aiScene* scene, aiNode* node )
+Node* FillNode( aiScene* scene, aiNode* ai_node )
 {
-    Frame* frame = new Frame();
-    frame->Name = node->mName.data;
-    frame->TransformationMatrix = node->mTransformation;
-    frame->CombinedTransformationMatrix = Matrix();
-    frame->Children.resize( node->mNumChildren );
-    frame->Mesh.resize( node->mNumMeshes );
+    Node* node = new Node();
+    node->Name = ai_node->mName.data;
+    node->TransformationMatrix = ai_node->mTransformation;
+    node->CombinedTransformationMatrix = Matrix();
+    node->Children.resize( ai_node->mNumChildren );
+    node->Mesh.resize( ai_node->mNumMeshes );
 
-    for( uint m = 0; m < node->mNumMeshes; m++ )
+    for( uint m = 0; m < ai_node->mNumMeshes; m++ )
     {
-        aiMesh*     aimesh = scene->mMeshes[ node->mMeshes[ m ] ];
-        MeshSubset& ms = frame->Mesh[ m ];
+        aiMesh*     ai_mesh = scene->mMeshes[ ai_node->mMeshes[ m ] ];
+        MeshSubset& ms = node->Mesh[ m ];
 
         // Vertices
-        ms.Vertices.resize( aimesh->mNumVertices );
-        ms.VerticesTransformed.resize( aimesh->mNumVertices );
-        bool has_tangents_and_bitangents = aimesh->HasTangentsAndBitangents();
-        bool has_color0 = aimesh->HasVertexColors( 0 );
+        ms.Vertices.resize( ai_mesh->mNumVertices );
+        ms.VerticesTransformed.resize( ai_mesh->mNumVertices );
+        bool has_tangents_and_bitangents = ai_mesh->HasTangentsAndBitangents();
+        bool has_color0 = ai_mesh->HasVertexColors( 0 );
         // bool has_color1 = aimesh->HasVertexColors( 1 );
-        bool has_tex_coords0 = aimesh->HasTextureCoords( 0 );
-        bool has_tex_coords1 = aimesh->HasTextureCoords( 1 );
-        bool has_tex_coords2 = aimesh->HasTextureCoords( 2 );
-        for( uint i = 0; i < aimesh->mNumVertices; i++ )
+        bool has_tex_coords0 = ai_mesh->HasTextureCoords( 0 );
+        bool has_tex_coords1 = ai_mesh->HasTextureCoords( 1 );
+        bool has_tex_coords2 = ai_mesh->HasTextureCoords( 2 );
+        for( uint i = 0; i < ai_mesh->mNumVertices; i++ )
         {
             Vertex3D& v = ms.Vertices[ i ];
             memzero( &v, sizeof( v ) );
-            v.Position = aimesh->mVertices[ i ];
+            v.Position = ai_mesh->mVertices[ i ];
             v.PositionW = 1.0f;
-            v.Normal = aimesh->mNormals[ i ];
+            v.Normal = ai_mesh->mNormals[ i ];
             if( has_tangents_and_bitangents )
             {
-                v.Tangent = aimesh->mTangents[ i ];
-                v.Bitangent = aimesh->mBitangents[ i ];
+                v.Tangent = ai_mesh->mTangents[ i ];
+                v.Bitangent = ai_mesh->mBitangents[ i ];
             }
             if( has_color0 )
             {
-                v.Color[ 2 ] = aimesh->mColors[ 0 ][ i ].r;
-                v.Color[ 1 ] = aimesh->mColors[ 0 ][ i ].g;
-                v.Color[ 0 ] = aimesh->mColors[ 0 ][ i ].b;
-                v.Color[ 3 ] = aimesh->mColors[ 0 ][ i ].a;
+                v.Color[ 2 ] = ai_mesh->mColors[ 0 ][ i ].r;
+                v.Color[ 1 ] = ai_mesh->mColors[ 0 ][ i ].g;
+                v.Color[ 0 ] = ai_mesh->mColors[ 0 ][ i ].b;
+                v.Color[ 3 ] = ai_mesh->mColors[ 0 ][ i ].a;
             }
             /*if( has_color1 )
                {
@@ -554,18 +554,18 @@ Frame* FillNode( aiScene* scene, aiNode* node )
                }*/
             if( has_tex_coords0 )
             {
-                v.TexCoord[ 0 ] = aimesh->mTextureCoords[ 0 ][ i ].x;
-                v.TexCoord[ 1 ] = aimesh->mTextureCoords[ 0 ][ i ].y;
+                v.TexCoord[ 0 ] = ai_mesh->mTextureCoords[ 0 ][ i ].x;
+                v.TexCoord[ 1 ] = ai_mesh->mTextureCoords[ 0 ][ i ].y;
             }
             if( has_tex_coords1 )
             {
-                v.TexCoord2[ 0 ] = aimesh->mTextureCoords[ 1 ][ i ].x;
-                v.TexCoord2[ 1 ] = aimesh->mTextureCoords[ 1 ][ i ].y;
+                v.TexCoord2[ 0 ] = ai_mesh->mTextureCoords[ 1 ][ i ].x;
+                v.TexCoord2[ 1 ] = ai_mesh->mTextureCoords[ 1 ][ i ].y;
             }
             if( has_tex_coords2 )
             {
-                v.TexCoord3[ 0 ] = aimesh->mTextureCoords[ 2 ][ i ].x;
-                v.TexCoord3[ 1 ] = aimesh->mTextureCoords[ 2 ][ i ].y;
+                v.TexCoord3[ 0 ] = ai_mesh->mTextureCoords[ 2 ][ i ].x;
+                v.TexCoord3[ 1 ] = ai_mesh->mTextureCoords[ 2 ][ i ].y;
             }
             v.BlendIndices[ 0 ] = -1.0f;
             v.BlendIndices[ 1 ] = -1.0f;
@@ -574,17 +574,17 @@ Frame* FillNode( aiScene* scene, aiNode* node )
         }
 
         // Faces
-        ms.Indicies.resize( aimesh->mNumFaces * 3 );
-        for( uint i = 0; i < aimesh->mNumFaces; i++ )
+        ms.Indicies.resize( ai_mesh->mNumFaces * 3 );
+        for( uint i = 0; i < ai_mesh->mNumFaces; i++ )
         {
-            aiFace& face = aimesh->mFaces[ i ];
+            aiFace& face = ai_mesh->mFaces[ i ];
             ms.Indicies[ i * 3 + 0 ] = face.mIndices[ 0 ];
             ms.Indicies[ i * 3 + 1 ] = face.mIndices[ 1 ];
             ms.Indicies[ i * 3 + 2 ] = face.mIndices[ 2 ];
         }
 
         // Material
-        aiMaterial* material = scene->mMaterials[ aimesh->mMaterialIndex ];
+        aiMaterial* material = scene->mMaterials[ ai_mesh->mMaterialIndex ];
         aiString    path;
         if( Ptr_aiGetMaterialTextureCount( material, aiTextureType_DIFFUSE ) )
         {
@@ -608,35 +608,35 @@ Frame* FillNode( aiScene* scene, aiNode* node )
         ms.VerticesTransformedValid = false;
     }
 
-    for( uint i = 0; i < node->mNumChildren; i++ )
-        frame->Children[ i ] = FillNode( scene, node->mChildren[ i ] );
-    return frame;
+    for( uint i = 0; i < ai_node->mNumChildren; i++ )
+        node->Children[ i ] = FillNode( scene, ai_node->mChildren[ i ] );
+    return node;
 }
 
-void FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, aiNode* node )
+void FixNode( Node* root_node, Node* node, aiScene* scene, aiNode* ai_node )
 {
-    for( uint m = 0; m < node->mNumMeshes; m++ )
+    for( uint m = 0; m < ai_node->mNumMeshes; m++ )
     {
-        aiMesh*     aimesh = scene->mMeshes[ node->mMeshes[ m ] ];
-        MeshSubset& mesh = frame->Mesh[ m ];
+        aiMesh*     ai_mesh = scene->mMeshes[ ai_node->mMeshes[ m ] ];
+        MeshSubset& mesh = node->Mesh[ m ];
 
         // Bones
         mesh.BoneInfluences = 0;
-        mesh.BoneOffsets.resize( aimesh->mNumBones );
-        mesh.BoneNames.resize( aimesh->mNumBones );
-        mesh.FrameCombinedMatrixPointer.resize( aimesh->mNumBones );
-        for( uint i = 0; i < aimesh->mNumBones; i++ )
+        mesh.BoneOffsets.resize( ai_mesh->mNumBones );
+        mesh.BoneNames.resize( ai_mesh->mNumBones );
+        mesh.BoneCombinedMatrices.resize( ai_mesh->mNumBones );
+        for( uint i = 0; i < ai_mesh->mNumBones; i++ )
         {
-            aiBone* bone = aimesh->mBones[ i ];
+            aiBone* bone = ai_mesh->mBones[ i ];
 
             // Matrices
             mesh.BoneOffsets[ i ] = bone->mOffsetMatrix;
             mesh.BoneNames[ i ] = bone->mName.data;
-            Frame* bone_frame = root_frame->Find( bone->mName.data );
-            if( bone_frame )
-                mesh.FrameCombinedMatrixPointer[ i ] = &bone_frame->CombinedTransformationMatrix;
+            Node* bone_node = root_node->Find( bone->mName.data );
+            if( bone_node )
+                mesh.BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
             else
-                mesh.FrameCombinedMatrixPointer[ i ] = NULL;
+                mesh.BoneCombinedMatrices[ i ] = NULL;
 
             // Blend data
             for( uint j = 0; j < bone->mNumWeights; j++ )
@@ -660,7 +660,7 @@ void FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, aiNode* node )
         }
 
         // Drop not filled indices
-        for( uint i = 0; i < aimesh->mNumVertices; i++ )
+        for( uint i = 0; i < ai_mesh->mNumVertices; i++ )
         {
             Vertex3D& v = mesh.Vertices[ i ];
             if( v.BlendIndices[ 0 ] < 0.0f )
@@ -674,26 +674,26 @@ void FixFrame( Frame* root_frame, Frame* frame, aiScene* scene, aiNode* node )
         }
     }
 
-    for( uint i = 0; i < node->mNumChildren; i++ )
-        FixFrame( root_frame, frame->Children[ i ], scene, node->mChildren[ i ] );
+    for( uint i = 0; i < ai_node->mNumChildren; i++ )
+        FixNode( root_node, node->Children[ i ], scene, ai_node->mChildren[ i ] );
 }
 
-Frame* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& bones )
+Node* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& fbx_bones )
 {
-    Frame* frame = new Frame();
-    frame->Name = fbx_node->GetName();
-    frame->TransformationMatrix = ConvertFbxMatrix( fbx_node->EvaluateLocalTransform() );
-    frame->CombinedTransformationMatrix = Matrix();
-    frame->Children.resize( fbx_node->GetChildCount() );
+    Node* node = new Node();
+    node->Name = fbx_node->GetName();
+    node->TransformationMatrix = ConvertFbxMatrix( fbx_node->EvaluateLocalTransform() );
+    node->CombinedTransformationMatrix = Matrix();
+    node->Children.resize( fbx_node->GetChildCount() );
 
     if( fbx_node->GetSkeleton() != NULL )
-        bones.push_back( fbx_node );
+        fbx_bones.push_back( fbx_node );
 
     FbxMesh* fbx_mesh = fbx_node->GetMesh();
     if( fbx_mesh && fbx_node->Show && fbx_mesh->GetPolygonVertexCount() == fbx_mesh->GetPolygonCount() * 3 && fbx_mesh->GetPolygonCount() > 0 )
     {
-        frame->Mesh.resize( 1 );
-        MeshSubset& ms = frame->Mesh[ 0 ];
+        node->Mesh.resize( 1 );
+        MeshSubset& ms = node->Mesh[ 0 ];
 
         // Vertices
         int*        vertices = fbx_mesh->GetPolygonVertices();
@@ -862,16 +862,16 @@ Frame* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& bone
     }
 
     for( int i = 0; i < fbx_node->GetChildCount(); i++ )
-        frame->Children[ i ] = FillNodeFbx( scene, fbx_node->GetChild( i ), bones );
-    return frame;
+        node->Children[ i ] = FillNodeFbx( scene, fbx_node->GetChild( i ), fbx_bones );
+    return node;
 }
 
-void FixFrameFbx( Frame* root_frame, Frame* frame, FbxScene* fbx_scene, FbxNode* fbx_node )
+void FixNodeFbx( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode* fbx_node )
 {
-    if( frame->Mesh.size() > 0 )
+    if( node->Mesh.size() > 0 )
     {
         FbxMesh*    fbx_mesh = fbx_node->GetMesh();
-        MeshSubset& mesh = frame->Mesh[ 0 ];
+        MeshSubset& mesh = node->Mesh[ 0 ];
         mesh.BoneInfluences = 0;
 
         if( fbx_mesh->GetDeformerCount( FbxDeformer::eSkin ) )
@@ -882,7 +882,7 @@ void FixFrameFbx( Frame* root_frame, Frame* frame, FbxScene* fbx_scene, FbxNode*
             int num_bones = fbx_skin->GetClusterCount();
             mesh.BoneOffsets.resize( num_bones );
             mesh.BoneNames.resize( num_bones );
-            mesh.FrameCombinedMatrixPointer.resize( num_bones );
+            mesh.BoneCombinedMatrices.resize( num_bones );
             for( int i = 0; i < num_bones; i++ )
             {
                 FbxCluster* fbx_cluster = fbx_skin->GetCluster( i );
@@ -895,11 +895,11 @@ void FixFrameFbx( Frame* root_frame, Frame* frame, FbxScene* fbx_scene, FbxNode*
                 mesh.BoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix );
                 mesh.BoneNames[ i ] = fbx_cluster->GetLink()->GetName();
 
-                Frame* bone_frame = root_frame->Find( fbx_cluster->GetLink()->GetName() );
-                if( bone_frame )
-                    mesh.FrameCombinedMatrixPointer[ i ] = &bone_frame->CombinedTransformationMatrix;
+                Node* bone_node = root_node->Find( fbx_cluster->GetLink()->GetName() );
+                if( bone_node )
+                    mesh.BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
                 else
-                    mesh.FrameCombinedMatrixPointer[ i ] = NULL;
+                    mesh.BoneCombinedMatrices[ i ] = NULL;
 
                 // Blend data
                 int     num_weights = fbx_cluster->GetControlPointIndicesCount();
@@ -951,14 +951,14 @@ void FixFrameFbx( Frame* root_frame, Frame* frame, FbxScene* fbx_scene, FbxNode*
     }
 
     for( int i = 0; i < fbx_node->GetChildCount(); i++ )
-        FixFrameFbx( root_frame, frame->Children[ i ], fbx_scene, fbx_node->GetChild( i ) );
+        FixNodeFbx( root_node, node->Children[ i ], fbx_scene, fbx_node->GetChild( i ) );
 }
 
-void CreateBuffers( Frame* frame )
+void CreateBuffers( Node* node )
 {
-    for( size_t m = 0; m < frame->Mesh.size(); m++ )
+    for( size_t m = 0; m < node->Mesh.size(); m++ )
     {
-        MeshSubset& ms = frame->Mesh[ m ];
+        MeshSubset& ms = node->Mesh[ m ];
 
         // Generate OGL buffers
         GL( glGenBuffers( 1, &ms.VBO ) );
@@ -988,7 +988,7 @@ void CreateBuffers( Frame* frame )
         }
     }
 
-    for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
+    for( auto it = node->Children.begin(), end = node->Children.end(); it != end; ++it )
         CreateBuffers( *it );
 }
 
@@ -1023,9 +1023,9 @@ AnimSet* GraphicLoader::LoadAnimation( const char* anim_fname, const char* anim_
     return NULL;
 }
 
-void GraphicLoader::Free( Frame* frame )
+void GraphicLoader::Free( Node* node )
 {
-    for( auto it = frame->Mesh.begin(), end = frame->Mesh.end(); it != end; ++it )
+    for( auto it = node->Mesh.begin(), end = node->Mesh.end(); it != end; ++it )
     {
         MeshSubset& ms = *it;
         if( ms.VAO )
@@ -1033,7 +1033,7 @@ void GraphicLoader::Free( Frame* frame )
         GL( glDeleteBuffers( 1, &ms.VBO ) );
         GL( glDeleteBuffers( 1, &ms.IBO ) );
     }
-    for( auto it = frame->Children.begin(), end = frame->Children.end(); it != end; ++it )
+    for( auto it = node->Children.begin(), end = node->Children.end(); it != end; ++it )
         Free( *it );
 }
 

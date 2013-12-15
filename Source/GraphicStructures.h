@@ -352,7 +352,7 @@ struct MeshSubset
     // Runtime data
     Vertex3DVec    VerticesTransformed;
     bool           VerticesTransformedValid;
-    MatrixPtrVec   FrameCombinedMatrixPointer;
+    MatrixPtrVec   BoneCombinedMatrices;
     EffectInstance DrawEffect;
     GLuint         VAO, VBO, IBO;
 
@@ -362,27 +362,27 @@ struct MeshSubset
 typedef vector< MeshSubset > MeshSubsetVec;
 
 //
-// Frame
+// Node
 //
 
-struct Frame;
-typedef vector< Frame* > FrameVec;
-struct Frame
+struct Node;
+typedef vector< Node* > NodeVec;
+struct Node
 {
     string        Name;
     Matrix        TransformationMatrix;
     MeshSubsetVec Mesh;
 
     // Runtime data
-    FrameVec      Children;
+    NodeVec       Children;
     Matrix        CombinedTransformationMatrix;
     Vector        ScreenPos;
 
     const char* GetName();
-    Frame*      Find( const char* name );
+    Node*       Find( const char* name );
     void        Save( FileManager& file );
     void        Load( FileManager& file );
-    void        FixAfterLoad( Frame* root_frame );
+    void        FixAfterLoad( Node* root_node );
 };
 
 //

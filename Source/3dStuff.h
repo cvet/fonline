@@ -53,7 +53,7 @@ typedef vector< AnimParams > AnimParamsVec;
 
 struct MeshOptions
 {
-    Frame*        FramePtr;
+    Node*         NodePtr;
     uint          SubsetsCount;
     bool*         DisabledSubsets;
     MeshTexture** TexSubsets;
@@ -94,21 +94,20 @@ private:
     // Derived animations
     Animation3dVec childAnimations;
     Animation3d*   parentAnimation;
-    Frame*         parentFrame;
+    Node*          parentNode;
     Matrix         parentMatrix;
-    FrameVec       linkFrames;
+    NodeVec        linkNodes;
     MatrixVec      linkMatricles;
     AnimParams     animLink;
     bool           childChecker;
 
-    bool         FrameMove( float elapsed, int x, int y, float scale, bool transform );
-    void         UpdateFrameMatrices( Frame* frame, const Matrix* parent_matrix );
-    bool         DrawFrame( Frame* frame, bool shadow );
-    bool         IsIntersectFrame( Frame* frame, const Vector& ray_origin, const Vector& ray_dir, float x, float y );
-    void         SetupBordersFrame( Frame* frame, RectF& borders );
+    bool         MoveNode( float elapsed, int x, int y, float scale, bool transform );
+    void         UpdateNodeMatrices( Node* node, const Matrix* parent_matrix );
+    bool         DrawNode( Node* node, bool shadow );
+    bool         IsIntersectNode( Node* node, const Vector& ray_origin, const Vector& ray_dir, float x, float y );
     float        GetSpeed();
     uint         GetTick();
-    MeshOptions* GetMeshOptions( Frame* frame );
+    MeshOptions* GetMeshOptions( Node* node );
     static void  SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear );
 
 public:
@@ -198,13 +197,13 @@ private:
     static Animation3dXFileVec xFiles;
 
     string                     fileName;
-    Frame*                     frameRoot;
-    FrameVec                   allFrames;
-    FrameVec                   allDrawFrames;
+    Node*                      rootNode;
+    NodeVec                    allNodes;
+    NodeVec                    allDrawNodes;
 
     static Animation3dXFile* GetXFile( const char* xname );
-    static void              SetupFrames( Animation3dXFile* xfile, Frame* frame, Frame* frame_root );
-    static void              SetupAnimationOutput( Frame* frame, AnimController* anim_controller );
+    static void              SetupNodes( Animation3dXFile* xfile, Node* node, Node* root_node );
+    static void              SetupAnimationOutput( Node* node, AnimController* anim_controller );
 
     MeshTexture* GetTexture( const char* tex_name );
     Effect*      GetEffect( EffectInstance* effect_inst );

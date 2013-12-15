@@ -15,14 +15,14 @@ class GraphicLoader
 {
     // Models
 public:
-    static Frame*   LoadModel( const char* fname );
+    static Node*    LoadModel( const char* fname );
     static AnimSet* LoadAnimation( const char* anim_fname, const char* anim_name );
-    static void     Free( Frame* frame );
+    static void     Free( Node* node );
     static bool     IsExtensionSupported( const char* ext );
 
 private:
     static PCharVec processedFiles;
-    static FrameVec loadedModels;
+    static NodeVec  loadedModels;
     static PtrVec   loadedAnimations;   // Pointers of AnimSet
 
     // Textures
