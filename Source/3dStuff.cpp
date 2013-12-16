@@ -1232,6 +1232,8 @@ bool Animation3d::StartUp()
         MoveTransitionTime = 0.001f;
     }
 
+    BoneMatrices.resize( 1 );
+
     return true;
 }
 

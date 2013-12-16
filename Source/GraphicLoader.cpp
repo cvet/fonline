@@ -33,8 +33,8 @@ unsigned int   ( * Ptr_aiGetMaterialTextureCount )( const aiMaterial* pMat, aiTe
 aiReturn       ( * Ptr_aiGetMaterialTexture )( const aiMaterial* mat, aiTextureType type, unsigned int  index, aiString* path, aiTextureMapping* mapping, unsigned int* uvindex, float* blend, aiTextureOp* op, aiTextureMapMode* mapmode, unsigned int* flags );
 aiReturn       ( * Ptr_aiGetMaterialFloatArray )( const aiMaterial* pMat, const char* pKey, unsigned int type, unsigned int index, float* pOut, unsigned int* pMax );
 
-static Node* FillNode( aiScene* scene, aiNode* ai_node );
-static void  FixNode( Node* root_node, Node* node, aiScene* scene, aiNode* ai_node );
+static Node* ConvertAssimpPass1( aiScene* scene, aiNode* ai_node );
+static void  ConvertAssimpPass2( Node* root_node, Node* node, aiScene* scene, aiNode* ai_node );
 
 // FBX stuff
 class FbxStreamImpl: public FbxStream
@@ -142,8 +142,8 @@ public:
     {}
 };
 
-Node*  FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& fbx_bones );
-void   FixNodeFbx( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode* fbx_node );
+Node*  ConvertFbxPass1( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& fbx_bones );
+void   ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode* fbx_node );
 Matrix ConvertFbxMatrix( const FbxAMatrix& m );
 
 /************************************************************************/
@@ -302,8 +302,8 @@ Node* GraphicLoader::LoadModel( const char* fname )
 
         // Load hierarchy
         vector< FbxNode* > fbx_bones;
-        root_node = FillNodeFbx( fbx_scene, fbx_scene->GetRootNode(), fbx_bones );
-        FixNodeFbx( root_node, root_node, fbx_scene, fbx_scene->GetRootNode() );
+        root_node = ConvertFbxPass1( fbx_scene, fbx_scene->GetRootNode(), fbx_bones );
+        ConvertFbxPass2( root_node, root_node, fbx_scene, fbx_scene->GetRootNode() );
         root_node->Name = Str::Duplicate( fname );
         loadedModels.push_back( root_node );
 
@@ -434,8 +434,8 @@ Node* GraphicLoader::LoadModel( const char* fname )
         }
 
         // Extract nodes
-        root_node = FillNode( scene, scene->mRootNode );
-        FixNode( root_node, root_node, scene, scene->mRootNode );
+        root_node = ConvertAssimpPass1( scene, scene->mRootNode );
+        ConvertAssimpPass2( root_node, root_node, scene, scene->mRootNode );
         root_node->Name = Str::Duplicate( fname );
         loadedModels.push_back( root_node );
 
@@ -503,7 +503,7 @@ Node* GraphicLoader::LoadModel( const char* fname )
     return root_node;
 }
 
-Node* FillNode( aiScene* scene, aiNode* ai_node )
+Node* ConvertAssimpPass1( aiScene* scene, aiNode* ai_node )
 {
     Node* node = new Node();
     node->Name = ai_node->mName.data;
@@ -609,11 +609,11 @@ Node* FillNode( aiScene* scene, aiNode* ai_node )
     }
 
     for( uint i = 0; i < ai_node->mNumChildren; i++ )
-        node->Children[ i ] = FillNode( scene, ai_node->mChildren[ i ] );
+        node->Children[ i ] = ConvertAssimpPass1( scene, ai_node->mChildren[ i ] );
     return node;
 }
 
-void FixNode( Node* root_node, Node* node, aiScene* scene, aiNode* ai_node )
+void ConvertAssimpPass2( Node* root_node, Node* node, aiScene* scene, aiNode* ai_node )
 {
     for( uint m = 0; m < ai_node->mNumMeshes; m++ )
     {
@@ -675,10 +675,10 @@ void FixNode( Node* root_node, Node* node, aiScene* scene, aiNode* ai_node )
     }
 
     for( uint i = 0; i < ai_node->mNumChildren; i++ )
-        FixNode( root_node, node->Children[ i ], scene, ai_node->mChildren[ i ] );
+        ConvertAssimpPass2( root_node, node->Children[ i ], scene, ai_node->mChildren[ i ] );
 }
 
-Node* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& fbx_bones )
+Node* ConvertFbxPass1( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& fbx_bones )
 {
     Node* node = new Node();
     node->Name = fbx_node->GetName();
@@ -689,20 +689,26 @@ Node* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& fbx_b
     if( fbx_node->GetSkeleton() != NULL )
         fbx_bones.push_back( fbx_node );
 
+    for( int i = 0; i < fbx_node->GetChildCount(); i++ )
+        node->Children[ i ] = ConvertFbxPass1( scene, fbx_node->GetChild( i ), fbx_bones );
+    return node;
+}
+
+void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode* fbx_node )
+{
     FbxMesh* fbx_mesh = fbx_node->GetMesh();
     if( fbx_mesh && fbx_node->Show && fbx_mesh->GetPolygonVertexCount() == fbx_mesh->GetPolygonCount() * 3 && fbx_mesh->GetPolygonCount() > 0 )
     {
-        node->Mesh.resize( 1 );
-        MeshSubset& ms = node->Mesh[ 0 ];
+        int material_count = fbx_node->GetMaterialCount();
+        node->Mesh.resize( material_count );
 
         // Vertices
         int*        vertices = fbx_mesh->GetPolygonVertices();
         int         vertices_count = fbx_mesh->GetPolygonVertexCount();
-
         FbxVector4* vertices_data = fbx_mesh->GetControlPoints();
-        ms.Vertices.resize( vertices_count );
-        ms.VerticesTransformed.resize( vertices_count );
+        int         polygon_count = fbx_mesh->GetPolygonCount();
 
+        // Vertex data
         FbxGeometryElementNormal*   fbx_normals = fbx_mesh->GetElementNormal();
         FbxGeometryElementTangent*  fbx_tangents = fbx_mesh->GetElementTangent();
         FbxGeometryElementBinormal* fbx_binormals = fbx_mesh->GetElementBinormal();
@@ -710,93 +716,116 @@ Node* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& fbx_b
         FbxGeometryElementUV*       fbx_uvs0 = fbx_mesh->GetElementUV( 0 );
         FbxGeometryElementUV*       fbx_uvs1 = fbx_mesh->GetElementUV( 1 );
         FbxGeometryElementUV*       fbx_uvs2 = fbx_mesh->GetElementUV( 2 );
-        for( int i = 0; i < vertices_count; i++ )
+
+        // Reserve space for material vertices
+        vector< vector< int > > material_vertices( material_count );
+        for( int m = 0; m < material_count; m++ )
+            material_vertices[ m ].reserve( vertices_count );
+
+        // Determine material vertices
+        FbxGeometryElementMaterial* fbx_material_element = fbx_mesh->GetElementMaterial();
+        FbxGeometryElement::EMappingMode mat_mapping = fbx_material_element->GetMappingMode();
+        for( int i = 0; i < polygon_count; i++ )
         {
-            Vertex3D&   v = ms.Vertices[ i ];
-            FbxVector4& fbx_v = vertices_data[ vertices[ i ] ];
-
-            memzero( &v, sizeof( v ) );
-            v.Position = Vector( (float) fbx_v.mData[ 0 ], (float) fbx_v.mData[ 1 ], (float) fbx_v.mData[ 2 ] );
-            v.PositionW = 1.0f;
-
-            #define FBX_GET_ELEMENT( elements, index )                                                                                                                     \
-                ( elements->GetMappingMode() == FbxGeometryElement::eByPolygonVertex ?                                                                                     \
-                  ( elements->GetReferenceMode() == FbxGeometryElement::eDirect ?                                                                                          \
-                    elements->GetDirectArray().GetAt( index ) : elements->GetDirectArray().GetAt( elements->GetIndexArray().GetAt( index ) ) ) :                           \
-                  ( elements->GetMappingMode() == FbxGeometryElement::eByControlPoint ?                                                                                    \
-                    ( elements->GetReferenceMode() == FbxGeometryElement::eDirect ?                                                                                        \
-                      elements->GetDirectArray().GetAt( vertices[ index ] ) : elements->GetDirectArray().GetAt( elements->GetIndexArray().GetAt( vertices[ index ] ) ) ) : \
-                    elements->GetDirectArray().GetAt( -1 ) ) )
-
-            if( fbx_normals )
-            {
-                const FbxVector4& fbx_normal = FBX_GET_ELEMENT( fbx_normals, i );
-                v.Normal = Vector( (float) fbx_normal[ 0 ], (float) fbx_normal[ 1 ], (float) fbx_normal[ 2 ] );
-            }
-            if( fbx_tangents )
-            {
-                const FbxVector4& fbx_tangent = FBX_GET_ELEMENT( fbx_tangents, i );
-                v.Tangent = Vector( (float) fbx_tangent[ 0 ], (float) fbx_tangent[ 1 ], (float) fbx_tangent[ 2 ] );
-            }
-            if( fbx_binormals )
-            {
-                const FbxVector4& fbx_binormal = FBX_GET_ELEMENT( fbx_binormals, i );
-                v.Bitangent = Vector( (float) fbx_binormal[ 0 ], (float) fbx_binormal[ 1 ], (float) fbx_binormal[ 2 ] );
-            }
-            if( fbx_colors )
-            {
-                const FbxColor& fbx_color = FBX_GET_ELEMENT( fbx_colors, i );
-                v.Color[ 2 ] = (float) fbx_color.mRed;
-                v.Color[ 1 ] = (float) fbx_color.mGreen;
-                v.Color[ 0 ] = (float) fbx_color.mBlue;
-                v.Color[ 3 ] = (float) fbx_color.mAlpha;
-            }
-            if( fbx_uvs0 )
-            {
-                const FbxVector2& fbx_uv0 = FBX_GET_ELEMENT( fbx_uvs0, i );
-                v.TexCoord[ 0 ] = (float) fbx_uv0[ 0 ];
-                v.TexCoord[ 1 ] = (float) fbx_uv0[ 1 ];
-            }
-            if( fbx_uvs1 )
-            {
-                const FbxVector2& fbx_uv1 = FBX_GET_ELEMENT( fbx_uvs1, i );
-                v.TexCoord2[ 0 ] = (float) fbx_uv1[ 0 ];
-                v.TexCoord2[ 1 ] = (float) fbx_uv1[ 1 ];
-            }
-            if( fbx_uvs2 )
-            {
-                const FbxVector2& fbx_uv2 = FBX_GET_ELEMENT( fbx_uvs2, i );
-                v.TexCoord3[ 0 ] = (float) fbx_uv2[ 0 ];
-                v.TexCoord3[ 1 ] = (float) fbx_uv2[ 1 ];
-            }
-            #undef FBX_GET_ELEMENT
-
-            v.BlendIndices[ 0 ] = -1.0f;
-            v.BlendIndices[ 1 ] = -1.0f;
-            v.BlendIndices[ 2 ] = -1.0f;
-            v.BlendIndices[ 3 ] = -1.0f;
+            int m = fbx_material_element->GetIndexArray().GetAt( mat_mapping == FbxGeometryElement::eAllSame ? 0 : i );
+            material_vertices[ m ].push_back( i * 3 + 0 );
+            material_vertices[ m ].push_back( i * 3 + 1 );
+            material_vertices[ m ].push_back( i * 3 + 2 );
         }
 
-        // Faces
-        ms.Indicies.resize( vertices_count );
-        for( int i = 0; i < vertices_count; i++ )
-            ms.Indicies[ i ] = i;
-
-        // Material
-        for( int i = 0; i < 4; i++ )
+        // Process each subset
+        for( int m = 0; m < material_count; m++ )
         {
-            ms.DiffuseColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
-            ms.AmbientColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
-            ms.SpecularColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
-            ms.EmissiveColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
-        }
+            MeshSubset& ms = node->Mesh[ m ];
 
-        FbxGeometryElementMaterial* fbx_material_element = fbx_mesh->GetElementMaterial( 0 );
-        if( fbx_material_element )
-        {
-            int                 mat_id = fbx_material_element->GetIndexArray().GetAt( 0 );
-            FbxSurfaceMaterial* fbx_material = fbx_mesh->GetNode()->GetMaterial( mat_id );
+            int material_vertices_count = (int) material_vertices[ m ].size();
 
+            ms.Vertices.resize( material_vertices_count );
+            ms.VerticesTransformed.resize( material_vertices_count );
+
+            for( int i = 0; i < material_vertices_count; i++ )
+            {
+                Vertex3D&   v = ms.Vertices[ i ];
+                int         vertex_index = material_vertices[ m ][ i ];
+                FbxVector4& fbx_v = vertices_data[ vertices[ vertex_index ] ];
+
+                memzero( &v, sizeof( v ) );
+                v.Position = Vector( (float) fbx_v.mData[ 0 ], (float) fbx_v.mData[ 1 ], (float) fbx_v.mData[ 2 ] );
+                v.PositionW = 1.0f;
+
+                #define FBX_GET_ELEMENT( elements, index )                                                                                                                     \
+                    ( elements->GetMappingMode() == FbxGeometryElement::eByPolygonVertex ?                                                                                     \
+                      ( elements->GetReferenceMode() == FbxGeometryElement::eDirect ?                                                                                          \
+                        elements->GetDirectArray().GetAt( index ) : elements->GetDirectArray().GetAt( elements->GetIndexArray().GetAt( index ) ) ) :                           \
+                      ( elements->GetMappingMode() == FbxGeometryElement::eByControlPoint ?                                                                                    \
+                        ( elements->GetReferenceMode() == FbxGeometryElement::eDirect ?                                                                                        \
+                          elements->GetDirectArray().GetAt( vertices[ index ] ) : elements->GetDirectArray().GetAt( elements->GetIndexArray().GetAt( vertices[ index ] ) ) ) : \
+                        elements->GetDirectArray().GetAt( -1 ) ) )
+
+                if( fbx_normals )
+                {
+                    const FbxVector4& fbx_normal = FBX_GET_ELEMENT( fbx_normals, vertex_index );
+                    v.Normal = Vector( (float) fbx_normal[ 0 ], (float) fbx_normal[ 1 ], (float) fbx_normal[ 2 ] );
+                }
+                if( fbx_tangents )
+                {
+                    const FbxVector4& fbx_tangent = FBX_GET_ELEMENT( fbx_tangents, vertex_index );
+                    v.Tangent = Vector( (float) fbx_tangent[ 0 ], (float) fbx_tangent[ 1 ], (float) fbx_tangent[ 2 ] );
+                }
+                if( fbx_binormals )
+                {
+                    const FbxVector4& fbx_binormal = FBX_GET_ELEMENT( fbx_binormals, vertex_index );
+                    v.Bitangent = Vector( (float) fbx_binormal[ 0 ], (float) fbx_binormal[ 1 ], (float) fbx_binormal[ 2 ] );
+                }
+                if( fbx_colors )
+                {
+                    const FbxColor& fbx_color = FBX_GET_ELEMENT( fbx_colors, vertex_index );
+                    v.Color[ 2 ] = (float) fbx_color.mRed;
+                    v.Color[ 1 ] = (float) fbx_color.mGreen;
+                    v.Color[ 0 ] = (float) fbx_color.mBlue;
+                    v.Color[ 3 ] = (float) fbx_color.mAlpha;
+                }
+                if( fbx_uvs0 )
+                {
+                    const FbxVector2& fbx_uv0 = FBX_GET_ELEMENT( fbx_uvs0, vertex_index );
+                    v.TexCoord[ 0 ] = (float) fbx_uv0[ 0 ];
+                    v.TexCoord[ 1 ] = (float) fbx_uv0[ 1 ];
+                }
+                if( fbx_uvs1 )
+                {
+                    const FbxVector2& fbx_uv1 = FBX_GET_ELEMENT( fbx_uvs1, vertex_index );
+                    v.TexCoord2[ 0 ] = (float) fbx_uv1[ 0 ];
+                    v.TexCoord2[ 1 ] = (float) fbx_uv1[ 1 ];
+                }
+                if( fbx_uvs2 )
+                {
+                    const FbxVector2& fbx_uv2 = FBX_GET_ELEMENT( fbx_uvs2, vertex_index );
+                    v.TexCoord3[ 0 ] = (float) fbx_uv2[ 0 ];
+                    v.TexCoord3[ 1 ] = (float) fbx_uv2[ 1 ];
+                }
+                #undef FBX_GET_ELEMENT
+
+                v.BlendIndices[ 0 ] = -1.0f;
+                v.BlendIndices[ 1 ] = -1.0f;
+                v.BlendIndices[ 2 ] = -1.0f;
+                v.BlendIndices[ 3 ] = -1.0f;
+            }
+
+            // Faces
+            ms.Indicies.resize( material_vertices_count );
+            for( int i = 0; i < material_vertices_count; i++ )
+                ms.Indicies[ i ] = i;
+
+            // Material
+            for( int i = 0; i < 4; i++ )
+            {
+                ms.DiffuseColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
+                ms.AmbientColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
+                ms.SpecularColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
+                ms.EmissiveColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
+            }
+
+            FbxSurfaceMaterial* fbx_material = fbx_node->GetMaterial( m );
             FbxProperty         prop_diffuse = fbx_material->FindProperty( "DiffuseColor" );
             FbxProperty         prop_diffuse_factor = fbx_material->FindProperty( "DiffuseFactor" );
             if( prop_diffuse.IsValid() )
@@ -851,107 +880,93 @@ Node* FillNodeFbx( FbxScene* scene, FbxNode* fbx_node, vector< FbxNode* >& fbx_b
                 ms.EmissiveColor[ 1 ] = (float) ( color.mData[ 1 ] * factor );
                 ms.EmissiveColor[ 2 ] = (float) ( color.mData[ 2 ] * factor );
             }
-        }
 
-        // Effect
-        ms.DrawEffect.EffectFilename = NULL;
+            // Effect
+            ms.DrawEffect.EffectFilename = NULL;
 
-        // Transformed vertices position
-        ms.VerticesTransformed = ms.Vertices;
-        ms.VerticesTransformedValid = false;
-    }
+            // Transformed vertices position
+            ms.VerticesTransformed = ms.Vertices;
+            ms.VerticesTransformedValid = false;
 
-    for( int i = 0; i < fbx_node->GetChildCount(); i++ )
-        node->Children[ i ] = FillNodeFbx( scene, fbx_node->GetChild( i ), fbx_bones );
-    return node;
-}
-
-void FixNodeFbx( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode* fbx_node )
-{
-    if( node->Mesh.size() > 0 )
-    {
-        FbxMesh*    fbx_mesh = fbx_node->GetMesh();
-        MeshSubset& mesh = node->Mesh[ 0 ];
-        mesh.BoneInfluences = 0;
-
-        if( fbx_mesh->GetDeformerCount( FbxDeformer::eSkin ) )
-        {
-            FbxSkin* fbx_skin = (FbxSkin*) fbx_mesh->GetDeformer( 0, FbxDeformer::eSkin );
-
-            // Bones
-            int num_bones = fbx_skin->GetClusterCount();
-            mesh.BoneOffsets.resize( num_bones );
-            mesh.BoneNames.resize( num_bones );
-            mesh.BoneCombinedMatrices.resize( num_bones );
-            for( int i = 0; i < num_bones; i++ )
+            // Skinning
+            ms.BoneInfluences = 0;
+            if( fbx_mesh->GetDeformerCount( FbxDeformer::eSkin ) )
             {
-                FbxCluster* fbx_cluster = fbx_skin->GetCluster( i );
+                FbxSkin* fbx_skin = (FbxSkin*) fbx_mesh->GetDeformer( 0, FbxDeformer::eSkin );
 
-                // Matrices
-                FbxAMatrix link_matrix;
-                fbx_cluster->GetTransformLinkMatrix( link_matrix );
-                FbxAMatrix cur_matrix;
-                fbx_cluster->GetTransformMatrix( cur_matrix );
-                mesh.BoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix );
-                mesh.BoneNames[ i ] = fbx_cluster->GetLink()->GetName();
-
-                Node* bone_node = root_node->Find( fbx_cluster->GetLink()->GetName() );
-                if( bone_node )
-                    mesh.BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
-                else
-                    mesh.BoneCombinedMatrices[ i ] = NULL;
-
-                // Blend data
-                int     num_weights = fbx_cluster->GetControlPointIndicesCount();
-                int*    indicies = fbx_cluster->GetControlPointIndices();
-                double* weights = fbx_cluster->GetControlPointWeights();
-                int     vertices_count = fbx_mesh->GetPolygonVertexCount();
-                int*    vertices = fbx_mesh->GetPolygonVertices();
-                for( int j = 0; j < num_weights; j++ )
+                // Bones
+                int num_bones = fbx_skin->GetClusterCount();
+                ms.BoneOffsets.resize( num_bones );
+                ms.BoneNames.resize( num_bones );
+                ms.BoneCombinedMatrices.resize( num_bones );
+                for( int i = 0; i < num_bones; i++ )
                 {
-                    for( int k = 0; k < vertices_count; k++ )
+                    FbxCluster* fbx_cluster = fbx_skin->GetCluster( i );
+
+                    // Matrices
+                    FbxAMatrix link_matrix;
+                    fbx_cluster->GetTransformLinkMatrix( link_matrix );
+                    FbxAMatrix cur_matrix;
+                    fbx_cluster->GetTransformMatrix( cur_matrix );
+                    ms.BoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix );
+                    ms.BoneNames[ i ] = fbx_cluster->GetLink()->GetName();
+
+                    Node* bone_node = root_node->Find( fbx_cluster->GetLink()->GetName() );
+                    if( bone_node )
+                        ms.BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
+                    else
+                        ms.BoneCombinedMatrices[ i ] = NULL;
+
+                    // Blend data
+                    int     num_weights = fbx_cluster->GetControlPointIndicesCount();
+                    int*    indicies = fbx_cluster->GetControlPointIndices();
+                    double* weights = fbx_cluster->GetControlPointWeights();
+                    for( int j = 0; j < num_weights; j++ )
                     {
-                        if( vertices[ k ] != indicies[ j ] )
-                            continue;
+                        for( int k = 0; k < material_vertices_count; k++ )
+                        {
+                            if( vertices[ material_vertices[ m ][ k ] ] != indicies[ j ] )
+                                continue;
 
-                        Vertex3D& v = mesh.Vertices[ k ];
-                        uint      index;
-                        if( v.BlendIndices[ 0 ] < 0.0f )
-                            index = 0;
-                        else if( v.BlendIndices[ 1 ] < 0.0f )
-                            index = 1;
-                        else if( v.BlendIndices[ 2 ] < 0.0f )
-                            index = 2;
-                        else
-                            index = 3;
+                            Vertex3D& v = ms.Vertices[ k ];
+                            uint      index;
+                            if( v.BlendIndices[ 0 ] < 0.0f )
+                                index = 0;
+                            else if( v.BlendIndices[ 1 ] < 0.0f )
+                                index = 1;
+                            else if( v.BlendIndices[ 2 ] < 0.0f )
+                                index = 2;
+                            else
+                                index = 3;
 
-                        v.BlendWeights[ index ] = (float) weights[ j ];
-                        v.BlendIndices[ index ] = (float) i;
+                            v.BlendWeights[ index ] = (float) weights[ j ];
+                            v.BlendIndices[ index ] = (float) i;
 
-                        if( mesh.BoneInfluences <= index )
-                            mesh.BoneInfluences = index + 1;
+                            if( ms.BoneInfluences <= index )
+                                ms.BoneInfluences = index + 1;
+                        }
                     }
                 }
-            }
 
-            // Drop not filled indices
-            for( int i = 0; i < (int) mesh.Vertices.size(); i++ )
-            {
-                Vertex3D& v = mesh.Vertices[ i ];
-                if( v.BlendIndices[ 0 ] < 0.0f )
-                    v.BlendIndices[ 0 ] = 0.0f;
-                if( v.BlendIndices[ 1 ] < 0.0f )
-                    v.BlendIndices[ 1 ] = 0.0f;
-                if( v.BlendIndices[ 2 ] < 0.0f )
-                    v.BlendIndices[ 2 ] = 0.0f;
-                if( v.BlendIndices[ 3 ] < 0.0f )
-                    v.BlendIndices[ 3 ] = 0.0f;
+                // Drop not filled indices
+                for( size_t i = 0; i < ms.Vertices.size(); i++ )
+                {
+                    Vertex3D& v = ms.Vertices[ i ];
+                    if( v.BlendIndices[ 0 ] < 0.0f )
+                        v.BlendIndices[ 0 ] = 0.0f;
+                    if( v.BlendIndices[ 1 ] < 0.0f )
+                        v.BlendIndices[ 1 ] = 0.0f;
+                    if( v.BlendIndices[ 2 ] < 0.0f )
+                        v.BlendIndices[ 2 ] = 0.0f;
+                    if( v.BlendIndices[ 3 ] < 0.0f )
+                        v.BlendIndices[ 3 ] = 0.0f;
+                }
             }
         }
     }
 
     for( int i = 0; i < fbx_node->GetChildCount(); i++ )
-        FixNodeFbx( root_node, node->Children[ i ], fbx_scene, fbx_node->GetChild( i ) );
+        ConvertFbxPass2( root_node, node->Children[ i ], fbx_scene, fbx_node->GetChild( i ) );
 }
 
 void CreateBuffers( Node* node )
@@ -1085,7 +1100,7 @@ MeshTexture* GraphicLoader::LoadTexture( const char* texture_name, const char* m
         char path[ MAX_FOPATH ];
         FileManager::ExtractPath( model_path, path );
         Str::Append( path, texture_name );
-        anim = SprMngr.LoadAnimation( texture_name, PT_DATA );
+        anim = SprMngr.LoadAnimation( path, PT_DATA );
     }
     SprMngr.PopAtlasType();
     if( !anim )
