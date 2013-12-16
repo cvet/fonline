@@ -6,6 +6,9 @@
 #include "Assimp/aiScene.h"
 #include "FileManager.h"
 
+#define MAX_BONE_MATRICES       ( 50 )
+#define BONES_PER_VERTEX        ( 4 )
+
 typedef aiMatrix4x4          Matrix;
 typedef aiVector3D           Vector;
 typedef aiQuaternion         Quaternion;
@@ -13,7 +16,6 @@ typedef aiColor4D            Color;
 typedef vector< Vector >     VectorVec;
 typedef vector< Quaternion > QuaternionVec;
 typedef vector< Matrix >     MatrixVec;
-typedef vector< Matrix* >    MatrixPtrVec;
 
 //
 // Vertex
@@ -45,8 +47,8 @@ struct Vertex3D
     float  TexCoord3[ 2 ];
     Vector Tangent;
     Vector Bitangent;
-    float  BlendWeights[ 4 ];
-    float  BlendIndices[ 4 ];
+    float  BlendWeights[ BONES_PER_VERTEX ];
+    float  BlendIndices[ BONES_PER_VERTEX ];
     float  Padding[ 1 ];
 };
 static_assert( sizeof( Vertex3D ) == 128, "Wrong Vertex3D size." );
@@ -59,6 +61,7 @@ typedef vector< Vertex3DVec > Vertex3DVecVec;
 
 #define ANY_FRAMES_POOL_SIZE    ( 2000 )
 #define MAX_FRAMES              ( 50 )
+
 struct AnyFrames
 {
     // Data
@@ -143,6 +146,7 @@ struct EffectInstance
 
 #define IS_EFFECT_VALUE( pos )                 ( ( pos ) != -1 )
 #define SET_EFFECT_VALUE( eff, pos, value )    GL( glUniform1f( pos, value ) )
+
 struct Effect
 {
     int            Id;
@@ -168,7 +172,6 @@ struct Effect
 
     EffectDefault* Defaults;
     GLint          ProjectionMatrix;
-    GLint          BoneInfluences;
     GLint          GroundPosition;
     GLint          MaterialAmbient;
     GLint          MaterialDiffuse;
@@ -341,21 +344,21 @@ struct MeshSubset
     Vertex3DVec    Vertices;
     UShortVec      Indicies;
     string         DiffuseTexture;
-    float          DiffuseColor[ 4 ];
-    float          AmbientColor[ 4 ];
-    float          SpecularColor[ 4 ];
-    float          EmissiveColor[ 4 ];
-    uint           BoneInfluences;
-    MatrixVec      BoneOffsets;
-    StrVec         BoneNames;
+    Color          DiffuseColor;
+    Color          AmbientColor;
+    StrVec         SkinBoneNames;
+    MatrixVec      SkinBoneOffsets;
+    int            SkinBoneIndicies[ MAX_BONE_MATRICES ];
 
     // Runtime data
     Vertex3DVec    VerticesTransformed;
     bool           VerticesTransformedValid;
-    MatrixPtrVec   BoneCombinedMatrices;
+    Matrix*        BoneCombinedMatrices[ MAX_BONE_MATRICES ];
+    Matrix         BoneOffsetMatrices[ MAX_BONE_MATRICES ];
     EffectInstance DrawEffect;
     GLuint         VAO, VBO, IBO;
 
+    bool IsSkinned() { return !SkinBoneNames.empty(); }
     void Save( FileManager& file );
     void Load( FileManager& file );
 };
@@ -372,9 +375,10 @@ struct Node
     string        Name;
     Matrix        TransformationMatrix;
     MeshSubsetVec Mesh;
+    NodeVec       Children;
 
     // Runtime data
-    NodeVec       Children;
+    static StrVec Bones;
     Matrix        CombinedTransformationMatrix;
     Vector        ScreenPos;
 
@@ -383,6 +387,7 @@ struct Node
     void        Save( FileManager& file );
     void        Load( FileManager& file );
     void        FixAfterLoad( Node* root_node );
+    int         GetBoneIndex();
 };
 
 //

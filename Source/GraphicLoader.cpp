@@ -591,14 +591,10 @@ Node* ConvertAssimpPass1( aiScene* scene, aiNode* ai_node )
             Ptr_aiGetMaterialTexture( material, aiTextureType_DIFFUSE, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL );
             ms.DiffuseTexture = path.data;
         }
-        Ptr_aiGetMaterialFloatArray( material, AI_MATKEY_COLOR_DIFFUSE, ms.DiffuseColor, NULL );
-        Ptr_aiGetMaterialFloatArray( material, AI_MATKEY_COLOR_AMBIENT, ms.AmbientColor, NULL );
-        Ptr_aiGetMaterialFloatArray( material, AI_MATKEY_COLOR_SPECULAR, ms.SpecularColor, NULL );
-        Ptr_aiGetMaterialFloatArray( material, AI_MATKEY_COLOR_EMISSIVE, ms.EmissiveColor, NULL );
+        Ptr_aiGetMaterialFloatArray( material, AI_MATKEY_COLOR_DIFFUSE, (float*) &ms.DiffuseColor, NULL );
+        Ptr_aiGetMaterialFloatArray( material, AI_MATKEY_COLOR_AMBIENT, (float*) &ms.AmbientColor, NULL );
         ms.DiffuseColor[ 3 ] = 1.0f;
         ms.AmbientColor[ 3 ] = 1.0f;
-        ms.SpecularColor[ 3 ] = 1.0f;
-        ms.EmissiveColor[ 3 ] = 1.0f;
 
         // Effect
         ms.DrawEffect.EffectFilename = NULL;
@@ -618,31 +614,31 @@ void ConvertAssimpPass2( Node* root_node, Node* node, aiScene* scene, aiNode* ai
     for( uint m = 0; m < ai_node->mNumMeshes; m++ )
     {
         aiMesh*     ai_mesh = scene->mMeshes[ ai_node->mMeshes[ m ] ];
-        MeshSubset& mesh = node->Mesh[ m ];
+        MeshSubset& ms = node->Mesh[ m ];
 
         // Bones
-        mesh.BoneInfluences = 0;
-        mesh.BoneOffsets.resize( ai_mesh->mNumBones );
-        mesh.BoneNames.resize( ai_mesh->mNumBones );
-        mesh.BoneCombinedMatrices.resize( ai_mesh->mNumBones );
+        ms.SkinBoneOffsets.resize( ai_mesh->mNumBones );
+        ms.SkinBoneNames.resize( ai_mesh->mNumBones );
+        memzero( ms.BoneCombinedMatrices, sizeof( ms.BoneCombinedMatrices ) );
+        memzero( ms.SkinBoneIndicies, sizeof( ms.SkinBoneIndicies ) );
         for( uint i = 0; i < ai_mesh->mNumBones; i++ )
         {
             aiBone* bone = ai_mesh->mBones[ i ];
 
             // Matrices
-            mesh.BoneOffsets[ i ] = bone->mOffsetMatrix;
-            mesh.BoneNames[ i ] = bone->mName.data;
+            ms.SkinBoneOffsets[ i ] = bone->mOffsetMatrix;
+            ms.SkinBoneNames[ i ] = bone->mName.data;
             Node* bone_node = root_node->Find( bone->mName.data );
-            if( bone_node )
-                mesh.BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
-            else
-                mesh.BoneCombinedMatrices[ i ] = NULL;
+            int bone_index = bone_node->GetBoneIndex();
+            ms.BoneCombinedMatrices[ bone_index ] = &bone_node->CombinedTransformationMatrix;
+            ms.BoneOffsetMatrices[ bone_index ] = ms.SkinBoneOffsets[ i ];
+            ms.SkinBoneIndicies[ bone_index ] = i;
 
             // Blend data
             for( uint j = 0; j < bone->mNumWeights; j++ )
             {
                 aiVertexWeight& vw = bone->mWeights[ j ];
-                Vertex3D&       v = mesh.Vertices[ vw.mVertexId ];
+                Vertex3D&       v = ms.Vertices[ vw.mVertexId ];
                 uint            index;
                 if( v.BlendIndices[ 0 ] < 0.0f )
                     index = 0;
@@ -653,24 +649,17 @@ void ConvertAssimpPass2( Node* root_node, Node* node, aiScene* scene, aiNode* ai
                 else
                     index = 3;
                 v.BlendWeights[ index ] = vw.mWeight;
-                v.BlendIndices[ index ] = (float) i;
-                if( mesh.BoneInfluences <= index )
-                    mesh.BoneInfluences = index + 1;
+                v.BlendIndices[ index ] = (float) bone_index;
             }
         }
 
         // Drop not filled indices
         for( uint i = 0; i < ai_mesh->mNumVertices; i++ )
         {
-            Vertex3D& v = mesh.Vertices[ i ];
-            if( v.BlendIndices[ 0 ] < 0.0f )
-                v.BlendIndices[ 0 ] = 0.0f;
-            if( v.BlendIndices[ 1 ] < 0.0f )
-                v.BlendIndices[ 1 ] = 0.0f;
-            if( v.BlendIndices[ 2 ] < 0.0f )
-                v.BlendIndices[ 2 ] = 0.0f;
-            if( v.BlendIndices[ 3 ] < 0.0f )
-                v.BlendIndices[ 3 ] = 0.0f;
+            Vertex3D& v = ms.Vertices[ i ];
+            for( int b = 0; b < BONES_PER_VERTEX; b++ )
+                if( v.BlendIndices[ b ] < 0.0f )
+                    v.BlendIndices[ b ] = v.BlendWeights[ b ] = 0.0f;
         }
     }
 
@@ -821,8 +810,6 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode*
             {
                 ms.DiffuseColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
                 ms.AmbientColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
-                ms.SpecularColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
-                ms.EmissiveColor[ i ] = ( i < 3 ? 0.0f : 1.0f );
             }
 
             FbxSurfaceMaterial* fbx_material = fbx_node->GetMaterial( m );
@@ -859,28 +846,6 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode*
                 ms.AmbientColor[ 2 ] = (float) ( color.mData[ 2 ] * factor );
             }
 
-            FbxProperty prop_specular = fbx_material->FindProperty( "SpecularColor" );
-            FbxProperty prop_specular_factor = fbx_material->FindProperty( "SpecularFactor" );
-            if( prop_specular.IsValid() && prop_specular_factor.IsValid() )
-            {
-                FbxDouble3 color = prop_specular.Get< FbxDouble3 >();
-                FbxDouble  factor = prop_specular_factor.Get< FbxDouble >();
-                ms.SpecularColor[ 0 ] = (float) ( color.mData[ 0 ] * factor );
-                ms.SpecularColor[ 1 ] = (float) ( color.mData[ 1 ] * factor );
-                ms.SpecularColor[ 2 ] = (float) ( color.mData[ 2 ] * factor );
-            }
-
-            FbxProperty prop_emissive = fbx_material->FindProperty( "EmissiveColor" );
-            FbxProperty prop_emissive_factor = fbx_material->FindProperty( "EmissiveFactor" );
-            if( prop_emissive.IsValid() && prop_emissive_factor.IsValid() )
-            {
-                FbxDouble3 color = prop_emissive.Get< FbxDouble3 >();
-                FbxDouble  factor = prop_emissive_factor.Get< FbxDouble >();
-                ms.EmissiveColor[ 0 ] = (float) ( color.mData[ 0 ] * factor );
-                ms.EmissiveColor[ 1 ] = (float) ( color.mData[ 1 ] * factor );
-                ms.EmissiveColor[ 2 ] = (float) ( color.mData[ 2 ] * factor );
-            }
-
             // Effect
             ms.DrawEffect.EffectFilename = NULL;
 
@@ -889,16 +854,16 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode*
             ms.VerticesTransformedValid = false;
 
             // Skinning
-            ms.BoneInfluences = 0;
+            memzero( ms.SkinBoneIndicies, sizeof( ms.SkinBoneIndicies ) );
+            memzero( ms.BoneCombinedMatrices, sizeof( ms.BoneCombinedMatrices ) );
             if( fbx_mesh->GetDeformerCount( FbxDeformer::eSkin ) )
             {
                 FbxSkin* fbx_skin = (FbxSkin*) fbx_mesh->GetDeformer( 0, FbxDeformer::eSkin );
 
                 // Bones
                 int num_bones = fbx_skin->GetClusterCount();
-                ms.BoneOffsets.resize( num_bones );
-                ms.BoneNames.resize( num_bones );
-                ms.BoneCombinedMatrices.resize( num_bones );
+                ms.SkinBoneOffsets.resize( num_bones );
+                ms.SkinBoneNames.resize( num_bones );
                 for( int i = 0; i < num_bones; i++ )
                 {
                     FbxCluster* fbx_cluster = fbx_skin->GetCluster( i );
@@ -908,14 +873,14 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode*
                     fbx_cluster->GetTransformLinkMatrix( link_matrix );
                     FbxAMatrix cur_matrix;
                     fbx_cluster->GetTransformMatrix( cur_matrix );
-                    ms.BoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix );
-                    ms.BoneNames[ i ] = fbx_cluster->GetLink()->GetName();
+                    ms.SkinBoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix );
+                    ms.SkinBoneNames[ i ] = fbx_cluster->GetLink()->GetName();
 
                     Node* bone_node = root_node->Find( fbx_cluster->GetLink()->GetName() );
-                    if( bone_node )
-                        ms.BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
-                    else
-                        ms.BoneCombinedMatrices[ i ] = NULL;
+                    int bone_index = bone_node->GetBoneIndex();
+                    ms.BoneCombinedMatrices[ bone_index ] = &bone_node->CombinedTransformationMatrix;
+                    ms.BoneOffsetMatrices[ bone_index ] = ms.SkinBoneOffsets[ i ];
+                    ms.SkinBoneIndicies[ bone_index ] = i;
 
                     // Blend data
                     int     num_weights = fbx_cluster->GetControlPointIndicesCount();
@@ -940,10 +905,7 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode*
                                 index = 3;
 
                             v.BlendWeights[ index ] = (float) weights[ j ];
-                            v.BlendIndices[ index ] = (float) i;
-
-                            if( ms.BoneInfluences <= index )
-                                ms.BoneInfluences = index + 1;
+                            v.BlendIndices[ index ] = (float) bone_index;
                         }
                     }
                 }
@@ -952,14 +914,9 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode*
                 for( size_t i = 0; i < ms.Vertices.size(); i++ )
                 {
                     Vertex3D& v = ms.Vertices[ i ];
-                    if( v.BlendIndices[ 0 ] < 0.0f )
-                        v.BlendIndices[ 0 ] = 0.0f;
-                    if( v.BlendIndices[ 1 ] < 0.0f )
-                        v.BlendIndices[ 1 ] = 0.0f;
-                    if( v.BlendIndices[ 2 ] < 0.0f )
-                        v.BlendIndices[ 2 ] = 0.0f;
-                    if( v.BlendIndices[ 3 ] < 0.0f )
-                        v.BlendIndices[ 3 ] = 0.0f;
+                    for( int b = 0; b < BONES_PER_VERTEX; b++ )
+                        if( v.BlendIndices[ b ] < 0.0f )
+                            v.BlendIndices[ b ] = v.BlendWeights[ b ] = 0.0f;
                 }
             }
         }
@@ -1422,7 +1379,6 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     #endif
     GL( effect->SpriteBorder = glGetUniformLocation( program, "SpriteBorder" ) );
 
-    GL( effect->BoneInfluences = glGetUniformLocation( program, "BoneInfluences" ) );
     GL( effect->GroundPosition = glGetUniformLocation( program, "GroundPosition" ) );
     GL( effect->MaterialAmbient = glGetUniformLocation( program, "MaterialAmbient" ) );
     GL( effect->MaterialDiffuse = glGetUniformLocation( program, "MaterialDiffuse" ) );

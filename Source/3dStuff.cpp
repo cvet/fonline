@@ -8,15 +8,15 @@
 #include "Script.h"
 #include "CritterType.h"
 
-int       ModeWidth = 0, ModeHeight = 0;
-float     ModeWidthF = 0, ModeHeightF = 0;
-float     FixedZ = 0.0f;
-Matrix    MatrixProjRM, MatrixEmptyRM, MatrixProjCM, MatrixEmptyCM; // Row or Column major order
-float     MoveTransitionTime = 0.25f;
-float     GlobalSpeedAdjust = 1.0f;
-MatrixVec BoneMatrices;
-bool      SoftwareSkinning = false;
-uint      AnimDelay = 0;
+int    ModeWidth = 0, ModeHeight = 0;
+float  ModeWidthF = 0, ModeHeightF = 0;
+float  FixedZ = 0.0f;
+Matrix MatrixProjRM, MatrixEmptyRM, MatrixProjCM, MatrixEmptyCM;    // Row or Column major order
+float  MoveTransitionTime = 0.25f;
+float  GlobalSpeedAdjust = 1.0f;
+Matrix BoneMatrices[ MAX_BONE_MATRICES ];
+bool   SoftwareSkinning = false;
+uint   AnimDelay = 0;
 
 #ifdef SHADOW_MAP
 GLuint FBODepth = 0;
@@ -938,8 +938,7 @@ bool Animation3d::MoveNode( float elapsed, int x, int y, float scale, bool trans
                 ms.VerticesTransformedValid = true;
 
                 // Simple
-                size_t mcount = ms.BoneCombinedMatrices.size();
-                if( !ms.BoneInfluences || !mcount )
+                if( !ms.IsSkinned() )
                 {
                     for( size_t i = 0, j = ms.Vertices.size(); i < j; i++ )
                     {
@@ -952,11 +951,11 @@ bool Animation3d::MoveNode( float elapsed, int x, int y, float scale, bool trans
                 // Skinned
                 else
                 {
-                    for( size_t i = 0; i < mcount; i++ )
+                    for( int i = 0; i < MAX_BONE_MATRICES; i++ )
                     {
                         Matrix* m = ms.BoneCombinedMatrices[ i ];
                         if( m )
-                            BoneMatrices[ i ] = ( *m ) * ms.BoneOffsets[ i ];
+                            BoneMatrices[ i ] = ( *m ) * ms.BoneOffsetMatrices[ i ];
                     }
 
                     for( size_t i = 0, j = ms.Vertices.size(); i < j; i++ )
@@ -966,7 +965,7 @@ bool Animation3d::MoveNode( float elapsed, int x, int y, float scale, bool trans
                         vt.Position = MatrixProjRM * v.Position;
 
                         Vector position = Vector();
-                        for( int b = 0; b < int(ms.BoneInfluences); b++ )
+                        for( int b = 0; b < BONES_PER_VERTEX; b++ )
                         {
                             Matrix& m = BoneMatrices[ int(v.BlendIndices[ b ]) ];
                             position += m * v.Position * v.BlendWeights[ b ];
@@ -1056,11 +1055,11 @@ bool Animation3d::DrawNode( Node* node, bool shadow )
         {
             effect = mopt->EffectSubsets[ k ];
             if( !effect )
-                effect = ( ms.BoneInfluences > 0 ? Effect::Skinned3d : Effect::Simple3d );
+                effect = ( ms.IsSkinned() ? Effect::Skinned3d : Effect::Simple3d );
         }
         else
         {
-            effect = ( ms.BoneInfluences > 0 ? Effect::Skinned3dShadow : Effect::Simple3dShadow );
+            effect = ( ms.IsSkinned() ? Effect::Skinned3dShadow : Effect::Simple3dShadow );
         }
 
         GL( glUseProgram( effect->Program ) );
@@ -1114,32 +1113,29 @@ bool Animation3d::DrawNode( Node* node, bool shadow )
         }
         #endif
         if( effect->MaterialDiffuse != -1 )
-            GL( glUniform4fv( effect->MaterialDiffuse, 1, ms.DiffuseColor ) );
+            GL( glUniform4fv( effect->MaterialDiffuse, 1, (float*) &ms.DiffuseColor ) );
         if( effect->MaterialAmbient != -1 )
-            GL( glUniform4fv( effect->MaterialAmbient, 1, ms.AmbientColor ) );
-        if( effect->BoneInfluences != -1 )
-            GL( glUniform1f( effect->BoneInfluences, (float) ms.BoneInfluences ) );
+            GL( glUniform4fv( effect->MaterialAmbient, 1, (float*) &ms.AmbientColor ) );
         if( effect->WorldMatrices != -1 )
         {
-            uint mcount = (uint) ms.BoneCombinedMatrices.size();
-            if( mcount )
+            if( ms.IsSkinned() )
             {
-                for( uint i = 0; i < mcount; i++ )
+                for( uint i = 0; i < MAX_BONE_MATRICES; i++ )
                 {
                     Matrix* m = ms.BoneCombinedMatrices[ i ];
                     if( m )
                     {
-                        BoneMatrices[ i ] = ( *m ) * ms.BoneOffsets[ i ];
+                        BoneMatrices[ i ] = ( *m ) * ms.BoneOffsetMatrices[ i ];
                         BoneMatrices[ i ].Transpose();                         // Convert to column major order
                     }
                 }
-                GL( glUniformMatrix4fv( effect->WorldMatrices, mcount, GL_FALSE, (float*) &BoneMatrices[ 0 ] ) );
+                GL( glUniformMatrix4fv( effect->WorldMatrices, MAX_BONE_MATRICES, GL_FALSE, (float*) &BoneMatrices[ 0 ] ) );
             }
             else
             {
                 BoneMatrices[ 0 ] = node->CombinedTransformationMatrix;
                 BoneMatrices[ 0 ].Transpose();                 // Convert to column major order
-                GL( glUniformMatrix4fv( effect->WorldMatrices, mcount, GL_FALSE, BoneMatrices[ 0 ][ 0 ] ) );
+                GL( glUniformMatrix4fv( effect->WorldMatrices, 1, GL_FALSE, BoneMatrices[ 0 ][ 0 ] ) );
             }
         }
         if( effect->WorldMatrix != -1 )
@@ -1231,8 +1227,6 @@ bool Animation3d::StartUp()
         AnimDelay = 1000 / ( GameOpt.Animation3dFPS ? GameOpt.Animation3dFPS : 10 );
         MoveTransitionTime = 0.001f;
     }
-
-    BoneMatrices.resize( 1 );
 
     return true;
 }
@@ -2275,15 +2269,9 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
 void Animation3dXFile::SetupNodes( Animation3dXFile* xfile, Node* node, Node* root_node )
 {
     xfile->allNodes.push_back( node );
+
     if( !node->Mesh.empty() )
         xfile->allDrawNodes.push_back( node );
-
-    for( auto it = node->Mesh.begin(), end = node->Mesh.end(); it != end; ++it )
-    {
-        MeshSubset& ms = *it;
-        if( BoneMatrices.size() < ms.BoneCombinedMatrices.size() )
-            BoneMatrices.resize( ms.BoneCombinedMatrices.size() );
-    }
 
     for( auto it = node->Children.begin(), end = node->Children.end(); it != end; ++it )
         SetupNodes( xfile, *it, root_node );

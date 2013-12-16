@@ -138,22 +138,20 @@ void MeshSubset::Save( FileManager& file )
     len = (uint) DiffuseTexture.length();
     file.SetData( &len, sizeof( len ) );
     file.SetData( &DiffuseTexture[ 0 ], len );
-    file.SetData( DiffuseColor, sizeof( DiffuseColor ) );
-    file.SetData( AmbientColor, sizeof( AmbientColor ) );
-    file.SetData( SpecularColor, sizeof( SpecularColor ) );
-    file.SetData( EmissiveColor, sizeof( EmissiveColor ) );
-    file.SetData( &BoneInfluences, sizeof( BoneInfluences ) );
-    len = (uint) BoneOffsets.size();
-    file.SetData( &len, sizeof( len ) );
-    file.SetData( &BoneOffsets[ 0 ], len * sizeof( BoneOffsets[ 0 ] ) );
-    len = (uint) BoneNames.size();
+    file.SetData( &DiffuseColor, sizeof( DiffuseColor ) );
+    file.SetData( &AmbientColor, sizeof( AmbientColor ) );
+    len = (uint) SkinBoneNames.size();
     file.SetData( &len, sizeof( len ) );
     for( uint i = 0, j = len; i < j; i++ )
     {
-        len = (uint) BoneNames[ i ].length();
+        len = (uint) SkinBoneNames[ i ].length();
         file.SetData( &len, sizeof( len ) );
-        file.SetData( &BoneNames[ i ][ 0 ], len );
+        file.SetData( &SkinBoneNames[ i ][ 0 ], len );
     }
+    len = (uint) SkinBoneOffsets.size();
+    file.SetData( &len, sizeof( len ) );
+    file.SetData( &SkinBoneOffsets[ 0 ], len * sizeof( SkinBoneOffsets[ 0 ] ) );
+    file.SetData( SkinBoneIndicies, sizeof( SkinBoneIndicies ) );
 }
 
 void MeshSubset::Load( FileManager& file )
@@ -168,25 +166,23 @@ void MeshSubset::Load( FileManager& file )
     file.CopyMem( &len, sizeof( len ) );
     DiffuseTexture.resize( len );
     file.CopyMem( &DiffuseTexture[ 0 ], len );
-    file.CopyMem( DiffuseColor, sizeof( DiffuseColor ) );
-    file.CopyMem( AmbientColor, sizeof( AmbientColor ) );
-    file.CopyMem( SpecularColor, sizeof( SpecularColor ) );
-    file.CopyMem( EmissiveColor, sizeof( EmissiveColor ) );
-    file.CopyMem( &BoneInfluences, sizeof( BoneInfluences ) );
+    file.CopyMem( &DiffuseColor, sizeof( DiffuseColor ) );
+    file.CopyMem( &AmbientColor, sizeof( AmbientColor ) );
     file.CopyMem( &len, sizeof( len ) );
-    BoneOffsets.resize( len );
-    file.CopyMem( &BoneOffsets[ 0 ], len * sizeof( BoneOffsets[ 0 ] ) );
-    file.CopyMem( &len, sizeof( len ) );
-    BoneNames.resize( len );
+    SkinBoneNames.resize( len );
     for( uint i = 0, j = len; i < j; i++ )
     {
         file.CopyMem( &len, sizeof( len ) );
-        BoneNames[ i ].resize( len );
-        file.CopyMem( &BoneNames[ i ][ 0 ], len );
+        SkinBoneNames[ i ].resize( len );
+        file.CopyMem( &SkinBoneNames[ i ][ 0 ], len );
     }
+    file.CopyMem( &len, sizeof( len ) );
+    SkinBoneOffsets.resize( len );
+    file.CopyMem( &SkinBoneOffsets[ 0 ], len * sizeof( SkinBoneOffsets[ 0 ] ) );
+    file.CopyMem( SkinBoneIndicies, sizeof( SkinBoneIndicies ) );
     VerticesTransformed = Vertices;
     VerticesTransformedValid = false;
-    BoneCombinedMatrices.resize( BoneOffsets.size() );
+    memzero( BoneCombinedMatrices, sizeof( BoneCombinedMatrices ) );
     memzero( &DrawEffect, sizeof( DrawEffect ) );
     VAO = VBO = IBO = 0;
 }
@@ -194,6 +190,8 @@ void MeshSubset::Load( FileManager& file )
 //
 // Node
 //
+
+StrVec Node::Bones;
 
 const char* Node::GetName()
 {
@@ -254,17 +252,46 @@ void Node::FixAfterLoad( Node* root_node )
 {
     for( auto it = Mesh.begin(), end = Mesh.end(); it != end; ++it )
     {
-        MeshSubset& mesh = *it;
-        for( uint i = 0, j = (uint) mesh.BoneNames.size(); i < j; i++ )
+        MeshSubset& ms = *it;
+
+        // Fix skin
+        if( ms.IsSkinned() )
         {
-            Node* bone_node = root_node->Find( mesh.BoneNames[ i ].c_str() );
-            if( bone_node )
-                mesh.BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
-            else
-                mesh.BoneCombinedMatrices[ i ] = NULL;
+            int    bone_indicies[ MAX_BONE_MATRICES ];
+            memcpy( bone_indicies, ms.SkinBoneIndicies, sizeof( bone_indicies ) );
+            IntVec new_bone_indicies( ms.SkinBoneNames.size() );
+            for( size_t i = 0, j = ms.SkinBoneNames.size(); i < j; i++ )
+            {
+                Node* bone_node = root_node->Find( ms.SkinBoneNames[ i ].c_str() );
+                int   bone_index = bone_node->GetBoneIndex();
+                ms.BoneCombinedMatrices[ bone_index ] = &bone_node->CombinedTransformationMatrix;
+                ms.BoneOffsetMatrices[ bone_index ] = ms.SkinBoneOffsets[ i ];
+                ms.SkinBoneIndicies[ bone_index ] = i;
+                new_bone_indicies[ i ] = bone_index;
+            }
+
+            // Fix blend matrix indicies
+            for( size_t i = 0, j = ms.Vertices.size(); i < j; i++ )
+            {
+                Vertex3D& v = ms.Vertices[ i ];
+                for( int b = 0; b < BONES_PER_VERTEX; b++ )
+                {
+                    if( v.BlendWeights[ b ] > 0.0f )
+                        v.BlendIndices[ b ] = (float) new_bone_indicies[ bone_indicies[ (int) v.BlendIndices[ b ] ] ];
+                }
+            }
         }
     }
 
     for( uint i = 0, j = (uint) Children.size(); i < j; i++ )
         Children[ i ]->FixAfterLoad( root_node );
+}
+
+int Node::GetBoneIndex()
+{
+    for( int i = 0, j = (int) Bones.size(); i < j; i++ )
+        if( Bones[ i ] == Name )
+            return i;
+    Bones.push_back( Name );
+    return (int) Bones.size() - 1;
 }
