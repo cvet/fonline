@@ -3040,6 +3040,10 @@ void Critter::Send_AddAllItems()
 
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
         Send_AddItem( *it );
+
+    BOUT_BEGIN( cl );
+    cl->Bout << NETMSG_ALL_ITEMS_SEND;
+    BOUT_END( cl );
 }
 
 void Critter::Send_AllQuests()
@@ -4996,6 +5000,13 @@ void Client::Send_SomeItem( Item* item )
     Bout << item->GetProtoId();
     Bout << item->AccCritter.Slot;
     Bout.Push( (char*) &item->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_CRITTER ], sizeof( item->Data ) );
+    BOUT_END( this );
+}
+
+void Client::Send_EndParseToGame()
+{
+    BOUT_BEGIN( this );
+    Bout << NETMSG_END_PARSE_TO_GAME;
     BOUT_END( this );
 }
 

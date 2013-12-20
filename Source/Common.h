@@ -5,7 +5,6 @@
 // #define DEV_VESRION
 // #define SHOW_RACE_CONDITIONS // All known places with race conditions, not use in multithreading
 // #define DISABLE_EGG
-// #define SHADOW_MAP
 
 // Some platform specific definitions
 #include "PlatformSpecific.h"
@@ -110,6 +109,12 @@ const char* GetLastSocketError();
 
 #define PACKUINT64( u32hi, u32lo )        ( ( (uint64) u32hi << 32 ) | ( (uint64) u32lo ) )
 #define MAKEUINT( ch0, ch1, ch2, ch3 )    ( (uint) (uchar) ( ch0 ) | ( (uint) (uchar) ( ch1 ) << 8 ) | ( (uint) (uchar) ( ch2 ) << 16 ) | ( (uint) (uchar) ( ch3 ) << 24 ) )
+
+#ifdef SHOW_RACE_CONDITIONS
+# define RACE_CONDITION                          MESSAGE( "Race condition" )
+#else
+# define RACE_CONDITION
+#endif
 
 typedef vector< Rect >  IntRectVec;
 typedef vector< RectF > FltRectVec;

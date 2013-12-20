@@ -10,7 +10,7 @@ private:
     friend class AnimController;
     struct BoneOutput
     {
-        string        name;
+        uint          nameHash;
         FloatVec      scaleTime;
         VectorVec     scaleValue;
         FloatVec      rotationTime;
@@ -35,12 +35,12 @@ public:
         ticksPerSecond = tps;
     }
 
-    void AddBoneOutput( const char* name, const FloatVec& st, const VectorVec& sv,
+    void AddBoneOutput( uint name_hash, const FloatVec& st, const VectorVec& sv,
                         const FloatVec& rt, const QuaternionVec& rv, const FloatVec& tt, const VectorVec& tv  )
     {
         boneOutputs.push_back( BoneOutput() );
         BoneOutput& o = boneOutputs.back();
-        o.name = name;
+        o.nameHash = name_hash;
         o.scaleTime = st;
         o.scaleValue = sv;
         o.rotationTime = rt;
@@ -84,10 +84,8 @@ public:
         for( auto it = boneOutputs.begin(), end = boneOutputs.end(); it != end; ++it )
         {
             BoneOutput& o = *it;
-            uint        len = (uint) o.name.length();
-            file.SetData( &len, sizeof( len ) );
-            file.SetData( &o.name[ 0 ], len );
-            len = (uint) o.scaleTime.size();
+            file.SetData( &o.nameHash, sizeof( o.nameHash ) );
+            uint        len = (uint) o.scaleTime.size();
             file.SetData( &len, sizeof( len ) );
             file.SetData( &o.scaleTime[ 0 ], len * sizeof( o.scaleTime[ 0 ] ) );
             file.SetData( &o.scaleValue[ 0 ], len * sizeof( o.scaleValue[ 0 ] ) );
@@ -118,9 +116,7 @@ public:
         for( uint i = 0, j = len; i < j; i++ )
         {
             BoneOutput& o = boneOutputs[ i ];
-            file.CopyMem( &len, sizeof( len ) );
-            o.name.resize( len );
-            file.CopyMem( &o.name[ 0 ], len );
+            file.CopyMem( &o.nameHash, sizeof( o.nameHash ) );
             file.CopyMem( &len, sizeof( len ) );
             o.scaleTime.resize( len );
             o.scaleValue.resize( len );
@@ -146,7 +142,7 @@ class AnimController
 private:
     struct Output
     {
-        string        name;
+        uint          nameHash;
         Matrix*       matrix;
         // Data for tracks blending
         BoolVec       valid;
@@ -225,11 +221,11 @@ public:
         return clone;
     }
 
-    void RegisterAnimationOutput( const char* frame_name, Matrix& output_matrix )
+    void RegisterAnimationOutput( uint node_name_hash, Matrix& output_matrix )
     {
         outputs->push_back( Output() );
         Output& o = outputs->back();
-        o.name = frame_name;
+        o.nameHash = node_name_hash;
         o.matrix = &output_matrix;
         o.valid.resize( tracks.size() );
         o.factor.resize( tracks.size() );
@@ -278,11 +274,11 @@ public:
         tracks[ track ].animOutput.resize( count );
         for( uint i = 0; i < count; i++ )
         {
-            const string& link_name = anim->boneOutputs[ i ].name;
-            Output*       output = NULL;
+            uint    link_name_hash = anim->boneOutputs[ i ].nameHash;
+            Output* output = NULL;
             for( uint j = 0; j < outputs->size(); j++ )
             {
-                if( ( *outputs )[ j ].name == link_name )
+                if( ( *outputs )[ j ].nameHash == link_name_hash )
                 {
                     output = &( *outputs )[ j ];
                     break;

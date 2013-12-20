@@ -91,6 +91,8 @@ FOClient::FOClient(): Active( false )
     UIDFail = false;
     MoveLastHx = -1;
     MoveLastHy = -1;
+
+    CurMapPid = 0;
 }
 
 uint* UID1;
@@ -3042,6 +3044,9 @@ void FOClient::NetProcess()
         case NETMSG_PING:
             Net_OnPing();
             break;
+        case NETMSG_END_PARSE_TO_GAME:
+            Net_OnEndParseToGame();
+            break;
         case NETMSG_CHECK_UID0:
             Net_OnCheckUID0();
             break;
@@ -3114,7 +3119,6 @@ void FOClient::NetProcess()
             Net_OnCheckUID2();
             break;
 
-            break;
         case NETMSG_ALL_PARAMS:
             Net_OnChosenParams();
             break;
@@ -3135,6 +3139,9 @@ void FOClient::NetProcess()
             break;
         case NETMSG_REMOVE_ITEM:
             Net_OnChosenEraseItem();
+            break;
+        case NETMSG_ALL_ITEMS_SEND:
+            Net_OnAllItemsSend();
             break;
         case NETMSG_CHECK_UID3:
             Net_OnCheckUID3();
@@ -3955,18 +3962,6 @@ void FOClient::Net_OnAddCritter( bool is_npc )
             SetAction( CHOSEN_NONE );
 
         AddCritter( cr );
-
-        if( cr->IsChosen() && !IsMainScreen( SCREEN_GLOBAL_MAP ) )
-        {
-            MoveDirs.clear();
-            cr->MoveSteps.clear();
-            HexMngr.FindSetCenter( cr->HexX, cr->HexY );
-            cr->AnimateStay();
-            SndMngr.PlayAmbient( MsgGM->GetStr( STR_MAP_AMBIENT_( HexMngr.GetCurPidMap() ) ) );
-            ShowMainScreen( SCREEN_GAME );
-            ScreenFadeOut();
-            HexMngr.RebuildLight();
-        }
 
         const char* look = FmtCritLook( cr, CRITTER_ONLY_NAME );
         if( look )
@@ -5197,6 +5192,18 @@ void FOClient::Net_OnChosenEraseItem()
     CollectContItems();
 }
 
+void FOClient::Net_OnAllItemsSend()
+{
+    if( !Chosen )
+    {
+        WriteLogF( _FUNC_, " - Chosen is not created.\n" );
+        return;
+    }
+
+    if( Chosen->Anim3d )
+        Chosen->Anim3d->StartMeshGeneration();
+}
+
 void FOClient::Net_OnAddItemOnMap()
 {
     uint           item_id;
@@ -5467,6 +5474,41 @@ void FOClient::Net_OnPing()
     CHECK_MULTIPLY_WINDOWS9;
 }
 
+void FOClient::Net_OnEndParseToGame()
+{
+    if( !Chosen )
+    {
+        WriteLogF( _FUNC_, " - Chosen is not created.\n" );
+        return;
+    }
+
+    FlashGameWindow();
+    ScreenFadeOut();
+
+    if( CurMapPid )
+    {
+        MoveDirs.clear();
+        HexMngr.FindSetCenter( Chosen->HexX, Chosen->HexY );
+        Chosen->AnimateStay();
+        SndMngr.PlayAmbient( MsgGM->GetStr( STR_MAP_AMBIENT_( HexMngr.GetCurPidMap() ) ) );
+        ShowMainScreen( SCREEN_GAME );
+        HexMngr.RebuildLight();
+    }
+    else
+    {
+        ShowMainScreen( SCREEN_GLOBAL_MAP );
+    }
+
+    #ifndef FO_OSX
+    if( IsVideoPlayed() )
+        MusicAfterVideo = MsgGM->GetStr( STR_MAP_MUSIC_( CurMapPid ) );
+    else
+        SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( CurMapPid ) ) );
+    #else
+    SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( CurMapPid ) ) );
+    #endif
+}
+
 void FOClient::Net_OnChosenTalk()
 {
     uint  msg_len;
@@ -5685,14 +5727,15 @@ void FOClient::Net_OnLoadMap()
     GameOpt.SpritesZoom = 1.0f;
     GmapZoom = 1.0f;
 
+    CurMapPid = map_pid;
     GameMapTexts.clear();
     HexMngr.UnloadMap();
     SndMngr.ClearSounds();
-    FlashGameWindow();
     ShowMainScreen( SCREEN_WAIT );
     ClearCritters();
     ResMngr.ReinitializeDynamicAtlas();
-    GmapPic.clear();
+    for( size_t i = 0, j = GmapPic.size(); i < j; i++ )
+        GmapPic[ i ] = NULL;
 
     DropScroll();
     IsTurnBased = false;
@@ -5701,53 +5744,38 @@ void FOClient::Net_OnLoadMap()
     if( !map_pid )
     {
         GmapNullParams();
-        ShowMainScreen( SCREEN_GLOBAL_MAP );
-        Net_SendLoadMapOk();
-        #ifndef FO_OSX
-        if( IsVideoPlayed() )
-            MusicAfterVideo = MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) );
-        else
-            SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
-        #else
-        SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
-        #endif
         WriteLog( "Global map loaded.\n" );
-        return;
     }
-
     // Local
-    uint hash_tiles_cl = 0;
-    uint hash_walls_cl = 0;
-    uint hash_scen_cl = 0;
-    HexMngr.GetMapHash( map_pid, hash_tiles_cl, hash_walls_cl, hash_scen_cl );
-
-    if( hash_tiles != hash_tiles_cl || hash_walls != hash_walls_cl || hash_scen != hash_scen_cl )
-    {
-        Net_SendGiveMap( false, map_pid, 0, hash_tiles_cl, hash_walls_cl, hash_scen_cl );
-        return;
-    }
-
-    if( !HexMngr.LoadMap( map_pid ) )
-    {
-        WriteLog( "Map not loaded. Disconnect.\n" );
-        IsConnected = false;
-        return;
-    }
-
-    HexMngr.SetWeather( map_time, map_rain );
-    SetDayTime( true );
-    Net_SendLoadMapOk();
-    LookBorders.clear();
-    ShootBorders.clear();
-    #ifndef FO_OSX
-    if( IsVideoPlayed() )
-        MusicAfterVideo = MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) );
     else
-        SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
-    #else
-    SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( map_pid ) ) );
-    #endif
-    WriteLog( "Local map loaded.\n" );
+    {
+        uint hash_tiles_cl = 0;
+        uint hash_walls_cl = 0;
+        uint hash_scen_cl = 0;
+        HexMngr.GetMapHash( map_pid, hash_tiles_cl, hash_walls_cl, hash_scen_cl );
+
+        if( hash_tiles != hash_tiles_cl || hash_walls != hash_walls_cl || hash_scen != hash_scen_cl )
+        {
+            Net_SendGiveMap( false, map_pid, 0, hash_tiles_cl, hash_walls_cl, hash_scen_cl );
+            return;
+        }
+
+        if( !HexMngr.LoadMap( map_pid ) )
+        {
+            WriteLog( "Map not loaded. Disconnect.\n" );
+            IsConnected = false;
+            return;
+        }
+
+        HexMngr.SetWeather( map_time, map_rain );
+        SetDayTime( true );
+        LookBorders.clear();
+        ShootBorders.clear();
+
+        WriteLog( "Local map loaded.\n" );
+    }
+
+    Net_SendLoadMapOk();
 }
 
 void FOClient::Net_OnMap()
@@ -11089,24 +11117,22 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     #define EFFECT_2D_TILE                   ( 0x00000004 )
     #define EFFECT_2D_ROOF                   ( 0x00000008 )
     #define EFFECT_2D_RAIN                   ( 0x00000010 )
-    #define EFFECT_3D_SIMPLE                 ( 0x00000100 ) // Only for OpenGL
-    #define EFFECT_3D_SIMPLE_SHADOW          ( 0x00000200 ) // Only for OpenGL
     #define EFFECT_3D_SKINNED                ( 0x00000400 )
-    #define EFFECT_3D_SKINNED_SHADOW         ( 0x00000800 ) // Only for OpenGL
+    #define EFFECT_3D_SKINNED_SHADOW         ( 0x00000800 )
     #define EFFECT_INTERFACE_BASE            ( 0x00001000 )
-    #define EFFECT_INTERFACE_CONTOUR         ( 0x00002000 ) // Only for OpenGL
+    #define EFFECT_INTERFACE_CONTOUR         ( 0x00002000 )
     #define EFFECT_FONT                      ( 0x00010000 ) // Subtype is FONT_*, -1 default for all fonts
     #define EFFECT_PRIMITIVE_GENERIC         ( 0x00100000 )
     #define EFFECT_PRIMITIVE_LIGHT           ( 0x00200000 )
-    #define EFFECT_FLUSH_RENDER_TARGET       ( 0x01000000 ) // Only for OpenGL
-    #define EFFECT_FLUSH_RENDER_TARGET_MS    ( 0x02000000 ) // Multisample, Only for OpenGL
-    #define EFFECT_FLUSH_PRIMITIVE           ( 0x04000000 ) // Only for OpenGL
-    #define EFFECT_FLUSH_MAP                 ( 0x08000000 ) // Only for OpenGL
+    #define EFFECT_FLUSH_RENDER_TARGET       ( 0x01000000 )
+    #define EFFECT_FLUSH_RENDER_TARGET_MS    ( 0x02000000 ) // Multisample
+    #define EFFECT_FLUSH_PRIMITIVE           ( 0x04000000 )
+    #define EFFECT_FLUSH_MAP                 ( 0x08000000 )
 
     Effect* effect = NULL;
     if( effect_name && effect_name->length() )
     {
-        bool use_in_2d = !( effect_type & ( EFFECT_3D_SIMPLE | EFFECT_3D_SKINNED ) );
+        bool use_in_2d = !( effect_type & ( EFFECT_3D_SKINNED | EFFECT_3D_SKINNED_SHADOW ) );
         effect = GraphicLoader::LoadEffect( effect_name->c_str(), use_in_2d, effect_defines ? effect_defines->c_str() : NULL );
         if( !effect )
             SCRIPT_ERROR_R0( "Effect not found or have some errors, see log file." );
@@ -11136,10 +11162,6 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     if( effect_type & EFFECT_2D_RAIN )
         *Effect::Rain = ( effect ? *effect : *Effect::RainDefault );
 
-    if( effect_type & EFFECT_3D_SIMPLE )
-        *Effect::Simple3d = ( effect ? *effect : *Effect::Simple3dDefault );
-    if( effect_type & EFFECT_3D_SIMPLE_SHADOW )
-        *Effect::Simple3dShadow = ( effect ? *effect : *Effect::Simple3dShadowDefault );
     if( effect_type & EFFECT_3D_SKINNED )
         *Effect::Skinned3d = ( effect ? *effect : *Effect::Skinned3dDefault );
     if( effect_type & EFFECT_3D_SKINNED_SHADOW )

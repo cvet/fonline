@@ -2108,11 +2108,11 @@ void FOClient::ConsoleDraw()
         {
             ushort hx, hy;
             GetCurHex( hx, hy, false );
-            PointF p = Animation3d::Convert2dTo3d( GameOpt.MouseX, GameOpt.MouseY );
+            Vector p = Animation3d::Convert2dTo3d( GameOpt.MouseX, GameOpt.MouseY );
             SprMngr.DrawStr( Rect( 250, 5, 450, 300 ), Str::FormatBuf(
-                                 "cr_hx<%u>, cr_hy<%u>,\nhx<%u>, hy<%u>,\ncur_x<%d>, cur_y<%d>\nCond<%u>\nox<%d>, oy<%d>\nFarDir<%d>\n3dXY<%f,%f>",
+                                 "cr_hx<%u>, cr_hy<%u>,\nhx<%u>, hy<%u>,\ncur_x<%d>, cur_y<%d>\nCond<%u>\nox<%d>, oy<%d>\nFarDir<%d>\3dPos<%.2f,%.2f,%.2f>",
                                  Chosen->HexX, Chosen->HexY, hx, hy, GameOpt.MouseX, GameOpt.MouseY, Chosen->Cond, GameOpt.ScrOx, GameOpt.ScrOy,
-                                 GetFarDir( Chosen->HexX, Chosen->HexY, hx, hy ), p.X, p.Y
+                                 GetFarDir( Chosen->HexX, Chosen->HexY, hx, hy ), p.x, p.y, p.z
                                  ), FT_CENTERX, COLOR_RGB( 255, 240, 0 ) );
 
             SprMngr.DrawStr( Rect( 450, 5, 650, 300 ), Str::FormatBuf(
@@ -5307,8 +5307,6 @@ void FOClient::ShowMainScreen( int new_screen )
     ScreenModeMain = new_screen;
     RunScreenScript( true, new_screen, -1, 0, 0 );
 
-    GmapActive = false;
-
     switch( GetMainScreen() )
     {
     case SCREEN_LOGIN:
@@ -6015,7 +6013,7 @@ void FOClient::GmapDraw()
                 continue;
 
             if( !GmapPic[ index ] )
-                GmapPic[ index ] = ResMngr.GetAnim( Str::GetHash( FileManager::GetFullPath( Str::FormatBuf( GmapTilesPic, index ), PT_ART_INTRFACE ) ), RES_ATLAS_DYNAMIC );
+                GmapPic[ index ] = ResMngr.GetAnim( FileManager::GetFileHash( Str::FormatBuf( GmapTilesPic, index ), PT_ART_INTRFACE ), RES_ATLAS_DYNAMIC );
             if( !GmapPic[ index ] )
                 continue;
 

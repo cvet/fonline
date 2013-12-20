@@ -59,7 +59,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define MAX_HOLO_INFO                ( 250 )
 #define MAX_PARAMETERS_ARRAYS        ( 100 )
 #define AMBIENT_SOUND_TIME           ( 60000 ) // Random(X/2,X);
-#define EFFECT_TEXTURES              ( 10 )
 #define EFFECT_SCRIPT_VALUES         ( 10 )
 #define ABC_SIZE                     ( 26 )
 #define DIRS_COUNT                   ( GameOpt.MapHexagonal ? 6 : 8 )

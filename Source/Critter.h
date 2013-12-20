@@ -722,10 +722,11 @@ public:
     void Send_RunClientScript( const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 );
     void Send_DropTimers();
     void Send_ViewMap();
-    void Send_ItemLexems( Item* item );     // Without checks!
-    void Send_ItemLexemsNull( Item* item ); // Without checks!
+    void Send_ItemLexems( Item* item );     // Without checks
+    void Send_ItemLexemsNull( Item* item ); // Without checks
     void Send_CheckUIDS();
-    void Send_SomeItem( Item* item );       // Without checks!
+    void Send_SomeItem( Item* item );       // Without checks
+    void Send_EndParseToGame();             // Without checks
 
     // Locations
     bool CheckKnownLocById( uint loc_id );

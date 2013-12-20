@@ -403,6 +403,8 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_REGISTER_SUCCESS_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_PING:
         return ( NETMSG_PING_SIZE + bufReadPos <= bufEndPos );
+    case NETMSG_END_PARSE_TO_GAME:
+        return ( NETMSG_END_PARSE_TO_GAME_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_REMOVE_CRITTER:
         return ( NETMSG_REMOVE_CRITTER_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_MSG:
@@ -439,6 +441,8 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_REMOVE_ITEM_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_SORT_VALUE_ITEM:
         return ( NETMSG_SEND_SORT_VALUE_ITEM_SIZE + bufReadPos <= bufEndPos );
+    case NETMSG_ALL_ITEMS_SEND:
+        return ( NETMSG_ALL_ITEMS_SEND_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_ADD_ITEM_ON_MAP:
         return ( NETMSG_ADD_ITEM_ON_MAP_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CHANGE_ITEM_ON_MAP:
@@ -617,6 +621,9 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_PING:
         size = NETMSG_PING_SIZE;
         break;
+    case NETMSG_END_PARSE_TO_GAME:
+        size = NETMSG_END_PARSE_TO_GAME_SIZE;
+        break;
     case NETMSG_REMOVE_CRITTER:
         size = NETMSG_REMOVE_CRITTER_SIZE;
         break;
@@ -670,6 +677,9 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_SEND_SORT_VALUE_ITEM:
         size = NETMSG_SEND_SORT_VALUE_ITEM_SIZE;
+        break;
+    case NETMSG_ALL_ITEMS_SEND:
+        size = NETMSG_ALL_ITEMS_SEND_SIZE;
         break;
     case NETMSG_ADD_ITEM_ON_MAP:
         size = NETMSG_ADD_ITEM_ON_MAP_SIZE;
@@ -891,6 +901,7 @@ bool BufferManager::IsValidMsg( uint msg )
     case NETMSG_SINGLEPLAYER_SAVE_LOAD:
     case NETMSG_REGISTER_SUCCESS:
     case NETMSG_PING:
+    case NETMSG_END_PARSE_TO_GAME:
     case NETMSG_ADD_PLAYER:
     case NETMSG_ADD_NPC:
     case NETMSG_REMOVE_CRITTER:
@@ -911,6 +922,7 @@ bool BufferManager::IsValidMsg( uint msg )
     case NETMSG_ADD_ITEM:
     case NETMSG_REMOVE_ITEM:
     case NETMSG_SEND_SORT_VALUE_ITEM:
+    case NETMSG_ALL_ITEMS_SEND:
     case NETMSG_ADD_ITEM_ON_MAP:
     case NETMSG_CHANGE_ITEM_ON_MAP:
     case NETMSG_ERASE_ITEM_FROM_MAP:

@@ -53,6 +53,7 @@ public:
     uint*      UID1;
     string     Password;
     HexManager HexMngr;
+    ushort     CurMapPid;
 
     int        ShowScreenType;
     uint       ShowScreenParam;
@@ -161,6 +162,7 @@ public:
     void Net_OnFlyEffect();
     void Net_OnPlaySound( bool by_type );
     void Net_OnPing();
+    void Net_OnEndParseToGame();
     void Net_OnCheckUID0();
 
     void Net_OnCritterDir();
@@ -183,6 +185,7 @@ public:
     void Net_OnChosenClearItems();
     void Net_OnChosenAddItem();
     void Net_OnChosenEraseItem();
+    void Net_OnAllItemsSend();
     void Net_OnChosenTalk();
     void Net_OnCheckUID2();
 

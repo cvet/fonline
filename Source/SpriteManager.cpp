@@ -1735,13 +1735,14 @@ AnyFrames* SpriteManager::LoadAnimation3d( const char* fname, int path_type )
     Animation3d* anim3d = Animation3d::GetAnimation( fname, path_type, false );
     if( !anim3d )
         return NULL;
+    anim3d->StartMeshGeneration();
 
     // Get animation data
     float period;
     int   proc_from, proc_to;
     anim3d->GetRenderFramesData( period, proc_from, proc_to );
 
-    // If not animations available than render just one
+    // If no animations available than render just one
     if( period == 0.0f || proc_from == proc_to )
     {
 label_LoadOneSpr:
@@ -3146,7 +3147,7 @@ uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc 
     ClearCurrentRenderTarget( 0 );
     ClearCurrentRenderTargetDS( true, false );
     GL( glDisable( GL_BLEND ) );
-    anim3d->Draw( rt_width / 2, rt_height - rt_height / 4, 1.0f, NULL, 0 );
+    anim3d->Draw( rt_width / 2, rt_height - rt_height / 4, 1.0f, NULL );
     GL( glEnable( GL_BLEND ) );
     PopRenderTarget();
 
@@ -3918,11 +3919,17 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         // Render 3d
         if( si->Anim3d )
         {
+            if( spr->Light )
+            {
+                int    lr = *spr->Light;
+                int    lg = *( spr->Light + 1 );
+                int    lb = *( spr->Light + 2 );
+            }
             x += si->Width / 2 - si->OffsX;
             y += si->Height - si->OffsY;
             x = (int) ( (float) x / zoom );
             y = (int) ( (float) y / zoom );
-            Render3d( x, y, 1.0f / zoom, si->Anim3d, NULL, 0  );
+            Render3d( x, y, 1.0f / zoom, si->Anim3d, NULL, cur_color  );
             #ifndef RENDER_3D_TO_2D
             continue;
             #endif
@@ -4332,7 +4339,7 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
         EnableStencil( *stencil );
         ClearCurrentRenderTargetDS( false, true );
     }
-    anim3d->Draw( x, y, scale, stencil, rtStack.back()->FBO );
+    anim3d->Draw( x, y, scale, color );
     if( stencil )
         DisableStencil( false );
     #else
@@ -4354,7 +4361,7 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
     GL( glDisable( GL_BLEND ) );
     if( stencil )
         EnableStencil( *stencil );
-    anim3d->Draw( x, y, scale, stencil, rtStack.back()->FBO );
+    anim3d->Draw( x, y, scale, color );
     if( stencil )
         DisableStencil( false );
     GL( glEnable( GL_BLEND ) );
@@ -4414,13 +4421,14 @@ bool SpriteManager::Render3dSize( RectF rect, bool stretch_up, bool center, Anim
     }
 
     // Draw model
-    Render3d( (int) ( rect.L + (float) xy.X * scale ), (int) ( rect.T + (float) xy.Y * scale ), scale, anim3d, stencil, 0 );
+    Render3d( (int) ( rect.L + (float) xy.X * scale ), (int) ( rect.T + (float) xy.Y * scale ), scale, anim3d, stencil, color );
 
     return true;
 }
 
 bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, RectF* stencil, uint color )
 {
+    anim3d->StartMeshGeneration();
     Render3d( x, y, scale, anim3d, stencil, color );
     #ifdef RENDER_3D_TO_2D
     DrawRenderTarget( rt3D, true );
@@ -4430,6 +4438,7 @@ bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, Rect
 
 bool SpriteManager::Draw3dSize( RectF rect, bool stretch_up, bool center, Animation3d* anim3d, RectF* stencil, uint color )
 {
+    anim3d->StartMeshGeneration();
     Render3dSize( rect, stretch_up, center, anim3d, stencil, color );
     #ifdef RENDER_3D_TO_2D
     DrawRenderTarget( rt3D, true );

@@ -565,6 +565,7 @@ struct BindClass
     static void Crit_IsAnim1()                  {}
     static void Crit_IsAnim3d()                 {}
     static void Cl_GetAccess()                  {}
+    static void Cl_SetAccess()                  {}
     static void Crit_SetLexems()                {}
     static void Crit_SetEvent()                 {}
     static void Crit_GetMap()                   {}

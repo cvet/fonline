@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION                   ( 0xF0F8 ) // FOnline Protocol Version
+#define FO_PROTOCOL_VERSION                   ( 0xF0F9 ) // FOnline Protocol Version
 #define MAKE_NETMSG_HEADER( number )    ( (uint) ( ( 0x5EAD << 17 ) | ( number << 8 ) | ( 0xAA ) ) )
 #define PING_CLIENT_LIFE_TIME                 ( 15000 )  // Time to ping client life
 
@@ -82,6 +82,12 @@
 // ////////////////////////////////////////////////////////////////////////
 // Ping
 // uchar ping (see Ping in FOdefines.h)
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_END_PARSE_TO_GAME              MAKE_NETMSG_HEADER( 7 )
+#define NETMSG_END_PARSE_TO_GAME_SIZE         ( sizeof( uint ) )
+// ////////////////////////////////////////////////////////////////////////
+// Message about successfully map loading
 // ////////////////////////////////////////////////////////////////////////
 
 /*#define NETMSG_UPDATE_FILES_LIST    MAKE_NETMSG_HEADER(7)
@@ -475,6 +481,12 @@
 // Params:
 // uint item_id
 // ushort sort_val
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_ALL_ITEMS_SEND                 MAKE_NETMSG_HEADER( 69 )
+#define NETMSG_ALL_ITEMS_SEND_SIZE            ( sizeof( uint ) )
+// ////////////////////////////////////////////////////////////////////////
+//
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************

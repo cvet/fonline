@@ -388,6 +388,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsCanRotate() const"
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsCanAim() const", asFUNCTION( BIND_CLASS Crit_IsCanAim ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsAnim1(uint index) const", asFUNCTION( BIND_CLASS Crit_IsAnim1 ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "int GetAccess() const", asFUNCTION( BIND_CLASS Cl_GetAccess ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool SetAccess(int access)", asFUNCTION( BIND_CLASS Cl_SetAccess ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool SetEvent(int eventType, string@+ funcName)", asFUNCTION( BIND_CLASS Crit_SetEvent ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetLexems(string@+ lexems)", asFUNCTION( BIND_CLASS Crit_SetLexems ), asCALL_CDECL_OBJFIRST ) );

@@ -1137,6 +1137,8 @@ void CritterCl::Action( int action, int action_ext, Item* item, bool local_call 
     case ACTION_REFRESH:
         if( !IsAnim() )
             AnimateStay();
+        if( Anim3d )
+            Anim3d->StartMeshGeneration();
         break;
     default:
         break;
@@ -1369,6 +1371,7 @@ void CritterCl::ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim
 int* CritterCl::GetLayers3dData()
 {
     #ifdef FONLINE_CLIENT
+    # pragma RACE_CONDITION
     static int   layers[ LAYERS3D_COUNT ];
     ScriptArray* arr = (ScriptArray*) Layers3d;
     memcpy( layers, arr->At( 0 ), sizeof( layers ) );

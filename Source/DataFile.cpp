@@ -333,9 +333,7 @@ uchar* FalloutDatFile::OpenFile( const char* fname, uint& len )
         {
             if( !stream.avail_in && left > 0 )
             {
-                #ifdef SHOW_RACE_CONDITIONS
-                # pragma MESSAGE("SHOW_RACE_CONDITIONS: read_buf")
-                #endif
+                #pragma RACE_CONDITION
                 static uchar read_buf[ 0x40000 ];
 
                 stream.next_in = read_buf;

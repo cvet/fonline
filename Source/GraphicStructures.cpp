@@ -124,10 +124,10 @@ TextureAtlas::~TextureAtlas()
 }
 
 //
-// MeshSubset
+// MeshData
 //
 
-void MeshSubset::Save( FileManager& file )
+void MeshData::Save( FileManager& file )
 {
     uint len = (uint) Vertices.size();
     file.SetData( &len, sizeof( len ) );
@@ -138,23 +138,15 @@ void MeshSubset::Save( FileManager& file )
     len = (uint) DiffuseTexture.length();
     file.SetData( &len, sizeof( len ) );
     file.SetData( &DiffuseTexture[ 0 ], len );
-    file.SetData( &DiffuseColor, sizeof( DiffuseColor ) );
-    file.SetData( &AmbientColor, sizeof( AmbientColor ) );
-    len = (uint) SkinBoneNames.size();
+    len = (uint) BoneNameHashes.size();
     file.SetData( &len, sizeof( len ) );
-    for( uint i = 0, j = len; i < j; i++ )
-    {
-        len = (uint) SkinBoneNames[ i ].length();
-        file.SetData( &len, sizeof( len ) );
-        file.SetData( &SkinBoneNames[ i ][ 0 ], len );
-    }
-    len = (uint) SkinBoneOffsets.size();
+    file.SetData( &BoneNameHashes[ 0 ], len * sizeof( BoneNameHashes[ 0 ] ) );
+    len = (uint) BoneOffsets.size();
     file.SetData( &len, sizeof( len ) );
-    file.SetData( &SkinBoneOffsets[ 0 ], len * sizeof( SkinBoneOffsets[ 0 ] ) );
-    file.SetData( SkinBoneIndicies, sizeof( SkinBoneIndicies ) );
+    file.SetData( &BoneOffsets[ 0 ], len * sizeof( BoneOffsets[ 0 ] ) );
 }
 
-void MeshSubset::Load( FileManager& file )
+void MeshData::Load( FileManager& file )
 {
     uint len = 0;
     file.CopyMem( &len, sizeof( len ) );
@@ -166,45 +158,135 @@ void MeshSubset::Load( FileManager& file )
     file.CopyMem( &len, sizeof( len ) );
     DiffuseTexture.resize( len );
     file.CopyMem( &DiffuseTexture[ 0 ], len );
-    file.CopyMem( &DiffuseColor, sizeof( DiffuseColor ) );
-    file.CopyMem( &AmbientColor, sizeof( AmbientColor ) );
     file.CopyMem( &len, sizeof( len ) );
-    SkinBoneNames.resize( len );
-    for( uint i = 0, j = len; i < j; i++ )
-    {
-        file.CopyMem( &len, sizeof( len ) );
-        SkinBoneNames[ i ].resize( len );
-        file.CopyMem( &SkinBoneNames[ i ][ 0 ], len );
-    }
+    BoneNameHashes.resize( len );
+    file.CopyMem( &BoneNameHashes[ 0 ], len * sizeof( BoneNameHashes[ 0 ] ) );
     file.CopyMem( &len, sizeof( len ) );
-    SkinBoneOffsets.resize( len );
-    file.CopyMem( &SkinBoneOffsets[ 0 ], len * sizeof( SkinBoneOffsets[ 0 ] ) );
-    file.CopyMem( SkinBoneIndicies, sizeof( SkinBoneIndicies ) );
-    VerticesTransformed = Vertices;
-    VerticesTransformedValid = false;
-    memzero( BoneCombinedMatrices, sizeof( BoneCombinedMatrices ) );
+    BoneOffsets.resize( len );
+    file.CopyMem( &BoneOffsets[ 0 ], len * sizeof( BoneOffsets[ 0 ] ) );
+    BoneCombinedMatrices.resize( BoneOffsets.size() );
     memzero( &DrawEffect, sizeof( DrawEffect ) );
+}
+
+//
+// CombinedMesh
+//
+
+void CombinedMesh::Clear()
+{
+    EncapsulatedMeshCount = 0;
+    if( VBO )
+        GL( glDeleteBuffers( 1, &VBO ) );
+    if( IBO )
+        GL( glDeleteBuffers( 1, &IBO ) );
+    if( VAO )
+        GL( glDeleteVertexArrays( 1, &VAO ) );
     VAO = VBO = IBO = 0;
+    CurBoneMatrix = 0;
+}
+
+bool CombinedMesh::CanEncapsulate( MeshInstance& mesh_instance )
+{
+    if( EncapsulatedMeshCount == 0 )
+        return true;
+    if( DrawEffect != mesh_instance.CurEffect )
+        return false;
+    for( int i = 0; i < EFFECT_TEXTURES; i++ )
+        if( Textures[ i ] && mesh_instance.CurTexures[ i ] && Textures[ i ]->Id != mesh_instance.CurTexures[ i ]->Id )
+            return false;
+    if( CurBoneMatrix + mesh_instance.Mesh->BoneCombinedMatrices.size() > MAX_BONE_MATRICES )
+        return false;
+    return true;
+}
+
+void CombinedMesh::Encapsulate( MeshInstance& mesh_instance )
+{
+    MeshData* mesh = mesh_instance.Mesh;
+
+    // Set or add data
+    if( !EncapsulatedMeshCount )
+    {
+        Vertices = mesh->Vertices;
+        Indicies = mesh->Indicies;
+        DrawEffect = mesh_instance.CurEffect;
+        memzero( BoneCombinedMatrices, sizeof( BoneCombinedMatrices ) );
+        memzero( Textures, sizeof( Textures ) );
+        CurBoneMatrix = 0;
+    }
+    else
+    {
+        Vertices.insert( Vertices.end(), mesh->Vertices.begin(), mesh->Vertices.end() );
+        Indicies.insert( Indicies.end(), mesh->Indicies.begin(), mesh->Indicies.end() );
+
+        // Add indicies offset
+        ushort index_offset = (ushort) ( Vertices.size() - mesh->Vertices.size() );
+        size_t start_index = Indicies.size() - mesh->Indicies.size();
+        for( size_t i = start_index, j = Indicies.size(); i < j; i++ )
+            Indicies[ i ] += index_offset;
+
+        // Add bones matrices offset
+        float  bone_index_offset = (float) CurBoneMatrix;
+        size_t start_vertex = Vertices.size() - mesh->Vertices.size();
+        for( size_t i = start_vertex, j = Vertices.size(); i < j; i++ )
+            for( size_t b = 0; b < BONES_PER_VERTEX; b++ )
+                Vertices[ i ].BlendIndices[ b ] += bone_index_offset;
+    }
+
+    // Add bones matrices
+    for( size_t i = 0, j = mesh->BoneCombinedMatrices.size(); i < j; i++ )
+    {
+        BoneCombinedMatrices[ CurBoneMatrix + i ] = mesh->BoneCombinedMatrices[ i ];
+        BoneOffsetMatrices[ CurBoneMatrix + i ] = mesh->BoneOffsets[ i ];
+    }
+    CurBoneMatrix += mesh->BoneCombinedMatrices.size();
+
+    // Add textures
+    for( int i = 0; i < EFFECT_TEXTURES; i++ )
+        if( !Textures[ i ] && mesh_instance.CurTexures[ i ] )
+            Textures[ i ] = mesh_instance.CurTexures[ i ];
+
+    // Increment mesh count
+    EncapsulatedMeshCount++;
+}
+
+void CombinedMesh::Finalize()
+{
+    GL( glGenBuffers( 1, &VBO ) );
+    GL( glBindBuffer( GL_ARRAY_BUFFER, VBO ) );
+    GL( glBufferData( GL_ARRAY_BUFFER, Vertices.size() * sizeof( Vertex3D ), &Vertices[ 0 ], GL_STATIC_DRAW ) );
+    GL( glGenBuffers( 1, &IBO ) );
+    GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, IBO ) );
+    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, Indicies.size() * sizeof( short ), &Indicies[ 0 ], GL_STATIC_DRAW ) );
+
+    if( !VAO && GL_HAS( vertex_array_object ) && ( GL_HAS( framebuffer_object ) || GL_HAS( framebuffer_object_ext ) ) )
+    {
+        GL( glGenVertexArrays( 1, &VAO ) );
+        GL( glBindVertexArray( VAO ) );
+        GL( glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Position ) ) );
+        GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Normal ) ) );
+        GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoordAtlas ) ) );
+        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoordBase ) ) );
+        GL( glVertexAttribPointer( 4, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Tangent ) ) );
+        GL( glVertexAttribPointer( 5, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Bitangent ) ) );
+        GL( glVertexAttribPointer( 6, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, BlendWeights ) ) );
+        GL( glVertexAttribPointer( 7, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, BlendIndices ) ) );
+        for( uint i = 0; i <= 7; i++ )
+            GL( glEnableVertexAttribArray( i ) );
+        GL( glBindVertexArray( 0 ) );
+    }
 }
 
 //
 // Node
 //
 
-StrVec Node::Bones;
-
-const char* Node::GetName()
+Node* Node::Find( uint name_hash )
 {
-    return Name.c_str();
-}
-
-Node* Node::Find( const char* name )
-{
-    if( Str::Compare( Name.c_str(), name ) )
+    if( NameHash == name_hash )
         return this;
     for( uint i = 0; i < Children.size(); i++ )
     {
-        Node* node = Children[ i ]->Find( name );
+        Node* node = Children[ i ]->Find( name_hash );
         if( node )
             return node;
     }
@@ -213,15 +295,12 @@ Node* Node::Find( const char* name )
 
 void Node::Save( FileManager& file )
 {
-    uint len = (uint) Name.length();
-    file.SetData( &len, sizeof( len ) );
-    file.SetData( &Name[ 0 ], len );
+    file.SetData( &NameHash, sizeof( NameHash ) );
     file.SetData( &TransformationMatrix, sizeof( TransformationMatrix ) );
-    len = (uint) Mesh.size();
-    file.SetData( &len, sizeof( len ) );
-    for( uint i = 0, j = len; i < j; i++ )
-        Mesh[ i ].Save( file );
-    len = (uint) Children.size();
+    file.SetUChar( Mesh != NULL ? 1 : 0 );
+    if( Mesh )
+        Mesh->Save( file );
+    uint len = (uint) Children.size();
     file.SetData( &len, sizeof( len ) );
     for( uint i = 0, j = len; i < j; i++ )
         Children[ i ]->Save( file );
@@ -229,15 +308,19 @@ void Node::Save( FileManager& file )
 
 void Node::Load( FileManager& file )
 {
-    uint len = 0;
-    file.CopyMem( &len, sizeof( len ) );
-    Name.resize( len );
-    file.CopyMem( &Name[ 0 ], len );
+    file.CopyMem( &NameHash, sizeof( NameHash ) );
     file.CopyMem( &TransformationMatrix, sizeof( TransformationMatrix ) );
-    file.CopyMem( &len, sizeof( len ) );
-    Mesh.resize( len );
-    for( uint i = 0, j = len; i < j; i++ )
-        Mesh[ i ].Load( file );
+    if( file.GetUChar() )
+    {
+        Mesh = new MeshData();
+        Mesh->Load( file );
+        Mesh->Parent = this;
+    }
+    else
+    {
+        Mesh = NULL;
+    }
+    uint len = 0;
     file.CopyMem( &len, sizeof( len ) );
     Children.resize( len );
     for( uint i = 0, j = len; i < j; i++ )
@@ -250,36 +333,13 @@ void Node::Load( FileManager& file )
 
 void Node::FixAfterLoad( Node* root_node )
 {
-    for( auto it = Mesh.begin(), end = Mesh.end(); it != end; ++it )
+    // Fix skin
+    if( Mesh )
     {
-        MeshSubset& ms = *it;
-
-        // Fix skin
-        if( ms.IsSkinned() )
+        for( size_t i = 0, j = Mesh->BoneNameHashes.size(); i < j; i++ )
         {
-            int    bone_indicies[ MAX_BONE_MATRICES ];
-            memcpy( bone_indicies, ms.SkinBoneIndicies, sizeof( bone_indicies ) );
-            IntVec new_bone_indicies( ms.SkinBoneNames.size() );
-            for( size_t i = 0, j = ms.SkinBoneNames.size(); i < j; i++ )
-            {
-                Node* bone_node = root_node->Find( ms.SkinBoneNames[ i ].c_str() );
-                int   bone_index = bone_node->GetBoneIndex();
-                ms.BoneCombinedMatrices[ bone_index ] = &bone_node->CombinedTransformationMatrix;
-                ms.BoneOffsetMatrices[ bone_index ] = ms.SkinBoneOffsets[ i ];
-                ms.SkinBoneIndicies[ bone_index ] = i;
-                new_bone_indicies[ i ] = bone_index;
-            }
-
-            // Fix blend matrix indicies
-            for( size_t i = 0, j = ms.Vertices.size(); i < j; i++ )
-            {
-                Vertex3D& v = ms.Vertices[ i ];
-                for( int b = 0; b < BONES_PER_VERTEX; b++ )
-                {
-                    if( v.BlendWeights[ b ] > 0.0f )
-                        v.BlendIndices[ b ] = (float) new_bone_indicies[ bone_indicies[ (int) v.BlendIndices[ b ] ] ];
-                }
-            }
+            Node* bone_node = root_node->Find( Mesh->BoneNameHashes[ i ] );
+            Mesh->BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
         }
     }
 
@@ -287,11 +347,10 @@ void Node::FixAfterLoad( Node* root_node )
         Children[ i ]->FixAfterLoad( root_node );
 }
 
-int Node::GetBoneIndex()
+uint Node::GetHash( const char* name )
 {
-    for( int i = 0, j = (int) Bones.size(); i < j; i++ )
-        if( Bones[ i ] == Name )
-            return i;
-    Bones.push_back( Name );
-    return (int) Bones.size() - 1;
+    uint hash = 2166136261U;
+    for( uint i = 0, j = Str::Length( name ); i < j; i++ )
+        hash = 16777619U * hash ^ (uint) name[ i ];
+    return hash;
 }

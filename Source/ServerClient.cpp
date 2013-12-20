@@ -2084,7 +2084,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             cl->NetIOOut->Locker.Unlock();
             cl->NetIOIn->Locker.Unlock();
             #endif
-            WriteLog( "Hello?\n" );
             ConnectedClientsLocker.Unlock();
             cl->Disconnect();
             BIN_BEGIN( cl );
@@ -2485,70 +2484,76 @@ void FOServer::Process_ParseToGame( Client* cl )
             cl->ProcessTalk( true );
             cl->Send_Talk();
         }
-        return;
     }
-
-    if( !map )
+    else
     {
-        WriteLogF( _FUNC_, " - Map not found, client<%s>.\n", cl->GetInfo() );
-        cl->Disconnect();
-        return;
-    }
-
-    // Parse to local
-    SETFLAG( cl->Flags, FCRIT_CHOSEN );
-    cl->Send_AddCritter( cl );
-    UNSETFLAG( cl->Flags, FCRIT_CHOSEN );
-
-    // Send all data
-    #pragma MESSAGE("Send all data by demand.")
-    cl->Send_AllParams();
-    cl->Send_AddAllItems();
-    cl->Send_AllQuests();
-    cl->Send_HoloInfo( true, 0, cl->Data.HoloInfoCount );
-    cl->Send_AllAutomapsInfo();
-
-    // Send current critters
-    CrVec critters = cl->VisCrSelf;
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        SYNC_LOCK( cr );
-        cl->Send_AddCritter( cr );
-    }
-
-    // Send current items on map
-    cl->VisItemLocker.Lock();
-    UIntSet items = cl->VisItem;
-    cl->VisItemLocker.Unlock();
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
-    {
-        Item* item = ItemMngr.GetItem( *it, false );
-        if( item )
-            cl->Send_AddItemOnMap( item );
-    }
-
-    // Check active talk
-    if( cl->Talk.TalkType != TALK_NONE )
-    {
-        cl->ProcessTalk( true );
-        cl->Send_Talk();
-    }
-
-    // Turn based
-    if( map->IsTurnBasedOn )
-    {
-        if( map->IsCritterTurn( cl ) )
-            cl->Send_ParamOther( OTHER_YOU_TURN, map->GetCritterTurnTime() );
-        else
+        if( !map )
         {
-            Critter* cr = cl->GetCritSelf( map->GetCritterTurnId(), false );
-            if( cr )
-                cl->Send_CritterParam( cr, OTHER_YOU_TURN, map->GetCritterTurnTime() );
+            WriteLogF( _FUNC_, " - Map not found, client<%s>.\n", cl->GetInfo() );
+            cl->Disconnect();
+            return;
+        }
+
+        // Parse to local
+        SETFLAG( cl->Flags, FCRIT_CHOSEN );
+        cl->Send_AddCritter( cl );
+        UNSETFLAG( cl->Flags, FCRIT_CHOSEN );
+
+        // Send all data
+        #pragma MESSAGE("Send all data by demand.")
+        cl->Send_AllParams();
+        cl->Send_AddAllItems();
+        cl->Send_AllQuests();
+        cl->Send_HoloInfo( true, 0, cl->Data.HoloInfoCount );
+        cl->Send_AllAutomapsInfo();
+
+        // Send current critters
+        CrVec critters = cl->VisCrSelf;
+        for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
+        {
+            Critter* cr = *it;
+            SYNC_LOCK( cr );
+            cl->Send_AddCritter( cr );
+        }
+
+        // Send current items on map
+        cl->VisItemLocker.Lock();
+        UIntSet items = cl->VisItem;
+        cl->VisItemLocker.Unlock();
+        for( auto it = items.begin(), end = items.end(); it != end; ++it )
+        {
+            Item* item = ItemMngr.GetItem( *it, false );
+            if( item )
+                cl->Send_AddItemOnMap( item );
+        }
+
+        // Check active talk
+        if( cl->Talk.TalkType != TALK_NONE )
+        {
+            cl->ProcessTalk( true );
+            cl->Send_Talk();
+        }
+
+        // Turn based
+        if( map->IsTurnBasedOn )
+        {
+            if( map->IsCritterTurn( cl ) )
+                cl->Send_ParamOther( OTHER_YOU_TURN, map->GetCritterTurnTime() );
+            else
+            {
+                Critter* cr = cl->GetCritSelf( map->GetCritterTurnId(), false );
+                if( cr )
+                    cl->Send_CritterParam( cr, OTHER_YOU_TURN, map->GetCritterTurnTime() );
+            }
+        }
+        else if( TB_BATTLE_TIMEOUT_CHECK( cl->GetParam( TO_BATTLE ) ) )
+        {
+            cl->SetTimeout( TO_BATTLE, 0 );
         }
     }
-    else if( TB_BATTLE_TIMEOUT_CHECK( cl->GetParam( TO_BATTLE ) ) )
-        cl->SetTimeout( TO_BATTLE, 0 );
+
+    // Notify about end of parsing
+    cl->Send_EndParseToGame();
 }
 
 void FOServer::Process_GiveMap( Client* cl )

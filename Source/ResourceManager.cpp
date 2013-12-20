@@ -144,6 +144,7 @@ void ResourceManager::ReinitializeDynamicAtlas()
     AnyFrames::Destroy( ItemHexDefaultAnim );
     CritterDefaultAnim = SprMngr.LoadAnimation( "art\\critters\\reservaa.frm", PT_DATA, true );
     ItemHexDefaultAnim = SprMngr.LoadAnimation( "art\\items\\reserved.frm", PT_DATA, true );
+    Animation3dXFile::FixAllTextureCoords();
     SprMngr.PopAtlasType();
 }
 
@@ -689,6 +690,7 @@ Animation3d* ResourceManager::GetCrit3dAnim( uint crtype, uint anim1, uint anim2
 
     anim3d->SetAnimation( anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH );
     anim3d->SetDir( dir );
+    anim3d->StartMeshGeneration();
     return anim3d;
 }
 

@@ -5,6 +5,7 @@
 #include "GraphicStructures.h"
 
 #define BORDERS_OFFSET         ( 50.0f )
+#define DRAW_Z_STEP            ( 5.0f )
 
 #define LAYERS3D_COUNT         ( 30 )
 
@@ -28,68 +29,64 @@ struct AnimParams
     uint            Id;
     int             Layer;
     int             LayerValue;
-    char*           LinkBone;
+    uint            LinkBoneHash;
     char*           ChildFName;
     float           RotX, RotY, RotZ;
     float           MoveX, MoveY, MoveZ;
     float           ScaleX, ScaleY, ScaleZ;
     float           SpeedAjust;
+
     int*            DisabledLayers;
     uint            DisabledLayersCount;
-    int*            DisabledSubsets;
-    int*            DisabledSubsetsMesh;
-    uint            DisabledSubsetsCount;
+
+    uint*           DisabledMesh;
+    uint            DisabledMeshCount;
+
     char**          TextureName;
-    int*            TextureMesh;
-    int*            TextureSubset;
+    uint*           TextureMesh;
     int*            TextureNum;
     uint            TextureCount;
+
     EffectInstance* EffectInst;
-    int*            EffectInstMesh;
-    int*            EffectInstSubset;
-    uint            EffectInstCount;
+    uint*           EffectMesh;
+    uint            EffectCount;
 };
 typedef vector< AnimParams > AnimParamsVec;
-
-struct MeshOptions
-{
-    Node*         NodePtr;
-    uint          SubsetsCount;
-    bool*         DisabledSubsets;
-    MeshTexture** TexSubsets;
-    MeshTexture** DefaultTexSubsets;
-    Effect**      EffectSubsets;
-    Effect**      DefaultEffectSubsets;
-};
-typedef vector< MeshOptions > MeshOptionsVec;
 
 class Animation3d
 {
 private:
     friend class Animation3dEntity;
     friend class Animation3dXFile;
-    static Animation3dVec generalAnimations;
 
-    Animation3dEntity*    animEntity;
-    AnimController*       animController;
-    int                   currentLayers[ LAYERS3D_COUNT + 1 ];     // +1 for actions
-    uint                  currentTrack;
-    uint                  lastTick;
-    uint                  endTick;
-    Matrix                matRot, matScale;
-    Matrix                matScaleBase, matRotBase, matTransBase;
-    float                 speedAdjustBase, speedAdjustCur, speedAdjustLink;
-    bool                  shadowDisabled;
-    float                 dirAngle;
-    uint                  sprId;
-    Point                 drawXY;
-    float                 drawScale;
-    Vector                groundPos;
-    RectF                 bonesBorder;
-    bool                  noDraw;
-    MeshOptionsVec        meshOpt;
-    bool                  useGameTimer;
-    float                 animPosProc, animPosTime, animPosPeriod;
+    // All loaded animations
+    static Animation3dVec loadedAnimations;
+
+    // Parameters
+    CombinedMeshVec    combinedMeshes;
+    size_t             combinedMeshesSize;
+    MeshInstanceVec    allMeshes;
+    BoolVec            allMeshesDisabled;
+    Animation3dEntity* animEntity;
+    AnimController*    animController;
+    int                currentLayers[ LAYERS3D_COUNT + 1 ];        // +1 for actions
+    uint               currentTrack;
+    uint               lastTick;
+    uint               endTick;
+    Matrix             matRot, matScale;
+    Matrix             matScaleBase, matRotBase, matTransBase;
+    float              speedAdjustBase, speedAdjustCur, speedAdjustLink;
+    bool               shadowDisabled;
+    float              dirAngle;
+    uint               sprId;
+    Point              drawXY;
+    float              drawScale;
+    Vector             groundPos;
+    RectF              bonesBorder;
+    bool               noDraw;
+    bool               useGameTimer;
+    float              animPosProc, animPosTime, animPosPeriod;
+    bool               allowMeshGeneration;
 
     // Derived animations
     Animation3dVec childAnimations;
@@ -101,35 +98,35 @@ private:
     AnimParams     animLink;
     bool           childChecker;
 
-    bool         MoveNode( float elapsed, int x, int y, float scale, bool transform );
-    void         UpdateNodeMatrices( Node* node, const Matrix* parent_matrix );
-    bool         DrawNode( Node* node, bool shadow );
-    bool         IsIntersectNode( Node* node, const Vector& ray_origin, const Vector& ray_dir, float x, float y );
-    float        GetSpeed();
-    uint         GetTick();
-    MeshOptions* GetMeshOptions( Node* node );
-    static void  SetAnimData( Animation3d* anim3d, AnimParams& data, bool clear );
+    void  GenerateCombinedMeshes();
+    void  FillCombinedMeshes( Animation3d* base, Animation3d* cur );
+    void  CombineMesh( MeshInstance& mesh_instance );
+    void  ProcessAnimation( float elapsed, int x, int y, float scale );
+    void  UpdateNodeMatrices( Node* node, const Matrix* parent_matrix );
+    void  DrawMesh( CombinedMesh* combined_mesh, bool shadow );
+    void  TransformMesh( CombinedMesh* combined_mesh );
+    float GetSpeed();
+    uint  GetTick();
+    void  SetAnimData( AnimParams& data, bool clear );
 
 public:
     Animation3d();
     ~Animation3d();
 
-    void SetAnimation( uint anim1, uint anim2, int* layers, int flags );
-    bool IsAnimation( uint anim1, uint anim2 );
-    bool CheckAnimation( uint& anim1, uint& anim2 );
-    int  GetAnim1();
-    int  GetAnim2();
-    void SetDir( int dir );
-    void SetDirAngle( int dir_angle );
-    void SetRotation( float rx, float ry, float rz );
-    #ifdef SHADOW_MAP
-    void SetPitch( float angle );
-    #endif
+    void  StartMeshGeneration();
+    bool  SetAnimation( uint anim1, uint anim2, int* layers, int flags );
+    bool  IsAnimation( uint anim1, uint anim2 );
+    bool  CheckAnimation( uint& anim1, uint& anim2 );
+    int   GetAnim1();
+    int   GetAnim2();
+    void  SetDir( int dir );
+    void  SetDirAngle( int dir_angle );
+    void  SetRotation( float rx, float ry, float rz );
     void  SetScale( float sx, float sy, float sz );
     void  SetSpeed( float speed );
     void  SetTimer( bool use_game_timer );
     void  EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
-    bool  Draw( int x, int y, float scale, RectF* stencil, uint color );
+    bool  Draw( int x, int y, float scale, uint color );
     void  SetDrawPos( int x, int y );
     bool  IsAnimationPlaying();
     bool  IsIntersect( int x, int y );
@@ -144,13 +141,12 @@ public:
     static bool         SetScreenSize( int width, int height );
     static void         Finish();
     static void         BeginScene();
-    static void         PreRestore();
     static Animation3d* GetAnimation( const char* name, int path_type, bool is_child );
     static Animation3d* GetAnimation( const char* name, bool is_child );
     static void         AnimateFaster();
     static void         AnimateSlower();
-    static PointF       Convert2dTo3d( int x, int y );
-    static Point        Convert3dTo2d( float x, float y );
+    static Vector       Convert2dTo3d( int x, int y );
+    static Point        Convert3dTo2d( Vector pos );
     static bool         Is2dEmulation();
 };
 
@@ -207,10 +203,13 @@ private:
 
     MeshTexture* GetTexture( const char* tex_name );
     Effect*      GetEffect( EffectInstance* effect_inst );
+    void         FixTextureCoords( Node* node, const char* model_path );
 
 public:
     Animation3dXFile();
     ~Animation3dXFile();
+
+    static void FixAllTextureCoords();
 };
 
 #endif // __3D_STUFF__

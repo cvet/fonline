@@ -59,6 +59,7 @@ typedef std::vector< uchar* >                PUCharVec;
 typedef std::vector< float >                 FloatVec;
 typedef std::vector< uint64 >                UInt64Vec;
 typedef std::vector< bool >                  BoolVec;
+typedef std::vector< size_t >                SizeVec;
 
 typedef std::set< std::string >              StrSet;
 typedef std::set< uchar >                    UCharSet;

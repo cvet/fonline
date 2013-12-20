@@ -6,7 +6,8 @@
 #include "Assimp/aiScene.h"
 #include "FileManager.h"
 
-#define MAX_BONE_MATRICES       ( 50 )
+#define EFFECT_TEXTURES         ( 10 )
+#define MAX_BONE_MATRICES       ( 128 )
 #define BONES_PER_VERTEX        ( 4 )
 
 typedef aiMatrix4x4          Matrix;
@@ -16,6 +17,7 @@ typedef aiColor4D            Color;
 typedef vector< Vector >     VectorVec;
 typedef vector< Quaternion > QuaternionVec;
 typedef vector< Matrix >     MatrixVec;
+typedef vector< Matrix* >    MatrixPtrVec;
 
 //
 // Vertex
@@ -39,19 +41,15 @@ typedef vector< Vertex > VertexVec;
 struct Vertex3D
 {
     Vector Position;
-    float  PositionW;
     Vector Normal;
-    float  Color[ 4 ];
-    float  TexCoord[ 2 ];
-    float  TexCoord2[ 2 ];
-    float  TexCoord3[ 2 ];
+    float  TexCoordAtlas[ 2 ];
+    float  TexCoordBase[ 2 ];
     Vector Tangent;
     Vector Bitangent;
     float  BlendWeights[ BONES_PER_VERTEX ];
     float  BlendIndices[ BONES_PER_VERTEX ];
-    float  Padding[ 1 ];
 };
-static_assert( sizeof( Vertex3D ) == 128, "Wrong Vertex3D size." );
+static_assert( sizeof( Vertex3D ) == 96, "Wrong Vertex3D size." );
 typedef vector< Vertex3D >    Vertex3DVec;
 typedef vector< Vertex3DVec > Vertex3DVecVec;
 
@@ -158,23 +156,15 @@ struct Effect
     GLint          ZoomFactor;
     GLint          ColorMap;
     GLint          ColorMapSize;
-    GLint          ColorMapAtlasOffset;
     GLint          ColorMapSamples;
     GLint          EggMap;
     GLint          EggMapSize;
-    #ifdef SHADOW_MAP
-    GLint          ShadowMap;
-    GLint          ShadowMapSize;
-    GLint          ShadowMapSamples;
-    GLint          ShadowMapMatrix;
-    #endif
     GLint          SpriteBorder;
 
     EffectDefault* Defaults;
     GLint          ProjectionMatrix;
     GLint          GroundPosition;
-    GLint          MaterialAmbient;
-    GLint          MaterialDiffuse;
+    GLint          LightColor;
     GLint          WorldMatrices;
     GLint          WorldMatrix;
 
@@ -223,9 +213,7 @@ struct Effect
     static Effect* FlushPrimitive, * FlushPrimitiveDefault;
     static Effect* FlushMap, * FlushMapDefault;
     static Effect* Font, * FontDefault;
-    static Effect* Simple3d, * Simple3dDefault;
     static Effect* Skinned3d, * Skinned3dDefault;
-    static Effect* Simple3dShadow, * Simple3dShadowDefault;
     static Effect* Skinned3dShadow, * Skinned3dShadowDefault;
 };
 typedef vector< Effect* > EffectVec;
@@ -252,6 +240,19 @@ struct Texture
     inline uint& Pixel( uint x, uint y ) { return *( (uint*) Data + y * Width + x ); }
 };
 typedef vector< Texture* > TextureVec;
+
+//
+// MeshTexture
+//
+
+struct MeshTexture
+{
+    string Name;
+    GLuint Id;
+    float  SizeData[ 4 ];
+    float  AtlasOffsetData[ 4 ];
+};
+typedef vector< MeshTexture* > MeshTextureVec;
 
 //
 // TextureAtlas
@@ -336,33 +337,68 @@ struct RenderTarget
 typedef vector< RenderTarget* > RenderTargetVec;
 
 //
-// MeshSubset
+// MeshData
 //
 
-struct MeshSubset
+struct Node;
+struct MeshData
 {
+    Node*          Parent;
     Vertex3DVec    Vertices;
     UShortVec      Indicies;
     string         DiffuseTexture;
-    Color          DiffuseColor;
-    Color          AmbientColor;
-    StrVec         SkinBoneNames;
-    MatrixVec      SkinBoneOffsets;
-    int            SkinBoneIndicies[ MAX_BONE_MATRICES ];
+    UIntVec        BoneNameHashes;
+    MatrixVec      BoneOffsets;
 
     // Runtime data
-    Vertex3DVec    VerticesTransformed;
-    bool           VerticesTransformedValid;
-    Matrix*        BoneCombinedMatrices[ MAX_BONE_MATRICES ];
-    Matrix         BoneOffsetMatrices[ MAX_BONE_MATRICES ];
+    MatrixPtrVec   BoneCombinedMatrices;
     EffectInstance DrawEffect;
-    GLuint         VAO, VBO, IBO;
 
-    bool IsSkinned() { return !SkinBoneNames.empty(); }
     void Save( FileManager& file );
     void Load( FileManager& file );
 };
-typedef vector< MeshSubset > MeshSubsetVec;
+
+//
+// MeshInstance
+//
+
+struct MeshInstance
+{
+    MeshData*    Mesh;
+    bool         Disabled;
+    MeshTexture* CurTexures[ EFFECT_TEXTURES ];
+    MeshTexture* DefaultTexures[ EFFECT_TEXTURES ];
+    Effect*      CurEffect;
+    Effect*      DefaultEffect;
+};
+typedef vector< MeshInstance > MeshInstanceVec;
+
+//
+// CombinedMesh
+//
+
+struct CombinedMesh
+{
+    int          EncapsulatedMeshCount;
+    Vertex3DVec  Vertices;
+    Vertex3DVec  VerticesTransformed;
+    UShortVec    Indicies;
+    size_t       CurBoneMatrix;
+    Matrix*      BoneCombinedMatrices[ MAX_BONE_MATRICES ];
+    Matrix       BoneOffsetMatrices[ MAX_BONE_MATRICES ];
+    MeshTexture* Textures[ EFFECT_TEXTURES ];
+    Effect*      DrawEffect;
+    GLuint       VAO, VBO, IBO;
+
+    void Clear();
+    bool CanEncapsulate( MeshInstance& mesh_instance );
+    void Encapsulate( MeshInstance& mesh_instance );
+    void Finalize();
+
+    CombinedMesh(): EncapsulatedMeshCount( 0 ), VAO( 0 ), VBO( 0 ), IBO( 0 ), CurBoneMatrix( 0 ) {}
+    ~CombinedMesh() { Clear(); }
+};
+typedef vector< CombinedMesh* > CombinedMeshVec;
 
 //
 // Node
@@ -372,35 +408,20 @@ struct Node;
 typedef vector< Node* > NodeVec;
 struct Node
 {
-    string        Name;
-    Matrix        TransformationMatrix;
-    MeshSubsetVec Mesh;
-    NodeVec       Children;
+    uint        NameHash;
+    Matrix      TransformationMatrix;
+    MeshData*   Mesh;
+    NodeVec     Children;
 
     // Runtime data
-    static StrVec Bones;
-    Matrix        CombinedTransformationMatrix;
-    Vector        ScreenPos;
+    Matrix      CombinedTransformationMatrix;
+    Vector      ScreenPos;
 
-    const char* GetName();
-    Node*       Find( const char* name );
+    Node*       Find( uint name_hash );
     void        Save( FileManager& file );
     void        Load( FileManager& file );
     void        FixAfterLoad( Node* root_node );
-    int         GetBoneIndex();
+    static uint GetHash( const char* name );
 };
-
-//
-// MeshTexture
-//
-
-struct MeshTexture
-{
-    string Name;
-    GLuint Id;
-    float  SizeData[ 4 ];
-    float  AtlasOffsetData[ 4 ];
-};
-typedef vector< MeshTexture* > MeshTextureVec;
 
 #endif // __GRAPHIC_STRUCTURES__

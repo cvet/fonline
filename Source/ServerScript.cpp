@@ -1380,6 +1380,35 @@ int FOServer::SScriptFunc::Cl_GetAccess( Critter* cl )
     return ( (Client*) cl )->Access;
 }
 
+bool FOServer::SScriptFunc::Cl_SetAccess( Critter* cl, int access )
+{
+    if( cl->IsNotValid )
+        SCRIPT_ERROR_R0( "This nullptr." );
+    if( !cl->IsPlayer() )
+        SCRIPT_ERROR_R0( "Critter is not player." );
+    if( access < ACCESS_CLIENT || access > ACCESS_ADMIN )
+        SCRIPT_ERROR_R0( "Wrong access type." );
+
+    if( access == ( (Client*) cl )->Access )
+        return true;
+
+    bool allow = false;
+    if( Script::PrepareContext( ServerFunctions.PlayerGetAccess, _FUNC_, cl->GetInfo() ) )
+    {
+        ScriptString* pass = new ScriptString( "" );
+        Script::SetArgObject( cl );
+        Script::SetArgUInt( access );
+        Script::SetArgObject( pass );
+        if( Script::RunPrepared() && Script::GetReturnedBool() )
+            allow = true;
+        pass->Release();
+    }
+
+    if( allow )
+        ( (Client*) cl )->Access = access;
+    return allow;
+}
+
 bool FOServer::SScriptFunc::Crit_SetEvent( Critter* cr, int event_type, ScriptString* func_name )
 {
     if( cr->IsNotValid )
