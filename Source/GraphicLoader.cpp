@@ -531,8 +531,6 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
     for( uint m = 0; m < ai_node->mNumMeshes; m++ )
     {
         aiMesh*   ai_mesh = ai_scene->mMeshes[ ai_node->mMeshes[ m ] ];
-        if( ai_mesh->mNumBones == 0 )
-            continue;
 
         // Mesh
         Node* mesh_node;
@@ -546,9 +544,17 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
             char name[ MAX_FOPATH ];
             Str::Format( name, "%s_%d", ai_node->mName.data, m + 1 );
             mesh_node->NameHash = Node::GetHash( name );
-            mesh_node->TransformationMatrix = node->TransformationMatrix;
-            mesh_node->CombinedTransformationMatrix = node->CombinedTransformationMatrix;
-            parent_node->Children.push_back( mesh_node );
+            mesh_node->CombinedTransformationMatrix = Matrix();
+            if( parent_node )
+            {
+                parent_node->Children.push_back( mesh_node );
+                mesh_node->TransformationMatrix = node->TransformationMatrix;
+            }
+            else
+            {
+                node->Children.push_back( mesh_node );
+                mesh_node->TransformationMatrix = Matrix();
+            }
         }
 
         MeshData* mesh = mesh_node->Mesh = new MeshData();
@@ -613,41 +619,59 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
         mesh->DrawEffect.EffectFilename = NULL;
 
         // Skinning
-        mesh->BoneNameHashes.resize( ai_mesh->mNumBones );
-        mesh->BoneOffsets.resize( ai_mesh->mNumBones );
-        mesh->BoneCombinedMatrices.resize( ai_mesh->mNumBones );
-        for( uint i = 0; i < ai_mesh->mNumBones; i++ )
+        if( ai_mesh->mNumBones > 0 )
         {
-            aiBone* bone = ai_mesh->mBones[ i ];
-
-            // Matrices
-            Node* bone_node = root_node->Find( Node::GetHash( bone->mName.data ) );
-            mesh->BoneNameHashes[ i ] = bone_node->NameHash;
-            mesh->BoneOffsets[ i ] = bone->mOffsetMatrix;
-            mesh->BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
-
-            // Blend data
-            float bone_index = (float) i;
-            for( uint j = 0; j < bone->mNumWeights; j++ )
+            mesh->BoneNameHashes.resize( ai_mesh->mNumBones );
+            mesh->BoneOffsets.resize( ai_mesh->mNumBones );
+            mesh->BoneCombinedMatrices.resize( ai_mesh->mNumBones );
+            for( uint i = 0; i < ai_mesh->mNumBones; i++ )
             {
-                aiVertexWeight& vw = bone->mWeights[ j ];
-                Vertex3D&       v = mesh->Vertices[ vw.mVertexId ];
-                uint            index;
-                if( v.BlendIndices[ 0 ] < 0.0f )
-                    index = 0;
-                else if( v.BlendIndices[ 1 ] < 0.0f )
-                    index = 1;
-                else if( v.BlendIndices[ 2 ] < 0.0f )
-                    index = 2;
-                else
-                    index = 3;
-                v.BlendWeights[ index ] = vw.mWeight;
-                v.BlendIndices[ index ] = bone_index;
+                aiBone* bone = ai_mesh->mBones[ i ];
+
+                // Matrices
+                Node* bone_node = root_node->Find( Node::GetHash( bone->mName.data ) );
+                mesh->BoneNameHashes[ i ] = bone_node->NameHash;
+                mesh->BoneOffsets[ i ] = bone->mOffsetMatrix;
+                mesh->BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
+
+                // Blend data
+                float bone_index = (float) i;
+                for( uint j = 0; j < bone->mNumWeights; j++ )
+                {
+                    aiVertexWeight& vw = bone->mWeights[ j ];
+                    Vertex3D&       v = mesh->Vertices[ vw.mVertexId ];
+                    uint            index;
+                    if( v.BlendIndices[ 0 ] < 0.0f )
+                        index = 0;
+                    else if( v.BlendIndices[ 1 ] < 0.0f )
+                        index = 1;
+                    else if( v.BlendIndices[ 2 ] < 0.0f )
+                        index = 2;
+                    else
+                        index = 3;
+                    v.BlendIndices[ index ] = bone_index;
+                    v.BlendWeights[ index ] = vw.mWeight;
+                }
+            }
+        }
+        else
+        {
+            mesh->BoneNameHashes.resize( 1 );
+            mesh->BoneOffsets.resize( 1 );
+            mesh->BoneCombinedMatrices.resize( 1 );
+            mesh->BoneNameHashes[ 0 ] = 0;
+            mesh->BoneOffsets[ 0 ] = Matrix();
+            mesh->BoneCombinedMatrices[ 0 ] = &mesh_node->CombinedTransformationMatrix;
+            for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
+            {
+                Vertex3D& v = mesh->Vertices[ i ];
+                v.BlendIndices[ 0 ] = 0.0f;
+                v.BlendWeights[ 0 ] = 1.0f;
             }
         }
 
         // Drop not filled indices
-        for( uint i = 0; i < ai_mesh->mNumVertices; i++ )
+        for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
         {
             Vertex3D& v = mesh->Vertices[ i ];
             for( int b = 0; b < BONES_PER_VERTEX; b++ )
@@ -680,18 +704,17 @@ Node* ConvertFbxPass1( FbxScene* fbx_scene, FbxNode* fbx_node, vector< FbxNode* 
 void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode* fbx_node )
 {
     FbxMesh* fbx_mesh = fbx_node->GetMesh();
-    if( fbx_mesh && fbx_node->Show && fbx_mesh->GetDeformerCount( FbxDeformer::eSkin ) &&
-        fbx_mesh->GetPolygonVertexCount() == fbx_mesh->GetPolygonCount() * 3 && fbx_mesh->GetPolygonCount() > 0 )
+    if( fbx_mesh && fbx_node->Show && fbx_mesh->GetPolygonVertexCount() == fbx_mesh->GetPolygonCount() * 3 && fbx_mesh->GetPolygonCount() > 0 )
     {
         node->Mesh = new MeshData();
         node->Mesh->Parent = node;
-        MeshData& mesh = *node->Mesh;
+        MeshData* mesh = node->Mesh;
 
         // Vertices
         int*        vertices = fbx_mesh->GetPolygonVertices();
         int         vertices_count = fbx_mesh->GetPolygonVertexCount();
         FbxVector4* vertices_data = fbx_mesh->GetControlPoints();
-        mesh.Vertices.resize( vertices_count );
+        mesh->Vertices.resize( vertices_count );
 
         FbxGeometryElementNormal*   fbx_normals = fbx_mesh->GetElementNormal();
         FbxGeometryElementTangent*  fbx_tangents = fbx_mesh->GetElementTangent();
@@ -699,7 +722,7 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode*
         FbxGeometryElementUV*       fbx_uvs = fbx_mesh->GetElementUV();
         for( int i = 0; i < vertices_count; i++ )
         {
-            Vertex3D&   v = mesh.Vertices[ i ];
+            Vertex3D&   v = mesh->Vertices[ i ];
             FbxVector4& fbx_v = vertices_data[ vertices[ i ] ];
 
             memzero( &v, sizeof( v ) );
@@ -744,9 +767,9 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode*
         }
 
         // Faces
-        mesh.Indicies.resize( vertices_count );
+        mesh->Indicies.resize( vertices_count );
         for( int i = 0; i < vertices_count; i++ )
-            mesh.Indicies[ i ] = i;
+            mesh->Indicies[ i ] = i;
 
         // Material
         FbxSurfaceMaterial* fbx_material = fbx_node->GetMaterial( 0 );
@@ -756,67 +779,84 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode*
             char tex_fname[ MAX_FOPATH ];
             FbxFileTexture* fbx_file_texture = (FbxFileTexture*) prop_diffuse.GetSrcObject();
             FileManager::ExtractFileName( fbx_file_texture->GetFileName(), tex_fname );
-            mesh.DiffuseTexture = tex_fname;
+            mesh->DiffuseTexture = tex_fname;
         }
 
         // Effect
-        mesh.DrawEffect.EffectFilename = NULL;
+        mesh->DrawEffect.EffectFilename = NULL;
 
         // Skinning
         FbxSkin* fbx_skin = (FbxSkin*) fbx_mesh->GetDeformer( 0, FbxDeformer::eSkin );
-        int num_bones = fbx_skin->GetClusterCount();
-        mesh.BoneNameHashes.resize( num_bones );
-        mesh.BoneOffsets.resize( num_bones );
-        mesh.BoneCombinedMatrices.resize( num_bones );
-        for( int i = 0; i < num_bones; i++ )
+        if( fbx_skin )
         {
-            FbxCluster* fbx_cluster = fbx_skin->GetCluster( i );
-
-            // Matrices
-            FbxAMatrix link_matrix;
-            fbx_cluster->GetTransformLinkMatrix( link_matrix );
-            FbxAMatrix cur_matrix;
-            fbx_cluster->GetTransformMatrix( cur_matrix );
-            Node* bone_node = root_node->Find( Node::GetHash( fbx_cluster->GetLink()->GetName() ) );
-            mesh.BoneNameHashes[ i ] = bone_node->NameHash;
-            mesh.BoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix );
-            mesh.BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
-
-            // Blend data
-            float   bone_index = (float) i;
-            int     num_weights = fbx_cluster->GetControlPointIndicesCount();
-            int*    indicies = fbx_cluster->GetControlPointIndices();
-            double* weights = fbx_cluster->GetControlPointWeights();
-            int     vertices_count = fbx_mesh->GetPolygonVertexCount();
-            int*    vertices = fbx_mesh->GetPolygonVertices();
-            for( int j = 0; j < num_weights; j++ )
+            int num_bones = fbx_skin->GetClusterCount();
+            mesh->BoneNameHashes.resize( num_bones );
+            mesh->BoneOffsets.resize( num_bones );
+            mesh->BoneCombinedMatrices.resize( num_bones );
+            for( int i = 0; i < num_bones; i++ )
             {
-                for( int k = 0; k < vertices_count; k++ )
+                FbxCluster* fbx_cluster = fbx_skin->GetCluster( i );
+
+                // Matrices
+                FbxAMatrix link_matrix;
+                fbx_cluster->GetTransformLinkMatrix( link_matrix );
+                FbxAMatrix cur_matrix;
+                fbx_cluster->GetTransformMatrix( cur_matrix );
+                Node* bone_node = root_node->Find( Node::GetHash( fbx_cluster->GetLink()->GetName() ) );
+                mesh->BoneNameHashes[ i ] = bone_node->NameHash;
+                mesh->BoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix );
+                mesh->BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
+
+                // Blend data
+                float   bone_index = (float) i;
+                int     num_weights = fbx_cluster->GetControlPointIndicesCount();
+                int*    indicies = fbx_cluster->GetControlPointIndices();
+                double* weights = fbx_cluster->GetControlPointWeights();
+                int     vertices_count = fbx_mesh->GetPolygonVertexCount();
+                int*    vertices = fbx_mesh->GetPolygonVertices();
+                for( int j = 0; j < num_weights; j++ )
                 {
-                    if( vertices[ k ] != indicies[ j ] )
-                        continue;
+                    for( int k = 0; k < vertices_count; k++ )
+                    {
+                        if( vertices[ k ] != indicies[ j ] )
+                            continue;
 
-                    Vertex3D& v = mesh.Vertices[ k ];
-                    uint      index;
-                    if( v.BlendIndices[ 0 ] < 0.0f )
-                        index = 0;
-                    else if( v.BlendIndices[ 1 ] < 0.0f )
-                        index = 1;
-                    else if( v.BlendIndices[ 2 ] < 0.0f )
-                        index = 2;
-                    else
-                        index = 3;
-
-                    v.BlendWeights[ index ] = (float) weights[ j ];
-                    v.BlendIndices[ index ] = bone_index;
+                        Vertex3D& v = mesh->Vertices[ k ];
+                        uint      index;
+                        if( v.BlendIndices[ 0 ] < 0.0f )
+                            index = 0;
+                        else if( v.BlendIndices[ 1 ] < 0.0f )
+                            index = 1;
+                        else if( v.BlendIndices[ 2 ] < 0.0f )
+                            index = 2;
+                        else
+                            index = 3;
+                        v.BlendIndices[ index ] = bone_index;
+                        v.BlendWeights[ index ] = (float) weights[ j ];
+                    }
                 }
+            }
+        }
+        else
+        {
+            mesh->BoneNameHashes.resize( 1 );
+            mesh->BoneOffsets.resize( 1 );
+            mesh->BoneCombinedMatrices.resize( 1 );
+            mesh->BoneNameHashes[ 0 ] = 0;
+            mesh->BoneOffsets[ 0 ] = Matrix();
+            mesh->BoneCombinedMatrices[ 0 ] = &node->CombinedTransformationMatrix;
+            for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
+            {
+                Vertex3D& v = mesh->Vertices[ i ];
+                v.BlendIndices[ 0 ] = 0.0f;
+                v.BlendWeights[ 0 ] = 1.0f;
             }
         }
 
         // Drop not filled indices
-        for( size_t i = 0; i < mesh.Vertices.size(); i++ )
+        for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
         {
-            Vertex3D& v = mesh.Vertices[ i ];
+            Vertex3D& v = mesh->Vertices[ i ];
             for( int b = 0; b < BONES_PER_VERTEX; b++ )
                 if( v.BlendIndices[ b ] < 0.0f )
                     v.BlendIndices[ b ] = v.BlendWeights[ b ] = 0.0f;

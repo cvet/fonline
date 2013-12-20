@@ -338,8 +338,15 @@ void Node::FixAfterLoad( Node* root_node )
     {
         for( size_t i = 0, j = Mesh->BoneNameHashes.size(); i < j; i++ )
         {
-            Node* bone_node = root_node->Find( Mesh->BoneNameHashes[ i ] );
-            Mesh->BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
+            if( Mesh->BoneNameHashes[ i ] )
+            {
+                Node* bone_node = root_node->Find( Mesh->BoneNameHashes[ i ] );
+                Mesh->BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
+            }
+            else
+            {
+                Mesh->BoneCombinedMatrices[ i ] = &Mesh->Parent->CombinedTransformationMatrix;
+            }
         }
     }
 
