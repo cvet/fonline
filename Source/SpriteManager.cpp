@@ -592,22 +592,22 @@ void SpriteManager::DrawRenderTarget( RenderTarget* rt, bool alpha_blend, const 
         float w = (float) rt->TargetTexture->Width;
         float h = (float) rt->TargetTexture->Height;
         uint  pos = 0;
-        vBuffer[ pos ].x = 0.0f;
-        vBuffer[ pos ].y = h;
-        vBuffer[ pos ].tu = 0.0f;
-        vBuffer[ pos++ ].tv = 0.0f;
-        vBuffer[ pos ].x = 0.0f;
-        vBuffer[ pos ].y = 0.0f;
-        vBuffer[ pos ].tu = 0.0f;
-        vBuffer[ pos++ ].tv = 1.0f;
-        vBuffer[ pos ].x = w;
-        vBuffer[ pos ].y = 0.0f;
-        vBuffer[ pos ].tu = 1.0f;
-        vBuffer[ pos++ ].tv = 1.0f;
-        vBuffer[ pos ].x = w;
-        vBuffer[ pos ].y = h;
-        vBuffer[ pos ].tu = 1.0f;
-        vBuffer[ pos++ ].tv = 0.0f;
+        vBuffer[ pos ].X = 0.0f;
+        vBuffer[ pos ].Y = h;
+        vBuffer[ pos ].TU = 0.0f;
+        vBuffer[ pos++ ].TV = 0.0f;
+        vBuffer[ pos ].X = 0.0f;
+        vBuffer[ pos ].Y = 0.0f;
+        vBuffer[ pos ].TU = 0.0f;
+        vBuffer[ pos++ ].TV = 1.0f;
+        vBuffer[ pos ].X = w;
+        vBuffer[ pos ].Y = 0.0f;
+        vBuffer[ pos ].TU = 1.0f;
+        vBuffer[ pos++ ].TV = 1.0f;
+        vBuffer[ pos ].X = w;
+        vBuffer[ pos ].Y = h;
+        vBuffer[ pos ].TU = 1.0f;
+        vBuffer[ pos++ ].TV = 0.0f;
     }
     else
     {
@@ -618,22 +618,22 @@ void SpriteManager::DrawRenderTarget( RenderTarget* rt, bool alpha_blend, const 
         float wf = (float) rt->TargetTexture->Width;
         float hf = (float) rt->TargetTexture->Height;
         uint  pos = 0;
-        vBuffer[ pos ].x = regiont.L;
-        vBuffer[ pos ].y = regiont.B;
-        vBuffer[ pos ].tu = regionf.L / wf;
-        vBuffer[ pos++ ].tv = 1.0f - regionf.B / hf;
-        vBuffer[ pos ].x = regiont.L;
-        vBuffer[ pos ].y = regiont.T;
-        vBuffer[ pos ].tu = regionf.L / wf;
-        vBuffer[ pos++ ].tv = 1.0f - regionf.T / hf;
-        vBuffer[ pos ].x = regiont.R;
-        vBuffer[ pos ].y = regiont.T;
-        vBuffer[ pos ].tu = regionf.R / wf;
-        vBuffer[ pos++ ].tv = 1.0f - regionf.T / hf;
-        vBuffer[ pos ].x = regiont.R;
-        vBuffer[ pos ].y = regiont.B;
-        vBuffer[ pos ].tu = regionf.R / wf;
-        vBuffer[ pos++ ].tv = 1.0f - regionf.B / hf;
+        vBuffer[ pos ].X = regiont.L;
+        vBuffer[ pos ].Y = regiont.B;
+        vBuffer[ pos ].TU = regionf.L / wf;
+        vBuffer[ pos++ ].TV = 1.0f - regionf.B / hf;
+        vBuffer[ pos ].X = regiont.L;
+        vBuffer[ pos ].Y = regiont.T;
+        vBuffer[ pos ].TU = regionf.L / wf;
+        vBuffer[ pos++ ].TV = 1.0f - regionf.T / hf;
+        vBuffer[ pos ].X = regiont.R;
+        vBuffer[ pos ].Y = regiont.T;
+        vBuffer[ pos ].TU = regionf.R / wf;
+        vBuffer[ pos++ ].TV = 1.0f - regionf.T / hf;
+        vBuffer[ pos ].X = regiont.R;
+        vBuffer[ pos ].Y = regiont.B;
+        vBuffer[ pos ].TU = regionf.R / wf;
+        vBuffer[ pos++ ].TV = 1.0f - regionf.B / hf;
     }
 
     curDrawQuad = 1;
@@ -711,7 +711,7 @@ void SpriteManager::InitVertexArray( VertexArray* va, bool quads, uint count )
     if( !va->VBO )
         GL( glGenBuffers( 1, &va->VBO ) );
     GL( glBindBuffer( GL_ARRAY_BUFFER, va->VBO ) );
-    GL( glBufferData( GL_ARRAY_BUFFER, vertices_count * sizeof( Vertex ), NULL, GL_DYNAMIC_DRAW ) );
+    GL( glBufferData( GL_ARRAY_BUFFER, vertices_count * sizeof( Vertex2D ), NULL, GL_DYNAMIC_DRAW ) );
     va->VCount = vertices_count;
 
     // Index buffer
@@ -735,14 +735,14 @@ void SpriteManager::BindVertexArray( VertexArray* va )
 {
     GL( glBindBuffer( GL_ARRAY_BUFFER, va->VBO ) );
     GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, va->IBO ) );
-    GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, x ) ) );
-    GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, diffuse ) ) );
-    GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, tu ) ) );
+    GL( glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex2D ), (void*) (size_t) OFFSETOF( Vertex2D, X ) ) );
+    GL( glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( Vertex2D ), (void*) (size_t) OFFSETOF( Vertex2D, Diffuse ) ) );
+    GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex2D ), (void*) (size_t) OFFSETOF( Vertex2D, TU ) ) );
     GL( glEnableVertexAttribArray( 0 ) );
     GL( glEnableVertexAttribArray( 1 ) );
     GL( glEnableVertexAttribArray( 2 ) );
     #ifndef DISABLE_EGG
-    GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*) (size_t) OFFSETOF( Vertex, tu2 ) ) );
+    GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex2D ), (void*) (size_t) OFFSETOF( Vertex2D, TUEgg ) ) );
     GL( glEnableVertexAttribArray( 3 ) );
     #endif
 }
@@ -759,7 +759,7 @@ void SpriteManager::EnableVertexArray( VertexArray* va, uint vertices_count )
     {
         BindVertexArray( va );
     }
-    GL( glBufferSubData( GL_ARRAY_BUFFER, 0, vertices_count * sizeof( Vertex ), &vBuffer[ 0 ] ) );
+    GL( glBufferSubData( GL_ARRAY_BUFFER, 0, vertices_count * sizeof( Vertex2D ), &vBuffer[ 0 ] ) );
 }
 
 void SpriteManager::DisableVertexArray( VertexArray*& va )
@@ -782,18 +782,18 @@ void SpriteManager::DisableVertexArray( VertexArray*& va )
 void SpriteManager::EnableStencil( RectF& stencil )
 {
     uint pos = 0;
-    vBuffer[ pos ].x = stencil.L;
-    vBuffer[ pos ].y = stencil.B;
-    vBuffer[ pos++ ].diffuse = 0xFFFFFFFF;
-    vBuffer[ pos ].x = stencil.L;
-    vBuffer[ pos ].y = stencil.T;
-    vBuffer[ pos++ ].diffuse = 0xFFFFFFFF;
-    vBuffer[ pos ].x = stencil.R;
-    vBuffer[ pos ].y = stencil.T;
-    vBuffer[ pos++ ].diffuse = 0xFFFFFFFF;
-    vBuffer[ pos ].x = stencil.R;
-    vBuffer[ pos ].y = stencil.B;
-    vBuffer[ pos++ ].diffuse = 0xFFFFFFFF;
+    vBuffer[ pos ].X = stencil.L;
+    vBuffer[ pos ].Y = stencil.B;
+    vBuffer[ pos++ ].Diffuse = 0xFFFFFFFF;
+    vBuffer[ pos ].X = stencil.L;
+    vBuffer[ pos ].Y = stencil.T;
+    vBuffer[ pos++ ].Diffuse = 0xFFFFFFFF;
+    vBuffer[ pos ].X = stencil.R;
+    vBuffer[ pos ].Y = stencil.T;
+    vBuffer[ pos++ ].Diffuse = 0xFFFFFFFF;
+    vBuffer[ pos ].X = stencil.R;
+    vBuffer[ pos ].Y = stencil.B;
+    vBuffer[ pos++ ].Diffuse = 0xFFFFFFFF;
 
     GL( glEnable( GL_STENCIL_TEST ) );
     GL( glStencilFunc( GL_NEVER, 1, 0xFF ) );
@@ -3458,29 +3458,29 @@ bool SpriteManager::DrawSprite( uint id, int x, int y, uint color /* = 0 */ )
     if( !color )
         color = COLOR_IFACE;
 
-    vBuffer[ pos ].x = (float) x;
-    vBuffer[ pos ].y = (float) y + si->Height;
-    vBuffer[ pos ].tu = si->SprRect.L;
-    vBuffer[ pos ].tv = si->SprRect.B;
-    vBuffer[ pos++ ].diffuse = color;
+    vBuffer[ pos ].X = (float) x;
+    vBuffer[ pos ].Y = (float) y + si->Height;
+    vBuffer[ pos ].TU = si->SprRect.L;
+    vBuffer[ pos ].TV = si->SprRect.B;
+    vBuffer[ pos++ ].Diffuse = color;
 
-    vBuffer[ pos ].x = (float) x;
-    vBuffer[ pos ].y = (float) y;
-    vBuffer[ pos ].tu = si->SprRect.L;
-    vBuffer[ pos ].tv = si->SprRect.T;
-    vBuffer[ pos++ ].diffuse = color;
+    vBuffer[ pos ].X = (float) x;
+    vBuffer[ pos ].Y = (float) y;
+    vBuffer[ pos ].TU = si->SprRect.L;
+    vBuffer[ pos ].TV = si->SprRect.T;
+    vBuffer[ pos++ ].Diffuse = color;
 
-    vBuffer[ pos ].x = (float) x + si->Width;
-    vBuffer[ pos ].y = (float) y;
-    vBuffer[ pos ].tu = si->SprRect.R;
-    vBuffer[ pos ].tv = si->SprRect.T;
-    vBuffer[ pos++ ].diffuse = color;
+    vBuffer[ pos ].X = (float) x + si->Width;
+    vBuffer[ pos ].Y = (float) y;
+    vBuffer[ pos ].TU = si->SprRect.R;
+    vBuffer[ pos ].TV = si->SprRect.T;
+    vBuffer[ pos++ ].Diffuse = color;
 
-    vBuffer[ pos ].x = (float) x + si->Width;
-    vBuffer[ pos ].y = (float) y + si->Height;
-    vBuffer[ pos ].tu = si->SprRect.R;
-    vBuffer[ pos ].tv = si->SprRect.B;
-    vBuffer[ pos ].diffuse = color;
+    vBuffer[ pos ].X = (float) x + si->Width;
+    vBuffer[ pos ].Y = (float) y + si->Height;
+    vBuffer[ pos ].TU = si->SprRect.R;
+    vBuffer[ pos ].TV = si->SprRect.B;
+    vBuffer[ pos ].Diffuse = color;
 
     if( ++curDrawQuad == drawQuadCount )
         Flush();
@@ -3550,29 +3550,29 @@ bool SpriteManager::DrawSpritePattern( uint id, int x, int y, int w, int h, int 
             float local_right = last_x ? si->SprRect.L + last_right_offs * local_width : si->SprRect.R;
             float local_bottom = last_y ? si->SprRect.T + last_bottom_offs * local_height : si->SprRect.B;
 
-            vBuffer[ pos ].x = xx;
-            vBuffer[ pos ].y = yy + local_height;
-            vBuffer[ pos ].tu = si->SprRect.L;
-            vBuffer[ pos ].tv = local_bottom;
-            vBuffer[ pos++ ].diffuse = color;
+            vBuffer[ pos ].X = xx;
+            vBuffer[ pos ].Y = yy + local_height;
+            vBuffer[ pos ].TU = si->SprRect.L;
+            vBuffer[ pos ].TV = local_bottom;
+            vBuffer[ pos++ ].Diffuse = color;
 
-            vBuffer[ pos ].x = xx;
-            vBuffer[ pos ].y = yy;
-            vBuffer[ pos ].tu = si->SprRect.L;
-            vBuffer[ pos ].tv = si->SprRect.T;
-            vBuffer[ pos++ ].diffuse = color;
+            vBuffer[ pos ].X = xx;
+            vBuffer[ pos ].Y = yy;
+            vBuffer[ pos ].TU = si->SprRect.L;
+            vBuffer[ pos ].TV = si->SprRect.T;
+            vBuffer[ pos++ ].Diffuse = color;
 
-            vBuffer[ pos ].x = xx + local_width;
-            vBuffer[ pos ].y = yy;
-            vBuffer[ pos ].tu = local_right;
-            vBuffer[ pos ].tv = si->SprRect.T;
-            vBuffer[ pos++ ].diffuse = color;
+            vBuffer[ pos ].X = xx + local_width;
+            vBuffer[ pos ].Y = yy;
+            vBuffer[ pos ].TU = local_right;
+            vBuffer[ pos ].TV = si->SprRect.T;
+            vBuffer[ pos++ ].Diffuse = color;
 
-            vBuffer[ pos ].x = xx + local_width;
-            vBuffer[ pos ].y = yy + local_height;
-            vBuffer[ pos ].tu = local_right;
-            vBuffer[ pos ].tv = local_bottom;
-            vBuffer[ pos ].diffuse = color;
+            vBuffer[ pos ].X = xx + local_width;
+            vBuffer[ pos ].Y = yy + local_height;
+            vBuffer[ pos ].TU = local_right;
+            vBuffer[ pos ].TV = local_bottom;
+            vBuffer[ pos ].Diffuse = color;
 
             if( ++curDrawQuad == drawQuadCount )
                 Flush();
@@ -3636,29 +3636,29 @@ bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, boo
     if( !color )
         color = COLOR_IFACE;
 
-    vBuffer[ pos ].x = (float) x;
-    vBuffer[ pos ].y = (float) y + hf;
-    vBuffer[ pos ].tu = si->SprRect.L;
-    vBuffer[ pos ].tv = si->SprRect.B;
-    vBuffer[ pos++ ].diffuse = color;
+    vBuffer[ pos ].X = (float) x;
+    vBuffer[ pos ].Y = (float) y + hf;
+    vBuffer[ pos ].TU = si->SprRect.L;
+    vBuffer[ pos ].TV = si->SprRect.B;
+    vBuffer[ pos++ ].Diffuse = color;
 
-    vBuffer[ pos ].x = (float) x;
-    vBuffer[ pos ].y = (float) y;
-    vBuffer[ pos ].tu = si->SprRect.L;
-    vBuffer[ pos ].tv = si->SprRect.T;
-    vBuffer[ pos++ ].diffuse = color;
+    vBuffer[ pos ].X = (float) x;
+    vBuffer[ pos ].Y = (float) y;
+    vBuffer[ pos ].TU = si->SprRect.L;
+    vBuffer[ pos ].TV = si->SprRect.T;
+    vBuffer[ pos++ ].Diffuse = color;
 
-    vBuffer[ pos ].x = (float) x + wf;
-    vBuffer[ pos ].y = (float) y;
-    vBuffer[ pos ].tu = si->SprRect.R;
-    vBuffer[ pos ].tv = si->SprRect.T;
-    vBuffer[ pos++ ].diffuse = color;
+    vBuffer[ pos ].X = (float) x + wf;
+    vBuffer[ pos ].Y = (float) y;
+    vBuffer[ pos ].TU = si->SprRect.R;
+    vBuffer[ pos ].TV = si->SprRect.T;
+    vBuffer[ pos++ ].Diffuse = color;
 
-    vBuffer[ pos ].x = (float) x + wf;
-    vBuffer[ pos ].y = (float) y + hf;
-    vBuffer[ pos ].tu = si->SprRect.R;
-    vBuffer[ pos ].tv = si->SprRect.B;
-    vBuffer[ pos ].diffuse = color;
+    vBuffer[ pos ].X = (float) x + wf;
+    vBuffer[ pos ].Y = (float) y + hf;
+    vBuffer[ pos ].TU = si->SprRect.R;
+    vBuffer[ pos ].TV = si->SprRect.B;
+    vBuffer[ pos ].Diffuse = color;
 
     if( ++curDrawQuad == drawQuadCount )
         Flush();
@@ -3972,14 +3972,14 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
                 float y2f = (float) ( y2 + ATLAS_SPRITES_PADDING );
 
                 int   pos = curDrawQuad * 4;
-                vBuffer[ pos + 0 ].tu2 = x1f / eggAtlasWidth;
-                vBuffer[ pos + 0 ].tv2 = y2f / eggAtlasHeight;
-                vBuffer[ pos + 1 ].tu2 = x1f / eggAtlasWidth;
-                vBuffer[ pos + 1 ].tv2 = y1f / eggAtlasHeight;
-                vBuffer[ pos + 2 ].tu2 = x2f / eggAtlasWidth;
-                vBuffer[ pos + 2 ].tv2 = y1f / eggAtlasHeight;
-                vBuffer[ pos + 3 ].tu2 = x2f / eggAtlasWidth;
-                vBuffer[ pos + 3 ].tv2 = y2f / eggAtlasHeight;
+                vBuffer[ pos + 0 ].TUEgg = x1f / eggAtlasWidth;
+                vBuffer[ pos + 0 ].TVEgg = y2f / eggAtlasHeight;
+                vBuffer[ pos + 1 ].TUEgg = x1f / eggAtlasWidth;
+                vBuffer[ pos + 1 ].TVEgg = y1f / eggAtlasHeight;
+                vBuffer[ pos + 2 ].TUEgg = x2f / eggAtlasWidth;
+                vBuffer[ pos + 2 ].TVEgg = y1f / eggAtlasHeight;
+                vBuffer[ pos + 3 ].TUEgg = x2f / eggAtlasWidth;
+                vBuffer[ pos + 3 ].TVEgg = y2f / eggAtlasHeight;
 
                 egg_added = true;
             }
@@ -4006,53 +4006,53 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         // Fill buffer
         int pos = curDrawQuad * 4;
 
-        vBuffer[ pos ].x = xf;
-        vBuffer[ pos ].y = yf + hf;
-        vBuffer[ pos ].tu = si->SprRect.L;
-        vBuffer[ pos ].tv = si->SprRect.B;
-        vBuffer[ pos++ ].diffuse = cur_color;
+        vBuffer[ pos ].X = xf;
+        vBuffer[ pos ].Y = yf + hf;
+        vBuffer[ pos ].TU = si->SprRect.L;
+        vBuffer[ pos ].TV = si->SprRect.B;
+        vBuffer[ pos++ ].Diffuse = cur_color;
 
-        vBuffer[ pos ].x = xf;
-        vBuffer[ pos ].y = yf;
-        vBuffer[ pos ].tu = si->SprRect.L;
-        vBuffer[ pos ].tv = si->SprRect.T;
-        vBuffer[ pos++ ].diffuse = cur_color;
+        vBuffer[ pos ].X = xf;
+        vBuffer[ pos ].Y = yf;
+        vBuffer[ pos ].TU = si->SprRect.L;
+        vBuffer[ pos ].TV = si->SprRect.T;
+        vBuffer[ pos++ ].Diffuse = cur_color;
 
-        vBuffer[ pos ].x = xf + wf;
-        vBuffer[ pos ].y = yf;
-        vBuffer[ pos ].tu = si->SprRect.R;
-        vBuffer[ pos ].tv = si->SprRect.T;
-        vBuffer[ pos++ ].diffuse = cur_color;
+        vBuffer[ pos ].X = xf + wf;
+        vBuffer[ pos ].Y = yf;
+        vBuffer[ pos ].TU = si->SprRect.R;
+        vBuffer[ pos ].TV = si->SprRect.T;
+        vBuffer[ pos++ ].Diffuse = cur_color;
 
-        vBuffer[ pos ].x = xf + wf;
-        vBuffer[ pos ].y = yf + hf;
-        vBuffer[ pos ].tu = si->SprRect.R;
-        vBuffer[ pos ].tv = si->SprRect.B;
-        vBuffer[ pos++ ].diffuse = cur_color;
+        vBuffer[ pos ].X = xf + wf;
+        vBuffer[ pos ].Y = yf + hf;
+        vBuffer[ pos ].TU = si->SprRect.R;
+        vBuffer[ pos ].TV = si->SprRect.B;
+        vBuffer[ pos++ ].Diffuse = cur_color;
 
         // Cutted sprite
         if( spr->CutType )
         {
             xf = (float) ( x + spr->CutX ) / zoom;
             wf = spr->CutW / zoom;
-            vBuffer[ pos - 4 ].x = xf;
-            vBuffer[ pos - 4 ].tu = spr->CutTexL;
-            vBuffer[ pos - 3 ].x = xf;
-            vBuffer[ pos - 3 ].tu = spr->CutTexL;
-            vBuffer[ pos - 2 ].x = xf + wf;
-            vBuffer[ pos - 2 ].tu = spr->CutTexR;
-            vBuffer[ pos - 1 ].x = xf + wf;
-            vBuffer[ pos - 1 ].tu = spr->CutTexR;
+            vBuffer[ pos - 4 ].X = xf;
+            vBuffer[ pos - 4 ].TU = spr->CutTexL;
+            vBuffer[ pos - 3 ].X = xf;
+            vBuffer[ pos - 3 ].TU = spr->CutTexL;
+            vBuffer[ pos - 2 ].X = xf + wf;
+            vBuffer[ pos - 2 ].TU = spr->CutTexR;
+            vBuffer[ pos - 1 ].X = xf + wf;
+            vBuffer[ pos - 1 ].TU = spr->CutTexR;
         }
 
         // Set default texture coordinates for egg texture
         #ifndef DISABLE_EGG
-        if( !egg_added && vBuffer[ pos - 1 ].tu2 != -1.0f )
+        if( !egg_added && vBuffer[ pos - 1 ].TUEgg != -1.0f )
         {
-            vBuffer[ pos - 1 ].tu2 = -1.0f;
-            vBuffer[ pos - 2 ].tu2 = -1.0f;
-            vBuffer[ pos - 3 ].tu2 = -1.0f;
-            vBuffer[ pos - 4 ].tu2 = -1.0f;
+            vBuffer[ pos - 1 ].TUEgg = -1.0f;
+            vBuffer[ pos - 2 ].TUEgg = -1.0f;
+            vBuffer[ pos - 3 ].TUEgg = -1.0f;
+            vBuffer[ pos - 4 ].TUEgg = -1.0f;
         }
         #endif
 
@@ -4298,10 +4298,10 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
         if( offset )
             x += offset->X, y += offset->Y;
 
-        memzero( &vBuffer[ i ], sizeof( Vertex ) );
-        vBuffer[ i ].x = x;
-        vBuffer[ i ].y = y;
-        vBuffer[ i ].diffuse = point.PointColor;
+        memzero( &vBuffer[ i ], sizeof( Vertex2D ) );
+        vBuffer[ i ].X = x;
+        vBuffer[ i ].Y = y;
+        vBuffer[ i ].Diffuse = point.PointColor;
     }
 
     // Draw
@@ -4514,22 +4514,22 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         PushRenderTarget( rtContoursMid );
 
         uint pos = 0;
-        vBuffer[ pos ].x = bordersf.L;
-        vBuffer[ pos ].y = mid_height - bordersf.B;
-        vBuffer[ pos ].tu = sr.L;
-        vBuffer[ pos++ ].tv = sr.B;
-        vBuffer[ pos ].x = bordersf.L;
-        vBuffer[ pos ].y = mid_height - bordersf.T;
-        vBuffer[ pos ].tu = sr.L;
-        vBuffer[ pos++ ].tv = sr.T;
-        vBuffer[ pos ].x = bordersf.R;
-        vBuffer[ pos ].y = mid_height - bordersf.T;
-        vBuffer[ pos ].tu = sr.R;
-        vBuffer[ pos++ ].tv = sr.T;
-        vBuffer[ pos ].x = bordersf.R;
-        vBuffer[ pos ].y = mid_height - bordersf.B;
-        vBuffer[ pos ].tu = sr.R;
-        vBuffer[ pos++ ].tv = sr.B;
+        vBuffer[ pos ].X = bordersf.L;
+        vBuffer[ pos ].Y = mid_height - bordersf.B;
+        vBuffer[ pos ].TU = sr.L;
+        vBuffer[ pos++ ].TV = sr.B;
+        vBuffer[ pos ].X = bordersf.L;
+        vBuffer[ pos ].Y = mid_height - bordersf.T;
+        vBuffer[ pos ].TU = sr.L;
+        vBuffer[ pos++ ].TV = sr.T;
+        vBuffer[ pos ].X = bordersf.R;
+        vBuffer[ pos ].Y = mid_height - bordersf.T;
+        vBuffer[ pos ].TU = sr.R;
+        vBuffer[ pos++ ].TV = sr.T;
+        vBuffer[ pos ].X = bordersf.R;
+        vBuffer[ pos ].Y = mid_height - bordersf.B;
+        vBuffer[ pos ].TU = sr.R;
+        vBuffer[ pos++ ].TV = sr.B;
 
         curDrawQuad = 1;
         dipQueue.push_back( DipData( texture, Effect::FlushRenderTarget ) );
@@ -4560,26 +4560,26 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     PushRenderTarget( rtContours );
 
     uint pos = 0;
-    vBuffer[ pos ].x = borders_pos.L;
-    vBuffer[ pos ].y = borders_pos.B;
-    vBuffer[ pos ].tu = textureuv.L;
-    vBuffer[ pos ].tv = textureuv.B;
-    vBuffer[ pos++ ].diffuse = contour_color;
-    vBuffer[ pos ].x = borders_pos.L;
-    vBuffer[ pos ].y = borders_pos.T;
-    vBuffer[ pos ].tu = textureuv.L;
-    vBuffer[ pos ].tv = textureuv.T;
-    vBuffer[ pos++ ].diffuse = contour_color;
-    vBuffer[ pos ].x = borders_pos.R;
-    vBuffer[ pos ].y = borders_pos.T;
-    vBuffer[ pos ].tu = textureuv.R;
-    vBuffer[ pos ].tv = textureuv.T;
-    vBuffer[ pos++ ].diffuse = contour_color;
-    vBuffer[ pos ].x = borders_pos.R;
-    vBuffer[ pos ].y = borders_pos.B;
-    vBuffer[ pos ].tu = textureuv.R;
-    vBuffer[ pos ].tv = textureuv.B;
-    vBuffer[ pos++ ].diffuse = contour_color;
+    vBuffer[ pos ].X = borders_pos.L;
+    vBuffer[ pos ].Y = borders_pos.B;
+    vBuffer[ pos ].TU = textureuv.L;
+    vBuffer[ pos ].TV = textureuv.B;
+    vBuffer[ pos++ ].Diffuse = contour_color;
+    vBuffer[ pos ].X = borders_pos.L;
+    vBuffer[ pos ].Y = borders_pos.T;
+    vBuffer[ pos ].TU = textureuv.L;
+    vBuffer[ pos ].TV = textureuv.T;
+    vBuffer[ pos++ ].Diffuse = contour_color;
+    vBuffer[ pos ].X = borders_pos.R;
+    vBuffer[ pos ].Y = borders_pos.T;
+    vBuffer[ pos ].TU = textureuv.R;
+    vBuffer[ pos ].TV = textureuv.T;
+    vBuffer[ pos++ ].Diffuse = contour_color;
+    vBuffer[ pos ].X = borders_pos.R;
+    vBuffer[ pos ].Y = borders_pos.B;
+    vBuffer[ pos ].TU = textureuv.R;
+    vBuffer[ pos ].TV = textureuv.B;
+    vBuffer[ pos++ ].Diffuse = contour_color;
 
     curDrawQuad = 1;
     dipQueue.push_back( DipData( texture, Effect::Contour ) );

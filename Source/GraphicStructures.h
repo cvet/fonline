@@ -20,19 +20,19 @@ typedef vector< Matrix >     MatrixVec;
 typedef vector< Matrix* >    MatrixPtrVec;
 
 //
-// Vertex
+// Vertex2D
 //
 
-struct Vertex
+struct Vertex2D
 {
-    float x, y;
-    uint  diffuse;
-    float tu, tv;
+    float X, Y;
+    uint  Diffuse;
+    float TU, TV;
     #ifndef DISABLE_EGG
-    float tu2, tv2;
+    float TUEgg, TVEgg;
     #endif
 };
-typedef vector< Vertex > VertexVec;
+typedef vector< Vertex2D > Vertex2DVec;
 
 //
 // Vertex3D

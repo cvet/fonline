@@ -1157,29 +1157,29 @@ bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint co
             float   x2 = texture_uv[ 2 ];
             float   y2 = texture_uv[ 3 ];
 
-            vBuffer[ pos ].x = (float) x;
-            vBuffer[ pos ].y = (float) y + h;
-            vBuffer[ pos ].tu = x1;
-            vBuffer[ pos ].tv = y2;
-            vBuffer[ pos++ ].diffuse = color;
+            vBuffer[ pos ].X = (float) x;
+            vBuffer[ pos ].Y = (float) y + h;
+            vBuffer[ pos ].TU = x1;
+            vBuffer[ pos ].TV = y2;
+            vBuffer[ pos++ ].Diffuse = color;
 
-            vBuffer[ pos ].x = (float) x;
-            vBuffer[ pos ].y = (float) y;
-            vBuffer[ pos ].tu = x1;
-            vBuffer[ pos ].tv = y1;
-            vBuffer[ pos++ ].diffuse = color;
+            vBuffer[ pos ].X = (float) x;
+            vBuffer[ pos ].Y = (float) y;
+            vBuffer[ pos ].TU = x1;
+            vBuffer[ pos ].TV = y1;
+            vBuffer[ pos++ ].Diffuse = color;
 
-            vBuffer[ pos ].x = (float) x + w;
-            vBuffer[ pos ].y = (float) y;
-            vBuffer[ pos ].tu = x2;
-            vBuffer[ pos ].tv = y1;
-            vBuffer[ pos++ ].diffuse = color;
+            vBuffer[ pos ].X = (float) x + w;
+            vBuffer[ pos ].Y = (float) y;
+            vBuffer[ pos ].TU = x2;
+            vBuffer[ pos ].TV = y1;
+            vBuffer[ pos++ ].Diffuse = color;
 
-            vBuffer[ pos ].x = (float) x + w;
-            vBuffer[ pos ].y = (float) y + h;
-            vBuffer[ pos ].tu = x2;
-            vBuffer[ pos ].tv = y2;
-            vBuffer[ pos ].diffuse = color;
+            vBuffer[ pos ].X = (float) x + w;
+            vBuffer[ pos ].Y = (float) y + h;
+            vBuffer[ pos ].TU = x2;
+            vBuffer[ pos ].TV = y2;
+            vBuffer[ pos ].Diffuse = color;
 
             if( ++curDrawQuad == drawQuadCount )
             {
