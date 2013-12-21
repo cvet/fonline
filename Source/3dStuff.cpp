@@ -736,6 +736,7 @@ bool Animation3d::Draw( int x, int y, float scale, uint color )
     LightColor.r = (float) ( (uchar*) &color )[ 0 ] / 255.0f;
     LightColor.g = (float) ( (uchar*) &color )[ 1 ] / 255.0f;
     LightColor.b = (float) ( (uchar*) &color )[ 2 ] / 255.0f;
+    LightColor.a = (float) ( (uchar*) &color )[ 3 ] / 255.0f;
 
     // Move timer
     float elapsed = 0.0f;
@@ -763,12 +764,33 @@ bool Animation3d::Draw( int x, int y, float scale, uint color )
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
         ( *it )->ProcessAnimation( elapsed, x, y, 1.0f );
 
-    // Draw
+    // Draw mesh shadow
     if( !shadow_disabled )
+	{
         for( size_t i = 0; i < combinedMeshesSize; i++ )
             DrawMesh( combinedMeshes[ i ], true );
-    for( size_t i = 0; i < combinedMeshesSize; i++ )
-        DrawMesh( combinedMeshes[ i ], false );
+	}
+
+    // Draw mesh
+    if( LightColor.a == 1.0f )
+    {
+        // Non transparent
+        for( size_t i = 0; i < combinedMeshesSize; i++ )
+            DrawMesh( combinedMeshes[ i ], false );
+    }
+    else
+    {
+        // Transparent
+        GL( glColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE ) );
+        GL( glDepthFunc( GL_LESS ) );
+        for( size_t i = 0; i < combinedMeshesSize; i++ )
+            DrawMesh( combinedMeshes[ i ], false );
+        GL( glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE ) );
+        GL( glDepthFunc( GL_EQUAL ) );
+        for( size_t i = 0; i < combinedMeshesSize; i++ )
+            DrawMesh( combinedMeshes[ i ], false );
+        GL( glDepthFunc( GL_LESS ) );
+    }
 
     // Store draw parameters
     float old_scale = drawScale;
@@ -911,7 +933,7 @@ void Animation3d::DrawMesh( CombinedMesh* combined_mesh, bool shadow )
             GL( glUniform4fv( effect->ColorMapSize, 1, textures[ 0 ]->SizeData ) );
     }
     if( effect->LightColor != -1 )
-        GL( glUniform3fv( effect->LightColor, 1, (float*) &LightColor ) );
+        GL( glUniform4fv( effect->LightColor, 1, (float*) &LightColor ) );
     if( effect->WorldMatrices != -1 )
     {
         for( uint i = 0; i < MAX_BONE_MATRICES; i++ )
