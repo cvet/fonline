@@ -426,26 +426,28 @@ bool Animation3d::IsAnimationPlaying()
 
 bool Animation3d::IsIntersect( int x, int y )
 {
+    // Mesh not draw at last frame
     if( noDraw )
         return false;
 
+    // Check dirty region
     Rect borders = GetBonesBorder( true );
     if( x < borders.L || x > borders.R || y < borders.T || y > borders.B )
         return false;
 
-    Vector ray_origin, ray_dir;
-    VecUnproject( Vector( (float) x, (float) y, 0.0f ), ray_origin );
-    VecUnproject( Vector( (float) x, (float) y, 0.0f ), ray_dir );
+    // Move animation
+    ProcessAnimation( 0.0f, drawXY.X, drawXY.Y, drawScale );
 
+    // Check precisely
     for( size_t m = 0; m < combinedMeshesSize; m++ )
     {
         CombinedMesh* combined_mesh = combinedMeshes[ m ];
         TransformMesh( combined_mesh );
         for( size_t i = 0, j = combined_mesh->Indicies.size(); i < j; i += 3 )
         {
-            Vector& c1 = combined_mesh->VerticesTransformed[ combined_mesh->Indicies[ i + 0 ] ].Position;
-            Vector& c2 = combined_mesh->VerticesTransformed[ combined_mesh->Indicies[ i + 1 ] ].Position;
-            Vector& c3 = combined_mesh->VerticesTransformed[ combined_mesh->Indicies[ i + 2 ] ].Position;
+            Vector& c1 = combined_mesh->VerticesTransformed[ combined_mesh->Indicies[ i + 0 ] ];
+            Vector& c2 = combined_mesh->VerticesTransformed[ combined_mesh->Indicies[ i + 1 ] ];
+            Vector& c3 = combined_mesh->VerticesTransformed[ combined_mesh->Indicies[ i + 2 ] ];
             #define SQUARE( x1, y1, x2, y2, x3, y3 )    fabs( x2 * y3 - x3 * y2 - x1 * y3 + x3 * y1 + x1 * y2 - x2 * y1 )
             float   s = 0.0f;
             s += SQUARE( x, y, c2.x, c2.y, c3.x, c3.y );
@@ -727,8 +729,12 @@ void Animation3d::CombineMesh( MeshInstance& mesh_instance )
     combinedMeshesSize++;
 }
 
-bool Animation3d::Draw( int x, int y, float scale, uint color )
+void Animation3d::Draw( int x, int y, float scale, uint color )
 {
+    // Skip drawing if no meshes generated
+    if( !combinedMeshesSize )
+        return;
+
     // Increment Z
     CurZ += DRAW_Z_STEP;
 
@@ -743,62 +749,46 @@ bool Animation3d::Draw( int x, int y, float scale, uint color )
     uint  tick = GetTick();
     if( AnimDelay && animController )
     {
+        // 2D emulation
         while( lastTick + AnimDelay <= tick )
         {
-            elapsed += 0.001f * AnimDelay;
+            elapsed += 0.001f * (float) AnimDelay;
             lastTick += AnimDelay;
         }
     }
     else
     {
-        elapsed = 0.001f * ( tick - lastTick );
+        // Smooth
+        elapsed = 0.001f * (float) ( tick - lastTick );
         lastTick = tick;
     }
 
-    // Setup parameters
-    bool shadow_disabled = ( shadowDisabled || animEntity->shadowDisabled );
-    bonesBorder( 1000000.0f, 1000000.0f, -1000000.0f, -1000000.0f );
-
     // Move animation
     ProcessAnimation( elapsed, x, y, scale );
-    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
-        ( *it )->ProcessAnimation( elapsed, x, y, 1.0f );
-
-    // Draw mesh shadow
-    if( !shadow_disabled )
-	{
-        for( size_t i = 0; i < combinedMeshesSize; i++ )
-            DrawMesh( combinedMeshes[ i ], true );
-	}
 
     // Draw mesh
     if( LightColor.a == 1.0f )
     {
         // Non transparent
-        for( size_t i = 0; i < combinedMeshesSize; i++ )
-            DrawMesh( combinedMeshes[ i ], false );
+        DrawCombinedMeshes();
     }
     else
     {
         // Transparent
         GL( glColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE ) );
         GL( glDepthFunc( GL_LESS ) );
-        for( size_t i = 0; i < combinedMeshesSize; i++ )
-            DrawMesh( combinedMeshes[ i ], false );
+        DrawCombinedMeshes();
         GL( glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE ) );
         GL( glDepthFunc( GL_EQUAL ) );
-        for( size_t i = 0; i < combinedMeshesSize; i++ )
-            DrawMesh( combinedMeshes[ i ], false );
+        DrawCombinedMeshes();
         GL( glDepthFunc( GL_LESS ) );
     }
 
     // Store draw parameters
-    float old_scale = drawScale;
     noDraw = false;
     drawScale = scale;
     drawXY.X = x;
     drawXY.Y = y;
-    return true;
 }
 
 void Animation3d::SetDrawPos( int x, int y )
@@ -821,6 +811,9 @@ void Animation3d::ProcessAnimation( float elapsed, int x, int y, float scale )
         groundPos.x = parentMatrix.a4;
         groundPos.y = parentMatrix.b4;
         groundPos.z = parentMatrix.c4;
+
+        // Clean border
+        bonesBorder( 1000000.0f, 1000000.0f, -1000000.0f, -1000000.0f );
     }
 
     // Advance animation time
@@ -860,6 +853,10 @@ void Animation3d::ProcessAnimation( float elapsed, int x, int y, float scale )
         child->groundPos = groundPos;
         child->parentMatrix = child->parentNode->CombinedTransformationMatrix * child->matTransBase * child->matRotBase * child->matScaleBase;
     }
+
+    // Move child animations
+    for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
+        ( *it )->ProcessAnimation( elapsed, x, y, 1.0f );
 }
 
 void Animation3d::UpdateNodeMatrices( Node* node, const Matrix* parent_matrix )
@@ -888,12 +885,23 @@ void Animation3d::UpdateNodeMatrices( Node* node, const Matrix* parent_matrix )
         UpdateNodeMatrices( *it, &node->CombinedTransformationMatrix );
 }
 
-void Animation3d::DrawMesh( CombinedMesh* combined_mesh, bool shadow )
+void Animation3d::DrawCombinedMeshes()
 {
     GL( glEnable( GL_CULL_FACE ) );
-    if( !shadow )
-        GL( glEnable( GL_DEPTH_TEST ) );
+    GL( glEnable( GL_DEPTH_TEST ) );
 
+    if( !shadowDisabled && !animEntity->shadowDisabled )
+        for( size_t i = 0; i < combinedMeshesSize; i++ )
+            DrawCombinedMesh( combinedMeshes[ i ], true );
+    for( size_t i = 0; i < combinedMeshesSize; i++ )
+        DrawCombinedMesh( combinedMeshes[ i ], false );
+
+    GL( glDisable( GL_CULL_FACE ) );
+    GL( glDisable( GL_DEPTH_TEST ) );
+}
+
+void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow )
+{
     if( combined_mesh->VAO )
     {
         GL( glBindVertexArray( combined_mesh->VAO ) );
@@ -970,10 +978,6 @@ void Animation3d::DrawMesh( CombinedMesh* combined_mesh, bool shadow )
         for( uint i = 0; i <= 7; i++ )
             GL( glDisableVertexAttribArray( i ) );
     }
-
-    GL( glDisable( GL_CULL_FACE ) );
-    if( !shadow )
-        GL( glDisable( GL_DEPTH_TEST ) );
 }
 
 void Animation3d::TransformMesh( CombinedMesh* combined_mesh )
@@ -991,18 +995,14 @@ void Animation3d::TransformMesh( CombinedMesh* combined_mesh )
     for( size_t i = 0, j = combined_mesh->Vertices.size(); i < j; i++ )
     {
         Vertex3D& v = combined_mesh->Vertices[ i ];
-        Vertex3D& vt = combined_mesh->VerticesTransformed[ i ];
-        vt.Position = MatrixProjRM * v.Position;
-
         Vector position = Vector();
         for( int b = 0; b < BONES_PER_VERTEX; b++ )
         {
-            Matrix& m = WorldMatrices[ int(v.BlendIndices[ b ]) ];
+            Matrix& m = WorldMatrices[ (int) v.BlendIndices[ b ] ];
             position += m * v.Position * v.BlendWeights[ b ];
         }
-
-        vt.Position = position;
-        ProjectPosition( vt.Position );
+        ProjectPosition( position );
+        combined_mesh->VerticesTransformed[ i ] = position;
     }
 }
 

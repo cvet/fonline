@@ -103,7 +103,8 @@ private:
     void  CombineMesh( MeshInstance& mesh_instance );
     void  ProcessAnimation( float elapsed, int x, int y, float scale );
     void  UpdateNodeMatrices( Node* node, const Matrix* parent_matrix );
-    void  DrawMesh( CombinedMesh* combined_mesh, bool shadow );
+    void  DrawCombinedMeshes();
+    void  DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow );
     void  TransformMesh( CombinedMesh* combined_mesh );
     float GetSpeed();
     uint  GetTick();
@@ -126,7 +127,7 @@ public:
     void  SetSpeed( float speed );
     void  SetTimer( bool use_game_timer );
     void  EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
-    bool  Draw( int x, int y, float scale, uint color );
+    void  Draw( int x, int y, float scale, uint color );
     void  SetDrawPos( int x, int y );
     bool  IsAnimationPlaying();
     bool  IsIntersect( int x, int y );
