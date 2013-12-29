@@ -558,7 +558,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
 
     // Image name
     char image_name[ MAX_FOPATH ] = { 0 };
-    fm.GetStr( image_name );
+    fm.GetStrNT( image_name );
 
     // Chars
     fm.SetCurPos( next_block );
@@ -708,7 +708,6 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         {
             size_t d_len = (uint) ( (size_t) s2 - (size_t) s1 ) + 1;
             uint   d = (uint) strtoul( s1 + 1, NULL, 0 );
-            std::swap( ( (uchar*) &d )[ 0 ], ( (uchar*) &d )[ 2 ] );
 
             dots[ (uint) ( (size_t) s1 - (size_t) str ) - d_offs ] = d;
             d_offs += d_len;
@@ -1066,6 +1065,7 @@ bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint co
     // FormatBuf
     if( !color && DefFontColor )
         color = DefFontColor;
+    COLOR_SWAP_RB( color );
 
     static FontFormatInfo fi;
     fi.Init( font, flags, r, str );
@@ -1094,6 +1094,7 @@ bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint co
                     color = fi.ColorDots[ i ];                                            // With alpha
                 else
                     color = ( color & 0xFF000000 ) | ( fi.ColorDots[ i ] & 0x00FFFFFF );  // Still old alpha
+                COLOR_SWAP_RB( color );
                 break;
             }
         }
@@ -1111,6 +1112,7 @@ bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint co
                     color = new_color;                                            // With alpha
                 else
                     color = ( color & 0xFF000000 ) | ( new_color & 0x00FFFFFF );  // Still old alpha
+                COLOR_SWAP_RB( color );
             }
         }
 

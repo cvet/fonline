@@ -14,6 +14,7 @@
 #define ANIMATION_PERIOD( proc )    ( 0x04 | ( ( proc ) << 16 ) )
 #define ANIMATION_NO_SMOOTH    ( 0x08 )
 #define ANIMATION_INIT         ( 0x10 )
+#define ANIMATION_COMBAT       ( 0x20 )
 
 class AnimController;
 class AnimSet;
@@ -174,7 +175,7 @@ private:
     bool                        calcualteTangetSpace;
 
     void ProcessTemplateDefines( char* str, StrVec& def );
-    int  GetAnimationIndex( uint& anim1, uint& anim2, float* speed );
+    int  GetAnimationIndex( uint& anim1, uint& anim2, float* speed, bool combat_first );
     int  GetAnimationIndexEx( uint anim1, uint anim2, float* speed );
 
     bool         Load( const char* name );

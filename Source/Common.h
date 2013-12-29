@@ -173,8 +173,6 @@ struct ScoreType
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 
 # define PI_VALUE                                ( 3.141592654f )
-# define COLOR_RGBA( a, r, g, b )         ( (uint) ( ( ( ( a ) & 0xff ) << 24 ) | ( ( ( b ) & 0xff ) << 16 ) | ( ( ( g ) & 0xff ) << 8 ) | ( ( r ) & 0xff ) ) )
-# define COLOR_RGB( r, g, b )             COLOR_RGBA( 0xff, r, g, b )
 
 # include "SDL/SDL.h"
 # ifndef FO_OGL_ES
@@ -229,7 +227,7 @@ struct ScoreType
 #  pragma comment( lib, "Winmm.lib" )
 #  pragma comment( lib, "Imm32.lib" )
 # endif
-# define GL( expr )                       { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X>.\n", err__ ); ExitProcess( 0 ); } } }
+# define GL( expr )             { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X>.\n", err__ ); ExitProcess( 0 ); } } }
 
 extern bool OGL_version_2_0;
 extern bool OGL_vertex_buffer_object;
@@ -240,7 +238,7 @@ extern bool OGL_packed_depth_stencil;
 extern bool OGL_texture_multisample;
 extern bool OGL_vertex_array_object;
 extern bool OGL_get_program_binary;
-# define GL_HAS( extension )              ( OGL_ ## extension )
+# define GL_HAS( extension )    ( OGL_ ## extension )
 
 extern SDL_Window*   MainWindow;
 extern SDL_GLContext GLContext;

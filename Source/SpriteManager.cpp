@@ -3457,6 +3457,7 @@ bool SpriteManager::DrawSprite( uint id, int x, int y, uint color /* = 0 */ )
 
     if( !color )
         color = COLOR_IFACE;
+    COLOR_SWAP_RB( color );
 
     vBuffer[ pos ].X = (float) x;
     vBuffer[ pos ].Y = (float) y + si->Height;
@@ -3525,6 +3526,7 @@ bool SpriteManager::DrawSpritePattern( uint id, int x, int y, int w, int h, int 
 
     if( !color )
         color = COLOR_IFACE;
+    COLOR_SWAP_RB( color );
 
     Effect* effect = ( si->DrawEffect ? si->DrawEffect : Effect::Iface );
 
@@ -3635,6 +3637,7 @@ bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, boo
 
     if( !color )
         color = COLOR_IFACE;
+    COLOR_SWAP_RB( color );
 
     vBuffer[ pos ].X = (float) x;
     vBuffer[ pos ].Y = (float) y + hf;
@@ -3915,6 +3918,9 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             ( (uchar*) &cur_color )[ 0 ] = b;
             cur_color &= spr->FlashMask;
         }
+
+        // Fix color
+        COLOR_SWAP_RB( cur_color );
 
         // Render 3d
         if( si->Anim3d )
@@ -4301,7 +4307,10 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
         memzero( &vBuffer[ i ], sizeof( Vertex2D ) );
         vBuffer[ i ].X = x;
         vBuffer[ i ].Y = y;
-        vBuffer[ i ].Diffuse = point.PointColor;
+
+        uint color = point.PointColor;
+        COLOR_SWAP_RB( color );
+        vBuffer[ i ].Diffuse = color;
     }
 
     // Draw
@@ -4554,6 +4563,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         contour_color = spr->ContourColor;
     else
         contour_color = 0xFFAFAFAF;
+    COLOR_SWAP_RB( contour_color );
 
     RectF borders_pos( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
 

@@ -1460,14 +1460,14 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
             StrVec dependencies;
             for( uint i = 0; i < dependencies_size; i++ )
             {
-                file_bin.GetStr( str );
+                file_bin.GetStrNT( str );
                 dependencies.push_back( str );
             }
             uint   pragmas_size = file_bin.GetBEUInt();
             StrVec pragmas;
             for( uint i = 0; i < pragmas_size; i++ )
             {
-                file_bin.GetStr( str );
+                file_bin.GetStrNT( str );
                 pragmas.push_back( str );
             }
 

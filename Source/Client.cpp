@@ -11078,6 +11078,8 @@ ScriptString* FOClient::SScriptFunc::Global_GetIfaceIniStr( ScriptString& key )
 
 bool FOClient::SScriptFunc::Global_Load3dFile( ScriptString& fname, int path_type )
 {
+    if( SprMngr.IsAccumulateAtlasActive() )
+        SCRIPT_ERROR_R0( "Unable to call this function now." );
     char fname_[ MAX_FOPATH ];
     Str::Copy( fname_, FileManager::GetPath( path_type ) );
     Str::Append( fname_, fname.c_str() );

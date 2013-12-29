@@ -267,7 +267,6 @@ struct MapObject
     int ProtoId;
     int MapX;
     int MapY;
-    int Dir;
 
     int UID;
     int ContainerUID;
@@ -284,6 +283,7 @@ struct MapObject
 
     struct
     {
+        int Dir;
         int Cond;
         int Anim1;
         int Anim2;

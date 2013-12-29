@@ -75,7 +75,7 @@ public:
 
     bool   GetLine( char* str, uint len );
     bool   CopyMem( void* ptr, uint size );
-    void   GetStr( char* str );
+    void   GetStrNT( char* str ); // Null terminated
     uchar  GetUChar();
     ushort GetBEUShort();
     ushort GetBEShort() { return (short) GetBEUShort(); }

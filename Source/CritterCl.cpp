@@ -1182,7 +1182,7 @@ void CritterCl::NextAnim( bool erase_front )
     else
     {
         SetOffs( 0, 0, cr_anim.MoveText );
-        Anim3d->SetAnimation( cr_anim.IndAnim1, cr_anim.IndAnim2, GetLayers3dData(), cr_anim.DirOffs ? 0 : ANIMATION_ONE_TIME );
+        Anim3d->SetAnimation( cr_anim.IndAnim1, cr_anim.IndAnim2, GetLayers3dData(), ( cr_anim.DirOffs ? 0 : ANIMATION_ONE_TIME ) | ( IsCombatMode() ? ANIMATION_COMBAT : 0 ) );
     }
 }
 
@@ -1274,9 +1274,9 @@ void CritterCl::AnimateStay()
         SetOffs( 0, 0, true );
 
         if( Cond == COND_LIFE || Cond == COND_KNOCKOUT )
-            Anim3d->SetAnimation( anim1, anim2, GetLayers3dData(), Animation3d::Is2dEmulation() ? ANIMATION_STAY : 0 );
+            Anim3d->SetAnimation( anim1, anim2, GetLayers3dData(), ( Animation3d::Is2dEmulation() ? ANIMATION_STAY : 0 ) | ( IsCombatMode() ? ANIMATION_COMBAT : 0 ) );
         else
-            Anim3d->SetAnimation( anim1, anim2, GetLayers3dData(), ANIMATION_STAY | ANIMATION_PERIOD( 100 ) );
+            Anim3d->SetAnimation( anim1, anim2, GetLayers3dData(), ( ANIMATION_STAY | ANIMATION_PERIOD( 100 ) ) | ( IsCombatMode() ? ANIMATION_COMBAT : 0 ) );
     }
 }
 

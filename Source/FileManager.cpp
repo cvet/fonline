@@ -451,11 +451,11 @@ bool FileManager::CopyMem( void* ptr, uint size )
     return true;
 }
 
-void FileManager::GetStr( char* str )
+void FileManager::GetStrNT( char* str )
 {
     if( !str || curPos + 1 > fileSize )
         return;
-    uint len = 1;   // Zero terminated
+    uint len = 1;
     while( *( fileBuf + curPos + len - 1 ) )
         len++;
     memcpy( str, fileBuf + curPos, len );
@@ -675,7 +675,7 @@ void FileManager::SetStr( const char* fmt, ... )
     vsprintf( str, fmt, list );
     va_end( list );
 
-    SetData( str, Str::Length( str ) + 1 );
+    SetData( str, Str::Length( str ) );
 }
 
 void FileManager::SetUChar( uchar data )
