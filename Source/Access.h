@@ -6,7 +6,7 @@
 #define ACCESS_MODER                 ( 2 )
 #define ACCESS_ADMIN                 ( 3 )
 
-#ifdef DEV_VESRION
+#ifdef DEV_VERSION
 # define ACCESS_DEFAULT              ACCESS_ADMIN
 #else
 # define ACCESS_DEFAULT              ACCESS_CLIENT

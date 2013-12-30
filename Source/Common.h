@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Debugging
-// #define DEV_VESRION
+// #define DEV_VERSION
 // #define SHOW_RACE_CONDITIONS // All known places with race conditions, not use in multithreading
 // #define DISABLE_EGG
 

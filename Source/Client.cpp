@@ -122,7 +122,7 @@ bool FOClient::Init()
     UID_PREPARE_UID4_0;
 
     // Another check for already runned window
-    #ifndef DEV_VESRION
+    #ifndef DEV_VERSION
     if( !Singleplayer )
     {
         # ifdef FO_WINDOWS

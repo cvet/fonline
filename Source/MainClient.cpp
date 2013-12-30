@@ -105,7 +105,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     #endif
 
     // Check for already runned window
-    #ifndef DEV_VESRION
+    #ifndef DEV_VERSION
     # ifdef FO_WINDOWS
     HANDLE h = CreateEvent( NULL, FALSE, FALSE, "fonline_instance" );
     if( !h || h == INVALID_HANDLE_VALUE || GetLastError() == ERROR_ALREADY_EXISTS )
