@@ -244,6 +244,41 @@ Node* GraphicLoader::LoadModel( const char* fname )
     // FBX loader
     if( Str::CompareCase( ext, "fbx" ) )
     {
+        // Load FBX SDK dynamic library
+        static bool binded = false;
+        static bool binded_try = false;
+        if( !binded )
+        {
+            // Already try
+            if( binded_try )
+                return NULL;
+            binded_try = true;
+
+            // Library extension
+            #ifdef FO_WINDOWS
+            # define FBXSDK_PATH        ""
+            # define FBXSDK_LIB_NAME    "libfbxsdk.dll"
+            #else
+            # define FBXSDK_PATH        "./"
+            # define FBXSDK_LIB_NAME    "libfbxsdk.so"
+            #endif
+
+            // Check dll availability
+            void* dll = DLL_Load( FBXSDK_PATH FBXSDK_LIB_NAME );
+            if( !dll )
+            {
+                if( GameOpt.ClientPath.c_std_str() != "" )
+                    dll = DLL_Load( ( GameOpt.ClientPath.c_std_str() + FBXSDK_LIB_NAME ).c_str() );
+                if( !dll )
+                {
+                    WriteLogF( _FUNC_, " - '" FBXSDK_LIB_NAME "' not found.\n" );
+                    return NULL;
+                }
+            }
+
+            binded = true;
+        }
+
         // Create manager
         static FbxManager* fbx_manager = NULL;
         if( !fbx_manager )

@@ -1425,6 +1425,12 @@ void CritterCl::SetBaseType( uint type )
         #endif
 
         Anim3d->SetAnimation( ANIM1_UNARMED, ANIM2_IDLE, GetLayers3dData(), 0 );
+
+        // Start mesh generation for Mapper
+        #ifdef FONLINE_MAPPER
+        Anim3d->StartMeshGeneration();
+        Anim3dStay->StartMeshGeneration();
+        #endif
     }
 
     // Allow influence of scale factor

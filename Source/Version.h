@@ -3,9 +3,9 @@
 
 #define SERVER_VERSION                   0x00000522
 #define CLIENT_VERSION                   0x00000440
-#define MAPPER_VERSION                   0x00000275
+#define MAPPER_VERSION                   0x00000276
 
-#define MAPPER_VERSION_STR               "v.1.34.1"
+#define MAPPER_VERSION_STR               "v.1.34.2"
 #define DIALOG_EDITOR_VERSION_STR        "v.2.19.0"
 
 #define CLIENT_SCRIPT_BINARY_VERSION     ( 57 )
