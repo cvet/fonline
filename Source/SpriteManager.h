@@ -25,9 +25,9 @@
 #define FT_SKIPLINES_END( l )         ( 0x0800 | ( ( l ) << 16 ) )
 
 // Colors
-#define COLOR_RGBA( a, r, g, b )      ( (uint) ( ( ( ( a ) & 0xff ) << 24 ) | ( ( ( r ) & 0xff ) << 16 ) | ( ( ( g ) & 0xff ) << 8 ) | ( ( b ) & 0xff ) ) )
-#define COLOR_RGB( r, g, b )          COLOR_RGBA( 0xff, r, g, b )
-#define COLOR_SWAP_RB( c )            std::swap( ( (uchar*) &c )[ 0 ], ( (uchar*) &c )[ 2 ] )
+#define COLOR_RGBA( a, r, g, b )      ( (uint) ( ( ( ( a ) & 0xFF ) << 24 ) | ( ( ( r ) & 0xFF ) << 16 ) | ( ( ( g ) & 0xFF ) << 8 ) | ( ( b ) & 0xFF ) ) )
+#define COLOR_RGB( r, g, b )          COLOR_RGBA( 0xFF, r, g, b )
+#define COLOR_SWAP_RB( c )            ( ( ( c ) & 0xFF00FF00 ) | ( ( ( c ) & 0x00FF0000 ) >> 16 ) | ( ( ( c ) & 0x000000FF ) << 16 ) )
 #define COLOR_CHANGE_ALPHA( v, a )    ( ( ( ( v ) | 0xFF000000 ) ^ 0xFF000000 ) | ( (uint) ( a ) & 0xFF ) << 24 )
 #define COLOR_IFACE_FIX            COLOR_GAME_RGB( 103, 95, 86 )
 #define COLOR_IFACE                SpriteManager::PackColor( ( ( COLOR_IFACE_FIX >> 16 ) & 0xFF ) + GameOpt.Light, ( ( COLOR_IFACE_FIX >> 8 ) & 0xFF ) + GameOpt.Light, ( COLOR_IFACE_FIX & 0xFF ) + GameOpt.Light )

@@ -1065,7 +1065,7 @@ bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint co
     // FormatBuf
     if( !color && DefFontColor )
         color = DefFontColor;
-    COLOR_SWAP_RB( color );
+    color = COLOR_SWAP_RB( color );
 
     static FontFormatInfo fi;
     fi.Init( font, flags, r, str );
@@ -1094,7 +1094,7 @@ bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint co
                     color = fi.ColorDots[ i ];                                            // With alpha
                 else
                     color = ( color & 0xFF000000 ) | ( fi.ColorDots[ i ] & 0x00FFFFFF );  // Still old alpha
-                COLOR_SWAP_RB( color );
+                color = COLOR_SWAP_RB( color );
                 break;
             }
         }
@@ -1112,7 +1112,7 @@ bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint co
                     color = new_color;                                            // With alpha
                 else
                     color = ( color & 0xFF000000 ) | ( new_color & 0x00FFFFFF );  // Still old alpha
-                COLOR_SWAP_RB( color );
+                color = COLOR_SWAP_RB( color );
             }
         }
 

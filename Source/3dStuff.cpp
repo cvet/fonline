@@ -464,8 +464,6 @@ bool Animation3d::IsIntersect( int x, int y )
 
 Point Animation3d::GetGroundPos()
 {
-    if( noDraw )
-        return Point();
     Vector pos = groundPos;
     ProjectPosition( pos );
     return PointF( pos.x, pos.y );
@@ -473,8 +471,6 @@ Point Animation3d::GetGroundPos()
 
 Rect Animation3d::GetBonesBorder( bool add_offsets /* = false */ )
 {
-    if( noDraw )
-        return Rect();
     if( add_offsets )
         return RectF( bonesBorder.L - BORDERS_OFFSET, bonesBorder.T - BORDERS_OFFSET, bonesBorder.R + BORDERS_OFFSET, bonesBorder.B + BORDERS_OFFSET );
     return bonesBorder;
@@ -482,8 +478,6 @@ Rect Animation3d::GetBonesBorder( bool add_offsets /* = false */ )
 
 Point Animation3d::GetBonesBorderPivot()
 {
-    if( noDraw )
-        return Point();
     return Point( drawXY.X - (int) bonesBorder.L, drawXY.Y - (int) bonesBorder.T );
 }
 

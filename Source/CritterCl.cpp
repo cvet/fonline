@@ -667,7 +667,7 @@ void CritterCl::DrawStay( Rect r )
     else if( Anim3dStay )
     {
         Anim3dStay->SetDir( dir );
-        Anim3dStay->SetAnimation( anim1, anim2, GetLayers3dData(), IsLife() ? 0 : ANIMATION_STAY | ANIMATION_PERIOD( 100 ) | ANIMATION_NO_SMOOTH );
+        Anim3dStay->SetAnimation( anim1, anim2, GetLayers3dData(), ANIMATION_STAY | ANIMATION_PERIOD( 100 ) | ANIMATION_NO_SMOOTH );
         RectF r1 = RectF( (float) r.L, (float) r.T, (float) r.R, (float) r.B );
         RectF r2 = RectF( (float) r.L, (float) r.T, (float) r.R, (float) r.B );
         SprMngr.Draw3dSize( r1, false, true, Anim3dStay, &r2, COLOR_IFACE );

@@ -1564,9 +1564,9 @@ AnyFrames* SpriteManager::LoadAnimationRix( const char* fname, int path_type )
     for( int i = 0, j = w * h; i < j; i++ )
     {
         uint index = fm.GetUChar();
-        uint r = *( palette + index * 3 + 0 ) * 4;
+        uint r = *( palette + index * 3 + 2 ) * 4;
         uint g = *( palette + index * 3 + 1 ) * 4;
-        uint b = *( palette + index * 3 + 2 ) * 4;
+        uint b = *( palette + index * 3 + 0 ) * 4;
         *( ptr + i ) = COLOR_RGB( r, g, b );
     }
 
@@ -3457,7 +3457,7 @@ bool SpriteManager::DrawSprite( uint id, int x, int y, uint color /* = 0 */ )
 
     if( !color )
         color = COLOR_IFACE;
-    COLOR_SWAP_RB( color );
+    color = COLOR_SWAP_RB( color );
 
     vBuffer[ pos ].X = (float) x;
     vBuffer[ pos ].Y = (float) y + si->Height;
@@ -3526,7 +3526,7 @@ bool SpriteManager::DrawSpritePattern( uint id, int x, int y, int w, int h, int 
 
     if( !color )
         color = COLOR_IFACE;
-    COLOR_SWAP_RB( color );
+    color = COLOR_SWAP_RB( color );
 
     Effect* effect = ( si->DrawEffect ? si->DrawEffect : Effect::Iface );
 
@@ -3637,7 +3637,7 @@ bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, boo
 
     if( !color )
         color = COLOR_IFACE;
-    COLOR_SWAP_RB( color );
+    color = COLOR_SWAP_RB( color );
 
     vBuffer[ pos ].X = (float) x;
     vBuffer[ pos ].Y = (float) y + hf;
@@ -3920,7 +3920,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         }
 
         // Fix color
-        COLOR_SWAP_RB( cur_color );
+        cur_color = COLOR_SWAP_RB( cur_color );
 
         // Render 3d
         if( si->Anim3d )
@@ -4309,7 +4309,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
         vBuffer[ i ].Y = y;
 
         uint color = point.PointColor;
-        COLOR_SWAP_RB( color );
+        color = COLOR_SWAP_RB( color );
         vBuffer[ i ].Diffuse = color;
     }
 
@@ -4345,8 +4345,8 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
     Flush();
     if( stencil )
     {
-        EnableStencil( *stencil );
         ClearCurrentRenderTargetDS( false, true );
+        EnableStencil( *stencil );
     }
     anim3d->Draw( x, y, scale, color );
     if( stencil )
@@ -4563,7 +4563,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
         contour_color = spr->ContourColor;
     else
         contour_color = 0xFFAFAFAF;
-    COLOR_SWAP_RB( contour_color );
+    contour_color = COLOR_SWAP_RB( contour_color );
 
     RectF borders_pos( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
 
