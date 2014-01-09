@@ -37,7 +37,7 @@
 			<Add option="-ldl" />
 			<Add option="-lpthread" />
 			<Add option="-lSDL2" />
-			<Add option="-lpng16" />
+			<Add option="-lpng" />
 			<Add option="-lvorbisfile" />
 			<Add option="-lvorbis" />
 			<Add option="-ltheoradec" />
@@ -46,6 +46,7 @@
 			<Add option="-lXft" />
 			<Add option="-lXinerama" />
 			<Add option="-lGL" />
+			<Add option="-lfbxsdk" />
 		</Linker>
 		<Unit filename="Client.ico" />
 		<Unit filename="../Source/3dAnimation.h" />
@@ -204,10 +205,12 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../Source/GL/glew.h" />
+		<Unit filename="../Source/GL/glu_stuff.cpp" />
 		<Unit filename="../Source/GL/glxew.h" />
 		<Unit filename="../Source/GL/wglew.h" />
 		<Unit filename="../Source/GraphicLoader.cpp" />
 		<Unit filename="../Source/GraphicLoader.h" />
+		<Unit filename="../Source/GraphicStructures.cpp" />
 		<Unit filename="../Source/GraphicStructures.h" />
 		<Unit filename="../Source/HexManager.cpp" />
 		<Unit filename="../Source/HexManager.h" />

@@ -48,7 +48,6 @@
 		<Unit filename="../Source/AngelScript/as_callfunc.cpp" />
 		<Unit filename="../Source/AngelScript/as_callfunc.h" />
 		<Unit filename="../Source/AngelScript/as_callfunc_x64_gcc.cpp" />
-		<Unit filename="../Source/AngelScript/as_callfunc_x64_msvc.asm" />
 		<Unit filename="../Source/AngelScript/as_callfunc_x64_msvc.cpp" />
 		<Unit filename="../Source/AngelScript/as_callfunc_x86.cpp" />
 		<Unit filename="../Source/AngelScript/as_compiler.cpp" />

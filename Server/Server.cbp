@@ -58,7 +58,7 @@
 			<Add option="-lpthread" />
 			<Add option="-levent_core" />
 			<Add option="-levent_pthreads" />
-			<Add option="-lpng16" />
+			<Add option="-lpng" />
 		</Linker>
 		<Unit filename="Server.ico" />
 		<Unit filename="../Source/AI.cpp" />
