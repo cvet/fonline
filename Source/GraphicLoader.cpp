@@ -247,8 +247,20 @@ Node* GraphicLoader::LoadModel( const char* fname )
         // Load FBX SDK dynamic library
         static bool binded = false;
         static bool binded_try = false;
+
+        // Static linkage
+        #ifdef FO_LINUX
+        binded = true;
+        #endif
+
+        // Dynamic linkage
         if( !binded )
         {
+            // Delay loading only for windows
+            #ifndef FO_WINDOWS
+            return NULL;
+            #endif
+
             // Already try
             if( binded_try )
                 return NULL;

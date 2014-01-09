@@ -328,7 +328,7 @@ uchar* FalloutDatFile::OpenFile( const char* fname, uint& len )
         stream.next_out = buf;
         stream.avail_out = real_size;
 
-        int left = packed_size;
+        uint left = packed_size;
         while( stream.avail_out )
         {
             if( !stream.avail_in && left > 0 )

@@ -878,7 +878,7 @@ bool FOServer::AI_MoveItem( Npc* npc, Map* map, uchar from_slot, uchar to_slot, 
 
 bool FOServer::AI_Attack( Npc* npc, Map* map, uchar mode, uint targ_id )
 {
-    int ap_cost = ( GameOpt.GetUseApCost ? GameOpt.GetUseApCost( npc, npc->ItemSlotMain, mode ) : 1 );
+    int ap_cost = npc->GetUseApCost( npc->ItemSlotMain, mode );
 
     CHECK_NPC_AP_R0( npc, map, ap_cost );
 
@@ -897,7 +897,7 @@ bool FOServer::AI_PickItem( Npc* npc, Map* map, ushort hx, ushort hy, ushort pid
 
 bool FOServer::AI_ReloadWeapon( Npc* npc, Map* map, Item* weap, uint ammo_id )
 {
-    int ap_cost = ( GameOpt.GetUseApCost ? GameOpt.GetUseApCost( npc, npc->ItemSlotMain, USE_RELOAD ) : 1 );
+    int ap_cost = npc->GetUseApCost( npc->ItemSlotMain, USE_RELOAD );
     CHECK_NPC_AP_R0( npc, map, ap_cost );
     return Act_Reload( npc, weap->GetId(), ammo_id );
 }

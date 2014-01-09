@@ -11,7 +11,7 @@ AnyFrames* AnyFrames::Create( uint frames, uint ticks )
 {
     AnyFrames* anim = (AnyFrames*) AnyFramesPool.Get();
     memzero( anim, sizeof( AnyFrames ) );
-    anim->CntFrm = min( frames, MAX_FRAMES );
+    anim->CntFrm = MIN( frames, MAX_FRAMES );
     anim->Ticks = ( ticks ? ticks : frames * 100 );
     anim->HaveDirs = false;
     return anim;

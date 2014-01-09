@@ -163,9 +163,30 @@ uint Critter::GetTalkDistance( Critter* talker )
     return dist + GetMultihex();
 }
 
+uint Critter::GetUseApCost( Item* weap, int use )
+{
+    if( Script::PrepareContext( ServerFunctions.GetUseApCost, _FUNC_, GetInfo() ) )
+    {
+        Script::SetArgObject( this );
+        Script::SetArgObject( weap );
+        Script::SetArgUChar( use );
+        if( Script::RunPrepared() )
+            return Script::GetReturnedUInt();
+    }
+    return 1;
+}
+
 uint Critter::GetAttackDist( Item* weap, int use )
 {
-    return GameOpt.GetAttackDistantion ? GameOpt.GetAttackDistantion( this, weap, use ) : 1;
+    if( Script::PrepareContext( ServerFunctions.GetAttackDistantion, _FUNC_, GetInfo() ) )
+    {
+        Script::SetArgObject( this );
+        Script::SetArgObject( weap );
+        Script::SetArgUChar( use );
+        if( Script::RunPrepared() )
+            return Script::GetReturnedUInt();
+    }
+    return 0;
 }
 
 uint Critter::GetUseDist()

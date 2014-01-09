@@ -4379,9 +4379,9 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
     PopRenderTarget();
 
     // Copy from multisampled texture to default
-    Point pivot;
-    Rect  borders = anim3d->GetExtraBorders( &pivot );
-    if( rt3DMS.FBO )
+    Point pivot = anim3d->GetBonesBorderPivot();
+    Rect  borders = anim3d->GetBonesBorder( true );
+    if( rt3DMS )
     {
         PushRenderTarget( rt3D );
         ClearCurrentRenderTarget( 0 );
@@ -4391,9 +4391,9 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
 
     // Fill sprite info
     SpriteInfo* si = sprData[ anim3d->GetSprId() ];
-    si->Atlas->TextureOwner = rt3D.TargetTexture;
-    si->Atlas->Width = rt3D.TargetTexture->Width;
-    si->Atlas->Height = rt3D.TargetTexture->Height;
+    si->Atlas->TextureOwner = rt3D->TargetTexture;
+    si->Atlas->Width = rt3D->TargetTexture->Width;
+    si->Atlas->Height = rt3D->TargetTexture->Height;
     int pivx = ( borders.L < 0 ? -borders.L : 0 );
     int pivy = ( borders.T < 0 ? -borders.T : 0 );
     borders.L = CLAMP( borders.L, 0, modeWidth );
@@ -4403,10 +4403,10 @@ bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, Re
     si->Width = borders.W() - 1;
     si->Height = borders.H() - 1;
     si->SprRect(
-        (float) borders.L / rt3D.TargetTexture->SizeData[ 0 ],
-        1.0f - (float) borders.T / rt3D.TargetTexture->SizeData[ 1 ],
-        (float) borders.R / rt3D.TargetTexture->SizeData[ 0 ],
-        1.0f - (float) borders.B / rt3D.TargetTexture->SizeData[ 1 ] );
+        (float) borders.L / rt3D->TargetTexture->SizeData[ 0 ],
+        1.0f - (float) borders.T / rt3D->TargetTexture->SizeData[ 1 ],
+        (float) borders.R / rt3D->TargetTexture->SizeData[ 0 ],
+        1.0f - (float) borders.B / rt3D->TargetTexture->SizeData[ 1 ] );
     si->OffsX = si->Width / 2 - pivot.X + pivx;
     si->OffsY = si->Height - pivot.Y + pivy;
     #endif

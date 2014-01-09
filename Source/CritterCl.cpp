@@ -102,7 +102,7 @@ void CritterCl::Finish()
 void CritterCl::GenParams()
 {
     #ifdef FONLINE_CLIENT
-    if( Script::PrepareContext( ClientFunctions.PlayerGeneration, _FUNC_, "Registration" ) )
+    if( Script::PrepareContext( ClientFunctions.PlayerGeneration, _FUNC_, GetInfo() ) )
     {
         ScriptArray* arr = Script::CreateArray( "int[]" );
         if( !arr )
@@ -531,13 +531,38 @@ uint CritterCl::GetTalkDistance()
     return dist + GetMultihex();
 }
 
+uint CritterCl::GetUseApCost( Item* item, uchar rate )
+{
+    #ifdef FONLINE_CLIENT
+    if( Script::PrepareContext( ClientFunctions.GetUseApCost, _FUNC_, GetInfo() ) )
+    {
+        Script::SetArgObject( this );
+        Script::SetArgObject( item );
+        Script::SetArgUChar( rate );
+        if( Script::RunPrepared() )
+            return Script::GetReturnedUInt();
+    }
+    #endif
+    return 1;
+}
+
 uint CritterCl::GetAttackDist()
 {
     uchar use;
     Item* weap = GetSlotUse( SLOT_HAND1, use );
     if( !weap->IsWeapon() )
         return 0;
-    return GameOpt.GetAttackDistantion ? GameOpt.GetAttackDistantion( this, weap, use ) : 1;
+    #ifdef FONLINE_CLIENT
+    if( Script::PrepareContext( ClientFunctions.GetAttackDistantion, _FUNC_, GetInfo() ) )
+    {
+        Script::SetArgObject( this );
+        Script::SetArgObject( weap );
+        Script::SetArgUChar( use );
+        if( Script::RunPrepared() )
+            return Script::GetReturnedUInt();
+    }
+    #endif
+    return 0;
 }
 
 uint CritterCl::GetUseDist()
@@ -854,11 +879,6 @@ void CritterCl::SetAim( uchar hit_location )
     SETFLAG( ItemSlotMain->Data.Mode, hit_location << 4 );
 }
 
-uint CritterCl::GetUseApCost( Item* item, uchar rate )
-{
-    return GameOpt.GetUseApCost ? GameOpt.GetUseApCost( this, item, rate ) : 1;
-}
-
 ProtoItem* CritterCl::GetUnarmedItem( uchar tree, uchar priority )
 {
     ProtoItem* best_unarmed = NULL;
@@ -1086,7 +1106,7 @@ void CritterCl::Move( int dir )
 void CritterCl::Action( int action, int action_ext, Item* item, bool local_call /* = true */ )
 {
     #ifdef FONLINE_CLIENT
-    if( Script::PrepareContext( ClientFunctions.CritterAction, _FUNC_, "CritterAction" ) )
+    if( Script::PrepareContext( ClientFunctions.CritterAction, _FUNC_, GetInfo() ) )
     {
         if( item )
             item = item->Clone();
@@ -1356,7 +1376,7 @@ uint CritterCl::GetAnim2()
 void CritterCl::ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, Item* item )
 {
     #ifdef FONLINE_CLIENT
-    if( Script::PrepareContext( is2d ? ClientFunctions.Animation2dProcess : ClientFunctions.Animation3dProcess, _FUNC_, "AnimationProcess" ) )
+    if( Script::PrepareContext( is2d ? ClientFunctions.Animation2dProcess : ClientFunctions.Animation3dProcess, _FUNC_, GetInfo() ) )
     {
         Script::SetArgBool( animate_stay );
         Script::SetArgObject( this );

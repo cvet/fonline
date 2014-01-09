@@ -9794,6 +9794,8 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.FilenameLogfile, "filename_logfile", "void %s( string& )" },
         { &ClientFunctions.FilenameScreenshot, "filename_screenshot", "void %s( string& )" },
         { &ClientFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(CritterCl&,ItemCl&,uint8,ItemCl@)" },
+        { &ClientFunctions.GetUseApCost, "get_use_ap_cost", "uint %s(CritterCl&,ItemCl&,uint8)" },
+        { &ClientFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(CritterCl&,ItemCl&,uint8)" },
     };
     const char*            config = msg_script.GetStr( STR_INTERNAL_SCRIPT_CONFIG );
     if( !Script::BindReservedFunctions( config, "client", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )

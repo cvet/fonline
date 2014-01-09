@@ -959,7 +959,7 @@ int main( int argc, char** argv )
 
     // Log version
     WriteLog( "FOnline server daemon, version %04X-%02X.\n", SERVER_VERSION, FO_PROTOCOL_VERSION & 0xFF );
-    if( CommandLineArgCount > 1 )
+    if( Str::Length( CommandLine ) > 0 )
         WriteLog( "Command line<%s>.\n", CommandLine );
 
     DaemonLoop(); // Never out from here

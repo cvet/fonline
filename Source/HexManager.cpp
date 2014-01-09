@@ -669,15 +669,8 @@ void HexManager::ProcessRain()
             {
                 cur_drop->CurSprId = picRainFall->GetCurSprId();
                 cur_drop->DropCnt = -1;
-                if( GameOpt.GetRainOffset )
-                {
-                    GameOpt.GetRainOffset( &cur_drop->OffsX, &cur_drop->OffsY );
-                }
-                else
-                {
-                    cur_drop->OffsX = Random( -10, 10 );
-                    cur_drop->OffsY = -100 - Random( 0, 100 );
-                }
+                cur_drop->OffsX = Random( -10, 10 );
+                cur_drop->OffsY = -100 - Random( 0, 100 );
             }
             else
             {
@@ -923,15 +916,8 @@ void HexManager::RebuildMap( int rx, int ry )
                     }
                     if( new_drop )
                     {
-                        if( GameOpt.GetRainOffset )
-                        {
-                            GameOpt.GetRainOffset( &new_drop->OffsX, &new_drop->OffsY );
-                        }
-                        else
-                        {
-                            new_drop->OffsX = Random( -10, 10 );
-                            new_drop->OffsY = -100 - Random( 0, 100 );
-                        }
+                        new_drop->OffsX = Random( -10, 10 );
+                        new_drop->OffsY = -100 - Random( 0, 100 );
                         if( new_drop->OffsY < 0 )
                             new_drop->OffsY = Random( new_drop->OffsY, 0 );
                     }

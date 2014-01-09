@@ -449,6 +449,7 @@ public:
     void SendMessage( int num, int val, int to );
     int  GetLook();
     uint GetTalkDistance( Critter* talker );
+    uint GetUseApCost( Item* weap, int use );
     uint GetAttackDist( Item* weap, int use );
     uint GetUseDist();
     uint GetMultihex();

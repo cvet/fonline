@@ -28,6 +28,8 @@ void SetCommandLine( uint argc, char** argv )
 {
     for( uint i = 0; i < argc; i++ )
     {
+        if( i == 0 && argv[ 0 ][ 0 ] != '-' )
+            continue;
         Str::Append( CommandLine, argv[ i ] );
         Str::Append( CommandLine, " " );
     }
@@ -1436,11 +1438,6 @@ GameOptions::GameOptions()
     Random = &::Random;
     GetTick = &Timer::FastTick;
     SetLogCallback = &LogToFunc;
-
-    // Callbacks
-    GetUseApCost = NULL;
-    GetAttackDistantion = NULL;
-    GetRainOffset = NULL;
 }
 
 /************************************************************************/

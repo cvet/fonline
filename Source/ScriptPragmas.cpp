@@ -10,6 +10,7 @@
 # include <stdio.h>
 # include <strstream>
 # include <algorithm>
+# include <string.h>
 
 # ifdef FO_WINDOWS
 #  include <Windows.h>

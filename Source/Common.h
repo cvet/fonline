@@ -312,6 +312,8 @@ struct ClientScriptFunctions
     int FilenameLogfile;
     int FilenameScreenshot;
     int CritterCheckMoveItem;
+    int GetUseApCost;
+    int GetAttackDistantion;
 } extern ClientFunctions;
 
 struct MapperScriptFunctions
@@ -396,6 +398,8 @@ struct ServerScriptFunctions
     int PlayerGetAccess;
     int PlayerAllowCommand;
     int CheckTrapLook;
+    int GetUseApCost;
+    int GetAttackDistantion;
 } extern ServerFunctions;
 
 // Net events
@@ -717,11 +721,6 @@ struct GameOptions
     int          ( * Random )( int, int );
     uint         ( * GetTick )();
     void         ( * SetLogCallback )( void ( * )( const char* str ), bool );
-
-    // Callbacks
-    uint         ( * GetUseApCost )( void*, void*, uchar );
-    uint         ( * GetAttackDistantion )( void*, void*, uchar );
-    void         ( * GetRainOffset )( short*, short* );
 
     GameOptions();
 } extern GameOpt;
