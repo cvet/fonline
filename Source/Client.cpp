@@ -8702,8 +8702,9 @@ void FOClient::FlashGameWindow()
         return;
 
     #ifdef FO_WINDOWS
-    // if( GameOpt.MessNotify )
-    //	FlashWindow( fl_xid( MainWindow ), true );
+    SDL_SysWMinfo info;
+    if( GameOpt.MessNotify && SDL_GetWindowWMInfo( MainWindow, &info ) )
+        FlashWindow( info.info.win.window, true );
     if( GameOpt.SoundNotify )
         Beep( 100, 200 );
     #else

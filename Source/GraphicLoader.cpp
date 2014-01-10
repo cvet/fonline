@@ -1309,7 +1309,6 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     GL( effect->GroundPosition = glGetUniformLocation( program, "GroundPosition" ) );
     GL( effect->LightColor = glGetUniformLocation( program, "LightColor" ) );
     GL( effect->WorldMatrices = glGetUniformLocation( program, "WorldMatrices" ) );
-    GL( effect->WorldMatrix = glGetUniformLocation( program, "WorldMatrix" ) );
 
     GL( effect->PassIndex = glGetUniformLocation( program, "PassIndex" ) );
     GL( effect->Time = glGetUniformLocation( program, "Time" ) );
@@ -1543,13 +1542,12 @@ bool GraphicLoader::LoadDefaultEffects()
     LOAD_EFFECT( Effect::Generic, "2D_Default", true, NULL );
     LOAD_EFFECT( Effect::Critter, "2D_Default", true, NULL );
     LOAD_EFFECT( Effect::Roof, "2D_Default", true, NULL );
-    LOAD_EFFECT( Effect::Rain, "2D_Default", true, NULL );
     #else
     LOAD_EFFECT( Effect::Generic, "2D_WithoutEgg", true, NULL );
     LOAD_EFFECT( Effect::Critter, "2D_WithoutEgg", true, NULL );
     LOAD_EFFECT( Effect::Roof, "2D_WithoutEgg", true, NULL );
-    LOAD_EFFECT( Effect::Rain, "2D_WithoutEgg", true, NULL );
     #endif
+    LOAD_EFFECT( Effect::Rain, "2D_WithoutEgg", true, NULL );
     LOAD_EFFECT( Effect::Iface, "Interface_Default", true, NULL );
     LOAD_EFFECT( Effect::Primitive, "Primitive_Default", true, NULL );
     LOAD_EFFECT( Effect::Light, "Primitive_Default", true, NULL );

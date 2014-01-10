@@ -166,7 +166,6 @@ struct Effect
     GLint          GroundPosition;
     GLint          LightColor;
     GLint          WorldMatrices;
-    GLint          WorldMatrix;
 
     // Automatic variables
     bool           IsNeedProcess;

@@ -175,6 +175,7 @@ struct ScoreType
 # define PI_VALUE                                ( 3.141592654f )
 
 # include "SDL/SDL.h"
+# include "SDL/SDL_syswm.h"
 # ifndef FO_OGL_ES
 #  define GLEW_NO_GLU
 #  include "GL/glew.h"
