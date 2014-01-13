@@ -1005,8 +1005,8 @@ public:
     bool       GmapShowEntrances[ 0x100 ];
 
     // Mask
-    C2BitMask GmapFog;
-    PointVec  GmapFogPix;
+    TwoBitMask GmapFog;
+    PointVec   GmapFogPix;
 
     // Locations
     struct GmapLocation

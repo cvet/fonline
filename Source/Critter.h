@@ -113,7 +113,7 @@ public:
     bool             CritterIsNpc;
     uint             Flags;
     ScriptString     NameStr;
-    C2BitMask        GMapFog;
+    TwoBitMask       GMapFog;
     bool             IsRuning;
     uint             PrevHexTick;
     ushort           PrevHexX, PrevHexY;

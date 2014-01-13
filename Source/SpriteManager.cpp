@@ -998,7 +998,8 @@ TextureAtlas* SpriteManager::FindAtlasPlace( SpriteInfo* si, int& x, int& y )
 
 void SpriteManager::AutofinalizeAtlases( int atlas_type )
 {
-    autofinalizeAtlases.push_back( atlas_type );
+    #pragma MESSAGE("Complete or exclude atlas finalization. In finalized atlas we can't retreive color of pixel.")
+    // autofinalizeAtlases.push_back( atlas_type );
 }
 
 void SpriteManager::DestroyAtlases( int atlas_type )
