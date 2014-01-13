@@ -88,7 +88,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     # ifdef FONLINE_SERVER
     FileManager::GetWritePath( "", PT_SERVER_DUMPS, dump_path_dir );
     # else
-    FileManager::GetWritePath( "", PT_ROOT, dump_path_dir );
+    Str::Copy( dump_path_dir, DIR_SLASH_SD );
     # endif
     Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
                  dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
@@ -463,7 +463,7 @@ LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
     # ifdef FONLINE_SERVER
     FileManager::GetWritePath( "", PT_SERVER_DUMPS, dump_path_dir );
     # else
-    FileManager::GetWritePath( "", PT_ROOT, dump_path_dir );
+    Str::Copy( dump_path_dir, DIR_SLASH_SD );
     # endif
     Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
                  dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
@@ -590,7 +590,7 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     # ifdef FONLINE_SERVER
     FileManager::GetWritePath( "", PT_SERVER_DUMPS, dump_path_dir );
     # else
-    FileManager::GetWritePath( "", PT_ROOT, dump_path_dir );
+    Str::Copy( dump_path_dir, DIR_SLASH_SD );
     # endif
     Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
                  dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
