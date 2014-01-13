@@ -1268,8 +1268,8 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         {
             GLsizei  buf_size;
             GL( glGetProgramiv( program, GL_PROGRAM_BINARY_LENGTH, &buf_size ) );
-            GLsizei  length;
-            GLenum   format;
+            GLsizei  length = 0;
+            GLenum   format = 0;
             UCharVec buf;
             buf.resize( buf_size );
             GL( glGetProgramBinary( program, buf_size, &length, &format, &buf[ 0 ] ) );

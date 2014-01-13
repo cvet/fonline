@@ -125,6 +125,10 @@ bool SpriteManager::Init()
     GL( glGetIntegerv( GL_MAX_TEXTURE_SIZE, &max_texture_size ) );
     atlasWidth = min( max_texture_size, 4096 );
     atlasHeight = min( max_texture_size, 6144 );
+    #ifdef FO_OSX_IOS
+    atlasWidth = min( max_texture_size, 3072 );
+    atlasHeight = min( max_texture_size, 3072 );
+    #endif
 
     // Atlas pool
     atlasDataPool.push_back( new uchar[ atlasWidth * atlasHeight * 4 ] );
@@ -1124,7 +1128,6 @@ uint SpriteManager::RequestFillAtlas( SpriteInfo* si, uint w, uint h, uchar* dat
 void SpriteManager::FillAtlas( SpriteInfo* si )
 {
     uchar* data = si->Data;
-    uint   size = si->DataSize;
     uint   w = si->Width;
     uint   h = si->Height;
 
@@ -3924,12 +3927,6 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         // Render 3d
         if( si->Anim3d )
         {
-            if( spr->Light )
-            {
-                int    lr = *spr->Light;
-                int    lg = *( spr->Light + 1 );
-                int    lb = *( spr->Light + 2 );
-            }
             x += si->Width / 2 - si->OffsX;
             y += si->Height - si->OffsY;
             x = (int) ( (float) x / zoom );

@@ -216,6 +216,9 @@ bool FOClient::Init()
     Keyb::Init();
 
     // Data files
+    #ifdef FO_OSX_IOS
+    FileManager::InitDataFiles( "../../Documents/" );
+    #endif
     FileManager::InitDataFiles( DIR_SLASH_SD "data" DIR_SLASH_S );
 
     // Cache

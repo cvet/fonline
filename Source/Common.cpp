@@ -966,8 +966,8 @@ void GetClientOptions()
     # endif
 
     # ifdef FO_OSX_IOS
-    GameOpt.ScreenWidth = 800;
-    GameOpt.ScreenHeight = 600;
+    GameOpt.ScreenWidth = 1024;
+    GameOpt.ScreenHeight = 768;
     GameOpt.FixedFPS = 0;
     # endif
 }
