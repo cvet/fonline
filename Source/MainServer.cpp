@@ -90,7 +90,7 @@ int main( int argc, char** argv )
 
     // Config
     IniParser cfg;
-    cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
+    cfg.LoadFile( GetConfigFileName(), PT_DATA );
 
     // Memory debugging
     MemoryDebugLevel = cfg.GetInt( "MemoryDebugLevel", 0 );
@@ -389,9 +389,11 @@ void GUICallback( Fl_Widget* widget, void* data )
         char             log_name[ MAX_FOTEXT ];
         char             log_name_dir[ MAX_FOTEXT ];
         Fl_Text_Display* log = ( widget == GuiBtnSaveLog ? GuiLog : GuiInfo );
-        FileManager::GetFullPath( NULL, PT_SERVER_LOGS, log_name_dir );
-        log->buffer()->savefile( Str::Format( log_name, "%sFOnlineServer_%s_%04u.%02u.%02u_%02u-%02u-%02u.log", log_name_dir,
-                                              log == GuiInfo ? UpdateLogName.c_str() : "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second ) );
+        FileManager::GetWritePath( "", PT_SERVER_LOGS, log_name_dir );
+        Str::Format( log_name, "%sFOnlineServer_%s_%04u.%02u.%02u_%02u-%02u-%02u.log",
+                     log_name_dir, log == GuiInfo ? UpdateLogName.c_str() : "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+        CreateDirectoryTree( log_name );
+        log->buffer()->savefile( log_name );
     }
     else if( widget == GuiBtnCreateDump )
     {
@@ -940,7 +942,7 @@ int main( int argc, char** argv )
 
     // Config
     IniParser cfg;
-    cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
+    cfg.LoadFile( GetConfigFileName(), PT_DATA );
 
     // Memory debugging
     MemoryDebugLevel = cfg.GetInt( "MemoryDebugLevel", 0 );
@@ -1024,7 +1026,7 @@ void InitAdminManager( IniParser* cfg )
     if( !cfg )
     {
         IniParser cfg_;
-        if( !cfg_.LoadFile( GetConfigFileName(), PT_SERVER_ROOT ) )
+        if( !cfg_.LoadFile( GetConfigFileName(), PT_ROOT ) )
         {
             WriteLogF( _FUNC_, "Can't access to config file.\n" );
             return;

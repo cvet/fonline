@@ -878,7 +878,7 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
     bool                loaded = file_source.LoadFile( RootPath, filename, data );
     if( !loaded )
     {
-        PrintErrorMessage( std::string( "Could not open file " ) + filename );
+        PrintErrorMessage( std::string( "Could not open file " ) + RootPath + filename );
         return;
     }
 

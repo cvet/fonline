@@ -1037,7 +1037,6 @@ void SpriteManager::DumpAtlases()
 
     char path[ MAX_FOPATH ];
     Str::Format( path, DIR_SLASH_SD "%u_%u.%03umb" DIR_SLASH_S, (uint) time( NULL ), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000 );
-    FileManager::CreateDirectoryTree( path );
 
     int cnt = 0;
     for( auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it )

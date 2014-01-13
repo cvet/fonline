@@ -11,15 +11,9 @@
 VarManager  VarMngr;
 FileLogger* DbgLog = NULL;
 
-bool VarManager::Init( const char* fpath )
+bool VarManager::Init()
 {
     WriteLog( "Var manager initialization.\n" );
-
-    if( !fpath )
-        varsPath = DIR_SLASH_SD;
-    else
-        varsPath = string( fpath );
-    varsPath += VAR_FNAME_VARS;
 
     // Load vars templates
     if( !UpdateVarsTemplate() )
@@ -76,22 +70,10 @@ bool VarManager::LoadVarsDataFile( void* f, int version )
         ushort temp_id;
         uint   master_id, slave_id;
         int    val;
-        if( version < WORLD_SAVE_V10 )
-        {
-            uint64 id;
-            FileRead( f, &id, sizeof( id ) );
-            FileRead( f, &temp_id, sizeof( temp_id ) );
-            FileRead( f, &val, sizeof( val ) );
-            master_id = ( id >> 24 ) & 0xFFFFFF;
-            slave_id = id & 0xFFFFFF;
-        }
-        else
-        {
-            FileRead( f, &temp_id, sizeof( temp_id ) );
-            FileRead( f, &master_id, sizeof( master_id ) );
-            FileRead( f, &slave_id, sizeof( slave_id ) );
-            FileRead( f, &val, sizeof( val ) );
-        }
+        FileRead( f, &temp_id, sizeof( temp_id ) );
+        FileRead( f, &master_id, sizeof( master_id ) );
+        FileRead( f, &slave_id, sizeof( slave_id ) );
+        FileRead( f, &val, sizeof( val ) );
 
         TemplateVar* tvar = GetTemplateVar( temp_id );
         if( !tvar )
@@ -147,7 +129,6 @@ void VarManager::Finish()
         SAFEDEL( *it );
     tempVars.clear();
 
-    varsPath = "";
     SAFEDEL( DbgLog );
     isInit = false;
     WriteLog( "Var manager finish complete.\n" );
@@ -178,13 +159,9 @@ bool VarManager::UpdateVarsTemplate()
     WriteLog( "Update template vars...\n" );
 
     FileManager fm;
-    #ifdef FONLINE_SERVER
-    if( !fm.LoadFile( varsPath.c_str(), PT_SERVER_ROOT ) )
-    #else
-    if( !fm.LoadFile( varsPath.c_str(), -1 ) )
-    #endif
+    if( !fm.LoadFile( VAR_FNAME_VARS, PT_SERVER_SCRIPTS ) )
     {
-        WriteLog( "Template vars file<%s> not found.\n", varsPath.c_str() );
+        WriteLog( "Template vars file<%s> not found.\n", VAR_FNAME_VARS );
         return false;
     }
 
@@ -405,11 +382,7 @@ void VarManager::SaveTemplateVars()
     fm.SetStr( "*************************************************************************************/\n" );
     fm.SetStr( "#endif\n" );
 
-    #ifdef FONLINE_SERVER
-    fm.SaveOutBufToFile( varsPath.c_str(), PT_SERVER_DATA );
-    #else
-    fm.LoadFile( varsPath.c_str(), -1 );
-    #endif
+    fm.SaveOutBufToFile( VAR_FNAME_VARS, PT_SERVER_SCRIPTS );
 
     WriteLog( "complete.\n" );
 }

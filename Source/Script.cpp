@@ -477,14 +477,14 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     #endif
 
     // Client path fixes
-    #if defined ( FONLINE_CLIENT )
-    Str::Insert( dll_path, FileManager::GetPath( PT_SERVER_SCRIPTS ) );
+    #ifdef FONLINE_CLIENT
+    Str::Insert( dll_path, FileManager::GetDataPath( "", PT_SERVER_SCRIPTS ) );
     Str::Replacement( dll_path, '\\', '.' );
     Str::Replacement( dll_path, '/', '.' );
     #endif
 
     // Insert base path
-    Str::Insert( dll_path, FileManager::GetFullPath( "", ScriptsPath ) );
+    Str::Insert( dll_path, FileManager::GetDataPath( "", ScriptsPath ) );
 
     // Load dynamic library
     void* dll = DLL_Load( dll_path );
@@ -732,8 +732,7 @@ void Script::Profiler::Init()
     Timer::GetCurrentDateTime( dt );
 
     char dump_file_path[ MAX_FOPATH ];
-    FileManager::GetFullPath( NULL, PT_SERVER_PROFILER, dump_file_path );
-    FileManager::CreateDirectoryTree( dump_file_path );
+    Str::Copy( dump_file_path, FileManager::GetWritePath( "", PT_SERVER_PROFILER ) );
 
     char dump_file[ MAX_FOPATH ];
     Str::Format( dump_file, "%sFOnlineServer_Profiler_%04u.%02u.%02u_%02u-%02u-%02u.foprof",
@@ -1567,7 +1566,7 @@ public:
     Preprocessor::StringOutStream result, errors;
     MemoryFileLoader              loader( source );
     int                           errors_count;
-    errors_count = Preprocessor::Preprocess( FileManager::GetFullPath( fname_real, ScriptsPath ), result, &errors, &loader );
+    errors_count = Preprocessor::Preprocess( FileManager::GetWritePath( fname_real, ScriptsPath ), result, &errors, &loader );
 
     if( errors.String != "" )
     {

@@ -83,31 +83,30 @@ bool FOClient::AppendIfaceIni( const char* ini_name )
     for( uint i = 0, j = (uint) IfaceIniNames.size(); i < j; i++ )
     {
         // Create name
-        string file_name = IfaceIniNames[ i ];
+        char file_name[ MAX_FOPATH ];
+        Str::Copy( file_name, IfaceIniNames[ i ].c_str() );
         if( !Str::Substring( ini_name, "\\" ) && !Str::Substring( ini_name, "/" ) )
-            file_name = string( FileManager::GetPath( PT_ART_INTRFACE ) ) + file_name;
+            FileManager::GetDataPath( file_name, PT_ART_INTRFACE, file_name );
+        for( char* str = file_name; *str; str++ )
+        {
+            if( *str == '/' )
+                *str = '\\';
+        }
 
         // Data files
-        DataFileVec& pfiles = FileManager::GetDataFiles();
-        for( int k = (int) pfiles.size() - 1; k >= 0; k-- )
+        DataFileVec& data_files = FileManager::GetDataFiles();
+        for( int k = (int) data_files.size() - 1; k >= 0; k-- )
         {
-            DataFile* pfile = pfiles[ k ];
+            DataFile* data_file = data_files[ k ];
             uint      len;
-            uchar*    data = pfile->OpenFile( file_name.c_str(), len );
-            IniParser ini;
-
+            uint64    write_time;
+            uchar*    data = data_file->OpenFile( file_name, len, write_time );
             if( data )
             {
                 AppendIfaceIni( data, len );
                 delete[] data;
             }
         }
-
-        // Folder
-        file_name = string( FileManager::GetDataPath( PT_ART_INTRFACE ) ) + file_name;
-        FileManager fm;
-        if( fm.LoadFile( file_name.c_str(), -1 ) )
-            AppendIfaceIni( fm.GetBuf(), fm.GetFsize() );
     }
 
     return true;
@@ -9120,8 +9119,8 @@ AnyFrames* FOClient::AimGetPic( CritterCl* cr, const char* ext )
     // Make names
     char aim_name[ MAX_FOPATH ];
     char aim_name_alias[ MAX_FOPATH ];
-    Str::Format( aim_name, "%s%sna.%s", FileManager::GetPath( PT_ART_CRITTERS ), CritType::GetName( cr->GetCrType() ), ext );
-    Str::Format( aim_name_alias, "%s%sna.%s", FileManager::GetPath( PT_ART_CRITTERS ), CritType::GetName( cr->GetCrTypeAlias() ), ext );
+    Str::Format( aim_name, "%s%sna.%s", FileManager::GetDataPath( "", PT_ART_CRITTERS ), CritType::GetName( cr->GetCrType() ), ext );
+    Str::Format( aim_name_alias, "%s%sna.%s", FileManager::GetDataPath( "", PT_ART_CRITTERS ), CritType::GetName( cr->GetCrTypeAlias() ), ext );
 
     // Load
     AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( aim_name ), RES_ATLAS_DYNAMIC );
@@ -11378,21 +11377,20 @@ void FOClient::SaveLoadCollect()
 
     // For each all saves in folder
     StrVec fnames;
-    FileManager::GetFolderFileNames( FileManager::GetPath( PT_SAVE ), true, "fo", fnames );
+    FileManager::GetFolderFileNames( FileManager::GetWritePath( "", PT_SAVE ), true, "fo", fnames );
     PtrVec open_handles;
     for( uint i = 0; i < fnames.size(); i++ )
     {
         const string& fname = fnames[ i ];
 
         // Open file
-        void* f = FileOpen( FileManager::GetFullPath( fname.c_str(), PT_DATA ), false );
+        void* f = FileOpen( FileManager::GetWritePath( fname.c_str(), PT_SAVE ), false );
         if( !f )
             continue;
         open_handles.push_back( f );
 
         // Get file information
-        uint64 tc, ta, tw;
-        FileGetTime( f, tc, ta, tw );
+        uint64 tw = FileGetWriteTime( f );
 
         // Read save data, offsets see SaveGameInfoFile in Server.cpp
         // Check singleplayer data
@@ -11463,14 +11461,14 @@ void FOClient::SaveLoadCollect()
 
         // Extract name
         char name[ MAX_FOPATH ];
-        FileManager::ExtractFileName( fname.c_str(), name );
+        Str::Copy( name, fname.c_str() );
         if( Str::Length( name ) < 4 )
             continue;
         name[ Str::Length( name ) - 3 ] = 0; // Cut '.fo'
 
         // Extract full path
         char fname_ex[ MAX_FOPATH ];
-        FileManager::GetFullPath( name, PT_SAVE, fname_ex );
+        FileManager::GetWritePath( name, PT_SAVE, fname_ex );
         ResolvePath( fname_ex );
         Str::Append( fname_ex, ".fo" );
 
@@ -11513,7 +11511,7 @@ void FOClient::SaveLoadSaveGame( const char* name )
 {
     // Get name of new save
     char fname[ MAX_FOPATH ];
-    FileManager::GetFullPath( NULL, PT_SAVE, fname );
+    FileManager::GetWritePath( "", PT_SAVE, fname );
     ResolvePath( fname );
     Str::Append( fname, name );
     Str::Append( fname, ".fo" );

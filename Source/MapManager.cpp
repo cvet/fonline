@@ -189,7 +189,7 @@ bool MapManager::LoadLocationsProtos()
     IniParser city_txt;
     if( !city_txt.LoadFile( "Locations.cfg", PT_SERVER_MAPS ) )
     {
-        WriteLog( "File<%s> not found.\n", FileManager::GetFullPath( "Locations.cfg", PT_SERVER_MAPS ) );
+        WriteLog( "File<%s> not found.\n", FileManager::GetDataPath( "Locations.cfg", PT_SERVER_MAPS ) );
         return false;
     }
 
@@ -517,7 +517,7 @@ bool MapManager::GenerateWorld( const char* fname, int path_type )
     FileManager fm;
     if( !fm.LoadFile( fname, path_type ) )
     {
-        WriteLog( "Load file<%s%s> fail.\n", fm.GetFullPath( fname, path_type ) );
+        WriteLog( "Load file<%s> fail.\n", FileManager::GetDataPath( fname, path_type ) );
         return false;
     }
 

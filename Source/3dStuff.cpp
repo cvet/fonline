@@ -1064,8 +1064,7 @@ void Animation3d::BeginScene()
 Animation3d* Animation3d::GetAnimation( const char* name, int path_type, bool is_child )
 {
     char fname[ MAX_FOPATH ];
-    Str::Copy( fname, FileManager::GetPath( path_type ) );
-    Str::Append( fname, name );
+    FileManager::GetDataPath( name, path_type, fname );
     return GetAnimation( fname, is_child );
 }
 

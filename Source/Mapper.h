@@ -39,6 +39,8 @@ public:
     HexManager       HexMngr;
     IniParser        IfaceIni;
     bool             IsMapperStarted;
+    static char      ServerWritePath[ MAX_FOPATH ];
+    static char      ClientWritePath[ MAX_FOPATH ];
 
     FOMapper();
     bool Init();

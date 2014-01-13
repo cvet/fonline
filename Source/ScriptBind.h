@@ -1482,7 +1482,6 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ScrollDelay", &GameOpt.Scro
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __ScrollStep", &GameOpt.ScrollStep ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MouseScroll", &GameOpt.MouseScroll ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ScrollCheck", &GameOpt.ScrollCheck ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "string __FoDataPath", &GameOpt.FoDataPath ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "string __Host", &GameOpt.Host ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Port", &GameOpt.Port ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ProxyType", &GameOpt.ProxyType ) );

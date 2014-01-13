@@ -215,59 +215,17 @@ bool FOClient::Init()
     // Input
     Keyb::Init();
 
-    // Paths
-    FileManager::SetDataPath( GameOpt.FoDataPath.c_str() );
-    if( Singleplayer )
-        FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_SAVE ) );
-
     // Data files
-    FileManager::InitDataFiles( ".\\" );
-
-    // Prepare cache on iOS
-    // Copy '*.cache' from 'home/app/Client/data/cache/ to 'home/Documents/cache'
-    #ifdef FO_OSX_IOS
-    StrVec cache_files;
-    FileManager::GetFolderFileNames( "cache" DIR_SLASH_S, false, NULL, cache_files );
-    for( size_t i = 0; i < cache_files.size(); i++ )
-    {
-        char fpath_from[ MAX_FOPATH ];
-        FileManager::GetFullPath( cache_files[ i ].c_str(), PT_DATA, fpath_from );
-
-        char fname[ MAX_FOPATH ];
-        FileManager::ExtractFileName( fpath_from, fname );
-        char fpath_to[ MAX_FOPATH ];
-        FileManager::GetFullPath( fname, PT_CACHE, fpath_to );
-
-        if( !FileExist( fpath_to ) )
-            FileManager::CopyFile( fpath_from, fpath_to );
-    }
-    #endif
+    FileManager::InitDataFiles( DIR_SLASH_SD "data" DIR_SLASH_S );
 
     // Cache
-    FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_CACHE ) );
-    if( !Crypt.SetCacheTable( FileManager::GetFullPath( "default.cache", PT_CACHE ) ) )
+    if( !FileExist( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
+        FileManager::CopyFile( FileManager::GetReadPath( "default.cache", PT_DATA ), FileManager::GetWritePath( "default.cache", PT_CACHE ) );
+    if( !Crypt.SetCacheTable( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
     {
         WriteLogF( _FUNC_, " - Can't set default cache.\n" );
         return false;
     }
-
-    char cache_name[ MAX_FOPATH ] = { "singleplayer" };
-    if( !Singleplayer )
-        Str::Format( cache_name, "%s.%u", GameOpt.Host.c_str(), GameOpt.Port );
-
-    char cache_fname[ MAX_FOPATH ];
-    FileManager::GetFullPath( cache_name, PT_CACHE, cache_fname );
-    Str::Append( cache_fname, ".cache" );
-
-    bool refresh_cache = ( !Singleplayer && !Str::Substring( CommandLine, "-DefCache" ) && !Crypt.IsCacheTable( cache_fname ) );
-
-    if( !Singleplayer && !Str::Substring( CommandLine, "-DefCache" ) && !Crypt.SetCacheTable( cache_fname ) )
-    {
-        WriteLogF( _FUNC_, " - Can't set cache<%s>.\n", cache_fname );
-        return false;
-    }
-
-    FileManager::SetCacheName( cache_name );
 
     UID_PREPARE_UID4_1;
 
@@ -307,7 +265,6 @@ bool FOClient::Init()
             Password = "password";
             Crypt.SetCache( "__name", (uchar*) GameOpt.Name.c_str(), (uint) GameOpt.Name.length() + 1 );
             Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
-            refresh_cache = true;
         }
     }
 
@@ -375,8 +332,7 @@ bool FOClient::Init()
         return false;
 
     // Scripts
-    if( !ReloadScripts() )
-        refresh_cache = true;
+    ReloadScripts();
 
     // Load interface
     int res = InitIface();
@@ -385,8 +341,6 @@ bool FOClient::Init()
         WriteLog( "Init interface fail, error<%d>.\n", res );
         return false;
     }
-    if( res != 0 )
-        refresh_cache = true;
 
     // Quest Manager
     QuestMngr.Init( MsgQuest );
@@ -464,14 +418,8 @@ bool FOClient::Init()
     Active = true;
     GET_UID4( UID4 );
 
-    // Start game
-    // Check cache
-    if( refresh_cache )
-    {
-        InitNetReason = INIT_NET_REASON_CACHE;
-    }
     // Begin game
-    else if( Str::Substring( CommandLine, "-Start" ) && !Singleplayer )
+    if( Str::Substring( CommandLine, "-Start" ) && !Singleplayer )
     {
         LogTryConnect();
     }
@@ -9012,9 +8960,6 @@ void FOClient::FmtTextIntellect( char* str, ushort intellect )
 
 bool FOClient::SaveLogFile()
 {
-    if( MessBox.empty() )
-        return false;
-
     DateTime dt;
     Timer::GetCurrentDateTime( dt );
     char     log_path[ MAX_FOPATH ];
@@ -9035,7 +8980,6 @@ bool FOClient::SaveLogFile()
         return ( false );
 
     FileManager::FormatPath( log_path );
-    FileManager::CreateDirectoryTree( FileManager::GetFullPath( log_path, PT_ROOT ) );
 
     void* f = FileOpen( log_path, true );
     if( !f )
@@ -9082,8 +9026,6 @@ bool FOClient::SaveScreenshot()
         return ( false );
 
     FileManager::FormatPath( screen_path );
-    FileManager::CreateDirectoryTree( FileManager::GetFullPath( screen_path, PT_ROOT ) );
-
     SprMngr.SaveTexture( NULL, screen_path, true );
 
     return true;
@@ -9120,11 +9062,11 @@ void FOClient::AddVideo( const char* video_name, bool can_stop, bool clear_seque
         *sound = 0;
         sound++;
         if( !Str::Substring( sound, "/" ) )
-            sw.SoundName = FileManager::GetPath( PT_VIDEO );
+            sw.SoundName = FileManager::GetDataPath( "", PT_VIDEO );
         sw.SoundName += sound;
     }
     if( !Str::Substring( str, "/" ) )
-        sw.FileName = FileManager::GetPath( PT_VIDEO );
+        sw.FileName = FileManager::GetDataPath( "", PT_VIDEO );
     sw.FileName += str;
 
     // Add video in sequence
@@ -9512,8 +9454,7 @@ uint FOClient::AnimLoad( uint name_hash, int res_type )
 uint FOClient::AnimLoad( const char* fname, int path_type, int res_type )
 {
     char full_name[ MAX_FOPATH ];
-    Str::Copy( full_name, FileManager::GetPath( path_type ) );
-    Str::Append( full_name, fname );
+    FileManager::GetDataPath( fname, path_type, full_name );
 
     AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( full_name ), res_type );
     if( !anim )
@@ -11083,9 +11024,8 @@ bool FOClient::SScriptFunc::Global_Load3dFile( ScriptString& fname, int path_typ
 {
     if( SprMngr.IsAccumulateAtlasActive() )
         SCRIPT_ERROR_R0( "Unable to call this function now." );
-    char fname_[ MAX_FOPATH ];
-    Str::Copy( fname_, FileManager::GetPath( path_type ) );
-    Str::Append( fname_, fname.c_str() );
+    char               fname_[ MAX_FOPATH ];
+    FileManager::GetDataPath( fname.c_str(), path_type, fname_ );
     Animation3dEntity* entity = Animation3dEntity::GetEntity( fname_ );
     return entity != NULL;
 }

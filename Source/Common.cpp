@@ -671,14 +671,12 @@ const char* GetWindowName()
     // Default config names
     #if defined ( FONLINE_SERVER )
     static char window_name[ MAX_FOPATH ] = { "FOnline Server\0--default-server-name--" };
-    int         path_type = PT_SERVER_ROOT;
     #elif defined ( FONLINE_MAPPER )
     static char window_name[ MAX_FOPATH ] = { "FOnline Mapper\0--default-mapper-name--" };
-    int         path_type = PT_MAPPER_ROOT;
     #else // FONLINE_CLIENT and others
     static char window_name[ MAX_FOPATH ] = { "FOnline\0--default-client-name--" };
-    int         path_type = PT_ROOT;
     #endif
+    int         path_type = PT_ROOT;
 
     // Extract config name from current exe
     static bool processed = false;
@@ -812,7 +810,7 @@ void GetClientOptions()
     // Load config file
     # ifdef FONLINE_MAPPER
     IniParser cfg_mapper;
-    cfg_mapper.LoadFile( GetConfigFileName(), PT_MAPPER_ROOT );
+    cfg_mapper.LoadFile( GetConfigFileName(), PT_ROOT );
 
     cfg_mapper.GetStr( "ClientPath", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ClientPath" );
@@ -827,13 +825,10 @@ void GetClientOptions()
     if( GameOpt.ServerPath.length() && GameOpt.ServerPath.c_str()[ GameOpt.ServerPath.length() - 1 ] != DIR_SLASH_C )
         GameOpt.ServerPath += DIR_SLASH_S;
 
-    FileManager::SetDataPath( GameOpt.ClientPath.c_str() );
-
     // Client config
     IniParser cfg;
     cfg_mapper.GetStr( "ClientName", "FOnline", buf );
-    Str::Append( buf, ".cfg" );
-    cfg.LoadFile( buf, PT_ROOT );
+    cfg.LoadFile( ( GameOpt.ClientPath.c_std_str() + buf + ".cfg" ).c_str(), PT_ROOT );
     # else
     IniParser cfg;
     cfg.LoadFile( GetConfigFileName(), PT_ROOT );
@@ -926,10 +921,6 @@ void GetClientOptions()
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugSprites, "-DebugSprites" );
 
     // Str
-    cfg.GetStr( CLIENT_CONFIG_APP, "FonlineDataPath", DIR_SLASH_SD "data", buf );
-    GETOPTIONS_CMD_LINE_STR( buf, "-FonlineDataPath" );
-    FileManager::FormatPath( buf );
-    GameOpt.FoDataPath = buf;
     cfg.GetStr( CLIENT_CONFIG_APP, "RemoteHost", "localhost", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-RemoteHost" );
     GameOpt.Host = buf;
@@ -1001,7 +992,7 @@ bool AllowClientNativeCalls = false;
 void GetServerOptions()
 {
     IniParser cfg;
-    cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
+    cfg.LoadFile( GetConfigFileName(), PT_ROOT );
     ServerGameSleep = cfg.GetInt( "GameSleep", 10 );
     Script::SetConcurrentExecution( cfg.GetInt( "ScriptConcurrentExecution", 0 ) != 0 );
     WorldSaveManager = ( cfg.GetInt( "WorldSaveManager", 1 ) != 0 );
@@ -1331,7 +1322,6 @@ GameOptions::GameOptions()
     ScrollDelay = 10;
     ScrollStep = 1;
     ScrollCheck = true;
-    FoDataPath = "";
     FixedFPS = 100;
     FPS = 0;
     PingPeriod = 2000;
@@ -1693,127 +1683,6 @@ void Thread_Sleep( uint ms ) // Used in Mutex.h as extern function
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
-
-// Deprecated stuff
-#include "FileManager.h"
-#include "Text.h"
-#include "Item.h"
-
-bool     ListsLoaded = false;
-PCharVec LstNames[ PATH_LIST_COUNT ];
-
-void LoadList( const char* lst_name, int path_type )
-{
-    FileManager fm;
-    if( !fm.LoadFile( lst_name, PT_ROOT ) )
-        return;
-
-    char        str[ 1024 ];
-    uint        str_cnt = 0;
-    const char* path = FileManager::GetPath( path_type );
-
-    PCharVec&   lst = LstNames[ path_type ];
-    for( uint i = 0, j = (uint) lst.size(); i < j; i++ )
-        SAFEDELA( lst[ i ] );
-    lst.clear();
-
-    while( fm.GetLine( str, 1023 ) )
-    {
-        // Lower text
-        Str::Lower( str );
-
-        // Skip comments
-        if( !Str::Length( str ) || str[ 0 ] == '#' || str[ 0 ] == ';' )
-            continue;
-
-        // New value of line
-        if( str[ 0 ] == '*' )
-        {
-            str_cnt = atoi( &str[ 1 ] );
-            continue;
-        }
-
-        // Find ext
-        char* ext = (char*) FileManager::GetExtension( str );
-        if( !ext )
-        {
-            str_cnt++;
-            WriteLogF( _FUNC_, " - Extension not found in line<%s>, skip.\n", str );
-            continue;
-        }
-
-        // Cut off comments
-        int j = 0;
-        while( ext[ j ] && ext[ j ] != ' ' )
-            j++;
-        ext[ j ] = '\0';
-
-        // Create name
-        uint  len = Str::Length( path ) + Str::Length( str ) + 1;
-        char* rec = new char[ len ];
-        Str::Copy( rec, len, path );
-        Str::Copy( rec, len, str );
-
-        // Check for size
-        if( str_cnt >= lst.size() )
-            lst.resize( str_cnt + 1 );
-
-        // Add
-        lst[ str_cnt ] = rec;
-        str_cnt++;
-    }
-}
-
-string GetPicName( uint lst_num, ushort pic_num )
-{
-    if( pic_num >= LstNames[ lst_num ].size() || !LstNames[ lst_num ][ pic_num ] )
-        return "";
-    return string( LstNames[ lst_num ][ pic_num ] );
-}
-
-string Deprecated_GetPicName( int pid, int type, ushort pic_num )
-{
-    if( !ListsLoaded )
-    {
-        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "tiles.lst", PT_ART_TILES );
-        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "items.lst", PT_ART_ITEMS );
-        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "scenery.lst", PT_ART_SCENERY );
-        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "walls.lst", PT_ART_WALLS );
-        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "misc.lst", PT_ART_MISC );
-        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "intrface.lst", PT_ART_INTRFACE );
-        LoadList( "data" DIR_SLASH_S "deprecated_lists" DIR_SLASH_S "inven.lst", PT_ART_INVEN );
-        ListsLoaded = true;
-    }
-
-    if( pid == -1 )
-        return GetPicName( PT_ART_INTRFACE, pic_num );
-    if( pid == -2 )
-        return GetPicName( PT_ART_TILES, pic_num );
-    if( pid == -3 )
-        return GetPicName( PT_ART_INVEN, pic_num );
-
-    if( type == ITEM_TYPE_DOOR )
-        return GetPicName( PT_ART_SCENERY, pic_num );                       // For doors from Scenery
-    else if( pid == SP_MISC_SCRBLOCK || SP_MISC_GRID_MAP( pid ) || SP_MISC_GRID_GM( pid ) )
-        return GetPicName( PT_ART_MISC, pic_num );                          // For exit grids from Misc
-    else if( pid >= 4000 && pid <= 4200 )
-        return GetPicName( PT_ART_MISC, pic_num );                          // From Misc
-    else if( type >= ITEM_TYPE_ARMOR && type <= ITEM_TYPE_DOOR )
-        return GetPicName( PT_ART_ITEMS, pic_num );                         // From Items
-    else if( type == ITEM_TYPE_GENERIC || type == ITEM_TYPE_GRID )
-        return GetPicName( PT_ART_SCENERY, pic_num );                       // From Scenery
-    else if( type == ITEM_TYPE_WALL )
-        return GetPicName( PT_ART_WALLS, pic_num );                         // From Walls
-    return "";
-}
-
-uint Deprecated_GetPicHash( int pid, int type, ushort pic_num )
-{
-    string name = Deprecated_GetPicName( pid, type, pic_num );
-    if( !name.length() )
-        return 0;
-    return Str::GetHash( name.c_str() );
-}
 
 void Deprecated_CondExtToAnim2( uchar cond, uchar cond_ext, uint& anim2ko, uint& anim2dead )
 {

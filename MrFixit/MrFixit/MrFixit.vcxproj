@@ -79,14 +79,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Source\ConstantsManager.cpp" />
-    <ClCompile Include="..\..\Source\DatFile\cfile.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\Source\DatFile\unlzss.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\..\Source\FileSystem.cpp" />
     <ClCompile Include="..\..\Source\IniParser.cpp" />
     <ClCompile Include="..\..\Source\MsgFiles.cpp" />
@@ -123,26 +115,6 @@
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
     </ClCompile>
     <ClCompile Include="..\..\Source\Zlib\deflate.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
-    </ClCompile>
-    <ClCompile Include="..\..\Source\Zlib\gzclose.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
-    </ClCompile>
-    <ClCompile Include="..\..\Source\Zlib\gzlib.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
-    </ClCompile>
-    <ClCompile Include="..\..\Source\Zlib\gzread.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
-    </ClCompile>
-    <ClCompile Include="..\..\Source\Zlib\gzwrite.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
       </PrecompiledHeader>
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
@@ -195,8 +167,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Source\ConstantsManager.h" />
-    <ClInclude Include="..\..\Source\DatFile\cfile.h" />
-    <ClInclude Include="..\..\Source\DatFile\unlzss.h" />
     <ClInclude Include="..\..\Source\Common.h" />
     <ClInclude Include="..\..\Source\CraftManager.h" />
     <ClInclude Include="..\..\Source\Crypt.h" />
@@ -217,7 +187,6 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="..\..\Source\Zlib\crc32.h" />
     <ClInclude Include="..\..\Source\Zlib\deflate.h" />
-    <ClInclude Include="..\..\Source\Zlib\gzguts.h" />
     <ClInclude Include="..\..\Source\Zlib\inffast.h" />
     <ClInclude Include="..\..\Source\Zlib\inffixed.h" />
     <ClInclude Include="..\..\Source\Zlib\inflate.h" />

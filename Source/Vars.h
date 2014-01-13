@@ -139,7 +139,6 @@ class VarManager
 {
 private:
     bool         isInit;
-    string       varsPath;
     TempVarVec   tempVars;
     StrUShortMap varsNames;
     Mutex        varsLocker;
@@ -147,7 +146,7 @@ private:
     bool LoadTemplateVars( const char* str, TempVarVec& vars );   // Return count error
 
 public:
-    bool Init( const char* fpath );
+    bool Init();
     void Finish();
     void Clear();
     bool IsInit() { return isInit; }

@@ -11,10 +11,9 @@ class DataFile
 {
 public:
     virtual const string& GetPackName() = 0;
-    virtual bool          IsFilePresent( const char* fname ) = 0;
-    virtual uchar*        OpenFile( const char* fname, uint& len ) = 0;
+    virtual bool          IsFilePresent( const char* fname, uint64& write_time ) = 0;
+    virtual uchar*        OpenFile( const char* fname, uint& len, uint64& write_time ) = 0;
     virtual void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) = 0;
-    virtual void          GetTime( uint64* create, uint64* access, uint64* write ) = 0;
     virtual ~DataFile() {}
 };
 typedef vector< DataFile* > DataFileVec;

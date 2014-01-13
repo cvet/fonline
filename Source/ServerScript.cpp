@@ -125,7 +125,7 @@ bool FOServer::InitScriptSystem()
     scripts_cfg.LoadFile( SCRIPTS_LST, PT_SERVER_SCRIPTS );
     if( !scripts_cfg.IsLoaded() )
     {
-        WriteLog( "Config file<%s> not found.\n", FileManager::GetFullPath( SCRIPTS_LST, PT_SERVER_SCRIPTS ) );
+        WriteLog( "Config file<%s> not found.\n", FileManager::GetDataPath( SCRIPTS_LST, PT_SERVER_SCRIPTS ) );
         return false;
     }
 
@@ -446,7 +446,7 @@ bool FOServer::ReloadClientScripts()
 
             // Load dll
             FileManager dll;
-            if( !dll.LoadFile( fname, -1 ) )
+            if( !dll.LoadFile( fname, PT_ROOT ) )
             {
                 if( !d )
                 {
@@ -6139,7 +6139,7 @@ bool FOServer::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
 {
     if( FileManager::LoadDataFile( dat_name.c_str() ) )
     {
-        ConstantsManager::Initialize( PT_SERVER_DATA );
+        ConstantsManager::Initialize( PT_SERVER_CONFIGS );
         return true;
     }
     return false;

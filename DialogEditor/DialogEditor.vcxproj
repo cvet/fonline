@@ -130,26 +130,6 @@
       </PrecompiledHeader>
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
     </ClCompile>
-    <ClCompile Include="..\Source\Zlib\gzclose.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\gzlib.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\gzread.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\gzwrite.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
-    </ClCompile>
     <ClCompile Include="..\Source\Zlib\infback.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
       </PrecompiledHeader>
@@ -195,14 +175,6 @@
       </PrecompiledHeader>
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
     </ClCompile>
-    <ClCompile Include="..\Source\DatFile\cfile.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Source\DatFile\unlzss.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Source\Common.h" />
@@ -241,7 +213,6 @@
     <ClInclude Include="..\Source\Version.h" />
     <ClInclude Include="..\Source\Zlib\crc32.h" />
     <ClInclude Include="..\Source\Zlib\deflate.h" />
-    <ClInclude Include="..\Source\Zlib\gzguts.h" />
     <ClInclude Include="..\Source\Zlib\inffast.h" />
     <ClInclude Include="..\Source\Zlib\inffixed.h" />
     <ClInclude Include="..\Source\Zlib\inflate.h" />
@@ -252,8 +223,6 @@
     <ClInclude Include="..\Source\Zlib\zconf.h" />
     <ClInclude Include="..\Source\Zlib\zlib.h" />
     <ClInclude Include="..\Source\Zlib\zutil.h" />
-    <ClInclude Include="..\Source\DatFile\cfile.h" />
-    <ClInclude Include="..\Source\DatFile\unlzss.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="$this.Icon.ico" />

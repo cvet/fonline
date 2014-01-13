@@ -615,7 +615,6 @@ struct GameOptions
     uint         ScrollDelay;
     int          ScrollStep;
     bool         ScrollCheck;
-    ScriptString FoDataPath;
     int          FixedFPS;
     uint         FPS;
     uint         PingPeriod;
@@ -942,14 +941,7 @@ public:
 /*                                                                      */
 /************************************************************************/
 
-// Deprecated stuff
-// tiles.lst, items.lst, scenery.lst, walls.lst, misc.lst, intrface.lst, inven.lst
-// pid == -1 - interface
-// pid == -2 - tiles
-// pid == -3 - inventory
-string Deprecated_GetPicName( int pid, int type, ushort pic_num );
-uint   Deprecated_GetPicHash( int pid, int type, ushort pic_num );
-void   Deprecated_CondExtToAnim2( uchar cond, uchar cond_ext, uint& anim2ko, uint& anim2dead );
+void Deprecated_CondExtToAnim2( uchar cond, uchar cond_ext, uint& anim2ko, uint& anim2dead );
 
 // Preprocessor output formatting
 void FormatPreprocessorOutput( string& str );

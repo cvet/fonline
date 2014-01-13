@@ -19,7 +19,7 @@ struct CritData
     uint       BaseType;
     uchar      Dir;
     uchar      Cond;
-    uchar      ReservedCE;
+    uchar      Reserved000;
     char       Reserved0;
     uint       ScriptId;
     uint       ShowCritterDist1;

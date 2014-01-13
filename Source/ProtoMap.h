@@ -217,9 +217,6 @@ public:
     #endif
 
 private:
-    bool ReadHeader( FileManager& fm, int version );
-    bool ReadTiles( FileManager& fm, int version );
-    bool ReadObjects( FileManager& fm, int version );
     bool LoadTextFormat( const char* buf );
     #ifdef FONLINE_MAPPER
     void SaveTextFormat( FileManager& fm );

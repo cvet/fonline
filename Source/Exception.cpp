@@ -86,13 +86,14 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = except ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER
-    FileManager::GetFullPath( NULL, PT_SERVER_DUMPS, dump_path_dir );
+    FileManager::GetWritePath( "", PT_SERVER_DUMPS, dump_path_dir );
     # else
-    FileManager::GetFullPath( NULL, PT_ROOT, dump_path_dir );
+    FileManager::GetWritePath( "", PT_DATA, dump_path_dir );
     # endif
     Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
                  dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
+    CreateDirectoryTree( dump_path );
     FILE* f = fopen( dump_path, "wt" );
     if( f )
     {
@@ -460,9 +461,9 @@ LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = except ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER
-    FileManager::GetFullPath( NULL, PT_SERVER_DUMPS, dump_path_dir );
+    FileManager::GetWritePath( "", PT_SERVER_DUMPS, dump_path_dir );
     # else
-    FileManager::GetFullPath( NULL, PT_ROOT, dump_path_dir );
+    FileManager::GetWritePath( "", PT_DATA, dump_path_dir );
     # endif
     Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
                  dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
@@ -587,13 +588,14 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = siginfo ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER
-    FileManager::GetFullPath( NULL, PT_SERVER_DUMPS, dump_path_dir );
+    FileManager::GetWritePath( "", PT_SERVER_DUMPS, dump_path_dir );
     # else
-    FileManager::GetFullPath( NULL, PT_ROOT, dump_path_dir );
+    FileManager::GetWritePath( "", PT_ROOT, dump_path_dir );
     # endif
     Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
                  dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
+    CreateDirectoryTree( dump_path );
     FILE* f = fopen( dump_path, "wt" );
     if( f )
     {

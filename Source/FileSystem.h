@@ -21,22 +21,25 @@
 # define SEEK_END         ( 2 ) // Set file pointer to EOF plus "offset"
 #endif
 
-void* FileOpen( const char* fname, bool write, bool write_through = false );
-void* FileOpenForAppend( const char* fname, bool write_through = false );
-void  FileClose( void* file );
-bool  FileRead( void* file, void* buf, uint len, uint* rb = NULL );
-bool  FileWrite( void* file, const void* buf, uint len );
-bool  FileSetPointer( void* file, int offset, int origin );
-void  FileGetTime( void* file, uint64& tc, uint64& ta, uint64& tw );
-uint  FileGetSize( void* file );
-bool  FileDelete( const char* fname );
-bool  FileExist( const char* fname );
-bool  FileRename( const char* fname, const char* new_fname );
+void*  FileOpen( const char* fname, bool write, bool write_through = false );
+void*  FileOpenForAppend( const char* fname, bool write_through = false );
+void   FileClose( void* file );
+bool   FileRead( void* file, void* buf, uint len, uint* rb = NULL );
+bool   FileWrite( void* file, const void* buf, uint len );
+bool   FileSetPointer( void* file, int offset, int origin );
+uint64 FileGetWriteTime( void* file );
+uint   FileGetSize( void* file );
+bool   FileDelete( const char* fname );
+bool   FileExist( const char* fname );
+bool   FileRename( const char* fname, const char* new_fname );
+void   CreateDirectoryTree( const char* path );
 
 struct FIND_DATA
 {
-    char FileName[ MAX_FOPATH ];
-    bool IsDirectory;
+    char   FileName[ MAX_FOPATH ];
+    uint   FileSize;
+    uint64 WriteTime;
+    bool   IsDirectory;
 };
 void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd );
 bool  FileFindNext( void* descriptor, FIND_DATA& fd );

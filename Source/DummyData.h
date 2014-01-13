@@ -1387,10 +1387,6 @@ struct GameOptions
     int ScrollDelay;
     int ScrollStep;
     int ScrollCheck;
-    int MasterPath;
-    int CritterPath;
-    int FoPatchPath;
-    int FoDataPath;
     int FixedFPS;
     int FPS;
     int PingPeriod;

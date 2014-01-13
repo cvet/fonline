@@ -1,10 +1,58 @@
 #include "StdAfx.h"
 #include "DataFile.h"
 #include "zlib/unzip.h"
+#include "FileManager.h"
 
 /************************************************************************/
-/* Dat/Zip loaders                                                      */
+/* Folder/Dat/Zip loaders                                               */
 /************************************************************************/
+
+template< class T >
+void GetFileNames_( const T& index_map, const char* path, bool include_subdirs, const char* ext, StrVec& result )
+{
+    size_t path_len = Str::Length( path );
+    for( auto it = index_map.begin(), end = index_map.end(); it != end; ++it )
+    {
+        const string& fname = ( *it ).first;
+        if( !fname.compare( 0, path_len, path ) && ( include_subdirs || fname.find_last_of( '\\' ) < path_len ) )
+        {
+            if( ext && *ext )
+            {
+                size_t pos = fname.find_last_of( '.' );
+                if( pos != string::npos && Str::CompareCase( &fname.c_str()[ pos + 1 ], ext ) )
+                    result.push_back( fname );
+            }
+            else
+            {
+                result.push_back( fname );
+            }
+        }
+    }
+}
+
+class FolderFile: public DataFile
+{
+private:
+    struct FileEntry
+    {
+        string FileName;
+        string ShortFileName;
+        uint   FileSize;
+        uint64 WriteTime;
+    };
+    typedef map< string, FileEntry > IndexMap;
+
+    IndexMap filesTree;
+    string   basePath;
+
+public:
+    bool Init( const char* fname );
+
+    const string& GetPackName() { return basePath; }
+    bool          IsFilePresent( const char* fname, uint64& write_time );
+    uchar*        OpenFile( const char* fname, uint& len, uint64& write_time );
+    void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
+};
 
 class FalloutDatFile: public DataFile
 {
@@ -15,8 +63,7 @@ private:
     string   fileName;
     uchar*   memTree;
     void*    datHandle;
-
-    uint64   timeCreate, timeAccess, timeWrite;
+    uint64   writeTime;
 
     bool ReadTree();
 
@@ -25,10 +72,9 @@ public:
     ~FalloutDatFile();
 
     const string& GetPackName() { return fileName; }
-    bool          IsFilePresent( const char* fname );
-    uchar*        OpenFile( const char* fname, uint& len );
-    void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
-    void          GetTime( uint64* create, uint64* access, uint64* write );
+    bool          IsFilePresent( const char* fname, uint64& write_time );
+    uchar*        OpenFile( const char* fname, uint& len, uint64& write_time );
+    void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) { GetFileNames_( filesTree, path, include_subdirs, ext, result ); }
 };
 
 class ZipFile: public DataFile
@@ -44,8 +90,7 @@ private:
     IndexMap filesTree;
     string   fileName;
     unzFile  zipHandle;
-
-    uint64   timeCreate, timeAccess, timeWrite;
+    uint64   writeTime;
 
     bool ReadTree();
 
@@ -54,10 +99,9 @@ public:
     ~ZipFile();
 
     const string& GetPackName() { return fileName; }
-    bool          IsFilePresent( const char* fname );
-    uchar*        OpenFile( const char* fname, uint& len );
-    void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
-    void          GetTime( uint64* create, uint64* access, uint64* write );
+    bool          IsFilePresent( const char* fname, uint64& write_time );
+    uchar*        OpenFile( const char* fname, uint& len, uint64& write_time );
+    void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) { GetFileNames_( filesTree, path, include_subdirs, ext, result ); }
 };
 
 /************************************************************************/
@@ -72,47 +116,127 @@ DataFile* OpenDataFile( const char* fname )
         return NULL;
     }
 
-    const char* ext = Str::Substring( fname, "." );
-    if( !ext )
-    {
-        WriteLogF( _FUNC_, " - File<%s> extension not found.\n", fname );
-        return NULL;
-    }
-
-    const char* ext_ = ext;
-    while( ( ext_ = Str::Substring( ext_ + 1, "." ) ) )
-        ext = ext_;
-
-    if( Str::CompareCase( ext, ".dat" ) ) // Try open DAT
+    const char* ext = FileManager::GetExtension( fname );
+    if( ext && Str::CompareCase( ext, "dat" ) ) // Try open DAT
     {
         FalloutDatFile* dat = new FalloutDatFile();
-        if( !dat || !dat->Init( fname ) )
+        if( !dat->Init( fname ) )
         {
             WriteLogF( _FUNC_, " - Unable to open DAT file<%s>.\n", fname );
-            if( dat )
-                delete dat;
+            delete dat;
             return NULL;
         }
         return dat;
     }
-    else if( Str::CompareCase( ext, ".zip" ) || Str::CompareCase( ext, ".bos" ) ) // Try open ZIP, BOS
+    else if( ext && ( Str::CompareCase( ext, "zip" ) || Str::CompareCase( ext, "bos" ) ) ) // Try open ZIP, BOS
     {
         ZipFile* zip = new ZipFile();
-        if( !zip || !zip->Init( fname ) )
+        if( !zip->Init( fname ) )
         {
             WriteLogF( _FUNC_, " - Unable to open ZIP file<%s>.\n", fname );
-            if( zip )
-                delete zip;
+            delete zip;
             return NULL;
         }
         return zip;
     }
-    else     // Bad file format
+    else     // Try open Folder
     {
-        WriteLogF( _FUNC_, " - Invalid file format<%s>. Supported only DAT and ZIP.\n", fname );
+        FolderFile* folder = new FolderFile();
+        if( !folder->Init( fname ) )
+        {
+            WriteLogF( _FUNC_, " - Unable to open Folder<%s>.\n", fname );
+            delete folder;
+            return NULL;
+        }
+        return folder;
     }
 
     return NULL;
+}
+
+/************************************************************************/
+/* Folder file                                                          */
+/************************************************************************/
+
+bool FolderFile::Init( const char* fname )
+{
+    basePath = fname;
+
+    StrVec              files;
+    vector< FIND_DATA > find_data;
+    FileManager::GetFolderFileNames( fname, true, NULL, files, &find_data );
+
+    char name[ MAX_FOPATH ];
+    for( size_t i = 0, j = files.size(); i < j; i++ )
+    {
+        FileEntry fe;
+        fe.FileName = basePath + files[ i ];
+        fe.ShortFileName = files[ i ];
+        fe.FileSize = find_data[ i ].FileSize;
+        fe.WriteTime = find_data[ i ].WriteTime;
+
+        Str::Copy( name, files[ i ].c_str() );
+        Str::Lower( name );
+        #ifndef FO_WINDOWS
+        for( char* str = name; *str; str++ )
+        {
+            if( *str == '/' )
+                *str = '\\';
+        }
+        #endif
+
+        filesTree.insert( PAIR( string( name ), fe ) );
+    }
+
+    return true;
+}
+
+bool FolderFile::IsFilePresent( const char* fname, uint64& write_time )
+{
+    auto it = filesTree.find( fname );
+    if( it == filesTree.end() )
+        return NULL;
+
+    FileEntry& fe = ( *it ).second;
+    write_time = fe.WriteTime;
+    return true;
+}
+
+uchar* FolderFile::OpenFile( const char* fname, uint& len, uint64& write_time )
+{
+    auto it = filesTree.find( fname );
+    if( it == filesTree.end() )
+        return NULL;
+
+    FileEntry& fe = ( *it ).second;
+    void*      f = FileOpen( fe.FileName.c_str(), false );
+    if( !f )
+        return NULL;
+
+    len = fe.FileSize;
+    uchar* buf = new uchar[ len + 1 ];
+
+    if( !FileRead( f, buf, len ) )
+    {
+        FileClose( f );
+        delete[] buf;
+        return NULL;
+    }
+    FileClose( f );
+
+    write_time = fe.WriteTime;
+    buf[ len ] = 0;
+    return buf;
+}
+
+void FolderFile::GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result )
+{
+    StrVec result_;
+    GetFileNames_( filesTree, path, include_subdirs, ext, result_ );
+    for( size_t i = 0, j = result_.size(); i < j; i++ )
+        result_[ i ] = filesTree[ result_[ i ] ].ShortFileName;
+    if( !result_.empty() )
+        result.insert( result.begin(), result_.begin(), result_.end() );
 }
 
 /************************************************************************/
@@ -132,7 +256,7 @@ bool FalloutDatFile::Init( const char* fname )
         return false;
     }
 
-    FileGetTime( datHandle, timeCreate, timeAccess, timeWrite );
+    writeTime = FileGetWriteTime( datHandle );
 
     if( !ReadTree() )
     {
@@ -272,15 +396,16 @@ bool FalloutDatFile::ReadTree()
     return true;
 }
 
-bool FalloutDatFile::IsFilePresent( const char* fname )
+bool FalloutDatFile::IsFilePresent( const char* fname, uint64& write_time )
 {
     if( !datHandle )
         return false;
 
+    write_time = writeTime;
     return filesTree.find( fname ) != filesTree.end();
 }
 
-uchar* FalloutDatFile::OpenFile( const char* fname, uint& len )
+uchar* FalloutDatFile::OpenFile( const char* fname, uint& len, uint64& write_time )
 {
     if( !datHandle )
         return NULL;
@@ -299,7 +424,7 @@ uchar* FalloutDatFile::OpenFile( const char* fname, uint& len )
         return NULL;
 
     len = real_size;
-    uchar* buf = new uchar[ len ];
+    uchar* buf = new uchar[ len + 1 ];
 
     if( !type )
     {
@@ -359,39 +484,9 @@ uchar* FalloutDatFile::OpenFile( const char* fname, uint& len )
         inflateEnd( &stream );
     }
 
+    write_time = writeTime;
+    buf[ len ] = 0;
     return buf;
-}
-
-void FalloutDatFile::GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result )
-{
-    size_t path_len = Str::Length( path );
-    for( auto it = filesTree.begin(), end = filesTree.end(); it != end; ++it )
-    {
-        const string& fname = ( *it ).first;
-        if( !fname.compare( 0, path_len, path ) && ( include_subdirs || fname.find_last_of( '\\' ) < path_len ) )
-        {
-            if( ext && *ext )
-            {
-                size_t pos = fname.find_last_of( '.' );
-                if( pos != string::npos && Str::CompareCase( &fname.c_str()[ pos + 1 ], ext ) )
-                    result.push_back( fname );
-            }
-            else
-            {
-                result.push_back( fname );
-            }
-        }
-    }
-}
-
-void FalloutDatFile::GetTime( uint64* create, uint64* access, uint64* write )
-{
-    if( create )
-        *create = timeCreate;
-    if( access )
-        *access = timeAccess;
-    if( write )
-        *write = timeWrite;
 }
 
 /************************************************************************/
@@ -418,7 +513,7 @@ bool ZipFile::Init( const char* fname )
         return false;
     }
 
-    FileGetTime( file, timeCreate, timeAccess, timeWrite );
+    writeTime = FileGetWriteTime( file );
 
     FileClose( file );
 
@@ -492,15 +587,16 @@ bool ZipFile::ReadTree()
     return true;
 }
 
-bool ZipFile::IsFilePresent( const char* fname )
+bool ZipFile::IsFilePresent( const char* fname, uint64& write_time )
 {
     if( !zipHandle )
         return false;
 
+    write_time = writeTime;
     return filesTree.find( fname ) != filesTree.end();
 }
 
-uchar* ZipFile::OpenFile( const char* fname, uint& len )
+uchar* ZipFile::OpenFile( const char* fname, uint& len, uint64& write_time )
 {
     if( !zipHandle )
         return NULL;
@@ -531,41 +627,10 @@ uchar* ZipFile::OpenFile( const char* fname, uint& len )
         return NULL;
     }
 
+    write_time = writeTime;
     len = info.UncompressedSize;
     buf[ len ] = 0;
     return buf;
-}
-
-void ZipFile::GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result )
-{
-    size_t path_len = Str::Length( path );
-    for( auto it = filesTree.begin(), end = filesTree.end(); it != end; ++it )
-    {
-        const string& fname = ( *it ).first;
-        if( !fname.compare( 0, path_len, path ) && ( include_subdirs || fname.find_last_of( '\\' ) < path_len ) )
-        {
-            if( ext && *ext )
-            {
-                size_t pos = fname.find_last_of( '.' );
-                if( pos != string::npos && Str::CompareCase( &fname.c_str()[ pos + 1 ], ext ) )
-                    result.push_back( fname );
-            }
-            else
-            {
-                result.push_back( fname );
-            }
-        }
-    }
-}
-
-void ZipFile::GetTime( uint64* create, uint64* access, uint64* write )
-{
-    if( create )
-        *create = timeCreate;
-    if( access )
-        *access = timeAccess;
-    if( write )
-        *write = timeWrite;
 }
 
 /************************************************************************/

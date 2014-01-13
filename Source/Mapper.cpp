@@ -3,6 +3,8 @@
 
 bool      FOMapper::SpritesCanDraw = false;
 FOMapper* FOMapper::Self = NULL;
+char      FOMapper::ServerWritePath[ MAX_FOPATH ];
+char      FOMapper::ClientWritePath[ MAX_FOPATH ];
 FOMapper::FOMapper()
 {
     Self = this;
@@ -112,16 +114,12 @@ bool FOMapper::Init()
     GameOpt.ScrollCheck = false;
 
     // File manager
-    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
-    FileManager::InitDataFiles( GameOpt.ClientPath.c_str() );
-    FileManager::InitDataFiles( ".\\" );
-
-    // Cache
-    FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_CACHE ) );
-    char cache_name[ MAX_FOPATH ] = { "singleplayer" };
-    if( !Singleplayer )
-        Str::Format( cache_name, "%s.%u", GameOpt.Host.c_str(), GameOpt.Port );
-    FileManager::SetCacheName( cache_name );
+    Str::Copy( ServerWritePath, GameOpt.ServerPath.c_str() );
+    Str::Copy( ClientWritePath, ( GameOpt.ClientPath.c_std_str() + "data" + DIR_SLASH_S ).c_str() );
+    FileManager::InitDataFiles( DIR_SLASH_SD "data" DIR_SLASH_S );
+    FileManager::InitDataFiles( ServerWritePath );
+    FileManager::InitDataFiles( ClientWritePath );
+    FileManager::SetWritePath( ClientWritePath );
 
     // Sprite manager
     if( !SprMngr.Init() )
@@ -152,10 +150,9 @@ bool FOMapper::Init()
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
 
     // Names
-    ConstantsManager::Initialize( PT_DATA );
-    FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
-    ConstantsManager::Initialize( PT_SERVER_DATA );
-    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+    FileManager::SetWritePath( ServerWritePath );
+    ConstantsManager::Initialize( PT_SERVER_CONFIGS );
+    FileManager::SetWritePath( ClientWritePath );
 
     // Resource manager
     ResMngr.Refresh();
@@ -174,17 +171,16 @@ bool FOMapper::Init()
     InitScriptSystem();
 
     // Server path
-    FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
+    FileManager::SetWritePath( ServerWritePath );
 
     // Language Packs
     IniParser cfg_mapper;
-    cfg_mapper.LoadFile( GetConfigFileName(), PT_MAPPER_ROOT );
+    cfg_mapper.LoadFile( GetConfigFileName(), PT_ROOT );
     char      server_cfg_name[ MAX_FOPATH ];
     cfg_mapper.GetStr( "ServerName", "FOnlineServer", server_cfg_name );
-    Str::Append( server_cfg_name, ".cfg" );
 
     IniParser cfg_server;
-    cfg_server.LoadFile( server_cfg_name, PT_SERVER_ROOT );
+    cfg_server.LoadFile( ( GameOpt.ServerPath.c_std_str() + server_cfg_name + ".cfg" ).c_str(), PT_ROOT );
     char      lang_name[ MAX_FOTEXT ];
     cfg_server.GetStr( "Language_0", DEFAULT_LANGUAGE, lang_name );
     if( strlen( lang_name ) != 4 )
@@ -258,7 +254,7 @@ bool FOMapper::Init()
         TabsActive[ i ] = &( *Tabs[ i ].begin() ).second;
     }
 
-    TabsTiles[ INT_MODE_TILE ].TileDirs.push_back( FileManager::GetPath( PT_ART_TILES ) );
+    TabsTiles[ INT_MODE_TILE ].TileDirs.push_back( FileManager::GetDataPath( "", PT_ART_TILES ) );
     TabsTiles[ INT_MODE_TILE ].TileSubDirs.push_back( true );
 
     // Initialize tabs scroll and names
@@ -275,7 +271,7 @@ bool FOMapper::Init()
     TabsName[ INT_MODE_LIST ] = "Maps";
 
     // Restore to client path
-    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+    FileManager::SetWritePath( ClientWritePath );
 
     // Hex manager
     if( !HexMngr.Init() )
@@ -291,12 +287,12 @@ bool FOMapper::Init()
         char map_name[ MAX_FOPATH ];
         sscanf( Str::Substring( CommandLine, "-Map" ) + strlen( "-Map" ) + 1, "%s", map_name );
 
-        FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
+        FileManager::SetWritePath( ServerWritePath );
 
         ProtoMap* pmap = new ProtoMap();
         bool      initialized = pmap->Init( 0xFFFF, map_name, PT_SERVER_MAPS );
 
-        FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+        FileManager::SetWritePath( ClientWritePath );
 
         if( initialized && HexMngr.SetProtoMap( *pmap ) )
         {
@@ -367,12 +363,12 @@ int FOMapper::InitIface()
     char       int_file[ 256 ];
 
     IniParser  cfg;
-    cfg.LoadFile( GetConfigFileName(), PT_MAPPER_ROOT );
+    cfg.LoadFile( GetConfigFileName(), PT_ROOT );
     cfg.GetStr( "MapperInterface", CFG_DEF_INT_FILE, int_file );
 
-    if( !ini.LoadFile( int_file, PT_MAPPER_DATA ) )
+    if( !ini.LoadFile( int_file, PT_DATA ) )
     {
-        WriteLog( "File<%s> not found.\n", FileManager::GetFullPath( int_file, PT_MAPPER_DATA ) );
+        WriteLog( "File<%s> not found.\n", int_file );
         return __LINE__;
     }
 
@@ -522,27 +518,27 @@ int FOMapper::InitIface()
     // Iface
     char f_name[ 1024 ];
     ini.GetStr( "IntMainPic", "error", f_name );
-    IntMainPic = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
+    IntMainPic = SprMngr.LoadAnimation( f_name, PT_DATA, true );
     ini.GetStr( "IntTabPic", "error", f_name );
-    IntPTab = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
+    IntPTab = SprMngr.LoadAnimation( f_name, PT_DATA, true );
     ini.GetStr( "IntSelectPic", "error", f_name );
-    IntPSelect = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
+    IntPSelect = SprMngr.LoadAnimation( f_name, PT_DATA, true );
     ini.GetStr( "IntShowPic", "error", f_name );
-    IntPShow = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
+    IntPShow = SprMngr.LoadAnimation( f_name, PT_DATA, true );
 
     // Object
     ini.GetStr( "ObjMainPic", "error", f_name );
-    ObjWMainPic = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
+    ObjWMainPic = SprMngr.LoadAnimation( f_name, PT_DATA, true );
     ini.GetStr( "ObjToAllPicDn", "error", f_name );
-    ObjPBToAllDn = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
+    ObjPBToAllDn = SprMngr.LoadAnimation( f_name, PT_DATA, true );
 
     // Sub tabs
     ini.GetStr( "SubTabsPic", "error", f_name );
-    SubTabsPic = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
+    SubTabsPic = SprMngr.LoadAnimation( f_name, PT_DATA, true );
 
     // Console
     ini.GetStr( "ConsolePic", "error", f_name );
-    ConsolePic = SprMngr.LoadAnimation( f_name, PT_MAPPER_DATA, true );
+    ConsolePic = SprMngr.LoadAnimation( f_name, PT_DATA, true );
 
     WriteLog( "Init interface complete.\n" );
     return 0;
@@ -592,8 +588,7 @@ uint FOMapper::AnimLoad( uint name_hash, int res_type )
 uint FOMapper::AnimLoad( const char* fname, int path_type, int res_type )
 {
     char full_name[ MAX_FOPATH ];
-    Str::Copy( full_name, FileManager::GetPath( path_type ) );
-    Str::Append( full_name, fname );
+    FileManager::GetDataPath( fname, path_type, full_name );
 
     AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( full_name ), res_type );
     if( !anim )
@@ -1652,8 +1647,7 @@ void FOMapper::RefreshTiles( int tab )
         bool    include_subdirs = ttab.TileSubDirs[ t ];
 
         StrVec  tiles;
-        FileManager::GetFolderFileNames( path.c_str(), include_subdirs, NULL, tiles );
-        FileManager::GetDatsFileNames( path.c_str(), include_subdirs, NULL, tiles );
+        FileManager::GetDataFileNames( path.c_str(), include_subdirs, NULL, tiles );
 
         struct StrComparator_
         {
@@ -4811,14 +4805,14 @@ void FOMapper::ParseCommand( const char* cmd )
         }
 
         ProtoMap* pmap = new ProtoMap();
-        FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
+        FileManager::SetWritePath( ServerWritePath );
         if( !pmap->Init( 0xFFFF, map_name, PT_SERVER_MAPS ) )
         {
             AddMess( "File not found or truncated." );
-            FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+            FileManager::SetWritePath( ClientWritePath );
             return;
         }
-        FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+        FileManager::SetWritePath( ClientWritePath );
 
         SelectClear();
         if( !HexMngr.SetProtoMap( *pmap ) )
@@ -4854,12 +4848,12 @@ void FOMapper::ParseCommand( const char* cmd )
 
         SelectClear();
         HexMngr.RefreshMap();
-        FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
+        FileManager::SetWritePath( ServerWritePath );
         if( CurProtoMap->Save( map_name, PT_SERVER_MAPS ) )
             AddMess( "Save map success." );
         else
             AddMess( "Save map fail, see log." );
-        FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+        FileManager::SetWritePath( ClientWritePath );
     }
     // Run script
     else if( *cmd == '#' )
@@ -5300,7 +5294,7 @@ void FOMapper::InitScriptSystem()
     #include <ScriptBind.h>
 
     // Load scripts
-    FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
+    FileManager::SetWritePath( ServerWritePath );
     Script::SetScriptsPath( PT_SERVER_SCRIPTS );
 
     // Get config file
@@ -5309,7 +5303,7 @@ void FOMapper::InitScriptSystem()
     if( !scripts_cfg.IsLoaded() )
     {
         WriteLog( "Config file<%s> not found.\n", SCRIPTS_LST );
-        FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+        FileManager::SetWritePath( ClientWritePath );
         return;
     }
 
@@ -5317,7 +5311,7 @@ void FOMapper::InitScriptSystem()
     Script::Undef( NULL );
     Script::Define( "__MAPPER" );
     Script::ReloadScripts( (char*) scripts_cfg.GetBuf(), "mapper", false, "MAPPER_" );
-    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+    FileManager::SetWritePath( ClientWritePath );
 
     // Bind game functions
     ReservedScriptFunction BindGameFunc[] =
@@ -5929,13 +5923,13 @@ ScriptString* FOMapper::SScriptFunc::Global_EncodeUTF8( uint ucs )
 ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( ScriptString& file_name, int path_type )
 {
     ProtoMap* pmap = new ProtoMap();
-    FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
+    FileManager::SetWritePath( ServerWritePath );
     if( !pmap->Init( 0xFFFF, file_name.c_str(), path_type ) )
     {
-        FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+        FileManager::SetWritePath( ClientWritePath );
         return NULL;
     }
-    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+    FileManager::SetWritePath( ClientWritePath );
     Self->LoadedProtoMaps.push_back( pmap );
     return pmap;
 }
@@ -5961,9 +5955,9 @@ bool FOMapper::SScriptFunc::Global_SaveMap( ProtoMap* pmap, ScriptString& file_n
 {
     if( !pmap )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
-    FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
+    FileManager::SetWritePath( ServerWritePath );
     bool result = pmap->Save( file_name.c_str(), path_type );
-    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+    FileManager::SetWritePath( ClientWritePath );
     return result;
 }
 
@@ -5998,8 +5992,8 @@ int FOMapper::SScriptFunc::Global_GetLoadedMaps( ScriptArray* maps )
 
 uint FOMapper::SScriptFunc::Global_GetMapFileNames( ScriptString* dir, ScriptArray* names )
 {
-    FileManager::SetDataPath( GameOpt.ServerPath.c_str() );
-    string dir_ = FileManager::GetFullPath( NULL, PT_SERVER_MAPS );
+    FileManager::SetWritePath( ServerWritePath );
+    string dir_ = FileManager::GetReadPath( "", PT_SERVER_MAPS );
     uint   n = 0;
     if( dir )
         dir_ = dir->c_std_str();
@@ -6008,7 +6002,7 @@ uint FOMapper::SScriptFunc::Global_GetMapFileNames( ScriptString* dir, ScriptArr
     void*     h = FileFindFirst( dir_.c_str(), NULL, fd );
     if( !h )
     {
-        FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+        FileManager::SetWritePath( ClientWritePath );
         return 0;
     }
 
@@ -6037,7 +6031,7 @@ uint FOMapper::SScriptFunc::Global_GetMapFileNames( ScriptString* dir, ScriptArr
     }
     FileFindClose( h );
 
-    FileManager::SetDataPath( ( GameOpt.ClientPath.c_std_str() + GameOpt.FoDataPath.c_std_str() ).c_str() );
+    FileManager::SetWritePath( ClientWritePath );
     return n;
 }
 

@@ -1,5 +1,20 @@
 #include "StdAfx.h"
 
+void CreateDirectoryTree( const char* path )
+{
+    char* work = Str::Duplicate( path );
+    for( char* ptr = work; *ptr; ++ptr )
+    {
+        if( *ptr == DIR_SLASH_C )
+        {
+            *ptr = 0;
+            MakeDirectory( work );
+            *ptr = DIR_SLASH_C;
+        }
+    }
+    delete[] work;
+}
+
 #ifdef FO_WINDOWS
 
 # include <io.h>
@@ -20,13 +35,33 @@ char* WCtoMB( const wchar_t* wc )
     return mb;
 }
 
+uint64 FileTimeToUInt64( FILETIME ft )
+{
+    union
+    {
+        FILETIME       ft;
+        ULARGE_INTEGER ul;
+    } t;
+    t.ft = ft;
+    return PACKUINT64( t.ul.HighPart, t.ul.LowPart );
+}
+
 void* FileOpen( const char* fname, bool write, bool write_through /* = false */ )
 {
     HANDLE file;
     if( write )
+    {
         file = CreateFileW( MBtoWC( fname ), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+        if( file == INVALID_HANDLE_VALUE )
+        {
+            CreateDirectoryTree( fname );
+            file = CreateFileW( MBtoWC( fname ), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+        }
+    }
     else
+    {
         file = CreateFileW( MBtoWC( fname ), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY | FILE_FLAG_SEQUENTIAL_SCAN, NULL );
+    }
     if( file == INVALID_HANDLE_VALUE )
         return NULL;
     return file;
@@ -35,6 +70,11 @@ void* FileOpen( const char* fname, bool write, bool write_through /* = false */ 
 void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
 {
     HANDLE file = CreateFileW( MBtoWC( fname ), GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+    if( file == INVALID_HANDLE_VALUE )
+    {
+        CreateDirectoryTree( fname );
+        file = CreateFileW( MBtoWC( fname ), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+    }
     if( file == INVALID_HANDLE_VALUE )
         return NULL;
     if( !FileSetPointer( file, 0, SEEK_END ) )
@@ -71,17 +111,11 @@ bool FileSetPointer( void* file, int offset, int origin )
     return SetFilePointer( (HANDLE) file, offset, NULL, origin ) != INVALID_SET_FILE_POINTER;
 }
 
-void FileGetTime( void* file, uint64& tc, uint64& ta, uint64& tw )
+uint64 FileGetWriteTime( void* file )
 {
-    union
-    {
-        FILETIME       ft;
-        ULARGE_INTEGER ul;
-    } tc_, ta_, tw_;
-    GetFileTime( (HANDLE) file, &tc_.ft, &ta_.ft, &tw_.ft );
-    tc = PACKUINT64( tc_.ul.HighPart, tc_.ul.LowPart );
-    ta = PACKUINT64( ta_.ul.HighPart, ta_.ul.LowPart );
-    tw = PACKUINT64( tw_.ul.HighPart, tw_.ul.LowPart );
+    FILETIME tc, ta, tw;
+    GetFileTime( (HANDLE) file, &tc, &ta, &tw );
+    return FileTimeToUInt64( tw );
 }
 
 uint FileGetSize( void* file )
@@ -122,6 +156,8 @@ void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd )
 
     Str::Copy( fd.FileName, WCtoMB( wfd.cFileName ) );
     fd.IsDirectory = ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) != 0;
+    fd.FileSize = wfd.nFileSizeLow;
+    fd.WriteTime = FileTimeToUInt64( wfd.ftLastWriteTime );
     if( fd.IsDirectory && ( Str::Compare( fd.FileName, "." ) || Str::Compare( fd.FileName, ".." ) ) )
         if( !FileFindNext( h, fd ) )
             return false;
@@ -137,6 +173,8 @@ bool FileFindNext( void* descriptor, FIND_DATA& fd )
 
     Str::Copy( fd.FileName, WCtoMB( wfd.cFileName ) );
     fd.IsDirectory = ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) != 0;
+    fd.FileSize = wfd.nFileSizeLow;
+    fd.WriteTime = FileTimeToUInt64( wfd.ftLastWriteTime );
     if( fd.IsDirectory && ( Str::Compare( fd.FileName, "." ) || Str::Compare( fd.FileName, ".." ) ) )
         return FileFindNext( (HANDLE) descriptor, fd );
 
@@ -189,6 +227,11 @@ struct FileDesc
 void* FileOpen( const char* fname, bool write, bool write_through /* = false */ )
 {
     FILE* f = fopen( fname, write ? "wb" : "rb" );
+    if( !f && write )
+    {
+        CreateDirectoryTree( fname );
+        f = fopen( fname, "wb" );
+    }
     if( !f )
         return NULL;
     FileDesc* fd = new FileDesc();
@@ -199,9 +242,12 @@ void* FileOpen( const char* fname, bool write, bool write_through /* = false */ 
 
 void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
 {
-    if( access( fname, 0 ) )
-        return NULL;
     FILE* f = fopen( fname, "ab" );
+    if( !f )
+    {
+        CreateDirectoryTree( fname );
+        f = fopen( fname, "ab" );
+    }
     if( !f )
         return NULL;
     FileDesc* fd = new FileDesc();
@@ -240,14 +286,12 @@ bool FileSetPointer( void* file, int offset, int origin )
     return fseek( ( (FileDesc*) file )->f, offset, origin ) == 0;
 }
 
-void FileGetTime( void* file, uint64& tc, uint64& ta, uint64& tw )
+uint64 FileGetWriteTime( void* file )
 {
     int         fd = fileno( ( (FileDesc*) file )->f );
     struct stat st;
     fstat( fd, &st );
-    tc = (uint64) st.st_mtime;
-    ta = (uint64) st.st_atime;
-    tw = (uint64) st.st_mtime;
+    return (uint64) st.st_mtime;
 }
 
 uint FileGetSize( void* file )
@@ -324,13 +368,19 @@ bool FileFindNext( void* descriptor, FIND_DATA& fd )
     bool        valid = false;
     bool        dir = false;
     char        fname[ MAX_FOPATH ];
+    uint        file_size;
+    uint64      write_time;
     Str::Format( fname, "%s%s", ff->path, ent->d_name );
     struct stat st;
     if( !stat( fname, &st ) )
     {
         dir = S_ISDIR( st.st_mode );
         if( dir || S_ISREG( st.st_mode ) )
+        {
             valid = true;
+            file_size = (uint) st.st_size;
+            write_time = (uint64) st.st_mtime;
+        }
     }
 
     // Skip not dirs and regular files
@@ -356,6 +406,8 @@ bool FileFindNext( void* descriptor, FIND_DATA& fd )
     // Fill find data
     Str::Copy( fd.FileName, ent->d_name );
     fd.IsDirectory = dir;
+    fd.FileSize = file_size;
+    fd.WriteTime = write_time;
     return true;
 }
 

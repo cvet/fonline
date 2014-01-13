@@ -12,9 +12,6 @@
     <Filter Include="Zlib">
       <UniqueIdentifier>{dc38aacd-49af-483e-b10e-23ed43184a63}</UniqueIdentifier>
     </Filter>
-    <Filter Include="DatFile">
-      <UniqueIdentifier>{170b0833-4e21-42d6-b8cd-4d4e7e034717}</UniqueIdentifier>
-    </Filter>
     <Filter Include="SHA2">
       <UniqueIdentifier>{78e0ebbd-47b4-4f86-b841-bca4e4ed6529}</UniqueIdentifier>
     </Filter>
@@ -80,18 +77,6 @@
     <ClCompile Include="..\Source\Zlib\deflate.c">
       <Filter>Zlib</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\Zlib\gzclose.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\gzlib.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\gzread.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\gzwrite.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
     <ClCompile Include="..\Source\Zlib\infback.c">
       <Filter>Zlib</Filter>
     </ClCompile>
@@ -118,12 +103,6 @@
     </ClCompile>
     <ClCompile Include="..\Source\Zlib\zutil.c">
       <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\DatFile\cfile.cpp">
-      <Filter>DatFile</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\DatFile\unlzss.cpp">
-      <Filter>DatFile</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\ConstantsManager.cpp">
       <Filter>DialogEditor</Filter>
@@ -202,9 +181,6 @@
     <ClInclude Include="..\Source\Zlib\deflate.h">
       <Filter>Zlib</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\Zlib\gzguts.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\Zlib\inffast.h">
       <Filter>Zlib</Filter>
     </ClInclude>
@@ -234,12 +210,6 @@
     </ClInclude>
     <ClInclude Include="..\Source\Zlib\zutil.h">
       <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\DatFile\cfile.h">
-      <Filter>DatFile</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\DatFile\unlzss.h">
-      <Filter>DatFile</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\ConstantsManager.h">
       <Filter>DialogEditor</Filter>

@@ -233,7 +233,7 @@ void FOServer::GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVe
     admin.clear();
     admin_names.clear();
     IniParser cfg;
-    cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
+    cfg.LoadFile( GetConfigFileName(), PT_ROOT );
     if( cfg.IsLoaded() )
     {
         char buf[ MAX_FOTEXT ];
@@ -372,7 +372,7 @@ void FOServer::DeleteClientFile( const char* client_name )
 {
     // Make old name
     char clients_path[ MAX_FOPATH ];
-    FileManager::GetFullPath( "", PT_SERVER_CLIENTS, clients_path );
+    FileManager::GetWritePath( "", PT_SERVER_CLIENTS, clients_path );
     char old_client_fname[ MAX_FOPATH ];
     Str::Format( old_client_fname, "%s%s.client", clients_path, client_name );
 
@@ -3358,27 +3358,12 @@ bool FOServer::Init()
 
 bool FOServer::InitReal()
 {
+    WriteLog( "***   Starting initialization   ****\n" );
+
     FileManager::InitDataFiles( DIR_SLASH_SD );
 
     IniParser cfg;
-    cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
-
-    WriteLog( "***   Starting initialization   ****\n" );
-    /*
-       WriteLog("FOServer<%u>.\n",sizeof(FOServer));
-       WriteLog("MapMngr<%u>.\n",sizeof(CMapMngr));
-       WriteLog("ItemMngr<%u>.\n",sizeof(ItemManager));
-       WriteLog("VarMngr<%u>.\n",sizeof(CVarMngr));
-       WriteLog("MrFixit<%u>.\n",sizeof(CraftManager));
-       WriteLog("Client<%u>.\n",sizeof(Client));
-       WriteLog("Npc<%u>.\n",sizeof(Npc));
-       WriteLog("Location<%u>.\n",sizeof(Location));
-       WriteLog("Map<%u>.\n",sizeof(Map));
-       WriteLog("Item<%u>.\n",sizeof(Item));
-       WriteLog("Item::ItemData<%u>.\n",sizeof(Item::ItemData));
-       WriteLog("CScriptString<%u>.\n",sizeof(CScriptString));
-       WriteLog("string<%u>.\n",sizeof(string));
-     */
+    cfg.LoadFile( GetConfigFileName(), PT_ROOT );
 
     // Check the sizes of base types
     STATIC_ASSERT( sizeof( char ) == 1 );
@@ -3457,18 +3442,13 @@ bool FOServer::InitReal()
         SaveClients.reserve( MAX_CLIENTS_IN_GAME );
     }
 
-    FileManager::SetDataPath( DIR_SLASH_SD );   // File manager
-    FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_SERVER_SAVE ) );
-    FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_SERVER_CLIENTS ) );
-    FileManager::CreateDirectoryTree( FileManager::GetFullPath( "", PT_SERVER_BANS ) );
-
-    ConstantsManager::Initialize( PT_SERVER_DATA ); // Generate name of defines
+    ConstantsManager::Initialize( PT_SERVER_CONFIGS ); // Generate name of defines
     if( !InitScriptSystem() )
-        return false;                               // Script system
+        return false;                                  // Script system
     if( !InitLangPacks( LangPacks ) )
-        return false;                               // Language packs
+        return false;                                  // Language packs
     if( !ReloadClientScripts() )
-        return false;                               // Client scripts, after language packs initialization
+        return false;                                  // Client scripts, after language packs initialization
     if( !Singleplayer && !LoadClientsData() )
         return false;
     if( !Singleplayer )
@@ -3483,7 +3463,7 @@ bool FOServer::InitReal()
         return false;                    // Critter manager
     if( !MapMngr.Init() )
         return false;                    // Map manager
-    if( !VarMngr.Init( FileManager::GetFullPath( "", PT_SERVER_SCRIPTS ) ) )
+    if( !VarMngr.Init() )
         return false;                    // Var Manager (only before dialog manager!)
     if( !DlgMngr.LoadDialogs( DIALOGS_LST_NAME ) )
         return false;                    // Dialog manager
@@ -3787,7 +3767,7 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
     WriteLog( "Loading language packs...\n" );
 
     IniParser cfg;
-    cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
+    cfg.LoadFile( GetConfigFileName(), PT_ROOT );
     uint      cur_lang = 0;
 
     while( true )
@@ -3987,7 +3967,7 @@ void FOServer::SaveBan( ClientBanned& ban, bool expired )
     const char* fname = ( expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE );
     if( !fm.LoadFile( fname, PT_SERVER_BANS ) )
     {
-        WriteLogF( _FUNC_, " - Can't open file<%s>.\n", FileManager::GetFullPath( fname, PT_SERVER_BANS ) );
+        WriteLogF( _FUNC_, " - Can't open file<%s>.\n", FileManager::GetDataPath( fname, PT_SERVER_BANS ) );
         return;
     }
     fm.SwitchToWrite();
@@ -4006,7 +3986,7 @@ void FOServer::SaveBan( ClientBanned& ban, bool expired )
     fm.SetStr( "\n" );
 
     if( !fm.SaveOutBufToFile( fname, PT_SERVER_BANS ) )
-        WriteLogF( _FUNC_, " - Unable to save file<%s>.\n", FileManager::GetFullPath( fname, PT_SERVER_BANS ) );
+        WriteLogF( _FUNC_, " - Unable to save file<%s>.\n", FileManager::GetWritePath( fname, PT_SERVER_BANS ) );
 }
 
 void FOServer::SaveBans()
@@ -4032,7 +4012,7 @@ void FOServer::SaveBans()
     }
 
     if( !fm.SaveOutBufToFile( BANS_FNAME_ACTIVE, PT_SERVER_BANS ) )
-        WriteLogF( _FUNC_, " - Unable to save file<%s>.\n", FileManager::GetFullPath( BANS_FNAME_ACTIVE, PT_SERVER_BANS ) );
+        WriteLogF( _FUNC_, " - Unable to save file<%s>.\n", FileManager::GetWritePath( BANS_FNAME_ACTIVE, PT_SERVER_BANS ) );
 }
 
 void FOServer::LoadBans()
@@ -4044,7 +4024,7 @@ void FOServer::LoadBans()
     IniParser bans_txt;
     if( !bans_txt.LoadFile( BANS_FNAME_ACTIVE, PT_SERVER_BANS ) )
     {
-        void* f = FileOpen( FileManager::GetFullPath( BANS_FNAME_ACTIVE, PT_SERVER_BANS ), true );
+        void* f = FileOpen( FileManager::GetWritePath( BANS_FNAME_ACTIVE, PT_SERVER_BANS ), true );
         if( f )
             FileClose( f );
         return;
@@ -4082,7 +4062,7 @@ bool FOServer::LoadClientsData()
     bool success = false;
     char client_name[ MAX_FOPATH ];
     char clients_path[ MAX_FOPATH ];
-    FileManager::GetFullPath( "", PT_SERVER_CLIENTS, clients_path );
+    FileManager::GetReadPath( "", PT_SERVER_CLIENTS, clients_path );
 
     // Last id
     char  last_id_fname[ MAX_FOPATH ];
@@ -4325,7 +4305,7 @@ bool FOServer::SaveClient( Client* cl, bool deferred )
     else
     {
         char fname[ MAX_FOPATH ];
-        FileManager::GetFullPath( cl->Name, PT_SERVER_CLIENTS, fname );
+        FileManager::GetWritePath( cl->Name, PT_SERVER_CLIENTS, fname );
         Str::Append( fname, ".client" );
         void* f = FileOpen( fname, true );
         if( !f )
@@ -4362,7 +4342,7 @@ bool FOServer::LoadClient( Client* cl )
     }
 
     char fname[ MAX_FOPATH ];
-    FileManager::GetFullPath( cl->Name, PT_SERVER_CLIENTS, fname );
+    FileManager::GetWritePath( cl->Name, PT_SERVER_CLIENTS, fname );
     Str::Append( fname, ".client" );
     void* f = FileOpen( fname, false );
     if( !f )
@@ -4430,7 +4410,7 @@ void FOServer::SaveWorld( const char* fname )
         // Save directly to file
         tick = Timer::AccurateTick();
         char auto_fname[ MAX_FOPATH ];
-        Str::Format( auto_fname, "%sworld%04d.fo", FileManager::GetFullPath( NULL, PT_SERVER_SAVE ), SaveWorldIndex + 1 );
+        Str::Format( auto_fname, "%sworld%04d.fo", FileManager::GetWritePath( "", PT_SERVER_SAVE ), SaveWorldIndex + 1 );
         DumpFile = FileOpen( fname ? fname : auto_fname, true );
         if( !DumpFile )
         {
@@ -4533,7 +4513,7 @@ bool FOServer::LoadWorld( const char* fname )
         for( int i = WORLD_SAVE_MAX_INDEX; i >= 1; i-- )
         {
             char auto_fname[ MAX_FOPATH ];
-            Str::Format( auto_fname, "%sworld%04d.fo", FileManager::GetFullPath( NULL, PT_SERVER_SAVE ), i );
+            Str::Format( auto_fname, "%sworld%04d.fo", FileManager::GetWritePath( "", PT_SERVER_SAVE ), i );
             f = FileOpen( auto_fname, false );
             if( f )
             {
@@ -4574,7 +4554,7 @@ bool FOServer::LoadWorld( const char* fname )
         FileClose( f );
         return false;
     }
-    if( version < WORLD_SAVE_V9 )
+    if( version < WORLD_SAVE_V13 )
     {
         WriteLog( "Version of save file is not supported.\n" );
         FileClose( f );
@@ -4722,9 +4702,9 @@ void FOServer::Dump_Work( void* data )
 
         // Paths
         char save_path[ MAX_FOPATH ];
-        FileManager::GetFullPath( NULL, PT_SERVER_SAVE, save_path );
+        FileManager::GetWritePath( "", PT_SERVER_SAVE, save_path );
         char clients_path[ MAX_FOPATH ];
-        FileManager::GetFullPath( NULL, PT_SERVER_CLIENTS, clients_path );
+        FileManager::GetWritePath( "", PT_SERVER_CLIENTS, clients_path );
 
         // Save world data
         void* fworld = FileOpen( Str::Format( fname, "%sworld%04d.fo", save_path, SaveWorldIndex + 1 ), true );

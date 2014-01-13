@@ -268,22 +268,22 @@ Node* GraphicLoader::LoadModel( const char* fname )
 
             // Library extension
             #ifdef FO_WINDOWS
-            # define FBXSDK_PATH        ""
-            # define FBXSDK_LIB_NAME    "libfbxsdk.dll"
+            # define FBXSDK_PATH1    ".\\"
+            # define FBXSDK_PATH2    "data\\dynlibs\\libfbxsdk.dll"
             #else
-            # define FBXSDK_PATH        "./"
-            # define FBXSDK_LIB_NAME    "libfbxsdk.so"
+            # define FBXSDK_PATH1    "./"
+            # define FBXSDK_PATH2    "data/dynlibs/libfbxsdk.dll"
             #endif
 
             // Check dll availability
-            void* dll = DLL_Load( FBXSDK_PATH FBXSDK_LIB_NAME );
+            void* dll = DLL_Load( FBXSDK_PATH1 FBXSDK_PATH2 );
             if( !dll )
             {
                 if( GameOpt.ClientPath.c_std_str() != "" )
-                    dll = DLL_Load( ( GameOpt.ClientPath.c_std_str() + FBXSDK_LIB_NAME ).c_str() );
+                    dll = DLL_Load( ( GameOpt.ClientPath.c_std_str() + FBXSDK_PATH2 ).c_str() );
                 if( !dll )
                 {
-                    WriteLogF( _FUNC_, " - '" FBXSDK_LIB_NAME "' not found.\n" );
+                    WriteLogF( _FUNC_, " - '" FBXSDK_PATH2 "' not found.\n" );
                     return NULL;
                 }
             }
@@ -428,22 +428,22 @@ Node* GraphicLoader::LoadModel( const char* fname )
 
             // Library extension
             #ifdef FO_WINDOWS
-            # define ASSIMP_PATH        ""
-            # define ASSIMP_LIB_NAME    "Assimp32.dll"
+            # define ASSIMP_PATH1    ".\\"
+            # define ASSIMP_PATH2    "data\\dynlibs\\Assimp32.dll"
             #else
-            # define ASSIMP_PATH        "./"
-            # define ASSIMP_LIB_NAME    "Assimp32.so"
+            # define ASSIMP_PATH1    "./"
+            # define ASSIMP_PATH2    "data/dynlibs/Assimp32.dll"
             #endif
 
             // Check dll availability
-            void* dll = DLL_Load( ASSIMP_PATH ASSIMP_LIB_NAME );
+            void* dll = DLL_Load( ASSIMP_PATH1 ASSIMP_PATH2 );
             if( !dll )
             {
                 if( GameOpt.ClientPath.c_std_str() != "" )
-                    dll = DLL_Load( ( GameOpt.ClientPath.c_std_str() + ASSIMP_LIB_NAME ).c_str() );
+                    dll = DLL_Load( ( GameOpt.ClientPath.c_std_str() + ASSIMP_PATH2 ).c_str() );
                 if( !dll )
                 {
-                    WriteLogF( _FUNC_, " - '" ASSIMP_LIB_NAME "' not found.\n" );
+                    WriteLogF( _FUNC_, " - '" ASSIMP_PATH2 "' not found.\n" );
                     return NULL;
                 }
             }

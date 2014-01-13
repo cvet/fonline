@@ -259,12 +259,6 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
         npc->NextRefreshBagTick = Timer::GameTick() + ( npc->Data.BagRefreshTime ? npc->Data.BagRefreshTime : GameOpt.BagRefreshTime ) * 60 * 1000;
         npc->RefreshName();
 
-        if( version < WORLD_SAVE_V12 )
-        {
-            Deprecated_CondExtToAnim2( npc->Data.Cond, npc->Data.ReservedCE, npc->Data.Anim2Knockout, npc->Data.Anim2Dead );
-            npc->Data.ReservedCE = 0;
-        }
-
         AddCritter( npc );
     }
 

@@ -79,8 +79,8 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         char      server_path[ MAX_FOPATH ] = { 0 };
         char      server_cmdline[ MAX_FOPATH ] = { 0 };
         cfg.LoadFile( GetConfigFileName(), PT_ROOT );
-        cfg.GetStr( CLIENT_CONFIG_APP, "ServerAppName", "FOserv.exe", server_exe );
-        cfg.GetStr( CLIENT_CONFIG_APP, "ServerPath", "..\\server\\", server_path );
+        cfg.GetStr( CLIENT_CONFIG_APP, "ServerAppName", "FOnlineServer.exe", server_exe );
+        cfg.GetStr( CLIENT_CONFIG_APP, "ServerPath", "..\\Server\\", server_path );
         cfg.GetStr( CLIENT_CONFIG_APP, "ServerCommandLine", "", server_cmdline );
 
         // Process attributes

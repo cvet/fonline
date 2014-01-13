@@ -6,9 +6,9 @@
 #include "Log.h"
 #include "DataFile.h"
 
-// Client and mapper paths
-#define PT_ROOT                   ( 0 )
-#define PT_DATA                   ( 1 )
+// Paths
+#define PT_ROOT                   ( -1 )
+#define PT_DATA                   ( 0 )
 #define PT_ART                    ( 2 )
 #define PT_ART_CRITTERS           ( 3 )
 #define PT_ART_INTRFACE           ( 4 )
@@ -30,10 +30,7 @@
 #define PT_SAVE                   ( 21 )
 #define PT_FONTS                  ( 22 )
 #define PT_CACHE                  ( 23 )
-
-// Server paths
-#define PT_SERVER_ROOT            ( 30 )
-#define PT_SERVER_DATA            ( 31 )
+#define PT_SERVER_CONFIGS         ( 31 )
 #define PT_SERVER_TEXTS           ( 32 )
 #define PT_SERVER_DIALOGS         ( 33 )
 #define PT_SERVER_MAPS            ( 34 )
@@ -46,19 +43,12 @@
 #define PT_SERVER_LOGS            ( 41 )
 #define PT_SERVER_DUMPS           ( 42 )
 #define PT_SERVER_PROFILER        ( 43 )
-
-// Other
-#define PT_MAPPER_ROOT            ( 45 )
-#define PT_MAPPER_DATA            ( 46 )
-
 #define PATH_LIST_COUNT           ( 50 )
 extern const char* PathList[ PATH_LIST_COUNT ];
 
 class FileManager
 {
 public:
-    static void SetDataPath( const char* path );
-    static void SetCacheName( const char* name );
     static void InitDataFiles( const char* path );
     static bool LoadDataFile( const char* path );
     static void EndOfWork();
@@ -104,16 +94,18 @@ public:
     void SetBEUInt( uint data );
     void SetLEUInt( uint data );
 
-    static const char* GetFullPath( const char* fname, int path_type );
-    static void        GetFullPath( const char* fname, int path_type, char* get_path );
-    static const char* GetPath( int path_type );
+    static const char* GetDataPath( const char* fname, int path_type );
+    static void        GetDataPath( const char* fname, int path_type, char* result );
+    static const char* GetReadPath( const char* fname, int path_type );
+    static void        GetReadPath( const char* fname, int path_type, char* result );
+    static const char* GetWritePath( const char* fname, int path_type );
+    static void        GetWritePath( const char* fname, int path_type, char* result );
+    static void        SetWritePath( const char* path );
     static uint        GetFileHash( const char* fname, int path_type );
-    static const char* GetDataPath( int path_type );
     static void        FormatPath( char* path, bool first_skipped = false );
     static void        ExtractPath( const char* fname, char* path );
     static void        ExtractFileName( const char* fname, char* name );
     static void        MakeFilePath( const char* name, const char* path, char* result );
-    static void        CreateDirectoryTree( const char* path );
     static const char* GetExtension( const char* fname ); // EXT without dot
     static char*       EraseExtension( char* fname );     // Erase EXT with dot
     static bool        CopyFile( const char* from, const char* to );
@@ -124,12 +116,12 @@ public:
     uint   GetCurPos()    { return curPos; }
     uint   GetFsize()     { return fileSize; }
     bool   IsEOF()        { return curPos >= fileSize; }
-    uint64 GetWriteTime() { return timeWrite; }
+    uint64 GetWriteTime() { return writeTime; }
     int    ParseLinesInt( const char* fname, int path_type, IntVec& lines );
 
     static DataFileVec& GetDataFiles() { return dataFiles; }
-    static void         GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
-    static void         GetDatsFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
+    static void         GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result, vector< FIND_DATA >* find_data = NULL );
+    static void         GetDataFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
 
     FileManager(): dataOutBuf( NULL ), posOutBuf( 0 ), endOutBuf( 0 ), lenOutBuf( 0 ), fileSize( 0 ), curPos( 0 ), fileBuf( NULL ) {};
     ~FileManager()
@@ -139,8 +131,8 @@ public:
     }
 
 private:
-    static char        dataPath[ MAX_FOPATH ];
     static DataFileVec dataFiles;
+    static string      basePathes[ 2 ];     // Write and read
 
     uint               fileSize;
     uchar*             fileBuf;
@@ -151,9 +143,9 @@ private:
     uint               endOutBuf;
     uint               lenOutBuf;
 
-    uint64             timeCreate, timeAccess, timeWrite;
+    uint64             writeTime;
 
-    static void RecursiveDirLook( const char* init_dir, bool include_subdirs, const char* ext, StrVec& result );
+    static void RecursiveDirLook( const char* base_dir, const char* cur_dir, bool include_subdirs, const char* ext, StrVec& result, vector< FIND_DATA >* find_data );
 };
 
 #endif // __FILE_MANAGER__
