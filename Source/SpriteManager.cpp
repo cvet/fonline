@@ -1932,7 +1932,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
             header.rotationCount = 1;
 
         // Fix dir
-        if( header.rotationCount != 8 )
+        if( dir0 > 0 && header.rotationCount != 8 )
             break;
 
         // Load palettes
