@@ -1006,7 +1006,7 @@ ServerScriptFunctions ServerFunctions;
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
-#if defined(FO_WINDOWS)
+#ifdef FO_WINDOWS
 
 const char* GetLastSocketError()
 {
@@ -1114,21 +1114,12 @@ const char* GetLastSocketError()
     return str;
 }
 
-#elif defined(FO_LINUX)
-
-const char* GetLastSocketError()
-{
-    static THREAD char str[ MAX_FOTEXT ];
-    Str::Format( str, "%s", strerror( errno ) ); // use strerror_r() instead?
-    return str;
-}
-
 #else
 
 const char* GetLastSocketError()
 {
     static THREAD char str[ MAX_FOTEXT ];
-    Str::Format( str, "%d", errno );
+    Str::Format( str, "%s", strerror( errno ) );
     return str;
 }
 
