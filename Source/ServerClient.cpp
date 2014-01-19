@@ -3943,8 +3943,6 @@ void FOServer::Process_PlayersBarter( Client* cl )
     cl->Bin >> param_ext;
     CHECK_IN_BUFF_ERROR( cl );
 
-// WriteLog("Barter<%s,%u,%u,%u>.\n",cl->GetName(),barter,param,param_ext);
-
     if( barter == BARTER_TRY || barter == BARTER_ACCEPTED )
     {
         if( !param )

@@ -1795,9 +1795,9 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
 {
     AnyFrames* base_anim = NULL;
 
-    for( int dir0 = 0; dir0 < DIRS_COUNT; dir0++ )
+    for( int dir = 0; dir < DIRS_COUNT; dir++ )
     {
-        int dir_art = dir0;
+        int dir_art = dir;
         if( GameOpt.MapHexagonal )
         {
             switch( dir_art )
@@ -1827,7 +1827,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
         }
         else
         {
-            dir_art = ( dir_art + 1 ) % 8;
+            dir_art = ( dir + 1 ) % 8;
         }
 
         char file_name[ MAX_FOPATH ];
@@ -1932,8 +1932,8 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
             header.rotationCount = 1;
 
         // Fix dir
-        if( dir0 > 0 && header.rotationCount != 8 )
-            break;
+        if( header.rotationCount == 1 )
+            dir_art = 0;
 
         // Load palettes
         int palette_count = 0;
@@ -1964,9 +1964,9 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
         // Create animation
         if( !base_anim )
             base_anim = AnyFrames::Create( frm_count_anim, 1000 / frm_fps * frm_count_anim );
-        if( dir0 == 1 )
+        if( dir == 1 )
             base_anim->CreateDirAnims();
-        AnyFrames* anim = base_anim->GetDir( dir0 );
+        AnyFrames* anim = base_anim->GetDir( dir );
 
         // Calculate data offset
         uint data_offset = sizeof( ArtHeader ) + sizeof( ArtPalette ) * palette_count + sizeof( ArtFrameInfo ) * dir_count * frm_count;
@@ -2106,6 +2106,9 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
                 frm--;
             frm_cur++;
         }
+
+        if( header.rotationCount != 8 )
+            break;
     }
 
     return base_anim;
@@ -2148,7 +2151,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
         }
         else
         {
-            dir_spr = ( dir_spr + 2 ) % 8;
+            dir_spr = ( dir + 2 ) % 8;
         }
 
         // Parameters
@@ -2621,6 +2624,9 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
             }
             anim->Ind[ f ] = result;
         }
+
+        if( dir_cnt == 1 )
+            break;
     }
 
     return base_anim;
