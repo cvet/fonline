@@ -1006,7 +1006,7 @@ ServerScriptFunctions ServerFunctions;
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
-#ifdef FO_WINDOWS
+#if defined(FO_WINDOWS)
 
 const char* GetLastSocketError()
 {
@@ -1111,6 +1111,15 @@ const char* GetLastSocketError()
         CASE_SOCK_ERROR( WSA_QOS_ESHAPERATEOBJ, "An invalid shaping rate object was found in the QOS provider-specific buffer." );
         CASE_SOCK_ERROR( WSA_QOS_RESERVED_PETYPE, "A reserved policy element was found in the QOS provider-specific buffer." );
     }
+    return str;
+}
+
+#elif defined(FO_LINUX)
+
+const char* GetLastSocketError()
+{
+    static THREAD char str[ MAX_FOTEXT ];
+    Str::Format( str, "%s", strerror( errno ) ); // use strerror_r() instead?
     return str;
 }
 
