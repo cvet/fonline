@@ -126,8 +126,8 @@ bool SpriteManager::Init()
     atlasWidth = min( max_texture_size, 4096 );
     atlasHeight = min( max_texture_size, 6144 );
     #ifdef FO_OSX_IOS
-    atlasWidth = min( max_texture_size, 3072 );
-    atlasHeight = min( max_texture_size, 3072 );
+    atlasWidth = min( max_texture_size, 2048 );
+    atlasHeight = min( max_texture_size, 3584 );
     #endif
 
     // Atlas pool
