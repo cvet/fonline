@@ -102,7 +102,7 @@ public:
     static void        GetWritePath( const char* fname, int path_type, char* result );
     static void        SetWritePath( const char* path );
     static uint        GetFileHash( const char* fname, int path_type );
-    static void        FormatPath( char* path, bool first_skipped = false );
+    static void        FormatPath( char* path );
     static void        ExtractPath( const char* fname, char* path );
     static void        ExtractFileName( const char* fname, char* name );
     static void        MakeFilePath( const char* name, const char* path, char* result );

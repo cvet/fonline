@@ -158,26 +158,14 @@ bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data 
         Str::Copy( data_path, PathList[ path_type ] );
         Str::Append( data_path, fname );
         FormatPath( data_path );
-        #ifndef FO_WINDOWS
-        if( data_path[ 0 ] == '.' && data_path[ 1 ] == DIR_SLASH_C )
-            Str::CopyBack( data_path ), Str::CopyBack( data_path );
-        #endif
 
-        // Check for empty
-        if( !data_path[ 0 ] )
-            return false;
-
-        // Filenames in dats in lower case
+        // File names in data files in lower case
         Str::Lower( data_path );
 
         // Change slashes back to slash, because dat tree use '\'
-        #ifndef FO_WINDOWS
         for( char* str = data_path; *str; str++ )
-        {
             if( *str == '/' )
                 *str = '\\';
-        }
-        #endif
 
         // Find file in every data file
         for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
@@ -204,9 +192,6 @@ bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data 
         char folder_path[ MAX_FOPATH ] = { 0 };
         Str::Copy( folder_path, fname );
         FormatPath( folder_path );
-
-        if( !folder_path[ 0 ] )
-            return false;
 
         void* file = FileOpen( folder_path, false );
         if( file )
@@ -681,7 +666,7 @@ uint FileManager::GetFileHash( const char* fname, int path_type )
     return Str::GetHash( fpath );
 }
 
-void FileManager::FormatPath( char* path, bool first_skipped /* = false */ )
+void FileManager::FormatPath( char* path )
 {
     // Change to valid slash
     for( char* str = path; *str; str++ )
@@ -707,10 +692,7 @@ void FileManager::FormatPath( char* path, bool first_skipped /* = false */ )
 
     // Skip first '../'
     while( path[ 0 ] == '.' && path[ 1 ] == '.' && path[ 2 ] == DIR_SLASH_C )
-    {
         path += 3;
-        first_skipped = true;
-    }
 
     // Erase 'folder/../'
     char* str = Str::Substring( path, DIR_SLASH_SDD );
@@ -731,7 +713,7 @@ void FileManager::FormatPath( char* path, bool first_skipped /* = false */ )
         *str = 0;
 
         // Recursive look
-        FormatPath( path, first_skipped );
+        FormatPath( path );
         return;
     }
 
@@ -746,15 +728,9 @@ void FileManager::FormatPath( char* path, bool first_skipped /* = false */ )
         *str = 0;
 
         // Recursive look
-        FormatPath( path, first_skipped );
+        FormatPath( path );
         return;
     }
-
-    // Extra dot+slash in beginning
-    #ifndef FO_WINDOWS
-    if( !first_skipped && path[ 0 ] != DIR_SLASH_C )
-        Str::Insert( path, DIR_SLASH_SD );
-    #endif
 }
 
 void FileManager::ExtractPath( const char* fname, char* path )

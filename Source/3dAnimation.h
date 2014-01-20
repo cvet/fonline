@@ -133,6 +133,8 @@ public:
             file.CopyMem( &o.translationTime[ 0 ], len * sizeof( o.translationTime[ 0 ] ) );
             file.CopyMem( &o.translationValue[ 0 ], len * sizeof( o.translationValue[ 0 ] ) );
         }
+        std::replace( animFileName.begin(), animFileName.end(), '/', DIR_SLASH_C );
+        std::replace( animFileName.begin(), animFileName.end(), '\\', DIR_SLASH_C );
     }
 };
 typedef vector< AnimSet* > AnimSetVec;

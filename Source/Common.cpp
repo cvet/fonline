@@ -437,12 +437,10 @@ void RestoreMainDirectory()
             chdir( buf );
         }
     }
-    #elif defined ( FO_OSX )
-    # ifdef FO_OSX_IOS
-    chdir( "./Client" );
-    # else
+    #elif defined ( FO_OSX_MAC )
     chdir( "./Client_OSX.app/Contents/Resources/Client" );
-    # endif
+    #elif defined ( FO_OSX_IOS )
+    chdir( "./Client" );
     #endif
 }
 

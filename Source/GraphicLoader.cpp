@@ -184,12 +184,12 @@ Node* GraphicLoader::LoadModel( const char* fname )
     processedFiles.push_back( fname );
 
     // Load file write time
+    uint64      write_time = 0;
     FileManager file;
-    if( !file.LoadFile( fname, PT_DATA, true ) )
-    {
-        // WriteLogF( _FUNC_, " - 3d file not found, name<%s>.\n", fname );
-        return NULL;
-    }
+    #if !defined ( FO_OSX_IOS ) && !defined ( FO_ANDROID )
+    if( file.LoadFile( fname, PT_DATA, true ) )
+        write_time = file.GetWriteTime();
+    #endif
 
     // Try load from cache
     char fname_cache[ MAX_FOPATH ] = { 0 };
@@ -201,7 +201,7 @@ Node* GraphicLoader::LoadModel( const char* fname )
     if( file_cache.LoadFile( fname_cache, PT_CACHE ) )
     {
         uint version = file_cache.GetBEUInt();
-        if( version != MODELS_BINARY_VERSION || file.GetWriteTime() > file_cache.GetWriteTime() )
+        if( version != MODELS_BINARY_VERSION || write_time > file_cache.GetWriteTime() )
             file_cache.UnloadFile();                  // Disable loading from this binary, because its outdated
     }
     if( file_cache.IsLoaded() )
@@ -222,10 +222,14 @@ Node* GraphicLoader::LoadModel( const char* fname )
         return root_node;
     }
 
+    #if defined ( FO_OSX_IOS ) || defined ( FO_ANDROID )
+    return NULL;
+    #endif
+
     // Load file data
     if( !file.LoadFile( fname, PT_DATA ) )
     {
-        WriteLogF( _FUNC_, " - 3d file not found, name<%s>.\n", fname );
+        // WriteLogF( _FUNC_, " - 3d file<%s> not found.\n", fname );
         return NULL;
     }
 
@@ -249,7 +253,7 @@ Node* GraphicLoader::LoadModel( const char* fname )
         static bool binded_try = false;
 
         // Static linkage
-        #ifdef FO_LINUX
+        #if defined ( FO_LINUX ) || defined ( FO_OSX_MAC )
         binded = true;
         #endif
 

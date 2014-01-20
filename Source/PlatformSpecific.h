@@ -6,8 +6,9 @@
 // FO_WINDOWS
 // FO_LINUX
 // FO_OSX
-// FO_OSX_IOS
-// FO_ANDROID - todo
+//  FO_OSX_MAC
+//  FO_OSX_IOS
+// FO_ANDROID
 //
 // CPU
 // FO_X86
@@ -47,7 +48,12 @@
 # if defined ( TARGET_OS_IPHONE ) && TARGET_OS_IPHONE == 1
 #  define FO_OSX_IOS
 #  define FO_OGL_ES
+# else
+#  define FO_OSX_MAC
 # endif
+#elif defined ( ANDROID )
+# define FO_ANDROID
+# define FO_OGL_ES
 #else
 # error "Unknown operating system."
 #endif
@@ -71,7 +77,7 @@
 #endif
 
 // TLS
-#if !defined ( FO_OSX_IOS )
+#if !defined ( FO_OSX_IOS ) && !defined ( FO_ANDROID )
 # if defined ( FO_MSVC )
 #  define THREAD    __declspec( thread )
 # elif defined ( FO_GCC )
