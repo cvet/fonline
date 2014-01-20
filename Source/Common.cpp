@@ -446,12 +446,16 @@ void RestoreMainDirectory()
 
 void ShowMessage( const char* message )
 {
-    #ifdef FO_WINDOWS
+    #if defined ( FO_CLIENT ) || defined ( FO_MAPPER )
+    SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "FOnline", message, NULL );
+    #else
+    # ifdef FO_WINDOWS
     wchar_t message_wc[ MAX_FOTEXT ];
     MultiByteToWideChar( CP_UTF8, 0, message, -1, message_wc, MAX_FOPATH );
     MessageBoxW( NULL, message_wc, L"FOnline", MB_OK );
-    #else
+    # else
     // Todo: Linux
+    # endif
     #endif
 }
 
