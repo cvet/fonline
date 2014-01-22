@@ -931,6 +931,8 @@ public:
         static ScriptString* Global_GetCritterSoundName( uint cr_type );
         static bool          Global_LoadImage( uint index, ScriptString* image_name, uint image_depth, int path_type );
         static uint          Global_GetImageColor( uint index, uint x, uint y );
+        static bool          Global_SingleplayerGame();
+        static bool          Global_MultiplayerGame();
         static void          Global_Synchronize();
         static void          Global_Resynchronize();
     } ScriptFunc;

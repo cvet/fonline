@@ -6426,6 +6426,16 @@ uint FOServer::SScriptFunc::Global_GetImageColor( uint index, uint x, uint y )
     return result;
 }
 
+bool FOServer::SScriptFunc::Global_SingleplayerGame()
+{
+    return ( Singleplayer );
+}
+
+bool FOServer::SScriptFunc::Global_MultiplayerGame()
+{
+    return ( !Singleplayer );
+}
+
 uint FOServer::SScriptFunc::Global_GetScriptId( ScriptString& script_name, ScriptString& func_decl )
 {
     return Script::GetScriptFuncNum( script_name.c_str(), func_decl.c_str() );

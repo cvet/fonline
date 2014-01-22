@@ -1034,6 +1034,8 @@ struct BindClass
     static void Global_GetCritterSoundName()            {}
     static void Global_GetGlobalMapRelief()             {}
     static void Global_GetCraftItem()                   {}
+    static void Global_SingleplayerGame()               {}
+    static void Global_MultiplayerGame()                {}
     #endif
 
     #ifdef BIND_MAPPER

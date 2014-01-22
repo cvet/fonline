@@ -12076,6 +12076,16 @@ void FOClient::SScriptFunc::Global_ChangeCursor( int cursor )
     Self->SetCurMode( cursor );
 }
 
+bool FOClient::SScriptFunc::Global_SingleplayerGame()
+{
+    return ( Singleplayer );
+}
+
+bool FOClient::SScriptFunc::Global_MultiplayerGame()
+{
+    return ( !Singleplayer );
+}
+
 bool FOClient::SScriptFunc::Global_SaveScreenshot()
 {
     return ( Self->SaveScreenshot() );

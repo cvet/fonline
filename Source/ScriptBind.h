@@ -1077,6 +1077,8 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "int GetCritterAnimType(uint crType
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCritterAlias(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterAlias ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetCritterTypeName(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterTypeName ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetCritterSoundName(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterSoundName ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool SingleplayerGame()", asFUNCTION( BIND_CLASS Global_SingleplayerGame ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool MultiplayerGame()", asFUNCTION( BIND_CLASS Global_MultiplayerGame ), asCALL_CDECL ) );
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "const uint16 __Year", &GameOpt.Year ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "const uint16 __Month", &GameOpt.Month ) );
