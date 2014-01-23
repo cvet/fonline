@@ -123,6 +123,7 @@ int main( int argc, char** argv )
     {
         # ifdef FO_WINDOWS
         Singleplayer = true;
+        GameOpt.Singleplayer = true;
         Timer::SetGamePause( true );
 
         // Logging

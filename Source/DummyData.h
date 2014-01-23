@@ -1034,8 +1034,6 @@ struct BindClass
     static void Global_GetCritterSoundName()            {}
     static void Global_GetGlobalMapRelief()             {}
     static void Global_GetCraftItem()                   {}
-    static void Global_SingleplayerGame()               {}
-    static void Global_MultiplayerGame()                {}
     #endif
 
     #ifdef BIND_MAPPER
@@ -1218,6 +1216,7 @@ struct GameOptions
     int TimeMultiplier;
     int GameTimeTick;
 
+    int Singleplayer;
     int DisableTcpNagle;
     int DisableZlibCompression;
     int FloodSize;

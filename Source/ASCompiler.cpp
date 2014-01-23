@@ -53,16 +53,6 @@ void CompilerLog( ScriptString& str )
     printf( "%s\n", str.c_str() );
 }
 
-bool CompilerSingleplayerGame()
-{
-    return ( Singleplayer );
-}
-
-bool CompilerMultiplayerGame()
-{
-    return ( !Singleplayer );
-}
-
 void PrintContextCallstack( asIScriptContext* ctx )
 {
     int                      line, column;
@@ -245,7 +235,6 @@ int main( int argc, char* argv[] )
                 " [-p preprocessor_output.txt]\n"
                 " [-d SOME_DEFINE]*\n"
                 " [-run func_name]*\n"
-                " [-singleplayer] (emulate singleplayer mode)\n"
                 " [-gc] (collect garbage after execution)\n"
                 "*can be used multiple times" );
         return 0;
@@ -272,9 +261,6 @@ int main( int argc, char* argv[] )
         // Run function
         else if( !_stricmp( argv[ i ], "-run" ) && i + 1 < argc )
             run_func.push_back( argv[ ++i ] );
-        // Emulate singleplayer mode
-        else if( !_stricmp( argv[ i ], "-singleplayer" ) )
-            Singleplayer = true;
         // Collect garbage
         else if( !_stricmp( argv[ i ], "-gc" ) )
             CollectGarbage = true;
@@ -318,18 +304,8 @@ int main( int argc, char* argv[] )
     // Stuff for run func
     if( !run_func.empty() )
     {
-        const char* masking = "Warning: cannot bind masking";
-
         if( Engine->RegisterGlobalFunction( "void __CompilerLog(string& text)", asFUNCTION( CompilerLog ), asCALL_CDECL ) < 0 )
-            printf( "%s Log().", masking );
-
-        if( !IsMapper )
-        {
-            if( Engine->RegisterGlobalFunction( "bool __SingleplayerGame()", asFUNCTION( CompilerSingleplayerGame ), asCALL_CDECL ) < 0 )
-                printf( "%s SingleplayerGame().", masking );
-            if( Engine->RegisterGlobalFunction( "bool __MultiplayerGame()", asFUNCTION( CompilerMultiplayerGame ), asCALL_CDECL ) < 0 )
-                printf( "%s MultiplayerGame().", masking );
-        }
+            printf( "Warning: cannot bind masking Log()." );
     }
 
     // Bind
@@ -368,15 +344,7 @@ int main( int argc, char* argv[] )
     for( size_t i = 0; i < defines.size(); i++ )
         Preprocessor::Define( string( defines[ i ] ) );
     if( !run_func.empty() )
-    {
         Preprocessor::Define( string( "Log __CompilerLog" ) );
-
-        if( !IsMapper )
-        {
-            Preprocessor::Define( string( "SingleplayerGame __SingleplayerGame" ) );
-            Preprocessor::Define( string( "MultiplayerGame __MultiplayerGame" ) );
-        }
-    }
 
     Preprocessor::StringOutStream result, errors;
     int                           res;

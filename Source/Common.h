@@ -446,6 +446,7 @@ struct GameOptions
     ushort       TimeMultiplier;
     uint         GameTimeTick;
 
+    bool         Singleplayer;
     bool         DisableTcpNagle;
     bool         DisableZlibCompression;
     uint         FloodSize;

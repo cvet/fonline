@@ -1145,6 +1145,7 @@ GameOptions::GameOptions()
     TimeMultiplier = 0;
     GameTimeTick = 0;
 
+    Singleplayer = false;
     DisableTcpNagle = false;
     DisableZlibCompression = false;
     FloodSize = 2048;

@@ -48,6 +48,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     {
         WriteLog( "Singleplayer mode.\n" );
         Singleplayer = true;
+        GameOpt.Singleplayer = true;
         Timer::SetGamePause( true );
 
         // Create interprocess shared data
