@@ -385,6 +385,7 @@ Node* GraphicLoader::LoadModel( const char* fname )
             FbxTakeInfo* take_info = fbx_importer->GetTakeInfo( i );
             int          frames_count = (int) take_info->mLocalTimeSpan.GetDuration().GetFrameCount() + 1;
             float        frame_rate = (float) ( frames_count - 1 ) / (float) take_info->mLocalTimeSpan.GetDuration().GetSecondDouble();
+            int          frame_offset = (int) take_info->mLocalTimeSpan.GetStart().GetFrameCount();
 
             times.resize( frames_count );
             sv.resize( frames_count );
@@ -398,7 +399,7 @@ Node* GraphicLoader::LoadModel( const char* fname )
                 for( int f = 0; f < frames_count; f++ )
                 {
                     float time = (float) f;
-                    cur_time.SetFrame( f );
+                    cur_time.SetFrame( frame_offset + f );
 
                     times[ f ] = time;
 
@@ -824,7 +825,7 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode*
 
         // Material
         FbxSurfaceMaterial* fbx_material = fbx_node->GetMaterial( 0 );
-        FbxProperty         prop_diffuse = fbx_material->FindProperty( "DiffuseColor" );
+        FbxProperty         prop_diffuse = ( fbx_material ? fbx_material->FindProperty( "DiffuseColor" ) : FbxProperty() );
         if( prop_diffuse.IsValid() && prop_diffuse.GetSrcObjectCount() > 0 )
         {
             char tex_fname[ MAX_FOPATH ];
