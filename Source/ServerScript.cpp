@@ -5327,6 +5327,11 @@ void FOServer::SScriptFunc::Global_EraseAnyData( ScriptString& name )
     EraseAnyData( name.c_std_str() );
 }
 
+void FOServer::SScriptFunc::Global_SetTime( ushort multiplier, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
+{
+    SetGameTime( multiplier, year, month, day, hour, minute, second );
+}
+
 Map* FOServer::SScriptFunc::Global_GetMap( uint map_id )
 {
     if( !map_id )

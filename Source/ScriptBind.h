@@ -819,6 +819,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void Synchronize()", asFUNCTION( B
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Resynchronize()", asFUNCTION( BIND_CLASS Global_Resynchronize ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SetParameterDialogGetBehaviour(uint index, string& funcName)", asFUNCTION( BIND_CLASS Global_SetParameterDialogGetBehaviour ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "CraftItem@ GetCraftItem(uint num)", asFUNCTION( BIND_CLASS Global_GetCraftItem ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void SetTime(uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)", asFUNCTION( BIND_CLASS Global_SetTime ), asCALL_CDECL ) );
 #endif
 
 #ifdef BIND_CLIENT

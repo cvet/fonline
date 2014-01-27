@@ -2900,38 +2900,8 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
 
         CHECK_ALLOW_COMMAND;
 
-        SynchronizeLogicThreads();
-
-        if( multiplier >= 1 && multiplier <= 50000 )
-            GameOpt.TimeMultiplier = multiplier;
-        if( year >= GameOpt.YearStart && year <= GameOpt.YearStart + 130 )
-            GameOpt.Year = year;
-        if( month >= 1 && month <= 12 )
-            GameOpt.Month = month;
-        if( day >= 1 && day <= 31 )
-            GameOpt.Day = day;
-        if( hour >= 0 && hour <= 23 )
-            GameOpt.Hour = hour;
-        if( minute >= 0 && minute <= 59 )
-            GameOpt.Minute = minute;
-        if( second >= 0 && second <= 59 )
-            GameOpt.Second = second;
-        GameOpt.FullSecond = Timer::GetFullSecond( GameOpt.Year, GameOpt.Month, GameOpt.Day, GameOpt.Hour, GameOpt.Minute, GameOpt.Second );
-        GameOpt.FullSecondStart = GameOpt.FullSecond;
-        GameOpt.GameTimeTick = Timer::GameTick();
-
-        ConnectedClientsLocker.Lock();
-        for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
-        {
-            Client* cl_ = *it;
-            if( cl_->IsOnline() )
-                cl_->Send_GameInfo( MapMngr.GetMap( cl_->GetMap(), false ) );
-        }
-        ConnectedClientsLocker.Unlock();
-
+        SetGameTime( multiplier, year, month, day, hour, minute, second );
         logcb( "Time changed." );
-
-        ResynchronizeLogicThreads();
     }
     break;
     case CMD_BAN:
@@ -3344,6 +3314,40 @@ void FOServer::InitGameTime()
 
     GameOpt.FullSecondStart = GameOpt.FullSecond;
     GameOpt.GameTimeTick = Timer::GameTick();
+}
+
+void FOServer::SetGameTime( int multiplier, int year, int month, int day, int hour, int minute, int second )
+{
+    SynchronizeLogicThreads();
+
+    if( multiplier >= 1 && multiplier <= 50000 )
+        GameOpt.TimeMultiplier = multiplier;
+    if( year >= GameOpt.YearStart && year <= GameOpt.YearStart + 130 )
+        GameOpt.Year = year;
+    if( month >= 1 && month <= 12 )
+        GameOpt.Month = month;
+    if( day >= 1 && day <= 31 )
+        GameOpt.Day = day;
+    if( hour >= 0 && hour <= 23 )
+        GameOpt.Hour = hour;
+    if( minute >= 0 && minute <= 59 )
+        GameOpt.Minute = minute;
+    if( second >= 0 && second <= 59 )
+        GameOpt.Second = second;
+    GameOpt.FullSecond = Timer::GetFullSecond( GameOpt.Year, GameOpt.Month, GameOpt.Day, GameOpt.Hour, GameOpt.Minute, GameOpt.Second );
+    GameOpt.FullSecondStart = GameOpt.FullSecond;
+    GameOpt.GameTimeTick = Timer::GameTick();
+
+    ConnectedClientsLocker.Lock();
+    for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
+    {
+        Client* cl_ = *it;
+        if( cl_->IsOnline() )
+            cl_->Send_GameInfo( MapMngr.GetMap( cl_->GetMap(), false ) );
+    }
+    ConnectedClientsLocker.Unlock();
+
+    ResynchronizeLogicThreads();
 }
 
 bool FOServer::Init()

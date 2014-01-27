@@ -906,6 +906,7 @@ struct BindClass
     static void Global_GetImageColor()          {}
     static void Global_Synchronize()            {}
     static void Global_Resynchronize()          {}
+    static void Global_SetTime()                {}
     #endif
 
     #ifdef BIND_CLIENT

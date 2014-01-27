@@ -263,6 +263,7 @@ public:
     static void SaveGameInfoFile();
     static bool LoadGameInfoFile( void* f );
     static void InitGameTime();
+    static void SetGameTime( int multiplier, int year, int month, int day, int hour, int minute, int second );
 
     // Lang packs
     static LangPackVec LangPacks;     // Todo: synchronize
@@ -869,6 +870,7 @@ public:
         static bool          Global_GetAnyData( ScriptString& name, ScriptArray& data );
         static bool          Global_IsAnyData( ScriptString& name );
         static void          Global_EraseAnyData( ScriptString& name );
+        static void          Global_SetTime( ushort multiplier, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static Map*          Global_GetMap( uint map_id );
         static Map*          Global_GetMapByPid( ushort map_pid, uint skip_count );
         static Location*     Global_GetLocation( uint loc_id );
