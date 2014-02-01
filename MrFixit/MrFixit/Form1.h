@@ -718,7 +718,7 @@ namespace MrFixitEditor {
 			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedSingle;
 			this->MaximizeBox = false;
 			this->Name = L"Form1";
-			this->Text = L"MrFixit Editor   v1.12";
+			this->Text = L"MrFixit Editor   v1.13";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numParamCount))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->numItemCount))->EndInit();

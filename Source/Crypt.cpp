@@ -493,7 +493,7 @@ void CryptManager::SetCache( const char* data_name, const string& str )
 
 void CryptManager::SetCache( const char* data_name, UCharVec& data )
 {
-    SetCache( data_name, (uchar*) data[ 0 ], (uint) data.size() );
+    SetCache( data_name, (uchar*) &data[ 0 ], (uint) data.size() );
 }
 
 uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
