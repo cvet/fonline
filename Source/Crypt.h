@@ -36,21 +36,22 @@ public:
 
     // Compress zlib
     uchar* Compress( const uchar* data, uint& data_len );
+    bool   Compress( UCharVec& data );
 
     // Uncompress zlib
     uchar* Uncompress( const uchar* data, uint& data_len, uint mul_approx );
+    bool   Uncompress( UCharVec& data, uint mul_approx );
 
-    // Crypt text
-//	void CryptText(char* text);
-
-    // Uncrypt text
-//	void UncryptText(char* text);
-
+    // Cache stuff
     bool   IsCacheTable( const char* cache_fname );
     bool   CreateCacheTable( const char* cache_fname );
     bool   SetCacheTable( const char* cache_fname );
     void   SetCache( const char* data_name, const uchar* data, uint data_len );
+    void   SetCache( const char* data_name, const string& str );
+    void   SetCache( const char* data_name, UCharVec& data );
     uchar* GetCache( const char* data_name, uint& data_len );
+    string GetCache( const char* data_name );
+    bool   GetCache( const char* data_name, UCharVec& data );
 };
 
 extern CryptManager Crypt;

@@ -1293,6 +1293,8 @@ struct GameOptions
     int DlgTalkMinTime;
     int DlgBarterMinTime;
     int MinimumOfflineTime;
+    int GameServer;
+    int UpdateServer;
 
     int StartSpecialPoints;
     int StartTagSkillPoints;
@@ -1380,6 +1382,8 @@ struct GameOptions
     int Light;
     int Host;
     int Port;
+    int UpdateServerHost;
+    int UpdateServerPort;
     int ProxyType;
     int ProxyHost;
     int ProxyPort;

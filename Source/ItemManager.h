@@ -15,13 +15,9 @@ private:
     bool         isActive;
     ProtoItem    allProto[ MAX_ITEM_PROTOTYPES ]; // All
     ProtoItemVec typeProto[ ITEM_MAX_TYPES ];     // By type
-    uint         protoHash[ ITEM_MAX_TYPES ];     // Hash types protos
     char*        protoScript[ MAX_ITEM_PROTOTYPES ];
 
 public:
-    ProtoItemVec& GetProtos( int type )     { return typeProto[ type ]; }
-    uint          GetProtosHash( int type ) { return protoHash[ type ]; }
-
     bool Init();
     bool IsInit() { return isActive; }
     void Finish();
@@ -37,14 +33,16 @@ public:
     void SaveProtos( ProtoItemVec& protos, const char* full_path );
     #endif
 
-    void        ParseProtos( ProtoItemVec& protos, const char* collection_name = NULL );
-    ProtoItem*  GetProtoItem( ushort pid );
-    ProtoItem*  GetAllProtos();
-    void        GetCopyAllProtos( ProtoItemVec& protos );
-    bool        IsInitProto( ushort pid );
-    const char* GetProtoScript( ushort pid );
-    void        ClearProtos( int type = 0xFF ); // 0xFF - All
-    void        ClearProto( ushort pid );
+    void          ParseProtos( ProtoItemVec& protos, const char* collection_name = NULL );
+    ProtoItem*    GetProtoItem( ushort pid );
+    ProtoItem*    GetAllProtos();
+    ProtoItemVec& GetProtos( int type );
+    void          GetCopyAllProtos( ProtoItemVec& protos );
+    bool          IsInitProto( ushort pid );
+    const char*   GetProtoScript( ushort pid );
+    void          ClearProtos( int type = 0xFF ); // 0xFF - All
+    void          ClearProto( ushort pid );
+    void          GetBinaryData( UCharVec& data );
 
     #ifdef FONLINE_SERVER
 private:

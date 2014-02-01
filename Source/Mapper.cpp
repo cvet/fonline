@@ -187,7 +187,7 @@ bool FOMapper::Init()
         Str::Copy( lang_name, DEFAULT_LANGUAGE );
     Str::Lower( lang_name );
 
-    if( !CurLang.Init( lang_name, PT_SERVER_TEXTS ) )
+    if( !CurLang.LoadFromFiles( lang_name ) )
         return false;
 
     MsgText = &CurLang.Msg[ TEXTMSG_TEXT ];
@@ -551,7 +551,7 @@ void FOMapper::Finish()
     HexMngr.Finish();
     SprMngr.Finish();
     CrMngr.Finish();
-    FileManager::EndOfWork();
+    FileManager::ClearDataFiles();
     FinishScriptSystem();
     WriteLog( "Mapper finish complete.\n" );
 }

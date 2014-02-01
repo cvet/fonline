@@ -19,63 +19,39 @@ extern const char* TextMsgFileName[ TEXTMSG_COUNT ];
 
 #define DEFAULT_LANGUAGE    "russ"
 
-#define FOMSG_ERRNUM        ( 0 )
-#define FOMSG_VERNUM        ( 1 )
-
 class FOMsg
 {
 public:
-    FOMsg();     // Insert FOMSG_ERRNUM into strData
+    FOMsg();
     FOMsg& operator+=( const FOMsg& r );
 
-    // Add String value in strData and Nums
     void AddStr( uint num, const char* str );
     void AddStr( uint num, const string& str );
     void AddBinary( uint num, const uchar* binary, uint len );
 
-    // Generate random number with interval from 10000000 to 99999999
-    uint           AddStr( const char* str );
-    const char*    GetStr( uint num );            // Gets const pointer on String value by num in strData
-    const char*    GetStr( uint num, uint skip ); // Gets const pointer on String value by num with skip in strData
-    uint           GetStrNumUpper( uint num );    // Gets const pointer on String value by upper num in strData
-    uint           GetStrNumLower( uint num );    // Gets const pointer on String value by lower num in strData
-    int            GetInt( uint num );            // Gets integer value of string
+    uint           AddStr( const char* str ); // Generate random number with interval from 10000000 to 99999999
+    const char*    GetStr( uint num );
+    const char*    GetStr( uint num, uint skip );
+    uint           GetStrNumUpper( uint num );
+    uint           GetStrNumLower( uint num );
+    int            GetInt( uint num );
     const uchar*   GetBinary( uint num, uint& len );
-    int            Count( uint num );             // Return count of string exist
-    void           EraseStr( uint num );          // Delete string
-    uint           GetSize();                     // Gets Size of All Strings, without only FOMSG_ERRNUM
-    void           CalculateHash();               // Calculate toSend data and hash
-    uint           GetHash();                     // Gets Hash code of MSG in toSend
-    UIntStrMulMap& GetData();                     // Gets strData
+    int            Count( uint num );
+    void           EraseStr( uint num );
+    uint           GetSize();
+    UIntStrMulMap& GetData();
 
-    #ifdef FONLINE_SERVER
-    const char* GetToSend();                      // Gets toSend data
-    uint        GetToSendLen();                   // Gets toSend Length
-    #endif
-
-    #ifdef FONLINE_CLIENT
-    // Load MSG from stream, old data is clear
-    int LoadMsgStream( CharVec& stream );
-    #endif
-
-    // Load MSG from file, old data is clear
-    int LoadMsgFile( const char* fname, int path_type );
-    int LoadMsgFileBuf( char* data, uint data_len );
-    // Save strData in file, if file is not empty his clear
-    int SaveMsgFile( const char* fname, int path_type );
-    // Clearing MSG
+    // Serialization
+    void GetBinaryData( UCharVec& data );
+    bool LoadFromBinaryData( const UCharVec& data );
+    bool LoadFromFile( const char* fname, int path_type );
+    void LoadFromString( const char* str, uint str_len );
+    bool SaveToFile( const char* fname, int path_type );
     void Clear();
 
 private:
 
-    #ifdef FONLINE_SERVER
-    // Data to send client
-    CharVec toSend;
-    #endif
-
-    // Hash of toSend
-    uint strDataHash;
-    // Numbers and String Values
+    // String values
     UIntStrMulMap strData;
 
 public:
@@ -92,11 +68,11 @@ public:
         char NameStr[ 5 ];
     };
 
-    int   PathType;
     FOMsg Msg[ TEXTMSG_COUNT ];
 
-    bool Init( const char* lang, int path_type );
-    int  LoadAll();
+    bool  LoadFromFiles( const char* lang_name );
+    bool  LoadFromCache( const char* lang_name );
+    char* GetMsgCacheName( int msg_num, char* result );
 
     LanguagePack() { memset( NameStr, 0, sizeof( NameStr ) ); }
     bool operator==( const uint& r ) { return Name == r; }

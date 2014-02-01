@@ -520,6 +520,8 @@ struct GameOptions
     uint         DlgTalkMinTime;
     uint         DlgBarterMinTime;
     uint         MinimumOfflineTime;
+    bool         GameServer;
+    bool         UpdateServer;
 
     int          StartSpecialPoints;
     int          StartTagSkillPoints;
@@ -607,6 +609,8 @@ struct GameOptions
     int          Light;
     ScriptString Host;
     uint         Port;
+    ScriptString UpdateServerHost;
+    uint         UpdateServerPort;
     uint         ProxyType;
     ScriptString ProxyHost;
     uint         ProxyPort;

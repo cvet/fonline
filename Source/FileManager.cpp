@@ -50,7 +50,7 @@ const char* PathList[ PATH_LIST_COUNT ] =
     "logs" DIR_SLASH_S,
     "dumps" DIR_SLASH_S,
     "profiler" DIR_SLASH_S,
-    "",
+    "update" DIR_SLASH_S,
     "",
     "",
     "",
@@ -121,7 +121,7 @@ bool FileManager::LoadDataFile( const char* path )
     return true;
 }
 
-void FileManager::EndOfWork()
+void FileManager::ClearDataFiles()
 {
     for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
         delete *it;
@@ -182,7 +182,7 @@ bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data 
             }
             else
             {
-                if( dat->IsFilePresent( data_path, writeTime ) )
+                if( dat->IsFilePresent( data_path, fileSize, writeTime ) )
                     return true;
             }
         }
@@ -197,6 +197,7 @@ bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data 
         if( file )
         {
             writeTime = FileGetWriteTime( file );
+            fileSize = FileGetSize( file );
 
             if( no_read_data )
             {
@@ -204,17 +205,15 @@ bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data 
                 return true;
             }
 
-            uint   size = FileGetSize( file );
-            uchar* buf = new uchar[ size + 1 ];
+            uchar* buf = new uchar[ fileSize + 1 ];
             if( !buf )
                 return false;
 
-            bool result = FileRead( file, buf, size );
+            bool result = FileRead( file, buf, fileSize );
             FileClose( file );
             if( !result )
                 return false;
 
-            fileSize = size;
             fileBuf = buf;
             fileBuf[ fileSize ] = 0;
             curPos = 0;
@@ -858,17 +857,27 @@ bool FileManager::CopyFile( const char* from, const char* to )
         return false;
     }
 
-    uint   size = FileGetSize( f_from );
-    uchar* buf = new uchar[ size ];
-    bool   ok = ( FileRead( f_from, buf, size ) && FileWrite( f_to, buf, size ) );
-    delete[] buf;
+    uint  remaining_size = FileGetSize( f_from );
+    uchar chunk[ 4096 ];
+    bool  fail = false;
+    while( !fail && remaining_size > 0 )
+    {
+        uint read_size = MIN( remaining_size, sizeof( chunk ) );
+        bool fail = !( FileRead( f_from, chunk, read_size ) && FileWrite( f_to, chunk, read_size ) );
+        remaining_size -= read_size;
+    }
 
     FileClose( f_to );
     FileClose( f_from );
 
-    if( !ok )
+    if( fail )
         FileDelete( to );
-    return ok;
+    return !fail;
+}
+
+bool FileManager::DeleteFile( const char* fname )
+{
+    return FileDelete( fname );
 }
 
 int FileManager::ParseLinesInt( const char* fname, int path_type, IntVec& lines )
@@ -950,6 +959,11 @@ void FileManager::GetDataFileNames( const char* path, bool include_subdirs, cons
     char path_[ MAX_FOPATH ];
     Str::Copy( path_, path );
     FormatPath( path_ );
+
+    // Change slashes back to slash, because dat tree use '\'
+    for( char* str = path_; *str; str++ )
+        if( *str == '/' )
+            *str = '\\';
 
     // Find in dat files
     for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )

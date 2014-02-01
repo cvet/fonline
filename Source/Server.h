@@ -24,10 +24,6 @@
 # include "event2/thread.h"
 #endif
 
-// #ifdef _DEBUG
-// #define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
-// #endif
-
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR( client )    CHECK_IN_BUFF_ERROR_EX( client, 0 )
 #define CHECK_IN_BUFF_ERROR_EX( client, ext )                                           \
@@ -46,9 +42,12 @@ public:
     FOServer();
     ~FOServer();
 
-    // Net proccess
+    // Net process
     static void Process_ParseToGame( Client* cl );
     static void Process_Move( Client* cl );
+    static void Process_Update( Client* cl );
+    static void Process_UpdateFile( Client* cl );
+    static void Process_UpdateFileData( Client* cl );
     static void Process_CreateClient( Client* cl );
     static void Process_LogIn( ClientPtr& cl );
     static void Process_SingleplayerSaveLoad( Client* cl );
@@ -82,11 +81,18 @@ public:
     static void Process_KarmaVoting( Client* cl );
 
     static void Send_MapData( Client* cl, ProtoMap* pmap, uchar send_info );
-    static void Send_MsgData( Client* cl, uint lang, ushort num_msg, FOMsg& data_msg );
-    static void Send_ProtoItemData( Client* cl, uchar type, ProtoItemVec& data, uint data_hash );
 
-    // Data
-    static int UpdateVarsTemplate();
+    // Update files
+    struct UpdateFile
+    {
+        uint   Size;
+        uchar* Data;
+    };
+    typedef vector< UpdateFile > UpdateFileVec;
+    static UpdateFileVec UpdateFiles;
+    static UCharVec      UpdateFilesList;
+
+    static void GenerateUpdateFiles( bool first_generation = false );
 
     // Holodisks
     struct HoloInfo

@@ -1,6 +1,5 @@
 #include "StdAfx.h"
 #include "Server.h"
-#include "FL/Fl.H"
 
 void* zlib_alloc( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
 void  zlib_free( void* opaque, void* address )                          { free( address ); }
@@ -72,6 +71,8 @@ ScoreType                   FOServer::BestScores[ SCORES_MAX ];
 Mutex                       FOServer::BestScoresLocker;
 FOServer::SingleplayerSave_ FOServer::SingleplayerSave;
 MutexSynchronizer           FOServer::LogicThreadSync;
+FOServer::UpdateFileVec     FOServer::UpdateFiles;
+UCharVec                    FOServer::UpdateFilesList;
 
 FOServer::FOServer()
 {
@@ -172,7 +173,7 @@ void FOServer::Finish()
     VarMngr.Finish();
     FinishScriptSystem();
     FinishLangPacks();
-    FileManager::EndOfWork();
+    FileManager::ClearDataFiles();
 
     // Statistics
     WriteLog( "Server stopped.\n" );
@@ -1431,15 +1432,45 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 break;
             case NETMSG_LOGIN:
-                Process_LogIn( cl );
+                if( GameOpt.GameServer )
+                    Process_LogIn( cl );
+                else
+                    cl->Disconnect();
                 BIN_END( cl );
                 break;
             case NETMSG_CREATE_CLIENT:
-                Process_CreateClient( cl );
+                if( GameOpt.GameServer )
+                    Process_CreateClient( cl );
+                else
+                    cl->Disconnect();
                 BIN_END( cl );
                 break;
             case NETMSG_SINGLEPLAYER_SAVE_LOAD:
-                Process_SingleplayerSaveLoad( cl );
+                if( GameOpt.GameServer )
+                    Process_SingleplayerSaveLoad( cl );
+                else
+                    cl->Disconnect();
+                BIN_END( cl );
+                break;
+            case NETMSG_UPDATE:
+                if( GameOpt.UpdateServer )
+                    Process_Update( cl );
+                else
+                    cl->Disconnect();
+                BIN_END( cl );
+                break;
+            case NETMSG_GET_UPDATE_FILE:
+                if( GameOpt.UpdateServer )
+                    Process_UpdateFile( cl );
+                else
+                    cl->Disconnect();
+                BIN_END( cl );
+                break;
+            case NETMSG_GET_UPDATE_FILE_DATA:
+                if( GameOpt.UpdateServer )
+                    Process_UpdateFileData( cl );
+                else
+                    cl->Disconnect();
                 BIN_END( cl );
                 break;
             default:
@@ -1447,13 +1478,15 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 break;
             }
+
+            cl->LastActivityTime = Timer::FastTick();
         }
         else
         {
             BIN_END( cl );
         }
 
-        if( cl->GameState == STATE_CONNECTED && cl->ConnectTime && Timer::FastTick() - cl->ConnectTime > PING_CLIENT_LIFE_TIME ) // Kick bot
+        if( cl->GameState == STATE_CONNECTED && cl->LastActivityTime && Timer::FastTick() - cl->LastActivityTime > PING_CLIENT_LIFE_TIME ) // Kick bot
         {
             WriteLogF( _FUNC_, " - Connection timeout, client kicked, maybe bot. Ip<%s>.\n", cl->GetIpStr() );
             cl->Disconnect();
@@ -3341,9 +3374,9 @@ void FOServer::SetGameTime( int multiplier, int year, int month, int day, int ho
     ConnectedClientsLocker.Lock();
     for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
     {
-        Client* cl_ = *it;
-        if( cl_->IsOnline() )
-            cl_->Send_GameInfo( MapMngr.GetMap( cl_->GetMap(), false ) );
+        Client* cl = *it;
+        if( cl->IsOnline() )
+            cl->Send_GameInfo( MapMngr.GetMap( cl->GetMap(), false ) );
     }
     ConnectedClientsLocker.Unlock();
 
@@ -3453,7 +3486,7 @@ bool FOServer::InitReal()
         return false;                                  // Language packs
     if( !ReloadClientScripts() )
         return false;                                  // Client scripts, after language packs initialization
-    if( !Singleplayer && !LoadClientsData() )
+    if( GameOpt.GameServer && !Singleplayer && !LoadClientsData() )
         return false;
     if( !Singleplayer )
         LoadBans();
@@ -3489,12 +3522,15 @@ bool FOServer::InitReal()
     if( !ItemMngr.CheckProtoFunctions() )
         return false;                          // Check valid of proto functions
 
+    // Update files
+    GenerateUpdateFiles( true );
+
     // Initialization script
     Script::PrepareContext( ServerFunctions.Init, _FUNC_, "Game" );
     Script::RunPrepared();
 
     // World loading
-    if( !Singleplayer )
+    if( GameOpt.GameServer && !Singleplayer )
     {
         // Copy of data
         if( !LoadWorld( NULL ) )
@@ -3535,6 +3571,12 @@ bool FOServer::InitReal()
     if( !Singleplayer )
     {
         port = cfg.GetInt( "Port", 4000 );
+        if( GameOpt.UpdateServer && !GameOpt.GameServer )
+        {
+            ushort update_port = ( ushort ) Str::AtoI( Str::Substring( CommandLine, "-update" ) + Str::Length( "-update" ) );
+            if( update_port )
+                port = update_port;
+        }
         WriteLog( "Starting server on port<%u>.\n", port );
     }
     else
@@ -3671,7 +3713,7 @@ bool FOServer::InitReal()
         void*       pointer;
         if( engine->GetGlobalPropertyByIndex( i, &name, NULL, &type_id, &is_const, &config_group, &pointer ) >= 0 )
         {
-            const char* cmd_name = strstr( cmd_line, name );
+            const char* cmd_name = Str::Substring( cmd_line, name );
             if( cmd_name )
             {
                 const char* type_decl = engine->GetTypeDeclaration( type_id );
@@ -3697,7 +3739,7 @@ bool FOServer::InitReal()
     ScriptSystemUpdate();
 
     // World saver
-    if( Singleplayer )
+    if( Singleplayer || !GameOpt.GameServer )
         WorldSaveManager = 0;                // Disable deferred saving
     if( WorldSaveManager )
     {
@@ -3797,7 +3839,7 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
         }
 
         LanguagePack lang;
-        if( !lang.Init( lang_name, PT_SERVER_TEXTS ) )
+        if( !lang.LoadFromFiles( lang_name ) )
         {
             WriteLog( "Unable to init Language pack<%u>.\n", cur_lang );
             return false;
@@ -3868,15 +3910,12 @@ bool FOServer::InitLangPacksDialogs( LangPackVec& lang_packs )
         }
     }
 
-    for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
-    {
-        LanguagePack& lang = *it;
-        lang.Msg[ TEXTMSG_DLG ].CalculateHash();
-        // lang.Msg[TEXTMSG_DLG].SaveMsgFile(Str::FormatBuf("%s.txt",lang.NameStr),PT_SERVER_ROOT);
-    }
-
     // Restore default randomizer
     DefaultRandomizer = def_rnd;
+
+    // Regenerate update files
+    GenerateUpdateFiles();
+
     return true;
 }
 
@@ -3900,6 +3939,9 @@ bool FOServer::InitLangCrTypes( LangPackVec& lang_packs )
             lang.Msg[ TEXTMSG_INTERNAL ].EraseStr( STR_INTERNAL_CRTYPE( i ) );
         lang.Msg[ TEXTMSG_INTERNAL ] += msg_crtypes;
     }
+
+    // Regenerate update files
+    GenerateUpdateFiles();
 
     return true;
 }
@@ -4395,6 +4437,8 @@ bool FOServer::NewWorld()
 
 void FOServer::SaveWorld( const char* fname )
 {
+    if( !GameOpt.GameServer )
+        return;
     if( !fname && Singleplayer )
         return;                           // Disable autosaving in singleplayer mode
 
@@ -5531,6 +5575,124 @@ string FOServer::GetAnyDataStatistics()
         result += "\n";
     }
     return result;
+}
+
+/************************************************************************/
+/*                                                                      */
+/************************************************************************/
+
+template< class T >
+void ModifyVec( UCharVec& vec, T data )
+{
+    size_t cur = vec.size();
+    vec.resize( cur + sizeof( data ) );
+    memcpy( &vec[ cur ], &data, sizeof( data ) );
+}
+
+template< class T >
+void ModifyVecArr( UCharVec& vec, T* data, size_t size )
+{
+    size_t cur = vec.size();
+    vec.resize( cur + size );
+    memcpy( &vec[ cur ], data, size );
+}
+
+void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
+{
+    if( !GameOpt.UpdateServer )
+        return;
+    if( !first_generation && UpdateFiles.empty() )
+        return;
+
+    WriteLog( "Generate update files...\n" );
+
+    // Clear collections
+    for( auto it = UpdateFiles.begin(), end = UpdateFiles.end(); it != end; ++it )
+        SAFEDELA( ( *it ).Data );
+    UpdateFiles.clear();
+    UpdateFilesList.clear();
+
+    // Fill MSG
+    UpdateFile update_file;
+    for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
+    {
+        LanguagePack& lang_pack = *it;
+        for( int i = 0; i < TEXTMSG_COUNT; i++ )
+        {
+            UCharVec msg_data;
+            lang_pack.Msg[ i ].GetBinaryData( msg_data );
+
+            memzero( &update_file, sizeof( update_file ) );
+            update_file.Size = (uint) msg_data.size();
+            update_file.Data = new uchar[ update_file.Size ];
+            memcpy( update_file.Data, &msg_data[ 0 ], update_file.Size );
+            UpdateFiles.push_back( update_file );
+
+            char msg_cache_name[ MAX_FOPATH ];
+            lang_pack.GetMsgCacheName( i, msg_cache_name );
+
+            ModifyVec( UpdateFilesList, (short) Str::Length( msg_cache_name ) );
+            ModifyVecArr( UpdateFilesList, msg_cache_name, Str::Length( msg_cache_name ) );
+            ModifyVec( UpdateFilesList, update_file.Size );
+            ModifyVec( UpdateFilesList, Crypt.Crc32( update_file.Data, update_file.Size ) );
+        }
+    }
+
+    // Fill prototypes
+    UCharVec proto_items_data;
+    ItemMngr.GetBinaryData( proto_items_data );
+
+    memzero( &update_file, sizeof( update_file ) );
+    update_file.Size = (uint) proto_items_data.size();
+    update_file.Data = new uchar[ update_file.Size ];
+    memcpy( update_file.Data, &proto_items_data[ 0 ], update_file.Size );
+    UpdateFiles.push_back( update_file );
+
+    char protos_cache_name[ MAX_FOPATH ];
+    Str::Format( protos_cache_name, CACHE_ITEM_PROTOS );
+
+    ModifyVec( UpdateFilesList, (short) Str::Length( protos_cache_name ) );
+    ModifyVecArr( UpdateFilesList, protos_cache_name, Str::Length( protos_cache_name ) );
+    ModifyVec( UpdateFilesList, update_file.Size );
+    ModifyVec( UpdateFilesList, Crypt.Crc32( update_file.Data, update_file.Size ) );
+
+    // Fill files
+    StrVec file_names;
+    FileManager::GetDataFileNames( FileManager::GetDataPath( "", PT_SERVER_UPDATE ), true, NULL, file_names );
+    for( size_t i = 0, j = file_names.size(); i < j; i++ )
+    {
+        string      file_name = file_names[ i ].substr( Str::Length( FileManager::GetDataPath( "", PT_SERVER_UPDATE ) ) );
+
+        FileManager fm;
+        if( !fm.LoadFile( file_name.c_str(), PT_SERVER_UPDATE ) )
+        {
+            WriteLogF( _FUNC_, " - Can't load file<%s>.\n", file_names[ i ].c_str() );
+            continue;
+        }
+
+        memzero( &update_file, sizeof( update_file ) );
+        update_file.Size = fm.GetFsize();
+        update_file.Data = fm.ReleaseBuffer();
+        UpdateFiles.push_back( update_file );
+
+        ModifyVec( UpdateFilesList, (short) file_name.length() );
+        ModifyVecArr( UpdateFilesList, file_name.c_str(), (uint) file_name.length() );
+        ModifyVec( UpdateFilesList, update_file.Size );
+    }
+
+    // Complete files list
+    ModifyVec( UpdateFilesList, (short) -1 );
+
+    // Disconnect all connected clients to force data updating
+    if( !first_generation )
+    {
+        ConnectedClientsLocker.Lock();
+        for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
+            ( *it )->Disconnect();
+        ConnectedClientsLocker.Unlock();
+    }
+
+    WriteLog( "Generate update files complete.\n" );
 }
 
 /************************************************************************/

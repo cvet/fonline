@@ -465,14 +465,8 @@ void ItemManager::ParseProtos( ProtoItemVec& protos, const char* collection_name
     }
 
     for( int i = 0; i < ITEM_MAX_TYPES; i++ )
-    {
-        protoHash[ i ] = 0;
-        if( typeProto[ i ].size() )
-        {
+        if( !typeProto[ i ].empty() )
             std::sort( typeProto[ i ].begin(), typeProto[ i ].end(), CompProtoByPid );
-            protoHash[ i ] = Crypt.Crc32( (uchar*) &typeProto[ i ][ 0 ], sizeof( ProtoItem ) * (uint) typeProto[ i ].size() );
-        }
-    }
 }
 
 ProtoItem* ItemManager::GetProtoItem( ushort pid )
@@ -487,15 +481,16 @@ ProtoItem* ItemManager::GetAllProtos()
     return allProto;
 }
 
+ProtoItemVec& ItemManager::GetProtos( int type )
+{
+    return typeProto[ type ];
+}
+
 void ItemManager::GetCopyAllProtos( ProtoItemVec& protos )
 {
     for( int i = 0; i < ITEM_MAX_TYPES; i++ )
-    {
         for( uint j = 0; j < typeProto[ i ].size(); j++ )
-        {
             protos.push_back( typeProto[ i ][ j ] );
-        }
-    }
 }
 
 bool ItemManager::IsInitProto( ushort pid )
@@ -517,10 +512,7 @@ void ItemManager::ClearProtos( int type /* = 0xFF */ )
     if( type == 0xFF )
     {
         for( int i = 0; i < ITEM_MAX_TYPES; i++ )
-        {
-            protoHash[ i ] = 0;
             typeProto[ i ].clear();
-        }
         memzero( allProto, sizeof( allProto ) );
         for( int i = 0; i < MAX_ITEM_PROTOTYPES; i++ )
             SAFEDELA( protoScript[ i ] );
@@ -537,7 +529,6 @@ void ItemManager::ClearProtos( int type /* = 0xFF */ )
             }
         }
         typeProto[ type ].clear();
-        protoHash[ type ] = 0;
     }
     else
     {
@@ -556,15 +547,25 @@ void ItemManager::ClearProto( ushort pid )
         type = ITEM_TYPE_OTHER;
 
     ProtoItemVec& protos = typeProto[ type ];
-    uint&         hash = protoHash[ type ];
 
     allProto[ pid ].Clear();
 
     auto it = std::find( protos.begin(), protos.end(), pid );
     if( it != protos.end() )
         protos.erase( it );
+}
 
-    hash = Crypt.Crc32( (uchar*) &protos[ 0 ], sizeof( ProtoItem ) * (uint) protos.size() );
+void ItemManager::GetBinaryData( UCharVec& data )
+{
+    ProtoItemVec protos;
+    for( int i = 0; i < ITEM_MAX_TYPES; i++ )
+        for( uint j = 0; j < typeProto[ i ].size(); j++ )
+            protos.push_back( typeProto[ i ][ j ] );
+
+    data.resize( protos.size() * sizeof( ProtoItem ) );
+    memcpy( &data[ 0 ], &protos[ 0 ], data.size() );
+
+    Crypt.Compress( data );
 }
 
 #ifdef FONLINE_SERVER
@@ -1628,7 +1629,3 @@ string ItemManager::GetItemsStatistics()
     }
     return result;
 }
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================

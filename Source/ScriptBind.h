@@ -1170,6 +1170,8 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __MaxNameLength", &GameOpt.Ma
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __DlgTalkMinTime", &GameOpt.DlgTalkMinTime ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __DlgBarterMinTime", &GameOpt.DlgBarterMinTime ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __MinimumOfflineTime", &GameOpt.MinimumOfflineTime ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GameServer", &GameOpt.GameServer ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "bool __UpdateServer", &GameOpt.UpdateServer ) );
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __StartSpecialPoints", &GameOpt.StartSpecialPoints ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __StartTagSkillPoints", &GameOpt.StartTagSkillPoints ) );
@@ -1486,6 +1488,8 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MouseScroll", &GameOpt.Mous
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ScrollCheck", &GameOpt.ScrollCheck ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "string __Host", &GameOpt.Host ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Port", &GameOpt.Port ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string __UpdateServerHost", &GameOpt.UpdateServerHost ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "uint __UpdateServerPort", &GameOpt.UpdateServerPort ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ProxyType", &GameOpt.ProxyType ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "string __ProxyHost", &GameOpt.ProxyHost ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ProxyPort", &GameOpt.ProxyPort ) );

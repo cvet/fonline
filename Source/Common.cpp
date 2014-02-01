@@ -890,6 +890,9 @@ void GetClientOptions()
     GameOpt.Port = cfg.GetInt( CLIENT_CONFIG_APP, "RemotePort", 4000 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.Port, "-RemotePort" );
     GETOPTIONS_CHECK( GameOpt.Port, 0, 0xFFFF, 4000 );
+    GameOpt.UpdateServerPort = cfg.GetInt( CLIENT_CONFIG_APP, "UpdateServerPort", 0 );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.UpdateServerPort, "-UpdateServerPort" );
+    GETOPTIONS_CHECK( GameOpt.UpdateServerPort, 0, 0xFFFF, 0 );
     GameOpt.ProxyType = cfg.GetInt( CLIENT_CONFIG_APP, "ProxyType", 0 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ProxyType, "-ProxyType" );
     GETOPTIONS_CHECK( GameOpt.ProxyType, 0, 3, 0 );
@@ -926,6 +929,9 @@ void GetClientOptions()
     cfg.GetStr( CLIENT_CONFIG_APP, "RemoteHost", "localhost", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-RemoteHost" );
     GameOpt.Host = buf;
+    cfg.GetStr( CLIENT_CONFIG_APP, "UpdateServerHost", "", buf );
+    GETOPTIONS_CMD_LINE_STR( buf, "-UpdateServerHost" );
+    GameOpt.UpdateServerHost = buf;
     cfg.GetStr( CLIENT_CONFIG_APP, "ProxyHost", "localhost", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ProxyHost" );
     GameOpt.ProxyHost = buf;
@@ -1228,6 +1234,8 @@ GameOptions::GameOptions()
     DlgTalkMinTime = 0;
     DlgBarterMinTime = 0;
     MinimumOfflineTime = 180000;
+    GameServer = false;
+    UpdateServer = false;
 
     StartSpecialPoints = 40;
     StartTagSkillPoints = 3;
@@ -1315,7 +1323,9 @@ GameOptions::GameOptions()
     VSync = false;
     Light = 0;
     Host = "localhost";
-    Port = 0;
+    Port = 4000;
+    UpdateServerHost = "";
+    UpdateServerPort = 0;
     ProxyType = 0;
     ProxyHost = "";
     ProxyPort = 0;

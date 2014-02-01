@@ -221,8 +221,8 @@ DialogPack* DialogManager::ParseDialog( const char* name, uint id, const char* d
         lang_buf = fodlg.GetApp( l.c_str() );
         if( !lang_buf )
             LOAD_FAIL( "One of the lang section not found." );
-        pack->Texts.push_back( new FOMsg );
-        pack->Texts[ i ]->LoadMsgFileBuf( lang_buf, Str::Length( lang_buf ) );
+        pack->Texts.push_back( new FOMsg() );
+        pack->Texts[ i ]->LoadFromString( lang_buf, Str::Length( lang_buf ) );
         SAFEDELA( lang_buf );
     }
 

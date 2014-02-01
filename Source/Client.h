@@ -48,16 +48,11 @@ public:
     int  MainLoop();
     void NetDisconnect();
 
-    ushort     NetState;
     bool       Active;
     uint*      UID1;
     string     Password;
     HexManager HexMngr;
     ushort     CurMapPid;
-
-    int        ShowScreenType;
-    uint       ShowScreenParam;
-    bool       ShowScreenNeedAnswer;
 
     int        ScreenModeMain;
     void ShowMainScreen( int new_screen );
@@ -81,6 +76,35 @@ public:
     void ParseKeyboard();
     void ParseMouse();
 
+    struct UpdateFile
+    {
+        uint   Index;
+        string Name;
+        uint   Size;
+        uint   RemaningSize;
+        uint   Hash;
+    };
+    typedef vector< UpdateFile > UpdateFileVec;
+
+    bool           UpdateFilesInProgress;
+    bool           UpdateFilesOnlyCheck;
+    bool           UpdateFilesAborted;
+    bool           UpdateFilesFontLoaded;
+    string         UpdateFilesText;
+    UpdateFileVec* UpdateFilesList;
+    uint           UpdateFilesWholeSize;
+    bool           UpdateFileActive;
+    void*          UpdateFileTemp;
+
+    int            ShowScreenType;
+    uint           ShowScreenParam;
+    bool           ShowScreenNeedAnswer;
+
+    void UpdateFiles( bool only_check );
+    void UpdateFilesAddText( uint num_str, const char* num_str_str );
+    void UpdateFilesAbort( uint num_str, const char* num_str_str );
+    void UpdateFilesWait( uint time );
+
     char*         ComBuf;
     uint          ComLen;
     BufferManager Bin;
@@ -98,14 +122,14 @@ public:
     bool          InitNetBegin;
     int           InitNetReason;
 
-    bool InitNet();
+    bool NetConnect( const char* host, ushort port );
     bool FillSockAddr( sockaddr_in& saddr, const char* host, ushort port );
-    bool NetConnect();
     void ParseSocket();
     int  NetInput( bool unpack );
     bool NetOutput();
     void NetProcess();
 
+    void Net_SendUpdate();
     void Net_SendLogIn( const char* name, const char* pass );
     void Net_SendCreatePlayer( CritterCl* newcr );
     void Net_SendSaveLoad( bool save, const char* fname, UCharVec* pic_data );
@@ -145,6 +169,7 @@ public:
     void Net_SendKarmaVoting( uint crid, bool val_up );
     void Net_SendRefereshMe();
 
+    void Net_OnWrongNetProto();
     void Net_OnLoginSuccess();
     void Net_OnAddCritter( bool is_npc );
     void Net_OnRemoveCritter();
@@ -205,8 +230,8 @@ public:
     void Net_OnItemLexems();
     void Net_OnCheckUID3();
 
-    void Net_OnMsgData();
-    void Net_OnProtoItemData();
+    void Net_OnUpdateFilesList();
+    void Net_OnUpdateFileData();
 
     void Net_OnQuest( bool many );
     void Net_OnHoloInfo();
@@ -1875,10 +1900,9 @@ public:
 
 // InitNetReason
 #define INIT_NET_REASON_NONE           ( 0 )
-#define INIT_NET_REASON_CACHE          ( 1 )
-#define INIT_NET_REASON_LOGIN          ( 2 )
-#define INIT_NET_REASON_REG            ( 3 )
-#define INIT_NET_REASON_LOAD           ( 4 )
+#define INIT_NET_REASON_LOGIN          ( 1 )
+#define INIT_NET_REASON_REG            ( 2 )
+#define INIT_NET_REASON_LOAD           ( 3 )
 
 // Items collections
 #define ITEMS_INVENTORY                ( 0 )

@@ -490,7 +490,7 @@ bool FOServer::ReloadClientScripts()
     #endif
     Script::SetEngine( old_engine );
 
-    // Add config text and pragmas, calculate hash
+    // Add config text and pragmas
     for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
     {
         LanguagePack& lang = *it;
@@ -508,21 +508,10 @@ bool FOServer::ReloadClientScripts()
         }
         for( uint i = 0, j = 10; i < j; i++ )
             msg_script.EraseStr( STR_INTERNAL_SCRIPT_PRAGMAS + (uint) pragmas.size() + i );
-
-        msg_script.CalculateHash();
     }
 
-    // Send to all connected clients
-    ConnectedClientsLocker.Lock();
-    for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
-    {
-        Client* cl = *it;
-        auto    it_l = std::find( LangPacks.begin(), LangPacks.end(), cl->LanguageMsg );
-        if( it_l != LangPacks.end() )
-            Send_MsgData( cl, cl->LanguageMsg, TEXTMSG_INTERNAL, ( *it_l ).Msg[ TEXTMSG_INTERNAL ] );
-        cl->Send_LoadMap( NULL );
-    }
-    ConnectedClientsLocker.Unlock();
+    // Regenerate update files
+    GenerateUpdateFiles();
 
     WriteLog( "Reload client scripts complete.\n" );
     return true;
@@ -5327,11 +5316,6 @@ void FOServer::SScriptFunc::Global_EraseAnyData( ScriptString& name )
     EraseAnyData( name.c_std_str() );
 }
 
-void FOServer::SScriptFunc::Global_SetTime( ushort multiplier, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
-{
-    SetGameTime( multiplier, year, month, day, hour, minute, second );
-}
-
 Map* FOServer::SScriptFunc::Global_GetMap( uint map_id )
 {
     if( !map_id )
@@ -6038,6 +6022,11 @@ void FOServer::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort&
     minute = cur_time.Minute;
     second = cur_time.Second;
     milliseconds = cur_time.Milliseconds;
+}
+
+void FOServer::SScriptFunc::Global_SetTime( ushort multiplier, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
+{
+    SetGameTime( multiplier, year, month, day, hour, minute, second );
 }
 
 bool FOServer::SScriptFunc::Global_SetParameterGetBehaviour( uint index, ScriptString& func_name )

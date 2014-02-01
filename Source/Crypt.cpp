@@ -166,6 +166,18 @@ uchar* CryptManager::Compress( const uchar* data, uint& data_len )
     return buf.Release();
 }
 
+bool CryptManager::Compress( UCharVec& data )
+{
+    uint   result_len = (uint) data.size();
+    uchar* result = Compress( &data[ 0 ], result_len );
+    if( !result )
+        return false;
+    data.resize( result_len );
+    memcpy( &data[ 0 ], result, result_len );
+    SAFEDELA( result );
+    return true;
+}
+
 uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_approx )
 {
     uLongf buf_len = data_len * mul_approx;
@@ -228,30 +240,17 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
     return buf.Release();
 }
 
-/*void CryptManager::CryptText(char* text)
-   {
-        uint len=Str::Length(text);
-        char* buf=(char*)Compress((uchar*)text,len);
-        if(!buf) len=0;
-        / *for(int i=0;i<len;i++)
-        {
-                char& c=buf[i];
-                if(c==) c=;
-                text[i]=c;
-        }* /
-        text[len]=0;
-        if(buf) delete[] buf;
-   }
-
-   void CryptManager::UncryptText(char* text)
-   {
-        uint len=Str::Length(text);
-        char* buf=(char*)Uncompress((uchar*)text,len,2);
-        if(buf) memcpy(text,buf,len);
-        else len=0;
-        text[len]=0;
-        if(buf) delete[] buf;
-   }*/
+bool CryptManager::Uncompress( UCharVec& data, uint mul_approx )
+{
+    uint   result_len = (uint) data.size();
+    uchar* result = Uncompress( &data[ 0 ], result_len, mul_approx );
+    if( !result )
+        return false;
+    data.resize( result_len );
+    memcpy( &data[ 0 ], result, result_len );
+    SAFEDELA( result );
+    return true;
+}
 
 #define MAX_CACHE_DESCRIPTORS    ( 10000 )
 #define CACHE_DATA_VALID         ( 0x08 )
@@ -337,8 +336,6 @@ bool CryptManager::SetCacheTable( const char* cache_fname )
             uint   len = (uint) ftell( fr );
             fseek( fr, 0, SEEK_SET );
             uchar* buf = new uchar[ len ];
-            if( !buf )
-                return false;
             fread( buf, sizeof( uchar ), len, fr );
             fwrite( buf, sizeof( uchar ), len, fw );
             delete[] buf;
@@ -489,6 +486,16 @@ label_PlaceFound:
     fclose( f );
 }
 
+void CryptManager::SetCache( const char* data_name, const string& str )
+{
+    SetCache( data_name, (uchar*) str.c_str(), (uint) str.length() + 1 );
+}
+
+void CryptManager::SetCache( const char* data_name, UCharVec& data )
+{
+    SetCache( data_name, (uchar*) data[ 0 ], (uint) data.size() );
+}
+
 uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
 {
     // Fix path
@@ -520,7 +527,7 @@ uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
         }
 
         fseek( f, 0, SEEK_END );
-        uint file_len = (uint) ftell( f ) + 1;
+        uint file_len = (uint) ftell( f );
         fseek( f, 0, SEEK_SET );
 
         if( file_len < sizeof( CacheTable ) + desc.DataOffset + desc.DataCurLen )
@@ -545,4 +552,31 @@ uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
         return data;
     }
     return NULL;
+}
+
+string CryptManager::GetCache( const char* data_name )
+{
+    string str;
+    uint   result_len;
+    uchar* result = GetCache( data_name, result_len );
+    if( result && result_len )
+    {
+        str.resize( result_len );
+        memcpy( &str[ 0 ], result, result_len );
+    }
+    SAFEDELA( result );
+    return str;
+}
+
+bool CryptManager::GetCache( const char* data_name, UCharVec& data )
+{
+    data.clear();
+    uint   result_len;
+    uchar* result = GetCache( data_name, result_len );
+    if( !result )
+        return false;
+    data.resize( result_len );
+    memcpy( &data[ 0 ], result, result_len );
+    SAFEDELA( result );
+    return true;
 }

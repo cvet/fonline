@@ -570,11 +570,13 @@ public:
     bool          DisableZlib;
     z_stream      Zstrm;
     bool          ZstrmInit;
-    uint          ConnectTime;
+    uint          LastActivityTime;
     uint          LastSendedMapTick;
     char          LastSay[ UTF8_BUF_SIZE( MAX_CHAT_MESSAGE ) ];
     uint          LastSayEqualCount;
     uint          RadioMessageSended;
+    int           UpdateFileIndex;
+    uint          UpdateFilePortion;
 
     #if defined ( USE_LIBEVENT )
     struct NetIOArg
@@ -723,11 +725,12 @@ public:
     void Send_RunClientScript( const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 );
     void Send_DropTimers();
     void Send_ViewMap();
-    void Send_ItemLexems( Item* item );     // Without checks
-    void Send_ItemLexemsNull( Item* item ); // Without checks
+    void Send_ItemLexems( Item* item );                                   // Without checks
+    void Send_ItemLexemsNull( Item* item );                               // Without checks
     void Send_CheckUIDS();
-    void Send_SomeItem( Item* item );       // Without checks
-    void Send_EndParseToGame();             // Without checks
+    void Send_SomeItem( Item* item );                                     // Without checks
+    void Send_CustomMessage( uint msg );
+    void Send_CustomMessage( uint msg, uchar* data, uint data_size );
 
     // Locations
     bool CheckKnownLocById( uint loc_id );

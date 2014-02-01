@@ -399,12 +399,22 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_LOGIN_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_LOGIN_SUCCESS:
         return ( NETMSG_LOGIN_SUCCESS_SIZE + bufReadPos <= bufEndPos );
+    case NETMSG_WRONG_NET_PROTO:
+        return ( NETMSG_WRONG_NET_PROTO_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_REGISTER_SUCCESS:
         return ( NETMSG_REGISTER_SUCCESS_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_PING:
         return ( NETMSG_PING_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_END_PARSE_TO_GAME:
         return ( NETMSG_END_PARSE_TO_GAME_SIZE + bufReadPos <= bufEndPos );
+    case NETMSG_UPDATE:
+        return ( NETMSG_UPDATE_SIZE + bufReadPos <= bufEndPos );
+    case NETMSG_GET_UPDATE_FILE:
+        return ( NETMSG_GET_UPDATE_FILE_SIZE + bufReadPos <= bufEndPos );
+    case NETMSG_GET_UPDATE_FILE_DATA:
+        return ( NETMSG_GET_UPDATE_FILE_DATA_SIZE + bufReadPos <= bufEndPos );
+    case NETMSG_UPDATE_FILE_DATA:
+        return ( NETMSG_UPDATE_FILE_DATA_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_REMOVE_CRITTER:
         return ( NETMSG_REMOVE_CRITTER_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_MSG:
@@ -551,6 +561,7 @@ bool BufferManager::NeedProcess()
     case NETMSG_CHECK_UID4:
     case NETMSG_CREATE_CLIENT:
     case NETMSG_SINGLEPLAYER_SAVE_LOAD:
+    case NETMSG_UPDATE_FILES_LIST:
     case NETMSG_ADD_PLAYER:
     case NETMSG_ADD_NPC:
     case NETMSG_CRITTER_LEXEMS:
@@ -573,8 +584,6 @@ bool BufferManager::NeedProcess()
     case NETMSG_SEND_RUN_SERVER_SCRIPT:
     case NETMSG_GLOBAL_INFO:
     case NETMSG_GLOBAL_ENTRANCES:
-    case NETMSG_MSG_DATA:
-    case NETMSG_ITEM_PROTOS:
     case NETMSG_QUESTS:
     case NETMSG_HOLO_INFO:
     case NETMSG_SEND_SET_USER_HOLO_STR:
@@ -615,6 +624,9 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_LOGIN_SUCCESS:
         size = NETMSG_LOGIN_SUCCESS_SIZE;
         break;
+    case NETMSG_WRONG_NET_PROTO:
+        size = NETMSG_WRONG_NET_PROTO_SIZE;
+        break;
     case NETMSG_REGISTER_SUCCESS:
         size = NETMSG_REGISTER_SUCCESS_SIZE;
         break;
@@ -623,6 +635,18 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_END_PARSE_TO_GAME:
         size = NETMSG_END_PARSE_TO_GAME_SIZE;
+        break;
+    case NETMSG_UPDATE:
+        size = NETMSG_UPDATE_SIZE;
+        break;
+    case NETMSG_GET_UPDATE_FILE:
+        size = NETMSG_GET_UPDATE_FILE_SIZE;
+        break;
+    case NETMSG_GET_UPDATE_FILE_DATA:
+        size = NETMSG_GET_UPDATE_FILE_DATA_SIZE;
+        break;
+    case NETMSG_UPDATE_FILE_DATA:
+        size = NETMSG_UPDATE_FILE_DATA_SIZE;
         break;
     case NETMSG_REMOVE_CRITTER:
         size = NETMSG_REMOVE_CRITTER_SIZE;
@@ -821,6 +845,7 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_CHECK_UID4:
     case NETMSG_CREATE_CLIENT:
     case NETMSG_SINGLEPLAYER_SAVE_LOAD:
+    case NETMSG_UPDATE_FILES_LIST:
     case NETMSG_ADD_PLAYER:
     case NETMSG_ADD_NPC:
     case NETMSG_CRITTER_LEXEMS:
@@ -843,8 +868,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_SEND_RUN_SERVER_SCRIPT:
     case NETMSG_GLOBAL_INFO:
     case NETMSG_GLOBAL_ENTRANCES:
-    case NETMSG_MSG_DATA:
-    case NETMSG_ITEM_PROTOS:
     case NETMSG_QUESTS:
     case NETMSG_HOLO_INFO:
     case NETMSG_SEND_SET_USER_HOLO_STR:
@@ -897,11 +920,17 @@ bool BufferManager::IsValidMsg( uint msg )
     case NETMSG_CHECK_UID4:
     case NETMSG_LOGIN:
     case NETMSG_LOGIN_SUCCESS:
+    case NETMSG_WRONG_NET_PROTO:
     case NETMSG_CREATE_CLIENT:
     case NETMSG_SINGLEPLAYER_SAVE_LOAD:
+    case NETMSG_UPDATE_FILES_LIST:
     case NETMSG_REGISTER_SUCCESS:
     case NETMSG_PING:
     case NETMSG_END_PARSE_TO_GAME:
+    case NETMSG_UPDATE:
+    case NETMSG_GET_UPDATE_FILE:
+    case NETMSG_GET_UPDATE_FILE_DATA:
+    case NETMSG_UPDATE_FILE_DATA:
     case NETMSG_ADD_PLAYER:
     case NETMSG_ADD_NPC:
     case NETMSG_REMOVE_CRITTER:
@@ -986,8 +1015,6 @@ bool BufferManager::IsValidMsg( uint msg )
     case NETMSG_SEND_RUN_SERVER_SCRIPT:
     case NETMSG_GLOBAL_INFO:
     case NETMSG_GLOBAL_ENTRANCES:
-    case NETMSG_MSG_DATA:
-    case NETMSG_ITEM_PROTOS:
     case NETMSG_QUESTS:
     case NETMSG_HOLO_INFO:
     case NETMSG_SEND_SET_USER_HOLO_STR:

@@ -3545,7 +3545,8 @@ Client::SendCallback Client::SendData = NULL;
 Client::Client(): ZstrmInit( false ), Access( ACCESS_DEFAULT ), pingOk( true ), LanguageMsg( 0 ),
                   GameState( STATE_NONE ), IsDisconnected( false ), DisconnectTick( 0 ), DisableZlib( false ),
                   LastSendScoresTick( 0 ), LastSendCraftTick( 0 ), LastSendEntrancesTick( 0 ), LastSendEntrancesLocId( 0 ),
-                  ScreenCallbackBindId( 0 ), ConnectTime( 0 ), LastSendedMapTick( 0 ), RadioMessageSended( 0 )
+                  ScreenCallbackBindId( 0 ), LastSendedMapTick( 0 ), RadioMessageSended( 0 ),
+                  UpdateFileIndex( -1 ), UpdateFilePortion( 0 )
 {
     CritterIsNpc = false;
     MEMORY_PROCESS( MEMORY_CLIENT, sizeof( Client ) + sizeof( GlobalMapGroup ) + 40 + sizeof( Item ) * 2 );
@@ -3558,7 +3559,7 @@ Client::Client(): ZstrmInit( false ), Access( ACCESS_DEFAULT ), pingOk( true ), 
     pingNextTick = Timer::FastTick() + PING_CLIENT_LIFE_TIME;
     Talk.Clear();
     talkNextTick = Timer::GameTick() + PROCESS_TALK_TICK;
-    ConnectTime = Timer::FastTick();
+    LastActivityTime = Timer::FastTick();
     LastSay[ 0 ] = 0;
     LastSayEqualCount = 0;
     memzero( UID, sizeof( UID ) );
@@ -5024,10 +5025,28 @@ void Client::Send_SomeItem( Item* item )
     BOUT_END( this );
 }
 
-void Client::Send_EndParseToGame()
+void Client::Send_CustomMessage( uint msg )
 {
+    if( IsSendDisabled() || IsOffline() )
+        return;
+
     BOUT_BEGIN( this );
-    Bout << NETMSG_END_PARSE_TO_GAME;
+    Bout << msg;
+    BOUT_END( this );
+}
+
+void Client::Send_CustomMessage( uint msg, uchar* data, uint data_size )
+{
+    if( IsSendDisabled() || IsOffline() )
+        return;
+
+    uint msg_len = sizeof( msg ) + sizeof( msg_len ) + data_size;
+
+    BOUT_BEGIN( this );
+    Bout << msg;
+    Bout << msg_len;
+    if( data_size )
+        Bout.Push( (char*) data, data_size );
     BOUT_END( this );
 }
 

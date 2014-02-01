@@ -43,6 +43,7 @@
 #define PT_SERVER_LOGS            ( 41 )
 #define PT_SERVER_DUMPS           ( 42 )
 #define PT_SERVER_PROFILER        ( 43 )
+#define PT_SERVER_UPDATE          ( 44 )
 #define PATH_LIST_COUNT           ( 50 )
 extern const char* PathList[ PATH_LIST_COUNT ];
 
@@ -51,7 +52,7 @@ class FileManager
 public:
     static void InitDataFiles( const char* path );
     static bool LoadDataFile( const char* path );
-    static void EndOfWork();
+    static void ClearDataFiles();
 
     bool   LoadFile( const char* fname, int path_type, bool no_read_data = false );
     bool   LoadStream( const uchar* stream, uint length );
@@ -68,8 +69,9 @@ public:
     void   GetStrNT( char* str ); // Null terminated
     uchar  GetUChar();
     ushort GetBEUShort();
-    ushort GetBEShort() { return (short) GetBEUShort(); }
+    short  GetBEShort() { return (short) GetBEUShort(); }
     ushort GetLEUShort();
+    short  GetLEShort() { return (short) GetLEUShort(); }
     uint   GetBEUInt();
     uint   GetLEUInt();
     uint   GetLE3UChar();
@@ -109,6 +111,7 @@ public:
     static const char* GetExtension( const char* fname ); // EXT without dot
     static char*       EraseExtension( char* fname );     // Erase EXT with dot
     static bool        CopyFile( const char* from, const char* to );
+    static bool        DeleteFile( const char* fname );
 
     bool   IsLoaded()     { return fileBuf != NULL; }
     uchar* GetBuf()       { return fileBuf; }

@@ -576,7 +576,7 @@ bool CraftManager::operator==( const CraftManager& r )
 bool CraftManager::LoadCrafts( const char* path )
 {
     FOMsg msg;
-    if( msg.LoadMsgFile( path, -1 ) < 0 )
+    if( !msg.LoadFromFile( path, PT_ROOT ) )
         return false;
     return LoadCrafts( msg );
 }
@@ -595,7 +595,7 @@ bool CraftManager::SaveCrafts( const char* path )
         msg.AddStr( craft->Num, string( craft->GetStr( false ) ) );
     }
 
-    if( msg.SaveMsgFile( path, -1 ) < 0 )
+    if( !msg.SaveToFile( path, PT_ROOT ) )
         return false;
     return true;
 }
@@ -636,9 +636,6 @@ bool CraftManager::LoadCrafts( FOMsg& msg )
         #endif
     }
 
-    #ifdef FONLINE_SERVER
-    msg.CalculateHash();
-    #endif
     return load_fail == 0;
 }
 

@@ -49,8 +49,8 @@ public:
     bool Init( const char* fname );
 
     const string& GetPackName() { return basePath; }
-    bool          IsFilePresent( const char* fname, uint64& write_time );
-    uchar*        OpenFile( const char* fname, uint& len, uint64& write_time );
+    bool          IsFilePresent( const char* fname, uint& size, uint64& write_time );
+    uchar*        OpenFile( const char* fname, uint& size, uint64& write_time );
     void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
 };
 
@@ -64,6 +64,7 @@ private:
     uchar*   memTree;
     void*    datHandle;
     uint64   writeTime;
+    uint     fileSize;
 
     bool ReadTree();
 
@@ -72,8 +73,8 @@ public:
     ~FalloutDatFile();
 
     const string& GetPackName() { return fileName; }
-    bool          IsFilePresent( const char* fname, uint64& write_time );
-    uchar*        OpenFile( const char* fname, uint& len, uint64& write_time );
+    bool          IsFilePresent( const char* fname, uint& size, uint64& write_time );
+    uchar*        OpenFile( const char* fname, uint& size, uint64& write_time );
     void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) { GetFileNames_( filesTree, path, include_subdirs, ext, result ); }
 };
 
@@ -91,6 +92,7 @@ private:
     string   fileName;
     unzFile  zipHandle;
     uint64   writeTime;
+    uint     fileSize;
 
     bool ReadTree();
 
@@ -99,8 +101,8 @@ public:
     ~ZipFile();
 
     const string& GetPackName() { return fileName; }
-    bool          IsFilePresent( const char* fname, uint64& write_time );
-    uchar*        OpenFile( const char* fname, uint& len, uint64& write_time );
+    bool          IsFilePresent( const char* fname, uint& size, uint64& write_time );
+    uchar*        OpenFile( const char* fname, uint& size, uint64& write_time );
     void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) { GetFileNames_( filesTree, path, include_subdirs, ext, result ); }
 };
 
@@ -191,18 +193,19 @@ bool FolderFile::Init( const char* fname )
     return true;
 }
 
-bool FolderFile::IsFilePresent( const char* fname, uint64& write_time )
+bool FolderFile::IsFilePresent( const char* fname, uint& size, uint64& write_time )
 {
     auto it = filesTree.find( fname );
     if( it == filesTree.end() )
         return NULL;
 
     FileEntry& fe = ( *it ).second;
+    size = fe.FileSize;
     write_time = fe.WriteTime;
     return true;
 }
 
-uchar* FolderFile::OpenFile( const char* fname, uint& len, uint64& write_time )
+uchar* FolderFile::OpenFile( const char* fname, uint& size, uint64& write_time )
 {
     auto it = filesTree.find( fname );
     if( it == filesTree.end() )
@@ -213,10 +216,10 @@ uchar* FolderFile::OpenFile( const char* fname, uint& len, uint64& write_time )
     if( !f )
         return NULL;
 
-    len = fe.FileSize;
-    uchar* buf = new uchar[ len + 1 ];
+    size = fe.FileSize;
+    uchar* buf = new uchar[ size + 1 ];
 
-    if( !FileRead( f, buf, len ) )
+    if( !FileRead( f, buf, size ) )
     {
         FileClose( f );
         delete[] buf;
@@ -225,7 +228,7 @@ uchar* FolderFile::OpenFile( const char* fname, uint& len, uint64& write_time )
     FileClose( f );
 
     write_time = fe.WriteTime;
-    buf[ len ] = 0;
+    buf[ size ] = 0;
     return buf;
 }
 
@@ -256,6 +259,7 @@ bool FalloutDatFile::Init( const char* fname )
         return false;
     }
 
+    fileSize = FileGetSize( datHandle );
     writeTime = FileGetWriteTime( datHandle );
 
     if( !ReadTree() )
@@ -396,16 +400,17 @@ bool FalloutDatFile::ReadTree()
     return true;
 }
 
-bool FalloutDatFile::IsFilePresent( const char* fname, uint64& write_time )
+bool FalloutDatFile::IsFilePresent( const char* fname, uint& size, uint64& write_time )
 {
     if( !datHandle )
         return false;
 
+    size = fileSize;
     write_time = writeTime;
     return filesTree.find( fname ) != filesTree.end();
 }
 
-uchar* FalloutDatFile::OpenFile( const char* fname, uint& len, uint64& write_time )
+uchar* FalloutDatFile::OpenFile( const char* fname, uint& size, uint64& write_time )
 {
     if( !datHandle )
         return NULL;
@@ -423,13 +428,13 @@ uchar* FalloutDatFile::OpenFile( const char* fname, uint& len, uint64& write_tim
     if( !FileSetPointer( datHandle, offset, SEEK_SET ) )
         return NULL;
 
-    len = real_size;
-    uchar* buf = new uchar[ len + 1 ];
+    size = real_size;
+    uchar* buf = new uchar[ size + 1 ];
 
     if( !type )
     {
         // Plane data
-        if( !FileRead( datHandle, buf, len ) )
+        if( !FileRead( datHandle, buf, size ) )
         {
             delete[] buf;
             return NULL;
@@ -485,7 +490,7 @@ uchar* FalloutDatFile::OpenFile( const char* fname, uint& len, uint64& write_tim
     }
 
     write_time = writeTime;
-    buf[ len ] = 0;
+    buf[ size ] = 0;
     return buf;
 }
 
@@ -513,6 +518,7 @@ bool ZipFile::Init( const char* fname )
         return false;
     }
 
+    fileSize = FileGetSize( file );
     writeTime = FileGetWriteTime( file );
 
     FileClose( file );
@@ -587,16 +593,17 @@ bool ZipFile::ReadTree()
     return true;
 }
 
-bool ZipFile::IsFilePresent( const char* fname, uint64& write_time )
+bool ZipFile::IsFilePresent( const char* fname, uint& size, uint64& write_time )
 {
     if( !zipHandle )
         return false;
 
+    size = fileSize;
     write_time = writeTime;
     return filesTree.find( fname ) != filesTree.end();
 }
 
-uchar* ZipFile::OpenFile( const char* fname, uint& len, uint64& write_time )
+uchar* ZipFile::OpenFile( const char* fname, uint& size, uint64& write_time )
 {
     if( !zipHandle )
         return NULL;
@@ -628,8 +635,8 @@ uchar* ZipFile::OpenFile( const char* fname, uint& len, uint64& write_time )
     }
 
     write_time = writeTime;
-    len = info.UncompressedSize;
-    buf[ len ] = 0;
+    size = info.UncompressedSize;
+    buf[ size ] = 0;
     return buf;
 }
 

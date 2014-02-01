@@ -1409,6 +1409,83 @@ bool FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from
     return result;
 }
 
+void FOServer::Process_Update( Client* cl )
+{
+    // Net protocol
+    ushort proto_ver = 0;
+    cl->Bin >> proto_ver;
+    if( proto_ver != FO_PROTOCOL_VERSION )
+    {
+        cl->Send_CustomMessage( NETMSG_WRONG_NET_PROTO );
+        cl->Disconnect();
+        return;
+    }
+
+    // Begin data encrypting
+    uint encrypt_key;
+    cl->Bin >> encrypt_key;
+    cl->Bin.SetEncryptKey( encrypt_key + 521 );
+    cl->Bout.SetEncryptKey( encrypt_key + 3491 );
+
+    // Send update files list
+    cl->Send_CustomMessage( NETMSG_UPDATE_FILES_LIST, &UpdateFilesList[ 0 ], (uint) UpdateFilesList.size() );
+}
+
+void FOServer::Process_UpdateFile( Client* cl )
+{
+    uint file_index;
+    cl->Bin >> file_index;
+
+    if( file_index >= (uint) UpdateFiles.size() )
+    {
+        WriteLogF( _FUNC_, " - Wrong file index<%u>, client ip<%s>.\n", file_index, cl->GetIpStr() );
+        cl->Disconnect();
+        return;
+    }
+
+    cl->UpdateFileIndex = file_index;
+    cl->UpdateFilePortion = 0;
+    Process_UpdateFileData( cl );
+}
+
+void FOServer::Process_UpdateFileData( Client* cl )
+{
+    if( cl->UpdateFileIndex == -1 )
+    {
+        WriteLogF( _FUNC_, " - Wrong update call, client ip<%s>.\n", cl->GetIpStr() );
+        cl->Disconnect();
+        return;
+    }
+
+    UpdateFile& update_file = UpdateFiles[ cl->UpdateFileIndex ];
+    uint        offset = cl->UpdateFilePortion * FILE_UPDATE_PORTION;
+
+    if( offset + FILE_UPDATE_PORTION < update_file.Size )
+        cl->UpdateFilePortion++;
+    else
+        cl->UpdateFileIndex = -1;
+
+    if( cl->IsSendDisabled() || cl->IsOffline() )
+        return;
+
+    uchar data[ FILE_UPDATE_PORTION ];
+    uint  remaining_size = update_file.Size - offset;
+    if( remaining_size >= sizeof( data ) )
+    {
+        memcpy( data, &update_file.Data[ offset ], sizeof( data ) );
+    }
+    else
+    {
+        memcpy( data, &update_file.Data[ offset ], remaining_size );
+        memzero( &data[ remaining_size ], sizeof( data ) - remaining_size );
+    }
+
+    BOUT_BEGIN( cl );
+    cl->Bout << NETMSG_UPDATE_FILE_DATA;
+    cl->Bout.Push( (char*) data, sizeof( data ) );
+    BOUT_END( cl );
+}
+
 void FOServer::Process_CreateClient( Client* cl )
 {
     // Check for ban by ip
@@ -1717,8 +1794,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     cl->Bin >> proto_ver;
     if( proto_ver != FO_PROTOCOL_VERSION )
     {
-        // WriteLogF(_FUNC_," - Wrong Protocol Version from SockId<%u>.\n",cl->Sock);
-        cl->Send_TextMsg( cl, STR_NET_WRONG_NETPROTO, SAY_NETMSG, TEXTMSG_GAME );
+        cl->Send_CustomMessage( NETMSG_WRONG_NET_PROTO );
         cl->Disconnect();
         return;
     }
@@ -1768,33 +1844,12 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     cl->Bin.Pop( dummy, 100 );
     CHECK_IN_BUFF_ERROR_EX( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ) );
 
-    // Lang packs
-    bool default_lang = false;
+    // Language
     auto it_l = std::find( LangPacks.begin(), LangPacks.end(), msg_language );
-    if( it_l == LangPacks.end() )
-    {
-        default_lang = true;
-        it_l = LangPacks.begin();
-    }
-
-    LanguagePack& lang = *it_l;
-    msg_language = lang.Name;
-    cl->LanguageMsg = msg_language;
-    for( int i = 0; i < TEXTMSG_COUNT; i++ )
-    {
-        if( lang.Msg[ i ].GetHash() != textmsg_hash[ i ] )
-            Send_MsgData( cl, msg_language, i, lang.Msg[ i ] );
-    }
-
-    if( default_lang )
-        cl->Send_TextMsg( cl, STR_NET_LANGUAGE_NOT_SUPPORTED, SAY_NETMSG, TEXTMSG_GAME );
-
-    // Proto item data
-    for( int i = 0; i < ITEM_MAX_TYPES; i++ )
-    {
-        if( ItemMngr.GetProtosHash( i ) != item_hash[ i ] )
-            Send_ProtoItemData( cl, i, ItemMngr.GetProtos( i ), ItemMngr.GetProtosHash( i ) );
-    }
+    if( it_l != LangPacks.end() )
+        cl->LanguageMsg = msg_language;
+    else
+        cl->LanguageMsg = ( *LangPacks.begin() ).Name;
 
     // If only cache checking than disconnect
     if( !Singleplayer && !name[ 0 ] )
@@ -2104,7 +2159,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         cl_old->Sock = cl->Sock;
         cl->Sock = INVALID_SOCKET;
         memcpy( &cl_old->From, &cl->From, sizeof( cl_old->From ) );
-        cl_old->ConnectTime = 0;
+        cl_old->LastActivityTime = 0;
         UNSETFLAG( cl_old->Flags, FCRIT_DISCONNECT );
         SETFLAG( cl->Flags, FCRIT_DISCONNECT );
         std::swap( cl_old->Zstrm, cl->Zstrm );
@@ -2553,7 +2608,7 @@ void FOServer::Process_ParseToGame( Client* cl )
     }
 
     // Notify about end of parsing
-    cl->Send_EndParseToGame();
+    cl->Send_CustomMessage( NETMSG_END_PARSE_TO_GAME );
 }
 
 void FOServer::Process_GiveMap( Client* cl )
@@ -4601,40 +4656,4 @@ void FOServer::Process_RuleGlobal( Client* cl )
     }
 
     cl->SetBreakTime( GameOpt.Breaktime );
-}
-
-
-void FOServer::Send_MsgData( Client* cl, uint lang, ushort num_msg, FOMsg& data_msg )
-{
-    if( cl->IsSendDisabled() || cl->IsOffline() )
-        return;
-
-    uint msg = NETMSG_MSG_DATA;
-    uint msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( lang ) + sizeof( num_msg ) + sizeof( uint ) + data_msg.GetToSendLen();
-
-    BOUT_BEGIN( cl );
-    cl->Bout << msg;
-    cl->Bout << msg_len;
-    cl->Bout << lang;
-    cl->Bout << num_msg;
-    cl->Bout << data_msg.GetHash();
-    cl->Bout.Push( data_msg.GetToSend(), data_msg.GetToSendLen() );
-    BOUT_END( cl );
-}
-
-void FOServer::Send_ProtoItemData( Client* cl, uchar type, ProtoItemVec& data, uint data_hash )
-{
-    if( cl->IsSendDisabled() || cl->IsOffline() )
-        return;
-
-    uint msg = NETMSG_ITEM_PROTOS;
-    uint msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( type ) + sizeof( data_hash ) + (uint) data.size() * sizeof( ProtoItem );
-
-    BOUT_BEGIN( cl );
-    cl->Bout << msg;
-    cl->Bout << msg_len;
-    cl->Bout << type;
-    cl->Bout << data_hash;
-    cl->Bout.Push( (char*) &data[ 0 ], (uint) data.size() * sizeof( ProtoItem ) );
-    BOUT_END( cl );
 }

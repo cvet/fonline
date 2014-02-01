@@ -7,9 +7,9 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION                   ( 0xF0FD ) // FOnline Protocol Version
+#define FO_PROTOCOL_VERSION                   ( 0xF0FE )    // FOnline Protocol Version
 #define MAKE_NETMSG_HEADER( number )    ( (uint) ( ( 0x5EAD << 17 ) | ( number << 8 ) | ( 0xAA ) ) )
-#define PING_CLIENT_LIFE_TIME                 ( 15000 )  // Time to ping client life
+#define PING_CLIENT_LIFE_TIME                 ( 15000 )     // Time to ping client life
 
 // Special message
 // 0xFFFFFFFF - ping, answer
@@ -58,6 +58,12 @@
 // uint bout_seed
 // ////////////////////////////////////////////////////////////////////////
 
+#define NETMSG_WRONG_NET_PROTO                MAKE_NETMSG_HEADER( 8 )
+#define NETMSG_WRONG_NET_PROTO_SIZE           ( sizeof( uint ) )
+// ////////////////////////////////////////////////////////////////////////
+// Wrong network protocol
+// ////////////////////////////////////////////////////////////////////////
+
 #define NETMSG_CREATE_CLIENT                  MAKE_NETMSG_HEADER( 3 )
 // ////////////////////////////////////////////////////////////////////////
 // Registration query
@@ -89,39 +95,6 @@
 // ////////////////////////////////////////////////////////////////////////
 // Message about successfully map loading
 // ////////////////////////////////////////////////////////////////////////
-
-/*#define NETMSG_UPDATE_FILES_LIST    MAKE_NETMSG_HEADER(7)
-   //////////////////////////////////////////////////////////////////////////
-   // Prepared message
-   // uint msg_len
-   // uint files_count
-   //  ushort path_len - max MAX_FOPATH
-   //  char path[path_len]
-   //  uint size
-   //  uint hash
-   //////////////////////////////////////////////////////////////////////////
-
-   #define NETMSG_SEND_GET_UPDATE_FILE MAKE_NETMSG_HEADER(8)
-   #define NETMSG_SEND_GET_UPDATE_FILE_SIZE (sizeof(uint)+sizeof(uint))
-   //////////////////////////////////////////////////////////////////////////
-   // Request to updated file
-   // uint file_number
-   //////////////////////////////////////////////////////////////////////////
-
-   #define NETMSG_UPDATE_FILE          MAKE_NETMSG_HEADER(9)
-   //////////////////////////////////////////////////////////////////////////
-   // Portion of data
-   // uint msg_len
-   // ushort portion_len
-   // uchar portion[portion_len]
-   //////////////////////////////////////////////////////////////////////////
-
-   #define NETMSG_HELLO                MAKE_NETMSG_HEADER(10)
-   #define NETMSG_HELLO_SIZE           (sizeof(uint))
-   //////////////////////////////////////////////////////////////////////////
-   // First message after connection
-   //////////////////////////////////////////////////////////////////////////
- */
 
 #define NETMSG_SINGLEPLAYER_SAVE_LOAD         MAKE_NETMSG_HEADER( 10 )
 // ////////////////////////////////////////////////////////////////////////
@@ -163,6 +136,48 @@
 // ////////////////////////////////////////////////////////////////////////
 //
 // uint msg_len
+// ////////////////////////////////////////////////////////////////////////
+
+// ************************************************************************
+// Update
+// ************************************************************************
+
+#define NETMSG_UPDATE                         MAKE_NETMSG_HEADER( 14 )
+#define NETMSG_UPDATE_SIZE                    ( sizeof( uint ) + sizeof( ushort ) + sizeof( uint ) )
+// ////////////////////////////////////////////////////////////////////////
+// Request to update
+// ushort protocol_version
+// uint encrypt_key
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_UPDATE_FILES_LIST              MAKE_NETMSG_HEADER( 15 )
+// ////////////////////////////////////////////////////////////////////////
+// Files list to update
+// uint msg_len
+// uint files_count
+//   short path_len
+//   char path[path_len]
+//   uint size
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_GET_UPDATE_FILE                MAKE_NETMSG_HEADER( 16 )
+#define NETMSG_GET_UPDATE_FILE_SIZE           ( sizeof( uint ) + sizeof( uint ) )
+// ////////////////////////////////////////////////////////////////////////
+// Request to updated file
+// uint file_number
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_GET_UPDATE_FILE_DATA           MAKE_NETMSG_HEADER( 17 )
+#define NETMSG_GET_UPDATE_FILE_DATA_SIZE      ( sizeof( uint ) )
+// ////////////////////////////////////////////////////////////////////////
+// Request to update file data
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_UPDATE_FILE_DATA               MAKE_NETMSG_HEADER( 18 )
+#define NETMSG_UPDATE_FILE_DATA_SIZE          ( sizeof( uint ) + FILE_UPDATE_PORTION )
+// ////////////////////////////////////////////////////////////////////////
+// Portion of data
+// uchar data[FILE_UPDATE_PORTION]
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
@@ -993,7 +1008,6 @@
 // char answer_s[MAX_SAY_NPC_TEXT]
 // ////////////////////////////////////////////////////////////////////////
 
-
 #define NETMSG_DROP_TIMERS                    MAKE_NETMSG_HEADER( 129 )
 #define NETMSG_DROP_TIMERS_SIZE               ( sizeof( uint ) )
 // ////////////////////////////////////////////////////////////////////////
@@ -1062,34 +1076,6 @@
 // uint loc_id
 // uchar count
 //  uchar entrances[count]
-// ////////////////////////////////////////////////////////////////////////
-
-// ************************************************************************
-// Cached data
-// ************************************************************************
-
-#define NETMSG_MSG_DATA                       MAKE_NETMSG_HEADER( 141 )
-// ////////////////////////////////////////////////////////////////////////
-//
-// uint msg_len
-// uint MSG_language
-// ushort MSG_num
-// uint MSG_hash
-// char[msg_len-(sizeof(uint)-sizeof(msg_len)-sizeof(MSG_language)-
-//	sizeof(MSG_num)-sizeof(MSG_hash))] MSG_data
-//	uint num
-//	uint len
-//	char data[len]
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_ITEM_PROTOS                    MAKE_NETMSG_HEADER( 142 )
-// ////////////////////////////////////////////////////////////////////////
-//
-// uint msg_len
-// uchar item_type
-// uint item_hash
-// ProtoItem[(msg_len-sizeof(uint)-sizeof(msg_len)-sizeof(item_type)-
-//	sizeof(msg_hash))/sizeof(ProtoItem)]
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************

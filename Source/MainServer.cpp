@@ -103,23 +103,31 @@ int main( int argc, char** argv )
     // Logging
     LogWithTime( cfg.GetInt( "LoggingTime", 1 ) == 0 ? false : true );
     LogWithThread( cfg.GetInt( "LoggingThread", 1 ) == 0 ? false : true );
-    if( strstr( CommandLine, "-logdebugoutput" ) || strstr( CommandLine, "-LoggingDebugOutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
+    if( Str::Substring( CommandLine, "-logdebugoutput" ) || Str::Substring( CommandLine, "-LoggingDebugOutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
         LogToDebugOutput( true );
+
+    // Update stuff
+    if( !Singleplayer && Str::Substring( CommandLine, "-game" ) )
+        GameOpt.GameServer = true, GameOpt.UpdateServer = false;
+    else if( !Singleplayer && Str::Substring( CommandLine, "-update" ) )
+        GameOpt.GameServer = false, GameOpt.UpdateServer = true;
+    else
+        GameOpt.GameServer = true, GameOpt.UpdateServer = true;
 
     // Init event
     GameInitEvent.Disallow();
 
     // Service
-    if( strstr( CommandLine, "-service" ) )
+    if( Str::Substring( CommandLine, "-service" ) )
     {
         # ifdef FO_WINDOWS
-        ServiceMain( strstr( CommandLine, "--service" ) != NULL );
+        ServiceMain( Str::Substring( CommandLine, "--service" ) != NULL );
         # endif
         return 0;
     }
 
     // Check single player parameters
-    if( strstr( CommandLine, "-singleplayer " ) )
+    if( Str::Substring( CommandLine, "-singleplayer " ) )
     {
         # ifdef FO_WINDOWS
         Singleplayer = true;
@@ -128,9 +136,9 @@ int main( int argc, char** argv )
 
         // Logging
         char log_path[ MAX_FOPATH ] = { 0 };
-        if( !strstr( CommandLine, "-nologpath" ) && strstr( CommandLine, "-logpath " ) )
+        if( !Str::Substring( CommandLine, "-nologpath" ) && Str::Substring( CommandLine, "-logpath " ) )
         {
-            const char* ptr = strstr( CommandLine, "-logpath " ) + Str::Length( "-logpath " );
+            const char* ptr = Str::Substring( CommandLine, "-logpath " ) + Str::Length( "-logpath " );
             Str::Copy( log_path, ptr );
         }
         Str::EraseFrontBackSpecificChars( log_path );
@@ -140,7 +148,7 @@ int main( int argc, char** argv )
         WriteLog( "Singleplayer mode.\n" );
 
         // Shared data
-        const char* ptr = strstr( CommandLine, "-singleplayer " ) + Str::Length( "-singleplayer " );
+        const char* ptr = Str::Substring( CommandLine, "-singleplayer " ) + Str::Length( "-singleplayer " );
         HANDLE      map_file = NULL;
         if( sscanf( ptr, "%p%p", &map_file, &SingleplayerClientProcess ) != 2 || !SingleplayerData.Attach( map_file ) )
         {
@@ -153,7 +161,7 @@ int main( int argc, char** argv )
     }
 
     // GUI
-    if( !Singleplayer || strstr( CommandLine, "-showgui" ) )
+    if( !Singleplayer || Str::Substring( CommandLine, "-showgui" ) )
     {
         Fl::lock();         // Begin GUI multi threading
         GUIInit( cfg );
@@ -180,7 +188,7 @@ int main( int argc, char** argv )
         WriteLog( "Command line<%s>.\n", CommandLine );
 
     // Autostart
-    if( strstr( CommandLine, "-start" ) || Singleplayer )
+    if( Str::Substring( CommandLine, "-start" ) || Singleplayer )
     {
         if( GuiWindow )
         {
@@ -285,7 +293,12 @@ void GUIInit( IniParser& cfg )
     GuiWindow->size_range( GUI_SIZE2( 129, 129 ) );
 
     // Name
-    GuiWindow->label( GetWindowName() );
+    string title = GetWindowName();
+    if( GameOpt.GameServer && !GameOpt.UpdateServer )
+        title += " GAME";
+    else if( !GameOpt.GameServer && GameOpt.UpdateServer )
+        title += " UPDATE";
+    GuiWindow->label( title.c_str() );
 
     // Icon
     # ifdef FO_WINDOWS
@@ -746,7 +759,7 @@ void ServiceMain( bool as_service )
     }
 
     // Delete service
-    if( strstr( CommandLine, "-delete" ) )
+    if( Str::Substring( CommandLine, "-delete" ) )
     {
         SC_HANDLE service = OpenService( manager, "FOnlineServer", DELETE );
 
@@ -956,7 +969,7 @@ int main( int argc, char** argv )
     // Logging
     LogWithTime( cfg.GetInt( "LoggingTime", 1 ) == 0 ? false : true );
     LogWithThread( cfg.GetInt( "LoggingThread", 1 ) == 0 ? false : true );
-    if( strstr( CommandLine, "-logdebugoutput" ) || strstr( CommandLine, "-LoggingDebugOutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
+    if( Str::Substring( CommandLine, "-logdebugoutput" ) || Str::Substring( CommandLine, "-LoggingDebugOutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
         LogToDebugOutput( true );
     LogToFile( "./FOnlineServerDaemon.log" );
 

@@ -306,6 +306,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define MAX_DLG_LEXEMS_TEXT          ( 1000 )
 #define MAX_BUF_LEN                  ( 4096 )
 #define PASS_HASH_SIZE               ( 32 )
+#define FILE_UPDATE_PORTION          ( 0x10000 )
 
 // Critters
 #define MAX_CRIT_TYPES               ( 1000 )
@@ -655,5 +656,11 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define USER_HOLO_START_NUM          ( 100000 )
 #define USER_HOLO_MAX_TITLE_LEN      ( 40 )
 #define USER_HOLO_MAX_LEN            ( 2000 )
+
+// Cache names
+#define CACHE_MAGIC_CHAR             "*"
+#define CACHE_HASH_APPENDIX          "_hash"
+#define CACHE_MSG_PREFIX             CACHE_MAGIC_CHAR "msg"
+#define CACHE_ITEM_PROTOS            CACHE_MAGIC_CHAR "item_protos"
 
 #endif // ___DEFINES___

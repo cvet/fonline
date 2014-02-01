@@ -27,6 +27,20 @@
 
 #define STR_VERSION_INFO                   ( 1 )
 
+// Update messages
+#define STR_CHECK_UPDATES                  ( 5 )
+#define STR_CONNECT_TO_SERVER              ( 6 )
+#define STR_CANT_CONNECT_TO_SERVER         ( 7 )
+#define STR_CONNECTION_ESTABLISHED         ( 8 )
+#define STR_DATA_SYNCHRONIZATION           ( 9 )
+#define STR_CONNECTION_FAILTURE            ( 10 )
+#define STR_FILESYSTEM_ERROR               ( 11 )
+#define STR_CLIENT_OUTDATED                ( 12 )
+#define STR_CLIENT_OUTDATED_APP_STORE      ( 13 )
+#define STR_CLIENT_OUTDATED_GOOGLE_PLAY    ( 14 )
+#define STR_CLIENT_UPDATED                 ( 15 )
+#define STR_CLIENT_DATA_OUTDATED           ( 16 )
+
 // Months, days
 #define STR_MONTH( m )            ( 20 + ( m ) )
 #define STR_DAY_OF_WEEK( dow )    ( 32 + ( dow ) )

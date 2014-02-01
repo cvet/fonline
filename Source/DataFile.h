@@ -11,8 +11,8 @@ class DataFile
 {
 public:
     virtual const string& GetPackName() = 0;
-    virtual bool          IsFilePresent( const char* fname, uint64& write_time ) = 0;
-    virtual uchar*        OpenFile( const char* fname, uint& len, uint64& write_time ) = 0;
+    virtual bool          IsFilePresent( const char* fname, uint& size, uint64& write_time ) = 0;
+    virtual uchar*        OpenFile( const char* fname, uint& size, uint64& write_time ) = 0;
     virtual void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) = 0;
     virtual ~DataFile() {}
 };
