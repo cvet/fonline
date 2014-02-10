@@ -144,46 +144,42 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
         IfaceIni.AppendPtrToBegin( ( *it ).second.first, ( *it ).second.second );
 }
 
-int FOClient::InitIface()
+bool FOClient::InitIface()
 {
     // Recreate static atlas
     ResMngr.FreeResources( RES_ATLAS_STATIC );
     SprMngr.AccumulateAtlasData();
     SprMngr.PushAtlasType( RES_ATLAS_STATIC );
 
-    // Initialize main interface
-    int result = InitIfaceExt();
-
-    // Load fonts
-    if( !SprMngr.LoadFontFO( FONT_FO, "OldDefault", false ) )
-        return -1;
-    if( !SprMngr.LoadFontFO( FONT_NUM, "Numbers", true ) )
-        return -2;
-    if( !SprMngr.LoadFontFO( FONT_BIG_NUM, "BigNumbers", true ) )
-        return -3;
-    if( !SprMngr.LoadFontFO( FONT_SAND_NUM, "SandNumbers", false ) )
-        return -4;
-    if( !SprMngr.LoadFontFO( FONT_SPECIAL, "Special", false ) )
-        return -5;
-    if( !SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false ) )
-        return -6;
-    if( !SprMngr.LoadFontFO( FONT_THIN, "Thin", false ) )
-        return -7;
-    if( !SprMngr.LoadFontFO( FONT_FAT, "Fat", false ) )
-        return -8;
-    if( !SprMngr.LoadFontFO( FONT_BIG, "Big", false ) )
-        return -9;
-
-    // BMF to FOFNT convertation
-    if( false )
-        SprMngr.LoadFontBMF( 11111, "DefaultExt" );
-
     // Start script
     if( !Script::PrepareContext( ClientFunctions.Start, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
     {
         WriteLog( "Execute start script fail.\n" );
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
-        result = -100;
+        return false;
+    }
+
+    // Initialize main interface
+    int result = InitIfaceExt();
+    if( result != 0 )
+    {
+        WriteLog( "Interface initialization fail on line<%d>.\n", result );
+        return false;
+    }
+
+    // Load fonts
+    if( !SprMngr.LoadFontFO( FONT_FO, "OldDefault", false ) ||
+        !SprMngr.LoadFontFO( FONT_NUM, "Numbers", true ) ||
+        !SprMngr.LoadFontFO( FONT_BIG_NUM, "BigNumbers", true ) ||
+        !SprMngr.LoadFontFO( FONT_SAND_NUM, "SandNumbers", false ) ||
+        !SprMngr.LoadFontFO( FONT_SPECIAL, "Special", false ) ||
+        !SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false ) ||
+        !SprMngr.LoadFontFO( FONT_THIN, "Thin", false ) ||
+        !SprMngr.LoadFontFO( FONT_FAT, "Fat", false ) ||
+        !SprMngr.LoadFontFO( FONT_BIG, "Big", false ) )
+    {
+        WriteLog( "Interface fonts initialization fail.\n" );
+        return false;
     }
 
     // Flush atlas data
@@ -194,7 +190,7 @@ int FOClient::InitIface()
     SprMngr.BuildFonts();
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
 
-    return result;
+    return true;
 }
 
 int FOClient::InitIfaceExt()
