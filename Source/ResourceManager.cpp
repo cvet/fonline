@@ -89,7 +89,9 @@ void ResourceManager::FreeResources( int type )
         critterFrames.clear();
 
         // 3D textures
+        #ifndef RES_ATLAS_TEXTURES
         GraphicLoader::DestroyTextures();
+        #endif
     }
 }
 
@@ -638,7 +640,9 @@ Animation3d* ResourceManager::GetCrit3dAnim( uint crtype, uint anim1, uint anim2
 
     char name[ MAX_FOPATH ];
     Str::Format( name, "%s.fo3d", CritType::GetName( crtype ) );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( name, PT_ART_CRITTERS );
+    SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( name, PT_ART_CRITTERS, true );
+    SprMngr.PopAtlasType();
     if( !anim3d )
         return NULL;
 
@@ -662,8 +666,8 @@ uint ResourceManager::GetCritSprId( uint crtype, uint anim1, uint anim2, int dir
     }
     else
     {
-        Animation3d* anim = GetCrit3dAnim( crtype, anim1, anim2, dir, layers3d );
-        spr_id = ( anim ? anim->GetSprId() : 0 );
+        Animation3d* anim3d = GetCrit3dAnim( crtype, anim1, anim2, dir, layers3d );
+        spr_id = ( anim3d ? anim3d->SprId : 0 );
     }
     return spr_id;
 }
@@ -677,6 +681,5 @@ AnyFrames* ResourceManager::GetRandomSplash()
     SprMngr.PushAtlasType( RES_ATLAS_SPLASH, true );
     splash = SprMngr.ReloadAnimation( splash, splashNames[ rnd ].c_str(), PT_DATA );
     SprMngr.PopAtlasType();
-    SprMngr.FinalizeAtlas( RES_ATLAS_SPLASH );
     return splash;
 }

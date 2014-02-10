@@ -8,8 +8,6 @@
 #include "3dStuff.h"
 #include "GraphicLoader.h"
 
-// #define RENDER_3D_TO_2D
-
 // Font flags
 #define FT_NOBREAK                 ( 0x0001 )
 #define FT_NOBREAK_LINE            ( 0x0002 )
@@ -105,13 +103,11 @@ class SpriteManager
 private:
     Matrix          projectionMatrixCM;
     int             modeWidth, modeHeight;
+    int             curViewportWidth, curViewportHeight;
     bool            sceneBeginned;
     RenderTarget*   rtMain;
     RenderTarget*   rtContours, * rtContoursMid;
-    RenderTarget*   rt3DSprite, * rt3DMSSprite;
-    #ifdef RENDER_3D_TO_2D
-    RenderTarget*   rt3D, * rt3DMS;
-    #endif
+    RenderTargetVec rt3D;
     RenderTargetVec rtStack;
     GLint           baseFBO;
 
@@ -125,15 +121,16 @@ public:
     void EndScene();
 
     // Render targets
-    bool          IsRenderTargetSupported();
-    RenderTarget* CreateRenderTarget( bool depth_stencil, bool multisampling = false, uint width = 0, uint height = 0, bool tex_linear = false );
+    RenderTarget* CreateRenderTarget( bool depth_stencil, bool multisampling, uint width, uint height, bool tex_linear );
     void          DeleteRenderTarget( RenderTarget*& rt );
     void          PushRenderTarget( RenderTarget* rt );
     void          PopRenderTarget();
     void          DrawRenderTarget( RenderTarget* rt, bool alpha_blend, const Rect* region_from = NULL, const Rect* region_to = NULL );
+    uint          GetRenderTargetPixel( RenderTarget* rt, int x, int y );
     void          ClearCurrentRenderTarget( uint color );
     void          ClearCurrentRenderTargetDS( bool depth, bool stencil );
-    void          RefreshViewPort();
+    void          RefreshViewport( int w = 0, int h = 0 );
+    RenderTarget* Get3dRenderTarget( uint width, uint height );
 
     // Texture atlases
 public:
@@ -142,8 +139,6 @@ public:
     void AccumulateAtlasData();
     void FlushAccumulatedAtlasData();
     bool IsAccumulateAtlasActive();
-    void FinalizeAtlas( int atlas_type );
-    void AutofinalizeAtlases( int atlas_type );
     void DestroyAtlases( int atlas_type );
     void DumpAtlases();
     void SaveTexture( Texture* tex, const char* fname, bool flip );   // tex == NULL is back buffer
@@ -155,8 +150,6 @@ private:
     TextureAtlasVec allAtlases;
     bool            accumulatorActive;
     SprInfoVec      accumulatorSprInfo;
-    IntVec          autofinalizeAtlases;
-    PtrVec          atlasDataPool;
 
     TextureAtlas* CreateAtlas( int w, int h );
     TextureAtlas* FindAtlasPlace( SpriteInfo* si, int& x, int& y );
@@ -167,13 +160,15 @@ private:
 public:
     AnyFrames*   LoadAnimation( const char* fname, int path_type, bool use_dummy = false, bool frm_anim_pix = false );
     AnyFrames*   ReloadAnimation( AnyFrames* anim, const char* fname, int path_type );
-    Animation3d* LoadPure3dAnimation( const char* fname, int path_type );
+    Animation3d* LoadPure3dAnimation( const char* fname, int path_type, bool auto_redraw );
+    void         RefreshPure3dAnimationSprite( Animation3d* anim3d );
     void         FreePure3dAnimation( Animation3d* anim3d );
     bool         SaveAnimationInFastFormat( AnyFrames* anim, const char* fname, int path_type );
     bool         TryLoadAnimationInFastFormat( const char* fname, int path_type, FileManager& fm, AnyFrames*& anim );
 
 private:
-    SprInfoVec sprData;
+    SprInfoVec     sprData;
+    Animation3dVec autoRedrawAnim3d;
 
     AnyFrames* CreateAnimation( uint frames, uint ticks );
     AnyFrames* LoadAnimationFrm( const char* fname, int path_type, bool anim_pix );
@@ -187,9 +182,7 @@ private:
     AnyFrames* LoadAnimationMos( const char* fname, int path_type );
     AnyFrames* LoadAnimationBam( const char* fname, int path_type );
     AnyFrames* LoadAnimationOther( const char* fname, int path_type, uchar * ( *loader )( const uchar *, uint, uint &, uint & ) );
-    bool Render3d( int x, int y, float scale, Animation3d* anim3d, RectF* stencil, uint color );
-    bool Render3dSize( RectF rect, bool stretch_up, bool center, Animation3d* anim3d, RectF* stencil, uint color );
-    uint Render3dSprite( Animation3d* anim3d, int dir, int time_proc );
+    bool Render3d( Animation3d* anim3d );
 
     // Draw
 public:
@@ -213,8 +206,7 @@ public:
     bool DrawSpriteSize( uint id, int x, int y, float w, float h, bool stretch_up, bool center, uint color = 0 );
     bool DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to );
     bool DrawPoints( PointVec& points, int prim, float* zoom = NULL, RectF* stencil = NULL, PointF* offset = NULL, Effect* effect = NULL );
-    bool Draw3d( int x, int y, float scale, Animation3d* anim3d, RectF* stencil, uint color );
-    bool Draw3dSize( RectF rect, bool stretch_up, bool center, Animation3d* anim3d, RectF* stencil, uint color );
+    bool Draw3d( int x, int y, Animation3d* anim3d, uint color );
 
     inline bool DrawSprite( AnyFrames* frames, int x, int y, uint color = 0 )
     {

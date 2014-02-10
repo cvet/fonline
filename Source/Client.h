@@ -402,6 +402,7 @@ public:
         } SS;
         FileManager   RawData;
         RenderTarget* RT;
+        uchar*        TextureData;
         uint          CurFrame;
         double        StartTime;
         double        AverageRenderTime;
@@ -696,7 +697,7 @@ public:
 
     bool AppendIfaceIni( const char* ini_name );
     void AppendIfaceIni( uchar* data, uint len );
-    int  InitIface();
+    bool InitIface();
     int  InitIfaceExt();
     bool IfaceLoadRect( Rect& comp, const char* name );
     void IfaceLoadRect2( Rect& comp, const char* name, int ox, int oy );

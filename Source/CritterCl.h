@@ -279,7 +279,6 @@ public:
 
     void SetOffs( short set_ox, short set_oy, bool move_text );
     void ChangeOffs( short change_ox, short change_oy, bool move_text );
-    void AccamulateOffs();
     void AddOffsExt( short ox, short oy );
     void GetWalkHexOffsets( int dir, int& ox, int& oy );
 

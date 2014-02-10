@@ -207,9 +207,8 @@ bool FOClient::Init()
             if( !sprite_ || !sprite_->Valid ) return false;
             SpriteInfo* si = SprMngr.GetSpriteInfo( sprite_->PSprId ? *sprite_->PSprId : sprite_->SprId );
             if( !si ) return false;
-            if( si->Anim3d ) return si->Anim3d->IsIntersect( x, y );
-            int sx = sprite_->ScrX - si->Width / 2 + si->OffsX + GameOpt.ScrOx + ( sprite_->OffsX ? *sprite_->OffsX : 0 );
-            int sy = sprite_->ScrY - si->Height + si->OffsY + GameOpt.ScrOy + ( sprite_->OffsY ? *sprite_->OffsY : 0 );
+            int         sx = sprite_->ScrX - si->Width / 2 + si->OffsX + GameOpt.ScrOx + ( sprite_->OffsX ? *sprite_->OffsX : 0 );
+            int         sy = sprite_->ScrY - si->Height + si->OffsY + GameOpt.ScrOy + ( sprite_->OffsY ? *sprite_->OffsY : 0 );
             if( !( sprite_ = sprite_->GetIntersected( x - sx, y - sy ) ) ) return false;
             if( check_egg && SprMngr.CompareHexEgg( sprite_->HexX, sprite_->HexY, sprite_->EggType ) && SprMngr.IsEggTransp( x, y ) ) return false;
             return true;
@@ -292,7 +291,6 @@ bool FOClient::Init()
     // Sprite manager
     if( !SprMngr.Init() )
         return false;
-    SprMngr.AutofinalizeAtlases( RES_ATLAS_DYNAMIC );
     UID_PREPARE_UID4_6;
     GET_UID4( UID4 );
 
@@ -354,10 +352,9 @@ bool FOClient::Init()
     ReloadScripts();
 
     // Load interface
-    int res = InitIface();
-    if( res != 0 && res != -100 )
+    if( !InitIface() )
     {
-        WriteLog( "Init interface fail, error<%d>.\n", res );
+        WriteLog( "Unable to initialize interface.\n" );
         return false;
     }
 
@@ -507,7 +504,7 @@ void FOClient::UpdateFiles( bool only_check )
                 dots_str += ".";
 
             string progress = "";
-            if( UpdateFilesList )
+            if( UpdateFilesList && !UpdateFilesList->empty() )
             {
                 progress += "\n";
                 for( size_t i = 0, j = UpdateFilesList->size(); i < j; i++ )
@@ -1458,7 +1455,7 @@ void FOClient::ParseKeyboard()
                     if( !SDL_SetWindowFullscreen( MainWindow, 0 ) )
                         GameOpt.FullScreen = false;
                 }
-                SprMngr.RefreshViewPort();
+                SprMngr.RefreshViewport();
                 continue;
             // Minimize
             case DIK_F12:
@@ -9308,7 +9305,7 @@ void FOClient::PlayVideo()
     CurVideo->Context = th_decode_alloc( &CurVideo->VideoInfo, CurVideo->SetupInfo );
 
     // Create texture
-    CurVideo->RT = SprMngr.CreateRenderTarget( false, false, CurVideo->VideoInfo.pic_width, CurVideo->VideoInfo.pic_height );
+    CurVideo->RT = SprMngr.CreateRenderTarget( false, false, CurVideo->VideoInfo.pic_width, CurVideo->VideoInfo.pic_height, true );
     if( !CurVideo->RT )
     {
         WriteLogF( _FUNC_, " - Can't create render target.\n" );
@@ -9316,7 +9313,7 @@ void FOClient::PlayVideo()
         NextVideo();
         return;
     }
-    CurVideo->RT->TargetTexture->Data = new uchar[ CurVideo->RT->TargetTexture->Size ];
+    CurVideo->TextureData = new uchar[ CurVideo->RT->TargetTexture->Width * CurVideo->RT->TargetTexture->Height * 4 ];
 
     // Start sound
     if( video.SoundName != "" )
@@ -9495,7 +9492,7 @@ void FOClient::RenderVideo()
             float cb = cy + 1.722f * ( cu - 127 );
 
             // Set on texture
-            uchar* data = CurVideo->RT->TargetTexture->Data + ( ( h - y - 1 ) * w * 4 + x * 4 );
+            uchar* data = CurVideo->TextureData + ( ( h - y - 1 ) * w * 4 + x * 4 );
             data[ 0 ] = (uchar) cr;
             data[ 1 ] = (uchar) cg;
             data[ 2 ] = (uchar) cb;
@@ -9504,7 +9501,7 @@ void FOClient::RenderVideo()
     }
 
     // Update texture and draw it
-    CurVideo->RT->TargetTexture->Update();
+    CurVideo->RT->TargetTexture->UpdateRegion( Rect( 0, 0, CurVideo->RT->TargetTexture->Width - 1, CurVideo->RT->TargetTexture->Height - 1 ), CurVideo->TextureData );
     SprMngr.DrawRenderTarget( CurVideo->RT, false );
 
     // Render to window
@@ -9573,6 +9570,7 @@ void FOClient::StopVideo()
         th_setup_free( CurVideo->SetupInfo );
         th_decode_free( CurVideo->Context );
         SprMngr.DeleteRenderTarget( CurVideo->RT );
+        SAFEDELA( CurVideo->TextureData );
         SAFEDEL( CurVideo );
     }
 
@@ -11164,7 +11162,9 @@ void FOClient::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar d
 
 bool FOClient::SScriptFunc::Global_AppendIfaceIni( ScriptString& ini_name )
 {
-    return Self->AppendIfaceIni( ini_name.c_str() );
+    bool r = Self->AppendIfaceIni( ini_name.c_str() );
+    WriteLog( "Global_AppendIfaceIni<%s> %d\n", ini_name.c_str(), r );
+    return r;
 }
 
 ScriptString* FOClient::SScriptFunc::Global_GetIfaceIniStr( ScriptString& key )
@@ -11858,24 +11858,26 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         if( DrawCritter3dFailToLoad[ instance ] && DrawCritter3dCrType[ instance ] == crtype )
             return;
 
-        Animation3d*& anim = DrawCritter3dAnim[ instance ];
-        if( !anim || DrawCritter3dCrType[ instance ] != crtype )
+        Animation3d*& anim3d = DrawCritter3dAnim[ instance ];
+        if( !anim3d || DrawCritter3dCrType[ instance ] != crtype )
         {
-            if( anim )
-                SprMngr.FreePure3dAnimation( anim );
+            if( anim3d )
+                SprMngr.FreePure3dAnimation( anim3d );
             char fname[ MAX_FOPATH ];
             Str::Format( fname, "%s.fo3d", CritType::GetName( crtype ) );
-            anim = SprMngr.LoadPure3dAnimation( fname, PT_ART_CRITTERS );
+            SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+            anim3d = SprMngr.LoadPure3dAnimation( fname, PT_ART_CRITTERS, false );
+            SprMngr.PopAtlasType();
             DrawCritter3dCrType[ instance ] = crtype;
             DrawCritter3dFailToLoad[ instance ] = false;
 
-            if( !anim )
+            if( !anim3d )
             {
                 DrawCritter3dFailToLoad[ instance ] = true;
                 return;
             }
-            anim->EnableShadow( false );
-            anim->SetTimer( false );
+            anim3d->EnableShadow( false );
+            anim3d->SetTimer( false );
         }
 
         uint  count = ( position ? position->GetSize() : 0 );
@@ -11893,17 +11895,18 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         float stt = ( count > 11 ? *(float*) position->At( 11 ) : 0.0f );
         float str = ( count > 12 ? *(float*) position->At( 12 ) : 0.0f );
         float stb = ( count > 13 ? *(float*) position->At( 13 ) : 0.0f );
+        RectF stencil_r = RectF( stl, stt, str, stb );
 
         memzero( DrawCritter3dLayers, sizeof( DrawCritter3dLayers ) );
         for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
             DrawCritter3dLayers[ i ] = *(int*) layers->At( i );
 
-        anim->SetRotation( rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f );
-        anim->SetScale( sx, sy, sz );
-        anim->SetSpeed( speed );
-        anim->SetAnimation( anim1, anim2, DrawCritter3dLayers, 0 );
-        RectF r = RectF( stl, stt, str, stb );
-        SprMngr.Draw3d( (int) x, (int) y, 1.0f, anim, stl < str && stt < stb ? &r : NULL, color ? color : COLOR_IFACE );
+        anim3d->SetRotation( rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f );
+        anim3d->SetScale( sx, sy, sz );
+        anim3d->SetSpeed( speed );
+        anim3d->SetAnimation( anim1, anim2, DrawCritter3dLayers, 0 );
+
+        SprMngr.Draw3d( (int) x, (int) y, anim3d, color ? color : COLOR_IFACE );
     }
 }
 

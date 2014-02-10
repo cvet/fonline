@@ -179,7 +179,7 @@ bool HexManager::Init()
         return false;
     }
 
-    rtMap = SprMngr.CreateRenderTarget( true );
+    rtMap = SprMngr.CreateRenderTarget( false, false, 0, 0, false );
     if( rtMap )
         rtMap->DrawEffect = Effect::FlushMap;
 
@@ -1639,8 +1639,6 @@ bool HexManager::IsVisible( uint spr_id, int ox, int oy )
     SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
     if( !si )
         return false;
-    if( si->Anim3d )
-        return true;
 
     int top = oy + si->OffsY - si->Height - SCROLL_OY;
     int bottom = oy + si->OffsY + SCROLL_OY;
@@ -1941,7 +1939,6 @@ void HexManager::DrawMap()
     {
         SprMngr.PushRenderTarget( rtMap );
         SprMngr.ClearCurrentRenderTarget( 0 );
-        SprMngr.ClearCurrentRenderTargetDS( true, false );
     }
 
     // Rebuild light
@@ -2654,13 +2651,6 @@ ItemHex* HexManager::GetItemPixel( int x, int y, bool& item_egg )
         if( !si )
             continue;
 
-        if( si->Anim3d )
-        {
-            if( si->Anim3d->IsIntersect( x, y ) )
-                pix_item.push_back( item );
-            continue;
-        }
-
         int l = (int) ( ( *item->HexScrX + item->ScrX + si->OffsX + HEX_OX + GameOpt.ScrOx - si->Width / 2 ) / GameOpt.SpritesZoom );
         int r = (int) ( ( *item->HexScrX + item->ScrX + si->OffsX + HEX_OX + GameOpt.ScrOx + si->Width / 2 ) / GameOpt.SpritesZoom );
         int t = (int) ( ( *item->HexScrY + item->ScrY + si->OffsY + HEX_OY + GameOpt.ScrOy - si->Height ) / GameOpt.SpritesZoom );
@@ -2725,21 +2715,11 @@ CritterCl* HexManager::GetCritterPixel( int x, int y, bool ignore_dead_and_chose
         if( ignore_dead_and_chosen && ( cr->IsDead() || cr->IsChosen() ) )
             continue;
 
-        // Check 3d model hit
-        if( cr->Anim3d )
+        if( x >= ( cr->DRect.L + GameOpt.ScrOx ) / GameOpt.SpritesZoom && x <= ( cr->DRect.R + GameOpt.ScrOx ) / GameOpt.SpritesZoom &&
+            y >= ( cr->DRect.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom && y <= ( cr->DRect.B + GameOpt.ScrOy ) / GameOpt.SpritesZoom &&
+            SprMngr.IsPixNoTransp( cr->SprId, (int) ( x - ( cr->DRect.L + GameOpt.ScrOx ) / GameOpt.SpritesZoom ), (int) ( y - ( cr->DRect.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom ) ) )
         {
-            if( cr->Anim3d->IsIntersect( x, y ) )
-                crits.push_back( cr );
-        }
-        // Check sprite hit
-        else
-        {
-            if( x >= ( cr->DRect.L + GameOpt.ScrOx ) / GameOpt.SpritesZoom && x <= ( cr->DRect.R + GameOpt.ScrOx ) / GameOpt.SpritesZoom &&
-                y >= ( cr->DRect.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom && y <= ( cr->DRect.B + GameOpt.ScrOy ) / GameOpt.SpritesZoom &&
-                SprMngr.IsPixNoTransp( cr->SprId, (int) ( x - ( cr->DRect.L + GameOpt.ScrOx ) / GameOpt.SpritesZoom ), (int) ( y - ( cr->DRect.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom ) ) )
-            {
-                crits.push_back( cr );
-            }
+            crits.push_back( cr );
         }
     }
 

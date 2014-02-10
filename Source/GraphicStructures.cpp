@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "GraphicStructures.h"
+#include "SpriteManager.h"
 
 //
 // AnyFrames
@@ -37,7 +38,7 @@ void AnyFrames::CreateDirAnims()
 // Texture
 //
 
-Texture::Texture(): Name( NULL ), Id( 0 ), Data( NULL ), Size( 0 ), Width( 0 ), Height( 0 ), Samples( 0.0f )
+Texture::Texture(): Name( NULL ), Id( 0 ), Size( 0 ), Width( 0 ), Height( 0 ), Samples( 0.0f )
 {
     // Dummy comment
 }
@@ -45,21 +46,13 @@ Texture::Texture(): Name( NULL ), Id( 0 ), Data( NULL ), Size( 0 ), Width( 0 ), 
 Texture::~Texture()
 {
     GL( glDeleteTextures( 1, &Id ) );
-    SAFEDELA( Data );
 }
 
-bool Texture::Update()
+void Texture::UpdateRegion( const Rect& r, const uchar* data )
 {
     GL( glBindTexture( GL_TEXTURE_2D, Id ) );
-    GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_RGBA, GL_UNSIGNED_BYTE, Data ) );
-    return true;
-}
-
-bool Texture::UpdateRegion( const Rect& r )
-{
-    GL( glBindTexture( GL_TEXTURE_2D, Id ) );
-    GL( glTexSubImage2D( GL_TEXTURE_2D, 0, 0, r.T, Width, r.H(), GL_RGBA, GL_UNSIGNED_BYTE, (uint*) Data + r.T * Width ) );
-    return true;
+    GL( glTexSubImage2D( GL_TEXTURE_2D, 0, r.L, r.T, r.W(), r.H(), GL_RGBA, GL_UNSIGNED_BYTE, data ) );
+    GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
 }
 
 //
@@ -119,7 +112,7 @@ TextureAtlas::TextureAtlas()
 
 TextureAtlas::~TextureAtlas()
 {
-    SAFEDEL( TextureOwner );
+    SprMngr.DeleteRenderTarget( RT );
     SAFEDEL( RootNode );
 }
 

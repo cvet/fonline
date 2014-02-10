@@ -17,7 +17,6 @@ bool   SoftwareSkinning = false;
 uint   AnimDelay = 0;
 Color  LightColor;
 Matrix WorldMatrices[ MAX_BONE_MATRICES ];
-float  CurZ = 0.0f;
 
 void VecProject( const Vector& v, Vector& out )
 {
@@ -53,11 +52,10 @@ void ProjectPosition( Vector& v )
 Animation3dVec Animation3d::loadedAnimations;
 
 Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ), combinedMeshesSize( 0 ),
-                            currentTrack( 0 ), lastTick( 0 ), endTick( 0 ), speedAdjustBase( 1.0f ), speedAdjustCur( 1.0f ), speedAdjustLink( 1.0f ),
-                            shadowDisabled( false ), dirAngle( GameOpt.MapHexagonal ? 150.0f : 135.0f ), sprId( 0 ),
-                            drawScale( 0.0f ), noDraw( true ), parentAnimation( NULL ), parentNode( NULL ),
+                            currentTrack( 0 ), lastDrawTick( 0 ), endTick( 0 ), speedAdjustBase( 1.0f ), speedAdjustCur( 1.0f ), speedAdjustLink( 1.0f ),
+                            shadowDisabled( false ), dirAngle( GameOpt.MapHexagonal ? 150.0f : 135.0f ), parentAnimation( NULL ), parentNode( NULL ),
                             childChecker( true ), useGameTimer( true ), animPosProc( 0.0f ), animPosTime( 0.0f ), animPosPeriod( 0.0f ),
-                            allowMeshGeneration( false )
+                            allowMeshGeneration( false ), SprId( 0 ), SprAtlasType( 0 )
 {
     memzero( currentLayers, sizeof( currentLayers ) );
     Matrix::RotationX( GameOpt.MapCameraAngle * PI_VALUE / 180.0f, matRot );
@@ -368,12 +366,8 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
         else
             endTick = 0;
 
-        // FPS imitation
-        if( AnimDelay )
-        {
-            lastTick = tick;
-            animController->AdvanceTime( 0.0f );
-        }
+        // Force redraw
+        lastDrawTick = 0;
     }
 
     // Set animation for children
@@ -424,68 +418,12 @@ bool Animation3d::IsAnimationPlaying()
     return GetTick() < endTick;
 }
 
-bool Animation3d::IsIntersect( int x, int y )
-{
-    // Mesh not draw at last frame
-    if( noDraw )
-        return false;
-
-    // Check dirty region
-    Rect borders = GetBonesBorder( true );
-    if( x < borders.L || x > borders.R || y < borders.T || y > borders.B )
-        return false;
-
-    // Move animation
-    ProcessAnimation( 0.0f, drawXY.X, drawXY.Y, drawScale );
-
-    // Check precisely
-    for( size_t m = 0; m < combinedMeshesSize; m++ )
-    {
-        CombinedMesh* combined_mesh = combinedMeshes[ m ];
-        TransformMesh( combined_mesh );
-        for( size_t i = 0, j = combined_mesh->Indicies.size(); i < j; i += 3 )
-        {
-            Vector& c1 = combined_mesh->VerticesTransformed[ combined_mesh->Indicies[ i + 0 ] ];
-            Vector& c2 = combined_mesh->VerticesTransformed[ combined_mesh->Indicies[ i + 1 ] ];
-            Vector& c3 = combined_mesh->VerticesTransformed[ combined_mesh->Indicies[ i + 2 ] ];
-            #define SQUARE( x1, y1, x2, y2, x3, y3 )    fabs( x2 * y3 - x3 * y2 - x1 * y3 + x3 * y1 + x1 * y2 - x2 * y1 )
-            float   s = 0.0f;
-            s += SQUARE( x, y, c2.x, c2.y, c3.x, c3.y );
-            s += SQUARE( c1.x, c1.y, x, y, c3.x, c3.y );
-            s += SQUARE( c1.x, c1.y, c2.x, c2.y, x, y );
-            if( s <= SQUARE( c1.x, c1.y, c2.x, c2.y, c3.x, c3.y ) )
-                return true;
-            #undef SQUARE
-        }
-    }
-
-    return false;
-}
-
-Point Animation3d::GetGroundPos()
-{
-    Vector pos = groundPos;
-    ProjectPosition( pos );
-    return PointF( pos.x, pos.y );
-}
-
-Rect Animation3d::GetBonesBorder( bool add_offsets /* = false */ )
-{
-    if( add_offsets )
-        return RectF( bonesBorder.L - BORDERS_OFFSET, bonesBorder.T - BORDERS_OFFSET, bonesBorder.R + BORDERS_OFFSET, bonesBorder.B + BORDERS_OFFSET );
-    return bonesBorder;
-}
-
-Point Animation3d::GetBonesBorderPivot()
-{
-    return Point( drawXY.X - (int) bonesBorder.L, drawXY.Y - (int) bonesBorder.T );
-}
-
-void Animation3d::GetRenderFramesData( float& period, int& proc_from, int& proc_to )
+void Animation3d::GetRenderFramesData( float& period, int& proc_from, int& proc_to, int& dir )
 {
     period = 0.0f;
     proc_from = animEntity->renderAnimProcFrom;
     proc_to = animEntity->renderAnimProcTo;
+    dir = animEntity->renderAnimDir;
 
     if( animController )
     {
@@ -493,6 +431,15 @@ void Animation3d::GetRenderFramesData( float& period, int& proc_from, int& proc_
         if( set )
             period = set->GetDuration();
     }
+}
+
+void Animation3d::GetDrawSize( uint& draw_width, uint& draw_height )
+{
+    draw_width = animEntity->drawWidth;
+    draw_height = animEntity->drawHeight;
+    int s = (int) ceilf( max( max( matScale.a1, matScale.b2 ), matScale.c3 ) );
+    draw_width *= s;
+    draw_height *= s;
 }
 
 float Animation3d::GetSpeed()
@@ -580,7 +527,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
             }
 
             // Assign it
-            int texture_num = data.TextureNum[ i ];
+            int  texture_num = data.TextureNum[ i ];
             uint mesh_name_hash = data.TextureMesh[ i ];
             for( auto it = allMeshes.begin(), end = allMeshes.end(); it != end; ++it )
                 if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Parent->NameHash )
@@ -723,72 +670,27 @@ void Animation3d::CombineMesh( MeshInstance& mesh_instance )
     combinedMeshesSize++;
 }
 
-void Animation3d::Draw( int x, int y, float scale, uint color )
+bool Animation3d::NeedDraw()
+{
+    return combinedMeshesSize && ( !lastDrawTick || GetTick() - lastDrawTick >= AnimDelay );
+}
+
+void Animation3d::Draw( int x, int y )
 {
     // Skip drawing if no meshes generated
     if( !combinedMeshesSize )
         return;
 
-    // Increment Z
-    CurZ += DRAW_Z_STEP;
-
-    // Lighting
-    LightColor.r = (float) ( (uchar*) &color )[ 0 ] / 255.0f;
-    LightColor.g = (float) ( (uchar*) &color )[ 1 ] / 255.0f;
-    LightColor.b = (float) ( (uchar*) &color )[ 2 ] / 255.0f;
-    LightColor.a = (float) ( (uchar*) &color )[ 3 ] / 255.0f;
-
     // Move timer
-    float elapsed = 0.0f;
     uint  tick = GetTick();
-    if( AnimDelay && animController )
-    {
-        // 2D emulation
-        while( lastTick + AnimDelay <= tick )
-        {
-            elapsed += 0.001f * (float) AnimDelay;
-            lastTick += AnimDelay;
-        }
-    }
-    else
-    {
-        // Smooth
-        elapsed = 0.001f * (float) ( tick - lastTick );
-        lastTick = tick;
-    }
+    float elapsed = ( lastDrawTick ? 0.001f * (float) ( tick - lastDrawTick ) : 0.0f );
+    lastDrawTick = tick;
 
     // Move animation
-    ProcessAnimation( elapsed, x, y, scale );
+    ProcessAnimation( elapsed, x ? x : ModeWidth / 2, y ? y : ModeHeight - ModeHeight / 4, 1.0f );
 
     // Draw mesh
-    if( LightColor.a == 1.0f )
-    {
-        // Non transparent
-        DrawCombinedMeshes();
-    }
-    else
-    {
-        // Transparent
-        GL( glColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE ) );
-        GL( glDepthFunc( GL_LESS ) );
-        DrawCombinedMeshes();
-        GL( glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE ) );
-        GL( glDepthFunc( GL_EQUAL ) );
-        DrawCombinedMeshes();
-        GL( glDepthFunc( GL_LESS ) );
-    }
-
-    // Store draw parameters
-    noDraw = false;
-    drawScale = scale;
-    drawXY.X = x;
-    drawXY.Y = y;
-}
-
-void Animation3d::SetDrawPos( int x, int y )
-{
-    drawXY.X = x;
-    drawXY.Y = y;
+    DrawCombinedMeshes();
 }
 
 void Animation3d::ProcessAnimation( float elapsed, int x, int y, float scale )
@@ -805,9 +707,6 @@ void Animation3d::ProcessAnimation( float elapsed, int x, int y, float scale )
         groundPos.x = parentMatrix.a4;
         groundPos.y = parentMatrix.b4;
         groundPos.z = parentMatrix.c4;
-
-        // Clean border
-        bonesBorder( 1000000.0f, 1000000.0f, -1000000.0f, -1000000.0f );
     }
 
     // Advance animation time
@@ -857,22 +756,6 @@ void Animation3d::UpdateNodeMatrices( Node* node, const Matrix* parent_matrix )
 {
     // If parent matrix exists multiply our node matrix by it
     node->CombinedTransformationMatrix = ( *parent_matrix ) * node->TransformationMatrix;
-
-    // Calculate bone screen position
-    Matrix& m = node->CombinedTransformationMatrix;
-    node->ScreenPos.Set( m[ 0 ][ 3 ], m[ 1 ][ 3 ], m[ 2 ][ 3 ] );
-    ProjectPosition( node->ScreenPos );
-
-    // Update borders
-    Vector& pos = node->ScreenPos;
-    if( pos.x < bonesBorder.L )
-        bonesBorder.L = pos.x;
-    if( pos.x > bonesBorder.R )
-        bonesBorder.R = pos.x;
-    if( pos.y < bonesBorder.T )
-        bonesBorder.T = pos.y;
-    if( pos.y > bonesBorder.B )
-        bonesBorder.B = pos.y;
 
     // Update child
     for( auto it = node->Children.begin(), end = node->Children.end(); it != end; ++it )
@@ -974,55 +857,31 @@ void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow )
     }
 }
 
-void Animation3d::TransformMesh( CombinedMesh* combined_mesh )
-{
-    if( combined_mesh->VerticesTransformed.size() != combined_mesh->Vertices.size() )
-        combined_mesh->VerticesTransformed.resize( combined_mesh->Vertices.size() );
-
-    for( int i = 0; i < MAX_BONE_MATRICES; i++ )
-    {
-        Matrix* m = combined_mesh->BoneCombinedMatrices[ i ];
-        if( m )
-            WorldMatrices[ i ] = ( *m ) * combined_mesh->BoneOffsetMatrices[ i ];
-    }
-
-    for( size_t i = 0, j = combined_mesh->Vertices.size(); i < j; i++ )
-    {
-        Vertex3D& v = combined_mesh->Vertices[ i ];
-        Vector position = Vector();
-        for( int b = 0; b < BONES_PER_VERTEX; b++ )
-        {
-            Matrix& m = WorldMatrices[ (int) v.BlendIndices[ b ] ];
-            position += m * v.Position * v.BlendWeights[ b ];
-        }
-        ProjectPosition( position );
-        combined_mesh->VerticesTransformed[ i ] = position;
-    }
-}
-
 bool Animation3d::StartUp()
 {
-    // FPS & Smooth
-    if( GameOpt.Animation3dSmoothTime )
-    {
-        // Smoothing
-        AnimDelay = 0;
-        MoveTransitionTime = GameOpt.Animation3dSmoothTime / 1000.0f;
-        if( MoveTransitionTime < 0.001f )
-            MoveTransitionTime = 0.001f;
-    }
-    else
-    {
-        // 2D emulation
-        AnimDelay = 1000 / ( GameOpt.Animation3dFPS ? GameOpt.Animation3dFPS : 10 );
+    // Check effects
+    if( !GraphicLoader::Load3dEffects() )
+        return false;
+
+    // Smoothing
+    MoveTransitionTime = GameOpt.Animation3dSmoothTime / 1000.0f;
+    if( MoveTransitionTime < 0.001f )
         MoveTransitionTime = 0.001f;
-    }
+
+    // 2D rendering time
+    if( GameOpt.Animation3dFPS )
+        AnimDelay = 1000 / GameOpt.Animation3dFPS;
+    else
+        AnimDelay = 0;
 
     return true;
 }
 
-bool Animation3d::SetScreenSize( int width, int height )
+void Animation3d::SetScreenSize( int width, int height )
 {
+    if( width == ModeWidth && height == ModeHeight )
+        return;
+
     // Build orthogonal projection
     ModeWidth = width;
     ModeHeight = height;
@@ -1031,7 +890,7 @@ bool Animation3d::SetScreenSize( int width, int height )
 
     // Projection
     float k = (float) ModeHeight / 768.0f;
-    gluStuffOrtho( MatrixProjRM[ 0 ], 0.0f, 18.65f * k * ModeWidthF / ModeHeightF, 0.0f, 18.65f * k, -500.0f, 500.0f );
+    gluStuffOrtho( MatrixProjRM[ 0 ], 0.0f, 18.65f * k * ModeWidthF / ModeHeightF, 0.0f, 18.65f * k, -10.0f, 10.0f );
     MatrixProjCM = MatrixProjRM;
     MatrixProjCM.Transpose();
     MatrixEmptyRM = Matrix();
@@ -1040,8 +899,6 @@ bool Animation3d::SetScreenSize( int width, int height )
 
     // View port
     GL( glViewport( 0, 0, ModeWidth, ModeHeight ) );
-
-    return true;
 }
 
 void Animation3d::Finish()
@@ -1052,13 +909,6 @@ void Animation3d::Finish()
     for( auto it = Animation3dXFile::xFiles.begin(), end = Animation3dXFile::xFiles.end(); it != end; ++it )
         delete *it;
     Animation3dXFile::xFiles.clear();
-}
-
-void Animation3d::BeginScene()
-{
-    CurZ = -450.0f;
-    for( auto it = loadedAnimations.begin(), end = loadedAnimations.end(); it != end; ++it )
-        ( *it )->noDraw = true;
 }
 
 Animation3d* Animation3d::GetAnimation( const char* name, int path_type, bool is_child )
@@ -1114,7 +964,7 @@ Vector Animation3d::Convert2dTo3d( int x, int y )
 {
     Vector pos;
     VecUnproject( Vector( (float) x, (float) y, 0.0f ), pos );
-    pos.z = CurZ;
+    pos.z = 0.0f;
     return pos;
 }
 
@@ -1125,11 +975,6 @@ Point Animation3d::Convert3dTo2d( Vector pos )
     return Point( (int) coords.x, (int) coords.y );
 }
 
-bool Animation3d::Is2dEmulation()
-{
-    return AnimDelay != 0;
-}
-
 /************************************************************************/
 /* Animation3dEntity                                                    */
 /************************************************************************/
@@ -1137,8 +982,8 @@ bool Animation3d::Is2dEmulation()
 Animation3dEntityVec Animation3dEntity::allEntities;
 
 Animation3dEntity::Animation3dEntity(): xFile( NULL ), animController( NULL ),
-                                        renderAnim( 0 ), renderAnimProcFrom( 0 ), renderAnimProcTo( 100 ),
-                                        shadowDisabled( false )
+                                        renderAnim( 0 ), renderAnimProcFrom( 0 ), renderAnimProcTo( 100 ), renderAnimDir( 0 ),
+                                        shadowDisabled( false ), drawWidth( DEFAULT_DRAW_SIZE ), drawHeight( DEFAULT_DRAW_SIZE )
 {
     memzero( &animDataDefault, sizeof( animDataDefault ) );
 }
@@ -1755,9 +1600,26 @@ bool Animation3dEntity::Load( const char* name )
                 renderAnimProcFrom = CLAMP( renderAnimProcFrom, 0, 100 );
                 renderAnimProcTo = CLAMP( renderAnimProcTo, 0, 100 );
             }
+            else if( Str::CompareCase( token, "RenderDir" ) )
+            {
+                ( *istr ) >> buf;
+
+                renderAnimDir = ConstantsManager::GetDefineValue( buf );
+            }
             else if( Str::CompareCase( token, "DisableShadow" ) )
             {
                 shadowDisabled = true;
+            }
+            else if( Str::CompareCase( token, "DrawSize" ) )
+            {
+                int w = 0, h = 0;
+                ( *istr ) >> buf;
+                w = ConstantsManager::GetDefineValue( buf );
+                ( *istr ) >> buf;
+                h = ConstantsManager::GetDefineValue( buf );
+
+                drawWidth = w;
+                drawHeight = h;
             }
             else
             {
@@ -1952,7 +1814,6 @@ Animation3d* Animation3dEntity::CloneAnimation()
         return NULL;
 
     a3d->animEntity = this;
-    a3d->lastTick = Timer::GameTick();
 
     if( animController )
         a3d->animController = animController->Clone();

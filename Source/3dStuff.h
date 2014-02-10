@@ -4,10 +4,8 @@
 #include "Common.h"
 #include "GraphicStructures.h"
 
-#define BORDERS_OFFSET         ( 50.0f )
-#define DRAW_Z_STEP            ( 5.0f )
-
 #define LAYERS3D_COUNT         ( 30 )
+#define DEFAULT_DRAW_SIZE      ( 128 )
 
 #define ANIMATION_STAY         ( 0x01 )
 #define ANIMATION_ONE_TIME     ( 0x02 )
@@ -72,19 +70,14 @@ private:
     AnimController*    animController;
     int                currentLayers[ LAYERS3D_COUNT + 1 ];        // +1 for actions
     uint               currentTrack;
-    uint               lastTick;
+    uint               lastDrawTick;
     uint               endTick;
     Matrix             matRot, matScale;
     Matrix             matScaleBase, matRotBase, matTransBase;
     float              speedAdjustBase, speedAdjustCur, speedAdjustLink;
     bool               shadowDisabled;
     float              dirAngle;
-    uint               sprId;
-    Point              drawXY;
-    float              drawScale;
     Vector             groundPos;
-    RectF              bonesBorder;
-    bool               noDraw;
     bool               useGameTimer;
     float              animPosProc, animPosTime, animPosPeriod;
     bool               allowMeshGeneration;
@@ -112,35 +105,33 @@ private:
     void  SetAnimData( AnimParams& data, bool clear );
 
 public:
+    uint SprId;
+    int  SprAtlasType;
+
     Animation3d();
     ~Animation3d();
 
-    void  StartMeshGeneration();
-    bool  SetAnimation( uint anim1, uint anim2, int* layers, int flags );
-    bool  IsAnimation( uint anim1, uint anim2 );
-    bool  CheckAnimation( uint& anim1, uint& anim2 );
-    int   GetAnim1();
-    int   GetAnim2();
-    void  SetDir( int dir );
-    void  SetDirAngle( int dir_angle );
-    void  SetRotation( float rx, float ry, float rz );
-    void  SetScale( float sx, float sy, float sz );
-    void  SetSpeed( float speed );
-    void  SetTimer( bool use_game_timer );
-    void  EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
-    void  Draw( int x, int y, float scale, uint color );
-    void  SetDrawPos( int x, int y );
-    bool  IsAnimationPlaying();
-    bool  IsIntersect( int x, int y );
-    void  SetSprId( uint value ) { sprId = value; }
-    uint  GetSprId()             { return sprId; }
-    Point GetGroundPos();
-    Rect  GetBonesBorder( bool add_offsets = false );
-    Point GetBonesBorderPivot();
-    void  GetRenderFramesData( float& period, int& proc_from, int& proc_to );
+    void StartMeshGeneration();
+    bool SetAnimation( uint anim1, uint anim2, int* layers, int flags );
+    bool IsAnimation( uint anim1, uint anim2 );
+    bool CheckAnimation( uint& anim1, uint& anim2 );
+    int  GetAnim1();
+    int  GetAnim2();
+    void SetDir( int dir );
+    void SetDirAngle( int dir_angle );
+    void SetRotation( float rx, float ry, float rz );
+    void SetScale( float sx, float sy, float sz );
+    void SetSpeed( float speed );
+    void SetTimer( bool use_game_timer );
+    void EnableShadow( bool enabled ) { shadowDisabled = !enabled; }
+    bool NeedDraw();
+    void Draw( int x, int y );
+    bool IsAnimationPlaying();
+    void GetRenderFramesData( float& period, int& proc_from, int& proc_to, int& dir );
+    void GetDrawSize( uint& draw_width, uint& draw_height );
 
     static bool         StartUp();
-    static bool         SetScreenSize( int width, int height );
+    static void         SetScreenSize( int width, int height );
     static void         Finish();
     static void         BeginScene();
     static Animation3d* GetAnimation( const char* name, int path_type, bool is_child );
@@ -149,7 +140,6 @@ public:
     static void         AnimateSlower();
     static Vector       Convert2dTo3d( int x, int y );
     static Point        Convert3dTo2d( Vector pos );
-    static bool         Is2dEmulation();
 };
 
 class Animation3dEntity
@@ -171,8 +161,10 @@ private:
     AnimParamsVec               animData;
     int                         renderAnim;
     int                         renderAnimProcFrom, renderAnimProcTo;
+    int                         renderAnimDir;
     bool                        shadowDisabled;
     bool                        calcualteTangetSpace;
+    uint                        drawWidth, drawHeight;
 
     void ProcessTemplateDefines( char* str, StrVec& def );
     int  GetAnimationIndex( uint& anim1, uint& anim2, float* speed, bool combat_first );

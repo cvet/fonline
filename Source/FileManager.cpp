@@ -863,7 +863,7 @@ bool FileManager::CopyFile( const char* from, const char* to )
     while( !fail && remaining_size > 0 )
     {
         uint read_size = MIN( remaining_size, sizeof( chunk ) );
-        bool fail = !( FileRead( f_from, chunk, read_size ) && FileWrite( f_to, chunk, read_size ) );
+        fail = !( FileRead( f_from, chunk, read_size ) && FileWrite( f_to, chunk, read_size ) );
         remaining_size -= read_size;
     }
 

@@ -42,6 +42,11 @@ int main( int argc, char** argv )
     while( !GameOpt.Quit )
         mapper->MainLoop();
 
+    // Just kill process
+    // System automatically clean up all resources
+    WriteLog( "Exit from mapper.\n" );
+    ExitProcess( 0 );
+
     // Destroy engine
     mapper->Finish();
     SAFEDEL( mapper );

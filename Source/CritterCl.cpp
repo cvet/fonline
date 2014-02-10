@@ -639,6 +639,8 @@ void CritterCl::ProcessChangedParams()
                     int   value = Params[ ST_SCALE_FACTOR ];
                     float scale = (float) ( value ? value : 1000 ) / 1000.0f;
                     Anim3d->SetScale( scale, scale, scale );
+                    SprMngr.RefreshPure3dAnimationSprite( Anim3d );
+                    SprId = Anim3d->SprId;
                 }
             }
         }
@@ -693,9 +695,7 @@ void CritterCl::DrawStay( Rect r )
     {
         Anim3dStay->SetDir( dir );
         Anim3dStay->SetAnimation( anim1, anim2, GetLayers3dData(), ANIMATION_STAY | ANIMATION_PERIOD( 100 ) | ANIMATION_NO_SMOOTH );
-        RectF r1 = RectF( (float) r.L, (float) r.T, (float) r.R, (float) r.B );
-        RectF r2 = RectF( (float) r.L, (float) r.T, (float) r.R, (float) r.B );
-        SprMngr.Draw3dSize( r1, false, true, Anim3dStay, &r2, COLOR_IFACE );
+        SprMngr.Draw3d( r.CX(), r.B, Anim3dStay, COLOR_IFACE );
     }
 }
 
@@ -1294,7 +1294,7 @@ void CritterCl::AnimateStay()
         SetOffs( 0, 0, true );
 
         if( Cond == COND_LIFE || Cond == COND_KNOCKOUT )
-            Anim3d->SetAnimation( anim1, anim2, GetLayers3dData(), ( Animation3d::Is2dEmulation() ? ANIMATION_STAY : 0 ) | ( IsCombatMode() ? ANIMATION_COMBAT : 0 ) );
+            Anim3d->SetAnimation( anim1, anim2, GetLayers3dData(), IsCombatMode() ? ANIMATION_COMBAT : 0 );
         else
             Anim3d->SetAnimation( anim1, anim2, GetLayers3dData(), ( ANIMATION_STAY | ANIMATION_PERIOD( 100 ) ) | ( IsCombatMode() ? ANIMATION_COMBAT : 0 ) );
     }
@@ -1422,14 +1422,15 @@ void CritterCl::SetBaseType( uint type )
     SprMngr.FreePure3dAnimation( Anim3d );
     SprMngr.FreePure3dAnimation( Anim3dStay );
     Anim3d = Anim3dStay = NULL;
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( BaseType ) ), PT_ART_CRITTERS );
+    SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( BaseType ) ), PT_ART_CRITTERS, true );
     if( anim3d )
     {
         Anim3d = anim3d;
-        Anim3dStay = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( BaseType ) ), PT_ART_CRITTERS );
+        Anim3dStay = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( BaseType ) ), PT_ART_CRITTERS, false );
 
         Anim3d->SetDir( CrDir );
-        SprId = Anim3d->GetSprId();
+        SprId = Anim3d->SprId;
 
         #ifdef FONLINE_CLIENT
         if( !Layers3d )
@@ -1452,6 +1453,7 @@ void CritterCl::SetBaseType( uint type )
         Anim3dStay->StartMeshGeneration();
         #endif
     }
+    SprMngr.PopAtlasType();
 
     // Allow influence of scale factor
     ChangeParam( ST_SCALE_FACTOR );
@@ -1607,14 +1609,13 @@ void CritterCl::SetOffs( short set_ox, short set_oy, bool move_text )
     SprOy = set_oy + OyExtI;
     if( SprDrawValid )
     {
-        if( !Anim3d )
+        SprMngr.GetDrawRect( SprDraw, DRect );
+        if( move_text )
         {
-            SprMngr.GetDrawRect( SprDraw, DRect );
-            if( move_text )
-                textRect = DRect;
+            textRect = DRect;
+            if( Anim3d )
+                textRect.T += SprMngr.GetSpriteInfo( SprId )->Height / 6;
         }
-        if( Anim3d )
-            Anim3d->SetDrawPos( SprDraw->ScrX + SprOx + GameOpt.ScrOx, SprDraw->ScrY + SprOy + GameOpt.ScrOy );
         if( IsChosen() )
             SprMngr.SetEgg( HexX, HexY, SprDraw );
     }
@@ -1624,19 +1625,13 @@ void CritterCl::SetSprRect()
 {
     if( SprDrawValid )
     {
-        if( !Anim3d )
-        {
-            Rect old = DRect;
-            SprMngr.GetDrawRect( SprDraw, DRect );
-            textRect.L += DRect.L - old.L;
-            textRect.R += DRect.L - old.L;
-            textRect.T += DRect.T - old.T;
-            textRect.B += DRect.T - old.T;
-        }
-        else
-        {
-            Anim3d->SetDrawPos( SprDraw->ScrX + SprOx + GameOpt.ScrOx, SprDraw->ScrY + SprOy + GameOpt.ScrOy );
-        }
+        Rect old = DRect;
+        SprMngr.GetDrawRect( SprDraw, DRect );
+        textRect.L += DRect.L - old.L;
+        textRect.R += DRect.L - old.L;
+        textRect.T += DRect.T - old.T;
+        textRect.B += DRect.T - old.T;
+
         if( IsChosen() )
             SprMngr.SetEgg( HexX, HexY, SprDraw );
     }
@@ -1645,47 +1640,8 @@ void CritterCl::SetSprRect()
 Rect CritterCl::GetTextRect()
 {
     if( SprDrawValid )
-    {
-        if( Anim3d )
-        {
-            SprMngr.GetDrawRect( SprDraw, textRect );
-            textRect( -GameOpt.ScrOx, -GameOpt.ScrOy - 3 );
-        }
         return textRect;
-    }
     return Rect();
-}
-
-/*
-   short CritterCl::GetSprOffX()
-   {
-        short res=0;
-        for(int i=0;i<curSpr;++i)
-
-        SpriteInfo*
-        res=lpSM->->next_x[lpSM->CrAnim[crtype][anim1][anim2]->dir_offs[Ori]];
-
-        for(int i=1;i<=num_frame;++i)
-                ChangeCur_offs(lpSM->CrAnim[crtype][anim1][anim2]->next_x[lpSM->CrAnim[crtype][anim1][anim2]->dir_offs[Ori]+i],
-                lpSM->CrAnim[crtype][anim1][anim2]->next_y[lpSM->CrAnim[crtype][anim1][anim2]->dir_offs[Ori]+i]);
-   }
-
-   short CritterCl::GetSprOffY()
-   {
-
-   }
- */
-void CritterCl::AccamulateOffs()
-{
-//	if(!cur_anim) return;
-//	if(cur_afrm<cnt_per_turn) return;
-
-//	for(int i=cur_afrm-cnt_per_turn;i<=cur_afrm;i++)
-//	{
-//		if(i<0) i=0;
-    //	SetCur_offs(cur_anim->next_x[cur_anim->dir_offs[cur_dir]+cur_afrm],
-    //		cur_anim->next_y[cur_anim->dir_offs[cur_dir]+cur_afrm]);
-//	}
 }
 
 void CritterCl::AddOffsExt( short ox, short oy )

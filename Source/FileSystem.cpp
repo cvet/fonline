@@ -461,6 +461,7 @@ bool MakeDirectory( const char* path )
 {
     char path_[ MAX_FOPATH ];
     SetRelativePath( path, path_ );
+    return mkdir( path_, ALLPERMS ) == 0;
 }
 
 char* FixPathSlashes( char* path )

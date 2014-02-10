@@ -189,60 +189,78 @@ void SpriteManager::BuildFont( int index )
     SpriteInfo* si_bordered = ( font.ImageBordered ? GetSpriteInfo( font.ImageBordered->GetSprId( 0 ) ) : NULL );
     font.FontTexBordered = ( si_bordered ? si_bordered->Atlas->TextureOwner : NULL );
 
-    // Normalize color to gray
     uint normal_ox = (uint) ( tex_w * si->SprRect.L );
     uint normal_oy = (uint) ( tex_h * si->SprRect.T );
     uint bordered_ox = ( si_bordered ? (uint) ( (float) si_bordered->Atlas->Width * si_bordered->SprRect.L ) : 0 );
     uint bordered_oy = ( si_bordered ? (uint) ( (float) si_bordered->Atlas->Height * si_bordered->SprRect.T ) : 0 );
+
+    // Read texture data
+    #define PIXEL_AT( data, width, x, y )    ( *( (uint*) data + y * width + x ) )
+
+    PushRenderTarget( si->Atlas->RT );
+    uint* data_normal = new uint[ si->Width * si->Height ];
+    GL( glReadPixels( normal_ox, normal_oy, si->Width, si->Height, GL_RGBA, GL_UNSIGNED_BYTE, data_normal ) );
+    PopRenderTarget();
+
+    uint* data_bordered = NULL;
+    if( si_bordered )
+    {
+        PushRenderTarget( si_bordered->Atlas->RT );
+        data_bordered = new uint[ si_bordered->Width * si_bordered->Height ];
+        GL( glReadPixels( bordered_ox, bordered_oy, si_bordered->Width, si_bordered->Height, GL_RGBA, GL_UNSIGNED_BYTE, data_bordered ) );
+        PopRenderTarget();
+    }
+
+    // Normalize color to gray
     if( font.MakeGray )
     {
         for( uint y = 0; y < (uint) si->Height; y++ )
         {
             for( uint x = 0; x < (uint) si->Width; x++ )
             {
-                uchar a = ( (uchar*) &si->Atlas->TextureOwner->Pixel( normal_ox + x, normal_oy + y ) )[ 3 ];
+                uchar a = ( (uchar*) &PIXEL_AT( data_normal, si->Width, x, y ) )[ 3 ];
                 if( a )
                 {
-                    si->Atlas->TextureOwner->Pixel( normal_ox + x, normal_oy + y ) = COLOR_RGBA( a, 128, 128, 128 );
+                    PIXEL_AT( data_normal, si->Width, x, y ) = COLOR_RGBA( a, 128, 128, 128 );
                     if( si_bordered )
-                        si_bordered->Atlas->TextureOwner->Pixel( bordered_ox + x, bordered_oy + y ) = COLOR_RGBA( a, 128, 128, 128 );
+                        PIXEL_AT( data_bordered, si_bordered->Width, x, y ) = COLOR_RGBA( a, 128, 128, 128 );
                 }
                 else
                 {
-                    si->Atlas->TextureOwner->Pixel( normal_ox + x, normal_oy + y ) = COLOR_RGBA( 0, 0, 0, 0 );
+                    PIXEL_AT( data_normal, si->Width, x, y ) = COLOR_RGBA( 0, 0, 0, 0 );
                     if( si_bordered )
-                        si_bordered->Atlas->TextureOwner->Pixel( bordered_ox + x, bordered_oy + y ) = COLOR_RGBA( 0, 0, 0, 0 );
+                        PIXEL_AT( data_bordered, si_bordered->Width, x, y ) = COLOR_RGBA( 0, 0, 0, 0 );
                 }
             }
         }
         Rect r = Rect( normal_ox, normal_oy, normal_ox + si->Width - 1, normal_oy + si->Height - 1 );
-        si->Atlas->TextureOwner->UpdateRegion( r );
+        si->Atlas->TextureOwner->UpdateRegion( r, (uchar*) data_normal );
     }
 
     // Fill border
     if( si_bordered )
     {
-        for( uint y = 0; y < (uint) si_bordered->Height; y++ )
+        for( uint y = 1; y < (uint) si_bordered->Height - 2; y++ )
         {
-            for( uint x = 0; x < (uint) si_bordered->Width; x++ )
+            for( uint x = 1; x < (uint) si_bordered->Width - 2; x++ )
             {
-                if( si->Atlas->TextureOwner->Pixel( normal_ox + x, normal_oy + y ) )
+                if( PIXEL_AT( data_normal, si->Width, x, y ) )
                 {
                     for( int xx = -1; xx <= 1; xx++ )
                     {
                         for( int yy = -1; yy <= 1; yy++ )
                         {
-                            uint ox = bordered_ox + x + xx;
-                            uint oy = bordered_oy + y + yy;
-                            if( !si_bordered->Atlas->TextureOwner->Pixel( ox, oy ) )
-                                si_bordered->Atlas->TextureOwner->Pixel( ox, oy ) = COLOR_RGB( 0, 0, 0 );
+                            uint ox = x + xx;
+                            uint oy = y + yy;
+                            if( !PIXEL_AT( data_bordered, si_bordered->Width, ox, oy ) )
+                                PIXEL_AT( data_bordered, si_bordered->Width, ox, oy ) = COLOR_RGB( 0, 0, 0 );
                         }
                     }
                 }
             }
         }
         Rect r_bordered = Rect( bordered_ox, bordered_oy, bordered_ox + si_bordered->Width - 1, bordered_oy + si_bordered->Height - 1 );
-        si_bordered->Atlas->TextureOwner->UpdateRegion( r_bordered );
+        si_bordered->Atlas->TextureOwner->UpdateRegion( r_bordered, (uchar*) data_bordered );
 
         // Fix texture coordinates on bordered texture
         tex_w = (float) si_bordered->Atlas->Width;
@@ -262,6 +280,11 @@ void SpriteManager::BuildFont( int index )
             l.TexBorderedUV[ 3 ] = ( image_y + y + h + 1.0f ) / tex_h;
         }
     }
+
+    // Clean up
+    #undef PIXEL_AT
+    SAFEDELA( data_normal );
+    SAFEDELA( data_bordered );
 }
 
 bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_bordered )

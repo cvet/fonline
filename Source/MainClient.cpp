@@ -154,6 +154,11 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
             Thread::Sleep( 100 );
     }
 
+    // Just kill process
+    // System automatically clean up all resources
+    WriteLog( "Exit from game.\n" );
+    ExitProcess( 0 );
+
     // Destroy engine
     engine->Finish();
     SAFEDEL( engine );

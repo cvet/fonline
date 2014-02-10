@@ -7,6 +7,7 @@
 SpriteManager SprMngr;
 AnyFrames*    SpriteManager::DummyAnimation = NULL;
 
+#define MAX_ATLAS_SIZE           ( 4096 )
 #define SPRITES_BUFFER_SIZE      ( 10000 )
 #define ATLAS_SPRITES_PADDING    ( 1 )
 #define ARRAY_BUFFERS_COUNT      ( 300 )
@@ -23,7 +24,6 @@ bool OGL_packed_depth_stencil = false;
 bool OGL_texture_multisample = false;
 bool OGL_vertex_array_object = false;
 bool OGL_get_program_binary = false;
-bool DisableRenderTargets = false;
 
 SpriteManager::SpriteManager()
 {
@@ -42,6 +42,8 @@ SpriteManager::SpriteManager()
     contoursAdded = false;
     modeWidth = 0;
     modeHeight = 0;
+    curViewportWidth = 0;
+    curViewportHeight = 0;
 
     baseColor = COLOR_RGBA( 255, 128, 128, 128 );
     allAtlases.reserve( 100 );
@@ -49,10 +51,6 @@ SpriteManager::SpriteManager()
 
     rtMain = NULL;
     rtContours = rtContoursMid = NULL;
-    rt3DSprite = rt3DMSSprite = NULL;
-    #ifdef RENDER_3D_TO_2D
-    rt3D = rt3DMS = NULL;
-    #endif
 
     quadsVertexArray = NULL;
     pointsVertexArray = NULL;
@@ -75,8 +73,8 @@ bool SpriteManager::Init()
 
     // Initialize window
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, DisableRenderTargets ? 24 : 0 );
-    SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, DisableRenderTargets ? 8 : 0 );
+    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 0 );
+    SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 0 );
     SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
@@ -123,16 +121,12 @@ bool SpriteManager::Init()
     // Calculate atlas size
     GLint max_texture_size;
     GL( glGetIntegerv( GL_MAX_TEXTURE_SIZE, &max_texture_size ) );
-    atlasWidth = min( max_texture_size, 4096 );
-    atlasHeight = min( max_texture_size, 6144 );
+    max_texture_size = min( max_texture_size, MAX_ATLAS_SIZE );
+    atlasWidth = atlasHeight = max_texture_size;
     #ifdef FO_OSX_IOS
-    atlasWidth = min( max_texture_size, 2048 );
-    atlasHeight = min( max_texture_size, 3584 );
+    atlasWidth = min( 2048, max_texture_size );
+    atlasHeight = min( 3584, max_texture_size );
     #endif
-
-    // Atlas pool
-    atlasDataPool.push_back( new uchar[ atlasWidth * atlasHeight * 4 ] );
-    atlasDataPool.push_back( new uchar[ atlasWidth * atlasHeight * 4 ] );
 
     // Initialize GLEW
     #ifndef FO_OGL_ES
@@ -179,22 +173,14 @@ bool SpriteManager::Init()
     CHECK_EXTENSION( version_2_0, true );
     CHECK_EXTENSION( vertex_buffer_object, true );
     CHECK_EXTENSION( vertex_array_object, false );
-    if( IsRenderTargetSupported() )
+    CHECK_EXTENSION( framebuffer_object, false );
+    if( !GL_HAS( framebuffer_object ) )
     {
-        CHECK_EXTENSION( framebuffer_object, false );
-        if( !GL_HAS( framebuffer_object ) )
-        {
-            CHECK_EXTENSION( framebuffer_object_ext, true );
-            CHECK_EXTENSION( framebuffer_multisample, false );
-            CHECK_EXTENSION( packed_depth_stencil, false );
-        }
-        CHECK_EXTENSION( texture_multisample, false );
+        CHECK_EXTENSION( framebuffer_object_ext, true );
+        CHECK_EXTENSION( framebuffer_multisample, false );
+        CHECK_EXTENSION( packed_depth_stencil, false );
     }
-    else
-    {
-        OGL_framebuffer_object = false;
-        OGL_framebuffer_object_ext = false;
-    }
+    CHECK_EXTENSION( texture_multisample, false );
     CHECK_EXTENSION( get_program_binary, false );
     #undef CHECK_EXTENSION
     if( extension_errors )
@@ -205,10 +191,11 @@ bool SpriteManager::Init()
         return false;
 
     // 3d stuff
-    if( !Animation3d::StartUp() )
+    if( !GameOpt.Disable3dRendering && !Animation3d::StartUp() )
+    {
+        WriteLog( "Can't initialize 3d rendering stuff.\n" );
         return false;
-    if( !Animation3d::SetScreenSize( modeWidth, modeHeight ) )
-        return false;
+    }
 
     // Render states
     GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) modeWidth, (float) modeHeight, 0.0f, -1.0f, 1.0f ) );
@@ -251,13 +238,9 @@ bool SpriteManager::Init()
         ( *it ) = NULL;
 
     // Render targets
-    rtMain = CreateRenderTarget( true, false, 0, 0, true );
-    rtContours = CreateRenderTarget( false );
-    rtContoursMid = CreateRenderTarget( false );
-    #ifdef RENDER_3D_TO_2D
-    rt3D = CreateRenderTarget( true );
-    rt3DMS = CreateRenderTarget( true, true );
-    #endif
+    rtMain = CreateRenderTarget( false, false, 0, 0, true );
+    rtContours = CreateRenderTarget( false, false, 0, 0, false );
+    rtContoursMid = CreateRenderTarget( false, false, 0, 0, false );
 
     // Clear scene
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
@@ -277,6 +260,13 @@ void SpriteManager::Finish()
 {
     WriteLog( "Sprite manager finish...\n" );
 
+    DeleteRenderTarget( rtMain );
+    DeleteRenderTarget( rtContours );
+    DeleteRenderTarget( rtContoursMid );
+    for( auto it = rt3D.begin(), end = rt3D.end(); it != end; ++it )
+        DeleteRenderTarget( *it );
+    rt3D.clear();
+
     for( auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it )
         SAFEDEL( *it );
     allAtlases.clear();
@@ -285,18 +275,29 @@ void SpriteManager::Finish()
     sprData.clear();
     dipQueue.clear();
 
-    Animation3d::Finish();
+    if( !GameOpt.Disable3dRendering )
+        Animation3d::Finish();
 
     WriteLog( "Sprite manager finish complete.\n" );
 }
 
 bool SpriteManager::BeginScene( uint clear_color )
 {
+    // Render 3d animations
+    if( !GameOpt.Disable3dRendering && !autoRedrawAnim3d.empty() )
+    {
+        for( auto it = autoRedrawAnim3d.begin(), end = autoRedrawAnim3d.end(); it != end; ++it )
+        {
+            Animation3d* anim3d = *it;
+            if( anim3d->NeedDraw() )
+                Render3d( anim3d );
+        }
+    }
+
+    // Clear window
     if( clear_color )
         ClearCurrentRenderTarget( clear_color );
-    ClearCurrentRenderTargetDS( true, false );
 
-    Animation3d::BeginScene();
     sceneBeginned = true;
     return true;
 }
@@ -323,16 +324,8 @@ void SpriteManager::EndScene()
     sceneBeginned = false;
 }
 
-bool SpriteManager::IsRenderTargetSupported()
+RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multisampling, uint width, uint height, bool tex_linear )
 {
-    return !DisableRenderTargets && ( GL_HAS( framebuffer_object ) || GL_HAS( framebuffer_object ) );
-}
-
-RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multisampling /* = false */, uint width /* = 0 */, uint height /* = 0 */, bool tex_linear /* = false */ )
-{
-    if( !IsRenderTargetSupported() )
-        return NULL;
-
     // Zero data
     RenderTarget* rt = new RenderTarget();
     memzero( rt, sizeof( RenderTarget ) );
@@ -349,7 +342,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
             GLint max_samples = 0;
             GL( glGetIntegerv( GL_MAX_COLOR_TEXTURE_SAMPLES, &max_samples ) );
             if( GameOpt.MultiSampling < 0 )
-                GameOpt.MultiSampling = 4;
+                GameOpt.MultiSampling = 8;
             samples = min( GameOpt.MultiSampling, max_samples );
 
             // Flush effect
@@ -365,7 +358,10 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         }
     }
     if( multisampling && samples <= 1 )
-        return NULL;
+    {
+        multisampling = false;
+        samples = 0;
+    }
 
     // Framebuffer
     if( GL_HAS( framebuffer_object ) )
@@ -381,8 +377,6 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
 
     // Texture
     Texture* tex = new Texture();
-    tex->Data = NULL;
-    tex->Size = width * height * 4;
     tex->Width = width;
     tex->Height = height;
     tex->SizeData[ 0 ] = (float) width;
@@ -397,7 +391,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, tex_linear ? GL_LINEAR : GL_NEAREST ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
-        GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex->Data ) );
+        GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL ) );
         if( GL_HAS( framebuffer_object ) )
         {
             GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->Id, 0 ) );
@@ -521,7 +515,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
 
 void SpriteManager::DeleteRenderTarget( RenderTarget*& rt )
 {
-    if( !IsRenderTargetSupported() )
+    if( !rt )
         return;
 
     if( GL_HAS( framebuffer_object ) )
@@ -542,8 +536,7 @@ void SpriteManager::DeleteRenderTarget( RenderTarget*& rt )
 
 void SpriteManager::PushRenderTarget( RenderTarget* rt )
 {
-    if( !IsRenderTargetSupported() )
-        return;
+    Flush();
 
     bool redundant = ( !rtStack.empty() && rtStack.back() == rt );
     rtStack.push_back( rt );
@@ -558,15 +551,12 @@ void SpriteManager::PushRenderTarget( RenderTarget* rt )
         {
             GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, rt->FBO ) );
         }
-        RefreshViewPort();
+        RefreshViewport();
     }
 }
 
 void SpriteManager::PopRenderTarget()
 {
-    if( !IsRenderTargetSupported() )
-        return;
-
     bool redundant = ( rtStack.size() > 2 && rtStack.back() == rtStack[ rtStack.size() - 2 ] );
     rtStack.pop_back();
     if( !redundant )
@@ -580,15 +570,12 @@ void SpriteManager::PopRenderTarget()
         {
             GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, rtStack.empty() ? baseFBO : rtStack.back()->FBO ) );
         }
-        RefreshViewPort();
+        RefreshViewport();
     }
 }
 
 void SpriteManager::DrawRenderTarget( RenderTarget* rt, bool alpha_blend, const Rect* region_from /* = NULL */, const Rect* region_to /* = NULL */ )
 {
-    if( !IsRenderTargetSupported() )
-        return;
-
     Flush();
 
     if( !region_from && !region_to )
@@ -650,6 +637,26 @@ void SpriteManager::DrawRenderTarget( RenderTarget* rt, bool alpha_blend, const 
         GL( glEnable( GL_BLEND ) );
 }
 
+uint SpriteManager::GetRenderTargetPixel( RenderTarget* rt, int x, int y )
+{
+    static RenderTarget* last_rt = NULL;
+    static int           last_x = 0, last_y = 0;
+    static uint          last_result = 0;
+    if( rt == last_rt && x == last_x && y == last_y )
+        return last_result;
+
+    PushRenderTarget( rt );
+    uint result = 0;
+    GL( glReadPixels( x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &result ) );
+    PopRenderTarget();
+
+    last_rt = rt;
+    last_x = x;
+    last_y = y;
+    last_result = result;
+    return result;
+}
+
 void SpriteManager::ClearCurrentRenderTarget( uint color )
 {
     float a = (float) ( ( color >> 24 ) & 0xFF ) / 255.0f;
@@ -668,18 +675,40 @@ void SpriteManager::ClearCurrentRenderTargetDS( bool depth, bool stencil )
     GL( glClear( depth_stencil_bit ) );
 }
 
-void SpriteManager::RefreshViewPort()
+void SpriteManager::RefreshViewport( int w /* = 0 */, int h /* = 0 */ )
 {
-    if( !rtStack.empty() )
+    if( !w && !h )
     {
-        GL( glViewport( 0, 0, rtStack.back()->TargetTexture->Width, rtStack.back()->TargetTexture->Height ) );
+        if( !rtStack.empty() )
+        {
+            w = rtStack.back()->TargetTexture->Width;
+            h = rtStack.back()->TargetTexture->Height;
+        }
+        else
+        {
+            SDL_GetWindowSize( MainWindow, &w, &h );
+        }
     }
-    else
+
+    if( curViewportWidth == w && curViewportHeight == h )
+        return;
+
+    GL( glViewport( 0, 0, w, h ) );
+
+    GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) w, (float) h, 0.0f, -1.0f, 1.0f ) );
+    projectionMatrixCM.Transpose();                 // Convert to column major order
+}
+
+RenderTarget* SpriteManager::Get3dRenderTarget( uint width, uint height )
+{
+    for( auto it = rt3D.begin(), end = rt3D.end(); it != end; ++it )
     {
-        int w = 0, h = 0;
-        SDL_GetWindowSize( MainWindow, &w, &h );
-        GL( glViewport( 0, 0, w, h ) );
+        RenderTarget* rt = *it;
+        if( rt->TargetTexture->Width == width && rt->TargetTexture->Height == height )
+            return rt;
     }
+    rt3D.push_back( CreateRenderTarget( true, true, width, height, false ) );
+    return rt3D.back();
 }
 
 void SpriteManager::InitVertexArray( VertexArray* va, bool quads, uint count )
@@ -857,56 +886,19 @@ bool SpriteManager::IsAccumulateAtlasActive()
     return accumulatorActive;
 }
 
-void SpriteManager::FinalizeAtlas( int atlas_type )
-{
-    for( auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it )
-    {
-        TextureAtlas* atlas = *it;
-        if( atlas->Finalized || atlas->Type != atlas_type )
-            continue;
-        if( atlas->Width == atlasWidth && atlas->Height == atlasHeight )
-            atlasDataPool.push_back( atlas->TextureOwner->Data );
-        else
-            delete[] atlas->TextureOwner->Data;
-        atlas->TextureOwner->Data = NULL;
-        atlas->Finalized = true;
-    }
-}
-
 TextureAtlas* SpriteManager::CreateAtlas( int w, int h )
 {
-    uchar* data = NULL;
+    TextureAtlas* atlas = new TextureAtlas();
+    atlas->Type = atlasTypeStack.back();
 
     if( !atlasOneImageStack.back() )
     {
         w = atlasWidth;
         h = atlasHeight;
-        if( atlasDataPool.empty() )
-            atlasDataPool.push_back( new uchar[ atlasWidth * atlasHeight * 4 ] );
-        data = (uchar*) atlasDataPool.back();
-        atlasDataPool.pop_back();
     }
 
-    Texture* tex = new Texture();
-    tex->Data = ( data ? data : new uchar[ w * h * 4 ] );
-    tex->Size = w * h * 4;
-    tex->Width = w;
-    tex->Height = h;
-    tex->SizeData[ 0 ] = (float) w;
-    tex->SizeData[ 1 ] = (float) h;
-    tex->SizeData[ 2 ] = 1.0f / tex->SizeData[ 0 ];
-    tex->SizeData[ 3 ] = 1.0f / tex->SizeData[ 1 ];
-    GL( glGenTextures( 1, &tex->Id ) );
-    GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
-    GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
-    GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex->Data ) );
-
-    TextureAtlas* atlas = new TextureAtlas();
-    atlas->Type = atlasTypeStack.back();
-    atlas->TextureOwner = tex;
+    atlas->RT = CreateRenderTarget( false, false, w, h, true );
+    atlas->TextureOwner = atlas->RT->TargetTexture;
     atlas->Width = w;
     atlas->Height = h;
     atlas->RootNode = ( accumulatorActive ? new TextureAtlas::SpaceNode( 0, 0, w, h ) : NULL );
@@ -924,7 +916,7 @@ TextureAtlas* SpriteManager::FindAtlasPlace( SpriteInfo* si, int& x, int& y )
     for( auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it )
     {
         TextureAtlas* a = *it;
-        if( a->Finalized || a->Type != atlas_type )
+        if( a->Type != atlas_type )
             continue;
 
         if( a->RootNode  )
@@ -971,9 +963,6 @@ TextureAtlas* SpriteManager::FindAtlasPlace( SpriteInfo* si, int& x, int& y )
     // Create new
     if( !atlas )
     {
-        if( std::find( autofinalizeAtlases.begin(), autofinalizeAtlases.end(), atlas_type ) != autofinalizeAtlases.end() )
-            FinalizeAtlas( atlas_type );
-
         atlas = CreateAtlas( w, h );
         if( atlas->RootNode )
         {
@@ -996,15 +985,8 @@ TextureAtlas* SpriteManager::FindAtlasPlace( SpriteInfo* si, int& x, int& y )
     return atlas;
 }
 
-void SpriteManager::AutofinalizeAtlases( int atlas_type )
-{
-    #pragma MESSAGE("Complete or exclude atlas finalization. In finalized atlas we can't retreive color of pixel.")
-    // autofinalizeAtlases.push_back( atlas_type );
-}
-
 void SpriteManager::DestroyAtlases( int atlas_type )
 {
-    FinalizeAtlas( atlas_type );
     for( auto it = allAtlases.begin(); it != allAtlases.end();)
     {
         TextureAtlas* atlas = *it;
@@ -1015,6 +997,9 @@ void SpriteManager::DestroyAtlases( int atlas_type )
                 SpriteInfo* si = *it_;
                 if( si && si->Atlas == atlas )
                 {
+                    if( si->Anim3d )
+                        si->Anim3d->SprId = 0;
+
                     delete si;
                     ( *it_ ) = NULL;
                 }
@@ -1036,8 +1021,7 @@ void SpriteManager::DumpAtlases()
     for( auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it )
     {
         TextureAtlas* atlas = *it;
-        if( !atlas->Finalized )
-            atlases_memory_size += atlas->Width * atlas->Height * 4;
+        atlases_memory_size += atlas->Width * atlas->Height * 4;
     }
 
     char path[ MAX_FOPATH ];
@@ -1048,11 +1032,8 @@ void SpriteManager::DumpAtlases()
     {
         TextureAtlas* atlas = *it;
         char          fname[ MAX_FOPATH ];
-        Str::Format( fname, "%s%d_%d_%ux%u%s.png", path, cnt, atlas->Type, atlas->Width, atlas->Height, atlas->Finalized ? "_finalized" : "" );
-        if( !atlas->Finalized )
-            SaveTexture( atlas->TextureOwner, fname, false );
-        else
-            FileClose( FileOpen( fname, true ) );
+        Str::Format( fname, "%s%d_%d_%ux%u.png", path, cnt, atlas->Type, atlas->Width, atlas->Height );
+        SaveTexture( atlas->TextureOwner, fname, false );
         cnt++;
     }
 }
@@ -1066,14 +1047,15 @@ void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
         SDL_GetWindowSize( MainWindow, &w, &h );
 
     // Get data
-    uchar* data;
+    uchar* data = new uchar[ w * h * 4 ];
     if( tex )
     {
-        data = (uchar*) tex->Data;
+        GL( glBindTexture( GL_TEXTURE_2D, tex->Id ) );
+        GL( glGetTexImage( GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data ) );
+        GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
     }
     else
     {
-        data = new uchar[ w * h * 4 ];
         GL( glReadPixels( 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data ) );
     }
 
@@ -1090,8 +1072,7 @@ void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
     GraphicLoader::SavePNG( fname, data, w, h );
 
     // Clean up
-    if( !tex )
-        delete[] data;
+    SAFEDELA( data );
 }
 
 uint SpriteManager::RequestFillAtlas( SpriteInfo* si, uint w, uint h, uchar* data )
@@ -1140,42 +1121,35 @@ void SpriteManager::FillAtlas( SpriteInfo* si )
     TextureAtlas* atlas = FindAtlasPlace( si, x, y );
     PopAtlasType();
 
-    Texture* tex = atlas->TextureOwner;
-    uint*    ptr_from = (uint*) data;
-    uint*    ptr_to = (uint*) tex->Data + ( y - 1 ) * tex->Width + x - 1;
-    for( uint i = 0; i < h; i++ )
-        memcpy( ptr_to + tex->Width * ( i + 1 ) + 1, ptr_from + w * i, w * 4 );
-
-    if( GameOpt.DebugSprites )
-    {
-        uint rnd_color = COLOR_RGB( Random( 0, 255 ), Random( 0, 255 ), Random( 0, 255 ) );
-        for( uint yy = 1; yy < h + 1; yy++ )
-        {
-            for( uint xx = 1; xx < w + 1; xx++ )
-            {
-                uint  xxx = x + xx - 1;
-                uint  yyy = y + yy - 1;
-                uint& p = tex->Pixel( xxx, yyy );
-                if( p && ( !tex->Pixel( xxx - 1, yyy - 1 ) || !tex->Pixel( xxx, yyy - 1 ) || !tex->Pixel( xxx + 1, yyy - 1 ) ||
-                           !tex->Pixel( xxx - 1, yyy ) || !tex->Pixel( xxx + 1, yyy ) || !tex->Pixel( xxx - 1, yyy + 1 ) ||
-                           !tex->Pixel( xxx, yyy + 1 ) || !tex->Pixel( xxx + 1, yyy + 1 ) ) )
-                    p = rnd_color;
-            }
-        }
-    }
-
-    // 1px border for correct linear interpolation
-    for( uint i = 0; i < h + 2; i++ )
-        tex->Pixel( x + 0 - 1, y + i - 1 ) = tex->Pixel( x + 1 - 1, y + i - 1 );                       // Left
-    for( uint i = 0; i < h + 2; i++ )
-        tex->Pixel( x + w + 1 - 1, y + i - 1 ) = tex->Pixel( x + w - 1, y + i - 1 );                   // Right
-    for( uint i = 0; i < w + 2; i++ )
-        tex->Pixel( x + i - 1, y + 0 - 1 ) = tex->Pixel( x + i - 1, y + 1 - 1 );                       // Top
-    for( uint i = 0; i < w + 2; i++ )
-        tex->Pixel( x + i - 1, y + h + 1 - 1 ) = tex->Pixel( x + i - 1, y + h - 1 );                   // Bottom
-
     // Refresh texture
-    tex->UpdateRegion( Rect( x - 1, y - 1, x + w, y + h ) );
+    if( data )
+    {
+        // Whole image
+        Texture* tex = atlas->TextureOwner;
+        tex->UpdateRegion( Rect( x, y, x + w - 1, y + h - 1 ), data );
+
+        // 1px border for correct linear interpolation
+        // Top
+        tex->UpdateRegion( Rect( x, y - 1, x + w - 1, y - 1 ), data );
+
+        // Bottom
+        tex->UpdateRegion( Rect( x, y + h, x + w - 1, y + h ), data + ( h - 1 ) * w * 4 );
+
+        // Left
+        uint data_border[ MAX_ATLAS_SIZE ];
+        for( uint i = 0; i < h; i++ )
+            data_border[ i + 1 ] = *(uint*) ( data + i * w * 4 );
+        data_border[ 0 ] = data_border[ 1 ];
+        data_border[ h + 1 ] = data_border[ h ];
+        tex->UpdateRegion( Rect( x - 1, y - 1, x - 1, y + h + 1 ), (uchar*) data_border );
+
+        // Right
+        for( uint i = 0; i < h; i++ )
+            data_border[ i + 1 ] = *(uint*) ( data + i * w * 4 + ( w - 1 ) * 4 );
+        data_border[ 0 ] = data_border[ 1 ];
+        data_border[ h + 1 ] = data_border[ h ];
+        tex->UpdateRegion( Rect( x + w, y - 1, x + w, y + h + 1 ), (uchar*) data_border );
+    }
 
     // Set parameters
     si->Atlas = atlas;
@@ -1185,7 +1159,7 @@ void SpriteManager::FillAtlas( SpriteInfo* si )
     si->SprRect.B = float(y + h) / float(atlas->Height);
 
     // Delete data
-    delete[] data;
+    SAFEDELA( data );
 }
 
 AnyFrames* SpriteManager::LoadAnimation( const char* fname, int path_type, bool use_dummy /* = false */, bool frm_anim_pix /* = false */ )
@@ -1726,6 +1700,9 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
 
 AnyFrames* SpriteManager::LoadAnimation3d( const char* fname, int path_type )
 {
+    if( GameOpt.Disable3dRendering )
+        return NULL;
+
     // Load file
     FileManager fm;
     AnyFrames*  fast_anim;
@@ -1743,17 +1720,26 @@ AnyFrames* SpriteManager::LoadAnimation3d( const char* fname, int path_type )
     // Get animation data
     float period;
     int   proc_from, proc_to;
-    anim3d->GetRenderFramesData( period, proc_from, proc_to );
+    int   dir;
+    anim3d->GetRenderFramesData( period, proc_from, proc_to, dir );
+
+    // Set fir
+    if( dir < 0 || dir >= DIRS_COUNT )
+        anim3d->SetDirAngle( dir );
+    else
+        anim3d->SetDir( dir );
 
     // If no animations available than render just one
     if( period == 0.0f || proc_from == proc_to )
     {
 label_LoadOneSpr:
-        uint spr_id = Render3dSprite( anim3d, 0, proc_from * 10 );
-        if( !spr_id )
-            return NULL;
+        anim3d->SetAnimation( 0, proc_from * 10, NULL, ANIMATION_ONE_TIME | ANIMATION_STAY );
+        Render3d( anim3d );
+
         AnyFrames* anim = AnyFrames::Create( 1, 100 );
-        anim->Ind[ 0 ] = spr_id;
+        anim->Ind[ 0 ] = anim3d->SprId;
+
+        SAFEDEL( anim3d );
         return anim;
     }
 
@@ -1776,18 +1762,25 @@ label_LoadOneSpr:
     {
         int cur_proci = ( proc_to > proc_from ? (int) ( 10.0f * cur_proc + 0.5 ) : (int) ( 10.0f * cur_proc ) );
 
-        if( cur_proci != prev_cur_proci ) // Previous frame is different
-            anim->Ind[ i ] = Render3dSprite( anim3d, 0, cur_proci );
-        else                              // Previous frame is same
-            anim->Ind[ i ] = anim->Ind[ i - 1 ];
+        // Previous frame is different
+        if( cur_proci != prev_cur_proci )
+        {
+            anim3d->SetAnimation( 0, cur_proci, NULL, ANIMATION_ONE_TIME | ANIMATION_STAY );
+            Render3d( anim3d );
 
-        if( !anim->Ind[ i ] )
-            return NULL;
+            anim->Ind[ i ] = anim3d->SprId;
+        }
+        // Previous frame is same
+        else
+        {
+            anim->Ind[ i ] = anim->Ind[ i - 1 ];
+        }
 
         cur_proc += proc_step;
         prev_cur_proci = cur_proci;
     }
 
+    SAFEDEL( anim3d );
     return anim;
 }
 
@@ -3131,159 +3124,128 @@ AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type, 
     return anim;
 }
 
-uint SpriteManager::Render3dSprite( Animation3d* anim3d, int dir, int time_proc )
+bool SpriteManager::Render3d( Animation3d* anim3d )
 {
-    // Create render targets
-    if( !rt3DSprite )
-    {
-        rt3DSprite = CreateRenderTarget( true, false, 512, 512 );
-        if( !rt3DSprite )
-            return 0;
-        rt3DMSSprite = CreateRenderTarget( true, true, 512, 512 );
-    }
+    // Find place for render
+    if( !anim3d->SprId )
+        RefreshPure3dAnimationSprite( anim3d );
 
-    // Prepare and render
-    int rt_width = rt3DSprite->TargetTexture->Width;
-    int rt_height = rt3DSprite->TargetTexture->Height;
-    Animation3d::SetScreenSize( rt_width, rt_height );
-    if( dir < 0 || dir >= DIRS_COUNT )
-        anim3d->SetDirAngle( dir );
-    else
-        anim3d->SetDir( dir );
-    anim3d->SetAnimation( 0, time_proc, NULL, ANIMATION_ONE_TIME | ANIMATION_STAY );
-
-    PushRenderTarget( rt3DSprite );
+    // Set render target
+    SpriteInfo* si = sprData[ anim3d->SprId ];
+    RenderTarget* rt = Get3dRenderTarget( si->Width, si->Height );
+    PushRenderTarget( rt );
     ClearCurrentRenderTarget( 0 );
-    ClearCurrentRenderTargetDS( true, false );
+    ClearCurrentRenderTargetDS( true, true );
+    Animation3d::SetScreenSize( rt->TargetTexture->Width, rt->TargetTexture->Height );
+
+    // Draw model
     GL( glDisable( GL_BLEND ) );
-    anim3d->Draw( rt_width / 2, rt_height - rt_height / 4, 1.0f, NULL );
+    anim3d->Draw( 0, 0 );
     GL( glEnable( GL_BLEND ) );
+
+    // Restore render target
     PopRenderTarget();
 
-    Animation3d::SetScreenSize( modeWidth, modeHeight );
-    Rect fb = anim3d->GetBonesBorder( true );
-
-    // Copy from multisampled to default rt
-    if( rt3DMSSprite )
-    {
-        Flush();
-        GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) rt_width, (float) rt_height, 0.0f, -1.0f, 1.0f ) );
-        projectionMatrixCM.Transpose();             // Convert to column major order
-        GL( glViewport( 0, 0, rt_width, rt_height ) );
-
-        PushRenderTarget( rt3DMSSprite );
-        DrawRenderTarget( rt3DSprite, false, &fb, &fb );
-        PopRenderTarget();
-
-        GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) modeWidth, (float) modeHeight, 0.0f, -1.0f, 1.0f ) );
-        projectionMatrixCM.Transpose();             // Convert to column major order
-        GL( glViewport( 0, 0, modeWidth, modeHeight ) );
-    }
-
-    // Grow render targets while sprite not fitted in it
-    if( fb.L < 0 || fb.R >= rt_width || fb.T < 0 || fb.B >= rt_height )
-    {
-        // Grow x2
-        if( fb.L < 0 || fb.R >= rt_width )
-            rt_width *= 2;
-        if( fb.T < 0 || fb.B >= rt_height )
-            rt_height *= 2;
-
-        // Recreate
-        RenderTarget* old_rt = rt3DSprite;
-        RenderTarget* old_rtms = rt3DMSSprite;
-        bool          result;
-        if( rt3DMSSprite )
-        {
-            rt3DSprite = CreateRenderTarget( true, false, rt_width, rt_height );
-            rt3DMSSprite = CreateRenderTarget( true, true, rt_width, rt_height );
-            result = ( rt3DSprite && rt3DMSSprite );
-        }
-        else
-        {
-            rt3DSprite = CreateRenderTarget( true, false, rt_width, rt_height );
-            result = ( rt3DSprite != NULL );
-        }
-        if( !result )
-        {
-            WriteLogF( _FUNC_, " - Size of model is too big.\n" );
-            rt3DSprite = old_rt;
-            rt3DMSSprite = old_rtms;
-            return 0;
-        }
-        DeleteRenderTarget( old_rt );
-        if( old_rtms )
-            DeleteRenderTarget( old_rtms );
-
-        // Try load again
-        return Render3dSprite( anim3d, dir, time_proc );
-    }
-
-    // Copy to system memory
-    uint   w = fb.W();
-    uint   h = fb.H();
-    uchar* data = new uchar[ w * h * 4 ];
-    PushRenderTarget( rt3DSprite );
-    GL( glReadPixels( fb.L, rt_height - fb.B, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data + 12 ) );
+    // Copy render
+    Rect region_to(
+        (int) ( si->SprRect.L * (float) si->Atlas->Width + 0.5f ),
+        (int) ( ( 1.0f - si->SprRect.T ) * (float) si->Atlas->Height + 0.5f ),
+        (int) ( si->SprRect.R * (float) si->Atlas->Width + 0.5f ),
+        (int) ( ( 1.0f - si->SprRect.B ) * (float) si->Atlas->Height + 0.5f ) );
+    PushRenderTarget( si->Atlas->RT );
+    DrawRenderTarget( rt, false, NULL, &region_to );
     PopRenderTarget();
 
-    // Flip
-    uint* data4 = (uint*) data;
-    for( uint y = 0; y < h / 2; y++ )
-        for( uint x = 0; x < w; x++ )
-            std::swap( data4[ y * w + x ], data4[ ( h - y - 1 ) * w + x ] );
-
-    // Fill from memory
-    SpriteInfo* si = new SpriteInfo();
-    Point       p = anim3d->GetBonesBorderPivot();
-    si->OffsX = fb.W() / 2 - p.X;
-    si->OffsY = fb.H() - p.Y;
-    return RequestFillAtlas( si, w, h, data );
+    return true;
 }
 
-Animation3d* SpriteManager::LoadPure3dAnimation( const char* fname, int path_type )
+bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color )
 {
+    if( GameOpt.Disable3dRendering )
+        return false;
+
+    anim3d->StartMeshGeneration();
+    Render3d( anim3d );
+
+    SpriteInfo* si = sprData[ anim3d->SprId ];
+    DrawSprite( anim3d->SprId, x - si->Width / 2 + si->OffsX, y - si->Height + si->OffsY, color );
+
+    return true;
+}
+
+Animation3d* SpriteManager::LoadPure3dAnimation( const char* fname, int path_type, bool auto_redraw )
+{
+    if( GameOpt.Disable3dRendering )
+        return NULL;
+
     // Fill data
     Animation3d* anim3d = Animation3d::GetAnimation( fname, path_type, false );
     if( !anim3d )
         return NULL;
 
-    // Add sprite information
-    SpriteInfo* si = new SpriteInfo();
-    uint        index = 1;
-    for( uint j = (uint) sprData.size(); index < j; index++ )
-        if( !sprData[ index ] )
-            break;
-    if( index < (uint) sprData.size() )
-        sprData[ index ] = si;
-    else
-        sprData.push_back( si );
+    // Create render sprite
+    anim3d->SprId = 0;
+    anim3d->SprAtlasType = atlasTypeStack.back();
+    if( auto_redraw )
+    {
+        RefreshPure3dAnimationSprite( anim3d );
+        autoRedrawAnim3d.push_back( anim3d );
+    }
+    return anim3d;
+}
 
-    // Fake atlas, filled after rendering
-    #ifdef RENDER_3D_TO_2D
-    si->Atlas = new TextureAtlas();
-    #endif
+void SpriteManager::RefreshPure3dAnimationSprite( Animation3d* anim3d )
+{
+    // Free old place
+    if( anim3d->SprId )
+    {
+        sprData[ anim3d->SprId ]->Anim3d = NULL;
+        anim3d->SprId = 0;
+    }
+
+    // Render size
+    uint draw_width, draw_height;
+    anim3d->GetDrawSize( draw_width, draw_height );
+
+    // Find already created place for rendering
+    uint index = 0;
+    for( size_t i = 0, j = sprData.size(); i < j; i++ )
+    {
+        SpriteInfo* si = sprData[ i ];
+        if( si && si->UsedForAnim3d && !si->Anim3d && si->Width == draw_width && si->Height == draw_height && si->Atlas->Type == anim3d->SprAtlasType )
+        {
+            index = (uint) i;
+            break;
+        }
+    }
+
+    // Create new place for rendering
+    if( !index )
+    {
+        PushAtlasType( anim3d->SprAtlasType );
+        index = RequestFillAtlas( NULL, draw_width, draw_height, NULL );
+        PopAtlasType();
+        SpriteInfo* si = sprData[ index ];
+        si->OffsY = draw_height / 4;
+        si->UsedForAnim3d = true;
+    }
 
     // Cross links
-    anim3d->SetSprId( index );
-    si->Anim3d = anim3d;
-    return anim3d;
+    anim3d->SprId = index;
+    sprData[ index ]->Anim3d = anim3d;
 }
 
 void SpriteManager::FreePure3dAnimation( Animation3d* anim3d )
 {
     if( anim3d )
     {
-        uint spr_id = anim3d->GetSprId();
-        if( spr_id )
-        {
-            if( sprData[ spr_id ]->Atlas )
-            {
-                sprData[ spr_id ]->Atlas->TextureOwner = NULL;
-                SAFEDEL( sprData[ spr_id ]->Atlas );
-            }
-            SAFEDEL( sprData[ spr_id ] );
-        }
+        auto it = std::find( autoRedrawAnim3d.begin(), autoRedrawAnim3d.end(), anim3d );
+        if( it != autoRedrawAnim3d.end() )
+            autoRedrawAnim3d.erase( it );
+
+        if( anim3d->SprId )
+            sprData[ anim3d->SprId ]->Anim3d = NULL;
+
         SAFEDEL( anim3d );
     }
 }
@@ -3448,14 +3410,6 @@ bool SpriteManager::DrawSprite( uint id, int x, int y, uint color /* = 0 */ )
     if( !si )
         return false;
 
-    if( si->Anim3d )
-    {
-        Render3d( x, y, 1.0f, si->Anim3d, NULL, color );
-        #ifndef RENDER_3D_TO_2D
-        return true;
-        #endif
-    }
-
     Effect* effect = ( si->DrawEffect ? si->DrawEffect : Effect::Iface );
     if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
         dipQueue.push_back( DipData( si->Atlas->TextureOwner, effect ) );
@@ -3507,9 +3461,6 @@ bool SpriteManager::DrawSpritePattern( uint id, int x, int y, int w, int h, int 
 
     SpriteInfo* si = sprData[ id ];
     if( !si )
-        return false;
-
-    if( si->Anim3d )
         return false;
 
     float width = (float) si->Width;
@@ -3628,14 +3579,6 @@ bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, boo
         y += (int) ( ( h - hf ) / 2.0f );
     }
 
-    if( si->Anim3d )
-    {
-        Render3d( x, y, 1.0f, si->Anim3d, NULL, color );
-        #ifndef RENDER_3D_TO_2D
-        return true;
-        #endif
-    }
-
     Effect* effect = ( si->DrawEffect ? si->DrawEffect : Effect::Iface );
     if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
         dipQueue.push_back( DipData( si->Atlas->TextureOwner, effect ) );
@@ -3714,29 +3657,16 @@ void SpriteManager::GetDrawRect( Sprite* prep, Rect& rect )
     if( !si )
         return;
 
-    if( !si->Anim3d )
-    {
-        int x = prep->ScrX - si->Width / 2 + si->OffsX;
-        int y = prep->ScrY - si->Height + si->OffsY;
-        if( prep->OffsX )
-            x += *prep->OffsX;
-        if( prep->OffsY )
-            y += *prep->OffsY;
-        rect.L = x;
-        rect.T = y;
-        rect.R = x + si->Width;
-        rect.B = y + si->Height;
-    }
-    else
-    {
-        Point ground_pos = si->Anim3d->GetGroundPos();
-        Rect bones_border = si->Anim3d->GetBonesBorder();
-        rect = Rect( 0, 0, bones_border.W(), bones_border.H(), ground_pos.X - bones_border.W() / 2, ground_pos.Y - (int) ( 60.0f / GameOpt.SpritesZoom ) );
-        rect.L = (int) ( (float) rect.L * GameOpt.SpritesZoom );
-        rect.T = (int) ( (float) rect.T * GameOpt.SpritesZoom );
-        rect.R = (int) ( (float) rect.R * GameOpt.SpritesZoom );
-        rect.B = (int) ( (float) rect.B * GameOpt.SpritesZoom );
-    }
+    int x = prep->ScrX - si->Width / 2 + si->OffsX;
+    int y = prep->ScrY - si->Height + si->OffsY;
+    if( prep->OffsX )
+        x += *prep->OffsX;
+    if( prep->OffsY )
+        y += *prep->OffsY;
+    rect.L = x;
+    rect.T = y;
+    rect.R = x + si->Width;
+    rect.B = y + si->Height;
 }
 
 void SpriteManager::InitializeEgg( const char* egg_name )
@@ -3801,21 +3731,8 @@ void SpriteManager::SetEgg( ushort hx, ushort hy, Sprite* spr )
     if( !si )
         return;
 
-    if( !si->Anim3d )
-    {
-        eggX = spr->ScrX + si->OffsX - sprEgg->Width / 2 + *spr->OffsX;
-        eggY = spr->ScrY - si->Height / 2 + si->OffsY - sprEgg->Height / 2 + *spr->OffsY;
-    }
-    else
-    {
-        Rect bb = si->Anim3d->GetBonesBorder();
-        int  w = (int) ( (float) bb.W() * GameOpt.SpritesZoom );
-        UNUSED_VARIABLE( w );
-        int  h = (int) ( (float) bb.H() * GameOpt.SpritesZoom );
-        eggX = spr->ScrX - sprEgg->Width / 2 + *spr->OffsX;
-        eggY = spr->ScrY - h / 2 - sprEgg->Height / 2 + *spr->OffsY;
-    }
-
+    eggX = spr->ScrX + si->OffsX - sprEgg->Width / 2 + *spr->OffsX;
+    eggY = spr->ScrY - si->Height / 2 + si->OffsY - sprEgg->Height / 2 + *spr->OffsY;
     eggHx = hx;
     eggHy = hy;
     eggValid = true;
@@ -3930,22 +3847,6 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
 
         // Fix color
         cur_color = COLOR_SWAP_RB( cur_color );
-
-        // Render 3d
-        if( si->Anim3d )
-        {
-            x += si->Width / 2 - si->OffsX;
-            y += si->Height - si->OffsY;
-            x = (int) ( (float) x / zoom );
-            y = (int) ( (float) y / zoom );
-            Render3d( x, y, 1.0f / zoom, si->Anim3d, NULL, cur_color  );
-            #ifndef RENDER_3D_TO_2D
-            continue;
-            #endif
-            x -= si->Width / 2 - si->OffsX;
-            y -= si->Height - si->OffsY;
-            zoom = 1.0f;
-        }
 
         // Check borders
         if( x / zoom > modeWidth || ( x + si->Width ) / zoom < 0 || y / zoom > modeHeight || ( y + si->Height ) / zoom < 0 )
@@ -4170,38 +4071,6 @@ uint SpriteManager::GetPixColor( uint spr_id, int offs_x, int offs_y, bool with_
     if( !si )
         return 0;
 
-    // 3d animation
-    if( si->Anim3d )
-    {
-        /*if(!si->Anim3d->GetDrawIndex()) return 0;
-
-           IDirect3DSurface9* zstencil;
-           D3D_HR(d3dDevice->GetDepthStencilSurface(&zstencil));
-
-           D3DSURFACE_DESC sDesc;
-           D3D_HR(zstencil->GetDesc(&sDesc));
-           int width=sDesc.Width;
-           int height=sDesc.Height;
-
-           D3DLOCKED_RECT desc;
-           D3D_HR(zstencil->LockRect(&desc,NULL,D3DLOCK_READONLY));
-           uchar* ptr=(uchar*)desc.pBits;
-           int pitch=desc.Pitch;
-
-           int stencil_offset=offs_y*pitch+offs_x*4+3;
-           WriteLog("===========%d %d====%u\n",offs_x,offs_y,ptr[stencil_offset]);
-           if(stencil_offset<pitch*height && ptr[stencil_offset]==si->Anim3d->GetDrawIndex())
-           {
-                D3D_HR(zstencil->UnlockRect());
-                D3D_HR(zstencil->Release());
-                return 1;
-           }
-
-           D3D_HR(zstencil->UnlockRect());
-           D3D_HR(zstencil->Release());*/
-        return 0;
-    }
-
     // 2d animation
     if( with_zoom && ( offs_x > si->Width / GameOpt.SpritesZoom || offs_y > si->Height / GameOpt.SpritesZoom ) )
         return 0;
@@ -4216,7 +4085,7 @@ uint SpriteManager::GetPixColor( uint spr_id, int offs_x, int offs_y, bool with_
 
     offs_x += (int) ( si->Atlas->TextureOwner->SizeData[ 0 ] * si->SprRect.L );
     offs_y += (int) ( si->Atlas->TextureOwner->SizeData[ 1 ] * si->SprRect.T );
-    return si->Atlas->TextureOwner->Pixel( offs_x, offs_y );
+    return GetRenderTargetPixel( si->Atlas->RT, offs_x, offs_y );
 }
 
 bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
@@ -4235,7 +4104,7 @@ bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
     ox = (int) ( ox * GameOpt.SpritesZoom );
     oy = (int) ( oy * GameOpt.SpritesZoom );
 
-    return sprEgg->Atlas->TextureOwner->Pixel( ox, oy ) < 170;
+    return GetRenderTargetPixel( sprEgg->Atlas->RT, ox, oy ) < 170;
 }
 
 bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NULL */, RectF* stencil /* = NULL */, PointF* offset /* = NULL */, Effect* effect /* = NULL */ )
@@ -4341,123 +4210,6 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     return true;
 }
 
-bool SpriteManager::Render3d( int x, int y, float scale, Animation3d* anim3d, RectF* stencil, uint color )
-{
-    #ifndef RENDER_3D_TO_2D
-    // Draw model
-    Flush();
-    if( stencil )
-    {
-        ClearCurrentRenderTargetDS( false, true );
-        EnableStencil( *stencil );
-    }
-    anim3d->Draw( x, y, scale, color );
-    if( stencil )
-        DisableStencil( false );
-    #else
-    // Set render target
-    if( rt3DMS )
-    {
-        PushRenderTarget( rt3DMS );
-        ClearCurrentRenderTarget( 0 );
-        ClearCurrentRenderTargetDS( true, stencil ? true : false );
-    }
-    else
-    {
-        PushRenderTarget( rt3D );
-        ClearCurrentRenderTarget( 0 );
-        ClearCurrentRenderTargetDS( true, stencil ? true : false );
-    }
-
-    // Draw model
-    GL( glDisable( GL_BLEND ) );
-    if( stencil )
-        EnableStencil( *stencil );
-    anim3d->Draw( x, y, scale, color );
-    if( stencil )
-        DisableStencil( false );
-    GL( glEnable( GL_BLEND ) );
-
-    // Restore render target
-    PopRenderTarget();
-
-    // Copy from multisampled texture to default
-    Point pivot = anim3d->GetBonesBorderPivot();
-    Rect  borders = anim3d->GetBonesBorder( true );
-    if( rt3DMS )
-    {
-        PushRenderTarget( rt3D );
-        ClearCurrentRenderTarget( 0 );
-        DrawRenderTarget( rt3DMS, false, &borders, &borders );
-        PopRenderTarget();
-    }
-
-    // Fill sprite info
-    SpriteInfo* si = sprData[ anim3d->GetSprId() ];
-    si->Atlas->TextureOwner = rt3D->TargetTexture;
-    si->Atlas->Width = rt3D->TargetTexture->Width;
-    si->Atlas->Height = rt3D->TargetTexture->Height;
-    int pivx = ( borders.L < 0 ? -borders.L : 0 );
-    int pivy = ( borders.T < 0 ? -borders.T : 0 );
-    borders.L = CLAMP( borders.L, 0, modeWidth );
-    borders.T = CLAMP( borders.T, 0, modeHeight );
-    borders.R = CLAMP( borders.R, 0, modeWidth );
-    borders.B = CLAMP( borders.B, 0, modeHeight );
-    si->Width = borders.W() - 1;
-    si->Height = borders.H() - 1;
-    si->SprRect(
-        (float) borders.L / rt3D->TargetTexture->SizeData[ 0 ],
-        1.0f - (float) borders.T / rt3D->TargetTexture->SizeData[ 1 ],
-        (float) borders.R / rt3D->TargetTexture->SizeData[ 0 ],
-        1.0f - (float) borders.B / rt3D->TargetTexture->SizeData[ 1 ] );
-    si->OffsX = si->Width / 2 - pivot.X + pivx;
-    si->OffsY = si->Height - pivot.Y + pivy;
-    #endif
-    return true;
-}
-
-bool SpriteManager::Render3dSize( RectF rect, bool stretch_up, bool center, Animation3d* anim3d, RectF* stencil, uint color )
-{
-    // Data
-    Point xy = anim3d->GetBonesBorderPivot();
-    Rect  borders = anim3d->GetBonesBorder();
-    float w_real = (float) borders.W();
-    float h_real = (float) borders.H();
-    float scale = min( rect.W() / w_real, rect.H() / h_real );
-    if( scale > 1.0f && !stretch_up )
-        scale = 1.0f;
-    if( center )
-    {
-        xy.X += (int) ( ( rect.W() - w_real * scale ) / 2.0f );
-        xy.Y += (int) ( ( rect.H() - h_real * scale ) / 2.0f );
-    }
-
-    // Draw model
-    Render3d( (int) ( rect.L + (float) xy.X * scale ), (int) ( rect.T + (float) xy.Y * scale ), scale, anim3d, stencil, color );
-
-    return true;
-}
-
-bool SpriteManager::Draw3d( int x, int y, float scale, Animation3d* anim3d, RectF* stencil, uint color )
-{
-    anim3d->StartMeshGeneration();
-    Render3d( x, y, scale, anim3d, stencil, color );
-    #ifdef RENDER_3D_TO_2D
-    DrawRenderTarget( rt3D, true );
-    #endif
-    return true;
-}
-
-bool SpriteManager::Draw3dSize( RectF rect, bool stretch_up, bool center, Animation3d* anim3d, RectF* stencil, uint color )
-{
-    anim3d->StartMeshGeneration();
-    Render3dSize( rect, stretch_up, center, anim3d, stencil, color );
-    #ifdef RENDER_3D_TO_2D
-    DrawRenderTarget( rt3D, true );
-    #endif
-    return true;
-}
-
 bool SpriteManager::DrawContours()
 {
     if( contoursAdded && rtContours && rtContoursMid )
@@ -4485,41 +4237,23 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     Rect     borders = Rect( x - 1, y - 1, x + si->Width + 1, y + si->Height + 1 );
     Texture* texture = si->Atlas->TextureOwner;
     RectF    textureuv, sprite_border;
-    float    zoom = ( si->Anim3d ? 1.0f : GameOpt.SpritesZoom );
 
-    if( borders.L >= modeWidth * zoom || borders.R < 0 || borders.T >= modeHeight * zoom || borders.B < 0 )
+    if( borders.L >= modeWidth * GameOpt.SpritesZoom || borders.R < 0 || borders.T >= modeHeight * GameOpt.SpritesZoom || borders.B < 0 )
         return true;
 
-    if( zoom == 1.0f )
+    if( GameOpt.SpritesZoom == 1.0f )
     {
         RectF& sr = si->SprRect;
         float  txw = texture->SizeData[ 2 ];
         float  txh = texture->SizeData[ 3 ];
         textureuv( sr.L - txw, sr.T - txh, sr.R + txw, sr.B + txh );
-        if( !si->Anim3d )
-        {
-            sprite_border = textureuv;
-        }
-        else
-        {
-            Rect r = si->Anim3d->GetBonesBorder( true );
-            r.L -= 5, r.T -= 5, r.R += 5, r.B += 5;
-            r.L = CLAMP( r.L, -1, modeWidth + 1 );
-            r.T = CLAMP( r.T, -1, modeHeight + 1 );
-            r.R = CLAMP( r.R, -1, modeWidth + 1 );
-            r.B = CLAMP( r.B, -1, modeHeight + 1 );
-            sprite_border(
-                (float) r.L / texture->SizeData[ 0 ],
-                1.0f - (float) r.T / texture->SizeData[ 1 ],
-                (float) r.R / texture->SizeData[ 0 ],
-                1.0f - (float) r.B / texture->SizeData[ 1 ] );
-        }
+        sprite_border = textureuv;
     }
     else
     {
         RectF& sr = si->SprRect;
-        borders( (int) ( x / zoom ), (int) ( y / zoom ),
-                 (int) ( ( x + si->Width ) / zoom ), (int) ( ( y + si->Height ) / zoom ) );
+        borders( (int) ( x / GameOpt.SpritesZoom ), (int) ( y / GameOpt.SpritesZoom ),
+                 (int) ( ( x + si->Width ) / GameOpt.SpritesZoom ), (int) ( ( y + si->Height ) / GameOpt.SpritesZoom ) );
         RectF bordersf( (float) borders.L, (float) borders.T, (float) borders.R, (float) borders.B );
         float mid_height = rtContoursMid->TargetTexture->SizeData[ 1 ];
 

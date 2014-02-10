@@ -991,7 +991,7 @@ MeshTexture* GraphicLoader::LoadTexture( const char* texture_name, const char* m
     loadedMeshTextures.push_back( mesh_tex );
 
     // First try load from textures folder
-    SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+    SprMngr.PushAtlasType( RES_ATLAS_TEXTURES );
     AnyFrames* anim = SprMngr.LoadAnimation( texture_name, PT_TEXTURES );
     if( !anim && model_path )
     {
@@ -1562,11 +1562,22 @@ bool GraphicLoader::LoadDefaultEffects()
     LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, NULL );
     LOAD_EFFECT( Effect::FlushPrimitive, "Flush_Primitive", true, NULL );
     LOAD_EFFECT( Effect::FlushMap, "Flush_Map", true, NULL );
+    if( effect_errors > 0 )
+    {
+        WriteLog( "Default effects not loaded.\n" );
+        return false;
+    }
+    return true;
+}
+
+bool GraphicLoader::Load3dEffects()
+{
+    uint effect_errors = 0;
     LOAD_EFFECT( Effect::Skinned3d, "3D_Skinned", false, NULL );
     LOAD_EFFECT( Effect::Skinned3dShadow, "3D_Skinned", false, "#define SHADOW" );
     if( effect_errors > 0 )
     {
-        WriteLog( "Default effects not loaded.\n" );
+        WriteLog( "3D effects not loaded.\n" );
         return false;
     }
     return true;

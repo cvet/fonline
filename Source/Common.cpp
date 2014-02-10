@@ -923,7 +923,7 @@ void GetClientOptions()
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.HelpInfo, "-HelpInfo" );
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugInfo, "-DebugInfo" );
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugNet, "-DebugNet" );
-    GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugSprites, "-DebugSprites" );
+    GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.Disable3dRendering, "-Disable3dRendering" );
 
     // Str
     cfg.GetStr( CLIENT_CONFIG_APP, "RemoteHost", "localhost", buf );
@@ -1318,7 +1318,7 @@ GameOptions::GameOptions()
     HelpInfo = false;
     DebugInfo = false;
     DebugNet = false;
-    DebugSprites = false;
+    Disable3dRendering = false;
     FullScreen = false;
     VSync = false;
     Light = 0;

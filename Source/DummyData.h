@@ -1376,7 +1376,7 @@ struct GameOptions
     int HelpInfo;
     int DebugInfo;
     int DebugNet;
-    int DebugSprites;
+    int Disable3dRendering;
     int FullScreen;
     int VSync;
     int Light;

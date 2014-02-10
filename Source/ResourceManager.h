@@ -8,6 +8,7 @@
 #define RES_ATLAS_STATIC           ( 1 )
 #define RES_ATLAS_DYNAMIC          ( 2 )
 #define RES_ATLAS_SPLASH           ( 3 )
+#define RES_ATLAS_TEXTURES         ( 4 )
 
 class SpriteManager;
 struct SpriteInfo;

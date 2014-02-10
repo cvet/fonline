@@ -223,20 +223,18 @@ typedef vector< Effect* > EffectVec;
 
 struct Texture
 {
-    const char*  Name;
-    GLuint       Id;
-    uchar*       Data;
-    uint         Size;
-    uint         Width;
-    uint         Height;
-    float        SizeData[ 4 ];       // Width, Height, TexelWidth, TexelHeight
-    float        Samples;
+    const char* Name;
+    GLuint      Id;
+    uint        Size;
+    uint        Width;
+    uint        Height;
+    float       SizeData[ 4 ];        // Width, Height, TexelWidth, TexelHeight
+    float       Samples;
 
     Texture();
     ~Texture();
-    bool         Update();
-    bool         UpdateRegion( const Rect& r );
-    inline uint& Pixel( uint x, uint y ) { return *( (uint*) Data + y * Width + x ); }
+    void   UpdateRegion( const Rect& r, const uchar* data );
+    uchar* ReadData();
 };
 typedef vector< Texture* > TextureVec;
 
@@ -252,6 +250,19 @@ struct MeshTexture
     float  AtlasOffsetData[ 4 ];
 };
 typedef vector< MeshTexture* > MeshTextureVec;
+
+//
+// Render target
+//
+
+struct RenderTarget
+{
+    GLuint   FBO;
+    Texture* TargetTexture;
+    GLuint   DepthStencilBuffer;
+    Effect*  DrawEffect;
+};
+typedef vector< RenderTarget* > RenderTargetVec;
 
 //
 // TextureAtlas
@@ -273,12 +284,12 @@ public:
         bool FindPosition( int w, int h, int& x, int& y );
     };
 
-    int        Type;
-    bool       Finalized;
-    Texture*   TextureOwner;
-    uint       Width, Height;
-    SpaceNode* RootNode;                                  // Packer 1
-    uint       CurX, CurY, LineMaxH, LineCurH, LineW;     // Packer 2
+    int           Type;
+    RenderTarget* RT;
+    Texture*      TextureOwner;
+    uint          Width, Height;
+    SpaceNode*    RootNode;                               // Packer 1
+    uint          CurX, CurY, LineMaxH, LineCurH, LineW;  // Packer 2
 
     TextureAtlas();
     ~TextureAtlas();
@@ -299,6 +310,7 @@ struct SpriteInfo
     short         OffsX;
     short         OffsY;
     Effect*       DrawEffect;
+    bool          UsedForAnim3d;
     Animation3d*  Anim3d;
     uchar*        Data;
     uint          DataSize;
@@ -321,19 +333,6 @@ struct DipData
     DipData( Texture* tex, Effect* effect ): SourceTexture( tex ), SourceEffect( effect ), SpritesCount( 1 ) {}
 };
 typedef vector< DipData > DipDataVec;
-
-//
-// Render target
-//
-
-struct RenderTarget
-{
-    GLuint   FBO;
-    Texture* TargetTexture;
-    GLuint   DepthStencilBuffer;
-    Effect*  DrawEffect;
-};
-typedef vector< RenderTarget* > RenderTargetVec;
 
 //
 // MeshData
@@ -414,7 +413,6 @@ struct Node
 
     // Runtime data
     Matrix      CombinedTransformationMatrix;
-    Vector      ScreenPos;
 
     Node*       Find( uint name_hash );
     void        Save( FileManager& file );
