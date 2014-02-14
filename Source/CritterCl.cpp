@@ -1155,8 +1155,6 @@ void CritterCl::Action( int action, int action_ext, Item* item, bool local_call 
         reSetTick = Timer::GameTick();       // Fast
         break;
     case ACTION_REFRESH:
-        if( !IsAnim() )
-            AnimateStay();
         if( Anim3d )
             Anim3d->StartMeshGeneration();
         break;
