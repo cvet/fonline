@@ -2171,6 +2171,7 @@ void FOClient::ConsoleKeyDown( uchar dik, const char* dik_text )
             return;
         }
 
+        // Modify console history
         ConsoleHistory.push_back( ConsoleStr );
         for( uint i = 0; i < ConsoleHistory.size() - 1; i++ )
         {
@@ -2180,8 +2181,17 @@ void FOClient::ConsoleKeyDown( uchar dik, const char* dik_text )
                 i = -1;
             }
         }
+        while( ConsoleHistory.size() > GameOpt.ConsoleHistorySize )
+            ConsoleHistory.erase( ConsoleHistory.begin() );
         ConsoleHistoryCur = (int) ConsoleHistory.size();
 
+        // Save console history
+        string history_str = "";
+        for( size_t i = 0, j = ConsoleHistory.size(); i < j; i++ )
+            history_str += ConsoleHistory[ i ] + "\n";
+        Crypt.SetCache( ( GameOpt.Name.c_std_str() + "_console" ).c_str(), history_str );
+
+        // Send text
         if( Keyb::CtrlDwn )
             Net_SendText( ConsoleStr.c_str(), SAY_SHOUT );
         else if( Keyb::AltDwn )

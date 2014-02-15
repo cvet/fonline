@@ -1381,6 +1381,7 @@ GameOptions::GameOptions()
     RainTick = 60;
     RainSpeedX = 0;
     RainSpeedY = 15;
+    ConsoleHistorySize = 20;
 
     // Mapper
     ClientPath = DIR_SLASH_SD;

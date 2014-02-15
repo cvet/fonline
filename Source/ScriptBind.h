@@ -1535,6 +1535,7 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __CritterFidgetTime", &GameOp
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Anim2CombatBegin", &GameOpt.Anim2CombatBegin ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Anim2CombatIdle", &GameOpt.Anim2CombatIdle ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Anim2CombatEnd", &GameOpt.Anim2CombatEnd ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ConsoleHistorySize", &GameOpt.ConsoleHistorySize ) );
 #endif
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MapHexagonal", &GameOpt.MapHexagonal ) );

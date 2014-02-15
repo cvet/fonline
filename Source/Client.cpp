@@ -3950,10 +3950,27 @@ void FOClient::Net_OnWrongNetProto()
 
 void FOClient::Net_OnLoginSuccess()
 {
+    WriteLog( "Authentication success.\n" );
+
     if( !Singleplayer )
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_LOGINOK ) );
-    WriteLog( "Auntification success.\n" );
 
+    // Load console history
+    ConsoleHistory.clear();
+    string history_str = Crypt.GetCache( ( GameOpt.Name.c_std_str() + "_console" ).c_str() );
+    size_t pos = 0, prev = 0, count = 0;
+    while( ( pos = history_str.find( "\n", prev ) ) != std::string::npos )
+    {
+        string history_part;
+        history_part.assign( &history_str.c_str()[ prev ], pos - prev );
+        ConsoleHistory.push_back( history_part );
+        prev = pos + 1;
+    }
+    while( ConsoleHistory.size() > GameOpt.ConsoleHistorySize )
+        ConsoleHistory.erase( ConsoleHistory.begin() );
+    ConsoleHistoryCur = (int) ConsoleHistory.size();
+
+    // Set encrypt keys
     uint bin_seed, bout_seed;     // Server bin/bout == client bout/bin
     Bin >> bin_seed;
     Bin >> bout_seed;

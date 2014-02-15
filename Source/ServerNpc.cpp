@@ -643,7 +643,6 @@ void FOServer::ProcessAI( Npc* npc )
                             npc->NextPlane( REASON_CANT_WALK );
                         break;
                     }
-
                 }
             }
             // Find precision HtH attack

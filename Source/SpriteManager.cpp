@@ -3212,7 +3212,8 @@ void SpriteManager::RefreshPure3dAnimationSprite( Animation3d* anim3d )
     for( size_t i = 0, j = sprData.size(); i < j; i++ )
     {
         SpriteInfo* si = sprData[ i ];
-        if( si && si->UsedForAnim3d && !si->Anim3d && si->Width == draw_width && si->Height == draw_height && si->Atlas->Type == anim3d->SprAtlasType )
+        if( si && si->UsedForAnim3d && !si->Anim3d && (uint) si->Width == draw_width &&
+            (uint) si->Height == draw_height && si->Atlas->Type == anim3d->SprAtlasType )
         {
             index = (uint) i;
             break;

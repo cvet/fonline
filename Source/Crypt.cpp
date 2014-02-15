@@ -252,7 +252,7 @@ bool CryptManager::Uncompress( UCharVec& data, uint mul_approx )
     return true;
 }
 
-#define MAX_CACHE_DESCRIPTORS    ( 10000 )
+#define MAX_CACHE_DESCRIPTORS    ( 10001 )
 #define CACHE_DATA_VALID         ( 0x08 )
 #define CACHE_SIZE_VALID         ( 0x10 )
 
@@ -453,7 +453,7 @@ void CryptManager::SetCache( const char* data_name, const uchar* data, uint data
         uint max_len = data_len * 2;
         if( max_len < 128 )
         {
-            max_len = 128;
+            max_len = 1024;
             fwrite( (void*) &crcTable[ 1 ], sizeof( uchar ), max_len, f );
         }
         else
@@ -482,7 +482,9 @@ label_PlaceFound:
     fseek( f, desc_place * sizeof( CacheDescriptor ), SEEK_SET );
     fwrite( (void*) &desc__, sizeof( uchar ), sizeof( CacheDescriptor ), f );
     fseek( f, sizeof( CacheTable ) + desc_.DataOffset, SEEK_SET );
+    XOR( (char*) data, data_len, (char*) &desc__.XorKey[ 0 ], 20 );
     fwrite( data, sizeof( uchar ), data_len, f );
+    XOR( (char*) data, data_len, (char*) &desc__.XorKey[ 0 ], 20 );
     fclose( f );
 }
 
@@ -548,6 +550,7 @@ uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
         data_len = desc.DataCurLen;
         fseek( f, sizeof( CacheTable ) + desc.DataOffset, SEEK_SET );
         fread( data, sizeof( uchar ), desc.DataCurLen, f );
+        XOR( (char*) data, data_len, (char*) &desc.XorKey[ 0 ], 20 );
         fclose( f );
         return data;
     }

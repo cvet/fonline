@@ -666,6 +666,7 @@ struct GameOptions
     uint         RainTick;
     short        RainSpeedX;
     short        RainSpeedY;
+    uint         ConsoleHistorySize;
 
     // Mapper
     ScriptString ClientPath;

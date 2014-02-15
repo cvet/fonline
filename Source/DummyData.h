@@ -1435,6 +1435,7 @@ struct GameOptions
     int Anim2CombatBegin;
     int Anim2CombatIdle;
     int Anim2CombatEnd;
+    int ConsoleHistorySize;
 
     // Mapper
     int ClientPath;

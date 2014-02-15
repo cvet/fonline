@@ -11,6 +11,8 @@ FOMapper::FOMapper()
     DrawCrExtInfo = 0;
     IsMapperStarted = false;
     Animations.resize( 10000 );
+    ConsoleHistory.clear();
+    ConsoleHistoryCur = 0;
 }
 
 bool FOMapper::Init()
@@ -329,6 +331,29 @@ bool FOMapper::Init()
         RefreshTiles( tab );
     RefreshCurProtos();
 
+    // Cache
+    if( !FileExist( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
+        FileManager::CopyFile( FileManager::GetReadPath( "default.cache", PT_DATA ), FileManager::GetWritePath( "default.cache", PT_CACHE ) );
+    if( !Crypt.SetCacheTable( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
+    {
+        WriteLogF( _FUNC_, " - Can't set default cache.\n" );
+        return false;
+    }
+
+    // Load console history
+    string history_str = Crypt.GetCache( "mapper_console" );
+    size_t pos = 0, prev = 0, count = 0;
+    while( ( pos = history_str.find( "\n", prev ) ) != std::string::npos )
+    {
+        string history_part;
+        history_part.assign( &history_str.c_str()[ prev ], pos - prev );
+        ConsoleHistory.push_back( history_part );
+        prev = pos + 1;
+    }
+    while( ConsoleHistory.size() > GameOpt.ConsoleHistorySize )
+        ConsoleHistory.erase( ConsoleHistory.begin() );
+    ConsoleHistoryCur = (int) ConsoleHistory.size();
+
     IsMapperStarted = true;
     WriteLog( "Mapper initialization complete.\n" );
     return true;
@@ -500,8 +525,6 @@ int FOMapper::InitIface()
     ConsoleAccelerate = 0;
     ConsoleStr = "";
     ConsoleCur = 0;
-    ConsoleHistory.clear();
-    ConsoleHistoryCur = 0;
 
     ResMngr.ItemHexDefaultAnim = SprMngr.LoadAnimation( "art\\items\\reserved.frm", PT_DATA, true );
     ResMngr.CritterDefaultAnim = SprMngr.LoadAnimation( "art\\critters\\reservaa.frm", PT_DATA, true );
@@ -4692,6 +4715,7 @@ void FOMapper::ConsoleKeyDown( uchar dik, const char* dik_text )
             }
             else
             {
+                // Modify console history
                 ConsoleHistory.push_back( ConsoleStr );
                 for( uint i = 0; i < ConsoleHistory.size() - 1; i++ )
                 {
@@ -4701,8 +4725,17 @@ void FOMapper::ConsoleKeyDown( uchar dik, const char* dik_text )
                         i = -1;
                     }
                 }
+                while( ConsoleHistory.size() > GameOpt.ConsoleHistorySize )
+                    ConsoleHistory.erase( ConsoleHistory.begin() );
                 ConsoleHistoryCur = (int) ConsoleHistory.size();
 
+                // Save console history
+                string history_str = "";
+                for( size_t i = 0, j = ConsoleHistory.size(); i < j; i++ )
+                    history_str += ConsoleHistory[ i ] + "\n";
+                Crypt.SetCache( "mapper_console", history_str );
+
+                // Process command
                 bool process_command = true;
                 if( MapperFunctions.ConsoleMessage && Script::PrepareContext( MapperFunctions.ConsoleMessage, _FUNC_, "Mapper" ) )
                 {
