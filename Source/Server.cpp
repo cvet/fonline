@@ -5662,21 +5662,37 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
     for( size_t i = 0, j = file_names.size(); i < j; i++ )
     {
         string      file_name = file_names[ i ].substr( Str::Length( FileManager::GetDataPath( "", PT_SERVER_UPDATE ) ) );
+        string      file_name_target = file_name;
 
-        FileManager fm;
-        if( !fm.LoadFile( file_name.c_str(), PT_SERVER_UPDATE ) )
+        const char* ext = FileManager::GetExtension( file_name.c_str() );
+        if( ext && Str::CompareCase( ext, "link" ) )
         {
-            WriteLogF( _FUNC_, " - Can't load file<%s>.\n", file_names[ i ].c_str() );
+            FileManager link;
+            if( !link.LoadFile( file_name.c_str(), PT_SERVER_UPDATE ) )
+            {
+                WriteLogF( _FUNC_, " - Can't load link file<%s>.\n", file_name.c_str() );
+                continue;
+            }
+
+            file_name = file_name.substr( 0, file_name.length() - 5 );
+            file_name.insert( 0, (char*) link.GetBuf() );
+            file_name_target = file_name_target.substr( 0, file_name_target.length() - 5 );
+        }
+
+        FileManager file;
+        if( !file.LoadFile( file_name.c_str(), PT_SERVER_UPDATE ) )
+        {
+            WriteLogF( _FUNC_, " - Can't load file<%s>.\n", file_name.c_str() );
             continue;
         }
 
         memzero( &update_file, sizeof( update_file ) );
-        update_file.Size = fm.GetFsize();
-        update_file.Data = fm.ReleaseBuffer();
+        update_file.Size = file.GetFsize();
+        update_file.Data = file.ReleaseBuffer();
         UpdateFiles.push_back( update_file );
 
-        ModifyVec( UpdateFilesList, (short) file_name.length() );
-        ModifyVecArr( UpdateFilesList, file_name.c_str(), (uint) file_name.length() );
+        ModifyVec( UpdateFilesList, (short) file_name_target.length() );
+        ModifyVecArr( UpdateFilesList, file_name_target.c_str(), (uint) file_name_target.length() );
         ModifyVec( UpdateFilesList, update_file.Size );
     }
 
