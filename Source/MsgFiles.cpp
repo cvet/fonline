@@ -391,17 +391,18 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
 {
     memcpy( NameStr, lang_name, 4 );
 
-    int count_fail = 0;
+    int errors = 0;
     for( int i = 0; i < TEXTMSG_COUNT; i++ )
     {
         if( !Msg[ i ].LoadFromFile( Str::FormatBuf( "%s" DIR_SLASH_S "%s", NameStr, TextMsgFileName[ i ] ), PT_SERVER_TEXTS ) )
         {
-            count_fail++;
+            errors++;
             WriteLogF( _FUNC_, " - Unable to load MSG<%s> from file.\n", TextMsgFileName[ i ] );
         }
     }
 
-    return count_fail == 0;
+    IsError = ( errors != 0 );
+    return errors == 0;
 }
 
 bool LanguagePack::LoadFromCache( const char* lang_name )
@@ -431,14 +432,9 @@ bool LanguagePack::LoadFromCache( const char* lang_name )
     }
 
     if( errors )
-    {
         WriteLogF( _FUNC_, " - Cached language<%s> not found.\n", NameStr );
 
-        string lang_default = Crypt.GetCache( "lang_default" );
-        if( lang_default.size() == 4 && lang_default != NameStr )
-            return LoadFromCache( lang_default.c_str() );
-    }
-
+    IsError = ( errors != 0 );
     return errors == 0;
 }
 

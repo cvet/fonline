@@ -69,12 +69,14 @@ public:
     };
 
     FOMsg Msg[ TEXTMSG_COUNT ];
+    bool  IsError;
 
     bool  LoadFromFiles( const char* lang_name );
     bool  LoadFromCache( const char* lang_name );
     char* GetMsgCacheName( int msg_num, char* result );
 
-    LanguagePack() { memset( NameStr, 0, sizeof( NameStr ) ); }
+    LanguagePack() { memset( NameStr, 0, sizeof( NameStr ) );
+                     IsError = true; }
     bool operator==( const uint& r ) { return Name == r; }
 };
 typedef vector< LanguagePack > LangPackVec;

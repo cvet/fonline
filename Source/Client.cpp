@@ -327,6 +327,30 @@ bool FOClient::Init()
     if( !Singleplayer )
         UpdateFiles( false );
 
+    // Find valid cache
+    if( CurLang.IsError )
+    {
+        StrVec processed_langs;
+        processed_langs.push_back( CurLang.NameStr );
+        StrVec msg_entires;
+        Crypt.GetCacheDataNames( CACHE_MSG_PREFIX, msg_entires );
+        for( size_t i = 0, j = msg_entires.size(); i < j; i++ )
+        {
+            string lang = msg_entires[ i ].substr( Str::Length( CACHE_MSG_PREFIX "\\" ), 4 );
+            if( lang.length() == 4 && std::find( processed_langs.begin(), processed_langs.end(), lang ) == processed_langs.end() )
+            {
+                processed_langs.push_back( lang );
+                if( CurLang.LoadFromCache( lang.c_str() ) )
+                    break;
+            }
+        }
+    }
+    if( CurLang.IsError )
+    {
+        WriteLog( "Language packs not found!\n" );
+        return false;
+    }
+
     // Cursor position
     int sw = 0, sh = 0;
     SDL_GetWindowSize( MainWindow, &sw, &sh );

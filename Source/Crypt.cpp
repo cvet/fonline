@@ -372,6 +372,20 @@ bool CryptManager::SetCacheTable( const char* cache_fname )
     return true;
 }
 
+void CryptManager::GetCacheDataNames( const char* start_with, StrVec& names )
+{
+    uint start_with_len = ( start_with ? Str::Length( start_with ) : 0 );
+    for( int i = 0; i < MAX_CACHE_DESCRIPTORS; i++ )
+    {
+        CacheDescriptor& desc = CacheTable[ i ];
+        if( !FLAG( desc.Flags, CACHE_DATA_VALID ) )
+            continue;
+        if( start_with && !Str::CompareCount( desc.DataName, start_with, start_with_len ) )
+            continue;
+        names.push_back( desc.DataName );
+    }
+}
+
 void CryptManager::SetCache( const char* data_name, const uchar* data, uint data_len )
 {
     // Load table

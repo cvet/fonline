@@ -46,6 +46,7 @@ public:
     bool   IsCacheTable( const char* cache_fname );
     bool   CreateCacheTable( const char* cache_fname );
     bool   SetCacheTable( const char* cache_fname );
+    void   GetCacheDataNames( const char* start_with, StrVec& names );
     void   SetCache( const char* data_name, const uchar* data, uint data_len );
     void   SetCache( const char* data_name, const string& str );
     void   SetCache( const char* data_name, UCharVec& data );
