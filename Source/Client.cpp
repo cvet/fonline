@@ -89,8 +89,10 @@ FOClient::FOClient()
     TurnBasedTime = 0;
     TurnBasedCurCritterId = 0;
     DaySumRGB = 0;
-    CurMode = 0;
-    CurModeLast = 0;
+    CurMode = CUR_DEFAULT;
+    CurModeLast = CUR_DEFAULT;
+    LMenuActive = false;
+    LMenuMode = LMENU_OFF;
 
     GmapCar.Car = NULL;
     Animations.resize( 10000 );
@@ -324,6 +326,14 @@ bool FOClient::Init()
     // Update
     if( !Singleplayer )
         UpdateFiles( false );
+
+    // Cursor position
+    int sw = 0, sh = 0;
+    SDL_GetWindowSize( MainWindow, &sw, &sh );
+    int mx = 0, my = 0;
+    SDL_GetMouseState( &mx, &my );
+    GameOpt.MouseX = CLAMP( mx, 0, sw - 1 );
+    GameOpt.MouseY = CLAMP( my, 0, sh - 1 );
 
     // CritterCl types
     CritType::InitFromMsg( MsgInternal );
@@ -645,6 +655,8 @@ void FOClient::UpdateFilesWait( uint time )
         while( SDL_PollEvent( &event ) )
             if( ( event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_ESCAPE ) || event.type == SDL_QUIT )
                 ExitProcess( 0 );
+        if( time )
+            Thread::Sleep( 1 );
     }
     while( Timer::FastTick() - tick < time );
 }
