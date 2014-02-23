@@ -986,7 +986,7 @@ struct BindClass
     static void Global_GetDayColor()            {}
     static void Global_GetFullSecond()          {}
     static void Global_GetGameTime()            {}
-    static void Global_Load3dFile()             {}
+    static void Global_Preload3dFiles()         {}
     static void Global_RunServerScript()        {}
     static void Global_RunServerScriptUnsafe()  {}
     static void Global_ShowScreen()             {}
@@ -1376,7 +1376,7 @@ struct GameOptions
     int HelpInfo;
     int DebugInfo;
     int DebugNet;
-    int Disable3dRendering;
+    int Enable3dRendering;
     int FullScreen;
     int VSync;
     int Light;

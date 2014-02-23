@@ -1033,7 +1033,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void ChangeCursor(int cursor)", as
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps)", asFUNCTION( BIND_CLASS Global_MoveHexByDir ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool AppendIfaceIni(string& iniName)", asFUNCTION( BIND_CLASS Global_AppendIfaceIni ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetIfaceIniStr(string& key)", asFUNCTION( BIND_CLASS Global_GetIfaceIniStr ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool Load3dFile(string& fileName, int pathType)", asFUNCTION( BIND_CLASS Global_Load3dFile ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Preload3dFiles(string[]& fileNames, int pathType)", asFUNCTION( BIND_CLASS Global_Preload3dFiles ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void WaitPing()", asFUNCTION( BIND_CLASS Global_WaitPing ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadFont(int font, string& fontFileName)", asFUNCTION( BIND_CLASS Global_LoadFont ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetDefaultFont(int font, uint color)", asFUNCTION( BIND_CLASS Global_SetDefaultFont ), asCALL_CDECL ) );
@@ -1479,7 +1479,7 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ScrollMouseUp", &GameOpt.Sc
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ScrollMouseDown", &GameOpt.ScrollMouseDown ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowGroups", &GameOpt.ShowGroups ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __HelpInfo", &GameOpt.HelpInfo ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "bool __Disable3dRendering", &GameOpt.Disable3dRendering ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "bool __Enable3dRendering", &GameOpt.Enable3dRendering ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __FullScr", &GameOpt.FullScreen ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __VSync", &GameOpt.VSync ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __Light", &GameOpt.Light ) );

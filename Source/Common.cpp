@@ -873,7 +873,7 @@ void GetClientOptions()
     GameOpt.ScreenHeight = cfg.GetInt( CLIENT_CONFIG_APP, "ScreenHeight", 0 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ScreenHeight, "-ScreenHeight" );
     GETOPTIONS_CHECK( GameOpt.ScreenHeight, 100, 30000, 600 );
-    GameOpt.MultiSampling = cfg.GetInt( CLIENT_CONFIG_APP, "MultiSampling", 0 );
+    GameOpt.MultiSampling = cfg.GetInt( CLIENT_CONFIG_APP, "MultiSampling", -1 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.MultiSampling, "-MultiSampling" );
     GETOPTIONS_CHECK( GameOpt.MultiSampling, -1, 16, -1 );
     GameOpt.AlwaysOnTop = cfg.GetInt( CLIENT_CONFIG_APP, "AlwaysOnTop", false ) != 0;
@@ -907,7 +907,7 @@ void GetClientOptions()
     GameOpt.IndicatorType = cfg.GetInt( CLIENT_CONFIG_APP, "IndicatorType", COMBAT_MODE_ANY );
     GETOPTIONS_CMD_LINE_INT( GameOpt.IndicatorType, "-IndicatorType" );
     GETOPTIONS_CHECK( GameOpt.IndicatorType, INDICATOR_LINES, INDICATOR_BOTH, INDICATOR_LINES );
-    GameOpt.DoubleClickTime = cfg.GetInt( CLIENT_CONFIG_APP, "DoubleClickTime", COMBAT_MODE_ANY );
+    GameOpt.DoubleClickTime = cfg.GetInt( CLIENT_CONFIG_APP, "DoubleClickTime", 400 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.DoubleClickTime, "-DoubleClickTime" );
     GETOPTIONS_CHECK( GameOpt.DoubleClickTime, 0, 1000, 0 );
     GameOpt.CombatMessagesType = cfg.GetInt( CLIENT_CONFIG_APP, "CombatMessagesType", 0 );
@@ -923,7 +923,7 @@ void GetClientOptions()
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.HelpInfo, "-HelpInfo" );
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugInfo, "-DebugInfo" );
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugNet, "-DebugNet" );
-    GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.Disable3dRendering, "-Disable3dRendering" );
+    GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.Enable3dRendering, "-Enable3dRendering" );
 
     // Str
     cfg.GetStr( CLIENT_CONFIG_APP, "RemoteHost", "localhost", buf );
@@ -1318,7 +1318,7 @@ GameOptions::GameOptions()
     HelpInfo = false;
     DebugInfo = false;
     DebugNet = false;
-    Disable3dRendering = false;
+    Enable3dRendering = false;
     FullScreen = false;
     VSync = false;
     Light = 0;

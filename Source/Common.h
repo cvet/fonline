@@ -603,7 +603,7 @@ struct GameOptions
     bool         HelpInfo;
     bool         DebugInfo;
     bool         DebugNet;
-    bool         Disable3dRendering;
+    bool         Enable3dRendering;
     bool         FullScreen;
     bool         VSync;
     int          Light;

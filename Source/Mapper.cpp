@@ -325,6 +325,13 @@ bool FOMapper::Init()
     // Start script
     RunStartScript();
 
+    // 3d initialization
+    if( GameOpt.Enable3dRendering && !Animation3d::StartUp() )
+    {
+        WriteLog( "Can't initialize 3d rendering stuff.\n" );
+        return false;
+    }
+
     // Refresh resources after start script executed
     ResMngr.Refresh();
     for( int tab = 0; tab < TAB_COUNT; tab++ )

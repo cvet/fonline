@@ -40,6 +40,7 @@
 #define STR_CLIENT_OUTDATED_GOOGLE_PLAY    ( 14 )
 #define STR_CLIENT_UPDATED                 ( 15 )
 #define STR_CLIENT_DATA_OUTDATED           ( 16 )
+#define STR_SINGLEPLAYER_DATA_UPDATED      ( 17 )
 
 // Months, days
 #define STR_MONTH( m )            ( 20 + ( m ) )

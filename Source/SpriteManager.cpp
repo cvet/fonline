@@ -190,13 +190,6 @@ bool SpriteManager::Init()
     if( !GraphicLoader::LoadDefaultEffects() )
         return false;
 
-    // 3d stuff
-    if( !GameOpt.Disable3dRendering && !Animation3d::StartUp() )
-    {
-        WriteLog( "Can't initialize 3d rendering stuff.\n" );
-        return false;
-    }
-
     // Render states
     GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) modeWidth, (float) modeHeight, 0.0f, -1.0f, 1.0f ) );
     projectionMatrixCM.Transpose();         // Convert to column major order
@@ -275,7 +268,7 @@ void SpriteManager::Finish()
     sprData.clear();
     dipQueue.clear();
 
-    if( !GameOpt.Disable3dRendering )
+    if( GameOpt.Enable3dRendering )
         Animation3d::Finish();
 
     WriteLog( "Sprite manager finish complete.\n" );
@@ -284,7 +277,7 @@ void SpriteManager::Finish()
 bool SpriteManager::BeginScene( uint clear_color )
 {
     // Render 3d animations
-    if( !GameOpt.Disable3dRendering && !autoRedrawAnim3d.empty() )
+    if( GameOpt.Enable3dRendering && !autoRedrawAnim3d.empty() )
     {
         for( auto it = autoRedrawAnim3d.begin(), end = autoRedrawAnim3d.end(); it != end; ++it )
         {
@@ -1700,7 +1693,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
 
 AnyFrames* SpriteManager::LoadAnimation3d( const char* fname, int path_type )
 {
-    if( GameOpt.Disable3dRendering )
+    if( !GameOpt.Enable3dRendering )
         return NULL;
 
     // Load file
@@ -3161,7 +3154,7 @@ bool SpriteManager::Render3d( Animation3d* anim3d )
 
 bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color )
 {
-    if( GameOpt.Disable3dRendering )
+    if( !GameOpt.Enable3dRendering )
         return false;
 
     anim3d->StartMeshGeneration();
@@ -3175,7 +3168,7 @@ bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color )
 
 Animation3d* SpriteManager::LoadPure3dAnimation( const char* fname, int path_type, bool auto_redraw )
 {
-    if( GameOpt.Disable3dRendering )
+    if( !GameOpt.Enable3dRendering )
         return NULL;
 
     // Fill data

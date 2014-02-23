@@ -73,7 +73,6 @@ FOClient::FOClient()
     InitNetReason = INIT_NET_REASON_NONE;
 
     UpdateFilesInProgress = false;
-    UpdateFilesOnlyCheck = false;
     UpdateFilesAborted = false;
     UpdateFilesFontLoaded = false;
     UpdateFilesText = "";
@@ -324,8 +323,7 @@ bool FOClient::Init()
     MsgUserHolo->LoadFromFile( USER_HOLO_TEXTMSG_FILE, PT_TEXTS );
 
     // Update
-    if( !Singleplayer )
-        UpdateFiles( false );
+    UpdateFiles( true );
 
     // Find valid cache
     if( CurLang.IsError )
@@ -383,13 +381,66 @@ bool FOClient::Init()
         return false;
 
     // Scripts
-    ReloadScripts();
-
-    // Load interface
-    if( !InitIface() )
-    {
-        WriteLog( "Unable to initialize interface.\n" );
+    if( !ReloadScripts() )
         return false;
+
+    // Recreate static atlas
+    ResMngr.FreeResources( RES_ATLAS_STATIC );
+    SprMngr.AccumulateAtlasData();
+    SprMngr.PushAtlasType( RES_ATLAS_STATIC );
+
+    // Start script
+    if( !Script::PrepareContext( ClientFunctions.Start, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
+    {
+        WriteLog( "Execute start script fail.\n" );
+        return false;
+    }
+
+    // 3d initialization
+    if( GameOpt.Enable3dRendering && !Animation3d::StartUp() )
+    {
+        WriteLog( "Can't initialize 3d rendering stuff.\n" );
+        return false;
+    }
+
+    // Initialize main interface
+    int result = InitIface();
+    if( result != 0 )
+    {
+        WriteLog( "Interface initialization fail on line<%d>.\n", result );
+        return false;
+    }
+
+    // Load fonts
+    if( !SprMngr.LoadFontFO( FONT_FO, "OldDefault", false ) ||
+        !SprMngr.LoadFontFO( FONT_NUM, "Numbers", true ) ||
+        !SprMngr.LoadFontFO( FONT_BIG_NUM, "BigNumbers", true ) ||
+        !SprMngr.LoadFontFO( FONT_SAND_NUM, "SandNumbers", false ) ||
+        !SprMngr.LoadFontFO( FONT_SPECIAL, "Special", false ) ||
+        !SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false ) ||
+        !SprMngr.LoadFontFO( FONT_THIN, "Thin", false ) ||
+        !SprMngr.LoadFontFO( FONT_FAT, "Fat", false ) ||
+        !SprMngr.LoadFontFO( FONT_BIG, "Big", false ) )
+    {
+        WriteLog( "Fonts initialization fail.\n" );
+        return false;
+    }
+
+    // Flush atlas data
+    SprMngr.PopAtlasType();
+    SprMngr.FlushAccumulatedAtlasData();
+
+    // Finish fonts
+    SprMngr.BuildFonts();
+    SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
+
+    // Preload 3d files
+    if( GameOpt.Enable3dRendering && !Preload3dFiles.empty() )
+    {
+        WriteLog( "Preload 3d files...\n" );
+        for( size_t i = 0, j = Preload3dFiles.size(); i < j; i++ )
+            Animation3dEntity::GetEntity( Preload3dFiles[ i ].c_str() );
+        WriteLog( "Preload 3d files complete.\n" );
     }
 
     // Quest Manager
@@ -482,10 +533,10 @@ bool FOClient::Init()
     return true;
 }
 
-void FOClient::UpdateFiles( bool only_check )
+void FOClient::UpdateFiles( bool early_call )
 {
     // Singleplayer can skip only check updates
-    if( Singleplayer && only_check )
+    if( Singleplayer && early_call )
         return;
 
     // Load font
@@ -498,7 +549,6 @@ void FOClient::UpdateFiles( bool only_check )
     // Update
     UpdateFilesAddText( STR_CHECK_UPDATES, "CHECK_UPDATES" );
     UpdateFilesInProgress = true;
-    UpdateFilesOnlyCheck = only_check;
     UpdateFilesText = "";
     bool cache_changed = false;
     bool files_changed = false;
@@ -529,7 +579,7 @@ void FOClient::UpdateFiles( bool only_check )
         uint tick = Timer::FastTick();
         while( IsConnected )
         {
-            if( UpdateFilesOnlyCheck && UpdateFilesList && !UpdateFilesList->empty() )
+            if( !Singleplayer && !early_call && UpdateFilesList && !UpdateFilesList->empty() )
                 UpdateFilesAbort( STR_CLIENT_DATA_OUTDATED, "STR_CLIENT_DATA_OUTDATED" );
 
             int    dots = ( Timer::FastTick() - tick ) / 100 % 50 + 1;
@@ -592,6 +642,10 @@ void FOClient::UpdateFiles( bool only_check )
                     SAFEDEL( UpdateFilesList );
                     UpdateFilesInProgress = false;
                     NetDisconnect();
+
+                    // Restart game after singleplayer update
+                    if( Singleplayer && ( cache_changed || files_changed ) )
+                        UpdateFilesAbort( STR_SINGLEPLAYER_DATA_UPDATED, "STR_SINGLEPLAYER_DATA_UPDATED" );
 
                     // Reinitialize data
                     if( cache_changed )
@@ -961,7 +1015,7 @@ int FOClient::MainLoop()
     if( InitNetReason != INIT_NET_REASON_NONE )
     {
         // Check updates
-        UpdateFiles( !Singleplayer ? true : false );
+        UpdateFiles( false );
 
         // Reason
         int reason = InitNetReason;
@@ -11215,9 +11269,7 @@ void FOClient::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar d
 
 bool FOClient::SScriptFunc::Global_AppendIfaceIni( ScriptString& ini_name )
 {
-    bool r = Self->AppendIfaceIni( ini_name.c_str() );
-    WriteLog( "Global_AppendIfaceIni<%s> %d\n", ini_name.c_str(), r );
-    return r;
+    return Self->AppendIfaceIni( ini_name.c_str() );
 }
 
 ScriptString* FOClient::SScriptFunc::Global_GetIfaceIniStr( ScriptString& key )
@@ -11228,14 +11280,18 @@ ScriptString* FOClient::SScriptFunc::Global_GetIfaceIniStr( ScriptString& key )
     return new ScriptString( "" );
 }
 
-bool FOClient::SScriptFunc::Global_Load3dFile( ScriptString& fname, int path_type )
+void FOClient::SScriptFunc::Global_Preload3dFiles( ScriptArray& fnames, int path_type )
 {
-    if( SprMngr.IsAccumulateAtlasActive() )
-        SCRIPT_ERROR_R0( "Unable to call this function now." );
-    char               fname_[ MAX_FOPATH ];
-    FileManager::GetDataPath( fname.c_str(), path_type, fname_ );
-    Animation3dEntity* entity = Animation3dEntity::GetEntity( fname_ );
-    return entity != NULL;
+    size_t k = Self->Preload3dFiles.size();
+
+    for( asUINT i = 0; i < fnames.GetSize(); i++ )
+    {
+        ScriptString* s = (ScriptString*) fnames.At( i );
+        Self->Preload3dFiles.push_back( s->c_std_str() );
+    }
+
+    for( ; k < Self->Preload3dFiles.size(); k++ )
+        Self->Preload3dFiles[ k ] = FileManager::GetDataPath( Self->Preload3dFiles[ k ].c_str(), path_type );
 }
 
 void FOClient::SScriptFunc::Global_WaitPing()

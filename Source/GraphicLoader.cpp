@@ -219,6 +219,9 @@ Node* GraphicLoader::LoadModel( const char* fname )
             anim_set->Load( file_cache );
             loadedAnimations.push_back( anim_set );
         }
+
+        loadedModels.push_back( root_node );
+        loadedModelNames.push_back( fname );
         return root_node;
     }
 

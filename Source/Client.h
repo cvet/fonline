@@ -53,6 +53,7 @@ public:
     string     Password;
     HexManager HexMngr;
     ushort     CurMapPid;
+    StrVec     Preload3dFiles;
 
     int        ScreenModeMain;
     void ShowMainScreen( int new_screen );
@@ -87,7 +88,6 @@ public:
     typedef vector< UpdateFile > UpdateFileVec;
 
     bool           UpdateFilesInProgress;
-    bool           UpdateFilesOnlyCheck;
     bool           UpdateFilesAborted;
     bool           UpdateFilesFontLoaded;
     string         UpdateFilesText;
@@ -100,7 +100,7 @@ public:
     uint           ShowScreenParam;
     bool           ShowScreenNeedAnswer;
 
-    void UpdateFiles( bool only_check );
+    void UpdateFiles( bool early_call );
     void UpdateFilesAddText( uint num_str, const char* num_str_str );
     void UpdateFilesAbort( uint num_str, const char* num_str_str );
     void UpdateFilesWait( uint time );
@@ -666,7 +666,7 @@ public:
         static void          Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
         static bool          Global_AppendIfaceIni( ScriptString& ini_name );
         static ScriptString* Global_GetIfaceIniStr( ScriptString& key );
-        static bool          Global_Load3dFile( ScriptString& fname, int path_type );
+        static void          Global_Preload3dFiles( ScriptArray& fnames, int path_type );
         static void          Global_WaitPing();
         static bool          Global_LoadFont( int font, ScriptString& font_fname );
         static void          Global_SetDefaultFont( int font, uint color );
@@ -697,8 +697,7 @@ public:
 
     bool AppendIfaceIni( const char* ini_name );
     void AppendIfaceIni( uchar* data, uint len );
-    bool InitIface();
-    int  InitIfaceExt();
+    int  InitIface();
     bool IfaceLoadRect( Rect& comp, const char* name );
     void IfaceLoadRect2( Rect& comp, const char* name, int ox, int oy );
     void IfaceLoadSpr( AnyFrames*& comp, const char* name );
