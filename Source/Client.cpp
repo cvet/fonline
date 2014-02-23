@@ -961,7 +961,7 @@ int FOClient::MainLoop()
     if( InitNetReason != INIT_NET_REASON_NONE )
     {
         // Check updates
-        UpdateFiles( Singleplayer ? true : false );
+        UpdateFiles( !Singleplayer ? true : false );
 
         // Reason
         int reason = InitNetReason;
