@@ -873,9 +873,6 @@ void GetClientOptions()
     GameOpt.ScreenHeight = cfg.GetInt( CLIENT_CONFIG_APP, "ScreenHeight", 0 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ScreenHeight, "-ScreenHeight" );
     GETOPTIONS_CHECK( GameOpt.ScreenHeight, 100, 30000, 600 );
-    GameOpt.MultiSampling = cfg.GetInt( CLIENT_CONFIG_APP, "MultiSampling", -1 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.MultiSampling, "-MultiSampling" );
-    GETOPTIONS_CHECK( GameOpt.MultiSampling, -1, 16, -1 );
     GameOpt.AlwaysOnTop = cfg.GetInt( CLIENT_CONFIG_APP, "AlwaysOnTop", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.AlwaysOnTop, "-AlwaysOnTop" );
     GameOpt.FixedFPS = cfg.GetInt( CLIENT_CONFIG_APP, "FixedFPS", 100 );
@@ -913,17 +910,10 @@ void GetClientOptions()
     GameOpt.CombatMessagesType = cfg.GetInt( CLIENT_CONFIG_APP, "CombatMessagesType", 0 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.CombatMessagesType, "-CombatMessagesType" );
     GETOPTIONS_CHECK( GameOpt.CombatMessagesType, 0, 1, 0 );
-    GameOpt.Animation3dFPS = cfg.GetInt( CLIENT_CONFIG_APP, "Animation3dFPS", 10 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.Animation3dFPS, "-Animation3dFPS" );
-    GETOPTIONS_CHECK( GameOpt.Animation3dFPS, 0, 1000, 10 );
-    GameOpt.Animation3dSmoothTime = cfg.GetInt( CLIENT_CONFIG_APP, "Animation3dSmoothTime", 0 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.Animation3dSmoothTime, "-Animation3dSmoothTime" );
-    GETOPTIONS_CHECK( GameOpt.Animation3dSmoothTime, 0, 10000, 250 );
 
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.HelpInfo, "-HelpInfo" );
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugInfo, "-DebugInfo" );
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugNet, "-DebugNet" );
-    GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.Enable3dRendering, "-Enable3dRendering" );
 
     // Str
     cfg.GetStr( CLIENT_CONFIG_APP, "RemoteHost", "localhost", buf );
@@ -1348,7 +1338,7 @@ GameOptions::GameOptions()
     DamageHitDelay = 0;
     ScreenWidth = 800;
     ScreenHeight = 600;
-    MultiSampling = 0;
+    MultiSampling = -1;
     MouseScroll = true;
     IndicatorType = INDICATOR_LINES;
     DoubleClickTime = 0;
@@ -1360,8 +1350,8 @@ GameOptions::GameOptions()
     HidePassword = true;
     PlayerOffAppendix = "_off";
     CombatMessagesType = 0;
-    Animation3dSmoothTime = 250;
-    Animation3dFPS = 10;
+    Animation3dSmoothTime = 150;
+    Animation3dFPS = 30;
     RunModMul = 1;
     RunModDiv = 3;
     RunModAdd = 0;
