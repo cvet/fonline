@@ -767,7 +767,7 @@ void FileManager::ExtractFileName( const char* fname, char* name )
     Str::Copy( buf, fname );
     FormatPath( buf );
 
-    const char* str = Str::Substring( fname, DIR_SLASH_S );
+    const char* str = Str::Substring( buf, DIR_SLASH_S );
     if( str )
     {
         str++;

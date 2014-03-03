@@ -748,7 +748,7 @@ Node* ConvertFbxPass1( FbxScene* fbx_scene, FbxNode* fbx_node, vector< FbxNode* 
     node->Mesh = NULL;
     node->Children.resize( fbx_node->GetChildCount() );
 
-    if( fbx_node->GetSkeleton() != NULL )
+    if( fbx_node->GetSkeleton() || ( fbx_node->GetMesh() && !fbx_node->GetMesh()->GetDeformer( 0, FbxDeformer::eSkin ) ) )
         fbx_bones.push_back( fbx_node );
 
     for( int i = 0; i < fbx_node->GetChildCount(); i++ )
