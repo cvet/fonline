@@ -146,12 +146,11 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
 
 int FOClient::InitIface()
 {
-    WriteLog( "Interface initialization.\n" );
+    WriteLog( "Interface initialization...\n" );
 
 /************************************************************************/
 /* Data                                                                 */
 /************************************************************************/
-    WriteLog( "Load data.\n" );
     // Other
     IfaceHold = IFACE_NONE;
     TargetSmth.Clear();
@@ -926,8 +925,6 @@ int FOClient::InitIface()
 /************************************************************************/
 /* Sprites                                                              */
 /************************************************************************/
-    WriteLog( "Load sprites.\n" );
-
     // Hex field sprites
     HexMngr.ReloadSprites();
 

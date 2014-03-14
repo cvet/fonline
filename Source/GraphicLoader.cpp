@@ -1765,6 +1765,7 @@ uchar* GraphicLoader::LoadTGA( const uchar* data, uint data_size, uint& result_w
         }                                               \
         else                                            \
         {                                               \
+            memset( x, 0, len );                        \
             read_error = true;                          \
         }
 

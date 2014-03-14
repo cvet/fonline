@@ -149,7 +149,7 @@ void SpriteManager::BuildFonts()
 {
     for( size_t i = 0; i < Fonts.size(); i++ )
         if( Fonts[ i ] && !Fonts[ i ]->Builded )
-            BuildFont( i );
+            BuildFont( (int) i );
 }
 
 void SpriteManager::BuildFont( int index )

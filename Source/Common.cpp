@@ -438,7 +438,7 @@ void RestoreMainDirectory()
         }
     }
     #elif defined ( FO_OSX_MAC )
-    chdir( "./Client_OSX.app/Contents/Resources/Client" );
+    chdir( "./FOnline.app/Contents/Resources/Client" );
     #elif defined ( FO_OSX_IOS )
     chdir( "./Client" );
     #endif
@@ -624,6 +624,7 @@ const char* GetConfigFileName()
     #endif
 
     // Extract config name from current exe
+    #ifdef FO_WINDOWS
     static bool processed = false;
     if( !processed )
     {
@@ -632,12 +633,12 @@ const char* GetConfigFileName()
 
         // Get full path
         char module_name[ MAX_FOPATH ];
-        #ifdef FO_WINDOWS
+        # ifdef FO_WINDOWS
         if( !GetModuleFileName( NULL, module_name, sizeof( module_name ) ) )
             return config_name;
-        #else
+        # else
         // Todo: Linux CommandLineArgValues[0] ?
-        #endif
+        # endif
 
         // Change extension
         char* ext = (char*) FileManager::GetExtension( module_name );
@@ -660,6 +661,7 @@ const char* GetConfigFileName()
         // Set as main
         Str::Copy( config_name, name );
     }
+    #endif
 
     return config_name;
 }

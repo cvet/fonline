@@ -180,10 +180,17 @@ struct ScoreType
 #  define GLEW_NO_GLU
 #  include "GL/glew.h"
 #  include "SDL/SDL_opengl.h"
+#  ifdef FO_OSX_MAC
+#   undef glGenVertexArrays
+#   undef glBindVertexArray
+#   undef glDeleteVertexArrays
+#   define glGenVertexArrays                     glGenVertexArraysAPPLE
+#   define glBindVertexArray                     glBindVertexArrayAPPLE
+#   define glDeleteVertexArrays                  glDeleteVertexArraysAPPLE
+#  endif
 # else
 #  include "SDL/SDL_opengles2.h"
 #  define glGenVertexArrays                      glGenVertexArraysOES
-#  define glBindVertexArray                      glBindVertexArrayOES
 #  define glBindVertexArray                      glBindVertexArrayOES
 #  define glDeleteVertexArrays                   glDeleteVertexArraysOES
 #  define glGenFramebuffersEXT                   glGenFramebuffers

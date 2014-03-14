@@ -143,7 +143,11 @@ bool SpriteManager::Init()
     OGL_framebuffer_multisample = GLEW_EXT_framebuffer_multisample != 0;
     OGL_packed_depth_stencil = GLEW_EXT_packed_depth_stencil != 0;
     OGL_texture_multisample = GLEW_ARB_texture_multisample != 0;
+    # ifdef FO_OSX_MAC
+    OGL_vertex_array_object = GLEW_APPLE_vertex_array_object != 0;
+    # else
     OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0;
+    # endif
     OGL_get_program_binary = GLEW_ARB_get_program_binary != 0;
     #endif
 
@@ -299,15 +303,17 @@ void SpriteManager::EndScene()
 {
     Flush();
 
-
     if( rtMain )
     {
         PopRenderTarget();
         DrawRenderTarget( rtMain, false );
+        SDL_GL_SwapWindow( MainWindow );
         PushRenderTarget( rtMain );
     }
-
-    SDL_GL_SwapWindow( MainWindow );
+    else
+    {
+        SDL_GL_SwapWindow( MainWindow );
+    }
 
     if( GameOpt.OpenGLDebug && glGetError() != GL_NO_ERROR )
     {

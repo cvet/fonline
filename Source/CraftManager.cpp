@@ -616,8 +616,6 @@ bool CraftManager::LoadCrafts( FOMsg& msg )
     auto           it = msg_str.begin();
     auto           it_end = msg_str.end();
 
-    it++;     // Skip ERROR
-
     for( ; it != it_end; ++it )
     {
         uint    num = ( *it ).first;

@@ -1177,8 +1177,8 @@ void HexManager::TraceLight( ushort from_hx, ushort from_hy, ushort& hx, ushort&
     float cury1f = (float) from_hy;
     int   curx1i = from_hx;
     int   cury1i = from_hy;
-    int   old_curx1i = curx1i;
-    int   old_cury1i = cury1i;
+    int   old_curx1i = 0;
+    int   old_cury1i = 0;
     uint  inten_sub = inten / dist;
 
     for( ; ;)
@@ -3281,21 +3281,15 @@ bool HexManager::TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint d
     ushort     cy = hy;
     ushort     old_cx = cx;
     ushort     old_cy = cy;
-    uchar      dir;
 
     LineTracer line_tracer( hx, hy, tx, ty, maxHexX, maxHexY, angle, !GameOpt.MapHexagonal );
 
     for( uint i = 0; i < dist; i++ )
     {
         if( GameOpt.MapHexagonal )
-        {
-            dir = line_tracer.GetNextHex( cx, cy );
-        }
+            line_tracer.GetNextHex( cx, cy );
         else
-        {
             line_tracer.GetNextSquare( cx, cy );
-            dir = GetNearDir( old_cx, old_cy, cx, cy );
-        }
 
         if( IsShowTrack() )
             GetHexTrack( cx, cy ) = ( cx == tx && cy == ty ? 1 : 2 );

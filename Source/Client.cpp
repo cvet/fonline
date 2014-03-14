@@ -4048,7 +4048,7 @@ void FOClient::Net_OnLoginSuccess()
     // Load console history
     ConsoleHistory.clear();
     string history_str = Crypt.GetCache( ( GameOpt.Name.c_std_str() + "_console" ).c_str() );
-    size_t pos = 0, prev = 0, count = 0;
+    size_t pos = 0, prev = 0;
     while( ( pos = history_str.find( "\n", prev ) ) != std::string::npos )
     {
         string history_part;
