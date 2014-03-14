@@ -213,6 +213,7 @@ struct ScoreType
 #  define GL_COLOR_ATTACHMENT0_EXT               GL_COLOR_ATTACHMENT0
 #  define GL_RENDERBUFFER_EXT                    GL_RENDERBUFFER
 #  define GL_DEPTH_ATTACHMENT_EXT                GL_DEPTH_ATTACHMENT
+#  define GL_RENDERBUFFER_BINDING_EXT            GL_RENDERBUFFER_BINDING
 #  define GL_CLAMP                               GL_CLAMP_TO_EDGE
 #  define GL_DEPTH24_STENCIL8                    GL_DEPTH24_STENCIL8_OES
 #  define GL_DEPTH24_STENCIL8_EXT                GL_DEPTH24_STENCIL8_OES
