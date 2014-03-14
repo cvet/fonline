@@ -697,6 +697,8 @@ void FOClient::UpdateFilesAddText( uint num_str, const char* num_str_str )
         SprMngr.DrawStr( Rect( 0, 0, MODE_WIDTH, MODE_HEIGHT ), UpdateFilesText.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
         SprMngr.EndScene();
     }
+
+    UpdateFilesWait( 0 );
 }
 
 void FOClient::UpdateFilesAbort( uint num_str, const char* num_str_str )
