@@ -1158,7 +1158,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             }
         }
         #ifdef FO_OGL_ES
-        char ios_data[] = { "precision highp float;\n" };
+        char ios_data[] = { "precision lowp float;\n" };
         ver = ios_data;
         #endif
 

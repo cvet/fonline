@@ -322,6 +322,9 @@ void SpriteManager::EndScene()
 
 RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multisampling, uint width, uint height, bool tex_linear )
 {
+    // Flush current sprites
+    Flush();
+
     // Zero data
     RenderTarget* rt = new RenderTarget();
     memzero( rt, sizeof( RenderTarget ) );
@@ -418,6 +421,8 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
     {
         if( GL_HAS( framebuffer_object ) )
         {
+            GLint cur_rb;
+            GL( glGetIntegerv( GL_RENDERBUFFER_BINDING, &cur_rb ) );
             GL( glGenRenderbuffers( 1, &rt->DepthStencilBuffer ) );
             GL( glBindRenderbuffer( GL_RENDERBUFFER, rt->DepthStencilBuffer ) );
             if( !multisampling )
@@ -430,9 +435,12 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
             }
             GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rt->DepthStencilBuffer ) );
             GL( glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rt->DepthStencilBuffer ) );
+            GL( glBindRenderbuffer( GL_RENDERBUFFER, cur_rb ) );
         }
         else // framebuffer_object_ext
         {
+            GLint cur_rb;
+            GL( glGetIntegerv( GL_RENDERBUFFER_BINDING_EXT, &cur_rb ) );
             GL( glGenRenderbuffersEXT( 1, &rt->DepthStencilBuffer ) );
             GL( glBindRenderbufferEXT( GL_RENDERBUFFER_EXT, rt->DepthStencilBuffer ) );
             if( !multisampling )
@@ -460,6 +468,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
             GL( glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rt->DepthStencilBuffer ) );
             if( GL_HAS( packed_depth_stencil ) )
                 GL( glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rt->DepthStencilBuffer ) );
+            GL( glBindRenderbufferEXT( GL_RENDERBUFFER_EXT, cur_rb ) );
         }
     }
 
@@ -492,14 +501,6 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         rt->DrawEffect = Effect::FlushRenderTargetMS;
 
     // Clear
-    if( GL_HAS( framebuffer_object ) )
-    {
-        GL( glBindFramebuffer( GL_FRAMEBUFFER, baseFBO ) );
-    }
-    else // framebuffer_object_ext
-    {
-        GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, baseFBO ) );
-    }
     PushRenderTarget( rt );
     ClearCurrentRenderTarget( 0 );
     if( depth_stencil )

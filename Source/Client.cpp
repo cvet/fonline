@@ -5719,6 +5719,8 @@ void FOClient::Net_OnEndParseToGame()
     #else
     SndMngr.PlayMusic( MsgGM->GetStr( STR_MAP_MUSIC_( CurMapPid ) ) );
     #endif
+
+    WriteLog( "Entering to game complete.\n" );
 }
 
 void FOClient::Net_OnChosenTalk()
