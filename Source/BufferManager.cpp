@@ -183,21 +183,21 @@ void BufferManager::CopyBuf( const char* from, char* to, const char* mask, uint 
 {
     if( mask )
     {
-        if( len % sizeof( size_t ) )
+        if( len % sizeof( uint ) )
             for( uint i = 0; i < len; i++, to++, from++, mask++ )
                 *to = ( *from & *mask ) ^ crypt_key;
         else
-            for( uint i = 0, j = sizeof( size_t ); i < len; i += j, to += j, from += j, mask += j )
-                *(size_t*) to = ( *(size_t*) from & *(size_t*) mask ) ^ crypt_key;
+            for( uint i = 0, j = sizeof( uint ); i < len; i += j, to += j, from += j, mask += j )
+                *(uint*) to = ( *(uint*) from & *(uint*) mask ) ^ crypt_key;
     }
     else
     {
-        if( len % sizeof( size_t ) )
+        if( len % sizeof( uint ) )
             for( uint i = 0; i < len; i++, to++, from++ )
                 *to = *from ^ crypt_key;
         else
-            for( uint i = 0, j = sizeof( size_t ); i < len; i += j, to += j, from += j )
-                *(size_t*) to = *(size_t*) from ^ crypt_key;
+            for( uint i = 0, j = sizeof( uint ); i < len; i += j, to += j, from += j )
+                *(uint*) to = *(uint*) from ^ crypt_key;
     }
 }
 
