@@ -97,9 +97,6 @@ bool SpriteManager::Init()
         return false;
     }
 
-    #ifdef FO_OSX_IOS
-    GLContext = SDL_GL_CreateContext( MainWindow );     // Strange workaround, does not wont work without it
-    #endif
     GLContext = SDL_GL_CreateContext( MainWindow );
     if( !GLContext )
     {
