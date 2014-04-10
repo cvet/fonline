@@ -88,6 +88,16 @@ public:
 		* \return \c True if unequal, \c false otherwise. */
 		bool operator!=(const FbxPropertyHandle& pHandle) const;
 
+		/** Lesser operator, used to sort property handle in map.
+		* \param pHandle The property handle compared to this property handle.
+		* \return \c true if less, \c false otherwise. */
+		bool operator< (const FbxPropertyHandle& pHandle) const;
+
+		/** Greater operator, used to sort property handle in map.
+		* \param pProperty The property handle compared to this property handle.
+		* \return \c true if greater, \c false otherwise. */
+		bool operator> (const FbxPropertyHandle& pHandle) const;
+
 		/** Compare type info together
 		* \param pHandle FbxPropertyHandle compared with this one.   
 		* \return \c True if equal, \c false otherwise. */

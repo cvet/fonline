@@ -1048,6 +1048,10 @@ public:
 	  * \name Node Evaluation Functions
 	  */
 	//@{
+		/** Retrieve the proper animation evaluator to use for this node.
+		* \return If the object has no scene, returns the default evaluator, otherwise the object's scene evaluator. */
+		FbxAnimEvaluator* GetAnimationEvaluator() const;
+
 		/** Returns this node's global transformation matrix at the specified time. The node's translation, rotation and scaling limits are taken into consideration.
 		  * \param pTime The time used for evaluate. If FBXSDK_TIME_INFINITE is used, this returns the default value, without animation curves evaluation.
 		  * \param pPivotSet The pivot set to take into account

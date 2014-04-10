@@ -17,7 +17,6 @@
 
 #include <fbxsdk/core/base/fbxtime.h>
 #include <fbxsdk/scene/fbxcollection.h>
-#include <fbxsdk/scene/animation/fbxanimevalstate.h>
 
 #include <fbxsdk/fbxsdk_nsbegin.h>
 
@@ -154,15 +153,9 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-	FbxAnimEvalState* GetEvaluationState() const;
-
 protected:
-	virtual void Construct(const FbxObject* pFrom);
     virtual void ConstructProperties(bool pForceSet);
 	virtual void Destruct(bool pRecursive);
-
-private:
-	FbxAnimEvalState* mEvalState;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

@@ -29,6 +29,7 @@ class FbxAnimStack;
 class FbxAnimLayer;
 class FbxAnimCurveNode;
 class FbxAnimCurve;
+class FbxAnimEvaluator;
 
 /** \brief Class to hold user properties.
 * \nosubgrouping
@@ -241,6 +242,16 @@ public:
 		  * \return \c True if unequal, \c false otherwise.
 		  */    
 		bool operator!= (const FbxProperty& pProperty) const;
+
+		/** Lesser operator, used to sort property in map.
+		* \param pProperty The property compared to this property.
+		* \return \c true if less, \c false otherwise. */
+		bool operator< (const FbxProperty& pProperty) const;
+
+		/** Greater operator, used to sort property in map.
+		* \param pProperty The property compared to this property.
+		* \return \c true if greater, \c false otherwise. */
+		bool operator> (const FbxProperty& pProperty) const;
 
 		/** Equivalence operator.
 		  * \param pValue The value compared to this property.
@@ -574,6 +585,10 @@ public:
 	  * \name Animation Curve Management
 	  */
 	//@{
+		/** Retrieve the proper animation evaluator to use for this property.
+		* \return If the object has no scene, returns the default evaluator, otherwise the object's scene evaluator. */
+		FbxAnimEvaluator* GetAnimationEvaluator() const;
+
 		/** Evaluate the value of a property if it has animation and return the result as the template type.
 		* \param pTime The time used for evaluate. If FBXSDK_TIME_INFINITE is used, this returns the default value, without animation curves evaluation.
 		* \param pForceEval Force the evaluator to refresh the evaluation state cache even if its already up-to-date.
@@ -1321,7 +1336,7 @@ public:
 		* \return The property value at the specified time. */
 		T EvaluateValue(const FbxTime& pTime=FBXSDK_TIME_INFINITE, bool pForceEval=false)
 		{
-			return GetFbxObject()->GetFbxManager()->GetAnimationEvaluator()-> template GetPropertyValue<T>(*this, pTime, pForceEval);
+			return GetAnimationEvaluator()-> template GetPropertyValue<T>(*this, pTime, pForceEval);
 		}
 	//@}
 

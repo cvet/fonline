@@ -307,7 +307,7 @@ void Node::Load( FileManager& file )
     {
         Mesh = new MeshData();
         Mesh->Load( file );
-        Mesh->Parent = this;
+        Mesh->Owner = this;
     }
     else
     {
@@ -338,7 +338,7 @@ void Node::FixAfterLoad( Node* root_node )
             }
             else
             {
-                Mesh->BoneCombinedMatrices[ i ] = &Mesh->Parent->CombinedTransformationMatrix;
+                Mesh->BoneCombinedMatrices[ i ] = &Mesh->Owner->CombinedTransformationMatrix;
             }
         }
     }

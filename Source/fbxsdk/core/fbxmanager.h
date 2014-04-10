@@ -462,18 +462,6 @@ public:
 		bool ClearReference(FbxSceneReference* pReference);
 	//@}
 
-	/** \name Animation Evaluation */
-	//@{
-		/** Set the animation evaluator that should be used by the entire FBX SDK animation evaluation engine.
-		* \param pEvaluator The animation evaluator to use. */
-		void SetAnimationEvaluator(FbxAnimEvaluator* pEvaluator);
-
-		/** Get the current animation evaluator used by the entire FBX SDK animation evaluation engine.
-		* \return The current animation evaluator.
-		* \remark If none were currently set, the FBX SDK will create a default evaluator so this function should always return an evaluator. */
-		FbxAnimEvaluator* GetAnimationEvaluator();
-	//@}
-
     /** Add a prefix to a name.
       * \param pPrefix The prefix to be added to the \c pName. This
       * string must contain the "::" characters in order to be considered
@@ -533,6 +521,8 @@ private:
 
 	void		RemoveObjectsOfType(const FbxClassId& pClassId);
 
+	FbxAnimEvaluator* GetDefaultAnimationEvaluator();
+
     FbxArray<FbxObject*>				mObjects;
 	FbxArray<FbxDocument*>				mDocuments;
 
@@ -542,7 +532,7 @@ private:
 	FbxMessageEmitter*					mMessageEmitter;
 	FbxArray<FbxLocalizationManager*>	mLocalizationManagerArray;
 	FbxArray<FbxSceneReference*>		mSceneReferenceArray;
-	FbxAnimEvaluator*					mEvaluator;
+	FbxAnimEvaluator*					mDefaultAnimationEvaluator;
 
 	FbxArray<FbxObject*>				mDestroyingObjects;
 	FbxArray<FbxDocument*>				mDestroyingDocuments;
@@ -553,6 +543,8 @@ private:
 
 	FBXSDK_FRIEND_NEW();
 	friend class FbxObject;
+	friend class FbxProperty;	//For GetDefaultAnimationEvaluator()
+	friend class FbxNode;		//For GetDefaultAnimationEvaluator()
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

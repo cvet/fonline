@@ -184,9 +184,10 @@ private:
     OutputVec*  outputs;
     TrackVec    tracks;
     float       curTime;
+    bool        interpolationDisabled;
 
 public:
-    AnimController(): sets( NULL ), outputs( NULL ), curTime( 0.0f )
+    AnimController(): sets( NULL ), outputs( NULL ), curTime( 0.0f ), interpolationDisabled( false )
     {}
 
     ~AnimController()
@@ -220,6 +221,7 @@ public:
         clone->outputs = outputs;
         clone->tracks = tracks;
         clone->curTime = 0.0f;
+        clone->interpolationDisabled = interpolationDisabled;
         return clone;
     }
 
@@ -327,6 +329,11 @@ public:
         tracks[ track ].position = position;
     }
 
+    void SetInterpolation( bool enabled )
+    {
+        interpolationDisabled = !enabled;
+    }
+
     void AdvanceTime( float time )
     {
         // Animation time
@@ -430,8 +437,7 @@ public:
                 Matrix::Scaling( o.scale[ 0 ], ms );
                 mr = Matrix( o.rotation[ 0 ].GetMatrix() );
                 Matrix::Translation( o.translation[ 0 ], mt );
-                Matrix m = mt * mr * ms;
-                *o.matrix = m;
+                *o.matrix = mt * mr * ms;
             }
             else
             {
@@ -443,8 +449,7 @@ public:
                         Matrix::Scaling( o.scale[ k ], ms );
                         mr = Matrix( o.rotation[ k ].GetMatrix() );
                         Matrix::Translation( o.translation[ k ], mt );
-                        Matrix m = mt * mr * ms;
-                        *o.matrix = m;
+                        *o.matrix = mt * mr * ms;
                         break;
                     }
                 }
@@ -476,16 +481,26 @@ private:
         }
     }
 
-    void Interpolate( Quaternion& q1, Quaternion& q2, float factor )
+    void Interpolate( Quaternion& q1, const Quaternion& q2, float factor )
     {
-        Quaternion::Interpolate( q1, q1, q2, factor );
+        if( !interpolationDisabled )
+            Quaternion::Interpolate( q1, q1, q2, factor );
+        else if( factor >= 0.5f )
+            q1 = q2;
     }
 
-    void Interpolate( Vector& v1, Vector& v2, float factor )
+    void Interpolate( Vector& v1, const Vector& v2, float factor )
     {
-        v1.x = v1.x + ( v2.x - v1.x ) * factor;
-        v1.y = v1.y + ( v2.y - v1.y ) * factor;
-        v1.z = v1.z + ( v2.z - v1.z ) * factor;
+        if( !interpolationDisabled )
+        {
+            v1.x = v1.x + ( v2.x - v1.x ) * factor;
+            v1.y = v1.y + ( v2.y - v1.y ) * factor;
+            v1.z = v1.z + ( v2.z - v1.z ) * factor;
+        }
+        else if( factor >= 0.5f )
+        {
+            v1 = v2;
+        }
     }
 };
 

@@ -22,12 +22,12 @@
 //FBX SDK version defines
 #define FBXSDK_VERSION_MAJOR	2014		//<! Integer, version major number
 #define FBXSDK_VERSION_MINOR	2			//<! Integer, version minor number
-#define FBXSDK_VERSION_POINT	0			//<! Integer, version point number
+#define FBXSDK_VERSION_POINT	1			//<! Integer, version point number
 #define FBXSDK_VERSION_NAME		"Release"	//<! String, version name, example: Alpha, Beta, RC, Release
 
 #define FBXSDK_VERSION_YEAR     2013		//<! Integer, release date year
-#define FBXSDK_VERSION_MONTH	10			//<! Integer, release date month
-#define FBXSDK_VERSION_DAY		15			//<! Integer, release date day
+#define FBXSDK_VERSION_MONTH	12			//<! Integer, release date month
+#define FBXSDK_VERSION_DAY		19			//<! Integer, release date day
 
 #ifndef FBXSDK_VERSION_REVISION
 	#define FBXSDK_VERSION_REVISION	0		//<! Integer, version revision number, set by build environment. Do not edit here!
@@ -54,7 +54,7 @@
 #endif
 
 #if FBXSDK_DEFINE_NAMESPACE == 1
-	#define FBXSDK_NAMESPACE fbxsdk_2014_2
+	#define FBXSDK_NAMESPACE fbxsdk_2014_2_1
 #else
 	#define FBXSDK_NAMESPACE
 #endif

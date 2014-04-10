@@ -374,47 +374,56 @@ Node* GraphicLoader::LoadModel( const char* fname )
         loadedModelNames.push_back( fname );
 
         // Extract animations
-        FloatVec          times;
-        VectorVec         sv;
-        QuaternionVec     rv;
-        VectorVec         tv;
-        FbxAnimEvaluator* fbx_anim_evaluator = fbx_manager->GetAnimationEvaluator();
-        FbxCriteria       fbx_anim_stack_criteria = FbxCriteria::ObjectType( fbx_anim_evaluator->GetContext()->GetClassId() );
-        for( int i = 0, j = fbx_scene->GetSrcObjectCount( fbx_anim_stack_criteria ); i < j; i++ )
+
+        if( fbx_scene->GetCurrentAnimationStack() )
         {
-            FbxAnimStack* fbx_anim_stack = (FbxAnimStack*) fbx_scene->GetSrcObject( fbx_anim_stack_criteria, i );
-            fbx_anim_evaluator->SetContext( fbx_anim_stack );
-
-            FbxTakeInfo* take_info = fbx_importer->GetTakeInfo( i );
-            int          frames_count = (int) take_info->mLocalTimeSpan.GetDuration().GetFrameCount() + 1;
-            float        frame_rate = (float) ( frames_count - 1 ) / (float) take_info->mLocalTimeSpan.GetDuration().GetSecondDouble();
-            int          frame_offset = (int) take_info->mLocalTimeSpan.GetStart().GetFrameCount();
-
-            times.resize( frames_count );
-            sv.resize( frames_count );
-            rv.resize( frames_count );
-            tv.resize( frames_count );
-
-            AnimSet* anim_set = new AnimSet();
-            for( uint n = 0; n < (uint) fbx_bones.size(); n++ )
+            FloatVec          times;
+            VectorVec         sv;
+            QuaternionVec     rv;
+            VectorVec         tv;
+            FbxAnimEvaluator* fbx_anim_evaluator = fbx_scene->GetAnimationEvaluator();
+            FbxCriteria       fbx_anim_stack_criteria = FbxCriteria::ObjectType( fbx_scene->GetCurrentAnimationStack()->GetClassId() );
+            for( int i = 0, j = fbx_scene->GetSrcObjectCount( fbx_anim_stack_criteria ); i < j; i++ )
             {
-                FbxTime cur_time;
-                for( int f = 0; f < frames_count; f++ )
+                FbxAnimStack* fbx_anim_stack = (FbxAnimStack*) fbx_scene->GetSrcObject( fbx_anim_stack_criteria, i );
+                fbx_scene->SetCurrentAnimationStack( fbx_anim_stack );
+
+                FbxTakeInfo* take_info = fbx_importer->GetTakeInfo( i );
+                int          frames_count = (int) take_info->mLocalTimeSpan.GetDuration().GetFrameCount() + 1;
+                float        frame_rate = (float) ( frames_count - 1 ) / (float) take_info->mLocalTimeSpan.GetDuration().GetSecondDouble();
+                int          frame_offset = (int) take_info->mLocalTimeSpan.GetStart().GetFrameCount();
+
+                times.resize( frames_count );
+                sv.resize( frames_count );
+                rv.resize( frames_count );
+                tv.resize( frames_count );
+
+                AnimSet* anim_set = new AnimSet();
+                for( uint n = 0; n < (uint) fbx_bones.size(); n++ )
                 {
-                    float time = (float) f;
-                    cur_time.SetFrame( frame_offset + f );
+                    FbxTime cur_time;
+                    for( int f = 0; f < frames_count; f++ )
+                    {
+                        float time = (float) f;
+                        cur_time.SetFrame( frame_offset + f );
 
-                    times[ f ] = time;
+                        times[ f ] = time;
 
-                    Matrix m = ConvertFbxMatrix( fbx_anim_evaluator->GetNodeLocalTransform( fbx_bones[ n ], cur_time ) );
-                    m.Decompose( sv[ f ], rv[ f ], tv[ f ] );
+                        FbxAMatrix&    fbx_m = fbx_anim_evaluator->GetNodeLocalTransform( fbx_bones[ n ], cur_time );
+                        FbxVector4&    fbx_s = fbx_m.GetS();
+                        FbxQuaternion& fbx_q = fbx_m.GetQ();
+                        FbxVector4&    fbx_t = fbx_m.GetT();
+                        sv[ f ] = Vector( (float) fbx_s[ 0 ], (float) fbx_s[ 1 ], (float) fbx_s[ 2 ] );
+                        rv[ f ] = Quaternion( (float) fbx_q[ 3 ], (float) fbx_q[ 0 ], (float) fbx_q[ 1 ], (float) fbx_q[ 2 ] );
+                        tv[ f ] = Vector( (float) fbx_t[ 0 ], (float) fbx_t[ 1 ], (float) fbx_t[ 2 ] );
+                    }
+                    anim_set->AddBoneOutput( Node::GetHash( fbx_bones[ n ]->GetName() ), times, sv, times, rv, times, tv );
                 }
-                anim_set->AddBoneOutput( Node::GetHash( fbx_bones[ n ]->GetName() ), times, sv, times, rv, times, tv );
-            }
 
-            anim_set->SetData( fname, take_info->mName.Buffer(), (float) frames_count, frame_rate );
-            loadedAnimations.push_back( anim_set );
-            loaded_anim_sets++;
+                anim_set->SetData( fname, take_info->mName.Buffer(), (float) frames_count, frame_rate );
+                loadedAnimations.push_back( anim_set );
+                loaded_anim_sets++;
+            }
         }
 
         // Release importer and scene
@@ -613,7 +622,7 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
         }
 
         MeshData* mesh = mesh_node->Mesh = new MeshData();
-        mesh->Parent = mesh_node;
+        mesh->Owner = mesh_node;
 
         // Vertices
         mesh->Vertices.resize( ai_mesh->mNumVertices );
@@ -762,7 +771,7 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode*
     if( fbx_mesh && fbx_node->Show && fbx_mesh->GetPolygonVertexCount() == fbx_mesh->GetPolygonCount() * 3 && fbx_mesh->GetPolygonCount() > 0 )
     {
         node->Mesh = new MeshData();
-        node->Mesh->Parent = node;
+        node->Mesh->Owner = node;
         MeshData* mesh = node->Mesh;
 
         // Vertices

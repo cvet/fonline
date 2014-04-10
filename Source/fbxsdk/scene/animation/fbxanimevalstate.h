@@ -26,9 +26,9 @@ class FbxNodeEvalState;
 class FbxPropertyEvalState;
 
 typedef FbxMap<FbxNode*, FbxNodeEvalState*> FbxNodeEvalStateMap;
-typedef FbxMap<FbxProperty*, FbxPropertyEvalState*> FbxPropertyEvalStateMap;
+typedef FbxMap<FbxProperty, FbxPropertyEvalState*> FbxPropertyEvalStateMap;
 typedef FbxMap<FbxAnimLayer*, FbxAnimCurveNode*> FbxAnimLayerCurveNodeMap;
-typedef FbxMap<FbxProperty*, FbxAnimLayerCurveNodeMap*> FbxPropertyCurveNodeMap;
+typedef FbxMap<FbxProperty, FbxAnimLayerCurveNodeMap*> FbxPropertyCurveNodeMap;
 
 /** This class hold results from animation evaluations. To clear an evaluation state for re-use, it is possible to invalidate
   * or to reset it. For the same scene with the same objects, invalidating an evaluation state is the quickest way to clear

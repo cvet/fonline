@@ -341,7 +341,7 @@ typedef vector< DipData > DipDataVec;
 struct Node;
 struct MeshData
 {
-    Node*          Parent;
+    Node*          Owner;
     Vertex3DVec    Vertices;
     UShortVec      Indicies;
     string         DiffuseTexture;

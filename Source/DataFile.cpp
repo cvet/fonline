@@ -202,6 +202,16 @@ bool FolderFile::IsFilePresent( const char* fname, uint& size, uint64& write_tim
     FileEntry& fe = ( *it ).second;
     size = fe.FileSize;
     write_time = fe.WriteTime;
+
+    #ifdef FONLINE_SERVER
+    void* file = FileOpen( fe.FileName.c_str(), false );
+    if( file )
+    {
+        write_time = FileGetWriteTime( file );
+        FileClose( file );
+    }
+    #endif
+
     return true;
 }
 
@@ -226,9 +236,19 @@ uchar* FolderFile::OpenFile( const char* fname, uint& size, uint64& write_time )
         return NULL;
     }
     FileClose( f );
+    buf[ size ] = 0;
 
     write_time = fe.WriteTime;
-    buf[ size ] = 0;
+
+    #ifdef FONLINE_SERVER
+    void* file = FileOpen( fe.FileName.c_str(), false );
+    if( file )
+    {
+        write_time = FileGetWriteTime( file );
+        FileClose( file );
+    }
+    #endif
+
     return buf;
 }
 

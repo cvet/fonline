@@ -182,7 +182,7 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                     {
                         uint disabled_mesh_name_hash = link.DisabledMesh[ j ];
                         for( auto it = allMeshes.begin(), end = allMeshes.end(); it != end; ++it )
-                            if( !disabled_mesh_name_hash || disabled_mesh_name_hash == ( *it ).Mesh->Parent->NameHash )
+                            if( !disabled_mesh_name_hash || disabled_mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
                                 ( *it ).Disabled = true;
                     }
                 }
@@ -199,7 +199,7 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
             {
                 uint disabled_mesh_name_hash = animLink.DisabledMesh[ j ];
                 for( auto it = allMeshes.begin(), end_ = allMeshes.end(); it != end_; ++it )
-                    if( !disabled_mesh_name_hash || disabled_mesh_name_hash == ( *it ).Mesh->Parent->NameHash )
+                    if( !disabled_mesh_name_hash || disabled_mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
                         ( *it ).Disabled = true;
             }
         }
@@ -517,7 +517,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
                         mesh_name++;
                     uint mesh_name_hash = ( *mesh_name ? Node::GetHash( mesh_name ) : 0 );
                     for( auto it = parentAnimation->allMeshes.begin(), end = parentAnimation->allMeshes.end(); it != end && !texture; ++it )
-                        if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Parent->NameHash )
+                        if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
                             texture = ( *it ).CurTexures[ data.TextureNum[ i ] ];
                 }
             }
@@ -530,7 +530,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
             int  texture_num = data.TextureNum[ i ];
             uint mesh_name_hash = data.TextureMesh[ i ];
             for( auto it = allMeshes.begin(), end = allMeshes.end(); it != end; ++it )
-                if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Parent->NameHash )
+                if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
                     ( *it ).CurTexures[ texture_num ] = texture;
         }
     }
@@ -561,7 +561,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
                         mesh_name++;
                     uint mesh_name_hash = ( *mesh_name ? Node::GetHash( mesh_name ) : 0 );
                     for( auto it = parentAnimation->allMeshes.begin(), end = parentAnimation->allMeshes.end(); it != end && !effect; ++it )
-                        if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Parent->NameHash )
+                        if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
                             effect = ( *it ).CurEffect;
                 }
             }
@@ -573,7 +573,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
             // Assign it
             uint mesh_name_hash = data.EffectMesh[ i ];
             for( auto it = allMeshes.begin(), end = allMeshes.end(); it != end; ++it )
-                if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Parent->NameHash )
+                if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
                     ( *it ).CurEffect = effect;
         }
     }
@@ -1045,6 +1045,7 @@ bool Animation3dEntity::Load( const char* name )
         char             render_fname[ MAX_FOPATH ] = { 0 };
         char             render_anim[ MAX_FOPATH ] = { 0 };
         vector< size_t > anim_indexes;
+        bool             disable_animation_interpolation = false;
 
         uint             mesh = 0;
         int              layer = -1;
@@ -1621,6 +1622,10 @@ bool Animation3dEntity::Load( const char* name )
                 drawWidth = w;
                 drawHeight = h;
             }
+            else if( Str::CompareCase( token, "DisableAnimationInterpolation" ) )
+            {
+                disable_animation_interpolation = true;
+            }
             else
             {
                 WriteLogF( _FUNC_, " - Unknown token<%s> in file<%s>.\n", token, name );
@@ -1696,9 +1701,14 @@ bool Animation3dEntity::Load( const char* name )
 
             numAnimationSets = animController->GetNumAnimationSets();
             if( numAnimationSets > 0 )
+            {
                 Animation3dXFile::SetupAnimationOutput( xFile->rootNode, animController );
+                animController->SetInterpolation( !disable_animation_interpolation );
+            }
             else
+            {
                 SAFEDEL( animController );
+            }
         }
     }
     // Load just x file

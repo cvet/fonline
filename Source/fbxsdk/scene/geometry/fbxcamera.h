@@ -703,16 +703,14 @@ public:
 
     //@}
 
-    /**
-      * \name Utility Functions.
-      */
+	//! \name Utility Functions.
     //@{
-		/** Evaluate the camera (or eye) position.
+		/** Evaluate the camera position (eye).
 		  * \param pTime	The time at which the camera should be evaluated.
 		  * \return			The camera position evaluated from property value and animation. */
 		FbxVector4 EvaluatePosition(const FbxTime& pTime=FBXSDK_TIME_ZERO) const;
 
-		/** Evaluate the camera target (or lookat) position.
+		/** Evaluate the camera target position (look at).
 		  * \param pTime	The time at which the camera should be evaluated.
 		  * \return			The camera target position evaluated from property value and animation. */
 		FbxVector4 EvaluateLookAtPosition(const FbxTime& pTime=FBXSDK_TIME_ZERO) const;
@@ -727,8 +725,7 @@ public:
 		/** Compute the camera projection matrix.
 		  * \param pWidth	The width of the output frame.
 		  * \param pHeight	The height of the output frame.
-		  * \return			The camera projection matrix, or the default identity matrix in case of wrong camera parameters.
-		  */
+		* \return The camera projection matrix, or the default identity matrix in case of wrong camera parameters. */
 		FbxMatrix ComputeProjectionMatrix(const int pWidth, const int pHeight) const;
 
 		/** Calculate the up vector. (DEPRECATED, please use EvaluateUpDirection instead)
@@ -753,30 +750,25 @@ public:
 		/** Determine if the given bounding box is in the camera's view. 
 		  * The input points do not need to be ordered in any particular way.
 		  * \param pWorldToScreen The world to screen transformation. Please refer to FbxCamera::ComputeWorldToScreen.
-		  * \param pWorldToCamera The world to camera transformation. 
-				   Inverse of the matrix returned from FbxAnimEvaluator::GetNodeGlobalTransform is suitable.
-				   Please refer to FbxScene::GetEvaluator and FbxAnimEvaluator::GetNodeGlobalTransform.
+		* \param pWorldToCamera The world to camera transformation. Inverse of the matrix returned from FbxAnimEvaluator::GetNodeGlobalTransform is suitable.
+		* Please refer to FbxScene::GetEvaluator and FbxAnimEvaluator::GetNodeGlobalTransform.
 		  * \param pPoints 8 corners of the bounding box.
-		  * \return \c true if any of the given points are in the camera's view, \c false otherwise.
-		  */
+		* \return \c true if any of the given points are in the camera's view, \c false otherwise. */
 		bool IsBoundingBoxInView(const FbxMatrix& pWorldToScreen, const FbxMatrix& pWorldToCamera, const FbxVector4 pPoints[8]) const;
 
 		/** Determine if the given 3d point is in the camera's view. 
 		  * \param pWorldToScreen The world to screen transformation. Please refer to FbxCamera::ComputeWorldToScreen.
-		  * \param pWorldToCamera The world to camera transformation. 
-				   Inverse of the matrix returned from FbxAnimEvaluator::GetNodeGlobalTransform is suitable.
-				   Please refer to FbxScene::GetEvaluator and FbxAnimEvaluator::GetNodeGlobalTransform.
+		* \param pWorldToCamera The world to camera transformation. Inverse of the matrix returned from FbxAnimEvaluator::GetNodeGlobalTransform is suitable.
+		* Please refer to FbxScene::GetEvaluator and FbxAnimEvaluator::GetNodeGlobalTransform.
 		  * \param pPoint World-space point to test.
-		  * \return \c true if the given point is in the camera's view, \c false otherwise.
-		  */
+		* \return \c true if the given point is in the camera's view, \c false otherwise. */
 		bool IsPointInView(const FbxMatrix& pWorldToScreen, const FbxMatrix& pWorldToCamera, const FbxVector4& pPoint) const;
 
 		/** Compute world space to screen space transformation matrix.
 		  * \param pPixelHeight   The pixel height of the output image.
 		  * \param pPixelWidth    The pixel height of the output image.
 		  * \param pWorldToCamera The world to camera affine transformation matrix.
-		  * \return The world to screen space matrix, or the identity matrix on error. 
-		  */
+		* \return The world to screen space matrix, or the identity matrix on error. */
 		FbxMatrix ComputeWorldToScreen(int pPixelWidth, int pPixelHeight, const FbxAMatrix& pWorldToCamera) const;
     //@}
 
@@ -1878,7 +1870,6 @@ public:
 
 protected:
     virtual void ConstructProperties(bool pForceSet);
-	virtual bool PropertyNotify(FbxObject::EPropertyNotifyType pType, FbxProperty& pProperty);
 	virtual FbxStringList GetTypeFlags() const;
 
 private:
