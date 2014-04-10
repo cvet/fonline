@@ -377,10 +377,6 @@ Node* GraphicLoader::LoadModel( const char* fname )
 
         if( fbx_scene->GetCurrentAnimationStack() )
         {
-            FloatVec          times;
-            VectorVec         sv;
-            QuaternionVec     rv;
-            VectorVec         tv;
             FbxAnimEvaluator* fbx_anim_evaluator = fbx_scene->GetAnimationEvaluator();
             FbxCriteria       fbx_anim_stack_criteria = FbxCriteria::ObjectType( fbx_scene->GetCurrentAnimationStack()->GetClassId() );
             for( int i = 0, j = fbx_scene->GetSrcObjectCount( fbx_anim_stack_criteria ); i < j; i++ )
@@ -388,36 +384,63 @@ Node* GraphicLoader::LoadModel( const char* fname )
                 FbxAnimStack* fbx_anim_stack = (FbxAnimStack*) fbx_scene->GetSrcObject( fbx_anim_stack_criteria, i );
                 fbx_scene->SetCurrentAnimationStack( fbx_anim_stack );
 
-                FbxTakeInfo* take_info = fbx_importer->GetTakeInfo( i );
-                int          frames_count = (int) take_info->mLocalTimeSpan.GetDuration().GetFrameCount() + 1;
-                float        frame_rate = (float) ( frames_count - 1 ) / (float) take_info->mLocalTimeSpan.GetDuration().GetSecondDouble();
-                int          frame_offset = (int) take_info->mLocalTimeSpan.GetStart().GetFrameCount();
+                FbxTakeInfo*  take_info = fbx_importer->GetTakeInfo( i );
+                int           frames_count = (int) take_info->mLocalTimeSpan.GetDuration().GetFrameCount() + 1;
+                float         frame_rate = (float) ( frames_count - 1 ) / (float) take_info->mLocalTimeSpan.GetDuration().GetSecondDouble();
+                int           frame_offset = (int) take_info->mLocalTimeSpan.GetStart().GetFrameCount();
 
-                times.resize( frames_count );
-                sv.resize( frames_count );
-                rv.resize( frames_count );
-                tv.resize( frames_count );
+                FloatVec      st;
+                VectorVec     sv;
+                FloatVec      rt;
+                QuaternionVec rv;
+                FloatVec      tt;
+                VectorVec     tv;
+                st.reserve( frames_count );
+                sv.reserve( frames_count );
+                rt.reserve( frames_count );
+                rv.reserve( frames_count );
+                tt.reserve( frames_count );
+                tv.reserve( frames_count );
 
                 AnimSet* anim_set = new AnimSet();
                 for( uint n = 0; n < (uint) fbx_bones.size(); n++ )
                 {
+                    st.clear();
+                    sv.clear();
+                    rt.clear();
+                    rv.clear();
+                    tt.clear();
+                    tv.clear();
+
                     FbxTime cur_time;
                     for( int f = 0; f < frames_count; f++ )
                     {
                         float time = (float) f;
                         cur_time.SetFrame( frame_offset + f );
 
-                        times[ f ] = time;
-
                         FbxAMatrix&    fbx_m = fbx_anim_evaluator->GetNodeLocalTransform( fbx_bones[ n ], cur_time );
                         FbxVector4&    fbx_s = fbx_m.GetS();
                         FbxQuaternion& fbx_q = fbx_m.GetQ();
                         FbxVector4&    fbx_t = fbx_m.GetT();
-                        sv[ f ] = Vector( (float) fbx_s[ 0 ], (float) fbx_s[ 1 ], (float) fbx_s[ 2 ] );
-                        rv[ f ] = Quaternion( (float) fbx_q[ 3 ], (float) fbx_q[ 0 ], (float) fbx_q[ 1 ], (float) fbx_q[ 2 ] );
-                        tv[ f ] = Vector( (float) fbx_t[ 0 ], (float) fbx_t[ 1 ], (float) fbx_t[ 2 ] );
+                        Vector&        s = Vector( (float) fbx_s[ 0 ], (float) fbx_s[ 1 ], (float) fbx_s[ 2 ] );
+                        Quaternion&    r = Quaternion( (float) fbx_q[ 3 ], (float) fbx_q[ 0 ], (float) fbx_q[ 1 ], (float) fbx_q[ 2 ] );
+                        Vector&        t = Vector( (float) fbx_t[ 0 ], (float) fbx_t[ 1 ], (float) fbx_t[ 2 ] );
+
+                        // Manage duplicates
+                        if( f < 2 || sv.back() != s || sv[ sv.size() - 2 ] != s )
+                            st.push_back( time ), sv.push_back( s );
+                        else
+                            st.back() = time;
+                        if( f < 2 || rv.back() != r || rv[ rv.size() - 2 ] != r )
+                            rt.push_back( time ), rv.push_back( r );
+                        else
+                            rt.back() = time;
+                        if( f < 2 || tv.back() != t || tv[ tv.size() - 2 ] != t )
+                            tt.push_back( time ), tv.push_back( t );
+                        else
+                            tt.back() = time;
                     }
-                    anim_set->AddBoneOutput( Node::GetHash( fbx_bones[ n ]->GetName() ), times, sv, times, rv, times, tv );
+                    anim_set->AddBoneOutput( Node::GetHash( fbx_bones[ n ]->GetName() ), st, sv, rt, rv, tt, tv );
                 }
 
                 anim_set->SetData( fname, take_info->mName.Buffer(), (float) frames_count, frame_rate );

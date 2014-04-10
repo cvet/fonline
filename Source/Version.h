@@ -10,7 +10,7 @@
 
 #define CLIENT_SCRIPT_BINARY_VERSION     ( 58 )
 #define SHADER_PROGRAM_BINARY_VERSION    ( 11 )
-#define MODELS_BINARY_VERSION            ( 6 )
+#define MODELS_BINARY_VERSION            ( 7 )
 
 #define MAJORNO                          0
 #define MINORNO                          0
