@@ -978,6 +978,14 @@ int main( int argc, char** argv )
     if( Str::Length( CommandLine ) > 0 )
         WriteLog( "Command line<%s>.\n", CommandLine );
 
+    // Update stuff
+    if( !Singleplayer && Str::Substring( CommandLine, "-game" ) )
+        GameOpt.GameServer = true, GameOpt.UpdateServer = false;
+    else if( !Singleplayer && Str::Substring( CommandLine, "-update" ) )
+        GameOpt.GameServer = false, GameOpt.UpdateServer = true;
+    else
+        GameOpt.GameServer = true, GameOpt.UpdateServer = true;
+
     DaemonLoop(); // Never out from here
     return 0;
 }

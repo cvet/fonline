@@ -1635,21 +1635,26 @@ void FOServer::Process_CreateClient( Client* cl )
 
     bool allow = false;
     uint disallow_msg_num = 0, disallow_str_num = 0;
+    char disallow_lexems[ MAX_FOTEXT ];
     if( Script::PrepareContext( ServerFunctions.PlayerRegistration, _FUNC_, cl->Name ) )
     {
         ScriptString* name = new ScriptString( cl->Name );
+        ScriptString* lexems = new ScriptString( "" );
         Script::SetArgUInt( cl->GetIp() );
         Script::SetArgObject( name );
         Script::SetArgAddress( &disallow_msg_num );
         Script::SetArgAddress( &disallow_str_num );
+        Script::SetArgObject( lexems );
         if( Script::RunPrepared() && Script::GetReturnedBool() )
             allow = true;
+        Str::Copy( disallow_lexems, lexems->c_str() );
         name->Release();
+        lexems->Release();
     }
     if( !allow )
     {
         if( disallow_msg_num < TEXTMSG_COUNT && disallow_str_num )
-            cl->Send_TextMsg( cl, disallow_str_num, SAY_NETMSG, disallow_msg_num );
+            cl->Send_TextMsgLex( cl, disallow_str_num, SAY_NETMSG, disallow_msg_num, disallow_lexems );
         else
             cl->Send_TextMsg( cl, STR_NET_LOGIN_SCRIPT_FAIL, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
@@ -1945,22 +1950,27 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     // Request script
     bool allow = false;
     uint disallow_msg_num = 0, disallow_str_num = 0;
+    char disallow_lexems[ MAX_FOTEXT ];
     if( Script::PrepareContext( ServerFunctions.PlayerLogin, _FUNC_, data.ClientName ) )
     {
         ScriptString* name = new ScriptString( data.ClientName );
+        ScriptString* lexems = new ScriptString( "" );
         Script::SetArgUInt( cl->GetIp() );
         Script::SetArgObject( name );
         Script::SetArgUInt( data.ClientId );
         Script::SetArgAddress( &disallow_msg_num );
         Script::SetArgAddress( &disallow_str_num );
+        Script::SetArgObject( lexems );
         if( Script::RunPrepared() && Script::GetReturnedBool() )
             allow = true;
+        Str::Copy( disallow_lexems, lexems->c_str() );
         name->Release();
+        lexems->Release();
     }
     if( !allow )
     {
         if( disallow_msg_num < TEXTMSG_COUNT && disallow_str_num )
-            cl->Send_TextMsg( cl, disallow_str_num, SAY_NETMSG, disallow_msg_num );
+            cl->Send_TextMsgLex( cl, disallow_str_num, SAY_NETMSG, disallow_msg_num, disallow_lexems );
         else
             cl->Send_TextMsg( cl, STR_NET_LOGIN_SCRIPT_FAIL, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();

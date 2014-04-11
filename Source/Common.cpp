@@ -1383,6 +1383,9 @@ GameOptions::GameOptions()
     ShowDrawOrder = false;
     SplitTilesCollection = true;
 
+    // Server
+    GenerateWorldDisabled = false;
+
     // Engine data
     CritterChangeParameter = NULL;
     CritterTypes = NULL;

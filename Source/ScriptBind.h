@@ -1210,6 +1210,10 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "int __ReputationAntipathy", &GameO
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __ReputationHated", &GameOpt.ReputationHated ) );
 #endif
 
+#ifdef BIND_SERVER
+BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GenerateWorldDisabled", &GameOpt.GenerateWorldDisabled ) );
+#endif
+
 #ifdef BIND_MAPPER
 BIND_ASSERT( engine->RegisterObjectType( "MapperObject", 0, asOBJ_REF ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "MapperObject", asBEHAVE_ADDREF, "void f()", asMETHOD( MapObject, AddRef ), asCALL_THISCALL ) );

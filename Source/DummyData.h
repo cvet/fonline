@@ -1444,4 +1444,7 @@ struct GameOptions
     int ShowSpriteCuts;
     int ShowDrawOrder;
     int SplitTilesCollection;
+
+    // Server
+    int GenerateWorldDisabled;
 } GameOpt;

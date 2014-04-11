@@ -684,6 +684,9 @@ struct GameOptions
     bool         ShowDrawOrder;
     bool         SplitTilesCollection;
 
+    // Server
+    bool         GenerateWorldDisabled;
+
     // Engine data
     void         ( * CritterChangeParameter )( void*, uint );
     void*        CritterTypes;

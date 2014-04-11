@@ -3522,12 +3522,12 @@ bool FOServer::InitReal()
     if( !ItemMngr.CheckProtoFunctions() )
         return false;                          // Check valid of proto functions
 
-    // Update files
-    GenerateUpdateFiles( true );
-
     // Initialization script
     Script::PrepareContext( ServerFunctions.Init, _FUNC_, "Game" );
     Script::RunPrepared();
+
+    // Update files
+    GenerateUpdateFiles( true );
 
     // World loading
     if( GameOpt.GameServer && !Singleplayer )
@@ -4430,7 +4430,7 @@ bool FOServer::NewWorld()
 {
     UnloadWorld();
     InitGameTime();
-    if( !MapMngr.GenerateWorld( "GenerateWorld.cfg", PT_SERVER_MAPS ) )
+    if( !GameOpt.GenerateWorldDisabled && !MapMngr.GenerateWorld( "GenerateWorld.cfg", PT_SERVER_MAPS ) )
         return false;
     return true;
 }
