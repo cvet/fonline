@@ -192,12 +192,13 @@ private:
     NodeVec                    allDrawNodes;
 
     static Animation3dXFile* GetXFile( const char* xname );
-    static void              SetupNodes( Animation3dXFile* xfile, Node* node, Node* root_node );
-    static void              SetupAnimationOutput( Node* node, AnimController* anim_controller );
+
+    void SetupNodes();
+    void SetupAnimationOutput( AnimController* anim_controller );
+    void FixTextureCoords();
 
     MeshTexture* GetTexture( const char* tex_name );
     Effect*      GetEffect( EffectInstance* effect_inst );
-    void         FixTextureCoords( Node* node, const char* model_path );
 
 public:
     Animation3dXFile();

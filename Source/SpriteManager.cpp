@@ -3136,9 +3136,7 @@ bool SpriteManager::Render3d( Animation3d* anim3d )
     Animation3d::SetScreenSize( rt->TargetTexture->Width, rt->TargetTexture->Height );
 
     // Draw model
-    GL( glDisable( GL_BLEND ) );
     anim3d->Draw( 0, 0 );
-    GL( glEnable( GL_BLEND ) );
 
     // Restore render target
     PopRenderTarget();

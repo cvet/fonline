@@ -1702,8 +1702,8 @@ bool Animation3dEntity::Load( const char* name )
             numAnimationSets = animController->GetNumAnimationSets();
             if( numAnimationSets > 0 )
             {
-                Animation3dXFile::SetupAnimationOutput( xFile->rootNode, animController );
                 animController->SetInterpolation( !disable_animation_interpolation );
+                xFile->SetupAnimationOutput( animController );
             }
             else
             {
@@ -1909,8 +1909,8 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
 
         xfile->fileName = xname;
         xfile->rootNode = root_node;
-        xfile->SetupNodes( xfile, xfile->rootNode, xfile->rootNode );
-        xfile->FixTextureCoords( xfile->rootNode, xname );
+        xfile->SetupNodes();
+        xfile->FixTextureCoords();
 
         xFiles.push_back( xfile );
     }
@@ -1918,42 +1918,41 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
     return xfile;
 }
 
-void Animation3dXFile::SetupNodes( Animation3dXFile* xfile, Node* node, Node* root_node )
+void SetupNodesExt( multimap< uint, Node*, less< uint > >& nodes, Node* node, uint depth )
 {
-    xfile->allNodes.push_back( node );
-
-    if( node->Mesh )
-        xfile->allDrawNodes.push_back( node );
-
-    for( auto it = node->Children.begin(), end = node->Children.end(); it != end; ++it )
-        SetupNodes( xfile, *it, root_node );
+    nodes.insert( PAIR( depth, node ) );
+    for( size_t i = 0, j = node->Children.size(); i < j; i++ )
+        SetupNodesExt( nodes, node->Children[ i ], depth + 1 );
 }
 
-void Animation3dXFile::SetupAnimationOutput( Node* node, AnimController* anim_controller )
+void Animation3dXFile::SetupNodes()
+{
+    multimap< uint, Node*, less< uint > > nodes;
+    SetupNodesExt( nodes, rootNode, 0 );
+
+    for( auto it = nodes.begin(), end = nodes.end(); it != end; ++it )
+    {
+        Node* node = ( *it ).second;
+        allNodes.push_back( node );
+        if( node->Mesh )
+            allDrawNodes.push_back( node );
+    }
+}
+
+void SetupAnimationOutputExt( AnimController* anim_controller, Node* node )
 {
     anim_controller->RegisterAnimationOutput( node->NameHash, node->TransformationMatrix );
 
     for( auto it = node->Children.begin(), end = node->Children.end(); it != end; ++it )
-        SetupAnimationOutput( *it, anim_controller );
+        SetupAnimationOutputExt( anim_controller, *it );
 }
 
-MeshTexture* Animation3dXFile::GetTexture( const char* tex_name )
+void Animation3dXFile::SetupAnimationOutput( AnimController* anim_controller )
 {
-    MeshTexture* texture = GraphicLoader::LoadTexture( tex_name, fileName.c_str() );
-    if( !texture )
-        WriteLogF( _FUNC_, " - Can't load texture<%s>.\n", tex_name ? tex_name : "nullptr" );
-    return texture;
+    SetupAnimationOutputExt( anim_controller, rootNode );
 }
 
-Effect* Animation3dXFile::GetEffect( EffectInstance* effect_inst )
-{
-    Effect* effect = GraphicLoader::LoadEffect( effect_inst->EffectFilename, false, NULL, fileName.c_str(), effect_inst->Defaults, effect_inst->DefaultsCount );
-    if( !effect )
-        WriteLogF( _FUNC_, " - Can't load effect<%s>.\n", effect_inst && effect_inst->EffectFilename ? effect_inst->EffectFilename : "nullptr" );
-    return effect;
-}
-
-void Animation3dXFile::FixTextureCoords( Node* node, const char* model_path )
+void FixTextureCoordsExt( const char* model_path, Node* node )
 {
     if( node->Mesh )
     {
@@ -1970,7 +1969,12 @@ void Animation3dXFile::FixTextureCoords( Node* node, const char* model_path )
     }
 
     for( size_t i = 0, j = node->Children.size(); i < j; i++ )
-        FixTextureCoords( node->Children[ i ], model_path );
+        FixTextureCoordsExt( model_path, node->Children[ i ] );
+}
+
+void Animation3dXFile::FixTextureCoords()
+{
+    FixTextureCoordsExt( fileName.c_str(), rootNode );
 }
 
 void Animation3dXFile::FixAllTextureCoords()
@@ -1978,8 +1982,24 @@ void Animation3dXFile::FixAllTextureCoords()
     for( auto it = xFiles.begin(), end = xFiles.end(); it != end; ++it )
     {
         Animation3dXFile* xfile = *it;
-        xfile->FixTextureCoords( xfile->rootNode, xfile->fileName.c_str() );
+        xfile->FixTextureCoords();
     }
+}
+
+MeshTexture* Animation3dXFile::GetTexture( const char* tex_name )
+{
+    MeshTexture* texture = GraphicLoader::LoadTexture( tex_name, fileName.c_str() );
+    if( !texture )
+        WriteLogF( _FUNC_, " - Can't load texture<%s>.\n", tex_name ? tex_name : "nullptr" );
+    return texture;
+}
+
+Effect* Animation3dXFile::GetEffect( EffectInstance* effect_inst )
+{
+    Effect* effect = GraphicLoader::LoadEffect( effect_inst->EffectFilename, false, NULL, fileName.c_str(), effect_inst->Defaults, effect_inst->DefaultsCount );
+    if( !effect )
+        WriteLogF( _FUNC_, " - Can't load effect<%s>.\n", effect_inst && effect_inst->EffectFilename ? effect_inst->EffectFilename : "nullptr" );
+    return effect;
 }
 
 /************************************************************************/
