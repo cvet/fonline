@@ -530,6 +530,7 @@ struct GameOptions
     uint         MinimumOfflineTime;
     bool         GameServer;
     bool         UpdateServer;
+    bool         GenerateWorldDisabled;
 
     int          StartSpecialPoints;
     int          StartTagSkillPoints;
@@ -683,9 +684,6 @@ struct GameOptions
     bool         ShowSpriteCuts;
     bool         ShowDrawOrder;
     bool         SplitTilesCollection;
-
-    // Server
-    bool         GenerateWorldDisabled;
 
     // Engine data
     void         ( * CritterChangeParameter )( void*, uint );

@@ -1295,6 +1295,7 @@ struct GameOptions
     int MinimumOfflineTime;
     int GameServer;
     int UpdateServer;
+    int GenerateWorldDisabled;
 
     int StartSpecialPoints;
     int StartTagSkillPoints;
@@ -1444,7 +1445,4 @@ struct GameOptions
     int ShowSpriteCuts;
     int ShowDrawOrder;
     int SplitTilesCollection;
-
-    // Server
-    int GenerateWorldDisabled;
 } GameOpt;

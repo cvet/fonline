@@ -1228,6 +1228,7 @@ GameOptions::GameOptions()
     MinimumOfflineTime = 180000;
     GameServer = false;
     UpdateServer = false;
+    GenerateWorldDisabled = false;
 
     StartSpecialPoints = 40;
     StartTagSkillPoints = 3;
@@ -1382,9 +1383,6 @@ GameOptions::GameOptions()
     ShowSpriteCuts = false;
     ShowDrawOrder = false;
     SplitTilesCollection = true;
-
-    // Server
-    GenerateWorldDisabled = false;
 
     // Engine data
     CritterChangeParameter = NULL;
