@@ -418,13 +418,13 @@ Node* GraphicLoader::LoadModel( const char* fname )
                         float time = (float) f;
                         cur_time.SetFrame( frame_offset + f );
 
-                        FbxAMatrix&    fbx_m = fbx_anim_evaluator->GetNodeLocalTransform( fbx_bones[ n ], cur_time );
-                        FbxVector4&    fbx_s = fbx_m.GetS();
-                        FbxQuaternion& fbx_q = fbx_m.GetQ();
-                        FbxVector4&    fbx_t = fbx_m.GetT();
-                        Vector&        s = Vector( (float) fbx_s[ 0 ], (float) fbx_s[ 1 ], (float) fbx_s[ 2 ] );
-                        Quaternion&    r = Quaternion( (float) fbx_q[ 3 ], (float) fbx_q[ 0 ], (float) fbx_q[ 1 ], (float) fbx_q[ 2 ] );
-                        Vector&        t = Vector( (float) fbx_t[ 0 ], (float) fbx_t[ 1 ], (float) fbx_t[ 2 ] );
+                        const FbxAMatrix&    fbx_m = fbx_anim_evaluator->GetNodeLocalTransform( fbx_bones[ n ], cur_time );
+                        const FbxVector4&    fbx_s = fbx_m.GetS();
+                        const FbxQuaternion& fbx_q = fbx_m.GetQ();
+                        const FbxVector4&    fbx_t = fbx_m.GetT();
+                        const Vector&        s = Vector( (float) fbx_s[ 0 ], (float) fbx_s[ 1 ], (float) fbx_s[ 2 ] );
+                        const Quaternion&    r = Quaternion( (float) fbx_q[ 3 ], (float) fbx_q[ 0 ], (float) fbx_q[ 1 ], (float) fbx_q[ 2 ] );
+                        const Vector&        t = Vector( (float) fbx_t[ 0 ], (float) fbx_t[ 1 ], (float) fbx_t[ 2 ] );
 
                         // Manage duplicates
                         if( f < 2 || sv.back() != s || sv[ sv.size() - 2 ] != s )
