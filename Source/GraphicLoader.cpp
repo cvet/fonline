@@ -140,8 +140,8 @@ public:
     {}
 };
 
-Node*  ConvertFbxPass1( FbxScene* fbx_scene, FbxNode* fbx_node, vector< FbxNode* >& fbx_bones );
-void   ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode* fbx_node );
+Node*  ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_bones );
+void   ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node );
 Matrix ConvertFbxMatrix( const FbxAMatrix& m );
 
 /************************************************************************/
@@ -368,13 +368,12 @@ Node* GraphicLoader::LoadModel( const char* fname )
 
         // Load hierarchy
         vector< FbxNode* > fbx_bones;
-        root_node = ConvertFbxPass1( fbx_scene, fbx_scene->GetRootNode(), fbx_bones );
-        ConvertFbxPass2( root_node, root_node, fbx_scene, fbx_scene->GetRootNode() );
+        root_node = ConvertFbxPass1( fbx_scene->GetRootNode(), fbx_bones );
+        ConvertFbxPass2( root_node, root_node, fbx_scene->GetRootNode() );
         loadedModels.push_back( root_node );
         loadedModelNames.push_back( fname );
 
         // Extract animations
-
         if( fbx_scene->GetCurrentAnimationStack() )
         {
             FbxAnimEvaluator* fbx_anim_evaluator = fbx_scene->GetAnimationEvaluator();
@@ -771,7 +770,7 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
         ConvertAssimpPass2( root_node, node, node->Children[ i ], ai_scene, ai_node->mChildren[ i ] );
 }
 
-Node* ConvertFbxPass1( FbxScene* fbx_scene, FbxNode* fbx_node, vector< FbxNode* >& fbx_bones )
+Node* ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_bones )
 {
     Node* node = new Node();
     node->NameHash = Node::GetHash( fbx_node->GetName() );
@@ -784,11 +783,11 @@ Node* ConvertFbxPass1( FbxScene* fbx_scene, FbxNode* fbx_node, vector< FbxNode* 
         fbx_bones.push_back( fbx_node );
 
     for( int i = 0; i < fbx_node->GetChildCount(); i++ )
-        node->Children[ i ] = ConvertFbxPass1( fbx_scene, fbx_node->GetChild( i ), fbx_bones );
+        node->Children[ i ] = ConvertFbxPass1( fbx_node->GetChild( i ), fbx_bones );
     return node;
 }
 
-void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode* fbx_node )
+void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
 {
     FbxMesh* fbx_mesh = fbx_node->GetMesh();
     if( fbx_mesh && fbx_node->Show && fbx_mesh->GetPolygonVertexCount() == fbx_mesh->GetPolygonCount() * 3 && fbx_mesh->GetPolygonCount() > 0 )
@@ -951,7 +950,7 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxScene* fbx_scene, FbxNode*
     }
 
     for( int i = 0; i < fbx_node->GetChildCount(); i++ )
-        ConvertFbxPass2( root_node, node->Children[ i ], fbx_scene, fbx_node->GetChild( i ) );
+        ConvertFbxPass2( root_node, node->Children[ i ], fbx_node->GetChild( i ) );
 }
 
 Matrix ConvertFbxMatrix( const FbxAMatrix& m )
