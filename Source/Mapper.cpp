@@ -209,16 +209,6 @@ bool FOMapper::Init()
     if( !ItemMngr.LoadProtos() )
         return false;
 
-    // Fill default critter parameters
-    for( int i = 0; i < MAPOBJ_CRITTER_PARAMS; i++ )
-        DefaultCritterParam[ i ] = -1;
-    DefaultCritterParam[ 0 ] = ST_DIALOG_ID;
-    DefaultCritterParam[ 1 ] = ST_AI_ID;
-    DefaultCritterParam[ 2 ] = ST_BAG_ID;
-    DefaultCritterParam[ 3 ] = ST_TEAM_ID;
-    DefaultCritterParam[ 4 ] = ST_NPC_ROLE;
-    DefaultCritterParam[ 5 ] = ST_REPLICATION_TIME;
-
     // Critters Manager
     if( !CrMngr.Init() )
         return false;
@@ -2215,14 +2205,8 @@ void FOMapper::ObjDraw()
         DRAW_COMPONENT( "Anim1", o->MCritter.Anim1, true, false );                              // 17
         DRAW_COMPONENT( "Anim2", o->MCritter.Anim2, true, false );                              // 18
         y += step;                                                                              // 19
-        for( int i = 0; i < MAPOBJ_CRITTER_PARAMS; i++ )                                        // 20..59
-        {
-            if( o->MCritter.ParamIndex[ i ] >= 0 && o->MCritter.ParamIndex[ i ] < MAX_PARAMS )
-            {
-                const char* param_name = ConstantsManager::GetParamName( o->MCritter.ParamIndex[ i ] );
-                DRAW_COMPONENT( param_name ? param_name : "???", o->MCritter.ParamValue[ i ], false, false );
-            }
-        }
+        for( size_t i = 0, j = ShowCritterParams.size(); i < j; i++ )                           // 20..
+            DRAW_COMPONENT( ShowCritterParamNames[ i ].c_str(), o->MCritter.Params[ ShowCritterParams[ i ] ], false, false );
     }
     else if( o->MapObjType == MAP_OBJECT_ITEM || o->MapObjType == MAP_OBJECT_SCENERY )
     {
@@ -2373,22 +2357,8 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
     if( o->MapObjType != MAP_OBJECT_CRITTER && !proto )
         return;
 
-    if( o->MapObjType == MAP_OBJECT_CRITTER && ObjCurLine >= 20 && ObjCurLine <= 20 + MAPOBJ_CRITTER_PARAMS - 1 )
-    {
-        int pos = ObjCurLine - 20;
-        for( int i = 0; i < MAPOBJ_CRITTER_PARAMS; i++ )
-        {
-            if( o->MCritter.ParamIndex[ i ] >= 0 && o->MCritter.ParamIndex[ i ] < MAX_PARAMS )
-            {
-                if( !pos )
-                {
-                    val_i = &o->MCritter.ParamValue[ i ];
-                    break;
-                }
-                pos--;
-            }
-        }
-    }
+    if( o->MapObjType == MAP_OBJECT_CRITTER && ObjCurLine >= 20 && ObjCurLine - 20 < (int) ShowCritterParams.size() )
+        val_i = &o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ];
 
     switch( ObjCurLine )
     {
@@ -2447,27 +2417,21 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
             val_w = &o->MItem.AnimWait;
         break;
     case 20:
-        if( o->MapObjType == MAP_OBJECT_CRITTER )
-            break;
-        else
+        if( o->MapObjType != MAP_OBJECT_CRITTER )
         {
             Keyb::GetChar( dik, dik_text, o->RunTime.PicMapName, sizeof( o->RunTime.PicMapName ), NULL, sizeof( o->RunTime.PicMapName ), KIF_NO_SPEC_SYMBOLS );
             return;
         }
         break;
     case 21:
-        if( o->MapObjType == MAP_OBJECT_CRITTER )
-            break;
-        else
+        if( o->MapObjType != MAP_OBJECT_CRITTER )
         {
             Keyb::GetChar( dik, dik_text, o->RunTime.PicInvName, sizeof( o->RunTime.PicInvName ), NULL, sizeof( o->RunTime.PicInvName ), KIF_NO_SPEC_SYMBOLS );
             return;
         }
         break;
     case 22:
-        if( o->MapObjType == MAP_OBJECT_CRITTER )
-            break;
-        else
+        if( o->MapObjType != MAP_OBJECT_CRITTER )
             val_b = &o->MItem.InfoOffset;
         break;
     case 23:
@@ -4328,15 +4292,6 @@ void FOMapper::ParseNpc( ushort pid, ushort hx, ushort hy )
     cr->Id = AnyId;
     cr->Init();
 
-    // Default parameters
-    for( int i = 0; i < MAPOBJ_CRITTER_PARAMS; i++ )
-    {
-        int param = DefaultCritterParam[ i ];
-        mobj->MCritter.ParamIndex[ i ] = param;
-        if( param >= 0 && param < MAX_PARAMS )
-            mobj->MCritter.ParamValue[ i ] = cr->Params[ param ];
-    }
-
     HexMngr.AddCrit( cr );
     SelectAdd( mobj );
 
@@ -5593,6 +5548,16 @@ void FOMapper::SScriptFunc::MapperObject_MoveToDir( MapObject& mobj, uchar dir )
     Self->MoveMapObject( &mobj, hx, hy );
 }
 
+int* FOMapper::SScriptFunc::MapperObject_CritterParam_Index( MapObject& mobj, uint index )
+{
+    static int dummy = 0;
+    if( index >= MAX_PARAMS )
+        SCRIPT_ERROR_RX( "Invalid index arg.", &dummy );
+    if( mobj.MapObjType != MAP_OBJECT_CRITTER )
+        SCRIPT_ERROR_RX( "Mapper object is not critter.", &dummy );
+    return &mobj.MCritter.Params[ index ];
+}
+
 MapObject* FOMapper::SScriptFunc::MapperMap_AddObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, ushort pid )
 {
     if( mobj_type == MAP_OBJECT_CRITTER )
@@ -5926,11 +5891,29 @@ void FOMapper::SScriptFunc::MapperMap_set_ScriptFunc( ProtoMap& pmap, ScriptStri
     Str::Copy( pmap.Header.ScriptFunc, str ? str->c_str() : "" );
 }
 
-void FOMapper::SScriptFunc::Global_SetDefaultCritterParam( uint index, int param )
+void FOMapper::SScriptFunc::Global_ShowCritterParam( int param_index, bool show, ScriptString* param_name )
 {
-    if( index >= MAPOBJ_CRITTER_PARAMS )
+    if( param_index < 0 || param_index >= MAX_PARAMS )
         SCRIPT_ERROR_R( "Invalid index arg." );
-    Self->DefaultCritterParam[ index ] = param;
+
+    // Erase current
+    for( size_t i = 0, j = Self->ShowCritterParams.size(); i < j; i++ )
+    {
+        if( Self->ShowCritterParams[ i ] == param_index )
+        {
+            Self->ShowCritterParams.erase( Self->ShowCritterParams.begin() + i );
+            Self->ShowCritterParamNames.erase( Self->ShowCritterParamNames.begin() + i );
+            break;
+        }
+    }
+
+    // Add new
+    if( show )
+    {
+        Self->ShowCritterParams.push_back( param_index );
+        const char* name = ( param_name ? param_name->c_str() : ConstantsManager::GetParamName( param_index ) );
+        Self->ShowCritterParamNames.push_back( name ? name : "???" );
+    }
 }
 
 void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& slot_name )

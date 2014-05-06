@@ -15,6 +15,7 @@
 #define FO_MAP_VERSION_TEXT2                     ( 2 )
 #define FO_MAP_VERSION_TEXT3                     ( 3 )
 #define FO_MAP_VERSION_TEXT4                     ( 4 )
+#define FO_MAP_VERSION_TEXT5                     ( 5 )
 
 #define APP_HEADER                               "Header"
 #define APP_TILES                                "Tiles"
@@ -199,7 +200,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         delete[] header_str;
     }
     if( ( Header.Version != FO_MAP_VERSION_TEXT1 && Header.Version != FO_MAP_VERSION_TEXT2 &&
-          Header.Version != FO_MAP_VERSION_TEXT3 && Header.Version != FO_MAP_VERSION_TEXT4 ) ||
+          Header.Version != FO_MAP_VERSION_TEXT3 && Header.Version != FO_MAP_VERSION_TEXT4 && Header.Version != FO_MAP_VERSION_TEXT5 ) ||
         Header.MaxHexX < 1 || Header.MaxHexY < 1 )
         return false;
 
@@ -226,7 +227,6 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                         Tiles.push_back( Tile( Str::GetHash( name.c_str() ), hx, hy, 0, 0, 0, false ) );
                     else if( type == "roof" )
                         Tiles.push_back( Tile( Str::GetHash( name.c_str() ), hx, hy, 0, 0, 0, true ) );
-                    // else if(type=="terr" || type=="terrain") Tiles.push_back(Tile(Str::GetHash(name.c_str()),hx,hy,0,0,0,));
                     else if( type == "0" )
                         Tiles.push_back( Tile( Str::AtoUI( name.c_str() ), hx, hy, 0, 0, 0, false ) );
                     else if( type == "1" )
@@ -303,6 +303,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         string     field;
         char       svalue[ MAX_FOTEXT ];
         int        ivalue;
+        int        critter_param_index = -1;
         while( !istr.eof() && !istr.fail() )
         {
             istr >> field;
@@ -318,15 +319,9 @@ bool ProtoMap::LoadTextFormat( const char* buf )
 
                     mobj->MapObjType = ivalue;
                     if( ivalue == MAP_OBJECT_CRITTER )
-                    {
                         mobj->MCritter.Cond = COND_LIFE;
-                        for( int i = 0; i < MAPOBJ_CRITTER_PARAMS; i++ )
-                            mobj->MCritter.ParamIndex[ i ] = -1;
-                    }
                     else if( ivalue != MAP_OBJECT_ITEM && ivalue != MAP_OBJECT_SCENERY )
-                    {
                         continue;
-                    }
 
                     MObjects.push_back( mobj );
                 }
@@ -395,18 +390,16 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                             mobj.MCritter.Anim2 = ivalue;
                         else if( field == "Critter_CondExt" )
                             Deprecated_CondExtToAnim2( mobj.MCritter.Cond, ivalue, mobj.MCritter.Anim2, mobj.MCritter.Anim2 );                                                  // Deprecated
-                        else
+                        else if( field.size() >= 18 /* "Critter_ParamIndex" or "Critter_ParamValue" */ && field.substr( 0, 13 ) == "Critter_Param" )
                         {
-                            for( int i = 0; i < MAPOBJ_CRITTER_PARAMS; i++ )
+                            if( field.substr( 13, 5 ) == "Index" )
                             {
-                                char str[ 128 ];
-                                if( field == Str::Format( str, "Critter_ParamIndex%d", i ) )
-                                    mobj.MCritter.ParamIndex[ i ] = ConstantsManager::GetParamId( Str::EraseFrontBackSpecificChars( svalue ) );
-                                else if( field == Str::Format( str, "Critter_ParamValue%d", i ) )
-                                    mobj.MCritter.ParamValue[ i ] = ivalue;
-                                else
-                                    continue;
-                                break;
+                                critter_param_index = ConstantsManager::GetParamId( Str::EraseFrontBackSpecificChars( svalue ) );
+                            }
+                            else if( critter_param_index != -1 )
+                            {
+                                mobj.MCritter.Params[ critter_param_index ] = ivalue;
+                                critter_param_index = -1;
                             }
                         }
                     }
@@ -656,18 +649,15 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
             fm.SetStr( "%-20s %d\n", "Critter_Cond", mobj.MCritter.Cond );
             fm.SetStr( "%-20s %d\n", "Critter_Anim1", mobj.MCritter.Anim1 );
             fm.SetStr( "%-20s %d\n", "Critter_Anim2", mobj.MCritter.Anim2 );
-            for( int i = 0; i < MAPOBJ_CRITTER_PARAMS; i++ )
+            for( int i = 0; i < MAX_PARAMS; i++ )
             {
-                if( mobj.MCritter.ParamIndex[ i ] >= 0 && mobj.MCritter.ParamIndex[ i ] < MAX_PARAMS )
+                if( mobj.MCritter.Params[ i ] )
                 {
-                    const char* param_name = ConstantsManager::GetParamName( mobj.MCritter.ParamIndex[ i ] );
+                    const char* param_name = ConstantsManager::GetParamName( i );
                     if( param_name )
                     {
-                        char str[ 128 ];
-                        Str::Format( str, "Critter_ParamIndex%d", i );
-                        fm.SetStr( "%-20s %s\n", str, param_name );
-                        Str::Format( str, "Critter_ParamValue%d", i );
-                        fm.SetStr( "%-20s %d\n", str, mobj.MCritter.ParamValue[ i ] );
+                        fm.SetStr( "%-20s %s\n", "Critter_ParamIndex", param_name );
+                        fm.SetStr( "%-20s %d\n", "Critter_ParamValue", mobj.MCritter.Params[ i ] );
                     }
                 }
             }
@@ -1434,7 +1424,7 @@ bool ProtoMap::Refresh()
 void ProtoMap::GenNew()
 {
     Clear();
-    Header.Version = FO_MAP_VERSION_TEXT4;
+    Header.Version = FO_MAP_VERSION_TEXT5;
     Header.MaxHexX = MAXHEX_DEF;
     Header.MaxHexY = MAXHEX_DEF;
     pmapPid = 0xFFFF;
@@ -1515,7 +1505,7 @@ bool ProtoMap::Save( const char* fname, int path_type )
 
     // Save
     FileManager fm;
-    Header.Version = FO_MAP_VERSION_TEXT4;
+    Header.Version = FO_MAP_VERSION_TEXT5;
     SaveTextFormat( fm );
     Tiles.clear();
 

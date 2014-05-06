@@ -314,8 +314,9 @@ public:
     void       SelectDelete();
 
     // Parse new
-    uint AnyId;
-    int  DefaultCritterParam[ MAPOBJ_CRITTER_PARAMS ];
+    uint   AnyId;
+    IntVec ShowCritterParams;
+    StrVec ShowCritterParamNames;
 
     MapObject* ParseProto( ushort pid, ushort hx, ushort hy, MapObject* owner, bool is_child = false );
     void       ParseTile( uint name_hash, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof );
@@ -446,6 +447,7 @@ public:
         static void          MapperObject_MoveToHex( MapObject& mobj, ushort hx, ushort hy );
         static void          MapperObject_MoveToHexOffset( MapObject& mobj, int x, int y );
         static void          MapperObject_MoveToDir( MapObject& mobj, uchar dir );
+        static int*          MapperObject_CritterParam_Index( MapObject& mobj, uint index );
 
         static MapObject*    MapperMap_AddObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, ushort pid );
         static MapObject*    MapperMap_GetObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, ushort pid, uint skip );
@@ -467,7 +469,7 @@ public:
         static ScriptString* MapperMap_get_ScriptFunc( ProtoMap& pmap );
         static void          MapperMap_set_ScriptFunc( ProtoMap& pmap, ScriptString* str );
 
-        static void          Global_SetDefaultCritterParam( uint index, int param );
+        static void          Global_ShowCritterParam( int param_index, bool show, ScriptString* param_name );
         static void          Global_AllowSlot( uchar index, ScriptString& slot_name );
         static uint          Global_DecodeUTF8( ScriptString& text, uint& length );
         static ScriptString* Global_EncodeUTF8( uint ucs );

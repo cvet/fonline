@@ -1264,16 +1264,12 @@ BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Critter_Dir"
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Critter_Cond", OFFSETOF( MapObject, MCritter.Cond ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Critter_Anim1", OFFSETOF( MapObject, MCritter.Anim1 ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Critter_Anim2", OFFSETOF( MapObject, MCritter.Anim2 ) ) );
-for( int i = 0; i < 40 /*MAPOBJ_CRITTER_PARAMS*/; i++ )
-{
-    char str[ 256 ];
-    sprintf( str, "int16 Critter_ParamIndex%d", i );
-    BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", str, OFFSETOF( MapObject, MCritter.ParamIndex[ 0 ] ) + sizeof( short ) * i ) );
 
-    sprintf( str, "int Critter_ParamValue%d", i );
-    BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", str, OFFSETOF( MapObject, MCritter.ParamValue[ 0 ] ) + sizeof( int ) * i ) );
-
-}
+// Critter parameters
+BIND_ASSERT( engine->RegisterObjectType( "CritterParam", 0, asOBJ_REF | asOBJ_NOHANDLE ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "CritterParam", "const int& opIndex(uint) const", asFUNCTION( BIND_CLASS MapperObject_CritterParam_Index ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "CritterParam", "int& opIndex(uint)", asFUNCTION( BIND_CLASS MapperObject_CritterParam_Index ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "CritterParam Critter_Param", 0 ) );
 
 // Item/critter shared parameters
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int16 OffsetX", OFFSETOF( MapObject, MItem.OffsetX ) ) );
@@ -1353,7 +1349,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "string@ get_ScriptFunc(
 BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void set_ScriptFunc(const string& name)", asFUNCTION( BIND_CLASS MapperMap_set_ScriptFunc ), asCALL_CDECL_OBJFIRST ) );
 
 // Global
-BIND_ASSERT( engine->RegisterGlobalFunction( "void SetDefaultCritterParam(uint index, int param)", asFUNCTION( BIND_CLASS Global_SetDefaultCritterParam ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowCritterParam(int paramIndex, bool show, string@+ paramName = null)", asFUNCTION( BIND_CLASS Global_ShowCritterParam ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "MapperMap@+ LoadMap(string& fileName, int pathType)", asFUNCTION( BIND_CLASS Global_LoadMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void UnloadMap(MapperMap@+ map)", asFUNCTION( BIND_CLASS Global_UnloadMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SaveMap(MapperMap@+ map, string& fileName, int pathType)", asFUNCTION( BIND_CLASS Global_SaveMap ), asCALL_CDECL ) );

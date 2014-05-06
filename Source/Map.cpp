@@ -151,15 +151,14 @@ bool Map::Generate()
         }
 
         // Make params array
-        int params[ MAPOBJ_CRITTER_PARAMS * 2 ];
+        int params[ MAX_PARAMS * 2 ];
         int params_count = 0;
-        for( int i = 0; i < MAPOBJ_CRITTER_PARAMS; i++ )
+        for( int i = 0; i < MAX_PARAMS; i++ )
         {
-            int index = mobj.MCritter.ParamIndex[ i ];
-            if( index >= 0 && index < MAX_PARAMS )
+            if( mobj.MCritter.Params[ i ] )
             {
-                params[ params_count * 2 ] = index;
-                params[ params_count * 2 + 1 ] = mobj.MCritter.ParamValue[ i ];
+                params[ params_count * 2 ] = i;
+                params[ params_count * 2 + 1 ] = mobj.MCritter.Params[ i ];
                 params_count++;
             }
         }
