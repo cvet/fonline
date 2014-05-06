@@ -554,13 +554,13 @@ void RegisterScriptString( asIScriptEngine* engine )
 
 // This function returns a string containing the substring of the input string
 // determined by the starting index and count of characters.
-ScriptString* StringSubString( ScriptString* str, int start, uint count )
+ScriptString* StringSubString( ScriptString* str, int start, int count )
 {
     if( !str->indexByteToUTF8( start ) )
         return new ScriptString( "" );
-    int count_ = (int) count;
-    str->indexByteToUTF8( count_, NULL, start );
-    return new ScriptString( str->c_std_str().substr( start, count_ ) );
+    if (count >= 0)
+        str->indexByteToUTF8( count, NULL, start );
+    return new ScriptString( str->c_std_str().substr( start, count >= 0 ? count : std::string::npos ) );
 }
 
 // This function returns the index of the first position where the substring
@@ -796,7 +796,7 @@ void RegisterScriptStringUtils( asIScriptEngine* engine )
 {
     int r;
 
-    r = engine->RegisterGlobalFunction( "string@ substring(const string &in, int, uint)", asFUNCTION( StringSubString ), asCALL_CDECL );
+    r = engine->RegisterGlobalFunction( "string@ substring(const string &in, int start, int count = -1)", asFUNCTION( StringSubString ), asCALL_CDECL );
     assert( r >= 0 );
     r = engine->RegisterGlobalFunction( "int findFirst(const string &in, const string &in, int start = 0)", asFUNCTION( StringFindFirst ), asCALL_CDECL );
     assert( r >= 0 );
