@@ -147,6 +147,10 @@ void IniParser::GotoEol( uint& iter )
 
 bool IniParser::GotoApp( const char* app_name, uint& iter )
 {
+    // Skip UTF-8 BOM signature
+    if( iter == 0 && bufLen >= 3 && (uchar) bufPtr[ 0 ] == 0xEF && (uchar) bufPtr[ 1 ] == 0xBB && (uchar) bufPtr[ 2 ] == 0xBF )
+        iter += 3;
+
     uint j;
     for( ; iter < bufLen; ++iter )
     {
@@ -186,6 +190,10 @@ label_NextLine:
 
 bool IniParser::GotoKey( const char* key_name, uint& iter )
 {
+    // Skip UTF-8 BOM signature
+    if( iter == 0 && bufLen >= 3 && (uchar) bufPtr[ 0 ] == 0xEF && (uchar) bufPtr[ 1 ] == 0xBB && (uchar) bufPtr[ 2 ] == 0xBF )
+        iter += 3;
+
     uint j;
     for( ; iter < bufLen; ++iter )
     {
