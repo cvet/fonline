@@ -154,10 +154,14 @@ bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data 
     if( path_type >= 0 && path_type < PATH_LIST_COUNT )
     {
         // Make data path
-        char data_path[ MAX_FOPATH ] = { 0 };
+        char data_path[ MAX_FOPATH ];
         Str::Copy( data_path, PathList[ path_type ] );
         Str::Append( data_path, fname );
         FormatPath( data_path );
+
+        // Store original data path
+        char original_data_path[ MAX_FOPATH ];
+        Str::Copy( original_data_path, data_path );
 
         // File names in data files in lower case
         Str::Lower( data_path );
@@ -173,7 +177,7 @@ bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data 
             DataFile* dat = *it;
             if( !no_read_data )
             {
-                fileBuf = dat->OpenFile( data_path, fileSize, writeTime );
+                fileBuf = dat->OpenFile( data_path, original_data_path, fileSize, writeTime );
                 if( fileBuf )
                 {
                     curPos = 0;
@@ -182,7 +186,7 @@ bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data 
             }
             else
             {
-                if( dat->IsFilePresent( data_path, fileSize, writeTime ) )
+                if( dat->IsFilePresent( data_path, original_data_path, fileSize, writeTime ) )
                     return true;
             }
         }

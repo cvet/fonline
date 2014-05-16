@@ -49,8 +49,8 @@ public:
     bool Init( const char* fname );
 
     const string& GetPackName() { return basePath; }
-    bool          IsFilePresent( const char* fname, uint& size, uint64& write_time );
-    uchar*        OpenFile( const char* fname, uint& size, uint64& write_time );
+    bool          IsFilePresent( const char* fname, const char* original_fname, uint& size, uint64& write_time );
+    uchar*        OpenFile( const char* fname, const char* original_fname, uint& size, uint64& write_time );
     void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
 };
 
@@ -73,8 +73,8 @@ public:
     ~FalloutDatFile();
 
     const string& GetPackName() { return fileName; }
-    bool          IsFilePresent( const char* fname, uint& size, uint64& write_time );
-    uchar*        OpenFile( const char* fname, uint& size, uint64& write_time );
+    bool          IsFilePresent( const char* fname, const char* original_fname, uint& size, uint64& write_time );
+    uchar*        OpenFile( const char* fname, const char* original_fname, uint& size, uint64& write_time );
     void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) { GetFileNames_( filesTree, path, include_subdirs, ext, result ); }
 };
 
@@ -101,8 +101,8 @@ public:
     ~ZipFile();
 
     const string& GetPackName() { return fileName; }
-    bool          IsFilePresent( const char* fname, uint& size, uint64& write_time );
-    uchar*        OpenFile( const char* fname, uint& size, uint64& write_time );
+    bool          IsFilePresent( const char* fname, const char* original_fname, uint& size, uint64& write_time );
+    uchar*        OpenFile( const char* fname, const char* original_fname, uint& size, uint64& write_time );
     void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) { GetFileNames_( filesTree, path, include_subdirs, ext, result ); }
 };
 
@@ -193,8 +193,17 @@ bool FolderFile::Init( const char* fname )
     return true;
 }
 
-bool FolderFile::IsFilePresent( const char* fname, uint& size, uint64& write_time )
+bool FolderFile::IsFilePresent( const char* fname, const char* original_fname, uint& size, uint64& write_time )
 {
+    #ifdef FONLINE_SERVER
+    void* f = FileOpen( original_fname, false );
+    if( !f )
+        return false;
+    write_time = FileGetWriteTime( f );
+    FileClose( f );
+    return true;
+
+    #else
     auto it = filesTree.find( fname );
     if( it == filesTree.end() )
         return NULL;
@@ -203,20 +212,31 @@ bool FolderFile::IsFilePresent( const char* fname, uint& size, uint64& write_tim
     size = fe.FileSize;
     write_time = fe.WriteTime;
 
-    #ifdef FONLINE_SERVER
-    void* file = FileOpen( fe.FileName.c_str(), false );
-    if( file )
-    {
-        write_time = FileGetWriteTime( file );
-        FileClose( file );
-    }
-    #endif
-
     return true;
+    #endif
 }
 
-uchar* FolderFile::OpenFile( const char* fname, uint& size, uint64& write_time )
+uchar* FolderFile::OpenFile( const char* fname, const char* original_fname, uint& size, uint64& write_time )
 {
+    #ifdef FONLINE_SERVER
+    void* f = FileOpen( original_fname, false );
+    if( !f )
+        return NULL;
+
+    size = FileGetSize( f );
+    uchar* buf = new uchar[ size + 1 ];
+    if( !FileRead( f, buf, size ) )
+    {
+        FileClose( f );
+        delete[] buf;
+        return NULL;
+    }
+    FileClose( f );
+    buf[ size ] = 0;
+    write_time = FileGetWriteTime( f );
+    return buf;
+
+    #else
     auto it = filesTree.find( fname );
     if( it == filesTree.end() )
         return NULL;
@@ -228,7 +248,6 @@ uchar* FolderFile::OpenFile( const char* fname, uint& size, uint64& write_time )
 
     size = fe.FileSize;
     uchar* buf = new uchar[ size + 1 ];
-
     if( !FileRead( f, buf, size ) )
     {
         FileClose( f );
@@ -237,19 +256,9 @@ uchar* FolderFile::OpenFile( const char* fname, uint& size, uint64& write_time )
     }
     FileClose( f );
     buf[ size ] = 0;
-
     write_time = fe.WriteTime;
-
-    #ifdef FONLINE_SERVER
-    void* file = FileOpen( fe.FileName.c_str(), false );
-    if( file )
-    {
-        write_time = FileGetWriteTime( file );
-        FileClose( file );
-    }
-    #endif
-
     return buf;
+    #endif
 }
 
 void FolderFile::GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result )
@@ -420,7 +429,7 @@ bool FalloutDatFile::ReadTree()
     return true;
 }
 
-bool FalloutDatFile::IsFilePresent( const char* fname, uint& size, uint64& write_time )
+bool FalloutDatFile::IsFilePresent( const char* fname, const char* original_fname, uint& size, uint64& write_time )
 {
     if( !datHandle )
         return false;
@@ -430,7 +439,7 @@ bool FalloutDatFile::IsFilePresent( const char* fname, uint& size, uint64& write
     return filesTree.find( fname ) != filesTree.end();
 }
 
-uchar* FalloutDatFile::OpenFile( const char* fname, uint& size, uint64& write_time )
+uchar* FalloutDatFile::OpenFile( const char* fname, const char* original_fname, uint& size, uint64& write_time )
 {
     if( !datHandle )
         return NULL;
@@ -613,7 +622,7 @@ bool ZipFile::ReadTree()
     return true;
 }
 
-bool ZipFile::IsFilePresent( const char* fname, uint& size, uint64& write_time )
+bool ZipFile::IsFilePresent( const char* fname, const char* original_fname, uint& size, uint64& write_time )
 {
     if( !zipHandle )
         return false;
@@ -623,7 +632,7 @@ bool ZipFile::IsFilePresent( const char* fname, uint& size, uint64& write_time )
     return filesTree.find( fname ) != filesTree.end();
 }
 
-uchar* ZipFile::OpenFile( const char* fname, uint& size, uint64& write_time )
+uchar* ZipFile::OpenFile( const char* fname, const char* original_fname, uint& size, uint64& write_time )
 {
     if( !zipHandle )
         return NULL;

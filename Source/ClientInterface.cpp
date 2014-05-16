@@ -100,7 +100,7 @@ bool FOClient::AppendIfaceIni( const char* ini_name )
             DataFile* data_file = data_files[ k ];
             uint      len;
             uint64    write_time;
-            uchar*    data = data_file->OpenFile( file_name, len, write_time );
+            uchar*    data = data_file->OpenFile( file_name, file_name, len, write_time );
             if( data )
             {
                 AppendIfaceIni( data, len );
