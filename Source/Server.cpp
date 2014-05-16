@@ -5658,10 +5658,10 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
 
     // Fill files
     StrVec file_names;
-    FileManager::GetDataFileNames( FileManager::GetDataPath( "", PT_SERVER_UPDATE ), true, NULL, file_names );
+    FileManager::GetFolderFileNames( FileManager::GetDataPath( "", PT_SERVER_UPDATE ), true, NULL, file_names );
     for( size_t i = 0, j = file_names.size(); i < j; i++ )
     {
-        string      file_name = file_names[ i ].substr( Str::Length( FileManager::GetDataPath( "", PT_SERVER_UPDATE ) ) );
+        string      file_name = file_names[ i ];
         string      file_name_target = file_name;
 
         const char* ext = FileManager::GetExtension( file_name.c_str() );
