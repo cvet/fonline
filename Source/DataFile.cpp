@@ -231,9 +231,9 @@ uchar* FolderFile::OpenFile( const char* fname, const char* original_fname, uint
         delete[] buf;
         return NULL;
     }
+    write_time = FileGetWriteTime( f );
     FileClose( f );
     buf[ size ] = 0;
-    write_time = FileGetWriteTime( f );
     return buf;
 
     #else
