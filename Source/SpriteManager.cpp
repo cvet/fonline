@@ -1138,14 +1138,14 @@ void SpriteManager::FillAtlas( SpriteInfo* si )
             data_border[ i + 1 ] = *(uint*) ( data + i * w * 4 );
         data_border[ 0 ] = data_border[ 1 ];
         data_border[ h + 1 ] = data_border[ h ];
-        tex->UpdateRegion( Rect( x - 1, y - 1, x - 1, y + h + 1 ), (uchar*) data_border );
+        tex->UpdateRegion( Rect( x - 1, y - 1, x - 1, y + h ), (uchar*) data_border );
 
         // Right
         for( uint i = 0; i < h; i++ )
             data_border[ i + 1 ] = *(uint*) ( data + i * w * 4 + ( w - 1 ) * 4 );
         data_border[ 0 ] = data_border[ 1 ];
         data_border[ h + 1 ] = data_border[ h ];
-        tex->UpdateRegion( Rect( x + w, y - 1, x + w, y + h + 1 ), (uchar*) data_border );
+        tex->UpdateRegion( Rect( x + w, y - 1, x + w, y + h ), (uchar*) data_border );
     }
 
     // Set parameters
