@@ -225,7 +225,6 @@ struct Texture
 {
     const char* Name;
     GLuint      Id;
-    uint        Size;
     uint        Width;
     uint        Height;
     float       SizeData[ 4 ];        // Width, Height, TexelWidth, TexelHeight

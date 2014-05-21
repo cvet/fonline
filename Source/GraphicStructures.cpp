@@ -38,7 +38,7 @@ void AnyFrames::CreateDirAnims()
 // Texture
 //
 
-Texture::Texture(): Name( NULL ), Id( 0 ), Size( 0 ), Width( 0 ), Height( 0 ), Samples( 0.0f )
+Texture::Texture(): Name( NULL ), Id( 0 ), Width( 0 ), Height( 0 ), Samples( 0.0f )
 {
     // Dummy comment
 }
