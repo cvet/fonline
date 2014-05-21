@@ -9,8 +9,8 @@ public:
     #ifdef FONLINE_DLL
     static ScriptAny& Create()
     {
-        static int typeId = ASEngine->GetTypeIdByDecl( "any" );
-        ScriptAny* scriptAny = (ScriptAny*) ASEngine->CreateScriptObject( typeId );
+        static asIObjectType* ot = ASEngine->GetObjectTypeByDecl( "any" );
+        ScriptAny*            scriptAny = (ScriptAny*) ASEngine->CreateScriptObject( ot );
         return *scriptAny;
     }
 protected:
@@ -24,8 +24,8 @@ protected:
 
 public:
     // Memory management
-    virtual void AddRef() const;
-    virtual void Release() const;
+    virtual int AddRef() const;
+    virtual int Release() const;
 
     // Copy the stored value from another any object
     ScriptAny& operator=( const ScriptAny& other )
@@ -61,6 +61,7 @@ protected:
     virtual void FreeObject();
 
     mutable int      refCount;
+    mutable bool     gcFlag;
     asIScriptEngine* engine;
 
     // The structure for holding the values

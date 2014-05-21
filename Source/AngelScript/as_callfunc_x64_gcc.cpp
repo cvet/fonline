@@ -43,6 +43,7 @@
 
 #include "as_scriptengine.h"
 #include "as_texts.h"
+#include "as_context.h"
 
 BEGIN_AS_NAMESPACE
 
@@ -59,7 +60,8 @@ typedef asQWORD ( *funcptr_t )( void );
 
 static asQWORD __attribute__((noinline)) X64_CallFunction(const asQWORD *args, int cnt, funcptr_t func, asQWORD &retQW2, bool returnFloat) 
 {
-	asQWORD   retQW1 = 0;
+	// Need to flag the variable as volatile so the compiler doesn't optimize out the variable
+	volatile asQWORD retQW1 = 0;
 
 	// Reference: http://www.x86-64.org/documentation/abi.pdf
 

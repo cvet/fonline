@@ -558,7 +558,7 @@ ScriptString* StringSubString( ScriptString* str, int start, int count )
 {
     if( !str->indexByteToUTF8( start ) )
         return new ScriptString( "" );
-    if (count >= 0)
+    if( count >= 0 )
         str->indexByteToUTF8( count, NULL, start );
     return new ScriptString( str->c_std_str().substr( start, count >= 0 ? count : std::string::npos ) );
 }
@@ -643,7 +643,7 @@ ScriptArray* StringSplit( ScriptString* str, ScriptString* delim )
     asIObjectType* arrayType = engine->GetObjectTypeById( engine->GetTypeIdByDecl( "array<string@>" ) );
 
     // Create the array object
-    ScriptArray* array = new ScriptArray( 0, arrayType );
+    ScriptArray* array = ScriptArray::Create( arrayType, 0, NULL );
 
     // Find the existence of the delimiter in the input string
     int pos = 0, prev = 0, count = 0;
@@ -690,7 +690,7 @@ ScriptArray* StringSplitEx( ScriptString* str, ScriptString* delim )
     asIObjectType* arrayType = engine->GetObjectTypeById( engine->GetTypeIdByDecl( "array<string@>" ) );
 
     // Create the array object
-    ScriptArray* array = new ScriptArray( 0, arrayType );
+    ScriptArray* array = ScriptArray::Create( arrayType, 0, NULL );
 
     // Find the existence of the delimiter in the input string
     const char* cstr = str->c_str();

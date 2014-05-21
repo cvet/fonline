@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2012 Andreas Jonsson
+   Copyright (c) 2003-2014 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -52,6 +52,7 @@ class asCScriptEngine;
 class asCModule;
 class asCConfigGroup;
 class asCGlobalProperty;
+class asCScriptNode;
 struct asSNameSpace;
 
 struct asSScriptVariable
@@ -60,6 +61,31 @@ struct asSScriptVariable
 	asCDataType type;
 	int         stackOffset;
 	asUINT      declaredAtProgramPos;
+};
+
+enum asEListPatternNodeType
+{
+	asLPT_REPEAT,
+	asLPT_REPEAT_SAME,
+	asLPT_START,
+	asLPT_END,
+	asLPT_TYPE
+};
+
+struct asSListPatternNode
+{
+	asSListPatternNode(asEListPatternNodeType t) : type(t), next(0) {}
+	virtual ~asSListPatternNode() {};
+	virtual asSListPatternNode *Duplicate() { return asNEW(asSListPatternNode)(type); }
+	asEListPatternNodeType  type;
+	asSListPatternNode     *next;
+};
+
+struct asSListPatternDataTypeNode : public asSListPatternNode
+{
+	asSListPatternDataTypeNode(const asCDataType &dt) : asSListPatternNode(asLPT_TYPE), dataType(dt) {}
+	asSListPatternNode *Duplicate() { return asNEW(asSListPatternDataTypeNode)(dataType); }
+	asCDataType dataType;
 };
 
 enum asEObjVarInfoOption
@@ -78,10 +104,6 @@ struct asSObjectVariableInfo
 };
 
 struct asSSystemFunctionInterface;
-
-// TODO: GetModuleName should be removed. A function won't belong to a specific module anymore
-//       as the function can be removed from the module, but still remain alive. For example
-//       for dynamically generated functions held by a function pointer.
 
 // TODO: Might be interesting to allow enumeration of accessed global variables, and 
 //       also functions/methods that are being called. This could be used to build a 
@@ -103,6 +125,7 @@ public:
 	int                  GetId() const;
 	asEFuncType          GetFuncType() const;
 	const char          *GetModuleName() const;
+	asIScriptModule     *GetModule() const;
 	const char          *GetScriptSectionName() const;
 	const char          *GetConfigGroup() const;
 	asDWORD              GetAccessMask() const;
@@ -112,32 +135,41 @@ public:
 	const char          *GetObjectName() const;
 	const char          *GetName() const;
 	const char          *GetNamespace() const;
-	const char          *GetDeclaration(bool includeObjectName = true, bool includeNamespace = false) const;
+	const char          *GetDeclaration(bool includeObjectName = true, bool includeNamespace = false, bool includeParamNames = false) const;
 	bool                 IsReadOnly() const;
 	bool                 IsPrivate() const;
 	bool                 IsFinal() const;
 	bool                 IsOverride() const;
 	bool                 IsShared() const;
 	asUINT               GetParamCount() const;
+	int                  GetParam(asUINT index, int *typeId, asDWORD *flags = 0, const char **name = 0, const char **defaultArg = 0) const;
+#ifdef AS_DEPRECATED
+	// Deprecated, since 2.29.0, 2014-04-06
 	int                  GetParamTypeId(asUINT index, asDWORD *flags = 0) const;
-	int                  GetReturnTypeId() const;
+#endif
+	int                  GetReturnTypeId(asDWORD *flags = 0) const;
 
 	// Type id for function pointers 
 	int                  GetTypeId() const;
 	bool                 IsCompatibleWithTypeId(int typeId) const;
 
+	// Delegates
+	void                *GetDelegateObject() const;
+	asIObjectType       *GetDelegateObjectType() const;
+	asIScriptFunction   *GetDelegateFunction() const;
+
 	// Debug information
 	asUINT               GetVarCount() const;
 	int                  GetVar(asUINT index, const char **name, int *typeId = 0) const;
-	const char *         GetVarDecl(asUINT index) const;
+	const char *         GetVarDecl(asUINT index, bool includeNamespace = false) const;
 	int                  FindNextLineWithCode(int line) const;
 
 	// For JIT compilation
 	asDWORD             *GetByteCode(asUINT *length = 0);
 
 	// User data
-	void                *SetUserData(void *userData);
-	void                *GetUserData() const;
+	void                *SetUserData(void *userData, asPWORD type);
+	void                *GetUserData(asPWORD type) const;
 
 public:
 	//-----------------------------------
@@ -146,6 +178,14 @@ public:
 	asCScriptFunction(asCScriptEngine *engine, asCModule *mod, asEFuncType funcType);
 	~asCScriptFunction();
 
+	// TODO: 2.29.0: operator==
+	// TODO: 2.29.0: The asIScriptFunction should provide operator== and operator!= that should do a
+	//               a value comparison. Two delegate objects that point to the same object and class method should compare as equal
+	// TODO: 2.29.0: The operator== should also be provided in script as opEquals to allow the same comparison in script
+	//               To do this we'll need some way to adapt the argtype for opEquals for each funcdef, preferrably without instantiating lots of different methods
+	//               Perhaps reusing 'auto' to mean the same type as the object
+	//bool      operator==(const asCScriptFunction &other) const;
+
 	void      DestroyInternal();
 	void      Orphan(asIScriptModule *mod);
 
@@ -153,7 +193,7 @@ public:
 
 	int       GetSpaceNeededForArguments();
 	int       GetSpaceNeededForReturnValue();
-	asCString GetDeclarationStr(bool includeObjectName = true, bool includeNamespace = false) const;
+	asCString GetDeclarationStr(bool includeObjectName = true, bool includeNamespace = false, bool includeParamNames = false) const;
 	int       GetLineNumber(int programPosition, int *sectionIdx);
 	void      ComputeSignatureId();
 	bool      IsSignatureEqual(const asCScriptFunction *func) const;
@@ -161,6 +201,14 @@ public:
 	bool      IsSignatureExceptNameEqual(const asCDataType &retType, const asCArray<asCDataType> &paramTypes, const asCArray<asETypeModifiers> &inOutFlags, const asCObjectType *type, bool isReadOnly) const;
 	bool      IsSignatureExceptNameAndReturnTypeEqual(const asCScriptFunction *fun) const;
 	bool      IsSignatureExceptNameAndReturnTypeEqual(const asCArray<asCDataType> &paramTypes, const asCArray<asETypeModifiers> &inOutFlags, const asCObjectType *type, bool isReadOnly) const;
+	bool      IsSignatureExceptNameAndObjectTypeEqual(const asCScriptFunction *func) const;
+
+	asCObjectType *GetObjectTypeOfLocalVar(short varOffset);
+
+	void      MakeDelegate(asCScriptFunction *func, void *obj);
+
+	int       RegisterListPattern(const char *decl, asCScriptNode *listPattern);
+	int       ParseListPattern(asSListPatternNode *&target, const char *decl, asCScriptNode *listPattern);
 
 	bool      DoesReturnOnStack() const;
 
@@ -169,6 +217,8 @@ public:
 	void      AddReferences();
 	void      ReleaseReferences();
 
+	void      AllocateScriptFunctionData();
+	void      DeallocateScriptFunctionData();
 
 	asCGlobalProperty *GetPropertyByGlobalVarPtr(void *gvarPtr);
 
@@ -188,12 +238,13 @@ public:
 	asCScriptEngine             *engine;
 	asCModule                   *module;
 
-	void                        *userData;
+	asCArray<asPWORD>            userData;
 
 	// Function signature
 	asCString                    name;
 	asCDataType                  returnType;
 	asCArray<asCDataType>        parameterTypes;
+	asCArray<asCString>          parameterNames;
 	asCArray<asETypeModifiers>   inOutFlags;
 	asCArray<asCString *>        defaultArgs;
 	bool                         isReadOnly;
@@ -211,41 +262,66 @@ public:
 
 	asSNameSpace                *nameSpace;
 
+	// Used by asFUNC_DELEGATE
+	void              *objForDelegate;
+	asCScriptFunction *funcForDelegate;
+
+	// Used by list factory behaviour
+	asSListPatternNode *listPattern;
+
 	// Used by asFUNC_SCRIPT
-	asCArray<asDWORD>               byteCode;
-	// The stack space needed for the local variables
-	asDWORD                         variableSpace;
+	struct ScriptFunctionData
+	{
+		// Bytecode for the script function
+		asCArray<asDWORD>               byteCode;
 
-	// These hold information objects and function pointers, including temporary
-	// variables used by exception handler and when saving bytecode
-	asCArray<asCObjectType*>        objVariableTypes;
-	asCArray<asCScriptFunction*>    funcVariableTypes;
-	asCArray<int>	                objVariablePos;
-	// The first variables in above array are allocated on the heap, the rest on the stack.
-	// This variable shows how many are on the heap.
-	asUINT                          objVariablesOnHeap;
+		// The stack space needed for the local variables
+		asDWORD                         variableSpace;
 
-	// Holds information on scope for object variables on the stack
-	asCArray<asSObjectVariableInfo> objVariableInfo;
+		// These hold information objects and function pointers, including temporary
+		// variables used by exception handler and when saving bytecode
+		asCArray<asCObjectType*>        objVariableTypes;
+		asCArray<asCScriptFunction*>    funcVariableTypes;
+		asCArray<int>                   objVariablePos;
 
-	// Holds information on explicitly declared variables
-	asCArray<asSScriptVariable*>    variables;        // debug info
+		// The first variables in above array are allocated on the heap, the rest on the stack.
+		// This variable shows how many are on the heap.
+		asUINT                          objVariablesOnHeap;
 
-	int                             stackNeeded;
-	asCArray<int>                   lineNumbers;      // debug info
-	int                             scriptSectionIdx; // debug info
-	asCArray<int>                   sectionIdxs;      // debug info. Store position/index pairs if the bytecode is compiled from multiple script sections
-	bool                            dontCleanUpOnException;   // Stub functions don't own the object and parameters
+		// Holds information on scope for object variables on the stack
+		asCArray<asSObjectVariableInfo> objVariableInfo;
+
+		// The stack needed to execute the function
+		int                             stackNeeded;
+
+		// JIT compiled code of this function
+		asJITFunction                   jitFunction;
+
+		// Holds debug information on explicitly declared variables
+		asCArray<asSScriptVariable*>    variables;
+		// Store position, line number pairs for debug information
+		asCArray<int>                   lineNumbers;
+		// Store the script section where the code was declared
+		int                             scriptSectionIdx;
+		// Store the location where the function was declared
+		int                             declaredAt;
+		// Store position/index pairs if the bytecode is compiled from multiple script sections
+		asCArray<int>                   sectionIdxs;
+	};
+	ScriptFunctionData          *scriptData;
+
+	// Stub functions and delegates don't own the object and parameters
+	bool                         dontCleanUpOnException;
 
 	// Used by asFUNC_VIRTUAL
 	int                          vfTableIdx;
 
 	// Used by asFUNC_SYSTEM
 	asSSystemFunctionInterface  *sysFuncIntf;
-
-    // JIT compiled code of this function
-    asJITFunction                jitFunction;
 };
+
+const char * const DELEGATE_FACTORY = "%delegate_factory";
+asCScriptFunction *CreateDelegate(asCScriptFunction *func, void *obj);
 
 END_AS_NAMESPACE
 

@@ -20,8 +20,8 @@ public:
     #ifdef FONLINE_DLL
     static ScriptFile& Create()
     {
-        static int  typeId = ASEngine->GetTypeIdByDecl( "file" );
-        ScriptFile* scriptFile = (ScriptFile*) ASEngine->CreateScriptObject( typeId );
+        static asIObjectType* ot = ASEngine->GetObjectTypeByDecl( "file" );
+        ScriptFile*           scriptFile = (ScriptFile*) ASEngine->CreateScriptObject( ot );
         return *scriptFile;
     }
 protected:

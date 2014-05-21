@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2013 Andreas Jonsson
+   Copyright (c) 2003-2014 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -42,6 +42,7 @@
 #include "as_context.h"
 #include "as_texts.h"
 #include "as_debug.h"
+#include "as_restore.h"
 
 BEGIN_AS_NAMESPACE
 
@@ -65,7 +66,7 @@ asCModule::~asCModule()
 {
 	InternalReset();
 
-	if( builder ) 
+	if( builder )
 	{
 		asDELETE(builder,asCBuilder);
 		builder = 0;
@@ -74,29 +75,79 @@ asCModule::~asCModule()
 	if( engine )
 	{
 		// Clean the user data
-		if( userData && engine->cleanModuleFunc )
-			engine->cleanModuleFunc(this);
+		for( asUINT n = 0; n < userData.GetLength(); n += 2 )
+		{
+			if( userData[n+1] )
+			{
+				for( asUINT c = 0; c < engine->cleanModuleFuncs.GetLength(); c++ )
+					if( engine->cleanModuleFuncs[c].type == userData[n] )
+						engine->cleanModuleFuncs[c].cleanFunc(this);
+			}
+		}
 
 		// Remove the module from the engine
 		if( engine->lastModule == this )
 			engine->lastModule = 0;
-
 		engine->scriptModules.RemoveValue(this);
 	}
 }
 
 // interface
-void *asCModule::SetUserData(void *data)
+void asCModule::Discard()
 {
-	void *oldData = userData;
-	userData = data;
-	return oldData;
+	asDELETE(this,asCModule);
 }
 
 // interface
-void *asCModule::GetUserData() const
+void *asCModule::SetUserData(void *data, asPWORD type)
 {
-	return userData;
+	// As a thread might add a new new user data at the same time as another
+	// it is necessary to protect both read and write access to the userData member
+	ACQUIREEXCLUSIVE(engine->engineRWLock);
+
+	// It is not intended to store a lot of different types of userdata,
+	// so a more complex structure like a associative map would just have
+	// more overhead than a simple array.
+	for( asUINT n = 0; n < userData.GetLength(); n += 2 )
+	{
+		if( userData[n] == type )
+		{
+			void *oldData = reinterpret_cast<void*>(userData[n+1]);
+			userData[n+1] = reinterpret_cast<asPWORD>(data);
+
+			RELEASEEXCLUSIVE(engine->engineRWLock);
+
+			return oldData;
+		}
+	}
+
+	userData.PushLast(type);
+	userData.PushLast(reinterpret_cast<asPWORD>(data));
+
+	RELEASEEXCLUSIVE(engine->engineRWLock);
+
+	return 0;
+}
+
+// interface
+void *asCModule::GetUserData(asPWORD type) const
+{
+	// There may be multiple threads reading, but when
+	// setting the user data nobody must be reading.
+	ACQUIRESHARED(engine->engineRWLock);
+
+	for( asUINT n = 0; n < userData.GetLength(); n += 2 )
+	{
+		if( userData[n] == type )
+		{
+			RELEASESHARED(engine->engineRWLock);
+			return reinterpret_cast<void*>(userData[n+1]);
+		}
+	}
+
+	RELEASESHARED(engine->engineRWLock);
+
+	return 0;
 }
 
 // interface
@@ -182,10 +233,12 @@ int asCModule::AddScriptSection(const char *name, const char *code, size_t codeL
 // internal
 void asCModule::JITCompile()
 {
+	asIJITCompiler *jit = engine->GetJITCompiler();
+	if( !jit )
+		return;
+
 	for (unsigned int i = 0; i < scriptFunctions.GetLength(); i++)
-	{
 		scriptFunctions[i]->JITCompile();
-	}
 }
 
 // interface
@@ -232,9 +285,9 @@ int asCModule::Build()
 		return r;
 	}
 
-    JITCompile();
+	JITCompile();
 
- 	engine->PrepareEngine();
+	engine->PrepareEngine();
 
 #ifdef AS_DEBUG
 	// Verify that there are no unwanted gaps in the scriptFunctions array.
@@ -264,18 +317,6 @@ int asCModule::ResetGlobalVars(asIScriptContext *ctx)
 
 	return CallInit(ctx);
 }
-
-#ifdef AS_DEPRECATED
-// Deprecated since 2.24.0 - 2012-05-20
-// interface
-int asCModule::GetFunctionIdByIndex(asUINT index) const
-{
-	if( index >= globalFunctions.GetLength() )
-		return asNO_FUNCTION;
-
-	return globalFunctions[index]->id;
-}
-#endif
 
 // interface
 asIScriptFunction *asCModule::GetFunctionByIndex(asUINT index) const
@@ -325,7 +366,7 @@ int asCModule::CallInit(asIScriptContext *myCtx)
 					msg.Format(TXT_FAILED_TO_INITIALIZE_s, desc->name.AddressOf());
 					asCScriptFunction *func = desc->GetInitFunc();
 
-					engine->WriteMessage(func->scriptSectionIdx >= 0 ? engine->scriptSectionNames[func->scriptSectionIdx]->AddressOf() : "",
+					engine->WriteMessage(func->scriptData->scriptSectionIdx >= 0 ? engine->scriptSectionNames[func->scriptData->scriptSectionIdx]->AddressOf() : "",
 										 func->GetLineNumber(0, 0) & 0xFFFFF, 
 										 func->GetLineNumber(0, 0) >> 20,
 										 asMSGTYPE_ERROR,
@@ -440,7 +481,7 @@ void asCModule::InternalReset()
 	{
 		if( bindInformations[n] )
 		{
-			asUINT id = bindInformations[n]->importedFunctionSignature->id & 0xFFFF;
+			asUINT id = bindInformations[n]->importedFunctionSignature->id & ~FUNC_IMPORTED;
 			engine->importedFunctions[id] = 0;
 			engine->freeImportedFunctionIdxs.PushLast(id);
 
@@ -465,38 +506,17 @@ void asCModule::InternalReset()
 	// Free funcdefs
 	for( n = 0; n < funcDefs.GetLength(); n++ )
 	{
-		// TODO: funcdefs: These may be shared between modules, so we can't just remove them
-		engine->funcDefs.RemoveValue(funcDefs[n]);
+		// The funcdefs are not removed from the engine at this moment as they may still be referred
+		// to by other types. The engine's ClearUnusedTypes will take care of the clean up.
 		funcDefs[n]->Release();
 	}
 	funcDefs.SetLength(0);
+
+	// Allow the engine to clean up what is not used
+	engine->CleanupAfterDiscardModule();
+
+	asASSERT( IsEmpty() );
 }
-
-#ifdef AS_DEPRECATED
-// Deprecated since 2.24.0 - 2012-05-20
-// interface
-int asCModule::GetFunctionIdByName(const char *name) const
-{
-	// TODO: optimize: Improve linear search
-	// Find the function id
-	int id = -1;
-	for( size_t n = 0; n < globalFunctions.GetLength(); n++ )
-	{
-		if( globalFunctions[n]->name == name &&
-			globalFunctions[n]->nameSpace == defaultNamespace )
-		{
-			if( id == -1 )
-				id = globalFunctions[n]->id;
-			else
-				return asMULTIPLE_FUNCTIONS;
-		}
-	}
-
-	if( id == -1 ) return asNO_FUNCTION;
-
-	return id;
-}
-#endif
 
 // interface
 asIScriptFunction *asCModule::GetFunctionByName(const char *name) const
@@ -519,6 +539,9 @@ asUINT asCModule::GetImportedFunctionCount() const
 int asCModule::GetImportedFunctionIndexByDecl(const char *decl) const
 {
 	asCBuilder bld(engine, const_cast<asCModule*>(this));
+
+	// Don't write parser errors to the message callback
+	bld.silent = true;
 
 	asCScriptFunction func(engine, const_cast<asCModule*>(this), asFUNC_DUMMY);
 	bld.ParseFunctionDeclaration(0, decl, &func, false, 0, 0, defaultNamespace);
@@ -563,62 +586,13 @@ asUINT asCModule::GetFunctionCount() const
 	return (asUINT)globalFunctions.GetSize();
 }
 
-#ifdef AS_DEPRECATED
-// Deprecated since 2.24.0 - 2012-05-20
-// interface
-int asCModule::GetFunctionIdByDecl(const char *decl) const
-{
-	asCBuilder bld(engine, const_cast<asCModule*>(this));
-
-	asCScriptFunction func(engine, const_cast<asCModule*>(this), asFUNC_DUMMY);
-	int r = bld.ParseFunctionDeclaration(0, decl, &func, false, 0, 0, defaultNamespace);
-	if( r < 0 )
-		return asINVALID_DECLARATION;
-
-	// Use the defaultNamespace implicitly unless an explicit namespace has been provided
-	asCString ns = func.nameSpace == "" ? defaultNamespace : func.nameSpace;
-
-	// TODO: optimize: Improve linear search
-	// Search script functions for matching interface
-	int id = -1;
-	for( size_t n = 0; n < globalFunctions.GetLength(); ++n )
-	{
-		if( globalFunctions[n]->objectType == 0 && 
-			func.name == globalFunctions[n]->name && 
-			func.returnType == globalFunctions[n]->returnType &&
-			func.parameterTypes.GetLength() == globalFunctions[n]->parameterTypes.GetLength() &&
-			ns == globalFunctions[n]->nameSpace )
-		{
-			bool match = true;
-			for( size_t p = 0; p < func.parameterTypes.GetLength(); ++p )
-			{
-				if( func.parameterTypes[p] != globalFunctions[n]->parameterTypes[p] )
-				{
-					match = false;
-					break;
-				}
-			}
-
-			if( match )
-			{
-				if( id == -1 )
-					id = globalFunctions[n]->id;
-				else
-					return asMULTIPLE_FUNCTIONS;
-			}
-		}
-	}
-
-	if( id == -1 ) return asNO_FUNCTION;
-
-	return id;
-}
-#endif
-
 // interface
 asIScriptFunction *asCModule::GetFunctionByDecl(const char *decl) const
 {
 	asCBuilder bld(engine, const_cast<asCModule*>(this));
+
+	// Don't write parser errors to the message callback
+	bld.silent = true;
 
 	asCScriptFunction func(engine, const_cast<asCModule*>(this), asFUNC_DUMMY);
 	int r = bld.ParseFunctionDeclaration(0, decl, &func, false, 0, 0, defaultNamespace);
@@ -700,6 +674,9 @@ int asCModule::RemoveGlobalVar(asUINT index)
 int asCModule::GetGlobalVarIndexByDecl(const char *decl) const
 {
 	asCBuilder bld(engine, const_cast<asCModule*>(this));
+
+	// Don't write parser errors to the message callback
+	bld.silent = true;
 
 	asCString name;
 	asSNameSpace *nameSpace;
@@ -798,12 +775,36 @@ asIObjectType *asCModule::GetObjectTypeByName(const char *name) const
 int asCModule::GetTypeIdByDecl(const char *decl) const
 {
 	asCDataType dt;
+
+	// This const cast is safe since we know the engine won't be modified
 	asCBuilder bld(engine, const_cast<asCModule*>(this));
+
+	// Don't write parser errors to the message callback
+	bld.silent = true;
+
 	int r = bld.ParseDataType(decl, &dt, defaultNamespace);
 	if( r < 0 )
 		return asINVALID_TYPE;
 
 	return engine->GetTypeIdFromDataType(dt);
+}
+
+// interface
+asIObjectType *asCModule::GetObjectTypeByDecl(const char *decl) const
+{
+	asCDataType dt;
+
+	// This const cast is safe since we know the engine won't be modified
+	asCBuilder bld(engine, const_cast<asCModule*>(this));
+
+	// Don't write parser errors to the message callback
+	bld.silent = true;
+
+	int r = bld.ParseDataType(decl, &dt, defaultNamespace);
+	if( r < 0 )
+		return 0;
+
+	return dt.GetObjectType();
 }
 
 // interface
@@ -889,14 +890,21 @@ int asCModule::GetNextImportedFunctionId()
 
 #ifndef AS_NO_COMPILER
 // internal
-int asCModule::AddScriptFunction(int sectionIdx, int id, const asCString &name, const asCDataType &returnType, const asCArray<asCDataType> &params, const asCArray<asETypeModifiers> &inOutFlags, const asCArray<asCString *> &defaultArgs, bool isInterface, asCObjectType *objType, bool isConstMethod, bool isGlobalFunction, bool isPrivate, bool isFinal, bool isOverride, bool isShared, asSNameSpace *ns)
+int asCModule::AddScriptFunction(int sectionIdx, int declaredAt, int id, const asCString &name, const asCDataType &returnType, const asCArray<asCDataType> &params, const asCArray<asCString> &paramNames, const asCArray<asETypeModifiers> &inOutFlags, const asCArray<asCString *> &defaultArgs, bool isInterface, asCObjectType *objType, bool isConstMethod, bool isGlobalFunction, bool isPrivate, bool isFinal, bool isOverride, bool isShared, asSNameSpace *ns)
 {
 	asASSERT(id >= 0);
 
 	// Store the function information
 	asCScriptFunction *func = asNEW(asCScriptFunction)(engine, this, isInterface ? asFUNC_INTERFACE : asFUNC_SCRIPT);
 	if( func == 0 )
+	{
+		// Free the default args
+		for( asUINT n = 0; n < defaultArgs.GetLength(); n++ )
+			if( defaultArgs[n] )
+				asDELETE(defaultArgs[n], asCString);
+
 		return asOUT_OF_MEMORY;
+	}
 
 	if( ns == 0 )
 		ns = engine->nameSpaces[0];
@@ -909,8 +917,13 @@ int asCModule::AddScriptFunction(int sectionIdx, int id, const asCString &name, 
 	func->nameSpace        = ns;
 	func->id               = id;
 	func->returnType       = returnType;
-	func->scriptSectionIdx = sectionIdx;
+	if( func->funcType == asFUNC_SCRIPT )
+	{
+		func->scriptData->scriptSectionIdx = sectionIdx;
+		func->scriptData->declaredAt = declaredAt;
+	}
 	func->parameterTypes   = params;
+	func->parameterNames   = paramNames;
 	func->inOutFlags       = inOutFlags;
 	func->defaultArgs      = defaultArgs;
 	func->objectType       = objType;
@@ -962,7 +975,14 @@ int asCModule::AddImportedFunction(int id, const asCString &name, const asCDataT
 	// Store the function information
 	asCScriptFunction *func = asNEW(asCScriptFunction)(engine, this, asFUNC_IMPORTED);
 	if( func == 0 )
+	{
+		// Free the default args
+		for( asUINT n = 0; n < defaultArgs.GetLength(); n++ )
+			if( defaultArgs[n] )
+				asDELETE(defaultArgs[n], asCString);
+
 		return asOUT_OF_MEMORY;
+	}
 
 	func->name           = name;
 	func->id             = id;
@@ -975,7 +995,10 @@ int asCModule::AddImportedFunction(int id, const asCString &name, const asCDataT
 
 	sBindInfo *info = asNEW(sBindInfo);
 	if( info == 0 )
+	{
+		asDELETE(func, asCScriptFunction);
 		return asOUT_OF_MEMORY;
+	}
 
 	info->importedFunctionSignature = func;
 	info->boundFunctionId           = -1;
@@ -1168,6 +1191,21 @@ asCGlobalProperty *asCModule::AllocateGlobalProperty(const char *name, const asC
 	return prop;
 }
 
+// internal
+bool asCModule::IsEmpty() const
+{
+	if( scriptFunctions.GetLength()  ) return false;
+	if( globalFunctions.GetSize()    ) return false;
+	if( bindInformations.GetLength() ) return false;
+	if( scriptGlobals.GetSize()      ) return false;
+	if( classTypes.GetLength()       ) return false;
+	if( enumTypes.GetLength()        ) return false;
+	if( typeDefs.GetLength()         ) return false;
+	if( funcDefs.GetLength()         ) return false;
+
+	return true;
+}
+
 // interface
 int asCModule::SaveByteCode(asIBinaryStream *out, bool stripDebugInfo) const
 {
@@ -1177,6 +1215,10 @@ int asCModule::SaveByteCode(asIBinaryStream *out, bool stripDebugInfo) const
 	return asNOT_SUPPORTED;
 #else
 	if( out == 0 ) return asINVALID_ARG;
+
+	// Make sure there is actually something to save
+	if( IsEmpty() )
+		return asERROR;
 
 	asCWriter write(const_cast<asCModule*>(this), out, engine, stripDebugInfo);
 	return write.Write();
@@ -1197,7 +1239,7 @@ int asCModule::LoadByteCode(asIBinaryStream *in, bool *wasDebugInfoStripped)
 	asCReader read(this, in, engine);
 	r = read.Read(wasDebugInfoStripped);
 
-    JITCompile();
+	JITCompile();
 
 #ifdef AS_DEBUG
 	// Verify that there are no unwanted gaps in the scriptFunctions array.
@@ -1336,18 +1378,6 @@ int asCModule::CompileFunction(const char *sectionName, const char *code, int li
 	return r;
 #endif
 }
-
-#ifdef AS_DEPRECATED
-// Deprecated since 2.24.0 - 2012-05-20
-// interface
-int asCModule::RemoveFunction(int funcId)
-{
-	if( funcId >= 0 && funcId < (int)engine->scriptFunctions.GetLength() )
-		return RemoveFunction(engine->scriptFunctions[funcId]);
-
-	return asNO_FUNCTION;
-}
-#endif
 
 // interface
 int asCModule::RemoveFunction(asIScriptFunction *func)

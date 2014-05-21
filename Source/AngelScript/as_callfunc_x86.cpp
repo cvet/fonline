@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2012 Andreas Jonsson
+   Copyright (c) 2003-2013 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -46,6 +46,7 @@
 #include "as_scriptengine.h"
 #include "as_texts.h"
 #include "as_tokendef.h"
+#include "as_context.h"
 
 BEGIN_AS_NAMESPACE
 
@@ -115,6 +116,14 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 #endif
 				{
 					// Copy the object's memory to the buffer
+					// TODO: bug: Must call the object's copy constructor instead of doing a memcpy, 
+					//            as the object may hold a pointer to itself. It's not enough to 
+					//            change only this memcpy as the assembler routine also makes a copy
+					//            of paramBuffer to the final stack location. To avoid the second 
+					//            copy the C++ routine should point paramBuffer to the final stack
+					//            position and copy the values directly to that location. The assembler
+					//            routines then don't need to copy anything, and will just be 
+					//            responsible for setting up the registers and the stack frame appropriately.
 					memcpy(&paramBuffer[dpos], *(void**)(args+spos), descr->parameterTypes[n].GetSizeInMemoryBytes());
 
 					// Delete the original memory
@@ -237,7 +246,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 
 asQWORD NOINLINE CallCDeclFunction(const asDWORD *args, int paramSize, asFUNCTION_t func)
 {
-	volatile asQWORD retQW;
+	volatile asQWORD retQW = 0;
 
 #if defined ASM_INTEL
 
@@ -348,7 +357,7 @@ endcopy:
 
 asQWORD NOINLINE CallCDeclFunctionObjLast(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func)
 {
-	volatile asQWORD retQW;
+	volatile asQWORD retQW = 0;
 
 #if defined ASM_INTEL
 
@@ -453,7 +462,7 @@ endcopy:
 
 asQWORD NOINLINE CallCDeclFunctionObjFirst(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func)
 {
-	volatile asQWORD retQW;
+	volatile asQWORD retQW = 0;
 
 #if defined ASM_INTEL
 
@@ -558,7 +567,7 @@ endcopy:
 
 asQWORD NOINLINE CallCDeclFunctionRetByRefObjFirst(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr)
 {
-	volatile asQWORD retQW;
+	volatile asQWORD retQW = 0;
 
 #if defined ASM_INTEL
 
@@ -675,7 +684,7 @@ endcopy:
 
 asQWORD NOINLINE CallCDeclFunctionRetByRef(const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr)
 {
-	volatile asQWORD retQW;
+	volatile asQWORD retQW = 0;
 
 #if defined ASM_INTEL
 
@@ -787,7 +796,7 @@ endcopy:
 
 asQWORD NOINLINE CallCDeclFunctionRetByRefObjLast(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr)
 {
-	volatile asQWORD retQW;
+	volatile asQWORD retQW = 0;
 
 #if defined ASM_INTEL
 
@@ -903,7 +912,7 @@ endcopy:
 
 asQWORD NOINLINE CallSTDCallFunction(const asDWORD *args, int paramSize, asFUNCTION_t func)
 {
-	volatile asQWORD retQW;
+	volatile asQWORD retQW = 0;
 
 #if defined ASM_INTEL
 
@@ -1001,7 +1010,7 @@ endcopy:
 
 asQWORD NOINLINE CallThisCallFunction(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func)
 {
-	volatile asQWORD retQW;
+	volatile asQWORD retQW = 0;
 
 #if defined ASM_INTEL
 
@@ -1122,7 +1131,7 @@ endcopy:
 
 asQWORD NOINLINE CallThisCallFunctionRetByRef(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr)
 {
-	volatile asQWORD retQW;
+	volatile asQWORD retQW = 0;
 
 #if defined ASM_INTEL
 

@@ -2729,7 +2729,7 @@ void Script::CallbackException( asIScriptContext* ctx, void* param )
 
 ScriptArray* Script::CreateArray( const char* type )
 {
-    return new ScriptArray( 0, Engine->GetObjectTypeById( Engine->GetTypeIdByDecl( type ) ) );
+    return ScriptArray::Create( Engine->GetObjectTypeById( Engine->GetTypeIdByDecl( type ) ), 0, NULL );
 }
 
 /************************************************************************/

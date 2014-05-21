@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2013 Andreas Jonsson
+   Copyright (c) 2003-2014 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -29,6 +29,7 @@
 */
 
 
+
 //
 // as_config.h
 //
@@ -44,6 +45,7 @@
 // Features
 //-----------------------------------------
 
+#define AS_NO_THREADS
 // AS_NO_THREADS
 // Turns off support for multithreading. By turning off
 // this when it's not needed a bit of performance is gained.
@@ -58,6 +60,9 @@
 // If the compiler/platform doesn't support atomic instructions
 // then this should be defined to use critical sections instead.
 
+#ifdef DEBUG
+# define AS_DEBUG
+#endif
 // AS_DEBUG
 // This flag can be defined to make the library write some extra output when
 // compiling and executing scripts.
@@ -166,6 +171,9 @@
 // Embarcadero C++Builder
 //  __BORLANDC__ is defined
 
+// Sun CC compiler
+// __SUNPRO_CC is defined
+
 
 
 //
@@ -197,6 +205,10 @@
 // AS_ARM
 // Use assembler code for the ARM CPU family
 
+// AS_SOFTFP
+// Use to tell compiler that ARM soft-float ABI
+// should be used instead of ARM hard-float ABI
+
 // AS_X64_GCC
 // Use GCC assembler code for the X64 AMD/Intel CPU family
 
@@ -208,6 +220,9 @@
 
 // AS_BIG_ENDIAN
 // Define this for CPUs that use big endian memory layout, e.g. PPC
+
+// AS_SPARC
+// Define this for SPARC CPU family
 
 
 
@@ -237,6 +252,7 @@
 // AS_HAIKU     - Haiku
 // AS_ILLUMOS   - Illumos like (OpenSolaris, OpenIndiana, NCP, etc)
 // AS_MARMALADE - Marmalade cross platform SDK (a layer on top of the OS)
+// AS_SUN       - Sun UNIX
 
 
 
@@ -378,6 +394,7 @@
 #endif
 
 // Microsoft Visual C++
+// Ref: http://msdn.microsoft.com/en-us/library/b0084kay.aspx
 #if defined(_MSC_VER) && !defined(__MWERKS__)
 
 	#if _MSC_VER <= 1200 // MSVC6
@@ -405,16 +422,16 @@
 
 		// Marmalade doesn't use the Windows libraries
 		#define asVSNPRINTF(a, b, c, d) vsnprintf(a, b, c, d)
-		
-		// Marmalade doesn't seem to have proper support for 
-		// atomic instructions or read/write locks, so we turn off 
+
+		// Marmalade doesn't seem to have proper support for
+		// atomic instructions or read/write locks, so we turn off
 		// multithread support
 		//#define AS_POSIX_THREADS
 		#define AS_NO_THREADS
 		#define AS_NO_ATOMIC
 
 		// Marmalade has it's own way of identifying the CPU target
-		// Note, when building for ARM, the gnuc compiler will always  
+		// Note, when building for ARM, the gnuc compiler will always
 		// be used so we don't need to check for it here
 		#if defined(I3D_ARCH_X86)
 			#define AS_X86
@@ -432,6 +449,7 @@
 	#define THISCALL_CALLEE_POPS_ARGUMENTS
 	#define STDCALL __stdcall
 	#define AS_SIZEOF_BOOL 1
+	#define COMPLEX_OBJS_PASSED_BY_REF
 
 	#define ASM_INTEL  // Intel style for inline assembly on microsoft compilers
 
@@ -452,28 +470,27 @@
 			#define AS_CALLEE_DESTROY_OBJ_BY_VAL
 			#define AS_LARGE_OBJS_PASSED_BY_REF
 			#define AS_LARGE_OBJ_MIN_SIZE 3
-			#define COMPLEX_OBJS_PASSED_BY_REF
-			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_ASSIGNMENT | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
-			#define COMPLEX_MASK (asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_ASSIGNMENT | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
 		#endif
 	#endif
 
-	#ifdef _ARM_
+	#if defined(_ARM_) || defined(_M_ARM)
 		#define AS_ARM
 		#define AS_CALLEE_DESTROY_OBJ_BY_VAL
 		#define CDECL_RETURN_SIMPLE_IN_MEMORY
 		#define STDCALL_RETURN_SIMPLE_IN_MEMORY
-		#define COMPLEX_OBJS_PASSED_BY_REF
-		#define COMPLEX_MASK asOBJ_APP_CLASS_ASSIGNMENT
-		#define COMPLEX_RETURN_MASK asOBJ_APP_CLASS_ASSIGNMENT
+		#define COMPLEX_MASK (asOBJ_APP_CLASS_ASSIGNMENT | asOBJ_APP_ARRAY)
+		#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_ASSIGNMENT | asOBJ_APP_ARRAY)
+		#define AS_SOFTFP
 	#endif
 
 	#ifndef COMPLEX_MASK
-		#define COMPLEX_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_ASSIGNMENT)
+		#define COMPLEX_MASK (asOBJ_APP_ARRAY)
 	#endif
 
 	#ifndef COMPLEX_RETURN_MASK
-		#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_ASSIGNMENT)
+		#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_CONSTRUCTOR | asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_ASSIGNMENT | asOBJ_APP_ARRAY)
 	#endif
 
 	#define UNREACHABLE_RETURN
@@ -528,7 +545,7 @@
 	#endif
 
 	// Support native calling conventions on x86, but not 64bit yet
-	#if defined(i386) && !defined(__LP64__)
+	#if (defined(i386) || defined(__i386) || defined(__i386__)) && !defined(__LP64__)
 		#define AS_X86
 	// PS3
 	#elif (defined(__PPC__) || defined(__ppc__)) && defined(__PPU__)
@@ -546,7 +563,7 @@
 #endif
 
 // GNU C (and MinGW or Cygwin on Windows)
-// Use the following command to determine predefined macros: echo . | mingw32-g++ -dM -E -
+// Use the following command to determine predefined macros: echo . | g++ -dM -E -
 #if (defined(__GNUC__) && !defined(__SNC__)) || defined(EPPC) || defined(__CYGWIN__) // JWC -- use this instead for Wii
 	#define GNU_STYLE_VIRTUAL_METHOD
 #if !defined( __amd64__ )
@@ -557,8 +574,8 @@
 	#define asVSNPRINTF(a, b, c, d) vsnprintf(a, b, c, d)
 	#define CALLEE_POPS_HIDDEN_RETURN_POINTER
 	#define COMPLEX_OBJS_PASSED_BY_REF
-	#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR)
-	#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR)
+	#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_ARRAY)
+	#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_ARRAY)
 	#define AS_NO_MEMORY_H
 	#define AS_SIZEOF_BOOL 1
 	#define STDCALL __attribute__((stdcall))
@@ -567,7 +584,7 @@
 	// WII U
 	#if defined(__ghs__)
 		#define AS_WIIU
-	
+
 		// Native calling conventions are not yet supported
 		#define AS_MAX_PORTABILITY
 
@@ -582,7 +599,7 @@
 		#undef STDCALL
 		#define STDCALL
 
-		// Marmalade doesn't seem to have proper support for 
+		// Marmalade doesn't seem to have proper support for
 		// atomic instructions or read/write locks
 		#define AS_NO_THREADS
 		#define AS_NO_ATOMIC
@@ -592,7 +609,9 @@
 			#define AS_X86
 		#elif defined(I3D_ARCH_ARM)
 			#define AS_ARM
-		
+
+			#define AS_SOFTFP
+
 			// Marmalade appear to use the same ABI as Android when built for ARM
 			#define CDECL_RETURN_SIMPLE_IN_MEMORY
 			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
@@ -610,9 +629,9 @@
 			#undef GNU_STYLE_VIRTUAL_METHOD
 
 			#undef COMPLEX_MASK
-			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
 			#undef COMPLEX_RETURN_MASK
-			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
 
 			#define AS_CALLEE_DESTROY_OBJ_BY_VAL
 		#endif
@@ -640,44 +659,9 @@
 			#define AS_SIZEOF_BOOL 1
 		#endif
 
-		#if defined(i386) && !defined(__LP64__)
-			// Support native calling conventions on Mac OS X + Intel 32bit CPU
-			#define AS_X86
-			#define THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
-			#undef COMPLEX_MASK
-			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
-			#undef COMPLEX_RETURN_MASK
-			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
-		#elif defined(__LP64__) && !defined(__ppc__) && !defined(__PPC__)
-			// http://developer.apple.com/library/mac/#documentation/DeveloperTools/Conceptual/LowLevelABI/140-x86-64_Function_Calling_Conventions/x86_64.html#//apple_ref/doc/uid/TP40005035-SW1
-			#define AS_X64_GCC
-			#define HAS_128_BIT_PRIMITIVES
-			#define SPLIT_OBJS_BY_MEMBER_TYPES
-			#undef COMPLEX_MASK
-			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
-			#undef COMPLEX_RETURN_MASK
-			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
-			#define AS_LARGE_OBJS_PASSED_BY_REF
-			#define AS_LARGE_OBJ_MIN_SIZE 5
-			// STDCALL is not available on 64bit Mac
-			#undef STDCALL
-			#define STDCALL
-		#elif (defined(__ppc__) || defined(__PPC__)) && !defined(__LP64__)
-			// Support native calling conventions on Mac OS X + PPC 32bit CPU
-			#define AS_PPC
-			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
-			#define CDECL_RETURN_SIMPLE_IN_MEMORY
-			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
-			#undef COMPLEX_MASK
-			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
-			#undef COMPLEX_RETURN_MASK
-			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
-		#elif (defined(__ppc__) || defined(__PPC__)) && defined(__LP64__)
-			#define AS_PPC_64
-		#elif (defined(_ARM_) || defined(__arm__))
-			// The IPhone use an ARM processor
+		#if (defined(_ARM_) || defined(__arm__))
+			// iOS use ARM processor
 			#define AS_ARM
-			#define AS_CALLEE_DESTROY_OBJ_BY_VAL
 			#define CDECL_RETURN_SIMPLE_IN_MEMORY
 			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
 			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
@@ -693,13 +677,66 @@
 			#define STDCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
 			#define COMPLEX_OBJS_PASSED_BY_REF
 			#undef COMPLEX_MASK
-			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
 			#undef COMPLEX_RETURN_MASK
-			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
+
+			// iOS uses soft-float ABI
+			#define AS_SOFTFP
 
 			// STDCALL is not available on ARM
 			#undef STDCALL
 			#define STDCALL
+
+		#elif (defined(__arm64__))
+			// The IPhone 5S+ uses an ARM64 processor
+
+			// AngelScript currently doesn't support native calling
+			// for 64bit ARM processors so it's necessary to turn on
+			// portability mode
+			#define AS_MAX_PORTABILITY
+
+			// STDCALL is not available on ARM
+			#undef STDCALL
+			#define STDCALL
+
+		#elif (defined(i386) || defined(__i386) || defined(__i386__)) && !defined(__LP64__)
+			// Support native calling conventions on Mac OS X + Intel 32bit CPU
+			#define AS_X86
+			#define THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
+			#undef COMPLEX_MASK
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
+			#undef COMPLEX_RETURN_MASK
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
+
+		#elif defined(__LP64__) && !defined(__ppc__) && !defined(__PPC__) && !defined(__arm64__)
+			// http://developer.apple.com/library/mac/#documentation/DeveloperTools/Conceptual/LowLevelABI/140-x86-64_Function_Calling_Conventions/x86_64.html#//apple_ref/doc/uid/TP40005035-SW1
+			#define AS_X64_GCC
+			#define HAS_128_BIT_PRIMITIVES
+			#define SPLIT_OBJS_BY_MEMBER_TYPES
+			#undef COMPLEX_MASK
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
+			#undef COMPLEX_RETURN_MASK
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
+			#define AS_LARGE_OBJS_PASSED_BY_REF
+			#define AS_LARGE_OBJ_MIN_SIZE 5
+			// STDCALL is not available on 64bit Mac
+			#undef STDCALL
+			#define STDCALL
+
+		#elif (defined(__ppc__) || defined(__PPC__)) && !defined(__LP64__)
+			// Support native calling conventions on Mac OS X + PPC 32bit CPU
+			#define AS_PPC
+			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
+			#define CDECL_RETURN_SIMPLE_IN_MEMORY
+			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
+			#undef COMPLEX_MASK
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
+			#undef COMPLEX_RETURN_MASK
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
+
+		#elif (defined(__ppc__) || defined(__PPC__)) && defined(__LP64__)
+			#define AS_PPC_64
 		#else
 			// Unknown CPU type
 			#define AS_MAX_PORTABILITY
@@ -714,11 +751,11 @@
 		//#define STDCALL_RETURN_SIMPLE_IN_MEMORY
 
 		#undef COMPLEX_MASK
-		#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+		#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
 		#undef COMPLEX_RETURN_MASK
-		#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+		#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
 
-		#if defined(i386) && !defined(__LP64__)
+		#if (defined(i386) || defined(__i386) || defined(__i386__)) && !defined(__LP64__)
 			// Support native calling conventions on Intel 32bit CPU
 			#define AS_X86
 
@@ -734,7 +771,6 @@
 
 		#elif defined(__x86_64__)
 			#define AS_X64_MINGW
-			#define AS_CALLEE_DESTROY_OBJ_BY_VAL
 			#define AS_LARGE_OBJS_PASSED_BY_REF
 			#define AS_LARGE_OBJ_MIN_SIZE 3
 			#define COMPLEX_OBJS_PASSED_BY_REF
@@ -745,28 +781,25 @@
 		#define AS_WINDOWS_THREADS
 
 	// Linux
-	#elif defined(__linux__) && !defined(ANDROID)
-		#if defined(i386) && !defined(__LP64__)
+	#elif defined(__linux__) && !defined(ANDROID) && !defined(__ANDROID__)
+
+		#undef COMPLEX_MASK
+		#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
+		#undef COMPLEX_RETURN_MASK
+		#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
+
+		#if (defined(i386) || defined(__i386) || defined(__i386__)) && !defined(__LP64__)
 			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
 			#define CDECL_RETURN_SIMPLE_IN_MEMORY
 			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
 
-			#undef COMPLEX_MASK
-			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
-			#undef COMPLEX_RETURN_MASK
-			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
-
 			// Support native calling conventions on Intel 32bit CPU
 			#define THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
 			#define AS_X86
-		#elif defined(__LP64__)
+		#elif defined(__LP64__) && !defined(__arm64__)
 			#define AS_X64_GCC
 			#define HAS_128_BIT_PRIMITIVES
 			#define SPLIT_OBJS_BY_MEMBER_TYPES
-			#undef COMPLEX_MASK
-			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
-			#undef COMPLEX_RETURN_MASK
-			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
 			#define AS_LARGE_OBJS_PASSED_BY_REF
 			#define AS_LARGE_OBJ_MIN_SIZE 5
 			// STDCALL is not available on 64bit Linux
@@ -774,7 +807,9 @@
 			#define STDCALL
 		#elif defined(__ARMEL__) || defined(__arm__)
 			#define AS_ARM
-			#define AS_NO_ATOMIC
+
+			#undef STDCALL
+			#define STDCALL
 
 			#define CDECL_RETURN_SIMPLE_IN_MEMORY
 			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
@@ -787,6 +822,20 @@
 			#define THISCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
 			#define CDECL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
 			#define STDCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 2
+
+			#ifndef AS_MAX_PORTABILITY
+			// Make a few checks against incompatible ABI combinations
+			#if defined(__FAST_MATH__) && __FAST_MATH__ == 1
+				#error -ffast-math is not supported with native calling conventions
+			#endif
+			#endif
+
+			// Verify if soft-float or hard-float ABI is used
+			#if defined(__SOFTFP__) && __SOFTFP__ == 1
+				// -ffloat-abi=softfp or -ffloat-abi=soft
+				#define AS_SOFTFP
+			#endif
+
 		#elif defined(__mips__)
 			#define AS_MIPS
 			#define AS_BIG_ENDIAN
@@ -808,11 +857,11 @@
 	// Free BSD
 	#elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
 		#define AS_BSD
-		#if defined(i386) && !defined(__LP64__)
+		#if (defined(i386) || defined(__i386) || defined(__i386__)) && !defined(__LP64__)
 			#undef COMPLEX_MASK
-			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
 			#undef COMPLEX_RETURN_MASK
-			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
 			#define THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
 			#define AS_X86
 		#elif defined(__LP64__)
@@ -820,9 +869,9 @@
 			#define HAS_128_BIT_PRIMITIVES
 			#define SPLIT_OBJS_BY_MEMBER_TYPES
 			#undef COMPLEX_MASK
-			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
 			#undef COMPLEX_RETURN_MASK
-			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
 			#define AS_LARGE_OBJS_PASSED_BY_REF
 			#define AS_LARGE_OBJ_MIN_SIZE 5
 			#undef STDCALL
@@ -874,9 +923,11 @@
 		#define STDCALL
 
 	// Android
-	#elif defined(ANDROID)
+	#elif defined(ANDROID) || defined(__ANDROID__)
 		#define AS_ANDROID
-		#define AS_NO_ATOMIC
+
+		// Android NDK 9+ supports posix threads
+		#define AS_POSIX_THREADS
 
 		#define CDECL_RETURN_SIMPLE_IN_MEMORY
 		#define STDCALL_RETURN_SIMPLE_IN_MEMORY
@@ -898,11 +949,12 @@
 			#undef GNU_STYLE_VIRTUAL_METHOD
 
 			#undef COMPLEX_MASK
-			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#define COMPLEX_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
 			#undef COMPLEX_RETURN_MASK
-			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR)
+			#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
 
 			#define AS_ARM
+			#define AS_SOFTFP
 			#define AS_CALLEE_DESTROY_OBJ_BY_VAL
 		#endif
 
@@ -912,7 +964,7 @@
 		// Only x86-32 is currently supported by Haiku, but they do plan to support
 		// x86-64 and PowerPC in the future, so should go ahead and check the platform
 		// for future compatibility
-		#if defined(i386) && !defined(__LP64__)
+		#if (defined(i386) || defined(__i386) || defined(__i386__)) && !defined(__LP64__)
 			#define AS_X86
 			#define THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
 			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
@@ -930,7 +982,7 @@
 
 	// Illumos
 	#elif defined(__sun)
-		#if defined(__i386__) && !defined(__LP64__)
+		#if (defined(i386) || defined(__i386) || defined(__i386__)) && !defined(__LP64__)
 			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
 			#define CDECL_RETURN_SIMPLE_IN_MEMORY
 			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
@@ -958,6 +1010,39 @@
 	#endif
 
 	#define UNREACHABLE_RETURN
+#endif
+
+// Sun CC
+// Initial information provided by Andrey Bergman
+#if defined(__SUNPRO_CC)
+	#if defined(__sparc)
+		#define AS_SPARC
+	#endif
+
+	#if defined(__sun)
+		#define AS_SUN
+	#endif
+
+	// Native calling conventions is not yet supported for Sun CC
+	#if !defined(AS_MAX_PORTABILITY)
+		#define AS_MAX_PORTABILITY
+	#endif
+
+	// I presume Sun CC uses a similar structure of method pointers as gnuc
+	#define MULTI_BASE_OFFSET(x) (*((asPWORD*)(&x)+1))
+
+	#if !defined(AS_SIZEOF_BOOL)
+		#define AS_SIZEOF_BOOL 1 // sizeof(bool) == 1
+	#endif
+	#if !defined(UNREACHABLE_RETURN)
+		#define UNREACHABLE_RETURN
+	#endif
+	#if !defined(STDCALL)
+		#define STDCALL // There is no stdcall on Solaris/SunPro/SPARC
+	#endif
+	#if !defined(asVSNPRINTF)
+		#define asVSNPRINTF(a, b, c, d) vsnprintf(a, b, c, d)
+	#endif
 #endif
 
 
@@ -998,7 +1083,7 @@
 	#endif
 #endif
 
-// If the platform doesn't support atomic instructions we can't allow 
+// If the platform doesn't support atomic instructions we can't allow
 // multithreading as the reference counters won't be threadsafe
 #if defined(AS_NO_ATOMIC) && !defined(AS_NO_THREADS)
 	#define AS_NO_THREADS

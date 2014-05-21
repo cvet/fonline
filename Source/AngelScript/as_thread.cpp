@@ -1,24 +1,24 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2013 Andreas Jonsson
+   Copyright (c) 2003-2014 Andreas Jonsson
 
-   This software is provided 'as-is', without any express or implied 
-   warranty. In no event will the authors be held liable for any 
+   This software is provided 'as-is', without any express or implied
+   warranty. In no event will the authors be held liable for any
    damages arising from the use of this software.
 
-   Permission is granted to anyone to use this software for any 
-   purpose, including commercial applications, and to alter it and 
+   Permission is granted to anyone to use this software for any
+   purpose, including commercial applications, and to alter it and
    redistribute it freely, subject to the following restrictions:
 
-   1. The origin of this software must not be misrepresented; you 
+   1. The origin of this software must not be misrepresented; you
       must not claim that you wrote the original software. If you use
-      this software in a product, an acknowledgment in the product 
+      this software in a product, an acknowledgment in the product
       documentation would be appreciated but is not required.
 
-   2. Altered source versions must be plainly marked as such, and 
+   2. Altered source versions must be plainly marked as such, and
       must not be misrepresented as being the original software.
 
-   3. This notice may not be removed or altered from any source 
+   3. This notice may not be removed or altered from any source
       distribution.
 
    The original version of this library can be located at:
@@ -109,19 +109,36 @@ AS_API void asReleaseSharedLock()
 
 //======================================================================
 
+#if !defined(AS_NO_THREADS) && defined(_MSC_VER) && defined(AS_WINDOWS_THREADS) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
+__declspec(thread) asCThreadLocalData *asCThreadManager::tld = 0;
+#endif
+
 asCThreadManager::asCThreadManager()
 {
 	// We're already in the critical section when this function is called
 
 #ifdef AS_NO_THREADS
 	tld = 0;
+#else
+	// Allocate the thread local storage
+	#if defined AS_POSIX_THREADS
+		pthread_key_t pKey;
+		pthread_key_create(&pKey, 0);
+		tlsKey = (asDWORD)pKey;
+	#elif defined AS_WINDOWS_THREADS
+		#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
+			tld = 0;
+		#else
+			tlsKey = (asDWORD)TlsAlloc();
+		#endif
+	#endif
 #endif
 	refCount = 1;
 }
 
 int asCThreadManager::Prepare(asIThreadManager *externalThreadMgr)
 {
-	// Don't allow an external thread manager if there 
+	// Don't allow an external thread manager if there
 	// is already a thread manager defined
 	if( externalThreadMgr && threadManager )
 		return asINVALID_ARG;
@@ -130,18 +147,18 @@ int asCThreadManager::Prepare(asIThreadManager *externalThreadMgr)
 	// guarantee for the order in which global variables are initialized
 	// or uninitialized.
 
-	// For this reason it's not possible to prevent two threads from calling 
+	// For this reason it's not possible to prevent two threads from calling
 	// AddRef at the same time, so there is a chance for a race condition here.
 
-	// To avoid the race condition when the thread manager is first created, 
+	// To avoid the race condition when the thread manager is first created,
 	// the application must make sure to call the global asPrepareForMultiThread()
-	// in the main thread before any other thread creates a script engine. 
+	// in the main thread before any other thread creates a script engine.
 	if( threadManager == 0 && externalThreadMgr == 0 )
 		threadManager = asNEW(asCThreadManager);
 	else
 	{
 		// If an application uses different dlls each dll will get it's own memory
-		// space for global variables. If multiple dlls then uses AngelScript's 
+		// space for global variables. If multiple dlls then uses AngelScript's
 		// global thread support functions it is then best to share the thread
 		// manager to make sure all dlls use the same critical section.
 		if( externalThreadMgr )
@@ -169,7 +186,10 @@ void asCThreadManager::Unprepare()
 	ENTERCRITICALSECTION(threadManager->criticalSection);
 	if( --threadManager->refCount == 0 )
 	{
-		// As the critical section will be destroyed together 
+		// Make sure the local data is destroyed, at least for the current thread
+		CleanupLocalData();
+
+		// As the critical section will be destroyed together
 		// with the thread manager we must first clear the global
 		// variable in case a new thread manager needs to be created;
 		asCThreadManager *mgr = threadManager;
@@ -187,20 +207,18 @@ void asCThreadManager::Unprepare()
 asCThreadManager::~asCThreadManager()
 {
 #ifndef AS_NO_THREADS
-	// Delete all thread local datas
-	asSMapNode<asPWORD,asCThreadLocalData*> *cursor = 0;
-	if( tldMap.MoveFirst(&cursor) )
-	{
-		do
-		{
-			if( tldMap.GetValue(cursor) ) 
-			{
-				asDELETE(tldMap.GetValue(cursor),asCThreadLocalData);
-			}
-		} while( tldMap.MoveNext(&cursor, cursor) );
-	}
+	// Deallocate the thread local storage
+	#if defined AS_POSIX_THREADS
+		pthread_key_delete((pthread_key_t)tlsKey);
+	#elif defined AS_WINDOWS_THREADS
+		#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
+			tld = 0;
+		#else
+			TlsFree((DWORD)tlsKey);
+		#endif
+	#endif
 #else
-	if( tld ) 
+	if( tld )
 	{
 		asDELETE(tld,asCThreadLocalData);
 	}
@@ -214,34 +232,34 @@ int asCThreadManager::CleanupLocalData()
 		return 0;
 
 #ifndef AS_NO_THREADS
-	int r = 0;
 #if defined AS_POSIX_THREADS
-	asPWORD id = (asPWORD)pthread_self();
+	asCThreadLocalData *tld = (asCThreadLocalData*)pthread_getspecific((pthread_key_t)threadManager->tlsKey);
 #elif defined AS_WINDOWS_THREADS
-	asPWORD id = (asPWORD)GetCurrentThreadId();
+	#if !defined(_MSC_VER) || !(WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
+		asCThreadLocalData *tld = (asCThreadLocalData*)TlsGetValue((DWORD)threadManager->tlsKey);
+	#endif
 #endif
 
-	ENTERCRITICALSECTION(threadManager->criticalSection);
+	if( tld == 0 )
+		return 0;
 
-	asSMapNode<asPWORD,asCThreadLocalData*> *cursor = 0;
-	if( threadManager->tldMap.MoveTo(&cursor, id) )
+	if( tld->activeContexts.GetLength() == 0 )
 	{
-		asCThreadLocalData *tld = threadManager->tldMap.GetValue(cursor);
-		
-		// Can we really remove it at this time?
-		if( tld->activeContexts.GetLength() == 0 )
-		{
-			asDELETE(tld,asCThreadLocalData);
-			threadManager->tldMap.Erase(cursor);
-			r = 0;
-		}
-		else
-			r = asCONTEXT_ACTIVE;
+		asDELETE(tld,asCThreadLocalData);
+		#if defined AS_POSIX_THREADS
+			pthread_setspecific((pthread_key_t)threadManager->tlsKey, 0);
+		#elif defined AS_WINDOWS_THREADS
+			#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
+				tld = 0;
+			#else
+				TlsSetValue((DWORD)threadManager->tlsKey, 0);
+			#endif
+		#endif
+		return 0;
 	}
+	else
+		return asCONTEXT_ACTIVE;
 
-	LEAVECRITICALSECTION(threadManager->criticalSection);
-
-	return r;
 #else
 	if( threadManager->tld )
 	{
@@ -257,28 +275,6 @@ int asCThreadManager::CleanupLocalData()
 #endif
 }
 
-#ifndef AS_NO_THREADS
-asCThreadLocalData *asCThreadManager::GetLocalData(asPWORD threadId)
-{
-	// We're already in the critical section when this function is called
-
-	asCThreadLocalData *tld = 0;
-
-	asSMapNode<asPWORD,asCThreadLocalData*> *cursor = 0;
-	if( threadManager->tldMap.MoveTo(&cursor, threadId) )
-		tld = threadManager->tldMap.GetValue(cursor);
-
-	return tld;
-}
-
-void asCThreadManager::SetLocalData(asPWORD threadId, asCThreadLocalData *tld)
-{
-	// We're already in the critical section when this function is called
-
-	tldMap.Insert(threadId, tld);
-}
-#endif
-
 asCThreadLocalData *asCThreadManager::GetLocalData()
 {
 	if( threadManager == 0 )
@@ -286,23 +282,25 @@ asCThreadLocalData *asCThreadManager::GetLocalData()
 
 #ifndef AS_NO_THREADS
 #if defined AS_POSIX_THREADS
-	asPWORD id = (asPWORD)pthread_self();
-#elif defined AS_WINDOWS_THREADS
-	asPWORD id = (asPWORD)GetCurrentThreadId();
-#endif
-
-	ENTERCRITICALSECTION(threadManager->criticalSection);
-
-	asCThreadLocalData *tld = threadManager->GetLocalData(id);
+	asCThreadLocalData *tld = (asCThreadLocalData*)pthread_getspecific((pthread_key_t)threadManager->tlsKey);
 	if( tld == 0 )
 	{
-		// Create a new tld
 		tld = asNEW(asCThreadLocalData)();
-		if( tld )
-			threadManager->SetLocalData(id, tld);
+		pthread_setspecific((pthread_key_t)threadManager->tlsKey, tld);
 	}
-
-	LEAVECRITICALSECTION(threadManager->criticalSection);
+#elif defined AS_WINDOWS_THREADS
+	#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
+		if( tld == 0 )
+			tld = asNEW(asCThreadLocalData)();
+	#else
+		asCThreadLocalData *tld = (asCThreadLocalData*)TlsGetValue((DWORD)threadManager->tlsKey);
+		if( tld == 0 )
+		{
+ 			tld = asNEW(asCThreadLocalData)();
+			TlsSetValue((DWORD)threadManager->tlsKey, tld);
+ 		}
+	#endif
+#endif
 
 	return tld;
 #else
@@ -331,7 +329,14 @@ asCThreadCriticalSection::asCThreadCriticalSection()
 #if defined AS_POSIX_THREADS
 	pthread_mutex_init(&cs, 0);
 #elif defined AS_WINDOWS_THREADS
+#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
+	// Only the Ex version is available on Windows Store
+	InitializeCriticalSectionEx(&cs, 4000, 0);
+#else
+	// Only the non-Ex version is available on WinXP and older
+	// MinGW also only defines this version
 	InitializeCriticalSection(&cs);
+#endif
 #endif
 }
 
@@ -380,10 +385,17 @@ asCThreadReadWriteLock::asCThreadReadWriteLock()
 	asASSERT( r == 0 );
 	UNUSED_VAR(r);
 #elif defined AS_WINDOWS_THREADS
+#if defined(_MSC_VER) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
+	// Only the Ex versions are available on Windows Store
+
 	// Create a semaphore to allow up to maxReaders simultaneous readers
-	readLocks = CreateSemaphore(NULL, maxReaders, maxReaders, 0);
+	readLocks = CreateSemaphoreExW(NULL, maxReaders, maxReaders, 0, 0, 0);
 	// Create a critical section to synchronize writers
+	InitializeCriticalSectionEx(&writeLock, 4000, 0);
+#else
+	readLocks = CreateSemaphoreW(NULL, maxReaders, maxReaders, 0);
 	InitializeCriticalSection(&writeLock);
+#endif
 #endif
 }
 
@@ -410,7 +422,7 @@ void asCThreadReadWriteLock::AcquireExclusive()
 	// If we try to lock all at once it is quite possible the writer will
 	// never succeed.
 	for( asUINT n = 0; n < maxReaders; n++ )
-		WaitForSingleObject(readLocks, INFINITE);
+		WaitForSingleObjectEx(readLocks, INFINITE, FALSE);
 
 	// Allow another writer to lock. It will only be able to
 	// lock the readers when this writer releases them anyway.
@@ -434,7 +446,7 @@ void asCThreadReadWriteLock::AcquireShared()
 	pthread_rwlock_rdlock(&lock);
 #elif defined AS_WINDOWS_THREADS
 	// Lock a reader slot
-	WaitForSingleObject(readLocks, INFINITE);
+	WaitForSingleObjectEx(readLocks, INFINITE, FALSE);
 #endif
 }
 

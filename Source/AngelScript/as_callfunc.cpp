@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2013 Andreas Jonsson
+   Copyright (c) 2003-2014 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -41,6 +41,7 @@
 #include "as_callfunc.h"
 #include "as_scriptengine.h"
 #include "as_texts.h"
+#include "as_context.h"
 
 BEGIN_AS_NAMESPACE
 
@@ -75,13 +76,18 @@ int DetectCallingConvention(bool isMethod, const asSFuncPtr &ptr, int callConv, 
 				return asINVALID_ARG;
 			internal->objForThiscall = objForThiscall;
 			internal->callConv       = ICC_THISCALL;
+
+			// This is really a thiscall, so it is necessary to check for virtual method pointers
+			base = asCALL_THISCALL;
+			isMethod = true;
 		}
 		else if( base == asCALL_GENERIC )
 			internal->callConv = ICC_GENERIC_FUNC;
 		else
 			return asNOT_SUPPORTED;
 	}
-	else
+	
+	if( isMethod )
 	{
 #ifndef AS_NO_CLASS_METHODS
 		if( base == asCALL_THISCALL )
@@ -136,11 +142,14 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 int PrepareSystemFunction(asCScriptFunction *func, asSSystemFunctionInterface *internal, asCScriptEngine *engine)
 {
 #ifdef AS_MAX_PORTABILITY
+	UNUSED_VAR(func);
+	UNUSED_VAR(internal);
+	UNUSED_VAR(engine);
+
 	// This should never happen, as when AS_MAX_PORTABILITY is on, all functions 
 	// are asCALL_GENERIC, which are prepared by PrepareSystemFunctionGeneric
 	asASSERT(false);
-#endif
-
+#else
 	// References are always returned as primitive data
 	if( func->returnType.IsReference() || func->returnType.IsObjectHandle() )
 	{
@@ -156,7 +165,7 @@ int PrepareSystemFunction(asCScriptFunction *func, asSSystemFunctionInterface *i
 		// Only value types can be returned by value
 		asASSERT( objType & asOBJ_VALUE );
 
-		if( !(objType & (asOBJ_APP_CLASS | asOBJ_APP_PRIMITIVE | asOBJ_APP_FLOAT)) )
+		if( !(objType & (asOBJ_APP_CLASS | asOBJ_APP_PRIMITIVE | asOBJ_APP_FLOAT | asOBJ_APP_ARRAY)) )
 		{
 			// If the return is by value then we need to know the true type
 			engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, func->GetDeclarationStr().AddressOf());
@@ -165,6 +174,13 @@ int PrepareSystemFunction(asCScriptFunction *func, asSSystemFunctionInterface *i
 			str.Format(TXT_CANNOT_RET_TYPE_s_BY_VAL, func->returnType.GetObjectType()->name.AddressOf());
 			engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
 			engine->ConfigError(asINVALID_CONFIGURATION, 0, 0, 0);
+		}
+		else if( objType & asOBJ_APP_ARRAY )
+		{
+			// Array types are always returned in memory
+			internal->hostReturnInMemory = true;
+			internal->hostReturnSize     = sizeof(void*)/4;
+			internal->hostReturnFloat = false;
 		}
 		else if( objType & asOBJ_APP_CLASS )
 		{
@@ -307,7 +323,7 @@ int PrepareSystemFunction(asCScriptFunction *func, asSSystemFunctionInterface *i
 			internal->takesObjByVal = true;
 
 			// Can't pass objects by value unless the application type is informed
-			if( !(func->parameterTypes[n].GetObjectType()->flags & (asOBJ_APP_CLASS | asOBJ_APP_PRIMITIVE | asOBJ_APP_FLOAT)) )
+			if( !(func->parameterTypes[n].GetObjectType()->flags & (asOBJ_APP_CLASS | asOBJ_APP_PRIMITIVE | asOBJ_APP_FLOAT | asOBJ_APP_ARRAY)) )
 			{
 				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, func->GetDeclarationStr().AddressOf());
 	
@@ -354,7 +370,7 @@ int PrepareSystemFunction(asCScriptFunction *func, asSSystemFunctionInterface *i
 			break;
 		}
 	}
-
+#endif // !defined(AS_MAX_PORTABILITY)
 	return 0;
 }
 
@@ -473,6 +489,7 @@ int CallSystemFunction(int id, asCContext *context, void *objectPointer)
 	}
 
 	context->m_callingSystemFunction = descr;
+	bool cppException = false;
 #ifdef AS_NO_EXCEPTIONS
 	retQW = CallSystemFunctionNative(context, descr, obj, args, sysFunc->hostReturnInMemory ? retPointer : 0, retQW2);
 #else
@@ -487,6 +504,8 @@ int CallSystemFunction(int id, asCContext *context, void *objectPointer)
 	}
 	catch(...)
 	{
+		cppException = true;
+
 		// Convert the exception to a script exception so the VM can 
 		// properly report the error to the application and then clean up
 		context->SetException(TXT_EXCEPTION_CAUGHT);
@@ -510,7 +529,7 @@ int CallSystemFunction(int id, asCContext *context, void *objectPointer)
 		{
 			bool needFree = false;
 			asCDataType &dt = descr->parameterTypes[n];
-#ifdef COMPLEX_OBJS_PASSED_BY_REF				
+#ifdef COMPLEX_OBJS_PASSED_BY_REF
 			if( dt.GetObjectType() && dt.GetObjectType()->flags & COMPLEX_MASK ) needFree = true;
 #endif
 #ifdef AS_LARGE_OBJS_PASSED_BY_REF
@@ -589,7 +608,7 @@ int CallSystemFunction(int id, asCContext *context, void *objectPointer)
 				}
 			}
 
-			if( context->m_status == asEXECUTION_EXCEPTION )
+			if( context->m_status == asEXECUTION_EXCEPTION && !cppException )
 			{
 				// If the function raised a script exception it really shouldn't have 
 				// initialized the object. However, as it is a soft exception there is 

@@ -265,12 +265,12 @@ ScriptFile::~ScriptFile()
 
 void ScriptFile::AddRef() const
 {
-    ++refCount;
+    asAtomicInc( refCount );
 }
 
 void ScriptFile::Release() const
 {
-    if( --refCount == 0 )
+    if( asAtomicDec( refCount ) == 0 )
         delete this;
 }
 
@@ -356,7 +356,7 @@ int ScriptFile::GetSize() const
 
     long pos = ftell( file );
     fseek( file, 0, SEEK_END );
-    int size = (int) ftell( file );
+    int  size = (int) ftell( file );
     fseek( file, pos, SEEK_SET );
 
     return size;
