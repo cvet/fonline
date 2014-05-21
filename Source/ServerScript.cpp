@@ -329,6 +329,7 @@ bool FOServer::ReloadClientScripts()
 
     Script::SetLoadLibraryCompiler( true );
 
+    FOMsg  msg_script;
     int    num = STR_INTERNAL_SCRIPT_MODULES;
     int    errors = 0;
     char   buf[ MAX_FOTEXT ];
@@ -390,16 +391,8 @@ bool FOServer::ReloadClientScripts()
             }
 
             // Add module name and bytecode
-            for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
-            {
-                LanguagePack& lang = *it;
-                FOMsg&        msg_script = lang.Msg[ TEXTMSG_INTERNAL ];
-
-                for( int i = 0; i < 10; i++ )
-                    msg_script.EraseStr( num + i );
-                msg_script.AddStr( num, value.c_str() );
-                msg_script.AddBinary( num + 1, (uchar*) &buf[ 0 ], (uint) buf.size() );
-            }
+            msg_script.AddStr( num, value.c_str() );
+            msg_script.AddBinary( num + 1, (uchar*) &buf[ 0 ], (uint) buf.size() );
             num += 2;
         }
         else
@@ -419,7 +412,7 @@ bool FOServer::ReloadClientScripts()
     }
 
     // Imported functions
-    Script::BindImportedFunctions();
+    errors += Script::BindImportedFunctions();
 
     // Add native dlls to MSG
     int         dll_num = STR_INTERNAL_SCRIPT_DLLS;
@@ -457,16 +450,8 @@ bool FOServer::ReloadClientScripts()
             }
 
             // Add dll name and binary
-            for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
-            {
-                LanguagePack& lang = *it;
-                FOMsg&        msg_script = lang.Msg[ TEXTMSG_INTERNAL ];
-
-                for( int i = 0; i < 10; i++ )
-                    msg_script.EraseStr( dll_num + i );
-                msg_script.AddStr( dll_num, fname );
-                msg_script.AddBinary( dll_num + 1, dll.GetBuf(), dll.GetFsize() );
-            }
+            msg_script.AddStr( dll_num, fname );
+            msg_script.AddBinary( dll_num + 1, dll.GetBuf(), dll.GetFsize() );
             dll_num += 2;
         }
     }
@@ -490,24 +475,21 @@ bool FOServer::ReloadClientScripts()
     #endif
     Script::SetEngine( old_engine );
 
+    // Exit if have errors
+    if( errors )
+        return false;
+
     // Add config text and pragmas
+    msg_script.AddStr( STR_INTERNAL_SCRIPT_CONFIG, config.c_str() );
+    msg_script.AddStr( STR_INTERNAL_SCRIPT_VERSION, Str::FormatBuf( "%d", CLIENT_SCRIPT_BINARY_VERSION ) );
+    for( uint i = 0, j = (uint) pragmas.size(); i < j; i++ )
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + i, pragmas[ i ].c_str() );
+
+    // Copy generated MSG to language packs
     for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
     {
         LanguagePack& lang = *it;
-        FOMsg&        msg_script = lang.Msg[ TEXTMSG_INTERNAL ];
-
-        msg_script.EraseStr( STR_INTERNAL_SCRIPT_CONFIG );
-        msg_script.AddStr( STR_INTERNAL_SCRIPT_CONFIG, config.c_str() );
-        msg_script.EraseStr( STR_INTERNAL_SCRIPT_VERSION );
-        msg_script.AddStr( STR_INTERNAL_SCRIPT_VERSION, Str::FormatBuf( "%d", CLIENT_SCRIPT_BINARY_VERSION ) );
-
-        for( uint i = 0, j = (uint) pragmas.size(); i < j; i++ )
-        {
-            msg_script.EraseStr( STR_INTERNAL_SCRIPT_PRAGMAS + i );
-            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + i, pragmas[ i ].c_str() );
-        }
-        for( uint i = 0, j = 10; i < j; i++ )
-            msg_script.EraseStr( STR_INTERNAL_SCRIPT_PRAGMAS + (uint) pragmas.size() + i );
+        lang.Msg[ TEXTMSG_INTERNAL ] = msg_script;
     }
 
     // Regenerate update files
