@@ -51,22 +51,13 @@ void FOMsg::AddStr( uint num, const string& str )
 void FOMsg::AddBinary( uint num, const uchar* binary, uint len )
 {
     CharVec str;
-    str.reserve( len * 2 + 1 );
+    str.resize( len * 2 + 1 );
+    size_t  str_cur = 0;
     for( uint i = 0; i < len; i++ )
     {
-        char c = (char) binary[ i ];
-        if( c == 0 || c == '}' )
-        {
-            str.push_back( 2 );
-            str.push_back( c + 1 );
-        }
-        else
-        {
-            str.push_back( 1 );
-            str.push_back( c );
-        }
+        Str::HexToStr( binary[ i ], &str[ str_cur ] );
+        str_cur += 2;
     }
-    str.push_back( 0 );
 
     AddStr( num, (char*) &str[ 0 ] );
 }
@@ -160,14 +151,10 @@ const uchar* FOMsg::GetBinary( uint num, uint& len )
 
     const char* str = GetStr( num );
     binary->clear();
-    for( int i = 0, j = Str::Length( str ); i < j - 1; i += 2 )
+    while( *str )
     {
-        if( str[ i ] == 1 )
-            binary->push_back( str[ i + 1 ] );
-        else if( str[ i ] == 2 )
-            binary->push_back( str[ i + 1 ] - 1 );
-        else
-            return NULL;
+        binary->push_back( Str::StrToHex( str ) );
+        str += 2;
     }
 
     len = (uint) binary->size();

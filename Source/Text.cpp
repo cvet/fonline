@@ -746,6 +746,32 @@ uint Str::AtoUI( const char* str )
     return (uint) strtoul( str, NULL, 10 );
 }
 
+void Str::HexToStr( uchar hex, char* str )
+{
+    for( int i = 0; i < 2; i++ )
+    {
+        int val = ( i == 0 ? hex >> 4 : hex & 0xF );
+        if( val < 10 )
+            *str++ = '0' + val;
+        else
+            *str++ = 'A' + val - 10;
+    }
+}
+
+uchar Str::StrToHex( const char* str )
+{
+    uchar result = 0;
+    for( int i = 0; i < 2; i++ )
+    {
+        char c = *str++;
+        if( c < 'A' )
+            result |= ( c - '0' ) << ( i == 0 ? 4 : 0 );
+        else
+            result |= ( c - 'A' + 10 ) << ( i == 0 ? 4 : 0 );
+    }
+    return result;
+}
+
 static char BigBuf[ BIG_BUF_SIZE ] = { 0 };
 char* Str::GetBigBuf()
 {
