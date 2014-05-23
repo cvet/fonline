@@ -862,10 +862,17 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
         FbxProperty         prop_diffuse = ( fbx_material ? fbx_material->FindProperty( "DiffuseColor" ) : FbxProperty() );
         if( prop_diffuse.IsValid() && prop_diffuse.GetSrcObjectCount() > 0 )
         {
-            char tex_fname[ MAX_FOPATH ];
-            FbxFileTexture* fbx_file_texture = (FbxFileTexture*) prop_diffuse.GetSrcObject();
-            FileManager::ExtractFileName( fbx_file_texture->GetFileName(), tex_fname );
-            mesh->DiffuseTexture = tex_fname;
+            for( int i = 0, j = prop_diffuse.GetSrcObjectCount(); i < j; i++ )
+            {
+                if( Str::Compare( prop_diffuse.GetSrcObject( i )->GetClassId().GetName(), "FbxFileTexture" ) )
+                {
+                    char tex_fname[ MAX_FOPATH ];
+                    FbxFileTexture* fbx_file_texture = (FbxFileTexture*) prop_diffuse.GetSrcObject( i );
+                    FileManager::ExtractFileName( fbx_file_texture->GetFileName(), tex_fname );
+                    mesh->DiffuseTexture = tex_fname;
+                    break;
+                }
+            }
         }
 
         // Effect
