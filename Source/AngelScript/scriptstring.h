@@ -64,14 +64,16 @@ public:
         return *this;
     }
 
-    virtual void assign( const char* buf, uint count );
-    virtual void assign( const char* buf );
-    virtual void append( const char* buf, uint count );
-    virtual void append( const char* buf );
-    virtual void reserve( uint count );
-    virtual void rawResize( uint count );
-    virtual uint lengthUTF8() const;
-    virtual bool indexByteToUTF8( int& index, uint* length = NULL, uint offset = 0 );
+    virtual void  assign( const char* buf, uint count );
+    virtual void  assign( const char* buf );
+    virtual void  append( const char* buf, uint count );
+    virtual void  append( const char* buf );
+    virtual void  reserve( uint count );
+    virtual void  rawResize( uint count );
+    virtual uint  lengthUTF8() const;
+    virtual bool  indexByteToUTF8( int& index, uint* length = NULL, uint offset = 0 );
+    virtual int   toInt( int defaultValue ) const;
+    virtual float toFloat( float defaultValue ) const;
 
     const char*        c_str()     const { return buffer.c_str(); }
     uint               length()    const { return (uint) buffer.length(); }

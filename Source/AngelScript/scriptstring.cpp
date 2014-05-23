@@ -6,6 +6,50 @@
 
 #define assert( x )
 
+int ScriptString::toInt( int defaultValue ) const
+{
+    const char* str = c_str();
+    while( *str == ' ' || *str == '\t' )
+        ++str;
+
+    char* end_str = NULL;
+    int   result;
+    if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
+        result = (int) strtol( str + 2, &end_str, 16 );
+    else
+        result = (int) strtol( str, &end_str, 10 );
+
+    if( !end_str || end_str == str )
+        return defaultValue;
+
+    while( *end_str == ' ' || *end_str == '\t' )
+        ++end_str;
+    if( *end_str )
+        return defaultValue;
+
+    return result;
+}
+
+float ScriptString::toFloat( float defaultValue ) const
+{
+    const char* str = c_str();
+    while( *str == ' ' || *str == '\t' )
+        ++str;
+
+    char* end_str = NULL;
+    float result = (float) strtod( str, &end_str );
+
+    if( !end_str || end_str == str )
+        return defaultValue;
+
+    while( *end_str == ' ' || *end_str == '\t' )
+        ++end_str;
+    if( *end_str )
+        return defaultValue;
+
+    return result;
+}
+
 bool ScriptString::indexByteToUTF8( int& index, uint* length, uint offset )
 {
     if( index < 0 )
@@ -495,6 +539,12 @@ void RegisterScriptString( asIScriptEngine* engine )
     r = engine->RegisterObjectMethod( "string", "uint8 rawGet(uint) const", asMETHODPR( ScriptString, rawGet, ( uint ), char ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "string", "void rawSet(uint, uint8)", asMETHODPR( ScriptString, rawSet, ( uint, char ), void ), asCALL_THISCALL );
+    assert( r >= 0 );
+
+    // Conversion methods
+    r = engine->RegisterObjectMethod( "string", "int toInt(int defaultValue = 0) const", asMETHOD( ScriptString, toInt ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "float toFloat(float defaultValue = 0) const", asMETHOD( ScriptString, toFloat ), asCALL_THISCALL );
     assert( r >= 0 );
 
     // TODO: Add factory  string(const string &in str, int repeatCount)
