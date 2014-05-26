@@ -14,7 +14,6 @@
 				<Compiler>
 					<Add option="-O2" />
 					<Add option="-DNDEBUG" />
-					<Add option="-DFONLINE_SCRIPT_COMPILER" />
 				</Compiler>
 				<Linker>
 					<Add option="-rdynamic" />
@@ -29,6 +28,7 @@
 			<Add option="-Wno-invalid-offsetof" />
 			<Add option="-Wno-unused-result" />
 			<Add option="-m32" />
+			<Add option="-DFONLINE_SCRIPT_COMPILER" />
 			<Add directory="../Source" />
 		</Compiler>
 		<Linker>

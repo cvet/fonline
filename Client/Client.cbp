@@ -29,7 +29,6 @@
 			<Add option="-Wno-unused-result" />
 			<Add option="-m32" />
 			<Add option="-DFONLINE_CLIENT" />
-			<Add option="-DAS_NO_THREADS" />
 			<Add directory="../Source" />
 		</Compiler>
 		<Linker>

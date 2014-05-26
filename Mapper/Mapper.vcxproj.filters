@@ -613,5 +613,13 @@
     <ClCompile Include="..\Source\GraphicStructures.cpp">
       <Filter>Mapper</Filter>
     </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\as_callfunc_x64_msvc.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="..\Source\AngelScript\as_callfunc_x64_msvc_asm.asm">
+      <Filter>AngelScript</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

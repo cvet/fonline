@@ -116,7 +116,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <AdditionalIncludeDirectories>..\Source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;FONLINE_CLIENT;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0;AS_NO_THREADS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FONLINE_CLIENT;NDEBUG;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -179,7 +179,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <AdditionalIncludeDirectories>..\Source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;FONLINE_CLIENT;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0;AS_NO_THREADS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FONLINE_CLIENT;NDEBUG;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_HAS_EXCEPTIONS=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -239,7 +239,7 @@
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <AdditionalIncludeDirectories>..\Source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>FONLINE_CLIENT;_WINDOWS;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_SECURE_SCL=0;_HAS_EXCEPTIONS=0;_DEBUG;DEBUG;AS_DEBUG;D3D_DEBUG_INFO;AS_NO_THREADS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FONLINE_CLIENT;DEBUG;_DEBUG;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>false</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
       <ExceptionHandling>false</ExceptionHandling>
@@ -306,7 +306,7 @@
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <AdditionalIncludeDirectories>..\Source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>FONLINE_CLIENT;_WINDOWS;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_SECURE_SCL=0;_HAS_EXCEPTIONS=0;_DEBUG;DEBUG;AS_DEBUG;D3D_DEBUG_INFO;AS_NO_THREADS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FONLINE_CLIENT;DEBUG;_DEBUG;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>false</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
       <ExceptionHandling>false</ExceptionHandling>
