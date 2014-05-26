@@ -130,8 +130,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     if( !engine->Init() )
     {
         WriteLog( "FOnline engine initialization fail.\n" );
-        GameOpt.Quit = true;
-        return -1;
+        ExitProcess( -1 );
     }
 
     // iOS loop

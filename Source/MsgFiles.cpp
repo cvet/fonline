@@ -79,7 +79,7 @@ const char* FOMsg::GetStr( uint num )
     switch( str_count )
     {
     case 0:
-        return "error";
+        return MSG_ERROR_MESSAGE;
     case 1:
         break;
     default:
@@ -97,7 +97,7 @@ const char* FOMsg::GetStr( uint num, uint skip )
     auto it = strData.find( num );
 
     if( skip >= str_count )
-        return "error";
+        return MSG_ERROR_MESSAGE;
     for( uint i = 0; i < skip; i++ )
         ++it;
 
