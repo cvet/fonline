@@ -2,7 +2,7 @@
 BIND_ASSERT( engine->SetEngineProperty( asEP_ALLOW_UNSAFE_REFERENCES, true ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_OPTIMIZE_BYTECODE, true ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_SCRIPT_SCANNER, 1 ) );
-BIND_ASSERT( engine->SetEngineProperty( asEP_USE_CHARACTER_LITERALS, 1 ) );
+BIND_ASSERT( engine->SetEngineProperty( asEP_USE_CHARACTER_LITERALS, true ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_AUTO_GARBAGE_COLLECT, false ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true ) );
 
@@ -780,7 +780,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetAnyData(string& name, uint
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetAnyData(string& name, uint16[]& data)", asFUNCTION( BIND_CLASS Global_GetAnyData ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetAnyData(string& name, uint8[]& data)", asFUNCTION( BIND_CLASS Global_GetAnyData ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsAnyData(string& name)", asFUNCTION( BIND_CLASS Global_IsAnyData ), asCALL_CDECL ) );
-// BIND_ASSERT( engine->RegisterGlobalFunction( "bool AnyDataClass(?& storedClass, ?[]& array)", asFUNCTION( BIND_CLASS Global_AnyDataClass ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void EraseAnyData(string& name)", asFUNCTION( BIND_CLASS Global_EraseAnyData ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "Map@+ GetMap(uint mapId)", asFUNCTION( BIND_CLASS Global_GetMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "Map@+ GetMapByPid(uint16 mapPid, uint skipCount)", asFUNCTION( BIND_CLASS Global_GetMapByPid ), asCALL_CDECL ) );
@@ -1044,6 +1043,13 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void KeyboardPress(uint8 key1, uin
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetRainAnimation(string@+ fallAnimName, string@+ dropAnimName)", asFUNCTION( BIND_CLASS Global_SetRainAnimation ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SaveScreenshot()", asFUNCTION( BIND_CLASS Global_SaveScreenshot ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SaveLogFile()", asFUNCTION( BIND_CLASS Global_SaveLogFile ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void SetCacheData(const string& name, const uint8[]& data)", asFUNCTION( BIND_CLASS Global_SetCacheData ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void SetCacheData(const string& name, const uint8[]& data, uint dataSize)", asFUNCTION( BIND_CLASS Global_SetCacheDataSize ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetCacheData(const string& name, uint8[]& data)", asFUNCTION( BIND_CLASS Global_GetCacheData ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void SetCacheDataStr(const string& name, const string& data)", asFUNCTION( BIND_CLASS Global_SetCacheDataStr ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetCacheDataStr(const string& name)", asFUNCTION( BIND_CLASS Global_GetCacheDataStr ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCacheData(const string& name)", asFUNCTION( BIND_CLASS Global_IsCacheData ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void EraseCacheData(const string& name)", asFUNCTION( BIND_CLASS Global_EraseCacheData ), asCALL_CDECL ) );
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ConsoleActive", &BIND_CLASS ConsoleActive ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GmapActive", &BIND_CLASS GmapActive ) );

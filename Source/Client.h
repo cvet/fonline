@@ -677,6 +677,13 @@ public:
         static void          Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name );
         static bool          Global_SaveScreenshot();
         static bool          Global_SaveLogFile();
+        static void          Global_SetCacheData( const ScriptString& name, const ScriptArray& data );
+        static void          Global_SetCacheDataSize( const ScriptString& name, const ScriptArray& data, uint data_size );
+        static bool          Global_GetCacheData( const ScriptString& name, ScriptArray& data );
+        static void          Global_SetCacheDataStr( const ScriptString& name, const ScriptString& str );
+        static ScriptString* Global_GetCacheDataStr( const ScriptString& name );
+        static bool          Global_IsCacheData( const ScriptString& name );
+        static void          Global_EraseCacheData( const ScriptString& name );
 
         static bool&         ConsoleActive;
         static bool&         GmapActive, & GmapWait;

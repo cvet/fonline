@@ -144,7 +144,7 @@ namespace Script
     ScriptArray* CreateArray( const char* type );
 
     template< typename Type >
-    void AppendVectorToArray( vector< Type >& vec, ScriptArray* arr )
+    void AppendVectorToArray( const vector< Type >& vec, ScriptArray* arr )
     {
         if( !vec.empty() && arr )
         {
@@ -158,7 +158,7 @@ namespace Script
         }
     }
     template< typename Type >
-    void AppendVectorToArrayRef( vector< Type >& vec, ScriptArray* arr )
+    void AppendVectorToArrayRef( const vector< Type >& vec, ScriptArray* arr )
     {
         if( !vec.empty() && arr )
         {
@@ -173,7 +173,7 @@ namespace Script
         }
     }
     template< typename Type >
-    void AssignScriptArrayInVector( vector< Type >& vec, ScriptArray* arr )
+    void AssignScriptArrayInVector( vector< Type >& vec, const ScriptArray* arr )
     {
         if( arr )
         {

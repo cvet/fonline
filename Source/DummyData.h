@@ -1004,6 +1004,13 @@ struct BindClass
     static void Global_RefreshMap()             {}
     static void Global_SaveScreenshot()         {}
     static void Global_SaveLogFile()            {}
+    static void Global_SetCacheData()           {}
+    static void Global_SetCacheDataSize()       {}
+    static void Global_GetCacheData()           {}
+    static void Global_SetCacheDataStr()        {}
+    static void Global_GetCacheDataStr()        {}
+    static void Global_IsCacheData()            {}
+    static void Global_EraseCacheData()         {}
 
     static int  ConsoleActive;
     static int  GmapActive, GmapWait;

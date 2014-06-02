@@ -331,7 +331,7 @@ bool FOClient::Init()
         StrVec processed_langs;
         processed_langs.push_back( CurLang.NameStr );
         StrVec msg_entires;
-        Crypt.GetCacheDataNames( CACHE_MSG_PREFIX, msg_entires );
+        Crypt.GetCacheNames( CACHE_MSG_PREFIX, msg_entires );
         for( size_t i = 0, j = msg_entires.size(); i < j; i++ )
         {
             string lang = msg_entires[ i ].substr( Str::Length( CACHE_MSG_PREFIX "\\" ), 4 );
@@ -12347,12 +12347,56 @@ void FOClient::SScriptFunc::Global_ChangeCursor( int cursor )
 
 bool FOClient::SScriptFunc::Global_SaveScreenshot()
 {
-    return ( Self->SaveScreenshot() );
+    return Self->SaveScreenshot();
 }
 
 bool FOClient::SScriptFunc::Global_SaveLogFile()
 {
-    return ( Self->SaveLogFile() );
+    return Self->SaveLogFile();
+}
+
+void FOClient::SScriptFunc::Global_SetCacheData( const ScriptString& name, const ScriptArray& data )
+{
+    UCharVec data_vec;
+    Script::AssignScriptArrayInVector( data_vec, &data );
+    Crypt.SetCache( name.c_str(), data_vec );
+}
+
+void FOClient::SScriptFunc::Global_SetCacheDataSize( const ScriptString& name, const ScriptArray& data, uint data_size )
+{
+    UCharVec data_vec;
+    Script::AssignScriptArrayInVector( data_vec, &data );
+    data_vec.resize( data_size );
+    Crypt.SetCache( name.c_str(), data_vec );
+}
+
+bool FOClient::SScriptFunc::Global_GetCacheData( const ScriptString& name, ScriptArray& data )
+{
+    UCharVec data_vec;
+    if( !Crypt.GetCache( name.c_str(), data_vec ) )
+        return false;
+    Script::AppendVectorToArray( data_vec, &data );
+    return true;
+}
+
+void FOClient::SScriptFunc::Global_SetCacheDataStr( const ScriptString& name, const ScriptString& str )
+{
+    Crypt.SetCache( name.c_str(), str.c_std_str() );
+}
+
+ScriptString* FOClient::SScriptFunc::Global_GetCacheDataStr( const ScriptString& name )
+{
+    return new ScriptString( Crypt.GetCache( name.c_str() ) );
+}
+
+bool FOClient::SScriptFunc::Global_IsCacheData( const ScriptString& name )
+{
+    return Crypt.IsCache( name.c_str() );
+}
+
+void FOClient::SScriptFunc::Global_EraseCacheData( const ScriptString& name )
+{
+    Crypt.EraseCache( name.c_str() );
 }
 
 bool&  FOClient::SScriptFunc::ConsoleActive = FOClient::ConsoleActive;

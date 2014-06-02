@@ -27,6 +27,7 @@ void   FileClose( void* file );
 bool   FileRead( void* file, void* buf, uint len, uint* rb = NULL );
 bool   FileWrite( void* file, const void* buf, uint len );
 bool   FileSetPointer( void* file, int offset, int origin );
+uint   FileGetPointer( void* file );
 uint64 FileGetWriteTime( void* file );
 uint   FileGetSize( void* file );
 bool   FileDelete( const char* fname );
