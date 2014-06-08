@@ -85,6 +85,20 @@ void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
     return file;
 }
 
+void* FileOpenForReadWrite( const char* fname, bool write_through /* = false */ )
+{
+    wchar_t wc[ MAX_FOPATH ];
+    HANDLE  file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+    if( file == INVALID_HANDLE_VALUE )
+    {
+        CreateDirectoryTree( fname );
+        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+    }
+    if( file == INVALID_HANDLE_VALUE )
+        return NULL;
+    return file;
+}
+
 void FileClose( void* file )
 {
     if( file )
@@ -274,6 +288,25 @@ void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
     {
         CreateDirectoryTree( fname_ );
         f = fopen( fname_, "ab" );
+    }
+    if( !f )
+        return NULL;
+    FileDesc* fd = new FileDesc();
+    fd->f = f;
+    fd->writeThrough = write_through;
+    return (void*) fd;
+}
+
+void* FileOpenForReadWrite( const char* fname, bool write_through /* = false */ )
+{
+    char fname_[ MAX_FOPATH ];
+    SetRelativePath( fname, fname_ );
+
+    FILE* f = fopen( fname_, "r+b" );
+    if( !f )
+    {
+        CreateDirectoryTree( fname_ );
+        f = fopen( fname_, "r+b" );
     }
     if( !f )
         return NULL;

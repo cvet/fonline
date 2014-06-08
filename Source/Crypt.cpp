@@ -289,6 +289,12 @@ bool CryptManager::IsCacheTable( const char* cache_fname )
 
 bool CryptManager::CreateCacheTable( const char* cache_fname )
 {
+    if( CacheTableFile )
+    {
+        FileClose( CacheTableFile );
+        CacheTableFile = NULL;
+    }
+
     void* f = FileOpen( cache_fname, true );
     if( !f )
         return false;
@@ -307,9 +313,7 @@ bool CryptManager::CreateCacheTable( const char* cache_fname )
     }
 
     FileClose( f );
-    if( CacheTableFile )
-        FileClose( CacheTableFile );
-    CacheTableFile = FileOpen( cache_fname, false );
+    CacheTableFile = FileOpenForReadWrite( cache_fname, true );
     return CacheTableFile != NULL;
 }
 
@@ -348,8 +352,9 @@ bool CryptManager::SetCacheTable( const char* cache_fname )
         }
     }
 
-    CacheTableFile = f;
-    return true;
+    FileClose( f );
+    CacheTableFile = FileOpenForReadWrite( cache_fname, true );
+    return CacheTableFile != NULL;
 }
 
 void CryptManager::GetCacheNames( const char* start_with, StrVec& names )
@@ -473,7 +478,8 @@ void CryptManager::SetCache( const char* data_name, const uchar* data, uint data
         if( max_len < 128 )
         {
             max_len = 1024;
-            FileWrite( CacheTableFile, (void*) &crcTable[ 1 ], max_len );
+            FileWrite( CacheTableFile, (void*) &crcTable[ 1 ], 512 );
+            FileWrite( CacheTableFile, (void*) &crcTable[ 1 ], 512 );
         }
         else
         {
