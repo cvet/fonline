@@ -485,6 +485,12 @@ bool FOServer::ReloadClientScripts()
     for( uint i = 0, j = (uint) pragmas.size(); i < j; i++ )
         msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + i, pragmas[ i ].c_str() );
 
+    // Copy critter types
+    LanguagePack& default_lang = *LangPacks.begin();
+    for( int i = 0; i < MAX_CRIT_TYPES; i++ )
+        if( default_lang.Msg[ TEXTMSG_INTERNAL ].Count( STR_INTERNAL_CRTYPE( i ) ) )
+            msg_script.AddStr( STR_INTERNAL_CRTYPE( i ), default_lang.Msg[ TEXTMSG_INTERNAL ].GetStr( STR_INTERNAL_CRTYPE( i ) ) );
+
     // Copy generated MSG to language packs
     for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
     {
