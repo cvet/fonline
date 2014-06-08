@@ -249,7 +249,7 @@ asCScriptObject::asCScriptObject(asCObjectType *ot, bool doInitialize)
 
 	// Initialize members to zero. Technically we only need to zero the pointer
 	// members, but just the memset is faster than having to loop and check the datatypes
-	memset(this+1, 0, objType->size - sizeof(asCScriptObject));
+	memset((void*)(this+1), 0, objType->size - sizeof(asCScriptObject));
 
 	if( doInitialize )
 	{

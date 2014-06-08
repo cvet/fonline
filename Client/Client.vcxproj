@@ -368,6 +368,7 @@
     <ClInclude Include="..\Source\AngelScript\as_symboltable.h" />
     <ClInclude Include="..\Source\AngelScript\preprocessor.h" />
     <ClInclude Include="..\Source\AngelScript\scriptstring.h" />
+    <ClInclude Include="..\Source\AngelScript\weakref.h" />
     <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\GL\glew.h" />
     <ClInclude Include="..\Source\GL\glu_stuff.h" />
@@ -491,6 +492,12 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\weakref.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>

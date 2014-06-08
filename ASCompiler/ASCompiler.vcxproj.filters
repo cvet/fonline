@@ -229,6 +229,9 @@
     <ClInclude Include="..\Source\AngelScript\preprocessor.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\weakref.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\ASCompiler.cpp">
@@ -421,6 +424,9 @@
       <Filter>SHA2</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\preprocessor.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\weakref.cpp">
       <Filter>AngelScript</Filter>
     </ClCompile>
   </ItemGroup>

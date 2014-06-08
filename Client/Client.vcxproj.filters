@@ -371,6 +371,9 @@
     <ClInclude Include="..\Source\GL\glu_stuff.h">
       <Filter>GL</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\weakref.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Zlib\adler32.c">
@@ -642,6 +645,9 @@
     </ClCompile>
     <ClCompile Include="..\Source\GraphicStructures.cpp">
       <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\weakref.cpp">
+      <Filter>AngelScript</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -100,7 +100,7 @@ public:
 	// Type registration
 	virtual int            RegisterObjectType(const char *obj, int byteSize, asDWORD flags);
 	virtual int            RegisterObjectProperty(const char *obj, const char *declaration, int byteOffset);
-	virtual int            RegisterObjectMethod(const char *obj, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv);
+	virtual int            RegisterObjectMethod(const char *obj, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall = 0);
 	virtual int            RegisterObjectBehaviour(const char *obj, asEBehaviours behaviour, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall = 0);
 	virtual int            RegisterInterface(const char *name);
 	virtual int            RegisterInterfaceMethod(const char *intf, const char *declaration);
@@ -111,7 +111,7 @@ public:
 
 	// String factory
 	virtual int RegisterStringFactory(const char *datatype, const asSFuncPtr &factoryFunc, asDWORD callConv, void *objForThiscall = 0);
-	virtual int GetStringFactoryReturnTypeId() const;
+	virtual int GetStringFactoryReturnTypeId(asDWORD *flags) const;
 
 	// Default array type
 	virtual int RegisterDefaultArrayType(const char *type);
@@ -186,7 +186,7 @@ public:
 	virtual asETokenClass ParseToken(const char *string, size_t stringLength = 0, int *tokenLength = 0) const;
 
 	// Garbage collection
-	virtual int  GarbageCollect(asDWORD flags);
+	virtual int  GarbageCollect(asDWORD flags = asGC_FULL_CYCLE, asUINT numIterations = 1);
 	virtual void GetGCStatistics(asUINT *currentSize, asUINT *totalDestroyed, asUINT *totalDetected, asUINT *newObjects, asUINT *totalNewDestroyed) const;
 	virtual int  NotifyGarbageCollectorOfNewObject(void *obj, asIObjectType *type);
 	virtual int  GetObjectInGC(asUINT idx, asUINT *seqNbr, void **obj = 0, asIObjectType **type = 0);
@@ -218,16 +218,13 @@ public:
 	friend class asCByteCode;
 	friend int PrepareSystemFunction(asCScriptFunction *func, asSSystemFunctionInterface *internal, asCScriptEngine *engine);
 
-	int RegisterMethodToObjectType(asCObjectType *objectType, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv);
+	int RegisterMethodToObjectType(asCObjectType *objectType, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall = 0);
 	int RegisterBehaviourToObjectType(asCObjectType *objectType, asEBehaviours behaviour, const char *decl, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall);
 
 	int VerifyVarTypeNotInFunction(asCScriptFunction *func);
 
 	void *CallAlloc(const asCObjectType *objType) const;
 	void  CallFree(void *obj) const;
-
-	// TODO: interface: This should be the public interface
-	int  GarbageCollect(asDWORD flags = asGC_FULL_CYCLE, asUINT numIterations = 1);
 
 	void *CallGlobalFunctionRetPtr(int func) const;
 	void *CallGlobalFunctionRetPtr(int func, void *param1) const;

@@ -139,6 +139,8 @@
 		<Unit filename="../Source/AngelScript/scriptmath.h" />
 		<Unit filename="../Source/AngelScript/scriptstring.cpp" />
 		<Unit filename="../Source/AngelScript/scriptstring.h" />
+		<Unit filename="../Source/AngelScript/weakref.cpp" />
+		<Unit filename="../Source/AngelScript/weakref.h" />
 		<Unit filename="../Source/Assimp/DefaultLogger.h" />
 		<Unit filename="../Source/Assimp/IOStream.h" />
 		<Unit filename="../Source/Assimp/IOSystem.h" />

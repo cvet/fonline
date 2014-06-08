@@ -751,7 +751,7 @@ ScriptDictionary::Iterator ScriptDictionary::end() const
     return Iterator( *this, dict.end() );
 }
 
-ScriptDictionary::Iterator::Iterator( const ScriptDictionary& dict, std::map< std::string, ScriptDictValue >::const_iterator it ): m_dict( dict ), m_it( it )
+ScriptDictionary::Iterator::Iterator( const ScriptDictionary& dict, std::map< std::string, ScriptDictValue >::const_iterator it ): m_it( it ), m_dict( dict )
 {}
 
 void ScriptDictionary::Iterator::operator++()

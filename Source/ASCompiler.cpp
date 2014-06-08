@@ -13,6 +13,7 @@
 #include "AngelScript/scriptmath.h"
 #include "AngelScript/scriptstring.h"
 #include "AngelScript/scriptarray.h"
+#include "AngelScript/weakref.h"
 #include <stdio.h>
 #include <list>
 #include <set>
@@ -300,6 +301,7 @@ int main( int argc, char* argv[] )
     RegisterScriptDictionary( Engine );
     RegisterScriptFile( Engine );
     RegisterScriptMath( Engine );
+    RegisterScriptWeakRef( Engine );
 
     // Stuff for run func
     if( !run_func.empty() )

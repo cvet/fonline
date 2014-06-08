@@ -109,6 +109,9 @@ AS_API const char * asGetLibraryOptions()
 #ifdef AS_NO_MEMBER_INIT
 		"AS_NO_MEMBER_INIT "
 #endif
+#ifdef AS_NO_THISCALL_FUNCTOR_METHOD
+		"AS_NO_THISCALL_FUNCTOR_METHOD "
+#endif
 
 	// Target system
 #ifdef AS_WIN
@@ -245,6 +248,8 @@ AS_API asIScriptEngine *asCreateScriptEngine(asDWORD version)
 #endif
 	asASSERT( memcmp("\x00\x01\x02\x03", &dw, 4) == 0 );
 	asASSERT( memcmp("\x00\x01\x02\x03\x04\x05\x06\x07", &qw, 8) == 0 );
+	UNUSED_VAR(dw);
+	UNUSED_VAR(qw);
 
 	return asNEW(asCScriptEngine)();
 }
@@ -479,7 +484,7 @@ asCScriptEngine::asCScriptEngine()
 		ep.allowMultilineStrings         = false;
 		ep.allowImplicitHandleTypes      = false;
 		// TODO: optimize: Maybe this should be turned off by default? If a debugger is not used
-		//                 then this is just slowing down the execution. 
+		//                 then this is just slowing down the execution.
 		ep.buildWithoutLineCues          = false;
 		ep.initGlobalVarsAfterBuild      = true;
 		ep.requireEnumScope              = false;
@@ -516,7 +521,7 @@ asCScriptEngine::asCScriptEngine()
 	defaultAccessMask = 1;
 
 	msgCallback = 0;
-    jitCompiler = 0;
+	jitCompiler = 0;
 
 	// Create the global namespace
 	defaultNamespace = AddNameSpace("");
@@ -847,7 +852,7 @@ int asCScriptEngine::Release() const
 
 	if( r == 0 )
 	{
-		// It is possible that some function will temporarily increment the engine ref count 
+		// It is possible that some function will temporarily increment the engine ref count
 		// during clean-up for example while destroying the objects in the garbage collector.
 		if( !shuttingDown )
 			asDELETE(const_cast<asCScriptEngine*>(this),asCScriptEngine);
@@ -986,7 +991,7 @@ int asCScriptEngine::SetMessageCallback(const asSFuncPtr &callback, void *obj, a
 	msgCallback = true;
 	msgCallbackObj = obj;
 	bool isObj = false;
-	if( (unsigned)callConv == asCALL_GENERIC )
+	if( (unsigned)callConv == asCALL_GENERIC || (unsigned)callConv == asCALL_THISCALL_OBJFIRST || (unsigned)callConv == asCALL_THISCALL_OBJLAST )
 	{
 		msgCallback = false;
 		return asNOT_SUPPORTED;
@@ -1224,7 +1229,7 @@ int asCScriptEngine::ClearUnusedTypes()
 						break;
 					}
 				}
-				
+
 				if( isScriptTemplate && type->module == 0 )
 					typeRefCount++;
 			}
@@ -1438,8 +1443,8 @@ int asCScriptEngine::RegisterObjectProperty(const char *obj, const char *declara
 
 	// The VM currently only supports 16bit offsets
 	// TODO: The VM needs to have support for 32bit offsets. Probably with a second ADDSi instruction
-	//       However, when implementing this it is necessary for the bytecode serialization to support 
-	//       the switch between the instructions upon loading bytecode as the offset may not be the 
+	//       However, when implementing this it is necessary for the bytecode serialization to support
+	//       the switch between the instructions upon loading bytecode as the offset may not be the
 	//       same on all platforms
 	if( byteOffset > 32767 || byteOffset < -32768 )
 		return ConfigError(asINVALID_ARG, "RegisterObjectProperty", obj, declaration);
@@ -1837,7 +1842,7 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asDWORD 
 				// TODO: Should have a better error message
 				return ConfigError(asNOT_SUPPORTED, "RegisterObjectType", name, 0);
 
-			// If this is not a template instance type, then it means it is an  
+			// If this is not a template instance type, then it means it is an
 			// already registered template specialization
 			if( !generatedTemplateTypes.Exists(dt.GetObjectType()) )
 				return ConfigError(asALREADY_REGISTERED, "RegisterObjectType", name, 0);
@@ -1909,36 +1914,18 @@ int asCScriptEngine::RegisterObjectBehaviour(const char *datatype, asEBehaviours
 // internal
 int asCScriptEngine::RegisterBehaviourToObjectType(asCObjectType *objectType, asEBehaviours behaviour, const char *decl, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall)
 {
-	asSSystemFunctionInterface internal;
-	if( behaviour == asBEHAVE_FACTORY ||
-		behaviour == asBEHAVE_LIST_FACTORY ||
-		behaviour == asBEHAVE_TEMPLATE_CALLBACK )
-	{
 #ifdef AS_MAX_PORTABILITY
-		if( callConv != asCALL_GENERIC )
-			return ConfigError(asNOT_SUPPORTED, "RegisterObjectBehaviour", objectType->name.AddressOf(), decl);
-#endif
-		int r = DetectCallingConvention(false, funcPointer, callConv, objForThiscall, &internal);
-		if( r < 0 )
-			return ConfigError(r, "RegisterObjectBehaviour", objectType->name.AddressOf(), decl);
-	}
-	else
-	{
-#ifdef AS_MAX_PORTABILITY
-		if( callConv != asCALL_GENERIC )
-			return ConfigError(asNOT_SUPPORTED, "RegisterObjectBehaviour", objectType->name.AddressOf(), decl);
-#else
-		if( callConv != asCALL_THISCALL &&
-			callConv != asCALL_CDECL_OBJLAST &&
-			callConv != asCALL_CDECL_OBJFIRST &&
-			callConv != asCALL_GENERIC )
-			return ConfigError(asNOT_SUPPORTED, "RegisterObjectBehaviour", objectType->name.AddressOf(), decl);
+	if( callConv != asCALL_GENERIC )
+		return ConfigError(asNOT_SUPPORTED, "RegisterObjectBehaviour", objectType->name.AddressOf(), decl);
 #endif
 
-		int r = DetectCallingConvention(true, funcPointer, callConv, objForThiscall, &internal);
-		if( r < 0 )
-			return ConfigError(r, "RegisterObjectBehaviour", objectType->name.AddressOf(), decl);
-	}
+	asSSystemFunctionInterface internal;
+	bool isMethod = !(behaviour == asBEHAVE_FACTORY ||
+		              behaviour == asBEHAVE_LIST_FACTORY ||
+		              behaviour == asBEHAVE_TEMPLATE_CALLBACK);
+	int r = DetectCallingConvention(isMethod, funcPointer, callConv, objForThiscall, &internal);
+	if( r < 0 )
+		return ConfigError(r, "RegisterObjectBehaviour", objectType->name.AddressOf(), decl);
 
 	isPrepared = false;
 
@@ -1950,7 +1937,7 @@ int asCScriptEngine::RegisterBehaviourToObjectType(asCObjectType *objectType, as
 	bool expectListPattern = behaviour == asBEHAVE_LIST_FACTORY || behaviour == asBEHAVE_LIST_CONSTRUCT;
 	asCScriptNode *listPattern = 0;
 	asCBuilder bld(this, 0);
-	int r = bld.ParseFunctionDeclaration(objectType, decl, &func, true, &internal.paramAutoHandles, &internal.returnAutoHandle, 0, expectListPattern ? &listPattern : 0);
+	r = bld.ParseFunctionDeclaration(objectType, decl, &func, true, &internal.paramAutoHandles, &internal.returnAutoHandle, 0, expectListPattern ? &listPattern : 0);
 	if( r < 0 )
 	{
 		if( listPattern )
@@ -1962,6 +1949,7 @@ int asCScriptEngine::RegisterBehaviourToObjectType(asCObjectType *objectType, as
 	if( behaviour != asBEHAVE_FACTORY && behaviour != asBEHAVE_LIST_FACTORY )
 		func.objectType = objectType;
 
+	// TODO: cleanup: This is identical to what is in RegisterMethodToObjectType
 	// Check if the method restricts that use of the template to value types or reference types
 	if( objectType->flags & asOBJ_TEMPLATE )
 	{
@@ -1973,6 +1961,10 @@ int asCScriptEngine::RegisterBehaviourToObjectType(asCObjectType *objectType, as
 					objectType->acceptValueSubType = false;
 				else if( !func.returnType.IsReference() )
 					objectType->acceptRefSubType = false;
+
+				// Can't support template subtypes by value, since each type is treated differently in the ABI
+				if( !func.returnType.IsObjectHandle() && !func.returnType.IsReference() )
+					return ConfigError(asNOT_SUPPORTED, "RegisterObjectMethod", objectType->name.AddressOf(), decl);
 			}
 
 			for( asUINT n = 0; n < func.parameterTypes.GetLength(); n++ )
@@ -1984,6 +1976,10 @@ int asCScriptEngine::RegisterBehaviourToObjectType(asCObjectType *objectType, as
 						objectType->acceptValueSubType = false;
 					else if( !func.parameterTypes[n].IsReference() )
 						objectType->acceptRefSubType = false;
+
+					// Can't support template subtypes by value, since each type is treated differently in the ABI
+					if( !func.parameterTypes[n].IsObjectHandle() && !func.parameterTypes[n].IsReference() )
+						return ConfigError(asNOT_SUPPORTED, "RegisterObjectMethod", objectType->name.AddressOf(), decl);
 				}
 			}
 		}
@@ -2685,7 +2681,7 @@ int asCScriptEngine::GetGlobalPropertyIndexByDecl(const char *decl) const
 }
 
 // interface
-int asCScriptEngine::RegisterObjectMethod(const char *obj, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv)
+int asCScriptEngine::RegisterObjectMethod(const char *obj, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall)
 {
 	if( obj == 0 )
 		return ConfigError(asINVALID_ARG, "RegisterObjectMethod", obj, declaration);
@@ -2707,28 +2703,21 @@ int asCScriptEngine::RegisterObjectMethod(const char *obj, const char *declarati
 		dt.GetObjectType() == &scriptTypeBehaviours )
 		return ConfigError(asINVALID_ARG, "RegisterObjectMethod", obj, declaration);
 
-	return RegisterMethodToObjectType(dt.GetObjectType(), declaration, funcPointer, callConv);
+	return RegisterMethodToObjectType(dt.GetObjectType(), declaration, funcPointer, callConv, objForThiscall);
 }
 
 // internal
-int asCScriptEngine::RegisterMethodToObjectType(asCObjectType *objectType, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv)
+int asCScriptEngine::RegisterMethodToObjectType(asCObjectType *objectType, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall)
 {
-	asSSystemFunctionInterface internal;
-	int r = DetectCallingConvention(true, funcPointer, callConv, 0, &internal);
-	if( r < 0 )
-		return ConfigError(r, "RegisterObjectMethod", objectType->name.AddressOf(), declaration);
-
-	// We only support these calling conventions for object methods
 #ifdef AS_MAX_PORTABILITY
 	if( callConv != asCALL_GENERIC )
 		return ConfigError(asNOT_SUPPORTED, "RegisterObjectMethod", objectType->name.AddressOf(), declaration);
-#else
-	if( callConv != asCALL_THISCALL &&
-		callConv != asCALL_CDECL_OBJLAST &&
-		callConv != asCALL_CDECL_OBJFIRST &&
-		callConv != asCALL_GENERIC )
-		return ConfigError(asNOT_SUPPORTED, "RegisterObjectMethod", objectType->name.AddressOf(), declaration);
 #endif
+
+	asSSystemFunctionInterface internal;
+	int r = DetectCallingConvention(true, funcPointer, callConv, objForThiscall, &internal);
+	if( r < 0 )
+		return ConfigError(r, "RegisterObjectMethod", objectType->name.AddressOf(), declaration);
 
 	isPrepared = false;
 
@@ -2812,6 +2801,10 @@ int asCScriptEngine::RegisterMethodToObjectType(asCObjectType *objectType, const
 					func->objectType->acceptValueSubType = false;
 				else if( !func->returnType.IsReference() )
 					func->objectType->acceptRefSubType = false;
+
+				// Can't support template subtypes by value, since each type is treated differently in the ABI
+				if( !func->returnType.IsObjectHandle() && !func->returnType.IsReference() )
+					return ConfigError(asNOT_SUPPORTED, "RegisterObjectMethod", objectType->name.AddressOf(), declaration);
 			}
 
 			for( asUINT n = 0; n < func->parameterTypes.GetLength(); n++ )
@@ -2823,6 +2816,10 @@ int asCScriptEngine::RegisterMethodToObjectType(asCObjectType *objectType, const
 						func->objectType->acceptValueSubType = false;
 					else if( !func->parameterTypes[n].IsReference() )
 						func->objectType->acceptRefSubType = false;
+
+					// Can't support template subtypes by value, since each type is treated differently in the ABI
+					if( !func->parameterTypes[n].IsObjectHandle() && !func->parameterTypes[n].IsReference() )
+						return ConfigError(asNOT_SUPPORTED, "RegisterObjectMethod", objectType->name.AddressOf(), declaration);
 				}
 			}
 		}
@@ -2847,21 +2844,15 @@ int asCScriptEngine::RegisterMethodToObjectType(asCObjectType *objectType, const
 // interface
 int asCScriptEngine::RegisterGlobalFunction(const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall)
 {
+#ifdef AS_MAX_PORTABILITY
+	if( callConv != asCALL_GENERIC )
+		return ConfigError(asNOT_SUPPORTED, "RegisterGlobalFunction", declaration, 0);
+#endif
+
 	asSSystemFunctionInterface internal;
 	int r = DetectCallingConvention(false, funcPointer, callConv, objForThiscall, &internal);
 	if( r < 0 )
 		return ConfigError(r, "RegisterGlobalFunction", declaration, 0);
-
-#ifdef AS_MAX_PORTABILITY
-	if( callConv != asCALL_GENERIC )
-		return ConfigError(asNOT_SUPPORTED, "RegisterGlobalFunction", declaration, 0);
-#else
-	if( callConv != asCALL_CDECL &&
-		callConv != asCALL_STDCALL &&
-		callConv != asCALL_THISCALL_ASGLOBAL &&
-		callConv != asCALL_GENERIC )
-		return ConfigError(asNOT_SUPPORTED, "RegisterGlobalFunction", declaration, 0);
-#endif
 
 	isPrepared = false;
 
@@ -3230,12 +3221,12 @@ int asCScriptEngine::RegisterStringFactory(const char *datatype, const asSFuncPt
 }
 
 // interface
-int asCScriptEngine::GetStringFactoryReturnTypeId() const
+int asCScriptEngine::GetStringFactoryReturnTypeId(asDWORD *flags) const
 {
 	if( stringFactory == 0 )
 		return asNO_FUNCTION;
 
-	return GetTypeIdFromDataType(stringFactory->returnType);
+	return stringFactory->GetReturnTypeId(flags);
 }
 
 // interface
@@ -3376,10 +3367,10 @@ void asCScriptEngine::OrphanTemplateInstances(asCObjectType *subType)
 	for( asUINT n = 0; n < templateInstanceTypes.GetLength(); n++ )
 	{
 		asCObjectType *type = templateInstanceTypes[n];
-		
+
 		if( type == 0 )
 			continue;
-		
+
 		// If the template type isn't owned by any module it can't be orphaned
 		if( type->module == 0 )
 			continue;
@@ -3468,7 +3459,7 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 		if( !deferValidationOfTemplateTypes )
 		{
 			asCScriptFunction *callback = scriptFunctions[templateType->beh.templateCallback];
-	
+
 			bool dontGarbageCollect = false;
 			if( !CallGlobalFunctionRetBool(ot, &dontGarbageCollect, callback->sysFuncIntf, callback) )
 			{
@@ -4288,12 +4279,12 @@ bool asCScriptEngine::CallGlobalFunctionRetBool(void *param1, void *param2, asSS
 
 void *asCScriptEngine::CallAlloc(const asCObjectType *type) const
 {
-    // Allocate 4 bytes as the smallest size. Otherwise CallSystemFunction may try to
-    // copy a DWORD onto a smaller memory block, in case the object type is return in registers.
+	// Allocate 4 bytes as the smallest size. Otherwise CallSystemFunction may try to
+	// copy a DWORD onto a smaller memory block, in case the object type is return in registers.
 
 	// Pad to the next even 4 bytes to avoid asBC_CPY writing outside of allocated buffer for registered POD types
 	asUINT size = type->size;
-	if( size & 0x3 ) 
+	if( size & 0x3 )
 		size += 4 - (size & 0x3);
 
 #if defined(AS_DEBUG)
@@ -4320,17 +4311,10 @@ int asCScriptEngine::GetObjectInGC(asUINT idx, asUINT *seqNbr, void **obj, asIOb
 	return gc.GetObjectInGC(idx, seqNbr, obj, type);
 }
 
-// internal
+// interface
 int asCScriptEngine::GarbageCollect(asDWORD flags, asUINT iterations)
 {
 	return gc.GarbageCollect(flags, iterations);
-}
-
-// interface
-// TODO: interface: Allow caller to inform number of iterations
-int asCScriptEngine::GarbageCollect(asDWORD flags)
-{
-	return gc.GarbageCollect(flags, 1);
 }
 
 // interface
@@ -4460,7 +4444,7 @@ asIObjectType *asCScriptEngine::GetObjectTypeByDecl(const char *decl) const
 
 	// Don't write parser errors to the message callback
 	bld.silent = true;
-	
+
 	int r = bld.ParseDataType(decl, &dt, defaultNamespace);
 	if( r < 0 )
 		return 0;
@@ -4477,7 +4461,7 @@ int asCScriptEngine::GetTypeIdByDecl(const char *decl) const
 
 	// Don't write parser errors to the message callback
 	bld.silent = true;
-	
+
 	int r = bld.ParseDataType(decl, &dt, defaultNamespace);
 	if( r < 0 )
 		return asINVALID_TYPE;
@@ -5712,11 +5696,11 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 							// We'll assume the object has been created if any byte in
 							// the memory is different from 0.
 							// TODO: This is not really correct, as bytes may have been
-							//       modified by the constructor, but then an exception 
+							//       modified by the constructor, but then an exception
 							//       thrown aborting the initialization. The engine
 							//       really should be keeping track of which objects has
 							//       been successfully initialized.
-						
+
 							for( asUINT n = 0; n < size; n++ )
 							{
 								if( buffer[n] != 0 )
@@ -5736,7 +5720,7 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 						// Align the offset to 4 bytes boundary
 						if( asPWORD(buffer) & 0x3 )
 							buffer += 4 - (asPWORD(buffer) & 0x3);
-						
+
 						// Call the release behaviour
 						void *ptr = *(void**)buffer;
 						if( ptr )

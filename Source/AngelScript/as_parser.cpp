@@ -1425,12 +1425,14 @@ asCScriptNode *asCParser::ParseArgList(bool withParenthesis)
 		for(;;)
 		{
 			// Determine if this is a named argument
-			sToken tl, t2;
+			// Careful not to mistake 'type = {init list}' as named argument
+			sToken tl, t2, t3;
 			GetToken(&tl);
 			GetToken(&t2);
+			GetToken(&t3);
 			RewindTo(&tl);
 
-			if( tl.type == ttIdentifier && t2.type == ttAssignment )
+			if( tl.type == ttIdentifier && t2.type == ttAssignment && t3.type != ttStartStatementBlock )
 			{
 				asCScriptNode *named = CreateNode(snNamedArgument);
 				if( named == 0 ) return 0;

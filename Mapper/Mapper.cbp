@@ -130,6 +130,8 @@
 		<Unit filename="../Source/AngelScript/scriptmath.h" />
 		<Unit filename="../Source/AngelScript/scriptstring.cpp" />
 		<Unit filename="../Source/AngelScript/scriptstring.h" />
+		<Unit filename="../Source/AngelScript/weakref.cpp" />
+		<Unit filename="../Source/AngelScript/weakref.h" />
 		<Unit filename="../Source/Common.cpp" />
 		<Unit filename="../Source/Common.h" />
 		<Unit filename="../Source/ConstantsManager.cpp" />

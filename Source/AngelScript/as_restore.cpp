@@ -3579,6 +3579,7 @@ void asCWriter::WriteObjectTypeDeclaration(asCObjectType *ot, int phase)
 			int size = (asUINT)ot->interfaces.GetLength();
 			WriteEncodedInt64(size);
 			asUINT n;
+			asASSERT( ot->interfaces.GetLength() == ot->interfaceVFTOffsets.GetLength() );
 			for( n = 0; n < ot->interfaces.GetLength(); n++ )
 			{
 				WriteObjectType(ot->interfaces[n]);

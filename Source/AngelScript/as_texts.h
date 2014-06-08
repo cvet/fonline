@@ -112,6 +112,7 @@
 
 #define TXT_HANDLE_ASSIGN_ON_NON_HANDLE_PROP     "It is not allowed to perform a handle assignment on a non-handle property"
 #define TXT_HANDLE_COMPARISON                    "The operand is implicitly converted to handle in order to compare them"
+#define TXT_HANDLE_OF_HANDLE_IS_NOT_ALLOWED      "Handle to handle is not allowed"
 
 #define TXT_IDENTIFIER_s_NOT_DATA_TYPE             "Identifier '%s' is not a data type"
 #define TXT_IF_WITH_EMPTY_STATEMENT                "If with empty statement"
@@ -128,6 +129,7 @@
 #define TXT_INVALID_CHAR_LITERAL                   "Invalid character literal"
 #define TXT_INVALID_CONTINUE                       "Invalid 'continue'"
 #define TXT_INVALID_ESCAPE_SEQUENCE                "Invalid escape sequence"
+#define TXT_INVALID_EXPRESSION_AMBIGUOUS_NAME     "Invalid expression: ambiguous name"
 #define TXT_INVALID_OP_ON_METHOD                   "Invalid operation on method"
 #define TXT_INVALID_REF_PROP_ACCESS                "Invalid reference. Property accessors cannot be used in combined read/write operations"
 #define TXT_INVALID_SCOPE                          "Invalid scope resolution"

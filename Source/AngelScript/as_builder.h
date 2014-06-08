@@ -51,6 +51,11 @@
 
 BEGIN_AS_NAMESPACE
 
+#ifdef AS_NO_COMPILER
+// Forward declare the structure, as it is part of some function signatures used even without the compiler
+struct sGlobalVariableDescription;
+#endif
+
 #ifndef AS_NO_COMPILER
 
 struct sFunctionDescription

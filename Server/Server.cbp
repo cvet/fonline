@@ -142,6 +142,8 @@
 		<Unit filename="../Source/AngelScript/scriptmath.h" />
 		<Unit filename="../Source/AngelScript/scriptstring.cpp" />
 		<Unit filename="../Source/AngelScript/scriptstring.h" />
+		<Unit filename="../Source/AngelScript/weakref.cpp" />
+		<Unit filename="../Source/AngelScript/weakref.h" />
 		<Unit filename="../Source/BufferManager.cpp" />
 		<Unit filename="../Source/BufferManager.h" />
 		<Unit filename="../Source/Common.cpp" />

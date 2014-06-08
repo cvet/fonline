@@ -146,7 +146,9 @@ enum asECallConvTypes
 	asCALL_THISCALL          = 3,
 	asCALL_CDECL_OBJLAST     = 4,
 	asCALL_CDECL_OBJFIRST    = 5,
-	asCALL_GENERIC           = 6
+	asCALL_GENERIC           = 6,
+	asCALL_THISCALL_OBJLAST  = 7,
+	asCALL_THISCALL_OBJFIRST = 8
 };
 
 // Object type flags
@@ -188,10 +190,16 @@ enum asEObjTypeFlags
 	asOBJ_NOCOUNT                    = (1<<18),
 	asOBJ_APP_CLASS_ALIGN8           = (1<<19),
 	asOBJ_MASK_VALID_FLAGS           = 0x0FFFFF,
+	// Internal flags
 	asOBJ_SCRIPT_OBJECT              = (1<<20),
 	asOBJ_SHARED                     = (1<<21),
 	asOBJ_NOINHERIT                  = (1<<22),
-	asOBJ_SCRIPT_FUNCTION            = (1<<23)
+	asOBJ_SCRIPT_FUNCTION            = (1<<23),
+	asOBJ_IMPLICIT_HANDLE            = (1<<24),
+	asOBJ_LIST_PATTERN               = (1<<25),
+	asOBJ_ENUM                       = (1<<26),
+	asOBJ_TEMPLATE_SUBTYPE           = (1<<27),
+	asOBJ_TYPEDEF                    = (1<<28)
 };
 
 // Behaviours
@@ -591,7 +599,7 @@ public:
 	// Object types
 	virtual int            RegisterObjectType(const char *obj, int byteSize, asDWORD flags) = 0;
 	virtual int            RegisterObjectProperty(const char *obj, const char *declaration, int byteOffset) = 0;
-	virtual int            RegisterObjectMethod(const char *obj, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv) = 0;
+	virtual int            RegisterObjectMethod(const char *obj, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall = 0) = 0;
 	virtual int            RegisterObjectBehaviour(const char *obj, asEBehaviours behaviour, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall = 0) = 0;
 	virtual int            RegisterInterface(const char *name) = 0;
 	virtual int            RegisterInterfaceMethod(const char *intf, const char *declaration) = 0;
@@ -602,7 +610,7 @@ public:
 
 	// String factory
 	virtual int RegisterStringFactory(const char *datatype, const asSFuncPtr &factoryFunc, asDWORD callConv, void *objForThiscall = 0) = 0;
-	virtual int GetStringFactoryReturnTypeId() const = 0;
+	virtual int GetStringFactoryReturnTypeId(asDWORD *flags = 0) const = 0;
 
 	// Default array type
 	virtual int RegisterDefaultArrayType(const char *type) = 0;
@@ -665,14 +673,14 @@ public:
 	// Context pooling
 	virtual asIScriptContext      *RequestContext() = 0;
 	virtual void                   ReturnContext(asIScriptContext *ctx) = 0;
-	virtual void                   SetRequestContextCallback(asREQUESTCONTEXTFUNC_t, void *param = 0) = 0;
-	virtual void                   SetReturnContextCallback(asRETURNCONTEXTFUNC_t, void *param = 0) = 0;
+	virtual void                   SetRequestContextCallback(asREQUESTCONTEXTFUNC_t callback, void *param = 0) = 0;
+	virtual void                   SetReturnContextCallback(asRETURNCONTEXTFUNC_t callback, void *param = 0) = 0;
 
 	// String interpretation
 	virtual asETokenClass ParseToken(const char *string, size_t stringLength = 0, int *tokenLength = 0) const = 0;
 
 	// Garbage collection
-	virtual int  GarbageCollect(asDWORD flags = asGC_FULL_CYCLE) = 0;
+	virtual int  GarbageCollect(asDWORD flags = asGC_FULL_CYCLE, asUINT numIterations = 1) = 0;
 	virtual void GetGCStatistics(asUINT *currentSize, asUINT *totalDestroyed = 0, asUINT *totalDetected = 0, asUINT *newObjects = 0, asUINT *totalNewDestroyed = 0) const = 0;
 	virtual int  NotifyGarbageCollectorOfNewObject(void *obj, asIObjectType *type) = 0;
 	virtual int  GetObjectInGC(asUINT idx, asUINT *seqNbr = 0, void **obj = 0, asIObjectType **type = 0) = 0;
