@@ -59,7 +59,7 @@ BEGIN_AS_NAMESPACE
 // AngelScript version
 
 #define ANGELSCRIPT_VERSION        22900
-#define ANGELSCRIPT_VERSION_STRING "2.29.0 WIP"
+#define ANGELSCRIPT_VERSION_STRING "2.29.0"
 
 // Data types
 
@@ -673,8 +673,7 @@ public:
 	// Context pooling
 	virtual asIScriptContext      *RequestContext() = 0;
 	virtual void                   ReturnContext(asIScriptContext *ctx) = 0;
-	virtual void                   SetRequestContextCallback(asREQUESTCONTEXTFUNC_t callback, void *param = 0) = 0;
-	virtual void                   SetReturnContextCallback(asRETURNCONTEXTFUNC_t callback, void *param = 0) = 0;
+	virtual int                    SetContextCallbacks(asREQUESTCONTEXTFUNC_t requestCtx, asRETURNCONTEXTFUNC_t returnCtx, void *param = 0) = 0;
 
 	// String interpretation
 	virtual asETokenClass ParseToken(const char *string, size_t stringLength = 0, int *tokenLength = 0) const = 0;

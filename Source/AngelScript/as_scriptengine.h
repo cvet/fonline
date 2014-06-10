@@ -179,8 +179,7 @@ public:
 	// Context pooling
 	virtual asIScriptContext *RequestContext();
 	virtual void              ReturnContext(asIScriptContext *ctx);
-	virtual void              SetRequestContextCallback(asREQUESTCONTEXTFUNC_t, void *param);
-	virtual void              SetReturnContextCallback(asRETURNCONTEXTFUNC_t, void *param);
+	virtual int               SetContextCallbacks(asREQUESTCONTEXTFUNC_t requestCtx, asRETURNCONTEXTFUNC_t returnCtx, void *param = 0);
 
 	// String interpretation
 	virtual asETokenClass ParseToken(const char *string, size_t stringLength = 0, int *tokenLength = 0) const;
@@ -433,9 +432,8 @@ public:
 
 	// Callbacks for context pooling
 	asREQUESTCONTEXTFUNC_t  requestCtxFunc;
-	void                   *requestCtxParam;
 	asRETURNCONTEXTFUNC_t   returnCtxFunc;
-	void                   *returnCtxParam;
+	void                   *ctxCallbackParam;
 
 	// User data
 	asCArray<asPWORD>       userData;

@@ -526,10 +526,9 @@ asCScriptEngine::asCScriptEngine()
 	// Create the global namespace
 	defaultNamespace = AddNameSpace("");
 
-	requestCtxFunc  = 0;
-	requestCtxParam = 0;
-	returnCtxFunc   = 0;
-	returnCtxParam  = 0;
+	requestCtxFunc   = 0;
+	returnCtxFunc    = 0;
+	ctxCallbackParam = 0;
 
 	// We must set the namespace in the built-in types explicitly as
 	// this wasn't done by the default constructor. If we do not do
@@ -795,17 +794,16 @@ void asCScriptEngine::CleanupAfterDiscardModule()
 }
 
 // interface
-void asCScriptEngine::SetRequestContextCallback(asREQUESTCONTEXTFUNC_t func, void *param)
+int asCScriptEngine::SetContextCallbacks(asREQUESTCONTEXTFUNC_t requestCtx, asRETURNCONTEXTFUNC_t returnCtx, void *param)
 {
-	requestCtxFunc  = func;
-	requestCtxParam = param;
-}
+	if( requestCtx == 0 || returnCtx == 0 )
+		return asINVALID_ARG;
 
-// interface
-void asCScriptEngine::SetReturnContextCallback(asRETURNCONTEXTFUNC_t func, void *param)
-{
-	returnCtxFunc  = func;
-	returnCtxParam = param;
+	requestCtxFunc   = requestCtx;
+	returnCtxFunc    = returnCtx;
+	ctxCallbackParam = param;
+
+	return 0;
 }
 
 // interface
@@ -816,7 +814,7 @@ asIScriptContext *asCScriptEngine::RequestContext()
 		// The return callback must also exist
 		asASSERT( returnCtxFunc );
 
-		asIScriptContext *ctx = requestCtxFunc(this, requestCtxParam);
+		asIScriptContext *ctx = requestCtxFunc(this, ctxCallbackParam);
 		return ctx;
 	}
 
@@ -829,7 +827,7 @@ void asCScriptEngine::ReturnContext(asIScriptContext *ctx)
 {
 	if( returnCtxFunc )
 	{
-		returnCtxFunc(this, ctx, returnCtxParam);
+		returnCtxFunc(this, ctx, ctxCallbackParam);
 		return;
 	}
 
