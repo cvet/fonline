@@ -791,8 +791,8 @@ void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow )
         GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, combined_mesh->IBO ) );
         GL( glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Position ) ) );
         GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Normal ) ) );
-        GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoordAtlas ) ) );
-        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoordBase ) ) );
+        GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord ) ) );
+        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord2 ) ) );
         GL( glVertexAttribPointer( 4, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Tangent ) ) );
         GL( glVertexAttribPointer( 5, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Bitangent ) ) );
         GL( glVertexAttribPointer( 6, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, BlendWeights ) ) );
@@ -816,6 +816,8 @@ void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow )
         GL( glUniform1i( effect->ColorMap, 0 ) );
         if( effect->ColorMapSize != -1 )
             GL( glUniform4fv( effect->ColorMapSize, 1, textures[ 0 ]->SizeData ) );
+        if( effect->ColorMapAtlasOffset != -1 )
+            GL( glUniform4fv( effect->ColorMapAtlasOffset, 1, textures[ 0 ]->AtlasOffsetData ) );
     }
     if( effect->LightColor != -1 )
         GL( glUniform4fv( effect->LightColor, 1, (float*) &LightColor ) );
@@ -1910,7 +1912,6 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
         xfile->fileName = xname;
         xfile->rootNode = root_node;
         xfile->SetupNodes();
-        xfile->FixTextureCoords();
 
         xFiles.push_back( xfile );
     }
@@ -1950,40 +1951,6 @@ void SetupAnimationOutputExt( AnimController* anim_controller, Node* node )
 void Animation3dXFile::SetupAnimationOutput( AnimController* anim_controller )
 {
     SetupAnimationOutputExt( anim_controller, rootNode );
-}
-
-void FixTextureCoordsExt( const char* model_path, Node* node )
-{
-    if( node->Mesh )
-    {
-        MeshTexture* texture = GraphicLoader::LoadTexture( node->Mesh->DiffuseTexture.c_str(), model_path );
-        if( texture )
-        {
-            for( auto it = node->Mesh->Vertices.begin(), end = node->Mesh->Vertices.end(); it != end; ++it )
-            {
-                Vertex3D& v = *it;
-                v.TexCoordAtlas[ 0 ] = ( v.TexCoordBase[ 0 ] * texture->AtlasOffsetData[ 2 ] ) + texture->AtlasOffsetData[ 0 ];
-                v.TexCoordAtlas[ 1 ] = ( v.TexCoordBase[ 1 ] * texture->AtlasOffsetData[ 3 ] ) + texture->AtlasOffsetData[ 1 ];
-            }
-        }
-    }
-
-    for( size_t i = 0, j = node->Children.size(); i < j; i++ )
-        FixTextureCoordsExt( model_path, node->Children[ i ] );
-}
-
-void Animation3dXFile::FixTextureCoords()
-{
-    FixTextureCoordsExt( fileName.c_str(), rootNode );
-}
-
-void Animation3dXFile::FixAllTextureCoords()
-{
-    for( auto it = xFiles.begin(), end = xFiles.end(); it != end; ++it )
-    {
-        Animation3dXFile* xfile = *it;
-        xfile->FixTextureCoords();
-    }
 }
 
 MeshTexture* Animation3dXFile::GetTexture( const char* tex_name )

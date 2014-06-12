@@ -499,7 +499,7 @@ void CryptManager::SetCache( const char* data_name, const uchar* data, uint data
     }
 
     // Grow table
-    #pragma MESSAGE("Grow cache descriptors table.");
+    #pragma MESSAGE("Grow cache descriptors table.")
     WriteLogF( _FUNC_, " - Cache table descriptors ended! Delete 'default.cache' file." );
     return;
 

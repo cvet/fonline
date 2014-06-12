@@ -195,7 +195,6 @@ private:
 
     void SetupNodes();
     void SetupAnimationOutput( AnimController* anim_controller );
-    void FixTextureCoords();
 
     MeshTexture* GetTexture( const char* tex_name );
     Effect*      GetEffect( EffectInstance* effect_inst );
@@ -203,8 +202,6 @@ private:
 public:
     Animation3dXFile();
     ~Animation3dXFile();
-
-    static void FixAllTextureCoords();
 };
 
 #endif // __3D_STUFF__

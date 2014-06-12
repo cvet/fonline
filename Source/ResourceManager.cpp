@@ -104,7 +104,6 @@ void ResourceManager::ReinitializeDynamicAtlas()
     AnyFrames::Destroy( ItemHexDefaultAnim );
     CritterDefaultAnim = SprMngr.LoadAnimation( "art\\critters\\reservaa.frm", PT_DATA, true );
     ItemHexDefaultAnim = SprMngr.LoadAnimation( "art\\items\\reserved.frm", PT_DATA, true );
-    Animation3dXFile::FixAllTextureCoords();
     SprMngr.PopAtlasType();
 }
 
