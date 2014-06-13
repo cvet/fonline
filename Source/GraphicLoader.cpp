@@ -144,6 +144,18 @@ Node*  ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_bones );
 void   ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node );
 Matrix ConvertFbxMatrix( const FbxAMatrix& m );
 
+void FixTexCoord( float& x, float& y )
+{
+    if( x < 0.0f )
+        x = 1.0f - fmodf( -x, 1.0f );
+    else if( x > 1.0f )
+        x = fmodf( x, 1.0f );
+    if( y < 0.0f )
+        y = 1.0f - fmodf( -y, 1.0f );
+    else if( y > 1.0f )
+        y = fmodf( y, 1.0f );
+}
+
 /************************************************************************/
 /* Models                                                               */
 /************************************************************************/
@@ -650,6 +662,7 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
         mesh->Vertices.resize( ai_mesh->mNumVertices );
         bool has_tangents_and_bitangents = ai_mesh->HasTangentsAndBitangents();
         bool has_tex_coords = ai_mesh->HasTextureCoords( 0 );
+        bool has_tex_coords2 = ai_mesh->HasTextureCoords( 1 );
         for( uint i = 0; i < ai_mesh->mNumVertices; i++ )
         {
             Vertex3D& v = mesh->Vertices[ i ];
@@ -663,18 +676,15 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
             }
             if( has_tex_coords )
             {
-                float x = ai_mesh->mTextureCoords[ 0 ][ i ].x;
-                float y = ai_mesh->mTextureCoords[ 0 ][ i ].y;
-                if( x < 0.0f )
-                    x = 1.0f - fmodf( -x, 1.0f );
-                else if( x > 1.0f )
-                    x = fmodf( x, 1.0f );
-                if( y < 0.0f )
-                    y = 1.0f - fmodf( -y, 1.0f );
-                else if( y > 1.0f )
-                    y = fmodf( y, 1.0f );
-                v.TexCoordAtlas[ 0 ] = v.TexCoordBase[ 0 ] = x;
-                v.TexCoordAtlas[ 1 ] = v.TexCoordBase[ 1 ] = y;
+                v.TexCoord[ 0 ] = ai_mesh->mTextureCoords[ 0 ][ i ].x;
+                v.TexCoord[ 1 ] = ai_mesh->mTextureCoords[ 0 ][ i ].y;
+                FixTexCoord( v.TexCoord[ 0 ], v.TexCoord[ 1 ] );
+            }
+            if( has_tex_coords2 )
+            {
+                v.TexCoord2[ 0 ] = ai_mesh->mTextureCoords[ 1 ][ i ].x;
+                v.TexCoord2[ 1 ] = ai_mesh->mTextureCoords[ 1 ][ i ].y;
+                FixTexCoord( v.TexCoord2[ 0 ], v.TexCoord2[ 1 ] );
             }
             v.BlendIndices[ 0 ] = -1.0f;
             v.BlendIndices[ 1 ] = -1.0f;
@@ -787,6 +797,28 @@ Node* ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_bones )
     return node;
 }
 
+template< class T, class T2 >
+T2 FbxGetElement( T* elements, int index, int* vertices )
+{
+    if( elements->GetMappingMode() == FbxGeometryElement::eByPolygonVertex )
+    {
+        if( elements->GetReferenceMode() == FbxGeometryElement::eDirect )
+            return elements->GetDirectArray().GetAt( index );
+        else if( elements->GetReferenceMode() == FbxGeometryElement::eIndexToDirect )
+            return elements->GetDirectArray().GetAt( elements->GetIndexArray().GetAt( index ) );
+    }
+    else if( elements->GetMappingMode() == FbxGeometryElement::eByControlPoint )
+    {
+        if( elements->GetReferenceMode() == FbxGeometryElement::eDirect )
+            return elements->GetDirectArray().GetAt( vertices[ index ] );
+        else if( elements->GetReferenceMode() == FbxGeometryElement::eIndexToDirect )
+            return elements->GetDirectArray().GetAt( elements->GetIndexArray().GetAt( vertices[ index ] ) );
+    }
+
+    WriteLogF( _FUNC_, " - Unknown mapping mode<%d> or reference mode<%d>.\n", elements->GetMappingMode(), elements->GetReferenceMode() );
+    return elements->GetDirectArray().GetAt( 0 );
+}
+
 void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
 {
     FbxMesh* fbx_mesh = fbx_node->GetMesh();
@@ -805,7 +837,8 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
         FbxGeometryElementNormal*   fbx_normals = fbx_mesh->GetElementNormal();
         FbxGeometryElementTangent*  fbx_tangents = fbx_mesh->GetElementTangent();
         FbxGeometryElementBinormal* fbx_binormals = fbx_mesh->GetElementBinormal();
-        FbxGeometryElementUV*       fbx_uvs = fbx_mesh->GetElementUV();
+        FbxGeometryElementUV*       fbx_uvs = fbx_mesh->GetElementUV( 0 );
+        FbxGeometryElementUV*       fbx_uvs2 = fbx_mesh->GetElementUV( 1 );
         for( int i = 0; i < vertices_count; i++ )
         {
             Vertex3D&   v = mesh->Vertices[ i ];
@@ -814,35 +847,34 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
             memzero( &v, sizeof( v ) );
             v.Position = Vector( (float) fbx_v.mData[ 0 ], (float) fbx_v.mData[ 1 ], (float) fbx_v.mData[ 2 ] );
 
-            #define FBX_GET_ELEMENT( elements, index )                                                                                                                     \
-                ( elements->GetMappingMode() == FbxGeometryElement::eByPolygonVertex ?                                                                                     \
-                  ( elements->GetReferenceMode() == FbxGeometryElement::eDirect ?                                                                                          \
-                    elements->GetDirectArray().GetAt( index ) : elements->GetDirectArray().GetAt( elements->GetIndexArray().GetAt( index ) ) ) :                           \
-                  ( elements->GetMappingMode() == FbxGeometryElement::eByControlPoint ?                                                                                    \
-                    ( elements->GetReferenceMode() == FbxGeometryElement::eDirect ?                                                                                        \
-                      elements->GetDirectArray().GetAt( vertices[ index ] ) : elements->GetDirectArray().GetAt( elements->GetIndexArray().GetAt( vertices[ index ] ) ) ) : \
-                    elements->GetDirectArray().GetAt( -1 ) ) )
-
             if( fbx_normals )
             {
-                const FbxVector4& fbx_normal = FBX_GET_ELEMENT( fbx_normals, i );
+                const FbxVector4& fbx_normal = FbxGetElement< FbxGeometryElementNormal, FbxVector4 >( fbx_normals, i, vertices );
                 v.Normal = Vector( (float) fbx_normal[ 0 ], (float) fbx_normal[ 1 ], (float) fbx_normal[ 2 ] );
             }
             if( fbx_tangents )
             {
-                const FbxVector4& fbx_tangent = FBX_GET_ELEMENT( fbx_tangents, i );
+                const FbxVector4& fbx_tangent = FbxGetElement< FbxGeometryElementTangent, FbxVector4 >( fbx_tangents, i, vertices );
                 v.Tangent = Vector( (float) fbx_tangent[ 0 ], (float) fbx_tangent[ 1 ], (float) fbx_tangent[ 2 ] );
             }
             if( fbx_binormals )
             {
-                const FbxVector4& fbx_binormal = FBX_GET_ELEMENT( fbx_binormals, i );
+                const FbxVector4& fbx_binormal = FbxGetElement< FbxGeometryElementBinormal, FbxVector4 >( fbx_binormals, i, vertices );
                 v.Bitangent = Vector( (float) fbx_binormal[ 0 ], (float) fbx_binormal[ 1 ], (float) fbx_binormal[ 2 ] );
             }
             if( fbx_uvs )
             {
-                const FbxVector2& fbx_uv = FBX_GET_ELEMENT( fbx_uvs, i );
-                v.TexCoordAtlas[ 0 ] = v.TexCoordBase[ 0 ] = (float) fbx_uv[ 0 ];
-                v.TexCoordAtlas[ 1 ] = v.TexCoordBase[ 1 ] = (float) fbx_uv[ 1 ];
+                const FbxVector2& fbx_uv = FbxGetElement< FbxGeometryElementUV, FbxVector2 >( fbx_uvs, i, vertices );
+                v.TexCoord[ 0 ] = (float) fbx_uv[ 0 ];
+                v.TexCoord[ 1 ] = 1.0f - (float) fbx_uv[ 1 ];
+                FixTexCoord( v.TexCoord[ 0 ], v.TexCoord[ 1 ] );
+            }
+            if( fbx_uvs2 )
+            {
+                const FbxVector2& fbx_uv2 = FbxGetElement< FbxGeometryElementUV, FbxVector2 >( fbx_uvs2, i, vertices );
+                v.TexCoord2[ 0 ] = (float) fbx_uv2[ 0 ];
+                v.TexCoord2[ 1 ] = 1.0f - (float) fbx_uv2[ 1 ];
+                FixTexCoord( v.TexCoord2[ 0 ], v.TexCoord2[ 1 ] );
             }
             #undef FBX_GET_ELEMENT
 
@@ -1284,7 +1316,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             GL( glBindAttribLocation( program, 0, "InPosition" ) );
             GL( glBindAttribLocation( program, 1, "InNormal" ) );
             GL( glBindAttribLocation( program, 2, "InTexCoord" ) );
-            GL( glBindAttribLocation( program, 3, "InTexCoordBase" ) );
+            GL( glBindAttribLocation( program, 3, "InTexCoord2" ) );
             GL( glBindAttribLocation( program, 4, "InTangent" ) );
             GL( glBindAttribLocation( program, 5, "InBitangent" ) );
             GL( glBindAttribLocation( program, 6, "InBlendWeights" ) );
@@ -1348,6 +1380,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     GL( effect->ZoomFactor = glGetUniformLocation( program, "ZoomFactor" ) );
     GL( effect->ColorMap = glGetUniformLocation( program, "ColorMap" ) );
     GL( effect->ColorMapSize = glGetUniformLocation( program, "ColorMapSize" ) );
+    GL( effect->ColorMapAtlasOffset = glGetUniformLocation( program, "ColorMapAtlasOffset" ) );
     GL( effect->ColorMapSamples = glGetUniformLocation( program, "ColorMapSamples" ) );
     GL( effect->EggMap = glGetUniformLocation( program, "EggMap" ) );
     GL( effect->EggMapSize = glGetUniformLocation( program, "EggMapSize" ) );
