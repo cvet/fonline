@@ -32,7 +32,8 @@
 #define MEMORY_ANY_DATA         ( 12 )
 #define MEMORY_IMAGE            ( 13 )
 #define MEMORY_SCRIPT_STRING    ( 14 )
-#define MEMORY_ANGEL_SCRIPT     ( 15 )
+#define MEMORY_SCRIPT_ARRAY     ( 15 )
+#define MEMORY_ANGEL_SCRIPT     ( 16 )
 
 namespace Debugger
 {

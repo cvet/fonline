@@ -3,22 +3,42 @@
 #include <string.h>
 #include <assert.h>
 #include <stdio.h> // sprintf
+#include "Common.h"
+#include "Debugger.h"
 
 #define AS_USE_STLNAMES    0
 #include "scriptarray.h"
 
 using namespace std;
 
-// Set the default memory routines
-// Use the angelscript engine's memory routines by default
-static asALLOCFUNC_t userAlloc = asAllocMem;
-static asFREEFUNC_t  userFree  = asFreeMem;
+void* AllocMem( size_t size )
+{
+    #ifdef MEMORY_DEBUG
+    if( MemoryDebugLevel >= 1 )
+        MEMORY_PROCESS( MEMORY_SCRIPT_ARRAY, (int) size );
+    #endif
+    char* mem = new char[ size ];
+    memset( mem, 0, size );
+    return mem;
+}
+
+void FreeMem( void* mem, size_t size )
+{
+    #ifdef MEMORY_DEBUG
+    if( MemoryDebugLevel >= 1 )
+        MEMORY_PROCESS( MEMORY_SCRIPT_ARRAY, -(int) size );
+    #endif
+    delete[] mem;
+}
+
+static auto userAlloc = AllocMem;
+static auto userFree  = FreeMem;
 
 // Allows the application to set which memory routines should be used by the array object
 void ScriptArray::SetMemoryFunctions( asALLOCFUNC_t allocFunc, asFREEFUNC_t freeFunc )
 {
-    userAlloc = allocFunc;
-    userFree = freeFunc;
+    // userAlloc = allocFunc;
+    // userFree = freeFunc;
 }
 
 static void RegisterScriptArray_Native( asIScriptEngine* engine );
@@ -35,7 +55,7 @@ static void CleanupObjectTypeArrayCache( asIObjectType* type )
     if( cache )
     {
         cache->~ArrayCache();
-        userFree( cache );
+        userFree( cache, sizeof( ArrayCache ) );
     }
 }
 
@@ -650,7 +670,7 @@ void ScriptArray::Reserve( asUINT maxElements )
     memcpy( newBuffer->data, buffer->data, buffer->numElements * elementSize );
 
     // Release the old buffer
-    userFree( buffer );
+    userFree( buffer, sizeof( ArrayBuffer ) - 1 + elementSize * buffer->maxElements );
 
     buffer = newBuffer;
 }
@@ -739,7 +759,7 @@ void ScriptArray::Resize( int delta, asUINT at )
             Construct( newBuffer, at, at + delta );
 
         // Release the old buffer
-        userFree( buffer );
+        userFree( buffer, sizeof( ArrayBuffer ) - 1 + elementSize * buffer->maxElements );
 
         buffer = newBuffer;
     }
@@ -910,7 +930,7 @@ void ScriptArray::DeleteBuffer( ArrayBuffer* buf )
     Destruct( buf, 0, buf->numElements );
 
     // Free the buffer
-    userFree( buf );
+    userFree( buf, sizeof( ArrayBuffer ) - 1 + elementSize * buf->maxElements );
 }
 
 // internal
@@ -1744,7 +1764,7 @@ void ScriptArray::Release() const
         // When reaching 0 no more references to this instance
         // exists and the object should be destroyed
         this->~ScriptArray();
-        userFree( const_cast< ScriptArray* >( this ) );
+        userFree( const_cast< ScriptArray* >( this ), sizeof( ScriptArray ) );
     }
 }
 
