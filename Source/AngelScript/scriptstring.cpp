@@ -6,6 +6,19 @@
 
 #define assert( x )
 
+ScriptString* StringSubString( ScriptString* str, int start, int count );
+int           StringFindFirst( ScriptString* str, ScriptString* sub, int start );
+int           StringFindLast( ScriptString* str, ScriptString* sub, int start );
+int           StringFindFirstOf( ScriptString* str, ScriptString* chars, int start );
+int           StringFindFirstNotOf( ScriptString* str, ScriptString* chars, int start );
+int           StringFindLastOf( ScriptString* str, ScriptString* chars, int start );
+int           StringFindLastNotOf( ScriptString* str, ScriptString* chars, int start );
+ScriptArray*  StringSplit( ScriptString* str, ScriptString* delim );
+ScriptArray*  StringSplitEx( ScriptString* str, ScriptString* delim );
+ScriptString* StringJoin( ScriptArray* array, ScriptString* delim );
+ScriptString* StringStrLwr( ScriptString* str );
+ScriptString* StringStrUpr( ScriptString* str );
+
 int ScriptString::toInt( int defaultValue ) const
 {
     const char* str = c_str();
@@ -567,11 +580,27 @@ void RegisterScriptString( asIScriptEngine* engine )
     r = engine->RegisterObjectMethod( "string", "bool endsWith(const string &in) const", asMETHOD( ScriptString, endsWith ), asCALL_THISCALL );
     assert( r >= 0 );
 
-    // TODO: Add factory  string(const string &in str, int repeatCount)
-
-    // TODO: Add explicit type conversion via constructor and value cast
-
-    // TODO: Add parseInt and parseDouble. Two versions, one without parameter, one with an outparm that returns the number of characters parsed.
+    // Global functions to methods replacement
+    r = engine->RegisterObjectMethod( "string", "string@ substring(int start, int count = -1)", asFUNCTION( StringSubString ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "int findFirst(const string &in, int start = 0)", asFUNCTION( StringFindFirst ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "int findLast(const string &in, int start = 0)", asFUNCTION( StringFindLast ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "int findFirstOf(const string &in, int start = 0)", asFUNCTION( StringFindFirstOf ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "int findFirstNotOf(const string &in, int start = 0)", asFUNCTION( StringFindFirstNotOf ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "int findLastOf(const string &in, int start = 0)", asFUNCTION( StringFindLastOf ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "int findLastNotOf(const string &in, int start = 0)", asFUNCTION( StringFindLastNotOf ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "array<string@>@ split(const string &in)", asFUNCTION( StringSplit ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string@ toLower()", asFUNCTION( StringStrLwr ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string@ toUpper()", asFUNCTION( StringStrUpr ), asCALL_CDECL_OBJFIRST );
+    assert( r >= 0 );
 
     // Automatic conversion from values
     r = engine->RegisterObjectMethod( "string", "string &opAssign(double)", asFUNCTION( AssignDoubleToString ), asCALL_CDECL_OBJLAST );
@@ -843,24 +872,6 @@ ScriptString* StringStrUpr( ScriptString* str )
     Str::UpperUTF8( (char*) str_.c_str() );
     return new ScriptString( str_ );
 }
-
-// TODO: Implement the following functions
-//
-//       int64    parseInt(const string &in str, int &out bytesParsed);
-//       double   parseDouble(const string &in str, int &out bytesParsed);
-//       string @ formatString(int64, const string &in format);  // should use sprintf to format the string
-//       string @ formatDouble(double, const string &in format);
-//
-//       int16    byteStringToInt16(const string &in str, int start);
-//       int32    byteStringToInt32(const string &in str, int start);
-//       int64    byteStringtoInt64(const string &in str, int start);
-//       float    byteStringToFloat(const string &in str, int start);
-//       double   byteStringToDouble(const string &in str, int start);
-//       string @ int16ToByteString(int16);
-//       string @ int32ToByteString(int32);
-//       string @ int64ToByteString(int64);
-//       string @ floatToByteString(float);
-//       string @ doubleToByteString(double);
 
 void RegisterScriptStringUtils( asIScriptEngine* engine )
 {
