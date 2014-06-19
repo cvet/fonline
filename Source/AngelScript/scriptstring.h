@@ -74,6 +74,8 @@ public:
     virtual bool  indexByteToUTF8( int& index, uint* length = NULL, uint offset = 0 );
     virtual int   toInt( int defaultValue ) const;
     virtual float toFloat( float defaultValue ) const;
+    virtual bool  startsWith( const ScriptString& str ) const;
+    virtual bool  endsWith( const ScriptString& str ) const;
 
     const char*        c_str()     const { return buffer.c_str(); }
     uint               length()    const { return (uint) buffer.length(); }

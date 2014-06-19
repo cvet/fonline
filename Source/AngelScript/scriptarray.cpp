@@ -753,8 +753,7 @@ void ScriptArray::Resize( int delta, asUINT at )
         if( at < buffer->numElements )
             memcpy( newBuffer->data + ( at + delta ) * elementSize, buffer->data + at * elementSize, ( buffer->numElements - at ) * elementSize );
 
-        if( subTypeId & asTYPEID_MASK_OBJECT )
-            Construct( newBuffer, at, at + delta );
+        Construct( newBuffer, at, at + delta );
 
         // Release the old buffer
         userFree( buffer, sizeof( ArrayBuffer ) - 1 + elementSize * buffer->maxElements );

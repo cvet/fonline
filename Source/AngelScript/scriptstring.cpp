@@ -50,6 +50,20 @@ float ScriptString::toFloat( float defaultValue ) const
     return result;
 }
 
+bool ScriptString::startsWith( const ScriptString& str ) const
+{
+    if( buffer.length() < str.buffer.length() )
+        return false;
+    return buffer.compare( 0, str.buffer.length(), str.buffer ) == 0;
+}
+
+bool ScriptString::endsWith( const ScriptString& str ) const
+{
+    if( buffer.length() < str.buffer.length() )
+        return false;
+    return buffer.compare( buffer.length() - str.buffer.length(), str.buffer.length(), str.buffer ) == 0;
+}
+
 bool ScriptString::indexByteToUTF8( int& index, uint* length, uint offset )
 {
     if( index < 0 )
@@ -545,6 +559,12 @@ void RegisterScriptString( asIScriptEngine* engine )
     r = engine->RegisterObjectMethod( "string", "int toInt(int defaultValue = 0) const", asMETHOD( ScriptString, toInt ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "string", "float toFloat(float defaultValue = 0) const", asMETHOD( ScriptString, toFloat ), asCALL_THISCALL );
+    assert( r >= 0 );
+
+    // Find methods
+    r = engine->RegisterObjectMethod( "string", "bool startsWith(const string &in) const", asMETHOD( ScriptString, startsWith ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "bool endsWith(const string &in) const", asMETHOD( ScriptString, endsWith ), asCALL_THISCALL );
     assert( r >= 0 );
 
     // TODO: Add factory  string(const string &in str, int repeatCount)
