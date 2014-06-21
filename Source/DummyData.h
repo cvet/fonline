@@ -951,66 +951,69 @@ struct BindClass
     static void Item_Animate()        {}
     static void Item_GetChild()       {}
 
-    static void Global_GetChosen()              {}
-    static void Global_GetChosenActions()       {}
-    static void Global_SetChosenActions()       {}
-    static void Global_GetItem()                {}
-    static void Global_GetCrittersDistantion()  {}
-    static void Global_GetCritter()             {}
-    static void Global_GetCritters()            {}
-    static void Global_GetCrittersByPids()      {}
-    static void Global_GetCrittersInPath()      {}
-    static void Global_GetCrittersInPathBlock() {}
-    static void Global_FlushScreen()            {}
-    static void Global_QuakeScreen()            {}
-    static void Global_PlaySound()              {}
-    static void Global_PlaySoundType()          {}
-    static void Global_PlayMusic()              {}
-    static void Global_PlayVideo()              {}
-    static void Global_IsTurnBased()            {}
-    static void Global_GetTurnBasedTime()       {}
-    static void Global_GetCurrentMapPid()       {}
-    static void Global_GetMessageFilters()      {}
-    static void Global_SetMessageFilters()      {}
-    static void Global_MessageType()            {}
-    static void Global_MessageMsgType()         {}
-    static void Global_FormatTags()             {}
-    static void Global_GetSomeValue()           {}
-    static void Global_LockScreenScroll()       {}
-    static void Global_GetFog()                 {}
-    static void Global_RefreshItemsCollection() {}
-    static void Global_GetScroll()              {}
-    static void Global_SetScroll()              {}
-    static void Global_GetDayTime()             {}
-    static void Global_GetDayColor()            {}
-    static void Global_GetFullSecond()          {}
-    static void Global_GetGameTime()            {}
-    static void Global_Preload3dFiles()         {}
-    static void Global_RunServerScript()        {}
-    static void Global_RunServerScriptUnsafe()  {}
-    static void Global_ShowScreen()             {}
-    static void Global_HideScreen()             {}
-    static void Global_GetHardcodedScreenPos()  {}
-    static void Global_DrawHardcodedScreen()    {}
-    static void Global_GetMonitorItem()         {}
-    static void Global_GetMonitorCritter()      {}
-    static void Global_GetMapWidth()            {}
-    static void Global_GetMapHeight()           {}
-    static void Global_GetCurrentCursor()       {}
-    static void Global_GetLastCursor()          {}
-    static void Global_ChangeCursor()           {}
-    static void Global_WaitPing()               {}
-    static void Global_SetEffect()              {}
-    static void Global_RefreshMap()             {}
-    static void Global_SaveScreenshot()         {}
-    static void Global_SaveLogFile()            {}
-    static void Global_SetCacheData()           {}
-    static void Global_SetCacheDataSize()       {}
-    static void Global_GetCacheData()           {}
-    static void Global_SetCacheDataStr()        {}
-    static void Global_GetCacheDataStr()        {}
-    static void Global_IsCacheData()            {}
-    static void Global_EraseCacheData()         {}
+    static void Global_CustomCall()                 {}
+    static void Global_GetChosen()                  {}
+    static void Global_GetChosenActions()           {}
+    static void Global_SetChosenActions()           {}
+    static void Global_GetItem()                    {}
+    static void Global_GetCrittersDistantion()      {}
+    static void Global_GetCritter()                 {}
+    static void Global_GetCritters()                {}
+    static void Global_GetCrittersByPids()          {}
+    static void Global_GetCrittersInPath()          {}
+    static void Global_GetCrittersInPathBlock()     {}
+    static void Global_FlushScreen()                {}
+    static void Global_QuakeScreen()                {}
+    static void Global_PlaySound()                  {}
+    static void Global_PlaySoundType()              {}
+    static void Global_PlayMusic()                  {}
+    static void Global_PlayVideo()                  {}
+    static void Global_IsTurnBased()                {}
+    static void Global_GetTurnBasedTime()           {}
+    static void Global_GetCurrentMapPid()           {}
+    static void Global_GetMessageFilters()          {}
+    static void Global_SetMessageFilters()          {}
+    static void Global_MessageType()                {}
+    static void Global_MessageMsgType()             {}
+    static void Global_FormatTags()                 {}
+    static void Global_GetSomeValue()               {}
+    static void Global_LockScreenScroll()           {}
+    static void Global_GetFog()                     {}
+    static void Global_RefreshItemsCollection()     {}
+    static void Global_GetScroll()                  {}
+    static void Global_SetScroll()                  {}
+    static void Global_GetDayTime()                 {}
+    static void Global_GetDayColor()                {}
+    static void Global_GetFullSecond()              {}
+    static void Global_GetGameTime()                {}
+    static void Global_Preload3dFiles()             {}
+    static void Global_RunServerScript()            {}
+    static void Global_RunServerScriptUnsafe()      {}
+    static void Global_ShowScreen()                 {}
+    static void Global_HideScreen()                 {}
+    static void Global_GetHardcodedScreenPos()      {}
+    static void Global_DrawHardcodedScreen()        {}
+    static void Global_HandleHardcodedScreenMouse() {}
+    static void Global_HandleHardcodedScreenKey()   {}
+    static void Global_GetMonitorItem()             {}
+    static void Global_GetMonitorCritter()          {}
+    static void Global_GetMapWidth()                {}
+    static void Global_GetMapHeight()               {}
+    static void Global_GetCurrentCursor()           {}
+    static void Global_GetLastCursor()              {}
+    static void Global_ChangeCursor()               {}
+    static void Global_WaitPing()                   {}
+    static void Global_SetEffect()                  {}
+    static void Global_RefreshMap()                 {}
+    static void Global_SaveScreenshot()             {}
+    static void Global_SaveLogFile()                {}
+    static void Global_SetCacheData()               {}
+    static void Global_SetCacheDataSize()           {}
+    static void Global_GetCacheData()               {}
+    static void Global_SetCacheDataStr()            {}
+    static void Global_GetCacheDataStr()            {}
+    static void Global_IsCacheData()                {}
+    static void Global_EraseCacheData()             {}
 
     static int  ConsoleActive;
     static int  GmapActive, GmapWait;
@@ -1190,6 +1193,7 @@ struct BindClass
     static void Global_AllowSlot()              {}
     static void Global_DecodeUTF8()             {}
     static void Global_EncodeUTF8()             {}
+    static void Global_CloneObject()            {}
 };
 
 #ifdef BIND_CLIENT
@@ -1444,6 +1448,8 @@ struct GameOptions
     int Anim2CombatIdle;
     int Anim2CombatEnd;
     int ConsoleHistorySize;
+    int SoundVolume;
+    int MusicVolume;
 
     // Mapper
     int ClientPath;

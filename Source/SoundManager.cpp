@@ -133,26 +133,6 @@ void SoundManager::ClearSounds()
     SDL_UnlockAudioDevice( DeviceID );
 }
 
-int SoundManager::GetSoundVolume()
-{
-    return soundVolume;
-}
-
-int SoundManager::GetMusicVolume()
-{
-    return musicVolume;
-}
-
-void SoundManager::SetSoundVolume( int volume )
-{
-    soundVolume = CLAMP( volume, 0, 100 );
-}
-
-void SoundManager::SetMusicVolume( int volume )
-{
-    musicVolume = CLAMP( volume, 0, 100 );
-}
-
 void SoundManager::ProcessSounds( uchar* output )
 {
     memzero( output, SoundSpec.size );
@@ -161,7 +141,7 @@ void SoundManager::ProcessSounds( uchar* output )
         Sound* sound = *it;
         if( SndMngr.ProcessSound( sound ) )
         {
-            int volume = ( sound->IsMusic ? musicVolume : soundVolume ) * SDL_MIX_MAXVOLUME / 100;
+            int volume = CLAMP( sound->IsMusic ? GameOpt.MusicVolume : GameOpt.SoundVolume, 0, 100 ) * SDL_MIX_MAXVOLUME / 100;
             SDL_MixAudioFormat( output, sound->OutputBuf, SoundSpec.format, SoundSpec.size, volume );
             ++it;
         }
@@ -634,7 +614,7 @@ bool SoundManager::ConvertData( Sound* sound )
 
 bool SoundManager::PlaySound( const char* name )
 {
-    if( !isActive || !GetSoundVolume() )
+    if( !isActive || !GameOpt.SoundVolume )
         return true;
     Sound* sound = Load( name, PT_SND_SFX );
     return sound != NULL;
@@ -642,7 +622,7 @@ bool SoundManager::PlaySound( const char* name )
 
 bool SoundManager::PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext )
 {
-    if( !isActive || !GetSoundVolume() )
+    if( !isActive || !GameOpt.SoundVolume )
         return true;
 
     // Generate name of the sound
@@ -705,7 +685,7 @@ bool SoundManager::PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar 
 
 bool SoundManager::PlayMusic( const char* fname, uint pos, uint repeat )
 {
-    if( !isActive || !GetMusicVolume() )
+    if( !isActive )
         return true;
 
     StopMusic();
@@ -742,7 +722,7 @@ void SoundManager::StopMusic()
 
 void SoundManager::PlayAmbient( const char* str )
 {
-    if( !isActive || !GetSoundVolume() )
+    if( !isActive || !GameOpt.SoundVolume )
         return;
 
     int  rnd = Random( 1, 100 );

@@ -15,7 +15,7 @@ int main( int argc, char** argv )
     Thread::SetCurrentName( "GUI" );
 
     // Exceptions
-    CatchExceptions( "FOnlineMapper", MAPPER_VERSION );
+    CatchExceptions( "FOnlineMapper", FONLINE_VERSION );
 
     // Make command line
     SetCommandLine( argc, argv );
@@ -27,7 +27,7 @@ int main( int argc, char** argv )
 
     GetClientOptions();
 
-    WriteLog( "Starting Mapper (%s)...\n", MAPPER_VERSION_STR );
+    WriteLog( "Starting Mapper (version %d)...\n", FONLINE_VERSION );
 
     // Create engine
     FOMapper* mapper = new FOMapper();
@@ -41,6 +41,10 @@ int main( int argc, char** argv )
     // Loop
     while( !GameOpt.Quit )
         mapper->MainLoop();
+
+    // Finish script
+    if( Script::PrepareContext( MapperFunctions.Finish, _FUNC_, "Game" ) )
+        Script::RunPrepared();
 
     // Just kill process
     // System automatically clean up all resources

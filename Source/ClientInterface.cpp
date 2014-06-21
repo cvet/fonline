@@ -1372,7 +1372,7 @@ void FOClient::ContainerDraw( const Rect& pos, int height, int scroll, ItemVec& 
         {
             AnyFrames* anim = ResMngr.GetInvAnim( item.GetPicInv() );
             if( anim )
-                SprMngr.DrawSpriteSize( anim->GetCurSprId(), pos.L, pos.T + ( i2 * height ), (float) pos.W(), (float) height, false, true, item.GetInvColor() );
+                SprMngr.DrawSpriteSize( anim->GetCurSprId(), pos.L, pos.T + ( i2 * height ), pos.W(), height, false, true, item.GetInvColor() );
             i2++;
         }
         i++;
@@ -1558,7 +1558,7 @@ void FOClient::InvDraw()
     {
         AnyFrames* anim = ResMngr.GetInvAnim( Chosen->ItemSlotMain->GetPicInv() );
         if( anim )
-            SprMngr.DrawSpriteSize( anim->GetCurSprId(), InvWSlot1[ 0 ] + InvX, InvWSlot1[ 1 ] + InvY, (float) InvWSlot1.W(), (float) InvWSlot1.H(), false, true, Chosen->ItemSlotMain->GetInvColor() );
+            SprMngr.DrawSpriteSize( anim->GetCurSprId(), InvWSlot1[ 0 ] + InvX, InvWSlot1[ 1 ] + InvY, InvWSlot1.W(), InvWSlot1.H(), false, true, Chosen->ItemSlotMain->GetInvColor() );
     }
 
     // Slot Extra
@@ -1566,7 +1566,7 @@ void FOClient::InvDraw()
     {
         AnyFrames* anim = ResMngr.GetInvAnim( Chosen->ItemSlotExt->GetPicInv() );
         if( anim )
-            SprMngr.DrawSpriteSize( anim->GetCurSprId(), InvWSlot2[ 0 ] + InvX, InvWSlot2[ 1 ] + InvY, (float) InvWSlot2.W(), (float) InvWSlot2.H(), false, true, Chosen->ItemSlotExt->GetInvColor() );
+            SprMngr.DrawSpriteSize( anim->GetCurSprId(), InvWSlot2[ 0 ] + InvX, InvWSlot2[ 1 ] + InvY, InvWSlot2.W(), InvWSlot2.H(), false, true, Chosen->ItemSlotExt->GetInvColor() );
     }
 
     // Slot Armor
@@ -1574,7 +1574,7 @@ void FOClient::InvDraw()
     {
         AnyFrames* anim = ResMngr.GetInvAnim( Chosen->ItemSlotArmor->GetPicInv() );
         if( anim )
-            SprMngr.DrawSpriteSize( anim->GetCurSprId(), InvWArmor[ 0 ] + InvX, InvWArmor[ 1 ] + InvY, (float) InvWArmor.W(), (float) InvWArmor.H(), false, true, Chosen->ItemSlotArmor->GetInvColor() );
+            SprMngr.DrawSpriteSize( anim->GetCurSprId(), InvWArmor[ 0 ] + InvX, InvWArmor[ 1 ] + InvY, InvWArmor.W(), InvWArmor.H(), false, true, Chosen->ItemSlotArmor->GetInvColor() );
     }
 
     // Extended slots
@@ -1589,7 +1589,7 @@ void FOClient::InvDraw()
         AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
         if( !anim )
             continue;
-        SprMngr.DrawSpriteSize( anim->GetCurSprId(), se.Region[ 0 ] + InvX, se.Region[ 1 ] + InvY, (float) se.Region.W(), (float) se.Region.H(), false, true, item->GetInvColor() );
+        SprMngr.DrawSpriteSize( anim->GetCurSprId(), se.Region[ 0 ] + InvX, se.Region[ 1 ] + InvY, se.Region.W(), se.Region.H(), false, true, item->GetInvColor() );
     }
 
     // Items in inventory
@@ -2018,14 +2018,12 @@ bool FOClient::ConsoleActive;
 
 void FOClient::ConsoleDraw()
 {
-    bool is_game_screen = ( IsMainScreen( SCREEN_GAME ) || IsMainScreen( SCREEN_GLOBAL_MAP ) );
-
     // Pause indicator
-    if( Timer::IsGamePaused() && is_game_screen && !IsScreenPresent( SCREEN__MENU_OPTION ) )
+    if( Timer::IsGamePaused() && !IsScreenPresent( SCREEN__MENU_OPTION ) )
         SprMngr.DrawStr( Rect( 0, 20, MODE_WIDTH, MODE_HEIGHT ), MsgGame->GetStr( STR_GAME_PAUSED ), FT_CENTERX, COLOR_TEXT_DRED, FONT_BIG );
 
     // Console
-    if( ConsoleActive && is_game_screen )
+    if( ConsoleActive )
     {
         if( IsMainScreen( SCREEN_GAME ) )
             SprMngr.DrawSprite( ConsolePic, IntX + ConsolePicX, ( IntVisible ? ( IntAddMess ? IntWAddMess[ 1 ] : IntY ) : MODE_HEIGHT ) + ConsolePicY );
@@ -2037,63 +2035,6 @@ void FOClient::ConsoleDraw()
         char* buf = (char*) Str::FormatBuf( "%s", ConsoleStr.c_str() );
         Str::Insert( &buf[ ConsoleCur ], Timer::FastTick() % 800 < 400 ? "!" : "." );
         SprMngr.DrawStr( rect, buf, FT_NOBREAK );
-    }
-
-    // Help info
-    if( GameOpt.HelpInfo )
-    {
-        if( !Chosen )
-            return;
-
-        // SprMngr.DrawSprite(ResMngr.GetIfaceSprId(297),0,0);
-
-        if( GameOpt.DebugInfo )
-        {
-            ushort hx, hy;
-            GetCurHex( hx, hy, false );
-            Vector p = Animation3d::Convert2dTo3d( GameOpt.MouseX, GameOpt.MouseY );
-            SprMngr.DrawStr( Rect( 250, 5, 450, 300 ), Str::FormatBuf(
-                                 "cr_hx<%u>, cr_hy<%u>,\nhx<%u>, hy<%u>,\ncur_x<%d>, cur_y<%d>\nCond<%u>\nox<%d>, oy<%d>\nFarDir<%d>\3dPos<%.2f,%.2f,%.2f>",
-                                 Chosen->HexX, Chosen->HexY, hx, hy, GameOpt.MouseX, GameOpt.MouseY, Chosen->Cond, GameOpt.ScrOx, GameOpt.ScrOy,
-                                 GetFarDir( Chosen->HexX, Chosen->HexY, hx, hy ), p.x, p.y, p.z
-                                 ), FT_CENTERX, COLOR_RGB( 255, 240, 0 ) );
-
-            SprMngr.DrawStr( Rect( 450, 5, 650, 300 ), Str::FormatBuf(
-                                 "Anim info: cur_id %d, cur_ox %d, cur_oy %d\nFileld offset: x<%d>, y<%d>",
-                                 Chosen->SprId, Chosen->SprOx, Chosen->SprOy, HexMngr.GetField( hx, hy ).ScrX, HexMngr.GetField( hx, hy ).ScrY
-                                 ), FT_CENTERX, COLOR_RGB( 255, 240, 0 ) );
-
-            SprMngr.DrawStr( Rect( 650, 5, 800, 300 ), Str::FormatBuf(
-                                 "Time:%02d:%02d %02d:%02d:%04d x%02d\nFixedFPS:%d\nSound:%d\nMusic:%d",
-                                 GameOpt.Hour, GameOpt.Minute, GameOpt.Day, GameOpt.Month, GameOpt.Year, GameOpt.TimeMultiplier,
-                                 GameOpt.FixedFPS, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume()
-                                 ), FT_CENTERX, COLOR_RGB( 255, 240, 0 ) );
-        }
-
-        SprMngr.DrawStr( Rect( 10, 10, MODE_WIDTH, MODE_HEIGHT ), Str::FormatBuf(
-                             "|0xFFBBBBBB FOnline %s\n"
-                             "by Gamers for Gamers\n"
-                             "version %04X-%02X beta\n\n"
-                             "Traffic, bytes:\n"
-                             "Send: %u\n"
-                             "Receive: %u\n"
-                             "Sum: %u\n"
-                             // "Receive Real: %u\n"
-                             "\n"
-                             "FPS: %d (%d%s)\n"
-                             "Ping: %d\n"
-                             "\n"
-                             // "sleep: %d\n"
-                             "Sound: %d\n"
-                             "Music: %d\n",
-                             Singleplayer ? "Singleplayer" : "",
-                             CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF,
-                             BytesSend, BytesReceive, BytesReceive + BytesSend, /*BytesRealReceive,*/
-                             GameOpt.FPS, !GameOpt.VSync ? abs( GameOpt.FixedFPS ) : 0, !GameOpt.VSync && GameOpt.FixedFPS < 0 ? ", sleep" : "",
-                             GameOpt.Ping, SndMngr.GetSoundVolume(), SndMngr.GetMusicVolume()
-                             ), 0, COLOR_RGB( 255, 248, 0 ), FONT_BIG );
-
-        SprMngr.DrawStr( Rect( 0, 0, MODE_WIDTH, MODE_HEIGHT ), MsgGame->GetStr( STR_GAME_HELP ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT );
     }
 }
 
@@ -2782,7 +2723,7 @@ void FOClient::IntDraw()
         SprMngr.DrawSpriteSize(
             ResMngr.GetInvAnim( Chosen->ItemSlotMain->GetPicInv() ),
             IntBItem.L + item_offsx, IntBItem.T + item_offsy,
-            (float) IntBItem.W(), (float) IntBItem.H(),
+            IntBItem.W(), IntBItem.H(),
             false, true, Chosen->ItemSlotMain->GetInvColor() );
     }
 
@@ -3064,20 +3005,32 @@ void FOClient::IntMouseMove()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::AddMess( int mess_type, const char* msg )
+void FOClient::AddMess( int mess_type, const char* msg, bool script_call )
 {
-    if( !msg )
+    // Script callback
+    ScriptString* text = new ScriptString( msg );
+    if( Script::PrepareContext( ClientFunctions.MessageBox, _FUNC_, "Game" ) )
+    {
+        Script::SetArgAddress( text );
+        Script::SetArgUInt( mess_type );
+        Script::SetArgBool( script_call );
+        Script::RunPrepared();
+    }
+
+    // Skip empty or error messages
+    if( !text->length() || ( mess_type == FOMB_GAME && text->c_std_str() == MSG_ERROR_MESSAGE ) )
+    {
+        text->Release();
         return;
-    if( mess_type == FOMB_GAME && !strcmp( msg, "error" ) )
-        return;
+    }
 
     // Text
     const uint str_color[] = { COLOR_TEXT_DGREEN, COLOR_TEXT, COLOR_TEXT_DRED, COLOR_TEXT_DDGREEN };
     static char str[ MAX_FOTEXT ];
     if( mess_type < 0 || mess_type > FOMB_VIEW )
-        Str::Format( str, "%s\n", msg );
+        Str::Format( str, "%s\n", text->c_str() );
     else
-        Str::Format( str, "|%u %c |%u %s\n", str_color[ mess_type ], TEXT_SYMBOL_DOT, COLOR_TEXT, msg );
+        Str::Format( str, "|%u %c%c%c |%u %s\n", str_color[ mess_type ], 0xE2, 0x80, 0xA2, COLOR_TEXT, text->c_str() );
 
     // Time
     DateTime dt;
@@ -3097,6 +3050,9 @@ void FOClient::AddMess( int mess_type, const char* msg )
             MessBoxScroll = 0;
     }
     MessBoxGenerate();
+
+    // Clean up
+    text->Release();
 }
 
 void FOClient::MessBoxGenerate()
@@ -3197,9 +3153,7 @@ Rect FOClient::MessBoxCurRectScroll()
 
     if( GetActiveScreen() == SCREEN_NONE )
     {
-        if( IsMainScreen( SCREEN_LOGIN ) )
-            return LogWChat;
-        else if( IsMainScreen( SCREEN_REGISTRATION ) )
+        if( IsMainScreen( SCREEN_REGISTRATION ) )
             return Rect( 0, 0, MODE_WIDTH, 60 );
         else if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
             return GmapWChat;
@@ -3436,7 +3390,7 @@ void FOClient::DlgDraw( bool is_dialog )
 {
     SprMngr.DrawSprite( DlgPMain, DlgX, DlgY );
     if( !BarterIsPlayers && DlgAvatarPic )
-        SprMngr.DrawSpriteSize( DlgAvatarPic, DlgWAvatar.L + DlgX, DlgWAvatar.T + DlgY, (float) DlgWAvatar.W(), (float) DlgWAvatar.H(), true, true );
+        SprMngr.DrawSpriteSize( DlgAvatarPic, DlgWAvatar.L + DlgX, DlgWAvatar.T + DlgY, DlgWAvatar.W(), DlgWAvatar.H(), true, true );
     if( !Chosen )
         return;
 
@@ -3447,8 +3401,8 @@ void FOClient::DlgDraw( bool is_dialog )
         SprMngr.DrawSprite( BarterPMain, BarterWMain[ 0 ] + DlgX, BarterWMain[ 1 ] + DlgY );
 
     // Text scroll
-    const char scr_up[] = { (char) TEXT_SYMBOL_UP, 0 };
-    const char scr_down[] = { (char) TEXT_SYMBOL_DOWN, 0 };
+    const char scr_up[] = { 24, 0 };
+    const char scr_down[] = { 25, 0 };
     if( DlgMainTextCur )
         SprMngr.DrawStr( Rect( DlgBScrUp, DlgX, DlgY ), scr_up, 0, IfaceHold == IFACE_DLG_SCR_UP ? COLOR_TEXT_DGREEN : COLOR_TEXT );
     if( DlgMainTextCur < DlgMainTextLinesReal - DlgMainTextLinesRect )
@@ -5250,15 +5204,15 @@ void FOClient::LMenuMouseUp()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::ShowMainScreen( int new_screen )
+void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NULL */, int cur_mode /* = 0 */ )
 {
     while( GetActiveScreen() != SCREEN_NONE )
         ShowScreen( SCREEN_NONE );
     int prev_main_screen = ScreenModeMain;
     if( ScreenModeMain )
-        RunScreenScript( false, ScreenModeMain, -1, 0, 0 );
+        RunScreenScript( false, ScreenModeMain, NULL );
     ScreenModeMain = new_screen;
-    RunScreenScript( true, new_screen, -1, 0, 0 );
+    RunScreenScript( true, new_screen, params );
 
     switch( GetMainScreen() )
     {
@@ -5344,7 +5298,7 @@ bool FOClient::IsScreenPresent( int screen )
     return std::find( active_screens->begin(), active_screens->end(), screen ) != active_screens->end();
 }
 
-void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
+void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, int cur_mode /* = 0 */ )
 {
     SmthSelected smth = TargetSmth;
     ConsoleLastKey = 0;
@@ -5357,36 +5311,13 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
     DropScroll();
 
     if( screen == SCREEN_NONE )
-    {
-        int s = GetActiveScreen();
-        if( p0 == -1 )
-            SetCurMode( CUR_DEFAULT );
-        else if( p0 == -2 )
-            SetLastCurMode();
-        if( s != SCREEN_NONE )
-            RunScreenScript( false, s, p0, p1, p2 );
-
-        if( Singleplayer )
-        {
-            if( SingleplayerData.Pause && s == SCREEN__MENU_OPTION )
-                SingleplayerData.Pause = false;
-
-            if( s == SCREEN__SAVE_LOAD )
-            {
-                if( SaveLoadLoginScreen )
-                    ScreenFadeOut();
-                SaveLoadDataSlots.clear();
-            }
-            else if( s == SCREEN__SAY && SayType == DIALOGSAY_SAVE )
-                SaveLoadShowDraft();
-        }
-        return;
-    }
+        HideScreen( screen, cur_mode );
 
     switch( screen )
     {
     case SCREEN__INVENTORY:
-        SetCurMode( CUR_HAND );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_HAND );
         CollectContItems();
         InvHoldId = 0;
         InvScroll = 0;
@@ -5394,20 +5325,23 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
         InvMouseMove();
         break;
     case SCREEN__PICKUP:
-        SetCurMode( CUR_HAND );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_HAND );
         CollectContItems();
         PupScroll1 = 0;
         PupScroll2 = 0;
         PupMouseMove();
         break;
     case SCREEN__MINI_MAP:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         //	LmapHold=LMAP_NONE;
         LmapPrepareMap();
         LmapMouseMove();
         break;
     case SCREEN__CHARACTER:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         memzero( ChaSkillUp, sizeof( ChaSkillUp ) );
         if( Chosen )
             ChaUnspentSkillPoints = Chosen->Params[ ST_UNSPENT_SKILL_POINTS ];
@@ -5422,28 +5356,33 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
         ChaMouseMove( false );
         break;
     case SCREEN__DIALOG:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         DlgMouseMove( true );
         break;
     case SCREEN__BARTER:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         BarterHoldId = 0;
         BarterIsPlayers = false;
         break;
     case SCREEN__PIP_BOY:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         PipMode = PIP__NONE;
         PipMouseMove();
         break;
     case SCREEN__FIX_BOY:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         FixMode = FIX_MODE_LIST;
         FixCurCraft = -1;
         FixGenerate( FIX_MODE_LIST );
         FixMouseMove();
         break;
     case SCREEN__MENU_OPTION:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         break;
     case SCREEN__AIM:
     {
@@ -5454,7 +5393,8 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
         if( !cr )
             break;
         AimTargetId = cr->GetId();
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         AnyFrames::Destroy( AimPic );
         AimPic = AimGetPic( cr, "frm" );
         if( !AimPic )
@@ -5465,19 +5405,23 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
     }
     break;
     case SCREEN__SAY:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         SayType = DIALOGSAY_NONE;
         SayTitle = MsgGame->GetStr( STR_SAY_TITLE );
         SayOnlyNumbers = false;
         break;
     case SCREEN__SPLIT:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         break;
     case SCREEN__TIMER:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         break;
     case SCREEN__DIALOGBOX:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         DlgboxType = DIALOGBOX_NONE;
         DlgboxWait = 0;
         Str::Copy( DlgboxText, "" );
@@ -5485,23 +5429,27 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
         DlgboxSelectedButton = 0;
         break;
     case SCREEN__ELEVATOR:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         break;
     case SCREEN__CHA_NAME:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         IfaceHold = IFACE_CHA_NAME_NAME;
         ChaNameX = ChaX + ChaNameWMain[ 0 ];
         ChaNameY = ChaY + ChaNameWMain[ 1 ];
         break;
     case SCREEN__CHA_AGE:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         ChaAgeX = ChaX + ChaAgeWMain[ 0 ];
         ChaAgeY = ChaY + ChaAgeWMain[ 1 ];
         if( !IsMainScreen( SCREEN_REGISTRATION ) )
             ShowScreen( SCREEN_NONE );
         break;
     case SCREEN__CHA_SEX:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         ChaSexX = ChaX + ChaSexWMain[ 0 ];
         ChaSexY = ChaY + ChaSexWMain[ 1 ];
         if( !IsMainScreen( SCREEN_REGISTRATION ) )
@@ -5509,7 +5457,8 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
         break;
     case SCREEN__GM_TOWN:
     {
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         GmapTownTextPos.clear();
         GmapTownText.clear();
 
@@ -5525,7 +5474,7 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
         AnyFrames* anim = ResMngr.GetIfaceAnim( Str::GetHash( MsgGM->GetStr( STR_GM_PIC_( loc_pid ) ) ) );
         if( !anim )
         {
-            RunScreenScript( true, screen, p0, p1, p2 );
+            RunScreenScript( true, screen, params );
             ShowScreen( SCREEN_NONE );
             return;
         }
@@ -5561,31 +5510,36 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
     }
     break;
     case SCREEN__INPUT_BOX:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         IboxMode = IBOX_MODE_NONE;
         IboxHolodiskId = 0;
         IboxTitleCur = 0;
         IboxTextCur = 0;
         break;
     case SCREEN__SKILLBOX:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         break;
     case SCREEN__USE:
-        SetCurMode( CUR_HAND );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_HAND );
         CollectContItems();
         UseHoldId = 0;
         UseScroll = 0;
         UseMouseMove();
         break;
     case SCREEN__PERK:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         PerkScroll = 0;
         PerkCurPerk = -1;
         PerkPrepare();
         PerkMouseMove();
         break;
     case SCREEN__TOWN_VIEW:
-        SetCurMode( CUR_DEFAULT );
+        if( cur_mode != -1 )
+            SetCurMode( CUR_DEFAULT );
         TViewShowCountours = false;
         TViewType = TOWN_VIEW_FROM_NONE;
         TViewGmapLocId = 0;
@@ -5599,23 +5553,49 @@ void FOClient::ShowScreen( int screen, int p0, int p1, int p2 )
     default:
         break;
     }
-    RunScreenScript( true, screen, p0, p1, p2 );
+
+    RunScreenScript( true, screen, params );
 }
 
-void FOClient::HideScreen( int screen, int p0, int p1, int p2 )
+void FOClient::HideScreen( int screen, int cur_mode /* = 0 */ )
 {
-    RunScreenScript( false, screen, p0, p1, p2 );
+    if( screen == SCREEN_NONE )
+        screen = GetActiveScreen();
+    if( screen == SCREEN_NONE )
+        return;
+
+    if( cur_mode == 0 )
+        SetCurMode( CUR_DEFAULT );
+    else if( cur_mode == 1 )
+        SetLastCurMode();
+
+    if( Singleplayer )
+    {
+        if( SingleplayerData.Pause && screen == SCREEN__MENU_OPTION )
+            SingleplayerData.Pause = false;
+
+        if( screen == SCREEN__SAVE_LOAD )
+        {
+            if( SaveLoadLoginScreen )
+                ScreenFadeOut();
+            SaveLoadDataSlots.clear();
+        }
+        else if( screen == SCREEN__SAY && SayType == DIALOGSAY_SAVE )
+        {
+            SaveLoadShowDraft();
+        }
+    }
+
+    RunScreenScript( false, screen, NULL );
 }
 
-void FOClient::RunScreenScript( bool show, int screen, int p0, int p1, int p2 )
+void FOClient::RunScreenScript( bool show, int screen, ScriptDictionary* params )
 {
     if( Script::PrepareContext( ClientFunctions.ScreenChange, _FUNC_, "Game" ) )
     {
         Script::SetArgBool( show );
         Script::SetArgUInt( screen );
-        Script::SetArgUInt( p0 );
-        Script::SetArgUInt( p1 );
-        Script::SetArgUInt( p2 );
+        Script::SetArgObject( params );
         Script::RunPrepared();
     }
 }
@@ -5996,7 +5976,7 @@ void FOClient::GmapDraw()
                 ( mx1 >= sx1 && mx1 <= sx2 && my2 >= sy1 && my2 <= sy2 ) ||
                 ( mx2 >= sx1 && mx2 <= sx2 && my2 >= sy1 && my2 <= sy2 ) )
                 SprMngr.DrawSpriteSize( GmapPic[ index ],
-                                        mx1, my1, w / GmapZoom, h / GmapZoom, true, false );
+                                        mx1, my1, (int) ( w / GmapZoom ), (int) ( h / GmapZoom ), true, false );
 
             wmx += w;
             if( px == GmapTilesX - 1 )
@@ -6047,8 +6027,7 @@ void FOClient::GmapDraw()
         int loc_pic_y2 = (int) ( ( loc.LocWy + radius ) / GmapZoom ) + GmapOffsetY;
         if( loc_pic_x1 <= GmapWMap[ 2 ] && loc_pic_y1 <= GmapWMap[ 3 ] && loc_pic_x2 >= GmapWMap[ 0 ] && loc_pic_y2 >= GmapWMap[ 1 ] )
         {
-            SprMngr.DrawSpriteSize( GmapLocPic, loc_pic_x1, loc_pic_y1,
-                                    (float) ( loc_pic_x2 - loc_pic_x1 ), (float) ( loc_pic_y2 - loc_pic_y1 ),
+            SprMngr.DrawSpriteSize( GmapLocPic, loc_pic_x1, loc_pic_y1, loc_pic_x2 - loc_pic_x1, loc_pic_y2 - loc_pic_y1,
                                     true, false, loc.Color ? loc.Color : COLOR_RGBA( GMAP_LOC_ALPHA, 0, 255, 0 ) );
         }
     }
@@ -6174,7 +6153,7 @@ void FOClient::GmapDraw()
     Item* car = GmapGetCar();
     if( car )
     {
-        SprMngr.DrawSpriteSize( car->GetCurSprId(), GmapWCar.L, GmapWCar.T, (float) GmapWCar.W(), (float) GmapWCar.H(), false, true );
+        SprMngr.DrawSpriteSize( car->GetCurSprId(), GmapWCar.L, GmapWCar.T, GmapWCar.W(), GmapWCar.H(), false, true );
         SprMngr.DrawStr( GmapWCar, FmtItemLook( car, ITEM_LOOK_WM_CAR ), FT_CENTERX | FT_BOTTOM, COLOR_TEXT, FONT_DEFAULT );
     }
 
@@ -9102,7 +9081,7 @@ void FOClient::PupDraw()
         {
             AnyFrames* anim = ResMngr.GetItemAnim( proto_item->PicMap );
             if( anim )
-                SprMngr.DrawSpriteSize( anim->GetSprId( anim->GetCnt() - 1 ), PupWInfo[ 0 ] + PupX, PupWInfo[ 1 ] + PupY, (float) PupWInfo.W(), (float) PupWInfo.H(), false, true );
+                SprMngr.DrawSpriteSize( anim->GetSprId( anim->GetCnt() - 1 ), PupWInfo[ 0 ] + PupX, PupWInfo[ 1 ] + PupY, PupWInfo.W(), PupWInfo.H(), false, true );
         }
     }
     else if( PupTransferType == TRANSFER_CRIT_STEAL || PupTransferType == TRANSFER_CRIT_LOOT || PupTransferType == TRANSFER_FAR_CRIT )
@@ -10215,7 +10194,7 @@ void FOClient::SayKeyDown( uchar dik, const char* dik_text )
 
 void FOClient::WaitDraw()
 {
-    SprMngr.DrawSpriteSize( WaitPic, 0, 0, (float) MODE_WIDTH, (float) MODE_HEIGHT, true, true );
+    SprMngr.DrawSpriteSize( WaitPic, 0, 0, MODE_WIDTH, MODE_HEIGHT, true, true );
     SprMngr.Flush();
 }
 
@@ -10274,7 +10253,7 @@ label_DropItems:
     }
 
     SplitParentScreen = SCREEN_NONE;
-    ShowScreen( SCREEN_NONE, -2 );
+    ShowScreen( SCREEN_NONE, NULL, 1 );
 }
 
 void FOClient::SplitDraw()
@@ -10303,7 +10282,7 @@ void FOClient::SplitDraw()
     }
 
     if( SplitItemPic )
-        SprMngr.DrawSpriteSize( SplitItemPic, SplitWItem[ 0 ] + SplitX, SplitWItem[ 1 ] + SplitY, (float) SplitWItem.W(), (float) SplitWItem.H(), false, true, SplitItemColor );
+        SprMngr.DrawSpriteSize( SplitItemPic, SplitWItem[ 0 ] + SplitX, SplitWItem[ 1 ] + SplitY, SplitWItem.W(), SplitWItem.H(), false, true, SplitItemColor );
 
     SprMngr.DrawStr( Rect( SplitWTitle, SplitX, SplitY ), MsgGame->GetStr( STR_SPLIT_TITLE ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
     SprMngr.DrawStr( Rect( SplitBAll, SplitX, SplitY - ( IfaceHold == IFACE_SPLIT_ALL ? 1 : 0 ) ), MsgGame->GetStr( STR_SPLIT_ALL ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
@@ -10502,7 +10481,7 @@ void FOClient::TimerClose( bool done )
         else
             AddActionBack( CHOSEN_USE_ITEM, TimerItemId, 0, TARGET_SELF, 0, USE_USE, TimerValue );
     }
-    ShowScreen( SCREEN_NONE, -2 );
+    ShowScreen( SCREEN_NONE, NULL, 1 );
 }
 
 void FOClient::TimerDraw()
@@ -10528,7 +10507,7 @@ void FOClient::TimerDraw()
     }
 
     if( TimerItemPic )
-        SprMngr.DrawSpriteSize( TimerItemPic, TimerWItem[ 0 ] + TimerX, TimerWItem[ 1 ] + TimerY, (float) TimerWItem.W(), (float) TimerWItem.H(), false, true, TimerItemColor );
+        SprMngr.DrawSpriteSize( TimerItemPic, TimerWItem[ 0 ] + TimerX, TimerWItem[ 1 ] + TimerY, TimerWItem.W(), TimerWItem.H(), false, true, TimerItemColor );
     SprMngr.Flush();
 
     SprMngr.DrawStr( Rect( TimerWTitle, TimerX, TimerY ), MsgGame->GetStr( STR_TIMER_TITLE ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
@@ -10980,7 +10959,7 @@ void FOClient::FixDraw()
         {
             FixDrawComponent* c = FixDrawComp[ i ];
             if( !c->IsText )
-                SprMngr.DrawSpriteSize( c->Anim, c->Place.L + FixX, c->Place.T + FixY, (float) c->Place.W(), (float) c->Place.H(), false, true );
+                SprMngr.DrawSpriteSize( c->Anim, c->Place.L + FixX, c->Place.T + FixY, c->Place.W(), c->Place.H(), false, true );
         }
     }
 

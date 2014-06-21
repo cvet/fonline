@@ -774,8 +774,8 @@ void HexManager::DrawCursor( uint spr_id )
     SprMngr.DrawSpriteSize( spr_id,
                             (int) ( (float) ( cursorX + GameOpt.ScrOx ) / GameOpt.SpritesZoom ),
                             (int) ( (float) ( cursorY + GameOpt.ScrOy ) / GameOpt.SpritesZoom ),
-                            (float) si->Width / GameOpt.SpritesZoom,
-                            (float) si->Height / GameOpt.SpritesZoom, true, false );
+                            (int) ( (float) si->Width / GameOpt.SpritesZoom ),
+                            (int) ( (float) si->Height / GameOpt.SpritesZoom ), true, false );
 }
 
 void HexManager::DrawCursor( const char* text )

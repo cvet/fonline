@@ -1276,6 +1276,14 @@ void SpriteManager::GetTextInfo( int width, int height, const char* str, int num
     if( !font )
         return;
 
+    if( !str )
+    {
+        tw = width;
+        th = height;
+        lines = height / ( font->LineHeight + font->YAdvance );
+        return;
+    }
+
     static FontFormatInfo fi;
     fi.Init( font, flags, Rect( 0, 0, width, height ), str );
     FormatText( fi, FORMAT_TYPE_LCOUNT );

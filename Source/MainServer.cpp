@@ -83,7 +83,7 @@ int main( int argc, char** argv )
     # endif
 
     // Exceptions catcher
-    CatchExceptions( "FOnlineServer", SERVER_VERSION );
+    CatchExceptions( "FOnlineServer", FONLINE_VERSION );
 
     // Timer
     Timer::Init();
@@ -169,7 +169,7 @@ int main( int argc, char** argv )
         LogToBuffer( true );
     }
 
-    WriteLog( "FOnline server, version %04X-%02X.\n", SERVER_VERSION, FO_PROTOCOL_VERSION & 0xFF );
+    WriteLog( "FOnline server, version %d.\n", FONLINE_VERSION );
 
     FOQuit = true;
     Script::SetLogDebugInfo( true );
@@ -824,7 +824,7 @@ VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
 {
     Thread::SetCurrentName( "Service" );
     LogToFile( "FOnlineServer.log" );
-    WriteLog( "FOnline server service, version %04X-%02X.\n", SERVER_VERSION, FO_PROTOCOL_VERSION & 0xFF );
+    WriteLog( "FOnline server service, version %d.\n", FONLINE_VERSION );
 
     FOServiceStatusHandle = RegisterServiceCtrlHandler( "FOnlineServer", FOServiceCtrlHandler );
     if( !FOServiceStatusHandle )

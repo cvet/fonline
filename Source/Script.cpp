@@ -402,11 +402,7 @@ void Script::Finish()
     UnloadScripts();
 
     FinishEngine( Engine );     // Finish default engine
-
-    #pragma MESSAGE("Client crashed here, disable finishing until fix angelscript.")
-    #ifndef FONLINE_CLIENT
     FinishThread();
-    #endif
 }
 
 bool Script::InitThread()
@@ -1407,8 +1403,8 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
     EngineData*      edata = (EngineData*) Engine->GetUserData();
     ScriptModuleVec& modules = edata->Modules;
 
-    // Compute whole version for server, client, mapper
-    uint version = ( SERVER_VERSION << 20 ) | ( CLIENT_VERSION << 10 ) | MAPPER_VERSION;
+    // Binary version
+    uint version = FONLINE_VERSION;
 
     // Get script names
     char fname_real[ MAX_FOPATH ];

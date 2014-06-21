@@ -56,15 +56,15 @@ public:
     StrVec     Preload3dFiles;
 
     int        ScreenModeMain;
-    void ShowMainScreen( int new_screen );
+    void ShowMainScreen( int new_screen, ScriptDictionary* params = NULL, int cur_mode = 0 );
     int  GetMainScreen()                  { return ScreenModeMain; }
     bool IsMainScreen( int check_screen ) { return check_screen == ScreenModeMain; }
 
-    void ShowScreen( int screen, int p0 = -1, int p1 = 0, int p2 = 0 );
-    void HideScreen( int screen, int p0 = -1, int p1 = 0, int p2 = 0 );
+    void ShowScreen( int screen, ScriptDictionary* params = NULL, int cur_mode = 0 );
+    void HideScreen( int screen, int cur_mode = 0 );
     int  GetActiveScreen( IntVec** screens = NULL );
     bool IsScreenPresent( int screen );
-    void RunScreenScript( bool show, int screen, int p0, int p1, int p2 );
+    void RunScreenScript( bool show, int screen, ScriptDictionary* params );
 
     int CurMode, CurModeLast;
     void SetCurMode( int new_cur );
@@ -546,6 +546,7 @@ public:
         static void   Item_Animate( Item* item, uchar from_frame, uchar to_frame );
         static Item*  Item_GetChild( Item* item, uint childIndex );
 
+        static ScriptString* Global_CustomCall( ScriptString& command, ScriptString& separator );
         static CritterCl*    Global_GetChosen();
         static uint          Global_GetChosenActions( ScriptArray* actions );
         static void          Global_SetChosenActions( ScriptArray* actions );
@@ -611,6 +612,7 @@ public:
         static void          Global_AllowSlot( uchar index, ScriptString& ini_option );
         static uint          Global_DecodeUTF8( ScriptString& text, uint& length );
         static ScriptString* Global_EncodeUTF8( uint ucs );
+        static void          Global_CloneObject( void* in, int in_type_id, void* out, int out_type_id, bool copy );
         static void          Global_SetRegistrationParam( uint index, bool enabled );
         static uint          Global_GetAngelScriptProperty( int property );
         static bool          Global_SetAngelScriptProperty( int property, uint value );
@@ -635,25 +637,25 @@ public:
 
         static uint Global_LoadSprite( ScriptString& spr_name, int path_index );
         static uint Global_LoadSpriteHash( uint name_hash );
-        static int  Global_GetSpriteWidth( uint spr_id, int spr_index );
-        static int  Global_GetSpriteHeight( uint spr_id, int spr_index );
+        static int  Global_GetSpriteWidth( uint spr_id, int frame_index );
+        static int  Global_GetSpriteHeight( uint spr_id, int frame_index );
         static uint Global_GetSpriteCount( uint spr_id );
-        static void Global_GetTextInfo( ScriptString& text, int w, int h, int font, int flags, int& tw, int& th, int& lines );
-        static void Global_DrawSprite( uint spr_id, int spr_index, int x, int y, uint color );
-        static void Global_DrawSpriteOffs( uint spr_id, int spr_index, int x, int y, uint color, bool offs );
-        static void Global_DrawSpritePattern( uint spr_id, int spr_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color );
-        static void Global_DrawSpriteSize( uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color );
-        static void Global_DrawSpriteSizeOffs( uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color, bool offs );
+        static void Global_GetTextInfo( ScriptString* text, int w, int h, int font, int flags, int& tw, int& th, int& lines );
+        static void Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs );
+        static void Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs );
+        static void Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color );
         static void Global_DrawText( ScriptString& text, int x, int y, int w, int h, uint color, int font, int flags );
         static void Global_DrawPrimitive( int primitive_type, ScriptArray& data );
-        static void Global_DrawMapSprite( ushort hx, ushort hy, ushort proto_id, uint spr_id, int spr_index, int ox, int oy );
+        static void Global_DrawMapSprite( ushort hx, ushort hy, ushort proto_id, uint spr_id, int frame_index, int ox, int oy );
         static void Global_DrawCritter2d( uint crtype, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color );
         static void Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color );
 
-        static void          Global_ShowScreen( int screen, int p0, int p1, int p2 );
-        static void          Global_HideScreen( int screen, int p0, int p1, int p2 );
+        static void          Global_ShowScreen( int screen, ScriptDictionary* params );
+        static void          Global_HideScreen( int screen );
         static void          Global_GetHardcodedScreenPos( int screen, int& x, int& y );
         static void          Global_DrawHardcodedScreen( int screen );
+        static void          Global_HandleHardcodedScreenMouse( int screen, int button, bool down, bool move );
+        static void          Global_HandleHardcodedScreenKey( int screen, uchar key, ScriptString* text, bool down );
         static bool          Global_GetHexPos( ushort hx, ushort hy, int& x, int& y );
         static bool          Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface );
         static Item*         Global_GetMonitorItem( int x, int y, bool ignore_interface );
@@ -1782,7 +1784,7 @@ public:
     IntVec            MessBoxFilters;
 
     void MessBoxGenerate();
-    void AddMess( int mess_type, const char* msg );
+    void AddMess( int mess_type, const char* msg, bool script_call = false );
     void MessBoxDraw();
     Rect MessBoxCurRectDraw();
     Rect MessBoxCurRectScroll();

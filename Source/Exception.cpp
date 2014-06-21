@@ -56,11 +56,11 @@ typedef struct _IMAGEHLP_MODULE64_V2
     CHAR     LoadedImageName[ 256 ]; // symbol file name
 } IMAGEHLP_MODULE64_V2;
 
-void CatchExceptions( const char* app_name, unsigned int app_ver )
+void CatchExceptions( const char* app_name, int app_ver )
 {
     if( app_name )
         Str::Copy( AppName, app_name );
-    Str::Format( AppVer, "%04X", app_ver );
+    Str::Format( AppVer, "%d", app_ver );
 
     if( app_name )
     # ifndef EXCEPTION_MINIDUMP
@@ -526,11 +526,11 @@ bool sigactionsSetted = false;
 struct sigaction oldSIGSEGV;
 struct sigaction oldSIGFPE;
 
-void CatchExceptions( const char* app_name, unsigned int app_ver )
+void CatchExceptions( const char* app_name, int app_ver )
 {
     if( app_name )
         Str::Copy( AppName, app_name );
-    Str::Format( AppVer, "%04X", app_ver );
+    Str::Format( AppVer, "%d", app_ver );
 
     if( app_name && !sigactionsSetted )
     {

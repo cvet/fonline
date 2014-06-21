@@ -688,7 +688,7 @@ void CritterCl::DrawStay( Rect r )
         if( anim )
         {
             uint spr_id = ( IsLife() ? anim->Ind[ 0 ] : anim->Ind[ anim->CntFrm - 1 ] );
-            SprMngr.DrawSpriteSize( spr_id, r.L, r.T, (float) r.W(), (float) r.H(), false, true );
+            SprMngr.DrawSpriteSize( spr_id, r.L, r.T, r.W(), r.H(), false, true );
         }
     }
     else if( Anim3dStay )

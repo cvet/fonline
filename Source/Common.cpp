@@ -712,8 +712,8 @@ const char* GetWindowName()
 
         // Mapper appendix
         #if defined ( FONLINE_MAPPER )
-        Str::Append( window_name, " " );
-        Str::Append( window_name, MAPPER_VERSION_STR );
+        Str::Append( window_name, " v." );
+        Str::Append( window_name, Str::ItoA( FONLINE_VERSION ) );
         #endif
     }
 
@@ -1375,6 +1375,8 @@ GameOptions::GameOptions()
     RainSpeedX = 0;
     RainSpeedY = 15;
     ConsoleHistorySize = 20;
+    SoundVolume = 100;
+    MusicVolume = 100;
 
     // Mapper
     ClientPath = DIR_SLASH_SD;

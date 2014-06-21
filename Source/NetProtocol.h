@@ -7,7 +7,6 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define FO_PROTOCOL_VERSION                   ( 0xF107 )    // FOnline Protocol Version
 #define MAKE_NETMSG_HEADER( number )    ( (uint) ( ( 0x5EAD << 17 ) | ( number << 8 ) | ( 0xAA ) ) )
 #define PING_CLIENT_LIFE_TIME                 ( 15000 )     // Time to ping client life
 

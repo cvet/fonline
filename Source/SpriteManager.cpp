@@ -3447,6 +3447,96 @@ bool SpriteManager::DrawSprite( uint id, int x, int y, uint color /* = 0 */ )
     return true;
 }
 
+bool SpriteManager::DrawSpriteSize( uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color /* = 0 */ )
+{
+    return DrawSpriteSizeExt( id, x, y, w, h, zoom_up, center, false, color );
+}
+
+
+bool SpriteManager::DrawSpriteSizeExt( uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color )
+{
+    if( !id )
+        return false;
+
+    SpriteInfo* si = sprData[ id ];
+    if( !si )
+        return false;
+
+    float xf = (float) x;
+    float yf = (float) y;
+    float wf = (float) si->Width;
+    float hf = (float) si->Height;
+    float k = min( w / wf, h / hf );
+    if( !stretch )
+    {
+        if( k < 1.0f || ( k > 1.0f && zoom_up ) )
+        {
+            wf = floorf( wf * k + 0.5f );
+            hf = floorf( hf * k + 0.5f );
+        }
+        if( center )
+        {
+            xf += floorf( ( (float) w - wf ) / 2.0f + 0.5f );
+            yf += floorf( ( (float) h - hf ) / 2.0f + 0.5f );
+        }
+    }
+    else if( zoom_up )
+    {
+        wf = floorf( wf * k + 0.5f );
+        hf = floorf( hf * k + 0.5f );
+        if( center )
+        {
+            xf += floorf( ( (float) w - wf ) / 2.0f + 0.5f );
+            yf += floorf( ( (float) h - hf ) / 2.0f + 0.5f );
+        }
+    }
+    else
+    {
+        wf = (float) w;
+        hf = (float) h;
+    }
+
+    Effect* effect = ( si->DrawEffect ? si->DrawEffect : Effect::Iface );
+    if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
+        dipQueue.push_back( DipData( si->Atlas->TextureOwner, effect ) );
+    else
+        dipQueue.back().SpritesCount++;
+
+    int pos = curDrawQuad * 4;
+
+    if( !color )
+        color = COLOR_IFACE;
+    color = COLOR_SWAP_RB( color );
+
+    vBuffer[ pos ].X = xf;
+    vBuffer[ pos ].Y = yf + hf;
+    vBuffer[ pos ].TU = si->SprRect.L;
+    vBuffer[ pos ].TV = si->SprRect.B;
+    vBuffer[ pos++ ].Diffuse = color;
+
+    vBuffer[ pos ].X = xf;
+    vBuffer[ pos ].Y = yf;
+    vBuffer[ pos ].TU = si->SprRect.L;
+    vBuffer[ pos ].TV = si->SprRect.T;
+    vBuffer[ pos++ ].Diffuse = color;
+
+    vBuffer[ pos ].X = xf + wf;
+    vBuffer[ pos ].Y = yf;
+    vBuffer[ pos ].TU = si->SprRect.R;
+    vBuffer[ pos ].TV = si->SprRect.T;
+    vBuffer[ pos++ ].Diffuse = color;
+
+    vBuffer[ pos ].X = xf + wf;
+    vBuffer[ pos ].Y = yf + hf;
+    vBuffer[ pos ].TU = si->SprRect.R;
+    vBuffer[ pos ].TV = si->SprRect.B;
+    vBuffer[ pos ].Diffuse = color;
+
+    if( ++curDrawQuad == drawQuadCount )
+        Flush();
+    return true;
+}
+
 bool SpriteManager::DrawSpritePattern( uint id, int x, int y, int w, int h, int spr_width /* = 0 */, int spr_height /* = 0 */, uint color /* = 0 */ )
 {
     if( !id )
@@ -3536,83 +3626,6 @@ bool SpriteManager::DrawSpritePattern( uint id, int x, int y, int w, int h, int 
                 Flush();
         }
     }
-    return true;
-}
-
-#pragma MESSAGE("Add 3d auto scaling.")
-bool SpriteManager::DrawSpriteSize( uint id, int x, int y, float w, float h, bool stretch_up, bool center, uint color /* = 0 */ )
-{
-    if( !id )
-        return false;
-
-    SpriteInfo* si = sprData[ id ];
-    if( !si )
-        return false;
-
-    float w_real = (float) si->Width;
-    float h_real = (float) si->Height;
-//      if(si->Anim3d)
-//      {
-//              si->Anim3d->SetupBorders();
-//              INTRECT fb=si->Anim3d->GetBaseBorders();
-//              w_real=fb.W();
-//              h_real=fb.H();
-//      }
-
-    float wf = w_real;
-    float hf = h_real;
-    float k = min( w / w_real, h / h_real );
-
-    if( k < 1.0f || ( k > 1.0f && stretch_up ) )
-    {
-        wf *= k;
-        hf *= k;
-    }
-
-    if( center )
-    {
-        x += (int) ( ( w - wf ) / 2.0f );
-        y += (int) ( ( h - hf ) / 2.0f );
-    }
-
-    Effect* effect = ( si->DrawEffect ? si->DrawEffect : Effect::Iface );
-    if( dipQueue.empty() || dipQueue.back().SourceTexture != si->Atlas->TextureOwner || dipQueue.back().SourceEffect->Id != effect->Id )
-        dipQueue.push_back( DipData( si->Atlas->TextureOwner, effect ) );
-    else
-        dipQueue.back().SpritesCount++;
-
-    int pos = curDrawQuad * 4;
-
-    if( !color )
-        color = COLOR_IFACE;
-    color = COLOR_SWAP_RB( color );
-
-    vBuffer[ pos ].X = (float) x;
-    vBuffer[ pos ].Y = (float) y + hf;
-    vBuffer[ pos ].TU = si->SprRect.L;
-    vBuffer[ pos ].TV = si->SprRect.B;
-    vBuffer[ pos++ ].Diffuse = color;
-
-    vBuffer[ pos ].X = (float) x;
-    vBuffer[ pos ].Y = (float) y;
-    vBuffer[ pos ].TU = si->SprRect.L;
-    vBuffer[ pos ].TV = si->SprRect.T;
-    vBuffer[ pos++ ].Diffuse = color;
-
-    vBuffer[ pos ].X = (float) x + wf;
-    vBuffer[ pos ].Y = (float) y;
-    vBuffer[ pos ].TU = si->SprRect.R;
-    vBuffer[ pos ].TV = si->SprRect.T;
-    vBuffer[ pos++ ].Diffuse = color;
-
-    vBuffer[ pos ].X = (float) x + wf;
-    vBuffer[ pos ].Y = (float) y + hf;
-    vBuffer[ pos ].TU = si->SprRect.R;
-    vBuffer[ pos ].TV = si->SprRect.B;
-    vBuffer[ pos ].Diffuse = color;
-
-    if( ++curDrawQuad == drawQuadCount )
-        Flush();
     return true;
 }
 

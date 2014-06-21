@@ -202,8 +202,9 @@ public:
     bool Flush();
 
     bool DrawSprite( uint id, int x, int y, uint color = 0 );
+    bool DrawSpriteSize( uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color = 0 );
+    bool DrawSpriteSizeExt( uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color );
     bool DrawSpritePattern( uint id, int x, int y, int w, int h, int spr_width = 0, int spr_height = 0, uint color = 0 );
-    bool DrawSpriteSize( uint id, int x, int y, float w, float h, bool stretch_up, bool center, uint color = 0 );
     bool DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to );
     bool DrawPoints( PointVec& points, int prim, float* zoom = NULL, RectF* stencil = NULL, PointF* offset = NULL, Effect* effect = NULL );
     bool Draw3d( int x, int y, Animation3d* anim3d, uint color );
@@ -214,10 +215,10 @@ public:
             return DrawSprite( frames->GetCurSprId(), x, y, color );
         return false;
     }
-    inline bool DrawSpriteSize( AnyFrames* frames, int x, int y, float w, float h, bool stretch_up, bool center, uint color = 0 )
+    inline bool DrawSpriteSize( AnyFrames* frames, int x, int y, int w, int h, bool zoom_up, bool center, uint color = 0 )
     {
         if( frames && frames != DummyAnimation )
-            return DrawSpriteSize( frames->GetCurSprId(), x, y, w, h, stretch_up, center, color );
+            return DrawSpriteSize( frames->GetCurSprId(), x, y, w, h, zoom_up, center, color );
         return false;
     }
 

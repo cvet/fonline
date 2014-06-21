@@ -278,6 +278,7 @@ void GetClientOptions();
 struct ClientScriptFunctions
 {
     int Start;
+    int Finish;
     int Loop;
     int GetActiveScreens;
     int ScreenChange;
@@ -300,6 +301,7 @@ struct ClientScriptFunctions
     int MapMessage;
     int InMessage;
     int OutMessage;
+    int MessageBox;
     int ToHit;
     int HitAim;
     int CombatResult;
@@ -328,6 +330,7 @@ struct ClientScriptFunctions
 struct MapperScriptFunctions
 {
     int Start;
+    int Finish;
     int Loop;
     int ConsoleMessage;
     int RenderIface;
@@ -676,6 +679,8 @@ struct GameOptions
     short        RainSpeedX;
     short        RainSpeedY;
     uint         ConsoleHistorySize;
+    int          SoundVolume;
+    int          MusicVolume;
 
     // Mapper
     ScriptString ClientPath;

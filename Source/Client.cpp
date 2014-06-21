@@ -16,6 +16,17 @@
 void* zlib_alloc_( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
 void  zlib_free_( void* opaque, void* address )                          { free( address ); }
 
+#define MOUSE_BUTTON_LEFT          ( 0 )
+#define MOUSE_BUTTON_RIGHT         ( 1 )
+#define MOUSE_BUTTON_MIDDLE        ( 2 )
+#define MOUSE_BUTTON_WHEEL_UP      ( 3 )
+#define MOUSE_BUTTON_WHEEL_DOWN    ( 4 )
+#define MOUSE_BUTTON_EXT0          ( 5 )
+#define MOUSE_BUTTON_EXT1          ( 6 )
+#define MOUSE_BUTTON_EXT2          ( 7 )
+#define MOUSE_BUTTON_EXT3          ( 8 )
+#define MOUSE_BUTTON_EXT4          ( 9 )
+
 #ifdef FO_OSX_IOS
 int HandleAppEvents( void* userdata, SDL_Event* event )
 {
@@ -297,8 +308,8 @@ bool FOClient::Init()
 
     // Sound manager
     SndMngr.Init();
-    SndMngr.SetSoundVolume( cfg.GetInt( CLIENT_CONFIG_APP, "SoundVolume", 100 ) );
-    SndMngr.SetMusicVolume( cfg.GetInt( CLIENT_CONFIG_APP, "MusicVolume", 100 ) );
+    GameOpt.SoundVolume = cfg.GetInt( CLIENT_CONFIG_APP, "SoundVolume", 100 );
+    GameOpt.MusicVolume = cfg.GetInt( CLIENT_CONFIG_APP, "MusicVolume", 100 );
 
     // Language Packs
     char lang_name[ MAX_FOTEXT ];
@@ -397,9 +408,10 @@ bool FOClient::Init()
     }
 
     // 3d initialization
+    WriteLog( "3d rendering is %s.\n", GameOpt.Enable3dRendering ? "enabled" : "disabled" );
     if( GameOpt.Enable3dRendering && !Animation3d::StartUp() )
     {
-        WriteLog( "Can't initialize 3d rendering stuff.\n" );
+        WriteLog( "Can't initialize 3d rendering.\n" );
         return false;
     }
 
@@ -959,27 +971,46 @@ int FOClient::MainLoop()
             MainWindowKeyboardEventsText.push_back( event.text.text );
             MainWindowKeyboardEvents.push_back( SDL_KEYUP );
             MainWindowKeyboardEvents.push_back( 510 );
-            MainWindowKeyboardEventsText.push_back( event.text.text );
+            MainWindowKeyboardEventsText.push_back( "" );
         }
         else if( event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP )
         {
-            MainWindowMouseEvents.push_back( event.type );
-            MainWindowMouseEvents.push_back( event.button.button );
-            MainWindowMouseEvents.push_back( 0 );
+            int button = -1;
+            if( event.button.button == SDL_BUTTON_LEFT )
+                button = MOUSE_BUTTON_LEFT;
+            if( event.button.button == SDL_BUTTON_RIGHT )
+                button = MOUSE_BUTTON_RIGHT;
+            if( event.button.button == SDL_BUTTON_MIDDLE )
+                button = MOUSE_BUTTON_MIDDLE;
+            if( event.button.button == SDL_BUTTON( 4 ) )
+                button = MOUSE_BUTTON_EXT0;
+            if( event.button.button == SDL_BUTTON( 5 ) )
+                button = MOUSE_BUTTON_EXT1;
+            if( event.button.button == SDL_BUTTON( 6 ) )
+                button = MOUSE_BUTTON_EXT2;
+            if( event.button.button == SDL_BUTTON( 7 ) )
+                button = MOUSE_BUTTON_EXT3;
+            if( event.button.button == SDL_BUTTON( 8 ) )
+                button = MOUSE_BUTTON_EXT4;
+            if( button != -1 )
+            {
+                MainWindowMouseEvents.push_back( event.type );
+                MainWindowMouseEvents.push_back( button );
+            }
         }
         else if( event.type == SDL_FINGERDOWN || event.type == SDL_FINGERUP )
         {
             MainWindowMouseEvents.push_back( event.type == SDL_FINGERDOWN ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP );
-            MainWindowMouseEvents.push_back( SDL_BUTTON_LEFT );
-            MainWindowMouseEvents.push_back( 0 );
+            MainWindowMouseEvents.push_back( MOUSE_BUTTON_LEFT );
             GameOpt.MouseX = (int) ( event.tfinger.x * (float) GameOpt.ScreenWidth );
             GameOpt.MouseY = (int) ( event.tfinger.y * (float) GameOpt.ScreenHeight );
         }
         else if( event.type == SDL_MOUSEWHEEL )
         {
-            MainWindowMouseEvents.push_back( event.type );
-            MainWindowMouseEvents.push_back( SDL_BUTTON_MIDDLE );
-            MainWindowMouseEvents.push_back( -event.wheel.y );
+            MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONDOWN );
+            MainWindowMouseEvents.push_back( event.wheel.y > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN );
+            MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONUP );
+            MainWindowMouseEvents.push_back( event.wheel.y > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN );
         }
         else if( event.type == SDL_QUIT )
         {
@@ -1144,8 +1175,6 @@ int FOClient::MainLoop()
 
     if( SaveLoadProcessDraft && GetMainScreen() == SCREEN_GLOBAL_MAP )
         SaveLoadFillDraft();
-    ConsoleDraw();
-    MessBoxDraw();
 
     CHECK_MULTIPLY_WINDOWS4;
 
@@ -1413,16 +1442,6 @@ void FOClient::ParseKeyboard()
         if( !dikdw  && !dikup )
             continue;
 
-        // Avoid repeating
-        if( dikdw && Keyb::KeyPressed[ dikdw ] )
-            continue;
-        if( dikup && !Keyb::KeyPressed[ dikup ] )
-            continue;
-
-        // Keyboard states, to know outside function
-        Keyb::KeyPressed[ dikup ] = false;
-        Keyb::KeyPressed[ dikdw ] = true;
-
         // Video
         #ifndef FO_OSX
         if( IsVideoPlayed() )
@@ -1437,33 +1456,22 @@ void FOClient::ParseKeyboard()
         #endif
 
         // Key script event
-        bool script_result = false;
         if( dikdw && Script::PrepareContext( ClientFunctions.KeyDown, _FUNC_, "Game" ) )
         {
-            ScriptString* event_text_script = new ScriptString( event_text );
+            ScriptString* event_text_script = NULL;
+            if( dikdw == DIK_TEXT )
+                event_text_script = new ScriptString( event_text );
             Script::SetArgUChar( dikdw );
             Script::SetArgObject( event_text_script );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-            event_text_script->Release();
+            Script::RunPrepared();
+            if( event_text_script )
+                event_text_script->Release();
         }
 
         if( dikup && Script::PrepareContext( ClientFunctions.KeyUp, _FUNC_, "Game" ) )
         {
-            ScriptString* event_text_script = new ScriptString( event_text );
             Script::SetArgUChar( dikup );
-            Script::SetArgObject( event_text_script );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-            event_text_script->Release();
-        }
-
-        // Disable keyboard events
-        if( script_result || GameOpt.DisableKeyboardEvents )
-        {
-            if( dikdw == DIK_ESCAPE && Keyb::ShiftDwn )
-                GameOpt.Quit = true;
-            continue;
+            Script::RunPrepared();
         }
 
         // Control keys
@@ -1479,308 +1487,9 @@ void FOClient::ParseKeyboard()
             Keyb::AltDwn = false;
         else if( dikup == DIK_LSHIFT || dikup == DIK_RSHIFT )
             Keyb::ShiftDwn = false;
-
-        // Hotkeys
-        if( !Keyb::ShiftDwn && !Keyb::AltDwn && !Keyb::CtrlDwn )
-        {
-            // F Buttons
-            switch( dikdw )
-            {
-            case DIK_F1:
-                GameOpt.HelpInfo = !GameOpt.HelpInfo;
-                break;
-            case DIK_F2:
-                if( SaveLogFile() )
-                    AddMess( FOMB_GAME, MsgGame->GetStr( STR_LOG_SAVED ) );
-                else
-                    AddMess( FOMB_GAME, MsgGame->GetStr( STR_LOG_NOT_SAVED ) );
-                break;
-            case DIK_F3:
-                if( SaveScreenshot() )
-                    AddMess( FOMB_GAME, MsgGame->GetStr( STR_SCREENSHOT_SAVED ) );
-                else
-                    AddMess( FOMB_GAME, MsgGame->GetStr( STR_SCREENSHOT_NOT_SAVED ) );
-                break;
-            case DIK_F4:
-                IntVisible = !IntVisible;
-                MessBoxGenerate();
-                break;
-            case DIK_F5:
-                IntAddMess = !IntAddMess;
-                MessBoxGenerate();
-                break;
-            case DIK_F6:
-                GameOpt.ShowPlayerNames = !GameOpt.ShowPlayerNames;
-                break;
-
-            case DIK_F7:
-                if( GameOpt.DebugInfo )
-                    GameOpt.ShowNpcNames = !GameOpt.ShowNpcNames;
-                break;
-
-            case DIK_F8:
-                GameOpt.MouseScroll = !GameOpt.MouseScroll;
-                GameOpt.ScrollMouseRight = false;
-                GameOpt.ScrollMouseLeft = false;
-                GameOpt.ScrollMouseDown = false;
-                GameOpt.ScrollMouseUp = false;
-                break;
-
-            case DIK_F9:
-                if( GameOpt.DebugInfo )
-                    HexMngr.SwitchShowTrack();
-                break;
-            case DIK_F10:
-                if( GameOpt.DebugInfo )
-                    HexMngr.SwitchShowHex();
-                break;
-
-            // Fullscreen
-            case DIK_F11:
-                if( !GameOpt.FullScreen )
-                {
-                    if( !SDL_SetWindowFullscreen( MainWindow, 1 ) )
-                        GameOpt.FullScreen = true;
-                }
-                else
-                {
-                    if( !SDL_SetWindowFullscreen( MainWindow, 0 ) )
-                        GameOpt.FullScreen = false;
-                }
-                SprMngr.RefreshViewport();
-                continue;
-            // Minimize
-            case DIK_F12:
-                SDL_MinimizeWindow( MainWindow );
-                continue;
-
-            // Exit buttons
-            case DIK_TAB:
-                if( GetActiveScreen() == SCREEN__MINI_MAP )
-                {
-                    TryExit();
-                    continue;
-                }
-                break;
-            // Mouse wheel emulate
-            case DIK_PRIOR:
-                ProcessMouseWheel( 1 );
-                Timer::StartAccelerator( ACCELERATE_PAGE_UP );
-                break;
-            case DIK_NEXT:
-                ProcessMouseWheel( -1 );
-                Timer::StartAccelerator( ACCELERATE_PAGE_DOWN );
-                break;
-
-            case DIK_ESCAPE:
-                TryExit();
-                continue;
-            default:
-                break;
-            }
-
-            if( !ConsoleActive )
-            {
-                switch( dikdw )
-                {
-                case DIK_C:
-                    if( GetActiveScreen() == SCREEN__CHARACTER )
-                    {
-                        TryExit();
-                        continue;
-                    }
-                    break;
-                case DIK_P:
-                    if( GetActiveScreen() == SCREEN__PIP_BOY )
-                    {
-                        if( PipMode == PIP__NONE )
-                            PipMode = PIP__STATUS;
-                        else
-                            TryExit();
-                        continue;
-                    }
-                case DIK_F:
-                    if( GetActiveScreen() == SCREEN__FIX_BOY )
-                    {
-                        TryExit();
-                        continue;
-                    }
-                    break;
-                case DIK_I:
-                    if( GetActiveScreen() == SCREEN__INVENTORY )
-                    {
-                        TryExit();
-                        continue;
-                    }
-                    break;
-                case DIK_Q:
-                    if( IsMainScreen( SCREEN_GAME ) && GetActiveScreen() == SCREEN_NONE )
-                    {
-                        DrawLookBorders = !DrawLookBorders;
-                        RebuildLookBorders = true;
-                    }
-                    break;
-                case DIK_W:
-                    if( IsMainScreen( SCREEN_GAME ) && GetActiveScreen() == SCREEN_NONE )
-                    {
-                        DrawShootBorders = !DrawShootBorders;
-                        RebuildLookBorders = true;
-                    }
-                    break;
-                case DIK_SPACE:
-                    if( Singleplayer )
-                        SingleplayerData.Pause = !SingleplayerData.Pause;
-                    break;
-                default:
-                    break;
-                }
-            }
-        }
-        else
-        {
-            switch( dikdw )
-            {
-            case DIK_F6:
-                if( GameOpt.DebugInfo && Keyb::CtrlDwn )
-                    GameOpt.ShowCritId = !GameOpt.ShowCritId;
-                break;
-            case DIK_F7:
-                if( GameOpt.DebugInfo && Keyb::CtrlDwn )
-                    GameOpt.ShowCritId = !GameOpt.ShowCritId;
-                break;
-            case DIK_F10:
-                if( /*GameOpt.DebugInfo &&*/ Keyb::ShiftDwn )
-                    SprMngr.DumpAtlases();
-                break;
-
-            // Num Pad
-            case DIK_EQUALS:
-            case DIK_ADD:
-                if( ConsoleActive )
-                    break;
-                if( Keyb::CtrlDwn )
-                    SndMngr.SetSoundVolume( SndMngr.GetSoundVolume() + 2 );
-                else if( Keyb::ShiftDwn )
-                    SndMngr.SetMusicVolume( SndMngr.GetMusicVolume() + 2 );
-                else if( Keyb::AltDwn && GameOpt.FixedFPS < 10000 )
-                    GameOpt.FixedFPS++;
-                break;
-            case DIK_MINUS:
-            case DIK_SUBTRACT:
-                if( ConsoleActive )
-                    break;
-                if( Keyb::CtrlDwn )
-                    SndMngr.SetSoundVolume( SndMngr.GetSoundVolume() - 2 );
-                else if( Keyb::ShiftDwn )
-                    SndMngr.SetMusicVolume( SndMngr.GetMusicVolume() - 2 );
-                else if( Keyb::AltDwn && GameOpt.FixedFPS > -10000 )
-                    GameOpt.FixedFPS--;
-                break;
-            // Escape
-            case DIK_ESCAPE:
-                if( Keyb::ShiftDwn )
-                    GameOpt.Quit = true;
-                break;
-            default:
-                break;
-            }
-        }
-
-        // Wait mode
-        if( IsCurMode( CUR_WAIT ) )
-        {
-            ConsoleKeyDown( dikdw, event_text );
-            continue;
-        }
-
-        // Cursor steps
-        if( HexMngr.IsMapLoaded() && ( dikdw == DIK_RCONTROL || dikdw == DIK_LCONTROL || dikup == DIK_RCONTROL || dikup == DIK_LCONTROL ) )
-            HexMngr.SetCursorPos( GameOpt.MouseX, GameOpt.MouseY, Keyb::CtrlDwn, true );
-
-        // Other by screens
-        // Key down
-        if( dikdw )
-        {
-            int active = GetActiveScreen();
-            if( active != SCREEN_NONE )
-            {
-                switch( active )
-                {
-                case SCREEN__SPLIT:
-                    SplitKeyDown( dikdw, event_text );
-                    break;
-                case SCREEN__TIMER:
-                    TimerKeyDown( dikdw, event_text );
-                    break;
-                case SCREEN__CHA_NAME:
-                    ChaNameKeyDown( dikdw, event_text );
-                    break;
-                case SCREEN__SAY:
-                    SayKeyDown( dikdw, event_text );
-                    break;
-                case SCREEN__INPUT_BOX:
-                    IboxKeyDown( dikdw, event_text );
-                    break;
-                case SCREEN__DIALOG:
-                    DlgKeyDown( true, dikdw, event_text );
-                    ConsoleKeyDown( dikdw, event_text );
-                    break;
-                case SCREEN__BARTER:
-                    DlgKeyDown( false, dikdw, event_text );
-                    ConsoleKeyDown( dikdw, event_text );
-                    break;
-                default:
-                    ConsoleKeyDown( dikdw, event_text );
-                    break;
-                }
-            }
-            else
-            {
-                switch( GetMainScreen() )
-                {
-                case SCREEN_LOGIN:
-                    LogKeyDown( dikdw, event_text );
-                    break;
-                case SCREEN_CREDITS:
-                    TryExit();
-                    break;
-                case SCREEN_GAME:
-                    GameKeyDown( dikdw, event_text );
-                    break;
-                case SCREEN_GLOBAL_MAP:
-                    GmapKeyDown( dikdw, event_text );
-                    break;
-                default:
-                    break;
-                }
-                ConsoleKeyDown( dikdw, event_text );
-            }
-
-            ProcessKeybScroll( true, dikdw );
-        }
-
-        // Key up
-        if( dikup )
-        {
-            if( GetActiveScreen() == SCREEN__INPUT_BOX )
-                IboxKeyUp( dikup );
-            ConsoleKeyUp( dikup );
-            ProcessKeybScroll( false, dikup );
-            Timer::StartAccelerator( ACCELERATE_NONE );
-        }
     }
 }
 
-#define MOUSE_CLICK_LEFT          ( 0 )
-#define MOUSE_CLICK_RIGHT         ( 1 )
-#define MOUSE_CLICK_MIDDLE        ( 2 )
-#define MOUSE_CLICK_WHEEL_UP      ( 3 )
-#define MOUSE_CLICK_WHEEL_DOWN    ( 4 )
-#define MOUSE_CLICK_EXT0          ( 5 )
-#define MOUSE_CLICK_EXT1          ( 6 )
-#define MOUSE_CLICK_EXT2          ( 7 )
-#define MOUSE_CLICK_EXT3          ( 8 )
-#define MOUSE_CLICK_EXT4          ( 9 )
 void FOClient::ParseMouse()
 {
     // Stop processing if window not active
@@ -1875,95 +1584,9 @@ void FOClient::ParseMouse()
         old_cur_x = GameOpt.MouseX;
         old_cur_y = GameOpt.MouseY;
 
-        if( GetActiveScreen() )
-        {
-            switch( GetActiveScreen() )
-            {
-            case SCREEN__SPLIT:
-                SplitMouseMove();
-                break;
-            case SCREEN__TIMER:
-                TimerMouseMove();
-                break;
-            case SCREEN__DIALOGBOX:
-                DlgboxMouseMove();
-                break;
-            case SCREEN__ELEVATOR:
-                ElevatorMouseMove();
-                break;
-            case SCREEN__SAY:
-                SayMouseMove();
-                break;
-            case SCREEN__INPUT_BOX:
-                IboxMouseMove();
-                break;
-            case SCREEN__SKILLBOX:
-                SboxMouseMove();
-                break;
-            case SCREEN__USE:
-                UseMouseMove();
-                break;
-            case SCREEN__PERK:
-                PerkMouseMove();
-                break;
-            case SCREEN__TOWN_VIEW:
-                TViewMouseMove();
-                break;
-            case SCREEN__DIALOG:
-                DlgMouseMove( true );
-                break;
-            case SCREEN__BARTER:
-                DlgMouseMove( false );
-                break;
-            case SCREEN__INVENTORY:
-                InvMouseMove();
-                break;
-            case SCREEN__PICKUP:
-                PupMouseMove();
-                break;
-            case SCREEN__MINI_MAP:
-                LmapMouseMove();
-                break;
-            case SCREEN__CHARACTER:
-                ChaMouseMove( false );
-                break;
-            case SCREEN__PIP_BOY:
-                PipMouseMove();
-                break;
-            case SCREEN__FIX_BOY:
-                FixMouseMove();
-                break;
-            case SCREEN__AIM:
-                AimMouseMove();
-                break;
-            case SCREEN__SAVE_LOAD:
-                SaveLoadMouseMove();
-                break;
-            default:
-                break;
-            }
-        }
-        else
-        {
-            switch( GetMainScreen() )
-            {
-            case SCREEN_GLOBAL_MAP:
-                GmapMouseMove();
-                break;
-            default:
-                break;
-            }
-        }
-
-        ProcessMouseScroll();
-        LMenuMouseMove();
-
+        // Script handler
         if( Script::PrepareContext( ClientFunctions.MouseMove, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( GameOpt.MouseX );
-            Script::SetArgUInt( GameOpt.MouseY );
             Script::RunPrepared();
-        }
     }
 
     // Get buffered data
@@ -1973,17 +1596,16 @@ void FOClient::ParseMouse()
     MainWindowMouseEvents.clear();
 
     // Process events
-    for( uint i = 0; i < events.size(); i += 3 )
+    for( uint i = 0; i < events.size(); i += 2 )
     {
         int event = events[ i ];
         int event_button = events[ i + 1 ];
-        int event_dy = -events[ i + 2 ];
 
         // Stop video
         #ifndef FO_OSX
         if( IsVideoPlayed() )
         {
-            if( IsCanStopVideo() && ( event == SDL_MOUSEBUTTONDOWN && ( event_button == SDL_BUTTON_LEFT || event_button == SDL_BUTTON_RIGHT ) ) )
+            if( IsCanStopVideo() && ( event == SDL_MOUSEBUTTONDOWN && ( event_button == MOUSE_BUTTON_LEFT || event_button == MOUSE_BUTTON_RIGHT ) ) )
             {
                 NextVideo();
                 return;
@@ -1993,423 +1615,15 @@ void FOClient::ParseMouse()
         #endif
 
         // Scripts
-        bool script_result = false;
-        if( event == SDL_MOUSEWHEEL && Script::PrepareContext( ClientFunctions.MouseDown, _FUNC_, "Game" ) )
+        if( event == SDL_MOUSEBUTTONDOWN && Script::PrepareContext( ClientFunctions.MouseDown, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( event_dy > 0 ? MOUSE_CLICK_WHEEL_UP : MOUSE_CLICK_WHEEL_DOWN );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
+            Script::SetArgUInt( event_button );
+            Script::RunPrepared();
         }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_LEFT && Script::PrepareContext( ClientFunctions.MouseDown, _FUNC_, "Game" ) )
+        else if( event == SDL_MOUSEBUTTONUP && Script::PrepareContext( ClientFunctions.MouseUp, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_LEFT );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_LEFT && Script::PrepareContext( ClientFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_LEFT );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_RIGHT && Script::PrepareContext( ClientFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_RIGHT );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_RIGHT && Script::PrepareContext( ClientFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_RIGHT );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_MIDDLE && Script::PrepareContext( ClientFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_MIDDLE );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_MIDDLE && Script::PrepareContext( ClientFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_MIDDLE );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-
-            // Normalize zoom
-            if( !script_result && !GameOpt.DisableMouseEvents && !ConsoleActive && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
-            {
-                int screen = GetActiveScreen();
-                if( IsMainScreen( SCREEN_GAME ) && ( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW ) )
-                {
-                    HexMngr.ChangeZoom( 0 );
-                    RebuildLookBorders = true;
-                }
-            }
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 4 ) && Script::PrepareContext( ClientFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_EXT0 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 4 ) && Script::PrepareContext( ClientFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_EXT0 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 5 ) && Script::PrepareContext( ClientFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_EXT1 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 5 ) && Script::PrepareContext( ClientFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_EXT1 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 6 ) && Script::PrepareContext( ClientFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_EXT2 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 6 ) && Script::PrepareContext( ClientFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_EXT2 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 7 ) && Script::PrepareContext( ClientFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_EXT3 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 7 ) && Script::PrepareContext( ClientFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_EXT3 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 8 ) && Script::PrepareContext( ClientFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_EXT4 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 8 ) && Script::PrepareContext( ClientFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_CLICK_EXT4 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-
-        if( script_result || GameOpt.DisableMouseEvents )
-            continue;
-        if( IsCurMode( CUR_WAIT ) )
-            continue;
-
-        // Wheel
-        if( event == SDL_MOUSEWHEEL )
-        {
-            ProcessMouseWheel( event_dy );
-            continue;
-        }
-
-        // Left Button Down
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_LEFT )
-        {
-            if( GetActiveScreen() )
-            {
-                switch( GetActiveScreen() )
-                {
-                case SCREEN__SPLIT:
-                    SplitLMouseDown();
-                    break;
-                case SCREEN__TIMER:
-                    TimerLMouseDown();
-                    break;
-                case SCREEN__DIALOGBOX:
-                    DlgboxLMouseDown();
-                    break;
-                case SCREEN__ELEVATOR:
-                    ElevatorLMouseDown();
-                    break;
-                case SCREEN__SAY:
-                    SayLMouseDown();
-                    break;
-                case SCREEN__CHA_NAME:
-                    ChaNameLMouseDown();
-                    break;
-                case SCREEN__CHA_AGE:
-                    ChaAgeLMouseDown();
-                    break;
-                case SCREEN__CHA_SEX:
-                    ChaSexLMouseDown();
-                    break;
-                case SCREEN__GM_TOWN:
-                    GmapLMouseDown();
-                    break;
-                case SCREEN__INPUT_BOX:
-                    IboxLMouseDown();
-                    break;
-                case SCREEN__SKILLBOX:
-                    SboxLMouseDown();
-                    break;
-                case SCREEN__USE:
-                    UseLMouseDown();
-                    break;
-                case SCREEN__PERK:
-                    PerkLMouseDown();
-                    break;
-                case SCREEN__TOWN_VIEW:
-                    TViewLMouseDown();
-                    break;
-                case SCREEN__INVENTORY:
-                    InvLMouseDown();
-                    break;
-                case SCREEN__PICKUP:
-                    PupLMouseDown();
-                    break;
-                case SCREEN__DIALOG:
-                    DlgLMouseDown( true );
-                    break;
-                case SCREEN__BARTER:
-                    DlgLMouseDown( false );
-                    break;
-                case SCREEN__MINI_MAP:
-                    LmapLMouseDown();
-                    break;
-                case SCREEN__MENU_OPTION:
-                    MoptLMouseDown();
-                    break;
-                case SCREEN__CHARACTER:
-                    ChaLMouseDown( false );
-                    break;
-                case SCREEN__PIP_BOY:
-                    PipLMouseDown();
-                    break;
-                case SCREEN__FIX_BOY:
-                    FixLMouseDown();
-                    break;
-                case SCREEN__AIM:
-                    AimLMouseDown();
-                    break;
-                case SCREEN__SAVE_LOAD:
-                    SaveLoadLMouseDown();
-                    break;
-                default:
-                    break;
-                }
-            }
-            else
-            {
-                switch( GetMainScreen() )
-                {
-                case SCREEN_GAME:
-                    if( IntLMouseDown() == IFACE_NONE )
-                        GameLMouseDown();
-                    break;
-                case SCREEN_GLOBAL_MAP:
-                    GmapLMouseDown();
-                    break;
-                case SCREEN_LOGIN:
-                    LogLMouseDown();
-                    break;
-                case SCREEN_REGISTRATION:
-                    ChaLMouseDown( true );
-                    break;
-                case SCREEN_CREDITS:
-                    TryExit();
-                    break;
-                default:
-                    break;
-                }
-            }
-
-            if( MessBoxLMouseDown() )
-                Timer::StartAccelerator( ACCELERATE_MESSBOX );
-            continue;
-        }
-
-        // Left Button Up
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_LEFT )
-        {
-            if( GetActiveScreen() )
-            {
-                switch( GetActiveScreen() )
-                {
-                case SCREEN__SPLIT:
-                    SplitLMouseUp();
-                    break;
-                case SCREEN__TIMER:
-                    TimerLMouseUp();
-                    break;
-                case SCREEN__DIALOGBOX:
-                    DlgboxLMouseUp();
-                    break;
-                case SCREEN__ELEVATOR:
-                    ElevatorLMouseUp();
-                    break;
-                case SCREEN__SAY:
-                    SayLMouseUp();
-                    break;
-                case SCREEN__CHA_AGE:
-                    ChaAgeLMouseUp();
-                    break;
-                case SCREEN__CHA_SEX:
-                    ChaSexLMouseUp();
-                    break;
-                case SCREEN__GM_TOWN:
-                    GmapLMouseUp();
-                    break;
-                case SCREEN__INPUT_BOX:
-                    IboxLMouseUp();
-                    break;
-                case SCREEN__SKILLBOX:
-                    SboxLMouseUp();
-                    break;
-                case SCREEN__USE:
-                    UseLMouseUp();
-                    break;
-                case SCREEN__PERK:
-                    PerkLMouseUp();
-                    break;
-                case SCREEN__TOWN_VIEW:
-                    TViewLMouseUp();
-                    break;
-                case SCREEN__INVENTORY:
-                    InvLMouseUp();
-                    break;
-                case SCREEN__PICKUP:
-                    PupLMouseUp();
-                    break;
-                case SCREEN__DIALOG:
-                    DlgLMouseUp( true );
-                    break;
-                case SCREEN__BARTER:
-                    DlgLMouseUp( false );
-                    break;
-                case SCREEN__MINI_MAP:
-                    LmapLMouseUp();
-                    break;
-                case SCREEN__MENU_OPTION:
-                    MoptLMouseUp();
-                    break;
-                case SCREEN__CHARACTER:
-                    ChaLMouseUp( false );
-                    break;
-                case SCREEN__PIP_BOY:
-                    PipLMouseUp();
-                    break;
-                case SCREEN__FIX_BOY:
-                    FixLMouseUp();
-                    break;
-                case SCREEN__AIM:
-                    AimLMouseUp();
-                    break;
-                case SCREEN__SAVE_LOAD:
-                    SaveLoadLMouseUp();
-                    break;
-                default:
-                    break;
-                }
-            }
-            else
-            {
-                switch( GetMainScreen() )
-                {
-                case SCREEN_GAME:
-                    ( IfaceHold == IFACE_NONE ) ? GameLMouseUp() : IntLMouseUp();
-                    break;
-                case SCREEN_GLOBAL_MAP:
-                    GmapLMouseUp();
-                    break;
-                case SCREEN_LOGIN:
-                    LogLMouseUp();
-                    break;
-                case SCREEN_REGISTRATION:
-                    ChaLMouseUp( true );
-                    break;
-                default:
-                    break;
-                }
-            }
-
-            LMenuMouseUp();
-            Timer::StartAccelerator( ACCELERATE_NONE );
-            continue;
-        }
-
-        // Right Button Down
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_RIGHT )
-        {
-            if( GetActiveScreen() )
-            {
-                switch( GetActiveScreen() )
-                {
-                case SCREEN__USE:
-                    UseRMouseDown();
-                    break;
-                case SCREEN__INVENTORY:
-                    InvRMouseDown();
-                    break;
-                case SCREEN__DIALOG:
-                    DlgRMouseDown( true );
-                    break;
-                case SCREEN__BARTER:
-                    DlgRMouseDown( false );
-                    break;
-                case SCREEN__PICKUP:
-                    PupRMouseDown();
-                    break;
-                case SCREEN__PIP_BOY:
-                    PipRMouseDown();
-                    break;
-                default:
-                    break;
-                }
-            }
-            else
-            {
-                switch( GetMainScreen() )
-                {
-                case SCREEN_GAME:
-                    IntRMouseDown();
-                    GameRMouseDown();
-                    break;
-                case SCREEN_GLOBAL_MAP:
-                    GmapRMouseDown();
-                    break;
-                default:
-                    break;
-                }
-            }
-            continue;
-        }
-
-        // Right Button Up
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_RIGHT )
-        {
-            if( !GetActiveScreen() )
-            {
-                switch( GetMainScreen() )
-                {
-                case SCREEN_GAME:
-                    GameRMouseUp();
-                    break;
-                case SCREEN_GLOBAL_MAP:
-                    GmapRMouseUp();
-                    break;
-                default:
-                    break;
-                }
-            }
-            continue;
+            Script::SetArgUInt( event_button );
+            Script::RunPrepared();
         }
     }
 }
@@ -3449,7 +2663,7 @@ void FOClient::Net_SendUpdate()
     Bout << NETMSG_UPDATE;
 
     // Protocol version
-    Bout << (ushort) FO_PROTOCOL_VERSION;
+    Bout << (ushort) FONLINE_VERSION;
 
     // Data encrypting
     uint encrypt_key = *UID0;
@@ -3469,7 +2683,7 @@ void FOClient::Net_SendLogIn( const char* name, const char* pass )
 
     uint uid1 = *UID1;
     Bout << NETMSG_LOGIN;
-    Bout << (ushort) FO_PROTOCOL_VERSION;
+    Bout << (ushort) FONLINE_VERSION;
     uint uid4 = *UID4;
     Bout << uid4;
     uid4 = uid1;                                                                                                                                                        // UID4
@@ -3535,7 +2749,7 @@ void FOClient::Net_SendCreatePlayer( CritterCl* newcr )
     Bout << NETMSG_CREATE_CLIENT;
     Bout << msg_len;
 
-    Bout << (ushort) FO_PROTOCOL_VERSION;
+    Bout << (ushort) FONLINE_VERSION;
 
     // Begin data encrypting
     Bout.SetEncryptKey( 1234567890 );
@@ -5792,10 +5006,10 @@ void FOClient::Net_OnChosenTalk()
         answers_texts.push_back( text_id );
     }
 
-    const char answ_beg[] = { ' ', ' ', (char) TEXT_SYMBOL_DOT, ' ', 0 };
-    const char page_up[] = { (char) TEXT_SYMBOL_UP, (char) TEXT_SYMBOL_UP, (char) TEXT_SYMBOL_UP, 0 };
+    const char answ_beg[] = { ' ', ' ', (char) 0xE2, (char) 0x80, (char) 0xA2, ' ', 0 };
+    const char page_up[] = { 24, 24, 24, 0 };
     const int  page_up_height = SprMngr.GetLinesHeight( DlgAnswText.W(), 0, page_up );
-    const char page_down[] = { (char) TEXT_SYMBOL_DOWN, (char) TEXT_SYMBOL_DOWN, (char) TEXT_SYMBOL_DOWN, 0 };
+    const char page_down[] = { 25, 25, 25, 0 };
     const int  page_down_height = SprMngr.GetLinesHeight( DlgAnswText.W(), 0, page_down );
 
     int        line = 0, height = 0, page = 0, answ = 0;
@@ -6565,7 +5779,7 @@ void FOClient::Net_OnPlayersBarter()
     case BARTER_END:
     {
         if( IsScreenPlayersBarter() )
-            ShowScreen( 0 );
+            ShowScreen( SCREEN_NONE );
     }
     break;
     case BARTER_TRY:
@@ -9429,8 +8643,8 @@ void FOClient::PlayVideo()
     // Start sound
     if( video.SoundName != "" )
     {
-        MusicVolumeRestore = SndMngr.GetMusicVolume();
-        SndMngr.SetMusicVolume( 100 );
+        MusicVolumeRestore = GameOpt.MusicVolume;
+        GameOpt.MusicVolume = 100;
         SndMngr.PlayMusic( video.SoundName.c_str(), 0, 0 );
     }
 }
@@ -9689,7 +8903,7 @@ void FOClient::StopVideo()
     SndMngr.StopMusic();
     if( MusicVolumeRestore != -1 )
     {
-        SndMngr.SetMusicVolume( MusicVolumeRestore );
+        GameOpt.MusicVolume = MusicVolumeRestore;
         MusicVolumeRestore = -1;
     }
 }
@@ -9958,16 +9172,17 @@ bool FOClient::ReloadScripts()
     ReservedScriptFunction BindGameFunc[] =
     {
         { &ClientFunctions.Start, "start", "bool %s()" },
+        { &ClientFunctions.Finish, "finish", "void %s()" },
         { &ClientFunctions.Loop, "loop", "uint %s()" },
         { &ClientFunctions.GetActiveScreens, "get_active_screens", "void %s(int[]&)" },
-        { &ClientFunctions.ScreenChange, "screen_change", "void %s(bool,int,int,int,int)" },
+        { &ClientFunctions.ScreenChange, "screen_change", "void %s(bool,int,dictionary@)" },
         { &ClientFunctions.RenderIface, "render_iface", "void %s(uint)" },
         { &ClientFunctions.RenderMap, "render_map", "void %s()" },
-        { &ClientFunctions.MouseDown, "mouse_down", "bool %s(int)" },
-        { &ClientFunctions.MouseUp, "mouse_up", "bool %s(int)" },
-        { &ClientFunctions.MouseMove, "mouse_move", "void %s(int,int)" },
-        { &ClientFunctions.KeyDown, "key_down", "bool %s(uint8,string&)" },
-        { &ClientFunctions.KeyUp, "key_up", "bool %s(uint8,string&)" },
+        { &ClientFunctions.MouseDown, "mouse_down", "void %s(int)" },
+        { &ClientFunctions.MouseUp, "mouse_up", "void %s(int)" },
+        { &ClientFunctions.MouseMove, "mouse_move", "void %s()" },
+        { &ClientFunctions.KeyDown, "key_down", "void %s(uint8,string@)" },
+        { &ClientFunctions.KeyUp, "key_up", "void %s(uint8)" },
         { &ClientFunctions.InputLost, "input_lost", "void %s()" },
         { &ClientFunctions.CritterIn, "critter_in", "void %s(CritterCl&)" },
         { &ClientFunctions.CritterOut, "critter_out", "void %s(CritterCl&)" },
@@ -9979,6 +9194,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.MapMessage, "map_message", "bool %s(string&,uint16&,uint16&,uint&,uint&)" },
         { &ClientFunctions.InMessage, "in_message", "bool %s(string&,int&,uint&,uint&)" },
         { &ClientFunctions.OutMessage, "out_message", "bool %s(string&,int&)" },
+        { &ClientFunctions.MessageBox, "message_box", "void %s(string&,int,bool)" },
         { &ClientFunctions.ToHit, "to_hit", "int %s(CritterCl&,CritterCl&,ProtoItem&,uint8)" },
         { &ClientFunctions.HitAim, "hit_aim", "void %s(uint8&)" },
         { &ClientFunctions.CombatResult, "combat_result", "void %s(uint[]&)" },
@@ -10468,6 +9684,133 @@ Item* FOClient::SScriptFunc::Item_GetChild( Item* item, uint childIndex )
     return NULL;
 }
 
+ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, ScriptString& separator )
+{
+    // Parse command
+    vector< string > args;
+    stringstream     ss( command.c_std_str() );
+    if( separator.length() > 0 )
+    {
+        string arg;
+        while( getline( ss, arg, *separator.c_str() ) )
+            args.push_back( arg );
+    }
+    else
+    {
+        args.push_back( command.c_std_str() );
+    }
+    if( args.size() < 1 )
+        SCRIPT_ERROR_RX( "Empty custom call command.", new ScriptString( "" ) );
+
+    // Execute
+    string cmd = args[ 0 ];
+    if( cmd == "Login" && args.size() >= 3 )
+    {
+        GameOpt.Name = args[ 1 ];
+        Self->Password = args[ 2 ];
+        Self->LogTryConnect();
+    }
+    else if( cmd == "GetPassword" )
+    {
+        return new ScriptString( Self->Password );
+    }
+    else if( cmd == "DumpAtlases" )
+    {
+        SprMngr.DumpAtlases();
+    }
+    else if( cmd == "SaveLogFile" )
+    {
+        if( Self->SaveLogFile() )
+            return new ScriptString( "OK" );
+    }
+    else if( cmd == "SaveScreenshot" )
+    {
+        if( Self->SaveScreenshot() )
+            return new ScriptString( "OK" );
+    }
+    else if( cmd == "SwitchIntVisible" )
+    {
+        Self->IntVisible = !Self->IntVisible;
+        Self->MessBoxGenerate();
+    }
+    else if( cmd == "SwitchIntAddMess" )
+    {
+        Self->IntAddMess = !Self->IntAddMess;
+        Self->MessBoxGenerate();
+    }
+    else if( cmd == "SwitchShowTrack" )
+    {
+        Self->HexMngr.SwitchShowTrack();
+    }
+    else if( cmd == "SwitchShowHex" )
+    {
+        Self->HexMngr.SwitchShowHex();
+    }
+    else if( cmd == "SwitchFullscreen" )
+    {
+        if( !GameOpt.FullScreen )
+        {
+            if( !SDL_SetWindowFullscreen( MainWindow, 1 ) )
+                GameOpt.FullScreen = true;
+        }
+        else
+        {
+            if( !SDL_SetWindowFullscreen( MainWindow, 0 ) )
+                GameOpt.FullScreen = false;
+        }
+        SprMngr.RefreshViewport();
+    }
+    else if( cmd == "MinimizeWindow" )
+    {
+        SDL_MinimizeWindow( MainWindow );
+    }
+    else if( cmd == "SwitchLookBorders" )
+    {
+        Self->DrawLookBorders = !Self->DrawLookBorders;
+        Self->RebuildLookBorders = true;
+    }
+    else if( cmd == "SwitchShootBorders" )
+    {
+        Self->DrawShootBorders = !Self->DrawShootBorders;
+        Self->RebuildLookBorders = true;
+    }
+    else if( cmd == "SwitchSingleplayerPause" )
+    {
+        SingleplayerData.Pause = !SingleplayerData.Pause;
+    }
+    else if( cmd == "SetCursorPos" )
+    {
+        if( Self->HexMngr.IsMapLoaded() )
+            Self->HexMngr.SetCursorPos( GameOpt.MouseX, GameOpt.MouseY, Keyb::CtrlDwn, true );
+    }
+    else if( cmd == "NetDisconnect" )
+    {
+        Self->NetDisconnect();
+    }
+    else if( cmd == "TryExit" )
+    {
+        Self->TryExit();
+    }
+    else if( cmd == "Version" )
+    {
+        char buf[ 1024 ];
+        return new ScriptString( Str::Format( buf, "%d", FONLINE_VERSION ) );
+    }
+    else if( cmd == "BytesSend" )
+    {
+        return new ScriptString( Str::ItoA( Self->BytesSend ) );
+    }
+    else if( cmd == "BytesReceive" )
+    {
+        return new ScriptString( Str::ItoA( Self->BytesReceive ) );
+    }
+    else
+    {
+        SCRIPT_ERROR_RX( "Invalid custom call command.", new ScriptString( "" ) );
+    }
+    return new ScriptString( "" );
+}
+
 CritterCl* FOClient::SScriptFunc::Global_GetChosen()
 {
     if( Self->Chosen && Self->Chosen->IsNotValid )
@@ -10733,21 +10076,21 @@ void FOClient::SScriptFunc::Global_SetMessageFilters( ScriptArray* filters )
 
 void FOClient::SScriptFunc::Global_Message( ScriptString& msg )
 {
-    Self->AddMess( FOMB_GAME, msg.c_str() );
+    Self->AddMess( FOMB_GAME, msg.c_str(), true );
 }
 
 void FOClient::SScriptFunc::Global_MessageType( ScriptString& msg, int type )
 {
     if( type < FOMB_GAME || type > FOMB_VIEW )
         type = FOMB_GAME;
-    Self->AddMess( type, msg.c_str() );
+    Self->AddMess( type, msg.c_str(), true );
 }
 
 void FOClient::SScriptFunc::Global_MessageMsg( int text_msg, uint str_num )
 {
     if( text_msg >= TEXTMSG_COUNT )
         SCRIPT_ERROR_R( "Invalid text msg arg." );
-    Self->AddMess( FOMB_GAME, Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
+    Self->AddMess( FOMB_GAME, Self->CurLang.Msg[ text_msg ].GetStr( str_num ), true );
 }
 
 void FOClient::SScriptFunc::Global_MessageMsgType( int text_msg, uint str_num, int type )
@@ -10756,7 +10099,7 @@ void FOClient::SScriptFunc::Global_MessageMsgType( int text_msg, uint str_num, i
         SCRIPT_ERROR_R( "Invalid text msg arg." );
     if( type < FOMB_GAME || type > FOMB_VIEW )
         type = FOMB_GAME;
-    Self->AddMess( type, Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
+    Self->AddMess( type, Self->CurLang.Msg[ text_msg ].GetStr( str_num ), true );
 }
 
 void FOClient::SScriptFunc::Global_MapMessage( ScriptString& text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy )
@@ -11431,37 +10774,49 @@ void FOClient::SScriptFunc::Global_MouseClick( int x, int y, int button, int cur
     int    prev_cursor = Self->CurMode;
     GameOpt.MouseX = x;
     GameOpt.MouseY = y;
-    Self->CurMode = cursor;
+    if( cursor != -1 )
+        Self->CurMode = cursor;
     MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONDOWN );
     MainWindowMouseEvents.push_back( button );
-    MainWindowMouseEvents.push_back( 0 );
     MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONUP );
     MainWindowMouseEvents.push_back( button );
-    MainWindowMouseEvents.push_back( 0 );
     Self->ParseMouse();
     MainWindowMouseEvents = prev_events;
     GameOpt.MouseX = prev_x;
     GameOpt.MouseY = prev_y;
-    Self->CurMode = prev_cursor;
+    if( cursor != -1 )
+        Self->CurMode = prev_cursor;
 }
 
 void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text )
 {
+    if( !key1 && !key2 )
+        return;
+
     IntVec prev_events = MainWindowKeyboardEvents;
     StrVec prev_events_text = MainWindowKeyboardEventsText;
     MainWindowKeyboardEvents.clear();
-    MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
-    MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
-    MainWindowKeyboardEventsText.push_back( key1_text ? key1_text->c_std_str() : "" );
-    MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
-    MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
-    MainWindowKeyboardEventsText.push_back( key2_text ? key2_text->c_std_str() : "" );
-    MainWindowKeyboardEvents.push_back( SDL_KEYUP );
-    MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
-    MainWindowKeyboardEventsText.push_back( "" );
-    MainWindowKeyboardEvents.push_back( SDL_KEYUP );
-    MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
-    MainWindowKeyboardEventsText.push_back( "" );
+    if( key1 )
+    {
+        MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
+        MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
+        MainWindowKeyboardEventsText.push_back( key1_text ? key1_text->c_std_str() : "" );
+    }
+    if( key2 )
+    {
+        MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
+        MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
+        MainWindowKeyboardEventsText.push_back( key2_text ? key2_text->c_std_str() : "" );
+        MainWindowKeyboardEvents.push_back( SDL_KEYUP );
+        MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
+        MainWindowKeyboardEventsText.push_back( "" );
+    }
+    if( key1 )
+    {
+        MainWindowKeyboardEvents.push_back( SDL_KEYUP );
+        MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
+        MainWindowKeyboardEventsText.push_back( "" );
+    }
     Self->ParseKeyboard();
     MainWindowKeyboardEvents = prev_events;
     MainWindowKeyboardEventsText = prev_events_text;
@@ -11541,6 +10896,33 @@ ScriptString* FOClient::SScriptFunc::Global_EncodeUTF8( uint ucs )
     uint len = Str::EncodeUTF8( ucs, buf );
     buf[ len ] = 0;
     return new ScriptString( buf );
+}
+
+void FOClient::SScriptFunc::Global_CloneObject( void* in, int in_type_id, void* out, int out_type_id, bool copy )
+{
+    if( !( in_type_id & asTYPEID_OBJHANDLE ) )
+        SCRIPT_ERROR_R( "Invalid in arg, not an handle." );
+    if( !( in_type_id & asTYPEID_SCRIPTOBJECT ) )
+        SCRIPT_ERROR_R( "Invalid in arg, not an script object." );
+    if( !*(void**) in )
+        SCRIPT_ERROR_R( "Invalid in arg, handle must be non null." );
+    if( !( out_type_id & asTYPEID_OBJHANDLE ) )
+        SCRIPT_ERROR_R( "Invalid out arg, not an handle." );
+    if( *(void**) out )
+        SCRIPT_ERROR_R( "Invalid out arg, handle must be null." );
+
+    in = *(void**) in;
+    asIScriptObject* in_obj = (asIScriptObject*) in;
+    in_type_id = in_obj->GetTypeId();
+
+    asIScriptEngine* engine = Script::GetEngine();
+    if( !engine->IsHandleCompatibleWithObject( in, in_type_id, out_type_id ) )
+        SCRIPT_ERROR_R( "Invalid args, incompatible objects." );
+
+    if( copy )
+        *(void**) out = engine->CreateScriptObjectCopy( in, engine->GetObjectTypeById( in_type_id ) );
+    else
+        *(void**) out = engine->CreateScriptObject( engine->GetObjectTypeById( in_type_id ) );
 }
 
 void FOClient::SScriptFunc::Global_SetRegistrationParam( uint index, bool enabled )
@@ -11719,23 +11101,23 @@ uint FOClient::SScriptFunc::Global_LoadSpriteHash( uint name_hash )
     return Self->AnimLoad( name_hash, RES_ATLAS_STATIC );
 }
 
-int FOClient::SScriptFunc::Global_GetSpriteWidth( uint spr_id, int spr_index )
+int FOClient::SScriptFunc::Global_GetSpriteWidth( uint spr_id, int frame_index )
 {
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || spr_index >= (int) anim->GetCnt() )
+    if( !anim || frame_index >= (int) anim->GetCnt() )
         return 0;
-    SpriteInfo* si = SprMngr.GetSpriteInfo( spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ) );
+    SpriteInfo* si = SprMngr.GetSpriteInfo( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
     if( !si )
         return 0;
     return si->Width;
 }
 
-int FOClient::SScriptFunc::Global_GetSpriteHeight( uint spr_id, int spr_index )
+int FOClient::SScriptFunc::Global_GetSpriteHeight( uint spr_id, int frame_index )
 {
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || spr_index >= (int) anim->GetCnt() )
+    if( !anim || frame_index >= (int) anim->GetCnt() )
         return 0;
-    SpriteInfo* si = SprMngr.GetSpriteInfo( spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ) );
+    SpriteInfo* si = SprMngr.GetSpriteInfo( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
     if( !si )
         return 0;
     return si->Height;
@@ -11747,29 +11129,19 @@ uint FOClient::SScriptFunc::Global_GetSpriteCount( uint spr_id )
     return anim ? anim->CntFrm : 0;
 }
 
-void FOClient::SScriptFunc::Global_GetTextInfo( ScriptString& text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
+void FOClient::SScriptFunc::Global_GetTextInfo( ScriptString* text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
 {
-    SprMngr.GetTextInfo( w, h, text.c_str(), font, flags, tw, th, lines );
+    SprMngr.GetTextInfo( w, h, text ? text->c_str() : NULL, font, flags, tw, th, lines );
 }
 
-void FOClient::SScriptFunc::Global_DrawSprite( uint spr_id, int spr_index, int x, int y, uint color )
+void FOClient::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs )
 {
     if( !SpritesCanDraw || !spr_id )
         return;
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || spr_index >= (int) anim->GetCnt() )
+    if( !anim || frame_index >= (int) anim->GetCnt() )
         return;
-    SprMngr.DrawSprite( spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ), x, y, color );
-}
-
-void FOClient::SScriptFunc::Global_DrawSpriteOffs( uint spr_id, int spr_index, int x, int y, uint color, bool offs )
-{
-    if( !SpritesCanDraw || !spr_id )
-        return;
-    AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || spr_index >= (int) anim->GetCnt() )
-        return;
-    uint spr_id_ = ( spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ) );
+    uint spr_id_ = ( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
     if( offs )
     {
         SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id_ );
@@ -11781,34 +11153,14 @@ void FOClient::SScriptFunc::Global_DrawSpriteOffs( uint spr_id, int spr_index, i
     SprMngr.DrawSprite( spr_id_, x, y, color );
 }
 
-void FOClient::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int spr_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color )
+void FOClient::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs )
 {
     if( !SpritesCanDraw || !spr_id )
         return;
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || spr_index >= (int) anim->GetCnt() )
+    if( !anim || frame_index >= (int) anim->GetCnt() )
         return;
-    SprMngr.DrawSpritePattern( spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ), x, y, w, h, spr_width, spr_height, color );
-}
-
-void FOClient::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color )
-{
-    if( !SpritesCanDraw || !spr_id )
-        return;
-    AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || spr_index >= (int) anim->GetCnt() )
-        return;
-    SprMngr.DrawSpriteSize( spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ), x, y, (float) w, (float) h, scratch, center, color );
-}
-
-void FOClient::SScriptFunc::Global_DrawSpriteSizeOffs( uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color, bool offs )
-{
-    if( !SpritesCanDraw || !spr_id )
-        return;
-    AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || spr_index >= (int) anim->GetCnt() )
-        return;
-    uint spr_id_ = ( spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ) );
+    uint spr_id_ = ( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
     if( offs )
     {
         SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id_ );
@@ -11817,12 +11169,24 @@ void FOClient::SScriptFunc::Global_DrawSpriteSizeOffs( uint spr_id, int spr_inde
         x += si->OffsX;
         y += si->OffsY;
     }
-    SprMngr.DrawSpriteSize( spr_id_, x, y, (float) w, (float) h, scratch, center, color );
+    SprMngr.DrawSpriteSizeExt( spr_id_, x, y, w, h, zoom, true, true, color );
+}
+
+void FOClient::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color )
+{
+    if( !SpritesCanDraw || !spr_id )
+        return;
+    AnyFrames* anim = Self->AnimGetFrames( spr_id );
+    if( !anim || frame_index >= (int) anim->GetCnt() )
+        return;
+    SprMngr.DrawSpritePattern( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), x, y, w, h, spr_width, spr_height, color );
 }
 
 void FOClient::SScriptFunc::Global_DrawText( ScriptString& text, int x, int y, int w, int h, uint color, int font, int flags )
 {
     if( !SpritesCanDraw )
+        return;
+    if( text.length() == 0 )
         return;
     if( !w && x < GameOpt.ScreenWidth )
         w = GameOpt.ScreenWidth - x;
@@ -11879,7 +11243,7 @@ void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, ScriptArra
     SprMngr.DrawPoints( points, prim );
 }
 
-void FOClient::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, ushort proto_id, uint spr_id, int spr_index, int ox, int oy )
+void FOClient::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, ushort proto_id, uint spr_id, int frame_index, int ox, int oy )
 {
     if( !Self->HexMngr.SpritesCanDrawMap )
         return;
@@ -11887,7 +11251,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, ushort p
         return;
 
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || spr_index >= (int) anim->GetCnt() )
+    if( !anim || frame_index >= (int) anim->GetCnt() )
         return;
 
     ProtoItem* proto_item = ItemMngr.GetProtoItem( proto_id );
@@ -11899,7 +11263,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, ushort p
     Sprites&   tree = Self->HexMngr.GetDrawTree();
     Sprite&    spr = tree.InsertSprite( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ),
                                         hx, hy + ( proto_item ? proto_item->DrawOrderOffsetHexY : 0 ), 0,
-                                        f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ), NULL, NULL, NULL, NULL, NULL, NULL );
+                                        f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), NULL, NULL, NULL, NULL, NULL, NULL );
     if( !no_light )
         spr.SetLight( Self->HexMngr.GetLightHex( 0, 0 ), Self->HexMngr.GetMaxHexX(), Self->HexMngr.GetMaxHexY() );
 
@@ -11944,7 +11308,7 @@ void FOClient::SScriptFunc::Global_DrawCritter2d( uint crtype, uint anim1, uint 
     {
         AnyFrames* anim = ResMngr.GetCrit2dAnim( crtype, anim1, anim2, dir );
         if( anim )
-            SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, (float) ( r - l ), (float) ( b - t ), scratch, center, color ? color : COLOR_IFACE );
+            SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, color ? color : COLOR_IFACE );
     }
 }
 
@@ -12023,17 +11387,17 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
     }
 }
 
-void FOClient::SScriptFunc::Global_ShowScreen( int screen, int p0, int p1, int p2 )
+void FOClient::SScriptFunc::Global_ShowScreen( int screen, ScriptDictionary* params )
 {
-    Self->ShowScreen( screen, p0, p1, p2 );
+    if( screen >= SCREEN_LOGIN && screen <= 9 )
+        Self->ShowMainScreen( screen, params, -1 );
+    else
+        Self->ShowScreen( screen, params, -1 );
 }
 
-void FOClient::SScriptFunc::Global_HideScreen( int screen, int p0, int p1, int p2 )
+void FOClient::SScriptFunc::Global_HideScreen( int screen )
 {
-    if( screen )
-        Self->HideScreen( screen, p0, p1, p2 );
-    else
-        Self->ShowScreen( SCREEN_NONE, p0, p1, p2 );
+    Self->HideScreen( screen, -1 );
 }
 
 void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, int& y )
@@ -12169,9 +11533,11 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
     {
     case SCREEN_LOGIN:
         Self->LogDraw();
+        Self->MessBoxDraw();
         break;
     case SCREEN_REGISTRATION:
         Self->ChaDraw( true );
+        Self->MessBoxDraw();
         break;
     case SCREEN_CREDITS:
         Self->CreditsDraw();
@@ -12180,9 +11546,13 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
         break;
     case SCREEN_GAME:
         Self->IntDraw();
+        Self->ConsoleDraw();
+        Self->MessBoxDraw();
         break;
     case SCREEN_GLOBAL_MAP:
         Self->GmapDraw();
+        Self->ConsoleDraw();
+        Self->MessBoxDraw();
         break;
     case SCREEN_WAIT:
         Self->WaitDraw();
@@ -12195,6 +11565,9 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
         break;
     case SCREEN__MINI_MAP:
         Self->LmapDraw();
+        break;
+    case SCREEN__CHARACTER:
+        Self->ChaDraw( false );
         break;
     case SCREEN__DIALOG:
         Self->DlgDraw( true );
@@ -12210,9 +11583,6 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
         break;
     case SCREEN__MENU_OPTION:
         Self->MoptDraw();
-        break;
-    case SCREEN__CHARACTER:
-        Self->ChaDraw( false );
         break;
     case SCREEN__AIM:
         Self->AimDraw();
@@ -12267,6 +11637,413 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
     }
 }
 
+void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int button, bool down, bool move )
+{
+    if( move )
+        button = -1;
+
+    switch( screen )
+    {
+    case SCREEN_LOGIN:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->LogLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->LogLMouseUp();
+        break;
+    case SCREEN_REGISTRATION:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->ChaLMouseDown( true );
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->ChaLMouseUp( true );
+        else if( move )
+            Self->ChaMouseMove( true );
+        break;
+    case SCREEN_CREDITS:
+        Self->TryExit();
+        break;
+    case SCREEN_OPTIONS:
+        break;
+    case SCREEN_GAME:
+        if( button == MOUSE_BUTTON_LEFT && down && Self->IntLMouseDown() == IFACE_NONE )
+            Self->GameLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down && Self->IfaceHold == IFACE_NONE )
+            Self->GameLMouseUp();
+        else if( button == MOUSE_BUTTON_LEFT && !down && Self->IfaceHold != IFACE_NONE )
+            Self->IntLMouseUp();
+        else if( button == MOUSE_BUTTON_RIGHT && down )
+            Self->IntRMouseDown();
+        else if( button == MOUSE_BUTTON_MIDDLE && !Self->ConsoleActive && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
+            Self->HexMngr.ChangeZoom( 0 ), Self->RebuildLookBorders = true;
+        else if( move )
+            Self->IntMouseMove();
+        break;
+    case SCREEN_GLOBAL_MAP:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->GmapLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->GmapLMouseUp();
+        else if( button == MOUSE_BUTTON_RIGHT && down )
+            Self->GmapRMouseDown();
+        else if( button == MOUSE_BUTTON_RIGHT && !down )
+            Self->GmapRMouseUp();
+        else if( move )
+            Self->GmapMouseMove();
+        break;
+    case SCREEN_WAIT:
+        break;
+    case SCREEN__INVENTORY:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->InvLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->InvLMouseUp();
+        else if( button == MOUSE_BUTTON_RIGHT && down )
+            Self->InvRMouseDown();
+        else if( move )
+            Self->InvMouseMove();
+        break;
+    case SCREEN__PICKUP:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->PupLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->PupLMouseUp();
+        else if( button == MOUSE_BUTTON_RIGHT && down )
+            Self->PupRMouseDown();
+        else if( move )
+            Self->PupMouseMove();
+        break;
+    case SCREEN__MINI_MAP:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->LmapLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->LmapLMouseUp();
+        else if( move )
+            Self->LmapMouseMove();
+        break;
+    case SCREEN__CHARACTER:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->ChaLMouseDown( false );
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->ChaLMouseUp( false );
+        else if( move )
+            Self->ChaMouseMove( false );
+        break;
+    case SCREEN__DIALOG:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->DlgLMouseDown( true );
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->DlgLMouseUp( true );
+        else if( button == MOUSE_BUTTON_RIGHT && down )
+            Self->DlgRMouseDown( true );
+        else if( move )
+            Self->DlgMouseMove( true );
+        break;
+    case SCREEN__BARTER:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->DlgLMouseDown( false );
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->DlgLMouseUp( false );
+        else if( button == MOUSE_BUTTON_RIGHT && down )
+            Self->DlgRMouseDown( false );
+        else if( move )
+            Self->DlgMouseMove( false );
+        break;
+    case SCREEN__PIP_BOY:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->PipLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->PipLMouseUp();
+        else if( button == MOUSE_BUTTON_RIGHT && down )
+            Self->PipRMouseDown();
+        else if( move )
+            Self->PipMouseMove();
+        break;
+    case SCREEN__FIX_BOY:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->FixLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->FixLMouseUp();
+        else if( move )
+            Self->FixMouseMove();
+        break;
+    case SCREEN__MENU_OPTION:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->MoptLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->MoptLMouseUp();
+        break;
+    case SCREEN__AIM:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->AimLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->AimLMouseUp();
+        else if( move )
+            Self->AimMouseMove();
+        break;
+    case SCREEN__SPLIT:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->SplitLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->SplitLMouseUp();
+        else if( move )
+            Self->SplitMouseMove();
+        break;
+    case SCREEN__TIMER:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->TimerLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->TimerLMouseUp();
+        else if( move )
+            Self->TimerMouseMove();
+        break;
+    case SCREEN__DIALOGBOX:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->DlgboxLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->DlgboxLMouseUp();
+        else if( move )
+            Self->DlgboxMouseMove();
+        break;
+    case SCREEN__ELEVATOR:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->ElevatorLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->ElevatorLMouseUp();
+        else if( move )
+            Self->ElevatorMouseMove();
+        break;
+    case SCREEN__SAY:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->SayLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->SayLMouseUp();
+        else if( move )
+            Self->SayMouseMove();
+        break;
+    case SCREEN__CHA_NAME:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->ChaNameLMouseDown();
+        break;
+    case SCREEN__CHA_AGE:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->ChaAgeLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->ChaAgeLMouseUp();
+        break;
+    case SCREEN__CHA_SEX:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->ChaSexLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->ChaSexLMouseUp();
+        break;
+    case SCREEN__GM_TOWN:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->GmapLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->GmapLMouseUp();
+        else if( button == MOUSE_BUTTON_RIGHT && down )
+            Self->GmapRMouseDown();
+        else if( button == MOUSE_BUTTON_RIGHT && !down )
+            Self->GmapRMouseUp();
+        else if( move )
+            Self->GmapMouseMove();
+        break;
+    case SCREEN__INPUT_BOX:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->IboxLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->IboxLMouseUp();
+        break;
+    case SCREEN__SKILLBOX:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->SboxLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->SboxLMouseUp();
+        else if( move )
+            Self->SboxMouseMove();
+        break;
+    case SCREEN__USE:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->UseLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->UseLMouseUp();
+        else if( button == MOUSE_BUTTON_RIGHT && down )
+            Self->UseRMouseDown();
+        else if( move )
+            Self->UseMouseMove();
+        break;
+    case SCREEN__PERK:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->PerkLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->PerkLMouseUp();
+        else if( move )
+            Self->PerkMouseMove();
+        break;
+    case SCREEN__TOWN_VIEW:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->TViewLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->TViewLMouseUp();
+        else if( button == MOUSE_BUTTON_MIDDLE && !Self->ConsoleActive && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
+            Self->HexMngr.ChangeZoom( 0 ), Self->RebuildLookBorders = true;
+        else if( move )
+            Self->TViewMouseMove();
+        break;
+    case SCREEN__SAVE_LOAD:
+        if( button == MOUSE_BUTTON_LEFT && down )
+            Self->SaveLoadLMouseDown();
+        else if( button == MOUSE_BUTTON_LEFT && !down )
+            Self->SaveLoadLMouseUp();
+        else if( move )
+            Self->SaveLoadMouseMove();
+        break;
+    default:
+        break;
+    }
+
+    if( button == MOUSE_BUTTON_LEFT && down && Self->MessBoxLMouseDown() )
+        Timer::StartAccelerator( ACCELERATE_MESSBOX );
+    else if( button == MOUSE_BUTTON_LEFT && !down )
+        Self->LMenuMouseUp(), Timer::StartAccelerator( ACCELERATE_NONE );
+    else if( ( button == MOUSE_BUTTON_WHEEL_DOWN || button == MOUSE_BUTTON_WHEEL_UP ) && down )
+        Self->ProcessMouseWheel( button == MOUSE_BUTTON_WHEEL_DOWN ? -1 : 1 );
+    else if( move )
+        Self->ProcessMouseScroll(), Self->LMenuMouseMove();
+}
+
+void FOClient::SScriptFunc::Global_HandleHardcodedScreenKey( int screen, uchar key, ScriptString* text, bool down )
+{
+    switch( screen )
+    {
+    case SCREEN_LOGIN:
+        if( down )
+            Self->LogKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN_REGISTRATION:
+        break;
+    case SCREEN_CREDITS:
+        Self->TryExit();
+        break;
+    case SCREEN_OPTIONS:
+        break;
+    case SCREEN_GAME:
+        if( down )
+            Self->GameKeyDown( key, text ? text->c_str() : "" ), Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN_GLOBAL_MAP:
+        if( down )
+            Self->GmapKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN_WAIT:
+        break;
+    case SCREEN__INVENTORY:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__PICKUP:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__MINI_MAP:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__CHARACTER:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__DIALOG:
+        if( down )
+            Self->DlgKeyDown( true, key, text ? text->c_str() : "" ), Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__BARTER:
+        if( down )
+            Self->DlgKeyDown( false, key, text ? text->c_str() : "" ), Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__PIP_BOY:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__FIX_BOY:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__MENU_OPTION:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__AIM:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__SPLIT:
+        if( down )
+            Self->SplitKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__TIMER:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__DIALOGBOX:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__ELEVATOR:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__SAY:
+        if( down )
+            Self->SayKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__CHA_NAME:
+        if( down )
+            Self->ChaNameKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__CHA_AGE:
+        break;
+    case SCREEN__CHA_SEX:
+        break;
+    case SCREEN__GM_TOWN:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__INPUT_BOX:
+        if( down )
+            Self->IboxKeyDown( key, text ? text->c_str() : "" );
+        else if( !down )
+            Self->IboxKeyUp( key );
+        break;
+    case SCREEN__SKILLBOX:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__USE:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__PERK:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__TOWN_VIEW:
+        if( down )
+            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+        break;
+    case SCREEN__SAVE_LOAD:
+        break;
+    default:
+        break;
+    }
+
+    if( !down )
+    {
+        Self->ConsoleKeyUp( key );
+        Self->ProcessKeybScroll( false, key );
+        Timer::StartAccelerator( ACCELERATE_NONE );
+    }
+}
+
 bool FOClient::SScriptFunc::Global_GetHexPos( ushort hx, ushort hy, int& x, int& y )
 {
     x = y = 0;
@@ -12285,7 +12062,14 @@ bool FOClient::SScriptFunc::Global_GetHexPos( ushort hx, ushort hy, int& x, int&
 bool FOClient::SScriptFunc::Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface )
 {
     ushort hx_, hy_;
-    if( Self->GetCurHex( hx_, hy_, ignore_interface ) )
+    int    old_x = GameOpt.MouseX;
+    int    old_y = GameOpt.MouseY;
+    GameOpt.MouseX = x;
+    GameOpt.MouseY = y;
+    bool result = Self->GetCurHex( hx_, hy_, ignore_interface );
+    GameOpt.MouseX = old_x;
+    GameOpt.MouseY = old_y;
+    if( result )
     {
         hx = hx_;
         hy = hy_;

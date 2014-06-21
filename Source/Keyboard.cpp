@@ -16,7 +16,6 @@ namespace Keyb
     bool ShiftDwn = false;
     bool CtrlDwn = false;
     bool AltDwn = false;
-    bool KeyPressed[ 0x100 ] = { 0 };
 
     void GetCharInternal( uchar dik, const char* dik_text, char* str, uint* position, uint max, int flags );
     bool IsInvalidChar( const char* str, uint flags );
@@ -45,7 +44,6 @@ void Keyb::Lost()
     CtrlDwn = false;
     AltDwn = false;
     ShiftDwn = false;
-    memzero( KeyPressed, sizeof( KeyPressed ) );
 }
 
 void Keyb::GetChar( uchar dik, const char* dik_text, string& str, uint* position, uint max, int flags )

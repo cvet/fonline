@@ -13,16 +13,11 @@ typedef vector< Sound* > SoundVec;
 class SoundManager
 {
 public:
-    SoundManager(): isActive( false ), soundVolume( 100 ), musicVolume( 100 ) {}
+    SoundManager(): isActive( false ) {}
 
     bool Init();
     void Finish();
     void ClearSounds();
-
-    int  GetSoundVolume();
-    int  GetMusicVolume();
-    void SetSoundVolume( int volume );
-    void SetMusicVolume( int volume );
 
     bool PlaySound( const char* name );
     bool PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
@@ -45,8 +40,6 @@ private:
     bool   ConvertData( Sound* sound );
 
     bool     isActive;
-    int      soundVolume;
-    int      musicVolume;
     SoundVec soundsActive;
 };
 

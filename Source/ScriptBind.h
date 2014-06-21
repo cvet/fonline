@@ -686,7 +686,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventTurnBasedEnd()", as
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventTurnBasedProcess(Critter& cr, bool beginTurn)", asFUNCTION( BIND_CLASS Map_EventTurnBasedProcess ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint Id", OFFSETOF( Map, Data.MapId ) ) );
-// BIND_ASSERT( engine->RegisterObjectProperty( "Map", "bool CombatRunning", OFFSETOF( Map, MapId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedRound", OFFSETOF( Map, TurnBasedRound ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedTurn", OFFSETOF( Map, TurnBasedTurn ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedWholeTurn", OFFSETOF( Map, TurnBasedWholeTurn ) ) );
@@ -855,7 +854,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "uint GetItemsByType(int
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "ProtoItem@+ GetSlotProto(int slot, uint8& mode) const", asFUNCTION( BIND_CLASS Crit_GetSlotProto ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "void SetVisible(bool visible)", asFUNCTION( BIND_CLASS Crit_SetVisible ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "bool GetVisible() const", asFUNCTION( BIND_CLASS Crit_GetVisible ), asCALL_CDECL_OBJFIRST ) );
-// BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "bool IsMyTurn() const", asFUNCTION( BIND_CLASS Crit_CheckKey ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "void set_ContourColor(uint value)", asFUNCTION( BIND_CLASS Crit_set_ContourColor ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "uint get_ContourColor() const", asFUNCTION( BIND_CLASS Crit_get_ContourColor ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "uint GetMultihex() const", asFUNCTION( BIND_CLASS Crit_GetMultihex ), asCALL_CDECL_OBJFIRST ) );
@@ -951,6 +949,7 @@ BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint HolodiskNumbe
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int16 OffsetX", OFFSETOF( Item, Data.OffsetX ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int16 OffsetY", OFFSETOF( Item, Data.OffsetY ) ) );
 
+BIND_ASSERT( engine->RegisterGlobalFunction( "string@ CustomCall(string& command, string& separator = \" \")", asFUNCTION( BIND_CLASS Global_CustomCall ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "CritterCl@+ GetChosen()", asFUNCTION( BIND_CLASS Global_GetChosen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetChosenActions(uint[]@+ actions)", asFUNCTION( BIND_CLASS Global_GetChosenActions ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetChosenActions(uint[]@+ actions)", asFUNCTION( BIND_CLASS Global_SetChosenActions ), asCALL_CDECL ) );
@@ -1002,24 +1001,24 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void RunServerScript(string& funcN
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RunServerScriptUnsafe(string& funcName, int p0, int p1, int p2, string@+ p3, int[]@+ p4)", asFUNCTION( BIND_CLASS Global_RunServerScriptUnsafe ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(string& name, int pathIndex)", asFUNCTION( BIND_CLASS Global_LoadSprite ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(uint nameHash)", asFUNCTION( BIND_CLASS Global_LoadSpriteHash ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteWidth(uint sprId, int sprIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteWidth ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteHeight(uint sprId, int sprIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteHeight ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteWidth(uint sprId, int frameIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteWidth ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteHeight(uint sprId, int frameIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteHeight ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetSpriteCount(uint sprId)", asFUNCTION( BIND_CLASS Global_GetSpriteCount ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void GetTextInfo(string& text, int w, int h, int font, int flags, int& tw, int& th, int& lines)", asFUNCTION( BIND_CLASS Global_GetTextInfo ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color)", asFUNCTION( BIND_CLASS Global_DrawSprite ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color, bool applyOffsets)", asFUNCTION( BIND_CLASS Global_DrawSpriteOffs ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color)", asFUNCTION( BIND_CLASS Global_DrawSpriteSize ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color, bool applyOffsets)", asFUNCTION( BIND_CLASS Global_DrawSpriteSizeOffs ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSpritePattern(uint sprId, int sprIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color)", asFUNCTION( BIND_CLASS Global_DrawSpritePattern ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void GetTextInfo(string@+ text, int w, int h, int font, int flags, int& tw, int& th, int& lines)", asFUNCTION( BIND_CLASS Global_GetTextInfo ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int frameIndex, int x, int y, uint color = 0, bool applyOffsets = false)", asFUNCTION( BIND_CLASS Global_DrawSprite ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int frameIndex, int x, int y, int w, int h, bool zoom = false, uint color = 0, bool applyOffsets = false)", asFUNCTION( BIND_CLASS Global_DrawSpriteSize ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSpritePattern(uint sprId, int frameIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color = 0)", asFUNCTION( BIND_CLASS Global_DrawSpritePattern ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawText(string& text, int x, int y, int w, int h, uint color, int font, int flags)", asFUNCTION( BIND_CLASS Global_DrawText ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawPrimitive(int primitiveType, int[]& data)", asFUNCTION( BIND_CLASS Global_DrawPrimitive ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSprite(uint16 hx, uint16 hy, uint16 effectPid, uint sprId, int sprIndex, int offsX, int offsY)", asFUNCTION( BIND_CLASS Global_DrawMapSprite ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSprite(uint16 hx, uint16 hy, uint16 effectPid, uint sprId, int frameIndex, int offsX, int offsY)", asFUNCTION( BIND_CLASS Global_DrawMapSprite ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter2d(uint crType, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter2d ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter3d(uint instance, uint crType, uint anim1, uint anim2, int[]@+ layers, float[]@+ position, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter3d ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowScreen(int screen, int p0, int p1, int p2)", asFUNCTION( BIND_CLASS Global_ShowScreen ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void HideScreen(int screen, int p0, int p1, int p2)", asFUNCTION( BIND_CLASS Global_HideScreen ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowScreen(int screen, dictionary@+ params = null)", asFUNCTION( BIND_CLASS Global_ShowScreen ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void HideScreen(int screen)", asFUNCTION( BIND_CLASS Global_HideScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void GetHardcodedScreenPos(int screen, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHardcodedScreenPos ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawHardcodedScreen(int screen)", asFUNCTION( BIND_CLASS Global_DrawHardcodedScreen ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void HandleHardcodedScreenMouse(int screen, int button, bool down, bool move)", asFUNCTION( BIND_CLASS Global_HandleHardcodedScreenMouse ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void HandleHardcodedScreenKey(int screen, uint8 key, string@ text, bool down)", asFUNCTION( BIND_CLASS Global_HandleHardcodedScreenKey ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHexPos ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorHex ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "ItemCl@+ GetMonitorItem(int x, int y, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorItem ), asCALL_CDECL ) );
@@ -1069,8 +1068,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFullSecond(uint16 year, ui
 BIND_ASSERT( engine->RegisterGlobalFunction( "void GetTime(uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)", asFUNCTION( BIND_CLASS Global_GetTime ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void GetGameTime(uint fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)", asFUNCTION( BIND_CLASS Global_GetGameTime ), asCALL_CDECL ) );
 // BIND_ASSERT( engine->RegisterGlobalFunction( "void GetVersion(uint& server, uint& client, uint& net)", asFUNCTION( BIND_CLASS Global_GetVersion ), asCALL_CDECL ) );
-// BIND_ASSERT( engine->RegisterGlobalFunction( "void Sort(int[]& array, string& func)", asFUNCTION( BIND_CLASS Global_Sort ), asCALL_CDECL ) );
-// BIND_ASSERT( engine->RegisterGlobalFunction( "void Sort(uint[]& array, string& func)", asFUNCTION( BIND_CLASS Global_Sort ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SetParameterGetBehaviour(uint index, string& funcName)", asFUNCTION( BIND_CLASS Global_SetParameterGetBehaviour ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SetParameterChangeBehaviour(uint index, string& funcName)", asFUNCTION( BIND_CLASS Global_SetParameterChangeBehaviour ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetRegistrationParameter(uint index, bool enabled)", asFUNCTION( BIND_CLASS Global_SetRegistrationParam ), asCALL_CDECL ) );
@@ -1410,18 +1407,16 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveScreen(uint16 hexX, uint1
 
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(string& name, int pathIndex)", asFUNCTION( BIND_CLASS Global_LoadSprite ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(uint nameHash)", asFUNCTION( BIND_CLASS Global_LoadSpriteHash ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteWidth(uint sprId, int sprIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteWidth ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteHeight(uint sprId, int sprIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteHeight ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteWidth(uint sprId, int frameIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteWidth ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteHeight(uint sprId, int frameIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteHeight ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetSpriteCount(uint sprId)", asFUNCTION( BIND_CLASS Global_GetSpriteCount ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void GetTextInfo(string& text, int w, int h, int font, int flags, int& tw, int& th, int& lines)", asFUNCTION( BIND_CLASS Global_GetTextInfo ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color)", asFUNCTION( BIND_CLASS Global_DrawSprite ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, uint color, bool applyOffsets)", asFUNCTION( BIND_CLASS Global_DrawSpriteOffs ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color)", asFUNCTION( BIND_CLASS Global_DrawSpriteSize ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int sprIndex, int x, int y, int w, int h, bool scratch, bool center, uint color, bool applyOffsets)", asFUNCTION( BIND_CLASS Global_DrawSpriteSizeOffs ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSpritePattern(uint sprId, int sprIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color)", asFUNCTION( BIND_CLASS Global_DrawSpritePattern ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int frameIndex, int x, int y, uint color = 0, bool applyOffsets = false)", asFUNCTION( BIND_CLASS Global_DrawSprite ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int frameIndex, int x, int y, int w, int h, bool zoom = false, uint color = 0, bool applyOffsets = false)", asFUNCTION( BIND_CLASS Global_DrawSpriteSize ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSpritePattern(uint sprId, int frameIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color = 0)", asFUNCTION( BIND_CLASS Global_DrawSpritePattern ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawText(string& text, int x, int y, int w, int h, uint color, int font, int flags)", asFUNCTION( BIND_CLASS Global_DrawText ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawPrimitive(int primitiveType, int[]& data)", asFUNCTION( BIND_CLASS Global_DrawPrimitive ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSprite(uint16 hx, uint16 hy, uint16 effectPid, uint sprId, int sprIndex, int offsX, int offsY)", asFUNCTION( BIND_CLASS Global_DrawMapSprite ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSprite(uint16 hx, uint16 hy, uint16 effectPid, uint sprId, int frameIndex, int offsX, int offsY)", asFUNCTION( BIND_CLASS Global_DrawMapSprite ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter2d(uint crType, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter2d ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter3d(uint instance, uint crType, uint anim1, uint anim2, int[]@+ layers, float[]@+ position, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter3d ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHexPos ), asCALL_CDECL ) );
@@ -1482,6 +1477,7 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ScrollMouseUp", &GameOpt.Sc
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ScrollMouseDown", &GameOpt.ScrollMouseDown ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowGroups", &GameOpt.ShowGroups ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __HelpInfo", &GameOpt.HelpInfo ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "bool __DebugInfo", &GameOpt.DebugInfo ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __Enable3dRendering", &GameOpt.Enable3dRendering ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __FullScr", &GameOpt.FullScreen ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __VSync", &GameOpt.VSync ) );
@@ -1539,6 +1535,8 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Anim2CombatBegin", &GameOpt
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Anim2CombatIdle", &GameOpt.Anim2CombatIdle ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Anim2CombatEnd", &GameOpt.Anim2CombatEnd ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ConsoleHistorySize", &GameOpt.ConsoleHistorySize ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "int __SoundVolume", &GameOpt.SoundVolume ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "int __MusicVolume", &GameOpt.MusicVolume ) );
 #endif
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MapHexagonal", &GameOpt.MapHexagonal ) );
@@ -1574,6 +1572,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadConstants(int constCollec
 BIND_ASSERT( engine->RegisterGlobalFunction( "void AllowSlot(uint8 index, string& slotName)", asFUNCTION( BIND_CLASS Global_AllowSlot ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint DecodeUTF8(const string& text, uint& length)", asFUNCTION( BIND_CLASS Global_DecodeUTF8 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ EncodeUTF8(uint ucs)", asFUNCTION( BIND_CLASS Global_EncodeUTF8 ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void CloneObject(?&in, ?&out, bool copy)", asFUNCTION( BIND_CLASS Global_CloneObject ), asCALL_CDECL ) );
 
 /************************************************************************/
 /*                                                                      */

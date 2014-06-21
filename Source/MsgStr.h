@@ -2,26 +2,6 @@
 #define __MSG_STR__
 
 // ***************************************************************************************
-// ***  SYMBOLS  *************************************************************************
-// ***************************************************************************************
-
-#define TEXT_SYMBOL_DOT                    ( 149 )
-#define TEXT_SYMBOL_CROSS                  ( 134 )
-#define TEXT_SYMBOL_TM                     ( 153 )
-#define TEXT_SYMBOL_EURO                   ( 163 )
-#define TEXT_SYMBOL_COPY_C                 ( 169 )
-#define TEXT_SYMBOL_COPY_R                 ( 174 )
-#define TEXT_SYMBOL_POW2                   ( 178 )
-#define TEXT_SYMBOL_POW3                   ( 179 )
-#define TEXT_SYMBOL_PI                     ( 182 )
-#define TEXT_SYMBOL_POW0                   ( 186 )
-#define TEXT_SYMBOL_1ON4                   ( 188 )
-#define TEXT_SYMBOL_1ON2                   ( 189 )
-#define TEXT_SYMBOL_3ON4                   ( 190 )
-#define TEXT_SYMBOL_UP                     ( 24 )
-#define TEXT_SYMBOL_DOWN                   ( 25 )
-
-// ***************************************************************************************
 // ***  FOGAME.MSG  **********************************************************************
 // ***************************************************************************************
 

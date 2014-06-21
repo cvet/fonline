@@ -768,7 +768,7 @@ bool ProtoMap::LoadCache( FileManager& fm )
 {
     // Server version
     uint version = fm.GetBEUInt();
-    if( version != SERVER_VERSION )
+    if( version != FONLINE_VERSION )
         return false;
     fm.GetBEUInt();
     fm.GetBEUInt();
@@ -884,7 +884,7 @@ bool ProtoMap::LoadCache( FileManager& fm )
 void ProtoMap::SaveCache( FileManager& fm )
 {
     // Server version
-    fm.SetBEUInt( SERVER_VERSION );
+    fm.SetBEUInt( FONLINE_VERSION );
     fm.SetBEUInt( 0 );
     fm.SetBEUInt( 0 );
     fm.SetBEUInt( 0 );

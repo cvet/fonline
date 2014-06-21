@@ -473,6 +473,7 @@ public:
         static void          Global_AllowSlot( uchar index, ScriptString& slot_name );
         static uint          Global_DecodeUTF8( ScriptString& text, uint& length );
         static ScriptString* Global_EncodeUTF8( uint ucs );
+        static void          Global_CloneObject( void* in, int in_type_id, void* out, int out_type_id );
         static ProtoMap*     Global_LoadMap( ScriptString& file_name, int path_type );
         static void          Global_UnloadMap( ProtoMap* pmap );
         static bool          Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type );
@@ -545,12 +546,10 @@ public:
         static int  Global_GetSpriteWidth( uint spr_id, int spr_index );
         static int  Global_GetSpriteHeight( uint spr_id, int spr_index );
         static uint Global_GetSpriteCount( uint spr_id );
-        static void Global_GetTextInfo( ScriptString& text, int w, int h, int font, int flags, int& tw, int& th, int& lines );
-        static void Global_DrawSprite( uint spr_id, int spr_index, int x, int y, uint color );
-        static void Global_DrawSpriteOffs( uint spr_id, int spr_index, int x, int y, uint color, bool offs );
-        static void Global_DrawSpritePattern( uint spr_id, int spr_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color );
-        static void Global_DrawSpriteSize( uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color );
-        static void Global_DrawSpriteSizeOffs( uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color, bool offs );
+        static void Global_GetTextInfo( ScriptString* text, int w, int h, int font, int flags, int& tw, int& th, int& lines );
+        static void Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs );
+        static void Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs );
+        static void Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color );
         static void Global_DrawText( ScriptString& text, int x, int y, int w, int h, uint color, int font, int flags );
         static void Global_DrawPrimitive( int primitive_type, ScriptArray& data );
         static void Global_DrawMapSprite( ushort hx, ushort hy, ushort proto_id, uint spr_id, int spr_index, int ox, int oy );

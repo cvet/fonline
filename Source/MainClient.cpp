@@ -24,7 +24,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     #endif
 
     // Exception
-    CatchExceptions( "FOnline", CLIENT_VERSION );
+    CatchExceptions( "FOnline", FONLINE_VERSION );
 
     // Make command line
     SetCommandLine( argc, argv );
@@ -123,7 +123,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     GetClientOptions();
 
     // Start message
-    WriteLog( "Starting FOnline (version %04X-%02X)...\n", CLIENT_VERSION, FO_PROTOCOL_VERSION & 0xFF );
+    WriteLog( "Starting FOnline (version %d)...\n", FONLINE_VERSION );
 
     // Create engine
     FOClient* engine = new FOClient();
@@ -152,6 +152,10 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         if( !engine->MainLoop() )
             Thread::Sleep( 100 );
     }
+
+    // Finish script
+    if( Script::PrepareContext( ClientFunctions.Finish, _FUNC_, "Game" ) )
+        Script::RunPrepared();
 
     // Just kill process
     // System automatically clean up all resources

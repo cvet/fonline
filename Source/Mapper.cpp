@@ -778,14 +778,15 @@ void FOMapper::ParseKeyboard()
             continue;
 
         // Avoid repeating
-        if( dikdw && Keyb::KeyPressed[ dikdw ] )
+        static bool key_pressed[ 0x100 ];
+        if( dikdw && key_pressed[ dikdw ] )
             continue;
-        if( dikup && !Keyb::KeyPressed[ dikup ] )
+        if( dikup && !key_pressed[ dikup ] )
             continue;
 
         // Keyboard states, to know outside function
-        Keyb::KeyPressed[ dikup ] = false;
-        Keyb::KeyPressed[ dikdw ] = true;
+        key_pressed[ dikup ] = false;
+        key_pressed[ dikdw ] = true;
 
         // Key script event
         bool script_result = false;
@@ -1073,16 +1074,16 @@ void FOMapper::ParseKeyboard()
     }
 }
 
-#define MOUSE_CLICK_LEFT          ( 0 )
-#define MOUSE_CLICK_RIGHT         ( 1 )
-#define MOUSE_CLICK_MIDDLE        ( 2 )
-#define MOUSE_CLICK_WHEEL_UP      ( 3 )
-#define MOUSE_CLICK_WHEEL_DOWN    ( 4 )
-#define MOUSE_CLICK_EXT0          ( 5 )
-#define MOUSE_CLICK_EXT1          ( 6 )
-#define MOUSE_CLICK_EXT2          ( 7 )
-#define MOUSE_CLICK_EXT3          ( 8 )
-#define MOUSE_CLICK_EXT4          ( 9 )
+#define MOUSE_BUTTON_LEFT          ( 0 )
+#define MOUSE_BUTTON_RIGHT         ( 1 )
+#define MOUSE_BUTTON_MIDDLE        ( 2 )
+#define MOUSE_BUTTON_WHEEL_UP      ( 3 )
+#define MOUSE_BUTTON_WHEEL_DOWN    ( 4 )
+#define MOUSE_BUTTON_EXT0          ( 5 )
+#define MOUSE_BUTTON_EXT1          ( 6 )
+#define MOUSE_BUTTON_EXT2          ( 7 )
+#define MOUSE_BUTTON_EXT3          ( 8 )
+#define MOUSE_BUTTON_EXT4          ( 9 )
 void FOMapper::ParseMouse()
 {
     // Mouse position
@@ -1165,103 +1166,103 @@ void FOMapper::ParseMouse()
         bool script_result = false;
         if( event == SDL_MOUSEWHEEL && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( event_dy > 0 ? MOUSE_CLICK_WHEEL_UP : MOUSE_CLICK_WHEEL_DOWN );
+            Script::SetArgUInt( event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_LEFT && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_LEFT );
+            Script::SetArgUInt( MOUSE_BUTTON_LEFT );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_LEFT && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_LEFT );
+            Script::SetArgUInt( MOUSE_BUTTON_LEFT );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_RIGHT && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_RIGHT );
+            Script::SetArgUInt( MOUSE_BUTTON_RIGHT );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_RIGHT && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_RIGHT );
+            Script::SetArgUInt( MOUSE_BUTTON_RIGHT );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_MIDDLE && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_MIDDLE );
+            Script::SetArgUInt( MOUSE_BUTTON_MIDDLE );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_MIDDLE && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_MIDDLE );
+            Script::SetArgUInt( MOUSE_BUTTON_MIDDLE );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 4 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_EXT0 );
+            Script::SetArgUInt( MOUSE_BUTTON_EXT0 );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 4 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_EXT0 );
+            Script::SetArgUInt( MOUSE_BUTTON_EXT0 );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 5 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_EXT1 );
+            Script::SetArgUInt( MOUSE_BUTTON_EXT1 );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 5 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_EXT1 );
+            Script::SetArgUInt( MOUSE_BUTTON_EXT1 );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 6 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_EXT2 );
+            Script::SetArgUInt( MOUSE_BUTTON_EXT2 );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 6 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_EXT2 );
+            Script::SetArgUInt( MOUSE_BUTTON_EXT2 );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 7 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_EXT3 );
+            Script::SetArgUInt( MOUSE_BUTTON_EXT3 );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 7 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_EXT3 );
+            Script::SetArgUInt( MOUSE_BUTTON_EXT3 );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 8 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_EXT4 );
+            Script::SetArgUInt( MOUSE_BUTTON_EXT4 );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
         if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 8 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
         {
-            Script::SetArgUInt( MOUSE_CLICK_EXT4 );
+            Script::SetArgUInt( MOUSE_BUTTON_EXT4 );
             if( Script::RunPrepared() )
                 script_result = Script::GetReturnedBool();
         }
@@ -1884,13 +1885,13 @@ void FOMapper::IntDraw()
         {
             ProtoItem* proto_item = &( *CurItemProtos )[ i ];
             uint       col = ( i == (int) GetTabIndex() ? COLOR_IFACE_RED : COLOR_IFACE );
-            SprMngr.DrawSpriteSize( proto_item->GetCurSprId(), x, y, (float) w, (float) ( h / 2 ), false, true, col );
+            SprMngr.DrawSpriteSize( proto_item->GetCurSprId(), x, y, w, h / 2, false, true, col );
 
             if( proto_item->IsItem() )
             {
                 AnyFrames* anim = ResMngr.GetInvAnim( proto_item->PicInv );
                 if( anim )
-                    SprMngr.DrawSpriteSize( anim->GetCurSprId(), x, y + h / 2, (float) w, (float) ( h / 2 ), false, true, col );
+                    SprMngr.DrawSpriteSize( anim->GetCurSprId(), x, y + h / 2, w, h / 2, false, true, col );
             }
 
             SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), Str::FormatBuf( "%u", proto_item->ProtoId ), FT_NOBREAK, COLOR_TEXT_WHITE );
@@ -1919,7 +1920,7 @@ void FOMapper::IntDraw()
                 anim = ResMngr.ItemHexDefaultAnim;
 
             uint col = ( i == (int) GetTabIndex() ? COLOR_IFACE_RED : COLOR_IFACE );
-            SprMngr.DrawSpriteSize( anim->GetCurSprId(), x, y, (float) w, (float) ( h / 2 ), false, true, col );
+            SprMngr.DrawSpriteSize( anim->GetCurSprId(), x, y, w, h / 2, false, true, col );
 
             string& name = ( *CurTileNames )[ i ];
             size_t  pos = name.find_last_of( '\\' );
@@ -1951,7 +1952,7 @@ void FOMapper::IntDraw()
             if( i == GetTabIndex() )
                 col = COLOR_IFACE_RED;
 
-            SprMngr.DrawSpriteSize( spr_id, x, y, (float) w, (float) ( h / 2 ), false, true, col );
+            SprMngr.DrawSpriteSize( spr_id, x, y, w, h / 2, false, true, col );
             SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), Str::FormatBuf( "%u", pnpc->ProtoId ), FT_NOBREAK, COLOR_TEXT_WHITE );
         }
 
@@ -1985,7 +1986,7 @@ void FOMapper::IntDraw()
             if( mobj == InContObject )
                 col = COLOR_IFACE_RED;
 
-            SprMngr.DrawSpriteSize( anim->GetCurSprId(), x, y, (float) w, (float) h, false, true, col );
+            SprMngr.DrawSpriteSize( anim->GetCurSprId(), x, y, w, h, false, true, col );
 
             uint cnt = ( proto_item->Stackable ? mobj->MItem.Count : 1 );
             if( proto_item->Stackable && !cnt )
@@ -2121,13 +2122,13 @@ void FOMapper::ObjDraw()
         AnyFrames* anim = ResMngr.GetItemAnim( o->MItem.PicMapHash ? o->MItem.PicMapHash : proto->PicMap );
         if( !anim )
             anim = ResMngr.ItemHexDefaultAnim;
-        SprMngr.DrawSpriteSize( anim->GetCurSprId(), x + w - ProtoWidth, y, (float) ProtoWidth, (float) ProtoWidth, false, true );
+        SprMngr.DrawSpriteSize( anim->GetCurSprId(), x + w - ProtoWidth, y, ProtoWidth, ProtoWidth, false, true );
 
         if( proto->IsItem() )
         {
             AnyFrames* anim = ResMngr.GetInvAnim( o->MItem.PicInvHash ? o->MItem.PicInvHash : proto->PicInv );
             if( anim )
-                SprMngr.DrawSpriteSize( anim->GetCurSprId(), x + w - ProtoWidth, y + ProtoWidth, (float) ProtoWidth, (float) ProtoWidth, false, true );
+                SprMngr.DrawSpriteSize( anim->GetCurSprId(), x + w - ProtoWidth, y + ProtoWidth, ProtoWidth, ProtoWidth, false, true );
         }
     }
 
@@ -4503,7 +4504,7 @@ void FOMapper::CurDraw()
                 int y = HexMngr.GetField( hx, hy ).ScrY - si->Height + si->OffsY + HEX_OY + GameOpt.ScrOy + proto_item.OffsetY;
 
                 SprMngr.DrawSpriteSize( spr_id, (int) ( x / GameOpt.SpritesZoom ), (int) ( y / GameOpt.SpritesZoom ),
-                                        si->Width / GameOpt.SpritesZoom, si->Height / GameOpt.SpritesZoom, true, false );
+                                        (int) ( si->Width / GameOpt.SpritesZoom ), (int) ( si->Height / GameOpt.SpritesZoom ), true, false );
             }
         }
         else if( IsTileMode() && CurTileHashes->size() )
@@ -4533,7 +4534,7 @@ void FOMapper::CurDraw()
                 }
 
                 SprMngr.DrawSpriteSize( anim, (int) ( ( x + GameOpt.ScrOx ) / GameOpt.SpritesZoom ), (int) ( ( y + GameOpt.ScrOy ) / GameOpt.SpritesZoom ),
-                                        si->Width / GameOpt.SpritesZoom, si->Height / GameOpt.SpritesZoom, true, false );
+                                        (int) ( si->Width / GameOpt.SpritesZoom ), (int) ( si->Height / GameOpt.SpritesZoom ), true, false );
             }
         }
         else if( IsCritMode() && CurNpcProtos->size() )
@@ -4553,7 +4554,7 @@ void FOMapper::CurDraw()
                 int y = HexMngr.GetField( hx, hy ).ScrY - si->Height + si->OffsY;
 
                 SprMngr.DrawSpriteSize( spr_id, (int) ( ( x + GameOpt.ScrOx + HEX_OX ) / GameOpt.SpritesZoom ), (int) ( ( y + GameOpt.ScrOy + HEX_OY ) / GameOpt.SpritesZoom ),
-                                        si->Width / GameOpt.SpritesZoom, si->Height / GameOpt.SpritesZoom, true, false );
+                                        (int) ( si->Width / GameOpt.SpritesZoom ), (int) ( si->Height / GameOpt.SpritesZoom ), true, false );
             }
         }
         else
@@ -5310,6 +5311,7 @@ void FOMapper::InitScriptSystem()
     ReservedScriptFunction BindGameFunc[] =
     {
         { &MapperFunctions.Start, "start", "void %s()" },
+        { &MapperFunctions.Finish, "finish", "void %s()" },
         { &MapperFunctions.Loop, "loop", "uint %s()" },
         { &MapperFunctions.ConsoleMessage, "console_message", "bool %s(string&)" },
         { &MapperFunctions.RenderIface, "render_iface", "void %s(uint)" },
@@ -5941,6 +5943,30 @@ ScriptString* FOMapper::SScriptFunc::Global_EncodeUTF8( uint ucs )
     return new ScriptString( buf );
 }
 
+void FOMapper::SScriptFunc::Global_CloneObject( void* in, int in_type_id, void* out, int out_type_id )
+{
+    if( !( in_type_id & asTYPEID_OBJHANDLE ) )
+        SCRIPT_ERROR_R( "Invalid in arg, not an handle." );
+    if( !( in_type_id & asTYPEID_SCRIPTOBJECT ) )
+        SCRIPT_ERROR_R( "Invalid in arg, not an script object." );
+    if( !*(void**) in )
+        SCRIPT_ERROR_R( "Invalid in arg, handle must be non null." );
+    if( !( out_type_id & asTYPEID_OBJHANDLE ) )
+        SCRIPT_ERROR_R( "Invalid out arg, not an handle." );
+    if( *(void**) out )
+        SCRIPT_ERROR_R( "Invalid out arg, handle must be null." );
+
+    in = *(void**) in;
+    asIScriptObject* in_obj = (asIScriptObject*) in;
+    in_type_id = in_obj->GetTypeId();
+
+    asIScriptEngine* engine = Script::GetEngine();
+    if( !engine->IsHandleCompatibleWithObject( in, in_type_id, out_type_id ) )
+        SCRIPT_ERROR_R( "Invalid args, incompatible objects." );
+
+    *(void**) out = engine->CreateScriptObjectCopy( in, engine->GetObjectTypeById( in_type_id ) );
+}
+
 ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( ScriptString& file_name, int path_type )
 {
     ProtoMap* pmap = new ProtoMap();
@@ -6564,8 +6590,15 @@ bool FOMapper::SScriptFunc::Global_GetHexPos( ushort hx, ushort hy, int& x, int&
 
 bool FOMapper::SScriptFunc::Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface )
 {
-    ushort hx_ = 0, hy_ = 0;
-    if( Self->GetCurHex( hx_, hy_, ignore_interface ) )
+    ushort hx_, hy_;
+    int old_x = GameOpt.MouseX;
+    int old_y = GameOpt.MouseY;
+    GameOpt.MouseX = x;
+    GameOpt.MouseY = y;
+    bool result = Self->GetCurHex( hx_, hy_, ignore_interface );
+    GameOpt.MouseX = old_x;
+    GameOpt.MouseY = old_y;
+    if( result )
     {
         hx = hx_;
         hy = hy_;
@@ -6693,6 +6726,27 @@ void FOMapper::SScriptFunc::Global_SetDefaultFont( int font, uint color )
     SprMngr.SetDefaultFont( font, color );
 }
 
+int MouseButtonToSdlButton( int button )
+{
+    if( button == MOUSE_BUTTON_LEFT )
+        return SDL_BUTTON_LEFT;
+    if( button == MOUSE_BUTTON_RIGHT )
+        return SDL_BUTTON_RIGHT;
+    if( button == MOUSE_BUTTON_MIDDLE )
+        return SDL_BUTTON_MIDDLE;
+    if( button == MOUSE_BUTTON_EXT0 )
+        return SDL_BUTTON( 4 );
+    if( button == MOUSE_BUTTON_EXT1 )
+        return SDL_BUTTON( 5 );
+    if( button == MOUSE_BUTTON_EXT2 )
+        return SDL_BUTTON( 6 );
+    if( button == MOUSE_BUTTON_EXT3 )
+        return SDL_BUTTON( 7 );
+    if( button == MOUSE_BUTTON_EXT4 )
+        return SDL_BUTTON( 8 );
+    return -1;
+}
+
 void FOMapper::SScriptFunc::Global_MouseClick( int x, int y, int button, int cursor )
 {
     IntVec prev_events = MainWindowMouseEvents;
@@ -6702,37 +6756,49 @@ void FOMapper::SScriptFunc::Global_MouseClick( int x, int y, int button, int cur
     int    prev_cursor = Self->CurMode;
     GameOpt.MouseX = x;
     GameOpt.MouseY = y;
-    Self->CurMode = cursor;
+    if( cursor != -1 )
+        Self->CurMode = cursor;
     MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONDOWN );
-    MainWindowMouseEvents.push_back( button );
-    MainWindowMouseEvents.push_back( 0 );
+    MainWindowMouseEvents.push_back( MouseButtonToSdlButton( button ) );
     MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONUP );
-    MainWindowMouseEvents.push_back( button );
-    MainWindowMouseEvents.push_back( 0 );
+    MainWindowMouseEvents.push_back( MouseButtonToSdlButton( button ) );
     Self->ParseMouse();
     MainWindowMouseEvents = prev_events;
     GameOpt.MouseX = prev_x;
     GameOpt.MouseY = prev_y;
-    Self->CurMode = prev_cursor;
+    if( cursor != -1 )
+        Self->CurMode = prev_cursor;
 }
 
 void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text )
 {
+    if( !key1 && !key2 )
+        return;
+
     IntVec prev_events = MainWindowKeyboardEvents;
     StrVec prev_events_text = MainWindowKeyboardEventsText;
     MainWindowKeyboardEvents.clear();
-    MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
-    MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
-    MainWindowKeyboardEventsText.push_back( key1_text ? key1_text->c_std_str() : "" );
-    MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
-    MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
-    MainWindowKeyboardEventsText.push_back( key2_text ? key2_text->c_std_str() : "" );
-    MainWindowKeyboardEvents.push_back( SDL_KEYUP );
-    MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
-    MainWindowKeyboardEventsText.push_back( "" );
-    MainWindowKeyboardEvents.push_back( SDL_KEYUP );
-    MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
-    MainWindowKeyboardEventsText.push_back( "" );
+    if( key1 )
+    {
+        MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
+        MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
+        MainWindowKeyboardEventsText.push_back( key1_text ? key1_text->c_std_str() : "" );
+    }
+    if( key2 )
+    {
+        MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
+        MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
+        MainWindowKeyboardEventsText.push_back( key2_text ? key2_text->c_std_str() : "" );
+        MainWindowKeyboardEvents.push_back( SDL_KEYUP );
+        MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
+        MainWindowKeyboardEventsText.push_back( "" );
+    }
+    if( key1 )
+    {
+        MainWindowKeyboardEvents.push_back( SDL_KEYUP );
+        MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
+        MainWindowKeyboardEventsText.push_back( "" );
+    }
     Self->ParseKeyboard();
     MainWindowKeyboardEvents = prev_events;
     MainWindowKeyboardEventsText = prev_events_text;
@@ -6783,29 +6849,19 @@ uint FOMapper::SScriptFunc::Global_GetSpriteCount( uint spr_id )
     return anim ? anim->CntFrm : 0;
 }
 
-void FOMapper::SScriptFunc::Global_GetTextInfo( ScriptString& text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
+void FOMapper::SScriptFunc::Global_GetTextInfo( ScriptString* text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
 {
-    SprMngr.GetTextInfo( w, h, text.c_str(), font, flags, tw, th, lines );
+    SprMngr.GetTextInfo( w, h, text ? text->c_str() : NULL, font, flags, tw, th, lines );
 }
 
-void FOMapper::SScriptFunc::Global_DrawSprite( uint spr_id, int spr_index, int x, int y, uint color )
+void FOMapper::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs )
 {
     if( !SpritesCanDraw || !spr_id )
         return;
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || spr_index >= (int) anim->GetCnt() )
+    if( !anim || frame_index >= (int) anim->GetCnt() )
         return;
-    SprMngr.DrawSprite( spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ), x, y, color );
-}
-
-void FOMapper::SScriptFunc::Global_DrawSpriteOffs( uint spr_id, int spr_index, int x, int y, uint color, bool offs )
-{
-    if( !SpritesCanDraw || !spr_id )
-        return;
-    AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || spr_index >= (int) anim->GetCnt() )
-        return;
-    uint spr_id_ = ( spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ) );
+    uint spr_id_ = ( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
     if( offs )
     {
         SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id_ );
@@ -6817,34 +6873,14 @@ void FOMapper::SScriptFunc::Global_DrawSpriteOffs( uint spr_id, int spr_index, i
     SprMngr.DrawSprite( spr_id_, x, y, color );
 }
 
-void FOMapper::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int spr_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color )
+void FOMapper::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs )
 {
     if( !SpritesCanDraw || !spr_id )
         return;
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || spr_index >= (int) anim->GetCnt() )
+    if( !anim || frame_index >= (int) anim->GetCnt() )
         return;
-    SprMngr.DrawSpritePattern( spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ), x, y, w, h, spr_width, spr_height, color );
-}
-
-void FOMapper::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color )
-{
-    if( !SpritesCanDraw || !spr_id )
-        return;
-    AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || spr_index >= (int) anim->GetCnt() )
-        return;
-    SprMngr.DrawSpriteSize( spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ), x, y, (float) w, (float) h, scratch, true, color );
-}
-
-void FOMapper::SScriptFunc::Global_DrawSpriteSizeOffs( uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color, bool offs )
-{
-    if( !SpritesCanDraw || !spr_id )
-        return;
-    AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || spr_index >= (int) anim->GetCnt() )
-        return;
-    uint spr_id_ = ( spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ) );
+    uint spr_id_ = ( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
     if( offs )
     {
         SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id_ );
@@ -6853,12 +6889,24 @@ void FOMapper::SScriptFunc::Global_DrawSpriteSizeOffs( uint spr_id, int spr_inde
         x += si->OffsX;
         y += si->OffsY;
     }
-    SprMngr.DrawSpriteSize( spr_id_, x, y, (float) w, (float) h, scratch, true, color );
+    SprMngr.DrawSpriteSizeExt( spr_id_, x, y, w, h, zoom, true, true, color );
+}
+
+void FOMapper::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color )
+{
+    if( !SpritesCanDraw || !spr_id )
+        return;
+    AnyFrames* anim = Self->AnimGetFrames( spr_id );
+    if( !anim || frame_index >= (int) anim->GetCnt() )
+        return;
+    SprMngr.DrawSpritePattern( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), x, y, w, h, spr_width, spr_height, color );
 }
 
 void FOMapper::SScriptFunc::Global_DrawText( ScriptString& text, int x, int y, int w, int h, uint color, int font, int flags )
 {
     if( !SpritesCanDraw )
+        return;
+    if( text.length() == 0 )
         return;
     if( !w && x < GameOpt.ScreenWidth )
         w = GameOpt.ScreenWidth - x;
@@ -6980,7 +7028,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter2d( uint crtype, uint anim1, uint 
     {
         AnyFrames* anim = ResMngr.GetCrit2dAnim( crtype, anim1, anim2, dir );
         if( anim )
-            SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, (float) ( r - l ), (float) ( b - t ), scratch, center, color ? color : COLOR_IFACE );
+            SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, color ? color : COLOR_IFACE );
     }
 }
 
