@@ -949,7 +949,7 @@ int main( int argc, char** argv )
     # endif
 
     // Exceptions catcher
-    CatchExceptions( "FOnlineServer", SERVER_VERSION );
+    CatchExceptions( "FOnlineServer", FONLINE_VERSION );
 
     // Timer
     Timer::Init();
@@ -974,7 +974,7 @@ int main( int argc, char** argv )
     LogToFile( "./FOnlineServerDaemon.log" );
 
     // Log version
-    WriteLog( "FOnline server daemon, version %04X-%02X.\n", SERVER_VERSION, FO_PROTOCOL_VERSION & 0xFF );
+    WriteLog( "FOnline server daemon, version %d.\n", FONLINE_VERSION );
     if( Str::Length( CommandLine ) > 0 )
         WriteLog( "Command line<%s>.\n", CommandLine );
 
