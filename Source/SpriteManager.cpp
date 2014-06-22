@@ -710,29 +710,29 @@ RenderTarget* SpriteManager::Get3dRenderTarget( uint width, uint height )
 
 void SpriteManager::InitVertexArray( VertexArray* va, bool quads, uint count )
 {
-    // Resize indicies
-    UShortVec& indicies = ( quads ? quadsIndicies : pointsIndicies );
-    uint       indicies_count = ( quads ? count * 6 : count );
-    uint       max_indicies_count = (uint) indicies.size();
-    if( indicies_count > max_indicies_count )
+    // Resize indices
+    UShortVec& indices = ( quads ? quadsIndices : pointsIndices );
+    uint       indices_count = ( quads ? count * 6 : count );
+    uint       max_indices_count = (uint) indices.size();
+    if( indices_count > max_indices_count )
     {
-        indicies.resize( indicies_count );
+        indices.resize( indices_count );
         if( quads )
         {
-            for( uint i = max_indicies_count / 6, j = indicies_count / 6; i < j; i++ )
+            for( uint i = max_indices_count / 6, j = indices_count / 6; i < j; i++ )
             {
-                indicies[ i * 6 + 0 ] = i * 4 + 0;
-                indicies[ i * 6 + 1 ] = i * 4 + 1;
-                indicies[ i * 6 + 2 ] = i * 4 + 3;
-                indicies[ i * 6 + 3 ] = i * 4 + 1;
-                indicies[ i * 6 + 4 ] = i * 4 + 2;
-                indicies[ i * 6 + 5 ] = i * 4 + 3;
+                indices[ i * 6 + 0 ] = i * 4 + 0;
+                indices[ i * 6 + 1 ] = i * 4 + 1;
+                indices[ i * 6 + 2 ] = i * 4 + 3;
+                indices[ i * 6 + 3 ] = i * 4 + 1;
+                indices[ i * 6 + 4 ] = i * 4 + 2;
+                indices[ i * 6 + 5 ] = i * 4 + 3;
             }
         }
         else
         {
-            for( uint i = max_indicies_count; i < indicies_count; i++ )
-                indicies[ i ] = i;
+            for( uint i = max_indices_count; i < indices_count; i++ )
+                indices[ i ] = i;
         }
     }
 
@@ -748,8 +748,8 @@ void SpriteManager::InitVertexArray( VertexArray* va, bool quads, uint count )
     if( !va->IBO )
         GL( glGenBuffers( 1, &va->IBO ) );
     GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, va->IBO ) );
-    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, indicies_count * sizeof( ushort ), &indicies[ 0 ], GL_STATIC_DRAW ) );
-    va->ICount = indicies_count;
+    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, indices_count * sizeof( ushort ), &indices[ 0 ], GL_STATIC_DRAW ) );
+    va->ICount = indices_count;
 
     // Vertex array
     if( !va->VAO && GL_HAS( vertex_array_object ) && ( GL_HAS( framebuffer_object ) || GL_HAS( framebuffer_object_ext ) ) )

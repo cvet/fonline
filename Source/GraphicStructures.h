@@ -342,7 +342,7 @@ struct MeshData
 {
     Node*          Owner;
     Vertex3DVec    Vertices;
-    UShortVec      Indicies;
+    UShortVec      Indices;
     string         DiffuseTexture;
     UIntVec        BoneNameHashes;
     MatrixVec      BoneOffsets;
@@ -379,7 +379,7 @@ struct CombinedMesh
     int          EncapsulatedMeshCount;
     Vertex3DVec  Vertices;
     VectorVec    VerticesTransformed;
-    UShortVec    Indicies;
+    UShortVec    Indices;
     size_t       CurBoneMatrix;
     Matrix*      BoneCombinedMatrices[ MAX_BONE_MATRICES ];
     Matrix       BoneOffsetMatrices[ MAX_BONE_MATRICES ];

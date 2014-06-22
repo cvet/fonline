@@ -688,13 +688,13 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
         }
 
         // Faces
-        mesh->Indicies.resize( ai_mesh->mNumFaces * 3 );
+        mesh->Indices.resize( ai_mesh->mNumFaces * 3 );
         for( uint i = 0; i < ai_mesh->mNumFaces; i++ )
         {
             aiFace& face = ai_mesh->mFaces[ i ];
-            mesh->Indicies[ i * 3 + 0 ] = face.mIndices[ 0 ];
-            mesh->Indicies[ i * 3 + 1 ] = face.mIndices[ 1 ];
-            mesh->Indicies[ i * 3 + 2 ] = face.mIndices[ 2 ];
+            mesh->Indices[ i * 3 + 0 ] = face.mIndices[ 0 ];
+            mesh->Indices[ i * 3 + 1 ] = face.mIndices[ 1 ];
+            mesh->Indices[ i * 3 + 2 ] = face.mIndices[ 2 ];
         }
 
         // Material
@@ -874,9 +874,9 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
         }
 
         // Faces
-        mesh->Indicies.resize( vertices_count );
+        mesh->Indices.resize( vertices_count );
         for( int i = 0; i < vertices_count; i++ )
-            mesh->Indicies[ i ] = i;
+            mesh->Indices[ i ] = i;
 
         // Material
         FbxSurfaceMaterial* fbx_material = fbx_node->GetMaterial( 0 );
@@ -924,7 +924,7 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
                 // Blend data
                 float   bone_index = (float) i;
                 int     num_weights = fbx_cluster->GetControlPointIndicesCount();
-                int*    indicies = fbx_cluster->GetControlPointIndices();
+                int*    indices = fbx_cluster->GetControlPointIndices();
                 double* weights = fbx_cluster->GetControlPointWeights();
                 int     vertices_count = fbx_mesh->GetPolygonVertexCount();
                 int*    vertices = fbx_mesh->GetPolygonVertices();
@@ -932,7 +932,7 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
                 {
                     for( int k = 0; k < vertices_count; k++ )
                     {
-                        if( vertices[ k ] != indicies[ j ] )
+                        if( vertices[ k ] != indices[ j ] )
                             continue;
 
                         Vertex3D& v = mesh->Vertices[ k ];

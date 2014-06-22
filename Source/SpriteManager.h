@@ -234,8 +234,8 @@ private:
     };
     VertexArray* quadsVertexArray;
     VertexArray* pointsVertexArray;
-    UShortVec    quadsIndicies;
-    UShortVec    pointsIndicies;
+    UShortVec    quadsIndices;
+    UShortVec    pointsIndices;
     Vertex2DVec  vBuffer;
     DipDataVec   dipQueue;
     uint         baseColor;

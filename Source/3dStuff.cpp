@@ -841,7 +841,7 @@ void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow )
     {
         if( effect->IsNeedProcess )
             GraphicLoader::EffectProcessVariables( effect, pass );
-        GL( glDrawElements( GL_TRIANGLES, (uint) combined_mesh->Indicies.size(), GL_UNSIGNED_SHORT, (void*) 0 ) );
+        GL( glDrawElements( GL_TRIANGLES, (uint) combined_mesh->Indices.size(), GL_UNSIGNED_SHORT, (void*) 0 ) );
     }
 
     GL( glUseProgram( 0 ) );

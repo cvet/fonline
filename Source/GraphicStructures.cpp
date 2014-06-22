@@ -125,9 +125,9 @@ void MeshData::Save( FileManager& file )
     uint len = (uint) Vertices.size();
     file.SetData( &len, sizeof( len ) );
     file.SetData( &Vertices[ 0 ], len * sizeof( Vertices[ 0 ] ) );
-    len = (uint) Indicies.size();
+    len = (uint) Indices.size();
     file.SetData( &len, sizeof( len ) );
-    file.SetData( &Indicies[ 0 ], len * sizeof( Indicies[ 0 ] ) );
+    file.SetData( &Indices[ 0 ], len * sizeof( Indices[ 0 ] ) );
     len = (uint) DiffuseTexture.length();
     file.SetData( &len, sizeof( len ) );
     file.SetData( &DiffuseTexture[ 0 ], len );
@@ -146,8 +146,8 @@ void MeshData::Load( FileManager& file )
     Vertices.resize( len );
     file.CopyMem( &Vertices[ 0 ], len * sizeof( Vertices[ 0 ] ) );
     file.CopyMem( &len, sizeof( len ) );
-    Indicies.resize( len );
-    file.CopyMem( &Indicies[ 0 ], len * sizeof( Indicies[ 0 ] ) );
+    Indices.resize( len );
+    file.CopyMem( &Indices[ 0 ], len * sizeof( Indices[ 0 ] ) );
     file.CopyMem( &len, sizeof( len ) );
     DiffuseTexture.resize( len );
     file.CopyMem( &DiffuseTexture[ 0 ], len );
@@ -201,7 +201,7 @@ void CombinedMesh::Encapsulate( MeshInstance& mesh_instance )
     if( !EncapsulatedMeshCount )
     {
         Vertices = mesh->Vertices;
-        Indicies = mesh->Indicies;
+        Indices = mesh->Indices;
         DrawEffect = mesh_instance.CurEffect;
         memzero( BoneCombinedMatrices, sizeof( BoneCombinedMatrices ) );
         memzero( Textures, sizeof( Textures ) );
@@ -210,13 +210,13 @@ void CombinedMesh::Encapsulate( MeshInstance& mesh_instance )
     else
     {
         Vertices.insert( Vertices.end(), mesh->Vertices.begin(), mesh->Vertices.end() );
-        Indicies.insert( Indicies.end(), mesh->Indicies.begin(), mesh->Indicies.end() );
+        Indices.insert( Indices.end(), mesh->Indices.begin(), mesh->Indices.end() );
 
-        // Add indicies offset
+        // Add indices offset
         ushort index_offset = (ushort) ( Vertices.size() - mesh->Vertices.size() );
-        size_t start_index = Indicies.size() - mesh->Indicies.size();
-        for( size_t i = start_index, j = Indicies.size(); i < j; i++ )
-            Indicies[ i ] += index_offset;
+        size_t start_index = Indices.size() - mesh->Indices.size();
+        for( size_t i = start_index, j = Indices.size(); i < j; i++ )
+            Indices[ i ] += index_offset;
 
         // Add bones matrices offset
         float  bone_index_offset = (float) CurBoneMatrix;
@@ -261,7 +261,7 @@ void CombinedMesh::Finalize()
     GL( glBufferData( GL_ARRAY_BUFFER, Vertices.size() * sizeof( Vertex3D ), &Vertices[ 0 ], GL_STATIC_DRAW ) );
     GL( glGenBuffers( 1, &IBO ) );
     GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, IBO ) );
-    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, Indicies.size() * sizeof( short ), &Indicies[ 0 ], GL_STATIC_DRAW ) );
+    GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER, Indices.size() * sizeof( short ), &Indices[ 0 ], GL_STATIC_DRAW ) );
 
     if( !VAO && GL_HAS( vertex_array_object ) && ( GL_HAS( framebuffer_object ) || GL_HAS( framebuffer_object_ext ) ) )
     {
