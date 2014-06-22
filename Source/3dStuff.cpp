@@ -792,7 +792,7 @@ void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow )
         GL( glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Position ) ) );
         GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Normal ) ) );
         GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord ) ) );
-        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord2 ) ) );
+        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoordBase ) ) );
         GL( glVertexAttribPointer( 4, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Tangent ) ) );
         GL( glVertexAttribPointer( 5, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Bitangent ) ) );
         GL( glVertexAttribPointer( 6, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, BlendWeights ) ) );
@@ -816,8 +816,6 @@ void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow )
         GL( glUniform1i( effect->ColorMap, 0 ) );
         if( effect->ColorMapSize != -1 )
             GL( glUniform4fv( effect->ColorMapSize, 1, textures[ 0 ]->SizeData ) );
-        if( effect->ColorMapAtlasOffset != -1 )
-            GL( glUniform4fv( effect->ColorMapAtlasOffset, 1, textures[ 0 ]->AtlasOffsetData ) );
     }
     if( effect->LightColor != -1 )
         GL( glUniform4fv( effect->LightColor, 1, (float*) &LightColor ) );

@@ -662,7 +662,6 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
         mesh->Vertices.resize( ai_mesh->mNumVertices );
         bool has_tangents_and_bitangents = ai_mesh->HasTangentsAndBitangents();
         bool has_tex_coords = ai_mesh->HasTextureCoords( 0 );
-        bool has_tex_coords2 = ai_mesh->HasTextureCoords( 1 );
         for( uint i = 0; i < ai_mesh->mNumVertices; i++ )
         {
             Vertex3D& v = mesh->Vertices[ i ];
@@ -679,12 +678,8 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
                 v.TexCoord[ 0 ] = ai_mesh->mTextureCoords[ 0 ][ i ].x;
                 v.TexCoord[ 1 ] = ai_mesh->mTextureCoords[ 0 ][ i ].y;
                 FixTexCoord( v.TexCoord[ 0 ], v.TexCoord[ 1 ] );
-            }
-            if( has_tex_coords2 )
-            {
-                v.TexCoord2[ 0 ] = ai_mesh->mTextureCoords[ 1 ][ i ].x;
-                v.TexCoord2[ 1 ] = ai_mesh->mTextureCoords[ 1 ][ i ].y;
-                FixTexCoord( v.TexCoord2[ 0 ], v.TexCoord2[ 1 ] );
+                v.TexCoordBase[ 0 ] = v.TexCoord[ 0 ];
+                v.TexCoordBase[ 1 ] = v.TexCoord[ 1 ];
             }
             v.BlendIndices[ 0 ] = -1.0f;
             v.BlendIndices[ 1 ] = -1.0f;
@@ -837,8 +832,7 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
         FbxGeometryElementNormal*   fbx_normals = fbx_mesh->GetElementNormal();
         FbxGeometryElementTangent*  fbx_tangents = fbx_mesh->GetElementTangent();
         FbxGeometryElementBinormal* fbx_binormals = fbx_mesh->GetElementBinormal();
-        FbxGeometryElementUV*       fbx_uvs = fbx_mesh->GetElementUV( 0 );
-        FbxGeometryElementUV*       fbx_uvs2 = fbx_mesh->GetElementUV( 1 );
+        FbxGeometryElementUV*       fbx_uvs = fbx_mesh->GetElementUV();
         for( int i = 0; i < vertices_count; i++ )
         {
             Vertex3D&   v = mesh->Vertices[ i ];
@@ -868,13 +862,8 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
                 v.TexCoord[ 0 ] = (float) fbx_uv[ 0 ];
                 v.TexCoord[ 1 ] = 1.0f - (float) fbx_uv[ 1 ];
                 FixTexCoord( v.TexCoord[ 0 ], v.TexCoord[ 1 ] );
-            }
-            if( fbx_uvs2 )
-            {
-                const FbxVector2& fbx_uv2 = FbxGetElement< FbxGeometryElementUV, FbxVector2 >( fbx_uvs2, i, vertices );
-                v.TexCoord2[ 0 ] = (float) fbx_uv2[ 0 ];
-                v.TexCoord2[ 1 ] = 1.0f - (float) fbx_uv2[ 1 ];
-                FixTexCoord( v.TexCoord2[ 0 ], v.TexCoord2[ 1 ] );
+                v.TexCoordBase[ 0 ] = v.TexCoord[ 0 ];
+                v.TexCoordBase[ 1 ] = v.TexCoord[ 1 ];
             }
             #undef FBX_GET_ELEMENT
 
@@ -1316,7 +1305,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             GL( glBindAttribLocation( program, 0, "InPosition" ) );
             GL( glBindAttribLocation( program, 1, "InNormal" ) );
             GL( glBindAttribLocation( program, 2, "InTexCoord" ) );
-            GL( glBindAttribLocation( program, 3, "InTexCoord2" ) );
+            GL( glBindAttribLocation( program, 3, "InTexCoordBase" ) );
             GL( glBindAttribLocation( program, 4, "InTangent" ) );
             GL( glBindAttribLocation( program, 5, "InBitangent" ) );
             GL( glBindAttribLocation( program, 6, "InBlendWeights" ) );
@@ -1380,7 +1369,6 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     GL( effect->ZoomFactor = glGetUniformLocation( program, "ZoomFactor" ) );
     GL( effect->ColorMap = glGetUniformLocation( program, "ColorMap" ) );
     GL( effect->ColorMapSize = glGetUniformLocation( program, "ColorMapSize" ) );
-    GL( effect->ColorMapAtlasOffset = glGetUniformLocation( program, "ColorMapAtlasOffset" ) );
     GL( effect->ColorMapSamples = glGetUniformLocation( program, "ColorMapSamples" ) );
     GL( effect->EggMap = glGetUniformLocation( program, "EggMap" ) );
     GL( effect->EggMapSize = glGetUniformLocation( program, "EggMapSize" ) );
@@ -1932,12 +1920,17 @@ uchar* GraphicLoader::LoadTGA( const uchar* data, uint data_size, uint& result_w
 
     // Copy data
     uchar* result = new uchar[ width * height * 4 ];
-    for( int i = 0, j = width * height; i < j; i++ )
+    for( short y = 0; y < height; y++ )
     {
-        result[ i * 4 + 0 ] = read_data[ i * bpp + 2 ];
-        result[ i * 4 + 1 ] = read_data[ i * bpp + 1 ];
-        result[ i * 4 + 2 ] = read_data[ i * bpp + 0 ];
-        result[ i * 4 + 3 ] = ( bpp == 4 ? read_data[ i * bpp + 3 ] : 0xFF );
+        for( short x = 0; x < width; x++ )
+        {
+            int i = ( height - y - 1 ) * width + x;
+            int j = y * width + x;
+            result[ i * 4 + 0 ] = read_data[ j * bpp + 2 ];
+            result[ i * 4 + 1 ] = read_data[ j * bpp + 1 ];
+            result[ i * 4 + 2 ] = read_data[ j * bpp + 0 ];
+            result[ i * 4 + 3 ] = ( bpp == 4 ? read_data[ j * bpp + 3 ] : 0xFF );
+        }
     }
     delete[] read_data;
 

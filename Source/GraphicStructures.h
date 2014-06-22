@@ -43,7 +43,7 @@ struct Vertex3D
     Vector Position;
     Vector Normal;
     float  TexCoord[ 2 ];
-    float  TexCoord2[ 2 ];
+    float  TexCoordBase[ 2 ];
     Vector Tangent;
     Vector Bitangent;
     float  BlendWeights[ BONES_PER_VERTEX ];
@@ -156,7 +156,6 @@ struct Effect
     GLint          ZoomFactor;
     GLint          ColorMap;
     GLint          ColorMapSize;
-    GLint          ColorMapAtlasOffset;
     GLint          ColorMapSamples;
     GLint          EggMap;
     GLint          EggMapSize;

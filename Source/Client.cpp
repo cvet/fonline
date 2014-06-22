@@ -11671,7 +11671,9 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
         else if( button == MOUSE_BUTTON_LEFT && !down && Self->IfaceHold != IFACE_NONE )
             Self->IntLMouseUp();
         else if( button == MOUSE_BUTTON_RIGHT && down )
-            Self->IntRMouseDown();
+            Self->IntRMouseDown(), Self->GameRMouseDown();
+        else if( button == MOUSE_BUTTON_RIGHT && !down )
+            Self->GameRMouseUp();
         else if( button == MOUSE_BUTTON_MIDDLE && !Self->ConsoleActive && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
             Self->HexMngr.ChangeZoom( 0 ), Self->RebuildLookBorders = true;
         else if( move )

@@ -195,6 +195,7 @@ bool CombinedMesh::CanEncapsulate( MeshInstance& mesh_instance )
 void CombinedMesh::Encapsulate( MeshInstance& mesh_instance )
 {
     MeshData* mesh = mesh_instance.Mesh;
+    size_t    vertices_old_size = Vertices.size();
 
     // Set or add data
     if( !EncapsulatedMeshCount )
@@ -238,6 +239,17 @@ void CombinedMesh::Encapsulate( MeshInstance& mesh_instance )
         if( !Textures[ i ] && mesh_instance.CurTexures[ i ] )
             Textures[ i ] = mesh_instance.CurTexures[ i ];
 
+    // Fix texture coords
+    if( mesh_instance.CurTexures[ 0 ] )
+    {
+        MeshTexture* mesh_tex = mesh_instance.CurTexures[ 0 ];
+        for( size_t i = vertices_old_size, j = Vertices.size(); i < j; i++ )
+        {
+            Vertices[ i ].TexCoord[ 0 ] = ( Vertices[ i ].TexCoord[ 0 ] * mesh_tex->AtlasOffsetData[ 2 ] ) + mesh_tex->AtlasOffsetData[ 0 ];
+            Vertices[ i ].TexCoord[ 1 ] = ( Vertices[ i ].TexCoord[ 1 ] * mesh_tex->AtlasOffsetData[ 3 ] ) + mesh_tex->AtlasOffsetData[ 1 ];
+        }
+    }
+
     // Increment mesh count
     EncapsulatedMeshCount++;
 }
@@ -258,7 +270,7 @@ void CombinedMesh::Finalize()
         GL( glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Position ) ) );
         GL( glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Normal ) ) );
         GL( glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord ) ) );
-        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoord2 ) ) );
+        GL( glVertexAttribPointer( 3, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, TexCoordBase ) ) );
         GL( glVertexAttribPointer( 4, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Tangent ) ) );
         GL( glVertexAttribPointer( 5, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, Bitangent ) ) );
         GL( glVertexAttribPointer( 6, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex3D ), (void*) (size_t) OFFSETOF( Vertex3D, BlendWeights ) ) );
