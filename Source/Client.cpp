@@ -9079,7 +9079,7 @@ bool FOClient::ReloadScripts()
 
     // Reinitialize engine
     Script::Finish();
-    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_CLIENT ), "CLIENT", false ) )
+    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_CLIENT ), "CLIENT", true ) )
     {
         WriteLog( "Unable to start script engine.\n" );
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );

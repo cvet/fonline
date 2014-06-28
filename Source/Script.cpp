@@ -481,7 +481,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     #endif
 
     // Insert base path
-    Str::Insert( dll_path, FileManager::GetDataPath( "", ScriptsPath ) );
+    Str::Insert( dll_path, FileManager::GetReadPath( "", ScriptsPath ) );
 
     // Load dynamic library
     void* dll = DLL_Load( dll_path );

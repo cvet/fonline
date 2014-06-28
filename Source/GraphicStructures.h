@@ -378,7 +378,6 @@ struct CombinedMesh
 {
     int          EncapsulatedMeshCount;
     Vertex3DVec  Vertices;
-    VectorVec    VerticesTransformed;
     UShortVec    Indices;
     size_t       CurBoneMatrix;
     Matrix*      BoneCombinedMatrices[ MAX_BONE_MATRICES ];
