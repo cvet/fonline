@@ -150,11 +150,11 @@ public:
     void AllocateCritterParams()
     {
         MCritter.Params = new int[ MAX_PARAMS ];
+		memzero( MCritter.Params, MAX_PARAMS * sizeof( int ) );
         MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) MAX_PARAMS * sizeof( int ) );
     }
 };
 typedef vector< MapObject* > MapObjectPtrVec;
-typedef vector< MapObject >  MapObjectVec;
 
 struct SceneryCl
 {

@@ -6644,6 +6644,8 @@ bool FOClient::RegCheckData()
         }
     }
 
+	RegGenParams();
+
     if( Script::PrepareContext( ClientFunctions.PlayerGenerationCheck, _FUNC_, "Registration" ) )
     {
         ScriptArray* arr = Script::CreateArray( "int[]" );
