@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using System.Drawing;
 
 namespace InterfaceEditor
 {
@@ -22,6 +23,7 @@ namespace InterfaceEditor
 			_Script.AppendLine(_BaseIdent + "void Init( int screenIndex )");
 			_Script.AppendLine(_BaseIdent + "{");
 			ProcessObjectCreation(root);
+			_Script.AppendLine(_BaseIdent + "    GUI_RegisterScreen( screenIndex, _" + root.Name + " );");
 			_Script.AppendLine(_BaseIdent + "}");
 
 			return _Script.ToString();
@@ -43,7 +45,7 @@ namespace InterfaceEditor
 
 		private void WriteClass(GUIObject obj)
 		{
-			string className = MakeClassName(obj.GetFullName());
+			string className = obj.Name;
 			GUIScreen root = (obj is GUIScreen ? (GUIScreen)obj : null);
 
 			// Global scope
@@ -59,8 +61,15 @@ namespace InterfaceEditor
 			_Script.AppendLine(_BaseIdent + "class " + className + " : " + obj.GetType().ToString().Substring(obj.GetType().ToString().IndexOf("GUI")));
 			_Script.AppendLine(_BaseIdent + "{");
 
+			// Class fields
+			if (!string.IsNullOrEmpty(obj.ClassFields))
+			{
+				AppendCode(obj.ClassFields, _BaseIdent + "    ");
+				_Script.AppendLine();
+			}
+
 			// Constructor
-			_Script.AppendLine(_BaseIdent + "    void OnInit() override");
+			_Script.AppendLine(_BaseIdent + "    void OnConstruct() override");
 			_Script.AppendLine(_BaseIdent + "    {");
 			if (root != null)
 			{
@@ -76,28 +85,28 @@ namespace InterfaceEditor
 
 			if (!obj.Active)
 				_Script.AppendLine(_BaseIdent + "        SetActive( false );");
-			_Script.AppendLine(_BaseIdent + "        SetName( \"" + obj.GetFullName() + "\" );");
-			_Script.AppendLine(_BaseIdent + "        SetPosition( " + obj.Position.X + ", " + obj.Position.Y + " );");
-			_Script.AppendLine(_BaseIdent + "        SetSize( " + obj.Size.Width + ", " + obj.Size.Height + " );");
+			_Script.AppendLine(_BaseIdent + "        SetName( \"" + obj.Name + "\" );");
+			if (!obj.Position.IsEmpty)
+				_Script.AppendLine(_BaseIdent + "        SetPosition( " + obj.Position.X + ", " + obj.Position.Y + " );");
+			if (!obj.Size.IsEmpty)
+				_Script.AppendLine(_BaseIdent + "        SetSize( " + obj.Size.Width + ", " + obj.Size.Height + " );");
 			if (obj.Anchor != AnchorStyles.None)
 				_Script.AppendLine(_BaseIdent + "        SetAnchor( " + ConvertAnchorStyles(obj.Anchor) + " );");
 			if (obj.Dock != DockStyle.None)
 				_Script.AppendLine(_BaseIdent + "        SetDock( " + ConvertDockStyle(obj.Dock) + " );");
+			if (obj.IsNotHittable)
+				_Script.AppendLine(_BaseIdent + "        SetNotHittable( true );");
 
-			if (obj is GUIImage)
-			{
-				GUIImage image = (GUIImage)obj;
-				if (!string.IsNullOrEmpty(image.BackgroundImage))
-				{
-					if (image.BackgroundImageLayout != ImageLayout.None)
-						_Script.AppendLine(_BaseIdent + "        SetBackgroundImage( \"" + image.BackgroundImage + "\", " + ConvertImageLayout(image.BackgroundImageLayout) + " );");
-					else
-						_Script.AppendLine(_BaseIdent + "        SetBackgroundImage( \"" + image.BackgroundImage + "\" );");
-				}
-			}
 			if (obj is GUIPanel)
 			{
 				GUIPanel panel = (GUIPanel)obj;
+				if (!string.IsNullOrEmpty(panel.BackgroundImage))
+				{
+					if (panel.BackgroundImageLayout != ImageLayout.None)
+						_Script.AppendLine(_BaseIdent + "        SetBackgroundImage( \"" + panel.BackgroundImage + "\", " + ConvertImageLayout(panel.BackgroundImageLayout) + " );");
+					else
+						_Script.AppendLine(_BaseIdent + "        SetBackgroundImage( \"" + panel.BackgroundImage + "\" );");
+				}
 				if (panel.IsCanMove)
 					_Script.AppendLine(_BaseIdent + "        SetCanMove( true, " + panel.IsMoveIgnoreBorders.ToString().ToLower() + " );");
 			}
@@ -122,9 +131,34 @@ namespace InterfaceEditor
 			if (obj is GUIText)
 			{
 				GUIText text = (GUIText)obj;
-				string textStr = (!string.IsNullOrEmpty(text.Text) ? text.Text : "\"\"");
-				string font = (!string.IsNullOrEmpty(text.Font) ? text.Font : "FONT_DEFAULT");
-				_Script.AppendLine(_BaseIdent + "        SetText( " + textStr + ", " + font + ", " + ConvertTextStyle(text.Style) + " );");
+
+				if (!string.IsNullOrEmpty(text.Text))
+					_Script.AppendLine(_BaseIdent + "        SetText( " + text.Text + " );");
+				if (!string.IsNullOrEmpty(text.Font))
+					_Script.AppendLine(_BaseIdent + "        SetTextFont( " + text.Font + " );");
+
+				string textFlags = "";
+				if (text.HorisontalAlignment == StringAlignment.Center)
+					textFlags += "FT_CENTERX | ";
+				if (text.VerticalAlignment == StringAlignment.Center)
+					textFlags += "FT_CENTERY | ";
+				if (text.HorisontalAlignment == StringAlignment.Far)
+					textFlags += "FT_CENTERR | ";
+				if (text.VerticalAlignment == StringAlignment.Far)
+					textFlags += "FT_BOTTOM | ";
+				if (text.DrawFromBottom)
+					textFlags += "FT_UPPER | ";
+				if (text.NoColorize)
+					textFlags += "FT_NO_COLORIZE | ";
+				if (text.Align)
+					textFlags += "FT_ALIGN | ";
+				if (text.Bordered)
+					textFlags += "FT_BORDERED | ";
+				if (textFlags != "")
+				{
+					textFlags = textFlags.Remove(textFlags.Length - 3);
+					_Script.AppendLine(_BaseIdent + "        SetTextFlags( " + textFlags + " );");
+				}
 
 				if (!string.IsNullOrEmpty(text.NormalColor))
 					_Script.AppendLine(_BaseIdent + "        SetTextColor( " + text.NormalColor + " );");
@@ -155,22 +189,22 @@ namespace InterfaceEditor
 				if (!string.IsNullOrEmpty(console.HistoryMaxLength))
 					_Script.AppendLine(_BaseIdent + "        SetHistoryMaxLength( " + console.HistoryMaxLength + " );");
 			}
-
-			if(!string.IsNullOrEmpty(obj.OnInit))
+			if (obj is GUIGrid)
 			{
-				_Script.AppendLine();
-				AppendCode(obj.OnInit, _BaseIdent + "        ");
+				GUIGrid grid = (GUIGrid)obj;
+				if (!string.IsNullOrEmpty(grid.CellPrototype))
+					_Script.AppendLine(_BaseIdent + "        SetCellPrototype( " + grid.CellPrototype + " );");
+				if (!string.IsNullOrEmpty(grid.GridSize))
+					_Script.AppendLine(_BaseIdent + "        SetGridSize( " + grid.GridSize + " );");
+				if (grid.Columns != 0)
+					_Script.AppendLine(_BaseIdent + "        SetColumns( " + grid.Columns + " );");
+				if (!grid.Padding.IsEmpty)
+					_Script.AppendLine(_BaseIdent + "        SetPadding( " + grid.Padding.Width + ", " + grid.Padding.Height + " );");
 			}
 			_Script.AppendLine(_BaseIdent + "    }");
 
-			// Class fields
-			if (!string.IsNullOrEmpty(obj.ClassFields))
-			{
-				_Script.AppendLine();
-				AppendCode(obj.ClassFields, _BaseIdent + "    ");
-			}
-
 			// Callbacks
+			WriteClassFunction("void OnInit() override", obj.OnInit);
 			WriteClassFunction("void OnShow( dictionary@ params ) override", obj.OnShow);
 			WriteClassFunction("void OnHide() override", obj.OnHide);
 			WriteClassFunction("void OnDraw() override", obj.OnDraw);
@@ -178,12 +212,25 @@ namespace InterfaceEditor
 			WriteClassFunction("void OnMouseDown( int button ) override", obj.OnMouseDown);
 			WriteClassFunction("void OnMouseUp( int button, bool lost ) override", obj.OnMouseUp);
 			WriteClassFunction("void OnMousePressed( int button ) override", obj.OnMousePressed);
+			WriteClassFunction("void OnLMousePressed() override", obj.OnLMousePressed);
+			WriteClassFunction("void OnRMousePressed() override", obj.OnRMousePressed);
 			WriteClassFunction("void OnMouseClick( int button ) override", obj.OnMouseClick);
 			WriteClassFunction("void OnLMouseClick() override", obj.OnLMouseClick);
 			WriteClassFunction("void OnRMouseClick() override", obj.OnRMouseClick);
+			WriteClassFunction("void OnMouseMove() override", obj.OnMouseMove);
+			WriteClassFunction("void OnGlobalMouseDown( int button ) override", obj.OnGlobalMouseDown);
+			WriteClassFunction("void OnGlobalMouseUp( int button ) override", obj.OnGlobalMouseUp);
+			WriteClassFunction("void OnGlobalMousePressed( int button ) override", obj.OnGlobalMousePressed);
+			WriteClassFunction("void OnGlobalMouseClick( int button ) override", obj.OnGlobalMouseClick);
+			WriteClassFunction("void OnGlobalMouseMove() override", obj.OnGlobalMouseMove);
 			WriteClassFunction("void OnInput( uint8 key, string@ text ) override", obj.OnInput);
+			WriteClassFunction("void OnGlobalInput( uint8 key, string@ text ) override", obj.OnGlobalInput);
+			WriteClassFunction("void OnActiveChanged() override", obj.OnActiveChanged);
+			WriteClassFunction("void OnFocusChanged() override", obj.OnFocusChanged);
+			WriteClassFunction("void OnHoverChanged() override", obj.OnHoverChanged);
+			WriteClassFunction("void OnResizeGrid( GUIObject@ cell, uint cellIndex ) override", obj.OnResizeGrid);
 
-			// Text
+			// Subtypes
 			if (obj is GUIText)
 			{
 				GUIText text = (GUIText)obj;
@@ -215,8 +262,8 @@ namespace InterfaceEditor
 
 		private void WriteClassCreation(GUIObject obj)
 		{
-			string className = MakeClassName(obj.GetFullName());
-			string instanceName = className.Substring(0, 1).ToLower() + className.Substring(1);
+			string className = obj.Name;
+			string instanceName = "_" + className;
 			GUIScreen root = (obj is GUIScreen ? (GUIScreen)obj : null);
 			string identPrefix = _BaseIdent + "    " + instanceName;
 
@@ -224,13 +271,11 @@ namespace InterfaceEditor
 			{
 				_Script.AppendLine(_BaseIdent + "    " + className + " " + instanceName + "();");
 				_Script.AppendLine(_BaseIdent + "    " + instanceName + ".Init( null );");
-				_Script.AppendLine(_BaseIdent + "    GUI_RegisterScreen( screenIndex, " + instanceName + " );");
 			}
 			else
 			{
-				string parentClassName = MakeClassName(obj.GetParent().GetFullName());
-				string parentInstanceName = parentClassName.Substring(0, 1).ToLower() + parentClassName.Substring(1);
-				_Script.AppendLine();
+				string parentClassName = obj.GetParent().Name;
+				string parentInstanceName = "_" + parentClassName;
 				_Script.AppendLine(_BaseIdent + "    " + className + " " + instanceName + "();");
 				_Script.AppendLine(_BaseIdent + "    " + instanceName + ".Init( " + parentInstanceName + " );");
 			}
@@ -242,41 +287,6 @@ namespace InterfaceEditor
 			if (!code.EndsWith(Environment.NewLine))
 				code += Environment.NewLine;
 			_Script.Append(code);
-		}
-
-		private string MakeClassName(string name)
-		{
-			return Utilites.MakeValidIdentifierName(name);
-		}
-
-		private string ConvertTextStyle(GUIText.TextStyle style)
-		{
-			string result = "";
-			if ((style & GUIText.TextStyle.NoBreak) != 0)
-				result += "FT_NOBREAK | ";
-			if ((style & GUIText.TextStyle.OneLine) != 0)
-				result += "FT_NOBREAK_LINE | ";
-			if ((style & GUIText.TextStyle.CenterX) != 0)
-				result += "FT_CENTERX | ";
-			if ((style & GUIText.TextStyle.CenterY) != 0)
-				result += "FT_CENTERY | ";
-			if ((style & GUIText.TextStyle.Right) != 0)
-				result += "FT_CENTERR | ";
-			if ((style & GUIText.TextStyle.Bottom) != 0)
-				result += "FT_BOTTOM | ";
-			if ((style & GUIText.TextStyle.Upper) != 0)
-				result += "FT_UPPER | ";
-			if ((style & GUIText.TextStyle.NoColorize) != 0)
-				result += "FT_NO_COLORIZE | ";
-			if ((style & GUIText.TextStyle.Align) != 0)
-				result += "FT_ALIGN | ";
-			if ((style & GUIText.TextStyle.Bordered) != 0)
-				result += "FT_BORDERED | ";
-			if (result == "")
-				result = "0";
-			else
-				result = result.Remove(result.Length - 3);
-			return result;
 		}
 
 		private string ConvertAnchorStyles(AnchorStyles styles)

@@ -65,7 +65,7 @@ namespace InterfaceEditor
 					Point pt = tree.PointToClient(new Point(e.X, e.Y));
 					TreeNode destNode = tree.GetNodeAt(pt);
 					TreeNode srcNode = (TreeNode)e.Data.GetData("System.Windows.Forms.TreeNode");
-					if (srcNode.Parent != null && destNode != null && srcNode != destNode && srcNode.Nodes.Find(destNode.Name, true).Length == 0)
+					if (srcNode.Parent != null && destNode != null && srcNode != destNode && ((GUIObject)srcNode.Tag).Find(((GUIObject)destNode.Tag).Name) == null)
 						((GUIObject)srcNode.Tag).AssignParent((GUIObject)destNode.Tag);
 				}
 			};
@@ -84,13 +84,13 @@ namespace InterfaceEditor
 
 			// Hierarchy menu strip
 			ToolStripMenuItem addMenuStrip = new ToolStripMenuItem("Add");
-			addMenuStrip.DropDownItems.Add("Image").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIImage(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Panel").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIPanel(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Button").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIButton(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Text").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIText(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Text Input").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUITextInput(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Message Box").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIMessageBox(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Console").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIConsole(obj).RefreshRepresentation(false); };
+			addMenuStrip.DropDownItems.Add("Grid").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIGrid(obj).RefreshRepresentation(false); };
 
 			ToolStripMenuItem moveUpMenuStrip = new ToolStripMenuItem("Move node up");
 			moveUpMenuStrip.Tag = (Action<GUIObject>)delegate(GUIObject obj) { if (obj != null) obj.MoveUp(); };
@@ -185,7 +185,7 @@ namespace InterfaceEditor
 			if (saveAs && !GetTreeFileName(true))
 				return;
 
-			GUIScreen root = obj.GetRoot();
+			GUIScreen root = obj.GetScreen();
 
 			JsonSerializerSettings settings = new JsonSerializerSettings();
 			settings.TypeNameHandling = TypeNameHandling.Objects;
@@ -206,8 +206,12 @@ namespace InterfaceEditor
 				((GUIObject)Hierarchy.Nodes[0].Tag).Delete();
 
 			root.RefreshRepresentation(true);
-			Hierarchy.Nodes[0].ExpandAll();
-			Hierarchy.SelectedNode = Hierarchy.Nodes[0];
+
+			GUIObject obj = root.FindSelected();
+			if (obj != null)
+				obj.Selected = true;
+			else
+				root.Selected = true;
 		}
 
 		private GUIScreen LoadTree(string fileName)
@@ -218,7 +222,8 @@ namespace InterfaceEditor
 			settings.Binder = new TypeBinder();
 			settings.Converters.Add(new StringEnumConverter());
 			GUIObject obj = JsonConvert.DeserializeObject<GUIObject>(data, settings);
-			return obj.GetRoot();
+			obj.FixAfterLoad();
+			return obj.GetScreen();
 		}
 
 		private GUIScreen NewTree()
@@ -329,6 +334,7 @@ namespace InterfaceEditor
 			initScript.AppendLine("void InitializeScreens()");
 			initScript.AppendLine("{");
 
+			List<string> writedScripts = new List<string>();
 			for (int i = 0; i < dataGridViewScheme.RowCount; i++)
 			{
 				string screen = (string)dataGridViewScheme.Rows[i].Cells[0].Value;
@@ -336,19 +342,22 @@ namespace InterfaceEditor
 				if (!string.IsNullOrEmpty(screen) && !string.IsNullOrEmpty(guiFile) && !guiFile.StartsWith("*"))
 				{
 					string guiFileFullPath = Path.GetDirectoryName(Application.ExecutablePath) + "\\gui\\" + guiFile;
+					string scriptPrefix = Path.GetFileNameWithoutExtension(guiFile);
 					GUIScreen root = LoadTree(guiFileFullPath);
 
-					string scriptPrefix = screen.Substring(screen.IndexOf("SCREEN_") + 7).ToLower();
-					scriptPrefix = scriptPrefix.Substring(0, 1).ToUpper() + scriptPrefix.Substring(1);
+					if (!writedScripts.Contains(scriptPrefix))
+					{
+						writedScripts.Add(scriptPrefix);
 
-					contentScript.AppendLine();
-					contentScript.AppendLine("namespace " + scriptPrefix);
-					contentScript.AppendLine("{");
+						contentScript.AppendLine();
+						contentScript.AppendLine("namespace " + scriptPrefix);
+						contentScript.AppendLine("{");
 
-					string scriptContent = new ScriptWriter().Write(root, "    ");
-					contentScript.Append(scriptContent);
+						string scriptContent = new ScriptWriter().Write(root, "    ");
+						contentScript.Append(scriptContent);
 
-					contentScript.AppendLine("} // namespace " + scriptPrefix);
+						contentScript.AppendLine("}");
+					}
 
 					initScript.AppendLine("    " + scriptPrefix + "::Init( " + screen + " );");
 				}
@@ -364,7 +373,14 @@ namespace InterfaceEditor
 		private void Design_Paint(object sender, PaintEventArgs e)
 		{
 			if (Hierarchy.Nodes.Count > 0)
-				((GUIObject)Hierarchy.Nodes[0].Tag).Draw(e.Graphics);
+			{
+				GUIObject obj = (GUIObject)Hierarchy.Nodes[0].Tag;
+				if (obj.Active)
+				{
+					obj.DrawPass1(e.Graphics);
+					obj.DrawPass2(e.Graphics);
+				}
+			}
 		}
 	}
 
@@ -372,6 +388,8 @@ namespace InterfaceEditor
 	{
 		public override Type BindToType(string assemblyName, string typeName)
 		{
+			if (typeName == "Image")
+				typeName = "Panel";
 			return Type.GetType(String.Format("{0}, {1}", "InterfaceEditor.GUI" + typeName, "InterfaceEditor"));
 		}
 

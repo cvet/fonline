@@ -72,7 +72,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 // Critters
 #define GENDER_MALE                  ( 0 )
 #define GENDER_FEMALE                ( 1 )
-#define GENDER_IT                    ( 2 )
 #define AGE_MAX                      ( 60 )
 #define AGE_MIN                      ( 14 )
 #define AGGRESSOR_TICK               ( 60000 )

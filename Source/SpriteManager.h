@@ -12,7 +12,8 @@
 #define FT_NOBREAK                 ( 0x0001 )
 #define FT_NOBREAK_LINE            ( 0x0002 )
 #define FT_CENTERX                 ( 0x0004 )
-#define FT_CENTERY                 ( 0x0008 )
+#define FT_CENTERY                 ( 0x0008 | FT_CENTERY_ENGINE )
+#define FT_CENTERY_ENGINE          ( 0x1000 ) // Temporary workaround
 #define FT_CENTERR                 ( 0x0010 )
 #define FT_BOTTOM                  ( 0x0020 )
 #define FT_UPPER                   ( 0x0040 )
@@ -23,6 +24,9 @@
 #define FT_SKIPLINES_END( l )         ( 0x0800 | ( ( l ) << 16 ) )
 
 // Colors
+#define COLOR_LIGHT( c )              SpriteManager::PackColor( ( ( ( c ) >> 16 ) & 0xFF ) + GameOpt.Light, ( ( ( c ) >> 8 ) & 0xFF ) + GameOpt.Light, ( ( c ) & 0xFF ) + GameOpt.Light, ( ( ( c ) >> 24 ) & 0xFF ) )
+#define COLOR_SCRIPT_SPRITE( c )      ( ( c ) ? COLOR_LIGHT( c ) : COLOR_LIGHT( COLOR_IFACE_FIX ) )
+#define COLOR_SCRIPT_TEXT( c )        ( ( c ) ? COLOR_LIGHT( c ) : COLOR_LIGHT( COLOR_TEXT ) )
 #define COLOR_RGBA( a, r, g, b )      ( (uint) ( ( ( ( a ) & 0xFF ) << 24 ) | ( ( ( r ) & 0xFF ) << 16 ) | ( ( ( g ) & 0xFF ) << 8 ) | ( ( b ) & 0xFF ) ) )
 #define COLOR_RGB( r, g, b )          COLOR_RGBA( 0xFF, r, g, b )
 #define COLOR_SWAP_RB( c )            ( ( ( c ) & 0xFF00FF00 ) | ( ( ( c ) & 0x00FF0000 ) >> 16 ) | ( ( ( c ) & 0x000000FF ) << 16 ) )
@@ -186,7 +190,7 @@ private:
 
     // Draw
 public:
-    static uint PackColor( int r, int g, int b );
+    static uint PackColor( int r, int g, int b, int a = 255 );
     void        SetSpritesColor( uint c ) { baseColor = c; }
     uint        GetSpritesColor()         { return baseColor; }
     SprInfoVec& GetSpritesInfo()          { return sprData; }

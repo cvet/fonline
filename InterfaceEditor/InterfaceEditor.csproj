@@ -65,10 +65,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ScriptWriter.cs" />
     <Compile Include="GUIButton.cs" />
-    <Compile Include="GUIImage.cs" />
     <Compile Include="GUIPanel.cs" />
     <Compile Include="GUIScreen.cs" />
     <Compile Include="GUIText.cs" />
+    <Compile Include="GUIGrid.cs" />
     <Compile Include="Utilites.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>

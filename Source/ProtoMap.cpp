@@ -398,6 +398,8 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                             }
                             else if( critter_param_index != -1 )
                             {
+                                if( !mobj.MCritter.Params )
+                                    mobj.AllocateCritterParams();
                                 mobj.MCritter.Params[ critter_param_index ] = ivalue;
                                 critter_param_index = -1;
                             }
@@ -649,15 +651,18 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
             fm.SetStr( "%-20s %d\n", "Critter_Cond", mobj.MCritter.Cond );
             fm.SetStr( "%-20s %d\n", "Critter_Anim1", mobj.MCritter.Anim1 );
             fm.SetStr( "%-20s %d\n", "Critter_Anim2", mobj.MCritter.Anim2 );
-            for( int i = 0; i < MAX_PARAMS; i++ )
+            if( mobj.MCritter.Params )
             {
-                if( mobj.MCritter.Params[ i ] )
+                for( int i = 0; i < MAX_PARAMS; i++ )
                 {
-                    const char* param_name = ConstantsManager::GetParamName( i );
-                    if( param_name )
+                    if( mobj.MCritter.Params[ i ] )
                     {
-                        fm.SetStr( "%-20s %s\n", "Critter_ParamIndex", param_name );
-                        fm.SetStr( "%-20s %d\n", "Critter_ParamValue", mobj.MCritter.Params[ i ] );
+                        const char* param_name = ConstantsManager::GetParamName( i );
+                        if( param_name )
+                        {
+                            fm.SetStr( "%-20s %s\n", "Critter_ParamIndex", param_name );
+                            fm.SetStr( "%-20s %d\n", "Critter_ParamValue", mobj.MCritter.Params[ i ] );
+                        }
                     }
                 }
             }
@@ -793,6 +798,11 @@ bool ProtoMap::LoadCache( FileManager& fm )
     {
         MapObject* mobj = new MapObject();
         fm.CopyMem( mobj, sizeof( MapObject ) - sizeof( MapObject::_RunTime ) );
+        if( mobj->MCritter.Params )
+        {
+            mobj->AllocateCritterParams();
+            fm.CopyMem( mobj->MCritter.Params, sizeof( int ) * MAX_PARAMS );
+        }
         CrittersVec.push_back( mobj );
     }
 
@@ -900,7 +910,11 @@ void ProtoMap::SaveCache( FileManager& fm )
     // Critters
     fm.SetBEUInt( (uint) CrittersVec.size() );
     for( auto it = CrittersVec.begin(), end = CrittersVec.end(); it != end; ++it )
+    {
         fm.SetData( *it, (uint) sizeof( MapObject ) - sizeof( MapObject::_RunTime ) );
+        if( ( *it )->MCritter.Params )
+            fm.SetData( ( *it )->MCritter.Params, sizeof( int ) * MAX_PARAMS );
+    }
 
     // Items
     fm.SetBEUInt( (uint) ItemsVec.size() );

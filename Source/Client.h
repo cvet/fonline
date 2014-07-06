@@ -41,7 +41,6 @@ public:
     void TryExit();
     bool IsScroll() { return GameOpt.ScrollMouseUp || GameOpt.ScrollMouseRight || GameOpt.ScrollMouseDown || GameOpt.ScrollMouseLeft || GameOpt.ScrollKeybUp || GameOpt.ScrollKeybRight || GameOpt.ScrollKeybDown || GameOpt.ScrollKeybLeft; }
     void ProcessMouseScroll();
-    void ProcessKeybScroll( bool down, uchar dik );
     void DropScroll();
     bool IsCurInWindow();
     void FlashGameWindow();
@@ -131,7 +130,7 @@ public:
 
     void Net_SendUpdate();
     void Net_SendLogIn( const char* name, const char* pass );
-    void Net_SendCreatePlayer( CritterCl* newcr );
+    void Net_SendCreatePlayer();
     void Net_SendSaveLoad( bool save, const char* fname, UCharVec* pic_data );
     void Net_SendUseSkill( ushort skill, CritterCl* cr );
     void Net_SendUseSkill( ushort skill, ItemHex* item );
@@ -1226,7 +1225,6 @@ public:
     Rect       RegWMain, RegBSpecialPlus, RegBSpecialMinus, RegBTagSkill, RegWUnspentSpecial, RegWUnspentSpecialText;
     int        RegBSpecialNextX, RegBSpecialNextY, RegBTagSkillNextX, RegBTagSkillNextY;
     int        RegCurSpecial, RegCurTagSkill;
-    CritterCl* RegNewCr;
 
     // Trait
     AnyFrames* RegPBTraitDn;
@@ -1235,7 +1233,9 @@ public:
     int        RegTraitNum;
 
     // Methods
-    bool RegCheckData( CritterCl* newcr );
+    void RegGenParams();
+    bool RegCheckData();
+    bool IsTagSkill( bool is_reg, int index );
     void ChaDraw( bool is_reg );
     void ChaLMouseDown( bool is_reg );
     void ChaLMouseUp( bool is_reg );

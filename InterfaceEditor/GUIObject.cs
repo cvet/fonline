@@ -7,11 +7,53 @@ using System.Windows.Forms;
 using System.Drawing.Design;
 using System.IO;
 using System.Windows.Forms.Design;
+using System.Text.RegularExpressions;
 
 namespace InterfaceEditor
 {
 	class GUIObject
 	{
+		private bool _Expanded;
+		[Browsable(false)]
+		public bool Expanded
+		{
+			get
+			{
+				if (_HierarchyNode != null)
+					return _HierarchyNode.IsExpanded;
+				return _Expanded;
+			}
+			set
+			{
+				_Expanded = value;
+				if (_HierarchyNode != null)
+				{
+					if (_Expanded)
+						_HierarchyNode.Expand();
+					else
+						_HierarchyNode.Collapse();
+				}
+			}
+		}
+
+		private bool _Selected;
+		[Browsable(false)]
+		public bool Selected
+		{
+			get
+			{
+				if (_HierarchyNode != null)
+					return _HierarchyNode.IsSelected;
+				return _Selected;
+			}
+			set
+			{
+				_Selected = value;
+				if (_HierarchyNode != null && _Selected)
+					MainForm.Instance.Hierarchy.SelectedNode = _HierarchyNode;
+			}
+		}
+
 		protected bool _Active = true;
 		public bool Active
 		{
@@ -24,21 +66,8 @@ namespace InterfaceEditor
 				// Store value
 				_Active = value;
 
-				// Check hidden state for parents
-				bool inactive = false;
-				GUIObject obj = this;
-				while (obj != null && !inactive)
-				{
-					inactive = !obj.Active;
-					obj = obj._Parent;
-				}
-
 				// Mark name
-				string hiddenMark = " (inactive)";
-				if (inactive && !Name.Contains(hiddenMark))
-					Name += hiddenMark;
-				else if (!inactive && Name.Contains(hiddenMark))
-					Name = Name.Remove(Name.IndexOf(hiddenMark), hiddenMark.Length);
+				Name = Name;
 
 				// Refresh design
 				RequestRedraw();
@@ -58,23 +87,55 @@ namespace InterfaceEditor
 			}
 			set
 			{
-				_Name = value;
-				while (_Parent != null && _Parent._Children.Find(n => n != this && n.Name == _Name) != null)
-					_Name += "2";
+				_Name = null;
+
+				string name = Utilites.MakeValidIdentifierName(value);
+				GUIObject root = GetRoot();
+				if (root.Find(name) != null)
+				{
+					int maxIndex = -1;
+					string indexStr = Regex.Match(name, @"\d+$").Value;
+					if (indexStr.Length == 0 || !int.TryParse(indexStr, out maxIndex) || maxIndex <= 0)
+						maxIndex = 1;
+					if (indexStr.Length > 0)
+						name = name.Remove(name.Length - indexStr.Length, indexStr.Length);
+
+					Action<GUIObject> checkMaxIndex = null;
+					checkMaxIndex = delegate(GUIObject obj)
+					{
+						int index;
+						if (obj._Name != null && obj._Name.StartsWith(name) && int.TryParse(obj._Name.Substring(name.Length), out index))
+							maxIndex = Math.Max(index, maxIndex);
+						foreach (GUIObject nextObj in obj.Children)
+							checkMaxIndex(nextObj);
+					};
+					checkMaxIndex(root);
+
+					maxIndex++;
+					name = name + maxIndex;
+				}
+
+				_Name = name;
+
 				if (_HierarchyNode != null)
-					_HierarchyNode.Text = Name;
+				{
+					_HierarchyNode.Text = _Name;
+
+					// Check hidden state
+					bool inactive = false;
+					GUIObject obj = this;
+					while (obj != null && !inactive)
+					{
+						inactive = !obj.Active;
+						obj = obj._Parent;
+					}
+					string hiddenMark = " (inactive)";
+					if (inactive && !_HierarchyNode.Text.Contains(hiddenMark))
+						_HierarchyNode.Text += hiddenMark;
+					else if (!inactive && _HierarchyNode.Text.Contains(hiddenMark))
+						_HierarchyNode.Text = Name.Remove(_HierarchyNode.Text.IndexOf(hiddenMark), hiddenMark.Length);
+				}
 			}
-		}
-		public string GetFullName()
-		{
-			GUIObject obj = this;
-			string name = "";
-			while (obj != null)
-			{
-				name = obj.Name + "/" + name;
-				obj = obj._Parent;
-			}
-			return name.Trim('/');
 		}
 
 		protected Point _Position;
@@ -126,6 +187,7 @@ namespace InterfaceEditor
 
 		public AnchorStyles Anchor { get; set; }
 		public DockStyle Dock { get; set; }
+		public bool IsNotHittable { get; set; }
 
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string GlobalScope { get; set; }
@@ -148,13 +210,39 @@ namespace InterfaceEditor
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnMousePressed { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnLMousePressed { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnRMousePressed { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnMouseClick { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnLMouseClick { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnRMouseClick { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnMouseMove { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnGlobalMouseDown { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnGlobalMouseUp { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnGlobalMousePressed { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnGlobalMouseClick { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnGlobalMouseMove { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnInput { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnGlobalInput { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnActiveChanged { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnFocusChanged { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnHoverChanged { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnResizeGrid { get; set; }
 
 		protected GUIObject _Parent = null;
 		protected List<GUIObject> _Children = new List<GUIObject>();
@@ -177,38 +265,18 @@ namespace InterfaceEditor
 
 		public GUIObject(GUIObject parent)
 		{
-			// Generate name
-			if (parent != null)
-			{
-				_Name = GetType().ToString();
-				_Name = _Name.Substring(_Name.IndexOf(".GUI") + 4);
-
-				int maxIndex = 0;
-				Action<GUIObject> checkMaxIndex = null;
-				checkMaxIndex = delegate(GUIObject obj)
-				{
-					int index;
-					if (obj._Name.StartsWith(_Name) && int.TryParse(obj._Name.Substring(_Name.Length), out index))
-						maxIndex = Math.Max(index, maxIndex);
-					foreach (GUIObject nextObj in obj.Children)
-						checkMaxIndex(nextObj);
-				};
-				checkMaxIndex(parent.GetRoot());
-
-				maxIndex++;
-				_Name += maxIndex.ToString();
-			}
-			else
-			{
-				_Name = "Root Panel";
-			}
-
 			// Set initial position
 			if (parent != null)
 				_Position = parent.AbsolutePosition;
 
 			// Set parent
 			AssignParent(parent);
+
+			// Generate name
+			if (parent != null)
+				Name = GetType().ToString().Substring(GetType().ToString().IndexOf(".GUI") + 4) + "1";
+			else
+				Name = "Screen";
 		}
 
 		public virtual void AssignParent(GUIObject parent)
@@ -262,6 +330,10 @@ namespace InterfaceEditor
 				foreach (GUIObject child in Children)
 					child.RefreshRepresentation(recursive);
 			}
+
+			// Refresh states
+			Name = _Name;
+			Expanded = _Expanded;
 		}
 
 		public void MoveUp()
@@ -304,7 +376,41 @@ namespace InterfaceEditor
 			RequestRedraw();
 		}
 
-		public GUIScreen GetRoot()
+		public GUIObject Find(string name)
+		{
+			if (_Name == name)
+				return this;
+			foreach (GUIObject child in _Children)
+			{
+				GUIObject obj = child.Find(name);
+				if (obj != null)
+					return obj;
+			}
+			return null;
+		}
+
+		public GUIObject FindSelected()
+		{
+			if (_Selected)
+				return this;
+			foreach (GUIObject child in _Children)
+			{
+				GUIObject obj = child.FindSelected();
+				if (obj != null)
+					return obj;
+			}
+			return null;
+		}
+
+		public GUIObject GetRoot()
+		{
+			GUIObject obj = this;
+			while (obj._Parent != null)
+				obj = obj._Parent;
+			return obj;
+		}
+
+		public GUIScreen GetScreen()
 		{
 			GUIObject obj = this;
 			while (obj._Parent != null)
@@ -317,21 +423,49 @@ namespace InterfaceEditor
 			return _Parent;
 		}
 
-		public virtual void Draw(Graphics g)
+		public virtual void DrawPass1(Graphics g)
+		{
+			foreach (GUIObject child in Children)
+				if (child.Active)
+					child.DrawPass1(g);
+		}
+
+		public virtual void DrawPass2(Graphics g)
 		{
 			if (_HierarchyNode.IsSelected)
-			{
-				TreeNode node = _HierarchyNode;
-				while (node != null)
-				{
-					GUIObject nodeObj = (GUIObject)node.Tag;
-					g.DrawRectangle(new Pen(Color.Red, 1f), new Rectangle(nodeObj.AbsolutePosition, nodeObj.Size));
-					node = node.Parent;
-				}
-			}
+				DrawSelected(g);
 
 			foreach (GUIObject child in Children)
-				child.Draw(g);
+				if (child.Active)
+					child.DrawPass2(g);
+		}
+
+		private void DrawSelected(Graphics g)
+		{
+			if (!Active)
+				return;
+
+			Point pos = AbsolutePosition;
+			if (Size.IsEmpty)
+			{
+				g.DrawLine(new Pen(Color.Red, 1f), new Point(pos.X - 10, pos.Y), new Point(pos.X + 10, pos.Y));
+				g.DrawLine(new Pen(Color.Red, 1f), new Point(pos.X, pos.Y - 10), new Point(pos.X, pos.Y + 10));
+			}
+			else if (Size.Width <= 1)
+			{
+				g.DrawLine(new Pen(Color.Red, 1f), new Point(pos.X, pos.Y), new Point(pos.X, pos.Y + Size.Height));
+			}
+			else if (Size.Height <= 1)
+			{
+				g.DrawLine(new Pen(Color.Red, 1f), new Point(pos.X, pos.Y), new Point(pos.X + Size.Width, pos.Y));
+			}
+			else
+			{
+				g.DrawRectangle(new Pen(Color.Red, 1f), pos.X, pos.Y, Size.Width - 1, Size.Height - 1);
+			}
+
+			foreach (GUIObject child in _Children)
+				child.DrawSelected(g);
 		}
 
 		public void RequestRedraw()
@@ -342,7 +476,19 @@ namespace InterfaceEditor
 		public bool IsHit(int x, int y)
 		{
 			Point pos = AbsolutePosition;
-			return x >= pos.X && y >= pos.Y && x < pos.X + Size.Width && y < pos.Y + Size.Height;
+			if (!Size.IsEmpty)
+				return x >= pos.X && y >= pos.Y && x < pos.X + Size.Width && y < pos.Y + Size.Height;
+			return Math.Abs(x - pos.X) <= 10 && Math.Abs(y - pos.Y) <= 10;
+		}
+
+		public void FixAfterLoad()
+		{
+			// Fix names
+			Name = Name;
+
+			// Fix children
+			foreach (GUIObject child in Children)
+				child.FixAfterLoad();
 		}
 	}
 

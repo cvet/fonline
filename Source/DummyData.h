@@ -1450,6 +1450,9 @@ struct GameOptions
     int ConsoleHistorySize;
     int SoundVolume;
     int MusicVolume;
+    int RegParams;
+    int RegName;
+    int RegPassword;
 
     // Mapper
     int ClientPath;

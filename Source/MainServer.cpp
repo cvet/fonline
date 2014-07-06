@@ -90,7 +90,7 @@ int main( int argc, char** argv )
 
     // Config
     IniParser cfg;
-    cfg.LoadFile( GetConfigFileName(), PT_DATA );
+    cfg.LoadFile( GetConfigFileName(), PT_ROOT );
 
     // Memory debugging
     MemoryDebugLevel = cfg.GetInt( "MemoryDebugLevel", 0 );

@@ -46,7 +46,7 @@ public:
             uchar Cond;
             uint  Anim1;
             uint  Anim2;
-            int   Params[ MAX_PARAMS ];
+            int*  Params;
         } MCritter;
 
         struct
@@ -135,9 +135,23 @@ public:
         RunTime.RefCounter = 1;
         return *this;
     }
+    ~MapObject()
+    {
+        if( MapObjType == MAP_OBJECT_CRITTER && MCritter.Params )
+        {
+            SAFEDELA( MCritter.Params );
+            MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) ( MAX_PARAMS * sizeof( int ) ) );
+        }
+    }
 
     void AddRef()  { ++RunTime.RefCounter; }
     void Release() { if( !--RunTime.RefCounter ) delete this; }
+
+    void AllocateCritterParams()
+    {
+        MCritter.Params = new int[ MAX_PARAMS ];
+        MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) MAX_PARAMS * sizeof( int ) );
+    }
 };
 typedef vector< MapObject* > MapObjectPtrVec;
 typedef vector< MapObject >  MapObjectVec;

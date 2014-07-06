@@ -23,22 +23,6 @@ namespace InterfaceEditor
 			"FONT_BIG",
 		};
 
-		[Flags]
-		public enum TextStyle
-		{
-			Default = CenterX | CenterY,
-			NoBreak = 0x0001,
-			OneLine = 0x0002,
-			CenterX = 0x0004,
-			CenterY = 0x0008,
-			Right = 0x0010,
-			Bottom = 0x0020,
-			Upper = 0x0040,
-			NoColorize = 0x0080,
-			Align = 0x0100,
-			Bordered = 0x0200,
-		}
-
 		protected string _Text;
 		public string Text
 		{
@@ -70,8 +54,38 @@ namespace InterfaceEditor
 
 		[Editor(typeof(ListValueEditor), typeof(UITypeEditor))]
 		public string Font { get; set; }
-		[Editor(typeof(FlagEnumUIEditor), typeof(UITypeEditor))]
-		public TextStyle Style { get; set; }
+
+		protected StringAlignment _VerticalAlignment;
+		public StringAlignment VerticalAlignment
+		{
+			get
+			{
+				return _VerticalAlignment;
+			}
+			set
+			{
+				_VerticalAlignment = value;
+				RequestRedraw();
+			}
+		}
+		protected StringAlignment _HorisontalAlignment;
+		public StringAlignment HorisontalAlignment
+		{
+			get
+			{
+				return _HorisontalAlignment;
+			}
+			set
+			{
+				_HorisontalAlignment = value;
+				RequestRedraw();
+			}
+		}
+
+		public bool Align { get; set; }
+		public bool NoColorize { get; set; }
+		public bool Bordered { get; set; }
+		public bool DrawFromBottom { get; set; }
 		public string NormalColor { get; set; }
 		public string FocusedColor { get; set; }
 
@@ -80,21 +94,21 @@ namespace InterfaceEditor
 		{
 		}
 
-		public override void Draw(Graphics g)
+		public override void DrawPass1(Graphics g)
 		{
-			base.Draw(g);
-
 			if (!string.IsNullOrEmpty(Text) || !string.IsNullOrEmpty(DynamicText))
 			{
 				RectangleF r = new RectangleF(AbsolutePosition, Size);
 				StringFormat format = new StringFormat();
-				format.LineAlignment = StringAlignment.Center;
-				format.Alignment = StringAlignment.Center;
+				format.LineAlignment = VerticalAlignment;
+				format.Alignment = HorisontalAlignment;
 				if (!string.IsNullOrEmpty(DynamicText))
-					g.DrawString(DynamicText, new Font("Courier New", 8f), new SolidBrush(Color.Green), r, format);
+					g.DrawString("DynamicText", new Font("Courier New", 8f), new SolidBrush(Color.Green), r, format);
 				else
-					g.DrawString(Text, new Font("Courier New", 8f), new SolidBrush(Color.Green), r, format);
+					g.DrawString("Text", new Font("Courier New", 8f), new SolidBrush(Color.Green), r, format);
 			}
+
+			base.DrawPass1(g);
 		}
 	}
 }

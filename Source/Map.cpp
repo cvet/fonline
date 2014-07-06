@@ -153,13 +153,16 @@ bool Map::Generate()
         // Make params array
         int params[ MAX_PARAMS * 2 ];
         int params_count = 0;
-        for( int i = 0; i < MAX_PARAMS; i++ )
+        if( mobj.MCritter.Params )
         {
-            if( mobj.MCritter.Params[ i ] )
+            for( int i = 0; i < MAX_PARAMS; i++ )
             {
-                params[ params_count * 2 ] = i;
-                params[ params_count * 2 + 1 ] = mobj.MCritter.Params[ i ];
-                params_count++;
+                if( mobj.MCritter.Params[ i ] )
+                {
+                    params[ params_count * 2 ] = i;
+                    params[ params_count * 2 + 1 ] = mobj.MCritter.Params[ i ];
+                    params_count++;
+                }
             }
         }
 

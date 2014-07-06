@@ -77,6 +77,7 @@ const char* GetLastSocketError();
 #include "Text.h"
 #include "FileSystem.h"
 #include "AngelScript/scriptstring.h"
+#include "AngelScript/scriptarray.h"
 
 #define ___MSG1( x )                      # x
 #define ___MSG0( x )                      ___MSG1( x )
@@ -681,6 +682,9 @@ struct GameOptions
     uint         ConsoleHistorySize;
     int          SoundVolume;
     int          MusicVolume;
+    ScriptArray* RegParams;
+    ScriptString RegName;
+    ScriptString RegPassword;
 
     // Mapper
     ScriptString ClientPath;

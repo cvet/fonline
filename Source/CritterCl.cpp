@@ -31,7 +31,6 @@ CritterCl::CritterCl(): CrDir( 0 ), SprId( 0 ), Id( 0 ), Pid( 0 ), NameColor( 0 
 {
     Name = "";
     NameOnHead = "";
-    Pass = "";
     memzero( Params, sizeof( Params ) );
     ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item();
     ItemSlotArmor = DefItemSlotArmor = new Item();
@@ -78,45 +77,10 @@ void CritterCl::Init()
     SetFade( true );
 }
 
-void CritterCl::InitForRegistration()
-{
-    Name = "";
-    Pass = "";
-    BaseType = 0;
-
-    memzero( Params, sizeof( Params ) );
-    memzero( ParamsReg, sizeof( ParamsReg ) );
-    ParamsReg[ 0 ] = ParamsReg[ 1 ] = ParamsReg[ 2 ] = ParamsReg[ 3 ] =
-                                                           ParamsReg[ 4 ] = ParamsReg[ 5 ] = ParamsReg[ 6 ] = 5;
-    ParamsReg[ ST_AGE ] = Random( AGE_MIN, AGE_MAX );
-    ParamsReg[ ST_GENDER ] = GENDER_MALE;
-    GenParams();
-}
-
 void CritterCl::Finish()
 {
     SetFade( false );
     finishingTime = FadingTick;
-}
-
-void CritterCl::GenParams()
-{
-    #ifdef FONLINE_CLIENT
-    if( Script::PrepareContext( ClientFunctions.PlayerGeneration, _FUNC_, GetInfo() ) )
-    {
-        ScriptArray* arr = Script::CreateArray( "int[]" );
-        if( !arr )
-            return;
-        arr->Resize( MAX_PARAMS );
-        for( int i = 0; i < MAX_PARAMS; i++ )
-            ( *(int*) arr->At( i ) ) = ParamsReg[ i ];
-        Script::SetArgObject( arr );
-        if( Script::RunPrepared() && arr->GetSize() == MAX_PARAMS )
-            for( int i = 0; i < MAX_PARAMS; i++ )
-                Params[ i ] = ( *(int*) arr->At( i ) );
-        arr->Release();
-    }
-    #endif
 }
 
 void CritterCl::SetFade( bool fade_up )

@@ -522,7 +522,6 @@ int FOClient::InitIface()
     IfaceLoadRect( ChaBAge, "ChaAge" );
     IfaceLoadRect( ChaBSex, "ChaSex" );
     // Registration
-    RegNewCr = NULL;
     RegWMain = ChaWMain;
     IfaceLoadRect( RegWMain, "RegMain" );
     IfaceLoadRect( RegBSpecialPlus, "RegSpecialPlus" );
@@ -2629,7 +2628,7 @@ void FOClient::GameRMouseUp()
 
 void FOClient::IntDraw()
 {
-    if( !ConsoleActive && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
+    if( GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
     {
         int screen = GetActiveScreen();
         if( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW )
@@ -3378,7 +3377,6 @@ void FOClient::LogTryConnect()
 
     // Connect to server
     InitNetReason = INIT_NET_REASON_LOGIN;
-    SAFEDEL( RegNewCr );
     ScreenEffects.clear();
 }
 
@@ -5223,13 +5221,10 @@ void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NUL
         break;
     case SCREEN_REGISTRATION:
         SetCurMode( CUR_DEFAULT );
-        if( !RegNewCr )
-        {
-            RegNewCr = new CritterCl();
-            RegNewCr->InitForRegistration();
-        }
+        if( !GameOpt.RegParams )
+            RegGenParams();
         memzero( ChaSkillUp, sizeof( ChaSkillUp ) );
-        ChaUnspentSkillPoints = RegNewCr->Params[ ST_UNSPENT_SKILL_POINTS ];
+        ChaUnspentSkillPoints = *(int*) GameOpt.RegParams->At( ST_UNSPENT_SKILL_POINTS );
         ChaX = ( MODE_WIDTH - RegWMain.W() ) / 2;
         ChaY = ( MODE_HEIGHT - RegWMain.H() ) / 2;
         ChaMouseMove( true );
@@ -7062,13 +7057,16 @@ void FOClient::ChaPrepareSwitch()
     }
 }
 
-#define CHA_PARAM( index )    ( is_reg ? cr->Params[ index ] : cr->GetParam( index ) )
+#define CHA_PARAM( index )        ( is_reg ? CritterCl::ParamsReg[ index ] : ( Chosen ? Chosen->GetParam( index ) : 0 ) )
+#define CHA_RAW_PARAM( index )    ( is_reg ? CritterCl::ParamsReg[ index ] : ( Chosen ? Chosen->GetRawParam( index ) : 0 ) )
+#define REG_PARAM( index )        ( *(int*) GameOpt.RegParams->At( index ) )
+bool FOClient::IsTagSkill( bool is_reg, int index )
+{
+    return CHA_PARAM( TAG_SKILL1 ) == index || CHA_PARAM( TAG_SKILL2 ) == index || CHA_PARAM( TAG_SKILL3 ) == index || CHA_PARAM( TAG_SKILL4 ) == index;
+}
+
 void FOClient::ChaDraw( bool is_reg )
 {
-    CritterCl* cr = ( is_reg ? RegNewCr : Chosen );
-    if( !cr )
-        return;
-
     if( is_reg )
         SprMngr.DrawSprite( RegPMain, RegWMain[ 0 ] + ChaX, RegWMain[ 1 ] + ChaY );
     else
@@ -7221,7 +7219,7 @@ void FOClient::ChaDraw( bool is_reg )
     {
         int unspent = GameOpt.StartSpecialPoints;
         for( uint i = 0, j = (uint) ChaSpecialParams.size(); i < j; i++ )
-            unspent -= cr->ParamsReg[ ChaSpecialParams[ i ] ];
+            unspent -= REG_PARAM( ChaSpecialParams[ i ] );
         SprMngr.DrawStr( Rect( RegWUnspentSpecial, ChaX, ChaY ), Str::FormatBuf( "%02d", unspent ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
         SprMngr.DrawStr( Rect( RegWUnspentSpecialText, ChaX, ChaY ), MsgGame->GetStr( STR_REG_SPECIAL_SUM ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
     }
@@ -7233,15 +7231,15 @@ void FOClient::ChaDraw( bool is_reg )
     {
         int offs = i - SKILL_BEGIN;
         // Name
-        SprMngr.DrawStr( Rect( ChaWSkillName, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, cr->IsTagSkill( i ) ? 0xFFAAAAAA : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( ChaWSkillName, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, IsTagSkill( is_reg, i ) ? 0xFFAAAAAA : COLOR_TEXT );
         // Value
-        SprMngr.DrawStr( Rect( ChaWSkillValue, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), Str::FormatBuf( "%d%%", CLAMP( CHA_PARAM( i ) + ( is_reg ? 0 : ChaSkillUp[ offs ] ), -MAX_SKILL_VAL, MAX_SKILL_VAL ) ), FT_NOBREAK, cr->IsTagSkill( i ) ? 0xFFAAAAAA : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( ChaWSkillValue, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), Str::FormatBuf( "%d%%", CLAMP( CHA_PARAM( i ) + ( is_reg ? 0 : ChaSkillUp[ offs ] ), -MAX_SKILL_VAL, MAX_SKILL_VAL ) ), FT_NOBREAK, IsTagSkill( is_reg, i ) ? 0xFFAAAAAA : COLOR_TEXT );
     }
 
     if( is_reg )
     {
         SprMngr.DrawStr( Rect( ChaWUnspentSPText, ChaX, ChaY ), MsgGame->GetStr( STR_REG_UNSPENT_TAGS ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        int free_tag_skill = GameOpt.StartTagSkillPoints - ( cr->Params[ TAG_SKILL1 ] ? 1 : 0 ) - ( cr->Params[ TAG_SKILL2 ] ? 1 : 0 ) - ( cr->Params[ TAG_SKILL3 ] ? 1 : 0 ) - ( cr->Params[ TAG_SKILL4 ] ? 1 : 0 );
+        int free_tag_skill = GameOpt.StartTagSkillPoints - ( CHA_PARAM( TAG_SKILL1 ) ? 1 : 0 ) - ( CHA_PARAM( TAG_SKILL2 ) ? 1 : 0 ) - ( CHA_PARAM( TAG_SKILL3 ) ? 1 : 0 ) - ( CHA_PARAM( TAG_SKILL4 ) ? 1 : 0 );
         SprMngr.DrawStr( Rect( ChaWUnspentSP, ChaX, ChaY ), Str::FormatBuf( "%02d", free_tag_skill ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
     }
     else
@@ -7257,19 +7255,22 @@ void FOClient::ChaDraw( bool is_reg )
     // Level
     if( !is_reg )
     {
-        SprMngr.DrawStr( Rect( ChaWLevel, ChaX, ChaY ), FmtGameText( STR_CHA_LEVEL, cr->GetParam( ST_LEVEL ) ), 0 );
-        SprMngr.DrawStr( Rect( ChaWExp, ChaX, ChaY ), FmtGameText( STR_CHA_EXPERIENCE, cr->GetParam( ST_EXPERIENCE ) ), 0 );
-        SprMngr.DrawStr( Rect( ChaWNextLevel, ChaX, ChaY ), FmtGameText( STR_CHA_NEXT_LEVEL, NumericalNumber( cr->GetParam( ST_LEVEL ) ) * 1000 ), 0 );
+        SprMngr.DrawStr( Rect( ChaWLevel, ChaX, ChaY ), FmtGameText( STR_CHA_LEVEL, CHA_PARAM( ST_LEVEL ) ), 0 );
+        SprMngr.DrawStr( Rect( ChaWExp, ChaX, ChaY ), FmtGameText( STR_CHA_EXPERIENCE, CHA_PARAM( ST_EXPERIENCE ) ), 0 );
+        SprMngr.DrawStr( Rect( ChaWNextLevel, ChaX, ChaY ), FmtGameText( STR_CHA_NEXT_LEVEL, NumericalNumber( CHA_PARAM( ST_LEVEL ) ) * 1000 ), 0 );
     }
 
     // Name
-    SprMngr.DrawStr( Rect( ChaBName, ChaX, ChaY - ( IfaceHold == IFACE_CHA_NAME ? 1 : 0 ) ), cr->GetName(), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    if( is_reg )
+        SprMngr.DrawStr( Rect( ChaBName, ChaX, ChaY - ( IfaceHold == IFACE_CHA_NAME ? 1 : 0 ) ), GameOpt.RegName.c_str(), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    else
+        SprMngr.DrawStr( Rect( ChaBName, ChaX, ChaY - ( IfaceHold == IFACE_CHA_NAME ? 1 : 0 ) ), Chosen ? Chosen->GetName() : "", FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 
     // Age
-    SprMngr.DrawStr( Rect( ChaBAge, ChaX, ChaY - ( IfaceHold == IFACE_CHA_AGE ? 1 : 0 ) ), Str::FormatBuf( "%02d", ( is_reg ? cr->ParamsReg[ ST_AGE ] : cr->GetParam( ST_AGE ) ) ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+    SprMngr.DrawStr( Rect( ChaBAge, ChaX, ChaY - ( IfaceHold == IFACE_CHA_AGE ? 1 : 0 ) ), Str::FormatBuf( "%02d", ( is_reg ? REG_PARAM( ST_AGE ) : CHA_PARAM( ST_AGE ) ) ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 
     // Sex
-    if( ( is_reg ? cr->ParamsReg[ ST_GENDER ] : cr->GetParam( ST_GENDER ) ) == GENDER_MALE )
+    if( ( is_reg ? REG_PARAM( ST_GENDER ) : CHA_PARAM( ST_GENDER ) ) == GENDER_MALE )
         SprMngr.DrawStr( Rect( ChaBSex, ChaX, ChaY - ( IfaceHold == IFACE_CHA_SEX ? 1 : 0 ) ), MsgGame->GetStr( STR_MALE_NAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
     else
         SprMngr.DrawStr( Rect( ChaBSex, ChaX, ChaY - ( IfaceHold == IFACE_CHA_SEX ? 1 : 0 ) ), MsgGame->GetStr( STR_FEMALE_NAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
@@ -7277,9 +7278,9 @@ void FOClient::ChaDraw( bool is_reg )
     // Damage
     // Life
     if( is_reg )
-        SprMngr.DrawStr( Rect( ChaWDmgLife, ChaX, ChaY ), FmtGameText( STR_DMG_LIFE, cr->Params[ ST_MAX_LIFE ], cr->Params[ ST_MAX_LIFE ] ), FT_NOBREAK );
+        SprMngr.DrawStr( Rect( ChaWDmgLife, ChaX, ChaY ), FmtGameText( STR_DMG_LIFE, CHA_PARAM( ST_MAX_LIFE ), CHA_PARAM( ST_MAX_LIFE ) ), FT_NOBREAK );
     else
-        SprMngr.DrawStr( Rect( ChaWDmgLife, ChaX, ChaY ), FmtGameText( STR_DMG_LIFE, cr->GetParam( ST_CURRENT_HP ), cr->GetParam( ST_MAX_LIFE ) ), FT_NOBREAK );
+        SprMngr.DrawStr( Rect( ChaWDmgLife, ChaX, ChaY ), FmtGameText( STR_DMG_LIFE, CHA_PARAM( ST_CURRENT_HP ), CHA_PARAM( ST_MAX_LIFE ) ), FT_NOBREAK );
 
     // Body damages
     for( uint i = DAMAGE_BEGIN; i <= DAMAGE_END; ++i )
@@ -7370,10 +7371,6 @@ void FOClient::ChaDraw( bool is_reg )
 void FOClient::ChaLMouseDown( bool is_reg )
 {
     IfaceHold = IFACE_NONE;
-
-    CritterCl* cr = ( is_reg ? RegNewCr : Chosen );
-    if( !cr )
-        return;
 
     // Special
     for( uint i = 0, j = (uint) ChaSpecialParams.size(); i < j; i++ )
@@ -7612,10 +7609,6 @@ label_DrawTrait:
 
 void FOClient::ChaLMouseUp( bool is_reg )
 {
-    CritterCl* cr = ( is_reg ? RegNewCr : Chosen );
-    if( !cr )
-        return;
-
     switch( IfaceHold )
     {
     case IFACE_CHA_PRINT:
@@ -7627,7 +7620,7 @@ void FOClient::ChaLMouseUp( bool is_reg )
             break;
         if( is_reg )
         {
-            if( RegCheckData( RegNewCr ) )
+            if( RegCheckData() )
             {
                 InitNetReason = INIT_NET_REASON_REG;
                 SetCurMode( CUR_WAIT );
@@ -7635,7 +7628,7 @@ void FOClient::ChaLMouseUp( bool is_reg )
         }
         else
         {
-            if( ChaUnspentSkillPoints < cr->Params[ ST_UNSPENT_SKILL_POINTS ] )
+            if( ChaUnspentSkillPoints < CHA_PARAM( ST_UNSPENT_SKILL_POINTS ) )
                 Net_SendLevelUp( 0xFFFF );
             ShowScreen( SCREEN_NONE );
         }
@@ -7682,7 +7675,7 @@ void FOClient::ChaLMouseUp( bool is_reg )
         if( !ChaUnspentSkillPoints )
             break;
 
-        int skill_val = cr->GetRawParam( ChaCurSkill + SKILL_BEGIN ) + ChaSkillUp[ ChaCurSkill ];
+        int skill_val = CHA_RAW_PARAM( ChaCurSkill + SKILL_BEGIN ) + ChaSkillUp[ ChaCurSkill ];
         if( skill_val >= MAX_SKILL_VAL )
             break;
 
@@ -7703,7 +7696,7 @@ void FOClient::ChaLMouseUp( bool is_reg )
 
         ChaUnspentSkillPoints -= need_sp;
         ChaSkillUp[ ChaCurSkill ]++;
-        if( cr->IsTagSkill( ChaCurSkill + SKILL_BEGIN ) )
+        if( IsTagSkill( is_reg, ChaCurSkill + SKILL_BEGIN ) )
             ChaSkillUp[ ChaCurSkill ]++;
     }
     break;
@@ -7717,9 +7710,9 @@ void FOClient::ChaLMouseUp( bool is_reg )
             break;
 
         ChaSkillUp[ ChaCurSkill ]--;
-        if( cr->IsTagSkill( ChaCurSkill + SKILL_BEGIN ) )
+        if( IsTagSkill( is_reg, ChaCurSkill + SKILL_BEGIN ) )
             ChaSkillUp[ ChaCurSkill ]--;
-        int skill_val = cr->GetRawParam( ChaCurSkill + SKILL_BEGIN ) + ChaSkillUp[ ChaCurSkill ];
+        int skill_val = CHA_RAW_PARAM( ChaCurSkill + SKILL_BEGIN ) + ChaSkillUp[ ChaCurSkill ];
 
         if( skill_val > GameOpt.SkillModAdd6 )
             ChaUnspentSkillPoints += 6;
@@ -7741,14 +7734,14 @@ void FOClient::ChaLMouseUp( bool is_reg )
             break;
         if( !IsCurInRect( RegBSpecialPlus, RegCurSpecial * RegBSpecialNextX + ChaX, RegCurSpecial * RegBSpecialNextY + ChaY ) )
             break;
-        int cur_count = cr->Params[ ChaSpecialParams[ RegCurSpecial ] ];
+        int cur_count = CHA_PARAM( ChaSpecialParams[ RegCurSpecial ] );
         int unspent = GameOpt.StartSpecialPoints;
         for( uint i = 0, j = (uint) ChaSpecialParams.size(); i < j; i++ )
-            unspent -= cr->ParamsReg[ ChaSpecialParams[ i ] ];
+            unspent -= REG_PARAM( ChaSpecialParams[ i ] );
         if( unspent <= 0 || cur_count >= 10 )
             break;
-        cr->ParamsReg[ ChaSpecialParams[ RegCurSpecial ] ]++;
-        cr->GenParams();
+        REG_PARAM( ChaSpecialParams[ RegCurSpecial ] )++;
+        RegGenParams();
     }
     break;
     case IFACE_REG_SPEC_MN:
@@ -7757,11 +7750,11 @@ void FOClient::ChaLMouseUp( bool is_reg )
             break;
         if( !IsCurInRect( RegBSpecialMinus, RegCurSpecial * RegBSpecialNextX + ChaX, RegCurSpecial * RegBSpecialNextY + ChaY ) )
             break;
-        int cur_count = cr->Params[ ChaSpecialParams[ RegCurSpecial ] ];
+        int cur_count = CHA_PARAM( ChaSpecialParams[ RegCurSpecial ] );
         if( cur_count <= 1 )
             break;
-        cr->ParamsReg[ ChaSpecialParams[ RegCurSpecial ] ]--;
-        cr->GenParams();
+        REG_PARAM( ChaSpecialParams[ RegCurSpecial ] )--;
+        RegGenParams();
     }
     break;
     case IFACE_REG_TAGSKILL:
@@ -7772,26 +7765,26 @@ void FOClient::ChaLMouseUp( bool is_reg )
         if( !IsCurInRect( RegBTagSkill, offs * RegBTagSkillNextX + ChaX, offs * RegBTagSkillNextY + ChaY ) )
             break;
 
-        int free_tag_skill = GameOpt.StartTagSkillPoints - ( cr->ParamsReg[ TAG_SKILL1 ] ? 1 : 0 ) - ( cr->ParamsReg[ TAG_SKILL2 ] ? 1 : 0 ) - ( cr->ParamsReg[ TAG_SKILL3 ] ? 1 : 0 ) - ( cr->ParamsReg[ TAG_SKILL4 ] ? 1 : 0 );
+        int free_tag_skill = GameOpt.StartTagSkillPoints - ( REG_PARAM( TAG_SKILL1 ) ? 1 : 0 ) - ( REG_PARAM( TAG_SKILL2 ) ? 1 : 0 ) - ( REG_PARAM( TAG_SKILL3 ) ? 1 : 0 ) - ( REG_PARAM( TAG_SKILL4 ) ? 1 : 0 );
 
-        if( cr->ParamsReg[ TAG_SKILL1 ] == RegCurTagSkill )
-            cr->ParamsReg[ TAG_SKILL1 ] = 0;
-        else if( cr->ParamsReg[ TAG_SKILL2 ] == RegCurTagSkill )
-            cr->ParamsReg[ TAG_SKILL2 ] = 0;
-        else if( cr->ParamsReg[ TAG_SKILL3 ] == RegCurTagSkill )
-            cr->ParamsReg[ TAG_SKILL3 ] = 0;
-        else if( cr->ParamsReg[ TAG_SKILL4 ] == RegCurTagSkill )
-            cr->ParamsReg[ TAG_SKILL4 ] = 0;
-        else if( !cr->ParamsReg[ TAG_SKILL1 ] && free_tag_skill > 0 )
-            cr->ParamsReg[ TAG_SKILL1 ] = RegCurTagSkill;
-        else if( !cr->ParamsReg[ TAG_SKILL2 ] && free_tag_skill > 0 )
-            cr->ParamsReg[ TAG_SKILL2 ] = RegCurTagSkill;
-        else if( !cr->ParamsReg[ TAG_SKILL3 ] && free_tag_skill > 0 )
-            cr->ParamsReg[ TAG_SKILL3 ] = RegCurTagSkill;
-        else if( !cr->ParamsReg[ TAG_SKILL4 ] && free_tag_skill > 0 )
-            cr->ParamsReg[ TAG_SKILL4 ] = RegCurTagSkill;
+        if( REG_PARAM( TAG_SKILL1 ) == RegCurTagSkill )
+            REG_PARAM( TAG_SKILL1 ) = 0;
+        else if( REG_PARAM( TAG_SKILL2 ) == RegCurTagSkill )
+            REG_PARAM( TAG_SKILL2 ) = 0;
+        else if( REG_PARAM( TAG_SKILL3 ) == RegCurTagSkill )
+            REG_PARAM( TAG_SKILL3 ) = 0;
+        else if( REG_PARAM( TAG_SKILL4 ) == RegCurTagSkill )
+            REG_PARAM( TAG_SKILL4 ) = 0;
+        else if( !REG_PARAM( TAG_SKILL1 ) && free_tag_skill > 0 )
+            REG_PARAM( TAG_SKILL1 ) = RegCurTagSkill;
+        else if( !REG_PARAM( TAG_SKILL2 ) && free_tag_skill > 0 )
+            REG_PARAM( TAG_SKILL2 ) = RegCurTagSkill;
+        else if( !REG_PARAM( TAG_SKILL3 ) && free_tag_skill > 0 )
+            REG_PARAM( TAG_SKILL3 ) = RegCurTagSkill;
+        else if( !REG_PARAM( TAG_SKILL4 ) && free_tag_skill > 0 )
+            REG_PARAM( TAG_SKILL4 ) = RegCurTagSkill;
 
-        cr->GenParams();
+        RegGenParams();
     }
     break;
     case IFACE_REG_TRAIT_L:
@@ -7808,21 +7801,21 @@ void FOClient::ChaLMouseUp( bool is_reg )
         if( IfaceHold == IFACE_REG_TRAIT_R )
             trait += TRAIT_COUNT / 2;
 
-        if( cr->Params[ trait ] )
+        if( CHA_PARAM( trait ) )
         {
-            cr->ParamsReg[ trait ] = 0;
+            REG_PARAM( trait ) = 0;
         }
         else
         {
             uint j = 0;
             for( uint i = TRAIT_BEGIN; i <= TRAIT_END; ++i )
-                if( cr->Params[ i ] )
+                if( CHA_PARAM( i ) )
                     j++;
             if( j < 2 )
-                cr->ParamsReg[ trait ] = 1;
+                REG_PARAM( trait ) = 1;
         }
 
-        cr->GenParams();
+        RegGenParams();
     }
     break;
     case IFACE_CHA_NAME:
@@ -7871,23 +7864,15 @@ void FOClient::ChaMouseMove( bool is_reg )
 
 void FOClient::ChaNameDraw()
 {
-    bool is_reg = IsMainScreen( SCREEN_REGISTRATION );
-    CritterCl* cr = ( is_reg ? RegNewCr : Chosen );
-    if( !cr )
-    {
-        ShowScreen( SCREEN_NONE );
-        return;
-    }
-
     SprMngr.DrawSprite( Singleplayer ? ChaNameSingleplayerMainPic : ChaNameMainPic, ChaNameX, ChaNameY );
 
     SprMngr.DrawStr( Rect( ChaNameWNameText, ChaNameX, ChaNameY ), MsgGame->GetStr( STR_CHA_NAME_NAME ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( ChaNameWName, ChaNameX, ChaNameY ), cr->GetName(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_NAME ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
+    SprMngr.DrawStr( Rect( ChaNameWName, ChaNameX, ChaNameY ), GameOpt.RegName.c_str(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_NAME ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
 
     if( !Singleplayer )
     {
         SprMngr.DrawStr( Rect( ChaNameWPassText, ChaNameX, ChaNameY ), MsgGame->GetStr( STR_CHA_NAME_PASS ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( Rect( ChaNameWPass, ChaNameX, ChaNameY ), cr->GetPass(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_PASS ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
+        SprMngr.DrawStr( Rect( ChaNameWPass, ChaNameX, ChaNameY ), GameOpt.RegPassword.c_str(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_PASS ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
     }
 }
 
@@ -7913,9 +7898,6 @@ void FOClient::ChaNameLMouseDown()
 
 void FOClient::ChaNameKeyDown( uchar dik, const char* dik_text )
 {
-    if( !IsMainScreen( SCREEN_REGISTRATION ) || !RegNewCr )
-        return;
-
     if( dik == DIK_TAB && !Singleplayer )
     {
         switch( IfaceHold )
@@ -7942,14 +7924,16 @@ void FOClient::ChaNameKeyDown( uchar dik, const char* dik_text )
     {
     case IFACE_CHA_NAME_NAME:
     {
-        string tmp_str = RegNewCr->Name.c_std_str();
+        string tmp_str = GameOpt.RegName.c_std_str();
         Keyb::GetChar( dik, dik_text, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
-        RegNewCr->Name = tmp_str;
+        GameOpt.RegName = tmp_str;
     }
     break;
     case IFACE_CHA_NAME_PASS:
     {
-        Keyb::GetChar( dik, dik_text, RegNewCr->Pass, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        string tmp_str = GameOpt.RegPassword.c_std_str();
+        Keyb::GetChar( dik, dik_text, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        GameOpt.RegPassword = tmp_str;
     }
     break;
     default:
@@ -7977,10 +7961,9 @@ void FOClient::ChaAgeDraw()
         break;
     }
 
-    if( !IsMainScreen( SCREEN_REGISTRATION ) || !RegNewCr )
-        return;
     char str[ 16 ];
-    Str::Format( str, "%02d", RegNewCr->ParamsReg[ ST_AGE ] );
+    bool is_reg = true;
+    Str::Format( str, "%02d", REG_PARAM( ST_AGE ) );
     SprMngr.DrawStr( Rect( ChaAgeWAge, ChaAgeX, ChaAgeY ), str, FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
 }
 
@@ -8013,23 +7996,19 @@ void FOClient::ChaAgeLMouseUp()
     case IFACE_CHA_AGE_UP:
         if( !IsCurInRect( ChaAgeBUp, ChaAgeX, ChaAgeY ) )
             break;
-        if( !RegNewCr )
-            break;
-        if( RegNewCr->ParamsReg[ ST_AGE ] >= AGE_MAX )
-            RegNewCr->ParamsReg[ ST_AGE ] = AGE_MIN;
+        if( REG_PARAM( ST_AGE ) >= AGE_MAX )
+            REG_PARAM( ST_AGE ) = AGE_MIN;
         else
-            RegNewCr->ParamsReg[ ST_AGE ]++;
-        RegNewCr->GenParams();
+            REG_PARAM( ST_AGE )++;
+        RegGenParams();
     case IFACE_CHA_AGE_DOWN:
         if( !IsCurInRect( ChaAgeBDown, ChaAgeX, ChaAgeY ) )
             break;
-        if( !RegNewCr )
-            break;
-        if( RegNewCr->ParamsReg[ ST_AGE ] <= AGE_MIN )
-            RegNewCr->ParamsReg[ ST_AGE ] = AGE_MAX;
+        if( REG_PARAM( ST_AGE ) <= AGE_MIN )
+            REG_PARAM( ST_AGE ) = AGE_MAX;
         else
-            RegNewCr->ParamsReg[ ST_AGE ]--;
-        RegNewCr->GenParams();
+            REG_PARAM( ST_AGE )--;
+        RegGenParams();
     default:
         break;
     }
@@ -8045,12 +8024,9 @@ void FOClient::ChaSexDraw()
 {
     SprMngr.DrawSprite( ChaSexPic, ChaSexX, ChaSexY );
 
-    if( !RegNewCr )
-        return;
-
-    if( RegNewCr->ParamsReg[ ST_GENDER ] == GENDER_MALE || IfaceHold == IFACE_CHA_SEX_MALE )
+    if( REG_PARAM( ST_GENDER ) == GENDER_MALE || IfaceHold == IFACE_CHA_SEX_MALE )
         SprMngr.DrawSprite( ChaSexBMaleDn, ChaSexBMale[ 0 ] + ChaSexX, ChaSexBMale[ 1 ] + ChaSexY );
-    if( RegNewCr->ParamsReg[ ST_GENDER ] == GENDER_FEMALE  || IfaceHold == IFACE_CHA_SEX_FEMALE )
+    if( REG_PARAM( ST_GENDER ) == GENDER_FEMALE  || IfaceHold == IFACE_CHA_SEX_FEMALE )
         SprMngr.DrawSprite( ChaSexBFemaleDn, ChaSexBFemale[ 0 ] + ChaSexX, ChaSexBFemale[ 1 ] + ChaSexY );
 }
 
@@ -8077,19 +8053,13 @@ void FOClient::ChaSexLMouseUp()
     case IFACE_CHA_SEX_MALE:
         if( !IsCurInRect( ChaSexBMale, ChaSexX, ChaSexY ) )
             break;
-        if( RegNewCr )
-        {
-            RegNewCr->ParamsReg[ ST_GENDER ] = GENDER_MALE;
-            RegNewCr->GenParams();
-        }
+        REG_PARAM( ST_GENDER ) = GENDER_MALE;
+        RegGenParams();
     case IFACE_CHA_SEX_FEMALE:
         if( !IsCurInRect( ChaSexBFemale, ChaSexX, ChaSexY ) )
             break;
-        if( RegNewCr )
-        {
-            RegNewCr->ParamsReg[ ST_GENDER ] = GENDER_FEMALE;
-            RegNewCr->GenParams();
-        }
+        REG_PARAM( ST_GENDER ) = GENDER_FEMALE;
+        RegGenParams();
     default:
         break;
     }

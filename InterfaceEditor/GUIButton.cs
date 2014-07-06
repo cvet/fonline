@@ -9,7 +9,7 @@ using System.Drawing.Design;
 
 namespace InterfaceEditor
 {
-	class GUIButton : GUIImage
+	class GUIButton : GUIPanel
 	{
 		protected string _PressedImageName;
 		protected Image _PressedImageContent;
@@ -23,7 +23,11 @@ namespace InterfaceEditor
 			set
 			{
 				_PressedImageName = value;
-				SetImage(ref _PressedImageName, ref _PressedImageContent);
+				SetImage(_PressedImageName, ref _PressedImageContent);
+
+				// Set size
+				if (_PressedImageContent != null && _BackgroundImageContent == null && _PressedImageLayout == ImageLayout.None)
+					Size = _PressedImageContent.Size;
 			}
 		}
 
@@ -52,7 +56,7 @@ namespace InterfaceEditor
 			set
 			{
 				_HoverImageName = value;
-				SetImage(ref _HoverImageName, ref _HoverImageContent);
+				SetImage(_HoverImageName, ref _HoverImageContent);
 			}
 		}
 
@@ -74,12 +78,12 @@ namespace InterfaceEditor
 		{
 		}
 
-		public override void Draw(Graphics g)
+		public override void DrawPass1(Graphics g)
 		{
-			base.Draw(g);
-
 			if (_PressedImageContent != null)
 				g.DrawImage(_PressedImageContent, new Rectangle(AbsolutePosition, Size));
+
+			base.DrawPass1(g);
 		}
 	}
 }

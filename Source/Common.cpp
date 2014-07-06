@@ -1377,6 +1377,9 @@ GameOptions::GameOptions()
     ConsoleHistorySize = 20;
     SoundVolume = 100;
     MusicVolume = 100;
+    RegParams = NULL;
+    RegName = "";
+    RegPassword = "";
 
     // Mapper
     ClientPath = DIR_SLASH_SD;

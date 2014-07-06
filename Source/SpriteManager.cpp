@@ -3649,12 +3649,12 @@ void SpriteManager::PrepareSquare( PointVec& points, Point lt, Point rt, Point l
     points.push_back( PrepPoint( rb.X, rb.Y, color, NULL, NULL ) );
 }
 
-uint SpriteManager::PackColor( int r, int g, int b )
+uint SpriteManager::PackColor( int r, int g, int b, int a /* = 255 */ )
 {
     r = CLAMP( r, 0, 255 );
     g = CLAMP( g, 0, 255 );
     b = CLAMP( b, 0, 255 );
-    return COLOR_RGB( r, g, b );
+    return COLOR_RGBA( a, r, g, b );
 }
 
 void SpriteManager::GetDrawRect( Sprite* prep, Rect& rect )

@@ -1069,7 +1069,7 @@ int FOClient::MainLoop()
         if( reason == INIT_NET_REASON_LOGIN )
             Net_SendLogIn( GameOpt.Name.c_str(), Password.c_str() );
         else if( reason == INIT_NET_REASON_REG )
-            Net_SendCreatePlayer( RegNewCr );
+            Net_SendCreatePlayer();
         else if( reason == INIT_NET_REASON_LOAD )
             Net_SendSaveLoad( false, SaveLoadFileName.c_str(), NULL );
         else
@@ -1713,7 +1713,7 @@ void FOClient::ProcessMouseWheel( int data )
                     Net_SendRateItem();
             }
 
-            if( !ConsoleActive && GameOpt.MapZooming && IsMainScreen( SCREEN_GAME ) && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
+            if( GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
             {
                 HexMngr.ChangeZoom( data > 0 ? -1 : 1 );
                 RebuildLookBorders = true;
@@ -2418,12 +2418,9 @@ void FOClient::NetProcess()
             if( !Singleplayer )
             {
                 WriteLog( "Registration success.\n" );
-                if( RegNewCr )
-                {
-                    GameOpt.Name = RegNewCr->Name;
-                    Password = RegNewCr->Pass;
-                    SAFEDEL( RegNewCr );
-                }
+                SAFEREL( GameOpt.RegParams );
+                GameOpt.RegName = "";
+                GameOpt.RegPassword = "";
             }
             else
             {
@@ -2729,11 +2726,11 @@ void FOClient::Net_SendLogIn( const char* name, const char* pass )
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_CONN_SUCCESS ) );
 }
 
-void FOClient::Net_SendCreatePlayer( CritterCl* newcr )
+void FOClient::Net_SendCreatePlayer()
 {
     WriteLog( "Player registration..." );
 
-    if( !newcr )
+    if( !GameOpt.RegParams )
     {
         WriteLog( "internal error.\n" );
         return;
@@ -2741,7 +2738,7 @@ void FOClient::Net_SendCreatePlayer( CritterCl* newcr )
 
     ushort count = 0;
     for( int i = 0; i < MAX_PARAMS; i++ )
-        if( newcr->ParamsReg[ i ] && CritterCl::ParamsRegEnabled[ i ] )
+        if( *(int*) GameOpt.RegParams->At( i ) && CritterCl::ParamsRegEnabled[ i ] )
             count++;
 
     uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( ushort ) + UTF8_BUF_SIZE( MAX_NAME ) + PASS_HASH_SIZE + sizeof( count ) + ( sizeof( ushort ) + sizeof( int ) ) * count;
@@ -2755,15 +2752,18 @@ void FOClient::Net_SendCreatePlayer( CritterCl* newcr )
     Bout.SetEncryptKey( 1234567890 );
     Bin.SetEncryptKey( 1234567890 );
 
-    Bout.Push( Str::FormatBuf( "%s", newcr->GetName() ), UTF8_BUF_SIZE( MAX_NAME ) );
+    char buf[ UTF8_BUF_SIZE( MAX_NAME ) ];
+    memzero( buf, sizeof( buf ) );
+    Str::Copy( buf, GameOpt.RegName.c_str() );
+    Bout.Push( buf, UTF8_BUF_SIZE( MAX_NAME ) );
     char pass_hash[ PASS_HASH_SIZE ];
-    Crypt.ClientPassHash( newcr->GetName(), newcr->GetPass(), pass_hash );
+    Crypt.ClientPassHash( GameOpt.RegName.c_str(), GameOpt.RegPassword.c_str(), pass_hash );
     Bout.Push( pass_hash, PASS_HASH_SIZE );
 
     Bout << count;
     for( ushort i = 0; i < MAX_PARAMS; i++ )
     {
-        int val = newcr->ParamsReg[ i ];
+        int val = *(int*) GameOpt.RegParams->At( i );
         if( val && CritterCl::ParamsRegEnabled[ i ] )
         {
             Bout << i;
@@ -3104,7 +3104,7 @@ void FOClient::Net_SendLevelUp( ushort perk_up )
         if( ChaSkillUp[ i ] )
         {
             ushort skill_up = ChaSkillUp[ i ];
-            if( Chosen->IsTagSkill( i + SKILL_BEGIN ) )
+            if( IsTagSkill( false, i + SKILL_BEGIN ) )
                 skill_up /= 2;
 
             Bout << ushort( i + SKILL_BEGIN );
@@ -6593,10 +6593,26 @@ bool FOClient::GetCurHex( ushort& hx, ushort& hy, bool ignore_interface )
     return HexMngr.GetHexPixel( GameOpt.MouseX, GameOpt.MouseY, hx, hy );
 }
 
-bool FOClient::RegCheckData( CritterCl* newcr )
+void FOClient::RegGenParams()
+{
+    if( Script::PrepareContext( ClientFunctions.PlayerGeneration, _FUNC_, "Registration" ) )
+    {
+        ScriptArray* arr = Script::CreateArray( "int[]" );
+        if( !arr )
+            return;
+        arr->Resize( MAX_PARAMS );
+        Script::SetArgObject( arr );
+        if( Script::RunPrepared() && arr->GetSize() == MAX_PARAMS )
+            for( int i = 0; i < MAX_PARAMS; i++ )
+                CritterCl::ParamsReg[ i ] = ( *(int*) arr->At( i ) );
+        arr->Release();
+    }
+}
+
+bool FOClient::RegCheckData()
 {
     // Name
-    uint name_len_utf8 = Str::LengthUTF8( newcr->Name.c_str() );
+    uint name_len_utf8 = Str::LengthUTF8( GameOpt.RegName.c_str() );
     if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
         name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
     {
@@ -6604,7 +6620,7 @@ bool FOClient::RegCheckData( CritterCl* newcr )
         return false;
     }
 
-    if( !Str::IsValidUTF8( newcr->Name.c_str() ) || Str::Substring( newcr->Name.c_str(), "*" ) )
+    if( !Str::IsValidUTF8( GameOpt.RegName.c_str() ) || Str::Substring( GameOpt.RegName.c_str(), "*" ) )
     {
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_NAME_WRONG_CHARS ) );
         return false;
@@ -6613,7 +6629,7 @@ bool FOClient::RegCheckData( CritterCl* newcr )
     // Password
     if( !Singleplayer )
     {
-        uint pass_len_utf8 = Str::LengthUTF8( newcr->Pass.c_str() );
+        uint pass_len_utf8 = Str::LengthUTF8( GameOpt.RegPassword.c_str() );
         if( pass_len_utf8 < MIN_NAME || pass_len_utf8 < GameOpt.MinNameLength ||
             pass_len_utf8 > MAX_NAME || pass_len_utf8 > GameOpt.MaxNameLength )
         {
@@ -6621,7 +6637,7 @@ bool FOClient::RegCheckData( CritterCl* newcr )
             return false;
         }
 
-        if( !Str::IsValidUTF8( newcr->Pass.c_str() ) || Str::Substring( newcr->Pass.c_str(), "*" ) )
+        if( !Str::IsValidUTF8( GameOpt.RegPassword.c_str() ) || Str::Substring( GameOpt.RegPassword.c_str(), "*" ) )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_PASS_WRONG_CHARS ) );
             return false;
@@ -6630,19 +6646,16 @@ bool FOClient::RegCheckData( CritterCl* newcr )
 
     if( Script::PrepareContext( ClientFunctions.PlayerGenerationCheck, _FUNC_, "Registration" ) )
     {
-        ScriptString* name = new ScriptString( newcr->Name );
-        ScriptArray*  arr = Script::CreateArray( "int[]" );
+        ScriptArray* arr = Script::CreateArray( "int[]" );
 
         arr->Resize( MAX_PARAMS );
         for( int i = 0; i < MAX_PARAMS; i++ )
-            ( *(int*) arr->At( i ) ) = newcr->ParamsReg[ i ];
+            ( *(int*) arr->At( i ) ) = CritterCl::ParamsReg[ i ];
 
         bool result = false;
-        Script::SetArgObject( name );
         Script::SetArgObject( arr );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
-        name->Release();
 
         if( !result )
         {
@@ -6652,11 +6665,13 @@ bool FOClient::RegCheckData( CritterCl* newcr )
 
         if( arr->GetSize() == MAX_PARAMS )
             for( int i = 0; i < MAX_PARAMS; i++ )
-                newcr->ParamsReg[ i ] = ( *(int*) arr->At( i ) );
+                CritterCl::ParamsReg[ i ] = ( *(int*) arr->At( i ) );
         arr->Release();
+
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 void FOClient::SetDayTime( bool refresh )
@@ -8078,30 +8093,6 @@ void FOClient::ProcessMouseScroll()
         GameOpt.ScrollMouseUp = false;
 }
 
-void FOClient::ProcessKeybScroll( bool down, uchar dik )
-{
-    if( down && IsMainScreen( SCREEN_GAME ) && ConsoleActive )
-        return;
-
-    switch( dik )
-    {
-    case DIK_LEFT:
-        GameOpt.ScrollKeybLeft = down;
-        break;
-    case DIK_RIGHT:
-        GameOpt.ScrollKeybRight = down;
-        break;
-    case DIK_UP:
-        GameOpt.ScrollKeybUp = down;
-        break;
-    case DIK_DOWN:
-        GameOpt.ScrollKeybDown = down;
-        break;
-    default:
-        break;
-    }
-}
-
 void FOClient::DropScroll()
 {
     GameOpt.ScrollMouseUp = false;
@@ -9205,7 +9196,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.ItemCost, "item_cost", "uint %s(ItemCl&,CritterCl&,CritterCl&,bool)" },
         { &ClientFunctions.PerkCheck, "check_perk", "bool %s(CritterCl&,uint)" },
         { &ClientFunctions.PlayerGeneration, "player_data_generate", "void %s(int[]&)" },
-        { &ClientFunctions.PlayerGenerationCheck, "player_data_check", "bool %s(string&, int[]&)" },
+        { &ClientFunctions.PlayerGenerationCheck, "player_data_check", "bool %s(int[]&)" },
         { &ClientFunctions.CritterAction, "critter_action", "void %s(bool,CritterCl&,int,int,ItemCl@)" },
         { &ClientFunctions.Animation2dProcess, "animation2d_process", "void %s(bool,CritterCl&,uint,uint,ItemCl@)" },
         { &ClientFunctions.Animation3dProcess, "animation3d_process", "void %s(bool,CritterCl&,uint,uint,ItemCl@)" },
@@ -9709,6 +9700,14 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         GameOpt.Name = args[ 1 ];
         Self->Password = args[ 2 ];
         Self->LogTryConnect();
+    }
+    else if( cmd == "Register" )
+    {
+        if( Self->RegCheckData() )
+        {
+            Self->InitNetReason = INIT_NET_REASON_REG;
+            Self->SetCurMode( CUR_WAIT );
+        }
     }
     else if( cmd == "GetPassword" )
     {
@@ -11150,7 +11149,7 @@ void FOClient::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int
         x += -si->Width / 2 + si->OffsX;
         y += -si->Height + si->OffsY;
     }
-    SprMngr.DrawSprite( spr_id_, x, y, color );
+    SprMngr.DrawSprite( spr_id_, x, y, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 void FOClient::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs )
@@ -11169,7 +11168,7 @@ void FOClient::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int frame_index,
         x += si->OffsX;
         y += si->OffsY;
     }
-    SprMngr.DrawSpriteSizeExt( spr_id_, x, y, w, h, zoom, true, true, color );
+    SprMngr.DrawSpriteSizeExt( spr_id_, x, y, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 void FOClient::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color )
@@ -11179,7 +11178,7 @@ void FOClient::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int frame_ind
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
     if( !anim || frame_index >= (int) anim->GetCnt() )
         return;
-    SprMngr.DrawSpritePattern( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), x, y, w, h, spr_width, spr_height, color );
+    SprMngr.DrawSpritePattern( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), x, y, w, h, spr_width, spr_height, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 void FOClient::SScriptFunc::Global_DrawText( ScriptString& text, int x, int y, int w, int h, uint color, int font, int flags )
@@ -11188,12 +11187,12 @@ void FOClient::SScriptFunc::Global_DrawText( ScriptString& text, int x, int y, i
         return;
     if( text.length() == 0 )
         return;
-    if( !w && x < GameOpt.ScreenWidth )
-        w = GameOpt.ScreenWidth - x;
-    if( !h && y < GameOpt.ScreenHeight )
-        h = GameOpt.ScreenHeight - y;
+    if( w < 0 )
+        w = -w, x -= w;
+    if( h < 0 )
+        h = -h, y -= h;
     Rect r = Rect( x, y, x + w, y + h );
-    SprMngr.DrawStr( r, text.c_str(), flags, color, font );
+    SprMngr.DrawStr( r, text.c_str(), flags, COLOR_SCRIPT_TEXT( color ), font );
 }
 
 void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, ScriptArray& data )
@@ -11308,7 +11307,7 @@ void FOClient::SScriptFunc::Global_DrawCritter2d( uint crtype, uint anim1, uint 
     {
         AnyFrames* anim = ResMngr.GetCrit2dAnim( crtype, anim1, anim2, dir );
         if( anim )
-            SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, color ? color : COLOR_IFACE );
+            SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE( color ) );
     }
 }
 
@@ -11383,7 +11382,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         anim3d->SetSpeed( speed );
         anim3d->SetAnimation( anim1, anim2, DrawCritter3dLayers, 0 );
 
-        SprMngr.Draw3d( (int) x, (int) y, anim3d, color ? color : COLOR_IFACE );
+        SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ) );
     }
 }
 
@@ -11674,7 +11673,7 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->IntRMouseDown(), Self->GameRMouseDown();
         else if( button == MOUSE_BUTTON_RIGHT && !down )
             Self->GameRMouseUp();
-        else if( button == MOUSE_BUTTON_MIDDLE && !Self->ConsoleActive && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
+        else if( button == MOUSE_BUTTON_MIDDLE && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
             Self->HexMngr.ChangeZoom( 0 ), Self->RebuildLookBorders = true;
         else if( move )
             Self->IntMouseMove();
@@ -11886,7 +11885,7 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->TViewLMouseDown();
         else if( button == MOUSE_BUTTON_LEFT && !down )
             Self->TViewLMouseUp();
-        else if( button == MOUSE_BUTTON_MIDDLE && !Self->ConsoleActive && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
+        else if( button == MOUSE_BUTTON_MIDDLE && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
             Self->HexMngr.ChangeZoom( 0 ), Self->RebuildLookBorders = true;
         else if( move )
             Self->TViewMouseMove();
@@ -12041,7 +12040,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenKey( int screen, uchar k
     if( !down )
     {
         Self->ConsoleKeyUp( key );
-        Self->ProcessKeybScroll( false, key );
         Timer::StartAccelerator( ACCELERATE_NONE );
     }
 }

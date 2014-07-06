@@ -1537,6 +1537,9 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Anim2CombatEnd", &GameOpt.A
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ConsoleHistorySize", &GameOpt.ConsoleHistorySize ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __SoundVolume", &GameOpt.SoundVolume ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __MusicVolume", &GameOpt.MusicVolume ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "int[]@ __RegParams", &GameOpt.RegParams ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string __RegName", &GameOpt.RegName ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string __RegPassword", &GameOpt.RegPassword ) );
 #endif
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MapHexagonal", &GameOpt.MapHexagonal ) );

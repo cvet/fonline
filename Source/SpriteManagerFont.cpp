@@ -690,8 +690,10 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
     uint      flags = fi.Flags;
     FontData* font = fi.CurFont;
     Rect&     r = fi.Region;
-    int&      curx = fi.CurX;
-    int&      cury = fi.CurY;
+    bool      infinity_w = ( r.L == r.R );
+    bool      infinity_h = ( r.T == r.B );
+    int       curx = 0;
+    int       cury = 0;
     uint&     offs_col = fi.OffsColDots;
 
     if( fmt_type != FORMAT_TYPE_DRAW && fmt_type != FORMAT_TYPE_LCOUNT && fmt_type != FORMAT_TYPE_SPLIT )
@@ -779,10 +781,10 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
             break;
         }
 
-        if( curx + x_advance > r.R )
+        if( !infinity_w && curx + x_advance > r.R )
         {
-            if( curx - r.L > fi.MaxCurX )
-                fi.MaxCurX = curx - r.L;
+            if( curx > fi.MaxCurX )
+                fi.MaxCurX = curx;
 
             if( fmt_type == FORMAT_TYPE_DRAW && FLAG( flags, FT_NOBREAK ) )
             {
@@ -858,7 +860,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
             if( !skip_line )
             {
                 cury += font->LineHeight + font->YAdvance;
-                if( cury + font->LineHeight > r.B && !fi.LinesInRect )
+                if( !infinity_h && cury + font->LineHeight > r.B && !fi.LinesInRect )
                     fi.LinesInRect = fi.LinesAll;
 
                 if( fmt_type == FORMAT_TYPE_DRAW )
@@ -907,8 +909,8 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         if( !str[ i ] )
             break;
     }
-    if( curx - r.L > fi.MaxCurX )
-        fi.MaxCurX = curx - r.L;
+    if( curx > fi.MaxCurX )
+        fi.MaxCurX = curx;
 
     if( skip_line_end )
     {
@@ -1035,7 +1037,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
                }*/
 
             // Align
-            if( fi.LineSpaceWidth[ curstr ] == 1 && spaces > 0 )
+            if( fi.LineSpaceWidth[ curstr ] == 1 && spaces > 0 && !infinity_w )
                 fi.LineSpaceWidth[ curstr ] = font->SpaceWidth + ( r.R - fi.LineWidth[ curstr ] ) / spaces;
             else
                 fi.LineSpaceWidth[ curstr ] = font->SpaceWidth;
@@ -1059,19 +1061,20 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
             break;
     }
 
-    curx = r.L;
-    cury = r.T;
+    // Initial position
+    fi.CurX = r.L;
+    fi.CurY = r.T;
 
     // Align X
     if( FLAG( flags, FT_CENTERX ) )
-        curx += ( r.R - fi.LineWidth[ 0 ] ) / 2;
+        fi.CurX += ( r.R - fi.LineWidth[ 0 ] ) / 2;
     else if( FLAG( flags, FT_CENTERR ) )
-        curx += r.R - fi.LineWidth[ 0 ];
+        fi.CurX += r.R - fi.LineWidth[ 0 ];
     // Align Y
     if( FLAG( flags, FT_CENTERY ) )
-        cury = r.T + ( r.H() - fi.LinesAll * font->LineHeight - ( fi.LinesAll - 1 ) * font->YAdvance ) / 2 + 1;
+        fi.CurY = r.T + (int) ( ( r.B - r.T + 1 ) - fi.LinesInRect * font->LineHeight - ( fi.LinesInRect - 1 ) * font->YAdvance ) / 2 + ( FLAG( flags, FT_CENTERY_ENGINE ) ? 1 : 0 );
     else if( FLAG( flags, FT_BOTTOM ) )
-        cury = r.B - ( fi.LinesAll * font->LineHeight + ( fi.LinesAll - 1 ) * font->YAdvance );
+        fi.CurY = r.B - (int) ( fi.LinesInRect * font->LineHeight + ( fi.LinesInRect - 1 ) * font->YAdvance );
 }
 
 bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint color /* = 0 */, int num_font /* = -1 */ )
@@ -1267,10 +1270,6 @@ int SpriteManager::GetLineHeight( int num_font /* = -1 */ )
 void SpriteManager::GetTextInfo( int width, int height, const char* str, int num_font, int flags, int& tw, int& th, int& lines )
 {
     tw = th = lines = 0;
-    if( width <= 0 )
-        width = GameOpt.ScreenWidth;
-    if( height <= 0 )
-        height = GameOpt.ScreenHeight;
 
     FontData* font = GetFont( num_font );
     if( !font )
@@ -1292,7 +1291,7 @@ void SpriteManager::GetTextInfo( int width, int height, const char* str, int num
 
     lines = fi.LinesInRect;
     th = fi.LinesInRect * font->LineHeight + ( fi.LinesInRect - 1 ) * font->YAdvance;
-    tw = fi.MaxCurX;
+    tw = fi.MaxCurX - fi.Region.L;
 }
 
 int SpriteManager::SplitLines( const Rect& r, const char* cstr, int num_font, StrVec& str_vec )

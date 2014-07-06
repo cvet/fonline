@@ -2207,7 +2207,7 @@ void FOMapper::ObjDraw()
         DRAW_COMPONENT( "Anim2", o->MCritter.Anim2, true, false );                              // 18
         y += step;                                                                              // 19
         for( size_t i = 0, j = ShowCritterParams.size(); i < j; i++ )                           // 20..
-            DRAW_COMPONENT( ShowCritterParamNames[ i ].c_str(), o->MCritter.Params[ ShowCritterParams[ i ] ], false, false );
+            DRAW_COMPONENT( ShowCritterParamNames[ i ].c_str(), o->MCritter.Params ? o->MCritter.Params[ ShowCritterParams[ i ] ] : 0, false, false );
     }
     else if( o->MapObjType == MAP_OBJECT_ITEM || o->MapObjType == MAP_OBJECT_SCENERY )
     {
@@ -2359,7 +2359,11 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
         return;
 
     if( o->MapObjType == MAP_OBJECT_CRITTER && ObjCurLine >= 20 && ObjCurLine - 20 < (int) ShowCritterParams.size() )
+    {
+        if( !o->MCritter.Params )
+            o->MCritter.Params = new int[ MAX_PARAMS ];
         val_i = &o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ];
+    }
 
     switch( ObjCurLine )
     {
@@ -5557,6 +5561,8 @@ int* FOMapper::SScriptFunc::MapperObject_CritterParam_Index( MapObject& mobj, ui
         SCRIPT_ERROR_RX( "Invalid index arg.", &dummy );
     if( mobj.MapObjType != MAP_OBJECT_CRITTER )
         SCRIPT_ERROR_RX( "Mapper object is not critter.", &dummy );
+    if( !mobj.MCritter.Params )
+        mobj.AllocateCritterParams();
     return &mobj.MCritter.Params[ index ];
 }
 
@@ -6870,7 +6876,7 @@ void FOMapper::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int
         x += -si->Width / 2 + si->OffsX;
         y += -si->Height + si->OffsY;
     }
-    SprMngr.DrawSprite( spr_id_, x, y, color );
+    SprMngr.DrawSprite( spr_id_, x, y, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 void FOMapper::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs )
@@ -6889,7 +6895,7 @@ void FOMapper::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int frame_index,
         x += si->OffsX;
         y += si->OffsY;
     }
-    SprMngr.DrawSpriteSizeExt( spr_id_, x, y, w, h, zoom, true, true, color );
+    SprMngr.DrawSpriteSizeExt( spr_id_, x, y, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 void FOMapper::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color )
@@ -6899,7 +6905,7 @@ void FOMapper::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int frame_ind
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
     if( !anim || frame_index >= (int) anim->GetCnt() )
         return;
-    SprMngr.DrawSpritePattern( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), x, y, w, h, spr_width, spr_height, color );
+    SprMngr.DrawSpritePattern( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), x, y, w, h, spr_width, spr_height, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 void FOMapper::SScriptFunc::Global_DrawText( ScriptString& text, int x, int y, int w, int h, uint color, int font, int flags )
@@ -6908,11 +6914,11 @@ void FOMapper::SScriptFunc::Global_DrawText( ScriptString& text, int x, int y, i
         return;
     if( text.length() == 0 )
         return;
-    if( !w && x < GameOpt.ScreenWidth )
-        w = GameOpt.ScreenWidth - x;
-    if( !h && y < GameOpt.ScreenHeight )
-        h = GameOpt.ScreenHeight - y;
-    SprMngr.DrawStr( Rect( x, y, x + w, y + h ), text.c_str(), flags, color, font );
+    if( w < 0 )
+        w = -w, x -= w;
+    if( h < 0 )
+        h = -h, y -= h;
+    SprMngr.DrawStr( Rect( x, y, x + w, y + h ), text.c_str(), flags, COLOR_SCRIPT_TEXT( color ), font );
 }
 
 void FOMapper::SScriptFunc::Global_DrawPrimitive( int primitive_type, ScriptArray& data )
@@ -7028,7 +7034,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter2d( uint crtype, uint anim1, uint 
     {
         AnyFrames* anim = ResMngr.GetCrit2dAnim( crtype, anim1, anim2, dir );
         if( anim )
-            SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, color ? color : COLOR_IFACE );
+            SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE( color ) );
     }
 }
 
@@ -7101,7 +7107,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         anim3d->SetSpeed( speed );
         anim3d->SetAnimation( anim1, anim2, DrawCritter3dLayers, 0 );
 
-        SprMngr.Draw3d( (int) x, (int) y, anim3d, color ? color : COLOR_IFACE );
+        SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ) );
     }
 }
 
