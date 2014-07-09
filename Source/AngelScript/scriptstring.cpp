@@ -27,6 +27,7 @@ ScriptString* StringStrUpr( ScriptString* str );
 #define SCRIPT_STRING_BUFFER_CAPACITY    ( 255 )
 
 vector< ScriptString* > ScriptStringPool;
+size_t                  ScriptStringRealCapacity = 0; // May be different with requested
 
 ScriptString* ScriptString::GetFromPool()
 {
@@ -37,6 +38,8 @@ ScriptString* ScriptString::GetFromPool()
         {
             ScriptString* str = new ScriptString();
             str->buffer.reserve( SCRIPT_STRING_BUFFER_CAPACITY );
+            if( ScriptStringRealCapacity == 0 )
+                ScriptStringRealCapacity = str->buffer.capacity();
             MEMORY_PROCESS( MEMORY_SCRIPT_STRING, sizeof( ScriptString ) );
             MEMORY_PROCESS( MEMORY_SCRIPT_STRING, (uint) str->buffer.capacity() );
             ScriptStringPool.push_back( str );
@@ -62,7 +65,12 @@ void ScriptString::AddRef() const
 void ScriptString::Release() const
 {
     if( --refCount == 0 )
-        PutToPool( (ScriptString*) this );
+    {
+        if( buffer.capacity() == ScriptStringRealCapacity )
+            PutToPool( (ScriptString*) this );
+        else
+            delete this;
+    }
 }
 
 ScriptString* ScriptString::Create()
@@ -103,6 +111,12 @@ ScriptString* ScriptString::Create( const std::string& s )
 ScriptString::ScriptString()
 {
     refCount = 0;
+}
+
+ScriptString::~ScriptString()
+{
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, -(int) sizeof( ScriptString ) );
+    MEMORY_PROCESS( MEMORY_SCRIPT_STRING, -(int) buffer.capacity() );
 }
 
 #define CHECK_CAPACITY_PRE               int capacity = (int) buffer.capacity()
