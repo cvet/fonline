@@ -298,8 +298,8 @@ Node* GraphicLoader::LoadModel( const char* fname )
             void* dll = DLL_Load( FBXSDK_PATH1 FBXSDK_PATH2 );
             if( !dll )
             {
-                if( GameOpt.ClientPath.c_std_str() != "" )
-                    dll = DLL_Load( ( GameOpt.ClientPath.c_std_str() + FBXSDK_PATH2 ).c_str() );
+                if( GameOpt.ClientPath->c_std_str() != "" )
+                    dll = DLL_Load( ( GameOpt.ClientPath->c_std_str() + FBXSDK_PATH2 ).c_str() );
                 if( !dll )
                 {
                     WriteLogF( _FUNC_, " - '" FBXSDK_PATH2 "' not found.\n" );
@@ -490,8 +490,8 @@ Node* GraphicLoader::LoadModel( const char* fname )
             void* dll = DLL_Load( ASSIMP_PATH1 ASSIMP_PATH2 );
             if( !dll )
             {
-                if( GameOpt.ClientPath.c_std_str() != "" )
-                    dll = DLL_Load( ( GameOpt.ClientPath.c_std_str() + ASSIMP_PATH2 ).c_str() );
+                if( GameOpt.ClientPath->c_std_str() != "" )
+                    dll = DLL_Load( ( GameOpt.ClientPath->c_std_str() + ASSIMP_PATH2 ).c_str() );
                 if( !dll )
                 {
                     WriteLogF( _FUNC_, " - '" ASSIMP_PATH2 "' not found.\n" );

@@ -271,14 +271,14 @@ bool FOClient::Init()
     UID_PREPARE_UID4_4;
 
     // User and password
-    if( !GameOpt.Name.length() && Password.empty() && !Singleplayer )
+    if( !GameOpt.Name->length() && Password.empty() && !Singleplayer )
     {
         bool  fail = false;
 
         uint  len;
         char* str = (char*) Crypt.GetCache( "__name", len );
         if( str && len <= UTF8_BUF_SIZE( MAX_NAME ) )
-            GameOpt.Name = str;
+            *GameOpt.Name = str;
         else
             fail = true;
         delete[] str;
@@ -292,9 +292,9 @@ bool FOClient::Init()
 
         if( fail )
         {
-            GameOpt.Name = "login";
+            *GameOpt.Name = "login";
             Password = "password";
-            Crypt.SetCache( "__name", (uchar*) GameOpt.Name.c_str(), (uint) GameOpt.Name.length() + 1 );
+            Crypt.SetCache( "__name", (uchar*) GameOpt.Name->c_str(), (uint) GameOpt.Name->length() + 1 );
             Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
         }
     }
@@ -568,7 +568,7 @@ void FOClient::UpdateFiles( bool early_call )
     {
         // Connect to server
         UpdateFilesAddText( STR_CONNECT_TO_SERVER, "CONNECT_TO_SERVER" );
-        const char* host = ( GameOpt.UpdateServerHost.length() > 0 ? GameOpt.UpdateServerHost.c_str() : GameOpt.Host.c_str() );
+        const char* host = ( GameOpt.UpdateServerHost->length() > 0 ? GameOpt.UpdateServerHost->c_str() : GameOpt.Host->c_str() );
         ushort      port = ( GameOpt.UpdateServerPort != 0 ? GameOpt.UpdateServerPort : GameOpt.Port );
         if( !NetConnect( host, port ) )
         {
@@ -1058,7 +1058,7 @@ int FOClient::MainLoop()
         ShowMainScreen( SCREEN_WAIT );
 
         // Connect to server
-        if( !NetConnect( GameOpt.Host.c_str(), GameOpt.Port ) )
+        if( !NetConnect( GameOpt.Host->c_str(), GameOpt.Port ) )
         {
             ShowMainScreen( SCREEN_LOGIN );
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_CONN_FAIL ) );
@@ -1067,7 +1067,7 @@ int FOClient::MainLoop()
 
         // After connect things
         if( reason == INIT_NET_REASON_LOGIN )
-            Net_SendLogIn( GameOpt.Name.c_str(), Password.c_str() );
+            Net_SendLogIn( GameOpt.Name->c_str(), Password.c_str() );
         else if( reason == INIT_NET_REASON_REG )
             Net_SendCreatePlayer();
         else if( reason == INIT_NET_REASON_LOAD )
@@ -1460,7 +1460,7 @@ void FOClient::ParseKeyboard()
         {
             ScriptString* event_text_script = NULL;
             if( dikdw == DIK_TEXT )
-                event_text_script = new ScriptString( event_text );
+                event_text_script = ScriptString::Create( event_text );
             Script::SetArgUChar( dikdw );
             Script::SetArgObject( event_text_script );
             Script::RunPrepared();
@@ -1920,7 +1920,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
     {
         if( !FillSockAddr( SockAddr, host, port ) )
             return false;
-        if( GameOpt.ProxyType && !FillSockAddr( ProxyAddr, GameOpt.ProxyHost.c_str(), GameOpt.ProxyPort ) )
+        if( GameOpt.ProxyType && !FillSockAddr( ProxyAddr, GameOpt.ProxyHost->c_str(), GameOpt.ProxyPort ) )
             return false;
     }
     else
@@ -2059,10 +2059,10 @@ bool FOClient::NetConnect( const char* host, ushort port )
             if( b2 == 2 )                                                                      // User/Password
             {
                 Bout << uchar( 1 );                                                            // Subnegotiation version
-                Bout << uchar( GameOpt.ProxyUser.length() );                                   // Name length
-                Bout.Push( GameOpt.ProxyUser.c_str(), (uint) GameOpt.ProxyUser.length() );     // Name
-                Bout << uchar( GameOpt.ProxyPass.length() );                                   // Pass length
-                Bout.Push( GameOpt.ProxyPass.c_str(), (uint) GameOpt.ProxyPass.length() );     // Pass
+                Bout << uchar( GameOpt.ProxyUser->length() );                                  // Name length
+                Bout.Push( GameOpt.ProxyUser->c_str(), (uint) GameOpt.ProxyUser->length() );   // Name
+                Bout << uchar( GameOpt.ProxyPass->length() );                                  // Pass length
+                Bout.Push( GameOpt.ProxyPass->c_str(), (uint) GameOpt.ProxyPass->length() );   // Pass
                 SEND_RECV;
                 Bin >> b1;                                                                     // Subnegotiation version
                 Bin >> b2;                                                                     // Status
@@ -2419,8 +2419,8 @@ void FOClient::NetProcess()
             {
                 WriteLog( "Registration success.\n" );
                 SAFEREL( GameOpt.RegParams );
-                GameOpt.RegName = "";
-                GameOpt.RegPassword = "";
+                *GameOpt.RegName = "";
+                *GameOpt.RegPassword = "";
             }
             else
             {
@@ -2754,10 +2754,10 @@ void FOClient::Net_SendCreatePlayer()
 
     char buf[ UTF8_BUF_SIZE( MAX_NAME ) ];
     memzero( buf, sizeof( buf ) );
-    Str::Copy( buf, GameOpt.RegName.c_str() );
+    Str::Copy( buf, GameOpt.RegName->c_str() );
     Bout.Push( buf, UTF8_BUF_SIZE( MAX_NAME ) );
     char pass_hash[ PASS_HASH_SIZE ];
-    Crypt.ClientPassHash( GameOpt.RegName.c_str(), GameOpt.RegPassword.c_str(), pass_hash );
+    Crypt.ClientPassHash( GameOpt.RegName->c_str(), GameOpt.RegPassword->c_str(), pass_hash );
     Bout.Push( pass_hash, PASS_HASH_SIZE );
 
     Bout << count;
@@ -2815,7 +2815,7 @@ void FOClient::Net_SendText( const char* send_str, uchar how_say )
     if( Script::PrepareContext( ClientFunctions.OutMessage, _FUNC_, "Game" ) )
     {
         int           say_type = how_say;
-        ScriptString* sstr = new ScriptString( str );
+        ScriptString* sstr = ScriptString::Create( str );
         Script::SetArgObject( sstr );
         Script::SetArgAddress( &say_type );
         if( Script::RunPrepared() )
@@ -2854,7 +2854,7 @@ void FOClient::Net_SendCommand( char* str )
             Self->AddMess( FOMB_GAME, str );
         }
     };
-    PackCommand( str, Bout, LogCB::Message, Chosen->Name.c_str() );
+    PackCommand( str, Bout, LogCB::Message, Chosen->Name->c_str() );
 }
 
 void FOClient::Net_SendDir()
@@ -3263,7 +3263,7 @@ void FOClient::Net_OnLoginSuccess()
 
     // Load console history
     ConsoleHistory.clear();
-    string history_str = Crypt.GetCache( ( GameOpt.Name.c_std_str() + "_console" ).c_str() );
+    string history_str = Crypt.GetCache( ( GameOpt.Name->c_std_str() + "_console" ).c_str() );
     size_t pos = 0, prev = 0;
     while( ( pos = history_str.find( "\n", prev ) ) != std::string::npos )
     {
@@ -3374,13 +3374,13 @@ void FOClient::Net_OnAddCritter( bool is_npc )
         {
             cr->Pid = npc_pid;
             cr->Params[ ST_DIALOG_ID ] = npc_dialog_id;
-            cr->Name = MsgDlg->GetStr( STR_NPC_NAME_( cr->Params[ ST_DIALOG_ID ], cr->Pid ) );
+            *cr->Name = MsgDlg->GetStr( STR_NPC_NAME_( cr->Params[ ST_DIALOG_ID ], cr->Pid ) );
             if( MsgDlg->Count( STR_NPC_AVATAR_( cr->Params[ ST_DIALOG_ID ] ) ) )
-                cr->Avatar = MsgDlg->GetStr( STR_NPC_AVATAR_( cr->Params[ ST_DIALOG_ID ] ) );
+                *cr->Avatar = MsgDlg->GetStr( STR_NPC_AVATAR_( cr->Params[ ST_DIALOG_ID ] ) );
         }
         else
         {
-            cr->Name = cl_name;
+            *cr->Name = cl_name;
         }
 
         cr->SetBaseType( base_type );
@@ -3393,7 +3393,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
 
         const char* look = FmtCritLook( cr, CRITTER_ONLY_NAME );
         if( look )
-            cr->Name = look;
+            *cr->Name = look;
         if( Script::PrepareContext( ClientFunctions.CritterIn, _FUNC_, "Game" ) )
         {
             Script::SetArgObject( cr );
@@ -3525,7 +3525,7 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
     uint text_delay = GameOpt.TextDelay + len * 100;
     if( Script::PrepareContext( ClientFunctions.InMessage, _FUNC_, "Game" ) )
     {
-        ScriptString* sstr = new ScriptString( fstr );
+        ScriptString* sstr = ScriptString::Create( fstr );
         Script::SetArgObject( sstr );
         Script::SetArgAddress( &how_say );
         Script::SetArgAddress( &crid );
@@ -3716,7 +3716,7 @@ void FOClient::OnMapText( const char* str, ushort hx, ushort hy, uint color, ush
 {
     uint          len = Str::Length( str );
     uint          text_delay = GameOpt.TextDelay + len * 100;
-    ScriptString* sstr = new ScriptString( str );
+    ScriptString* sstr = ScriptString::Create( str );
     if( Script::PrepareContext( ClientFunctions.MapMessage, _FUNC_, "Game" ) )
     {
         Script::SetArgObject( sstr );
@@ -4985,8 +4985,8 @@ void FOClient::Net_OnChosenTalk()
 
     // Avatar
     DlgAvatarPic = NULL;
-    if( npc && npc->Avatar.length() )
-        DlgAvatarPic = ResMngr.GetAnim( Str::GetHash( npc->Avatar.c_str() ), RES_ATLAS_DYNAMIC );
+    if( npc && npc->Avatar->length() )
+        DlgAvatarPic = ResMngr.GetAnim( Str::GetHash( npc->Avatar->c_str() ), RES_ATLAS_DYNAMIC );
 
     // Main text
     Bin >> text_id;
@@ -6063,7 +6063,7 @@ void FOClient::Net_OnRunClientScript()
     char          str[ MAX_FOTEXT ];
     uint          msg_len;
     ushort        func_name_len;
-    ScriptString* func_name = new ScriptString();
+    ScriptString* func_name = ScriptString::Create();
     int           p0, p1, p2;
     ushort        p3len;
     ScriptString* p3 = NULL;
@@ -6085,7 +6085,7 @@ void FOClient::Net_OnRunClientScript()
     {
         Bin.Pop( str, p3len );
         str[ p3len ] = 0;
-        p3 = new ScriptString( str );
+        p3 = ScriptString::Create( str );
     }
     Bin >> p4size;
     if( p4size )
@@ -6158,10 +6158,10 @@ void FOClient::Net_OnCritterLexems()
     CritterCl* cr = GetCritter( critter_id );
     if( cr )
     {
-        cr->Lexems = lexems;
+        *cr->Lexems = lexems;
         const char* look = FmtCritLook( cr, CRITTER_ONLY_NAME );
         if( look )
-            cr->Name = look;
+            *cr->Name = look;
     }
 }
 
@@ -6191,11 +6191,11 @@ void FOClient::Net_OnItemLexems()
     // Find on map
     Item* item = GetItem( item_id );
     if( item )
-        item->Lexems = lexems;
+        *item->Lexems = lexems;
     // Find in inventory
     item = ( Chosen ? Chosen->GetItem( item_id ) : NULL );
     if( item )
-        item->Lexems = lexems;
+        *item->Lexems = lexems;
     // Find in containers
     UpdateContLexems( InvContInit, item_id, lexems );
     UpdateContLexems( BarterCont1oInit, item_id, lexems );
@@ -6213,7 +6213,7 @@ void FOClient::Net_OnItemLexems()
 
     // Some item
     if( SomeItem.GetId() == item_id )
-        SomeItem.Lexems = lexems;
+        *SomeItem.Lexems = lexems;
 }
 
 void FOClient::Net_OnCheckUID3()
@@ -6612,7 +6612,7 @@ void FOClient::RegGenParams()
 bool FOClient::RegCheckData()
 {
     // Name
-    uint name_len_utf8 = Str::LengthUTF8( GameOpt.RegName.c_str() );
+    uint name_len_utf8 = Str::LengthUTF8( GameOpt.RegName->c_str() );
     if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
         name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
     {
@@ -6620,7 +6620,7 @@ bool FOClient::RegCheckData()
         return false;
     }
 
-    if( !Str::IsValidUTF8( GameOpt.RegName.c_str() ) || Str::Substring( GameOpt.RegName.c_str(), "*" ) )
+    if( !Str::IsValidUTF8( GameOpt.RegName->c_str() ) || Str::Substring( GameOpt.RegName->c_str(), "*" ) )
     {
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_NAME_WRONG_CHARS ) );
         return false;
@@ -6629,7 +6629,7 @@ bool FOClient::RegCheckData()
     // Password
     if( !Singleplayer )
     {
-        uint pass_len_utf8 = Str::LengthUTF8( GameOpt.RegPassword.c_str() );
+        uint pass_len_utf8 = Str::LengthUTF8( GameOpt.RegPassword->c_str() );
         if( pass_len_utf8 < MIN_NAME || pass_len_utf8 < GameOpt.MinNameLength ||
             pass_len_utf8 > MAX_NAME || pass_len_utf8 > GameOpt.MaxNameLength )
         {
@@ -6637,14 +6637,14 @@ bool FOClient::RegCheckData()
             return false;
         }
 
-        if( !Str::IsValidUTF8( GameOpt.RegPassword.c_str() ) || Str::Substring( GameOpt.RegPassword.c_str(), "*" ) )
+        if( !Str::IsValidUTF8( GameOpt.RegPassword->c_str() ) || Str::Substring( GameOpt.RegPassword->c_str(), "*" ) )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_PASS_WRONG_CHARS ) );
             return false;
         }
     }
 
-	RegGenParams();
+    RegGenParams();
 
     if( Script::PrepareContext( ClientFunctions.PlayerGenerationCheck, _FUNC_, "Registration" ) )
     {
@@ -8439,7 +8439,7 @@ bool FOClient::SaveLogFile()
     if( Script::PrepareContext( ClientFunctions.FilenameLogfile, _FUNC_, "Game" ) )
     {
         char*         str = log_path;
-        ScriptString* sstr = new ScriptString( str );
+        ScriptString* sstr = ScriptString::Create( str );
         Script::SetArgObject( sstr );
         if( Script::RunPrepared() )
             Str::Copy( log_path, sstr->c_str() );
@@ -8485,7 +8485,7 @@ bool FOClient::SaveScreenshot()
     if( Script::PrepareContext( ClientFunctions.FilenameScreenshot, _FUNC_, "Game" ) )
     {
         char*         str = screen_path;
-        ScriptString* sstr = new ScriptString( str );
+        ScriptString* sstr = ScriptString::Create( str );
         Script::SetArgObject( sstr );
         if( Script::RunPrepared() )
             Str::Copy( screen_path, sstr->c_str() );
@@ -9693,13 +9693,13 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         args.push_back( command.c_std_str() );
     }
     if( args.size() < 1 )
-        SCRIPT_ERROR_RX( "Empty custom call command.", new ScriptString( "" ) );
+        SCRIPT_ERROR_RX( "Empty custom call command.", ScriptString::Create() );
 
     // Execute
     string cmd = args[ 0 ];
     if( cmd == "Login" && args.size() >= 3 )
     {
-        GameOpt.Name = args[ 1 ];
+        *GameOpt.Name = args[ 1 ];
         Self->Password = args[ 2 ];
         Self->LogTryConnect();
     }
@@ -9713,7 +9713,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     }
     else if( cmd == "GetPassword" )
     {
-        return new ScriptString( Self->Password );
+        return ScriptString::Create( Self->Password );
     }
     else if( cmd == "DumpAtlases" )
     {
@@ -9722,12 +9722,12 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     else if( cmd == "SaveLogFile" )
     {
         if( Self->SaveLogFile() )
-            return new ScriptString( "OK" );
+            return ScriptString::Create( "OK" );
     }
     else if( cmd == "SaveScreenshot" )
     {
         if( Self->SaveScreenshot() )
-            return new ScriptString( "OK" );
+            return ScriptString::Create( "OK" );
     }
     else if( cmd == "SwitchIntVisible" )
     {
@@ -9795,21 +9795,21 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     else if( cmd == "Version" )
     {
         char buf[ 1024 ];
-        return new ScriptString( Str::Format( buf, "%d", FONLINE_VERSION ) );
+        return ScriptString::Create( Str::Format( buf, "%d", FONLINE_VERSION ) );
     }
     else if( cmd == "BytesSend" )
     {
-        return new ScriptString( Str::ItoA( Self->BytesSend ) );
+        return ScriptString::Create( Str::ItoA( Self->BytesSend ) );
     }
     else if( cmd == "BytesReceive" )
     {
-        return new ScriptString( Str::ItoA( Self->BytesReceive ) );
+        return ScriptString::Create( Str::ItoA( Self->BytesReceive ) );
     }
     else
     {
-        SCRIPT_ERROR_RX( "Invalid custom call command.", new ScriptString( "" ) );
+        SCRIPT_ERROR_RX( "Invalid custom call command.", ScriptString::Create() );
     }
-    return new ScriptString( "" );
+    return ScriptString::Create();
 }
 
 CritterCl* FOClient::SScriptFunc::Global_GetChosen()
@@ -10124,15 +10124,15 @@ void FOClient::SScriptFunc::Global_MapMessage( ScriptString& text, ushort hx, us
 ScriptString* FOClient::SScriptFunc::Global_GetMsgStr( int text_msg, uint str_num )
 {
     if( text_msg >= TEXTMSG_COUNT )
-        SCRIPT_ERROR_RX( "Invalid text msg arg.", new ScriptString( "" ) );
-    return new ScriptString( text_msg == TEXTMSG_HOLO ? Self->GetHoloText( str_num ) : Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
+        SCRIPT_ERROR_RX( "Invalid text msg arg.", ScriptString::Create() );
+    return ScriptString::Create( text_msg == TEXTMSG_HOLO ? Self->GetHoloText( str_num ) : Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
 }
 
 ScriptString* FOClient::SScriptFunc::Global_GetMsgStrSkip( int text_msg, uint str_num, uint skip_count )
 {
     if( text_msg >= TEXTMSG_COUNT )
-        SCRIPT_ERROR_RX( "Invalid text msg arg.", new ScriptString( "" ) );
-    return new ScriptString( text_msg == TEXTMSG_HOLO ? Self->GetHoloText( str_num ) : Self->CurLang.Msg[ text_msg ].GetStr( str_num, skip_count ) );
+        SCRIPT_ERROR_RX( "Invalid text msg arg.", ScriptString::Create() );
+    return ScriptString::Create( text_msg == TEXTMSG_HOLO ? Self->GetHoloText( str_num ) : Self->CurLang.Msg[ text_msg ].GetStr( str_num, skip_count ) );
 }
 
 uint FOClient::SScriptFunc::Global_GetMsgStrNumUpper( int text_msg, uint str_num )
@@ -10167,20 +10167,20 @@ ScriptString* FOClient::SScriptFunc::Global_ReplaceTextStr( ScriptString& text, 
 {
     size_t pos = text.c_std_str().find( replace.c_std_str(), 0 );
     if( pos == std::string::npos )
-        return new ScriptString( text );
+        return ScriptString::Create( text );
     string result = text.c_std_str();
-    return new ScriptString( result.replace( pos, replace.length(), str.c_std_str() ) );
+    return ScriptString::Create( result.replace( pos, replace.length(), str.c_std_str() ) );
 }
 
 ScriptString* FOClient::SScriptFunc::Global_ReplaceTextInt( ScriptString& text, ScriptString& replace, int i )
 {
     size_t pos = text.c_std_str().find( replace.c_std_str(), 0 );
     if( pos == std::string::npos )
-        return new ScriptString( text );
+        return ScriptString::Create( text );
     char   val[ 32 ];
     Str::Format( val, "%d", i );
     string result = text.c_std_str();
-    return new ScriptString( result.replace( pos, replace.length(), val ) );
+    return ScriptString::Create( result.replace( pos, replace.length(), val ) );
 }
 
 ScriptString* FOClient::SScriptFunc::Global_FormatTags( ScriptString& text, ScriptString* lexems )
@@ -10206,7 +10206,7 @@ ScriptString* FOClient::SScriptFunc::Global_FormatTags( ScriptString& text, Scri
 
     Str::Copy( buf, buf_len, text.c_str() );
     Self->FormatTags( buf, buf_len, Self->Chosen, NULL, lexems ? lexems->c_str() : NULL );
-    return new ScriptString( buf );
+    return ScriptString::Create( buf );
 }
 
 int FOClient::SScriptFunc::Global_GetSomeValue( int var )
@@ -10512,7 +10512,7 @@ void FOClient::SScriptFunc::Global_GetDayColor( uint day_part, uchar& r, uchar& 
 
 ScriptString* FOClient::SScriptFunc::Global_GetLastError()
 {
-    return new ScriptString( ScriptLastError );
+    return ScriptString::Create( ScriptLastError );
 }
 
 void FOClient::SScriptFunc::Global_Log( ScriptString& text )
@@ -10624,8 +10624,8 @@ ScriptString* FOClient::SScriptFunc::Global_GetIfaceIniStr( ScriptString& key )
 {
     char* big_buf = Str::GetBigBuf();
     if( Self->IfaceIni.GetStr( key.c_str(), "", big_buf ) )
-        return new ScriptString( big_buf );
-    return new ScriptString( "" );
+        return ScriptString::Create( big_buf );
+    return ScriptString::Create();
 }
 
 void FOClient::SScriptFunc::Global_Preload3dFiles( ScriptArray& fnames, int path_type )
@@ -10896,7 +10896,7 @@ ScriptString* FOClient::SScriptFunc::Global_EncodeUTF8( uint ucs )
     char buf[ 5 ];
     uint len = Str::EncodeUTF8( ucs, buf );
     buf[ len ] = 0;
-    return new ScriptString( buf );
+    return ScriptString::Create( buf );
 }
 
 void FOClient::SScriptFunc::Global_CloneObject( void* in, int in_type_id, void* out, int out_type_id, bool copy )
@@ -10983,7 +10983,7 @@ ScriptString* FOClient::SScriptFunc::Global_GetConstantName( int const_collectio
 {
     if( !ConstantsManager::IsCollectionInit( const_collection ) )
         SCRIPT_ERROR_R0( "Invalid namesFile arg." );
-    return new ScriptString( ConstantsManager::GetName( const_collection, value ) );
+    return ScriptString::Create( ConstantsManager::GetName( const_collection, value ) );
 }
 
 void FOClient::SScriptFunc::Global_AddConstant( int const_collection, ScriptString* name, int value )
@@ -11063,15 +11063,15 @@ uint FOClient::SScriptFunc::Global_GetCritterAlias( uint cr_type )
 ScriptString* FOClient::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", new ScriptString( "" ) );
-    return new ScriptString( CritType::GetCritType( cr_type ).Name );
+        SCRIPT_ERROR_RX( "Invalid critter type arg.", ScriptString::Create() );
+    return ScriptString::Create( CritType::GetCritType( cr_type ).Name );
 }
 
 ScriptString* FOClient::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", new ScriptString( "" ) );
-    return new ScriptString( CritType::GetSoundName( cr_type ) );
+        SCRIPT_ERROR_RX( "Invalid critter type arg.", ScriptString::Create() );
+    return ScriptString::Create( CritType::GetSoundName( cr_type ) );
 }
 
 void FOClient::SScriptFunc::Global_RunServerScript( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 )
@@ -12172,7 +12172,7 @@ void FOClient::SScriptFunc::Global_SetCacheDataStr( const ScriptString& name, co
 
 ScriptString* FOClient::SScriptFunc::Global_GetCacheDataStr( const ScriptString& name )
 {
-    return new ScriptString( Crypt.GetCache( name.c_str() ) );
+    return ScriptString::Create( Crypt.GetCache( name.c_str() ) );
 }
 
 bool FOClient::SScriptFunc::Global_IsCacheData( const ScriptString& name )

@@ -26,7 +26,7 @@ void Keyb::Init()
     // User keys mapping
     for( uint i = 0; i < 0x100; i++ )
         KeysMapUser[ i ] = i;
-    istrstream str( GameOpt.KeyboardRemap.c_str() );
+    istrstream str( GameOpt.KeyboardRemap->c_str() );
     while( !str.eof() )
     {
         int from, to;

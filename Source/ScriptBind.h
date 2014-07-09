@@ -356,10 +356,10 @@ BIND_ASSERT( engine->RegisterObjectBehaviour( "CraftItem", asBEHAVE_RELEASE, "vo
 
 // Properties
 BIND_ASSERT( engine->RegisterObjectProperty( "CraftItem", "const uint Num", OFFSETOF( CraftItem, Num ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "CraftItem", "const string Name", OFFSETOF( CraftItem, Name ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "CraftItem", "const string Info", OFFSETOF( CraftItem, Info ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "CraftItem", "const string@ Name", OFFSETOF( CraftItem, Name ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "CraftItem", "const string@ Info", OFFSETOF( CraftItem, Info ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "CraftItem", "const uint Experience", OFFSETOF( CraftItem, Experience ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "CraftItem", "const string Script", OFFSETOF( CraftItem, Script ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "CraftItem", "const string@ Script", OFFSETOF( CraftItem, Script ) ) );
 
 // Methods
 BIND_ASSERT( engine->RegisterObjectMethod( "CraftItem", "uint GetShowParams(array<uint>@+ nums, array<int>@+ values, array<bool>@+ ors)", asFUNCTION( BIND_CLASS CraftItem_GetShowParams ), asCALL_CDECL_OBJFIRST ) );
@@ -582,7 +582,7 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const uint Anim2Life", 
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const uint Anim2Knockout", OFFSETOF( Critter, Data ) + OFFSETOF( CritData, Anim2Knockout ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const uint Anim2Dead", OFFSETOF( Critter, Data ) + OFFSETOF( CritData, Anim2Dead ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const uint Flags", OFFSETOF( Critter, Flags ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const string Name", OFFSETOF( Critter, NameStr ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const string@ Name", OFFSETOF( Critter, NameStr ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "uint ShowCritterDist1", OFFSETOF( Critter, Data ) + OFFSETOF( CritData, ShowCritterDist1 ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "uint ShowCritterDist2", OFFSETOF( Critter, Data ) + OFFSETOF( CritData, ShowCritterDist2 ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "uint ShowCritterDist3", OFFSETOF( Critter, Data ) + OFFSETOF( CritData, ShowCritterDist3 ) ) );
@@ -875,9 +875,10 @@ BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "const uint Anim2Life"
 BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "const uint Anim2Knockout", OFFSETOF( CritterCl, Anim2Knockout ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "const uint Anim2Dead", OFFSETOF( CritterCl, Anim2Dead ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "const uint Flags", OFFSETOF( CritterCl, Flags ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "string Name", OFFSETOF( CritterCl, Name ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "string NameOnHead", OFFSETOF( CritterCl, NameOnHead ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "string Lexems", OFFSETOF( CritterCl, Lexems ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "string@ Name", OFFSETOF( CritterCl, Name ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "string@ NameOnHead", OFFSETOF( CritterCl, NameOnHead ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "string@ Lexems", OFFSETOF( CritterCl, Lexems ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "string@ Avatar", OFFSETOF( CritterCl, Avatar ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "uint NameColor", OFFSETOF( CritterCl, NameColor ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "const int16 Ref", OFFSETOF( CritterCl, RefCounter ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "CritterCl", "DataVal Param", OFFSETOF( CritterCl, ThisPtr[ 0 ] ) ) );
@@ -894,7 +895,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "ItemCl", "bool GetMapPosition(uint16
 BIND_ASSERT( engine->RegisterObjectMethod( "ItemCl", "void Animate(uint8 fromFrame, uint8 toFrame)", asFUNCTION( BIND_CLASS Item_Animate ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint Id", OFFSETOF( Item, Id ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const ProtoItem@ Proto", OFFSETOF( Item, Proto ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const string Lexems", OFFSETOF( Item, Lexems ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const string@ Lexems", OFFSETOF( Item, Lexems ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 Accessory", OFFSETOF( Item, Accessory ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint MapId", OFFSETOF( Item, AccHex.MapId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint16 HexX", OFFSETOF( Item, AccHex.HexX ) ) );
@@ -1430,8 +1431,8 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void MouseClick(int x, int y, int 
 BIND_ASSERT( engine->RegisterGlobalFunction( "void KeyboardPress(uint8 key1, uint8 key2, string@+ key1Text = null, string@+ key2Text = null)", asFUNCTION( BIND_CLASS Global_KeyboardPress ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetRainAnimation(string@+ fallAnimName, string@+ dropAnimName)", asFUNCTION( BIND_CLASS Global_SetRainAnimation ), asCALL_CDECL ) );
 
-BIND_ASSERT( engine->RegisterGlobalProperty( "string __ClientPath", &GameOpt.ClientPath ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "string __ServerPath", &GameOpt.ServerPath ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __ClientPath", &GameOpt.ClientPath ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __ServerPath", &GameOpt.ServerPath ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowCorners", &GameOpt.ShowCorners ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowSpriteCuts", &GameOpt.ShowSpriteCuts ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowDrawOrder", &GameOpt.ShowDrawOrder ) );
@@ -1454,7 +1455,7 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "bool __DisableLMenu", &GameOpt.Dis
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __DisableMouseEvents", &GameOpt.DisableMouseEvents ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __DisableKeyboardEvents", &GameOpt.DisableKeyboardEvents ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __HidePassword", &GameOpt.HidePassword ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "string __PlayerOffAppendix", &GameOpt.PlayerOffAppendix ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __PlayerOffAppendix", &GameOpt.PlayerOffAppendix ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __DamageHitDelay", &GameOpt.DamageHitDelay ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __CombatMessagesType", &GameOpt.CombatMessagesType ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowTile", &GameOpt.ShowTile ) );
@@ -1486,16 +1487,16 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ScrollDelay", &GameOpt.Scro
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __ScrollStep", &GameOpt.ScrollStep ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MouseScroll", &GameOpt.MouseScroll ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ScrollCheck", &GameOpt.ScrollCheck ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "string __Host", &GameOpt.Host ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __Host", &GameOpt.Host ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Port", &GameOpt.Port ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "string __UpdateServerHost", &GameOpt.UpdateServerHost ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __UpdateServerHost", &GameOpt.UpdateServerHost ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __UpdateServerPort", &GameOpt.UpdateServerPort ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ProxyType", &GameOpt.ProxyType ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "string __ProxyHost", &GameOpt.ProxyHost ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __ProxyHost", &GameOpt.ProxyHost ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ProxyPort", &GameOpt.ProxyPort ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "string __ProxyUser", &GameOpt.ProxyUser ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "string __ProxyPass", &GameOpt.ProxyPass ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "string __Name", &GameOpt.Name ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __ProxyUser", &GameOpt.ProxyUser ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __ProxyPass", &GameOpt.ProxyPass ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __Name", &GameOpt.Name ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __TextDelay", &GameOpt.TextDelay ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __AlwaysOnTop", &GameOpt.AlwaysOnTop ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __FixedFPS", &GameOpt.FixedFPS ) );
@@ -1538,8 +1539,8 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ConsoleHistorySize", &GameO
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __SoundVolume", &GameOpt.SoundVolume ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __MusicVolume", &GameOpt.MusicVolume ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int[]@ __RegParams", &GameOpt.RegParams ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "string __RegName", &GameOpt.RegName ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "string __RegPassword", &GameOpt.RegPassword ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __RegName", &GameOpt.RegName ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __RegPassword", &GameOpt.RegPassword ) );
 #endif
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MapHexagonal", &GameOpt.MapHexagonal ) );
@@ -1553,7 +1554,7 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "int __MapRoofOffsY", &GameOpt.MapR
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __MapRoofSkipSize", &GameOpt.MapRoofSkipSize ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "float __MapCameraAngle", &GameOpt.MapCameraAngle ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MapSmoothPath", &GameOpt.MapSmoothPath ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "string __MapDataPrefix", &GameOpt.MapDataPrefix ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __MapDataPrefix", &GameOpt.MapDataPrefix ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Log(string& text)", asFUNCTION( BIND_CLASS Global_Log ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetLastError()", asFUNCTION( BIND_CLASS Global_GetLastError ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int Random(int minimum, int maximum)", asFUNCTION( Random ), asCALL_CDECL ) );

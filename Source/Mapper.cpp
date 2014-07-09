@@ -115,8 +115,8 @@ bool FOMapper::Init()
     GameOpt.ScrollCheck = false;
 
     // File manager
-    Str::Copy( ServerWritePath, GameOpt.ServerPath.c_str() );
-    Str::Copy( ClientWritePath, ( GameOpt.ClientPath.c_std_str() + "data" + DIR_SLASH_S ).c_str() );
+    Str::Copy( ServerWritePath, GameOpt.ServerPath->c_str() );
+    Str::Copy( ClientWritePath, ( GameOpt.ClientPath->c_std_str() + "data" + DIR_SLASH_S ).c_str() );
     FileManager::InitDataFiles( DIR_SLASH_SD "data" DIR_SLASH_S );
     FileManager::InitDataFiles( ServerWritePath );
     FileManager::InitDataFiles( ClientWritePath );
@@ -180,7 +180,7 @@ bool FOMapper::Init()
     cfg_mapper.GetStr( "ServerName", "FOnlineServer", server_cfg_name );
 
     IniParser cfg_server;
-    cfg_server.LoadFile( ( GameOpt.ServerPath.c_std_str() + server_cfg_name + ".cfg" ).c_str(), PT_ROOT );
+    cfg_server.LoadFile( ( GameOpt.ServerPath->c_std_str() + server_cfg_name + ".cfg" ).c_str(), PT_ROOT );
     char      lang_name[ MAX_FOTEXT ];
     cfg_server.GetStr( "Language_0", DEFAULT_LANGUAGE, lang_name );
     if( strlen( lang_name ) != 4 )
@@ -792,7 +792,7 @@ void FOMapper::ParseKeyboard()
         bool script_result = false;
         if( dikdw && MapperFunctions.KeyDown && Script::PrepareContext( MapperFunctions.KeyDown, _FUNC_, "Mapper" ) )
         {
-            ScriptString* event_text_script = new ScriptString( event_text );
+            ScriptString* event_text_script = ScriptString::Create( event_text );
             Script::SetArgUChar( dikdw );
             Script::SetArgObject( event_text_script );
             if( Script::RunPrepared() )
@@ -801,7 +801,7 @@ void FOMapper::ParseKeyboard()
         }
         if( dikup && MapperFunctions.KeyUp && Script::PrepareContext( MapperFunctions.KeyUp, _FUNC_, "Mapper" ) )
         {
-            ScriptString* event_text_script = new ScriptString( event_text );
+            ScriptString* event_text_script = ScriptString::Create( event_text );
             Script::SetArgUChar( dikup );
             Script::SetArgObject( event_text_script );
             if( Script::RunPrepared() )
@@ -4706,7 +4706,7 @@ void FOMapper::ConsoleKeyDown( uchar dik, const char* dik_text )
                 bool process_command = true;
                 if( MapperFunctions.ConsoleMessage && Script::PrepareContext( MapperFunctions.ConsoleMessage, _FUNC_, "Mapper" ) )
                 {
-                    ScriptString* sstr = new ScriptString( ConsoleStr );
+                    ScriptString* sstr = ScriptString::Create( ConsoleStr );
                     Script::SetArgObject( sstr );
                     if( Script::RunPrepared() && Script::GetReturnedBool() )
                         process_command = false;
@@ -4877,7 +4877,7 @@ void FOMapper::ParseCommand( const char* cmd )
 
         if( bind_id > 0 && Script::PrepareContext( bind_id, _FUNC_, "Mapper" ) )
         {
-            ScriptString* sstr = new ScriptString( str );
+            ScriptString* sstr = ScriptString::Create( str );
             Script::SetArgObject( sstr );
             if( Script::RunPrepared() )
             {
@@ -5366,7 +5366,7 @@ static string ScriptLastError;
 
 ScriptString* FOMapper::SScriptFunc::MapperObject_get_ScriptName( MapObject& mobj )
 {
-    return new ScriptString( mobj.ScriptName );
+    return ScriptString::Create( mobj.ScriptName );
 }
 
 void FOMapper::SScriptFunc::MapperObject_set_ScriptName( MapObject& mobj, ScriptString* str )
@@ -5376,7 +5376,7 @@ void FOMapper::SScriptFunc::MapperObject_set_ScriptName( MapObject& mobj, Script
 
 ScriptString* FOMapper::SScriptFunc::MapperObject_get_FuncName( MapObject& mobj )
 {
-    return new ScriptString( mobj.FuncName );
+    return ScriptString::Create( mobj.FuncName );
 }
 
 void FOMapper::SScriptFunc::MapperObject_set_FuncName( MapObject& mobj, ScriptString* str )
@@ -5414,16 +5414,16 @@ void FOMapper::SScriptFunc::MapperObject_set_Critter_Cond( MapObject& mobj, ucha
 ScriptString* FOMapper::SScriptFunc::MapperObject_get_PicMap( MapObject& mobj )
 {
     if( mobj.MapObjType != MAP_OBJECT_ITEM && mobj.MapObjType != MAP_OBJECT_SCENERY )
-        SCRIPT_ERROR_RX( "Map object is not item or scenery.", new ScriptString( "" ) );
+        SCRIPT_ERROR_RX( "Map object is not item or scenery.", ScriptString::Create() );
     if( mobj.RunTime.PicMapName[ 0 ] )
-        return new ScriptString( mobj.RunTime.PicMapName );
+        return ScriptString::Create( mobj.RunTime.PicMapName );
     ProtoItem* proto_item = ItemMngr.GetProtoItem( mobj.ProtoId );
     if( !proto_item )
-        SCRIPT_ERROR_RX( "Proto item not found.", new ScriptString( "" ) );
+        SCRIPT_ERROR_RX( "Proto item not found.", ScriptString::Create() );
     const char* name = Str::GetName( proto_item->PicMap );
     if( !name )
-        SCRIPT_ERROR_RX( "Name not found.", new ScriptString( "" ) );
-    return new ScriptString( name );
+        SCRIPT_ERROR_RX( "Name not found.", ScriptString::Create() );
+    return ScriptString::Create( name );
 }
 
 void FOMapper::SScriptFunc::MapperObject_set_PicMap( MapObject& mobj, ScriptString* str )
@@ -5437,17 +5437,17 @@ void FOMapper::SScriptFunc::MapperObject_set_PicMap( MapObject& mobj, ScriptStri
 ScriptString* FOMapper::SScriptFunc::MapperObject_get_PicInv( MapObject& mobj )
 {
     if( mobj.MapObjType != MAP_OBJECT_ITEM && mobj.MapObjType != MAP_OBJECT_SCENERY )
-        SCRIPT_ERROR_RX( "Map object is not item or scenery.", new ScriptString( "" ) );
-    return new ScriptString( mobj.RunTime.PicInvName );
+        SCRIPT_ERROR_RX( "Map object is not item or scenery.", ScriptString::Create() );
+    return ScriptString::Create( mobj.RunTime.PicInvName );
     if( mobj.RunTime.PicMapName[ 0 ] )
-        return new ScriptString( mobj.RunTime.PicInvName );
+        return ScriptString::Create( mobj.RunTime.PicInvName );
     ProtoItem* proto_item = ItemMngr.GetProtoItem( mobj.ProtoId );
     if( !proto_item )
-        SCRIPT_ERROR_RX( "Proto item not found.", new ScriptString( "" ) );
+        SCRIPT_ERROR_RX( "Proto item not found.", ScriptString::Create() );
     const char* name = Str::GetName( proto_item->PicInv );
     if( !name )
-        SCRIPT_ERROR_RX( "Name not found.", new ScriptString( "" ) );
-    return new ScriptString( name );
+        SCRIPT_ERROR_RX( "Name not found.", ScriptString::Create() );
+    return ScriptString::Create( name );
 }
 
 void FOMapper::SScriptFunc::MapperObject_set_PicInv( MapObject& mobj, ScriptString* str )
@@ -5785,15 +5785,15 @@ void FOMapper::SScriptFunc::MapperMap_AddTileHash( ProtoMap& pmap, ushort hx, us
 ScriptString* FOMapper::SScriptFunc::MapperMap_GetTileName( ProtoMap& pmap, ushort hx, ushort hy, bool roof, uint index )
 {
     if( hx >= pmap.Header.MaxHexX )
-        SCRIPT_ERROR_RX( "Invalid hex x arg.", new ScriptString( "" ) );
+        SCRIPT_ERROR_RX( "Invalid hex x arg.", ScriptString::Create() );
     if( hy >= pmap.Header.MaxHexY )
-        SCRIPT_ERROR_RX( "Invalid hex y arg.", new ScriptString( "" ) );
+        SCRIPT_ERROR_RX( "Invalid hex y arg.", ScriptString::Create() );
 
     ProtoMap::TileVec& tiles = pmap.GetTiles( hx, hy, roof );
     if( index >= tiles.size() )
-        return new ScriptString( "" );
+        return ScriptString::Create();
     const char* name = Str::GetName( tiles[ index ].NameHash );
-    return new ScriptString( name ? name : "" );
+    return ScriptString::Create( name ? name : "" );
 }
 
 void FOMapper::SScriptFunc::MapperMap_AddTileName( ProtoMap& pmap, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, ScriptString* pic_name )
@@ -5881,7 +5881,7 @@ void FOMapper::SScriptFunc::MapperMap_SetDayColor( ProtoMap& pmap, uint day_part
 
 ScriptString* FOMapper::SScriptFunc::MapperMap_get_ScriptModule( ProtoMap& pmap )
 {
-    return new ScriptString( pmap.Header.ScriptModule );
+    return ScriptString::Create( pmap.Header.ScriptModule );
 }
 
 void FOMapper::SScriptFunc::MapperMap_set_ScriptModule( ProtoMap& pmap, ScriptString* str )
@@ -5891,7 +5891,7 @@ void FOMapper::SScriptFunc::MapperMap_set_ScriptModule( ProtoMap& pmap, ScriptSt
 
 ScriptString* FOMapper::SScriptFunc::MapperMap_get_ScriptFunc( ProtoMap& pmap )
 {
-    return new ScriptString( pmap.Header.ScriptFunc );
+    return ScriptString::Create( pmap.Header.ScriptFunc );
 }
 
 void FOMapper::SScriptFunc::MapperMap_set_ScriptFunc( ProtoMap& pmap, ScriptString* str )
@@ -5946,7 +5946,7 @@ ScriptString* FOMapper::SScriptFunc::Global_EncodeUTF8( uint ucs )
     char buf[ 5 ];
     uint len = Str::EncodeUTF8( ucs, buf );
     buf[ len ] = 0;
-    return new ScriptString( buf );
+    return ScriptString::Create( buf );
 }
 
 void FOMapper::SScriptFunc::Global_CloneObject( void* in, int in_type_id, void* out, int out_type_id )
@@ -6074,7 +6074,7 @@ uint FOMapper::SScriptFunc::Global_GetMapFileNames( ScriptString* dir, ScriptArr
                 int            len = names->GetSize();
                 names->Resize( names->GetSize() + 1 );
                 ScriptString** ptr = (ScriptString**) names->At( len );
-                *ptr = new ScriptString( fname );
+                *ptr = ScriptString::Create( fname );
             }
             n++;
         }
@@ -6159,7 +6159,7 @@ uint FOMapper::SScriptFunc::Global_TabGetTileDirs( int tab, ScriptArray* dir_nam
         for( uint k = 0, l = (uint) ttab.TileDirs.size(); k < l; k++, i++ )
         {
             ScriptString** p = (ScriptString**) dir_names->At( i );
-            *p = new ScriptString( ttab.TileDirs[ k ] );
+            *p = ScriptString::Create( ttab.TileDirs[ k ] );
         }
     }
     if( include_subdirs )
@@ -6369,7 +6369,7 @@ void FOMapper::SScriptFunc::Global_TabSetName( int tab, ScriptString* tab_name )
 
 ScriptString* FOMapper::SScriptFunc::Global_GetLastError()
 {
-    return new ScriptString( ScriptLastError );
+    return ScriptString::Create( ScriptLastError );
 }
 
 ProtoItem* FOMapper::SScriptFunc::Global_GetProtoItem( ushort proto_id )
@@ -6421,8 +6421,8 @@ ScriptString* FOMapper::SScriptFunc::Global_GetIfaceIniStr( ScriptString& key )
 {
     char* big_buf = Str::GetBigBuf();
     if( Self->IfaceIni.GetStr( key.c_str(), "", big_buf ) )
-        return new ScriptString( big_buf );
-    return new ScriptString( "" );
+        return ScriptString::Create( big_buf );
+    return ScriptString::Create();
 }
 
 void FOMapper::SScriptFunc::Global_Log( ScriptString& text )
@@ -6481,7 +6481,7 @@ ScriptString* FOMapper::SScriptFunc::Global_GetMsgStr( int text_msg, uint str_nu
 {
     if( text_msg >= TEXTMSG_COUNT )
         SCRIPT_ERROR_R0( "Invalid text msg arg." );
-    ScriptString* str = new ScriptString( Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
+    ScriptString* str = ScriptString::Create( Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
     return str;
 }
 
@@ -6489,7 +6489,7 @@ ScriptString* FOMapper::SScriptFunc::Global_GetMsgStrSkip( int text_msg, uint st
 {
     if( text_msg >= TEXTMSG_COUNT )
         SCRIPT_ERROR_R0( "Invalid text msg arg." );
-    ScriptString* str = new ScriptString( Self->CurLang.Msg[ text_msg ].GetStr( str_num, skip_count ) );
+    ScriptString* str = ScriptString::Create( Self->CurLang.Msg[ text_msg ].GetStr( str_num, skip_count ) );
     return str;
 }
 
@@ -6525,20 +6525,20 @@ ScriptString* FOMapper::SScriptFunc::Global_ReplaceTextStr( ScriptString& text, 
 {
     size_t pos = text.c_std_str().find( replace.c_std_str(), 0 );
     if( pos == std::string::npos )
-        return new ScriptString( text );
+        return ScriptString::Create( text );
     string str_ = text.c_std_str();
-    return new ScriptString( str_.replace( pos, replace.length(), str_ ) );
+    return ScriptString::Create( str_.replace( pos, replace.length(), str_ ) );
 }
 
 ScriptString* FOMapper::SScriptFunc::Global_ReplaceTextInt( ScriptString& text, ScriptString& replace, int i )
 {
     size_t pos = text.c_std_str().find( replace.c_std_str(), 0 );
     if( pos == std::string::npos )
-        return new ScriptString( text );
+        return ScriptString::Create( text );
     char   val[ 32 ];
     Str::Format( val, "%d", i );
     string str_ = text.c_std_str();
-    return new ScriptString( str_.replace( pos, replace.length(), val ) );
+    return ScriptString::Create( str_.replace( pos, replace.length(), val ) );
 }
 
 uint FOMapper::SScriptFunc::Global_GetDistantion( ushort hex_x1, ushort hex_y1, ushort hex_x2, ushort hex_y2 )
@@ -6667,7 +6667,7 @@ uint FOMapper::SScriptFunc::Global_GetStrHash( ScriptString* str )
 
 bool FOMapper::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
 {
-    if( FileManager::LoadDataFile( dat_name.c_std_str().find( ':' ) == string::npos ? ( GameOpt.ClientPath.c_std_str() + dat_name.c_std_str() ).c_str() : dat_name.c_str() ) )
+    if( FileManager::LoadDataFile( dat_name.c_std_str().find( ':' ) == string::npos ? ( GameOpt.ClientPath->c_std_str() + dat_name.c_std_str() ).c_str() : dat_name.c_str() ) )
     {
         // Reload resource manager
         if( Self->IsMapperStarted )
@@ -6694,7 +6694,7 @@ ScriptString* FOMapper::SScriptFunc::Global_GetConstantName( int const_collectio
 {
     if( !ConstantsManager::IsCollectionInit( const_collection ) )
         SCRIPT_ERROR_R0( "Invalid namesFile arg." );
-    return new ScriptString( ConstantsManager::GetName( const_collection, value ) );
+    return ScriptString::Create( ConstantsManager::GetName( const_collection, value ) );
 }
 
 void FOMapper::SScriptFunc::Global_AddConstant( int const_collection, ScriptString* name, int value )
@@ -7170,13 +7170,13 @@ uint FOMapper::SScriptFunc::Global_GetCritterAlias( uint cr_type )
 ScriptString* FOMapper::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", new ScriptString( "" ) );
-    return new ScriptString( CritType::GetCritType( cr_type ).Name );
+        SCRIPT_ERROR_RX( "Invalid critter type arg.", ScriptString::Create() );
+    return ScriptString::Create( CritType::GetCritType( cr_type ).Name );
 }
 
 ScriptString* FOMapper::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", new ScriptString( "" ) );
-    return new ScriptString( CritType::GetSoundName( cr_type ) );
+        SCRIPT_ERROR_RX( "Invalid critter type arg.", ScriptString::Create() );
+    return ScriptString::Create( CritType::GetSoundName( cr_type ) );
 }

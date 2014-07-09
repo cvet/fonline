@@ -426,7 +426,7 @@ public:
     SyncObject  Sync;
     #endif
     #ifdef FONLINE_CLIENT
-    ScriptString Lexems;
+    ScriptString* Lexems;
     #endif
 
     void AddRef()  { RefCounter++; }

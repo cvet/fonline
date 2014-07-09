@@ -290,6 +290,26 @@ void ScriptDictionary::Set( const ScriptString& key, const double& value )
     Set( key, const_cast< double* >( &value ), asTYPEID_DOUBLE );
 }
 
+void ScriptDictionary::Set( const string& key, void* value, int typeId )
+{
+    map< string, ScriptDictValue >::iterator it;
+    it = dict.find( key );
+    if( it == dict.end() )
+        it = dict.insert( map< string, ScriptDictValue >::value_type( key, ScriptDictValue() ) ).first;
+
+    it->second.Set( engine, value, typeId );
+}
+
+void ScriptDictionary::Set( const string& key, const asINT64& value )
+{
+    Set( key, const_cast< asINT64* >( &value ), asTYPEID_INT64 );
+}
+
+void ScriptDictionary::Set( const string& key, const double& value )
+{
+    Set( key, const_cast< double* >( &value ), asTYPEID_DOUBLE );
+}
+
 // Returns true if the value was successfully retrieved
 bool ScriptDictionary::Get( const ScriptString& key, void* value, int typeId ) const
 {

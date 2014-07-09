@@ -1505,7 +1505,7 @@ void FOClient::UpdateContLexems( ItemVec& cont, uint item_id, const char* lexems
 {
     auto it = std::find( cont.begin(), cont.end(), item_id );
     if( it != cont.end() )
-        ( *it ).Lexems = lexems;
+        *( *it ).Lexems = lexems;
 }
 
 // ==============================================================================================================================
@@ -2077,7 +2077,7 @@ void FOClient::ConsoleKeyDown( uchar dik, const char* dik_text )
         string history_str = "";
         for( size_t i = 0, j = ConsoleHistory.size(); i < j; i++ )
             history_str += ConsoleHistory[ i ] + "\n";
-        Crypt.SetCache( ( GameOpt.Name.c_std_str() + "_console" ).c_str(), history_str );
+        Crypt.SetCache( ( GameOpt.Name->c_std_str() + "_console" ).c_str(), history_str );
 
         // Send text
         if( Keyb::CtrlDwn )
@@ -3007,7 +3007,7 @@ void FOClient::IntMouseMove()
 void FOClient::AddMess( int mess_type, const char* msg, bool script_call )
 {
     // Script callback
-    ScriptString* text = new ScriptString( msg );
+    ScriptString* text = ScriptString::Create( msg );
     if( Script::PrepareContext( ClientFunctions.MessageBox, _FUNC_, "Game" ) )
     {
         Script::SetArgAddress( text );
@@ -3222,7 +3222,7 @@ void FOClient::LogDraw()
 
     if( !Singleplayer )
     {
-        SprMngr.DrawStr( LogWName, GameOpt.Name.c_str(), FT_CENTERX | FT_CENTERY | FT_NOBREAK, LogFocus == IFACE_LOG_NAME ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
+        SprMngr.DrawStr( LogWName, GameOpt.Name->c_str(), FT_CENTERX | FT_CENTERY | FT_NOBREAK, LogFocus == IFACE_LOG_NAME ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
 
         if( Keyb::CtrlDwn || !GameOpt.HidePassword )
         {
@@ -3262,9 +3262,9 @@ void FOClient::LogKeyDown( uchar dik, const char* dik_text )
 
     if( LogFocus == IFACE_LOG_NAME )
     {
-        string tmp_str = GameOpt.Name.c_std_str();
+        string tmp_str = GameOpt.Name->c_std_str();
         Keyb::GetChar( dik, dik_text, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
-        GameOpt.Name = tmp_str;
+        *GameOpt.Name = tmp_str;
     }
     else if( LogFocus == IFACE_LOG_PASS )
     {
@@ -3333,14 +3333,14 @@ void FOClient::LogTryConnect()
 {
     if( !Singleplayer )
     {
-        string tmp_str = GameOpt.Name.c_std_str();
+        string tmp_str = GameOpt.Name->c_std_str();
         while( !tmp_str.empty() && tmp_str[ 0 ] == ' ' )
             tmp_str.erase( 0, 1 );
         while( !tmp_str.empty() && tmp_str[ tmp_str.length() - 1 ] == ' ' )
             tmp_str.erase( tmp_str.length() - 1, 1 );
-        GameOpt.Name = tmp_str;
+        *GameOpt.Name = tmp_str;
 
-        uint name_len_utf8 = Str::LengthUTF8( GameOpt.Name.c_str() );
+        uint name_len_utf8 = Str::LengthUTF8( GameOpt.Name->c_str() );
         if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
             name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
         {
@@ -3348,7 +3348,7 @@ void FOClient::LogTryConnect()
             return;
         }
 
-        if( !Str::IsValidUTF8( GameOpt.Name.c_str() ) || Str::Substring( GameOpt.Name.c_str(), "*" ) )
+        if( !Str::IsValidUTF8( GameOpt.Name->c_str() ) || Str::Substring( GameOpt.Name->c_str(), "*" ) )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_NAME_WRONG_CHARS ) );
             return;
@@ -3369,7 +3369,7 @@ void FOClient::LogTryConnect()
         }
 
         // Save login and password
-        Crypt.SetCache( "__name", (uchar*) GameOpt.Name.c_str(), (uint) GameOpt.Name.length() + 1 );
+        Crypt.SetCache( "__name", (uchar*) GameOpt.Name->c_str(), (uint) GameOpt.Name->length() + 1 );
         Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
 
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_CONNECTION ) );
@@ -4301,7 +4301,7 @@ void FOClient::FormatTags( char* text, uint text_len, CritterCl* player, Critter
                 Str::Copy( tag, "<script function not found>" );
                 if( bind_id > 0 && Script::PrepareContext( bind_id, _FUNC_, "Game" ) )
                 {
-                    ScriptString* script_lexems = new ScriptString( lexems ? lexems : "" );
+                    ScriptString* script_lexems = ScriptString::Create( lexems ? lexems : "" );
                     Script::SetArgObject( script_lexems );
                     if( Script::RunPrepared() )
                     {
@@ -7262,7 +7262,7 @@ void FOClient::ChaDraw( bool is_reg )
 
     // Name
     if( is_reg )
-        SprMngr.DrawStr( Rect( ChaBName, ChaX, ChaY - ( IfaceHold == IFACE_CHA_NAME ? 1 : 0 ) ), GameOpt.RegName.c_str(), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
+        SprMngr.DrawStr( Rect( ChaBName, ChaX, ChaY - ( IfaceHold == IFACE_CHA_NAME ? 1 : 0 ) ), GameOpt.RegName->c_str(), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
     else
         SprMngr.DrawStr( Rect( ChaBName, ChaX, ChaY - ( IfaceHold == IFACE_CHA_NAME ? 1 : 0 ) ), Chosen ? Chosen->GetName() : "", FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
 
@@ -7867,12 +7867,12 @@ void FOClient::ChaNameDraw()
     SprMngr.DrawSprite( Singleplayer ? ChaNameSingleplayerMainPic : ChaNameMainPic, ChaNameX, ChaNameY );
 
     SprMngr.DrawStr( Rect( ChaNameWNameText, ChaNameX, ChaNameY ), MsgGame->GetStr( STR_CHA_NAME_NAME ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( ChaNameWName, ChaNameX, ChaNameY ), GameOpt.RegName.c_str(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_NAME ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
+    SprMngr.DrawStr( Rect( ChaNameWName, ChaNameX, ChaNameY ), GameOpt.RegName->c_str(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_NAME ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
 
     if( !Singleplayer )
     {
         SprMngr.DrawStr( Rect( ChaNameWPassText, ChaNameX, ChaNameY ), MsgGame->GetStr( STR_CHA_NAME_PASS ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( Rect( ChaNameWPass, ChaNameX, ChaNameY ), GameOpt.RegPassword.c_str(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_PASS ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
+        SprMngr.DrawStr( Rect( ChaNameWPass, ChaNameX, ChaNameY ), GameOpt.RegPassword->c_str(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_PASS ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
     }
 }
 
@@ -7924,16 +7924,16 @@ void FOClient::ChaNameKeyDown( uchar dik, const char* dik_text )
     {
     case IFACE_CHA_NAME_NAME:
     {
-        string tmp_str = GameOpt.RegName.c_std_str();
+        string tmp_str = GameOpt.RegName->c_std_str();
         Keyb::GetChar( dik, dik_text, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
-        GameOpt.RegName = tmp_str;
+        *GameOpt.RegName = tmp_str;
     }
     break;
     case IFACE_CHA_NAME_PASS:
     {
-        string tmp_str = GameOpt.RegPassword.c_std_str();
+        string tmp_str = GameOpt.RegPassword->c_std_str();
         Keyb::GetChar( dik, dik_text, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
-        GameOpt.RegPassword = tmp_str;
+        *GameOpt.RegPassword = tmp_str;
     }
     break;
     default:
@@ -10645,7 +10645,7 @@ void FOClient::FixGenerate( int fix_mode )
         {
             CraftItem* craft = true_crafts[ i ];
 
-            if( craft->Script.length() )
+            if( craft->Script->length() )
             {
                 script_craft.push_back( craft->Num );
                 if( !FixShowCraft.count( craft->Num ) )
@@ -10653,7 +10653,7 @@ void FOClient::FixGenerate( int fix_mode )
             }
 
             Rect pos( FixWWin[ 0 ], FixWWin[ 1 ] + cur_height, FixWWin[ 2 ], FixWWin[ 1 ] + cur_height + 100 );
-            int line_height = SprMngr.GetLinesHeight( FixWWin.W(), 0, craft->Name.c_str() );
+            int line_height = SprMngr.GetLinesHeight( FixWWin.W(), 0, craft->Name->c_str() );
 
             cur_height += line_height;
             pos.B = FixWWin[ 1 ] + cur_height;
@@ -10672,7 +10672,7 @@ void FOClient::FixGenerate( int fix_mode )
                 cur_height = line_height;
             }
 
-            scraft_vec.push_back( SCraft( pos, craft->Name, craft->Num, MrFixit.IsTrueCraft( Chosen, craft->Num ) ) );
+            scraft_vec.push_back( SCraft( pos, craft->Name->c_std_str(), craft->Num, MrFixit.IsTrueCraft( Chosen, craft->Num ) ) );
         }
 
         if( !scraft_vec.empty() )
@@ -10713,10 +10713,10 @@ void FOClient::FixGenerate( int fix_mode )
         FixGenerateItems( craft->OutItems, craft->OutItemsVal, tmp_vec, str, r, x );
 
         // About
-        if( craft->Info.length() )
+        if( craft->Info->length() )
         {
             str = "\n";
-            str += craft->Info;
+            str += craft->Info->c_std_str();
             str += "\n";
             FixGenerateStrLine( str, r );
         }

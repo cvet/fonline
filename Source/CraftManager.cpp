@@ -46,16 +46,17 @@ CraftManager MrFixit;
 CraftItem::CraftItem()
 {
     Num = 0;
-    Name = "";
-    Info = "";
+    Name = ScriptString::Create();
+    Info = ScriptString::Create();
+    Script = ScriptString::Create();
 }
 
 CraftItem& CraftItem::operator=( const CraftItem& _right )
 {
     // Number, name, info
     Num = _right.Num;
-    Name = _right.Name;
-    Info = _right.Info;
+    *Name = *_right.Name;
+    *Info = *_right.Info;
 
     // Need parameters to show craft
     ShowPNum = _right.ShowPNum;
@@ -82,7 +83,7 @@ CraftItem& CraftItem::operator=( const CraftItem& _right )
     OutItemsVal = _right.OutItemsVal;
 
     // Other
-    Script = _right.Script;
+    *Script = *_right.Script;
     ScriptBindId = _right.ScriptBindId;
     Experience = _right.Experience;
     return *this;
@@ -92,7 +93,7 @@ bool CraftItem::IsValid()
 {
     if( !Num )
         return false;
-    if( !Name.length() )
+    if( !Name->length() )
         return false;
     if( NeedItems.empty() )
         return false;
@@ -104,8 +105,8 @@ bool CraftItem::IsValid()
 void CraftItem::Clear()
 {
     Num = 0;
-    Name = "";
-    Info = "";
+    *Name = "";
+    *Info = "";
     ShowPNum.clear();
     ShowPVal.clear();
     NeedPNum.clear();
@@ -116,7 +117,7 @@ void CraftItem::Clear()
     NeedToolsVal.clear();
     OutItems.clear();
     OutItemsVal.clear();
-    Script.clear();
+    *Script = "";
     ScriptBindId = 0;
     Experience = 0;
 }
@@ -124,7 +125,7 @@ void CraftItem::Clear()
 #ifdef FONLINE_CLIENT
 void CraftItem::SetName( FOMsg& msg_game, FOMsg& msg_item )
 {
-    Name = "";
+    *Name = "";
 
     // Out items
     for( uint i = 0, j = (uint) OutItems.size(); i < j; i++ )
@@ -132,21 +133,21 @@ void CraftItem::SetName( FOMsg& msg_game, FOMsg& msg_item )
         ProtoItem* proto = ItemMngr.GetProtoItem( OutItems[ i ] );
 
         if( !proto )
-            Name += "???";
+            *Name += "???";
         else
-            Name += msg_item.GetStr( proto->ProtoId * 100 );
+            *Name += msg_item.GetStr( proto->ProtoId * 100 );
 
         if( OutItemsVal[ i ] > 1 )
         {
-            Name += " ";
-            Name += Str::UItoA( OutItemsVal[ i ] );
-            Name += " ";
-            Name += msg_game.GetStr( STR_FIX_PIECES );
+            *Name += " ";
+            *Name += Str::UItoA( OutItemsVal[ i ] );
+            *Name += " ";
+            *Name += msg_game.GetStr( STR_FIX_PIECES );
         }
 
         if( i == j - 1 )
             break;
-        Name += msg_game.GetStr( STR_AND );
+        *Name += msg_game.GetStr( STR_AND );
     }
 }
 #endif // FONLINE_CLIENT
@@ -216,7 +217,7 @@ int CraftItem::SetStr( uint num, const char* str_in )
 
     pstr_in++;
     *pstr = '\0';
-    Name = str;
+    *Name = str;
 
     // Parse info
     pstr = str;
@@ -232,7 +233,7 @@ int CraftItem::SetStr( uint num, const char* str_in )
 
     pstr_in++;
     *pstr = '\0';
-    Info = str;
+    *Info = str;
 
     if( metadata )
     {
@@ -251,9 +252,9 @@ int CraftItem::SetStr( uint num, const char* str_in )
         SetStrMetadata( OutItems, pstr_in );
         SetStrMetadata( OutItemsVal, pstr_in );
         if( Str::Substring( pstr_in, "script" ) )
-            Script = "true";
+            *Script = "true";
         else
-            Script = "";
+            *Script = "";
         return 0;
     }
 
@@ -286,9 +287,9 @@ int CraftItem::SetStr( uint num, const char* str_in )
 
     // Parse script
     if( Str::Substring( pstr_in, "script " ) )
-        Script = Str::Substring( pstr_in, "script " ) + Str::Length( "script " );
+        *Script = Str::Substring( pstr_in, "script " ) + Str::Length( "script " );
     else
-        Script = "";
+        *Script = "";
 
     // Experience
     if( Str::Substring( pstr_in, "exp " ) )
@@ -421,7 +422,7 @@ const char* CraftItem::GetStr( bool metadata )
 
     if( metadata )
     {
-        Str::Format( str, "%c%s%c%s%c", MRFIXIT_METADATA, Name.c_str(), MRFIXIT_NEXT, Info.c_str(), MRFIXIT_NEXT );
+        Str::Format( str, "%c%s%c%s%c", MRFIXIT_METADATA, Name->c_str(), MRFIXIT_NEXT, Info->c_str(), MRFIXIT_NEXT );
         GetStrMetadata( ShowPNum, str );
         GetStrMetadata( ShowPVal, str );
         GetStrMetadata( ShowPOr, str );
@@ -436,14 +437,14 @@ const char* CraftItem::GetStr( bool metadata )
         GetStrMetadata( NeedToolsOr, str );
         GetStrMetadata( OutItems, str );
         GetStrMetadata( OutItemsVal, str );
-        if( Script.length() )
+        if( Script->length() )
             Str::Append( str, "script" );
         return str;
     }
 
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_MRFIXIT )
     // Name, info
-    Str::Format( str, "%s%c%s%c", Name.c_str(), MRFIXIT_NEXT, Info.c_str(), MRFIXIT_NEXT );
+    Str::Format( str, "%s%c%s%c", Name->c_str(), MRFIXIT_NEXT, Info->c_str(), MRFIXIT_NEXT );
 
     // Need params to show
     GetStrParam( str, ShowPNum, ShowPVal, ShowPOr );
@@ -472,10 +473,10 @@ const char* CraftItem::GetStr( bool metadata )
     }
 
     // Script
-    if( Script.length() )
+    if( Script->length() )
     {
         Str::Append( str, "script " );
-        Str::Append( str, Script.c_str() );
+        Str::Append( str, Script->c_str() );
     }
     #endif
     return str;
@@ -566,7 +567,7 @@ bool CraftManager::operator==( const CraftManager& r )
         COMPARE_CRAFT( NeedToolsOr );
         COMPARE_CRAFT( OutItems );
         COMPARE_CRAFT( OutItemsVal );
-        COMPARE_CRAFT( Script );
+        COMPARE_CRAFT( Script->c_std_str() );
         COMPARE_CRAFT( Experience );
     }
     return true;
@@ -680,9 +681,9 @@ bool CraftManager::AddCraft( uint num, const char* str )
     }
 
     #ifdef FONLINE_SERVER
-    if( craft->Script.length() )
+    if( craft->Script->length() )
     {
-        craft->ScriptBindId = Script::Bind( craft->Script.c_str(), "int %s(Critter&, int, CraftItem&)", false );
+        craft->ScriptBindId = Script::Bind( craft->Script->c_str(), "int %s(Critter&, int, CraftItem&)", false );
         if( !craft->ScriptBindId )
         {
             delete craft;

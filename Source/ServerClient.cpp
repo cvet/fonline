@@ -1639,8 +1639,8 @@ void FOServer::Process_CreateClient( Client* cl )
     char disallow_lexems[ MAX_FOTEXT ];
     if( Script::PrepareContext( ServerFunctions.PlayerRegistration, _FUNC_, cl->Name ) )
     {
-        ScriptString* name = new ScriptString( cl->Name );
-        ScriptString* lexems = new ScriptString( "" );
+        ScriptString* name = ScriptString::Create( cl->Name );
+        ScriptString* lexems = ScriptString::Create();
         Script::SetArgUInt( cl->GetIp() );
         Script::SetArgObject( name );
         Script::SetArgAddress( &disallow_msg_num );
@@ -1954,8 +1954,8 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     char disallow_lexems[ MAX_FOTEXT ];
     if( Script::PrepareContext( ServerFunctions.PlayerLogin, _FUNC_, data.ClientName ) )
     {
-        ScriptString* name = new ScriptString( data.ClientName );
-        ScriptString* lexems = new ScriptString( "" );
+        ScriptString* name = ScriptString::Create( data.ClientName );
+        ScriptString* lexems = ScriptString::Create();
         Script::SetArgUInt( cl->GetIp() );
         Script::SetArgObject( name );
         Script::SetArgUInt( data.ClientId );
@@ -4246,7 +4246,7 @@ void FOServer::Process_ScreenAnswer( Client* cl )
         return;
     Script::SetArgObject( cl );
     Script::SetArgUInt( answer_i );
-    ScriptString* lexems = new ScriptString( answer_s );
+    ScriptString* lexems = ScriptString::Create( answer_s );
     Script::SetArgObject( lexems );
     Script::RunPrepared();
     lexems->Release();
@@ -4338,7 +4338,7 @@ void FOServer::Process_RunServerScript( Client* cl )
     {
         cl->Bin.Pop( p3str, p3len );
         p3str[ p3len ] = 0;
-        p3 = new ScriptString( p3str );
+        p3 = ScriptString::Create( p3str );
     }
     cl->Bin >> p4size;
     if( p4size )

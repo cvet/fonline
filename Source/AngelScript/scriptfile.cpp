@@ -121,7 +121,7 @@ ScriptString* ScriptFile::ReadWord()
     // Read the string
     char buf[ 1024 ];
     fscanf( file, "%s", buf );
-    return new ScriptString( buf );
+    return ScriptString::Create( buf );
 }
 
 int ScriptFile::ReadNumber()

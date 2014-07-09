@@ -12,51 +12,51 @@
 class CritterCl
 {
 public:
-    uint         Id;
-    ushort       Pid;
-    ushort       HexX, HexY;
-    uchar        CrDir;
-    int          Params[ MAX_PARAMS ];
-    uint         NameColor;
-    uint         ContourColor;
-    UShortVec    LastHexX, LastHexY;
-    uchar        Cond;
-    uint         Anim1Life;
-    uint         Anim1Knockout;
-    uint         Anim1Dead;
-    uint         Anim2Life;
-    uint         Anim2Knockout;
-    uint         Anim2Dead;
-    uint         Flags;
-    uint         BaseType, BaseTypeAlias;
-    uint         ApRegenerationTick;
-    short        Multihex;
-    Effect*      DrawEffect;
+    uint          Id;
+    ushort        Pid;
+    ushort        HexX, HexY;
+    uchar         CrDir;
+    int           Params[ MAX_PARAMS ];
+    uint          NameColor;
+    uint          ContourColor;
+    UShortVec     LastHexX, LastHexY;
+    uchar         Cond;
+    uint          Anim1Life;
+    uint          Anim1Knockout;
+    uint          Anim1Dead;
+    uint          Anim2Life;
+    uint          Anim2Knockout;
+    uint          Anim2Dead;
+    uint          Flags;
+    uint          BaseType, BaseTypeAlias;
+    uint          ApRegenerationTick;
+    short         Multihex;
+    Effect*       DrawEffect;
 
-    ScriptString Name;
-    ScriptString NameOnHead;
-    ScriptString Lexems;
-    ScriptString Avatar;
+    ScriptString* Name;
+    ScriptString* NameOnHead;
+    ScriptString* Lexems;
+    ScriptString* Avatar;
 
-    ItemPtrVec   InvItems;
-    Item*        DefItemSlotHand;
-    Item*        DefItemSlotArmor;
-    Item*        ItemSlotMain;
-    Item*        ItemSlotExt;
-    Item*        ItemSlotArmor;
+    ItemPtrVec    InvItems;
+    Item*         DefItemSlotHand;
+    Item*         DefItemSlotArmor;
+    Item*         ItemSlotMain;
+    Item*         ItemSlotExt;
+    Item*         ItemSlotArmor;
 
-    static bool  ParamsRegEnabled[ MAX_PARAMS ];
-    static int   ParamsReg[ MAX_PARAMS ];
-    CritterCl*   ThisPtr[ MAX_PARAMETERS_ARRAYS ];
-    static int   ParamsChangeScript[ MAX_PARAMS ];
-    static int   ParamsGetScript[ MAX_PARAMS ];
-    static uint  ParametersMin[ MAX_PARAMETERS_ARRAYS ];
-    static uint  ParametersMax[ MAX_PARAMETERS_ARRAYS ];
-    static bool  ParametersOffset[ MAX_PARAMETERS_ARRAYS ];
-    bool         ParamsIsChanged[ MAX_PARAMS ];
-    IntVec       ParamsChanged;
-    int          ParamLocked;
-    static bool  SlotEnabled[ 0x100 ];
+    static bool   ParamsRegEnabled[ MAX_PARAMS ];
+    static int    ParamsReg[ MAX_PARAMS ];
+    CritterCl*    ThisPtr[ MAX_PARAMETERS_ARRAYS ];
+    static int    ParamsChangeScript[ MAX_PARAMS ];
+    static int    ParamsGetScript[ MAX_PARAMS ];
+    static uint   ParametersMin[ MAX_PARAMETERS_ARRAYS ];
+    static uint   ParametersMax[ MAX_PARAMETERS_ARRAYS ];
+    static bool   ParametersOffset[ MAX_PARAMETERS_ARRAYS ];
+    bool          ParamsIsChanged[ MAX_PARAMS ];
+    IntVec        ParamsChanged;
+    int           ParamLocked;
+    static bool   SlotEnabled[ 0x100 ];
 
     CritterCl();
     ~CritterCl();
@@ -64,7 +64,7 @@ public:
     void Finish();
 
     uint        GetId()   { return Id; }
-    const char* GetInfo() { return Name.c_str(); }
+    const char* GetInfo() { return Name->c_str(); }
     ushort      GetHexX() { return HexX; }
     ushort      GetHexY() { return HexY; }
     bool        IsLastHexes();
@@ -83,7 +83,7 @@ public:
 
     int         GetCond() { return Cond; }
     void        DrawStay( Rect r );
-    const char* GetName() { return Name.c_str(); }
+    const char* GetName() { return Name->c_str(); }
 
     bool IsNpc()      { return FLAG( Flags, FCRIT_NPC ); }
     bool IsPlayer()   { return FLAG( Flags, FCRIT_PLAYER ); }

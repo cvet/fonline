@@ -1572,7 +1572,7 @@ public:
         uint   Num;
         bool   IsTrue;
 
-        SCraft( Rect& pos, string& name, uint num, bool is_true )
+        SCraft( Rect& pos, const string& name, uint num, bool is_true )
         {
             Pos = pos;
             Name = name;

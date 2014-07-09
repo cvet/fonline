@@ -18,17 +18,13 @@ public:
             scriptStr->assign( str );
         return *scriptStr;
     }
-protected:
+	#else
+	static ScriptString* Create();
+	static ScriptString* Create( const ScriptString& other );
+	static ScriptString* Create( const char* s, uint len );
+	static ScriptString* Create( const char* s );
+	static ScriptString* Create( const std::string& s );
     #endif
-
-    ScriptString();
-    ScriptString( const ScriptString& other );
-    ScriptString( const char* s, uint len );
-    ScriptString( const char* s );
-    ScriptString( const std::string& s );
-
-public:
-    virtual ~ScriptString();
 
     virtual void AddRef() const;
     virtual void Release() const;
@@ -70,6 +66,7 @@ public:
     virtual void  append( const char* buf );
     virtual void  reserve( uint count );
     virtual void  rawResize( uint count );
+	virtual void  clear();
     virtual uint  lengthUTF8() const;
     virtual bool  indexByteToUTF8( int& index, uint* length = NULL, uint offset = 0 );
     virtual int   toInt( int defaultValue ) const;
@@ -92,6 +89,12 @@ public:
         if( index < buffer.length() )
             buffer[ index ] = value;
     }
+
+private:
+	static ScriptString* GetFromPool();
+	static void          PutToPool( ScriptString* str );
+	ScriptString();
+	~ScriptString();
 
 protected:
     std::string buffer;

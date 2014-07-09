@@ -209,7 +209,7 @@ public:
         else if( type == "string" )
         {
             if( value != "" ) value = text.substr( text.find( value ), string::npos );
-            auto it = stringArray.insert( stringArray.begin(), new ScriptString( value ) );
+            auto it = stringArray.insert( stringArray.begin(), ScriptString::Create( value ) );
             if( engine->RegisterGlobalProperty( name.c_str(), ( *it ) ) < 0 ) WriteLog( "Unable to register string global var, pragma<%s>.\n", text.c_str() );
         }
         else if( type == "float" )

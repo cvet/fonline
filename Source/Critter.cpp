@@ -83,7 +83,7 @@ Critter::Critter(): CritterIsNpc( false ), RefCounter( 1 ), IsNotValid( false ),
                     Flags( 0 ), AccessContainerId( 0 ), ItemTransferCount( 0 ),
                     TryingGoHomeTick( 0 ), ApRegenerationTick( 0 ), GlobalIdleNextTick( 0 ), LockMapTransfers( 0 ),
                     ViewMapId( 0 ), ViewMapPid( 0 ), ViewMapLook( 0 ), ViewMapHx( 0 ), ViewMapHy( 0 ), ViewMapDir( 0 ),
-                    DisableSend( 0 ), CanBeRemoved( false )
+                    DisableSend( 0 ), CanBeRemoved( false ), NameStr( ScriptString::Create() )
 {
     memzero( &Data, sizeof( Data ) );
     DataExt = NULL;
@@ -3148,7 +3148,7 @@ void Critter::RefreshName()
 {
     if( IsPlayer() )
     {
-        NameStr = ( (Client*) this )->Name;
+        *NameStr = ( (Client*) this )->Name;
     }
     else
     {
@@ -3156,9 +3156,9 @@ void Critter::RefreshName()
         DialogPack* dlg_pack = ( dlg_pack_id > 0 ? DlgMngr.GetDialogPack( dlg_pack_id ) : NULL );
         char        buf[ MAX_FOTEXT ];
         if( dlg_pack )
-            NameStr = Str::Format( buf, "Npc (%s, %u)", dlg_pack->PackName.c_str(), GetId() );
+            *NameStr = Str::Format( buf, "Npc (%s, %u)", dlg_pack->PackName.c_str(), GetId() );
         else
-            NameStr = Str::Format( buf, "Npc (%u)", GetId() );
+            *NameStr = Str::Format( buf, "Npc (%u)", GetId() );
     }
 }
 

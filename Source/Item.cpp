@@ -109,7 +109,7 @@ void Item::Init( ProtoItem* proto )
     }
 
     #ifdef FONLINE_CLIENT
-    Lexems = "";
+    Lexems = ScriptString::Create();
     #endif
 }
 
@@ -129,7 +129,7 @@ Item* Item::Clone()
     clone->PLexems = NULL;
     #endif
     #ifdef FONLINE_CLIENT
-    clone->Lexems = Lexems;
+    *clone->Lexems = *Lexems;
     #endif
 
     return clone;

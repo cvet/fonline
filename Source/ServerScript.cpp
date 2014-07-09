@@ -512,7 +512,7 @@ bool FOServer::ReloadClientScripts()
 string FOServer::SScriptFunc::ScriptLastError = "No errors.";
 ScriptString* FOServer::SScriptFunc::Global_GetLastError()
 {
-    return new ScriptString( ScriptLastError );
+    return ScriptString::Create( ScriptLastError );
 }
 
 int SortCritterHx = 0, SortCritterHy = 0;
@@ -571,7 +571,7 @@ ScriptString* FOServer::SScriptFunc::ProtoItem_GetScriptName( ProtoItem* proto )
 {
     if( !ItemMngr.IsInitProto( proto->ProtoId ) )
         return NULL;
-    return new ScriptString( ItemMngr.GetProtoScript( proto->ProtoId ) );
+    return ScriptString::Create( ItemMngr.GetProtoScript( proto->ProtoId ) );
 }
 
 void FOServer::SScriptFunc::Synchronizer_Constructor( void* memory )
@@ -1374,7 +1374,7 @@ bool FOServer::SScriptFunc::Cl_SetAccess( Critter* cl, int access )
     bool allow = false;
     if( Script::PrepareContext( ServerFunctions.PlayerGetAccess, _FUNC_, cl->GetInfo() ) )
     {
-        ScriptString* pass = new ScriptString( "" );
+        ScriptString* pass = ScriptString::Create();
         Script::SetArgObject( cl );
         Script::SetArgUInt( access );
         Script::SetArgObject( pass );
@@ -5213,7 +5213,7 @@ ScriptString* FOServer::SScriptFunc::Global_GetPlayerName( uint id )
     if( Singleplayer )
     {
         if( id == 1 )
-            return new ScriptString( SingleplayerSave.CrData.Name );
+            return ScriptString::Create( SingleplayerSave.CrData.Name );
         return NULL;
     }
 
@@ -5221,7 +5221,7 @@ ScriptString* FOServer::SScriptFunc::Global_GetPlayerName( uint id )
     ClientData* data = GetClientData( id );
     if( !data )
         return NULL;           // SCRIPT_ERROR_RX("Player not found.",new CScriptString(""));
-    return new ScriptString( data->ClientName );
+    return ScriptString::Create( data->ClientName );
 }
 
 uint FOServer::SScriptFunc::Global_GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type, ScriptArray* critters )
@@ -5888,7 +5888,7 @@ uint FOServer::SScriptFunc::Global_GetRegisteredPlayers( ScriptArray* ids, Scrip
         {
             ClientData data = *it;
             ids_.push_back( data.ClientId );
-            names_.push_back( new ScriptString( data.ClientName ) );
+            names_.push_back( ScriptString::Create( data.ClientName ) );
         }
 
         if( !ids_.size() )
@@ -5970,7 +5970,7 @@ uint FOServer::SScriptFunc::Global_GetAllLocations( ushort pid, ScriptArray* loc
 
 ScriptString* FOServer::SScriptFunc::Global_GetScriptName( uint script_id )
 {
-    return new ScriptString( Script::GetScriptFuncName( script_id ) );
+    return ScriptString::Create( Script::GetScriptFuncName( script_id ) );
 }
 
 ScriptArray* FOServer::SScriptFunc::Global_GetItemDataMask( int mask_type )
@@ -6081,7 +6081,7 @@ ScriptString* FOServer::SScriptFunc::Global_EncodeUTF8( uint ucs )
     char buf[ 5 ];
     uint len = Str::EncodeUTF8( ucs, buf );
     buf[ len ] = 0;
-    return new ScriptString( buf );
+    return ScriptString::Create( buf );
 }
 
 void FOServer::SScriptFunc::Global_CloneObject( void* in, int in_type_id, void* out, int out_type_id, bool copy )
@@ -6167,7 +6167,7 @@ ScriptString* FOServer::SScriptFunc::Global_GetConstantName( int const_collectio
 {
     if( !ConstantsManager::IsCollectionInit( const_collection ) )
         SCRIPT_ERROR_R0( "Invalid namesFile arg." );
-    return new ScriptString( ConstantsManager::GetName( const_collection, value ) );
+    return ScriptString::Create( ConstantsManager::GetName( const_collection, value ) );
 }
 
 void FOServer::SScriptFunc::Global_AddConstant( int const_collection, ScriptString* name, int value )
@@ -6247,15 +6247,15 @@ uint FOServer::SScriptFunc::Global_GetCritterAlias( uint cr_type )
 ScriptString* FOServer::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", new ScriptString( "" ) );
-    return new ScriptString( CritType::GetCritType( cr_type ).Name );
+        SCRIPT_ERROR_RX( "Invalid critter type arg.", ScriptString::Create() );
+    return ScriptString::Create( CritType::GetCritType( cr_type ).Name );
 }
 
 ScriptString* FOServer::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", new ScriptString( "" ) );
-    return new ScriptString( CritType::GetSoundName( cr_type ) );
+        SCRIPT_ERROR_RX( "Invalid critter type arg.", ScriptString::Create() );
+    return ScriptString::Create( CritType::GetSoundName( cr_type ) );
 }
 
 struct ServerImage

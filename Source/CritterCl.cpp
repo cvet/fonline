@@ -29,8 +29,10 @@ CritterCl::CritterCl(): CrDir( 0 ), SprId( 0 ), Id( 0 ), Pid( 0 ), NameColor( 0 
                         OxExtI( 0 ), OyExtI( 0 ), OxExtF( 0 ), OyExtF( 0 ), OxExtSpeed( 0 ), OyExtSpeed( 0 ), OffsExtNextTick( 0 ),
                         Anim3d( NULL ), Anim3dStay( NULL ), Layers3d( NULL ), Multihex( 0 )
 {
-    Name = "";
-    NameOnHead = "";
+    Name = ScriptString::Create();
+    NameOnHead = ScriptString::Create();
+    Lexems = ScriptString::Create();
+    Avatar = ScriptString::Create();
     memzero( Params, sizeof( Params ) );
     ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item();
     ItemSlotArmor = DefItemSlotArmor = new Item();
@@ -1652,14 +1654,14 @@ void CritterCl::GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int&
 
         nameVisible = true;
 
-        if( NameOnHead.length() )
-            Str::Copy( str, NameOnHead.c_str() );
+        if( NameOnHead->length() )
+            Str::Copy( str, NameOnHead->c_str() );
         else
-            Str::Copy( str, Name.c_str() );
+            Str::Copy( str, Name->c_str() );
         if( GameOpt.ShowCritId )
             Str::Append( str, Str::FormatBuf( " <%u>", GetId() ) );
         if( FLAG( Flags, FCRIT_DISCONNECT ) )
-            Str::Append( str, GameOpt.PlayerOffAppendix.c_str() );
+            Str::Append( str, GameOpt.PlayerOffAppendix->c_str() );
     }
     else
         Str::Copy( str, strTextOnHead.c_str() );
@@ -1694,14 +1696,14 @@ void CritterCl::DrawTextOnHead()
         uint color;
         if( strTextOnHead.empty() )
         {
-            if( NameOnHead.length() )
-                Str::Copy( str, NameOnHead.c_str() );
+            if( NameOnHead->length() )
+                Str::Copy( str, NameOnHead->c_str() );
             else
-                Str::Copy( str, Name.c_str() );
+                Str::Copy( str, Name->c_str() );
             if( GameOpt.ShowCritId )
                 Str::Append( str, Str::FormatBuf( " <%u>", GetId() ) );
             if( FLAG( Flags, FCRIT_DISCONNECT ) )
-                Str::Append( str, GameOpt.PlayerOffAppendix.c_str() );
+                Str::Append( str, GameOpt.PlayerOffAppendix->c_str() );
             color = ( NameColor ? NameColor : COLOR_CRITTER_NAME );
         }
         else

@@ -1499,7 +1499,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, 
     cl->Talk.Lexems.clear();
     if( cl->Talk.CurDialog.DlgScript > NOT_ANSWER_BEGIN_BATTLE && Script::PrepareContext( cl->Talk.CurDialog.DlgScript, _FUNC_, cl->GetInfo() ) )
     {
-        ScriptString* lexems = new ScriptString();
+        ScriptString* lexems = ScriptString::Create();
         Script::SetArgObject( cl );
         Script::SetArgObject( npc );
         Script::SetArgObject( lexems );
@@ -1635,7 +1635,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
             if( cur_dialog->DlgScript <= NOT_ANSWER_BEGIN_BATTLE )
                 return;
 
-            ScriptString* str_ = new ScriptString( str );
+            ScriptString* str_ = ScriptString::Create( str );
             if( !Script::PrepareContext( cur_dialog->DlgScript, _FUNC_, cl->GetInfo() ) )
                 return;
             Script::SetArgObject( cl );
@@ -1789,7 +1789,7 @@ label_Barter:
     cl->Talk.Lexems.clear();
     if( cl->Talk.CurDialog.DlgScript > NOT_ANSWER_BEGIN_BATTLE && Script::PrepareContext( cl->Talk.CurDialog.DlgScript, _FUNC_, cl->GetInfo() ) )
     {
-        ScriptString* lexems = new ScriptString();
+        ScriptString* lexems = ScriptString::Create();
         Script::SetArgObject( cl );
         Script::SetArgObject( npc );
         Script::SetArgObject( lexems );

@@ -1974,7 +1974,7 @@ void FOServer::Process_Text( Client* cl )
                 Str::CompareCaseCountUTF8( str, tl.FirstStr, tl.FirstStrLen ) )
             {
                 licten_func_id[ listen_count ] = tl.FuncId;
-                licten_str[ listen_count ] = new ScriptString( str );
+                licten_str[ listen_count ] = ScriptString::Create( str );
                 if( ++listen_count >= 100 )
                     break;
             }
@@ -1989,7 +1989,7 @@ void FOServer::Process_Text( Client* cl )
             if( tl.SayType == how_say && tl.Parameter == pid && Str::CompareCaseCountUTF8( str, tl.FirstStr, tl.FirstStrLen ) )
             {
                 licten_func_id[ listen_count ] = tl.FuncId;
-                licten_str[ listen_count ] = new ScriptString( str );
+                licten_str[ listen_count ] = ScriptString::Create( str );
                 if( ++listen_count >= 100 )
                     break;
             }
@@ -2021,7 +2021,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
     bool allow_command = false;
     if( Script::PrepareContext( ServerFunctions.PlayerAllowCommand, _FUNC_, cl_ ? cl_->GetInfo() : "AdminPanel" ) )
     {
-        ScriptString* sstr = ( cl_ ? NULL : new ScriptString( admin_panel ) );
+        ScriptString* sstr = ( cl_ ? NULL : ScriptString::Create( admin_panel ) );
         Script::SetArgObject( cl_ );
         Script::SetArgObject( sstr );
         Script::SetArgUChar( cmd );
@@ -2351,7 +2351,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         bool allow = false;
         if( wanted_access != -1 && Script::PrepareContext( ServerFunctions.PlayerGetAccess, _FUNC_, cl_->GetInfo() ) )
         {
-            ScriptString* pass = new ScriptString( pasw_access );
+            ScriptString* pass = ScriptString::Create( pasw_access );
             Script::SetArgObject( cl_ );
             Script::SetArgUInt( wanted_access );
             Script::SetArgObject( pass );

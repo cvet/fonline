@@ -398,6 +398,7 @@ struct Critter
     int  Name;
     int  NameOnHead;
     int  Lexems;
+    int  Avatar;
     int  DialogId;
     int  NameColor;
     int  ContourColor;

@@ -23,37 +23,37 @@ struct CraftItem
 public:
     // Number, name, info
     uint Num;
-    string     Name;
-    string     Info;
+    ScriptString* Name;
+    ScriptString* Info;
 
     // Need parameters to show craft
-    UIntVec    ShowPNum;
-    IntVec     ShowPVal;
-    UCharVec   ShowPOr;
+    UIntVec       ShowPNum;
+    IntVec        ShowPVal;
+    UCharVec      ShowPOr;
 
     // Need parameters to craft
-    UIntVec    NeedPNum;
-    IntVec     NeedPVal;
-    UCharVec   NeedPOr;
+    UIntVec       NeedPNum;
+    IntVec        NeedPVal;
+    UCharVec      NeedPOr;
 
     // Need items to craft
-    UShortVec  NeedItems;
-    UIntVec    NeedItemsVal;
-    UCharVec   NeedItemsOr;
+    UShortVec     NeedItems;
+    UIntVec       NeedItemsVal;
+    UCharVec      NeedItemsOr;
 
     // Need tools to craft
-    UShortVec  NeedTools;
-    UIntVec    NeedToolsVal;
-    UCharVec   NeedToolsOr;
+    UShortVec     NeedTools;
+    UIntVec       NeedToolsVal;
+    UCharVec      NeedToolsOr;
 
     // New items
-    UShortVec  OutItems;
-    UIntVec    OutItemsVal;
+    UShortVec     OutItems;
+    UIntVec       OutItemsVal;
 
     // Other
-    string     Script;
-    uint       ScriptBindId; // In runtime
-    uint       Experience;
+    ScriptString* Script;
+    uint          ScriptBindId; // In runtime
+    uint          Experience;
 
     // Operator =
     CraftItem();

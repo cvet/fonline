@@ -235,7 +235,7 @@ void HexManager::Finish()
 
 void HexManager::ReloadSprites()
 {
-    curDataPrefix = GameOpt.MapDataPrefix.c_std_str();
+    curDataPrefix = GameOpt.MapDataPrefix->c_std_str();
 
     // Must be valid
     picHex[ 0 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex1.png" ).c_str(), PT_DATA, true );
@@ -3428,7 +3428,7 @@ bool HexManager::LoadMap( ushort map_pid )
     UnloadMap();
 
     // Check data sprites reloading
-    if( curDataPrefix != GameOpt.MapDataPrefix.c_std_str() )
+    if( curDataPrefix != GameOpt.MapDataPrefix->c_std_str() )
         ReloadSprites();
 
     // Make name
@@ -3963,7 +3963,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     UnloadMap();
     CurProtoMap = NULL;
 
-    if( curDataPrefix != GameOpt.MapDataPrefix.c_std_str() )
+    if( curDataPrefix != GameOpt.MapDataPrefix->c_std_str() )
         ReloadSprites();
 
     if( !ResizeField( pmap.Header.MaxHexX, pmap.Header.MaxHexY ) )

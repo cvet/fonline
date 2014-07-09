@@ -93,6 +93,9 @@ public:
     virtual void Set( const ScriptString& key, void* value, int typeId );
     virtual void Set( const ScriptString& key, const asINT64& value );
     virtual void Set( const ScriptString& key, const double& value );
+    virtual void Set( const std::string& key, void* value, int typeId );
+    virtual void Set( const std::string& key, const asINT64& value );
+    virtual void Set( const std::string& key, const double& value );
 
     // Gets the stored value. Returns false if the value isn't compatible with the informed typeId
     virtual bool Get( const ScriptString& key, void* value, int typeId ) const;

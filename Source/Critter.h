@@ -99,10 +99,6 @@ typedef vector< Npc* >        PcVec;
 
 class Critter
 {
-private:
-    Critter( const Critter& ) {}
-    Critter& operator=( const Critter& ) { return *this; }
-
 public:
     Critter();
     ~Critter();
@@ -112,7 +108,7 @@ public:
     SyncObject       Sync;
     bool             CritterIsNpc;
     uint             Flags;
-    ScriptString     NameStr;
+    ScriptString*    NameStr;
     TwoBitMask       GMapFog;
     bool             IsRuning;
     uint             PrevHexTick;
@@ -416,7 +412,7 @@ public:
     uint        GetMap()      { return Data.MapId; }
     ushort      GetProtoMap() { return Data.MapPid; }
     void        RefreshName();
-    const char* GetName() { return NameStr.c_str(); }
+    const char* GetName() { return NameStr->c_str(); }
     const char* GetInfo();
     uint        GetCrType() { return Data.BaseType; }
     ushort      GetHexX()   { return Data.HexX; }

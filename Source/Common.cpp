@@ -819,20 +819,20 @@ void GetClientOptions()
     cfg_mapper.GetStr( "ClientPath", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ClientPath" );
     FileManager::FormatPath( buf );
-    GameOpt.ClientPath = buf;
-    if( GameOpt.ClientPath.length() && GameOpt.ClientPath.c_str()[ GameOpt.ClientPath.length() - 1 ] != DIR_SLASH_C )
-        GameOpt.ClientPath += DIR_SLASH_S;
+    *GameOpt.ClientPath = buf;
+    if( GameOpt.ClientPath->length() && GameOpt.ClientPath->c_str()[ GameOpt.ClientPath->length() - 1 ] != DIR_SLASH_C )
+        *GameOpt.ClientPath += DIR_SLASH_S;
     cfg_mapper.GetStr( "ServerPath", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ServerPath" );
     FileManager::FormatPath( buf );
-    GameOpt.ServerPath = buf;
-    if( GameOpt.ServerPath.length() && GameOpt.ServerPath.c_str()[ GameOpt.ServerPath.length() - 1 ] != DIR_SLASH_C )
-        GameOpt.ServerPath += DIR_SLASH_S;
+    *GameOpt.ServerPath = buf;
+    if( GameOpt.ServerPath->length() && GameOpt.ServerPath->c_str()[ GameOpt.ServerPath->length() - 1 ] != DIR_SLASH_C )
+        *GameOpt.ServerPath += DIR_SLASH_S;
 
     // Client config
     IniParser cfg;
     cfg_mapper.GetStr( "ClientName", "FOnline", buf );
-    cfg.LoadFile( ( GameOpt.ClientPath.c_std_str() + buf + ".cfg" ).c_str(), PT_ROOT );
+    cfg.LoadFile( ( GameOpt.ClientPath->c_std_str() + buf + ".cfg" ).c_str(), PT_ROOT );
     # else
     IniParser cfg;
     cfg.LoadFile( GetConfigFileName(), PT_ROOT );
@@ -920,25 +920,25 @@ void GetClientOptions()
     // Str
     cfg.GetStr( CLIENT_CONFIG_APP, "RemoteHost", "localhost", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-RemoteHost" );
-    GameOpt.Host = buf;
+    *GameOpt.Host = buf;
     cfg.GetStr( CLIENT_CONFIG_APP, "UpdateServerHost", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-UpdateServerHost" );
-    GameOpt.UpdateServerHost = buf;
+    *GameOpt.UpdateServerHost = buf;
     cfg.GetStr( CLIENT_CONFIG_APP, "ProxyHost", "localhost", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ProxyHost" );
-    GameOpt.ProxyHost = buf;
+    *GameOpt.ProxyHost = buf;
     cfg.GetStr( CLIENT_CONFIG_APP, "ProxyUser", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ProxyUser" );
-    GameOpt.ProxyUser = buf;
+    *GameOpt.ProxyUser = buf;
     cfg.GetStr( CLIENT_CONFIG_APP, "ProxyPass", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ProxyPass" );
-    GameOpt.ProxyPass = buf;
+    *GameOpt.ProxyPass = buf;
     cfg.GetStr( CLIENT_CONFIG_APP, "UserName", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-UserName" );
-    GameOpt.Name = buf;
+    *GameOpt.Name = buf;
     cfg.GetStr( CLIENT_CONFIG_APP, "KeyboardRemap", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-KeyboardRemap" );
-    GameOpt.KeyboardRemap = buf;
+    *GameOpt.KeyboardRemap = buf;
 
     // Logging
     bool logging = cfg.GetInt( CLIENT_CONFIG_APP, "Logging", 1 ) != 0;
@@ -1278,7 +1278,7 @@ GameOptions::GameOptions()
     MapRoofSkipSize = 2;
     MapCameraAngle = 25.7f;
     MapSmoothPath = true;
-    MapDataPrefix = "art/geometry/fallout_";
+    MapDataPrefix = ScriptString::Create( "art/geometry/fallout_" );
 
     // Client and Mapper
     Quit = false;
@@ -1315,16 +1315,16 @@ GameOptions::GameOptions()
     FullScreen = false;
     VSync = false;
     Light = 0;
-    Host = "localhost";
+    Host = ScriptString::Create( "localhost" );
     Port = 4000;
-    UpdateServerHost = "";
+    UpdateServerHost = ScriptString::Create();
     UpdateServerPort = 0;
     ProxyType = 0;
-    ProxyHost = "";
+    ProxyHost = ScriptString::Create();
     ProxyPort = 0;
-    ProxyUser = "";
-    ProxyPass = "";
-    Name = "";
+    ProxyUser = ScriptString::Create();
+    ProxyPass = ScriptString::Create();
+    Name = ScriptString::Create();
     ScrollDelay = 10;
     ScrollStep = 1;
     ScrollCheck = true;
@@ -1351,7 +1351,7 @@ GameOptions::GameOptions()
     DisableMouseEvents = false;
     DisableKeyboardEvents = false;
     HidePassword = true;
-    PlayerOffAppendix = "_off";
+    PlayerOffAppendix = ScriptString::Create( "_off" );
     CombatMessagesType = 0;
     Animation3dSmoothTime = 150;
     Animation3dFPS = 30;
@@ -1366,7 +1366,7 @@ GameOptions::GameOptions()
     AlwaysRun = false;
     AlwaysRunMoveDist = 1;
     AlwaysRunUseDist = 5;
-    KeyboardRemap = "";
+    KeyboardRemap = ScriptString::Create();
     CritterFidgetTime = 50000;
     Anim2CombatBegin = 0;
     Anim2CombatIdle = 0;
@@ -1378,12 +1378,12 @@ GameOptions::GameOptions()
     SoundVolume = 100;
     MusicVolume = 100;
     RegParams = NULL;
-    RegName = "";
-    RegPassword = "";
+    RegName = ScriptString::Create();
+    RegPassword = ScriptString::Create();
 
     // Mapper
-    ClientPath = DIR_SLASH_SD;
-    ServerPath = DIR_SLASH_SD;
+    ClientPath = ScriptString::Create( DIR_SLASH_SD );
+    ServerPath = ScriptString::Create( DIR_SLASH_SD );
     ShowCorners = false;
     ShowSpriteCuts = false;
     ShowDrawOrder = false;
