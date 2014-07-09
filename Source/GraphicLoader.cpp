@@ -676,7 +676,7 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
             if( has_tex_coords )
             {
                 v.TexCoord[ 0 ] = ai_mesh->mTextureCoords[ 0 ][ i ].x;
-                v.TexCoord[ 1 ] = ai_mesh->mTextureCoords[ 0 ][ i ].y;
+                v.TexCoord[ 1 ] = 1.0f - ai_mesh->mTextureCoords[ 0 ][ i ].y;
                 FixTexCoord( v.TexCoord[ 0 ], v.TexCoord[ 1 ] );
                 v.TexCoordBase[ 0 ] = v.TexCoord[ 0 ];
                 v.TexCoordBase[ 1 ] = v.TexCoord[ 1 ];
