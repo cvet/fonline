@@ -299,6 +299,21 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                 ++it;
         }
 
+        // Compare changed effect
+        if( !mesh_changed )
+        {
+            for( size_t i = 0, j = allMeshes.size(); i < j && !mesh_changed; i++ )
+                mesh_changed = ( allMeshes[ i ].LastEffect != allMeshes[ i ].CurEffect );
+        }
+
+        // Compare changed textures
+        if( !mesh_changed )
+        {
+            for( size_t i = 0, j = allMeshes.size(); i < j && !mesh_changed; i++ )
+                for( size_t k = 0; k < EFFECT_TEXTURES && !mesh_changed; k++ )
+                    mesh_changed = ( allMeshes[ i ].LastTexures[ k ] != allMeshes[ i ].CurTexures[ k ] );
+        }
+
         // Compare disabled meshes
         if( !mesh_changed )
         {
@@ -497,6 +512,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
         {
             MeshInstance& mesh_instance = *it;
             mesh_instance.Disabled = false;
+            memcpy( mesh_instance.LastTexures, mesh_instance.CurTexures, sizeof( mesh_instance.LastTexures ) );
             memcpy( mesh_instance.CurTexures, mesh_instance.DefaultTexures, sizeof( mesh_instance.CurTexures ) );
         }
     }
@@ -541,6 +557,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
         for( auto it = allMeshes.begin(), end = allMeshes.end(); it != end; ++it )
         {
             MeshInstance& mesh_instance = *it;
+            mesh_instance.LastEffect = mesh_instance.CurEffect;
             mesh_instance.CurEffect = mesh_instance.DefaultEffect;
         }
     }

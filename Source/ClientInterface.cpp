@@ -3151,9 +3151,7 @@ Rect FOClient::MessBoxCurRectScroll()
 
     if( GetActiveScreen() == SCREEN_NONE )
     {
-        if( IsMainScreen( SCREEN_REGISTRATION ) )
-            return Rect( 0, 0, MODE_WIDTH, 60 );
-        else if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
+        if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
             return GmapWChat;
         else if( IsMainScreen( SCREEN_GAME ) && IntVisible && !IsScreenPresent( SCREEN__TOWN_VIEW ) )
         {

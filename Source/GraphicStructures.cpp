@@ -176,6 +176,8 @@ void CombinedMesh::Clear()
         GL( glDeleteVertexArrays( 1, &VAO ) );
     VAO = VBO = IBO = 0;
     CurBoneMatrix = 0;
+    Vertices.clear();
+    Indices.clear();
 }
 
 bool CombinedMesh::CanEncapsulate( MeshInstance& mesh_instance )

@@ -365,8 +365,10 @@ struct MeshInstance
     bool         Disabled;
     MeshTexture* CurTexures[ EFFECT_TEXTURES ];
     MeshTexture* DefaultTexures[ EFFECT_TEXTURES ];
+    MeshTexture* LastTexures[ EFFECT_TEXTURES ];
     Effect*      CurEffect;
     Effect*      DefaultEffect;
+    Effect*      LastEffect;
 };
 typedef vector< MeshInstance > MeshInstanceVec;
 
