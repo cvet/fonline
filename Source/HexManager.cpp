@@ -4489,6 +4489,12 @@ void HexManager::AffectCritter( MapObject* mobj, CritterCl* cr )
         refresh = true;
     }
 
+    if( cr->GetDir() != mobj->MCritter.Dir )
+    {
+        cr->SetDir( mobj->MCritter.Dir, false );
+        refresh = true;
+    }
+
     uint& anim1 = ( cr->Cond == COND_LIFE ? cr->Anim1Life : ( cr->Cond == COND_KNOCKOUT ? cr->Anim1Knockout : cr->Anim1Dead ) );
     uint& anim2 = ( cr->Cond == COND_LIFE ? cr->Anim2Life : ( cr->Cond == COND_KNOCKOUT ? cr->Anim2Knockout : cr->Anim2Dead ) );
     if( anim1 != mobj->MCritter.Anim1 || anim2 != mobj->MCritter.Anim2 )
