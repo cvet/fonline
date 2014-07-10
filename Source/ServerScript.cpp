@@ -1,7 +1,6 @@
 #include "StdAfx.h"
 #include "Server.h"
 #include "AngelScript/preprocessor.h"
-#include "Version.h"
 #include "ScriptPragmas.h"
 
 // Global_LoadImage
@@ -481,7 +480,6 @@ bool FOServer::ReloadClientScripts()
 
     // Add config text and pragmas
     msg_script.AddStr( STR_INTERNAL_SCRIPT_CONFIG, config.c_str() );
-    msg_script.AddStr( STR_INTERNAL_SCRIPT_VERSION, Str::FormatBuf( "%d", CLIENT_SCRIPT_BINARY_VERSION ) );
     for( uint i = 0, j = (uint) pragmas.size(); i < j; i++ )
         msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + i, pragmas[ i ].c_str() );
 

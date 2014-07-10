@@ -263,7 +263,6 @@
 		<Unit filename="../Source/Timer.cpp" />
 		<Unit filename="../Source/Timer.h" />
 		<Unit filename="../Source/Types.h" />
-		<Unit filename="../Source/Version.h" />
 		<Unit filename="../Source/ogg/codec.h" />
 		<Unit filename="../Source/ogg/ogg.h" />
 		<Unit filename="../Source/ogg/os_types.h" />

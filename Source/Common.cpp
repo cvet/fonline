@@ -7,7 +7,6 @@
 #include <math.h>
 #include "FileManager.h"
 #include "IniParser.h"
-#include "Version.h"
 #include <stdarg.h>
 
 #pragma MESSAGE("Add TARGET_HEX.")

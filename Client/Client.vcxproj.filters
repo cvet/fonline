@@ -200,9 +200,6 @@
     <ClInclude Include="..\Source\Types.h">
       <Filter>Client</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\Version.h">
-      <Filter>Client</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\AngelScript\angelscript.h">
       <Filter>AngelScript</Filter>
     </ClInclude>

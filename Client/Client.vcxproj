@@ -432,7 +432,6 @@
     <ClInclude Include="..\Source\Text.h" />
     <ClInclude Include="..\Source\Timer.h" />
     <ClInclude Include="..\Source\Types.h" />
-    <ClInclude Include="..\Source\Version.h" />
     <ClInclude Include="..\Source\AngelScript\angelscript.h" />
     <ClInclude Include="..\Source\AngelScript\as_array.h" />
     <ClInclude Include="..\Source\AngelScript\as_atomic.h" />

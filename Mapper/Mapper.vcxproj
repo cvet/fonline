@@ -452,7 +452,6 @@
     <ClInclude Include="..\Source\Text.h" />
     <ClInclude Include="..\Source\Timer.h" />
     <ClInclude Include="..\Source\Types.h" />
-    <ClInclude Include="..\Source\Version.h" />
     <ClInclude Include="..\Source\Zlib\crc32.h" />
     <ClInclude Include="..\Source\Zlib\deflate.h" />
     <ClInclude Include="..\Source\Zlib\inffast.h" />

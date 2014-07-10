@@ -2,7 +2,6 @@
 #include "Client.h"
 #include "Access.h"
 #include "Defence.h"
-#include "Version.h"
 
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR                          \
@@ -9054,18 +9053,10 @@ bool FOClient::ReloadScripts()
 
     FOMsg& msg_script = CurLang.Msg[ TEXTMSG_INTERNAL ];
     if( !msg_script.Count( STR_INTERNAL_SCRIPT_CONFIG ) ||
-        !msg_script.Count( STR_INTERNAL_SCRIPT_VERSION ) ||
         !msg_script.Count( STR_INTERNAL_SCRIPT_MODULES ) ||
         !msg_script.Count( STR_INTERNAL_SCRIPT_MODULES + 1 ) )
     {
         WriteLog( "Main script section not found in MSG.\n" );
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
-        return false;
-    }
-
-    if( msg_script.GetInt( STR_INTERNAL_SCRIPT_VERSION ) != CLIENT_SCRIPT_BINARY_VERSION )
-    {
-        WriteLog( "Old version of scripts.\n" );
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
         return false;
     }

@@ -72,7 +72,7 @@ public:
     ushort      PopLastHexX();
     ushort      PopLastHexY();
     void        SetBaseType( uint type );
-    void        SetDir( uchar dir );
+    void        SetDir( uchar dir, bool animate = true );
     uchar       GetDir() { return CrDir; }
     uint        GetCrTypeAlias();
 

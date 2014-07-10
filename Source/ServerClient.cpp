@@ -1,6 +1,5 @@
 #include "StdAfx.h"
 #include "Server.h"
-#include "Version.h"
 
 void FOServer::ProcessCritter( Critter* cr )
 {

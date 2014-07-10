@@ -3,7 +3,6 @@
 #include "ItemManager.h"
 #include "Crypt.h"
 #include "ConstantsManager.h"
-#include "Version.h"
 #include <strstream>
 #include "IniParser.h"
 

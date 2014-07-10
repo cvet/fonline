@@ -1,7 +1,6 @@
 #include "StdAfx.h"
 #include "Server.h"
 #include "Exception.h"
-#include "Version.h"
 #include "Access.h"
 #include "BufferManager.h"
 #include <locale.h>

@@ -469,9 +469,6 @@
     <ClInclude Include="..\Source\Vars.h">
       <Filter>Server</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\Version.h">
-      <Filter>Server</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\AngelScript\angelscript.h">
       <Filter>AngelScript</Filter>
     </ClInclude>

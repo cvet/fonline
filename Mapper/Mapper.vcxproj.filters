@@ -149,9 +149,6 @@
     <ClInclude Include="..\Source\Types.h">
       <Filter>Mapper</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\Version.h">
-      <Filter>Mapper</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\Zlib\crc32.h">
       <Filter>Zlib</Filter>
     </ClInclude>

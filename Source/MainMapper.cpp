@@ -1,7 +1,6 @@
 #include "StdAfx.h"
 #include "Mapper.h"
 #include "Exception.h"
-#include "Version.h"
 #include <locale.h>
 
 int main( int argc, char** argv )

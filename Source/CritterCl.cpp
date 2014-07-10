@@ -1424,7 +1424,7 @@ void CritterCl::SetBaseType( uint type )
     ProcessChangedParams();
 }
 
-void CritterCl::SetDir( uchar dir )
+void CritterCl::SetDir( uchar dir, bool animate /* = true */ )
 {
     if( dir >= DIRS_COUNT || !CritType::IsCanRotate( GetCrType() ) )
         dir = 0;
@@ -1433,7 +1433,7 @@ void CritterCl::SetDir( uchar dir )
     CrDir = dir;
     if( Anim3d )
         Anim3d->SetDir( dir );
-    if( !IsAnim() )
+    if( animate && !IsAnim() )
         AnimateStay();
 }
 

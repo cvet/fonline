@@ -1,6 +1,9 @@
 #ifndef __COMMON__
 #define __COMMON__
 
+// Main version
+#define FONLINE_VERSION                          ( 436 )
+
 // Debugging
 // #define DEV_VERSION
 // #define SHOW_RACE_CONDITIONS // All known places with race conditions, not use in multithreading

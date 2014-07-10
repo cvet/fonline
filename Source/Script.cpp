@@ -2,7 +2,6 @@
 #include "Script.h"
 #include "Text.h"
 #include "FileManager.h"
-#include "Version.h"
 #include "AngelScript/scriptstring.h"
 #include "AngelScript/scriptany.h"
 #include "AngelScript/scriptdictionary.h"

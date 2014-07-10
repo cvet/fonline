@@ -1,7 +1,6 @@
 #include "StdAfx.h"
 #include "Client.h"
 #include "Exception.h"
-#include "Version.h"
 #include "Keyboard.h"
 #include <locale.h>
 #ifndef FO_WINDOWS

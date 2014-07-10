@@ -227,7 +227,6 @@
 		<Unit filename="../Source/Timer.h" />
 		<Unit filename="../Source/Vars.cpp" />
 		<Unit filename="../Source/Vars.h" />
-		<Unit filename="../Source/Version.h" />
 		<Unit filename="../Source/zlib/adler32.c">
 			<Option compilerVar="CC" />
 		</Unit>

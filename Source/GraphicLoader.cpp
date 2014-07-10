@@ -3,7 +3,6 @@
 #include "3dAnimation.h"
 #include "Text.h"
 #include "Timer.h"
-#include "Version.h"
 #include "SpriteManager.h"
 #include "ResourceManager.h"
 
@@ -213,7 +212,7 @@ Node* GraphicLoader::LoadModel( const char* fname )
     if( file_cache.LoadFile( fname_cache, PT_CACHE ) )
     {
         uint version = file_cache.GetBEUInt();
-        if( version != MODELS_BINARY_VERSION || write_time > file_cache.GetWriteTime() )
+        if( version != FONLINE_VERSION || write_time > file_cache.GetWriteTime() )
             file_cache.UnloadFile();                  // Disable loading from this binary, because its outdated
     }
     if( file_cache.IsLoaded() )
@@ -600,7 +599,7 @@ Node* GraphicLoader::LoadModel( const char* fname )
 
     // Save to cache
     file_cache.SwitchToWrite();
-    file_cache.SetBEUInt( MODELS_BINARY_VERSION );
+    file_cache.SetBEUInt( FONLINE_VERSION );
     root_node->Save( file_cache );
     file_cache.SetBEUInt( loaded_anim_sets );
     for( uint i = 0; i < loaded_anim_sets; i++ )
@@ -1169,7 +1168,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     {
         bool loaded = false;
         uint version = file_binary.GetBEUInt();
-        if( version == SHADER_PROGRAM_BINARY_VERSION )
+        if( version == FONLINE_VERSION )
         {
             GLenum  format = file_binary.GetBEUInt();
             UNUSED_VARIABLE( format ); // OGL ES
@@ -1341,7 +1340,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             buf.resize( buf_size );
             GL( glGetProgramBinary( program, buf_size, &length, &format, &buf[ 0 ] ) );
             Str::Append( fname, "b" );
-            file_binary.SetBEUInt( SHADER_PROGRAM_BINARY_VERSION );
+            file_binary.SetBEUInt( FONLINE_VERSION );
             file_binary.SetBEUInt( format );
             file_binary.SetBEUInt( length );
             file_binary.SetData( &buf[ 0 ], length );
