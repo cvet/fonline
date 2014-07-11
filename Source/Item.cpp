@@ -107,10 +107,6 @@ void Item::Init( ProtoItem* proto )
             Data.HolodiskNumber = Random( 1, 42 );
         #endif
     }
-
-    #ifdef FONLINE_CLIENT
-    Lexems = ScriptString::Create();
-    #endif
 }
 
 Item* Item::Clone()

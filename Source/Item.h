@@ -643,6 +643,7 @@ public:
     Item()
     {
         memzero( this, OFFSETOF( Item, IsNotValid ) );
+        Lexems = ScriptString::Create();
         RefCounter = 1;
         IsNotValid = false;
     }
