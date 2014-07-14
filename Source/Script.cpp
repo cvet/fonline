@@ -1774,6 +1774,7 @@ int Script::BindImportedFunctions()
     EngineData*      edata = (EngineData*) Engine->GetUserData();
     ScriptModuleVec& modules = edata->Modules;
     int              errors = 0;
+
     for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
     {
         asIScriptModule* module = *it;
@@ -1782,6 +1783,46 @@ int Script::BindImportedFunctions()
         {
             WriteLogF( _FUNC_, " - Fail to bind imported functions, module<%s>, error<%d>.\n", module->GetName(), result );
             errors++;
+
+            #ifndef FONLINE_CLIENT
+            // import all functions again, "manually"
+            // does not solve anything, but makes finding problems easier
+
+            char buf[ MAX_FOTEXT ];
+
+            if( module->UnbindAllImportedFunctions() < 0 )
+                continue;
+
+            for( asUINT i = 0, iLen = module->GetImportedFunctionCount(); i < iLen; i++ )
+            {
+                const char* decl = module->GetImportedFunctionDeclaration( i );
+                const char* name = module->GetImportedFunctionSourceModule( i );
+
+                Str::Format( buf, "%s : import %s from \"%s\"", module->GetName(), decl, name );
+
+                asIScriptModule* mod = Engine->GetModule( name, asGM_ONLY_IF_EXISTS );
+                if( !mod )
+                {
+                    WriteLogF( _FUNC_, "   %s : source module does not exists.\n", buf );
+                    continue;
+                }
+
+                asIScriptFunction* func = mod->GetFunctionByDecl( decl );
+                if( !func )
+                {
+                    WriteLogF( _FUNC_, "   %s : source function does not exists.\n", buf );
+                    continue;
+                }
+
+                int temp = module->BindImportedFunction( i, func );
+                if( temp < 0 )
+                {
+                    WriteLogF( _FUNC_, "   %s : bind error<%d>\n", buf, temp );
+                    continue;
+                }
+            }
+            #endif // !FONLINE_CLIENT
+
             continue;
         }
     }

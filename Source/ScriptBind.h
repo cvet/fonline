@@ -1347,6 +1347,7 @@ BIND_ASSERT( engine->RegisterObjectProperty( "MapperMap", "const int WorkHexX", 
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperMap", "const int WorkHexY", OFFSETOF( ProtoMap, Header.WorkHexY ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperMap", "int Time", OFFSETOF( ProtoMap, Header.Time ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperMap", "bool NoLogOut", OFFSETOF( ProtoMap, Header.NoLogOut ) ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "string@ get_Name()", asFUNCTION( BIND_CLASS MapperMap_get_Name ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "string@ get_ScriptModule() const", asFUNCTION( BIND_CLASS MapperMap_get_ScriptModule ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void set_ScriptModule(const string& name)", asFUNCTION( BIND_CLASS MapperMap_set_ScriptModule ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "string@ get_ScriptFunc() const", asFUNCTION( BIND_CLASS MapperMap_get_ScriptFunc ), asCALL_CDECL_OBJFIRST ) );
@@ -1356,7 +1357,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void set_ScriptFunc(con
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowCritterParam(int paramIndex, bool show, string@+ paramName = null)", asFUNCTION( BIND_CLASS Global_ShowCritterParam ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "MapperMap@+ LoadMap(string& fileName, int pathType)", asFUNCTION( BIND_CLASS Global_LoadMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void UnloadMap(MapperMap@+ map)", asFUNCTION( BIND_CLASS Global_UnloadMap ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool SaveMap(MapperMap@+ map, string& fileName, int pathType)", asFUNCTION( BIND_CLASS Global_SaveMap ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool SaveMap(MapperMap@+ map, string& fileName, int pathType, bool keepName = false)", asFUNCTION( BIND_CLASS Global_SaveMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool ShowMap(MapperMap@+ map)", asFUNCTION( BIND_CLASS Global_ShowMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetLoadedMaps(MapperMap@[]@+ maps)", asFUNCTION( BIND_CLASS Global_GetLoadedMaps ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetMapFileNames(string@+ dir, string@[]@+ names)", asFUNCTION( BIND_CLASS Global_GetMapFileNames ), asCALL_CDECL ) );

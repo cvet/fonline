@@ -1,5 +1,38 @@
 #include "reflection.h"
+#include "Script.h"
 #include <assert.h>
+
+uint ScriptType::GetLoadedModules( ScriptArray* modules )
+{
+#ifdef FONLINE_SCRIPT_COMPILER
+    asIScriptContext* ctx = asGetActiveContext();
+    if( !ctx )
+        return ( 0 );
+
+    if( modules )
+    {
+        asIScriptModule* module = (asIScriptModule*) ctx->GetUserData();
+        modules->InsertLast( ScriptString::Create( module->GetName() ) );
+    }
+
+    return ( 1 );
+#else
+    EngineData* edata = (EngineData*) ( Script::GetEngine()->GetUserData() );
+    if( !edata || !edata->Modules.size() )
+        return ( 0 );
+
+    uint result = 0;
+
+    for( auto module : edata->Modules )
+    {
+        if( modules )
+            modules->InsertLast( ScriptString::Create( module->GetName() ) );
+        result++;
+    }
+
+    return ( result );
+#endif
+}
 
 ScriptString* ScriptType::GetName() const
 {
@@ -209,6 +242,8 @@ void RegisterScriptReflection( asIScriptEngine* engine )
     engine->RegisterObjectBehaviour( "typeof<T>", asBEHAVE_ADDREF, "void f()", asMETHOD( ScriptTypeOf, AddRef ), asCALL_THISCALL );
     engine->RegisterObjectBehaviour( "typeof<T>", asBEHAVE_RELEASE, "void f()", asMETHOD( ScriptTypeOf, Release ), asCALL_THISCALL );
     engine->RegisterObjectBehaviour( "typeof<T>", asBEHAVE_IMPLICIT_VALUE_CAST, "type f()", asMETHOD( ScriptTypeOf, ConvertToType ), asCALL_THISCALL );
+
+    engine->RegisterGlobalFunction( "getLoadedModules(string[]@+ modules)", asFUNCTION(ScriptType::GetLoadedModules), asCALL_CDECL );
 
     RegisterMethod( engine, "string@ get_name() const", asMETHOD( ScriptType, GetName ) );
     RegisterMethod( engine, "string@ get_nameWithoutNamespace() const", asMETHOD( ScriptType, GetNameWithoutNamespace ) );

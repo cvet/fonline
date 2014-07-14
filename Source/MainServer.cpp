@@ -910,30 +910,36 @@ Thread   LoopThread;
 
 int main( int argc, char** argv )
 {
-    // Start daemon
-    pid_t parpid = fork();
-    if( parpid < 0 )
+    // Make command line
+    SetCommandLine( argc, argv );
+
+    if( !Str::Substring( CommandLine, "-nodetach" ) )
     {
-        WriteLog( "Create child process (fork) fail, error<%s>.", ERRORSTR );
-        return 1;
-    }
-    else if( parpid != 0 )
-    {
-        // Close parent process
-        return 0;
+        // Start daemon
+        pid_t parpid = fork();
+        if( parpid < 0 )
+        {
+            WriteLog( "Create child process (fork) fail, error<%s>.", ERRORSTR );
+            return 1;
+        }
+        else if( parpid != 0 )
+        {
+            // Close parent process
+            return 0;
+        }
+
+        close( STDIN_FILENO );
+        close( STDOUT_FILENO );
+        close( STDERR_FILENO );
+
+        if( setsid() < 0 )
+        {
+            WriteLog( "Generate process index (setsid) fail, error<%s>.\n", ERRORSTR );
+            return 1;
+        }
     }
 
     umask( 0 );
-
-    if( setsid() < 0 )
-    {
-        WriteLog( "Generate process index (setsid) fail, error<%s>.\n", ERRORSTR );
-        return 1;
-    }
-
-    close( STDIN_FILENO );
-    close( STDOUT_FILENO );
-    close( STDERR_FILENO );
 
     // Stuff
     setlocale( LC_ALL, "Russian" );
@@ -962,8 +968,6 @@ int main( int argc, char** argv )
     if( MemoryDebugLevel >= 3 )
         Debugger::StartTraceMemory();
 
-    // Make command line
-    SetCommandLine( argc, argv );
 
     // Logging
     LogWithTime( cfg.GetInt( "LoggingTime", 1 ) == 0 ? false : true );

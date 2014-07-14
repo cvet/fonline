@@ -309,6 +309,7 @@ bool FOMapper::Init()
             HexMngr.FindSetCenter( hexX, hexY );
             CurProtoMap = pmap;
             LoadedProtoMaps.push_back( pmap );
+            RunMapLoadScript( pmap );
         }
     }
 
@@ -4824,6 +4825,8 @@ void FOMapper::ParseCommand( const char* cmd )
         LoadedProtoMaps.push_back( pmap );
 
         AddMess( "Load map complete." );
+
+        RunMapLoadScript( pmap );
     }
     // Save map
     else if( *cmd == '^' )
@@ -4848,7 +4851,10 @@ void FOMapper::ParseCommand( const char* cmd )
         HexMngr.RefreshMap();
         FileManager::SetWritePath( ServerWritePath );
         if( CurProtoMap->Save( map_name, PT_SERVER_MAPS ) )
+        {
             AddMess( "Save map success." );
+            RunMapSaveScript( CurProtoMap );
+        }
         else
             AddMess( "Save map fail, see log." );
         FileManager::SetWritePath( ClientWritePath );
@@ -5329,6 +5335,8 @@ void FOMapper::InitScriptSystem()
         { &MapperFunctions.CritterAnimation, "critter_animation", "string@ %s(int,uint,uint,uint,uint&,uint&,int&,int&)" },
         { &MapperFunctions.CritterAnimationSubstitute, "critter_animation_substitute", "bool %s(int,uint,uint,uint,uint&,uint&,uint&)" },
         { &MapperFunctions.CritterAnimationFallout, "critter_animation_fallout", "bool %s(uint,uint&,uint&,uint&,uint&,uint&)" },
+        { &MapperFunctions.MapLoad, "map_load", "void %s(MapperMap&)" },
+        { &MapperFunctions.MapSave, "map_save", "void %s(MapperMap&)" },
     };
     Script::BindReservedFunctions( (char*) scripts_cfg.GetBuf(), "mapper", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) );
 
@@ -5345,6 +5353,30 @@ void FOMapper::RunStartScript()
 {
     if( MapperFunctions.Start && Script::PrepareContext( MapperFunctions.Start, _FUNC_, "Mapper" ) )
         Script::RunPrepared();
+}
+
+void FOMapper::RunMapLoadScript( ProtoMap* pmap )
+{
+    if( !pmap )
+        return;
+
+    if( MapperFunctions.MapLoad && Script::PrepareContext( MapperFunctions.MapLoad, _FUNC_, "Mapper " ) )
+    {
+        Script::SetArgObject( pmap );
+        Script::RunPrepared();
+    }
+}
+
+void FOMapper::RunMapSaveScript( ProtoMap* pmap )
+{
+    if( !pmap )
+        return;
+
+    if( MapperFunctions.MapSave && Script::PrepareContext( MapperFunctions.MapSave, _FUNC_, "Mapper " ) )
+    {
+        Script::SetArgObject( pmap );
+        Script::RunPrepared();
+    }
 }
 
 void FOMapper::DrawIfaceLayer( uint layer )
@@ -5564,6 +5596,11 @@ int* FOMapper::SScriptFunc::MapperObject_CritterParam_Index( MapObject& mobj, ui
     if( !mobj.MCritter.Params )
         mobj.AllocateCritterParams();
     return &mobj.MCritter.Params[ index ];
+}
+
+ScriptString* FOMapper::SScriptFunc::MapperMap_get_Name( ProtoMap& pmap )
+{
+    return ScriptString::Create( pmap.GetName() );
 }
 
 MapObject* FOMapper::SScriptFunc::MapperMap_AddObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, ushort pid )
@@ -5960,6 +5997,7 @@ ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( ScriptString& file_name, int pa
     }
     FileManager::SetWritePath( ClientWritePath );
     Self->LoadedProtoMaps.push_back( pmap );
+    Self->RunMapLoadScript( pmap );
     return pmap;
 }
 
@@ -5980,13 +6018,15 @@ void FOMapper::SScriptFunc::Global_UnloadMap( ProtoMap* pmap )
     pmap->Release();
 }
 
-bool FOMapper::SScriptFunc::Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type )
+bool FOMapper::SScriptFunc::Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type, bool keepName /* = false */ )
 {
     if( !pmap )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
     FileManager::SetWritePath( ServerWritePath );
-    bool result = pmap->Save( file_name.c_str(), path_type );
+    bool result = pmap->Save( file_name.c_str(), path_type, keepName );
     FileManager::SetWritePath( ClientWritePath );
+    if( result )
+        Self->RunMapSaveScript( pmap );
     return result;
 }
 

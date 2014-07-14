@@ -1472,8 +1472,10 @@ void ProtoMap::GenNew()
     isInit = true;
 }
 
-bool ProtoMap::Save( const char* fname, int path_type )
+bool ProtoMap::Save( const char* fname, int path_type, bool keepName /* = false */ )
 {
+    string pmapNameOld = pmapName;
+
     if( fname && *fname )
         pmapName = fname;
     if( path_type >= 0 )
@@ -1523,6 +1525,9 @@ bool ProtoMap::Save( const char* fname, int path_type )
     Tiles.clear();
 
     string save_fname = pmapName + MAP_PROTO_EXT;
+    if( keepName )
+        pmapName = pmapNameOld;
+
     if( !fm.SaveOutBufToFile( save_fname.c_str(), pathType ) )
     {
         WriteLogF( _FUNC_, " - Unable write file.\n" );

@@ -348,6 +348,8 @@ struct MapperScriptFunctions
     int CritterAnimation;
     int CritterAnimationSubstitute;
     int CritterAnimationFallout;
+    int MapLoad;
+    int MapSave;
 } extern MapperFunctions;
 
 #endif

@@ -193,6 +193,32 @@ bool FOServer::InitScriptSystem()
     }
 
     ASDbgMemoryCanWork = true;
+
+    EngineData* edata = (EngineData*) engine->GetUserData();
+    if( edata && edata->Modules.size() )
+    {
+        for( auto module : edata->Modules )
+        {
+            uint bindId = Script::Bind( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
+            if( bindId && Script::PrepareContext( bindId, _FUNC_, "Script" ) )
+            {
+                WriteLog( "Initializing module : %s\n", module->GetName() );
+
+                if( !Script::RunPrepared() )
+                {
+                    WriteLog( "Error executing init function, module<%s>\n", module->GetName() );
+                    return ( false );
+                }
+
+                if( !Script::GetReturnedBool() )
+                {
+                    WriteLog( "Initialization stopped by module<%s>\n", module->GetName() );
+                    return ( false );
+                }
+            }
+        }
+    }
+
     WriteLog( "Script system initialization complete.\n" );
     return true;
 }

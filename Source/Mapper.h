@@ -427,6 +427,8 @@ public:
     void InitScriptSystem();
     void FinishScriptSystem();
     void RunStartScript();
+    void RunMapLoadScript( ProtoMap* pmap );
+    void RunMapSaveScript( ProtoMap* pmap );
     void DrawIfaceLayer( uint layer );
 
     struct SScriptFunc
@@ -449,6 +451,7 @@ public:
         static void          MapperObject_MoveToDir( MapObject& mobj, uchar dir );
         static int*          MapperObject_CritterParam_Index( MapObject& mobj, uint index );
 
+        static ScriptString* MapperMap_get_Name( ProtoMap& pmap );
         static MapObject*    MapperMap_AddObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, ushort pid );
         static MapObject*    MapperMap_GetObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, ushort pid, uint skip );
         static uint          MapperMap_GetObjects( ProtoMap& pmap, ushort hx, ushort hy, uint radius, int mobj_type, ushort pid, ScriptArray* objects );
@@ -475,7 +478,7 @@ public:
         static ScriptString* Global_EncodeUTF8( uint ucs );
         static ProtoMap*     Global_LoadMap( ScriptString& file_name, int path_type );
         static void          Global_UnloadMap( ProtoMap* pmap );
-        static bool          Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type );
+        static bool          Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type, bool keepName = false );
         static bool          Global_ShowMap( ProtoMap* pmap );
         static int           Global_GetLoadedMaps( ScriptArray* maps );
         static uint          Global_GetMapFileNames( ScriptString* dir, ScriptArray* names );

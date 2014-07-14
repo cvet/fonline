@@ -1066,6 +1066,7 @@ struct BindClass
     static void MapperObject_MoveToHexOffset()    {}
     static void MapperObject_MoveToDir()          {}
 
+    static void MapperMap_get_Name()         {}
     static void MapperMap_AddObject()        {}
     static void MapperMap_GetObject()        {}
     static void MapperMap_GetObjects()       {}

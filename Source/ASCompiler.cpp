@@ -108,6 +108,8 @@ void RunMain( asIScriptModule* module, const char* func_str )
         return;
     }
 
+    ctx->SetUserData( module );
+
     result = ctx->Execute();
     asEContextState state = ctx->GetState();
     if( state != asEXECUTION_FINISHED )

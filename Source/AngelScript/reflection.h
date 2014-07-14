@@ -2,11 +2,14 @@
 #define SCRIPTTYPE_H
 
 #include "angelscript.h"
+#include "scriptarray.h"
 #include "scriptstring.h"
 
 class ScriptType
 {
 public:
+    static uint GetLoadedModules( ScriptArray* modules );
+
     ScriptString* GetName() const;
     ScriptString* GetNameWithoutNamespace() const;
     ScriptString* GetNamespace() const;

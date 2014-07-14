@@ -293,7 +293,7 @@ public:
 
     #ifdef FONLINE_MAPPER
     void        GenNew();
-    bool        Save( const char* fname, int path_type );
+    bool        Save( const char* fname, int path_type, bool keepName = false );
     static bool IsMapFile( const char* fname );
     #endif
 
