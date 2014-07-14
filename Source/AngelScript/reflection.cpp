@@ -23,8 +23,9 @@ uint ScriptType::GetLoadedModules( ScriptArray* modules )
 
     uint result = 0;
 
-    for( auto module : edata->Modules )
+    for( auto it = edata->Modules.begin(); it != edata->Modules.end(); ++it )
     {
+        asIScriptModule* module = *it;
         if( modules )
             modules->InsertLast( ScriptString::Create( module->GetName() ) );
         result++;

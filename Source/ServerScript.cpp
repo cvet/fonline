@@ -197,9 +197,10 @@ bool FOServer::InitScriptSystem()
     EngineData* edata = (EngineData*) engine->GetUserData();
     if( edata && edata->Modules.size() )
     {
-        for( auto module : edata->Modules )
+        for( auto it = edata->Modules.begin(); it != edata->Modules.end(); ++it )
         {
-            uint bindId = Script::Bind( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
+            asIScriptModule* module = *it;
+            uint             bindId = Script::Bind( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
             if( bindId && Script::PrepareContext( bindId, _FUNC_, "Script" ) )
             {
                 WriteLog( "Initializing module : %s\n", module->GetName() );
