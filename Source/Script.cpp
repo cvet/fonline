@@ -9,6 +9,7 @@
 #include "AngelScript/scriptmath.h"
 #include "AngelScript/scriptarray.h"
 #include "AngelScript/weakref.h"
+#include "AngelScript/reflection.h"
 #include "AngelScript/preprocessor.h"
 #include <strstream>
 
@@ -950,6 +951,7 @@ asIScriptEngine* Script::CreateEngine( Preprocessor::PragmaCallback* pragma_call
     RegisterScriptFile( engine );
     RegisterScriptMath( engine );
     RegisterScriptWeakRef( engine );
+    RegisterScriptReflection( engine );
 
     EngineData* edata = new EngineData();
     edata->PragmaCB = pragma_callback;

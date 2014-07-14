@@ -353,6 +353,9 @@
     <ClInclude Include="..\Source\AngelScript\weakref.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\reflection.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Common.cpp">
@@ -617,6 +620,9 @@
       <Filter>AngelScript</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\weakref.cpp">
+      <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\reflection.cpp">
       <Filter>AngelScript</Filter>
     </ClCompile>
   </ItemGroup>

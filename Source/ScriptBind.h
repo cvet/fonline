@@ -1576,7 +1576,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadConstants(int constCollec
 BIND_ASSERT( engine->RegisterGlobalFunction( "void AllowSlot(uint8 index, string& slotName)", asFUNCTION( BIND_CLASS Global_AllowSlot ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint DecodeUTF8(const string& text, uint& length)", asFUNCTION( BIND_CLASS Global_DecodeUTF8 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ EncodeUTF8(uint ucs)", asFUNCTION( BIND_CLASS Global_EncodeUTF8 ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void CloneObject(?&in, ?&out, bool copy)", asFUNCTION( BIND_CLASS Global_CloneObject ), asCALL_CDECL ) );
 
 /************************************************************************/
 /*                                                                      */

@@ -10890,33 +10890,6 @@ ScriptString* FOClient::SScriptFunc::Global_EncodeUTF8( uint ucs )
     return ScriptString::Create( buf );
 }
 
-void FOClient::SScriptFunc::Global_CloneObject( void* in, int in_type_id, void* out, int out_type_id, bool copy )
-{
-    if( !( in_type_id & asTYPEID_OBJHANDLE ) )
-        SCRIPT_ERROR_R( "Invalid in arg, not an handle." );
-    if( !( in_type_id & asTYPEID_SCRIPTOBJECT ) )
-        SCRIPT_ERROR_R( "Invalid in arg, not an script object." );
-    if( !*(void**) in )
-        SCRIPT_ERROR_R( "Invalid in arg, handle must be non null." );
-    if( !( out_type_id & asTYPEID_OBJHANDLE ) )
-        SCRIPT_ERROR_R( "Invalid out arg, not an handle." );
-    if( *(void**) out )
-        SCRIPT_ERROR_R( "Invalid out arg, handle must be null." );
-
-    in = *(void**) in;
-    asIScriptObject* in_obj = (asIScriptObject*) in;
-    in_type_id = in_obj->GetTypeId();
-
-    asIScriptEngine* engine = Script::GetEngine();
-    if( !engine->IsHandleCompatibleWithObject( in, in_type_id, out_type_id ) )
-        SCRIPT_ERROR_R( "Invalid args, incompatible objects." );
-
-    if( copy )
-        *(void**) out = engine->CreateScriptObjectCopy( in, engine->GetObjectTypeById( in_type_id ) );
-    else
-        *(void**) out = engine->CreateScriptObject( engine->GetObjectTypeById( in_type_id ) );
-}
-
 void FOClient::SScriptFunc::Global_SetRegistrationParam( uint index, bool enabled )
 {
     if( index >= MAX_PARAMS )

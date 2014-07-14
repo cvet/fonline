@@ -14,6 +14,7 @@
 #include "AngelScript/scriptstring.h"
 #include "AngelScript/scriptarray.h"
 #include "AngelScript/weakref.h"
+#include "AngelScript/reflection.h"
 #include <stdio.h>
 #include <list>
 #include <set>
@@ -112,11 +113,11 @@ void RunMain( asIScriptModule* module, const char* func_str )
     if( state != asEXECUTION_FINISHED )
     {
         if( state == asEXECUTION_EXCEPTION )
-            printf( "Execution of script stopped due to exception.\n" );
+            printf( "Execution of script stopped due to exception '%s'.\n", ctx->GetExceptionString() );
         else if( state == asEXECUTION_SUSPENDED )
             printf( "Execution of script stopped due to timeout.\n" );
         else
-            printf( "Execution of script stopped due to %s.\n", ContextStatesStr[ (int) state ] );
+            printf( "Execution of script stopped due to '%s'.\n", ContextStatesStr[ (int) state ] );
         PrintContextCallstack( ctx );
         ctx->Abort();
         return;
@@ -237,7 +238,7 @@ int main( int argc, char* argv[] )
                 " [-d SOME_DEFINE]*\n"
                 " [-run func_name]*\n"
                 " [-gc] (collect garbage after execution)\n"
-                "*can be used multiple times" );
+                "*can be used multiple times\n" );
         return 0;
     }
 
@@ -302,6 +303,7 @@ int main( int argc, char* argv[] )
     RegisterScriptFile( Engine );
     RegisterScriptMath( Engine );
     RegisterScriptWeakRef( Engine );
+    RegisterScriptReflection( Engine );
 
     // Stuff for run func
     if( !run_func.empty() )
@@ -505,6 +507,9 @@ int main( int argc, char* argv[] )
     // Execute functions
     for( size_t i = 0; i < run_func.size(); i++ )
         RunMain( module, run_func[ i ] );
+
+    // Fast exit from program
+    return 0;
 
     // Collect garbage
     if( CollectGarbage )

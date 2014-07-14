@@ -473,7 +473,6 @@ public:
         static void          Global_AllowSlot( uchar index, ScriptString& slot_name );
         static uint          Global_DecodeUTF8( ScriptString& text, uint& length );
         static ScriptString* Global_EncodeUTF8( uint ucs );
-        static void          Global_CloneObject( void* in, int in_type_id, void* out, int out_type_id );
         static ProtoMap*     Global_LoadMap( ScriptString& file_name, int path_type );
         static void          Global_UnloadMap( ProtoMap* pmap );
         static bool          Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type );

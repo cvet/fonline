@@ -917,7 +917,6 @@ public:
         static void          Global_AllowSlot( uchar index, ScriptString& ini_option );
         static uint          Global_DecodeUTF8( ScriptString& text, uint& length );
         static ScriptString* Global_EncodeUTF8( uint ucs );
-        static void          Global_CloneObject( void* in, int in_type_id, void* out, int out_type_id, bool copy );
         static void          Global_SetRegistrationParam( uint index, bool enabled );
         static uint          Global_GetAngelScriptProperty( int property );
         static bool          Global_SetAngelScriptProperty( int property, uint value );

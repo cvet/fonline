@@ -1194,7 +1194,6 @@ struct BindClass
     static void Global_AllowSlot()              {}
     static void Global_DecodeUTF8()             {}
     static void Global_EncodeUTF8()             {}
-    static void Global_CloneObject()            {}
 };
 
 #ifdef BIND_CLIENT

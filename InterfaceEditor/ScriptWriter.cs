@@ -85,7 +85,6 @@ namespace InterfaceEditor
 
 			if (!obj.Active)
 				_Script.AppendLine(_BaseIdent + "        SetActive( false );");
-			_Script.AppendLine(_BaseIdent + "        SetName( \"" + obj.Name + "\" );");
 			if (!obj.Position.IsEmpty)
 				_Script.AppendLine(_BaseIdent + "        SetPosition( " + obj.Position.X + ", " + obj.Position.Y + " );");
 			if (!obj.Size.IsEmpty)
