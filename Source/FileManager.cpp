@@ -790,7 +790,7 @@ void FileManager::ExtractFileName( const char* fname, char* name )
     }
     else
     {
-        name[ 0 ] = 0;
+        Str::Copy( name, MAX_FOPATH, fname );
     }
 }
 

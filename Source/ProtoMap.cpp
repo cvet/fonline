@@ -1472,9 +1472,9 @@ void ProtoMap::GenNew()
     isInit = true;
 }
 
-bool ProtoMap::Save( const char* fname, int path_type, bool keepName /* = false */ )
+bool ProtoMap::Save( const char* fname, int path_type, bool keep_name /* = false */ )
 {
-    string pmapNameOld = pmapName;
+    string pmap_name_old = pmapName;
 
     if( fname && *fname )
         pmapName = fname;
@@ -1525,8 +1525,8 @@ bool ProtoMap::Save( const char* fname, int path_type, bool keepName /* = false 
     Tiles.clear();
 
     string save_fname = pmapName + MAP_PROTO_EXT;
-    if( keepName )
-        pmapName = pmapNameOld;
+    if( keep_name )
+        pmapName = pmap_name_old;
 
     if( !fm.SaveOutBufToFile( save_fname.c_str(), pathType ) )
     {

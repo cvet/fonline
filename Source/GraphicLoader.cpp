@@ -822,6 +822,9 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
         node->Mesh->Owner = node;
         MeshData* mesh = node->Mesh;
 
+        // Generate tangents
+        fbx_mesh->GenerateTangentsDataForAllUVSets();
+
         // Vertices
         int*        vertices = fbx_mesh->GetPolygonVertices();
         int         vertices_count = fbx_mesh->GetPolygonVertexCount();

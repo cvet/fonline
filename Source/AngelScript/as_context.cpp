@@ -1582,25 +1582,27 @@ void asCContext::CallScriptFunction(asCScriptFunction *func)
 	m_currentFunction = func;
 	m_regs.programPointer = m_currentFunction->scriptData->byteCode.AddressOf();
 
-	// Make sure there is space on the stack to execute the function
-	asDWORD *oldStackPointer = m_regs.stackPointer;
-	if( !ReserveStackSpace(func->scriptData->stackNeeded) )
-		return;
-
-	// If a new stack block was allocated then we'll need to move
-	// over the function arguments to the new block
-	if( m_regs.stackPointer != oldStackPointer )
-	{
-		int numDwords = func->GetSpaceNeededForArguments() + (func->objectType ? AS_PTR_SIZE : 0) + (func->DoesReturnOnStack() ? AS_PTR_SIZE : 0);
-		memcpy(m_regs.stackPointer, oldStackPointer, sizeof(asDWORD)*numDwords);
-	}
-
 	PrepareScriptFunction();
 }
 
 void asCContext::PrepareScriptFunction()
 {
 	asASSERT( m_currentFunction->scriptData );
+
+	// Make sure there is space on the stack to execute the function
+	asDWORD *oldStackPointer = m_regs.stackPointer;
+	if( !ReserveStackSpace(m_currentFunction->scriptData->stackNeeded) )
+		return;
+
+	// If a new stack block was allocated then we'll need to move
+	// over the function arguments to the new block.
+	if( m_regs.stackPointer != oldStackPointer )
+	{
+		int numDwords = m_currentFunction->GetSpaceNeededForArguments() + 
+		                (m_currentFunction->objectType ? AS_PTR_SIZE : 0) + 
+		                (m_currentFunction->DoesReturnOnStack() ? AS_PTR_SIZE : 0);
+		memcpy(m_regs.stackPointer, oldStackPointer, sizeof(asDWORD)*numDwords);
+	}
 
 	// Update framepointer
 	m_regs.stackFramePointer = m_regs.stackPointer;

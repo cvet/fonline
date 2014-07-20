@@ -478,7 +478,7 @@ public:
         static ScriptString* Global_EncodeUTF8( uint ucs );
         static ProtoMap*     Global_LoadMap( ScriptString& file_name, int path_type );
         static void          Global_UnloadMap( ProtoMap* pmap );
-        static bool          Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type, bool keepName = false );
+        static bool          Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type, bool keep_name = false );
         static bool          Global_ShowMap( ProtoMap* pmap );
         static int           Global_GetLoadedMaps( ScriptArray* maps );
         static uint          Global_GetMapFileNames( ScriptString* dir, ScriptArray* names );

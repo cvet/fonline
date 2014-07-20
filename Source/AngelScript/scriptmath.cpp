@@ -47,6 +47,8 @@ inline float modff( float x, float* y )
 }
 #endif
 
+BEGIN_AS_NAMESPACE
+
 // Determine whether the float version should be registered, or the double version
 #ifndef AS_USE_FLOAT
 # if !defined ( _WIN32_WCE ) // WinCE doesn't have the float versions of the math functions
@@ -109,10 +111,10 @@ bool closeTo( float a, float b, float epsilon )
     if( a == b )
         return true;
 
+    // When very close to 0, we can use the absolute comparison
     float diff = fabs( a - b );
-    if( a == 0 || b == 0 || diff < FLT_MIN )
-        // When very close to 0, we can use the absolute comparison
-        return diff < ( epsilon * FLT_MIN );
+    if( ( a == 0 || b == 0 ) && ( diff < epsilon ) )
+        return true;
 
     // Otherwise we need to use relative comparison to account for precision
     return diff / ( fabs( a ) + fabs( b ) ) < epsilon;
@@ -124,8 +126,8 @@ bool closeTo( double a, double b, double epsilon )
         return true;
 
     double diff = fabs( a - b );
-    if( a == 0 || b == 0 || diff < DBL_MIN )
-        return diff < ( epsilon * DBL_MIN );
+    if( ( a == 0 || b == 0 ) && ( diff < epsilon ) )
+        return true;
 
     return diff / ( fabs( a ) + fabs( b ) ) < epsilon;
 }
@@ -149,7 +151,6 @@ void RegisterScriptMath_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterGlobalFunction( "bool closeTo(double, double, double = 0.0000000001)", asFUNCTIONPR( closeTo, ( double, double, double ), bool ), asCALL_CDECL );
     assert( r >= 0 );
-
 
     #if AS_USE_FLOAT
     // Trigonometric functions
@@ -420,3 +421,5 @@ void RegisterScriptMath( asIScriptEngine* engine )
     else
         RegisterScriptMath_Native( engine );
 }
+
+END_AS_NAMESPACE

@@ -108,8 +108,6 @@ void RunMain( asIScriptModule* module, const char* func_str )
         return;
     }
 
-    ctx->SetUserData( module );
-
     result = ctx->Execute();
     asEContextState state = ctx->GetState();
     if( state != asEXECUTION_FINISHED )
@@ -390,15 +388,20 @@ int main( int argc, char* argv[] )
         if( Buf[ i ] == '\n' )
             Buf[ i ] = '\0';
 
+    // Make module name
+    char module_name[ MAX_FOTEXT ];
+    FileManager::ExtractFileName( str_fname, module_name );
+    FileManager::EraseExtension( module_name );
+
     // AS compilation
-    asIScriptModule* module = Engine->GetModule( 0, asGM_ALWAYS_CREATE );
+    asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
     if( !module )
     {
         printf( "Can't create module.\n" );
         return -1;
     }
 
-    if( module->AddScriptSection( NULL, result.String.c_str() ) < 0 )
+    if( module->AddScriptSection( module_name, result.String.c_str() ) < 0 )
     {
         printf( "Unable to add section.\n" );
         return -1;

@@ -1774,7 +1774,6 @@ int Script::BindImportedFunctions()
     EngineData*      edata = (EngineData*) Engine->GetUserData();
     ScriptModuleVec& modules = edata->Modules;
     int              errors = 0;
-
     for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
     {
         asIScriptModule* module = *it;
@@ -1785,8 +1784,8 @@ int Script::BindImportedFunctions()
             errors++;
 
             #ifndef FONLINE_CLIENT
-            // import all functions again, "manually"
-            // does not solve anything, but makes finding problems easier
+            // Import all functions again, "manually"
+            // Does not solve anything, but makes finding problems easier
 
             char buf[ MAX_FOTEXT ];
 
@@ -1798,26 +1797,30 @@ int Script::BindImportedFunctions()
                 const char* decl = module->GetImportedFunctionDeclaration( i );
                 const char* name = module->GetImportedFunctionSourceModule( i );
 
-                Str::Format( buf, "%s : import %s from \"%s\"", module->GetName(), decl, name );
+                buf[ 0 ] = 0;
+                uint len = Str::Length( _FUNC_ );
+                for( uint j = 0; j < len; j++ )
+                    Str::Append( buf, " " );
+                Str::Format( &buf[ len ], "%s : import %s from \"%s\"", module->GetName(), decl, name );
 
                 asIScriptModule* mod = Engine->GetModule( name, asGM_ONLY_IF_EXISTS );
                 if( !mod )
                 {
-                    WriteLogF( _FUNC_, "   %s : source module does not exists.\n", buf );
+                    WriteLog( "   %s : source module does not exists.\n", buf );
                     continue;
                 }
 
                 asIScriptFunction* func = mod->GetFunctionByDecl( decl );
                 if( !func )
                 {
-                    WriteLogF( _FUNC_, "   %s : source function does not exists.\n", buf );
+                    WriteLog( "   %s : source function does not exists.\n", buf );
                     continue;
                 }
 
                 int temp = module->BindImportedFunction( i, func );
                 if( temp < 0 )
                 {
-                    WriteLogF( _FUNC_, "   %s : bind error<%d>\n", buf, temp );
+                    WriteLog( "   %s : bind error<%d>.\n", buf, temp );
                     continue;
                 }
             }

@@ -6018,12 +6018,12 @@ void FOMapper::SScriptFunc::Global_UnloadMap( ProtoMap* pmap )
     pmap->Release();
 }
 
-bool FOMapper::SScriptFunc::Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type, bool keepName /* = false */ )
+bool FOMapper::SScriptFunc::Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type, bool keep_name /* = false */ )
 {
     if( !pmap )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
     FileManager::SetWritePath( ServerWritePath );
-    bool result = pmap->Save( file_name.c_str(), path_type, keepName );
+    bool result = pmap->Save( file_name.c_str(), path_type, keep_name );
     FileManager::SetWritePath( ClientWritePath );
     if( result )
         Self->RunMapSaveScript( pmap );
