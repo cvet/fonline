@@ -1483,6 +1483,7 @@ void FOServer::Process( ClientPtr& cl )
         }
         else
         {
+            CHECK_IN_BUFF_ERROR( cl );
             BIN_END( cl );
         }
 
@@ -1531,6 +1532,7 @@ void FOServer::Process( ClientPtr& cl )
         }
         else
         {
+            CHECK_IN_BUFF_ERROR( cl );
             BIN_END( cl );
         }
     }
@@ -1565,6 +1567,7 @@ void FOServer::Process( ClientPtr& cl )
             cl->Bin.Refresh();
             if( !cl->Bin.NeedProcess() )
             {
+                CHECK_IN_BUFF_ERROR( cl );
                 BIN_END( cl );
                 break;
             }

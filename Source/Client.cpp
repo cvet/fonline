@@ -1046,12 +1046,13 @@ int FOClient::MainLoop()
     // Network
     if( InitNetReason != INIT_NET_REASON_NONE )
     {
-        // Check updates
-        UpdateFiles( false );
-
         // Reason
         int reason = InitNetReason;
         InitNetReason = INIT_NET_REASON_NONE;
+
+        // Check updates
+        if( reason != INIT_NET_REASON_LOGIN2 )
+            UpdateFiles( false );
 
         // Wait screen
         ShowMainScreen( SCREEN_WAIT );
@@ -1065,7 +1066,7 @@ int FOClient::MainLoop()
         }
 
         // After connect things
-        if( reason == INIT_NET_REASON_LOGIN )
+        if( reason == INIT_NET_REASON_LOGIN || reason == INIT_NET_REASON_LOGIN2 )
             Net_SendLogIn( GameOpt.Name->c_str(), Password.c_str() );
         else if( reason == INIT_NET_REASON_REG )
             Net_SendCreatePlayer();
@@ -2417,6 +2418,10 @@ void FOClient::NetProcess()
             if( !Singleplayer )
             {
                 WriteLog( "Registration success.\n" );
+                *GameOpt.Name = *GameOpt.RegName;
+                Password = GameOpt.RegPassword->c_std_str();
+                Crypt.SetCache( "__name", (uchar*) GameOpt.Name->c_str(), (uint) GameOpt.Name->length() + 1 );
+                Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
                 SAFEREL( GameOpt.RegParams );
                 *GameOpt.RegName = "";
                 *GameOpt.RegPassword = "";
@@ -2424,8 +2429,10 @@ void FOClient::NetProcess()
             else
             {
                 WriteLog( "World loaded, enter to it.\n" );
-                LogTryConnect();
             }
+            NetDisconnect();
+            LogTryConnect();
+            InitNetReason = INIT_NET_REASON_LOGIN2;
             break;
 
         case NETMSG_PING:
@@ -2643,13 +2650,17 @@ void FOClient::NetProcess()
             break;
 
         default:
-            if( GameOpt.DebugNet )
-                AddMess( FOMB_GAME, Str::FormatBuf( "Invalid msg<%u>. Seek valid.", ( msg >> 8 ) & 0xFF ) );
-            WriteLog( "Invalid msg<%u>. Seek valid.\n", msg );
-            Bin.MoveReadPos( sizeof( uint ) );
-            Bin.SeekValidMsg();
-            return;
+            Bin.SkipMsg( msg );
+            break;
         }
+    }
+
+    if( Bin.IsError() )
+    {
+        if( GameOpt.DebugNet )
+            AddMess( FOMB_GAME, "Invalid network message. Disconnect." );
+        WriteLog( "Invalid network message. Disconnect.\n" );
+        NetDisconnect();
     }
 }
 

@@ -19,7 +19,6 @@ private:
     uint encryptKeys[ CRYPT_KEYS_COUNT ];
 
     void CopyBuf( const char* from, char* to, const char* mask, uint crypt_key, uint len );
-    bool IsValidMsg( uint msg );
 
 public:
     BufferManager();
@@ -27,40 +26,29 @@ public:
     BufferManager& operator=( const BufferManager& r );
     ~BufferManager();
 
-    void SetEncryptKey( uint seed );
-    void Lock();
-    void Unlock();
-    void Refresh();
-    void Reset();
-    void LockReset();
-    void Push( const char* buf, uint len, bool no_crypt = false );
-    void Push( const char* buf, const char* mask, uint len );
-    void Pop( char* buf, uint len );
-    void Cut( uint len );
-    void GrowBuf( uint len );
-
+    void  SetEncryptKey( uint seed );
+    void  Lock();
+    void  Unlock();
+    void  Refresh();
+    void  Reset();
+    void  LockReset();
+    void  Push( const char* buf, uint len, bool no_crypt = false );
+    void  Push( const char* buf, const char* mask, uint len );
+    void  Pop( char* buf, uint len );
+    void  Cut( uint len );
+    void  GrowBuf( uint len );
     char* GetData()             { return bufData; }
     char* GetCurData()          { return bufData + bufReadPos; }
     uint  GetLen()              { return bufLen; }
     uint  GetCurPos()           { return bufReadPos; }
     void  SetEndPos( uint pos ) { bufEndPos = pos; }
-    uint  GetEndPos() const     { return bufEndPos; }
-    void  MoveReadPos( int val )
-    {
-        bufReadPos += val;
-        EncryptKey( val );
-    }
-    bool IsError() const               { return isError; }
-    bool IsEmpty() const               { return bufReadPos >= bufEndPos; }
-    bool IsHaveSize( uint size ) const { return bufReadPos + size <= bufEndPos; }
-
-    #if ( defined ( FONLINE_SERVER ) ) || ( defined ( FONLINE_CLIENT ) )
-    bool NeedProcess();
-    void SkipMsg( uint msg );
-    void SeekValidMsg();
-    #else
-    bool NeedProcess() { return ( bufReadPos < bufEndPos ); }
-    #endif
+    uint  GetEndPos()           { return bufEndPos; }
+    void  MoveReadPos( int val );
+    bool  IsError()               { return isError; }
+    bool  IsEmpty()               { return bufReadPos >= bufEndPos; }
+    bool  IsHaveSize( uint size ) { return bufReadPos + size <= bufEndPos; }
+    bool  NeedProcess();
+    void  SkipMsg( uint msg );
 
     BufferManager& operator<<( uint i );
     BufferManager& operator>>( uint& i );

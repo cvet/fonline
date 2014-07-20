@@ -1911,6 +1911,7 @@ public:
 #define INIT_NET_REASON_LOGIN          ( 1 )
 #define INIT_NET_REASON_REG            ( 2 )
 #define INIT_NET_REASON_LOAD           ( 3 )
+#define INIT_NET_REASON_LOGIN2         ( 4 )
 
 // Items collections
 #define ITEMS_INVENTORY                ( 0 )

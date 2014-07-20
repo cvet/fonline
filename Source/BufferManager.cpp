@@ -129,6 +129,12 @@ void BufferManager::GrowBuf( uint len )
     bufData = new_buf;
 }
 
+void BufferManager::MoveReadPos( int val )
+{
+    bufReadPos += val;
+    EncryptKey( val );
+}
+
 void BufferManager::Push( const char* buf, uint len, bool no_crypt /* = false */ )
 {
     if( isError || !len )
@@ -383,7 +389,6 @@ BufferManager& BufferManager::operator>>( bool& i )
     return *this;
 }
 
-#if ( defined ( FONLINE_SERVER ) ) || ( defined ( FONLINE_CLIENT ) )
 bool BufferManager::NeedProcess()
 {
     if( bufReadPos + sizeof( uint ) > bufEndPos )
@@ -592,15 +597,9 @@ bool BufferManager::NeedProcess()
         return ( msg_len + bufReadPos <= bufEndPos );
     default:
         // Unknown message
-        # ifdef FONLINE_CLIENT
-        WriteLogF( _FUNC_, " - Unknown message<%u> in buffer, try find valid.\n", ( msg >> 8 ) & 0xFF );
-        SeekValidMsg();
-        return NeedProcess();
-        # else
-        // WriteLogF(_FUNC_," - Unknown message<%u> in buffer, reset.\n",msg);
         Reset();
+        isError = true;
         return false;
-        # endif
     }
 
     return false;
@@ -888,141 +887,3 @@ void BufferManager::SkipMsg( uint msg )
     bufReadPos += size;
     EncryptKey( size );
 }
-
-void BufferManager::SeekValidMsg()
-{
-    while( true )
-    {
-        if( bufReadPos + sizeof( uint ) > bufEndPos )
-        {
-            Reset();
-            return;
-        }
-
-        uint msg = *(uint*) ( bufData + bufReadPos ) ^ EncryptKey( 0 );
-        if( IsValidMsg( msg ) )
-            return;
-
-        bufReadPos++;
-        EncryptKey( 1 );
-    }
-}
-
-bool BufferManager::IsValidMsg( uint msg )
-{
-    switch( msg )
-    {
-    case 0xFFFFFFFF:
-    case NETMSG_CHECK_UID0:
-    case NETMSG_CHECK_UID1:
-    case NETMSG_CHECK_UID2:
-    case NETMSG_CHECK_UID3:
-    case NETMSG_CHECK_UID4:
-    case NETMSG_LOGIN:
-    case NETMSG_LOGIN_SUCCESS:
-    case NETMSG_WRONG_NET_PROTO:
-    case NETMSG_CREATE_CLIENT:
-    case NETMSG_SINGLEPLAYER_SAVE_LOAD:
-    case NETMSG_UPDATE_FILES_LIST:
-    case NETMSG_REGISTER_SUCCESS:
-    case NETMSG_PING:
-    case NETMSG_END_PARSE_TO_GAME:
-    case NETMSG_UPDATE:
-    case NETMSG_GET_UPDATE_FILE:
-    case NETMSG_GET_UPDATE_FILE_DATA:
-    case NETMSG_UPDATE_FILE_DATA:
-    case NETMSG_ADD_PLAYER:
-    case NETMSG_ADD_NPC:
-    case NETMSG_REMOVE_CRITTER:
-    case NETMSG_MSG:
-    case NETMSG_MAP_TEXT_MSG:
-    case NETMSG_DIR:
-    case NETMSG_CRITTER_DIR:
-    case NETMSG_SEND_MOVE_WALK:
-    case NETMSG_SEND_MOVE_RUN:
-    case NETMSG_CRITTER_MOVE:
-    case NETMSG_CRITTER_XY:
-    case NETMSG_ALL_PARAMS:
-    case NETMSG_PARAM:
-    case NETMSG_CRITTER_PARAM:
-    case NETMSG_SEND_CRAFT:
-    case NETMSG_CRAFT_RESULT:
-    case NETMSG_CLEAR_ITEMS:
-    case NETMSG_ADD_ITEM:
-    case NETMSG_REMOVE_ITEM:
-    case NETMSG_SEND_SORT_VALUE_ITEM:
-    case NETMSG_ALL_ITEMS_SEND:
-    case NETMSG_ADD_ITEM_ON_MAP:
-    case NETMSG_CHANGE_ITEM_ON_MAP:
-    case NETMSG_ERASE_ITEM_FROM_MAP:
-    case NETMSG_ANIMATE_ITEM:
-    case NETMSG_SEND_RATE_ITEM:
-    case NETMSG_SEND_CHANGE_ITEM:
-    case NETMSG_SEND_PICK_ITEM:
-    case NETMSG_SEND_ITEM_CONT:
-    case NETMSG_SEND_USE_ITEM:
-    case NETMSG_SEND_USE_SKILL:
-    case NETMSG_SEND_PICK_CRITTER:
-    case NETMSG_SOME_ITEM:
-    case NETMSG_CRITTER_ACTION:
-    case NETMSG_CRITTER_KNOCKOUT:
-    case NETMSG_CRITTER_ITEM_DATA:
-    case NETMSG_CRITTER_MOVE_ITEM:
-    case NETMSG_CRITTER_ANIMATE:
-    case NETMSG_CRITTER_SET_ANIMS:
-    case NETMSG_EFFECT:
-    case NETMSG_FLY_EFFECT:
-    case NETMSG_PLAY_SOUND:
-    case NETMSG_PLAY_SOUND_TYPE:
-    case NETMSG_SEND_KARMA_VOTING:
-    case NETMSG_SEND_TALK_NPC:
-    case NETMSG_SEND_SAY_NPC:
-    case NETMSG_PLAYERS_BARTER:
-    case NETMSG_PLAYERS_BARTER_SET_HIDE:
-    case NETMSG_SEND_GET_INFO:
-    case NETMSG_GAME_INFO:
-    case NETMSG_SEND_COMBAT:
-    case NETMSG_LOADMAP:
-    case NETMSG_SEND_GIVE_MAP:
-    case NETMSG_SEND_LOAD_MAP_OK:
-    case NETMSG_SHOW_SCREEN:
-    case NETMSG_SEND_SCREEN_ANSWER:
-    case NETMSG_DROP_TIMERS:
-    case NETMSG_SEND_REFRESH_ME:
-    case NETMSG_VIEW_MAP:
-    case NETMSG_SEND_GIVE_GLOBAL_INFO:
-    case NETMSG_SEND_RULE_GLOBAL:
-    case NETMSG_FOLLOW:
-    case NETMSG_QUEST:
-    case NETMSG_SEND_GET_USER_HOLO_STR:
-    case NETMSG_SEND_GET_SCORES:
-    case NETMSG_SCORES:
-    case NETMSG_CRITTER_LEXEMS:
-    case NETMSG_ITEM_LEXEMS:
-    case NETMSG_SEND_COMMAND:
-    case NETMSG_SEND_TEXT:
-    case NETMSG_CRITTER_TEXT:
-    case NETMSG_MSG_LEX:
-    case NETMSG_MAP_TEXT:
-    case NETMSG_MAP_TEXT_MSG_LEX:
-    case NETMSG_SEND_LEVELUP:
-    case NETMSG_CRAFT_ASK:
-    case NETMSG_CONTAINER_INFO:
-    case NETMSG_TALK_NPC:
-    case NETMSG_SEND_BARTER:
-    case NETMSG_MAP:
-    case NETMSG_RUN_CLIENT_SCRIPT:
-    case NETMSG_SEND_RUN_SERVER_SCRIPT:
-    case NETMSG_GLOBAL_INFO:
-    case NETMSG_GLOBAL_ENTRANCES:
-    case NETMSG_QUESTS:
-    case NETMSG_HOLO_INFO:
-    case NETMSG_SEND_SET_USER_HOLO_STR:
-    case NETMSG_USER_HOLO_STR:
-    case NETMSG_AUTOMAPS_INFO:
-        return true;
-    default:
-        return false;
-    }
-}
-#endif
