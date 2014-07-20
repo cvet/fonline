@@ -96,17 +96,14 @@ namespace InterfaceEditor
 
 		public override void DrawPass1(Graphics g)
 		{
-			if (!string.IsNullOrEmpty(Text) || !string.IsNullOrEmpty(DynamicText))
-			{
-				RectangleF r = new RectangleF(AbsolutePosition, Size);
-				StringFormat format = new StringFormat();
-				format.LineAlignment = VerticalAlignment;
-				format.Alignment = HorisontalAlignment;
-				if (!string.IsNullOrEmpty(DynamicText))
-					g.DrawString("DynamicText", new Font("Courier New", 8f), new SolidBrush(Color.Green), r, format);
-				else
-					g.DrawString("Text", new Font("Courier New", 8f), new SolidBrush(Color.Green), r, format);
-			}
+			RectangleF r = new RectangleF(AbsolutePosition, Size);
+			StringFormat format = new StringFormat();
+			format.LineAlignment = VerticalAlignment;
+			format.Alignment = HorisontalAlignment;
+			if (!string.IsNullOrEmpty(DynamicText))
+				g.DrawString("DynamicText", new Font("Courier New", 8f), new SolidBrush(Color.Green), r, format);
+			else
+				g.DrawString("Text", new Font("Courier New", 8f), new SolidBrush(Color.Green), r, format);
 
 			base.DrawPass1(g);
 		}
