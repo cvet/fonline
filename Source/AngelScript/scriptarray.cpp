@@ -26,7 +26,7 @@ void FreeMem( void* mem, size_t size )
     if( MemoryDebugLevel >= 1 )
         MEMORY_PROCESS( MEMORY_SCRIPT_ARRAY, -(int) size );
     #endif
-    delete[] mem;
+    delete[] (char*) mem;
 }
 
 static auto userAlloc = AllocMem;

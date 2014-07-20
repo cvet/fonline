@@ -334,7 +334,8 @@ ScriptArray* GetEnumsInternal( bool global, const char* module_name )
             engine->GetEnumByIndex( i, &enum_type_id );
         else
             module->GetEnumByIndex( i, &enum_type_id );
-        enums->InsertLast( &ScriptType( engine->GetObjectTypeById( enum_type_id ) ) );
+        ScriptType type = ScriptType( engine->GetObjectTypeById( enum_type_id ) );
+        enums->InsertLast( &type );
     }
     return enums;
 }
