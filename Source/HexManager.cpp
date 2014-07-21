@@ -16,99 +16,167 @@
 /* FIELD                                                                */
 /************************************************************************/
 
-void Field::Clear()
+Field::Field()
 {
-    Crit = NULL;
-    DeadCrits.clear();
-    ScrX = 0;
-    ScrY = 0;
-    Tiles.clear();
-    Roofs.clear();
-    RoofNum = 0;
-    Items.clear();
-    ScrollBlock = false;
-    IsWall = false;
-    IsWallSAI = false;
-    IsWallTransp = false;
-    IsScen = false;
-    IsExitGrid = false;
-    Corner = 0;
-    IsNotPassed = false;
-    IsNotRaked = false;
-    IsNoLight = false;
-    IsMultihex = false;
+    memzero( this, sizeof( Field ) );
+}
+
+Field::~Field()
+{
+    SAFEDEL( DeadCrits );
+    SAFEDEL( Tiles );
+    SAFEDEL( Roofs );
+    SAFEDEL( Items );
 }
 
 void Field::AddItem( ItemHex* item )
 {
-    Items.push_back( item );
+    if( !Items )
+        Items = new ItemHexVec();
+    Items->push_back( item );
     ProcessCache();
 }
 
 void Field::EraseItem( ItemHex* item )
 {
-    auto it = std::find( Items.begin(), Items.end(), item );
-    if( it != Items.end() )
+    if( !Items )
+        return;
+    auto it = std::find( Items->begin(), Items->end(), item );
+    if( it != Items->end() )
     {
-        Items.erase( it );
+        Items->erase( it );
+        if( Items->empty() )
+            SAFEDEL( DeadCrits );
         ProcessCache();
+    }
+}
+
+Field::Tile& Field::AddTile( AnyFrames* anim, short ox, short oy, uchar layer, bool is_roof )
+{
+    Tile*     tile;
+    TileVec*& tiles_vec = ( is_roof ? Roofs : Tiles );
+    if( !tiles_vec && !SimplyTile && !ox && !oy && !layer )
+    {
+        static Tile simply_tile;
+        SimplyTile = anim;
+        tile = &simply_tile;
+    }
+    else
+    {
+        if( !tiles_vec )
+            tiles_vec = new TileVec();
+        tiles_vec->push_back( Tile() );
+        tile = &tiles_vec->back();
+    }
+
+    tile->Anim = anim;
+    tile->OffsX = ox;
+    tile->OffsY = oy;
+    tile->Layer = layer;
+    return *tile;
+}
+
+void Field::EraseTile( uint index, bool is_roof )
+{
+    TileVec*& tiles_vec = ( is_roof ? Roofs : Tiles );
+    if( index == 0 && SimplyTile )
+    {
+        SimplyTile = NULL;
+        if( tiles_vec && !tiles_vec->front().OffsX && !tiles_vec->front().OffsY && !tiles_vec->front().Layer )
+        {
+            SimplyTile = tiles_vec->front().Anim;
+            tiles_vec->erase( tiles_vec->begin() );
+        }
+    }
+    else
+    {
+        tiles_vec->erase( tiles_vec->begin() + index - ( SimplyTile ? 1 : 0 ) );
+    }
+    if( tiles_vec->empty() )
+        SAFEDEL( tiles_vec );
+}
+
+uint Field::GetTilesCount( bool is_roof )
+{
+    return is_roof ? ( Roofs ? (uint) Roofs->size() : 0 ) : ( ( SimplyTile ? 1 : 0 ) +  ( Tiles ? (uint) Tiles->size() : 0 ) );
+}
+
+Field::Tile& Field::GetTile( uint index, bool is_roof )
+{
+    if( !is_roof && index == 0 && SimplyTile )
+    {
+        static Tile simply_tile;
+        simply_tile.Anim = SimplyTile;
+        return simply_tile;
+    }
+    return is_roof ? Roofs->at( index ) : Tiles->at( index - ( SimplyTile ? 1 : 0 ) );
+}
+
+void Field::AddDeadCrit( CritterCl* cr )
+{
+    if( !DeadCrits )
+        DeadCrits = new CritVec();
+    if( std::find( DeadCrits->begin(), DeadCrits->end(), cr ) == DeadCrits->end() )
+        DeadCrits->push_back( cr );
+}
+
+void Field::EraseDeadCrit( CritterCl* cr )
+{
+    if( !DeadCrits )
+        return;
+    auto it = std::find( DeadCrits->begin(), DeadCrits->end(), cr );
+    if( it != DeadCrits->end() )
+    {
+        DeadCrits->erase( it );
+        if( DeadCrits->empty() )
+            SAFEDEL( DeadCrits );
     }
 }
 
 void Field::ProcessCache()
 {
-    IsWall = false;
-    IsWallSAI = false;
-    IsWallTransp = false;
-    IsScen = false;
-    IsExitGrid = false;
+    Flags.IsWall = false;
+    Flags.IsWallSAI = false;
+    Flags.IsWallTransp = false;
+    Flags.IsScen = false;
+    Flags.IsExitGrid = false;
+    Flags.IsNotPassed = ( Crit != NULL || Flags.IsMultihex );
+    Flags.IsNotRaked = false;
+    Flags.IsNoLight = false;
+    Flags.ScrollBlock = false;
     Corner = 0;
-    IsNotPassed = ( Crit != NULL || IsMultihex );
-    IsNotRaked = false;
-    IsNoLight = false;
-    ScrollBlock = false;
-    for( auto it = Items.begin(), end = Items.end(); it != end; ++it )
+    if( Items )
     {
-        ItemHex* item = *it;
-        ushort   pid = item->GetProtoId();
-        if( item->IsWall() )
+        for( auto it = Items->begin(), end = Items->end(); it != end; ++it )
         {
-            IsWall = true;
-            IsWallTransp = item->IsLightThru();
-            Corner = item->Proto->Corner;
-            if( pid == SP_SCEN_IBLOCK )
-                IsWallSAI = true;
+            ItemHex* item = *it;
+            ushort   pid = item->GetProtoId();
+            if( item->IsWall() )
+            {
+                Flags.IsWall = true;
+                Flags.IsWallTransp = item->IsLightThru();
+                Corner = item->Proto->Corner;
+                if( pid == SP_SCEN_IBLOCK )
+                    Flags.IsWallSAI = true;
+            }
+            else if( item->IsScenOrGrid() )
+            {
+                Flags.IsScen = true;
+                if( pid == SP_WALL_BLOCK || pid == SP_WALL_BLOCK_LIGHT )
+                    Flags.IsWall = true;
+                else if( pid == SP_GRID_EXITGRID )
+                    Flags.IsExitGrid = true;
+            }
+            if( !item->IsPassed() )
+                Flags.IsNotPassed = true;
+            if( !item->IsRaked() )
+                Flags.IsNotRaked = true;
+            if( pid == SP_MISC_SCRBLOCK )
+                Flags.ScrollBlock = true;
+            if( !item->IsLightThru() )
+                Flags.IsNoLight = true;
         }
-        else if( item->IsScenOrGrid() )
-        {
-            IsScen = true;
-            if( pid == SP_WALL_BLOCK || pid == SP_WALL_BLOCK_LIGHT )
-                IsWall = true;
-            else if( pid == SP_GRID_EXITGRID )
-                IsExitGrid = true;
-        }
-        if( !item->IsPassed() )
-            IsNotPassed = true;
-        if( !item->IsRaked() )
-            IsNotRaked = true;
-        if( pid == SP_MISC_SCRBLOCK )
-            ScrollBlock = true;
-        if( !item->IsLightThru() )
-            IsNoLight = true;
     }
-}
-
-void Field::AddTile( AnyFrames* anim, short ox, short oy, uchar layer, bool is_roof )
-{
-    if( is_roof )
-        Roofs.push_back( Tile() );
-    else
-        Tiles.push_back( Tile() );
-    Tile& tile = ( is_roof ? Roofs.back() : Tiles.back() );
-    tile.Anim = anim;
-    tile.OffsX = ox;
-    tile.OffsY = oy;
-    tile.Layer = layer;
 }
 
 /************************************************************************/
@@ -222,10 +290,6 @@ void HexManager::Finish()
         hexItems[ i ]->Release();
     hexItems.clear();
 
-    for( int hx = 0; hx < maxHexX; hx++ )
-        for( int hy = 0; hy < maxHexY; hy++ )
-            GetField( hx, hy ).Clear();
-
     SAFEDELA( viewField );
     ResizeField( 0, 0 );
 
@@ -261,9 +325,9 @@ void HexManager::PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
 
     bool raked = FLAG( proto_item->Flags, ITEM_SHOOT_THRU );
     FOREACH_PROTO_ITEM_LINES( proto_item->BlockLines, hx, hy, GetMaxHexX(), GetMaxHexY(),
-                              GetField( hx, hy ).IsNotPassed = true;
+                              GetField( hx, hy ).Flags.IsNotPassed = true;
                               if( !raked )
-                                  GetField( hx, hy ).IsNotRaked = true;
+                                  GetField( hx, hy ).Flags.IsNotRaked = true;
                               );
 }
 
@@ -497,16 +561,16 @@ void HexManager::PushItem( ItemHex* item )
         PlaceItemBlocks( hx, hy, item->Proto );
 
     // Sort
-    std::sort( f.Items.begin(), f.Items.end(), ItemCompScen );
-    std::sort( f.Items.begin(), f.Items.end(), ItemCompWall );
+    std::sort( f.Items->begin(), f.Items->end(), ItemCompScen );
+    std::sort( f.Items->begin(), f.Items->end(), ItemCompWall );
 }
 
 ItemHex* HexManager::GetItem( ushort hx, ushort hy, ushort pid )
 {
-    if( !IsMapLoaded() || hx >= maxHexX || hy >= maxHexY )
+    if( !IsMapLoaded() || hx >= maxHexX || hy >= maxHexY || !GetField( hx, hy ).Items )
         return NULL;
 
-    for( auto it = GetField( hx, hy ).Items.begin(), end = GetField( hx, hy ).Items.end(); it != end; ++it )
+    for( auto it = GetField( hx, hy ).Items->begin(), end = GetField( hx, hy ).Items->end(); it != end; ++it )
     {
         ItemHex* item = *it;
         if( item->GetProtoId() == pid )
@@ -517,10 +581,10 @@ ItemHex* HexManager::GetItem( ushort hx, ushort hy, ushort pid )
 
 ItemHex* HexManager::GetItemById( ushort hx, ushort hy, uint id )
 {
-    if( !IsMapLoaded() || hx >= maxHexX || hy >= maxHexY )
+    if( !IsMapLoaded() || hx >= maxHexX || hy >= maxHexY || !GetField( hx, hy ).Items )
         return NULL;
 
-    for( auto it = GetField( hx, hy ).Items.begin(), end = GetField( hx, hy ).Items.end(); it != end; ++it )
+    for( auto it = GetField( hx, hy ).Items->begin(), end = GetField( hx, hy ).Items->end(); it != end; ++it )
     {
         ItemHex* item = *it;
         if( item->GetId() == id )
@@ -546,10 +610,13 @@ void HexManager::GetItems( ushort hx, ushort hy, ItemHexVec& items )
         return;
 
     Field& f = GetField( hx, hy );
-    for( uint i = 0, j = (uint) f.Items.size(); i < j; i++ )
+    if( !f.Items )
+        return;
+
+    for( uint i = 0, j = (uint) f.Items->size(); i < j; i++ )
     {
-        if( std::find( items.begin(), items.end(), f.Items[ i ] ) == items.end() )
-            items.push_back( f.Items[ i ] );
+        if( std::find( items.begin(), items.end(), f.Items->at( i ) ) == items.end() )
+            items.push_back( f.Items->at( i ) );
     }
 }
 
@@ -562,22 +629,25 @@ Rect HexManager::GetRectForText( ushort hx, ushort hy )
     // Critters first
     if( f.Crit )
         return f.Crit->GetTextRect();
-    else if( f.DeadCrits.size() )
-        return f.DeadCrits[ 0 ]->GetTextRect();
+    else if( f.DeadCrits )
+        return f.DeadCrits->front()->GetTextRect();
 
     // Items
     Rect r( 0, 0, 0, 0 );
-    for( uint i = 0, j = (uint) f.Items.size(); i < j; i++ )
+    if( f.Items )
     {
-        SpriteInfo* si = SprMngr.GetSpriteInfo( f.Items[ i ]->SprId );
-        if( si )
+        for( uint i = 0, j = (uint) f.Items->size(); i < j; i++ )
         {
-            int w = si->Width - si->OffsX;
-            int h = si->Height - si->OffsY;
-            if( w > r.L )
-                r.L = w;
-            if( h > r.B )
-                r.B = h;
+            SpriteInfo* si = SprMngr.GetSpriteInfo( f.Items->at( i )->SprId );
+            if( si )
+            {
+                int w = si->Width - si->OffsX;
+                int h = si->Height - si->OffsY;
+                if( w > r.L )
+                    r.L = w;
+                if( h > r.B )
+                    r.B = h;
+            }
         }
     }
     return r;
@@ -722,7 +792,7 @@ void HexManager::SetCursorPos( int x, int y, bool show_steps, bool refresh )
         int  cy = chosen->GetHexY();
         uint mh = chosen->GetMultihex();
 
-        if( ( cx == hx && cy == hy ) || ( f.IsNotPassed && ( !mh || !CheckDist( cx, cy, hx, hy, mh ) ) ) )
+        if( ( cx == hx && cy == hy ) || ( f.Flags.IsNotPassed && ( !mh || !CheckDist( cx, cy, hx, hy, mh ) ) ) )
         {
             drawCursorX = -1;
         }
@@ -898,7 +968,7 @@ void HexManager::RebuildMap( int rx, int ry )
                         rofy--;
 
                     Drop* new_drop = NULL;
-                    if( GetField( rofx, rofy ).Roofs.empty() )
+                    if( GetField( rofx, rofy ).GetTilesCount( true ) )
                     {
                         new_drop = new Drop( picRainFall->GetCurSprId(), Random( -10, 10 ), -Random( 0, 200 ), 0 );
                         rainData.push_back( new_drop );
@@ -925,9 +995,9 @@ void HexManager::RebuildMap( int rx, int ry )
             }
 
             // Items on hex
-            if( !f.Items.empty() )
+            if( f.Items )
             {
-                for( auto it = f.Items.begin(), end = f.Items.end(); it != end; ++it )
+                for( auto it = f.Items->begin(), end = f.Items->end(); it != end; ++it )
                 {
                     ItemHex* item = *it;
 
@@ -984,9 +1054,9 @@ void HexManager::RebuildMap( int rx, int ry )
             }
 
             // Dead critters
-            if( !f.DeadCrits.empty() && GameOpt.ShowCrit )
+            if( f.DeadCrits && GameOpt.ShowCrit )
             {
-                for( auto it = f.DeadCrits.begin(), end = f.DeadCrits.end(); it != end; ++it )
+                for( auto it = f.DeadCrits->begin(), end = f.DeadCrits->end(); it != end; ++it )
                 {
                     CritterCl* cr = *it;
                     if( !cr->Visible )
@@ -1071,7 +1141,7 @@ void HexManager::MarkLight( ushort hx, ushort hy, uint inten )
 void HexManager::MarkLightEndNeighbor( ushort hx, ushort hy, bool north_south, uint inten )
 {
     Field& f = GetField( hx, hy );
-    if( f.IsWall )
+    if( f.Flags.IsWall )
     {
         int lt = f.Corner;
         if( ( north_south && ( lt == CORNER_NORTH_SOUTH || lt == CORNER_NORTH || lt == CORNER_WEST ) ) ||
@@ -1108,7 +1178,7 @@ void HexManager::MarkLightEnd( ushort from_hx, ushort from_hy, ushort to_hx, ush
     bool   is_wall = false;
     bool   north_south = false;
     Field& f = GetField( to_hx, to_hy );
-    if( f.IsWall )
+    if( f.Flags.IsWall )
     {
         is_wall = true;
         if( f.Corner == CORNER_NORTH_SOUTH || f.Corner == CORNER_NORTH || f.Corner == CORNER_WEST )
@@ -1154,7 +1224,7 @@ void HexManager::MarkLightEnd( ushort from_hx, ushort from_hy, ushort to_hx, ush
 void HexManager::MarkLightStep( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint inten )
 {
     Field& f = GetField( to_hx, to_hy );
-    if( f.IsWallTransp )
+    if( f.Flags.IsWallTransp )
     {
         bool north_south = ( f.Corner == CORNER_NORTH_SOUTH || f.Corner == CORNER_NORTH || f.Corner == CORNER_WEST );
         int  dir = GetFarDir( from_hx, from_hy, to_hx, to_hy );
@@ -1233,7 +1303,7 @@ void HexManager::TraceLight( ushort from_hx, ushort from_hy, ushort& hx, ushort&
         {
             // Left side
             ox = old_curx1i + ox;
-            if( ox < 0 || ox >= maxHexX || GetField( ox, old_cury1i ).IsNoLight )
+            if( ox < 0 || ox >= maxHexX || GetField( ox, old_cury1i ).Flags.IsNoLight )
             {
                 hx = ( ox < 0 || ox >= maxHexX ? old_curx1i : ox );
                 hy = old_cury1i;
@@ -1246,7 +1316,7 @@ void HexManager::TraceLight( ushort from_hx, ushort from_hy, ushort& hx, ushort&
 
             // Right side
             oy = old_cury1i + oy;
-            if( oy < 0 || oy >= maxHexY || GetField( old_curx1i, oy ).IsNoLight )
+            if( oy < 0 || oy >= maxHexY || GetField( old_curx1i, oy ).Flags.IsNoLight )
             {
                 hx = old_curx1i;
                 hy = ( oy < 0 || oy >= maxHexY ? old_cury1i : oy );
@@ -1259,7 +1329,7 @@ void HexManager::TraceLight( ushort from_hx, ushort from_hy, ushort& hx, ushort&
         }
 
         // Main trace
-        if( curx1i < 0 || curx1i >= maxHexX || cury1i < 0 || cury1i >= maxHexY || GetField( curx1i, cury1i ).IsNoLight )
+        if( curx1i < 0 || curx1i >= maxHexX || cury1i < 0 || cury1i >= maxHexY || GetField( curx1i, cury1i ).Flags.IsNoLight )
         {
             hx = ( curx1i < 0 || curx1i >= maxHexX ? old_curx1i : curx1i );
             hy = ( cury1i < 0 || cury1i >= maxHexY ? old_cury1i : cury1i );
@@ -1518,12 +1588,13 @@ void HexManager::RebuildTiles()
                 continue;
 
             Field& f = GetField( hx, hy );
-            if( f.Tiles.empty() )
+            uint   tiles_count = f.GetTilesCount( false );
+            if( !tiles_count )
                 continue;
 
-            for( uint i = 0, j = (uint) f.Tiles.size(); i < j; i++ )
+            for( uint i = 0; i < tiles_count; i++ )
             {
-                Field::Tile& tile = f.Tiles[ i ];
+                Field::Tile& tile = f.GetTile( i, false );
                 uint         spr_id = tile.Anim->GetSprId( 0 );
                 int          ox = f.ScrX + tile.OffsX + TILE_OX;
                 int          oy = f.ScrY + tile.OffsY + TILE_OY;
@@ -1568,14 +1639,15 @@ void HexManager::RebuildRoof()
                 continue;
 
             Field& f = GetField( hx, hy );
-            if( f.Roofs.empty() )
+            uint   roofs_count = f.GetTilesCount( true );
+            if( !roofs_count )
                 continue;
 
             if( !roofSkip || roofSkip != f.RoofNum )
             {
-                for( uint i = 0, j = (uint) f.Roofs.size(); i < j; i++ )
+                for( uint i = 0; i < roofs_count; i++ )
                 {
-                    Field::Tile& roof = f.Roofs[ i ];
+                    Field::Tile& roof = f.GetTile( i, true );
                     uint         spr_id = roof.Anim->GetSprId( 0 );
                     int          ox = f.ScrX + roof.OffsX + ROOF_OX;
                     int          oy = f.ScrY + roof.OffsY + ROOF_OY;
@@ -1616,7 +1688,7 @@ void HexManager::MarkRoofNum( int hx, int hy, int num )
 {
     if( hx < 0 || hx >= maxHexX || hy < 0 || hy >= maxHexY )
         return;
-    if( GetField( hx, hy ).Roofs.empty() )
+    if( !GetField( hx, hy ).GetTilesCount( true ) )
         return;
     if( GetField( hx, hy ).RoofNum )
         return;
@@ -2196,12 +2268,12 @@ bool HexManager::ScrollCheckPos( int(&positions)[ 4 ], int dir1, int dir2 )
             return true;
 
         MoveHexByDir( hx, hy, dir1, maxHexX, maxHexY );
-        if( GetField( hx, hy ).ScrollBlock )
+        if( GetField( hx, hy ).Flags.ScrollBlock )
             return true;
         if( dir2 >= 0 )
         {
             MoveHexByDir( hx, hy, dir2, maxHexX, maxHexY );
-            if( GetField( hx, hy ).ScrollBlock )
+            if( GetField( hx, hy ).Flags.ScrollBlock )
                 return true;
         }
     }
@@ -2316,8 +2388,7 @@ void HexManager::SetCrit( CritterCl* cr )
 
     if( cr->IsDead() )
     {
-        if( std::find( f.DeadCrits.begin(), f.DeadCrits.end(), cr ) == f.DeadCrits.end() )
-            f.DeadCrits.push_back( cr );
+        f.AddDeadCrit( cr );
     }
     else
     {
@@ -2368,9 +2439,7 @@ void HexManager::RemoveCrit( CritterCl* cr )
     }
     else
     {
-        auto it = std::find( f.DeadCrits.begin(), f.DeadCrits.end(), cr );
-        if( it != f.DeadCrits.end() )
-            f.DeadCrits.erase( it );
+        f.EraseDeadCrit( cr );
     }
 
     if( cr->IsChosen() || cr->IsHaveLightSources() )
@@ -2424,9 +2493,12 @@ void HexManager::GetCritters( ushort hx, ushort hy, CritVec& crits, int find_typ
     Field* f = &GetField( hx, hy );
     if( f->Crit && f->Crit->CheckFind( find_type ) )
         crits.push_back( f->Crit );
-    for( auto it = f->DeadCrits.begin(), end = f->DeadCrits.end(); it != end; ++it )
-        if( ( *it )->CheckFind( find_type ) )
-            crits.push_back( *it );
+    if( f->DeadCrits )
+    {
+        for( auto it = f->DeadCrits->begin(), end = f->DeadCrits->end(); it != end; ++it )
+            if( ( *it )->CheckFind( find_type ) )
+                crits.push_back( *it );
+    }
 }
 
 void HexManager::SetCritterContour( uint crid, int contour )
@@ -2545,7 +2617,7 @@ void HexManager::SetMultihex( ushort hx, ushort hy, uint multihex, bool set )
             if( cx >= 0 && cy >= 0 && cx < maxHexX && cy < maxHexY )
             {
                 Field& neighbor = GetField( cx, cy );
-                neighbor.IsMultihex = set;
+                neighbor.Flags.IsMultihex = set;
                 neighbor.ProcessCache();
             }
         }
@@ -2811,7 +2883,7 @@ bool HexManager::FindPath( CritterCl* cr, ushort start_x, ushort start_y, ushort
 
                 if( !mh )
                 {
-                    if( GetField( nx, ny ).IsNotPassed )
+                    if( GetField( nx, ny ).Flags.IsNotPassed )
                         continue;
                 }
                 else
@@ -2822,7 +2894,7 @@ bool HexManager::FindPath( CritterCl* cr, ushort start_x, ushort start_y, ushort
                         MoveHexByDirUnsafe( nx_, ny_, j );
                     if( nx_ < 0 || ny_ < 0 || nx_ >= maxHexX || ny_ >= maxHexY )
                         continue;
-                    if( GetField( nx_, ny_ ).IsNotPassed )
+                    if( GetField( nx_, ny_ ).Flags.IsNotPassed )
                         continue;
 
                     // Clock wise hexes
@@ -2836,7 +2908,7 @@ bool HexManager::FindPath( CritterCl* cr, ushort start_x, ushort start_y, ushort
                     for( uint k = 0; k < steps_count && !not_passed; k++ )
                     {
                         MoveHexByDirUnsafe( nx__, ny__, dir_ );
-                        not_passed = GetField( nx__, ny__ ).IsNotPassed;
+                        not_passed = GetField( nx__, ny__ ).Flags.IsNotPassed;
                     }
                     if( not_passed )
                         continue;
@@ -2849,7 +2921,7 @@ bool HexManager::FindPath( CritterCl* cr, ushort start_x, ushort start_y, ushort
                     for( uint k = 0; k < steps_count && !not_passed; k++ )
                     {
                         MoveHexByDirUnsafe( nx__, ny__, dir_ );
-                        not_passed = GetField( nx__, ny__ ).IsNotPassed;
+                        not_passed = GetField( nx__, ny__ ).Flags.IsNotPassed;
                     }
                     if( not_passed )
                         continue;
@@ -3301,7 +3373,7 @@ bool HexManager::TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint d
         }
 
         Field& f = GetField( cx, cy );
-        if( check_passed && f.IsNotRaked )
+        if( check_passed && f.Flags.IsNotRaked )
             break;
         if( critters != NULL )
             GetCritters( cx, cy, *critters, find_type );
@@ -3411,7 +3483,7 @@ void HexManager::FindSetCenterDir( ushort& hx, ushort& hy, int dirs[ 2 ], int st
             break;
 
         GetHexTrack( sx, sy ) = 1;
-        if( GetField( sx, sy ).ScrollBlock )
+        if( GetField( sx, sy ).Flags.ScrollBlock )
             break;
         GetHexTrack( sx, sy ) = 2;
     }
@@ -3539,12 +3611,8 @@ bool HexManager::LoadMap( ushort map_pid )
         AnyFrames* anim = ResMngr.GetItemAnim( tile.NameHash );
         if( anim )
         {
-            if( !tile.IsRoof )
-                f.AddTile( anim, tile.OffsX, tile.OffsY, tile.Layer, false );
-            else
-                f.AddTile( anim, tile.OffsX, tile.OffsY, tile.Layer, true );
-
-            CheckTilesBorder( tile.IsRoof ? f.Roofs.back() : f.Tiles.back(), tile.IsRoof );
+            Field::Tile& ftile = f.AddTile( anim, tile.OffsX, tile.OffsY, tile.Layer, tile.IsRoof );
+            CheckTilesBorder( ftile, tile.IsRoof );
         }
     }
 
@@ -3554,7 +3622,7 @@ bool HexManager::LoadMap( ushort map_pid )
     {
         for( int hy = 0; hy < maxHexY; hy++ )
         {
-            if( GetField( hx, hy ).Roofs.size() )
+            if( GetField( hx, hy ).GetTilesCount( true ) )
             {
                 MarkRoofNum( hx, hy, roof_num );
                 roof_num++;
@@ -3614,13 +3682,13 @@ bool HexManager::LoadMap( ushort map_pid )
         for( int hy = 0; hy < maxHexY; hy++ )
         {
             Field& f = GetField( hx, hy );
-            if( f.ScrollBlock )
+            if( f.Flags.ScrollBlock )
             {
                 for( int i = 0; i < 6; i++ )
                 {
                     ushort hx_ = hx, hy_ = hy;
                     MoveHexByDir( hx_, hy_, i, maxHexX, maxHexY );
-                    GetField( hx_, hy_ ).IsNotPassed = true;
+                    GetField( hx_, hy_ ).Flags.IsNotPassed = true;
                 }
             }
         }
@@ -3994,17 +4062,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
                     AnyFrames*      anim = ResMngr.GetItemAnim( tile.NameHash );
                     if( anim )
                     {
-                        Field::Tile ftile;
-                        ftile.Anim = anim;
-                        ftile.OffsX = tile.OffsX;
-                        ftile.OffsY = tile.OffsY;
-                        ftile.Layer = tile.Layer;
-
-                        if( !tile.IsRoof )
-                            f.Tiles.push_back( ftile );
-                        else
-                            f.Roofs.push_back( ftile );
-
+                        Field::Tile& ftile = f.AddTile( anim, tile.OffsX, tile.OffsY, tile.Layer, tile.IsRoof );
                         CheckTilesBorder( ftile, tile.IsRoof );
                     }
                 }
@@ -4130,7 +4188,7 @@ void HexManager::ClearSelTiles()
         for( int hy = 0; hy < maxHexY; hy++ )
         {
             Field& f = GetField( hx, hy );
-            if( f.Tiles.size() )
+            if( f.GetTilesCount( false ) )
             {
                 ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, false );
                 for( uint i = 0; i < tiles.size();)
@@ -4138,13 +4196,13 @@ void HexManager::ClearSelTiles()
                     if( tiles[ i ].IsSelected )
                     {
                         tiles.erase( tiles.begin() + i );
-                        f.Tiles.erase( f.Tiles.begin() + i );
+                        f.EraseTile( i, false );
                     }
                     else
                         i++;
                 }
             }
-            if( f.Roofs.size() )
+            if( f.GetTilesCount( true ) )
             {
                 ProtoMap::TileVec& roofs = CurProtoMap->GetTiles( hx, hy, true );
                 for( uint i = 0; i < roofs.size();)
@@ -4152,7 +4210,7 @@ void HexManager::ClearSelTiles()
                     if( roofs[ i ].IsSelected )
                     {
                         roofs.erase( roofs.begin() + i );
-                        f.Roofs.erase( f.Roofs.begin() + i );
+                        f.EraseTile( i, true );
                     }
                     else
                         i++;
@@ -4173,14 +4231,14 @@ void HexManager::ParseSelTiles()
         for( int hy = 0; hy < maxHexY; hy++ )
         {
             Field& f = GetField( hx, hy );
-            if( f.Tiles.size() )
+            if( f.GetTilesCount( false ) )
             {
                 ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, false );
                 for( uint i = 0, j = (uint) tiles.size(); i < j; i++ )
                     if( tiles[ i ].IsSelected )
                         tiles[ i ].IsSelected = false;
             }
-            if( f.Roofs.size() )
+            if( f.GetTilesCount( true ) )
             {
                 ProtoMap::TileVec& roofs = CurProtoMap->GetTiles( hx, hy, true );
                 for( uint i = 0, j = (uint) roofs.size(); i < j; i++ )
@@ -4201,22 +4259,12 @@ void HexManager::SetTile( uint name_hash, ushort hx, ushort hy, short ox, short 
     if( !anim )
         return;
 
-    if( is_roof )
-    {
-        f.AddTile( anim, 0, 0, layer, true );
-        ProtoMap::TileVec& roofs = CurProtoMap->GetTiles( hx, hy, true );
-        roofs.push_back( ProtoMap::Tile( name_hash, hx, hy, (char) ox, (char) oy, layer, true ) );
-        roofs.back().      IsSelected = select;
-    }
-    else
-    {
-        f.AddTile( anim, 0, 0, layer, false );
-        ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, false );
-        tiles.push_back( ProtoMap::Tile( name_hash, hx, hy, (char) ox, (char) oy, layer, false ) );
-        tiles.back().      IsSelected = select;
-    }
+    Field::Tile&       ftile = f.AddTile( anim, 0, 0, layer, is_roof );
+    ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, is_roof );
+    tiles.push_back( ProtoMap::Tile( name_hash, hx, hy, (char) ox, (char) oy, layer, is_roof ) );
+    tiles.back().      IsSelected = select;
 
-    if( CheckTilesBorder( is_roof ? f.Roofs.back() : f.Tiles.back(), is_roof ) )
+    if( CheckTilesBorder( ftile, is_roof ) )
     {
         ResizeView();
         RefreshMap();
@@ -4394,9 +4442,9 @@ void HexManager::MarkPassedHexes()
             Field& f = GetField( hx, hy );
             char&  track = GetHexTrack( hx, hy );
             track = 0;
-            if( f.IsNotPassed )
+            if( f.Flags.IsNotPassed )
                 track = 2;
-            if( f.IsNotRaked )
+            if( f.Flags.IsNotRaked )
                 track = 1;
         }
     }

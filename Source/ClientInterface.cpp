@@ -5677,17 +5677,17 @@ void FOClient::LmapPrepareMap()
                 LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x + ( LmapZoom - 1 ), LmapWMap[ 1 ] + pix_y, cur_color, &LmapX, &LmapY ) );
                 LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x, LmapWMap[ 1 ] + pix_y + ( ( LmapZoom - 1 ) / 2 ), cur_color, &LmapX, &LmapY ) );
             }
-            else if( f.IsExitGrid )
+            else if( f.Flags.IsExitGrid )
             {
                 cur_color = 0x3FFF7F00;
             }
-            else if( f.IsWall || f.IsScen )
+            else if( f.Flags.IsWall || f.Flags.IsScen )
             {
-                if( f.IsWallSAI || f.ScrollBlock )
+                if( f.Flags.IsWallSAI || f.Flags.ScrollBlock )
                     continue;
-                if( LmapSwitchHi == false && !f.IsWall )
+                if( LmapSwitchHi == false && !f.Flags.IsWall )
                     continue;
-                cur_color = ( f.IsWall ? 0xFF00FF00 : 0x7F00FF00 );
+                cur_color = ( f.Flags.IsWall ? 0xFF00FF00 : 0x7F00FF00 );
             }
             else
             {
@@ -9378,9 +9378,12 @@ CritVec& FOClient::PupGetLootCrits()
     if( !loot_cr || !loot_cr->IsDead() )
         return loot;
     Field& f = HexMngr.GetField( loot_cr->GetHexX(), loot_cr->GetHexY() );
-    for( uint i = 0, j = (uint) f.DeadCrits.size(); i < j; i++ )
-        if( !f.DeadCrits[ i ]->IsRawParam( MODE_NO_LOOT ) )
-            loot.push_back( f.DeadCrits[ i ] );
+    if( f.DeadCrits )
+    {
+        for( uint i = 0, j = (uint) f.DeadCrits->size(); i < j; i++ )
+            if( !f.DeadCrits->at( i )->IsRawParam( MODE_NO_LOOT ) )
+                loot.push_back( f.DeadCrits->at( i ) );
+    }
     return loot;
 }
 

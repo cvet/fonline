@@ -230,7 +230,7 @@ bool FOMapper::Init()
 
     ProtoItemVec item_protos;
     ItemMngr.GetCopyAllProtos( item_protos );
-    for( int i = 0, j = item_protos.size(); i < j; i++ )
+    for( size_t i = 0, j = item_protos.size(); i < j; i++ )
     {
         ProtoItem& proto = item_protos[ i ];
         Tabs[ INT_MODE_ITEM ][ DEFAULT_SUB_TAB ].ItemProtos.push_back( proto );
@@ -3697,9 +3697,9 @@ void FOMapper::SelectAddCrit( CritterCl* npc )
 void FOMapper::SelectAddTile( ushort hx, ushort hy, bool is_roof )
 {
     Field& f = HexMngr.GetField( hx, hy );
-    if( !is_roof && f.Tiles.empty() )
+    if( !is_roof && !f.GetTilesCount( false ) )
         return;
-    if( is_roof && f.Roofs.empty() )
+    if( is_roof && !f.GetTilesCount( true ) )
         return;
 
     // Helper
@@ -4027,7 +4027,6 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
         if( Keyb::ShiftDwn )
         {
             Field&             f = HexMngr.GetField( stile.HexX, stile.HexY );
-            Field::TileVec&    ftiles = ( stile.IsRoof ? f.Roofs : f.Tiles );
             ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( stile.HexX, stile.HexY, stile.IsRoof );
 
             for( uint k = 0, l = (uint) tiles.size(); k < l; k++ )
@@ -4043,8 +4042,9 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
 
                     tiles[ k ].OffsX = ox;
                     tiles[ k ].OffsY = oy;
-                    ftiles[ k ].OffsX = ox;
-                    ftiles[ k ].OffsY = oy;
+                    Field::Tile& ftile = f.GetTile( k, stile.IsRoof );
+                    ftile.OffsX = ox;
+                    ftile.OffsY = oy;
                 }
             }
         }
@@ -4071,7 +4071,6 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
                 continue;
 
             Field&             f = HexMngr.GetField( stile.HexX, stile.HexY );
-            Field::TileVec&    ftiles = ( stile.IsRoof ? f.Roofs : f.Tiles );
             ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( stile.HexX, stile.HexY, stile.IsRoof );
 
             for( uint k = 0; k < tiles.size();)
@@ -4080,9 +4079,10 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
                 {
                     tiles[ k ].HexX = hx;
                     tiles[ k ].HexY = hy;
-                    tiles_to_move.push_back( TileToMove( &HexMngr.GetField( hx, hy ), ftiles[ k ], &CurProtoMap->GetTiles( hx, hy, stile.IsRoof ), tiles[ k ], stile.IsRoof ) );
+                    Field::Tile& ftile = f.GetTile( k, stile.IsRoof );
+                    tiles_to_move.push_back( TileToMove( &HexMngr.GetField( hx, hy ), ftile, &CurProtoMap->GetTiles( hx, hy, stile.IsRoof ), tiles[ k ], stile.IsRoof ) );
                     tiles.erase( tiles.begin() + k );
-                    ftiles.erase( ftiles.begin() + k );
+                    f.EraseTile( k, stile.IsRoof );
                 }
                 else
                     k++;
@@ -4095,10 +4095,7 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
     for( auto it = tiles_to_move.begin(), end = tiles_to_move.end(); it != end; ++it )
     {
         TileToMove& ttm = *it;
-        if( !ttm.roof )
-            ttm.field->Tiles.push_back( ttm.tile );
-        else
-            ttm.field->Roofs.push_back( ttm.tile );
+        ttm.field->AddTile( ttm.tile.Anim, ttm.tile.OffsX, ttm.tile.OffsY, ttm.tile.Layer, ttm.roof );
         ttm.ptiles->push_back( ttm.ptile );
     }
 }
@@ -4139,7 +4136,6 @@ void FOMapper::SelectDelete()
     {
         SelMapTile&        stile = SelectedTile[ i ];
         Field&             f = HexMngr.GetField( stile.HexX, stile.HexY );
-        Field::TileVec&    ftiles = ( stile.IsRoof ? f.Roofs : f.Tiles );
         ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( stile.HexX, stile.HexY, stile.IsRoof );
 
         for( uint k = 0; k < tiles.size();)
@@ -4147,7 +4143,7 @@ void FOMapper::SelectDelete()
             if( tiles[ k ].IsSelected )
             {
                 tiles.erase( tiles.begin() + k );
-                ftiles.erase( ftiles.begin() + k );
+                f.EraseTile( k, stile.IsRoof );
             }
             else
                 k++;
@@ -4384,7 +4380,6 @@ void FOMapper::BufferCopy()
         ushort             hx = SelectedTile[ i ].HexX;
         ushort             hy = SelectedTile[ i ].HexY;
         Field&             f = HexMngr.GetField( hx, hy );
-        Field::TileVec&    ftiles = ( SelectedTile[ i ].IsRoof ? f.Roofs : f.Tiles );
         ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, SelectedTile[ i ].IsRoof );
 
         for( uint k = 0, l = (uint) tiles.size(); k < l; k++ )
@@ -5014,8 +5009,11 @@ void FOMapper::ParseCommand( const char* cmd )
                 {
                     Field&    f = HexMngr.GetField( hx, hy );
                     UShortVec pids;
-                    for( auto it = f.Items.begin(), end = f.Items.end(); it != end; ++it )
-                        pids.push_back( ( *it )->GetProtoId() );
+                    if( f.Items )
+                    {
+                        for( auto it = f.Items->begin(), end = f.Items->end(); it != end; ++it )
+                            pids.push_back( ( *it )->GetProtoId() );
+                    }
                     std::sort( pids.begin(), pids.end() );
                     for( uint i = 0, j = (uint) pids.size(), same = 0; i < j; i++ )
                     {
@@ -5039,14 +5037,14 @@ void FOMapper::ParseCommand( const char* cmd )
             {
                 for( int hy = 0; hy < HexMngr.GetMaxHexY(); hy++ )
                 {
-                    if( !HexMngr.GetField( hx, hy ).ScrollBlock )
+                    if( !HexMngr.GetField( hx, hy ).Flags.ScrollBlock )
                         continue;
                     ushort hx_ = hx, hy_ = hy;
                     int    count = 0;
                     MoveHexByDir( hx_, hy_, 4, HexMngr.GetMaxHexX(), HexMngr.GetMaxHexY() );
                     for( int i = 0; i < 5; i++ )
                     {
-                        if( HexMngr.GetField( hx_, hy_ ).ScrollBlock )
+                        if( HexMngr.GetField( hx_, hy_ ).Flags.ScrollBlock )
                             count++;
                         MoveHexByDir( hx_, hy_, i, HexMngr.GetMaxHexX(), HexMngr.GetMaxHexY() );
                     }
@@ -5090,59 +5088,7 @@ void FOMapper::ParseCommand( const char* cmd )
                 return;
             }
 
-            SelectClear();
-            HexMngr.UnloadMap();
-            ushort old_maxhx = CurProtoMap->Header.MaxHexX;
-            ushort old_maxhy = CurProtoMap->Header.MaxHexY;
-            maxhx = CLAMP( maxhx, MAXHEX_MIN, MAXHEX_MAX );
-            maxhy = CLAMP( maxhy, MAXHEX_MIN, MAXHEX_MAX );
-            if( CurProtoMap->Header.WorkHexX >= maxhx )
-                CurProtoMap->Header.WorkHexX = maxhx - 1;
-            if( CurProtoMap->Header.WorkHexY >= maxhy )
-                CurProtoMap->Header.WorkHexY = maxhy - 1;
-            CurProtoMap->Header.MaxHexX = maxhx;
-            CurProtoMap->Header.MaxHexY = maxhy;
-
-            // Delete truncated map objects
-            if( maxhx < old_maxhx || maxhy < old_maxhy )
-            {
-                for( auto it = CurProtoMap->MObjects.begin(); it != CurProtoMap->MObjects.end();)
-                {
-                    MapObject* mobj = *it;
-                    if( mobj->MapX >= maxhx || mobj->MapY >= maxhy )
-                    {
-                        SAFEREL( mobj );
-                        it = CurProtoMap->MObjects.erase( it );
-                    }
-                    else
-                        ++it;
-                }
-            }
-
-            // Resize tiles
-            ProtoMap::TileVecVec tiles_field = CurProtoMap->TilesField;
-            ProtoMap::TileVecVec roofs_field = CurProtoMap->RoofsField;
-            CurProtoMap->TilesField.clear();
-            CurProtoMap->TilesField.resize( maxhx * maxhy );
-            CurProtoMap->RoofsField.clear();
-            CurProtoMap->RoofsField.resize( maxhx * maxhy );
-            for( int hy = 0; hy < min( (ushort) maxhy, old_maxhy ); hy++ )
-            {
-                for( int hx = 0; hx < min( (ushort) maxhx, old_maxhx ); hx++ )
-                {
-                    for( int r = 0; r <= 1; r++ )
-                    {
-                        ProtoMap::TileVecVec& field_from = ( !r ? tiles_field : roofs_field );
-                        ProtoMap::TileVecVec& field_to = ( !r ? CurProtoMap->TilesField : CurProtoMap->RoofsField );
-                        ProtoMap::TileVec&    tiles_from = field_from[ hy * old_maxhx + hx ];
-                        ProtoMap::TileVec&    tiles_to = field_to[ hy * maxhx + hx ];
-                        tiles_to = tiles_from;
-                    }
-                }
-            }
-
-            HexMngr.SetProtoMap( *CurProtoMap );
-            HexMngr.FindSetCenter( CurProtoMap->Header.WorkHexX, CurProtoMap->Header.WorkHexY );
+            FOMapper::SScriptFunc::MapperMap_Resize( *CurProtoMap, maxhx, maxhy );
         }
         else if( Str::CompareCase( cmd_, "hex" ) )
         {
@@ -5679,12 +5625,16 @@ void FOMapper::SScriptFunc::MapperMap_UpdateObjects( ProtoMap& pmap )
 
 void FOMapper::SScriptFunc::MapperMap_Resize( ProtoMap& pmap, ushort width, ushort height )
 {
+    // Unload current
     if( Self->CurProtoMap == &pmap )
+    {
+        Self->SelectClear();
         Self->HexMngr.UnloadMap();
+    }
 
+    // Check size
     int maxhx = CLAMP( width, MAXHEX_MIN, MAXHEX_MAX );
     int maxhy = CLAMP( height, MAXHEX_MIN, MAXHEX_MAX );
-    ;
     int old_maxhx = pmap.Header.MaxHexX;
     int old_maxhy = pmap.Header.MaxHexY;
     maxhx = CLAMP( maxhx, MAXHEX_MIN, MAXHEX_MAX );
@@ -5696,43 +5646,48 @@ void FOMapper::SScriptFunc::MapperMap_Resize( ProtoMap& pmap, ushort width, usho
     pmap.Header.MaxHexX = maxhx;
     pmap.Header.MaxHexY = maxhy;
 
+    // Delete truncated map objects
     if( maxhx < old_maxhx || maxhy < old_maxhy )
     {
-        // Delete truncated map objects
-        if( maxhx < old_maxhx || maxhy < old_maxhy )
+        for( auto it = pmap.MObjects.begin(); it != pmap.MObjects.end();)
         {
-            for( auto it = pmap.MObjects.begin(); it != pmap.MObjects.end();)
+            MapObject* mobj = *it;
+            if( mobj->MapX >= maxhx || mobj->MapY >= maxhy )
             {
-                MapObject* mobj = *it;
-                if( mobj->MapX >= maxhx || mobj->MapY >= maxhy )
-                {
-                    SAFEREL( mobj );
-                    it = pmap.MObjects.erase( it );
-                }
-                else
-                    ++it;
+                SAFEREL( mobj );
+                it = pmap.MObjects.erase( it );
             }
+            else
+                ++it;
         }
+    }
 
-        // Resize tiles
+    // Resize tiles
+    {
         ProtoMap::TileVecVec tiles_field = pmap.TilesField;
-        ProtoMap::TileVecVec roofs_field = pmap.RoofsField;
         pmap.TilesField.clear();
         pmap.TilesField.resize( maxhx * maxhy );
+        for( int hy = 0; hy < min( maxhy, old_maxhy ); hy++ )
+        {
+            for( int hx = 0; hx < min( maxhx, old_maxhx ); hx++ )
+            {
+                ProtoMap::TileVec& tiles_from = tiles_field[ hy * old_maxhx + hx ];
+                ProtoMap::TileVec& tiles_to = pmap.TilesField[ hy * maxhx + hx ];
+                tiles_to = tiles_from;
+            }
+        }
+    }
+    {
+        ProtoMap::TileVecVec roofs_field = pmap.RoofsField;
         pmap.RoofsField.clear();
         pmap.RoofsField.resize( maxhx * maxhy );
         for( int hy = 0; hy < min( maxhy, old_maxhy ); hy++ )
         {
             for( int hx = 0; hx < min( maxhx, old_maxhx ); hx++ )
             {
-                for( int r = 0; r <= 1; r++ )
-                {
-                    ProtoMap::TileVecVec& field_from = ( !r ? tiles_field : roofs_field );
-                    ProtoMap::TileVecVec& field_to = ( !r ? pmap.TilesField : pmap.RoofsField );
-                    ProtoMap::TileVec&    tiles_from = field_from[ hy * old_maxhx + hx ];
-                    ProtoMap::TileVec&    tiles_to = field_to[ hy * maxhx + hx ];
-                    tiles_to = tiles_from;
-                }
+                ProtoMap::TileVec& tiles_from = roofs_field[ hy * old_maxhx + hx ];
+                ProtoMap::TileVec& tiles_to = pmap.RoofsField[ hy * maxhx + hx ];
+                tiles_to = tiles_from;
             }
         }
     }
@@ -5765,16 +5720,16 @@ void FOMapper::SScriptFunc::MapperMap_DeleteTile( ProtoMap& pmap, ushort hx, ush
 
     ProtoMap::TileVec& tiles = pmap.GetTiles( hx, hy, roof );
     Field&             f = Self->HexMngr.GetField( hx, hy );
-    Field::TileVec&    ftiles = ( roof ? f.Roofs : f.Tiles );
     if( index == uint( -1 ) )
     {
-        ftiles.clear();
         tiles.clear();
+        while( f.GetTilesCount( roof ) )
+            f.EraseTile( 0, roof );
     }
     else if( index < tiles.size() )
     {
-        ftiles.erase( ftiles.begin() + index );
         tiles.erase( tiles.begin() + index );
+        f.EraseTile( index, roof );
     }
 
     if( Self->CurProtoMap == &pmap )

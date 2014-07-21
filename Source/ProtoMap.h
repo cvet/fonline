@@ -204,11 +204,11 @@ public:
     uint            LastObjectUID;
 
     // Tiles
-    struct Tile     // 12 bytes
+    struct Tile     // 16 bytes
     {
         uint   NameHash;
         ushort HexX, HexY;
-        char   OffsX, OffsY;
+        short  OffsX, OffsY;
         uchar  Layer;
         bool   IsRoof;
         #ifdef FONLINE_MAPPER

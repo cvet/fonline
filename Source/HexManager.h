@@ -24,8 +24,8 @@
 #define TILE_OY          ( GameOpt.MapTileOffsY )
 #define ROOF_OX          ( GameOpt.MapRoofOffsX )
 #define ROOF_OY          ( GameOpt.MapRoofOffsY )
-#define MAX_MOVE_OX      ( 99 )
-#define MAX_MOVE_OY      ( 99 )
+#define MAX_MOVE_OX      ( 30000 )
+#define MAX_MOVE_OY      ( 30000 )
 
 /************************************************************************/
 /* ViewField                                                            */
@@ -72,33 +72,44 @@ struct Field
     };
     typedef vector< Tile > TileVec;
 
-    CritterCl* Crit;
-    CritVec    DeadCrits;
-    int        ScrX;
-    int        ScrY;
-    TileVec    Tiles;
-    TileVec    Roofs;
-    ItemHexVec Items;
-    short      RoofNum;
-    bool       ScrollBlock;
-    bool       IsWall;
-    bool       IsWallSAI;
-    bool       IsWallTransp;
-    bool       IsScen;
-    bool       IsExitGrid;
-    bool       IsNotPassed;
-    bool       IsNotRaked;
-    uchar      Corner;
-    bool       IsNoLight;
-    uchar      LightValues[ 3 ];
-    bool       IsMultihex;
+    CritterCl*  Crit;
+    CritVec*    DeadCrits;
+    int         ScrX;
+    int         ScrY;
+    AnyFrames*  SimplyTile;
+    TileVec*    Tiles;
+    TileVec*    Roofs;
+    ItemHexVec* Items;
+    short       RoofNum;
 
-    void Clear();
-    void AddItem( ItemHex* item );
-    void EraseItem( ItemHex* item );
-    void ProcessCache();
-    void AddTile( AnyFrames* anim, short ox, short oy, uchar layer, bool is_roof );
-    Field() { Clear(); }
+    struct
+    {
+        bool ScrollBlock : 1;
+        bool IsWall : 1;
+        bool IsWallSAI : 1;
+        bool IsWallTransp : 1;
+        bool IsScen : 1;
+        bool IsExitGrid : 1;
+        bool IsNotPassed : 1;
+        bool IsNotRaked : 1;
+        bool IsNoLight : 1;
+        bool IsMultihex : 1;
+    } Flags;
+
+    uchar Corner;
+    uchar LightValues[ 3 ];
+
+    Field();
+    ~Field();
+    void  AddItem( ItemHex* item );
+    void  EraseItem( ItemHex* item );
+    Tile& AddTile( AnyFrames* anim, short ox, short oy, uchar layer, bool is_roof );
+    void  EraseTile( uint index, bool is_roof );
+    uint  GetTilesCount( bool is_roof );
+    Tile& GetTile( uint index, bool is_roof );
+    void  AddDeadCrit( CritterCl* cr );
+    void  EraseDeadCrit( CritterCl* cr );
+    void  ProcessCache();
 };
 
 /************************************************************************/

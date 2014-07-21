@@ -292,7 +292,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 // Coordinates
 #define MAXHEX_DEF                   ( 200 )
 #define MAXHEX_MIN                   ( 10 )
-#define MAXHEX_MAX                   ( 10000 )
+#define MAXHEX_MAX                   ( 4000 )
 
 // Client parameters
 #define MAX_NAME                     ( 30 )

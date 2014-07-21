@@ -735,7 +735,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
             uint   d = (uint) strtoul( s1 + 1, NULL, 0 );
 
             dots[ (uint) ( (size_t) s1 - (size_t) str ) - d_offs ] = d;
-            d_offs += d_len;
+            d_offs += (uint) d_len;
         }
 
         *s1 = 0;

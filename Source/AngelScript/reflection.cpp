@@ -226,7 +226,7 @@ ScriptString* ScriptType::GetPropertyDeclaration( uint index, bool include_names
 uint ScriptType::GetEnumLength() const
 {
     asCObjectType* objTypeExt = (asCObjectType*) ObjType;
-    return objTypeExt->enumValues.GetLength();
+    return (uint) objTypeExt->enumValues.GetLength();
 }
 
 ScriptArray* ScriptType::GetEnumNames() const

@@ -1429,6 +1429,7 @@ bool ProtoMap::Refresh()
         }
     }
     Tiles.clear();
+    TileVec( Tiles ).swap( Tiles );
     #endif
     return true;
 }

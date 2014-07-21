@@ -7050,7 +7050,7 @@ void FOClient::CrittersProcess()
             ushort hx_ = from_hx;
             ushort hy_ = from_hy;
             MoveHexByDir( hx_, hy_, MoveDirs[ 0 ], HexMngr.GetMaxHexX(), HexMngr.GetMaxHexY() );
-            if( !HexMngr.GetField( hx_, hy_ ).IsNotPassed )
+            if( !HexMngr.GetField( hx_, hy_ ).Flags.IsNotPassed )
                 skip_find = true;
         }
 
@@ -7064,7 +7064,7 @@ void FOClient::CrittersProcess()
                 ushort hx_ = from_hx;
                 ushort hy_ = from_hy;
                 MoveHexByDir( hx_, hy_, MoveDirs[ 0 ], HexMngr.GetMaxHexX(), HexMngr.GetMaxHexY() );
-                if( !HexMngr.GetField( hx_, hy_ ).IsNotPassed )
+                if( !HexMngr.GetField( hx_, hy_ ).Flags.IsNotPassed )
                 {
                     for( uint i = 1; i < MoveDirs.size() && i < 4; i++ )
                         MoveHexByDir( hx_, hy_, MoveDirs[ i ], HexMngr.GetMaxHexX(), HexMngr.GetMaxHexY() );
