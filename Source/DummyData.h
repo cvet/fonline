@@ -1351,6 +1351,7 @@ struct GameOptions
     int MapHexLineHeight;
     int MapTileOffsX;
     int MapTileOffsY;
+    int MapTileStep;
     int MapRoofOffsX;
     int MapRoofOffsY;
     int MapRoofSkipSize;

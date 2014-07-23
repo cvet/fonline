@@ -396,6 +396,7 @@ public:
     void ClearSelTiles();
     void ParseSelTiles();
     void SetTile( uint name_hash, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select );
+    void EraseTile( ushort hx, ushort hy, uchar layer, bool is_roof );
 
     // Ignore pids to draw
 private:

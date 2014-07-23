@@ -3326,15 +3326,16 @@ void FOMapper::IntMouseMove()
         {
             int offs_hx = (int) SelectHX2 - (int) SelectHX1;
             int offs_hy = (int) SelectHY2 - (int) SelectHY1;
-            SelectHX1 = SelectHX2;
-            SelectHY1 = SelectHY2;
             int offs_x = GameOpt.MouseX - SelectX;
             int offs_y = GameOpt.MouseY - SelectY;
-            SelectX = GameOpt.MouseX;
-            SelectY = GameOpt.MouseY;
-
-            SelectMove( offs_hx, offs_hy, offs_x, offs_y );
-            HexMngr.RefreshMap();
+            if( SelectMove( !Keyb::ShiftDwn, offs_hx, offs_hy, offs_x, offs_y ) )
+            {
+                SelectHX1 += offs_hx;
+                SelectHY1 += offs_hy;
+                SelectX += offs_x;
+                SelectY += offs_y;
+                HexMngr.RefreshMap();
+            }
         }
     }
     else if( IntHold == INT_MAIN )
@@ -3867,15 +3868,31 @@ struct TileToMove
     TileToMove() {}
     TileToMove( Field* f, Field::Tile& t, ProtoMap::TileVec* pts, ProtoMap::Tile& pt, bool r ): field( f ), tile( t ), ptiles( pts ), ptile( pt ), roof( r ) {}
 };
-void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
+bool FOMapper::SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y )
 {
-    if( Keyb::ShiftDwn && ( !offs_x && !offs_y ) )
-        return;
-    if( !Keyb::ShiftDwn && ( !offs_hx && !offs_hy ) )
-        return;
+    if( !hex_move && ( !offs_x && !offs_y ) )
+        return false;
+    if( hex_move && ( !offs_hx && !offs_hy ) )
+        return false;
+
+    // Tile step
+    if( hex_move && !SelectedTile.empty() )
+    {
+        if( abs( offs_hx ) < GameOpt.MapTileStep && abs( offs_hy ) < GameOpt.MapTileStep )
+            return false;
+        offs_hx -= offs_hx % GameOpt.MapTileStep;
+        offs_hy -= offs_hy % GameOpt.MapTileStep;
+    }
+
+    // Setup hex moving switcher
+    int switcher = 0;
+    if( !SelectedObj.empty() )
+        switcher = SelectedObj[ 0 ].MapObj->MapX % 2;
+    else if( !SelectedTile.empty() )
+        switcher = SelectedTile[ 0 ].HexX % 2;
 
     // Change moving speed on zooming
-    if( Keyb::ShiftDwn )
+    if( !hex_move )
     {
         static float small_ox = 0.0f, small_oy = 0.0f;
         float        ox = (float) offs_x * GameOpt.SpritesZoom + small_ox;
@@ -3895,7 +3912,6 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
     else
     {
         // Objects
-        int switcher = ( SelectedObj.size() ? SelectedObj[ 0 ].MapObj->MapX % 2 : 0 );
         for( uint i = 0, j = (uint) SelectedObj.size(); i < j; i++ )
         {
             SelMapObj* obj = &SelectedObj[ i ];
@@ -3915,7 +3931,7 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
                 hy += offs_hy;
             }
             if( hx < 0 || hy < 0 || hx >= HexMngr.GetMaxHexX() || hy >= HexMngr.GetMaxHexY() )
-                return;                                                                                  // Disable moving
+                return false;                                                                                  // Disable moving
         }
 
         // Tiles
@@ -3938,17 +3954,16 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
                 hy += offs_hy;
             }
             if( hx < 0 || hy < 0 || hx >= HexMngr.GetMaxHexX() || hy >= HexMngr.GetMaxHexY() )
-                return;                                                                                  // Disable moving
+                return false;                                                                                  // Disable moving
         }
     }
 
     // Move map objects
-    int switcher = ( SelectedObj.size() ? SelectedObj[ 0 ].MapObj->MapX % 2 : 0 );
     for( uint i = 0, j = (uint) SelectedObj.size(); i < j; i++ )
     {
         SelMapObj* obj = &SelectedObj[ i ];
 
-        if( Keyb::ShiftDwn )
+        if( !hex_move )
         {
             if( !obj->IsItem() )
                 continue;
@@ -4024,7 +4039,7 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
     {
         SelMapTile& stile = SelectedTile[ i ];
 
-        if( Keyb::ShiftDwn )
+        if( !hex_move )
         {
             Field&             f = HexMngr.GetField( stile.HexX, stile.HexY );
             ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( stile.HexX, stile.HexY, stile.IsRoof );
@@ -4098,6 +4113,8 @@ void FOMapper::SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y )
         ttm.field->AddTile( ttm.tile.Anim, ttm.tile.OffsX, ttm.tile.OffsY, ttm.tile.Layer, ttm.roof );
         ttm.ptiles->push_back( ttm.ptile );
     }
+
+    return true;
 }
 
 void FOMapper::SelectDelete()
@@ -4244,6 +4261,9 @@ MapObject* FOMapper::ParseProto( ushort pid, ushort hx, ushort hy, MapObject* ow
 
 void FOMapper::ParseTile( uint name_hash, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof )
 {
+    hx -= hx % GameOpt.MapTileStep;
+    hy -= hy % GameOpt.MapTileStep;
+
     if( hx >= HexMngr.GetMaxHexX() || hy >= HexMngr.GetMaxHexY() )
         return;
 
@@ -4520,6 +4540,8 @@ void FOMapper::CurDraw()
             SpriteInfo* si = SprMngr.GetSpriteInfo( anim->GetCurSprId() );
             if( si )
             {
+                hx -= hx % GameOpt.MapTileStep;
+                hy -= hy % GameOpt.MapTileStep;
                 int x = HexMngr.GetField( hx, hy ).ScrX - ( si->Width / 2 ) + si->OffsX;
                 int y = HexMngr.GetField( hx, hy ).ScrY - si->Height + si->OffsY;
                 if( !DrawRoof )
@@ -5711,28 +5733,38 @@ uint FOMapper::SScriptFunc::MapperMap_GetTilesCount( ProtoMap& pmap, ushort hx, 
     return (uint) tiles.size();
 }
 
-void FOMapper::SScriptFunc::MapperMap_DeleteTile( ProtoMap& pmap, ushort hx, ushort hy, bool roof, uint index )
+void FOMapper::SScriptFunc::MapperMap_DeleteTile( ProtoMap& pmap, ushort hx, ushort hy, bool roof, int layer )
 {
     if( hx >= pmap.Header.MaxHexX )
         SCRIPT_ERROR_R( "Invalid hex x arg." );
     if( hy >= pmap.Header.MaxHexY )
         SCRIPT_ERROR_R( "Invalid hex y arg." );
 
+    bool deleted = false;
     ProtoMap::TileVec& tiles = pmap.GetTiles( hx, hy, roof );
     Field&             f = Self->HexMngr.GetField( hx, hy );
-    if( index == uint( -1 ) )
+    if( layer < 0 )
     {
+        deleted = !tiles.empty();
         tiles.clear();
         while( f.GetTilesCount( roof ) )
             f.EraseTile( 0, roof );
     }
-    else if( index < tiles.size() )
+    else
     {
-        tiles.erase( tiles.begin() + index );
-        f.EraseTile( index, roof );
+        for( size_t i = 0, j = tiles.size(); i < j; i++ )
+        {
+            if( tiles[ i ].Layer == layer )
+            {
+                tiles.erase( tiles.begin() + i );
+                f.EraseTile( i, roof );
+                deleted = true;
+                break;
+            }
+        }
     }
 
-    if( Self->CurProtoMap == &pmap )
+    if( deleted && Self->CurProtoMap == &pmap )
     {
         if( roof )
             Self->HexMngr.RebuildRoof();
@@ -5741,7 +5773,7 @@ void FOMapper::SScriptFunc::MapperMap_DeleteTile( ProtoMap& pmap, ushort hx, ush
     }
 }
 
-uint FOMapper::SScriptFunc::MapperMap_GetTileHash( ProtoMap& pmap, ushort hx, ushort hy, bool roof, uint index )
+uint FOMapper::SScriptFunc::MapperMap_GetTileHash( ProtoMap& pmap, ushort hx, ushort hy, bool roof, int layer )
 {
     if( hx >= pmap.Header.MaxHexX )
         SCRIPT_ERROR_R0( "Invalid hex x arg." );
@@ -5749,7 +5781,12 @@ uint FOMapper::SScriptFunc::MapperMap_GetTileHash( ProtoMap& pmap, ushort hx, us
         SCRIPT_ERROR_R0( "Invalid hex y arg." );
 
     ProtoMap::TileVec& tiles = pmap.GetTiles( hx, hy, roof );
-    return index < tiles.size() ? tiles[ index ].NameHash : 0;
+    for( size_t i = 0, j = tiles.size(); i < j; i++ )
+    {
+        if( tiles[ i ].Layer == layer )
+            return tiles[ i ].NameHash;
+    }
+    return 0;
 }
 
 void FOMapper::SScriptFunc::MapperMap_AddTileHash( ProtoMap& pmap, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, uint pic_hash )
@@ -5765,16 +5802,26 @@ void FOMapper::SScriptFunc::MapperMap_AddTileHash( ProtoMap& pmap, ushort hx, us
     layer = CLAMP( layer, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
 
     if( Self->CurProtoMap == &pmap )
+    {
         Self->HexMngr.SetTile( pic_hash, hx, hy, ox, oy, layer, roof, false );
+    }
     else
     {
         ProtoMap::TileVec& tiles = pmap.GetTiles( hx, hy, roof );
+        for( size_t i = 0, j = tiles.size(); i < j; i++ )
+        {
+            if( tiles[ i ].Layer == layer )
+            {
+                tiles.erase( tiles.begin() + i );
+                break;
+            }
+        }
         tiles.push_back( ProtoMap::Tile( pic_hash, hx, hy, ox, oy, layer, roof ) );
         tiles.back().IsSelected = false;
     }
 }
 
-ScriptString* FOMapper::SScriptFunc::MapperMap_GetTileName( ProtoMap& pmap, ushort hx, ushort hy, bool roof, uint index )
+ScriptString* FOMapper::SScriptFunc::MapperMap_GetTileName( ProtoMap& pmap, ushort hx, ushort hy, bool roof, int layer )
 {
     if( hx >= pmap.Header.MaxHexX )
         SCRIPT_ERROR_RX( "Invalid hex x arg.", ScriptString::Create() );
@@ -5782,10 +5829,12 @@ ScriptString* FOMapper::SScriptFunc::MapperMap_GetTileName( ProtoMap& pmap, usho
         SCRIPT_ERROR_RX( "Invalid hex y arg.", ScriptString::Create() );
 
     ProtoMap::TileVec& tiles = pmap.GetTiles( hx, hy, roof );
-    if( index >= tiles.size() )
-        return ScriptString::Create();
-    const char* name = Str::GetName( tiles[ index ].NameHash );
-    return ScriptString::Create( name ? name : "" );
+    for( size_t i = 0, j = tiles.size(); i < j; i++ )
+    {
+        if( tiles[ i ].Layer == layer )
+            return ScriptString::Create( Str::GetName( tiles[ i ].NameHash ) );
+    }
+    return ScriptString::Create( "" );
 }
 
 void FOMapper::SScriptFunc::MapperMap_AddTileName( ProtoMap& pmap, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, ScriptString* pic_name )
@@ -5802,10 +5851,20 @@ void FOMapper::SScriptFunc::MapperMap_AddTileName( ProtoMap& pmap, ushort hx, us
 
     uint pic_hash = Str::GetHash( pic_name->c_str() );
     if( Self->CurProtoMap == &pmap )
+    {
         Self->HexMngr.SetTile( pic_hash, hx, hy, ox, oy, layer, roof, false );
+    }
     else
     {
         ProtoMap::TileVec& tiles = pmap.GetTiles( hx, hy, roof );
+        for( size_t i = 0, j = tiles.size(); i < j; i++ )
+        {
+            if( tiles[ i ].Layer == layer )
+            {
+                tiles.erase( tiles.begin() + i );
+                break;
+            }
+        }
         tiles.push_back( ProtoMap::Tile( pic_hash, hx, hy, ox, oy, layer, roof ) );
         tiles.back().IsSelected = false;
     }

@@ -92,7 +92,7 @@ void Field::EraseTile( uint index, bool is_roof )
     {
         tiles_vec->erase( tiles_vec->begin() + index - ( SimplyTile ? 1 : 0 ) );
     }
-    if( tiles_vec->empty() )
+    if( tiles_vec && tiles_vec->empty() )
         SAFEDEL( tiles_vec );
 }
 
@@ -4259,6 +4259,8 @@ void HexManager::SetTile( uint name_hash, ushort hx, ushort hy, short ox, short 
     if( !anim )
         return;
 
+    EraseTile( hx, hy, layer, is_roof );
+
     Field::Tile&       ftile = f.AddTile( anim, 0, 0, layer, is_roof );
     ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, is_roof );
     tiles.push_back( ProtoMap::Tile( name_hash, hx, hy, (char) ox, (char) oy, layer, is_roof ) );
@@ -4275,6 +4277,22 @@ void HexManager::SetTile( uint name_hash, ushort hx, ushort hy, short ox, short 
             RebuildRoof();
         else
             RebuildTiles();
+    }
+}
+
+void HexManager::EraseTile( ushort hx, ushort hy, uchar layer, bool is_roof )
+{
+    Field& f = GetField( hx, hy );
+    for( uint i = 0, j = f.GetTilesCount( is_roof ); i < j; i++ )
+    {
+        Field::Tile& tile = f.GetTile( i, is_roof );
+        if( tile.Layer == layer )
+        {
+            f.EraseTile( i, is_roof );
+            ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, is_roof );
+            tiles.erase( tiles.begin() + i );
+            break;
+        }
     }
 }
 

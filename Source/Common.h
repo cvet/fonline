@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Main version
-#define FONLINE_VERSION                          ( 441 )
+#define FONLINE_VERSION                          ( 442 )
 
 // Debugging
 // #define DEV_VERSION
@@ -583,6 +583,7 @@ struct GameOptions
     int           MapHexLineHeight;
     int           MapTileOffsX;
     int           MapTileOffsY;
+    int           MapTileStep;
     int           MapRoofOffsX;
     int           MapRoofOffsY;
     int           MapRoofSkipSize;

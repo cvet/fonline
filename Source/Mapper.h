@@ -310,7 +310,7 @@ public:
     void       SelectAdd( MapObject* mobj, bool select_childs = true );
     void       SelectErase( MapObject* mobj );
     void       SelectAll();
-    void       SelectMove( int offs_hx, int offs_hy, int offs_x, int offs_y );
+    bool       SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y );
     void       SelectDelete();
 
     // Parse new
@@ -458,10 +458,10 @@ public:
         static void          MapperMap_UpdateObjects( ProtoMap& pmap );
         static void          MapperMap_Resize( ProtoMap& pmap, ushort width, ushort height );
         static uint          MapperMap_GetTilesCount( ProtoMap& pmap, ushort hx, ushort hy, bool roof );
-        static void          MapperMap_DeleteTile( ProtoMap& pmap, ushort hx, ushort hy, bool roof, uint index );
-        static uint          MapperMap_GetTileHash( ProtoMap& pmap, ushort hx, ushort hy, bool roof, uint index );
+        static void          MapperMap_DeleteTile( ProtoMap& pmap, ushort hx, ushort hy, bool roof, int layer );
+        static uint          MapperMap_GetTileHash( ProtoMap& pmap, ushort hx, ushort hy, bool roof, int layer );
         static void          MapperMap_AddTileHash( ProtoMap& pmap, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, uint pic_hash );
-        static ScriptString* MapperMap_GetTileName( ProtoMap& pmap, ushort hx, ushort hy, bool roof, uint index );
+        static ScriptString* MapperMap_GetTileName( ProtoMap& pmap, ushort hx, ushort hy, bool roof, int layer );
         static void          MapperMap_AddTileName( ProtoMap& pmap, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, ScriptString* pic_name );
         static uint          MapperMap_GetDayTime( ProtoMap& pmap, uint day_part );
         static void          MapperMap_SetDayTime( ProtoMap& pmap, uint day_part, uint time );
