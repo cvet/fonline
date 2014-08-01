@@ -1081,7 +1081,7 @@ int FOClient::MainLoop()
         ParseSocket();
 
     // Exit in Login screen if net disconnect
-    if( !IsConnected && !IsMainScreen( SCREEN_LOGIN ) && !IsMainScreen( SCREEN_REGISTRATION ) && !IsMainScreen( SCREEN_CREDITS ) )
+    if( !IsConnected && !IsMainScreen( SCREEN_LOGIN ) && !IsMainScreen( SCREEN_REGISTRATION ) && !IsMainScreen( SCREEN_CREDITS ) && !IsMainScreen( SCREEN_OPTIONS ) )
         ShowMainScreen( SCREEN_LOGIN );
 
     // Input

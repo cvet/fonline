@@ -4230,20 +4230,24 @@ void HexManager::ParseSelTiles()
     {
         for( int hy = 0; hy < maxHexY; hy++ )
         {
-            Field& f = GetField( hx, hy );
-            if( f.GetTilesCount( false ) )
+            for( int r = 0; r <= 1; r++ )
             {
-                ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, false );
-                for( uint i = 0, j = (uint) tiles.size(); i < j; i++ )
+                bool               roof = ( r == 1 );
+                Field&             f = GetField( hx, hy );
+                ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, roof );
+                for( size_t i = 0; i < tiles.size();)
+                {
                     if( tiles[ i ].IsSelected )
+                    {
                         tiles[ i ].IsSelected = false;
-            }
-            if( f.GetTilesCount( true ) )
-            {
-                ProtoMap::TileVec& roofs = CurProtoMap->GetTiles( hx, hy, true );
-                for( uint i = 0, j = (uint) roofs.size(); i < j; i++ )
-                    if( roofs[ i ].IsSelected )
-                        roofs[ i ].IsSelected = false;
+                        EraseTile( hx, hy, tiles[ i ].Layer, roof, (int) i );
+                        i = 0;
+                    }
+                    else
+                    {
+                        i++;
+                    }
+                }
             }
         }
     }
@@ -4259,7 +4263,8 @@ void HexManager::SetTile( uint name_hash, ushort hx, ushort hy, short ox, short 
     if( !anim )
         return;
 
-    EraseTile( hx, hy, layer, is_roof );
+    if( !select )
+        EraseTile( hx, hy, layer, is_roof, ( uint ) - 1 );
 
     Field::Tile&       ftile = f.AddTile( anim, 0, 0, layer, is_roof );
     ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, is_roof );
@@ -4280,13 +4285,13 @@ void HexManager::SetTile( uint name_hash, ushort hx, ushort hy, short ox, short 
     }
 }
 
-void HexManager::EraseTile( ushort hx, ushort hy, uchar layer, bool is_roof )
+void HexManager::EraseTile( ushort hx, ushort hy, uchar layer, bool is_roof, uint skip_index )
 {
     Field& f = GetField( hx, hy );
     for( uint i = 0, j = f.GetTilesCount( is_roof ); i < j; i++ )
     {
         Field::Tile& tile = f.GetTile( i, is_roof );
-        if( tile.Layer == layer )
+        if( tile.Layer == layer && i != skip_index )
         {
             f.EraseTile( i, is_roof );
             ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, is_roof );

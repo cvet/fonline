@@ -993,6 +993,25 @@ void FOMapper::ParseKeyboard()
                 SelectAll();
                 break;
             case DIK_S:
+                if( CurProtoMap )
+                {
+                    SelectClear();
+                    HexMngr.RefreshMap();
+                    FileManager::SetWritePath( ServerWritePath );
+                    if( CurProtoMap->Save( NULL, -1 ) )
+                    {
+                        AddMess( "Map saved." );
+                        RunMapSaveScript( CurProtoMap );
+                    }
+                    else
+                    {
+                        AddMess( "Saving error." );
+                    }
+                    FileManager::SetWritePath( ClientWritePath );
+                }
+                FileManager::SetWritePath( ClientWritePath );
+                break;
+            case DIK_D:
                 GameOpt.ScrollCheck = !GameOpt.ScrollCheck;
                 break;
             case DIK_B:
@@ -4329,7 +4348,24 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
     if( mobj->MapObjType == MAP_OBJECT_CRITTER )
     {
         if( HexMngr.GetField( mobj->MapX, mobj->MapY ).Crit )
-            return NULL;
+        {
+            bool place_founded = false;
+            for( int d = 0; d < 6; d++ )
+            {
+                ushort hx = mobj->MapX;
+                ushort hy = mobj->MapY;
+                MoveHexByDir( hx, hy, d, HexMngr.GetMaxHexX(), HexMngr.GetMaxHexY() );
+                if( !HexMngr.GetField( hx, hy ).Crit )
+                {
+                    mobj->MapX = hx;
+                    mobj->MapY = hy;
+                    place_founded = true;
+                    break;
+                }
+            }
+            if( !place_founded )
+                return NULL;
+        }
         CritData* pnpc = CrMngr.GetProto( mobj->ProtoId );
         if( !pnpc )
             return NULL;

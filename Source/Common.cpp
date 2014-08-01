@@ -1272,7 +1272,7 @@ GameOptions::GameOptions()
     MapHexLineHeight = 12;
     MapTileOffsX = -8;
     MapTileOffsY = 32;
-	MapTileStep = 2;
+    MapTileStep = 2;
     MapRoofOffsX = -8;
     MapRoofOffsY = -66;
     MapRoofSkipSize = 2;
