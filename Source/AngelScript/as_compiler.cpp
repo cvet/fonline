@@ -3128,7 +3128,7 @@ int asCCompiler::CompileInitListElement(asSListPatternNode *&patternNode, asCScr
 {
 	if( patternNode->type == asLPT_START )
 	{
-		if( valueNode->nodeType != snInitList )
+		if( valueNode == 0 || valueNode->nodeType != snInitList )
 		{
 			Error(TXT_EXPECTED_LIST, valueNode);
 			return -1;
@@ -3139,7 +3139,8 @@ int asCCompiler::CompileInitListElement(asSListPatternNode *&patternNode, asCScr
 		asCScriptNode *node = valueNode->firstChild;
 		while( patternNode->type != asLPT_END )
 		{
-			if( node == 0 )
+			// Check for missing value here, else the error reporting will not have a source position to report the error for
+			if( node == 0 && patternNode->type == asLPT_TYPE )
 			{
 				Error(TXT_NOT_ENOUGH_VALUES_FOR_LIST, valueNode);
 				return -1;
@@ -3193,6 +3194,27 @@ int asCCompiler::CompileInitListElement(asSListPatternNode *&patternNode, asCScr
 			if( r < 0 ) return r;
 
 			countElements++;
+		}
+
+		if( countElements == 0 )
+		{
+			// Skip the sub pattern that was expected to be repeated, otherwise the caller will try to match these when we return
+			patternNode = nextNode;
+			if( patternNode->type == asLPT_TYPE )
+				patternNode = patternNode->next;
+			else if( patternNode->type == asLPT_START )
+			{
+				int subCount = 1;
+				do
+				{
+					patternNode = patternNode->next;
+					if( patternNode->type == asLPT_START )
+						subCount++;
+					else if( patternNode->type == asLPT_END )
+						subCount--;
+				} while( subCount > 0 );
+				patternNode = patternNode->next;
+			}
 		}
 
 		// For repeat_same each repeated sublist must have the same size to form a rectangular array
@@ -11120,7 +11142,7 @@ int asCCompiler::CompileExpressionPostOp(asCScriptNode *node, asSExprContext *ct
 				if( r == asSUCCESS )
 				{
 					Dereference(ctx, true);
-					if(  ctx->type.dataType.GetFuncDef() )
+					if( ctx->type.dataType.GetFuncDef() )
 					{
 						if( !ctx->type.isVariable )
 							ConvertToVariable(ctx);
@@ -11129,7 +11151,7 @@ int asCCompiler::CompileExpressionPostOp(asCScriptNode *node, asSExprContext *ct
 						ctx->bc.Instr(asBC_PopPtr);
 					}
 
-					MakeFunctionCall(ctx, funcs[0], 0, args, node, false, 0, ctx->type.stackOffset);
+					MakeFunctionCall(ctx, funcs[0], ctx->type.dataType.GetFuncDef() ? 0 : ctx->type.dataType.GetObjectType(), args, node, false, 0, ctx->type.stackOffset);
 				}
 			}
 		}

@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Main version
-#define FONLINE_VERSION                          ( 444 )
+#define FONLINE_VERSION                          ( 445 )
 
 // Debugging
 // #define DEV_VERSION
@@ -156,10 +156,6 @@ inline bool CompareContainers( const T& a, const T& b ) { return a.size() == b.s
 void GetHexOffsets( bool odd, short*& sx, short*& sy );
 void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y );
 
-// Config file
-#define CLIENT_CONFIG_APP                        "Game Options"
-const char* GetConfigFileName();
-
 // Window name
 const char* GetWindowName();
 
@@ -260,9 +256,6 @@ extern StrVec        MainWindowKeyboardEventsText;
 extern IntVec        MainWindowMouseEvents;
 
 # include "Assimp/aiTypes.h"
-
-# define MODE_WIDTH                              ( GameOpt.ScreenWidth )
-# define MODE_HEIGHT                             ( GameOpt.ScreenHeight )
 
 # ifdef FONLINE_CLIENT
 #  include "ResourceClient.h"
@@ -512,6 +505,7 @@ struct GameOptions
     uint          ApCostAimLegs;
     bool          RunOnCombat;
     bool          RunOnTransfer;
+    bool          RunOnTurnBased;
     uint          GlobalMapWidth;
     uint          GlobalMapHeight;
     uint          GlobalMapZoneLength;

@@ -22,10 +22,16 @@ int main( int argc, char** argv )
     // Timer
     Timer::Init();
 
+    // Logging
     LogToFile( "FOMapper.log" );
 
+    // Data files
+    FileManager::InitDataFiles( DIR_SLASH_SD "data" DIR_SLASH_S );
+
+    // Options
     GetClientOptions();
 
+    // Start
     WriteLog( "Starting Mapper (version %d)...\n", FONLINE_VERSION );
 
     // Create engine

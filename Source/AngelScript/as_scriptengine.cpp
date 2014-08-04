@@ -5732,6 +5732,26 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 			// Determine how many times the pattern repeat
 			count = *(asUINT*)buffer;
 			buffer += 4;
+
+			if( count == 0 )
+			{
+				// Skip the sub pattern that was expected to be repeated, otherwise
+				// we'll try to delete things that don't exist in the buffer
+				node = node->next;
+				if( node->type == asLPT_START )
+				{
+					int subCount = 1;
+					do
+					{
+						node = node->next;
+						if( node->type == asLPT_START )
+							subCount++;
+						else if( node->type == asLPT_END )
+							subCount--;
+					} while( subCount > 0 );
+					return;
+				}
+			}
 		}
 		else if( node->type == asLPT_TYPE )
 		{

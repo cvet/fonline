@@ -35,6 +35,12 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     LogToFile( "FOnline.log" );
     LogToDebugOutput( true );
 
+    // Data files
+    #ifdef FO_OSX_IOS
+    FileManager::InitDataFiles( "../../Documents/" );
+    #endif
+    FileManager::InitDataFiles( DIR_SLASH_SD "data" DIR_SLASH_S );
+
     // Singleplayer mode initialization
     #ifdef FO_WINDOWS
     char full_path[ MAX_FOPATH ] = { 0 };
@@ -74,14 +80,13 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         }
 
         // Config parsing
-        IniParser cfg;
-        char      server_exe[ MAX_FOPATH ] = { 0 };
-        char      server_path[ MAX_FOPATH ] = { 0 };
-        char      server_cmdline[ MAX_FOPATH ] = { 0 };
-        cfg.LoadFile( GetConfigFileName(), PT_ROOT );
-        cfg.GetStr( CLIENT_CONFIG_APP, "ServerAppName", "FOnlineServer.exe", server_exe );
-        cfg.GetStr( CLIENT_CONFIG_APP, "ServerPath", "..\\Server\\", server_path );
-        cfg.GetStr( CLIENT_CONFIG_APP, "ServerCommandLine", "", server_cmdline );
+        IniParser& cfg = IniParser::GetClientConfig();
+        char       server_exe[ MAX_FOPATH ] = { 0 };
+        char       server_path[ MAX_FOPATH ] = { 0 };
+        char       server_cmdline[ MAX_FOPATH ] = { 0 };
+        cfg.GetStr( "ServerAppName", "FOnlineServer.exe", server_exe );
+        cfg.GetStr( "ServerPath", "..\\Server\\", server_path );
+        cfg.GetStr( "ServerCommandLine", "", server_cmdline );
 
         // Process attributes
         PROCESS_INFORMATION server;

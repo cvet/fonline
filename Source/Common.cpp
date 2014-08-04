@@ -608,64 +608,6 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 }
 
 /************************************************************************/
-/* Config file                                                          */
-/************************************************************************/
-
-const char* GetConfigFileName()
-{
-    // Default config names
-    #if defined ( FONLINE_SERVER )
-    static char config_name[ MAX_FOPATH ] = { "FOnlineServer.cfg\0--default-server-config--" };
-    #elif defined ( FONLINE_MAPPER )
-    static char config_name[ MAX_FOPATH ] = { "Mapper.cfg\0--default-mapper-config--" };
-    #else // FONLINE_CLIENT and others
-    static char config_name[ MAX_FOPATH ] = { "FOnline.cfg\0--default-client-config--" };
-    #endif
-
-    // Extract config name from current exe
-    #ifdef FO_WINDOWS
-    static bool processed = false;
-    if( !processed )
-    {
-        // Call once
-        processed = true;
-
-        // Get full path
-        char module_name[ MAX_FOPATH ];
-        # ifdef FO_WINDOWS
-        if( !GetModuleFileName( NULL, module_name, sizeof( module_name ) ) )
-            return config_name;
-        # else
-        // Todo: Linux CommandLineArgValues[0] ?
-        # endif
-
-        // Change extension
-        char* ext = (char*) FileManager::GetExtension( module_name );
-        if( !ext )
-            return config_name;
-        Str::Copy( ext, 4, "cfg" );
-
-        // Check availability
-        if( !FileExist( module_name ) )
-            return config_name;
-
-        // Get file name
-        const char* name = NULL;
-        for( size_t i = 0, j = Str::Length( module_name ); i < j; i++ )
-            if( module_name[ i ] == DIR_SLASH_C )
-                name = &module_name[ i + 1 ];
-        if( !name )
-            return config_name;
-
-        // Set as main
-        Str::Copy( config_name, name );
-    }
-    #endif
-
-    return config_name;
-}
-
-/************************************************************************/
 /* Window name                                                          */
 /************************************************************************/
 
@@ -679,7 +621,6 @@ const char* GetWindowName()
     #else // FONLINE_CLIENT and others
     static char window_name[ MAX_FOPATH ] = { "FOnline\0--default-client-name--" };
     #endif
-    int         path_type = PT_ROOT;
 
     // Extract config name from current exe
     static bool processed = false;
@@ -689,8 +630,13 @@ const char* GetWindowName()
         processed = true;
 
         // Take name from config file
-        IniParser cfg;
-        cfg.LoadFile( GetConfigFileName(), path_type );
+        #if defined ( FONLINE_SERVER )
+        IniParser& cfg = IniParser::GetServerConfig();
+        #elif defined ( FONLINE_MAPPER )
+        IniParser& cfg = IniParser::GetMapperConfig();
+        #else // FONLINE_CLIENT and others
+        IniParser& cfg = IniParser::GetClientConfig();
+        #endif
         if( !cfg.IsLoaded() )
             return window_name;
 
@@ -700,7 +646,7 @@ const char* GetWindowName()
         if( !cfg.GetStr( "WindowName", "", str ) || !str[ 0 ] )
             return window_name;
         #else
-        if( !cfg.GetStr( CLIENT_CONFIG_APP, "WindowName", "", str ) || !str[ 0 ] )
+        if( !cfg.GetStr( "WindowName", "", str ) || !str[ 0 ] )
             return window_name;
         #endif
         Str::Copy( window_name, str );
@@ -812,9 +758,7 @@ void GetClientOptions()
 
     // Load config file
     # ifdef FONLINE_MAPPER
-    IniParser cfg_mapper;
-    cfg_mapper.LoadFile( GetConfigFileName(), PT_ROOT );
-
+    IniParser& cfg_mapper = IniParser::GetMapperConfig();
     cfg_mapper.GetStr( "ClientPath", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ClientPath" );
     FileManager::FormatPath( buf );
@@ -828,87 +772,86 @@ void GetClientOptions()
     if( GameOpt.ServerPath->length() && GameOpt.ServerPath->c_str()[ GameOpt.ServerPath->length() - 1 ] != DIR_SLASH_C )
         *GameOpt.ServerPath += DIR_SLASH_S;
 
-    // Client config
-    IniParser cfg;
-    cfg_mapper.GetStr( "ClientName", "FOnline", buf );
-    cfg.LoadFile( ( GameOpt.ClientPath->c_std_str() + buf + ".cfg" ).c_str(), PT_ROOT );
-    # else
-    IniParser cfg;
-    cfg.LoadFile( GetConfigFileName(), PT_ROOT );
+    // Server and client data
+    FileManager::InitDataFiles( GameOpt.ServerPath->c_str() );
+    FileManager::InitDataFiles( ( GameOpt.ClientPath->c_std_str() + "data" + DIR_SLASH_S ).c_str() );
     # endif
 
+    // Client config
+    IniParser& cfg = IniParser::GetClientConfig();
+
     // Language
-    cfg.GetStr( CLIENT_CONFIG_APP, "Language", "russ", buf );
+    cfg.GetStr( "Language", "russ", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "Language" );
     Str::Lower( buf );
     if( Str::Compare( buf, "russ" ) )
         SetExceptionsRussianText();
 
     // Int / Bool
-    GameOpt.OpenGLDebug = cfg.GetInt( CLIENT_CONFIG_APP, "OpenGLDebug", false ) != 0;
+    GameOpt.OpenGLDebug = cfg.GetInt( "OpenGLDebug", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.OpenGLDebug, "-OpenGLDebug" );
-    GameOpt.AssimpLogging = cfg.GetInt( CLIENT_CONFIG_APP, "AssimpLogging", false ) != 0;
+    GameOpt.AssimpLogging = cfg.GetInt( "AssimpLogging", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.AssimpLogging, "-AssimpLogging" );
-    GameOpt.FullScreen = cfg.GetInt( CLIENT_CONFIG_APP, "FullScreen", false ) != 0;
+    GameOpt.FullScreen = cfg.GetInt( "FullScreen", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.FullScreen, "-FullScreen" );
-    GameOpt.VSync = cfg.GetInt( CLIENT_CONFIG_APP, "VSync", false ) != 0;
+    GameOpt.VSync = cfg.GetInt( "VSync", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.VSync, "-VSync" );
-    GameOpt.Light = cfg.GetInt( CLIENT_CONFIG_APP, "Light", 20 );
+    GameOpt.Light = cfg.GetInt( "Light", 20 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.Light, "-Light" );
     GETOPTIONS_CHECK( GameOpt.Light, 0, 100, 20 );
-    GameOpt.ScrollDelay = cfg.GetInt( CLIENT_CONFIG_APP, "ScrollDelay", 10 );
+    GameOpt.ScrollDelay = cfg.GetInt( "ScrollDelay", 10 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ScrollDelay, "-ScrollDelay" );
     GETOPTIONS_CHECK( GameOpt.ScrollDelay, 0, 100, 10 );
-    GameOpt.ScrollStep = cfg.GetInt( CLIENT_CONFIG_APP, "ScrollStep", 12 );
+    GameOpt.ScrollStep = cfg.GetInt( "ScrollStep", 12 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ScrollStep, "-ScrollStep" );
     GETOPTIONS_CHECK( GameOpt.ScrollStep, 4, 32, 12 );
-    GameOpt.TextDelay = cfg.GetInt( CLIENT_CONFIG_APP, "TextDelay", 3000 );
+    GameOpt.TextDelay = cfg.GetInt( "TextDelay", 3000 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.TextDelay, "-TextDelay" );
     GETOPTIONS_CHECK( GameOpt.TextDelay, 1000, 3000, 30000 );
-    GameOpt.DamageHitDelay = cfg.GetInt( CLIENT_CONFIG_APP, "DamageHitDelay", 0 );
+    GameOpt.DamageHitDelay = cfg.GetInt( "DamageHitDelay", 0 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.DamageHitDelay, "-OptDamageHitDelay" );
     GETOPTIONS_CHECK( GameOpt.DamageHitDelay, 0, 30000, 0 );
-    GameOpt.ScreenWidth = cfg.GetInt( CLIENT_CONFIG_APP, "ScreenWidth", 0 );
+    GameOpt.ScreenWidth = cfg.GetInt( "ScreenWidth", 0 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ScreenWidth, "-ScreenWidth" );
     GETOPTIONS_CHECK( GameOpt.ScreenWidth, 100, 30000, 800 );
-    GameOpt.ScreenHeight = cfg.GetInt( CLIENT_CONFIG_APP, "ScreenHeight", 0 );
+    GameOpt.ScreenHeight = cfg.GetInt( "ScreenHeight", 0 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ScreenHeight, "-ScreenHeight" );
     GETOPTIONS_CHECK( GameOpt.ScreenHeight, 100, 30000, 600 );
-    GameOpt.AlwaysOnTop = cfg.GetInt( CLIENT_CONFIG_APP, "AlwaysOnTop", false ) != 0;
+    GameOpt.AlwaysOnTop = cfg.GetInt( "AlwaysOnTop", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.AlwaysOnTop, "-AlwaysOnTop" );
-    GameOpt.FixedFPS = cfg.GetInt( CLIENT_CONFIG_APP, "FixedFPS", 100 );
+    GameOpt.FixedFPS = cfg.GetInt( "FixedFPS", 100 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.FixedFPS, "-FixedFPS" );
     GETOPTIONS_CHECK( GameOpt.FixedFPS, -10000, 10000, 100 );
-    GameOpt.MsgboxInvert = cfg.GetInt( CLIENT_CONFIG_APP, "InvertMessBox", false ) != 0;
+    GameOpt.MsgboxInvert = cfg.GetInt( "InvertMessBox", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.MsgboxInvert, "-InvertMessBox" );
-    GameOpt.MessNotify = cfg.GetInt( CLIENT_CONFIG_APP, "WinNotify", true ) != 0;
+    GameOpt.MessNotify = cfg.GetInt( "WinNotify", true ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.MessNotify, "-WinNotify" );
-    GameOpt.SoundNotify = cfg.GetInt( CLIENT_CONFIG_APP, "SoundNotify", false ) != 0;
+    GameOpt.SoundNotify = cfg.GetInt( "SoundNotify", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.SoundNotify, "-SoundNotify" );
-    GameOpt.Port = cfg.GetInt( CLIENT_CONFIG_APP, "RemotePort", 4000 );
+    GameOpt.Port = cfg.GetInt( "RemotePort", 4000 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.Port, "-RemotePort" );
     GETOPTIONS_CHECK( GameOpt.Port, 0, 0xFFFF, 4000 );
-    GameOpt.UpdateServerPort = cfg.GetInt( CLIENT_CONFIG_APP, "UpdateServerPort", 0 );
+    GameOpt.UpdateServerPort = cfg.GetInt( "UpdateServerPort", 0 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.UpdateServerPort, "-UpdateServerPort" );
     GETOPTIONS_CHECK( GameOpt.UpdateServerPort, 0, 0xFFFF, 0 );
-    GameOpt.ProxyType = cfg.GetInt( CLIENT_CONFIG_APP, "ProxyType", 0 );
+    GameOpt.ProxyType = cfg.GetInt( "ProxyType", 0 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ProxyType, "-ProxyType" );
     GETOPTIONS_CHECK( GameOpt.ProxyType, 0, 3, 0 );
-    GameOpt.ProxyPort = cfg.GetInt( CLIENT_CONFIG_APP, "ProxyPort", 8080 );
+    GameOpt.ProxyPort = cfg.GetInt( "ProxyPort", 8080 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ProxyPort, "-ProxyPort" );
     GETOPTIONS_CHECK( GameOpt.ProxyPort, 0, 0xFFFF, 1080 );
-    GameOpt.AlwaysRun = cfg.GetInt( CLIENT_CONFIG_APP, "AlwaysRun", false ) != 0;
+    GameOpt.AlwaysRun = cfg.GetInt( "AlwaysRun", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.AlwaysRun, "-AlwaysRun" );
-    GameOpt.DefaultCombatMode = cfg.GetInt( CLIENT_CONFIG_APP, "DefaultCombatMode", COMBAT_MODE_ANY );
+    GameOpt.DefaultCombatMode = cfg.GetInt( "DefaultCombatMode", COMBAT_MODE_ANY );
     GETOPTIONS_CMD_LINE_INT( GameOpt.DefaultCombatMode, "-DefaultCombatMode" );
     GETOPTIONS_CHECK( GameOpt.DefaultCombatMode, COMBAT_MODE_ANY, COMBAT_MODE_TURN_BASED, COMBAT_MODE_ANY );
-    GameOpt.IndicatorType = cfg.GetInt( CLIENT_CONFIG_APP, "IndicatorType", COMBAT_MODE_ANY );
+    GameOpt.IndicatorType = cfg.GetInt( "IndicatorType", COMBAT_MODE_ANY );
     GETOPTIONS_CMD_LINE_INT( GameOpt.IndicatorType, "-IndicatorType" );
     GETOPTIONS_CHECK( GameOpt.IndicatorType, INDICATOR_LINES, INDICATOR_BOTH, INDICATOR_LINES );
-    GameOpt.DoubleClickTime = cfg.GetInt( CLIENT_CONFIG_APP, "DoubleClickTime", 400 );
+    GameOpt.DoubleClickTime = cfg.GetInt( "DoubleClickTime", 400 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.DoubleClickTime, "-DoubleClickTime" );
     GETOPTIONS_CHECK( GameOpt.DoubleClickTime, 0, 1000, 0 );
-    GameOpt.CombatMessagesType = cfg.GetInt( CLIENT_CONFIG_APP, "CombatMessagesType", 0 );
+    GameOpt.CombatMessagesType = cfg.GetInt( "CombatMessagesType", 0 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.CombatMessagesType, "-CombatMessagesType" );
     GETOPTIONS_CHECK( GameOpt.CombatMessagesType, 0, 1, 0 );
 
@@ -917,30 +860,30 @@ void GetClientOptions()
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugNet, "-DebugNet" );
 
     // Str
-    cfg.GetStr( CLIENT_CONFIG_APP, "RemoteHost", "localhost", buf );
+    cfg.GetStr( "RemoteHost", "localhost", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-RemoteHost" );
     *GameOpt.Host = buf;
-    cfg.GetStr( CLIENT_CONFIG_APP, "UpdateServerHost", "", buf );
+    cfg.GetStr( "UpdateServerHost", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-UpdateServerHost" );
     *GameOpt.UpdateServerHost = buf;
-    cfg.GetStr( CLIENT_CONFIG_APP, "ProxyHost", "localhost", buf );
+    cfg.GetStr( "ProxyHost", "localhost", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ProxyHost" );
     *GameOpt.ProxyHost = buf;
-    cfg.GetStr( CLIENT_CONFIG_APP, "ProxyUser", "", buf );
+    cfg.GetStr( "ProxyUser", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ProxyUser" );
     *GameOpt.ProxyUser = buf;
-    cfg.GetStr( CLIENT_CONFIG_APP, "ProxyPass", "", buf );
+    cfg.GetStr( "ProxyPass", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ProxyPass" );
     *GameOpt.ProxyPass = buf;
-    cfg.GetStr( CLIENT_CONFIG_APP, "UserName", "", buf );
+    cfg.GetStr( "UserName", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-UserName" );
     *GameOpt.Name = buf;
-    cfg.GetStr( CLIENT_CONFIG_APP, "KeyboardRemap", "", buf );
+    cfg.GetStr( "KeyboardRemap", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-KeyboardRemap" );
     *GameOpt.KeyboardRemap = buf;
 
     // Logging
-    bool logging = cfg.GetInt( CLIENT_CONFIG_APP, "Logging", 1 ) != 0;
+    bool logging = cfg.GetInt( "Logging", 1 ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( logging, "-Logging" );
     if( !logging )
     {
@@ -948,15 +891,15 @@ void GetClientOptions()
         LogToFile( NULL );
     }
 
-    logging = cfg.GetInt( CLIENT_CONFIG_APP, "LoggingDebugOutput", 0 ) != 0;
+    logging = cfg.GetInt( "LoggingDebugOutput", 0 ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( logging, "-LoggingDebugOutput" );
     if( logging )
         LogToDebugOutput( true );
 
-    logging = cfg.GetInt( CLIENT_CONFIG_APP, "LoggingTime", false ) != 0;
+    logging = cfg.GetInt( "LoggingTime", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( logging, "-LoggingTime" );
     LogWithTime( logging );
-    logging = cfg.GetInt( CLIENT_CONFIG_APP, "LoggingThread", false ) != 0;
+    logging = cfg.GetInt( "LoggingThread", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( logging, "-LoggingThread" );
     LogWithThread( logging );
 
@@ -990,8 +933,7 @@ bool AllowClientNativeCalls = false;
 
 void GetServerOptions()
 {
-    IniParser cfg;
-    cfg.LoadFile( GetConfigFileName(), PT_ROOT );
+    IniParser& cfg = IniParser::GetServerConfig();
     ServerGameSleep = cfg.GetInt( "GameSleep", 10 );
     Script::SetConcurrentExecution( cfg.GetInt( "ScriptConcurrentExecution", 0 ) != 0 );
     WorldSaveManager = ( cfg.GetInt( "WorldSaveManager", 1 ) != 0 );
@@ -1192,6 +1134,7 @@ GameOptions::GameOptions()
     ApCostAimLegs = 1;
     RunOnCombat = false;
     RunOnTransfer = false;
+    RunOnTurnBased = false;
     GlobalMapWidth = 28;
     GlobalMapHeight = 30;
     GlobalMapZoneLength = 50;

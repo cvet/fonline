@@ -616,8 +616,27 @@ bool SoundManager::PlaySound( const char* name )
 {
     if( !isActive || !GameOpt.SoundVolume )
         return true;
-    Sound* sound = Load( name, PT_SND_SFX );
-    return sound != NULL;
+
+    StrMap& names = ResMngr.GetSoundNames();
+    string  sname = name;
+    auto    it = names.find( sname );
+    if( it == names.end() )
+    {
+        // Check random pattern 'name_X'
+        uint count = 0;
+        sname += "_";
+        while( names.find( sname + Str::ItoA( count + 1 ) ) != names.end() )
+            count++;
+        if( count )
+        {
+            sname += Str::ItoA( Random( 1, count ) );
+            return Load( sname.c_str(), PT_SND_SFX ) != NULL;
+        }
+
+        return false;
+    }
+
+    return Load( name, PT_SND_SFX ) != NULL;
 }
 
 bool SoundManager::PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext )

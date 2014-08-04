@@ -684,6 +684,7 @@ public:
         static ScriptString* Global_GetCacheDataStr( const ScriptString& name );
         static bool          Global_IsCacheData( const ScriptString& name );
         static void          Global_EraseCacheData( const ScriptString& name );
+        static void          Global_SetUserConfig( ScriptArray& key_values );
 
         static bool&         ConsoleActive;
         static bool&         GmapActive, & GmapWait;

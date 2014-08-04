@@ -65,7 +65,8 @@ bool IniParser::AppendToBegin( const char* fname, int path_type )
 
     char* grow_buf = new char[ bufLen + len + 1 ];
     memcpy( grow_buf, buf, len );
-    memcpy( grow_buf + len, bufPtr, bufLen );
+    if( bufLen )
+        memcpy( grow_buf + len, bufPtr, bufLen );
     grow_buf[ bufLen + len ] = 0;
 
     SAFEDELA( bufPtr );
@@ -87,7 +88,8 @@ bool IniParser::AppendToEnd( const char* fname, int path_type )
     uint  len = Str::Length( buf );
 
     char* grow_buf = new char[ bufLen + len + 1 ];
-    memcpy( grow_buf, bufPtr, bufLen );
+    if( bufLen )
+        memcpy( grow_buf, bufPtr, bufLen );
     memcpy( grow_buf + bufLen, buf, len );
     grow_buf[ bufLen + len ] = 0;
 
@@ -107,7 +109,8 @@ bool IniParser::AppendPtrToBegin( const char* buf, uint len )
     grow_buf[ len ] = 0;
     Str::Replacement( grow_buf, '\r', ' ' );
     len = Str::Length( grow_buf );
-    memcpy( grow_buf + len, bufPtr, bufLen );
+    if( bufLen )
+        memcpy( grow_buf + len, bufPtr, bufLen );
     grow_buf[ bufLen + len ] = 0;
 
     SAFEDELA( bufPtr );
@@ -588,4 +591,103 @@ bool IniParser::IsCachedKey( const char* key_name )
 StrSet& IniParser::GetCachedKeys()
 {
     return cachedKeys;
+}
+
+const char* IniParser::GetConfigFileName()
+{
+    // Default config names
+    #if defined ( FONLINE_SERVER )
+    static char config_name[ MAX_FOPATH ] = { "FOnlineServer.cfg\0--default-server-config--" };
+    #elif defined ( FONLINE_MAPPER )
+    static char config_name[ MAX_FOPATH ] = { "Mapper.cfg\0--default-mapper-config--" };
+    #else // FONLINE_CLIENT and others
+    static char config_name[ MAX_FOPATH ] = { "FOnline.cfg\0--default-client-config--" };
+    #endif
+
+    // Extract config name from current exe
+    #ifdef FO_WINDOWS
+    static bool processed = false;
+    if( !processed )
+    {
+        // Call once
+        processed = true;
+
+        // Get full path
+        char module_name[ MAX_FOPATH ];
+        # ifdef FO_WINDOWS
+        if( !GetModuleFileName( NULL, module_name, sizeof( module_name ) ) )
+            return config_name;
+        # else
+        // Todo: Linux CommandLineArgValues[0] ?
+        # endif
+
+        // Change extension
+        char* ext = (char*) FileManager::GetExtension( module_name );
+        if( !ext )
+            return config_name;
+        Str::Copy( ext, 4, "cfg" );
+
+        // Check availability
+        if( !FileExist( module_name ) )
+            return config_name;
+
+        // Get file name
+        const char* name = NULL;
+        for( size_t i = 0, j = Str::Length( module_name ); i < j; i++ )
+            if( module_name[ i ] == DIR_SLASH_C )
+                name = &module_name[ i + 1 ];
+        if( !name )
+            return config_name;
+
+        // Set as main
+        Str::Copy( config_name, name );
+    }
+    #endif
+
+    return config_name;
+}
+
+IniParser& IniParser::GetClientConfig()
+{
+    static IniParser cfg_client;
+
+    #ifndef FONLINE_MAPPER
+    const char* cfg_name = GetConfigFileName();
+    cfg_client.LoadFile( cfg_name, PT_ROOT );
+    cfg_client.AppendToBegin( cfg_name, PT_CACHE );
+    #else
+    IniParser& cfg_mapper = GetMapperConfig();
+    char       buf[ MAX_FOPATH ];
+    cfg_mapper.GetStr( "ClientName", "FOnline", buf );
+    Str::Append( buf, ".cfg" );
+    cfg_client.LoadFile( ( GameOpt.ClientPath->c_std_str() + buf ).c_str(), PT_ROOT );
+    cfg_client.AppendToBegin( buf, PT_CACHE );
+    #endif
+
+    return cfg_client;
+}
+
+IniParser& IniParser::GetServerConfig()
+{
+    static IniParser cfg_server;
+
+    #ifndef FONLINE_MAPPER
+    cfg_server.LoadFile( GetConfigFileName(), PT_ROOT );
+    #else
+    IniParser& cfg_mapper = GetMapperConfig();
+    char       buf[ MAX_FOTEXT ];
+    cfg_mapper.GetStr( "ServerName", "FOnline", buf );
+    cfg_server.LoadFile( ( GameOpt.ServerPath->c_std_str() + buf + ".cfg" ).c_str(), PT_ROOT );
+    #endif
+
+    return cfg_server;
+}
+
+IniParser& IniParser::GetMapperConfig()
+{
+    static IniParser cfg_mapper;
+
+    cfg_mapper.LoadFile( GetConfigFileName(), PT_ROOT );
+
+    return cfg_mapper;
 }

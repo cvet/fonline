@@ -764,9 +764,17 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
         for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
         {
             Vertex3D& v = mesh->Vertices[ i ];
+            float w = 0.0f;
+            int last_bone = 0;
             for( int b = 0; b < BONES_PER_VERTEX; b++ )
+            {
                 if( v.BlendIndices[ b ] < 0.0f )
                     v.BlendIndices[ b ] = v.BlendWeights[ b ] = 0.0f;
+                else
+                    last_bone = b;
+                w += v.BlendWeights[ b ];
+            }
+            v.BlendWeights[ last_bone ] += 1.0f - w;
         }
     }
 
@@ -973,9 +981,17 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
         for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
         {
             Vertex3D& v = mesh->Vertices[ i ];
+            float w = 0.0f;
+            int last_bone = 0;
             for( int b = 0; b < BONES_PER_VERTEX; b++ )
+            {
                 if( v.BlendIndices[ b ] < 0.0f )
                     v.BlendIndices[ b ] = v.BlendWeights[ b ] = 0.0f;
+                else
+                    last_bone = b;
+                w += v.BlendWeights[ b ];
+            }
+            v.BlendWeights[ last_bone ] += 1.0f - w;
         }
     }
 

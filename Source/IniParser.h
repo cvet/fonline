@@ -49,6 +49,11 @@ public:
     void    CacheKeys();
     bool    IsCachedKey( const char* key_name );
     StrSet& GetCachedKeys();
+
+    static const char* GetConfigFileName();
+    static IniParser& GetClientConfig();
+    static IniParser& GetServerConfig();
+    static IniParser& GetMapperConfig();
 };
 
 #endif // ___INI_PARSER___

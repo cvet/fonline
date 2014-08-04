@@ -232,11 +232,15 @@ int asCBuilder::Build()
 
 	ParseScripts();
 
-	// Compile the global variables first, so the auto types can be
-	// resolved before the variables is used else where in the code
-	CompileGlobalVariables();
+	// Compile the types first
 	CompileInterfaces();
 	CompileClasses();
+
+	// Then the global variables. Here the variables declared with auto
+	// will be resolved, so they can be accessed properly in the functions
+	CompileGlobalVariables();
+
+	// Finally the global functions and class methods
 	CompileFunctions();
 
 	// TODO: Attempt to reorder the initialization of global variables so that

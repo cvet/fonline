@@ -11,8 +11,8 @@
 
 #define MAX_FIND_PATH    ( 600 )
 #define TILE_ALPHA       ( 0xFF )
-#define VIEW_WIDTH       ( (int) ( ( MODE_WIDTH / GameOpt.MapHexWidth + ( ( MODE_WIDTH % GameOpt.MapHexWidth ) ? 1 : 0 ) ) * GameOpt.SpritesZoom ) )
-#define VIEW_HEIGHT      ( (int) ( ( MODE_HEIGHT / GameOpt.MapHexLineHeight + ( ( MODE_HEIGHT % GameOpt.MapHexLineHeight ) ? 1 : 0 ) ) * GameOpt.SpritesZoom ) )
+#define VIEW_WIDTH       ( (int) ( ( GameOpt.ScreenWidth / GameOpt.MapHexWidth + ( ( GameOpt.ScreenWidth % GameOpt.MapHexWidth ) ? 1 : 0 ) ) * GameOpt.SpritesZoom ) )
+#define VIEW_HEIGHT      ( (int) ( ( GameOpt.ScreenHeight / GameOpt.MapHexLineHeight + ( ( GameOpt.ScreenHeight % GameOpt.MapHexLineHeight ) ? 1 : 0 ) ) * GameOpt.SpritesZoom ) )
 #define SCROLL_OX        ( GameOpt.MapHexWidth )
 #define SCROLL_OY        ( GameOpt.MapHexLineHeight * 2 )
 #define HEX_W            ( GameOpt.MapHexWidth )
@@ -193,6 +193,7 @@ public:
     int    GetMapTime();
     int*   GetMapDayTime();
     uchar* GetMapDayColor();
+    void   OnResolutionChanged();
 
     // Init, finish, restore
 private:

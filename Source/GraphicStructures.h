@@ -260,6 +260,9 @@ struct RenderTarget
     Texture* TargetTexture;
     GLuint   DepthStencilBuffer;
     Effect*  DrawEffect;
+    bool     Multisampling;
+    bool     ScreenSize;
+    bool     TexLinear;
 };
 typedef vector< RenderTarget* > RenderTargetVec;
 

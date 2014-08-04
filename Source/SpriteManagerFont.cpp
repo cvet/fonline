@@ -1241,7 +1241,7 @@ int SpriteManager::GetLinesCount( int width, int height, const char* str, int nu
         return height / ( font->LineHeight + font->YAdvance );
 
     static FontFormatInfo fi;
-    fi.Init( font, 0, Rect( 0, 0, width ? width : modeWidth, height ? height : modeHeight ), str );
+    fi.Init( font, 0, Rect( 0, 0, width ? width : GameOpt.ScreenWidth, height ? height : GameOpt.ScreenHeight ), str );
     FormatText( fi, FORMAT_TYPE_LCOUNT );
     if( fi.IsError )
         return 0;

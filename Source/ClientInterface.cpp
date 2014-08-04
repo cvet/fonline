@@ -121,7 +121,7 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
     char*   end = Str::Substring( begin, "\nresolution " );
     while( true )
     {
-        if( w <= MODE_WIDTH && h <= MODE_HEIGHT )
+        if( w <= GameOpt.ScreenWidth && h <= GameOpt.ScreenHeight )
         {
             uint l = (uint) ( end ? (size_t) end - (size_t) begin : (size_t) ( data + len ) - (size_t) begin );
             sections.insert( PAIR( w, PAIR( begin, l ) ) );
@@ -167,10 +167,10 @@ int FOClient::InitIface()
     IfaceLoadRect( InvWText, "InvText" );
     InvX = IfaceIni.GetInt( "InvX", -1 );
     if( InvX == -1 )
-        InvX = ( MODE_WIDTH - InvWMain[ 2 ] ) / 2;
+        InvX = ( GameOpt.ScreenWidth - InvWMain[ 2 ] ) / 2;
     InvY = IfaceIni.GetInt( "InvY", -1 );
     if( InvY == -1 )
-        InvY = ( MODE_HEIGHT - InvWMain[ 3 ] ) / 2;
+        InvY = ( GameOpt.ScreenHeight - InvWMain[ 3 ] ) / 2;
     InvScroll = 0;
     InvHeightItem = IfaceIni.GetInt( "InvHeightItem", 30 );
     for( int i = 0, j = (uint) SlotsExt.size(); i < j; i++ )
@@ -188,10 +188,10 @@ int FOClient::InitIface()
     IfaceLoadRect( UseBCancel, "UseCancel" );
     UseX = IfaceIni.GetInt( "UseX", -1 );
     if( UseX == -1 )
-        UseX = ( MODE_WIDTH - UseWMain[ 2 ] ) / 2;
+        UseX = ( GameOpt.ScreenWidth - UseWMain[ 2 ] ) / 2;
     UseY = IfaceIni.GetInt( "UseY", -1 );
     if( UseY == -1 )
-        UseY = ( MODE_HEIGHT - UseWMain[ 3 ] ) / 2;
+        UseY = ( GameOpt.ScreenHeight - UseWMain[ 3 ] ) / 2;
     UseVectX = 0;
     UseVectY = 0;
     UseScroll = 0;
@@ -202,19 +202,19 @@ int FOClient::InitIface()
     IfaceLoadRect( IntWMain, "IntMain" );
     IntX = IfaceIni.GetInt( "IntX", -1 );
     if( IntX == -1 )
-        IntX = ( MODE_WIDTH - IntWMain.W() ) / 2;
+        IntX = ( GameOpt.ScreenWidth - IntWMain.W() ) / 2;
     else if( IntX == -2 )
-        IntX = MODE_WIDTH - IntWMain.W();
+        IntX = GameOpt.ScreenWidth - IntWMain.W();
     else if( IntX == -3 )
         IntX = 0;
     else
     {
         if( IntX < 0 )
             IntX = 0;
-        if( IntX + IntWMain.W() > MODE_WIDTH )
+        if( IntX + IntWMain.W() > GameOpt.ScreenWidth )
             IntX = 0;
     }
-    IntY = MODE_HEIGHT - IntWMain.B;
+    IntY = GameOpt.ScreenHeight - IntWMain.B;
     IfaceLoadRect2( IntWMain, "IntMain", IntX, IntY );
     IfaceLoadRect2( IntWAddMess, "IntAddMessWindow", IntX, IntY );
     IfaceLoadRect2( IntBAddMess, "IntAddMess", IntX, IntY );
@@ -285,8 +285,8 @@ int FOClient::InitIface()
     // Login
     LogFocus = 0;
     IfaceLoadRect( LogMain, "LogMain" );
-    LogX = ( MODE_WIDTH - LogMain.W() ) / 2;
-    LogY = ( MODE_HEIGHT - LogMain.H() ) / 2;
+    LogX = ( GameOpt.ScreenWidth - LogMain.W() ) / 2;
+    LogY = ( GameOpt.ScreenHeight - LogMain.H() ) / 2;
     IfaceLoadRect2( LogWName, "LogName", LogX, LogY );
     IfaceLoadRect2( LogWPass, "LogPass", LogX, LogY );
     IfaceLoadRect2( LogBOk, "LogPlay", LogX, LogY );
@@ -333,10 +333,10 @@ int FOClient::InitIface()
     DlgNextAnswY = IfaceIni.GetInt( "DlgNextAnswY", 1 );
     DlgX = IfaceIni.GetInt( "DlgX", -1 );
     if( DlgX == -1 )
-        DlgX = MODE_WIDTH / 2 - DlgWMain[ 2 ] / 2;
+        DlgX = GameOpt.ScreenWidth / 2 - DlgWMain[ 2 ] / 2;
     DlgY = IfaceIni.GetInt( "DlgY", -1 );
     if( DlgY == -1 )
-        DlgY = MODE_HEIGHT / 2 - DlgWMain[ 3 ] / 2;
+        DlgY = GameOpt.ScreenHeight / 2 - DlgWMain[ 3 ] / 2;
     // Barter
     BarterPlayerId = 0;
     IfaceLoadRect( BarterWMain, "BarterMain" );
@@ -434,17 +434,17 @@ int FOClient::InitIface()
     SboxX = IfaceIni.GetInt( "SboxX", -1 );
     SboxY = IfaceIni.GetInt( "SboxY", -1 );
     if( SboxX < 0 )
-        SboxX = MODE_WIDTH - SboxWMain[ 2 ];
+        SboxX = GameOpt.ScreenWidth - SboxWMain[ 2 ];
     if( SboxY < 0 )
-        SboxY = ( MODE_HEIGHT - SboxWMain[ 3 ] ) / 2;
+        SboxY = ( GameOpt.ScreenHeight - SboxWMain[ 3 ] ) / 2;
     SboxVectX = 0;
     SboxVectY = 0;
     CurSkill = 0;
 
     // Menu option
     IfaceLoadRect( MoptMain, "MoptMain" );
-    MoptX = ( MODE_WIDTH - MoptMain.W() ) / 2;
-    MoptY = ( MODE_HEIGHT - MoptMain.H() ) / 2;
+    MoptX = ( GameOpt.ScreenWidth - MoptMain.W() ) / 2;
+    MoptY = ( GameOpt.ScreenHeight - MoptMain.H() ) / 2;
     IfaceLoadRect2( MoptMain, "MoptMain", MoptX, MoptY );
     IfaceLoadRect2( MoptSaveGame, "MoptSaveGame", MoptX, MoptY );
     IfaceLoadRect2( MoptLoadGame, "MoptLoadGame", MoptX, MoptY );
@@ -455,8 +455,8 @@ int FOClient::InitIface()
     // Character
     // Main
     IfaceLoadRect( ChaWMain, "ChaMain" );
-    ChaX = ( MODE_WIDTH - ChaWMain.W() ) / 2;
-    ChaY = ( MODE_HEIGHT - ChaWMain.H() ) / 2;
+    ChaX = ( GameOpt.ScreenWidth - ChaWMain.W() ) / 2;
+    ChaY = ( GameOpt.ScreenHeight - ChaWMain.H() ) / 2;
     ChaVectX = 0;
     ChaVectY = 0;
     IfaceLoadRect( ChaBPrint, "ChaPrint" );
@@ -578,8 +578,8 @@ int FOClient::InitIface()
     IfaceLoadRect( PerkBCancel, "PerkCancel" );
     IfaceLoadRect( PerkBOkText, "PerkOkText" );
     IfaceLoadRect( PerkBCancelText, "PerkCancelText" );
-    PerkX = ( MODE_WIDTH - PerkWMain.W() ) / 2;
-    PerkY = ( MODE_HEIGHT - PerkWMain.H() ) / 2;
+    PerkX = ( GameOpt.ScreenWidth - PerkWMain.W() ) / 2;
+    PerkY = ( GameOpt.ScreenHeight - PerkWMain.H() ) / 2;
     PerkNextX = IfaceIni.GetInt( "PerkNextX", 0 );
     PerkNextY = IfaceIni.GetInt( "PerkNextY", 11 );
     PerkVectX = 0;
@@ -592,7 +592,7 @@ int FOClient::InitIface()
     IfaceLoadRect( TViewBBack, "TViewBack" );
     IfaceLoadRect( TViewBEnter, "TViewEnter" );
     IfaceLoadRect( TViewBContours, "TViewContours" );
-    TViewX = MODE_WIDTH - TViewWMain.W() - 10;
+    TViewX = GameOpt.ScreenWidth - TViewWMain.W() - 10;
     TViewY = 10;
     TViewVectX = 0;
     TViewVectY = 0;
@@ -644,11 +644,6 @@ int FOClient::InitIface()
     GmapTabsScrY = 0;
     GmapVectX = 0;
     GmapVectY = 0;
-    GmapMapCutOff.clear();
-    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, 0, MODE_WIDTH, GmapWMap.T ), COLOR_RGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, GmapWMap.T, GmapWMap.L, GmapWMap.B ), COLOR_RGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, Rect( GmapWMap.R, GmapWMap.T, MODE_WIDTH, GmapWMap.B ), COLOR_RGB( 0, 0, 0 ) );
-    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, GmapWMap.B, MODE_WIDTH, MODE_HEIGHT ), COLOR_RGB( 0, 0, 0 ) );
     GmapNextShowEntrancesTick = 0;
     GmapShowEntrancesLocId = 0;
     memzero( GmapShowEntrances, sizeof( GmapShowEntrances ) );
@@ -671,8 +666,8 @@ int FOClient::InitIface()
     IfaceLoadRect( PupBScrDw2, "PupScrDw2" );
     IfaceLoadRect( PupBNextCritLeft, "PupNextCritLeft" );
     IfaceLoadRect( PupBNextCritRight, "PupNextCritRight" );
-    PupX = ( MODE_WIDTH - PupWMain.W() ) / 2;
-    PupY = ( MODE_HEIGHT - PupWMain.H() ) / 2;
+    PupX = ( GameOpt.ScreenWidth - PupWMain.W() ) / 2;
+    PupY = ( GameOpt.ScreenHeight - PupWMain.H() ) / 2;
     PupHeightItem1 = IfaceIni.GetInt( "PupHeightCont1", 0 );
     PupHeightItem2 = IfaceIni.GetInt( "PupHeightCont2", 0 );
     PupHoldId = 0;
@@ -697,8 +692,8 @@ int FOClient::InitIface()
     IfaceLoadRect( PipBArchives, "PipArchives" );
     IfaceLoadRect( PipBClose, "PipClose" );
     IfaceLoadRect( PipWTime, "PipTime" );
-    PipX = ( MODE_WIDTH - PipWMain.W() ) / 2;
-    PipY = ( MODE_HEIGHT - PipWMain.H() ) / 2;
+    PipX = ( GameOpt.ScreenWidth - PipWMain.W() ) / 2;
+    PipY = ( GameOpt.ScreenHeight - PipWMain.H() ) / 2;
     PipVectX = 0;
     PipVectY = 0;
     PipMode = PIP__NONE;
@@ -737,8 +732,8 @@ int FOClient::InitIface()
     IfaceLoadRect( AimWGroinP, "AimGroinProc" );
     AimPicX = IfaceIni.GetInt( "AimPicX", 0 );
     AimPicY = IfaceIni.GetInt( "AimPicY", 0 );
-    AimX = ( MODE_WIDTH - AimWMain.W() ) / 2;
-    AimY = ( MODE_HEIGHT - AimWMain.H() ) / 2;
+    AimX = ( GameOpt.ScreenWidth - AimWMain.W() ) / 2;
+    AimY = ( GameOpt.ScreenHeight - AimWMain.H() ) / 2;
     AimVectX = 0;
     AimVectY = 0;
     AimPic = NULL;
@@ -751,8 +746,8 @@ int FOClient::InitIface()
     IfaceLoadRect( DlgboxWText, "DlgboxText" );
     IfaceLoadRect( DlgboxBButton, "DlgboxButton" );
     IfaceLoadRect( DlgboxBButtonText, "DlgboxButtonText" );
-    DlgboxX = ( MODE_WIDTH - DlgboxWTop.W() ) / 2;
-    DlgboxY = ( MODE_HEIGHT - DlgboxWTop.H() ) / 2;
+    DlgboxX = ( GameOpt.ScreenWidth - DlgboxWTop.W() ) / 2;
+    DlgboxY = ( GameOpt.ScreenHeight - DlgboxWTop.H() ) / 2;
     DlgboxVectX = 0;
     DlgboxVectY = 0;
     FollowRuleId = 0;
@@ -795,8 +790,8 @@ int FOClient::InitIface()
     IfaceLoadRect( SayBOkText, "SayOkText" );
     IfaceLoadRect( SayBCancel, "SayCancel" );
     IfaceLoadRect( SayBCancelText, "SayCancelText" );
-    SayX = ( MODE_WIDTH - SayWMain.W() ) / 2;
-    SayY = ( MODE_HEIGHT - SayWMain.H() ) / 2;
+    SayX = ( GameOpt.ScreenWidth - SayWMain.W() ) / 2;
+    SayY = ( GameOpt.ScreenHeight - SayWMain.H() ) / 2;
     SayVectX = 0;
     SayVectY = 0;
     SayType = DIALOGSAY_NONE;
@@ -820,8 +815,8 @@ int FOClient::InitIface()
     SplitMinValue = 0;
     SplitMaxValue = 0;
     SplitValueKeyPressed = false;
-    SplitX = ( MODE_WIDTH - SplitWMain.W() ) / 2;
-    SplitY = ( MODE_HEIGHT - SplitWMain.H() ) / 2;
+    SplitX = ( GameOpt.ScreenWidth - SplitWMain.W() ) / 2;
+    SplitY = ( GameOpt.ScreenHeight - SplitWMain.H() ) / 2;
     SplitItemPic = 0;
     SplitItemColor = 0;
     SplitParentScreen = SCREEN_NONE;
@@ -839,8 +834,8 @@ int FOClient::InitIface()
     TimerVectY = 0;
     TimerItemId = 0;
     TimerValue = 0;
-    TimerX = ( MODE_WIDTH - TimerWMain.W() ) / 2;
-    TimerY = ( MODE_HEIGHT - TimerWMain.H() ) / 2;
+    TimerX = ( GameOpt.ScreenWidth - TimerWMain.W() ) / 2;
+    TimerY = ( GameOpt.ScreenHeight - TimerWMain.H() ) / 2;
     TimerItemPic = 0;
     TimerItemColor = 0;
 
@@ -853,8 +848,8 @@ int FOClient::InitIface()
     IfaceLoadRect( FixBFix, "FixFix" );
     FixVectX = 0;
     FixVectY = 0;
-    FixX = ( MODE_WIDTH - FixWMain.W() ) / 2;
-    FixY = ( MODE_HEIGHT - FixWMain.H() ) / 2;
+    FixX = ( GameOpt.ScreenWidth - FixWMain.W() ) / 2;
+    FixY = ( GameOpt.ScreenHeight - FixWMain.H() ) / 2;
     FixMode = FIX_MODE_LIST;
     FixCurCraft = -1;
     FixScrollLst = 0;
@@ -873,8 +868,8 @@ int FOClient::InitIface()
     IfaceLoadRect( IboxBCancel, "IboxCancel" );
     IfaceLoadRect( IboxBCancelText, "IboxCancelText" );
     IboxMode = IBOX_MODE_NONE;
-    IboxX = ( MODE_WIDTH - IboxWMain.W() ) / 2;
-    IboxY = ( MODE_HEIGHT - IboxWMain.H() ) / 2;
+    IboxX = ( GameOpt.ScreenWidth - IboxWMain.W() ) / 2;
+    IboxY = ( GameOpt.ScreenHeight - IboxWMain.H() ) / 2;
     IboxVectX = 0;
     IboxVectY = 0;
     IboxTitle = "";
@@ -897,8 +892,8 @@ int FOClient::InitIface()
     IfaceLoadRect( SaveLoadDoneText, "SaveLoadDoneText" );
     IfaceLoadRect( SaveLoadBack, "SaveLoadBack" );
     IfaceLoadRect( SaveLoadBackText, "SaveLoadBackText" );
-    SaveLoadCX = ( MODE_WIDTH - SaveLoadMain.W() ) / 2;
-    SaveLoadCY = ( MODE_HEIGHT - SaveLoadMain.H() ) / 2;
+    SaveLoadCX = ( GameOpt.ScreenWidth - SaveLoadMain.W() ) / 2;
+    SaveLoadCY = ( GameOpt.ScreenHeight - SaveLoadMain.H() ) / 2;
     SaveLoadX = SaveLoadCX;
     SaveLoadY = SaveLoadCY;
     SaveLoadVectX = 0;
@@ -1843,13 +1838,13 @@ void FOClient::InvMouseMove()
 
         if( InvX < 0 )
             InvX = 0;
-        if( InvX + InvWMain[ 2 ] > MODE_WIDTH )
-            InvX = MODE_WIDTH - InvWMain[ 2 ];
+        if( InvX + InvWMain[ 2 ] > GameOpt.ScreenWidth )
+            InvX = GameOpt.ScreenWidth - InvWMain[ 2 ];
         if( InvY < 0 )
             InvY = 0;
         // if(InvY+InvMain[3]>IntY) InvY=IntY-InvMain[3];
-        if( InvY + InvWMain[ 3 ] > MODE_HEIGHT )
-            InvY = MODE_HEIGHT - InvWMain[ 3 ];
+        if( InvY + InvWMain[ 3 ] > GameOpt.ScreenHeight )
+            InvY = GameOpt.ScreenHeight - InvWMain[ 3 ];
     }
 }
 
@@ -2000,12 +1995,12 @@ void FOClient::UseMouseMove()
         UseY = GameOpt.MouseY - UseVectY;
         if( UseX < 0 )
             UseX = 0;
-        if( UseX + UseWMain[ 2 ] > MODE_WIDTH )
-            UseX = MODE_WIDTH - UseWMain[ 2 ];
+        if( UseX + UseWMain[ 2 ] > GameOpt.ScreenWidth )
+            UseX = GameOpt.ScreenWidth - UseWMain[ 2 ];
         if( UseY < 0 )
             UseY = 0;
-        if( UseY + UseWMain[ 3 ] > MODE_HEIGHT )
-            UseY = MODE_HEIGHT - UseWMain[ 3 ];
+        if( UseY + UseWMain[ 3 ] > GameOpt.ScreenHeight )
+            UseY = GameOpt.ScreenHeight - UseWMain[ 3 ];
     }
 }
 
@@ -2018,15 +2013,15 @@ void FOClient::ConsoleDraw()
 {
     // Pause indicator
     if( Timer::IsGamePaused() && !IsScreenPresent( SCREEN__MENU_OPTION ) )
-        SprMngr.DrawStr( Rect( 0, 20, MODE_WIDTH, MODE_HEIGHT ), MsgGame->GetStr( STR_GAME_PAUSED ), FT_CENTERX, COLOR_TEXT_DRED, FONT_BIG );
+        SprMngr.DrawStr( Rect( 0, 20, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), MsgGame->GetStr( STR_GAME_PAUSED ), FT_CENTERX, COLOR_TEXT_DRED, FONT_BIG );
 
     // Console
     if( ConsoleActive )
     {
         if( IsMainScreen( SCREEN_GAME ) )
-            SprMngr.DrawSprite( ConsolePic, IntX + ConsolePicX, ( IntVisible ? ( IntAddMess ? IntWAddMess[ 1 ] : IntY ) : MODE_HEIGHT ) + ConsolePicY );
+            SprMngr.DrawSprite( ConsolePic, IntX + ConsolePicX, ( IntVisible ? ( IntAddMess ? IntWAddMess[ 1 ] : IntY ) : GameOpt.ScreenHeight ) + ConsolePicY );
 
-        Rect rect( IntX + ConsoleTextX, ( IntVisible ? ( IntAddMess ? IntWAddMess[ 1 ] : IntY ) : MODE_HEIGHT ) + ConsoleTextY, MODE_WIDTH, MODE_HEIGHT );
+        Rect rect( IntX + ConsoleTextX, ( IntVisible ? ( IntAddMess ? IntWAddMess[ 1 ] : IntY ) : GameOpt.ScreenHeight ) + ConsoleTextY, GameOpt.ScreenWidth, GameOpt.ScreenHeight );
         if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
             rect = GmapWPanel;
 
@@ -2632,7 +2627,7 @@ void FOClient::IntDraw()
         int screen = GetActiveScreen();
         if( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW )
         {
-            SprMngr.DrawStr( Rect( 0, 0, MODE_WIDTH, MODE_HEIGHT ),
+            SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ),
                              FmtGameText( STR_ZOOM, (int) ( 1.0f / GameOpt.SpritesZoom * 100.0f ) ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_BIG );
         }
     }
@@ -3130,7 +3125,7 @@ Rect FOClient::MessBoxCurRectDraw()
     if( IsMainScreen( SCREEN_LOGIN ) )
         return LogWChat;
     else if( IsMainScreen( SCREEN_REGISTRATION ) )
-        return r( 0, 0, MODE_WIDTH, 60 );
+        return r( 0, 0, GameOpt.ScreenWidth, 60 );
     else if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
         return GmapWChat;
     else if( IsMainScreen( SCREEN_GAME ) && IntVisible && !IsScreenPresent( SCREEN__TOWN_VIEW ) )
@@ -3889,13 +3884,13 @@ void FOClient::DlgMouseMove( bool is_dialog )
 
         if( DlgX < 0 )
             DlgX = 0;
-        if( DlgX + DlgWMain[ 2 ] > MODE_WIDTH )
-            DlgX = MODE_WIDTH - DlgWMain[ 2 ];
+        if( DlgX + DlgWMain[ 2 ] > GameOpt.ScreenWidth )
+            DlgX = GameOpt.ScreenWidth - DlgWMain[ 2 ];
         if( DlgY < 0 )
             DlgY = 0;
         // if(DlgY+DlgMain[3]>IntY) DlgY=IntY-DlgMain[3];
-        if( DlgY + DlgWMain[ 3 ] > MODE_HEIGHT )
-            DlgY = MODE_HEIGHT - DlgWMain[ 3 ];
+        if( DlgY + DlgWMain[ 3 ] > GameOpt.ScreenHeight )
+            DlgY = GameOpt.ScreenHeight - DlgWMain[ 3 ];
     }
 }
 
@@ -4456,10 +4451,10 @@ void FOClient::LMenuTryCreate()
 
         SndMngr.PlaySound( SND_LMENU );
         int height = (int) LMenuCurNodes->size() * LMenuNodeHeight;
-        if( LMenuY + height > MODE_HEIGHT )
-            LMenuY -= LMenuY + height - MODE_HEIGHT;
-        if( LMenuX + LMenuNodeHeight > MODE_WIDTH )
-            LMenuX -= LMenuX + LMenuNodeHeight - MODE_WIDTH;
+        if( LMenuY + height > GameOpt.ScreenHeight )
+            LMenuY -= LMenuY + height - GameOpt.ScreenHeight;
+        if( LMenuX + LMenuNodeHeight > GameOpt.ScreenWidth )
+            LMenuX -= LMenuX + LMenuNodeHeight - GameOpt.ScreenWidth;
         SetCurPos( LMenuX, LMenuY );
         LMenuCurNode = 0;
         LMenuTryActivated = false;
@@ -5222,15 +5217,18 @@ void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NUL
             RegGenParams();
         memzero( ChaSkillUp, sizeof( ChaSkillUp ) );
         ChaUnspentSkillPoints = *(int*) GameOpt.RegParams->At( ST_UNSPENT_SKILL_POINTS );
-        ChaX = ( MODE_WIDTH - RegWMain.W() ) / 2;
-        ChaY = ( MODE_HEIGHT - RegWMain.H() ) / 2;
+        ChaX = ( GameOpt.ScreenWidth - RegWMain.W() ) / 2;
+        ChaY = ( GameOpt.ScreenHeight - RegWMain.H() ) / 2;
         ChaMouseMove( true );
         ScreenFadeOut();
         break;
     case SCREEN_CREDITS:
         CreditsNextTick = Timer::FastTick();
-        CreditsYPos = MODE_HEIGHT;
+        CreditsYPos = GameOpt.ScreenHeight;
         CreaditsExt = Keyb::ShiftDwn;
+        break;
+    case SCREEN_OPTIONS:
+        ScreenFadeOut();
         break;
     case SCREEN_GAME:
         SetCurMode( CUR_DEFAULT );
@@ -5457,8 +5455,8 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, in
         GmapTownPic = NULL;
         GmapTownPicPos[ 0 ] = 0;
         GmapTownPicPos[ 1 ] = 0;
-        GmapTownPicPos[ 2 ] = MODE_WIDTH;
-        GmapTownPicPos[ 3 ] = MODE_HEIGHT;
+        GmapTownPicPos[ 2 ] = GameOpt.ScreenWidth;
+        GmapTownPicPos[ 3 ] = GameOpt.ScreenHeight;
         int pic_offsx = 0;
         int pic_offsy = 0;
         ushort loc_pid = GmapTownLoc.LocPid;
@@ -5473,8 +5471,8 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, in
         SpriteInfo* si = SprMngr.GetSpriteInfo( anim->GetCurSprId() );
 
         GmapTownPic = anim;
-        pic_offsx = ( MODE_WIDTH - si->Width ) / 2;
-        pic_offsy = ( MODE_HEIGHT - si->Height ) / 2;
+        pic_offsx = ( GameOpt.ScreenWidth - si->Width ) / 2;
+        pic_offsy = ( GameOpt.ScreenHeight - si->Height ) / 2;
         GmapTownPicPos[ 0 ] = pic_offsx;
         GmapTownPicPos[ 1 ] = pic_offsy;
         GmapTownPicPos[ 2 ] = pic_offsx + si->Width;
@@ -5489,7 +5487,7 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, in
             int x = MsgGM->GetInt( STR_GM_ENTRANCE_PICX_( loc_pid, i ) ) + pic_offsx;
             int y = MsgGM->GetInt( STR_GM_ENTRANCE_PICY_( loc_pid, i ) ) + pic_offsy;
 
-            GmapTownTextPos.push_back( Rect( x, y, MODE_WIDTH, MODE_HEIGHT ) );
+            GmapTownTextPos.push_back( Rect( x, y, GameOpt.ScreenWidth, GameOpt.ScreenHeight ) );
             GmapTownText.push_back( string( MsgGM->GetStr( STR_GM_ENTRANCE_NAME_( loc_pid, i ) ) ) );
         }
 
@@ -5747,12 +5745,12 @@ void FOClient::LmapMouseMove()
         LmapY = GameOpt.MouseY - LmapVectY;
         if( LmapX < 0 )
             LmapX = 0;
-        if( LmapX + LmapMain[ 2 ] > MODE_WIDTH )
-            LmapX = MODE_WIDTH - LmapMain[ 2 ];
+        if( LmapX + LmapMain[ 2 ] > GameOpt.ScreenWidth )
+            LmapX = GameOpt.ScreenWidth - LmapMain[ 2 ];
         if( LmapY < 0 )
             LmapY = 0;
-        if( LmapY + LmapMain[ 3 ] > MODE_HEIGHT )
-            LmapY = MODE_HEIGHT - LmapMain[ 3 ];
+        if( LmapY + LmapMain[ 3 ] > GameOpt.ScreenHeight )
+            LmapY = GameOpt.ScreenHeight - LmapMain[ 3 ];
     }
 }
 
@@ -6069,6 +6067,11 @@ void FOClient::GmapDraw()
     DrawIfaceLayer( 101 );
 
     // Cut off map
+    GmapMapCutOff.clear();
+    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, 0, GameOpt.ScreenWidth, GmapWMap.T ), COLOR_RGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, GmapWMap.T, GmapWMap.L, GmapWMap.B ), COLOR_RGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, Rect( GmapWMap.R, GmapWMap.T, GameOpt.ScreenWidth, GmapWMap.B ), COLOR_RGB( 0, 0, 0 ) );
+    SprMngr.PrepareSquare( GmapMapCutOff, Rect( 0, GmapWMap.B, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), COLOR_RGB( 0, 0, 0 ) );
     SprMngr.DrawPoints( GmapMapCutOff, PRIMITIVE_TRIANGLELIST );
 
     // Tabs pics
@@ -6229,7 +6232,7 @@ void FOClient::GmapTownDraw()
 
     SpriteInfo* si = SprMngr.GetSpriteInfo( GmapTownPic->GetCurSprId() );
     if( si )
-        SprMngr.DrawSprite( GmapTownPic, ( MODE_WIDTH - si->Width ) / 2, ( MODE_HEIGHT - si->Height ) / 2 );
+        SprMngr.DrawSprite( GmapTownPic, ( GameOpt.ScreenWidth - si->Width ) / 2, ( GameOpt.ScreenHeight - si->Height ) / 2 );
 
     if( !Chosen || !Chosen->IsGmapRule() )
         return;
@@ -6826,12 +6829,12 @@ void FOClient::SboxMouseMove()
 
         if( SboxX < 0 )
             SboxX = 0;
-        if( SboxX + SboxWMain[ 2 ] > MODE_WIDTH )
-            SboxX = MODE_WIDTH - SboxWMain[ 2 ];
+        if( SboxX + SboxWMain[ 2 ] > GameOpt.ScreenWidth )
+            SboxX = GameOpt.ScreenWidth - SboxWMain[ 2 ];
         if( SboxY < 0 )
             SboxY = 0;
-        if( SboxY + SboxWMain[ 3 ] > MODE_HEIGHT )
-            SboxY = MODE_HEIGHT - SboxWMain[ 3 ];
+        if( SboxY + SboxWMain[ 3 ] > GameOpt.ScreenHeight )
+            SboxY = GameOpt.ScreenHeight - SboxWMain[ 3 ];
     }
 }
 
@@ -6910,7 +6913,7 @@ void FOClient::MoptLMouseUp()
 
 void FOClient::CreditsDraw()
 {
-    SprMngr.DrawStr( Rect( 0, CreditsYPos, MODE_WIDTH, MODE_HEIGHT + 50 ),
+    SprMngr.DrawStr( Rect( 0, CreditsYPos, GameOpt.ScreenWidth, GameOpt.ScreenHeight + 50 ),
                      MsgGame->GetStr( CreaditsExt ? STR_GAME_CREDITS_EXT : STR_GAME_CREDITS ), FT_CENTERX, COLOR_TEXT, FONT_BIG );
 
     if( Timer::FastTick() >= CreditsNextTick )
@@ -7847,12 +7850,12 @@ void FOClient::ChaMouseMove( bool is_reg )
 
     if( ChaX < 0 )
         ChaX = 0;
-    if( ChaX + ChaWMain[ 2 ] > MODE_WIDTH )
-        ChaX = MODE_WIDTH - ChaWMain[ 2 ];
+    if( ChaX + ChaWMain[ 2 ] > GameOpt.ScreenWidth )
+        ChaX = GameOpt.ScreenWidth - ChaWMain[ 2 ];
     if( ChaY < 0 )
         ChaY = 0;
-    if( ChaY + ChaWMain[ 3 ] > MODE_HEIGHT )
-        ChaY = MODE_HEIGHT - ChaWMain[ 3 ];
+    if( ChaY + ChaWMain[ 3 ] > GameOpt.ScreenHeight )
+        ChaY = GameOpt.ScreenHeight - ChaWMain[ 3 ];
 }
 
 // ==============================================================================================================================
@@ -8226,12 +8229,12 @@ void FOClient::PerkMouseMove()
 
         if( PerkX < 0 )
             PerkX = 0;
-        if( PerkX + PerkWMain[ 2 ] > MODE_WIDTH )
-            PerkX = MODE_WIDTH - PerkWMain[ 2 ];
+        if( PerkX + PerkWMain[ 2 ] > GameOpt.ScreenWidth )
+            PerkX = GameOpt.ScreenWidth - PerkWMain[ 2 ];
         if( PerkY < 0 )
             PerkY = 0;
-        if( PerkY + PerkWMain[ 3 ] > MODE_HEIGHT )
-            PerkY = MODE_HEIGHT - PerkWMain[ 3 ];
+        if( PerkY + PerkWMain[ 3 ] > GameOpt.ScreenHeight )
+            PerkY = GameOpt.ScreenHeight - PerkWMain[ 3 ];
     }
 }
 
@@ -8313,12 +8316,12 @@ void FOClient::TViewMouseMove()
 
         if( TViewX < 0 )
             TViewX = 0;
-        if( TViewX + TViewWMain[ 2 ] > MODE_WIDTH )
-            TViewX = MODE_WIDTH - TViewWMain[ 2 ];
+        if( TViewX + TViewWMain[ 2 ] > GameOpt.ScreenWidth )
+            TViewX = GameOpt.ScreenWidth - TViewWMain[ 2 ];
         if( TViewY < 0 )
             TViewY = 0;
-        if( TViewY + TViewWMain[ 3 ] > MODE_HEIGHT )
-            TViewY = MODE_HEIGHT - TViewWMain[ 3 ];
+        if( TViewY + TViewWMain[ 3 ] > GameOpt.ScreenHeight )
+            TViewY = GameOpt.ScreenHeight - TViewWMain[ 3 ];
     }
 }
 
@@ -8817,12 +8820,12 @@ void FOClient::PipMouseMove()
 
         if( PipX < 0 )
             PipX = 0;
-        if( PipX + PipWMain[ 2 ] > MODE_WIDTH )
-            PipX = MODE_WIDTH - PipWMain[ 2 ];
+        if( PipX + PipWMain[ 2 ] > GameOpt.ScreenWidth )
+            PipX = GameOpt.ScreenWidth - PipWMain[ 2 ];
         if( PipY < 0 )
             PipY = 0;
-        if( PipY + PipWMain[ 3 ] > MODE_HEIGHT )
-            PipY = MODE_HEIGHT - PipWMain[ 3 ];
+        if( PipY + PipWMain[ 3 ] > GameOpt.ScreenHeight )
+            PipY = GameOpt.ScreenHeight - PipWMain[ 3 ];
         AutomapScrX += (float) PipX;
         AutomapScrY += (float) PipY;
     }
@@ -9005,12 +9008,12 @@ void FOClient::AimMouseMove()
 
         if( AimX < 0 )
             AimX = 0;
-        if( AimX + AimWMain[ 2 ] > MODE_WIDTH )
-            AimX = MODE_WIDTH - AimWMain[ 2 ];
+        if( AimX + AimWMain[ 2 ] > GameOpt.ScreenWidth )
+            AimX = GameOpt.ScreenWidth - AimWMain[ 2 ];
         if( AimY < 0 )
             AimY = 0;
-        if( AimY + AimWMain[ 3 ] > MODE_HEIGHT )
-            AimY = MODE_HEIGHT - AimWMain[ 3 ];
+        if( AimY + AimWMain[ 3 ] > GameOpt.ScreenHeight )
+            AimY = GameOpt.ScreenHeight - AimWMain[ 3 ];
     }
 }
 
@@ -9318,13 +9321,13 @@ void FOClient::PupMouseMove()
 
         if( PupX < 0 )
             PupX = 0;
-        if( PupX + PupWMain[ 2 ] > MODE_WIDTH )
-            PupX = MODE_WIDTH - PupWMain[ 2 ];
+        if( PupX + PupWMain[ 2 ] > GameOpt.ScreenWidth )
+            PupX = GameOpt.ScreenWidth - PupWMain[ 2 ];
         if( PupY < 0 )
             PupY = 0;
         // if(PupY+PupWMain[3]>IntY) PupY=IntY-PupWMain[3];
-        if( PupY + PupWMain[ 3 ] > MODE_HEIGHT )
-            PupY = MODE_HEIGHT - PupWMain[ 3 ];
+        if( PupY + PupWMain[ 3 ] > GameOpt.ScreenHeight )
+            PupY = GameOpt.ScreenHeight - PupWMain[ 3 ];
     }
 }
 
@@ -9796,12 +9799,12 @@ void FOClient::DlgboxMouseMove()
         int height = DlgboxWTop.H() + DlgboxButtonsCount* DlgboxWMiddle.H() + DlgboxWBottom.H();
         if( DlgboxX < 0 )
             DlgboxX = 0;
-        if( DlgboxX + DlgboxWTop[ 2 ] > MODE_WIDTH )
-            DlgboxX = MODE_WIDTH - DlgboxWTop[ 2 ];
+        if( DlgboxX + DlgboxWTop[ 2 ] > GameOpt.ScreenWidth )
+            DlgboxX = GameOpt.ScreenWidth - DlgboxWTop[ 2 ];
         if( DlgboxY < 0 )
             DlgboxY = 0;
-        if( DlgboxY + height > MODE_HEIGHT )
-            DlgboxY = MODE_HEIGHT - height;
+        if( DlgboxY + height > GameOpt.ScreenHeight )
+            DlgboxY = GameOpt.ScreenHeight - height;
     }
 }
 
@@ -9885,12 +9888,12 @@ void FOClient::ElevatorMouseMove()
 
         if( ElevatorX < 0 )
             ElevatorX = 0;
-        if( ElevatorX + ElevatorMain[ 2 ] > MODE_WIDTH )
-            ElevatorX = MODE_WIDTH - ElevatorMain[ 2 ];
+        if( ElevatorX + ElevatorMain[ 2 ] > GameOpt.ScreenWidth )
+            ElevatorX = GameOpt.ScreenWidth - ElevatorMain[ 2 ];
         if( ElevatorY < 0 )
             ElevatorY = 0;
-        if( ElevatorY + ElevatorMain[ 3 ] > MODE_HEIGHT )
-            ElevatorY = MODE_HEIGHT - ElevatorMain[ 3 ];
+        if( ElevatorY + ElevatorMain[ 3 ] > GameOpt.ScreenHeight )
+            ElevatorY = GameOpt.ScreenHeight - ElevatorMain[ 3 ];
     }
 }
 
@@ -9995,8 +9998,8 @@ void FOClient::ElevatorGenerate( uint param )
         return;
 
     AnimRun( ElevatorIndicatorAnim, ANIMRUN_SET_FRM( AnimGetSprCount( ElevatorIndicatorAnim ) * Procent( ElevatorLevelsCount - 1, ElevatorCurrentLevel - ElevatorStartLevel ) / 100 ) | ANIMRUN_STOP );
-    ElevatorX = ( MODE_WIDTH - ElevatorMain.W() ) / 2;
-    ElevatorY = ( MODE_HEIGHT - ElevatorMain.H() ) / 2;
+    ElevatorX = ( GameOpt.ScreenWidth - ElevatorMain.W() ) / 2;
+    ElevatorY = ( GameOpt.ScreenHeight - ElevatorMain.H() ) / 2;
     ElevatorAnswerDone = false;
     ElevatorSendAnswerTick = 0;
     ShowScreen( SCREEN__ELEVATOR );
@@ -10120,12 +10123,12 @@ void FOClient::SayMouseMove()
 
         if( SayX < 0 )
             SayX = 0;
-        if( SayX + SayWMain[ 2 ] > MODE_WIDTH )
-            SayX = MODE_WIDTH - SayWMain[ 2 ];
+        if( SayX + SayWMain[ 2 ] > GameOpt.ScreenWidth )
+            SayX = GameOpt.ScreenWidth - SayWMain[ 2 ];
         if( SayY < 0 )
             SayY = 0;
-        if( SayY + SayWMain[ 3 ] > MODE_HEIGHT )
-            SayY = MODE_HEIGHT - SayWMain[ 3 ];
+        if( SayY + SayWMain[ 3 ] > GameOpt.ScreenHeight )
+            SayY = GameOpt.ScreenHeight - SayWMain[ 3 ];
     }
 }
 
@@ -10164,7 +10167,7 @@ void FOClient::SayKeyDown( uchar dik, const char* dik_text )
 
 void FOClient::WaitDraw()
 {
-    SprMngr.DrawSpriteSize( WaitPic, 0, 0, MODE_WIDTH, MODE_HEIGHT, true, true );
+    SprMngr.DrawSpriteSize( WaitPic, 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight, true, true );
     SprMngr.Flush();
 }
 
@@ -10416,12 +10419,12 @@ void FOClient::SplitMouseMove()
 
         if( SplitX < 0 )
             SplitX = 0;
-        if( SplitX + SplitWMain[ 2 ] > MODE_WIDTH )
-            SplitX = MODE_WIDTH - SplitWMain[ 2 ];
+        if( SplitX + SplitWMain[ 2 ] > GameOpt.ScreenWidth )
+            SplitX = GameOpt.ScreenWidth - SplitWMain[ 2 ];
         if( SplitY < 0 )
             SplitY = 0;
-        if( SplitY + SplitWMain[ 3 ] > MODE_HEIGHT )
-            SplitY = MODE_HEIGHT - SplitWMain[ 3 ];
+        if( SplitY + SplitWMain[ 3 ] > GameOpt.ScreenHeight )
+            SplitY = GameOpt.ScreenHeight - SplitWMain[ 3 ];
     }
 }
 
@@ -10609,12 +10612,12 @@ void FOClient::TimerMouseMove()
 
         if( TimerX < 0 )
             TimerX = 0;
-        if( TimerX + TimerWMain[ 2 ] > MODE_WIDTH )
-            TimerX = MODE_WIDTH - TimerWMain[ 2 ];
+        if( TimerX + TimerWMain[ 2 ] > GameOpt.ScreenWidth )
+            TimerX = GameOpt.ScreenWidth - TimerWMain[ 2 ];
         if( TimerY < 0 )
             TimerY = 0;
-        if( TimerY + TimerWMain[ 3 ] > MODE_HEIGHT )
-            TimerY = MODE_HEIGHT - TimerWMain[ 3 ];
+        if( TimerY + TimerWMain[ 3 ] > GameOpt.ScreenHeight )
+            TimerY = GameOpt.ScreenHeight - TimerWMain[ 3 ];
     }
 }
 
@@ -11124,12 +11127,12 @@ void FOClient::FixMouseMove()
 
         if( FixX < 0 )
             FixX = 0;
-        if( FixX + FixWMain[ 2 ] > MODE_WIDTH )
-            FixX = MODE_WIDTH - FixWMain[ 2 ];
+        if( FixX + FixWMain[ 2 ] > GameOpt.ScreenWidth )
+            FixX = GameOpt.ScreenWidth - FixWMain[ 2 ];
         if( FixY < 0 )
             FixY = 0;
-        if( FixY + FixWMain[ 3 ] > MODE_HEIGHT )
-            FixY = MODE_HEIGHT - FixWMain[ 3 ];
+        if( FixY + FixWMain[ 3 ] > GameOpt.ScreenHeight )
+            FixY = GameOpt.ScreenHeight - FixWMain[ 3 ];
     }
 }
 
@@ -11259,12 +11262,12 @@ void FOClient::IboxMouseMove()
 
         if( IboxX < 0 )
             IboxX = 0;
-        if( IboxX + IboxWMain[ 2 ] > MODE_WIDTH )
-            IboxX = MODE_WIDTH - IboxWMain[ 2 ];
+        if( IboxX + IboxWMain[ 2 ] > GameOpt.ScreenWidth )
+            IboxX = GameOpt.ScreenWidth - IboxWMain[ 2 ];
         if( IboxY < 0 )
             IboxY = 0;
-        if( IboxY + IboxWMain[ 3 ] > MODE_HEIGHT )
-            IboxY = MODE_HEIGHT - IboxWMain[ 3 ];
+        if( IboxY + IboxWMain[ 3 ] > GameOpt.ScreenHeight )
+            IboxY = GameOpt.ScreenHeight - IboxWMain[ 3 ];
     }
 }
 
@@ -11669,12 +11672,12 @@ void FOClient::SaveLoadMouseMove()
 
         if( SaveLoadX < 0 )
             SaveLoadX = 0;
-        if( SaveLoadX + SaveLoadMain[ 2 ] > MODE_WIDTH )
-            SaveLoadX = MODE_WIDTH - SaveLoadMain[ 2 ];
+        if( SaveLoadX + SaveLoadMain[ 2 ] > GameOpt.ScreenWidth )
+            SaveLoadX = GameOpt.ScreenWidth - SaveLoadMain[ 2 ];
         if( SaveLoadY < 0 )
             SaveLoadY = 0;
-        if( SaveLoadY + SaveLoadMain[ 3 ] > MODE_HEIGHT )
-            SaveLoadY = MODE_HEIGHT - SaveLoadMain[ 3 ];
+        if( SaveLoadY + SaveLoadMain[ 3 ] > GameOpt.ScreenHeight )
+            SaveLoadY = GameOpt.ScreenHeight - SaveLoadMain[ 3 ];
     }
 }
 

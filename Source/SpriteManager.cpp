@@ -40,8 +40,6 @@ SpriteManager::SpriteManager()
     eggSprHeight = 0;
 
     contoursAdded = false;
-    modeWidth = 0;
-    modeHeight = 0;
     curViewportWidth = 0;
     curViewportHeight = 0;
 
@@ -68,8 +66,6 @@ bool SpriteManager::Init()
 
     drawQuadCount = 1024;
     curDrawQuad = 0;
-    modeWidth = GameOpt.ScreenWidth;
-    modeHeight = GameOpt.ScreenHeight;
 
     // Initialize window
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
@@ -80,7 +76,7 @@ bool SpriteManager::Init()
     SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
     uint window_create_flags = ( SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
-    window_create_flags |= ( GameOpt.FullScreen ? SDL_WINDOW_FULLSCREEN : 0 );
+    window_create_flags |= ( GameOpt.FullScreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0 );
     #ifdef FO_OSX_IOS
     window_create_flags |= SDL_WINDOW_FULLSCREEN;
     window_create_flags |= SDL_WINDOW_BORDERLESS;
@@ -90,7 +86,7 @@ bool SpriteManager::Init()
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
     #endif
-    MainWindow = SDL_CreateWindow( GetWindowName(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, modeWidth, modeHeight, window_create_flags );
+    MainWindow = SDL_CreateWindow( GetWindowName(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, GameOpt.ScreenWidth, GameOpt.ScreenHeight, window_create_flags );
     if( !MainWindow )
     {
         WriteLog( "SDL Window not created, error<%s>.\n", SDL_GetError() );
@@ -110,8 +106,6 @@ bool SpriteManager::Init()
     }
 
     SDL_ShowCursor( 0 );
-    if( GameOpt.FullScreen )
-        SDL_SetWindowFullscreen( MainWindow, 1 );
     SDL_GL_SetSwapInterval( GameOpt.VSync ? 1 : 0 );
     GL( glGetIntegerv( GL_FRAMEBUFFER_BINDING, &baseFBO ) );
 
@@ -192,7 +186,7 @@ bool SpriteManager::Init()
         return false;
 
     // Render states
-    GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) modeWidth, (float) modeHeight, 0.0f, -1.0f, 1.0f ) );
+    GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) GameOpt.ScreenWidth, (float) GameOpt.ScreenHeight, 0.0f, -1.0f, 1.0f ) );
     projectionMatrixCM.Transpose();         // Convert to column major order
     GL( glClearColor( 0.0f, 0.0f, 0.0f, 1.0f ) );
     GL( glDisable( GL_DEPTH_TEST ) );
@@ -320,16 +314,35 @@ void SpriteManager::EndScene()
     sceneBeginned = false;
 }
 
-RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multisampling, uint width, uint height, bool tex_linear )
+void SpriteManager::OnResolutionChanged()
+{
+    for( auto it = rtAll.begin(), end = rtAll.end(); it != end; ++it )
+    {
+        RenderTarget* rt = *it;
+        if( rt->ScreenSize )
+            CreateRenderTarget( rt->DepthStencilBuffer != 0, rt->Multisampling, 0, 0, rt->TexLinear, rt );
+    }
+
+    RefreshViewport();
+}
+
+RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multisampling, uint width, uint height, bool tex_linear, RenderTarget* rt_refresh /* = NULL */ )
 {
     // Flush current sprites
     Flush();
 
+    // Allocate new or refresh old
+    RenderTarget* rt = rt_refresh;
+    if( !rt )
+        rt = new RenderTarget();
+    else
+        CleanRenderTarget( rt );
+
     // Zero data
-    RenderTarget* rt = new RenderTarget();
     memzero( rt, sizeof( RenderTarget ) );
-    width = ( width ? width : modeWidth );
-    height = ( height ? height : modeHeight );
+    rt->ScreenSize = ( !width && !height );
+    width = ( width ? width : GameOpt.ScreenWidth );
+    height = ( height ? height : GameOpt.ScreenHeight );
 
     // Multisampling
     static int samples = -1;
@@ -361,6 +374,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         multisampling = false;
         samples = 0;
     }
+    rt->Multisampling = multisampling;
 
     // Framebuffer
     if( GL_HAS( framebuffer_object ) )
@@ -415,6 +429,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         }
     }
     rt->TargetTexture = tex;
+    rt->TexLinear = tex_linear;
 
     // Depth / stencil
     if( depth_stencil )
@@ -507,7 +522,26 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         ClearCurrentRenderTargetDS( true, true );
     PopRenderTarget();
 
+    if( !rt_refresh )
+        rtAll.push_back( rt );
     return rt;
+}
+
+void SpriteManager::CleanRenderTarget( RenderTarget* rt )
+{
+    if( GL_HAS( framebuffer_object ) )
+    {
+        if( rt->DepthStencilBuffer )
+            GL( glDeleteRenderbuffers( 1, &rt->DepthStencilBuffer ) );
+        GL( glDeleteFramebuffers( 1, &rt->FBO ) );
+    }
+    else     // framebuffer_object_ext
+    {
+        if( rt->DepthStencilBuffer )
+            GL( glDeleteRenderbuffersEXT( 1, &rt->DepthStencilBuffer ) );
+        GL( glDeleteFramebuffersEXT( 1, &rt->FBO ) );
+    }
+    SAFEDEL( rt->TargetTexture );
 }
 
 void SpriteManager::DeleteRenderTarget( RenderTarget*& rt )
@@ -515,19 +549,8 @@ void SpriteManager::DeleteRenderTarget( RenderTarget*& rt )
     if( !rt )
         return;
 
-    if( GL_HAS( framebuffer_object ) )
-    {
-        if( rt->DepthStencilBuffer )
-            GL( glDeleteRenderbuffers( 1, &rt->DepthStencilBuffer ) );
-        GL( glDeleteFramebuffers( 1, &rt->FBO ) );
-    }
-    else // framebuffer_object_ext
-    {
-        if( rt->DepthStencilBuffer )
-            GL( glDeleteRenderbuffersEXT( 1, &rt->DepthStencilBuffer ) );
-        GL( glDeleteFramebuffersEXT( 1, &rt->FBO ) );
-    }
-    SAFEDEL( rt->TargetTexture );
+    CleanRenderTarget( rt );
+    rtAll.erase( std::find( rtAll.begin(), rtAll.end(), rt ) );
     SAFEDEL( rt );
 }
 
@@ -692,7 +715,7 @@ void SpriteManager::RefreshViewport( int w /* = 0 */, int h /* = 0 */ )
 
     GL( glViewport( 0, 0, w, h ) );
 
-    GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) w, (float) h, 0.0f, -1.0f, 1.0f ) );
+    GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) GameOpt.ScreenWidth, (float) GameOpt.ScreenHeight, 0.0f, -1.0f, 1.0f ) );
     projectionMatrixCM.Transpose();                 // Convert to column major order
 }
 
@@ -3858,7 +3881,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         cur_color = COLOR_SWAP_RB( cur_color );
 
         // Check borders
-        if( x / zoom > modeWidth || ( x + si->Width ) / zoom < 0 || y / zoom > modeHeight || ( y + si->Height ) / zoom < 0 )
+        if( x / zoom > GameOpt.ScreenWidth || ( x + si->Width ) / zoom < 0 || y / zoom > GameOpt.ScreenHeight || ( y + si->Height ) / zoom < 0 )
             continue;
 
         // 2d sprite
@@ -4247,7 +4270,7 @@ bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
     Texture* texture = si->Atlas->TextureOwner;
     RectF    textureuv, sprite_border;
 
-    if( borders.L >= modeWidth * GameOpt.SpritesZoom || borders.R < 0 || borders.T >= modeHeight * GameOpt.SpritesZoom || borders.B < 0 )
+    if( borders.L >= GameOpt.ScreenWidth * GameOpt.SpritesZoom || borders.R < 0 || borders.T >= GameOpt.ScreenHeight * GameOpt.SpritesZoom || borders.B < 0 )
         return true;
 
     if( GameOpt.SpritesZoom == 1.0f )

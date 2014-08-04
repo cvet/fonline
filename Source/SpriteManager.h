@@ -106,13 +106,13 @@ class SpriteManager
 {
 private:
     Matrix          projectionMatrixCM;
-    int             modeWidth, modeHeight;
     int             curViewportWidth, curViewportHeight;
     bool            sceneBeginned;
     RenderTarget*   rtMain;
     RenderTarget*   rtContours, * rtContoursMid;
     RenderTargetVec rt3D;
     RenderTargetVec rtStack;
+    RenderTargetVec rtAll;
     GLint           baseFBO;
 
 public:
@@ -123,9 +123,11 @@ public:
     void Finish();
     bool BeginScene( uint clear_color );
     void EndScene();
+    void OnResolutionChanged();
 
     // Render targets
-    RenderTarget* CreateRenderTarget( bool depth_stencil, bool multisampling, uint width, uint height, bool tex_linear );
+    RenderTarget* CreateRenderTarget( bool depth_stencil, bool multisampling, uint width, uint height, bool tex_linear, RenderTarget* rt_refresh = NULL );
+    void          CleanRenderTarget( RenderTarget* rt );
     void          DeleteRenderTarget( RenderTarget*& rt );
     void          PushRenderTarget( RenderTarget* rt );
     void          PopRenderTarget();

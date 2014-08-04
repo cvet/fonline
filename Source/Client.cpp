@@ -241,12 +241,6 @@ bool FOClient::Init()
     GET_UID2( UID2 );
     UID_PREPARE_UID4_2;
 
-    // Data files
-    #ifdef FO_OSX_IOS
-    FileManager::InitDataFiles( "../../Documents/" );
-    #endif
-    FileManager::InitDataFiles( DIR_SLASH_SD "data" DIR_SLASH_S );
-
     // Cache
     if( !FileExist( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
         FileManager::CopyFile( FileManager::GetReadPath( "default.cache", PT_DATA ), FileManager::GetWritePath( "default.cache", PT_CACHE ) );
@@ -258,11 +252,10 @@ bool FOClient::Init()
     UID_PREPARE_UID4_3;
 
     // Check password in config and command line
-    char      pass[ MAX_FOTEXT ];
-    IniParser cfg;     // Also used below
-    cfg.LoadFile( GetConfigFileName(), PT_ROOT );
-    cfg.GetStr( CLIENT_CONFIG_APP, "UserPass", "", pass );
-    char* cmd_line_pass = Str::Substring( CommandLine, "-UserPass" );
+    char       pass[ MAX_FOTEXT ];
+    IniParser& cfg = IniParser::GetClientConfig();     // Also used below
+    cfg.GetStr( "UserPass", "", pass );
+    char*      cmd_line_pass = Str::Substring( CommandLine, "-UserPass" );
     if( cmd_line_pass )
         sscanf( cmd_line_pass + Str::Length( "-UserPass" ) + 1, "%s", pass );
     Password = pass;
@@ -307,12 +300,12 @@ bool FOClient::Init()
 
     // Sound manager
     SndMngr.Init();
-    GameOpt.SoundVolume = cfg.GetInt( CLIENT_CONFIG_APP, "SoundVolume", 100 );
-    GameOpt.MusicVolume = cfg.GetInt( CLIENT_CONFIG_APP, "MusicVolume", 100 );
+    GameOpt.SoundVolume = cfg.GetInt( "SoundVolume", 100 );
+    GameOpt.MusicVolume = cfg.GetInt( "MusicVolume", 100 );
 
     // Language Packs
     char lang_name[ MAX_FOTEXT ];
-    cfg.GetStr( CLIENT_CONFIG_APP, "Language", DEFAULT_LANGUAGE, lang_name );
+    cfg.GetStr( "Language", DEFAULT_LANGUAGE, lang_name );
     if( Str::Length( lang_name ) != 4 )
         Str::Copy( lang_name, DEFAULT_LANGUAGE );
     Str::Lower( lang_name );
@@ -617,7 +610,7 @@ void FOClient::UpdateFiles( bool early_call )
             {
                 SprMngr.BeginScene( COLOR_RGB( 50, 50, 50 ) );
                 string update_text = UpdateFilesText + progress + dots_str;
-                SprMngr.DrawStr( Rect( 0, 0, MODE_WIDTH, MODE_HEIGHT ), update_text.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
+                SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), update_text.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
                 SprMngr.EndScene();
             }
 
@@ -705,7 +698,7 @@ void FOClient::UpdateFilesAddText( uint num_str, const char* num_str_str )
         const char* text = ( CurLang.Msg[ TEXTMSG_GAME ].Count( num_str ) ? CurLang.Msg[ TEXTMSG_GAME ].GetStr( num_str ) : num_str_str );
         UpdateFilesText += string( text ) + "\n";
         SprMngr.BeginScene( COLOR_RGB( 50, 50, 50 ) );
-        SprMngr.DrawStr( Rect( 0, 0, MODE_WIDTH, MODE_HEIGHT ), UpdateFilesText.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
+        SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), UpdateFilesText.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
         SprMngr.EndScene();
     }
 
@@ -727,7 +720,7 @@ void FOClient::UpdateFilesAbort( uint num_str, const char* num_str_str )
            num_str == STR_CLIENT_UPDATED || num_str == STR_CLIENT_DATA_OUTDATED )
     {
         SprMngr.BeginScene( COLOR_RGB( 255, 0, 0 ) );
-        SprMngr.DrawStr( Rect( 0, 0, MODE_WIDTH, MODE_HEIGHT ), UpdateFilesText.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
+        SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), UpdateFilesText.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
         SprMngr.EndScene();
 
         SDL_Event event;
@@ -954,8 +947,8 @@ int FOClient::MainLoop()
             SDL_GetWindowSize( MainWindow, &sw, &sh );
             int x = (int) ( event.motion.x / (float) sw * (float) GameOpt.ScreenWidth );
             int y = (int) ( event.motion.y / (float) sh * (float) GameOpt.ScreenHeight );
-            GameOpt.MouseX = CLAMP( x, 0, MODE_WIDTH - 1 );
-            GameOpt.MouseY = CLAMP( y, 0, MODE_HEIGHT - 1 );
+            GameOpt.MouseX = CLAMP( x, 0, GameOpt.ScreenWidth - 1 );
+            GameOpt.MouseY = CLAMP( y, 0, GameOpt.ScreenHeight - 1 );
         }
         else if( event.type == SDL_KEYDOWN || event.type == SDL_KEYUP )
         {
@@ -1251,9 +1244,8 @@ void FOClient::ScreenQuake( int noise, uint time )
 
 void FOClient::ProcessScreenEffectFading()
 {
-    static PointVec six_points;
-    if( six_points.empty() )
-        SprMngr.PrepareSquare( six_points, Rect( 0, 0, MODE_WIDTH, MODE_HEIGHT ), 0 );
+    PointVec full_screen_quad;
+    SprMngr.PrepareSquare( full_screen_quad, Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), 0 );
 
     for( auto it = ScreenEffects.begin(); it != ScreenEffects.end();)
     {
@@ -1278,9 +1270,9 @@ void FOClient::ProcessScreenEffectFading()
 
             uint color = COLOR_RGBA( res[ 3 ], res[ 2 ], res[ 1 ], res[ 0 ] );
             for( int i = 0; i < 6; i++ )
-                six_points[ i ].PointColor = color;
+                full_screen_quad[ i ].PointColor = color;
 
-            SprMngr.DrawPoints( six_points, PRIMITIVE_TRIANGLELIST );
+            SprMngr.DrawPoints( full_screen_quad, PRIMITIVE_TRIANGLELIST );
         }
         it++;
     }
@@ -7019,7 +7011,7 @@ void FOClient::CrittersProcess()
             is_run = false;
         else if( !GameOpt.RunOnTransfer && Chosen->GetParam( TO_TRANSFER ) )
             is_run = false;
-        else if( IsTurnBased )
+        else if( !GameOpt.RunOnTurnBased && IsTurnBased )
             is_run = false;
         else if( Chosen->IsDmgLeg() || Chosen->IsOverweight() )
             is_run = false;
@@ -8084,7 +8076,7 @@ void FOClient::ProcessMouseScroll()
     if( IsLMenu() || !GameOpt.MouseScroll )
         return;
 
-    if( GameOpt.MouseX >= MODE_WIDTH - 1 )
+    if( GameOpt.MouseX >= GameOpt.ScreenWidth - 1 )
         GameOpt.ScrollMouseRight = true;
     else
         GameOpt.ScrollMouseRight = false;
@@ -8094,7 +8086,7 @@ void FOClient::ProcessMouseScroll()
     else
         GameOpt.ScrollMouseLeft = false;
 
-    if( GameOpt.MouseY >= MODE_HEIGHT - 1 )
+    if( GameOpt.MouseY >= GameOpt.ScreenHeight - 1 )
         GameOpt.ScrollMouseDown = true;
     else
         GameOpt.ScrollMouseDown = false;
@@ -8833,13 +8825,13 @@ void FOClient::RenderVideo()
     SprMngr.DrawRenderTarget( CurVideo->RT, false );
 
     // Render to window
-    float mw = (float) MODE_WIDTH;
-    float mh = (float) MODE_HEIGHT;
+    float mw = (float) GameOpt.ScreenWidth;
+    float mh = (float) GameOpt.ScreenHeight;
     float k = min( mw / w, mh / h );
     w = (uint) ( (float) w * k );
     h = (uint) ( (float) h * k );
-    int x = ( MODE_WIDTH - w ) / 2;
-    int y = ( MODE_HEIGHT - h ) / 2;
+    int x = ( GameOpt.ScreenWidth - w ) / 2;
+    int y = ( GameOpt.ScreenHeight - h ) / 2;
     if( SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) ) )
     {
         Rect r = Rect( x, y, x + w, y + h );
@@ -9753,7 +9745,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         if( !GameOpt.FullScreen )
         {
-            if( !SDL_SetWindowFullscreen( MainWindow, 1 ) )
+            if( !SDL_SetWindowFullscreen( MainWindow, SDL_WINDOW_FULLSCREEN_DESKTOP ) )
                 GameOpt.FullScreen = true;
         }
         else
@@ -9806,6 +9798,34 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     else if( cmd == "BytesReceive" )
     {
         return ScriptString::Create( Str::ItoA( Self->BytesReceive ) );
+    }
+    else if( cmd == "GetLanguage" )
+    {
+        return ScriptString::Create( Self->CurLang.NameStr );
+    }
+    else if( cmd == "SetLanguage" && args.size() >= 2 )
+    {
+        if( args[ 1 ].length() == 4 )
+            Self->CurLang.LoadFromCache( args[ 1 ].c_str() );
+    }
+    else if( cmd == "SetResolution" && args.size() >= 3 )
+    {
+        int w = Str::AtoI( args[ 1 ].c_str() );
+        int h = Str::AtoI( args[ 2 ].c_str() );
+        int diff_w = w - GameOpt.ScreenWidth;
+        int diff_h = h - GameOpt.ScreenHeight;
+
+        GameOpt.ScreenWidth = w;
+        GameOpt.ScreenHeight = h;
+        SDL_SetWindowSize( MainWindow, w, h );
+
+        int x, y;
+        SDL_GetWindowPosition( MainWindow, &x, &y );
+        SDL_SetWindowPosition( MainWindow, x - diff_w / 2, y - diff_h / 2 );
+
+        SprMngr.OnResolutionChanged();
+        if( Self->HexMngr.IsMapLoaded() )
+            Self->HexMngr.OnResolutionChanged();
     }
     else
     {
@@ -12158,6 +12178,23 @@ bool FOClient::SScriptFunc::Global_IsCacheData( const ScriptString& name )
 void FOClient::SScriptFunc::Global_EraseCacheData( const ScriptString& name )
 {
     Crypt.EraseCache( name.c_str() );
+}
+
+void FOClient::SScriptFunc::Global_SetUserConfig( ScriptArray& key_values )
+{
+    FileManager cfg_user;
+    for( int i = 0, j = (int) key_values.GetSize(); i < j - 1; i += 2 )
+    {
+        ScriptString& key = *(ScriptString*) key_values.At( i );
+        ScriptString& value = *(ScriptString*) key_values.At( i + 1 );
+        cfg_user.SetStr( key.c_str() );
+        cfg_user.SetStr( " = " );
+        cfg_user.SetStr( value.c_str() );
+        cfg_user.SetStr( "\n" );
+    }
+    char cfg_name[ MAX_FOPATH ];
+    Str::Format( cfg_name, "%s", IniParser::GetConfigFileName() );
+    cfg_user.SaveOutBufToFile( cfg_name, PT_CACHE );
 }
 
 bool&  FOClient::SScriptFunc::ConsoleActive = FOClient::ConsoleActive;

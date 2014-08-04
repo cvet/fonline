@@ -1015,6 +1015,7 @@ struct BindClass
     static void Global_GetCacheDataStr()            {}
     static void Global_IsCacheData()                {}
     static void Global_EraseCacheData()             {}
+    static void Global_SetUserConfig()              {}
 
     static int  ConsoleActive;
     static int  GmapActive, GmapWait;
@@ -1278,6 +1279,7 @@ struct GameOptions
     int ApCostAimLegs;
     int RunOnCombat;
     int RunOnTransfer;
+	int RunOnTurnBased;
     int GlobalMapWidth;
     int GlobalMapHeight;
     int GlobalMapZoneLength;
