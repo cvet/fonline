@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.IO;
+using System.Windows.Forms;
 
 namespace InterfaceEditor
 {
@@ -8,26 +10,30 @@ namespace InterfaceEditor
 	{
 		public string Path;
 
-		[DllImport("kernel32")]
-		private static extern long WritePrivateProfileString(string section, string key, string val, string filePath);
-		[DllImport("kernel32")]
-		private static extern int GetPrivateProfileString(string section, string key, string def, StringBuilder retVal, int size, string filePath);
-
 		public IniFile(string path)
 		{
 			Path = path;
 		}
 
-		public void IniWriteValue(string section, string key, string value)
-		{
-			WritePrivateProfileString(section, key, value, Path);
-		}
-
 		public string IniReadValue(string section, string key, string defaultValue)
 		{
-			StringBuilder temp = new StringBuilder(255);
-			int i = GetPrivateProfileString(section, key, defaultValue, temp, 255, Path);
-			return temp.ToString();
+			string ini = File.ReadAllText(Path);
+
+			int startIndex = ini.IndexOf(key);
+			if (startIndex == -1)
+				return defaultValue;
+
+			int endIndex = ini.IndexOf('\n', startIndex);
+			if (endIndex == -1)
+				endIndex = ini.Length;
+
+			startIndex += key.Length;
+			string value = ini.Substring(startIndex, endIndex - startIndex);
+			value = value.Trim();
+			if (value[0] != '=')
+				return defaultValue;
+
+			return value.Substring(1).Trim();
 		}
 	}
 }

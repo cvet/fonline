@@ -86,11 +86,24 @@ namespace InterfaceEditor
 			ToolStripMenuItem addMenuStrip = new ToolStripMenuItem("Add");
 			addMenuStrip.DropDownItems.Add("Panel").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIPanel(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Button").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIButton(obj).RefreshRepresentation(false); };
+			addMenuStrip.DropDownItems.Add("CheckBox").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUICheckBox(obj).RefreshRepresentation(false); };
+			addMenuStrip.DropDownItems.Add("RadioButton").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIRadioButton(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Text").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIText(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Text Input").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUITextInput(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Message Box").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIMessageBox(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Console").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIConsole(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Grid").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIGrid(obj).RefreshRepresentation(false); };
+
+			ToolStripMenuItem convertMenuStrip = new ToolStripMenuItem("Convert");
+			convertMenuStrip.DropDownItems.Add("Panel").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUIPanel(obj); };
+			convertMenuStrip.DropDownItems.Add("Button").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUIButton(obj); };
+			convertMenuStrip.DropDownItems.Add("CheckBox").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUICheckBox(obj); };
+			convertMenuStrip.DropDownItems.Add("RadioButton").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUIRadioButton(obj); };
+			convertMenuStrip.DropDownItems.Add("Text").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUIText(obj); };
+			convertMenuStrip.DropDownItems.Add("Text Input").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUITextInput(obj); };
+			convertMenuStrip.DropDownItems.Add("Message Box").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUIMessageBox(obj); };
+			convertMenuStrip.DropDownItems.Add("Console").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUIConsole(obj); };
+			convertMenuStrip.DropDownItems.Add("Grid").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUIGrid(obj); };
 
 			ToolStripMenuItem moveUpMenuStrip = new ToolStripMenuItem("Move node up");
 			moveUpMenuStrip.Tag = (Action<GUIObject>)delegate(GUIObject obj) { if (obj != null) obj.MoveUp(); };
@@ -115,6 +128,7 @@ namespace InterfaceEditor
 
 			ContextMenuStrip hierarchyMenuStrip = new ContextMenuStrip();
 			hierarchyMenuStrip.Items.Add(addMenuStrip);
+			//hierarchyMenuStrip.Items.Add(convertMenuStrip);
 			hierarchyMenuStrip.Items.Add(moveUpMenuStrip);
 			hierarchyMenuStrip.Items.Add(moveDownMenuStrip);
 			hierarchyMenuStrip.Items.Add(deleteMenuStrip);
@@ -129,14 +143,32 @@ namespace InterfaceEditor
 				{
 					hierarchyMenuStrip.Close();
 					GUIObject curObj = (Hierarchy.SelectedNode != null ? (GUIObject)Hierarchy.SelectedNode.Tag : null);
-					if (curObj == null && addMenuStrip.DropDownItems.Contains(e.ClickedItem))
-						MessageBox.Show("Create or load GUI first.");
+					if (convertMenuStrip.DropDownItems.Contains(e.ClickedItem))
+					{
+						if (curObj != null && !(curObj is GUIScreen))
+						{
+							GUIObject newObj = ((Func<GUIObject, GUIObject>)e.ClickedItem.Tag)(curObj.GetParent());
+							curObj.Delete();
+							CopyObject(curObj, newObj);
+							newObj.RefreshRepresentation(false);
+						}
+						else
+						{
+							MessageBox.Show("Create or load GUI first.");
+						}
+					}
 					else
-						((Action<GUIObject>)e.ClickedItem.Tag)(curObj);
+					{
+						if (curObj == null && addMenuStrip.DropDownItems.Contains(e.ClickedItem))
+							MessageBox.Show("Create or load GUI first.");
+						else
+							((Action<GUIObject>)e.ClickedItem.Tag)(curObj);
+					}
 				}
 			};
 
 			addMenuStrip.DropDownItemClicked += clickHandler;
+			convertMenuStrip.DropDownItemClicked += clickHandler;
 			hierarchyMenuStrip.ItemClicked += clickHandler;
 			Hierarchy.ContextMenuStrip = hierarchyMenuStrip;
 
@@ -380,6 +412,17 @@ namespace InterfaceEditor
 					obj.DrawPass1(e.Graphics);
 					obj.DrawPass2(e.Graphics);
 				}
+			}
+		}
+
+		public void CopyObject(object source, object dest)
+		{
+			FieldInfo[] sourceFields = source.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+			FieldInfo[] destFields = dest.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+			foreach (FieldInfo fi in sourceFields)
+			{
+				if (Array.FindIndex(destFields, fi2 => fi2.Name == fi.Name) != -1)
+					fi.SetValue(dest, fi.GetValue(source));
 			}
 		}
 	}

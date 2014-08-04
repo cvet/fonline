@@ -11,6 +11,8 @@ namespace InterfaceEditor
 {
 	class GUIButton : GUIPanel
 	{
+		public bool IsDisabled { get; set; }
+
 		protected string _PressedImageName;
 		protected Image _PressedImageContent;
 		[Editor(typeof(ImageLocationEditor), typeof(UITypeEditor))]
@@ -70,6 +72,35 @@ namespace InterfaceEditor
 			set
 			{
 				_HoverImageLayout = value;
+			}
+		}
+
+		protected string _DisabledImageName;
+		protected Image _DisabledImageContent;
+		[Editor(typeof(ImageLocationEditor), typeof(UITypeEditor))]
+		public string DisabledImage
+		{
+			get
+			{
+				return _DisabledImageName;
+			}
+			set
+			{
+				_DisabledImageName = value;
+				SetImage(_DisabledImageName, ref _DisabledImageContent);
+			}
+		}
+
+		protected ImageLayout _DisabledImageLayout;
+		public ImageLayout DisabledImageLayout
+		{
+			get
+			{
+				return _DisabledImageLayout;
+			}
+			set
+			{
+				_DisabledImageLayout = value;
 			}
 		}
 

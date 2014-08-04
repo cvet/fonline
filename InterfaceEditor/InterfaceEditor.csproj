@@ -54,9 +54,11 @@
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
+    <Compile Include="GUICheckBox.cs" />
     <Compile Include="GUIConsole.cs" />
     <Compile Include="GUIMessageBox.cs" />
     <Compile Include="GUIObject.cs" />
+    <Compile Include="GUIRadioButton.cs" />
     <Compile Include="GUITextInput.cs" />
     <Compile Include="History.cs" />
     <Compile Include="IniFile.cs" />

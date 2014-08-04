@@ -134,6 +134,11 @@ namespace InterfaceEditor
 						_HierarchyNode.Text += hiddenMark;
 					else if (!inactive && _HierarchyNode.Text.Contains(hiddenMark))
 						_HierarchyNode.Text = Name.Remove(_HierarchyNode.Text.IndexOf(hiddenMark), hiddenMark.Length);
+
+					// Type
+					string typeStr = GetType().ToString();
+					typeStr = typeStr.Substring(typeStr.IndexOf(".GUI") + 4);
+					_HierarchyNode.Text += " (" + typeStr + ")";
 				}
 			}
 		}
@@ -425,6 +430,8 @@ namespace InterfaceEditor
 
 		public virtual void DrawPass1(Graphics g)
 		{
+			DrawStroke(g, Color.Green, false);
+
 			foreach (GUIObject child in Children)
 				if (child.Active)
 					child.DrawPass1(g);
@@ -433,14 +440,14 @@ namespace InterfaceEditor
 		public virtual void DrawPass2(Graphics g)
 		{
 			if (_HierarchyNode.IsSelected)
-				DrawSelected(g);
+				DrawStroke(g, Color.Red, true);
 
 			foreach (GUIObject child in Children)
 				if (child.Active)
 					child.DrawPass2(g);
 		}
 
-		private void DrawSelected(Graphics g)
+		private void DrawStroke(Graphics g, Color c, bool recursive)
 		{
 			if (!Active)
 				return;
@@ -448,24 +455,27 @@ namespace InterfaceEditor
 			Point pos = AbsolutePosition;
 			if (Size.IsEmpty)
 			{
-				g.DrawLine(new Pen(Color.Red, 1f), new Point(pos.X - 10, pos.Y), new Point(pos.X + 10, pos.Y));
-				g.DrawLine(new Pen(Color.Red, 1f), new Point(pos.X, pos.Y - 10), new Point(pos.X, pos.Y + 10));
+				g.DrawLine(new Pen(c, 1f), new Point(pos.X - 10, pos.Y), new Point(pos.X + 10, pos.Y));
+				g.DrawLine(new Pen(c, 1f), new Point(pos.X, pos.Y - 10), new Point(pos.X, pos.Y + 10));
 			}
 			else if (Size.Width <= 1)
 			{
-				g.DrawLine(new Pen(Color.Red, 1f), new Point(pos.X, pos.Y), new Point(pos.X, pos.Y + Size.Height));
+				g.DrawLine(new Pen(c, 1f), new Point(pos.X, pos.Y), new Point(pos.X, pos.Y + Size.Height));
 			}
 			else if (Size.Height <= 1)
 			{
-				g.DrawLine(new Pen(Color.Red, 1f), new Point(pos.X, pos.Y), new Point(pos.X + Size.Width, pos.Y));
+				g.DrawLine(new Pen(c, 1f), new Point(pos.X, pos.Y), new Point(pos.X + Size.Width, pos.Y));
 			}
 			else
 			{
-				g.DrawRectangle(new Pen(Color.Red, 1f), pos.X, pos.Y, Size.Width - 1, Size.Height - 1);
+				g.DrawRectangle(new Pen(c, 1f), pos.X, pos.Y, Size.Width - 1, Size.Height - 1);
 			}
 
-			foreach (GUIObject child in _Children)
-				child.DrawSelected(g);
+			if (recursive)
+			{
+				foreach (GUIObject child in _Children)
+					child.DrawStroke(g, c, recursive);
+			}
 		}
 
 		public void RequestRedraw()

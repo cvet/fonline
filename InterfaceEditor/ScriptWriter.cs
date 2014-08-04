@@ -112,6 +112,8 @@ namespace InterfaceEditor
 			if (obj is GUIButton)
 			{
 				GUIButton button = (GUIButton)obj;
+				if (button.IsDisabled)
+					_Script.AppendLine(_BaseIdent + "        SetCondition( false );");
 				if (!string.IsNullOrEmpty(button.PressedImage))
 				{
 					if (button.PressedImageLayout != ImageLayout.None)
@@ -126,6 +128,19 @@ namespace InterfaceEditor
 					else
 						_Script.AppendLine(_BaseIdent + "        SetHoverImage( \"" + button.HoverImage + "\" );");
 				}
+				if (!string.IsNullOrEmpty(button.DisabledImage))
+				{
+					if (button.DisabledImageLayout != ImageLayout.None)
+						_Script.AppendLine(_BaseIdent + "        SetDisabledImage( \"" + button.DisabledImage + "\", " + ConvertImageLayout(button.DisabledImageLayout) + " );");
+					else
+						_Script.AppendLine(_BaseIdent + "        SetDisabledImage( \"" + button.DisabledImage + "\" );");
+				}
+			}
+			if (obj is GUICheckBox)
+			{
+				GUICheckBox checkBox = (GUICheckBox)obj;
+				if (!string.IsNullOrEmpty(checkBox.IsChecked))
+					_Script.AppendLine(_BaseIdent + "        SetChecked( " + checkBox.IsChecked + " );");
 			}
 			if (obj is GUIText)
 			{
