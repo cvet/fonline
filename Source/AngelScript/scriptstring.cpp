@@ -739,7 +739,8 @@ int StringFindLast( ScriptString* str, ScriptString* sub, int start )
 {
     if( !str->indexByteToUTF8( start ) )
         return -1;
-    return (int) str->c_std_str().rfind( sub->c_std_str(), start );
+    int pos = (int) str->c_std_str().rfind( sub->c_std_str() );
+    return pos != -1 && pos >= start ? pos : -1;
 }
 
 // This function returns the index of the first character that is in
@@ -769,7 +770,8 @@ int StringFindLastOf( ScriptString* str, ScriptString* chars, int start )
 {
     if( !str->indexByteToUTF8( start ) )
         return -1;
-    return (int) str->c_std_str().find_last_of( chars->c_std_str(), start );
+    int pos = (int) str->c_std_str().find_last_of( chars->c_std_str() );
+    return pos != -1 && pos >= start ? pos : -1;
 }
 
 // This function returns the index of the last character that is not in
@@ -779,7 +781,8 @@ int StringFindLastNotOf( ScriptString* str, ScriptString* chars, int start )
 {
     if( !str->indexByteToUTF8( start ) )
         return -1;
-    return (int) str->c_std_str().find_last_not_of( chars->c_std_str(), start );
+    int pos = (int) str->c_std_str().find_last_not_of( chars->c_std_str(), start );
+    return pos != -1 && pos >= start ? pos : -1;
 }
 
 // This function takes an input string and splits it into parts by looking

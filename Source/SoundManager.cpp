@@ -617,26 +617,27 @@ bool SoundManager::PlaySound( const char* name )
     if( !isActive || !GameOpt.SoundVolume )
         return true;
 
+    // Make 'NAME'
+    char name_[ MAX_FOPATH ];
+    Str::Copy( name_, name );
+    FileManager::EraseExtension( name_ );
+    Str::Upper( name_ );
+
+    // Find base
     StrMap& names = ResMngr.GetSoundNames();
-    string  sname = name;
-    auto    it = names.find( sname );
-    if( it == names.end() )
-    {
-        // Check random pattern 'name_X'
-        uint count = 0;
-        sname += "_";
-        while( names.find( sname + Str::ItoA( count + 1 ) ) != names.end() )
-            count++;
-        if( count )
-        {
-            sname += Str::ItoA( Random( 1, count ) );
-            return Load( sname.c_str(), PT_SND_SFX ) != NULL;
-        }
+    auto    it = names.find( name_ );
+    if( it != names.end() )
+        return Load( ( *it ).second.c_str(), PT_SND_SFX ) != NULL;
 
-        return false;
-    }
+    // Check random pattern 'NAME_X'
+    uint count = 0;
+    char buf[ MAX_FOPATH ];
+    while( names.find( Str::Format( buf, "%s_%d", name_, count + 1 ) ) != names.end() )
+        count++;
+    if( count )
+        return Load( names.find( Str::Format( buf, "%s_%d", name_, Random( 1, count ) ) )->second.c_str(), PT_SND_SFX ) != NULL;
 
-    return Load( name, PT_SND_SFX ) != NULL;
+    return false;
 }
 
 bool SoundManager::PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext )
