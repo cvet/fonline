@@ -1279,7 +1279,7 @@ struct GameOptions
     int ApCostAimLegs;
     int RunOnCombat;
     int RunOnTransfer;
-	int RunOnTurnBased;
+    int RunOnTurnBased;
     int GlobalMapWidth;
     int GlobalMapHeight;
     int GlobalMapZoneLength;

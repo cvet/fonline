@@ -106,7 +106,6 @@ class SpriteManager
 {
 private:
     Matrix          projectionMatrixCM;
-    int             curViewportWidth, curViewportHeight;
     bool            sceneBeginned;
     RenderTarget*   rtMain;
     RenderTarget*   rtContours, * rtContoursMid;
@@ -135,7 +134,7 @@ public:
     uint          GetRenderTargetPixel( RenderTarget* rt, int x, int y );
     void          ClearCurrentRenderTarget( uint color );
     void          ClearCurrentRenderTargetDS( bool depth, bool stencil );
-    void          RefreshViewport( int w = 0, int h = 0 );
+    void          RefreshViewport();
     RenderTarget* Get3dRenderTarget( uint width, uint height );
 
     // Texture atlases

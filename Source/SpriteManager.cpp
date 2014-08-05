@@ -40,8 +40,6 @@ SpriteManager::SpriteManager()
     eggSprHeight = 0;
 
     contoursAdded = false;
-    curViewportWidth = 0;
-    curViewportHeight = 0;
 
     baseColor = COLOR_RGBA( 255, 128, 128, 128 );
     allAtlases.reserve( 100 );
@@ -695,27 +693,32 @@ void SpriteManager::ClearCurrentRenderTargetDS( bool depth, bool stencil )
     GL( glClear( depth_stencil_bit ) );
 }
 
-void SpriteManager::RefreshViewport( int w /* = 0 */, int h /* = 0 */ )
+void SpriteManager::RefreshViewport()
 {
-    if( !w && !h )
+    int  w, h;
+    bool screen_size;
+    if( !rtStack.empty() )
     {
-        if( !rtStack.empty() )
-        {
-            w = rtStack.back()->TargetTexture->Width;
-            h = rtStack.back()->TargetTexture->Height;
-        }
-        else
-        {
-            SDL_GetWindowSize( MainWindow, &w, &h );
-        }
+        w = rtStack.back()->TargetTexture->Width;
+        h = rtStack.back()->TargetTexture->Height;
+        screen_size = rtStack.back()->ScreenSize;
     }
-
-    if( curViewportWidth == w && curViewportHeight == h )
-        return;
+    else
+    {
+        SDL_GetWindowSize( MainWindow, &w, &h );
+        screen_size = true;
+    }
 
     GL( glViewport( 0, 0, w, h ) );
 
-    GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) GameOpt.ScreenWidth, (float) GameOpt.ScreenHeight, 0.0f, -1.0f, 1.0f ) );
+    if( screen_size )
+    {
+        GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) GameOpt.ScreenWidth, (float) GameOpt.ScreenHeight, 0.0f, -1.0f, 1.0f ) );
+    }
+    else
+    {
+        GL( gluStuffOrtho( projectionMatrixCM[ 0 ], 0.0f, (float) w, (float) h, 0.0f, -1.0f, 1.0f ) );
+    }
     projectionMatrixCM.Transpose();                 // Convert to column major order
 }
 
