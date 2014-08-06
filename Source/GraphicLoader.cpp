@@ -202,32 +202,36 @@ Node* GraphicLoader::LoadModel( const char* fname )
         write_time = file.GetWriteTime();
     #endif
 
-    // Try load from cache
-    char fname_cache[ MAX_FOPATH ] = { 0 };
-    Str::Copy( fname_cache, fname );
-    Str::Replacement( fname_cache, '/', '_' );
-    Str::Replacement( fname_cache, '\\', '_' );
-    Str::Append( fname_cache, "b" );
-    FileManager file_cache;
-    if( file_cache.LoadFile( fname_cache, PT_CACHE ) )
+    // Try load binary file
+    FileManager file_binary;
+    char        fname_binary[ MAX_FOPATH ];
+    Str::Copy( fname_binary, fname );
+    Str::Append( fname_binary, "b" );
+    if( !file_binary.LoadFile( fname, PT_DATA ) )
     {
-        uint version = file_cache.GetBEUInt();
-        if( version != FONLINE_VERSION || write_time > file_cache.GetWriteTime() )
-            file_cache.UnloadFile();                  // Disable loading from this binary, because its outdated
+        Str::Replacement( fname_binary, '/', '_' );
+        Str::Replacement( fname_binary, '\\', '_' );
+        file_binary.LoadFile( fname_binary, PT_CACHE );
     }
-    if( file_cache.IsLoaded() )
+    if( file_binary.IsLoaded() )
+    {
+        uint version = file_binary.GetBEUInt();
+        if( version != MODELS_BINARY_VERSION || write_time > file_binary.GetWriteTime() )
+            file_binary.UnloadFile();                  // Disable loading from this binary, because its outdated
+    }
+    if( file_binary.IsLoaded() )
     {
         // Load nodes
         Node* root_node = new Node();
-        root_node->Load( file_cache );
+        root_node->Load( file_binary );
         root_node->FixAfterLoad( root_node );
 
         // Load animations
-        uint anim_sets_count = file_cache.GetBEUInt();
+        uint anim_sets_count = file_binary.GetBEUInt();
         for( uint i = 0; i < anim_sets_count; i++ )
         {
             AnimSet* anim_set = new AnimSet();
-            anim_set->Load( file_cache );
+            anim_set->Load( file_binary );
             loadedAnimations.push_back( anim_set );
         }
 
@@ -598,13 +602,15 @@ Node* GraphicLoader::LoadModel( const char* fname )
     }
 
     // Save to cache
-    file_cache.SwitchToWrite();
-    file_cache.SetBEUInt( FONLINE_VERSION );
-    root_node->Save( file_cache );
-    file_cache.SetBEUInt( loaded_anim_sets );
+    file_binary.SwitchToWrite();
+    file_binary.SetBEUInt( MODELS_BINARY_VERSION );
+    root_node->Save( file_binary );
+    file_binary.SetBEUInt( loaded_anim_sets );
     for( uint i = 0; i < loaded_anim_sets; i++ )
-        ( (AnimSet*) loadedAnimations[ loadedAnimations.size() - i - 1 ] )->Save( file_cache );
-    file_cache.SaveOutBufToFile( fname_cache, PT_CACHE );
+        ( (AnimSet*) loadedAnimations[ loadedAnimations.size() - i - 1 ] )->Save( file_binary );
+    Str::Replacement( fname_binary, '/', '_' );
+    Str::Replacement( fname_binary, '\\', '_' );
+    file_binary.SaveOutBufToFile( fname_binary, PT_CACHE );
 
     return root_node;
 }

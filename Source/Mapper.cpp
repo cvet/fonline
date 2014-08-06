@@ -2373,7 +2373,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
     if( o->MapObjType == MAP_OBJECT_CRITTER && ObjCurLine >= 20 && ObjCurLine - 20 < (int) ShowCritterParams.size() )
     {
         if( !o->MCritter.Params )
-            o->MCritter.Params = new int[ MAX_PARAMS ];
+            o->AllocateCritterParams();
         val_i = &o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ];
     }
 

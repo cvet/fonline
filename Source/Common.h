@@ -1,8 +1,9 @@
 #ifndef __COMMON__
 #define __COMMON__
 
-// Main version
-#define FONLINE_VERSION                          ( 447 )
+// Versions
+#define FONLINE_VERSION                          ( 448 )
+#define MODELS_BINARY_VERSION                    ( 8 )
 
 // Debugging
 // #define DEV_VERSION
