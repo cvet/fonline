@@ -124,17 +124,7 @@ public:
         memzero( this, sizeof( MapObject ) );
         RunTime.RefCounter = 1;
     }
-    MapObject( const MapObject& r )
-    {
-        memcpy( this, &r, sizeof( MapObject ) );
-        RunTime.RefCounter = 1;
-    }
-    MapObject& operator=( const MapObject& r )
-    {
-        memcpy( this, &r, sizeof( MapObject ) );
-        RunTime.RefCounter = 1;
-        return *this;
-    }
+
     ~MapObject()
     {
         if( MapObjType == MAP_OBJECT_CRITTER && MCritter.Params )
@@ -153,6 +143,35 @@ public:
         memzero( MCritter.Params, MAX_PARAMS * sizeof( int ) );
         MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) MAX_PARAMS * sizeof( int ) );
     }
+
+    #ifndef FONLINE_SERVER
+    MapObject( const MapObject& r )
+    {
+        CopyObject( r );
+        RunTime.RefCounter = 1;
+    }
+
+    MapObject& operator=( const MapObject& r )
+    {
+        CopyObject( r );
+        return *this;
+    }
+
+    void CopyObject( const MapObject& other )
+    {
+        memcpy( this, &other, sizeof( MapObject ) );
+        if( other.MapObjType == MAP_OBJECT_CRITTER && MCritter.Params )
+        {
+            AllocateCritterParams();
+            memcpy( MCritter.Params, other.MCritter.Params, MAX_PARAMS * sizeof( int ) );
+        }
+        RunTime.RefCounter = 1;
+	}
+    #else
+private:
+    MapObject( const MapObject& r ) {}
+    MapObject& operator=( const MapObject& r ) { return *this; }
+    #endif
 };
 typedef vector< MapObject* > MapObjectPtrVec;
 
