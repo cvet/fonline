@@ -207,7 +207,7 @@ Node* GraphicLoader::LoadModel( const char* fname )
     char        fname_binary[ MAX_FOPATH ];
     Str::Copy( fname_binary, fname );
     Str::Append( fname_binary, "b" );
-    if( !file_binary.LoadFile( fname, PT_DATA ) )
+    if( !file_binary.LoadFile( fname_binary, PT_DATA ) )
     {
         Str::Replacement( fname_binary, '/', '_' );
         Str::Replacement( fname_binary, '\\', '_' );
