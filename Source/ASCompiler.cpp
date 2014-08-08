@@ -338,6 +338,9 @@ int main( int argc, char* argv[] )
 
     Preprocessor::SetPragmaCallback( new ScriptPragmaCallback( pragma_type ) );
 
+    char buf[ MAX_FOTEXT ];
+    Preprocessor::Define( Str::Format( buf, "__VERSION %d", FONLINE_VERSION ) );
+
     Preprocessor::Define( "__ASCOMPILER" );
     if( IsServer )
         Preprocessor::Define( "__SERVER" );

@@ -166,7 +166,7 @@ public:
             memcpy( MCritter.Params, other.MCritter.Params, MAX_PARAMS * sizeof( int ) );
         }
         RunTime.RefCounter = 1;
-	}
+    }
     #else
 private:
     MapObject( const MapObject& r ) {}

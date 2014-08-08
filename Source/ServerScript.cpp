@@ -131,6 +131,7 @@ bool FOServer::InitScriptSystem()
     // Load script modules
     Script::Undef( NULL );
     Script::Define( "__SERVER" );
+    Script::Define( "__VERSION %d", FONLINE_VERSION );
     if( !Script::ReloadScripts( (char*) scripts_cfg.GetBuf(), "server", false ) )
     {
         Script::Finish();

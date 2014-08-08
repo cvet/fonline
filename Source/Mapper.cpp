@@ -5310,6 +5310,7 @@ void FOMapper::InitScriptSystem()
     // Load script modules
     Script::Undef( NULL );
     Script::Define( "__MAPPER" );
+    Script::Define( "__VERSION %d", FONLINE_VERSION );
     Script::ReloadScripts( (char*) scripts_cfg.GetBuf(), "mapper", false, "MAPPER_" );
     FileManager::SetWritePath( ClientWritePath );
 

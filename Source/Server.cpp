@@ -2474,6 +2474,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
             // Reload script modules
             Script::Undef( NULL );
             Script::Define( "__SERVER" );
+            Script::Define( "__VERSION %d", FONLINE_VERSION );
             if( Script::ReloadScripts( (char*) scripts_cfg.GetBuf(), "server", false ) )
                 logcb( "Success." );
             else

@@ -1374,9 +1374,14 @@ void Script::SetScriptsPath( int path_type )
     ScriptsPath = path_type;
 }
 
-void Script::Define( const char* def )
+void Script::Define( const char* def, ... )
 {
-    Preprocessor::Define( def );
+    va_list list;
+    va_start( list, def );
+    char    buf[ MAX_FOTEXT ];
+    vsnprintf( buf, MAX_FOTEXT, def, list );
+    va_end( list );
+    Preprocessor::Define( buf );
 }
 
 void Script::Undef( const char* def )
