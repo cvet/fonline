@@ -51,7 +51,7 @@ void ProjectPosition( Vector& v )
 
 Animation3dVec Animation3d::loadedAnimations;
 
-Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ), combinedMeshesSize( 0 ),
+Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ), combinedMeshesSize( 0 ), disableCulling( false ),
                             currentTrack( 0 ), lastDrawTick( 0 ), endTick( 0 ), speedAdjustBase( 1.0f ), speedAdjustCur( 1.0f ), speedAdjustLink( 1.0f ),
                             shadowDisabled( false ), dirAngle( GameOpt.MapHexagonal ? 150.0f : 135.0f ), parentAnimation( NULL ), parentNode( NULL ),
                             childChecker( true ), useGameTimer( true ), animPosProc( 0.0f ), animPosTime( 0.0f ), animPosPeriod( 0.0f ),
@@ -469,6 +469,11 @@ uint Animation3d::GetTick()
     return Timer::FastTick();
 }
 
+bool Animation3d::IsCut()
+{
+    return parentNode && !animLink.CutLayers.empty();
+}
+
 void Animation3d::SetAnimData( AnimParams& data, bool clear )
 {
     // Transformations
@@ -648,6 +653,10 @@ void Animation3d::GenerateCombinedMeshes()
     // Combine meshes recursively
     FillCombinedMeshes( this, this );
 
+    // Cut
+    disableCulling = false;
+    CutCombinedMeshes( this, this );
+
     // Finalize meshes
     for( size_t i = 0, j = combinedMeshesSize; i < j; i++ )
         combinedMeshes[ i ]->Finalize();
@@ -656,15 +665,18 @@ void Animation3d::GenerateCombinedMeshes()
 void Animation3d::FillCombinedMeshes( Animation3d* base, Animation3d* cur )
 {
     // Combine meshes
-    for( size_t i = 0, j = cur->allMeshes.size(); i < j; i++ )
-        base->CombineMesh( cur->allMeshes[ i ] );
+    if( !cur->IsCut() )
+    {
+        for( size_t i = 0, j = cur->allMeshes.size(); i < j; i++ )
+            base->CombineMesh( cur->allMeshes[ i ], cur->parentNode ? cur->animLink.Layer : 0 );
+    }
 
     // Fill child
     for( auto it = cur->childAnimations.begin(), end = cur->childAnimations.end(); it != end; ++it )
         FillCombinedMeshes( base, *it );
 }
 
-void Animation3d::CombineMesh( MeshInstance& mesh_instance )
+void Animation3d::CombineMesh( MeshInstance& mesh_instance, int anim_layer )
 {
     // Skip disabled meshes
     if( mesh_instance.Disabled )
@@ -675,7 +687,7 @@ void Animation3d::CombineMesh( MeshInstance& mesh_instance )
     {
         if( combinedMeshes[ i ]->CanEncapsulate( mesh_instance ) )
         {
-            combinedMeshes[ i ]->Encapsulate( mesh_instance );
+            combinedMeshes[ i ]->Encapsulate( mesh_instance, anim_layer );
             return;
         }
     }
@@ -683,8 +695,205 @@ void Animation3d::CombineMesh( MeshInstance& mesh_instance )
     // Create new combined mesh
     if( combinedMeshesSize >= combinedMeshes.size() )
         combinedMeshes.push_back( new CombinedMesh() );
-    combinedMeshes[ combinedMeshesSize ]->Encapsulate( mesh_instance );
+    combinedMeshes[ combinedMeshesSize ]->Encapsulate( mesh_instance, anim_layer );
     combinedMeshesSize++;
+}
+
+void Animation3d::CutCombinedMeshes( Animation3d* base, Animation3d* cur )
+{
+    // Cut meshes
+    if( cur->IsCut() )
+    {
+        for( size_t i = 0, j = cur->allMeshes.size(); i < j; i++ )
+            for( size_t k = 0; k < base->combinedMeshesSize; k++ )
+                base->CutCombinedMesh( *base->combinedMeshes[ k ], cur->allMeshes[ i ], cur->animLink.CutLayers );
+        disableCulling = true;
+    }
+
+    // Fill child
+    for( auto it = cur->childAnimations.begin(), end = cur->childAnimations.end(); it != end; ++it )
+        CutCombinedMeshes( base, *it );
+}
+
+// -2 - ignore
+// -1 - inside
+// 0 - outside
+// 1 - one point
+inline float Square( float f ) { return f * f; }
+int          SphereLineIntersection( const Vertex3D& p1, const Vertex3D& p2, const Vector& sp, float r, Vertex3D& in )
+{
+    float a = Square( p2.Position.x - p1.Position.x ) + Square( p2.Position.y - p1.Position.y ) + Square( p2.Position.z - p1.Position.z );
+    float b = 2 * ( ( p2.Position.x - p1.Position.x ) * ( p1.Position.x - sp.x ) + ( p2.Position.y - p1.Position.y ) * ( p1.Position.y - sp.y ) + ( p2.Position.z - p1.Position.z ) * ( p1.Position.z - sp.z ) );
+    float c = Square( sp.x ) + Square( sp.y ) + Square( sp.z ) + Square( p1.Position.x ) + Square( p1.Position.y ) + Square( p1.Position.z ) - 2 * ( sp.x * p1.Position.x + sp.y * p1.Position.y + sp.z * p1.Position.z ) - Square( r );
+    float i = Square( b ) - 4 * a * c;
+
+    if( i > 0.0 )
+    {
+        float sqrt_i = sqrt( i );
+        float mu1 = ( -b + sqrt_i ) / ( 2 * a );
+        float mu2 = ( -b - sqrt_i ) / ( 2 * a );
+
+        // Line segment doesn't intersect and on outside of sphere, in which case both values of u wll either be less than 0 or greater than 1
+        if( ( mu1 < 0.0 && mu2 < 0.0 ) || ( mu1 > 1.0 && mu2 > 1.0 ) )
+            return 0;
+
+        // Line segment doesn't intersect and is inside sphere, in which case one value of u will be negative and the other greater than 1
+        if( ( mu1 < 0.0 && mu2 > 1.0 ) || ( mu2 < 0.0 && mu1 > 1.0 ) )
+            return -1;
+
+        // Line segment intersects at one point, in which case one value of u will be between 0 and 1 and the other not
+        if( ( mu1 >= 0.0 && mu1 <= 1.0 && ( mu2 < 0.0 || mu2 > 1.0 ) ) || ( mu2 >= 0.0 && mu2 <= 1.0 && ( mu1 < 0.0 || mu1 > 1.0 ) ) )
+        {
+            float& mu = ( ( mu1 >= 0.0 && mu1 <= 1.0 ) ? mu1 : mu2 );
+            in = p1;
+            in.Position.x = p1.Position.x + mu * ( p2.Position.x - p1.Position.x );
+            in.Position.y = p1.Position.y + mu * ( p2.Position.y - p1.Position.y );
+            in.Position.z = p1.Position.z + mu * ( p2.Position.z - p1.Position.z );
+            in.TexCoord[ 0 ] = p1.TexCoord[ 0 ] + mu * ( p2.TexCoord[ 0 ] - p1.TexCoord[ 0 ] );
+            in.TexCoord[ 1 ] = p1.TexCoord[ 1 ] + mu * ( p2.TexCoord[ 1 ] - p1.TexCoord[ 1 ] );
+            in.TexCoordBase[ 0 ] = p1.TexCoordBase[ 0 ] + mu * ( p2.TexCoordBase[ 0 ] - p1.TexCoordBase[ 0 ] );
+            in.TexCoordBase[ 1 ] = p1.TexCoordBase[ 1 ] + mu * ( p2.TexCoordBase[ 1 ] - p1.TexCoordBase[ 1 ] );
+            return 1;
+        }
+
+        // Line segment intersects at two points, in which case both values of u will be between 0 and 1
+        if( mu1 >= 0.0 && mu1 <= 1.0 && mu2 >= 0.0 && mu2 <= 1.0 )
+        {
+            // Ignore
+            return -2;
+        }
+    }
+    else if( i == 0.0 )
+    {
+        // Ignore
+        return -2;
+    }
+    return 0;
+}
+
+void Animation3d::CutCombinedMesh( CombinedMesh& combined_mesh, MeshInstance& sphere, IntVec& cut_layers )
+{
+    // Calculate sphere radius
+    float vmin, vmax;
+    for( size_t i = 0, j = sphere.Mesh->Vertices.size(); i < j; i++ )
+    {
+        Vertex3D v = sphere.Mesh->Vertices[ i ];
+        if( !i || v.Position.x < vmin )
+            vmin = v.Position.x;
+        if( !i || v.Position.x > vmax )
+            vmax = v.Position.x;
+    }
+    float sphere_radius = ( vmax - vmin ) / 2.0f;
+
+    // Process
+    UShortVec   result_indices;
+    Vertex3DVec result_vertices;
+    UIntVec     result_mesh_faces;
+    result_indices.reserve( combined_mesh.Indices.size() );
+    result_vertices.reserve( combined_mesh.Vertices.size() );
+    result_mesh_faces.reserve( combined_mesh.MeshFaces.size() );
+    uint face_pos = 0, face_count = 0;
+    for( size_t k = 0, l = combined_mesh.MeshFaces.size(); k < l; k++ )
+    {
+        // Move sphere to face space
+        Matrix     mesh_transform = combined_mesh.MeshTransforms[ k ];
+        Matrix     sm = mesh_transform.Inverse() * sphere.Mesh->Owner->TransformationMatrix;
+        Vector     ss, sp;
+        Quaternion sr;
+        sm.Decompose( ss, sr, sp );
+
+        // Check anim layer
+        int  mesh_anim_layer = combined_mesh.MeshAnimLayers[ k ];
+        bool skip = ( std::find( cut_layers.begin(), cut_layers.end(), mesh_anim_layer ) == cut_layers.end() );
+
+        // Process faces
+        face_count += combined_mesh.MeshFaces[ k ];
+        size_t indices_old_size = result_indices.size();
+        for( ; face_pos < face_count; face_pos++ )
+        {
+            // Face points
+            const Vertex3D& v1 = combined_mesh.Vertices[ combined_mesh.Indices[ face_pos * 3 + 0 ] ];
+            const Vertex3D& v2 = combined_mesh.Vertices[ combined_mesh.Indices[ face_pos * 3 + 1 ] ];
+            const Vertex3D& v3 = combined_mesh.Vertices[ combined_mesh.Indices[ face_pos * 3 + 2 ] ];
+
+            // Skip mesh
+            if( skip )
+            {
+                result_indices.push_back( result_indices.size() );
+                result_indices.push_back( result_indices.size() );
+                result_indices.push_back( result_indices.size() );
+                result_vertices.push_back( v1 );
+                result_vertices.push_back( v2 );
+                result_vertices.push_back( v3 );
+                continue;
+            }
+
+            // Find intersections
+            Vertex3D i1, i2, i3;
+            int      r1 = SphereLineIntersection( v1, v2, sp, sphere_radius * ss.x, i1 );
+            int      r2 = SphereLineIntersection( v2, v3, sp, sphere_radius * ss.x, i2 );
+            int      r3 = SphereLineIntersection( v3, v1, sp, sphere_radius * ss.x, i3 );
+
+            // Process intersections
+            bool outside = ( r1 == 0 && r2 == 0 && r3 == 0 );
+            bool ignore = ( r1 == -2 || r2 == -2 || r3 == -2 );
+            int  sum = r1 + r2 + r3;
+            if( !ignore && sum == 2 ) // 1 1 0, corner in
+            {
+                const Vertex3D& vv1 = ( r1 == 0 ? v1 : ( r2 == 0 ? v2 : v3 ) );
+                const Vertex3D& vv2 = ( r1 == 0 ? v2 : ( r2 == 0 ? v3 : v1 ) );
+                const Vertex3D& vv3 = ( r1 == 0 ? i3 : ( r2 == 0 ? i1 : i2 ) );
+                const Vertex3D& vv4 = ( r1 == 0 ? i2 : ( r2 == 0 ? i3 : i1 ) );
+
+                // First face
+                result_indices.push_back( result_indices.size() );
+                result_indices.push_back( result_indices.size() );
+                result_indices.push_back( result_indices.size() );
+                result_vertices.push_back( vv1 );
+                result_vertices.push_back( vv2 );
+                result_vertices.push_back( vv3 );
+
+
+                // Second face
+                result_indices.push_back( result_indices.size() );
+                result_indices.push_back( result_indices.size() );
+                result_indices.push_back( result_indices.size() );
+                result_vertices.push_back( vv3 );
+                result_vertices.push_back( vv2 );
+                result_vertices.push_back( vv4 );
+            }
+            else if( !ignore && sum == 1 ) // 1 1 -1, corner out
+            {
+                const Vertex3D& vv1 = ( r1 == -1 ? i3 : ( r2 == -1 ? v1 : i1 ) );
+                const Vertex3D& vv2 = ( r1 == -1 ? i2 : ( r2 == -1 ? i1 : v2 ) );
+                const Vertex3D& vv3 = ( r1 == -1 ? v3 : ( r2 == -1 ? i3 : i2 ) );
+
+                // One face
+                result_indices.push_back( result_indices.size() );
+                result_indices.push_back( result_indices.size() );
+                result_indices.push_back( result_indices.size() );
+                result_vertices.push_back( vv1 );
+                result_vertices.push_back( vv2 );
+                result_vertices.push_back( vv3 );
+            }
+            else if( ignore || outside )
+            {
+                if( ignore && sum == 0 ) // 1 1 -2
+                    continue;
+
+                result_indices.push_back( result_indices.size() );
+                result_indices.push_back( result_indices.size() );
+                result_indices.push_back( result_indices.size() );
+                result_vertices.push_back( v1 );
+                result_vertices.push_back( v2 );
+                result_vertices.push_back( v3 );
+            }
+        }
+        result_mesh_faces.push_back( (uint) ( result_indices.size() - indices_old_size ) / 3 );
+    }
+    combined_mesh.Indices = result_indices;
+    combined_mesh.Vertices = result_vertices;
+    combined_mesh.MeshFaces = result_mesh_faces;
 }
 
 bool Animation3d::NeedDraw()
@@ -781,7 +990,8 @@ void Animation3d::UpdateNodeMatrices( Node* node, const Matrix* parent_matrix )
 
 void Animation3d::DrawCombinedMeshes()
 {
-    GL( glEnable( GL_CULL_FACE ) );
+    if( !disableCulling )
+        GL( glEnable( GL_CULL_FACE ) );
     GL( glEnable( GL_DEPTH_TEST ) );
 
     if( !shadowDisabled && !animEntity->shadowDisabled )
@@ -790,7 +1000,8 @@ void Animation3d::DrawCombinedMeshes()
     for( size_t i = 0; i < combinedMeshesSize; i++ )
         DrawCombinedMesh( combinedMeshes[ i ], false );
 
-    GL( glDisable( GL_CULL_FACE ) );
+    if( !disableCulling )
+        GL( glDisable( GL_CULL_FACE ) );
     GL( glDisable( GL_DEPTH_TEST ) );
 }
 
@@ -1008,7 +1219,6 @@ Animation3dEntity::Animation3dEntity(): xFile( NULL ), animController( NULL ),
 Animation3dEntity::~Animation3dEntity()
 {
     animData.push_back( animDataDefault );
-    memzero( &animDataDefault, sizeof( animDataDefault ) );
     for( auto it = animData.begin(), end = animData.end(); it != end; ++it )
     {
         AnimParams& link = *it;
@@ -1248,6 +1458,23 @@ bool Animation3dEntity::Load( const char* name )
                 ( *istr ) >> buf;
                 if( link->Id )
                     link->LinkBoneHash = Node::GetHash( buf );
+            }
+            else if( Str::CompareCase( token, "Cut" ) )
+            {
+                if( link->Id )
+                {
+                    ( *istr ) >> buf;
+                    StrVec layers;
+                    Str::ParseLine( buf, '-', layers, Str::ParseLineDummy );
+                    for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
+                    {
+                        int layer = ConstantsManager::GetDefineValue( layers[ m ].c_str() );
+                        if( layer >= 0 && layer < LAYERS3D_COUNT )
+                            link->CutLayers.push_back( layer );
+                    }
+                    if( link->CutLayers.empty() )
+                        link->CutLayers.push_back( 0 );
+                }
             }
             else if( Str::CompareCase( token, "RotX" ) )
                 ( *istr ) >> link->RotX;

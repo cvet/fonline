@@ -29,6 +29,7 @@ struct AnimParams
     int             Layer;
     int             LayerValue;
     uint            LinkBoneHash;
+    IntVec          CutLayers;
     char*           ChildFName;
     float           RotX, RotY, RotZ;
     float           MoveX, MoveY, MoveZ;
@@ -64,6 +65,7 @@ private:
     // Parameters
     CombinedMeshVec    combinedMeshes;
     size_t             combinedMeshesSize;
+    bool               disableCulling;
     MeshInstanceVec    allMeshes;
     BoolVec            allMeshesDisabled;
     Animation3dEntity* animEntity;
@@ -94,7 +96,9 @@ private:
 
     void  GenerateCombinedMeshes();
     void  FillCombinedMeshes( Animation3d* base, Animation3d* cur );
-    void  CombineMesh( MeshInstance& mesh_instance );
+    void  CombineMesh( MeshInstance& mesh_instance, int anim_layer );
+    void  CutCombinedMeshes( Animation3d* base, Animation3d* cur );
+    void  CutCombinedMesh( CombinedMesh& combined_mesh, MeshInstance& sphere, IntVec& cut_layers );
     void  ProcessAnimation( float elapsed, int x, int y, float scale );
     void  UpdateNodeMatrices( Node* node, const Matrix* parent_matrix );
     void  DrawCombinedMeshes();
@@ -102,6 +106,7 @@ private:
     void  TransformMesh( CombinedMesh* combined_mesh );
     float GetSpeed();
     uint  GetTick();
+    bool  IsCut();
     void  SetAnimData( AnimParams& data, bool clear );
 
 public:

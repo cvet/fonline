@@ -384,6 +384,9 @@ struct CombinedMesh
     int          EncapsulatedMeshCount;
     Vertex3DVec  Vertices;
     UShortVec    Indices;
+    UIntVec      MeshFaces;
+    MatrixVec    MeshTransforms;
+    IntVec       MeshAnimLayers;
     size_t       CurBoneMatrix;
     Matrix*      BoneCombinedMatrices[ MAX_BONE_MATRICES ];
     Matrix       BoneOffsetMatrices[ MAX_BONE_MATRICES ];
@@ -393,7 +396,7 @@ struct CombinedMesh
 
     void Clear();
     bool CanEncapsulate( MeshInstance& mesh_instance );
-    void Encapsulate( MeshInstance& mesh_instance );
+    void Encapsulate( MeshInstance& mesh_instance, int anim_layer );
     void Finalize();
 
     CombinedMesh(): EncapsulatedMeshCount( 0 ), VAO( 0 ), VBO( 0 ), IBO( 0 ), CurBoneMatrix( 0 ) {}

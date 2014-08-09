@@ -178,6 +178,9 @@ void CombinedMesh::Clear()
     CurBoneMatrix = 0;
     Vertices.clear();
     Indices.clear();
+    MeshFaces.clear();
+    MeshTransforms.clear();
+    MeshAnimLayers.clear();
 }
 
 bool CombinedMesh::CanEncapsulate( MeshInstance& mesh_instance )
@@ -194,10 +197,11 @@ bool CombinedMesh::CanEncapsulate( MeshInstance& mesh_instance )
     return true;
 }
 
-void CombinedMesh::Encapsulate( MeshInstance& mesh_instance )
+void CombinedMesh::Encapsulate( MeshInstance& mesh_instance, int anim_layer )
 {
     MeshData* mesh = mesh_instance.Mesh;
     size_t    vertices_old_size = Vertices.size();
+    size_t    indices_old_size = Indices.size();
 
     // Set or add data
     if( !EncapsulatedMeshCount )
@@ -227,6 +231,11 @@ void CombinedMesh::Encapsulate( MeshInstance& mesh_instance )
             for( size_t b = 0; b < BONES_PER_VERTEX; b++ )
                 Vertices[ i ].BlendIndices[ b ] += bone_index_offset;
     }
+
+    // Set mesh transform and anim layer
+    MeshFaces.push_back( (uint) ( Indices.size() - indices_old_size ) / 3 );
+    MeshTransforms.push_back( mesh->Owner->TransformationMatrix );
+    MeshAnimLayers.push_back( anim_layer );
 
     // Add bones matrices
     for( size_t i = 0, j = mesh->BoneCombinedMatrices.size(); i < j; i++ )
