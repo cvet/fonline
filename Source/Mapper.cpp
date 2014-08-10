@@ -119,6 +119,15 @@ bool FOMapper::Init()
     Str::Copy( ClientWritePath, ( GameOpt.ClientPath->c_std_str() + "data" + DIR_SLASH_S ).c_str() );
     FileManager::SetWritePath( ClientWritePath );
 
+    // Cache
+    if( !FileExist( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
+        FileManager::CopyFile( FileManager::GetReadPath( "default.cache", PT_DATA ), FileManager::GetWritePath( "default.cache", PT_CACHE ) );
+    if( !Crypt.SetCacheTable( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
+    {
+        WriteLogF( _FUNC_, " - Can't set default cache.\n" );
+        return false;
+    }
+
     // Sprite manager
     if( !SprMngr.Init() )
         return false;
@@ -321,15 +330,6 @@ bool FOMapper::Init()
     for( int tab = 0; tab < TAB_COUNT; tab++ )
         RefreshTiles( tab );
     RefreshCurProtos();
-
-    // Cache
-    if( !FileExist( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
-        FileManager::CopyFile( FileManager::GetReadPath( "default.cache", PT_DATA ), FileManager::GetWritePath( "default.cache", PT_CACHE ) );
-    if( !Crypt.SetCacheTable( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
-    {
-        WriteLogF( _FUNC_, " - Can't set default cache.\n" );
-        return false;
-    }
 
     // Load console history
     string history_str = Crypt.GetCache( "mapper_console" );

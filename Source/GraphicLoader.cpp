@@ -1249,10 +1249,13 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         GLuint vs, fs;
         GL( vs = glCreateShader( GL_VERTEX_SHADER ) );
         GL( fs = glCreateShader( GL_FRAGMENT_SHADER ) );
-        const char* vs_str[] = { ver ? ver : "", "\n", "#define VERTEX_SHADER\n", defines ? defines : "", "\n", str };
-        GL( glShaderSource( vs, 6, (const GLchar**) vs_str, NULL ) );
-        const char* fs_str[] = { ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", defines ? defines : "", "\n", str };
-        GL( glShaderSource( fs, 6, (const GLchar**) fs_str, NULL ) );
+        GLchar buf[ MAX_FOTEXT ];
+        Str::Format( buf, "%s%s%s%s%s%s", ver ? ver : "", "\n", "#define VERTEX_SHADER\n", defines ? defines : "", "\n", str );
+        const GLchar* vs_str = buf;
+        GL( glShaderSource( vs, 1, &vs_str, NULL ) );
+        Str::Format( buf, "%s%s%s%s%s%s", ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", defines ? defines : "", "\n", str );
+        const GLchar* fs_str = buf;
+        GL( glShaderSource( fs, 1, &fs_str, NULL ) );
 
         // Info parser
         struct ShaderInfo

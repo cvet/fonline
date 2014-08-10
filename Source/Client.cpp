@@ -159,7 +159,7 @@ bool FOClient::Init()
     #endif
 
     // SDL
-    if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS ) )
+    if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
     {
         WriteLogF( _FUNC_, " - SDL initialization fail, error<%s>.\n", SDL_GetError() );
         return false;

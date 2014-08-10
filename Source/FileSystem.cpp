@@ -50,16 +50,16 @@ void* FileOpen( const char* fname, bool write, bool write_through /* = false */ 
     HANDLE  file;
     if( write )
     {
-        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
         if( file == INVALID_HANDLE_VALUE )
         {
             CreateDirectoryTree( fname );
-            file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+            file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
         }
     }
     else
     {
-        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY | FILE_FLAG_SEQUENTIAL_SCAN, NULL );
+        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL );
     }
     if( file == INVALID_HANDLE_VALUE )
         return NULL;
@@ -69,11 +69,11 @@ void* FileOpen( const char* fname, bool write, bool write_through /* = false */ 
 void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
 {
     wchar_t wc[ MAX_FOPATH ];
-    HANDLE  file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+    HANDLE  file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
     if( file == INVALID_HANDLE_VALUE )
     {
         CreateDirectoryTree( fname );
-        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
     }
     if( file == INVALID_HANDLE_VALUE )
         return NULL;
@@ -88,11 +88,11 @@ void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
 void* FileOpenForReadWrite( const char* fname, bool write_through /* = false */ )
 {
     wchar_t wc[ MAX_FOPATH ];
-    HANDLE  file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+    HANDLE  file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
     if( file == INVALID_HANDLE_VALUE )
     {
         CreateDirectoryTree( fname );
-        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
+        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, NULL );
     }
     if( file == INVALID_HANDLE_VALUE )
         return NULL;

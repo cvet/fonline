@@ -328,7 +328,7 @@ bool CryptManager::SetCacheTable( const char* cache_fname )
         CacheTableFile = NULL;
     }
 
-    void* f = FileOpen( cache_fname, false );
+    void* f = FileOpenForReadWrite( cache_fname, true );
     if( !f )
         return CreateCacheTable( cache_fname );
 
@@ -352,9 +352,8 @@ bool CryptManager::SetCacheTable( const char* cache_fname )
         }
     }
 
-    FileClose( f );
-    CacheTableFile = FileOpenForReadWrite( cache_fname, true );
-    return CacheTableFile != NULL;
+    CacheTableFile = f;
+    return true;
 }
 
 void CryptManager::GetCacheNames( const char* start_with, StrVec& names )
@@ -507,12 +506,12 @@ void CryptManager::SetCache( const char* data_name, const uchar* data, uint data
 label_PlaceFound:
     CacheDescriptor desc__ = desc_;
     XOR( (char*) &desc__, sizeof( CacheDescriptor ) - 24, (char*) &desc__.XorKey[ 0 ], 20 );
-    FileSetPointer( CacheTableFile, desc_place * sizeof( CacheDescriptor ), SEEK_SET );
-    FileWrite( CacheTableFile, (void*) &desc__, sizeof( CacheDescriptor ) );
     FileSetPointer( CacheTableFile, sizeof( CacheTable ) + desc_.DataOffset, SEEK_SET );
     XOR( (char*) data, data_len, (char*) &desc__.XorKey[ 0 ], 20 );
     FileWrite( CacheTableFile, data, data_len );
     XOR( (char*) data, data_len, (char*) &desc__.XorKey[ 0 ], 20 );
+    FileSetPointer( CacheTableFile, desc_place * sizeof( CacheDescriptor ), SEEK_SET );
+    FileWrite( CacheTableFile, (void*) &desc__, sizeof( CacheDescriptor ) );
 }
 
 void CryptManager::SetCache( const char* data_name, const string& str )

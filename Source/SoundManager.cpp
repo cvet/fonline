@@ -86,6 +86,13 @@ bool SoundManager::Init()
 
     WriteLog( "Sound manager initialization...\n" );
 
+    // SDL
+    if( SDL_InitSubSystem( SDL_INIT_AUDIO ) )
+    {
+        WriteLogF( _FUNC_, " - SDL Audio initialization fail, error<%s>.\n", SDL_GetError() );
+        return false;
+    }
+
     // Create audio device
     SDL_AudioSpec desired;
     desired.freq = 22050;              // DSP frequency -- samples per second
