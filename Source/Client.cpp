@@ -9463,7 +9463,7 @@ Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, ushort proto_id, int s
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
     if( proto_id && slot >= 0 && slot < SLOT_GROUND )
-        cr->GetItemByPidSlot( proto_id, slot );
+        return cr->GetItemByPidSlot( proto_id, slot );
     else if( proto_id )
         return cr->GetItemByPidInvPriority( proto_id );
     else if( slot >= 0 && slot < SLOT_GROUND )
