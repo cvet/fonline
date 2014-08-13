@@ -446,6 +446,7 @@
     <ClInclude Include="..\Source\ResourceManager.h" />
     <ClInclude Include="..\Source\Script.h" />
     <ClInclude Include="..\Source\ScriptBind.h" />
+    <ClInclude Include="..\Source\ScriptFunctions.h" />
     <ClInclude Include="..\Source\ScriptPragmas.h" />
     <ClInclude Include="..\Source\SpriteManager.h" />
     <ClInclude Include="..\Source\Sprites.h" />

@@ -378,6 +378,7 @@
     <ClInclude Include="..\Source\GraphicLoader.h" />
     <ClInclude Include="..\Source\GraphicStructures.h" />
     <ClInclude Include="..\Source\ResourceClient.h" />
+    <ClInclude Include="..\Source\ScriptFunctions.h" />
     <ClInclude Include="..\Source\Sprites.h" />
     <ClInclude Include="..\Source\Zlib\crc32.h" />
     <ClInclude Include="..\Source\Zlib\deflate.h" />

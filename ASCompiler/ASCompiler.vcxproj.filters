@@ -235,6 +235,12 @@
     <ClInclude Include="..\Source\AngelScript\reflection.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\ScriptFunctions.h">
+      <Filter>ASCompiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\StdAfx.h">
+      <Filter>ASCompiler</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\ASCompiler.cpp">
@@ -434,6 +440,9 @@
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\reflection.cpp">
       <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\StdAfx.cpp">
+      <Filter>ASCompiler</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -356,6 +356,9 @@
     <ClInclude Include="..\Source\AngelScript\reflection.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\ScriptFunctions.h">
+      <Filter>Mapper</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Common.cpp">
