@@ -145,11 +145,12 @@ public:
     bool IsMovePassed( ushort hx, ushort hy, uchar dir, uint multihex );
     bool IsHexItem( ushort hx, ushort hy ) { return FLAG( hexFlags[ hy * GetMaxHexX() + hx ], FH_ITEM ); }
 
-    bool IsHexTrigger( ushort hx, ushort hy ) { return FLAG( Proto->HexFlags[ hy * GetMaxHexX() + hx ], FH_TRIGGER ); }
     bool IsHexTrap( ushort hx, ushort hy )    { return FLAG( hexFlags[ hy * GetMaxHexX() + hx ], FH_WALK_ITEM ); }
-
     bool IsHexCritter( ushort hx, ushort hy ) { return FLAG( hexFlags[ hy * GetMaxHexX() + hx ], FH_CRITTER | FH_DEAD_CRITTER ); }
     bool IsHexGag( ushort hx, ushort hy )     { return FLAG( hexFlags[ hy * GetMaxHexX() + hx ], FH_GAG_ITEM ); }
+    #ifdef FONLINE_SERVER
+    bool IsHexTrigger( ushort hx, ushort hy ) { return FLAG( Proto->HexFlags[ hy * GetMaxHexX() + hx ], FH_TRIGGER ); }
+    #endif
 
     bool     IsFlagCritter( ushort hx, ushort hy, bool dead );
     void     SetFlagCritter( ushort hx, ushort hy, uint multihex, bool dead );

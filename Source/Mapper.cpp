@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "Mapper.h"
+#include "ScriptFunctions.h"
 
 bool      FOMapper::SpritesCanDraw = false;
 FOMapper* FOMapper::Self = NULL;
@@ -6016,19 +6017,6 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& slot_na
     Self->SlotsExt.insert( PAIR( index, se ) );
 }
 
-uint FOMapper::SScriptFunc::Global_DecodeUTF8( ScriptString& text, uint& length )
-{
-    return Str::DecodeUTF8( text.c_str(), &length );
-}
-
-ScriptString* FOMapper::SScriptFunc::Global_EncodeUTF8( uint ucs )
-{
-    char buf[ 5 ];
-    uint len = Str::EncodeUTF8( ucs, buf );
-    buf[ len ] = 0;
-    return ScriptString::Create( buf );
-}
-
 ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( ScriptString& file_name, int path_type )
 {
     ProtoMap* pmap = new ProtoMap();
@@ -6484,28 +6472,6 @@ ScriptString* FOMapper::SScriptFunc::Global_GetIfaceIniStr( ScriptString& key )
     return ScriptString::Create();
 }
 
-void FOMapper::SScriptFunc::Global_Log( ScriptString& text )
-{
-    // Self->AddMessFormat(text.buffer.c_str());
-    Script::Log( text.c_str() );
-}
-
-bool FOMapper::SScriptFunc::Global_StrToInt( ScriptString* text, int& result )
-{
-    if( !text || !text->length() || !Str::IsNumber( text->c_str() ) )
-        return false;
-    result = Str::AtoI( text->c_str() );
-    return true;
-}
-
-bool FOMapper::SScriptFunc::Global_StrToFloat( ScriptString* text, float& result )
-{
-    if( !text || !text->length() )
-        return false;
-    result = (float) strtod( text->c_str(), NULL );
-    return true;
-}
-
 void FOMapper::SScriptFunc::Global_Message( ScriptString& msg )
 {
     Self->AddMess( msg.c_str() );
@@ -6600,21 +6566,6 @@ ScriptString* FOMapper::SScriptFunc::Global_ReplaceTextInt( ScriptString& text, 
     return ScriptString::Create( str_.replace( pos, replace.length(), val ) );
 }
 
-uint FOMapper::SScriptFunc::Global_GetDistantion( ushort hex_x1, ushort hex_y1, ushort hex_x2, ushort hex_y2 )
-{
-    return DistGame( hex_x1, hex_y1, hex_x2, hex_y2 );
-}
-
-uchar FOMapper::SScriptFunc::Global_GetDirection( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
-{
-    return GetFarDir( from_hx, from_hy, to_hx, to_hy );
-}
-
-uchar FOMapper::SScriptFunc::Global_GetOffsetDir( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset )
-{
-    return GetFarDir( from_hx, from_hy, to_hx, to_hy, offset );
-}
-
 void FOMapper::SScriptFunc::Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist )
 {
     UShortPair pre_block, block;
@@ -6696,32 +6647,6 @@ MapObject* FOMapper::SScriptFunc::Global_GetMonitorObject( int x, int y, bool ig
         mobj = Self->FindMapObject( cr->GetHexX(), cr->GetHexY(), MAP_OBJECT_CRITTER, cr->Flags, false );
     }
     return mobj;
-}
-
-uint FOMapper::SScriptFunc::Global_GetAngelScriptProperty( int property )
-{
-    asIScriptEngine* engine = Script::GetEngine();
-    if( !engine )
-        SCRIPT_ERROR_R0( "Can't get engine." );
-    return (uint) engine->GetEngineProperty( (asEEngineProp) property );
-}
-
-bool FOMapper::SScriptFunc::Global_SetAngelScriptProperty( int property, uint value )
-{
-    asIScriptEngine* engine = Script::GetEngine();
-    if( !engine )
-        SCRIPT_ERROR_R0( "Can't get engine." );
-    int result = engine->SetEngineProperty( (asEEngineProp) property, value );
-    if( result < 0 )
-        SCRIPT_ERROR_R0( "Invalid data. Property not setted." );
-    return true;
-}
-
-uint FOMapper::SScriptFunc::Global_GetStrHash( ScriptString* str )
-{
-    if( str )
-        return Str::GetHash( str->c_str() );
-    return 0;
 }
 
 bool FOMapper::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )

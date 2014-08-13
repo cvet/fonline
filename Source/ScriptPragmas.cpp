@@ -1,35 +1,9 @@
+#include "StdAfx.h"
 #include "ScriptPragmas.h"
 #include "AngelScript/angelscript.h"
 
 #ifdef FONLINE_SCRIPT_COMPILER
-# include "PlatformSpecific.h"
-# include "Defines.h"
-# include "Types.h"
 # include "../ASCompiler/ScriptEngine.h"
-# include "AngelScript/scriptstring.h"
-# include <stdio.h>
-# include <strstream>
-# include <algorithm>
-# include <string.h>
-
-# ifdef FO_WINDOWS
-#  include <Windows.h>
-# endif
-
-// DLL
-# ifdef FO_WINDOWS
-static char DLLTempBuf[ 64 ];
-#  define DLL_Load( name )              (void*) LoadLibrary( name )
-#  define DLL_Free( h )                 FreeLibrary( (HMODULE) h )
-#  define DLL_GetAddress( h, pname )    (size_t*) GetProcAddress( (HMODULE) h, pname )
-#  define DLL_Error()                   _itoa( GetLastError(), DLLTempBuf, 10 )
-# else
-#  include <dlfcn.h>
-#  define DLL_Load( name )              (void*) dlopen( name, RTLD_NOW | RTLD_LOCAL )
-#  define DLL_Free( h )                 dlclose( h )
-#  define DLL_GetAddress( h, pname )    (size_t*) dlsym( h, pname )
-#  define DLL_Error()                   dlerror()
-# endif
 
 namespace Script
 {

@@ -474,8 +474,6 @@ public:
 
         static void          Global_ShowCritterParam( int param_index, bool show, ScriptString* param_name );
         static void          Global_AllowSlot( uchar index, ScriptString& slot_name );
-        static uint          Global_DecodeUTF8( ScriptString& text, uint& length );
-        static ScriptString* Global_EncodeUTF8( uint ucs );
         static ProtoMap*     Global_LoadMap( ScriptString& file_name, int path_type );
         static void          Global_UnloadMap( ProtoMap* pmap );
         static bool          Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type, bool keep_name = false );
@@ -503,10 +501,6 @@ public:
         static void          Global_MoveScreen( ushort hx, ushort hy, uint speed );
         static void          Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
         static ScriptString* Global_GetIfaceIniStr( ScriptString& key );
-        static uint          Global_GetTick() { return Timer::FastTick(); }
-        static uint          Global_GetAngelScriptProperty( int property );
-        static bool          Global_SetAngelScriptProperty( int property, uint value );
-        static uint          Global_GetStrHash( ScriptString* str );
         static bool          Global_LoadDataFile( ScriptString& dat_name );
         static int           Global_GetConstantValue( int const_collection, ScriptString* name );
         static ScriptString* Global_GetConstantName( int const_collection, int value );
@@ -519,9 +513,6 @@ public:
         static void          Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name );
 
         static ScriptString* Global_GetLastError();
-        static void          Global_Log( ScriptString& text );
-        static bool          Global_StrToInt( ScriptString* text, int& result );
-        static bool          Global_StrToFloat( ScriptString* text, float& result );
         static void          Global_Message( ScriptString& msg );
         static void          Global_MessageMsg( int text_msg, uint str_num );
         static void          Global_MapMessage( ScriptString& text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy );
@@ -534,9 +525,6 @@ public:
         static ScriptString* Global_ReplaceTextStr( ScriptString& text, ScriptString& replace, ScriptString& str );
         static ScriptString* Global_ReplaceTextInt( ScriptString& text, ScriptString& replace, int i );
 
-        static uint       Global_GetDistantion( ushort hex_x1, ushort hex_y1, ushort hex_x2, ushort hex_y2 );
-        static uchar      Global_GetDirection( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
-        static uchar      Global_GetOffsetDir( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset );
         static void       Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
         static uint       Global_GetPathLengthHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
         static bool       Global_GetHexPos( ushort hx, ushort hy, int& x, int& y );

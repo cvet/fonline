@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 451 )
+#define FONLINE_VERSION                          ( 452 )
 #define MODELS_BINARY_VERSION                    ( 8 )
 
 // Debugging
@@ -79,6 +79,7 @@ const char* GetLastSocketError();
 #include "Randomizer.h"
 #include "Mutex.h"
 #include "Text.h"
+#include "FileManager.h"
 #include "FileSystem.h"
 #include "AngelScript/scriptstring.h"
 #include "AngelScript/scriptarray.h"

@@ -834,13 +834,9 @@ public:
         static void Location_EventFinish( Location* loc, bool deleted );
         static bool Location_EventEnter( Location* loc, ScriptArray& group, uchar entrance );
 
-        static void          Global_Log( ScriptString& text );
         static ProtoItem*    Global_GetProtoItem( ushort pid );
         static Item*         Global_GetItem( uint item_id );
         static uint          Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 );
-        static uint          Global_GetDistantion( ushort hx1, ushort hy1, ushort hx2, ushort hy2 );
-        static uchar         Global_GetDirection( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
-        static uchar         Global_GetOffsetDir( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset );
         static void          Global_MoveItemCr( Item* item, uint count, Critter* to_cr );
         static void          Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy );
         static void          Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id );
@@ -884,8 +880,6 @@ public:
         static uint          Global_GetLocations( ushort wx, ushort wy, uint radius, ScriptArray* locations );
         static uint          Global_GetVisibleLocations( ushort wx, ushort wy, uint radius, Critter* cr, ScriptArray* locations );
         static uint          Global_GetZoneLocationIds( ushort zx, ushort zy, uint zone_radius, ScriptArray* locations );
-        static bool          Global_StrToInt( ScriptString* text, int& result );
-        static bool          Global_StrToFloat( ScriptString* text, float& result );
         static bool          Global_RunDialogNpc( Critter* player, Critter* npc, bool ignore_distance );
         static bool          Global_RunDialogNpcDlgPack( Critter* player, Critter* npc, uint dlg_pack, bool ignore_distance );
         static bool          Global_RunDialogHex( Critter* player, uint dlg_pack, ushort hx, ushort hy, bool ignore_distance );
@@ -909,18 +903,12 @@ public:
         static ScriptString* Global_GetScriptName( uint script_id );
         static ScriptArray*  Global_GetItemDataMask( int mask_type );
         static bool          Global_SetItemDataMask( int mask_type, ScriptArray& mask );
-        static uint          Global_GetTick() { return Timer::FastTick(); }
         static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
         static bool          Global_SetParameterGetBehaviour( uint index, ScriptString& func_name );
         static bool          Global_SetParameterChangeBehaviour( uint index, ScriptString& func_name );
         static bool          Global_SetParameterDialogGetBehaviour( uint index, ScriptString& func_name );
         static void          Global_AllowSlot( uchar index, ScriptString& ini_option );
-        static uint          Global_DecodeUTF8( ScriptString& text, uint& length );
-        static ScriptString* Global_EncodeUTF8( uint ucs );
         static void          Global_SetRegistrationParam( uint index, bool enabled );
-        static uint          Global_GetAngelScriptProperty( int property );
-        static bool          Global_SetAngelScriptProperty( int property, uint value );
-        static uint          Global_GetStrHash( ScriptString* str );
         static bool          Global_LoadDataFile( ScriptString& dat_name );
         static int           Global_GetConstantValue( int const_collection, ScriptString* name );
         static ScriptString* Global_GetConstantName( int const_collection, int value );

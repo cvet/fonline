@@ -264,11 +264,11 @@ uint Str::DecodeUTF8( const char* str, uint* length )
     {
         goto FAIL;
     }
-    if( ( str[ 1 ] & 0xc0 ) != 0x80 )
+    else if( ( str[ 1 ] & 0xc0 ) != 0x80 )
     {
         goto FAIL;
     }
-    if( c < 0xe0 )
+    else if( c < 0xe0 )
     {
         if( length )
             *length = 2;

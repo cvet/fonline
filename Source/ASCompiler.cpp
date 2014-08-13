@@ -1,9 +1,6 @@
-#include "Common.h"
-#include "../ASCompiler/ScriptEngine.h"
-#include "PlatformSpecific.h"
+#include "StdAfx.h"
 #include "ScriptPragmas.h"
-#include "Debugger.h"
-#include "FileManager.h"
+#include "../ASCompiler/ScriptEngine.h"
 #include "AngelScript/angelscript.h"
 #include "AngelScript/preprocessor.h"
 #include "AngelScript/as_config.h"
@@ -15,16 +12,6 @@
 #include "AngelScript/scriptarray.h"
 #include "AngelScript/weakref.h"
 #include "AngelScript/reflection.h"
-#include <stdio.h>
-#include <list>
-#include <set>
-#include <strstream>
-#include <algorithm>
-#include <locale.h>
-#ifdef FO_WINDOWS
-# include <Windows.h>
-#endif
-using namespace std;
 
 #ifdef FO_LINUX
 # include <unistd.h>
@@ -49,11 +36,6 @@ const char*      ContextStatesStr[] =
     "Active",
     "Error",
 };
-
-void CompilerLog( ScriptString& str )
-{
-    printf( "%s\n", str.c_str() );
-}
 
 void PrintContextCallstack( asIScriptContext* ctx )
 {
@@ -177,11 +159,11 @@ void CallBack( const asSMessageInfo* msg, void* param )
 #define BIND_ASSERT( x )    if( ( x ) < 0 ) { printf( "Bind error, line<" # x ">.\n" ); bind_errors++; }
 namespace ServerBind
 {
-    #include <DummyData.h>
+    #include "DummyData.h"
     static int Bind( asIScriptEngine* engine )
     {
         int bind_errors = 0;
-        #include <ScriptBind.h>
+        #include "ScriptBind.h"
         return bind_errors;
     }
 }
@@ -195,11 +177,11 @@ namespace ServerBind
 #define BIND_ASSERT( x )    if( ( x ) < 0 ) { printf( "Bind error, line<" # x ">.\n" ); bind_errors++; }
 namespace ClientBind
 {
-    #include <DummyData.h>
+    #include "DummyData.h"
     static int Bind( asIScriptEngine* engine )
     {
         int bind_errors = 0;
-        #include <ScriptBind.h>
+        #include "ScriptBind.h"
         return bind_errors;
     }
 }
@@ -213,11 +195,11 @@ namespace ClientBind
 #define BIND_ASSERT( x )    if( ( x ) < 0 ) { printf( "Bind error, line<" # x ">.\n" ); bind_errors++; }
 namespace MapperBind
 {
-    #include <DummyData.h>
+    #include "DummyData.h"
     static int Bind( asIScriptEngine* engine )
     {
         int bind_errors = 0;
-        #include <ScriptBind.h>
+        #include "ScriptBind.h"
         return bind_errors;
     }
 }
@@ -305,13 +287,6 @@ int main( int argc, char* argv[] )
     RegisterScriptWeakRef( Engine );
     RegisterScriptReflection( Engine );
 
-    // Stuff for run func
-    if( !run_func.empty() )
-    {
-        if( Engine->RegisterGlobalFunction( "void __CompilerLog(string& text)", asFUNCTION( CompilerLog ), asCALL_CDECL ) < 0 )
-            printf( "Warning: cannot bind masking Log()." );
-    }
-
     // Bind
     int bind_errors = 0;
     if( IsServer )
@@ -350,8 +325,6 @@ int main( int argc, char* argv[] )
         Preprocessor::Define( "__MAPPER" );
     for( size_t i = 0; i < defines.size(); i++ )
         Preprocessor::Define( string( defines[ i ] ) );
-    if( !run_func.empty() )
-        Preprocessor::Define( string( "Log __CompilerLog" ) );
 
     Preprocessor::StringOutStream result, errors;
     int                           res;

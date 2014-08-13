@@ -11,6 +11,7 @@
 #include "CritterData.h"
 #include "DataMask.h"
 #include "NetProtocol.h"
+#include "ThreadSync.h"
 
 #if defined ( USE_LIBEVENT )
 # include "event2/event.h"

@@ -595,26 +595,14 @@ public:
         static void          Global_GetDayColor( uint day_part, uchar& r, uchar& g, uchar& b );
 
         static ScriptString* Global_GetLastError();
-        static void          Global_Log( ScriptString& text );
         static ProtoItem*    Global_GetProtoItem( ushort proto_id );
-        static uint          Global_GetDistantion( ushort hex_x1, ushort hex_y1, ushort hex_x2, ushort hex_y2 );
-        static uchar         Global_GetDirection( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
-        static uchar         Global_GetOffsetDir( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset );
         static uint          Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static void          Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
-        static bool          Global_StrToInt( ScriptString* text, int& result );
-        static bool          Global_StrToFloat( ScriptString* text, float& result );
-        static uint          Global_GetTick() { return Timer::FastTick(); }
         static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
         static bool          Global_SetParameterGetBehaviour( uint index, ScriptString& func_name );
         static bool          Global_SetParameterChangeBehaviour( uint index, ScriptString& func_name );
         static void          Global_AllowSlot( uchar index, ScriptString& ini_option );
-        static uint          Global_DecodeUTF8( ScriptString& text, uint& length );
-        static ScriptString* Global_EncodeUTF8( uint ucs );
         static void          Global_SetRegistrationParam( uint index, bool enabled );
-        static uint          Global_GetAngelScriptProperty( int property );
-        static bool          Global_SetAngelScriptProperty( int property, uint value );
-        static uint          Global_GetStrHash( ScriptString* str );
         static bool          Global_LoadDataFile( ScriptString& dat_name );
         static int           Global_GetConstantValue( int const_collection, ScriptString* name );
         static ScriptString* Global_GetConstantName( int const_collection, int value );

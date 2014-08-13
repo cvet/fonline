@@ -2,6 +2,7 @@
 #include "Server.h"
 #include "AngelScript/preprocessor.h"
 #include "ScriptPragmas.h"
+#include "ScriptFunctions.h"
 
 // Global_LoadImage
 #include "PNG/png.h"
@@ -290,7 +291,6 @@ int FOServer::DialogGetParam( Critter* master, Critter* slave, uint index )
 namespace ClientBind
 {
     #include "DummyData.h"
-
     static int Bind( asIScriptEngine* engine )
     {
         int bind_errors = 0;
@@ -4914,26 +4914,6 @@ uint FOServer::SScriptFunc::Global_GetCrittersDistantion( Critter* cr1, Critter*
     return DistGame( cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY() );
 }
 
-uint FOServer::SScriptFunc::Global_GetDistantion( ushort hx1, ushort hy1, ushort hx2, ushort hy2 )
-{
-    return DistGame( hx1, hy1, hx2, hy2 );
-}
-
-uchar FOServer::SScriptFunc::Global_GetDirection( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
-{
-    return GetFarDir( from_hx, from_hy, to_hx, to_hy );
-}
-
-uchar FOServer::SScriptFunc::Global_GetOffsetDir( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset )
-{
-    return GetFarDir( from_hx, from_hy, to_hx, to_hy, offset );
-}
-
-void FOServer::SScriptFunc::Global_Log( ScriptString& text )
-{
-    Script::Log( text.c_str() );
-}
-
 ProtoItem* FOServer::SScriptFunc::Global_GetProtoItem( ushort pid )
 {
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
@@ -5411,22 +5391,6 @@ uint FOServer::SScriptFunc::Global_GetZoneLocationIds( ushort zx, ushort zy, uin
     if( locations )
         Script::AppendVectorToArray< uint >( loc_ids, locations );
     return (uint) loc_ids.size();
-}
-
-bool FOServer::SScriptFunc::Global_StrToInt( ScriptString* text, int& result )
-{
-    if( !text || !text->length() || !Str::IsNumber( text->c_str() ) )
-        return false;
-    result = Str::AtoI( text->c_str() );
-    return true;
-}
-
-bool FOServer::SScriptFunc::Global_StrToFloat( ScriptString* text, float& result )
-{
-    if( !text || !text->length() )
-        return false;
-    result = (float) strtod( text->c_str(), NULL );
-    return true;
 }
 
 bool FOServer::SScriptFunc::Global_RunDialogNpc( Critter* player, Critter* npc, bool ignore_distance )
@@ -6097,50 +6061,11 @@ void FOServer::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& ini_opt
     Critter::SlotEnabled[ index ] = true;
 }
 
-uint FOServer::SScriptFunc::Global_DecodeUTF8( ScriptString& text, uint& length )
-{
-    return Str::DecodeUTF8( text.c_str(), &length );
-}
-
-ScriptString* FOServer::SScriptFunc::Global_EncodeUTF8( uint ucs )
-{
-    char buf[ 5 ];
-    uint len = Str::EncodeUTF8( ucs, buf );
-    buf[ len ] = 0;
-    return ScriptString::Create( buf );
-}
-
 void FOServer::SScriptFunc::Global_SetRegistrationParam( uint index, bool enabled )
 {
     if( index >= MAX_PARAMS )
         SCRIPT_ERROR_R( "Invalid index arg." );
     Critter::ParamsRegEnabled[ index ] = enabled;
-}
-
-uint FOServer::SScriptFunc::Global_GetAngelScriptProperty( int property )
-{
-    asIScriptEngine* engine = Script::GetEngine();
-    if( !engine )
-        SCRIPT_ERROR_R0( "Can't get engine." );
-    return (uint) engine->GetEngineProperty( (asEEngineProp) property );
-}
-
-bool FOServer::SScriptFunc::Global_SetAngelScriptProperty( int property, uint value )
-{
-    asIScriptEngine* engine = Script::GetEngine();
-    if( !engine )
-        SCRIPT_ERROR_R0( "Can't get engine." );
-    int result = engine->SetEngineProperty( (asEEngineProp) property, value );
-    if( result < 0 )
-        SCRIPT_ERROR_R0( "Invalid data. Property not setted." );
-    return true;
-}
-
-uint FOServer::SScriptFunc::Global_GetStrHash( ScriptString* str )
-{
-    if( str )
-        return Str::GetHash( str->c_str() );
-    return 0;
 }
 
 bool FOServer::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )

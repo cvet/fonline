@@ -2,6 +2,7 @@
 #include "Client.h"
 #include "Access.h"
 #include "Defence.h"
+#include "ScriptFunctions.h"
 
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR                          \
@@ -10539,31 +10540,11 @@ ScriptString* FOClient::SScriptFunc::Global_GetLastError()
     return ScriptString::Create( ScriptLastError );
 }
 
-void FOClient::SScriptFunc::Global_Log( ScriptString& text )
-{
-    Script::Log( text.c_str() );
-}
-
 ProtoItem* FOClient::SScriptFunc::Global_GetProtoItem( ushort proto_id )
 {
     ProtoItem* proto_item = ItemMngr.GetProtoItem( proto_id );
     // if(!proto_item) SCRIPT_ERROR_R0("Proto item not found.");
     return proto_item;
-}
-
-uint FOClient::SScriptFunc::Global_GetDistantion( ushort hex_x1, ushort hex_y1, ushort hex_x2, ushort hex_y2 )
-{
-    return DistGame( hex_x1, hex_y1, hex_x2, hex_y2 );
-}
-
-uchar FOClient::SScriptFunc::Global_GetDirection( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
-{
-    return GetFarDir( from_hx, from_hy, to_hx, to_hy );
-}
-
-uchar FOClient::SScriptFunc::Global_GetOffsetDir( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset )
-{
-    return GetFarDir( from_hx, from_hy, to_hx, to_hy, offset );
 }
 
 uint FOClient::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
@@ -10602,22 +10583,6 @@ void FOClient::SScriptFunc::Global_GetGameTime( uint full_second, ushort& year, 
     hour = dt.Hour;
     minute = dt.Minute;
     second = dt.Second;
-}
-
-bool FOClient::SScriptFunc::Global_StrToInt( ScriptString* text, int& result )
-{
-    if( !text || !text->length() || !Str::IsNumber( text->c_str() ) )
-        return false;
-    result = Str::AtoI( text->c_str() );
-    return true;
-}
-
-bool FOClient::SScriptFunc::Global_StrToFloat( ScriptString* text, float& result )
-{
-    if( !text || !text->length() )
-        return false;
-    result = (float) strtod( text->c_str(), NULL );
-    return true;
 }
 
 void FOClient::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps )
@@ -10910,50 +10875,11 @@ void FOClient::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& ini_opt
     Self->SlotsExt.push_back( se );
 }
 
-uint FOClient::SScriptFunc::Global_DecodeUTF8( ScriptString& text, uint& length )
-{
-    return Str::DecodeUTF8( text.c_str(), &length );
-}
-
-ScriptString* FOClient::SScriptFunc::Global_EncodeUTF8( uint ucs )
-{
-    char buf[ 5 ];
-    uint len = Str::EncodeUTF8( ucs, buf );
-    buf[ len ] = 0;
-    return ScriptString::Create( buf );
-}
-
 void FOClient::SScriptFunc::Global_SetRegistrationParam( uint index, bool enabled )
 {
     if( index >= MAX_PARAMS )
         SCRIPT_ERROR_R( "Invalid index arg." );
     CritterCl::ParamsRegEnabled[ index ] = enabled;
-}
-
-uint FOClient::SScriptFunc::Global_GetAngelScriptProperty( int property )
-{
-    asIScriptEngine* engine = Script::GetEngine();
-    if( !engine )
-        SCRIPT_ERROR_R0( "Can't get engine." );
-    return (uint) engine->GetEngineProperty( (asEEngineProp) property );
-}
-
-bool FOClient::SScriptFunc::Global_SetAngelScriptProperty( int property, uint value )
-{
-    asIScriptEngine* engine = Script::GetEngine();
-    if( !engine )
-        SCRIPT_ERROR_R0( "Can't get engine." );
-    int result = engine->SetEngineProperty( (asEEngineProp) property, value );
-    if( result < 0 )
-        SCRIPT_ERROR_R0( "Invalid data. Property not setted." );
-    return true;
-}
-
-uint FOClient::SScriptFunc::Global_GetStrHash( ScriptString* str )
-{
-    if( str )
-        return Str::GetHash( str->c_str() );
-    return 0;
 }
 
 bool FOClient::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
