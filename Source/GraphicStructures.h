@@ -315,7 +315,6 @@ struct SpriteInfo
     bool          UsedForAnim3d;
     Animation3d*  Anim3d;
     uchar*        Data;
-    uint          DataSize;
     int           DataAtlasType;
     bool          DataAtlasOneImage;
     SpriteInfo() { memzero( this, sizeof( SpriteInfo ) ); }

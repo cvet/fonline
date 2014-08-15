@@ -889,6 +889,10 @@ void SpriteManager::AccumulateAtlasData()
 
 void SpriteManager::FlushAccumulatedAtlasData()
 {
+    accumulatorActive = false;
+    if( accumulatorSprInfo.empty() )
+        return;
+
     struct Sorter
     {
         static bool SortBySize( SpriteInfo* si1, SpriteInfo* si2 )
@@ -901,7 +905,6 @@ void SpriteManager::FlushAccumulatedAtlasData()
     for( auto it = accumulatorSprInfo.begin(), end = accumulatorSprInfo.end(); it != end; ++it )
         FillAtlas( *it );
     accumulatorSprInfo.clear();
-    accumulatorActive = false;
 }
 
 bool SpriteManager::IsAccumulateAtlasActive()
@@ -1106,7 +1109,6 @@ uint SpriteManager::RequestFillAtlas( SpriteInfo* si, uint w, uint h, uchar* dat
 
     // Get width, height
     si->Data = data;
-    si->DataSize = w * h * 4;
     si->DataAtlasType = atlasTypeStack.back();
     si->DataAtlasOneImage = atlasOneImageStack.back();
     si->Width = w;
@@ -1137,7 +1139,6 @@ void SpriteManager::FillAtlas( SpriteInfo* si )
     uint   h = si->Height;
 
     si->Data = NULL;
-    si->DataSize = 0;
 
     PushAtlasType( si->DataAtlasType, si->DataAtlasOneImage );
     int           x, y;

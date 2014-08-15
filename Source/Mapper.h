@@ -472,20 +472,20 @@ public:
         static ScriptString* MapperMap_get_ScriptFunc( ProtoMap& pmap );
         static void          MapperMap_set_ScriptFunc( ProtoMap& pmap, ScriptString* str );
 
-        static void          Global_ShowCritterParam( int param_index, bool show, ScriptString* param_name );
-        static void          Global_AllowSlot( uchar index, ScriptString& slot_name );
-        static ProtoMap*     Global_LoadMap( ScriptString& file_name, int path_type );
-        static void          Global_UnloadMap( ProtoMap* pmap );
-        static bool          Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type, bool keep_name = false );
-        static bool          Global_ShowMap( ProtoMap* pmap );
-        static int           Global_GetLoadedMaps( ScriptArray* maps );
-        static uint          Global_GetMapFileNames( ScriptString* dir, ScriptArray* names );
-        static void          Global_DeleteObject( MapObject* mobj );
-        static void          Global_DeleteObjects( ScriptArray& objects );
-        static void          Global_SelectObject( MapObject* mobj, bool set );
-        static void          Global_SelectObjects( ScriptArray& objects, bool set );
-        static MapObject*    Global_GetSelectedObject();
-        static uint          Global_GetSelectedObjects( ScriptArray* objects );
+        static void       Global_ShowCritterParam( int param_index, bool show, ScriptString* param_name );
+        static void       Global_AllowSlot( uchar index, ScriptString& slot_name );
+        static ProtoMap*  Global_LoadMap( ScriptString& file_name, int path_type );
+        static void       Global_UnloadMap( ProtoMap* pmap );
+        static bool       Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type, bool keep_name = false );
+        static bool       Global_ShowMap( ProtoMap* pmap );
+        static int        Global_GetLoadedMaps( ScriptArray* maps );
+        static uint       Global_GetMapFileNames( ScriptString* dir, ScriptArray* names );
+        static void       Global_DeleteObject( MapObject* mobj );
+        static void       Global_DeleteObjects( ScriptArray& objects );
+        static void       Global_SelectObject( MapObject* mobj, bool set );
+        static void       Global_SelectObjects( ScriptArray& objects, bool set );
+        static MapObject* Global_GetSelectedObject();
+        static uint       Global_GetSelectedObjects( ScriptArray* objects );
 
         static uint Global_TabGetTileDirs( int tab, ScriptArray* dir_names, ScriptArray* include_subdirs );
         static uint Global_TabGetItemPids( int tab, ScriptString* sub_tab, ScriptArray* item_pids );
