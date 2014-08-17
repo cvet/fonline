@@ -52,6 +52,7 @@ typedef std::vector< uchar >                 UCharVec;
 typedef std::vector< short >                 ShortVec;
 typedef std::vector< ushort >                UShortVec;
 typedef std::vector< uint >                  UIntVec;
+typedef std::vector< UIntVec >               UIntVecVec;
 typedef std::vector< char >                  CharVec;
 typedef std::vector< std::string >           StrVec;
 typedef std::vector< char* >                 PCharVec;

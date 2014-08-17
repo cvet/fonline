@@ -1946,6 +1946,31 @@ bool Animation3dEntity::Load( const char* name )
             numAnimationSets = animController->GetNumAnimationSets();
             if( numAnimationSets > 0 )
             {
+                // Add animation nodes, not included to base hierarchy
+                // All nodes linked with animation in SetupAnimationOutput
+                for( uint i = 0; i < numAnimationSets; i++ )
+                {
+                    AnimSet*    set = animController->GetAnimationSet( i );
+                    UIntVecVec& bones_hierarchy = set->GetBonesHierarchy();
+                    for( size_t j = 0; j < bones_hierarchy.size(); j++ )
+                    {
+                        UIntVec& bone_hierarchy = bones_hierarchy[ j ];
+                        Node*    node = xFile->rootNode;
+                        for( size_t b = 1; b < bone_hierarchy.size(); b++ )
+                        {
+                            Node* child = node->Find( bone_hierarchy[ b ] );
+                            if( !child )
+                            {
+                                child = new Node();
+                                child->NameHash = bone_hierarchy[ b ];
+                                child->Mesh = NULL;
+                                node->Children.push_back( child );
+                            }
+                            node = child;
+                        }
+                    }
+                }
+
                 animController->SetInterpolation( !disable_animation_interpolation );
                 xFile->SetupAnimationOutput( animController );
             }

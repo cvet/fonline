@@ -454,7 +454,16 @@ Node* GraphicLoader::LoadModel( const char* fname )
                         else
                             tt.back() = time;
                     }
-                    anim_set->AddBoneOutput( Node::GetHash( fbx_bones[ n ]->GetName() ), st, sv, rt, rv, tt, tv );
+
+                    UIntVec  hierarchy;
+                    FbxNode* fbx_bone = fbx_bones[ n ];
+                    while( fbx_bone != NULL )
+                    {
+                        hierarchy.insert( hierarchy.begin(), Node::GetHash( fbx_bone->GetName() ) );
+                        fbx_bone = fbx_bone->GetParent();
+                    }
+
+                    anim_set->AddBoneOutput( hierarchy, st, sv, rt, rv, tt, tv );
                 }
 
                 anim_set->SetData( fname, take_info->mName.Buffer(), (float) frames_count, frame_rate );
@@ -590,7 +599,15 @@ Node* GraphicLoader::LoadModel( const char* fname )
                     tv[ k ] = na->mPositionKeys[ k ].mValue;
                 }
 
-                anim_set->AddBoneOutput( Node::GetHash( na->mNodeName.data ), st, sv, rt, rv, tt, tv );
+                UIntVec hierarchy;
+                aiNode* node = scene->mRootNode->FindNode( na->mNodeName );
+                while( node != NULL )
+                {
+                    hierarchy.insert( hierarchy.begin(), Node::GetHash( node->mName.data ) );
+                    node = node->mParent;
+                }
+
+                anim_set->AddBoneOutput( hierarchy, st, sv, rt, rv, tt, tv );
             }
 
             anim_set->SetData( fname, anim->mName.data, (float) anim->mDuration, (float) anim->mTicksPerSecond );
@@ -797,8 +814,7 @@ Node* ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_bones )
     node->Mesh = NULL;
     node->Children.resize( fbx_node->GetChildCount() );
 
-    if( fbx_node->GetSkeleton() || ( fbx_node->GetMesh() && !fbx_node->GetMesh()->GetDeformer( 0, FbxDeformer::eSkin ) ) )
-        fbx_bones.push_back( fbx_node );
+    fbx_bones.push_back( fbx_node );
 
     for( int i = 0; i < fbx_node->GetChildCount(); i++ )
         node->Children[ i ] = ConvertFbxPass1( fbx_node->GetChild( i ), fbx_bones );
@@ -969,11 +985,20 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
         }
         else
         {
+            // 3DS Max specific - Geometric transform
+            Matrix ms, mr, mt;
+            FbxVector4 gt = fbx_node->GetGeometricTranslation( FbxNode::eSourcePivot );
+            FbxVector4 gr = fbx_node->GetGeometricRotation( FbxNode::eSourcePivot );
+            FbxVector4 gs = fbx_node->GetGeometricScaling( FbxNode::eSourcePivot );
+            Matrix::Translation( Vector( (float) gt[ 0 ], (float) gt[ 1 ], (float) gt[ 2 ] ), mt );
+            mr.FromEulerAnglesXYZ( Vector( (float) gr[ 0 ], (float) gr[ 1 ], (float) gr[ 2 ] ) );
+            Matrix::Scaling( Vector( (float) gs[ 0 ], (float) gs[ 1 ], (float) gs[ 2 ] ), ms );
+
             mesh->BoneNameHashes.resize( 1 );
             mesh->BoneOffsets.resize( 1 );
             mesh->BoneCombinedMatrices.resize( 1 );
             mesh->BoneNameHashes[ 0 ] = 0;
-            mesh->BoneOffsets[ 0 ] = Matrix();
+            mesh->BoneOffsets[ 0 ] = mt * mr * ms;
             mesh->BoneCombinedMatrices[ 0 ] = &node->CombinedTransformationMatrix;
             for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
             {

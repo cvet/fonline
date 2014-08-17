@@ -3,7 +3,7 @@
 
 // Versions
 #define FONLINE_VERSION                          ( 452 )
-#define MODELS_BINARY_VERSION                    ( 8 )
+#define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
 // #define DEV_VERSION

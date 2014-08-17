@@ -25,6 +25,7 @@ private:
     float         durationTicks;
     float         ticksPerSecond;
     BoneOutputVec boneOutputs;
+    UIntVecVec    bonesHierarchy;
 
 public:
     void SetData( const char* fname, const char* name, float ticks, float tps )
@@ -35,18 +36,19 @@ public:
         ticksPerSecond = tps;
     }
 
-    void AddBoneOutput( uint name_hash, const FloatVec& st, const VectorVec& sv,
+    void AddBoneOutput( UIntVec hierarchy, const FloatVec& st, const VectorVec& sv,
                         const FloatVec& rt, const QuaternionVec& rv, const FloatVec& tt, const VectorVec& tv  )
     {
         boneOutputs.push_back( BoneOutput() );
         BoneOutput& o = boneOutputs.back();
-        o.nameHash = name_hash;
+        o.nameHash = hierarchy.back();
         o.scaleTime = st;
         o.scaleValue = sv;
         o.rotationTime = rt;
         o.rotationValue = rv;
         o.translationTime = tt;
         o.translationValue = tv;
+        bonesHierarchy.push_back( hierarchy );
     }
 
     const char* GetFileName()
@@ -69,6 +71,11 @@ public:
         return durationTicks / ticksPerSecond;
     }
 
+    UIntVecVec& GetBonesHierarchy()
+    {
+        return bonesHierarchy;
+    }
+
     void Save( FileManager& file )
     {
         uint len = (uint) animFileName.length();
@@ -79,13 +86,21 @@ public:
         file.SetData( &animName[ 0 ], len );
         file.SetData( &durationTicks, sizeof( durationTicks ) );
         file.SetData( &ticksPerSecond, sizeof( ticksPerSecond ) );
+        len = (uint) bonesHierarchy.size();
+        file.SetData( &len, sizeof( len ) );
+        for( uint i = 0, j = (uint) bonesHierarchy.size(); i < j; i++ )
+        {
+            len = (uint) bonesHierarchy[ i ].size();
+            file.SetData( &len, sizeof( len ) );
+            file.SetData( &bonesHierarchy[ i ][ 0 ], len * sizeof( bonesHierarchy[ 0 ][ 0 ] ) );
+        }
         len = (uint) boneOutputs.size();
         file.SetData( &len, sizeof( len ) );
         for( auto it = boneOutputs.begin(), end = boneOutputs.end(); it != end; ++it )
         {
             BoneOutput& o = *it;
             file.SetData( &o.nameHash, sizeof( o.nameHash ) );
-            uint        len = (uint) o.scaleTime.size();
+            len = (uint) o.scaleTime.size();
             file.SetData( &len, sizeof( len ) );
             file.SetData( &o.scaleTime[ 0 ], len * sizeof( o.scaleTime[ 0 ] ) );
             file.SetData( &o.scaleValue[ 0 ], len * sizeof( o.scaleValue[ 0 ] ) );
@@ -111,6 +126,14 @@ public:
         file.CopyMem( &animName[ 0 ], len );
         file.CopyMem( &durationTicks, sizeof( durationTicks ) );
         file.CopyMem( &ticksPerSecond, sizeof( ticksPerSecond ) );
+        file.CopyMem( &len, sizeof( len ) );
+        bonesHierarchy.resize( len );
+        for( uint i = 0, j = len; i < j; i++ )
+        {
+            file.CopyMem( &len, sizeof( len ) );
+            bonesHierarchy[ i ].resize( len );
+            file.CopyMem( &bonesHierarchy[ i ][ 0 ], len * sizeof( bonesHierarchy[ 0 ][ 0 ] ) );
+        }
         file.CopyMem( &len, sizeof( len ) );
         boneOutputs.resize( len );
         for( uint i = 0, j = len; i < j; i++ )
