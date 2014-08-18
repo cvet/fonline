@@ -339,10 +339,10 @@ typedef vector< DipData > DipDataVec;
 // MeshData
 //
 
-struct Node;
+struct Bone;
 struct MeshData
 {
-    Node*          Owner;
+    Bone*          Owner;
     Vertex3DVec    Vertices;
     UShortVec      Indices;
     string         DiffuseTexture;
@@ -404,25 +404,25 @@ struct CombinedMesh
 typedef vector< CombinedMesh* > CombinedMeshVec;
 
 //
-// Node
+// Bone
 //
 
-struct Node;
-typedef vector< Node* > NodeVec;
-struct Node
+struct Bone;
+typedef vector< Bone* > BoneVec;
+struct Bone
 {
     uint        NameHash;
     Matrix      TransformationMatrix;
     MeshData*   Mesh;
-    NodeVec     Children;
+    BoneVec     Children;
 
     // Runtime data
     Matrix      CombinedTransformationMatrix;
 
-    Node*       Find( uint name_hash );
+    Bone*       Find( uint name_hash );
     void        Save( FileManager& file );
     void        Load( FileManager& file );
-    void        FixAfterLoad( Node* root_node );
+    void        FixAfterLoad( Bone* root_bone );
     static uint GetHash( const char* name );
 };
 

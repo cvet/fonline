@@ -53,7 +53,7 @@ Animation3dVec Animation3d::loadedAnimations;
 
 Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ), combinedMeshesSize( 0 ), disableCulling( false ),
                             currentTrack( 0 ), lastDrawTick( 0 ), endTick( 0 ), speedAdjustBase( 1.0f ), speedAdjustCur( 1.0f ), speedAdjustLink( 1.0f ),
-                            shadowDisabled( false ), dirAngle( GameOpt.MapHexagonal ? 150.0f : 135.0f ), parentAnimation( NULL ), parentNode( NULL ),
+                            shadowDisabled( false ), dirAngle( GameOpt.MapHexagonal ? 150.0f : 135.0f ), parentAnimation( NULL ), parentBone( NULL ),
                             childChecker( true ), useGameTimer( true ), animPosProc( 0.0f ), animPosTime( 0.0f ), animPosPeriod( 0.0f ),
                             allowMeshGeneration( false ), SprId( 0 ), SprAtlasType( 0 )
 {
@@ -155,7 +155,7 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
         SetAnimData( animEntity->animDataDefault, true );
 
         // Append linked data
-        if( parentNode )
+        if( parentBone )
             SetAnimData( animLink, false );
 
         // Mark animations as unused
@@ -189,7 +189,7 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
             }
         }
 
-        if( parentNode )
+        if( parentBone )
         {
             for( uint j = 0; j < animLink.DisabledLayersCount; j++ )
             {
@@ -237,18 +237,18 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                     {
                         Animation3d* anim3d = NULL;
 
-                        // Link to main node
+                        // Link to main bone
                         if( link.LinkBoneHash )
                         {
-                            Node* to_node = animEntity->xFile->rootNode->Find( link.LinkBoneHash );
-                            if( to_node )
+                            Bone* to_bone = animEntity->xFile->rootBone->Find( link.LinkBoneHash );
+                            if( to_bone )
                             {
                                 anim3d = Animation3d::GetAnimation( link.ChildFName, true );
                                 if( anim3d )
                                 {
                                     mesh_changed = true;
                                     anim3d->parentAnimation = this;
-                                    anim3d->parentNode = to_node;
+                                    anim3d->parentBone = to_bone;
                                     anim3d->animLink = link;
                                     anim3d->SetAnimData( link, false );
                                     childAnimations.push_back( anim3d );
@@ -261,20 +261,20 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                             anim3d = Animation3d::GetAnimation( link.ChildFName, true );
                             if( anim3d )
                             {
-                                for( auto it = anim3d->animEntity->xFile->allNodes.begin(), end = anim3d->animEntity->xFile->allNodes.end(); it != end; ++it )
+                                for( auto it = anim3d->animEntity->xFile->allBones.begin(), end = anim3d->animEntity->xFile->allBones.end(); it != end; ++it )
                                 {
-                                    Node* child_node = *it;
-                                    Node* root_node = animEntity->xFile->rootNode->Find( child_node->NameHash );
-                                    if( root_node )
+                                    Bone* child_bone = *it;
+                                    Bone* root_bone = animEntity->xFile->rootBone->Find( child_bone->NameHash );
+                                    if( root_bone )
                                     {
-                                        anim3d->linkNodes.push_back( root_node );
-                                        anim3d->linkNodes.push_back( child_node );
+                                        anim3d->linkBones.push_back( root_bone );
+                                        anim3d->linkBones.push_back( child_bone );
                                     }
                                 }
 
                                 mesh_changed = true;
                                 anim3d->parentAnimation = this;
-                                anim3d->parentNode = animEntity->xFile->rootNode;
+                                anim3d->parentBone = animEntity->xFile->rootBone;
                                 anim3d->animLink = link;
                                 anim3d->SetAnimData( link, false );
                                 childAnimations.push_back( anim3d );
@@ -394,7 +394,7 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
     }
 
     // Regenerate mesh for drawing
-    if( !parentNode && mesh_changed )
+    if( !parentBone && mesh_changed )
         GenerateCombinedMeshes();
 
     return mesh_changed;
@@ -471,7 +471,7 @@ uint Animation3d::GetTick()
 
 bool Animation3d::IsCut()
 {
-    return parentNode && !animLink.CutLayers.empty();
+    return parentBone && !animLink.CutLayers.empty();
 }
 
 void Animation3d::SetAnimData( AnimParams& data, bool clear )
@@ -536,7 +536,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
                     const char* mesh_name = data.TextureName[ i ] + 6;
                     if( *mesh_name && *mesh_name == '_' )
                         mesh_name++;
-                    uint mesh_name_hash = ( *mesh_name ? Node::GetHash( mesh_name ) : 0 );
+                    uint mesh_name_hash = ( *mesh_name ? Bone::GetHash( mesh_name ) : 0 );
                     for( auto it = parentAnimation->allMeshes.begin(), end = parentAnimation->allMeshes.end(); it != end && !texture; ++it )
                         if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
                             texture = ( *it ).CurTexures[ data.TextureNum[ i ] ];
@@ -581,7 +581,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
                     const char* mesh_name = data.EffectInst[ i ].EffectFilename + 6;
                     if( *mesh_name && *mesh_name == '_' )
                         mesh_name++;
-                    uint mesh_name_hash = ( *mesh_name ? Node::GetHash( mesh_name ) : 0 );
+                    uint mesh_name_hash = ( *mesh_name ? Bone::GetHash( mesh_name ) : 0 );
                     for( auto it = parentAnimation->allMeshes.begin(), end = parentAnimation->allMeshes.end(); it != end && !effect; ++it )
                         if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
                             effect = ( *it ).CurEffect;
@@ -668,7 +668,7 @@ void Animation3d::FillCombinedMeshes( Animation3d* base, Animation3d* cur )
     if( !cur->IsCut() )
     {
         for( size_t i = 0, j = cur->allMeshes.size(); i < j; i++ )
-            base->CombineMesh( cur->allMeshes[ i ], cur->parentNode ? cur->animLink.Layer : 0 );
+            base->CombineMesh( cur->allMeshes[ i ], cur->parentBone ? cur->animLink.Layer : 0 );
     }
 
     // Fill child
@@ -922,7 +922,7 @@ void Animation3d::Draw( int x, int y )
 void Animation3d::ProcessAnimation( float elapsed, int x, int y, float scale )
 {
     // Update world matrix, only for root
-    if( !parentNode )
+    if( !parentBone )
     {
         Vector pos = Convert2dTo3d( x, y );
         Matrix mat_rot_y, mat_scale, mat_trans;
@@ -954,15 +954,15 @@ void Animation3d::ProcessAnimation( float elapsed, int x, int y, float scale )
     }
 
     // Update matrices
-    UpdateNodeMatrices( animEntity->xFile->rootNode, &parentMatrix );
+    UpdateBoneMatrices( animEntity->xFile->rootBone, &parentMatrix );
 
     // Update linked matrices
-    if( parentNode && linkNodes.size() )
+    if( parentBone && linkBones.size() )
     {
-        for( uint i = 0, j = (uint) linkNodes.size() / 2; i < j; i++ )
-            // UpdateNodeMatrices(linkNodes[i*2+1],&linkMatricles[i]);
-            // linkNodes[i*2+1]->exCombinedTransformationMatrix=linkMatricles[i];
-            linkNodes[ i * 2 + 1 ]->CombinedTransformationMatrix = linkNodes[ i * 2 ]->CombinedTransformationMatrix;
+        for( uint i = 0, j = (uint) linkBones.size() / 2; i < j; i++ )
+            // UpdateBoneMatrices(linkBones[i*2+1],&linkMatricles[i]);
+            // linkBones[i*2+1]->exCombinedTransformationMatrix=linkMatricles[i];
+            linkBones[ i * 2 + 1 ]->CombinedTransformationMatrix = linkBones[ i * 2 ]->CombinedTransformationMatrix;
     }
 
     // Update world matrices for children
@@ -970,7 +970,7 @@ void Animation3d::ProcessAnimation( float elapsed, int x, int y, float scale )
     {
         Animation3d* child = *it;
         child->groundPos = groundPos;
-        child->parentMatrix = child->parentNode->CombinedTransformationMatrix * child->matTransBase * child->matRotBase * child->matScaleBase;
+        child->parentMatrix = child->parentBone->CombinedTransformationMatrix * child->matTransBase * child->matRotBase * child->matScaleBase;
     }
 
     // Move child animations
@@ -978,14 +978,14 @@ void Animation3d::ProcessAnimation( float elapsed, int x, int y, float scale )
         ( *it )->ProcessAnimation( elapsed, x, y, 1.0f );
 }
 
-void Animation3d::UpdateNodeMatrices( Node* node, const Matrix* parent_matrix )
+void Animation3d::UpdateBoneMatrices( Bone* bone, const Matrix* parent_matrix )
 {
-    // If parent matrix exists multiply our node matrix by it
-    node->CombinedTransformationMatrix = ( *parent_matrix ) * node->TransformationMatrix;
+    // If parent matrix exists multiply our bone matrix by it
+    bone->CombinedTransformationMatrix = ( *parent_matrix ) * bone->TransformationMatrix;
 
     // Update child
-    for( auto it = node->Children.begin(), end = node->Children.end(); it != end; ++it )
-        UpdateNodeMatrices( *it, &node->CombinedTransformationMatrix );
+    for( auto it = bone->Children.begin(), end = bone->Children.end(); it != end; ++it )
+        UpdateBoneMatrices( *it, &bone->CombinedTransformationMatrix );
 }
 
 void Animation3d::DrawCombinedMeshes()
@@ -1156,12 +1156,12 @@ Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
         return NULL;
 
     // Create mesh instances
-    anim3d->allMeshes.resize( entity->xFile->allDrawNodes.size() );
+    anim3d->allMeshes.resize( entity->xFile->allDrawBones.size() );
     anim3d->allMeshesDisabled.resize( anim3d->allMeshes.size() );
-    for( size_t i = 0, j = entity->xFile->allDrawNodes.size(); i < j; i++ )
+    for( size_t i = 0, j = entity->xFile->allDrawBones.size(); i < j; i++ )
     {
         MeshInstance& mesh_instance = anim3d->allMeshes[ i ];
-        MeshData*     mesh = entity->xFile->allDrawNodes[ i ]->Mesh;
+        MeshData*     mesh = entity->xFile->allDrawBones[ i ]->Mesh;
         memzero( &mesh_instance, sizeof( mesh_instance ) );
         mesh_instance.Mesh = mesh;
         const char* tex_name = ( mesh->DiffuseTexture.length() ? mesh->DiffuseTexture.c_str() : NULL );
@@ -1414,7 +1414,7 @@ bool Animation3dEntity::Load( const char* name )
             {
                 ( *istr ) >> buf;
                 if( !Str::CompareCase( buf, "All" ) )
-                    mesh = Node::GetHash( buf );
+                    mesh = Bone::GetHash( buf );
                 else
                     mesh = 0;
             }
@@ -1457,7 +1457,7 @@ bool Animation3dEntity::Load( const char* name )
             {
                 ( *istr ) >> buf;
                 if( link->Id )
-                    link->LinkBoneHash = Node::GetHash( buf );
+                    link->LinkBoneHash = Bone::GetHash( buf );
             }
             else if( Str::CompareCase( token, "Cut" ) )
             {
@@ -1649,7 +1649,7 @@ bool Animation3dEntity::Load( const char* name )
                 {
                     uint mesh_name_hash = 0;
                     if( !Str::CompareCase( meshes[ m ].c_str(), "All" ) )
-                        mesh_name_hash = Node::GetHash( meshes[ m ].c_str() );
+                        mesh_name_hash = Bone::GetHash( meshes[ m ].c_str() );
                     uint* tmp = link->DisabledMesh;
                     link->DisabledMesh = new uint[ link->DisabledMeshCount + 1 ];
                     for( uint h = 0; h < link->DisabledMeshCount; h++ )
@@ -1946,8 +1946,8 @@ bool Animation3dEntity::Load( const char* name )
             numAnimationSets = animController->GetNumAnimationSets();
             if( numAnimationSets > 0 )
             {
-                // Add animation nodes, not included to base hierarchy
-                // All nodes linked with animation in SetupAnimationOutput
+                // Add animation bones, not included to base hierarchy
+                // All bones linked with animation in SetupAnimationOutput
                 for( uint i = 0; i < numAnimationSets; i++ )
                 {
                     AnimSet*    set = animController->GetAnimationSet( i );
@@ -1955,18 +1955,18 @@ bool Animation3dEntity::Load( const char* name )
                     for( size_t j = 0; j < bones_hierarchy.size(); j++ )
                     {
                         UIntVec& bone_hierarchy = bones_hierarchy[ j ];
-                        Node*    node = xFile->rootNode;
+                        Bone*    bone = xFile->rootBone;
                         for( size_t b = 1; b < bone_hierarchy.size(); b++ )
                         {
-                            Node* child = node->Find( bone_hierarchy[ b ] );
+                            Bone* child = bone->Find( bone_hierarchy[ b ] );
                             if( !child )
                             {
-                                child = new Node();
+                                child = new Bone();
                                 child->NameHash = bone_hierarchy[ b ];
                                 child->Mesh = NULL;
-                                node->Children.push_back( child );
+                                bone->Children.push_back( child );
                             }
-                            node = child;
+                            bone = child;
                         }
                     }
                 }
@@ -2136,13 +2136,13 @@ Animation3dEntity* Animation3dEntity::GetEntity( const char* name )
 
 Animation3dXFileVec Animation3dXFile::xFiles;
 
-Animation3dXFile::Animation3dXFile(): rootNode( NULL )
+Animation3dXFile::Animation3dXFile(): rootBone( NULL )
 {}
 
 Animation3dXFile::~Animation3dXFile()
 {
-    GraphicLoader::DestroyModel( rootNode );
-    rootNode = NULL;
+    GraphicLoader::DestroyModel( rootBone );
+    rootBone = NULL;
 }
 
 Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
@@ -2162,8 +2162,8 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
     if( !xfile )
     {
         // Load
-        Node* root_node = GraphicLoader::LoadModel( xname );
-        if( !root_node )
+        Bone* root_bone = GraphicLoader::LoadModel( xname );
+        if( !root_bone )
         {
             WriteLogF( _FUNC_, " - Unable to load 3d file<%s>.\n", xname );
             return NULL;
@@ -2177,8 +2177,8 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
         }
 
         xfile->fileName = xname;
-        xfile->rootNode = root_node;
-        xfile->SetupNodes();
+        xfile->rootBone = root_bone;
+        xfile->SetupBones();
 
         xFiles.push_back( xfile );
     }
@@ -2186,38 +2186,38 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
     return xfile;
 }
 
-void SetupNodesExt( multimap< uint, Node*, less< uint > >& nodes, Node* node, uint depth )
+void SetupBonesExt( multimap< uint, Bone*, less< uint > >& bones, Bone* bone, uint depth )
 {
-    nodes.insert( PAIR( depth, node ) );
-    for( size_t i = 0, j = node->Children.size(); i < j; i++ )
-        SetupNodesExt( nodes, node->Children[ i ], depth + 1 );
+    bones.insert( PAIR( depth, bone ) );
+    for( size_t i = 0, j = bone->Children.size(); i < j; i++ )
+        SetupBonesExt( bones, bone->Children[ i ], depth + 1 );
 }
 
-void Animation3dXFile::SetupNodes()
+void Animation3dXFile::SetupBones()
 {
-    multimap< uint, Node*, less< uint > > nodes;
-    SetupNodesExt( nodes, rootNode, 0 );
+    multimap< uint, Bone*, less< uint > > bones;
+    SetupBonesExt( bones, rootBone, 0 );
 
-    for( auto it = nodes.begin(), end = nodes.end(); it != end; ++it )
+    for( auto it = bones.begin(), end = bones.end(); it != end; ++it )
     {
-        Node* node = ( *it ).second;
-        allNodes.push_back( node );
-        if( node->Mesh )
-            allDrawNodes.push_back( node );
+        Bone* bone = ( *it ).second;
+        allBones.push_back( bone );
+        if( bone->Mesh )
+            allDrawBones.push_back( bone );
     }
 }
 
-void SetupAnimationOutputExt( AnimController* anim_controller, Node* node )
+void SetupAnimationOutputExt( AnimController* anim_controller, Bone* bone )
 {
-    anim_controller->RegisterAnimationOutput( node->NameHash, node->TransformationMatrix );
+    anim_controller->RegisterAnimationOutput( bone->NameHash, bone->TransformationMatrix );
 
-    for( auto it = node->Children.begin(), end = node->Children.end(); it != end; ++it )
+    for( auto it = bone->Children.begin(), end = bone->Children.end(); it != end; ++it )
         SetupAnimationOutputExt( anim_controller, *it );
 }
 
 void Animation3dXFile::SetupAnimationOutput( AnimController* anim_controller )
 {
-    SetupAnimationOutputExt( anim_controller, rootNode );
+    SetupAnimationOutputExt( anim_controller, rootBone );
 }
 
 MeshTexture* Animation3dXFile::GetTexture( const char* tex_name )

@@ -30,8 +30,8 @@ unsigned int   ( * Ptr_aiGetMaterialTextureCount )( const aiMaterial* pMat, aiTe
 aiReturn       ( * Ptr_aiGetMaterialTexture )( const aiMaterial* mat, aiTextureType type, unsigned int  index, aiString* path, aiTextureMapping* mapping, unsigned int* uvindex, float* blend, aiTextureOp* op, aiTextureMapMode* mapmode, unsigned int* flags );
 aiReturn       ( * Ptr_aiGetMaterialFloatArray )( const aiMaterial* pMat, const char* pKey, unsigned int type, unsigned int index, float* pOut, unsigned int* pMax );
 
-static Node* ConvertAssimpPass1( aiScene* ai_scene, aiNode* ai_node );
-static void  ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene* ai_scene, aiNode* ai_node );
+static Bone* ConvertAssimpPass1( aiScene* ai_scene, aiNode* ai_node );
+static void  ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene* ai_scene, aiNode* ai_node );
 
 // FBX stuff
 class FbxStreamImpl: public FbxStream
@@ -139,8 +139,8 @@ public:
     {}
 };
 
-Node*  ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_bones );
-void   ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node );
+Bone*  ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_all_nodes );
+void   ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node );
 Matrix ConvertFbxMatrix( const FbxAMatrix& m );
 
 void FixTexCoord( float& x, float& y )
@@ -160,15 +160,15 @@ void FixTexCoord( float& x, float& y )
 /************************************************************************/
 
 StrVec  GraphicLoader::processedFiles;
-NodeVec GraphicLoader::loadedModels;
+BoneVec GraphicLoader::loadedModels;
 StrVec  GraphicLoader::loadedModelNames;
 PtrVec  GraphicLoader::loadedAnimations;
 
-void GraphicLoader::DestroyModel( Node* node )
+void GraphicLoader::DestroyModel( Bone* root_bone )
 {
     for( size_t i = 0, j = loadedModels.size(); i < j; i++ )
     {
-        if( loadedModels[ i ] == node )
+        if( loadedModels[ i ] == root_bone )
         {
             processedFiles.erase( std::find( processedFiles.begin(), processedFiles.end(), loadedModelNames[ i ] ) );
             loadedModels.erase( loadedModels.begin() + i );
@@ -176,10 +176,10 @@ void GraphicLoader::DestroyModel( Node* node )
             break;
         }
     }
-    delete node;
+    delete root_bone;
 }
 
-Node* GraphicLoader::LoadModel( const char* fname )
+Bone* GraphicLoader::LoadModel( const char* fname )
 {
     // Find already loaded
     for( size_t i = 0, j = loadedModelNames.size(); i < j; i++ )
@@ -221,10 +221,10 @@ Node* GraphicLoader::LoadModel( const char* fname )
     }
     if( file_binary.IsLoaded() )
     {
-        // Load nodes
-        Node* root_node = new Node();
-        root_node->Load( file_binary );
-        root_node->FixAfterLoad( root_node );
+        // Load bones
+        Bone* root_bone = new Bone();
+        root_bone->Load( file_binary );
+        root_bone->FixAfterLoad( root_bone );
 
         // Load animations
         uint anim_sets_count = file_binary.GetBEUInt();
@@ -235,9 +235,9 @@ Node* GraphicLoader::LoadModel( const char* fname )
             loadedAnimations.push_back( anim_set );
         }
 
-        loadedModels.push_back( root_node );
+        loadedModels.push_back( root_bone );
         loadedModelNames.push_back( fname );
-        return root_node;
+        return root_bone;
     }
 
     #if defined ( FO_OSX_IOS ) || defined ( FO_ANDROID )
@@ -251,8 +251,8 @@ Node* GraphicLoader::LoadModel( const char* fname )
         return NULL;
     }
 
-    // Result node
-    Node* root_node = NULL;
+    // Result bone
+    Bone* root_bone = NULL;
     uint  loaded_anim_sets = 0;
 
     // Check extension
@@ -382,10 +382,10 @@ Node* GraphicLoader::LoadModel( const char* fname )
         }
 
         // Load hierarchy
-        vector< FbxNode* > fbx_bones;
-        root_node = ConvertFbxPass1( fbx_scene->GetRootNode(), fbx_bones );
-        ConvertFbxPass2( root_node, root_node, fbx_scene->GetRootNode() );
-        loadedModels.push_back( root_node );
+        vector< FbxNode* > fbx_all_nodes;
+        root_bone = ConvertFbxPass1( fbx_scene->GetRootNode(), fbx_all_nodes );
+        ConvertFbxPass2( root_bone, root_bone, fbx_scene->GetRootNode() );
+        loadedModels.push_back( root_bone );
         loadedModelNames.push_back( fname );
 
         // Extract animations
@@ -417,7 +417,7 @@ Node* GraphicLoader::LoadModel( const char* fname )
                 tv.reserve( frames_count );
 
                 AnimSet* anim_set = new AnimSet();
-                for( uint n = 0; n < (uint) fbx_bones.size(); n++ )
+                for( uint n = 0; n < (uint) fbx_all_nodes.size(); n++ )
                 {
                     st.clear();
                     sv.clear();
@@ -432,7 +432,7 @@ Node* GraphicLoader::LoadModel( const char* fname )
                         float time = (float) f;
                         cur_time.SetFrame( frame_offset + f );
 
-                        const FbxAMatrix&    fbx_m = fbx_anim_evaluator->GetNodeLocalTransform( fbx_bones[ n ], cur_time );
+                        const FbxAMatrix&    fbx_m = fbx_anim_evaluator->GetNodeLocalTransform( fbx_all_nodes[ n ], cur_time );
                         const FbxVector4&    fbx_s = fbx_m.GetS();
                         const FbxQuaternion& fbx_q = fbx_m.GetQ();
                         const FbxVector4&    fbx_t = fbx_m.GetT();
@@ -456,11 +456,11 @@ Node* GraphicLoader::LoadModel( const char* fname )
                     }
 
                     UIntVec  hierarchy;
-                    FbxNode* fbx_bone = fbx_bones[ n ];
-                    while( fbx_bone != NULL )
+                    FbxNode* fbx_node = fbx_all_nodes[ n ];
+                    while( fbx_node != NULL )
                     {
-                        hierarchy.insert( hierarchy.begin(), Node::GetHash( fbx_bone->GetName() ) );
-                        fbx_bone = fbx_bone->GetParent();
+                        hierarchy.insert( hierarchy.begin(), Bone::GetHash( fbx_node->GetName() ) );
+                        fbx_node = fbx_node->GetParent();
                     }
 
                     anim_set->AddBoneOutput( hierarchy, st, sv, rt, rv, tt, tv );
@@ -555,10 +555,10 @@ Node* GraphicLoader::LoadModel( const char* fname )
             return NULL;
         }
 
-        // Extract nodes
-        root_node = ConvertAssimpPass1( scene, scene->mRootNode );
-        ConvertAssimpPass2( root_node, NULL, root_node, scene, scene->mRootNode );
-        loadedModels.push_back( root_node );
+        // Extract bones
+        root_bone = ConvertAssimpPass1( scene, scene->mRootNode );
+        ConvertAssimpPass2( root_bone, NULL, root_bone, scene, scene->mRootNode );
+        loadedModels.push_back( root_bone );
         loadedModelNames.push_back( fname );
 
         // Extract animations
@@ -600,11 +600,11 @@ Node* GraphicLoader::LoadModel( const char* fname )
                 }
 
                 UIntVec hierarchy;
-                aiNode* node = scene->mRootNode->FindNode( na->mNodeName );
-                while( node != NULL )
+                aiNode* ai_node = scene->mRootNode->FindNode( na->mNodeName );
+                while( ai_node != NULL )
                 {
-                    hierarchy.insert( hierarchy.begin(), Node::GetHash( node->mName.data ) );
-                    node = node->mParent;
+                    hierarchy.insert( hierarchy.begin(), Bone::GetHash( ai_node->mName.data ) );
+                    ai_node = ai_node->mParent;
                 }
 
                 anim_set->AddBoneOutput( hierarchy, st, sv, rt, rv, tt, tv );
@@ -621,7 +621,7 @@ Node* GraphicLoader::LoadModel( const char* fname )
     // Save to cache
     file_binary.SwitchToWrite();
     file_binary.SetBEUInt( MODELS_BINARY_VERSION );
-    root_node->Save( file_binary );
+    root_bone->Save( file_binary );
     file_binary.SetBEUInt( loaded_anim_sets );
     for( uint i = 0; i < loaded_anim_sets; i++ )
         ( (AnimSet*) loadedAnimations[ loadedAnimations.size() - i - 1 ] )->Save( file_binary );
@@ -629,56 +629,56 @@ Node* GraphicLoader::LoadModel( const char* fname )
     Str::Replacement( fname_binary, '\\', '_' );
     file_binary.SaveOutBufToFile( fname_binary, PT_CACHE );
 
-    return root_node;
+    return root_bone;
 }
 
-Node* ConvertAssimpPass1( aiScene* ai_scene, aiNode* ai_node )
+Bone* ConvertAssimpPass1( aiScene* ai_scene, aiNode* ai_node )
 {
-    Node* node = new Node();
-    node->NameHash = Node::GetHash( ai_node->mName.data );
-    node->TransformationMatrix = ai_node->mTransformation;
-    node->CombinedTransformationMatrix = Matrix();
-    node->Mesh = NULL;
-    node->Children.resize( ai_node->mNumChildren );
+    Bone* bone = new Bone();
+    bone->NameHash = Bone::GetHash( ai_node->mName.data );
+    bone->TransformationMatrix = ai_node->mTransformation;
+    bone->CombinedTransformationMatrix = Matrix();
+    bone->Mesh = NULL;
+    bone->Children.resize( ai_node->mNumChildren );
 
     for( uint i = 0; i < ai_node->mNumChildren; i++ )
-        node->Children[ i ] = ConvertAssimpPass1( ai_scene, ai_node->mChildren[ i ] );
-    return node;
+        bone->Children[ i ] = ConvertAssimpPass1( ai_scene, ai_node->mChildren[ i ] );
+    return bone;
 }
 
-void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene* ai_scene, aiNode* ai_node )
+void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene* ai_scene, aiNode* ai_node )
 {
     for( uint m = 0; m < ai_node->mNumMeshes; m++ )
     {
         aiMesh*   ai_mesh = ai_scene->mMeshes[ ai_node->mMeshes[ m ] ];
 
         // Mesh
-        Node* mesh_node;
+        Bone* mesh_bone;
         if( m == 0 )
         {
-            mesh_node = node;
+            mesh_bone = bone;
         }
         else
         {
-            mesh_node = new Node();
+            mesh_bone = new Bone();
             char name[ MAX_FOPATH ];
             Str::Format( name, "%s_%d", ai_node->mName.data, m + 1 );
-            mesh_node->NameHash = Node::GetHash( name );
-            mesh_node->CombinedTransformationMatrix = Matrix();
-            if( parent_node )
+            mesh_bone->NameHash = Bone::GetHash( name );
+            mesh_bone->CombinedTransformationMatrix = Matrix();
+            if( parent_bone )
             {
-                parent_node->Children.push_back( mesh_node );
-                mesh_node->TransformationMatrix = node->TransformationMatrix;
+                parent_bone->Children.push_back( mesh_bone );
+                mesh_bone->TransformationMatrix = bone->TransformationMatrix;
             }
             else
             {
-                node->Children.push_back( mesh_node );
-                mesh_node->TransformationMatrix = Matrix();
+                bone->Children.push_back( mesh_bone );
+                mesh_bone->TransformationMatrix = Matrix();
             }
         }
 
-        MeshData* mesh = mesh_node->Mesh = new MeshData();
-        mesh->Owner = mesh_node;
+        MeshData* mesh = mesh_bone->Mesh = new MeshData();
+        mesh->Owner = mesh_bone;
 
         // Vertices
         mesh->Vertices.resize( ai_mesh->mNumVertices );
@@ -742,10 +742,10 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
                 aiBone* bone = ai_mesh->mBones[ i ];
 
                 // Matrices
-                Node* bone_node = root_node->Find( Node::GetHash( bone->mName.data ) );
-                mesh->BoneNameHashes[ i ] = bone_node->NameHash;
+                Bone* skin_bone = root_bone->Find( Bone::GetHash( bone->mName.data ) );
+                mesh->BoneNameHashes[ i ] = skin_bone->NameHash;
                 mesh->BoneOffsets[ i ] = bone->mOffsetMatrix;
-                mesh->BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
+                mesh->BoneCombinedMatrices[ i ] = &skin_bone->CombinedTransformationMatrix;
 
                 // Blend data
                 float bone_index = (float) i;
@@ -774,7 +774,7 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
             mesh->BoneCombinedMatrices.resize( 1 );
             mesh->BoneNameHashes[ 0 ] = 0;
             mesh->BoneOffsets[ 0 ] = Matrix();
-            mesh->BoneCombinedMatrices[ 0 ] = &mesh_node->CombinedTransformationMatrix;
+            mesh->BoneCombinedMatrices[ 0 ] = &mesh_bone->CombinedTransformationMatrix;
             for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
             {
                 Vertex3D& v = mesh->Vertices[ i ];
@@ -802,23 +802,23 @@ void ConvertAssimpPass2( Node* root_node, Node* parent_node, Node* node, aiScene
     }
 
     for( uint i = 0; i < ai_node->mNumChildren; i++ )
-        ConvertAssimpPass2( root_node, node, node->Children[ i ], ai_scene, ai_node->mChildren[ i ] );
+        ConvertAssimpPass2( root_bone, bone, bone->Children[ i ], ai_scene, ai_node->mChildren[ i ] );
 }
 
-Node* ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_bones )
+Bone* ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_all_nodes )
 {
-    Node* node = new Node();
-    node->NameHash = Node::GetHash( fbx_node->GetName() );
-    node->TransformationMatrix = ConvertFbxMatrix( fbx_node->EvaluateLocalTransform() );
-    node->CombinedTransformationMatrix = Matrix();
-    node->Mesh = NULL;
-    node->Children.resize( fbx_node->GetChildCount() );
+    fbx_all_nodes.push_back( fbx_node );
 
-    fbx_bones.push_back( fbx_node );
+    Bone* bone = new Bone();
+    bone->NameHash = Bone::GetHash( fbx_node->GetName() );
+    bone->TransformationMatrix = ConvertFbxMatrix( fbx_node->EvaluateLocalTransform() );
+    bone->CombinedTransformationMatrix = Matrix();
+    bone->Mesh = NULL;
+    bone->Children.resize( fbx_node->GetChildCount() );
 
     for( int i = 0; i < fbx_node->GetChildCount(); i++ )
-        node->Children[ i ] = ConvertFbxPass1( fbx_node->GetChild( i ), fbx_bones );
-    return node;
+        bone->Children[ i ] = ConvertFbxPass1( fbx_node->GetChild( i ), fbx_all_nodes );
+    return bone;
 }
 
 template< class T, class T2 >
@@ -843,14 +843,14 @@ T2 FbxGetElement( T* elements, int index, int* vertices )
     return elements->GetDirectArray().GetAt( 0 );
 }
 
-void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
+void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
 {
     FbxMesh* fbx_mesh = fbx_node->GetMesh();
     if( fbx_mesh && fbx_node->Show && fbx_mesh->GetPolygonVertexCount() == fbx_mesh->GetPolygonCount() * 3 && fbx_mesh->GetPolygonCount() > 0 )
     {
-        node->Mesh = new MeshData();
-        node->Mesh->Owner = node;
-        MeshData* mesh = node->Mesh;
+        bone->Mesh = new MeshData();
+        bone->Mesh->Owner = bone;
+        MeshData* mesh = bone->Mesh;
 
         // Generate tangents
         fbx_mesh->GenerateTangentsDataForAllUVSets();
@@ -948,10 +948,10 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
                 fbx_cluster->GetTransformLinkMatrix( link_matrix );
                 FbxAMatrix cur_matrix;
                 fbx_cluster->GetTransformMatrix( cur_matrix );
-                Node* bone_node = root_node->Find( Node::GetHash( fbx_cluster->GetLink()->GetName() ) );
-                mesh->BoneNameHashes[ i ] = bone_node->NameHash;
+                Bone* skin_bone = root_bone->Find( Bone::GetHash( fbx_cluster->GetLink()->GetName() ) );
+                mesh->BoneNameHashes[ i ] = skin_bone->NameHash;
                 mesh->BoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix );
-                mesh->BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
+                mesh->BoneCombinedMatrices[ i ] = &skin_bone->CombinedTransformationMatrix;
 
                 // Blend data
                 float   bone_index = (float) i;
@@ -999,7 +999,7 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
             mesh->BoneCombinedMatrices.resize( 1 );
             mesh->BoneNameHashes[ 0 ] = 0;
             mesh->BoneOffsets[ 0 ] = mt * mr * ms;
-            mesh->BoneCombinedMatrices[ 0 ] = &node->CombinedTransformationMatrix;
+            mesh->BoneCombinedMatrices[ 0 ] = &bone->CombinedTransformationMatrix;
             for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
             {
                 Vertex3D& v = mesh->Vertices[ i ];
@@ -1027,7 +1027,7 @@ void ConvertFbxPass2( Node* root_node, Node* node, FbxNode* fbx_node )
     }
 
     for( int i = 0; i < fbx_node->GetChildCount(); i++ )
-        ConvertFbxPass2( root_node, node->Children[ i ], fbx_node->GetChild( i ) );
+        ConvertFbxPass2( root_bone, bone->Children[ i ], fbx_node->GetChild( i ) );
 }
 
 Matrix ConvertFbxMatrix( const FbxAMatrix& m )

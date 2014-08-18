@@ -293,23 +293,23 @@ void CombinedMesh::Finalize()
 }
 
 //
-// Node
+// Bone
 //
 
-Node* Node::Find( uint name_hash )
+Bone* Bone::Find( uint name_hash )
 {
     if( NameHash == name_hash )
         return this;
     for( uint i = 0; i < Children.size(); i++ )
     {
-        Node* node = Children[ i ]->Find( name_hash );
-        if( node )
-            return node;
+        Bone* bone = Children[ i ]->Find( name_hash );
+        if( bone )
+            return bone;
     }
     return NULL;
 }
 
-void Node::Save( FileManager& file )
+void Bone::Save( FileManager& file )
 {
     file.SetData( &NameHash, sizeof( NameHash ) );
     file.SetData( &TransformationMatrix, sizeof( TransformationMatrix ) );
@@ -322,7 +322,7 @@ void Node::Save( FileManager& file )
         Children[ i ]->Save( file );
 }
 
-void Node::Load( FileManager& file )
+void Bone::Load( FileManager& file )
 {
     file.CopyMem( &NameHash, sizeof( NameHash ) );
     file.CopyMem( &TransformationMatrix, sizeof( TransformationMatrix ) );
@@ -341,13 +341,13 @@ void Node::Load( FileManager& file )
     Children.resize( len );
     for( uint i = 0, j = len; i < j; i++ )
     {
-        Children[ i ] = new Node();
+        Children[ i ] = new Bone();
         Children[ i ]->Load( file );
     }
     CombinedTransformationMatrix = Matrix();
 }
 
-void Node::FixAfterLoad( Node* root_node )
+void Bone::FixAfterLoad( Bone* root_bone )
 {
     // Fix skin
     if( Mesh )
@@ -356,8 +356,8 @@ void Node::FixAfterLoad( Node* root_node )
         {
             if( Mesh->BoneNameHashes[ i ] )
             {
-                Node* bone_node = root_node->Find( Mesh->BoneNameHashes[ i ] );
-                Mesh->BoneCombinedMatrices[ i ] = &bone_node->CombinedTransformationMatrix;
+                Bone* bone = root_bone->Find( Mesh->BoneNameHashes[ i ] );
+                Mesh->BoneCombinedMatrices[ i ] = &bone->CombinedTransformationMatrix;
             }
             else
             {
@@ -367,10 +367,10 @@ void Node::FixAfterLoad( Node* root_node )
     }
 
     for( uint i = 0, j = (uint) Children.size(); i < j; i++ )
-        Children[ i ]->FixAfterLoad( root_node );
+        Children[ i ]->FixAfterLoad( root_bone );
 }
 
-uint Node::GetHash( const char* name )
+uint Bone::GetHash( const char* name )
 {
     uint hash = 2166136261U;
     for( uint i = 0, j = Str::Length( name ); i < j; i++ )

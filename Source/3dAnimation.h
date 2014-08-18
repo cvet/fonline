@@ -248,11 +248,11 @@ public:
         return clone;
     }
 
-    void RegisterAnimationOutput( uint node_name_hash, Matrix& output_matrix )
+    void RegisterAnimationOutput( uint bone_name_hash, Matrix& output_matrix )
     {
         outputs->push_back( Output() );
         Output& o = outputs->back();
-        o.nameHash = node_name_hash;
+        o.nameHash = bone_name_hash;
         o.matrix = &output_matrix;
         o.valid.resize( tracks.size() );
         o.factor.resize( tracks.size() );

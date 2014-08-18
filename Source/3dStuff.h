@@ -87,9 +87,9 @@ private:
     // Derived animations
     Animation3dVec childAnimations;
     Animation3d*   parentAnimation;
-    Node*          parentNode;
+    Bone*          parentBone;
     Matrix         parentMatrix;
-    NodeVec        linkNodes;
+    BoneVec        linkBones;
     MatrixVec      linkMatricles;
     AnimParams     animLink;
     bool           childChecker;
@@ -100,7 +100,7 @@ private:
     void  CutCombinedMeshes( Animation3d* base, Animation3d* cur );
     void  CutCombinedMesh( CombinedMesh& combined_mesh, MeshInstance& sphere, IntVec& cut_layers );
     void  ProcessAnimation( float elapsed, int x, int y, float scale );
-    void  UpdateNodeMatrices( Node* node, const Matrix* parent_matrix );
+    void  UpdateBoneMatrices( Bone* bone, const Matrix* parent_matrix );
     void  DrawCombinedMeshes();
     void  DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow );
     void  TransformMesh( CombinedMesh* combined_mesh );
@@ -192,13 +192,13 @@ private:
     static Animation3dXFileVec xFiles;
 
     string                     fileName;
-    Node*                      rootNode;
-    NodeVec                    allNodes;
-    NodeVec                    allDrawNodes;
+    Bone*                      rootBone;
+    BoneVec                    allBones;
+    BoneVec                    allDrawBones;
 
     static Animation3dXFile* GetXFile( const char* xname );
 
-    void SetupNodes();
+    void SetupBones();
     void SetupAnimationOutput( AnimController* anim_controller );
 
     MeshTexture* GetTexture( const char* tex_name );

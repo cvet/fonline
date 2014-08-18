@@ -8,21 +8,18 @@
 
 class AnimSet;
 
-struct aiNode;
-struct aiScene;
-
 class GraphicLoader
 {
     // Models
 public:
-    static Node*    LoadModel( const char* fname );
-    static void     DestroyModel( Node* node );
+    static Bone*    LoadModel( const char* fname );
+    static void     DestroyModel( Bone* root_bone );
     static AnimSet* LoadAnimation( const char* anim_fname, const char* anim_name );
     static bool     IsExtensionSupported( const char* ext );
 
 private:
     static StrVec  processedFiles;
-    static NodeVec loadedModels;
+    static BoneVec loadedModels;
     static StrVec  loadedModelNames;
     static PtrVec  loadedAnimations;   // Pointers of AnimSet
 
