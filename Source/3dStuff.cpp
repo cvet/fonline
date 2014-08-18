@@ -785,6 +785,16 @@ void Animation3d::CutCombinedMesh( CombinedMesh& combined_mesh, MeshInstance& sp
     }
     float sphere_radius = ( vmax - vmin ) / 2.0f;
 
+    // Collect cut bones
+    FloatVec cut_bones;
+    for( size_t i = 0; i < combined_mesh.CurBoneMatrix; i++ )
+    {
+        Vector pos1 = combined_mesh.SkinBones[ i ]->GlobalTransformationMatrix * Vector();
+        Vector pos2 = sphere.Mesh->Owner->GlobalTransformationMatrix * Vector();
+        if( ( pos1 - pos2 ).Length() <= sphere_radius )
+            cut_bones.push_back( (float) i );
+    }
+
     // Process
     UShortVec   result_indices;
     Vertex3DVec result_vertices;
@@ -797,7 +807,7 @@ void Animation3d::CutCombinedMesh( CombinedMesh& combined_mesh, MeshInstance& sp
     {
         // Move sphere to face space
         Matrix     mesh_transform = combined_mesh.MeshTransforms[ k ];
-        Matrix     sm = mesh_transform.Inverse() * sphere.Mesh->Owner->TransformationMatrix;
+        Matrix     sm = mesh_transform.Inverse() * sphere.Mesh->Owner->GlobalTransformationMatrix;
         Vector     ss, sp;
         Quaternion sr;
         sm.Decompose( ss, sr, sp );
@@ -809,6 +819,7 @@ void Animation3d::CutCombinedMesh( CombinedMesh& combined_mesh, MeshInstance& sp
         // Process faces
         face_count += combined_mesh.MeshFaces[ k ];
         size_t indices_old_size = result_indices.size();
+        size_t vertices_old_size = result_vertices.size();
         for( ; face_pos < face_count; face_pos++ )
         {
             // Face points
@@ -889,6 +900,29 @@ void Animation3d::CutCombinedMesh( CombinedMesh& combined_mesh, MeshInstance& sp
                 result_vertices.push_back( v3 );
             }
         }
+
+        // Disable skin influence of cut bones
+        if( !cut_bones.empty() )
+        {
+            for( size_t i = vertices_old_size, j = result_vertices.size(); i < j; i++ )
+            {
+                Vertex3D& v = result_vertices[ i ];
+                for( int b = 0; b < BONES_PER_VERTEX; b++ )
+                {
+                    if( v.BlendWeights[ b ] > 0.0f && std::find( cut_bones.begin(), cut_bones.end(), v.BlendIndices[ b ] ) != cut_bones.end() )
+                    {
+                        float w = v.BlendWeights[ b ];
+                        if( w < 1.0f )
+                        {
+                            v.BlendWeights[ b ] = 0.0f;
+                            for( int b2 = 0; b2 < BONES_PER_VERTEX; b2++ )
+                                v.BlendWeights[ b2 ] += v.BlendWeights[ b2 ] / ( 1.0f - w ) * w;
+                        }
+                    }
+                }
+            }
+        }
+
         result_mesh_faces.push_back( (uint) ( result_indices.size() - indices_old_size ) / 3 );
     }
     combined_mesh.Indices = result_indices;
@@ -1049,16 +1083,12 @@ void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow )
         GL( glUniform4fv( effect->LightColor, 1, (float*) &LightColor ) );
     if( effect->WorldMatrices != -1 )
     {
-        for( uint i = 0; i < MAX_BONE_MATRICES; i++ )
+        for( size_t i = 0; i < combined_mesh->CurBoneMatrix; i++ )
         {
-            Matrix* m = combined_mesh->BoneCombinedMatrices[ i ];
-            if( m )
-            {
-                WorldMatrices[ i ] = ( *m ) * combined_mesh->BoneOffsetMatrices[ i ];
-                WorldMatrices[ i ].Transpose();                                         // Convert to column major order
-            }
+            WorldMatrices[ i ] = combined_mesh->SkinBones[ i ]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[ i ];
+            WorldMatrices[ i ].Transpose();                                         // Convert to column major order
         }
-        GL( glUniformMatrix4fv( effect->WorldMatrices, MAX_BONE_MATRICES, GL_FALSE, (float*) &WorldMatrices[ 0 ] ) );
+        GL( glUniformMatrix4fv( effect->WorldMatrices, combined_mesh->CurBoneMatrix, GL_FALSE, (float*) &WorldMatrices[ 0 ] ) );
     }
     if( effect->GroundPosition != -1 )
         GL( glUniform3fv( effect->GroundPosition, 1, (float*) &groundPos ) );

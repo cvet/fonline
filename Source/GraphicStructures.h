@@ -19,6 +19,9 @@ typedef vector< Quaternion > QuaternionVec;
 typedef vector< Matrix >     MatrixVec;
 typedef vector< Matrix* >    MatrixPtrVec;
 
+struct Bone;
+typedef vector< Bone* >      BoneVec;
+
 //
 // Vertex2D
 //
@@ -339,18 +342,17 @@ typedef vector< DipData > DipDataVec;
 // MeshData
 //
 
-struct Bone;
 struct MeshData
 {
     Bone*          Owner;
     Vertex3DVec    Vertices;
     UShortVec      Indices;
     string         DiffuseTexture;
-    UIntVec        BoneNameHashes;
-    MatrixVec      BoneOffsets;
+    UIntVec        SkinBoneNameHashes;
+    MatrixVec      SkinBoneOffsets;
 
     // Runtime data
-    MatrixPtrVec   BoneCombinedMatrices;
+    BoneVec        SkinBones;
     EffectInstance DrawEffect;
 
     void Save( FileManager& file );
@@ -387,8 +389,8 @@ struct CombinedMesh
     MatrixVec    MeshTransforms;
     IntVec       MeshAnimLayers;
     size_t       CurBoneMatrix;
-    Matrix*      BoneCombinedMatrices[ MAX_BONE_MATRICES ];
-    Matrix       BoneOffsetMatrices[ MAX_BONE_MATRICES ];
+    Bone*        SkinBones[ MAX_BONE_MATRICES ];
+    Matrix       SkinBoneOffsets[ MAX_BONE_MATRICES ];
     MeshTexture* Textures[ EFFECT_TEXTURES ];
     Effect*      DrawEffect;
     GLuint       VAO, VBO, IBO;
@@ -407,12 +409,11 @@ typedef vector< CombinedMesh* > CombinedMeshVec;
 // Bone
 //
 
-struct Bone;
-typedef vector< Bone* > BoneVec;
 struct Bone
 {
     uint        NameHash;
     Matrix      TransformationMatrix;
+    Matrix      GlobalTransformationMatrix;
     MeshData*   Mesh;
     BoneVec     Children;
 

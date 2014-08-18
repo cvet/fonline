@@ -131,12 +131,12 @@ void MeshData::Save( FileManager& file )
     len = (uint) DiffuseTexture.length();
     file.SetData( &len, sizeof( len ) );
     file.SetData( &DiffuseTexture[ 0 ], len );
-    len = (uint) BoneNameHashes.size();
+    len = (uint) SkinBoneNameHashes.size();
     file.SetData( &len, sizeof( len ) );
-    file.SetData( &BoneNameHashes[ 0 ], len * sizeof( BoneNameHashes[ 0 ] ) );
-    len = (uint) BoneOffsets.size();
+    file.SetData( &SkinBoneNameHashes[ 0 ], len * sizeof( SkinBoneNameHashes[ 0 ] ) );
+    len = (uint) SkinBoneOffsets.size();
     file.SetData( &len, sizeof( len ) );
-    file.SetData( &BoneOffsets[ 0 ], len * sizeof( BoneOffsets[ 0 ] ) );
+    file.SetData( &SkinBoneOffsets[ 0 ], len * sizeof( SkinBoneOffsets[ 0 ] ) );
 }
 
 void MeshData::Load( FileManager& file )
@@ -152,12 +152,12 @@ void MeshData::Load( FileManager& file )
     DiffuseTexture.resize( len );
     file.CopyMem( &DiffuseTexture[ 0 ], len );
     file.CopyMem( &len, sizeof( len ) );
-    BoneNameHashes.resize( len );
-    file.CopyMem( &BoneNameHashes[ 0 ], len * sizeof( BoneNameHashes[ 0 ] ) );
+    SkinBoneNameHashes.resize( len );
+    file.CopyMem( &SkinBoneNameHashes[ 0 ], len * sizeof( SkinBoneNameHashes[ 0 ] ) );
     file.CopyMem( &len, sizeof( len ) );
-    BoneOffsets.resize( len );
-    file.CopyMem( &BoneOffsets[ 0 ], len * sizeof( BoneOffsets[ 0 ] ) );
-    BoneCombinedMatrices.resize( BoneOffsets.size() );
+    SkinBoneOffsets.resize( len );
+    file.CopyMem( &SkinBoneOffsets[ 0 ], len * sizeof( SkinBoneOffsets[ 0 ] ) );
+    SkinBones.resize( SkinBoneOffsets.size() );
     memzero( &DrawEffect, sizeof( DrawEffect ) );
 }
 
@@ -192,7 +192,7 @@ bool CombinedMesh::CanEncapsulate( MeshInstance& mesh_instance )
     for( int i = 0; i < EFFECT_TEXTURES; i++ )
         if( Textures[ i ] && mesh_instance.CurTexures[ i ] && Textures[ i ]->Id != mesh_instance.CurTexures[ i ]->Id )
             return false;
-    if( CurBoneMatrix + mesh_instance.Mesh->BoneCombinedMatrices.size() > MAX_BONE_MATRICES )
+    if( CurBoneMatrix + mesh_instance.Mesh->SkinBones.size() > MAX_BONE_MATRICES )
         return false;
     return true;
 }
@@ -209,7 +209,7 @@ void CombinedMesh::Encapsulate( MeshInstance& mesh_instance, int anim_layer )
         Vertices = mesh->Vertices;
         Indices = mesh->Indices;
         DrawEffect = mesh_instance.CurEffect;
-        memzero( BoneCombinedMatrices, sizeof( BoneCombinedMatrices ) );
+        memzero( SkinBones, sizeof( SkinBones ) );
         memzero( Textures, sizeof( Textures ) );
         CurBoneMatrix = 0;
     }
@@ -234,16 +234,16 @@ void CombinedMesh::Encapsulate( MeshInstance& mesh_instance, int anim_layer )
 
     // Set mesh transform and anim layer
     MeshFaces.push_back( (uint) ( Indices.size() - indices_old_size ) / 3 );
-    MeshTransforms.push_back( mesh->Owner->TransformationMatrix );
+    MeshTransforms.push_back( mesh->Owner->GlobalTransformationMatrix );
     MeshAnimLayers.push_back( anim_layer );
 
     // Add bones matrices
-    for( size_t i = 0, j = mesh->BoneCombinedMatrices.size(); i < j; i++ )
+    for( size_t i = 0, j = mesh->SkinBones.size(); i < j; i++ )
     {
-        BoneCombinedMatrices[ CurBoneMatrix + i ] = mesh->BoneCombinedMatrices[ i ];
-        BoneOffsetMatrices[ CurBoneMatrix + i ] = mesh->BoneOffsets[ i ];
+        SkinBones[ CurBoneMatrix + i ] = mesh->SkinBones[ i ];
+        SkinBoneOffsets[ CurBoneMatrix + i ] = mesh->SkinBoneOffsets[ i ];
     }
-    CurBoneMatrix += mesh->BoneCombinedMatrices.size();
+    CurBoneMatrix += mesh->SkinBones.size();
 
     // Add textures
     for( int i = 0; i < EFFECT_TEXTURES; i++ )
@@ -313,6 +313,7 @@ void Bone::Save( FileManager& file )
 {
     file.SetData( &NameHash, sizeof( NameHash ) );
     file.SetData( &TransformationMatrix, sizeof( TransformationMatrix ) );
+    file.SetData( &GlobalTransformationMatrix, sizeof( GlobalTransformationMatrix ) );
     file.SetUChar( Mesh != NULL ? 1 : 0 );
     if( Mesh )
         Mesh->Save( file );
@@ -326,6 +327,7 @@ void Bone::Load( FileManager& file )
 {
     file.CopyMem( &NameHash, sizeof( NameHash ) );
     file.CopyMem( &TransformationMatrix, sizeof( TransformationMatrix ) );
+    file.CopyMem( &GlobalTransformationMatrix, sizeof( GlobalTransformationMatrix ) );
     if( file.GetUChar() )
     {
         Mesh = new MeshData();
@@ -352,17 +354,12 @@ void Bone::FixAfterLoad( Bone* root_bone )
     // Fix skin
     if( Mesh )
     {
-        for( size_t i = 0, j = Mesh->BoneNameHashes.size(); i < j; i++ )
+        for( size_t i = 0, j = Mesh->SkinBoneNameHashes.size(); i < j; i++ )
         {
-            if( Mesh->BoneNameHashes[ i ] )
-            {
-                Bone* bone = root_bone->Find( Mesh->BoneNameHashes[ i ] );
-                Mesh->BoneCombinedMatrices[ i ] = &bone->CombinedTransformationMatrix;
-            }
+            if( Mesh->SkinBoneNameHashes[ i ] )
+                Mesh->SkinBones[ i ] = root_bone->Find( Mesh->SkinBoneNameHashes[ i ] );
             else
-            {
-                Mesh->BoneCombinedMatrices[ i ] = &Mesh->Owner->CombinedTransformationMatrix;
-            }
+                Mesh->SkinBones[ i ] = Mesh->Owner;
         }
     }
 

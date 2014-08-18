@@ -632,11 +632,17 @@ Bone* GraphicLoader::LoadModel( const char* fname )
     return root_bone;
 }
 
+Matrix AssimpGlobalTransform( aiNode* ai_node )
+{
+    return ( ai_node->mParent ? AssimpGlobalTransform( ai_node->mParent ) : Matrix() ) * ai_node->mTransformation;
+}
+
 Bone* ConvertAssimpPass1( aiScene* ai_scene, aiNode* ai_node )
 {
     Bone* bone = new Bone();
     bone->NameHash = Bone::GetHash( ai_node->mName.data );
     bone->TransformationMatrix = ai_node->mTransformation;
+    bone->GlobalTransformationMatrix = AssimpGlobalTransform( ai_node );
     bone->CombinedTransformationMatrix = Matrix();
     bone->Mesh = NULL;
     bone->Children.resize( ai_node->mNumChildren );
@@ -650,7 +656,7 @@ void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene
 {
     for( uint m = 0; m < ai_node->mNumMeshes; m++ )
     {
-        aiMesh*   ai_mesh = ai_scene->mMeshes[ ai_node->mMeshes[ m ] ];
+        aiMesh* ai_mesh = ai_scene->mMeshes[ ai_node->mMeshes[ m ] ];
 
         // Mesh
         Bone* mesh_bone;
@@ -669,11 +675,13 @@ void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene
             {
                 parent_bone->Children.push_back( mesh_bone );
                 mesh_bone->TransformationMatrix = bone->TransformationMatrix;
+                mesh_bone->GlobalTransformationMatrix = AssimpGlobalTransform( ai_node );
             }
             else
             {
                 bone->Children.push_back( mesh_bone );
                 mesh_bone->TransformationMatrix = Matrix();
+                mesh_bone->GlobalTransformationMatrix = AssimpGlobalTransform( ai_node );
             }
         }
 
@@ -734,18 +742,18 @@ void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene
         // Skinning
         if( ai_mesh->mNumBones > 0 )
         {
-            mesh->BoneNameHashes.resize( ai_mesh->mNumBones );
-            mesh->BoneOffsets.resize( ai_mesh->mNumBones );
-            mesh->BoneCombinedMatrices.resize( ai_mesh->mNumBones );
+            mesh->SkinBoneNameHashes.resize( ai_mesh->mNumBones );
+            mesh->SkinBoneOffsets.resize( ai_mesh->mNumBones );
+            mesh->SkinBones.resize( ai_mesh->mNumBones );
             for( uint i = 0; i < ai_mesh->mNumBones; i++ )
             {
                 aiBone* bone = ai_mesh->mBones[ i ];
 
                 // Matrices
                 Bone* skin_bone = root_bone->Find( Bone::GetHash( bone->mName.data ) );
-                mesh->BoneNameHashes[ i ] = skin_bone->NameHash;
-                mesh->BoneOffsets[ i ] = bone->mOffsetMatrix;
-                mesh->BoneCombinedMatrices[ i ] = &skin_bone->CombinedTransformationMatrix;
+                mesh->SkinBoneNameHashes[ i ] = skin_bone->NameHash;
+                mesh->SkinBoneOffsets[ i ] = bone->mOffsetMatrix;
+                mesh->SkinBones[ i ] = skin_bone;
 
                 // Blend data
                 float bone_index = (float) i;
@@ -769,12 +777,12 @@ void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene
         }
         else
         {
-            mesh->BoneNameHashes.resize( 1 );
-            mesh->BoneOffsets.resize( 1 );
-            mesh->BoneCombinedMatrices.resize( 1 );
-            mesh->BoneNameHashes[ 0 ] = 0;
-            mesh->BoneOffsets[ 0 ] = Matrix();
-            mesh->BoneCombinedMatrices[ 0 ] = &mesh_bone->CombinedTransformationMatrix;
+            mesh->SkinBoneNameHashes.resize( 1 );
+            mesh->SkinBoneOffsets.resize( 1 );
+            mesh->SkinBones.resize( 1 );
+            mesh->SkinBoneNameHashes[ 0 ] = 0;
+            mesh->SkinBoneOffsets[ 0 ] = Matrix();
+            mesh->SkinBones[ 0 ] = mesh_bone;
             for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
             {
                 Vertex3D& v = mesh->Vertices[ i ];
@@ -812,6 +820,7 @@ Bone* ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_all_nodes )
     Bone* bone = new Bone();
     bone->NameHash = Bone::GetHash( fbx_node->GetName() );
     bone->TransformationMatrix = ConvertFbxMatrix( fbx_node->EvaluateLocalTransform() );
+    bone->GlobalTransformationMatrix = ConvertFbxMatrix( fbx_node->EvaluateGlobalTransform() );
     bone->CombinedTransformationMatrix = Matrix();
     bone->Mesh = NULL;
     bone->Children.resize( fbx_node->GetChildCount() );
@@ -936,9 +945,9 @@ void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
         if( fbx_skin )
         {
             int num_bones = fbx_skin->GetClusterCount();
-            mesh->BoneNameHashes.resize( num_bones );
-            mesh->BoneOffsets.resize( num_bones );
-            mesh->BoneCombinedMatrices.resize( num_bones );
+            mesh->SkinBoneNameHashes.resize( num_bones );
+            mesh->SkinBoneOffsets.resize( num_bones );
+            mesh->SkinBones.resize( num_bones );
             for( int i = 0; i < num_bones; i++ )
             {
                 FbxCluster* fbx_cluster = fbx_skin->GetCluster( i );
@@ -949,9 +958,9 @@ void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
                 FbxAMatrix cur_matrix;
                 fbx_cluster->GetTransformMatrix( cur_matrix );
                 Bone* skin_bone = root_bone->Find( Bone::GetHash( fbx_cluster->GetLink()->GetName() ) );
-                mesh->BoneNameHashes[ i ] = skin_bone->NameHash;
-                mesh->BoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix );
-                mesh->BoneCombinedMatrices[ i ] = &skin_bone->CombinedTransformationMatrix;
+                mesh->SkinBoneNameHashes[ i ] = skin_bone->NameHash;
+                mesh->SkinBoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix );
+                mesh->SkinBones[ i ] = skin_bone;
 
                 // Blend data
                 float   bone_index = (float) i;
@@ -994,12 +1003,12 @@ void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
             mr.FromEulerAnglesXYZ( Vector( (float) gr[ 0 ], (float) gr[ 1 ], (float) gr[ 2 ] ) );
             Matrix::Scaling( Vector( (float) gs[ 0 ], (float) gs[ 1 ], (float) gs[ 2 ] ), ms );
 
-            mesh->BoneNameHashes.resize( 1 );
-            mesh->BoneOffsets.resize( 1 );
-            mesh->BoneCombinedMatrices.resize( 1 );
-            mesh->BoneNameHashes[ 0 ] = 0;
-            mesh->BoneOffsets[ 0 ] = mt * mr * ms;
-            mesh->BoneCombinedMatrices[ 0 ] = &bone->CombinedTransformationMatrix;
+            mesh->SkinBoneNameHashes.resize( 1 );
+            mesh->SkinBoneOffsets.resize( 1 );
+            mesh->SkinBones.resize( 1 );
+            mesh->SkinBoneNameHashes[ 0 ] = 0;
+            mesh->SkinBoneOffsets[ 0 ] = mt * mr * ms;
+            mesh->SkinBones[ 0 ] = bone;
             for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
             {
                 Vertex3D& v = mesh->Vertices[ i ];
