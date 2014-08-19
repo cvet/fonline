@@ -747,19 +747,24 @@ void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene
             mesh->SkinBones.resize( ai_mesh->mNumBones );
             for( uint i = 0; i < ai_mesh->mNumBones; i++ )
             {
-                aiBone* bone = ai_mesh->mBones[ i ];
+                aiBone* ai_bone = ai_mesh->mBones[ i ];
 
                 // Matrices
-                Bone* skin_bone = root_bone->Find( Bone::GetHash( bone->mName.data ) );
+                Bone* skin_bone = root_bone->Find( Bone::GetHash( ai_bone->mName.data ) );
+                if( !skin_bone )
+                {
+                    WriteLogF( _FUNC_, " - Skin bone<%s> for mesh<%s> not found.\n", ai_bone->mName.data, ai_node->mName.data );
+                    skin_bone = bone;
+                }
                 mesh->SkinBoneNameHashes[ i ] = skin_bone->NameHash;
-                mesh->SkinBoneOffsets[ i ] = bone->mOffsetMatrix;
+                mesh->SkinBoneOffsets[ i ] = ai_bone->mOffsetMatrix;
                 mesh->SkinBones[ i ] = skin_bone;
 
                 // Blend data
                 float bone_index = (float) i;
-                for( uint j = 0; j < bone->mNumWeights; j++ )
+                for( uint j = 0; j < ai_bone->mNumWeights; j++ )
                 {
-                    aiVertexWeight& vw = bone->mWeights[ j ];
+                    aiVertexWeight& vw = ai_bone->mWeights[ j ];
                     Vertex3D&       v = mesh->Vertices[ vw.mVertexId ];
                     uint            index;
                     if( v.BlendIndices[ 0 ] < 0.0f )
@@ -958,6 +963,11 @@ void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
                 FbxAMatrix cur_matrix;
                 fbx_cluster->GetTransformMatrix( cur_matrix );
                 Bone* skin_bone = root_bone->Find( Bone::GetHash( fbx_cluster->GetLink()->GetName() ) );
+                if( !skin_bone )
+                {
+                    WriteLogF( _FUNC_, " - Skin bone<%s> for mesh<%s> not found.\n", fbx_cluster->GetLink()->GetName(), fbx_node->GetName() );
+                    skin_bone = bone;
+                }
                 mesh->SkinBoneNameHashes[ i ] = skin_bone->NameHash;
                 mesh->SkinBoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix );
                 mesh->SkinBones[ i ] = skin_bone;

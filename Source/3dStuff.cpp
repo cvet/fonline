@@ -864,7 +864,6 @@ void Animation3d::CutCombinedMesh( CombinedMesh& combined_mesh, MeshInstance& sp
                 result_vertices.push_back( vv2 );
                 result_vertices.push_back( vv3 );
 
-
                 // Second face
                 result_indices.push_back( result_indices.size() );
                 result_indices.push_back( result_indices.size() );
