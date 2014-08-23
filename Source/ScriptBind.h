@@ -1041,6 +1041,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void RefreshMap(bool onlyTiles, bo
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MouseClick(int x, int y, int button, int cursor)", asFUNCTION( BIND_CLASS Global_MouseClick ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void KeyboardPress(uint8 key1, uint8 key2, string@+ key1Text = null, string@+ key2Text = null)", asFUNCTION( BIND_CLASS Global_KeyboardPress ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetRainAnimation(string@+ fallAnimName, string@+ dropAnimName)", asFUNCTION( BIND_CLASS Global_SetRainAnimation ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ChangeZoom(float targetZoom)", asFUNCTION( BIND_CLASS Global_ChangeZoom ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SaveScreenshot()", asFUNCTION( BIND_CLASS Global_SaveScreenshot ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SaveLogFile()", asFUNCTION( BIND_CLASS Global_SaveLogFile ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetCacheData(const string& name, const uint8[]& data)", asFUNCTION( BIND_CLASS Global_SetCacheData ), asCALL_CDECL ) );
@@ -1433,6 +1434,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void SetDefaultFont(int font, uint
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MouseClick(int x, int y, int button, int cursor)", asFUNCTION( BIND_CLASS Global_MouseClick ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void KeyboardPress(uint8 key1, uint8 key2, string@+ key1Text = null, string@+ key2Text = null)", asFUNCTION( BIND_CLASS Global_KeyboardPress ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetRainAnimation(string@+ fallAnimName, string@+ dropAnimName)", asFUNCTION( BIND_CLASS Global_SetRainAnimation ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ChangeZoom(float targetZoom)", asFUNCTION( BIND_CLASS Global_ChangeZoom ), asCALL_CDECL ) );
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __ClientPath", &GameOpt.ClientPath ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __ServerPath", &GameOpt.ServerPath ) );

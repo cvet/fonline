@@ -663,6 +663,7 @@ public:
         static void          Global_MouseClick( int x, int y, int button, int cursor );
         static void          Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text );
         static void          Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name );
+        static void          Global_ChangeZoom( float target_zoom );
         static bool          Global_SaveScreenshot();
         static bool          Global_SaveLogFile();
         static void          Global_SetCacheData( const ScriptString& name, const ScriptArray& data );

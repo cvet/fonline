@@ -1173,7 +1173,7 @@ struct BindClass
     static void Global_MouseClick()         {}
     static void Global_KeyboardPress()      {}
     static void Global_SetRainAnimation()   {}
-    static void Global_GetFPS()             {}
+    static void Global_ChangeZoom()         {}
     #endif
 
     static void Global_GetLastError()     {}

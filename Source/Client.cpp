@@ -10817,6 +10817,37 @@ void FOClient::SScriptFunc::Global_SetRainAnimation( ScriptString* fall_anim_nam
     Self->HexMngr.SetRainAnimation( fall_anim_name ? fall_anim_name->c_str() : NULL, drop_anim_name ? drop_anim_name->c_str() : NULL );
 }
 
+void FOClient::SScriptFunc::Global_ChangeZoom( float target_zoom )
+{
+    if( target_zoom == GameOpt.SpritesZoom )
+        return;
+
+    if( target_zoom == 1.0f )
+    {
+        Self->HexMngr.ChangeZoom( 0 );
+    }
+    else if( target_zoom > GameOpt.SpritesZoom )
+    {
+        while( target_zoom > GameOpt.SpritesZoom )
+        {
+            float old_zoom = GameOpt.SpritesZoom;
+            Self->HexMngr.ChangeZoom( 1 );
+            if( GameOpt.SpritesZoom == old_zoom )
+                break;
+        }
+    }
+    else if( target_zoom < GameOpt.SpritesZoom )
+    {
+        while( target_zoom < GameOpt.SpritesZoom )
+        {
+            float old_zoom = GameOpt.SpritesZoom;
+            Self->HexMngr.ChangeZoom( -1 );
+            if( GameOpt.SpritesZoom == old_zoom )
+                break;
+        }
+    }
+}
+
 void FOClient::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds )
 {
     DateTime dt;
