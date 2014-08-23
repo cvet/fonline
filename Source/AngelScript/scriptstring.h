@@ -68,7 +68,8 @@ public:
     virtual void  rawResize( uint count );
     virtual void  clear();
     virtual uint  lengthUTF8() const;
-    virtual bool  indexByteToUTF8( int& index, uint* length = NULL, uint offset = 0 );
+    virtual bool  indexUTF8ToRaw( int& index, uint* length = NULL, uint offset = 0 );
+    virtual int   indexRawToUTF8( int index );
     virtual int   toInt( int defaultValue ) const;
     virtual float toFloat( float defaultValue ) const;
     virtual bool  startsWith( const ScriptString& str ) const;

@@ -241,7 +241,7 @@ bool ScriptString::endsWith( const ScriptString& str ) const
     return buffer.compare( buffer.length() - str.buffer.length(), str.buffer.length(), str.buffer ) == 0;
 }
 
-bool ScriptString::indexByteToUTF8( int& index, uint* length, uint offset )
+bool ScriptString::indexUTF8ToRaw( int& index, uint* length, uint offset )
 {
     if( index < 0 )
     {
@@ -283,6 +283,21 @@ bool ScriptString::indexByteToUTF8( int& index, uint* length, uint offset )
     if( length )
         *length = 0;
     return false;
+}
+
+int ScriptString::indexRawToUTF8( int index )
+{
+    int         result = 0;
+    const char* str = buffer.c_str();
+    while( index > 0 && *str )
+    {
+        uint ch_length;
+        Str::DecodeUTF8( str, &ch_length );
+        str += ch_length;
+        index -= ch_length;
+        result++;
+    }
+    return result;
 }
 
 // -----------------
@@ -514,7 +529,7 @@ static ScriptString* AddBoolString( bool b, const ScriptString& str )
 static ScriptString* GetStringAt( int i, ScriptString& str )
 {
     uint length;
-    if( !str.indexByteToUTF8( i, &length ) )
+    if( !str.indexUTF8ToRaw( i, &length ) )
     {
         // Set a script exception
         asIScriptContext* ctx = asGetActiveContext();
@@ -530,7 +545,7 @@ static ScriptString* GetStringAt( int i, ScriptString& str )
 static void SetStringAt( int i, ScriptString& value, ScriptString& str )
 {
     uint length;
-    if( !str.indexByteToUTF8( i, &length ) )
+    if( !str.indexUTF8ToRaw( i, &length ) )
     {
         // Set a script exception
         asIScriptContext* ctx = asGetActiveContext();
@@ -715,10 +730,10 @@ void RegisterScriptString( asIScriptEngine* engine )
 // determined by the starting index and count of characters.
 ScriptString* StringSubString( ScriptString* str, int start, int count )
 {
-    if( !str->indexByteToUTF8( start ) )
+    if( !str->indexUTF8ToRaw( start ) )
         return ScriptString::Create( "" );
     if( count >= 0 )
-        str->indexByteToUTF8( count, NULL, start );
+        str->indexUTF8ToRaw( count, NULL, start );
     return ScriptString::Create( str->c_std_str().substr( start, count >= 0 ? count : std::string::npos ) );
 }
 
@@ -727,9 +742,10 @@ ScriptString* StringSubString( ScriptString* str, int start, int count )
 // string -1 is returned.
 int StringFindFirst( ScriptString* str, ScriptString* sub, int start )
 {
-    if( !str->indexByteToUTF8( start ) )
+    if( !str->indexUTF8ToRaw( start ) )
         return -1;
-    return (int) str->c_std_str().find( sub->c_std_str(), start );
+    int pos = (int) str->c_std_str().find( sub->c_std_str(), start );
+    return pos != -1 ? str->indexRawToUTF8( pos ) : -1;
 }
 
 // This function returns the index of the last position where the substring
@@ -737,10 +753,10 @@ int StringFindFirst( ScriptString* str, ScriptString* sub, int start )
 // string -1 is returned.
 int StringFindLast( ScriptString* str, ScriptString* sub, int start )
 {
-    if( !str->indexByteToUTF8( start ) )
+    if( !str->indexUTF8ToRaw( start ) )
         return -1;
     int pos = (int) str->c_std_str().rfind( sub->c_std_str() );
-    return pos != -1 && pos >= start ? pos : -1;
+    return pos != -1 && pos >= start ? str->indexRawToUTF8( pos ) : -1;
 }
 
 // This function returns the index of the first character that is in
@@ -748,9 +764,10 @@ int StringFindLast( ScriptString* str, ScriptString* sub, int start )
 // returned.
 int StringFindFirstOf( ScriptString* str, ScriptString* chars, int start )
 {
-    if( !str->indexByteToUTF8( start ) )
+    if( !str->indexUTF8ToRaw( start ) )
         return -1;
-    return (int) str->c_std_str().find_first_of( chars->c_std_str(), start );
+    int pos = (int) str->c_std_str().find_first_of( chars->c_std_str(), start );
+    return pos != -1 ? str->indexRawToUTF8( pos ) : -1;
 }
 
 // This function returns the index of the first character that is not in
@@ -758,9 +775,10 @@ int StringFindFirstOf( ScriptString* str, ScriptString* chars, int start )
 // returned.
 int StringFindFirstNotOf( ScriptString* str, ScriptString* chars, int start )
 {
-    if( !str->indexByteToUTF8( start ) )
+    if( !str->indexUTF8ToRaw( start ) )
         return -1;
-    return (int) str->c_std_str().find_first_not_of( chars->c_std_str(), start );
+    int pos =  (int) str->c_std_str().find_first_not_of( chars->c_std_str(), start );
+    return pos != -1 ? str->indexRawToUTF8( pos ) : -1;
 }
 
 // This function returns the index of the last character that is in
@@ -768,10 +786,10 @@ int StringFindFirstNotOf( ScriptString* str, ScriptString* chars, int start )
 // returned.
 int StringFindLastOf( ScriptString* str, ScriptString* chars, int start )
 {
-    if( !str->indexByteToUTF8( start ) )
+    if( !str->indexUTF8ToRaw( start ) )
         return -1;
     int pos = (int) str->c_std_str().find_last_of( chars->c_std_str() );
-    return pos != -1 && pos >= start ? pos : -1;
+    return pos != -1 && pos >= start ? str->indexRawToUTF8( pos ) : -1;
 }
 
 // This function returns the index of the last character that is not in
@@ -779,10 +797,10 @@ int StringFindLastOf( ScriptString* str, ScriptString* chars, int start )
 // returned.
 int StringFindLastNotOf( ScriptString* str, ScriptString* chars, int start )
 {
-    if( !str->indexByteToUTF8( start ) )
+    if( !str->indexUTF8ToRaw( start ) )
         return -1;
     int pos = (int) str->c_std_str().find_last_not_of( chars->c_std_str(), start );
-    return pos != -1 && pos >= start ? pos : -1;
+    return pos != -1 && pos >= start ? str->indexRawToUTF8( pos ) : -1;
 }
 
 // This function takes an input string and splits it into parts by looking
