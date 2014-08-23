@@ -358,6 +358,7 @@ struct MeshData
     void Save( FileManager& file );
     void Load( FileManager& file );
 };
+typedef vector< MeshData* > MeshDataVec;
 
 //
 // MeshInstance
@@ -385,8 +386,9 @@ struct CombinedMesh
     int          EncapsulatedMeshCount;
     Vertex3DVec  Vertices;
     UShortVec    Indices;
-    UIntVec      MeshFaces;
-    MatrixVec    MeshTransforms;
+    MeshDataVec  Meshes;
+    UIntVec      MeshVertices;
+    UIntVec      MeshIndices;
     IntVec       MeshAnimLayers;
     size_t       CurBoneMatrix;
     Bone*        SkinBones[ MAX_BONE_MATRICES ];
@@ -426,5 +428,27 @@ struct Bone
     void        FixAfterLoad( Bone* root_bone );
     static uint GetHash( const char* name );
 };
+
+//
+// Cut
+//
+
+struct CutShape
+{
+    Matrix          GlobalTransformationMatrix;
+    float           SphereRadius;
+
+    static CutShape Make( MeshData* mesh );
+};
+typedef vector< CutShape > CutShapeVec;
+
+struct CutData
+{
+    CutShapeVec Shapes;
+    IntVec      Layers;
+    uint        UnskinBone;
+    CutShape    UnskinShape;
+};
+typedef vector< CutData* > CutDataVec;
 
 #endif // __GRAPHIC_STRUCTURES__

@@ -58,6 +58,7 @@ Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ), combined
                             allowMeshGeneration( false ), SprId( 0 ), SprAtlasType( 0 )
 {
     memzero( currentLayers, sizeof( currentLayers ) );
+    memzero( &animLink, sizeof( animLink ) );
     Matrix::RotationX( GameOpt.MapCameraAngle * PI_VALUE / 180.0f, matRot );
     matScale = Matrix();
     matScaleBase = Matrix();
@@ -469,11 +470,6 @@ uint Animation3d::GetTick()
     return Timer::FastTick();
 }
 
-bool Animation3d::IsCut()
-{
-    return parentBone && !animLink.CutLayers.empty();
-}
-
 void Animation3d::SetAnimData( AnimParams& data, bool clear )
 {
     // Transformations
@@ -599,6 +595,12 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
                     ( *it ).CurEffect = effect;
         }
     }
+
+    // Cut
+    if( clear )
+        allCuts.clear();
+    for( uint i = 0; i < data.CutCount; i++ )
+        allCuts.push_back( data.Cut[ i ] );
 }
 
 void Animation3d::SetDir( int dir )
@@ -665,11 +667,8 @@ void Animation3d::GenerateCombinedMeshes()
 void Animation3d::FillCombinedMeshes( Animation3d* base, Animation3d* cur )
 {
     // Combine meshes
-    if( !cur->IsCut() )
-    {
-        for( size_t i = 0, j = cur->allMeshes.size(); i < j; i++ )
-            base->CombineMesh( cur->allMeshes[ i ], cur->parentBone ? cur->animLink.Layer : 0 );
-    }
+    for( size_t i = 0, j = cur->allMeshes.size(); i < j; i++ )
+        base->CombineMesh( cur->allMeshes[ i ], cur->parentBone ? cur->animLink.Layer : 0 );
 
     // Fill child
     for( auto it = cur->childAnimations.begin(), end = cur->childAnimations.end(); it != end; ++it )
@@ -702,11 +701,11 @@ void Animation3d::CombineMesh( MeshInstance& mesh_instance, int anim_layer )
 void Animation3d::CutCombinedMeshes( Animation3d* base, Animation3d* cur )
 {
     // Cut meshes
-    if( cur->IsCut() )
+    if( !cur->allCuts.empty() )
     {
-        for( size_t i = 0, j = cur->allMeshes.size(); i < j; i++ )
+        for( size_t i = 0, j = cur->allCuts.size(); i < j; i++ )
             for( size_t k = 0; k < base->combinedMeshesSize; k++ )
-                base->CutCombinedMesh( *base->combinedMeshes[ k ], cur->allMeshes[ i ], cur->animLink.CutLayers );
+                base->CutCombinedMesh( base->combinedMeshes[ k ], cur->allCuts[ i ] );
         disableCulling = true;
     }
 
@@ -771,162 +770,192 @@ int          SphereLineIntersection( const Vertex3D& p1, const Vertex3D& p2, con
     return 0;
 }
 
-void Animation3d::CutCombinedMesh( CombinedMesh& combined_mesh, MeshInstance& sphere, IntVec& cut_layers )
+void Animation3d::CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut )
 {
-    // Calculate sphere radius
-    float vmin, vmax;
-    for( size_t i = 0, j = sphere.Mesh->Vertices.size(); i < j; i++ )
-    {
-        Vertex3D v = sphere.Mesh->Vertices[ i ];
-        if( !i || v.Position.x < vmin )
-            vmin = v.Position.x;
-        if( !i || v.Position.x > vmax )
-            vmax = v.Position.x;
-    }
-    float sphere_radius = ( vmax - vmin ) / 2.0f;
-
-    // Collect cut bones
-    FloatVec cut_bones;
-    for( size_t i = 0; i < combined_mesh.CurBoneMatrix; i++ )
-    {
-        Vector pos1 = combined_mesh.SkinBones[ i ]->GlobalTransformationMatrix * Vector();
-        Vector pos2 = sphere.Mesh->Owner->GlobalTransformationMatrix * Vector();
-        if( ( pos1 - pos2 ).Length() <= sphere_radius )
-            cut_bones.push_back( (float) i );
-    }
-
     // Process
-    UShortVec   result_indices;
-    Vertex3DVec result_vertices;
-    UIntVec     result_mesh_faces;
-    result_indices.reserve( combined_mesh.Indices.size() );
-    result_vertices.reserve( combined_mesh.Vertices.size() );
-    result_mesh_faces.reserve( combined_mesh.MeshFaces.size() );
-    uint face_pos = 0, face_count = 0;
-    for( size_t k = 0, l = combined_mesh.MeshFaces.size(); k < l; k++ )
+    IntVec& cut_layers = cut->Layers;
+    for( size_t i = 0, j = cut->Shapes.size(); i < j; i++ )
     {
-        // Move sphere to face space
-        Matrix     mesh_transform = combined_mesh.MeshTransforms[ k ];
-        Matrix     sm = mesh_transform.Inverse() * sphere.Mesh->Owner->GlobalTransformationMatrix;
-        Vector     ss, sp;
-        Quaternion sr;
-        sm.Decompose( ss, sr, sp );
-
-        // Check anim layer
-        int  mesh_anim_layer = combined_mesh.MeshAnimLayers[ k ];
-        bool skip = ( std::find( cut_layers.begin(), cut_layers.end(), mesh_anim_layer ) == cut_layers.end() );
-
-        // Process faces
-        face_count += combined_mesh.MeshFaces[ k ];
-        size_t indices_old_size = result_indices.size();
-        size_t vertices_old_size = result_vertices.size();
-        for( ; face_pos < face_count; face_pos++ )
+        bool        cut_all = ( std::find( cut_layers.begin(), cut_layers.end(), -1 ) != cut_layers.end() );
+        Vertex3DVec result_vertices;
+        UShortVec   result_indices;
+        UIntVec     result_mesh_vertices;
+        UIntVec     result_mesh_indices;
+        result_vertices.reserve( combined_mesh->Vertices.size() );
+        result_indices.reserve( combined_mesh->Indices.size() );
+        result_mesh_vertices.reserve( combined_mesh->MeshVertices.size() );
+        result_mesh_indices.reserve( combined_mesh->MeshIndices.size() );
+        uint i_pos = 0, i_count = 0;
+        for( size_t k = 0, l = combined_mesh->MeshIndices.size(); k < l; k++ )
         {
-            // Face points
-            const Vertex3D& v1 = combined_mesh.Vertices[ combined_mesh.Indices[ face_pos * 3 + 0 ] ];
-            const Vertex3D& v2 = combined_mesh.Vertices[ combined_mesh.Indices[ face_pos * 3 + 1 ] ];
-            const Vertex3D& v3 = combined_mesh.Vertices[ combined_mesh.Indices[ face_pos * 3 + 2 ] ];
+            // Move shape to face space
+            Matrix     mesh_transform = combined_mesh->Meshes[ k ]->Owner->GlobalTransformationMatrix;
+            Matrix     sm = mesh_transform.Inverse() * cut->Shapes[ i ].GlobalTransformationMatrix;
+            Vector     ss, sp;
+            Quaternion sr;
+            sm.Decompose( ss, sr, sp );
 
-            // Skip mesh
-            if( skip )
+            // Check anim layer
+            int  mesh_anim_layer = combined_mesh->MeshAnimLayers[ k ];
+            bool skip = ( !cut_all && std::find( cut_layers.begin(), cut_layers.end(), mesh_anim_layer ) == cut_layers.end() );
+
+            // Process faces
+            i_count += combined_mesh->MeshIndices[ k ];
+            size_t vertices_old_size = result_vertices.size();
+            size_t indices_old_size = result_indices.size();
+            for( ; i_pos < i_count; i_pos += 3 )
             {
-                result_indices.push_back( result_indices.size() );
-                result_indices.push_back( result_indices.size() );
-                result_indices.push_back( result_indices.size() );
-                result_vertices.push_back( v1 );
-                result_vertices.push_back( v2 );
-                result_vertices.push_back( v3 );
-                continue;
-            }
+                // Face points
+                const Vertex3D& v1 = combined_mesh->Vertices[ combined_mesh->Indices[ i_pos + 0 ] ];
+                const Vertex3D& v2 = combined_mesh->Vertices[ combined_mesh->Indices[ i_pos + 1 ] ];
+                const Vertex3D& v3 = combined_mesh->Vertices[ combined_mesh->Indices[ i_pos + 2 ] ];
 
-            // Find intersections
-            Vertex3D i1, i2, i3;
-            int      r1 = SphereLineIntersection( v1, v2, sp, sphere_radius * ss.x, i1 );
-            int      r2 = SphereLineIntersection( v2, v3, sp, sphere_radius * ss.x, i2 );
-            int      r3 = SphereLineIntersection( v3, v1, sp, sphere_radius * ss.x, i3 );
-
-            // Process intersections
-            bool outside = ( r1 == 0 && r2 == 0 && r3 == 0 );
-            bool ignore = ( r1 == -2 || r2 == -2 || r3 == -2 );
-            int  sum = r1 + r2 + r3;
-            if( !ignore && sum == 2 ) // 1 1 0, corner in
-            {
-                const Vertex3D& vv1 = ( r1 == 0 ? v1 : ( r2 == 0 ? v2 : v3 ) );
-                const Vertex3D& vv2 = ( r1 == 0 ? v2 : ( r2 == 0 ? v3 : v1 ) );
-                const Vertex3D& vv3 = ( r1 == 0 ? i3 : ( r2 == 0 ? i1 : i2 ) );
-                const Vertex3D& vv4 = ( r1 == 0 ? i2 : ( r2 == 0 ? i3 : i1 ) );
-
-                // First face
-                result_indices.push_back( result_indices.size() );
-                result_indices.push_back( result_indices.size() );
-                result_indices.push_back( result_indices.size() );
-                result_vertices.push_back( vv1 );
-                result_vertices.push_back( vv2 );
-                result_vertices.push_back( vv3 );
-
-                // Second face
-                result_indices.push_back( result_indices.size() );
-                result_indices.push_back( result_indices.size() );
-                result_indices.push_back( result_indices.size() );
-                result_vertices.push_back( vv3 );
-                result_vertices.push_back( vv2 );
-                result_vertices.push_back( vv4 );
-            }
-            else if( !ignore && sum == 1 ) // 1 1 -1, corner out
-            {
-                const Vertex3D& vv1 = ( r1 == -1 ? i3 : ( r2 == -1 ? v1 : i1 ) );
-                const Vertex3D& vv2 = ( r1 == -1 ? i2 : ( r2 == -1 ? i1 : v2 ) );
-                const Vertex3D& vv3 = ( r1 == -1 ? v3 : ( r2 == -1 ? i3 : i2 ) );
-
-                // One face
-                result_indices.push_back( result_indices.size() );
-                result_indices.push_back( result_indices.size() );
-                result_indices.push_back( result_indices.size() );
-                result_vertices.push_back( vv1 );
-                result_vertices.push_back( vv2 );
-                result_vertices.push_back( vv3 );
-            }
-            else if( ignore || outside )
-            {
-                if( ignore && sum == 0 ) // 1 1 -2
+                // Skip mesh
+                if( skip )
+                {
+                    result_vertices.push_back( v1 );
+                    result_vertices.push_back( v2 );
+                    result_vertices.push_back( v3 );
+                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( result_indices.size() );
                     continue;
+                }
 
-                result_indices.push_back( result_indices.size() );
-                result_indices.push_back( result_indices.size() );
-                result_indices.push_back( result_indices.size() );
-                result_vertices.push_back( v1 );
-                result_vertices.push_back( v2 );
-                result_vertices.push_back( v3 );
+                // Find intersections
+                Vertex3D i1, i2, i3;
+                int      r1 = SphereLineIntersection( v1, v2, sp, cut->Shapes[ i ].SphereRadius * ss.x, i1 );
+                int      r2 = SphereLineIntersection( v2, v3, sp, cut->Shapes[ i ].SphereRadius * ss.x, i2 );
+                int      r3 = SphereLineIntersection( v3, v1, sp, cut->Shapes[ i ].SphereRadius * ss.x, i3 );
+
+                // Process intersections
+                bool outside = ( r1 == 0 && r2 == 0 && r3 == 0 );
+                bool ignore = ( r1 == -2 || r2 == -2 || r3 == -2 );
+                int  sum = r1 + r2 + r3;
+                if( !ignore && sum == 2 )                 // 1 1 0, corner in
+                {
+                    const Vertex3D& vv1 = ( r1 == 0 ? v1 : ( r2 == 0 ? v2 : v3 ) );
+                    const Vertex3D& vv2 = ( r1 == 0 ? v2 : ( r2 == 0 ? v3 : v1 ) );
+                    const Vertex3D& vv3 = ( r1 == 0 ? i3 : ( r2 == 0 ? i1 : i2 ) );
+                    const Vertex3D& vv4 = ( r1 == 0 ? i2 : ( r2 == 0 ? i3 : i1 ) );
+
+                    // First face
+                    result_vertices.push_back( vv1 );
+                    result_vertices.push_back( vv2 );
+                    result_vertices.push_back( vv3 );
+                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( result_indices.size() );
+
+                    // Second face
+                    result_vertices.push_back( vv3 );
+                    result_vertices.push_back( vv2 );
+                    result_vertices.push_back( vv4 );
+                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( result_indices.size() );
+                }
+                else if( !ignore && sum == 1 )                 // 1 1 -1, corner out
+                {
+                    const Vertex3D& vv1 = ( r1 == -1 ? i3 : ( r2 == -1 ? v1 : i1 ) );
+                    const Vertex3D& vv2 = ( r1 == -1 ? i2 : ( r2 == -1 ? i1 : v2 ) );
+                    const Vertex3D& vv3 = ( r1 == -1 ? v3 : ( r2 == -1 ? i3 : i2 ) );
+
+                    // One face
+                    result_vertices.push_back( vv1 );
+                    result_vertices.push_back( vv2 );
+                    result_vertices.push_back( vv3 );
+                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( result_indices.size() );
+                }
+                else if( ignore || outside )
+                {
+                    if( ignore && sum == 0 )                     // 1 1 -2
+                        continue;
+
+                    result_vertices.push_back( v1 );
+                    result_vertices.push_back( v2 );
+                    result_vertices.push_back( v3 );
+                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( result_indices.size() );
+                }
+            }
+
+            result_mesh_vertices.push_back( (uint) ( result_vertices.size() - vertices_old_size ) );
+            result_mesh_indices.push_back( (uint) ( result_indices.size() - indices_old_size ) );
+        }
+        combined_mesh->Vertices = result_vertices;
+        combined_mesh->Indices = result_indices;
+        combined_mesh->MeshVertices = result_mesh_vertices;
+        combined_mesh->MeshIndices = result_mesh_indices;
+    }
+
+    // Unskin
+    if( cut->UnskinBone )
+    {
+        // Find unskin bone
+        Bone* unskin_bone = NULL;
+        for( size_t i = 0; i < combined_mesh->CurBoneMatrix; i++ )
+        {
+            if( combined_mesh->SkinBones[ i ]->NameHash == cut->UnskinBone )
+            {
+                unskin_bone = combined_mesh->SkinBones[ i ];
+                break;
             }
         }
 
-        // Disable skin influence of cut bones
-        if( !cut_bones.empty() )
+        // Unskin
+        if( unskin_bone )
         {
-            for( size_t i = vertices_old_size, j = result_vertices.size(); i < j; i++ )
+            // Process meshes
+            size_t v_pos = 0, v_count = 0;
+            for( size_t i = 0, j = combined_mesh->MeshVertices.size(); i < j; i++ )
             {
-                Vertex3D& v = result_vertices[ i ];
-                for( int b = 0; b < BONES_PER_VERTEX; b++ )
+                // Move shape to face space
+                Matrix     mesh_transform = combined_mesh->Meshes[ i ]->Owner->GlobalTransformationMatrix;
+                Matrix     sm = mesh_transform.Inverse() * cut->UnskinShape.GlobalTransformationMatrix;
+                Vector     ss, sp;
+                Quaternion sr;
+                sm.Decompose( ss, sr, sp );
+                float      sphere_square_radius = powf( cut->UnskinShape.SphereRadius * ss.x, 2.0f );
+
+                // Process mesh vertices
+                v_count += combined_mesh->MeshVertices[ i ];
+                for( ; v_pos < v_count; v_pos++ )
                 {
-                    if( v.BlendWeights[ b ] > 0.0f && std::find( cut_bones.begin(), cut_bones.end(), v.BlendIndices[ b ] ) != cut_bones.end() )
+                    Vertex3D& v = combined_mesh->Vertices[ v_pos ];
+
+                    // Get vertex side
+                    bool v_side = ( ( v.Position - sp ).SquareLength() <= sphere_square_radius );
+
+                    // Check influences
+                    for( int b = 0; b < BONES_PER_VERTEX; b++ )
                     {
+                        // No influence
                         float w = v.BlendWeights[ b ];
-                        if( w < 1.0f )
-                        {
-                            v.BlendWeights[ b ] = 0.0f;
-                            for( int b2 = 0; b2 < BONES_PER_VERTEX; b2++ )
-                                v.BlendWeights[ b2 ] += v.BlendWeights[ b2 ] / ( 1.0f - w ) * w;
-                        }
+                        if( w <= 0.0f )
+                            continue;
+
+                        // Last influence, don't reskin
+                        if( w >= 1.0f )
+                            break;
+
+                        // Skip equal influence side
+                        bool influence_side = ( unskin_bone->Find( combined_mesh->SkinBones[ (int) v.BlendIndices[ b ] ]->NameHash ) != NULL );
+                        if( v_side == influence_side )
+                            continue;
+
+                        // Move influence to other bones
+                        v.BlendWeights[ b ] = 0.0f;
+                        for( int b2 = 0; b2 < BONES_PER_VERTEX; b2++ )
+                            v.BlendWeights[ b2 ] += v.BlendWeights[ b2 ] / ( 1.0f - w ) * w;
                     }
                 }
             }
         }
-
-        result_mesh_faces.push_back( (uint) ( result_indices.size() - indices_old_size ) / 3 );
     }
-    combined_mesh.Indices = result_indices;
-    combined_mesh.Vertices = result_vertices;
-    combined_mesh.MeshFaces = result_mesh_faces;
 }
 
 bool Animation3d::NeedDraw()
@@ -1270,6 +1299,7 @@ Animation3dEntity::~Animation3dEntity()
         }
         SAFEDELA( link.EffectInst );
         SAFEDELA( link.EffectMesh );
+        SAFEDELA( link.Cut );
     }
     animData.clear();
     delete animController;
@@ -1490,19 +1520,71 @@ bool Animation3dEntity::Load( const char* name )
             }
             else if( Str::CompareCase( token, "Cut" ) )
             {
-                if( link->Id )
+                ( *istr ) >> buf;
+                char              fname[ MAX_FOPATH ];
+                FileManager::MakeFilePath( buf, path, fname );
+                Animation3dXFile* area = Animation3dXFile::GetXFile( fname );
+                if( area )
                 {
+                    // Add cut
+                    CutData*  cut = new CutData();
+                    CutData** tmp = link->Cut;
+                    link->Cut = new CutData*[ link->CutCount + 1 ];
+                    for( uint i = 0; i < link->CutCount; i++ )
+                        link->Cut[ i ] = tmp[ i ];
+                    SAFEDELA( tmp );
+                    link->Cut[ link->CutCount ] = cut;
+                    link->CutCount++;
+
+                    // Layers
                     ( *istr ) >> buf;
                     StrVec layers;
                     Str::ParseLine( buf, '-', layers, Str::ParseLineDummy );
                     for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                     {
                         int layer = ConstantsManager::GetDefineValue( layers[ m ].c_str() );
-                        if( layer >= 0 && layer < LAYERS3D_COUNT )
-                            link->CutLayers.push_back( layer );
+                        if( Str::Compare( layers[ m ].c_str(), "All" ) )
+                            layer = -1;
+                        cut->Layers.push_back( layer );
                     }
-                    if( link->CutLayers.empty() )
-                        link->CutLayers.push_back( 0 );
+
+                    // Shapes
+                    ( *istr ) >> buf;
+                    StrVec shapes;
+                    Str::ParseLine( buf, '-', shapes, Str::ParseLineDummy );
+                    for( uint m = 0, n = (uint) shapes.size(); m < n; m++ )
+                    {
+                        uint shape_name = Bone::GetHash( shapes[ m ].c_str() );
+                        if( Str::Compare( shapes[ m ].c_str(), "All" ) )
+                            shape_name = 0;
+                        for( size_t k = 0, l = area->allDrawBones.size(); k < l; k++ )
+                        {
+                            if( !shape_name || shape_name == area->allDrawBones[ k ]->NameHash )
+                                cut->Shapes.push_back( CutShape::Make( area->allDrawBones[ k ]->Mesh ) );
+                        }
+                    }
+
+                    // Unskin bone
+                    ( *istr ) >> buf;
+                    cut->UnskinBone = Bone::GetHash( buf );
+                    if( Str::CompareCase( buf, "-" ) )
+                        cut->UnskinBone = 0;
+
+                    // Unskin shape
+                    ( *istr ) >> buf;
+                    if( cut->UnskinBone )
+                    {
+                        uint unskin_shape_name = Bone::GetHash( buf );
+                        for( size_t k = 0, l = area->allDrawBones.size(); k < l; k++ )
+                        {
+                            if( unskin_shape_name == area->allDrawBones[ k ]->NameHash )
+                                cut->UnskinShape = CutShape::Make( area->allDrawBones[ k ]->Mesh );
+                        }
+                    }
+                }
+                else
+                {
+                    WriteLogF( _FUNC_, " - Cur file<%s> not found.\n", fname );
                 }
             }
             else if( Str::CompareCase( token, "RotX" ) )

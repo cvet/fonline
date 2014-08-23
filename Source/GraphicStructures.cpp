@@ -178,8 +178,9 @@ void CombinedMesh::Clear()
     CurBoneMatrix = 0;
     Vertices.clear();
     Indices.clear();
-    MeshFaces.clear();
-    MeshTransforms.clear();
+    Meshes.clear();
+    MeshIndices.clear();
+    MeshVertices.clear();
     MeshAnimLayers.clear();
 }
 
@@ -233,8 +234,9 @@ void CombinedMesh::Encapsulate( MeshInstance& mesh_instance, int anim_layer )
     }
 
     // Set mesh transform and anim layer
-    MeshFaces.push_back( (uint) ( Indices.size() - indices_old_size ) / 3 );
-    MeshTransforms.push_back( mesh->Owner->GlobalTransformationMatrix );
+    Meshes.push_back( mesh );
+    MeshVertices.push_back( (uint) ( Vertices.size() - vertices_old_size ) );
+    MeshIndices.push_back( (uint) ( Indices.size() - indices_old_size ) );
     MeshAnimLayers.push_back( anim_layer );
 
     // Add bones matrices
@@ -373,4 +375,28 @@ uint Bone::GetHash( const char* name )
     for( uint i = 0, j = Str::Length( name ); i < j; i++ )
         hash = 16777619U * hash ^ (uint) name[ i ];
     return hash;
+}
+
+//
+// Cut
+//
+
+CutShape CutShape::Make( MeshData* mesh )
+{
+    CutShape result;
+    result.GlobalTransformationMatrix = mesh->Owner->GlobalTransformationMatrix;
+
+    // Calculate sphere radius
+    float vmin, vmax;
+    for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
+    {
+        Vertex3D v = mesh->Vertices[ i ];
+        if( !i || v.Position.x < vmin )
+            vmin = v.Position.x;
+        if( !i || v.Position.x > vmax )
+            vmax = v.Position.x;
+    }
+    result.SphereRadius = ( vmax - vmin ) / 2.0f;
+
+    return result;
 }

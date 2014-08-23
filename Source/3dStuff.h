@@ -29,7 +29,6 @@ struct AnimParams
     int             Layer;
     int             LayerValue;
     uint            LinkBoneHash;
-    IntVec          CutLayers;
     char*           ChildFName;
     float           RotX, RotY, RotZ;
     float           MoveX, MoveY, MoveZ;
@@ -50,6 +49,9 @@ struct AnimParams
     EffectInstance* EffectInst;
     uint*           EffectMesh;
     uint            EffectCount;
+
+    CutData**       Cut;
+    uint            CutCount;
 };
 typedef vector< AnimParams > AnimParamsVec;
 
@@ -83,6 +85,7 @@ private:
     bool               useGameTimer;
     float              animPosProc, animPosTime, animPosPeriod;
     bool               allowMeshGeneration;
+    CutDataVec         allCuts;
 
     // Derived animations
     Animation3dVec childAnimations;
@@ -98,7 +101,7 @@ private:
     void  FillCombinedMeshes( Animation3d* base, Animation3d* cur );
     void  CombineMesh( MeshInstance& mesh_instance, int anim_layer );
     void  CutCombinedMeshes( Animation3d* base, Animation3d* cur );
-    void  CutCombinedMesh( CombinedMesh& combined_mesh, MeshInstance& sphere, IntVec& cut_layers );
+    void  CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut );
     void  ProcessAnimation( float elapsed, int x, int y, float scale );
     void  UpdateBoneMatrices( Bone* bone, const Matrix* parent_matrix );
     void  DrawCombinedMeshes();
@@ -106,7 +109,6 @@ private:
     void  TransformMesh( CombinedMesh* combined_mesh );
     float GetSpeed();
     uint  GetTick();
-    bool  IsCut();
     void  SetAnimData( AnimParams& data, bool clear );
 
 public:
