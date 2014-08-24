@@ -62,6 +62,7 @@
 #define TXT_CANNOT_INSTANTIATE_TEMPLATE_s_WITH_s   "Can't instantiate template '%s' with subtype '%s'"
 #define TXT_CANNOT_PASS_CLASS_METHOD_AS_ARG        "Can't pass class method as arg directly. Use a delegate object instead"
 #define TXT_CANNOT_RETURN_REF_TO_LOCAL             "Can't return reference to local value."
+#define TXT_CANT_CONSTRUCT_s_USE_REF_CAST          "Can't construct handle '%s'. Use ref cast instead"
 #define TXT_CANT_IMPLICITLY_CONVERT_s_TO_s         "Can't implicitly convert from '%s' to '%s'."
 #define TXT_CANT_RETURN_VALUE                      "Can't return value when return type is 'void'"
 #define TXT_CHANGE_SIGN                            "Implicit conversion changed sign of value"

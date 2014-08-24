@@ -485,7 +485,8 @@ void asCModule::InternalReset()
 			engine->importedFunctions[id] = 0;
 			engine->freeImportedFunctionIdxs.PushLast(id);
 
-			asDELETE(bindInformations[n]->importedFunctionSignature, asCScriptFunction);
+			bindInformations[n]->importedFunctionSignature->Orphan(this);
+
 			asDELETE(bindInformations[n], sBindInfo);
 		}
 	}

@@ -69,8 +69,8 @@ ScriptDictionary::ScriptDictionary( asBYTE* buffer )
             buffer += 4 - ( asPWORD( buffer ) & 0x3 );
 
         // Get the name value pair from the buffer and insert it in the dictionary
-        string name = *(string*) buffer;
-        buffer += sizeof( string );
+        ScriptString* name = *(ScriptString**) buffer;
+        buffer += sizeof( ScriptString * * );
 
         // Get the type id of the value
         int typeId = *(int*) buffer;
@@ -119,9 +119,9 @@ ScriptDictionary::ScriptDictionary( asBYTE* buffer )
             }
 
             if( typeId >= asTYPEID_FLOAT )
-                Set( name, d );
+                Set( *name, d );
             else
-                Set( name, i64 );
+                Set( *name, i64 );
         }
         else
         {
@@ -133,7 +133,7 @@ ScriptDictionary::ScriptDictionary( asBYTE* buffer )
                 ref = *(void**) ref;
             }
 
-            Set( name, ref, typeId );
+            Set( *name, ref, typeId );
         }
 
         // Advance the buffer pointer with the size of the value
@@ -234,22 +234,22 @@ ScriptDictionary& ScriptDictionary::operator=( const ScriptDictionary& other )
     return *this;
 }
 
-ScriptDictValue* ScriptDictionary::operator[]( const string& key )
+ScriptDictValue* ScriptDictionary::operator[]( const ScriptString& key )
 {
     // Return the existing value if it exists, else insert an empty value
     map< string, ScriptDictValue >::iterator it;
-    it = dict.find( key );
+    it = dict.find( key.c_std_str() );
     if( it == dict.end() )
-        it = dict.insert( map< string, ScriptDictValue >::value_type( key, ScriptDictValue() ) ).first;
+        it = dict.insert( map< string, ScriptDictValue >::value_type( key.c_std_str(), ScriptDictValue() ) ).first;
 
     return &it->second;
 }
 
-const ScriptDictValue* ScriptDictionary::operator[]( const string& key ) const
+const ScriptDictValue* ScriptDictionary::operator[]( const ScriptString& key ) const
 {
     // Return the existing value if it exists
     map< string, ScriptDictValue >::const_iterator it;
-    it = dict.find( key );
+    it = dict.find( key.c_std_str() );
     if( it != dict.end() )
         return &it->second;
 
@@ -405,7 +405,7 @@ ScriptArray* ScriptDictionary::GetKeys() const
     for( it = dict.begin(); it != dict.end(); it++ )
     {
         current++;
-        *(string*) array->At( current ) = it->first;
+        *(ScriptString*) array->At( current ) = it->first;
     }
 
     return array;
@@ -413,13 +413,13 @@ ScriptArray* ScriptDictionary::GetKeys() const
 
 void ScriptDictionaryFactory_Generic( asIScriptGeneric* gen )
 {
-    *(ScriptDictionary**) gen->GetAddressOfReturnLocation() = new ScriptDictionary( gen->GetEngine() );
+    *(ScriptDictionary**) gen->GetAddressOfReturnLocation() = ScriptDictionary::Create( gen->GetEngine() );
 }
 
 void ScriptDictionaryListFactory_Generic( asIScriptGeneric* gen )
 {
     asBYTE* buffer = (asBYTE*) gen->GetArgAddress( 0 );
-    *(ScriptDictionary**) gen->GetAddressOfReturnLocation() = new ScriptDictionary( buffer );
+    *(ScriptDictionary**) gen->GetAddressOfReturnLocation() = ScriptDictionary::Create( buffer );
 }
 
 // -------------------------------------------------------------------------
@@ -543,15 +543,55 @@ bool ScriptDictValue::Get( asIScriptEngine* engine, void* value, int typeId ) co
         }
 
         // We know all numbers are stored as either int64 or double, since we register overloaded functions for those
-        if( m_typeId == asTYPEID_INT64 && typeId == asTYPEID_DOUBLE )
+        if( typeId == asTYPEID_DOUBLE )
         {
-            *(double*) value = double(m_valueInt);
+            if( m_typeId == asTYPEID_INT64 )
+                *(double*) value = double(m_valueInt);
+            else if( m_typeId == asTYPEID_BOOL )
+                *(double*) value = char(m_valueInt) ? 1.0 : 0.0;
+            else if( m_typeId > asTYPEID_DOUBLE && ( m_typeId & asTYPEID_MASK_OBJECT ) == 0 )
+                *(double*) value = double( int(m_valueInt) );              // enums are 32bit
+            else
+            {
+                // The stored type is an object
+                // TODO: Check if the object has a conversion operator to a primitive value
+                *(double*) value = 0;
+            }
             return true;
         }
-        else if( m_typeId == asTYPEID_DOUBLE && typeId == asTYPEID_INT64 )
+        else if( typeId == asTYPEID_INT64 )
         {
-            *(asINT64*) value = asINT64( m_valueFlt );
+            if( m_typeId == asTYPEID_DOUBLE )
+                *(asINT64*) value = asINT64( m_valueFlt );
+            else if( m_typeId == asTYPEID_BOOL )
+                *(asINT64*) value = char(m_valueInt) ? 1 : 0;
+            else if( m_typeId > asTYPEID_DOUBLE && ( m_typeId & asTYPEID_MASK_OBJECT ) == 0 )
+                *(asINT64*) value = int(m_valueInt);                // enums are 32bit
+            else
+            {
+                // The stored type is an object
+                // TODO: Check if the object has a conversion operator to a primitive value
+                *(asINT64*) value = 0;
+            }
             return true;
+        }
+        else if( typeId > asTYPEID_DOUBLE && ( m_typeId & asTYPEID_MASK_OBJECT ) == 0 )
+        {
+            // The desired type is an enum. These are always 32bit integers
+            if( m_typeId == asTYPEID_DOUBLE )
+                *(int*) value = int(m_valueFlt);
+            else if( m_typeId == asTYPEID_INT64 )
+                *(int*) value = int(m_valueInt);
+            else if( m_typeId == asTYPEID_BOOL )
+                *(int*) value = char(m_valueInt) ? 1 : 0;
+            else if( m_typeId > asTYPEID_DOUBLE && ( m_typeId & asTYPEID_MASK_OBJECT ) == 0 )
+                *(int*) value = int(m_valueInt);
+            else
+            {
+                // The stored type is an object
+                // TODO: Check if the object has a conversion operator to a primitive value
+                *(int*) value = 0;
+            }
         }
     }
 
@@ -719,9 +759,9 @@ void RegisterScriptDictionary_Native( asIScriptEngine* engine )
     r = engine->RegisterObjectMethod( "dictionary", "array<string> @getKeys() const", asMETHOD( ScriptDictionary, GetKeys ), asCALL_THISCALL );
     assert( r >= 0 );
 
-    r = engine->RegisterObjectMethod( "dictionary", "dictionaryValue &opIndex(const string &in)", asMETHODPR( ScriptDictionary, operator[], ( const string & ), ScriptDictValue* ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dictionary", "dictionaryValue &opIndex(const string &in)", asMETHODPR( ScriptDictionary, operator[], ( const ScriptString & ), ScriptDictValue* ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "dictionary", "const dictionaryValue &opIndex(const string &in) const", asMETHODPR( ScriptDictionary, operator[], ( const string & ) const, const ScriptDictValue* ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dictionary", "const dictionaryValue &opIndex(const string &in) const", asMETHODPR( ScriptDictionary, operator[], ( const ScriptString & ) const, const ScriptDictValue* ), asCALL_THISCALL );
     assert( r >= 0 );
 
     // Register GC behaviours
@@ -735,21 +775,6 @@ void RegisterScriptDictionary_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectBehaviour( "dictionary", asBEHAVE_RELEASEREFS, "void f(int&in)", asMETHOD( ScriptDictionary, ReleaseAllReferences ), asCALL_THISCALL );
     assert( r >= 0 );
-
-    #if AS_USE_STLNAMES == 1
-    // Same as isEmpty
-    r = engine->RegisterObjectMethod( "dictionary", "bool empty() const", asMETHOD( ScriptDictionary, IsEmpty ), asCALL_THISCALL );
-    assert( r >= 0 );
-    // Same as getSize
-    r = engine->RegisterObjectMethod( "dictionary", "uint size() const", asMETHOD( ScriptDictionary, GetSize ), asCALL_THISCALL );
-    assert( r >= 0 );
-    // Same as delete
-    r = engine->RegisterObjectMethod( "dictionary", "void erase(const string &in)", asMETHOD( ScriptDictionary, Delete ), asCALL_THISCALL );
-    assert( r >= 0 );
-    // Same as deleteAll
-    r = engine->RegisterObjectMethod( "dictionary", "void clear()", asMETHOD( ScriptDictionary, DeleteAll ), asCALL_THISCALL );
-    assert( r >= 0 );
-    #endif
 }
 
 void RegisterScriptDictionary_Generic( asIScriptEngine* engine )

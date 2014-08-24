@@ -133,6 +133,9 @@ asCObjectType::asCObjectType()
 
 	accessMask = 0xFFFFFFFF;
 	nameSpace = 0;
+#ifdef WIP_16BYTE_ALIGN
+	alignment = 4;
+#endif
 }
 
 asCObjectType::asCObjectType(asCScriptEngine *engine) 
@@ -147,6 +150,9 @@ asCObjectType::asCObjectType(asCScriptEngine *engine)
 
 	accessMask = 0xFFFFFFFF;
 	nameSpace = engine->nameSpaces[0];
+#ifdef WIP_16BYTE_ALIGN
+	alignment = 4;
+#endif
 }
 
 int asCObjectType::AddRef() const
@@ -748,8 +754,19 @@ asCObjectProperty *asCObjectType::AddPropertyToClass(const asCString &name, cons
 		propSize = dt.GetSizeInMemoryBytes();
 
 	// Add extra bytes so that the property will be properly aligned
+#ifndef WIP_16BYTE_ALIGN
 	if( propSize == 2 && (size & 1) ) size += 1;
 	if( propSize > 2 && (size & 3) ) size += 4 - (size & 3);
+#else
+	asUINT alignment = dt.GetAlignment();
+	const asUINT propSizeAlignmentDifference = size & (alignment-1);
+	if( propSizeAlignmentDifference != 0 )
+	{
+		size += (alignment - propSizeAlignmentDifference);
+	}
+
+	asASSERT((size % alignment) == 0);
+#endif
 
 	prop->byteOffset = size;
 	size += propSize;

@@ -112,6 +112,9 @@ AS_API const char * asGetLibraryOptions()
 #ifdef AS_NO_THISCALL_FUNCTOR_METHOD
 		"AS_NO_THISCALL_FUNCTOR_METHOD "
 #endif
+#ifdef WIP_16BYTE_ALIGN
+		"WIP_16BYTE_ALIGN "
+#endif
 
 	// Target system
 #ifdef AS_WIN
@@ -1702,7 +1705,11 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asDWORD 
 		return ConfigError(asINVALID_ARG, "RegisterObjectType", name, 0);
 
 	// Don't allow anything else than the defined flags
+#ifndef WIP_16BYTE_ALIGN
 	if( flags - (flags & asOBJ_MASK_VALID_FLAGS) )
+#else
+	if( flags - (flags & (asOBJ_MASK_VALID_FLAGS | asOBJ_APP_ALIGN16)) )
+#endif
 		return ConfigError(asINVALID_ARG, "RegisterObjectType", name, 0);
 
 	// Value types must have a defined size
@@ -1738,6 +1745,10 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asDWORD 
 		type->name       = typeName;
 		type->nameSpace  = defaultNamespace;
 		type->size       = byteSize;
+#ifdef WIP_16BYTE_ALIGN
+		// TODO: Types smaller than 4 don't need to be aligned to 4 byte boundaries
+		type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : 4;
+#endif
 		type->flags      = flags;
 		type->accessMask = defaultAccessMask;
 
@@ -1768,6 +1779,9 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asDWORD 
 
 				subtype->name      = subtypeNames[subTypeIdx];
 				subtype->size      = 0;
+#ifdef WIP_16BYTE_ALIGN
+				type->alignment    = 0; // template subtypes cannot be instantiated and don't need alignment
+#endif
 				subtype->flags     = asOBJ_TEMPLATE_SUBTYPE;
 				templateSubTypes.PushLast(subtype);
 				subtype->AddRef();
@@ -1832,6 +1846,10 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asDWORD 
 			type->name       = typeName;
 			type->nameSpace  = defaultNamespace;
 			type->size       = byteSize;
+#ifdef WIP_16BYTE_ALIGN
+			// TODO: Types smaller than 4 don't need to be aligned to 4 byte boundaries
+			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : 4;
+#endif
 			type->flags      = flags;
 			type->accessMask = defaultAccessMask;
 
@@ -1884,6 +1902,10 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asDWORD 
 			type->templateSubTypes.PushLast(dt.GetSubType());
 			if( type->templateSubTypes[0].GetObjectType() ) type->templateSubTypes[0].GetObjectType()->AddRef();
 			type->size       = byteSize;
+#ifdef WIP_16BYTE_ALIGN
+			// TODO: Types smaller than 4 don't need to be aligned to 4 byte boundaries
+			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : 4;
+#endif
 			type->flags      = flags;
 			type->accessMask = defaultAccessMask;
 
@@ -2377,7 +2399,8 @@ int asCScriptEngine::RegisterBehaviourToObjectType(asCObjectType *objectType, as
 	else if( behaviour == asBEHAVE_IMPLICIT_VALUE_CAST ||
 		     behaviour == asBEHAVE_VALUE_CAST )
 	{
-		// TODO: 2.29.0: These should be registered as methods with opConv or opImplConv names
+		// TODO: 2.30.0: Deprecate these behaviours, the application should register 
+		//               them directly as methods with opConv or opImplConv names
 
 		// There are two allowed signatures
 		// 1. type f()
@@ -2391,11 +2414,13 @@ int asCScriptEngine::RegisterBehaviourToObjectType(asCObjectType *objectType, as
 		if( func.returnType.IsEqualExceptRefAndConst(asCDataType::CreatePrimitive(ttBool, false)) )
 			return ConfigError(asNOT_SUPPORTED, "RegisterObjectBehaviour", objectType->name.AddressOf(), decl);
 
-		// TODO: verify that the same cast is not registered already (const or non-const is treated the same for the return type)
-
-		beh->operators.PushLast(behaviour);
-		func.id = AddBehaviourFunction(func, internal);
-		beh->operators.PushLast(func.id);
+		asCString decl;
+		decl += func.returnType.Format();
+		decl += behaviour == asBEHAVE_VALUE_CAST ? " opConv(" : " opImplConv(";
+		if( func.parameterTypes.GetLength() )
+			decl += "?&out";
+		decl += ")";
+		func.id = RegisterMethodToObjectType(objectType, decl.AddressOf(), funcPointer, callConv, objForThiscall);
 	}
 	else if( behaviour == asBEHAVE_REF_CAST ||
 	         behaviour == asBEHAVE_IMPLICIT_REF_CAST )
@@ -2787,15 +2812,33 @@ int asCScriptEngine::RegisterMethodToObjectType(asCObjectType *objectType, const
 
 	// Check against duplicate methods
 	asUINT n;
-	for( n = 0; n < func->objectType->methods.GetLength(); n++ )
+	if( func->name == "opConv" || func->name == "opImplConv" )
 	{
-		asCScriptFunction *f = scriptFunctions[func->objectType->methods[n]];
-		if( f->name == func->name &&
-			f->IsSignatureExceptNameAndReturnTypeEqual(func) )
+		// opConv and opImplConv are special methods that the compiler differentiates between by the return type
+		for( n = 0; n < func->objectType->methods.GetLength(); n++ )
 		{
-			func->funcType = asFUNC_DUMMY;
-			asDELETE(func,asCScriptFunction);
-			return ConfigError(asALREADY_REGISTERED, "RegisterObjectMethod", objectType->name.AddressOf(), declaration);
+			asCScriptFunction *f = scriptFunctions[func->objectType->methods[n]];
+			if( f->name == func->name &&
+				f->IsSignatureExceptNameEqual(func) )
+			{
+				func->funcType = asFUNC_DUMMY;
+				asDELETE(func,asCScriptFunction);
+				return ConfigError(asALREADY_REGISTERED, "RegisterObjectMethod", objectType->name.AddressOf(), declaration);
+			}
+		}
+	}
+	else
+	{
+		for( n = 0; n < func->objectType->methods.GetLength(); n++ )
+		{
+			asCScriptFunction *f = scriptFunctions[func->objectType->methods[n]];
+			if( f->name == func->name &&
+				f->IsSignatureExceptNameAndReturnTypeEqual(func) )
+			{
+				func->funcType = asFUNC_DUMMY;
+				asDELETE(func,asCScriptFunction);
+				return ConfigError(asALREADY_REGISTERED, "RegisterObjectMethod", objectType->name.AddressOf(), declaration);
+			}
 		}
 	}
 
@@ -4364,16 +4407,28 @@ void *asCScriptEngine::CallAlloc(const asCObjectType *type) const
 	if( size & 0x3 )
 		size += 4 - (size & 0x3);
 
+#ifndef WIP_16BYTE_ALIGN
 #if defined(AS_DEBUG)
-	return ((asALLOCFUNCDEBUG_t)(userAlloc))(size, __FILE__, __LINE__);
+	return ((asALLOCFUNCDEBUG_t)userAlloc)(size, __FILE__, __LINE__);
 #else
 	return userAlloc(size);
+#endif
+#else
+#if defined(AS_DEBUG)
+	return ((asALLOCALIGNEDFUNCDEBUG_t)userAllocAligned)(size, type->alignment, __FILE__, __LINE__);
+#else
+	return userAllocAligned(size, type->alignment);
+#endif
 #endif
 }
 
 void asCScriptEngine::CallFree(void *obj) const
 {
+#ifndef WIP_16BYTE_ALIGN
 	userFree(obj);
+#else
+	userFreeAligned(obj);
+#endif
 }
 
 // interface

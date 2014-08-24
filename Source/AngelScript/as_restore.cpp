@@ -589,17 +589,35 @@ void asCReader::ReadUsedFunctions()
 			// Find the correct function
 			if( c == 'm' )
 			{
-				for( asUINT i = 0; i < module->scriptFunctions.GetLength(); i++ )
+				if( func.funcType == asFUNC_IMPORTED )
 				{
-					asCScriptFunction *f = module->scriptFunctions[i];
-					if( !func.IsSignatureEqual(f) ||
-						func.objectType != f->objectType ||
-						func.funcType != f->funcType || 
-						func.nameSpace != f->nameSpace )
-						continue;
+					for( asUINT i = 0; i < module->bindInformations.GetLength(); i++ )
+					{
+						asCScriptFunction *f = module->bindInformations[i]->importedFunctionSignature;
+						if( !func.IsSignatureEqual(f) ||
+							func.objectType != f->objectType ||
+							func.funcType != f->funcType || 
+							func.nameSpace != f->nameSpace )
+							continue;
 
-					usedFunctions[n] = f;
-					break;
+						usedFunctions[n] = f;
+						break;
+					}
+				}
+				else
+				{
+					for( asUINT i = 0; i < module->scriptFunctions.GetLength(); i++ )
+					{
+						asCScriptFunction *f = module->scriptFunctions[i];
+						if( !func.IsSignatureEqual(f) ||
+							func.objectType != f->objectType ||
+							func.funcType != f->funcType || 
+							func.nameSpace != f->nameSpace )
+							continue;
+
+						usedFunctions[n] = f;
+						break;
+					}
 				}
 			}
 			else

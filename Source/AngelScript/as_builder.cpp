@@ -4020,29 +4020,62 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 		GetObjectMethodDescriptions(name.AddressOf(), objType, funcs, false);
 	else
 		GetFunctionDescriptions(name.AddressOf(), funcs, ns);
-	for( asUINT n = 0; n < funcs.GetLength(); ++n )
+	if( objType && (name == "opConv" || name == "opImplConv") && parameterTypes.GetLength() == 0 )
 	{
-		asCScriptFunction *func = GetFunctionDescription(funcs[n]);
-		if( func->IsSignatureExceptNameAndReturnTypeEqual(parameterTypes, inOutFlags, objType, isConstMethod) )
+		// opConv and opImplConv are special methods used for type casts
+		for( asUINT n = 0; n < funcs.GetLength(); ++n )
 		{
-			if( isMixin )
+			asCScriptFunction *func = GetFunctionDescription(funcs[n]);
+			if( func->IsSignatureExceptNameEqual(returnType, parameterTypes, inOutFlags, objType, isConstMethod) )
 			{
-				// Clean up the memory, as the function will not be registered
-				if( node )
-					node->Destroy(engine);
-				sFunctionDescription *func = functions.PopLast();
-				asDELETE(func, sFunctionDescription);
+				// TODO: clean up: Reuse the same error handling for both opConv and normal methods
+				if( isMixin )
+				{
+					// Clean up the memory, as the function will not be registered
+					if( node )
+						node->Destroy(engine);
+					sFunctionDescription *func = functions.PopLast();
+					asDELETE(func, sFunctionDescription);
 
-				// Free the default args
-				for( asUINT n = 0; n < defaultArgs.GetLength(); n++ )
-					if( defaultArgs[n] )
-						asDELETE(defaultArgs[n], asCString);
+					// Free the default args
+					for( asUINT n = 0; n < defaultArgs.GetLength(); n++ )
+						if( defaultArgs[n] )
+							asDELETE(defaultArgs[n], asCString);
 
-				return 0;
+					return 0;
+				}
+
+				WriteError(TXT_FUNCTION_ALREADY_EXIST, file, node);
+				break;
 			}
+		}
+	}
+	else
+	{
+		for( asUINT n = 0; n < funcs.GetLength(); ++n )
+		{
+			asCScriptFunction *func = GetFunctionDescription(funcs[n]);
+			if( func->IsSignatureExceptNameAndReturnTypeEqual(parameterTypes, inOutFlags, objType, isConstMethod) )
+			{
+				if( isMixin )
+				{
+					// Clean up the memory, as the function will not be registered
+					if( node )
+						node->Destroy(engine);
+					sFunctionDescription *func = functions.PopLast();
+					asDELETE(func, sFunctionDescription);
 
-			WriteError(TXT_FUNCTION_ALREADY_EXIST, file, node);
-			break;
+					// Free the default args
+					for( asUINT n = 0; n < defaultArgs.GetLength(); n++ )
+						if( defaultArgs[n] )
+							asDELETE(defaultArgs[n], asCString);
+
+					return 0;
+				}
+
+				WriteError(TXT_FUNCTION_ALREADY_EXIST, file, node);
+				break;
+			}
 		}
 	}
 

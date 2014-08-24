@@ -3358,18 +3358,28 @@ int asCCompiler::CompileInitListElement(asSListPatternNode *&patternNode, asCScr
 				}
 			}
 
-			asSExprContext ctx(engine);
-			DoAssignment(&ctx, &lctx, &rctx, valueNode, valueNode, ttAssignment, valueNode);
+			if( lctx.type.dataType.IsNullHandle() )
+			{
+				// Don't add any code to assign a null handle. RefCpy doesn't work without a known type. 
+				// The buffer is already initialized to zero in asBC_AllocMem anyway.
+				asASSERT( rctx.bc.GetLastInstr() == asBC_PshNull );
+				asASSERT( reinterpret_cast<asSListPatternDataTypeNode*>(patternNode)->dataType.GetTokenType() == ttQuestion );
+			}
+			else
+			{
+				asSExprContext ctx(engine);
+				DoAssignment(&ctx, &lctx, &rctx, valueNode, valueNode, ttAssignment, valueNode);
 
-			if( !lctx.type.dataType.IsPrimitive() )
-				ctx.bc.Instr(asBC_PopPtr);
+				if( !lctx.type.dataType.IsPrimitive() )
+					ctx.bc.Instr(asBC_PopPtr);
 
-			// Release temporary variables used by expression
-			ReleaseTemporaryVariable(ctx.type, &ctx.bc);
+				// Release temporary variables used by expression
+				ReleaseTemporaryVariable(ctx.type, &ctx.bc);
 
-			ProcessDeferredParams(&ctx);
+				ProcessDeferredParams(&ctx);
 
-			byteCode.AddCode(&ctx.bc);
+				byteCode.AddCode(&ctx.bc);
+			}
 		}
 		else
 		{
@@ -5801,8 +5811,8 @@ asUINT asCCompiler::ImplicitConvObjectToPrimitive(asSExprContext *ctx, const asC
 	// Find matching value cast behaviours
 	// Here we're only interested in those that convert the type to a primitive type
 	asCArray<int> funcs;
-	asSTypeBehaviour *beh = ctx->type.dataType.GetBehaviour();
-	if( beh == 0 )
+	asCObjectType *ot = ctx->type.dataType.GetObjectType();
+	if( ot == 0 )
 	{
 		if( convType != asIC_IMPLICIT_CONV && node )
 		{
@@ -5816,25 +5826,26 @@ asUINT asCCompiler::ImplicitConvObjectToPrimitive(asSExprContext *ctx, const asC
 
 	if( convType == asIC_EXPLICIT_VAL_CAST )
 	{
-		for( unsigned int n = 0; n < beh->operators.GetLength(); n += 2 )
+		for( unsigned int n = 0; n < ot->methods.GetLength(); n++ )
 		{
 			// accept both implicit and explicit cast
-			// TODO: 2.29.0: look for opConv or opImplConv methods
-			if( (beh->operators[n] == asBEHAVE_VALUE_CAST ||
-					beh->operators[n] == asBEHAVE_IMPLICIT_VALUE_CAST) &&
-				builder->GetFunctionDescription(beh->operators[n+1])->returnType.IsPrimitive() )
-				funcs.PushLast(beh->operators[n+1]);
+			asCScriptFunction *mthd = engine->scriptFunctions[ot->methods[n]];
+			if( (mthd->name == "opConv" || mthd->name == "opImplConv") &&
+				mthd->parameterTypes.GetLength() == 0 &&
+				mthd->returnType.IsPrimitive() )
+				funcs.PushLast(ot->methods[n]);
 		}
 	}
 	else
 	{
-		for( unsigned int n = 0; n < beh->operators.GetLength(); n += 2 )
+		for( unsigned int n = 0; n < ot->methods.GetLength(); n++ )
 		{
 			// accept only implicit cast
-			// TODO: 2.29.0: look for opImplConv methods
-			if( beh->operators[n] == asBEHAVE_IMPLICIT_VALUE_CAST &&
-				builder->GetFunctionDescription(beh->operators[n+1])->returnType.IsPrimitive() )
-				funcs.PushLast(beh->operators[n+1]);
+			asCScriptFunction *mthd = engine->scriptFunctions[ot->methods[n]];
+			if( mthd->name == "opImplConv" &&
+				mthd->parameterTypes.GetLength() == 0 &&
+				mthd->returnType.IsPrimitive() )
+				funcs.PushLast(ot->methods[n]);
 		}
 	}
 
@@ -5906,21 +5917,20 @@ asUINT asCCompiler::ImplicitConvObjectToPrimitive(asSExprContext *ctx, const asC
 	// TODO: clean-up: This part is similar to what is in ImplicitConvObjectValue
 	// If no direct conversion is found we should look for the generic form 'void opConv(?&out)'
 	funcs.SetLength(0);
-	for( asUINT n = 0; n < beh->operators.GetLength(); n+= 2 )
+	for( asUINT n = 0; n < ot->methods.GetLength(); n++ )
 	{
-		if( ((convType == asIC_EXPLICIT_VAL_CAST) && asBEHAVE_VALUE_CAST == beh->operators[n]) ||
-			asBEHAVE_IMPLICIT_VALUE_CAST == beh->operators[n] )
+		asCScriptFunction *func = engine->scriptFunctions[ot->methods[n]];
+		if( ((convType == asIC_EXPLICIT_VAL_CAST) && func->name == "opConv") ||
+			func->name == "opImplConv" )
 		{
-			int funcId = beh->operators[n+1];
-
 			// Does the operator take the ?&out parameter?
-			asCScriptFunction *func = engine->scriptFunctions[funcId];
-			if( func->parameterTypes.GetLength() != 1 ||
+			if( func->returnType != asCDataType::CreatePrimitive(ttVoid, false) ||
+				func->parameterTypes.GetLength() != 1 ||
 				func->parameterTypes[0].GetTokenType() != ttQuestion ||
 				func->inOutFlags[0] != asTM_OUTREF )
 				continue;
 
-			funcs.PushLast(funcId);
+			funcs.PushLast(ot->methods[n]);
 		}
 	}
 
@@ -6099,32 +6109,36 @@ asUINT asCCompiler::ImplicitConvObjectValue(asSExprContext *ctx, const asCDataTy
 	if( to.GetObjectType() != ctx->type.dataType.GetObjectType() )
 	{
 		// TODO: Implement support for implicit constructor/factory
-		asSTypeBehaviour *beh = ctx->type.dataType.GetBehaviour();
-		if( beh == 0 )
+		asCObjectType *ot = ctx->type.dataType.GetObjectType();
+		if( ot == 0 )
 			return cost;
 
 		asCArray<int> funcs;
 		if( convType == asIC_EXPLICIT_VAL_CAST )
 		{
-			for( unsigned int n = 0; n < beh->operators.GetLength(); n += 2 )
+			for( unsigned int n = 0; n < ot->methods.GetLength(); n++ )
 			{
+				asCScriptFunction *func = engine->scriptFunctions[ot->methods[n]];
+
 				// accept both implicit and explicit cast
-				// TODO: 2.29.0: Look for opConv and opImplConv methods instead
-				if( (beh->operators[n] == asBEHAVE_VALUE_CAST ||
-					 beh->operators[n] == asBEHAVE_IMPLICIT_VALUE_CAST) &&
-					builder->GetFunctionDescription(beh->operators[n+1])->returnType.GetObjectType() == to.GetObjectType() )
-					funcs.PushLast(beh->operators[n+1]);
+				if( (func->name == "opConv" ||
+					 func->name == "opImplConv") &&
+					func->returnType.GetObjectType() == to.GetObjectType() &&
+					func->parameterTypes.GetLength() == 0 )
+					funcs.PushLast(ot->methods[n]);
 			}
 		}
 		else
 		{
-			for( unsigned int n = 0; n < beh->operators.GetLength(); n += 2 )
+			for( unsigned int n = 0; n < ot->methods.GetLength(); n++ )
 			{
+				asCScriptFunction *func = engine->scriptFunctions[ot->methods[n]];
+
 				// accept only implicit cast
-				// TODO: 2.29.0: Look for opImplConv methods instead
-				if( beh->operators[n] == asBEHAVE_IMPLICIT_VALUE_CAST &&
-					builder->GetFunctionDescription(beh->operators[n+1])->returnType.GetObjectType() == to.GetObjectType() )
-					funcs.PushLast(beh->operators[n+1]);
+				if( func->name == "opImplConv" &&
+					func->returnType.GetObjectType() == to.GetObjectType() &&
+					func->parameterTypes.GetLength() == 0 )
+					funcs.PushLast(ot->methods[n]);
 			}
 		}
 
@@ -6165,21 +6179,20 @@ asUINT asCCompiler::ImplicitConvObjectValue(asSExprContext *ctx, const asCDataTy
 		{
 			// TODO: cleanup: This part is similar to the second half of ImplicitConvObjectToPrimitive
 			// Look for a value cast with variable type
-			for( asUINT n = 0; n < beh->operators.GetLength(); n+= 2 )
+			for( asUINT n = 0; n < ot->methods.GetLength(); n++ )
 			{
-				if( ((convType == asIC_EXPLICIT_VAL_CAST) && asBEHAVE_VALUE_CAST == beh->operators[n]) ||
-					asBEHAVE_IMPLICIT_VALUE_CAST == beh->operators[n] )
+				asCScriptFunction *func = engine->scriptFunctions[ot->methods[n]];
+				if( ((convType == asIC_EXPLICIT_VAL_CAST) && func->name == "opConv") ||
+					func->name == "opImplConv" )
 				{
-					int funcId = beh->operators[n+1];
-
 					// Does the operator take the ?&out parameter?
-					asCScriptFunction *func = engine->scriptFunctions[funcId];
-					if( func->parameterTypes.GetLength() != 1 ||
+					if( func->returnType != asCDataType::CreatePrimitive(ttVoid, false) ||
+						func->parameterTypes.GetLength() != 1 ||
 						func->parameterTypes[0].GetTokenType() != ttQuestion ||
 						func->inOutFlags[0] != asTM_OUTREF )
 						continue;
 
-					funcs.PushLast(funcId);
+					funcs.PushLast(ot->methods[n]);
 				}
 			}
 
@@ -7392,7 +7405,7 @@ int asCCompiler::DoAssignment(asSExprContext *ctx, asSExprContext *lctx, asSExpr
 			return -1;
 		}
 
-		if( lctx->type.dataType.GetObjectType()->flags & asOBJ_ASHANDLE )
+		if( lctx->type.dataType.GetObjectType() && (lctx->type.dataType.GetObjectType()->flags & asOBJ_ASHANDLE) )
 		{
 			// The object is a value type but that should be treated as a handle
 
@@ -9230,6 +9243,22 @@ void asCCompiler::CompileConstructCall(asCScriptNode *node, asSExprContext *ctx)
 		return;
 	}
 
+	if( dt.GetObjectType() && (dt.GetObjectType()->flags & asOBJ_IMPLICIT_HANDLE) )
+	{
+		// Types declared as implicit handle must not attempt to construct a handle
+		dt.MakeHandle(false);
+	}
+
+	// Don't accept syntax like object@(expr)
+	if( dt.IsObjectHandle() )
+	{
+		asCString str;
+		str.Format(TXT_CANT_CONSTRUCT_s_USE_REF_CAST, dt.Format().AddressOf());
+		Error(str, node);
+		ctx->type.SetDummy();
+		return;
+	}
+
 	if( !dt.CanBeInstantiated() )
 	{
 		asCString str;
@@ -10016,7 +10045,9 @@ int asCCompiler::CompileExpressionPreOp(asCScriptNode *node, asSExprContext *ctx
 		}
 
 		if( ctx->type.dataType.IsReference() ) ConvertToVariable(ctx);
-		ImplicitConversion(ctx, to, node, asIC_IMPLICIT_CONV);
+
+		// Use an explicit conversion in case of constants to avoid unnecessary warning about change of sign
+		ImplicitConversion(ctx, to, node, ctx->type.isConstant ? asIC_EXPLICIT_VAL_CAST : asIC_IMPLICIT_CONV);
 
 		if( !ctx->type.isConstant )
 		{
@@ -11989,16 +12020,17 @@ void asCCompiler::ConvertToVariableNotIn(asSExprContext *ctx, asSExprContext *ex
 void asCCompiler::ImplicitConvObjectToBestMathType(asSExprContext *ctx, asCScriptNode *node)
 {
 	asCArray<int> funcs;
-	asSTypeBehaviour *beh = ctx->type.dataType.GetBehaviour();
-	if( beh )
+	asCObjectType *ot = ctx->type.dataType.GetObjectType();
+	if( ot )
 	{
-		for( unsigned int n = 0; n < beh->operators.GetLength(); n += 2 )
+		for( unsigned int n = 0; n < ot->methods.GetLength(); n++ )
 		{
 			// Consider only implicit casts
-			// TODO: 2.29.0: Look for opImplConv methods instead
-			if( beh->operators[n] == asBEHAVE_IMPLICIT_VALUE_CAST &&
-				builder->GetFunctionDescription(beh->operators[n+1])->returnType.IsPrimitive() )
-				funcs.PushLast(beh->operators[n+1]);
+			asCScriptFunction *func = engine->scriptFunctions[ot->methods[n]];
+			if( func->name == "opImplConv" &&
+				func->returnType.IsPrimitive() &&
+				func->parameterTypes.GetLength() == 0 )
+				funcs.PushLast(ot->methods[n]);
 		}
 
 		// Use the one with the highest precision
@@ -13380,7 +13412,14 @@ void asCCompiler::CompileOperatorOnHandles(asCScriptNode *node, asSExprContext *
 	int op = node->tokenType;
 	if( op == ttEqual || op == ttNotEqual || op == ttIs || op == ttNotIs )
 	{
-		// TODO: runtime optimize: don't do REFCPY
+		// Make sure handles received as parameters by reference are copied to a local variable before the 
+		// asBC_CmpPtr, so we don't end up comparing the reference to the handle instead of the handle itself
+		if( lctx->type.isVariable && !lctx->type.isTemporary && lctx->type.stackOffset <= 0 )
+			lctx->type.isVariable = false;
+		if( rctx->type.isVariable && !rctx->type.isTemporary && rctx->type.stackOffset <= 0 )
+			rctx->type.isVariable = false;
+
+		// TODO: runtime optimize: don't do REFCPY if not necessary
 		ConvertToVariableNotIn(lctx, rctx);
 		ConvertToVariable(rctx);
 

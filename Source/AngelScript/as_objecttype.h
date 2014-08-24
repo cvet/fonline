@@ -192,6 +192,9 @@ public:
 	asCString                    name;
 	asSNameSpace                *nameSpace;
 	int                          size;
+#ifdef WIP_16BYTE_ALIGN
+	int                          alignment;
+#endif
 	asCArray<asCObjectProperty*> properties;
 	asCArray<int>                methods;
 	asCArray<asCObjectType*>     interfaces;

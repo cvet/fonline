@@ -61,7 +61,6 @@ const int RESERVE_STACK = 2*AS_PTR_SIZE;
 // For each script function call we push 9 PTRs on the call stack
 const int CALLSTACK_FRAME_SIZE = 9;
 
-
 #if defined(AS_DEBUG)
 
 class asCDebugStats
@@ -254,7 +253,11 @@ void asCContext::DetachEngine()
 	{
 		if( m_stackBlocks[n] )
 		{
+#ifndef WIP_16BYTE_ALIGN
 			asDELETEARRAY(m_stackBlocks[n]);
+#else
+			asDELETEARRAYALIGNED(m_stackBlocks[n]);
+#endif
 		}
 	}
 	m_stackBlocks.SetLength(0);
@@ -1190,6 +1193,14 @@ int asCContext::Execute()
 					SetInternalException(TXT_NULL_POINTER_ACCESS);
 			}
 		}
+		else if( m_currentFunction->funcType == asFUNC_IMPORTED )
+		{
+			int funcId = m_engine->importedFunctions[m_currentFunction->id & ~FUNC_IMPORTED]->boundFunctionId;
+			if( funcId > 0 )
+				m_currentFunction = m_engine->scriptFunctions[funcId];
+			else
+				SetInternalException(TXT_UNBOUND_FUNCTION);
+		}
 
 		if( m_currentFunction->funcType == asFUNC_SCRIPT )
 		{
@@ -1500,22 +1511,46 @@ int asCContext::GetLineNumber(asUINT stackLevel, int *column, const char **secti
 // internal
 bool asCContext::ReserveStackSpace(asUINT size)
 {
+#ifdef WIP_16BYTE_ALIGN
+	// Pad size to a multiple of MAX_TYPE_ALIGNMENT.
+	const asUINT remainder = size % MAX_TYPE_ALIGNMENT;
+	if(remainder != 0)
+	{
+		size = size + (MAX_TYPE_ALIGNMENT - (size % MAX_TYPE_ALIGNMENT));
+	}
+#endif
+
 	// Make sure the first stack block is allocated
 	if( m_stackBlocks.GetLength() == 0 )
 	{
 		m_stackBlockSize = m_engine->initialContextStackSize;
 		asASSERT( m_stackBlockSize > 0 );
 
+#ifndef WIP_16BYTE_ALIGN
 		asDWORD *stack = asNEWARRAY(asDWORD,m_stackBlockSize);
+#else
+		asDWORD *stack = asNEWARRAYALIGNED(asDWORD, m_stackBlockSize, MAX_TYPE_ALIGNMENT);
+#endif
 		if( stack == 0 )
 		{
 			// Out of memory
 			return false;
 		}
 
+#ifdef WIP_16BYTE_ALIGN
+		asASSERT( isAligned(stack, MAX_TYPE_ALIGNMENT) );
+#endif
+
 		m_stackBlocks.PushLast(stack);
 		m_stackIndex = 0;
 		m_regs.stackPointer = m_stackBlocks[0] + m_stackBlockSize;
+
+#ifdef WIP_16BYTE_ALIGN
+		// Align the stack pointer. This is necessary as the m_stackBlockSize is not necessarily evenly divisable with the max alignment
+		((asPWORD&)m_regs.stackPointer) &= ~(MAX_TYPE_ALIGNMENT-1);
+
+		asASSERT( isAligned(m_regs.stackPointer, MAX_TYPE_ALIGNMENT) );
+#endif
 	}
 
 	// Check if there is enough space on the current stack block, otherwise move
@@ -1542,7 +1577,11 @@ bool asCContext::ReserveStackSpace(asUINT size)
 		if( m_stackBlocks.GetLength() == m_stackIndex )
 		{
 			// Allocate the new stack block, with twice the size of the previous
-			asDWORD *stack = asNEWARRAY(asDWORD,(m_stackBlockSize << m_stackIndex));
+#ifndef WIP_16BYTE_ALIGN
+			asDWORD *stack = asNEWARRAY(asDWORD, (m_stackBlockSize << m_stackIndex));
+#else
+			asDWORD *stack = asNEWARRAYALIGNED(asDWORD, (m_stackBlockSize << m_stackIndex), MAX_TYPE_ALIGNMENT);
+#endif
 			if( stack == 0 )
 			{
 				// Out of memory
@@ -1554,6 +1593,11 @@ bool asCContext::ReserveStackSpace(asUINT size)
 				SetInternalException(TXT_STACK_OVERFLOW);
 				return false;
 			}
+
+#ifdef WIP_16BYTE_ALIGN
+			asASSERT( isAligned(stack, MAX_TYPE_ALIGNMENT) );
+#endif
+
 			m_stackBlocks.PushLast(stack);
 		}
 
@@ -1564,6 +1608,13 @@ bool asCContext::ReserveStackSpace(asUINT size)
 			                  m_currentFunction->GetSpaceNeededForArguments() -
 			                  (m_currentFunction->objectType ? AS_PTR_SIZE : 0) -
 			                  (m_currentFunction->DoesReturnOnStack() ? AS_PTR_SIZE : 0);
+
+#ifdef WIP_16BYTE_ALIGN
+		// Align the stack pointer 
+		(asPWORD&)m_regs.stackPointer &= ~(MAX_TYPE_ALIGNMENT-1);
+
+		asASSERT( isAligned(m_regs.stackPointer, MAX_TYPE_ALIGNMENT) );
+#endif
 	}
 
 	return true;
@@ -3978,7 +4029,11 @@ void asCContext::ExecuteNext()
 
 			asUINT size = asBC_DWORDARG(l_bc);
 			asBYTE **var = (asBYTE**)(l_fp - asBC_SWORDARG0(l_bc));
+#ifndef WIP_16BYTE_ALIGN
 			*var = asNEWARRAY(asBYTE, size);
+#else
+			*var = asNEWARRAYALIGNED(asBYTE, size, MAX_TYPE_ALIGNMENT);
+#endif
 
 			// Clear the buffer for the pointers that will be placed in it
 			memset(*var, 0, size);
