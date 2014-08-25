@@ -540,10 +540,6 @@ bool FOClient::Init()
 
 void FOClient::UpdateFiles( bool early_call )
 {
-    // Singleplayer can skip only check updates
-    if( Singleplayer && early_call )
-        return;
-
     // Load font
     SprMngr.PushAtlasType( RES_ATLAS_STATIC );
     UpdateFilesFontLoaded = SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false );
@@ -584,7 +580,7 @@ void FOClient::UpdateFiles( bool early_call )
         uint tick = Timer::FastTick();
         while( IsConnected )
         {
-            if( !Singleplayer && !early_call && UpdateFilesList && !UpdateFilesList->empty() )
+            if( !early_call && UpdateFilesList && !UpdateFilesList->empty() )
                 UpdateFilesAbort( STR_CLIENT_DATA_OUTDATED, "STR_CLIENT_DATA_OUTDATED" );
 
             int    dots = ( Timer::FastTick() - tick ) / 100 % 50 + 1;
@@ -648,10 +644,6 @@ void FOClient::UpdateFiles( bool early_call )
                     UpdateFilesInProgress = false;
                     NetDisconnect();
 
-                    // Restart game after singleplayer update
-                    if( Singleplayer && ( cache_changed || files_changed ) )
-                        UpdateFilesAbort( STR_SINGLEPLAYER_DATA_UPDATED, "STR_SINGLEPLAYER_DATA_UPDATED" );
-
                     // Reinitialize data
                     if( cache_changed )
                     {
@@ -686,7 +678,11 @@ void FOClient::UpdateFiles( bool early_call )
 void FOClient::UpdateFilesAddText( uint num_str, const char* num_str_str )
 {
     if( Singleplayer )
-        return;
+    {
+        UpdateFilesText = "";
+        num_str = STR_START_SINGLEPLAYER;
+        num_str_str = "STR_START_SINGLEPLAYER";
+    }
 
     if( !UpdateFilesFontLoaded )
     {
@@ -11889,7 +11885,7 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenKey( int screen, uchar k
         break;
     case SCREEN_GLOBAL_MAP:
         if( down )
-            Self->GmapKeyDown( key, text ? text->c_str() : "" );
+            Self->GmapKeyDown( key, text ? text->c_str() : "" ), Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
         break;
     case SCREEN_WAIT:
         break;
