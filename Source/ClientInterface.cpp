@@ -5385,7 +5385,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, in
         AimTargetId = cr->GetId();
         if( cur_mode != -1 )
             SetCurMode( CUR_DEFAULT );
-        AnyFrames::Destroy( AimPic );
         AimPic = AimGetPic( cr, "frm" );
         if( !AimPic )
             AimPic = AimGetPic( cr, "png" );
