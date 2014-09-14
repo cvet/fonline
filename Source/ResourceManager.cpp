@@ -73,7 +73,7 @@ void ResourceManager::FreeResources( int type )
         if( res_type == type )
         {
             AnyFrames::Destroy( ( *it ).second.Anim );
-            loadedAnims.erase( it++ );
+            it = loadedAnims.erase( it );
         }
         else
         {

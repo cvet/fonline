@@ -4046,6 +4046,8 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
         return false;
     }
 
+    CurProtoMap = &pmap;
+
     for( int i = 0; i < 4; i++ )
         dayTime[ i ] = pmap.Header.DayTime[ i ];
     for( int i = 0; i < 12; i++ )
@@ -4179,7 +4181,6 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     curHashTiles = 0xFFFF;
     curHashWalls = 0xFFFF;
     curHashScen = 0xFFFF;
-    CurProtoMap = &pmap;
     WriteLog( "Create map from prototype complete.\n" );
     return true;
 }

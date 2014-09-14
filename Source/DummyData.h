@@ -104,7 +104,6 @@ struct ProtoItem
     int  Flags;
     int  Corner;
     int  DisableEgg;
-    int  Dir;
     int  Weight;
     int  Volume;
     int  Cost;
