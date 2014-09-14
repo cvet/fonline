@@ -76,9 +76,8 @@ struct Field
     CritVec*    DeadCrits;
     int         ScrX;
     int         ScrY;
-    AnyFrames*  SimplyTile;
-    TileVec*    Tiles;
-    TileVec*    Roofs;
+    AnyFrames*  SimplyTile[ 2 ]; // Tile / Roof
+    TileVec*    Tiles[ 2 ];      // Tile / Roof
     ItemHexVec* Items;
     short       RoofNum;
 

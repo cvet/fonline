@@ -24,8 +24,8 @@ Field::Field()
 Field::~Field()
 {
     SAFEDEL( DeadCrits );
-    SAFEDEL( Tiles );
-    SAFEDEL( Roofs );
+    SAFEDEL( Tiles[ 0 ] );
+    SAFEDEL( Tiles[ 1 ] );
     SAFEDEL( Items );
 }
 
@@ -53,12 +53,13 @@ void Field::EraseItem( ItemHex* item )
 
 Field::Tile& Field::AddTile( AnyFrames* anim, short ox, short oy, uchar layer, bool is_roof )
 {
-    Tile*     tile;
-    TileVec*& tiles_vec = ( is_roof ? Roofs : Tiles );
-    if( !tiles_vec && !SimplyTile && !ox && !oy && !layer )
+    Tile*       tile;
+    TileVec*&   tiles_vec = Tiles[ is_roof ? 1 : 0 ];
+    AnyFrames*& stile = SimplyTile[ is_roof ? 1 : 0 ];
+    if( !tiles_vec && !stile && !ox && !oy && !layer )
     {
         static Tile simply_tile;
-        SimplyTile = anim;
+        stile = anim;
         tile = &simply_tile;
     }
     else
@@ -78,19 +79,20 @@ Field::Tile& Field::AddTile( AnyFrames* anim, short ox, short oy, uchar layer, b
 
 void Field::EraseTile( uint index, bool is_roof )
 {
-    TileVec*& tiles_vec = ( is_roof ? Roofs : Tiles );
-    if( index == 0 && SimplyTile )
+    TileVec*&   tiles_vec = Tiles[ is_roof ? 1 : 0 ];
+    AnyFrames*& stile = SimplyTile[ is_roof ? 1 : 0 ];
+    if( index == 0 && stile )
     {
-        SimplyTile = NULL;
+        stile = NULL;
         if( tiles_vec && !tiles_vec->front().OffsX && !tiles_vec->front().OffsY && !tiles_vec->front().Layer )
         {
-            SimplyTile = tiles_vec->front().Anim;
+            stile = tiles_vec->front().Anim;
             tiles_vec->erase( tiles_vec->begin() );
         }
     }
     else
     {
-        tiles_vec->erase( tiles_vec->begin() + index - ( SimplyTile ? 1 : 0 ) );
+        tiles_vec->erase( tiles_vec->begin() + index - ( stile ? 1 : 0 ) );
     }
     if( tiles_vec && tiles_vec->empty() )
         SAFEDEL( tiles_vec );
@@ -98,18 +100,22 @@ void Field::EraseTile( uint index, bool is_roof )
 
 uint Field::GetTilesCount( bool is_roof )
 {
-    return is_roof ? ( Roofs ? (uint) Roofs->size() : 0 ) : ( ( SimplyTile ? 1 : 0 ) +  ( Tiles ? (uint) Tiles->size() : 0 ) );
+    TileVec*&   tiles_vec = Tiles[ is_roof ? 1 : 0 ];
+    AnyFrames*& stile = SimplyTile[ is_roof ? 1 : 0 ];
+    return ( stile ? 1 : 0 ) + ( tiles_vec ? (uint) tiles_vec->size() : 0 );
 }
 
 Field::Tile& Field::GetTile( uint index, bool is_roof )
 {
-    if( !is_roof && index == 0 && SimplyTile )
+    TileVec*&   tiles_vec = Tiles[ is_roof ? 1 : 0 ];
+    AnyFrames*& stile = SimplyTile[ is_roof ? 1 : 0 ];
+    if( index == 0 && stile )
     {
         static Tile simply_tile;
-        simply_tile.Anim = SimplyTile;
+        simply_tile.Anim = stile;
         return simply_tile;
     }
-    return is_roof ? Roofs->at( index ) : Tiles->at( index - ( SimplyTile ? 1 : 0 ) );
+    return tiles_vec->at( index - ( stile ? 1 : 0 ) );
 }
 
 void Field::AddDeadCrit( CritterCl* cr )
