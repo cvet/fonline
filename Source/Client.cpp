@@ -6585,6 +6585,18 @@ bool FOClient::IsCurInInterface()
     return false;
 }
 
+bool FOClient::IsCurInInterface( int x, int y )
+{
+    int old_x = GameOpt.MouseX;
+    int old_y = GameOpt.MouseY;
+    GameOpt.MouseX = x;
+    GameOpt.MouseY = y;
+    bool result = IsCurInInterface();
+    GameOpt.MouseX = old_x;
+    GameOpt.MouseY = old_y;
+    return result;
+}
+
 bool FOClient::GetCurHex( ushort& hx, ushort& hy, bool ignore_interface )
 {
     hx = hy = 0;
@@ -12033,7 +12045,7 @@ bool FOClient::SScriptFunc::Global_GetMonitorHex( int x, int y, ushort& hx, usho
 
 Item* FOClient::SScriptFunc::Global_GetMonitorItem( int x, int y, bool ignore_interface )
 {
-    if( !ignore_interface && Self->IsCurInInterface() )
+    if( !ignore_interface && Self->IsCurInInterface( x, y ) )
         return NULL;
 
     ItemHex*   item;
@@ -12044,7 +12056,7 @@ Item* FOClient::SScriptFunc::Global_GetMonitorItem( int x, int y, bool ignore_in
 
 CritterCl* FOClient::SScriptFunc::Global_GetMonitorCritter( int x, int y, bool ignore_interface )
 {
-    if( !ignore_interface && Self->IsCurInInterface() )
+    if( !ignore_interface && Self->IsCurInInterface( x, y ) )
         return NULL;
 
     ItemHex*   item;
