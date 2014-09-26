@@ -53,25 +53,16 @@ int              ScriptsPath = PT_SCRIPTS;
 bool             LogDebugInfo = true;
 StrVec           WrongGlobalObjects;
 
-uint             GarbagerCycle = 120000;
-uint             EvaluationCycle = 120000;
-double           MaxGarbagerTime = 40.0;
+BindFunctionVec  BindedFunctions;
 #ifdef SCRIPT_MULTITHREADING
-MutexCode        GarbageLocker;
+Mutex            BindedFunctionsLocker;
 #endif
-uint GetGCStatistics();
-void CollectGarbage( asDWORD flags );
+StrVec           ScriptFuncCache;
+IntVec           ScriptFuncBindId;
 
-BindFunctionVec BindedFunctions;
+bool             ConcurrentExecution = false;
 #ifdef SCRIPT_MULTITHREADING
-Mutex           BindedFunctionsLocker;
-#endif
-StrVec          ScriptFuncCache;
-IntVec          ScriptFuncBindId;
-
-bool            ConcurrentExecution = false;
-#ifdef SCRIPT_MULTITHREADING
-Mutex           ConcurrentExecutionLocker;
+Mutex            ConcurrentExecutionLocker;
 #endif
 
 #ifdef FONLINE_SERVER
@@ -571,7 +562,6 @@ void Script::UnloadScripts()
     }
 
     modules.clear();
-    CollectGarbage( asGC_FULL_CYCLE );
 }
 
 bool Script::ReloadScripts( const char* config, const char* key, bool skip_binaries, const char* file_pefix /* = NULL */ )
@@ -1110,142 +1100,6 @@ asIScriptModule* Script::CreateModule( const char* module_name )
         return NULL;
     modules.push_back( module );
     return module;
-}
-
-void Script::ScriptGarbager( bool collect_now /* = false */ )
-{
-    static uchar  garbager_state = 5;
-    static uint   last_nongarbage = 0;
-    static uint   best_count = 0;
-    static uint   last_garbager_tick = 0;
-    static uint   last_evaluation_tick = 0;
-
-    static uint   garbager_count[ 3 ];     // Uses garbager_state as index
-    static double garbager_time[ 3 ];      // Uses garbager_state as index
-
-    if( !Engine )
-        return;
-
-    if( collect_now )
-    {
-        CollectGarbage( asGC_FULL_CYCLE );
-        garbager_state = 5;
-        return;
-    }
-
-    switch( garbager_state )
-    {
-    case 5:     // First time
-    {
-        best_count = 1000;
-    }
-    case 6:     // Statistics init and first time
-    {
-        CollectGarbage( asGC_FULL_CYCLE | asGC_DESTROY_GARBAGE );
-
-        last_nongarbage = GetGCStatistics();
-        garbager_state = 0;
-    }
-    break;
-    case 0:     // Statistics stage 0, 1, 2
-    case 1:
-    case 2:
-    {
-        uint current_size = GetGCStatistics();
-
-        // Try 1x, 1.5x and 2x count time for time extrapolation
-        if( current_size < last_nongarbage + ( best_count * ( 2 + garbager_state ) ) / 2 )
-            break;
-
-        garbager_time[ garbager_state ] = Timer::AccurateTick();
-        CollectGarbage( asGC_FULL_CYCLE | asGC_DESTROY_GARBAGE );
-        garbager_time[ garbager_state ] = Timer::AccurateTick() - garbager_time[ garbager_state ];
-
-        last_nongarbage = GetGCStatistics();
-        garbager_count[ garbager_state ] = current_size - last_nongarbage;
-
-        if( !garbager_count[ garbager_state ] )
-            break;                                                 // Repeat this step
-        garbager_state++;
-    }
-    break;
-    case 3:     // Statistics last stage, calculate best count
-    {
-        double obj_times[ 2 ];
-        bool   undetermined = false;
-        for( int i = 0; i < 2; i++ )
-        {
-            if( garbager_count[ i + 1 ] == garbager_count[ i ] )
-            {
-                undetermined = true;                       // Too low resolution, break statistics and repeat later
-                break;
-            }
-
-            obj_times[ i ] = ( garbager_time[ i + 1 ] - garbager_time[ i ] ) / ( (double) garbager_count[ i + 1 ] - (double) garbager_count[ i ] );
-
-            if( obj_times[ i ] <= 0.0f )               // Should not happen
-            {
-                undetermined = true;                   // Too low resolution, break statistics and repeat later
-                break;
-            }
-        }
-        garbager_state = 4;
-        if( undetermined )
-            break;
-
-        double object_delete_time = ( obj_times[ 0 ] + obj_times[ 1 ] ) / 2;
-        double overhead = 0.0f;
-        for( int i = 0; i < 3; i++ )
-            overhead += ( garbager_time[ i ] - garbager_count[ i ] * object_delete_time );
-        overhead /= 3;
-        if( overhead > MaxGarbagerTime )
-            overhead = MaxGarbagerTime;                                        // Will result on deletion on every frame
-        best_count = (uint) ( ( MaxGarbagerTime - overhead ) / object_delete_time );
-    }
-    break;
-    case 4:     // Normal garbage check
-    {
-        if( GarbagerCycle && Timer::FastTick() - last_garbager_tick >= GarbagerCycle )
-        {
-            CollectGarbage( asGC_ONE_STEP | asGC_DETECT_GARBAGE );
-            last_garbager_tick = Timer::FastTick();
-        }
-
-        if( EvaluationCycle && Timer::FastTick() - last_evaluation_tick >= EvaluationCycle )
-        {
-            garbager_state = 6;                   // Enter statistics after normal garbaging is done
-            last_evaluation_tick = Timer::FastTick();
-        }
-
-        if( GetGCStatistics() > last_nongarbage + best_count )
-        {
-            CollectGarbage( asGC_FULL_CYCLE | asGC_DESTROY_GARBAGE );
-        }
-    }
-    break;
-    default:
-        break;
-    }
-}
-
-uint GetGCStatistics()
-{
-    asUINT current_size = 0;
-    Engine->GetGCStatistics( &current_size );
-    return (uint) current_size;
-}
-
-void CollectGarbage( asDWORD flags )
-{
-    #ifdef SCRIPT_MULTITHREADING
-    if( LogicMT )
-        GarbageLocker.LockCode();
-    Engine->GarbageCollect( flags );
-    if( LogicMT )
-        GarbageLocker.UnlockCode();
-    #else
-    Engine->GarbageCollect( flags );
-    #endif
 }
 
 void RunTimeout( void* data )
@@ -2132,8 +1986,6 @@ void Script::BeginExecution()
 
     if( !ExecutionRecursionCounter )
     {
-        GarbageLocker.EnterCode();
-
         SyncManager* sync_mngr = SyncManager::GetForCurThread();
         if( !ConcurrentExecution )
         {
@@ -2160,8 +2012,6 @@ void Script::EndExecution()
     ExecutionRecursionCounter--;
     if( !ExecutionRecursionCounter )
     {
-        GarbageLocker.LeaveCode();
-
         if( !ConcurrentExecution )
         {
             ConcurrentExecutionLocker.Unlock();

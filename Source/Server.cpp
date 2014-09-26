@@ -436,7 +436,6 @@ void FOServer::MainLoop()
     Job::PushBack( JOB_GARBAGE_ITEMS );
     Job::PushBack( JOB_GARBAGE_CRITTERS );
     Job::PushBack( JOB_GARBAGE_LOCATIONS );
-    Job::PushBack( JOB_GARBAGE_SCRIPT );
     Job::PushBack( JOB_GARBAGE_VARS );
     Job::PushBack( JOB_DEFERRED_RELEASE );
     Job::PushBack( JOB_GAME_TIME );
@@ -570,7 +569,6 @@ void FOServer::MainLoop()
     ItemMngr.ItemGarbager();
     CrMngr.CritterGarbager();
     MapMngr.LocationGarbager();
-    Script::ScriptGarbager( true );
     Job::SetDeferredReleaseCycle( 0xFFFFFFFF );
     Job::ProcessDeferredReleasing();
 
@@ -730,11 +728,6 @@ void FOServer::Logic_Work( void* data )
             sync_mngr->PushPriority( 2 );
             MapMngr.LocationGarbager();
             sync_mngr->PopPriority();
-        }
-        else if( job.Type == JOB_GARBAGE_SCRIPT )
-        {
-            // AngelScript garbage
-            Script::ScriptGarbager();
         }
         else if( job.Type == JOB_GARBAGE_VARS )
         {

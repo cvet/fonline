@@ -3,7 +3,6 @@ BIND_ASSERT( engine->SetEngineProperty( asEP_ALLOW_UNSAFE_REFERENCES, true ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_OPTIMIZE_BYTECODE, true ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_SCRIPT_SCANNER, 1 ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_USE_CHARACTER_LITERALS, true ) );
-BIND_ASSERT( engine->SetEngineProperty( asEP_AUTO_GARBAGE_COLLECT, false ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true ) );
 
 #if defined ( BIND_CLIENT ) || defined ( BIND_SERVER )

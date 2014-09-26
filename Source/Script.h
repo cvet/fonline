@@ -80,8 +80,6 @@ namespace Script
     asIScriptModule* GetModule( const char* name );
     asIScriptModule* CreateModule( const char* module_name );
 
-    void ScriptGarbager( bool collect_now = false );
-
     void SetRunTimeout( uint suspend_timeout, uint message_timeout );
 
     void SetScriptsPath( int path_type );

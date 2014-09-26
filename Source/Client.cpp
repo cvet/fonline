@@ -1132,7 +1132,6 @@ int FOClient::MainLoop()
             wait_tick = Script::GetReturnedUInt();
         next_call = Timer::FastTick() + wait_tick;
     }
-    Script::ScriptGarbager();
 
     // Video
     #ifndef FO_OSX
