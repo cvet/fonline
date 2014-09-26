@@ -1482,7 +1482,6 @@ void FOMapper::MainLoop()
             wait_tick = Script::GetReturnedUInt();
         next_call = Timer::FastTick() + wait_tick;
     }
-    Script::ScriptGarbager();
 
     // Input
     ConsoleProcess();
