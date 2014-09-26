@@ -223,6 +223,8 @@ void ItemHex::RefreshAnim()
     Anim = NULL;
     if( name_hash )
         Anim = ResMngr.GetItemAnim( name_hash );
+    if( Anim && isEffect )
+        Anim = Anim->GetDir( effDir );
     if( !Anim )
         Anim = ResMngr.ItemHexDefaultAnim;
 
