@@ -190,7 +190,6 @@ uint   RunTimeoutMessage = 300000;     // 5 minutes
 Thread RunTimeoutThread;
 void RunTimeout( void* );
 
-
 bool Script::Init( bool with_log, Preprocessor::PragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls )
 {
     if( with_log && !StartLog() )
@@ -541,12 +540,9 @@ void Script::SetLoadLibraryCompiler( bool enabled )
 
 void Script::UnloadScripts()
 {
-    EngineData*      edata = (EngineData*) Engine->GetUserData();
-    ScriptModuleVec& modules = edata->Modules;
-
-    for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
+    for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
     {
-        asIScriptModule* module = *it;
+        asIScriptModule* module = Engine->GetModuleByIndex( i );
         int              result = module->ResetGlobalVars();
         if( result < 0 )
             WriteLogF( _FUNC_, " - Reset global vars fail, module<%s>, error<%d>.\n", module->GetName(), result );
@@ -555,13 +551,8 @@ void Script::UnloadScripts()
             WriteLogF( _FUNC_, " - Unbind fail, module<%s>, error<%d>.\n", module->GetName(), result );
     }
 
-    for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
-    {
-        asIScriptModule* module = *it;
-        Engine->DiscardModule( module->GetName() );
-    }
-
-    modules.clear();
+    while( Engine->GetModuleCount() > 0 )
+        Engine->GetModuleByIndex( 0 )->Discard();
 }
 
 bool Script::ReloadScripts( const char* config, const char* key, bool skip_binaries, const char* file_pefix /* = NULL */ )
@@ -1081,25 +1072,7 @@ asIScriptModule* Script::GetModule( const char* name )
 
 asIScriptModule* Script::CreateModule( const char* module_name )
 {
-    // Delete old
-    EngineData*      edata = (EngineData*) Engine->GetUserData();
-    ScriptModuleVec& modules = edata->Modules;
-    for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
-    {
-        asIScriptModule* module = *it;
-        if( Str::Compare( module->GetName(), module_name ) )
-        {
-            modules.erase( it );
-            break;
-        }
-    }
-
-    // Create new
-    asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
-    if( !module )
-        return NULL;
-    modules.push_back( module );
-    return module;
+    return Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
 }
 
 void RunTimeout( void* data )
@@ -1260,9 +1233,6 @@ void Script::CallPragmas( const StrVec& pragmas )
 
 bool Script::LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_prefix /* = NULL */ )
 {
-    EngineData*      edata = (EngineData*) Engine->GetUserData();
-    ScriptModuleVec& modules = edata->Modules;
-
     // Binary version
     uint version = FONLINE_VERSION;
 
@@ -1298,6 +1268,7 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
     FileManager::FormatPath( fname_script );
 
     // Set current pragmas
+    EngineData* edata = (EngineData*) Engine->GetUserData();
     Preprocessor::SetPragmaCallback( edata->PragmaCB );
 
     // Try load precompiled script
@@ -1354,14 +1325,13 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
                     WriteLogF( _FUNC_, " - Script<%s> outdated.\n", module_name );
 
                 // Delete old
-                for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
+                for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
                 {
-                    asIScriptModule* module = *it;
+                    asIScriptModule* module = Engine->GetModuleByIndex( i );
                     if( Str::Compare( module->GetName(), module_name ) )
                     {
                         WriteLogF( _FUNC_, " - Warning, script for this name<%s> already exist. Discard it.\n", module_name );
-                        Engine->DiscardModule( module_name );
-                        modules.erase( it );
+                        module->Discard();
                         break;
                     }
                 }
@@ -1378,14 +1348,18 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
                     if( module->LoadByteCode( &binary ) >= 0 )
                     {
                         Preprocessor::GetParsedPragmas() = pragmas;
-                        modules.push_back( module );
                         return true;
                     }
                     else
+                    {
                         WriteLogF( _FUNC_, " - Can't load binary, script<%s>.\n", module_name );
+                        module->Discard();
+                    }
                 }
                 else
+                {
                     WriteLogF( _FUNC_, " - Create module fail, script<%s>.\n", module_name );
+                }
             }
         }
 
@@ -1440,14 +1414,13 @@ public:
     }
 
     // Delete old
-    for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
+    for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
     {
-        asIScriptModule* module = *it;
+        asIScriptModule* module = Engine->GetModuleByIndex( i );
         if( Str::Compare( module->GetName(), module_name ) )
         {
             WriteLogF( _FUNC_, " - Warning, script for this name<%s> already exist. Discard it.\n", module_name );
-            Engine->DiscardModule( module_name );
-            modules.erase( it );
+            module->Discard();
             break;
         }
     }
@@ -1463,6 +1436,7 @@ public:
     if( as_result < 0 )
     {
         WriteLogF( _FUNC_, " - Unable to AddScriptSection module<%s>, result<%d>.\n", module_name, as_result );
+        module->Discard();
         return false;
     }
 
@@ -1470,6 +1444,7 @@ public:
     if( as_result < 0 )
     {
         WriteLogF( _FUNC_, " - Unable to Build module<%s>, result<%d>.\n", module_name, as_result );
+        module->Discard();
         return false;
     }
 
@@ -1542,12 +1517,10 @@ public:
         if( global_fail )
         {
             WriteLogF( _FUNC_, " - Wrong global variables in module<%s>.\n", module_name );
+            module->Discard();
             return false;
         }
     }
-
-    // Done, add to collection
-    modules.push_back( module );
 
     // Save binary version of script and preprocessed version
     if( !skip_binary && !file_bin.IsLoaded() )
@@ -1593,17 +1566,13 @@ bool Script::LoadScript( const char* module_name, const uchar* bytecode, uint le
         return false;
     }
 
-    EngineData*      edata = (EngineData*) Engine->GetUserData();
-    ScriptModuleVec& modules = edata->Modules;
-
-    for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
+    for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
     {
-        asIScriptModule* module = *it;
+        asIScriptModule* module = Engine->GetModuleByIndex( i );
         if( Str::Compare( module->GetName(), module_name ) )
         {
             WriteLogF( _FUNC_, " - Warning, script for this name<%s> already exist. Discard it.\n", module_name );
-            Engine->DiscardModule( module_name );
-            modules.erase( it );
+            module->Discard();
             break;
         }
     }
@@ -1621,21 +1590,19 @@ bool Script::LoadScript( const char* module_name, const uchar* bytecode, uint le
     if( result < 0 )
     {
         WriteLogF( _FUNC_, " - Can't load binary, module<%s>, result<%d>.\n", module_name, result );
+        module->Discard();
         return false;
     }
 
-    modules.push_back( module );
     return true;
 }
 
 int Script::BindImportedFunctions()
 {
-    EngineData*      edata = (EngineData*) Engine->GetUserData();
-    ScriptModuleVec& modules = edata->Modules;
-    int              errors = 0;
-    for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
+    int errors = 0;
+    for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
     {
-        asIScriptModule* module = *it;
+        asIScriptModule* module = Engine->GetModuleByIndex( i );
         int              result = module->BindAllImportedFunctions();
         if( result < 0 )
         {

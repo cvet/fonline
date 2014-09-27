@@ -196,28 +196,24 @@ bool FOServer::InitScriptSystem()
 
     ASDbgMemoryCanWork = true;
 
-    EngineData* edata = (EngineData*) engine->GetUserData();
-    if( edata && edata->Modules.size() )
+    for( asUINT i = 0; i < engine->GetModuleCount(); i++ )
     {
-        for( size_t i = 0, j = edata->Modules.size(); i < j; i++ )
+        asIScriptModule* module = engine->GetModuleByIndex( i );
+        uint             bind_id = Script::Bind( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
+        if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Script" ) )
         {
-            asIScriptModule* module = edata->Modules[ i ];
-            uint             bind_id = Script::Bind( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
-            if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Script" ) )
+            WriteLog( "Initializing module<%s>.\n", module->GetName() );
+
+            if( !Script::RunPrepared() )
             {
-                WriteLog( "Initializing module<%s>.\n", module->GetName() );
+                WriteLog( "Error executing init function, module<%s>.\n", module->GetName() );
+                return false;
+            }
 
-                if( !Script::RunPrepared() )
-                {
-                    WriteLog( "Error executing init function, module<%s>.\n", module->GetName() );
-                    return false;
-                }
-
-                if( !Script::GetReturnedBool() )
-                {
-                    WriteLog( "Initialization stopped by module<%s>.\n", module->GetName() );
-                    return false;
-                }
+            if( !Script::GetReturnedBool() )
+            {
+                WriteLog( "Initialization stopped by module<%s>.\n", module->GetName() );
+                return false;
             }
         }
     }

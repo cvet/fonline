@@ -14,11 +14,9 @@
 #define CONTEXT_BUFFER_SIZE          ( 512 )
 
 typedef void ( *EndExecutionCallback )();
-typedef std::vector< asIScriptModule* > ScriptModuleVec;
 
 struct EngineData
 {
-    ScriptModuleVec                      Modules;
     Preprocessor::PragmaCallback*        PragmaCB;
     string                               DllTarget;
     bool                                 AllowNativeCalls;
