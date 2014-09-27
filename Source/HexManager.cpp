@@ -974,7 +974,7 @@ void HexManager::RebuildMap( int rx, int ry )
                         rofy--;
 
                     Drop* new_drop = NULL;
-                    if( GetField( rofx, rofy ).GetTilesCount( true ) )
+                    if( !GetField( rofx, rofy ).GetTilesCount( true ) )
                     {
                         new_drop = new Drop( picRainFall->GetCurSprId(), Random( -10, 10 ), -Random( 0, 200 ), 0 );
                         rainData.push_back( new_drop );
@@ -2047,9 +2047,9 @@ void HexManager::DrawMap()
     // Roof
     if( GameOpt.ShowRoof )
     {
-        SprMngr.DrawSprites( roofTree, false, true, 0, 0 );
+        SprMngr.DrawSprites( roofTree, false, true, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
         if( rainCapacity )
-            SprMngr.DrawSprites( roofRainTree, false, false, 0, 0 );
+            SprMngr.DrawSprites( roofRainTree, false, false, DRAW_ORDER_RAIN, DRAW_ORDER_RAIN );
     }
 
     // Contours
