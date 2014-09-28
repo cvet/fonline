@@ -624,6 +624,12 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
         Item::ItemData data;
         FileRead( f, &data, sizeof( data ) );
 
+        if( version <= WORLD_SAVE_V13 )
+        {
+            data.TrapValue = data.ScriptId >> 16;
+            data.ScriptId &= 0xFFFF;
+        }
+
         uchar lex_len;
         char  lexems[ 1024 ] = { 0 };
         FileRead( f, &lex_len, sizeof( lex_len ) );

@@ -1697,7 +1697,7 @@ bool Map::ParseScript( const char* script, bool first_time )
 {
     if( script && script[ 0 ] )
     {
-        uint func_num = Script::GetScriptFuncNum( script, "void %s(Map&,bool)" );
+        uint func_num = Script::BindScriptFuncNum( script, "void %s(Map&,bool)" );
         if( !func_num )
         {
             WriteLogF( _FUNC_, " - Script<%s> bind fail, map pid<%u>.\n", script, GetPid() );
@@ -1706,7 +1706,7 @@ bool Map::ParseScript( const char* script, bool first_time )
         Data.ScriptId = func_num;
     }
 
-    if( Data.ScriptId && Script::PrepareContext( Script::GetScriptFuncBindId( Data.ScriptId ), _FUNC_, Str::FormatBuf( "Map id<%u>, pid<%u>", GetId(), GetPid() ) ) )
+    if( Data.ScriptId && Script::PrepareScriptFuncContext( Data.ScriptId, _FUNC_, Str::FormatBuf( "Map id<%u>, pid<%u>", GetId(), GetPid() ) ) )
     {
         Script::SetArgObject( this );
         Script::SetArgBool( first_time );

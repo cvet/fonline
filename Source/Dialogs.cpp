@@ -401,7 +401,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     int  values_count = 0;
     char svalue[ 256 ] = { 0 };
     int  ivalue = 0;
-    int  id = 0;
+    uint id = 0;
     char type_str[ 256 ];
     char name[ 256 ] = { 0 };
     bool no_recheck = false;
@@ -454,7 +454,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
 
         // Name
         input >> name;
-        if( ( id = ConstantsManager::GetParamId( name ) ) < 0 )
+        if( (int) ( id = ConstantsManager::GetParamId( name ) ) < 0 )
         {
             AddError( "Invalid DR parameter<%s>.", name );
             errors++;
@@ -515,7 +515,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         // Name
         input >> name;
         id = ConstantsManager::GetItemPid( name );
-        if( id == -1 )
+        if( (int) id == -1 )
         {
             id = atoi( name );
             const char* name_ = ConstantsManager::GetItemName( id );

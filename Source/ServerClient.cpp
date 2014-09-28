@@ -53,7 +53,7 @@ void FOServer::ProcessCritter( Critter* cr )
             Critter::CrTimeEvent me = cr->CrTimeEvents[ 0 ];
             cr->EraseCrTimeEvent( 0 );
             uint                 time = GameOpt.TimeMultiplier * 1800; // 30 minutes on error
-            if( Script::PrepareContext( Script::GetScriptFuncBindId( me.FuncNum ), _FUNC_, cr->GetInfo() ) )
+            if( Script::PrepareScriptFuncContext( me.FuncNum, _FUNC_, cr->GetInfo() ) )
             {
                 Script::SetArgObject( cr );
                 Script::SetArgUInt( me.Identifier );

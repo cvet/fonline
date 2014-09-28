@@ -1020,7 +1020,7 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
         if( !master )
             continue;
 
-        ushort index = demand.ParamId;
+        uint index = demand.ParamId;
         switch( demand.Type )
         {
         case DR_PARAM:
@@ -1179,7 +1179,7 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
         if( !master )
             continue;
 
-        ushort index = result.ParamId;
+        uint index = result.ParamId;
         switch( result.Type )
         {
         case DR_PARAM:

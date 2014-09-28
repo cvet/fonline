@@ -160,7 +160,7 @@ bool Item::ParseScript( const char* script, bool first_time )
 {
     if( script && script[ 0 ] )
     {
-        uint func_num = Script::GetScriptFuncNum( script, "void %s(Item&,bool)" );
+        uint func_num = Script::BindScriptFuncNum( script, "void %s(Item&,bool)" );
         if( !func_num )
         {
             WriteLogF( _FUNC_, " - Script<%s> bind fail, item pid<%u>.\n", script, GetProtoId() );
@@ -169,7 +169,7 @@ bool Item::ParseScript( const char* script, bool first_time )
         Data.ScriptId = func_num;
     }
 
-    if( Data.ScriptId && Script::PrepareContext( Script::GetScriptFuncBindId( Data.ScriptId ), _FUNC_, Str::FormatBuf( "Item id<%u>, pid<%u>", GetId(), GetProtoId() ) ) )
+    if( Data.ScriptId && Script::PrepareScriptFuncContext( Data.ScriptId, _FUNC_, Str::FormatBuf( "Item id<%u>, pid<%u>", GetId(), GetProtoId() ) ) )
     {
         Script::SetArgObject( this );
         Script::SetArgBool( first_time );

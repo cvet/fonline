@@ -391,8 +391,7 @@ public:
         uchar       LightDistance;
         uchar       LightFlags;
         uint        LightColor;
-        ushort      ScriptId;
-        short       TrapValue;
+        uint        ScriptId;
         uint        Count;
         uint        Cost;
         int         ScriptValues[ ITEM_MAX_SCRIPT_VALUES ];
@@ -412,7 +411,8 @@ public:
         ushort      Charge;
         short       OffsetX;
         short       OffsetY;
-        char        Reserved[ 4 ];
+        short       TrapValue;
+        char        Reserved[ 2 ];
     } Data;
 
     short RefCounter;

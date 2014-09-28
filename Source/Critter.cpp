@@ -1765,7 +1765,7 @@ bool Critter::ParseScript( const char* script, bool first_time )
 {
     if( script && script[ 0 ] )
     {
-        uint func_num = Script::GetScriptFuncNum( script, "void %s(Critter&,bool)" );
+        uint func_num = Script::BindScriptFuncNum( script, "void %s(Critter&,bool)" );
         if( !func_num )
         {
             WriteLogF( _FUNC_, " - Script<%s> bind fail, critter<%s>.\n", script, GetInfo() );
@@ -1774,7 +1774,7 @@ bool Critter::ParseScript( const char* script, bool first_time )
         Data.ScriptId = func_num;
     }
 
-    if( Data.ScriptId && Script::PrepareContext( Script::GetScriptFuncBindId( Data.ScriptId ), _FUNC_, GetInfo() ) )
+    if( Data.ScriptId && Script::PrepareScriptFuncContext( Data.ScriptId, _FUNC_, GetInfo() ) )
     {
         Script::SetArgObject( this );
         Script::SetArgBool( first_time );

@@ -35,13 +35,13 @@
 class DemandResult
 {
 public:
-    char   Type;                // Type of demand or result
-    char   Who;                 // Direction ('p' - player, 'n' - npc)
-    ushort ParamId;             // Parameter Id
-    bool   NoRecheck;           // Disable demand rechecking
-    bool   RetValue;            // Reserved
-    char   Op;                  // Operation
-    char   ValuesCount;         // Script values count
+    char Type;                  // Type of demand or result
+    char Who;                   // Direction ('p' - player, 'n' - npc)
+    uint ParamId;               // Parameter Id
+    bool NoRecheck;             // Disable demand rechecking
+    bool RetValue;              // Reserved
+    char Op;                    // Operation
+    char ValuesCount;           // Script values count
 
     #ifdef FONLINE_NPCEDITOR
     string ValueStr;            // Main value string

@@ -521,13 +521,6 @@ public:
         uint Rate;
         uint NextTime;
         int  Identifier;
-        void operator=( const CrTimeEvent& r )
-        {
-            FuncNum = r.FuncNum;
-            Rate = r.Rate;
-            NextTime = r.NextTime;
-            Identifier = r.Identifier;
-        }
     };
     typedef vector< CrTimeEvent > CrTimeEventVec;
     CrTimeEventVec CrTimeEvents;

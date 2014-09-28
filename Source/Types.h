@@ -43,6 +43,7 @@ typedef std::map< int, void* >               IntPtrMap;
 typedef std::map< uint, float >              UIntFloatMap;
 typedef std::map< ushort, uint >             UShortUIntMap;
 typedef std::map< size_t, std::string >      SizeTStrMap;
+typedef std::map< uint, int >                UIntIntMap;
 
 typedef std::multimap< uint, std::string >   UIntStrMulMap;
 

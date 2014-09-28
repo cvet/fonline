@@ -46,8 +46,8 @@ namespace Str
     const char* FormatBuf( const char* format, ... );
 
     void  ChangeValue( char* str, int value );
-    void  EraseInterval( char* str, int len );
-    void  Insert( char* to, const char* from );
+    void  EraseInterval( char* str, uint len );
+    void  Insert( char* to, const char* from, uint from_len = 0 );
     void  EraseWords( char* str, char begin, char end );
     void  EraseWords( char* str, const char* word );
     void  EraseChars( char* str, char ch );

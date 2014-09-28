@@ -4590,7 +4590,7 @@ bool FOServer::LoadWorld( const char* fname )
     if( version != WORLD_SAVE_V1 && version != WORLD_SAVE_V2 && version != WORLD_SAVE_V3 && version != WORLD_SAVE_V4 &&
         version != WORLD_SAVE_V5 && version != WORLD_SAVE_V6 && version != WORLD_SAVE_V7 && version != WORLD_SAVE_V8 &&
         version != WORLD_SAVE_V9 && version != WORLD_SAVE_V10 && version != WORLD_SAVE_V11 && version != WORLD_SAVE_V12 &&
-        version != WORLD_SAVE_V13 )
+        version != WORLD_SAVE_V13 && version != WORLD_SAVE_V14 )
     {
         WriteLog( "Unknown version<%u> of world dump file.\n", version );
         FileClose( f );
@@ -4675,9 +4675,6 @@ void FOServer::UnloadWorld()
         delete *it;
     TimeEvents.clear();
     TimeEventsLastNum = 0;
-
-    // Script functions
-    Script::ResizeCache( 0 );
 
     // Singleplayer header
     SingleplayerSave.Valid = false;
@@ -5391,12 +5388,13 @@ string FOServer::GetTimeEventsStatistics()
 
 void FOServer::SaveScriptFunctionsFile()
 {
-    const StrVec& cache = Script::GetScriptFuncCache();
-    uint          count = (uint) cache.size();
+    StrVec func_names;
+    Script::GetIndexedScriptFunc( func_names );
+    uint   count = (uint) func_names.size();
     AddWorldSaveData( &count, sizeof( count ) );
-    for( uint i = 0, j = (uint) cache.size(); i < j; i++ )
+    for( uint i = 0; i < count; i++ )
     {
-        const string& func_name = cache[ i ];
+        const string& func_name = func_names[ i ];
         uint          len = (uint) func_name.length();
         AddWorldSaveData( &len, sizeof( len ) );
         AddWorldSaveData( (void*) func_name.c_str(), len );
@@ -5408,10 +5406,9 @@ bool FOServer::LoadScriptFunctionsFile( void* f )
     uint count = 0;
     if( !FileRead( f, &count, sizeof( count ) ) )
         return false;
+    Script::AddIndexedScriptFunc( NULL, NULL );
     for( uint i = 0; i < count; i++ )
     {
-        Script::ResizeCache( i );
-
         char script[ 1024 ];
         uint len = 0;
         if( !FileRead( f, &len, sizeof( len ) ) )
@@ -5431,7 +5428,7 @@ bool FOServer::LoadScriptFunctionsFile( void* f )
         decl++;
 
         // Parse
-        if( !Script::GetScriptFuncNum( script, decl ) )
+        if( !Script::AddIndexedScriptFunc( script, decl ) )
         {
             WriteLogF( _FUNC_, " - Function<%s,%s> not found.\n", script, decl );
             continue;

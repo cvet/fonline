@@ -2955,7 +2955,7 @@ bool FOServer::SScriptFunc::Crit_AddTimeEvent( Critter* cr, ScriptString& func_n
         SCRIPT_ERROR_R0( "This nullptr." );
     if( !func_name.length() )
         SCRIPT_ERROR_R0( "Script name is empty." );
-    uint func_num = Script::GetScriptFuncNum( func_name.c_str(), "uint %s(Critter&,int,uint&)" );
+    uint func_num = Script::BindScriptFuncNum( func_name.c_str(), "uint %s(Critter&,int,uint&)" );
     if( !func_num )
         SCRIPT_ERROR_R0( "Function not found." );
     cr->AddCrTimeEvent( func_num, 0, duration, identifier );
@@ -2968,7 +2968,7 @@ bool FOServer::SScriptFunc::Crit_AddTimeEventRate( Critter* cr, ScriptString& fu
         SCRIPT_ERROR_R0( "This nullptr." );
     if( !func_name.length() )
         SCRIPT_ERROR_R0( "Script name is empty." );
-    uint func_num = Script::GetScriptFuncNum( func_name.c_str(), "uint %s(Critter&,int,uint&)" );
+    uint func_num = Script::BindScriptFuncNum( func_name.c_str(), "uint %s(Critter&,int,uint&)" );
     if( !func_num )
         SCRIPT_ERROR_R0( "Function not found." );
     cr->AddCrTimeEvent( func_num, rate, duration, identifier );
@@ -6357,7 +6357,7 @@ uint FOServer::SScriptFunc::Global_GetImageColor( uint index, uint x, uint y )
 
 uint FOServer::SScriptFunc::Global_GetScriptId( ScriptString& script_name, ScriptString& func_decl )
 {
-    return Script::GetScriptFuncNum( script_name.c_str(), func_decl.c_str() );
+    return Script::BindScriptFuncNum( script_name.c_str(), func_decl.c_str() );
 }
 
 void FOServer::SScriptFunc::Global_Synchronize()

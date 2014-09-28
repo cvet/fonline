@@ -485,9 +485,9 @@ void Str::ChangeValue( char* str, int value )
         str[ i ] += value;
 }
 
-void Str::EraseInterval( char* str, int len )
+void Str::EraseInterval( char* str, uint len )
 {
-    if( !str || len <= 0 )
+    if( !str || !len )
         return;
 
     char* str2 = str + len;
@@ -501,13 +501,14 @@ void Str::EraseInterval( char* str, int len )
     *str = 0;
 }
 
-void Str::Insert( char* to, const char* from )
+void Str::Insert( char* to, const char* from, uint from_len /* = 0 */ )
 {
     if( !to || !from )
         return;
 
-    int flen = Length( from );
-    if( !flen )
+    if( !from_len )
+        from_len = Length( from );
+    if( !from_len )
         return;
 
     char* end_to = to;
@@ -515,9 +516,9 @@ void Str::Insert( char* to, const char* from )
         ++end_to;
 
     for( ; end_to >= to; --end_to )
-        *( end_to + flen ) = *end_to;
+        *( end_to + from_len ) = *end_to;
 
-    while( *from )
+    while( from_len-- )
     {
         *to = *from;
         ++to;
