@@ -173,6 +173,8 @@ public:
 public:
 	asCObjectType(asCScriptEngine *engine);
 	~asCObjectType();
+	void DropFromEngine();
+	void DestroyInternal();
 
 	void Orphan(asCModule *module);
 	int  GetRefCount();

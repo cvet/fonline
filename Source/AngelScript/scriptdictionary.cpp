@@ -522,7 +522,9 @@ bool ScriptDictValue::Get( asIScriptEngine* engine, void* value, int typeId ) co
     {
         // Verify that the copy can be made
         bool isCompatible = false;
-        if( m_typeId == typeId )
+
+        // Allow a handle to be value assigned if the wanted type is not a handle
+        if( ( m_typeId & ~asTYPEID_OBJHANDLE ) == typeId && m_valueObj != 0 )
             isCompatible = true;
 
         // Copy the object into the given reference

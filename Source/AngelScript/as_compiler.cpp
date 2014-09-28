@@ -2574,6 +2574,16 @@ void asCCompiler::CompileDeclaration(asCScriptNode *decl, asCByteCode *bc)
 			// lead to more errors that are likely false
 			return;
 		}
+		else
+		{
+			// Warn if this variable hides another variable in a higher scope
+			if( variables->parent && variables->parent->GetVariable(name.AddressOf()) )
+			{
+				asCString str;
+				str.Format(TXT_s_HIDES_VAR_IN_OUTER_SCOPE, name.AddressOf());
+				Warning(str, node);
+			}
+		}
 
 		// Add marker that the variable has been declared
 		bc->VarDecl((int)outFunc->scriptData->variables.GetLength());
@@ -5397,6 +5407,9 @@ asUINT asCCompiler::ImplicitConvPrimitiveToPrimitive(asSExprContext *ctx, const 
 			{
 				ctx->type.SetConstantDW(out, value);
 				ctx->type.dataType.MakeReadOnly(to.IsReadOnly());
+
+				// Reset the enum value since we no longer need it
+				ctx->enumValue = "";
 
 				// It wasn't really a conversion. The compiler just resolved the ambiguity (or not)
 				return asCC_NO_CONV;
@@ -9190,9 +9203,9 @@ void asCCompiler::ProcessDeferredParams(asSExprContext *ctx)
 				if( !expr->type.IsVoidExpression() && (!expr->type.isConstant || expr->type.IsNullConstant()) )
 					ctx->bc.Instr(asBC_PopPtr);
 
-				// Give a warning, except if the argument is void, null or 0 which indicate the argument is really to be ignored
+				// Give an error, except if the argument is void, null or 0 which indicate the argument is explicitly to be ignored
 				if( !expr->type.IsVoidExpression() && !expr->type.IsNullConstant() && !(expr->type.isConstant && expr->type.qwordValue == 0) )
-					Warning(TXT_ARG_NOT_LVALUE, outParam.argNode);
+					Error(TXT_ARG_NOT_LVALUE, outParam.argNode);
 
 				ReleaseTemporaryVariable(outParam.argType, &ctx->bc);
 			}
@@ -12126,6 +12139,18 @@ void asCCompiler::CompileMathOperator(asCScriptNode *node, asSExprContext *lctx,
 		(rctx->type.isConstant && rctx->type.dataType.IsDoubleType() && !lctx->type.isConstant && lctx->type.dataType.IsFloatType()) )
 		to.SetTokenType(ttFloat);
 
+	// If integer division is disabled, convert to floating-point
+	int op = node->tokenType;
+	if( engine->ep.disableIntegerDivision &&
+		(op == ttSlash || op == ttDivAssign) &&
+		(to.IsIntegerType() || to.IsUnsignedType()) )
+	{
+		// Use double to avoid losing precision when dividing with 32bit ints
+		// For 64bit ints there is unfortunately no greater type so with those
+		// there is still a risk of loosing precision
+		to.SetTokenType(ttDouble);
+	}
+
 	// Do the actual conversion
 	int l = int(reservedVariables.GetLength());
 	rctx->bc.GetVarsUsed(reservedVariables);
@@ -12136,7 +12161,6 @@ void asCCompiler::CompileMathOperator(asCScriptNode *node, asSExprContext *lctx,
 	if( rctx->type.dataType.IsReference() )
 		ConvertToVariable(rctx);
 
-	int op = node->tokenType;
 	if( to.IsPrimitive() )
 	{
 		// ttStarStar allows an integer, right-hand operand and a double
@@ -12869,6 +12893,12 @@ void asCCompiler::CompileComparisonOperator(asCScriptNode *node, asSExprContext 
 	// Check for signed/unsigned mismatch
 	if( signMismatch )
 		Warning(TXT_SIGNED_UNSIGNED_MISMATCH, node);
+
+	// Attempt to resolve ambiguous enumerations
+	if( lctx->type.dataType.IsEnumType() && rctx->enumValue != "" )
+		ImplicitConversion(rctx, lctx->type.dataType, node, asIC_IMPLICIT_CONV);
+	else if( rctx->type.dataType.IsEnumType() && lctx->enumValue != "" )
+		ImplicitConversion(lctx, rctx->type.dataType, node, asIC_IMPLICIT_CONV);
 
 	// Do the actual conversion
 	int l = int(reservedVariables.GetLength());

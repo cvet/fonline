@@ -134,6 +134,7 @@ enum asEEngineProp
 	asEP_COMPILER_WARNINGS                  = 19,
 	asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE = 20,
 	asEP_ALTER_SYNTAX_NAMED_ARGS            = 21,
+	asEP_DISABLE_INTEGER_DIVISION           = 22,
 
 	asEP_LAST_PROPERTY
 };
@@ -575,19 +576,26 @@ BEGIN_AS_NAMESPACE
 template<typename T>
 asUINT asGetTypeTraits()
 {
-	bool hasConstructor =  std::is_default_constructible<T>::value && !std::has_trivial_default_constructor<T>::value;
-#if defined(__GNUC__) && __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8) 
-	// http://stackoverflow.com/questions/12702103/writing-code-that-works-when-has-trivial-destructor-is-defined-instead-of-is
-	bool hasDestructor = std::is_destructible<T>::value && !std::is_trivially_destructible<T>::value;
+#if defined(_MSC_VER) || defined(_LIBCPP_TYPE_TRAITS) || (defined(__GNUC__) && __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8))
+	// C++11 compliant code
+	bool hasConstructor        = std::is_default_constructible<T>::value && !std::is_trivially_default_constructible<T>::value;
+	bool hasDestructor         = std::is_destructible<T>::value          && !std::is_trivially_destructible<T>::value;
+	bool hasAssignmentOperator = std::is_copy_assignable<T>::value       && !std::is_trivially_copy_assignable<T>::value;
+	bool hasCopyConstructor    = std::is_copy_constructible<T>::value    && !std::is_trivially_copy_constructible<T>::value;
 #else
-	bool hasDestructor = std::is_destructible<T>::value && !std::has_trivial_destructor<T>::value;
+	// Not fully C++11 compliant. The has_trivial checks were used while the standard was still 
+	// being elaborated, but were then removed in favor of the above is_trivially checks
+	// http://stackoverflow.com/questions/12702103/writing-code-that-works-when-has-trivial-destructor-is-defined-instead-of-is
+	// https://github.com/mozart/mozart2/issues/51
+	bool hasConstructor        = std::is_default_constructible<T>::value && !std::has_trivial_default_constructor<T>::value;
+	bool hasDestructor         = std::is_destructible<T>::value          && !std::has_trivial_destructor<T>::value;
+	bool hasAssignmentOperator = std::is_copy_assignable<T>::value       && !std::has_trivial_copy_assign<T>::value;
+	bool hasCopyConstructor    = std::is_copy_constructible<T>::value    && !std::has_trivial_copy_constructor<T>::value;
 #endif
-	bool hasAssignmentOperator = std::is_copy_assignable<T>::value && !std::has_trivial_copy_assign<T>::value;
-	bool hasCopyConstructor = std::is_copy_constructible<T>::value && !std::has_trivial_copy_constructor<T>::value;
-	bool isFloat = std::is_floating_point<T>::value;
+	bool isFloat     = std::is_floating_point<T>::value;
 	bool isPrimitive = std::is_integral<T>::value || std::is_pointer<T>::value || std::is_enum<T>::value;
-	bool isClass = std::is_class<T>::value;
-	bool isArray = std::is_array<T>::value;
+	bool isClass     = std::is_class<T>::value;
+	bool isArray     = std::is_array<T>::value;
 
 	if( isFloat )
 		return asOBJ_APP_FLOAT;

@@ -498,7 +498,7 @@ void asCModule::InternalReset()
 		classTypes[n]->Orphan(this);
 	classTypes.SetLength(0);
 	for( n = 0; n < enumTypes.GetLength(); n++ )
-		enumTypes[n]->Release();
+		enumTypes[n]->Orphan(this);
 	enumTypes.SetLength(0);
 	for( n = 0; n < typeDefs.GetLength(); n++ )
 		typeDefs[n]->Release();
