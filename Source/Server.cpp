@@ -73,6 +73,8 @@ FOServer::SingleplayerSave_ FOServer::SingleplayerSave;
 MutexSynchronizer           FOServer::LogicThreadSync;
 FOServer::UpdateFileVec     FOServer::UpdateFiles;
 UCharVec                    FOServer::UpdateFilesList;
+UIntUIntPairMap             FOServer::BruteForceIps;
+StrUIntMap                  FOServer::BruteForceNames;
 
 FOServer::FOServer()
 {
@@ -5703,5 +5705,58 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
 }
 
 /************************************************************************/
-/*                                                                      */
+/* Brute force                                                          */
 /************************************************************************/
+
+bool FOServer::CheckBruteForceIp( uint ip )
+{
+    // Skip checking
+    if( !GameOpt.BruteForceTick || Singleplayer )
+        return false;
+
+    // Get entire for this ip
+    uint tick = Timer::FastTick();
+    auto it = BruteForceIps.insert( PAIR( ip, PAIR( tick, 0 ) ) );
+
+    // Newly inserted
+    if( it.second )
+        return false;
+
+    // Blocked
+    if( it.first->second.first > tick )
+        return true;
+
+    // Check timeout
+    bool result = ( tick - it.first->second.first ) < GameOpt.BruteForceTick;
+    it.first->second.first = tick;
+
+    // After 10 fails block access for this ip on 10 minutes
+    if( result && ++it.first->second.second >= 10 )
+    {
+        it.first->second.first = tick + 10 * 60 * 1000;
+        it.first->second.second = 0;
+        return true;
+    }
+
+    return result;
+}
+
+bool FOServer::CheckBruteForceName( const char* name )
+{
+    // Skip checking
+    if( !GameOpt.BruteForceTick || Singleplayer )
+        return false;
+
+    // Get entire for this name
+    uint tick = Timer::FastTick();
+    auto it = BruteForceNames.insert( PAIR( string( name ), tick ) );
+
+    // Newly inserted
+    if( it.second )
+        return false;
+
+    // Check timeout
+    bool result = ( tick - it.first->second ) < GameOpt.BruteForceTick;
+    it.first->second = tick;
+    return result;
+}

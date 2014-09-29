@@ -484,6 +484,12 @@ public:
         UCharVec       PicData;
     } static SingleplayerSave;
 
+    // Brute force prevention
+    static UIntUIntPairMap BruteForceIps;   // Ip -> Time / Fail count
+    static StrUIntMap      BruteForceNames; // Name -> Time
+    static bool CheckBruteForceIp( uint ip );
+    static bool CheckBruteForceName( const char* name );
+
     // Script functions
     #define SCRIPT_ERROR( error )          do { SScriptFunc::ScriptLastError = error; Script::LogError( _FUNC_, error ); } while( 0 )
     #define SCRIPT_ERROR_RX( error, x )    do { SScriptFunc::ScriptLastError = error; Script::LogError( _FUNC_, error ); return x; } while( 0 )

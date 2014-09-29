@@ -82,4 +82,6 @@ typedef std::vector< UIntPair >              UIntPairVec;
 typedef std::vector< PCharPair >             PCharPairVec;
 typedef std::vector< UCharPair >             UCharPairVec;
 
+typedef std::map< uint, UIntPair >           UIntUIntPairMap;
+
 #endif // ___TYPES___

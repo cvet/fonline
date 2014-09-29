@@ -1488,6 +1488,13 @@ void FOServer::Process_UpdateFileData( Client* cl )
 
 void FOServer::Process_CreateClient( Client* cl )
 {
+    // Prevent brute force by ip
+    if( CheckBruteForceIp( cl->GetIp() ) )
+    {
+        cl->Disconnect();
+        return;
+    }
+
     // Check for ban by ip
     {
         SCOPE_LOCK( BannedLocker );
@@ -1794,6 +1801,13 @@ void FOServer::Process_CreateClient( Client* cl )
 
 void FOServer::Process_LogIn( ClientPtr& cl )
 {
+    // Prevent brute force by ip
+    if( CheckBruteForceIp( cl->GetIp() ) )
+    {
+        cl->Disconnect();
+        return;
+    }
+
     // Net protocol
     ushort proto_ver = 0;
     cl->Bin >> proto_ver;
@@ -1825,6 +1839,13 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     {
         memzero( cl->Name, sizeof( cl->Name ) );
         memzero( cl->PassHash, sizeof( cl->PassHash ) );
+    }
+
+    // Prevent brute force by name
+    if( CheckBruteForceName( cl->Name ) )
+    {
+        cl->Disconnect();
+        return;
     }
 
     // Bin hashes
