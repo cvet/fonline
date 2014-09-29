@@ -36,26 +36,28 @@ public:
 
     BindFunction()
     {
-        memzero( this, sizeof( BindFunction ) );
+        IsScriptCall = false;
+        ScriptFunc = NULL;
+        NativeFuncAddr = 0;
     }
 
     BindFunction( asIScriptFunction* func )
     {
-        memzero( this, sizeof( BindFunction ) );
         IsScriptCall = true;
         ScriptFunc = func;
         ModuleName = func->GetModuleName();
         FuncName = func->GetDeclaration();
         func->AddRef();
+        NativeFuncAddr = 0;
     }
 
     BindFunction( size_t native_func_addr, const char* module_name,  const char* func_name )
     {
-        memzero( this, sizeof( BindFunction ) );
         IsScriptCall = false;
         NativeFuncAddr = native_func_addr;
         ModuleName = module_name;
         FuncName = func_name;
+        ScriptFunc = NULL;
     }
 
     void Clear()
