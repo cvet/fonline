@@ -5760,3 +5760,9 @@ bool FOServer::CheckBruteForceName( const char* name )
     it.first->second = tick;
     return result;
 }
+
+void FOServer::ClearBruteForceEntire( uint ip, const char* name )
+{
+    BruteForceIps.erase( ip );
+    BruteForceNames.erase( string( name ) );
+}

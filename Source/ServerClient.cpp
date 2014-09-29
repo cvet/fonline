@@ -1736,6 +1736,9 @@ void FOServer::Process_CreateClient( Client* cl )
         FileClose( FileOpen( "cache_fail", true ) );
     }
 
+    // Clear brute force ip and name, because client enter to game immediately after registration
+    ClearBruteForceEntire( cl->GetIp(), cl->Name );
+
     // Load world
     if( Singleplayer )
     {

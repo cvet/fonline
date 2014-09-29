@@ -489,6 +489,7 @@ public:
     static StrUIntMap      BruteForceNames; // Name -> Time
     static bool CheckBruteForceIp( uint ip );
     static bool CheckBruteForceName( const char* name );
+    static void ClearBruteForceEntire( uint ip, const char* name );
 
     // Script functions
     #define SCRIPT_ERROR( error )          do { SScriptFunc::ScriptLastError = error; Script::LogError( _FUNC_, error ); } while( 0 )
