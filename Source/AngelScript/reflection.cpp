@@ -317,7 +317,7 @@ ScriptString* GetCurrentModule()
 ScriptArray* GetEnumsInternal( bool global, const char* module_name )
 {
     asIScriptEngine* engine = asGetActiveContext()->GetEngine();
-    ScriptArray*     enums = ScriptArray::Create( engine->GetObjectTypeByDecl( "type[]" ) );
+    ScriptArray*     enums = ScriptArray::Create( engine->GetObjectTypeByDecl( "reflection::type[]" ) );
 
     asIScriptModule* module;
     if( !global )

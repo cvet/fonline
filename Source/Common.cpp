@@ -32,6 +32,8 @@ void SetCommandLine( uint argc, char** argv )
         Str::Append( CommandLine, argv[ i ] );
         Str::Append( CommandLine, " " );
     }
+
+    GameOpt.CmdLine = ScriptString::Create( CommandLine );
 }
 
 // Default randomizer
@@ -657,7 +659,7 @@ const char* GetWindowName()
 
         // Mapper appendix
         #if defined ( FONLINE_MAPPER )
-        Str::Append( window_name, " v." );
+        Str::Append( window_name, " r" );
         Str::Append( window_name, Str::ItoA( FONLINE_VERSION ) );
         #endif
     }
@@ -1172,6 +1174,7 @@ GameOptions::GameOptions()
     GameServer = false;
     UpdateServer = false;
     GenerateWorldDisabled = false;
+    BuildMapperScripts = false;
 
     StartSpecialPoints = 40;
     StartTagSkillPoints = 3;
@@ -1223,6 +1226,8 @@ GameOptions::GameOptions()
     MapCameraAngle = 25.7f;
     MapSmoothPath = true;
     MapDataPrefix = ScriptString::Create( "art/geometry/fallout_" );
+
+    CmdLine = ScriptString::Create( "" );
 
     // Client and Mapper
     Quit = false;

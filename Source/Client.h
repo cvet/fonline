@@ -150,7 +150,6 @@ public:
     void Net_SendRuleGlobal( uchar command, uint param1 = 0, uint param2 = 0 );
     void Net_SendGiveMap( bool automap, ushort map_pid, uint loc_id, uint tiles_hash, uint walls_hash, uint scen_hash );
     void Net_SendLoadMapOk();
-    void Net_SendCommand( char* str );
     void Net_SendText( const char* send_str, uchar how_say );
     void Net_SendDir();
     void Net_SendMove( UCharVec steps );

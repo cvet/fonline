@@ -197,6 +197,7 @@ public:
     // Client script
     static bool RequestReloadClientScripts;
     static bool ReloadClientScripts();
+    static bool ReloadMapperScripts();
 
     // Pragma callbacks
     static bool PragmaCallbackCrData( const char* text );

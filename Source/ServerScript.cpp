@@ -527,6 +527,148 @@ bool FOServer::ReloadClientScripts()
     return true;
 }
 
+#undef BIND_CLIENT
+#define BIND_MAPPER
+// #define BIND_CLASS    BindClass::
+
+namespace MapperBind
+{
+    #include "DummyData.h"
+    static int Bind( asIScriptEngine* engine )
+    {
+        int bind_errors = 0;
+        #include "ScriptBind.h"
+        return bind_errors;
+    }
+}
+
+bool FOServer::ReloadMapperScripts()
+{
+    WriteLog( "Reload mapper scripts...\n" );
+
+    // Get config file
+    FileManager scripts_cfg;
+    scripts_cfg.LoadFile( SCRIPTS_LST, PT_SERVER_SCRIPTS );
+    if( !scripts_cfg.IsLoaded() )
+    {
+        WriteLog( "Config file<%s> not found.\n", SCRIPTS_LST );
+        return false;
+    }
+
+    // Disable debug allocators
+    #ifdef MEMORY_DEBUG
+    asSetGlobalMemoryFunctions( malloc, free );
+    #endif
+
+    asIScriptEngine* old_engine = Script::GetEngine();
+    asIScriptEngine* engine = Script::CreateEngine( new ScriptPragmaCallback( PRAGMA_MAPPER ), "MAPPER", true );
+    if( engine )
+        Script::SetEngine( engine );
+
+    // Bind vars and functions
+    int bind_errors = 0;
+    if( engine )
+        bind_errors = MapperBind::Bind( engine );
+
+    // Check errors
+    if( !engine || bind_errors )
+    {
+        if( !engine )
+            WriteLogF( _FUNC_, " - asCreateScriptEngine fail.\n" );
+        else
+            WriteLog( "Bind fail, errors<%d>.\n", bind_errors );
+        Script::FinishEngine( engine );
+
+        #ifdef MEMORY_DEBUG
+        if( MemoryDebugLevel >= 2 )
+            asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
+        else if( MemoryDebugLevel >= 1 )
+            asSetGlobalMemoryFunctions( ASDebugMalloc, ASDebugFree );
+        else
+            asSetGlobalMemoryFunctions( malloc, free );
+        #endif
+        return false;
+    }
+
+    // Load script modules
+    Script::Undef( "__SERVER" );
+    Script::Define( "__MAPPER" );
+
+    StrVec empty;
+    Script::SetWrongGlobalObjects( empty );
+
+    Script::SetLoadLibraryCompiler( true );
+
+    int    errors = 0;
+    char   buf[ MAX_FOTEXT ];
+    string value, config;
+    StrVec pragmas;
+    while( scripts_cfg.GetLine( buf, MAX_FOTEXT ) )
+    {
+        if( buf[ 0 ] != '@' )
+            continue;
+        istrstream str( &buf[ 1 ] );
+        str >> value;
+        if( str.fail() || value != "mapper" )
+            continue;
+        str >> value;
+        if( str.fail() || ( value != "module" && value != "bind" ) )
+            continue;
+
+        if( value == "module" )
+        {
+            str >> value;
+            if( str.fail() )
+                continue;
+
+            if( !Script::LoadScript( value.c_str(), NULL, false, "MAPPER_" ) )
+            {
+                WriteLogF( _FUNC_, " - Unable to load mapper script<%s>.\n", value.c_str() );
+                errors++;
+                continue;
+            }
+
+            asIScriptModule* module = engine->GetModule( value.c_str(), asGM_ONLY_IF_EXISTS );
+            CBytecodeStream  binary;
+            if( !module || module->SaveByteCode( &binary ) < 0 )
+            {
+                WriteLogF( _FUNC_, " - Unable to save bytecode of mapper script<%s>.\n", value.c_str() );
+                errors++;
+                continue;
+            }
+        }
+    }
+
+    // Imported functions
+    errors += Script::BindImportedFunctions();
+
+    // Finish
+    Script::FinishEngine( engine );
+    Script::Undef( "__MAPPER" );
+    Script::Define( "__SERVER" );
+
+    Script::SetWrongGlobalObjects( ServerWrongGlobalObjects );
+
+    Script::SetLoadLibraryCompiler( false );
+
+    #ifdef MEMORY_DEBUG
+    if( MemoryDebugLevel >= 2 )
+        asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
+    else if( MemoryDebugLevel >= 1 )
+        asSetGlobalMemoryFunctions( ASDebugMalloc, ASDebugFree );
+    else
+        asSetGlobalMemoryFunctions( malloc, free );
+    #endif
+    Script::SetEngine( old_engine );
+
+    // Exit if have errors
+    if( errors )
+        return false;
+
+    WriteLog( "Reload mapper scripts complete.\n" );
+    return true;
+}
+
 /************************************************************************/
 /* Wrapper functions                                                    */
 /************************************************************************/

@@ -2826,13 +2826,6 @@ void FOClient::Net_SendText( const char* send_str, uchar how_say )
     if( !result || !str[ 0 ] )
         return;
 
-    if( str[ 0 ] == '~' )
-    {
-        str++;
-        Net_SendCommand( str );
-        return;
-    }
-
     ushort len = Str::Length( str );
     uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( how_say ) + sizeof( len ) + len;
 
@@ -2841,18 +2834,6 @@ void FOClient::Net_SendText( const char* send_str, uchar how_say )
     Bout << how_say;
     Bout << len;
     Bout.Push( str, len );
-}
-
-void FOClient::Net_SendCommand( char* str )
-{
-    struct LogCB
-    {
-        static void Message( const char* str )
-        {
-            Self->AddMess( FOMB_GAME, str );
-        }
-    };
-    PackCommand( str, Bout, LogCB::Message, Chosen->Name->c_str() );
 }
 
 void FOClient::Net_SendDir()
@@ -9837,6 +9818,38 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         SprMngr.OnResolutionChanged();
         if( Self->HexMngr.IsMapLoaded() )
             Self->HexMngr.OnResolutionChanged();
+    }
+    else if( cmd == "Command" && args.size() >= 2 )
+    {
+        char str[ MAX_FOTEXT ] = { 0 };
+
+        for( uint i = 1, j = args.size(); i < j; i++ )
+        {
+            if( i > 1 )
+                Str::Append( str, " " );
+            Str::Append( str, args[ i ].c_str() );
+        }
+
+        static char buf[ MAX_FOTEXT ];
+        static char buf_separator[ MAX_FOTEXT ];
+        struct LogCB
+        {
+            static void Message( const char* msg )
+            {
+                if( strlen( buf ) > 0 && strlen( buf_separator ) > 0 )
+                    Str::Append( buf, buf_separator );
+
+                Str::Append( buf, msg );
+            }
+        };
+
+        Str::Copy( buf, "" );
+        Str::Copy( buf_separator, separator.c_str() );
+
+        if( !PackCommand( str, Self->Bout, LogCB::Message, Self->Chosen->Name->c_str() ) )
+            return ( ScriptString::Create( "UNKNOWN" ) );
+
+        return ( ScriptString::Create( buf ) );
     }
     else
     {

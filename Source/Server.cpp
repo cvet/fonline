@@ -3483,6 +3483,8 @@ bool FOServer::InitReal()
         return false;                                  // Language packs
     if( !ReloadClientScripts() )
         return false;                                  // Client scripts, after language packs initialization
+    if( GameOpt.BuildMapperScripts && !ReloadMapperScripts() )
+        return false;                                  // Mapper scripts
     if( GameOpt.GameServer && !Singleplayer && !LoadClientsData() )
         return false;
     if( !Singleplayer )

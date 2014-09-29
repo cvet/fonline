@@ -294,7 +294,7 @@ Bone* GraphicLoader::LoadModel( const char* fname )
             # define FBXSDK_PATH2    "data\\dynlibs\\libfbxsdk.dll"
             #else
             # define FBXSDK_PATH1    "./"
-            # define FBXSDK_PATH2    "data/dynlibs/libfbxsdk.dll"
+            # define FBXSDK_PATH2    "data/dynlibs/libfbxsdk.so"
             #endif
 
             // Check dll availability
@@ -495,7 +495,7 @@ Bone* GraphicLoader::LoadModel( const char* fname )
             # define ASSIMP_PATH2    "data\\dynlibs\\Assimp32.dll"
             #else
             # define ASSIMP_PATH1    "./"
-            # define ASSIMP_PATH2    "data/dynlibs/Assimp32.dll"
+            # define ASSIMP_PATH2    "data/dynlibs/Assimp32.so"
             #endif
 
             // Check dll availability
