@@ -123,7 +123,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         if( Str::CompareCase( cmd_str, cmdlist[ cur_cmd ].cmd ) )
             cmd = cmdlist[ cur_cmd ].id;
     if( !cmd )
-        return ( false );
+        return false;
 
     uint msg = NETMSG_SEND_COMMAND;
     uint msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( cmd );
@@ -732,10 +732,10 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     }
     break;
     default:
-        return ( false );
+        return false;
     }
 
-    return ( true );
+    return true;
 }
 
 #endif // __ACCESS__

@@ -527,9 +527,16 @@ bool FOServer::ReloadClientScripts()
     return true;
 }
 
+/************************************************************************/
+/* Mapper script processing                                             */
+/************************************************************************/
+
 #undef BIND_CLIENT
+#undef BIND_CLASS
+#undef BIND_ASSERT
 #define BIND_MAPPER
-// #define BIND_CLASS    BindClass::
+#define BIND_CLASS    BindClass::
+#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line<%d>.\n", __LINE__ ); bind_errors++; }
 
 namespace MapperBind
 {

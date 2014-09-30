@@ -9823,7 +9823,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         char str[ MAX_FOTEXT ] = { 0 };
 
-        for( uint i = 1, j = args.size(); i < j; i++ )
+        for( uint i = 1, j = (uint) args.size(); i < j; i++ )
         {
             if( i > 1 )
                 Str::Append( str, " " );
@@ -9836,7 +9836,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         {
             static void Message( const char* msg )
             {
-                if( strlen( buf ) > 0 && strlen( buf_separator ) > 0 )
+                if( Str::Length( buf ) > 0 && Str::Length( buf_separator ) > 0 )
                     Str::Append( buf, buf_separator );
 
                 Str::Append( buf, msg );
@@ -9847,9 +9847,9 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         Str::Copy( buf_separator, separator.c_str() );
 
         if( !PackCommand( str, Self->Bout, LogCB::Message, Self->Chosen->Name->c_str() ) )
-            return ( ScriptString::Create( "UNKNOWN" ) );
+            return ScriptString::Create( "UNKNOWN" );
 
-        return ( ScriptString::Create( buf ) );
+        return ScriptString::Create( buf );
     }
     else
     {

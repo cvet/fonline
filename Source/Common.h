@@ -538,6 +538,7 @@ struct GameOptions
     bool          UpdateServer;
     bool          GenerateWorldDisabled;
     bool          BuildMapperScripts;
+    ScriptString* CommandLine;
 
     int           StartSpecialPoints;
     int           StartTagSkillPoints;
@@ -588,8 +589,6 @@ struct GameOptions
     float         MapCameraAngle;
     bool          MapSmoothPath;
     ScriptString* MapDataPrefix;
-
-    ScriptString* CmdLine;
 
     // Client and Mapper
     bool          Quit;
