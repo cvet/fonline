@@ -278,7 +278,10 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char name_access[ MAX_FOTEXT ];
         char pasw_access[ MAX_FOTEXT ];
         if( sscanf( args, "%s%s", name_access, pasw_access ) != 2 )
+        {
+            logcb( "Invalid arguments. Example: <getaccess name password>." );
             break;
+        }
         Str::Replacement( name_access, '*', ' ' );
         Str::Replacement( pasw_access, '*', ' ' );
 
