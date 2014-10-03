@@ -32,6 +32,7 @@ SpriteManager::SpriteManager()
     sceneBeginned = false;
 
     sprEgg = NULL;
+    eggData = NULL;
     eggValid = false;
     eggHx = eggHy = eggX = eggY = 0;
     eggAtlasWidth = 0;
@@ -540,6 +541,7 @@ void SpriteManager::CleanRenderTarget( RenderTarget* rt )
         GL( glDeleteFramebuffersEXT( 1, &rt->FBO ) );
     }
     SAFEDEL( rt->TargetTexture );
+    SAFEDEL( rt->LastPixelPicks );
 }
 
 void SpriteManager::DeleteRenderTarget( RenderTarget*& rt )
@@ -570,6 +572,10 @@ void SpriteManager::PushRenderTarget( RenderTarget* rt )
             GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, rt->FBO ) );
         }
         RefreshViewport();
+
+        // Invalidate last pixel color picking
+        if( rt->LastPixelPicks && !rt->LastPixelPicks->empty() )
+            rt->LastPixelPicks->clear();
     }
 }
 
@@ -657,21 +663,43 @@ void SpriteManager::DrawRenderTarget( RenderTarget* rt, bool alpha_blend, const 
 
 uint SpriteManager::GetRenderTargetPixel( RenderTarget* rt, int x, int y )
 {
-    static RenderTarget* last_rt = NULL;
-    static int           last_x = 0, last_y = 0;
-    static uint          last_result = 0;
-    if( rt == last_rt && x == last_x && y == last_y )
-        return last_result;
+    // Try find in last picks
+    uint xy = ( x << 16 ) | y;
+    for( auto it = rt->LastPixelPicks->begin(), end = rt->LastPixelPicks->end(); it != end; ++it )
+        if( it->first == xy )
+            return it->second;
 
-    PushRenderTarget( rt );
+    // Set FBO for pixel reading
+    GLint prev_fbo;
+    GL( glGetIntegerv( GL_FRAMEBUFFER_BINDING, &prev_fbo ) );
+    if( GL_HAS( framebuffer_object ) )
+    {
+        GL( glBindFramebuffer( GL_FRAMEBUFFER, rt->FBO ) );
+    }
+    else     // framebuffer_object_ext
+    {
+        GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, rt->FBO ) );
+    }
+
+    // Read one pixel
     uint result = 0;
     GL( glReadPixels( x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &result ) );
-    PopRenderTarget();
 
-    last_rt = rt;
-    last_x = x;
-    last_y = y;
-    last_result = result;
+    // Restore previous FBO
+    if( GL_HAS( framebuffer_object ) )
+    {
+        GL( glBindFramebuffer( GL_FRAMEBUFFER, prev_fbo ) );
+    }
+    else     // framebuffer_object_ext
+    {
+        GL( glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, prev_fbo ) );
+    }
+
+    // Refresh picks
+    rt->LastPixelPicks->insert( rt->LastPixelPicks->begin(), PAIR( xy, result ) );
+    if( rt->LastPixelPicks->size() > MAX_STORED_PIXEL_PICKS )
+        rt->LastPixelPicks->pop_back();
+
     return result;
 }
 
@@ -924,6 +952,8 @@ TextureAtlas* SpriteManager::CreateAtlas( int w, int h )
     }
 
     atlas->RT = CreateRenderTarget( false, false, w, h, true );
+    atlas->RT->LastPixelPicks = new UIntPairVec();
+    atlas->RT->LastPixelPicks->reserve( MAX_STORED_PIXEL_PICKS );
     atlas->TextureOwner = atlas->RT->TargetTexture;
     atlas->Width = w;
     atlas->Height = h;
@@ -1173,6 +1203,10 @@ void SpriteManager::FillAtlas( SpriteInfo* si )
         data_border[ 0 ] = data_border[ 1 ];
         data_border[ h + 1 ] = data_border[ h ];
         tex->UpdateRegion( Rect( x + w, y - 1, x + w, y + h ), (uchar*) data_border );
+
+        // Invalidate last pixel color picking
+        if( atlas->RT->LastPixelPicks && !atlas->RT->LastPixelPicks->empty() )
+            atlas->RT->LastPixelPicks->clear();
     }
 
     // Set parameters
@@ -3719,6 +3753,14 @@ void SpriteManager::InitializeEgg( const char* egg_name )
         eggSprHeight = sprEgg->Height;
         eggAtlasWidth = (float) atlasWidth;
         eggAtlasHeight = (float) atlasHeight;
+
+        PushRenderTarget( sprEgg->Atlas->RT );
+        SAFEDELA( eggData );
+        eggData = new uint[ eggSprWidth * eggSprHeight ];
+        int x = (int) ( sprEgg->Atlas->TextureOwner->SizeData[ 0 ] * sprEgg->SprRect.L );
+        int y = (int) ( sprEgg->Atlas->TextureOwner->SizeData[ 1 ] * sprEgg->SprRect.T );
+        GL( glReadPixels( x, y, eggSprWidth, eggSprHeight, GL_RGBA, GL_UNSIGNED_BYTE, eggData ) );
+        PopRenderTarget();
     }
     else
     {
@@ -4140,7 +4182,8 @@ bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
     ox = (int) ( ox * GameOpt.SpritesZoom );
     oy = (int) ( oy * GameOpt.SpritesZoom );
 
-    return GetRenderTargetPixel( sprEgg->Atlas->RT, ox, oy ) < 170;
+    uint egg_color = *( eggData + oy * eggSprWidth + ox );
+    return ( egg_color >> 24 ) < 127;
 }
 
 bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NULL */, RectF* stencil /* = NULL */, PointF* offset /* = NULL */, Effect* effect /* = NULL */ )

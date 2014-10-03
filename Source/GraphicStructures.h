@@ -257,15 +257,18 @@ typedef vector< MeshTexture* > MeshTextureVec;
 // Render target
 //
 
+#define MAX_STORED_PIXEL_PICKS    ( 100 )
+
 struct RenderTarget
 {
-    GLuint   FBO;
-    Texture* TargetTexture;
-    GLuint   DepthStencilBuffer;
-    Effect*  DrawEffect;
-    bool     Multisampling;
-    bool     ScreenSize;
-    bool     TexLinear;
+    GLuint       FBO;
+    Texture*     TargetTexture;
+    GLuint       DepthStencilBuffer;
+    Effect*      DrawEffect;
+    bool         Multisampling;
+    bool         ScreenSize;
+    bool         TexLinear;
+    UIntPairVec* LastPixelPicks;
 };
 typedef vector< RenderTarget* > RenderTargetVec;
 

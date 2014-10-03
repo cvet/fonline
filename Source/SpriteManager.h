@@ -269,6 +269,7 @@ private:
     ushort      eggHx, eggHy;
     int         eggX, eggY;
     SpriteInfo* sprEgg;
+    uint*       eggData;
     int         eggSprWidth, eggSprHeight;
     float       eggAtlasWidth, eggAtlasHeight;
 
