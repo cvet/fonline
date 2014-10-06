@@ -868,6 +868,7 @@ struct BindClass
     static void Global_SetAnyData()             {}
     static void Global_SetAnyDataSize()         {}
     static void Global_GetAnyData()             {}
+    static void Global_GetAnyDataList()         {}
     static void Global_IsAnyData()              {}
     static void Global_EraseAnyData()           {}
     static void Global_SetStartLocation()       {}

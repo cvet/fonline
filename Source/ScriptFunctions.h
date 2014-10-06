@@ -81,3 +81,32 @@ ScriptString* Global_EncodeUTF8( uint ucs )
     buf[ len ] = 0;
     return ScriptString::Create( buf );
 }
+
+uint Global_GetFolderFileNames( ScriptArray& result, ScriptString& path, ScriptString& ext, bool subdirs )
+{
+    char path_[ MAX_FOPATH ];
+    char ext_[ MAX_FOPATH ];
+
+    Str::Copy( path_, path.c_str() );
+    Str::Copy( ext_, ext.c_str() );
+
+    StrVec files;
+    FileManager::GetFolderFileNames( path_, subdirs, Str::Length( ext_ ) == 0 ? NULL : ext_, files );
+
+    uint size = (uint) files.size();
+    for( uint f = 0; f < size; f++ )
+    {
+        result.InsertLast( ScriptString::Create( files[ f ] ) );
+    }
+
+    return size;
+}
+
+bool Global_DeleteFile( ScriptString& filename )
+{
+    char filename_[ MAX_FOPATH ];
+
+    Str::Copy( filename_, filename.c_str() );
+
+    return FileManager::DeleteFile( filename_ );
+}

@@ -598,7 +598,12 @@ void FOClient::UpdateFiles( bool early_call )
                     float       cur = (float) ( update_file.Size - update_file.RemaningSize ) / ( 1024.0f * 1024.0f );
                     float       max = MAX( (float) update_file.Size / ( 1024.0f * 1024.0f ), 0.01f );
                     char        buf[ MAX_FOTEXT ];
-                    progress += Str::Format( buf, "%s %.2f / %.2f MB\n", update_file.Name.c_str(), cur, max );
+                    char        name[ MAX_FOPATH ];
+
+                    Str::Copy( name, update_file.Name.c_str() );
+                    FileManager::FormatPath( name );
+
+                    progress += Str::Format( buf, "%s %.2f / %.2f MB\n", name, cur, max );
                 }
                 progress += "\n";
             }
@@ -6236,12 +6241,10 @@ void FOClient::Net_OnUpdateFilesList()
         name[ name_len ] = 0;
 
         uint size = fm.GetLEUInt();
-        uint hash = 0;
+        uint hash = fm.GetLEUInt();
 
         if( name[ 0 ] == '*' )
         {
-            hash = fm.GetLEUInt();
-
             uint  cur_hash_len;
             uint* cur_hash = (uint*) Crypt.GetCache( ( string( name ) + CACHE_HASH_APPENDIX ).c_str(), cur_hash_len );
             if( cur_hash && cur_hash_len == sizeof( hash ) && *cur_hash == hash )
@@ -6251,7 +6254,14 @@ void FOClient::Net_OnUpdateFilesList()
         {
             FileManager file;
             if( file.LoadFile( name, PT_DATA, true ) && file.GetFsize() == size )
-                continue;
+            {
+                if( hash == 0 )
+                    continue;
+
+                file.UnloadFile();
+                if( file.LoadFile( name, PT_DATA ) && file.GetFsize() > 0 && hash == Crypt.Crc32( file.GetBuf(), file.GetFsize() ) )
+                    continue;
+            }
         }
 
         UpdateFile update_file;
@@ -8439,7 +8449,7 @@ bool FOClient::SaveLogFile()
     }
 
     if( Str::Compare( log_path, "" ) )
-        return ( false );
+        return false;
 
     FileManager::FormatPath( log_path );
 
@@ -8485,7 +8495,7 @@ bool FOClient::SaveScreenshot()
     }
 
     if( Str::Compare( screen_path, "" ) )
-        return ( false );
+        return false;
 
     FileManager::FormatPath( screen_path );
     SprMngr.SaveTexture( NULL, screen_path, true );

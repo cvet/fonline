@@ -5441,6 +5441,11 @@ bool FOServer::SScriptFunc::Global_GetAnyData( ScriptString& name, ScriptArray& 
     return GetAnyData( name.c_std_str(), data );
 }
 
+uint FOServer::SScriptFunc::Global_GetAnyDataList( ScriptArray* names )
+{
+    return GetAnyDataList( names );
+}
+
 bool FOServer::SScriptFunc::Global_IsAnyData( ScriptString& name )
 {
     if( !name.length() )

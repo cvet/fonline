@@ -177,6 +177,7 @@ public:
     static bool   LoadAnyDataFile( void* f );
     static bool   SetAnyData( const string& name, const uchar* data, uint data_size );
     static bool   GetAnyData( const string& name, ScriptArray& script_array );
+    static uint   GetAnyDataList( ScriptArray* script_array );
     static bool   IsAnyData( const string& name );
     static void   EraseAnyData( const string& name );
     static string GetAnyDataStatistics();
@@ -878,6 +879,7 @@ public:
         static bool          Global_SetAnyData( ScriptString& name, ScriptArray& data );
         static bool          Global_SetAnyDataSize( ScriptString& name, ScriptArray& data, uint data_size_bytes );
         static bool          Global_GetAnyData( ScriptString& name, ScriptArray& data );
+        static uint          Global_GetAnyDataList( ScriptArray* names );
         static bool          Global_IsAnyData( ScriptString& name );
         static void          Global_EraseAnyData( ScriptString& name );
         static void          Global_SetTime( ushort multiplier, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );

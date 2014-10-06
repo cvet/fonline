@@ -777,6 +777,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetAnyData(string& name, uint
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetAnyData(string& name, uint32[]& data)", asFUNCTION( BIND_CLASS Global_GetAnyData ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetAnyData(string& name, uint16[]& data)", asFUNCTION( BIND_CLASS Global_GetAnyData ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetAnyData(string& name, uint8[]& data)", asFUNCTION( BIND_CLASS Global_GetAnyData ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAnyData(string[]& names)", asFUNCTION( BIND_CLASS Global_GetAnyDataList ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsAnyData(string& name)", asFUNCTION( BIND_CLASS Global_IsAnyData ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void EraseAnyData(string& name)", asFUNCTION( BIND_CLASS Global_EraseAnyData ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "Map@+ GetMap(uint mapId)", asFUNCTION( BIND_CLASS Global_GetMap ), asCALL_CDECL ) );
@@ -1590,6 +1591,9 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void SetAngelScriptProperty(int pr
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetStrHash(string@+ str)", asFUNCTION( Global_GetStrHash ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint DecodeUTF8(const string& text, uint& length)", asFUNCTION( Global_DecodeUTF8 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ EncodeUTF8(uint ucs)", asFUNCTION( Global_EncodeUTF8 ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFolderFileNames(string[]& result, string& path, string& extension, bool include_subdirs = true)", asFUNCTION( Global_GetFolderFileNames ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool DeleteFile(string& filename)", asFUNCTION( Global_DeleteFile ), asCALL_CDECL ) );
+
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/

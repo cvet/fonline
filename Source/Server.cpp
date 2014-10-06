@@ -5529,6 +5529,23 @@ bool FOServer::GetAnyData( const string& name, ScriptArray& script_array )
     return true;
 }
 
+uint FOServer::GetAnyDataList( ScriptArray* script_array )
+{
+    SCOPE_LOCK( AnyDataLocker );
+
+    uint size = AnyData.size();
+    if( !script_array )
+        return ( size );
+
+    for( auto it = AnyData.begin(), end = AnyData.end(); it != end; ++it )
+    {
+        const string& name = ( *it ).first;
+        script_array->InsertLast( ScriptString::Create( name ) );
+    }
+
+    return size;
+}
+
 bool FOServer::IsAnyData( const string& name )
 {
     SCOPE_LOCK( AnyDataLocker );
@@ -5658,6 +5675,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
     {
         string      file_name = file_names[ i ];
         string      file_name_target = file_name;
+        uint        hash = 0;
 
         const char* ext = FileManager::GetExtension( file_name.c_str() );
         if( ext && Str::CompareCase( ext, "link" ) )
@@ -5672,6 +5690,24 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
             file_name = file_name.substr( 0, file_name.length() - 5 );
             file_name.insert( 0, (char*) link.GetBuf() );
             file_name_target = file_name_target.substr( 0, file_name_target.length() - 5 );
+        }
+        else if( ext && Str::CompareCase( ext, "crc" ) )
+        {
+            FileManager crc;
+            if( !crc.LoadFile( file_name.c_str(), PT_SERVER_UPDATE ) )
+            {
+                WriteLogF( _FUNC_, " - Can't load file<%s>.\n", file_name.c_str() );
+                continue;
+            }
+
+            if( crc.GetFsize() == 0 )
+            {
+                WriteLogF( _FUNC_, " - Can't calculate hash of empty file<%s>.\n", file_name.c_str() );
+                continue;
+            }
+
+            file_name_target = file_name_target.substr( 0, file_name_target.length() - 4 );
+            hash = Crypt.Crc32( crc.GetBuf(), crc.GetFsize() );
         }
 
         FileManager file;
@@ -5689,6 +5725,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
         ModifyVec( UpdateFilesList, (short) file_name_target.length() );
         ModifyVecArr( UpdateFilesList, file_name_target.c_str(), (uint) file_name_target.length() );
         ModifyVec( UpdateFilesList, update_file.Size );
+        ModifyVec( UpdateFilesList, hash );
     }
 
     // Complete files list

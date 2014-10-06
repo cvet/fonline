@@ -3,13 +3,26 @@
 #include <assert.h>
 #include "as_objecttype.h"
 
-ScriptType::ScriptType( asIObjectType* type )
+ScriptType::ScriptType( asIObjectType* type ) : Enum( false )
 {
     ObjType = type;
 }
 
 ScriptString* ScriptType::GetName() const
 {
+    if( Enum )
+    {
+        ScriptString* str = ScriptString::Create();
+        if( EnumNamespace[0] )
+        {
+            str->append( EnumNamespace );
+            str->append( "::");
+        }
+        str->append( EnumName );
+
+        return str;
+    }
+
     if( !ObjType )
         return ScriptString::Create( "(not assigned)" );
 
@@ -21,11 +34,15 @@ ScriptString* ScriptType::GetName() const
         str->append( ObjType->GetName() );
         return str;
     }
+
     return ScriptString::Create( ObjType->GetName() );
 }
 
 ScriptString* ScriptType::GetNameWithoutNamespace() const
 {
+    if( Enum )
+        return ScriptString::Create( EnumName );
+
     if( !ObjType )
         return ScriptString::Create( "(not assigned)" );
     return ScriptString::Create( ObjType->GetName() );
@@ -33,6 +50,9 @@ ScriptString* ScriptType::GetNameWithoutNamespace() const
 
 ScriptString* ScriptType::GetNamespace() const
 {
+    if( Enum )
+        return ScriptString::Create( EnumNamespace );
+
     if( !ObjType )
         return ScriptString::Create();
     return ScriptString::Create( ObjType->GetNamespace() );
@@ -40,6 +60,9 @@ ScriptString* ScriptType::GetNamespace() const
 
 ScriptString* ScriptType::GetModule() const
 {
+    if( Enum )
+        return ScriptString::Create( EnumModule );
+
     if( !ObjType )
         return ScriptString::Create();
     return ScriptString::Create( ObjType->GetModule() ? ObjType->GetModule()->GetName() : "(global)" );
@@ -57,6 +80,9 @@ bool ScriptType::IsAssigned() const
 
 bool ScriptType::IsGlobal() const
 {
+    if( Enum )
+        return Str::Compare( EnumModule, "(global)" );
+
     return ObjType != NULL ? ObjType->GetModule() == NULL : false;
 }
 
@@ -72,7 +98,7 @@ bool ScriptType::IsInterface() const
 
 bool ScriptType::IsEnum() const
 {
-    return ObjType ? ( (asCObjectType*) ObjType )->enumValues.GetLength() > 0 : false;
+    return Enum;
 }
 
 bool ScriptType::IsFunction() const
@@ -329,12 +355,23 @@ ScriptArray* GetEnumsInternal( bool global, const char* module_name )
 
     for( uint i = 0, j = ( global ? engine->GetEnumCount() : module->GetEnumCount() ); i < j; i++ )
     {
-        int enum_type_id;
+        // enum data must be cached due to exception in asCScriptEngine::GetObjectTypeById()
+
+        ScriptType type = ScriptType( NULL );
+
         if( global )
-            engine->GetEnumByIndex( i, &enum_type_id );
+        {
+            type.EnumName = engine->GetEnumByIndex( i, NULL, &type.EnumNamespace );
+            type.EnumModule = "(global)";
+        }
         else
-            module->GetEnumByIndex( i, &enum_type_id );
-        ScriptType type = ScriptType( engine->GetObjectTypeById( enum_type_id ) );
+        {
+            type.EnumName = module->GetEnumByIndex( i, NULL, &type.EnumNamespace );
+            type.EnumModule = module->GetName();
+        }
+
+        type.Enum = true;
+
         enums->InsertLast( &type );
     }
     return enums;
