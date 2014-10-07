@@ -4068,9 +4068,9 @@ bool FOMapper::SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_
 
                     tiles[ k ].OffsX = ox;
                     tiles[ k ].OffsY = oy;
-                    Field::Tile& ftile = f.GetTile( k, stile.IsRoof );
-                    ftile.OffsX = ox;
-                    ftile.OffsY = oy;
+                    Field::Tile ftile = f.GetTile( k, stile.IsRoof );
+                    f.EraseTile( k, stile.IsRoof );
+                    f.AddTile( ftile.Anim, ox, oy, ftile.Layer, stile.IsRoof );
                 }
             }
         }
