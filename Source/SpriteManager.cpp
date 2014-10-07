@@ -4176,7 +4176,7 @@ bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
     int ox = pix_x - (int) ( ex / GameOpt.SpritesZoom );
     int oy = pix_y - (int) ( ey / GameOpt.SpritesZoom );
 
-    if( ox < 0 || oy < 0 || ox >= int(eggAtlasWidth / GameOpt.SpritesZoom) || oy >= int(eggAtlasHeight / GameOpt.SpritesZoom) )
+    if( ox < 0 || oy < 0 || ox >= int(eggSprWidth / GameOpt.SpritesZoom) || oy >= int(eggSprHeight / GameOpt.SpritesZoom) )
         return false;
 
     ox = (int) ( ox * GameOpt.SpritesZoom );
