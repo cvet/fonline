@@ -2871,7 +2871,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
                     break;
                 }
 
-                *ptr++ = col;
+                *ptr++ = COLOR_SWAP_RB( col );
             }
 
             if( control_mode )
