@@ -38,11 +38,6 @@ public:
     ScriptArray*  GetEnumValues() const;
 
     asIObjectType* ObjType;
-
-    bool           Enum;
-    const char*    EnumName;
-    const char*    EnumNamespace;
-    const char*    EnumModule;
 };
 
 class ScriptTypeOf: public ScriptType

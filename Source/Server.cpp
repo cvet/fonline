@@ -5533,17 +5533,16 @@ uint FOServer::GetAnyDataList( ScriptArray* script_array )
 {
     SCOPE_LOCK( AnyDataLocker );
 
-    uint size = AnyData.size();
-    if( !script_array )
-        return ( size );
-
-    for( auto it = AnyData.begin(), end = AnyData.end(); it != end; ++it )
+    if( script_array )
     {
-        const string& name = ( *it ).first;
-        script_array->InsertLast( ScriptString::Create( name ) );
+        for( auto it = AnyData.begin(), end = AnyData.end(); it != end; ++it )
+        {
+            const string& name = ( *it ).first;
+            script_array->InsertLast( ScriptString::Create( name ) );
+        }
     }
 
-    return size;
+    return (uint) AnyData.size();
 }
 
 bool FOServer::IsAnyData( const string& name )

@@ -82,31 +82,21 @@ ScriptString* Global_EncodeUTF8( uint ucs )
     return ScriptString::Create( buf );
 }
 
-uint Global_GetFolderFileNames( ScriptArray& result, ScriptString& path, ScriptString& ext, bool subdirs )
+uint Global_GetFolderFileNames( ScriptString& path, ScriptString* ext, bool include_subdirs, ScriptArray* result )
 {
-    char path_[ MAX_FOPATH ];
-    char ext_[ MAX_FOPATH ];
-
-    Str::Copy( path_, path.c_str() );
-    Str::Copy( ext_, ext.c_str() );
-
     StrVec files;
-    FileManager::GetFolderFileNames( path_, subdirs, Str::Length( ext_ ) == 0 ? NULL : ext_, files );
+    FileManager::GetFolderFileNames( path.c_str(), include_subdirs, ext ? ext->c_str() : NULL, files );
 
-    uint size = (uint) files.size();
-    for( uint f = 0; f < size; f++ )
+    if( result )
     {
-        result.InsertLast( ScriptString::Create( files[ f ] ) );
+        for( uint i = 0, j = (uint) files.size(); i < j; i++ )
+            result->InsertLast( ScriptString::Create( files[ i ] ) );
     }
 
-    return size;
+    return (uint) files.size();
 }
 
 bool Global_DeleteFile( ScriptString& filename )
 {
-    char filename_[ MAX_FOPATH ];
-
-    Str::Copy( filename_, filename.c_str() );
-
-    return FileManager::DeleteFile( filename_ );
+    return FileManager::DeleteFile( filename.c_str() );
 }

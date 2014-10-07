@@ -2,27 +2,23 @@
 #include "Script.h"
 #include <assert.h>
 #include "as_objecttype.h"
+#include "as_scriptengine.h"
 
-ScriptType::ScriptType( asIObjectType* type ) : Enum( false )
+static asIObjectType* GetObjectTypeById( asIScriptEngine* engine, int typeId )
+{
+	asCDataType dt = ( (asCScriptEngine*) engine )->GetDataTypeFromTypeId( typeId );
+	if( dt.IsValid() )
+		return dt.GetObjectType();
+	return NULL;
+}
+
+ScriptType::ScriptType( asIObjectType* type )
 {
     ObjType = type;
 }
 
 ScriptString* ScriptType::GetName() const
 {
-    if( Enum )
-    {
-        ScriptString* str = ScriptString::Create();
-        if( EnumNamespace[0] )
-        {
-            str->append( EnumNamespace );
-            str->append( "::");
-        }
-        str->append( EnumName );
-
-        return str;
-    }
-
     if( !ObjType )
         return ScriptString::Create( "(not assigned)" );
 
@@ -34,15 +30,11 @@ ScriptString* ScriptType::GetName() const
         str->append( ObjType->GetName() );
         return str;
     }
-
     return ScriptString::Create( ObjType->GetName() );
 }
 
 ScriptString* ScriptType::GetNameWithoutNamespace() const
 {
-    if( Enum )
-        return ScriptString::Create( EnumName );
-
     if( !ObjType )
         return ScriptString::Create( "(not assigned)" );
     return ScriptString::Create( ObjType->GetName() );
@@ -50,9 +42,6 @@ ScriptString* ScriptType::GetNameWithoutNamespace() const
 
 ScriptString* ScriptType::GetNamespace() const
 {
-    if( Enum )
-        return ScriptString::Create( EnumNamespace );
-
     if( !ObjType )
         return ScriptString::Create();
     return ScriptString::Create( ObjType->GetNamespace() );
@@ -60,9 +49,6 @@ ScriptString* ScriptType::GetNamespace() const
 
 ScriptString* ScriptType::GetModule() const
 {
-    if( Enum )
-        return ScriptString::Create( EnumModule );
-
     if( !ObjType )
         return ScriptString::Create();
     return ScriptString::Create( ObjType->GetModule() ? ObjType->GetModule()->GetName() : "(global)" );
@@ -80,9 +66,6 @@ bool ScriptType::IsAssigned() const
 
 bool ScriptType::IsGlobal() const
 {
-    if( Enum )
-        return Str::Compare( EnumModule, "(global)" );
-
     return ObjType != NULL ? ObjType->GetModule() == NULL : false;
 }
 
@@ -98,7 +81,7 @@ bool ScriptType::IsInterface() const
 
 bool ScriptType::IsEnum() const
 {
-    return Enum;
+    return ObjType ? ( (asCObjectType*) ObjType )->enumValues.GetLength() > 0 : false;
 }
 
 bool ScriptType::IsFunction() const
@@ -165,7 +148,7 @@ void ScriptType::Instantiate( void* out, int out_type_id ) const
         asGetActiveContext()->SetException( "Invalid 'instance' argument, handle must be null" );
         return;
     }
-    if( !ObjType->DerivesFrom( engine->GetObjectTypeById( out_type_id ) ) )
+    if( !ObjType->DerivesFrom( GetObjectTypeById( engine, out_type_id ) ) )
     {
         asGetActiveContext()->SetException( "Invalid 'instance' argument, incompatible types" );
         return;
@@ -194,7 +177,7 @@ void ScriptType::InstantiateCopy( void* in, int in_type_id, void* out, int out_t
         asGetActiveContext()->SetException( "Invalid 'instance' argument, handle must be null" );
         return;
     }
-    if( !ObjType->DerivesFrom( engine->GetObjectTypeById( out_type_id ) ) )
+    if( !ObjType->DerivesFrom( GetObjectTypeById( engine, out_type_id ) ) )
     {
         asGetActiveContext()->SetException( "Invalid 'instance' argument, incompatible types" );
         return;
@@ -355,23 +338,12 @@ ScriptArray* GetEnumsInternal( bool global, const char* module_name )
 
     for( uint i = 0, j = ( global ? engine->GetEnumCount() : module->GetEnumCount() ); i < j; i++ )
     {
-        // enum data must be cached due to exception in asCScriptEngine::GetObjectTypeById()
-
-        ScriptType type = ScriptType( NULL );
-
+        int enum_type_id;
         if( global )
-        {
-            type.EnumName = engine->GetEnumByIndex( i, NULL, &type.EnumNamespace );
-            type.EnumModule = "(global)";
-        }
+            engine->GetEnumByIndex( i, &enum_type_id );
         else
-        {
-            type.EnumName = module->GetEnumByIndex( i, NULL, &type.EnumNamespace );
-            type.EnumModule = module->GetName();
-        }
-
-        type.Enum = true;
-
+            module->GetEnumByIndex( i, &enum_type_id );
+        ScriptType type = ScriptType( GetObjectTypeById( engine, enum_type_id ) );
         enums->InsertLast( &type );
     }
     return enums;
