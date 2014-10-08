@@ -5668,7 +5668,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
     ModifyVec( UpdateFilesList, Crypt.Crc32( update_file.Data, update_file.Size ) );
 
     // Fill files
-    StrVec file_names;
+    StrVec file_names, file_names_targets;
     FileManager::GetFolderFileNames( FileManager::GetDataPath( "", PT_SERVER_UPDATE ), true, NULL, file_names );
     for( size_t i = 0, j = file_names.size(); i < j; i++ )
     {
@@ -5709,6 +5709,21 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
             hash = Crypt.Crc32( crc.GetBuf(), crc.GetFsize() );
         }
 
+        bool duplicate = false;
+        for( size_t i = 0, j = file_names_targets.size(); i < j; i++ )
+        {
+            if( Str::Compare( file_names_targets[ i ].c_str(), file_name_target.c_str() ) )
+            {
+                duplicate = true;
+                break;
+            }
+        }
+        if( duplicate )
+        {
+            WriteLogF( _FUNC_, " - Duplicated file<%s> ignored.\n", file_name_target.c_str() );
+            continue;
+        }
+
         FileManager file;
         if( !file.LoadFile( file_name.c_str(), PT_SERVER_UPDATE ) )
         {
@@ -5725,6 +5740,8 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
         ModifyVecArr( UpdateFilesList, file_name_target.c_str(), (uint) file_name_target.length() );
         ModifyVec( UpdateFilesList, update_file.Size );
         ModifyVec( UpdateFilesList, hash );
+
+        file_names_targets.push_back( file_name_target );
     }
 
     // Complete files list
