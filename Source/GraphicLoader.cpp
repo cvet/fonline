@@ -949,6 +949,16 @@ void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
         FbxSkin* fbx_skin = (FbxSkin*) fbx_mesh->GetDeformer( 0, FbxDeformer::eSkin );
         if( fbx_skin )
         {
+            // 3DS Max specific - Geometric transform
+            Matrix ms, mr, mt;
+            FbxVector4 gt = fbx_node->GetGeometricTranslation( FbxNode::eSourcePivot );
+            FbxVector4 gr = fbx_node->GetGeometricRotation( FbxNode::eSourcePivot );
+            FbxVector4 gs = fbx_node->GetGeometricScaling( FbxNode::eSourcePivot );
+            Matrix::Translation( Vector( (float) gt[ 0 ], (float) gt[ 1 ], (float) gt[ 2 ] ), mt );
+            mr.FromEulerAnglesXYZ( Vector( (float) gr[ 0 ], (float) gr[ 1 ], (float) gr[ 2 ] ) );
+            Matrix::Scaling( Vector( (float) gs[ 0 ], (float) gs[ 1 ], (float) gs[ 2 ] ), ms );
+
+            // Process skin bones
             int num_bones = fbx_skin->GetClusterCount();
             mesh->SkinBoneNameHashes.resize( num_bones );
             mesh->SkinBoneOffsets.resize( num_bones );
@@ -969,7 +979,7 @@ void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
                     skin_bone = bone;
                 }
                 mesh->SkinBoneNameHashes[ i ] = skin_bone->NameHash;
-                mesh->SkinBoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix );
+                mesh->SkinBoneOffsets[ i ] = ConvertFbxMatrix( link_matrix ).Inverse() * ConvertFbxMatrix( cur_matrix ) * mt * mr * ms;
                 mesh->SkinBones[ i ] = skin_bone;
 
                 // Blend data
