@@ -211,8 +211,8 @@ public:
     bool DrawSpriteSizeExt( uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color );
     bool DrawSpritePattern( uint id, int x, int y, int w, int h, int spr_width = 0, int spr_height = 0, uint color = 0 );
     bool DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to );
-    bool DrawPoints( PointVec& points, int prim, float* zoom = NULL, RectF* stencil = NULL, PointF* offset = NULL, Effect* effect = NULL );
-    bool Draw3d( int x, int y, Animation3d* anim3d, uint color );
+    bool DrawPoints( PointVec& points, int prim, float* zoom = NULL, RectF* scissor = NULL, PointF* offset = NULL, Effect* effect = NULL );
+    bool Draw3d( int x, int y, Animation3d* anim3d, uint color, RectF* scissor = NULL );
 
     inline bool DrawSprite( AnyFrames* frames, int x, int y, uint color = 0 )
     {
@@ -251,8 +251,8 @@ private:
     void BindVertexArray( VertexArray* va );
     void EnableVertexArray( VertexArray* va, uint vertices_count );
     void DisableVertexArray( VertexArray*& va );
-    void EnableStencil( RectF& stencil );
-    void DisableStencil( bool clear_stencil );
+    void EnableScissor( RectF& r );
+    void DisableScissor();
 
     // Contours
 public:

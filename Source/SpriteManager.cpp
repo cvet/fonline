@@ -195,10 +195,6 @@ bool SpriteManager::Init()
     GL( glActiveTexture( GL_TEXTURE0 ) );
     GL( glPixelStorei( GL_PACK_ALIGNMENT, 1 ) );
     GL( glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ) );
-    #ifndef FO_OGL_ES
-    GL( glEnable( GL_POINT_SMOOTH ) );
-    GL( glEnable( GL_LINE_SMOOTH ) );
-    #endif
 
     // Vertex arrays
     quadsVertexArray = new VertexArray[ ARRAY_BUFFERS_COUNT ];
@@ -863,39 +859,15 @@ void SpriteManager::DisableVertexArray( VertexArray*& va )
         va = va->Next;
 }
 
-void SpriteManager::EnableStencil( RectF& stencil )
+void SpriteManager::EnableScissor( RectF& r )
 {
-    uint pos = 0;
-    vBuffer[ pos ].X = stencil.L;
-    vBuffer[ pos ].Y = stencil.B;
-    vBuffer[ pos++ ].Diffuse = 0xFFFFFFFF;
-    vBuffer[ pos ].X = stencil.L;
-    vBuffer[ pos ].Y = stencil.T;
-    vBuffer[ pos++ ].Diffuse = 0xFFFFFFFF;
-    vBuffer[ pos ].X = stencil.R;
-    vBuffer[ pos ].Y = stencil.T;
-    vBuffer[ pos++ ].Diffuse = 0xFFFFFFFF;
-    vBuffer[ pos ].X = stencil.R;
-    vBuffer[ pos ].Y = stencil.B;
-    vBuffer[ pos++ ].Diffuse = 0xFFFFFFFF;
-
-    GL( glEnable( GL_STENCIL_TEST ) );
-    GL( glStencilFunc( GL_NEVER, 1, 0xFF ) );
-    GL( glStencilOp( GL_REPLACE, GL_KEEP, GL_KEEP ) );
-
-    curDrawQuad = 1;
-    dipQueue.push_back( DipData( NULL, Effect::FlushPrimitive ) );
-    Flush();
-
-    GL( glStencilFunc( GL_NOTEQUAL, 0, 0xFF ) );
-    GL( glStencilOp( GL_REPLACE, GL_KEEP, GL_KEEP ) );
+    GL( glEnable( GL_SCISSOR_TEST ) );
+    GL( glScissor( (int) r.L, rtStack.back()->TargetTexture->Height - (int) r.B, (int) ( r.R - r.L ), (int) ( r.B - r.T ) ) );
 }
 
-void SpriteManager::DisableStencil( bool clear_stencil )
+void SpriteManager::DisableScissor()
 {
-    if( clear_stencil )
-        ClearCurrentRenderTargetDS( false, true );
-    GL( glDisable( GL_STENCIL_TEST ) );
+    GL( glDisable( GL_SCISSOR_TEST ) );
 }
 
 void SpriteManager::PushAtlasType( int atlas_type, bool one_image /* = false */ )
@@ -3215,7 +3187,7 @@ bool SpriteManager::Render3d( Animation3d* anim3d )
     return true;
 }
 
-bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color )
+bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color, RectF* scissor /* = NULL */ )
 {
     if( !GameOpt.Enable3dRendering )
         return false;
@@ -3223,8 +3195,14 @@ bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color )
     anim3d->StartMeshGeneration();
     Render3d( anim3d );
 
+    if( scissor )
+        EnableScissor( *scissor );
+
     SpriteInfo* si = sprData[ anim3d->SprId ];
     DrawSprite( anim3d->SprId, x - si->Width / 2 + si->OffsX, y - si->Height + si->OffsY, color );
+
+    if( scissor )
+        DisableScissor();
 
     return true;
 }
@@ -4186,7 +4164,7 @@ bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
     return ( egg_color >> 24 ) < 127;
 }
 
-bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NULL */, RectF* stencil /* = NULL */, PointF* offset /* = NULL */, Effect* effect /* = NULL */ )
+bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NULL */, RectF* scissor /* = NULL */, PointF* offset /* = NULL */, Effect* effect /* = NULL */ )
 {
     if( points.empty() )
         return true;
@@ -4230,9 +4208,9 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     if( prim_count <= 0 )
         return false;
 
-    // Draw stencil
-    if( stencil )
-        EnableStencil( *stencil );
+    // Enable scissor
+    if( scissor )
+        EnableScissor( *scissor );
 
     // Resize buffers
     if( vBuffer.size() < count )
@@ -4258,11 +4236,14 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
         memzero( &vBuffer[ i ], sizeof( Vertex2D ) );
         vBuffer[ i ].X = x;
         vBuffer[ i ].Y = y;
-
-        uint color = point.PointColor;
-        color = COLOR_SWAP_RB( color );
-        vBuffer[ i ].Diffuse = color;
+        vBuffer[ i ].Diffuse = COLOR_SWAP_RB( point.PointColor );
     }
+
+    // Enable smooth
+    #ifndef FO_OGL_ES
+    if( zoom && *zoom != 1.0f )
+        GL( glEnable( prim == PRIMITIVE_POINTLIST ? GL_POINT_SMOOTH : GL_LINE_SMOOTH ) );
+    #endif
 
     // Draw
     EnableVertexArray( pointsVertexArray, count );
@@ -4283,9 +4264,15 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     GL( glUseProgram( 0 ) );
     DisableVertexArray( pointsVertexArray );
 
-    // Finish
-    if( stencil )
-        DisableStencil( true );
+    // Disable smooth
+    #ifndef FO_OGL_ES
+    if( zoom && *zoom != 1.0f )
+        GL( glDisable( prim == PRIMITIVE_POINTLIST ? GL_POINT_SMOOTH : GL_LINE_SMOOTH ) );
+    #endif
+
+    // Disable scissor
+    if( scissor )
+        DisableScissor();
     return true;
 }
 
