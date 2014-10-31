@@ -2419,7 +2419,6 @@ void FOClient::GameKeyDown( uchar dik, const char* dik_text )
                 Net_SendRateItem();
             break;
         case DIK_S:
-            SboxUseOn.Clear();
             ShowScreen( SCREEN__SKILLBOX );
             break;
         case DIK_SLASH:
@@ -2579,8 +2578,7 @@ void FOClient::GameRMouseDown()
 {
     IfaceHold = IFACE_NONE;
 
-    if( !( IntVisible && ( ( IsCurInRect( IntWMain ) && SprMngr.IsPixNoTransp( IntMainPic->GetCurSprId(), GameOpt.MouseX - IntWMain[ 0 ], GameOpt.MouseY - IntWMain[ 1 ], false ) ) ||
-                           ( IntAddMess && IsCurInRect( IntWAddMess ) && SprMngr.IsPixNoTransp( IntPWAddMess->GetCurSprId(), GameOpt.MouseX - IntWAddMess[ 0 ], GameOpt.MouseY - IntWAddMess[ 1 ], false ) ) ) ) )
+    if( !IsCurInInterface( GameOpt.MouseX, GameOpt.MouseY ) )
         IfaceHold = IFACE_GAME_MNEXT;
 }
 
@@ -2622,16 +2620,6 @@ void FOClient::GameRMouseUp()
 
 void FOClient::IntDraw()
 {
-    if( GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
-    {
-        int screen = GetActiveScreen();
-        if( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW )
-        {
-            SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ),
-                             FmtGameText( STR_ZOOM, (int) ( 1.0f / GameOpt.SpritesZoom * 100.0f ) ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_BIG );
-        }
-    }
-
     if( !Chosen || !IntVisible )
         return;
 
@@ -2895,7 +2883,6 @@ void FOClient::IntLMouseUp()
     }
     else if( IfaceHold == IFACE_INT_SKILL && IsCurInRect( IntBSkill ) )
     {
-        SboxUseOn.Clear();
         ShowScreen( SCREEN__SKILLBOX );
     }
     else if( IfaceHold == IFACE_INT_MAP && IsCurInRect( IntBMap ) )
@@ -2990,9 +2977,6 @@ void FOClient::IntLMouseUp()
 
     IfaceHold = IFACE_NONE;
 }
-
-void FOClient::IntMouseMove()
-{}
 
 // ==============================================================================================================================
 // ******************************************************************************************************************************
@@ -4565,13 +4549,8 @@ void FOClient::LMenuCollect()
         {
         case SCREEN_GAME:
         {
-            if( IntVisible )
-            {
-                if( IsCurInRectNoTransp( IntMainPic->GetCurSprId(), IntWMain, 0, 0 ) )
-                    break;
-                if( IntAddMess && IsCurInRectNoTransp( IntPWAddMess->GetCurSprId(), IntWAddMess, 0, 0 ) )
-                    break;
-            }
+            if( IsCurInInterface( GameOpt.MouseX, GameOpt.MouseY ) )
+                break;
 
             CritterCl* cr;
             ItemHex* item;
@@ -4930,12 +4909,12 @@ void FOClient::LMenuMouseUp()
             SetAction( CHOSEN_PICK_CRIT, cr->GetId(), 1 );
             break;
         case LMENU_NODE_BAG:
-            UseSelect = TargetSmth;
             ShowScreen( SCREEN__USE );
+            UseSelect = TargetSmth;
             break;
         case LMENU_NODE_SKILL:
-            SboxUseOn = TargetSmth;
             ShowScreen( SCREEN__SKILLBOX );
+            SboxUseOn = TargetSmth;
             break;
         case LMENU_NODE_BARTER_OPEN:
             Net_SendPlayersBarter( BARTER_TRY, cr->GetId(), false );
@@ -4982,12 +4961,12 @@ void FOClient::LMenuMouseUp()
             SetAction( CHOSEN_PICK_CRIT, cr->GetId(), 1 );
             break;
         case LMENU_NODE_BAG:
-            UseSelect = TargetSmth;
             ShowScreen( SCREEN__USE );
+            UseSelect = TargetSmth;
             break;
         case LMENU_NODE_SKILL:
-            SboxUseOn = TargetSmth;
             ShowScreen( SCREEN__SKILLBOX );
+            SboxUseOn = TargetSmth;
             break;
         case LMENU_NODE_BREAK:
             break;
@@ -5013,12 +4992,12 @@ void FOClient::LMenuMouseUp()
             SetAction( CHOSEN_PICK_ITEM, item->GetProtoId(), item->HexX, item->HexY );
             break;
         case LMENU_NODE_BAG:
-            UseSelect = TargetSmth;
             ShowScreen( SCREEN__USE );
+            UseSelect = TargetSmth;
             break;
         case LMENU_NODE_SKILL:
-            SboxUseOn = TargetSmth;
             ShowScreen( SCREEN__SKILLBOX );
+            SboxUseOn = TargetSmth;
             break;
         case LMENU_NODE_BREAK:
             break;
@@ -5101,8 +5080,8 @@ void FOClient::LMenuMouseUp()
         case LMENU_NODE_SKILL:
             if( !inv_item )
                 break;
-            SboxUseOn.SetContItem( inv_item->GetId(), 0 );
             ShowScreen( SCREEN__SKILLBOX );
+            SboxUseOn.SetContItem( inv_item->GetId(), 0 );
             break;
         case LMENU_NODE_SORT_UP:
         {
@@ -5151,12 +5130,12 @@ void FOClient::LMenuMouseUp()
             AddMess( FOMB_VIEW, FmtCritLook( cr, CRITTER_LOOK_FULL ) );
             break;
         case LMENU_NODE_SKILL:
-            SboxUseOn = TargetSmth;
             ShowScreen( SCREEN__SKILLBOX );
+            SboxUseOn = TargetSmth;
             break;
         case LMENU_NODE_BAG:
-            UseSelect = TargetSmth;
             ShowScreen( SCREEN__USE );
+            UseSelect = TargetSmth;
             break;
         case LMENU_NODE_GMAP_KICK:
             Net_SendRuleGlobal( GM_CMD_KICKCRIT, cr->GetId() );
@@ -5194,7 +5173,7 @@ void FOClient::LMenuMouseUp()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NULL */, int cur_mode /* = 0 */ )
+void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NULL */ )
 {
     while( GetActiveScreen() != SCREEN_NONE )
         ShowScreen( SCREEN_NONE );
@@ -5207,12 +5186,10 @@ void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NUL
     switch( GetMainScreen() )
     {
     case SCREEN_LOGIN:
-        SetCurMode( CUR_DEFAULT );
         LogFocus = IFACE_LOG_NAME;
         ScreenFadeOut();
         break;
     case SCREEN_REGISTRATION:
-        SetCurMode( CUR_DEFAULT );
         if( !GameOpt.RegParams )
             RegGenParams();
         memzero( ChaSkillUp, sizeof( ChaSkillUp ) );
@@ -5231,18 +5208,15 @@ void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NUL
         ScreenFadeOut();
         break;
     case SCREEN_GAME:
-        SetCurMode( CUR_DEFAULT );
         if( Singleplayer )
             SingleplayerData.Pause = false;
         break;
     case SCREEN_GLOBAL_MAP:
-        SetCurMode( CUR_DEFAULT );
         GmapMouseMove();
         if( Singleplayer )
             SingleplayerData.Pause = false;
         break;
     case SCREEN_WAIT:
-        SetCurMode( CUR_WAIT );
         if( prev_main_screen != SCREEN_WAIT )
         {
             ScreenEffects.clear();
@@ -5288,7 +5262,7 @@ bool FOClient::IsScreenPresent( int screen )
     return std::find( active_screens->begin(), active_screens->end(), screen ) != active_screens->end();
 }
 
-void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, int cur_mode /* = 0 */ )
+void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
 {
     SmthSelected smth = TargetSmth;
     ConsoleLastKey = 0;
@@ -5301,13 +5275,11 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, in
     DropScroll();
 
     if( screen == SCREEN_NONE )
-        HideScreen( screen, cur_mode );
+        HideScreen( screen );
 
     switch( screen )
     {
     case SCREEN__INVENTORY:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_HAND );
         CollectContItems();
         InvHoldId = 0;
         InvScroll = 0;
@@ -5315,23 +5287,17 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, in
         InvMouseMove();
         break;
     case SCREEN__PICKUP:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_HAND );
         CollectContItems();
         PupScroll1 = 0;
         PupScroll2 = 0;
         PupMouseMove();
         break;
     case SCREEN__MINI_MAP:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         //	LmapHold=LMAP_NONE;
         LmapPrepareMap();
         LmapMouseMove();
         break;
     case SCREEN__CHARACTER:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         memzero( ChaSkillUp, sizeof( ChaSkillUp ) );
         if( Chosen )
             ChaUnspentSkillPoints = Chosen->Params[ ST_UNSPENT_SKILL_POINTS ];
@@ -5346,33 +5312,21 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, in
         ChaMouseMove( false );
         break;
     case SCREEN__DIALOG:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         DlgMouseMove( true );
         break;
     case SCREEN__BARTER:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         BarterHoldId = 0;
         BarterIsPlayers = false;
         break;
     case SCREEN__PIP_BOY:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         PipMode = PIP__NONE;
         PipMouseMove();
         break;
     case SCREEN__FIX_BOY:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         FixMode = FIX_MODE_LIST;
         FixCurCraft = -1;
         FixGenerate( FIX_MODE_LIST );
         FixMouseMove();
-        break;
-    case SCREEN__MENU_OPTION:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         break;
     case SCREEN__AIM:
     {
@@ -5383,8 +5337,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, in
         if( !cr )
             break;
         AimTargetId = cr->GetId();
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         AimPic = AimGetPic( cr, "frm" );
         if( !AimPic )
             AimPic = AimGetPic( cr, "png" );
@@ -5394,51 +5346,29 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, in
     }
     break;
     case SCREEN__SAY:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         SayType = DIALOGSAY_NONE;
         SayTitle = MsgGame->GetStr( STR_SAY_TITLE );
         SayOnlyNumbers = false;
         break;
-    case SCREEN__SPLIT:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
-        break;
-    case SCREEN__TIMER:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
-        break;
     case SCREEN__DIALOGBOX:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         DlgboxType = DIALOGBOX_NONE;
         DlgboxWait = 0;
         Str::Copy( DlgboxText, "" );
         DlgboxButtonsCount = 0;
         DlgboxSelectedButton = 0;
         break;
-    case SCREEN__ELEVATOR:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
-        break;
     case SCREEN__CHA_NAME:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         IfaceHold = IFACE_CHA_NAME_NAME;
         ChaNameX = ChaX + ChaNameWMain[ 0 ];
         ChaNameY = ChaY + ChaNameWMain[ 1 ];
         break;
     case SCREEN__CHA_AGE:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         ChaAgeX = ChaX + ChaAgeWMain[ 0 ];
         ChaAgeY = ChaY + ChaAgeWMain[ 1 ];
         if( !IsMainScreen( SCREEN_REGISTRATION ) )
             ShowScreen( SCREEN_NONE );
         break;
     case SCREEN__CHA_SEX:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         ChaSexX = ChaX + ChaSexWMain[ 0 ];
         ChaSexY = ChaY + ChaSexWMain[ 1 ];
         if( !IsMainScreen( SCREEN_REGISTRATION ) )
@@ -5446,8 +5376,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, in
         break;
     case SCREEN__GM_TOWN:
     {
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         GmapTownTextPos.clear();
         GmapTownText.clear();
 
@@ -5499,36 +5427,29 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, in
     }
     break;
     case SCREEN__INPUT_BOX:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         IboxMode = IBOX_MODE_NONE;
         IboxHolodiskId = 0;
         IboxTitleCur = 0;
         IboxTextCur = 0;
         break;
     case SCREEN__SKILLBOX:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
+        SboxUseOn.Clear();
         break;
     case SCREEN__USE:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_HAND );
+        UseSelect.Clear();
+        TargetSmth = smth;
         CollectContItems();
         UseHoldId = 0;
         UseScroll = 0;
         UseMouseMove();
         break;
     case SCREEN__PERK:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         PerkScroll = 0;
         PerkCurPerk = -1;
         PerkPrepare();
         PerkMouseMove();
         break;
     case SCREEN__TOWN_VIEW:
-        if( cur_mode != -1 )
-            SetCurMode( CUR_DEFAULT );
         TViewShowCountours = false;
         TViewType = TOWN_VIEW_FROM_NONE;
         TViewGmapLocId = 0;
@@ -5544,19 +5465,16 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */, in
     }
 
     RunScreenScript( true, screen, params );
+
+    TargetSmth = smth;
 }
 
-void FOClient::HideScreen( int screen, int cur_mode /* = 0 */ )
+void FOClient::HideScreen( int screen )
 {
     if( screen == SCREEN_NONE )
         screen = GetActiveScreen();
     if( screen == SCREEN_NONE )
         return;
-
-    if( cur_mode == 0 )
-        SetCurMode( CUR_DEFAULT );
-    else if( cur_mode == 1 )
-        SetLastCurMode();
 
     if( Singleplayer )
     {
@@ -10225,7 +10143,7 @@ label_DropItems:
     }
 
     SplitParentScreen = SCREEN_NONE;
-    ShowScreen( SCREEN_NONE, NULL, 1 );
+    ShowScreen( SCREEN_NONE, NULL );
 }
 
 void FOClient::SplitDraw()
@@ -10453,7 +10371,7 @@ void FOClient::TimerClose( bool done )
         else
             AddActionBack( CHOSEN_USE_ITEM, TimerItemId, 0, TARGET_SELF, 0, USE_USE, TimerValue );
     }
-    ShowScreen( SCREEN_NONE, NULL, 1 );
+    ShowScreen( SCREEN_NONE, NULL );
 }
 
 void FOClient::TimerDraw()

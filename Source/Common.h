@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 462 )
+#define FONLINE_VERSION                          ( 463 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
@@ -296,6 +296,7 @@ struct ClientScriptFunctions
     int ItemMapChanged;
     int ItemMapOut;
     int ItemInvIn;
+    int ItemInvChanged;
     int ItemInvOut;
     int MapMessage;
     int InMessage;
@@ -324,6 +325,7 @@ struct ClientScriptFunctions
     int CritterCheckMoveItem;
     int GetUseApCost;
     int GetAttackDistantion;
+    int CheckInterfaceHit;
 } extern ClientFunctions;
 
 struct MapperScriptFunctions

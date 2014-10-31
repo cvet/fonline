@@ -1580,6 +1580,9 @@ void FOClient::ParseMouse()
         // Script handler
         if( Script::PrepareContext( ClientFunctions.MouseMove, _FUNC_, "Game" ) )
             Script::RunPrepared();
+
+        // Engine handlers
+        LMenuMouseMove();
     }
 
     // Get buffered data
@@ -1606,6 +1609,10 @@ void FOClient::ParseMouse()
             continue;
         }
         #endif
+
+        // Engine handlers
+        if( event == SDL_MOUSEBUTTONUP )
+            LMenuMouseUp();
 
         // Scripts
         if( event == SDL_MOUSEBUTTONDOWN && Script::PrepareContext( ClientFunctions.MouseDown, _FUNC_, "Game" ) )
@@ -5998,11 +6005,9 @@ void FOClient::Net_OnShowScreen()
         DlgboxButtonText[ param ] = MsgGame->GetStr( STR_DIALOGBOX_CANCEL );
         break;
     case SHOW_SCREEN_SKILLBOX:
-        SboxUseOn.Clear();
         ShowScreen( SCREEN__SKILLBOX );
         break;
     case SHOW_SCREEN_BAG:
-        UseSelect.Clear();
         ShowScreen( SCREEN__USE );
         break;
     case SHOW_SCREEN_SAY:
@@ -6565,32 +6570,22 @@ void FOClient::SetGameColor( uint color )
     HexMngr.RefreshMap();
 }
 
-bool FOClient::IsCurInInterface()
-{
-    if( IntVisible && IsCurInRectNoTransp( IntMainPic->GetCurSprId(), IntWMain, 0, 0 ) )
-        return true;
-    if( IntVisible && IntAddMess && IsCurInRectNoTransp( IntPWAddMess->GetCurSprId(), IntWAddMess, 0, 0 ) )
-        return true;
-    // if( ConsoleActive && IsCurInRectNoTransp( ConsolePic, Main, 0, 0 ) ) // Todo: need check console?
-    return false;
-}
-
 bool FOClient::IsCurInInterface( int x, int y )
 {
-    int old_x = GameOpt.MouseX;
-    int old_y = GameOpt.MouseY;
-    GameOpt.MouseX = x;
-    GameOpt.MouseY = y;
-    bool result = IsCurInInterface();
-    GameOpt.MouseX = old_x;
-    GameOpt.MouseY = old_y;
-    return result;
+    if( ClientFunctions.CheckInterfaceHit && Script::PrepareContext( ClientFunctions.CheckInterfaceHit, _FUNC_, "Game" ) )
+    {
+        Script::SetArgUInt( x );
+        Script::SetArgUInt( y );
+        if( Script::RunPrepared() )
+            return Script::GetReturnedBool();
+    }
+    return false;
 }
 
 bool FOClient::GetCurHex( ushort& hx, ushort& hy, bool ignore_interface )
 {
     hx = hy = 0;
-    if( !ignore_interface && IsCurInInterface() )
+    if( !ignore_interface && IsCurInInterface( GameOpt.MouseX, GameOpt.MouseY ) )
         return false;
     return HexMngr.GetHexPixel( GameOpt.MouseX, GameOpt.MouseY, hx, hy );
 }
@@ -7575,6 +7570,14 @@ label_EndMove:
 
         // Spend AP
         Chosen->SubAp( ap_cost );
+
+        // Notify scripts about item changing
+        if( Script::PrepareContext( ClientFunctions.ItemInvChanged, _FUNC_, "Game" ) )
+        {
+            Script::SetArgObject( item );             // Todo: pass not modified item copy
+            Script::SetArgObject( item );
+            Script::RunPrepared();
+        }
     }
     break;
     case CHOSEN_MOVE_ITEM_CONT:
@@ -9179,6 +9182,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.ItemMapChanged, "item_map_changed", "void %s(ItemCl&,ItemCl&)" },
         { &ClientFunctions.ItemMapOut, "item_map_out", "void %s(ItemCl&)" },
         { &ClientFunctions.ItemInvIn, "item_inv_in", "void %s(ItemCl&)" },
+        { &ClientFunctions.ItemInvChanged, "item_inv_changed", "void %s(ItemCl&,ItemCl&)" },
         { &ClientFunctions.ItemInvOut, "item_inv_out", "void %s(ItemCl&)" },
         { &ClientFunctions.MapMessage, "map_message", "bool %s(string&,uint16&,uint16&,uint&,uint&)" },
         { &ClientFunctions.InMessage, "in_message", "bool %s(string&,int&,uint&,uint&)" },
@@ -9207,6 +9211,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(CritterCl&,ItemCl&,uint8,ItemCl@)" },
         { &ClientFunctions.GetUseApCost, "get_use_ap_cost", "uint %s(CritterCl&,ItemCl&,uint8)" },
         { &ClientFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(CritterCl&,ItemCl&,uint8)" },
+        { &ClientFunctions.CheckInterfaceHit, "check_interface_hit", "bool %s(int,int)" },
     };
     const char*            config = msg_script.GetStr( STR_INTERNAL_SCRIPT_CONFIG );
     if( !Script::BindReservedFunctions( config, "client", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
@@ -9860,6 +9865,98 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
             return ScriptString::Create( "UNKNOWN" );
 
         return ScriptString::Create( buf );
+    }
+    else if( cmd == "ConsoleMessage" && args.size() >= 2 )
+    {
+        Self->Net_SendText( args[ 1 ].c_str(), SAY_NORM );
+    }
+    else if( cmd == "ChangeSlot" )
+    {
+        Self->ChosenChangeSlot();
+    }
+    else if( cmd == "UseMainItem" )
+    {
+        if( Self->Chosen->GetUse() == USE_RELOAD )
+        {
+            Self->SetAction( CHOSEN_USE_ITEM, Self->Chosen->ItemSlotMain->GetId(), 0, TARGET_SELF_ITEM, 0, USE_RELOAD );
+        }
+        else if( Self->Chosen->GetUse() < MAX_USES && Self->Chosen->ItemSlotMain->IsWeapon() )
+        {
+            Self->SetCurMode( CUR_USE_WEAPON );
+        }
+        else if( Self->Chosen->GetUse() == USE_USE && Self->Chosen->ItemSlotMain->IsCanUseOnSmth() )
+        {
+            Self->SetCurMode( CUR_USE_ITEM );
+        }
+        else if( Self->Chosen->GetUse() == USE_USE && Self->Chosen->ItemSlotMain->IsCanUse() )
+        {
+            if( !Self->Chosen->ItemSlotMain->IsHasTimer() )
+                Self->SetAction( CHOSEN_USE_ITEM, Self->Chosen->ItemSlotMain->GetId(), 0, TARGET_SELF, 0, USE_USE );
+            else
+                Self->TimerStart( Self->Chosen->ItemSlotMain->GetId(), ResMngr.GetInvAnim( Self->Chosen->ItemSlotMain->GetPicInv() ), Self->Chosen->ItemSlotMain->GetInvColor() );
+        }
+    }
+    else if( cmd == "IsTurnBasedMyTurn" )
+    {
+        return ScriptString::Create( Self->IsTurnBasedMyTurn() ? "true" : "false" );
+    }
+    else if( cmd == "EndTurn" )
+    {
+        if( Self->IsTurnBasedMyTurn() )
+        {
+            Self->Net_SendCombat( COMBAT_TB_END_TURN, 1 );
+            Self->TurnBasedTime = 0;
+            Self->TurnBasedCurCritterId = 0;
+        }
+    }
+    else if( cmd == "EndCombat" )
+    {
+        if( Self->IsTurnBased )
+        {
+            if( Self->Chosen->IsRawParam( MODE_END_COMBAT ) )
+                Self->Net_SendCombat( COMBAT_TB_END_COMBAT, 0 );
+            else
+                Self->Net_SendCombat( COMBAT_TB_END_COMBAT, 1 );
+            Self->Chosen->Params[ MODE_END_COMBAT ] = !Self->Chosen->Params[ MODE_END_COMBAT ];
+        }
+    }
+    else if( cmd == "NextItemMode" )
+    {
+        if( Self->Chosen->NextRateItem( args.size() >= 2 && args[ 1 ] == "Prev" ? true : false ) )
+            Self->Net_SendRateItem();
+    }
+    else if( cmd == "GameLMouseDown" )
+    {
+        Self->GameLMouseDown();
+    }
+    else if( cmd == "GameRMouseDown" )
+    {
+        Self->GameRMouseDown();
+    }
+    else if( cmd == "GameLMouseUp" )
+    {
+        Self->GameLMouseUp();
+    }
+    else if( cmd == "GameRMouseUp" )
+    {
+        Self->GameRMouseUp();
+    }
+    else if( cmd == "IsCurInInterface" )
+    {
+        int x = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
+        int y = Str::AtoI( args.size() >= 3 ? args[ 2 ].c_str() : "0" );
+        int old_x = GameOpt.MouseX;
+        int old_y = GameOpt.MouseY;
+        GameOpt.MouseX = x;
+        GameOpt.MouseY = y;
+        bool result = false;
+        if( Self->IntVisible && Self->IsCurInRectNoTransp( Self->IntMainPic->GetCurSprId(), Self->IntWMain, 0, 0 ) )
+            result = true;
+        else if( Self->IntVisible && Self->IntAddMess && Self->IsCurInRectNoTransp( Self->IntPWAddMess->GetCurSprId(), Self->IntWAddMess, 0, 0 ) )
+            result = true;
+        GameOpt.MouseX = old_x;
+        GameOpt.MouseY = old_y;
+        return ScriptString::Create( result ? "true" : "false" );
     }
     else
     {
@@ -10853,6 +10950,7 @@ void FOClient::SScriptFunc::Global_ChangeZoom( float target_zoom )
     if( target_zoom == GameOpt.SpritesZoom )
         return;
 
+    float init_zoom = GameOpt.SpritesZoom;
     if( target_zoom == 1.0f )
     {
         Self->HexMngr.ChangeZoom( 0 );
@@ -10877,6 +10975,9 @@ void FOClient::SScriptFunc::Global_ChangeZoom( float target_zoom )
                 break;
         }
     }
+
+    if( init_zoom != GameOpt.SpritesZoom )
+        Self->RebuildLookBorders = true;
 }
 
 void FOClient::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds )
@@ -11115,6 +11216,25 @@ uint FOClient::SScriptFunc::Global_GetSpriteCount( uint spr_id )
     return anim ? anim->CntFrm : 0;
 }
 
+uint FOClient::SScriptFunc::Global_GetSpriteTicks( uint spr_id )
+{
+    AnyFrames* anim = Self->AnimGetFrames( spr_id );
+    return anim ? anim->Ticks : 0;
+}
+
+uint FOClient::SScriptFunc::Global_GetPixelColor( uint spr_id, int frame_index, int x, int y )
+{
+    if( !spr_id )
+        return 0;
+
+    AnyFrames* anim = Self->AnimGetFrames( spr_id );
+    if( !anim || frame_index >= (int) anim->GetCnt() )
+        return 0;
+
+    uint spr_id_ = ( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
+    return SprMngr.GetPixColor( spr_id_, x, y, false );
+}
+
 void FOClient::SScriptFunc::Global_GetTextInfo( ScriptString* text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
 {
     SprMngr.GetTextInfo( w, h, text ? text->c_str() : NULL, font, flags, tw, th, lines );
@@ -11184,7 +11304,7 @@ void FOClient::SScriptFunc::Global_DrawText( ScriptString& text, int x, int y, i
 
 void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, ScriptArray& data )
 {
-    if( !SpritesCanDraw )
+    if( !SpritesCanDraw || data.GetSize() == 0 )
         return;
 
     int prim;
@@ -11308,7 +11428,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
     // rx ry rz
     // sx sy sz
     // speed
-    // stencil l t r b
+    // scissor l t r b
     if( CritType::IsEnabled( crtype ) )
     {
         if( instance >= DrawCritter3dAnim.size() )
@@ -11358,7 +11478,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         float stt = ( count > 11 ? *(float*) position->At( 11 ) : 0.0f );
         float str = ( count > 12 ? *(float*) position->At( 12 ) : 0.0f );
         float stb = ( count > 13 ? *(float*) position->At( 13 ) : 0.0f );
-        RectF stencil_r = RectF( stl, stt, str, stb );
+        RectF scissor = RectF( stl, stt, str, stb );
 
         memzero( DrawCritter3dLayers, sizeof( DrawCritter3dLayers ) );
         for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
@@ -11369,21 +11489,21 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         anim3d->SetSpeed( speed );
         anim3d->SetAnimation( anim1, anim2, DrawCritter3dLayers, 0 );
 
-        SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ) );
+        SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ), !scissor.IsZero() ? &scissor : NULL );
     }
 }
 
 void FOClient::SScriptFunc::Global_ShowScreen( int screen, ScriptDictionary* params )
 {
     if( screen >= SCREEN_LOGIN && screen <= 9 )
-        Self->ShowMainScreen( screen, params, -1 );
+        Self->ShowMainScreen( screen, params );
     else
-        Self->ShowScreen( screen, params, -1 );
+        Self->ShowScreen( screen, params );
 }
 
 void FOClient::SScriptFunc::Global_HideScreen( int screen )
 {
-    Self->HideScreen( screen, -1 );
+    Self->HideScreen( screen );
 }
 
 void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, int& y )
@@ -11662,8 +11782,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->GameRMouseUp();
         else if( button == MOUSE_BUTTON_MIDDLE && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
             Self->HexMngr.ChangeZoom( 0 ), Self->RebuildLookBorders = true;
-        else if( move )
-            Self->IntMouseMove();
         break;
     case SCREEN_GLOBAL_MAP:
         if( button == MOUSE_BUTTON_LEFT && down )
@@ -11892,11 +12010,11 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
     if( button == MOUSE_BUTTON_LEFT && down && Self->MessBoxLMouseDown() )
         Timer::StartAccelerator( ACCELERATE_MESSBOX );
     else if( button == MOUSE_BUTTON_LEFT && !down )
-        Self->LMenuMouseUp(), Timer::StartAccelerator( ACCELERATE_NONE );
+        Timer::StartAccelerator( ACCELERATE_NONE );
     else if( ( button == MOUSE_BUTTON_WHEEL_DOWN || button == MOUSE_BUTTON_WHEEL_UP ) && down )
         Self->ProcessMouseWheel( button == MOUSE_BUTTON_WHEEL_DOWN ? -1 : 1 );
     else if( move )
-        Self->ProcessMouseScroll(), Self->LMenuMouseMove();
+        Self->ProcessMouseScroll();
 }
 
 void FOClient::SScriptFunc::Global_HandleHardcodedScreenKey( int screen, uchar key, ScriptString* text, bool down )

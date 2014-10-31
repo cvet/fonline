@@ -1643,48 +1643,47 @@ int Script::BindImportedFunctions()
             WriteLogF( _FUNC_, " - Fail to bind imported functions, module<%s>, error<%d>.\n", module->GetName(), result );
             errors++;
 
-            #ifndef FONLINE_CLIENT
-            // Import all functions again, "manually"
-            // Does not solve anything, but makes finding problems easier
-
-            char buf[ MAX_FOTEXT ];
-
-            if( module->UnbindAllImportedFunctions() < 0 )
-                continue;
-
-            for( asUINT i = 0, iLen = module->GetImportedFunctionCount(); i < iLen; i++ )
+            EngineData* edata = (EngineData*) Engine->GetUserData();
+            if( edata->DllTarget == "SERVER" )
             {
-                const char* decl = module->GetImportedFunctionDeclaration( i );
-                const char* name = module->GetImportedFunctionSourceModule( i );
-
-                buf[ 0 ] = 0;
-                uint len = Str::Length( _FUNC_ );
-                for( uint j = 0; j < len; j++ )
-                    Str::Append( buf, " " );
-                Str::Format( &buf[ len ], "%s : import %s from \"%s\"", module->GetName(), decl, name );
-
-                asIScriptModule* mod = Engine->GetModule( name, asGM_ONLY_IF_EXISTS );
-                if( !mod )
-                {
-                    WriteLog( "   %s : source module does not exists.\n", buf );
+                // Import all functions again, "manually"
+                // Does not solve anything, but makes finding problems easier
+                if( module->UnbindAllImportedFunctions() < 0 )
                     continue;
-                }
 
-                asIScriptFunction* func = mod->GetFunctionByDecl( decl );
-                if( !func )
+                for( asUINT m = 0; m < module->GetImportedFunctionCount(); m++ )
                 {
-                    WriteLog( "   %s : source function does not exists.\n", buf );
-                    continue;
-                }
+                    const char* decl = module->GetImportedFunctionDeclaration( m );
+                    const char* name = module->GetImportedFunctionSourceModule( m );
 
-                int temp = module->BindImportedFunction( i, func );
-                if( temp < 0 )
-                {
-                    WriteLog( "   %s : bind error<%d>.\n", buf, temp );
-                    continue;
+                    char        buf[ MAX_FOTEXT ] = { 0 };
+                    uint        len = Str::Length( _FUNC_ );
+                    for( uint k = 0; k < len; k++ )
+                        Str::Append( buf, " " );
+                    Str::Format( &buf[ len ], "%s : import %s from \"%s\"", module->GetName(), decl, name );
+
+                    asIScriptModule* mod = Engine->GetModule( name, asGM_ONLY_IF_EXISTS );
+                    if( !mod )
+                    {
+                        WriteLog( "   %s : source module does not exists.\n", buf );
+                        continue;
+                    }
+
+                    asIScriptFunction* func = mod->GetFunctionByDecl( decl );
+                    if( !func )
+                    {
+                        WriteLog( "   %s : source function does not exists.\n", buf );
+                        continue;
+                    }
+
+                    int r = module->BindImportedFunction( m, func );
+                    if( r < 0 )
+                    {
+                        WriteLog( "   %s : bind error<%d>.\n", buf, r );
+                        continue;
+                    }
                 }
             }
-            #endif // !FONLINE_CLIENT
 
             continue;
         }

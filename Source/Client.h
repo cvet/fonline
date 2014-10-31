@@ -55,12 +55,12 @@ public:
     StrVec     Preload3dFiles;
 
     int        ScreenModeMain;
-    void ShowMainScreen( int new_screen, ScriptDictionary* params = NULL, int cur_mode = 0 );
+    void ShowMainScreen( int new_screen, ScriptDictionary* params = NULL );
     int  GetMainScreen()                  { return ScreenModeMain; }
     bool IsMainScreen( int check_screen ) { return check_screen == ScreenModeMain; }
 
-    void ShowScreen( int screen, ScriptDictionary* params = NULL, int cur_mode = 0 );
-    void HideScreen( int screen, int cur_mode = 0 );
+    void ShowScreen( int screen, ScriptDictionary* params = NULL );
+    void HideScreen( int screen );
     int  GetActiveScreen( IntVec** screens = NULL );
     bool IsScreenPresent( int screen );
     void RunScreenScript( bool show, int screen, ScriptDictionary* params );
@@ -625,6 +625,8 @@ public:
         static int  Global_GetSpriteWidth( uint spr_id, int frame_index );
         static int  Global_GetSpriteHeight( uint spr_id, int frame_index );
         static uint Global_GetSpriteCount( uint spr_id );
+        static uint Global_GetSpriteTicks( uint spr_id );
+        static uint Global_GetPixelColor( uint spr_id, int frame_index, int x, int y );
         static void Global_GetTextInfo( ScriptString* text, int w, int h, int font, int flags, int& tw, int& th, int& lines );
         static void Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs );
         static void Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs );
@@ -703,7 +705,6 @@ public:
     bool IsCurInRect( const Rect& rect, int ax, int ay )                { return !rect.IsZero() && ( GameOpt.MouseX >= rect.L + ax && GameOpt.MouseY >= rect.T + ay && GameOpt.MouseX <= rect.R + ax && GameOpt.MouseY <= rect.B + ay ); }
     bool IsCurInRect( const Rect& rect )                                { return !rect.IsZero() && ( GameOpt.MouseX >= rect.L && GameOpt.MouseY >= rect.T && GameOpt.MouseX <= rect.R && GameOpt.MouseY <= rect.B ); }
     bool IsCurInRectNoTransp( uint spr_id, Rect& rect, int ax, int ay ) { return IsCurInRect( rect, ax, ay ) && SprMngr.IsPixNoTransp( spr_id, GameOpt.MouseX - rect.L - ax, GameOpt.MouseY - rect.T - ay, false ); }
-    bool IsCurInInterface();
     bool IsCurInInterface( int x, int y );
     bool GetCurHex( ushort& hx, ushort& hy, bool ignore_interface );
 
@@ -855,7 +856,6 @@ public:
     int  IntLMouseDown();
     void IntRMouseDown();
     void IntLMouseUp();
-    void IntMouseMove();
 
 /************************************************************************/
 /* LMenu                                                                */
