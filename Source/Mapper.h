@@ -537,6 +537,8 @@ public:
         static int  Global_GetSpriteWidth( uint spr_id, int spr_index );
         static int  Global_GetSpriteHeight( uint spr_id, int spr_index );
         static uint Global_GetSpriteCount( uint spr_id );
+        static uint Global_GetSpriteTicks( uint spr_id );
+        static uint Global_GetPixelColor( uint spr_id, int frame_index, int x, int y );
         static void Global_GetTextInfo( ScriptString* text, int w, int h, int font, int flags, int& tw, int& th, int& lines );
         static void Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs );
         static void Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs );

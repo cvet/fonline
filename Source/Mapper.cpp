@@ -6869,6 +6869,25 @@ uint FOMapper::SScriptFunc::Global_GetSpriteCount( uint spr_id )
     return anim ? anim->CntFrm : 0;
 }
 
+uint FOMapper::SScriptFunc::Global_GetSpriteTicks( uint spr_id )
+{
+    AnyFrames* anim = Self->AnimGetFrames( spr_id );
+    return anim ? anim->Ticks : 0;
+}
+
+uint FOMapper::SScriptFunc::Global_GetPixelColor( uint spr_id, int frame_index, int x, int y )
+{
+    if( !spr_id )
+        return 0;
+
+    AnyFrames* anim = Self->AnimGetFrames( spr_id );
+    if( !anim || frame_index >= (int) anim->GetCnt() )
+        return 0;
+
+    uint spr_id_ = ( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
+    return SprMngr.GetPixColor( spr_id_, x, y, false );
+}
+
 void FOMapper::SScriptFunc::Global_GetTextInfo( ScriptString* text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
 {
     SprMngr.GetTextInfo( w, h, text ? text->c_str() : NULL, font, flags, tw, th, lines );
@@ -6937,7 +6956,7 @@ void FOMapper::SScriptFunc::Global_DrawText( ScriptString& text, int x, int y, i
 
 void FOMapper::SScriptFunc::Global_DrawPrimitive( int primitive_type, ScriptArray& data )
 {
-    if( !SpritesCanDraw )
+    if( !SpritesCanDraw || data.GetSize() == 0 )
         return;
 
     int prim;
@@ -7062,7 +7081,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
     // rx ry rz
     // sx sy sz
     // speed
-    // stencil l t r b
+    // scissor l t r b
     if( CritType::IsEnabled( crtype ) )
     {
         if( instance >= DrawCritter3dAnim.size() )
@@ -7110,7 +7129,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         float stt = ( count > 11 ? *(float*) position->At( 11 ) : 0.0f );
         float str = ( count > 12 ? *(float*) position->At( 12 ) : 0.0f );
         float stb = ( count > 13 ? *(float*) position->At( 13 ) : 0.0f );
-        RectF stencil_r = RectF( stl, stt, str, stb );
+        RectF scissor = RectF( stl, stt, str, stb );
 
         memzero( DrawCritter3dLayers, sizeof( DrawCritter3dLayers ) );
         for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
@@ -7121,7 +7140,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         anim3d->SetSpeed( speed );
         anim3d->SetAnimation( anim1, anim2, DrawCritter3dLayers, 0 );
 
-        SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ) );
+        SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ), !scissor.IsZero() ? &scissor : NULL );
     }
 }
 
