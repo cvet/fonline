@@ -26,10 +26,6 @@ namespace InterfaceEditor
 			{
 				_PressedImageName = value;
 				SetImage(_PressedImageName, ref _PressedImageContent);
-
-				// Set size
-				if (_PressedImageContent != null && _BackgroundImageContent == null && _PressedImageLayout == ImageLayout.None)
-					Size = _PressedImageContent.Size;
 			}
 		}
 
@@ -107,6 +103,22 @@ namespace InterfaceEditor
 		public GUIButton(GUIObject parent)
 			: base(parent)
 		{
+		}
+
+		override public bool IsAutoSize()
+		{
+			return _PressedImageLayout == ImageLayout.None || _HoverImageLayout == ImageLayout.None || _DisabledImageLayout == ImageLayout.None || base.IsAutoSize();
+		}
+		override public void DoAutoSize()
+		{
+			base.DoAutoSize();
+
+			if (_PressedImageContent != null)
+				Size = _PressedImageContent.Size;
+			if (_HoverImageContent != null)
+				Size = _HoverImageContent.Size;
+			if (_DisabledImageContent != null)
+				Size = _DisabledImageContent.Size;
 		}
 
 		public override void DrawPass1(Graphics g)

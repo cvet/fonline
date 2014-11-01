@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using System.Drawing;
 using System.Drawing.Design;
 using System.ComponentModel;
+using System.IO;
 
 namespace InterfaceEditor
 {
@@ -23,10 +24,6 @@ namespace InterfaceEditor
 			{
 				_BackgroundImageName = value;
 				SetImage(_BackgroundImageName, ref _BackgroundImageContent);
-
-				// Set size
-				if (_BackgroundImageContent != null && _BackgroundImageLayout == ImageLayout.None)
-					Size = _BackgroundImageContent.Size;
 			}
 		}
 
@@ -52,6 +49,17 @@ namespace InterfaceEditor
 		{
 		}
 
+		override public bool IsAutoSize()
+		{
+			return _BackgroundImageLayout == ImageLayout.None;
+		}
+		override public void DoAutoSize()
+		{
+			Size = Size.Empty;
+			if (_BackgroundImageContent != null)
+				Size = _BackgroundImageContent.Size;
+		}
+
 		protected void SetImage(string name, ref Image content)
 		{
 			content = null;
@@ -61,11 +69,17 @@ namespace InterfaceEditor
 				{
 					content = Image.FromFile(Utilites.MakeFullPath(name));
 				}
-				catch (Exception e)
+				catch (FileNotFoundException e)
 				{
 					Log.Write(e);
 				}
+				catch (Exception)
+				{
+				}
 			}
+
+			// Set size
+			DoAutoSize();
 
 			RequestRedraw();
 		}

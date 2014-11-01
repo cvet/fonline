@@ -79,15 +79,15 @@ namespace InterfaceEditor
 					_Script.AppendLine(_BaseIdent + "        SetMultiinstance( true );");
 				if (root.IsCloseOnMiss)
 					_Script.AppendLine(_BaseIdent + "        SetCloseOnMiss( true );");
-				if (root.IsAutoCursor)
-					_Script.AppendLine(_BaseIdent + "        SetAutoCursor( " + root.AutoCursorType + " );");
+				if (!string.IsNullOrEmpty(root.Cursor))
+					_Script.AppendLine(_BaseIdent + "        SetCursor( " + root.Cursor + " );");
 			}
 
 			if (!obj.Active)
 				_Script.AppendLine(_BaseIdent + "        SetActive( false );");
 			if (!obj.Position.IsEmpty)
 				_Script.AppendLine(_BaseIdent + "        SetPosition( " + obj.Position.X + ", " + obj.Position.Y + " );");
-			if (!obj.Size.IsEmpty)
+			if (!obj.Size.IsEmpty /*&& !obj.IsAutoSize()*/)
 				_Script.AppendLine(_BaseIdent + "        SetSize( " + obj.Size.Width + ", " + obj.Size.Height + " );");
 			if (obj.Anchor != AnchorStyles.None)
 				_Script.AppendLine(_BaseIdent + "        SetAnchor( " + ConvertAnchorStyles(obj.Anchor) + " );");
@@ -95,6 +95,8 @@ namespace InterfaceEditor
 				_Script.AppendLine(_BaseIdent + "        SetDock( " + ConvertDockStyle(obj.Dock) + " );");
 			if (obj.IsNotHittable)
 				_Script.AppendLine(_BaseIdent + "        SetNotHittable( true );");
+			if (obj.CheckTransparentOnHit)
+				_Script.AppendLine(_BaseIdent + "        SetCheckTransparentOnHit( true );");
 
 			if (obj is GUIPanel)
 			{
@@ -221,6 +223,8 @@ namespace InterfaceEditor
 			WriteClassFunction("void OnInit() override", obj.OnInit);
 			WriteClassFunction("void OnShow( dictionary@ params ) override", obj.OnShow);
 			WriteClassFunction("void OnHide() override", obj.OnHide);
+			WriteClassFunction("void OnAppear( dictionary@ params ) override", obj.OnAppear);
+			WriteClassFunction("void OnDisappear() override", obj.OnDisappear);
 			WriteClassFunction("void OnDraw() override", obj.OnDraw);
 			WriteClassFunction("void OnMove( int deltaX, int deltaY ) override", obj.OnMove);
 			WriteClassFunction("void OnMouseDown( int button ) override", obj.OnMouseDown);
@@ -243,6 +247,11 @@ namespace InterfaceEditor
 			WriteClassFunction("void OnFocusChanged() override", obj.OnFocusChanged);
 			WriteClassFunction("void OnHoverChanged() override", obj.OnHoverChanged);
 			WriteClassFunction("void OnResizeGrid( GUIObject@ cell, uint cellIndex ) override", obj.OnResizeGrid);
+			WriteClassFunction("void OnDrawItem( ItemCl@ item, GUIObject@ cell, uint cellIndex ) override", obj.OnDrawItem);
+			if (obj is GUICheckBox)
+				WriteClassFunction("void OnCheckedChanged() override", ((GUICheckBox)obj).OnCheckedChanged);
+			if (obj is GUIItemView)
+				WriteClassFunction("bool OnCheckItem( ItemCl@ item ) override", ((GUIItemView)obj).OnCheckItem);
 
 			// Subtypes
 			if (obj is GUIText)

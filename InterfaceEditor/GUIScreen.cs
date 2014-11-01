@@ -13,8 +13,7 @@ namespace InterfaceEditor
 		public bool IsModal { get; set; }
 		public bool IsMultiinstance { get; set; }
 		public bool IsCloseOnMiss { get; set; }
-		public bool IsAutoCursor { get; set; }
-		public string AutoCursorType { get; set; }
+		public string Cursor { get; set; }
 
 		public GUIScreen(GUIPanel parent)
 			: base(parent)

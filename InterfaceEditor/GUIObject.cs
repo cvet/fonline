@@ -189,10 +189,18 @@ namespace InterfaceEditor
 				RequestRedraw();
 			}
 		}
+		virtual public bool IsAutoSize()
+		{
+			return false;
+		}
+		virtual public void DoAutoSize()
+		{
+		}
 
 		public AnchorStyles Anchor { get; set; }
 		public DockStyle Dock { get; set; }
 		public bool IsNotHittable { get; set; }
+		public bool CheckTransparentOnHit { get; set; }
 
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string GlobalScope { get; set; }
@@ -204,6 +212,10 @@ namespace InterfaceEditor
 		public string OnShow { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnHide { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnAppear { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnDisappear { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnDraw { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
@@ -248,6 +260,8 @@ namespace InterfaceEditor
 		public string OnHoverChanged { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnResizeGrid { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnDrawItem { get; set; }
 
 		protected GUIObject _Parent = null;
 		protected List<GUIObject> _Children = new List<GUIObject>();
@@ -480,7 +494,11 @@ namespace InterfaceEditor
 
 		public void RequestRedraw()
 		{
-			MainForm.Instance.Design.Invalidate();
+			if (MainForm.Instance.LoadedTree == GetRoot())
+			{
+				MainForm.Instance.Properties.Refresh();
+				MainForm.Instance.Design.Invalidate();
+			}
 		}
 
 		public bool IsHit(int x, int y)

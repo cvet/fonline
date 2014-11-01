@@ -56,6 +56,7 @@
     </Compile>
     <Compile Include="GUICheckBox.cs" />
     <Compile Include="GUIConsole.cs" />
+    <Compile Include="GUIItemView.cs" />
     <Compile Include="GUIMessageBox.cs" />
     <Compile Include="GUIObject.cs" />
     <Compile Include="GUIRadioButton.cs" />
