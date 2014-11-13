@@ -10104,7 +10104,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersByPids( ushort pid, int find_type,
 uint FOClient::SScriptFunc::Global_GetCrittersInPath( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters )
 {
     CritVec cr_vec;
-    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, NULL, false, &cr_vec, FIND_LIFE | FIND_KO, NULL, NULL, NULL, true );
+    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, NULL, false, &cr_vec, find_type, NULL, NULL, NULL, true );
     if( critters )
         Script::AppendVectorToArrayRef< CritterCl* >( cr_vec, critters );
     return (uint) cr_vec.size();
@@ -10114,7 +10114,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersInPathBlock( ushort from_hx, ushor
 {
     CritVec    cr_vec;
     UShortPair block, pre_block;
-    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, NULL, false, &cr_vec, FIND_LIFE | FIND_KO, &block, &pre_block, NULL, true );
+    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, NULL, false, &cr_vec, find_type, &block, &pre_block, NULL, true );
     if( critters )
         Script::AppendVectorToArrayRef< CritterCl* >( cr_vec, critters );
     pre_block_hx = pre_block.first;
