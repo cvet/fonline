@@ -829,6 +829,8 @@ struct BindClass
     static void Location_GetMap()        {}
     static void Location_GetMapByIndex() {}
     static void Location_GetMaps()       {}
+    static void Location_GetEntrance()   {}
+    static void Location_GetEntrances()  {}
     static void Location_Reload()        {}
     static void Location_Update()        {}
 
@@ -865,6 +867,7 @@ struct BindClass
     static void Global_EraseTimeEvent()         {}
     static void Global_GetTimeEvent()           {}
     static void Global_SetTimeEvent()           {}
+    static void Global_GetTimeEventList()       {}
     static void Global_SetAnyData()             {}
     static void Global_SetAnyDataSize()         {}
     static void Global_GetAnyData()             {}

@@ -196,27 +196,8 @@ bool FOServer::InitScriptSystem()
 
     ASDbgMemoryCanWork = true;
 
-    for( asUINT i = 0; i < engine->GetModuleCount(); i++ )
-    {
-        asIScriptModule* module = engine->GetModuleByIndex( i );
-        uint             bind_id = Script::Bind( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
-        if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Script" ) )
-        {
-            WriteLog( "Initializing module<%s>.\n", module->GetName() );
-
-            if( !Script::RunPrepared() )
-            {
-                WriteLog( "Error executing init function, module<%s>.\n", module->GetName() );
-                return false;
-            }
-
-            if( !Script::GetReturnedBool() )
-            {
-                WriteLog( "Initialization stopped by module<%s>.\n", module->GetName() );
-                return false;
-            }
-        }
-    }
+    if( !Script::RunModuleInitFunctions() )
+        return false;
 
     WriteLog( "Script system initialization complete.\n" );
     return true;
@@ -5012,6 +4993,41 @@ uint FOServer::SScriptFunc::Location_GetMaps( Location* loc, ScriptArray* maps )
     return (uint) maps_.size();
 }
 
+bool FOServer::SScriptFunc::Location_GetEntrance( Location* loc, uint entrance, uint& mapIndex, uint& entire )
+{
+    if( loc->IsNotValid )
+        SCRIPT_ERROR_RX( "This nullptr.", false );
+
+    if( entrance >= loc->Proto->Entrance.size() )
+        SCRIPT_ERROR_RX( "Invalid entrance.", false );
+
+    mapIndex = loc->Proto->Entrance[ entrance ].first;
+    entire = loc->Proto->Entrance[ entrance ].second;
+
+    return true;
+}
+
+uint FOServer::SScriptFunc::Location_GetEntrances( Location* loc, ScriptArray* mapsIndex, ScriptArray* entires )
+{
+    if( loc->IsNotValid )
+        SCRIPT_ERROR_R0( "This nullptr." );
+
+    uint size = (uint) loc->Proto->Entrance.size();
+
+    if( mapsIndex || entires )
+    {
+        for( uint e = 0; e < size; e++ )
+        {
+            if( mapsIndex )
+                mapsIndex->InsertLast( &loc->Proto->Entrance[ e ].first );
+            if( entires )
+                entires->InsertLast( &loc->Proto->Entrance[ e ].second );
+        }
+    }
+
+    return size;
+}
+
 bool FOServer::SScriptFunc::Location_Reload( Location* loc )
 {
     if( loc->IsNotValid )
@@ -5412,6 +5428,11 @@ bool FOServer::SScriptFunc::Global_GetTimeEvent( uint num, uint& duration, Scrip
 bool FOServer::SScriptFunc::Global_SetTimeEvent( uint num, uint duration, ScriptArray* values )
 {
     return SetTimeEvent( num, duration, values );
+}
+
+uint FOServer::SScriptFunc::Global_GetTimeEventList( ScriptArray* ids )
+{
+    return GetTimeEventsList( ids );
 }
 
 bool FOServer::SScriptFunc::Global_SetAnyData( ScriptString& name, ScriptArray& data )

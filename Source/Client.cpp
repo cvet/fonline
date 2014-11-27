@@ -9217,7 +9217,7 @@ bool FOClient::ReloadScripts()
     if( !Script::BindReservedFunctions( config, "client", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
         errors++;
 
-    if( errors )
+    if( errors || !Script::RunModuleInitFunctions() )
     {
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
         return false;

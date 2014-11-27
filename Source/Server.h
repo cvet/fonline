@@ -163,6 +163,7 @@ public:
     static bool   EraseTimeEvent( uint num );
     static void   ProcessTimeEvents();
     static uint   GetTimeEventsCount();
+    static uint   GetTimeEventsList( ScriptArray* nums );
     static string GetTimeEventsStatistics();
 
     static void SaveScriptFunctionsFile();
@@ -837,6 +838,8 @@ public:
         static Map*   Location_GetMap( Location* loc, ushort map_pid );
         static Map*   Location_GetMapByIndex( Location* loc, uint index );
         static uint   Location_GetMaps( Location* loc, ScriptArray* maps );
+        static bool   Location_GetEntrance( Location* loc, uint entrance, uint& mapIndex, uint& entire );
+        static uint   Location_GetEntrances( Location* loc, ScriptArray* mapsIndex, ScriptArray* entires );
         static bool   Location_Reload( Location* loc );
         static void   Location_Update( Location* loc );
 
@@ -876,6 +879,7 @@ public:
         static bool          Global_EraseTimeEvent( uint num );
         static bool          Global_GetTimeEvent( uint num, uint& duration, ScriptArray* data );
         static bool          Global_SetTimeEvent( uint num, uint duration, ScriptArray* data );
+        static uint          Global_GetTimeEventList( ScriptArray* nums );
         static bool          Global_SetAnyData( ScriptString& name, ScriptArray& data );
         static bool          Global_SetAnyDataSize( ScriptString& name, ScriptArray& data, uint data_size_bytes );
         static bool          Global_GetAnyData( ScriptString& name, ScriptArray& data );

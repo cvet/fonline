@@ -82,6 +82,15 @@ ScriptString* Global_EncodeUTF8( uint ucs )
     return ScriptString::Create( buf );
 }
 
+ScriptString* Global_GetFilePath( int path_type )
+{
+    char path[ MAX_FOPATH ];
+    FileManager::GetReadPath( "", path_type, path );
+    FileManager::FormatPath( path );
+
+    return ScriptString::Create( path );
+}
+
 uint Global_GetFolderFileNames( ScriptString& path, ScriptString* ext, bool include_subdirs, ScriptArray* result )
 {
     StrVec files;
@@ -99,4 +108,13 @@ uint Global_GetFolderFileNames( ScriptString& path, ScriptString* ext, bool incl
 bool Global_DeleteFile( ScriptString& filename )
 {
     return FileManager::DeleteFile( filename.c_str() );
+}
+
+void Global_CreateDirectoryTree( ScriptString& path )
+{
+    char tmp[ MAX_FOPATH ];
+    Str::Copy( tmp, path.c_str() );
+    Str::Append( tmp, DIR_SLASH_S );
+    FileManager::FormatPath( tmp );
+    CreateDirectoryTree( tmp );
 }

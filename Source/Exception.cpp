@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "Exception.h"
+#include "Script.h"
 
 char DumpMessRus[] =
 {
@@ -40,6 +41,8 @@ char ManualDumpAppendix[ 128 ] = { 0 };
 
 LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except );
 LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except );
+
+void DumpAngelScript( FILE* f );
 
 // Old version of the structure, used before Vista
 typedef struct _IMAGEHLP_MODULE64_V2
@@ -435,6 +438,8 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 
         SymCleanup( process );
         CloseHandle( process );
+        fprintf( f, "\nAngelScript\n" );
+        DumpAngelScript( f );
         fclose( f );
 
         Str::Format( mess, DumpMess, dump_path );
@@ -519,12 +524,15 @@ void CreateDump( const char* appendix )
 # include <sys/utsname.h>
 # include <string.h>
 
-# define BACKTRACE_BUFFSER_COUNT    ( 100 )
+# define BACKTRACE_BUFFER_COUNT    ( 100 )
+// # define BACKTRACE_SIMPLE
 
 void TerminationHandler( int signum, siginfo_t* siginfo, void* context );
 bool sigactionsSetted = false;
 struct sigaction oldSIGSEGV;
 struct sigaction oldSIGFPE;
+
+void DumpAngelScript( FILE* f );
 
 void CatchExceptions( const char* app_name, int app_ver )
 {
@@ -641,16 +649,52 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
             fprintf( f, "\n" );
         }
 
+        fprintf( f, "Thread '%s' (%zu%s)\n", Thread::GetCurrentName(), Thread::GetCurrentId(), ", current" );
+
         // Stack
-        void* array[ BACKTRACE_BUFFSER_COUNT ];
-        int size = backtrace( array, BACKTRACE_BUFFSER_COUNT );
+        # ifdef BACKTRACE_SIMPLE
+        void* array[ BACKTRACE_BUFFER_COUNT ];
+        int size = backtrace( array, BACKTRACE_BUFFER_COUNT );
         char** symbols = backtrace_symbols( array, size );
 
-        fprintf( f, "Thread '%s' (%zu%s)\n", Thread::GetCurrentName(), Thread::GetCurrentId(), ", current" );
         for( int i = 0; i < size; i++ )
             fprintf( f, "\t%s\n", symbols[ i ] );
+        # else
+        int skip = 0;
+        void* callstack[ BACKTRACE_BUFFER_COUNT ];
+        const int nMaxFrames = sizeof( callstack ) / sizeof( callstack[ 0 ] );
+        char buf[ 1024 ];
+        int nFrames = backtrace( callstack, nMaxFrames );
+        char** symbols = backtrace_symbols( callstack, nFrames );
+
+        for( int i = skip; i < nFrames; i++ )
+        {
+            Dl_info info;
+            if( dladdr( callstack[ i ], &info ) && info.dli_sname )
+            {
+                char* demangled = NULL;
+                int status = -1;
+                if( info.dli_sname[ 0 ] == '_' )
+                    demangled = abi::__cxa_demangle( info.dli_sname, NULL, 0, &status );
+                snprintf( buf, sizeof( buf ), "%-3d %*p %s + %zd",
+                          i, int(2 + sizeof( void* ) * 2), callstack[ i ],
+                          status == 0 ? demangled : info.dli_sname == 0 ? symbols[ i ] : info.dli_sname,
+                          (char*) callstack[ i ] - (char*) info.dli_saddr );
+
+                free( demangled );
+            }
+            else
+            {
+                snprintf( buf, sizeof( buf ), "%-3d %*p %s",
+                          i, int(2 + sizeof( void* ) * 2), callstack[ i ], symbols[ i ] );
+            }
+            fprintf( f, "\t%s\n", buf );
+        }
+        # endif // !BACKTRACE_SIMPLE
 
         free( symbols );
+        fprintf( f, "\nAngelScript\n" );
+        DumpAngelScript( f );
         fclose( f );
 
         Str::Format( mess, DumpMess, dump_path );
@@ -668,3 +712,39 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 }
 
 #endif
+
+void DumpAngelScript( FILE* f )
+{
+    asIScriptContext* ctx = Script::GetGlobalContext();
+    if( !ctx )
+    {
+        fprintf( f, "\tNot available\n" );
+        return;
+    }
+
+    asUINT stack_size = ctx->GetCallstackSize();
+    if( stack_size > 0 )
+    {
+        int line, column;
+        const asIScriptFunction* func;
+
+        for( asUINT i = 0; i < stack_size; i++ )
+        {
+            func = ctx->GetFunction( i );
+            line = ctx->GetLineNumber( i, &column );
+
+            if( func )
+            {
+                bool includeNamespace = ( Str::Length( func->GetNamespace() ) > 0 );
+                const char* module = func->GetModuleName();
+                const char* decl = func->GetDeclaration( true, includeNamespace, true );
+
+                fprintf( f, "\t%d) %s : %s : %d, %d\n", i, module, decl, line, column );
+            }
+            else
+                fprintf( f, "\t%d) <unknown function> : %d, %d\n", i, line, column );
+        }
+
+        fprintf( f, "\n" );
+    }
+}

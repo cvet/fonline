@@ -190,7 +190,7 @@ bool MapManager::LoadLocationsProtos()
     if( !city_txt.LoadFile( "Locations.cfg", PT_SERVER_MAPS ) )
     {
         WriteLog( "File<%s> not found.\n", FileManager::GetDataPath( "Locations.cfg", PT_SERVER_MAPS ) );
-        return false;
+        return true;
     }
 
     city_txt.CacheApps();

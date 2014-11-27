@@ -364,6 +364,37 @@ ScriptArray* GetEnumsModule( ScriptString& module_name )
     return GetEnumsInternal( false, module_name.c_str() );
 }
 
+uint GetCallstack( ScriptArray& modules, ScriptArray& names, ScriptArray& lines, ScriptArray& columns, bool includeObjectName, bool includeNamespace, bool includeParamNames)
+{
+    asIScriptContext* ctx = asGetActiveContext();
+    if( !ctx )
+        return 0;
+
+    asUINT count = 0, stack_size = ctx->GetCallstackSize();
+    int line, column;
+    const asIScriptFunction* func;
+
+    for( asUINT i=0; i<stack_size; i++)
+    {
+        func = ctx->GetFunction(i);
+        line = ctx->GetLineNumber(i,&column);
+        if( func )
+        {
+            modules.InsertLast( ScriptString::Create( func->GetModuleName() ));
+
+            bool includeNamespace_ = (includeNamespace && Str::Length( func->GetNamespace() ) > 0);
+            names.InsertLast( ScriptString::Create( func->GetDeclaration( includeObjectName, includeNamespace_, includeParamNames )));
+
+            lines.InsertLast( &line );
+            columns.InsertLast( &column );
+
+            count++;
+        }
+    }
+
+    return count;
+}
+
 void RegisterMethod( asIScriptEngine* engine, const char* declaration, const asSFuncPtr& func_pointer )
 {
     engine->RegisterObjectMethod( "type", declaration, func_pointer, asCALL_THISCALL );
@@ -417,6 +448,7 @@ void RegisterScriptReflection( asIScriptEngine* engine )
     engine->RegisterGlobalFunction( "type[]@ getGlobalEnums()", asFUNCTION( GetGlobalEnums ), asCALL_CDECL );
     engine->RegisterGlobalFunction( "type[]@ getEnums()", asFUNCTION( GetEnums ), asCALL_CDECL );
     engine->RegisterGlobalFunction( "type[]@ getEnums( string& moduleName )", asFUNCTION( GetEnumsModule ), asCALL_CDECL );
+    engine->RegisterGlobalFunction( "uint getCallstack( string[]& modules, string[]& names, uint[]& lines, uint[]& columns, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true)", asFUNCTION( GetCallstack ), asCALL_CDECL );
 
     engine->SetDefaultNamespace( "" );
 }

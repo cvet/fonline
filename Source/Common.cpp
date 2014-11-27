@@ -809,7 +809,7 @@ void GetClientOptions()
     GETOPTIONS_CHECK( GameOpt.ScrollStep, 4, 32, 12 );
     GameOpt.TextDelay = cfg.GetInt( "TextDelay", 3000 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.TextDelay, "-TextDelay" );
-    GETOPTIONS_CHECK( GameOpt.TextDelay, 1000, 3000, 30000 );
+    GETOPTIONS_CHECK( GameOpt.TextDelay, 1000, 30000, 3000 );
     GameOpt.DamageHitDelay = cfg.GetInt( "DamageHitDelay", 0 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.DamageHitDelay, "-OptDamageHitDelay" );
     GETOPTIONS_CHECK( GameOpt.DamageHitDelay, 0, 30000, 0 );

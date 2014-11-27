@@ -130,8 +130,9 @@ bool NpcAIMngr::LoadNpcBags()
     IniParser bags_txt;
     if( !bags_txt.LoadFile( BAGS_FILE_NAME, PT_SERVER_CONFIGS ) )
     {
-        WriteLog( "<%s> not found.\n", FileManager::GetDataPath( BAGS_FILE_NAME, PT_SERVER_CONFIGS ) );
-        return false;
+        WriteLog( "File<%s> not found.\n", FileManager::GetDataPath( BAGS_FILE_NAME, PT_SERVER_CONFIGS ) );
+        npcBags.resize( 1 );
+        return true;
     }
 
     int                 end_bag = bags_txt.GetInt( "end_bag", -1 );

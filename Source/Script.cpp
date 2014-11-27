@@ -699,6 +699,31 @@ bool Script::BindReservedFunctions( const char* config, const char* key, Reserve
     return true;
 }
 
+bool Script::RunModuleInitFunctions()
+{
+    for( asUINT i = 0; i < Engine->GetModuleCount(); i++ )
+    {
+        asIScriptModule* module = Engine->GetModuleByIndex( i );
+        uint             bind_id = Script::Bind( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
+        if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Script" ) )
+        {
+            if( !Script::RunPrepared() )
+            {
+                WriteLog( "Error executing init function, module<%s>.\n", module->GetName() );
+                return false;
+            }
+
+            if( !Script::GetReturnedBool() )
+            {
+                WriteLog( "Initialization stopped by module<%s>.\n", module->GetName() );
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 #ifdef FONLINE_SERVER
 void Script::Profiler::SetData( uint sample_time, uint save_time, bool dynamic_display )
 {
@@ -1351,13 +1376,13 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
                     outdated = ( file_dep.IsLoaded() && last_write > last_write_bin );
             }
 
-            if( no_all_files || ( !outdated && bin_version == version ) )
-            {
-                if( bin_version != version )
-                    WriteLogF( _FUNC_, " - Script<%s> compiled in older server version.\n", module_name );
-                if( outdated )
-                    WriteLogF( _FUNC_, " - Script<%s> outdated.\n", module_name );
+            bool load_bytecode = true;
 
+            if( bin_version != version || outdated )
+                load_bytecode = false;
+
+            if( load_bytecode )
+            {
                 // Delete old
                 for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
                 {

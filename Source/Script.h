@@ -45,6 +45,7 @@ namespace Script
     void UnloadScripts();
     bool ReloadScripts( const char* config, const char* key, bool skip_binaries, const char* file_pefix = NULL );
     bool BindReservedFunctions( const char* config, const char* key, ReservedScriptFunction* bind_func, uint bind_func_count );
+    bool RunModuleInitFunctions();
 
     #ifdef FONLINE_SERVER
     namespace Profiler

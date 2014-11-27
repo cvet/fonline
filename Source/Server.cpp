@@ -5362,6 +5362,24 @@ uint FOServer::GetTimeEventsCount()
     return count;
 }
 
+uint FOServer::GetTimeEventsList( ScriptArray* nums )
+{
+    SCOPE_LOCK( TimeEventsLocker );
+
+    uint size = (uint) TimeEvents.size();
+
+    if( nums )
+    {
+        for( uint i = 0; i < size; i++ )
+        {
+            TimeEvent* te = TimeEvents[ i ];
+            nums->InsertLast( &te->Num );
+        }
+    }
+
+    return size;
+}
+
 string FOServer::GetTimeEventsStatistics()
 {
     SCOPE_LOCK( TimeEventsLocker );

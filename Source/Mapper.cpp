@@ -5337,6 +5337,8 @@ void FOMapper::InitScriptSystem()
     };
     Script::BindReservedFunctions( (char*) scripts_cfg.GetBuf(), "mapper", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) );
 
+    Script::RunModuleInitFunctions();
+
     WriteLog( "Script system initialization complete.\n" );
 }
 
