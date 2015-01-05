@@ -286,7 +286,7 @@ public:
     PCharPairVec IntellectWords;
     PCharPairVec IntellectSymbols;
 
-    void ParseIntellectWords( char* words, PCharPairVec& text );
+    void ParseIntellectWords( const char* words, PCharPairVec& text );
     auto FindIntellectWord( const char* word, PCharPairVec & text, Randomizer & rnd )->PCharPairVec::iterator;
     void FmtTextIntellect( char* str, ushort intellect );
 
@@ -584,8 +584,8 @@ public:
         static ScriptString* Global_ReplaceTextInt( ScriptString& text, ScriptString& replace, int i );
         static ScriptString* Global_FormatTags( ScriptString& text, ScriptString* lexems );
         static int           Global_GetSomeValue( int var );
-        static void          Global_MoveScreen( ushort hx, ushort hy, uint speed );
-        static void          Global_LockScreenScroll( CritterCl* cr );
+        static void          Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop );
+        static void          Global_LockScreenScroll( CritterCl* cr, bool unlock_if_same );
         static int           Global_GetFog( ushort zone_x, ushort zone_y );
         static void          Global_RefreshItemsCollection( int collection );
         static int           Global_GetScroll( int scroll_element );
@@ -651,7 +651,7 @@ public:
         static ushort        Global_GetMapHeight();
         static int           Global_GetCurrentCursor();
         static int           Global_GetLastCursor();
-        static void          Global_ChangeCursor( int cursor );
+        static void          Global_ChangeCursor( int cursor, uint context_id );
         static void          Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
         static bool          Global_AppendIfaceIni( ScriptString& ini_name );
         static ScriptString* Global_GetIfaceIniStr( ScriptString& key );

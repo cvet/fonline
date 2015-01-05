@@ -81,6 +81,11 @@ void ResourceManager::FreeResources( int type )
         }
     }
 
+    if( type == RES_ATLAS_STATIC )
+    {
+        SprMngr.ClearFonts();
+    }
+
     if( type == RES_ATLAS_DYNAMIC )
     {
         // 2D critters

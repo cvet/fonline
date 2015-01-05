@@ -194,8 +194,8 @@ namespace InterfaceEditor
 				GUIMessageBox messageBox = (GUIMessageBox)obj;
 				if (!string.IsNullOrEmpty(messageBox.InvertMessages))
 					_Script.AppendLine(_BaseIdent + "        SetInvertMessages( " + messageBox.InvertMessages + " );");
-				if (!string.IsNullOrEmpty(messageBox.Filters))
-					_Script.AppendLine(_BaseIdent + "        SetFilters( " + messageBox.Filters + " );");
+				if (!string.IsNullOrEmpty(messageBox.DisplayedMessages))
+					_Script.AppendLine(_BaseIdent + "        SetDisplayedMessages( " + messageBox.DisplayedMessages + ", true );");
 			}
 			if (obj is GUIConsole)
 			{
@@ -216,6 +216,12 @@ namespace InterfaceEditor
 					_Script.AppendLine(_BaseIdent + "        SetColumns( " + grid.Columns + " );");
 				if (!grid.Padding.IsEmpty)
 					_Script.AppendLine(_BaseIdent + "        SetPadding( " + grid.Padding.Width + ", " + grid.Padding.Height + " );");
+			}
+			if (obj is GUIItemView)
+			{
+				GUIItemView itemView = (GUIItemView)obj;
+				if (itemView.UseSorting)
+					_Script.AppendLine(_BaseIdent + "        SetUseSorting( true );");
 			}
 			_Script.AppendLine(_BaseIdent + "    }");
 
@@ -251,7 +257,7 @@ namespace InterfaceEditor
 			if (obj is GUICheckBox)
 				WriteClassFunction("void OnCheckedChanged() override", ((GUICheckBox)obj).OnCheckedChanged);
 			if (obj is GUIItemView)
-				WriteClassFunction("bool OnCheckItem( ItemCl@ item ) override", ((GUIItemView)obj).OnCheckItem);
+				WriteClassFunction("int OnCheckItem( ItemCl@ item ) override", ((GUIItemView)obj).OnCheckItem);
 
 			// Subtypes
 			if (obj is GUIText)

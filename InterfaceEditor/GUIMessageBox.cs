@@ -8,7 +8,7 @@ namespace InterfaceEditor
 	class GUIMessageBox : GUIText
 	{
 		public string InvertMessages { get; set; }
-		public string Filters { get; set; }
+		public string DisplayedMessages { get; set; }
 
 		public GUIMessageBox(GUIObject parent)
 			: base(parent)

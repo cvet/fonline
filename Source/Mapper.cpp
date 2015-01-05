@@ -6427,7 +6427,7 @@ ProtoItem* FOMapper::SScriptFunc::Global_GetProtoItem( ushort proto_id )
     return proto_item;
 }
 
-void FOMapper::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed )
+void FOMapper::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop )
 {
     if( hx >= Self->HexMngr.GetMaxHexX() || hy >= Self->HexMngr.GetMaxHexY() )
         SCRIPT_ERROR_R( "Invalid hex args." );
@@ -6436,7 +6436,7 @@ void FOMapper::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed 
     if( !speed )
         Self->HexMngr.FindSetCenter( hx, hy );
     else
-        Self->HexMngr.ScrollToHex( hx, hy, double(speed) / 1000.0, false );
+        Self->HexMngr.ScrollToHex( hx, hy, double(speed) / 1000.0, can_stop );
 }
 
 void FOMapper::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps )

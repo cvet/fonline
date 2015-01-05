@@ -129,6 +129,9 @@ namespace InterfaceEditor
 			ToolStripMenuItem saveAsTreeMenuStrip = new ToolStripMenuItem("Save GUI As");
 			saveAsTreeMenuStrip.Tag = (Action<GUIObject>)delegate(GUIObject obj) { SaveTree(obj, true); GenerateScheme(); };
 
+			ToolStripMenuItem setCoordsTreeMenuStrip = new ToolStripMenuItem("Set Coords");
+			setCoordsTreeMenuStrip.Tag = (Action<GUIObject>)delegate(GUIObject obj) { SetCoords(); };
+
 			ContextMenuStrip hierarchyMenuStrip = new ContextMenuStrip();
 			hierarchyMenuStrip.Items.Add(addMenuStrip);
 			//hierarchyMenuStrip.Items.Add(convertMenuStrip);
@@ -139,6 +142,7 @@ namespace InterfaceEditor
 			hierarchyMenuStrip.Items.Add(loadTreeMenuStrip);
 			hierarchyMenuStrip.Items.Add(saveTreeMenuStrip);
 			hierarchyMenuStrip.Items.Add(saveAsTreeMenuStrip);
+			hierarchyMenuStrip.Items.Add(setCoordsTreeMenuStrip);
 
 			ToolStripItemClickedEventHandler clickHandler = delegate(object sender, ToolStripItemClickedEventArgs e)
 			{
@@ -371,6 +375,7 @@ namespace InterfaceEditor
 			initScript.AppendLine("#include \"_client_defines.fos\"");
 			initScript.AppendLine("#include \"_colors.fos\"");
 			initScript.AppendLine("#include \"_msgstr.fos\"");
+			initScript.AppendLine("#include \"input_h.fos\"");
 			initScript.AppendLine("#include \"gui_h.fos\"");
 			initScript.AppendLine("#include \"gui_screens_stuff.fos\"");
 			initScript.AppendLine();
@@ -434,6 +439,41 @@ namespace InterfaceEditor
 			{
 				if (Array.FindIndex(destFields, fi2 => fi2.Name == fi.Name) != -1)
 					fi.SetValue(dest, fi.GetValue(source));
+			}
+		}
+
+		private void SetCoords()
+		{
+			OpenFileDialog fileDialog = new OpenFileDialog();
+			fileDialog.Filter = "Text file with coords (*.txt) | *.txt";
+			fileDialog.InitialDirectory = Utilites.DataPath;
+			if (fileDialog.ShowDialog() != DialogResult.OK)
+				return;
+
+			StreamReader stream = new StreamReader(fileDialog.FileName);
+			string line;
+			while ((line = stream.ReadLine()) != null)
+			{
+				string[] s = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+				if (s.Length != 3)
+					continue;
+
+				string imageName = s[0];
+				int x = 0, y = 0;
+				int.TryParse(s[1], out x);
+				int.TryParse(s[2], out y);
+				if (x < 0)
+					x = 0;
+				if (y < 0)
+					y = 0;
+
+				GUIObject obj = LoadedTree.FindByBackground(imageName);
+				if (obj != null)
+				{
+					obj.SetAbsolutePosition(x, y);
+					if (obj is GUIPanel)
+						((GUIPanel)obj).SetBackgroundSize();
+				}
 			}
 		}
 	}

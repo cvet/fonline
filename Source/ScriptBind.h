@@ -993,8 +993,8 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "string@ ReplaceText(const string& 
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ ReplaceText(const string& text, const string& replace, int i)", asFUNCTION( BIND_CLASS Global_ReplaceTextInt ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ FormatTags(const string& text, const string@+ lexems)", asFUNCTION( BIND_CLASS Global_FormatTags ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSomeValue(int var)", asFUNCTION( BIND_CLASS Global_GetSomeValue ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveScreen(uint16 hexX, uint16 hexY, uint speed)", asFUNCTION( BIND_CLASS Global_MoveScreen ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void LockScreenScroll(CritterCl@+ cr)", asFUNCTION( BIND_CLASS Global_LockScreenScroll ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveScreen(uint16 hexX, uint16 hexY, uint speed, bool canStop = false)", asFUNCTION( BIND_CLASS Global_MoveScreen ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void LockScreenScroll(CritterCl@+ cr, bool unlockIfSame = false)", asFUNCTION( BIND_CLASS Global_LockScreenScroll ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetFog(uint16 zoneX, uint16 zoneY)", asFUNCTION( BIND_CLASS Global_GetFog ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RefreshItemsCollection(int collection)", asFUNCTION( BIND_CLASS Global_RefreshItemsCollection ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetScroll(int scrollElement)", asFUNCTION( BIND_CLASS Global_GetScroll ), asCALL_CDECL ) );
@@ -1017,7 +1017,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint16 GetMapWidth()", asFUNCTION(
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint16 GetMapHeight()", asFUNCTION( BIND_CLASS Global_GetMapHeight ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetCurrentCursor()", asFUNCTION( BIND_CLASS Global_GetCurrentCursor ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetLastCursor()", asFUNCTION( BIND_CLASS Global_GetLastCursor ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void ChangeCursor(int cursor)", asFUNCTION( BIND_CLASS Global_ChangeCursor ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ChangeCursor(int cursor, uint contextId = 0)", asFUNCTION( BIND_CLASS Global_ChangeCursor ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps)", asFUNCTION( BIND_CLASS Global_MoveHexByDir ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool AppendIfaceIni(string& iniName)", asFUNCTION( BIND_CLASS Global_AppendIfaceIni ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetIfaceIniStr(string& key)", asFUNCTION( BIND_CLASS Global_GetIfaceIniStr ), asCALL_CDECL ) );
@@ -1403,7 +1403,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsMsgStr(int textMsg, uint st
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ ReplaceText(const string& text, const string& replace, const string& str)", asFUNCTION( BIND_CLASS Global_ReplaceTextStr ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ ReplaceText(const string& text, const string& replace, int i)", asFUNCTION( BIND_CLASS Global_ReplaceTextInt ), asCALL_CDECL ) );
 
-BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveScreen(uint16 hexX, uint16 hexY, uint speed)", asFUNCTION( BIND_CLASS Global_MoveScreen ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveScreen(uint16 hexX, uint16 hexY, uint speed, bool canStop = false)", asFUNCTION( BIND_CLASS Global_MoveScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHexPos ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorHex ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "MapperObject@+ GetMonitorObject(int x, int y, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorObject ), asCALL_CDECL ) );

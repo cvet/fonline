@@ -8251,9 +8251,10 @@ const char* FOClient::FmtItemLook( Item* item, int look_type )
     return MsgGame->GetStr( STR_ITEM_LOOK_NOTHING );
 }
 
-void FOClient::ParseIntellectWords( char* words, PCharPairVec& text )
+void FOClient::ParseIntellectWords( const char* words, PCharPairVec& text )
 {
-    Str::SkipLine( words );
+    char* w = (char*) words;
+    Str::SkipLine( w );
 
     bool parse_in = true;
     char in[ MAX_FOTEXT ] = { 0 };
@@ -8261,12 +8262,12 @@ void FOClient::ParseIntellectWords( char* words, PCharPairVec& text )
 
     while( true )
     {
-        if( *words == 0 )
+        if( *w == 0 )
             break;
 
-        if( *words == '\n' || *words == '\r' )
+        if( *w == '\n' || *w == '\r' )
         {
-            Str::SkipLine( words );
+            Str::SkipLine( w );
             parse_in = true;
 
             uint in_len = Str::Length( in ) + 1;
@@ -8285,22 +8286,22 @@ void FOClient::ParseIntellectWords( char* words, PCharPairVec& text )
             continue;
         }
 
-        if( *words == ' ' && *( words + 1 ) == ' ' && parse_in )
+        if( *w == ' ' && *( w + 1 ) == ' ' && parse_in )
         {
             if( !Str::Length( in ) )
             {
-                Str::SkipLine( words );
+                Str::SkipLine( w );
             }
             else
             {
-                words += 2;
+                w += 2;
                 parse_in = false;
             }
             continue;
         }
 
-        strncat( parse_in ? in : out, words, 1 );
-        words++;
+        strncat( parse_in ? in : out, w, 1 );
+        w++;
     }
 }
 
@@ -8338,10 +8339,13 @@ void FOClient::FmtTextIntellect( char* str, ushort intellect )
     static bool is_parsed = false;
     if( !is_parsed )
     {
-        ParseIntellectWords( (char*) MsgGame->GetStr( STR_INTELLECT_WORDS ), IntellectWords );
-        ParseIntellectWords( (char*) MsgGame->GetStr( STR_INTELLECT_SYMBOLS ), IntellectSymbols );
+        ParseIntellectWords( MsgGame->GetStr( STR_INTELLECT_WORDS ), IntellectWords );
+        ParseIntellectWords( MsgGame->GetStr( STR_INTELLECT_SYMBOLS ), IntellectSymbols );
         is_parsed = true;
     }
+
+    if( IntellectWords.empty() && IntellectSymbols.empty() )
+        return;
 
     uchar intellegence = intellect & 0xF;
     if( !intellect || intellegence >= 5 )
@@ -9929,17 +9933,36 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->GameLMouseDown();
     }
-    else if( cmd == "GameRMouseDown" )
-    {
-        Self->GameRMouseDown();
-    }
     else if( cmd == "GameLMouseUp" )
     {
         Self->GameLMouseUp();
     }
-    else if( cmd == "GameRMouseUp" )
+    else if( cmd == "NextCursor" )
     {
-        Self->GameRMouseUp();
+        switch( Self->GetCurMode() )
+        {
+        case CUR_DEFAULT:
+            Self->SetCurMode( CUR_MOVE );
+            break;
+        case CUR_MOVE:
+            if( Self->Chosen->GetParam( TO_BATTLE ) && Self->Chosen->ItemSlotMain->IsWeapon() )
+                Self->SetCurMode( CUR_USE_WEAPON );
+            else
+                Self->SetCurMode( CUR_DEFAULT );
+            break;
+        case CUR_USE_ITEM:
+            Self->SetCurMode( CUR_DEFAULT );
+            break;
+        case CUR_USE_WEAPON:
+            Self->SetCurMode( CUR_DEFAULT );
+            break;
+        case CUR_USE_SKILL:
+            Self->SetCurMode( CUR_MOVE );
+            break;
+        default:
+            Self->SetCurMode( CUR_DEFAULT );
+            break;
+        }
     }
     else if( cmd == "IsCurInInterface" )
     {
@@ -9957,6 +9980,14 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         GameOpt.MouseX = old_x;
         GameOpt.MouseY = old_y;
         return ScriptString::Create( result ? "true" : "false" );
+    }
+    else if( cmd == "TryPickItemOnGround" )
+    {
+        Self->TryPickItemOnGround();
+    }
+    else if( cmd == "ProcessMouseScroll" )
+    {
+        Self->ProcessMouseScroll();
     }
     else
     {
@@ -10373,7 +10404,7 @@ int FOClient::SScriptFunc::Global_GetSomeValue( int var )
     return 0;
 }
 
-void FOClient::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed )
+void FOClient::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop )
 {
     if( hx >= Self->HexMngr.GetMaxHexX() || hy >= Self->HexMngr.GetMaxHexY() )
         SCRIPT_ERROR_R( "Invalid hex args." );
@@ -10382,14 +10413,20 @@ void FOClient::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed 
     if( !speed )
         Self->HexMngr.FindSetCenter( hx, hy );
     else
-        Self->HexMngr.ScrollToHex( hx, hy, double(speed) / 1000.0, false );
+        Self->HexMngr.ScrollToHex( hx, hy, double(speed) / 1000.0, can_stop );
 }
 
-void FOClient::SScriptFunc::Global_LockScreenScroll( CritterCl* cr )
+void FOClient::SScriptFunc::Global_LockScreenScroll( CritterCl* cr, bool unlock_if_same )
 {
     if( cr && cr->IsNotValid )
         SCRIPT_ERROR_R( "CritterCl arg nullptr." );
-    Self->HexMngr.AutoScroll.LockedCritter = ( cr ? cr->GetId() : 0 );
+
+    uint id = ( cr ? cr->GetId() : 0 );
+    if( unlock_if_same && id == Self->HexMngr.AutoScroll.LockedCritter )
+        Self->HexMngr.AutoScroll.LockedCritter = 0;
+    else
+        Self->HexMngr.AutoScroll.LockedCritter = id;
+
 }
 
 int FOClient::SScriptFunc::Global_GetFog( ushort zone_x, ushort zone_y )
@@ -12229,8 +12266,11 @@ int FOClient::SScriptFunc::Global_GetLastCursor()
     return Self->CurModeLast;
 }
 
-void FOClient::SScriptFunc::Global_ChangeCursor( int cursor )
+void FOClient::SScriptFunc::Global_ChangeCursor( int cursor, uint context_id )
 {
+    if( cursor == CUR_USE_SKILL )
+        Self->CurSkill = (ushort) context_id;
+
     Self->SetCurMode( cursor );
 }
 

@@ -8,6 +8,7 @@ namespace InterfaceEditor
 {
 	class GUIItemView : GUIGrid
 	{
+		public bool UseSorting { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnCheckItem { get; set; }
 

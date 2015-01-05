@@ -175,6 +175,12 @@ namespace InterfaceEditor
 				return position;
 			}
 		}
+		public void SetAbsolutePosition(int x, int y)
+		{
+			_Position = Point.Empty;
+			Point absPos = AbsolutePosition;
+			Position = new Point(x - absPos.X, y - absPos.Y);
+		}
 
 		protected Size _Size;
 		public Size Size
@@ -402,6 +408,19 @@ namespace InterfaceEditor
 			foreach (GUIObject child in _Children)
 			{
 				GUIObject obj = child.Find(name);
+				if (obj != null)
+					return obj;
+			}
+			return null;
+		}
+
+		public GUIObject FindByBackground(string backgroundName)
+		{
+			if (this is GUIPanel && ((GUIPanel)this).BackgroundImage != null && ((GUIPanel)this).BackgroundImage.Contains(backgroundName))
+				return this;
+			foreach (GUIObject child in _Children)
+			{
+				GUIObject obj = child.FindByBackground(backgroundName);
 				if (obj != null)
 					return obj;
 			}

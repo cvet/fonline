@@ -59,6 +59,11 @@ namespace InterfaceEditor
 			if (_BackgroundImageContent != null)
 				Size = _BackgroundImageContent.Size;
 		}
+		public void SetBackgroundSize()
+		{
+			if (_BackgroundImageContent != null)
+				Size = _BackgroundImageContent.Size;
+		}
 
 		protected void SetImage(string name, ref Image content)
 		{

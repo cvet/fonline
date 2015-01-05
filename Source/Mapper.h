@@ -498,7 +498,7 @@ public:
         static void Global_TabSetName( int tab, ScriptString* tab_name );
 
         static ProtoItem*    Global_GetProtoItem( ushort proto_id );
-        static void          Global_MoveScreen( ushort hx, ushort hy, uint speed );
+        static void          Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop );
         static void          Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
         static ScriptString* Global_GetIfaceIniStr( ScriptString& key );
         static bool          Global_LoadDataFile( ScriptString& dat_name );

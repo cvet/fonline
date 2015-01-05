@@ -284,6 +284,7 @@ private:
     void BuildFont( int index );
 
 public:
+    void ClearFonts();
     void SetDefaultFont( int index, uint color );
     void SetFontEffect( int index, Effect* effect );
     bool LoadFontFO( int index, const char* font_name, bool not_bordered, bool skip_if_loaded = true );

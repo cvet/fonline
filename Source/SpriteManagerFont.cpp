@@ -132,6 +132,13 @@ struct FontFormatInfo
     }
 };
 
+void SpriteManager::ClearFonts()
+{
+    for( size_t i = 0; i < Fonts.size(); i++ )
+        SAFEDEL( Fonts[ i ] );
+    Fonts.clear();
+}
+
 void SpriteManager::SetDefaultFont( int index, uint color )
 {
     DefFontIndex = index;
