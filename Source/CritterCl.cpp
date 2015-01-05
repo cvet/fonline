@@ -137,6 +137,7 @@ void CritterCl::AddItem( Item* item )
     }
 
     InvItems.push_back( item );
+    Item::SortItems( InvItems );
     if( anim_stay && !IsAnim() )
         AnimateStay();
 }

@@ -6,10 +6,10 @@
 
 static asIObjectType* GetObjectTypeById( asIScriptEngine* engine, int typeId )
 {
-	asCDataType dt = ( (asCScriptEngine*) engine )->GetDataTypeFromTypeId( typeId );
-	if( dt.IsValid() )
-		return dt.GetObjectType();
-	return NULL;
+    asCDataType dt = ( (asCScriptEngine*) engine )->GetDataTypeFromTypeId( typeId );
+    if( dt.IsValid() )
+        return dt.GetObjectType();
+    return NULL;
 }
 
 ScriptType::ScriptType( asIObjectType* type )
@@ -364,26 +364,26 @@ ScriptArray* GetEnumsModule( ScriptString& module_name )
     return GetEnumsInternal( false, module_name.c_str() );
 }
 
-uint GetCallstack( ScriptArray& modules, ScriptArray& names, ScriptArray& lines, ScriptArray& columns, bool includeObjectName, bool includeNamespace, bool includeParamNames)
+uint GetCallstack( ScriptArray& modules, ScriptArray& names, ScriptArray& lines, ScriptArray& columns, bool include_object_name, bool include_namespace, bool include_param_names )
 {
     asIScriptContext* ctx = asGetActiveContext();
     if( !ctx )
         return 0;
 
-    asUINT count = 0, stack_size = ctx->GetCallstackSize();
-    int line, column;
+    asUINT                   count = 0, stack_size = ctx->GetCallstackSize();
+    int                      line, column;
     const asIScriptFunction* func;
 
-    for( asUINT i=0; i<stack_size; i++)
+    for( asUINT i = 0; i < stack_size; i++ )
     {
-        func = ctx->GetFunction(i);
-        line = ctx->GetLineNumber(i,&column);
+        func = ctx->GetFunction( i );
+        line = ctx->GetLineNumber( i, &column );
         if( func )
         {
-            modules.InsertLast( ScriptString::Create( func->GetModuleName() ));
+            modules.InsertLast( ScriptString::Create( func->GetModuleName() ) );
 
-            bool includeNamespace_ = (includeNamespace && Str::Length( func->GetNamespace() ) > 0);
-            names.InsertLast( ScriptString::Create( func->GetDeclaration( includeObjectName, includeNamespace_, includeParamNames )));
+            bool include_ns = ( include_namespace && Str::Length( func->GetNamespace() ) > 0 );
+            names.InsertLast( ScriptString::Create( func->GetDeclaration( include_object_name, include_ns, include_param_names ) ) );
 
             lines.InsertLast( &line );
             columns.InsertLast( &column );

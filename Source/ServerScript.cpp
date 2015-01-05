@@ -4993,7 +4993,7 @@ uint FOServer::SScriptFunc::Location_GetMaps( Location* loc, ScriptArray* maps )
     return (uint) maps_.size();
 }
 
-bool FOServer::SScriptFunc::Location_GetEntrance( Location* loc, uint entrance, uint& mapIndex, uint& entire )
+bool FOServer::SScriptFunc::Location_GetEntrance( Location* loc, uint entrance, uint& map_index, uint& entire )
 {
     if( loc->IsNotValid )
         SCRIPT_ERROR_RX( "This nullptr.", false );
@@ -5001,25 +5001,25 @@ bool FOServer::SScriptFunc::Location_GetEntrance( Location* loc, uint entrance, 
     if( entrance >= loc->Proto->Entrance.size() )
         SCRIPT_ERROR_RX( "Invalid entrance.", false );
 
-    mapIndex = loc->Proto->Entrance[ entrance ].first;
+    map_index = loc->Proto->Entrance[ entrance ].first;
     entire = loc->Proto->Entrance[ entrance ].second;
 
     return true;
 }
 
-uint FOServer::SScriptFunc::Location_GetEntrances( Location* loc, ScriptArray* mapsIndex, ScriptArray* entires )
+uint FOServer::SScriptFunc::Location_GetEntrances( Location* loc, ScriptArray* maps_index, ScriptArray* entires )
 {
     if( loc->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
 
     uint size = (uint) loc->Proto->Entrance.size();
 
-    if( mapsIndex || entires )
+    if( maps_index || entires )
     {
         for( uint e = 0; e < size; e++ )
         {
-            if( mapsIndex )
-                mapsIndex->InsertLast( &loc->Proto->Entrance[ e ].first );
+            if( maps_index )
+                maps_index->InsertLast( &loc->Proto->Entrance[ e ].first );
             if( entires )
                 entires->InsertLast( &loc->Proto->Entrance[ e ].second );
         }

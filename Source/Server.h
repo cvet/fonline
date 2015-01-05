@@ -838,8 +838,8 @@ public:
         static Map*   Location_GetMap( Location* loc, ushort map_pid );
         static Map*   Location_GetMapByIndex( Location* loc, uint index );
         static uint   Location_GetMaps( Location* loc, ScriptArray* maps );
-        static bool   Location_GetEntrance( Location* loc, uint entrance, uint& mapIndex, uint& entire );
-        static uint   Location_GetEntrances( Location* loc, ScriptArray* mapsIndex, ScriptArray* entires );
+        static bool   Location_GetEntrance( Location* loc, uint entrance, uint& map_index, uint& entire );
+        static uint   Location_GetEntrances( Location* loc, ScriptArray* maps_index, ScriptArray* entires );
         static bool   Location_Reload( Location* loc );
         static void   Location_Update( Location* loc );
 

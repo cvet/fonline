@@ -5093,6 +5093,7 @@ void FOClient::LMenuMouseUp()
             if( inv_item->GetSortValue() < item->GetSortValue() )
                 break;
             inv_item->Data.SortValue = item->GetSortValue() - 1;
+            Item::SortItems( Chosen->InvItems );
             Net_SendSortValueItem( inv_item );
         }
         break;
@@ -5106,6 +5107,7 @@ void FOClient::LMenuMouseUp()
             if( inv_item->GetSortValue() > item->GetSortValue() )
                 break;
             inv_item->Data.SortValue = item->GetSortValue() + 1;
+            Item::SortItems( Chosen->InvItems );
             Net_SendSortValueItem( inv_item );
         }
         break;

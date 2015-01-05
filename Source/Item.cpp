@@ -300,8 +300,17 @@ void Item::SetSortValue( ItemPtrVec& items )
     Data.SortValue = sort_value;
 }
 
-bool SortItemsFunc( const Item& l, const Item& r ) { return l.Data.SortValue < r.Data.SortValue; }
-void Item::SortItems( ItemVec& items )             { std::sort( items.begin(), items.end(), SortItemsFunc ); }
+bool SortItemsFunc1( const Item* l, const Item* r ) { return l->Data.SortValue < r->Data.SortValue; }
+void Item::SortItems( ItemPtrVec& items )
+{
+    std::sort( items.begin(), items.end(), SortItemsFunc1 );
+}
+
+bool SortItemsFunc2( const Item& l, const Item& r ) { return l.Data.SortValue < r.Data.SortValue; }
+void Item::SortItems( ItemVec& items )
+{
+    std::sort( items.begin(), items.end(), SortItemsFunc2 );
+}
 
 uint Item::GetCount()
 {

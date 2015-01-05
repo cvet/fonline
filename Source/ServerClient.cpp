@@ -1297,6 +1297,10 @@ void FOServer::KnockoutCritter( Critter* cr, uint anim2begin, uint anim2idle, ui
     td.HexCallback = FOServer::VerifyTrigger;
     MapMngr.TraceBullet( td );
 
+    // Map can be changed on some trigger
+    if( cr->GetMap() != map->GetId() )
+        return;
+
     if( x1 != x2 || y1 != y2 )
     {
         uint multihex = cr->GetMultihex();

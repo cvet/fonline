@@ -287,8 +287,12 @@ void SpriteManager::BuildFont( int index )
     SAFEDELA( data_bordered );
 }
 
-bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_bordered )
+bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_bordered, bool skip_if_loaded /* = true */ )
 {
+    // Skip if loaded
+    if( skip_if_loaded && index < (int) Fonts.size() && Fonts[ index ] )
+        return true;
+
     // Load font data
     char        fname[ MAX_FOPATH ];
     Str::Format( fname, "%s.fofnt", font_name );
@@ -570,7 +574,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
 
     if( fm.GetLEUShort() != 1 )
     {
-        WriteLogF( _FUNC_, " - Texture for font<%s> must be single.\n", font_name );
+        WriteLogF( _FUNC_, " - Texture for font<%s> must be one.\n", font_name );
         return false;
     }
 
@@ -653,8 +657,8 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
         }
     }
 
-    font.YAdvance = 1;
-    font.LineHeight = base_height;
+    font.LineHeight = ( font.Letters.count( 'W' ) ? font.Letters[ 'W' ].H : base_height );
+    font.YAdvance = font.LineHeight / 2;
     font.MakeGray = true;
 
     // Load image

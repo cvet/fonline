@@ -450,6 +450,7 @@ public:
     void        Init( ProtoItem* proto );
     Item*       Clone();
     void        SetSortValue( ItemPtrVec& items );
+    static void SortItems( ItemPtrVec& items );
     static void SortItems( ItemVec& items );
 
     // All

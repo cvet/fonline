@@ -525,7 +525,6 @@ void CreateDump( const char* appendix )
 # include <string.h>
 
 # define BACKTRACE_BUFFER_COUNT    ( 100 )
-// # define BACKTRACE_SIMPLE
 
 void TerminationHandler( int signum, siginfo_t* siginfo, void* context );
 bool sigactionsSetted = false;
@@ -652,22 +651,14 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         fprintf( f, "Thread '%s' (%zu%s)\n", Thread::GetCurrentName(), Thread::GetCurrentId(), ", current" );
 
         // Stack
-        # ifdef BACKTRACE_SIMPLE
-        void* array[ BACKTRACE_BUFFER_COUNT ];
-        int size = backtrace( array, BACKTRACE_BUFFER_COUNT );
-        char** symbols = backtrace_symbols( array, size );
-
-        for( int i = 0; i < size; i++ )
-            fprintf( f, "\t%s\n", symbols[ i ] );
-        # else
         int skip = 0;
         void* callstack[ BACKTRACE_BUFFER_COUNT ];
-        const int nMaxFrames = sizeof( callstack ) / sizeof( callstack[ 0 ] );
+        const int max_frames = sizeof( callstack ) / sizeof( callstack[ 0 ] );
         char buf[ 1024 ];
-        int nFrames = backtrace( callstack, nMaxFrames );
-        char** symbols = backtrace_symbols( callstack, nFrames );
+        int frames = backtrace( callstack, max_frames );
+        char** symbols = backtrace_symbols( callstack, frames );
 
-        for( int i = skip; i < nFrames; i++ )
+        for( int i = skip; i < frames; i++ )
         {
             Dl_info info;
             if( dladdr( callstack[ i ], &info ) && info.dli_sname )
@@ -690,7 +681,6 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
             }
             fprintf( f, "\t%s\n", buf );
         }
-        # endif // !BACKTRACE_SIMPLE
 
         free( symbols );
         fprintf( f, "\nAngelScript\n" );
@@ -735,14 +725,16 @@ void DumpAngelScript( FILE* f )
 
             if( func )
             {
-                bool includeNamespace = ( Str::Length( func->GetNamespace() ) > 0 );
+                bool include_ns = ( Str::Length( func->GetNamespace() ) > 0 );
                 const char* module = func->GetModuleName();
-                const char* decl = func->GetDeclaration( true, includeNamespace, true );
+                const char* decl = func->GetDeclaration( true, include_ns, true );
 
                 fprintf( f, "\t%d) %s : %s : %d, %d\n", i, module, decl, line, column );
             }
             else
+            {
                 fprintf( f, "\t%d) <unknown function> : %d, %d\n", i, line, column );
+            }
         }
 
         fprintf( f, "\n" );

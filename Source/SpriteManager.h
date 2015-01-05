@@ -286,7 +286,7 @@ private:
 public:
     void SetDefaultFont( int index, uint color );
     void SetFontEffect( int index, Effect* effect );
-    bool LoadFontFO( int index, const char* font_name, bool not_bordered );
+    bool LoadFontFO( int index, const char* font_name, bool not_bordered, bool skip_if_loaded = true );
     bool LoadFontBMF( int index, const char* font_name );
     void BuildFonts();
     bool DrawStr( const Rect& r, const char* str, uint flags, uint color = 0, int num_font = -1 );
