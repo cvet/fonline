@@ -678,7 +678,6 @@ bool HexManager::RunEffect( ushort eff_pid, ushort from_hx, ushort from_hy, usho
 
     Field&   f = GetField( from_hx, from_hy );
     ItemHex* item = new ItemHex( 0, proto, NULL, from_hx, from_hy, 0, 0, &f.ScrX, &f.ScrY, 0 );
-    item->SetAnimFromStart();
 
     float sx = 0;
     float sy = 0;

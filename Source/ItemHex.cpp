@@ -95,7 +95,7 @@ void ItemHex::Finish()
     SetFade( false );
     finishing = true;
     finishingTime = fadingTick;
-    if( IsEffect() )
+    if( isEffect )
         finishingTime = Timer::GameTick();
 }
 
@@ -132,7 +132,7 @@ void ItemHex::Process()
                 SetSpr( cur_spr );
         }
     }
-    else if( IsEffect() && !IsFinishing() )
+    else if( isEffect && !IsFinishing() )
     {
         if( IsDynamicEffect() )
             SetAnimFromStart();
@@ -191,9 +191,13 @@ void ItemHex::SetEffect( float sx, float sy, uint dist, int dir )
     effDir = dir;
     effLastTick = Timer::GameTick();
     isEffect = true;
+
     // Check off fade
     fading = false;
     Alpha = maxAlpha;
+
+    // Refresh effect animation dir
+    RefreshAnim();
 }
 
 UShortPair ItemHex::GetEffectStep()

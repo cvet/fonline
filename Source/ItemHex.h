@@ -88,8 +88,7 @@ private:
 public:
     float EffOffsX, EffOffsY;
 
-    bool       IsEffect()        { return isEffect; }
-    bool       IsDynamicEffect() { return IsEffect() && ( effSx || effSy ); }
+    bool       IsDynamicEffect() { return isEffect && ( effSx || effSy ); }
     void       SetEffect( float sx, float sy, uint dist, int dir );
     UShortPair GetEffectStep();
 
