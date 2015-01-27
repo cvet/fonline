@@ -94,7 +94,7 @@ namespace InterfaceEditor
 			addMenuStrip.DropDownItems.Add("Message Box").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIMessageBox(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Console").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIConsole(obj).RefreshRepresentation(false); };
 			addMenuStrip.DropDownItems.Add("Grid").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIGrid(obj).RefreshRepresentation(false); };
-			addMenuStrip.DropDownItems.Add("Items").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIItemView(obj).RefreshRepresentation(false); };
+			addMenuStrip.DropDownItems.Add("Item View").Tag = (Action<GUIObject>)delegate(GUIObject obj) { new GUIItemView(obj).RefreshRepresentation(false); };
 
 			ToolStripMenuItem convertMenuStrip = new ToolStripMenuItem("Convert");
 			convertMenuStrip.DropDownItems.Add("Panel").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUIPanel(obj); };
@@ -106,7 +106,7 @@ namespace InterfaceEditor
 			convertMenuStrip.DropDownItems.Add("Message Box").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUIMessageBox(obj); };
 			convertMenuStrip.DropDownItems.Add("Console").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUIConsole(obj); };
 			convertMenuStrip.DropDownItems.Add("Grid").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUIGrid(obj); };
-			convertMenuStrip.DropDownItems.Add("Items").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUIItemView(obj); };
+			convertMenuStrip.DropDownItems.Add("Item View").Tag = (Func<GUIObject, GUIObject>)delegate(GUIObject obj) { return new GUIItemView(obj); };
 
 			ToolStripMenuItem moveUpMenuStrip = new ToolStripMenuItem("Move node up");
 			moveUpMenuStrip.Tag = (Action<GUIObject>)delegate(GUIObject obj) { if (obj != null) obj.MoveUp(); };

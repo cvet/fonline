@@ -79,8 +79,10 @@ namespace InterfaceEditor
 					_Script.AppendLine(_BaseIdent + "        SetMultiinstance( true );");
 				if (root.IsCloseOnMiss)
 					_Script.AppendLine(_BaseIdent + "        SetCloseOnMiss( true );");
-				if (!string.IsNullOrEmpty(root.Cursor))
-					_Script.AppendLine(_BaseIdent + "        SetCursor( " + root.Cursor + " );");
+				if (!string.IsNullOrEmpty(root.AvailableCursors))
+					_Script.AppendLine(_BaseIdent + "        SetAvailableCursors( " + root.AvailableCursors + " );");
+				if (root.IsCanMove)
+					_Script.AppendLine(_BaseIdent + "        SetCanMove( true, " + root.IsMoveIgnoreBorders.ToString().ToLower() + " );");
 			}
 
 			if (!obj.Active)
@@ -93,6 +95,8 @@ namespace InterfaceEditor
 				_Script.AppendLine(_BaseIdent + "        SetAnchor( " + ConvertAnchorStyles(obj.Anchor) + " );");
 			if (obj.Dock != DockStyle.None)
 				_Script.AppendLine(_BaseIdent + "        SetDock( " + ConvertDockStyle(obj.Dock) + " );");
+			if (obj.IsDraggable)
+				_Script.AppendLine(_BaseIdent + "        SetDraggable( true );");
 			if (obj.IsNotHittable)
 				_Script.AppendLine(_BaseIdent + "        SetNotHittable( true );");
 			if (obj.CheckTransparentOnHit)
@@ -108,8 +112,6 @@ namespace InterfaceEditor
 					else
 						_Script.AppendLine(_BaseIdent + "        SetBackgroundImage( \"" + panel.BackgroundImage + "\" );");
 				}
-				if (panel.IsCanMove)
-					_Script.AppendLine(_BaseIdent + "        SetCanMove( true, " + panel.IsMoveIgnoreBorders.ToString().ToLower() + " );");
 			}
 			if (obj is GUIButton)
 			{
@@ -220,6 +222,8 @@ namespace InterfaceEditor
 			if (obj is GUIItemView)
 			{
 				GUIItemView itemView = (GUIItemView)obj;
+				if (!string.IsNullOrEmpty(itemView.UserData))
+					_Script.AppendLine(_BaseIdent + "        SetUserData( " + itemView.UserData + " );");
 				if (itemView.UseSorting)
 					_Script.AppendLine(_BaseIdent + "        SetUseSorting( true );");
 			}
@@ -252,12 +256,18 @@ namespace InterfaceEditor
 			WriteClassFunction("void OnActiveChanged() override", obj.OnActiveChanged);
 			WriteClassFunction("void OnFocusChanged() override", obj.OnFocusChanged);
 			WriteClassFunction("void OnHoverChanged() override", obj.OnHoverChanged);
+			WriteClassFunction("void OnDragChanged() override", obj.OnDragChanged);
 			WriteClassFunction("void OnResizeGrid( GUIObject@ cell, uint cellIndex ) override", obj.OnResizeGrid);
 			WriteClassFunction("void OnDrawItem( ItemCl@ item, GUIObject@ cell, uint cellIndex ) override", obj.OnDrawItem);
 			if (obj is GUICheckBox)
+			{
 				WriteClassFunction("void OnCheckedChanged() override", ((GUICheckBox)obj).OnCheckedChanged);
+			}
 			if (obj is GUIItemView)
+			{
 				WriteClassFunction("int OnCheckItem( ItemCl@ item ) override", ((GUIItemView)obj).OnCheckItem);
+				WriteClassFunction("void OnScrollChanged() override", ((GUIItemView)obj).OnScrollChanged);
+			}
 
 			// Subtypes
 			if (obj is GUIText)

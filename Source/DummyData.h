@@ -934,6 +934,7 @@ struct BindClass
     static void Crit_ItemsVolume()      {}
     static void Crit_CountItem()        {}
     static void Crit_GetItem()          {}
+    static void Crit_GetItemById()      {}
     static void Crit_GetItems()         {}
     static void Crit_GetItemsByType()   {}
     static void Crit_GetSlotProto()     {}

@@ -1173,10 +1173,6 @@ int FOClient::MainLoop()
     CHECK_MULTIPLY_WINDOWS4;
 
     DrawIfaceLayer( 3 );
-
-    LMenuDraw();
-    CurDraw();
-
     DrawIfaceLayer( 4 );
 
     SprMngr.Flush();
@@ -1574,15 +1570,16 @@ void FOClient::ParseMouse()
     static int old_cur_y = GameOpt.MouseY;
     if( old_cur_x != GameOpt.MouseX || old_cur_y != GameOpt.MouseY )
     {
-        old_cur_x = GameOpt.MouseX;
-        old_cur_y = GameOpt.MouseY;
-
         // Script handler
         if( Script::PrepareContext( ClientFunctions.MouseMove, _FUNC_, "Game" ) )
             Script::RunPrepared();
 
         // Engine handlers
         LMenuMouseMove();
+
+        // Store last position to avid redundant calls
+        old_cur_x = GameOpt.MouseX;
+        old_cur_y = GameOpt.MouseY;
     }
 
     // Get buffered data
@@ -4702,14 +4699,14 @@ void FOClient::Net_OnEraseItemFromMap()
     Bin >> item_id;
     Bin >> is_deleted;
 
-    HexMngr.FinishItem( item_id, is_deleted );
-
     Item* item = HexMngr.GetItemById( item_id );
     if( item && Script::PrepareContext( ClientFunctions.ItemMapOut, _FUNC_, "Game" ) )
     {
         Script::SetArgObject( item );
         Script::RunPrepared();
     }
+
+    HexMngr.FinishItem( item_id, is_deleted );
 
     // Refresh borders
     if( item && !item->IsRaked() )
@@ -6693,6 +6690,31 @@ void FOClient::SetDayTime( bool refresh )
 
 Item* FOClient::GetTargetContItem()
 {
+    if( !TargetSmth.IsContItem() )
+        return NULL;
+
+    // Script stuff
+    if( TargetSmth.GetParam() > 1 )
+    {
+        uint  item_id = TargetSmth.GetId();
+        Item* item = NULL;
+        if( TargetSmth.GetParam() == 2 )
+        {
+            if( Chosen )
+                item = Chosen->GetItem( item_id );
+        }
+        else
+        {
+            CritMap& critters = HexMngr.GetCritters();
+            for( auto it = critters.begin(), end = critters.end(); it != end && !item; ++it )
+                item = ( *it ).second->GetItem( item_id );
+        }
+        if( !item )
+            TargetSmth.Clear();
+        return item;
+    }
+
+    // Hardcoded stuff
     static Item inv_slot;
     #define TRY_SEARCH_IN_CONT( cont )                                                        \
         do { auto it = std::find( cont.begin(), cont.end(), item_id ); if( it != cont.end() ) \
@@ -6701,10 +6723,7 @@ Item* FOClient::GetTargetContItem()
         while( 0 )
     #define TRY_SEARCH_IN_SLOT( target_item )    do { if( target_item->GetId() == item_id ) { inv_slot = *target_item; return &inv_slot; } } while( 0 )
 
-    if( !TargetSmth.IsContItem() )
-        return NULL;
     uint item_id = TargetSmth.GetId();
-
     if( GetActiveScreen() != SCREEN_NONE )
     {
         switch( GetActiveScreen() )
@@ -9216,6 +9235,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.GetUseApCost, "get_use_ap_cost", "uint %s(CritterCl&,ItemCl&,uint8)" },
         { &ClientFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(CritterCl&,ItemCl&,uint8)" },
         { &ClientFunctions.CheckInterfaceHit, "check_interface_hit", "bool %s(int,int)" },
+        { &ClientFunctions.GetContItem, "get_cont_item", "bool %s(uint&,bool&)" },
     };
     const char*            config = msg_script.GetStr( STR_INTERNAL_SCRIPT_CONFIG );
     if( !Script::BindReservedFunctions( config, "client", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
@@ -9478,6 +9498,13 @@ Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, ushort proto_id, int s
     else if( slot >= 0 && slot < SLOT_GROUND )
         return cr->GetItemSlot( slot );
     return NULL;
+}
+
+Item* FOClient::SScriptFunc::Crit_GetItemById( CritterCl* cr, uint item_id )
+{
+    if( cr->IsNotValid )
+        SCRIPT_ERROR_R0( "This nullptr." );
+    return cr->GetItem( item_id );
 }
 
 uint FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr, int slot, ScriptArray* items )
@@ -9988,6 +10015,42 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     else if( cmd == "ProcessMouseScroll" )
     {
         Self->ProcessMouseScroll();
+    }
+    else if( cmd == "LMenuDraw" )
+    {
+        Self->LMenuDraw();
+    }
+    else if( cmd == "CurDraw" )
+    {
+        Self->CurDraw();
+    }
+    else if( cmd == "CurDrawHand" )
+    {
+        Self->CurDrawHand();
+    }
+    else if( cmd == "SetMousePos" )
+    {
+        int x = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
+        int y = Str::AtoI( args.size() >= 3 ? args[ 2 ].c_str() : "0" );
+        Self->SetCurPos( x, y );
+    }
+    else if( cmd == "SplitDrop" )
+    {
+        uint  item_id = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
+        Item* item = Self->Chosen->GetItem( item_id );
+        Self->SplitStart( item, SLOT_GROUND );
+    }
+    else if( cmd == "GetInvItemInfo" )
+    {
+        return ScriptString::Create( Self->InvItemInfo );
+    }
+    else if( cmd == "IsLMenu" )
+    {
+        return ScriptString::Create( Self->IsLMenu() ? "true" : "false" );
+    }
+    else if( cmd == "LMenuTryActivate" )
+    {
+        Self->LMenuTryActivate();
     }
     else
     {

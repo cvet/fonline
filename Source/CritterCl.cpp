@@ -144,9 +144,6 @@ void CritterCl::AddItem( Item* item )
 
 void CritterCl::EraseItem( Item* item, bool animate )
 {
-    if( !item )
-        return;
-
     if( ItemSlotMain == item )
         ItemSlotMain = DefItemSlotHand;
     if( ItemSlotExt == item )
@@ -165,7 +162,9 @@ void CritterCl::EraseItem( Item* item, bool animate )
         }
     }
 
+    item->IsNotValid = true;
     item->Release();
+
     if( animate && !IsAnim() )
         AnimateStay();
 }

@@ -387,6 +387,7 @@ int FOClient::InitIface()
     LMenuY = 0;
     LMenuRestoreCurX = 0;
     LMenuRestoreCurY = 0;
+    LMenuHeightOffset = 0;
     LMenuSet( LMENU_OFF );
     LMenuNodeHeight = IfaceIni.GetInt( "LMenuNodeHeight", 40 );
     LMenuCritNodes.push_back( LMENU_NODE_LOOK );
@@ -4456,6 +4457,26 @@ void FOClient::LMenuCollect()
     LMenuY = GameOpt.MouseY;
     LMenuRestoreCurX = GameOpt.MouseX;
     LMenuRestoreCurY = GameOpt.MouseY;
+    LMenuHeightOffset = 0;
+
+    if( Script::PrepareContext( ClientFunctions.GetContItem, _FUNC_, "Game" ) )
+    {
+        uint item_id = 0;
+        bool is_enemy = 0;
+        Script::SetArgAddress( &item_id );
+        Script::SetArgAddress( &is_enemy );
+        if( Script::RunPrepared() && Script::GetReturnedBool() )
+        {
+            if( item_id )
+            {
+                TargetSmth.SetContItem( item_id, is_enemy ? 3 : 2 );
+                LMenuSet( LMENU_ITEM_INV );
+            }
+            if( !LMenuCurNodes )
+                LMenuSet( LMENU_OFF );
+            return;
+        }
+    }
 
     int screen = GetActiveScreen();
     if( screen )
@@ -4849,7 +4870,10 @@ void FOClient::LMenuMouseMove()
 {
     if( IsLMenu() )
     {
-        LMenuCurNode = ( GameOpt.MouseY - LMenuY ) / LMenuNodeHeight;
+        LMenuHeightOffset += GameOpt.MouseY - LMenuRestoreCurY;
+        SetCurPos( LMenuRestoreCurX, LMenuRestoreCurY );
+
+        LMenuCurNode = LMenuHeightOffset / LMenuNodeHeight;
         if( LMenuCurNode < 0 )
             LMenuCurNode = 0;
         if( LMenuCurNode > (int) LMenuCurNodes->size() - 1 )
@@ -5060,9 +5084,9 @@ void FOClient::LMenuMouseUp()
             if( !Chosen->IsLife() || !Chosen->IsFree() )
                 break;
             if( cont_item->IsStackable() && cont_item->GetCount() > 1 )
-                SplitStart( cont_item, SLOT_GROUND | ( ( TargetSmth.GetParam() ? 1 : 0 ) << 16 ) );
+                SplitStart( cont_item, SLOT_GROUND | ( ( ( TargetSmth.GetParam() == 1 || TargetSmth.GetParam() == 3 ) ? 1 : 0 ) << 16 ) );
             else
-                AddActionBack( CHOSEN_MOVE_ITEM, cont_item->GetId(), cont_item->GetCount(), SLOT_GROUND, TargetSmth.GetParam() ? 1 : 0 );
+                AddActionBack( CHOSEN_MOVE_ITEM, cont_item->GetId(), cont_item->GetCount(), SLOT_GROUND, ( TargetSmth.GetParam() == 1 || TargetSmth.GetParam() == 3 ) ? 1 : 0 );
             break;
         case LMENU_NODE_UNLOAD:
             if( !inv_item )
@@ -5550,6 +5574,7 @@ void FOClient::SetCurPos( int x, int y )
     GameOpt.MouseX = x;
     GameOpt.MouseY = y;
     SDL_WarpMouseInWindow( MainWindow, x, y );
+    SDL_FlushEvent( SDL_MOUSEMOTION );
 }
 
 // ==============================================================================================================================
@@ -9495,100 +9520,108 @@ void FOClient::CurDraw()
         SprMngr.DrawSprite( CurPDef, x, y );
         break;
     case CUR_HAND:
-        if( !Chosen )
-            break;
-
-        if( GetActiveScreen() == SCREEN__INVENTORY )
-        {
-            if( IfaceHold && InvHoldId )
-            {
-                Item* item = Chosen->GetItem( InvHoldId );
-                if( !item )
-                    break;
-                AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
-                if( !anim )
-                    break;
-                if( !( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) ) )
-                    return;
-                x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-                y = GameOpt.MouseY - ( si->Height / 2 ) + si->OffsY;
-                SprMngr.DrawSprite( anim, x, y, item->GetInvColor() );
-            }
-            else
-            {
-DrawCurHand:
-                if( !( si = SprMngr.GetSpriteInfo( CurPHand->GetCurSprId() ) ) )
-                    return;
-                x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-                y = GameOpt.MouseY - si->Height + si->OffsY;
-                SprMngr.DrawSprite( CurPHand, x, y );
-                break;
-            }
-        }
-        else if( GetActiveScreen() == SCREEN__BARTER )
-        {
-            if( IfaceHold && BarterHoldId )
-            {
-                ItemVec* cont = NULL;
-                switch( IfaceHold )
-                {
-                case IFACE_BARTER_CONT1:
-                    cont = &InvContInit;
-                    break;
-                case IFACE_BARTER_CONT2:
-                    cont = &BarterCont2Init;
-                    break;
-                case IFACE_BARTER_CONT1O:
-                    cont = &BarterCont1oInit;
-                    break;
-                case IFACE_BARTER_CONT2O:
-                    cont = &BarterCont2oInit;
-                    break;
-                default:
-                    goto DrawCurHand;
-                }
-
-                auto it = std::find( cont->begin(), cont->end(), BarterHoldId );
-                if( it == cont->end() )
-                    goto DrawCurHand;
-                Item* item = &( *it );
-
-                AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
-                if( !anim )
-                    goto DrawCurHand;
-
-                if( !( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) ) )
-                    goto DrawCurHand;
-                x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-                y = GameOpt.MouseY - ( si->Height / 2 ) + si->OffsY;
-                SprMngr.DrawSprite( anim, x, y, item->GetInvColor() );
-            }
-            else
-                goto DrawCurHand;
-        }
-        else if( GetActiveScreen() == SCREEN__PICKUP && PupHoldId )
-        {
-            Item* item = GetContainerItem( IfaceHold == IFACE_PUP_CONT1 ? PupCont1 : PupCont2, PupHoldId );
-            if( item )
-            {
-                AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
-                if( anim )
-                {
-                    if( !( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) ) )
-                        return;
-                    x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-                    y = GameOpt.MouseY - ( si->Height / 2 ) + si->OffsY;
-                    SprMngr.DrawSprite( anim, x, y, item->GetInvColor() );
-                }
-            }
-        }
-        else
-            goto DrawCurHand;
+        CurDrawHand();
         break;
     default:
         SetCurMode( CUR_DEFAULT );
         break;
     }
+}
+
+void FOClient::CurDrawHand()
+{
+    if( !Chosen )
+        return;
+
+    SpriteInfo* si = NULL;
+    int x = 0, y = 0;
+
+    if( GetActiveScreen() == SCREEN__INVENTORY )
+    {
+        if( IfaceHold && InvHoldId )
+        {
+            Item* item = Chosen->GetItem( InvHoldId );
+            if( !item )
+                return;
+            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
+            if( !anim )
+                return;
+            if( !( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) ) )
+                return;
+            x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
+            y = GameOpt.MouseY - ( si->Height / 2 ) + si->OffsY;
+            SprMngr.DrawSprite( anim, x, y, item->GetInvColor() );
+        }
+        else
+        {
+DrawCurHand:
+            if( !( si = SprMngr.GetSpriteInfo( CurPHand->GetCurSprId() ) ) )
+                return;
+            x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
+            y = GameOpt.MouseY - si->Height + si->OffsY;
+            SprMngr.DrawSprite( CurPHand, x, y );
+            return;
+        }
+    }
+    else if( GetActiveScreen() == SCREEN__BARTER )
+    {
+        if( IfaceHold && BarterHoldId )
+        {
+            ItemVec* cont = NULL;
+            switch( IfaceHold )
+            {
+            case IFACE_BARTER_CONT1:
+                cont = &InvContInit;
+                break;
+            case IFACE_BARTER_CONT2:
+                cont = &BarterCont2Init;
+                break;
+            case IFACE_BARTER_CONT1O:
+                cont = &BarterCont1oInit;
+                break;
+            case IFACE_BARTER_CONT2O:
+                cont = &BarterCont2oInit;
+                break;
+            default:
+                goto DrawCurHand;
+            }
+
+            auto it = std::find( cont->begin(), cont->end(), BarterHoldId );
+            if( it == cont->end() )
+                goto DrawCurHand;
+            Item* item = &( *it );
+
+            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
+            if( !anim )
+                goto DrawCurHand;
+
+            if( !( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) ) )
+                goto DrawCurHand;
+            x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
+            y = GameOpt.MouseY - ( si->Height / 2 ) + si->OffsY;
+            SprMngr.DrawSprite( anim, x, y, item->GetInvColor() );
+        }
+        else
+            goto DrawCurHand;
+    }
+    else if( GetActiveScreen() == SCREEN__PICKUP && PupHoldId )
+    {
+        Item* item = GetContainerItem( IfaceHold == IFACE_PUP_CONT1 ? PupCont1 : PupCont2, PupHoldId );
+        if( item )
+        {
+            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
+            if( anim )
+            {
+                if( !( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) ) )
+                    return;
+                x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
+                y = GameOpt.MouseY - ( si->Height / 2 ) + si->OffsY;
+                SprMngr.DrawSprite( anim, x, y, item->GetInvColor() );
+            }
+        }
+    }
+    else
+        goto DrawCurHand;
 }
 
 // ==============================================================================================================================

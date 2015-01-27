@@ -1328,6 +1328,10 @@ GameOptions::GameOptions()
     RegParams = NULL;
     RegName = ScriptString::Create();
     RegPassword = ScriptString::Create();
+    ChosenLightColor = 0;
+    ChosenLightDistance = 4;
+    ChosenLightIntensity = 2500;
+    ChosenLightFlags = 0;
 
     // Mapper
     ClientPath = ScriptString::Create( DIR_SLASH_SD );

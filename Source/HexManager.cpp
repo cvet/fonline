@@ -378,15 +378,18 @@ bool HexManager::AddItem( uint id, ushort pid, ushort hx, ushort hy, bool is_add
     ItemHex* item_old = GetItemById( id );
     if( item_old )
     {
-        if( item_old->IsFinishing() )
-            item_old->StopFinishing();
         if( item_old->GetProtoId() == pid && item_old->GetHexX() == hx && item_old->GetHexY() == hy )
         {
+            item_old->IsNotValid = false;
+            if( item_old->IsFinishing() )
+                item_old->StopFinishing();
             ChangeItem( id, *data );
             return true;
         }
         else
+        {
             DeleteItem( item_old );
+        }
     }
 
     // Parse
@@ -474,6 +477,8 @@ void HexManager::FinishItem( uint id, bool is_deleted )
     item->Finish();
     if( is_deleted )
         item->SetHideAnim();
+
+    item->IsNotValid = true;
 }
 
 auto HexManager::DeleteItem( ItemHex * item, bool with_delete /* = true */ )->ItemHexVec::iterator
@@ -679,9 +684,9 @@ bool HexManager::RunEffect( ushort eff_pid, ushort from_hx, ushort from_hy, usho
     Field&   f = GetField( from_hx, from_hy );
     ItemHex* item = new ItemHex( 0, proto, NULL, from_hx, from_hy, 0, 0, &f.ScrX, &f.ScrY, 0 );
 
-    float sx = 0;
-    float sy = 0;
-    uint  dist = 0;
+    float    sx = 0;
+    float    sy = 0;
+    uint     dist = 0;
 
     if( from_hx != to_hx || from_hy != to_hy )
     {
@@ -1554,7 +1559,7 @@ void HexManager::CollectLightSources()
 
         // Default chosen light
         if( cr->IsChosen() && !added )
-            lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), 0, 4, MAX_LIGHT_VALUE / 4, 0 ) );
+            lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), GameOpt.ChosenLightColor, GameOpt.ChosenLightDistance, GameOpt.ChosenLightIntensity, GameOpt.ChosenLightFlags ) );
     }
     #endif
 }

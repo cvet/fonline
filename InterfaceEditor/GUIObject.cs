@@ -8,6 +8,7 @@ using System.Drawing.Design;
 using System.IO;
 using System.Windows.Forms.Design;
 using System.Text.RegularExpressions;
+using FastColoredTextBoxNS;
 
 namespace InterfaceEditor
 {
@@ -205,6 +206,7 @@ namespace InterfaceEditor
 
 		public AnchorStyles Anchor { get; set; }
 		public DockStyle Dock { get; set; }
+		public bool IsDraggable { get; set; }
 		public bool IsNotHittable { get; set; }
 		public bool CheckTransparentOnHit { get; set; }
 
@@ -264,6 +266,8 @@ namespace InterfaceEditor
 		public string OnFocusChanged { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnHoverChanged { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnDragChanged { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnResizeGrid { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
@@ -582,14 +586,14 @@ namespace InterfaceEditor
 			var svc = (IWindowsFormsEditorService)provider.GetService(typeof(IWindowsFormsEditorService));
 			if (svc != null)
 			{
-				TextBox txt = new TextBox
+				FastColoredTextBox txt = new FastColoredTextBox
 				{
-					Text = (string)value,
 					Dock = DockStyle.Fill,
 					Multiline = true,
-					AcceptsReturn = true,
 					Font = new Font("Courier New", 10f),
+					Language = Language.CSharp,
 				};
+				txt.Text = (string)value;
 				Button ok = new Button
 				{
 					Text = "OK",
@@ -600,6 +604,7 @@ namespace InterfaceEditor
 				{
 					Text = "Script editor",
 					Size = new Size(800, 600),
+					//WindowState = FormWindowState.Maximized,
 					AcceptButton = ok,
 				};
 				frm.Controls.Add(txt);

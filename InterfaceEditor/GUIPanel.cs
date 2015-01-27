@@ -41,9 +41,6 @@ namespace InterfaceEditor
 			}
 		}
 
-		public bool IsCanMove { get; set; }
-		public bool IsMoveIgnoreBorders { get; set; }
-
 		public GUIPanel(GUIObject parent)
 			: base(parent)
 		{

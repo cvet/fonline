@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 469 )
+#define FONLINE_VERSION                          ( 472 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
@@ -326,6 +326,7 @@ struct ClientScriptFunctions
     int GetUseApCost;
     int GetAttackDistantion;
     int CheckInterfaceHit;
+    int GetContItem;
 } extern ClientFunctions;
 
 struct MapperScriptFunctions
@@ -692,6 +693,10 @@ struct GameOptions
     ScriptArray*  RegParams;
     ScriptString* RegName;
     ScriptString* RegPassword;
+    uint          ChosenLightColor;
+    uchar         ChosenLightDistance;
+    int           ChosenLightIntensity;
+    uchar         ChosenLightFlags;
 
     // Mapper
     ScriptString* ClientPath;

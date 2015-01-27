@@ -308,6 +308,7 @@ public:
         {
             smthType = SMTH_NONE;
             smthId = 0;
+            smthParam = 0;
         }
         bool IsSmth()     { return smthType != SMTH_NONE; }
         bool IsCritter()  { return smthType == SMTH_CRITTER; }
@@ -523,6 +524,7 @@ public:
         static uint       Crit_CountItem( CritterCl* cr, ushort proto_id );
         static uint       Crit_CountItemByType( CritterCl* cr, uchar type );
         static Item*      Crit_GetItem( CritterCl* cr, ushort proto_id, int slot );
+        static Item*      Crit_GetItemById( CritterCl* cr, uint item_id );
         static uint       Crit_GetItems( CritterCl* cr, int slot, ScriptArray* items );
         static uint       Crit_GetItemsByType( CritterCl* cr, int type, ScriptArray* items );
         static ProtoItem* Crit_GetSlotProto( CritterCl* cr, int slot, uchar& mode );
@@ -874,6 +876,7 @@ public:
     bool      LMenuTryActivated;
     uint      LMenuStartTime;
     int       LMenuX, LMenuY, LMenuRestoreCurX, LMenuRestoreCurY;
+    int       LMenuHeightOffset;
     int       LMenuNodeHeight;
     UCharVec* LMenuCurNodes;
     int       LMenuCurNode;
@@ -1704,6 +1707,7 @@ public:
     * CurPScrRt, * CurPScrLt, * CurPScrUp, * CurPScrDw, * CurPScrRU, * CurPScrLU, * CurPScrRD, * CurPScrLD;
 
     void CurDraw();
+    void CurDrawHand();
 
 /************************************************************************/
 /* Generic                                                              */

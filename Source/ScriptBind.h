@@ -852,6 +852,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "uint ItemsWeight() cons
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "uint ItemsVolume() const", asFUNCTION( BIND_CLASS Crit_ItemsVolume ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "uint CountItem(uint16 protoId) const", asFUNCTION( BIND_CLASS Crit_CountItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "ItemCl@+ GetItem(uint16 protoId, int slot) const", asFUNCTION( BIND_CLASS Crit_GetItem ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "ItemCl@+ GetItemById(uint itemId) const", asFUNCTION( BIND_CLASS Crit_GetItemById ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "uint GetItems(int slot, ItemCl@[]@+ items) const", asFUNCTION( BIND_CLASS Crit_GetItems ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "uint GetItemsByType(int type, ItemCl@[]@+ items) const", asFUNCTION( BIND_CLASS Crit_GetItemsByType ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "ProtoItem@+ GetSlotProto(int slot, uint8& mode) const", asFUNCTION( BIND_CLASS Crit_GetSlotProto ), asCALL_CDECL_OBJFIRST ) );
@@ -1004,7 +1005,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void GetDayColor(uint dayPart, uin
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RunServerScript(string& funcName, int p0, int p1, int p2, string@+ p3, int[]@+ p4)", asFUNCTION( BIND_CLASS Global_RunServerScript ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RunServerScriptUnsafe(string& funcName, int p0, int p1, int p2, string@+ p3, int[]@+ p4)", asFUNCTION( BIND_CLASS Global_RunServerScriptUnsafe ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowScreen(int screen, dictionary@+ params = null)", asFUNCTION( BIND_CLASS Global_ShowScreen ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void HideScreen(int screen)", asFUNCTION( BIND_CLASS Global_HideScreen ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void HideScreen(int screen = 0)", asFUNCTION( BIND_CLASS Global_HideScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void GetHardcodedScreenPos(int screen, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHardcodedScreenPos ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawHardcodedScreen(int screen)", asFUNCTION( BIND_CLASS Global_DrawHardcodedScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void HandleHardcodedScreenMouse(int screen, int button, bool down, bool move)", asFUNCTION( BIND_CLASS Global_HandleHardcodedScreenMouse ), asCALL_CDECL ) );
@@ -1543,6 +1544,10 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "int __MusicVolume", &GameOpt.Music
 BIND_ASSERT( engine->RegisterGlobalProperty( "int[]@ __RegParams", &GameOpt.RegParams ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __RegName", &GameOpt.RegName ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __RegPassword", &GameOpt.RegPassword ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ChosenLightColor", &GameOpt.ChosenLightColor ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "uint8 __ChosenLightDistance", &GameOpt.ChosenLightDistance ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "int __ChosenLightIntensity", &GameOpt.ChosenLightIntensity ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "uint8 __ChosenLightFlags", &GameOpt.ChosenLightFlags ) );
 #endif
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MapHexagonal", &GameOpt.MapHexagonal ) );
