@@ -1568,6 +1568,13 @@ void FOServer::Process_CreateClient( Client* cl )
             return;
         }
 
+        if( !Critter::ParamsRegEnabled[ index ] )
+        {
+            cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME );
+            cl->Disconnect();
+            return;
+        }
+
         cl->Data.Params[ index ] = val;
     }
 
