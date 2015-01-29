@@ -495,6 +495,7 @@ public:
     int         ScriptGetHitProc( CritterCl* cr, int hit_location );
     void        DrawIfaceLayer( uint layer );
     static bool PragmaCallbackCrData( const char* text );
+    void        OnItemInvChanged( Item* old_item, Item* new_item );
 
     struct SScriptFunc
     {
@@ -686,7 +687,7 @@ public:
         static float&        GmapGroupSpeed;
     } ScriptFunc;
 
-    static bool SpritesCanDraw;
+    static int SpritesCanDraw;
 
 /************************************************************************/
 /* Interface                                                            */

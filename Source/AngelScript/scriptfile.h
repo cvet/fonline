@@ -44,12 +44,12 @@ public:
     virtual bool IsEOF() const;
 
     // Reading
-    virtual int     ReadString( unsigned int length, ScriptString& str );
-    virtual int     ReadLine( ScriptString& str );
-    virtual asINT64 ReadInt( asUINT bytes );
-    virtual asQWORD ReadUInt( asUINT bytes );
-    virtual float   ReadFloat();
-    virtual double  ReadDouble();
+    virtual ScriptString* ReadString( unsigned int length );
+    virtual ScriptString* ReadLine();
+    virtual asINT64       ReadInt( asUINT bytes );
+    virtual asQWORD       ReadUInt( asUINT bytes );
+    virtual float         ReadFloat();
+    virtual double        ReadDouble();
 
     // Writing
     virtual int WriteString( const ScriptString& str );

@@ -66,7 +66,7 @@ int HandleAppEvents( void* userdata, SDL_Event* event )
 #endif
 
 FOClient*    FOClient::Self = NULL;
-bool         FOClient::SpritesCanDraw = false;
+int          FOClient::SpritesCanDraw = 0;
 static uint* UID4 = NULL;
 FOClient::FOClient()
 {
@@ -7520,6 +7520,9 @@ label_EndMove:
             ap_cost = Chosen->GetApCostDropItem();
         CHECK_NEED_AP( ap_cost );
 
+        // Store old copy
+        Item* old_item = item->Clone();
+
         // Move
         if( to_slot == SLOT_GROUND )
         {
@@ -7591,12 +7594,7 @@ label_EndMove:
         Chosen->SubAp( ap_cost );
 
         // Notify scripts about item changing
-        if( Script::PrepareContext( ClientFunctions.ItemInvChanged, _FUNC_, "Game" ) )
-        {
-            Script::SetArgObject( item );             // Todo: pass not modified item copy
-            Script::SetArgObject( item );
-            Script::RunPrepared();
-        }
+        OnItemInvChanged( old_item, item );
     }
     break;
     case CHOSEN_MOVE_ITEM_CONT:
@@ -9276,11 +9274,22 @@ void FOClient::DrawIfaceLayer( uint layer )
 {
     if( Script::PrepareContext( ClientFunctions.RenderIface, _FUNC_, "Game" ) )
     {
-        SpritesCanDraw = true;
+        SpritesCanDraw++;
         Script::SetArgUInt( layer );
         Script::RunPrepared();
-        SpritesCanDraw = false;
+        SpritesCanDraw--;
     }
+}
+
+void FOClient::OnItemInvChanged( Item* old_item, Item* item )
+{
+    if( Script::PrepareContext( ClientFunctions.ItemInvChanged, _FUNC_, "Game" ) )
+    {
+        Script::SetArgObject( old_item );
+        Script::SetArgObject( item );
+        Script::RunPrepared();
+    }
+    old_item->Release();
 }
 
 int SortCritterHx_ = 0, SortCritterHy_ = 0;
@@ -10040,8 +10049,10 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         Item* item = Self->Chosen->GetItem( item_id );
         Self->SplitStart( item, SLOT_GROUND );
     }
-    else if( cmd == "GetInvItemInfo" )
+    else if( cmd == "InvItemInfo" )
     {
+        if( args.size() >= 2 )
+            Self->InvItemInfo = "";
         return ScriptString::Create( Self->InvItemInfo );
     }
     else if( cmd == "IsLMenu" )

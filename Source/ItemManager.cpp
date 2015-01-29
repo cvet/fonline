@@ -163,7 +163,7 @@ bool ItemManager::LoadProtos( ProtoItemVec& protos, const char* fname )
             const char* name;
             int         type_id;
             int         offset;
-            ot->GetProperty( i, &name, &type_id, NULL, &offset );
+            ot->GetProperty( i, &name, &type_id, NULL, NULL, &offset );
 
             if( !fopro.GetStr( "Proto", name, "", svalue ) )
             {

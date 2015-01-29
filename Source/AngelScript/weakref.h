@@ -19,9 +19,7 @@ public:
 	CScriptWeakRef(const CScriptWeakRef &other);
 	CScriptWeakRef(void *ref, asIObjectType *type);
 
-	// Memory management
-	void AddRef() const;
-	void Release() const;
+	~CScriptWeakRef();
 
 	// Copy the stored value from another weakref object
 	CScriptWeakRef &operator=(const CScriptWeakRef &other);
@@ -30,20 +28,24 @@ public:
 	bool operator==(const CScriptWeakRef &o) const;
 	bool operator!=(const CScriptWeakRef &o) const;
 
+	// Sets a new reference
+	CScriptWeakRef &Set(void *newRef);
+
 	// Returns the object if it is still alive
+	// This will increment the refCount of the returned object
 	void *Get() const;
+
+	// Returns true if the contained reference is the same
+	bool Equals(void *ref) const;
 
 	// Returns the type of the reference held
 	asIObjectType *GetRefType() const;
 
 protected:
-	~CScriptWeakRef();
-
 	// These functions need to have access to protected
 	// members in order to call them from the script engine
 	friend void RegisterScriptWeakRef_Native(asIScriptEngine *engine);
 
-	mutable int            refCount;
 	void                  *m_ref;
 	asIObjectType         *m_type;
 	asILockableSharedBool *m_weakRefFlag;

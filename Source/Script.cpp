@@ -1952,7 +1952,13 @@ uint GetFuncNum( asIScriptFunction* func )
     if( !func_num )
     {
         char func_signature[ MAX_FOTEXT ];
-        Str::Format( func_signature, "%s|%s", func->GetModuleName(), func->GetDeclaration( true, true ) );
+        Str::Copy( func_signature, func->GetModuleName() );
+        Str::Append( func_signature, "|" );
+        Str::Append( func_signature, func->GetDeclaration( true, true ) );
+        char* ns = func_signature;
+        Str::GoTo( ns, '|', true );
+        Str::GoTo( ns, ' ', true );
+        Str::Insert( ns, "::" );
         func_num = Str::GetHash( func_signature );
         func->SetUserData( (void*) func_num );
     }

@@ -198,6 +198,9 @@ bool ScriptDictionary::GetGCFlag()
 
 void ScriptDictionary::EnumReferences( asIScriptEngine* engine )
 {
+    // TODO: If garbage collection can be done from a separate thread, then this method must be
+    //       protected so that it doesn't get lost during the iteration if the dictionary is modified
+
     // Call the gc enum callback for each of the objects
     map< string, ScriptDictValue >::iterator it;
     for( it = dict.begin(); it != dict.end(); it++ )
@@ -259,6 +262,16 @@ const ScriptDictValue* ScriptDictionary::operator[]( const ScriptString& key ) c
         ctx->SetException( "Invalid access to non-existing value" );
 
     return 0;
+}
+
+void ScriptDictValue::Set( asIScriptEngine* engine, ScriptDictValue& value )
+{
+    if( value.m_typeId & asTYPEID_OBJHANDLE )
+        Set( engine, (void*) &value.m_valueObj, value.m_typeId );
+    else if( value.m_typeId & asTYPEID_MASK_OBJECT )
+        Set( engine, (void*) value.m_valueObj, value.m_typeId );
+    else
+        Set( engine, (void*) &value.m_valueInt, value.m_typeId );
 }
 
 void ScriptDictionary::Set( const ScriptString& key, void* value, int typeId )
@@ -509,11 +522,28 @@ bool ScriptDictValue::Get( asIScriptEngine* engine, void* value, int typeId ) co
     {
         // A handle can be retrieved if the stored type is a handle of same or compatible type
         // or if the stored type is an object that implements the interface that the handle refer to.
-        if( ( m_typeId & asTYPEID_MASK_OBJECT ) &&
-            engine->IsHandleCompatibleWithObject( m_valueObj, m_typeId, typeId ) )
+        if( ( m_typeId & asTYPEID_MASK_OBJECT ) )
         {
-            engine->AddRefScriptObject( m_valueObj, engine->GetObjectTypeById( m_typeId ) );
-            *(void**) value = m_valueObj;
+            // Don't allow the get if the stored handle is to a const, but the desired handle is not
+            if( ( m_typeId & asTYPEID_HANDLETOCONST ) && !( typeId & asTYPEID_HANDLETOCONST ) )
+                return false;
+
+            asIObjectType* currType = engine->GetObjectTypeById( m_typeId );
+            if( currType->GetFlags() & asOBJ_SCRIPT_FUNCTION )
+            {
+                // For function pointers it is necessary to check if they have the same signature
+                asIScriptFunction* func = reinterpret_cast< asIScriptFunction* >( m_valueObj );
+                if( !func->IsCompatibleWithTypeId( typeId ) )
+                    return false;
+
+                func->AddRef();
+                *reinterpret_cast< asIScriptFunction** >( value ) = func;
+            }
+            else
+            {
+                // RefCastObject will increment the refcount if successful
+                engine->RefCastObject( m_valueObj, currType, engine->GetObjectTypeById( typeId ), reinterpret_cast< void** >( value ) );
+            }
 
             return true;
         }
@@ -595,6 +625,22 @@ bool ScriptDictValue::Get( asIScriptEngine* engine, void* value, int typeId ) co
                 *(int*) value = 0;
             }
         }
+        else if( typeId == asTYPEID_BOOL )
+        {
+            if( m_typeId & asTYPEID_OBJHANDLE )
+                *(bool*) value = m_valueObj ? true : false;
+            else if( m_typeId & asTYPEID_MASK_OBJECT )
+            {
+                // TODO: Check if the object has a conversion operator to a primitive value
+                *(bool*) value = true;
+            }
+            else
+            {
+                asQWORD zero = 0;
+                int     size = engine->GetSizeOfPrimitiveType( typeId );
+                *(bool*) value = memcmp( &m_valueInt, &zero, size ) == 0 ? false : true;
+            }
+        }
     }
 
     // It was not possible to retrieve the value using the desired typeId
@@ -640,6 +686,18 @@ static ScriptDictValue& ScriptDictValue_opAssign( void* ref, int typeId, ScriptD
         asIScriptEngine* engine = ctx->GetEngine();
         obj->Set( engine, ref, typeId );
     }
+    return *obj;
+}
+
+static ScriptDictValue& ScriptDictValue_opAssign( const ScriptDictValue& other, ScriptDictValue* obj )
+{
+    asIScriptContext* ctx = asGetActiveContext();
+    if( ctx )
+    {
+        asIScriptEngine* engine = ctx->GetEngine();
+        obj->Set( engine, const_cast< ScriptDictValue& >( other ) );
+    }
+
     return *obj;
 }
 
@@ -694,11 +752,19 @@ void RegisterScriptDictionary_Native( asIScriptEngine* engine )
 {
     int r;
 
+    #if AS_CAN_USE_CPP11
+    // With C++11 it is possible to use asGetTypeTraits to automatically determine the correct flags that represents the C++ class
+    r = engine->RegisterObjectType( "dictionaryValue", sizeof( ScriptDictValue ), asOBJ_VALUE | asOBJ_ASHANDLE | asGetTypeTraits< ScriptDictValue >() );
+    assert( r >= 0 );
+    #else
     r = engine->RegisterObjectType( "dictionaryValue", sizeof( ScriptDictValue ), asOBJ_VALUE | asOBJ_ASHANDLE | asOBJ_APP_CLASS_CD );
     assert( r >= 0 );
+    #endif
     r = engine->RegisterObjectBehaviour( "dictionaryValue", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION( ScriptDictValue_Construct ), asCALL_CDECL_OBJLAST );
     assert( r >= 0 );
     r = engine->RegisterObjectBehaviour( "dictionaryValue", asBEHAVE_DESTRUCT, "void f()", asFUNCTION( ScriptDictValue_Destruct ), asCALL_CDECL_OBJLAST );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "dictionaryValue", "dictionaryValue &opAssign(const dictionaryValue &in)", asFUNCTIONPR( ScriptDictValue_opAssign, ( const ScriptDictValue &, ScriptDictValue* ), ScriptDictValue & ), asCALL_CDECL_OBJLAST );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dictionaryValue", "dictionaryValue &opHndlAssign(const ?&in)", asFUNCTIONPR( ScriptDictValue_opAssign, ( void*, int, ScriptDictValue* ), ScriptDictValue & ), asCALL_CDECL_OBJLAST );
     assert( r >= 0 );
@@ -708,13 +774,13 @@ void RegisterScriptDictionary_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dictionaryValue", "dictionaryValue &opAssign(int64)", asFUNCTIONPR( ScriptDictValue_opAssign, ( asINT64, ScriptDictValue* ), ScriptDictValue & ), asCALL_CDECL_OBJLAST );
     assert( r >= 0 );
-    r = engine->RegisterObjectBehaviour( "dictionaryValue", asBEHAVE_REF_CAST, "void opCast(?&out)", asFUNCTIONPR( ScriptDictValue_opCast, ( void*, int, ScriptDictValue* ), void ), asCALL_CDECL_OBJLAST );
+    r = engine->RegisterObjectMethod( "dictionaryValue", "void opCast(?&out)", asFUNCTIONPR( ScriptDictValue_opCast, ( void*, int, ScriptDictValue* ), void ), asCALL_CDECL_OBJLAST );
     assert( r >= 0 );
-    r = engine->RegisterObjectBehaviour( "dictionaryValue", asBEHAVE_VALUE_CAST, "void opConv(?&out)", asFUNCTIONPR( ScriptDictValue_opCast, ( void*, int, ScriptDictValue* ), void ), asCALL_CDECL_OBJLAST );
+    r = engine->RegisterObjectMethod( "dictionaryValue", "void opConv(?&out)", asFUNCTIONPR( ScriptDictValue_opCast, ( void*, int, ScriptDictValue* ), void ), asCALL_CDECL_OBJLAST );
     assert( r >= 0 );
-    r = engine->RegisterObjectBehaviour( "dictionaryValue", asBEHAVE_VALUE_CAST, "int64 opConv()", asFUNCTIONPR( ScriptDictValue_opConvInt, (ScriptDictValue*), asINT64 ), asCALL_CDECL_OBJLAST );
+    r = engine->RegisterObjectMethod( "dictionaryValue", "int64 opConv()", asFUNCTIONPR( ScriptDictValue_opConvInt, (ScriptDictValue*), asINT64 ), asCALL_CDECL_OBJLAST );
     assert( r >= 0 );
-    r = engine->RegisterObjectBehaviour( "dictionaryValue", asBEHAVE_VALUE_CAST, "double opConv()", asFUNCTIONPR( ScriptDictValue_opConvDouble, (ScriptDictValue*), double ), asCALL_CDECL_OBJLAST );
+    r = engine->RegisterObjectMethod( "dictionaryValue", "double opConv()", asFUNCTIONPR( ScriptDictValue_opConvDouble, (ScriptDictValue*), double ), asCALL_CDECL_OBJLAST );
     assert( r >= 0 );
 
     r = engine->RegisterObjectType( "dictionary", sizeof( ScriptDictionary ), asOBJ_REF | asOBJ_GC );

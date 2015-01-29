@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2015 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -46,6 +46,33 @@
 
 BEGIN_AS_NAMESPACE
 
+// TODO: 2.30.0: redesign: Improved method for discarding modules (faster clean-up, less abuse of garbage collector)
+//
+// I need to separate the reference counter for internal references and outside references:
+//
+//  - Internal references are for example, when the module refers to a function or object since it is declared in the module, or when
+//    a function refers to another function since it is being called in the code.
+//  - Outside references are for example object instances holding a reference to the object type, or a context currently
+//    executing a function.
+//
+// If no object instances are alive or no contexts are alive it is known that functions from a discarded module
+// can be called, so they can be destroyed without any need to execute the complex garbage collection routines.
+//
+// If there are live objects, the entire module should be kept for safe keeping, though no longer visible.
+//
+// TODO: It may not be necessary to keep track of internal references. Without keeping track of internal references, can I still
+//       handle RemoveFunction and RemoveGlobalVariable correctly?
+//
+// TODO: How to avoid global variables keeping code alive? For example a script object, or a funcdef?
+//       Can I do a quick check of the object types and functions to count number of outside references, and then do another
+//       check over the global variables to subtract the outside references coming from these? What if the outside reference
+//       is added by an application type in a global variable that the engine doesn't know about? Example, a global dictionary 
+//       holding object instances. Should discarding a module immediately destroy the content of the global variables? What if
+//       a live object tries to access the global variable after it has been discarded? Throwing a script exception is acceptable?
+//       Perhaps I need to allow the user to provide a clean-up routine that will be executed before destroying the objects. 
+//       Or I might just put that responsibility on the application.
+
+
 // internal
 asCModule::asCModule(const char *name, asCScriptEngine *engine)
 {
@@ -66,6 +93,8 @@ asCModule::~asCModule()
 {
 	InternalReset();
 
+	// The builder is not removed by InternalReset because it holds the script 
+	// sections that will be built, so we need to explictly remove it now if it exists
 	if( builder )
 	{
 		asDELETE(builder,asCBuilder);
@@ -86,16 +115,50 @@ asCModule::~asCModule()
 		}
 
 		// Remove the module from the engine
-		if( engine->lastModule == this )
-			engine->lastModule = 0;
-		engine->scriptModules.RemoveValue(this);
+		ACQUIREEXCLUSIVE(engine->engineRWLock);
+		// The module must have been discarded before it is deleted
+		asASSERT( !engine->scriptModules.Exists(this) );
+		engine->discardedModules.RemoveValue(this);
+		RELEASEEXCLUSIVE(engine->engineRWLock);
 	}
 }
 
 // interface
 void asCModule::Discard()
 {
-	asDELETE(this,asCModule);
+	// Reset the global variables already so that no object in the global variables keep the module alive forever.
+	// If any live object tries to access the global variables during clean up they will fail with a script exception,
+	// so the application must keep that in mind before discarding a module.
+	CallExit();
+
+	// Keep a local copy of the engine pointer, because once the module is moved do the discarded
+	// pile, it is possible that another thread might discard it while we are still in here. So no
+	// further access to members may be done after that
+	asCScriptEngine *lEngine = engine;
+
+	// Instead of deleting the module immediately, move it to the discarded pile
+	// This will turn it invisible to the application, yet keep it alive until all 
+	// external references to its entities have been released.
+	ACQUIREEXCLUSIVE(engine->engineRWLock);
+	if( lEngine->lastModule == this )
+		lEngine->lastModule = 0;
+	lEngine->scriptModules.RemoveValue(this);
+	lEngine->discardedModules.PushLast(this);
+	RELEASEEXCLUSIVE(lEngine->engineRWLock);
+
+	// Allow the engine to go over the list of discarded modules to see what can be cleaned up at this moment.
+	// Don't do this if the engine is already shutting down, as it will be done explicitly by the engine itself with error reporting
+	if( !lEngine->shuttingDown )
+	{
+		if( lEngine->ep.autoGarbageCollect )
+			lEngine->GarbageCollect();
+		else
+		{
+			// GarbageCollect calls DeleteDiscardedModules, so no need
+			// to call it again if we already called GarbageCollect
+			lEngine->DeleteDiscardedModules();
+		}
+	}
 }
 
 // interface
@@ -140,8 +203,9 @@ void *asCModule::GetUserData(asPWORD type) const
 	{
 		if( userData[n] == type )
 		{
+			void *ud = reinterpret_cast<void*>(userData[n+1]);
 			RELEASESHARED(engine->engineRWLock);
-			return reinterpret_cast<void*>(userData[n+1]);
+			return ud;
 		}
 	}
 
@@ -249,6 +313,15 @@ int asCModule::Build()
 #else
 	TimeIt("asCModule::Build");
 
+	// Don't allow the module to be rebuilt if there are still 
+	// external references that will need the previous code
+	// TODO: 2.30.0: interface: The asIScriptModule must have a method for querying if the module is used
+	if( HasExternalReferences(false) )
+	{
+		engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, TXT_MODULE_IS_IN_USE);
+		return asMODULE_IS_IN_USE;
+	}
+
 	// Only one thread may build at one time
 	// TODO: It should be possible to have multiple threads perform compilations
 	int r = engine->RequestBuild();
@@ -263,7 +336,7 @@ int asCModule::Build()
 		return asINVALID_CONFIGURATION;
 	}
 
- 	InternalReset();
+	InternalReset();
 
 	if( !builder )
 	{
@@ -447,32 +520,97 @@ void asCModule::CallExit()
 }
 
 // internal
+bool asCModule::HasExternalReferences(bool shuttingDown)
+{
+	// Check all entiteis in the module for any external references.
+	// If there are any external references the module cannot be deleted yet.
+	
+	for( asUINT n = 0; n < scriptFunctions.GetLength(); n++ )
+		if( scriptFunctions[n] && scriptFunctions[n]->externalRefCount.get() )
+		{
+			if( !shuttingDown )
+				return true;
+			else
+			{
+				asCString msg;
+				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
+
+				msg.Format(TXT_PREV_FUNC_IS_NAMED_s_TYPE_IS_d, scriptFunctions[n]->GetName(), scriptFunctions[n]->GetFuncType());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
+			}
+		}
+
+	for( asUINT n = 0; n < classTypes.GetLength(); n++ )
+		if( classTypes[n] && classTypes[n]->externalRefCount.get() )
+		{
+			if( !shuttingDown )
+				return true;
+			else
+			{
+				asCString msg;
+				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
+
+				msg.Format(TXT_PREV_TYPE_IS_NAMED_s, classTypes[n]->GetName());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
+			}
+		}
+
+	for( asUINT n = 0; n < funcDefs.GetLength(); n++ )
+		if( funcDefs[n] && funcDefs[n]->externalRefCount.get() )
+		{
+			if( !shuttingDown )
+				return true;
+			else
+			{
+				asCString msg;
+				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
+
+				msg.Format(TXT_PREV_FUNC_IS_NAMED_s_TYPE_IS_d, funcDefs[n]->GetName(), funcDefs[n]->GetFuncType());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
+			}
+		}
+
+	for( asUINT n = 0; n < templateInstances.GetLength(); n++ )
+		if( templateInstances[n] && templateInstances[n]->externalRefCount.get() )
+		{
+			if( !shuttingDown )
+				return true;
+			else
+			{
+				asCString msg;
+				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
+
+				msg.Format(TXT_PREV_TYPE_IS_NAMED_s, templateInstances[n]->GetName());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
+			}
+		}
+
+	return false;
+}
+
+// internal
 void asCModule::InternalReset()
 {
 	CallExit();
 
-	size_t n;
+	asUINT n;
 
-	// Release all global functions
-	asCSymbolTable<asCScriptFunction>::iterator funcIt = globalFunctions.List();
-	for( ; funcIt; funcIt++ )
-		(*funcIt)->Release();
+	// Remove all global functions
 	globalFunctions.Clear();
 
-	// First release all compiled functions
-	for( n = 0; n < scriptFunctions.GetLength(); n++ )
-		if( scriptFunctions[n] )
-			scriptFunctions[n]->Orphan(this);
-	scriptFunctions.SetLength(0);
-
-	// Release the global properties declared in the module
+	// Destroy the internals of the global properties here, but do not yet remove them from the 
+	// engine, because functions need the engine's varAddressMap to get to the property. If the
+	// property is removed already, it may leak as the refCount doesn't reach 0.
 	asCSymbolTableIterator<asCGlobalProperty> globIt = scriptGlobals.List();
 	while( globIt )
 	{
-		(*globIt)->Orphan(this);
+		(*globIt)->DestroyInternal();
 		globIt++;
 	}
-	scriptGlobals.Clear();
 
 	UnbindAllImportedFunctions();
 
@@ -481,11 +619,7 @@ void asCModule::InternalReset()
 	{
 		if( bindInformations[n] )
 		{
-			asUINT id = bindInformations[n]->importedFunctionSignature->id & ~FUNC_IMPORTED;
-			engine->importedFunctions[id] = 0;
-			engine->freeImportedFunctionIdxs.PushLast(id);
-
-			bindInformations[n]->importedFunctionSignature->Orphan(this);
+			bindInformations[n]->importedFunctionSignature->ReleaseInternal();
 
 			asDELETE(bindInformations[n], sBindInfo);
 		}
@@ -493,28 +627,148 @@ void asCModule::InternalReset()
 	bindInformations.SetLength(0);
 
 	// Free declared types, including classes, typedefs, and enums
-	// TODO: optimize: Check if it is possible to destroy the object directly without notifying the GC
+	for( n = 0; n < templateInstances.GetLength(); n++ )
+	{
+		asCObjectType *type = templateInstances[n];
+		if( engine->FindNewOwnerForSharedType(type, this) != this )
+		{
+			// The type is owned by another module, just release our reference
+			type->ReleaseInternal();
+			continue;
+		}
+
+		// Orphan the template instance
+		type->module = 0;
+
+		// No other module is holding the template type
+		engine->RemoveTemplateInstanceType(type);
+		type->ReleaseInternal();
+	}
+	templateInstances.SetLength(0);
 	for( n = 0; n < classTypes.GetLength(); n++ )
-		classTypes[n]->Orphan(this);
+	{
+		asCObjectType *type = classTypes[n];
+		if( type->IsShared() )
+		{
+			// The type is shared, so transfer ownership to another module that also uses it
+			if( engine->FindNewOwnerForSharedType(type, this) != this )
+			{
+				// The type is owned by another module, just release our reference
+				type->ReleaseInternal();
+				continue;
+			}
+		}
+
+		// The type should be destroyed now
+		type->DestroyInternal();
+
+		// Remove the type from the engine
+		if( type->IsShared() )
+		{
+			engine->sharedScriptTypes.RemoveValue(type);
+			type->ReleaseInternal();
+		}
+
+		// Release it from the module
+		type->module = 0;
+		type->ReleaseInternal();
+	}
 	classTypes.SetLength(0);
 	for( n = 0; n < enumTypes.GetLength(); n++ )
-		enumTypes[n]->Orphan(this);
+	{
+		asCObjectType *type = enumTypes[n];
+		if( type->IsShared() )
+		{
+			// The type is shared, so transfer ownership to another module that also uses it
+			if( engine->FindNewOwnerForSharedType(type, this) != this )
+			{
+				// The type is owned by another module, just release our reference
+				type->ReleaseInternal();
+				continue;
+			}
+		}
+
+		// The type should be destroyed now
+		type->DestroyInternal();
+
+		// Remove the type from the engine
+		if( type->IsShared() )
+		{
+			engine->sharedScriptTypes.RemoveValue(type);
+			type->ReleaseInternal();
+		}
+
+		// Release it from the module
+		type->module = 0;
+		type->ReleaseInternal();
+	}
 	enumTypes.SetLength(0);
 	for( n = 0; n < typeDefs.GetLength(); n++ )
-		typeDefs[n]->Release();
+	{
+		asCObjectType *type = typeDefs[n];
+
+		// The type should be destroyed now
+		type->DestroyInternal();
+
+		// Release it from the module
+		type->module = 0;
+		type->ReleaseInternal();
+	}
 	typeDefs.SetLength(0);
 
 	// Free funcdefs
 	for( n = 0; n < funcDefs.GetLength(); n++ )
 	{
-		// The funcdefs are not removed from the engine at this moment as they may still be referred
-		// to by other types. The engine's ClearUnusedTypes will take care of the clean up.
-		funcDefs[n]->Release();
+		asCScriptFunction *func = funcDefs[n];
+		if( func->IsShared() )
+		{
+			// The func is shared, so transfer ownership to another module that also uses it
+			if( engine->FindNewOwnerForSharedFunc(func, this) != this )
+			{
+				// The func is owned by another module, just release our reference
+				func->ReleaseInternal();
+				continue;
+			}
+		}
+
+		func->DestroyInternal();
+		engine->RemoveFuncdef(func);
+		func->module = 0;
+		func->ReleaseInternal();
 	}
 	funcDefs.SetLength(0);
 
-	// Allow the engine to clean up what is not used
-	engine->CleanupAfterDiscardModule();
+	// Then release the functions
+	for( n = 0; n < scriptFunctions.GetLength(); n++ )
+	{
+		asCScriptFunction *func = scriptFunctions[n];
+		if( func->IsShared() )
+		{
+			// The func is shared, so transfer ownership to another module that also uses it
+			if( engine->FindNewOwnerForSharedFunc(func, this) != this )
+			{
+				// The func is owned by another module, just release our reference
+				func->ReleaseInternal();
+				continue;
+			}
+		}
+
+		func->DestroyInternal();
+		func->module = 0;
+		func->ReleaseInternal();
+	}
+	scriptFunctions.SetLength(0);
+
+	// Now remove and release the global properties as there are no more references to them
+	globIt = scriptGlobals.List();
+	while( globIt )
+	{
+		engine->RemoveGlobalProperty(*globIt);
+		asASSERT( (*globIt)->refCount.get() == 1 );
+		(*globIt)->Release();
+		globIt++;
+	}
+	scriptGlobals.Clear();
 
 	asASSERT( IsEmpty() );
 }
@@ -619,7 +873,7 @@ asIScriptFunction *asCModule::GetFunctionByDecl(const char *decl) const
 			)
 		{
 			bool match = true;
-			for( size_t p = 0; p < func.parameterTypes.GetLength(); ++p )
+			for( asUINT p = 0; p < func.parameterTypes.GetLength(); ++p )
 			{
 				if( func.parameterTypes[p] != funcPtr->parameterTypes[p] )
 				{
@@ -662,10 +916,23 @@ int asCModule::GetGlobalVarIndexByName(const char *name) const
 // interface
 int asCModule::RemoveGlobalVar(asUINT index)
 {
+	// TODO: 2.30.0: redesign: Before removing the variable, clear it to free the object
+	//                         The property shouldn't be orphaned.
+
 	asCGlobalProperty *prop = scriptGlobals.Get(index);
 	if( !prop )
 		return asINVALID_ARG;
-	prop->Orphan(this);
+
+	// Destroy the internal of the global variable (removes the initialization function)
+	prop->DestroyInternal();
+
+	// Check if the module is the only one referring to the module, if so remove it from the engine too
+	// If the property is not removed now, it will be removed later when the module is discarded
+	if( prop->refCount.get() == 2 )
+		engine->RemoveGlobalProperty(prop);
+
+	// Remove the global variable from the module
+	prop->Release();
 	scriptGlobals.Erase(index);
 
 	return 0;
@@ -716,9 +983,9 @@ const char *asCModule::GetGlobalVarDeclaration(asUINT index, bool includeNamespa
 	if (!prop) return 0;
 
 	asCString *tempString = &asCThreadManager::GetLocalData()->string;
-	*tempString = prop->type.Format();
+	*tempString = prop->type.Format(defaultNamespace);
 	*tempString += " ";
-	if( includeNamespace )
+	if( includeNamespace && prop->nameSpace->name != "" )
 		*tempString += prop->nameSpace->name + "::";
 	*tempString += prop->name;
 
@@ -891,7 +1158,7 @@ int asCModule::GetNextImportedFunctionId()
 
 #ifndef AS_NO_COMPILER
 // internal
-int asCModule::AddScriptFunction(int sectionIdx, int declaredAt, int id, const asCString &name, const asCDataType &returnType, const asCArray<asCDataType> &params, const asCArray<asCString> &paramNames, const asCArray<asETypeModifiers> &inOutFlags, const asCArray<asCString *> &defaultArgs, bool isInterface, asCObjectType *objType, bool isConstMethod, bool isGlobalFunction, bool isPrivate, bool isFinal, bool isOverride, bool isShared, asSNameSpace *ns)
+int asCModule::AddScriptFunction(int sectionIdx, int declaredAt, int id, const asCString &name, const asCDataType &returnType, const asCArray<asCDataType> &params, const asCArray<asCString> &paramNames, const asCArray<asETypeModifiers> &inOutFlags, const asCArray<asCString *> &defaultArgs, bool isInterface, asCObjectType *objType, bool isConstMethod, bool isGlobalFunction, bool isPrivate, bool isProtected, bool isFinal, bool isOverride, bool isShared, asSNameSpace *ns)
 {
 	asASSERT(id >= 0);
 
@@ -928,8 +1195,11 @@ int asCModule::AddScriptFunction(int sectionIdx, int declaredAt, int id, const a
 	func->inOutFlags       = inOutFlags;
 	func->defaultArgs      = defaultArgs;
 	func->objectType       = objType;
+	if( objType )
+		objType->AddRefInternal();
 	func->isReadOnly       = isConstMethod;
 	func->isPrivate        = isPrivate;
+	func->isProtected      = isProtected;
 	func->isFinal          = isFinal;
 	func->isOverride       = isOverride;
 	func->isShared         = isShared;
@@ -940,9 +1210,9 @@ int asCModule::AddScriptFunction(int sectionIdx, int declaredAt, int id, const a
 	asASSERT( !(!objType && isFinal) );
 	asASSERT( !(!objType && isOverride) );
 
-	// The script function's refCount was initialized to 1
+	// The internal ref count was already set by the constructor
 	scriptFunctions.PushLast(func);
-	engine->SetScriptFunction(func);
+	engine->AddScriptFunction(func);
 
 	// Compute the signature id
 	if( objType )
@@ -950,10 +1220,7 @@ int asCModule::AddScriptFunction(int sectionIdx, int declaredAt, int id, const a
 
 	// Add reference
 	if( isGlobalFunction )
-	{
 		globalFunctions.Put(func);
-		func->AddRef();
-	}
 
 	return 0;
 }
@@ -962,8 +1229,8 @@ int asCModule::AddScriptFunction(int sectionIdx, int declaredAt, int id, const a
 int asCModule::AddScriptFunction(asCScriptFunction *func)
 {
 	scriptFunctions.PushLast(func);
-	func->AddRef();
-	engine->SetScriptFunction(func);
+	func->AddRefInternal();
+	engine->AddScriptFunction(func);
 
 	return 0;
 }
@@ -1047,14 +1314,14 @@ int asCModule::BindImportedFunction(asUINT index, asIScriptFunction *func)
 	if( dst->parameterTypes.GetLength() != src->parameterTypes.GetLength() )
 		return asINVALID_INTERFACE;
 
-	for( size_t n = 0; n < dst->parameterTypes.GetLength(); ++n )
+	for( asUINT n = 0; n < dst->parameterTypes.GetLength(); ++n )
 	{
 		if( dst->parameterTypes[n] != src->parameterTypes[n] )
 			return asINVALID_INTERFACE;
 	}
 
 	bindInformations[index]->boundFunctionId = src->GetId();
-	src->AddRef();
+	src->AddRefInternal();
 
 	return asSUCCESS;
 }
@@ -1072,7 +1339,7 @@ int asCModule::UnbindImportedFunction(asUINT index)
 		if( oldFuncID != -1 )
 		{
 			bindInformations[index]->boundFunctionId = -1;
-			engine->scriptFunctions[oldFuncID]->Release();
+			engine->scriptFunctions[oldFuncID]->ReleaseInternal();
 		}
 	}
 
@@ -1151,7 +1418,7 @@ int asCModule::UnbindAllImportedFunctions()
 // internal
 asCObjectType *asCModule::GetObjectType(const char *type, asSNameSpace *ns)
 {
-	size_t n;
+	asUINT n;
 
 	// TODO: optimize: Improve linear search
 	for( n = 0; n < classTypes.GetLength(); n++ )
@@ -1186,8 +1453,9 @@ asCGlobalProperty *asCModule::AllocateGlobalProperty(const char *name, const asC
 	// Make an entry in the address to variable map
 	engine->varAddressMap.Insert(prop->GetAddressOfValue(), prop);
 
-	// Store the variable in the module scope (the reference count is already set to 1)
+	// Store the variable in the module scope
 	scriptGlobals.Put(prop);
+	prop->AddRef();
 
 	return prop;
 }
@@ -1230,6 +1498,14 @@ int asCModule::SaveByteCode(asIBinaryStream *out, bool stripDebugInfo) const
 int asCModule::LoadByteCode(asIBinaryStream *in, bool *wasDebugInfoStripped)
 {
 	if( in == 0 ) return asINVALID_ARG;
+
+	// Don't allow the module to be rebuilt if there are still 
+	// external references that will need the previous code
+	if( HasExternalReferences(false) )
+	{
+		engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, TXT_MODULE_IS_IN_USE);
+		return asMODULE_IS_IN_USE;
+	}
 
 	// Only permit loading bytecode if no other thread is currently compiling
 	// TODO: It should be possible to have multiple threads perform compilations
@@ -1367,14 +1643,14 @@ int asCModule::CompileFunction(const char *sectionName, const char *code, int li
 
 	if( r >= 0 && outFunc && func )
 	{
-		// Return the function to the caller
+		// Return the function to the caller and add an external reference
 		*outFunc = func;
 		func->AddRef();
 	}
 
 	// Release our reference to the function
 	if( func )
-		func->Release();
+		func->ReleaseInternal();
 
 	return r;
 #endif
@@ -1383,15 +1659,24 @@ int asCModule::CompileFunction(const char *sectionName, const char *code, int li
 // interface
 int asCModule::RemoveFunction(asIScriptFunction *func)
 {
+	// TODO: 2.30.0: redesign: Check if there are any references before removing the function
+	//                         if there are, just hide it from the visible but do not destroy or 
+	//                         remove it from the module.
+	//
+	//                         Only if the function has no live references, nor internal references
+	//                         can it be immediately removed, and its internal references released.
+	//
+	//                         Check if any previously hidden functions are without references,
+	//                         if so they should removed too.
+
 	// Find the global function
 	asCScriptFunction *f = static_cast<asCScriptFunction*>(func);
 	int idx = globalFunctions.GetIndex(f);
 	if( idx >= 0 )
 	{
 		globalFunctions.Erase(idx);
-		f->Release();
 		scriptFunctions.RemoveValue(f);
-		f->Orphan(this);
+		f->ReleaseInternal();
 		return 0;
 	}
 
@@ -1413,7 +1698,7 @@ int asCModule::AddFuncDef(const asCString &name, asSNameSpace *ns)
 
 	engine->funcDefs.PushLast(func);
 	func->id = engine->GetNextScriptFunctionId();
-	engine->SetScriptFunction(func);
+	engine->AddScriptFunction(func);
 
 	return (int)funcDefs.GetLength()-1;
 }

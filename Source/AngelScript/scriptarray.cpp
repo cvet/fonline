@@ -42,6 +42,10 @@ void ScriptArray::SetMemoryFunctions( asALLOCFUNC_t allocFunc, asFREEFUNC_t free
 static void RegisterScriptArray_Native( asIScriptEngine* engine );
 static void RegisterScriptArray_Generic( asIScriptEngine* engine );
 
+// This macro is used to avoid warnings about unused variables.
+// Usually where the variables are only used in debug mode.
+#define UNUSED_VAR( x )    (void) ( x )
+
 // We just define a number here that we assume nobody else is using for
 // object type user data. The add-ons have reserved the numbers 1000
 // through 1999 for this purpose, so we should be fine.
@@ -227,6 +231,39 @@ static bool ScriptArrayTemplateCallback( asIObjectType* ot, bool& dontGarbageCol
         // thus there is no need to garbage collect them
         dontGarbageCollect = true;
     }
+    else
+    {
+        assert( typeId & asTYPEID_OBJHANDLE );
+
+        // It is not necessary to set the array as garbage collected for all handle types.
+        // If it is possible to determine that the handle cannot refer to an object type
+        // that can potentially form a circular reference with the array then it is not
+        // necessary to make the array garbage collected.
+        asIObjectType* subtype = ot->GetEngine()->GetObjectTypeById( typeId );
+        asDWORD        flags = subtype->GetFlags();
+        if( !( flags & asOBJ_GC ) )
+        {
+            if( ( flags & asOBJ_SCRIPT_OBJECT ) )
+            {
+                // Even if a script class is by itself not garbage collected, it is possible
+                // that classes that derive from it may be, so it is not possible to know
+                // that no circular reference can occur.
+                if( ( flags & asOBJ_NOINHERIT ) )
+                {
+                    // A script class declared as final cannot be inherited from, thus
+                    // we can be certain that the object cannot be garbage collected.
+                    dontGarbageCollect = true;
+                }
+            }
+            else
+            {
+                // For application registered classes we assume the application knows
+                // what it is doing and don't mark the array as garbage collected unless
+                // the type is also garbage collected.
+                dontGarbageCollect = true;
+            }
+        }
+    }
 
     // The type is ok
     return true;
@@ -243,13 +280,14 @@ void RegisterScriptArray( asIScriptEngine* engine, bool defaultArray )
     if( defaultArray )
     {
         int r = engine->RegisterDefaultArrayType( "array<T>" );
-        assert( r >= 0 );
+        UNUSED_VAR( r );
     }
 }
 
 static void RegisterScriptArray_Native( asIScriptEngine* engine )
 {
-    int r;
+    int r = 0;
+    UNUSED_VAR( r );
 
     // Register the object type user data clean up
     engine->SetObjectTypeUserDataCleanupCallback( CleanupObjectTypeArrayCache, ARRAY_CACHE );
@@ -1730,6 +1768,9 @@ void ScriptArray::Precache()
 // GC behaviour
 void ScriptArray::EnumReferences( asIScriptEngine* engine )
 {
+    // TODO: If garbage collection can be done from a separate thread, then this method must be
+    //       protected so that it doesn't get lost during the iteration if the array is modified
+
     // If the array is holding handles, then we need to notify the GC of them
     if( subTypeId & asTYPEID_MASK_OBJECT )
     {

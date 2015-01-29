@@ -50,9 +50,9 @@ void RegisterScriptFile_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "file", "bool isEndOfFile() const", asMETHOD( ScriptFile, IsEOF ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "file", "int readString(uint, string &out)", asMETHOD( ScriptFile, ReadString ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "file", "string@ readString(uint)", asMETHOD( ScriptFile, ReadString ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "file", "int readLine(string &out)", asMETHOD( ScriptFile, ReadLine ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "file", "string@ readLine()", asMETHOD( ScriptFile, ReadLine ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "file", "int64 readInt(uint)", asMETHOD( ScriptFile, ReadInt ), asCALL_THISCALL );
     assert( r >= 0 );
@@ -392,27 +392,28 @@ int ScriptFile::MovePos( int delta )
     return r ? -1 : 0;
 }
 
-int ScriptFile::ReadString( unsigned int length, ScriptString& str )
+ScriptString* ScriptFile::ReadString( unsigned int length )
 {
     if( file == 0 )
         return 0;
 
     // Read the string
-    str.rawResize( length );
-    int size = (int) fread( (char*) str.c_str(), 1, length, file );
-    str.rawResize( size );
+    ScriptString* str = ScriptString::Create();
+    str->rawResize( length );
+    int           size = (int) fread( (char*) str->c_str(), 1, length, file );
+    str->rawResize( size );
 
-    return size;
+    return str;
 }
 
-int ScriptFile::ReadLine( ScriptString& str )
+ScriptString* ScriptFile::ReadLine()
 {
     if( file == 0 )
         return 0;
 
     // Read until the first new-line character
-    str = "";
-    char buf[ 256 ];
+    ScriptString* str = ScriptString::Create();
+    char          buf[ 256 ];
 
     do
     {
@@ -431,11 +432,11 @@ int ScriptFile::ReadLine( ScriptString& str )
         long end = ftell( file );
 
         // Add the read characters to the output buffer
-        str.append( buf, (uint) ( end - start ) );
+        str->append( buf, (uint) ( end - start ) );
     }
     while( !feof( file ) && buf[ 255 ] == 0 && buf[ 254 ] != '\n' );
 
-    return int( str.length() );
+    return str;
 }
 
 asINT64 ScriptFile::ReadInt( asUINT bytes )

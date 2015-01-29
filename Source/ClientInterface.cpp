@@ -5116,8 +5116,10 @@ void FOClient::LMenuMouseUp()
                 break;
             if( inv_item->GetSortValue() < item->GetSortValue() )
                 break;
+            Item* old_inv_item = inv_item->Clone();
             inv_item->Data.SortValue = item->GetSortValue() - 1;
             Item::SortItems( Chosen->InvItems );
+            OnItemInvChanged( old_inv_item, inv_item );
             Net_SendSortValueItem( inv_item );
         }
         break;
@@ -5130,8 +5132,10 @@ void FOClient::LMenuMouseUp()
                 break;
             if( inv_item->GetSortValue() > item->GetSortValue() )
                 break;
+            Item* old_inv_item = inv_item->Clone();
             inv_item->Data.SortValue = item->GetSortValue() + 1;
             Item::SortItems( Chosen->InvItems );
+            OnItemInvChanged( old_inv_item, inv_item );
             Net_SendSortValueItem( inv_item );
         }
         break;
@@ -5535,6 +5539,8 @@ void FOClient::RunScreenScript( bool show, int screen, ScriptDictionary* params 
 
 void FOClient::SetCurMode( int new_cur )
 {
+    if( new_cur == CurMode )
+        return;
     if( CurModeLast != CurMode )
         CurModeLast = CurMode;
     CurMode = new_cur;
