@@ -81,6 +81,7 @@ bool FOServer::InitScriptSystem()
 
     // Memory debugging
     #ifdef MEMORY_DEBUG
+    asThreadCleanup();
     if( MemoryDebugLevel >= 2 )
         asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
     else if( MemoryDebugLevel >= 1 )
@@ -291,6 +292,7 @@ bool FOServer::ReloadClientScripts()
 
     // Disable debug allocators
     #ifdef MEMORY_DEBUG
+    asThreadCleanup();
     asSetGlobalMemoryFunctions( malloc, free );
     #endif
 
@@ -314,6 +316,7 @@ bool FOServer::ReloadClientScripts()
         Script::FinishEngine( engine );
 
         #ifdef MEMORY_DEBUG
+        asThreadCleanup();
         if( MemoryDebugLevel >= 2 )
             asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
         else if( MemoryDebugLevel >= 1 )
@@ -470,6 +473,7 @@ bool FOServer::ReloadClientScripts()
     Script::SetLoadLibraryCompiler( false );
 
     #ifdef MEMORY_DEBUG
+    asThreadCleanup();
     if( MemoryDebugLevel >= 2 )
         asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
     else if( MemoryDebugLevel >= 1 )
@@ -545,6 +549,7 @@ bool FOServer::ReloadMapperScripts()
 
     // Disable debug allocators
     #ifdef MEMORY_DEBUG
+    asThreadCleanup();
     asSetGlobalMemoryFunctions( malloc, free );
     #endif
 
@@ -568,6 +573,7 @@ bool FOServer::ReloadMapperScripts()
         Script::FinishEngine( engine );
 
         #ifdef MEMORY_DEBUG
+        asThreadCleanup();
         if( MemoryDebugLevel >= 2 )
             asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
         else if( MemoryDebugLevel >= 1 )
@@ -640,6 +646,7 @@ bool FOServer::ReloadMapperScripts()
     Script::SetLoadLibraryCompiler( false );
 
     #ifdef MEMORY_DEBUG
+    asThreadCleanup();
     if( MemoryDebugLevel >= 2 )
         asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
     else if( MemoryDebugLevel >= 1 )

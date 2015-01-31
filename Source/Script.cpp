@@ -1659,58 +1659,46 @@ bool Script::LoadScript( const char* module_name, const uchar* bytecode, uint le
 int Script::BindImportedFunctions()
 {
     int errors = 0;
-    for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
+    for( asUINT i = 0; i < Engine->GetModuleCount(); i++ )
     {
         asIScriptModule* module = Engine->GetModuleByIndex( i );
-        int              result = module->BindAllImportedFunctions();
-        if( result < 0 )
+        for( asUINT j = 0; j < module->GetImportedFunctionCount(); j++ )
         {
-            WriteLogF( _FUNC_, " - Fail to bind imported functions, module<%s>, error<%d>.\n", module->GetName(), result );
-            errors++;
+            const char*      name = module->GetImportedFunctionSourceModule( j );
+            const char*      decl = module->GetImportedFunctionDeclaration( j );
 
-            EngineData* edata = (EngineData*) Engine->GetUserData();
-            if( edata->DllTarget == "SERVER" )
+            asIScriptModule* mod = Engine->GetModule( name, asGM_ONLY_IF_EXISTS );
+            if( !mod )
             {
-                // Import all functions again, "manually"
-                // Does not solve anything, but makes finding problems easier
-                if( module->UnbindAllImportedFunctions() < 0 )
-                    continue;
-
-                for( asUINT m = 0; m < module->GetImportedFunctionCount(); m++ )
-                {
-                    const char* decl = module->GetImportedFunctionDeclaration( m );
-                    const char* name = module->GetImportedFunctionSourceModule( m );
-
-                    char        buf[ MAX_FOTEXT ] = { 0 };
-                    uint        len = Str::Length( _FUNC_ );
-                    for( uint k = 0; k < len; k++ )
-                        Str::Append( buf, " " );
-                    Str::Format( &buf[ len ], "%s : import %s from \"%s\"", module->GetName(), decl, name );
-
-                    asIScriptModule* mod = Engine->GetModule( name, asGM_ONLY_IF_EXISTS );
-                    if( !mod )
-                    {
-                        WriteLog( "   %s : source module does not exists.\n", buf );
-                        continue;
-                    }
-
-                    asIScriptFunction* func = mod->GetFunctionByDecl( decl );
-                    if( !func )
-                    {
-                        WriteLog( "   %s : source function does not exists.\n", buf );
-                        continue;
-                    }
-
-                    int r = module->BindImportedFunction( m, func );
-                    if( r < 0 )
-                    {
-                        WriteLog( "   %s : bind error<%d>.\n", buf, r );
-                        continue;
-                    }
-                }
+                WriteLog( "Module<%s> fail to bind: import %s from \"%s\" - source module does not exists.\n", module->GetName(), decl, name );
+                errors++;
+                continue;
             }
 
-            continue;
+            asIScriptFunction* func = mod->GetFunctionByDecl( decl );
+            if( !func )
+            {
+                WriteLog( "Module<%s> fail to bind: import %s from \"%s\" - source function does not exists.\n", module->GetName(), decl, name );
+                errors++;
+                continue;
+            }
+
+            int r = module->BindImportedFunction( j, func );
+            if( r < 0 )
+            {
+                WriteLog( "Module<%s> fail to bind: import %s from \"%s\" - bind error<%d>.\n", module->GetName(), decl, name, r );
+                errors++;
+                continue;
+            }
+        }
+    }
+    if( errors )
+    {
+        for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
+        {
+            asIScriptModule* module = Engine->GetModuleByIndex( i );
+            for( asUINT m = 0; m < module->GetImportedFunctionCount(); m++ )
+                module->UnbindAllImportedFunctions();
         }
     }
     return errors;
