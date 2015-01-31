@@ -620,10 +620,10 @@ void Animation3d::SetDirAngle( int dir_angle )
 void Animation3d::SetRotation( float rx, float ry, float rz )
 {
     Matrix my, mx, mz;
-    Matrix::RotationY( ry, my );
     Matrix::RotationX( rx, mx );
+    Matrix::RotationY( ry, my );
     Matrix::RotationZ( rz, mz );
-    matRot = my * mx * mz;
+    matRot = mx * my * mz;
 }
 
 void Animation3d::SetScale( float sx, float sy, float sz )
