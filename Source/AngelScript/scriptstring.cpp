@@ -4,7 +4,9 @@
 #include <Debugger.h>
 #include <Text.h>
 
-#define assert( x )
+#ifndef assert
+# define assert( x )
+#endif
 
 ScriptString* StringSubString( ScriptString* str, int start, int count );
 int           StringFindFirst( ScriptString* str, ScriptString* sub, int start );
