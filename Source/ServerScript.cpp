@@ -6234,8 +6234,6 @@ void FOServer::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& ini_opt
 {
     if( index <= SLOT_ARMOR || index == SLOT_GROUND )
         SCRIPT_ERROR_R( "Invalid index arg." );
-    if( !ini_option.length() )
-        SCRIPT_ERROR_R( "Ini string is empty." );
     Critter::SlotEnabled[ index ] = true;
 }
 

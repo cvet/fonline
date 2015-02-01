@@ -74,8 +74,8 @@ uint      Critter::ParametersMin[ MAX_PARAMETERS_ARRAYS ] = { 0 };
 uint      Critter::ParametersMax[ MAX_PARAMETERS_ARRAYS ] = { MAX_PARAMS - 1, 0 };
 bool      Critter::ParametersOffset[ MAX_PARAMETERS_ARRAYS ] = { 0 };
 bool      Critter::SlotEnabled[ 0x100 ] = { true, true, true, true, 0 };
-Item*     Critter::SlotEnabledCacheData[ 0x100 ] = { 0 };
-Item*     Critter::SlotEnabledCacheDataExt[ 0x100 ] = { 0 };
+Item*     Critter::SlotCacheData[ 0x100 ] = { 0 };
+Item*     Critter::SlotCacheDataExt[ 0x100 ] = { 0 };
 
 Critter::Critter(): CritterIsNpc( false ), RefCounter( 1 ), IsNotValid( false ),
                     GroupMove( NULL ), PrevHexTick( 0 ), PrevHexX( 0 ), PrevHexY( 0 ),
@@ -3875,12 +3875,12 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
             int script = SlotDataSendScript[ slot ];
             if( SlotDataSendEnabled[ slot ] && ( !script || RunSlotDataSendScript( script, slot, item_, from_cr, this ) ) )
             {
-                SlotEnabledCacheDataExt[ slots_data_ext_count ] = item_;
+                SlotCacheDataExt[ slots_data_ext_count ] = item_;
                 slots_data_ext_count++;
             }
             else
             {
-                SlotEnabledCacheData[ slots_data_count ] = item_;
+                SlotCacheData[ slots_data_count ] = item_;
                 slots_data_count++;
             }
         }
@@ -3899,7 +3899,7 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     Bout << (uchar) ( slots_data_count + slots_data_ext_count );
     for( uchar i = 0; i < slots_data_count; i++ )
     {
-        Item* item_ = SlotEnabledCacheData[ i ];
+        Item* item_ = SlotCacheData[ i ];
         Bout << item_->AccCritter.Slot;
         Bout << item_->GetId();
         Bout << item_->GetProtoId();
@@ -3907,7 +3907,7 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     }
     for( uchar i = 0; i < slots_data_ext_count; i++ )
     {
-        Item* item_ = SlotEnabledCacheDataExt[ i ];
+        Item* item_ = SlotCacheDataExt[ i ];
         Bout << item_->AccCritter.Slot;
         Bout << item_->GetId();
         Bout << item_->GetProtoId();
@@ -3917,11 +3917,11 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
 
     // Lexems
     for( uchar i = 0; i < slots_data_count; i++ )
-        if( SlotEnabledCacheData[ i ]->PLexems )
-            Send_ItemLexems( SlotEnabledCacheData[ i ] );
+        if( SlotCacheData[ i ]->PLexems )
+            Send_ItemLexems( SlotCacheData[ i ] );
     for( uchar i = 0; i < slots_data_ext_count; i++ )
-        if( SlotEnabledCacheDataExt[ i ]->PLexems )
-            Send_ItemLexems( SlotEnabledCacheDataExt[ i ] );
+        if( SlotCacheDataExt[ i ]->PLexems )
+            Send_ItemLexems( SlotCacheDataExt[ i ] );
 }
 
 void Client::Send_ItemData( Critter* from_cr, uchar slot, Item* item, bool ext_data )

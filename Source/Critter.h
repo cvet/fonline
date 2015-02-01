@@ -137,8 +137,8 @@ public:
     IntVec           ParamsChanged;
     int              ParamLocked;
     static bool      SlotEnabled[ 0x100 ];
-    static Item*     SlotEnabledCacheData[ 0x100 ];
-    static Item*     SlotEnabledCacheDataExt[ 0x100 ];
+    static Item*     SlotCacheData[ 0x100 ];
+    static Item*     SlotCacheDataExt[ 0x100 ];
 
     CritDataExt* GetDataExt();
     void         SetMaps( uint map_id, ushort map_pid )

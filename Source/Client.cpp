@@ -543,6 +543,8 @@ void FOClient::UpdateFiles( bool early_call )
     // Load font
     SprMngr.PushAtlasType( RES_ATLAS_STATIC );
     UpdateFilesFontLoaded = SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false );
+    if( !UpdateFilesFontLoaded )
+        UpdateFilesFontLoaded = SprMngr.LoadFontBMF( FONT_DEFAULT, "Default" );
     if( UpdateFilesFontLoaded )
         SprMngr.BuildFonts();
     SprMngr.PopAtlasType();
@@ -7456,7 +7458,7 @@ label_EndMove:
             break;
 
         uchar from_slot = item->AccCritter.Slot;
-        if( item->AccCritter.Slot != from_slot || from_slot == to_slot )
+        if( from_slot == to_slot )
             break;
         if( to_slot != SLOT_GROUND && !CritterCl::SlotEnabled[ to_slot ] )
             break;
@@ -11139,13 +11141,12 @@ void FOClient::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& ini_opt
 {
     if( index <= SLOT_ARMOR || index == SLOT_GROUND )
         SCRIPT_ERROR_R( "Invalid index arg." );
-    if( !ini_option.length() )
-        SCRIPT_ERROR_R( "Ini string is empty." );
     CritterCl::SlotEnabled[ index ] = true;
     SlotExt se;
     se.Index = index;
     se.IniName = Str::Duplicate( ini_option.c_str() );
-    Self->IfaceLoadRect( se.Region, se.IniName );
+    if( se.IniName[ 0 ] )
+        Self->IfaceLoadRect( se.Region, se.IniName );
     Self->SlotsExt.push_back( se );
 }
 
@@ -11595,6 +11596,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
             DrawCritter3dLayers[ i ] = *(int*) layers->At( i );
 
+        anim3d->SetDirAngle( 0 );
         anim3d->SetRotation( rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f );
         anim3d->SetScale( sx, sy, sz );
         anim3d->SetSpeed( speed );

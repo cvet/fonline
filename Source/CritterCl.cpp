@@ -16,7 +16,7 @@ int  CritterCl::ParamsReg[ MAX_PARAMS ] = { 0 };
 uint CritterCl::ParametersMin[ MAX_PARAMETERS_ARRAYS ] = { 0 };
 uint CritterCl::ParametersMax[ MAX_PARAMETERS_ARRAYS ] = { MAX_PARAMS - 1 };
 bool CritterCl::ParametersOffset[ MAX_PARAMETERS_ARRAYS ] = { false };
-bool CritterCl::SlotEnabled[ 0x100 ] = { true, true, true, true, false };
+bool CritterCl::SlotEnabled[ 0x100 ] = { true, true, true, true, 0 };
 
 CritterCl::CritterCl(): CrDir( 0 ), SprId( 0 ), Id( 0 ), Pid( 0 ), NameColor( 0 ), ContourColor( 0 ),
                         Cond( 0 ), Anim1Life( 0 ), Anim1Knockout( 0 ), Anim1Dead( 0 ), Anim2Life( 0 ), Anim2Knockout( 0 ), Anim2Dead( 0 ),

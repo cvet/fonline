@@ -7137,6 +7137,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
             DrawCritter3dLayers[ i ] = *(int*) layers->At( i );
 
+        anim3d->SetDirAngle( 0 );
         anim3d->SetRotation( rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f );
         anim3d->SetScale( sx, sy, sz );
         anim3d->SetSpeed( speed );

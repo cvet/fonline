@@ -988,7 +988,6 @@ bool FOServer::Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dia
     return true;
 }
 
-
 bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, bool recheck )
 {
     if( !answer.Demands.size() )

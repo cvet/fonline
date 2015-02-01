@@ -3196,13 +3196,19 @@ bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color, RectF
     Render3d( anim3d );
 
     if( scissor )
+    {
+        Flush();
         EnableScissor( *scissor );
+    }
 
     SpriteInfo* si = sprData[ anim3d->SprId ];
     DrawSprite( anim3d->SprId, x - si->Width / 2 + si->OffsX, y - si->Height + si->OffsY, color );
 
     if( scissor )
+    {
+        Flush();
         DisableScissor();
+    }
 
     return true;
 }
