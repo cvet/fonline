@@ -307,9 +307,6 @@ static uint                         MemoryAllocRecursion;
 
 // Hooks
 # include "NCodeHook/NCodeHookInstantiation.h"
-# ifdef FO_MSVC
-#  pragma comment( lib, "distorm.lib" )
-# endif
 
 static HANDLE        ProcessHandle;
 static NCodeHookIA32 CodeHooker;

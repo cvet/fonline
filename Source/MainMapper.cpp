@@ -8,9 +8,6 @@ int main( int argc, char** argv )
     RestoreMainDirectory();
 
     // Threading
-    #ifdef FO_WINDOWS
-    pthread_win32_process_attach_np();
-    #endif
     Thread::SetCurrentName( "GUI" );
 
     // Exceptions

@@ -2,11 +2,11 @@
 #define __SCRIPT__
 
 #include "Common.h"
-#include "AngelScript/angelscript.h"
-#include "AngelScript/scriptarray.h"
-#include "AngelScript/scriptstring.h"
-#include "AngelScript/scriptdictionary.h"
-#include "AngelScript/preprocessor.h"
+#include "angelscript.h"
+#include "scriptarray.h"
+#include "scriptstring.h"
+#include "scriptdictionary.h"
+#include "preprocessor.h"
 #include <vector>
 #include <string>
 

@@ -3589,7 +3589,7 @@ bool FOServer::InitReal()
     sin.sin_port = htons( port );
     sin.sin_addr.s_addr = INADDR_ANY;
 
-    if( bind( ListenSock, (sockaddr*) &sin, sizeof( sin ) ) == SOCKET_ERROR )
+    if( ::bind( ListenSock, (sockaddr*) &sin, sizeof( sin ) ) == SOCKET_ERROR )
     {
         WriteLog( "Bind error.\n" );
         return false;

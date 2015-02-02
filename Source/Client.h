@@ -19,17 +19,12 @@
 #include "CritterType.h"
 #include "DataMask.h"
 #include "Script.h"
-#include "zlib/zlib.h"
+#include "zlib.h"
 #include "IniParser.h"
 #include "MsgFiles.h"
 
 // Video
-#ifndef FO_OSX
-# include "Theora/theoradec.h"
-# ifdef FO_MSVC
-#  pragma comment( lib, "libtheora_static.lib" )
-# endif
-#endif
+#include "Theora/theoradec.h"
 
 class FOClient
 {
@@ -374,7 +369,6 @@ public:
 /************************************************************************/
 /* Video                                                                */
 /************************************************************************/
-    #ifndef FO_OSX
     struct ShowVideo
     {
         string FileName;
@@ -420,7 +414,6 @@ public:
     void PlayVideo();
     void NextVideo();
     void StopVideo();
-    #endif
 
 /************************************************************************/
 /* Animation                                                            */

@@ -1,9 +1,9 @@
 #include "StdAfx.h"
 #include "ScriptPragmas.h"
-#include "AngelScript/angelscript.h"
+#include "angelscript.h"
 
 #ifdef FONLINE_SCRIPT_COMPILER
-# include "../ASCompiler/ScriptEngine.h"
+# include "ScriptEngine.h"
 
 namespace Script
 {

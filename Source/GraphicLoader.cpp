@@ -5,19 +5,10 @@
 #include "Timer.h"
 #include "SpriteManager.h"
 #include "ResourceManager.h"
-
 #include "Assimp/assimp.h"
 #include "Assimp/aiPostProcess.h"
-
 #include "fbxsdk/fbxsdk.h"
-#ifdef FO_WINDOWS
-# pragma comment( lib, "libfbxsdk.lib" )
-#endif
-
-#include "PNG/png.h"
-#ifdef FO_MSVC
-# pragma comment( lib, "libpng16.lib" )
-#endif
+#include "png.h"
 
 // Assimp functions
 const aiScene* ( *Ptr_aiImportFileFromMemory )( const char* pBuffer, unsigned int pLength, unsigned int pFlags, const char* pHint );

@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "DataFile.h"
-#include "zlib/unzip.h"
+#include "minizip/unzip.h"
 #include "FileManager.h"
 
 /************************************************************************/

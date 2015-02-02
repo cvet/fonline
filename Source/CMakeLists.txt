@@ -8,6 +8,14 @@ set( CMAKE_INSTALL_PREFIX "C:/Games/FOnline" CACHE STRING "" FORCE )
 # Preprocessor definitions
 #
 
+if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
+  set( ARCH_X64 TRUE )
+  set( ARCH_STR "x64" )
+else()
+  set( ARCH_X64 FALSE)
+  set( ARCH_STR "x86" )
+endif()
+
 if( MSVC_IDE )
 	# Todo: -D_HAS_ITERATOR_DEBUGGING=0 -D_SECURE_SCL=0 -D_HAS_EXCEPTIONS=0
 	set( COMPILER_DEFINES "-D_CRT_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_DEPRECATE" )
@@ -25,39 +33,68 @@ set( ASCPMPILER_DEFINES "${COMMON_DEFINES} -DFONLINE_SCRIPT_COMPILER")
 # Sources
 #
 
-file( GLOB Acm_SOURCE Acm/*.* )
-source_group( Acm FILES ${Acm_SOURCE} )
-file( GLOB AngelScript_SOURCE AngelScript/*.* )
-source_group( AngelScript FILES ${AngelScript_SOURCE} )
+set( SKIP_INSTALL_ALL ON )
+
+set( SDL_DIR "SDL2" ) # SDL2-2.0.3
+set( SDL_SHARED OFF CACHE STRING "" FORCE )
+#set( FORCE_STATIC_VCRT ON CACHE STRING "" FORCE )
+add_subdirectory( "${SDL_DIR}" )
+include_directories( "${SDL_DIR}/include" )
+
+set( FLTK_DIR "FLTK" ) # fltk-1.3.3
+set( OPTION_BUILD_EXAMPLES OFF CACHE STRING "" FORCE )
+add_subdirectory( "${FLTK_DIR}" )
+include_directories( "${FLTK_DIR}" )
+
+set( ZLIB_DIR "Zlib" ) # zlib-1.2.8
+add_subdirectory( "${ZLIB_DIR}" )
+include_directories( "${ZLIB_DIR}" "${ZLIB_DIR}/contrib" "${CMAKE_BINARY_DIR}/${ZLIB_DIR}" )
+
+set( PNG_DIR "PNG" ) # lpng1616
+set( ZLIB_LIBRARY "zlibstatic" )
+set( ZLIB_INCLUDE_DIR "${ZLIB_DIR}" )
+set( PNG_SHARED OFF )
+set( PNG_STATIC ON )
+add_subdirectory( "${PNG_DIR}" )
+include_directories( "${PNG_DIR}" "${CMAKE_BINARY_DIR}/${PNG_DIR}" )
+
+set( OGG_DIR "Ogg" ) # libogg-1.3.1
+file( GLOB OGG_SOURCE "${OGG_DIR}/src/*.c" )
+source_group( ogg FILES ${OGG_SOURCE} )
+include_directories( "${OGG_DIR}/include" )
+
+set( VORBIS_DIR "Vorbis" ) # libvorbis-1.3.3
+file( GLOB VORBIS_SOURCE "${VORBIS_DIR}/lib/*.c" )
+list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/barkmel.c" )
+list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/psytune.c" )
+list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/tone.c" )
+source_group( vorbis FILES ${VORBIS_SOURCE} )
+include_directories( "${VORBIS_DIR}/include" )
+
+set( THEORA_DIR "Theora" ) # libtheora-1.1.1
+file( GLOB THEORA_SOURCE "${THEORA_DIR}/lib/*.c" )
+list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/analyze.c" )
+list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/encode.c" )
+list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/encapiwrapper.c" )
+source_group( theora FILES ${THEORA_SOURCE} )
+include_directories( "${THEORA_DIR}/include" )
+
+set( ANGEL_SCRIPT_DIR "AngelScript" )
+add_subdirectory( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/projects/cmake" )
+add_subdirectory( "${ANGEL_SCRIPT_DIR}" )
+include_directories( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/include" "${ANGEL_SCRIPT_DIR}" )
+
+add_subdirectory( "Acm" )
+add_subdirectory( "SHA2" )
+add_subdirectory( "GL" )
+add_subdirectory( "NCodeHook" )
+
 file( GLOB Assimp_SOURCE Assimp/*.* Assimp/Compiler/*.* )
 source_group( Assimp FILES ${Assimp_SOURCE} )
-file( GLOB event2_SOURCE event2/*.* )
-source_group( event2 FILES ${event2_SOURCE} )
 file( GLOB fbxsdk_SOURCE fbxsdk/*.* )
 source_group( fbxsdk FILES ${fbxsdk_SOURCE} )
-file( GLOB FL_SOURCE FL/*.* )
-source_group( FL FILES ${FL_SOURCE} )
-file( GLOB GL_SOURCE GL/*.* )
-source_group( GL FILES ${GL_SOURCE} )
-file( GLOB NCodeHook_SOURCE NCodeHook/*.* )
-source_group( NCodeHook FILES ${NCodeHook_SOURCE} )
-file( GLOB ogg_SOURCE ogg/*.* )
-source_group( ogg FILES ${ogg_SOURCE} )
-file( GLOB PNG_SOURCE PNG/*.* )
-source_group( PNG FILES ${PNG_SOURCE} )
-file( GLOB SDL_SOURCE SDL/*.* )
-source_group( SDL FILES ${SDL_SOURCE} )
-file( GLOB SHA2_SOURCE SHA2/*.c SHA2/*.h )
-source_group( SHA2 FILES ${SHA2_SOURCE} )
-file( GLOB Theora_SOURCE Theora/*.* )
-source_group( Theora FILES ${Theora_SOURCE} )
-file( GLOB zlib_SOURCE zlib/*.* )
-source_group( zlib FILES ${zlib_SOURCE} )
 
 set( COMMON_SOURCE
-	${AngelScript_SOURCE}
-	${SHA2_SOURCE}
-	${zlib_SOURCE}
 	DataFile.cpp DataFile.h
 	Debugger.cpp Debugger.h
 	Defines.h
@@ -78,7 +115,6 @@ set( COMMON_SOURCE
 	Types.h
 )
 set( SERVER_CLIENT_MAPPER_SOURCE
-	${PNG_SOURCE}
 	ConstantsManager.cpp ConstantsManager.h
 	CritterManager.h
 	CritterType.cpp CritterType.h
@@ -107,8 +143,6 @@ set( SERVER_ASCOMPILER_SOURCE
 set( CLIENT_MAPPER_SOURCE
 	${Assimp_SOURCE}
 	${fbxsdk_SOURCE}
-	${GL_SOURCE}
-	${SDL_SOURCE}
 	3dAnimation.h
 	3dStuff.cpp 3dStuff.h
 	CritterCl.cpp CritterCl.h
@@ -132,9 +166,6 @@ set( SERVER_SOURCE
 	${SERVER_CLIENT_SOURCE}
 	${SERVER_MAPPER_SOURCE}
 	${SERVER_ASCOMPILER_SOURCE}
-	${event2_SOURCE}
-	${FL_SOURCE}
-	${NCodeHook_SOURCE}
 	AI.cpp AI.h
 	Critter.cpp Critter.h
 	CritterData.h
@@ -157,9 +188,9 @@ set( CLIENT_SOURCE
 	${SERVER_CLIENT_MAPPER_SOURCE}
 	${SERVER_CLIENT_SOURCE}
 	${CLIENT_MAPPER_SOURCE}
-	${Acm_SOURCE}
-	${ogg_SOURCE}
-	${Theora_SOURCE}
+	${OGG_SOURCE}
+	${VORBIS_SOURCE}
+	${THEORA_SOURCE}
 	Client.cpp Client.h
 	ClientInterface.cpp
 	Defence.h
@@ -188,13 +219,15 @@ set( ASCOMPILER_SOURCE
 #
 
 include_directories( "." )
-link_directories( "../Lib" )
+link_directories( "Lib/${ARCH_STR}" )
+link_directories( "$ENV{DXSDK_DIR}/lib/${ARCH_STR}" )
 
-set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd /MP /Z7" )
-set( CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_RELEASE} /MT /MP /Z7" )
-set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} /MT /MP /Z7" )
-set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT /MP /Z7" )
-set( CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /INCREMENTAL:NO" )
+#set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd /MP /Z7" )
+#set( CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_RELEASE} /MT /MP /Z7" )
+#set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} /MT /MP /Z7" )
+#set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT /MP /Z7" )
+#set( CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /INCREMENTAL:NO" )
+set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DELAYLOAD:libfbxsdk.dll" )
 
 set( RO1 RUNTIME_OUTPUT_DIRECTORY_DEBUG )
 set( RO2 RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL )
@@ -205,18 +238,26 @@ add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} )
 set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../sdk/Server/" )
 set_target_properties( FOnlineServer PROPERTIES ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 set_target_properties( FOnlineServer PROPERTIES COMPILE_FLAGS "${SERVER_DEFINES}" )
+target_link_libraries( FOnlineServer "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SHA2" "NCodeHook" "fltk" )
 
 add_executable( FOnline WIN32 ${CLIENT_SOURCE} )
 set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/../sdk/Client/" )
 set_target_properties( FOnline PROPERTIES ${RO1} ${CLIENT_OUTPUT} ${RO2} ${CLIENT_OUTPUT} ${RO3} ${CLIENT_OUTPUT} ${RO4} ${CLIENT_OUTPUT} )
 set_target_properties( FOnline PROPERTIES COMPILE_FLAGS "${CLIENT_DEFINES}" )
+target_link_libraries( FOnline "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SDL2main" "SDL2-static" "Acm" "SHA2" "NCodeHook" "GL" "libfbxsdk" )
 
 add_executable( Mapper WIN32 ${MAPPER_SOURCE} )
 set( MAPPER_OUTPUT "${CMAKE_BINARY_DIR}/../sdk/Tools/Mapper/" )
 set_target_properties( Mapper PROPERTIES ${RO1} ${MAPPER_OUTPUT} ${RO2} ${MAPPER_OUTPUT} ${RO3} ${MAPPER_OUTPUT} ${RO4} ${MAPPER_OUTPUT} )
 set_target_properties( Mapper PROPERTIES COMPILE_FLAGS "${MAPPER_DEFINES}" )
+target_link_libraries( Mapper "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SDL2main" "SDL2-static" "SHA2" "NCodeHook" "GL" "libfbxsdk" )
 
 add_executable( ASCompiler ${ASCOMPILER_SOURCE} )
 set( ASCOMPILER_OUTPUT "${CMAKE_BINARY_DIR}/../sdk/Tools/ASCompiler/" )
 set_target_properties( ASCompiler PROPERTIES ${RO1} ${ASCOMPILER_OUTPUT} ${RO2} ${ASCOMPILER_OUTPUT} ${RO3} ${ASCOMPILER_OUTPUT} ${RO4} ${ASCOMPILER_OUTPUT} )
 set_target_properties( ASCompiler PROPERTIES COMPILE_FLAGS "${ASCPMPILER_DEFINES}" )
+target_link_libraries( ASCompiler "Angelscript" "AngelscriptExt" "zlibstatic" "SHA2" "NCodeHook" )
+
+set_property( GLOBAL PROPERTY USE_FOLDERS ON )
+set_property( TARGET FOnlineServer FOnline Mapper ASCompiler PROPERTY FOLDER "Binaries")
+set_property( TARGET Acm Angelscript AngelscriptExt fltk fltk_gl fltk_forms fltk_images fltk_jpeg fltk_png fltk_z fluid GL NCodeHook png16_static SDL2main SDL2-static SHA2 zlibstatic PROPERTY FOLDER "Libraries")

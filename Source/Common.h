@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <algorithm>
+#include <functional>
 #include <math.h>
 #ifdef FO_WINDOWS
 # define WINVER                                  0x0501 // Windows XP
@@ -176,12 +177,12 @@ struct ScoreType
 
 # define PI_VALUE                                ( 3.141592654f )
 
-# include "SDL/SDL.h"
-# include "SDL/SDL_syswm.h"
+# include "SDL.h"
+# include "SDL_syswm.h"
 # ifndef FO_OGL_ES
 #  define GLEW_NO_GLU
 #  include "GL/glew.h"
-#  include "SDL/SDL_opengl.h"
+#  include "SDL_opengl.h"
 #  ifdef FO_OSX_MAC
 #   undef glGenVertexArrays
 #   undef glBindVertexArray
@@ -191,7 +192,7 @@ struct ScoreType
 #   define glDeleteVertexArrays                  glDeleteVertexArraysAPPLE
 #  endif
 # else
-#  include "SDL/SDL_opengles2.h"
+#  include "SDL_opengles2.h"
 #  define glGenVertexArrays                      glGenVertexArraysOES
 #  define glBindVertexArray                      glBindVertexArrayOES
 #  define glDeleteVertexArrays                   glDeleteVertexArraysOES
@@ -232,8 +233,6 @@ struct ScoreType
 # ifdef FO_MSVC
 #  pragma comment( lib, "opengl32.lib" )
 #  pragma comment( lib, "glu32.lib" )
-#  pragma comment( lib, "SDL2_static.lib" )
-#  pragma comment( lib, "SDL2main.lib" )
 #  pragma comment( lib, "Version.lib" )
 #  pragma comment( lib, "Winmm.lib" )
 #  pragma comment( lib, "Imm32.lib" )
@@ -417,13 +416,6 @@ struct ServerScriptFunctions
     int GetUseApCost;
     int GetAttackDistantion;
 } extern ServerFunctions;
-
-// Net events
-# if defined ( USE_LIBEVENT )
-#  if defined ( FO_MSVC )
-#   pragma comment( lib, "libevent_core.lib" )
-#  endif
-# endif
 
 #endif
 /************************************************************************/
@@ -887,13 +879,10 @@ extern InterprocessData SingleplayerData;
 #if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
 
 # ifdef FO_WINDOWS
-#  define PTW32_STATIC_LIB
-#  include "PthreadWnd/pthread.h"
-#  if defined ( FO_MSVC )
-#   pragma comment( lib, "pthread.lib" )
-#  endif
+#  define ThreadType    HANDLE
 # else
 #  include <pthread.h>
+#  define ThreadType    pthread_t
 # endif
 
 class Thread
@@ -903,8 +892,7 @@ private:
     static SizeTStrMap threadNames;
     static Mutex       threadNamesLocker;
     bool               isStarted;
-    pthread_t          threadId;
-    pthread_attr_t     threadAttr;
+    ThreadType         threadId;
 
 public:
     Thread();

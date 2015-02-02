@@ -12,13 +12,8 @@ SoundManager SndMngr;
 #include "Acm/acmstrm.h"
 
 // OGG
-#include "ogg/codec.h"
-#include "ogg/vorbisfile.h"
-#ifdef FO_MSVC
-# pragma comment ( lib, "libogg_static.lib" )
-# pragma comment ( lib, "libvorbis_static.lib" )
-# pragma comment ( lib, "libvorbisfile_static.lib" )
-#endif
+#include "vorbis/codec.h"
+#include "vorbis/vorbisfile.h"
 
 SDL_AudioDeviceID DeviceID = 0;
 SDL_AudioSpec     SoundSpec;

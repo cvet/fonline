@@ -6,9 +6,6 @@
 
 // Global_LoadImage
 #include "PNG/png.h"
-#ifdef FO_WINDOWS
-# pragma comment( lib, "libpng16.lib" )
-#endif
 
 void* ASDebugMalloc( size_t size )
 {

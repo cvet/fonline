@@ -1534,7 +1534,11 @@ THREAD char Thread::threadName[ 64 ] = { 0 };
 SizeTStrMap Thread::threadNames;
 Mutex       Thread::threadNamesLocker;
 
+# ifdef FO_WINDOWS
+DWORD WINAPI ThreadBeginExecution( void* args )
+# else
 void* ThreadBeginExecution( void* args )
+# endif
 {
     void** args_ = (void**) args;
     void   ( * func )( void* ) = ( void ( * )( void* ) )args_[ 0 ];
@@ -1550,12 +1554,11 @@ void* ThreadBeginExecution( void* args )
 Thread::Thread()
 {
     isStarted = false;
-    pthread_attr_init( &threadAttr );
 }
 
 Thread::~Thread()
 {
-    pthread_attr_destroy( &threadAttr );
+    Finish();
 }
 
 bool Thread::Start( void ( * func )( void* ), const char* name, void* arg /* = NULL */ )
@@ -1563,28 +1566,44 @@ bool Thread::Start( void ( * func )( void* ), const char* name, void* arg /* = N
     void** args = (void**) malloc( sizeof( void* ) * 3 );
     char*  name_ = Str::Duplicate( name );
     args[ 0 ] = (void*) func, args[ 1 ] = arg, args[ 2 ] = name_;
-    isStarted = ( pthread_create( &threadId, &threadAttr, ThreadBeginExecution, args ) == 0 );
+    # ifdef FO_WINDOWS
+    threadId = CreateThread( NULL, 0, ThreadBeginExecution, args, 0, NULL );
+    # else
+    isStarted = ( pthread_create( &threadId, NULL, ThreadBeginExecution, args ) == 0 );
+    # endif
     return isStarted;
 }
 
 void Thread::Wait()
 {
     if( isStarted )
+    {
+        # ifdef FO_WINDOWS
+        WaitForSingleObject( threadId, INFINITE );
+        # else
         pthread_join( threadId, NULL );
-    isStarted = false;
+        # endif
+        isStarted = false;
+    }
 }
 
 void Thread::Finish()
 {
     if( isStarted )
-        pthread_cancel( threadId );
-    isStarted = false;
+    {
+        isStarted = false;
+        # ifdef FO_WINDOWS
+        TerminateThread( threadId, NULL );
+        # else
+        pthread_cancel( threadId, NULL );
+        # endif
+    }
 }
 
 # if defined ( FO_WINDOWS )
 HANDLE Thread::GetWindowsHandle()
 {
-    return pthread_getw32threadhandle_np( threadId );
+    return threadId;
 }
 # elif defined ( FO_LINUX )
 pid_t Thread::GetPid()

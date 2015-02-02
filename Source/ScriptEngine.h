@@ -1,2 +1,2 @@
-void* GetScriptEngine();
+void*       GetScriptEngine();
 const char* GetDllTarget();

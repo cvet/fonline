@@ -12,9 +12,6 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     RestoreMainDirectory();
 
     // Threading
-    #ifdef FO_WINDOWS
-    pthread_win32_process_attach_np();
-    #endif
     Thread::SetCurrentName( "Main" );
 
     // Disable SIGPIPE signal

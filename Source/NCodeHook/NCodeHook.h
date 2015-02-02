@@ -4,7 +4,7 @@
 #include <set>
 #include <map>
 #include "NCodeHookItem.h"
-#include "distorm.h"
+#include "distorm3/include/distorm.h"
 
 class ArchitectureCommon
 {
