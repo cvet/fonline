@@ -152,7 +152,6 @@ set( CLIENT_MAPPER_SOURCE
 	HexManager.cpp HexManager.h
 	ItemHex.cpp ItemHex.h
 	Keyboard.cpp Keyboard.h
-	ResourceClient.h
 	ResourceManager.cpp ResourceManager.h
 	SpriteManager.cpp SpriteManager.h
 	SpriteManagerFont.cpp
@@ -204,7 +203,6 @@ set( MAPPER_SOURCE
 	${CLIENT_MAPPER_SOURCE}
 	MainMapper.cpp
 	Mapper.cpp Mapper.h
-	ResourceMapper.h
 )
 set( ASCOMPILER_SOURCE
 	${COMMON_SOURCE}
@@ -233,19 +231,19 @@ set( RO2 RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL )
 set( RO3 RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO )
 set( RO4 RUNTIME_OUTPUT_DIRECTORY_RELEASE )
 
-add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} )
+add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} "Server.rc" )
 set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../sdk/Server/" )
 set_target_properties( FOnlineServer PROPERTIES ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 set_target_properties( FOnlineServer PROPERTIES COMPILE_FLAGS "${SERVER_DEFINES}" )
 target_link_libraries( FOnlineServer "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SHA2" "NCodeHook" "fltk" )
 
-add_executable( FOnline WIN32 ${CLIENT_SOURCE} )
+add_executable( FOnline WIN32 ${CLIENT_SOURCE} "Client.rc" )
 set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/../sdk/Client/" )
 set_target_properties( FOnline PROPERTIES ${RO1} ${CLIENT_OUTPUT} ${RO2} ${CLIENT_OUTPUT} ${RO3} ${CLIENT_OUTPUT} ${RO4} ${CLIENT_OUTPUT} )
 set_target_properties( FOnline PROPERTIES COMPILE_FLAGS "${CLIENT_DEFINES}" )
 target_link_libraries( FOnline "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SDL2main" "SDL2-static" "Acm" "SHA2" "NCodeHook" "GL" "libfbxsdk" )
 
-add_executable( Mapper WIN32 ${MAPPER_SOURCE} )
+add_executable( Mapper WIN32 ${MAPPER_SOURCE} "Mapper.rc" )
 set( MAPPER_OUTPUT "${CMAKE_BINARY_DIR}/../sdk/Tools/Mapper/" )
 set_target_properties( Mapper PROPERTIES ${RO1} ${MAPPER_OUTPUT} ${RO2} ${MAPPER_OUTPUT} ${RO3} ${MAPPER_OUTPUT} ${RO4} ${MAPPER_OUTPUT} )
 set_target_properties( Mapper PROPERTIES COMPILE_FLAGS "${MAPPER_DEFINES}" )

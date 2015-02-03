@@ -259,10 +259,8 @@ extern IntVec        MainWindowMouseEvents;
 # include "Assimp/aiTypes.h"
 
 # ifdef FONLINE_CLIENT
-#  include "ResourceClient.h"
 #  define CFG_DEF_INT_FILE                       "default800x600.ini"
 # else // FONLINE_MAPPER
-#  include "ResourceMapper.h"
 const uchar SELECT_ALPHA    = 100;
 #  define CFG_DEF_INT_FILE                       "mapper_default.ini"
 # endif
