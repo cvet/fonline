@@ -17,7 +17,6 @@ else()
 endif()
 
 if( MSVC_IDE )
-	# Todo: -D_HAS_ITERATOR_DEBUGGING=0 -D_SECURE_SCL=0 -D_HAS_EXCEPTIONS=0
 	set( COMPILER_DEFINES "-D_CRT_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_DEPRECATE" )
 else()
 	set( COMPILER_DEFINES "" )
@@ -46,7 +45,7 @@ set( OPTION_BUILD_EXAMPLES OFF CACHE STRING "" FORCE )
 add_subdirectory( "${FLTK_DIR}" )
 include_directories( "${FLTK_DIR}" )
 
-set( ZLIB_DIR "Zlib" ) # zlib-1.2.8
+set( ZLIB_DIR "zlib" ) # zlib-1.2.8
 add_subdirectory( "${ZLIB_DIR}" )
 include_directories( "${ZLIB_DIR}" "${ZLIB_DIR}/contrib" "${CMAKE_BINARY_DIR}/${ZLIB_DIR}" )
 
@@ -58,7 +57,7 @@ set( PNG_STATIC ON )
 add_subdirectory( "${PNG_DIR}" )
 include_directories( "${PNG_DIR}" "${CMAKE_BINARY_DIR}/${PNG_DIR}" )
 
-set( OGG_DIR "Ogg" ) # libogg-1.3.1
+set( OGG_DIR "ogg" ) # libogg-1.3.1
 file( GLOB OGG_SOURCE "${OGG_DIR}/src/*.c" )
 source_group( ogg FILES ${OGG_SOURCE} )
 include_directories( "${OGG_DIR}/include" )
