@@ -206,7 +206,6 @@ public:
     static bool PragmaCallbackCrClData( const char* text );
 
     // Text listen
-    #define TEXT_LISTEN_FIRST_STR_MIN_LEN    ( 2 )
     #define TEXT_LISTEN_FIRST_STR_MAX_LEN    ( 63 )
     struct TextListen
     {

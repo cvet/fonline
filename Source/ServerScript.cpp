@@ -5643,8 +5643,6 @@ void FOServer::SScriptFunc::Global_SetBestScore( int score, Critter* cl, ScriptS
 
 bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, ScriptString& first_str, ushort parameter, ScriptString& script_name )
 {
-    if( first_str.length() < TEXT_LISTEN_FIRST_STR_MIN_LEN )
-        SCRIPT_ERROR_R0( "First string arg length less than minimum." );
     if( first_str.length() >= TEXT_LISTEN_FIRST_STR_MAX_LEN )
         SCRIPT_ERROR_R0( "First string arg length greater than maximum." );
 

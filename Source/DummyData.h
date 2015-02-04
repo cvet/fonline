@@ -956,42 +956,43 @@ struct BindClass
     static void Item_Animate()        {}
     static void Item_GetChild()       {}
 
-    static void Global_CustomCall()                 {}
-    static void Global_GetChosen()                  {}
-    static void Global_GetChosenActions()           {}
-    static void Global_SetChosenActions()           {}
-    static void Global_GetItem()                    {}
-    static void Global_GetCrittersDistantion()      {}
-    static void Global_GetCritter()                 {}
-    static void Global_GetCritters()                {}
-    static void Global_GetCrittersByPids()          {}
-    static void Global_GetCrittersInPath()          {}
-    static void Global_GetCrittersInPathBlock()     {}
-    static void Global_FlushScreen()                {}
-    static void Global_QuakeScreen()                {}
-    static void Global_PlaySound()                  {}
-    static void Global_PlaySoundType()              {}
-    static void Global_PlayMusic()                  {}
-    static void Global_PlayVideo()                  {}
-    static void Global_IsTurnBased()                {}
-    static void Global_GetTurnBasedTime()           {}
-    static void Global_GetCurrentMapPid()           {}
-    static void Global_GetMessageFilters()          {}
-    static void Global_SetMessageFilters()          {}
-    static void Global_MessageType()                {}
-    static void Global_MessageMsgType()             {}
-    static void Global_FormatTags()                 {}
-    static void Global_GetSomeValue()               {}
-    static void Global_LockScreenScroll()           {}
-    static void Global_GetFog()                     {}
-    static void Global_RefreshItemsCollection()     {}
-    static void Global_GetScroll()                  {}
-    static void Global_SetScroll()                  {}
-    static void Global_GetDayTime()                 {}
-    static void Global_GetDayColor()                {}
-    static void Global_GetFullSecond()              {}
-    static void Global_GetGameTime()                {}
-    static void Global_Preload3dFiles()             {}
+    static void Global_CustomCall()             {}
+    static void Global_GetChosen()              {}
+    static void Global_GetChosenActions()       {}
+    static void Global_SetChosenActions()       {}
+    static void Global_GetItem()                {}
+    static void Global_GetCrittersDistantion()  {}
+    static void Global_GetCritter()             {}
+    static void Global_GetCritters()            {}
+    static void Global_GetCrittersByPids()      {}
+    static void Global_GetCrittersInPath()      {}
+    static void Global_GetCrittersInPathBlock() {}
+    static void Global_FlushScreen()            {}
+    static void Global_QuakeScreen()            {}
+    static void Global_PlaySound()              {}
+    static void Global_PlaySoundType()          {}
+    static void Global_PlayMusic()              {}
+    static void Global_PlayVideo()              {}
+    static void Global_IsTurnBased()            {}
+    static void Global_GetTurnBasedTime()       {}
+    static void Global_GetCurrentMapPid()       {}
+    static void Global_GetMessageFilters()      {}
+    static void Global_SetMessageFilters()      {}
+    static void Global_MessageType()            {}
+    static void Global_MessageMsgType()         {}
+    static void Global_FormatTags()             {}
+    static void Global_GetSomeValue()           {}
+    static void Global_LockScreenScroll()       {}
+    static void Global_GetFog()                 {}
+    static void Global_RefreshItemsCollection() {}
+    static void Global_GetScroll()              {}
+    static void Global_SetScroll()              {}
+    static void Global_GetDayTime()             {}
+    static void Global_GetDayColor()            {}
+    static void Global_GetFullSecond()          {}
+    static void Global_GetGameTime()            {}
+    static void Global_Preload3dFiles()         {}
+
     static void Global_RunServerScript()            {}
     static void Global_RunServerScriptUnsafe()      {}
     static void Global_ShowScreen()                 {}

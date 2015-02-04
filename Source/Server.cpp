@@ -1957,8 +1957,8 @@ void FOServer::Process_Text( Client* cl )
 
     // Text listen
     int           listen_count = 0;
-    int           licten_func_id[ 100 ];  // 100 calls per one message is enough
-    ScriptString* licten_str[ 100 ];
+    int           listen_func_id[ 100 ];  // 100 calls per one message is enough
+    ScriptString* listen_str[ 100 ];
 
     TextListenersLocker.Lock();
 
@@ -1970,8 +1970,8 @@ void FOServer::Process_Text( Client* cl )
             if( tl.SayType == SAY_RADIO && std::find( channels.begin(), channels.end(), tl.Parameter ) != channels.end() &&
                 Str::CompareCaseCountUTF8( str, tl.FirstStr, tl.FirstStrLen ) )
             {
-                licten_func_id[ listen_count ] = tl.FuncId;
-                licten_str[ listen_count ] = ScriptString::Create( str );
+                listen_func_id[ listen_count ] = tl.FuncId;
+                listen_str[ listen_count ] = ScriptString::Create( str );
                 if( ++listen_count >= 100 )
                     break;
             }
@@ -1985,8 +1985,8 @@ void FOServer::Process_Text( Client* cl )
             TextListen& tl = TextListeners[ i ];
             if( tl.SayType == how_say && tl.Parameter == pid && Str::CompareCaseCountUTF8( str, tl.FirstStr, tl.FirstStrLen ) )
             {
-                licten_func_id[ listen_count ] = tl.FuncId;
-                licten_str[ listen_count ] = ScriptString::Create( str );
+                listen_func_id[ listen_count ] = tl.FuncId;
+                listen_str[ listen_count ] = ScriptString::Create( str );
                 if( ++listen_count >= 100 )
                     break;
             }
@@ -1997,13 +1997,13 @@ void FOServer::Process_Text( Client* cl )
 
     for( int i = 0; i < listen_count; i++ )
     {
-        if( Script::PrepareContext( licten_func_id[ i ], _FUNC_, cl->GetInfo() ) )
+        if( Script::PrepareContext( listen_func_id[ i ], _FUNC_, cl->GetInfo() ) )
         {
             Script::SetArgObject( cl );
-            Script::SetArgObject( licten_str[ i ] );
+            Script::SetArgObject( listen_str[ i ] );
             Script::RunPrepared();
         }
-        licten_str[ i ]->Release();
+        listen_str[ i ]->Release();
     }
 }
 

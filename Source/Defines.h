@@ -287,7 +287,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define FH_NOSHOOT                   BIN16( 00100000, 00000010 )
 
 // Client map
-#define SERVER_MAP_EXT               ".map"
+// #define SERVER_MAP_EXT            ".map"
 #define CLIENT_MAP_FORMAT_VER        ( 7 )
 
 // Coordinates
@@ -319,9 +319,9 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define DIALOGS_LST_NAME             "dialogs.lst"
 #define MAX_SCRIPT_NAME              ( 64 )
 #define SCRIPTS_LST                  "scripts.cfg"
-#define MAX_START_SPECIAL            ( 40 )
+// #define MAX_START_SPECIAL         ( 40 )
 #define TURN_BASED_TIMEOUT           ( 1000 )
-#define MIN_VISIBLE_CRIT             ( 6 )
+// #define MIN_VISIBLE_CRIT          ( 6 )
 #define FADING_PERIOD                ( 1000 )
 
 #define RESPOWN_TIME_PLAYER          ( 3 )
@@ -409,11 +409,11 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 // Stats
 #define ST_STRENGTH                  ( 0 )
 #define ST_PERCEPTION                ( 1 )
-// #define ST_ENDURANCE                (2)
+// #define ST_ENDURANCE              ( 2 )
 #define ST_CHARISMA                  ( 3 )
 #define ST_INTELLECT                 ( 4 )
 #define ST_AGILITY                   ( 5 )
-#define ST_LUCK                      ( 6 )
+// #define ST_LUCK                   ( 6 )
 #define ST_MAX_LIFE                  ( 7 )
 #define ST_ACTION_POINTS             ( 8 )
 #define ST_ARMOR_CLASS               ( 9 )
@@ -508,7 +508,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define PE_SILENT_RUNNING            ( 316 )
 #define PE_MASTER_TRADER             ( 318 )
 #define PE_QUICK_POCKETS             ( 349 )
-#define PE_SMOOTH_TALKER             ( 350 )
+// #define PE_SMOOTH_TALKER          ( 350 )
 
 // Addiction
 #define ADDICTION_BEGIN              ( GameOpt.AddictionBegin )

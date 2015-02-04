@@ -1,6 +1,7 @@
 /*
-   Preprocessor 0.5
+   Preprocessor 0.7
    Copyright (c) 2005 Anthony Casteel
+   Copyright (c) 2015 Anton "Cvet" Cvetinsky, Grzegorz "Atom" Jagiella
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -28,6 +29,11 @@
 
    Anthony Casteel
    jm@omnisu.com
+ */
+
+/*
+ * This version has been modified and improved by Anton "Cvet" Cvetinsky and Rotators team.
+ * http://github.com/rotators/angelscript-preprocessor/
  */
 
 #include "preprocessor.h"
@@ -202,6 +208,7 @@ public:
     unsigned int               LinesThisFile = 0;
     bool                       SkipPragmas = false;
     std::vector< std::string > FileDependencies;
+    std::vector< std::string > FilesPreprocessed;
     std::vector< std::string > Pragmas;
 }
 
@@ -422,7 +429,7 @@ Preprocessor::LLITR Preprocessor::ExpandDefine( LLITR itr, LLITR end, LexemList&
 
     if( define_entry->second.Arguments.size() != arguments.size() )
     {
-        PrintErrorMessage( "Didn't supply right number of arguments to define." );
+        PrintErrorMessage( "Didn't supply right number of arguments to define '"+itr_begin->Value+"'." );
         return end;
     }
 
@@ -874,6 +881,11 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
     SetFileMacro( define_table, CurrentFile );
     SetLineMacro( define_table, LinesThisFile );
 
+    // Path formatting must be done in main application
+    std::string CurrentFileRoot = RootPath + CurrentFile;
+    if( std::find( FilesPreprocessed.begin(), FilesPreprocessed.end(), CurrentFileRoot ) == FilesPreprocessed.end() )
+        FilesPreprocessed.push_back( CurrentFileRoot );
+
     std::vector< char > data;
     bool                loaded = file_source.LoadFile( RootPath, filename, data );
     if( !loaded )
@@ -1046,6 +1058,7 @@ int Preprocessor::Preprocess( std::string file_path, OutStream& result, OutStrea
     ErrorsCount = 0;
 
     FileDependencies.clear();
+    FilesPreprocessed.clear();
 
     Pragmas.clear();
     SkipPragmas = skip_pragmas;
@@ -1124,6 +1137,11 @@ unsigned int Preprocessor::ResolveOriginalLine( unsigned int line_number, LineNu
 std::vector< std::string >& Preprocessor::GetFileDependencies()
 {
     return FileDependencies;
+}
+
+std::vector< std::string >& Preprocessor::GetFilesPreprocessed()
+{
+    return FilesPreprocessed;
 }
 
 std::vector< std::string >& Preprocessor::GetParsedPragmas()

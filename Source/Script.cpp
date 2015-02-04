@@ -1588,8 +1588,28 @@ public:
         if( module->SaveByteCode( &binary ) >= 0 )
         {
             std::vector< asBYTE >& data = binary.GetBuf();
-            const StrVec&          dependencies = Preprocessor::GetFileDependencies();
+            // Can't use GetFileDependencies() here, it loose track of included files directory
+            StrVec&                dependencies = Preprocessor::GetFilesPreprocessed();
             const StrVec&          pragmas = Preprocessor::GetParsedPragmas();
+
+            char                   scripts_path[ MAX_FOPATH ];
+            FileManager::GetReadPath( "", ScriptsPath, scripts_path );
+            FileManager::FormatPath( scripts_path );
+
+            // Format dependencies paths and make them relative to ScriptsPath
+            for( int d = 0, dLen = dependencies.size(); d < dLen; d++ )
+            {
+                // char* dep_original = Str::Duplicate( dependencies[ d ].c_str() );
+
+                char dep[ MAX_FOPATH ];
+                Str::Copy( dep, dependencies[ d ].c_str() );
+                FileManager::FormatPath( dep );
+                dependencies[ d ].assign( dep );
+                dependencies[ d ].erase( 0, Str::Length( scripts_path ) );
+
+                // if( !d ) WriteLog( "Module<%s> dependencies:\n", module_name );
+                // WriteLog( "\t%s -> %s\n", dep_original, dependencies[ d ].c_str() );
+            }
 
             file_bin.SetBEUInt( version );
             file_bin.SetBEUInt( (uint) dependencies.size() );

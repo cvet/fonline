@@ -1,6 +1,7 @@
 /*
-   Preprocessor 0.5
+   Preprocessor 0.7
    Copyright (c) 2005 Anthony Casteel
+   Copyright (c) 2015 Anton "Cvet" Cvetinsky, Grzegorz "Atom" Jagiella
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -28,6 +29,11 @@
 
    Anthony Casteel
    jm@omnisu.com
+ */
+
+/*
+ * This version has been modified and improved by Anton "Cvet" Cvetinsky and Rotators team.
+ * http://github.com/rotators/angelscript-preprocessor/
  */
 
 #ifndef PREPROCESSOR_H
@@ -67,6 +73,7 @@ namespace Preprocessor
     std::string                 ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt = NULL );
     unsigned int                ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt = NULL );
     std::vector< std::string >& GetFileDependencies();
+    std::vector< std::string >& GetFilesPreprocessed();
     std::vector< std::string >& GetParsedPragmas();
 
     /************************************************************************/
