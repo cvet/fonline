@@ -161,9 +161,6 @@ extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 #define ITEM_DATA_MASK_MAX            ( 5 )
 
 // Special item pids
-// #define SP_SCEN_LIGHT              ( 2141 )         // Light Source
-// #define SP_SCEN_LIGHT_STOP         ( 4592 )
-// #define SP_SCEN_BLOCK              ( 2067 )         // Secret Blocking Hex
 #define SP_SCEN_IBLOCK                ( 2344 )         // Block Hex Auto Inviso
 #define SP_SCEN_TRIGGER               ( 3852 )
 #define SP_WALL_BLOCK_LIGHT           ( 5621 )         // Wall s.t. with light
@@ -171,8 +168,6 @@ extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 #define SP_GRID_EXITGRID              ( 2049 )         // Exit Grid Map Marker
 #define SP_GRID_ENTIRE                ( 3853 )
 #define SP_MISC_SCRBLOCK              ( 4012 )         // Scroll block
-// #define SP_MISC_GRID_MAP( pid )    ( ( pid ) >= 4016 && ( pid ) <= 4023 )
-// #define SP_MISC_GRID_GM( pid )     ( ( pid ) >= 4031 && ( pid ) <= 4046 )
 
 // Slot protos offsets
 // 1000 - 1100 protos reserved

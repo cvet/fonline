@@ -5335,7 +5335,7 @@ void FOMapper::InitScriptSystem()
         { &MapperFunctions.MapLoad, "map_load", "void %s(MapperMap&)" },
         { &MapperFunctions.MapSave, "map_save", "void %s(MapperMap&)" },
     };
-    Script::BindReservedFunctions( (char*) scripts_cfg.GetBuf(), "mapper", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) );
+    Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) );
 
     Script::RunModuleInitFunctions();
 

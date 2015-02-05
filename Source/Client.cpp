@@ -9065,8 +9065,7 @@ bool FOClient::ReloadScripts()
     WriteLog( "Load scripts...\n" );
 
     FOMsg& msg_script = CurLang.Msg[ TEXTMSG_INTERNAL ];
-    if( !msg_script.Count( STR_INTERNAL_SCRIPT_CONFIG ) ||
-        !msg_script.Count( STR_INTERNAL_SCRIPT_MODULES ) ||
+    if( !msg_script.Count( STR_INTERNAL_SCRIPT_MODULES ) ||
         !msg_script.Count( STR_INTERNAL_SCRIPT_MODULES + 1 ) )
     {
         WriteLog( "Main script section not found in MSG.\n" );
@@ -9221,8 +9220,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.CheckInterfaceHit, "check_interface_hit", "bool %s(int,int)" },
         { &ClientFunctions.GetContItem, "get_cont_item", "bool %s(uint&,bool&)" },
     };
-    const char*            config = msg_script.GetStr( STR_INTERNAL_SCRIPT_CONFIG );
-    if( !Script::BindReservedFunctions( config, "client", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
+    if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
         errors++;
 
     if( errors || !Script::RunModuleInitFunctions() )

@@ -1,7 +1,7 @@
 /*
    Preprocessor 0.7
    Copyright (c) 2005 Anthony Casteel
-   Copyright (c) 2015 Anton "Cvet" Cvetinsky, Grzegorz "Atom" Jagiella
+   Copyright (c) 2015 Anton "Cvet" Tsvetinsky, Grzegorz "Atom" Jagiella
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -32,7 +32,7 @@
  */
 
 /*
- * This version has been modified and improved by Anton "Cvet" Cvetinsky and Rotators team.
+ * This version has been modified and improved by Anton "Cvet" Tsvetinsky and Rotators team.
  * http://github.com/rotators/angelscript-preprocessor/
  */
 
@@ -44,7 +44,7 @@
 #include <sstream>
 #include <vector>
 
-#define PREPROCESSOR_VERSION_STRING    "0.5"
+#define PREPROCESSOR_VERSION_STRING    "0.7"
 
 namespace Preprocessor
 {
@@ -147,7 +147,7 @@ public:
     class PragmaCallback
     {
 public:
-		virtual ~PragmaCallback() {}
+        virtual ~PragmaCallback() {}
         virtual void CallPragma( const std::string& name, const PragmaInstance& pi ) = 0;
     };
 };

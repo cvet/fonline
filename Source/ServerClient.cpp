@@ -4111,10 +4111,7 @@ void FOServer::Process_PlayersBarter( Client* cl )
             {
                 Client::BarterItem& barter_item = cl->BarterItems[ i ];
                 ProtoItem*          proto_item = ItemMngr.GetProtoItem( barter_item.Pid );
-                if( !proto_item )
-                    WriteLogF( _FUNC_, " - proto item not found, pid<%u>.\n", barter_item.Pid );
-                else
-                    weigth += proto_item->Weight * barter_item.Count;
+                weigth += proto_item->Weight * barter_item.Count;
             }
             // Opponent
             uint weigth_ = 0;
@@ -4122,10 +4119,7 @@ void FOServer::Process_PlayersBarter( Client* cl )
             {
                 Client::BarterItem& barter_item = opponent->BarterItems[ i ];
                 ProtoItem*          proto_item = ItemMngr.GetProtoItem( barter_item.Pid );
-                if( !proto_item )
-                    WriteLogF( _FUNC_, " - proto item not found, pid<%u>.\n", barter_item.Pid );
-                else
-                    weigth_ += proto_item->Weight * barter_item.Count;
+                weigth_ += proto_item->Weight * barter_item.Count;
             }
             // Check
             if( cl->GetFreeWeight() + (int) weigth < (int) weigth_ )

@@ -1,7 +1,7 @@
 /*
    Preprocessor 0.7
    Copyright (c) 2005 Anthony Casteel
-   Copyright (c) 2015 Anton "Cvet" Cvetinsky, Grzegorz "Atom" Jagiella
+   Copyright (c) 2015 Anton "Cvet" Tsvetinsky, Grzegorz "Atom" Jagiella
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -32,7 +32,7 @@
  */
 
 /*
- * This version has been modified and improved by Anton "Cvet" Cvetinsky and Rotators team.
+ * This version has been modified and improved by Anton "Cvet" Tsvetinsky and Rotators team.
  * http://github.com/rotators/angelscript-preprocessor/
  */
 
@@ -429,7 +429,7 @@ Preprocessor::LLITR Preprocessor::ExpandDefine( LLITR itr, LLITR end, LexemList&
 
     if( define_entry->second.Arguments.size() != arguments.size() )
     {
-        PrintErrorMessage( "Didn't supply right number of arguments to define '"+itr_begin->Value+"'." );
+        PrintErrorMessage( "Didn't supply right number of arguments to define '" + itr_begin->Value + "'." );
         return end;
     }
 
@@ -1558,7 +1558,7 @@ char* Preprocessor::ParseLexem( char* start, char* end, Lexem& out )
     if( current_char == '\"' )
         return ParseStringLiteral( start, end, '\"', out );
     if( current_char == '\'' )
-        return ParseStringLiteral( start, end, '\'', out ); // Todo: set optional ParseCharacterLiteral?
+        return ParseStringLiteral( start, end, '\'', out );  // Todo: set optional ParseCharacterLiteral?
     if( current_char == '/' )
     {
         // Need to see if it's a comment.

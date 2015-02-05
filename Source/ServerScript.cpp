@@ -185,7 +185,7 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.GetUseApCost, "get_use_ap_cost", "uint %s(Critter&,Item&,uint8)" },
         { &ServerFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(Critter&,Item&,uint8)" },
     };
-    if( !Script::BindReservedFunctions( (char*) scripts_cfg.GetBuf(), "server", BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
+    if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
     {
         Script::Finish();
         WriteLog( "Bind game functions fail.\n" );
@@ -485,7 +485,6 @@ bool FOServer::ReloadClientScripts()
         return false;
 
     // Add config text and pragmas
-    msg_script.AddStr( STR_INTERNAL_SCRIPT_CONFIG, config.c_str() );
     for( uint i = 0, j = (uint) pragmas.size(); i < j; i++ )
         msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + i, pragmas[ i ].c_str() );
 
@@ -5643,7 +5642,7 @@ void FOServer::SScriptFunc::Global_SetBestScore( int score, Critter* cl, ScriptS
 
 bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, ScriptString& first_str, ushort parameter, ScriptString& script_name )
 {
-    if( first_str.length() >= TEXT_LISTEN_FIRST_STR_MAX_LEN )
+    if( first_str.length() > TEXT_LISTEN_FIRST_STR_MAX_LEN )
         SCRIPT_ERROR_R0( "First string arg length greater than maximum." );
 
     int func_id = Script::Bind( script_name.c_str(), "void %s(Critter&,string&)", false );

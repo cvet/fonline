@@ -629,8 +629,10 @@ bool Script::ReloadScripts( const char* config, const char* key, bool skip_binar
     Script::Profiler::SaveFunctionsData();
     #endif
 
-    errors += BindImportedFunctions();
-    errors += RebindFunctions();
+    if( !errors )
+        errors += BindImportedFunctions();
+    if( !errors )
+        errors += RebindFunctions();
 
     if( errors )
     {
@@ -642,49 +644,56 @@ bool Script::ReloadScripts( const char* config, const char* key, bool skip_binar
     return true;
 }
 
-bool Script::BindReservedFunctions( const char* config, const char* key, ReservedScriptFunction* bind_func, uint bind_func_count )
+bool Script::BindReservedFunctions( ReservedScriptFunction* bind_func, uint bind_func_count )
 {
     WriteLog( "Bind reserved functions...\n" );
 
-    int    errors = 0;
-    char   buf[ 1024 ];
-    string value;
+    int errors = 0;
+
+    // Collect functions in all modules
+    multimap< string, asIScriptFunction* > all_functions;
+    asUINT                                 module_count = Engine->GetModuleCount();
+    for( asUINT m = 0; m < module_count; m++ )
+    {
+        asIScriptModule* module = Engine->GetModuleByIndex( m );
+        asUINT           func_count = module->GetFunctionCount();
+        for( asUINT f = 0; f < func_count; f++ )
+        {
+            asIScriptFunction* func = module->GetFunctionByIndex( f );
+            all_functions.insert( PAIR( func->GetName(), func ) );
+        }
+    }
+
+    // Automatically find function
     for( uint i = 0; i < bind_func_count; i++ )
     {
         ReservedScriptFunction* bf = &bind_func[ i ];
-        int                     bind_id = 0;
-
-        istrstream              config_( config );
-        while( !config_.eof() )
+        auto                    count                 = all_functions.count( bf->FuncName );
+        if( count == 1 )
         {
-            config_.getline( buf, 1024 );
-            if( buf[ 0 ] != '@' )
-                continue;
-
-            istrstream str( &buf[ 1 ] );
-            str >> value;
-            if( str.fail() || key != value )
-                continue;
-            str >> value;
-            if( str.fail() || value != "bind" )
-                continue;
-            str >> value;
-            if( str.fail() || value != bf->FuncName )
-                continue;
-
-            str >> value;
-            if( !str.fail() )
-                bind_id = Bind( value.c_str(), bf->FuncName, bf->FuncDecl, false );
-            break;
+            asIScriptFunction* func = all_functions.find( bf->FuncName )->second;
+            int                bind_id = Bind( func->GetModuleName(), bf->FuncName, bf->FuncDecl, false );
+            if( bind_id > 0 )
+            {
+                *bf->BindId = bind_id;
+            }
+            else
+            {
+                WriteLog( "Bind reserved function fail, module<%s>, name<%s>.\n", func->GetModuleName(), bf->FuncName );
+                errors++;
+            }
         }
-
-        if( bind_id > 0 )
+        else if( count == 0 )
         {
-            *bf->BindId = bind_id;
+            WriteLog( "Function for reserved function<%s> not founded.\n", bf->FuncName );
+            errors++;
         }
         else
         {
-            WriteLog( "Bind reserved function fail, name<%s>.\n", bf->FuncName );
+            WriteLog( "Multiplied functions founded for reserved function<%s>.\n", bf->FuncName );
+            auto it = all_functions.find( bf->FuncName );
+            for( auto j = 0; j < count; j++, it++ )
+                WriteLog( "- In module<%s>.\n", it->second->GetModuleName() );
             errors++;
         }
     }
@@ -1588,28 +1597,8 @@ public:
         if( module->SaveByteCode( &binary ) >= 0 )
         {
             std::vector< asBYTE >& data = binary.GetBuf();
-            // Can't use GetFileDependencies() here, it loose track of included files directory
-            StrVec&                dependencies = Preprocessor::GetFilesPreprocessed();
+            const StrVec&          dependencies = Preprocessor::GetFileDependencies();
             const StrVec&          pragmas = Preprocessor::GetParsedPragmas();
-
-            char                   scripts_path[ MAX_FOPATH ];
-            FileManager::GetReadPath( "", ScriptsPath, scripts_path );
-            FileManager::FormatPath( scripts_path );
-
-            // Format dependencies paths and make them relative to ScriptsPath
-            for( int d = 0, dLen = dependencies.size(); d < dLen; d++ )
-            {
-                // char* dep_original = Str::Duplicate( dependencies[ d ].c_str() );
-
-                char dep[ MAX_FOPATH ];
-                Str::Copy( dep, dependencies[ d ].c_str() );
-                FileManager::FormatPath( dep );
-                dependencies[ d ].assign( dep );
-                dependencies[ d ].erase( 0, Str::Length( scripts_path ) );
-
-                // if( !d ) WriteLog( "Module<%s> dependencies:\n", module_name );
-                // WriteLog( "\t%s -> %s\n", dep_original, dependencies[ d ].c_str() );
-            }
 
             file_bin.SetBEUInt( version );
             file_bin.SetBEUInt( (uint) dependencies.size() );
