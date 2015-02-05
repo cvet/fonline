@@ -99,7 +99,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 add_definitions("-D_CRT_SECURE_NO_WARNINGS -DANGELSCRIPT_EXPORT -D_LIB")
 
 # Fix x64 issues on Linux
-if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64" AND NOT APPLE)
+if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" AND NOT APPLE)
         add_definitions(-fPIC)
 endif()
 

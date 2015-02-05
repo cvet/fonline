@@ -1,25 +1,43 @@
 cmake_minimum_required( VERSION 3.1 )
 project( FOnlineProject )
-
-set( CMAKE_CONFIGURATION_TYPES "RelWithDebInfo;Debug;Release;MinSizeRel" CACHE STRING "" FORCE )
-set( CMAKE_INSTALL_PREFIX "C:/Games/FOnline" CACHE STRING "" FORCE )
+set( CMAKE_CONFIGURATION_TYPES "RelWithDebInfo" CACHE STRING "" FORCE )
 
 #
 # Preprocessor definitions
 #
 
-if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
-  set( ARCH_X64 TRUE )
-  set( ARCH_STR "x64" )
+if( WIN32 )
+	set( OS "Windows" )
+elseif( CMAKE_SYSTEM_NAME == "Linux" || CMAKE_SYSTEM_NAME == "FreeBSD" )
+	set( OS "Linux" )
+elseif( APPLE )
+	set( OS "OSX" )
 else()
-  set( ARCH_X64 FALSE)
-  set( ARCH_STR "x86" )
+	message( FATAL_ERROR "Unknown OS!" )
+endif()
+
+if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
+	set( ARCH_X64 TRUE )
+	set( ARCH_STR "x64" )
+else()
+	set( ARCH_X64 FALSE)
+	set( ARCH_STR "x86" )
 endif()
 
 if( MSVC_IDE )
 	set( COMPILER_DEFINES "-D_CRT_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_DEPRECATE" )
+	set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MP" )
+	set( CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_RELEASE} /MP" )
+	set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} /MP" )
+	set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MP" )
+	set( CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /INCREMENTAL:NO" )
 else()
 	set( COMPILER_DEFINES "" )
+	set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}" )
+	set( CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_RELEASE}" )
+	set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE}" )
+	set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}" )
+	set( CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}" )
 endif()
 
 set( COMMON_DEFINES "${COMPILER_DEFINES}")
@@ -36,31 +54,25 @@ set( SKIP_INSTALL_ALL ON )
 
 set( SDL_DIR "SDL2" ) # SDL2-2.0.3
 set( SDL_SHARED OFF CACHE STRING "" FORCE )
-#set( FORCE_STATIC_VCRT ON CACHE STRING "" FORCE )
 add_subdirectory( "${SDL_DIR}" )
-include_directories( "${SDL_DIR}/include" )
 
 set( FLTK_DIR "FLTK" ) # fltk-1.3.3
 set( OPTION_BUILD_EXAMPLES OFF CACHE STRING "" FORCE )
 add_subdirectory( "${FLTK_DIR}" )
-include_directories( "${FLTK_DIR}" )
 
 set( ZLIB_DIR "zlib" ) # zlib-1.2.8
 add_subdirectory( "${ZLIB_DIR}" )
-include_directories( "${ZLIB_DIR}" "${ZLIB_DIR}/contrib" "${CMAKE_BINARY_DIR}/${ZLIB_DIR}" )
 
 set( PNG_DIR "PNG" ) # lpng1616
 set( ZLIB_LIBRARY "zlibstatic" )
-set( ZLIB_INCLUDE_DIR "${ZLIB_DIR}" )
+set( ZLIB_INCLUDE_DIR "../${ZLIB_DIR}" "${CMAKE_BINARY_DIR}/${ZLIB_DIR}" )
 set( PNG_SHARED OFF )
 set( PNG_STATIC ON )
 add_subdirectory( "${PNG_DIR}" )
-include_directories( "${PNG_DIR}" "${CMAKE_BINARY_DIR}/${PNG_DIR}" )
 
 set( OGG_DIR "ogg" ) # libogg-1.3.1
 file( GLOB OGG_SOURCE "${OGG_DIR}/src/*.c" )
 source_group( ogg FILES ${OGG_SOURCE} )
-include_directories( "${OGG_DIR}/include" )
 
 set( VORBIS_DIR "Vorbis" ) # libvorbis-1.3.3
 file( GLOB VORBIS_SOURCE "${VORBIS_DIR}/lib/*.c" )
@@ -68,7 +80,6 @@ list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/b
 list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/psytune.c" )
 list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/tone.c" )
 source_group( vorbis FILES ${VORBIS_SOURCE} )
-include_directories( "${VORBIS_DIR}/include" )
 
 set( THEORA_DIR "Theora" ) # libtheora-1.1.1
 file( GLOB THEORA_SOURCE "${THEORA_DIR}/lib/*.c" )
@@ -76,12 +87,10 @@ list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/a
 list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/encode.c" )
 list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/encapiwrapper.c" )
 source_group( theora FILES ${THEORA_SOURCE} )
-include_directories( "${THEORA_DIR}/include" )
 
 set( ANGEL_SCRIPT_DIR "AngelScript" )
 add_subdirectory( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/projects/cmake" )
 add_subdirectory( "${ANGEL_SCRIPT_DIR}" )
-include_directories( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/include" "${ANGEL_SCRIPT_DIR}" )
 
 add_subdirectory( "Acm" )
 add_subdirectory( "SHA2" )
@@ -215,15 +224,18 @@ set( ASCOMPILER_SOURCE
 # Builds
 #
 
-include_directories( "." )
-link_directories( "Lib/${ARCH_STR}" )
+include_directories( "${CMAKE_CURRENT_SOURCE_DIR}" )
+include_directories( "${SDL_DIR}/include" )
+include_directories( "${FLTK_DIR}" )
+include_directories( "${ZLIB_DIR}" "${ZLIB_DIR}/contrib" "${CMAKE_BINARY_DIR}/${ZLIB_DIR}" )
+include_directories( "${PNG_DIR}" "${CMAKE_BINARY_DIR}/${PNG_DIR}" )
+include_directories( "${OGG_DIR}/include" )
+include_directories( "${VORBIS_DIR}/include" )
+include_directories( "${THEORA_DIR}/include" )
+include_directories( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/include" "${ANGEL_SCRIPT_DIR}" )
+link_directories( "Lib/${OS}/${ARCH_STR}" )
 link_directories( "$ENV{DXSDK_DIR}/lib/${ARCH_STR}" )
 
-#set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd /MP /Z7" )
-#set( CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_RELEASE} /MT /MP /Z7" )
-#set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} /MT /MP /Z7" )
-#set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT /MP /Z7" )
-#set( CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /INCREMENTAL:NO" )
 set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DELAYLOAD:libfbxsdk.dll" )
 
 set( RO1 RUNTIME_OUTPUT_DIRECTORY_DEBUG )

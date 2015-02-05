@@ -1272,6 +1272,8 @@ if(SDL_STATIC)
   target_link_libraries(SDL2-static ${EXTRA_LIBS} ${EXTRA_LDFLAGS})
 endif()
 
+return()
+
 ##### Installation targets #####
 install(TARGETS ${_INSTALL_LIBS}
   LIBRARY DESTINATION "lib${LIB_SUFFIX}"

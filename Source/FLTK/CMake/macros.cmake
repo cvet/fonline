@@ -63,12 +63,12 @@ macro(FL_ADD_LIBRARY LIBNAME LIBTYPE LIBFILES)
             endif(${LIBTYPE} STREQUAL "SHARED")
     endif(MSVC)
 
-    install(TARGETS ${LIBRARY_NAME}
-        EXPORT FLTK-Targets
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        )
+    #install(TARGETS ${LIBRARY_NAME}
+    #    EXPORT FLTK-Targets
+    #    RUNTIME DESTINATION bin
+    #    LIBRARY DESTINATION lib
+    #    ARCHIVE DESTINATION lib
+    #    )
 
     list(APPEND FLTK_LIBRARIES "${LIBRARY_NAME}")
     set(FLTK_LIBRARIES ${FLTK_LIBRARIES} PARENT_SCOPE)
@@ -119,9 +119,9 @@ macro(CREATE_EXAMPLE NAME SOURCES LIBRARIES)
     endif(HAVE_XINERAMA)
 
     # install the example
-    install(TARGETS ${tname}
-        DESTINATION ${FLTK_EXAMPLES_PATH}
-        )
+    #install(TARGETS ${tname}
+    #    DESTINATION ${FLTK_EXAMPLES_PATH}
+    #    )
 
 endmacro(CREATE_EXAMPLE NAME SOURCES LIBRARIES)
 
