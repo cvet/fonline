@@ -612,26 +612,23 @@ void CraftManager::EraseCraft( uint num )
 
 bool CraftManager::LoadCrafts( FOMsg& msg )
 {
-    int            load_fail = 0;
-    UIntStrMulMap& msg_str = msg.GetData();
-    auto           it = msg_str.begin();
-    auto           it_end = msg_str.end();
-
-    for( ; it != it_end; ++it )
+    int  load_fail = 0;
+    uint num = 0;
+    while( num = msg.GetStrNumUpper( num ) )
     {
-        uint    num = ( *it ).first;
-        string& str = ( *it ).second;
+        const char* str = msg.GetStr( num );
 
-        if( !AddCraft( num, str.c_str() ) )
+        if( !AddCraft( num, str ) )
         {
-            WriteLogF( _FUNC_, " - Craft<%d> string<%s> load fail.\n", num, str.c_str() );
+            WriteLogF( _FUNC_, " - Craft<%d> string<%s> load fail.\n", num, str );
             load_fail++;
             continue;
         }
 
         #ifdef FONLINE_SERVER
         CraftItem* craft = GetCraft( num );
-        str = craft->GetStr( true );
+        msg.EraseStr( num );
+        msg.AddStr( num, craft->GetStr( true ) );
         #endif
     }
 

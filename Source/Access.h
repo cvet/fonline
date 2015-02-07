@@ -499,20 +499,18 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     case CMD_LOADDIALOG:
     {
         char dlg_name[ 128 ];
-        uint dlg_id;
-        if( sscanf( args, "%s%u", dlg_name, &dlg_id ) != 2 )
+        if( sscanf( args, "%s", dlg_name ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <loaddialog name id>." );
+            logcb( "Invalid arguments. Example: <loaddialog name>." );
             break;
         }
         dlg_name[ 127 ] = 0;
-        msg_len += 128 + sizeof( dlg_id );
+        msg_len += 128;
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
         buf.Push( dlg_name, 128 );
-        buf << dlg_id;
     }
     break;
     case CMD_RELOADTEXTS:

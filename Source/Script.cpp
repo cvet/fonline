@@ -668,7 +668,7 @@ bool Script::BindReservedFunctions( ReservedScriptFunction* bind_func, uint bind
     for( uint i = 0; i < bind_func_count; i++ )
     {
         ReservedScriptFunction* bf = &bind_func[ i ];
-        auto                    count                 = all_functions.count( bf->FuncName );
+        uint                    count = (uint) all_functions.count( bf->FuncName );
         if( count == 1 )
         {
             asIScriptFunction* func = all_functions.find( bf->FuncName )->second;
@@ -692,7 +692,7 @@ bool Script::BindReservedFunctions( ReservedScriptFunction* bind_func, uint bind
         {
             WriteLog( "Multiplied functions founded for reserved function<%s>.\n", bf->FuncName );
             auto it = all_functions.find( bf->FuncName );
-            for( auto j = 0; j < count; j++, it++ )
+            for( uint j = 0; j < count; j++, it++ )
                 WriteLog( "- In module<%s>.\n", it->second->GetModuleName() );
             errors++;
         }

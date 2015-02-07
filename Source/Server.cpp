@@ -2743,13 +2743,10 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
 
         SynchronizeLogicThreads();
 
-        DlgMngr.DialogsPacks.clear();
-        DlgMngr.DlgPacksNames.clear();
-        int errors = DlgMngr.LoadDialogs( DIALOGS_LST_NAME );
-
+        bool error = DlgMngr.LoadDialogs();
         InitLangPacks( LangPacks );
         InitLangPacksDialogs( LangPacks );
-        logcb( Str::FormatBuf( "Dialogs reload done, errors<%d>.", errors ) );
+        logcb( Str::FormatBuf( "Dialogs reload done%s.", error ? ", with errors." : "" ) );
 
         ResynchronizeLogicThreads();
     }
@@ -2757,9 +2754,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
     case CMD_LOADDIALOG:
     {
         char dlg_name[ 128 ];
-        uint dlg_id;
         buf.Pop( dlg_name, 128 );
-        buf >> dlg_id;
         dlg_name[ 127 ] = 0;
 
         CHECK_ALLOW_COMMAND;
@@ -2767,15 +2762,14 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         SynchronizeLogicThreads();
 
         FileManager fm;
-        if( fm.LoadFile( Str::FormatBuf( "%s%s", dlg_name, DIALOG_FILE_EXT ), PT_SERVER_DIALOGS ) )
+        if( fm.LoadFile( Str::FormatBuf( "%s%s", dlg_name, ".fodlg" ), PT_SERVER_DIALOGS ) )
         {
-            DialogPack* pack = DlgMngr.ParseDialog( dlg_name, dlg_id, (char*) fm.GetBuf() );
+            DialogPack* pack = DlgMngr.ParseDialog( dlg_name, (char*) fm.GetBuf() );
             if( pack )
             {
-                DlgMngr.EraseDialogs( dlg_id );
-                DlgMngr.EraseDialogs( string( dlg_name ) );
+                DlgMngr.EraseDialog( pack->PackId );
 
-                if( DlgMngr.AddDialogs( pack ) )
+                if( DlgMngr.AddDialog( pack ) )
                 {
                     InitLangPacks( LangPacks );
                     InitLangPacksDialogs( LangPacks );
@@ -3228,7 +3222,7 @@ void FOServer::SaveGameInfoFile()
 
 bool FOServer::LoadGameInfoFile( void* f )
 {
-    WriteLog( "Load game info..." );
+    WriteLog( "Load game info...\n" );
 
     // Singleplayer info
     uint sp = 0;
@@ -3236,8 +3230,6 @@ bool FOServer::LoadGameInfoFile( void* f )
         return false;
     if( sp != 0 )
     {
-        WriteLog( "singleplayer..." );
-
         // Critter data
         ClientSaveData& csd = SingleplayerSave.CrData;
         csd.Clear();
@@ -3304,7 +3296,7 @@ bool FOServer::LoadGameInfoFile( void* f )
     if( !FileRead( f, &BestScores[ 0 ], sizeof( BestScores ) ) )
         return false;
 
-    WriteLog( "complete.\n" );
+    WriteLog( "Load game info complete.\n" );
     return true;
 }
 
@@ -3501,7 +3493,7 @@ bool FOServer::InitReal()
         return false;                    // Map manager
     if( !VarMngr.Init() )
         return false;                    // Var Manager (only before dialog manager!)
-    if( !DlgMngr.LoadDialogs( DIALOGS_LST_NAME ) )
+    if( !DlgMngr.LoadDialogs() )
         return false;                    // Dialog manager
     if( !InitLangPacksDialogs( LangPacks ) )
         return false;                    // Create FONPC.MSG, FODLG.MSG, need call after InitLangPacks and DlgMngr.LoadDialogs
@@ -3809,7 +3801,7 @@ bool FOServer::InitCrafts( LangPackVec& lang_packs )
 
 bool FOServer::InitLangPacks( LangPackVec& lang_packs )
 {
-    WriteLog( "Loading language packs...\n" );
+    WriteLog( "Load language packs...\n" );
 
     IniParser& cfg = IniParser::GetServerConfig();
     uint       cur_lang = 0;
@@ -3847,69 +3839,34 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
         cur_lang++;
     }
 
-    WriteLog( "Loading language packs complete, loaded<%u> packs.\n", cur_lang );
+    WriteLog( "Load language packs complete, loaded<%u> packs.\n", cur_lang );
     return cur_lang > 0;
 }
 
 bool FOServer::InitLangPacksDialogs( LangPackVec& lang_packs )
 {
-    // Parse dialog texts with one seed to prevent MSG numbers truncation
-    Randomizer def_rnd = DefaultRandomizer;
-    DefaultRandomizer.Generate( 666666 );
+    for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
+        it->Msg[ TEXTMSG_DLG ].Clear();
 
-    for( auto it = DlgMngr.DialogsPacks.begin(), end = DlgMngr.DialogsPacks.end(); it != end; ++it )
+    DialogPack* pack = NULL;
+    uint        index = 0;
+    while( pack = DlgMngr.GetDialogByIndex( index++ ) )
     {
-        DialogPack* pack = ( *it ).second;
         for( uint i = 0, j = (uint) pack->TextsLang.size(); i < j; i++ )
         {
-            for( auto it_ = lang_packs.begin(), end_ = lang_packs.end(); it_ != end_; ++it_ )
+            for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
             {
-                LanguagePack& lang = *it_;
+                LanguagePack& lang = *it;
                 if( pack->TextsLang[ i ] != lang.NameStr )
                     continue;
 
-                FOMsg* msg = pack->Texts[ i ];
-                FOMsg* msg_dlg = &lang.Msg[ TEXTMSG_DLG ];
+                if( lang.Msg[ TEXTMSG_DLG ].IsIntersects( *pack->Texts[ i ] ) )
+                    WriteLog( "Warning! Dialog<%s> text intersection detected, send notification about this to developers.\n", pack->PackName.c_str() );
 
-                // Npc names, descriptions
-                // 100000..10100000
-                for( uint n = 100; n < 300; n += 10 )
-                {
-                    for( int l = 0, k = msg->Count( n ); l < k; l++ )
-                        msg_dlg->AddStr( 100000 + pack->PackId * 1000 + n, msg->GetStr( n, l ) );
-                }
-
-                // Dialogs text
-                // 100000000..999999999
-                for( uint i_ = 0; i_ < pack->Dialogs.size(); i_++ )
-                {
-                    Dialog& dlg = pack->Dialogs[ i_ ];
-                    if( dlg.TextId < 100000000 )
-                        dlg.TextId = msg_dlg->AddStr( msg->GetStr( ( i_ + 1 ) * 1000 ) );
-                    else
-                        msg_dlg->AddStr( dlg.TextId, msg->GetStr( ( i_ + 1 ) * 1000 ) );
-                    for( uint j_ = 0; j_ < dlg.Answers.size(); j_++ )
-                    {
-                        DialogAnswer& answ = dlg.Answers[ j_ ];
-                        if( answ.TextId < 100000000 )
-                            answ.TextId = msg_dlg->AddStr( msg->GetStr( ( i_ + 1 ) * 1000 + ( j_ + 1 ) * 10 ) );
-                        else
-                            msg_dlg->AddStr( answ.TextId, msg->GetStr( ( i_ + 1 ) * 1000 + ( j_ + 1 ) * 10 ) );
-                    }
-                }
-
-                // Any texts
-                // 1000000000..
-                UIntStrMulMap& data = msg->GetData();
-                auto           it__ = data.upper_bound( 99999999 );
-                for( ; it__ != data.end(); ++it__ )
-                    msg_dlg->AddStr( 1000000000 + pack->PackId * 100000 + ( ( *it__ ).first - 100000000 ), ( *it__ ).second );
+                lang.Msg[ TEXTMSG_DLG ] += *pack->Texts[ i ];
             }
         }
     }
-
-    // Restore default randomizer
-    DefaultRandomizer = def_rnd;
 
     // Regenerate update files
     GenerateUpdateFiles();
@@ -4563,7 +4520,7 @@ bool FOServer::LoadWorld( const char* fname )
             f = FileOpen( auto_fname, false );
             if( f )
             {
-                WriteLog( "Begin load world from dump file<%s>.\n", auto_fname );
+                WriteLog( "Load world from dump file<%s>.\n", auto_fname );
                 SaveWorldIndex = i;
                 break;
             }
@@ -4585,7 +4542,7 @@ bool FOServer::LoadWorld( const char* fname )
             return false;
         }
 
-        WriteLog( "Begin load world from dump file<%s>.\n", fname );
+        WriteLog( "Load world from dump file<%s>.\n", fname );
     }
 
     // File begin
@@ -4594,7 +4551,7 @@ bool FOServer::LoadWorld( const char* fname )
     if( version != WORLD_SAVE_V1 && version != WORLD_SAVE_V2 && version != WORLD_SAVE_V3 && version != WORLD_SAVE_V4 &&
         version != WORLD_SAVE_V5 && version != WORLD_SAVE_V6 && version != WORLD_SAVE_V7 && version != WORLD_SAVE_V8 &&
         version != WORLD_SAVE_V9 && version != WORLD_SAVE_V10 && version != WORLD_SAVE_V11 && version != WORLD_SAVE_V12 &&
-        version != WORLD_SAVE_V13 && version != WORLD_SAVE_V14 )
+        version != WORLD_SAVE_V13 && version != WORLD_SAVE_V14 && version != WORLD_SAVE_V15 )
     {
         WriteLog( "Unknown version<%u> of world dump file.\n", version );
         FileClose( f );
@@ -4955,7 +4912,7 @@ void FOServer::SaveTimeEventsFile()
 
 bool FOServer::LoadTimeEventsFile( void* f )
 {
-    WriteLog( "Load time events..." );
+    WriteLog( "Load time events...\n" );
 
     TimeEventsLastNum = 0;
 
@@ -5026,7 +4983,7 @@ bool FOServer::LoadTimeEventsFile( void* f )
             TimeEventsLastNum = num;
     }
 
-    WriteLog( "complete, count<%u>.\n", count );
+    WriteLog( "Load time events complete, count<%u>.\n", count );
     return true;
 }
 

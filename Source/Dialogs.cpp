@@ -6,164 +6,136 @@
 
 DialogManager DlgMngr;
 
-bool DialogManager::LoadDialogs( const char* list_name )
+bool DialogManager::LoadDialogs()
 {
-    WriteLog( "Load Dialogs..." );
+    WriteLog( "Load dialogs...\n" );
 
-    if( !list_name )
+    while( !dialogPacks.empty() )
+        EraseDialog( dialogPacks.begin()->second->PackId );
+
+    StrVec dialog_files;
+    FileManager::GetDataFileNames( FileManager::GetDataPath( "", PT_SERVER_DIALOGS ), false, "fodlg", dialog_files );
+    uint   dlg_count = (uint) dialog_files.size();
+    uint   dlg_loaded = 0;
+    for( auto it = dialog_files.begin(); it != dialog_files.end(); ++it )
     {
-        WriteLog( "List name nullptr.\n" );
-        return false;
-    }
+        const string& dialog_file = *it;
 
-    WriteLog( "from list<%s>.\n", list_name );
-
-    FileManager lst;
-    if( !lst.LoadFile( list_name, PT_SERVER_DIALOGS ) )
-    {
-        WriteLog( "File not found.\n" );
-        return false;
-    }
-
-    istrstream str( (char*) lst.GetBuf() );
-    int        dlg_count = 0;
-    int        dlg_loaded = 0;
-    while( !str.eof() )
-    {
-        char ch;
-        str >> ch;
-        if( ch != '$' )
-            continue;
-
-        dlg_count++;
-
-        uint dlg_id;
-        str >> dlg_id;
-        if( str.fail() )
-        {
-            WriteLog( "Unable to read id of dialog.\n" );
-            continue;
-        }
-
-        char dlg_name[ MAX_FOTEXT ];
-        str >> dlg_name;
-        if( str.fail() )
-        {
-            WriteLog( "Unable to read name of dialog.\n" );
-            continue;
-        }
-
-        if( DialogsPacks.count( dlg_id ) )
-        {
-            WriteLog( "Dialog id<%u> is already parsed.\n", dlg_id );
-            continue;
-        }
-
-        char name[ 256 ];
-        Str::Copy( name, dlg_name );
-        Str::Append( name, DIALOG_FILE_EXT );
+        char          pack_name[ MAX_FOTEXT ];
+        FileManager::ExtractFileName( dialog_file.c_str(), pack_name );
+        FileManager::EraseExtension( pack_name );
 
         FileManager fdlg;
-        if( !fdlg.LoadFile( name, PT_SERVER_DIALOGS ) )
+        if( !fdlg.LoadFile( dialog_file.c_str(), PT_DATA ) )
         {
-            WriteLog( "Unable to open dialog file, id<%u>, name<%s>.\n", dlg_id, name );
+            WriteLog( "Unable to open dialog file, dialog file<%s>.\n", dialog_file.c_str() );
             continue;
         }
 
-        DialogPack* pack = ParseDialog( dlg_name, dlg_id, (char*) fdlg.GetBuf() );
+        DialogPack* pack = ParseDialog( pack_name, (char*) fdlg.GetBuf() );
         if( !pack )
         {
-            WriteLog( "Unable to parse dialog, id<%u>, path<%s>.\n", dlg_id, dlg_name );
+            WriteLog( "Unable to parse dialog, dialog<%s>.\n", pack_name );
             continue;
         }
 
-        if( !AddDialogs( pack ) )
+        if( !AddDialog( pack ) )
         {
-            WriteLog( "Unable to add dialogs pack, id<%u>, path<%s>.\n", dlg_id, dlg_name );
+            WriteLog( "Unable to add dialogs pack, dialog<%s>.\n", pack_name );
             continue;
         }
 
         dlg_loaded++;
     }
 
-    WriteLog( "Loading dialogs finish, loaded<%u/%u>.\n", dlg_loaded, dlg_count );
-    return dlg_count == dlg_loaded;
+    indexToId.clear();
+    FileManager lst;
+    if( lst.LoadFile( "dialogs.lst", PT_SERVER_DIALOGS ) )
+    {
+        istrstream str( (char*) lst.GetBuf() );
+        while( !str.eof() )
+        {
+            char ch;
+            str >> ch;
+            if( ch != '$' )
+                continue;
+
+            uint dlg_id;
+            str >> dlg_id;
+            if( str.fail() )
+            {
+                WriteLog( "Unable to read id of dialog.\n" );
+                continue;
+            }
+
+            char dlg_name[ MAX_FOTEXT ];
+            str >> dlg_name;
+            if( str.fail() )
+            {
+                WriteLog( "Unable to read name of dialog.\n" );
+                continue;
+            }
+
+            indexToId.insert( PAIR( dlg_id, Str::GetHash( dlg_name ) ) );
+        }
+    }
+
+    WriteLog( "Load dialogs complete, loaded<%u/%u>.\n", dlg_loaded, dlg_count );
+    return dlg_loaded == dlg_count;
 }
 
-void DialogManager::SaveList( const char* list_path, const char* list_name )
+bool DialogManager::AddDialog( DialogPack* pack )
 {
-    if( !list_path || !list_name )
-        return;
-    char full_path[ 1024 ];
-    Str::Copy( full_path, list_path );
-    Str::Append( full_path, list_name );
-
-    FileManager fm;
-
-    fm.SetStr( "**************************************************************************************\n" );
-    fm.SetStr( "***  DIALOGS  *********  COUNT: %08d  ********************************************\n", DlgPacksNames.size() );
-    fm.SetStr( "**************************************************************************************\n" );
-
-    for( auto it = DlgPacksNames.begin(); it != DlgPacksNames.end(); ++it )
-        fm.SetStr( "$\t%u\t%s\n", ( *it ).second, ( *it ).first.c_str() );
-
-    fm.SetStr( "**************************************************************************************\n" );
-    fm.SetStr( "**************************************************************************************\n" );
-    fm.SetStr( "**************************************************************************************\n" );
-
-    fm.SaveOutBufToFile( full_path, -1 );
-}
-
-bool DialogManager::AddDialogs( DialogPack* pack )
-{
-    if( DialogsPacks.find( pack->PackId ) != DialogsPacks.end() )
+    if( dialogPacks.count( pack->PackId ) )
+    {
+        WriteLog( "Dialog<%s> already added.\n", pack->PackName.c_str() );
         return false;
-    if( DlgPacksNames.find( pack->PackName ) != DlgPacksNames.end() )
-        return false;
+    }
 
-    DialogsPacks.insert( PAIR( pack->PackId, pack ) );
-    DlgPacksNames.insert( PAIR( string( pack->PackName ), pack->PackId ) );
+    uint pack_id = pack->PackId & DLGID_MASK;
+    for( auto it = dialogPacks.begin(), end = dialogPacks.end(); it != end; ++it )
+    {
+        uint check_pack_id = ( *it ).first & DLGID_MASK;
+        if( pack_id == check_pack_id )
+        {
+            WriteLog( "Name hash collision for dialogs <%s> and <%s>.\n", pack->PackName.c_str(), ( *it ).second->PackName.c_str() );
+            return false;
+        }
+    }
+
+    dialogPacks.insert( PAIR( pack->PackId, pack ) );
     return true;
 }
 
-DialogPack* DialogManager::GetDialogPack( uint num_pack )
+DialogPack* DialogManager::GetDialog( uint pack_id )
 {
-    auto it = DialogsPacks.find( num_pack );
-    return it == DialogsPacks.end() ? NULL : ( *it ).second;
+    auto it = dialogPacks.find( pack_id );
+    return it != dialogPacks.end() ? ( *it ).second : NULL;
 }
 
-DialogsVec* DialogManager::GetDialogs( uint num_pack )
+DialogPack* DialogManager::GetDialogByIndex( uint index )
 {
-    //	auto it=std::find(DialogsPacks.begin(),DialogsPacks.end(),num_pack);
-    //	return it!=DialogsPacks.end()?&(*it):NULL;
-    auto it = DialogsPacks.find( num_pack );
-    return it == DialogsPacks.end() ? NULL : &( *it ).second->Dialogs;
+    auto it = dialogPacks.begin();
+    while( index-- && it != dialogPacks.end() )
+        ++it;
+    return it != dialogPacks.end() ? ( *it ).second : NULL;
 }
 
-void DialogManager::EraseDialogs( uint num_pack )
+void DialogManager::EraseDialog( uint pack_id )
 {
-    auto it = DialogsPacks.find( num_pack );
-    if( it == DialogsPacks.end() )
+    auto it = dialogPacks.find( pack_id );
+    if( it == dialogPacks.end() )
         return;
 
-    DlgPacksNames.erase( ( *it ).second->PackName );
     delete ( *it ).second;
-    DialogsPacks.erase( it );
-}
-
-void DialogManager::EraseDialogs( string name_pack )
-{
-    auto it = DlgPacksNames.find( name_pack );
-    if( it == DlgPacksNames.end() )
-        return;
-    EraseDialogs( ( *it ).second );
+    dialogPacks.erase( it );
 }
 
 void DialogManager::Finish()
 {
     WriteLog( "Dialog manager finish...\n" );
-    DialogsPacks.clear();
-    DlgPacksNames.clear();
+    while( !dialogPacks.empty() )
+        EraseDialog( dialogPacks.begin()->second->PackId );
     WriteLog( "Dialog manager finish complete.\n" );
 }
 
@@ -174,31 +146,28 @@ string ParseLangKey( const char* str )
     return string( str );
 }
 
-DialogPack* DialogManager::ParseDialog( const char* name, uint id, const char* data )
+DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data )
 {
-    LastErrors = "";
-
-    if( !data )
-    {
-        AddError( "Data nullptr." );
-        return NULL;
-    }
-
     IniParser fodlg;
     if( !fodlg.LoadFilePtr( data, Str::Length( data ) ) )
     {
-        AddError( "Internal error." );
+        WriteLog( "Dialog<%s> - Internal error.\n", pack_name );
         return NULL;
     }
 
-    #define LOAD_FAIL( err )    { AddError( err ); goto load_false; }
-    DialogPack* pack = new DialogPack( id, string( name ) );
+    #define LOAD_FAIL( err )           { WriteLog( "Dialog<%s> - %s\n", pack_name, err ); goto load_false; }
+    #define VERIFY_STR_ID( str_id )    ( uint( str_id ) <= ~DLGID_MASK )
+
+    DialogPack* pack = new DialogPack();
     char*       dlg_buf = fodlg.GetApp( "dialog" );
     istrstream  input( dlg_buf, Str::Length( dlg_buf ) );
     char*       lang_buf = NULL;
-    pack->PackId = id;
-    pack->PackName = name;
+    pack->PackId = Str::GetHash( pack_name );
+    pack->PackName = pack_name;
     StrVec& lang = pack->TextsLang;
+
+    if( pack->PackId <= 0xFFFF )
+        LOAD_FAIL( "Invalid hash for dialog name." );
 
     // Comment
     char* comment = fodlg.GetApp( "comment" );
@@ -207,7 +176,7 @@ DialogPack* DialogManager::ParseDialog( const char* name, uint id, const char* d
     SAFEDELA( comment );
 
     // Texts
-    char lang_key[ 256 ];
+    char lang_key[ MAX_FOTEXT ];
     if( !fodlg.GetStr( "data", "lang", "russ", lang_key ) )
         LOAD_FAIL( "Lang app not found." );
 
@@ -221,9 +190,24 @@ DialogPack* DialogManager::ParseDialog( const char* name, uint id, const char* d
         lang_buf = fodlg.GetApp( l.c_str() );
         if( !lang_buf )
             LOAD_FAIL( "One of the lang section not found." );
-        pack->Texts.push_back( new FOMsg() );
-        pack->Texts[ i ]->LoadFromString( lang_buf, Str::Length( lang_buf ) );
+
+        FOMsg temp_msg;
+        temp_msg.LoadFromString( lang_buf, Str::Length( lang_buf ) );
         SAFEDELA( lang_buf );
+
+        if( temp_msg.GetStrNumUpper( 1000000000 + ~DLGID_MASK ) )
+            LOAD_FAIL( "Text have any text with index greather than 4000." );
+
+        pack->Texts.push_back( new FOMsg() );
+
+        uint str_num = 0;
+        while( str_num = temp_msg.GetStrNumUpper( str_num ) )
+        {
+            uint count = temp_msg.Count( str_num );
+            uint new_str_num = DLG_STR_ID( pack->PackId, ( str_num < 1000000000 ? str_num / 10 : str_num - 1000000000 + 12000 ) );
+            for( uint n = 0; n < count; n++ )
+                pack->Texts[ i ]->AddStr( new_str_num, temp_msg.GetStr( str_num, n ) );
+        }
     }
 
     // Dialog
@@ -238,11 +222,11 @@ DialogPack* DialogManager::ParseDialog( const char* name, uint id, const char* d
     uint dlg_id;
     uint text_id;
     uint link;
-    char read_str[ 256 ];
+    char read_str[ MAX_FOTEXT ];
     bool ret_val;
 
     #ifdef FONLINE_NPCEDITOR
-    char script[ 1024 ];
+    char script[ MAX_FOTEXT ];
     #else
     int  script;
     #endif
@@ -258,6 +242,8 @@ DialogPack* DialogManager::ParseDialog( const char* name, uint id, const char* d
         input >> text_id;
         if( input.fail() )
             LOAD_FAIL( "Bad text link." );
+        if( !VERIFY_STR_ID( text_id / 10 ) )
+            LOAD_FAIL( "Invalid text link value." );
         input >> read_str;
         if( input.fail() )
             LOAD_FAIL( "Bad not answer action." );
@@ -282,7 +268,7 @@ DialogPack* DialogManager::ParseDialog( const char* name, uint id, const char* d
 
         Dialog current_dialog;
         current_dialog.Id = dlg_id;
-        current_dialog.TextId = text_id;
+        current_dialog.TextId = DLG_STR_ID( pack->PackId, text_id / 10 );
         current_dialog.DlgScript = script;
         current_dialog.Flags = flags;
         current_dialog.RetVal = ret_val;
@@ -308,13 +294,15 @@ DialogPack* DialogManager::ParseDialog( const char* name, uint id, const char* d
         {
             input >> link;
             if( input.fail() )
-                LOAD_FAIL( "Bad link in dialog." );
+                LOAD_FAIL( "Bad link in answer." );
             input >> text_id;
             if( input.fail() )
-                LOAD_FAIL( "Bad text link in dialog." );
+                LOAD_FAIL( "Bad text link in answer." );
+            if( !VERIFY_STR_ID( text_id / 10 ) )
+                LOAD_FAIL( "Invalid text link value in answer." );
             DialogAnswer current_answer;
             current_answer.Link = link;
-            current_answer.TextId = text_id;
+            current_answer.TextId = DLG_STR_ID( pack->PackId, text_id / 10 );
 
             bool read_demands = true;           // Deprecated
             while( true )
@@ -354,13 +342,6 @@ DialogPack* DialogManager::ParseDialog( const char* name, uint id, const char* d
                         LOAD_FAIL( "Result not loaded." );
                     current_answer.Results.push_back( *r );
                 }
-                // Flags
-                /*else if(ch=='F')
-                   {
-                        input >> read_str;
-                        if(input.fail()) LOAD_FAIL("Parse flags fail.");
-                        if(Str::CompareCase(read_str,"no_recheck_demand") && current_dialog.Answers.size()) current_answer.NoRecheck=true;
-                   }*/
                 else
                     break;
             }
@@ -385,8 +366,7 @@ load_done:
     return pack;
 
 load_false:
-    AddError( "Bad node<%d>.", dlg_id );
-    WriteLogF( _FUNC_, " - Errors:\n%s", LastErrors.c_str() );
+    WriteLog( "Dialog<%s> - Bad node<%d>.\n", pack_name, dlg_id );
     delete pack;
     SAFEDELA( dlg_buf );
     SAFEDELA( lang_buf );
@@ -399,11 +379,11 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     char who = 'p';
     char oper = '=';
     int  values_count = 0;
-    char svalue[ 256 ] = { 0 };
+    char svalue[ MAX_FOTEXT ] = { 0 };
     int  ivalue = 0;
     uint id = 0;
-    char type_str[ 256 ];
-    char name[ 256 ] = { 0 };
+    char type_str[ MAX_FOTEXT ];
+    char name[ MAX_FOTEXT ] = { 0 };
     bool no_recheck = false;
     bool ret_value = false;
 
@@ -418,7 +398,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     input >> type_str;
     if( input.fail() )
     {
-        AddError( "Parse dr type fail." );
+        WriteLog( "Parse DR type fail.\n" );
         return NULL;
     }
 
@@ -431,7 +411,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         input >> type_str;
         if( input.fail() )
         {
-            AddError( "Parse dr type fail2." );
+            WriteLog( "Parse DR type fail2.\n" );
             return NULL;
         }
         type = GetDRType( type_str, deprecated );
@@ -447,7 +427,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
             input >> who;
             if( !CheckWho( who ) )
             {
-                AddError( "Invalid DR param who<%c>.", who );
+                WriteLog( "Invalid DR param who<%c>.\n", who );
                 errors++;
             }
         }
@@ -456,7 +436,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         input >> name;
         if( (int) ( id = ConstantsManager::GetParamId( name ) ) < 0 )
         {
-            AddError( "Invalid DR parameter<%s>.", name );
+            WriteLog( "Invalid DR parameter<%s>.\n", name );
             errors++;
         }
 
@@ -464,7 +444,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         input >> oper;
         if( !CheckOper( oper ) )
         {
-            AddError( "Invalid DR param oper<%c>.", oper );
+            WriteLog( "Invalid DR param oper<%c>.\n", oper );
             errors++;
         }
 
@@ -478,7 +458,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         input >> who;
         if( !CheckWho( who ) )
         {
-            AddError( "Invalid DR var who<%c>.", who );
+            WriteLog( "Invalid DR var who<%c>.\n", who );
             errors++;
         }
 
@@ -486,7 +466,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         input >> name;
         if( ( id = GetTempVarId( name ) ) == 0 )
         {
-            AddError( "Invalid DR var name<%s>.", name );
+            WriteLog( "Invalid DR var name<%s>.\n", name );
             errors++;
         }
 
@@ -494,7 +474,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         input >> oper;
         if( !CheckOper( oper ) )
         {
-            AddError( "Invalid DR var oper<%c>.", oper );
+            WriteLog( "Invalid DR var oper<%c>.\n", oper );
             errors++;
         }
 
@@ -508,7 +488,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         input >> who;
         if( !CheckWho( who ) )
         {
-            AddError( "Invalid DR item who<%c>.", who );
+            WriteLog( "Invalid DR item who<%c>.\n", who );
             errors++;
         }
 
@@ -521,7 +501,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
             const char* name_ = ConstantsManager::GetItemName( id );
             if( !name_ )
             {
-                AddError( "Invalid DR item<%s>.", name );
+                WriteLog( "Invalid DR item<%s>.\n", name );
                 errors++;
             }
             if( name_ != 0 )
@@ -532,7 +512,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         input >> oper;
         if( !CheckOper( oper ) )
         {
-            AddError( "Invalid DR item oper<%c>.", oper );
+            WriteLog( "Invalid DR item oper<%c>.\n", oper );
             errors++;
         }
 
@@ -562,7 +542,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
             #else
             # define READ_SCRIPT_VALUE_( val )       { input >> value_str; val = ConstantsManager::GetDefineValue( value_str ); }
             #endif
-            char value_str[ 256 ];
+            char value_str[ MAX_FOTEXT ];
             if( values_count > 0 )
                 READ_SCRIPT_VALUE_( script_val[ 0 ] );
             if( values_count > 1 )
@@ -575,7 +555,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
                 READ_SCRIPT_VALUE_( script_val[ 4 ] );
             if( values_count > 5 )
             {
-                AddError( "Invalid DR script values count<%d>.", values_count );
+                WriteLog( "Invalid DR script values count<%d>.\n", values_count );
                 values_count = 0;
                 errors++;
             }
@@ -586,7 +566,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
             if( ch == ' ' )
             {
                 #ifdef FONLINE_NPCEDITOR
-                # define READ_SCRIPT_VALUE( val )    { input >> value_int; char buf[ 64 ]; val = itoa( value_int, buf, 10 ); }
+                # define READ_SCRIPT_VALUE( val )    { input >> value_int; char buf[ MAX_FOTEXT ]; val = itoa( value_int, buf, 10 ); }
                 #else
                 # define READ_SCRIPT_VALUE( val )    { input >> value_int; val = value_int; }
                 #endif
@@ -603,7 +583,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
                     READ_SCRIPT_VALUE( script_val[ 4 ] );
                 if( values_count > 5 )
                 {
-                    AddError( "Invalid DR script values count<%d>.", values_count );
+                    WriteLog( "Invalid DR script values count<%d>.\n", values_count );
                     values_count = 0;
                     errors++;
                 }
@@ -611,7 +591,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
             else
             {
                 #ifdef FONLINE_NPCEDITOR
-                char buf[ 64 ];
+                char buf[ MAX_FOTEXT ];
                 script_val[ 0 ] = _itoa( values_count, buf, 10 );
                 #else
                 script_val[ 0 ] = values_count;
@@ -656,11 +636,11 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         }
         if( id <= 0 )
         {
-            WriteLogF( _FUNC_, " - Script<%s> bind error.\n", name );
+            WriteLog( "Script<%s> bind error.\n", name );
             return NULL;
         }
         if( id > 0xFFFF )
-            WriteLogF( _FUNC_, " - Id greater than 0xFFFF.\n" );
+            WriteLog( "Id greater than 0xFFFF.\n" );
         #endif
     }
         break;
@@ -678,7 +658,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     // Validate parsing
     if( input.fail() )
     {
-        AddError( "DR parse fail." );
+        WriteLog( "DR parse fail.\n" );
         errors++;
     }
 
@@ -716,8 +696,19 @@ ushort DialogManager::GetTempVarId( const char* str )
 {
     ushort tid = VarMngr.GetTemplateVarId( str );
     if( !tid )
-        WriteLogF( _FUNC_, " - Template var not found, name<%s>.\n", str );
+        WriteLog( "Template var not found, name<%s>.\n", str );
     return tid;
+}
+
+#pragma DEPRECATED
+uint DialogManager::FixDialogId( uint pack_id )
+{
+    if( pack_id > 0 && pack_id <= 0xFFFF )
+    {
+        auto it = indexToId.find( pack_id );
+        pack_id = ( it != indexToId.end() ? ( *it ).second : 0 );
+    }
+    return pack_id;
 }
 
 int DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
@@ -835,17 +826,4 @@ bool DialogManager::CheckOper( char oper )
 bool DialogManager::CheckWho( char who )
 {
     return who == 'p' || who == 'n';
-}
-
-void DialogManager::AddError( const char* fmt, ... )
-{
-    static char res[ 1024 ];
-
-    va_list list;
-    va_start( list, fmt );
-    vsprintf( res, fmt, list );
-    va_end( list );
-
-    LastErrors += res;
-    LastErrors += "\n";
 }

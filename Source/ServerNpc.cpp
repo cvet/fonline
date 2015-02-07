@@ -962,7 +962,7 @@ bool FOServer::TransferAllNpc()
         cr->ProcessVisibleItems();
     }
 
-    WriteLog( "Transfer npc complete. Errors<%d>.\n", errors );
+    WriteLog( "Transfer npc complete, errors<%d>.\n", errors );
     return true;
 }
 
@@ -1302,7 +1302,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, 
         if( !dlg_pack_id )
         {
             int npc_dlg_id = npc->Data.Params[ ST_DIALOG_ID ];
-            if( npc_dlg_id <= 0 )
+            if( !npc_dlg_id )
                 return;
             dlg_pack_id = npc_dlg_id;
         }
@@ -1381,14 +1381,10 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, 
             return;
         }
 
-        dialog_pack = DlgMngr.GetDialogPack( dlg_pack_id );
+        dialog_pack = DlgMngr.GetDialog( dlg_pack_id );
         dialogs = ( dialog_pack ? &dialog_pack->Dialogs : NULL );
         if( !dialogs || !dialogs->size() )
             return;
-//              {
-//                      WriteLogF(_FUNC_," - No dialogs, client<%s>.\n",cl->GetInfo());
-//                      return;
-//              }
 
         if( !ignore_distance )
         {
@@ -1403,13 +1399,6 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, 
     // Talk with hex
     else
     {
-//		Map* map=MapMngr.GetMap(cl->GetMap());
-//		if(!map || hx>=map->GetMaxHexX() || hy>=map->GetMaxHexY())
-//		{
-//			WriteLogF(_FUNC_," - Invalid hexes value, hx<%u>, hy<%u>, client<%s>.\n",hx,hy,cl->GetInfo());
-//			return;
-//		}
-
         if( !ignore_distance && !CheckDist( cl->GetHexX(), cl->GetHexY(), hx, hy, GameOpt.TalkDistance + cl->GetMultihex() ) )
         {
             cl->Send_XY( cl );
@@ -1418,12 +1407,10 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, 
             return;
         }
 
-        dialog_pack = DlgMngr.GetDialogPack( dlg_pack_id );
+        dialog_pack = DlgMngr.GetDialog( dlg_pack_id );
         dialogs = ( dialog_pack ? &dialog_pack->Dialogs : NULL );
         if( !dialogs || !dialogs->size() )
         {
-            //	Map* map=MapMngr.GetMap(cl->GetMap());
-            //	if(map) map->SetTextMsg(hx,hy,0,TEXTMSG_GAME,STR_DIALOG_NO_DIALOGS);
             WriteLogF( _FUNC_, " - No dialogs, hx<%u>, hy<%u>, client<%s>.\n", hx, hy, cl->GetInfo() );
             return;
         }
@@ -1442,11 +1429,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, 
     }
 
     if( go_dialog == uint( -1 ) )
-    {
-        // cl->Send_Str(cl,STR_DIALOG_PRE_INST_FAIL,SAY_NETMSG,TEXTMSG_GAME);
-        // WriteLogF(_FUNC_," - Invalid predialogue installations, client<%s>, dialog pack<%u>.\n",cl->GetInfo(),dialog_pack->PackId);
         return;
-    }
 
     // Use result
     uint force_dialog = Dialog_UseResult( npc, cl, ( *it_a ) );
@@ -1594,7 +1577,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
         }
 
         // Set dialogs
-        dialog_pack = DlgMngr.GetDialogPack( cl->Talk.DialogPackId );
+        dialog_pack = DlgMngr.GetDialog( cl->Talk.DialogPackId );
         dialogs = dialog_pack ? &dialog_pack->Dialogs : NULL;
         if( !dialogs || !dialogs->size() )
         {
@@ -1607,7 +1590,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
     else
     {
         // Set dialogs
-        dialog_pack = DlgMngr.GetDialogPack( id_npc_talk );
+        dialog_pack = DlgMngr.GetDialog( id_npc_talk );
         dialogs = dialog_pack ? &dialog_pack->Dialogs : NULL;
         if( !dialogs || !dialogs->size() )
         {

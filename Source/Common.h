@@ -2,12 +2,13 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 476 )
+#define FONLINE_VERSION                          ( 477 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
 // #define DEV_VERSION
 // #define SHOW_RACE_CONDITIONS // All known places with race conditions, not use in multithreading
+// #define SHOW_DEPRECTAED // All known places with deprecated stuff
 // #define DISABLE_EGG
 
 // Some platform specific definitions
@@ -121,6 +122,12 @@ const char* GetLastSocketError();
 # define RACE_CONDITION                          MESSAGE( "Race condition" )
 #else
 # define RACE_CONDITION
+#endif
+
+#ifdef SHOW_DEPRECATED
+# define DEPRECATED                              MESSAGE( "Deprecated" )
+#else
+# define DEPRECATED
 #endif
 
 typedef vector< Rect >  IntRectVec;

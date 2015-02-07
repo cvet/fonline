@@ -41,7 +41,8 @@
 #define WORLD_SAVE_V12               ( 0x01AB0F12 )
 #define WORLD_SAVE_V13               ( 0x01AB0F13 )
 #define WORLD_SAVE_V14               ( 0x01AB0F14 )
-#define WORLD_SAVE_LAST              WORLD_SAVE_V14
+#define WORLD_SAVE_V15               ( 0x01AB0F15 )
+#define WORLD_SAVE_LAST              WORLD_SAVE_V15
 #define SINGLEPLAYER_SAVE_V1         ( 1 )
 #define SINGLEPLAYER_SAVE_V2         ( 2 )
 #define SINGLEPLAYER_SAVE_LAST       ( SINGLEPLAYER_SAVE_V2 )
@@ -65,6 +66,8 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define DIRS_COUNT                   ( GameOpt.MapHexagonal ? 6 : 8 )
 #define IS_DIR_CORNER( dir )                  ( ( ( dir ) & 1 ) != 0 ) // 1, 3, 5, 7
 #define UTF8_BUF_SIZE( count )                ( ( count ) * 4 )
+#define DLGID_MASK                   ( 0xFFFFC000 )
+#define DLG_STR_ID( dlg_id, idx )             ( ( ( dlg_id ) & DLGID_MASK ) | ( ( idx ) & ~DLGID_MASK ) )
 
 // Script pragma bindfield sizes
 #define PROTO_ITEM_USER_DATA_SIZE    ( 500 )
@@ -315,7 +318,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define IS_NPC_ID( id )                       ( ( id ) >= NPC_START_ID )
 #define MAX_ANSWERS                  ( 100 )
 #define PROCESS_TALK_TICK            ( 1000 )
-#define DIALOGS_LST_NAME             "dialogs.lst"
 #define MAX_SCRIPT_NAME              ( 64 )
 #define SCRIPTS_LST                  "scripts.cfg"
 #define TURN_BASED_TIMEOUT           ( 1000 )

@@ -20,27 +20,31 @@ extern const char* TextMsgFileName[ TEXTMSG_COUNT ];
 #define DEFAULT_LANGUAGE     "russ"
 #define MSG_ERROR_MESSAGE    "error"
 
+typedef multimap< uint, const char* > FOMsgMap;
+
 class FOMsg
 {
 public:
     FOMsg();
-    FOMsg& operator+=( const FOMsg& r );
+    FOMsg( const FOMsg& other );
+    ~FOMsg();
+    FOMsg& operator=( const FOMsg& other );
+    FOMsg& operator+=( const FOMsg& other );
 
     void AddStr( uint num, const char* str );
     void AddStr( uint num, const string& str );
     void AddBinary( uint num, const uchar* binary, uint len );
 
-    uint           AddStr( const char* str ); // Generate random number with interval from 10000000 to 99999999
-    const char*    GetStr( uint num );
-    const char*    GetStr( uint num, uint skip );
-    uint           GetStrNumUpper( uint num );
-    uint           GetStrNumLower( uint num );
-    int            GetInt( uint num );
-    const uchar*   GetBinary( uint num, uint& len );
-    int            Count( uint num );
-    void           EraseStr( uint num );
-    uint           GetSize();
-    UIntStrMulMap& GetData();
+    const char*  GetStr( uint num );
+    const char*  GetStr( uint num, uint skip );
+    uint         GetStrNumUpper( uint num );
+    uint         GetStrNumLower( uint num );
+    int          GetInt( uint num );
+    const uchar* GetBinary( uint num, uint& len );
+    int          Count( uint num );
+    void         EraseStr( uint num );
+    uint         GetSize();
+    bool         IsIntersects( const FOMsg& other );
 
     // Serialization
     void GetBinaryData( UCharVec& data );
@@ -52,7 +56,7 @@ public:
 
 private:
     // String values
-    UIntStrMulMap strData;
+    FOMsgMap strData;
 
 public:
     static int GetMsgType( const char* type_name );

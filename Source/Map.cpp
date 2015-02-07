@@ -161,6 +161,11 @@ bool Map::Generate()
                 {
                     params[ params_count * 2 ] = i;
                     params[ params_count * 2 + 1 ] = mobj.MCritter.Params[ i ];
+
+                    #pragma DEPRECATED
+                    if( i == ST_DIALOG_ID )
+                        params[ params_count * 2 + 1 ] = DlgMngr.FixDialogId( params[ params_count * 2 + 1 ] );
+
                     params_count++;
                 }
             }

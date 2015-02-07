@@ -13,7 +13,7 @@ FileLogger* DbgLog = NULL;
 
 bool VarManager::Init()
 {
-    WriteLog( "Var manager initialization.\n" );
+    WriteLog( "Vars initialization.\n" );
 
     // Load vars templates
     if( !UpdateVarsTemplate() )
@@ -22,8 +22,7 @@ bool VarManager::Init()
     if( GameOpt.LoggingVars )
         DbgLog = new FileLogger( "vars.log" );
 
-    isInit = true;
-    WriteLog( "Var manager initialization complete.\n" );
+    WriteLog( "Vars initialization complete, count<%u>.\n", (uint) tempVars.size() );
     return true;
 }
 
@@ -58,7 +57,7 @@ void VarManager::SaveVarsDataFile( void ( * save_func )( void*, size_t ) )
 
 bool VarManager::LoadVarsDataFile( void* f, int version )
 {
-    WriteLog( "Load vars..." );
+    WriteLog( "Load vars...\n" );
     allQuestVars.reserve( 10000 );   // 40kb
 
     UShortUIntMap failed_tvars;
@@ -114,7 +113,7 @@ bool VarManager::LoadVarsDataFile( void* f, int version )
             WriteLog( "Template var not found, tid<%u>, total<%u>.\n", it->first, failed );
     }
 
-    WriteLog( "complete, count<%u>.\n", count );
+    WriteLog( "Load vars complete, count<%u>.\n", count );
     return true;
 }
 #endif // FONLINE_SERVER
@@ -130,7 +129,6 @@ void VarManager::Finish()
     tempVars.clear();
 
     SAFEDEL( DbgLog );
-    isInit = false;
     WriteLog( "Var manager finish complete.\n" );
 }
 
@@ -156,8 +154,6 @@ void VarManager::Clear()
 
 bool VarManager::UpdateVarsTemplate()
 {
-    WriteLog( "Update template vars...\n" );
-
     FileManager fm;
     if( !fm.LoadFile( VAR_FNAME_VARS, PT_SERVER_SCRIPTS ) )
     {
@@ -173,7 +169,6 @@ bool VarManager::UpdateVarsTemplate()
         if( !AddTemplateVar( *it ) )
             return false;
 
-    WriteLog( "Update template vars complete.\n" );
     return true;
 }
 

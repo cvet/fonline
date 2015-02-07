@@ -22,9 +22,29 @@ FOMsg::FOMsg()
     Clear();
 }
 
-FOMsg& FOMsg::operator+=( const FOMsg& r )
+FOMsg::FOMsg( const FOMsg& other )
 {
-    for( auto it = r.strData.begin(), end = r.strData.end(); it != end; ++it )
+    Clear();
+    for( auto it = other.strData.begin(), end = other.strData.end(); it != end; ++it )
+        AddStr( ( *it ).first, ( *it ).second );
+}
+
+FOMsg::~FOMsg()
+{
+    Clear();
+}
+
+FOMsg& FOMsg::operator=( const FOMsg& other )
+{
+    Clear();
+    for( auto it = other.strData.begin(), end = other.strData.end(); it != end; ++it )
+        AddStr( ( *it ).first, ( *it ).second );
+    return *this;
+}
+
+FOMsg& FOMsg::operator+=( const FOMsg& other )
+{
+    for( auto it = other.strData.begin(), end = other.strData.end(); it != end; ++it )
     {
         EraseStr( ( *it ).first );
         AddStr( ( *it ).first, ( *it ).second );
@@ -34,18 +54,12 @@ FOMsg& FOMsg::operator+=( const FOMsg& r )
 
 void FOMsg::AddStr( uint num, const char* str )
 {
-    if( !str || !Str::Length( str ) )
-        strData.insert( PAIR( num, " " ) );
-    else
-        strData.insert( PAIR( num, str ) );
+    strData.insert( PAIR( num, Str::Duplicate( str ) ) );
 }
 
 void FOMsg::AddStr( uint num, const string& str )
 {
-    if( !str.length() )
-        strData.insert( PAIR( num, " " ) );
-    else
-        strData.insert( PAIR( num, str ) );
+    strData.insert( PAIR( num, Str::Duplicate( str.c_str() ) ) );
 }
 
 void FOMsg::AddBinary( uint num, const uchar* binary, uint len )
@@ -60,15 +74,6 @@ void FOMsg::AddBinary( uint num, const uchar* binary, uint len )
     }
 
     AddStr( num, (char*) &str[ 0 ] );
-}
-
-uint FOMsg::AddStr( const char* str )
-{
-    uint i = Random( 100000000, 999999999 );
-    if( strData.count( i ) )
-        return AddStr( str );
-    AddStr( i, str );
-    return i;
 }
 
 const char* FOMsg::GetStr( uint num )
@@ -88,7 +93,7 @@ const char* FOMsg::GetStr( uint num )
         break;
     }
 
-    return ( *it ).second.c_str();
+    return ( *it ).second;
 }
 
 const char* FOMsg::GetStr( uint num, uint skip )
@@ -101,7 +106,7 @@ const char* FOMsg::GetStr( uint num, uint skip )
     for( uint i = 0; i < skip; i++ )
         ++it;
 
-    return ( *it ).second.c_str();
+    return ( *it ).second;
 }
 
 uint FOMsg::GetStrNumUpper( uint num )
@@ -137,7 +142,7 @@ int FOMsg::GetInt( uint num )
         break;
     }
 
-    return atoi( ( *it ).second.c_str() );
+    return Str::AtoI( ( *it ).second );
 }
 
 const uchar* FOMsg::GetBinary( uint num, uint& len )
@@ -163,7 +168,7 @@ const uchar* FOMsg::GetBinary( uint num, uint& len )
 
 int FOMsg::Count( uint num )
 {
-    return !num ? 0 : (uint) strData.count( num );
+    return num ? (uint) strData.count( num ) : 0;
 }
 
 void FOMsg::EraseStr( uint num )
@@ -172,9 +177,14 @@ void FOMsg::EraseStr( uint num )
     {
         auto it = strData.find( num );
         if( it != strData.end() )
+        {
+            SAFEDELA( ( *it ).second );
             strData.erase( it );
+        }
         else
+        {
             break;
+        }
     }
 }
 
@@ -183,9 +193,12 @@ uint FOMsg::GetSize()
     return (uint) strData.size() - 1;
 }
 
-UIntStrMulMap& FOMsg::GetData()
+bool FOMsg::IsIntersects( const FOMsg& other )
 {
-    return strData;
+    for( auto it = strData.begin(), end = strData.end(); it != end; ++it )
+        if( other.strData.count( it->first ) )
+            return true;
+    return false;
 }
 
 void FOMsg::GetBinaryData( UCharVec& data )
@@ -196,14 +209,15 @@ void FOMsg::GetBinaryData( UCharVec& data )
     memcpy( &data[ 0 ], &count, sizeof( count ) );
     for( auto it = strData.begin(), end = strData.end(); it != end; ++it )
     {
-        uint    num = ( *it ).first;
-        string& str = ( *it ).second;
-        uint    str_len = (uint) str.size();
+        uint        num = ( *it ).first;
+        const char* str = ( *it ).second;
+        uint        str_len = ( str ? Str::Length( str ) : 0 );
 
         data.resize( data.size() + sizeof( num ) + sizeof( str_len ) + str_len );
         memcpy( &data[ data.size() - ( sizeof( num ) + sizeof( str_len ) + str_len ) ], &num, sizeof( num ) );
         memcpy( &data[ data.size() - ( sizeof( str_len ) + str_len ) ], &str_len, sizeof( str_len ) );
-        memcpy( &data[ data.size() - str_len ], (void*) str.c_str(), str_len );
+        if( str_len )
+            memcpy( &data[ data.size() - str_len ], (void*) str, str_len );
     }
 
     // Compress
@@ -342,6 +356,8 @@ bool FOMsg::SaveToFile( const char* fname, int path_type )
 
 void FOMsg::Clear()
 {
+    for( auto it = strData.begin(), end = strData.end(); it != end; ++it )
+        SAFEDELA( ( *it ).second );
     strData.clear();
 }
 

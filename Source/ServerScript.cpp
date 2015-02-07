@@ -5607,7 +5607,7 @@ bool FOServer::SScriptFunc::Global_RunDialogHex( Critter* player, uint dlg_pack,
         SCRIPT_ERROR_R0( "Player arg nullptr." );
     if( !player->IsPlayer() )
         SCRIPT_ERROR_R0( "Player arg is not player." );
-    if( !DlgMngr.GetDialogPack( dlg_pack ) )
+    if( !DlgMngr.GetDialog( dlg_pack ) )
         SCRIPT_ERROR_R0( "Dialog not found." );
     Client* cl = (Client*) player;
     if( cl->Talk.Locked )

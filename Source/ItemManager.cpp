@@ -95,7 +95,7 @@ T ResolveProtoValue( const char* str )
 
 bool ItemManager::LoadProtos()
 {
-    WriteLog( "Loading items prototypes...\n" );
+    WriteLog( "Load item prototypes...\n" );
 
     FileManager fm;
     if( !fm.LoadFile( "items.lst", PT_SERVER_PRO_ITEMS ) )
@@ -130,7 +130,7 @@ bool ItemManager::LoadProtos()
         }
     }
 
-    WriteLog( "Items prototypes successfully loaded, count<%u>.\n", loaded );
+    WriteLog( "Load item prototypes complete, count<%u>.\n", loaded );
     return true;
 }
 
@@ -597,7 +597,7 @@ void ItemManager::SaveAllItemsFile( void ( * save_func )( void*, size_t ) )
 
 bool ItemManager::LoadAllItemsFile( void* f, int version )
 {
-    WriteLog( "Load items..." );
+    WriteLog( "Load items...\n" );
 
     lastItemId = 0;
 
@@ -605,7 +605,7 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
     FileRead( f, &count, sizeof( count ) );
     if( !count )
     {
-        WriteLog( "items not found.\n" );
+        WriteLog( "Items not found.\n" );
         return true;
     }
 
@@ -664,7 +664,7 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
     if( errors )
         return false;
 
-    WriteLog( "complete, count<%u>.\n", count );
+    WriteLog( "Load items complete, count<%u>.\n", count );
     return true;
 }
 

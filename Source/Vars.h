@@ -138,7 +138,6 @@ int  GameVarCmpGameVar( const GameVar& var, const GameVar& _right );
 class VarManager
 {
 private:
-    bool         isInit;
     TempVarVec   tempVars;
     StrUShortMap varsNames;
     Mutex        varsLocker;
@@ -149,7 +148,6 @@ public:
     bool Init();
     void Finish();
     void Clear();
-    bool IsInit() { return isInit; }
 
     bool         UpdateVarsTemplate();
     bool         AddTemplateVar( TemplateVar* var );

@@ -96,18 +96,14 @@ label_ParseNext:
 
 bool NpcAIMngr::Init()
 {
-    WriteLog( "AI manager initialization...\n" );
     if( !LoadNpcBags() )
         return false;
-    WriteLog( "AI manager initialization complete.\n" );
     return true;
 }
 
 void NpcAIMngr::Finish()
 {
-    WriteLog( "AI manager finish.\n" );
     npcBags.clear();
-    WriteLog( "AI manager finish success.\n" );
 }
 
 /************************************************************************/
@@ -125,7 +121,7 @@ NpcBag& NpcAIMngr::GetBag( uint num )
 
 bool NpcAIMngr::LoadNpcBags()
 {
-    WriteLog( "Find bags...\n" );
+    WriteLog( "Load NPC bags...\n" );
 
     IniParser bags_txt;
     if( !bags_txt.LoadFile( BAGS_FILE_NAME, PT_SERVER_CONFIGS ) )
@@ -141,7 +137,6 @@ bool NpcAIMngr::LoadNpcBags()
     StringNpcBagCombMap loaded_comb;
 
     npcBags.resize( end_bag + 1 );
-    // LogSetProperty(LogProp_WithTime,0);
 
     for( int i = 0; i <= end_bag; i++ )
     {
@@ -169,6 +164,7 @@ bool NpcAIMngr::LoadNpcBags()
                 // Parse
                 NpcBagCombination items_comb;
                 Str::ParseLine< NpcBagCombination, NpcBagItems ( * )( const char* ) >( bag_str, ' ', items_comb, ParseBagItems );
+
                 // Check
                 for( uint l = 0; l < items_comb.size(); l++ )
                 {
@@ -194,10 +190,9 @@ bool NpcAIMngr::LoadNpcBags()
 
         bag_count++;
     }
-    // LogSetProperty(LogProp_WithTime,1);
 
     delete[] bag_str;
-    WriteLog( "Loaded<%d> bags.\n", bag_count );
+    WriteLog( "Load NPC bags complete, count<%d>.\n", bag_count );
     return true;
 }
 

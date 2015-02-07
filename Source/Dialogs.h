@@ -6,9 +6,6 @@
 #include "Text.h"
 #include "MsgFiles.h"
 
-// Misc
-#define DIALOG_FILE_EXT            ".fodlg"
-
 // Special script
 #define NOT_ANSWER_CLOSE_DIALOG    ( 0 )
 #define NOT_ANSWER_BEGIN_BATTLE    ( 1 )
@@ -124,17 +121,14 @@ public:
 };
 typedef vector< Dialog > DialogsVec;
 
-class DialogPack
+struct DialogPack
 {
-public:
     uint       PackId;
     string     PackName;
     DialogsVec Dialogs;
     StrVec     TextsLang;
     FOMsgVec   Texts;
     string     Comment;
-
-    DialogPack( uint id, string name ): PackId( id ), PackName( name ) {}
 };
 typedef map< uint, DialogPack* > DialogPackMap;
 
@@ -179,33 +173,27 @@ struct Talking
 class DialogManager
 {
 public:
-    DialogPackMap DialogsPacks;
-    StrUIntMap    DlgPacksNames;
-    string        LastErrors;
-
-    bool LoadDialogs( const char* list_name );
-    void SaveList( const char* path, const char* list_name );
-    void Finish();
-
-    bool AddDialogs( DialogPack* pack );
-
-    DialogPack* GetDialogPack( uint num_pack );
-    DialogsVec* GetDialogs( uint num_pack );
-
-    void EraseDialogs( uint num_pack );
-    void EraseDialogs( string name_pack );
-
-    DialogPack* ParseDialog( const char* name, uint id, const char* data );
+    bool        LoadDialogs();
+    void        Finish();
+    DialogPack* ParseDialog( const char* pack_name, const char* data );
+    bool        AddDialog( DialogPack* pack );
+    DialogPack* GetDialog( uint pack_id );
+    DialogPack* GetDialogByIndex( uint index );
+    void        EraseDialog( uint pack_id );
     ushort      GetTempVarId( const char* str );
+    uint        FixDialogId( uint pack_id );
 
 private:
+    DialogPackMap dialogPacks;
+    UIntMap       indexToId;
+    string        lastErrors;
+
     DemandResult* LoadDemandResult( istrstream& input, bool is_demand );
     bool          CheckLockTime( int time );
     int           GetNotAnswerAction( const char* str, bool& ret_val );
     int           GetDRType( const char* str, bool& deprecated );
     bool          CheckOper( char oper );
     bool          CheckWho( char who );
-    void          AddError( const char* fmt, ... );
 };
 
 extern DialogManager DlgMngr;
