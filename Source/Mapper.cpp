@@ -2219,7 +2219,14 @@ void FOMapper::ObjDraw()
         DRAW_COMPONENT( "Anim2", o->MCritter.Anim2, true, false );                              // 18
         y += step;                                                                              // 19
         for( size_t i = 0, j = ShowCritterParams.size(); i < j; i++ )                           // 20..
-            DRAW_COMPONENT( ShowCritterParamNames[ i ].c_str(), o->MCritter.Params ? o->MCritter.Params[ ShowCritterParams[ i ] ] : 0, false, false );
+        {
+            string str = ( o->MCritter.Params ? o->MCritter.Params[ ShowCritterParams[ i ] ]->c_std_str() : "" );
+            if( str.length() > 0 && str[ 0 ] == '$' )
+                str += Str::FormatBuf( " (constant: %d)", MapObject::ConvertParamValue( str.c_str() ) );
+            else if( str.length() > 0 && !Str::IsNumber( str.c_str() ) )
+                str += Str::FormatBuf( " (hash: %08X)", MapObject::ConvertParamValue( str.c_str() ) );
+            DRAW_COMPONENT_TEXT( ShowCritterParamNames[ i ].c_str(), str.c_str(), false );
+        }
     }
     else if( o->MapObjType == MAP_OBJECT_ITEM || o->MapObjType == MAP_OBJECT_SCENERY )
     {
@@ -2374,7 +2381,12 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
     {
         if( !o->MCritter.Params )
             o->AllocateCritterParams();
-        val_i = &o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ];
+        char buf[ MAX_FOTEXT ];
+        Str::Copy( buf, o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ]->c_str() );
+        Keyb::GetChar( dik, dik_text, buf, sizeof( buf ), NULL, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
+        Str::EraseFrontBackSpecificChars( buf );
+        *o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ] = buf;
+        return;
     }
 
     switch( ObjCurLine )
@@ -2602,7 +2614,6 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
     case DIK_NUMPAD9:
         add = 9;
         break;
-//	case DIK_DELETE:
     case DIK_BACK:
         if( val_c )
             *val_c = *val_c / 10;
@@ -5585,16 +5596,15 @@ void FOMapper::SScriptFunc::MapperObject_MoveToDir( MapObject& mobj, uchar dir )
     Self->MoveMapObject( &mobj, hx, hy );
 }
 
-int* FOMapper::SScriptFunc::MapperObject_CritterParam_Index( MapObject& mobj, uint index )
+ScriptString* FOMapper::SScriptFunc::MapperObject_CritterParam_Index( MapObject& mobj, uint index )
 {
-    static int dummy = 0;
     if( index >= MAX_PARAMS )
-        SCRIPT_ERROR_RX( "Invalid index arg.", &dummy );
+        SCRIPT_ERROR_RX( "Invalid index arg.", ScriptString::Create() );
     if( mobj.MapObjType != MAP_OBJECT_CRITTER )
-        SCRIPT_ERROR_RX( "Mapper object is not critter.", &dummy );
+        SCRIPT_ERROR_RX( "Mapper object is not critter.", ScriptString::Create() );
     if( !mobj.MCritter.Params )
         mobj.AllocateCritterParams();
-    return &mobj.MCritter.Params[ index ];
+    return mobj.MCritter.Params[ index ];
 }
 
 ScriptString* FOMapper::SScriptFunc::MapperMap_get_Name( ProtoMap& pmap )

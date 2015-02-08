@@ -42,11 +42,15 @@ public:
     {
         struct
         {
-            uchar Dir;
-            uchar Cond;
-            uint  Anim1;
-            uint  Anim2;
-            int*  Params;
+            uchar          Dir;
+            uchar          Cond;
+            uint           Anim1;
+            uint           Anim2;
+            #ifndef FONLINE_MAPPER
+            int*           Params;
+            #else
+            ScriptString** Params;
+            #endif
         } MCritter;
 
         struct
@@ -129,8 +133,15 @@ public:
     {
         if( MapObjType == MAP_OBJECT_CRITTER && MCritter.Params )
         {
+            #ifndef FONLINE_MAPPER
+            MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) ( MAX_PARAMS * sizeof( MCritter.Params[ 0 ] ) ) );
             SAFEDELA( MCritter.Params );
-            MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) ( MAX_PARAMS * sizeof( int ) ) );
+            #else
+            for( uint i = 0; i < MAX_PARAMS; i++ )
+                MCritter.Params[ i ]->Release();
+            SAFEDELA( MCritter.Params );
+            MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) ( MAX_PARAMS * sizeof( ScriptString* ) ) );
+            #endif
         }
     }
 
@@ -139,9 +150,16 @@ public:
 
     void AllocateCritterParams()
     {
+        #ifndef FONLINE_MAPPER
         MCritter.Params = new int[ MAX_PARAMS ];
         memzero( MCritter.Params, MAX_PARAMS * sizeof( int ) );
         MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) MAX_PARAMS * sizeof( int ) );
+        #else
+        MCritter.Params = new ScriptString*[ MAX_PARAMS ];
+        for( uint i = 0; i < MAX_PARAMS; i++ )
+            MCritter.Params[ i ] = ScriptString::Create();
+        MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) MAX_PARAMS * sizeof( ScriptString* ) );
+        #endif
     }
 
     #ifndef FONLINE_SERVER
@@ -163,7 +181,12 @@ public:
         if( other.MapObjType == MAP_OBJECT_CRITTER && MCritter.Params )
         {
             AllocateCritterParams();
+            # ifndef FONLINE_MAPPER
             memcpy( MCritter.Params, other.MCritter.Params, MAX_PARAMS * sizeof( int ) );
+            # else
+            for( uint i = 0; i < MAX_PARAMS; i++ )
+                *MCritter.Params[ i ] = *other.MCritter.Params[ i ];
+            # endif
         }
         RunTime.RefCounter = 1;
     }
@@ -172,6 +195,9 @@ private:
     MapObject( const MapObject& r ) {}
     MapObject& operator=( const MapObject& r ) { return *this; }
     #endif
+
+public:
+    static int ConvertParamValue( const char* str );
 };
 typedef vector< MapObject* > MapObjectPtrVec;
 

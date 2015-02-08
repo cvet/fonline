@@ -449,7 +449,7 @@ public:
         static void          MapperObject_MoveToHex( MapObject& mobj, ushort hx, ushort hy );
         static void          MapperObject_MoveToHexOffset( MapObject& mobj, int x, int y );
         static void          MapperObject_MoveToDir( MapObject& mobj, uchar dir );
-        static int*          MapperObject_CritterParam_Index( MapObject& mobj, uint index );
+        static ScriptString* MapperObject_CritterParam_Index( MapObject& mobj, uint index );
 
         static ScriptString* MapperMap_get_Name( ProtoMap& pmap );
         static MapObject*    MapperMap_AddObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, ushort pid );

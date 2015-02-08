@@ -1270,8 +1270,8 @@ BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Critter_Anim
 
 // Critter parameters
 BIND_ASSERT( engine->RegisterObjectType( "CritterParam", 0, asOBJ_REF | asOBJ_NOHANDLE ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "CritterParam", "const int& opIndex(uint) const", asFUNCTION( BIND_CLASS MapperObject_CritterParam_Index ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "CritterParam", "int& opIndex(uint)", asFUNCTION( BIND_CLASS MapperObject_CritterParam_Index ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "CritterParam", "const string& opIndex(uint) const", asFUNCTION( BIND_CLASS MapperObject_CritterParam_Index ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "CritterParam", "string& opIndex(uint)", asFUNCTION( BIND_CLASS MapperObject_CritterParam_Index ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "CritterParam Critter_Param", 0 ) );
 
 // Item/critter shared parameters

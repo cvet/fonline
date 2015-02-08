@@ -10,15 +10,26 @@
 # include "ResourceManager.h"
 #endif
 
-#define FO_MAP_VERSION_TEXT1                     ( 1 )
-#define FO_MAP_VERSION_TEXT2                     ( 2 )
-#define FO_MAP_VERSION_TEXT3                     ( 3 )
-#define FO_MAP_VERSION_TEXT4                     ( 4 )
-#define FO_MAP_VERSION_TEXT5                     ( 5 )
+#define FO_MAP_VERSION_TEXT1    ( 1 )
+#define FO_MAP_VERSION_TEXT2    ( 2 )
+#define FO_MAP_VERSION_TEXT3    ( 3 )
+#define FO_MAP_VERSION_TEXT4    ( 4 )
+#define FO_MAP_VERSION_TEXT5    ( 5 )
 
-#define APP_HEADER                               "Header"
-#define APP_TILES                                "Tiles"
-#define APP_OBJECTS                              "Objects"
+#define APP_HEADER              "Header"
+#define APP_TILES               "Tiles"
+#define APP_OBJECTS             "Objects"
+
+int MapObject::ConvertParamValue( const char* str )
+{
+    if( !str[ 0 ] )
+        return 0;
+    if( str[ 0 ] == '$' )
+        return ConstantsManager::GetDefineValue( str + 1 );
+    if( !Str::IsNumber( str ) )
+        return Str::GetHash( str );
+    return Str::AtoI( str );
+}
 
 bool ProtoMap::Init( ushort pid, const char* name, int path_type )
 {
@@ -399,7 +410,11 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                             {
                                 if( !mobj.MCritter.Params )
                                     mobj.AllocateCritterParams();
-                                mobj.MCritter.Params[ critter_param_index ] = ivalue;
+                                #ifndef FONLINE_MAPPER
+                                mobj.MCritter.Params[ critter_param_index ] = MapObject::ConvertParamValue( Str::EraseFrontBackSpecificChars( svalue ) );
+                                #else
+                                *mobj.MCritter.Params[ critter_param_index ] = Str::EraseFrontBackSpecificChars( svalue );
+                                #endif
                                 critter_param_index = -1;
                             }
                         }
@@ -654,13 +669,19 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
             {
                 for( int i = 0; i < MAX_PARAMS; i++ )
                 {
-                    if( mobj.MCritter.Params[ i ] )
+                    if( mobj.MCritter.Params[ i ]->length() > 0 )
                     {
-                        const char* param_name = ConstantsManager::GetParamName( i );
-                        if( param_name )
+                        char param_str[ MAX_FOTEXT ];
+                        Str::Copy( param_str, mobj.MCritter.Params[ i ]->c_str() );
+                        Str::EraseFrontBackSpecificChars( param_str );
+                        if( Str::Length( param_str ) > 0 )
                         {
-                            fm.SetStr( "%-20s %s\n", "Critter_ParamIndex", param_name );
-                            fm.SetStr( "%-20s %d\n", "Critter_ParamValue", mobj.MCritter.Params[ i ] );
+                            const char* param_name = ConstantsManager::GetParamName( i );
+                            if( param_name )
+                            {
+                                fm.SetStr( "%-20s %s\n", "Critter_ParamIndex", param_name );
+                                fm.SetStr( "%-20s %s\n", "Critter_ParamValue", param_str );
+                            }
                         }
                     }
                 }
