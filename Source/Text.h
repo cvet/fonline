@@ -74,10 +74,8 @@ namespace Str
     char* GetBigBuf();                      // Just big buffer, 1mb
 
     // Name hashes
-    uint        FormatForHash( char* name );
     uint        GetHash( const char* name );
     const char* GetName( uint hash );
-    void        AddNameHash( const char* name );
 
     // Parse str
     const char* ParseLineDummy( const char* str );

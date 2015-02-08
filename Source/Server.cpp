@@ -4557,7 +4557,7 @@ bool FOServer::LoadWorld( const char* fname )
         FileClose( f );
         return false;
     }
-    if( version < WORLD_SAVE_V13 )
+    if( version < WORLD_SAVE_V15 )
     {
         WriteLog( "Version of save file is not supported.\n" );
         FileClose( f );

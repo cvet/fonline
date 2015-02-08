@@ -64,9 +64,17 @@ bool Global_SetAngelScriptProperty( int property, uint value )
 
 uint Global_GetStrHash( ScriptString* str )
 {
-    if( str )
-        return Str::GetHash( str->c_str() );
-    return 0;
+    if( !str )
+        return 0;
+    return Str::GetHash( str->c_str() );
+}
+
+ScriptString* Global_GetHashStr( uint hash )
+{
+    if( !hash )
+        return ScriptString::Create();
+    const char* str = Str::GetName( hash );
+    return ScriptString::Create( str ? str : "" );
 }
 
 uint Global_DecodeUTF8( ScriptString& text, uint& length )

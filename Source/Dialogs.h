@@ -181,11 +181,9 @@ public:
     DialogPack* GetDialogByIndex( uint index );
     void        EraseDialog( uint pack_id );
     ushort      GetTempVarId( const char* str );
-    uint        FixDialogId( uint pack_id );
 
 private:
     DialogPackMap dialogPacks;
-    UIntMap       indexToId;
     string        lastErrors;
 
     DemandResult* LoadDemandResult( istrstream& input, bool is_demand );

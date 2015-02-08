@@ -1585,6 +1585,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetTick()", asFUNCTION( Globa
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAngelScriptProperty(int property)", asFUNCTION( Global_GetAngelScriptProperty ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetAngelScriptProperty(int property, uint value)", asFUNCTION( Global_SetAngelScriptProperty ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetStrHash(string@+ str)", asFUNCTION( Global_GetStrHash ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetHashStr(uint hash)", asFUNCTION( Global_GetHashStr ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint DecodeUTF8(const string& text, uint& length)", asFUNCTION( Global_DecodeUTF8 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ EncodeUTF8(uint ucs)", asFUNCTION( Global_EncodeUTF8 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetFilePath(int path)", asFUNCTION( Global_GetFilePath ), asCALL_CDECL ) );

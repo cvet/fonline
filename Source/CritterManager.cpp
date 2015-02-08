@@ -222,10 +222,6 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
         CritData data;
         FileRead( f, &data, sizeof( data ) );
 
-        # pragma DEPRECATED
-        if( version <= WORLD_SAVE_V14 )
-            data.Params[ ST_DIALOG_ID ] = DlgMngr.FixDialogId( data.Params[ ST_DIALOG_ID ] );
-
         CritDataExt data_ext;
         if( data.IsDataExt )
             FileRead( f, &data_ext, sizeof( data_ext ) );

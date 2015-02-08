@@ -84,7 +84,7 @@ bool ConstantsManager::AddCollection( int collection, const char* fname, int pat
 
             value_name.insert( PAIR( num + offset, name ) );
             name_value.insert( PAIR( name, num + offset ) );
-            Str::AddNameHash( name.c_str() );
+            Str::GetHash( name.c_str() );
         }
     }
 
@@ -95,7 +95,7 @@ void ConstantsManager::AddConstant( int collection, const char* str, int value )
 {
     ConstCollections[ collection ].ValueName.insert( PAIR( value, str ) );
     ConstCollections[ collection ].NameValue.insert( PAIR( str, value ) );
-    Str::AddNameHash( str );
+    Str::GetHash( str );
 }
 
 StrVec ConstantsManager::GetCollection( int collection )

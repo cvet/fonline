@@ -779,11 +779,21 @@ char* Str::GetBigBuf()
     return BigBuf;
 }
 
-static UIntStrMap NamesHash;
-uint Str::FormatForHash( char* name )
+static UIntStrMap HashRawNames;
+static UIntStrMap HashFormattedNames;
+void AddNameHash( uint hash, const char* raw_name, const char* formatted_name )
 {
-    EraseFrontBackSpecificChars( name );
-    Lower( name );
+    auto ins = HashFormattedNames.insert( PAIR( hash, formatted_name ) );
+    if( !ins.second && !Str::Compare( ( *ins.first ).second.c_str(), formatted_name ) )
+        WriteLog( "Hash collision detected for names <%s> and <%s>, hash<%08X>.\n", formatted_name, ( *ins.first ).second.c_str(), hash );
+    else if( ins.second )
+        HashRawNames.insert( PAIR( hash, raw_name ) );
+}
+
+uint FormatForHash( char* name )
+{
+    Str::EraseFrontBackSpecificChars( name );
+    Str::Lower( name );
     uint len = 0;
     for( char* s = name; *s; s++, len++ )
         if( *s == '\\' )
@@ -796,10 +806,12 @@ uint Str::GetHash( const char* name )
     if( !name )
         return 0;
 
-    char name_[ MAX_FOPATH ];
+    char name_[ MAX_FOTEXT ];
     Copy( name_, name );
     uint len = FormatForHash( name_ );
-    return Crypt.Crc32( (uchar*) name_, len );
+    uint hash = Crypt.Crc32( (uchar*) name_, len );
+    AddNameHash( hash, name, name_ );
+    return hash;
 }
 
 const char* Str::GetName( uint hash )
@@ -807,30 +819,8 @@ const char* Str::GetName( uint hash )
     if( !hash )
         return NULL;
 
-    auto it = NamesHash.find( hash );
-    return it != NamesHash.end() ? ( *it ).second.c_str() : NULL;
-}
-
-void Str::AddNameHash( const char* name )
-{
-    char name_[ MAX_FOPATH ];
-    Copy( name_, name );
-    uint len = FormatForHash( name_ );
-    uint hash = Crypt.Crc32( (uchar*) name_, len );
-
-    auto it = NamesHash.find( hash );
-    if( it == NamesHash.end() )
-    {
-        NamesHash.insert( PAIR( hash, name ) );
-    }
-    else
-    {
-        char name__[ MAX_FOPATH ];
-        Copy( name__, ( *it ).second.c_str() );
-        FormatForHash( name__ );
-        if( !Compare( name_, name__ ) )
-            WriteLogF( _FUNC_, " - Found equal hash for different names, name1<%s>, name2<%s>, hash<%u>.\n", name, ( *it ).second.c_str(), hash );
-    }
+    auto it = HashRawNames.find( hash );
+    return it != HashRawNames.end() ? ( *it ).second.c_str() : NULL;
 }
 
 const char* Str::ParseLineDummy( const char* str )

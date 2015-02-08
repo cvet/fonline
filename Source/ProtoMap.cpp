@@ -661,10 +661,14 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
         // Critter
         if( mobj.MapObjType == MAP_OBJECT_CRITTER )
         {
-            fm.SetStr( "%-20s %d\n", "Critter_Dir", mobj.MCritter.Dir );
-            fm.SetStr( "%-20s %d\n", "Critter_Cond", mobj.MCritter.Cond );
-            fm.SetStr( "%-20s %d\n", "Critter_Anim1", mobj.MCritter.Anim1 );
-            fm.SetStr( "%-20s %d\n", "Critter_Anim2", mobj.MCritter.Anim2 );
+            if( mobj.MCritter.Dir )
+                fm.SetStr( "%-20s %d\n", "Critter_Dir", mobj.MCritter.Dir );
+            if( mobj.MCritter.Cond )
+                fm.SetStr( "%-20s %d\n", "Critter_Cond", mobj.MCritter.Cond );
+            if( mobj.MCritter.Anim1 )
+                fm.SetStr( "%-20s %d\n", "Critter_Anim1", mobj.MCritter.Anim1 );
+            if( mobj.MCritter.Anim2 )
+                fm.SetStr( "%-20s %d\n", "Critter_Anim2", mobj.MCritter.Anim2 );
             if( mobj.MCritter.Params )
             {
                 for( int i = 0; i < MAX_PARAMS; i++ )
@@ -674,7 +678,7 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
                         char param_str[ MAX_FOTEXT ];
                         Str::Copy( param_str, mobj.MCritter.Params[ i ]->c_str() );
                         Str::EraseFrontBackSpecificChars( param_str );
-                        if( Str::Length( param_str ) > 0 )
+                        if( Str::Length( param_str ) > 0 && !( Str::IsNumber( param_str ) && Str::AtoI( param_str ) == 0 ) )
                         {
                             const char* param_name = ConstantsManager::GetParamName( i );
                             if( param_name )

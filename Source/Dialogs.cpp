@@ -48,38 +48,6 @@ bool DialogManager::LoadDialogs()
         dlg_loaded++;
     }
 
-    indexToId.clear();
-    FileManager lst;
-    if( lst.LoadFile( "dialogs.lst", PT_SERVER_DIALOGS ) )
-    {
-        istrstream str( (char*) lst.GetBuf() );
-        while( !str.eof() )
-        {
-            char ch;
-            str >> ch;
-            if( ch != '$' )
-                continue;
-
-            uint dlg_id;
-            str >> dlg_id;
-            if( str.fail() )
-            {
-                WriteLog( "Unable to read id of dialog.\n" );
-                continue;
-            }
-
-            char dlg_name[ MAX_FOTEXT ];
-            str >> dlg_name;
-            if( str.fail() )
-            {
-                WriteLog( "Unable to read name of dialog.\n" );
-                continue;
-            }
-
-            indexToId.insert( PAIR( dlg_id, Str::GetHash( dlg_name ) ) );
-        }
-    }
-
     WriteLog( "Load dialogs complete, loaded<%u/%u>.\n", dlg_loaded, dlg_count );
     return dlg_loaded == dlg_count;
 }
@@ -698,17 +666,6 @@ ushort DialogManager::GetTempVarId( const char* str )
     if( !tid )
         WriteLog( "Template var not found, name<%s>.\n", str );
     return tid;
-}
-
-#pragma DEPRECATED
-uint DialogManager::FixDialogId( uint pack_id )
-{
-    if( pack_id > 0 && pack_id <= 0xFFFF )
-    {
-        auto it = indexToId.find( pack_id );
-        pack_id = ( it != indexToId.end() ? ( *it ).second : 0 );
-    }
-    return pack_id;
 }
 
 int DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
