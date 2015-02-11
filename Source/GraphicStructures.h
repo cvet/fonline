@@ -2,7 +2,7 @@
 #define __GRAPHIC_STRUCTURES__
 
 #include "Defines.h"
-#include "GL/GL.h"
+#include "GL/gl.h"
 #include "Assimp/aiTypes.h"
 #include "Assimp/aiScene.h"
 #include "FileManager.h"

@@ -957,7 +957,7 @@ const char* GetLastSocketError()
     int                error = WSAGetLastError();
     # define CASE_SOCK_ERROR( code, message ) \
     case code:                                \
-        Str::Format( str, # code ", %d, "message, code ); break
+        Str::Format( str, "%s, %d, %s", #code, code, message ); break
 
     switch( error )
     {
@@ -1595,7 +1595,7 @@ void Thread::Finish()
         # ifdef FO_WINDOWS
         TerminateThread( threadId, NULL );
         # else
-        pthread_cancel( threadId, NULL );
+        pthread_cancel( threadId );
         # endif
     }
 }

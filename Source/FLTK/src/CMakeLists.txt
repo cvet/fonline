@@ -248,6 +248,8 @@ if(USE_XFT)
    endif(LIB_fontconfig)
 endif(USE_XFT)
 
+return()
+
 #######################################################################
 FL_ADD_LIBRARY(fltk_forms STATIC "${FLCPPFILES}")
 target_link_libraries(fltk_forms fltk)

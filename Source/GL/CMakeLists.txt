@@ -1,6 +1,6 @@
 cmake_minimum_required( VERSION 2.8 )
-project( GL )
+project( GLExt )
 
-file( GLOB GL_SOURCE "*.*" )
-add_library( GL ${GL_SOURCE} )
-include_directories( "../" )
+file( GLOB GLEXT_SOURCE "*.*" )
+add_library( GLExt ${GLEXT_SOURCE} )
+include_directories( "${CMAKE_CURRENT_SOURCE_DIR}/../" )

@@ -134,14 +134,15 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     pack->PackName = pack_name;
     StrVec& lang = pack->TextsLang;
 
-    if( pack->PackId <= 0xFFFF )
-        LOAD_FAIL( "Invalid hash for dialog name." );
-
     // Comment
     char* comment = fodlg.GetApp( "comment" );
     if( comment )
         pack->Comment = comment;
     SAFEDELA( comment );
+
+	// Check dialog pack
+	if( pack->PackId <= 0xFFFF )
+		LOAD_FAIL( "Invalid hash for dialog name." );
 
     // Texts
     char lang_key[ MAX_FOTEXT ];
@@ -334,11 +335,11 @@ load_done:
     return pack;
 
 load_false:
-    WriteLog( "Dialog<%s> - Bad node<%d>.\n", pack_name, dlg_id );
-    delete pack;
-    SAFEDELA( dlg_buf );
-    SAFEDELA( lang_buf );
-    return NULL;
+	WriteLog( "Dialog<%s> - Bad node<%d>.\n", pack_name, dlg_id );
+	delete pack;
+	SAFEDELA( dlg_buf );
+	SAFEDELA( lang_buf );
+	return NULL;
 }
 
 DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand )

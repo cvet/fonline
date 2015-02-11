@@ -187,7 +187,6 @@ struct ScoreType
 # include "SDL.h"
 # include "SDL_syswm.h"
 # ifndef FO_OGL_ES
-#  define GLEW_NO_GLU
 #  include "GL/glew.h"
 #  include "SDL_opengl.h"
 #  ifdef FO_OSX_MAC

@@ -63,8 +63,8 @@ if(MSVC)
     set(CMAKE_DEBUG_POSTFIX "d")
     add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
     add_definitions(-D_CRT_NONSTDC_NO_DEPRECATE)
-    include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 endif()
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 if(NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
     # If we're doing an out of source build and the user has a zconf.h
@@ -184,6 +184,9 @@ if(MINGW)
 endif(MINGW)
 
 file(GLOB MINIZIP_SOURCE "contrib/minizip/*.c")
+if(NOT WIN32)
+	list(REMOVE_ITEM MINIZIP_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/contrib/minizip/iowin32.c")
+endif()
 
 add_library(zlibstatic STATIC ${ZLIB_SRCS} ${ZLIB_ASMS} ${ZLIB_PUBLIC_HDRS} ${ZLIB_PRIVATE_HDRS} ${MINIZIP_SOURCE})
 
