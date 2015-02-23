@@ -6020,8 +6020,6 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& slot_na
 {
     if( index <= SLOT_ARMOR || index == SLOT_GROUND )
         SCRIPT_ERROR_R( "Invalid index arg." );
-    if( !slot_name.length() )
-        SCRIPT_ERROR_R( "Slot name string is empty." );
     SlotExt se;
     se.Index = index;
     se.SlotName = Str::Duplicate( slot_name.c_str() );

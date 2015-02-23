@@ -140,9 +140,9 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
         pack->Comment = comment;
     SAFEDELA( comment );
 
-	// Check dialog pack
-	if( pack->PackId <= 0xFFFF )
-		LOAD_FAIL( "Invalid hash for dialog name." );
+    // Check dialog pack
+    if( pack->PackId <= 0xFFFF )
+        LOAD_FAIL( "Invalid hash for dialog name." );
 
     // Texts
     char lang_key[ MAX_FOTEXT ];
@@ -164,7 +164,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
         temp_msg.LoadFromString( lang_buf, Str::Length( lang_buf ) );
         SAFEDELA( lang_buf );
 
-        if( temp_msg.GetStrNumUpper( 1000000000 + ~DLGID_MASK ) )
+        if( temp_msg.GetStrNumUpper( 100000000 + ~DLGID_MASK ) )
             LOAD_FAIL( "Text have any text with index greather than 4000." );
 
         pack->Texts.push_back( new FOMsg() );
@@ -173,9 +173,24 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
         while( str_num = temp_msg.GetStrNumUpper( str_num ) )
         {
             uint count = temp_msg.Count( str_num );
-            uint new_str_num = DLG_STR_ID( pack->PackId, ( str_num < 1000000000 ? str_num / 10 : str_num - 1000000000 + 12000 ) );
+            uint new_str_num = DLG_STR_ID( pack->PackId, ( str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000 ) );
             for( uint n = 0; n < count; n++ )
-                pack->Texts[ i ]->AddStr( new_str_num, temp_msg.GetStr( str_num, n ) );
+            {
+                const char* str = temp_msg.GetStr( str_num, n );
+                if( Str::Substring( str, "\n\\[" ) )
+                {
+                    char  str_copy[ MAX_FOTEXT ];
+                    Str::Copy( str_copy, str );
+                    char* s = str_copy;
+                    while( s = Str::Substring( s, "\n\\[" ) )
+                        Str::EraseInterval( s + 1, 1 );
+                    pack->Texts[ i ]->AddStr( new_str_num, str_copy );
+                }
+                else
+                {
+                    pack->Texts[ i ]->AddStr( new_str_num, str );
+                }
+            }
         }
     }
 
@@ -335,11 +350,11 @@ load_done:
     return pack;
 
 load_false:
-	WriteLog( "Dialog<%s> - Bad node<%d>.\n", pack_name, dlg_id );
-	delete pack;
-	SAFEDELA( dlg_buf );
-	SAFEDELA( lang_buf );
-	return NULL;
+    WriteLog( "Dialog<%s> - Bad node<%d>.\n", pack_name, dlg_id );
+    delete pack;
+    SAFEDELA( dlg_buf );
+    SAFEDELA( lang_buf );
+    return NULL;
 }
 
 DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand )

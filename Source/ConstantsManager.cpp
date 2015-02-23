@@ -16,6 +16,7 @@ const char* CollectionFiles[] =
 struct ConstCollection
 {
     bool       Init;
+    StrVec     Names;
     UIntStrMap ValueName;
     StrUIntMap NameValue;
     ConstCollection(): Init( false ) {}
@@ -42,10 +43,13 @@ bool ConstantsManager::AddCollection( int collection, const char* fname, int pat
 
     if( collection >= (int) ConstCollections.size() )
         ConstCollections.resize( collection + 1 );
+
+    StrVec&     names = ConstCollections[ collection ].Names;
     UIntStrMap& value_name = ConstCollections[ collection ].ValueName;
     StrUIntMap& name_value = ConstCollections[ collection ].NameValue;
 
     ConstCollections[ collection ].Init = true;
+    names.clear();
     value_name.clear();
     name_value.clear();
 
@@ -82,6 +86,7 @@ bool ConstantsManager::AddCollection( int collection, const char* fname, int pat
                     continue;
             }
 
+            names.push_back( name );
             value_name.insert( PAIR( num + offset, name ) );
             name_value.insert( PAIR( name, num + offset ) );
             Str::GetHash( name.c_str() );
@@ -100,17 +105,7 @@ void ConstantsManager::AddConstant( int collection, const char* str, int value )
 
 StrVec ConstantsManager::GetCollection( int collection )
 {
-    UIntVec val_added;
-    StrVec  result;
-    for( auto it = ConstCollections[ collection ].ValueName.begin(), end = ConstCollections[ collection ].ValueName.end(); it != end; ++it )
-    {
-        if( collection == CONSTANTS_DEFINE || std::find( val_added.begin(), val_added.end(), ( *it ).first ) == val_added.end() )
-        {
-            result.push_back( ( *it ).second );
-            val_added.push_back( ( *it ).first );
-        }
-    }
-    return result;
+    return ConstCollections[ collection ].Names;
 }
 
 bool ConstantsManager::IsCollectionInit( int collection )

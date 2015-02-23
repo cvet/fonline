@@ -15,6 +15,9 @@
     <Filter Include="SHA2">
       <UniqueIdentifier>{78e0ebbd-47b4-4f86-b841-bca4e4ed6529}</UniqueIdentifier>
     </Filter>
+    <Filter Include="DialogEditor\AngelScript">
+      <UniqueIdentifier>{581e6a56-8b2e-4ecb-b6de-a057a69949ac}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AssemblyInfo.cpp">
@@ -65,45 +68,6 @@
     <ClCompile Include="..\Source\Vars.cpp">
       <Filter>DialogEditor</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\Zlib\adler32.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\compress.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\crc32.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\deflate.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\infback.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\inffast.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\inflate.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\inftrees.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\ioapi.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\trees.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\uncompr.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\unzip.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Zlib\zutil.c">
-      <Filter>Zlib</Filter>
-    </ClCompile>
     <ClCompile Include="..\Source\ConstantsManager.cpp">
       <Filter>DialogEditor</Filter>
     </ClCompile>
@@ -118,6 +82,210 @@
     </ClCompile>
     <ClCompile Include="..\Source\FileSystem.cpp">
       <Filter>DialogEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_atomic.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_builder.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_bytecode.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_arm.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_mips.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_ppc.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_ppc_64.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_sh4.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_x64_gcc.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_x64_mingw.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_x64_msvc.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_x86.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_xenon.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_compiler.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_configgroup.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_context.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_datatype.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_gc.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_generic.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_globalproperty.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_memory.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_module.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_objecttype.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_outputbuffer.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_parser.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_restore.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_scriptcode.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_scriptengine.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_scriptfunction.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_scriptnode.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_scriptobject.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_string.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_string_util.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_thread.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_tokenizer.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_typeinfo.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_variablescope.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\preprocessor.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\reflection.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptany.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptarray.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptdictionary.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptfile.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptmath.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\weakref.cpp">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\adler32.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\compress.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\crc32.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\deflate.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\gzclose.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\gzlib.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\gzread.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\gzwrite.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\infback.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\inffast.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\inflate.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\inftrees.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\trees.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\uncompr.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\zutil.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\contrib\minizip\ioapi.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\contrib\minizip\iowin32.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\contrib\minizip\miniunz.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\contrib\minizip\mztools.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\contrib\minizip\unzip.c">
+      <Filter>Zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\zlib\contrib\minizip\zip.c">
+      <Filter>Zlib</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -175,42 +343,6 @@
     <ClInclude Include="..\Source\Version.h">
       <Filter>DialogEditor</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\Zlib\crc32.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Zlib\deflate.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Zlib\inffast.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Zlib\inffixed.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Zlib\inflate.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Zlib\inftrees.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Zlib\ioapi.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Zlib\trees.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Zlib\unzip.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Zlib\zconf.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Zlib\zlib.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Zlib\zutil.h">
-      <Filter>Zlib</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\ConstantsManager.h">
       <Filter>DialogEditor</Filter>
     </ClInclude>
@@ -229,6 +361,192 @@
     <ClInclude Include="DialogEditor.h">
       <Filter>DialogEditor</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_array.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_atomic.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_builder.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_bytecode.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_compiler.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_config.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_configgroup.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_context.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_criticalsection.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_datatype.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_debug.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_gc.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_generic.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_map.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_memory.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_module.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_namespace.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_objecttype.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_outputbuffer.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_parser.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_property.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_restore.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_scriptcode.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_scriptengine.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_scriptfunction.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_scriptnode.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_scriptobject.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_string.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_string_util.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_symboltable.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_texts.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_thread.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_tokendef.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_tokenizer.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_typeinfo.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_variablescope.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\preprocessor.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\reflection.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptany.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptarray.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptdictionary.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptfile.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptmath.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptstring.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\weakref.h">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\crc32.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\deflate.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\gzguts.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\inffast.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\inffixed.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\inflate.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\inftrees.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\trees.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\zlib.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\zutil.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\contrib\minizip\crypt.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\contrib\minizip\ioapi.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\contrib\minizip\iowin32.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\contrib\minizip\mztools.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\contrib\minizip\unzip.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\zlib\contrib\minizip\zip.h">
+      <Filter>Zlib</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="DialogEditor.ico">
@@ -236,6 +554,21 @@
     </None>
     <None Include="$this.Icon.ico">
       <Filter>Resource</Filter>
+    </None>
+    <None Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_arm_gcc.S">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </None>
+    <None Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_arm_msvc.asm">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </None>
+    <None Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_arm_vita.S">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </None>
+    <None Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_arm_xcode.S">
+      <Filter>DialogEditor\AngelScript</Filter>
+    </None>
+    <None Include="..\Source\AngelScript\sdk\angelscript\source\as_callfunc_x64_msvc_asm.asm">
+      <Filter>DialogEditor\AngelScript</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

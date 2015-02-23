@@ -11,7 +11,6 @@
 #include <string>
 #include <map>
 
-class ScriptArray;
 class ScriptDictionary;
 
 class ScriptDictValue

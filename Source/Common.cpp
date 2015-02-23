@@ -957,7 +957,7 @@ const char* GetLastSocketError()
     int                error = WSAGetLastError();
     # define CASE_SOCK_ERROR( code, message ) \
     case code:                                \
-        Str::Format( str, "%s, %d, %s", #code, code, message ); break
+        Str::Format( str, "%s, %d, %s", # code, code, message ); break
 
     switch( error )
     {

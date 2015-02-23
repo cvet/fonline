@@ -180,6 +180,7 @@ struct ScoreType
 /************************************************************************/
 /* Client & Mapper                                                      */
 /************************************************************************/
+
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 
 # define PI_VALUE                                ( 3.141592654f )
@@ -354,9 +355,11 @@ struct MapperScriptFunctions
 } extern MapperFunctions;
 
 #endif
+
 /************************************************************************/
 /* Server                                                               */
 /************************************************************************/
+
 #ifdef FONLINE_SERVER
 
 # include "Script.h"
@@ -422,21 +425,7 @@ struct ServerScriptFunctions
 } extern ServerFunctions;
 
 #endif
-/************************************************************************/
-/* Tools                                                                */
-/************************************************************************/
-#ifdef FONLINE_NPCEDITOR
-# include <strstream>
-# include <fstream>
 
-# define _CRT_SECURE_NO_DEPRECATE
-# define MAX_TEXT_DIALOG    ( 1000 )
-
-# define ScriptString       string
-#endif
-#ifdef FONLINE_MRFIXIT
-# define ScriptString       string
-#endif
 /************************************************************************/
 /* Game options                                                         */
 /************************************************************************/
