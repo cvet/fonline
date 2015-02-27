@@ -252,7 +252,8 @@ bool FOMsg::LoadFromBinaryData( const UCharVec& data )
         buf += sizeof( str_len );
 
         str.resize( str_len );
-        memcpy( &str[ 0 ], buf, str_len );
+        if( str_len )
+            memcpy( &str[ 0 ], buf, str_len );
         buf += str_len;
 
         AddStr( num, str );

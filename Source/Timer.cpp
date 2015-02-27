@@ -158,6 +158,9 @@ void Timer::GetCurrentDateTime( DateTime& dt )
     #endif
 }
 
+#ifdef FO_MSVC
+# pragma optimize( "", off )
+#endif
 void Timer::DateTimeToFullTime( const DateTime& dt, uint64& ft )
 {
     // Minor year
@@ -184,6 +187,9 @@ void Timer::DateTimeToFullTime( const DateTime& dt, uint64& ft )
     ft += (uint64) dt.Milliseconds * 1000;
     ft *= (uint64) 10;
 }
+#ifdef FO_MSVC
+# pragma optimize( "", on )
+#endif
 
 void Timer::FullTimeToDateTime( uint64 ft, DateTime& dt )
 {

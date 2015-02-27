@@ -48,7 +48,7 @@ ScriptString* ScriptString::GetFromPool()
         }
     }
 
-    ScriptString* str = ScriptStringPool.back();
+    ScriptString* str = ScriptStringPool[ ScriptStringPool.size() - 1 ];
     ScriptStringPool.pop_back();
     str->AddRef();
     return str;
