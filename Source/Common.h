@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 480 )
+#define FONLINE_VERSION                          ( 481 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
@@ -299,6 +299,7 @@ struct ClientScriptFunctions
     int ItemMapIn;
     int ItemMapChanged;
     int ItemMapOut;
+    int ItemInvAllIn;
     int ItemInvIn;
     int ItemInvChanged;
     int ItemInvOut;

@@ -2491,10 +2491,10 @@ void Critter::Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm )
     if( IsPlayer() )
         ( (Client*) this )->Send_AnimateItem( item, from_frm, to_frm );
 }
-void Critter::Send_AddItem( Item* item )
+void Critter::Send_AddItem( Item* item, bool initial_send /* = false */ )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_AddItem( item );
+        ( (Client*) this )->Send_AddItem( item, initial_send );
 }
 void Critter::Send_EraseItem( Item* item )
 {
@@ -3060,7 +3060,7 @@ void Critter::Send_AddAllItems()
     BOUT_END( cl );
 
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
-        Send_AddItem( *it );
+        Send_AddItem( *it, true );
 
     BOUT_BEGIN( cl );
     cl->Bout << NETMSG_ALL_ITEMS_SEND;
@@ -4032,7 +4032,7 @@ void Client::Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm )
     BOUT_END( this );
 }
 
-void Client::Send_AddItem( Item* item )
+void Client::Send_AddItem( Item* item, bool initial_send /* = false */ )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
@@ -4040,7 +4040,7 @@ void Client::Send_AddItem( Item* item )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_ADD_ITEM;
+    Bout << ( initial_send ? NETMSG_ADD_ITEM_INITIAL : NETMSG_ADD_ITEM );
     Bout << item->GetId();
     Bout << item->GetProtoId();
     Bout << item->AccCritter.Slot;

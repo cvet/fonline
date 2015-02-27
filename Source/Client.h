@@ -201,7 +201,7 @@ public:
     void Net_OnCraftAsk();
     void Net_OnCraftResult();
     void Net_OnChosenClearItems();
-    void Net_OnChosenAddItem();
+    void Net_OnChosenAddItem( bool initial_send );
     void Net_OnChosenEraseItem();
     void Net_OnAllItemsSend();
     void Net_OnChosenTalk();

@@ -2517,8 +2517,11 @@ void FOClient::NetProcess()
         case NETMSG_CLEAR_ITEMS:
             Net_OnChosenClearItems();
             break;
+        case NETMSG_ADD_ITEM_INITIAL:
+            Net_OnChosenAddItem( true );
+            break;
         case NETMSG_ADD_ITEM:
-            Net_OnChosenAddItem();
+            Net_OnChosenAddItem( false );
             break;
         case NETMSG_REMOVE_ITEM:
             Net_OnChosenEraseItem();
@@ -4508,7 +4511,7 @@ void FOClient::Net_OnChosenClearItems()
     CollectContItems();
 }
 
-void FOClient::Net_OnChosenAddItem()
+void FOClient::Net_OnChosenAddItem( bool initial_send )
 {
     uint   item_id;
     ushort pid;
@@ -4548,18 +4551,14 @@ void FOClient::Net_OnChosenAddItem()
         return;
     }
 
+    item->AddRef();
+
     Bin.Pop( (char*) &item->Data, sizeof( item->Data ) );
     item->Accessory = ITEM_ACCESSORY_CRITTER;
     item->AccCritter.Slot = slot;
     if( item != Chosen->ItemSlotMain || !item->IsWeapon() )
         item->SetMode( item->Data.Mode );
     Chosen->AddItem( item );
-
-    if( Script::PrepareContext( ClientFunctions.ItemInvIn, _FUNC_, "Game" ) )
-    {
-        Script::SetArgObject( item );
-        Script::RunPrepared();
-    }
 
     if( slot == SLOT_HAND1 || prev_slot == SLOT_HAND1 )
         RebuildLookBorders = true;
@@ -4568,6 +4567,14 @@ void FOClient::Net_OnChosenAddItem()
     if( item->IsHidden() )
         Chosen->EraseItem( item, true );
     CollectContItems();
+
+    if( !initial_send && Script::PrepareContext( ClientFunctions.ItemInvIn, _FUNC_, "Game" ) )
+    {
+        Script::SetArgObject( item );
+        Script::RunPrepared();
+    }
+
+    item->Release();
 }
 
 void FOClient::Net_OnChosenEraseItem()
@@ -4588,28 +4595,29 @@ void FOClient::Net_OnChosenEraseItem()
         return;
     }
 
+    item->AddRef();
+
+    if( item->IsLight() && item->AccCritter.Slot != SLOT_INV )
+        HexMngr.RebuildLight();
+    Chosen->EraseItem( item, true );
+    CollectContItems();
+
     if( Script::PrepareContext( ClientFunctions.ItemInvOut, _FUNC_, "Game" ) )
     {
         Script::SetArgObject( item );
         Script::RunPrepared();
     }
 
-    if( item->IsLight() && item->AccCritter.Slot != SLOT_INV )
-        HexMngr.RebuildLight();
-    Chosen->EraseItem( item, true );
-    CollectContItems();
+    item->Release();
 }
 
 void FOClient::Net_OnAllItemsSend()
 {
-    if( !Chosen )
-    {
-        WriteLogF( _FUNC_, " - Chosen is not created.\n" );
-        return;
-    }
-
     if( Chosen->Anim3d )
         Chosen->Anim3d->StartMeshGeneration();
+
+    if( Script::PrepareContext( ClientFunctions.ItemInvAllIn, _FUNC_, "Game" ) )
+        Script::RunPrepared();
 }
 
 void FOClient::Net_OnAddItemOnMap()
@@ -9187,6 +9195,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.ItemMapIn, "item_map_in", "void %s(ItemCl&)" },
         { &ClientFunctions.ItemMapChanged, "item_map_changed", "void %s(ItemCl&,ItemCl&)" },
         { &ClientFunctions.ItemMapOut, "item_map_out", "void %s(ItemCl&)" },
+        { &ClientFunctions.ItemInvAllIn, "item_inv_all_in", "void %s()" },
         { &ClientFunctions.ItemInvIn, "item_inv_in", "void %s(ItemCl&)" },
         { &ClientFunctions.ItemInvChanged, "item_inv_changed", "void %s(ItemCl&,ItemCl&)" },
         { &ClientFunctions.ItemInvOut, "item_inv_out", "void %s(ItemCl&)" },
@@ -10046,6 +10055,18 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     else if( cmd == "LMenuTryActivate" )
     {
         Self->LMenuTryActivate();
+    }
+    else if( cmd == "SaveGame" )
+    {
+        Self->SaveLoadLoginScreen = false;
+        Self->SaveLoadSave = true;
+        Self->ShowScreen( SCREEN__SAVE_LOAD );
+    }
+    else if( cmd == "LoadGame" )
+    {
+        Self->SaveLoadLoginScreen = false;
+        Self->SaveLoadSave = false;
+        Self->ShowScreen( SCREEN__SAVE_LOAD );
     }
     else
     {
