@@ -467,7 +467,6 @@
 //
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_ADD_ITEM_INITIAL               MAKE_NETMSG_HEADER( 67 )
 #define NETMSG_ADD_ITEM                       MAKE_NETMSG_HEADER( 65 )
 #define NETMSG_ADD_ITEM_SIZE            \
     ( sizeof( uint ) + sizeof( uint ) + \

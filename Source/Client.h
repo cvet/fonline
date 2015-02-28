@@ -115,6 +115,7 @@ public:
     bool          IsConnected;
     bool          InitNetBegin;
     int           InitNetReason;
+    bool          InitialItemsSend;
 
     bool NetConnect( const char* host, ushort port );
     bool FillSockAddr( sockaddr_in& saddr, const char* host, ushort port );
@@ -201,7 +202,7 @@ public:
     void Net_OnCraftAsk();
     void Net_OnCraftResult();
     void Net_OnChosenClearItems();
-    void Net_OnChosenAddItem( bool initial_send );
+    void Net_OnChosenAddItem();
     void Net_OnChosenEraseItem();
     void Net_OnAllItemsSend();
     void Net_OnChosenTalk();

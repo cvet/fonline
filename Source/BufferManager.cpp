@@ -450,7 +450,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_CRAFT_RESULT_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CLEAR_ITEMS:
         return ( NETMSG_CLEAR_ITEMS_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_ADD_ITEM_INITIAL:
     case NETMSG_ADD_ITEM:
         return ( NETMSG_ADD_ITEM_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_REMOVE_ITEM:
@@ -693,7 +692,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_CLEAR_ITEMS:
         size = NETMSG_CLEAR_ITEMS_SIZE;
         break;
-    case NETMSG_ADD_ITEM_INITIAL:
     case NETMSG_ADD_ITEM:
         size = NETMSG_ADD_ITEM_SIZE;
         break;

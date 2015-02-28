@@ -345,7 +345,7 @@ public:
     void Send_ChangeItemOnMap( Item* item );
     void Send_EraseItemFromMap( Item* item );
     void Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm );
-    void Send_AddItem( Item* item, bool initial_send = false );
+    void Send_AddItem( Item* item );
     void Send_EraseItem( Item* item );
     void Send_ContainerInfo();
     void Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open_screen );
@@ -668,7 +668,7 @@ public:
     void Send_ChangeItemOnMap( Item* item );
     void Send_EraseItemFromMap( Item* item );
     void Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm );
-    void Send_AddItem( Item* item, bool initial_send = false );
+    void Send_AddItem( Item* item );
     void Send_EraseItem( Item* item );
     void Send_ContainerInfo();
     void Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open_screen );

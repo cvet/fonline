@@ -2517,11 +2517,8 @@ void FOClient::NetProcess()
         case NETMSG_CLEAR_ITEMS:
             Net_OnChosenClearItems();
             break;
-        case NETMSG_ADD_ITEM_INITIAL:
-            Net_OnChosenAddItem( true );
-            break;
         case NETMSG_ADD_ITEM:
-            Net_OnChosenAddItem( false );
+            Net_OnChosenAddItem();
             break;
         case NETMSG_REMOVE_ITEM:
             Net_OnChosenEraseItem();
@@ -4502,16 +4499,15 @@ void FOClient::Net_OnChosenParam()
 
 void FOClient::Net_OnChosenClearItems()
 {
-    if( Chosen )
-    {
-        if( Chosen->IsHaveLightSources() )
-            HexMngr.RebuildLight();
-        Chosen->EraseAllItems();
-    }
+    if( Chosen->IsHaveLightSources() )
+        HexMngr.RebuildLight();
+    Chosen->EraseAllItems();
     CollectContItems();
+
+    InitialItemsSend = true;
 }
 
-void FOClient::Net_OnChosenAddItem( bool initial_send )
+void FOClient::Net_OnChosenAddItem()
 {
     uint   item_id;
     ushort pid;
@@ -4568,7 +4564,7 @@ void FOClient::Net_OnChosenAddItem( bool initial_send )
         Chosen->EraseItem( item, true );
     CollectContItems();
 
-    if( !initial_send && Script::PrepareContext( ClientFunctions.ItemInvIn, _FUNC_, "Game" ) )
+    if( !InitialItemsSend && Script::PrepareContext( ClientFunctions.ItemInvIn, _FUNC_, "Game" ) )
     {
         Script::SetArgObject( item );
         Script::RunPrepared();
@@ -4618,6 +4614,8 @@ void FOClient::Net_OnAllItemsSend()
 
     if( Script::PrepareContext( ClientFunctions.ItemInvAllIn, _FUNC_, "Game" ) )
         Script::RunPrepared();
+
+    InitialItemsSend = false;
 }
 
 void FOClient::Net_OnAddItemOnMap()
