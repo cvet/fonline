@@ -53,7 +53,7 @@ struct LightSource
     uchar  Flags;
     int    Intensity;
 
-    LightSource( ushort hx, ushort hy, uint color, uchar distance, int inten, uchar flags ): HexX( hx ), HexY( hy ), ColorRGB( color ), Intensity( inten ), Distance( distance ), Flags( flags ) {}
+    LightSource( ushort hx, ushort hy, uint color, uchar distance, int inten, uchar flags ): HexX( hx ), HexY( hy ), ColorRGB( color ), Distance( distance ), Flags( flags ), Intensity( inten ) {}
 };
 typedef vector< LightSource > LightSourceVec;
 
@@ -123,8 +123,8 @@ struct Drop
     short GroundOffsY;
     short DropCnt;
 
-    Drop(): CurSprId( 0 ), OffsX( 0 ), OffsY( 0 ), DropCnt( 0 ), GroundOffsY( 0 ) {};
-    Drop( ushort id, short x, short y, short ground_y ): CurSprId( id ), OffsX( x ), OffsY( y ), DropCnt( -1 ), GroundOffsY( ground_y ) {};
+    Drop(): CurSprId( 0 ), OffsX( 0 ), OffsY( 0 ), GroundOffsY( 0 ), DropCnt( 0 ) {};
+    Drop( ushort id, short x, short y, short ground_y ): CurSprId( id ), OffsX( x ), OffsY( y ), GroundOffsY( ground_y ), DropCnt( -1 ) {};
 };
 typedef vector< Drop* > DropVec;
 
@@ -293,7 +293,7 @@ public:
     bool AddItem( uint id, ushort pid, ushort hx, ushort hy, bool is_added, Item::ItemData* data );
     void ChangeItem( uint id, const Item::ItemData& data );
     void FinishItem( uint id, bool is_deleted );
-    auto DeleteItem( ItemHex * item, bool with_delete = true )->ItemHexVec::iterator;
+    ItemHexVec::iterator DeleteItem( ItemHex * item, bool with_delete = true );
     void        PushItem( ItemHex* item );
     ItemHex*    GetItem( ushort hx, ushort hy, ushort pid );
     ItemHex*    GetItemById( ushort hx, ushort hy, uint id );

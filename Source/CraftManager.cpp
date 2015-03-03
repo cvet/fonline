@@ -614,7 +614,7 @@ bool CraftManager::LoadCrafts( FOMsg& msg )
 {
     int  load_fail = 0;
     uint num = 0;
-    while( num = msg.GetStrNumUpper( num ) )
+    while( ( num = msg.GetStrNumUpper( num ) ) )
     {
         const char* str = msg.GetStr( num );
 

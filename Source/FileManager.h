@@ -126,12 +126,8 @@ public:
     static void         GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result, vector< FIND_DATA >* find_data = NULL );
     static void         GetDataFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
 
-    FileManager(): dataOutBuf( NULL ), posOutBuf( 0 ), endOutBuf( 0 ), lenOutBuf( 0 ), fileSize( 0 ), curPos( 0 ), fileBuf( NULL ) {};
-    ~FileManager()
-    {
-        UnloadFile();
-        ClearOutBuf();
-    }
+    FileManager();
+    ~FileManager();
 
 private:
     static DataFileVec dataFiles;

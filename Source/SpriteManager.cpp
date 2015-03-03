@@ -2189,7 +2189,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
         // 1 - skin
         // 2 - hair
         // 3 - armor
-        int   rgb_offs[ 4 ][ 3 ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        int   rgb_offs[ 4 ][ 3 ] = { { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 } };
 
         char* delim = Str::Substring( file_name, "$" );
         if( delim )

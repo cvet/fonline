@@ -4,8 +4,8 @@
 #include "FileManager.h"
 #include "MsgFiles.h"
 
-CritTypeType CrTypes[ MAX_CRIT_TYPES ];
-int          MoveWalk[ MAX_CRIT_TYPES ][ 6 ] = { 0 };
+static CritTypeType CrTypes[ MAX_CRIT_TYPES ];
+static int          MoveWalk[ MAX_CRIT_TYPES ][ 6 ];
 
 bool CritType::IsEnabled( uint cr_type )
 {

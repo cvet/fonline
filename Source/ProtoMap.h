@@ -310,7 +310,7 @@ public:
         uchar  Dir;
 
         MapEntire() { memzero( this, sizeof( MapEntire ) ); }
-        MapEntire( ushort hx, ushort hy, uchar dir, uint type ): HexX( hx ), HexY( hy ), Dir( dir ), Number( type ) {}
+        MapEntire( ushort hx, ushort hy, uchar dir, uint type ): Number( type ), HexX( hx ), HexY( hy ), Dir( dir ) {}
     };
     typedef vector< MapEntire > EntiresVec;
 
@@ -369,7 +369,7 @@ public:
         MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) sizeof( ProtoMap ) );
     }
     #else
-    ProtoMap(): isInit( false ), pathType( 0 ), RefCounter( 1 ) {}
+    ProtoMap(): pathType( 0 ), isInit( false ), RefCounter( 1 ) {}
     ~ProtoMap() { isInit = false; }
     #endif
 };

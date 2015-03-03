@@ -481,7 +481,7 @@ void HexManager::FinishItem( uint id, bool is_deleted )
     item->IsNotValid = true;
 }
 
-auto HexManager::DeleteItem( ItemHex * item, bool with_delete /* = true */ )->ItemHexVec::iterator
+ItemHexVec::iterator HexManager::DeleteItem( ItemHex * item, bool with_delete /* = true */ )
 {
     ushort hx = item->GetHexX();
     ushort hy = item->GetHexY();

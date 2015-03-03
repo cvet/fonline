@@ -283,7 +283,7 @@ public:
     PCharPairVec IntellectSymbols;
 
     void ParseIntellectWords( const char* words, PCharPairVec& text );
-    auto FindIntellectWord( const char* word, PCharPairVec & text, Randomizer & rnd )->PCharPairVec::iterator;
+    PCharPairVec::iterator FindIntellectWord( const char* word, PCharPairVec & text, Randomizer & rnd );
     void FmtTextIntellect( char* str, ushort intellect );
 
     #define SMTH_NONE                 ( 0 )
@@ -1153,7 +1153,7 @@ public:
         uint   DrawFlags;
         char   Addon[ 64 ];
 
-        SwitchElement( uint name, uint desc, ushort pic, uint flags ): NameStrNum( name ), DescStrNum( desc ), DrawFlags( flags ), PictureId( pic ) { memzero( Addon, sizeof( Addon ) ); }
+        SwitchElement( uint name, uint desc, ushort pic, uint flags ): NameStrNum( name ), DescStrNum( desc ), PictureId( pic ), DrawFlags( flags ) { memzero( Addon, sizeof( Addon ) ); }
         SwitchElement( const char* add, uint flags ): NameStrNum( 0 ), DescStrNum( 0 ), PictureId( 0 ), DrawFlags( flags ) { memcpy( Addon, add, sizeof( Addon ) ); }
     };
     typedef vector< SwitchElement > SwitchElementVec;

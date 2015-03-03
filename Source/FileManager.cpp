@@ -61,6 +61,23 @@ const char* PathList[ PATH_LIST_COUNT ] =
 DataFileVec FileManager::dataFiles;
 string      FileManager::basePathes[ 2 ];
 
+FileManager::FileManager()
+{
+    curPos = 0;
+    fileSize = 0;
+    dataOutBuf = NULL;
+    fileBuf = NULL;
+    posOutBuf = 0;
+    endOutBuf = 0;
+    lenOutBuf = 0;
+}
+
+FileManager::~FileManager()
+{
+    UnloadFile();
+    ClearOutBuf();
+}
+
 void FileManager::InitDataFiles( const char* path )
 {
     static bool write_path_ckecked = false;

@@ -86,7 +86,7 @@ struct MemNode
     int64 DeallocMem;
     int64 MinAlloc;
     int64 MaxAlloc;
-} static MemNodes[ MAX_MEM_NODES ] = { 0, 0, 0, 0 };
+} static MemNodes[ MAX_MEM_NODES ];
 
 const char* MemBlockNames[ MAX_MEM_NODES ] =
 {

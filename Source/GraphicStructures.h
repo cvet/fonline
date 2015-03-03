@@ -2,7 +2,6 @@
 #define __GRAPHIC_STRUCTURES__
 
 #include "Defines.h"
-#include "GL/gl.h"
 #include "Assimp/aiTypes.h"
 #include "Assimp/aiScene.h"
 #include "FileManager.h"
@@ -112,8 +111,8 @@ struct PrepPoint
     short* PointOffsY;
     uint   PointColor;
 
-    PrepPoint(): PointX( 0 ), PointY( 0 ), PointColor( 0 ), PointOffsX( NULL ), PointOffsY( NULL ) {}
-    PrepPoint( short x, short y, uint color, short* ox = NULL, short* oy = NULL ): PointX( x ), PointY( y ), PointColor( color ), PointOffsX( ox ), PointOffsY( oy ) {}
+    PrepPoint(): PointX( 0 ), PointY( 0 ), PointOffsX( NULL ), PointOffsY( NULL ), PointColor( 0 ) {}
+    PrepPoint( short x, short y, uint color, short* ox = NULL, short* oy = NULL ): PointX( x ), PointY( y ), PointOffsX( ox ), PointOffsY( oy ), PointColor( color ) {}
 };
 typedef vector< PrepPoint > PointVec;
 typedef vector< PointVec >  PointVecVec;
@@ -406,7 +405,7 @@ struct CombinedMesh
     void Encapsulate( MeshInstance& mesh_instance, int anim_layer );
     void Finalize();
 
-    CombinedMesh(): EncapsulatedMeshCount( 0 ), VAO( 0 ), VBO( 0 ), IBO( 0 ), CurBoneMatrix( 0 ) {}
+    CombinedMesh(): EncapsulatedMeshCount( 0 ), CurBoneMatrix( 0 ), VAO( 0 ), VBO( 0 ), IBO( 0 ) {}
     ~CombinedMesh() { Clear(); }
 };
 typedef vector< CombinedMesh* > CombinedMeshVec;

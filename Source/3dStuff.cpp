@@ -52,12 +52,30 @@ void ProjectPosition( Vector& v )
 
 Animation3dVec Animation3d::loadedAnimations;
 
-Animation3d::Animation3d(): animEntity( NULL ), animController( NULL ), combinedMeshesSize( 0 ), disableCulling( false ),
-                            currentTrack( 0 ), lastDrawTick( 0 ), endTick( 0 ), speedAdjustBase( 1.0f ), speedAdjustCur( 1.0f ), speedAdjustLink( 1.0f ),
-                            shadowDisabled( false ), dirAngle( GameOpt.MapHexagonal ? 150.0f : 135.0f ), parentAnimation( NULL ), parentBone( NULL ),
-                            childChecker( true ), useGameTimer( true ), animPosProc( 0.0f ), animPosTime( 0.0f ), animPosPeriod( 0.0f ),
-                            allowMeshGeneration( false ), SprId( 0 ), SprAtlasType( 0 )
+Animation3d::Animation3d()
 {
+    animEntity = NULL;
+    animController = NULL;
+    combinedMeshesSize = 0;
+    disableCulling = false;
+    currentTrack = 0;
+    lastDrawTick = 0;
+    endTick = 0;
+    speedAdjustBase = 1.0f;
+    speedAdjustCur = 1.0f;
+    speedAdjustLink = 1.0f;
+    shadowDisabled = false;
+    dirAngle = ( GameOpt.MapHexagonal ? 150.0f : 135.0f );
+    parentAnimation = NULL;
+    parentBone = NULL;
+    childChecker = true;
+    useGameTimer = true;
+    animPosProc = 0.0f;
+    animPosTime = 0.0f;
+    animPosPeriod = 0.0f;
+    allowMeshGeneration = false;
+    SprId = 0;
+    SprAtlasType = 0;
     memzero( currentLayers, sizeof( currentLayers ) );
     memzero( &animLink, sizeof( animLink ) );
     Matrix::RotationX( GameOpt.MapCameraAngle * PI_VALUE / 180.0f, matRot );

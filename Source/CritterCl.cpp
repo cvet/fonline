@@ -18,17 +18,47 @@ uint CritterCl::ParametersMax[ MAX_PARAMETERS_ARRAYS ] = { MAX_PARAMS - 1 };
 bool CritterCl::ParametersOffset[ MAX_PARAMETERS_ARRAYS ] = { false };
 bool CritterCl::SlotEnabled[ 0x100 ] = { true, true, true, true, 0 };
 
-CritterCl::CritterCl(): CrDir( 0 ), SprId( 0 ), Id( 0 ), Pid( 0 ), NameColor( 0 ), ContourColor( 0 ),
-                        Cond( 0 ), Anim1Life( 0 ), Anim1Knockout( 0 ), Anim1Dead( 0 ), Anim2Life( 0 ), Anim2Knockout( 0 ), Anim2Dead( 0 ),
-                        Flags( 0 ), BaseType( 0 ), BaseTypeAlias( 0 ), curSpr( 0 ), lastEndSpr( 0 ), animStartTick( 0 ),
-                        SprOx( 0 ), SprOy( 0 ), StartTick( 0 ), TickCount( 0 ), ApRegenerationTick( 0 ),
-                        tickTextDelay( 0 ), textOnHeadColor( COLOR_TEXT ), Alpha( 0 ),
-                        fadingEnable( false ), FadingTick( 0 ), fadeUp( false ), finishingTime( 0 ),
-                        staySprDir( 0 ), staySprTick( 0 ), needReSet( false ), reSetTick( 0 ), CurMoveStep( 0 ),
-                        Visible( true ), SprDrawValid( false ), IsNotValid( false ), RefCounter( 1 ),
-                        OxExtI( 0 ), OyExtI( 0 ), OxExtF( 0 ), OyExtF( 0 ), OxExtSpeed( 0 ), OyExtSpeed( 0 ), OffsExtNextTick( 0 ),
-                        Anim3d( NULL ), Anim3dStay( NULL ), Layers3d( NULL ), Multihex( 0 )
+CritterCl::CritterCl()
 {
+    CrDir = 0;
+    SprId = 0;
+    Id = 0;
+    Pid = 0;
+    NameColor = 0;
+    ContourColor = 0;
+    Cond = 0;
+    Anim1Life = Anim1Knockout = Anim1Dead = Anim2Life = Anim2Knockout = Anim2Dead = 0;
+    Flags = 0;
+    BaseType = BaseTypeAlias = 0;
+    curSpr = 0;
+    lastEndSpr = 0;
+    animStartTick = 0;
+    SprOx = SprOy = 0;
+    StartTick = 0;
+    TickCount = 0;
+    ApRegenerationTick = 0;
+    tickTextDelay = 0;
+    textOnHeadColor = COLOR_TEXT;
+    Alpha = 0;
+    fadingEnable = false;
+    FadingTick = 0;
+    fadeUp = false;
+    finishingTime = 0;
+    staySprDir = 0;
+    staySprTick = 0;
+    needReSet = false;
+    reSetTick = 0;
+    CurMoveStep = 0;
+    Visible = true;
+    SprDrawValid = false;
+    IsNotValid = false;
+    RefCounter = 1;
+    OxExtI = OyExtI = OxExtF = OyExtF = 0;
+    OxExtSpeed = OyExtSpeed = 0;
+    OffsExtNextTick = 0;
+    Anim3d = Anim3dStay = NULL;
+    Layers3d = NULL;
+    Multihex = 0;
     Name = ScriptString::Create();
     NameOnHead = ScriptString::Create();
     Lexems = ScriptString::Create();

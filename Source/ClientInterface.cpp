@@ -124,7 +124,8 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
         if( w <= GameOpt.ScreenWidth && h <= GameOpt.ScreenHeight )
         {
             uint l = (uint) ( end ? (size_t) end - (size_t) begin : (size_t) ( data + len ) - (size_t) begin );
-            sections.insert( PAIR( w, PAIR( begin, l ) ) );
+            auto value = PAIR( begin, l );
+            sections.insert( PAIR( w, value ) );
         }
 
         if( !end )
@@ -7912,7 +7913,6 @@ void FOClient::ChaAgeDraw()
     }
 
     char str[ 16 ];
-    bool is_reg = true;
     Str::Format( str, "%02d", REG_PARAM( ST_AGE ) );
     SprMngr.DrawStr( Rect( ChaAgeWAge, ChaAgeX, ChaAgeY ), str, FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
 }

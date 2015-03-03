@@ -8316,7 +8316,7 @@ void FOClient::ParseIntellectWords( const char* words, PCharPairVec& text )
     }
 }
 
-auto FOClient::FindIntellectWord( const char* word, PCharPairVec & text, Randomizer & rnd )->PCharPairVec::iterator
+PCharPairVec::iterator FOClient::FindIntellectWord( const char* word, PCharPairVec & text, Randomizer & rnd )
 {
     auto it = text.begin();
     auto end = text.end();
