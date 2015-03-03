@@ -1946,7 +1946,7 @@ string Script::GetBindFuncName( int bind_id )
 
 uint GetFuncNum( asIScriptFunction* func )
 {
-    uint func_num = 0;//(uint) func->GetUserData();
+    uint func_num = (uint) func->GetUserData();
     if( !func_num )
     {
         char func_signature[ MAX_FOTEXT ];
@@ -1958,7 +1958,7 @@ uint GetFuncNum( asIScriptFunction* func )
         Str::GoTo( ns, ' ', true );
         Str::Insert( ns, "::" );
         func_num = Str::GetHash( func_signature );
-        //func->SetUserData( (void*) func_num );
+        func->SetUserData( (void*) func_num );
     }
     return func_num;
 }
