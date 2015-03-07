@@ -6,6 +6,7 @@
 
 #define MAX_FOTEXT      UTF8_BUF_SIZE( 2048 )
 #define BIG_BUF_SIZE    ( 0x100000 )       // 1mb
+#define HASH_STR( h )    ( Str::GetName( h ) )
 
 namespace Str
 {
@@ -55,7 +56,7 @@ namespace Str
     void  CopyBack( char* str );
     void  Replacement( char* str, char from, char to );
     void  Replacement( char* str, char from1, char from2, char to );
-    char* EraseFrontBackSpecificChars( char* str );
+    char* Trim( char* str );
 
     void SkipLine( char*& str );
     void GoTo( char*& str, char ch, bool skip_char = false );
@@ -74,8 +75,8 @@ namespace Str
     char* GetBigBuf();                      // Just big buffer, 1mb
 
     // Name hashes
-    uint        GetHash( const char* name );
-    const char* GetName( uint hash );
+    hash        GetHash( const char* name );
+    const char* GetName( hash h );
 
     // Parse str
     const char* ParseLineDummy( const char* str );
@@ -91,7 +92,7 @@ namespace Str
                 if( buf_pos )
                 {
                     buf[ buf_pos ] = 0;
-                    EraseFrontBackSpecificChars( buf );
+                    Trim( buf );
                     if( buf[ 0 ] )
                         result.push_back( typename Cont::value_type( f( buf ) ) );
                     buf_pos = 0;

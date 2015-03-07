@@ -472,7 +472,7 @@ void Animation3d::GetDrawSize( uint& draw_width, uint& draw_height )
 {
     draw_width = animEntity->drawWidth;
     draw_height = animEntity->drawHeight;
-    int s = (int) ceilf( max( max( matScale.a1, matScale.b2 ), matScale.c3 ) );
+    int s = (int) ceilf( MAX( MAX( matScale.a1, matScale.b2 ), matScale.c3 ) );
     draw_width *= s;
     draw_height *= s;
 }
@@ -2316,7 +2316,7 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
     return xfile;
 }
 
-void SetupBonesExt( multimap< uint, Bone*, less< uint > >& bones, Bone* bone, uint depth )
+void SetupBonesExt( multimap< uint, Bone* >& bones, Bone* bone, uint depth )
 {
     bones.insert( PAIR( depth, bone ) );
     for( size_t i = 0, j = bone->Children.size(); i < j; i++ )
@@ -2325,7 +2325,7 @@ void SetupBonesExt( multimap< uint, Bone*, less< uint > >& bones, Bone* bone, ui
 
 void Animation3dXFile::SetupBones()
 {
-    multimap< uint, Bone*, less< uint > > bones;
+    multimap< uint, Bone* > bones;
     SetupBonesExt( bones, rootBone, 0 );
 
     for( auto it = bones.begin(), end = bones.end(); it != end; ++it )

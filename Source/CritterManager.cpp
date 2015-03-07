@@ -16,22 +16,9 @@ bool CritterManager::Init()
 {
     WriteLog( "Critter manager initialization...\n" );
 
-    if( isActive )
-    {
-        WriteLog( "already initialized.\n" );
-        return true;
-    }
-
-    if( !ItemMngr.IsInit() )
-    {
-        WriteLog( "Error, Items manager not init.\n" );
-        return false;
-    }
-
-    memzero( allProtos, sizeof( allProtos ) );
+    allProtos.clear();
     Clear();
 
-    isActive = true;
     WriteLog( "Critter manager initialization complete.\n" );
     return true;
 }
@@ -44,10 +31,9 @@ void CritterManager::Finish()
     CritterGarbager();
     #endif
 
-    memzero( allProtos, sizeof( allProtos ) );
+    allProtos.clear();
     Clear();
 
-    isActive = false;
     WriteLog( "Critter manager finish complete.\n" );
 }
 
@@ -68,14 +54,9 @@ bool CritterManager::LoadProtos()
 {
     WriteLog( "Load critters prototypes...\n" );
 
-    if( !IsInit() )
-    {
-        WriteLog( "Critters manager is not init.\n" );
-        return false;
-    }
-
     // Get names of proto
-    if( !fileMngr.LoadFile( "critters.lst", PT_SERVER_PRO_CRITTERS ) )
+    FileManager fm;
+    if( !fm.LoadFile( "critters.lst", PT_SERVER_PRO_CRITTERS ) )
     {
         WriteLog( "Cannot open \"critters.lst\".\n" );
         return false;
@@ -83,9 +64,9 @@ bool CritterManager::LoadProtos()
 
     char   buf[ 256 ];
     StrVec fnames;
-    while( fileMngr.GetLine( buf, sizeof( buf ) ) )
+    while( fm.GetLine( buf, sizeof( buf ) ) )
         fnames.push_back( string( buf ) );
-    fileMngr.UnloadFile();
+    fm.UnloadFile();
 
     // Load protos
     IniParser protos_txt;
@@ -137,43 +118,51 @@ bool CritterManager::LoadProtos()
                     }
                 }
 
-                if( pid > 0 && pid < MAX_CRIT_PROTOS )
+                if( !pid )
                 {
-                    CritData& proto = allProtos[ pid ];
+                    WriteLogF( _FUNC_, " - Invalid zero pid of critter prototype.\n" );
+                    errors++;
+                    continue;
+                }
 
-                    if( !proto.ProtoId )
-                        loaded_count++;
-                    else
-                        WriteLogF( _FUNC_, " - Critter prototype is already parsed, pid<%u>. Rewrite.\n", pid );
-
-                    proto.ProtoId = pid;
-                    memcpy( proto.Params, params, sizeof( params ) );
-
-                    #ifdef FONLINE_MAPPER
-                    ProtosCollectionName[ pid ] = collection_name;
-                    #endif
+                if( allProtos.count( pid ) )
+                {
+                    WriteLogF( _FUNC_, " - Critter prototype is already parsed, pid<%u>. Rewrite.\n", pid );
+                    #pragma MESSAGE( "Proto leak, add ref counting." )
+                    allProtos.erase( pid );
                 }
                 else
                 {
-                    WriteLogF( _FUNC_, " - Invalid pid<%u> of critter prototype.\n", pid );
-                    errors++;
+                    loaded_count++;
                 }
+
+                CritData* proto = new CritData();
+                #ifdef FONLINE_MAPPER
+                memzero( proto, OFFSETOF( CritData, CollectionName ) );
+                proto->CollectionName = collection_name;
+                #else
+                memzero( proto, sizeof( CritData ) );
+                #endif
+
+                proto->ProtoId = pid;
+                memcpy( proto->Params, params, sizeof( params ) );
+
+                allProtos.insert( PAIR( pid, proto ) );
             }
         }
     }
 
-    WriteLog( "Load critters prototypes complete, count<%d>, errors<%d>.\n", loaded_count, errors );
+    WriteLog( "Load critters prototypes complete, loaded<%d/%d>.\n", loaded_count, loaded_count - errors );
     return errors == 0;
 }
 
-CritData* CritterManager::GetProto( ushort proto_id )
+CritData* CritterManager::GetProto( hash proto_id )
 {
-    if( !proto_id || proto_id >= MAX_CRIT_PROTOS || !allProtos[ proto_id ].ProtoId )
-        return NULL;
-    return &allProtos[ proto_id ];
+    auto it = allProtos.find( proto_id );
+    return it != allProtos.end() ? ( *it ).second : NULL;
 }
 
-CritData* CritterManager::GetAllProtos()
+CritDataMap& CritterManager::GetAllProtos()
 {
     return allProtos;
 }
@@ -380,7 +369,7 @@ void CritterManager::CritterGarbager()
     }
 }
 
-Npc* CritterManager::CreateNpc( ushort proto_id, uint params_count, int* params, uint items_count, int* items, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy )
+Npc* CritterManager::CreateNpc( hash proto_id, uint params_count, int* params, uint items_count, int* items, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy )
 {
     if( !map || hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
     {
@@ -494,14 +483,8 @@ Npc* CritterManager::CreateNpc( ushort proto_id, uint params_count, int* params,
     return npc;
 }
 
-Npc* CritterManager::CreateNpc( ushort proto_id, bool copy_data )
+Npc* CritterManager::CreateNpc( hash proto_id, bool copy_data )
 {
-    if( !IsInit() )
-    {
-        WriteLogF( _FUNC_, " - Critter manager is not initialized.\n" );
-        return NULL;
-    }
-
     CritData* data = GetProto( proto_id );
     if( !data )
     {

@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 481 )
+#define FONLINE_VERSION                          ( 482 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
@@ -160,6 +160,16 @@ uint GetDoubleClickTicks();
 // Containers comparator template
 template< class T >
 inline bool CompareContainers( const T& a, const T& b ) { return a.size() == b.size() && ( a.empty() || !memcmp( &a[ 0 ], &b[ 0 ], a.size() * sizeof( a[ 0 ] ) ) ); }
+
+// Find in container of pointers
+template< typename TIt, typename T >
+inline TIt PtrCollectionFind( TIt it, TIt end, const T& v )
+{
+    for( ; it != end; ++it )
+        if( *( *it ) == v ) // Invoke operator==
+            return it;
+    return end;
+}
 
 // Hex offsets
 #define MAX_HEX_OFFSET                           ( 50 ) // Must be not odd
@@ -383,6 +393,7 @@ struct ServerScriptFunctions
     int Init;
     int Start;
     int GetStartTime;
+    int GenerateWorld;
     int Finish;
     int Loop;
     int GlobalProcess;
@@ -706,8 +717,8 @@ struct GameOptions
     uint          ( * GetSpriteColor )( uint, int, int, bool );
     bool          ( * IsSpriteHit )( void*, int, int, bool );
 
-    const char*   ( *GetNameByHash )( uint );
-    uint          ( * GetHashByName )( const char* );
+    const char*   ( *GetNameByHash )( hash );
+    hash          ( * GetHashByName )( const char* );
 
     bool          ( * ScriptLoadModule )( const char* );
     uint          ( * ScriptBind )( const char*, const char*, bool );

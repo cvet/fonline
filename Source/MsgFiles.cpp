@@ -15,6 +15,7 @@ const char* TextMsgFileName[ TEXTMSG_COUNT ] =
     "FOHOLO.MSG",
     "FOCRAFT.MSG",
     "FOINTERNAL.MSG",
+    "FOLOCATIONS.MSG",
 };
 
 FOMsg::FOMsg()
@@ -400,12 +401,14 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
     {
         if( !Msg[ i ].LoadFromFile( Str::FormatBuf( "%s" DIR_SLASH_S "%s", NameStr, TextMsgFileName[ i ] ), PT_SERVER_TEXTS ) )
         {
-            errors++;
-            WriteLogF( _FUNC_, " - Unable to load MSG<%s> from file.\n", TextMsgFileName[ i ] );
+            if( i != TEXTMSG_INTERNAL && i != TEXTMSG_DLG && i != TEXTMSG_LOCATIONS )
+            {
+                errors++;
+                WriteLogF( _FUNC_, " - Unable to load MSG<%s> from file.\n", TextMsgFileName[ i ] );
+            }
         }
     }
 
-    IsError = ( errors != 0 );
     return errors == 0;
 }
 
@@ -438,7 +441,6 @@ bool LanguagePack::LoadFromCache( const char* lang_name )
     if( errors )
         WriteLogF( _FUNC_, " - Cached language<%s> not found.\n", NameStr );
 
-    IsError = ( errors != 0 );
     return errors == 0;
 }
 

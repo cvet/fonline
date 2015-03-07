@@ -62,18 +62,18 @@ bool Global_SetAngelScriptProperty( int property, uint value )
     return asGetActiveContext()->GetEngine()->SetEngineProperty( (asEEngineProp) property, value ) >= 0;
 }
 
-uint Global_GetStrHash( ScriptString* str )
+hash Global_GetStrHash( ScriptString* str )
 {
     if( !str )
         return 0;
     return Str::GetHash( str->c_str() );
 }
 
-ScriptString* Global_GetHashStr( uint hash )
+ScriptString* Global_GetHashStr( hash h )
 {
-    if( !hash )
+    if( !h )
         return ScriptString::Create();
-    const char* str = Str::GetName( hash );
+    const char* str = Str::GetName( h );
     return ScriptString::Create( str ? str : "" );
 }
 

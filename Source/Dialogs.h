@@ -32,13 +32,13 @@
 class DemandResult
 {
 public:
-    char Type;                  // Type of demand or result
-    char Who;                   // Direction ('p' - player, 'n' - npc)
-    uint ParamId;               // Parameter Id
-    bool NoRecheck;             // Disable demand rechecking
-    bool RetValue;              // Reserved
-    char Op;                    // Operation
-    char ValuesCount;           // Script values count
+    char  Type;                 // Type of demand or result
+    char  Who;                  // Direction ('p' - player, 'n' - npc)
+    max_t ParamId;              // Parameter Id
+    bool  NoRecheck;            // Disable demand rechecking
+    bool  RetValue;             // Reserved
+    char  Op;                   // Operation
+    char  ValuesCount;          // Script values count
 
     #ifdef FONLINE_NPCEDITOR
     string ValueStr;            // Main value string
@@ -123,14 +123,14 @@ typedef vector< Dialog > DialogsVec;
 
 struct DialogPack
 {
-    uint       PackId;
+    hash       PackId;
     string     PackName;
     DialogsVec Dialogs;
-    StrVec     TextsLang;
+    UIntVec    TextsLang;
     FOMsgVec   Texts;
     string     Comment;
 };
-typedef map< uint, DialogPack* > DialogPackMap;
+typedef map< hash, DialogPack* > DialogPackMap;
 
 struct Talking
 {
@@ -142,7 +142,7 @@ struct Talking
     uint   TalkHexMap;
     ushort TalkHexX, TalkHexY;
 
-    uint   DialogPackId;
+    hash   DialogPackId;
     Dialog CurDialog;
     uint   LastDialogId;
     uint   StartTick;
@@ -177,9 +177,9 @@ public:
     void        Finish();
     DialogPack* ParseDialog( const char* pack_name, const char* data );
     bool        AddDialog( DialogPack* pack );
-    DialogPack* GetDialog( uint pack_id );
+    DialogPack* GetDialog( hash pack_id );
     DialogPack* GetDialogByIndex( uint index );
-    void        EraseDialog( uint pack_id );
+    void        EraseDialog( hash pack_id );
     ushort      GetTempVarId( const char* str );
 
 private:

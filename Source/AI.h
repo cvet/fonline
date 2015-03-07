@@ -143,7 +143,7 @@ typedef vector< AIDataPlane* > AIDataPlaneVec;
 class NpcBagItem
 {
 public:
-    uint ItemPid;
+    hash ItemPid;
     uint MinCnt;
     uint MaxCnt;
     uint ItemSlot;

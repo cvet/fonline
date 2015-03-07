@@ -37,22 +37,22 @@ public:
     UCharVec      NeedPOr;
 
     // Need items to craft
-    UShortVec     NeedItems;
+    HashVec       NeedItems;
     UIntVec       NeedItemsVal;
     UCharVec      NeedItemsOr;
 
     // Need tools to craft
-    UShortVec     NeedTools;
+    HashVec       NeedTools;
     UIntVec       NeedToolsVal;
     UCharVec      NeedToolsOr;
 
     // New items
-    UShortVec     OutItems;
+    HashVec       OutItems;
     UIntVec       OutItemsVal;
 
     // Other
     ScriptString* Script;
-    uint          ScriptBindId; // In runtime
+    int           ScriptBindId; // In runtime
     uint          Experience;
 
     // Operator =
@@ -74,14 +74,14 @@ public:
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_MRFIXIT )
 private:
     int  SetStrParam( const char*& pstr_in, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec );
-    int  SetStrItem( const char*& pstr_in, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec );
+    int  SetStrItem( const char*& pstr_in, HashVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec );
     void GetStrParam( char* pstr_out, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec );
-    void GetStrItem( char* pstr_out, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec );
+    void GetStrItem( char* pstr_out, HashVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec );
     #endif
 };
 
-typedef map< uint, CraftItem*, less< uint > > CraftItemMap;
-typedef vector< CraftItem* >                  CraftItemVec;
+typedef map< uint, CraftItem* > CraftItemMap;
+typedef vector< CraftItem* >    CraftItemVec;
 
 #ifdef FONLINE_SERVER
 class Critter;
@@ -131,7 +131,7 @@ public:
     void GetTrueCrafts( Critter* cr, CraftItemVec& craft_vec );
 private:
     bool IsTrueParams( Critter* cr, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec );
-    bool IsTrueItems( Critter* cr, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec );
+    bool IsTrueItems( Critter* cr, HashVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec );
     #endif
     #ifdef FONLINE_CLIENT
 public:
@@ -141,7 +141,7 @@ public:
     void GetTrueCrafts( CritterCl* cr, CraftItemVec& craft_vec );
 private:
     bool IsTrueParams( CritterCl* cr, UIntVec& num_vec, IntVec& val_vec, UCharVec& or_vec );
-    bool IsTrueItems( CritterCl* cr, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec );
+    bool IsTrueItems( CritterCl* cr, HashVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec );
     #endif
 
     #ifdef FONLINE_SERVER

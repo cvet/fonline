@@ -96,12 +96,10 @@ namespace Script
     bool   ReparseScriptName( const char* script_name, char* module_name, char* func_name, bool disable_log = false );
     string GetBindFuncName( int bind_id );
 
-    uint   BindScriptFuncNum( const char* script_name, const char* decl );
-    uint   BindScriptFuncNum( asIScriptFunction* func );
-    bool   PrepareScriptFuncContext( uint func_num, const char* call_func, const char* ctx_info );
-    string GetScriptFuncName( uint func_num );
-    bool   AddIndexedScriptFunc( const char* script_name, const char* decl );
-    void   GetIndexedScriptFunc( StrVec& func_names );
+    hash   BindScriptFuncNum( const char* script_name, const char* decl );
+    hash   BindScriptFuncNum( asIScriptFunction* func );
+    bool   PrepareScriptFuncContext( hash func_num, const char* call_func, const char* ctx_info );
+    string GetScriptFuncName( hash func_num );
 
     // Script execution
     void BeginExecution();

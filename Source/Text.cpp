@@ -633,7 +633,7 @@ void Str::Replacement( char* str, char from1, char from2, char to )
     }
 }
 
-char* Str::EraseFrontBackSpecificChars( char* str )
+char* Str::Trim( char* str )
 {
     char* front = str;
     while( *front && ( *front == ' ' || *front == '\t' || *front == '\n' || *front == '\r' ) )
@@ -773,26 +773,26 @@ uchar Str::StrToHex( const char* str )
     return result;
 }
 
-static char BigBuf[ BIG_BUF_SIZE ] = { 0 };
+static THREAD char BigBuf[ BIG_BUF_SIZE ] = { 0 };
 char* Str::GetBigBuf()
 {
     return BigBuf;
 }
 
-static UIntStrMap HashRawNames;
-static UIntStrMap HashFormattedNames;
-void AddNameHash( uint hash, const char* raw_name, const char* formatted_name )
+static map< hash, const char* > HashRawNames;
+static map< hash, const char* > HashFormattedNames;
+void AddNameHash( hash hash, const char* raw_name, const char* formatted_name )
 {
-    auto ins = HashFormattedNames.insert( PAIR( hash, formatted_name ) );
-    if( !ins.second && !Str::Compare( ( *ins.first ).second.c_str(), formatted_name ) )
-        WriteLog( "Hash collision detected for names <%s> and <%s>, hash<%08X>.\n", formatted_name, ( *ins.first ).second.c_str(), hash );
+    auto ins = HashFormattedNames.insert( PAIR( hash, Str::Duplicate( formatted_name ) ) );
+    if( !ins.second && !Str::Compare( ( *ins.first ).second, formatted_name ) )
+        WriteLog( "Hash collision detected for names <%s> and <%s>, hash<%08X>.\n", formatted_name, ( *ins.first ).second, hash );
     else if( ins.second )
-        HashRawNames.insert( PAIR( hash, raw_name ) );
+        HashRawNames.insert( PAIR( hash, Str::Duplicate( raw_name ) ) );
 }
 
 uint FormatForHash( char* name )
 {
-    Str::EraseFrontBackSpecificChars( name );
+    Str::Trim( name );
     Str::Lower( name );
     uint len = 0;
     for( char* s = name; *s; s++, len++ )
@@ -801,7 +801,7 @@ uint FormatForHash( char* name )
     return len;
 }
 
-uint Str::GetHash( const char* name )
+hash Str::GetHash( const char* name )
 {
     if( !name )
         return 0;
@@ -809,18 +809,18 @@ uint Str::GetHash( const char* name )
     char name_[ MAX_FOTEXT ];
     Copy( name_, name );
     uint len = FormatForHash( name_ );
-    uint hash = Crypt.Crc32( (uchar*) name_, len );
-    AddNameHash( hash, name, name_ );
-    return hash;
+    hash h = Crypt.Crc32( (uchar*) name_, len );
+    AddNameHash( h, name, name_ );
+    return h;
 }
 
-const char* Str::GetName( uint hash )
+const char* Str::GetName( hash h )
 {
-    if( !hash )
+    if( !h )
         return NULL;
 
-    auto it = HashRawNames.find( hash );
-    return it != HashRawNames.end() ? ( *it ).second.c_str() : NULL;
+    auto it = HashRawNames.find( h );
+    return it != HashRawNames.end() ? ( *it ).second : NULL;
 }
 
 const char* Str::ParseLineDummy( const char* str )

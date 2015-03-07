@@ -103,7 +103,7 @@ public:
     static const char* GetWritePath( const char* fname, int path_type );
     static void        GetWritePath( const char* fname, int path_type, char* result );
     static void        SetWritePath( const char* path );
-    static uint        GetFileHash( const char* fname, int path_type );
+    static hash        GetPathHash( const char* fname, int path_type );
     static void        FormatPath( char* path );
     static void        ExtractPath( const char* fname, char* path );
     static void        ExtractFileName( const char* fname, char* name );
@@ -145,6 +145,21 @@ private:
     uint64             writeTime;
 
     static void RecursiveDirLook( const char* base_dir, const char* cur_dir, bool include_subdirs, const char* ext, StrVec& result, vector< FIND_DATA >* find_data );
+};
+
+class FilesCollection
+{
+public:
+    FilesCollection( int path_type, const char* ext, bool include_subdirs );
+    bool         IsNextFile();
+    FileManager& GetNextFile( const char** name = NULL );
+    uint         GetFilesCount();
+
+private:
+    StrVec      fileNames;
+    uint        curFileIndex;
+    FileManager curFile;
+    char        curFileName[ MAX_FOPATH ];
 };
 
 #endif // __FILE_MANAGER__

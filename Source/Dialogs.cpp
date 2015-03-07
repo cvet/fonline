@@ -13,43 +13,36 @@ bool DialogManager::LoadDialogs()
     while( !dialogPacks.empty() )
         EraseDialog( dialogPacks.begin()->second->PackId );
 
-    StrVec dialog_files;
-    FileManager::GetDataFileNames( FileManager::GetDataPath( "", PT_SERVER_DIALOGS ), false, "fodlg", dialog_files );
-    uint   dlg_count = (uint) dialog_files.size();
-    uint   dlg_loaded = 0;
-    for( auto it = dialog_files.begin(); it != dialog_files.end(); ++it )
+    FilesCollection files = FilesCollection( PT_SERVER_DIALOGS, "fodlg", false );
+    uint            files_loaded = 0;
+    while( files.IsNextFile() )
     {
-        const string& dialog_file = *it;
-
-        char          pack_name[ MAX_FOTEXT ];
-        FileManager::ExtractFileName( dialog_file.c_str(), pack_name );
-        FileManager::EraseExtension( pack_name );
-
-        FileManager fdlg;
-        if( !fdlg.LoadFile( dialog_file.c_str(), PT_DATA ) )
+        const char*  file_name;
+        FileManager& file = files.GetNextFile( &file_name );
+        if( !file.IsLoaded() )
         {
-            WriteLog( "Unable to open dialog file, dialog file<%s>.\n", dialog_file.c_str() );
+            WriteLog( "Unable to open file<%s>.\n", file_name );
             continue;
         }
 
-        DialogPack* pack = ParseDialog( pack_name, (char*) fdlg.GetBuf() );
+        DialogPack* pack = ParseDialog( file_name, (char*) file.GetBuf() );
         if( !pack )
         {
-            WriteLog( "Unable to parse dialog, dialog<%s>.\n", pack_name );
+            WriteLog( "Unable to parse dialog<%s>.\n", file_name );
             continue;
         }
 
         if( !AddDialog( pack ) )
         {
-            WriteLog( "Unable to add dialogs pack, dialog<%s>.\n", pack_name );
+            WriteLog( "Unable to add dialog<%s>.\n", file_name );
             continue;
         }
 
-        dlg_loaded++;
+        files_loaded++;
     }
 
-    WriteLog( "Load dialogs complete, loaded<%u/%u>.\n", dlg_loaded, dlg_count );
-    return dlg_loaded == dlg_count;
+    WriteLog( "Load dialogs complete, loaded<%u/%u>.\n", files_loaded, files.GetFilesCount() );
+    return files_loaded == files.GetFilesCount();
 }
 
 bool DialogManager::AddDialog( DialogPack* pack )
@@ -75,7 +68,7 @@ bool DialogManager::AddDialog( DialogPack* pack )
     return true;
 }
 
-DialogPack* DialogManager::GetDialog( uint pack_id )
+DialogPack* DialogManager::GetDialog( hash pack_id )
 {
     auto it = dialogPacks.find( pack_id );
     return it != dialogPacks.end() ? ( *it ).second : NULL;
@@ -89,7 +82,7 @@ DialogPack* DialogManager::GetDialogByIndex( uint index )
     return it != dialogPacks.end() ? ( *it ).second : NULL;
 }
 
-void DialogManager::EraseDialog( uint pack_id )
+void DialogManager::EraseDialog( hash pack_id )
 {
     auto it = dialogPacks.find( pack_id );
     if( it == dialogPacks.end() )
@@ -117,11 +110,7 @@ string ParseLangKey( const char* str )
 DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data )
 {
     IniParser fodlg;
-    if( !fodlg.LoadFilePtr( data, Str::Length( data ) ) )
-    {
-        WriteLog( "Dialog<%s> - Internal error.\n", pack_name );
-        return NULL;
-    }
+    fodlg.LoadFilePtr( data, Str::Length( data ) );
 
     #define LOAD_FAIL( err )           { WriteLog( "Dialog<%s> - %s\n", pack_name, err ); goto load_false; }
     #define VERIFY_STR_ID( str_id )    ( uint( str_id ) <= ~DLGID_MASK )
@@ -132,7 +121,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     char*       lang_buf = NULL;
     pack->PackId = Str::GetHash( pack_name );
     pack->PackName = pack_name;
-    StrVec& lang = pack->TextsLang;
+    StrVec lang_apps;
 
     // Comment
     char* comment = fodlg.GetApp( "comment" );
@@ -149,14 +138,17 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     if( !fodlg.GetStr( "data", "lang", "russ", lang_key ) )
         LOAD_FAIL( "Lang app not found." );
 
-    Str::ParseLine< StrVec, string ( * )( const char* ) >( lang_key, ' ', lang, ParseLangKey );
-    if( !lang.size() )
+    Str::ParseLine( lang_key, ' ', lang_apps, ParseLangKey );
+    if( !lang_apps.size() )
         LOAD_FAIL( "Lang app is empty." );
 
-    for( uint i = 0, j = (uint) lang.size(); i < j; i++ )
+    for( uint i = 0, j = (uint) lang_apps.size(); i < j; i++ )
     {
-        string& l = lang[ i ];
-        lang_buf = fodlg.GetApp( l.c_str() );
+        string& lang_app = lang_apps[ i ];
+        if( lang_app.size() != 4 )
+            LOAD_FAIL( "Language length not equal 4." );
+
+        lang_buf = fodlg.GetApp( lang_app.c_str() );
         if( !lang_buf )
             LOAD_FAIL( "One of the lang section not found." );
 
@@ -167,6 +159,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
         if( temp_msg.GetStrNumUpper( 100000000 + ~DLGID_MASK ) )
             LOAD_FAIL( "Text have any text with index greather than 4000." );
 
+        pack->TextsLang.push_back( *(uint*) lang_app.c_str() );
         pack->Texts.push_back( new FOMsg() );
 
         uint str_num = 0;
@@ -359,17 +352,17 @@ load_false:
 
 DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand )
 {
-    int  errors = 0;
-    char who = 'p';
-    char oper = '=';
-    int  values_count = 0;
-    char svalue[ MAX_FOTEXT ] = { 0 };
-    int  ivalue = 0;
-    uint id = 0;
-    char type_str[ MAX_FOTEXT ];
-    char name[ MAX_FOTEXT ] = { 0 };
-    bool no_recheck = false;
-    bool ret_value = false;
+    int   errors = 0;
+    char  who = 'p';
+    char  oper = '=';
+    int   values_count = 0;
+    char  svalue[ MAX_FOTEXT ] = { 0 };
+    int   ivalue = 0;
+    max_t id = 0;
+    char  type_str[ MAX_FOTEXT ];
+    char  name[ MAX_FOTEXT ] = { 0 };
+    bool  no_recheck = false;
+    bool  ret_value = false;
 
     #define READ_VALUE    if( !deprecated ) { input >> svalue; ivalue = ConstantsManager::GetDefineValue( svalue ); } else { input >> ivalue; Str::Format( svalue, "%d", ivalue ); }
 
@@ -479,7 +472,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         // Name
         input >> name;
         id = ConstantsManager::GetItemPid( name );
-        if( (int) id == -1 )
+        if( id == 0 )
         {
             id = atoi( name );
             const char* name_ = ConstantsManager::GetItemName( id );

@@ -141,13 +141,9 @@ public:
     static Item*     SlotCacheDataExt[ 0x100 ];
 
     CritDataExt* GetDataExt();
-    void         SetMaps( uint map_id, ushort map_pid )
-    {
-        Data.MapId = map_id;
-        Data.MapPid = map_pid;
-    }
-    void SetLexems( const char* lexems );
-    bool IsLexems() { return Data.Lexems[ 0 ] != 0; }
+    void         SetMaps( uint map_id, hash map_pid );
+    void         SetLexems( const char* lexems );
+    bool         IsLexems() { return Data.Lexems[ 0 ] != 0; }
 
     int  RunParamsSendScript( int bind_id, uint param_index, Critter* from_cr, Critter* to_cr );
     bool RunSlotDataSendScript( int bind_id, uchar slot, Item* item, Critter* from_cr, Critter* to_cr );
@@ -161,7 +157,8 @@ public:
     UIntSet       VisItem;
     MutexSpinlock VisItemLocker;
     uint          ViewMapId;
-    ushort        ViewMapPid, ViewMapLook, ViewMapHx, ViewMapHy;
+    hash          ViewMapPid;
+    ushort        ViewMapLook, ViewMapHx, ViewMapHy;
     uchar         ViewMapDir;
     uint          ViewMapLocId, ViewMapLocEnt;
 
@@ -195,40 +192,40 @@ public:
 
     // Items
 protected:
-    ItemPtrVec invItems;
-    Item*      defItemSlotHand;
-    Item*      defItemSlotArmor;
+    ItemVec invItems;
+    Item*   defItemSlotHand;
+    Item*   defItemSlotArmor;
 
 public:
     Item* ItemSlotMain;
     Item* ItemSlotExt;
     Item* ItemSlotArmor;
 
-    void        SyncLockItems();
-    bool        SetDefaultItems( ProtoItem* proto_hand, ProtoItem* proto_armor );
-    Item*       GetDefaultItemSlotMain() { return defItemSlotHand; }
-    void        AddItem( Item*& item, bool send );
-    void        SetItem( Item* item );
-    void        EraseItem( Item* item, bool send );
-    Item*       GetItem( uint item_id, bool skip_hide );
-    Item*       GetInvItem( uint item_id, int transfer_type );
-    ItemPtrVec& GetItemsNoLock() { return invItems; }
-    void        GetInvItems( ItemPtrVec& items, int transfer_type, bool lock );
-    Item*       GetItemByPid( ushort item_pid );
-    Item*       GetItemByPidInvPriority( ushort item_pid );
-    Item*       GetItemByPidSlot( ushort item_pid, int slot );
-    Item*       GetAmmoForWeapon( Item* weap );
-    Item*       GetAmmo( int caliber );
-    Item*       GetItemCar();
-    Item*       GetItemSlot( int slot );
-    void        GetItemsSlot( int slot, ItemPtrVec& items, bool lock );
-    void        GetItemsType( int type, ItemPtrVec& items, bool lock );
-    uint        CountItemPid( ushort item_pid );
-    void        TakeDefaultItem( uchar slot );
-    bool        MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count );
-    uint        RealCountItems() { return (uint) invItems.size(); }
-    uint        CountItems();
-    ItemPtrVec& GetInventory()
+    void     SyncLockItems();
+    bool     SetDefaultItems( ProtoItem* proto_hand, ProtoItem* proto_armor );
+    Item*    GetDefaultItemSlotMain() { return defItemSlotHand; }
+    void     AddItem( Item*& item, bool send );
+    void     SetItem( Item* item );
+    void     EraseItem( Item* item, bool send );
+    Item*    GetItem( uint item_id, bool skip_hide );
+    Item*    GetInvItem( uint item_id, int transfer_type );
+    ItemVec& GetItemsNoLock() { return invItems; }
+    void     GetInvItems( ItemVec& items, int transfer_type, bool lock );
+    Item*    GetItemByPid( hash item_pid );
+    Item*    GetItemByPidInvPriority( hash item_pid );
+    Item*    GetItemByPidSlot( hash item_pid, int slot );
+    Item*    GetAmmoForWeapon( Item* weap );
+    Item*    GetAmmo( int caliber );
+    Item*    GetItemCar();
+    Item*    GetItemSlot( int slot );
+    void     GetItemsSlot( int slot, ItemVec& items, bool lock );
+    void     GetItemsType( int type, ItemVec& items, bool lock );
+    uint     CountItemPid( hash item_pid );
+    void     TakeDefaultItem( uchar slot );
+    bool     MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count );
+    uint     RealCountItems() { return (uint) invItems.size(); }
+    uint     CountItems();
+    ItemVec& GetInventory()
     {
         SyncLockItems();
         return invItems;
@@ -242,7 +239,7 @@ protected:
 public:
     int FuncId[ CRITTER_EVENT_MAX ];
     bool ParseScript( const char* script, bool first_time );
-    uint GetScriptId() { return Data.ScriptId; }
+    hash GetScriptId() { return Data.ScriptId; }
 
     void EventIdle();
     void EventFinish( bool deleted );
@@ -376,9 +373,9 @@ public:
     void Send_Quests( UIntVec& nums );
     void Send_HoloInfo( bool clear, ushort offset, ushort count );
     void Send_AutomapsInfo( void* locs_vec, Location* loc );
-    void Send_Follow( uint rule, uchar follow_type, ushort map_pid, uint follow_wait );
-    void Send_Effect( ushort eff_pid, ushort hx, ushort hy, ushort radius );
-    void Send_FlyEffect( ushort eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
+    void Send_Follow( uint rule, uchar follow_type, hash map_pid, uint follow_wait );
+    void Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius );
+    void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
     void Send_PlaySound( uint crid_synchronize, const char* sound_name );
     void Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
     void Send_CritterLexems( Critter* cr );
@@ -398,7 +395,7 @@ public:
     void SendAA_Msg( CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg );
     void SendAA_MsgLex( CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
     void SendA_Dir();
-    void SendA_Follow( uchar follow_type, ushort map_pid, uint follow_wait );
+    void SendA_Follow( uchar follow_type, hash map_pid, uint follow_wait );
     void SendA_ParamOther( ushort num_param, int val );
     void SendA_ParamCheck( ushort num_param );
 
@@ -411,7 +408,7 @@ public:
     bool        IsNpc()       { return CritterIsNpc; }
     uint        GetId()       { return Data.Id; }
     uint        GetMap()      { return Data.MapId; }
-    ushort      GetProtoMap() { return Data.MapPid; }
+    hash        GetProtoMap() { return Data.MapPid; }
     void        RefreshName();
     const char* GetName() { return NameStr->c_str(); }
     const char* GetInfo();
@@ -517,7 +514,7 @@ public:
     // Time events
     struct CrTimeEvent
     {
-        uint FuncNum;
+        hash FuncNum;
         uint Rate;
         uint NextTime;
         int  Identifier;
@@ -525,7 +522,7 @@ public:
     typedef vector< CrTimeEvent > CrTimeEventVec;
     CrTimeEventVec CrTimeEvents;
 
-    void AddCrTimeEvent( uint func_num, uint rate, uint duration, int identifier );
+    void AddCrTimeEvent( hash func_num, uint rate, uint duration, int identifier );
     void EraseCrTimeEvent( int index );
     void ContinueTimeEvents( int offs_time );
 
@@ -699,9 +696,9 @@ public:
     void Send_Quests( UIntVec& nums );
     void Send_HoloInfo( bool clear, ushort offset, ushort count );
     void Send_AutomapsInfo( void* locs_vec, Location* loc );
-    void Send_Follow( uint rule, uchar follow_type, ushort map_pid, uint follow_wait );
-    void Send_Effect( ushort eff_pid, ushort hx, ushort hy, ushort radius );
-    void Send_FlyEffect( ushort eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
+    void Send_Follow( uint rule, uchar follow_type, hash map_pid, uint follow_wait );
+    void Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius );
+    void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
     void Send_PlaySound( uint crid_synchronize, const char* sound_name );
     void Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
     void Send_CritterLexems( Critter* cr );
@@ -724,7 +721,7 @@ public:
 
     // Locations
     bool CheckKnownLocById( uint loc_id );
-    bool CheckKnownLocByPid( ushort loc_pid );
+    bool CheckKnownLocByPid( hash loc_pid );
     void AddKnownLoc( uint loc_id );
     void EraseKnownLoc( uint loc_id );
 
@@ -735,10 +732,10 @@ public:
     struct BarterItem
     {
         uint Id;
-        uint Pid;
+        hash Pid;
         uint Count;
         bool operator==( uint id ) { return Id == id; }
-        BarterItem( uint id, uint pid, uint count ): Id( id ), Pid( pid ), Count( count ) {}
+        BarterItem( uint id, hash pid, uint count ): Id( id ), Pid( pid ), Count( count ) {}
     };
     typedef vector< BarterItem > BarterItemVec;
     BarterItemVec BarterItems;
@@ -812,7 +809,7 @@ public:
     void SetTarget( int reason, Critter* target, int min_hp, bool is_gag );
 
     // Params
-    ushort GetProtoId( void ) const { return Data.ProtoId; }
+    hash GetProtoId() { return Data.ProtoId; }
 
     uint Reserved;
 

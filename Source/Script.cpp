@@ -79,9 +79,7 @@ BindFunctionVec  BindedFunctions;
 #ifdef SCRIPT_MULTITHREADING
 Mutex            BindedFunctionsLocker;
 #endif
-UIntIntMap       ScriptFuncBinds;   // Func Num -> Bind Id
-UIntVec          ScriptFuncIndexed; // Func Num by Index, supporting of deprecated stuff
-StrVec           ScriptFuncIndexedNames;
+HashIntMap       ScriptFuncBinds;   // Func Num -> Bind Id
 
 bool             ConcurrentExecution = false;
 #ifdef SCRIPT_MULTITHREADING
@@ -236,8 +234,6 @@ bool Script::Init( bool with_log, Preprocessor::PragmaCallback* pragma_callback,
     BindedFunctions.push_back( BindFunction() );     // None
     BindedFunctions.push_back( BindFunction() );     // Temp
     ScriptFuncBinds.clear();
-    ScriptFuncIndexed.clear();
-    ScriptFuncIndexedNames.clear();
 
     if( !InitThread() )
         return false;
@@ -418,8 +414,6 @@ void Script::Finish()
         ( *it ).Clear();
     BindedFunctions.clear();
     ScriptFuncBinds.clear();
-    ScriptFuncIndexed.clear();
-    ScriptFuncIndexedNames.clear();
 
     Preprocessor::SetPragmaCallback( NULL );
     Preprocessor::UndefAll();
@@ -1944,26 +1938,22 @@ string Script::GetBindFuncName( int bind_id )
 /* Functions association                                                */
 /************************************************************************/
 
-uint GetFuncNum( asIScriptFunction* func )
+hash GetFuncNum( asIScriptFunction* func )
 {
-    uint func_num = (uint) func->GetUserData();
+    hash func_num = (hash) func->GetUserData();
     if( !func_num )
     {
         char func_signature[ MAX_FOTEXT ];
         Str::Copy( func_signature, func->GetModuleName() );
         Str::Append( func_signature, "|" );
         Str::Append( func_signature, func->GetDeclaration( true, true ) );
-        char* ns = func_signature;
-        Str::GoTo( ns, '|', true );
-        Str::GoTo( ns, ' ', true );
-        Str::Insert( ns, "::" );
         func_num = Str::GetHash( func_signature );
         func->SetUserData( (void*) func_num );
     }
     return func_num;
 }
 
-asIScriptFunction* FindFunc( uint func_num )
+asIScriptFunction* FindFunc( hash func_num )
 {
     for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
     {
@@ -1978,7 +1968,7 @@ asIScriptFunction* FindFunc( uint func_num )
     return NULL;
 }
 
-uint Script::BindScriptFuncNum( const char* script_name, const char* decl )
+hash Script::BindScriptFuncNum( const char* script_name, const char* decl )
 {
     #ifdef SCRIPT_MULTITHREADING
     SCOPE_LOCK( BindedFunctionsLocker );
@@ -1995,7 +1985,7 @@ uint Script::BindScriptFuncNum( const char* script_name, const char* decl )
         return 0;
 
     // Get func num
-    uint func_num = GetFuncNum( bf.ScriptFunc );
+    hash func_num = GetFuncNum( bf.ScriptFunc );
 
     // Duplicate checking
     auto it = ScriptFuncBinds.find( func_num );
@@ -2009,7 +1999,7 @@ uint Script::BindScriptFuncNum( const char* script_name, const char* decl )
     return func_num;
 }
 
-uint Script::BindScriptFuncNum( asIScriptFunction* func )
+hash Script::BindScriptFuncNum( asIScriptFunction* func )
 {
     #ifdef SCRIPT_MULTITHREADING
     SCOPE_LOCK( BindedFunctionsLocker );
@@ -2021,7 +2011,7 @@ uint Script::BindScriptFuncNum( asIScriptFunction* func )
         return 0;
 
     // Get func num
-    uint func_num = GetFuncNum( func );
+    hash func_num = GetFuncNum( func );
 
     // Duplicate checking
     auto it = ScriptFuncBinds.find( func_num );
@@ -2035,7 +2025,7 @@ uint Script::BindScriptFuncNum( asIScriptFunction* func )
     return func_num;
 }
 
-int GetScriptFuncBindId( uint func_num )
+int GetScriptFuncBindId( hash func_num )
 {
     #ifdef SCRIPT_MULTITHREADING
     SCOPE_LOCK( BindedFunctionsLocker );
@@ -2043,15 +2033,6 @@ int GetScriptFuncBindId( uint func_num )
 
     if( !func_num )
         return 0;
-
-    // Indexing by index (old stuff)
-    if( ( func_num & 0xFFFF0000 ) == 0 )
-    {
-        uint index = func_num - 1;
-        if( index >= (uint) ScriptFuncIndexed.size() )
-            return 0;
-        func_num = ScriptFuncIndexed[ index ];
-    }
 
     // Indexing by hash
     auto it = ScriptFuncBinds.find( func_num );
@@ -2071,7 +2052,7 @@ int GetScriptFuncBindId( uint func_num )
     return 0;
 }
 
-bool Script::PrepareScriptFuncContext( uint func_num, const char* call_func, const char* ctx_info )
+bool Script::PrepareScriptFuncContext( hash func_num, const char* call_func, const char* ctx_info )
 {
     int bind_id = GetScriptFuncBindId( func_num );
     if( bind_id <= 0 )
@@ -2082,42 +2063,12 @@ bool Script::PrepareScriptFuncContext( uint func_num, const char* call_func, con
     return PrepareContext( bind_id, call_func, ctx_info );
 }
 
-string Script::GetScriptFuncName( uint func_num )
+string Script::GetScriptFuncName( hash func_num )
 {
     asIScriptFunction* func = FindFunc( func_num );
     if( !func )
-        return "(unknown)";
+        return "";
     return string( func->GetModuleName() ).append( "@" ).append( func->GetName() );
-}
-
-bool Script::AddIndexedScriptFunc( const char* script_name, const char* decl )
-{
-    #ifdef SCRIPT_MULTITHREADING
-    SCOPE_LOCK( BindedFunctionsLocker );
-    #endif
-
-    if( !script_name && !decl )
-    {
-        ScriptFuncIndexed.clear();
-        return true;
-    }
-
-    uint func_num = BindScriptFuncNum( script_name, decl );
-    if( !func_num )
-        return false;
-
-    ScriptFuncIndexed.push_back( func_num );
-    ScriptFuncIndexedNames.push_back( string( script_name ).append( "|" ).append( decl ) );
-    return true;
-}
-
-void Script::GetIndexedScriptFunc( StrVec& func_names )
-{
-    #ifdef SCRIPT_MULTITHREADING
-    SCOPE_LOCK( BindedFunctionsLocker );
-    #endif
-
-    func_names = ScriptFuncIndexedNames;
 }
 
 /************************************************************************/

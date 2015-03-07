@@ -12,21 +12,19 @@
 class CritterManager
 {
 private:
-    bool        isActive;
-    FileManager fileMngr;
-    CritData    allProtos[ MAX_CRIT_PROTOS ];
+    CritDataMap allProtos;
 
 public:
-    CritterManager(): isActive( false ) { MEMORY_PROCESS( MEMORY_STATIC, sizeof( CritterManager ) ); }
+    CritterManager() { MEMORY_PROCESS( MEMORY_STATIC, sizeof( CritterManager ) ); }
+    ~CritterManager() { MEMORY_PROCESS( MEMORY_STATIC, -(int) sizeof( CritterManager ) ); }
 
     bool Init();
-    bool IsInit() { return isActive; }
     void Finish();
     void Clear();
 
-    bool      LoadProtos();
-    CritData* GetProto( ushort proto_id );
-    CritData* GetAllProtos();
+    bool         LoadProtos();
+    CritData*    GetProto( hash proto_id );
+    CritDataMap& GetAllProtos();
 
     #ifdef FONLINE_SERVER
 private:
@@ -45,8 +43,8 @@ public:
     void CritterToGarbage( Critter* cr );
     void CritterGarbager();
 
-    Npc* CreateNpc( ushort proto_id, uint params_count, int* params, uint items_count, int* items, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy );
-    Npc* CreateNpc( ushort proto_id, bool copy_data );
+    Npc* CreateNpc( hash proto_id, uint params_count, int* params, uint items_count, int* items, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy );
+    Npc* CreateNpc( hash proto_id, bool copy_data );
 
     void     AddCritter( Critter* cr );
     CrMap&   GetCrittersNoLock() { return allCritters; }
@@ -65,11 +63,6 @@ public:
     uint NpcInGame();
     uint CrittersInGame();
     #endif // FONLINE_SERVER
-
-
-    #ifdef FONLINE_MAPPER
-    string ProtosCollectionName[ MAX_CRIT_PROTOS ];
-    #endif
 };
 
 extern CritterManager CrMngr;

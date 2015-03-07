@@ -13,6 +13,7 @@ void GetFileNames_( const T& index_map, const char* path, bool include_subdirs, 
     size_t path_len = Str::Length( path );
     for( auto it = index_map.begin(), end = index_map.end(); it != end; ++it )
     {
+        bool          add = false;
         const string& fname = ( *it ).first;
         if( !fname.compare( 0, path_len, path ) && ( include_subdirs || fname.find_last_of( '\\' ) < path_len ) )
         {
@@ -20,13 +21,15 @@ void GetFileNames_( const T& index_map, const char* path, bool include_subdirs, 
             {
                 size_t pos = fname.find_last_of( '.' );
                 if( pos != string::npos && Str::CompareCase( &fname.c_str()[ pos + 1 ], ext ) )
-                    result.push_back( fname );
+                    add = true;
             }
             else
             {
-                result.push_back( fname );
+                add = true;
             }
         }
+        if( add && std::find( result.begin(), result.end(), fname ) == result.end() )
+            result.push_back( fname );
     }
 }
 

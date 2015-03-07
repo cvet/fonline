@@ -98,8 +98,8 @@ void FOServer::ProcessAI( Npc* npc )
         }
         else if( !npc->IsRawParam( MODE_NO_FAVORITE_ITEM ) )
         {
-            ushort favor_item_pid;
-            Item*  favor_item;
+            hash  favor_item_pid;
+            Item* favor_item;
             // Set favorite item to slot1
             favor_item_pid = npc->Data.FavoriteItemPid[ SLOT_HAND1 ];
             if( favor_item_pid != npc->ItemSlotMain->GetProtoId() )
@@ -888,7 +888,7 @@ bool FOServer::AI_Attack( Npc* npc, Map* map, uchar mode, uint targ_id )
     return true;
 }
 
-bool FOServer::AI_PickItem( Npc* npc, Map* map, ushort hx, ushort hy, ushort pid, uint use_item_id )
+bool FOServer::AI_PickItem( Npc* npc, Map* map, ushort hx, ushort hy, hash pid, uint use_item_id )
 {
     CHECK_NPC_AP_R0( npc, map, npc->GetApCostPickItem() );
     return Act_PickItem( npc, hx, hy, pid );
@@ -1019,12 +1019,13 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
         if( !master )
             continue;
 
-        uint index = demand.ParamId;
+        max_t index = demand.ParamId;
         switch( demand.Type )
         {
         case DR_PARAM:
         {
-            int val = DialogGetParam( master, slave, index );
+            uint param = (uint) index;
+            int  val = DialogGetParam( master, slave, param );
             switch( demand.Op )
             {
             case '>':
@@ -1055,10 +1056,11 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
                 break;
             }
         }
-        break;                 // or
+        break;                                 // or
         case DR_VAR:
         {
-            TemplateVar* tvar = VarMngr.GetTemplateVar( index );
+            ushort       temp_id = (ushort) index;
+            TemplateVar* tvar = VarMngr.GetTemplateVar( temp_id );
             if( !tvar )
                 break;
 
@@ -1081,42 +1083,46 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
             else if( tvar->Type == VAR_LOCAL_ITEM )
                 master_id = master->ItemSlotMain->GetId();
 
-            if( VarMngr.CheckVar( index, master_id, slave_id, demand.Op, demand.Value ) )
+            if( VarMngr.CheckVar( temp_id, master_id, slave_id, demand.Op, demand.Value ) )
                 continue;
         }
-        break;                 // or
+        break;                                 // or
         case DR_ITEM:
+        {
+            hash pid = (hash) index;
             switch( demand.Op )
             {
             case '>':
-                if( (int) master->CountItemPid( index ) > demand.Value )
+                if( (int) master->CountItemPid( pid ) > demand.Value )
                     continue;
                 break;
             case '<':
-                if( (int) master->CountItemPid( index ) < demand.Value )
+                if( (int) master->CountItemPid( pid ) < demand.Value )
                     continue;
                 break;
             case '=':
-                if( (int) master->CountItemPid( index ) == demand.Value )
+                if( (int) master->CountItemPid( pid ) == demand.Value )
                     continue;
                 break;
             case '!':
-                if( (int) master->CountItemPid( index ) != demand.Value )
+                if( (int) master->CountItemPid( pid ) != demand.Value )
                     continue;
                 break;
             case '}':
-                if( (int) master->CountItemPid( index ) >= demand.Value )
+                if( (int) master->CountItemPid( pid ) >= demand.Value )
                     continue;
                 break;
             case '{':
-                if( (int) master->CountItemPid( index ) <= demand.Value )
+                if( (int) master->CountItemPid( pid ) <= demand.Value )
                     continue;
                 break;
             default:
                 break;
             }
-            break;             // or
+        }
+        break;             // or
         case DR_SCRIPT:
+        {
             GameOpt.DialogDemandRecheck = recheck;
             cl->Talk.Locked = true;
             if( DialogScriptDemand( demand, master, slave ) )
@@ -1125,7 +1131,8 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
                 continue;
             }
             cl->Talk.Locked = false;
-            break;             // or
+        }
+        break;                             // or
         case DR_OR:
             return true;
         default:
@@ -1178,37 +1185,41 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
         if( !master )
             continue;
 
-        uint index = result.ParamId;
+        max_t index = result.ParamId;
         switch( result.Type )
         {
         case DR_PARAM:
-            master->ChangeParam( index );
-            if( index >= REPUTATION_BEGIN && index <= REPUTATION_END && master->Data.Params[ index ] == (int) 0x80000000 )
-                master->Data.Params[ index ] = 0;
+        {
+            uint param = (uint) index;
+            master->ChangeParam( param );
+            if( param >= REPUTATION_BEGIN && param <= REPUTATION_END && master->Data.Params[ param ] == (int) 0x80000000 )
+                master->Data.Params[ param ] = 0;
             switch( result.Op )
             {
             case '+':
-                master->Data.Params[ index ] += result.Value;
+                master->Data.Params[ param ] += result.Value;
                 break;
             case '-':
-                master->Data.Params[ index ] -= result.Value;
+                master->Data.Params[ param ] -= result.Value;
                 break;
             case '*':
-                master->Data.Params[ index ] *= result.Value;
+                master->Data.Params[ param ] *= result.Value;
                 break;
             case '/':
-                master->Data.Params[ index ] /= result.Value;
+                master->Data.Params[ param ] /= result.Value;
                 break;
             case '=':
-                master->Data.Params[ index ] = result.Value;
+                master->Data.Params[ param ] = result.Value;
                 break;
             default:
                 break;
             }
+        }
             continue;
         case DR_VAR:
         {
-            TemplateVar* tvar = VarMngr.GetTemplateVar( index );
+            ushort       temp_id = (ushort) index;
+            TemplateVar* tvar = VarMngr.GetTemplateVar( temp_id );
             if( !tvar )
                 break;
 
@@ -1231,13 +1242,14 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
             else if( tvar->Type == VAR_LOCAL_ITEM )
                 master_id = master->ItemSlotMain->GetId();
 
-            VarMngr.ChangeVar( index, master_id, slave_id, result.Op, result.Value );
+            VarMngr.ChangeVar( temp_id, master_id, slave_id, result.Op, result.Value );
         }
             continue;
         case DR_ITEM:
         {
-            int cur_count = master->CountItemPid( index );
-            int need_count = cur_count;
+            hash pid = (hash) index;
+            int  cur_count = master->CountItemPid( pid );
+            int  need_count = cur_count;
 
             switch( result.Op )
             {
@@ -1264,13 +1276,15 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
                 need_count = 0;
             if( cur_count == need_count )
                 continue;
-            ItemMngr.SetItemCritter( master, index, need_count );
+            ItemMngr.SetItemCritter( master, pid, need_count );
         }
             continue;
         case DR_SCRIPT:
+        {
             cl->Talk.Locked = true;
             force_dialog = DialogScriptResult( result, master, slave );
             cl->Talk.Locked = false;
+        }
             continue;
         default:
             continue;
@@ -1919,16 +1933,16 @@ void FOServer::Process_Barter( Client* cl )
     }
 
     // Check cost
-    int        barter_k = npc->GetRawParam( SK_BARTER ) - cl->GetRawParam( SK_BARTER );
+    int     barter_k = npc->GetRawParam( SK_BARTER ) - cl->GetRawParam( SK_BARTER );
     barter_k = CLAMP( barter_k, 5, 95 );
-    int        sale_cost = 0;
-    int        buy_cost = 0;
-    uint       sale_weight = 0;
-    uint       buy_weight = 0;
-    uint       sale_volume = 0;
-    uint       buy_volume = 0;
-    ItemPtrVec sale_items;
-    ItemPtrVec buy_items;
+    int     sale_cost = 0;
+    int     buy_cost = 0;
+    uint    sale_weight = 0;
+    uint    buy_weight = 0;
+    uint    sale_volume = 0;
+    uint    buy_volume = 0;
+    ItemVec sale_items;
+    ItemVec buy_items;
 
     for( int i = 0; i < sale_count; ++i )
     {

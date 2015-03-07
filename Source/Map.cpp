@@ -45,7 +45,7 @@ Map::~Map()
     SAFEDELA( hexFlags );
 }
 
-bool Map::Init( ProtoMap* proto, Location* location )
+bool Map::Init( uint id, ProtoMap* proto, Location* location )
 {
     if( !proto || !location )
         return false;
@@ -56,6 +56,8 @@ bool Map::Init( ProtoMap* proto, Location* location )
         return false;
     memzero( hexFlags, proto->Header.MaxHexX * proto->Header.MaxHexY );
     memzero( &Data, sizeof( Data ) );
+    Data.MapId = id;
+    Data.MapPid = proto->GetPid();
     Proto = proto;
     mapLocation = location;
     Data.MapTime = Proto->Header.Time;
@@ -87,7 +89,7 @@ void Map::Clear( bool full )
     mapPlayers.clear();
     mapNpcs.clear();
 
-    ItemPtrVec del_items = hexItems;
+    ItemVec del_items = hexItems;
     hexItems.clear();
 
     dataLocker.Unlock();
@@ -224,7 +226,7 @@ bool Map::Generate()
     for( auto it = Proto->ItemsVec.begin(), end = Proto->ItemsVec.end(); it != end; ++it )
     {
         MapObject& mobj = *( *it );
-        ushort     pid = mobj.ProtoId;
+        hash       pid = mobj.ProtoId;
         ProtoItem* proto = ItemMngr.GetProtoItem( pid );
         if( !proto )
         {
@@ -318,8 +320,8 @@ bool Map::Generate()
         }
         if( mobj.MItem.AnimWait )
             item->Data.AnimWaitBase = mobj.MItem.AnimWait;
-        if( mobj.MItem.PicMapHash )
-            item->Data.PicMapHash = mobj.MItem.PicMapHash;
+        if( mobj.MItem.PicMap )
+            item->Data.PicMap = mobj.MItem.PicMap;
 
         // Parse script
         char script[ MAX_SCRIPT_NAME * 2 + 1 ] = { 0 };
@@ -384,7 +386,7 @@ bool Map::Generate()
         Npc* npc = *it;
 
         // Generate internal bag
-        ItemPtrVec& items = npc->GetInventory();
+        ItemVec& items = npc->GetInventory();
         if( !npc->Data.Params[ ST_BAG_ID ] )
         {
             int cur_item = 0;
@@ -895,7 +897,7 @@ Item* Map::GetItem( uint item_id )
     return NULL;
 }
 
-Item* Map::GetItemHex( ushort hx, ushort hy, ushort item_pid, Critter* picker )
+Item* Map::GetItemHex( ushort hx, ushort hy, hash item_pid, Critter* picker )
 {
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
@@ -966,7 +968,7 @@ Item* Map::GetItemGag( ushort hx, ushort hy )
     return NULL;
 }
 
-void Map::GetItemsHex( ushort hx, ushort hy, ItemPtrVec& items, bool lock )
+void Map::GetItemsHex( ushort hx, ushort hy, ItemVec& items, bool lock )
 {
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
@@ -980,7 +982,7 @@ void Map::GetItemsHex( ushort hx, ushort hy, ItemPtrVec& items, bool lock )
             SYNC_LOCK( *it );
 }
 
-void Map::GetItemsHexEx( ushort hx, ushort hy, uint radius, ushort pid, ItemPtrVec& items, bool lock )
+void Map::GetItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items, bool lock )
 {
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
@@ -994,7 +996,7 @@ void Map::GetItemsHexEx( ushort hx, ushort hy, uint radius, ushort pid, ItemPtrV
             SYNC_LOCK( *it );
 }
 
-void Map::GetItemsPid( ushort pid, ItemPtrVec& items, bool lock )
+void Map::GetItemsPid( hash pid, ItemVec& items, bool lock )
 {
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
@@ -1008,7 +1010,7 @@ void Map::GetItemsPid( ushort pid, ItemPtrVec& items, bool lock )
             SYNC_LOCK( *it );
 }
 
-void Map::GetItemsType( int type, ItemPtrVec& items, bool lock )
+void Map::GetItemsType( int type, ItemVec& items, bool lock )
 {
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
@@ -1022,7 +1024,7 @@ void Map::GetItemsType( int type, ItemPtrVec& items, bool lock )
             SYNC_LOCK( *it );
 }
 
-void Map::GetItemsTrap( ushort hx, ushort hy, ItemPtrVec& traps, bool lock )
+void Map::GetItemsTrap( ushort hx, ushort hy, ItemVec& traps, bool lock )
 {
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
@@ -1539,7 +1541,7 @@ uint Map::GetNpcsCount()
     return count;
 }
 
-void Map::SendEffect( ushort eff_pid, ushort hx, ushort hy, ushort radius )
+void Map::SendEffect( hash eff_pid, ushort hx, ushort hy, ushort radius )
 {
     SCOPE_LOCK( dataLocker );
 
@@ -1551,7 +1553,7 @@ void Map::SendEffect( ushort eff_pid, ushort hx, ushort hy, ushort radius )
     }
 }
 
-void Map::SendFlyEffect( ushort eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
+void Map::SendFlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
 {
     SCOPE_LOCK( dataLocker );
 
@@ -1608,7 +1610,7 @@ void Map::SetCritterCar( ushort hx, ushort hy, Critter* cr, Item* car )
     // Move car bags from inventory to map
     for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
     {
-        ushort child_pid = car->Proto->ChildPid[ i ];
+        hash child_pid = car->Proto->ChildPid[ i ];
         if( !child_pid )
             continue;
 
@@ -1674,7 +1676,7 @@ void Map::ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
 Item* Map::GetItemChild( ushort hx, ushort hy, ProtoItem* proto_item, uint child_index )
 {
     // Get child pid
-    ushort child_pid = proto_item->ChildPid[ child_index ];
+    hash child_pid = proto_item->ChildPid[ child_index ];
     if( !child_pid )
         return NULL;
 
@@ -1697,7 +1699,7 @@ bool Map::ParseScript( const char* script, bool first_time )
 {
     if( script && script[ 0 ] )
     {
-        uint func_num = Script::BindScriptFuncNum( script, "void %s(Map&,bool)" );
+        hash func_num = Script::BindScriptFuncNum( script, "void %s(Map&,bool)" );
         if( !func_num )
         {
             WriteLogF( _FUNC_, " - Script<%s> bind fail, map pid<%u>.\n", script, GetPid() );
@@ -2322,6 +2324,12 @@ Map* Location::GetMap( uint count )
     return map;
 }
 
+uint Location::GetMapIndex( hash map_pid )
+{
+    auto it = std::find( Proto->ProtoMapPids.begin(), Proto->ProtoMapPids.end(), map_pid );
+    return ( uint ) std::distance( Proto->ProtoMapPids.begin(), it );
+}
+
 bool Location::GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, uchar& dir )
 {
     if( !from_map || hx >= from_map->GetMaxHexX() || hy >= from_map->GetMaxHexY() )
@@ -2331,7 +2339,7 @@ bool Location::GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, 
     if( !mobj )
         return false;
 
-    if( mobj->MScenery.ToMapPid == 0 || mobj->MScenery.ToMapPid >= MAX_PROTO_MAPS )
+    if( mobj->MScenery.ToMap == 0 )
     {
         id_map = 0;
         return true;
@@ -2341,7 +2349,7 @@ bool Location::GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, 
     for( auto it = locMaps.begin(), end = locMaps.end(); it != end; ++it )
     {
         Map* map = *it;
-        if( map->GetPid() == mobj->MScenery.ToMapPid )
+        if( map->GetPid() == mobj->MScenery.ToMap )
         {
             to_map = map;
             break;

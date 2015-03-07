@@ -96,8 +96,8 @@ private:
     AnyFrames() {}
     ~AnyFrames() {}
 };
-typedef map< uint, AnyFrames*, less< uint > > AnimMap;
-typedef vector< AnyFrames* >                  AnimVec;
+typedef map< uint, AnyFrames* > AnimMap;
+typedef vector< AnyFrames* >    AnimVec;
 
 //
 // Point

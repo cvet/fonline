@@ -6,7 +6,6 @@
 #include "AI.h"
 #include "Defines.h"
 
-#define MAX_CRIT_PROTOS         ( 10000 )
 #define MAX_STORED_LOCATIONS    ( 1000 )
 
 struct CritData
@@ -21,7 +20,7 @@ struct CritData
     uchar      Cond;
     uchar      Reserved000;
     char       Reserved0;
-    uint       ScriptId;
+    hash       ScriptId;
     uint       ShowCritterDist1;
     uint       ShowCritterDist2;
     uint       ShowCritterDist3;
@@ -32,7 +31,7 @@ struct CritData
     ushort     LastHexY;
     uint       Reserved1[ 4 ];
     uint       MapId;
-    ushort     MapPid;
+    hash       MapPid;
     ushort     Reserved2;
     int        Params[ MAX_PARAMS ];
     uint       Anim1Life;
@@ -61,7 +60,7 @@ struct CritData
     ushort     HomeY;
     uchar      HomeOri;
     uchar      Reserved11;
-    ushort     ProtoId;
+    hash       ProtoId;
     uint       Reserved12;
     uint       Reserved13;
     uint       Reserved14;
@@ -70,7 +69,7 @@ struct CritData
     uchar      Reserved16;
     ushort     Reserved17;
     uint       Reserved18[ 8 ];
-    ushort     FavoriteItemPid[ 4 ];
+    hash       FavoriteItemPid[ 4 ];
     uint       Reserved19[ 10 ];
     uint       EnemyStackCount;
     uint       EnemyStack[ MAX_ENEMY_STACK ];
@@ -81,7 +80,12 @@ struct CritData
     uchar      BagSize;
     NpcBagItem Bag[ MAX_NPC_BAGS ];
     uint       Reserved22[ 100 ];
+
+    #ifdef FONLINE_MAPPER
+    string     CollectionName;
+    #endif
 };
+typedef map< hash, CritData* > CritDataMap;
 
 struct CritDataExt
 {

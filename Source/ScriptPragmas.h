@@ -5,7 +5,6 @@
 #include "preprocessor.h"
 #include <set>
 #include <string>
-using namespace std;
 
 #define PRAGMA_UNKNOWN    ( 0 )
 #define PRAGMA_SERVER     ( 1 )

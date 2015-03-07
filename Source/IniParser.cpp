@@ -39,19 +39,15 @@ bool IniParser::LoadFile( const char* fname, int path_type )
     return true;
 }
 
-bool IniParser::LoadFilePtr( const char* buf, uint len )
+void IniParser::LoadFilePtr( const char* buf, uint len )
 {
     UnloadFile();
 
     bufPtr = new char[ len + 1 ];
-    if( !bufPtr )
-        return false;
-
     memcpy( bufPtr, buf, len );
     bufPtr[ len ] = 0;
     Str::Replacement( bufPtr, '\r', ' ' );
     bufLen = Str::Length( bufPtr );
-    return true;
 }
 
 bool IniParser::AppendToBegin( const char* fname, int path_type )
@@ -289,7 +285,7 @@ int IniParser::GetInt( const char* app_name, const char* key_name, int def_val )
     if( !j )
         return def_val;
     num[ j ] = 0;
-    Str::EraseFrontBackSpecificChars( num );
+    Str::Trim( num );
     if( Str::CompareCase( num, "true" ) )
         return 1;
     if( Str::CompareCase( num, "false" ) )
@@ -376,11 +372,8 @@ bool IniParser::GetStr( const char* key_name, const char* def_val, char* ret_buf
 
 void IniParser::SetStr( const char* app_name, const char* key_name, const char* val )
 {
-    if( !bufPtr )
-        return;
-
     uint iter = 0;
-    if( GetPos( app_name, key_name, iter ) )
+    if( bufPtr && GetPos( app_name, key_name, iter ) )
     {
         // Refresh founded field
         while( iter < bufLen && ( bufPtr[ iter ] == ' ' || bufPtr[ iter ] == '\t' ) )
@@ -420,14 +413,15 @@ void IniParser::SetStr( const char* app_name, const char* key_name, const char* 
     {
         // Write new field
         bool new_line = false;
-        if( bufPtr[ bufLen - 1 ] != '\n' )
+        if( bufPtr && bufPtr[ bufLen - 1 ] != '\n' )
             new_line = true;
 
         uint  key_name_len = Str::Length( key_name );
         uint  val_len = Str::Length( val );
         uint  new_len = bufLen + ( new_line ? 1 : 0 ) + key_name_len + 3 + val_len + 1; // {[\n]key_name = val\n}
         char* new_buf = new char[ new_len + 1 ];
-        memcpy( new_buf, bufPtr, bufLen );
+        if( bufPtr )
+            memcpy( new_buf, bufPtr, bufLen );
 
         uint pos = bufLen;
         if( new_line )
@@ -442,7 +436,7 @@ void IniParser::SetStr( const char* app_name, const char* key_name, const char* 
         new_buf[ pos++ ] = '\n';
         new_buf[ pos ] = 0;
 
-        delete[] bufPtr;
+        SAFEDELA( bufPtr );
         bufPtr = new_buf;
         bufLen = new_len;
     }
@@ -550,7 +544,7 @@ void IniParser::CacheApps()
                 {
                     string app;
                     app.assign( line + 1, len );
-                    cachedKeys.insert( app );
+                    cachedApps.insert( app );
                 }
             }
         }
@@ -559,7 +553,12 @@ void IniParser::CacheApps()
 
 bool IniParser::IsCachedApp( const char* app_name )
 {
-    return cachedKeys.count( string( app_name ) ) != 0;
+    return cachedApps.count( string( app_name ) ) != 0;
+}
+
+StrSet& IniParser::GetCachedApps()
+{
+    return cachedApps;
 }
 
 void IniParser::CacheKeys()
@@ -576,7 +575,7 @@ void IniParser::CacheKeys()
         if( key_end )
         {
             *key_end = 0;
-            Str::EraseFrontBackSpecificChars( line );
+            Str::Trim( line );
             if( Str::Length( line ) )
                 cachedKeys.insert( line );
         }

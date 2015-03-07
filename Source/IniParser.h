@@ -23,7 +23,7 @@ public:
     ~IniParser();
     bool  IsLoaded();
     bool  LoadFile( const char* fname, int path_type );
-    bool  LoadFilePtr( const char* buf, uint len );
+    void  LoadFilePtr( const char* buf, uint len );
     bool  AppendToBegin( const char* fname, int path_type );
     bool  AppendToEnd( const char* fname, int path_type );
     bool  AppendPtrToBegin( const char* buf, uint len );
@@ -46,6 +46,7 @@ public:
 
     void    CacheApps();
     bool    IsCachedApp( const char* app_name );
+    StrSet& GetCachedApps();
     void    CacheKeys();
     bool    IsCachedKey( const char* key_name );
     StrSet& GetCachedKeys();

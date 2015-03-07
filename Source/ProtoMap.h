@@ -17,7 +17,7 @@ class MapObject // Available in fonline.h
 {
 public:
     uchar  MapObjType;
-    ushort ProtoId;
+    hash   ProtoId;
     ushort MapX;
     ushort MapY;
 
@@ -55,57 +55,65 @@ public:
 
         struct
         {
-            short  OffsetX;
-            short  OffsetY;
-            uchar  AnimStayBegin;
-            uchar  AnimStayEnd;
-            ushort AnimWait;
-            uchar  InfoOffset;
-            uint   PicMapHash;
-            uint   PicInvHash;
+            short         OffsetX;
+            short         OffsetY;
+            uchar         AnimStayBegin;
+            uchar         AnimStayEnd;
+            ushort        AnimWait;
+            uchar         InfoOffset;
+            hash          PicMap;
+            hash          PicInv;
 
-            uint   Count;
-            uchar  ItemSlot;
+            uint          Count;
+            uchar         ItemSlot;
 
-            uchar  BrokenFlags;
-            uchar  BrokenCount;
-            ushort Deterioration;
+            uchar         BrokenFlags;
+            uchar         BrokenCount;
+            ushort        Deterioration;
 
-            ushort AmmoPid;
-            uint   AmmoCount;
+            #ifndef FONLINE_MAPPER
+            hash          AmmoPid;
+            #else
+            ScriptString* AmmoPid;
+            #endif
+            uint          AmmoCount;
 
-            uint   LockerDoorId;
-            ushort LockerCondition;
-            ushort LockerComplexity;
+            uint          LockerDoorId;
+            ushort        LockerCondition;
+            ushort        LockerComplexity;
 
-            short  TrapValue;
+            short         TrapValue;
 
-            int    Val[ 10 ];
+            int           Val[ 10 ];
         } MItem;
 
         struct
         {
-            short  OffsetX;
-            short  OffsetY;
-            uchar  AnimStayBegin;
-            uchar  AnimStayEnd;
-            ushort AnimWait;
-            uchar  InfoOffset;
-            uint   PicMapHash;
-            uint   PicInvHash;
+            short         OffsetX;
+            short         OffsetY;
+            uchar         AnimStayBegin;
+            uchar         AnimStayEnd;
+            ushort        AnimWait;
+            uchar         InfoOffset;
+            hash          PicMap;
+            hash          PicInv;
 
-            bool   CanUse;
-            bool   CanTalk;
-            uint   TriggerNum;
+            bool          CanUse;
+            bool          CanTalk;
+            uint          TriggerNum;
 
-            uchar  ParamsCount;
-            int    Param[ 5 ];
+            uchar         ParamsCount;
+            int           Param[ 5 ];
 
-            ushort ToMapPid;
-            uint   ToEntire;
-            uchar  ToDir;
+            #ifndef FONLINE_MAPPER
+            hash          ToMap;
+            #else
+            ScriptString* ToMap;
+            #endif
+            uint          ToEntire;
+            uchar         ToDir;
 
-            uchar  SpriteCut;
+            uchar         SpriteCut;
         } MScenery;
     };
 
@@ -203,7 +211,8 @@ typedef vector< MapObject* > MapObjectPtrVec;
 
 struct SceneryCl
 {
-    ushort ProtoId;
+    hash   ProtoId;
+    ushort Reserved;
     uchar  Flags;
     uchar  SpriteCut;
     ushort MapX;
@@ -218,7 +227,7 @@ struct SceneryCl
     uchar  AnimStayBegin;
     uchar  AnimStayEnd;
     ushort AnimWait;
-    uint   PicMapHash;
+    hash   PicMap;
 };
 typedef vector< SceneryCl > SceneryClVec;
 
@@ -251,7 +260,7 @@ public:
     // Tiles
     struct Tile     // 16 bytes
     {
-        uint   NameHash;
+        hash   Name;
         ushort HexX, HexY;
         short  OffsX, OffsY;
         uchar  Layer;
@@ -261,7 +270,7 @@ public:
         #endif
 
         Tile() { memzero( this, sizeof( Tile ) ); }
-        Tile( uint name, ushort hx, ushort hy, char ox, char oy, uchar layer, bool is_roof ): NameHash( name ), HexX( hx ), HexY( hy ), OffsX( ox ), OffsY( oy ), Layer( layer ), IsRoof( is_roof ) {}
+        Tile( hash name, ushort hx, ushort hy, char ox, char oy, uchar layer, bool is_roof ): Name( name ), HexX( hx ), HexY( hy ), OffsX( ox ), OffsY( oy ), Layer( layer ), IsRoof( is_roof ) {}
     };
     typedef vector< Tile >    TileVec;
     TileVec Tiles;
@@ -326,37 +335,34 @@ public:
     void       GetEntires( uint num, EntiresVec& entires );
 
 private:
-    int    pathType;
     string pmapName;
-    ushort pmapPid;
-    bool   isInit;
+    hash   pmapPid;
 
 public:
-    bool Init( ushort pid, const char* name, int path_type );
+    bool Init( const char* name );
     void Clear();
     bool Refresh();
 
     #ifdef FONLINE_MAPPER
     void        GenNew();
-    bool        Save( const char* fname, int path_type, bool keep_name = false );
+    bool        Save( const char* custom_name = NULL );
     static bool IsMapFile( const char* fname );
     #endif
 
-    bool        IsInit()  { return isInit; }
-    ushort      GetPid()  { return isInit ? pmapPid : 0; }
     const char* GetName() { return pmapName.c_str(); }
+    hash        GetPid()  { return pmapPid; }
 
     long RefCounter;
     void AddRef()  { ++RefCounter; }
     void Release() { if( !--RefCounter ) delete this; }
 
     #ifdef FONLINE_SERVER
-    MapObject* GetMapScenery( ushort hx, ushort hy, ushort pid );
+    MapObject* GetMapScenery( ushort hx, ushort hy, hash pid );
     void       GetMapSceneriesHex( ushort hx, ushort hy, MapObjectPtrVec& mobjs );
-    void       GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, ushort pid, MapObjectPtrVec& mobjs );
-    void       GetMapSceneriesByPid( ushort pid, MapObjectPtrVec& mobjs );
+    void       GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, hash pid, MapObjectPtrVec& mobjs );
+    void       GetMapSceneriesByPid( hash pid, MapObjectPtrVec& mobjs );
     MapObject* GetMapGrid( ushort hx, ushort hy );
-    ProtoMap(): isInit( false ), pathType( 0 ), HexFlags( NULL ) { MEMORY_PROCESS( MEMORY_PROTO_MAP, sizeof( ProtoMap ) ); }
+    ProtoMap(): HexFlags( NULL ) { MEMORY_PROCESS( MEMORY_PROTO_MAP, sizeof( ProtoMap ) ); }
     ProtoMap( const ProtoMap& r )
     {
         *this = r;
@@ -364,16 +370,15 @@ public:
     }
     ~ProtoMap()
     {
-        isInit = false;
         HexFlags = NULL;
         MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) sizeof( ProtoMap ) );
     }
     #else
-    ProtoMap(): pathType( 0 ), isInit( false ), RefCounter( 1 ) {}
-    ~ProtoMap() { isInit = false; }
+    ProtoMap(): RefCounter( 1 ) {}
+    ~ProtoMap() {}
     #endif
 };
-typedef vector< ProtoMap >  ProtoMapVec;
-typedef vector< ProtoMap* > ProtoMapPtrVec;
+typedef vector< ProtoMap* >    ProtoMapVec;
+typedef map< hash, ProtoMap* > ProtoMapMap;
 
 #endif // __PROTO_MAP__

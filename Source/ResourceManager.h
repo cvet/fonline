@@ -20,7 +20,7 @@ struct LoadedAnim
     AnyFrames* Anim;
     LoadedAnim( int res_type, AnyFrames* anim ): ResType( res_type ), Anim( anim ) {}
 };
-typedef map< uint, LoadedAnim, less< uint > > LoadedAnimMap;
+typedef map< hash, LoadedAnim > LoadedAnimMap;
 
 class ResourceManager
 {
@@ -47,11 +47,11 @@ public:
     void FreeResources( int type );
     void ReinitializeDynamicAtlas();
 
-    AnyFrames* GetAnim( uint name_hash, int res_type );
-    AnyFrames* GetIfaceAnim( uint name_hash ) { return GetAnim( name_hash, RES_ATLAS_STATIC ); }
-    AnyFrames* GetInvAnim( uint name_hash )   { return GetAnim( name_hash, RES_ATLAS_STATIC ); }
-    AnyFrames* GetSkDxAnim( uint name_hash )  { return GetAnim( name_hash, RES_ATLAS_STATIC ); }
-    AnyFrames* GetItemAnim( uint name_hash )  { return GetAnim( name_hash, RES_ATLAS_DYNAMIC ); }
+    AnyFrames* GetAnim( hash name_hash, int res_type );
+    AnyFrames* GetIfaceAnim( hash name_hash ) { return GetAnim( name_hash, RES_ATLAS_STATIC ); }
+    AnyFrames* GetInvAnim( hash name_hash )   { return GetAnim( name_hash, RES_ATLAS_STATIC ); }
+    AnyFrames* GetSkDxAnim( hash name_hash )  { return GetAnim( name_hash, RES_ATLAS_STATIC ); }
+    AnyFrames* GetItemAnim( hash name_hash )  { return GetAnim( name_hash, RES_ATLAS_DYNAMIC ); }
 
     AnyFrames*   GetCrit2dAnim( uint crtype, uint anim1, uint anim2, int dir );
     Animation3d* GetCrit3dAnim( uint crtype, uint anim1, uint anim2, int dir, int* layers3d = NULL );

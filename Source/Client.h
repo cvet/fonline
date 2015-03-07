@@ -46,7 +46,9 @@ public:
     uint*      UID1;
     string     Password;
     HexManager HexMngr;
-    ushort     CurMapPid;
+    hash       CurMapPid;
+    hash       CurMapLocPid;
+    uint       CurMapIndexInLoc;
     StrVec     Preload3dFiles;
 
     int        ScreenModeMain;
@@ -131,8 +133,8 @@ public:
     void Net_SendUseSkill( ushort skill, CritterCl* cr );
     void Net_SendUseSkill( ushort skill, ItemHex* item );
     void Net_SendUseSkill( ushort skill, Item* item );
-    void Net_SendUseItem( uchar ap, uint item_id, ushort item_pid, uchar rate, uchar target_type, uint target_id, ushort target_pid, uint param );
-    void Net_SendPickItem( ushort targ_x, ushort targ_y, ushort pid );
+    void Net_SendUseItem( uchar ap, uint item_id, hash item_pid, uchar rate, uchar target_type, uint target_id, hash target_pid, uint param );
+    void Net_SendPickItem( ushort targ_x, ushort targ_y, hash pid );
     void Net_SendPickCritter( uint crid, uchar pick_type );
     void Net_SendChangeItem( uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count );
     void Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags );
@@ -144,7 +146,7 @@ public:
     void Net_SendGetGameInfo();
     void Net_SendGiveGlobalInfo( uchar info_flags );
     void Net_SendRuleGlobal( uchar command, uint param1 = 0, uint param2 = 0 );
-    void Net_SendGiveMap( bool automap, ushort map_pid, uint loc_id, uint tiles_hash, uint walls_hash, uint scen_hash );
+    void Net_SendGiveMap( bool automap, hash map_pid, uint loc_id, uint tiles_hash, uint walls_hash, uint scen_hash );
     void Net_SendLoadMapOk();
     void Net_SendText( const char* send_str, uchar how_say );
     void Net_SendDir();
@@ -253,7 +255,7 @@ public:
 
     // MSG File
     LanguagePack CurLang;
-    FOMsg*       MsgText, * MsgDlg, * MsgItem, * MsgGame, * MsgGM, * MsgCombat, * MsgQuest, * MsgHolo, * MsgUserHolo, * MsgCraft, * MsgInternal;
+    FOMsg*       MsgText, * MsgDlg, * MsgItem, * MsgGame, * MsgLocations, * MsgCombat, * MsgQuest, * MsgHolo, * MsgUserHolo, * MsgCraft, * MsgInternal;
 
     const char* GetHoloText( uint str_num );
     const char* FmtGameText( uint str_num, ... );
@@ -282,9 +284,9 @@ public:
     PCharPairVec IntellectWords;
     PCharPairVec IntellectSymbols;
 
-    void ParseIntellectWords( const char* words, PCharPairVec& text );
-    PCharPairVec::iterator FindIntellectWord( const char* word, PCharPairVec & text, Randomizer & rnd );
-    void FmtTextIntellect( char* str, ushort intellect );
+    void                   ParseIntellectWords( const char* words, PCharPairVec& text );
+    PCharPairVec::iterator FindIntellectWord( const char* word, PCharPairVec& text, Randomizer& rnd );
+    void                   FmtTextIntellect( char* str, ushort intellect );
 
     #define SMTH_NONE                 ( 0 )
     #define SMTH_CRITTER              ( 1 )
@@ -336,11 +338,11 @@ public:
 
     struct ActionEvent
     {
-        uint Type;
-        uint Param[ 6 ];
+        max_t Type;
+        max_t Param[ 6 ];
         bool operator==( const ActionEvent& r ) { return Type == r.Type && Param[ 0 ] == r.Param[ 0 ] && Param[ 1 ] == r.Param[ 1 ] && Param[ 2 ] == r.Param[ 2 ] && Param[ 3 ] == r.Param[ 3 ] && Param[ 4 ] == r.Param[ 4 ] && Param[ 4 ] == r.Param[ 5 ]; }
         ActionEvent() {}
-        ActionEvent( uint type, uint param0, uint param1, uint param2, uint param3, uint param4, uint param5 ): Type( type )
+        ActionEvent( max_t type, max_t param0, max_t param1, max_t param2, max_t param3, max_t param4, max_t param5 ): Type( type )
         {
             Param[ 0 ] = param0;
             Param[ 1 ] = param1;
@@ -355,14 +357,14 @@ public:
 
     ActionEventVec ChosenAction;
     void AddAction( bool to_front, ActionEvent act );
-    void SetAction( uint type_action, uint param0 = 0, uint param1 = 0, uint param2 = 0, uint param3 = 0, uint param4 = 0, uint param5 = 0 );
+    void SetAction( max_t type_action, max_t param0 = 0, max_t param1 = 0, max_t param2 = 0, max_t param3 = 0, max_t param4 = 0, max_t param5 = 0 );
     void SetAction( ActionEvent act );
-    void AddActionBack( uint type_action, uint param0 = 0, uint param1 = 0, uint param2 = 0, uint param3 = 0, uint param4 = 0, uint param5 = 0 );
+    void AddActionBack( max_t type_action, max_t param0 = 0, max_t param1 = 0, max_t param2 = 0, max_t param3 = 0, max_t param4 = 0, max_t param5 = 0 );
     void AddActionBack( ActionEvent act );
-    void AddActionFront( uint type_action, uint param0 = 0, uint param1 = 0, uint param2 = 0, uint param3 = 0, uint param4 = 0, uint param5 = 0 );
+    void AddActionFront( max_t type_action, max_t param0 = 0, max_t param1 = 0, max_t param2 = 0, max_t param3 = 0, max_t param4 = 0, max_t param5 = 0 );
     void EraseFrontAction();
     void EraseBackAction();
-    bool IsAction( uint type_action );
+    bool IsAction( max_t type_action );
     void ChosenChangeSlot();
     void CrittersProcess();
     void TryPickItemOnGround();
@@ -516,9 +518,9 @@ public:
         static uint       Crit_ItemsCount( CritterCl* cr );
         static uint       Crit_ItemsWeight( CritterCl* cr );
         static uint       Crit_ItemsVolume( CritterCl* cr );
-        static uint       Crit_CountItem( CritterCl* cr, ushort proto_id );
+        static uint       Crit_CountItem( CritterCl* cr, hash proto_id );
         static uint       Crit_CountItemByType( CritterCl* cr, uchar type );
-        static Item*      Crit_GetItem( CritterCl* cr, ushort proto_id, int slot );
+        static Item*      Crit_GetItem( CritterCl* cr, hash proto_id, int slot );
         static Item*      Crit_GetItemById( CritterCl* cr, uint item_id );
         static uint       Crit_GetItems( CritterCl* cr, int slot, ScriptArray* items );
         static uint       Crit_GetItemsByType( CritterCl* cr, int type, ScriptArray* items );
@@ -531,15 +533,15 @@ public:
         static bool       Crit_IsTurnBasedTurn( CritterCl* cr );
         static void       Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines );
 
-        static bool   Item_IsStackable( Item* item );
-        static bool   Item_IsDeteriorable( Item* item );
-        static uint   Item_GetScriptId( Item* item );
-        static uchar  Item_GetType( Item* item );
-        static ushort Item_GetProtoId( Item* item );
-        static uint   Item_GetCount( Item* item );
-        static bool   Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
-        static void   Item_Animate( Item* item, uchar from_frame, uchar to_frame );
-        static Item*  Item_GetChild( Item* item, uint childIndex );
+        static bool  Item_IsStackable( Item* item );
+        static bool  Item_IsDeteriorable( Item* item );
+        static hash  Item_GetScriptId( Item* item );
+        static uchar Item_GetType( Item* item );
+        static hash  Item_GetProtoId( Item* item );
+        static uint  Item_GetCount( Item* item );
+        static bool  Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
+        static void  Item_Animate( Item* item, uchar from_frame, uchar to_frame );
+        static Item* Item_GetChild( Item* item, uint childIndex );
 
         static ScriptString* Global_CustomCall( ScriptString& command, ScriptString& separator );
         static CritterCl*    Global_GetChosen();
@@ -549,7 +551,7 @@ public:
         static uint          Global_GetCrittersDistantion( CritterCl* cr1, CritterCl* cr2 );
         static CritterCl*    Global_GetCritter( uint critter_id );
         static uint          Global_GetCritters( ushort hx, ushort hy, uint radius, int find_type, ScriptArray* critters );
-        static uint          Global_GetCrittersByPids( ushort pid, int find_type, ScriptArray* critters );
+        static uint          Global_GetCrittersByPids( hash pid, int find_type, ScriptArray* critters );
         static uint          Global_GetCrittersInPath( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters );
         static uint          Global_GetCrittersInPathBlock( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy );
         static void          Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
@@ -563,7 +565,8 @@ public:
         static void          Global_PlayVideo( ScriptString& video_name, bool can_stop );
         static bool          Global_IsTurnBased();
         static uint          Global_GetTurnBasedTime();
-        static ushort        Global_GetCurrentMapPid();
+
+        static hash          Global_GetCurrentMapPid();
         static uint          Global_GetMessageFilters( ScriptArray* filters );
         static void          Global_SetMessageFilters( ScriptArray* filters );
         static void          Global_Message( ScriptString& msg );
@@ -591,7 +594,7 @@ public:
         static void          Global_GetDayColor( uint day_part, uchar& r, uchar& g, uchar& b );
 
         static ScriptString* Global_GetLastError();
-        static ProtoItem*    Global_GetProtoItem( ushort proto_id );
+        static ProtoItem*    Global_GetProtoItem( hash proto_id );
         static uint          Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static void          Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
         static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
@@ -630,7 +633,7 @@ public:
         static void Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color );
         static void Global_DrawText( ScriptString& text, int x, int y, int w, int h, uint color, int font, int flags );
         static void Global_DrawPrimitive( int primitive_type, ScriptArray& data );
-        static void Global_DrawMapSprite( ushort hx, ushort hy, ushort proto_id, uint spr_id, int frame_index, int ox, int oy );
+        static void Global_DrawMapSprite( ushort hx, ushort hy, hash proto_id, uint spr_id, int frame_index, int ox, int oy );
         static void Global_DrawCritter2d( uint crtype, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color );
         static void Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color );
 
@@ -1032,11 +1035,12 @@ public:
     struct GmapLocation
     {
         uint   LocId;
-        ushort LocPid;
+        hash   LocPid;
         ushort LocWx;
         ushort LocWy;
         ushort Radius;
         uint   Color;
+        uchar  Entrances;
         bool operator==( const uint& _right ) { return ( this->LocId == _right ); }
     };
     typedef vector< GmapLocation > GmapLocationVec;
@@ -1337,12 +1341,12 @@ public:
     // Automaps
     struct Automap
     {
-        uint      LocId;
-        ushort    LocPid;
-        string    LocName;
-        UShortVec MapPids;
-        StrVec    MapNames;
-        size_t    CurMap;
+        uint    LocId;
+        hash    LocPid;
+        string  LocName;
+        HashVec MapPids;
+        StrVec  MapNames;
+        uint    CurMap;
 
         Automap(): LocId( 0 ), LocPid( 0 ), CurMap( 0 ) {}
         bool operator==( const uint id ) const { return LocId == id; }
@@ -1350,10 +1354,10 @@ public:
     typedef vector< Automap > AutomapVec;
     AutomapVec Automaps;
     Automap    AutomapSelected;
-    UShortSet  AutomapWaitPids;
-    UShortSet  AutomapReceivedPids;
+    HashSet    AutomapWaitPids;
+    HashSet    AutomapReceivedPids;
     PointVec   AutomapPoints;
-    ushort     AutomapCurMapPid;
+    hash       AutomapCurMapPid;
     float      AutomapScrX, AutomapScrY;
     float      AutomapZoom;
 
@@ -1393,7 +1397,7 @@ public:
     int    PupHeightItem1, PupHeightItem2;
     uchar  PupTransferType;
     uint   PupContId, PupClosedContId, PupLastPutId;
-    ushort PupContPid;
+    hash   PupContPid;
     uint   PupCount;
     ushort PupSize;
     uint   PupWeight;
@@ -1430,7 +1434,7 @@ public:
     // For follow
     uchar  FollowType;
     uint   FollowRuleId;
-    ushort FollowMap;
+    hash   FollowMap;
     // For barter
     uint   PBarterPlayerId;
     bool   PBarterHide;
@@ -1617,7 +1621,7 @@ public:
 
     void       FixGenerate( int fix_mode );
     void       FixGenerateStrLine( string& str, Rect& r );
-    void       FixGenerateItems( UShortVec& items_vec, UIntVec& val_vec, UCharVec& or_vec, string& str, Rect& r, int& x );
+    void       FixGenerateItems( HashVec& items_vec, UIntVec& val_vec, UCharVec& or_vec, string& str, Rect& r, int& x );
     int        GetMouseCraft();
     SCraftVec* GetCurSCrafts();
 

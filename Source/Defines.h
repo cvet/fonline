@@ -42,7 +42,9 @@
 #define WORLD_SAVE_V13               ( 0x01AB0F13 )
 #define WORLD_SAVE_V14               ( 0x01AB0F14 )
 #define WORLD_SAVE_V15               ( 0x01AB0F15 )
-#define WORLD_SAVE_LAST              WORLD_SAVE_V15
+#define WORLD_SAVE_V16               ( 0x01AB0F16 )
+#define WORLD_SAVE_V17               ( 0x01AB0F17 )
+#define WORLD_SAVE_LAST              WORLD_SAVE_V17
 #define SINGLEPLAYER_SAVE_V1         ( 1 )
 #define SINGLEPLAYER_SAVE_V2         ( 2 )
 #define SINGLEPLAYER_SAVE_LAST       ( SINGLEPLAYER_SAVE_V2 )
@@ -68,6 +70,8 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define UTF8_BUF_SIZE( count )                ( ( count ) * 4 )
 #define DLGID_MASK                   ( 0xFFFFC000 )
 #define DLG_STR_ID( dlg_id, idx )             ( ( ( dlg_id ) & DLGID_MASK ) | ( ( idx ) & ~DLGID_MASK ) )
+#define LOCPID_MASK                  ( 0xFFFFF000 )
+#define LOC_STR_ID( loc_pid, idx )            ( ( ( loc_pid ) & LOCPID_MASK ) | ( ( idx ) & ~LOCPID_MASK ) )
 
 // Script pragma bindfield sizes
 #define PROTO_ITEM_USER_DATA_SIZE    ( 500 )
@@ -108,7 +112,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 
 // Proto maps
 #define MAP_PROTO_EXT                ".fomap"
-#define MAX_PROTO_MAPS               ( 30000 )
 
 // Type entires
 #define ENTIRE_DEFAULT               ( 0 )
@@ -206,9 +209,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define HIT_LOCATION_UNCALLED        ( 9 )
 #define MAX_HIT_LOCATION             ( 10 )
 
-// Locations
-#define MAX_PROTO_LOCATIONS          ( 30000 )
-
 // Global map
 #define GM_MAXX                      ( GameOpt.GlobalMapWidth * GameOpt.GlobalMapZoneLength )
 #define GM_MAXY                      ( GameOpt.GlobalMapHeight * GameOpt.GlobalMapZoneLength )
@@ -290,7 +290,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define FH_NOSHOOT                   BIN16( 00100000, 00000010 )
 
 // Client map
-#define CLIENT_MAP_FORMAT_VER        ( 7 )
+#define CLIENT_MAP_FORMAT_VER        ( 8 )
 
 // Coordinates
 #define MAXHEX_DEF                   ( 200 )

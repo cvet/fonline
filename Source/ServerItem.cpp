@@ -2,7 +2,7 @@
 #include "Server.h"
 
 
-Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, ushort pid, uint count, bool check_blocks /* = true */ )
+Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, bool check_blocks /* = true */ )
 {
     // Checks
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
@@ -28,7 +28,7 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, ushort pid, uin
     // Create childs
     for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
     {
-        ushort child_pid = item->Proto->ChildPid[ i ];
+        hash child_pid = item->Proto->ChildPid[ i ];
         if( !child_pid )
             continue;
 
@@ -54,12 +54,6 @@ bool FOServer::TransferAllItems()
 {
     WriteLog( "Transfer all items to npc, maps and containers...\n" );
 
-    if( !ItemMngr.IsInit() )
-    {
-        WriteLog( "Item manager is not init.\n" );
-        return false;
-    }
-
     // Set default items
     CrMap critters = CrMngr.GetCrittersNoLock();
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
@@ -74,8 +68,8 @@ bool FOServer::TransferAllItems()
     }
 
     // Transfer items
-    ItemPtrVec bad_items;
-    ItemPtrVec game_items;
+    ItemVec bad_items;
+    ItemVec game_items;
     ItemMngr.GetGameItems( game_items );
     for( auto it = game_items.begin(), end = game_items.end(); it != end; ++it )
     {

@@ -177,7 +177,7 @@ void GetStrMetadata( T& v, char* str )
     Str::Append( str, MAX_FOTEXT, " " );
     for( uint i = 0; i < (uint) v.size(); i++ )
     {
-        Str::Append( str, MAX_FOTEXT, Str::ItoA( v[ i ] ) );
+        Str::Append( str, MAX_FOTEXT, Str::I64toA( v[ i ] ) );
         Str::Append( str, MAX_FOTEXT, " " );
     }
 }
@@ -357,12 +357,12 @@ int CraftItem::SetStrParam( const char*& pstr_in, UIntVec& num_vec, IntVec& val_
     return 0;
 }
 
-int CraftItem::SetStrItem( const char*& pstr_in, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec )
+int CraftItem::SetStrItem( const char*& pstr_in, HashVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec )
 {
     char  str[ MAX_FOTEXT ];
     char* pstr = str;
 
-    int   item_pid = 0;
+    hash  item_pid = 0;
     uint  item_count = 0;
 
     while( *pstr_in != MRFIXIT_NEXT )
@@ -379,7 +379,7 @@ int CraftItem::SetStrItem( const char*& pstr_in, UShortVec& pid_vec, UIntVec& co
             *pstr = '\0';
 
             item_pid = ConstantsManager::GetItemPid( str );
-            if( item_pid == -1 )
+            if( !item_pid )
                 return -2;
 
             pstr = str;
@@ -508,7 +508,7 @@ void CraftItem::GetStrParam( char* pstr_out, UIntVec& num_vec, IntVec& val_vec, 
     Str::Append( pstr_out, MAX_FOTEXT, MRFIXIT_NEXT_S );
 }
 
-void CraftItem::GetStrItem( char* pstr_out, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec )
+void CraftItem::GetStrItem( char* pstr_out, HashVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec )
 {
     for( uint i = 0, j = (uint) pid_vec.size(); i < j; i++ )
     {
@@ -910,15 +910,15 @@ bool CraftManager::IsTrueParams( CritterCl* cr, UIntVec& num_vec, IntVec& val_ve
 }
 # endif
 # ifdef FONLINE_SERVER
-bool CraftManager::IsTrueItems( Critter* cr, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec )
+bool CraftManager::IsTrueItems( Critter* cr, HashVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec )
 {
     for( uint i = 0, j = (uint) pid_vec.size(); i < j; i++ )
     {
-        bool   next = true;
+        bool  next = true;
 
-        ushort item_pid = pid_vec[ i ];
-        uint   item_count = count_vec[ i ];
-        uchar  item_or = or_vec[ i ];
+        hash  item_pid = pid_vec[ i ];
+        uint  item_count = count_vec[ i ];
+        uchar item_or = or_vec[ i ];
 
         if( cr->CountItemPid( item_pid ) < item_count )
             next = false;
@@ -945,15 +945,15 @@ bool CraftManager::IsTrueItems( Critter* cr, UShortVec& pid_vec, UIntVec& count_
 }
 # endif
 # ifdef FONLINE_CLIENT
-bool CraftManager::IsTrueItems( CritterCl* cr, UShortVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec )
+bool CraftManager::IsTrueItems( CritterCl* cr, HashVec& pid_vec, UIntVec& count_vec, UCharVec& or_vec )
 {
     for( uint i = 0, j = (uint) pid_vec.size(); i < j; i++ )
     {
-        bool   next = true;
+        bool  next = true;
 
-        ushort item_pid = pid_vec[ i ];
-        uint   item_count = count_vec[ i ];
-        uchar  item_or = or_vec[ i ];
+        hash  item_pid = pid_vec[ i ];
+        uint  item_count = count_vec[ i ];
+        uchar item_or = or_vec[ i ];
 
         if( cr->CountItemPid( item_pid ) < item_count )
             next = false;
@@ -1015,14 +1015,14 @@ int CraftManager::ProcessCraft( Critter* cr, uint num )
     if( !FLAG( flags, FIXBOY_ALLOW_CRAFT ) )
         CRAFT_RETURN_FAIL;
 
-    ItemPtrVec sub_items;
+    ItemVec sub_items;
     if( FLAG( flags, FIXBOY_SUB_MATERIALS ) ) // Sub items
     {
         for( uint i = 0, j = (uint) craft->NeedItems.size(); i < j; i++ )
         {
-            ushort pid = craft->NeedItems[ i ];
-            uint   count = craft->NeedItemsVal[ i ];
-            uchar  or_cmd = craft->NeedItemsOr[ i ];
+            hash  pid = craft->NeedItems[ i ];
+            uint  count = craft->NeedItemsVal[ i ];
+            uchar or_cmd = craft->NeedItemsOr[ i ];
 
             if( cr->CountItemPid( pid ) < count )
                 continue;
@@ -1037,11 +1037,11 @@ int CraftManager::ProcessCraft( Critter* cr, uint num )
 
     if( FLAG( flags, FIXBOY_ADD_CRAFT_ITEMS ) ) // Add items
     {
-        ItemPtrVec crafted;
-        UIntVec    crafted_count;
+        ItemVec crafted;
+        UIntVec crafted_count;
         for( uint i = 0, j = (uint) craft->OutItems.size(); i < j; i++ )
         {
-            ushort     pid = craft->OutItems[ i ];
+            hash       pid = craft->OutItems[ i ];
             uint       count = craft->OutItemsVal[ i ];
             ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
             if( !proto_item )

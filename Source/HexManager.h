@@ -172,21 +172,20 @@ private:
 
     // Map load
 private:
-    ushort curPidMap;
-    int    curMapTime;
-    int    dayTime[ 4 ];
-    uchar  dayColor[ 12 ];
-    uint   curHashTiles;
-    uint   curHashWalls;
-    uint   curHashScen;
+    hash  curPidMap;
+    int   curMapTime;
+    int   dayTime[ 4 ];
+    uchar dayColor[ 12 ];
+    uint  curHashTiles;
+    uint  curHashWalls;
+    uint  curHashScen;
 
 public:
-    bool   IsMapLoaded()  { return hexField != NULL; }
-    ushort GetCurPidMap() { return curPidMap; }
-    bool   LoadMap( ushort map_pid );
+    bool   IsMapLoaded() { return hexField != NULL; }
+    bool   LoadMap( hash map_pid );
     void   UnloadMap();
-    void   GetMapHash( ushort map_pid, uint& hash_tiles, uint& hash_walls, uint& hash_scen );
-    bool   GetMapData( ushort map_pid, ItemVec& items, ushort& maxhx, ushort& maxhy );
+    void   GetMapHash( hash map_pid, uint& hash_tiles, uint& hash_walls, uint& hash_scen );
+    bool   GetMapData( hash map_pid, ItemVec& items, ushort& maxhx, ushort& maxhy );
     bool   ParseScenery( SceneryCl& scen );
     int    GetDayTime();
     int    GetMapTime();
@@ -290,15 +289,15 @@ private:
     void ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item );
 
 public:
-    bool AddItem( uint id, ushort pid, ushort hx, ushort hy, bool is_added, Item::ItemData* data );
-    void ChangeItem( uint id, const Item::ItemData& data );
-    void FinishItem( uint id, bool is_deleted );
-    ItemHexVec::iterator DeleteItem( ItemHex * item, bool with_delete = true );
-    void        PushItem( ItemHex* item );
-    ItemHex*    GetItem( ushort hx, ushort hy, ushort pid );
-    ItemHex*    GetItemById( ushort hx, ushort hy, uint id );
-    ItemHex*    GetItemById( uint id );
-    void        GetItems( ushort hx, ushort hy, ItemHexVec& items );
+    bool                 AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, Item::ItemData* data );
+    void                 ChangeItem( uint id, const Item::ItemData& data );
+    void                 FinishItem( uint id, bool is_deleted );
+    ItemHexVec::iterator DeleteItem( ItemHex* item, bool with_delete = true );
+    void                 PushItem( ItemHex* item );
+    ItemHex*             GetItem( ushort hx, ushort hy, hash pid );
+    ItemHex*             GetItemById( ushort hx, ushort hy, uint id );
+    ItemHex*             GetItemById( uint id );
+    void                 GetItems( ushort hx, ushort hy, ItemHexVec& items );
     ItemHexVec& GetItems() { return hexItems; }
     Rect        GetRectForText( ushort hx, ushort hy );
     void        ProcessItems();
@@ -352,7 +351,7 @@ public:
 
     // Effects
 public:
-    bool RunEffect( ushort eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
+    bool RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
 
     // Rain
 private:
@@ -395,21 +394,21 @@ public:
 public:
     void ClearSelTiles();
     void ParseSelTiles();
-    void SetTile( uint name_hash, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select );
+    void SetTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select );
     void EraseTile( ushort hx, ushort hy, uchar layer, bool is_roof, uint skip_index );
 
     // Ignore pids to draw
 private:
-    UShortSet fastPids;
-    UShortSet ignorePids;
+    HashSet fastPids;
+    HashSet ignorePids;
 
 public:
-    void AddFastPid( ushort pid );
-    bool IsFastPid( ushort pid );
+    void AddFastPid( hash pid );
+    bool IsFastPid( hash pid );
     void ClearFastPids();
-    void AddIgnorePid( ushort pid );
-    void SwitchIgnorePid( ushort pid );
-    bool IsIgnorePid( ushort pid );
+    void AddIgnorePid( hash pid );
+    void SwitchIgnorePid( hash pid );
+    bool IsIgnorePid( hash pid );
     void ClearIgnorePids();
 
     void GetHexesRect( const Rect& rect, UShortPairVec& hexes );

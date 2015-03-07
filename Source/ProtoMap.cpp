@@ -15,6 +15,7 @@
 #define FO_MAP_VERSION_TEXT3    ( 3 )
 #define FO_MAP_VERSION_TEXT4    ( 4 )
 #define FO_MAP_VERSION_TEXT5    ( 5 )
+#define FO_MAP_VERSION_TEXT6    ( 6 )
 
 #define APP_HEADER              "Header"
 #define APP_TILES               "Tiles"
@@ -27,22 +28,23 @@ int MapObject::ConvertParamValue( const char* str )
     if( str[ 0 ] == '$' )
         return ConstantsManager::GetDefineValue( str + 1 );
     if( !Str::IsNumber( str ) )
-        return Str::GetHash( str );
+        return (int) Str::GetHash( str );
     return Str::AtoI( str );
 }
 
-bool ProtoMap::Init( ushort pid, const char* name, int path_type )
+bool ProtoMap::Init( const char* name )
 {
     Clear();
     if( !name || !name[ 0 ] )
         return false;
 
-    pmapPid = pid;
-    pathType = path_type;
     pmapName = name;
+    pmapPid = Str::GetHash( name );
+    if( !pmapPid )
+        return false;
+
     LastObjectUID = 0;
 
-    isInit = true;
     if( !Refresh() )
     {
         Clear();
@@ -97,8 +99,7 @@ void ProtoMap::Clear()
     #endif
     memzero( &Header, sizeof( Header ) );
     pmapName = "";
-    pathType = 0;
-    isInit = false;
+    pmapPid = 0;
 }
 
 bool ProtoMap::LoadTextFormat( const char* buf )
@@ -150,30 +151,30 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                         Header.DayColor[ 11 ] = 29;
                     }
                 }
-                if( field == "MaxHexX" )
+                else if( field == "MaxHexX" )
                     Header.MaxHexX = ivalue;
-                if( field == "MaxHexY" )
+                else if( field == "MaxHexY" )
                     Header.MaxHexY = ivalue;
-                if( field == "WorkHexX" || field == "CenterX" )
+                else if( field == "WorkHexX" || field == "CenterX" )
                     Header.WorkHexX = ivalue;
-                if( field == "WorkHexY" || field == "CenterY" )
+                else if( field == "WorkHexY" || field == "CenterY" )
                     Header.WorkHexY = ivalue;
-                if( field == "Time" )
+                else if( field == "Time" )
                     Header.Time = ivalue;
-                if( field == "NoLogOut" )
+                else if( field == "NoLogOut" )
                     Header.NoLogOut = ( ivalue != 0 );
-                if( field == "ScriptModule" && value != "-" )
+                else if( field == "ScriptModule" && value != "-" )
                     Str::Copy( Header.ScriptModule, value.c_str() );
-                if( field == "ScriptFunc" && value != "-" )
+                else if( field == "ScriptFunc" && value != "-" )
                     Str::Copy( Header.ScriptFunc, value.c_str() );
-                if( field == "DayTime" )
+                else if( field == "DayTime" )
                 {
                     Header.DayTime[ 0 ] = ivalue;
                     istr >> Header.DayTime[ 1 ];
                     istr >> Header.DayTime[ 2 ];
                     istr >> Header.DayTime[ 3 ];
                 }
-                if( field == "DayColor0" )
+                else if( field == "DayColor0" )
                 {
                     Header.DayColor[ 0 ] = ivalue;
                     istr >> ivalue;
@@ -181,7 +182,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                     istr >> ivalue;
                     Header.DayColor[ 8 ] = ivalue;
                 }
-                if( field == "DayColor1" )
+                else if( field == "DayColor1" )
                 {
                     Header.DayColor[ 1 ] = ivalue;
                     istr >> ivalue;
@@ -189,7 +190,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                     istr >> ivalue;
                     Header.DayColor[ 9 ] = ivalue;
                 }
-                if( field == "DayColor2" )
+                else if( field == "DayColor2" )
                 {
                     Header.DayColor[ 2 ] = ivalue;
                     istr >> ivalue;
@@ -197,7 +198,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                     istr >> ivalue;
                     Header.DayColor[ 10 ] = ivalue;
                 }
-                if( field == "DayColor3" )
+                else if( field == "DayColor3" )
                 {
                     Header.DayColor[ 3 ] = ivalue;
                     istr >> ivalue;
@@ -209,8 +210,8 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         }
         delete[] header_str;
     }
-    if( ( Header.Version != FO_MAP_VERSION_TEXT1 && Header.Version != FO_MAP_VERSION_TEXT2 &&
-          Header.Version != FO_MAP_VERSION_TEXT3 && Header.Version != FO_MAP_VERSION_TEXT4 && Header.Version != FO_MAP_VERSION_TEXT5 ) ||
+    if( ( Header.Version != FO_MAP_VERSION_TEXT1 && Header.Version != FO_MAP_VERSION_TEXT2 && Header.Version != FO_MAP_VERSION_TEXT3 &&
+          Header.Version != FO_MAP_VERSION_TEXT4 && Header.Version != FO_MAP_VERSION_TEXT5 && Header.Version != FO_MAP_VERSION_TEXT6 ) ||
         Header.MaxHexX < 1 || Header.MaxHexY < 1 )
         return false;
 
@@ -296,7 +297,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                         layer = 0;
 
                     istr.getline( name, MAX_FOTEXT );
-                    Str::EraseFrontBackSpecificChars( name );
+                    Str::Trim( name );
 
                     Tiles.push_back( Tile( Str::GetHash( name ), hx, hy, ox, oy, layer, is_roof ) );
                 }
@@ -318,6 +319,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         {
             istr >> field;
             istr.getline( svalue, MAX_FOTEXT );
+            Str::Trim( svalue );
 
             if( !istr.fail() )
             {
@@ -364,9 +366,9 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                     else if( field == "LightIntensity" )
                         mobj.LightIntensity = ivalue;
                     else if( field == "ScriptName" )
-                        Str::Copy( mobj.ScriptName, Str::EraseFrontBackSpecificChars( svalue ) );
+                        Str::Copy( mobj.ScriptName, svalue );
                     else if( field == "FuncName" )
-                        Str::Copy( mobj.FuncName, Str::EraseFrontBackSpecificChars( svalue ) );
+                        Str::Copy( mobj.FuncName, svalue );
                     else if( field == "UserData0" )
                         mobj.UserData[ 0 ] = ivalue;
                     else if( field == "UserData1" )
@@ -404,16 +406,16 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                         {
                             if( field.substr( 13, 5 ) == "Index" )
                             {
-                                critter_param_index = ConstantsManager::GetParamId( Str::EraseFrontBackSpecificChars( svalue ) );
+                                critter_param_index = ConstantsManager::GetParamId( svalue );
                             }
                             else if( critter_param_index != -1 )
                             {
                                 if( !mobj.MCritter.Params )
                                     mobj.AllocateCritterParams();
                                 #ifndef FONLINE_MAPPER
-                                mobj.MCritter.Params[ critter_param_index ] = MapObject::ConvertParamValue( Str::EraseFrontBackSpecificChars( svalue ) );
+                                mobj.MCritter.Params[ critter_param_index ] = MapObject::ConvertParamValue( svalue );
                                 #else
-                                *mobj.MCritter.Params[ critter_param_index ] = Str::EraseFrontBackSpecificChars( svalue );
+                                *mobj.MCritter.Params[ critter_param_index ] = svalue;
                                 #endif
                                 critter_param_index = -1;
                             }
@@ -436,16 +438,16 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                         else if( field == "PicMapName" )
                         {
                             #ifdef FONLINE_MAPPER
-                            Str::Copy( mobj.RunTime.PicMapName, Str::EraseFrontBackSpecificChars( svalue ) );
+                            Str::Copy( mobj.RunTime.PicMapName, svalue );
                             #endif
-                            mobj.MItem.PicMapHash = Str::GetHash( Str::EraseFrontBackSpecificChars( svalue ) );
+                            mobj.MItem.PicMap = Str::GetHash( svalue );
                         }
                         else if( field == "PicInvName" )
                         {
                             #ifdef FONLINE_MAPPER
-                            Str::Copy( mobj.RunTime.PicInvName, Str::EraseFrontBackSpecificChars( svalue ) );
+                            Str::Copy( mobj.RunTime.PicInvName, svalue );
                             #endif
-                            mobj.MItem.PicInvHash = Str::GetHash( Str::EraseFrontBackSpecificChars( svalue ) );
+                            mobj.MItem.PicInv = Str::GetHash( svalue );
                         }
                         else if( field == "InfoOffset" )
                             mobj.MItem.InfoOffset = ivalue;
@@ -465,7 +467,11 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                             else if( field == "Item_ItemSlot" )
                                 mobj.MItem.ItemSlot = ivalue;
                             else if( field == "Item_AmmoPid" )
-                                mobj.MItem.AmmoPid = ivalue;
+                            #ifndef FONLINE_MAPPER
+                                mobj.MItem.AmmoPid = MapObject::ConvertParamValue( svalue );
+                            #else
+                                mobj.MItem.AmmoPid = ScriptString::Create( svalue );
+                            #endif
                             else if( field == "Item_AmmoCount" )
                                 mobj.MItem.AmmoCount = ivalue;
                             else if( field == "Item_LockerDoorId" )
@@ -527,8 +533,12 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                                 mobj.MScenery.Param[ 3 ] = ivalue;
                             else if( field == "Scenery_Param4" )
                                 mobj.MScenery.Param[ 4 ] = ivalue;
-                            else if( field == "Scenery_ToMapPid" )
-                                mobj.MScenery.ToMapPid = ivalue;
+                            else if( field == "Scenery_ToMap" || field == "Scenery_ToMapPid" )
+                            #ifndef FONLINE_MAPPER
+                                mobj.MScenery.ToMap = MapObject::ConvertParamValue( svalue );
+                            #else
+                                mobj.MScenery.ToMap = ScriptString::Create( svalue );
+                            #endif
                             else if( field == "Scenery_ToEntire" )
                                 mobj.MScenery.ToEntire = ivalue;
                             else if( field == "Scenery_ToDir" )
@@ -547,6 +557,19 @@ bool ProtoMap::LoadTextFormat( const char* buf )
 }
 
 #ifdef FONLINE_MAPPER
+void WriteStr( FileManager& fm, const char* format, const char* field, ScriptString* str )
+{
+    if( !str || str->length() == 0 )
+        return;
+
+    char buf[ MAX_FOTEXT ];
+    Str::Copy( buf, str->c_str() );
+    Str::Trim( buf );
+
+    if( Str::Length( buf ) )
+        fm.SetStr( format, field, buf );
+}
+
 void ProtoMap::SaveTextFormat( FileManager& fm )
 {
     // Header
@@ -573,7 +596,7 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
     for( uint i = 0, j = (uint) Tiles.size(); i < j; i++ )
     {
         Tile&       tile = Tiles[ i ];
-        const char* name = Str::GetName( tile.NameHash );
+        const char* name = Str::GetName( tile.Name );
         if( name )
         {
             bool has_offs = ( tile.OffsX || tile.OffsY );
@@ -677,7 +700,7 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
                     {
                         char param_str[ MAX_FOTEXT ];
                         Str::Copy( param_str, mobj.MCritter.Params[ i ]->c_str() );
-                        Str::EraseFrontBackSpecificChars( param_str );
+                        Str::Trim( param_str );
                         if( Str::Length( param_str ) > 0 && !( Str::IsNumber( param_str ) && Str::AtoI( param_str ) == 0 ) )
                         {
                             const char* param_name = ConstantsManager::GetParamName( i );
@@ -723,7 +746,7 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
                 if( mobj.MItem.ItemSlot )
                     fm.SetStr( "%-20s %d\n", "Item_ItemSlot", mobj.MItem.ItemSlot );
                 if( mobj.MItem.AmmoPid )
-                    fm.SetStr( "%-20s %d\n", "Item_AmmoPid", mobj.MItem.AmmoPid );
+                    WriteStr( fm, "%-20s %s\n", "Item_AmmoPid", mobj.MItem.AmmoPid );
                 if( mobj.MItem.AmmoCount )
                     fm.SetStr( "%-20s %d\n", "Item_AmmoCount", mobj.MItem.AmmoCount );
                 if( mobj.MItem.LockerDoorId )
@@ -776,8 +799,8 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
                     fm.SetStr( "%-20s %d\n", "Scenery_Param3", mobj.MScenery.Param[ 3 ] );
                 if( mobj.MScenery.Param[ 4 ] )
                     fm.SetStr( "%-20s %d\n", "Scenery_Param4", mobj.MScenery.Param[ 4 ] );
-                if( mobj.MScenery.ToMapPid )
-                    fm.SetStr( "%-20s %d\n", "Scenery_ToMapPid", mobj.MScenery.ToMapPid );
+                if( mobj.MScenery.ToMap )
+                    WriteStr( fm, "%-20s %s\n", "Scenery_ToMap", mobj.MScenery.ToMap );
                 if( mobj.MScenery.ToEntire )
                     fm.SetStr( "%-20s %d\n", "Scenery_ToEntire", mobj.MScenery.ToEntire );
                 if( mobj.MScenery.ToDir )
@@ -976,7 +999,7 @@ void ProtoMap::SaveCache( FileManager& fm )
     // Save
     char fname[ MAX_FOPATH ];
     Str::Format( fname, "%s%sb", pmapName.c_str(), MAP_PROTO_EXT );
-    fm.SaveOutBufToFile( fname, pathType );
+    fm.SaveOutBufToFile( fname, PT_SERVER_MAPS );
 }
 
 void ProtoMap::BindSceneryScript( MapObject* mobj )
@@ -1013,10 +1036,8 @@ void ProtoMap::BindSceneryScript( MapObject* mobj )
 
     if( mobj->RunTime.BindScriptId <= 0 )
     {
-        char map_info[ MAX_FOTEXT ];
-        Str::Format( map_info, "pid<%u>, name<%s>", GetPid(), pmapName.c_str() );
-        WriteLogF( _FUNC_, " - Map<%s>, Can't bind scenery function<%s> in module<%s>. Scenery hexX<%u>, hexY<%u>.\n", map_info,
-                   mobj->FuncName, mobj->ScriptName, mobj->MapX, mobj->MapY );
+        WriteLogF( _FUNC_, " - Map<%s>, Can't bind scenery function<%s> in module<%s>. Scenery hexX<%u>, hexY<%u>.\n",
+                   pmapName.c_str(), mobj->FuncName, mobj->ScriptName, mobj->MapX, mobj->MapY );
         mobj->RunTime.BindScriptId = 0;
     }
 }
@@ -1024,12 +1045,6 @@ void ProtoMap::BindSceneryScript( MapObject* mobj )
 
 bool ProtoMap::Refresh()
 {
-    if( !IsInit() )
-        return false;
-
-    char map_info[ MAX_FOTEXT ];
-    Str::Format( map_info, "pid<%u>, name<%s>", GetPid(), pmapName.c_str() );
-
     // Read
     string fname_txt = pmapName + MAP_PROTO_EXT;
     string fname_bin = pmapName + string( MAP_PROTO_EXT ) + "b";
@@ -1038,17 +1053,17 @@ bool ProtoMap::Refresh()
     #ifdef FONLINE_SERVER
     // Cached binary
     FileManager cached;
-    cached.LoadFile( fname_bin.c_str(), pathType );
+    cached.LoadFile( fname_bin.c_str(), PT_SERVER_MAPS );
 
     // Load text or binary
     FileManager fm;
     bool        text = true;
-    if( !fm.LoadFile( fname_txt.c_str(), pathType ) )
+    if( !fm.LoadFile( fname_txt.c_str(), PT_SERVER_MAPS ) )
     {
         text = false;
-        if( !fm.LoadFile( fname_map.c_str(), pathType ) && !cached.IsLoaded() )
+        if( !fm.LoadFile( fname_map.c_str(), PT_SERVER_MAPS ) && !cached.IsLoaded() )
         {
-            WriteLogF( _FUNC_, " - Load file<%s> fail.\n", FileManager::GetDataPath( pmapName.c_str(), pathType ) );
+            WriteLogF( _FUNC_, " - Load map<%s> fail.\n", pmapName.c_str() );
             return false;
         }
     }
@@ -1072,7 +1087,7 @@ bool ProtoMap::Refresh()
 
             if( !fm.IsLoaded() )
             {
-                WriteLogF( _FUNC_, " - Map<%s>. Can't read cached map file.\n", map_info );
+                WriteLogF( _FUNC_, " - Map<%s>. Can't read cached map file.\n", pmapName.c_str() );
                 return false;
             }
         }
@@ -1082,12 +1097,12 @@ bool ProtoMap::Refresh()
     // Load binary or text
     FileManager fm;
     bool        text = true;
-    if( !fm.LoadFile( fname_txt.c_str(), pathType ) )
+    if( !fm.LoadFile( fname_txt.c_str(), PT_SERVER_MAPS ) )
     {
         text = false;
-        if( !fm.LoadFile( fname_map.c_str(), pathType ) )
+        if( !fm.LoadFile( fname_map.c_str(), PT_SERVER_MAPS ) )
         {
-            WriteLogF( _FUNC_, " - Load file<%s> fail.\n", FileManager::GetDataPath( pmapName.c_str(), pathType ) );
+            WriteLogF( _FUNC_, " - Load map<%s> fail.\n", pmapName.c_str() );
             return false;
         }
     }
@@ -1098,13 +1113,13 @@ bool ProtoMap::Refresh()
     {
         if( !LoadTextFormat( (const char*) fm.GetBuf() ) )
         {
-            WriteLogF( _FUNC_, " - Map<%s>. Can't read text map format.\n", map_info );
+            WriteLogF( _FUNC_, " - Map<%s>. Can't read text map format.\n", pmapName.c_str() );
             return false;
         }
     }
     else
     {
-        WriteLogF( _FUNC_, " - Map<%s>. Binary format is not supported anymore, resave map in earliest version.\n", map_info );
+        WriteLogF( _FUNC_, " - Map<%s>. Binary format is not supported anymore, resave map in earliest version.\n", pmapName.c_str() );
         return false;
     }
     fm.UnloadFile();
@@ -1217,20 +1232,20 @@ bool ProtoMap::Refresh()
             continue;
         }
 
-        ushort     pid = mobj.ProtoId;
-        ushort     hx = mobj.MapX;
-        ushort     hy = mobj.MapY;
+        hash   pid = mobj.ProtoId;
+        ushort hx = mobj.MapX;
+        ushort hy = mobj.MapY;
 
         ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
         if( !proto_item )
         {
-            WriteLogF( _FUNC_, " - Map<%s>, Unknown prototype<%u>, hexX<%u>, hexY<%u>.\n", map_info, pid, hx, hy );
+            WriteLogF( _FUNC_, " - Map<%s>, Unknown prototype<%u>, hexX<%u>, hexY<%u>.\n", pmapName.c_str(), pid, hx, hy );
             continue;
         }
 
         if( hx >= maxhx || hy >= maxhy )
         {
-            WriteLogF( _FUNC_, " - Invalid object position on map<%s>, pid<%u>, hexX<%u>, hexY<%u>.\n", map_info, pid, hx, hy );
+            WriteLogF( _FUNC_, " - Invalid object position on map<%s>, pid<%u>, hexX<%u>, hexY<%u>.\n", pmapName.c_str(), pid, hx, hy );
             continue;
         }
 
@@ -1266,7 +1281,7 @@ bool ProtoMap::Refresh()
             cur_wall.AnimStayBegin = mobj.MScenery.AnimStayBegin;
             cur_wall.AnimStayEnd = mobj.MScenery.AnimStayEnd;
             cur_wall.AnimWait = mobj.MScenery.AnimWait;
-            cur_wall.PicMapHash = mobj.MScenery.PicMapHash;
+            cur_wall.PicMap = mobj.MScenery.PicMap;
             cur_wall.SpriteCut = mobj.MScenery.SpriteCut;
 
             WallsToSend.push_back( cur_wall );
@@ -1311,12 +1326,11 @@ bool ProtoMap::Refresh()
             else                     // ITEM_TYPE_GENERIC
             {
                 // Bind script
-                const char* script = ItemMngr.GetProtoScript( pid );
-                if( script )
+                if( proto_item->ScriptName.length() > 0 )
                 {
                     char script_module[ MAX_SCRIPT_NAME + 1 ];
                     char script_func[ MAX_SCRIPT_NAME + 1 ];
-                    if( Script::ReparseScriptName( script, script_module, script_func ) )
+                    if( Script::ReparseScriptName( proto_item->ScriptName.c_str(), script_module, script_func ) )
                     {
                         Str::Copy( mobj.ScriptName, script_module );
                         Str::Copy( mobj.FuncName, script_func );
@@ -1365,7 +1379,7 @@ bool ProtoMap::Refresh()
             cur_scen.AnimStayBegin = mobj.MScenery.AnimStayBegin;
             cur_scen.AnimStayEnd = mobj.MScenery.AnimStayEnd;
             cur_scen.AnimWait = mobj.MScenery.AnimWait;
-            cur_scen.PicMapHash = mobj.MScenery.PicMapHash;
+            cur_scen.PicMap = mobj.MScenery.PicMap;
             cur_scen.SpriteCut = mobj.MScenery.SpriteCut;
 
             SceneriesToSend.push_back( cur_scen );
@@ -1426,10 +1440,10 @@ bool ProtoMap::Refresh()
         // Convert hashes to names
         if( mobj->MapObjType == MAP_OBJECT_ITEM || mobj->MapObjType == MAP_OBJECT_SCENERY )
         {
-            if( mobj->MItem.PicMapHash && !mobj->RunTime.PicMapName[ 0 ] )
-                Str::Copy( mobj->RunTime.PicMapName, Str::GetName( mobj->MItem.PicMapHash ) );
-            if( mobj->MItem.PicInvHash && !mobj->RunTime.PicInvName[ 0 ] )
-                Str::Copy( mobj->RunTime.PicInvName, Str::GetName( mobj->MItem.PicInvHash ) );
+            if( mobj->MItem.PicMap && !mobj->RunTime.PicMapName[ 0 ] )
+                Str::Copy( mobj->RunTime.PicMapName, Str::GetName( mobj->MItem.PicMap ) );
+            if( mobj->MItem.PicInv && !mobj->RunTime.PicInvName[ 0 ] )
+                Str::Copy( mobj->RunTime.PicInvName, Str::GetName( mobj->MItem.PicInv ) );
         }
 
         // Last UID
@@ -1463,11 +1477,11 @@ bool ProtoMap::Refresh()
 void ProtoMap::GenNew()
 {
     Clear();
-    Header.Version = FO_MAP_VERSION_TEXT5;
+    Header.Version = FO_MAP_VERSION_TEXT6;
     Header.MaxHexX = MAXHEX_DEF;
     Header.MaxHexY = MAXHEX_DEF;
-    pmapPid = 0xFFFF;
-    pathType = PT_SERVER_MAPS;
+    pmapName = "";
+    pmapPid = 0;
 
     // Morning	 5.00 -  9.59	 300 - 599
     // Day		10.00 - 18.59	 600 - 1139
@@ -1494,18 +1508,11 @@ void ProtoMap::GenNew()
     TilesField.resize( Header.MaxHexX * Header.MaxHexY );
     RoofsField.resize( Header.MaxHexX * Header.MaxHexY );
     # endif
-
-    isInit = true;
 }
 
-bool ProtoMap::Save( const char* fname, int path_type, bool keep_name /* = false */ )
+bool ProtoMap::Save( const char* custom_name /* = NULL */ )
 {
-    string pmap_name_old = pmapName;
-
-    if( fname && *fname )
-        pmapName = fname;
-    if( path_type >= 0 )
-        pathType = path_type;
+    string save_fname = ( custom_name && *custom_name ? string( custom_name ) : pmapName ) + MAP_PROTO_EXT;
 
     // Fill tiles from cached fields
     TilesField.resize( Header.MaxHexX * Header.MaxHexY );
@@ -1546,15 +1553,11 @@ bool ProtoMap::Save( const char* fname, int path_type, bool keep_name /* = false
 
     // Save
     FileManager fm;
-    Header.Version = FO_MAP_VERSION_TEXT5;
+    Header.Version = FO_MAP_VERSION_TEXT6;
     SaveTextFormat( fm );
     Tiles.clear();
 
-    string save_fname = pmapName + MAP_PROTO_EXT;
-    if( keep_name )
-        pmapName = pmap_name_old;
-
-    if( !fm.SaveOutBufToFile( save_fname.c_str(), pathType ) )
+    if( !fm.SaveOutBufToFile( save_fname.c_str(), PT_SERVER_MAPS ) )
     {
         WriteLogF( _FUNC_, " - Unable write file.\n" );
         fm.ClearOutBuf();
@@ -1680,7 +1683,7 @@ void ProtoMap::GetEntires( uint num, EntiresVec& entires )
     }
 }
 
-MapObject* ProtoMap::GetMapScenery( ushort hx, ushort hy, ushort pid )
+MapObject* ProtoMap::GetMapScenery( ushort hx, ushort hy, hash pid )
 {
     for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
     {
@@ -1701,7 +1704,7 @@ void ProtoMap::GetMapSceneriesHex( ushort hx, ushort hy, MapObjectPtrVec& mobjs 
     }
 }
 
-void ProtoMap::GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, ushort pid, MapObjectPtrVec& mobjs )
+void ProtoMap::GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, hash pid, MapObjectPtrVec& mobjs )
 {
     for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
     {
@@ -1711,7 +1714,7 @@ void ProtoMap::GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, ushort p
     }
 }
 
-void ProtoMap::GetMapSceneriesByPid( ushort pid, MapObjectPtrVec& mobjs )
+void ProtoMap::GetMapSceneriesByPid( hash pid, MapObjectPtrVec& mobjs )
 {
     for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
     {

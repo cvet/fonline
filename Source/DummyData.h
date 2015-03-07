@@ -217,8 +217,8 @@ struct Item
         int SortValue;
         int Info;
         int Indicator;
-        int PicMapHash;
-        int PicInvHash;
+        int PicMap;
+        int PicInv;
         int AnimWaitBase;
         int AnimStay[ 2 ];
         int AnimShow[ 2 ];
@@ -300,8 +300,8 @@ struct MapObject
         int PicInvDeprecated;
         int InfoOffset;
         int Reserved[ 3 ];
-        int PicMapHash;
-        int PicInvHash;
+        int PicMap;
+        int PicInv;
 
         int Count;
 
@@ -335,8 +335,8 @@ struct MapObject
         int PicInvDeprecated;
         int InfoOffset;
         int Reserved[ 3 ];
-        int PicMapHash;
-        int PicInvHash;
+        int PicMap;
+        int PicInv;
 
         int CanUse;
         int CanTalk;
@@ -345,7 +345,7 @@ struct MapObject
         int ParamsCount;
         int Param[ 5 ];
 
-        int ToMapPid;
+        int ToMap;
         int ToEntire;
         int ToMapX;
         int ToMapY;

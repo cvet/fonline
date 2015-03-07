@@ -136,7 +136,7 @@ int main( int argc, char** argv )
             const char* ptr = Str::Substring( CommandLine, "-logpath " ) + Str::Length( "-logpath " );
             Str::Copy( log_path, ptr );
         }
-        Str::EraseFrontBackSpecificChars( log_path );
+        Str::Trim( log_path );
         Str::Append( log_path, "FOnlineServer.log" );
         LogToFile( log_path );
 
@@ -167,7 +167,7 @@ int main( int argc, char** argv )
     WriteLog( "FOnline server, version %d.\n", FONLINE_VERSION );
 
     FOQuit = true;
-    Script::SetLogDebugInfo( true );
+    Script::SetLogDebugInfo( false );
 
     if( GuiWindow )
     {
@@ -175,7 +175,7 @@ int main( int argc, char** argv )
         GuiCBtnLogging->value( cfg.GetInt( "Logging", 1 ) != 0 ? 1 : 0 );
         GuiCBtnLoggingTime->value( cfg.GetInt( "LoggingTime", 1 ) != 0 ? 1 : 0 );
         GuiCBtnLoggingThread->value( cfg.GetInt( "LoggingThread", 1 ) != 0 ? 1 : 0 );
-        GuiCBtnScriptDebug->value( 1 );
+        GuiCBtnScriptDebug->value( 0 );
     }
 
     // Command line
@@ -1235,7 +1235,7 @@ void AdminWork( void* session_ )
         if( len > 200 )
             len = 200;
         cmd[ len ] = 0;
-        Str::EraseFrontBackSpecificChars( cmd );
+        Str::Trim( cmd );
 
         // Authorization
         if( !s->Authorized )

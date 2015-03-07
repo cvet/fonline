@@ -241,6 +241,12 @@ void Critter::SetLexems( const char* lexems )
     }
 }
 
+void Critter::SetMaps( uint map_id, hash map_pid )
+{
+    Data.MapId = map_id;
+    Data.MapPid = map_pid;
+}
+
 int Critter::RunParamsSendScript( int bind_id, uint param_index, Critter* from_cr, Critter* to_cr )
 {
     if( Script::PrepareContext( bind_id, _FUNC_, from_cr->GetInfo() ) )
@@ -732,8 +738,8 @@ void Critter::ProcessVisibleItems()
     if( !map )
         return;
 
-    int        look = GetLook();
-    ItemPtrVec items = map->GetItemsNoLock();
+    int     look = GetLook();
+    ItemVec items = map->GetItemsNoLock();
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
@@ -882,7 +888,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
     }
 
     // Items
-    ItemPtrVec& items = map->GetItemsNoLock();
+    ItemVec items = map->GetItemsNoLock();
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
@@ -1110,9 +1116,11 @@ bool Critter::CountIdVisItem( uint item_id )
 
 void Critter::SyncLockItems()
 {
-    ItemPtrVec inv_items = invItems;
+    ItemVec inv_items = invItems;
     for( auto it = inv_items.begin(), end = inv_items.end(); it != end; ++it )
         SYNC_LOCK( *it );
+    if( !CompareContainers( inv_items, invItems ) )
+        SyncLockItems();
 }
 
 bool Critter::SetDefaultItems( ProtoItem* proto_hand, ProtoItem* proto_armor )
@@ -1299,7 +1307,7 @@ Item* Critter::GetInvItem( uint item_id, int transfer_type )
     return item;
 }
 
-void Critter::GetInvItems( ItemPtrVec& items, int transfer_type, bool lock )
+void Critter::GetInvItems( ItemVec& items, int transfer_type, bool lock )
 {
     if( transfer_type == TRANSFER_CRIT_LOOT && IsRawParam( MODE_NO_LOOT ) )
         return;
@@ -1321,7 +1329,7 @@ void Critter::GetInvItems( ItemPtrVec& items, int transfer_type, bool lock )
 }
 
 #pragma MESSAGE("Add explicit sync lock.")
-Item* Critter::GetItemByPid( ushort item_pid )
+Item* Critter::GetItemByPid( hash item_pid )
 {
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
@@ -1335,7 +1343,7 @@ Item* Critter::GetItemByPid( ushort item_pid )
     return NULL;
 }
 
-Item* Critter::GetItemByPidSlot( ushort item_pid, int slot )
+Item* Critter::GetItemByPidSlot( hash item_pid, int slot )
 {
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
@@ -1349,7 +1357,7 @@ Item* Critter::GetItemByPidSlot( ushort item_pid, int slot )
     return NULL;
 }
 
-Item* Critter::GetItemByPidInvPriority( ushort item_pid )
+Item* Critter::GetItemByPidInvPriority( hash item_pid )
 {
     ProtoItem* proto_item = ItemMngr.GetProtoItem( item_pid );
     if( !proto_item )
@@ -1449,7 +1457,7 @@ Item* Critter::GetItemSlot( int slot )
     return NULL;
 }
 
-void Critter::GetItemsSlot( int slot, ItemPtrVec& items, bool lock )
+void Critter::GetItemsSlot( int slot, ItemVec& items, bool lock )
 {
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
@@ -1463,7 +1471,7 @@ void Critter::GetItemsSlot( int slot, ItemPtrVec& items, bool lock )
             SYNC_LOCK( *it );
 }
 
-void Critter::GetItemsType( int type, ItemPtrVec& items, bool lock )
+void Critter::GetItemsType( int type, ItemVec& items, bool lock )
 {
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
@@ -1477,7 +1485,7 @@ void Critter::GetItemsType( int type, ItemPtrVec& items, bool lock )
             SYNC_LOCK( *it );
 }
 
-uint Critter::CountItemPid( ushort pid )
+uint Critter::CountItemPid( hash pid )
 {
     uint res = 0;
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
@@ -1765,7 +1773,7 @@ bool Critter::ParseScript( const char* script, bool first_time )
 {
     if( script && script[ 0 ] )
     {
-        uint func_num = Script::BindScriptFuncNum( script, "void %s(Critter&,bool)" );
+        hash func_num = Script::BindScriptFuncNum( script, "void %s(Critter&,bool)" );
         if( !func_num )
         {
             WriteLogF( _FUNC_, " - Script<%s> bind fail, critter<%s>.\n", script, GetInfo() );
@@ -2646,17 +2654,17 @@ void Critter::Send_AutomapsInfo( void* locs_vec, Location* loc )
     if( IsPlayer() )
         ( (Client*) this )->Send_AutomapsInfo( locs_vec, loc );
 }
-void Critter::Send_Follow( uint rule, uchar follow_type, ushort map_pid, uint follow_wait )
+void Critter::Send_Follow( uint rule, uchar follow_type, hash map_pid, uint follow_wait )
 {
     if( IsPlayer() )
         ( (Client*) this )->Send_Follow( rule, follow_type, map_pid, follow_wait );
 }
-void Critter::Send_Effect( ushort eff_pid, ushort hx, ushort hy, ushort radius )
+void Critter::Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius )
 {
     if( IsPlayer() )
         ( (Client*) this )->Send_Effect( eff_pid, hx, hy, radius );
 }
-void Critter::Send_FlyEffect( ushort eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
+void Critter::Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
 {
     if( IsPlayer() )
         ( (Client*) this )->Send_FlyEffect( eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy );
@@ -2982,7 +2990,7 @@ void Critter::SendA_Dir()
     }
 }
 
-void Critter::SendA_Follow( uchar follow_type, ushort map_pid, uint follow_wait )
+void Critter::SendA_Follow( uchar follow_type, hash map_pid, uint follow_wait )
 {
     if( VisCr.empty() )
         return;
@@ -3489,7 +3497,7 @@ Critter* Critter::ScanEnemyStack()
 /* Misc events                                                          */
 /************************************************************************/
 
-void Critter::AddCrTimeEvent( uint func_num, uint rate, uint duration, int identifier )
+void Critter::AddCrTimeEvent( hash func_num, uint rate, uint duration, int identifier )
 {
     if( duration )
         duration += GameOpt.FullSecond;
@@ -3691,7 +3699,7 @@ void Client::Send_AddCritter( Critter* cr )
     uint msg = ( is_npc ? NETMSG_ADD_NPC : NETMSG_ADD_PLAYER );
     uint msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( uint ) + sizeof( ushort ) * 2 +
                    sizeof( uchar ) + sizeof( uchar ) + sizeof( uint ) * 6 + sizeof( uint ) + sizeof( short ) +
-                   ( is_npc ? sizeof( ushort ) + sizeof( uint ) : UTF8_BUF_SIZE( MAX_NAME ) ) + ParamsSendMsgLen;
+                   ( is_npc ? sizeof( hash ) + sizeof( int ) : UTF8_BUF_SIZE( MAX_NAME ) ) + ParamsSendMsgLen;
     int dialog_id = ( is_npc ? cr->Data.Params[ ST_DIALOG_ID ] : 0 );
 
     BOUT_BEGIN( this );
@@ -3761,28 +3769,35 @@ void Client::Send_LoadMap( Map* map )
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    ushort pid_map = 0;
-    int    map_time = -1;
-    uchar  map_rain = 0;
-    uint   hash_tiles = 0;
-    uint   hash_walls = 0;
-    uint   hash_scen = 0;
+    hash  pid_map = 0;
+    hash  pid_loc = 0;
+    uchar map_index_in_loc = 0;
+    int   map_time = -1;
+    uchar map_rain = 0;
+    uint  hash_tiles = 0;
+    uint  hash_walls = 0;
+    uint  hash_scen = 0;
 
     if( !map )
         map = MapMngr.GetMap( GetMap(), false );
     if( map )
     {
         pid_map = map->GetPid();
+        pid_loc = map->GetLocation( false )->GetPid();
+        map_index_in_loc = (uchar) map->GetLocation( false )->GetMapIndex( pid_map );
         map_time = map->GetTime();
         map_rain = map->GetRain();
         hash_tiles = map->Proto->HashTiles;
         hash_walls = map->Proto->HashWalls;
         hash_scen = map->Proto->HashScen;
+
     }
 
     BOUT_BEGIN( this );
     Bout << NETMSG_LOADMAP;
     Bout << pid_map;
+    Bout << pid_loc;
+    Bout << map_index_in_loc;
     Bout << map_time;
     Bout << map_rain;
     Bout << hash_tiles;
@@ -3860,12 +3875,12 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     if( item )
         Send_SomeItem( item );
 
-    uint        msg = NETMSG_CRITTER_MOVE_ITEM;
-    uint        msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( action ) + sizeof( prev_slot ) + sizeof( bool );
+    uint     msg = NETMSG_CRITTER_MOVE_ITEM;
+    uint     msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( action ) + sizeof( prev_slot ) + sizeof( bool );
 
-    uchar       slots_data_count = 0;
-    uchar       slots_data_ext_count = 0;
-    ItemPtrVec& inv = from_cr->GetInventory();
+    uchar    slots_data_count = 0;
+    uchar    slots_data_ext_count = 0;
+    ItemVec& inv = from_cr->GetInventory();
     for( auto it = inv.begin(), end = inv.end(); it != end; ++it )
     {
         Item* item_ = *it;
@@ -3885,7 +3900,7 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
             }
         }
     }
-    msg_len += sizeof( uchar ) + ( sizeof( uchar ) + sizeof( uint ) + sizeof( ushort ) + sizeof( Item::ItemData ) ) * ( slots_data_count + slots_data_ext_count );
+    msg_len += sizeof( uchar ) + ( sizeof( uchar ) + sizeof( uint ) + sizeof( hash ) + sizeof( Item::ItemData ) ) * ( slots_data_count + slots_data_ext_count );
 
     BOUT_BEGIN( this );
     Bout << NETMSG_CRITTER_MOVE_ITEM;
@@ -3976,7 +3991,7 @@ void Client::Send_AddItemOnMap( Item* item )
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    uchar is_added = item->ViewPlaceOnMap;
+    bool is_added = item->ViewPlaceOnMap;
 
     BOUT_BEGIN( this );
     Bout << NETMSG_ADD_ITEM_ON_MAP;
@@ -4086,11 +4101,11 @@ void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open
     if( item_cont->GetType() != ITEM_TYPE_CONTAINER )
         return;
 
-    uint       msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uchar ) + sizeof( uint ) + sizeof( uint ) + sizeof( ushort ) + sizeof( uint );
-    ItemPtrVec items;
+    uint    msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uchar ) + sizeof( uint ) + sizeof( uint ) + sizeof( max_t ) + sizeof( uint );
+    ItemVec items;
     item_cont->ContGetAllItems( items, true, true );
     if( items.size() )
-        msg_len += (uint) items.size() * ( sizeof( uint ) + sizeof( ushort ) + sizeof( Item::ItemData ) );
+        msg_len += (uint) items.size() * ( sizeof( uint ) + sizeof( hash ) + sizeof( Item::ItemData ) );
     if( open_screen )
         SETFLAG( transfer_type, 0x80 );
 
@@ -4100,7 +4115,7 @@ void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open
     Bout << transfer_type;
     Bout << uint( 0 );
     Bout << item_cont->GetId();
-    Bout << item_cont->GetProtoId();
+    Bout << (max_t) item_cont->GetProtoId();
     Bout << uint( items.size() );
 
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
@@ -4127,10 +4142,10 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    uint       msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uchar ) + sizeof( uint ) + sizeof( uint ) + sizeof( ushort ) + sizeof( uint );
-    ItemPtrVec items;
+    uint    msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uchar ) + sizeof( uint ) + sizeof( uint ) + sizeof( max_t ) + sizeof( uint );
+    ItemVec items;
     cr_cont->GetInvItems( items, transfer_type, true );
-    ushort     barter_k = 0;
+    ushort  barter_k = 0;
     if( transfer_type == TRANSFER_CRIT_BARTER )
     {
         if( cr_cont->GetRawParam( SK_BARTER ) > GetRawParam( SK_BARTER ) )
@@ -4142,7 +4157,7 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
 
     if( open_screen )
         SETFLAG( transfer_type, 0x80 );
-    msg_len += (uint) items.size() * ( sizeof( uint ) + sizeof( ushort ) + sizeof( Item::ItemData ) );
+    msg_len += (uint) items.size() * ( sizeof( uint ) + sizeof( hash ) + sizeof( Item::ItemData ) );
 
     BOUT_BEGIN( this );
     Bout << NETMSG_CONTAINER_INFO;
@@ -4150,7 +4165,7 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
     Bout << transfer_type;
     Bout << (uint) Talk.TalkTime;
     Bout << cr_cont->GetId();
-    Bout << barter_k;
+    Bout << (max_t) barter_k;
     Bout << (uint) items.size();
 
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
@@ -4172,7 +4187,7 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
     AccessContainerId = cr_cont->GetId();
 }
 
-#define SEND_LOCATION_SIZE    ( 16 )
+#define SEND_LOCATION_SIZE    ( sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) * 2 + sizeof( ushort ) + sizeof( uint ) + sizeof( uchar ) )
 void Client::Send_GlobalInfo( uchar info_flags )
 {
     if( IsSendDisabled() || IsOffline() )
@@ -4223,6 +4238,7 @@ void Client::Send_GlobalInfo( uchar info_flags )
                 Bout << loc->Data.WY;
                 Bout << loc->Data.Radius;
                 Bout << loc->Data.Color;
+                Bout << (uchar) loc->Proto->Entrance.size();
             }
             else
             {
@@ -4285,6 +4301,7 @@ void Client::Send_GlobalLocation( Location* loc, bool add )
     Bout << loc->Data.WY;
     Bout << loc->Data.Radius;
     Bout << loc->Data.Color;
+    Bout << (uchar) loc->Proto->Entrance.size();
     BOUT_END( this );
 }
 
@@ -4377,7 +4394,7 @@ void Client::Send_Talk()
 
     bool  close = ( Talk.TalkType == TALK_NONE );
     uchar is_npc = ( Talk.TalkType == TALK_WITH_NPC );
-    uint  talk_id = ( is_npc ? Talk.TalkNpc : Talk.DialogPackId );
+    max_t talk_id = ( is_npc ? Talk.TalkNpc : Talk.DialogPackId );
     uint  msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( is_npc ) + sizeof( talk_id ) + sizeof( uchar );
 
     BOUT_BEGIN( this );
@@ -4719,7 +4736,7 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
         for( uint i = 0, j = (uint) locs->size(); i < j; i++ )
         {
             Location* loc_ = ( *locs )[ i ];
-            msg_len += sizeof( uint ) + sizeof( ushort ) + sizeof( ushort ) + sizeof( ushort ) * (uint) loc_->GetAutomaps().size();
+            msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) + ( sizeof( hash ) + sizeof( uchar ) ) * (uint) loc_->GetAutomaps().size();
         }
 
         BOUT_BEGIN( this );
@@ -4729,22 +4746,25 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
         Bout << (ushort) locs->size();
         for( uint i = 0, j = (uint) locs->size(); i < j; i++ )
         {
-            Location*  loc_ = ( *locs )[ i ];
-            UShortVec& automaps = loc_->GetAutomaps();
+            Location* loc_ = ( *locs )[ i ];
+            HashVec&  automaps = loc_->GetAutomaps();
             Bout << loc_->GetId();
             Bout << loc_->GetPid();
             Bout << (ushort) automaps.size();
             for( uint k = 0, l = (uint) automaps.size(); k < l; k++ )
+            {
                 Bout << automaps[ k ];
+                Bout << (uchar) loc_->GetMapIndex( automaps[ k ] );
+            }
         }
         BOUT_END( this );
     }
 
     if( loc )
     {
-        UShortVec& automaps = loc->GetAutomaps();
-        uint       msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( bool ) + sizeof( ushort ) +
-                             sizeof( uint ) + sizeof( ushort ) + sizeof( ushort ) + sizeof( ushort ) * (uint) automaps.size();
+        HashVec& automaps = loc->GetAutomaps();
+        uint     msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( bool ) + sizeof( ushort ) +
+                           sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) + ( sizeof( hash ) + sizeof( uchar ) ) * (uint) automaps.size();
 
         BOUT_BEGIN( this );
         Bout << NETMSG_AUTOMAPS_INFO;
@@ -4755,12 +4775,15 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
         Bout << loc->GetPid();
         Bout << (ushort) automaps.size();
         for( uint i = 0, j = (uint) automaps.size(); i < j; i++ )
+        {
             Bout << automaps[ i ];
+            Bout << (uchar) loc->GetMapIndex( automaps[ i ] );
+        }
         BOUT_END( this );
     }
 }
 
-void Client::Send_Follow( uint rule, uchar follow_type, ushort map_pid, uint follow_wait )
+void Client::Send_Follow( uint rule, uchar follow_type, hash map_pid, uint follow_wait )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
@@ -4774,7 +4797,7 @@ void Client::Send_Follow( uint rule, uchar follow_type, ushort map_pid, uint fol
     BOUT_END( this );
 }
 
-void Client::Send_Effect( ushort eff_pid, ushort hx, ushort hy, ushort radius )
+void Client::Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
@@ -4788,7 +4811,7 @@ void Client::Send_Effect( ushort eff_pid, ushort hx, ushort hy, ushort radius )
     BOUT_END( this );
 }
 
-void Client::Send_FlyEffect( ushort eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
+void Client::Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
@@ -5068,7 +5091,7 @@ bool Client::CheckKnownLocById( uint loc_id )
     return false;
 }
 
-bool Client::CheckKnownLocByPid( ushort loc_pid )
+bool Client::CheckKnownLocByPid( hash loc_pid )
 {
     if( !loc_pid )
         return false;
@@ -5383,13 +5406,14 @@ void Npc::RefreshBag()
     SyncLockItems();
 
     // Collect pids and count
-    static THREAD uint pids[ MAX_ITEM_PROTOTYPES ];
-    memzero( &pids, sizeof( pids ) );
-
+    HashUIntMap pids;
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        pids[ item->GetProtoId() ] += item->GetCount();
+        if( pids.count( item->GetProtoId() ) )
+            pids[ item->GetProtoId() ] += item->GetCount();
+        else
+            pids[ item->GetProtoId() ] = item->GetCount();
 
         // Repair/reload item in slots
         if( item->AccCritter.Slot != SLOT_INV )
@@ -5406,15 +5430,15 @@ void Npc::RefreshBag()
     {
         // Erase not grouped items
         uint need_count = Random( 2, 4 );
-        for( uint i = 0; i < MAX_ITEM_PROTOTYPES; i++ )
+        for( auto it = pids.begin(), end = pids.end(); it != end; ++it )
         {
-            if( pids[ i ] <= need_count )
+            if( ( *it ).second <= need_count )
                 continue;
-            ProtoItem* proto_item = ItemMngr.GetProtoItem( i );
+            ProtoItem* proto_item = ItemMngr.GetProtoItem( ( *it ).first );
             if( !proto_item || proto_item->Stackable )
                 continue;
-            ItemMngr.SetItemCritter( this, i, need_count );
-            pids[ i ] = need_count;
+            ItemMngr.SetItemCritter( this, ( *it ).first, need_count );
+            ( *it ).second = need_count;
             need_count = Random( 2, 4 );
         }
     }
@@ -5433,7 +5457,8 @@ void Npc::RefreshBag()
         {
             NpcBagItem& item = Data.Bag[ k ];
             uint        count = item.MinCnt;
-            if( pids[ item.ItemPid ] > count )
+            auto        it = pids.find( item.ItemPid );
+            if( it != pids.end() && ( *it ).second > count )
                 continue;
             if( item.MinCnt != item.MaxCnt )
                 count = Random( item.MinCnt, item.MaxCnt );
@@ -5459,14 +5484,16 @@ void Npc::RefreshBag()
                 for( uint l = 0; l < items.size(); l++ )
                 {
                     NpcBagItem& item = items[ l ];
-                    if( pids[ item.ItemPid ] > 0 )
+                    auto        it = pids.find( item.ItemPid );
+                    if( it != pids.end() && ( *it ).second > 0 )
                     {
                         // Update cur items
                         for( uint k = 0; k < items.size(); k++ )
                         {
                             NpcBagItem& item_ = items[ k ];
                             uint        count = item_.MinCnt;
-                            if( pids[ item_.ItemPid ] > count )
+                            auto        it_ = pids.find( item_.ItemPid );
+                            if( it_ != pids.end() && ( *it_ ).second > count )
                                 continue;
                             if( item_.MinCnt != item_.MaxCnt )
                                 count = Random( item_.MinCnt, item_.MaxCnt );
@@ -5493,7 +5520,6 @@ label_EndCycles:
                     uint        count = bag_item.MinCnt;
                     if( bag_item.MinCnt != bag_item.MaxCnt )
                         count = Random( bag_item.MinCnt, bag_item.MaxCnt );
-                    // if(pids[bag_item.ItemPid]<count) TODO: need???
                     if( ItemMngr.SetItemCritter( this, bag_item.ItemPid, count ) )
                     {
                         // Move bag_item

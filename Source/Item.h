@@ -21,9 +21,6 @@ class MapObject;
 extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 
 // Prototypes
-#define MAX_ITEM_PROTOTYPES           ( 30000 )
-#define PROTO_ITEM_DEFAULT_EXT        ".pro"
-#define PROTO_ITEM_FILENAME           "proto.fopro_"
 #define ITEM_MAX_SCRIPT_VALUES        ( 10 )
 
 // Types
@@ -54,16 +51,6 @@ extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 #define ITEM_ACCESSORY_CRITTER        ( 1 )
 #define ITEM_ACCESSORY_HEX            ( 2 )
 #define ITEM_ACCESSORY_CONTAINER      ( 3 )
-
-// Damage types
-#define DAMAGE_TYPE_UNCALLED          ( 0 )
-#define DAMAGE_TYPE_NORMAL            ( 1 )
-#define DAMAGE_TYPE_LASER             ( 2 )
-#define DAMAGE_TYPE_FIRE              ( 3 )
-#define DAMAGE_TYPE_PLASMA            ( 4 )
-#define DAMAGE_TYPE_ELECTR            ( 5 )
-#define DAMAGE_TYPE_EMP               ( 6 )
-#define DAMAGE_TYPE_EXPLODE           ( 7 )
 
 // Uses
 #define USE_PRIMARY                   ( 0 )
@@ -116,16 +103,6 @@ extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 #define ITEM_HOLODISK                 ( 0x20000000 )
 #define ITEM_RADIO                    ( 0x40000000 )
 #define ITEM_CACHED                   ( 0x80000000 ) // Not used
-
-// Material
-#define MATERIAL_GLASS                ( 0 )
-#define MATERIAL_METAL                ( 1 )
-#define MATERIAL_PLASTIC              ( 2 )
-#define MATERIAL_WOOD                 ( 3 )
-#define MATERIAL_DIRT                 ( 4 )
-#define MATERIAL_STONE                ( 5 )
-#define MATERIAL_CEMENT               ( 6 )
-#define MATERIAL_LEATHER              ( 7 )
 
 // Item deterioration info
 #define MAX_DETERIORATION             ( 10000 )
@@ -183,10 +160,10 @@ class ProtoItem
 {
 public:
     // Internal data
-    ushort ProtoId;
+    hash   ProtoId;
     int    Type;
-    uint   PicMap;
-    uint   PicInv;
+    hash   PicMap;
+    hash   PicInv;
     uint   Flags;
     bool   Stackable;
     bool   Deteriorable;
@@ -223,7 +200,7 @@ public:
     uint   HolodiskNum;
     int    StartValue[ ITEM_MAX_SCRIPT_VALUES ];
     uchar  BlockLines[ ITEM_MAX_BLOCK_LINES ];
-    ushort ChildPid[ ITEM_MAX_CHILDS ];
+    hash   ChildPid[ ITEM_MAX_CHILDS ];
     uchar  ChildLines[ ITEM_MAX_CHILDS ][ ITEM_MAX_CHILD_LINES ];
 
     // User data, binded with 'bindfield' pragma
@@ -239,12 +216,12 @@ public:
     uint   Weapon_Anim1;
     uint   Weapon_MaxAmmoCount;
     int    Weapon_Caliber;
-    ushort Weapon_DefaultAmmoPid;
+    hash   Weapon_DefaultAmmoPid;
     int    Weapon_MinStrength;
     int    Weapon_Perk;
     uint   Weapon_ActiveUses;
     int    Weapon_Skill[ MAX_USES ];
-    uint   Weapon_PicUse[ MAX_USES ];
+    hash   Weapon_PicUse[ MAX_USES ];
     uint   Weapon_MaxDist[ MAX_USES ];
     uint   Weapon_Round[ MAX_USES ];
     uint   Weapon_ApCost[ MAX_USES ];
@@ -273,9 +250,6 @@ public:
     void AddRef()  {}
     void Release() {}
 
-    void Clear()   { memzero( this, sizeof( ProtoItem ) ); }
-    uint GetHash() { return Crypt.Crc32( (uchar*) this, sizeof( ProtoItem ) ); }
-
     bool IsItem() { return !IsScen() && !IsWall() && !IsGrid(); }
     bool IsScen() { return Type == ITEM_TYPE_GENERIC; }
     bool IsWall() { return Type == ITEM_TYPE_WALL; }
@@ -301,12 +275,14 @@ public:
     }
     bool IsCanPickUp() { return FLAG( Flags, ITEM_CAN_PICKUP ); }
 
-    bool operator==( const ushort& _r ) { return ( ProtoId == _r ); }
-    ProtoItem() { Clear(); }
-
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
     uint GetCurSprId();
     #endif
+
+    ProtoItem() { memzero( this, OFFSETOF( ProtoItem, InstanceCount ) + sizeof( InstanceCount ) ); }
+    bool operator==( const hash& pid ) { return ( ProtoId == pid ); }
+
+    int64 InstanceCount;
 
     #ifdef FONLINE_OBJECT_EDITOR
     string ScriptModule;
@@ -318,16 +294,20 @@ public:
     #endif
 
     #ifdef FONLINE_MAPPER
-    char* CollectionName;
+    string CollectionName;
+    #endif
+
+    #ifdef FONLINE_SERVER
+    string ScriptName;
     #endif
 };
 
-typedef vector< ProtoItem > ProtoItemVec;
+typedef vector< ProtoItem* >    ProtoItemVec;
+typedef map< hash, ProtoItem* > ProtoItemMap;
 
 class Item;
-typedef map< uint, Item* >  ItemPtrMap;
-typedef vector< Item* >     ItemPtrVec;
-typedef vector< Item >      ItemVec;
+typedef map< uint, Item* >      ItemMap;
+typedef vector< Item* >         ItemVec;
 
 /************************************************************************/
 /* Item                                                                 */
@@ -367,15 +347,15 @@ public:
         char AccBuffer[ 8 ];
     };
 
-    struct ItemData     // 120, size used in NetProto.h
+    struct ItemData     // size used in NetProto.h
     {
         static char SendMask[ ITEM_DATA_MASK_MAX ][ 120 ];
 
         ushort      SortValue;
         uchar       Info;
         uchar       Indicator;
-        uint        PicMapHash;
-        uint        PicInvHash;
+        hash        PicMap;
+        hash        PicInv;
         ushort      AnimWaitBase;
         uchar       AnimStay[ 2 ];
         uchar       AnimShow[ 2 ];
@@ -386,15 +366,16 @@ public:
         uchar       LightDistance;
         uchar       LightFlags;
         uint        LightColor;
-        uint        ScriptId;
+        hash        ScriptId;
         uint        Count;
         uint        Cost;
         int         ScriptValues[ ITEM_MAX_SCRIPT_VALUES ];
         uchar       BrokenFlags;
         uchar       BrokenCount;
         ushort      Deterioration;
-        ushort      AmmoPid;
+        hash        AmmoPid;
         ushort      AmmoCount;
+        short       TrapValue;
         uint        LockerId;
         ushort      LockerCondition;
         ushort      LockerComplexity;
@@ -406,19 +387,17 @@ public:
         ushort      Charge;
         short       OffsetX;
         short       OffsetY;
-        short       TrapValue;
-        char        Reserved[ 2 ];
     } Data;
 
     short RefCounter;
     bool  IsNotValid;
 
     #ifdef FONLINE_SERVER
-    int         FuncId[ ITEM_EVENT_MAX ];
-    Critter*    ViewByCritter;
-    ItemPtrVec* ChildItems;
-    char*       PLexems;
-    SyncObject  Sync;
+    int        FuncId[ ITEM_EVENT_MAX ];
+    Critter*   ViewByCritter;
+    ItemVec*   ChildItems;
+    char*      PLexems;
+    SyncObject Sync;
     #endif
     #ifdef FONLINE_CLIENT
     ScriptString* Lexems;
@@ -444,17 +423,16 @@ public:
 
     void        Init( ProtoItem* proto );
     Item*       Clone();
-    void        SetSortValue( ItemPtrVec& items );
-    static void SortItems( ItemPtrVec& items );
+    void        SetSortValue( ItemVec& items );
     static void SortItems( ItemVec& items );
+    static void ClearItems( ItemVec& items );
 
     // All
-    uint   GetId()            { return Id; }
-    ushort GetProtoId()       { return Proto->ProtoId; }
-    uint   GetInfo()          { return Proto->ProtoId * 100 + Data.Info; }
-    uint   GetPicMap()        { return Data.PicMapHash ? Data.PicMapHash : Proto->PicMap; }
-    uint   GetPicInv()        { return Data.PicInvHash ? Data.PicInvHash : Proto->PicInv; }
-    bool   IsValidAccessory() { return Accessory == ITEM_ACCESSORY_CRITTER || Accessory == ITEM_ACCESSORY_HEX || Accessory == ITEM_ACCESSORY_CONTAINER; }
+    uint GetId()            { return Id; }
+    hash GetProtoId()       { return Proto->ProtoId; }
+    hash GetPicMap()        { return Data.PicMap ? Data.PicMap : Proto->PicMap; }
+    hash GetPicInv()        { return Data.PicInv ? Data.PicInv : Proto->PicInv; }
+    bool IsValidAccessory() { return Accessory == ITEM_ACCESSORY_CRITTER || Accessory == ITEM_ACCESSORY_HEX || Accessory == ITEM_ACCESSORY_CONTAINER; }
 
     uint GetCount();
     void Count_Set( uint val );
@@ -497,7 +475,6 @@ public:
     uint GetWeight1st() { return Proto->Weight; }
     uint GetCost()      { return GetCount() * GetCost1st(); }
     uint GetCost1st();
-    // uint GetCost1st(){return Data.Cost?Data.Cost:Proto->Cost;}
 
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
     uint GetCurSprId();
@@ -528,7 +505,7 @@ public:
     bool WeapIsEmpty()               { return !Data.AmmoCount; }
     bool WeapIsFull()                { return Data.AmmoCount >= Proto->Weapon_MaxAmmoCount; }
     uint WeapGetAmmoCount()          { return Data.AmmoCount; }
-    uint WeapGetAmmoPid()            { return Data.AmmoPid; }
+    hash WeapGetAmmoPid()            { return Data.AmmoPid; }
     uint WeapGetMaxAmmoCount()       { return Proto->Weapon_MaxAmmoCount; }
     int  WeapGetAmmoCaliber()        { return Proto->Weapon_Caliber; }
     bool WeapIsUseAviable( int use ) { return use >= USE_PRIMARY && use <= USE_THIRD ? ( ( ( Proto->Weapon_ActiveUses >> use ) & 1 ) != 0 ) : false; }
@@ -545,9 +522,9 @@ public:
     void  ContSetItem( Item* item );
     void  ContEraseItem( Item* item );
     Item* ContGetItem( uint item_id, bool skip_hide );
-    void  ContGetAllItems( ItemPtrVec& items, bool skip_hide, bool sync_lock );
-    Item* ContGetItemByPid( ushort pid, uint stack_id );
-    void  ContGetItems( ItemPtrVec& items, uint stack_id, bool sync_lock );
+    void  ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock );
+    Item* ContGetItemByPid( hash pid, uint stack_id );
+    void  ContGetItems( ItemVec& items, uint stack_id, bool sync_lock );
     int   ContGetFreeVolume( uint stack_id );
     bool  ContIsItems();
     #endif

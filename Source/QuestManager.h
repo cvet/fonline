@@ -48,13 +48,14 @@ public:
     Quest* AddQuest( ushort num, string info )
     {
         quests.push_back( Quest( num, info ) );
-        return &quests[ quests.size() - 1 ];
         ReparseText();
+        return &quests[ quests.size() - 1 ];
     }
     void RefreshQuest( ushort num, string str )
     {
         Quest* quest = GetQuest( num );
-        if( !quest ) return;
+        if( !quest )
+            return;
         quest->str = str;
         ReparseText();
     }
@@ -66,14 +67,15 @@ public:
     void EraseQuest( ushort num )
     {
         auto it = std::find( quests.begin(), quests.end(), num );
-        if( it != quests.end() ) quests.erase( it );
+        if( it != quests.end() )
+            quests.erase( it );
         ReparseText();
     }
     QuestVec*   GetQuests() { return &quests; }
     const char* GetText()   { return text.c_str(); }
     QuestTab( FOMsg* _msg ): msg( _msg ) {}
 };
-typedef map< string, QuestTab, less< string > > QuestTabMap;
+typedef map< string, QuestTab > QuestTabMap;
 
 class QuestManager
 {
@@ -99,36 +101,42 @@ public:
         ushort val = num % QUEST_MUL;
 
         // Check valid Name of Tab
-        if( !msg->Count( STR_QUEST_MAP_( q_num ) ) ) return;
+        if( !msg->Count( STR_QUEST_MAP( q_num ) ) )
+            return;
 
         // Get Name of Tab
-        string tab_name = string( msg->GetStr( STR_QUEST_MAP_( q_num ) ) );
+        string tab_name = string( msg->GetStr( STR_QUEST_MAP( q_num ) ) );
 
         // Try get Tab
         QuestTab* tab = NULL;
         auto      it_tab = tabs.find( tab_name );
-        if( it_tab != tabs.end() ) tab = &( *it_tab ).second;
+        if( it_tab != tabs.end() )
+            tab = &( *it_tab ).second;
 
         // Try get Quest
         Quest* quest = NULL;
-        if( tab ) quest = tab->GetQuest( q_num );
+        if( tab )
+            quest = tab->GetQuest( q_num );
 
-        // Erase	quest
+        // Erase quest
         if( !val )
         {
             if( tab )
             {
                 tab->EraseQuest( q_num );
-                if( tab->IsEmpty() ) tabs.erase( tab_name );
+                if( tab->IsEmpty() )
+                    tabs.erase( tab_name );
             }
             return;
         }
 
         // Add Tab if not exists
-        if( !tab ) tab = &( *( tabs.insert( PAIR( tab_name, QuestTab( msg ) ) ) ).first ).second;
+        if( !tab )
+            tab = &( *( tabs.insert( PAIR( tab_name, QuestTab( msg ) ) ) ).first ).second;
 
         // Add Quest if not exists
-        if( !quest ) quest = tab->AddQuest( q_num, string( msg->GetStr( STR_QUEST_INFO_( q_num ) ) ) );
+        if( !quest )
+            quest = tab->AddQuest( q_num, string( msg->GetStr( STR_QUEST_INFO( q_num ) ) ) );
 
         // Get name of quest
         tab->RefreshQuest( q_num, string( msg->GetStr( num ) ) );
@@ -141,14 +149,16 @@ public:
 
     QuestTab* GetTab( uint tab_num )
     {
-        if( tabs.empty() ) return NULL;
+        if( tabs.empty() )
+            return NULL;
 
         auto it = tabs.begin();
         while( tab_num )
         {
             ++it;
             --tab_num;
-            if( it == tabs.end() ) return NULL;
+            if( it == tabs.end() )
+                return NULL;
         }
 
         return &( *it ).second;
@@ -162,8 +172,9 @@ public:
 
     Quest* GetQuest( uint num )
     {
-        if( !msg->Count( STR_QUEST_MAP_( num / QUEST_MUL ) ) ) return NULL;
-        string tab_name = string( msg->GetStr( STR_QUEST_MAP_( num / QUEST_MUL ) ) );
+        if( !msg->Count( STR_QUEST_MAP( num / QUEST_MUL ) ) )
+            return NULL;
+        string tab_name = string( msg->GetStr( STR_QUEST_MAP( num / QUEST_MUL ) ) );
         auto   it_tab = tabs.find( tab_name );
         return it_tab != tabs.end() ? ( *it_tab ).second.GetQuest( num / QUEST_MUL ) : NULL;
     }

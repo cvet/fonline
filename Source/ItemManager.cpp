@@ -21,16 +21,9 @@ bool ItemManager::Init()
 {
     WriteLog( "Item manager initialization...\n" );
 
-    if( IsInit() )
-    {
-        WriteLog( "already init.\n" );
-        return true;
-    }
-
     Clear();
-    ClearProtos();
+    allProto.clear();
 
-    isActive = true;
     WriteLog( "Item manager initialization complete.\n" );
     return true;
 }
@@ -39,16 +32,10 @@ void ItemManager::Finish()
 {
     WriteLog( "Item manager finish...\n" );
 
-    if( !isActive )
-    {
-        WriteLog( "already finish or not init.\n" );
-        return;
-    }
-
     #ifdef FONLINE_SERVER
     ItemGarbager();
 
-    ItemPtrMap items = gameItems;
+    ItemMap items = gameItems;
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = ( *it ).second;
@@ -59,9 +46,8 @@ void ItemManager::Finish()
     #endif
 
     Clear();
-    ClearProtos();
+    allProto.clear();
 
-    isActive = false;
     WriteLog( "Item manager finish complete.\n" );
 }
 
@@ -76,9 +62,6 @@ void ItemManager::Clear()
     itemToDeleteCount.clear();
     lastItemId = 0;
     #endif
-
-    for( int i = 0; i < MAX_ITEM_PROTOTYPES; i++ )
-        itemCount[ i ] = 0;
 }
 
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_OBJECT_EDITOR ) || defined ( FONLINE_MAPPER )
@@ -114,15 +97,16 @@ bool ItemManager::LoadProtos()
     }
     fm.UnloadFile();
 
-    uint         loaded = 0;
-    ProtoItemVec item_protos;
-    ClearProtos();
+    allProto.clear();
+
+    uint loaded = 0;
     for( int i = 0; i < count; i++ )
     {
         char collection_name[ MAX_FOPATH ];
         Str::Format( collection_name, "%03d - %s", i + 1, fnames[ i ].c_str() );
         FileManager::EraseExtension( collection_name );
 
+        ProtoItemVec item_protos;
         if( LoadProtos( item_protos, fnames[ i ].c_str() ) )
         {
             ParseProtos( item_protos, collection_name );
@@ -136,8 +120,6 @@ bool ItemManager::LoadProtos()
 
 bool ItemManager::LoadProtos( ProtoItemVec& protos, const char* fname )
 {
-    protos.clear();
-
     IniParser fopro;
     if( !fopro.LoadFile( fname, PT_SERVER_PRO_ITEMS ) )
     {
@@ -145,15 +127,14 @@ bool ItemManager::LoadProtos( ProtoItemVec& protos, const char* fname )
         return false;
     }
 
-    ProtoItem proto_item;
-    char      svalue[ MAX_FOTEXT ];
-    char      name_[ MAX_FOTEXT ]; // For deprecated conversion
+    char svalue[ MAX_FOTEXT ];
+    char name_[ MAX_FOTEXT ];      // For deprecated conversion
     while( true )
     {
         if( !fopro.GotoNextApp( "Proto" ) )
             break;
 
-        proto_item.Clear();
+        ProtoItem*       proto_item = new ProtoItem();
         bool             deprecated = fopro.GetStr( "Proto", "Pid", "", svalue ); // Detect deprecated by 'Pid', instead new 'ProtoId'
         asIScriptEngine* engine = Script::GetEngine();
         asIObjectType*   ot = engine->GetObjectTypeById( engine->GetTypeIdByDecl( "ProtoItem" ) );
@@ -279,16 +260,16 @@ bool ItemManager::LoadProtos( ProtoItemVec& protos, const char* fname )
                 uint   max_count;
                 if( Str::Compare( name, "BlockLines" ) )
                 {
-                    lines = proto_item.BlockLines;
-                    max_count = sizeof( proto_item.BlockLines );
+                    lines = proto_item->BlockLines;
+                    max_count = sizeof( proto_item->BlockLines );
                 }
                 else
                 {
                     int child_index = name[ 11 ] - '0';
                     if( child_index < 0 || child_index >= ITEM_MAX_CHILDS )
                         continue;
-                    lines = proto_item.ChildLines[ child_index ];
-                    max_count = sizeof( proto_item.ChildLines[ child_index ] );
+                    lines = proto_item->ChildLines[ child_index ];
+                    max_count = sizeof( proto_item->ChildLines[ child_index ] );
 
                     // Convert dir-dir-dir to dir-1-dir-1-dir-1
                     if( deprecated )
@@ -327,16 +308,16 @@ bool ItemManager::LoadProtos( ProtoItemVec& protos, const char* fname )
                 switch( size )
                 {
                 case sizeof( uchar ):
-                    *(uchar*) ( ( (uchar*) &proto_item ) + offset ) = ResolveProtoValue< uchar >( svalue );
+                    *(uchar*) ( ( (uchar*) proto_item ) + offset ) = ResolveProtoValue< uchar >( svalue );
                     break;
                 case sizeof( ushort ):
-                    *(ushort*) ( ( (uchar*) &proto_item ) + offset ) = ResolveProtoValue< ushort >( svalue );
+                    *(ushort*) ( ( (uchar*) proto_item ) + offset ) = ResolveProtoValue< ushort >( svalue );
                     break;
                 case sizeof( uint ):
-                    *(uint*) ( ( (uchar*) &proto_item ) + offset ) = ResolveProtoValue< uint >( svalue );
+                    *(uint*) ( ( (uchar*) proto_item ) + offset ) = ResolveProtoValue< uint >( svalue );
                     break;
                 case sizeof( int64 ):
-                    *(int64*) ( ( (uchar*) &proto_item ) + offset ) = ResolveProtoValue< int64 >( svalue );
+                    *(int64*) ( ( (uchar*) proto_item ) + offset ) = ResolveProtoValue< int64 >( svalue );
                     break;
                 default:
                     break;
@@ -349,68 +330,64 @@ bool ItemManager::LoadProtos( ProtoItemVec& protos, const char* fname )
             // Car
             if( fopro.GetStr( "Proto", "MiscEx.IsCar", "", svalue ) )
             {
-                proto_item.Type = ITEM_TYPE_CAR;
-                proto_item.ChildPid[ 0 ] = proto_item.StartValue[ 1 ];
-                proto_item.ChildPid[ 1 ] = proto_item.StartValue[ 2 ];
-                proto_item.ChildPid[ 2 ] = proto_item.StartValue[ 3 ];
-                proto_item.StartValue[ 1 ] = proto_item.StartValue[ 2 ] = proto_item.StartValue[ 3 ];
+                proto_item->Type = ITEM_TYPE_CAR;
+                proto_item->ChildPid[ 0 ] = proto_item->StartValue[ 1 ];
+                proto_item->ChildPid[ 1 ] = proto_item->StartValue[ 2 ];
+                proto_item->ChildPid[ 2 ] = proto_item->StartValue[ 3 ];
+                proto_item->StartValue[ 1 ] = proto_item->StartValue[ 2 ] = proto_item->StartValue[ 3 ];
             }
 
             // Stacking, Deteriorating
-            if( proto_item.Type == ITEM_TYPE_AMMO || proto_item.Type == ITEM_TYPE_DRUG ||
-                proto_item.Type == ITEM_TYPE_MISC )
-                proto_item.Stackable = true;
-            if( proto_item.Type == ITEM_TYPE_WEAPON )
+            if( proto_item->Type == ITEM_TYPE_AMMO || proto_item->Type == ITEM_TYPE_DRUG || proto_item->Type == ITEM_TYPE_MISC )
+                proto_item->Stackable = true;
+            if( proto_item->Type == ITEM_TYPE_WEAPON )
             {
                 if( fopro.GetStr( "Proto", "Weapon.NoWear", "", svalue ) )
-                    proto_item.Stackable = true;
+                    proto_item->Stackable = true;
                 else
-                    proto_item.Deteriorable = true;
+                    proto_item->Deteriorable = true;
             }
-            if( proto_item.Type == ITEM_TYPE_ARMOR )
-                proto_item.Deteriorable = true;
+            if( proto_item->Type == ITEM_TYPE_ARMOR )
+                proto_item->Deteriorable = true;
 
             // ITEM_TYPE_MISC_EX (6)
-            if( proto_item.Type == 6 )
-                proto_item.Type = ITEM_TYPE_MISC;
+            if( proto_item->Type == 6 )
+                proto_item->Type = ITEM_TYPE_MISC;
 
             // IsGroundLevel
-            proto_item.GroundLevel = true;
-            if( proto_item.Type == ITEM_TYPE_CONTAINER )
-                proto_item.GroundLevel = ( proto_item.Container_MagicHandsGrnd ? true : false );
-            else if( proto_item.IsDoor() || proto_item.IsCar() || proto_item.IsScen() ||
-                     proto_item.IsGrid() || !proto_item.IsCanPickUp() )
-                proto_item.GroundLevel = false;
+            proto_item->GroundLevel = true;
+            if( proto_item->Type == ITEM_TYPE_CONTAINER )
+                proto_item->GroundLevel = ( proto_item->Container_MagicHandsGrnd ? true : false );
+            else if( proto_item->IsDoor() || proto_item->IsCar() || proto_item->IsScen() ||
+                     proto_item->IsGrid() || !proto_item->IsCanPickUp() )
+                proto_item->GroundLevel = false;
 
             // Unarmed
-            if( proto_item.Weapon_IsUnarmed )
+            if( proto_item->Weapon_IsUnarmed )
             {
-                proto_item.Stackable = false;
-                proto_item.Deteriorable = false;
+                proto_item->Stackable = false;
+                proto_item->Deteriorable = false;
             }
 
             // No open container
             if( fopro.GetStr( "Proto", "Container.IsNoOpen", "", svalue ) )
-                SETFLAG( proto_item.Locker_Condition, LOCKER_NOOPEN );
+                SETFLAG( proto_item->Locker_Condition, LOCKER_NOOPEN );
         }
 
-        if( proto_item.ProtoId )
+        if( proto_item->ProtoId )
         {
             // Check script
-            SAFEDELA( protoScript[ proto_item.ProtoId ] );
+            # ifdef FONLINE_SERVER
             char script_module[ MAX_SCRIPT_NAME + 1 ];
             char script_func[ MAX_SCRIPT_NAME + 1 ];
             fopro.GetStr( "Proto", "ScriptModule", "", script_module );
             fopro.GetStr( "Proto", "ScriptFunc", "", script_func );
             if( script_module[ 0 ] && script_func[ 0 ] )
-                protoScript[ proto_item.ProtoId ] = Str::Duplicate( Str::FormatBuf( "%s@%s", script_module, script_func ) );
+                proto_item->ScriptName = Str::FormatBuf( "%s@%s", script_module, script_func );
+            # endif
 
             // Add to collection
             protos.push_back( proto_item );
-
-            //	if(FLAG(proto_item.Flags,ITEM_MULTI_HEX)) WriteLog("pid<%u> ITEM_MULTI_HEX\n",proto_item.ProtoId);
-            //	if(FLAG(proto_item.Flags,ITEM_WALL_TRANS_END)) WriteLog("pid<%u> ITEM_WALL_TRANS_END\n",proto_item.ProtoId);
-            //	if(FLAG(proto_item.Flags,ITEM_CACHED)) WriteLog("pid<%u> ITEM_CACHED\n",proto_item.ProtoId);
         }
     }
 
@@ -434,138 +411,80 @@ void ItemManager::ParseProtos( ProtoItemVec& protos, const char* collection_name
 
     for( uint i = 0, j = (uint) protos.size(); i < j; i++ )
     {
-        ProtoItem& proto_item = protos[ i ];
-        ushort     pid = proto_item.ProtoId;
+        ProtoItem* proto_item = protos[ i ];
+        hash       pid = proto_item->ProtoId;
 
-        if( !pid || pid >= MAX_ITEM_PROTOTYPES )
+        if( !pid )
         {
-            WriteLogF( _FUNC_, " - Invalid pid<%u> of item prototype.\n", pid );
+            WriteLogF( _FUNC_, " - Invalid zero pid of item prototype.\n" );
             continue;
         }
 
-        if( IsInitProto( pid ) )
+        if( allProto.count( pid ) )
         {
             ClearProto( pid );
             WriteLogF( _FUNC_, " - Item prototype is already parsed, pid<%u>. Rewrite.\n", pid );
         }
 
-        int type = protos[ i ].Type;
-        if( type < 0 || type >= ITEM_MAX_TYPES )
-            type = ITEM_TYPE_OTHER;
+        allProto.insert( PAIR( pid, proto_item ) );
 
         #ifdef FONLINE_MAPPER
         if( collection_name )
-            proto_item.CollectionName = Str::Duplicate( collection_name );
-        else
-            proto_item.CollectionName = Str::Duplicate( "" );
+            allProto[ pid ]->CollectionName = collection_name;
         #endif
-
-        typeProto[ type ].push_back( proto_item );
-        allProto[ pid ] = proto_item;
     }
-
-    for( int i = 0; i < ITEM_MAX_TYPES; i++ )
-        if( !typeProto[ i ].empty() )
-            std::sort( typeProto[ i ].begin(), typeProto[ i ].end(), CompProtoByPid );
 }
 
-ProtoItem* ItemManager::GetProtoItem( ushort pid )
+ProtoItem* ItemManager::GetProtoItem( hash pid )
 {
-    if( !IsInitProto( pid ) )
-        return NULL;
-    return &allProto[ pid ];
+    auto it = allProto.find( pid );
+    return it != allProto.end() ? ( *it ).second : NULL;
 }
 
-ProtoItem* ItemManager::GetAllProtos()
+ProtoItemMap& ItemManager::GetAllProtos()
 {
     return allProto;
 }
 
-ProtoItemVec& ItemManager::GetProtos( int type )
+void ItemManager::ClearProto( hash pid )
 {
-    return typeProto[ type ];
-}
-
-void ItemManager::GetCopyAllProtos( ProtoItemVec& protos )
-{
-    for( int i = 0; i < ITEM_MAX_TYPES; i++ )
-        for( uint j = 0; j < typeProto[ i ].size(); j++ )
-            protos.push_back( typeProto[ i ][ j ] );
-}
-
-bool ItemManager::IsInitProto( ushort pid )
-{
-    if( !pid || pid >= MAX_ITEM_PROTOTYPES )
-        return false;
-    return allProto[ pid ].ProtoId != 0;
-}
-
-const char* ItemManager::GetProtoScript( ushort pid )
-{
-    if( !IsInitProto( pid ) )
-        return NULL;
-    return protoScript[ pid ];
-}
-
-void ItemManager::ClearProtos( int type /* = 0xFF */ )
-{
-    if( type == 0xFF )
-    {
-        for( int i = 0; i < ITEM_MAX_TYPES; i++ )
-            typeProto[ i ].clear();
-        memzero( allProto, sizeof( allProto ) );
-        for( int i = 0; i < MAX_ITEM_PROTOTYPES; i++ )
-            SAFEDELA( protoScript[ i ] );
-    }
-    else if( type < ITEM_MAX_TYPES )
-    {
-        for( uint i = 0; i < typeProto[ type ].size(); ++i )
-        {
-            ushort pid = ( typeProto[ type ] )[ i ].ProtoId;
-            if( IsInitProto( pid ) )
-            {
-                allProto[ pid ].Clear();
-                SAFEDELA( protoScript[ pid ] );
-            }
-        }
-        typeProto[ type ].clear();
-    }
-    else
-    {
-        WriteLogF( _FUNC_, " - Wrong proto type<%u>.\n", type );
-    }
-}
-
-void ItemManager::ClearProto( ushort pid )
-{
-    ProtoItem* proto_item = GetProtoItem( pid );
-    if( !proto_item )
-        return;
-
-    int type = proto_item->Type;
-    if( type < 0 || type >= ITEM_MAX_TYPES )
-        type = ITEM_TYPE_OTHER;
-
-    ProtoItemVec& protos = typeProto[ type ];
-
-    allProto[ pid ].Clear();
-
-    auto it = std::find( protos.begin(), protos.end(), pid );
-    if( it != protos.end() )
-        protos.erase( it );
+    auto it = allProto.find( pid );
+    if( it != allProto.end() )
+        allProto.erase( it );
 }
 
 void ItemManager::GetBinaryData( UCharVec& data )
 {
-    ProtoItemVec protos;
-    for( int i = 0; i < ITEM_MAX_TYPES; i++ )
-        for( uint j = 0; j < typeProto[ i ].size(); j++ )
-            protos.push_back( typeProto[ i ][ j ] );
-
-    data.resize( protos.size() * sizeof( ProtoItem ) );
-    memcpy( &data[ 0 ], &protos[ 0 ], data.size() );
+    size_t proto_size = OFFSETOF( ProtoItem, InstanceCount );
+    data.resize( allProto.size() * proto_size );
+    size_t cur_proto = 0;
+    for( auto it = allProto.begin(), end = allProto.end(); it != end; ++it )
+    {
+        memcpy( &data[ cur_proto * proto_size ], ( *it ).second, proto_size );
+        cur_proto++;
+    }
 
     Crypt.Compress( data );
+}
+
+void ItemManager::SetBinaryData( UCharVec& data )
+{
+    allProto.clear();
+
+    if( !Crypt.Uncompress( data, 15 ) )
+        return;
+
+    size_t proto_size = OFFSETOF( ProtoItem, InstanceCount );
+    if( data.size() == 0 || data.size() % proto_size != 0 )
+        return;
+
+    size_t protos_count = data.size() / proto_size;
+    for( size_t i = 0; i < protos_count; i++ )
+    {
+        ProtoItem* proto_item = new ProtoItem();
+        memcpy( proto_item, &data[ i * proto_size ], proto_size );
+        allProto.insert( PAIR( proto_item->ProtoId, proto_item ) );
+    }
 }
 
 #ifdef FONLINE_SERVER
@@ -612,23 +531,17 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
     int errors = 0;
     for( uint i = 0; i < count; ++i )
     {
-        uint   id;
+        uint  id;
         FileRead( f, &id, sizeof( id ) );
-        ushort pid;
+        hash  pid;
         FileRead( f, &pid, sizeof( pid ) );
-        uchar  acc;
+        uchar acc;
         FileRead( f, &acc, sizeof( acc ) );
-        char   acc_buf[ 8 ];
+        char  acc_buf[ 8 ];
         FileRead( f, &acc_buf[ 0 ], sizeof( acc_buf ) );
 
         Item::ItemData data;
         FileRead( f, &data, sizeof( data ) );
-
-        if( version <= WORLD_SAVE_V13 )
-        {
-            data.TrapValue = data.ScriptId >> 16;
-            data.ScriptId &= 0xFFFF;
-        }
 
         uchar lex_len;
         char  lexems[ 1024 ] = { 0 };
@@ -671,18 +584,12 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
 # pragma MESSAGE("Add item proto functions checker.")
 bool ItemManager::CheckProtoFunctions()
 {
-    for( int i = 0; i < MAX_ITEM_PROTOTYPES; i++ )
-    {
-        const char* script = protoScript[ i ];
-        // Check for items
-        // Check for scenery
-    }
     return true;
 }
 
 void ItemManager::RunInitScriptItems()
 {
-    ItemPtrMap items = gameItems;
+    ItemMap items = gameItems;
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = ( *it ).second;
@@ -691,7 +598,7 @@ void ItemManager::RunInitScriptItems()
     }
 }
 
-void ItemManager::GetGameItems( ItemPtrVec& items )
+void ItemManager::GetGameItems( ItemVec& items )
 {
     SCOPE_LOCK( itemLocker );
     items.reserve( gameItems.size() );
@@ -711,8 +618,8 @@ uint ItemManager::GetItemsCount()
 
 void ItemManager::SetCritterItems( Critter* cr )
 {
-    ItemPtrVec items;
-    uint       crid = cr->GetId();
+    ItemVec items;
+    uint    crid = cr->GetId();
 
     itemLocker.Lock();
     for( auto it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
@@ -745,9 +652,10 @@ void ItemManager::GetItemIds( UIntSet& item_ids )
         item_ids.insert( ( *it ).second->GetId() );
 }
 
-Item* ItemManager::CreateItem( ushort pid, uint count, uint item_id /* = 0 */ )
+Item* ItemManager::CreateItem( hash pid, uint count, uint item_id /* = 0 */ )
 {
-    if( !IsInitProto( pid ) )
+    ProtoItem* proto = GetProtoItem( pid );
+    if( !proto )
         return NULL;
 
     Item* item = new Item();
@@ -757,7 +665,7 @@ Item* ItemManager::CreateItem( ushort pid, uint count, uint item_id /* = 0 */ )
         return NULL;
     }
 
-    item->Init( &allProto[ pid ] );
+    item->Init( proto );
     if( item_id )
     {
         SCOPE_LOCK( itemLocker );
@@ -796,12 +704,14 @@ Item* ItemManager::CreateItem( ushort pid, uint count, uint item_id /* = 0 */ )
         RadioRegister( item, true );
 
     // Prototype script
-    if( !item_id && count && protoScript[ pid ] ) // Only for new items
+    # ifdef FONLINE_SERVER
+    if( !item_id && count && proto->ScriptName.length() > 0 )         // Only for new items
     {
-        item->ParseScript( protoScript[ pid ], true );
+        item->ParseScript( proto->ScriptName.c_str(), true );
         if( item->IsNotValid )
             return NULL;
     }
+    # endif
     return item;
 }
 
@@ -1052,7 +962,7 @@ void ItemManager::MoveItem( Item* item, uint count, Item* to_cont, uint stack_id
     }
 }
 
-Item* ItemManager::AddItemContainer( Item* cont, ushort pid, uint count, uint stack_id )
+Item* ItemManager::AddItemContainer( Item* cont, hash pid, uint count, uint stack_id )
 {
     if( !cont || !cont->IsContainer() )
         return NULL;
@@ -1113,7 +1023,7 @@ Item* ItemManager::AddItemContainer( Item* cont, ushort pid, uint count, uint st
     return result;
 }
 
-Item* ItemManager::AddItemCritter( Critter* cr, ushort pid, uint count )
+Item* ItemManager::AddItemCritter( Critter* cr, hash pid, uint count )
 {
     if( !count )
         return NULL;
@@ -1175,7 +1085,7 @@ Item* ItemManager::AddItemCritter( Critter* cr, ushort pid, uint count )
     return result;
 }
 
-bool ItemManager::SubItemCritter( Critter* cr, ushort pid, uint count, ItemPtrVec* erased_items )
+bool ItemManager::SubItemCritter( Critter* cr, hash pid, uint count, ItemVec* erased_items )
 {
     if( !count )
         return true;
@@ -1227,7 +1137,7 @@ bool ItemManager::SubItemCritter( Critter* cr, ushort pid, uint count, ItemPtrVe
     return true;
 }
 
-bool ItemManager::SetItemCritter( Critter* cr, ushort pid, uint count )
+bool ItemManager::SetItemCritter( Critter* cr, hash pid, uint count )
 {
     uint cur_count = cr->CountItemPid( pid );
     if( cur_count > count )
@@ -1372,7 +1282,7 @@ bool ItemManager::MoveItemsContainers( Item* from_cont, Item* to_cont, uint from
     if( !from_cont->ContIsItems() )
         return true;
 
-    ItemPtrVec items;
+    ItemVec items;
     from_cont->ContGetItems( items, from_stack_id, true );
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
@@ -1391,7 +1301,7 @@ bool ItemManager::MoveItemsContToCritter( Item* from_cont, Critter* to_cr, uint 
     if( !from_cont->ContIsItems() )
         return true;
 
-    ItemPtrVec items;
+    ItemVec items;
     from_cont->ContGetItems( items, stack_id, true );
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
@@ -1423,8 +1333,8 @@ void ItemManager::RadioRegister( Item* radio, bool add )
 
 void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len, bool unsafe_text, ushort text_msg, uint num_str, UShortVec& channels )
 {
-    ItemPtrVec radios;
-    ItemPtrVec items = cr->GetItemsNoLock();
+    ItemVec radios;
+    ItemVec items = cr->GetItemsNoLock();
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
@@ -1465,7 +1375,7 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
 
     // Get copy of all radios
     radioItemsLocker.Lock();
-    ItemPtrVec radio_items = radioItems;
+    ItemVec radio_items = radioItems;
     radioItemsLocker.Unlock();
 
     // Multiple sending controlling
@@ -1586,51 +1496,46 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
 }
 #endif // FONLINE_SERVER
 
-void ItemManager::AddItemStatistics( ushort pid, uint val )
+void ItemManager::AddItemStatistics( hash pid, uint val )
 {
-    if( !IsInitProto( pid ) )
-        return;
-
     SCOPE_LOCK( itemCountLocker );
 
-    itemCount[ pid ] += (int64) val;
+    ProtoItem* proto = GetProtoItem( pid );
+    if( proto )
+        proto->InstanceCount += (int64) val;
 }
 
-void ItemManager::SubItemStatistics( ushort pid, uint val )
+void ItemManager::SubItemStatistics( hash pid, uint val )
 {
-    if( !IsInitProto( pid ) )
-        return;
-
     SCOPE_LOCK( itemCountLocker );
 
-    itemCount[ pid ] -= (int64) val;
+    ProtoItem* proto = GetProtoItem( pid );
+    if( proto )
+        proto->InstanceCount -= (int64) val;
 }
 
-int64 ItemManager::GetItemStatistics( ushort pid )
+int64 ItemManager::GetItemStatistics( hash pid )
 {
     SCOPE_LOCK( itemCountLocker );
 
-    int64 count = itemCount[ pid ];
-    return count;
+    ProtoItem* proto = GetProtoItem( pid );
+    return proto ? proto->InstanceCount : 0;
 }
 
 string ItemManager::GetItemsStatistics()
 {
     SCOPE_LOCK( itemCountLocker );
 
-    string result = "Pid    Name                                     Count\n";
-    if( IsInit() )
+    string result = "Name                                     Count\n";
+    char   str[ MAX_FOTEXT ];
+    for( auto it = allProto.begin(), end = allProto.end(); it != end; ++it )
     {
-        char str[ 512 ];
-        for( int i = 0; i < MAX_ITEM_PROTOTYPES; i++ )
+        ProtoItem* proto_item = ( *it ).second;
+        if( proto_item->IsItem() )
         {
-            ProtoItem* proto_item = GetProtoItem( i );
-            if( proto_item && proto_item->IsItem() )
-            {
-                char* s = (char*) ConstantsManager::GetItemName( i );
-                Str::Format( str, "%-6u %-40s %-20s\n", i, s ? s : Str::ItoA( i ), Str::I64toA( itemCount[ i ] ) );
-                result += str;
-            }
+            char* s = (char*) ConstantsManager::GetItemName( proto_item->ProtoId );
+            Str::Format( str, "%-40s %-20s\n", s ? s : Str::ItoA( proto_item->ProtoId ), Str::I64toA( proto_item->InstanceCount ) );
+            result += str;
         }
     }
     return result;

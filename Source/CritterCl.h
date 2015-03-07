@@ -13,7 +13,7 @@ class CritterCl
 {
 public:
     uint          Id;
-    ushort        Pid;
+    hash          Pid;
     ushort        HexX, HexY;
     uchar         CrDir;
     int           Params[ MAX_PARAMS ];
@@ -38,7 +38,7 @@ public:
     ScriptString* Lexems;
     ScriptString* Avatar;
 
-    ItemPtrVec    InvItems;
+    ItemVec       InvItems;
     Item*         DefItemSlotHand;
     Item*         DefItemSlotArmor;
     Item*         ItemSlotMain;
@@ -139,14 +139,14 @@ public:
     void        EraseItem( Item* item, bool animate );
     void        EraseAllItems();
     Item*       GetItem( uint item_id );
-    Item*       GetItemByPid( ushort item_pid );
-    Item*       GetItemByPidInvPriority( ushort item_pid );
-    Item*       GetItemByPidSlot( ushort item_pid, int slot );
+    Item*       GetItemByPid( hash item_pid );
+    Item*       GetItemByPidInvPriority( hash item_pid );
+    Item*       GetItemByPidSlot( hash item_pid, int slot );
     Item*       GetAmmo( uint caliber );
     Item*       GetItemSlot( int slot );
-    void        GetItemsSlot( int slot, ItemPtrVec& items );
-    void        GetItemsType( int slot, ItemPtrVec& items );
-    uint        CountItemPid( ushort item_pid );
+    void        GetItemsSlot( int slot, ItemVec& items );
+    void        GetItemsType( int slot, ItemVec& items );
+    uint        CountItemPid( hash item_pid );
     uint        CountItemType( uchar type );
     bool        IsCanSortItems();
     Item*       GetItemHighSortValue();
@@ -161,7 +161,7 @@ public:
     int         GetFreeVolume();
     bool        IsHaveLightSources();
     Item*       GetSlotUse( uchar num_slot, uchar& use );
-    uint        GetUsePicName( uchar num_slot );
+    hash        GetUsePicName( uchar num_slot );
     bool        IsItemAim( uchar num_slot );
     uchar       GetUse()      { return ItemSlotMain->Data.Mode & 0xF; }
     uchar       GetFullRate() { return ItemSlotMain->Data.Mode; }
@@ -343,8 +343,8 @@ public:
     }
 };
 
-typedef map< uint, CritterCl*, less< uint > > CritMap;
-typedef vector< CritterCl* >                  CritVec;
-typedef CritterCl*                            CritterClPtr;
+typedef map< uint, CritterCl* > CritMap;
+typedef vector< CritterCl* >    CritVec;
+typedef CritterCl*              CritterClPtr;
 
 #endif // __CRITTER_CL__

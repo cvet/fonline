@@ -14,7 +14,8 @@
 #define TEXTMSG_HOLO         ( 7 )
 #define TEXTMSG_CRAFT        ( 8 )
 #define TEXTMSG_INTERNAL     ( 9 )
-#define TEXTMSG_COUNT        ( 10 )
+#define TEXTMSG_LOCATIONS    ( 10 )
+#define TEXTMSG_COUNT        ( 11 )
 extern const char* TextMsgFileName[ TEXTMSG_COUNT ];
 
 #define DEFAULT_LANGUAGE     "russ"
@@ -73,18 +74,13 @@ public:
     };
 
     FOMsg Msg[ TEXTMSG_COUNT ];
-    bool  IsError;
 
     bool  LoadFromFiles( const char* lang_name );
     bool  LoadFromCache( const char* lang_name );
     char* GetMsgCacheName( int msg_num, char* result );
 
-    LanguagePack()
-    {
-        memset( NameStr, 0, sizeof( NameStr ) );
-        IsError = true;
-    }
-    bool operator==( const uint& r ) { return Name == r; }
+    LanguagePack() { memzero( NameStr, sizeof( NameStr ) ); }
+    bool operator==( const uint& other ) { return Name == other; }
 };
 typedef vector< LanguagePack > LangPackVec;
 

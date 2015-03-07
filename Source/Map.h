@@ -36,27 +36,27 @@ public:
     SyncObject Sync;
 
 private:
-    Mutex      dataLocker;
-    uchar*     hexFlags;
-    CrVec      mapCritters;
-    ClVec      mapPlayers;
-    PcVec      mapNpcs;
-    ItemPtrVec hexItems;
-    Location*  mapLocation;
+    Mutex     dataLocker;
+    uchar*    hexFlags;
+    CrVec     mapCritters;
+    ClVec     mapPlayers;
+    PcVec     mapNpcs;
+    ItemVec   hexItems;
+    Location* mapLocation;
 
 public:
     struct MapData
     {
-        uint   MapId;
-        ushort MapPid;
-        uchar  MapRain;
-        bool   IsTurnBasedAviable;
-        int    MapTime;
-        uint   ScriptId;
-        int    MapDayTime[ 4 ];
-        uchar  MapDayColor[ 12 ];
-        uint   Reserved[ 20 ];
-        int    UserData[ MAP_MAX_DATA ];
+        uint  MapId;
+        hash  MapPid;
+        uchar MapRain;
+        bool  IsTurnBasedAviable;
+        int   MapTime;
+        hash  ScriptId;
+        int   MapDayTime[ 4 ];
+        uchar MapDayColor[ 12 ];
+        uint  Reserved[ 20 ];
+        int   UserData[ MAP_MAX_DATA ];
     } Data;
 
     ProtoMap* Proto;
@@ -67,7 +67,7 @@ public:
     uint      LoopLastTick[ MAP_LOOP_FUNC_MAX ];
     uint      LoopWaitTick[ MAP_LOOP_FUNC_MAX ];
 
-    bool Init( ProtoMap* proto, Location* location );
+    bool Init( uint id, ProtoMap* proto, Location* location );
     bool Generate();
     void Clear( bool full );
     void Process();
@@ -97,13 +97,8 @@ public:
     bool GetStartCoordCar( ushort& hx, ushort& hy, ProtoItem* proto_item );
     bool FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe );
 
-    void SetId( uint id, ushort pid )
-    {
-        Data.MapId = id;
-        Data.MapPid = pid;
-    }
-    uint   GetId()  { return Data.MapId; }
-    ushort GetPid() { return Data.MapPid; }
+    uint GetId()  { return Data.MapId; }
+    hash GetPid() { return Data.MapPid; }
 
     void AddCritter( Critter* cr );
     void AddCritterEvents( Critter* cr );
@@ -119,21 +114,21 @@ public:
     void AnimateItem( Item* item, uchar from_frm, uchar to_frm );
 
     Item* GetItem( uint item_id );
-    Item* GetItemHex( ushort hx, ushort hy, ushort item_pid, Critter* picker );
+    Item* GetItemHex( ushort hx, ushort hy, hash item_pid, Critter* picker );
     Item* GetItemDoor( ushort hx, ushort hy );
     Item* GetItemCar( ushort hx, ushort hy );
     Item* GetItemContainer( ushort hx, ushort hy );
     Item* GetItemGag( ushort hx, ushort hy );
 
-    ItemPtrVec& GetItemsNoLock() { return hexItems; }
-    void        GetItemsHex( ushort hx, ushort hy, ItemPtrVec& items, bool lock );
-    void        GetItemsHexEx( ushort hx, ushort hy, uint radius, ushort pid, ItemPtrVec& items, bool lock );
-    void        GetItemsPid( ushort pid, ItemPtrVec& items, bool lock );
-    void        GetItemsType( int type, ItemPtrVec& items, bool lock );
-    void        GetItemsTrap( ushort hx, ushort hy, ItemPtrVec& items, bool lock );
-    void        RecacheHexBlock( ushort hx, ushort hy );
-    void        RecacheHexShoot( ushort hx, ushort hy );
-    void        RecacheHexBlockShoot( ushort hx, ushort hy );
+    ItemVec& GetItemsNoLock() { return hexItems; }
+    void     GetItemsHex( ushort hx, ushort hy, ItemVec& items, bool lock );
+    void     GetItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items, bool lock );
+    void     GetItemsPid( hash pid, ItemVec& items, bool lock );
+    void     GetItemsType( int type, ItemVec& items, bool lock );
+    void     GetItemsTrap( ushort hx, ushort hy, ItemVec& items, bool lock );
+    void     RecacheHexBlock( ushort hx, ushort hy );
+    void     RecacheHexShoot( ushort hx, ushort hy );
+    void     RecacheHexBlockShoot( ushort hx, ushort hy );
 
     ushort GetHexFlags( ushort hx, ushort hy );
     void   SetHexFlag( ushort hx, ushort hy, uchar flag );
@@ -174,8 +169,8 @@ public:
     bool IsNoLogOut() { return Proto->Header.NoLogOut; }
 
     // Sends
-    void SendEffect( ushort eff_pid, ushort hx, ushort hy, ushort radius );
-    void SendFlyEffect( ushort eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
+    void SendEffect( hash eff_pid, ushort hx, ushort hy, ushort radius );
+    void SendFlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
 
     // Cars
 public:
@@ -245,24 +240,25 @@ typedef vector< Map* >    MapVec;
 class ProtoLocation
 {
 public:
-    bool        IsInit;
-    ushort      LocPid;
+    hash        LocPid;
     string      Name;
 
     uint        MaxPlayers;
-    UShortVec   ProtoMapPids;
-    UShortVec   AutomapsPids;
-    UIntPairVec Entrance;
-    int         ScriptBindId;
-
     ushort      Radius;
     bool        Visible;
     bool        AutoGarbage;
     bool        GeckVisible;
 
-    ProtoLocation(): IsInit( false ) {};
+    HashVec     ProtoMapPids;
+    HashVec     AutomapsPids;
+    UIntPairVec Entrance;
+    int         EntranceScriptBindId;
+
+    UIntVec     TextsLang;
+    FOMsgVec    Texts;
 };
-typedef vector< ProtoLocation > ProtoLocVec;
+typedef vector< ProtoLocation* >    ProtoLocVec;
+typedef map< hash, ProtoLocation* > ProtoLocMap;
 
 // Script events
 #define LOCATION_EVENT_FINISH    ( 0 )
@@ -282,7 +278,7 @@ public:
     struct LocData
     {
         uint   LocId;
-        ushort LocPid;
+        hash   LocPid;
         ushort WX;
         ushort WY;
         ushort Radius;
@@ -298,23 +294,23 @@ public:
     volatile int   GeckCount;
     int            FuncId[ LOCATION_EVENT_MAX ];
 
-    bool       Init( ProtoLocation* proto, ushort wx, ushort wy );
-    void       Clear( bool full );
-    void       Update();
-    bool       IsVisible()       { return Data.Visible || ( Data.GeckVisible && GeckCount > 0 ); }
-    uint       GetId()           { return Data.LocId; }
-    void       SetId( uint _id ) { Data.LocId = _id; }
-    ushort     GetPid()          { return Data.LocPid; }
-    uint       GetRadius()       { return Data.Radius; }
-    MapVec&    GetMapsNoLock()   { return locMaps; };
-    void       GetMaps( MapVec& maps, bool lock );
-    uint       GetMapsCount() { return (uint) locMaps.size(); }
-    Map*       GetMap( uint count );
-    bool       GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, uchar& dir );
-    bool       IsAutomaps()                { return !Proto->AutomapsPids.empty(); }
-    bool       IsAutomap( ushort map_pid ) { return std::find( Proto->AutomapsPids.begin(), Proto->AutomapsPids.end(), map_pid ) != Proto->AutomapsPids.end(); }
-    UShortVec& GetAutomaps()               { return Proto->AutomapsPids; }
-    bool       IsCanEnter( uint players_count );
+    bool     Init( ProtoLocation* proto, ushort wx, ushort wy );
+    void     Clear( bool full );
+    void     Update();
+    bool     IsVisible()     { return Data.Visible || ( Data.GeckVisible && GeckCount > 0 ); }
+    uint     GetId()         { return Data.LocId; }
+    hash     GetPid()        { return Data.LocPid; }
+    uint     GetRadius()     { return Data.Radius; }
+    MapVec&  GetMapsNoLock() { return locMaps; };
+    void     GetMaps( MapVec& maps, bool lock );
+    uint     GetMapsCount() { return (uint) locMaps.size(); }
+    Map*     GetMap( uint count );
+    uint     GetMapIndex( hash map_pid );
+    bool     GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, uchar& dir );
+    bool     IsAutomaps()              { return !Proto->AutomapsPids.empty(); }
+    bool     IsAutomap( hash map_pid ) { return std::find( Proto->AutomapsPids.begin(), Proto->AutomapsPids.end(), map_pid ) != Proto->AutomapsPids.end(); }
+    HashVec& GetAutomaps()             { return Proto->AutomapsPids; }
+    bool     IsCanEnter( uint players_count );
 
     bool IsNoCrit();
     bool IsNoPlayer();

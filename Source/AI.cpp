@@ -33,8 +33,8 @@ label_ParseNext:
     for( ; *str != ':' && *str != '+' && *str != '^' && *str; str++, pbuf++ )
         *pbuf = *str;
     *pbuf = 0;
-    int pid = ConstantsManager::GetItemPid( buf );
-    if( pid < 0 )
+    hash pid = ConstantsManager::GetItemPid( buf );
+    if( !pid )
         return items;
     i.ItemPid = pid;
     // Parse place
@@ -172,7 +172,7 @@ bool NpcAIMngr::LoadNpcBags()
                     for( uint k = 0; k < items.size(); k++ )
                     {
                         NpcBagItem& b = items[ k ];
-                        if( b.ItemPid >= MAX_ITEM_PROTOTYPES || b.MinCnt > b.MaxCnt )
+                        if( b.MinCnt > b.MaxCnt )
                         {
                             WriteLog( "Invalid items combination<%s>, Item combination<%d>, number<%d>.\n", c.c_str(), l, k );
                             delete[] bag_str;

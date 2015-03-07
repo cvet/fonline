@@ -5,8 +5,6 @@
 // ***  FOGAME.MSG  **********************************************************************
 // ***************************************************************************************
 
-#define STR_VERSION_INFO                   ( 1 )
-
 // Update messages
 #define STR_CHECK_UPDATES                  ( 5 )
 #define STR_CONNECT_TO_SERVER              ( 6 )
@@ -22,21 +20,14 @@
 #define STR_CLIENT_DATA_OUTDATED           ( 16 )
 #define STR_START_SINGLEPLAYER             ( 17 )
 
-// Months, days
-#define STR_MONTH( m )            ( 20 + ( m ) )
-#define STR_DAY_OF_WEEK( dow )    ( 32 + ( dow ) )
-
-// Misc
-#define STR_DOT                            ( 50 )
-#define STR_COMMA                          ( 52 )
-#define STR_SLASH                          ( 53 )
-#define STR_AND                            ( 54 )
-#define STR_OR                             ( 55 )
-
 // Music/Video
 #define STR_MUSIC_MAIN_THEME               ( 80 )
+#define STR_MUSIC_GLOBAL_MAP               ( 85 )
 #define STR_VIDEO_INTRO_BEGIN              ( 90 )
 #define STR_VIDEO_INTRO_END                ( 99 )
+
+// Month in save info
+#define STR_MONTH( m )                  ( 20 + ( m ) )
 
 // Chat
 #define STR_CRNORM                         ( 100 )
@@ -63,6 +54,9 @@
 #define STR_FIX_TIMEOUT                    ( 162 )
 
 // Interface
+#define STR_VERSION_INFO                   ( 1 )
+#define STR_AND                            ( 54 )
+#define STR_OR                             ( 55 )
 #define STR_OPTIONS_NOT_AVIABLE            ( 250 )
 #define STR_SCREENSHOT_SAVED               ( 251 )
 #define STR_SCREENSHOT_NOT_SAVED           ( 252 )
@@ -130,8 +124,7 @@
 #define STR_SAVE_LOAD_TYPE_RECORD_NAME     ( 395 )
 
 // Inventory
-#define STR_INV_SHORT_SPECIAL_( num )    ( 400 + ( num ) )
-#define STR_INV_SHORT_SPECIAL              # (num)    ( 400 + ( num ) )
+#define STR_INV_SHORT_SPECIAL( num )    ( 400 + ( num ) )
 #define STR_INV_HP                         ( 407 )
 #define STR_INV_AC                         ( 408 )
 #define STR_INV_NORMAL                     ( 409 )
@@ -152,7 +145,6 @@
 #define STR_ITEM_WEIGHT_FUNT               ( 436 )
 #define STR_ITEM_COST                      ( 437 )
 #define STR_ITEM_TRADER_COST               ( 438 )
-
 #define STR_OVERWEIGHT_TITLE               ( 440 )
 #define STR_OVERVOLUME_TITLE               ( 448 )
 
@@ -296,6 +288,7 @@
 #define STR_NET_LOGIN_SCRIPT_FAIL          ( 1048 )
 #define STR_NET_PERMANENT_DEATH            ( 1049 )
 
+// Singleplayer
 #define STR_SP_SAVE_SUCCESS                ( 1070 )
 #define STR_SP_SAVE_FAIL                   ( 1071 )
 #define STR_SP_LOAD_SUCCESS                ( 1072 )
@@ -304,18 +297,11 @@
 #define STR_SP_NEW_GAME_FAIL               ( 1075 )
 
 // Parameters
-#define STR_PARAM_NAME_( index )            ( 100000 + ( index ) * 10 + 1 )
-#define STR_PARAM_NAME                     # (index)         ( 100000 + ( index ) * 10 + 1 )
-#define STR_PARAM_DESC_( index )            ( 100000 + ( index ) * 10 + 2 )
-#define STR_PARAM_DESC                     # (index)         ( 100000 + ( index ) * 10 + 2 )
-#define STR_PARAM_NAME_SHORT_( index )      ( 100000 + ( index ) * 10 + 3 )
-#define STR_PARAM_NAME_SHORT               # (index)   ( 100000 + ( index ) * 10 + 3 )
-
-#define STR_STAT_LEVEL_( val )              ( ( val ) > 10 ? ( 2310 ) : ( ( val ) < 1 ? ( 2301 ) : 2300 + ( val ) ) )
-#define STR_STAT_LEVEL                     # (val)           ( ( val ) > 10 ? ( 2310 ) : ( ( val ) < 1 ? ( 2301 ) : 2300 + ( val ) ) )
-#define STR_STAT_LEVEL_ABB_( val )          ( ( val ) > 10 ? ( 2320 ) : ( ( val ) < 1 ? ( 2311 ) : 2310 + ( val ) ) )
-#define STR_STAT_LEVEL_ABB                 # (val)       ( ( val ) > 10 ? ( 2320 ) : ( ( val ) < 1 ? ( 2311 ) : 2310 + ( val ) ) )
-
+#define STR_PARAM_NAME( index )                      ( 100000 + ( index ) * 10 + 1 )
+#define STR_PARAM_DESC( index )                      ( 100000 + ( index ) * 10 + 2 )
+#define STR_PARAM_NAME_SHORT( index )                ( 100000 + ( index ) * 10 + 3 )
+#define STR_STAT_LEVEL( val )                        ( ( val ) > 10 ? ( 2310 ) : ( ( val ) < 1 ? ( 2301 ) : 2300 + ( val ) ) )
+#define STR_STAT_LEVEL_ABB( val )                    ( ( val ) > 10 ? ( 2320 ) : ( ( val ) < 1 ? ( 2311 ) : 2310 + ( val ) ) )
 #define STR_NEXT_LEVEL_NAME                ( 4001 )
 #define STR_UNSPENT_SKILL_POINTS_NAME      ( 4002 )
 #define STR_LEVEL_NAME                     ( 4003 )
@@ -336,7 +322,6 @@
 #define STR_PERKS_DESC                     ( 4057 )
 #define STR_KILLS_DESC                     ( 4058 )
 #define STR_TRAITS_DESC                    ( 4061 )
-
 #define STR_SWITCH_PERKS_NAME              ( 4109 )
 #define STR_SWITCH_KARMA_NAME              ( 4110 )
 #define STR_SWITCH_KILLS_NAME              ( 4111 )
@@ -348,10 +333,8 @@
 #define STR_SKILL_NONEED_DOCTOR            ( 3403 )
 #define STR_SKILL_NOFIRSTAID_NEEDDOCTOR    ( 3404 )
 #define STR_SKILL_NODOCTOR_NEEDFIRSTAID    ( 3405 )
-#define STR_SKILL_HEAL_DMG_( dmg )          ( 3410 + ( dmg ) )
-#define STR_SKILL_HEAL_DMG                 # (dmg)       ( 3410 + ( dmg ) )
-#define STR_SKILL_NOHEAL_DMG_( dmg )        ( 3420 + ( dmg ) )
-#define STR_SKILL_NOHEAL_DMG               # (dmg)     ( 3420 + ( dmg ) )
+#define STR_SKILL_HEAL_DMG( dmg )                    ( 3410 + ( dmg ) )
+#define STR_SKILL_NOHEAL_DMG( dmg )                  ( 3420 + ( dmg ) )
 #define STR_SKILL_STEAL_TRIED_GET          ( 3430 )
 #define STR_SKILL_STEAL_TRIED_PUT          ( 3431 )
 #define STR_SKILL_LOCKPICK_FAIL            ( 3440 )
@@ -378,21 +361,19 @@
 #define STR_KARMA_GEN_GEN_NAME2            ( 6001 )
 #define STR_KARMA_GEN_GEN_DESC             ( 6002 )
 #define STR_KARMA_GEN_COUNT                ( 6099 )
-#define STR_KARMA_GEN_VAL_( num )           ( 6100 + ( num ) * 3 )
-#define STR_KARMA_GEN_NAME_( num )          ( 6100 + ( num ) * 3 + 1 )
-#define STR_KARMA_GEN_SKILLDEX_( num )      ( 6100 + ( num ) * 3 + 2 )
-
+#define STR_KARMA_GEN_VAL( num )                     ( 6100 + ( num ) * 3 )
+#define STR_KARMA_GEN_NAME( num )                    ( 6100 + ( num ) * 3 + 1 )
+#define STR_KARMA_GEN_SKILLDEX( num )                ( 6100 + ( num ) * 3 + 2 )
 #define STR_TOWNREP_TITLE_NAME             ( 6405 )
 #define STR_TOWNREP_TITLE_DESC             ( 6406 )
-#define STR_TOWNREP_RATIO_NAME_( val )      ( 6500 + ( ( val ) >= GameOpt.ReputationLoved ? 0 : ( ( val ) >= GameOpt.ReputationLiked ? 1 : ( ( val ) >= GameOpt.ReputationAccepted ? 2 : ( ( val ) >= GameOpt.ReputationNeutral ? 3 : ( ( val ) >= GameOpt.ReputationAntipathy ? 4 : ( ( val ) >= GameOpt.ReputationHated ? 5 : 6 ) ) ) ) ) ) )
-#define STR_TOWNREP_RATIO_DESC_( val )      ( 6550 + ( ( val ) >= GameOpt.ReputationLoved ? 0 : ( ( val ) >= GameOpt.ReputationLiked ? 1 : ( ( val ) >= GameOpt.ReputationAccepted ? 2 : ( ( val ) >= GameOpt.ReputationNeutral ? 3 : ( ( val ) >= GameOpt.ReputationAntipathy ? 4 : ( ( val ) >= GameOpt.ReputationHated ? 5 : 6 ) ) ) ) ) ) )
-
+#define STR_TOWNREP_RATIO_NAME( val )                ( 6500 + ( ( val ) >= GameOpt.ReputationLoved ? 0 : ( ( val ) >= GameOpt.ReputationLiked ? 1 : ( ( val ) >= GameOpt.ReputationAccepted ? 2 : ( ( val ) >= GameOpt.ReputationNeutral ? 3 : ( ( val ) >= GameOpt.ReputationAntipathy ? 4 : ( ( val ) >= GameOpt.ReputationHated ? 5 : 6 ) ) ) ) ) ) )
+#define STR_TOWNREP_RATIO_DESC( val )                ( 6550 + ( ( val ) >= GameOpt.ReputationLoved ? 0 : ( ( val ) >= GameOpt.ReputationLiked ? 1 : ( ( val ) >= GameOpt.ReputationAccepted ? 2 : ( ( val ) >= GameOpt.ReputationNeutral ? 3 : ( ( val ) >= GameOpt.ReputationAntipathy ? 4 : ( ( val ) >= GameOpt.ReputationHated ? 5 : 6 ) ) ) ) ) ) )
 #define STR_ADDICT_TITLE_NAME              ( 6900 )
 #define STR_ADDICT_TITLE_DESC              ( 6901 )
 
 // Kills
-#define STR_KILL_NAME_( num )               ( 8000 + ( num ) )
-#define STR_KILL_DESC_( num )               ( 8100 + ( num ) )
+#define STR_KILL_NAME( num )                         ( 8000 + ( num ) )
+#define STR_KILL_DESC( num )                         ( 8100 + ( num ) )
 
 // Items
 #define STR_ITEM_LOOK                      ( 10000 )
@@ -433,40 +414,13 @@
 #define STR_GRAVE_UNCOVERED                ( 10550 )
 #define STR_GRAVE_COVERED                  ( 10551 )
 
-// Caliber
-#define STR_CALIBER_( num )                 ( 10900 + ( num ) )
-#define STR_CALIBER                        # (num)              ( 10900 + ( num ) )
-
 // Critters
-#define STR_CRIT_LOOK1                     # (gen)                   ( 11000 + ( gen ) * 1000 )
-#define STR_CRIT_LOOK1_SELF                # (gen)              ( 11001 + ( gen ) * 1000 )
-#define STR_CRIT_LOOK2                     # (gen)                   ( 11002 + ( gen ) * 1000 )
-#define STR_CRIT_LOOK3                     # (gen)                   ( 11003 + ( gen ) * 1000 )
-#define STR_CRIT_LOOK_SELF                 # (gen)               ( 11005 + ( gen ) * 1000 )
-#define STR_CRIT_LOOK_LIFE                 ( 11010 )
-#define STR_CRIT_LOOK_KO                   ( 11011 )
-#define STR_CRIT_LOOK_DEAD                 ( 11012 )
-#define STR_CRIT_LOOK_CRITICAL_DEAD        ( 11013 )
 #define STR_CRIT_LOOK_NOTHING              ( 11014 )
-#define STR_CRIT_LOOK_AGE                  # ( gen, age )( 11100 + ( ( age ) > 99 ? 99 : ( age ) ) + ( gen ) * 1000 )
-#define STR_CRIT_LOOK_COND                 # ( gen, main, ext )( 11200 + ( main ) * 10 + ( ext ) + ( gen ) * 1000 )
-#define STR_CRIT_LOOK_SPEC                 # ( gen, num, val )( 11300 + ( num ) * 10 + ( ( val ) > 10 ? 10 : ( val ) ) + ( gen ) * 1000 )
-#define STR_CRIT_LOOK_DMG                  # ( gen, dmg )( 11400 + ( dmg ) + ( gen ) * 1000 )
-#define STR_CRIT_LOOK_PERK                 # ( gen, perk )( 11500 + ( perk ) + ( gen ) * 1000 )
-// Fallout system
-#define STR_CRIT_LOOK_WHO                  # (gender)             ( 12500 + ( gender ) )
-#define STR_CRIT_LOOK_STATE                # (num)              ( 12510 + ( num ) )
-#define STR_CRIT_LOOK_LIMBS                # ( gender, unhurt )( 12520 + ( gender ) * 2 + ( unhurt ? 1 : 0 ) )
-#define STR_CRIT_LOOK_HP                   # (gender)              ( 12530 + ( gender ) )
-#define STR_CRIT_LOOK_WEAP                 ( 12540 )
-#define STR_CRIT_LOOK_WEAP_AMMO            ( 12541 )
-#define STR_CRIT_LOOK_MISC                 ( 12542 )
-
 #define STR_CRITTER_CANT_MOVE              ( 12600 )
 
 // Scores
-#define STR_SCORES_TITLE_( score )          ( 13000 + ( score ) * 10 )
-#define STR_SCORES_NAME_( score )           ( 13000 + ( score ) * 10 + 1 )
+#define STR_SCORES_TITLE( score )                    ( 13000 + ( score ) * 10 )
+#define STR_SCORES_NAME( score )                     ( 13000 + ( score ) * 10 + 1 )
 
 // Intellect words
 #define STR_INTELLECT_WORDS                ( 1999000000 )
@@ -481,50 +435,27 @@
 #define STR_GAME_CREDITS_EXT               ( 2000001020 )
 
 // ***************************************************************************************
-// ***  FOOBJ.MSG  ***********************************************************************
+// ***  FOLOCATIONS.MSG  *****************************************************************
 // ***************************************************************************************
-
-#define STR_ITEM_INFO                      # (item)           ( item.GetProtoId() * 100 + item.Info )
-
-// ***************************************************************************************
-// ***  FOGM.MSG  ************************************************************************
-// ***************************************************************************************
-
-// Local map info
-#define STR_MAP_NAME_( pid )                ( ( pid + 1 ) * 10 + 0 )
-#define STR_MAP_MUSIC_( pid )               ( ( pid + 1 ) * 10 + 5 )
-#define STR_MAP_AMBIENT_( pid )             ( ( pid + 1 ) * 10 + 6 )
 
 // Global map info
-#define STR_GM_NAME_( pid )                 ( ( pid + 100 ) * 1000 + 0 )
-#define STR_GM_INFO_( pid )                 ( ( pid + 100 ) * 1000 + 5 )
-#define STR_GM_PIC_( pid )                  ( ( pid + 100 ) * 1000 + 20 )
-#define STR_GM_LABELPIC_( pid )             ( ( pid + 100 ) * 1000 + 30 )
-
-#define STR_GM_ENTRANCE_COUNT_( pid )       ( ( pid + 100 ) * 1000 + 90 )
-#define STR_GM_ENTRANCE_NAME_( pid, en )    ( ( pid + 100 ) * 1000 + 100 + ( ( en ) * 10 + 1 ) )
-#define STR_GM_ENTRANCE_PICX_( pid, en )    ( ( pid + 100 ) * 1000 + 100 + ( ( en ) * 10 + 2 ) )
-#define STR_GM_ENTRANCE_PICY_( pid, en )    ( ( pid + 100 ) * 1000 + 100 + ( ( en ) * 10 + 3 ) )
+#define STR_LOC_NAME( loc_pid )                      LOC_STR_ID( loc_pid, 0 )
+#define STR_LOC_INFO( loc_pid )                      LOC_STR_ID( loc_pid, 1 )
+#define STR_LOC_PIC( loc_pid )                       LOC_STR_ID( loc_pid, 5 )
+#define STR_LOC_LABEL_PIC( loc_pid )                 LOC_STR_ID( loc_pid, 6 )
+#define STR_LOC_MAP_NAME( loc_pid, map_index )       LOC_STR_ID( loc_pid, 1000 + ( map_index ) * 10 + 0 )
+#define STR_LOC_MAP_MUSIC( loc_pid, map_index )      LOC_STR_ID( loc_pid, 1000 + ( map_index ) * 10 + 1 )
+#define STR_LOC_MAP_AMBIENT( loc_pid, map_index )    LOC_STR_ID( loc_pid, 1000 + ( map_index ) * 10 + 2 )
+#define STR_LOC_ENTRANCE_NAME( loc_pid, ent )        LOC_STR_ID( loc_pid, 2000 + ( ent ) * 10 + 0 )
+#define STR_LOC_ENTRANCE_PICX( loc_pid, ent )        LOC_STR_ID( loc_pid, 2000 + ( ent ) * 10 + 1 )
+#define STR_LOC_ENTRANCE_PICY( loc_pid, ent )        LOC_STR_ID( loc_pid, 2000 + ( ent ) * 10 + 2 )
 
 // ***************************************************************************************
 // ***  FODLG.MSG  ***********************************************************************
 // ***************************************************************************************
 
-#define STR_NPC_PROTO_NAME_( pid )          ( ( pid ) * 10 )
-#define STR_NPC_PROTO_NAME                 # (pid)                          ( ( pid ) * 10 )
-#define STR_NPC_PROTO_DESC                 # (pid)                          ( ( pid ) * 10 + 1 )
-#define STR_NPC_NAME_( num, pid )           ( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 10 : STR_NPC_PROTO_NAME_( pid ) )
-#define STR_NPC_NAME                       # ( num, pid )( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 10 : STR_NPC_PROTO_NAME( pid ) )
-#define STR_NPC_AVATAR_( num )              ( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 11 : 0 )
-#define STR_NPC_AVATAR                     # (num)                              ( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 11 : 0 )
-#define STR_NPC_INFO_LIFE                  # ( num, pid )( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 20 : STR_NPC_PROTO_DESC( pid ) )
-#define STR_NPC_FULL_INFO_LIFE             # ( num, pid )( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 21 : STR_NPC_PROTO_DESC( pid ) )
-#define STR_NPC_INFO_KO                    # ( num, pid )( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 22 : STR_NPC_PROTO_DESC( pid ) )
-#define STR_NPC_FULL_INFO_KO               # ( num, pid )( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 23 : STR_NPC_PROTO_DESC( pid ) )
-#define STR_NPC_INFO_DEAD                  # ( num, pid )( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 24 : STR_NPC_PROTO_DESC( pid ) )
-#define STR_NPC_FULL_INFO_DEAD             # ( num, pid )( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 25 : STR_NPC_PROTO_DESC( pid ) )
-#define STR_NPC_INFO_CRITICAL_DEAD         # ( num, pid )( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 26 : STR_NPC_PROTO_DESC( pid ) )
-#define STR_NPC_FULL_INFO_CRITICAL_DEAD    # ( num, pid )( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 27 : STR_NPC_PROTO_DESC( pid ) )
+#define STR_NPC_NAME( num )                          ( ( ( num ) & DLGID_MASK ) | 10 )
+#define STR_NPC_AVATAR( num )                        ( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 11 : 0 )
 
 // ***************************************************************************************
 // ***  FOQUEST.MSG  *********************************************************************
@@ -532,8 +463,8 @@
 
 #define STR_QUEST_NUMBER                   ( 4 )
 #define STR_QUEST_PROCESS                  ( 5 )
-#define STR_QUEST_MAP_( num )               ( ( num ) * 1000 + 101 )
-#define STR_QUEST_INFO_( num )              ( ( num ) * 1000 + 102 )
+#define STR_QUEST_MAP( num )                         ( ( num ) * 1000 + 101 )
+#define STR_QUEST_INFO( num )                        ( ( num ) * 1000 + 102 )
 
 // ***************************************************************************************
 // ***  FOHOLO.MSG, FOUSERHOLO.MSG  ******************************************************
@@ -547,10 +478,8 @@
 #define STR_HOLO_ERASE_FAIL                ( 6 )
 #define STR_HOLO_WRITE_SUCC                ( 7 )
 #define STR_HOLO_WRITE_FAIL                ( 8 )
-#define STR_HOLO_INFO_NAME_( num )          ( ( num ) * 10 )
-#define STR_HOLO_INFO_NAME                 # (num)       ( ( num ) * 10 )
-#define STR_HOLO_INFO_DESC_( num )          ( ( num ) * 10 + 1 )
-#define STR_HOLO_INFO_DESC                 # (num)       ( ( num ) * 10 + 1 )
+#define STR_HOLO_INFO_NAME( num )                    ( ( num ) * 10 )
+#define STR_HOLO_INFO_DESC( num )                    ( ( num ) * 10 + 1 )
 
 // ***************************************************************************************
 // ***  FOCOMBAT.MSG  ********************************************************************
@@ -572,7 +501,7 @@
 #define STR_INTERNAL_SCRIPT_MODULES        ( 100 )
 #define STR_INTERNAL_SCRIPT_DLLS           ( 50000 )
 #define STR_INTERNAL_SCRIPT_PRAGMAS        ( 90000 )
-#define STR_INTERNAL_CRTYPE( num )          ( 100000 + ( num ) )
+#define STR_INTERNAL_CRTYPE( num )                   ( 100000 + ( num ) )
 
 // ***************************************************************************************
 // ***************************************************************************************

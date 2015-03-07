@@ -108,7 +108,7 @@ public:
     static uint        LastHoloId;
 
     static void      SaveHoloInfoFile();
-    static bool      LoadHoloInfoFile( void* f );
+    static bool      LoadHoloInfoFile( void* f, uint version );
     static HoloInfo* GetHoloInfo( uint id )
     {
         auto it = HolodiskInfo.find( id );
@@ -122,8 +122,8 @@ public:
     static bool Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params );
     static bool Act_Attack( Critter* cr, uchar rate_weap, uint target_id );
     static bool Act_Reload( Critter* cr, uint weap_id, uint ammo_id );
-    static bool Act_Use( Critter* cr, uint item_id, int skill, int target_type, uint target_id, ushort target_pid, uint param );
-    static bool Act_PickItem( Critter* cr, ushort hx, ushort hy, ushort pid );
+    static bool Act_Use( Critter* cr, uint item_id, int skill, int target_type, uint target_id, hash target_pid, uint param );
+    static bool Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid );
 
     static void KillCritter( Critter* cr, uint anim2, Critter* attacker );
     static void RespawnCritter( Critter* cr );
@@ -154,7 +154,7 @@ public:
     static Mutex        TimeEventsLocker;
 
     static void   SaveTimeEventsFile();
-    static bool   LoadTimeEventsFile( void* f );
+    static bool   LoadTimeEventsFile( void* f, uint version );
     static void   AddTimeEvent( TimeEvent* te );
     static uint   CreateTimeEvent( uint begin_second, const char* script_name, int values, uint val1, ScriptArray* val2, bool save );
     static void   TimeEventEndScriptCallback();
@@ -166,16 +166,13 @@ public:
     static uint   GetTimeEventsList( ScriptArray* nums );
     static string GetTimeEventsStatistics();
 
-    static void SaveScriptFunctionsFile();
-    static bool LoadScriptFunctionsFile( void* f );
-
     // Any data
     typedef map< string, UCharVec > AnyDataMap;
     static AnyDataMap AnyData;
     static Mutex      AnyDataLocker;
 
     static void   SaveAnyDataFile();
-    static bool   LoadAnyDataFile( void* f );
+    static bool   LoadAnyDataFile( void* f, uint version );
     static bool   SetAnyData( const string& name, const uchar* data, uint data_size );
     static bool   GetAnyData( const string& name, ScriptArray& script_array );
     static uint   GetAnyDataList( ScriptArray* script_array );
@@ -213,7 +210,7 @@ public:
         int    SayType;
         char   FirstStr[ TEXT_LISTEN_FIRST_STR_MAX_LEN + 1 ];
         uint   FirstStrLen;
-        ushort Parameter;
+        uint64 Parameter;
     };
     typedef vector< TextListen > TextListenVec;
     static TextListenVec TextListeners;
@@ -227,7 +224,7 @@ public:
 //	void GlobalEventCritterDead(Critter* cr);
 
     // Items
-    static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, ushort pid, uint count, bool check_blocks = true );
+    static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, bool check_blocks = true );
     static bool  TransferAllItems();
 
     // Npc
@@ -237,7 +234,7 @@ public:
     static bool AI_MoveToCrit( Npc* npc, uint targ_id, uint cut, uint trace, bool is_run );
     static bool AI_MoveItem( Npc* npc, Map* map, uchar from_slot, uchar to_slot, uint item_id, uint count );
     static bool AI_Attack( Npc* npc, Map* map, uchar mode, uint targ_id );
-    static bool AI_PickItem( Npc* npc, Map* map, ushort hx, ushort hy, ushort pid, uint use_item_id );
+    static bool AI_PickItem( Npc* npc, Map* map, ushort hx, ushort hy, hash pid, uint use_item_id );
     static bool AI_ReloadWeapon( Npc* npc, Map* map, Item* weap, uint ammo_id );
     static bool TransferAllNpc();
     static void ProcessCritter( Critter* cr );
@@ -269,7 +266,7 @@ public:
 
     // Game time
     static void SaveGameInfoFile();
-    static bool LoadGameInfoFile( void* f );
+    static bool LoadGameInfoFile( void* f, uint version );
     static void InitGameTime();
     static void SetGameTime( int multiplier, int year, int month, int day, int hour, int minute, int second );
 
@@ -278,6 +275,7 @@ public:
     static bool InitCrafts( LangPackVec& lang_packs );
     static bool InitLangPacks( LangPackVec& lang_packs );
     static bool InitLangPacksDialogs( LangPackVec& lang_packs );
+    static bool InitLangPacksLocations( LangPackVec& lang_packs );
     static void FinishLangPacks();
     static bool InitLangCrTypes( LangPackVec& lang_packs );
 
@@ -516,28 +514,28 @@ public:
         static AIDataPlane* NpcPlane_GetChild( AIDataPlane* plane, uint index );
         static bool         NpcPlane_Misc_SetScript( AIDataPlane* plane, ScriptString& func_name );
 
-        static Item* Container_AddItem( Item* cont, ushort pid, uint count, uint stack_id );
+        static Item* Container_AddItem( Item* cont, hash pid, uint count, uint stack_id );
         static uint  Container_GetItems( Item* cont, uint stack_id, ScriptArray* items );
-        static Item* Container_GetItem( Item* cont, ushort pid, uint stack_id );
+        static Item* Container_GetItem( Item* cont, hash pid, uint stack_id );
 
-        static bool   Item_IsStackable( Item* item );
-        static bool   Item_IsDeteriorable( Item* item );
-        static bool   Item_SetScript( Item* item, ScriptString* script );
-        static uint   Item_GetScriptId( Item* item );
-        static bool   Item_SetEvent( Item* item, int event_type, ScriptString* func_name );
-        static uchar  Item_GetType( Item* item );
-        static ushort Item_GetProtoId( Item* item );
-        static uint   Item_GetCount( Item* item );
-        static void   Item_SetCount( Item* item, uint count );
-        static uint   Item_GetCost( Item* item );
-        static Map*   Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
-        static bool   Item_ChangeProto( Item* item, ushort pid );
-        static void   Item_Update( Item* item );
-        static void   Item_Animate( Item* item, uchar from_frm, uchar to_frm );
-        static void   Item_SetLexems( Item* item, ScriptString* lexems );
-        static Item*  Item_GetChild( Item* item, uint child_index );
-        static bool   Item_LockerOpen( Item* item );
-        static bool   Item_LockerClose( Item* item );
+        static bool  Item_IsStackable( Item* item );
+        static bool  Item_IsDeteriorable( Item* item );
+        static bool  Item_SetScript( Item* item, ScriptString* script );
+        static hash  Item_GetScriptId( Item* item );
+        static bool  Item_SetEvent( Item* item, int event_type, ScriptString* func_name );
+        static uchar Item_GetType( Item* item );
+        static hash  Item_GetProtoId( Item* item );
+        static uint  Item_GetCount( Item* item );
+        static void  Item_SetCount( Item* item, uint count );
+        static uint  Item_GetCost( Item* item );
+        static Map*  Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
+        static bool  Item_ChangeProto( Item* item, hash pid );
+        static void  Item_Update( Item* item );
+        static void  Item_Animate( Item* item, uchar from_frm, uchar to_frm );
+        static void  Item_SetLexems( Item* item, ScriptString* lexems );
+        static Item* Item_GetChild( Item* item, uint child_index );
+        static bool  Item_LockerOpen( Item* item );
+        static bool  Item_LockerClose( Item* item );
 
         static void Item_EventFinish( Item* item, bool deleted );
         static bool Item_EventAttack( Item* item, Critter* attacker, Critter* target );
@@ -574,7 +572,7 @@ public:
         static void         Crit_SetLexems( Critter* cr, ScriptString* lexems );
         static Map*         Crit_GetMap( Critter* cr );
         static uint         Crit_GetMapId( Critter* cr );
-        static ushort       Crit_GetMapProtoId( Critter* cr );
+        static hash         Crit_GetMapProtoId( Critter* cr );
         static void         Crit_SetHomePos( Critter* cr, ushort hx, ushort hy, uchar dir );
         static void         Crit_GetHomePos( Critter* cr, uint& map_id, ushort& hx, ushort& hy, uchar& dir );
         static bool         Crit_ChangeCrType( Critter* cr, uint new_type );
@@ -607,9 +605,9 @@ public:
         static void         Crit_SayMsg( Critter* cr, uchar how_say, ushort text_msg, uint num_str );
         static void         Crit_SayMsgLex( Critter* cr, uchar how_say, ushort text_msg, uint num_str, ScriptString& lexems );
         static void         Crit_SetDir( Critter* cr, uchar dir );
-        static bool         Crit_PickItem( Critter* cr, ushort hx, ushort hy, ushort pid );
-        static void         Crit_SetFavoriteItem( Critter* cr, int slot, ushort pid );
-        static ushort       Crit_GetFavoriteItem( Critter* cr, int slot );
+        static bool         Crit_PickItem( Critter* cr, ushort hx, ushort hy, hash pid );
+        static void         Crit_SetFavoriteItem( Critter* cr, int slot, hash pid );
+        static hash         Crit_GetFavoriteItem( Critter* cr, int slot );
         static uint         Crit_GetCritters( Critter* cr, bool look_on_me, int find_type, ScriptArray* critters );
         static uint         Crit_GetFollowGroup( Critter* cr, int find_type, ScriptArray* critters );
         static Critter*     Crit_GetFollowLeader( Critter* cr );
@@ -621,13 +619,13 @@ public:
         static bool         Crit_IsSeeCr( Critter* cr, Critter* cr_ );
         static bool         Crit_IsSeenByCr( Critter* cr, Critter* cr_ );
         static bool         Crit_IsSeeItem( Critter* cr, Item* item );
-        static Item*        Crit_AddItem( Critter* cr, ushort pid, uint count );
-        static bool         Crit_DeleteItem( Critter* cr, ushort pid, uint count );
+        static Item*        Crit_AddItem( Critter* cr, hash pid, uint count );
+        static bool         Crit_DeleteItem( Critter* cr, hash pid, uint count );
         static uint         Crit_ItemsCount( Critter* cr );
         static uint         Crit_ItemsWeight( Critter* cr );
         static uint         Crit_ItemsVolume( Critter* cr );
-        static uint         Crit_CountItem( Critter* cr, ushort proto_id );
-        static Item*        Crit_GetItem( Critter* cr, ushort proto_id, int slot );
+        static uint         Crit_CountItem( Critter* cr, hash proto_id );
+        static Item*        Crit_GetItem( Critter* cr, hash proto_id, int slot );
         static Item*        Crit_GetItemById( Critter* cr, uint item_id );
         static uint         Crit_GetItems( Critter* cr, int slot, ScriptArray* items );
         static uint         Crit_GetItemsByType( Critter* cr, int type, ScriptArray* items );
@@ -665,16 +663,16 @@ public:
         static void Cl_RunClientScript( Critter* cl, ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
         static void Cl_Disconnect( Critter* cl );
 
-        static bool   Crit_SetScript( Critter* cr, ScriptString* script );
-        static uint   Crit_GetScriptId( Critter* cr );
-        static uint   Crit_GetBagId( Critter* cr );
-        static void   Crit_SetBagRefreshTime( Critter* cr, uint real_minutes );
-        static uint   Crit_GetBagRefreshTime( Critter* cr );
-        static void   Crit_SetInternalBag( Critter* cr, ScriptArray& pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots );
-        static uint   Crit_GetInternalBag( Critter* cr, ScriptArray* pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots );
-        static ushort Crit_GetProtoId( Critter* cr );
-        static uint   Crit_GetMultihex( Critter* cr );
-        static void   Crit_SetMultihex( Critter* cr, int value );
+        static bool Crit_SetScript( Critter* cr, ScriptString* script );
+        static hash Crit_GetScriptId( Critter* cr );
+        static uint Crit_GetBagId( Critter* cr );
+        static void Crit_SetBagRefreshTime( Critter* cr, uint real_minutes );
+        static uint Crit_GetBagRefreshTime( Critter* cr );
+        static void Crit_SetInternalBag( Critter* cr, ScriptArray& pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots );
+        static uint Crit_GetInternalBag( Critter* cr, ScriptArray* pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots );
+        static hash Crit_GetProtoId( Critter* cr );
+        static uint Crit_GetMultihex( Critter* cr );
+        static void Crit_SetMultihex( Critter* cr, int value );
 
         static void Crit_AddEnemyInStack( Critter* cr, uint critter_id );
         static bool Crit_CheckEnemyInStack( Critter* cr, uint critter_id );
@@ -743,10 +741,10 @@ public:
         static GameVar* Global_GetUnicumVar( ushort tvar_id, uint master_id, uint slave_id );
 
         static uint       Map_GetId( Map* map );
-        static ushort     Map_GetProtoId( Map* map );
+        static hash       Map_GetProtoId( Map* map );
         static Location*  Map_GetLocation( Map* map );
         static bool       Map_SetScript( Map* map, ScriptString* script );
-        static uint       Map_GetScriptId( Map* map );
+        static hash       Map_GetScriptId( Map* map );
         static bool       Map_SetEvent( Map* map, int event_type, ScriptString* func_name );
         static void       Map_SetLoopTime( Map* map, uint loop_num, uint ms );
         static uchar      Map_GetRain( Map* map );
@@ -765,23 +763,23 @@ public:
         static int        Map_GetTurnBasedSequence( Map* map, ScriptArray& critters_ids );
         static void       Map_SetData( Map* map, uint index, int value );
         static int        Map_GetData( Map* map, uint index );
-        static Item*      Map_AddItem( Map* map, ushort hx, ushort hy, ushort proto_id, uint count );
+        static Item*      Map_AddItem( Map* map, ushort hx, ushort hy, hash proto_id, uint count );
         static uint       Map_GetItemsHex( Map* map, ushort hx, ushort hy, ScriptArray* items );
-        static uint       Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, ushort pid, ScriptArray* items );
-        static uint       Map_GetItemsByPid( Map* map, ushort pid, ScriptArray* items );
+        static uint       Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid, ScriptArray* items );
+        static uint       Map_GetItemsByPid( Map* map, hash pid, ScriptArray* items );
         static uint       Map_GetItemsByType( Map* map, int type, ScriptArray* items );
         static Item*      Map_GetItem( Map* map, uint item_id );
-        static Item*      Map_GetItemHex( Map* map, ushort hx, ushort hy, ushort pid );
+        static Item*      Map_GetItemHex( Map* map, ushort hx, ushort hy, hash pid );
         static Item*      Map_GetDoor( Map* map, ushort hx, ushort hy );
         static Item*      Map_GetCar( Map* map, ushort hx, ushort hy );
-        static MapObject* Map_GetSceneryHex( Map* map, ushort hx, ushort hy, ushort pid );
+        static MapObject* Map_GetSceneryHex( Map* map, ushort hx, ushort hy, hash pid );
         static uint       Map_GetSceneriesHex( Map* map, ushort hx, ushort hy, ScriptArray* sceneries );
-        static uint       Map_GetSceneriesHexEx( Map* map, ushort hx, ushort hy, uint radius, ushort pid, ScriptArray* sceneries );
-        static uint       Map_GetSceneriesByPid( Map* map, ushort pid, ScriptArray* sceneries );
+        static uint       Map_GetSceneriesHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid, ScriptArray* sceneries );
+        static uint       Map_GetSceneriesByPid( Map* map, hash pid, ScriptArray* sceneries );
         static Critter*   Map_GetCritterHex( Map* map, ushort hx, ushort hy );
         static Critter*   Map_GetCritterById( Map* map, uint crid );
         static uint       Map_GetCritters( Map* map, ushort hx, ushort hy, uint radius, int find_type, ScriptArray* critters );
-        static uint       Map_GetCrittersByPids( Map* map, ushort pid, int find_type, ScriptArray* critters );
+        static uint       Map_GetCrittersByPids( Map* map, hash pid, int find_type, ScriptArray* critters );
         static uint       Map_GetCrittersInPath( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters );
         static uint       Map_GetCrittersInPathBlock( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy );
         static uint       Map_GetCrittersWhoViewPath( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, int find_type, ScriptArray* critters );
@@ -790,7 +788,7 @@ public:
         static void       Map_GetHexInPathWall( Map* map, ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
         static uint       Map_GetPathLengthHex( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
         static uint       Map_GetPathLengthCr( Map* map, Critter* cr, ushort to_hx, ushort to_hy, uint cut );
-        static Critter*   Map_AddNpc( Map* map, ushort proto_id, ushort hx, ushort hy, uchar dir, ScriptArray* params, ScriptArray* items, ScriptString* script );
+        static Critter*   Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, ScriptArray* params, ScriptArray* items, ScriptString* script );
         static uint       Map_GetNpcCount( Map* map, int npc_role, int find_type );
         static Critter*   Map_GetNpc( Map* map, int npc_role, int find_type, uint skip_count );
         static uint       Map_CountEntire( Map* map, int entire );
@@ -804,9 +802,9 @@ public:
         static void       Map_SetText( Map* map, ushort hex_x, ushort hex_y, uint color, ScriptString& text );
         static void       Map_SetTextMsg( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num );
         static void       Map_SetTextMsgLex( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num, ScriptString& lexems );
-        static void       Map_RunEffect( Map* map, ushort eff_pid, ushort hx, ushort hy, uint radius );
-        static void       Map_RunFlyEffect( Map* map, ushort eff_pid, Critter* from_cr, Critter* to_cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
-        static bool       Map_CheckPlaceForItem( Map* map, ushort hx, ushort hy, ushort pid );
+        static void       Map_RunEffect( Map* map, hash eff_pid, ushort hx, ushort hy, uint radius );
+        static void       Map_RunFlyEffect( Map* map, hash eff_pid, Critter* from_cr, Critter* to_cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
+        static bool       Map_CheckPlaceForItem( Map* map, ushort hx, ushort hy, hash pid );
         static void       Map_BlockHex( Map* map, ushort hx, ushort hy, bool full );
         static void       Map_UnblockHex( Map* map, ushort hx, ushort hy );
         static void       Map_PlaySound( Map* map, ScriptString& sound_name );
@@ -830,22 +828,21 @@ public:
         static void Map_EventTurnBasedEnd( Map* map );
         static void Map_EventTurnBasedProcess( Map* map, Critter* cr, bool begin_turn );
 
-        static uint   Location_GetId( Location* loc );
-        static ushort Location_GetProtoId( Location* loc );
-        static bool   Location_SetEvent( Location* loc, int event_type, ScriptString* func_name );
-        static uint   Location_GetMapCount( Location* loc );
-        static Map*   Location_GetMap( Location* loc, ushort map_pid );
-        static Map*   Location_GetMapByIndex( Location* loc, uint index );
-        static uint   Location_GetMaps( Location* loc, ScriptArray* maps );
-        static bool   Location_GetEntrance( Location* loc, uint entrance, uint& map_index, uint& entire );
-        static uint   Location_GetEntrances( Location* loc, ScriptArray* maps_index, ScriptArray* entires );
-        static bool   Location_Reload( Location* loc );
-        static void   Location_Update( Location* loc );
+        static hash Location_GetProtoId( Location* loc );
+        static bool Location_SetEvent( Location* loc, int event_type, ScriptString* func_name );
+        static uint Location_GetMapCount( Location* loc );
+        static Map* Location_GetMap( Location* loc, hash map_pid );
+        static Map* Location_GetMapByIndex( Location* loc, uint index );
+        static uint Location_GetMaps( Location* loc, ScriptArray* maps );
+        static bool Location_GetEntrance( Location* loc, uint entrance, uint& map_index, uint& entire );
+        static uint Location_GetEntrances( Location* loc, ScriptArray* maps_index, ScriptArray* entires );
+        static bool Location_Reload( Location* loc );
+        static void Location_Update( Location* loc );
 
         static void Location_EventFinish( Location* loc, bool deleted );
         static bool Location_EventEnter( Location* loc, ScriptArray& group, uchar entrance );
 
-        static ProtoItem*    Global_GetProtoItem( ushort pid );
+        static ProtoItem*    Global_GetProtoItem( hash pid );
         static Item*         Global_GetItem( uint item_id );
         static uint          Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 );
         static void          Global_MoveItemCr( Item* item, uint count, Critter* to_cr );
@@ -863,9 +860,9 @@ public:
         static void          Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, ScriptString* lexems );
         static uint          Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static void          Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
-        static uint          Global_CreateLocation( ushort loc_pid, ushort wx, ushort wy, ScriptArray* critters );
+        static uint          Global_CreateLocation( hash loc_pid, ushort wx, ushort wy, ScriptArray* critters );
         static void          Global_DeleteLocation( uint loc_id );
-        static void          Global_GetProtoCritter( ushort proto_id, ScriptArray& data );
+        static void          Global_GetProtoCritter( hash proto_id, ScriptArray& data );
         static Critter*      Global_GetCritter( uint crid );
         static CraftItem*    Global_GetCraftItem( uint num );
         static Critter*      Global_GetPlayer( ScriptString& name );
@@ -887,33 +884,33 @@ public:
         static void          Global_EraseAnyData( ScriptString& name );
         static void          Global_SetTime( ushort multiplier, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static Map*          Global_GetMap( uint map_id );
-        static Map*          Global_GetMapByPid( ushort map_pid, uint skip_count );
+        static Map*          Global_GetMapByPid( hash map_pid, uint skip_count );
         static Location*     Global_GetLocation( uint loc_id );
-        static Location*     Global_GetLocationByPid( ushort loc_pid, uint skip_count );
+        static Location*     Global_GetLocationByPid( hash loc_pid, uint skip_count );
         static uint          Global_GetLocations( ushort wx, ushort wy, uint radius, ScriptArray* locations );
         static uint          Global_GetVisibleLocations( ushort wx, ushort wy, uint radius, Critter* cr, ScriptArray* locations );
         static uint          Global_GetZoneLocationIds( ushort zx, ushort zy, uint zone_radius, ScriptArray* locations );
         static bool          Global_RunDialogNpc( Critter* player, Critter* npc, bool ignore_distance );
         static bool          Global_RunDialogNpcDlgPack( Critter* player, Critter* npc, uint dlg_pack, bool ignore_distance );
         static bool          Global_RunDialogHex( Critter* player, uint dlg_pack, ushort hx, ushort hy, bool ignore_distance );
-        static int64         Global_WorldItemCount( ushort pid );
+        static int64         Global_WorldItemCount( hash pid );
         static void          Global_SetBestScore( int score, Critter* cl, ScriptString& name );
-        static bool          Global_AddTextListener( int say_type, ScriptString& first_str, ushort parameter, ScriptString& script_name );
-        static void          Global_EraseTextListener( int say_type, ScriptString& first_str, ushort parameter );
+        static bool          Global_AddTextListener( int say_type, ScriptString& first_str, uint parameter, ScriptString& script_name );
+        static void          Global_EraseTextListener( int say_type, ScriptString& first_str, uint parameter );
         static AIDataPlane*  Global_CreatePlane();
         static uint          Global_GetBagItems( uint bag_id, ScriptArray* pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots );
         static void          Global_SetChosenSendParameter( int index, bool enabled );
         static void          Global_SetSendParameter( int index, bool enabled );
         static void          Global_SetSendParameterFunc( int index, bool enabled, ScriptString* allow_func );
         static bool          Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory, bool with_vars );
-        static uint          Global_GetAllItems( ushort pid, ScriptArray* items );
+        static uint          Global_GetAllItems( hash pid, ScriptArray* items );
         static uint          Global_GetAllPlayers( ScriptArray* players );
         static uint          Global_GetRegisteredPlayers( ScriptArray* ids, ScriptArray* names );
-        static uint          Global_GetAllNpc( ushort pid, ScriptArray* npc );
-        static uint          Global_GetAllMaps( ushort pid, ScriptArray* maps );
-        static uint          Global_GetAllLocations( ushort pid, ScriptArray* locations );
-        static uint          Global_GetScriptId( ScriptString& script_name, ScriptString& func_decl );
-        static ScriptString* Global_GetScriptName( uint script_id );
+        static uint          Global_GetAllNpc( hash pid, ScriptArray* npc );
+        static uint          Global_GetAllMaps( hash pid, ScriptArray* maps );
+        static uint          Global_GetAllLocations( hash pid, ScriptArray* locations );
+        static hash          Global_GetScriptId( ScriptString& script_name, ScriptString& func_decl );
+        static ScriptString* Global_GetScriptName( hash script_id );
         static ScriptArray*  Global_GetItemDataMask( int mask_type );
         static bool          Global_SetItemDataMask( int mask_type, ScriptArray& mask );
         static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );

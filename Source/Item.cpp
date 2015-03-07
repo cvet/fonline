@@ -131,7 +131,6 @@ Item* Item::Clone()
     return clone;
 }
 
-
 #ifdef FONLINE_SERVER
 void Item::FullClear()
 {
@@ -140,9 +139,9 @@ void Item::FullClear()
 
     if( IsContainer() && ChildItems )
     {
-        MEMORY_PROCESS( MEMORY_ITEM, -(int) sizeof( ItemPtrMap ) );
+        MEMORY_PROCESS( MEMORY_ITEM, -(int) sizeof( ItemMap ) );
 
-        ItemPtrVec del_items = *ChildItems;
+        ItemVec del_items = *ChildItems;
         ChildItems->clear();
         SAFEDEL( ChildItems );
 
@@ -160,7 +159,7 @@ bool Item::ParseScript( const char* script, bool first_time )
 {
     if( script && script[ 0 ] )
     {
-        uint func_num = Script::BindScriptFuncNum( script, "void %s(Item&,bool)" );
+        hash func_num = Script::BindScriptFuncNum( script, "void %s(Item&,bool)" );
         if( !func_num )
         {
             WriteLogF( _FUNC_, " - Script<%s> bind fail, item pid<%u>.\n", script, GetProtoId() );
@@ -286,7 +285,7 @@ void Item::EventWalk( Critter* cr, bool entered, uchar dir )
 }
 #endif // FONLINE_SERVER
 
-void Item::SetSortValue( ItemPtrVec& items )
+void Item::SetSortValue( ItemVec& items )
 {
     ushort sort_value = 0x7FFF;
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
@@ -300,16 +299,17 @@ void Item::SetSortValue( ItemPtrVec& items )
     Data.SortValue = sort_value;
 }
 
-bool SortItemsFunc1( const Item* l, const Item* r ) { return l->Data.SortValue < r->Data.SortValue; }
-void Item::SortItems( ItemPtrVec& items )
-{
-    std::sort( items.begin(), items.end(), SortItemsFunc1 );
-}
-
-bool SortItemsFunc2( const Item& l, const Item& r ) { return l.Data.SortValue < r.Data.SortValue; }
+bool SortItemsFunc( const Item* l, const Item* r ) { return l->Data.SortValue < r->Data.SortValue; }
 void Item::SortItems( ItemVec& items )
 {
-    std::sort( items.begin(), items.end(), SortItemsFunc2 );
+    std::sort( items.begin(), items.end(), SortItemsFunc );
+}
+
+void Item::ClearItems( ItemVec& items )
+{
+    for( auto it = items.begin(), end = items.end(); it != end; ++it )
+        ( *it )->Release();
+    items.clear();
 }
 
 uint Item::GetCount()
@@ -490,8 +490,8 @@ void Item::ContAddItem( Item*& item, uint stack_id )
 
     if( !ChildItems )
     {
-        MEMORY_PROCESS( MEMORY_ITEM, sizeof( ItemPtrMap ) );
-        ChildItems = new ItemPtrVec();
+        MEMORY_PROCESS( MEMORY_ITEM, sizeof( ItemMap ) );
+        ChildItems = new ItemVec();
         if( !ChildItems )
             return;
     }
@@ -517,8 +517,8 @@ void Item::ContSetItem( Item* item )
 {
     if( !ChildItems )
     {
-        MEMORY_PROCESS( MEMORY_ITEM, sizeof( ItemPtrMap ) );
-        ChildItems = new ItemPtrVec();
+        MEMORY_PROCESS( MEMORY_ITEM, sizeof( ItemMap ) );
+        ChildItems = new ItemVec();
         if( !ChildItems )
             return;
     }
@@ -583,7 +583,7 @@ Item* Item::ContGetItem( uint item_id, bool skip_hide )
     return NULL;
 }
 
-void Item::ContGetAllItems( ItemPtrVec& items, bool skip_hide, bool sync_lock )
+void Item::ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock )
 {
     if( !IsContainer() || !ChildItems )
         return;
@@ -602,7 +602,7 @@ void Item::ContGetAllItems( ItemPtrVec& items, bool skip_hide, bool sync_lock )
 }
 
 # pragma MESSAGE("Add explicit sync lock.")
-Item* Item::ContGetItemByPid( ushort pid, uint stack_id )
+Item* Item::ContGetItemByPid( hash pid, uint stack_id )
 {
     if( !IsContainer() || !ChildItems )
         return NULL;
@@ -619,7 +619,7 @@ Item* Item::ContGetItemByPid( ushort pid, uint stack_id )
     return NULL;
 }
 
-void Item::ContGetItems( ItemPtrVec& items, uint stack_id, bool sync_lock )
+void Item::ContGetItems( ItemVec& items, uint stack_id, bool sync_lock )
 {
     if( !IsContainer() || !ChildItems )
         return;

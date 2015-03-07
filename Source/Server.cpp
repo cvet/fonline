@@ -341,7 +341,7 @@ void FOServer::RemoveClient( Client* cl )
         cl->IsNotValid = true;
 
         // Erase radios from collection
-        ItemPtrVec items = cl->GetItemsNoLock();
+        ItemVec items = cl->GetItemsNoLock();
         for( auto it = items.begin(), end = items.end(); it != end; ++it )
         {
             Item* item = *it;
@@ -1979,7 +1979,7 @@ void FOServer::Process_Text( Client* cl )
     }
     else
     {
-        ushort pid = cl->GetProtoMap();
+        hash pid = cl->GetProtoMap();
         for( uint i = 0; i < TextListeners.size(); i++ )
         {
             TextListen& tl = TextListeners[ i ];
@@ -2597,40 +2597,37 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         else
             logcb( "Reload proto locations fail." );
 
+        InitLangPacksLocations( LangPacks );
+        GenerateUpdateFiles();
+
         ResynchronizeLogicThreads();
     }
     break;
     case CMD_LOADLOCATION:
     {
-        ushort loc_pid;
-        buf >> loc_pid;
+        char loc_name[ MAX_FOPATH ];
+        buf.Pop( loc_name, sizeof( loc_name ) );
 
         CHECK_ALLOW_COMMAND;
 
-        if( !loc_pid || loc_pid >= MAX_PROTO_LOCATIONS )
-        {
-            logcb( "Invalid proto location pid." );
-            break;
-        }
-
         SynchronizeLogicThreads();
 
-        IniParser city_txt;
-        if( city_txt.LoadFile( "Locations.cfg", PT_SERVER_MAPS ) )
+        Str::Append( loc_name, ".foloc" );
+        FileManager file;
+        if( file.LoadFile( loc_name, PT_SERVER_MAPS ) )
         {
-            ProtoLocation ploc;
-            if( !MapMngr.LoadLocationProto( city_txt, ploc, loc_pid ) )
-                logcb( "Load proto location fail." );
-            else
-            {
-                MapMngr.ProtoLoc[ loc_pid ] = ploc;
+            if( MapMngr.LoadLocationProto( loc_name, file ) )
                 logcb( "Load proto location success." );
-            }
+            else
+                logcb( "Load proto location fail." );
         }
         else
         {
-            logcb( "Locations.cfg not found." );
+            logcb( "File not found." );
         }
+
+        InitLangPacksLocations( LangPacks );
+        GenerateUpdateFiles();
 
         ResynchronizeLogicThreads();
     }
@@ -2641,26 +2638,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
 
         SynchronizeLogicThreads();
 
-        int fails = 0;
-        for( int map_pid = 0; map_pid < MAX_PROTO_MAPS; map_pid++ )
-        {
-            if( MapMngr.ProtoMaps[ map_pid ].IsInit() )
-            {
-                ProtoMap    pmap;
-                const char* map_name = MapMngr.ProtoMaps[ map_pid ].GetName();
-                if( pmap.Init( map_pid, map_name, PT_SERVER_MAPS ) )
-                {
-                    MapMngr.ProtoMaps[ map_pid ].Clear();
-                    MapMngr.ProtoMaps[ map_pid ] = pmap;
-                }
-                else
-                {
-                    fails++;
-                }
-            }
-        }
-
-        if( !fails )
+        if( MapMngr.ReloadMaps( NULL ) == 0 )
             logcb( "Reload proto maps complete, without fails." );
         else
             logcb( "Reload proto maps complete, with fails." );
@@ -2670,33 +2648,17 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
     break;
     case CMD_LOADMAP:
     {
-        ushort map_pid;
-        buf >> map_pid;
+        char map_name[ MAX_FOPATH ];
+        buf.Pop( map_name, sizeof( map_name ) );
 
         CHECK_ALLOW_COMMAND;
 
         SynchronizeLogicThreads();
 
-        if( map_pid > 0 && map_pid < MAX_PROTO_MAPS && MapMngr.ProtoMaps[ map_pid ].IsInit() )
-        {
-            ProtoMap    pmap;
-            const char* map_name = MapMngr.ProtoMaps[ map_pid ].GetName();
-            if( pmap.Init( map_pid, map_name, PT_SERVER_MAPS ) )
-            {
-                MapMngr.ProtoMaps[ map_pid ].Clear();
-                MapMngr.ProtoMaps[ map_pid ] = pmap;
-
-                logcb( "Load proto map success." );
-            }
-            else
-            {
-                logcb( "Load proto map fail." );
-            }
-        }
+        if( MapMngr.ReloadMaps( map_name ) == 0 )
+            logcb( "Load proto map success." );
         else
-        {
-            logcb( "Invalid proto map pid." );
-        }
+            logcb( "Load proto map success." );
 
         ResynchronizeLogicThreads();
     }
@@ -2744,8 +2706,8 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         SynchronizeLogicThreads();
 
         bool error = DlgMngr.LoadDialogs();
-        InitLangPacks( LangPacks );
         InitLangPacksDialogs( LangPacks );
+        GenerateUpdateFiles();
         logcb( Str::FormatBuf( "Dialogs reload done%s.", error ? ", with errors." : "" ) );
 
         ResynchronizeLogicThreads();
@@ -2771,8 +2733,8 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
 
                 if( DlgMngr.AddDialog( pack ) )
                 {
-                    InitLangPacks( LangPacks );
                     InitLangPacksDialogs( LangPacks );
+                    GenerateUpdateFiles();
                     logcb( "Load dialog success." );
                 }
                 else
@@ -2800,9 +2762,10 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         SynchronizeLogicThreads();
 
         LangPackVec lang_packs;
-        if( InitLangPacks( lang_packs ) && InitLangPacksDialogs( lang_packs ) && InitCrafts( lang_packs ) )
+        if( InitLangPacks( lang_packs ) && InitLangPacksDialogs( lang_packs ) && InitLangPacksLocations( lang_packs ) && InitCrafts( lang_packs ) )
         {
             LangPacks = lang_packs;
+            GenerateUpdateFiles();
             logcb( "Reload texts success." );
         }
         else
@@ -3220,7 +3183,7 @@ void FOServer::SaveGameInfoFile()
     AddWorldSaveData( &BestScores[ 0 ], sizeof( BestScores ) );
 }
 
-bool FOServer::LoadGameInfoFile( void* f )
+bool FOServer::LoadGameInfoFile( void* f, uint version )
 {
     WriteLog( "Load game info...\n" );
 
@@ -3408,6 +3371,7 @@ bool FOServer::InitReal()
     STATIC_ASSERT( sizeof( size_t ) == 8 );
     STATIC_ASSERT( sizeof( void* ) == 8 );
     #endif
+    STATIC_ASSERT( sizeof( Item::ItemData ) == 120 );
 
     // Critters parameters
     Critter::ParamsSendMsgLen = sizeof( Critter::ParamsSendCount );
@@ -3495,13 +3459,10 @@ bool FOServer::InitReal()
         return false;                    // Var Manager (only before dialog manager!)
     if( !DlgMngr.LoadDialogs() )
         return false;                    // Dialog manager
-    if( !InitLangPacksDialogs( LangPacks ) )
-        return false;                    // Create FONPC.MSG, FODLG.MSG, need call after InitLangPacks and DlgMngr.LoadDialogs
     if( !InitCrafts( LangPacks ) )
         return false;                    // MrFixit
     if( !InitLangCrTypes( LangPacks ) )
         return false;                    // Critter types
-    // if(!MapMngr.LoadRelief()) return false; // Global map relief
 
     // Prototypes
     if( !ItemMngr.LoadProtos() )
@@ -3512,6 +3473,12 @@ bool FOServer::InitReal()
         return false;                          // Proto locations and maps
     if( !ItemMngr.CheckProtoFunctions() )
         return false;                          // Check valid of proto functions
+
+    // Language packs
+    if( !InitLangPacksDialogs( LangPacks ) )
+        return false;                            // Create FODLG.MSG, need call after InitLangPacks and DlgMngr.LoadDialogs
+    if( !InitLangPacksLocations( LangPacks ) )
+        return false;                            // Create FOLOCATIONS.MSG, need call after InitLangPacks and MapMngr.LoadLocationsProtos
 
     // Initialization script
     Script::PrepareContext( ServerFunctions.Init, _FUNC_, "Game" );
@@ -3857,7 +3824,7 @@ bool FOServer::InitLangPacksDialogs( LangPackVec& lang_packs )
             for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
             {
                 LanguagePack& lang = *it;
-                if( pack->TextsLang[ i ] != lang.NameStr )
+                if( pack->TextsLang[ i ] != lang.Name )
                     continue;
 
                 if( lang.Msg[ TEXTMSG_DLG ].IsIntersects( *pack->Texts[ i ] ) )
@@ -3868,8 +3835,33 @@ bool FOServer::InitLangPacksDialogs( LangPackVec& lang_packs )
         }
     }
 
-    // Regenerate update files
-    GenerateUpdateFiles();
+    return true;
+}
+
+bool FOServer::InitLangPacksLocations( LangPackVec& lang_packs )
+{
+    for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
+        it->Msg[ TEXTMSG_LOCATIONS ].Clear();
+
+    ProtoLocation* ploc = NULL;
+    uint           index = 0;
+    while( ploc = MapMngr.GetProtoLocationByIndex( index++ ) )
+    {
+        for( uint i = 0, j = (uint) ploc->TextsLang.size(); i < j; i++ )
+        {
+            for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
+            {
+                LanguagePack& lang = *it;
+                if( ploc->TextsLang[ i ] != lang.Name )
+                    continue;
+
+                if( lang.Msg[ TEXTMSG_LOCATIONS ].IsIntersects( *ploc->Texts[ i ] ) )
+                    WriteLog( "Warning! Location<%s> text intersection detected, send notification about this to developers.\n", ploc->Name.c_str() );
+
+                lang.Msg[ TEXTMSG_LOCATIONS ] += *ploc->Texts[ i ];
+            }
+        }
+    }
 
     return true;
 }
@@ -4105,7 +4097,7 @@ bool FOServer::LoadClientsData()
             cache_buf[ fsize ] = 0;
             cache_str = new istrstream( cache_buf );
             cache_str->getline( client_name, sizeof( client_name ) );
-            Str::EraseFrontBackSpecificChars( client_name );
+            Str::Trim( client_name );
             if( !client_name[ 0 ] )
             {
                 SAFEDEL( cache_str );
@@ -4158,7 +4150,7 @@ bool FOServer::LoadClientsData()
             else
             {
                 cache_str->getline( client_name, sizeof( client_name ) );
-                Str::EraseFrontBackSpecificChars( client_name );
+                Str::Trim( client_name );
                 if( cache_str->eof() || !client_name[ 0 ] )
                 {
                     success = true;
@@ -4385,7 +4377,7 @@ bool FOServer::NewWorld()
 {
     UnloadWorld();
     InitGameTime();
-    if( !GameOpt.GenerateWorldDisabled && !MapMngr.GenerateWorld( "GenerateWorld.cfg", PT_SERVER_MAPS ) )
+    if( !GameOpt.GenerateWorldDisabled && !MapMngr.GenerateWorld() )
         return false;
     return true;
 }
@@ -4461,9 +4453,6 @@ void FOServer::SaveWorld( const char* fname )
 
     // SaveTimeEventsFile
     SaveTimeEventsFile();
-
-    // SaveScriptFunctionsFile
-    SaveScriptFunctionsFile();
 
     // End signature
     AddWorldSaveData( &version, sizeof( version ) );
@@ -4551,13 +4540,14 @@ bool FOServer::LoadWorld( const char* fname )
     if( version != WORLD_SAVE_V1 && version != WORLD_SAVE_V2 && version != WORLD_SAVE_V3 && version != WORLD_SAVE_V4 &&
         version != WORLD_SAVE_V5 && version != WORLD_SAVE_V6 && version != WORLD_SAVE_V7 && version != WORLD_SAVE_V8 &&
         version != WORLD_SAVE_V9 && version != WORLD_SAVE_V10 && version != WORLD_SAVE_V11 && version != WORLD_SAVE_V12 &&
-        version != WORLD_SAVE_V13 && version != WORLD_SAVE_V14 && version != WORLD_SAVE_V15 )
+        version != WORLD_SAVE_V13 && version != WORLD_SAVE_V14 && version != WORLD_SAVE_V15 && version != WORLD_SAVE_V16 &&
+        version != WORLD_SAVE_V17 )
     {
         WriteLog( "Unknown version<%u> of world dump file.\n", version );
         FileClose( f );
         return false;
     }
-    if( version < WORLD_SAVE_V15 )
+    if( version < WORLD_SAVE_V17 )
     {
         WriteLog( "Version of save file is not supported.\n" );
         FileClose( f );
@@ -4565,9 +4555,9 @@ bool FOServer::LoadWorld( const char* fname )
     }
 
     // Main data
-    if( !LoadGameInfoFile( f ) )
+    if( !LoadGameInfoFile( f, version ) )
         return false;
-    if( !MapMngr.LoadAllLocationsAndMapsFile( f ) )
+    if( !MapMngr.LoadAllLocationsAndMapsFile( f, version ) )
         return false;
     if( !CrMngr.LoadCrittersFile( f, version ) )
         return false;
@@ -4575,13 +4565,11 @@ bool FOServer::LoadWorld( const char* fname )
         return false;
     if( !VarMngr.LoadVarsDataFile( f, version ) )
         return false;
-    if( !LoadHoloInfoFile( f ) )
+    if( !LoadHoloInfoFile( f, version ) )
         return false;
-    if( !LoadAnyDataFile( f ) )
+    if( !LoadAnyDataFile( f, version ) )
         return false;
-    if( !LoadTimeEventsFile( f ) )
-        return false;
-    if( !LoadScriptFunctionsFile( f ) )
+    if( !LoadTimeEventsFile( f, version ) )
         return false;
 
     // File end
@@ -4910,7 +4898,7 @@ void FOServer::SaveTimeEventsFile()
     }
 }
 
-bool FOServer::LoadTimeEventsFile( void* f )
+bool FOServer::LoadTimeEventsFile( void* f, uint version )
 {
     WriteLog( "Load time events...\n" );
 
@@ -5365,57 +5353,6 @@ string FOServer::GetTimeEventsStatistics()
     return result;
 }
 
-void FOServer::SaveScriptFunctionsFile()
-{
-    StrVec func_names;
-    Script::GetIndexedScriptFunc( func_names );
-    uint   count = (uint) func_names.size();
-    AddWorldSaveData( &count, sizeof( count ) );
-    for( uint i = 0; i < count; i++ )
-    {
-        const string& func_name = func_names[ i ];
-        uint          len = (uint) func_name.length();
-        AddWorldSaveData( &len, sizeof( len ) );
-        AddWorldSaveData( (void*) func_name.c_str(), len );
-    }
-}
-
-bool FOServer::LoadScriptFunctionsFile( void* f )
-{
-    uint count = 0;
-    if( !FileRead( f, &count, sizeof( count ) ) )
-        return false;
-    Script::AddIndexedScriptFunc( NULL, NULL );
-    for( uint i = 0; i < count; i++ )
-    {
-        char script[ 1024 ];
-        uint len = 0;
-        if( !FileRead( f, &len, sizeof( len ) ) )
-            return false;
-        if( len && !FileRead( f, script, len ) )
-            return false;
-        script[ len ] = 0;
-
-        // Cut off decl
-        char* decl = strstr( script, "|" );
-        if( !decl )
-        {
-            WriteLogF( _FUNC_, " - Function declaration not found, script<%s>.\n", script );
-            continue;
-        }
-        *decl = 0;
-        decl++;
-
-        // Parse
-        if( !Script::AddIndexedScriptFunc( script, decl ) )
-        {
-            WriteLogF( _FUNC_, " - Function<%s,%s> not found.\n", script, decl );
-            continue;
-        }
-    }
-    return true;
-}
-
 /************************************************************************/
 /* Any data                                                             */
 /************************************************************************/
@@ -5437,7 +5374,7 @@ void FOServer::SaveAnyDataFile()
     }
 }
 
-bool FOServer::LoadAnyDataFile( void* f )
+bool FOServer::LoadAnyDataFile( void* f, uint version )
 {
     UCharVec data;
     uint     count = 0;

@@ -12,14 +12,10 @@ class Map;
 class ItemManager
 {
 private:
-    bool         isActive;
-    ProtoItem    allProto[ MAX_ITEM_PROTOTYPES ]; // All
-    ProtoItemVec typeProto[ ITEM_MAX_TYPES ];     // By type
-    char*        protoScript[ MAX_ITEM_PROTOTYPES ];
+    ProtoItemMap allProto;
 
 public:
     bool Init();
-    bool IsInit() { return isActive; }
     void Finish();
     void Clear();
 
@@ -34,23 +30,19 @@ public:
     #endif
 
     void          ParseProtos( ProtoItemVec& protos, const char* collection_name = NULL );
-    ProtoItem*    GetProtoItem( ushort pid );
-    ProtoItem*    GetAllProtos();
-    ProtoItemVec& GetProtos( int type );
-    void          GetCopyAllProtos( ProtoItemVec& protos );
-    bool          IsInitProto( ushort pid );
-    const char*   GetProtoScript( ushort pid );
-    void          ClearProtos( int type = 0xFF ); // 0xFF - All
-    void          ClearProto( ushort pid );
+    ProtoItem*    GetProtoItem( hash pid );
+    ProtoItemMap& GetAllProtos();
+    void          ClearProto( hash pid );
     void          GetBinaryData( UCharVec& data );
+    void          SetBinaryData( UCharVec& data );
 
     #ifdef FONLINE_SERVER
 private:
-    ItemPtrMap gameItems;
-    UIntVec    itemToDelete;
-    UIntVec    itemToDeleteCount;
-    uint       lastItemId;
-    Mutex      itemLocker;
+    ItemMap gameItems;
+    UIntVec itemToDelete;
+    UIntVec itemToDeleteCount;
+    uint    lastItemId;
+    Mutex   itemLocker;
 
 public:
     void SaveAllItemsFile( void ( * save_func )( void*, size_t ) );
@@ -58,12 +50,12 @@ public:
     bool CheckProtoFunctions();
     void RunInitScriptItems();
 
-    void GetGameItems( ItemPtrVec& items );
+    void GetGameItems( ItemVec& items );
     uint GetItemsCount();
     void SetCritterItems( Critter* cr );
     void GetItemIds( UIntSet& item_ids );
 
-    Item* CreateItem( ushort pid, uint count, uint item_id = 0 );
+    Item* CreateItem( hash pid, uint count, uint item_id = 0 );
     Item* SplitItem( Item* item, uint count );
     Item* GetItem( uint item_id, bool sync_lock );
 
@@ -77,10 +69,10 @@ public:
     void MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy );
     void MoveItem( Item* item, uint count, Item* to_cont, uint stack_id );
 
-    Item* AddItemContainer( Item* cont, ushort pid, uint count, uint stack_id );
-    Item* AddItemCritter( Critter* cr, ushort pid, uint count );
-    bool  SubItemCritter( Critter* cr, ushort pid, uint count, ItemPtrVec* erased_items = NULL );
-    bool  SetItemCritter( Critter* cr, ushort pid, uint count );
+    Item* AddItemContainer( Item* cont, hash pid, uint count, uint stack_id );
+    Item* AddItemCritter( Critter* cr, hash pid, uint count );
+    bool  SubItemCritter( Critter* cr, hash pid, uint count, ItemVec* erased_items = NULL );
+    bool  SetItemCritter( Critter* cr, hash pid, uint count );
     bool  MoveItemCritters( Critter* from_cr, Critter* to_cr, uint item_id, uint count );
     bool  MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint item_id, uint count, uint stack_id );
     bool  MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, uint item_id, uint count );
@@ -89,8 +81,8 @@ public:
 
     // Radio
 private:
-    ItemPtrVec radioItems;
-    Mutex      radioItemsLocker;
+    ItemVec radioItems;
+    Mutex   radioItemsLocker;
 
 public:
     void RadioRegister( Item* radio, bool add );
@@ -100,16 +92,15 @@ public:
 
     // Items statistics
 private:
-    int64         itemCount[ MAX_ITEM_PROTOTYPES ];
     MutexSpinlock itemCountLocker;
 
 public:
-    void   AddItemStatistics( ushort pid, uint val );
-    void   SubItemStatistics( ushort pid, uint val );
-    int64  GetItemStatistics( ushort pid );
+    void   AddItemStatistics( hash pid, uint val );
+    void   SubItemStatistics( hash pid, uint val );
+    int64  GetItemStatistics( hash pid );
     string GetItemsStatistics();
 
-    ItemManager(): isActive( false ) { MEMORY_PROCESS( MEMORY_STATIC, sizeof( ItemManager ) ); };
+    ItemManager() { MEMORY_PROCESS( MEMORY_STATIC, sizeof( ItemManager ) ); };
 };
 
 extern ItemManager ItemMngr;

@@ -66,9 +66,9 @@ public:
     Sprites(): spritesTreeSize( 0 ) {}
     ~Sprites() { Resize( 0 ); }
     SpriteVec::iterator Begin() { return spritesTree.begin(); }
-    SpriteVec::iterator End() { return spritesTree.begin() + spritesTreeSize; }
-    uint    Size() { return spritesTreeSize; }
-    Sprite& AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
+    SpriteVec::iterator End()   { return spritesTree.begin() + spritesTreeSize; }
+    uint                Size()  { return spritesTreeSize; }
+    Sprite&             AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
     Sprite& InsertSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
     void    Resize( uint size );
     void    Clear() { Resize( 0 ); }

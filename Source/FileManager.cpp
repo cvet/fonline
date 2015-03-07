@@ -679,7 +679,7 @@ void FileManager::SetWritePath( const char* path )
     basePathes[ 0 ] = path;
 }
 
-uint FileManager::GetFileHash( const char* fname, int path_type )
+hash FileManager::GetPathHash( const char* fname, int path_type )
 {
     char fpath[ MAX_FOPATH ];
     GetDataPath( fname, path_type, fpath );
@@ -992,4 +992,34 @@ void FileManager::GetDataFileNames( const char* path, bool include_subdirs, cons
         DataFile* dat = *it;
         dat->GetFileNames( path_, include_subdirs, ext, result );
     }
+}
+
+FilesCollection::FilesCollection( int path_type, const char* ext, bool include_subdirs )
+{
+    curFileIndex = 0;
+    memzero( curFileName, sizeof( curFileName ) );
+    FileManager::GetDataFileNames( FileManager::GetDataPath( "", path_type ), include_subdirs, ext, fileNames );
+}
+
+bool FilesCollection::IsNextFile()
+{
+    return curFileIndex < fileNames.size();
+}
+
+FileManager& FilesCollection::GetNextFile( const char** name /* = NULL */ )
+{
+    curFileIndex++;
+    curFile.LoadFile( fileNames[ curFileIndex - 1 ].c_str(), PT_DATA );
+    if( name )
+    {
+        FileManager::ExtractFileName( fileNames[ curFileIndex - 1 ].c_str(), curFileName );
+        FileManager::EraseExtension( curFileName );
+        *name = curFileName;
+    }
+    return curFile;
+}
+
+uint FilesCollection::GetFilesCount()
+{
+    return (uint) fileNames.size();
 }

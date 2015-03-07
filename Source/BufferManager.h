@@ -50,31 +50,69 @@ public:
     bool  NeedProcess();
     void  SkipMsg( uint msg );
 
-    BufferManager& operator<<( uint i );
-    BufferManager& operator>>( uint& i );
-    BufferManager& operator<<( int i );
-    BufferManager& operator>>( int& i );
-    BufferManager& operator<<( ushort i );
-    BufferManager& operator>>( ushort& i );
-    BufferManager& operator<<( short i );
-    BufferManager& operator>>( short& i );
-    BufferManager& operator<<( uchar i );
-    BufferManager& operator>>( uchar& i );
-    BufferManager& operator<<( char i );
-    BufferManager& operator>>( char& i );
-    BufferManager& operator<<( bool i );
-    BufferManager& operator>>( bool& i );
+    template< typename T >
+    BufferManager& operator<<( const T& i )
+    {
+        if( isError )
+            return *this;
+        if( bufEndPos + sizeof( T ) >= bufLen )
+            GrowBuf( sizeof( T ) );
+        *(T*) ( bufData + bufEndPos ) = i ^ EncryptKey( sizeof( T ) );
+        bufEndPos += sizeof( T );
+        return *this;
+    }
+
+    template< typename T >
+    BufferManager& operator>>( T& i )
+    {
+        if( isError )
+            return *this;
+        if( bufReadPos + sizeof( T ) > bufEndPos )
+        {
+            isError = true;
+            WriteLog( "Buffer Manager Error!\n" );
+            return *this;
+        }
+        i = *(T*) ( bufData + bufReadPos ) ^ EncryptKey( sizeof( T ) );
+        bufReadPos += sizeof( T );
+        return *this;
+    }
+
+    BufferManager& operator<<( const bool& b )
+    {
+        *this << (uchar) ( b ? 1 : 0 );
+        return *this;
+    }
+
+    BufferManager& operator>>( bool& b )
+    {
+        uchar i = 0;
+        *this >> i;
+        b = ( i != 0 );
+        return *this;
+    }
+
+    // Disable transferring some types
+private:
+    BufferManager& operator<<( const uint64& i );
+    BufferManager& operator>>( uint64& i );
+    BufferManager& operator<<( const float& i );
+    BufferManager& operator>>( float& i );
+    BufferManager& operator<<( const double& i );
+    BufferManager& operator>>( double& i );
 
 private:
     inline uint EncryptKey( int move )
     {
-        if( !encryptActive ) return 0;
+        if( !encryptActive )
+            return 0;
         uint key = encryptKeys[ encryptKeyPos ];
         encryptKeyPos += move;
         if( encryptKeyPos < 0 || encryptKeyPos >= CRYPT_KEYS_COUNT )
         {
             encryptKeyPos %= CRYPT_KEYS_COUNT;
-            if( encryptKeyPos < 0 ) encryptKeyPos += CRYPT_KEYS_COUNT;
+            if( encryptKeyPos < 0 )
+                encryptKeyPos += CRYPT_KEYS_COUNT;
         }
         return key;
     }

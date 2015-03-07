@@ -53,7 +53,8 @@ CritterCl::CritterCl()
     SprDrawValid = false;
     IsNotValid = false;
     RefCounter = 1;
-    OxExtI = OyExtI = OxExtF = OyExtF = 0;
+    OxExtI = OyExtI = 0;
+    OxExtF = OyExtF = 0.0f;
     OxExtSpeed = OyExtSpeed = 0;
     OffsExtNextTick = 0;
     Anim3d = Anim3dStay = NULL;
@@ -66,8 +67,10 @@ CritterCl::CritterCl()
     memzero( Params, sizeof( Params ) );
     ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item();
     ItemSlotArmor = DefItemSlotArmor = new Item();
-    ItemSlotMain->Init( ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
-    ItemSlotArmor->Init( ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
+    ProtoItem* slotMainProto = ItemMngr.GetProtoItem( ITEM_DEF_SLOT );
+    ItemSlotMain->Init( slotMainProto );
+    ProtoItem* slotArmorProto = ItemMngr.GetProtoItem( ITEM_DEF_ARMOR );
+    ItemSlotArmor->Init( slotArmorProto );
     tickFidget = Timer::GameTick() + Random( GameOpt.CritterFidgetTime, GameOpt.CritterFidgetTime * 2 );
     for( int i = 0; i < MAX_PARAMETERS_ARRAYS; i++ )
         ThisPtr[ i ] = this;
@@ -201,7 +204,7 @@ void CritterCl::EraseItem( Item* item, bool animate )
 
 void CritterCl::EraseAllItems()
 {
-    ItemPtrVec items = InvItems;
+    ItemVec items = InvItems;
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
         EraseItem( *it, false );
     InvItems.clear();
@@ -218,7 +221,7 @@ Item* CritterCl::GetItem( uint item_id )
     return NULL;
 }
 
-Item* CritterCl::GetItemByPid( ushort item_pid )
+Item* CritterCl::GetItemByPid( hash item_pid )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->GetProtoId() == item_pid )
@@ -226,7 +229,7 @@ Item* CritterCl::GetItemByPid( ushort item_pid )
     return NULL;
 }
 
-Item* CritterCl::GetItemByPidInvPriority( ushort item_pid )
+Item* CritterCl::GetItemByPidInvPriority( hash item_pid )
 {
     ProtoItem* proto_item = ItemMngr.GetProtoItem( item_pid );
     if( !proto_item )
@@ -259,7 +262,7 @@ Item* CritterCl::GetItemByPidInvPriority( ushort item_pid )
     return NULL;
 }
 
-Item* CritterCl::GetItemByPidSlot( ushort item_pid, int slot )
+Item* CritterCl::GetItemByPidSlot( hash item_pid, int slot )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
@@ -286,7 +289,7 @@ Item* CritterCl::GetItemSlot( int slot )
     return NULL;
 }
 
-void CritterCl::GetItemsSlot( int slot, ItemPtrVec& items )
+void CritterCl::GetItemsSlot( int slot, ItemVec& items )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
@@ -296,7 +299,7 @@ void CritterCl::GetItemsSlot( int slot, ItemPtrVec& items )
     }
 }
 
-void CritterCl::GetItemsType( int type, ItemPtrVec& items )
+void CritterCl::GetItemsType( int type, ItemVec& items )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
@@ -306,7 +309,7 @@ void CritterCl::GetItemsType( int type, ItemPtrVec& items )
     }
 }
 
-uint CritterCl::CountItemPid( ushort item_pid )
+uint CritterCl::CountItemPid( hash item_pid )
 {
     uint result = 0;
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
@@ -368,12 +371,11 @@ Item* CritterCl::GetItemLowSortValue()
 
 void CritterCl::GetInvItems( ItemVec& items )
 {
-    items.clear();
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->AccCritter.Slot == SLOT_INV )
-            items.push_back( *item );
+            items.push_back( item );
     }
 
     Item::SortItems( items );
@@ -455,11 +457,11 @@ Item* CritterCl::GetSlotUse( uchar num_slot, uchar& use )
     return item;
 }
 
-uint CritterCl::GetUsePicName( uchar num_slot )
+hash CritterCl::GetUsePicName( uchar num_slot )
 {
-    static uint use_on_pic = Str::GetHash( "art\\intrface\\useon.frm" );
-    static uint use_pic = Str::GetHash( "art\\intrface\\uset.frm" );
-    static uint reload_pic = Str::GetHash( "art\\intrface\\reload.frm" );
+    static hash use_on_pic = Str::GetHash( "art\\intrface\\useon.frm" );
+    static hash use_pic = Str::GetHash( "art\\intrface\\uset.frm" );
+    static hash reload_pic = Str::GetHash( "art\\intrface\\reload.frm" );
 
     uchar       use;
     Item*       item = GetSlotUse( num_slot, use );

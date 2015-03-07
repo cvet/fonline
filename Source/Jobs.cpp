@@ -106,18 +106,18 @@ uint Job::Count()
 }
 
 // Deferred releasing
-static CrVec      DeferredReleaseCritters;
-static UIntVec    DeferredReleaseCrittersCycle;
-static MapVec     DeferredReleaseMaps;
-static UIntVec    DeferredReleaseMapsCycle;
-static LocVec     DeferredReleaseLocs;
-static UIntVec    DeferredReleaseLocsCycle;
-static ItemPtrVec DeferredReleaseItems;
-static UIntVec    DeferredReleaseItemsCycle;
-static VarsVec    DeferredReleaseVars;
-static UIntVec    DeferredReleaseVarsCycle;
-static uint       DeferredReleaseCycle = 0;
-static Mutex      DeferredReleaseLocker;
+static CrVec   DeferredReleaseCritters;
+static UIntVec DeferredReleaseCrittersCycle;
+static MapVec  DeferredReleaseMaps;
+static UIntVec DeferredReleaseMapsCycle;
+static LocVec  DeferredReleaseLocs;
+static UIntVec DeferredReleaseLocsCycle;
+static ItemVec DeferredReleaseItems;
+static UIntVec DeferredReleaseItemsCycle;
+static VarsVec DeferredReleaseVars;
+static UIntVec DeferredReleaseVarsCycle;
+static uint    DeferredReleaseCycle = 0;
+static Mutex   DeferredReleaseLocker;
 
 void Job::DeferredRelease( Critter* cr )
 {

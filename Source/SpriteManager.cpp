@@ -111,11 +111,11 @@ bool SpriteManager::Init()
     // Calculate atlas size
     GLint max_texture_size;
     GL( glGetIntegerv( GL_MAX_TEXTURE_SIZE, &max_texture_size ) );
-    max_texture_size = min( max_texture_size, MAX_ATLAS_SIZE );
+    max_texture_size = MIN( max_texture_size, MAX_ATLAS_SIZE );
     atlasWidth = atlasHeight = max_texture_size;
     #ifdef FO_OSX_IOS
-    atlasWidth = min( 2048, max_texture_size );
-    atlasHeight = min( 3584, max_texture_size );
+    atlasWidth = MIN( 2048, max_texture_size );
+    atlasHeight = MIN( 3584, max_texture_size );
     #endif
 
     // Initialize GLEW
@@ -350,7 +350,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
             GL( glGetIntegerv( GL_MAX_COLOR_TEXTURE_SAMPLES, &max_samples ) );
             if( GameOpt.MultiSampling < 0 )
                 GameOpt.MultiSampling = 8;
-            samples = min( GameOpt.MultiSampling, max_samples );
+            samples = MIN( GameOpt.MultiSampling, max_samples );
 
             // Flush effect
             Effect::FlushRenderTargetMSDefault = GraphicLoader::LoadEffect( "Flush_RenderTargetMS.glsl", true );
@@ -968,7 +968,7 @@ TextureAtlas* SpriteManager::FindAtlasPlace( SpriteInfo* si, int& x, int& y )
                 a->CurX += w;
                 a->LineW = w;
                 a->LineCurH = h;
-                a->LineMaxH = max( a->LineMaxH, h );
+                a->LineMaxH = MAX( a->LineMaxH, h );
                 atlas = a;
             }
             else if( a->Width >= w && a->Height - a->CurY - a->LineMaxH >= h )
@@ -1598,8 +1598,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
 
     // Load ini parser
     IniParser fofrm;
-    if( !fofrm.LoadFilePtr( (char*) fm.GetBuf(), fm.GetFsize() ) )
-        return NULL;
+    fofrm.LoadFilePtr( (char*) fm.GetBuf(), fm.GetFsize() );
 
     ushort frm_fps = fofrm.GetInt( "fps", 0 );
     if( !frm_fps )
@@ -1982,7 +1981,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
             frm_from = frm_count - 1;
         if( frm_to >= frm_count )
             frm_to = frm_count - 1;
-        uint frm_count_anim = max( frm_from, frm_to ) - min( frm_from, frm_to ) + 1;
+        uint frm_count_anim = MAX( frm_from, frm_to ) - MIN( frm_from, frm_to ) + 1;
 
         // Create animation
         if( !base_anim )
@@ -2056,7 +2055,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
                 if( !index )                                                                                   \
                     color = 0;                                                                                 \
                 else if( transparent )                                                                         \
-                    color |= max( ( color >> 16 ) & 0xFF, max( ( color >> 8 ) & 0xFF, color & 0xFF ) ) << 24;  \
+                    color |= MAX( ( color >> 16 ) & 0xFF, MAX( ( color >> 8 ) & 0xFF, color & 0xFF ) ) << 24;  \
                 else                                                                                           \
                     color |= 0xFF000000
             #define ART_WRITE_COLOR                                                                             \
@@ -3511,7 +3510,7 @@ bool SpriteManager::DrawSpriteSizeExt( uint id, int x, int y, int w, int h, bool
     float yf = (float) y;
     float wf = (float) si->Width;
     float hf = (float) si->Height;
-    float k = min( w / wf, h / hf );
+    float k = MIN( w / wf, h / hf );
     if( !stretch )
     {
         if( k < 1.0f || ( k > 1.0f && zoom_up ) )
@@ -3933,10 +3932,10 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
 
             if( !( x1 >= eggSprWidth || y1 >= eggSprHeight || x2 < 0 || y2 < 0 ) )
             {
-                x1 = max( x1, 0 );
-                y1 = max( y1, 0 );
-                x2 = min( x2, eggSprWidth );
-                y2 = min( y2, eggSprHeight );
+                x1 = MAX( x1, 0 );
+                y1 = MAX( y1, 0 );
+                x2 = MIN( x2, eggSprWidth );
+                y2 = MIN( y2, eggSprHeight );
 
                 float x1f = (float) ( x1 + ATLAS_SPRITES_PADDING );
                 float x2f = (float) ( x2 + ATLAS_SPRITES_PADDING );

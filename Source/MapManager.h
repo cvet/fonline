@@ -119,26 +119,26 @@ typedef vector< PathStep > PathStepVec;
 class MapManager
 {
 private:
-    uint  lastMapId;
-    uint  lastLocId;
-    Mutex mapLocker;
+    ProtoMapMap protoMaps;
+    ProtoLocMap protoLoc;
+    uint        lastMapId;
+    uint        lastLocId;
+    Mutex       mapLocker;
 
 public:
-    ProtoMap      ProtoMaps[ MAX_PROTO_MAPS ];
-    ProtoLocation ProtoLoc[ MAX_PROTO_LOCATIONS ];
-
     MapManager();
     bool Init();
     void Finish();
     void Clear();
 
     bool   LoadLocationsProtos();
-    bool   LoadLocationProto( IniParser& city_txt, ProtoLocation& ploc, ushort pid );
+    bool   LoadLocationProto( const char* loc_name, FileManager& file );
+    int    ReloadMaps( const char* map_name );
     void   SaveAllLocationsAndMapsFile( void ( * save_func )( void*, size_t ) );
-    bool   LoadAllLocationsAndMapsFile( void* f );
+    bool   LoadAllLocationsAndMapsFile( void* f, uint version );
     string GetLocationsMapsStatistics();
     void   RunInitScriptMaps();
-    bool   GenerateWorld( const char* fname, int path_type );
+    bool   GenerateWorld();
     void   GetLocationAndMapIds( UIntSet& loc_ids, UIntSet& map_ids );
 
     // Maps stuff
@@ -174,12 +174,12 @@ private:
     volatile bool runGarbager;
 
 public:
-    bool           IsInitProtoLocation( ushort pid_loc );
-    ProtoLocation* GetProtoLocation( ushort loc_pid );
-    Location*      CreateLocation( ushort pid_loc, ushort wx, ushort wy, uint loc_id );
+    ProtoLocation* GetProtoLocation( hash loc_pid );
+    ProtoLocation* GetProtoLocationByIndex( uint index );
+    Location*      CreateLocation( hash loc_pid, ushort wx, ushort wy, uint loc_id );
     Location*      GetLocationByMap( uint map_id );
     Location*      GetLocation( uint loc_id );
-    Location*      GetLocationByPid( ushort loc_pid, uint skip_count );
+    Location*      GetLocationByPid( hash loc_pid, uint skip_count );
     void           GetLocations( LocVec& locs, bool lock );
     uint           GetLocationsCount();
     void           LocationGarbager();
@@ -192,14 +192,13 @@ private:
     uint        pathNumCur;
 
 public:
-    bool         IsInitProtoMap( ushort pid_map );
-    Map*         CreateMap( ushort pid_map, Location* loc_map, uint map_id );
+    Map*         CreateMap( hash map_pid, Location* loc_map, uint map_id );
     Map*         GetMap( uint map_id, bool sync_lock = true );
-    Map*         GetMapByPid( ushort map_pid, uint skip_count );
+    Map*         GetMapByPid( hash map_pid, uint skip_count );
     void         GetMaps( MapVec& maps, bool lock );
     uint         GetMapsCount();
-    ProtoMap*    GetProtoMap( ushort pid_map );
-    bool         IsProtoMapNoLogOut( ushort pid_map );
+    ProtoMap*    GetProtoMap( hash map_pid );
+    bool         IsProtoMapNoLogOut( hash map_pid );
     void         TraceBullet( TraceData& trace );
     int          FindPath( PathFindData& pfd );
     int          FindPathGrid( ushort& hx, ushort& hy, int index, bool smooth_switcher );

@@ -9,8 +9,6 @@
 #define AS_USE_STLNAMES    0
 #include "scriptarray.h"
 
-using namespace std;
-
 void* AllocMem( size_t size )
 {
     #ifdef MEMORY_DEBUG

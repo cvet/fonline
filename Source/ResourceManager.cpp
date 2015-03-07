@@ -112,7 +112,7 @@ void ResourceManager::ReinitializeDynamicAtlas()
     SprMngr.PopAtlasType();
 }
 
-AnyFrames* ResourceManager::GetAnim( uint name_hash, int res_type )
+AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
 {
     // Find already loaded
     auto it = loadedAnims.find( name_hash );

@@ -48,7 +48,8 @@ bool FOMapper::Init()
     // Register dll script data
     struct CritterChangeParameter_
     {
-        static void CritterChangeParameter( void*, uint ) {} };                           // Dummy
+        static void CritterChangeParameter( void*, uint ) {}
+    };                               // Dummy
     GameOpt.CritterChangeParameter = &CritterChangeParameter_::CritterChangeParameter;
 
     GameOpt.CritterTypes = &CritType::GetRealCritType( 0 );
@@ -102,11 +103,13 @@ bool FOMapper::Init()
 
     struct GetNameByHash_
     {
-        static const char* GetNameByHash( uint hash ) { return Str::GetName( hash ); } };
+        static const char* GetNameByHash( hash h ) { return Str::GetName( h ); }
+    };
     GameOpt.GetNameByHash = &GetNameByHash_::GetNameByHash;
     struct GetHashByName_
     {
-        static uint GetHashByName( const char* name ) { return Str::GetHash( name ); } };
+        static hash GetHashByName( const char* name ) { return Str::GetHash( name ); }
+    };
     GameOpt.GetHashByName = &GetHashByName_::GetHashByName;
 
     // Input
@@ -219,25 +222,21 @@ bool FOMapper::Init()
         return false;
 
     // Initialize tabs
-    CritData* cr_protos = CrMngr.GetAllProtos();
-    for( int i = 1; i < MAX_CRIT_PROTOS; i++ )
+    CritDataMap& cr_protos = CrMngr.GetAllProtos();
+    for( auto it = cr_protos.begin(), end = cr_protos.end(); it != end; ++it )
     {
-        CritData* data = &cr_protos[ i ];
-        if( data->ProtoId )
-        {
-            data->BaseType = data->Params[ ST_BASE_CRTYPE ];
-            Tabs[ INT_MODE_CRIT ][ DEFAULT_SUB_TAB ].NpcProtos.push_back( data );
-            Tabs[ INT_MODE_CRIT ][ CrMngr.ProtosCollectionName[ i ] ].NpcProtos.push_back( data );
-        }
+        CritData* data = ( *it ).second;
+        data->BaseType = data->Params[ ST_BASE_CRTYPE ];
+        Tabs[ INT_MODE_CRIT ][ DEFAULT_SUB_TAB ].NpcProtos.push_back( data );
+        Tabs[ INT_MODE_CRIT ][ data->CollectionName ].NpcProtos.push_back( data );
     }
 
-    ProtoItemVec item_protos;
-    ItemMngr.GetCopyAllProtos( item_protos );
-    for( size_t i = 0, j = item_protos.size(); i < j; i++ )
+    ProtoItemMap& item_protos = ItemMngr.GetAllProtos();
+    for( auto it = item_protos.begin(), end = item_protos.end(); it != end; ++it )
     {
-        ProtoItem& proto = item_protos[ i ];
+        ProtoItem* proto = ( *it ).second;
         Tabs[ INT_MODE_ITEM ][ DEFAULT_SUB_TAB ].ItemProtos.push_back( proto );
-        Tabs[ INT_MODE_ITEM ][ proto.CollectionName ].ItemProtos.push_back( proto );
+        Tabs[ INT_MODE_ITEM ][ proto->CollectionName ].ItemProtos.push_back( proto );
     }
 
     for( int i = 0; i < TAB_COUNT; i++ )
@@ -283,7 +282,7 @@ bool FOMapper::Init()
         FileManager::SetWritePath( ServerWritePath );
 
         ProtoMap* pmap = new ProtoMap();
-        bool      initialized = pmap->Init( 0xFFFF, map_name, PT_SERVER_MAPS );
+        bool      initialized = pmap->Init( map_name );
 
         FileManager::SetWritePath( ClientWritePath );
 
@@ -991,7 +990,7 @@ void FOMapper::ParseKeyboard()
                     SelectClear();
                     HexMngr.RefreshMap();
                     FileManager::SetWritePath( ServerWritePath );
-                    if( CurProtoMap->Save( NULL, -1 ) )
+                    if( CurProtoMap->Save( NULL ) )
                     {
                         AddMess( "Map saved." );
                         RunMapSaveScript( CurProtoMap );
@@ -1760,7 +1759,7 @@ void FOMapper::RefreshTiles( int tab )
                 }
 
                 // Write tile
-                uint hash = Str::GetHash( fname.c_str() );
+                hash hash = Str::GetHash( fname.c_str() );
                 Tabs[ tab ][ DEFAULT_SUB_TAB ].TileHashes.push_back( hash );
                 Tabs[ tab ][ DEFAULT_SUB_TAB ].TileNames.push_back( fname );
                 Tabs[ tab ][ collection_name ].TileHashes.push_back( hash );
@@ -1895,7 +1894,7 @@ void FOMapper::IntDraw()
 
         for( ; i < j; i++, x += w )
         {
-            ProtoItem* proto_item = &( *CurItemProtos )[ i ];
+            ProtoItem* proto_item = ( *CurItemProtos )[ i ];
             uint       col = ( i == (int) GetTabIndex() ? COLOR_IFACE_RED : COLOR_IFACE );
             SprMngr.DrawSpriteSize( proto_item->GetCurSprId(), x, y, w, h / 2, false, true, col );
 
@@ -1911,7 +1910,7 @@ void FOMapper::IntDraw()
 
         if( GetTabIndex() < (uint) ( *CurItemProtos ).size() )
         {
-            ProtoItem* proto_item = &( *CurItemProtos )[ GetTabIndex() ];
+            ProtoItem* proto_item = ( *CurItemProtos )[ GetTabIndex() ];
             string     info = MsgItem->GetStr( proto_item->ProtoId * 100 );
             info += " - ";
             info += MsgItem->GetStr( proto_item->ProtoId * 100 + 1 );
@@ -1971,7 +1970,7 @@ void FOMapper::IntDraw()
         if( GetTabIndex() < CurNpcProtos->size() )
         {
             CritData* pnpc = ( *CurNpcProtos )[ GetTabIndex() ];
-            SprMngr.DrawStr( Rect( IntWHint, IntX, IntY ), MsgDlg->GetStr( STR_NPC_PROTO_NAME_( pnpc->ProtoId ) ), 0 );
+            SprMngr.DrawStr( Rect( IntWHint, IntX, IntY ), Str::I64toA( pnpc->ProtoId ), 0 );
         }
     }
     else if( IntMode == INT_MODE_INCONT && !SelectedObj.empty() )
@@ -2131,14 +2130,14 @@ void FOMapper::ObjDraw()
 
     if( proto )
     {
-        AnyFrames* anim = ResMngr.GetItemAnim( o->MItem.PicMapHash ? o->MItem.PicMapHash : proto->PicMap );
+        AnyFrames* anim = ResMngr.GetItemAnim( o->MItem.PicMap ? o->MItem.PicMap : proto->PicMap );
         if( !anim )
             anim = ResMngr.ItemHexDefaultAnim;
         SprMngr.DrawSpriteSize( anim->GetCurSprId(), x + w - ProtoWidth, y, ProtoWidth, ProtoWidth, false, true );
 
         if( proto->IsItem() )
         {
-            AnyFrames* anim = ResMngr.GetInvAnim( o->MItem.PicInvHash ? o->MItem.PicInvHash : proto->PicInv );
+            AnyFrames* anim = ResMngr.GetInvAnim( o->MItem.PicInv ? o->MItem.PicInv : proto->PicInv );
             if( anim )
                 SprMngr.DrawSpriteSize( anim->GetCurSprId(), x + w - ProtoWidth, y + ProtoWidth, ProtoWidth, ProtoWidth, false, true );
         }
@@ -2298,7 +2297,7 @@ void FOMapper::ObjDraw()
 
             if( proto->Type == ITEM_TYPE_GRID )
             {
-                DRAW_COMPONENT( "ToMapPid", o->MScenery.ToMapPid, true, false );                             // 25
+                DRAW_COMPONENT_TEXT( "ToMap", o->MScenery.ToMap ? o->MScenery.ToMap->c_str() : "", false );  // 25
                 if( o->ProtoId == SP_GRID_ENTIRE )
                     DRAW_COMPONENT( "EntireNumber", o->MScenery.ToEntire, true, false );                     // 26
                 else
@@ -2372,6 +2371,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
     uint*      val_dw = NULL;
     int*       val_i = NULL;
     bool*      val_bool = NULL;
+    ScriptString** str = NULL;
 
     ProtoItem* proto = ( o->MapObjType != MAP_OBJECT_CRITTER ? ItemMngr.GetProtoItem( o->ProtoId ) : NULL );
     if( o->MapObjType != MAP_OBJECT_CRITTER && !proto )
@@ -2384,7 +2384,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
         char buf[ MAX_FOTEXT ];
         Str::Copy( buf, o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ]->c_str() );
         Keyb::GetChar( dik, dik_text, buf, sizeof( buf ), NULL, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
-        Str::EraseFrontBackSpecificChars( buf );
+        Str::Trim( buf );
         *o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ] = buf;
         return;
     }
@@ -2478,7 +2478,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
         else if( o->MapObjType == MAP_OBJECT_SCENERY )
         {
             if( proto->Type == ITEM_TYPE_GRID )
-                val_w = &o->MScenery.ToMapPid;
+                str = &o->MScenery.ToMap;
             else if( proto->Type == ITEM_TYPE_GENERIC )
                 val_b = &o->MScenery.ParamsCount;
         }
@@ -2552,7 +2552,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
         break;
     case 34:
         if( o->MapObjType == MAP_OBJECT_ITEM && proto->Type == ITEM_TYPE_WEAPON && proto->Weapon_MaxAmmoCount )
-            val_w = &o->MItem.AmmoPid;
+            str = &o->MItem.AmmoPid;
         else if( o->MapObjType == MAP_OBJECT_ITEM && ( proto->Type == ITEM_TYPE_KEY || proto->Type == ITEM_TYPE_CONTAINER || proto->Type == ITEM_TYPE_DOOR ) )
             val_dw = &o->MItem.LockerDoorId;
         break;
@@ -2568,6 +2568,18 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
         break;
     default:
         break;
+    }
+
+    if( str )
+    {
+        if( !*str )
+            *str = ScriptString::Create( "" );
+        string s = ( *str )->c_std_str();
+        Keyb::GetChar( dik, dik_text, s, NULL, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
+        *( *str ) = s;
+        if( ( *str )->length() == 0 )
+            SAFEREL( *str );
+        return;
     }
 
     int add = 0;
@@ -2773,7 +2785,7 @@ void FOMapper::IntLMouseDown()
         else if( CurMode == CUR_MODE_PLACE_OBJECT )
         {
             if( IsObjectMode() && ( *CurItemProtos ).size() )
-                ParseProto( ( *CurItemProtos )[ GetTabIndex() ].ProtoId, SelectHX1, SelectHY1, NULL );
+                ParseProto( ( *CurItemProtos )[ GetTabIndex() ]->ProtoId, SelectHX1, SelectHY1, NULL );
             else if( IsTileMode() && CurTileHashes->size() )
                 ParseTile( ( *CurTileHashes )[ GetTabIndex() ], SelectHX1, SelectHY1, 0, 0, TileLayer, DrawRoof );
             else if( IsCritMode() && CurNpcProtos->size() )
@@ -2826,10 +2838,10 @@ void FOMapper::IntLMouseDown()
             // Switch ignore pid to draw
             if( Keyb::CtrlDwn )
             {
-                ushort  pid = ( *CurItemProtos )[ ind ].ProtoId;
+                hash  pid = ( *CurItemProtos )[ ind ]->ProtoId;
 
                 SubTab& stab = Tabs[ INT_MODE_IGNORE ][ DEFAULT_SUB_TAB ];
-                auto    it = std::find( stab.ItemProtos.begin(), stab.ItemProtos.end(), pid );
+                auto    it = PtrCollectionFind( stab.ItemProtos.begin(), stab.ItemProtos.end(), pid );
                 if( it != stab.ItemProtos.end() )
                     stab.ItemProtos.erase( it );
                 else
@@ -2842,7 +2854,7 @@ void FOMapper::IntLMouseDown()
             else if( Keyb::AltDwn && SelectedObj.size() && SelectedObj[ 0 ].IsContainer() )
             {
                 bool       add = true;
-                ProtoItem* proto_item = &( *CurItemProtos )[ ind ];
+                ProtoItem* proto_item = ( *CurItemProtos )[ ind ];
 
                 if( proto_item->Stackable )
                 {
@@ -3212,10 +3224,10 @@ void FOMapper::IntLMouseUp()
 
                 if( SelectType == SELECT_TYPE_OLD )
                 {
-                    int fx = min( SelectHX1, SelectHX2 );
-                    int tx = max( SelectHX1, SelectHX2 );
-                    int fy = min( SelectHY1, SelectHY2 );
-                    int ty = max( SelectHY1, SelectHY2 );
+                    int fx = MIN( SelectHX1, SelectHX2 );
+                    int tx = MAX( SelectHX1, SelectHX2 );
+                    int fy = MIN( SelectHY1, SelectHY2 );
+                    int ty = MAX( SelectHY1, SelectHY2 );
 
                     for( int i = fx; i <= tx; i++ )
                     {
@@ -3250,7 +3262,7 @@ void FOMapper::IntLMouseUp()
 
                 for( uint k = 0; k < items.size(); k++ )
                 {
-                    ushort pid = items[ k ]->GetProtoId();
+                    hash pid = items[ k ]->GetProtoId();
                     if( HexMngr.IsIgnorePid( pid ) )
                         continue;
                     if( !GameOpt.ShowFast && HexMngr.IsFastPid( pid ) )
@@ -3289,8 +3301,6 @@ void FOMapper::IntLMouseUp()
                 }
             }
 
-            //	if(SelectedObj.size() || SelectedTile.size()) CurMode=CUR_MODE_MOVE_SELECTION;
-
             // Crits or item container
             if( SelectedObj.size() && SelectedObj[ 0 ].IsContainer() )
                 IntSetMode( INT_MODE_INCONT );
@@ -3323,10 +3333,10 @@ void FOMapper::IntMouseMove()
             {
                 if( SelectType == SELECT_TYPE_OLD )
                 {
-                    int fx = min( SelectHX1, SelectHX2 );
-                    int tx = max( SelectHX1, SelectHX2 );
-                    int fy = min( SelectHY1, SelectHY2 );
-                    int ty = max( SelectHY1, SelectHY2 );
+                    int fx = MIN( SelectHX1, SelectHX2 );
+                    int tx = MAX( SelectHX1, SelectHX2 );
+                    int fy = MIN( SelectHY1, SelectHY2 );
+                    int ty = MAX( SelectHY1, SelectHY2 );
 
                     for( int i = fx; i <= tx; i++ )
                         for( int j = fy; j <= ty; j++ )
@@ -3422,13 +3432,13 @@ void FOMapper::RefreshCurProtos()
     HexMngr.ClearFastPids();
     ProtoItemVec& fast_pids = TabsActive[ INT_MODE_FAST ]->ItemProtos;
     for( uint i = 0, j = (uint) fast_pids.size(); i < j; i++ )
-        HexMngr.AddFastPid( fast_pids[ i ].ProtoId );
+        HexMngr.AddFastPid( fast_pids[ i ]->ProtoId );
 
     // Update ignore pids
     HexMngr.ClearIgnorePids();
     ProtoItemVec& ignore_pids = TabsActive[ INT_MODE_IGNORE ]->ItemProtos;
     for( uint i = 0, j = (uint) ignore_pids.size(); i < j; i++ )
-        HexMngr.AddIgnorePid( ignore_pids[ i ].ProtoId );
+        HexMngr.AddIgnorePid( ignore_pids[ i ]->ProtoId );
 
     // Refresh map
     if( HexMngr.IsMapLoaded() )
@@ -3491,7 +3501,7 @@ void FOMapper::IntSetMode( int mode )
     }
 }
 
-MapObject* FOMapper::FindMapObject( ProtoMap& pmap, ushort hx, ushort hy, uchar mobj_type, ushort pid, uint skip )
+MapObject* FOMapper::FindMapObject( ProtoMap& pmap, ushort hx, ushort hy, uchar mobj_type, hash pid, uint skip )
 {
     for( uint i = 0, j = (uint) pmap.MObjects.size(); i < j; i++ )
     {
@@ -3508,7 +3518,7 @@ MapObject* FOMapper::FindMapObject( ProtoMap& pmap, ushort hx, ushort hy, uchar 
     return NULL;
 }
 
-void FOMapper::FindMapObjects( ProtoMap& pmap, ushort hx, ushort hy, uint radius, uchar mobj_type, ushort pid, MapObjectPtrVec& objects )
+void FOMapper::FindMapObjects( ProtoMap& pmap, ushort hx, ushort hy, uint radius, uchar mobj_type, hash pid, MapObjectPtrVec& objects )
 {
     for( uint i = 0, j = (uint) pmap.MObjects.size(); i < j; i++ )
     {
@@ -3521,7 +3531,7 @@ void FOMapper::FindMapObjects( ProtoMap& pmap, ushort hx, ushort hy, uint radius
     }
 }
 
-MapObject* FOMapper::FindMapObject( ushort hx, ushort hy, uchar mobj_type, ushort pid, bool skip_selected )
+MapObject* FOMapper::FindMapObject( ushort hx, ushort hy, uchar mobj_type, hash pid, bool skip_selected )
 {
     for( uint i = 0, j = (uint) CurProtoMap->MObjects.size(); i < j; i++ )
     {
@@ -4198,7 +4208,7 @@ void FOMapper::SelectDelete()
     CurMode = CUR_MODE_DEFAULT;
 }
 
-MapObject* FOMapper::ParseProto( ushort pid, ushort hx, ushort hy, MapObject* owner, bool is_child /* = false */ )
+MapObject* FOMapper::ParseProto( hash pid, ushort hx, ushort hy, MapObject* owner, bool is_child /* = false */ )
 {
     // Checks
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
@@ -4281,7 +4291,7 @@ MapObject* FOMapper::ParseProto( ushort pid, ushort hx, ushort hy, MapObject* ow
     return mobj;
 }
 
-void FOMapper::ParseTile( uint name_hash, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof )
+void FOMapper::ParseTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof )
 {
     hx -= hx % GameOpt.MapTileStep;
     hy -= hy % GameOpt.MapTileStep;
@@ -4291,11 +4301,11 @@ void FOMapper::ParseTile( uint name_hash, ushort hx, ushort hy, short ox, short 
 
     SelectClear();
 
-    HexMngr.SetTile( name_hash, hx, hy, ox, oy, layer, is_roof, false );
+    HexMngr.SetTile( name, hx, hy, ox, oy, layer, is_roof, false );
     CurMode = CUR_MODE_DEFAULT;
 }
 
-void FOMapper::ParseNpc( ushort pid, ushort hx, ushort hy )
+void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
 {
     CritData* pnpc = CrMngr.GetProto( pid );
     if( !pnpc )
@@ -4331,7 +4341,7 @@ void FOMapper::ParseNpc( ushort pid, ushort hx, ushort hy )
     cr->HexY = hy;
     cr->SetDir( NpcDir );
     cr->Cond = COND_LIFE;
-    cr->Flags = pid;
+    cr->Pid = pid;
     memcpy( cr->Params, pnpc->Params, sizeof( pnpc->Params ) );
     cr->Id = AnyId;
     cr->Init();
@@ -4386,7 +4396,7 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
         cr->HexY = mobj->MapY;
         cr->SetDir( (uchar) mobj->MCritter.Dir );
         cr->Cond = COND_LIFE;
-        cr->Flags = mobj->ProtoId;
+        cr->Pid = mobj->ProtoId;
         memcpy( cr->Params, pnpc->Params, sizeof( pnpc->Params ) );
         cr->Id = AnyId;
         cr->Init();
@@ -4446,7 +4456,7 @@ void FOMapper::BufferCopy()
             if( tiles[ k ].IsSelected )
             {
                 TileBuf tb;
-                tb.NameHash = tiles[ k ].NameHash;
+                tb.Name = tiles[ k ].Name;
                 tb.HexX = hx;
                 tb.HexY = hy;
                 tb.OffsX = tiles[ k ].OffsX;
@@ -4507,7 +4517,7 @@ void FOMapper::BufferPaste( int hx, int hy )
         if( tb.HexX < HexMngr.GetMaxHexX() && tb.HexY < HexMngr.GetMaxHexY() )
         {
             // Create
-            HexMngr.SetTile( tb.NameHash, tb.HexX, tb.HexY, tb.OffsX, tb.OffsY, tb.Layer, tb.IsRoof, true );
+            HexMngr.SetTile( tb.Name, tb.HexX, tb.HexY, tb.OffsX, tb.OffsY, tb.Layer, tb.IsRoof, true );
 
             // Select helper
             bool sel_added = false;
@@ -4549,18 +4559,18 @@ void FOMapper::CurDraw()
     case CUR_MODE_PLACE_OBJECT:
         if( IsObjectMode() && ( *CurItemProtos ).size() )
         {
-            ProtoItem& proto_item = ( *CurItemProtos )[ GetTabIndex() ];
+            ProtoItem* proto_item = ( *CurItemProtos )[ GetTabIndex() ];
 
             ushort     hx, hy;
             if( !HexMngr.GetHexPixel( GameOpt.MouseX, GameOpt.MouseY, hx, hy ) )
                 break;
 
-            uint        spr_id = proto_item.GetCurSprId();
+            uint        spr_id = proto_item->GetCurSprId();
             SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
             if( si )
             {
-                int x = HexMngr.GetField( hx, hy ).ScrX - ( si->Width / 2 ) + si->OffsX + HEX_OX + GameOpt.ScrOx + proto_item.OffsetX;
-                int y = HexMngr.GetField( hx, hy ).ScrY - si->Height + si->OffsY + HEX_OY + GameOpt.ScrOy + proto_item.OffsetY;
+                int x = HexMngr.GetField( hx, hy ).ScrX - ( si->Width / 2 ) + si->OffsX + HEX_OX + GameOpt.ScrOx + proto_item->OffsetX;
+                int y = HexMngr.GetField( hx, hy ).ScrY - si->Height + si->OffsY + HEX_OY + GameOpt.ScrOy + proto_item->OffsetY;
 
                 SprMngr.DrawSpriteSize( spr_id, (int) ( x / GameOpt.SpritesZoom ), (int) ( y / GameOpt.SpritesZoom ),
                                         (int) ( si->Width / GameOpt.SpritesZoom ), (int) ( si->Height / GameOpt.SpritesZoom ), true, false );
@@ -4861,7 +4871,7 @@ void FOMapper::ParseCommand( const char* cmd )
 
         ProtoMap* pmap = new ProtoMap();
         FileManager::SetWritePath( ServerWritePath );
-        if( !pmap->Init( 0xFFFF, map_name, PT_SERVER_MAPS ) )
+        if( !pmap->Init( map_name ) )
         {
             AddMess( "File not found or truncated." );
             FileManager::SetWritePath( ClientWritePath );
@@ -4906,7 +4916,7 @@ void FOMapper::ParseCommand( const char* cmd )
         SelectClear();
         HexMngr.RefreshMap();
         FileManager::SetWritePath( ServerWritePath );
-        if( CurProtoMap->Save( map_name, PT_SERVER_MAPS ) )
+        if( CurProtoMap->Save( map_name ) )
         {
             AddMess( "Save map success." );
             RunMapSaveScript( CurProtoMap );
@@ -5069,7 +5079,7 @@ void FOMapper::ParseCommand( const char* cmd )
                 for( int hy = 0; hy < HexMngr.GetMaxHexY(); hy++ )
                 {
                     Field&    f = HexMngr.GetField( hx, hy );
-                    UShortVec pids;
+                    HashVec pids;
                     if( f.Items )
                     {
                         for( auto it = f.Items->begin(), end = f.Items->end(); it != end; ++it )
@@ -5083,7 +5093,7 @@ void FOMapper::ParseCommand( const char* cmd )
                         else
                         {
                             if( same )
-                                AddMessFormat( "%d duplicates of %d on %d:%d.", same, pids[ i ], hx, hy );
+                                AddMessFormat( "%d duplicates of %u on %d:%d.", same, pids[ i ], hx, hy );
                             same = 0;
                         }
                     }
@@ -5473,7 +5483,7 @@ void FOMapper::SScriptFunc::MapperObject_set_PicMap( MapObject& mobj, ScriptStri
     if( mobj.MapObjType != MAP_OBJECT_ITEM && mobj.MapObjType != MAP_OBJECT_SCENERY )
         SCRIPT_ERROR_R( "Map object is not item or scenery." );
     Str::Copy( mobj.RunTime.PicMapName, str->c_str() );
-    mobj.MItem.PicMapHash = Str::GetHash( mobj.RunTime.PicMapName );
+    mobj.MItem.PicMap = Str::GetHash( mobj.RunTime.PicMapName );
 }
 
 ScriptString* FOMapper::SScriptFunc::MapperObject_get_PicInv( MapObject& mobj )
@@ -5497,7 +5507,7 @@ void FOMapper::SScriptFunc::MapperObject_set_PicInv( MapObject& mobj, ScriptStri
     if( mobj.MapObjType != MAP_OBJECT_ITEM && mobj.MapObjType != MAP_OBJECT_SCENERY )
         SCRIPT_ERROR_R( "Map object is not item or scenery." );
     Str::Copy( mobj.RunTime.PicInvName, str->c_str() );
-    mobj.MItem.PicInvHash = Str::GetHash( mobj.RunTime.PicInvName );
+    mobj.MItem.PicInv = Str::GetHash( mobj.RunTime.PicInvName );
 }
 
 void FOMapper::SScriptFunc::MapperObject_Update( MapObject& mobj )
@@ -5506,7 +5516,7 @@ void FOMapper::SScriptFunc::MapperObject_Update( MapObject& mobj )
         Self->UpdateMapObject( &mobj );
 }
 
-MapObject* FOMapper::SScriptFunc::MapperObject_AddChild( MapObject& mobj, ushort pid )
+MapObject* FOMapper::SScriptFunc::MapperObject_AddChild( MapObject& mobj, hash pid )
 {
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
     if( !proto_item || !proto_item->IsContainer() )
@@ -5612,7 +5622,7 @@ ScriptString* FOMapper::SScriptFunc::MapperMap_get_Name( ProtoMap& pmap )
     return ScriptString::Create( pmap.GetName() );
 }
 
-MapObject* FOMapper::SScriptFunc::MapperMap_AddObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, ushort pid )
+MapObject* FOMapper::SScriptFunc::MapperMap_AddObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, hash pid )
 {
     if( mobj_type == MAP_OBJECT_CRITTER )
     {
@@ -5663,12 +5673,12 @@ MapObject* FOMapper::SScriptFunc::MapperMap_AddObject( ProtoMap& pmap, ushort hx
     return mobj;
 }
 
-MapObject* FOMapper::SScriptFunc::MapperMap_GetObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, ushort pid, uint skip )
+MapObject* FOMapper::SScriptFunc::MapperMap_GetObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, hash pid, uint skip )
 {
     return Self->FindMapObject( pmap, hx, hy, mobj_type, pid, skip );
 }
 
-uint FOMapper::SScriptFunc::MapperMap_GetObjects( ProtoMap& pmap, ushort hx, ushort hy, uint radius, int mobj_type, ushort pid, ScriptArray* objects )
+uint FOMapper::SScriptFunc::MapperMap_GetObjects( ProtoMap& pmap, ushort hx, ushort hy, uint radius, int mobj_type, hash pid, ScriptArray* objects )
 {
     MapObjectPtrVec objects_;
     Self->FindMapObjects( pmap, hx, hy, radius, mobj_type, pid, objects_ );
@@ -5730,9 +5740,9 @@ void FOMapper::SScriptFunc::MapperMap_Resize( ProtoMap& pmap, ushort width, usho
         ProtoMap::TileVecVec tiles_field = pmap.TilesField;
         pmap.TilesField.clear();
         pmap.TilesField.resize( maxhx * maxhy );
-        for( int hy = 0; hy < min( maxhy, old_maxhy ); hy++ )
+        for( int hy = 0; hy < MIN( maxhy, old_maxhy ); hy++ )
         {
-            for( int hx = 0; hx < min( maxhx, old_maxhx ); hx++ )
+            for( int hx = 0; hx < MIN( maxhx, old_maxhx ); hx++ )
             {
                 ProtoMap::TileVec& tiles_from = tiles_field[ hy * old_maxhx + hx ];
                 ProtoMap::TileVec& tiles_to = pmap.TilesField[ hy * maxhx + hx ];
@@ -5744,9 +5754,9 @@ void FOMapper::SScriptFunc::MapperMap_Resize( ProtoMap& pmap, ushort width, usho
         ProtoMap::TileVecVec roofs_field = pmap.RoofsField;
         pmap.RoofsField.clear();
         pmap.RoofsField.resize( maxhx * maxhy );
-        for( int hy = 0; hy < min( maxhy, old_maxhy ); hy++ )
+        for( int hy = 0; hy < MIN( maxhy, old_maxhy ); hy++ )
         {
-            for( int hx = 0; hx < min( maxhx, old_maxhx ); hx++ )
+            for( int hx = 0; hx < MIN( maxhx, old_maxhx ); hx++ )
             {
                 ProtoMap::TileVec& tiles_from = roofs_field[ hy * old_maxhx + hx ];
                 ProtoMap::TileVec& tiles_to = pmap.RoofsField[ hy * maxhx + hx ];
@@ -5814,7 +5824,7 @@ void FOMapper::SScriptFunc::MapperMap_DeleteTile( ProtoMap& pmap, ushort hx, ush
     }
 }
 
-uint FOMapper::SScriptFunc::MapperMap_GetTileHash( ProtoMap& pmap, ushort hx, ushort hy, bool roof, int layer )
+hash FOMapper::SScriptFunc::MapperMap_GetTileHash( ProtoMap& pmap, ushort hx, ushort hy, bool roof, int layer )
 {
     if( hx >= pmap.Header.MaxHexX )
         SCRIPT_ERROR_R0( "Invalid hex x arg." );
@@ -5825,7 +5835,7 @@ uint FOMapper::SScriptFunc::MapperMap_GetTileHash( ProtoMap& pmap, ushort hx, us
     for( size_t i = 0, j = tiles.size(); i < j; i++ )
     {
         if( tiles[ i ].Layer == layer )
-            return tiles[ i ].NameHash;
+            return tiles[ i ].Name;
     }
     return 0;
 }
@@ -5873,7 +5883,7 @@ ScriptString* FOMapper::SScriptFunc::MapperMap_GetTileName( ProtoMap& pmap, usho
     for( size_t i = 0, j = tiles.size(); i < j; i++ )
     {
         if( tiles[ i ].Layer == layer )
-            return ScriptString::Create( Str::GetName( tiles[ i ].NameHash ) );
+            return ScriptString::Create( Str::GetName( tiles[ i ].Name ) );
     }
     return ScriptString::Create( "" );
 }
@@ -5890,7 +5900,7 @@ void FOMapper::SScriptFunc::MapperMap_AddTileName( ProtoMap& pmap, ushort hx, us
     oy = CLAMP( oy, -MAX_MOVE_OY, MAX_MOVE_OY );
     layer = CLAMP( layer, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
 
-    uint pic_hash = Str::GetHash( pic_name->c_str() );
+    hash pic_hash = Str::GetHash( pic_name->c_str() );
     if( Self->CurProtoMap == &pmap )
     {
         Self->HexMngr.SetTile( pic_hash, hx, hy, ox, oy, layer, roof, false );
@@ -6030,7 +6040,7 @@ ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( ScriptString& file_name, int pa
 {
     ProtoMap* pmap = new ProtoMap();
     FileManager::SetWritePath( ServerWritePath );
-    if( !pmap->Init( 0xFFFF, file_name.c_str(), path_type ) )
+    if( !pmap->Init( file_name.c_str() ) )
     {
         FileManager::SetWritePath( ClientWritePath );
         return NULL;
@@ -6058,12 +6068,12 @@ void FOMapper::SScriptFunc::Global_UnloadMap( ProtoMap* pmap )
     pmap->Release();
 }
 
-bool FOMapper::SScriptFunc::Global_SaveMap( ProtoMap* pmap, ScriptString& file_name, int path_type, bool keep_name /* = false */ )
+bool FOMapper::SScriptFunc::Global_SaveMap( ProtoMap* pmap, ScriptString* custom_name )
 {
     if( !pmap )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
     FileManager::SetWritePath( ServerWritePath );
-    bool result = pmap->Save( file_name.c_str(), path_type, keep_name );
+    bool result = pmap->Save( custom_name ? custom_name->c_str() : NULL );
     FileManager::SetWritePath( ClientWritePath );
     if( result )
         Self->RunMapSaveScript( pmap );
@@ -6293,7 +6303,7 @@ void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, ScriptString* sub_ta
             ushort     pid = *(ushort*) item_pids->At( i );
             ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
             if( proto_item )
-                proto_items.push_back( *proto_item );
+                proto_items.push_back( proto_item );
         }
 
         if( proto_items.size() )
@@ -6428,11 +6438,9 @@ ScriptString* FOMapper::SScriptFunc::Global_GetLastError()
     return ScriptString::Create( ScriptLastError );
 }
 
-ProtoItem* FOMapper::SScriptFunc::Global_GetProtoItem( ushort proto_id )
+ProtoItem* FOMapper::SScriptFunc::Global_GetProtoItem( hash proto_id )
 {
-    ProtoItem* proto_item = ItemMngr.GetProtoItem( proto_id );
-    // if(!proto_item) SCRIPT_ERROR_R0("Proto item not found.");
-    return proto_item;
+    return ItemMngr.GetProtoItem( proto_id );
 }
 
 void FOMapper::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop )
@@ -7011,7 +7019,7 @@ void FOMapper::SScriptFunc::Global_DrawPrimitive( int primitive_type, ScriptArra
     SprMngr.DrawPoints( points, prim );
 }
 
-void FOMapper::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, ushort proto_id, uint spr_id, int spr_index, int ox, int oy )
+void FOMapper::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash proto_id, uint spr_id, int spr_index, int ox, int oy )
 {
     if( !Self->HexMngr.SpritesCanDrawMap )
         return;

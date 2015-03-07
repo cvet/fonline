@@ -159,7 +159,7 @@ void FOServer::SaveHoloInfoFile()
     }
 }
 
-bool FOServer::LoadHoloInfoFile( void* f )
+bool FOServer::LoadHoloInfoFile( void* f, uint version )
 {
     LastHoloId = USER_HOLO_START_NUM;
 
@@ -286,13 +286,13 @@ void FOServer::Send_PlayerHoloInfo( Critter* cr, uint holo_num, bool send_text )
 
         HolodiskLocker.Unlock();
 
-        cl->Send_UserHoloStr( send_text ? STR_HOLO_INFO_DESC_( holo_num ) : STR_HOLO_INFO_NAME_( holo_num ), str.c_str(), (ushort) str.length() );
+        cl->Send_UserHoloStr( send_text ? STR_HOLO_INFO_DESC( holo_num ) : STR_HOLO_INFO_NAME( holo_num ), str.c_str(), (ushort) str.length() );
     }
     else
     {
         HolodiskLocker.Unlock();
 
-        cl->Send_UserHoloStr( send_text ? STR_HOLO_INFO_DESC_( holo_num ) : STR_HOLO_INFO_NAME_( holo_num ), "Truncated", Str::Length( "Truncated" ) );
+        cl->Send_UserHoloStr( send_text ? STR_HOLO_INFO_DESC( holo_num ) : STR_HOLO_INFO_NAME( holo_num ), "Truncated", Str::Length( "Truncated" ) );
     }
 }
 
@@ -438,7 +438,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
         // Out trap
         if( map->IsHexTrap( fx, fy ) )
         {
-            ItemPtrVec traps;
+            ItemVec traps;
             map->GetItemsTrap( fx, fy, traps, true );
             for( auto it = traps.begin(), end = traps.end(); it != end; ++it )
                 ( *it )->EventWalk( cr, false, dir );
@@ -447,7 +447,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
         // In trap
         if( map->IsHexTrap( hx, hy ) )
         {
-            ItemPtrVec traps;
+            ItemVec traps;
             map->GetItemsTrap( hx, hy, traps, true );
             for( auto it = traps.begin(), end = traps.end(); it != end; ++it )
                 ( *it )->EventWalk( cr, true, dir );
@@ -759,7 +759,7 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
 }
 
 #pragma MESSAGE("Add using hands/legs.")
-bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, uint target_id, ushort target_pid, uint param )
+bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, uint target_id, hash target_pid, uint param )
 {
     cr->SetBreakTime( GameOpt.Breaktime );
 
@@ -1044,7 +1044,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     return true;
 }
 
-bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, ushort pid )
+bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
 {
     cr->SetBreakTime( GameOpt.Breaktime );
 
@@ -1352,7 +1352,7 @@ bool FOServer::RegenerateMap( Map* map )
 {
     // Copy need params
     uint      map_id = map->GetId();
-    ushort    map_pid = map->GetPid();
+    hash      map_pid = map->GetPid();
     ProtoMap* map_proto = map->Proto;
     Location* map_loc = map->GetLocation( true );
 
@@ -1370,8 +1370,7 @@ bool FOServer::RegenerateMap( Map* map )
     }
 
     map->Clear( true );
-    map->Init( map_proto, map_loc );
-    map->SetId( map_id, map_pid );
+    map->Init( map_id, map_proto, map_loc );
     map->Generate();
     return true;
 }
@@ -2658,12 +2657,12 @@ void FOServer::Process_ParseToGame( Client* cl )
 
 void FOServer::Process_GiveMap( Client* cl )
 {
-    bool   automap;
-    ushort map_pid;
-    uint   loc_id;
-    uint   hash_tiles;
-    uint   hash_walls;
-    uint   hash_scen;
+    bool automap;
+    hash map_pid;
+    uint loc_id;
+    uint hash_tiles;
+    uint hash_walls;
+    uint hash_scen;
 
     cl->Bin >> automap;
     cl->Bin >> map_pid;
@@ -2735,7 +2734,7 @@ void FOServer::Process_GiveMap( Client* cl )
 void FOServer::Send_MapData( Client* cl, ProtoMap* pmap, uchar send_info )
 {
     uint   msg = NETMSG_MAP;
-    ushort map_pid = pmap->GetPid();
+    hash   map_pid = pmap->GetPid();
     ushort maxhx = pmap->Header.MaxHexX;
     ushort maxhy = pmap->Header.MaxHexY;
     uint   msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( map_pid ) + sizeof( maxhx ) + sizeof( maxhy ) + sizeof( send_info );
@@ -2942,13 +2941,13 @@ void FOServer::Process_SortValueItem( Client* cl )
 
 void FOServer::Process_UseItem( Client* cl )
 {
-    uint   item_id;
-    ushort item_pid;
-    uchar  rate;
-    uchar  target_type;
-    uint   target_id;
-    ushort target_pid;
-    uint   param;
+    uint  item_id;
+    hash  item_pid;
+    uchar rate;
+    uchar target_type;
+    uint  target_id;
+    hash  target_pid;
+    uint  param;
 
     cl->Bin >> item_id;
     cl->Bin >> item_pid;
@@ -3029,7 +3028,7 @@ void FOServer::Process_PickItem( Client* cl )
 {
     ushort targ_x;
     ushort targ_y;
-    ushort pid;
+    hash   pid;
 
     cl->Bin >> targ_x;
     cl->Bin >> targ_y;
@@ -3325,7 +3324,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 1, NULL );
 
             // Get items
-            ItemPtrVec items;
+            ItemVec items;
             cont->ContGetAllItems( items, true, true );
             if( items.empty() )
             {
@@ -3615,7 +3614,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 1, NULL );
 
             // Get items
-            ItemPtrVec items;
+            ItemVec items;
             cr->GetInvItems( items, transfer_type, true );
             if( items.empty() )
                 return;
@@ -3760,19 +3759,13 @@ void FOServer::Process_UseSkill( Client* cl )
     ushort skill;
     uchar  targ_type;
     uint   target_id;
-    ushort target_pid;
+    hash   target_pid;
 
     cl->Bin >> skill;
     cl->Bin >> targ_type;
     cl->Bin >> target_id;
     cl->Bin >> target_pid;
     CHECK_IN_BUFF_ERROR( cl );
-
-//      if(skill<SKILL_BEGIN || skill>SKILL_END)
-//      {
-//              WriteLogF(_FUNC_," - Invalid skill<%d>, client<%s>.\n",skill,cl->GetInfo());
-//              return;
-//      }
 
     if( targ_type > TARGET_SCENERY )
     {
@@ -3857,8 +3850,8 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
 
     HolodiskLocker.Unlock();
 
-    cl->Send_UserHoloStr( STR_HOLO_INFO_NAME_( holo_id ), title, title_len );
-    cl->Send_UserHoloStr( STR_HOLO_INFO_DESC_( holo_id ), text, text_len );
+    cl->Send_UserHoloStr( STR_HOLO_INFO_NAME( holo_id ), title, title_len );
+    cl->Send_UserHoloStr( STR_HOLO_INFO_DESC( holo_id ), text, text_len );
     holodisk->HolodiskSetNum( holo_id );
     cl->SendAA_ItemData( holodisk );
     cl->Send_TextMsg( cl, STR_HOLO_WRITE_SUCC, SAY_NETMSG, TEXTMSG_HOLO );
@@ -4598,7 +4591,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
         cl->LastSendEntrancesLocId = loc_id;
         cl->LastSendEntrancesTick = tick;
 
-        if( loc->Proto->ScriptBindId > 0 )
+        if( loc->Proto->EntranceScriptBindId > 0 )
         {
             uchar        count = 0;
             uchar        show[ 0x100 ];
@@ -4657,7 +4650,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
         uint entrance = param2;
         if( entrance >= loc->Proto->Entrance.size() )
             break;
-        if( loc->Proto->ScriptBindId > 0 )
+        if( loc->Proto->EntranceScriptBindId > 0 )
         {
             ScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
             if( !arr )

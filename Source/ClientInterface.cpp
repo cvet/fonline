@@ -113,7 +113,7 @@ bool FOClient::AppendIfaceIni( const char* ini_name )
 
 void FOClient::AppendIfaceIni( uchar* data, uint len )
 {
-    typedef multimap< int, pair< char*, uint >, less< int > > IniMMap;
+    typedef multimap< int, pair< char*, uint > > IniMMap;
     IniMMap sections;
 
     int     w = 0, h = 0;
@@ -682,7 +682,7 @@ int FOClient::InitIface()
     PupContId = 0;
     PupContPid = 0;
     PupCount = 0;
-    PupCont2.clear();
+    Item::ClearItems( PupCont2 );
     PupLastPutId = 0;
 
     // Pipboy
@@ -1350,7 +1350,7 @@ uint FOClient::GetCurContainerItemId( const Rect& pos, int height, int scroll, I
     {
         if( i - scroll != pos_cur )
             continue;
-        return ( *it ).GetId();
+        return ( *it )->GetId();
     }
     return 0;
 }
@@ -1360,14 +1360,14 @@ void FOClient::ContainerDraw( const Rect& pos, int height, int scroll, ItemVec& 
     int i = 0, i2 = 0;
     for( auto it = cont.begin(), end = cont.end(); it != end; ++it )
     {
-        Item& item = *it;
-        if( item.GetId() == skip_id )
+        Item* item = *it;
+        if( item->GetId() == skip_id )
             continue;
         if( i >= scroll && i < scroll + pos.H() / height )
         {
-            AnyFrames* anim = ResMngr.GetInvAnim( item.GetPicInv() );
+            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
             if( anim )
-                SprMngr.DrawSpriteSize( anim->GetCurSprId(), pos.L, pos.T + ( i2 * height ), pos.W(), height, false, true, item.GetInvColor() );
+                SprMngr.DrawSpriteSize( anim->GetCurSprId(), pos.L, pos.T + ( i2 * height ), pos.W(), height, false, true, item->GetInvColor() );
             i2++;
         }
         i++;
@@ -1378,13 +1378,13 @@ void FOClient::ContainerDraw( const Rect& pos, int height, int scroll, ItemVec& 
     i = 0, i2 = 0;
     for( auto it = cont.begin(), end = cont.end(); it != end; ++it )
     {
-        Item& item = *it;
-        if( item.GetId() == skip_id )
+        Item* item = *it;
+        if( item->GetId() == skip_id )
             continue;
         if( i >= scroll && i < scroll + pos.H() / height )
         {
-            if( item.GetCount() > 1 )
-                SprMngr.DrawStr( Rect( pos.L, pos.T + ( i2 * height ), pos.R, pos.T + ( i2 * height ) + height ), Str::FormatBuf( "x%u", item.GetCount() ), 0, COLOR_TEXT_WHITE );
+            if( item->GetCount() > 1 )
+                SprMngr.DrawStr( Rect( pos.L, pos.T + ( i2 * height ), pos.R, pos.T + ( i2 * height ) + height ), Str::FormatBuf( "x%u", item->GetCount() ), 0, COLOR_TEXT_WHITE );
             i2++;
         }
         i++;
@@ -1393,44 +1393,54 @@ void FOClient::ContainerDraw( const Rect& pos, int height, int scroll, ItemVec& 
 
 Item* FOClient::GetContainerItem( ItemVec& cont, uint id )
 {
-    auto it = std::find( cont.begin(), cont.end(), id );
-    return it != cont.end() ? &( *it ) : NULL;
+    auto it = PtrCollectionFind( cont.begin(), cont.end(), id );
+    return it != cont.end() ? *it : NULL;
 }
 
 void FOClient::CollectContItems()
 {
-    InvContInit.clear();
+    Item::ClearItems( InvContInit );
     if( Chosen )
+    {
         Chosen->GetInvItems( InvContInit );
+        for( auto it = InvContInit.begin(), end = InvContInit.end(); it != end; ++it )
+            ( *it )->AddRef();
+    }
 
     if( IsScreenPresent( SCREEN__BARTER ) )
     {
         // Manage offered items
         for( auto it = BarterCont1oInit.begin(); it != BarterCont1oInit.end();)
         {
-            Item& item = *it;
-            auto  it_ = std::find( InvContInit.begin(), InvContInit.end(), item.GetId() );
-            if( it_ == InvContInit.end() || ( *it_ ).GetCount() < item.GetCount() )
+            Item* item = *it;
+            auto  it_ = PtrCollectionFind( InvContInit.begin(), InvContInit.end(), item->GetId() );
+            if( it_ == InvContInit.end() || ( *it_ )->GetCount() < item->GetCount() )
+            {
+                ( *it )->Release();
                 it = BarterCont1oInit.erase( it );
+            }
             else
+            {
                 ++it;
+            }
         }
         for( auto it = InvContInit.begin(); it != InvContInit.end();)
         {
-            Item& item = *it;
-            auto  it_ = std::find( BarterCont1oInit.begin(), BarterCont1oInit.end(), item.GetId() );
+            Item* item = *it;
+            auto  it_ = PtrCollectionFind( BarterCont1oInit.begin(), BarterCont1oInit.end(), item->GetId() );
             if( it_ != BarterCont1oInit.end() )
             {
-                Item& item_ = *it_;
+                Item* item_ = *it_;
 
-                uint  count = item_.GetCount();
-                item_.Data = item.Data;
-                item_.Count_Set( count );
+                uint  count = item_->GetCount();
+                item_->Data = item->Data;
+                item_->Count_Set( count );
 
-                if( item.IsStackable() )
-                    item.Count_Sub( item_.GetCount() );
-                if( !item.IsStackable() || !item.GetCount() )
+                if( item->IsStackable() )
+                    item->Count_Sub( item_->GetCount() );
+                if( !item->IsStackable() || !item->GetCount() )
                 {
+                    ( *it )->Release();
                     it = InvContInit.erase( it );
                     continue;
                 }
@@ -1452,8 +1462,8 @@ void FOClient::CollectContItems()
 void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, ItemVec& result )
 {
     // Default result
-    result = init_items;
-    if( result.empty() )
+    Item::ClearItems( result );
+    if( init_items.empty() )
         return;
 
     // Prepare to call
@@ -1463,12 +1473,8 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
         ScriptArray* arr = Script::CreateArray( "ItemCl@[]" );
         if( arr )
         {
-            // Clone to script array
-            ItemPtrVec items_ptr;
-            items_ptr.reserve( init_items.size() );
-            for( auto it = init_items.begin(), end = init_items.end(); it != end; ++it )
-                items_ptr.push_back( ( *it ).Clone() );
-            Script::AppendVectorToArrayRef( items_ptr, arr );
+            // Copy to script array
+            Script::AppendVectorToArrayRef( init_items, arr );
 
             // Call
             Script::SetArgUInt( collection );
@@ -1476,22 +1482,12 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
             if( Script::RunPrepared() )
             {
                 // Copy from script to std array
-                ItemPtrVec result_items_ptr;
-                Script::AssignScriptArrayInVector( result_items_ptr, arr );
-
-                // Copy to result array
-                result.clear();
-                for( auto it = result_items_ptr.begin(), end = result_items_ptr.end(); it != end; ++it )
-                {
-                    Item* item = *it;
-                    if( item )
-                        result.push_back( *item );
-                }
+                Script::AssignScriptArrayInVector( result, arr );
+                for( auto it = result.begin(), end = result.end(); it != end; ++it )
+                    ( *it )->AddRef();
             }
 
-            // Release items
-            for( auto it = items_ptr.begin(), end = items_ptr.end(); it != end; ++it )
-                ( *it )->Release();
+            // Release array
             arr->Release();
         }
     }
@@ -1499,9 +1495,9 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
 
 void FOClient::UpdateContLexems( ItemVec& cont, uint item_id, const char* lexems )
 {
-    auto it = std::find( cont.begin(), cont.end(), item_id );
+    auto it = PtrCollectionFind( cont.begin(), cont.end(), item_id );
     if( it != cont.end() )
-        *( *it ).Lexems = lexems;
+        *( *it )->Lexems = lexems;
 }
 
 // ==============================================================================================================================
@@ -3210,9 +3206,9 @@ void FOClient::LogDraw()
         {
             char mask[ UTF8_BUF_SIZE( MAX_NAME ) ];
             uint pass_len = ( uint ) Str::LengthUTF8( Password.c_str() );
-            for( uint i = 0, j = min( (uint) MAX_NAME, pass_len ); i < j; i++ )
+            for( uint i = 0, j = MIN( (uint) MAX_NAME, pass_len ); i < j; i++ )
                 mask[ i ] = '#';
-            mask[ min( (uint) MAX_NAME, pass_len ) ] = '\0';
+            mask[ MIN( (uint) MAX_NAME, pass_len ) ] = '\0';
             SprMngr.DrawStr( LogWPass, mask, FT_CENTERX | FT_CENTERY | FT_NOBREAK, LogFocus == IFACE_LOG_PASS ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
         }
     }
@@ -3241,12 +3237,12 @@ void FOClient::LogKeyDown( uchar dik, const char* dik_text )
     if( LogFocus == IFACE_LOG_NAME )
     {
         string tmp_str = GameOpt.Name->c_std_str();
-        Keyb::GetChar( dik, dik_text, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, tmp_str, NULL, MIN( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
         *GameOpt.Name = tmp_str;
     }
     else if( LogFocus == IFACE_LOG_PASS )
     {
-        Keyb::GetChar( dik, dik_text, Password, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, Password, NULL, MIN( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
     }
 }
 
@@ -3703,9 +3699,9 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 HideScreen( SCREEN__DIALOG );
                 ShowScreen( SCREEN__BARTER );
                 CollectContItems();
-                BarterCont1o.clear();
-                BarterCont2.clear();
-                BarterCont2o.clear();
+                Item::ClearItems( BarterCont1o );
+                Item::ClearItems( BarterCont2 );
+                Item::ClearItems( BarterCont2o );
                 BarterText = "";
                 DlgMainTextCur = 0;
                 DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, BarterText.c_str() );
@@ -3724,14 +3720,14 @@ void FOClient::DlgLMouseUp( bool is_dialog )
         {
             if( IsCurInRect( BarterWCont1o, DlgX, DlgY ) )
             {
-                auto it = std::find( BarterCont1.begin(), BarterCont1.end(), BarterHoldId );
+                auto it = PtrCollectionFind( BarterCont1.begin(), BarterCont1.end(), BarterHoldId );
                 if( it != BarterCont1.end() )
                 {
-                    Item& item = *it;
-                    if( item.GetCount() > 1 )
-                        SplitStart( &item, IFACE_BARTER_CONT1 );
+                    Item* item = *it;
+                    if( item->GetCount() > 1 )
+                        SplitStart( item, IFACE_BARTER_CONT1 );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1, item.GetCount() );
+                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1, item->GetCount() );
                 }
             }
         }
@@ -3739,14 +3735,14 @@ void FOClient::DlgLMouseUp( bool is_dialog )
         {
             if( IsCurInRect( BarterWCont2o, DlgX, DlgY ) && !( BarterIsPlayers && BarterOpponentHide ) )
             {
-                auto it = std::find( BarterCont2.begin(), BarterCont2.end(), BarterHoldId );
+                auto it = PtrCollectionFind( BarterCont2.begin(), BarterCont2.end(), BarterHoldId );
                 if( it != BarterCont2.end() )
                 {
-                    Item& item = *it;
-                    if( item.GetCount() > 1 )
-                        SplitStart( &item, IFACE_BARTER_CONT2 );
+                    Item* item = *it;
+                    if( item->GetCount() > 1 )
+                        SplitStart( item, IFACE_BARTER_CONT2 );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2, item.GetCount() );
+                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2, item->GetCount() );
                 }
             }
         }
@@ -3754,14 +3750,14 @@ void FOClient::DlgLMouseUp( bool is_dialog )
         {
             if( IsCurInRect( BarterWCont1, DlgX, DlgY ) )
             {
-                auto it = std::find( BarterCont1o.begin(), BarterCont1o.end(), BarterHoldId );
+                auto it = PtrCollectionFind( BarterCont1o.begin(), BarterCont1o.end(), BarterHoldId );
                 if( it != BarterCont1o.end() )
                 {
-                    Item& item = *it;
-                    if( item.GetCount() > 1 )
-                        SplitStart( &item, IFACE_BARTER_CONT1O );
+                    Item* item = *it;
+                    if( item->GetCount() > 1 )
+                        SplitStart( item, IFACE_BARTER_CONT1O );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1O, item.GetCount() );
+                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1O, item->GetCount() );
                 }
             }
         }
@@ -3769,14 +3765,14 @@ void FOClient::DlgLMouseUp( bool is_dialog )
         {
             if( IsCurInRect( BarterWCont2, DlgX, DlgY ) && !( BarterIsPlayers && BarterOpponentHide ) )
             {
-                auto it = std::find( BarterCont2o.begin(), BarterCont2o.end(), BarterHoldId );
+                auto it = PtrCollectionFind( BarterCont2o.begin(), BarterCont2o.end(), BarterHoldId );
                 if( it != BarterCont2o.end() )
                 {
-                    Item& item = *it;
-                    if( item.GetCount() > 1 )
-                        SplitStart( &item, IFACE_BARTER_CONT2O );
+                    Item* item = *it;
+                    if( item->GetCount() > 1 )
+                        SplitStart( item, IFACE_BARTER_CONT2O );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2O, item.GetCount() );
+                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2O, item->GetCount() );
                 }
             }
         }
@@ -4055,11 +4051,11 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
         return;
     }
 
-    auto it = std::find( from_cont->begin(), from_cont->end(), item_id );
+    auto it = PtrCollectionFind( from_cont->begin(), from_cont->end(), item_id );
     if( it == from_cont->end() )
         return;
 
-    Item* item = &( *it );
+    Item* item = *it;
     Item* to_item = NULL;
 
     if( item->GetCount() < item_count )
@@ -4067,9 +4063,9 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
 
     if( item->IsStackable() )
     {
-        auto it_to = std::find( to_cont->begin(), to_cont->end(), item->GetId() );
+        auto it_to = PtrCollectionFind( to_cont->begin(), to_cont->end(), item->GetId() );
         if( it_to != to_cont->end() )
-            to_item = &( *it_to );
+            to_item = ( *it_to );
     }
 
     if( to_item )
@@ -4078,14 +4074,18 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
     }
     else
     {
-        to_cont->push_back( *item );
-        Item& last = ( *to_cont )[ to_cont->size() - 1 ];
-        last.Count_Set( item_count );
+        item->AddRef();
+        to_cont->push_back( item );
+        Item* last = ( *to_cont )[ to_cont->size() - 1 ];
+        last->Count_Set( item_count );
     }
 
     item->Count_Sub( item_count );
     if( !item->GetCount() || !item->IsStackable() )
+    {
+        ( *it )->Release();
         from_cont->erase( it );
+    }
     CollectContItems();
 
     switch( item_cont )
@@ -4118,16 +4118,16 @@ void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint&
     volume = 0;
     for( auto it = cont.begin(); it != cont.end(); it++ )
     {
-        Item& item = *it;
+        Item* item = *it;
         if( barter_k != MAX_INT )
         {
-            uint cost_ = item.GetCost1st();
+            uint cost_ = item->GetCost1st();
             if( GameOpt.CustomItemCost )
             {
                 CritterCl* npc = GetCritter( PupContId );
                 if( Chosen && npc && Script::PrepareContext( ClientFunctions.ItemCost, _FUNC_, Chosen->GetInfo() ) )
                 {
-                    Script::SetArgObject( &item );
+                    Script::SetArgObject( item );
                     Script::SetArgObject( Chosen );
                     Script::SetArgObject( npc );
                     Script::SetArgBool( sell );
@@ -4141,10 +4141,10 @@ void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint&
                 if( !cost_ )
                     cost_++;
             }
-            cost += cost_ * item.GetCount();
+            cost += cost_ * item->GetCount();
         }
-        weigth += item.GetWeight();
-        volume += item.GetVolume();
+        weigth += item->GetWeight();
+        volume += item->GetVolume();
     }
 }
 
@@ -5417,9 +5417,9 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         GmapTownPicPos[ 3 ] = GameOpt.ScreenHeight;
         int pic_offsx = 0;
         int pic_offsy = 0;
-        ushort loc_pid = GmapTownLoc.LocPid;
+        hash loc_pid = GmapTownLoc.LocPid;
 
-        AnyFrames* anim = ResMngr.GetIfaceAnim( Str::GetHash( MsgGM->GetStr( STR_GM_PIC_( loc_pid ) ) ) );
+        AnyFrames* anim = ResMngr.GetIfaceAnim( Str::GetHash( MsgLocations->GetStr( STR_LOC_PIC( loc_pid ) ) ) );
         if( !anim )
         {
             RunScreenScript( true, screen, params );
@@ -5436,17 +5436,17 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         GmapTownPicPos[ 2 ] = pic_offsx + si->Width;
         GmapTownPicPos[ 3 ] = pic_offsy + si->Height;
 
-        uint entrance = MsgGM->GetInt( STR_GM_ENTRANCE_COUNT_( loc_pid ) );
-        if( !entrance )
+        uint entrances = GmapTownLoc.Entrances;
+        if( !entrances )
             break;
 
-        for( uint i = 0; i < entrance; i++ )
+        for( uint i = 0; i < entrances; i++ )
         {
-            int x = MsgGM->GetInt( STR_GM_ENTRANCE_PICX_( loc_pid, i ) ) + pic_offsx;
-            int y = MsgGM->GetInt( STR_GM_ENTRANCE_PICY_( loc_pid, i ) ) + pic_offsy;
+            int x = MsgLocations->GetInt( STR_LOC_ENTRANCE_PICX( loc_pid, i ) ) + pic_offsx;
+            int y = MsgLocations->GetInt( STR_LOC_ENTRANCE_PICY( loc_pid, i ) ) + pic_offsy;
 
             GmapTownTextPos.push_back( Rect( x, y, GameOpt.ScreenWidth, GameOpt.ScreenHeight ) );
-            GmapTownText.push_back( string( MsgGM->GetStr( STR_GM_ENTRANCE_NAME_( loc_pid, i ) ) ) );
+            GmapTownText.push_back( string( MsgLocations->GetStr( STR_LOC_ENTRANCE_NAME( loc_pid, i ) ) ) );
         }
 
         if( GmapTownLoc.LocId != GmapShowEntrancesLocId || Timer::FastTick() >= GmapNextShowEntrancesTick )
@@ -5839,7 +5839,7 @@ void FOClient::GmapProcess()
             for( uint i = 0, j = (uint) GmapLoc.size(); i < j; i++ )
             {
                 GmapLocation& loc = GmapLoc[ i ];
-                if( MsgGM->Count( STR_GM_LABELPIC_( loc.LocPid ) ) && ResMngr.GetIfaceAnim( Str::GetHash( MsgGM->GetStr( STR_GM_LABELPIC_( loc.LocPid ) ) ) ) )
+                if( MsgLocations->Count( STR_LOC_LABEL_PIC( loc.LocPid ) ) && ResMngr.GetIfaceAnim( Str::GetHash( MsgLocations->GetStr( STR_LOC_LABEL_PIC( loc.LocPid ) ) ) ) )
                     tabs_count++;
             }
 
@@ -5887,7 +5887,7 @@ void FOClient::GmapDraw()
                 continue;
 
             if( !GmapPic[ index ] )
-                GmapPic[ index ] = ResMngr.GetAnim( FileManager::GetFileHash( Str::FormatBuf( GmapTilesPic, index ), PT_ART_INTRFACE ), RES_ATLAS_DYNAMIC );
+                GmapPic[ index ] = ResMngr.GetAnim( FileManager::GetPathHash( Str::FormatBuf( GmapTilesPic, index ), PT_ART_INTRFACE ), RES_ATLAS_DYNAMIC );
             if( !GmapPic[ index ] )
                 continue;
 
@@ -6033,9 +6033,9 @@ void FOClient::GmapDraw()
     {
         GmapLocation& loc = GmapLoc[ i ];
 
-        if( !MsgGM->Count( STR_GM_LABELPIC_( loc.LocPid ) ) )
+        if( !MsgLocations->Count( STR_LOC_LABEL_PIC( loc.LocPid ) ) )
             continue;
-        AnyFrames* tab_pic = ResMngr.GetIfaceAnim( Str::GetHash( MsgGM->GetStr( STR_GM_LABELPIC_( loc.LocPid ) ) ) );
+        AnyFrames* tab_pic = ResMngr.GetIfaceAnim( Str::GetHash( MsgLocations->GetStr( STR_LOC_LABEL_PIC( loc.LocPid ) ) ) );
         if( !tab_pic )
             continue;
 
@@ -6135,7 +6135,7 @@ void FOClient::GmapDraw()
             {
                 GmapLocation& loc = ( *it );
                 uint radius = loc.Radius;               // MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
-                if( !radius || !MsgGM->Count( STR_GM_NAME_( loc.LocPid ) ) || !MsgGM->Count( STR_GM_INFO_( loc.LocPid ) ) )
+                if( !radius || !MsgLocations->Count( STR_LOC_NAME( loc.LocPid ) ) || !MsgLocations->Count( STR_LOC_INFO( loc.LocPid ) ) )
                     continue;
                 if( DistSqrt( loc.LocWx, loc.LocWy, cx, cy ) <= radius )
                 {
@@ -6148,13 +6148,13 @@ void FOClient::GmapDraw()
             if( Chosen )
             {
                 SprMngr.DrawStr( Rect( GameOpt.MouseX + si->Width, GameOpt.MouseY + si->Height, GameOpt.MouseX + si->Width + 200, GameOpt.MouseY + si->Height + 500 ), cur_loc ?
-                                 FmtGameText( STR_GMAP_CUR_LOC_INFO, cx, cy, GM_ZONE( cx ), GM_ZONE( cy ), MsgGM->GetStr( STR_GM_NAME_( cur_loc->LocPid ) ), MsgGM->GetStr( STR_GM_INFO_( cur_loc->LocPid ) ) ) :
+                                 FmtGameText( STR_GMAP_CUR_LOC_INFO, cx, cy, GM_ZONE( cx ), GM_ZONE( cy ), MsgLocations->GetStr( STR_LOC_NAME( cur_loc->LocPid ) ), MsgLocations->GetStr( STR_LOC_INFO( cur_loc->LocPid ) ) ) :
                                  FmtGameText( STR_GMAP_CUR_INFO, cx, cy, GM_ZONE( cx ), GM_ZONE( cy ) ), 0 );
             }
             else if( cur_loc )
             {
                 SprMngr.DrawStr( Rect( GameOpt.MouseX + si->Width, GameOpt.MouseY + si->Height, GameOpt.MouseX + si->Width + 200, GameOpt.MouseY + si->Height + 500 ),
-                                 FmtGameText( STR_GMAP_LOC_INFO, MsgGM->GetStr( STR_GM_NAME_( cur_loc->LocPid ) ), MsgGM->GetStr( STR_GM_INFO_( cur_loc->LocPid ) ) ), 0 );
+                                 FmtGameText( STR_GMAP_LOC_INFO, MsgLocations->GetStr( STR_LOC_NAME( cur_loc->LocPid ) ), MsgLocations->GetStr( STR_LOC_INFO( cur_loc->LocPid ) ) ), 0 );
             }
         }
     }
@@ -6582,9 +6582,9 @@ uint FOClient::GmapGetMouseTabLocId()
                 GmapLocation& loc = GmapLoc[ i ];
 
                 // Skip na
-                if( !MsgGM->Count( STR_GM_LABELPIC_( loc.LocPid ) ) )
+                if( !MsgLocations->Count( STR_LOC_LABEL_PIC( loc.LocPid ) ) )
                     continue;
-                AnyFrames* tab_pic = ResMngr.GetIfaceAnim( Str::GetHash( MsgGM->GetStr( STR_GM_LABELPIC_( loc.LocPid ) ) ) );
+                AnyFrames* tab_pic = ResMngr.GetIfaceAnim( Str::GetHash( MsgLocations->GetStr( STR_LOC_LABEL_PIC( loc.LocPid ) ) ) );
                 if( !tab_pic )
                     continue;
 
@@ -6633,11 +6633,11 @@ void FOClient::SboxDraw()
     SprMngr.DrawStr( Rect( SboxBCancelText, SboxX, SboxY ), MsgGame->GetStr( STR_SKILLDEX_CANCEL ), FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT );
 
     // Skills
-    #define SBOX_DRAW_SKILL( comp, skill )                                                                                                                                                                                \
-        do { SprMngr.DrawStr( Rect( SboxB ## comp, SboxX, SboxY - ( IfaceHold == skill ? 1 : 0 ) ), MsgGame->GetStr( STR_PARAM_NAME_SHORT_( skill ) ), FT_CENTERX | FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT ); \
-             int sk_val = ( Chosen ? Chosen->GetRawParam( skill ) : 0 ); if( sk_val < 0 )                                                                                                                                 \
-                 sk_val = -sk_val; sk_val = CLAMP( sk_val, 0, MAX_SKILL_VAL ); char str[ 16 ]; Str::Format( str, "%03d", sk_val ); if( Chosen && Chosen->GetRawParam( skill ) < 0 )                                       \
-                 Str::ChangeValue( str, 0x10 );                                                                                                                                                                           \
+    #define SBOX_DRAW_SKILL( comp, skill )                                                                                                                                                                               \
+        do { SprMngr.DrawStr( Rect( SboxB ## comp, SboxX, SboxY - ( IfaceHold == skill ? 1 : 0 ) ), MsgGame->GetStr( STR_PARAM_NAME_SHORT( skill ) ), FT_CENTERX | FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT ); \
+             int sk_val = ( Chosen ? Chosen->GetRawParam( skill ) : 0 ); if( sk_val < 0 )                                                                                                                                \
+                 sk_val = -sk_val; sk_val = CLAMP( sk_val, 0, MAX_SKILL_VAL ); char str[ 16 ]; Str::Format( str, "%03d", sk_val ); if( Chosen && Chosen->GetRawParam( skill ) < 0 )                                      \
+                 Str::ChangeValue( str, 0x10 );                                                                                                                                                                          \
              SprMngr.DrawStr( Rect( SboxT ## comp, SboxX, SboxY ), str, 0, COLOR_IFACE, FONT_BIG_NUM ); } while( 0 )
 
     SBOX_DRAW_SKILL( Sneak, SK_SNEAK );
@@ -6907,7 +6907,7 @@ void FOClient::ChaPrepareSwitch()
             continue;
         if( perks.empty() )
             perks.push_back( SwitchElement( STR_TRAITS_NAME, STR_TRAITS_DESC, SKILLDEX_TRAITS, FT_CENTERX ) );
-        perks.push_back( SwitchElement( STR_PARAM_NAME_( i ), STR_PARAM_DESC_( i ), SKILLDEX_PARAM( i ), 0 ) );
+        perks.push_back( SwitchElement( STR_PARAM_NAME( i ), STR_PARAM_DESC( i ), SKILLDEX_PARAM( i ), 0 ) );
     }
 
     // Perks
@@ -6925,7 +6925,7 @@ void FOClient::ChaPrepareSwitch()
         }
 
         // Perk info
-        perks.push_back( SwitchElement( STR_PARAM_NAME_( i ), STR_PARAM_DESC_( i ), SKILLDEX_PARAM( i ), 0 ) );
+        perks.push_back( SwitchElement( STR_PARAM_NAME( i ), STR_PARAM_DESC( i ), SKILLDEX_PARAM( i ), 0 ) );
 
         // Perk count
         if( Chosen->GetParam( i ) > 1 )
@@ -6938,12 +6938,12 @@ void FOClient::ChaPrepareSwitch()
     int karma_gen_count = MsgGame->GetInt( STR_KARMA_GEN_COUNT );
     for( int i = 0; i < karma_gen_count; i++ )
     {
-        int val = MsgGame->GetInt( STR_KARMA_GEN_VAL_( i ) );
+        int val = MsgGame->GetInt( STR_KARMA_GEN_VAL( i ) );
         if( Chosen->GetParam( ST_KARMA ) < val )
             continue;
-        string karma_info = MsgGame->GetStr( STR_KARMA_GEN_NAME_( i ) );
+        string karma_info = MsgGame->GetStr( STR_KARMA_GEN_NAME( i ) );
         Str::Copy( karma[ karma.size() - 1 ].Addon, FmtGameText( STR_KARMA_GEN_GEN_NAME2, Chosen->GetParam( ST_KARMA ), karma_info.c_str() ) );
-        karma[ karma.size() - 1 ].PictureId = MsgGame->GetInt( STR_KARMA_GEN_SKILLDEX_( i ) );
+        karma[ karma.size() - 1 ].PictureId = MsgGame->GetInt( STR_KARMA_GEN_SKILLDEX( i ) );
         break;
     }
 
@@ -6954,7 +6954,7 @@ void FOClient::ChaPrepareSwitch()
             continue;
 
         // Karma perks info
-        karma.push_back( SwitchElement( STR_PARAM_NAME_( i ), STR_PARAM_DESC_( i ), SKILLDEX_PARAM( i ), 0 ) );
+        karma.push_back( SwitchElement( STR_PARAM_NAME( i ), STR_PARAM_DESC( i ), SKILLDEX_PARAM( i ), 0 ) );
     }
 
     // Town reputation
@@ -6973,10 +6973,10 @@ void FOClient::ChaPrepareSwitch()
         }
 
         // Reputation
-        karma.push_back( SwitchElement( STR_PARAM_NAME_( i ), STR_TOWNREP_RATIO_DESC_( val ), SKILLDEX_REPUTATION_RATIO( val ), 0 ) );
+        karma.push_back( SwitchElement( STR_PARAM_NAME( i ), STR_TOWNREP_RATIO_DESC( val ), SKILLDEX_REPUTATION_RATIO( val ), 0 ) );
 
         // Perk count
-        Str::Copy( karma[ karma.size() - 1 ].Addon, Str::FormatBuf( ": %s %d", MsgGame->GetStr( STR_TOWNREP_RATIO_NAME_( val ) ), val ) );
+        Str::Copy( karma[ karma.size() - 1 ].Addon, Str::FormatBuf( ": %s %d", MsgGame->GetStr( STR_TOWNREP_RATIO_NAME( val ) ), val ) );
     }
 
     // Addiction
@@ -6994,7 +6994,7 @@ void FOClient::ChaPrepareSwitch()
         }
 
         // Addiction info
-        karma.push_back( SwitchElement( STR_PARAM_NAME_( i ), STR_PARAM_DESC_( i ), SKILLDEX_PARAM( i ), 0 ) );
+        karma.push_back( SwitchElement( STR_PARAM_NAME( i ), STR_PARAM_DESC( i ), SKILLDEX_PARAM( i ), 0 ) );
     }
 
     // Kills
@@ -7003,7 +7003,7 @@ void FOClient::ChaPrepareSwitch()
         if( !Chosen->GetParam( i ) )
             continue;
 
-        kills.push_back( SwitchElement( STR_PARAM_NAME_( i ), STR_PARAM_DESC_( i ), SKILLDEX_PARAM( i ), 0 ) );
+        kills.push_back( SwitchElement( STR_PARAM_NAME( i ), STR_PARAM_DESC( i ), SKILLDEX_PARAM( i ), 0 ) );
         Str::Copy( kills[ kills.size() - 1 ].Addon, Str::UItoA( Chosen->GetParam( i ) ) );
     }
 }
@@ -7147,7 +7147,7 @@ void FOClient::ChaDraw( bool is_reg )
         int param = ChaSpecialParams[ i ];
 
         // Text
-        SprMngr.DrawStr( Rect( ChaWSpecialText, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_INV_SHORT_SPECIAL_( param ) ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_SAND, FONT_BIG );
+        SprMngr.DrawStr( Rect( ChaWSpecialText, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_INV_SHORT_SPECIAL( param ) ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_SAND, FONT_BIG );
 
         // Value
         int val = CHA_PARAM( param );
@@ -7160,9 +7160,9 @@ void FOClient::ChaDraw( bool is_reg )
 
         // Str level
         if( is_reg )
-            SprMngr.DrawStr( Rect( ChaWSpecialLevel, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_STAT_LEVEL_ABB_( val ) ), FT_NOBREAK | FT_CENTERY );
+            SprMngr.DrawStr( Rect( ChaWSpecialLevel, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_STAT_LEVEL_ABB( val ) ), FT_NOBREAK | FT_CENTERY );
         else
-            SprMngr.DrawStr( Rect( ChaWSpecialLevel, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_STAT_LEVEL_( val ) ), FT_NOBREAK | FT_CENTERY );
+            SprMngr.DrawStr( Rect( ChaWSpecialLevel, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_STAT_LEVEL( val ) ), FT_NOBREAK | FT_CENTERY );
     }
 
     // Unspent
@@ -7182,7 +7182,7 @@ void FOClient::ChaDraw( bool is_reg )
     {
         int offs = i - SKILL_BEGIN;
         // Name
-        SprMngr.DrawStr( Rect( ChaWSkillName, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, IsTagSkill( is_reg, i ) ? 0xFFAAAAAA : COLOR_TEXT );
+        SprMngr.DrawStr( Rect( ChaWSkillName, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME( i ) ), FT_NOBREAK, IsTagSkill( is_reg, i ) ? 0xFFAAAAAA : COLOR_TEXT );
         // Value
         SprMngr.DrawStr( Rect( ChaWSkillValue, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), Str::FormatBuf( "%d%%", CLAMP( CHA_PARAM( i ) + ( is_reg ? 0 : ChaSkillUp[ offs ] ), -MAX_SKILL_VAL, MAX_SKILL_VAL ) ), FT_NOBREAK, IsTagSkill( is_reg, i ) ? 0xFFAAAAAA : COLOR_TEXT );
     }
@@ -7244,14 +7244,14 @@ void FOClient::ChaDraw( bool is_reg )
             color = ( CHA_PARAM( ST_POISONING_LEVEL ) ? COLOR_TEXT : COLOR_TEXT_DARK );
         else
             color = ( CHA_PARAM( i ) ? COLOR_TEXT : COLOR_TEXT_DARK );
-        SprMngr.DrawStr( Rect( ChaWDmg, ChaX + ChaWDmgNextX * offs, ChaY + ChaWDmgNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, color );
+        SprMngr.DrawStr( Rect( ChaWDmg, ChaX + ChaWDmgNextX * offs, ChaY + ChaWDmgNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME( i ) ), FT_NOBREAK, color );
     }
 
     // Secondary stats
     for( int i = 0; i < ShowStatsCnt; ++i )
     {
         // Name
-        SprMngr.DrawStr( Rect( ChaWStatsName, ChaX + ChaWStatsNextX * i, ChaY + ChaWStatsNextY * i ), MsgGame->GetStr( STR_PARAM_NAME_SHORT_( ShowStats[ i ] ) ), FT_NOBREAK, COLOR_TEXT );
+        SprMngr.DrawStr( Rect( ChaWStatsName, ChaX + ChaWStatsNextX * i, ChaY + ChaWStatsNextY * i ), MsgGame->GetStr( STR_PARAM_NAME_SHORT( ShowStats[ i ] ) ), FT_NOBREAK, COLOR_TEXT );
         // Value
         int val = CHA_PARAM( ShowStats[ i ] );
         const char* str;
@@ -7276,11 +7276,11 @@ void FOClient::ChaDraw( bool is_reg )
     {
         // Left
         for( uint i = TRAIT_BEGIN, k = 0; i < TRAIT_BEGIN + TRAIT_COUNT / 2; ++i, ++k )
-            SprMngr.DrawStr( Rect( RegWTraitL, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, CHA_PARAM( i ) ? 0xFFAAAAAA : COLOR_TEXT );
+            SprMngr.DrawStr( Rect( RegWTraitL, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ), MsgGame->GetStr( STR_PARAM_NAME( i ) ), FT_NOBREAK, CHA_PARAM( i ) ? 0xFFAAAAAA : COLOR_TEXT );
 
         // Right
         for( uint i = TRAIT_BEGIN + TRAIT_COUNT / 2, k = 0; i <= TRAIT_END; ++i, ++k )
-            SprMngr.DrawStr( Rect( RegWTraitR, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, CHA_PARAM( i ) ? 0xFFAAAAAA : COLOR_TEXT );
+            SprMngr.DrawStr( Rect( RegWTraitR, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ), MsgGame->GetStr( STR_PARAM_NAME( i ) ), FT_NOBREAK, CHA_PARAM( i ) ? 0xFFAAAAAA : COLOR_TEXT );
     }
 
     // Slider
@@ -7346,8 +7346,8 @@ void FOClient::ChaLMouseDown( bool is_reg )
         {
 label_DrawSpecial:
             ChaSkilldexPic = SKILLDEX_PARAM( param );
-            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME_( param ) ) );
-            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC_( param ) ) );
+            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( param ) ) );
+            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( param ) ) );
             return;
         }
     }
@@ -7367,8 +7367,8 @@ label_DrawSpecial:
         {
 label_DrawSkill:
             ChaSkilldexPic = SKILLDEX_PARAM( i );
-            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME_( i ) ) );
-            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC_( i ) ) );
+            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( i ) ) );
+            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( i ) ) );
             ChaCurSkill = offs;
             return;
         }
@@ -7379,8 +7379,8 @@ label_DrawSkill:
     if( IsCurInRect( ChaWDmgLife, ChaX, ChaY ) )
     {
         ChaSkilldexPic = SKILLDEX_PARAM( ST_MAX_LIFE );
-        Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME_( ST_MAX_LIFE ) ) );
-        Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC_( ST_MAX_LIFE ) ) );
+        Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( ST_MAX_LIFE ) ) );
+        Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( ST_MAX_LIFE ) ) );
         return;
     }
 
@@ -7391,8 +7391,8 @@ label_DrawSkill:
         if( IsCurInRect( ChaWDmg, ChaX + ChaWDmgNextX * offs, ChaY + ChaWDmgNextY * offs ) )
         {
             ChaSkilldexPic = SKILLDEX_PARAM( i );
-            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME_( i ) ) );
-            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC_( i ) ) );
+            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( i ) ) );
+            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( i ) ) );
             return;
         }
     }
@@ -7404,8 +7404,8 @@ label_DrawSkill:
             IsCurInRect( ChaWStatsValue, ChaX + ChaWStatsNextX * i, ChaY + ChaWStatsNextY * i ) )
         {
             ChaSkilldexPic = SKILLDEX_PARAM( ShowStats[ i ] );
-            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME_( ShowStats[ i ] ) ) );
-            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC_( ShowStats[ i ] ) ) );
+            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( ShowStats[ i ] ) ) );
+            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( ShowStats[ i ] ) ) );
             return;
         }
     }
@@ -7442,8 +7442,8 @@ label_DrawSkill:
 label_DrawTrait:
             RegTraitNum = k;
             ChaSkilldexPic = SKILLDEX_PARAM( i );
-            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME_( i ) ) );
-            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC_( i ) ) );
+            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( i ) ) );
+            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( i ) ) );
             return;
         }
     }
@@ -7503,14 +7503,14 @@ label_DrawTrait:
     if( !is_reg && IsCurInRect( ChaWLevel, ChaX, ChaY ) )
     {
         ChaSkilldexPic = SKILLDEX_PARAM( ST_LEVEL );
-        Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME_( ST_LEVEL ) ) );
-        Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC_( ST_LEVEL ) ) );
+        Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( ST_LEVEL ) ) );
+        Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( ST_LEVEL ) ) );
     }
     else if( !is_reg && IsCurInRect( ChaWExp, ChaX, ChaY ) )
     {
         ChaSkilldexPic = SKILLDEX_PARAM( ST_EXPERIENCE );
-        Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME_( ST_EXPERIENCE ) ) );
-        Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC_( ST_EXPERIENCE ) ) );
+        Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( ST_EXPERIENCE ) ) );
+        Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( ST_EXPERIENCE ) ) );
     }
     else if( !is_reg && IsCurInRect( ChaWNextLevel, ChaX, ChaY ) )
     {
@@ -7876,14 +7876,14 @@ void FOClient::ChaNameKeyDown( uchar dik, const char* dik_text )
     case IFACE_CHA_NAME_NAME:
     {
         string tmp_str = GameOpt.RegName->c_std_str();
-        Keyb::GetChar( dik, dik_text, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, tmp_str, NULL, MIN( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
         *GameOpt.RegName = tmp_str;
     }
     break;
     case IFACE_CHA_NAME_PASS:
     {
         string tmp_str = GameOpt.RegPassword->c_std_str();
-        Keyb::GetChar( dik, dik_text, tmp_str, NULL, min( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, tmp_str, NULL, MIN( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
         *GameOpt.RegPassword = tmp_str;
     }
     break;
@@ -8085,11 +8085,11 @@ void FOClient::PerkDraw()
         uint col = COLOR_TEXT;
         if( PerkCollection[ i ] == PerkCurPerk )
             col = COLOR_TEXT_DGREEN;
-        SprMngr.DrawStr( Rect( PerkWPerks, PerkX + PerkNextX * k, PerkY + PerkNextY * k ), MsgGame->GetStr( STR_PARAM_NAME_( PerkCollection[ i ] ) ), 0, col );
+        SprMngr.DrawStr( Rect( PerkWPerks, PerkX + PerkNextX * k, PerkY + PerkNextY * k ), MsgGame->GetStr( STR_PARAM_NAME( PerkCollection[ i ] ) ), 0, col );
     }
 
     if( PerkCurPerk >= 0 )
-        SprMngr.DrawStr( Rect( PerkWText, PerkX, PerkY ), MsgGame->GetStr( STR_PARAM_DESC_( PerkCurPerk ) ), 0, COLOR_TEXT_BLACK );
+        SprMngr.DrawStr( Rect( PerkWText, PerkX, PerkY ), MsgGame->GetStr( STR_PARAM_DESC( PerkCurPerk ) ), 0, COLOR_TEXT_BLACK );
 }
 
 void FOClient::PerkLMouseDown()
@@ -8344,7 +8344,7 @@ void FOClient::PipDraw()
         scr++;
         for( uint j = TIMEOUT_END; j >= TIMEOUT_BEGIN; j-- )
         {
-            if( !MsgGame->Count( STR_PARAM_NAME_( j ) ) )
+            if( !MsgGame->Count( STR_PARAM_NAME( j ) ) )
                 continue;
             uint val = Chosen->GetParam( j );
 
@@ -8367,7 +8367,7 @@ void FOClient::PipDraw()
                 val /= 60;
                 str_num = STR_TIMEOUT_MINUTES;
             }
-            PIP_DRAW_TEXT( FmtGameText( STR_PARAM_NAME_( j ) ), 0, COLOR_TEXT );
+            PIP_DRAW_TEXT( FmtGameText( STR_PARAM_NAME( j ) ), 0, COLOR_TEXT );
             if( val > 1440 )
                 PIP_DRAW_TEXTR( FmtGameText( str_num, "?" ), 0, COLOR_TEXT );
             else
@@ -8406,8 +8406,8 @@ void FOClient::PipDraw()
         char last_title[ 256 ];
         for( int i = 0; i < SCORES_MAX; i++ )
         {
-            if( MsgGame->Count( STR_SCORES_TITLE_( i ) ) )
-                Str::Copy( last_title, MsgGame->GetStr( STR_SCORES_TITLE_( i ) ) );
+            if( MsgGame->Count( STR_SCORES_TITLE( i ) ) )
+                Str::Copy( last_title, MsgGame->GetStr( STR_SCORES_TITLE( i ) ) );
             char* name = &BestScores[ i ][ 0 ];
             if( !name[ 0 ] )
                 continue;
@@ -8420,7 +8420,7 @@ void FOClient::PipDraw()
                 last_title[ 0 ] = '\0';
                 is_first_title = false;
             }
-            PIP_DRAW_TEXT( MsgGame->GetStr( STR_SCORES_NAME_( i ) ), FT_CENTERX, COLOR_TEXT );
+            PIP_DRAW_TEXT( MsgGame->GetStr( STR_SCORES_NAME( i ) ), FT_CENTERX, COLOR_TEXT );
             scr++;
             PIP_DRAW_TEXT( name, FT_CENTERX, COLOR_TEXT );
             scr++;
@@ -8450,12 +8450,12 @@ void FOClient::PipDraw()
     break;
     case PIP__AUTOMAPS_LOC:
     {
-        SprMngr.DrawStr( Rect( PipWMonitor, PipX, PipY ), MsgGM->GetStr( STR_GM_INFO_( AutomapSelected.LocPid ) ), FT_SKIPLINES( PipScroll[ PipMode ] ) | FT_ALIGN );
+        SprMngr.DrawStr( Rect( PipWMonitor, PipX, PipY ), MsgLocations->GetStr( STR_LOC_INFO( AutomapSelected.LocPid ) ), FT_SKIPLINES( PipScroll[ PipMode ] ) | FT_ALIGN );
     }
     break;
     case PIP__AUTOMAPS_MAP:
     {
-        ushort map_pid = AutomapSelected.MapPids[ AutomapSelected.CurMap ];
+        hash map_pid = AutomapSelected.MapPids[ AutomapSelected.CurMap ];
         const char* map_name = AutomapSelected.MapNames[ AutomapSelected.CurMap ].c_str();
 
         scr = 0;
@@ -8501,29 +8501,31 @@ void FOClient::PipDraw()
         AutomapScrY = (float) ( PipY - maxhy * 2 / 2 + PipWMonitor.H() / 2 );
         for( auto it = items.begin(), end = items.end(); it != end; ++it )
         {
-            Item& item = *it;
-            ushort pid = item.GetProtoId();
+            Item* item = *it;
+            hash pid = item->GetProtoId();
             if( pid == SP_SCEN_IBLOCK || pid == SP_MISC_SCRBLOCK )
                 continue;
 
             uint color;
             if( pid == SP_GRID_EXITGRID )
                 color = 0x3FFF7F00;
-            else if( item.Proto->IsWall() )
+            else if( item->Proto->IsWall() )
                 color = 0xFF00FF00;
-            else if( item.Proto->IsScen() )
+            else if( item->Proto->IsScen() )
                 color = 0x7F00FF00;
-            else if( item.Proto->IsGrid() )
+            else if( item->Proto->IsGrid() )
                 color = 0x7F00FF00;
             else
                 continue;
 
-            int x = PipWMonitor.L + maxhx * 2 - item.AccHex.HexX * 2;
-            int y = PipWMonitor.T + item.AccHex.HexY * 2;
+            int x = PipWMonitor.L + maxhx * 2 - item->AccHex.HexX * 2;
+            int y = PipWMonitor.T + item->AccHex.HexY * 2;
 
             AutomapPoints.push_back( PrepPoint( x, y, color ) );
             AutomapPoints.push_back( PrepPoint( x + 1, y + 1, color ) );
         }
+        for( auto it = items.begin(), end = items.end(); it != end; ++it )
+            ( *it )->Release();
         AutomapCurMapPid = map_pid;
         AutomapZoom = 1.0f;
     }
@@ -8540,14 +8542,14 @@ void FOClient::PipDraw()
                 scr++;
                 continue;
             }
-            PIP_DRAW_TEXT( GetHoloText( STR_HOLO_INFO_NAME_( num ) ), 0, COLOR_TEXT );
+            PIP_DRAW_TEXT( GetHoloText( STR_HOLO_INFO_NAME( num ) ), 0, COLOR_TEXT );
             scr++;
         }
     }
     break;
     case PIP__ARCHIVES_INFO:
     {
-        SprMngr.DrawStr( Rect( PipWMonitor, PipX, PipY ), GetHoloText( STR_HOLO_INFO_DESC_( PipInfoNum ) ), FT_SKIPLINES( PipScroll[ PipMode ] ) | FT_ALIGN );
+        SprMngr.DrawStr( Rect( PipWMonitor, PipX, PipY ), GetHoloText( STR_HOLO_INFO_DESC( PipInfoNum ) ), FT_SKIPLINES( PipScroll[ PipMode ] ) | FT_ALIGN );
     }
     break;
     default:
@@ -8590,7 +8592,7 @@ void FOClient::PipLMouseDown()
         {
             scr += 8;
             for( uint j = TIMEOUT_END; j >= TIMEOUT_BEGIN; j-- )
-                if( MsgGame->Count( STR_PARAM_NAME_( j ) ) )
+                if( MsgGame->Count( STR_PARAM_NAME( j ) ) )
                     scr++;
             int scr_ = scr;
 
@@ -9141,12 +9143,12 @@ void FOClient::PupLMouseUp()
         if( !IsCurInRect( PupWCont1, PupX, PupY ) )
             break;
 
-        auto it = std::find( PupCont2.begin(), PupCont2.end(), PupHoldId );
+        auto it = PtrCollectionFind( PupCont2.begin(), PupCont2.end(), PupHoldId );
         if( it != PupCont2.end() )
         {
-            Item& item = *it;
-            if( item.GetCount() > 1 )
-                SplitStart( &item, IFACE_PUP_CONT2 );
+            Item* item = *it;
+            if( item->GetCount() > 1 )
+                SplitStart( item, IFACE_PUP_CONT2 );
             else
                 SetAction( CHOSEN_MOVE_ITEM_CONT, PupHoldId, IFACE_PUP_CONT2, 1 );
         }
@@ -9157,12 +9159,12 @@ void FOClient::PupLMouseUp()
         if( !IsCurInRect( PupWCont2, PupX, PupY ) )
             break;
 
-        auto it = std::find( PupCont1.begin(), PupCont1.end(), PupHoldId );
+        auto it = PtrCollectionFind( PupCont1.begin(), PupCont1.end(), PupHoldId );
         if( it != PupCont1.end() )
         {
-            Item& item = *it;
-            if( item.GetCount() > 1 )
-                SplitStart( &item, IFACE_PUP_CONT1 );
+            Item* item = *it;
+            if( item->GetCount() > 1 )
+                SplitStart( item, IFACE_PUP_CONT1 );
             else
                 SetAction( CHOSEN_MOVE_ITEM_CONT, PupHoldId, IFACE_PUP_CONT1, 1 );
         }
@@ -9305,15 +9307,20 @@ void FOClient::PupTransfer( uint item_id, uint cont, uint count )
     // From container to Chosen
     else if( cont == IFACE_PUP_CONT2 )
     {
-        auto it = std::find( PupCont2Init.begin(), PupCont2Init.end(), item_id );
+        auto it = PtrCollectionFind( PupCont2Init.begin(), PupCont2Init.end(), item_id );
         if( it == PupCont2Init.end() )
             return;
-        Item& item = *it;
+        Item* item = *it;
 
-        if( item.IsStackable() && count < item.GetCount() )
-            item.Count_Sub( count );
+        if( item->IsStackable() && count < item->GetCount() )
+        {
+            item->Count_Sub( count );
+        }
         else
+        {
+            ( *it )->Release();
             PupCont2Init.erase( it );
+        }
 
         Net_SendItemCont( PupTransferType, PupContId, item_id, count, CONT_GET );
         WaitPing();
@@ -9592,10 +9599,10 @@ DrawCurHand:
                 goto DrawCurHand;
             }
 
-            auto it = std::find( cont->begin(), cont->end(), BarterHoldId );
+            auto it = PtrCollectionFind( cont->begin(), cont->end(), BarterHoldId );
             if( it == cont->end() )
                 goto DrawCurHand;
-            Item* item = &( *it );
+            Item* item = *it;
 
             AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
             if( !anim )
@@ -10691,7 +10698,7 @@ void FOClient::FixGenerate( int fix_mode )
             for( uint i = 0, j = (uint) craft->NeedPNum.size(); i < j; i++ )
             {
                 // Need
-                str += MsgGame->GetStr( STR_PARAM_NAME_( craft->NeedPNum[ i ] ) );
+                str += MsgGame->GetStr( STR_PARAM_NAME( craft->NeedPNum[ i ] ) );
                 str += " ";
                 str += Str::ItoA( craft->NeedPVal[ i ] );
 
@@ -10766,7 +10773,7 @@ void FOClient::FixGenerateStrLine( string& str, Rect& r )
     r.T = r.B;
 }
 
-void FOClient::FixGenerateItems( UShortVec& items_vec, UIntVec& val_vec, UCharVec& or_vec, string& str, Rect& r, int& x )
+void FOClient::FixGenerateItems( HashVec& items_vec, UIntVec& val_vec, UCharVec& or_vec, string& str, Rect& r, int& x )
 {
     str = "";
     for( uint i = 0, j = (uint) items_vec.size(); i < j; i++ )
@@ -11284,7 +11291,7 @@ void FOClient::SaveLoadCollect()
         }
 
         // Map pid
-        ushort map_pid;
+        hash map_pid;
         FileSetPointer( f, 8 + crname_size + 68, SEEK_SET );
         if( !FileRead( f, &map_pid, sizeof( map_pid ) ) )
             continue;
@@ -11345,7 +11352,7 @@ void FOClient::SaveLoadCollect()
         slot.Name = name;
         slot.Info = Str::FormatBuf( "%s\n%02d.%02d.%04d %02d:%02d:%02d\n", name, dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
         slot.InfoExt = Str::FormatBuf( "%s\n%02d %3s %04d %02d%02d\n%s", crname,
-                                       day, MsgGame->GetStr( STR_MONTH( month ) ), year, hour, minute, MsgGM->GetStr( STR_MAP_NAME_( map_pid ) ) );
+                                       day, MsgGame->GetStr( STR_MONTH( month ) ), year, hour, minute, MsgLocations->GetStr( STR_LOC_MAP_NAME( CurMapLocPid, CurMapIndexInLoc ) ) );
         slot.FileName = fname_ex;
         slot.RealTime = tw;
         slot.PicData = pic_data;

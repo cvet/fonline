@@ -107,7 +107,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
 {
     char args[ MAX_FOTEXT ];
     Str::Copy( args, str );
-    Str::EraseFrontBackSpecificChars( args );
+    Str::Trim( args );
 
     char  cmd_str[ MAX_FOTEXT ];
     Str::Copy( cmd_str, args );
@@ -445,18 +445,18 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     break;
     case CMD_LOADLOCATION:
     {
-        ushort loc_pid;
-        if( sscanf( args, "%hu", &loc_pid ) != 1 )
+        char loc_name[ MAX_FOPATH ];
+        if( sscanf( args, "%s", loc_name ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <loadlocation pid>." );
+            logcb( "Invalid arguments. Example: <loadlocation loc_name>." );
             break;
         }
-        msg_len += sizeof( loc_pid );
+        msg_len += sizeof( loc_name );
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf << loc_pid;
+        buf.Push( loc_name, sizeof( loc_name ) );
     }
     break;
     case CMD_RELOADMAPS:
@@ -468,18 +468,18 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     break;
     case CMD_LOADMAP:
     {
-        ushort map_pid;
-        if( sscanf( args, "%hu", &map_pid ) != 1 )
+        char map_name[ MAX_FOPATH ];
+        if( sscanf( args, "%s", map_name ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <loadmap pid>." );
+            logcb( "Invalid arguments. Example: <loadmap map_name>." );
             break;
         }
-        msg_len += sizeof( map_pid );
+        msg_len += sizeof( map_name );
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf << map_pid;
+        buf.Push( map_name, sizeof( map_name ) );
     }
     break;
     case CMD_REGENMAP:

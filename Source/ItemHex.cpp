@@ -221,9 +221,9 @@ void ItemHex::SetFade( bool fade_up )
 
 void ItemHex::RefreshAnim()
 {
-    uint name_hash = Proto->PicMap;
-    if( Data.PicMapHash )
-        name_hash = Data.PicMapHash;
+    hash name_hash = Proto->PicMap;
+    if( Data.PicMap )
+        name_hash = Data.PicMap;
     Anim = NULL;
     if( name_hash )
         Anim = ResMngr.GetItemAnim( name_hash );
