@@ -513,7 +513,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
     uint decoded = 0;
     while( true )
     {
-        int portion = min( (uint) 4096, STREAMING_PORTION - decoded );
+        int portion = MIN( (uint) 4096, STREAMING_PORTION - decoded );
         result = (int) ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, NULL );
         if( result <= 0 )
             break;
@@ -564,7 +564,7 @@ bool SoundManager::StreamingOGG( Sound* sound )
     uint decoded = 0;
     while( true )
     {
-        int portion = min( (uint) 4096, STREAMING_PORTION - decoded );
+        int portion = MIN( (uint) 4096, STREAMING_PORTION - decoded );
         result = (int) ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, NULL );
         if( result <= 0 )
             break;

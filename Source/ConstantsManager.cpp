@@ -139,9 +139,10 @@ const char* ConstantsManager::GetParamName( uint index )
     return GetName( CONSTANTS_PARAM, index );
 }
 
-int ConstantsManager::GetItemPid( const char* str )
+uint ConstantsManager::GetItemPid( const char* str )
 {
-    return GetValue( CONSTANTS_ITEM, str );
+    int value = GetValue( CONSTANTS_ITEM, str );
+    return (uint) ( value < 0 ? 0 : value );
 }
 
 const char* ConstantsManager::GetItemName( ushort pid )
