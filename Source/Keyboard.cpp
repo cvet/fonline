@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include <strstream>
 
 static uchar  KeysMap[ 0x200 ] = { 0 };

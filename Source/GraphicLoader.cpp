@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "GraphicLoader.h"
 #include "3dAnimation.h"
 #include "Text.h"

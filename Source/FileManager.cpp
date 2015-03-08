@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "FileManager.h"
 
 #define OUT_BUF_START_SIZE    ( 0x100 )

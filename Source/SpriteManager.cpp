@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "SpriteManager.h"
 #include "IniParser.h"
 #include "Crypt.h"

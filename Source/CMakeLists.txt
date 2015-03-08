@@ -154,7 +154,6 @@ set( COMMON_SOURCE
 	ScriptBind.h
 	ScriptFunctions.h
 	ScriptPragmas.cpp ScriptPragmas.h
-	StdAfx.cpp StdAfx.h
 	Text.cpp Text.h
 	Timer.cpp Timer.h
 	Types.h

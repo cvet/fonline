@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "ScriptPragmas.h"
 #include "angelscript.h"
 

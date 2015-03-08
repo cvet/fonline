@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "ThreadSync.h"
 #include "Mutex.h"
 

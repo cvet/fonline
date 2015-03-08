@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "ConstantsManager.h"
 #include "Log.h"
 #include "Text.h"

@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "Log.h"
 #include "Timer.h"
 #include <stdarg.h>

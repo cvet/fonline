@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "CraftManager.h"
 #include "ConstantsManager.h"
 #include "FileManager.h"

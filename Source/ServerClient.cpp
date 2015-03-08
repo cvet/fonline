@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "Server.h"
 
 void FOServer::ProcessCritter( Critter* cr )

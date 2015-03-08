@@ -1,7 +1,6 @@
 #ifndef __SERVER__
 #define __SERVER__
 
-#include "StdAfx.h"
 #include "Common.h"
 #include "Item.h"
 #include "Critter.h"

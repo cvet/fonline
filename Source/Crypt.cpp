@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "Crypt.h"
 #include "zlib.h"
 #include "SHA2/sha2.h"

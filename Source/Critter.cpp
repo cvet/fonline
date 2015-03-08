@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "Critter.h"
 #include "MapManager.h"
 #include "ItemManager.h"

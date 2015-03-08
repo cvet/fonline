@@ -1,6 +1,5 @@
-#include "StdAfx.h"
-#include "ItemHex.h"
 #include "Common.h"
+#include "ItemHex.h"
 #include "ResourceManager.h"
 
 ItemHex::ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut )

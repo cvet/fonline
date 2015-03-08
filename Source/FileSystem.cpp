@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 
 void CreateDirectoryTree( const char* path )
 {

@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "Timer.h"
 
 #ifdef FO_WINDOWS

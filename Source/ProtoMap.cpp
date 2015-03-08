@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "ProtoMap.h"
 #include "ItemManager.h"
 #include "Crypt.h"

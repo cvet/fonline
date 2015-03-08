@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "Client.h"
 #include "Exception.h"
 #include "Keyboard.h"

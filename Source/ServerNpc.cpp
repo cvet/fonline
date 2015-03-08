@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "Server.h"
 
 #define CHECK_NPC_AP( npc, map, need_ap )                                                                                        \

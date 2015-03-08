@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "BufferManager.h"
 #include "NetProtocol.h"
 #include "Randomizer.h"

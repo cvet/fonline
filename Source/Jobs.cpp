@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "Jobs.h"
 #include "Mutex.h"
 #include "Map.h"

@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "Text.h"
 #include "Crypt.h"
 #include "src/xutf8/headers/case.h"

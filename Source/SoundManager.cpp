@@ -1,6 +1,5 @@
-#include "StdAfx.h"
-#include "SoundManager.h"
 #include "Common.h"
+#include "SoundManager.h"
 #include "ResourceManager.h"
 #include "Text.h"
 #include "FileManager.h"

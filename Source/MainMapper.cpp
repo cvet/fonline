@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "Mapper.h"
 #include "Exception.h"
 #include <locale.h>

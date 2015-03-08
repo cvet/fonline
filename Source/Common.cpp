@@ -1,4 +1,3 @@
-#include "StdAfx.h"
 #include "Common.h"
 #include "Exception.h"
 #include "Crypt.h"

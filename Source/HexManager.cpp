@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "HexManager.h"
 #include "ResourceManager.h"
 #include "LineTracer.h"

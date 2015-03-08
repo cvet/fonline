@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "Sprites.h"
 #include "SpriteManager.h"
 

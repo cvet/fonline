@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "CritterCl.h"
 #include "CritterType.h"
 #include "ResourceManager.h"

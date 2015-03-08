@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "ItemManager.h"
 #include "ConstantsManager.h"
 #include "IniParser.h"

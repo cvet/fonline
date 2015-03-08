@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.h"
 #include "Vars.h"
 #include "Text.h"
 #include "FileManager.h"
