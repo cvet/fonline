@@ -212,6 +212,7 @@ public:
     void ChangeZoom( int zoom );   // <0 in, >0 out, 0 normalize
     void GetScreenHexes( int& sx, int& sy );
     void GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y );
+    bool ProcessHexBorders( ItemHex* item );
 
 public:
     bool SpritesCanDrawMap;
@@ -289,8 +290,7 @@ private:
     void ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item );
 
 public:
-    bool                 AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, Item::ItemData* data );
-    void                 ChangeItem( uint id, const Item::ItemData& data );
+    bool                 AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, const UCharVec* data );
     void                 FinishItem( uint id, bool is_deleted );
     ItemHexVec::iterator DeleteItem( ItemHex* item, bool with_delete = true );
     void                 PushItem( ItemHex* item );

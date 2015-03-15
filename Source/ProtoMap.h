@@ -35,7 +35,6 @@ public:
     char   ScriptName[ MAPOBJ_SCRIPT_NAME + 1 ];
     char   FuncName[ MAPOBJ_SCRIPT_NAME + 1 ];
 
-    uint   Reserved[ 7 ];
     int    UserData[ 10 ];
 
     union
@@ -57,10 +56,6 @@ public:
         {
             short         OffsetX;
             short         OffsetY;
-            uchar         AnimStayBegin;
-            uchar         AnimStayEnd;
-            ushort        AnimWait;
-            uchar         InfoOffset;
             hash          PicMap;
             hash          PicInv;
 
@@ -91,10 +86,6 @@ public:
         {
             short         OffsetX;
             short         OffsetY;
-            uchar         AnimStayBegin;
-            uchar         AnimStayEnd;
-            ushort        AnimWait;
-            uchar         InfoOffset;
             hash          PicMap;
             hash          PicInv;
 
@@ -203,18 +194,13 @@ private:
     MapObject( const MapObject& r ) {}
     MapObject& operator=( const MapObject& r ) { return *this; }
     #endif
-
-public:
-    static int ConvertParamValue( const char* str );
 };
 typedef vector< MapObject* > MapObjectPtrVec;
 
 struct SceneryCl
 {
     hash   ProtoId;
-    ushort Reserved;
-    uchar  Flags;
-    uchar  SpriteCut;
+    hash   PicMap;
     ushort MapX;
     ushort MapY;
     short  OffsetX;
@@ -223,11 +209,8 @@ struct SceneryCl
     uchar  LightDistance;
     uchar  LightFlags;
     char   LightIntensity;
-    uchar  InfoOffset;
-    uchar  AnimStayBegin;
-    uchar  AnimStayEnd;
-    ushort AnimWait;
-    hash   PicMap;
+    uchar  Flags;
+    uchar  SpriteCut;
 };
 typedef vector< SceneryCl > SceneryClVec;
 

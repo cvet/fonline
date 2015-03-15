@@ -341,7 +341,7 @@ void HexManager::ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item 
                               );
 }
 
-bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, Item::ItemData* data )
+bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, const UCharVec* data )
 {
     if( !id )
     {
@@ -377,7 +377,7 @@ bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
             item_old->IsNotValid = false;
             if( item_old->IsFinishing() )
                 item_old->StopFinishing();
-            ChangeItem( id, *data );
+            item_old->Props.RestoreData( data );
             return true;
         }
         else
@@ -412,45 +412,6 @@ bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
     }
 
     return true;
-}
-
-void HexManager::ChangeItem( uint id, const Item::ItemData& data )
-{
-    ItemHex* item = GetItemById( id );
-    if( !item )
-        return;
-
-    ProtoItem*     proto = item->Proto;
-    Item::ItemData old_data = item->Data;
-    item->Data = data;
-
-    bool check_borders = false;
-
-    if( old_data.PicMap != data.PicMap )
-        item->RefreshAnim();
-    if( proto->IsDoor() || proto->IsContainer() )
-    {
-        ushort old_cond = old_data.LockerCondition;
-        ushort new_cond = data.LockerCondition;
-        if( !FLAG( old_cond, LOCKER_ISOPEN ) && FLAG( new_cond, LOCKER_ISOPEN ) )
-            item->SetAnimFromStart();
-        if( FLAG( old_cond, LOCKER_ISOPEN ) && !FLAG( new_cond, LOCKER_ISOPEN ) )
-            item->SetAnimFromEnd();
-    }
-    if( old_data.OffsetX != data.OffsetX || old_data.OffsetY != data.OffsetY )
-    {
-        item->SetAnimOffs();
-        check_borders = true;
-    }
-
-    item->RefreshAlpha();
-    item->SetSprite( NULL );   // Refresh
-    if( item->IsLight() || FLAG( old_data.Flags, ITEM_LIGHT_THRU ) != FLAG( data.Flags, ITEM_LIGHT_THRU ) )
-        RebuildLight();
-    GetField( item->GetHexX(), item->GetHexY() ).ProcessCache();
-
-    if( check_borders )
-        ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetOffsetX(), item->GetOffsetY(), true );
 }
 
 void HexManager::FinishItem( uint id, bool is_deleted )
@@ -1721,6 +1682,11 @@ bool HexManager::IsVisible( uint spr_id, int ox, int oy )
     int left = ox + si->OffsX - si->Width / 2 - SCROLL_OX;
     int right = ox + si->OffsX + si->Width / 2 + SCROLL_OX;
     return !( top > GameOpt.ScreenHeight * GameOpt.SpritesZoom || bottom < 0 || left > GameOpt.ScreenWidth * GameOpt.SpritesZoom || right < 0 );
+}
+
+bool HexManager::ProcessHexBorders( ItemHex* item )
+{
+    return ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetOffsetX(), item->GetOffsetY(), true );
 }
 
 bool HexManager::ProcessHexBorders( uint spr_id, int ox, int oy, bool resize_map )
@@ -3926,8 +3892,7 @@ bool HexManager::GetMapData( hash map_pid, ItemVec& items, ushort& maxhx, ushort
         ProtoItem* proto_item = ItemMngr.GetProtoItem( scenwall.ProtoId );
         if( proto_item )
         {
-            Item* item = new Item();
-            item->Init( proto_item );
+            Item* item = new Item( 0, proto_item );
             item->Accessory = ITEM_ACCESSORY_NONE;
             item->AccHex.HexX = scenwall.MapX;
             item->AccHex.HexY = scenwall.MapY;
@@ -3967,29 +3932,13 @@ bool HexManager::ParseScenery( SceneryCl& scen )
 
     // Mapper additional parameters
     bool refresh_anim = false;
-    scenery->Data.LightIntensity = scen.LightIntensity;
-    scenery->Data.LightDistance = scen.LightDistance;
-    scenery->Data.LightColor = scen.LightColor;
-    scenery->Data.LightFlags = scen.LightFlags;
-    if( scen.InfoOffset )
-        scenery->Data.Info = scen.InfoOffset;
-    if( scen.AnimStayBegin || scen.AnimStayEnd )
-    {
-        SETFLAG( scenery->Data.Flags, ITEM_SHOW_ANIM );
-        SETFLAG( scenery->Data.Flags, ITEM_SHOW_ANIM_EXT );
-        scenery->Data.AnimShow[ 0 ] = scen.AnimStayBegin;
-        scenery->Data.AnimShow[ 1 ] = scen.AnimStayEnd;
-        scenery->Data.AnimStay[ 0 ] = scen.AnimStayBegin;
-        scenery->Data.AnimStay[ 1 ] = scen.AnimStayEnd;
-        scenery->Data.AnimHide[ 0 ] = scen.AnimStayBegin;
-        scenery->Data.AnimHide[ 1 ] = scen.AnimStayEnd;
-        refresh_anim = true;
-    }
-    if( scen.AnimWait )
-        scenery->Data.AnimWaitBase = scen.AnimWait;
+    scenery->LightIntensity = scen.LightIntensity;
+    scenery->LightDistance = scen.LightDistance;
+    scenery->LightColor = scen.LightColor;
+    scenery->LightFlags = scen.LightFlags;
     if( scen.PicMap )
     {
-        scenery->Data.PicMap = scen.PicMap;
+        scenery->PicMap = scen.PicMap;
         refresh_anim = true;
     }
 
@@ -4163,13 +4112,14 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
 
             CritterCl* cr = new CritterCl();
             cr->SetBaseType( pnpc->BaseType );
-            cr->DefItemSlotHand->Init( pitem_main ? pitem_main : ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
-            cr->DefItemSlotArmor->Init( pitem_armor ? pitem_armor : ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
+            cr->DefItemSlotHand->SetProto( pitem_main ? pitem_main : ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
+            cr->DefItemSlotArmor->SetProto( pitem_armor ? pitem_armor : ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
             memcpy( cr->Params, pnpc->Params, sizeof( pnpc->Params ) );
             cr->HexX = o->MapX;
             cr->HexY = o->MapY;
             cr->SetDir( (uchar) o->MCritter.Dir );
             cr->Id = ++cur_id;
+            cr->Pid = o->ProtoId;
             cr->Init();
             AffectCritter( o, cr );
             AddCrit( cr );
@@ -4180,7 +4130,6 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     ResizeView();
 
     curPidMap = 0xFFFF;
-//	curMapTime=pmap.Time;
     curHashTiles = 0xFFFF;
     curHashWalls = 0xFFFF;
     curHashScen = 0xFFFF;
@@ -4487,57 +4436,26 @@ void HexManager::MarkPassedHexes()
 void HexManager::AffectItem( MapObject* mobj, ItemHex* item )
 {
     uint  old_spr_id = item->SprId;
-    short old_ox = item->Data.OffsetX;
-    short old_oy = item->Data.OffsetY;
+    short old_ox = item->OffsetX;
+    short old_oy = item->OffsetY;
 
     mobj->LightIntensity = CLAMP( mobj->LightIntensity, -100, 100 );
 
-    if( mobj->MItem.AnimStayBegin || mobj->MItem.AnimStayEnd )
-    {
-        SETFLAG( item->Data.Flags, ITEM_SHOW_ANIM );
-        SETFLAG( item->Data.Flags, ITEM_SHOW_ANIM_EXT );
-        item->Data.AnimShow[ 0 ] = mobj->MItem.AnimStayBegin;
-        item->Data.AnimShow[ 1 ] = mobj->MItem.AnimStayEnd;
-        item->Data.AnimStay[ 0 ] = mobj->MItem.AnimStayBegin;
-        item->Data.AnimStay[ 1 ] = mobj->MItem.AnimStayEnd;
-        item->Data.AnimHide[ 0 ] = mobj->MItem.AnimStayBegin;
-        item->Data.AnimHide[ 1 ] = mobj->MItem.AnimStayEnd;
-    }
-    else
-    {
-        UNSETFLAG( item->Data.Flags, ITEM_SHOW_ANIM );
-        UNSETFLAG( item->Data.Flags, ITEM_SHOW_ANIM_EXT );
-        SETFLAG( item->Data.Flags, item->Proto->Flags & ITEM_SHOW_ANIM );
-        SETFLAG( item->Data.Flags, item->Proto->Flags & ITEM_SHOW_ANIM_EXT );
-        item->Data.AnimShow[ 0 ] = item->Proto->AnimShow[ 0 ];
-        item->Data.AnimShow[ 1 ] = item->Proto->AnimShow[ 1 ];
-        item->Data.AnimStay[ 0 ] = item->Proto->AnimStay[ 0 ];
-        item->Data.AnimStay[ 1 ] = item->Proto->AnimStay[ 1 ];
-        item->Data.AnimHide[ 0 ] = item->Proto->AnimHide[ 0 ];
-        item->Data.AnimHide[ 1 ] = item->Proto->AnimHide[ 1 ];
-    }
-
-    if( mobj->MItem.AnimWait )
-        item->Data.AnimWaitBase = mobj->MItem.AnimWait;
-    else
-        item->Data.AnimWaitBase = item->Proto->AnimWaitBase;
-
-    item->Data.LightIntensity = mobj->LightIntensity;
-    item->Data.LightColor = mobj->LightColor;
-    item->Data.LightFlags = ( mobj->LightDirOff | ( ( mobj->LightDay & 3 ) << 6 ) );
-    item->Data.LightDistance = mobj->LightDistance;
+    item->LightIntensity = mobj->LightIntensity;
+    item->LightColor = mobj->LightColor;
+    item->LightFlags = ( mobj->LightDirOff | ( ( mobj->LightDay & 3 ) << 6 ) );
+    item->LightDistance = mobj->LightDistance;
 
     mobj->MItem.PicMap = ( mobj->RunTime.PicMapName[ 0 ] ? Str::GetHash( mobj->RunTime.PicMapName ) : 0 );
     mobj->MItem.PicInv = ( mobj->RunTime.PicInvName[ 0 ] ? Str::GetHash( mobj->RunTime.PicInvName ) : 0 );
-    item->Data.PicMap = mobj->MItem.PicMap;
-    item->Data.PicInv = mobj->MItem.PicInv;
+    item->PicMap = mobj->MItem.PicMap;
+    item->PicInv = mobj->MItem.PicInv;
 
-    item->Data.Info = mobj->MItem.InfoOffset;
-    item->Data.OffsetX = mobj->MItem.OffsetX;
-    item->Data.OffsetY = mobj->MItem.OffsetY;
+    item->OffsetX = mobj->MItem.OffsetX;
+    item->OffsetY = mobj->MItem.OffsetY;
 
     if( item->IsHasLocker() )
-        item->Data.LockerCondition = mobj->MItem.LockerCondition;
+        item->LockerCondition = mobj->MItem.LockerCondition;
 
     int cut = ( mobj->MScenery.SpriteCut ? mobj->MScenery.SpriteCut : item->Proto->SpriteCut );
     if( mobj->MapObjType == MAP_OBJECT_SCENERY && item->SpriteCut != cut )
@@ -4548,8 +4466,8 @@ void HexManager::AffectItem( MapObject* mobj, ItemHex* item )
 
     item->RefreshAnim();
 
-    if( item->SprId != old_spr_id || item->Data.OffsetX != old_ox || item->Data.OffsetX != old_oy )
-        ProcessHexBorders( item->SprId, item->Data.OffsetX, item->Data.OffsetY, true );
+    if( item->SprId != old_spr_id || item->OffsetX != old_ox || item->OffsetX != old_oy )
+        ProcessHexBorders( item->SprId, item->OffsetX, item->OffsetY, true );
 }
 
 void HexManager::AffectCritter( MapObject* mobj, CritterCl* cr )
@@ -4587,7 +4505,7 @@ void HexManager::AffectCritter( MapObject* mobj, CritterCl* cr )
     {
         for( int i = 0; i < MAX_PARAMS; i++ )
         {
-            int value = MapObject::ConvertParamValue( mobj->MCritter.Params[ i ]->c_str() );
+            int value = (int) ConvertParamValue( mobj->MCritter.Params[ i ]->c_str() );
             if( cr->Params[ i ] != value )
             {
                 cr->Params[ i ] = value;

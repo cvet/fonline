@@ -113,11 +113,12 @@ public:
     fd_set        SockSet, SockSetErr;
     uint*         UID0;
     bool          UIDFail;
-    Item          SomeItem;
+    Item*         SomeItem;
     bool          IsConnected;
     bool          InitNetBegin;
     int           InitNetReason;
     bool          InitialItemsSend;
+    UCharVec      ItemData;
 
     bool NetConnect( const char* host, ushort port );
     bool FillSockAddr( sockaddr_in& saddr, const char* host, ushort port );
@@ -136,10 +137,10 @@ public:
     void Net_SendUseItem( uchar ap, uint item_id, hash item_pid, uchar rate, uchar target_type, uint target_id, hash target_pid, uint param );
     void Net_SendPickItem( ushort targ_x, ushort targ_y, hash pid );
     void Net_SendPickCritter( uint crid, uchar pick_type );
+    void Net_SendItemProperty( Item* item, Property* prop, void* data );
     void Net_SendChangeItem( uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count );
     void Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags );
     void Net_SendRateItem();
-    void Net_SendSortValueItem( Item* item );
     void Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer );
     void Net_SendSayNpc( uchar is_npc, uint id_to_talk, const char* str );
     void Net_SendBarter( uint npc_id, ItemVec& cont_sale, ItemVec& cont_buy );
@@ -175,7 +176,7 @@ public:
     void Net_OnMapTextMsg();
     void Net_OnMapTextMsgLex();
     void Net_OnAddItemOnMap();
-    void Net_OnChangeItemOnMap();
+    void Net_OnMapItemProperty( uint data_size );
     void Net_OnEraseItemFromMap();
     void Net_OnAnimateItem();
     void Net_OnCombatResult();
@@ -192,7 +193,7 @@ public:
     void Net_OnCritterAction();
     void Net_OnCritterKnockout();
     void Net_OnCritterMoveItem();
-    void Net_OnCritterItemData();
+    void Net_OnCritterItemProperty( uint data_size );
     void Net_OnCritterAnimate();
     void Net_OnCritterSetAnims();
     void Net_OnCritterParam();
@@ -483,6 +484,14 @@ public:
     void ProcessScreenEffectFading();
     void ProcessScreenEffectQuake();
     void ProcessScreenEffectMirror();
+
+    // Item properties callbacks
+    static void OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemSomeLight( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemPicMap( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemOffsetXY( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemLockerCondition( void* obj, Property* prop, void* cur_value, void* old_value );
 
 /************************************************************************/
 /* Scripting                                                            */

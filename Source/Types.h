@@ -46,6 +46,7 @@ typedef map< string, string >    StrMap;
 typedef map< uint, string >      UIntStrMap;
 typedef map< string, ushort >    StrUShortMap;
 typedef map< string, uint >      StrUIntMap;
+typedef map< string, int64 >     StrInt64Map;
 typedef map< string, void* >     StrPtrMap;
 typedef map< ushort, string >    UShortStrMap;
 typedef map< string, uint >      StrUIntMap;

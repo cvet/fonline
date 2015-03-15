@@ -2,13 +2,12 @@
 #define __NET_PROTOCOL__
 
 #include "Defines.h"
-#include "Item.h"
 
 /************************************************************************/
 /* Base                                                                 */
 /************************************************************************/
 
-#define MAKE_NETMSG_HEADER( number )    ( (uint) ( ( 0x5EAD << 17 ) | ( number << 8 ) | ( 0xAA ) ) )
+#define MAKE_NETMSG_HEADER( number )    ( (uint) ( ( 0x5EAD << 17 ) | ( ( number ) << 8 ) | ( 0xAA ) ) )
 #define PING_CLIENT_LIFE_TIME                 ( 15000 )     // Time to ping client life
 
 // Special message
@@ -469,16 +468,14 @@
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_ADD_ITEM                       MAKE_NETMSG_HEADER( 65 )
-#define NETMSG_ADD_ITEM_SIZE            \
-    ( sizeof( uint ) + sizeof( uint ) + \
-      sizeof( hash ) + sizeof( uchar ) + sizeof( Item::ItemData ) )
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
+// uint msg_len
 // uint id
 // hash pid
 // uchar slot
-// Item::ItemData Data
+// Properties data
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_REMOVE_ITEM                    MAKE_NETMSG_HEADER( 66 )
@@ -487,15 +484,6 @@
 //
 // Params:
 // uint item_id
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_SEND_SORT_VALUE_ITEM           MAKE_NETMSG_HEADER( 68 )
-#define NETMSG_SEND_SORT_VALUE_ITEM_SIZE      ( sizeof( uint ) + sizeof( uint ) + sizeof( ushort ) )
-// ////////////////////////////////////////////////////////////////////////
-//
-// Params:
-// uint item_id
-// ushort sort_val
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_ALL_ITEMS_SEND                 MAKE_NETMSG_HEADER( 69 )
@@ -509,27 +497,26 @@
 // ************************************************************************
 
 #define NETMSG_ADD_ITEM_ON_MAP                MAKE_NETMSG_HEADER( 71 )
-#define NETMSG_ADD_ITEM_ON_MAP_SIZE                      \
-    ( sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + \
-      sizeof( ushort ) * 2 + sizeof( uchar ) + sizeof( Item::ItemData ) )
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
+// uint msg_len
 // uint item_id
 // hash item_pid
 // ushort item_x
 // ushort item_y
 // uchar is_added
-// Item::ItemData data
+// Properties data
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_CHANGE_ITEM_ON_MAP             MAKE_NETMSG_HEADER( 72 )
-#define NETMSG_CHANGE_ITEM_ON_MAP_SIZE        ( sizeof( uint ) + sizeof( uint ) + sizeof( Item::ItemData ) )
+#define NETMSG_MAP_ITEM_PROPERTY( b )         MAKE_NETMSG_HEADER( 180 + ( b ) )
+#define NETMSG_MAP_ITEM_PROPERTY_SIZE( b )    ( sizeof( uint ) + sizeof( ushort ) + ( b ) )
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // uint item_id
-// Item::ItemData data
+// ushort property_index
+// uchar data[b]
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_RATE_ITEM                 MAKE_NETMSG_HEADER( 73 )
@@ -601,7 +588,7 @@
 //	uint item_id
 //	hash item_pid
 //	uint item_count
-//	Data
+//	Properties data
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_ITEM_CONT                 MAKE_NETMSG_HEADER( 84 )
@@ -662,16 +649,14 @@
 // ************************************************************************
 
 #define NETMSG_SOME_ITEM                      MAKE_NETMSG_HEADER( 90 )
-#define NETMSG_SOME_ITEM_SIZE                            \
-    ( sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + \
-      sizeof( uchar ) + sizeof( Item::ItemData ) )
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
+// uint msg_len
 // uint item_id
 // hash item_pid
 // uchar slot
-// Item::ItemData data
+// Properties data
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_ACTION                 MAKE_NETMSG_HEADER( 91 )
@@ -706,15 +691,24 @@
 //
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_CRITTER_ITEM_DATA              MAKE_NETMSG_HEADER( 94 )
-#define NETMSG_CRITTER_ITEM_DATA_SIZE   \
-    ( sizeof( uint ) + sizeof( uint ) + \
-      sizeof( uchar ) + sizeof( Item::ItemData ) )
+#define NETMSG_SEND_ITEM_PROPERTY( b )            MAKE_NETMSG_HEADER( 200 + ( b ) )
+#define NETMSG_SEND_ITEM_PROPERTY_SIZE( b )       ( sizeof( uint ) + sizeof( ushort ) + ( b ) )
+// ////////////////////////////////////////////////////////////////////////
+//
+// Params:
+// uint item_id
+// ushort property_index
+// uchar data[b]
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_CRITTER_ITEM_PROPERTY( b )         MAKE_NETMSG_HEADER( 190 + ( b ) )
+#define NETMSG_CRITTER_ITEM_PROPERTY_SIZE( b )    ( sizeof( uint ) * 2 + sizeof( ushort ) + ( b ) )
 // ////////////////////////////////////////////////////////////////////////
 // Item data changed
 // uint crid
-// uchar slot
-// Item::ItemData data
+// uint item_id
+// ushort property_index
+// uchar data[b]
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_ANIMATE                MAKE_NETMSG_HEADER( 95 )
@@ -874,15 +868,13 @@
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_PLAYERS_BARTER_SET_HIDE        MAKE_NETMSG_HEADER( 115 )
-#define NETMSG_PLAYERS_BARTER_SET_HIDE_SIZE \
-    ( sizeof( uint ) + sizeof( uint ) +     \
-      sizeof( hash ) + sizeof( uint ) + sizeof( Item::ItemData ) )
 // ////////////////////////////////////////////////////////////////////////
 //
+// uint msg_len
 // uint id
 // hash pid
 // uint count
-// Item::ItemData data
+// Properties data
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************

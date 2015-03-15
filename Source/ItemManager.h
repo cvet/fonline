@@ -55,14 +55,12 @@ public:
     void SetCritterItems( Critter* cr );
     void GetItemIds( UIntSet& item_ids );
 
-    Item* CreateItem( hash pid, uint count, uint item_id = 0 );
+    Item* CreateItem( hash pid, uint count = 0, uint item_id = 0 );
     Item* SplitItem( Item* item, uint count );
     Item* GetItem( uint item_id, bool sync_lock );
 
     void ItemToGarbage( Item* item );
     void ItemGarbager();
-
-    void NotifyChangeItem( Item* item );
 
     void EraseItemHolder( Item* item );
     void MoveItem( Item* item, uint count, Critter* to_cr );
@@ -95,8 +93,7 @@ private:
     MutexSpinlock itemCountLocker;
 
 public:
-    void   AddItemStatistics( hash pid, uint val );
-    void   SubItemStatistics( hash pid, uint val );
+    void   ChangeItemStatistics( hash pid, int val );
     int64  GetItemStatistics( hash pid );
     string GetItemsStatistics();
 

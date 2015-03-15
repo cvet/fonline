@@ -53,7 +53,6 @@ public:
     static void Process_Dir( Client* cl );
     static void Process_ChangeItem( Client* cl );
     static void Process_RateItem( Client* cl );
-    static void Process_SortValueItem( Client* cl );
     static void Process_UseItem( Client* cl );
     static void Process_PickItem( Client* cl );
     static void Process_PickCritter( Client* cl );
@@ -78,6 +77,7 @@ public:
     static void Process_Combat( Client* cl );
     static void Process_RunServerScript( Client* cl );
     static void Process_KarmaVoting( Client* cl );
+    static void Process_ItemField( Client* cl, uint data_size );
 
     static void Send_MapData( Client* cl, ProtoMap* pmap, uchar send_info );
 
@@ -225,6 +225,10 @@ public:
     // Items
     static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, bool check_blocks = true );
     static bool  TransferAllItems();
+    static void  OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemCount( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemTrapValue( void* obj, Property* prop, void* cur_value, void* old_value );
 
     // Npc
     static void ProcessAI( Npc* npc );
@@ -529,7 +533,6 @@ public:
         static uint  Item_GetCost( Item* item );
         static Map*  Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
         static bool  Item_ChangeProto( Item* item, hash pid );
-        static void  Item_Update( Item* item );
         static void  Item_Animate( Item* item, uchar from_frm, uchar to_frm );
         static void  Item_SetLexems( Item* item, ScriptString* lexems );
         static Item* Item_GetChild( Item* item, uint child_index );
@@ -544,11 +547,6 @@ public:
         static void Item_EventDrop( Item* item, Critter* cr );
         static void Item_EventMove( Item* item, Critter* cr, uchar from_slot );
         static void Item_EventWalk( Item* item, Critter* cr, bool entered, uchar dir );
-
-        static void  Item_set_Flags( Item* item, uint value );
-        static uint  Item_get_Flags( Item* item );
-        static void  Item_set_TrapValue( Item* item, short value );
-        static short Item_get_TrapValue( Item* item );
 
         static uint CraftItem_GetShowParams( CraftItem* craft, ScriptArray* nums, ScriptArray* vals, ScriptArray* ors );
         static uint CraftItem_GetNeedParams( CraftItem* craft, ScriptArray* nums, ScriptArray* vals, ScriptArray* ors );

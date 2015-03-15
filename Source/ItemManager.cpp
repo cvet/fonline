@@ -499,7 +499,6 @@ void ItemManager::SaveAllItemsFile( void ( * save_func )( void*, size_t ) )
         save_func( &item->Proto->ProtoId, sizeof( item->Proto->ProtoId ) );
         save_func( &item->Accessory, sizeof( item->Accessory ) );
         save_func( &item->AccBuffer[ 0 ], sizeof( item->AccBuffer ) );
-        save_func( &item->Data, sizeof( item->Data ) );
         if( item->PLexems )
         {
             uchar lex_len = Str::Length( item->PLexems );
@@ -511,6 +510,7 @@ void ItemManager::SaveAllItemsFile( void ( * save_func )( void*, size_t ) )
             uchar zero = 0;
             save_func( &zero, sizeof( zero ) );
         }
+        item->Props.Save( save_func );
     }
 }
 
@@ -540,9 +540,6 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
         char  acc_buf[ 8 ];
         FileRead( f, &acc_buf[ 0 ], sizeof( acc_buf ) );
 
-        Item::ItemData data;
-        FileRead( f, &data, sizeof( data ) );
-
         uchar lex_len;
         char  lexems[ 1024 ] = { 0 };
         FileRead( f, &lex_len, sizeof( lex_len ) );
@@ -552,23 +549,25 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
             lexems[ lex_len ] = 0;
         }
 
-        Item* item = CreateItem( pid, 0, id );
+        Item* item = CreateItem( pid, 1, id );
         if( !item )
         {
             WriteLog( "Create item error id<%u>, pid<%u>.\n", id, pid );
+            PropertyRegistrator dummy_fields_registrator( false, "Dummy" );
+            Properties          dummy_fields( &dummy_fields_registrator );
+            dummy_fields.Load( f, version );
             errors++;
             continue;
         }
         if( id > lastItemId )
             lastItemId = id;
 
+        item->Props.Load( f, version );
+
         item->Accessory = acc;
         memcpy( item->AccBuffer, acc_buf, sizeof( acc_buf ) );
-        item->Data = data;
         if( lexems[ 0 ] )
             item->SetLexems( lexems );
-
-        AddItemStatistics( pid, item->GetCount() );
 
         // Radio collection
         if( item->IsRadio() )
@@ -593,7 +592,7 @@ void ItemManager::RunInitScriptItems()
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = ( *it ).second;
-        if( item->Data.ScriptId )
+        if( item->ScriptId )
             item->ParseScript( NULL, false );
     }
 }
@@ -652,20 +651,12 @@ void ItemManager::GetItemIds( UIntSet& item_ids )
         item_ids.insert( ( *it ).second->GetId() );
 }
 
-Item* ItemManager::CreateItem( hash pid, uint count, uint item_id /* = 0 */ )
+Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, uint item_id /* = 0 */ )
 {
     ProtoItem* proto = GetProtoItem( pid );
     if( !proto )
         return NULL;
 
-    Item* item = new Item();
-    if( !item )
-    {
-        WriteLogF( _FUNC_, " - Allocation fail.\n" );
-        return NULL;
-    }
-
-    item->Init( proto );
     if( item_id )
     {
         SCOPE_LOCK( itemLocker );
@@ -673,30 +664,26 @@ Item* ItemManager::CreateItem( hash pid, uint count, uint item_id /* = 0 */ )
         if( gameItems.count( item_id ) )
         {
             WriteLogF( _FUNC_, " - Item already created, id<%u>.\n", item_id );
-            delete item;
             return NULL;
         }
-
-        item->Id = item_id;
     }
     else
     {
         SCOPE_LOCK( itemLocker );
 
-        item->Id = lastItemId + 1;
+        item_id = lastItemId + 1;
         lastItemId++;
     }
 
-    if( item->IsStackable() )
-        item->Count_Set( count );
-    else
-        AddItemStatistics( pid, 1 );
+    Item* item = new Item( item_id, proto );
+    if( count > 1 && item->IsStackable() )
+        item->SetCount( count );
 
     SYNC_LOCK( item );
 
     // Main collection
     itemLocker.Lock();
-    gameItems.insert( PAIR( item->Id, item ) );
+    gameItems.insert( PAIR( item_id, item ) );
     itemLocker.Unlock();
 
     // Radio collection
@@ -723,24 +710,23 @@ Item* ItemManager::SplitItem( Item* item, uint count )
         return NULL;
     }
 
-    uint item_count = item->GetCount();
+    uint item_count = item->Count;
     if( !count || count >= item_count )
     {
         WriteLogF( _FUNC_, " - Invalid count, id<%u>, pid<%u>, count<%u>, split count<%u>.\n", item->GetId(), item->GetProtoId(), item_count, count );
         return NULL;
     }
 
-    Item* new_item = CreateItem( item->GetProtoId(), 0 ); // Ignore init script
+    Item* new_item = CreateItem( item->GetProtoId() ); // Ignore init script
     if( !new_item )
     {
         WriteLogF( _FUNC_, " - Create item fail, pid<%u>, count<%u>.\n", item->GetProtoId(), count );
         return NULL;
     }
 
-    item->Count_Sub( count );
-    new_item->Data = item->Data;
-    new_item->Data.Count = 0;
-    new_item->Count_Add( count );
+    item->ChangeCount( -(int) count );
+    new_item->Props = item->Props;
+    new_item->SetCount( count );
     if( item->PLexems )
         new_item->SetLexems( item->PLexems );
 
@@ -770,7 +756,7 @@ void ItemManager::ItemToGarbage( Item* item )
 {
     SCOPE_LOCK( itemLocker );
     itemToDelete.push_back( item->GetId() );
-    itemToDeleteCount.push_back( item->GetCount() );
+    itemToDeleteCount.push_back( item->Count );
 }
 
 void ItemManager::ItemGarbager()
@@ -805,14 +791,13 @@ void ItemManager::ItemGarbager()
             SYNC_LOCK( item );
 
             // Maybe some items added
-            if( item->IsStackable() && item->GetCount() > count )
+            if( item->IsStackable() && item->Count > count )
             {
                 itemLocker.Lock();
-                gameItems.insert( PAIR( item->Id, item ) );
+                gameItems.insert( PAIR( id, item ) );
                 itemLocker.Unlock();
 
-                item->Count_Sub( count );
-                NotifyChangeItem( item );
+                item->ChangeCount( -(int) count );
                 continue;
             }
 
@@ -827,10 +812,7 @@ void ItemManager::ItemGarbager()
                 EraseItemHolder( item );
 
             // Erase from statistics
-            if( item->IsStackable() )
-                item->Count_Set( 0 );
-            else
-                SubItemStatistics( item->GetProtoId(), 1 );
+            ChangeItemStatistics( item->GetProtoId(), -(int) item->Count );
 
             // Erase from radio collection
             if( item->IsRadio() )
@@ -840,29 +822,6 @@ void ItemManager::ItemGarbager()
             item->FullClear();
             Job::DeferredRelease( item );
         }
-    }
-}
-
-void ItemManager::NotifyChangeItem( Item* item )
-{
-    switch( item->Accessory )
-    {
-    case ITEM_ACCESSORY_CRITTER:
-    {
-        Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, false );
-        if( cr )
-            cr->SendAA_ItemData( item );
-    }
-    break;
-    case ITEM_ACCESSORY_HEX:
-    {
-        Map* map = MapMngr.GetMap( item->AccHex.MapId, false );
-        if( map )
-            map->ChangeDataItem( item );
-    }
-    break;
-    default:
-        break;
     }
 }
 
@@ -904,7 +863,7 @@ void ItemManager::MoveItem( Item* item, uint count, Critter* to_cr )
     if( item->Accessory == ITEM_ACCESSORY_CRITTER && item->AccCritter.Id == to_cr->GetId() )
         return;
 
-    if( count >= item->GetCount() || !item->IsStackable() )
+    if( count >= item->Count || !item->IsStackable() )
     {
         EraseItemHolder( item );
         to_cr->AddItem( item, true );
@@ -913,10 +872,7 @@ void ItemManager::MoveItem( Item* item, uint count, Critter* to_cr )
     {
         Item* item_ = ItemMngr.SplitItem( item, count );
         if( item_ )
-        {
-            NotifyChangeItem( item );
             to_cr->AddItem( item_, true );
-        }
     }
 }
 
@@ -925,7 +881,7 @@ void ItemManager::MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, u
     if( item->Accessory == ITEM_ACCESSORY_HEX && item->AccHex.MapId == to_map->GetId() && item->AccHex.HexX == to_hx && item->AccHex.HexY == to_hy )
         return;
 
-    if( count >= item->GetCount() || !item->IsStackable() )
+    if( count >= item->Count || !item->IsStackable() )
     {
         EraseItemHolder( item );
         to_map->AddItem( item, to_hx, to_hy );
@@ -934,10 +890,7 @@ void ItemManager::MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, u
     {
         Item* item_ = ItemMngr.SplitItem( item, count );
         if( item_ )
-        {
-            NotifyChangeItem( item );
             to_map->AddItem( item_, to_hx, to_hy );
-        }
     }
 }
 
@@ -946,7 +899,7 @@ void ItemManager::MoveItem( Item* item, uint count, Item* to_cont, uint stack_id
     if( item->Accessory == ITEM_ACCESSORY_CONTAINER && item->AccContainer.ContainerId == to_cont->GetId() && item->AccContainer.StackId == stack_id )
         return;
 
-    if( count >= item->GetCount() || !item->IsStackable() )
+    if( count >= item->Count || !item->IsStackable() )
     {
         EraseItemHolder( item );
         to_cont->ContAddItem( item, stack_id );
@@ -955,10 +908,7 @@ void ItemManager::MoveItem( Item* item, uint count, Item* to_cont, uint stack_id
     {
         Item* item_ = ItemMngr.SplitItem( item, count );
         if( item_ )
-        {
-            NotifyChangeItem( item );
             to_cont->ContAddItem( item_, stack_id );
-        }
     }
 }
 
@@ -974,7 +924,7 @@ Item* ItemManager::AddItemContainer( Item* cont, hash pid, uint count, uint stac
     {
         if( item->IsStackable() )
         {
-            item->Count_Add( count );
+            item->ChangeCount( count );
             result = item;
         }
         else
@@ -983,7 +933,7 @@ Item* ItemManager::AddItemContainer( Item* cont, hash pid, uint count, uint stac
                 count = MAX_ADDED_NOGROUP_ITEMS;
             for( uint i = 0; i < count; ++i )
             {
-                item = ItemMngr.CreateItem( pid, 1 );
+                item = ItemMngr.CreateItem( pid );
                 if( !item )
                     continue;
                 cont->ContAddItem( item, stack_id );
@@ -1011,7 +961,7 @@ Item* ItemManager::AddItemContainer( Item* cont, hash pid, uint count, uint stac
                 count = MAX_ADDED_NOGROUP_ITEMS;
             for( uint i = 0; i < count; ++i )
             {
-                item = ItemMngr.CreateItem( pid, 1 );
+                item = ItemMngr.CreateItem( pid );
                 if( !item )
                     continue;
                 cont->ContAddItem( item, stack_id );
@@ -1035,8 +985,7 @@ Item* ItemManager::AddItemCritter( Critter* cr, hash pid, uint count )
     {
         if( item->IsStackable() )
         {
-            item->Count_Add( count );
-            cr->SendAA_ItemData( item );
+            item->ChangeCount( count );
             result = item;
         }
         else
@@ -1045,7 +994,7 @@ Item* ItemManager::AddItemCritter( Critter* cr, hash pid, uint count )
                 count = MAX_ADDED_NOGROUP_ITEMS;
             for( uint i = 0; i < count; ++i )
             {
-                item = ItemMngr.CreateItem( pid, 1 );
+                item = ItemMngr.CreateItem( pid );
                 if( !item )
                     break;
                 cr->AddItem( item, true );
@@ -1073,7 +1022,7 @@ Item* ItemManager::AddItemCritter( Critter* cr, hash pid, uint count )
                 count = MAX_ADDED_NOGROUP_ITEMS;
             for( uint i = 0; i < count; ++i )
             {
-                item = ItemMngr.CreateItem( pid, 1 );
+                item = ItemMngr.CreateItem( pid );
                 if( !item )
                     break;
                 cr->AddItem( item, true );
@@ -1096,7 +1045,7 @@ bool ItemManager::SubItemCritter( Critter* cr, hash pid, uint count, ItemVec* er
 
     if( item->IsStackable() )
     {
-        if( count >= item->GetCount() )
+        if( count >= item->Count )
         {
             cr->EraseItem( item, true );
             if( !erased_items )
@@ -1114,9 +1063,8 @@ bool ItemManager::SubItemCritter( Critter* cr, hash pid, uint count, ItemVec* er
             }
             else
             {
-                item->Count_Sub( count );
+                item->ChangeCount( -(int) count );
             }
-            cr->SendAA_ItemData( item );
         }
     }
     else
@@ -1153,10 +1101,10 @@ bool ItemManager::MoveItemCritters( Critter* from_cr, Critter* to_cr, uint item_
     if( !item )
         return false;
 
-    if( !count || count > item->GetCount() )
-        count = item->GetCount();
+    if( !count || count > item->Count )
+        count = item->Count;
 
-    if( item->IsStackable() && item->GetCount() > count )
+    if( item->IsStackable() && item->Count > count )
     {
         Item* item_ = to_cr->GetItemByPid( item->GetProtoId() );
         if( !item_ )
@@ -1172,12 +1120,10 @@ bool ItemManager::MoveItemCritters( Critter* from_cr, Critter* to_cr, uint item_
         }
         else
         {
-            item_->Count_Add( count );
-            to_cr->SendAA_ItemData( item_ );
+            item_->ChangeCount( count );
         }
 
-        item->Count_Sub( count );
-        from_cr->SendAA_ItemData( item );
+        item->ChangeCount( -(int) count );
     }
     else
     {
@@ -1197,10 +1143,10 @@ bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint i
     if( !item )
         return false;
 
-    if( !count || count > item->GetCount() )
-        count = item->GetCount();
+    if( !count || count > item->Count )
+        count = item->Count;
 
-    if( item->IsStackable() && item->GetCount() > count )
+    if( item->IsStackable() && item->Count > count )
     {
         Item* item_ = to_cont->ContGetItemByPid( item->GetProtoId(), stack_id );
         if( !item_ )
@@ -1217,11 +1163,10 @@ bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint i
         }
         else
         {
-            item_->Count_Add( count );
+            item_->ChangeCount( count );
         }
 
-        item->Count_Sub( count );
-        from_cr->SendAA_ItemData( item );
+        item->ChangeCount( -(int) count );
     }
     else
     {
@@ -1241,10 +1186,10 @@ bool ItemManager::MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, uint
     if( !item )
         return false;
 
-    if( !count || count > item->GetCount() )
-        count = item->GetCount();
+    if( !count || count > item->Count )
+        count = item->Count;
 
-    if( item->IsStackable() && item->GetCount() > count )
+    if( item->IsStackable() && item->Count > count )
     {
         Item* item_ = to_cr->GetItemByPid( item->GetProtoId() );
         if( !item_ )
@@ -1260,11 +1205,10 @@ bool ItemManager::MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, uint
         }
         else
         {
-            item_->Count_Add( count );
-            to_cr->SendAA_ItemData( item_ );
+            item_->ChangeCount( count );
         }
 
-        item->Count_Sub( count );
+        item->ChangeCount( -(int) count );
     }
     else
     {
@@ -1339,9 +1283,9 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
     {
         Item* item = *it;
         if( item->IsRadio() && item->RadioIsSendActive() &&
-            std::find( channels.begin(), channels.end(), item->Data.RadioChannel ) == channels.end() )
+            std::find( channels.begin(), channels.end(), item->RadioChannel ) == channels.end() )
         {
-            channels.push_back( item->Data.RadioChannel );
+            channels.push_back( item->RadioChannel );
             radios.push_back( item );
 
             if( radios.size() > 100 )
@@ -1352,7 +1296,7 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
     for( uint i = 0, j = (uint) radios.size(); i < j; i++ )
     {
         RadioSendTextEx( channels[ i ],
-                         radios[ i ]->Data.RadioBroadcastSend, cr->GetMap(), cr->Data.WorldX, cr->Data.WorldY,
+                         radios[ i ]->RadioBroadcastSend, cr->GetMap(), cr->Data.WorldX, cr->Data.WorldY,
                          text, text_len, cr->IntellectCacheValue, unsafe_text, text_msg, num_str, NULL );
     }
 }
@@ -1388,16 +1332,16 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
     {
         Item* radio = *it;
 
-        if( radio->Data.RadioChannel == channel && radio->RadioIsRecvActive() )
+        if( radio->RadioChannel == channel && radio->RadioIsRecvActive() )
         {
-            if( broadcast_type != RADIO_BROADCAST_FORCE_ALL && radio->Data.RadioBroadcastRecv != RADIO_BROADCAST_FORCE_ALL )
+            if( broadcast_type != RADIO_BROADCAST_FORCE_ALL && radio->RadioBroadcastRecv != RADIO_BROADCAST_FORCE_ALL )
             {
                 if( broadcast_type == RADIO_BROADCAST_WORLD )
-                    broadcast = radio->Data.RadioBroadcastRecv;
-                else if( radio->Data.RadioBroadcastRecv == RADIO_BROADCAST_WORLD )
+                    broadcast = radio->RadioBroadcastRecv;
+                else if( radio->RadioBroadcastRecv == RADIO_BROADCAST_WORLD )
                     broadcast = broadcast_type;
                 else
-                    broadcast = MIN( broadcast_type, radio->Data.RadioBroadcastRecv );
+                    broadcast = MIN( broadcast_type, radio->RadioBroadcastRecv );
 
                 if( broadcast == RADIO_BROADCAST_WORLD )
                     broadcast = RADIO_BROADCAST_FORCE_ALL;
@@ -1496,22 +1440,13 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
 }
 #endif // FONLINE_SERVER
 
-void ItemManager::AddItemStatistics( hash pid, uint val )
+void ItemManager::ChangeItemStatistics( hash pid, int val )
 {
     SCOPE_LOCK( itemCountLocker );
 
     ProtoItem* proto = GetProtoItem( pid );
     if( proto )
         proto->InstanceCount += (int64) val;
-}
-
-void ItemManager::SubItemStatistics( hash pid, uint val )
-{
-    SCOPE_LOCK( itemCountLocker );
-
-    ProtoItem* proto = GetProtoItem( pid );
-    if( proto )
-        proto->InstanceCount -= (int64) val;
 }
 
 int64 ItemManager::GetItemStatistics( hash pid )

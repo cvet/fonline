@@ -5,6 +5,7 @@
 #include "preprocessor.h"
 #include <set>
 #include <string>
+#include "Properties.h"
 
 #define PRAGMA_UNKNOWN    ( 0 )
 #define PRAGMA_SERVER     ( 1 )
@@ -16,6 +17,7 @@ class GlobalVarPragma;
 class CrDataPragma;
 class BindFuncPragma;
 class BindFieldPragma;
+class PropertyPragma;
 
 class ScriptPragmaCallback: public Preprocessor::PragmaCallback
 {
@@ -27,9 +29,10 @@ private:
     CrDataPragma*    crDataPragma;
     BindFuncPragma*  bindFuncPragma;
     BindFieldPragma* bindFieldPragma;
+    PropertyPragma*  propertyPragma;
 
 public:
-    ScriptPragmaCallback( int pragma_type );
+    ScriptPragmaCallback( int pragma_type, PropertyRegistrator** properties_registrators );
     void CallPragma( const string& name, const Preprocessor::PragmaInstance& instance );
 };
 

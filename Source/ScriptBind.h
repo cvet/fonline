@@ -264,15 +264,12 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Item", "hash GetScriptId() const", a
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool SetEvent(int eventType, string@+ funcName)", asFUNCTION( BIND_CLASS Item_SetEvent ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint8 GetType() const", asFUNCTION( BIND_CLASS Item_GetType ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "hash GetProtoId() const", asFUNCTION( BIND_CLASS Item_GetProtoId ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetCount() const", asFUNCTION( BIND_CLASS Item_GetCount ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void SetCount(uint count)", asFUNCTION( BIND_CLASS Item_SetCount ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetCost() const", asFUNCTION( BIND_CLASS Item_GetCost ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ AddItem(hash protoId, uint count, uint specialId)", asFUNCTION( BIND_CLASS Container_AddItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ GetItem(hash protoId, uint specialId) const", asFUNCTION( BIND_CLASS Container_GetItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetItems(uint specialId, Item@[]@+ items) const", asFUNCTION( BIND_CLASS Container_GetItems ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Map@+ GetMapPosition(uint16& hexX, uint16& hexY) const", asFUNCTION( BIND_CLASS Item_GetMapPosition ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool ChangeProto(hash protoId) const", asFUNCTION( BIND_CLASS Item_ChangeProto ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void Update() const", asFUNCTION( BIND_CLASS Item_Update ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void Animate(uint8 fromFrame, uint8 toFrame)", asFUNCTION( BIND_CLASS Item_Animate ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void SetLexems(string@+ lexems)", asFUNCTION( BIND_CLASS Item_SetLexems ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ GetChild(uint childIndex) const", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL_OBJFIRST ) );
@@ -298,57 +295,9 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Item", "const uint8 CritSlot", OFF
 BIND_ASSERT( engine->RegisterObjectProperty( "Item", "const uint ContainerId", OFFSETOF( Item, AccContainer.ContainerId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Item", "const uint StackId", OFFSETOF( Item, AccContainer.StackId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Item", "const bool IsNotValid", OFFSETOF( Item, IsNotValid ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "const uint8 Mode", OFFSETOF( Item, Data.Mode ) ) );
 
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint16 SortValue", OFFSETOF( Item, Data.SortValue ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 Info", OFFSETOF( Item, Data.Info ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "hash PicMap", OFFSETOF( Item, Data.PicMap ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "hash PicInv", OFFSETOF( Item, Data.PicInv ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint16 AnimWaitBase", OFFSETOF( Item, Data.AnimWaitBase ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 AnimStayBegin", OFFSETOF( Item, Data.AnimStay[ 0 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 AnimStayEnd", OFFSETOF( Item, Data.AnimStay[ 1 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 AnimShowBegin", OFFSETOF( Item, Data.AnimShow[ 0 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 AnimShowEnd", OFFSETOF( Item, Data.AnimShow[ 1 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 AnimHideBegin", OFFSETOF( Item, Data.AnimHide[ 0 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 AnimHideEnd", OFFSETOF( Item, Data.AnimHide[ 1 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void set_Flags(uint value)", asFUNCTION( BIND_CLASS Item_set_Flags ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint get_Flags() const", asFUNCTION( BIND_CLASS Item_get_Flags ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void set_TrapValue(int16 val)", asFUNCTION( BIND_CLASS Item_set_TrapValue ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "int16 get_TrapValue() const", asFUNCTION( BIND_CLASS Item_get_TrapValue ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint Cost", OFFSETOF( Item, Data.Cost ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int Val0", OFFSETOF( Item, Data.ScriptValues[ 0 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int Val1", OFFSETOF( Item, Data.ScriptValues[ 1 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int Val2", OFFSETOF( Item, Data.ScriptValues[ 2 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int Val3", OFFSETOF( Item, Data.ScriptValues[ 3 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int Val4", OFFSETOF( Item, Data.ScriptValues[ 4 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int Val5", OFFSETOF( Item, Data.ScriptValues[ 5 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int Val6", OFFSETOF( Item, Data.ScriptValues[ 6 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int Val7", OFFSETOF( Item, Data.ScriptValues[ 7 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int Val8", OFFSETOF( Item, Data.ScriptValues[ 8 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int Val9", OFFSETOF( Item, Data.ScriptValues[ 9 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int8 LightIntensity", OFFSETOF( Item, Data.LightIntensity ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 LightDistance", OFFSETOF( Item, Data.LightDistance ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 LightFlags", OFFSETOF( Item, Data.LightFlags ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint LightColor", OFFSETOF( Item, Data.LightColor ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 Indicator", OFFSETOF( Item, Data.Indicator ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 BrokenFlags", OFFSETOF( Item, Data.BrokenFlags ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 BrokenCount", OFFSETOF( Item, Data.BrokenCount ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint16 Deterioration", OFFSETOF( Item, Data.Deterioration ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "hash AmmoPid", OFFSETOF( Item, Data.AmmoPid ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint16 AmmoCount", OFFSETOF( Item, Data.AmmoCount ) ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool LockerOpen()", asFUNCTION( BIND_CLASS Item_LockerOpen ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool LockerClose()", asFUNCTION( BIND_CLASS Item_LockerClose ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint LockerId", OFFSETOF( Item, Data.LockerId ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint16 LockerCondition", OFFSETOF( Item, Data.LockerCondition ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint16 LockerComplexity", OFFSETOF( Item, Data.LockerComplexity ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint16 Charge", OFFSETOF( Item, Data.Charge ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint16 RadioChannel", OFFSETOF( Item, Data.RadioChannel ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint16 RadioFlags", OFFSETOF( Item, Data.RadioFlags ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 RadioBroadcastSend", OFFSETOF( Item, Data.RadioBroadcastSend ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint8 RadioBroadcastRecv", OFFSETOF( Item, Data.RadioBroadcastRecv ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "uint HolodiskNumber", OFFSETOF( Item, Data.HolodiskNumber ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int16 OffsetX", OFFSETOF( Item, Data.OffsetX ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "int16 OffsetY", OFFSETOF( Item, Data.OffsetY ) ) );
 
 /************************************************************************/
 /* CraftItem
@@ -816,8 +765,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllMaps(hash pid, Map@[]@+
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllLocations(hash pid, Location@[]@+ locations)", asFUNCTION( BIND_CLASS Global_GetAllLocations ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "hash GetScriptId(string& scriptName, string& funcDeclaration)", asFUNCTION( BIND_CLASS Global_GetScriptId ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetScriptName(hash scriptId)", asFUNCTION( BIND_CLASS Global_GetScriptName ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "int8[]@ GetItemDataMask(int maskType)", asFUNCTION( BIND_CLASS Global_GetItemDataMask ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool SetItemDataMask(int maskType, int8[]& mask)", asFUNCTION( BIND_CLASS Global_SetItemDataMask ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadImage(uint index, string@+ imageName, uint imageDepth, int pathType)", asFUNCTION( BIND_CLASS Global_LoadImage ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetImageColor(uint index, uint x, uint y)", asFUNCTION( BIND_CLASS Global_GetImageColor ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Synchronize()", asFUNCTION( BIND_CLASS Global_Synchronize ), asCALL_CDECL ) );
@@ -827,14 +774,16 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "CraftItem@ GetCraftItem(uint num)"
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetTime(uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)", asFUNCTION( BIND_CLASS Global_SetTime ), asCALL_CDECL ) );
 #endif
 
-#ifdef BIND_CLIENT
+#if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
 BIND_ASSERT( engine->RegisterObjectType( "CritterCl", 0, asOBJ_REF ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "CritterCl", asBEHAVE_ADDREF, "void f()", asMETHOD( CritterCl, AddRef ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "CritterCl", asBEHAVE_RELEASE, "void f()", asMETHOD( CritterCl, Release ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectType( "ItemCl", 0, asOBJ_REF ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "ItemCl", asBEHAVE_ADDREF, "void f()", asMETHOD( Item, AddRef ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "ItemCl", asBEHAVE_RELEASE, "void f()", asMETHOD( Item, Release ), asCALL_THISCALL ) );
+#endif
 
+#ifdef BIND_CLIENT
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "bool IsChosen() const", asFUNCTION( BIND_CLASS Crit_IsChosen ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "bool IsPlayer() const", asFUNCTION( BIND_CLASS Crit_IsPlayer ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CritterCl", "bool IsNpc() const", asFUNCTION( BIND_CLASS Crit_IsNpc ), asCALL_CDECL_OBJFIRST ) );
@@ -898,9 +847,9 @@ BIND_ASSERT( engine->RegisterObjectMethod( "ItemCl", "bool IsDeteriorable() cons
 BIND_ASSERT( engine->RegisterObjectMethod( "ItemCl", "hash GetScriptId() const", asFUNCTION( BIND_CLASS Item_GetScriptId ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "ItemCl", "uint8 GetType() const", asFUNCTION( BIND_CLASS Item_GetType ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "ItemCl", "hash GetProtoId() const", asFUNCTION( BIND_CLASS Item_GetProtoId ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "ItemCl", "uint GetCount() const", asFUNCTION( BIND_CLASS Item_GetCount ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "ItemCl", "bool GetMapPosition(uint16& hexX, uint16& hexY) const", asFUNCTION( BIND_CLASS Item_GetMapPosition ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "ItemCl", "void Animate(uint8 fromFrame, uint8 toFrame)", asFUNCTION( BIND_CLASS Item_Animate ), asCALL_CDECL_OBJFIRST ) );
+
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint Id", OFFSETOF( Item, Id ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const ProtoItem@ Proto", OFFSETOF( Item, Proto ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const string@ Lexems", OFFSETOF( Item, Lexems ) ) );
@@ -912,51 +861,6 @@ BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint CritId", OFFS
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 CritSlot", OFFSETOF( Item, AccCritter.Slot ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint ContainerId", OFFSETOF( Item, AccContainer.ContainerId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint StackId", OFFSETOF( Item, AccContainer.StackId ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint16 SortValue", OFFSETOF( Item, Data.SortValue ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 Info", OFFSETOF( Item, Data.Info ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const hash PicMap", OFFSETOF( Item, Data.PicMap ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const hash PicInv", OFFSETOF( Item, Data.PicInv ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint16 AnimWaitBase", OFFSETOF( Item, Data.AnimWaitBase ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 AnimStayBegin", OFFSETOF( Item, Data.AnimStay[ 0 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 AnimStayEnd", OFFSETOF( Item, Data.AnimStay[ 1 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 AnimShowBegin", OFFSETOF( Item, Data.AnimShow[ 0 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 AnimShowEnd", OFFSETOF( Item, Data.AnimShow[ 1 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 AnimHideBegin", OFFSETOF( Item, Data.AnimHide[ 0 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 AnimHideEnd", OFFSETOF( Item, Data.AnimHide[ 1 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint Flags", OFFSETOF( Item, Data.Flags ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 Mode", OFFSETOF( Item, Data.Mode ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int Val0", OFFSETOF( Item, Data.ScriptValues[ 0 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int Val1", OFFSETOF( Item, Data.ScriptValues[ 1 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int Val2", OFFSETOF( Item, Data.ScriptValues[ 2 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int Val3", OFFSETOF( Item, Data.ScriptValues[ 3 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int Val4", OFFSETOF( Item, Data.ScriptValues[ 4 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int Val5", OFFSETOF( Item, Data.ScriptValues[ 5 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int Val6", OFFSETOF( Item, Data.ScriptValues[ 6 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int Val7", OFFSETOF( Item, Data.ScriptValues[ 7 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int Val8", OFFSETOF( Item, Data.ScriptValues[ 8 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int Val9", OFFSETOF( Item, Data.ScriptValues[ 9 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int8 LightIntensity", OFFSETOF( Item, Data.LightIntensity ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 LightDistance", OFFSETOF( Item, Data.LightDistance ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 LightFlags", OFFSETOF( Item, Data.LightFlags ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint LightColor", OFFSETOF( Item, Data.LightColor ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int16 TrapValue", OFFSETOF( Item, Data.TrapValue ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 Indicator", OFFSETOF( Item, Data.Indicator ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 BrokenFlags", OFFSETOF( Item, Data.BrokenFlags ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 BrokenCount", OFFSETOF( Item, Data.BrokenCount ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint16 Deterioration", OFFSETOF( Item, Data.Deterioration ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const hash AmmoPid", OFFSETOF( Item, Data.AmmoPid ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint16 AmmoCount", OFFSETOF( Item, Data.AmmoCount ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint LockerId", OFFSETOF( Item, Data.LockerId ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint16 LockerCondition", OFFSETOF( Item, Data.LockerCondition ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint16 LockerComplexity", OFFSETOF( Item, Data.LockerComplexity ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint16 Charge", OFFSETOF( Item, Data.Charge ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint16 RadioChannel", OFFSETOF( Item, Data.RadioChannel ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint16 RadioFlags", OFFSETOF( Item, Data.RadioFlags ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 RadioBroadcastSend", OFFSETOF( Item, Data.RadioBroadcastSend ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 RadioBroadcastRecv", OFFSETOF( Item, Data.RadioBroadcastRecv ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint HolodiskNumber", OFFSETOF( Item, Data.HolodiskNumber ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int16 OffsetX", OFFSETOF( Item, Data.OffsetX ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const int16 OffsetY", OFFSETOF( Item, Data.OffsetY ) ) );
 
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ CustomCall(string& command, string& separator = \" \")", asFUNCTION( BIND_CLASS Global_CustomCall ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "CritterCl@+ GetChosen()", asFUNCTION( BIND_CLASS Global_GetChosen ), asCALL_CDECL ) );
@@ -1281,14 +1185,10 @@ BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "CritterParam Critt
 // Item/critter shared parameters
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int16 OffsetX", OFFSETOF( MapObject, MItem.OffsetX ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int16 OffsetY", OFFSETOF( MapObject, MItem.OffsetY ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 AnimStayBegin", OFFSETOF( MapObject, MItem.AnimStayBegin ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 AnimStayEnd", OFFSETOF( MapObject, MItem.AnimStayEnd ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint16 AnimWait", OFFSETOF( MapObject, MItem.AnimWait ) ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "string@ get_PicMap() const", asFUNCTION( BIND_CLASS MapperObject_get_PicMap ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "void set_PicMap(const string& name)", asFUNCTION( BIND_CLASS MapperObject_set_PicMap ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "string@ get_PicInv() const", asFUNCTION( BIND_CLASS MapperObject_get_PicInv ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "void set_PicInv(const string& name)", asFUNCTION( BIND_CLASS MapperObject_set_PicInv ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 InfoOffset", OFFSETOF( MapObject, MItem.InfoOffset ) ) );
 
 // Item
 BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint Item_Count", OFFSETOF( MapObject, MItem.Count ) ) );
@@ -1596,6 +1496,51 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetFilePath(int path)", as
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFolderFileNames(string& path, string@+ extension, bool includeSubdirs, string[]@+ result)", asFUNCTION( Global_GetFolderFileNames ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool DeleteFile(string& fileName)", asFUNCTION( Global_DeleteFile ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(string& path)", asFUNCTION( Global_CreateDirectoryTree ), asCALL_CDECL ) );
+
+#define BIND_ASSERT_EXT( expr )    BIND_ASSERT( ( expr ) ? 0 : -1 )
+if( registrators[ 0 ] )
+{
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint16", "SortValue", Property::PublicModifiable ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint8", "Indicator", Property::ProtectedModifiable ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint8", "Info", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "hash", "PicMap", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "hash", "PicInv", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint", "Flags", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint8", "Mode", Property::PublicModifiable ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int8", "LightIntensity", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint8", "LightDistance", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint8", "LightFlags", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint", "LightColor", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "hash", "ScriptId", Property::PrivateServer ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint", "Count", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint", "Cost", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int", "Val0", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int", "Val1", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int", "Val2", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int", "Val3", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int", "Val4", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int", "Val5", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int", "Val6", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int", "Val7", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int", "Val8", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int", "Val9", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint8", "BrokenFlags", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint8", "BrokenCount", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint16", "Deterioration", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "hash", "AmmoPid", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint16", "AmmoCount", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int16", "TrapValue", Property::Protected ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint", "LockerId", Property::Protected ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint16", "LockerCondition", Property::Protected ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint16", "LockerComplexity", Property::Protected ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint", "HolodiskNumber", Property::Protected ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint16", "RadioChannel", Property::Protected ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint16", "RadioFlags", Property::Protected ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint8", "RadioBroadcastSend", Property::Protected ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint8", "RadioBroadcastRecv", Property::Protected ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int16", "OffsetX", Property::Public ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int16", "OffsetY", Property::Public ) );
+}
 
 /************************************************************************/
 /*                                                                      */

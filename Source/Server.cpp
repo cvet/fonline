@@ -1690,12 +1690,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_SORT_VALUE_ITEM:
-            {
-                Process_SortValueItem( cl );
-                BIN_END( cl );
-                continue;
-            }
             case NETMSG_SEND_USE_SKILL:
             {
                 CHECK_BUSY_AND_LIFE;
@@ -1820,6 +1814,30 @@ void FOServer::Process( ClientPtr& cl )
             case NETMSG_SINGLEPLAYER_SAVE_LOAD:
             {
                 Process_SingleplayerSaveLoad( cl );
+                BIN_END( cl );
+                continue;
+            }
+            case NETMSG_SEND_ITEM_PROPERTY( 1 ):
+            {
+                Process_ItemField( cl, 1 );
+                BIN_END( cl );
+                continue;
+            }
+            case NETMSG_SEND_ITEM_PROPERTY( 2 ):
+            {
+                Process_ItemField( cl, 2 );
+                BIN_END( cl );
+                continue;
+            }
+            case NETMSG_SEND_ITEM_PROPERTY( 4 ):
+            {
+                Process_ItemField( cl, 4 );
+                BIN_END( cl );
+                continue;
+            }
+            case NETMSG_SEND_ITEM_PROPERTY( 8 ):
+            {
+                Process_ItemField( cl, 8 );
                 BIN_END( cl );
                 continue;
             }
@@ -3371,7 +3389,6 @@ bool FOServer::InitReal()
     STATIC_ASSERT( sizeof( size_t ) == 8 );
     STATIC_ASSERT( sizeof( void* ) == 8 );
     #endif
-    STATIC_ASSERT( sizeof( Item::ItemData ) == 120 );
 
     // Critters parameters
     Critter::ParamsSendMsgLen = sizeof( Critter::ParamsSendCount );

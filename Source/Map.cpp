@@ -251,7 +251,7 @@ bool Map::Generate()
         }
 
         // Create item
-        Item* item = ItemMngr.CreateItem( pid, 1 );
+        Item* item = ItemMngr.CreateItem( pid );
         if( !item )
         {
             WriteLogF( _FUNC_, " - Create item on map<%s> with pid<%u> failture, continue generate.\n", Proto->GetName(), pid );
@@ -259,69 +259,59 @@ bool Map::Generate()
         }
 
         // Script values
-        for( int i = 0; i < 10; i++ )
-            if( mobj.MItem.Val[ i ] )
-                item->Data.ScriptValues[ i ] = mobj.MItem.Val[ i ];
+        item->Val0 = mobj.MItem.Val[ 0 ];
+        item->Val1 = mobj.MItem.Val[ 1 ];
+        item->Val2 = mobj.MItem.Val[ 2 ];
+        item->Val3 = mobj.MItem.Val[ 3 ];
+        item->Val4 = mobj.MItem.Val[ 4 ];
+        item->Val5 = mobj.MItem.Val[ 5 ];
+        item->Val6 = mobj.MItem.Val[ 6 ];
+        item->Val7 = mobj.MItem.Val[ 7 ];
+        item->Val8 = mobj.MItem.Val[ 8 ];
+        item->Val9 = mobj.MItem.Val[ 9 ];
 
         // Deterioration
         if( item->IsDeteriorable() )
         {
-            item->Data.BrokenFlags = mobj.MItem.BrokenFlags;
-            item->Data.BrokenCount = mobj.MItem.BrokenCount;
-            item->Data.Deterioration = mobj.MItem.Deterioration;
+            item->BrokenFlags = mobj.MItem.BrokenFlags;
+            item->BrokenCount = mobj.MItem.BrokenCount;
+            item->Deterioration = mobj.MItem.Deterioration;
         }
 
         // Stacking
         if( item->IsStackable() )
         {
-            if( mobj.MItem.Count )
-                item->Count_Set( mobj.MItem.Count );
-            else if( item->Proto->StartCount )
-                item->Count_Set( item->Proto->StartCount );
-            else
-                item->Count_Set( 1 );
+            if( mobj.MItem.Count > 1 )
+                item->SetCount( mobj.MItem.Count );
+            else if( item->Proto->StartCount > 1 )
+                item->SetCount( item->Proto->StartCount );
         }
 
         // Trap value
         if( mobj.MItem.TrapValue )
-            item->Data.TrapValue = mobj.MItem.TrapValue;
+            item->TrapValue = mobj.MItem.TrapValue;
 
         // Other values
-        item->Data.OffsetX = mobj.MItem.OffsetX;
-        item->Data.OffsetY = mobj.MItem.OffsetY;
-        item->Data.AmmoPid = mobj.MItem.AmmoPid;
-        item->Data.AmmoCount = mobj.MItem.AmmoCount;
-        item->Data.LockerId = mobj.MItem.LockerDoorId;
-        item->Data.LockerCondition = mobj.MItem.LockerCondition;
-        item->Data.LockerComplexity = mobj.MItem.LockerComplexity;
-        if( item->IsDoor() && FLAG( item->Data.LockerCondition, LOCKER_ISOPEN ) )
+        item->OffsetX = mobj.MItem.OffsetX;
+        item->OffsetY = mobj.MItem.OffsetY;
+        item->AmmoPid = mobj.MItem.AmmoPid;
+        item->AmmoCount = mobj.MItem.AmmoCount;
+        item->LockerId = mobj.MItem.LockerDoorId;
+        item->LockerCondition = mobj.MItem.LockerCondition;
+        item->LockerComplexity = mobj.MItem.LockerComplexity;
+        if( item->IsDoor() && FLAG( item->LockerCondition, LOCKER_ISOPEN ) )
         {
             if( !item->Proto->Door_NoBlockMove )
-                SETFLAG( item->Data.Flags, ITEM_NO_BLOCK );
+                SETFLAG( item->Flags, ITEM_NO_BLOCK );
             if( !item->Proto->Door_NoBlockShoot )
-                SETFLAG( item->Data.Flags, ITEM_SHOOT_THRU );
+                SETFLAG( item->Flags, ITEM_SHOOT_THRU );
             if( !item->Proto->Door_NoBlockLight )
-                SETFLAG( item->Data.Flags, ITEM_LIGHT_THRU );
+                SETFLAG( item->Flags, ITEM_LIGHT_THRU );
         }
 
         // Mapper additional parameters
-        if( mobj.MItem.InfoOffset )
-            item->Data.Info = mobj.MItem.InfoOffset;
-        if( mobj.MItem.AnimStayBegin || mobj.MItem.AnimStayEnd )
-        {
-            SETFLAG( item->Data.Flags, ITEM_SHOW_ANIM );
-            SETFLAG( item->Data.Flags, ITEM_SHOW_ANIM_EXT );
-            item->Data.AnimShow[ 0 ] = mobj.MItem.AnimStayBegin;
-            item->Data.AnimShow[ 1 ] = mobj.MItem.AnimStayEnd;
-            item->Data.AnimStay[ 0 ] = mobj.MItem.AnimStayBegin;
-            item->Data.AnimStay[ 1 ] = mobj.MItem.AnimStayEnd;
-            item->Data.AnimHide[ 0 ] = mobj.MItem.AnimStayBegin;
-            item->Data.AnimHide[ 1 ] = mobj.MItem.AnimStayEnd;
-        }
-        if( mobj.MItem.AnimWait )
-            item->Data.AnimWaitBase = mobj.MItem.AnimWait;
         if( mobj.MItem.PicMap )
-            item->Data.PicMap = mobj.MItem.PicMap;
+            item->PicMap = mobj.MItem.PicMap;
 
         // Parse script
         char script[ MAX_SCRIPT_NAME * 2 + 1 ] = { 0 };
@@ -395,8 +385,8 @@ bool Map::Generate()
                 Item*       item = *it_;
                 NpcBagItem& bag_item = npc->Data.Bag[ cur_item ];
                 bag_item.ItemPid = item->GetProtoId();
-                bag_item.MaxCnt = item->GetCount();
-                bag_item.MinCnt = item->GetCount();
+                bag_item.MaxCnt = item->Count;
+                bag_item.MinCnt = item->Count;
                 if( npc->Data.FavoriteItemPid[ SLOT_HAND1 ] == item->GetProtoId() )
                     bag_item.ItemSlot = SLOT_HAND1;
                 else if( npc->Data.FavoriteItemPid[ SLOT_HAND2 ] == item->GetProtoId() )
@@ -672,7 +662,7 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
                 {
                     int dist = DistGame( cr->GetHexX(), cr->GetHexY(), hx, hy );
                     if( item->IsTrap() )
-                        dist += item->TrapGetValue();
+                        dist += item->TrapValue;
                     allowed = dist <= cr->GetLook();
                 }
                 if( !allowed )
@@ -773,7 +763,7 @@ void Map::EraseItem( uint item_id )
     item->ViewPlaceOnMap = false;
 }
 
-void Map::ChangeDataItem( Item* item )
+void Map::SendItemProperty( Item* item, Property* prop, void* cur_value )
 {
     CrVec critters;
     GetCritters( critters, true );
@@ -784,7 +774,7 @@ void Map::ChangeDataItem( Item* item )
 
         if( cr->CountIdVisItem( item->GetId() ) )
         {
-            cr->Send_ChangeItemOnMap( item );
+            cr->Send_MapItemProperty( item, prop, cur_value );
             cr->EventChangeItemOnMap( item );
         }
     }
@@ -825,7 +815,7 @@ void Map::ChangeViewItem( Item* item )
                 {
                     int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->AccHex.HexX, item->AccHex.HexY );
                     if( item->IsTrap() )
-                        dist += item->TrapGetValue();
+                        dist += item->TrapValue;
                     allowed = dist <= cr->GetLook();
                 }
                 if( !allowed )
@@ -856,7 +846,7 @@ void Map::ChangeViewItem( Item* item )
                 {
                     int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->AccHex.HexX, item->AccHex.HexY );
                     if( item->IsTrap() )
-                        dist += item->TrapGetValue();
+                        dist += item->TrapValue;
                     allowed = dist <= cr->GetLook();
                 }
                 if( !allowed )
@@ -1577,7 +1567,7 @@ void Map::GetCritterCar( Critter* cr, Item* car )
 
     // Move car from map to inventory
     EraseItem( car->GetId() );
-    SETFLAG( car->Data.Flags, ITEM_HIDDEN );
+    SETFLAG( car->Flags, ITEM_HIDDEN );
     cr->AddItem( car, false );
 
     // Move car bags from map to inventory
@@ -1588,7 +1578,7 @@ void Map::GetCritterCar( Critter* cr, Item* car )
             continue;
 
         EraseItem( child->GetId() );
-        SETFLAG( child->Data.Flags, ITEM_HIDDEN );
+        SETFLAG( child->Flags, ITEM_HIDDEN );
         cr->AddItem( child, false );
     }
 }
@@ -1604,7 +1594,7 @@ void Map::SetCritterCar( ushort hx, ushort hy, Critter* cr, Item* car )
 
     // Move car from inventory to map
     cr->EraseItem( car, false );
-    UNSETFLAG( car->Data.Flags, ITEM_HIDDEN );
+    UNSETFLAG( car->Flags, ITEM_HIDDEN );
     AddItem( car, hx, hy );
 
     // Move car bags from inventory to map
@@ -1625,7 +1615,7 @@ void Map::SetCritterCar( ushort hx, ushort hy, Critter* cr, Item* car )
                                   );
 
         cr->EraseItem( child, false );
-        UNSETFLAG( child->Data.Flags, ITEM_HIDDEN );
+        UNSETFLAG( child->Flags, ITEM_HIDDEN );
         AddItem( child, child_hx, child_hy );
     }
 }

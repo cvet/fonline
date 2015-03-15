@@ -1383,8 +1383,8 @@ void FOClient::ContainerDraw( const Rect& pos, int height, int scroll, ItemVec& 
             continue;
         if( i >= scroll && i < scroll + pos.H() / height )
         {
-            if( item->GetCount() > 1 )
-                SprMngr.DrawStr( Rect( pos.L, pos.T + ( i2 * height ), pos.R, pos.T + ( i2 * height ) + height ), Str::FormatBuf( "x%u", item->GetCount() ), 0, COLOR_TEXT_WHITE );
+            if( item->Count > 1 )
+                SprMngr.DrawStr( Rect( pos.L, pos.T + ( i2 * height ), pos.R, pos.T + ( i2 * height ) + height ), Str::FormatBuf( "x%u", item->Count ), 0, COLOR_TEXT_WHITE );
             i2++;
         }
         i++;
@@ -1414,7 +1414,7 @@ void FOClient::CollectContItems()
         {
             Item* item = *it;
             auto  it_ = PtrCollectionFind( InvContInit.begin(), InvContInit.end(), item->GetId() );
-            if( it_ == InvContInit.end() || ( *it_ )->GetCount() < item->GetCount() )
+            if( it_ == InvContInit.end() || ( *it_ )->Count < item->Count )
             {
                 ( *it )->Release();
                 it = BarterCont1oInit.erase( it );
@@ -1432,13 +1432,13 @@ void FOClient::CollectContItems()
             {
                 Item* item_ = *it_;
 
-                uint  count = item_->GetCount();
-                item_->Data = item->Data;
-                item_->Count_Set( count );
+                uint  count = item_->Count;
+                item_->Props = item->Props;
+                item_->SetCount( count );
 
                 if( item->IsStackable() )
-                    item->Count_Sub( item_->GetCount() );
-                if( !item->IsStackable() || !item->GetCount() )
+                    item->ChangeCount( -(int) item_->Count );
+                if( !item->IsStackable() || !item->Count )
                 {
                     ( *it )->Release();
                     it = InvContInit.erase( it );
@@ -1777,7 +1777,7 @@ void FOClient::InvLMouseUp()
         // Load weapon
         if( item->IsAmmo() && to_weap )
         {
-            if( item->Proto->Ammo_Caliber == to_weap->Proto->Weapon_Caliber && ( to_weap->Data.AmmoCount < to_weap->Proto->Weapon_MaxAmmoCount || to_weap->Data.AmmoPid != item->GetProtoId() ) )
+            if( item->Proto->Ammo_Caliber == to_weap->Proto->Weapon_Caliber && ( to_weap->AmmoCount < to_weap->Proto->Weapon_MaxAmmoCount || to_weap->AmmoPid != item->GetProtoId() ) )
             {
                 AddActionBack( CHOSEN_USE_ITEM, to_weap->GetId(), 0, TARGET_SELF_ITEM, item->GetId(), USE_RELOAD );
             }
@@ -1786,7 +1786,7 @@ void FOClient::InvLMouseUp()
         else
         {
             // Split
-            if( to_slot == SLOT_GROUND && item->IsStackable() && item->GetCount() > 1 )
+            if( to_slot == SLOT_GROUND && item->IsStackable() && item->Count > 1 )
             {
                 SplitStart( item, to_slot );
                 return;
@@ -1794,7 +1794,7 @@ void FOClient::InvLMouseUp()
             // Without split
             else
             {
-                AddActionBack( CHOSEN_MOVE_ITEM, item->GetId(), item->GetCount(), to_slot );
+                AddActionBack( CHOSEN_MOVE_ITEM, item->GetId(), item->Count, to_slot );
             }
         }
     }
@@ -2769,7 +2769,7 @@ void FOClient::IntDraw()
     // Indicator
     Item* item = Chosen->ItemSlotMain;
     int indicator_max = item->Proto->IndicatorMax;
-    int indicator_cur = item->Data.Indicator;
+    int indicator_cur = item->Indicator;
 
     if( item->IsWeapon() && item->WeapGetMaxAmmoCount() )
     {
@@ -3724,10 +3724,10 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 if( it != BarterCont1.end() )
                 {
                     Item* item = *it;
-                    if( item->GetCount() > 1 )
+                    if( item->Count > 1 )
                         SplitStart( item, IFACE_BARTER_CONT1 );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1, item->GetCount() );
+                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1, item->Count );
                 }
             }
         }
@@ -3739,10 +3739,10 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 if( it != BarterCont2.end() )
                 {
                     Item* item = *it;
-                    if( item->GetCount() > 1 )
+                    if( item->Count > 1 )
                         SplitStart( item, IFACE_BARTER_CONT2 );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2, item->GetCount() );
+                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2, item->Count );
                 }
             }
         }
@@ -3754,10 +3754,10 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 if( it != BarterCont1o.end() )
                 {
                     Item* item = *it;
-                    if( item->GetCount() > 1 )
+                    if( item->Count > 1 )
                         SplitStart( item, IFACE_BARTER_CONT1O );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1O, item->GetCount() );
+                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1O, item->Count );
                 }
             }
         }
@@ -3769,10 +3769,10 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 if( it != BarterCont2o.end() )
                 {
                     Item* item = *it;
-                    if( item->GetCount() > 1 )
+                    if( item->Count > 1 )
                         SplitStart( item, IFACE_BARTER_CONT2O );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2O, item->GetCount() );
+                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2O, item->Count );
                 }
             }
         }
@@ -4058,7 +4058,7 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
     Item* item = *it;
     Item* to_item = NULL;
 
-    if( item->GetCount() < item_count )
+    if( item->Count < item_count )
         return;
 
     if( item->IsStackable() )
@@ -4070,18 +4070,18 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
 
     if( to_item )
     {
-        to_item->Count_Add( item_count );
+        to_item->ChangeCount( item_count );
     }
     else
     {
         item->AddRef();
         to_cont->push_back( item );
         Item* last = ( *to_cont )[ to_cont->size() - 1 ];
-        last->Count_Set( item_count );
+        last->SetCount( item_count );
     }
 
-    item->Count_Sub( item_count );
-    if( !item->GetCount() || !item->IsStackable() )
+    item->ChangeCount( -(int) item_count );
+    if( !item->Count || !item->IsStackable() )
     {
         ( *it )->Release();
         from_cont->erase( it );
@@ -4141,7 +4141,7 @@ void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint&
                 if( !cost_ )
                     cost_++;
             }
-            cost += cost_ * item->GetCount();
+            cost += cost_ * item->Count;
         }
         weigth += item->GetWeight();
         volume += item->GetVolume();
@@ -5084,10 +5084,10 @@ void FOClient::LMenuMouseUp()
                 break;
             if( !Chosen->IsLife() || !Chosen->IsFree() )
                 break;
-            if( cont_item->IsStackable() && cont_item->GetCount() > 1 )
+            if( cont_item->IsStackable() && cont_item->Count > 1 )
                 SplitStart( cont_item, SLOT_GROUND | ( ( ( TargetSmth.GetParam() == 1 || TargetSmth.GetParam() == 3 ) ? 1 : 0 ) << 16 ) );
             else
-                AddActionBack( CHOSEN_MOVE_ITEM, cont_item->GetId(), cont_item->GetCount(), SLOT_GROUND, ( TargetSmth.GetParam() == 1 || TargetSmth.GetParam() == 3 ) ? 1 : 0 );
+                AddActionBack( CHOSEN_MOVE_ITEM, cont_item->GetId(), cont_item->Count, SLOT_GROUND, ( TargetSmth.GetParam() == 1 || TargetSmth.GetParam() == 3 ) ? 1 : 0 );
             break;
         case LMENU_NODE_UNLOAD:
             if( !inv_item )
@@ -5115,13 +5115,13 @@ void FOClient::LMenuMouseUp()
             Item* item = Chosen->GetItemLowSortValue();
             if( !item || inv_item == item )
                 break;
-            if( inv_item->GetSortValue() < item->GetSortValue() )
+            if( inv_item->SortValue < item->SortValue )
                 break;
             Item* old_inv_item = inv_item->Clone();
-            inv_item->Data.SortValue = item->GetSortValue() - 1;
+            inv_item->SetPropertyValue< ushort >( Item::PropertySortValue, item->SortValue - 1 );
             Item::SortItems( Chosen->InvItems );
             OnItemInvChanged( old_inv_item, inv_item );
-            Net_SendSortValueItem( inv_item );
+            CollectContItems();
         }
         break;
         case LMENU_NODE_SORT_DOWN:
@@ -5131,13 +5131,13 @@ void FOClient::LMenuMouseUp()
             Item* item = Chosen->GetItemHighSortValue();
             if( !item || inv_item == item )
                 break;
-            if( inv_item->GetSortValue() > item->GetSortValue() )
+            if( inv_item->SortValue > item->SortValue )
                 break;
             Item* old_inv_item = inv_item->Clone();
-            inv_item->Data.SortValue = item->GetSortValue() + 1;
+            inv_item->SetPropertyValue< ushort >( Item::PropertySortValue, item->SortValue + 1 );
             Item::SortItems( Chosen->InvItems );
             OnItemInvChanged( old_inv_item, inv_item );
-            Net_SendSortValueItem( inv_item );
+            CollectContItems();
         }
         break;
         case LMENU_NODE_BREAK:
@@ -9147,7 +9147,7 @@ void FOClient::PupLMouseUp()
         if( it != PupCont2.end() )
         {
             Item* item = *it;
-            if( item->GetCount() > 1 )
+            if( item->Count > 1 )
                 SplitStart( item, IFACE_PUP_CONT2 );
             else
                 SetAction( CHOSEN_MOVE_ITEM_CONT, PupHoldId, IFACE_PUP_CONT2, 1 );
@@ -9163,7 +9163,7 @@ void FOClient::PupLMouseUp()
         if( it != PupCont1.end() )
         {
             Item* item = *it;
-            if( item->GetCount() > 1 )
+            if( item->Count > 1 )
                 SplitStart( item, IFACE_PUP_CONT1 );
             else
                 SetAction( CHOSEN_MOVE_ITEM_CONT, PupHoldId, IFACE_PUP_CONT1, 1 );
@@ -9312,9 +9312,9 @@ void FOClient::PupTransfer( uint item_id, uint cont, uint count )
             return;
         Item* item = *it;
 
-        if( item->IsStackable() && count < item->GetCount() )
+        if( item->IsStackable() && count < item->Count )
         {
-            item->Count_Sub( count );
+            item->ChangeCount( -(int) count );
         }
         else
         {
@@ -10146,7 +10146,7 @@ void FOClient::SplitStart( Item* item, int to_cont )
     SplitCont = to_cont;
     SplitValue = 1;
     SplitMinValue = 1;
-    SplitMaxValue = item->GetCount();
+    SplitMaxValue = item->Count;
     SplitValueKeyPressed = false;
     SplitItemPic = ResMngr.GetInvAnim( item->GetPicInv() );
     SplitItemColor = item->GetInvColor();

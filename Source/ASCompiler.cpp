@@ -1,6 +1,7 @@
 #include "Common.h"
 #include "ScriptPragmas.h"
 #include "ScriptEngine.h"
+#include "Properties.h"
 #include "angelscript.h"
 #include "preprocessor.h"
 #include "scriptany.h"
@@ -16,6 +17,12 @@
 # include <unistd.h>
 # define _stricmp    strcasecmp
 #endif
+
+bool RaiseAssert( const char* message, const char* file, int line ) // For RUNTIME_ASSERT
+{
+    ExitProcess( 0 );
+    return 0;
+}
 
 asIScriptEngine* Engine = NULL;
 bool             IsServer = true;
@@ -159,7 +166,7 @@ void CallBack( const asSMessageInfo* msg, void* param )
 namespace ServerBind
 {
     #include "DummyData.h"
-    static int Bind( asIScriptEngine* engine )
+    static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     {
         int bind_errors = 0;
         #include "ScriptBind.h"
@@ -177,7 +184,7 @@ namespace ServerBind
 namespace ClientBind
 {
     #include "DummyData.h"
-    static int Bind( asIScriptEngine* engine )
+    static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     {
         int bind_errors = 0;
         #include "ScriptBind.h"
@@ -195,7 +202,7 @@ namespace ClientBind
 namespace MapperBind
 {
     #include "DummyData.h"
-    static int Bind( asIScriptEngine* engine )
+    static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     {
         int bind_errors = 0;
         #include "ScriptBind.h"
@@ -289,14 +296,23 @@ int main( int argc, char* argv[] )
     RegisterScriptWeakRef( Engine );
     RegisterScriptReflection( Engine );
 
+    // Properties
+    PropertyRegistrator* registrators[ 1 ] = { NULL };
+    if( IsServer )
+        registrators[ 0 ] = new PropertyRegistrator( true, "Item" );
+    if( IsClient )
+        registrators[ 0 ] = new PropertyRegistrator( false, "ItemCl" );
+    if( IsMapper )
+        registrators[ 0 ] = new PropertyRegistrator( false, "ItemCl" );
+
     // Bind
     int bind_errors = 0;
     if( IsServer )
-        bind_errors = ServerBind::Bind( Engine );
+        bind_errors = ServerBind::Bind( Engine, registrators );
     else if( IsClient )
-        bind_errors = ClientBind::Bind( Engine );
+        bind_errors = ClientBind::Bind( Engine, registrators );
     else if( IsMapper )
-        bind_errors = MapperBind::Bind( Engine );
+        bind_errors = MapperBind::Bind( Engine, registrators );
     if( bind_errors )
         printf( "Warning, bind result: %d.\n", bind_errors );
 
@@ -313,7 +329,7 @@ int main( int argc, char* argv[] )
     else if( IsMapper )
         pragma_type = PRAGMA_MAPPER;
 
-    Preprocessor::SetPragmaCallback( new ScriptPragmaCallback( pragma_type ) );
+    Preprocessor::SetPragmaCallback( new ScriptPragmaCallback( pragma_type, registrators ) );
 
     char buf[ MAX_FOTEXT ];
     Preprocessor::Define( Str::Format( buf, "__VERSION %d", FONLINE_VERSION ) );

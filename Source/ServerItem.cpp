@@ -14,7 +14,7 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint 
         return NULL;
 
     // Create instance
-    Item* item = ItemMngr.CreateItem( pid, proto_item->Stackable ? count : 1 );
+    Item* item = ItemMngr.CreateItem( pid, count );
     if( !item )
         return NULL;
 
@@ -163,4 +163,152 @@ bool FOServer::TransferAllItems()
 
     WriteLog( "Transfer game items complete.\n" );
     return true;
+}
+
+void FOServer::OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    Item* item = (Item*) obj;
+    #pragma MESSAGE( "Clean up server 0 and -1 item ids" )
+    if( item->Id && item->Id != uint( -1 ) )
+    {
+        bool is_public = ( prop->Access & Property::PublicMask ) != 0;
+        bool is_protected = ( prop->Access & Property::ProtectedMask ) != 0;
+        if( item->Accessory == ITEM_ACCESSORY_CRITTER )
+        {
+            if( is_public || is_protected )
+            {
+                Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, false );
+                if( cr )
+                {
+                    if( is_public || is_protected )
+                        cr->Send_CritterItemProperty( cr, item, prop, cur_value );
+                    if( is_public )
+                        cr->SendAA_CritterItemProperty( item, prop, cur_value );
+                }
+            }
+        }
+        else if( item->Accessory == ITEM_ACCESSORY_HEX )
+        {
+            if( is_public )
+            {
+                Map* map = MapMngr.GetMap( item->AccHex.MapId, false );
+                if( map )
+                    map->SendItemProperty( item, prop, cur_value );
+            }
+        }
+        else if( item->Accessory == ITEM_ACCESSORY_CONTAINER )
+        {
+            #pragma MESSAGE( "Add container properties changing notifications." )
+            // Item* cont = ItemMngr.GetItem( item->AccContainer.ContainerId );
+        }
+    }
+}
+
+void FOServer::OnSetItemCount( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    Item* item = (Item*) obj;
+    uint  old = *(uint*) old_value;
+    if( item->IsStackable() && (int) item->Count > 0 )
+    {
+        int diff = (int) item->Count - (int) old;
+        ItemMngr.ChangeItemStatistics( item->GetProtoId(), diff );
+    }
+    else
+    {
+        item->Count = old;
+        if( !item->IsStackable() )
+            Script::RaiseException( "Trying to change count of not stackable item" );
+        else
+            Script::RaiseException( "Item count can't be zero or negative (%d)", (int) item->Count );
+    }
+}
+
+void FOServer::OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    Item* item = (Item*) obj;
+    uint  value = item->Flags;
+    uint  old = *(uint*) old_value;
+    Map*  map = NULL;
+
+    // Recalculate view for this item
+    if( ( old & ( ITEM_HIDDEN | ITEM_ALWAYS_VIEW | ITEM_TRAP ) ) != ( value & ( ITEM_HIDDEN | ITEM_ALWAYS_VIEW | ITEM_TRAP ) ) )
+    {
+        if( item->Accessory == ITEM_ACCESSORY_HEX )
+        {
+            if( !map )
+                map = MapMngr.GetMap( item->AccHex.MapId );
+            if( map )
+                map->ChangeViewItem( item );
+        }
+        else if( item->Accessory == ITEM_ACCESSORY_CRITTER && ( old & ITEM_HIDDEN ) != ( value & ITEM_HIDDEN ) )
+        {
+            Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, false );
+            if( cr )
+            {
+                if( FLAG( value, ITEM_HIDDEN ) )
+                    cr->Send_EraseItem( item );
+                else
+                    cr->Send_AddItem( item );
+                cr->SendAA_MoveItem( item, ACTION_REFRESH, 0 );
+            }
+        }
+    }
+
+    // Recache move and shoot blockers
+    if( ( old & ( ITEM_NO_BLOCK | ITEM_SHOOT_THRU | ITEM_GAG ) ) != ( value & ( ITEM_NO_BLOCK | ITEM_SHOOT_THRU | ITEM_GAG ) ) && item->Accessory == ITEM_ACCESSORY_HEX )
+    {
+        if( !map )
+            map = MapMngr.GetMap( item->AccHex.MapId );
+        if( map )
+        {
+            bool recache_block = false;
+            bool recache_shoot = false;
+
+            if( FLAG( value, ITEM_NO_BLOCK ) )
+                recache_block = true;
+            else
+                map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_BLOCK_ITEM );
+            if( FLAG( value, ITEM_SHOOT_THRU ) )
+                recache_shoot = true;
+            else
+                map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_NRAKE_ITEM );
+            if( !FLAG( value, ITEM_GAG ) )
+                recache_block = true;
+            else
+                map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_GAG_ITEM );
+
+            if( recache_block && recache_shoot )
+                map->RecacheHexBlockShoot( item->AccHex.HexX, item->AccHex.HexY );
+            else if( recache_block )
+                map->RecacheHexBlock( item->AccHex.HexX, item->AccHex.HexY );
+            else if( recache_shoot )
+                map->RecacheHexShoot( item->AccHex.HexX, item->AccHex.HexY );
+        }
+    }
+
+    // Recache geck value
+    if( ( old & ITEM_GECK ) != ( value & ITEM_GECK ) && item->Accessory == ITEM_ACCESSORY_HEX )
+    {
+        if( !map )
+            map = MapMngr.GetMap( item->AccHex.MapId );
+        if( map )
+            map->GetLocation( false )->GeckCount += ( FLAG( value, ITEM_GECK ) ? 1 : -1 );
+    }
+
+    // Process radio flag
+    if( ( old & ITEM_RADIO ) != ( value & ITEM_RADIO ) )
+    {
+        ItemMngr.RadioRegister( item, FLAG( value, ITEM_RADIO ) );
+    }
+}
+
+void FOServer::OnSetItemTrapValue( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    Item* item = (Item*) obj;
+    if( item->Accessory == ITEM_ACCESSORY_HEX )
+    {
+        Map* map = MapMngr.GetMap( item->AccHex.MapId );
+        if( map )
+            map->ChangeViewItem( item );
+    }
 }

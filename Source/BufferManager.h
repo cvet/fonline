@@ -4,6 +4,7 @@
 #include "Common.h"
 
 #define CRYPT_KEYS_COUNT    ( 50 )
+#define PUSH_BUF_LEN( v )    ( (uint) ( sizeof( ushort ) + ( v ? v->size() : 0 ) ) )
 
 class BufferManager
 {
@@ -35,6 +36,8 @@ public:
     void  Push( const char* buf, uint len, bool no_crypt = false );
     void  Push( const char* buf, const char* mask, uint len );
     void  Pop( char* buf, uint len );
+    void  Push( const UCharVec* buf );
+    void  Pop( UCharVec& buf );
     void  Cut( uint len );
     void  GrowBuf( uint len );
     char* GetData()             { return bufData; }

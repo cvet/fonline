@@ -10,27 +10,16 @@
 # include "ResourceManager.h"
 #endif
 
-#define FO_MAP_VERSION_TEXT1    ( 1 )
-#define FO_MAP_VERSION_TEXT2    ( 2 )
-#define FO_MAP_VERSION_TEXT3    ( 3 )
-#define FO_MAP_VERSION_TEXT4    ( 4 )
-#define FO_MAP_VERSION_TEXT5    ( 5 )
-#define FO_MAP_VERSION_TEXT6    ( 6 )
+#define FO_MAP_VERSION_TEXT1                     ( 1 )
+#define FO_MAP_VERSION_TEXT2                     ( 2 )
+#define FO_MAP_VERSION_TEXT3                     ( 3 )
+#define FO_MAP_VERSION_TEXT4                     ( 4 )
+#define FO_MAP_VERSION_TEXT5                     ( 5 )
+#define FO_MAP_VERSION_TEXT6                     ( 6 )
 
-#define APP_HEADER              "Header"
-#define APP_TILES               "Tiles"
-#define APP_OBJECTS             "Objects"
-
-int MapObject::ConvertParamValue( const char* str )
-{
-    if( !str[ 0 ] )
-        return 0;
-    if( str[ 0 ] == '$' )
-        return ConstantsManager::GetDefineValue( str + 1 );
-    if( !Str::IsNumber( str ) )
-        return (int) Str::GetHash( str );
-    return Str::AtoI( str );
-}
+#define APP_HEADER                               "Header"
+#define APP_TILES                                "Tiles"
+#define APP_OBJECTS                              "Objects"
 
 bool ProtoMap::Init( const char* name )
 {
@@ -413,7 +402,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                                 if( !mobj.MCritter.Params )
                                     mobj.AllocateCritterParams();
                                 #ifndef FONLINE_MAPPER
-                                mobj.MCritter.Params[ critter_param_index ] = MapObject::ConvertParamValue( svalue );
+                                mobj.MCritter.Params[ critter_param_index ] = (int) ConvertParamValue( svalue );
                                 #else
                                 *mobj.MCritter.Params[ critter_param_index ] = svalue;
                                 #endif
@@ -429,12 +418,6 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                             mobj.MItem.OffsetX = ivalue;
                         else if( field == "OffsetY" )
                             mobj.MItem.OffsetY = ivalue;
-                        else if( field == "AnimStayBegin" )
-                            mobj.MItem.AnimStayBegin = ivalue;
-                        else if( field == "AnimStayEnd" )
-                            mobj.MItem.AnimStayEnd = ivalue;
-                        else if( field == "AnimWait" )
-                            mobj.MItem.AnimWait = ivalue;
                         else if( field == "PicMapName" )
                         {
                             #ifdef FONLINE_MAPPER
@@ -449,14 +432,10 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                             #endif
                             mobj.MItem.PicInv = Str::GetHash( svalue );
                         }
-                        else if( field == "InfoOffset" )
-                            mobj.MItem.InfoOffset = ivalue;
                         // Item
                         else if( mobj.MapObjType == MAP_OBJECT_ITEM )
                         {
-                            if( field == "Item_InfoOffset" )
-                                mobj.MItem.InfoOffset = ivalue;
-                            else if( field == "Item_Count" )
+                            if( field == "Item_Count" )
                                 mobj.MItem.Count = ivalue;
                             else if( field == "Item_BrokenFlags" )
                                 mobj.MItem.BrokenFlags = ivalue;
@@ -468,7 +447,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                                 mobj.MItem.ItemSlot = ivalue;
                             else if( field == "Item_AmmoPid" )
                             #ifndef FONLINE_MAPPER
-                                mobj.MItem.AmmoPid = MapObject::ConvertParamValue( svalue );
+                                mobj.MItem.AmmoPid = (hash) ConvertParamValue( svalue );
                             #else
                                 mobj.MItem.AmmoPid = ScriptString::Create( svalue );
                             #endif
@@ -535,7 +514,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                                 mobj.MScenery.Param[ 4 ] = ivalue;
                             else if( field == "Scenery_ToMap" || field == "Scenery_ToMapPid" )
                             #ifndef FONLINE_MAPPER
-                                mobj.MScenery.ToMap = MapObject::ConvertParamValue( svalue );
+                                mobj.MScenery.ToMap = (hash) ConvertParamValue( svalue );
                             #else
                                 mobj.MScenery.ToMap = ScriptString::Create( svalue );
                             #endif
@@ -721,18 +700,10 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
                 fm.SetStr( "%-20s %d\n", "OffsetX", mobj.MItem.OffsetX );
             if( mobj.MItem.OffsetY )
                 fm.SetStr( "%-20s %d\n", "OffsetY", mobj.MItem.OffsetY );
-            if( mobj.MItem.AnimStayBegin )
-                fm.SetStr( "%-20s %d\n", "AnimStayBegin", mobj.MItem.AnimStayBegin );
-            if( mobj.MItem.AnimStayEnd )
-                fm.SetStr( "%-20s %d\n", "AnimStayEnd", mobj.MItem.AnimStayEnd );
-            if( mobj.MItem.AnimWait )
-                fm.SetStr( "%-20s %d\n", "AnimWait", mobj.MItem.AnimWait );
             if( mobj.RunTime.PicMapName[ 0 ] )
                 fm.SetStr( "%-20s %s\n", "PicMapName", mobj.RunTime.PicMapName );
             if( mobj.RunTime.PicInvName[ 0 ] )
                 fm.SetStr( "%-20s %s\n", "PicInvName", mobj.RunTime.PicInvName );
-            if( mobj.MItem.InfoOffset )
-                fm.SetStr( "%-20s %d\n", "InfoOffset", mobj.MItem.InfoOffset );
             if( mobj.MapObjType == MAP_OBJECT_ITEM )
             {
                 if( mobj.MItem.Count )
@@ -1277,10 +1248,6 @@ bool ProtoMap::Refresh()
             cur_wall.LightDistance = mobj.LightDistance;
             cur_wall.LightFlags = mobj.LightDirOff | ( ( mobj.LightDay & 3 ) << 6 );
             cur_wall.LightIntensity = mobj.LightIntensity;
-            cur_wall.InfoOffset = mobj.MScenery.InfoOffset;
-            cur_wall.AnimStayBegin = mobj.MScenery.AnimStayBegin;
-            cur_wall.AnimStayEnd = mobj.MScenery.AnimStayEnd;
-            cur_wall.AnimWait = mobj.MScenery.AnimWait;
             cur_wall.PicMap = mobj.MScenery.PicMap;
             cur_wall.SpriteCut = mobj.MScenery.SpriteCut;
 
@@ -1375,10 +1342,6 @@ bool ProtoMap::Refresh()
             cur_scen.LightDistance = mobj.LightDistance;
             cur_scen.LightFlags = mobj.LightDirOff | ( ( mobj.LightDay & 3 ) << 6 );
             cur_scen.LightIntensity = mobj.LightIntensity;
-            cur_scen.InfoOffset = mobj.MScenery.InfoOffset;
-            cur_scen.AnimStayBegin = mobj.MScenery.AnimStayBegin;
-            cur_scen.AnimStayEnd = mobj.MScenery.AnimStayEnd;
-            cur_scen.AnimWait = mobj.MScenery.AnimWait;
             cur_scen.PicMap = mobj.MScenery.PicMap;
             cur_scen.SpriteCut = mobj.MScenery.SpriteCut;
 

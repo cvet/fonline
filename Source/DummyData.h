@@ -187,9 +187,7 @@ struct Item
     int ViewByCritter;
     int ViewPlaceOnMap;
     int Accessory;
-    int Reserved00;
     int ChildObjects;
-    int Reserved11;
     int Lexems;
     int IsNotValid;
 
@@ -211,48 +209,6 @@ struct Item
         int ContainerId;
         int StackId;
     } AccContainer;
-
-    struct ItemData
-    {
-        int SortValue;
-        int Info;
-        int Indicator;
-        int PicMap;
-        int PicInv;
-        int AnimWaitBase;
-        int AnimStay[ 2 ];
-        int AnimShow[ 2 ];
-        int AnimHide[ 2 ];
-        int Flags;
-        int Mode;
-        int LightIntensity;
-        int LightDistance;
-        int LightFlags;
-        int LightColor;
-        int ScriptId;
-        int TrapValue;
-        int Count;
-        int Cost;
-        int ScriptValues[ 10 ];
-        int BrokenFlags;
-        int BrokenCount;
-        int Deterioration;
-        int AmmoPid;
-        int AmmoCount;
-        int LockerId;
-        int LockerCondition;
-        int LockerComplexity;
-        int HolodiskNumber;
-        int RadioChannel;
-        int RadioFlags;
-        int RadioBroadcastSend;
-        int RadioBroadcastRecv;
-        int Charge;
-        int OffsetX;
-        int OffsetY;
-        int Dir;
-        int Reserved[ 10 ];
-    } Data;
 
     int  RefCounter;
 
@@ -293,13 +249,6 @@ struct MapObject
     {
         int OffsetX;
         int OffsetY;
-        int AnimStayBegin;
-        int AnimStayEnd;
-        int AnimWait;
-        int PicMapDeprecated;
-        int PicInvDeprecated;
-        int InfoOffset;
-        int Reserved[ 3 ];
         int PicMap;
         int PicInv;
 
@@ -328,13 +277,6 @@ struct MapObject
     {
         int OffsetX;
         int OffsetY;
-        int AnimStayBegin;
-        int AnimStayEnd;
-        int AnimWait;
-        int PicMapDeprecated;
-        int PicInvDeprecated;
-        int InfoOffset;
-        int Reserved[ 3 ];
         int PicMap;
         int PicInv;
 
@@ -521,12 +463,9 @@ struct BindClass
     static void Item_SetEvent()       {}
     static void Item_GetType()        {}
     static void Item_GetProtoId()     {}
-    static void Item_GetCount()       {}
-    static void Item_SetCount()       {}
     static void Item_GetCost()        {}
     static void Item_GetMapPosition() {}
     static void Item_ChangeProto()    {}
-    static void Item_Update()         {}
     static void Item_Animate()        {}
     static void Item_SetLexems()      {}
     static void Item_GetChild()       {}
@@ -541,11 +480,6 @@ struct BindClass
     static void Item_EventDrop()    {}
     static void Item_EventMove()    {}
     static void Item_EventWalk()    {}
-
-    static void Item_set_Flags()     {}
-    static void Item_get_Flags()     {}
-    static void Item_set_TrapValue() {}
-    static void Item_get_TrapValue() {}
 
     static void CraftItem_GetShowParams() {}
     static void CraftItem_GetNeedParams() {}
@@ -903,8 +837,6 @@ struct BindClass
     static void Global_GetAllLocations()        {}
     static void Global_GetScriptId()            {}
     static void Global_GetScriptName()          {}
-    static void Global_GetItemDataMask()        {}
-    static void Global_SetItemDataMask()        {}
     static void Global_LoadImage()              {}
     static void Global_GetImageColor()          {}
     static void Global_Synchronize()            {}
@@ -951,7 +883,6 @@ struct BindClass
     static void Item_GetScriptId()    {}
     static void Item_GetType()        {}
     static void Item_GetProtoId()     {}
-    static void Item_GetCount()       {}
     static void Item_GetMapPosition() {}
     static void Item_Animate()        {}
     static void Item_GetChild()       {}

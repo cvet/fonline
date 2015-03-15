@@ -295,7 +295,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         }
 
         uint map_index = ( uint ) std::distance( ploc->ProtoMapPids.begin(), it );
-        ploc->Entrance.push_back( PAIR( map_index, MapObject::ConvertParamValue( entire_name ) ) );
+        ploc->Entrance.push_back( PAIR( map_index, (uint) ConvertParamValue( entire_name ) ) );
 
         load_entrances_fail = false;
     }

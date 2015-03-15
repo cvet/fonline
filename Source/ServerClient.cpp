@@ -620,11 +620,11 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     ProtoItem* ammo = NULL;
     if( weap->WeapGetAmmoCaliber() && weap->WeapGetMaxAmmoCount() )
     {
-        ammo = ItemMngr.GetProtoItem( weap->Data.AmmoPid );
+        ammo = ItemMngr.GetProtoItem( weap->AmmoPid );
         if( !ammo )
         {
-            weap->Data.AmmoPid = weap->Proto->Weapon_DefaultAmmoPid;
-            ammo = ItemMngr.GetProtoItem( weap->Data.AmmoPid );
+            weap->SetPropertyValue< hash >( Item::PropertyAmmoPid, weap->Proto->Weapon_DefaultAmmoPid );
+            ammo = ItemMngr.GetProtoItem( weap->AmmoPid );
         }
 
         if( !ammo )
@@ -643,7 +643,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     // No ammo
     if( weap->WeapGetMaxAmmoCount() && !cr->IsRawParam( MODE_UNLIMITED_AMMO ) )
     {
-        if( !weap->Data.AmmoCount )
+        if( !weap->AmmoCount )
         {
             WriteLogF( _FUNC_, " - Critter bullets count is zero, critter<%s>.\n", cr->GetInfo() );
             return false;
@@ -793,7 +793,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
 
     if( item_id )
     {
-        if( !item->GetCount() )
+        if( !item->Count )
         {
             WriteLogF( _FUNC_, " - Error, count is zero, id<%u>, critter<%s>.\n", item->GetId(), cr->GetInfo() );
             cr->EraseItem( item, true );
@@ -957,10 +957,9 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
                 cr->SendAA_Action( ACTION_USE_SKILL, skill_index, NULL );
             else if( target_scen )
             {
-                Item item_scenery;
-                item_scenery.Id = uint( -1 );
-                item_scenery.Init( ItemMngr.GetProtoItem( target_scen->ProtoId ) );
-                cr->SendAA_Action( ACTION_USE_SKILL, skill_index, &item_scenery );
+                Item* item_scenery = new Item( uint( -1 ), ItemMngr.GetProtoItem( target_scen->ProtoId ) );
+                cr->SendAA_Action( ACTION_USE_SKILL, skill_index, item_scenery );
+                SAFEREL( item_scenery );
             }
         }
     }
@@ -1010,7 +1009,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         // Default process
         if( item->IsHolodisk() && target_type == TARGET_SELF && cr->IsPlayer() )
         {
-            AddPlayerHoloInfo( (Client*) cr, item->HolodiskGetNum(), true );
+            AddPlayerHoloInfo( (Client*) cr, item->HolodiskNumber, true );
         }
         // Nothing happens
         else
@@ -1122,10 +1121,9 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
             return false;
         }
 
-        Item pick_item;
-        pick_item.Id = uint( -1 );
-        pick_item.Init( proto );
-        cr->SendAA_Action( ACTION_PICK_ITEM, 0, &pick_item );
+        Item* pick_item = new Item( uint( -1 ), proto );
+        cr->SendAA_Action( ACTION_PICK_ITEM, 0, pick_item );
+        SAFEREL( pick_item )
 
         if( proto->IsGeneric() && pick_scenery->RunTime.BindScriptId > 0 )
         {
@@ -1165,10 +1163,9 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
         case GRID_LADDERTOP:
         case GRID_ELEVATOR:
         {
-            Item pick_item;
-            pick_item.Id = uint( -1 );
-            pick_item.Init( proto );
-            cr->SendAA_Action( ACTION_PICK_ITEM, 0, &pick_item );
+            Item* pick_item = new Item( uint( -1 ), proto );
+            cr->SendAA_Action( ACTION_PICK_ITEM, 0, pick_item );
+            SAFEREL( pick_item );
 
             MapMngr.TryTransitCrGrid( cr, map, hx, hy, false );
         }
@@ -2920,25 +2917,6 @@ void FOServer::Process_RateItem( Client* cl )
     }
 }
 
-void FOServer::Process_SortValueItem( Client* cl )
-{
-    uint   item_id;
-    ushort sort_val;
-
-    cl->Bin >> item_id;
-    cl->Bin >> sort_val;
-    CHECK_IN_BUFF_ERROR( cl );
-
-    Item* item = cl->GetItem( item_id, true );
-    if( !item )
-    {
-        WriteLogF( _FUNC_, " - Item not found, client<%s>, item id<%u>.\n", cl->GetInfo(), item_id );
-        return;
-    }
-
-    item->Data.SortValue = sort_val;
-}
-
 void FOServer::Process_UseItem( Client* cl )
 {
     uint  item_id;
@@ -2993,7 +2971,7 @@ void FOServer::Process_UseItem( Client* cl )
                     break;
                 if( cl->Data.Params[ ST_LEVEL ] < unarmed->Weapon_UnarmedMinLevel || cl->GetRawParam( SK_UNARMED ) < unarmed->Weapon_UnarmedMinUnarmed )
                     break;
-                cl->ItemSlotMain->Init( unarmed );
+                cl->ItemSlotMain->SetProto( unarmed );
             }
 
             Act_Attack( cl, rate, target_id );
@@ -3276,7 +3254,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 0, item );
 
             // Check count
-            if( !item_count || item->GetCount() < item_count )
+            if( !item_count || item->Count < item_count )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Error count.", SAY_NETMSG );
@@ -3396,7 +3374,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 2, item );
 
             // Check count
-            if( !item_count || item->GetCount() < item_count )
+            if( !item_count || item->Count < item_count )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Error count.", SAY_NETMSG );
@@ -3548,7 +3526,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 0, item );
 
             // Check count
-            if( !item_count || item->GetCount() < item_count )
+            if( !item_count || item->Count < item_count )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Incorrect count.", SAY_NETMSG );
@@ -3681,7 +3659,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 2, item );
 
             // Check count
-            if( !item_count || item->GetCount() < item_count )
+            if( !item_count || item->Count < item_count )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Incorrect count.", SAY_NETMSG );
@@ -3835,7 +3813,7 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
 
     HolodiskLocker.Lock();
 
-    uint      holo_id = holodisk->HolodiskGetNum();
+    uint      holo_id = holodisk->HolodiskNumber;
     HoloInfo* hi = GetHoloInfo( holo_id );
     if( hi && hi->CanRewrite )
     {
@@ -3852,8 +3830,7 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
 
     cl->Send_UserHoloStr( STR_HOLO_INFO_NAME( holo_id ), title, title_len );
     cl->Send_UserHoloStr( STR_HOLO_INFO_DESC( holo_id ), text, text_len );
-    holodisk->HolodiskSetNum( holo_id );
-    cl->SendAA_ItemData( holodisk );
+    holodisk->SetPropertyValue< uint >( Item::PropertyHolodiskNumber, holo_id );
     cl->Send_TextMsg( cl, STR_HOLO_WRITE_SUCC, SAY_NETMSG, TEXTMSG_HOLO );
 }
 
@@ -4194,7 +4171,7 @@ label_EndOffer:
         Item*               item = barter_cl->GetItem( param, true );
         Client::BarterItem* barter_item = barter_cl->BarterGetItem( param );
 
-        if( !item || ( barter_item && barter_item->Count > item->GetCount() ) )
+        if( !item || ( barter_item && barter_item->Count > item->Count ) )
         {
             barter_cl->BarterEraseItem( param );
             cl->BarterRefresh( opponent );
@@ -4204,7 +4181,7 @@ label_EndOffer:
 
         if( is_set )
         {
-            if( param_ext > item->GetCount() - ( barter_item ? barter_item->Count : 0 ) )
+            if( param_ext > item->Count - ( barter_item ? barter_item->Count : 0 ) )
             {
                 barter_cl->BarterEraseItem( param );
                 cl->BarterRefresh( opponent );
@@ -4690,4 +4667,28 @@ void FOServer::Process_RuleGlobal( Client* cl )
     }
 
     cl->SetBreakTime( GameOpt.Breaktime );
+}
+
+void FOServer::Process_ItemField( Client* cl, uint data_size )
+{
+    uint   item_id;
+    ushort property_index;
+    uint64 value = 0;
+    cl->Bin >> item_id;
+    cl->Bin >> property_index;
+    cl->Bin.Pop( (char*) &value, data_size );
+
+    CHECK_IN_BUFF_ERROR( cl );
+
+    Property* prop = Item::PropertiesRegistrator->Get( property_index );
+    if( !prop || !( prop->Access & Property::ModifiableMask ) )
+        return;
+
+    Item* item = cl->GetItem( item_id, true );
+    if( !item )
+        return;
+
+    #pragma MESSAGE( "Disable send changing field by client to this client" )
+    prop->Accessor->GenericSet( item, &value );
+    WriteLog( "Client set %s to %d\n", prop->Name.c_str(), (int) value );
 }

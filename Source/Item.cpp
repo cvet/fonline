@@ -20,72 +20,155 @@ const char* ItemEventFuncName[ ITEM_EVENT_MAX ] =
     "void %s(Item&,Critter&,bool,uint8)",              // ITEM_EVENT_WALK
 };
 
-// Item default send data mask
-char Item::ItemData::SendMask[ ITEM_DATA_MASK_MAX ][ 120 ] =
-{
-    // SortValue Info Indicator PicMapHash   PicInvHash   AnimWaitBase AnimStay[2] AnimShow[2] AnimHide[2] Flags        Rate               LightIntensity LightDistance LightFlags   LightColor   ScriptId  TrapValue        Count              Cost                    ScriptValues[10]                                                                                                                        Other 36 bytes
-    // ITEM_DATA_MASK_CHOSEN                                                                                           ITEM_DATA_MASK_CHOSEN                                                                                                ITEM_DATA_MASK_CHOSEN
-    {  -1, -1,     -1,    0,     -1, -1, -1, -1, -1, -1, -1, -1,      0, 0,       0, 0,        0, 0,        0, 0,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,    -1, -1, -1, -1,  -1, -1, -1, -1,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0 },
-    // ITEM_DATA_MASK_CRITTER                                                                                          ITEM_DATA_MASK_CRITTER                                                                                               ITEM_DATA_MASK_CRITTER
-    {    0, 0,     -1,    0,         0, 0, 0, 0,     0, 0, 0, 0,      0, 0,       0, 0,        0, 0,        0, 0,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,     0,  0,  0,  0,   0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0 },
-    // ITEM_DATA_MASK_CRITTER_EXT                                                                                      ITEM_DATA_MASK_CRITTER_EXT                                                                                           ITEM_DATA_MASK_CRITTER_EXT
-    {    0, 0,     -1,    0,         0, 0, 0, 0,     0, 0, 0, 0,      0, 0,       0, 0,        0, 0,        0, 0,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,    -1, -1, -1, -1,   0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0 },
-    // ITEM_DATA_MASK_CONTAINER                                                                                        ITEM_DATA_MASK_CONTAINER                                                                                             ITEM_DATA_MASK_CONTAINER
-    {  -1, -1,     -1,    0,         0, 0, 0, 0, -1, -1, -1, -1,      0, 0,       0, 0,        0, 0,        0, 0,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,    -1, -1, -1, -1,  -1, -1, -1, -1,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0 },
-    // ITEM_DATA_MASK_MAP                                                                                              ITEM_DATA_MASK_MAP                                                                                                   ITEM_DATA_MASK_MAP
-    {  -1, -1,     -1,    0,     -1, -1, -1, -1,     0, 0, 0, 0,    -1, -1,     -1, -1,      -1, -1,      -1, -1,     -1, -1, -1, -1,  -1,       -1,            -1,        -1,     -1, -1, -1, -1,   0, 0,     0, 0,     0,  0,  0,  0,   0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0 },
-};
+PropertyRegistrator* Item::PropertiesRegistrator;
+Property*            Item::PropertyFlags;
+Property*            Item::PropertyLockerCondition;
+Property*            Item::PropertyCount;
+Property*            Item::PropertyHolodiskNumber;
+Property*            Item::PropertySortValue;
+Property*            Item::PropertyBrokenFlags;
+Property*            Item::PropertyDeterioration;
+Property*            Item::PropertyMode;
+Property*            Item::PropertyAmmoPid;
+Property*            Item::PropertyAmmoCount;
 
-void Item::Init( ProtoItem* proto )
+void Item::SetPropertyRegistrator( PropertyRegistrator* registrator )
 {
-    if( !proto )
-    {
-        WriteLogF( _FUNC_, " - Proto is null ptr.\n" );
-        return;
-    }
+    SAFEDEL( PropertiesRegistrator );
+    PropertiesRegistrator = registrator;
+    PropertiesRegistrator->RegistrationFinished = true;
+    PropertyCount = PropertiesRegistrator->Find( "Count" );
+    PropertyFlags = PropertiesRegistrator->Find( "Flags" );
+    PropertyLockerCondition = PropertiesRegistrator->Find( "LockerCondition" );
+    PropertyHolodiskNumber = PropertiesRegistrator->Find( "HolodiskNumber" );
+    PropertySortValue = PropertiesRegistrator->Find( "SortValue" );
+    PropertyBrokenFlags = PropertiesRegistrator->Find( "BrokenFlags" );
+    PropertyDeterioration = PropertiesRegistrator->Find( "Deterioration" );
+    PropertyMode = PropertiesRegistrator->Find( "Mode" );
+    PropertyAmmoPid = PropertiesRegistrator->Find( "AmmoPid" );
+    PropertyAmmoCount = PropertiesRegistrator->Find( "AmmoCount" );
+}
+
+Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator ),
+                                         SortValue( *( ushort* )Props.FindData( "SortValue" ) ),
+                                         Indicator( *( uchar* )Props.FindData( "Indicator" ) ),
+                                         PicMap( *( hash* )Props.FindData( "PicMap" ) ),
+                                         PicInv( *( hash* )Props.FindData( "PicInv" ) ),
+                                         Flags( *( uint* )Props.FindData( "Flags" ) ),
+                                         Mode( *( uchar* )Props.FindData( "Mode" ) ),
+                                         LightIntensity( *( char* )Props.FindData( "LightIntensity" ) ),
+                                         LightDistance( *( uchar* )Props.FindData( "LightDistance" ) ),
+                                         LightFlags( *( uchar* )Props.FindData( "LightFlags" ) ),
+                                         LightColor( *( uint* )Props.FindData( "LightColor" ) ),
+                                         ScriptId( *( hash* )Props.FindData( "ScriptId" ) ),
+                                         Count( *( uint* )Props.FindData( "Count" ) ),
+                                         Cost( *( uint* )Props.FindData( "Cost" ) ),
+                                         Val0( *( int* )Props.FindData( "Val0" ) ),
+                                         Val1( *( int* )Props.FindData( "Val1" ) ),
+                                         Val2( *( int* )Props.FindData( "Val2" ) ),
+                                         Val3( *( int* )Props.FindData( "Val3" ) ),
+                                         Val4( *( int* )Props.FindData( "Val4" ) ),
+                                         Val5( *( int* )Props.FindData( "Val5" ) ),
+                                         Val6( *( int* )Props.FindData( "Val6" ) ),
+                                         Val7( *( int* )Props.FindData( "Val7" ) ),
+                                         Val8( *( int* )Props.FindData( "Val8" ) ),
+                                         Val9( *( int* )Props.FindData( "Val9" ) ),
+                                         BrokenFlags( *( uchar* )Props.FindData( "BrokenFlags" ) ),
+                                         BrokenCount( *( uchar* )Props.FindData( "BrokenCount" ) ),
+                                         Deterioration( *( ushort* )Props.FindData( "Deterioration" ) ),
+                                         AmmoPid( *( hash* )Props.FindData( "AmmoPid" ) ),
+                                         AmmoCount( *( ushort* )Props.FindData( "AmmoCount" ) ),
+                                         TrapValue( *( short* )Props.FindData( "TrapValue" ) ),
+                                         LockerId( *( uint* )Props.FindData( "LockerId" ) ),
+                                         LockerCondition( *( ushort* )Props.FindData( "LockerCondition" ) ),
+                                         LockerComplexity( *( ushort* )Props.FindData( "LockerComplexity" ) ),
+                                         HolodiskNumber( *( uint* )Props.FindData( "HolodiskNumber" ) ),
+                                         RadioChannel( *( ushort* )Props.FindData( "RadioChannel" ) ),
+                                         RadioFlags( *( ushort* )Props.FindData( "RadioFlags" ) ),
+                                         RadioBroadcastSend( *( uchar* )Props.FindData( "RadioBroadcastSend" ) ),
+                                         RadioBroadcastRecv( *( uchar* )Props.FindData( "RadioBroadcastRecv" ) ),
+                                         OffsetX( *( short* )Props.FindData( "OffsetX" ) ),
+                                         OffsetY( *( short* )Props.FindData( "OffsetY" ) )
+{
+    RUNTIME_ASSERT( proto );
+
+    MEMORY_PROCESS( MEMORY_ITEM, sizeof( Item ) + PropertiesRegistrator->GetWholeDataSize() );
+
+    Id = id;
+    RefCounter = 1;
+    IsNotValid = false;
+
+    From = 0;
+    ViewPlaceOnMap = false;
+    Accessory = 0;
+    memzero( AccBuffer, sizeof( AccBuffer ) );
+
+    Count = 1;
+    ItemMngr.ChangeItemStatistics( proto->ProtoId, 1 );
 
     #ifdef FONLINE_SERVER
+    memzero( FuncId, sizeof( FuncId ) );
     ViewByCritter = NULL;
-    ViewPlaceOnMap = false;
     ChildItems = NULL;
-    From = 0;
+    PLexems = NULL;
+    #endif
+    #ifdef FONLINE_CLIENT
+    Lexems = ScriptString::Create();
     #endif
 
-    memzero( &Data, sizeof( Data ) );
+    SetProto( proto );
+}
+
+Item::~Item()
+{
+    #ifdef FONLINE_SERVER
+    if( PLexems )
+        MEMORY_PROCESS( MEMORY_ITEM, -LEXEMS_SIZE );
+    SAFEDELA( PLexems );
+    #endif
+    #ifdef FONLINE_CLIENT
+    SAFEREL( Lexems );
+    #endif
+    MEMORY_PROCESS( MEMORY_ITEM, -(int) ( sizeof( Item ) + PropertiesRegistrator->GetWholeDataSize() ) );
+}
+
+void Item::SetProto( ProtoItem* proto )
+{
     Proto = proto;
     Accessory = ITEM_ACCESSORY_NONE;
-    Data.SortValue = 0x7FFF;
-    Data.AnimWaitBase = Proto->AnimWaitBase;
-    Data.AnimStay[ 0 ] = Proto->AnimStay[ 0 ];
-    Data.AnimStay[ 1 ] = Proto->AnimStay[ 1 ];
-    Data.AnimShow[ 0 ] = Proto->AnimShow[ 0 ];
-    Data.AnimShow[ 1 ] = Proto->AnimShow[ 1 ];
-    Data.AnimHide[ 0 ] = Proto->AnimHide[ 0 ];
-    Data.AnimHide[ 1 ] = Proto->AnimHide[ 1 ];
-    Data.Flags = Proto->Flags;
-    Data.Indicator = Proto->IndicatorStart;
+    SortValue = 0x7FFF;
+    Flags = Proto->Flags;
+    Indicator = Proto->IndicatorStart;
 
-    for( int i = 0; i < ITEM_MAX_SCRIPT_VALUES; i++ )
-        Data.ScriptValues[ i ] = Proto->StartValue[ i ];
+    Val0 = Proto->StartValue[ 0 ];
+    Val1 = Proto->StartValue[ 1 ];
+    Val2 = Proto->StartValue[ 2 ];
+    Val3 = Proto->StartValue[ 3 ];
+    Val4 = Proto->StartValue[ 4 ];
+    Val5 = Proto->StartValue[ 5 ];
+    Val6 = Proto->StartValue[ 6 ];
+    Val7 = Proto->StartValue[ 7 ];
+    Val8 = Proto->StartValue[ 8 ];
+    Val9 = Proto->StartValue[ 9 ];
 
     switch( GetType() )
     {
     case ITEM_TYPE_WEAPON:
-        Data.AmmoCount = Proto->Weapon_MaxAmmoCount;
-        Data.AmmoPid = Proto->Weapon_DefaultAmmoPid;
+        AmmoCount = Proto->Weapon_MaxAmmoCount;
+        AmmoPid = Proto->Weapon_DefaultAmmoPid;
         break;
     case ITEM_TYPE_DOOR:
-        SETFLAG( Data.Flags, ITEM_GAG );
+        SETFLAG( Flags, ITEM_GAG );
         if( !Proto->Door_NoBlockMove )
-            UNSETFLAG( Data.Flags, ITEM_NO_BLOCK );
+            UNSETFLAG( Flags, ITEM_NO_BLOCK );
         if( !Proto->Door_NoBlockShoot )
-            UNSETFLAG( Data.Flags, ITEM_SHOOT_THRU );
+            UNSETFLAG( Flags, ITEM_SHOOT_THRU );
         if( !Proto->Door_NoBlockLight )
-            UNSETFLAG( Data.Flags, ITEM_LIGHT_THRU );
-        Data.LockerCondition = Proto->Locker_Condition;
+            UNSETFLAG( Flags, ITEM_LIGHT_THRU );
+        LockerCondition = Proto->Locker_Condition;
         break;
     case  ITEM_TYPE_CONTAINER:
-        Data.LockerCondition = Proto->Locker_Condition;
+        LockerCondition = Proto->Locker_Condition;
         break;
     default:
         break;
@@ -93,43 +176,35 @@ void Item::Init( ProtoItem* proto )
 
     if( IsRadio() )
     {
-        Data.RadioChannel = Proto->RadioChannel;
-        Data.RadioFlags = Proto->RadioFlags;
-        Data.RadioBroadcastSend = Proto->RadioBroadcastSend;
-        Data.RadioBroadcastRecv = Proto->RadioBroadcastRecv;
+        RadioChannel = Proto->RadioChannel;
+        RadioFlags = Proto->RadioFlags;
+        RadioBroadcastSend = Proto->RadioBroadcastSend;
+        RadioBroadcastRecv = Proto->RadioBroadcastRecv;
     }
 
     if( IsHolodisk() )
     {
-        Data.HolodiskNumber = Proto->HolodiskNum;
+        HolodiskNumber = Proto->HolodiskNum;
         #ifdef FONLINE_SERVER
-        if( !Data.HolodiskNumber )
-            Data.HolodiskNumber = Random( 1, 42 );
+        if( !HolodiskNumber )
+            HolodiskNumber = Random( 1, 42 );
         #endif
     }
 }
 
+#if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 Item* Item::Clone()
 {
-    Item* clone = new Item();
-    clone->Id = Id;
-    clone->Proto = Proto;
+    Item* clone = new Item( Id, Proto );
     clone->Accessory = Accessory;
     memcpy( clone->AccBuffer, AccBuffer, sizeof( AccBuffer ) );
-    clone->Data = Data;
-
-    #ifdef FONLINE_SERVER
-    clone->ViewByCritter = NULL;
-    clone->ViewPlaceOnMap = false;
-    clone->ChildItems = NULL;
-    clone->PLexems = NULL;
-    #endif
-    #ifdef FONLINE_CLIENT
+    clone->Props = Props;
+    # if defined ( FONLINE_CLIENT )
     *clone->Lexems = *Lexems;
-    #endif
-
+    # endif
     return clone;
 }
+#endif
 
 #ifdef FONLINE_SERVER
 void Item::FullClear()
@@ -165,10 +240,10 @@ bool Item::ParseScript( const char* script, bool first_time )
             WriteLogF( _FUNC_, " - Script<%s> bind fail, item pid<%u>.\n", script, GetProtoId() );
             return false;
         }
-        Data.ScriptId = func_num;
+        ScriptId = func_num;
     }
 
-    if( Data.ScriptId && Script::PrepareScriptFuncContext( Data.ScriptId, _FUNC_, Str::FormatBuf( "Item id<%u>, pid<%u>", GetId(), GetProtoId() ) ) )
+    if( ScriptId && Script::PrepareScriptFuncContext( ScriptId, _FUNC_, Str::FormatBuf( "Item id<%u>, pid<%u>", GetId(), GetProtoId() ) ) )
     {
         Script::SetArgObject( this );
         Script::SetArgBool( first_time );
@@ -293,13 +368,13 @@ void Item::SetSortValue( ItemVec& items )
         Item* item = *it;
         if( item == this )
             continue;
-        if( sort_value >= item->GetSortValue() )
-            sort_value = item->GetSortValue() - 1;
+        if( sort_value >= item->SortValue )
+            sort_value = item->SortValue - 1;
     }
-    Data.SortValue = sort_value;
+    SetPropertyValue< ushort >( Item::PropertySortValue, sort_value );
 }
 
-bool SortItemsFunc( const Item* l, const Item* r ) { return l->Data.SortValue < r->Data.SortValue; }
+bool SortItemsFunc( const Item* l, const Item* r ) { return l->SortValue < r->SortValue; }
 void Item::SortItems( ItemVec& items )
 {
     std::sort( items.begin(), items.end(), SortItemsFunc );
@@ -312,54 +387,25 @@ void Item::ClearItems( ItemVec& items )
     items.clear();
 }
 
-uint Item::GetCount()
+void Item::SetCount( int val )
 {
-    return IsStackable() ? Data.Count : 1;
+    SetPropertyValue< uint >( Item::PropertyCount, val );
 }
 
-void Item::Count_Set( uint val )
+void Item::ChangeCount( int val )
 {
-    if( !IsStackable() )
-        return;
-
-    if( Data.Count > val )
-        ItemMngr.SubItemStatistics( GetProtoId(), Data.Count - val );
-    else if( Data.Count < val )
-        ItemMngr.AddItemStatistics( GetProtoId(), val - Data.Count );
-    Data.Count = val;
-}
-
-void Item::Count_Add( uint val )
-{
-    if( !IsStackable() )
-        return;
-
-    Data.Count += val;
-    ItemMngr.AddItemStatistics( GetProtoId(), val );
-}
-
-void Item::Count_Sub( uint val )
-{
-    if( !IsStackable() )
-        return;
-
-    if( val > Data.Count )
-        val = Data.Count;
-    Data.Count -= val;
-    ItemMngr.SubItemStatistics( GetProtoId(), val );
+    SetPropertyValue< uint >( Item::PropertyCount, Count + val );
 }
 
 #ifdef FONLINE_SERVER
 void Item::Repair()
 {
-    uchar&  flags = Data.BrokenFlags;
-    uchar&  broken_count = Data.BrokenCount;
-    ushort& deterioration = Data.Deterioration;
-
-    if( FLAG( flags, BI_BROKEN ) )
+    if( FLAG( BrokenFlags, BI_BROKEN ) )
     {
+        uchar flags = BrokenFlags;
         UNSETFLAG( flags, BI_BROKEN );
-        deterioration = 0;
+        SetPropertyValue< uchar >( Item::PropertyBrokenFlags, flags );
+        SetPropertyValue< ushort >( Item::PropertyDeterioration, 0 );
     }
 }
 #endif
@@ -423,18 +469,18 @@ void Item::SetMode( uchar mode )
             aim = 0;
         mode = ( aim << 4 ) | ( use & 0xF );
     }
-    Data.Mode = mode;
+
+    SetPropertyValue< uchar >( Item::PropertyMode, mode );
 }
 
 uint Item::GetCost1st()
 {
-    uint cost = ( Data.Cost ? Data.Cost : Proto->Cost );
-    // if(IsDeteriorable()) cost-=cost*GetWearProc()/100;
-    if( IsWeapon() && Data.AmmoCount )
+    uint cost = ( Cost ? Cost : Proto->Cost );
+    if( IsWeapon() && AmmoCount )
     {
-        ProtoItem* ammo = ItemMngr.GetProtoItem( Data.AmmoPid );
+        ProtoItem* ammo = ItemMngr.GetProtoItem( AmmoPid );
         if( ammo )
-            cost += ammo->Cost * Data.AmmoCount;
+            cost += ammo->Cost * AmmoCount;
     }
     if( !cost )
         cost = 1;
@@ -477,9 +523,9 @@ void Item::SetLexems( const char* lexems )
 
 void Item::WeapLoadHolder()
 {
-    if( !Data.AmmoPid )
-        Data.AmmoPid = Proto->Weapon_DefaultAmmoPid;
-    Data.AmmoCount = Proto->Weapon_MaxAmmoCount;
+    if( !AmmoPid )
+        SetPropertyValue< hash >( Item::PropertyAmmoPid, Proto->Weapon_DefaultAmmoPid );
+    SetPropertyValue< uint >( Item::PropertyAmmoCount, Proto->Weapon_MaxAmmoCount );
 }
 
 #ifdef FONLINE_SERVER
@@ -501,7 +547,7 @@ void Item::ContAddItem( Item*& item, uint stack_id )
         Item* item_ = ContGetItemByPid( item->GetProtoId(), stack_id );
         if( item_ )
         {
-            item_->Count_Add( item->GetCount() );
+            item_->ChangeCount( item->Count );
             ItemMngr.ItemToGarbage( item );
             item = item_;
             return;
@@ -730,8 +776,8 @@ uint Item::GetCurSprId()
         end = anim->CntFrm - 1;
     if( IsShowAnimExt() )
     {
-        beg = Data.AnimStay[ 0 ];
-        end = Data.AnimStay[ 1 ];
+        beg = Proto->AnimStay[ 0 ];
+        end = Proto->AnimStay[ 1 ];
     }
 
     if( beg >= anim->CntFrm )

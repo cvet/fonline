@@ -73,6 +73,7 @@ namespace Script
     void              FinishContext( asIScriptContext*& ctx );
     asIScriptContext* GetGlobalContext();
     void              PrintContextCallstack( asIScriptContext* ctx );
+    void              RaiseException( const char* message, ... );
 
     const char*      GetActiveModuleName();
     const char*      GetActiveFuncName();

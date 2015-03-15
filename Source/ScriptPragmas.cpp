@@ -1,6 +1,7 @@
 #include "Common.h"
 #include "ScriptPragmas.h"
 #include "angelscript.h"
+#include "ConstantsManager.h"
 
 #ifdef FONLINE_SCRIPT_COMPILER
 # include "ScriptEngine.h"
@@ -393,7 +394,7 @@ public:
     void Call( const string& text )
     {
         asIScriptEngine* engine = Script::GetEngine();
-        string           s, type_name, field_name, class_name;
+        string           s, type_name, property_name, class_name;
         int              offset = 0;
         istrstream       str( text.c_str() );
 
@@ -412,7 +413,7 @@ public:
             WriteLog( "Error in 'bindfield' pragma<%s>, '::' not found.\n", text.c_str() );
             return;
         }
-        field_name.assign( s, ns + 2, s.size() - ns - 2 );
+        property_name.assign( s, ns + 2, s.size() - ns - 2 );
         class_name.assign( s, 0, ns );
 
         str >> s >> offset;
@@ -486,7 +487,7 @@ public:
                 {
                     const char* name;
                     ot->GetProperty( j, &name );
-                    if( !strcmp( name, field_name.c_str() ) )
+                    if( !strcmp( name, property_name.c_str() ) )
                     {
                         WriteLog( "Error in 'bindfield' pragma<%s>, property<%s> already available.\n", text.c_str(), name );
                         return;
@@ -496,7 +497,7 @@ public:
         }
 
         // Bind
-        int result = engine->RegisterObjectProperty( class_name.c_str(), ( type_name + field_name ).c_str(), base_offset + offset );
+        int result = engine->RegisterObjectProperty( class_name.c_str(), ( type_name + property_name ).c_str(), base_offset + offset );
         if( result < 0 )
         {
             WriteLog( "Error in 'bindfield' pragma<%s>, register object property fail, error<%d>.\n", text.c_str(), result );
@@ -506,7 +507,127 @@ public:
     }
 };
 
-ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
+// #pragma property "MyObject Virtual int PropName Default = 100 Min = 10 Max = 50 Random = true"
+class PropertyPragma
+{
+private:
+    PropertyRegistrator** propertiesRegistrators;
+
+public:
+    PropertyPragma( PropertyRegistrator** properties_registrators )
+    {
+        propertiesRegistrators = properties_registrators;
+    }
+
+    void Call( const string& text )
+    {
+        // Read all
+        istrstream str( text.c_str() );
+        string     class_name, access_str, property_type_name, property_name;
+        str >> class_name >> access_str >> property_type_name >> property_name;
+        char       options_buf[ MAX_FOTEXT ];
+        str.getline( options_buf, MAX_FOTEXT );
+        if( str.fail() )
+        {
+            WriteLog( "Error in 'property' pragma<%s>.\n", text.c_str() );
+            return;
+        }
+
+        // Parse access type
+        Property::AccessType access = (Property::AccessType) 0;
+        if( Str::CompareCase( access_str.c_str(), "Virtual" ) )
+            access = Property::Virtual;
+        else if( Str::CompareCase( access_str.c_str(), "VirtualClient" ) )
+            access = Property::VirtualClient;
+        else if( Str::CompareCase( access_str.c_str(), "VirtualServer" ) )
+            access = Property::VirtualServer;
+        else if( Str::CompareCase( access_str.c_str(), "Private" ) )
+            access = Property::Private;
+        else if( Str::CompareCase( access_str.c_str(), "PrivateClient" ) )
+            access = Property::PrivateClient;
+        else if( Str::CompareCase( access_str.c_str(), "PrivateServer" ) )
+            access = Property::PrivateServer;
+        else if( Str::CompareCase( access_str.c_str(), "Public" ) )
+            access = Property::Public;
+        else if( Str::CompareCase( access_str.c_str(), "PublicModifiable" ) )
+            access = Property::PublicModifiable;
+        else if( Str::CompareCase( access_str.c_str(), "Protected" ) )
+            access = Property::Protected;
+        else if( Str::CompareCase( access_str.c_str(), "ProtectedModifiable" ) )
+            access = Property::ProtectedModifiable;
+        if( access == (Property::AccessType) 0 )
+        {
+            WriteLog( "Error in 'property' pragma<%s>, invalid access type<%s>.\n", text.c_str(), access_str.c_str() );
+            return;
+        }
+
+        // Parse options
+        StrInt64Map options_map;
+        StrVec      opt_entries;
+        Str::ParseLine( options_buf, ',', opt_entries, Str::ParseLineDummy );
+        for( size_t i = 0, j = opt_entries.size(); i < j; i++ )
+        {
+            StrVec opt_entry;
+            Str::ParseLine( opt_entries[ i ].c_str(), '=', opt_entry, Str::ParseLineDummy );
+            if( opt_entry.size() != 2 )
+            {
+                WriteLog( "Error in 'property' pragma<%s>, invalid options entry.\n", text.c_str() );
+                return;
+            }
+            int64 value = ConvertParamValue( opt_entry[ 1 ].c_str() );
+            options_map.insert( PAIR( opt_entry[ 0 ], value ) );
+        }
+
+        // Affect options
+        bool  generate_random_value = false;
+        bool  set_default_value = false;
+        int64 default_value = 0;
+        bool  check_min_value = false;
+        int64 min_value = 0;
+        bool  check_max_value = false;
+        int64 max_value = 0;
+        for( auto it = options_map.begin(); it != options_map.end(); ++it )
+        {
+            const char* opt_name = ( *it ).first.c_str();
+            int64       opt_value = ( *it ).second;
+            if( Str::CompareCase( opt_name, "default" ) )
+            {
+                set_default_value = true;
+                default_value = opt_value;
+            }
+            else if( Str::CompareCase( opt_name, "min" ) )
+            {
+                check_min_value = true;
+                min_value = opt_value;
+            }
+            else if( Str::CompareCase( opt_name, "max" ) )
+            {
+                check_max_value = true;
+                max_value = opt_value;
+            }
+            else if( Str::CompareCase( opt_name, "random" ) )
+            {
+                generate_random_value = ( opt_value != 0 );
+            }
+        }
+
+        // Register
+        PropertyRegistrator* properties_registrator = NULL;
+        if( class_name == "Item" )
+            properties_registrator = propertiesRegistrators[ 0 ];
+        else
+            WriteLog( "Invalid class in 'property' pragma<%s>.\n", text.c_str() );
+
+        if( properties_registrator )
+        {
+            properties_registrator->Register( property_type_name.c_str(), property_name.c_str(), access,
+                                              generate_random_value, set_default_value ? &default_value : NULL,
+                                              check_min_value ? &min_value : NULL, check_max_value ? &max_value : NULL );
+        }
+    }
+};
+
+ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type, PropertyRegistrator** properties_registrators )
 {
     pragmaType = pragma_type;
     if( pragmaType != PRAGMA_SERVER && pragmaType != PRAGMA_CLIENT && pragmaType != PRAGMA_MAPPER )
@@ -519,6 +640,7 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
         crDataPragma = new CrDataPragma( pragmaType );
         bindFuncPragma = new BindFuncPragma();
         bindFieldPragma = new BindFieldPragma();
+        propertyPragma = new PropertyPragma( properties_registrators );
 
         #ifdef FONLINE_SCRIPT_COMPILER
         bindFieldPragma->Add( "ProtoItem", 0, PROTO_ITEM_USER_DATA_SIZE );
@@ -541,16 +663,18 @@ void ScriptPragmaCallback::CallPragma( const string& name, const Preprocessor::P
     if( ignorePragma && ignorePragma->IsIgnored( name ) )
         return;
 
-    if( name == "ignore" && ignorePragma )
+    if( Str::CompareCase( name.c_str(), "ignore" ) && ignorePragma )
         ignorePragma->Call( instance.Text );
-    else if( name == "globalvar" && globalVarPragma )
+    else if( Str::CompareCase( name.c_str(), "globalvar" ) && globalVarPragma )
         globalVarPragma->Call( instance.Text );
-    else if( name == "crdata" && crDataPragma )
+    else if( Str::CompareCase( name.c_str(), "crdata" ) && crDataPragma )
         crDataPragma->Call( instance.Text );
-    else if( name == "bindfunc" && bindFuncPragma )
+    else if( Str::CompareCase( name.c_str(), "bindfunc" ) && bindFuncPragma )
         bindFuncPragma->Call( instance.Text );
-    else if( name == "bindfield" && bindFieldPragma )
+    else if( Str::CompareCase( name.c_str(), "bindfield" ) && bindFieldPragma )
         bindFieldPragma->Call( instance.Text );
+    else if( Str::CompareCase( name.c_str(), "property" ) && propertyPragma )
+        propertyPragma->Call( instance.Text );
     else
         WriteLog( "Unknown pragma instance, name<%s> text<%s>.\n", name.c_str(), instance.Text.c_str() );
 }

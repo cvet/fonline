@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 482 )
+#define FONLINE_VERSION                          ( 484 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
@@ -100,6 +100,7 @@ const char* GetLastSocketError();
     { if( x )         \
           delete[] ( x ); ( x ) = NULL; }
 
+#define RUNTIME_ASSERT( a )               ( !!( a ) || RaiseAssert( # a, __FILE__, __LINE__ ) )
 #define STATIC_ASSERT( a )                static_assert( a, # a )
 #define OFFSETOF( s, m )                  ( (int) (size_t) ( &reinterpret_cast< s* >( 100000 )->m ) - 100000 )
 #define UNUSED_VARIABLE( x )              (void) ( x )
@@ -139,23 +140,24 @@ void SetCommandLine( uint argc, char** argv );
 extern Randomizer DefaultRandomizer;
 int Random( int minimum, int maximum );
 
-int  Procent( int full, int peace );
-uint NumericalNumber( uint num );
-uint DistSqrt( int x1, int y1, int x2, int y2 );
-uint DistGame( int x1, int y1, int x2, int y2 );
-int  GetNearDir( int x1, int y1, int x2, int y2 );
-int  GetFarDir( int x1, int y1, int x2, int y2 );
-int  GetFarDir( int x1, int y1, int x2, int y2, float offset );
-bool CheckDist( ushort x1, ushort y1, ushort x2, ushort y2, uint dist );
-int  ReverseDir( int dir );
-void GetStepsXY( float& sx, float& sy, int x1, int y1, int x2, int y2 );
-void ChangeStepsXY( float& sx, float& sy, float deq );
-bool MoveHexByDir( ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy );
-void MoveHexByDirUnsafe( int& hx, int& hy, uchar dir );
-bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, int y2 );
-void RestoreMainDirectory();
-void ShowMessage( const char* message );
-uint GetDoubleClickTicks();
+int   Procent( int full, int peace );
+uint  NumericalNumber( uint num );
+uint  DistSqrt( int x1, int y1, int x2, int y2 );
+uint  DistGame( int x1, int y1, int x2, int y2 );
+int   GetNearDir( int x1, int y1, int x2, int y2 );
+int   GetFarDir( int x1, int y1, int x2, int y2 );
+int   GetFarDir( int x1, int y1, int x2, int y2, float offset );
+bool  CheckDist( ushort x1, ushort y1, ushort x2, ushort y2, uint dist );
+int   ReverseDir( int dir );
+void  GetStepsXY( float& sx, float& sy, int x1, int y1, int x2, int y2 );
+void  ChangeStepsXY( float& sx, float& sy, float deq );
+bool  MoveHexByDir( ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy );
+void  MoveHexByDirUnsafe( int& hx, int& hy, uchar dir );
+bool  IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, int y2 );
+void  RestoreMainDirectory();
+void  ShowMessage( const char* message );
+uint  GetDoubleClickTicks();
+int64 ConvertParamValue( const char* str );
 
 // Containers comparator template
 template< class T >

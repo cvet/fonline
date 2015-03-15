@@ -1104,6 +1104,21 @@ void Script::PrintContextCallstack( asIScriptContext* ctx )
     }
 }
 
+void Script::RaiseException( const char* message, ... )
+{
+    va_list list;
+    va_start( list, message );
+    char    buf[ MAX_FOTEXT ];
+    vsnprintf( buf, MAX_FOTEXT, message, list );
+    va_end( list );
+
+    asIScriptContext* ctx = asGetActiveContext();
+    if( ctx )
+        ctx->SetException( buf );
+    else
+        WriteLog( "Runtime exception: %s.\n", buf );
+}
+
 const char* Script::GetActiveModuleName()
 {
     static const char error[] = "<error>";

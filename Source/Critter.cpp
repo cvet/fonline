@@ -74,8 +74,6 @@ uint      Critter::ParametersMin[ MAX_PARAMETERS_ARRAYS ] = { 0 };
 uint      Critter::ParametersMax[ MAX_PARAMETERS_ARRAYS ] = { MAX_PARAMS - 1, 0 };
 bool      Critter::ParametersOffset[ MAX_PARAMETERS_ARRAYS ] = { 0 };
 bool      Critter::SlotEnabled[ 0x100 ] = { true, true, true, true, 0 };
-Item*     Critter::SlotCacheData[ 0x100 ] = { 0 };
-Item*     Critter::SlotCacheDataExt[ 0x100 ] = { 0 };
 
 Critter::Critter(): CritterIsNpc( false ), RefCounter( 1 ), IsNotValid( false ),
                     GroupMove( NULL ), PrevHexTick( 0 ), PrevHexX( 0 ), PrevHexY( 0 ),
@@ -100,8 +98,8 @@ Critter::Critter(): CritterIsNpc( false ), RefCounter( 1 ), IsNotValid( false ),
     ParamLocked = -1;
     for( int i = 0; i < MAX_PARAMETERS_ARRAYS; i++ )
         ThisPtr[ i ] = this;
-    ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item();
-    ItemSlotArmor = defItemSlotArmor = new Item();
+    ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
+    ItemSlotArmor = defItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
 }
 
 Critter::~Critter()
@@ -772,7 +770,7 @@ void Critter::ProcessVisibleItems()
             {
                 int dist = DistGame( Data.HexX, Data.HexY, item->AccHex.HexX, item->AccHex.HexY );
                 if( item->IsTrap() )
-                    dist += item->TrapGetValue();
+                    dist += item->TrapValue;
                 allowed = look >= dist;
             }
 
@@ -915,7 +913,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
             {
                 int dist = DistGame( hx, hy, item->AccHex.HexX, item->AccHex.HexY );
                 if( item->IsTrap() )
-                    dist += item->TrapGetValue();
+                    dist += item->TrapValue;
                 allowed = look >= dist;
             }
 
@@ -1128,8 +1126,8 @@ bool Critter::SetDefaultItems( ProtoItem* proto_hand, ProtoItem* proto_armor )
     if( !proto_hand || !proto_armor )
         return false;
 
-    defItemSlotHand->Init( proto_hand );
-    defItemSlotArmor->Init( proto_armor );
+    defItemSlotHand->SetProto( proto_hand );
+    defItemSlotArmor->SetProto( proto_armor );
     defItemSlotHand->Accessory = ITEM_ACCESSORY_CRITTER;
     defItemSlotArmor->Accessory = ITEM_ACCESSORY_CRITTER;
     defItemSlotHand->AccCritter.Id = GetId();
@@ -1154,11 +1152,10 @@ void Critter::AddItem( Item*& item, bool send )
         Item* item_already = GetItemByPid( item->GetProtoId() );
         if( item_already )
         {
-            item_already->Count_Add( item->GetCount() );
+            uint count = item->Count;
             ItemMngr.ItemToGarbage( item );
             item = item_already;
-            if( send )
-                SendAA_ItemData( item );
+            item->ChangeCount( count );
             return;
         }
     }
@@ -1403,7 +1400,7 @@ Item* Critter::GetAmmoForWeapon( Item* weap )
     if( !weap->IsWeapon() )
         return NULL;
 
-    Item* ammo = GetItemByPid( weap->Data.AmmoPid );
+    Item* ammo = GetItemByPid( weap->AmmoPid );
     if( ammo )
         return ammo;
     ammo = GetItemByPid( weap->Proto->Weapon_DefaultAmmoPid );
@@ -1492,7 +1489,7 @@ uint Critter::CountItemPid( hash pid )
     {
         Item* item = *it;
         if( item->GetProtoId() == pid )
-            res += item->GetCount();
+            res += item->Count;
     }
     return res;
 }
@@ -1565,13 +1562,13 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
 
     if( to_slot == SLOT_GROUND )
     {
-        if( !count || count > item->GetCount() )
+        if( !count || count > item->Count )
         {
             Send_AddItem( item );
             return false;
         }
 
-        bool full_drop = ( !item->IsStackable() || count >= item->GetCount() );
+        bool full_drop = ( !item->IsStackable() || count >= item->Count );
         if( !full_drop )
         {
             if( GetMap() )
@@ -1582,13 +1579,11 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
                     Send_AddItem( item );
                     return false;
                 }
-                SendAA_ItemData( item );
                 item = item_;
             }
             else
             {
-                item->Count_Sub( count );
-                SendAA_ItemData( item );
+                item->ChangeCount( -(int) count );
                 item = NULL;
             }
         }
@@ -1679,7 +1674,7 @@ uint Critter::CountItems()
 {
     uint count = 0;
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
-        count += ( *it )->GetCount();
+        count += ( *it )->Count;
     return count;
 }
 
@@ -1744,10 +1739,10 @@ void Critter::ToDead( uint anim2, bool send_all )
 
     Item* item = ItemSlotMain;
     if( item->GetId() )
-        MoveItem( SLOT_HAND1, SLOT_INV, item->GetId(), item->GetCount() );
+        MoveItem( SLOT_HAND1, SLOT_INV, item->GetId(), item->Count );
     item = ItemSlotExt;
     if( item->GetId() )
-        MoveItem( SLOT_HAND2, SLOT_INV, item->GetId(), item->GetCount() );
+        MoveItem( SLOT_HAND2, SLOT_INV, item->GetId(), item->Count );
     // if(ItemSlotArmor->GetId()) MoveItem(SLOT_ARMOR,SLOT_INV,ItemSlotArmor->GetId(),ItemSlotArmor->GetCount());
 
     if( send_all )
@@ -2484,10 +2479,10 @@ void Critter::Send_AddItemOnMap( Item* item )
     if( IsPlayer() )
         ( (Client*) this )->Send_AddItemOnMap( item );
 }
-void Critter::Send_ChangeItemOnMap( Item* item )
+void Critter::Send_MapItemProperty( Item* item, Property* prop, void* property_data )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_ChangeItemOnMap( item );
+        ( (Client*) this )->Send_MapItemProperty( item, prop, property_data );
 }
 void Critter::Send_EraseItemFromMap( Item* item )
 {
@@ -2614,10 +2609,10 @@ void Critter::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar p
     if( IsPlayer() )
         ( (Client*) this )->Send_MoveItem( from_cr, item, action, prev_slot );
 }
-void Critter::Send_ItemData( Critter* from_cr, uchar slot, Item* item, bool ext_data )
+void Critter::Send_CritterItemProperty( Critter* from_cr, Item* item, Property* prop, void* property_data )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_ItemData( from_cr, slot, item, ext_data );
+        ( (Client*) this )->Send_CritterItemProperty( from_cr, item, prop, property_data );
 }
 void Critter::Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play )
 {
@@ -2775,53 +2770,30 @@ void Critter::SendAA_MoveItem( Item* item, uchar action, uchar prev_slot )
     }
 }
 
-void Critter::SendAA_ItemData( Item* item )
+void Critter::SendAA_CritterItemProperty( Item* item, Property* prop, void* property_data )
 {
-    if( IsPlayer() )
-        Send_AddItem( item );
-
     uchar slot = item->AccCritter.Slot;
-    if( !VisCr.empty() && slot != SLOT_INV && SlotEnabled[ slot ] )
+    if( !VisCr.empty() && SlotEnabled[ slot ] && SlotDataSendEnabled[ slot ] )
     {
-        if( SlotDataSendEnabled[ slot ] )
+        int bind_id = SlotDataSendScript[ slot ];
+        if( !bind_id )
         {
-            int script = SlotDataSendScript[ slot ];
-            if( !script )
-            {
-                // Send all data
-                for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
-                {
-                    Critter* cr = *it;
-                    if( cr->IsPlayer() )
-                        cr->Send_ItemData( this, slot, item, true );
-                }
-            }
-            else
-            {
-                SyncLockCritters( false, true );
-
-                // Send all data if condition passably, else send half
-                for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
-                {
-                    Critter* cr = *it;
-                    if( cr->IsPlayer() )
-                    {
-                        if( RunSlotDataSendScript( script, slot, item, this, cr ) )
-                            cr->Send_ItemData( this, slot, item, true );
-                        else
-                            cr->Send_ItemData( this, slot, item, false );
-                    }
-                }
-            }
-        }
-        else
-        {
-            // Send half data
             for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
             {
                 Critter* cr = *it;
                 if( cr->IsPlayer() )
-                    cr->Send_ItemData( this, slot, item, false );
+                    cr->Send_CritterItemProperty( this, item, prop, property_data );
+            }
+        }
+        else
+        {
+            SyncLockCritters( false, true );
+
+            for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+            {
+                Critter* cr = *it;
+                if( cr->IsPlayer() && RunSlotDataSendScript( bind_id, slot, item, this, cr ) )
+                    cr->Send_CritterItemProperty( this, item, prop, property_data );
             }
         }
     }
@@ -3838,7 +3810,9 @@ void Client::Send_Action( Critter* from_cr, int action, int action_ext, Item* it
 {
     if( IsSendDisabled() || IsOffline() )
         return;
+
     Send_XY( from_cr );
+
     if( item )
         Send_SomeItem( item );
 
@@ -3871,36 +3845,37 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
 {
     if( IsSendDisabled() || IsOffline() )
         return;
-    Send_XY( from_cr );
+
     if( item )
         Send_SomeItem( item );
 
     uint     msg = NETMSG_CRITTER_MOVE_ITEM;
     uint     msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( action ) + sizeof( prev_slot ) + sizeof( bool );
 
-    uchar    slots_data_count = 0;
-    uchar    slots_data_ext_count = 0;
     ItemVec& inv = from_cr->GetInventory();
+    ItemVec  items_to_send;
+    items_to_send.reserve( inv.size() );
     for( auto it = inv.begin(), end = inv.end(); it != end; ++it )
     {
         Item* item_ = *it;
         uchar slot = item_->AccCritter.Slot;
-        if( slot != SLOT_INV && SlotEnabled[ slot ] )
+        if( SlotEnabled[ slot ] && SlotDataSendEnabled[ slot ] )
         {
             int script = SlotDataSendScript[ slot ];
-            if( SlotDataSendEnabled[ slot ] && ( !script || RunSlotDataSendScript( script, slot, item_, from_cr, this ) ) )
-            {
-                SlotCacheDataExt[ slots_data_ext_count ] = item_;
-                slots_data_ext_count++;
-            }
-            else
-            {
-                SlotCacheData[ slots_data_count ] = item_;
-                slots_data_count++;
-            }
+            if( !script || RunSlotDataSendScript( script, slot, item_, from_cr, this ) )
+                items_to_send.push_back( item_ );
         }
     }
-    msg_len += sizeof( uchar ) + ( sizeof( uchar ) + sizeof( uint ) + sizeof( hash ) + sizeof( Item::ItemData ) ) * ( slots_data_count + slots_data_ext_count );
+
+    msg_len += sizeof( ushort );
+    vector< UCharVec* > items_data( items_to_send.size() );
+    for( size_t i = 0, j = items_to_send.size(); i < j; i++ )
+    {
+        Item*     item_ = items_to_send[ i ];
+        UCharVec* data = item_->Props.StoreData( Property::PublicMask );
+        msg_len += sizeof( uchar ) + sizeof( uint ) + sizeof( hash ) + PUSH_BUF_LEN( data );
+        items_data[ i ] = data;
+    }
 
     BOUT_BEGIN( this );
     Bout << NETMSG_CRITTER_MOVE_ITEM;
@@ -3909,46 +3884,33 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     Bout << action;
     Bout << prev_slot;
     Bout << (bool) ( item ? true : false );
-
-    // Slots
-    Bout << (uchar) ( slots_data_count + slots_data_ext_count );
-    for( uchar i = 0; i < slots_data_count; i++ )
+    Bout << (ushort) items_to_send.size();
+    for( size_t i = 0, j = items_to_send.size(); i < j; i++ )
     {
-        Item* item_ = SlotCacheData[ i ];
+        Item* item_ = items_to_send[ i ];
         Bout << item_->AccCritter.Slot;
         Bout << item_->GetId();
         Bout << item_->GetProtoId();
-        Bout.Push( (char*) &item_->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_CRITTER ], sizeof( item_->Data ) );
-    }
-    for( uchar i = 0; i < slots_data_ext_count; i++ )
-    {
-        Item* item_ = SlotCacheDataExt[ i ];
-        Bout << item_->AccCritter.Slot;
-        Bout << item_->GetId();
-        Bout << item_->GetProtoId();
-        Bout.Push( (char*) &item_->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_CRITTER_EXT ], sizeof( item_->Data ) );
+        Bout.Push( items_data[ i ] );
     }
     BOUT_END( this );
 
     // Lexems
-    for( uchar i = 0; i < slots_data_count; i++ )
-        if( SlotCacheData[ i ]->PLexems )
-            Send_ItemLexems( SlotCacheData[ i ] );
-    for( uchar i = 0; i < slots_data_ext_count; i++ )
-        if( SlotCacheDataExt[ i ]->PLexems )
-            Send_ItemLexems( SlotCacheDataExt[ i ] );
+    for( size_t i = 0, j = items_to_send.size(); i < j; i++ )
+        Send_ItemLexems( items_to_send[ i ] );
 }
 
-void Client::Send_ItemData( Critter* from_cr, uchar slot, Item* item, bool ext_data )
+void Client::Send_CritterItemProperty( Critter* from_cr, Item* item, Property* prop, void* property_data )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_CRITTER_ITEM_DATA;
+    Bout << NETMSG_CRITTER_ITEM_PROPERTY( prop->Size );
     Bout << from_cr->GetId();
-    Bout << slot;
-    Bout.Push( (char*) &item->Data, Item::ItemData::SendMask[ ext_data ? ITEM_DATA_MASK_CRITTER_EXT : ITEM_DATA_MASK_CRITTER ], sizeof( item->Data ) );
+    Bout << item->GetId();
+    Bout << (ushort) prop->Index;
+    Bout.Push( (char*) property_data, prop->Size );
     BOUT_END( this );
 }
 
@@ -3991,35 +3953,37 @@ void Client::Send_AddItemOnMap( Item* item )
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    bool is_added = item->ViewPlaceOnMap;
+    bool      is_added = item->ViewPlaceOnMap;
+    uint      msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) * 2 + sizeof( bool );
+    UCharVec* item_data = item->Props.StoreData( Property::PublicMask );
+    msg_len += PUSH_BUF_LEN( item_data );
 
     BOUT_BEGIN( this );
     Bout << NETMSG_ADD_ITEM_ON_MAP;
+    Bout << msg_len;
     Bout << item->GetId();
     Bout << item->GetProtoId();
     Bout << item->AccHex.HexX;
     Bout << item->AccHex.HexY;
     Bout << is_added;
-    Bout.Push( (char*) &item->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_MAP ], sizeof( item->Data ) );
+    Bout.Push( item_data );
     BOUT_END( this );
 
     if( item->PLexems )
         Send_ItemLexems( item );
 }
 
-void Client::Send_ChangeItemOnMap( Item* item )
+void Client::Send_MapItemProperty( Item* item, Property* prop, void* property_data )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_CHANGE_ITEM_ON_MAP;
+    Bout << NETMSG_MAP_ITEM_PROPERTY( prop->Size );
     Bout << item->GetId();
-    Bout.Push( (char*) &item->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_MAP ], sizeof( item->Data ) );
+    Bout << (ushort) prop->Index;
+    Bout.Push( (char*) property_data, prop->Size );
     BOUT_END( this );
-
-    if( item->PLexems )
-        Send_ItemLexems( item );
 }
 
 void Client::Send_EraseItemFromMap( Item* item )
@@ -4054,12 +4018,17 @@ void Client::Send_AddItem( Item* item )
     if( item->IsHidden() )
         return;
 
+    uint      msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( uchar );
+    UCharVec* item_data = item->Props.StoreData( Property::PublicProtectedMask );
+    msg_len += PUSH_BUF_LEN( item_data );
+
     BOUT_BEGIN( this );
     Bout << NETMSG_ADD_ITEM;
+    Bout << msg_len;
     Bout << item->GetId();
     Bout << item->GetProtoId();
     Bout << item->AccCritter.Slot;
-    Bout.Push( (char*) &item->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_CHOSEN ], sizeof( item->Data ) );
+    Bout.Push( item_data );
     BOUT_END( this );
 
     if( item->PLexems )
@@ -4101,11 +4070,15 @@ void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open
     if( item_cont->GetType() != ITEM_TYPE_CONTAINER )
         return;
 
-    uint    msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uchar ) + sizeof( uint ) + sizeof( uint ) + sizeof( max_t ) + sizeof( uint );
-    ItemVec items;
+    uint                msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uchar ) + sizeof( uint ) + sizeof( uint ) + sizeof( max_t ) + sizeof( uint );
+    ItemVec             items;
     item_cont->ContGetAllItems( items, true, true );
-    if( items.size() )
-        msg_len += (uint) items.size() * ( sizeof( uint ) + sizeof( hash ) + sizeof( Item::ItemData ) );
+    vector< UCharVec* > items_data( items.size() );
+    for( size_t i = 0, j = items.size(); i < j; i++ )
+    {
+        items_data[ i ] = items[ i ]->Props.StoreData( Property::PublicMask );
+        msg_len += sizeof( uint ) + sizeof( hash ) + PUSH_BUF_LEN( items_data[ i ] );
+    }
     if( open_screen )
         SETFLAG( transfer_type, 0x80 );
 
@@ -4118,18 +4091,18 @@ void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open
     Bout << (max_t) item_cont->GetProtoId();
     Bout << uint( items.size() );
 
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
+    for( size_t i = 0, j = items.size(); i < j; i++ )
     {
-        Item* item = *it;
+        Item* item = items[ i ];
         Bout << item->GetId();
         Bout << item->GetProtoId();
-        Bout.Push( (char*) &item->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_CONTAINER ], sizeof( item->Data ) );
+        Bout.Push( items_data[ i ] );
     }
     BOUT_END( this );
 
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
+    for( size_t i = 0, j = items.size(); i < j; i++ )
     {
-        Item* item = *it;
+        Item* item = items[ i ];
         if( item->PLexems )
             Send_ItemLexems( item );
     }
@@ -4157,7 +4130,13 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
 
     if( open_screen )
         SETFLAG( transfer_type, 0x80 );
-    msg_len += (uint) items.size() * ( sizeof( uint ) + sizeof( hash ) + sizeof( Item::ItemData ) );
+
+    vector< UCharVec* > items_data( items.size() );
+    for( size_t i = 0, j = items.size(); i < j; i++ )
+    {
+        items_data[ i ] = items[ i ]->Props.StoreData( Property::PublicMask );
+        msg_len += sizeof( uint ) + sizeof( hash ) + PUSH_BUF_LEN( items_data[ i ] );
+    }
 
     BOUT_BEGIN( this );
     Bout << NETMSG_CONTAINER_INFO;
@@ -4168,18 +4147,18 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
     Bout << (max_t) barter_k;
     Bout << (uint) items.size();
 
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
+    for( size_t i = 0, j = items.size(); i < j; i++ )
     {
-        Item* item = *it;
+        Item* item = items[ i ];
         Bout << item->GetId();
         Bout << item->GetProtoId();
-        Bout.Push( (char*) &item->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_CONTAINER ], sizeof( item->Data ) );
+        Bout.Push( items_data[ i ] );
     }
     BOUT_END( this );
 
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
+    for( size_t i = 0, j = items.size(); i < j; i++ )
     {
-        Item* item = *it;
+        Item* item = items[ i ];
         if( item->PLexems )
             Send_ItemLexems( item );
     }
@@ -4416,13 +4395,13 @@ void Client::Send_Talk()
         Bout << is_npc;
         Bout << talk_id;
         Bout << all_answers;
-        Bout << (ushort) Talk.Lexems.length();                                  // Lexems length
+        Bout << (ushort) Talk.Lexems.length();                                      // Lexems length
         if( Talk.Lexems.length() )
-            Bout.Push( Talk.Lexems.c_str(), (uint) Talk.Lexems.length() );      // Lexems string
-        Bout << Talk.CurDialog.TextId;                                          // Main text_id
+            Bout.Push( Talk.Lexems.c_str(), (uint) Talk.Lexems.length() );          // Lexems string
+        Bout << Talk.CurDialog.TextId;                                              // Main text_id
         for( auto it = Talk.CurDialog.Answers.begin(), end = Talk.CurDialog.Answers.end(); it != end; ++it )
-            Bout << ( *it ).TextId;                                             // Answers text_id
-        Bout << uint( Talk.TalkTime - ( Timer::GameTick() - Talk.StartTick ) ); // Talk time
+            Bout << ( *it ).TextId;                                                 // Answers text_id
+        Bout << uint( Talk.TalkTime - ( Timer::GameTick() - Talk.StartTick ) );     // Talk time
     }
     BOUT_END( this );
 }
@@ -4891,12 +4870,16 @@ void Client::Send_PlayersBarterSetHide( Item* item, uint count )
     if( IsSendDisabled() || IsOffline() )
         return;
 
+    uint      msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( uint );
+    UCharVec* item_data = item->Props.StoreData( Property::PublicMask );
+    msg_len += PUSH_BUF_LEN( item_data );
+
     BOUT_BEGIN( this );
     Bout << NETMSG_PLAYERS_BARTER_SET_HIDE;
     Bout << item->GetId();
     Bout << item->GetProtoId();
     Bout << count;
-    Bout.Push( (char*) &item->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_CONTAINER ], sizeof( item->Data ) );
+    Bout.Push( item_data );
     BOUT_END( this );
 
     if( item->PLexems )
@@ -5039,12 +5022,17 @@ void Client::Send_CheckUIDS()
 
 void Client::Send_SomeItem( Item* item )
 {
+    uint      msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( uchar );
+    UCharVec* item_data = item->Props.StoreData( Property::PublicMask );
+    msg_len += PUSH_BUF_LEN( item_data );
+
     BOUT_BEGIN( this );
     Bout << NETMSG_SOME_ITEM;
+    Bout << msg_len;
     Bout << item->GetId();
     Bout << item->GetProtoId();
     Bout << item->AccCritter.Slot;
-    Bout.Push( (char*) &item->Data, Item::ItemData::SendMask[ ITEM_DATA_MASK_CRITTER ], sizeof( item->Data ) );
+    Bout.Push( item_data );
     BOUT_END( this );
 }
 
@@ -5411,9 +5399,9 @@ void Npc::RefreshBag()
     {
         Item* item = *it;
         if( pids.count( item->GetProtoId() ) )
-            pids[ item->GetProtoId() ] += item->GetCount();
+            pids[ item->GetProtoId() ] += item->Count;
         else
-            pids[ item->GetProtoId() ] = item->GetCount();
+            pids[ item->GetProtoId() ] = item->Count;
 
         // Repair/reload item in slots
         if( item->AccCritter.Slot != SLOT_INV )
@@ -5528,7 +5516,7 @@ label_EndCycles:
                             if( !GetItemSlot( bag_item.ItemSlot ) )
                             {
                                 Item* item = GetItemByPid( bag_item.ItemPid );
-                                if( item && MoveItem( SLOT_INV, bag_item.ItemSlot, item->GetId(), item->GetCount() ) )
+                                if( item && MoveItem( SLOT_INV, bag_item.ItemSlot, item->GetId(), item->Count ) )
                                     Data.FavoriteItemPid[ bag_item.ItemSlot ] = bag_item.ItemPid;
                             }
                         }

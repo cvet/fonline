@@ -463,7 +463,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, uint params_count, int* params, u
         {
             Item* item = ItemMngr.AddItemCritter( npc, pid, count );
             if( item && slot != SLOT_INV )
-                npc->MoveItem( SLOT_INV, slot, item->GetId(), item->GetCount() );
+                npc->MoveItem( SLOT_INV, slot, item->GetId(), item->Count );
         }
     }
 

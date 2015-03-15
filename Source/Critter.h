@@ -137,8 +137,6 @@ public:
     IntVec           ParamsChanged;
     int              ParamLocked;
     static bool      SlotEnabled[ 0x100 ];
-    static Item*     SlotCacheData[ 0x100 ];
-    static Item*     SlotCacheDataExt[ 0x100 ];
 
     CritDataExt* GetDataExt();
     void         SetMaps( uint map_id, hash map_pid );
@@ -339,7 +337,7 @@ public:
     void Send_LoadMap( Map* map );
     void Send_XY( Critter* cr );
     void Send_AddItemOnMap( Item* item );
-    void Send_ChangeItemOnMap( Item* item );
+    void Send_MapItemProperty( Item* item, Property* prop, void* cur_value );
     void Send_EraseItemFromMap( Item* item );
     void Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm );
     void Send_AddItem( Item* item );
@@ -365,7 +363,7 @@ public:
     void Send_Action( Critter* from_cr, int action, int action_ext, Item* item );
     void Send_Knockout( Critter* from_cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy );
     void Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar prev_slot );
-    void Send_ItemData( Critter* from_cr, uchar slot, Item* item, bool ext_data );
+    void Send_CritterItemProperty( Critter* from_cr, Item* item, Property* prop, void* property_data );
     void Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void Send_SetAnims( Critter* from_cr, int cond, uint anim1, uint anim2 );
     void Send_CombatResult( uint* combat_res, uint len );
@@ -387,7 +385,7 @@ public:
     void SendAA_Action( int action, int action_ext, Item* item );
     void SendA_Knockout( uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy );
     void SendAA_MoveItem( Item* item, uchar action, uchar prev_slot );
-    void SendAA_ItemData( Item* item );
+    void SendAA_CritterItemProperty( Item* item, Property* prop, void* property_data );
     void SendAA_Animate( uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void SendAA_SetAnims( int cond, uint anim1, uint anim2 );
     void SendA_GlobalInfo( GlobalMapGroup* group, uchar info_flags );
@@ -662,7 +660,7 @@ public:
     void Send_LoadMap( Map* map );
     void Send_XY( Critter* cr );
     void Send_AddItemOnMap( Item* item );
-    void Send_ChangeItemOnMap( Item* item );
+    void Send_MapItemProperty( Item* item, Property* prop, void* cur_value );
     void Send_EraseItemFromMap( Item* item );
     void Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm );
     void Send_AddItem( Item* item );
@@ -688,7 +686,7 @@ public:
     void Send_Action( Critter* from_cr, int action, int action_ext, Item* item );
     void Send_Knockout( Critter* from_cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy );
     void Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar prev_slot );
-    void Send_ItemData( Critter* from_cr, uchar slot, Item* item, bool ext_data );
+    void Send_CritterItemProperty( Critter* from_cr, Item* item, Property* prop, void* property_data );
     void Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void Send_SetAnims( Critter* from_cr, int cond, uint anim1, uint anim2 );
     void Send_CombatResult( uint* combat_res, uint len );

@@ -150,6 +150,7 @@ set( COMMON_SOURCE
 	IniParser.cpp IniParser.h
 	Log.cpp Log.h
 	PlatformSpecific.h
+	Properties.cpp Properties.h
 	Randomizer.h
 	ScriptBind.h
 	ScriptFunctions.h

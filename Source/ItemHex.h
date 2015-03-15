@@ -13,7 +13,7 @@ struct AnyFrames;
 class ItemHex: public Item
 {
 public:
-    ItemHex( uint id, ProtoItem* proto, Item::ItemData* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut );
+    ItemHex( uint id, ProtoItem* proto, const UCharVec* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut );
     // ~ItemHex() Destructor not been called because Item not have virtual destructor
     bool operator==( const ushort& _right ) { return ( GetProtoId() == _right ); }
 
@@ -45,8 +45,8 @@ public:
     bool   IsWall()             { return Proto->IsWall(); }
     ushort GetHexX()            { return HexX; }
     ushort GetHexY()            { return HexY; }
-    short  GetOffsetX()         { return Data.OffsetX ? Data.OffsetX : Proto->OffsetX; }
-    short  GetOffsetY()         { return Data.OffsetY ? Data.OffsetY : Proto->OffsetY; }
+    short  GetOffsetX()         { return OffsetX ? OffsetX : Proto->OffsetX; }
+    short  GetOffsetY()         { return OffsetY ? OffsetY : Proto->OffsetY; }
     bool   IsAnimated()         { return isAnimated; }
     bool   IsCanLook()          { return !( Proto->IsGrid() && Proto->Grid_Type == GRID_EXITGRID ); }
     bool   IsUsable()           { return !IsWall() && ( IsCanUse() || IsCanUseOnSmth() || IsCanPickUp() || ( IsScenOrGrid() && FLAG( ScenFlags, SCEN_CAN_USE ) ) ); }

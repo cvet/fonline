@@ -7,6 +7,7 @@
 #include "FileManager.h"
 #include "IniParser.h"
 #include <stdarg.h>
+#include "ConstantsManager.h"
 
 #pragma MESSAGE("Add TARGET_HEX.")
 
@@ -467,6 +468,24 @@ uint GetDoubleClickTicks()
     // Todo: Linux
     return 500;
     #endif
+}
+
+int64 ConvertParamValue( const char* str )
+{
+    if( !str[ 0 ] )
+        return 0;
+
+    if( str[ 0 ] == '$' )
+    {
+        #ifndef FONLINE_SCRIPT_COMPILER
+        return ConstantsManager::GetDefineValue( str + 1 );
+        #else
+        return 0;
+        #endif
+    }
+    if( !Str::IsNumber( str ) )
+        return Str::GetHash( str );
+    return Str::AtoI64( str );
 }
 
 /************************************************************************/

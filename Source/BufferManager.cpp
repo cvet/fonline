@@ -169,6 +169,34 @@ void BufferManager::Pop( char* buf, uint len )
     bufReadPos += len;
 }
 
+void BufferManager::Push( const UCharVec* buf )
+{
+    if( buf && !buf->empty() )
+    {
+        *this << (ushort) buf->size();
+        Push( (char*) &buf->at( 0 ), (ushort) buf->size() );
+    }
+    else
+    {
+        *this << (ushort) 0;
+    }
+}
+
+void BufferManager::Pop( UCharVec& buf )
+{
+    ushort len = 0;
+    *this >> len;
+    if( len )
+    {
+        buf.resize( len );
+        Pop( (char*) &buf[ 0 ], len );
+    }
+    else
+    {
+        buf.clear();
+    }
+}
+
 void BufferManager::Cut( uint len )
 {
     if( isError || !len )
@@ -268,18 +296,10 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_CRAFT_RESULT_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CLEAR_ITEMS:
         return ( NETMSG_CLEAR_ITEMS_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_ADD_ITEM:
-        return ( NETMSG_ADD_ITEM_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_REMOVE_ITEM:
         return ( NETMSG_REMOVE_ITEM_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_SORT_VALUE_ITEM:
-        return ( NETMSG_SEND_SORT_VALUE_ITEM_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_ALL_ITEMS_SEND:
         return ( NETMSG_ALL_ITEMS_SEND_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_ADD_ITEM_ON_MAP:
-        return ( NETMSG_ADD_ITEM_ON_MAP_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_CHANGE_ITEM_ON_MAP:
-        return ( NETMSG_CHANGE_ITEM_ON_MAP_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_ERASE_ITEM_FROM_MAP:
         return ( NETMSG_ERASE_ITEM_FROM_MAP_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_ANIMATE_ITEM:
@@ -298,14 +318,10 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_SEND_USE_SKILL_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_PICK_CRITTER:
         return ( NETMSG_SEND_PICK_CRITTER_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SOME_ITEM:
-        return ( NETMSG_SOME_ITEM_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CRITTER_ACTION:
         return ( NETMSG_CRITTER_ACTION_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CRITTER_KNOCKOUT:
         return ( NETMSG_CRITTER_KNOCKOUT_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_CRITTER_ITEM_DATA:
-        return ( NETMSG_CRITTER_ITEM_DATA_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CRITTER_ANIMATE:
         return ( NETMSG_CRITTER_ANIMATE_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CRITTER_SET_ANIMS:
@@ -326,8 +342,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_SEND_SAY_NPC_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_PLAYERS_BARTER:
         return ( NETMSG_PLAYERS_BARTER_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_PLAYERS_BARTER_SET_HIDE:
-        return ( NETMSG_PLAYERS_BARTER_SET_HIDE_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_GET_INFO:
         return ( NETMSG_SEND_GET_TIME_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_GAME_INFO:
@@ -364,6 +378,30 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_SEND_GET_SCORES_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SCORES:
         return ( NETMSG_SCORES_SIZE + bufReadPos <= bufEndPos );
+    case NETMSG_SEND_ITEM_PROPERTY( 1 ):
+        return ( NETMSG_SEND_ITEM_PROPERTY_SIZE( 1 ) + bufReadPos <= bufEndPos );
+    case NETMSG_SEND_ITEM_PROPERTY( 2 ):
+        return ( NETMSG_SEND_ITEM_PROPERTY_SIZE( 2 ) + bufReadPos <= bufEndPos );
+    case NETMSG_SEND_ITEM_PROPERTY( 4 ):
+        return ( NETMSG_SEND_ITEM_PROPERTY_SIZE( 4 ) + bufReadPos <= bufEndPos );
+    case NETMSG_SEND_ITEM_PROPERTY( 8 ):
+        return ( NETMSG_SEND_ITEM_PROPERTY_SIZE( 8 ) + bufReadPos <= bufEndPos );
+    case NETMSG_CRITTER_ITEM_PROPERTY( 1 ):
+        return ( NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 1 ) + bufReadPos <= bufEndPos );
+    case NETMSG_CRITTER_ITEM_PROPERTY( 2 ):
+        return ( NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 2 ) + bufReadPos <= bufEndPos );
+    case NETMSG_CRITTER_ITEM_PROPERTY( 4 ):
+        return ( NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 4 ) + bufReadPos <= bufEndPos );
+    case NETMSG_CRITTER_ITEM_PROPERTY( 8 ):
+        return ( NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 8 ) + bufReadPos <= bufEndPos );
+    case NETMSG_MAP_ITEM_PROPERTY( 1 ):
+        return ( NETMSG_MAP_ITEM_PROPERTY_SIZE( 1 ) + bufReadPos <= bufEndPos );
+    case NETMSG_MAP_ITEM_PROPERTY( 2 ):
+        return ( NETMSG_MAP_ITEM_PROPERTY_SIZE( 2 ) + bufReadPos <= bufEndPos );
+    case NETMSG_MAP_ITEM_PROPERTY( 4 ):
+        return ( NETMSG_MAP_ITEM_PROPERTY_SIZE( 4 ) + bufReadPos <= bufEndPos );
+    case NETMSG_MAP_ITEM_PROPERTY( 8 ):
+        return ( NETMSG_MAP_ITEM_PROPERTY_SIZE( 8 ) + bufReadPos <= bufEndPos );
     default:
         break;
     }
@@ -397,6 +435,10 @@ bool BufferManager::NeedProcess()
     case NETMSG_MAP_TEXT_MSG_LEX:
     case NETMSG_SEND_LEVELUP:
     case NETMSG_CRAFT_ASK:
+    case NETMSG_ADD_ITEM:
+    case NETMSG_ADD_ITEM_ON_MAP:
+    case NETMSG_SOME_ITEM:
+    case NETMSG_PLAYERS_BARTER_SET_HIDE:
     case NETMSG_CONTAINER_INFO:
     case NETMSG_CRITTER_MOVE_ITEM:
     case NETMSG_COMBAT_RESULTS:
@@ -510,23 +552,11 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_CLEAR_ITEMS:
         size = NETMSG_CLEAR_ITEMS_SIZE;
         break;
-    case NETMSG_ADD_ITEM:
-        size = NETMSG_ADD_ITEM_SIZE;
-        break;
     case NETMSG_REMOVE_ITEM:
         size = NETMSG_REMOVE_ITEM_SIZE;
         break;
-    case NETMSG_SEND_SORT_VALUE_ITEM:
-        size = NETMSG_SEND_SORT_VALUE_ITEM_SIZE;
-        break;
     case NETMSG_ALL_ITEMS_SEND:
         size = NETMSG_ALL_ITEMS_SEND_SIZE;
-        break;
-    case NETMSG_ADD_ITEM_ON_MAP:
-        size = NETMSG_ADD_ITEM_ON_MAP_SIZE;
-        break;
-    case NETMSG_CHANGE_ITEM_ON_MAP:
-        size = NETMSG_CHANGE_ITEM_ON_MAP_SIZE;
         break;
     case NETMSG_ERASE_ITEM_FROM_MAP:
         size = NETMSG_ERASE_ITEM_FROM_MAP_SIZE;
@@ -555,17 +585,11 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_SEND_PICK_CRITTER:
         size = NETMSG_SEND_PICK_CRITTER_SIZE;
         break;
-    case NETMSG_SOME_ITEM:
-        size = NETMSG_SOME_ITEM_SIZE;
-        break;
     case NETMSG_CRITTER_ACTION:
         size = NETMSG_CRITTER_ACTION_SIZE;
         break;
     case NETMSG_CRITTER_KNOCKOUT:
         size = NETMSG_CRITTER_KNOCKOUT_SIZE;
-        break;
-    case NETMSG_CRITTER_ITEM_DATA:
-        size = NETMSG_CRITTER_ITEM_DATA_SIZE;
         break;
     case NETMSG_CRITTER_ANIMATE:
         size = NETMSG_CRITTER_ANIMATE_SIZE;
@@ -596,9 +620,6 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_PLAYERS_BARTER:
         size = NETMSG_PLAYERS_BARTER_SIZE;
-        break;
-    case NETMSG_PLAYERS_BARTER_SET_HIDE:
-        size = NETMSG_PLAYERS_BARTER_SET_HIDE_SIZE;
         break;
     case NETMSG_SEND_GET_INFO:
         size = NETMSG_SEND_GET_TIME_SIZE;
@@ -654,6 +675,42 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_SCORES:
         size = NETMSG_SCORES_SIZE;
         break;
+    case NETMSG_SEND_ITEM_PROPERTY( 1 ):
+        size = NETMSG_SEND_ITEM_PROPERTY_SIZE( 1 );
+        break;
+    case NETMSG_SEND_ITEM_PROPERTY( 2 ):
+        size = NETMSG_SEND_ITEM_PROPERTY_SIZE( 2 );
+        break;
+    case NETMSG_SEND_ITEM_PROPERTY( 4 ):
+        size = NETMSG_SEND_ITEM_PROPERTY_SIZE( 4 );
+        break;
+    case NETMSG_SEND_ITEM_PROPERTY( 8 ):
+        size = NETMSG_SEND_ITEM_PROPERTY_SIZE( 8 );
+        break;
+    case NETMSG_CRITTER_ITEM_PROPERTY( 1 ):
+        size = NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 1 );
+        break;
+    case NETMSG_CRITTER_ITEM_PROPERTY( 2 ):
+        size = NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 2 );
+        break;
+    case NETMSG_CRITTER_ITEM_PROPERTY( 4 ):
+        size = NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 4 );
+        break;
+    case NETMSG_CRITTER_ITEM_PROPERTY( 8 ):
+        size = NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 8 );
+        break;
+    case NETMSG_MAP_ITEM_PROPERTY( 1 ):
+        size = NETMSG_MAP_ITEM_PROPERTY_SIZE( 1 );
+        break;
+    case NETMSG_MAP_ITEM_PROPERTY( 2 ):
+        size = NETMSG_MAP_ITEM_PROPERTY_SIZE( 2 );
+        break;
+    case NETMSG_MAP_ITEM_PROPERTY( 4 ):
+        size = NETMSG_MAP_ITEM_PROPERTY_SIZE( 4 );
+        break;
+    case NETMSG_MAP_ITEM_PROPERTY( 8 ):
+        size = NETMSG_MAP_ITEM_PROPERTY_SIZE( 8 );
+        break;
 
     case NETMSG_CHECK_UID0:
     case NETMSG_CHECK_UID1:
@@ -690,6 +747,10 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_SEND_SET_USER_HOLO_STR:
     case NETMSG_USER_HOLO_STR:
     case NETMSG_AUTOMAPS_INFO:
+    case NETMSG_ADD_ITEM:
+    case NETMSG_ADD_ITEM_ON_MAP:
+    case NETMSG_SOME_ITEM:
+    case NETMSG_PLAYERS_BARTER_SET_HIDE:
     {
         // Changeable size
         EncryptKey( sizeof( msg ) );

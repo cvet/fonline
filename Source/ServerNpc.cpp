@@ -106,12 +106,12 @@ void FOServer::ProcessAI( Npc* npc )
             {
                 if( npc->ItemSlotMain->GetId() )
                 {
-                    AI_MoveItem( npc, map, npc->ItemSlotMain->AccCritter.Slot, SLOT_INV, npc->ItemSlotMain->GetId(), npc->ItemSlotMain->GetCount() );
+                    AI_MoveItem( npc, map, npc->ItemSlotMain->AccCritter.Slot, SLOT_INV, npc->ItemSlotMain->GetId(), npc->ItemSlotMain->Count );
                     return;
                 }
                 else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && ( !favor_item->IsWeapon() || CritType::IsAnim1( npc->GetCrType(), favor_item->Proto->Weapon_Anim1 ) ) )
                 {
-                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_HAND1, favor_item->GetId(), favor_item->GetCount() );
+                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_HAND1, favor_item->GetId(), favor_item->Count );
                     return;
                 }
             }
@@ -121,12 +121,12 @@ void FOServer::ProcessAI( Npc* npc )
             {
                 if( npc->ItemSlotExt->GetId() )
                 {
-                    AI_MoveItem( npc, map, npc->ItemSlotExt->AccCritter.Slot, SLOT_INV, npc->ItemSlotExt->GetId(), npc->ItemSlotExt->GetCount() );
+                    AI_MoveItem( npc, map, npc->ItemSlotExt->AccCritter.Slot, SLOT_INV, npc->ItemSlotExt->GetId(), npc->ItemSlotExt->Count );
                     return;
                 }
                 else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) )
                 {
-                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_HAND2, favor_item->GetId(), favor_item->GetCount() );
+                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_HAND2, favor_item->GetId(), favor_item->Count );
                     return;
                 }
             }
@@ -136,12 +136,12 @@ void FOServer::ProcessAI( Npc* npc )
             {
                 if( npc->ItemSlotArmor->GetId() )
                 {
-                    AI_MoveItem( npc, map, npc->ItemSlotArmor->AccCritter.Slot, SLOT_INV, npc->ItemSlotArmor->GetId(), npc->ItemSlotArmor->GetCount() );
+                    AI_MoveItem( npc, map, npc->ItemSlotArmor->AccCritter.Slot, SLOT_INV, npc->ItemSlotArmor->GetId(), npc->ItemSlotArmor->Count );
                     return;
                 }
                 else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && favor_item->IsArmor() && !favor_item->Proto->Slot )
                 {
-                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_ARMOR, favor_item->GetId(), favor_item->GetCount() );
+                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_ARMOR, favor_item->GetId(), favor_item->Count );
                     return;
                 }
             }
@@ -442,7 +442,7 @@ void FOServer::ProcessAI( Npc* npc )
             int   use;
             Item* weap = NULL;
             uint  r0 = targ->GetId(), r1 = 0, r2 = 0;
-            int   sss = 0;
+            int   way = 0;
             if( !npc->RunPlane( REASON_ATTACK_WEAPON, r0, r1, r2 ) )
             {
                 WriteLog( "REASON_ATTACK_WEAPON fail. Skip attack.\n" );
@@ -454,7 +454,7 @@ void FOServer::ProcessAI( Npc* npc )
             if( r0 )
             {
                 weap = npc->GetItem( r0, false );
-                SETFLAG( sss, 0x000001 );
+                SETFLAG( way, 0x000001 );
             }
             else
             {
@@ -464,14 +464,14 @@ void FOServer::ProcessAI( Npc* npc )
                     break;
                 }
 
-                SETFLAG( sss, 0x000002 );
+                SETFLAG( way, 0x000002 );
                 ProtoItem* unarmed = ItemMngr.GetProtoItem( r2 );
                 if( unarmed && unarmed->Weapon_IsUnarmed )
                 {
-                    SETFLAG( sss, 0x000004 );
+                    SETFLAG( way, 0x000004 );
                     Item* def_item_main = npc->GetDefaultItemSlotMain();
                     if( def_item_main->Proto != unarmed )
-                        def_item_main->Init( unarmed );
+                        def_item_main->SetProto( unarmed );
                     weap = def_item_main;
                 }
             }
@@ -479,7 +479,7 @@ void FOServer::ProcessAI( Npc* npc )
 
             if( !weap || !weap->IsWeapon() || !weap->WeapIsUseAviable( use ) )
             {
-                WriteLog( "REASON_ATTACK_WEAPON fail, debug values<%u><%p><%d><%d>.\n", sss, weap, weap ? weap->IsWeapon() : -1, weap ? weap->WeapIsUseAviable( use ) : -1 );
+                WriteLog( "REASON_ATTACK_WEAPON fail, debug values<%u><%p><%d><%d>.\n", way, weap, weap ? weap->IsWeapon() : -1, weap ? weap->WeapIsUseAviable( use ) : -1 );
                 break;
             }
 
@@ -490,14 +490,14 @@ void FOServer::ProcessAI( Npc* npc )
                 if( npc->ItemSlotMain->GetId() )                       // Is no hands
                 {
                     Item* item_hand = npc->ItemSlotMain;
-                    AI_MoveItem( npc, map, SLOT_HAND1, SLOT_INV, item_hand->GetId(), item_hand->GetCount() );
+                    AI_MoveItem( npc, map, SLOT_HAND1, SLOT_INV, item_hand->GetId(), item_hand->Count );
                     break;
                 }
 
                 // Show new
                 if( weap->GetId() )                       // Is no hands
                 {
-                    AI_MoveItem( npc, map, weap->AccCritter.Slot, SLOT_HAND1, weap->GetId(), weap->GetCount() );
+                    AI_MoveItem( npc, map, weap->AccCritter.Slot, SLOT_HAND1, weap->GetId(), weap->Count );
                     break;
                 }
             }
@@ -1962,9 +1962,9 @@ void FOServer::Process_Barter( Client* cl )
             return;
         }
 
-        if( !sale_item_count[ i ] || sale_item_count[ i ] > item->GetCount() )
+        if( !sale_item_count[ i ] || sale_item_count[ i ] > item->Count )
         {
-            WriteLogF( _FUNC_, " - Sale item count error, id<%u>, count<%u>, real count<%u>, client<%s>, npc<%s>.\n", sale_item_id[ i ], sale_item_count[ i ], item->GetCount(), cl->GetInfo(), npc->GetInfo() );
+            WriteLogF( _FUNC_, " - Sale item count error, id<%u>, count<%u>, real count<%u>, client<%s>, npc<%s>.\n", sale_item_id[ i ], sale_item_count[ i ], item->Count, cl->GetInfo(), npc->GetInfo() );
             cl->Send_ContainerInfo();
             return;
         }
@@ -2012,9 +2012,9 @@ void FOServer::Process_Barter( Client* cl )
             return;
         }
 
-        if( !buy_item_count[ i ] || buy_item_count[ i ] > item->GetCount() )
+        if( !buy_item_count[ i ] || buy_item_count[ i ] > item->Count )
         {
-            WriteLogF( _FUNC_, " - Buy item count error, id<%u>, count<%u>, real count<%u>, client<%s>, npc<%s>.\n", buy_item_id[ i ], buy_item_count[ i ], item->GetCount(), cl->GetInfo(), npc->GetInfo() );
+            WriteLogF( _FUNC_, " - Buy item count error, id<%u>, count<%u>, real count<%u>, client<%s>, npc<%s>.\n", buy_item_id[ i ], buy_item_count[ i ], item->Count, cl->GetInfo(), npc->GetInfo() );
             cl->Send_ContainerInfo();
             return;
         }

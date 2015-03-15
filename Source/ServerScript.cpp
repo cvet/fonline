@@ -87,8 +87,11 @@ bool FOServer::InitScriptSystem()
         asSetGlobalMemoryFunctions( malloc, free );
     #endif
 
+    // Properties
+    PropertyRegistrator* registrators[ 1 ] = { new PropertyRegistrator( true, "Item" ) };
+
     // Init
-    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_SERVER ), "SERVER", AllowServerNativeCalls ) )
+    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_SERVER, registrators ), "SERVER", AllowServerNativeCalls ) )
     {
         WriteLog( "Script System initialization failed.\n" );
         return false;
@@ -198,6 +201,12 @@ bool FOServer::InitScriptSystem()
     if( !Script::RunModuleInitFunctions() )
         return false;
 
+    Item::SetPropertyRegistrator( registrators[ 0 ] );
+    Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "Count", OnSetItemCount );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "Flags", OnSetItemFlags );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "TrapValue", OnSetItemTrapValue );
+
     WriteLog( "Script system initialization complete.\n" );
     return true;
 }
@@ -269,7 +278,7 @@ int FOServer::DialogGetParam( Critter* master, Critter* slave, uint index )
 namespace ClientBind
 {
     #include "DummyData.h"
-    static int Bind( asIScriptEngine* engine )
+    static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     {
         int bind_errors = 0;
         #include "ScriptBind.h"
@@ -296,15 +305,20 @@ bool FOServer::ReloadClientScripts()
     asSetGlobalMemoryFunctions( malloc, free );
     #endif
 
+    // Properties
+    PropertyRegistrator  reg0( false, "ItemCl" );
+    PropertyRegistrator* registrators[ 1 ] = { &reg0 };
+
+    // Swap engine
     asIScriptEngine* old_engine = Script::GetEngine();
-    asIScriptEngine* engine = Script::CreateEngine( new ScriptPragmaCallback( PRAGMA_CLIENT ), "CLIENT", AllowClientNativeCalls );
+    asIScriptEngine* engine = Script::CreateEngine( new ScriptPragmaCallback( PRAGMA_CLIENT, registrators ), "CLIENT", AllowClientNativeCalls );
     if( engine )
         Script::SetEngine( engine );
 
     // Bind vars and functions
     int bind_errors = 0;
     if( engine )
-        bind_errors = ClientBind::Bind( engine );
+        bind_errors = ClientBind::Bind( engine, registrators );
 
     // Check errors
     if( !engine || bind_errors )
@@ -525,7 +539,7 @@ bool FOServer::ReloadClientScripts()
 namespace MapperBind
 {
     #include "DummyData.h"
-    static int Bind( asIScriptEngine* engine )
+    static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     {
         int bind_errors = 0;
         #include "ScriptBind.h"
@@ -552,15 +566,19 @@ bool FOServer::ReloadMapperScripts()
     asSetGlobalMemoryFunctions( malloc, free );
     #endif
 
+    // Properties
+    PropertyRegistrator* registrators[ 1 ] = { NULL };
+
+    // Swap engine
     asIScriptEngine* old_engine = Script::GetEngine();
-    asIScriptEngine* engine = Script::CreateEngine( new ScriptPragmaCallback( PRAGMA_MAPPER ), "MAPPER", true );
+    asIScriptEngine* engine = Script::CreateEngine( new ScriptPragmaCallback( PRAGMA_MAPPER, registrators ), "MAPPER", true );
     if( engine )
         Script::SetEngine( engine );
 
     // Bind vars and functions
     int bind_errors = 0;
     if( engine )
-        bind_errors = MapperBind::Bind( engine );
+        bind_errors = MapperBind::Bind( engine, registrators );
 
     // Check errors
     if( !engine || bind_errors )
@@ -832,7 +850,7 @@ bool FOServer::SScriptFunc::Item_SetScript( Item* item, ScriptString* script )
         SCRIPT_ERROR_R0( "This nullptr." );
     if( !script || !script->length() )
     {
-        item->Data.ScriptId = 0;
+        item->ScriptId = 0;
     }
     else
     {
@@ -846,7 +864,7 @@ hash FOServer::SScriptFunc::Item_GetScriptId( Item* item )
 {
     if( item->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
-    return item->Data.ScriptId;
+    return item->ScriptId;
 }
 
 bool FOServer::SScriptFunc::Item_SetEvent( Item* item, int event_type, ScriptString* func_name )
@@ -885,27 +903,6 @@ hash FOServer::SScriptFunc::Item_GetProtoId( Item* item )
     if( item->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
     return item->GetProtoId();
-}
-
-uint FOServer::SScriptFunc::Item_GetCount( Item* item )
-{
-    if( item->IsNotValid )
-        SCRIPT_ERROR_R0( "This nullptr." );
-    return item->GetCount();
-}
-
-void FOServer::SScriptFunc::Item_SetCount( Item* item, uint count )
-{
-    if( item->IsNotValid )
-        SCRIPT_ERROR_R( "This nullptr." );
-    if( !item->IsStackable() )
-        SCRIPT_ERROR_R( "Item is not grouped." );
-    if( count == 0 )
-        SCRIPT_ERROR_R( "Count arg is zero." );
-    if( item->GetCount() == count )
-        return;
-    item->Count_Set( count );
-    ItemMngr.NotifyChangeItem( item );
 }
 
 uint FOServer::SScriptFunc::Item_GetCost( Item* item )
@@ -1003,13 +1000,6 @@ bool FOServer::SScriptFunc::Item_ChangeProto( Item* item, hash pid )
         map->AddItem( item, hx, hy );
     }
     return true;
-}
-
-void FOServer::SScriptFunc::Item_Update( Item* item )
-{
-    if( item->IsNotValid )
-        SCRIPT_ERROR_R( "This nullptr." );
-    ItemMngr.NotifyChangeItem( item );
 }
 
 void FOServer::SScriptFunc::Item_Animate( Item* item, uchar from_frm, uchar to_frm )
@@ -1122,23 +1112,28 @@ bool FOServer::SScriptFunc::Item_LockerOpen( Item* item )
         SCRIPT_ERROR_R0( "Door is not changeble." );
     if( item->LockerIsOpen() )
         return true;
-    SETFLAG( item->Data.LockerCondition, LOCKER_ISOPEN );
+
+    ushort locker_condition = item->LockerCondition;
+    SETFLAG( locker_condition, LOCKER_ISOPEN );
+    item->SetPropertyValue< ushort >( Item::PropertyLockerCondition, locker_condition );
+
     if( item->IsDoor() )
     {
+        uint flags = item->Flags;
         bool recache_block = false;
         bool recache_shoot = false;
         if( !item->Proto->Door_NoBlockMove )
         {
-            SETFLAG( item->Data.Flags, ITEM_NO_BLOCK );
+            SETFLAG( flags, ITEM_NO_BLOCK );
             recache_block = true;
         }
         if( !item->Proto->Door_NoBlockShoot )
         {
-            SETFLAG( item->Data.Flags, ITEM_SHOOT_THRU );
+            SETFLAG( flags, ITEM_SHOOT_THRU );
             recache_shoot = true;
         }
         if( !item->Proto->Door_NoBlockLight )
-            SETFLAG( item->Data.Flags, ITEM_LIGHT_THRU );
+            SETFLAG( flags, ITEM_LIGHT_THRU );
 
         if( item->Accessory == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
         {
@@ -1153,8 +1148,9 @@ bool FOServer::SScriptFunc::Item_LockerOpen( Item* item )
                     map->RecacheHexShoot( item->AccHex.HexX, item->AccHex.HexY );
             }
         }
+
+        item->SetPropertyValue< uint >( Item::PropertyFlags, flags );
     }
-    ItemMngr.NotifyChangeItem( item );
     return true;
 }
 
@@ -1168,23 +1164,28 @@ bool FOServer::SScriptFunc::Item_LockerClose( Item* item )
         SCRIPT_ERROR_R0( "Door is not changeble." );
     if( item->LockerIsClose() )
         return true;
-    UNSETFLAG( item->Data.LockerCondition, LOCKER_ISOPEN );
+
+    ushort locker_condition = item->LockerCondition;
+    UNSETFLAG( locker_condition, LOCKER_ISOPEN );
+    item->SetPropertyValue< ushort >( Item::PropertyLockerCondition, locker_condition );
+
     if( item->IsDoor() )
     {
+        uint flags = item->Flags;
         bool recache_block = false;
         bool recache_shoot = false;
         if( !item->Proto->Door_NoBlockMove )
         {
-            UNSETFLAG( item->Data.Flags, ITEM_NO_BLOCK );
+            UNSETFLAG( flags, ITEM_NO_BLOCK );
             recache_block = true;
         }
         if( !item->Proto->Door_NoBlockShoot )
         {
-            UNSETFLAG( item->Data.Flags, ITEM_SHOOT_THRU );
+            UNSETFLAG( flags, ITEM_SHOOT_THRU );
             recache_shoot = true;
         }
         if( !item->Proto->Door_NoBlockLight )
-            UNSETFLAG( item->Data.Flags, ITEM_LIGHT_THRU );
+            UNSETFLAG( flags, ITEM_LIGHT_THRU );
 
         if( item->Accessory == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
         {
@@ -1197,8 +1198,9 @@ bool FOServer::SScriptFunc::Item_LockerClose( Item* item )
                     map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_NRAKE_ITEM );
             }
         }
+
+        item->SetPropertyValue< uint >( Item::PropertyFlags, flags );
     }
-    ItemMngr.NotifyChangeItem( item );
     return true;
 }
 
@@ -1278,114 +1280,6 @@ void FOServer::SScriptFunc::Item_EventWalk( Item* item, Critter* cr, bool entere
     if( cr->IsNotValid )
         SCRIPT_ERROR_R( "Critter arg nullptr." );
     item->EventWalk( cr, entered, dir );
-}
-
-void FOServer::SScriptFunc::Item_set_Flags( Item* item, uint value )
-{
-    if( item->IsNotValid )
-        return;
-
-    uint old = item->Data.Flags;
-    item->Data.Flags = value;
-    Map* map = NULL;
-
-    // Recalculate view for this item
-    if( ( old & ( ITEM_HIDDEN | ITEM_ALWAYS_VIEW | ITEM_TRAP ) ) != ( value & ( ITEM_HIDDEN | ITEM_ALWAYS_VIEW | ITEM_TRAP ) ) )
-    {
-        if( item->Accessory == ITEM_ACCESSORY_HEX )
-        {
-            if( !map )
-                map = MapMngr.GetMap( item->AccHex.MapId );
-            if( map )
-                map->ChangeViewItem( item );
-        }
-        else if( item->Accessory == ITEM_ACCESSORY_CRITTER && ( old & ITEM_HIDDEN ) != ( value & ITEM_HIDDEN ) )
-        {
-            Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, false );
-            if( cr )
-            {
-                if( FLAG( value, ITEM_HIDDEN ) )
-                    cr->Send_EraseItem( item );
-                else
-                    cr->Send_AddItem( item );
-                cr->SendAA_MoveItem( item, ACTION_REFRESH, 0 );
-            }
-        }
-    }
-
-    // Recache move and shoot blockers
-    if( ( old & ( ITEM_NO_BLOCK | ITEM_SHOOT_THRU | ITEM_GAG ) ) != ( value & ( ITEM_NO_BLOCK | ITEM_SHOOT_THRU | ITEM_GAG ) ) && item->Accessory == ITEM_ACCESSORY_HEX )
-    {
-        if( !map )
-            map = MapMngr.GetMap( item->AccHex.MapId );
-        if( map )
-        {
-            bool recache_block = false;
-            bool recache_shoot = false;
-
-            if( FLAG( value, ITEM_NO_BLOCK ) )
-                recache_block = true;
-            else
-                map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_BLOCK_ITEM );
-            if( FLAG( value, ITEM_SHOOT_THRU ) )
-                recache_shoot = true;
-            else
-                map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_NRAKE_ITEM );
-            if( !FLAG( value, ITEM_GAG ) )
-                recache_block = true;
-            else
-                map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_GAG_ITEM );
-
-            if( recache_block && recache_shoot )
-                map->RecacheHexBlockShoot( item->AccHex.HexX, item->AccHex.HexY );
-            else if( recache_block )
-                map->RecacheHexBlock( item->AccHex.HexX, item->AccHex.HexY );
-            else if( recache_shoot )
-                map->RecacheHexShoot( item->AccHex.HexX, item->AccHex.HexY );
-        }
-    }
-
-    // Recache geck value
-    if( ( old & ITEM_GECK ) != ( value & ITEM_GECK ) && item->Accessory == ITEM_ACCESSORY_HEX )
-    {
-        if( !map )
-            map = MapMngr.GetMap( item->AccHex.MapId );
-        if( map )
-            map->GetLocation( false )->GeckCount += ( FLAG( value, ITEM_GECK ) ? 1 : -1 );
-    }
-
-    // Process radio flag
-    if( ( old & ITEM_RADIO ) != ( value & ITEM_RADIO ) )
-    {
-        ItemMngr.RadioRegister( item, FLAG( value, ITEM_RADIO ) );
-    }
-
-    // Update data
-    if( old != value )
-        ItemMngr.NotifyChangeItem( item );
-}
-
-uint FOServer::SScriptFunc::Item_get_Flags( Item* item )
-{
-    return item->Data.Flags;
-}
-
-void FOServer::SScriptFunc::Item_set_TrapValue( Item* item, short value )
-{
-    if( item->IsNotValid )
-        return;
-    item->Data.TrapValue = value;
-    if( item->Accessory == ITEM_ACCESSORY_HEX )
-    {
-        Map* map = MapMngr.GetMap( item->AccHex.MapId );
-        if( map )
-            map->ChangeViewItem( item );
-    }
-}
-
-short FOServer::SScriptFunc::Item_get_TrapValue( Item* item )
-{
-    return item->Data.TrapValue;
 }
 
 uint FOServer::SScriptFunc::CraftItem_GetShowParams( CraftItem* craft, ScriptArray* nums, ScriptArray* vals, ScriptArray* ors )
@@ -2500,7 +2394,7 @@ ProtoItem* FOServer::SScriptFunc::Crit_GetSlotProto( Critter* cr, int slot, ucha
     if( !item )
         return NULL;
 
-    mode = item->Data.Mode;
+    mode = item->Mode;
     if( !item->GetId() && ( item == cr->ItemSlotMain || item == cr->ItemSlotExt ) )
         mode = cr->Data.Params[ ST_HANDS_ITEM_AND_MODE ] & 0xFF;
     return item->Proto;
@@ -2516,10 +2410,10 @@ bool FOServer::SScriptFunc::Crit_MoveItem( Critter* cr, uint item_id, uint count
     if( !item )
         SCRIPT_ERROR_R0( "Item not found." );
     if( !count )
-        count = item->GetCount();
+        count = item->Count;
     if( item->AccCritter.Slot == to_slot )
         return true;                                    // SCRIPT_ERROR_R0("To slot arg is equal of current item slot.");
-    if( count > item->GetCount() )
+    if( count > item->Count )
         SCRIPT_ERROR_R0( "Item count arg is greater than items count." );
     bool result = cr->MoveItem( item->AccCritter.Slot, to_slot, item_id, count );
     if( !result )
@@ -5094,8 +4988,8 @@ void FOServer::SScriptFunc::Global_MoveItemCr( Item* item, uint count, Critter* 
     if( to_cr->IsNotValid )
         SCRIPT_ERROR_R( "Critter arg nullptr." );
     if( !count )
-        count = item->GetCount();
-    if( count > item->GetCount() )
+        count = item->Count;
+    if( count > item->Count )
         SCRIPT_ERROR_R( "Count arg is greater than maximum." );
     ItemMngr.MoveItem( item, count, to_cr );
 }
@@ -5109,8 +5003,8 @@ void FOServer::SScriptFunc::Global_MoveItemMap( Item* item, uint count, Map* to_
     if( to_hx >= to_map->GetMaxHexX() || to_hy >= to_map->GetMaxHexY() )
         SCRIPT_ERROR_R( "Invalid hexex args." );
     if( !count )
-        count = item->GetCount();
-    if( count > item->GetCount() )
+        count = item->Count;
+    if( count > item->Count )
         SCRIPT_ERROR_R( "Count arg is greater than maximum." );
     ItemMngr.MoveItem( item, count, to_map, to_hx, to_hy );
 }
@@ -5124,8 +5018,8 @@ void FOServer::SScriptFunc::Global_MoveItemCont( Item* item, uint count, Item* t
     if( !to_cont->IsContainer() )
         SCRIPT_ERROR_R( "Container arg is not container type." );
     if( !count )
-        count = item->GetCount();
-    if( count > item->GetCount() )
+        count = item->Count;
+    if( count > item->Count )
         SCRIPT_ERROR_R( "Count arg is greater than maximum." );
     ItemMngr.MoveItem( item, count, to_cont, stack_id );
 }
@@ -5139,7 +5033,7 @@ void FOServer::SScriptFunc::Global_MoveItemsCr( ScriptArray& items, Critter* to_
         Item* item = *(Item**) items.At( i );
         if( !item || item->IsNotValid )
             continue;
-        ItemMngr.MoveItem( item, item->GetCount(), to_cr );
+        ItemMngr.MoveItem( item, item->Count, to_cr );
     }
 }
 
@@ -5154,7 +5048,7 @@ void FOServer::SScriptFunc::Global_MoveItemsMap( ScriptArray& items, Map* to_map
         Item* item = *(Item**) items.At( i );
         if( !item || item->IsNotValid )
             continue;
-        ItemMngr.MoveItem( item, item->GetCount(), to_map, to_hx, to_hy );
+        ItemMngr.MoveItem( item, item->Count, to_map, to_hx, to_hy );
     }
 }
 
@@ -5169,7 +5063,7 @@ void FOServer::SScriptFunc::Global_MoveItemsCont( ScriptArray& items, Item* to_c
         Item* item = *(Item**) items.At( i );
         if( !item || item->IsNotValid )
             continue;
-        ItemMngr.MoveItem( item, item->GetCount(), to_cont, stack_id );
+        ItemMngr.MoveItem( item, item->Count, to_cont, stack_id );
     }
 }
 
@@ -6122,31 +6016,6 @@ uint FOServer::SScriptFunc::Global_GetAllLocations( hash pid, ScriptArray* locat
 ScriptString* FOServer::SScriptFunc::Global_GetScriptName( hash script_id )
 {
     return ScriptString::Create( Script::GetScriptFuncName( script_id ) );
-}
-
-ScriptArray* FOServer::SScriptFunc::Global_GetItemDataMask( int mask_type )
-{
-    if( mask_type < 0 || mask_type >= ITEM_DATA_MASK_MAX )
-        SCRIPT_ERROR_R0( "Invalid mask type arg." );
-    ScriptArray* result = Script::CreateArray( "int8[]" );
-    if( !result )
-        return NULL;
-    CharVec mask;
-    for( uint i = 0; i < sizeof( Item::ItemData ); i++ )
-        mask.push_back( Item::ItemData::SendMask[ mask_type ][ i ] );
-    Script::AppendVectorToArray( mask, result );
-    return result;
-}
-
-bool FOServer::SScriptFunc::Global_SetItemDataMask( int mask_type, ScriptArray& mask )
-{
-    if( mask_type < 0 || mask_type >= ITEM_DATA_MASK_MAX )
-        SCRIPT_ERROR_R0( "Invalid mask type arg." );
-    if( mask.GetSize() != sizeof( Item::ItemData ) )
-        SCRIPT_ERROR_R0( "Invalid mask size." );
-    for( uint i = 0; i < sizeof( Item::ItemData ); i++ )
-        Item::ItemData::SendMask[ mask_type ][ i ] = *(char*) mask.At( i );
-    return true;
 }
 
 void FOServer::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds )

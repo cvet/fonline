@@ -424,7 +424,7 @@ public:
 
     // Scripts
     static bool SpritesCanDraw;
-    void InitScriptSystem();
+    bool InitScriptSystem();
     void FinishScriptSystem();
     void RunStartScript();
     void RunMapLoadScript( ProtoMap* pmap );

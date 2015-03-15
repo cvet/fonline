@@ -5,12 +5,12 @@
 #include "ScriptFunctions.h"
 
 // Check buffer for error
-#define CHECK_IN_BUFF_ERROR                          \
-    if( Bin.IsError() )                              \
-    {                                                \
-        WriteLogF( _FUNC_, " - Wrong MSG data.\n" ); \
-        NetDisconnect();                             \
-        return;                                      \
+#define CHECK_IN_BUFF_ERROR                              \
+    if( Bin.IsError() )                                  \
+    {                                                    \
+        WriteLogF( _FUNC_, " - Wrong network data!\n" ); \
+        NetDisconnect();                                 \
+        return;                                          \
     }
 
 void* zlib_alloc_( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
@@ -117,6 +117,8 @@ FOClient::FOClient()
     CurMapPid = 0;
     CurMapLocPid = 0;
     CurMapIndexInLoc = 0;
+
+    SomeItem = NULL;
 }
 
 uint* UID1;
@@ -2392,6 +2394,8 @@ void FOClient::NetProcess()
         uint msg = 0;
         Bin >> msg;
 
+        CHECK_IN_BUFF_ERROR;
+
         if( GameOpt.DebugNet )
         {
             static uint count = 0;
@@ -2460,8 +2464,17 @@ void FOClient::NetProcess()
         case NETMSG_CRITTER_MOVE_ITEM:
             Net_OnCritterMoveItem();
             break;
-        case NETMSG_CRITTER_ITEM_DATA:
-            Net_OnCritterItemData();
+        case NETMSG_CRITTER_ITEM_PROPERTY( 1 ):
+            Net_OnCritterItemProperty( 1 );
+            break;
+        case NETMSG_CRITTER_ITEM_PROPERTY( 2 ):
+            Net_OnCritterItemProperty( 2 );
+            break;
+        case NETMSG_CRITTER_ITEM_PROPERTY( 4 ):
+            Net_OnCritterItemProperty( 4 );
+            break;
+        case NETMSG_CRITTER_ITEM_PROPERTY( 8 ):
+            Net_OnCritterItemProperty( 8 );
             break;
         case NETMSG_CRITTER_ANIMATE:
             Net_OnCritterAnimate();
@@ -2611,8 +2624,17 @@ void FOClient::NetProcess()
         case NETMSG_ADD_ITEM_ON_MAP:
             Net_OnAddItemOnMap();
             break;
-        case NETMSG_CHANGE_ITEM_ON_MAP:
-            Net_OnChangeItemOnMap();
+        case NETMSG_MAP_ITEM_PROPERTY( 1 ):
+            Net_OnMapItemProperty( 1 );
+            break;
+        case NETMSG_MAP_ITEM_PROPERTY( 2 ):
+            Net_OnMapItemProperty( 2 );
+            break;
+        case NETMSG_MAP_ITEM_PROPERTY( 4 ):
+            Net_OnMapItemProperty( 4 );
+            break;
+        case NETMSG_MAP_ITEM_PROPERTY( 8 ):
+            Net_OnMapItemProperty( 8 );
             break;
         case NETMSG_ERASE_ITEM_FROM_MAP:
             Net_OnEraseItemFromMap();
@@ -2944,6 +2966,14 @@ void FOClient::Net_SendPickCritter( uint crid, uchar pick_type )
     Bout << pick_type;
 }
 
+void FOClient::Net_SendItemProperty( Item* item, Property* prop, void* data )
+{
+    Bout << NETMSG_SEND_ITEM_PROPERTY( prop->Size );
+    Bout << item->GetId();
+    Bout << (ushort) prop->Index;
+    Bout.Push( (char*) data, prop->Size );
+}
+
 void FOClient::Net_SendChangeItem( uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count )
 {
     Bout << NETMSG_SEND_CHANGE_ITEM;
@@ -2970,23 +3000,13 @@ void FOClient::Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id
 
 void FOClient::Net_SendRateItem()
 {
-    if( !Chosen )
+    if( !Chosen || Chosen->ItemSlotMain->GetId() )
         return;
-    uint rate = Chosen->ItemSlotMain->Data.Mode;
-    if( !Chosen->ItemSlotMain->GetId() )
-        rate |= Chosen->ItemSlotMain->GetProtoId() << 16;
+
+    uint rate = ( Chosen->ItemSlotMain->Mode | ( Chosen->ItemSlotMain->GetProtoId() << 16 ) );
 
     Bout << NETMSG_SEND_RATE_ITEM;
     Bout << rate;
-}
-
-void FOClient::Net_SendSortValueItem( Item* item )
-{
-    Bout << NETMSG_SEND_SORT_VALUE_ITEM;
-    Bout << item->GetId();
-    Bout << item->GetSortValue();
-
-    CollectContItems();
 }
 
 void FOClient::Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer )
@@ -3020,14 +3040,14 @@ void FOClient::Net_SendBarter( uint npc_id, ItemVec& cont_sale, ItemVec& cont_bu
     for( int i = 0; i < sale_count; ++i )
     {
         Bout << cont_sale[ i ]->GetId();
-        Bout << cont_sale[ i ]->GetCount();
+        Bout << cont_sale[ i ]->Count;
     }
 
     Bout << buy_count;
     for( int i = 0; i < buy_count; ++i )
     {
         Bout << cont_buy[ i ]->GetId();
-        Bout << cont_buy[ i ]->GetCount();
+        Bout << cont_buy[ i ]->Count;
     }
 }
 
@@ -3265,6 +3285,9 @@ void FOClient::Net_OnLoginSuccess()
     uint bin_seed, bout_seed;     // Server bin/bout == client bout/bin
     Bin >> bin_seed;
     Bin >> bout_seed;
+
+    CHECK_IN_BUFF_ERROR;
+
     Bout.SetEncryptKey( bin_seed );
     Bin.SetEncryptKey( bout_seed );
 }
@@ -3393,11 +3416,16 @@ void FOClient::Net_OnAddCritter( bool is_npc )
 
 void FOClient::Net_OnRemoveCritter()
 {
-    uint       remid;
-    Bin >> remid;
-    CritterCl* cr = GetCritter( remid );
-    if( cr )
-        cr->Finish();
+    uint remove_crid;
+    Bin >> remove_crid;
+
+    CHECK_IN_BUFF_ERROR;
+
+    CritterCl* cr = GetCritter( remove_crid );
+    if( !cr )
+        return;
+
+    cr->Finish();
 
     if( Script::PrepareContext( ClientFunctions.CritterOut, _FUNC_, "Game" ) )
     {
@@ -3599,7 +3627,7 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
             {
                 Item* radio = Chosen->GetItem( crid );
                 if( radio )
-                    channel = radio->Data.RadioChannel;
+                    channel = radio->RadioChannel;
             }
             AddMess( mess_type, FmtGameText( fstr_mb, channel, fstr ) );
         }
@@ -3792,6 +3820,8 @@ void FOClient::Net_OnMapTextMsg()
     Bin >> msg_num;
     Bin >> num_str;
 
+    CHECK_IN_BUFF_ERROR;
+
     if( msg_num >= TEXTMSG_COUNT )
     {
         WriteLogF( _FUNC_, " - Msg num invalid value, num<%u>.\n", msg_num );
@@ -3851,6 +3881,8 @@ void FOClient::Net_OnCritterDir()
     Bin >> crid;
     Bin >> dir;
 
+    CHECK_IN_BUFF_ERROR;
+
     if( dir >= DIRS_COUNT )
     {
         WriteLogF( _FUNC_, " - Invalid dir<%u>.\n", dir );
@@ -3873,6 +3905,8 @@ void FOClient::Net_OnCritterMove()
     Bin >> move_params;
     Bin >> new_hx;
     Bin >> new_hy;
+
+    CHECK_IN_BUFF_ERROR;
 
     if( new_hx >= HexMngr.GetMaxHexX() || new_hy >= HexMngr.GetMaxHexY() )
         return;
@@ -3932,14 +3966,19 @@ void FOClient::Net_OnCritterMove()
 
 void FOClient::Net_OnSomeItem()
 {
-    uint           item_id;
-    hash           item_pid;
-    uchar          slot;
-    Item::ItemData data;
+    uint  msg_len;
+    uint  item_id;
+    hash  item_pid;
+    uchar slot;
+    Bin >> msg_len;
     Bin >> item_id;
     Bin >> item_pid;
     Bin >> slot;
-    Bin.Pop( (char*) &data, sizeof( data ) );
+    Bin.Pop( ItemData );
+
+    CHECK_IN_BUFF_ERROR;
+
+    SAFEREL( SomeItem );
 
     ProtoItem* proto_item = ItemMngr.GetProtoItem( item_pid );
     if( !proto_item )
@@ -3948,10 +3987,9 @@ void FOClient::Net_OnSomeItem()
         return;
     }
 
-    SomeItem.Id = item_id;
-    SomeItem.AccCritter.Slot = slot;
-    SomeItem.Init( proto_item );
-    SomeItem.Data = data;
+    SomeItem = new Item( item_id, proto_item );
+    SomeItem->AccCritter.Slot = slot;
+    SomeItem->Props.RestoreData( &ItemData );
 }
 
 void FOClient::Net_OnCritterAction()
@@ -3965,10 +4003,13 @@ void FOClient::Net_OnCritterAction()
     Bin >> action_ext;
     Bin >> is_item;
 
+    CHECK_IN_BUFF_ERROR;
+
     CritterCl* cr = GetCritter( crid );
     if( !cr )
         return;
-    cr->Action( action, action_ext, is_item ? &SomeItem : NULL, false );
+
+    cr->Action( action, action_ext, is_item ? SomeItem : NULL, false );
 }
 
 void FOClient::Net_OnCritterKnockout()
@@ -3983,6 +4024,8 @@ void FOClient::Net_OnCritterKnockout()
     Bin >> anim2idle;
     Bin >> knock_hx;
     Bin >> knock_hy;
+
+    CHECK_IN_BUFF_ERROR;
 
     CritterCl* cr = GetCritter( crid );
     if( !cr )
@@ -4012,26 +4055,25 @@ void FOClient::Net_OnCritterMoveItem()
     Bin >> is_item;
 
     // Slot items
-    UCharVec                 slots_data_slot;
-    UIntVec                  slots_data_id;
-    HashVec                  slots_data_pid;
-    vector< Item::ItemData > slots_data_data;
-    uchar                    slots_data_count;
+    UCharVec           slots_data_slot;
+    UIntVec            slots_data_id;
+    HashVec            slots_data_pid;
+    vector< UCharVec > slots_data_data;
+    ushort             slots_data_count;
     Bin >> slots_data_count;
     for( uchar i = 0; i < slots_data_count; i++ )
     {
-        uchar          slot;
-        uint           id;
-        hash           pid;
-        Item::ItemData data;
+        uchar slot;
+        uint  id;
+        hash  pid;
         Bin >> slot;
         Bin >> id;
         Bin >> pid;
-        Bin.Pop( (char*) &data, sizeof( data ) );
+        Bin.Pop( ItemData );
         slots_data_slot.push_back( slot );
         slots_data_id.push_back( id );
         slots_data_pid.push_back( pid );
-        slots_data_data.push_back( data );
+        slots_data_data.push_back( ItemData );
     }
 
     CHECK_IN_BUFF_ERROR;
@@ -4050,18 +4092,16 @@ void FOClient::Net_OnCritterMoveItem()
         }
 
         cr->EraseAllItems();
-        cr->DefItemSlotHand->Init( ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
-        cr->DefItemSlotArmor->Init( ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
+        cr->DefItemSlotHand->SetProto( ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
+        cr->DefItemSlotArmor->SetProto( ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
 
         for( uchar i = 0; i < slots_data_count; i++ )
         {
             ProtoItem* proto_item = ItemMngr.GetProtoItem( slots_data_pid[ i ] );
             if( proto_item )
             {
-                Item* item = new Item();
-                item->Id = slots_data_id[ i ];
-                item->Init( proto_item );
-                item->Data = slots_data_data[ i ];
+                Item* item = new Item( slots_data_id[ i ], proto_item );
+                item->Props.RestoreData( &slots_data_data[ i ] );
                 item->AccCritter.Slot = slots_data_slot[ i ];
                 cr->AddItem( item );
             }
@@ -4077,31 +4117,37 @@ void FOClient::Net_OnCritterMoveItem()
             HexMngr.RebuildLight();
     }
 
-    cr->Action( action, prev_slot, is_item ? &SomeItem : NULL, false );
+    cr->Action( action, prev_slot, is_item ? SomeItem : NULL, false );
 }
 
-void FOClient::Net_OnCritterItemData()
+void FOClient::Net_OnCritterItemProperty( uint data_size )
 {
-    uint           crid;
-    uchar          slot;
-    Item::ItemData data;
-    memzero( &data, sizeof( data ) );
+    uint   crid;
+    uint   item_id;
+    ushort property_index;
+    uint64 value = 0;
     Bin >> crid;
-    Bin >> slot;
-    Bin.Pop( (char*) &data, sizeof( data ) );
+    Bin >> item_id;
+    Bin >> property_index;
+    Bin.Pop( (char*) &value, data_size );
+
+    CHECK_IN_BUFF_ERROR;
 
     CritterCl* cr = GetCritter( crid );
     if( !cr )
         return;
 
-    Item* item = cr->GetItemSlot( slot );
-    if( item )
-    {
-        uint light_hash = item->LightGetHash();
-        item->Data = data;
-        if( item->LightGetHash() != light_hash )
-            HexMngr.RebuildLight();
-    }
+    Item* item = cr->GetItem( item_id );
+    if( !item )
+        return;
+
+    Property* prop = Item::PropertiesRegistrator->Get( property_index );
+    if( !prop )
+        return;
+
+    prop->Accessor->SetSendIgnore( item );
+    prop->Accessor->GenericSet( item, &value );
+    prop->Accessor->SetSendIgnore( NULL );
 }
 
 void FOClient::Net_OnCritterAnimate()
@@ -4119,6 +4165,8 @@ void FOClient::Net_OnCritterAnimate()
     Bin >> clear_sequence;
     Bin >> delay_play;
 
+    CHECK_IN_BUFF_ERROR;
+
     CritterCl* cr = GetCritter( crid );
     if( !cr )
         return;
@@ -4126,7 +4174,7 @@ void FOClient::Net_OnCritterAnimate()
     if( clear_sequence )
         cr->ClearAnim();
     if( delay_play || !cr->IsAnim() )
-        cr->Animate( anim1, anim2, is_item ? &SomeItem : NULL );
+        cr->Animate( anim1, anim2, is_item ? SomeItem : NULL );
 }
 
 void FOClient::Net_OnCritterSetAnims()
@@ -4139,6 +4187,8 @@ void FOClient::Net_OnCritterSetAnims()
     Bin >> cond;
     Bin >> anim1;
     Bin >> anim2;
+
+    CHECK_IN_BUFF_ERROR;
 
     CritterCl* cr = GetCritter( crid );
     if( cr )
@@ -4205,6 +4255,9 @@ void FOClient::Net_OnCritterParam()
     Bin >> crid;
     Bin >> index;
     Bin >> value;
+
+    CHECK_IN_BUFF_ERROR;
+
     if( GameOpt.DebugNet )
         AddMess( FOMB_GAME, Str::FormatBuf( " - crid<%u> index<%u> value<%d>.", crid, index, value ) );
 
@@ -4275,6 +4328,9 @@ void FOClient::Net_OnCritterXY()
     Bin >> hx;
     Bin >> hy;
     Bin >> dir;
+
+    CHECK_IN_BUFF_ERROR;
+
     if( GameOpt.DebugNet )
         AddMess( FOMB_GAME, Str::FormatBuf( " - crid<%u> hx<%u> hy<%u> dir<%u>.", crid, hx, hy, dir ) );
 
@@ -4360,6 +4416,9 @@ void FOClient::Net_OnChosenParam()
     int    value;
     Bin >> index;
     Bin >> value;
+
+    CHECK_IN_BUFF_ERROR;
+
     if( GameOpt.DebugNet )
         AddMess( FOMB_GAME, Str::FormatBuf( " - index<%u> value<%d>.", index, value ) );
 
@@ -4520,18 +4579,21 @@ void FOClient::Net_OnChosenClearItems()
 
 void FOClient::Net_OnChosenAddItem()
 {
+    uint  msg_len;
     uint  item_id;
     hash  pid;
     uchar slot;
+    Bin >> msg_len;
     Bin >> item_id;
     Bin >> pid;
     Bin >> slot;
+    Bin.Pop( ItemData );
+
+    CHECK_IN_BUFF_ERROR;
 
     if( !Chosen )
     {
         WriteLogF( _FUNC_, " - Chosen is not created.\n" );
-        Item::ItemData dummy;
-        Bin.Pop( (char*) &dummy, sizeof( dummy ) );
         return;
     }
 
@@ -4549,22 +4611,16 @@ void FOClient::Net_OnChosenAddItem()
     if( !proto_item )
     {
         WriteLogF( _FUNC_, " - Proto item not found, pid<%u>.\n", pid );
-        Item::ItemData dummy;
-        Bin.Pop( (char*) &dummy, sizeof( dummy ) );
         return;
     }
 
-    Item* item = new Item();
-    item->Id = item_id;
-    item->Init( proto_item );
+    Item* item = new Item( item_id, proto_item );
+    item->Props.RestoreData( &ItemData );
+    item->Accessory = ITEM_ACCESSORY_CRITTER;
+    item->AccCritter.Slot = slot;
 
     item->AddRef();
 
-    Bin.Pop( (char*) &item->Data, sizeof( item->Data ) );
-    item->Accessory = ITEM_ACCESSORY_CRITTER;
-    item->AccCritter.Slot = slot;
-    if( item != Chosen->ItemSlotMain || !item->IsWeapon() )
-        item->SetMode( item->Data.Mode );
     Chosen->AddItem( item );
 
     if( slot == SLOT_HAND1 || prev_slot == SLOT_HAND1 )
@@ -4588,6 +4644,8 @@ void FOClient::Net_OnChosenEraseItem()
 {
     uint item_id;
     Bin >> item_id;
+
+    CHECK_IN_BUFF_ERROR;
 
     if( !Chosen )
     {
@@ -4637,22 +4695,25 @@ void FOClient::Net_OnAllItemsSend()
 
 void FOClient::Net_OnAddItemOnMap()
 {
-    uint           item_id;
-    hash           item_pid;
-    ushort         item_x;
-    ushort         item_y;
-    bool           is_added;
-    Item::ItemData data;
+    uint   msg_len;
+    uint   item_id;
+    hash   item_pid;
+    ushort item_hx;
+    ushort item_hy;
+    bool   is_added;
+    Bin >> msg_len;
     Bin >> item_id;
     Bin >> item_pid;
-    Bin >> item_x;
-    Bin >> item_y;
+    Bin >> item_hx;
+    Bin >> item_hy;
     Bin >> is_added;
-    Bin.Pop( (char*) &data, sizeof( data ) );
+    Bin.Pop( ItemData );
+
+    CHECK_IN_BUFF_ERROR;
 
     if( HexMngr.IsMapLoaded() )
     {
-        HexMngr.AddItem( item_id, item_pid, item_x, item_y, is_added, &data );
+        HexMngr.AddItem( item_id, item_pid, item_hx, item_hy, is_added, &ItemData );
     }
     else     // Global map car
     {
@@ -4660,10 +4721,8 @@ void FOClient::Net_OnAddItemOnMap()
         if( proto_item && proto_item->IsCar() )
         {
             SAFEREL( GmapCar.Car );
-            GmapCar.Car = new Item();
-            GmapCar.Car->Id = item_id;
-            GmapCar.Car->Init( proto_item );
-            GmapCar.Car->Data = data;
+            GmapCar.Car = new Item( item_id, proto_item );
+            GmapCar.Car->Props.RestoreData( &ItemData );
         }
     }
 
@@ -4679,32 +4738,35 @@ void FOClient::Net_OnAddItemOnMap()
         RebuildLookBorders = true;
 }
 
-void FOClient::Net_OnChangeItemOnMap()
+void FOClient::Net_OnMapItemProperty( uint data_size )
 {
-    uint           item_id;
-    Item::ItemData data;
+    uint   item_id;
+    ushort property_index;
+    uint64 value = 0;
     Bin >> item_id;
-    Bin.Pop( (char*) &data, sizeof( data ) );
+    Bin >> property_index;
+    Bin.Pop( (char*) &value, data_size );
+
+    CHECK_IN_BUFF_ERROR;
 
     Item* item = HexMngr.GetItemById( item_id );
-    bool  is_raked = ( item && item->IsRaked() );
+    if( !item )
+        return;
 
-    HexMngr.ChangeItem( item_id, data );
+    Property* prop = Item::PropertiesRegistrator->Get( property_index );
+    if( !prop )
+        return;
+
+    prop->Accessor->SetSendIgnore( item );
+    prop->Accessor->GenericSet( item, &value );
+    prop->Accessor->SetSendIgnore( NULL );
 
     if( item && Script::PrepareContext( ClientFunctions.ItemMapChanged, _FUNC_, "Game" ) )
     {
-        Item* prev_state = new Item( *item );
-        prev_state->RefCounter = 1;
-        prev_state->Data = data;
         Script::SetArgObject( item );
-        Script::SetArgObject( prev_state );
+        Script::SetArgObject( item );
         Script::RunPrepared();
-        prev_state->Release();
     }
-
-    // Refresh borders
-    if( item && is_raked != item->IsRaked() )
-        RebuildLookBorders = true;
 }
 
 void FOClient::Net_OnEraseItemFromMap()
@@ -4713,6 +4775,8 @@ void FOClient::Net_OnEraseItemFromMap()
     bool is_deleted;
     Bin >> item_id;
     Bin >> is_deleted;
+
+    CHECK_IN_BUFF_ERROR;
 
     Item* item = HexMngr.GetItemById( item_id );
     if( item && Script::PrepareContext( ClientFunctions.ItemMapOut, _FUNC_, "Game" ) )
@@ -4736,6 +4800,8 @@ void FOClient::Net_OnAnimateItem()
     Bin >> item_id;
     Bin >> from_frm;
     Bin >> to_frm;
+
+    CHECK_IN_BUFF_ERROR;
 
     ItemHex* item = HexMngr.GetItemById( item_id );
     if( item )
@@ -4786,6 +4852,8 @@ void FOClient::Net_OnEffect()
     Bin >> hy;
     Bin >> radius;
 
+    CHECK_IN_BUFF_ERROR;
+
     // Base hex effect
     HexMngr.RunEffect( eff_pid, hx, hy, hx, hy );
 
@@ -4824,6 +4892,8 @@ void FOClient::Net_OnFlyEffect()
     Bin >> eff_cr1_hy;
     Bin >> eff_cr2_hx;
     Bin >> eff_cr2_hy;
+
+    CHECK_IN_BUFF_ERROR;
 
     CritterCl* cr1 = GetCritter( eff_cr1_id );
     CritterCl* cr2 = GetCritter( eff_cr2_id );
@@ -4872,12 +4942,16 @@ void FOClient::Net_OnPlaySound( bool by_type )
         Bin >> sound_id_ext;
         SndMngr.PlaySoundType( sound_type, sound_type_ext, sound_id, sound_id_ext );
     }
+
+    CHECK_IN_BUFF_ERROR;
 }
 
 void FOClient::Net_OnPing()
 {
     uchar ping;
     Bin >> ping;
+
+    CHECK_IN_BUFF_ERROR;
 
     if( ping == PING_WAIT )
     {
@@ -5076,6 +5150,8 @@ void FOClient::Net_OnChosenTalk()
 
     Bin >> talk_time;
 
+    CHECK_IN_BUFF_ERROR;
+
     DlgCollectAnswers( false );
     if( talk_time )
         DlgEndTick = Timer::GameTick() + talk_time;
@@ -5157,6 +5233,8 @@ void FOClient::Net_OnLoadMap()
     Bin >> hash_walls;
     Bin >> hash_scen;
 
+    CHECK_IN_BUFF_ERROR;
+
     GameOpt.SpritesZoom = 1.0f;
     GmapZoom = 1.0f;
 
@@ -5224,6 +5302,8 @@ void FOClient::Net_OnMap()
     Bin >> maxhx;
     Bin >> maxhy;
     Bin >> send_info;
+
+    CHECK_IN_BUFF_ERROR;
 
     WriteLog( "Map<%u> received...\n", map_pid );
 
@@ -5585,20 +5665,17 @@ void FOClient::Net_OnContainerInfo()
     ItemVec item_container;
     for( uint i = 0; i < items_count; i++ )
     {
-        uint           item_id;
-        hash           item_pid;
-        Item::ItemData data;
+        uint item_id;
+        hash item_pid;
         Bin >> item_id;
         Bin >> item_pid;
-        Bin.Pop( (char*) &data, sizeof( data ) );
+        Bin.Pop( ItemData );
 
         ProtoItem* proto_item = ItemMngr.GetProtoItem( item_pid );
         if( item_id && proto_item )
         {
-            Item* item = new Item();
-            item->Init( proto_item );
-            item->Id = item_id;
-            item->Data = data;
+            Item* item = new Item( item_id, proto_item );
+            item->Props.RestoreData( &ItemData );
             item_container.push_back( item );
         }
     }
@@ -5692,6 +5769,8 @@ void FOClient::Net_OnFollow()
     Bin >> map_pid;
     Bin >> wait_time;
 
+    CHECK_IN_BUFF_ERROR;
+
     ShowScreen( SCREEN__DIALOGBOX );
     DlgboxType = DIALOGBOX_FOLLOW;
     FollowRuleId = rule;
@@ -5734,6 +5813,8 @@ void FOClient::Net_OnPlayersBarter()
     Bin >> barter;
     Bin >> param;
     Bin >> param_ext;
+
+    CHECK_IN_BUFF_ERROR;
 
     switch( barter )
     {
@@ -5814,7 +5895,7 @@ void FOClient::Net_OnPlayersBarter()
         if( !is_hide )
         {
             auto it = PtrCollectionFind( cont.begin(), cont.end(), param );
-            if( it == cont.end() || param_ext > ( *it )->GetCount() )
+            if( it == cont.end() || param_ext > ( *it )->Count )
             {
                 Net_SendPlayersBarter( BARTER_REFRESH, 0, 0 );
                 break;
@@ -5826,11 +5907,14 @@ void FOClient::Net_OnPlayersBarter()
                 citem->AddRef();
                 cont_o.push_back( citem );
                 it_ = cont_o.begin() + cont_o.size() - 1;
-                ( *it_ )->Count_Set( 0 );
+                ( *it_ )->SetCount( param_ext );
             }
-            ( *it_ )->Count_Add( param_ext );
-            citem->Count_Sub( param_ext );
-            if( !citem->GetCount() || !citem->IsStackable() )
+            else
+            {
+                ( *it_ )->ChangeCount( param_ext );
+            }
+            citem->ChangeCount( -(int) param_ext );
+            if( !citem->Count || !citem->IsStackable() )
             {
                 ( *it )->Release();
                 cont.erase( it );
@@ -5863,7 +5947,7 @@ void FOClient::Net_OnPlayersBarter()
         if( !is_hide )
         {
             auto it = PtrCollectionFind( cont_o.begin(), cont_o.end(), param );
-            if( it == cont_o.end() || param_ext > ( *it )->GetCount() )
+            if( it == cont_o.end() || param_ext > ( *it )->Count )
             {
                 Net_SendPlayersBarter( BARTER_REFRESH, 0, 0 );
                 break;
@@ -5875,11 +5959,14 @@ void FOClient::Net_OnPlayersBarter()
                 citem->AddRef();
                 cont.push_back( citem );
                 it_ = cont.begin() + cont.size() - 1;
-                ( *it_ )->Count_Set( 0 );
+                ( *it_ )->SetCount( param_ext );
             }
-            ( *it_ )->Count_Add( param_ext );
-            citem->Count_Sub( param_ext );
-            if( !citem->GetCount() || !citem->IsStackable() )
+            else
+            {
+                ( *it_ )->ChangeCount( param_ext );
+            }
+            citem->ChangeCount( -(int) param_ext );
+            if( !citem->Count || !citem->IsStackable() )
             {
                 ( *it )->Release();
                 cont_o.erase( it );
@@ -5888,13 +5975,13 @@ void FOClient::Net_OnPlayersBarter()
         else                 // Hide
         {
             Item* citem = GetContainerItem( cont_o, param );
-            if( !citem || param_ext > citem->GetCount() )
+            if( !citem || param_ext > citem->Count )
             {
                 Net_SendPlayersBarter( BARTER_REFRESH, 0, 0 );
                 break;
             }
-            citem->Count_Sub( param_ext );
-            if( !citem->GetCount() || !citem->IsStackable() )
+            citem->ChangeCount( -(int) param_ext );
+            if( !citem->Count || !citem->IsStackable() )
             {
                 auto it = PtrCollectionFind( cont_o.begin(), cont_o.end(), param );
                 ( *it )->Release();
@@ -5936,14 +6023,17 @@ void FOClient::Net_OnPlayersBarter()
 
 void FOClient::Net_OnPlayersBarterSetHide()
 {
-    uint           id;
-    hash           pid;
-    uint           count;
-    Item::ItemData data;
-    Bin >> id;
+    uint msg_len;
+    uint item_id;
+    hash pid;
+    uint count;
+    Bin >> msg_len;
+    Bin >> item_id;
     Bin >> pid;
     Bin >> count;
-    Bin.Pop( (char*) &data, sizeof( data ) );
+    Bin.Pop( ItemData );
+
+    CHECK_IN_BUFF_ERROR;
 
     if( !IsScreenPlayersBarter() )
     {
@@ -5959,19 +6049,17 @@ void FOClient::Net_OnPlayersBarterSetHide()
         return;
     }
 
-    Item* citem = GetContainerItem( BarterCont2oInit, id );
+    Item* citem = GetContainerItem( BarterCont2oInit, item_id );
     if( !citem )
     {
-        Item* item = new Item();
-        item->Init( proto_item );
-        item->Id = id;
-        item->Count_Set( count );
+        Item* item = new Item( item_id, proto_item );
+        item->SetCount( count );
         BarterCont2oInit.push_back( item );
     }
     else
     {
-        citem->Count_Add( count );
-        citem->Data = data;
+        citem->ChangeCount( count );
+        citem->Props.RestoreData( &ItemData );
     }
     CollectContItems();
 }
@@ -5984,6 +6072,8 @@ void FOClient::Net_OnShowScreen()
     Bin >> screen_type;
     Bin >> param;
     Bin >> need_answer;
+
+    CHECK_IN_BUFF_ERROR;
 
     // Close current
     switch( screen_type )
@@ -6215,8 +6305,8 @@ void FOClient::Net_OnItemLexems()
     UpdateContLexems( PupCont2, item_id, lexems );
 
     // Some item
-    if( SomeItem.GetId() == item_id )
-        *SomeItem.Lexems = lexems;
+    if( SomeItem && SomeItem->GetId() == item_id )
+        *( SomeItem->Lexems ) = lexems;
 }
 
 void FOClient::Net_OnCheckUID3()
@@ -6391,6 +6481,8 @@ void FOClient::Net_OnQuest( bool many )
             AddMess( FOMB_GAME, quest->str.c_str() );
     }
 
+    CHECK_IN_BUFF_ERROR;
+
     WriteLog( "Complete.\n" );
 }
 
@@ -6409,6 +6501,8 @@ void FOClient::Net_OnHoloInfo()
         memzero( HoloInfo, sizeof( HoloInfo ) );
     if( count )
         Bin.Pop( (char*) &HoloInfo[ offset ], count * sizeof( uint ) );
+
+    CHECK_IN_BUFF_ERROR;
 }
 
 void FOClient::Net_OnScores()
@@ -6529,6 +6623,8 @@ void FOClient::Net_OnViewMap()
     Bin >> loc_id;
     Bin >> loc_ent;
 
+    CHECK_IN_BUFF_ERROR;
+
     if( !HexMngr.IsMapLoaded() )
         return;
 
@@ -6572,6 +6668,8 @@ void FOClient::Net_OnCraftResult()
 {
     uchar craft_result;
     Bin >> craft_result;
+
+    CHECK_IN_BUFF_ERROR;
 
     if( craft_result != CRAFT_RESULT_NONE )
     {
@@ -6848,16 +6946,16 @@ void FOClient::ChosenChangeSlot()
         return;
 
     if( Chosen->ItemSlotExt->GetId() )
-        AddActionBack( CHOSEN_MOVE_ITEM, Chosen->ItemSlotExt->GetId(), Chosen->ItemSlotExt->GetCount(), SLOT_HAND1 );
+        AddActionBack( CHOSEN_MOVE_ITEM, Chosen->ItemSlotExt->GetId(), Chosen->ItemSlotExt->Count, SLOT_HAND1 );
     else if( Chosen->ItemSlotMain->GetId() )
-        AddActionBack( CHOSEN_MOVE_ITEM, Chosen->ItemSlotMain->GetId(), Chosen->ItemSlotMain->GetCount(), SLOT_HAND2 );
+        AddActionBack( CHOSEN_MOVE_ITEM, Chosen->ItemSlotMain->GetId(), Chosen->ItemSlotMain->Count, SLOT_HAND2 );
     else
     {
         uchar      tree = Chosen->DefItemSlotHand->Proto->Weapon_UnarmedTree + 1;
         ProtoItem* unarmed = Chosen->GetUnarmedItem( tree, 0 );
         if( !unarmed )
             unarmed = Chosen->GetUnarmedItem( 0, 0 );
-        Chosen->DefItemSlotHand->Init( unarmed );
+        Chosen->DefItemSlotHand->SetProto( unarmed );
     }
 }
 
@@ -7239,15 +7337,7 @@ label_EndMove:
         if( !proto_item )
             break;
         if( item->GetProtoId() != item_pid )             // Unarmed proto
-        {
-            static Item      temp_item;
-            static ProtoItem temp_proto_item;
-            temp_item = *item;
-            temp_proto_item = *proto_item;
-            item = &temp_item;
-            proto_item = &temp_proto_item;
-            item->Init( proto_item );
-        }
+            item->SetProto( proto_item );
 
         // Find target
         CritterCl* target_cr = NULL;
@@ -7525,8 +7615,8 @@ label_EndMove:
                 if( allow1 && allow2 )
                 {
                     EraseFrontAction();
-                    AddActionFront( CHOSEN_MOVE_ITEM, item_id, item_count, to_slot, is_barter_cont, true );                        // Second
-                    AddActionFront( CHOSEN_MOVE_ITEM, item_swap->GetId(), item_swap->GetCount(), SLOT_INV, is_barter_cont, true ); // First
+                    AddActionFront( CHOSEN_MOVE_ITEM, item_id, item_count, to_slot, is_barter_cont, true );                   // Second
+                    AddActionFront( CHOSEN_MOVE_ITEM, item_swap->GetId(), item_swap->Count, SLOT_INV, is_barter_cont, true ); // First
                     return;
                 }
             }
@@ -7547,8 +7637,8 @@ label_EndMove:
         if( to_slot == SLOT_GROUND )
         {
             Chosen->Action( ACTION_DROP_ITEM, from_slot, item );
-            if( item_count < item->GetCount() )
-                item->Count_Sub( item_count );
+            if( item_count < item->Count )
+                item->ChangeCount( -(int) item_count );
             else
                 Chosen->EraseItem( item, true );
         }
@@ -7593,14 +7683,14 @@ label_EndMove:
             if( it != BarterCont1oInit.end() )
             {
                 Item* item_ = *it;
-                if( item_count >= item_->GetCount() )
+                if( item_count >= item_->Count )
                 {
                     ( *it )->Release();
                     BarterCont1oInit.erase( it );
                 }
                 else
                 {
-                    item_->Count_Sub( item_count );
+                    item_->ChangeCount( -(int) item_count );
                 }
             }
             CollectContItems();
@@ -7633,7 +7723,7 @@ label_EndMove:
         Item* item = GetContainerItem( cont == IFACE_PUP_CONT1 ? InvContInit : PupCont2Init, item_id );
         if( !item )
             break;
-        if( count > item->GetCount() )
+        if( count > item->Count )
             break;
 
         if( cont == IFACE_PUP_CONT2 )
@@ -7760,8 +7850,8 @@ label_EndMove:
                 ShowScreen( SCREEN__INPUT_BOX );
                 IboxMode = IBOX_MODE_HOLO;
                 IboxHolodiskId = item->GetId();
-                IboxTitle = GetHoloText( STR_HOLO_INFO_NAME( item->HolodiskGetNum() ) );
-                IboxText = GetHoloText( STR_HOLO_INFO_DESC( item->HolodiskGetNum() ) );
+                IboxTitle = GetHoloText( STR_HOLO_INFO_NAME( item->HolodiskNumber ) );
+                IboxText = GetHoloText( STR_HOLO_INFO_DESC( item->HolodiskNumber ) );
                 if( IboxTitle.length() > USER_HOLO_MAX_TITLE_LEN )
                     IboxTitle.resize( USER_HOLO_MAX_TITLE_LEN );
                 if( IboxText.length() > USER_HOLO_MAX_LEN )
@@ -8012,8 +8102,8 @@ label_EndMove:
         Item* holo = Chosen->GetItem( IboxHolodiskId );
         if( !holo->IsHolodisk() )
             break;
-        const char* old_title = GetHoloText( STR_HOLO_INFO_NAME( holo->HolodiskGetNum() ) );
-        const char* old_text = GetHoloText( STR_HOLO_INFO_DESC( holo->HolodiskGetNum() ) );
+        const char* old_title = GetHoloText( STR_HOLO_INFO_NAME( holo->HolodiskNumber ) );
+        const char* old_text = GetHoloText( STR_HOLO_INFO_DESC( holo->HolodiskNumber ) );
         if( holo && IboxTitle.length() && IboxText.length() && ( IboxTitle != old_title || IboxText != old_text ) )
         {
             Net_SendSetUserHoloStr( holo, IboxTitle.c_str(), IboxText.c_str() );
@@ -9089,6 +9179,92 @@ void FOClient::AnimProcess()
     }
 }
 
+void FOClient::OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    Item* item = (Item*) obj;
+    #pragma MESSAGE( "Clean up client 0 and -1 item ids" )
+    if( item->Id && item->Id != uint( -1 ) && Self->Chosen && Self->Chosen->GetItem( item->Id ) )
+    {
+        Self->Net_SendItemProperty( item, prop, cur_value );
+    }
+}
+
+void FOClient::OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    Item* item = (Item*) obj;
+    uint  cur = *(uint*) cur_value;
+    uint  old = *(uint*) old_value;
+
+    if( FLAG( cur, ITEM_LIGHT ) != FLAG( old, ITEM_LIGHT ) )
+        Self->HexMngr.RebuildLight();
+
+    if( item->Accessory == ITEM_ACCESSORY_HEX )
+    {
+        ItemHex* hex_item = (ItemHex*) item;
+        bool     rebuild_cache = false;
+        if( FLAG( cur, ITEM_COLORIZE ) != FLAG( old, ITEM_COLORIZE ) )
+            hex_item->RefreshAlpha();
+        if( FLAG( cur, ITEM_BAD_ITEM ) != FLAG( old, ITEM_BAD_ITEM ) )
+            hex_item->SetSprite( NULL );
+        if( FLAG( cur, ITEM_SHOOT_THRU ) != FLAG( old, ITEM_SHOOT_THRU ) )
+            Self->RebuildLookBorders = true, rebuild_cache = true;
+        if( FLAG( cur, ITEM_LIGHT_THRU ) != FLAG( old, ITEM_LIGHT_THRU ) )
+            Self->HexMngr.RebuildLight(), rebuild_cache = true;
+        if( FLAG( cur, ITEM_NO_BLOCK ) != FLAG( old, ITEM_NO_BLOCK ) )
+            rebuild_cache = true;
+        if( rebuild_cache )
+            Self->HexMngr.GetField( hex_item->GetHexX(), hex_item->GetHexY() ).ProcessCache();
+    }
+}
+
+void FOClient::OnSetItemSomeLight( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    // LightIntensity, LightDistance, LightFlags, LightColor
+
+    Self->HexMngr.RebuildLight();
+}
+
+void FOClient::OnSetItemPicMap( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    Item* item = (Item*) obj;
+
+    if( item->Accessory == ITEM_ACCESSORY_HEX )
+    {
+        ItemHex* hex_item = (ItemHex*) item;
+        hex_item->RefreshAnim();
+    }
+}
+
+void FOClient::OnSetItemOffsetXY( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    // OffsetX, OffsetY
+
+    Item* item = (Item*) obj;
+
+    if( item->Accessory == ITEM_ACCESSORY_HEX )
+    {
+        ItemHex* hex_item = (ItemHex*) item;
+        hex_item->SetAnimOffs();
+        Self->HexMngr.ProcessHexBorders( hex_item );
+    }
+}
+
+void FOClient::OnSetItemLockerCondition( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    Item* item = (Item*) obj;
+    uint  cur = *(uint*) cur_value;
+    uint  old = *(uint*) old_value;
+
+    if( item->IsDoor() || item->IsContainer() )
+    {
+        ItemHex* hex_item = (ItemHex*) item;
+        if( !FLAG( old, LOCKER_ISOPEN ) && FLAG( cur, LOCKER_ISOPEN ) )
+            hex_item->SetAnimFromStart();
+        if( FLAG( old, LOCKER_ISOPEN ) && !FLAG( cur, LOCKER_ISOPEN ) )
+            hex_item->SetAnimFromEnd();
+    }
+}
+
 /************************************************************************/
 /* Scripts                                                              */
 /************************************************************************/
@@ -9108,9 +9284,12 @@ bool FOClient::ReloadScripts()
         return false;
     }
 
+    // Properties
+    PropertyRegistrator* registrators[ 1 ] = { new PropertyRegistrator( false, "ItemCl" ) };
+
     // Reinitialize engine
     Script::Finish();
-    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_CLIENT ), "CLIENT", true ) )
+    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_CLIENT, registrators ), "CLIENT", true ) )
     {
         WriteLog( "Unable to start script engine.\n" );
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
@@ -9258,6 +9437,18 @@ bool FOClient::ReloadScripts()
     };
     if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
         errors++;
+
+    Item::SetPropertyRegistrator( registrators[ 0 ] );
+    Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "Flags", OnSetItemFlags );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "LightIntensity", OnSetItemSomeLight );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "LightDistance", OnSetItemSomeLight );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "LightFlags", OnSetItemSomeLight );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "LightColor", OnSetItemSomeLight );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "PicMap", OnSetItemPicMap );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "LockerCondition", OnSetItemLockerCondition );
 
     if( errors || !Script::RunModuleInitFunctions() )
     {
@@ -9582,7 +9773,7 @@ ProtoItem* FOClient::SScriptFunc::Crit_GetSlotProto( CritterCl* cr, int slot, uc
     if( !item )
         return NULL;
 
-    mode = item->Data.Mode;
+    mode = item->Mode;
     return item->Proto;
 }
 
@@ -9657,7 +9848,7 @@ hash FOClient::SScriptFunc::Item_GetScriptId( Item* item )
 {
     if( item->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
-    return item->Data.ScriptId;
+    return item->ScriptId;
 }
 
 uchar FOClient::SScriptFunc::Item_GetType( Item* item )
@@ -9678,7 +9869,7 @@ uint FOClient::SScriptFunc::Item_GetCount( Item* item )
 {
     if( item->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
-    return item->GetCount();
+    return item->Count;
 }
 
 bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& hy )

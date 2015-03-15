@@ -65,12 +65,8 @@ CritterCl::CritterCl()
     Lexems = ScriptString::Create();
     Avatar = ScriptString::Create();
     memzero( Params, sizeof( Params ) );
-    ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item();
-    ItemSlotArmor = DefItemSlotArmor = new Item();
-    ProtoItem* slotMainProto = ItemMngr.GetProtoItem( ITEM_DEF_SLOT );
-    ItemSlotMain->Init( slotMainProto );
-    ProtoItem* slotArmorProto = ItemMngr.GetProtoItem( ITEM_DEF_ARMOR );
-    ItemSlotArmor->Init( slotArmorProto );
+    ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
+    ItemSlotArmor = DefItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
     tickFidget = Timer::GameTick() + Random( GameOpt.CritterFidgetTime, GameOpt.CritterFidgetTime * 2 );
     for( int i = 0; i < MAX_PARAMETERS_ARRAYS; i++ )
         ThisPtr[ i ] = this;
@@ -314,7 +310,7 @@ uint CritterCl::CountItemPid( hash item_pid )
     uint result = 0;
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->GetProtoId() == item_pid )
-            result += ( *it )->GetCount();
+            result += ( *it )->Count;
     return result;
 }
 
@@ -323,7 +319,7 @@ uint CritterCl::CountItemType( uchar type )
     uint res = 0;
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->GetType() == type )
-            res += ( *it )->GetCount();
+            res += ( *it )->Count;
     return res;
 }
 
@@ -349,7 +345,7 @@ Item* CritterCl::GetItemHighSortValue()
         Item* item = *it;
         if( !result )
             result = item;
-        else if( item->GetSortValue() > result->GetSortValue() )
+        else if( item->SortValue > result->SortValue )
             result = item;
     }
     return result;
@@ -363,7 +359,7 @@ Item* CritterCl::GetItemLowSortValue()
         Item* item = *it;
         if( !result )
             result = item;
-        else if( item->GetSortValue() < result->GetSortValue() )
+        else if( item->SortValue < result->SortValue )
             result = item;
     }
     return result;
@@ -385,7 +381,7 @@ uint CritterCl::GetItemsCount()
 {
     uint count = 0;
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        count += ( *it )->GetCount();
+        count += ( *it )->Count;
     return count;
 }
 
@@ -627,7 +623,7 @@ void CritterCl::ProcessChangedParams()
                     unarmed = NULL;
                 if( !unarmed )
                     unarmed = GetUnarmedItem( 0, 0 );
-                DefItemSlotHand->Init( unarmed );
+                DefItemSlotHand->SetProto( unarmed );
                 DefItemSlotHand->SetMode( value & 0xFF );
             }
             else if( index == ST_SCALE_FACTOR )
@@ -709,13 +705,13 @@ const char* CritterCl::GetMoneyStr()
 bool CritterCl::NextRateItem( bool prev )
 {
     bool  result = false;
-    uchar old_rate = ItemSlotMain->Data.Mode;
+    uchar old_rate = ItemSlotMain->Mode;
     if( !ItemSlotMain->IsWeapon() )
     {
         if( ItemSlotMain->IsCanUse() || ItemSlotMain->IsCanUseOnSmth() )
-            ItemSlotMain->Data.Mode = USE_USE;
+            ItemSlotMain->SetMode( USE_USE );
         else
-            ItemSlotMain->Data.Mode = USE_NONE;
+            ItemSlotMain->SetMode( USE_NONE );
     }
     else
     {
@@ -771,7 +767,7 @@ bool CritterCl::NextRateItem( bool prev )
                         priority--;
                         unarmed = GetUnarmedItem( tree, priority );
                     }
-                    ItemSlotMain->Init( unarmed );
+                    ItemSlotMain->SetProto( unarmed );
                     if( IsItemAim( SLOT_HAND1 ) && !IsRawParam( MODE_NO_AIM ) && CritType::IsCanAim( GetCrType() ) )
                     {
                         SetAim( HIT_LOCATION_TORSO );
@@ -795,7 +791,7 @@ bool CritterCl::NextRateItem( bool prev )
                         if( !unarmed )
                             unarmed = GetUnarmedItem( 0, 0 );
                     }
-                    ItemSlotMain->Init( unarmed );
+                    ItemSlotMain->SetProto( unarmed );
                     SetAim( HIT_LOCATION_NONE );
                 }
                 break;
@@ -814,10 +810,10 @@ bool CritterCl::NextRateItem( bool prev )
                         SetAim( HIT_LOCATION_NONE );
                         break;
                     }
-                    if( !ItemSlotMain->Data.Mode )
-                        ItemSlotMain->Data.Mode = ( ItemSlotMain->IsCanUseOnSmth() ? USE_USE : USE_RELOAD );
+                    if( !ItemSlotMain->Mode )
+                        ItemSlotMain->SetMode( ItemSlotMain->IsCanUseOnSmth() ? USE_USE : USE_RELOAD );
                     else
-                        ItemSlotMain->Data.Mode--;
+                        ItemSlotMain->SetMode( ItemSlotMain->Mode - 1 );
                     if( IsItemAim( SLOT_HAND1 ) && !IsRawParam( MODE_NO_AIM ) && CritType::IsCanAim( GetCrType() ) )
                     {
                         SetAim( HIT_LOCATION_TORSO );
@@ -831,7 +827,7 @@ bool CritterCl::NextRateItem( bool prev )
                         SetAim( HIT_LOCATION_TORSO );
                         break;
                     }
-                    ItemSlotMain->Data.Mode++;
+                    ItemSlotMain->SetMode( ItemSlotMain->Mode + 1 );
                     SetAim( HIT_LOCATION_NONE );
                 }
 
@@ -858,23 +854,23 @@ bool CritterCl::NextRateItem( bool prev )
                         break;
                     continue;
                 default:
-                    ItemSlotMain->Data.Mode = USE_PRIMARY;
+                    ItemSlotMain->SetMode( USE_PRIMARY );
                     break;
                 }
                 break;
             }
         }
     }
-    ItemSlotMain->SetMode( ItemSlotMain->Data.Mode );
-    return ItemSlotMain->Data.Mode != old_rate || result;
+    return ItemSlotMain->Mode != old_rate || result;
 }
 
 void CritterCl::SetAim( uchar hit_location )
 {
-    UNSETFLAG( ItemSlotMain->Data.Mode, 0xF0 );
-    if( !IsItemAim( SLOT_HAND1 ) )
-        return;
-    SETFLAG( ItemSlotMain->Data.Mode, hit_location << 4 );
+    uchar mode = ItemSlotMain->Mode;
+    UNSETFLAG( mode, 0xF0 );
+    if( IsItemAim( SLOT_HAND1 ) )
+        SETFLAG( mode, hit_location << 4 );
+    ItemSlotMain->SetMode( mode );
 }
 
 ProtoItem* CritterCl::GetUnarmedItem( uchar tree, uchar priority )
@@ -898,7 +894,7 @@ ProtoItem* CritterCl::GetUnarmedItem( uchar tree, uchar priority )
 
 Item* CritterCl::GetAmmoAvialble( Item* weap )
 {
-    Item* ammo = GetItemByPid( weap->Data.AmmoPid );
+    Item* ammo = GetItemByPid( weap->AmmoPid );
     if( !ammo && weap->WeapIsEmpty() )
         ammo = GetItemByPid( weap->Proto->Weapon_DefaultAmmoPid );
     if( !ammo && weap->WeapIsEmpty() )
@@ -1106,17 +1102,12 @@ void CritterCl::Action( int action, int action_ext, Item* item, bool local_call 
     #ifdef FONLINE_CLIENT
     if( Script::PrepareContext( ClientFunctions.CritterAction, _FUNC_, GetInfo() ) )
     {
-        if( item )
-            item = item->Clone();
-
         Script::SetArgBool( local_call );
         Script::SetArgObject( this );
         Script::SetArgUInt( action );
         Script::SetArgUInt( action_ext );
         Script::SetArgObject( item );
         Script::RunPrepared();
-
-        SAFEREL( item );
     }
     #endif
 

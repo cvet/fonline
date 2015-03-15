@@ -163,10 +163,10 @@ public:
     Item*       GetSlotUse( uchar num_slot, uchar& use );
     hash        GetUsePicName( uchar num_slot );
     bool        IsItemAim( uchar num_slot );
-    uchar       GetUse()      { return ItemSlotMain->Data.Mode & 0xF; }
-    uchar       GetFullRate() { return ItemSlotMain->Data.Mode; }
+    uchar       GetUse()      { return ItemSlotMain->Mode & 0xF; }
+    uchar       GetFullRate() { return ItemSlotMain->Mode; }
     bool        NextRateItem( bool prev );
-    uchar       GetAim() { return ( ItemSlotMain->Data.Mode >> 4 ) & 0xF; }
+    uchar       GetAim() { return ( ItemSlotMain->Mode >> 4 ) & 0xF; }
     bool        IsAim()  { return GetAim() > 0; }
     void        SetAim( uchar hit_location );
     uint        GetUseApCost( Item* item, uchar rate );
