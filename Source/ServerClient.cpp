@@ -4690,5 +4690,4 @@ void FOServer::Process_ItemField( Client* cl, uint data_size )
 
     #pragma MESSAGE( "Disable send changing field by client to this client" )
     prop->Accessor->GenericSet( item, &value );
-    WriteLog( "Client set %s to %d\n", prop->Name.c_str(), (int) value );
 }
