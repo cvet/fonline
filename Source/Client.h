@@ -118,7 +118,7 @@ public:
     bool          InitNetBegin;
     int           InitNetReason;
     bool          InitialItemsSend;
-    UCharVec      ItemData;
+    UCharVec      TempItemData;
 
     bool NetConnect( const char* host, ushort port );
     bool FillSockAddr( sockaddr_in& saddr, const char* host, ushort port );

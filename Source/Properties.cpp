@@ -135,7 +135,7 @@ void PropertyAccessor::GenericSet( void* obj, void* new_value )
     // Native send callback
     if( prop->NativeSendCallback && obj != sendIgnoreObj && !setCallbackLocked && memcmp( cur_value, &old_value, prop->Size ) )
     {
-        if( ( properties->registrator->isServer && ( prop->Access & Property::PublicProtectedMask ) ) ||
+        if( ( properties->registrator->isServer && ( prop->Access & ( Property::PublicMask | Property::ProtectedMask ) ) ) ||
             ( !properties->registrator->isServer && ( prop->Access & Property::ModifiableMask ) ) )
         {
             prop->NativeSendCallback( obj, prop, cur_value, &old_value );
@@ -152,7 +152,7 @@ Properties::Properties( PropertyRegistrator* reg )
 {
     registrator = reg;
     RUNTIME_ASSERT( registrator );
-    RUNTIME_ASSERT( registrator->RegistrationFinished );
+    RUNTIME_ASSERT( registrator->registrationFinished );
 
     if( !registrator->propertiesDataPool.empty() )
     {
@@ -208,49 +208,28 @@ void* Properties::FindData( const char* property_name )
     return prop ? &propertiesData[ prop->Offset ] : NULL;
 }
 
-UCharVec* Properties::StoreData( Property::AccessType access_mask )
+uchar* Properties::StoreData( bool with_protected, uint& size )
 {
-    tmpStoreData.clear();
-
-    for( size_t i = 0, j = registrator->registeredProperties.size(); i < j; i++ )
-    {
-        Property* prop = registrator->registeredProperties[ i ];
-        if( !( prop->Access & access_mask ) )
-            continue;
-
-        uint   pos = (uint) tmpStoreData.size();
-        tmpStoreData.resize( tmpStoreData.size() + sizeof( ushort ) + prop->Size );
-        uchar* data = &tmpStoreData[ pos ];
-        *(ushort*) data = (ushort) prop->Index;
-        memcpy( data + sizeof( ushort ), &propertiesData[ prop->Offset ], prop->Size );
-    }
-
-    return !tmpStoreData.empty() ? &tmpStoreData : NULL;
+    size = (uint) registrator->publicDataSpace.size() + ( with_protected ? (uint) registrator->protectedDataSpace.size() : 0 );
+    return size ? &propertiesData[ 0 ] : NULL;
 }
 
 void Properties::RestoreData( const UCharVec* properties_data )
 {
-    memzero( propertiesData, registrator->wholeDataSize );
-    if( !properties_data || properties_data->empty() )
-        return;
-
-    const uchar* data = &properties_data->at( 0 );
-    uint         size = (uint) properties_data->size();
-    const uchar* end_data = data + size;
-    while( data < end_data )
+    if( properties_data && !properties_data->empty() )
     {
-        uint      property_index = *(ushort*) data;
-        data += sizeof( ushort );
-        Property* prop = registrator->registeredProperties[ property_index ];
-        RUNTIME_ASSERT( !( prop->Access & Property::VirtualMask ) );
-        memcpy( &propertiesData[ prop->Offset ], data, prop->Size );
-        data += prop->Size;
+        memcpy( &propertiesData[ 0 ], &properties_data->at( 0 ), properties_data->size() );
+        memzero( &propertiesData[ properties_data->size() ], registrator->wholeDataSize - properties_data->size() );
+    }
+    else
+    {
+        memzero( propertiesData, registrator->wholeDataSize );
     }
 }
 
 void Properties::Save( void ( * save_func )( void*, size_t ) )
 {
-    RUNTIME_ASSERT( registrator->RegistrationFinished );
+    RUNTIME_ASSERT( registrator->registrationFinished );
 
     uint count = (uint) registrator->registeredProperties.size();
     save_func( &count, sizeof( count ) );
@@ -271,7 +250,7 @@ void Properties::Save( void ( * save_func )( void*, size_t ) )
 
 void Properties::Load( void* file, uint version )
 {
-    RUNTIME_ASSERT( registrator->RegistrationFinished );
+    RUNTIME_ASSERT( registrator->registrationFinished );
 
     uint count = 0;
     FileRead( file, &count, sizeof( count ) );
@@ -307,7 +286,7 @@ void Properties::Load( void* file, uint version )
 
 PropertyRegistrator::PropertyRegistrator( bool is_server, const char* script_class_name )
 {
-    RegistrationFinished = false;
+    registrationFinished = false;
     isServer = is_server;
     scriptClassName = script_class_name;
     wholeDataSize = 0;
@@ -340,7 +319,7 @@ Property* PropertyRegistrator::Register(
     int64* max_value /* = NULL */
     )
 {
-    if( RegistrationFinished )
+    if( registrationFinished )
     {
         WriteLogF( _FUNC_, " - Registration of class properties is finished.\n" );
         return NULL;
@@ -350,12 +329,13 @@ Property* PropertyRegistrator::Register(
     RUNTIME_ASSERT( engine );
 
     // Check primitive
-    int property_data_size = engine->GetSizeOfPrimitiveType( engine->GetTypeIdByDecl( type_name ) );
-    if( property_data_size <= 0 )
+    int primitive_size = engine->GetSizeOfPrimitiveType( engine->GetTypeIdByDecl( type_name ) );
+    if( primitive_size <= 0 )
     {
         WriteLogF( _FUNC_, " - Invalid property type<%s>.\n", type_name );
         return NULL;
     }
+    uint property_data_size = (uint) primitive_size;
     if( property_data_size != 1 && property_data_size != 2 && property_data_size != 4 && property_data_size != 8 )
     {
         WriteLogF( _FUNC_, " - Invalid size of property type<%s>, size<%d>.\n", type_name, property_data_size );
@@ -430,20 +410,50 @@ Property* PropertyRegistrator::Register(
     }
 
     // Calculate property data offset
-    uint property_data_offset = 0;
+    uint property_data_base_offset = 0;
     if( !( access & Property::VirtualMask ) )
     {
-        property_data_offset = ( registeredProperties.empty() ? 0 : registeredProperties.back()->Offset + registeredProperties.back()->Size );
-        property_data_offset += property_data_offset % property_data_size;
-        wholeDataSize = property_data_offset + property_data_size;
-        wholeDataSize += wholeDataSize % 8;
+        bool     is_public = ( access & Property::PublicMask ) != 0;
+        bool     is_protected = ( access & Property::ProtectedMask ) != 0;
+        BoolVec& space = ( is_public ? publicDataSpace : ( is_protected ? protectedDataSpace : privateDataSpace ) );
+
+        uint     space_size = (uint) space.size();
+        uint     space_pos = 0;
+        while( space_pos + property_data_size <= space_size )
+        {
+            bool fail = false;
+            for( uint i = 0; i < property_data_size; i++ )
+            {
+                if( space[ space_pos + i ] )
+                {
+                    fail = true;
+                    break;
+                }
+            }
+            if( !fail )
+                break;
+            space_pos += property_data_size;
+        }
+
+        uint new_size = space_pos + property_data_size;
+        new_size += 8 - new_size % 8;
+        if( new_size > (uint) space.size() )
+            space.resize( new_size );
+
+        for( uint i = 0; i < property_data_size; i++ )
+            space[ space_pos + i ] = true;
+
+        property_data_base_offset = space_pos;
+
+        wholeDataSize = (uint) ( publicDataSpace.size() + protectedDataSpace.size() + privateDataSpace.size() );
+        RUNTIME_ASSERT( !( wholeDataSize % 8 ) );
     }
 
     // Make entry
     Property* prop = new Property();
 
     prop->Index = property_index;
-    prop->Offset = property_data_offset;
+    prop->Offset = property_data_base_offset;
     prop->Size = property_data_size;
     prop->Accessor = property_accessor;
     prop->GetCallback = 0;
@@ -463,6 +473,21 @@ Property* PropertyRegistrator::Register(
     registeredProperties.push_back( prop );
 
     return prop;
+}
+
+void PropertyRegistrator::FinishRegistration()
+{
+    RUNTIME_ASSERT( !registrationFinished );
+    registrationFinished = true;
+
+    for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
+    {
+        Property* prop = registeredProperties[ i ];
+        if( prop->Access & Property::ProtectedMask )
+            prop->Offset += (uint) publicDataSpace.size();
+        else if( prop->Access & Property::PrivateMask )
+            prop->Offset += (uint) publicDataSpace.size() + (uint) protectedDataSpace.size();
+    }
 }
 
 Property* PropertyRegistrator::Get( uint property_index )

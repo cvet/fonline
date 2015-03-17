@@ -65,7 +65,6 @@ struct Property
         PrivateMask         = 0x00F0,
         PublicMask          = 0x0F00,
         ProtectedMask       = 0xF000,
-        PublicProtectedMask = PublicMask | ProtectedMask,
         ClientMask          = 0x0022,
         ServerMask          = 0x0044,
         ModifiableMask      = 0x2200,
@@ -106,7 +105,7 @@ public:
     ~Properties();
     Properties& operator=( const Properties& other );
     void*       FindData( const char* property_name );
-    UCharVec*   StoreData( Property::AccessType access_mask );
+    uchar*      StoreData( bool with_protected, uint& size );
     void        RestoreData( const UCharVec* data );
     void        Save( void ( * save_func )( void*, size_t ) );
     void        Load( void* file, uint version );
@@ -114,7 +113,6 @@ public:
 private:
     PropertyRegistrator*  registrator;
     uchar*                propertiesData;
-    UCharVec              tmpStoreData;
     UnresolvedPropertyVec unresolvedProperties;
 };
 
@@ -124,11 +122,10 @@ class PropertyRegistrator
     friend class PropertyAccessor;
 
 public:
-    bool RegistrationFinished;
-
     PropertyRegistrator( bool is_server, const char* class_name );
     ~PropertyRegistrator();
     Property* Register( const char* type_name, const char* name, Property::AccessType access, bool generate_random_value = false, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
+    void      FinishRegistration();
     Property* Find( const char* property_name );
     Property* Get( uint property_index );
     bool      SetGetCallback( const char* property_name, const char* script );
@@ -138,10 +135,14 @@ public:
     uint      GetWholeDataSize();
 
 private:
+    bool        registrationFinished;
     bool        isServer;
     string      scriptClassName;
     PropertyVec registeredProperties;
     uint        wholeDataSize;
+    BoolVec     publicDataSpace;
+    BoolVec     protectedDataSpace;
+    BoolVec     privateDataSpace;
     PUCharVec   propertiesDataPool;
 };
 

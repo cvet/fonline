@@ -3970,11 +3970,15 @@ void FOClient::Net_OnSomeItem()
     uint  item_id;
     hash  item_pid;
     uchar slot;
+    uint  data_size;
     Bin >> msg_len;
     Bin >> item_id;
     Bin >> item_pid;
     Bin >> slot;
-    Bin.Pop( ItemData );
+    Bin >> data_size;
+    TempItemData.resize( data_size );
+    if( data_size )
+        Bin.Pop( (char*) &TempItemData[ 0 ], data_size );
 
     CHECK_IN_BUFF_ERROR;
 
@@ -3989,7 +3993,7 @@ void FOClient::Net_OnSomeItem()
 
     SomeItem = new Item( item_id, proto_item );
     SomeItem->AccCritter.Slot = slot;
-    SomeItem->Props.RestoreData( &ItemData );
+    SomeItem->Props.RestoreData( &TempItemData );
 }
 
 void FOClient::Net_OnCritterAction()
@@ -4066,14 +4070,18 @@ void FOClient::Net_OnCritterMoveItem()
         uchar slot;
         uint  id;
         hash  pid;
+        uint  data_size;
         Bin >> slot;
         Bin >> id;
         Bin >> pid;
-        Bin.Pop( ItemData );
+        Bin >> data_size;
+        TempItemData.resize( data_size );
+        if( data_size )
+            Bin.Pop( (char*) &TempItemData[ 0 ], data_size );
         slots_data_slot.push_back( slot );
         slots_data_id.push_back( id );
         slots_data_pid.push_back( pid );
-        slots_data_data.push_back( ItemData );
+        slots_data_data.push_back( TempItemData );
     }
 
     CHECK_IN_BUFF_ERROR;
@@ -4583,11 +4591,15 @@ void FOClient::Net_OnChosenAddItem()
     uint  item_id;
     hash  pid;
     uchar slot;
+    uint  data_size;
     Bin >> msg_len;
     Bin >> item_id;
     Bin >> pid;
     Bin >> slot;
-    Bin.Pop( ItemData );
+    Bin >> data_size;
+    TempItemData.resize( data_size );
+    if( data_size )
+        Bin.Pop( (char*) &TempItemData[ 0 ], data_size );
 
     CHECK_IN_BUFF_ERROR;
 
@@ -4615,7 +4627,7 @@ void FOClient::Net_OnChosenAddItem()
     }
 
     Item* item = new Item( item_id, proto_item );
-    item->Props.RestoreData( &ItemData );
+    item->Props.RestoreData( &TempItemData );
     item->Accessory = ITEM_ACCESSORY_CRITTER;
     item->AccCritter.Slot = slot;
 
@@ -4701,19 +4713,23 @@ void FOClient::Net_OnAddItemOnMap()
     ushort item_hx;
     ushort item_hy;
     bool   is_added;
+    uint   data_size;
     Bin >> msg_len;
     Bin >> item_id;
     Bin >> item_pid;
     Bin >> item_hx;
     Bin >> item_hy;
     Bin >> is_added;
-    Bin.Pop( ItemData );
+    Bin >> data_size;
+    TempItemData.resize( data_size );
+    if( data_size )
+        Bin.Pop( (char*) &TempItemData[ 0 ], data_size );
 
     CHECK_IN_BUFF_ERROR;
 
     if( HexMngr.IsMapLoaded() )
     {
-        HexMngr.AddItem( item_id, item_pid, item_hx, item_hy, is_added, &ItemData );
+        HexMngr.AddItem( item_id, item_pid, item_hx, item_hy, is_added, &TempItemData );
     }
     else     // Global map car
     {
@@ -4722,7 +4738,7 @@ void FOClient::Net_OnAddItemOnMap()
         {
             SAFEREL( GmapCar.Car );
             GmapCar.Car = new Item( item_id, proto_item );
-            GmapCar.Car->Props.RestoreData( &ItemData );
+            GmapCar.Car->Props.RestoreData( &TempItemData );
         }
     }
 
@@ -5667,15 +5683,19 @@ void FOClient::Net_OnContainerInfo()
     {
         uint item_id;
         hash item_pid;
+        uint data_size;
         Bin >> item_id;
         Bin >> item_pid;
-        Bin.Pop( ItemData );
+        Bin >> data_size;
+        TempItemData.resize( data_size );
+        if( data_size )
+            Bin.Pop( (char*) &TempItemData[ 0 ], data_size );
 
         ProtoItem* proto_item = ItemMngr.GetProtoItem( item_pid );
         if( item_id && proto_item )
         {
             Item* item = new Item( item_id, proto_item );
-            item->Props.RestoreData( &ItemData );
+            item->Props.RestoreData( &TempItemData );
             item_container.push_back( item );
         }
     }
@@ -6027,11 +6047,15 @@ void FOClient::Net_OnPlayersBarterSetHide()
     uint item_id;
     hash pid;
     uint count;
+    uint data_size;
     Bin >> msg_len;
     Bin >> item_id;
     Bin >> pid;
     Bin >> count;
-    Bin.Pop( ItemData );
+    Bin >> data_size;
+    TempItemData.resize( data_size );
+    if( data_size )
+        Bin.Pop( (char*) &TempItemData[ 0 ], data_size );
 
     CHECK_IN_BUFF_ERROR;
 
@@ -6059,7 +6083,7 @@ void FOClient::Net_OnPlayersBarterSetHide()
     else
     {
         citem->ChangeCount( count );
-        citem->Props.RestoreData( &ItemData );
+        citem->Props.RestoreData( &TempItemData );
     }
     CollectContItems();
 }

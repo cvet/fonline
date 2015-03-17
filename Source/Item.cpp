@@ -36,7 +36,7 @@ void Item::SetPropertyRegistrator( PropertyRegistrator* registrator )
 {
     SAFEDEL( PropertiesRegistrator );
     PropertiesRegistrator = registrator;
-    PropertiesRegistrator->RegistrationFinished = true;
+    PropertiesRegistrator->FinishRegistration();
     PropertyCount = PropertiesRegistrator->Find( "Count" );
     PropertyFlags = PropertiesRegistrator->Find( "Flags" );
     PropertyLockerCondition = PropertiesRegistrator->Find( "LockerCondition" );

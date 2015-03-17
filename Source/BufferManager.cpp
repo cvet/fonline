@@ -169,34 +169,6 @@ void BufferManager::Pop( char* buf, uint len )
     bufReadPos += len;
 }
 
-void BufferManager::Push( const UCharVec* buf )
-{
-    if( buf && !buf->empty() )
-    {
-        *this << (ushort) buf->size();
-        Push( (char*) &buf->at( 0 ), (ushort) buf->size() );
-    }
-    else
-    {
-        *this << (ushort) 0;
-    }
-}
-
-void BufferManager::Pop( UCharVec& buf )
-{
-    ushort len = 0;
-    *this >> len;
-    if( len )
-    {
-        buf.resize( len );
-        Pop( (char*) &buf[ 0 ], len );
-    }
-    else
-    {
-        buf.clear();
-    }
-}
-
 void BufferManager::Cut( uint len )
 {
     if( isError || !len )

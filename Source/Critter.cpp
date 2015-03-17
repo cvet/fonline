@@ -3868,12 +3868,15 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     }
 
     msg_len += sizeof( ushort );
-    vector< UCharVec* > items_data( items_to_send.size() );
+    UIntVec   items_data_size( items_to_send.size() );
+    PUCharVec items_data( items_to_send.size() );
     for( size_t i = 0, j = items_to_send.size(); i < j; i++ )
     {
-        Item*     item_ = items_to_send[ i ];
-        UCharVec* data = item_->Props.StoreData( Property::PublicMask );
-        msg_len += sizeof( uchar ) + sizeof( uint ) + sizeof( hash ) + PUSH_BUF_LEN( data );
+        Item*  item_ = items_to_send[ i ];
+        uint   data_size;
+        uchar* data = item_->Props.StoreData( false, data_size );
+        msg_len += sizeof( uchar ) + sizeof( uint ) + sizeof( hash ) + sizeof( data_size ) + data_size;
+        items_data_size[ i ] = data_size;
         items_data[ i ] = data;
     }
 
@@ -3891,7 +3894,8 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
         Bout << item_->AccCritter.Slot;
         Bout << item_->GetId();
         Bout << item_->GetProtoId();
-        Bout.Push( items_data[ i ] );
+        Bout << items_data_size[ i ];
+        Bout.Push( (char*) items_data[ i ], items_data_size[ i ] );
     }
     BOUT_END( this );
 
@@ -3953,10 +3957,11 @@ void Client::Send_AddItemOnMap( Item* item )
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    bool      is_added = item->ViewPlaceOnMap;
-    uint      msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) * 2 + sizeof( bool );
-    UCharVec* item_data = item->Props.StoreData( Property::PublicMask );
-    msg_len += PUSH_BUF_LEN( item_data );
+    bool   is_added = item->ViewPlaceOnMap;
+    uint   msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) * 2 + sizeof( bool );
+    uint   data_size;
+    uchar* data = item->Props.StoreData( false, data_size );
+    msg_len += sizeof( data_size ) + data_size;
 
     BOUT_BEGIN( this );
     Bout << NETMSG_ADD_ITEM_ON_MAP;
@@ -3966,7 +3971,8 @@ void Client::Send_AddItemOnMap( Item* item )
     Bout << item->AccHex.HexX;
     Bout << item->AccHex.HexY;
     Bout << is_added;
-    Bout.Push( item_data );
+    Bout << data_size;
+    Bout.Push( (char*) data, data_size );
     BOUT_END( this );
 
     if( item->PLexems )
@@ -4018,9 +4024,10 @@ void Client::Send_AddItem( Item* item )
     if( item->IsHidden() )
         return;
 
-    uint      msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( uchar );
-    UCharVec* item_data = item->Props.StoreData( Property::PublicProtectedMask );
-    msg_len += PUSH_BUF_LEN( item_data );
+    uint   msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( uchar );
+    uint   data_size;
+    uchar* data = item->Props.StoreData( true, data_size );
+    msg_len += sizeof( data_size ) + data_size;
 
     BOUT_BEGIN( this );
     Bout << NETMSG_ADD_ITEM;
@@ -4028,7 +4035,8 @@ void Client::Send_AddItem( Item* item )
     Bout << item->GetId();
     Bout << item->GetProtoId();
     Bout << item->AccCritter.Slot;
-    Bout.Push( item_data );
+    Bout << data_size;
+    Bout.Push( (char*) data, data_size );
     BOUT_END( this );
 
     if( item->PLexems )
@@ -4070,14 +4078,18 @@ void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open
     if( item_cont->GetType() != ITEM_TYPE_CONTAINER )
         return;
 
-    uint                msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uchar ) + sizeof( uint ) + sizeof( uint ) + sizeof( max_t ) + sizeof( uint );
-    ItemVec             items;
+    uint      msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uchar ) + sizeof( uint ) + sizeof( uint ) + sizeof( max_t ) + sizeof( uint );
+    ItemVec   items;
     item_cont->ContGetAllItems( items, true, true );
-    vector< UCharVec* > items_data( items.size() );
+    UIntVec   items_data_size( items.size() );
+    PUCharVec items_data( items.size() );
     for( size_t i = 0, j = items.size(); i < j; i++ )
     {
-        items_data[ i ] = items[ i ]->Props.StoreData( Property::PublicMask );
-        msg_len += sizeof( uint ) + sizeof( hash ) + PUSH_BUF_LEN( items_data[ i ] );
+        uint   data_size;
+        uchar* data = items[ i ]->Props.StoreData( false, data_size );
+        items_data_size[ i ] = data_size;
+        items_data[ i ] = data;
+        msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( data_size ) + data_size;
     }
     if( open_screen )
         SETFLAG( transfer_type, 0x80 );
@@ -4096,7 +4108,8 @@ void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open
         Item* item = items[ i ];
         Bout << item->GetId();
         Bout << item->GetProtoId();
-        Bout.Push( items_data[ i ] );
+        Bout << items_data_size[ i ];
+        Bout.Push( (char*) items_data[ i ], items_data_size[ i ] );
     }
     BOUT_END( this );
 
@@ -4131,11 +4144,15 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
     if( open_screen )
         SETFLAG( transfer_type, 0x80 );
 
-    vector< UCharVec* > items_data( items.size() );
+    UIntVec   items_data_size( items.size() );
+    PUCharVec items_data( items.size() );
     for( size_t i = 0, j = items.size(); i < j; i++ )
     {
-        items_data[ i ] = items[ i ]->Props.StoreData( Property::PublicMask );
-        msg_len += sizeof( uint ) + sizeof( hash ) + PUSH_BUF_LEN( items_data[ i ] );
+        uint   data_size;
+        uchar* data = items[ i ]->Props.StoreData( false, data_size );
+        items_data_size[ i ] = data_size;
+        items_data[ i ] = data;
+        msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( data_size ) + data_size;
     }
 
     BOUT_BEGIN( this );
@@ -4152,7 +4169,8 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
         Item* item = items[ i ];
         Bout << item->GetId();
         Bout << item->GetProtoId();
-        Bout.Push( items_data[ i ] );
+        Bout << items_data_size[ i ];
+        Bout.Push( (char*) items_data[ i ], items_data_size[ i ] );
     }
     BOUT_END( this );
 
@@ -4870,16 +4888,18 @@ void Client::Send_PlayersBarterSetHide( Item* item, uint count )
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    uint      msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( uint );
-    UCharVec* item_data = item->Props.StoreData( Property::PublicMask );
-    msg_len += PUSH_BUF_LEN( item_data );
+    uint   msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( uint );
+    uint   data_size;
+    uchar* data = item->Props.StoreData( false, data_size );
+    msg_len += sizeof( data_size ) + data_size;
 
     BOUT_BEGIN( this );
     Bout << NETMSG_PLAYERS_BARTER_SET_HIDE;
     Bout << item->GetId();
     Bout << item->GetProtoId();
     Bout << count;
-    Bout.Push( item_data );
+    Bout << data_size;
+    Bout.Push( (char*) data, data_size );
     BOUT_END( this );
 
     if( item->PLexems )
@@ -5022,9 +5042,10 @@ void Client::Send_CheckUIDS()
 
 void Client::Send_SomeItem( Item* item )
 {
-    uint      msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( uchar );
-    UCharVec* item_data = item->Props.StoreData( Property::PublicMask );
-    msg_len += PUSH_BUF_LEN( item_data );
+    uint   msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( uchar );
+    uint   data_size;
+    uchar* data = item->Props.StoreData( false, data_size );
+    msg_len += sizeof( data_size ) + data_size;
 
     BOUT_BEGIN( this );
     Bout << NETMSG_SOME_ITEM;
@@ -5032,7 +5053,8 @@ void Client::Send_SomeItem( Item* item )
     Bout << item->GetId();
     Bout << item->GetProtoId();
     Bout << item->AccCritter.Slot;
-    Bout.Push( item_data );
+    Bout << data_size;
+    Bout.Push( (char*) data, data_size );
     BOUT_END( this );
 }
 

@@ -4,8 +4,7 @@
 
 ItemHex::ItemHex( uint id, ProtoItem* proto, const UCharVec* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut ): Item( id, proto )
 {
-    if( data )
-        Props.RestoreData( data );
+    Props.RestoreData( data );
 
     // Init parent
     Accessory = ITEM_ACCESSORY_HEX;
