@@ -505,14 +505,50 @@ Property* PropertyRegistrator::Find( const char* property_name )
     return NULL;
 }
 
-bool PropertyRegistrator::SetGetCallback( const char* property_name, const char* script )
+string PropertyRegistrator::SetGetCallback( const char* property_name, const char* script_func )
 {
-    return false;
+    #ifndef FONLINE_SCRIPT_COMPILER
+    Property* prop = Find( property_name );
+    if( !prop )
+        return "Property '" + string( property_name ) + "' in class '" + scriptClassName + "' not found.";
+
+    char decl[ MAX_FOTEXT ];
+    Str::Format( decl, "%s %s(%s&)", prop->TypeName.c_str(), "%s", scriptClassName.c_str() );
+
+    int bind_id = Script::Bind( script_func, "void %s(%s&,uint,int)", false );
+    if( bind_id <= 0 )
+    {
+        char buf[ MAX_FOTEXT ];
+        Str::Format( buf, decl, script_func );
+        return "Unable to bind function '" + string( buf ) + "'.";
+    }
+
+    prop->GetCallback = bind_id;
+    #endif
+    return "";
 }
 
-bool PropertyRegistrator::AddSetCallback( const char* property_name, const char* script )
+string PropertyRegistrator::AddSetCallback( const char* property_name, const char* script_func )
 {
-    return false;
+    #ifndef FONLINE_SCRIPT_COMPILER
+    Property* prop = Find( property_name );
+    if( !prop )
+        return "Property '" + string( property_name ) + "' in class '" + scriptClassName + "' not found.";
+
+    char decl[ MAX_FOTEXT ];
+    Str::Format( decl, "%s %s(%s&,%s)", prop->TypeName.c_str(), "%s", scriptClassName.c_str(), prop->TypeName.c_str() );
+
+    int bind_id = Script::Bind( script_func, "void %s(%s&,uint,int)", false );
+    if( bind_id <= 0 )
+    {
+        char buf[ MAX_FOTEXT ];
+        Str::Format( buf, decl, script_func );
+        return "Unable to bind function '" + string( buf ) + "'.";
+    }
+
+    prop->SetCallbacks.push_back( bind_id );
+    #endif
+    return "";
 }
 
 void PropertyRegistrator::SetNativeSetCallback( const char* property_name, NativeCallback callback )

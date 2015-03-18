@@ -607,6 +607,8 @@ public:
         static uint          Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static void          Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
         static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
+        static bool          Global_SetPropertyGetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func );
+        static bool          Global_AddPropertySetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func );
         static bool          Global_SetParameterGetBehaviour( uint index, ScriptString& func_name );
         static bool          Global_SetParameterChangeBehaviour( uint index, ScriptString& func_name );
         static void          Global_AllowSlot( uchar index, ScriptString& ini_option );

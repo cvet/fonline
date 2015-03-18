@@ -966,6 +966,8 @@ struct BindClass
     static void DataVal_Index() {}
 
     static void Global_GetTime()                        {}
+    static void Global_SetPropertyGetCallback()         {}
+    static void Global_AddPropertySetCallback()         {}
     static void Global_SetParameterGetBehaviour()       {}
     static void Global_SetParameterChangeBehaviour()    {}
     static void Global_SetParameterDialogGetBehaviour() {}

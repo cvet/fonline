@@ -908,9 +908,9 @@ public:
         static uint          Global_GetAllLocations( hash pid, ScriptArray* locations );
         static hash          Global_GetScriptId( ScriptString& script_name, ScriptString& func_decl );
         static ScriptString* Global_GetScriptName( hash script_id );
-        static ScriptArray*  Global_GetItemDataMask( int mask_type );
-        static bool          Global_SetItemDataMask( int mask_type, ScriptArray& mask );
         static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
+        static bool          Global_SetPropertyGetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func );
+        static bool          Global_AddPropertySetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func );
         static bool          Global_SetParameterGetBehaviour( uint index, ScriptString& func_name );
         static bool          Global_SetParameterChangeBehaviour( uint index, ScriptString& func_name );
         static bool          Global_SetParameterDialogGetBehaviour( uint index, ScriptString& func_name );

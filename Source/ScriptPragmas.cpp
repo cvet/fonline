@@ -511,12 +511,12 @@ public:
 class PropertyPragma
 {
 private:
-    PropertyRegistrator** propertiesRegistrators;
+    PropertyRegistrator** propertyRegistrators;
 
 public:
-    PropertyPragma( PropertyRegistrator** properties_registrators )
+    PropertyPragma( PropertyRegistrator** property_registrators )
     {
-        propertiesRegistrators = properties_registrators;
+        propertyRegistrators = property_registrators;
     }
 
     void Call( const string& text )
@@ -612,17 +612,17 @@ public:
         }
 
         // Register
-        PropertyRegistrator* properties_registrator = NULL;
+        PropertyRegistrator* registrator = NULL;
         if( class_name == "Item" )
-            properties_registrator = propertiesRegistrators[ 0 ];
+            registrator = propertyRegistrators[ 0 ];
         else
             WriteLog( "Invalid class in 'property' pragma<%s>.\n", text.c_str() );
 
-        if( properties_registrator )
+        if( registrator )
         {
-            properties_registrator->Register( property_type_name.c_str(), property_name.c_str(), access,
-                                              generate_random_value, set_default_value ? &default_value : NULL,
-                                              check_min_value ? &min_value : NULL, check_max_value ? &max_value : NULL );
+            registrator->Register( property_type_name.c_str(), property_name.c_str(), access,
+                                   generate_random_value, set_default_value ? &default_value : NULL,
+                                   check_min_value ? &min_value : NULL, check_max_value ? &max_value : NULL );
         }
     }
 };

@@ -6037,6 +6037,34 @@ void FOServer::SScriptFunc::Global_SetTime( ushort multiplier, ushort year, usho
     SetGameTime( multiplier, year, month, day, hour, minute, second );
 }
 
+bool FOServer::SScriptFunc::Global_SetPropertyGetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func )
+{
+    PropertyRegistrator* registrator = NULL;
+    if( class_name.c_std_str() == "Item" )
+        registrator = Item::PropertiesRegistrator;
+    else
+        SCRIPT_ERROR_R0( "Invalid class name." );
+
+    string result = registrator->SetGetCallback( property_name.c_str(), script_func.c_str() );
+    if( result != "" )
+        SCRIPT_ERROR_R0( result.c_str() );
+    return true;
+}
+
+bool FOServer::SScriptFunc::Global_AddPropertySetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func )
+{
+    PropertyRegistrator* registrator = NULL;
+    if( class_name.c_std_str() == "Item" )
+        registrator = Item::PropertiesRegistrator;
+    else
+        SCRIPT_ERROR_R0( "Invalid class name." );
+
+    string result = registrator->AddSetCallback( property_name.c_str(), script_func.c_str() );
+    if( result != "" )
+        SCRIPT_ERROR_R0( result.c_str() );
+    return true;
+}
+
 bool FOServer::SScriptFunc::Global_SetParameterGetBehaviour( uint index, ScriptString& func_name )
 {
     if( index >= MAX_PARAMS )

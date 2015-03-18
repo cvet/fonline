@@ -128,8 +128,8 @@ public:
     void      FinishRegistration();
     Property* Find( const char* property_name );
     Property* Get( uint property_index );
-    bool      SetGetCallback( const char* property_name, const char* script );
-    bool      AddSetCallback( const char* property_name, const char* script );
+    string    SetGetCallback( const char* property_name, const char* script_func );
+    string    AddSetCallback( const char* property_name, const char* script_func );
     void      SetNativeSetCallback( const char* property_name, NativeCallback callback );
     void      SetNativeSendCallback( NativeCallback callback );
     uint      GetWholeDataSize();

@@ -32,7 +32,7 @@ private:
     PropertyPragma*  propertyPragma;
 
 public:
-    ScriptPragmaCallback( int pragma_type, PropertyRegistrator** properties_registrators );
+    ScriptPragmaCallback( int pragma_type, PropertyRegistrator** property_registrators );
     void CallPragma( const string& name, const Preprocessor::PragmaInstance& instance );
 };
 

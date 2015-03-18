@@ -11348,6 +11348,34 @@ void FOClient::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort&
     milliseconds = dt.Milliseconds;
 }
 
+bool FOClient::SScriptFunc::Global_SetPropertyGetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func )
+{
+    PropertyRegistrator* registrator = NULL;
+    if( class_name.c_std_str() == "Item" )
+        registrator = Item::PropertiesRegistrator;
+    else
+        SCRIPT_ERROR_R0( "Invalid class name." );
+
+    string result = registrator->SetGetCallback( property_name.c_str(), script_func.c_str() );
+    if( result != "" )
+        SCRIPT_ERROR_R0( result.c_str() );
+    return true;
+}
+
+bool FOClient::SScriptFunc::Global_AddPropertySetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func )
+{
+    PropertyRegistrator* registrator = NULL;
+    if( class_name.c_std_str() == "Item" )
+        registrator = Item::PropertiesRegistrator;
+    else
+        SCRIPT_ERROR_R0( "Invalid class name." );
+
+    string result = registrator->AddSetCallback( property_name.c_str(), script_func.c_str() );
+    if( result != "" )
+        SCRIPT_ERROR_R0( result.c_str() );
+    return true;
+}
+
 bool FOClient::SScriptFunc::Global_SetParameterGetBehaviour( uint index, ScriptString& func_name )
 {
     if( index >= MAX_PARAMS )
