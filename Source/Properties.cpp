@@ -524,7 +524,7 @@ string PropertyRegistrator::SetGetCallback( const char* property_name, const cha
     char decl[ MAX_FOTEXT ];
     Str::Format( decl, "%s %s(%s&)", prop->TypeName.c_str(), "%s", scriptClassName.c_str() );
 
-    int bind_id = Script::Bind( script_func, "void %s(%s&,uint,int)", false );
+    int bind_id = Script::Bind( script_func, decl, false );
     if( bind_id <= 0 )
     {
         char buf[ MAX_FOTEXT ];
@@ -545,9 +545,9 @@ string PropertyRegistrator::AddSetCallback( const char* property_name, const cha
         return "Property '" + string( property_name ) + "' in class '" + scriptClassName + "' not found.";
 
     char decl[ MAX_FOTEXT ];
-    Str::Format( decl, "%s %s(%s&,%s)", prop->TypeName.c_str(), "%s", scriptClassName.c_str(), prop->TypeName.c_str() );
+    Str::Format( decl, "void %s(%s&,%s)", "%s", scriptClassName.c_str(), prop->TypeName.c_str() );
 
-    int bind_id = Script::Bind( script_func, "void %s(%s&,uint,int)", false );
+    int bind_id = Script::Bind( script_func, decl, false );
     if( bind_id <= 0 )
     {
         char buf[ MAX_FOTEXT ];

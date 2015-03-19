@@ -4086,7 +4086,7 @@ void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open
     for( size_t i = 0, j = items.size(); i < j; i++ )
     {
         uint   data_size;
-        uchar* data = items[ i ]->Props.StoreData( true, data_size );
+        uchar* data = items[ i ]->Props.StoreData( false, data_size );
         items_data_size[ i ] = data_size;
         items_data[ i ] = data;
         msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( data_size ) + data_size;
@@ -4149,7 +4149,7 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
     for( size_t i = 0, j = items.size(); i < j; i++ )
     {
         uint   data_size;
-        uchar* data = items[ i ]->Props.StoreData( true, data_size );
+        uchar* data = items[ i ]->Props.StoreData( false, data_size );
         items_data_size[ i ] = data_size;
         items_data[ i ] = data;
         msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( data_size ) + data_size;
@@ -4890,7 +4890,7 @@ void Client::Send_PlayersBarterSetHide( Item* item, uint count )
 
     uint   msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( uint );
     uint   data_size;
-    uchar* data = item->Props.StoreData( true, data_size );
+    uchar* data = item->Props.StoreData( false, data_size );
     msg_len += sizeof( data_size ) + data_size;
 
     BOUT_BEGIN( this );
