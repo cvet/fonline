@@ -530,8 +530,8 @@ public:
             WriteLog( "Error in 'property' pragma<%s>.\n", text.c_str() );
             return;
         }
-		char options_buf[ MAX_FOTEXT ] = { 0 };
-		str.getline( options_buf, MAX_FOTEXT );
+        char options_buf[ MAX_FOTEXT ] = { 0 };
+        str.getline( options_buf, MAX_FOTEXT );
 
         // Parse access type
         Property::AccessType access = (Property::AccessType) 0;
