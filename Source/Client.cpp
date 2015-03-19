@@ -6077,13 +6077,15 @@ void FOClient::Net_OnPlayersBarterSetHide()
     if( !citem )
     {
         Item* item = new Item( item_id, proto_item );
+        item->Props.RestoreData( &TempItemData );
         item->SetCount( count );
         BarterCont2oInit.push_back( item );
     }
     else
     {
-        citem->ChangeCount( count );
+        uint new_count = citem->Count + count;
         citem->Props.RestoreData( &TempItemData );
+        citem->SetCount( new_count );
     }
     CollectContItems();
 }

@@ -525,7 +525,7 @@ void Item::WeapLoadHolder()
 {
     if( !AmmoPid )
         SetPropertyValue< hash >( Item::PropertyAmmoPid, Proto->Weapon_DefaultAmmoPid );
-    SetPropertyValue< uint >( Item::PropertyAmmoCount, Proto->Weapon_MaxAmmoCount );
+    SetPropertyValue< ushort >( Item::PropertyAmmoCount, (ushort) Proto->Weapon_MaxAmmoCount );
 }
 
 #ifdef FONLINE_SERVER
