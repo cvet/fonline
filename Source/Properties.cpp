@@ -366,9 +366,9 @@ Property* PropertyRegistrator::Register(
     bool disable_set = false;
     if( access & Property::VirtualMask )
         disable_set = true;
-    if( isServer && !( access & Property::ServerMask ) )
+    if( isServer && ( access & Property::ClientMask ) )
         disable_get = disable_set = true;
-    if( !isServer && !( access & Property::ClientMask ) )
+    if( !isServer && ( access & Property::ServerMask ) )
         disable_get = disable_set = true;
 
     // Register default getter

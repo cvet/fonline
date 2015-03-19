@@ -525,13 +525,13 @@ public:
         istrstream str( text.c_str() );
         string     class_name, access_str, property_type_name, property_name;
         str >> class_name >> access_str >> property_type_name >> property_name;
-        char       options_buf[ MAX_FOTEXT ];
-        str.getline( options_buf, MAX_FOTEXT );
         if( str.fail() )
         {
             WriteLog( "Error in 'property' pragma<%s>.\n", text.c_str() );
             return;
         }
+		char options_buf[ MAX_FOTEXT ] = { 0 };
+		str.getline( options_buf, MAX_FOTEXT );
 
         // Parse access type
         Property::AccessType access = (Property::AccessType) 0;

@@ -1532,7 +1532,7 @@ if( registrators[ 0 ] )
     BIND_ASSERT_EXT( registrators[ 0 ]->Register( "hash", "AmmoPid", Property::Protected ) );
     BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint16", "AmmoCount", Property::Protected ) );
     BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int16", "TrapValue", Property::Protected ) );
-    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint", "LockerId", Property::PrivateServer ) );
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint", "LockerId", Property::Protected ) );
     BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint16", "LockerCondition", Property::Public ) );
     BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint16", "LockerComplexity", Property::PrivateServer ) );
     BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint", "HolodiskNumber", Property::Protected ) );
