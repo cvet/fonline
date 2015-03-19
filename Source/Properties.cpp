@@ -60,6 +60,7 @@ void PropertyAccessor::GenericGet( void* obj, void* ret_value )
     }
 
     // Raw property
+    RUNTIME_ASSERT( prop->Offset != uint( -1 ) );
     memcpy( ret_value, &properties->propertiesData[ prop->Offset ], prop->Size );
 }
 
@@ -67,7 +68,7 @@ void PropertyAccessor::GenericSet( void* obj, void* new_value )
 {
     Properties* properties = (Properties*) obj;
     Property*   prop = properties->registrator->registeredProperties[ propertyIndex ];
-    RUNTIME_ASSERT( !( prop->Access & Property::VirtualMask ) );
+    RUNTIME_ASSERT( prop->Offset != uint( -1 ) );
     void*       cur_value = &properties->propertiesData[ prop->Offset ];
 
     // Clamp
@@ -169,7 +170,7 @@ Properties::Properties( PropertyRegistrator* reg )
     for( size_t i = 0, j = registrator->registeredProperties.size(); i < j; i++ )
     {
         Property* prop = registrator->registeredProperties[ i ];
-        if( prop->Access & Property::VirtualMask )
+        if( prop->Offset == uint( -1 ) )
             continue;
 
         if( prop->SetDefaultValue )
@@ -204,7 +205,7 @@ void* Properties::FindData( const char* property_name )
 {
     Property* prop = registrator->Find( property_name );
     RUNTIME_ASSERT( prop );
-    RUNTIME_ASSERT( !( prop->Access & Property::VirtualMask ) );
+    RUNTIME_ASSERT( prop->Offset != uint( -1 ) );
     return prop ? &propertiesData[ prop->Offset ] : NULL;
 }
 
@@ -236,7 +237,7 @@ void Properties::Save( void ( * save_func )( void*, size_t ) )
     for( size_t i = 0, j = registrator->registeredProperties.size(); i < j; i++ )
     {
         Property* prop = registrator->registeredProperties[ i ];
-        if( prop->Access & Property::VirtualMask )
+        if( prop->Offset == uint( -1 ) )
             continue;
 
         ushort name_len = (ushort) prop->Name.length();
@@ -267,7 +268,7 @@ void Properties::Load( void* file, uint version )
         FileRead( file, &value, size );
 
         Property* prop = registrator->Find( name );
-        if( prop && !( prop->Access & Property::VirtualMask ) )
+        if( prop && prop->Offset != uint( -1 ) )
         {
             void* data = &propertiesData[ prop->Offset ];
             memzero( data, prop->Size );
@@ -356,43 +357,48 @@ Property* PropertyRegistrator::Register(
         }
     }
 
-    // Disallow client set accessors
-    bool disable_set = false;
-    if( access & Property::VirtualMask )
-        disable_set = true;
-    if( isServer && ( access & Property::ClientMask ) )
-        disable_set = true;
-    if( !isServer && ( access & Property::ServerMask ) )
-        disable_set = true;
-
     // Cerate accessor
     uint              property_index = (uint) registeredProperties.size();
     PropertyAccessor* property_accessor = new PropertyAccessor( property_index );
 
+    // Disallow set or get accessors
+    bool disable_get = false;
+    bool disable_set = false;
+    if( access & Property::VirtualMask )
+        disable_set = true;
+    if( isServer && !( access & Property::ServerMask ) )
+        disable_get = disable_set = true;
+    if( !isServer && !( access & Property::ClientMask ) )
+        disable_get = disable_set = true;
+
     // Register default getter
-    char decl[ MAX_FOTEXT ];
-    Str::Format( decl, "%s get_%s() const", type_name, name );
-    int  result = -1;
-    if( property_data_size == 1 )
-        result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Get< uchar >, (void*), uchar ), asCALL_THISCALL_OBJFIRST, property_accessor );
-    else if( property_data_size == 2 )
-        result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Get< ushort >, (void*), ushort ), asCALL_THISCALL_OBJFIRST, property_accessor );
-    else if( property_data_size == 4 )
-        result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Get< uint >, (void*), uint ), asCALL_THISCALL_OBJFIRST, property_accessor );
-    else if( property_data_size == 8 )
-        result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Get< uint64 >, (void*), uint64 ), asCALL_THISCALL_OBJFIRST, property_accessor );
-    if( result < 0 )
+    if( !disable_get )
     {
-        WriteLogF( _FUNC_, " - Register object property<%s> getter fail, error<%d>.\n", name, result );
-        delete property_accessor;
-        return NULL;
+        char decl[ MAX_FOTEXT ];
+        Str::Format( decl, "%s get_%s() const", type_name, name );
+        int  result = -1;
+        if( property_data_size == 1 )
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Get< uchar >, (void*), uchar ), asCALL_THISCALL_OBJFIRST, property_accessor );
+        else if( property_data_size == 2 )
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Get< ushort >, (void*), ushort ), asCALL_THISCALL_OBJFIRST, property_accessor );
+        else if( property_data_size == 4 )
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Get< uint >, (void*), uint ), asCALL_THISCALL_OBJFIRST, property_accessor );
+        else if( property_data_size == 8 )
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Get< uint64 >, (void*), uint64 ), asCALL_THISCALL_OBJFIRST, property_accessor );
+        if( result < 0 )
+        {
+            WriteLogF( _FUNC_, " - Register object property<%s> getter fail, error<%d>.\n", name, result );
+            delete property_accessor;
+            return NULL;
+        }
     }
 
     // Register setter
     if( !disable_set )
     {
+        char decl[ MAX_FOTEXT ];
         Str::Format( decl, "void set_%s(%s)", name, type_name );
-        result = -1;
+        int  result = -1;
         if( property_data_size == 1 )
             result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Set< uchar >, ( void*, uchar ), void ), asCALL_THISCALL_OBJFIRST, property_accessor );
         else if( property_data_size == 2 )
@@ -410,8 +416,8 @@ Property* PropertyRegistrator::Register(
     }
 
     // Calculate property data offset
-    uint property_data_base_offset = 0;
-    if( !( access & Property::VirtualMask ) )
+    uint property_data_base_offset = uint( -1 );
+    if( !disable_set )
     {
         bool     is_public = ( access & Property::PublicMask ) != 0;
         bool     is_protected = ( access & Property::ProtectedMask ) != 0;
@@ -483,6 +489,9 @@ void PropertyRegistrator::FinishRegistration()
     for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
     {
         Property* prop = registeredProperties[ i ];
+        if( prop->Offset == uint( -1 ) )
+            continue;
+
         if( prop->Access & Property::ProtectedMask )
             prop->Offset += (uint) publicDataSpace.size();
         else if( prop->Access & Property::PrivateMask )
