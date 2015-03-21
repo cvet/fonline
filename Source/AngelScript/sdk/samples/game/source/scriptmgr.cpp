@@ -26,7 +26,7 @@ CScriptMgr::~CScriptMgr()
 		contexts[n]->Release();
 
 	if( engine )
-		engine->Release();
+		engine->ShutDownAndRelease();
 }
 
 int CScriptMgr::Init()

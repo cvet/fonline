@@ -45,6 +45,14 @@
 
 BEGIN_AS_NAMESPACE
 
+// ref: Member Function Pointers and the Fastest Possible C++ Delegates
+//      describes the structure of class method pointers for most compilers
+//      http://www.codeproject.com/Articles/7150/Member-Function-Pointers-and-the-Fastest-Possible
+
+// ref: The code comments for ItaniumCXXABI::EmitLoadOfMemberFunctionPointer in the LLVM compiler
+//      describes the structure for class method pointers on Itanium and arm64 ABI
+//      http://clang.llvm.org/doxygen/CodeGen_2ItaniumCXXABI_8cpp_source.html#l00937
+
 int DetectCallingConvention(bool isMethod, const asSFuncPtr &ptr, int callConv, void *objForThiscall, asSSystemFunctionInterface *internal)
 {
 	memset(internal, 0, sizeof(asSSystemFunctionInterface));
@@ -104,8 +112,7 @@ int DetectCallingConvention(bool isMethod, const asSFuncPtr &ptr, int callConv, 
 			{
 #ifdef AS_NO_THISCALL_FUNCTOR_METHOD
 				return asNOT_SUPPORTED;
-#endif
-
+#else
 				if( objForThiscall == 0 )
 					return asINVALID_ARG;
 
@@ -114,6 +121,7 @@ int DetectCallingConvention(bool isMethod, const asSFuncPtr &ptr, int callConv, 
 					thisCallConv = ICC_THISCALL_OBJFIRST;
 				else //if( base == asCALL_THISCALL_OBJLAST )
 					thisCallConv = ICC_THISCALL_OBJLAST;
+#endif
 			}
 
 			internal->callConv = thisCallConv;
@@ -160,6 +168,7 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 	internal->paramSize = func->GetSpaceNeededForArguments();
 
 	// Prepare the clean up instructions for the function arguments
+	internal->cleanArgs.SetLength(0);
 	int offset = 0;
 	for( asUINT n = 0; n < func->parameterTypes.GetLength(); n++ )
 	{
@@ -433,6 +442,7 @@ int PrepareSystemFunction(asCScriptFunction *func, asSSystemFunctionInterface *i
 	}
 
 	// Prepare the clean up instructions for the function arguments
+	internal->cleanArgs.SetLength(0);
 	int offset = 0;
 	for( n = 0; n < func->parameterTypes.GetLength(); n++ )
 	{

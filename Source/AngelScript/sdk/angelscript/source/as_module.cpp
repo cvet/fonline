@@ -776,12 +776,22 @@ void asCModule::InternalReset()
 // interface
 asIScriptFunction *asCModule::GetFunctionByName(const char *name) const
 {
-	const asCArray<unsigned int> &idxs = globalFunctions.GetIndexes(defaultNamespace, name);
-	if( idxs.GetLength() != 1 )
-		return 0;
+	asSNameSpace *ns = defaultNamespace;
+	while( ns )
+	{
+		const asCArray<unsigned int> &idxs = globalFunctions.GetIndexes(ns, name);
+		if( idxs.GetLength() != 1 )
+			return 0;
 
-	const asIScriptFunction *func = globalFunctions.Get(idxs[0]);
-	return const_cast<asIScriptFunction*>(func);
+		const asIScriptFunction *func = globalFunctions.Get(idxs[0]);
+		if( func )
+			return const_cast<asIScriptFunction*>(func);
+
+		// Recursively search parent namespaces
+		ns = engine->GetParentNameSpace(ns);
+	}
+
+	return 0;
 }
 
 // interface
@@ -862,38 +872,49 @@ asIScriptFunction *asCModule::GetFunctionByDecl(const char *decl) const
 	asSNameSpace *ns = func.nameSpace == engine->nameSpaces[0] ? defaultNamespace : func.nameSpace;
 
 	// Search script functions for matching interface
-	asIScriptFunction *f = 0;
-	const asCArray<unsigned int> &idxs = globalFunctions.GetIndexes(ns, func.name);
-	for( unsigned int n = 0; n < idxs.GetLength(); n++ )
+	while( ns )
 	{
-		const asCScriptFunction *funcPtr = globalFunctions.Get(idxs[n]);
-		if( funcPtr->objectType == 0 &&
-			func.returnType                 == funcPtr->returnType &&
-			func.parameterTypes.GetLength() == funcPtr->parameterTypes.GetLength()
-			)
+		asIScriptFunction *f = 0;
+		const asCArray<unsigned int> &idxs = globalFunctions.GetIndexes(ns, func.name);
+		for( unsigned int n = 0; n < idxs.GetLength(); n++ )
 		{
-			bool match = true;
-			for( asUINT p = 0; p < func.parameterTypes.GetLength(); ++p )
+			const asCScriptFunction *funcPtr = globalFunctions.Get(idxs[n]);
+			if( funcPtr->objectType == 0 &&
+				func.returnType                 == funcPtr->returnType &&
+				func.parameterTypes.GetLength() == funcPtr->parameterTypes.GetLength()
+				)
 			{
-				if( func.parameterTypes[p] != funcPtr->parameterTypes[p] )
+				bool match = true;
+				for( asUINT p = 0; p < func.parameterTypes.GetLength(); ++p )
 				{
-					match = false;
-					break;
+					if( func.parameterTypes[p] != funcPtr->parameterTypes[p] )
+					{
+						match = false;
+						break;
+					}
+				}
+
+				if( match )
+				{
+					if( f == 0 )
+						f = const_cast<asCScriptFunction*>(funcPtr);
+					else
+						// Multiple functions
+						return 0;
 				}
 			}
+		}
 
-			if( match )
-			{
-				if( f == 0 )
-					f = const_cast<asCScriptFunction*>(funcPtr);
-				else
-					// Multiple functions
-					return 0;
-			}
+		if( f )
+			return f;
+		else
+		{
+			// Search for matching functions in the parent namespace
+			ns = engine->GetParentNameSpace(ns);
 		}
 	}
 
-	return f;
+	return 0;
 }
 
 // interface
@@ -905,12 +926,19 @@ asUINT asCModule::GetGlobalVarCount() const
 // interface
 int asCModule::GetGlobalVarIndexByName(const char *name) const
 {
+	asSNameSpace *ns = defaultNamespace;
+
 	// Find the global var id
-	int id = scriptGlobals.GetFirstIndex(defaultNamespace, name);
+	while( ns )
+	{
+		int id = scriptGlobals.GetFirstIndex(ns, name);
+		if( id >= 0 ) return id;
 
-	if( id == -1 ) return asNO_GLOBAL_VAR;
+		// Recursively search parent namespaces
+		ns = engine->GetParentNameSpace(ns);
+	}
 
-	return id;
+	return asNO_GLOBAL_VAR;
 }
 
 // interface
@@ -954,9 +982,15 @@ int asCModule::GetGlobalVarIndexByDecl(const char *decl) const
 		return r;
 
 	// Search global variables for a match
-	int id = scriptGlobals.GetFirstIndex(nameSpace, name, asCCompGlobPropType(dt));
-	if( id != -1 )
-		return id;
+	while( nameSpace )
+	{
+		int id = scriptGlobals.GetFirstIndex(nameSpace, name, asCCompGlobPropType(dt));
+		if( id != -1 )
+			return id;
+
+		// Recursively search parent namespace
+		nameSpace = engine->GetParentNameSpace(nameSpace);
+	}
 
 	return asNO_GLOBAL_VAR;
 }
@@ -1028,12 +1062,19 @@ asIObjectType *asCModule::GetObjectTypeByIndex(asUINT index) const
 // interface
 asIObjectType *asCModule::GetObjectTypeByName(const char *name) const
 {
-	for( asUINT n = 0; n < classTypes.GetLength(); n++ )
+	asSNameSpace *ns = defaultNamespace;
+	while( ns )
 	{
-		if( classTypes[n] &&
-			classTypes[n]->name == name &&
-			classTypes[n]->nameSpace == defaultNamespace )
-			return classTypes[n];
+		for( asUINT n = 0; n < classTypes.GetLength(); n++ )
+		{
+			if( classTypes[n] &&
+				classTypes[n]->name == name &&
+				classTypes[n]->nameSpace == ns )
+				return classTypes[n];
+		}
+
+		// Recursively search parent namespace
+		ns = engine->GetParentNameSpace(ns);
 	}
 
 	return 0;
@@ -1379,7 +1420,7 @@ int asCModule::BindAllImportedFunctions()
 		asCScriptFunction *importFunc = GetImportedFunction(n);
 		if( importFunc == 0 ) return asERROR;
 
-		asCString str = importFunc->GetDeclarationStr();
+		asCString str = importFunc->GetDeclarationStr(false, true);
 
 		// Get module name from where the function should be imported
 		const char *moduleName = GetImportedFunctionSourceModule(n);

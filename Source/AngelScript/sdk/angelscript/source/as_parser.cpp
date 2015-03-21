@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2015 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -261,6 +261,13 @@ int asCParser::ParsePropertyDeclaration(asCScriptCode *script)
 	scriptNode->AddChildLast(ParseType(true));
 	if( isSyntaxError ) return -1;
 
+	// Allow optional '&' to indicate that the property is indirect, i.e. stored as reference
+	sToken t;
+	GetToken(&t);
+	RewindTo(&t);
+	if( t.type == ttAmp )
+		scriptNode->AddChildLast(ParseToken(ttAmp));
+
 	// Allow optional namespace to be defined before the identifier in case
 	// the declaration is to be used for searching for an existing property
 	ParseOptionalScope(scriptNode);
@@ -269,7 +276,6 @@ int asCParser::ParsePropertyDeclaration(asCScriptCode *script)
 	if( isSyntaxError ) return -1;
 
 	// The declaration should end after the identifier
-	sToken t;
 	GetToken(&t);
 	if( t.type != ttEnd )
 	{

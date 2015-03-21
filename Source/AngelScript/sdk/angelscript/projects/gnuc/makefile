@@ -1,22 +1,37 @@
-# Angelscript makefile for linux (based on MingW makefile)
-# Type 'make' then 'make install' to complete the installation of the library
+# AngelScript makefile for Linux.
+# Type 'make' then 'make install' to complete
+# the installation of the library. You no
+# longer have to specify SHARED=1 VERSION=x.y.z
+# (the Makefile automatically determines it
+# and builds it and the static library).
+# See README for how to use the shared library
+# instead of the static. The README also
+# contains other information and in particular
+# specifies on how to override the install
+# location should you desire this (you don't
+# have to - nor should you - edit this
+# file).
+#
+# One note: I don't have a way to test
+# the phone builds. I am an old-timer
+# and I _still_ miss customer-owned
+# coin-operated telephones. In fact
+# I still _miss_ the rotary telephone!
 
-# For 'make install' to work, set LOCAL according to your system configuration
-LOCAL ?= /usr/local
-INSTALL_LIBDIR ?= lib
+LIBNAME=libangelscript
+SHLIB=$(LIBNAME)_s.so
+ARLIB=$(LIBNAME).a
 
-# If you want to build a shared library, then run make with SHARED=1 and VERSION=version
-ifdef SHARED
-	LIB = libangelscript-$(VERSION).so
-	DEVLIB = libangelscript.so
-else
-	LIB = libangelscript.a
-	DEVLIB = libangelscript.a
+ifeq ($(PREFIX),)
+PREFIX=/usr/local
 endif
-INC = angelscript.h
+INCLUDEDEST=$(PREFIX)/include/
+LIBRARYDEST=$(PREFIX)/lib/
 
+HEADER = angelscript.h
 SRCDIR = ../../source
 INCDIR = ../../include
+
 ifeq ($(TARGETPLATFORM), iphone)
 	IPHONEBIN =  /Developer/Platforms/iPhoneOS.platform/Developer/usr/bin
 	OBJDIR = obj-iphone
@@ -51,10 +66,9 @@ else
 	CXXFLAGS += -Wall -fPIC -fno-strict-aliasing
 endif
 
+
 AR ?= ar
 RANLIB ?= ranlib
-DELETER = rm -f
-COPIER = cp -a
 
 SRCNAMES = \
   as_atomic.cpp \
@@ -95,7 +109,6 @@ SRCNAMES = \
   as_variablescope.cpp \
 
 OBJ = $(addprefix $(OBJDIR)/, $(notdir $(SRCNAMES:.cpp=.o)))
-BIN = $(LIBDIR)/$(LIB)
 
 ifeq ($(TARGETPLATFORM), iphone)
 	OBJ += $(OBJDIR)/as_callfunc_arm_xcode.o
@@ -103,23 +116,21 @@ else
 	OBJ += $(OBJDIR)/as_callfunc_arm_gcc.o
 endif
 
-all: $(BIN)
+default: all
 
-$(BIN): $(OBJDIR) $(LIBDIR) $(OBJ)
-ifdef SHARED
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared -Wl,-soname,$(LIB) -o $(BIN) $(OBJ)
-else
-	$(AR) r $(BIN) $(OBJ)
-	$(RANLIB) $(BIN)
-endif
+all: $(OBJDIR) $(LIBDIR) $(OBJ)
+	$(MAKE) $(OBJDIR) $(LIBDIR) $(OBJ)
+	$(AR) r $(LIBDIR)/$(ARLIB) $(OBJ)
+	$(RANLIB) $(LIBDIR)/$(ARLIB)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared -Wl,-soname,$(LIBRARYDEST)$(LIBNAME)_s.so -o $(LIBDIR)/$(SHLIB) $(OBJ)
 	@echo -------------------------------------------------------------------
 	@echo Done. As root, type 'make install' to install the library.
 
 $(OBJDIR):
-	mkdir $(OBJDIR)
+	mkdir -p $(OBJDIR)
 
 $(LIBDIR):
-	mkdir $(LIBDIR)
+	mkdir -p $(LIBDIR)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
@@ -130,25 +141,31 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.S
 $(OBJDIR)/%.o: $(SRCDIR)/%.s
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
+install_shared:
+	@ver=`awk -F\" '/#define ANGELSCRIPT_VERSION_STRING/{print $$2}' ../../include/angelscript.h | cut -d" " -f1`; \
+	if [ "$$ver" = "" ]; then \
+		echo "Skipping creation of symbolic links..."; \
+	else \
+		( install -Dm 755 $(LIBDIR)/$(SHLIB) $(LIBRARYDEST)$(LIBNAME)_s-$$ver.so && \
+		ln -fs $(LIBRARYDEST)$(LIBNAME)_s-$$ver.so $(LIBRARYDEST)$(SHLIB) && \
+		ln -fs $(LIBRARYDEST)$(LIBNAME)_s-$$ver.so $(LIBRARYDEST)$(SHLIB).$$ver ) \
+	fi ;
+
 
 clean:
-	$(DELETER) $(OBJ) $(BIN) $(LIBDIR)/$(DEVLIB)
+	rm -f $(OBJ) $(LIBDIR)/$(ARLIB) $(LIBDIR)/$(SHLIB)
 
-install: $(BIN)
-	@echo Installing to: $(LOCAL)/$(INSTALL_LIBDIR) and $(LOCAL)/include...
+install: $(LIBDIR)/$(ARLIB) $(LIBDIR)/$(SHLIB)
+	@echo Installing to: $(LIBRARYDEST) and $(INCLUDEDEST)...
 	@echo -------------------------------------------------------------------
-ifdef SHARED
-	$(COPIER) $(LIBDIR)/$(LIB) $(LOCAL)/$(INSTALL_LIBDIR)
-	ln -s $(LOCAL)/$(INSTALL_LIBDIR)/$(LIB) $(LOCAL)/$(INSTALL_LIBDIR)/$(DEVLIB)
-	ln -s $(LOCAL)/$(INSTALL_LIBDIR)/$(LIB) $(LOCAL)/$(INSTALL_LIBDIR)/$(DEVLIB).$(VERSION)
-endif
-	$(COPIER) $(BIN) $(LOCAL)/$(INSTALL_LIBDIR)
-	$(COPIER) $(INCDIR)/$(INC) $(LOCAL)/include
+	install -Dm 644 $(LIBDIR)/$(ARLIB) $(LIBRARYDEST)$(ARLIB)
+	install -Dm 644 $(INCDIR)/$(HEADER) $(INCLUDEDEST)$(HEADER)
+	$(MAKE) install_shared
 	@echo -------------------------------------------------------------------
 	@echo Angelscript library installed. Enjoy!
 
 uninstall:
-	$(DELETER) $(LOCAL)/include/$(INC) $(LOCAL)/$(INSTALL_LIBDIR)/$(LIB) $(LOCAL)/$(INSTALL_LIBDIR)/$(DEVLIB)
+	rm -f $(INCLUDEDEST)$(HEADER) $(LIBRARYDEST)$(LIBNAME)*
 	@echo -------------------------------------------------------------------
 	@echo Angelscript library uninstalled.
 

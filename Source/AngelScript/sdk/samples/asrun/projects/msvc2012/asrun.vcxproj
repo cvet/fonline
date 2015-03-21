@@ -66,8 +66,8 @@
     <_ProjectFileVersion>11.0.60315.1</_ProjectFileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(SolutionDir)..\..\bin\</OutDir>
-    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>..\..\bin\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -75,8 +75,8 @@
     <OutDir>..\..\bin\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(SolutionDir)..\..\bin\</OutDir>
-    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>..\..\bin\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -128,7 +128,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <AdditionalIncludeDirectories>..\..\..\..\angelscript\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader />
       <WarningLevel>Level3</WarningLevel>
@@ -150,7 +150,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <AdditionalIncludeDirectories>..\..\..\..\angelscript\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
@@ -170,6 +170,7 @@
     <ClCompile Include="..\..\..\..\add_on\contextmgr\contextmgr.cpp" />
     <ClCompile Include="..\..\..\..\add_on\debugger\debugger.cpp" />
     <ClCompile Include="..\..\..\..\add_on\scriptdictionary\scriptdictionary.cpp" />
+    <ClCompile Include="..\..\..\..\add_on\scriptfile\scriptfilesystem.cpp" />
     <ClCompile Include="..\..\source\main.cpp" />
     <ClCompile Include="..\..\..\..\add_on\scriptarray\scriptarray.cpp" />
     <ClCompile Include="..\..\..\..\add_on\scriptbuilder\scriptbuilder.cpp" />
@@ -181,6 +182,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\..\add_on\contextmgr\contextmgr.h" />
     <ClInclude Include="..\..\..\..\add_on\scriptdictionary\scriptdictionary.h" />
+    <ClInclude Include="..\..\..\..\add_on\scriptfile\scriptfilesystem.h" />
     <ClInclude Include="..\..\..\..\angelscript\include\angelscript.h" />
     <ClInclude Include="..\..\..\..\add_on\debugger\debugger.h" />
     <ClInclude Include="..\..\..\..\add_on\scriptarray\scriptarray.h" />

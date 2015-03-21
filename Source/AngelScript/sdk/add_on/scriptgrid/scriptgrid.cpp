@@ -200,6 +200,39 @@ static bool ScriptGridTemplateCallback(asIObjectType *ot, bool &dontGarbageColle
 		// thus there is no need to garbage collect them
 		dontGarbageCollect = true;
 	}
+	else
+	{
+		assert( typeId & asTYPEID_OBJHANDLE );
+
+		// It is not necessary to set the array as garbage collected for all handle types.
+		// If it is possible to determine that the handle cannot refer to an object type
+		// that can potentially form a circular reference with the array then it is not 
+		// necessary to make the array garbage collected.
+		asIObjectType *subtype = ot->GetEngine()->GetObjectTypeById(typeId);
+		asDWORD flags = subtype->GetFlags();
+		if( !(flags & asOBJ_GC) )
+		{
+			if( (flags & asOBJ_SCRIPT_OBJECT) )
+			{
+				// Even if a script class is by itself not garbage collected, it is possible
+				// that classes that derive from it may be, so it is not possible to know 
+				// that no circular reference can occur.
+				if( (flags & asOBJ_NOINHERIT) )
+				{
+					// A script class declared as final cannot be inherited from, thus
+					// we can be certain that the object cannot be garbage collected.
+					dontGarbageCollect = true;
+				}
+			}
+			else
+			{
+				// For application registered classes we assume the application knows
+				// what it is doing and don't mark the array as garbage collected unless
+				// the type is also garbage collected.
+				dontGarbageCollect = true;
+			}
+		}
+	}
 
 	// The type is ok
 	return true;
@@ -270,7 +303,7 @@ CScriptGrid::CScriptGrid(asIObjectType *ot, void *buf)
 
 	// Determine the initial size from the buffer
 	asUINT height = *(asUINT*)buf;
-	asUINT width = *(asUINT*)((char*)(buf)+4);
+	asUINT width = height ? *(asUINT*)((char*)(buf)+4) : 0;
 
 	// Make sure the grid size isn't too large for us to handle
 	if( !CheckMaxSize(width, height) )

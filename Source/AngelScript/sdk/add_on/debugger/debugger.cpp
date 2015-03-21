@@ -130,10 +130,6 @@ string CDebugger::ToString(void *value, asUINT typeId, bool expandMembers, asISc
 				string str = it->second(value, expandMembers, this);
 				s << str;
 			}
-			else
-			{
-				// TODO: Value types can have their properties expanded by default
-			}
 		}
 	}
 
@@ -490,15 +486,34 @@ void CDebugger::PrintValue(const std::string &expr, asIScriptContext *ctx)
 
 	asIScriptEngine *engine = ctx->GetEngine();
 
-	int len = 0;
-	asETokenClass t = engine->ParseToken(expr.c_str(), 0, &len);
-
-	// TODO: If the expression starts with :: we should only look for global variables
-	// TODO: If the expression starts with identifier followed by ::, then use that as namespace
-	if( t == asTC_IDENTIFIER )
+	// Tokenize the input string to get the variable scope and name
+	asUINT len = 0;
+	string scope;
+	string name;
+	string str = expr;
+	asETokenClass t = engine->ParseToken(str.c_str(), 0, &len);
+	while( t == asTC_IDENTIFIER || (t == asTC_KEYWORD && len == 2 && str.compare("::")) )
 	{
-		string name(expr.c_str(), len);
+		if( t == asTC_KEYWORD )
+		{
+			if( scope == "" && name == "" )
+				scope = "::";			// global scope
+			else if( scope == "::" || scope == "" )
+				scope = name;			// namespace
+			else
+				scope += "::" + name;	// nested namespace
+			name = "";
+		}
+		else if( t == asTC_IDENTIFIER )
+			name.assign(str.c_str(), len);
 
+		// Skip the parsed token and get the next one
+		str = str.substr(len);
+		t = engine->ParseToken(str.c_str(), 0, &len);
+	}
+
+	if( name.size() )
+	{
 		// Find the variable
 		void *ptr = 0;
 		int typeId = 0;
@@ -506,39 +521,43 @@ void CDebugger::PrintValue(const std::string &expr, asIScriptContext *ctx)
 		asIScriptFunction *func = ctx->GetFunction();
 		if( !func ) return;
 
-		// We start from the end, in case the same name is reused in different scopes
-		for( asUINT n = func->GetVarCount(); n-- > 0; )
+		// skip local variables if a scope was informed
+		if( scope == "" )
 		{
-			if( ctx->IsVarInScope(n) && name == ctx->GetVarName(n) )
+			// We start from the end, in case the same name is reused in different scopes
+			for( asUINT n = func->GetVarCount(); n-- > 0; )
 			{
-				ptr = ctx->GetAddressOfVar(n);
-				typeId = ctx->GetVarTypeId(n);
-				break;
-			}
-		}
-
-		// Look for class members, if we're in a class method
-		if( !ptr && func->GetObjectType() )
-		{
-			if( name == "this" )
-			{
-				ptr = ctx->GetThisPointer();
-				typeId = ctx->GetThisTypeId();
-			}
-			else
-			{
-				asIObjectType *type = engine->GetObjectTypeById(ctx->GetThisTypeId());
-				for( asUINT n = 0; n < type->GetPropertyCount(); n++ )
+				if( ctx->IsVarInScope(n) && name == ctx->GetVarName(n) )
 				{
-					const char *propName = 0;
-					int offset = 0;
-					bool isReference = 0;
-					type->GetProperty(n, &propName, &typeId, 0, &offset, &isReference);
-					if( name == propName )
+					ptr = ctx->GetAddressOfVar(n);
+					typeId = ctx->GetVarTypeId(n);
+					break;
+				}
+			}
+
+			// Look for class members, if we're in a class method
+			if( !ptr && func->GetObjectType() )
+			{
+				if( name == "this" )
+				{
+					ptr = ctx->GetThisPointer();
+					typeId = ctx->GetThisTypeId();
+				}
+				else
+				{
+					asIObjectType *type = engine->GetObjectTypeById(ctx->GetThisTypeId());
+					for( asUINT n = 0; n < type->GetPropertyCount(); n++ )
 					{
-						ptr = (void*)(((asBYTE*)ctx->GetThisPointer())+offset);
-						if( isReference ) ptr = *(void**)ptr;
-						break;
+						const char *propName = 0;
+						int offset = 0;
+						bool isReference = 0;
+						type->GetProperty(n, &propName, &typeId, 0, 0, &offset, &isReference);
+						if( name == propName )
+						{
+							ptr = (void*)(((asBYTE*)ctx->GetThisPointer())+offset);
+							if( isReference ) ptr = *(void**)ptr;
+							break;
+						}
 					}
 				}
 			}
@@ -547,15 +566,27 @@ void CDebugger::PrintValue(const std::string &expr, asIScriptContext *ctx)
 		// Look for global variables
 		if( !ptr )
 		{
+			if( scope == "" )
+			{
+				// If no explicit scope was informed then use the namespace of the current function by default
+				scope = func->GetNamespace();
+			}
+			else if( scope == "::" )
+			{
+				// The global namespace will be empty
+				scope = "";
+			}
+
 			asIScriptModule *mod = func->GetModule();
 			if( mod )
 			{
 				for( asUINT n = 0; n < mod->GetGlobalVarCount(); n++ )
 				{
-					// TODO: Handle namespace too
 					const char *varName = 0, *nameSpace = 0;
 					mod->GetGlobalVar(n, &varName, &nameSpace, &typeId);
-					if( name == varName )
+
+					// Check if both name and namespace match
+					if( name == varName && scope == nameSpace )
 					{
 						ptr = mod->GetAddressOfGlobalVar(n);
 						break;
@@ -567,6 +598,7 @@ void CDebugger::PrintValue(const std::string &expr, asIScriptContext *ctx)
 		if( ptr )
 		{
 			// TODO: If there is a . after the identifier, check for members
+			// TODO: If there is a [ after the identifier try to call the 'opIndex(expr) const' method 
 
 			stringstream s;
 			s << ToString(ptr, typeId, true, engine) << endl;

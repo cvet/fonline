@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <fstream>
+#include <set>
 #include <stdlib.h>
 
 using namespace std;
@@ -169,7 +170,7 @@ int ExecuteString(asIScriptEngine *engine, const char *code, void *ref, int refT
 		return r;
 
 	// If no context was provided, request a new one from the engine
-	asIScriptContext *execCtx = ctx ? ctx : engine->CreateContext();
+	asIScriptContext *execCtx = ctx ? ctx : engine->RequestContext();
 	r = execCtx->Prepare(func);
 	if( r < 0 )
 	{
@@ -206,7 +207,7 @@ int ExecuteString(asIScriptEngine *engine, const char *code, void *ref, int refT
 
 	// Clean up
 	func->Release();
-	if( !ctx ) execCtx->Release();
+	if( !ctx ) engine->ReturnContext(execCtx);
 
 	return r;
 }
@@ -244,11 +245,11 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 		}
 	};
 
-
 	int c, n;
 
 	asDWORD currAccessMask = 0;
 	string currNamespace = "";
+	engine->SetDefaultNamespace(currNamespace.c_str());
 
 	// Export the engine version, just for info
 	strm << "// AngelScript " << asGetLibraryVersion() << "\n";
@@ -279,8 +280,9 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 		}
 		if( nameSpace != currNamespace )
 		{
-			strm << "namespace " << nameSpace << "\n";
+			strm << "namespace \"" << nameSpace << "\"\n";
 			currNamespace = nameSpace;
+			engine->SetDefaultNamespace(currNamespace.c_str());
 		}
 		strm << "enum " << enumName << "\n";
 		for( int m = 0; m < engine->GetEnumValueCount(typeId); m++ )
@@ -295,6 +297,9 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 	// Enumerate all types
 	strm << "\n// Types\n";
 
+	// Keep a list of the template types, as the methods for these need to be exported first
+	set<asIObjectType*> templateTypes;
+
 	c = engine->GetObjectTypeCount();
 	for( n = 0; n < c; n++ )
 	{
@@ -308,8 +313,9 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 		const char *nameSpace = type->GetNamespace();
 		if( nameSpace != currNamespace )
 		{
-			strm << "namespace " << nameSpace << "\n";
+			strm << "namespace \"" << nameSpace << "\"\n";
 			currNamespace = nameSpace;
+			engine->SetDefaultNamespace(currNamespace.c_str());
 		}
 		if( type->GetFlags() & asOBJ_SCRIPT_OBJECT )
 		{
@@ -323,7 +329,11 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 			// Only the type flags are necessary. The application flags are application
 			// specific and doesn't matter to the offline compiler. The object size is also
 			// unnecessary for the offline compiler
-			strm << "objtype \"" << engine->GetTypeDeclaration(type->GetTypeId()) << "\" " << (unsigned int)(type->GetFlags() & 0xFF) << "\n";
+			strm << "objtype \"" << engine->GetTypeDeclaration(type->GetTypeId()) << "\" " << (unsigned int)(type->GetFlags() & asOBJ_MASK_VALID_FLAGS) << "\n";
+
+			// Store the template types (but not template instances)
+			if( (type->GetFlags() & asOBJ_TEMPLATE) && type->GetSubType() && (type->GetSubType()->GetFlags() & asOBJ_TEMPLATE_SUBTYPE) )
+				templateTypes.insert(type);
 		}
 	}
 
@@ -336,8 +346,9 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 		const char *typeDef = engine->GetTypedefByIndex(n, &typeId, &nameSpace, 0, &accessMask);
 		if( nameSpace != currNamespace )
 		{
-			strm << "namespace " << nameSpace << "\n";
+			strm << "namespace \"" << nameSpace << "\"\n";
 			currNamespace = nameSpace;
+			engine->SetDefaultNamespace(currNamespace.c_str());
 		}
 		if( accessMask != currAccessMask )
 		{
@@ -355,8 +366,9 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 		const char *nameSpace = funcDef->GetNamespace();
 		if( nameSpace != currNamespace )
 		{
-			strm << "namespace " << nameSpace << "\n";
+			strm << "namespace \"" << nameSpace << "\"\n";
 			currNamespace = nameSpace;
+			engine->SetDefaultNamespace(currNamespace.c_str());
 		}
 		if( accessMask != currAccessMask )
 		{
@@ -366,86 +378,105 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 		strm << "funcdef \"" << funcDef->GetDeclaration() << "\"\n";
 	}
 
+	// A helper for writing object type members
+	struct TypeWriter
+	{
+		static void Write(asIScriptEngine *engine, ostream &strm, asIObjectType *type, string &currNamespace, asDWORD &currAccessMask)
+		{
+			const char *nameSpace = type->GetNamespace();
+			if( nameSpace != currNamespace )
+			{
+				strm << "namespace \"" << nameSpace << "\"\n";
+				currNamespace = nameSpace;
+				engine->SetDefaultNamespace(currNamespace.c_str());
+			}
+			string typeDecl = engine->GetTypeDeclaration(type->GetTypeId());
+			if( type->GetFlags() & asOBJ_SCRIPT_OBJECT )
+			{
+				for( asUINT m = 0; m < type->GetMethodCount(); m++ )
+				{
+					asIScriptFunction *func = type->GetMethodByIndex(m);
+					asDWORD accessMask = func->GetAccessMask();
+					if( accessMask != currAccessMask )
+					{
+						strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
+						currAccessMask = accessMask;
+					}
+					strm << "intfmthd " << typeDecl.c_str() << " \"" << Escape::Quotes(func->GetDeclaration(false)).c_str() << "\"\n";
+				}
+			}
+			else
+			{
+				asUINT m;
+				for( m = 0; m < type->GetFactoryCount(); m++ )
+				{
+					asIScriptFunction *func = type->GetFactoryByIndex(m);
+					asDWORD accessMask = func->GetAccessMask();
+					if( accessMask != currAccessMask )
+					{
+						strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
+						currAccessMask = accessMask;
+					}
+					strm << "objbeh \"" << typeDecl.c_str() << "\" " << asBEHAVE_FACTORY << " \"" << Escape::Quotes(func->GetDeclaration(false)).c_str() << "\"\n";
+				}
+				for( m = 0; m < type->GetBehaviourCount(); m++ )
+				{
+					asEBehaviours beh;
+					asIScriptFunction *func = type->GetBehaviourByIndex(m, &beh);
+
+					if( beh == asBEHAVE_CONSTRUCT )
+						// Prefix 'void'
+						strm << "objbeh \"" << typeDecl.c_str() << "\" " << beh << " \"void " << Escape::Quotes(func->GetDeclaration(false)).c_str() << "\"\n";
+					else if( beh == asBEHAVE_DESTRUCT )
+						// Prefix 'void' and remove ~
+						strm << "objbeh \"" << typeDecl.c_str() << "\" " << beh << " \"void " << Escape::Quotes(func->GetDeclaration(false)).c_str()+1 << "\"\n";
+					else
+						strm << "objbeh \"" << typeDecl.c_str() << "\" " << beh << " \"" << Escape::Quotes(func->GetDeclaration(false)).c_str() << "\"\n";
+				}
+				for( m = 0; m < type->GetMethodCount(); m++ )
+				{
+					asIScriptFunction *func = type->GetMethodByIndex(m);
+					asDWORD accessMask = func->GetAccessMask();
+					if( accessMask != currAccessMask )
+					{
+						strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
+						currAccessMask = accessMask;
+					}
+					strm << "objmthd \"" << typeDecl.c_str() << "\" \"" << Escape::Quotes(func->GetDeclaration(false)).c_str() << "\"\n";
+				}
+				for( m = 0; m < type->GetPropertyCount(); m++ )
+				{
+					asDWORD accessMask;
+					type->GetProperty(m, 0, 0, 0, 0, 0, 0, &accessMask);
+					if( accessMask != currAccessMask )
+					{
+						strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
+						currAccessMask = accessMask;
+					}
+					strm << "objprop \"" << typeDecl.c_str() << "\" \"" << type->GetPropertyDeclaration(m) << "\"\n";
+				}
+			}
+		}
+	};
+
+	// Write the members of the template types, so they can be fully registered before any other type uses them
+	// TODO: Order the template types based on dependency to avoid failure if one type uses instances of another 
+	strm << "\n// Template type members\n";
+	for( set<asIObjectType*>::iterator it = templateTypes.begin(); it != templateTypes.end(); ++it )
+	{
+		asIObjectType *type = *it;
+		TypeWriter::Write(engine, strm, type, currNamespace, currAccessMask);
+	}
+
 	// Write the object types members
-	// TODO: All function declarations must use escape sequences for " so as not to cause the parsing of the file to fail
 	strm << "\n// Type members\n";
 
 	c = engine->GetObjectTypeCount();
 	for( n = 0; n < c; n++ )
 	{
 		asIObjectType *type = engine->GetObjectTypeByIndex(n);
-		const char *nameSpace = type->GetNamespace();
-		if( nameSpace != currNamespace )
-		{
-			strm << "namespace " << nameSpace << "\n";
-			currNamespace = nameSpace;
-		}
-		string typeDecl = engine->GetTypeDeclaration(type->GetTypeId());
-		if( type->GetFlags() & asOBJ_SCRIPT_OBJECT )
-		{
-			for( asUINT m = 0; m < type->GetMethodCount(); m++ )
-			{
-				asIScriptFunction *func = type->GetMethodByIndex(m);
-				asDWORD accessMask = func->GetAccessMask();
-				if( accessMask != currAccessMask )
-				{
-					strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
-					currAccessMask = accessMask;
-				}
-				strm << "intfmthd " << typeDecl.c_str() << " \"" << Escape::Quotes(func->GetDeclaration(false)).c_str() << "\"\n";
-			}
-		}
-		else
-		{
-			asUINT m;
-			for( m = 0; m < type->GetFactoryCount(); m++ )
-			{
-				asIScriptFunction *func = type->GetFactoryByIndex(m);
-				asDWORD accessMask = func->GetAccessMask();
-				if( accessMask != currAccessMask )
-				{
-					strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
-					currAccessMask = accessMask;
-				}
-				strm << "objbeh \"" << typeDecl.c_str() << "\" " << asBEHAVE_FACTORY << " \"" << Escape::Quotes(func->GetDeclaration(false)).c_str() << "\"\n";
-			}
-			for( m = 0; m < type->GetBehaviourCount(); m++ )
-			{
-				asEBehaviours beh;
-				asIScriptFunction *func = type->GetBehaviourByIndex(m, &beh);
-
-				if( beh == asBEHAVE_CONSTRUCT )
-					// Prefix 'void'
-					strm << "objbeh \"" << typeDecl.c_str() << "\" " << beh << " \"void " << Escape::Quotes(func->GetDeclaration(false)).c_str() << "\"\n";
-				else if( beh == asBEHAVE_DESTRUCT )
-					// Prefix 'void' and remove ~
-					strm << "objbeh \"" << typeDecl.c_str() << "\" " << beh << " \"void " << Escape::Quotes(func->GetDeclaration(false)).c_str()+1 << "\"\n";
-				else
-					strm << "objbeh \"" << typeDecl.c_str() << "\" " << beh << " \"" << Escape::Quotes(func->GetDeclaration(false)).c_str() << "\"\n";
-			}
-			for( m = 0; m < type->GetMethodCount(); m++ )
-			{
-				asIScriptFunction *func = type->GetMethodByIndex(m);
-				asDWORD accessMask = func->GetAccessMask();
-				if( accessMask != currAccessMask )
-				{
-					strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
-					currAccessMask = accessMask;
-				}
-				strm << "objmthd \"" << typeDecl.c_str() << "\" \"" << Escape::Quotes(func->GetDeclaration(false)).c_str() << "\"\n";
-			}
-			for( m = 0; m < type->GetPropertyCount(); m++ )
-			{
-				asDWORD accessMask;
-				type->GetProperty(m, 0, 0, 0, 0, 0, &accessMask);
-				if( accessMask != currAccessMask )
-				{
-					strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
-					currAccessMask = accessMask;
-				}
-				strm << "objprop \"" << typeDecl.c_str() << "\" \"" << type->GetPropertyDeclaration(m) << "\"\n";
-			}
-		}
+		if( templateTypes.find(type) == templateTypes.end() )
+			TypeWriter::Write(engine, strm, type, currNamespace, currAccessMask);
 	}
 
 	// Write functions
@@ -458,8 +489,9 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 		const char *nameSpace = func->GetNamespace();
 		if( nameSpace != currNamespace )
 		{
-			strm << "namespace " << nameSpace << "\n";
+			strm << "namespace \"" << nameSpace << "\"\n";
 			currNamespace = nameSpace;
+			engine->SetDefaultNamespace(currNamespace.c_str());
 		}
 		asDWORD accessMask = func->GetAccessMask();
 		if( accessMask != currAccessMask )
@@ -489,11 +521,14 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 		}
 		if( nameSpace != currNamespace )
 		{
-			strm << "namespace " << nameSpace << "\n";
+			strm << "namespace \"" << nameSpace << "\"\n";
 			currNamespace = nameSpace;
+			engine->SetDefaultNamespace(currNamespace.c_str());
 		}
 		strm << "prop \"" << (isConst ? "const " : "") << engine->GetTypeDeclaration(typeId) << " " << name << "\"\n";
 	}
+
+	engine->SetDefaultNamespace("");
 
 	// Write string factory
 	strm << "\n// String factory\n";
@@ -523,7 +558,7 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 	{
 		static asETokenClass GetToken(asIScriptEngine *engine, string &token, const string &text, asUINT &pos)
 		{
-			int len;
+			asUINT len = 0;
 			asETokenClass t = engine->ParseToken(&text[pos], text.length() - pos, &len);
 			while( (t == asTC_WHITESPACE || t == asTC_COMMENT) && pos < text.length() )
 			{
@@ -593,48 +628,27 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 			asEEngineProp ep = asEEngineProp(atol(tmp.c_str()));
 
 			// Only set properties that affect the compiler
-			switch( ep )
+			if( ep != asEP_COPY_SCRIPT_SECTIONS &&
+				ep != asEP_MAX_STACK_SIZE &&
+				ep != asEP_INIT_GLOBAL_VARS_AFTER_BUILD &&
+				ep != asEP_EXPAND_DEF_ARRAY_TO_TMPL &&
+				ep != asEP_AUTO_GARBAGE_COLLECT )
 			{
-			case asEP_ALLOW_UNSAFE_REFERENCES:
-			case asEP_OPTIMIZE_BYTECODE:
-			case asEP_USE_CHARACTER_LITERALS:
-			case asEP_ALLOW_MULTILINE_STRINGS:
-			case asEP_ALLOW_IMPLICIT_HANDLE_TYPES:
-			case asEP_BUILD_WITHOUT_LINE_CUES:
-			case asEP_REQUIRE_ENUM_SCOPE:
-			case asEP_SCRIPT_SCANNER:
-			case asEP_INCLUDE_JIT_INSTRUCTIONS:
-			case asEP_STRING_ENCODING:
-			case asEP_PROPERTY_ACCESSOR_MODE:
-			case asEP_DISALLOW_GLOBAL_VARS:
-			case asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT:
-			case asEP_COMPILER_WARNINGS:
-			case asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE:
-				{
-					// Get the value for the property
-					in::GetToken(engine, tmp, config, pos);
-					stringstream s(tmp);
-					asPWORD value;
+				// Get the value for the property
+				in::GetToken(engine, tmp, config, pos);
+				stringstream s(tmp);
+				asPWORD value;
 
-					s >> value;
+				s >> value;
 
-					engine->SetEngineProperty(ep, value);
-				}
-				break;
-
-			case asEP_COPY_SCRIPT_SECTIONS:
-			case asEP_MAX_STACK_SIZE:
-			case asEP_INIT_GLOBAL_VARS_AFTER_BUILD:
-			case asEP_EXPAND_DEF_ARRAY_TO_TMPL:
-			case asEP_AUTO_GARBAGE_COLLECT:
-				// These don't affect the compiler, so there is no need to export them
-				break;
+				engine->SetEngineProperty(ep, value);
 			}
 		}
 		else if( token == "namespace" )
 		{
 			string ns;
 			in::GetToken(engine, ns, config, pos);
+			ns = ns.substr(1, ns.length() - 2);
 
 			r = engine->SetDefaultNamespace(ns.c_str());
 			if( r < 0 )
@@ -782,7 +796,7 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 			// All properties must have different offsets in order to make them
 			// distinct, so we simply register them with an incremental offset.
 			// The pointer must also be non-null so we add 1 to have a value.
-			r = engine->RegisterGlobalProperty(decl.c_str(), (void*)(engine->GetGlobalPropertyCount()+1));
+			r = engine->RegisterGlobalProperty(decl.c_str(), reinterpret_cast<void*>(engine->GetGlobalPropertyCount()+1));
 			if( r < 0 )
 			{
 				engine->WriteMessage(configFile, in::GetLineNumber(config, pos), 0, asMSGTYPE_ERROR, "Failed to register global property");

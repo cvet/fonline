@@ -324,12 +324,16 @@ bool CScriptAny::Retrieve(void *ref, int refTypeId) const
 
 		// A handle can be retrieved if the stored type is a handle of same or compatible type
 		// or if the stored type is an object that implements the interface that the handle refer to.
-		if( (value.typeId & asTYPEID_MASK_OBJECT) && 
-			engine->IsHandleCompatibleWithObject(value.valueObj, value.typeId, refTypeId) )
+		if( (value.typeId & asTYPEID_MASK_OBJECT) )
 		{
-			engine->AddRefScriptObject(value.valueObj, engine->GetObjectTypeById(value.typeId));
-			*(void**)ref = value.valueObj;
+			// Don't allow the retrieval if the stored handle is to a const object but not the wanted handle
+			if( (value.typeId & asTYPEID_HANDLETOCONST) && !(refTypeId & asTYPEID_HANDLETOCONST) )
+				return false;
 
+			// RefCastObject will increment the refCount of the returned pointer if successful
+			engine->RefCastObject(value.valueObj, engine->GetObjectTypeById(value.typeId), engine->GetObjectTypeById(refTypeId), reinterpret_cast<void**>(ref));
+			if( *(asPWORD*)ref == 0 )
+				return false;
 			return true;
 		}
 	}
@@ -341,7 +345,6 @@ bool CScriptAny::Retrieve(void *ref, int refTypeId) const
 		if( value.typeId == refTypeId )
 		{
 			engine->AssignScriptObject(ref, value.valueObj, engine->GetObjectTypeById(value.typeId));
-
 			return true;
 		}
 	}

@@ -261,5 +261,8 @@
     <None Include="..\..\source\as_callfunc_arm_xcode.S">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="..\..\source\as_callfunc_arm_vita.S">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -138,8 +138,8 @@ int main(int argc, char **argv)
 		Sleep(100);
 	}
 
-	// Release the engine
-	engine->Release();
+	// Shut down the engine
+	engine->ShutDownAndRelease();
 
 	return 0;
 }

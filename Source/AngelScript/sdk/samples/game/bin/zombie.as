@@ -16,13 +16,13 @@ class CZombie : IController
 	void OnThink()
 	{
 		// Check if we already have a reference to the player
-		const CGameObj @player = playerRef.get();
+		const CGameObj @player = playerRef;
 		if( player is null )
 		{
 			@player = game.FindObjByName('player');
 			
 			// Keep a weak ref to the player so we don't keep the object alive unnecessarily
-			playerRef = const_weakref<CGameObj>(player);
+			@playerRef = player;
 		}
 		
 		// The zombie can either turn, move forward, or hit. 

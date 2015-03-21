@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2015 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -3558,7 +3558,7 @@ void asCContext::ExecuteNext()
 		break;
 
 	case asBC_u64TOf:
-#if _MSC_VER <= 1200 // MSVC6
+#if defined(_MSC_VER) && _MSC_VER <= 1200 // MSVC6
 		{
 			// MSVC6 doesn't permit UINT64 to double
 			asINT64 v = *(asINT64*)(l_fp - asBC_SWORDARG1(l_bc));
@@ -3579,7 +3579,7 @@ void asCContext::ExecuteNext()
 		break;
 
 	case asBC_u64TOd:
-#if _MSC_VER <= 1200 // MSVC6
+#if defined(_MSC_VER) && _MSC_VER <= 1200 // MSVC6
 		{
 			// MSVC6 doesn't permit UINT64 to double
 			asINT64 v = *(asINT64*)(l_fp - asBC_SWORDARG0(l_bc));

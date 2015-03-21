@@ -102,8 +102,8 @@ int main(int argc, char **argv)
 			cout << "Unknown command." << endl;
 	}
 
-	// Release the engine
-	engine->Release();
+	// Shut down the engine
+	engine->ShutDownAndRelease();
 
 	return 0;
 }

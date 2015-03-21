@@ -82,8 +82,8 @@ int main(int argc, char **argv)
 	r = SaveBytecode(engine, argv[3]);
 	if( r < 0 ) return -1;
 
-	// Release the engine
-	engine->Release();
+	// Shut down the engine
+	engine->ShutDownAndRelease();
 
 	return 0;
 }

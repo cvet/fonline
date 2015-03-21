@@ -965,15 +965,20 @@ int asCBuilder::VerifyProperty(asCDataType *dt, const char *decl, asCString &nam
 	if( r < 0 )
 		return asINVALID_DECLARATION;
 
-	// Get data type and property name
+	// Get data type
 	asCScriptNode *dataType = parser.GetScriptNode()->firstChild;
 
-	asCScriptNode *nameNode = dataType->next;
+	// Check if the property is declared 'by reference'
+	bool isReference = (dataType->next->tokenType == ttAmp);
+
+	// Get the name of the property
+	asCScriptNode *nameNode = isReference ? dataType->next->next : dataType->next;
 
 	// If an object property is registered, then use the
 	// object's namespace, otherwise use the specified namespace
 	type = CreateDataTypeFromNode(dataType, &source, dt ? dt->GetObjectType()->nameSpace : ns);
 	name.Assign(&decl[nameNode->tokenPos], nameNode->tokenLength);
+	type.MakeReference(isReference);
 
 	// Validate that the type really can be a registered property
 	// We cannot use CanBeInstantiated, as it is allowed to register
@@ -2379,7 +2384,7 @@ void asCBuilder::CompileInterfaces()
 				objType = GetObjectType(name.AddressOf(), ns);
 				if( objType ) break;
 
-				ns = GetParentNameSpace(ns);
+				ns = engine->GetParentNameSpace(ns);
 			}
 
 			// Check that the object type is an interface
@@ -2562,7 +2567,7 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 				if( objType || mixin )
 					break;
 
-				ns = GetParentNameSpace(ns);
+				ns = engine->GetParentNameSpace(ns);
 			}
 
 			if( objType == 0 && mixin == 0 )
@@ -3325,7 +3330,7 @@ void asCBuilder::IncludeMethodsFromMixins(sClassDeclaration *decl)
 			if( objType || mixin )
 				break;
 
-			ns = GetParentNameSpace(ns);
+			ns = engine->GetParentNameSpace(ns);
 		}
 
 		if( mixin )
@@ -3399,7 +3404,7 @@ void asCBuilder::IncludePropertiesFromMixins(sClassDeclaration *decl)
 			if( objType || mixin )
 				break;
 
-			ns = GetParentNameSpace(ns);
+			ns = engine->GetParentNameSpace(ns);
 		}
 
 		if( mixin )
@@ -4708,7 +4713,8 @@ void asCBuilder::GetFunctionDescriptions(const char *name, asCArray<int> &funcs,
 	// TODO: optimize: Linear search: This is probably not that critial. Also bindInformation will probably be removed in near future
 	for( n = 0; n < module->bindInformations.GetLength(); n++ )
 	{
-		if( module->bindInformations[n]->importedFunctionSignature->name == name )
+		if( module->bindInformations[n]->importedFunctionSignature->name == name &&
+			module->bindInformations[n]->importedFunctionSignature->nameSpace == ns )
 			funcs.PushLast(module->bindInformations[n]->importedFunctionSignature->id);
 	}
 
@@ -4891,22 +4897,6 @@ asSNameSpace *asCBuilder::GetNameSpaceFromNode(asCScriptNode *node, asCScriptCod
 {
 	asCString scope = GetScopeFromNode(node, script, next);
 	return GetNameSpaceByString(scope, implicitNs, node, script);
-}
-
-asSNameSpace *asCBuilder::GetParentNameSpace(asSNameSpace *ns)
-{
-	if( ns == 0 ) return 0;
-	if( ns == engine->nameSpaces[0] ) return 0;
-
-	asCString scope = ns->name;
-	int pos = scope.FindLast("::");
-	if( pos >= 0 )
-	{
-		scope = scope.SubString(0, pos);
-		return engine->FindNameSpace(scope.AddressOf());
-	}
-
-	return engine->nameSpaces[0];
 }
 
 asSNameSpace *asCBuilder::GetNameSpaceByString(const asCString &nsName, asSNameSpace *implicitNs, asCScriptNode *errNode, asCScriptCode *script)
@@ -5120,7 +5110,7 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 			if( !found )
 			{
 				// Try to find it in the parent namespace
-				ns = GetParentNameSpace(ns);
+				ns = engine->GetParentNameSpace(ns);
 			}
 		}
 

@@ -2,6 +2,7 @@
 #include <assert.h>  // assert()
 #include <string.h>  // strstr()
 #include <vector>
+#include <stdlib.h>  // system()
 #include <stdio.h>
 #include <sstream>   // stringstream
 #include <angelscript.h>
@@ -10,9 +11,14 @@
 #include "../../../add_on/scriptarray/scriptarray.h"
 #include "../../../add_on/scriptdictionary/scriptdictionary.h"
 #include "../../../add_on/scriptfile/scriptfile.h"
+#include "../../../add_on/scriptfile/scriptfilesystem.h"
 #include "../../../add_on/scripthelper/scripthelper.h"
 #include "../../../add_on/debugger/debugger.h"
 #include "../../../add_on/contextmgr/contextmgr.h"
+
+#ifdef _WIN32
+#include <Windows.h> // WriteConsoleW
+#endif
 
 #if defined(_MSC_VER)
 #include <crtdbg.h>   // MSVC debugging routines
@@ -29,6 +35,7 @@ void              MessageCallback(const asSMessageInfo *msg, void *param);
 asIScriptContext *RequestContextCallback(asIScriptEngine *engine, void *param);
 void              ReturnContextCallback(asIScriptEngine *engine, asIScriptContext *ctx, void *param);
 void              PrintString(const string &str);
+int               ExecSystemCmd(const string &cmd);
 CScriptArray     *GetCommandLineArgs();
 
 // The command line arguments
@@ -105,10 +112,10 @@ int main(int argc, char **argv)
 	// Execute the script
 	r = ExecuteScript(engine, argv[scriptArg], debug);
 	
-	// Release the engine
+	// Shut down the engine
 	if( g_commandLineArgs )
 		g_commandLineArgs->Release();
-	engine->Release();
+	engine->ShutDownAndRelease();
 
 	return r;
 }
@@ -139,10 +146,12 @@ int ConfigureEngine(asIScriptEngine *engine)
 	RegisterStdStringUtils(engine);
 	RegisterScriptDictionary(engine);
 	RegisterScriptFile(engine);
+	RegisterScriptFileSystem(engine);
 
 	// Register a couple of extra functions for the scripts
 	r = engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(PrintString), asCALL_CDECL); assert( r >= 0 );
 	r = engine->RegisterGlobalFunction("array<string> @getCommandLineArgs()", asFUNCTION(GetCommandLineArgs), asCALL_CDECL); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction("int exec(const string &in)", asFUNCTION(ExecSystemCmd), asCALL_CDECL); assert( r >= 0 );
 
 	// Setup the context manager and register the support for co-routines
 	g_ctxMgr = new CContextMgr();
@@ -280,7 +289,7 @@ int ExecuteScript(asIScriptEngine *engine, const char *scriptFile, bool debug)
 	// Set up a context to execute the script
 	// The context manager will request the context from the 
 	// pool, which will automatically attach the debugger
-	asIScriptContext *ctx = g_ctxMgr->AddContext(engine, func);
+	asIScriptContext *ctx = g_ctxMgr->AddContext(engine, func, true);
 
 	// Execute the script until completion
 	// The script may create co-routines. These will automatically
@@ -319,6 +328,9 @@ int ExecuteScript(asIScriptEngine *engine, const char *scriptFile, bool debug)
 			r = 0;
 	}
 
+	// Return the context after retrieving the return value
+	g_ctxMgr->DoneWithContext(ctx);
+
 	// Destroy the context manager
 	if( g_ctxMgr )
 	{
@@ -350,7 +362,53 @@ int ExecuteScript(asIScriptEngine *engine, const char *scriptFile, bool debug)
 // This little function allows the script to print a string to the screen
 void PrintString(const string &str)
 {
+#ifdef _WIN32
+	// Unless the std out has been redirected to file we'll need to allow Windows to convert
+	// the text to the current locale so that characters will be displayed appropriately.
+	HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+	DWORD mode = 0;
+	if( console != INVALID_HANDLE_VALUE && GetConsoleMode(console, &mode) != 0 ) 
+	{
+		// We're writing to a console window, so convert the UTF8 string to UTF16 and write with
+		// WriteConsoleW. Windows will then automatically display the characters correctly according
+		// to the user's settings
+		wchar_t bufUTF16[10000];
+		MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, bufUTF16, 10000);
+		WriteConsoleW(console, bufUTF16, lstrlenW(bufUTF16), 0, 0);
+	}
+	else
+	{
+		// We're writing to a file, so just write the bytes as-is without any conversion
+		cout << str;
+	}
+#else
 	cout << str;
+#endif
+}
+
+// TODO: Perhaps it might be interesting to implement pipes so that the script can receive input from stdin, 
+//       or execute commands that return output similar to how popen is used
+
+// This function simply calls the system command and returns the status
+int ExecSystemCmd(const string &str)
+{
+	// Check if the command line processor is available
+	if( system(0) == 0 )
+	{
+		asIScriptContext *ctx = asGetActiveContext();
+		if( ctx )
+			ctx->SetException("Command interpreter not available\n");
+		return -1;
+	}
+
+#ifdef _WIN32
+	// Convert the command to UTF16 to properly handle unicode path names
+	wchar_t bufUTF16[10000];
+	MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, bufUTF16, 10000);
+	return _wsystem(bufUTF16);
+#else
+	return system(cmd.c_str());
+#endif
 }
 
 // This function returns the command line arguments that were passed to the script

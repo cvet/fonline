@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2015 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -314,7 +314,8 @@ public:
 
 	// Namespace management
 	asSNameSpace *AddNameSpace(const char *name);
-	asSNameSpace *FindNameSpace(const char *name);
+	asSNameSpace *FindNameSpace(const char *name) const;
+	asSNameSpace *GetParentNameSpace(asSNameSpace *ns) const;
 
 //===========================================================
 // internal properties
@@ -495,9 +496,12 @@ public:
 		bool   alwaysImplDefaultConstruct;
 		int    compilerWarnings;
 		bool   disallowValueAssignForRefType;
+		// TODO: 3.0.0: Remove the alterSyntaxNamedArgs
 		int    alterSyntaxNamedArgs;
 		bool   disableIntegerDivision;
 		bool   disallowEmptyListElements;
+		// TODO: 3.0.0: Remove the privatePropAsProtected
+		bool   privatePropAsProtected;
 	} ep;
 
 	// This flag is to allow a quicker shutdown when releasing the engine

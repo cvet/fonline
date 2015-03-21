@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2015 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -45,7 +45,6 @@
 // Features
 //-----------------------------------------
 
-#define AS_NO_THREADS
 // AS_NO_THREADS
 // Turns off support for multithreading. By turning off
 // this when it's not needed a bit of performance is gained.
@@ -60,9 +59,6 @@
 // If the compiler/platform doesn't support atomic instructions
 // then this should be defined to use critical sections instead.
 
-#ifdef DEBUG
-# define AS_DEBUG
-#endif
 // AS_DEBUG
 // This flag can be defined to make the library write some extra output when
 // compiling and executing scripts.
@@ -96,7 +92,6 @@
 // for those applications that will load pre-compiled bytecode and wants to decrease
 // the size of the executable.
 
-#define AS_NO_EXCEPTIONS
 // AS_NO_EXCEPTIONS
 // Define this if exception handling is turned off or not available on the target platform.
 
@@ -608,11 +603,7 @@
 // Use the following command to determine predefined macros: echo . | g++ -dM -E -
 #if (defined(__GNUC__) && !defined(__SNC__)) || defined(EPPC) || defined(__CYGWIN__) // JWC -- use this instead for Wii
 	#define GNU_STYLE_VIRTUAL_METHOD
-#if !defined( __amd64__ )
-	#define MULTI_BASE_OFFSET(x) (*((asDWORD*)(&x)+1))
-#else
-	#define MULTI_BASE_OFFSET(x) (*((asQWORD*)(&x)+1))
-#endif
+	#define MULTI_BASE_OFFSET(x) (*((asPWORD*)(&x)+1))
 	#define asVSNPRINTF(a, b, c, d) vsnprintf(a, b, c, d)
 	#define CALLEE_POPS_HIDDEN_RETURN_POINTER
 	#define COMPLEX_OBJS_PASSED_BY_REF
@@ -1202,7 +1193,7 @@
 // Usually where the variables are only used in debug mode.
 #define UNUSED_VAR(x) (void)(x)
 
-#include "angelscript.h"
+#include "../include/angelscript.h"
 #include "as_memory.h"
 
 #ifdef AS_USE_NAMESPACE

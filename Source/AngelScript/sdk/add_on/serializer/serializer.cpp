@@ -23,6 +23,18 @@ CSerializer::CSerializer()
 
 CSerializer::~CSerializer()
 {
+	// Extra objects need to be released, since they are not stored in 
+	// the module and we cannot rely on the application releasing them
+	for( size_t i = 0; i < m_extraObjects.size(); i++ )
+	{
+		SExtraObject &o = m_extraObjects[i];
+		for( size_t i2 = 0; i2 < m_root.m_children.size(); i2++ )
+		{
+			if( m_root.m_children[i2]->m_originalPtr == o.originalObject && m_root.m_children[i2]->m_restorePtr )
+				reinterpret_cast<asIScriptObject*>(m_root.m_children[i2]->m_restorePtr)->Release();
+		}
+	}
+
 	// Clean the serialized values before we remove the user types
 	m_root.Uninit();
 
@@ -95,7 +107,7 @@ int CSerializer::Restore(asIScriptModule *mod)
 			{
 				if( m_root.m_children[i2]->m_originalPtr == o.originalObject )
 				{
-					// Create a new script object, but don't call its constructor as we will initialize the members. 
+					// Create a new script object, but don't call its constructor as we will initialize the members.
 					// Calling the constructor may have unwanted side effects if for example the constructor changes
 					// any outside entities, such as setting global variables to point to new objects, etc.
 					void *newPtr = m_engine->CreateUninitializedScriptObject( type );
@@ -313,14 +325,19 @@ void CSerializedValue::Store(void *ref, int typeId)
 		int size = m_serializer->m_engine->GetSizeOfPrimitiveType(m_typeId);
 		
 		if( size == 0 )
-		{			
+		{
 			// if it is user type( string, array, etc ... )
 			if( m_serializer->m_userTypes[m_typeName] )
 				m_serializer->m_userTypes[m_typeName]->Store(this, m_originalPtr);
-			
-			// it is script class
-			else if( GetType() )
-				size = GetType()->GetSize();	
+			else
+			{
+				// POD-types can be stored without need for user type
+				asIObjectType *type = GetType();
+				if( type && (type->GetFlags() & asOBJ_POD) )
+					size = GetType()->GetSize();
+
+				// It is not necessary to report an error here if it is not a POD-type as that will be done when restoring
+			}
 		}
 
 		if( size )
@@ -356,7 +373,11 @@ void CSerializedValue::Restore(void *ref, int typeId)
 
 			if( type->GetFactoryCount() == 0 )
 			{
+				// There are no factories, so assume the same pointer is going to be used
 				m_children[0]->m_restorePtr = m_handlePtr;
+
+				// Increase the refCount for the object as it will be released upon clean-up
+				m_serializer->m_engine->AddRefScriptObject(m_handlePtr, type);
 			}
 			else
 			{

@@ -51,7 +51,14 @@ public:
 	// Create a new context, prepare it with the function id, then return 
 	// it so that the application can pass the argument values. The context
 	// will be released by the manager after the execution has completed.
-	asIScriptContext *AddContext(asIScriptEngine *engine, asIScriptFunction *func);
+	// Set keepCtxAfterExecution to true if the application needs to retrieve
+	// information from the context after it the script has finished. 
+	asIScriptContext *AddContext(asIScriptEngine *engine, asIScriptFunction *func, bool keepCtxAfterExecution = false);
+
+	// If the context was kept after the execution, this method must be 
+	// called when the application is done with the context so it can be
+	// returned to the pool for reuse.
+	void DoneWithContext(asIScriptContext *ctx);
 
 	// Create a new context, prepare it with the function id, then return
 	// it so that the application can pass the argument values. The context

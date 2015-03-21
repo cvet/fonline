@@ -20,7 +20,7 @@ using namespace std;
 #define UINT unsigned int 
 typedef unsigned int DWORD;
 
-// Linux doesn't have timeGetTime(), this essintially does the same
+// Linux doesn't have timeGetTime(), this essentially does the same
 // thing, except this is milliseconds since Epoch (Jan 1st 1970) instead
 // of system start. It will work the same though...
 DWORD timeGetTime()
@@ -201,8 +201,8 @@ int RunApplication()
 	// We must release the contexts when no longer using them
 	ctx->Release();
 
-	// Release the engine
-	engine->Release();
+	// Shut down the engine
+	engine->ShutDownAndRelease();
 
 	return 0;
 }
@@ -266,7 +266,7 @@ int CompileScript(asIScriptEngine *engine)
 	// Read the entire file
 	string script;
 	script.resize(len);
-	int c =	fread(&script[0], len, 1, f);
+	size_t c = fread(&script[0], len, 1, f);
 	fclose(f);
 
 	if( c == 0 ) 

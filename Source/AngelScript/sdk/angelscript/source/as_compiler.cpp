@@ -1484,6 +1484,17 @@ int asCCompiler::PrepareArgument(asCDataType *paramType, asSExprContext *ctx, as
 			}
 			else if( ctx->type.dataType.IsNullHandle() )
 			{
+				// Make sure the argument type can support handles (or is itself a handle)
+				if( !dt.SupportHandles() && !dt.IsObjectHandle() )
+				{
+					asCString str;
+					str.Format(TXT_CANT_IMPLICITLY_CONVERT_s_TO_s, ctx->type.dataType.Format(outFunc->nameSpace).AddressOf(), param.Format(outFunc->nameSpace).AddressOf());
+					Error(str, node);
+
+					ctx->type.Set(param);
+					return -1;
+				}
+
 				// Need to initialize a local temporary variable to
 				// represent the null handle when passed as reference
 				asASSERT( ctx->bc.GetLastInstr() == asBC_PshNull );
@@ -5864,6 +5875,10 @@ asUINT asCCompiler::ImplicitConversion(asSExprContext *ctx, const asCDataType &t
 	if( ctx->type.dataType.GetTokenType() == ttVoid )
 		return asCC_NO_CONV;
 
+	// No conversion from class method to any type (it requires delegate)
+	if( ctx->IsClassMethod() )
+		return asCC_NO_CONV;
+
 	// Do we want a var type?
 	if( to.GetTokenType() == ttQuestion )
 	{
@@ -8298,9 +8313,21 @@ int asCCompiler::CompileVariableAccess(const asCString &name, const asCString &s
 				// Is the property access allowed?
 				if( prop->isPrivate && prop->isInherited )
 				{
-					asCString msg;
-					msg.Format(TXT_INHERITED_PRIVATE_PROP_ACCESS_s, name.AddressOf());
-					Error(msg, errNode);
+					if( engine->ep.privatePropAsProtected )
+					{
+						// The application is allowing inherited classes to access private properties of the parent
+						// class. This option is allowed to provide backwards compatibility with pre-2.30.0 versions
+						// as it was how the compiler behaved earlier.
+						asCString msg;
+						msg.Format(TXT_ACCESSING_PRIVATE_PROP_s, name.AddressOf());
+						Warning(msg, errNode);
+					}
+					else
+					{
+						asCString msg;
+						msg.Format(TXT_INHERITED_PRIVATE_PROP_ACCESS_s, name.AddressOf());
+						Error(msg, errNode);
+					}
 				}
 
 				if( !objType )
@@ -8386,12 +8413,14 @@ int asCCompiler::CompileVariableAccess(const asCString &name, const asCString &s
 
 	// Recursively search parent namespaces for global entities
 	asCString currScope = scope;
-	if( scope == "" )
-		currScope = outFunc->nameSpace->name;
+
+	// Get the namespace for this scope. This may return null if the scope is an enum
+	asSNameSpace *ns = DetermineNameSpace(currScope);
+	if( ns && currScope != "::" )
+		currScope = ns->name;
+
 	while( !found && !noGlobal && !objType )
 	{
-		asSNameSpace *ns = DetermineNameSpace(currScope);
-
 		// Is it a global property?
 		if( !found && ns )
 		{
@@ -8605,7 +8634,7 @@ int asCCompiler::CompileVariableAccess(const asCString &name, const asCString &s
 				{
 					ctx->type.SetDummy();
 					asCString str;
-					str.Format(TXT_UNKNOWN_SCOPE_s, currScope.AddressOf());
+					str.Format(TXT_UNKNOWN_SCOPE_s, scope.AddressOf());
 					Error(str, errNode);
 					return -1;
 				}
@@ -8623,6 +8652,9 @@ int asCCompiler::CompileVariableAccess(const asCString &name, const asCString &s
 				currScope = currScope.SubString(0, pos);
 			else
 				currScope = "::";
+
+			if( ns )
+				ns = engine->GetParentNameSpace(ns);
 		}
 	}
 
@@ -9873,7 +9905,7 @@ int asCCompiler::CompileFunctionCall(asCScriptNode *node, asSExprContext *ctx, a
 						}
 					}
 
-					ns = builder->GetParentNameSpace(ns);
+					ns = engine->GetParentNameSpace(ns);
 				}
 			}
 			else
@@ -10046,7 +10078,8 @@ asSNameSpace *asCCompiler::DetermineNameSpace(const asCString &scope)
 
 	if( scope == "" )
 	{
-		if( outFunc->nameSpace->name != "" )
+		// When compiling default argument expression the correct namespace is stored in the outFunc even for objects
+		if( outFunc->nameSpace->name != "" || isCompilingDefaultArg )
 			ns = outFunc->nameSpace;
 		else if( outFunc->objectType && outFunc->objectType->nameSpace->name != "" )
 			ns = outFunc->objectType->nameSpace;
@@ -10911,10 +10944,24 @@ int asCCompiler::ProcessPropertyGetSetAccessor(asSExprContext *ctx, asSExprConte
 		before.bc.InstrPTR(asBC_REFCPY, func->objectType);
 		before.bc.Instr(asBC_PopPtr);
 
+		if( lctx->type.isTemporary )
+		{
+			// Add the release of the temporary variable as a deferred expression
+			asSDeferredParam deferred;
+			deferred.origExpr = 0;
+			deferred.argInOutFlags = asTM_INREF;
+			deferred.argNode = 0;
+			deferred.argType.SetVariable(ctx->type.dataType, lctx->type.stackOffset, true);
+			before.deferredParams.PushLast(deferred);
+		}
+
 		// Update the left expression to use the local variable
 		lctx->bc.InstrSHORT(asBC_PSF, (short)offset);
 		lctx->type.stackOffset = (short)offset;
 		lctx->property_ref = true;
+
+		// Don't release the temporary variable too early
+		lctx->type.isTemporary = false;
 
 		ctx->bc.AddCode(&before.bc);
 	}
@@ -10943,6 +10990,10 @@ int asCCompiler::ProcessPropertyGetSetAccessor(asSExprContext *ctx, asSExprConte
 
 	if( before.type.stackOffset )
 		ReleaseTemporaryVariable(before.type.stackOffset, &ctx->bc);
+
+	asASSERT( ctx->deferredParams.GetLength() == 0 );
+	ctx->deferredParams = before.deferredParams;
+	ProcessDeferredParams(ctx);
 
 	return 0;
 }
@@ -11000,9 +11051,15 @@ void asCCompiler::ProcessPropertyGetAccessor(asSExprContext *ctx, asCScriptNode 
 		}
 	}
 
+	// The explicit handle flag must be remembered
+	bool isExplicitHandle = ctx->type.isExplicitHandle;
+
 	// Call the accessor
 	MakeFunctionCall(ctx, ctx->property_get, func->objectType, args, node);
+	if( isExplicitHandle )
+		ctx->type.isExplicitHandle = true;
 
+	// Clear the property get/set ids 
 	ctx->property_get = 0;
 	ctx->property_set = 0;
 	if( ctx->property_arg )

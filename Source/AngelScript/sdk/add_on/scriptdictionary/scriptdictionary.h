@@ -52,6 +52,7 @@ public:
 	void Set(asIScriptEngine *engine, void *value, int typeId);
 	void Set(asIScriptEngine *engine, const asINT64 &value);
 	void Set(asIScriptEngine *engine, const double &value);
+	void Set(asIScriptEngine *engine, CScriptDictValue &value);
 
 	// Gets the stored value. Returns false if the value isn't compatible with the informed typeId
 	bool Get(asIScriptEngine *engine, void *value, int typeId) const;

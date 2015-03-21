@@ -15,6 +15,133 @@ BODY { FONT-SIZE: 12px; FONT-FAMILY: Arial; }
 
 <h1>AngelScript Change Log</h1>
 
+<h2>Version 2.30.1 WIP - 2015/03/13</h2>
+
+<ul>
+<li>Bug fixes
+<ul>
+<li>Fixed bug in compiler when using compound assignment on virtual property on temporary variable (Thanks Violet CLM)
+<li>Compiler no longer gives error when access global variable in global namespace from class in namespace (Thanks Sir Ementaler)
+<li>Fixed bug with compiler accepting null handle in initialization lists that didn't support it (Thanks Phong Ba)
+</ul>
+<li>Library
+<ul>
+<li>It is now possible to register member properties as references if the member should be dereferenced before access (Thanks cvet)
+</ul>
+<li>Add-ons
+<ul>
+<li>Fixed memory leak in serializer when using extra objects
+<li>Fixed bug in serializer with incorrect refcount on registered types when restoring the script object that references them
+<li>Serializer attempted to backup non-pod types that had no user type registered with bitwise copy potentially causing errors 
+</ul>
+</ul>
+
+<h2>Version 2.30.0 - 2015/02/22</h2>
+
+<ul>
+<li>Bug fixes
+<ul>
+<li>Fixed bug with use of scoped reference types declared in global variables (Thanks ic0de)
+<li>Fixed bug when comparing two handles and one is a handle to a read-only object (Thanks mbwac)
+<li>Compiler will now give error if there is an overflow when evaluating power-of in constant expression (Thanks ThyReaper)
+<li>Funcdefs can now have template types with script classes as subtypes (Thanks Sir Ementaler)
+<li>Fixed an incorrect error code when registering a template specialization and the template type instance already existed (Thanks glcolor)
+<li>Template specialization failed to remove generated template instances that has been created as a consequence (Thanks Sami Vuorela)
+<li>Engine detects if application attempts to register method or property for generated template instances (Thanks glcolor)
+<li>Fixed bug with asOBJ_APP_ARRAY in arm and ppc64 calling conventions (Thanks Brandon Bare)
+<li>Fixed bug in Linux arm hardfloat ABI (Thanks Brandon Bare)
+<li>Fixed an assert failure in the compiler when compiling an assignment with non-temporary deferred arguments (Thanks iraxef)
+<li>The constructor stubs for value template types didn't pop the object pointer from the stack (Thanks iraxef)
+<li>GetFunctionByDecl wasn't able to find the global function if the name was prefixed with :: (Thanks Ser Ementaler)
+<li>The compiler was producing wrong bytecode when calling asBEHAVE_IMPLICIT_REF_CAST on value type
+<li>Fixed crash when script class contained value template type as member
+<li>Class method can refer to base class' method with fully specified namespace (Thanks iraxef)
+<li>It is possible to register an enum with the same name in a namespace after it has been registered in the global namespace (Simon Geilfus)
+<li>No more memory build-up when the script has circular references between classes and templates (Thanks iraxef)
+<li>Private class properties are not accessible from derived classes (Thanks iraxef)
+<li>Fixed bug in compiler where default argument could use temp var used in previous arguments (Thanks Solokiller)
+<li>Compiler didn't properly check the access masks for registered class methods (Thanks Solokiller)
+<li>Directly calling a funcdef retrieved from member property accessor would get wrong arguments (Thanks Solokiller)
+<li>Methods declared in mixins in namespaces weren't compiled with the correct namespace (Thanks Sir Ementaler)
+<li>Fixed problem with compiler not detecting incorrect type when passing class method as argument to constructor (Thanks Polyák István)
+<li>Fixed bug in asBC_u64TOd and asBC_u64TOf on non-MSVC compilers (Thanks Turo Lamminen)
+<li>Fixed crash on iOS/arm64 with thiscall callback functions (Thanks _Engine_)
+<li>Fixed incorrect compiler warning about converting to handle after get accessor (Thanks agentprog)
+</ul>
+<li>Library interface
+<ul>
+<li>Deprecated asBEHAVE_VALUE_CAST and asBEHAVE_IMPLICIT_VALUE_CAST
+<li>asIScriptEngine::AssignScriptObject now returns an int with the success or error code
+<li>The tokenLength arg for ParseToken is changed to asUINT
+<li>Added asIScriptObject::GetWeakRefFlag
+<li>Implemented asIScriptEngine::RefCastObject
+<li>Deprecated asIScriptEngine::IsHandleCompatibleWithObject
+<li>Implemented SetArgVarType to the context for calling functions with variable argument types
+<li>Added ShutDownAndRelease to explicitly tell when the engine should be shut down, compared to simply releasing the reference
+<li>Implemented support for user data in script object instances
+<li>Included asIScriptFunction::IsProtected
+<li>asIObjectType::GetProperty has an additional parameter to return if the property is protected
+<li>Deprecated asBEHAVE_REF_CAST and asBEHAVE_IMPLICIT_REF_CAST
+<li>Added engine property asEP_PRIVATE_PROP_AS_PROTECTED
+</ul>
+<li>Library
+<ul>
+<li>Improved the algorithm for verifying if script classes require garbage collection
+<li>Added support for native calling conventions on PS Vita (Thanks Brandon Bare)
+<li>GetModule and DiscardModule are now thread-safe (Thanks Brandon Bare)
+<li>Returned declarations with namespaces no longer prefix symbols with :: when declared in the global namespace (Thanks iraxef)
+<li>When compiling a default argument expression the namespace of the called function is used as default (Thanks iraxef)
+<li>Implemented asEP_DISALLOW_EMPTY_LIST_ELEMENTS to allow application to disable empty elements in initialization lists (Thanks theoutfield)
+<li>Application can now register types with asOBJ_IMPLICIT_HANDLE if this option is turned on
+<li>Improved some compiler error messages
+<li>Updated gnuc makefile to automatically retrieve version number from angelscript.h for the shared library file name (Thanks Cody Ferguson)
+<li>Minor runtime optimizations have been made
+<li>Changed SetLineCallback so that it is safe to call it from a second thread while the context is running (Thanks ziomau)
+<li>Completely re-factored the way the memory management for the internal script code is done
+<li>Discarding modules is much faster, and doesn't burden the garbage collector (Thanks ziomau)
+<li>Compiler no longer warns on empty sections since this may be a valid situation (Thanks iraxef)
+<li>When formatting type declarations for messages the namespace will always be included if different than the current namespace (Thanks Solokiller)
+<li>Included check to avoid modifying template types registration after a template instance has already been generated
+<li>module's GetFunctionByName/Decl, GetGlobalVarIndexByName/Decl, GetObjectTypeByName recursively search parent namespaces
+<li>engine's GetGlobalPropertyIndexByName/Decl, GetGlobalFunctionByDecl, GetObjectTypeByName recursively search parent namespaces
+</ul>
+<li>Script language
+<ul>
+<li>The ternary condition operator can now be used as lvalue if both options are lvalues of the same type (Thanks Polyák István)
+<li>opImplConv can now be used to allow implicit conversion to bool for registered value types
+<li>imported functions can now be placed in namespaces too (Thanks cvet)
+<li>Compound assignment operators can now be used with virtual properties
+<li>Included 'protected' as reserved keyword
+<li>Class members can now be declared as protected
+<li>Script classes can now implement opCast and opImplCast to provide custom ref cast behaviours
+</ul>
+<li>Add-ons &amp; Samples
+<ul>
+<li>The script array and grid add-ons avoid flagging themselves as garbage collected for handle subtypes that are known not to be garbage collected
+<li>CScriptHandle, CScriptAny, and CScriptDictionary use the new RefCastObject to properly cast to all supported types of the contained handle
+<li>The dictionaryValue was missing a copy opAssign method so it wasn't possible to directly assign one dictionaryValue to another (Thanks iraxef)
+<li>The weakref is now a value template type
+<li>The syntax for using weakref in script is much more like a normal handles
+<li>Implemented a CScriptFileSystem add-on to complement the CScriptFile add-on
+<li>Changed ContextMgr::AddContext to allow application to tell manager that it want to keep the context after execution
+<li>Added ContextMgr::DoneWithContext to return the context after the application has retrieved what it wants from it
+<li>Fixed the asrun sample so now returns the status from the script again
+<li>Improved asrun to support international languages better when writing to the console on Windows
+<li>Changed CScriptFile::ReadLine and ReadString to return the string by value instead of as an output parameter
+<li>Fixed some compiler warnings on gnuc in the add-ons (Thanks Bertram25)
+<li>dictionaryValue has better support for boolean values
+<li>Added support for asrun to execute system commands
+<li>Debugger now accepts namespace for printing variables
+<li>CScriptBuilder expands relative paths to absolute paths before verifying if the include file is duplicate (Thanks cuipeng)
+<li>Fixed WriteConfigToStream/ConfigEngineFromStream to keep the valid object type flags and properly handle namespaces (Thanks Solokiller)
+<li>Fixed ScriptArrayIsEmpty_Generic that didn't set the return value (Thanks _Engine_)
+<li>Improved WriteConfigToStream so that template types are fully registered before other types (Thanks Solokiller)
+<li>Prepared CContextMgr for use with AS_MAX_PORTABILITY
+<li>Fixed bug in dictionary's opIndex when generic calling convention was used
+<li>Fixed bug in CScriptHandle when AS_MAX_PORTABILITY was used
+</ul>
+</ul>
+
 <h2>Version 2.29.2 - 2014/10/21</h2>
 
 <ul>
