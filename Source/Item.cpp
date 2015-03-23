@@ -97,8 +97,6 @@ Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator ),
     Id = id;
     RefCounter = 1;
     IsNotValid = false;
-
-    From = 0;
     ViewPlaceOnMap = false;
     Accessory = 0;
     memzero( AccBuffer, sizeof( AccBuffer ) );

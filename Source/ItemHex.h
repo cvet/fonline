@@ -14,8 +14,6 @@ class ItemHex: public Item
 {
 public:
     ItemHex( uint id, ProtoItem* proto, const UCharVec* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut );
-    // ~ItemHex() Destructor not been called because Item not have virtual destructor
-    bool operator==( const ushort& _right ) { return ( GetProtoId() == _right ); }
 
 public:
     uint       SprId;

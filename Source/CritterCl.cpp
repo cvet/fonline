@@ -615,16 +615,20 @@ void CritterCl::ProcessChangedParams()
             ParamsIsChanged[ index ] = false;
 
             // Internal processing
-            if( index == ST_HANDS_ITEM_AND_MODE )
+            if( index == ST_HANDS_ITEM_PROTO_ID )
             {
-                int        value = Params[ ST_HANDS_ITEM_AND_MODE ];
-                ProtoItem* unarmed = ItemMngr.GetProtoItem( value >> 16 );
+                hash       pid = Params[ ST_HANDS_ITEM_PROTO_ID ];
+                ProtoItem* unarmed = ItemMngr.GetProtoItem( pid );
                 if( !unarmed || !unarmed->IsWeapon() || !unarmed->Weapon_IsUnarmed )
                     unarmed = NULL;
                 if( !unarmed )
                     unarmed = GetUnarmedItem( 0, 0 );
                 DefItemSlotHand->SetProto( unarmed );
-                DefItemSlotHand->SetMode( value & 0xFF );
+            }
+            else if( index == ST_HANDS_ITEM_MODE )
+            {
+                uchar mode = Params[ ST_HANDS_ITEM_MODE ];
+                DefItemSlotHand->SetMode( mode );
             }
             else if( index == ST_SCALE_FACTOR )
             {

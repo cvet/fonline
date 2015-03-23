@@ -3293,59 +3293,6 @@ int Critter::GetFreeVolume()
     return max_volume - cur_volume;
 }
 
-/*
-   void Critter::SetPerkSafe(uint index, int val)
-   {
-        if(Data.Pe[num]==val) return;
-
-        if(num>=0 && num<PERK_COUNT)
-        {
-                // Up
-                if(Data.Pe[num]<val)
-                {
-                        val=val-Data.Pe[num];
-                        while(val)
-                        {
-                                Perks::Up(this,num,PERK_ALL,true);
-                                val--;
-                        }
-                }
-                // Down
-                else
-                {
-                        val=Data.Pe[num]-val;
-                        while(val)
-                        {
-                                Perks::Down(this,num);
-                                val--;
-                        }
-                }
-        }
-        else if(num>=DAMAGE_BEGIN && num<=DAMAGE_END)
-        {
-                // Injure, uninjure
-                Data.Pe[num]=val;
-                SendPerk(num);
-
-                if(num==PE_DAMAGE_EYE) ProcessVisibleCritters();
-        }
-        else if(num>=MODE_BEGIN && num<=MODE_END)
-        {
-                // Modes
-                Data.Pe[num]=val;
-                SendPerk(num);
-
-                if(num==MODE_HIDE && GetMap()) ProcessVisibleCritters();
-        }
-        else if(num>=TRAIT_BEGIN && num<=TRAIT_END)
-        {
-                // Trait
-                Data.Pe[num]=val;
-                SendPerk(num);
-        }
-   }*/
-
-
 bool Critter::CheckMyTurn( Map* map )
 {
     if( !IsTurnBased() )

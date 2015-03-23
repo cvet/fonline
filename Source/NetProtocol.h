@@ -520,11 +520,12 @@
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_RATE_ITEM                 MAKE_NETMSG_HEADER( 73 )
-#define NETMSG_SEND_RATE_ITEM_SIZE            ( sizeof( uint ) + sizeof( uint ) )
+#define NETMSG_SEND_RATE_ITEM_SIZE            ( sizeof( uint ) + sizeof( hash ) + sizeof( uchar ) )
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint rate of main item
+// hash proto_id
+// uchar rate
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_ERASE_ITEM_FROM_MAP            MAKE_NETMSG_HEADER( 74 )

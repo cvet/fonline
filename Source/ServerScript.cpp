@@ -2396,7 +2396,7 @@ ProtoItem* FOServer::SScriptFunc::Crit_GetSlotProto( Critter* cr, int slot, ucha
 
     mode = item->Mode;
     if( !item->GetId() && ( item == cr->ItemSlotMain || item == cr->ItemSlotExt ) )
-        mode = cr->Data.Params[ ST_HANDS_ITEM_AND_MODE ] & 0xFF;
+        mode = cr->Data.Params[ ST_HANDS_ITEM_MODE ];
     return item->Proto;
 }
 

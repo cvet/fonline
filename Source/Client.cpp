@@ -3003,10 +3003,9 @@ void FOClient::Net_SendRateItem()
     if( !Chosen || Chosen->ItemSlotMain->GetId() )
         return;
 
-    uint rate = ( Chosen->ItemSlotMain->Mode | ( Chosen->ItemSlotMain->GetProtoId() << 16 ) );
-
     Bout << NETMSG_SEND_RATE_ITEM;
-    Bout << rate;
+    Bout << Chosen->ItemSlotMain->GetProtoId();
+    Bout << Chosen->ItemSlotMain->Mode;
 }
 
 void FOClient::Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer )

@@ -2906,14 +2906,18 @@ void FOServer::Process_ChangeItem( Client* cl )
 
 void FOServer::Process_RateItem( Client* cl )
 {
-    uint rate;
-    cl->Bin >> rate;
+    hash  proto_id;
+    uchar mode;
+    cl->Bin >> proto_id;
+    cl->Bin >> mode;
 
-    cl->ItemSlotMain->SetMode( rate & 0xFF );
+    cl->ItemSlotMain->SetMode( mode );
     if( !cl->ItemSlotMain->GetId() )
     {
-        cl->ChangeParam( ST_HANDS_ITEM_AND_MODE );
-        cl->Data.Params[ ST_HANDS_ITEM_AND_MODE ] = rate;
+        cl->ChangeParam( ST_HANDS_ITEM_PROTO_ID );
+        cl->Data.Params[ ST_HANDS_ITEM_PROTO_ID ] = proto_id;
+        cl->ChangeParam( ST_HANDS_ITEM_MODE );
+        cl->Data.Params[ ST_HANDS_ITEM_MODE ] = mode;
     }
 }
 
@@ -3423,11 +3427,6 @@ void FOServer::Process_ContainerItem( Client* cl )
             cl->Send_ContainerInfo();
         }
         break;
-        //	case CONT_UNLOAD:
-        //		{
-        //			//TODO:
-        //		}
-        //		break;
         default:
             break;
         }

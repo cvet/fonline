@@ -335,9 +335,10 @@ public:
     // Internal fields
     uint       Id;
     ProtoItem* Proto;
-    int        From;
     uchar      Accessory;
     bool       ViewPlaceOnMap;
+    bool       IsNotValid;
+    int        RefCounter;
 
     union     // 8
     {
@@ -362,9 +363,6 @@ public:
 
         char AccBuffer[ 8 ];
     };
-
-    short RefCounter;
-    bool  IsNotValid;
 
     ushort& SortValue;
     uchar&  Indicator;

@@ -444,7 +444,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define ST_MOVE_AP                   ( 88 )
 #define ST_NPC_ROLE                  ( 89 )
 #define ST_BONUS_LOOK                ( 101 )
-#define ST_HANDS_ITEM_AND_MODE       ( 102 )
+#define ST_HANDS_ITEM_PROTO_ID       ( 102 )
 #define ST_FREE_BARTER_PLAYER        ( 103 )
 #define ST_DIALOG_ID                 ( 104 )
 #define ST_AI_ID                     ( 105 )
@@ -457,6 +457,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define ST_WALK_TIME                 ( 117 )
 #define ST_RUN_TIME                  ( 118 )
 #define ST_MAX_TALKERS               ( 119 )
+#define ST_HANDS_ITEM_MODE           ( 120 )
 #define ST_ANIM3D_LAYER_BEGIN        ( 150 )
 #define ST_ANIM3D_LAYER_END          ( 179 )
 
