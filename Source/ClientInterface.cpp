@@ -155,31 +155,6 @@ int FOClient::InitIface()
     IfaceHold = IFACE_NONE;
     TargetSmth.Clear();
 
-    // Inventory
-    IfaceLoadRect( InvWMain, "InvMain" );
-    IfaceLoadRect( InvWInv, "InvInv" );
-    IfaceLoadRect( InvWChosen, "InvChosen" );
-    IfaceLoadRect( InvWSlot1, "InvSlot1" );
-    IfaceLoadRect( InvWSlot2, "InvSlot2" );
-    IfaceLoadRect( InvWArmor, "InvArmor" );
-    IfaceLoadRect( InvBScrUp, "InvScrUp" );
-    IfaceLoadRect( InvBScrDn, "InvScrDn" );
-    IfaceLoadRect( InvBOk, "InvOk" );
-    IfaceLoadRect( InvWText, "InvText" );
-    InvX = IfaceIni.GetInt( "InvX", -1 );
-    if( InvX == -1 )
-        InvX = ( GameOpt.ScreenWidth - InvWMain[ 2 ] ) / 2;
-    InvY = IfaceIni.GetInt( "InvY", -1 );
-    if( InvY == -1 )
-        InvY = ( GameOpt.ScreenHeight - InvWMain[ 3 ] ) / 2;
-    InvScroll = 0;
-    InvHeightItem = IfaceIni.GetInt( "InvHeightItem", 30 );
-    for( int i = 0, j = (uint) SlotsExt.size(); i < j; i++ )
-        IfaceLoadRect( SlotsExt[ i ].Region, SlotsExt[ i ].IniName );
-    InvItemInfo = "";
-    InvItemInfoScroll = 0;
-    InvItemInfoMaxScroll = 0;
-
     // Use
     IfaceLoadRect( UseWMain, "UseMain" );
     IfaceLoadRect( UseWChosen, "UseChosen" );
@@ -198,110 +173,6 @@ int FOClient::InitIface()
     UseScroll = 0;
     UseHeightItem = IfaceIni.GetInt( "UseHeightItem", 30 );
     UseHoldId = 0;
-
-    // Interface
-    IfaceLoadRect( IntWMain, "IntMain" );
-    IntX = IfaceIni.GetInt( "IntX", -1 );
-    if( IntX == -1 )
-        IntX = ( GameOpt.ScreenWidth - IntWMain.W() ) / 2;
-    else if( IntX == -2 )
-        IntX = GameOpt.ScreenWidth - IntWMain.W();
-    else if( IntX == -3 )
-        IntX = 0;
-    else
-    {
-        if( IntX < 0 )
-            IntX = 0;
-        if( IntX + IntWMain.W() > GameOpt.ScreenWidth )
-            IntX = 0;
-    }
-    IntY = GameOpt.ScreenHeight - IntWMain.B;
-    IfaceLoadRect2( IntWMain, "IntMain", IntX, IntY );
-    IfaceLoadRect2( IntWAddMess, "IntAddMessWindow", IntX, IntY );
-    IfaceLoadRect2( IntBAddMess, "IntAddMess", IntX, IntY );
-    IfaceLoadRect2( IntBMessFilter1, "IntMessFilter1", IntX, IntY );
-    IfaceLoadRect2( IntBMessFilter2, "IntMessFilter2", IntX, IntY );
-    IfaceLoadRect2( IntBMessFilter3, "IntMessFilter3", IntX, IntY );
-    IfaceLoadRect2( IntBItem, "IntItem", IntX, IntY );
-    IfaceLoadRect2( IntBChangeSlot, "IntChangeSlot", IntX, IntY );
-    IfaceLoadRect2( IntBInv, "IntInv", IntX, IntY );
-    IfaceLoadRect2( IntBMenu, "IntMenu", IntX, IntY );
-    IfaceLoadRect2( IntBSkill, "IntSkill", IntX, IntY );
-    IfaceLoadRect2( IntBMap, "IntMap", IntX, IntY );
-    IfaceLoadRect2( IntBChar, "IntCha", IntX, IntY );
-    IfaceLoadRect2( IntBPip, "IntPip", IntX, IntY );
-    IfaceLoadRect2( IntBFix, "IntFix", IntX, IntY );
-    IfaceLoadRect2( IntWMess, "IntMess", IntX, IntY );
-    IfaceLoadRect2( IntWMessLarge, "IntMessLarge", IntX, IntY );
-    IfaceLoadRect2( IntHP, "IntHp", IntX, IntY );
-    IfaceLoadRect2( IntAC, "IntAc", IntX, IntY );
-    IfaceLoadRect2( IntAP, "IntAp", IntX, IntY );
-    IfaceLoadRect2( IntBreakTime, "IntBreakTime", IntX, IntY );
-    IntAPstepX = IfaceIni.GetInt( "IntApStepX", 9 );
-    IntAPstepY = IfaceIni.GetInt( "IntApStepY", 0 );
-    IntAPMax = IfaceIni.GetInt( "IntApMax", 10 );
-    IfaceLoadRect2( IntWCombat, "IntCombat", IntX, IntY );
-    IfaceLoadRect2( IntBCombatTurn, "IntCombatTurn", IntX, IntY );
-    IfaceLoadRect2( IntBCombatEnd, "IntCombatEnd", IntX, IntY );
-    IfaceLoadRect2( IntWApCost, "IntApCost", IntX, IntY );
-    IfaceLoadRect2( IntWAmmoCount, "IntAmmoCount", IntX, IntY );
-    IfaceLoadRect2( IntWWearProcent, "IntWearProcent", IntX, IntY );
-    IntWAmmoCountStr = Rect( IntBItem, 7, 8 );
-    IntWWearProcentStr = Rect( IntBItem, 7, 19 );
-    IfaceLoadRect2( IntWAmmoCountStr, "IntAmmoCountText", IntX, IntY );
-    IfaceLoadRect2( IntWWearProcentStr, "IntWearProcentText", IntX, IntY );
-    IntVisible = true;
-    IntAddMess = false;
-    MessBoxFilters.clear();
-    MessBoxScroll = 0;
-    MessBoxMaxScroll = 0;
-    MessBoxScrollLines = 0;
-    IntBItemOffsX = IfaceIni.GetInt( "IntItemOffsX", 0 );
-    IntBItemOffsY = IfaceIni.GetInt( "IntItemOffsY", -2 );
-    IntAimX = IfaceIni.GetInt( "IntAimX", 0 );
-    IntAimX += IntX;
-    IntAimY = IfaceIni.GetInt( "IntAimY", 0 );
-    IntAimY += IntY;
-    IntUseX = IfaceIni.GetInt( "IntUseX", 0 );
-    IntUseX += IntX;
-    IntUseY = IfaceIni.GetInt( "IntUseY", 0 );
-    IntUseY += IntY;
-    IntAmmoPoints.clear();
-    IntWearPoints.clear();
-    IntAmmoTick = 0;
-    IntWearTick = 0;
-
-    // Console
-    ConsolePicX = IfaceIni.GetInt( "ConsoleMainPicX", 0 );
-    ConsolePicY = IfaceIni.GetInt( "ConsoleMainPicY", 0 );
-    ConsoleTextX = IfaceIni.GetInt( "ConsoleTextX", 0 );
-    ConsoleTextY = IfaceIni.GetInt( "ConsoleTextY", 0 );
-    ConsoleActive = false;
-    ConsoleLastKey = 0;
-    ConsoleLastKeyText = "";
-    ConsoleStr = "";
-    ConsoleCur = 0;
-    ConsoleHistoryCur = 0;
-
-    // Login
-    LogFocus = 0;
-    IfaceLoadRect( LogMain, "LogMain" );
-    LogX = ( GameOpt.ScreenWidth - LogMain.W() ) / 2;
-    LogY = ( GameOpt.ScreenHeight - LogMain.H() ) / 2;
-    IfaceLoadRect2( LogWName, "LogName", LogX, LogY );
-    IfaceLoadRect2( LogWPass, "LogPass", LogX, LogY );
-    IfaceLoadRect2( LogBOk, "LogPlay", LogX, LogY );
-    IfaceLoadRect2( LogBOkText, "LogPlayText", LogX, LogY );
-    IfaceLoadRect2( LogBReg, "LogReg", LogX, LogY );
-    IfaceLoadRect2( LogBRegText, "LogRegText", LogX, LogY );
-    IfaceLoadRect2( LogBOptions, "LogOptions", LogX, LogY );
-    IfaceLoadRect2( LogBOptionsText, "LogOptionsText", LogX, LogY );
-    IfaceLoadRect2( LogBCredits, "LogCredits", LogX, LogY );
-    IfaceLoadRect2( LogBCreditsText, "LogCreditsText", LogX, LogY );
-    IfaceLoadRect2( LogBExit, "LogExit", LogX, LogY );
-    IfaceLoadRect2( LogBExitText, "LogExitText", LogX, LogY );
-    IfaceLoadRect( LogWChat, "LogMessageBox" );
-    IfaceLoadRect( LogWVersion, "LogVersion" );
 
     // Dialog
     DlgCurAnswPage = 0;
@@ -423,7 +294,6 @@ int FOClient::InitIface()
     IfaceLoadRect( SboxBDoctor, "SboxDoctor" );
     IfaceLoadRect( SboxBScience, "SboxScience" );
     IfaceLoadRect( SboxBRepair, "SboxRepair" );
-
     IfaceLoadRect( SboxTSneak, "SboxSneakText" );
     IfaceLoadRect( SboxTLockpick, "SboxLockpickText" );
     IfaceLoadRect( SboxTSteal, "SboxStealText" );
@@ -442,132 +312,6 @@ int FOClient::InitIface()
     SboxVectX = 0;
     SboxVectY = 0;
     CurSkill = 0;
-
-    // Menu option
-    IfaceLoadRect( MoptMain, "MoptMain" );
-    MoptX = ( GameOpt.ScreenWidth - MoptMain.W() ) / 2;
-    MoptY = ( GameOpt.ScreenHeight - MoptMain.H() ) / 2;
-    IfaceLoadRect2( MoptMain, "MoptMain", MoptX, MoptY );
-    IfaceLoadRect2( MoptSaveGame, "MoptSaveGame", MoptX, MoptY );
-    IfaceLoadRect2( MoptLoadGame, "MoptLoadGame", MoptX, MoptY );
-    IfaceLoadRect2( MoptOptions, "MoptOptions", MoptX, MoptY );
-    IfaceLoadRect2( MoptExit, "MoptExit", MoptX, MoptY );
-    IfaceLoadRect2( MoptResume, "MoptResume", MoptX, MoptY );
-
-    // Character
-    // Main
-    IfaceLoadRect( ChaWMain, "ChaMain" );
-    ChaX = ( GameOpt.ScreenWidth - ChaWMain.W() ) / 2;
-    ChaY = ( GameOpt.ScreenHeight - ChaWMain.H() ) / 2;
-    ChaVectX = 0;
-    ChaVectY = 0;
-    IfaceLoadRect( ChaBPrint, "ChaPrint" );
-    IfaceLoadRect( ChaBPrintText, "ChaPrintText" );
-    IfaceLoadRect( ChaBOk, "ChaOk" );
-    IfaceLoadRect( ChaBOkText, "ChaOkText" );
-    IfaceLoadRect( ChaBCancel, "ChaCancel" );
-    IfaceLoadRect( ChaBCancelText, "ChaCancelText" );
-    // Switch
-    IfaceLoadRect( ChaBSwitch, "ChaSwitch" );
-    IfaceLoadRect( ChaTSwitch, "ChaSwitchText" );
-    IfaceLoadRect( ChaBSwitchScrUp, "ChaSwitchScrUp" );
-    IfaceLoadRect( ChaBSwitchScrDn, "ChaSwitchScrDn" );
-    ChaCurSwitch = CHA_SWITCH_PERKS;
-    memzero( ChaSwitchScroll, sizeof( ChaSwitchScroll ) );
-    // Special
-    IfaceLoadRect( ChaWSpecialText, "ChaSpecialText" );
-    IfaceLoadRect( ChaWSpecialValue, "ChaSpecialValue" );
-    IfaceLoadRect( ChaWSpecialLevel, "ChaSpecialLevel" );
-    ChaWSpecialNextX = IfaceIni.GetInt( "ChaSpecialNextX", 1 );
-    ChaWSpecialNextY = IfaceIni.GetInt( "ChaSpecialNextY", 1 );
-    IfaceLoadArray( ChaSpecialParams, "ChaSpecialParams" );
-    // Skills
-    IfaceLoadRect( ChaWSkillText, "ChaSkillText" );
-    IfaceLoadRect( ChaWSkillName, "ChaSkillName" );
-    IfaceLoadRect( ChaWSkillValue, "ChaSkillValue" );
-    IfaceLoadRect( ChaWUnspentSP, "ChaUnspentSP" );
-    IfaceLoadRect( ChaWUnspentSPText, "ChaUnspentSPText" );
-    ChaWSkillNextX = IfaceIni.GetInt( "ChaSkillNextX", 1 );
-    ChaWSkillNextY = IfaceIni.GetInt( "ChaSkillNextY", 1 );
-    memzero( ChaSkillUp, sizeof( ChaSkillUp ) );
-    ChaUnspentSkillPoints = 0;
-    // Slider
-    IfaceLoadRect( ChaBSliderMinus, "ChaSliderMinus" );
-    IfaceLoadRect( ChaBSliderPlus, "ChaSliderPlus" );
-    ChaWSliderX = IfaceIni.GetInt( "ChaSliderX", 1 );
-    ChaWSliderY = IfaceIni.GetInt( "ChaSliderY", 1 );
-    ChaCurSkill = 0;
-    // Level
-    IfaceLoadRect( ChaWLevel, "ChaLevel" );
-    IfaceLoadRect( ChaWExp, "ChaExp" );
-    IfaceLoadRect( ChaWNextLevel, "ChaNextLevel" );
-    // Damage
-    IfaceLoadRect( ChaWDmgLife, "ChaDmgLife" );
-    IfaceLoadRect( ChaWDmg, "ChaDmg" );
-    ChaWDmgNextX = IfaceIni.GetInt( "ChaDmgNextX", 1 );
-    ChaWDmgNextY = IfaceIni.GetInt( "ChaDmgNextY", 1 );
-    // Stats
-    IfaceLoadRect( ChaWStatsName, "ChaStatsName" );
-    IfaceLoadRect( ChaWStatsValue, "ChaStatsValue" );
-    ChaWStatsNextX = IfaceIni.GetInt( "ChaStatsNextX", 1 );
-    ChaWStatsNextY = IfaceIni.GetInt( "ChaStatsNextY", 1 );
-    // Tips
-    IfaceLoadRect( ChaWName, "ChaParamName" );
-    IfaceLoadRect( ChaWDesc, "ChaParamDesc" );
-    IfaceLoadRect( ChaWPic, "ChaParamPic" );
-    memzero( ChaName, sizeof( ChaName ) );
-    memzero( ChaDesc, sizeof( ChaDesc ) );
-    ChaSkilldexPic = -1;
-    // Buttons
-    IfaceLoadRect( ChaBName, "ChaName" );
-    IfaceLoadRect( ChaBAge, "ChaAge" );
-    IfaceLoadRect( ChaBSex, "ChaSex" );
-    // Registration
-    RegWMain = ChaWMain;
-    IfaceLoadRect( RegWMain, "RegMain" );
-    IfaceLoadRect( RegBSpecialPlus, "RegSpecialPlus" );
-    IfaceLoadRect( RegBSpecialMinus, "RegSpecialMinus" );
-    IfaceLoadRect( RegBTagSkill, "RegTagSkill" );
-    IfaceLoadRect( RegWUnspentSpecial, "RegUnspentSpecial" );
-    IfaceLoadRect( RegWUnspentSpecialText, "RegUnspentSpecialText" );
-    RegBSpecialNextX = IfaceIni.GetInt( "RegSpecialNextX", 1 );
-    RegBSpecialNextY = IfaceIni.GetInt( "RegSpecialNextY", 1 );
-    RegBTagSkillNextX = IfaceIni.GetInt( "RegTagSkillNextX", 1 );
-    RegBTagSkillNextY = IfaceIni.GetInt( "RegTagSkillNextY", 1 );
-    RegCurSpecial = 0;
-    RegCurTagSkill = 0;
-    // Trait
-    IfaceLoadRect( RegBTraitL, "RegTraitL" );
-    IfaceLoadRect( RegBTraitR, "RegTraitR" );
-    IfaceLoadRect( RegWTraitL, "RegTraitLText" );
-    IfaceLoadRect( RegWTraitR, "RegTraitRText" );
-    RegTraitNextX = IfaceIni.GetInt( "RegTraitNextX", 1 );
-    RegTraitNextY = IfaceIni.GetInt( "RegTraitNextY", 1 );
-    RegTraitNum = 0;
-
-    // ChaName
-    IfaceLoadRect( ChaNameWMain, "ChaNameMain" );
-    IfaceLoadRect( ChaNameWName, "ChaNameName" );
-    IfaceLoadRect( ChaNameWNameText, "ChaNameNameText" );
-    IfaceLoadRect( ChaNameWPass, "ChaNamePass" );
-    IfaceLoadRect( ChaNameWPassText, "ChaNamePassText" );
-    ChaNameX = 0;
-    ChaNameY = 0;
-
-    // ChaAge
-    IfaceLoadRect( ChaAgeWMain, "ChaAgeMain" );
-    IfaceLoadRect( ChaAgeBUp, "ChaAgeUp" );
-    IfaceLoadRect( ChaAgeBDown, "ChaAgeDown" );
-    IfaceLoadRect( ChaAgeWAge, "ChaAgeAge" );
-    ChaAgeX = 0;
-    ChaAgeY = 0;
-
-    // ChaSex
-    IfaceLoadRect( ChaSexWMain, "ChaSexMain" );
-    IfaceLoadRect( ChaSexBMale, "ChaSexMale" );
-    IfaceLoadRect( ChaSexBFemale, "ChaSexFemale" );
-    ChaSexX = 0;
-    ChaSexY = 0;
 
     // Perk
     IfaceLoadRect( PerkWMain, "PerkMain" );
@@ -618,8 +362,6 @@ int FOClient::InitIface()
     IfaceLoadRect2( GmapWMap, "GmapMap", GmapX, GmapY );
     IfaceLoadRect2( GmapBTown, "GmapTown", GmapX, GmapY );
     IfaceLoadRect2( GmapWName, "GmapName", GmapX, GmapY );
-    IfaceLoadRect2( GmapWChat, "GmapMessageBox", GmapX, GmapY );
-    IfaceLoadRect2( GmapWPanel, "GmapPanel", GmapX, GmapY );
     IfaceLoadRect2( GmapWCar, "GmapCar", GmapX, GmapY );
     IfaceLoadRect2( GmapWTime, "GmapTime", GmapX, GmapY );
     IfaceLoadRect2( GmapWDayTime, "GmapDayTime", GmapX, GmapY );
@@ -923,48 +665,6 @@ int FOClient::InitIface()
     // Hex field sprites
     HexMngr.ReloadSprites();
 
-    // Interface
-    IfaceLoadSpr( IntPWAddMess, "IntAddMessWindowPic" );
-    IfaceLoadSpr( IntPBAddMessDn, "IntAddMessPicDn" );
-    IfaceLoadSpr( IntPBMessFilter1Dn, "IntMessFilter1PicDn" );
-    IfaceLoadSpr( IntPBMessFilter2Dn, "IntMessFilter2PicDn" );
-    IfaceLoadSpr( IntPBMessFilter3Dn, "IntMessFilter3PicDn" );
-    IfaceLoadSpr( IntDiodeG, "IntApGreenPic" );
-    IfaceLoadSpr( IntDiodeY, "IntApYellowPic" );
-    IfaceLoadSpr( IntDiodeR, "IntApRedPic" );
-    IfaceLoadSpr( IntBreakTimePic, "IntBreakTimePic" );
-    IfaceLoadSpr( IntPBScrUpDn, "IntScrUpPicDn" );
-    IfaceLoadSpr( IntPBScrDnDn, "IntScrDownPicDn" );
-    IfaceLoadSpr( IntPBSlotsDn, "IntChangeSlotPicDn" );
-    IfaceLoadSpr( IntPBInvDn, "IntInvPicDn" );
-    IfaceLoadSpr( IntPBMenuDn, "IntMenuPicDn" );
-    IfaceLoadSpr( IntPBSkillDn, "IntSkillPicDn" );
-    IfaceLoadSpr( IntPBMapDn, "IntMapPicDn" );
-    IfaceLoadSpr( IntPBChaDn, "IntChaPicDn" );
-    IfaceLoadSpr( IntPBPipDn, "IntPipPicDn" );
-    IfaceLoadSpr( IntPBFixDn, "IntFixPicDn" );
-    IfaceLoadSpr( IntBItemPicDn, "IntItemPicDn" );
-    IfaceLoadSpr( IntAimPic, "IntAimPic" );
-    IfaceLoadSpr( IntWApCostPicNone, "IntApCostPic" );
-    IfaceLoadAnim( IntWCombatAnim, "IntCombatAnim" );
-    IfaceLoadSpr( IntBCombatTurnPicDown, "IntCombatTurnPicDn" );
-    IfaceLoadSpr( IntBCombatEndPicDown, "IntCombatEndPicDn" );
-    IfaceLoadSpr( IntMainPic, "IntMainPic" );
-
-    // Console
-    IfaceLoadSpr( ConsolePic, "ConsoleMainPic" );
-
-    // Inventory
-    IfaceLoadSpr( InvPWMain, "InvMainPic" );
-    IfaceLoadSpr( InvPBOkUp, "InvOkPic" );
-    IfaceLoadSpr( InvPBOkDw, "InvOkPicDn" );
-    IfaceLoadSpr( InvPBScrUpUp, "InvScrUpPic" );
-    IfaceLoadSpr( InvPBScrUpDw, "InvScrUpPicDn" );
-    IfaceLoadSpr( InvPBScrUpOff, "InvScrUpPicNa" );
-    IfaceLoadSpr( InvPBScrDwUp, "InvScrDnPic" );
-    IfaceLoadSpr( InvPBScrDwDw, "InvScrDnPicDn" );
-    IfaceLoadSpr( InvPBScrDwOff, "InvScrDnPicNa" );
-
     // Use
     IfaceLoadSpr( UseWMainPicNone, "UseMainPic" );
     IfaceLoadSpr( UseBCancelPicDown, "UseCancelPicDn" );
@@ -974,18 +674,6 @@ int FOClient::InitIface()
     IfaceLoadSpr( UseBScrDownPicDown, "UseScrDownPicDn" );
     IfaceLoadSpr( UseBScrDownPicUp, "UseScrDownPic" );
     IfaceLoadSpr( UseBScrDownPicOff, "UseScrDownPicOff" );
-
-    // Login/Password
-    IfaceLoadSpr( LogPMain, "LogMainPic" );
-    if( Singleplayer )
-        IfaceLoadSpr( LogPSingleplayerMain, "LogSingleplayerMainPic" );
-    if( !LogPSingleplayerMain )
-        LogPSingleplayerMain = LogPMain;
-    IfaceLoadSpr( LogPBLogin, "LogPlayPicDn" );
-    IfaceLoadSpr( LogPBReg, "LogRegPicDn" );
-    IfaceLoadSpr( LogPBOptions, "LogOptionsPicDn" );
-    IfaceLoadSpr( LogPBCredits, "LogCreditsPicDn" );
-    IfaceLoadSpr( LogPBExit, "LogExitPicDn" );
 
     // Dialog
     IfaceLoadSpr( DlgPMain, "DlgMainPic" );
@@ -1007,51 +695,8 @@ int FOClient::InitIface()
     IfaceLoadSpr( BarterPBC2oScrDnDn, "BarterCont2oScrDnPicDn" );
 
     // Cursors
-    CurPMove = SprMngr.LoadAnimation( "msef001.frm", PT_ART_INTRFACE, true );
-    CurPMoveBlock = SprMngr.LoadAnimation( "msef002.frm", PT_ART_INTRFACE, true );
-    CurPUseItem = SprMngr.LoadAnimation( "acttohit.frm", PT_ART_INTRFACE, true );
-    CurPUseSkill = SprMngr.LoadAnimation( "crossuse.frm", PT_ART_INTRFACE, true );
-    CurPWait = SprMngr.LoadAnimation( "wait2.frm", PT_ART_INTRFACE, true );
-    CurPHand = SprMngr.LoadAnimation( "hand.frm", PT_ART_INTRFACE, true );
-    CurPDef = SprMngr.LoadAnimation( "actarrow.frm", PT_ART_INTRFACE, true );
-    CurPScrRt = SprMngr.LoadAnimation( "screast.frm", PT_ART_INTRFACE, true );
-    CurPScrLt = SprMngr.LoadAnimation( "scrwest.frm", PT_ART_INTRFACE, true );
-    CurPScrUp = SprMngr.LoadAnimation( "scrnorth.frm", PT_ART_INTRFACE, true );
-    CurPScrDw = SprMngr.LoadAnimation( "scrsouth.frm", PT_ART_INTRFACE, true );
-    CurPScrRU = SprMngr.LoadAnimation( "scrneast.frm", PT_ART_INTRFACE, true );
-    CurPScrLU = SprMngr.LoadAnimation( "scrnwest.frm", PT_ART_INTRFACE, true );
-    CurPScrRD = SprMngr.LoadAnimation( "scrseast.frm", PT_ART_INTRFACE, true );
-    CurPScrLD = SprMngr.LoadAnimation( "scrswest.frm", PT_ART_INTRFACE, true );
-    if( !CurPMove )
-        return __LINE__;
-    if( !CurPMoveBlock )
-        return __LINE__;
-    if( !CurPUseItem )
-        return __LINE__;
-    if( !CurPUseSkill )
-        return __LINE__;
-    if( !CurPWait )
-        return __LINE__;
-    if( !CurPHand )
-        return __LINE__;
-    if( !CurPDef )
-        return __LINE__;
-    if( !CurPScrRt )
-        return __LINE__;
-    if( !CurPScrLt )
-        return __LINE__;
-    if( !CurPScrUp )
-        return __LINE__;
-    if( !CurPScrDw )
-        return __LINE__;
-    if( !CurPScrRU )
-        return __LINE__;
-    if( !CurPScrLU )
-        return __LINE__;
-    if( !CurPScrRD )
-        return __LINE__;
-    if( !CurPScrLD )
-        return __LINE__;
+    CurPDef = SprMngr.LoadAnimation( "cursor_default.png", PT_ART_INTRFACE, true );
+    CurPHand = SprMngr.LoadAnimation( "cursor_hand.png", PT_ART_INTRFACE, true );
 
     // LMenu
     IfaceLoadSpr( LmenuPTalkOff, "LMenuTalkPic" );
@@ -1115,68 +760,6 @@ int FOClient::InitIface()
     IfaceLoadSpr( SboxPBDoctorDn, "SboxDoctorPicDn" );
     IfaceLoadSpr( SboxPBScienceDn, "SboxSciencePicDn" );
     IfaceLoadSpr( SboxPBRepairDn, "SboxRepairPicDn" );
-
-    // Menu option
-    IfaceLoadSpr( MoptMainPic, "MoptMainPic" );
-    if( Singleplayer )
-        IfaceLoadSpr( MoptSingleplayerMainPic, "MoptSingleplayerMainPic" );
-    if( !MoptSingleplayerMainPic )
-        MoptSingleplayerMainPic = MoptMainPic;
-    IfaceLoadSpr( MoptSaveGamePicDown, "MoptSaveGamePicDn" );
-    IfaceLoadSpr( MoptLoadGamePicDown, "MoptLoadGamePicDn" );
-    IfaceLoadSpr( MoptOptionsPicDown, "MoptOptionsPicDn" );
-    IfaceLoadSpr( MoptExitPicDown, "MoptExitPicDn" );
-    IfaceLoadSpr( MoptResumePicDown, "MoptResumePicDn" );
-
-    // Character
-    IfaceLoadSpr( ChaPMain, "ChaMainPic" );
-    IfaceLoadSpr( ChaPBPrintDn, "ChaPrintPicDn" );
-    IfaceLoadSpr( ChaPBOkDn, "ChaOkPicDn" );
-    IfaceLoadSpr( ChaPBCancelDn, "ChaCancelPicDn" );
-    IfaceLoadSpr( ChaPWSlider, "ChaSliderPic" );
-    IfaceLoadSpr( ChaPBSliderPlusDn, "ChaSliderPlusPicDn" );
-    IfaceLoadSpr( ChaPBSliderMinusDn, "ChaSliderMinusPicDn" );
-
-    // Switch
-    IfaceLoadSpr( ChaPBSwitchPerks, "ChaSwitchPerksPic" );
-    IfaceLoadSpr( ChaPBSwitchKarma, "ChaSwitchKarmaPic" );
-    IfaceLoadSpr( ChaPBSwitchKills, "ChaSwitchKillsPic" );
-    IfaceLoadSpr( ChaPBSwitchMask, "ChaSwitchMaskPic" );
-    IfaceLoadSpr( ChaPBSwitchScrUpUp, "ChaSwitchScrUpPic" );
-    IfaceLoadSpr( ChaPBSwitchScrUpDn, "ChaSwitchScrUpPicDn" );
-    IfaceLoadSpr( ChaPBSwitchScrDnUp, "ChaSwitchScrDnPic" );
-    IfaceLoadSpr( ChaPBSwitchScrDnDn, "ChaSwitchScrDnPicDn" );
-
-    // Registration
-    IfaceLoadSpr( RegPMain, "RegMainPic" );
-    IfaceLoadSpr( RegPBSpecialPlusDn, "RegSpecialPlusPicDn" );
-    IfaceLoadSpr( RegPBSpecialMinusDn, "RegSpecialMinusPicDn" );
-    IfaceLoadSpr( RegPBTagSkillDn, "RegTagSkillPicDn" );
-
-    // Traits
-    IfaceLoadSpr( RegPBTraitDn, "RegTraitPicDn" );
-
-    // Buttons
-    IfaceLoadSpr( ChaPBNameDn, "ChaNamePicDn" );
-    IfaceLoadSpr( ChaPBAgeDn, "ChaAgePicDn" );
-    IfaceLoadSpr( ChaPBSexDn, "ChaSexPicDn" );
-
-    // ChaName
-    IfaceLoadSpr( ChaNameMainPic, "ChaNameMainPic" );
-    if( Singleplayer )
-        IfaceLoadSpr( ChaNameSingleplayerMainPic, "ChaNameSingleplayerMainPic" );
-    if( !ChaNameSingleplayerMainPic )
-        ChaNameSingleplayerMainPic = ChaNameMainPic;
-
-    // ChaAge
-    IfaceLoadSpr( ChaAgePic, "ChaAgeMainPic" );
-    IfaceLoadSpr( ChaAgeBUpDn, "ChaAgeUpPicDn" );
-    IfaceLoadSpr( ChaAgeBDownDn, "ChaAgeDownPicDn" );
-
-    // ChaSex
-    IfaceLoadSpr( ChaSexPic, "ChaSexMainPic" );
-    IfaceLoadSpr( ChaSexBMaleDn, "ChaSexMalePicDn" );
-    IfaceLoadSpr( ChaSexBFemaleDn, "ChaSexFemalePicDn" );
 
     // Perk
     IfaceLoadSpr( PerkPMain, "PerkMainPic" );
@@ -1504,352 +1087,6 @@ void FOClient::UpdateContLexems( ItemVec& cont, uint item_id, const char* lexems
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::InvDraw()
-{
-    // Check
-    if( !Chosen )
-        return;
-
-    // Main pic
-    SprMngr.DrawSprite( InvPWMain, InvX, InvY, COLOR_IFACE );
-
-    // Scroll up
-    if( InvScroll <= 0 )
-        SprMngr.DrawSprite( InvPBScrUpOff, InvBScrUp[ 0 ] + InvX, InvBScrUp[ 1 ] + InvY );
-    else
-    {
-        if( IfaceHold == IFACE_INV_SCRUP )
-            SprMngr.DrawSprite( InvPBScrUpDw, InvBScrUp[ 0 ] + InvX, InvBScrUp[ 1 ] + InvY );
-        else
-            SprMngr.DrawSprite( InvPBScrUpUp, InvBScrUp[ 0 ] + InvX, InvBScrUp[ 1 ] + InvY );
-    }
-
-    // Scroll down
-    if( InvScroll >= (int) InvCont.size() - ( InvWInv[ 3 ] - InvWInv[ 1 ] ) / InvHeightItem )
-        SprMngr.DrawSprite( InvPBScrDwOff, InvBScrDn[ 0 ] + InvX, InvBScrDn[ 1 ] + InvY );
-    else
-    {
-        if( IfaceHold == IFACE_INV_SCRDW )
-            SprMngr.DrawSprite( InvPBScrDwDw, InvBScrDn[ 0 ] + InvX, InvBScrDn[ 1 ] + InvY );
-        else
-            SprMngr.DrawSprite( InvPBScrDwUp, InvBScrDn[ 0 ] + InvX, InvBScrDn[ 1 ] + InvY );
-    }
-
-    // Ok button
-    if( IfaceHold == IFACE_INV_OK )
-        SprMngr.DrawSprite( InvPBOkDw, InvBOk[ 0 ] + InvX, InvBOk[ 1 ] + InvY );
-    else
-        SprMngr.DrawSprite( InvPBOkUp, InvBOk[ 0 ] + InvX, InvBOk[ 1 ] + InvY );
-
-    // Chosen
-    Chosen->DrawStay( Rect( InvWChosen, InvX, InvY ) );
-
-    // Slot Main
-    if( Chosen->ItemSlotMain->GetId() && ( IsCurMode( CUR_DEFAULT ) || IfaceHold != IFACE_INV_SLOT1 ) )
-    {
-        AnyFrames* anim = ResMngr.GetInvAnim( Chosen->ItemSlotMain->GetPicInv() );
-        if( anim )
-            SprMngr.DrawSpriteSize( anim->GetCurSprId(), InvWSlot1[ 0 ] + InvX, InvWSlot1[ 1 ] + InvY, InvWSlot1.W(), InvWSlot1.H(), false, true, Chosen->ItemSlotMain->GetInvColor() );
-    }
-
-    // Slot Extra
-    if( Chosen->ItemSlotExt->GetId() && ( IsCurMode( CUR_DEFAULT ) || IfaceHold != IFACE_INV_SLOT2 ) )
-    {
-        AnyFrames* anim = ResMngr.GetInvAnim( Chosen->ItemSlotExt->GetPicInv() );
-        if( anim )
-            SprMngr.DrawSpriteSize( anim->GetCurSprId(), InvWSlot2[ 0 ] + InvX, InvWSlot2[ 1 ] + InvY, InvWSlot2.W(), InvWSlot2.H(), false, true, Chosen->ItemSlotExt->GetInvColor() );
-    }
-
-    // Slot Armor
-    if( Chosen->ItemSlotArmor->GetId() && ( IsCurMode( CUR_DEFAULT ) || IfaceHold != IFACE_INV_ARMOR ) )
-    {
-        AnyFrames* anim = ResMngr.GetInvAnim( Chosen->ItemSlotArmor->GetPicInv() );
-        if( anim )
-            SprMngr.DrawSpriteSize( anim->GetCurSprId(), InvWArmor[ 0 ] + InvX, InvWArmor[ 1 ] + InvY, InvWArmor.W(), InvWArmor.H(), false, true, Chosen->ItemSlotArmor->GetInvColor() );
-    }
-
-    // Extended slots
-    for( auto it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
-    {
-        SlotExt& se = *it;
-        if( se.Region.IsZero() )
-            continue;
-        Item* item = Chosen->GetItemSlot( se.Index );
-        if( !item || ( !IsCurMode( CUR_DEFAULT ) && IfaceHold == IFACE_INV_SLOTS_EXT && item->GetId() == InvHoldId ) )
-            continue;
-        AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
-        if( !anim )
-            continue;
-        SprMngr.DrawSpriteSize( anim->GetCurSprId(), se.Region[ 0 ] + InvX, se.Region[ 1 ] + InvY, se.Region.W(), se.Region.H(), false, true, item->GetInvColor() );
-    }
-
-    // Items in inventory
-    uint skip_id = 0;
-    if( IsCurMode( CUR_HAND ) && IfaceHold == IFACE_INV_INV && InvHoldId )
-        skip_id = InvHoldId;
-    ContainerDraw( Rect( InvWInv, InvX, InvY ), InvHeightItem, InvScroll, InvCont, skip_id );
-
-    if( InvItemInfo.empty() )
-    {
-        // Inventory info
-        int         ox, oy;
-        const char* result = FmtGenericDesc( DESC_INVENTORY_MAIN, ox, oy );
-        if( result )
-            SprMngr.DrawStr( Rect( InvWText, InvX + ox, InvY + oy ), result, FT_NOBREAK_LINE );
-        result = FmtGenericDesc( DESC_INVENTORY_SPECIAL, ox, oy );
-        if( result )
-            SprMngr.DrawStr( Rect( InvWText, InvX + ox, InvY + oy ), result, FT_NOBREAK_LINE );
-        result = FmtGenericDesc( DESC_INVENTORY_STATS, ox, oy );
-        if( result )
-            SprMngr.DrawStr( Rect( InvWText, InvX + ox, InvY + oy ), result, FT_NOBREAK_LINE );
-        result = FmtGenericDesc( DESC_INVENTORY_RESIST, ox, oy );
-        if( result )
-            SprMngr.DrawStr( Rect( InvWText, InvX + ox, InvY + oy ), result, FT_NOBREAK_LINE );
-    }
-    else
-    {
-        // Item info
-        SprMngr.DrawStr( Rect( InvWText, InvX, InvY ), InvItemInfo.c_str(), FT_SKIPLINES( InvItemInfoScroll ) );
-    }
-}
-
-void FOClient::InvLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-    InvHoldId = 0;
-    InvFocus = INVF_NONE;
-    if( !Chosen )
-        return;
-
-    if( IsCurInRect( InvWMain, InvX, InvY ) )
-    {
-        if( IsCurInRect( InvWInv, InvX, InvY ) )
-        {
-            InvHoldId = GetCurContainerItemId( Rect( InvWInv, InvX, InvY ), InvHeightItem, InvScroll, InvCont );
-            if( InvHoldId )
-                IfaceHold = IFACE_INV_INV;
-        }
-        else if( IsCurInRect( InvWSlot1, InvX, InvY ) && Chosen->ItemSlotMain->GetId() )
-        {
-            InvHoldId = Chosen->ItemSlotMain->GetId();
-            IfaceHold = IFACE_INV_SLOT1;
-        }
-        else if( IsCurInRect( InvWSlot2, InvX, InvY ) && Chosen->ItemSlotExt->GetId() )
-        {
-            InvHoldId = Chosen->ItemSlotExt->GetId();
-            IfaceHold = IFACE_INV_SLOT2;
-        }
-        else if( IsCurInRect( InvWArmor, InvX, InvY ) && Chosen->ItemSlotArmor->GetId() )
-        {
-            InvHoldId = Chosen->ItemSlotArmor->GetId();
-            IfaceHold = IFACE_INV_ARMOR;
-        }
-        else if( IsCurInRect( InvBScrUp, InvX, InvY ) )
-        {
-            Timer::StartAccelerator( ACCELERATE_INV_SCRUP );
-            IfaceHold = IFACE_INV_SCRUP;
-        }
-        else if( IsCurInRect( InvBScrDn, InvX, InvY ) )
-        {
-            Timer::StartAccelerator( ACCELERATE_INV_SCRDOWN );
-            IfaceHold = IFACE_INV_SCRDW;
-        }
-        else if( IsCurInRect( InvBOk, InvX, InvY ) )
-        {
-            IfaceHold = IFACE_INV_OK;
-        }
-        else
-        {
-            // Try find extended slot
-            for( auto it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
-            {
-                SlotExt& se = *it;
-                if( !se.Region.IsZero() && IsCurInRect( se.Region, InvX, InvY ) )
-                {
-                    Item* item = Chosen->GetItemSlot( se.Index );
-                    if( item )
-                    {
-                        InvHoldId = item->GetId();
-                        IfaceHold = IFACE_INV_SLOTS_EXT;
-                        break;
-                    }
-                }
-            }
-
-            // Move screen
-            if( IfaceHold == IFACE_NONE )
-            {
-                InvVectX = GameOpt.MouseX - InvX;
-                InvVectY = GameOpt.MouseY - InvY;
-                IfaceHold = IFACE_INV_MAIN;
-            }
-        }
-
-        if( IsCurMode( CUR_DEFAULT ) && ( IfaceHold == IFACE_INV_INV || IfaceHold == IFACE_INV_SLOT1 || IfaceHold == IFACE_INV_SLOT2 ||
-                                          IfaceHold == IFACE_INV_ARMOR || IfaceHold == IFACE_INV_SLOTS_EXT ) )
-            LMenuTryActivate();
-    }
-}
-
-void FOClient::InvLMouseUp()
-{
-    if( !Chosen )
-        return;
-    if( IsCurMode( CUR_HAND ) && ( IfaceHold == IFACE_INV_INV || IfaceHold == IFACE_INV_SLOT1 || IfaceHold == IFACE_INV_SLOT2 || IfaceHold == IFACE_INV_ARMOR || IfaceHold == IFACE_INV_SLOTS_EXT ) )
-    {
-        int   to_slot = -1;
-        Item* to_weap = NULL;
-        if( IsCurInRect( InvWInv, InvX, InvY ) )
-            to_slot = SLOT_INV;
-        else if( IsCurInRect( InvWSlot1, InvX, InvY ) )
-        {
-            to_slot = SLOT_HAND1;
-            if( Chosen->ItemSlotMain->GetId() )
-                to_weap = Chosen->ItemSlotMain;
-        }
-        else if( IsCurInRect( InvWSlot2, InvX, InvY ) )
-        {
-            to_slot = SLOT_HAND2;
-            if( Chosen->ItemSlotExt->GetId() )
-                to_weap = Chosen->ItemSlotExt;
-        }
-        else if( IsCurInRect( InvWArmor, InvX, InvY ) )
-            to_slot = SLOT_ARMOR;
-        else if( !IsCurInRect( InvWMain, InvX, InvY ) )
-            to_slot = SLOT_GROUND;
-        else
-        {
-            // Find extended slot
-            for( auto it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
-            {
-                SlotExt& se = *it;
-                if( !se.Region.IsZero() && IsCurInRect( se.Region, InvX, InvY ) )
-                {
-                    to_slot = se.Index;
-                    break;
-                }
-            }
-        }
-
-        if( to_slot == -1 )
-        {
-            IfaceHold = 0;
-            InvHoldId = 0;
-            return;
-        }
-
-        if( to_weap && !to_weap->IsWeapon() )
-            to_weap = NULL;
-
-        int from_slot = -1;
-        switch( IfaceHold )
-        {
-        case IFACE_INV_INV:
-            from_slot = SLOT_INV;
-            break;
-        case IFACE_INV_SLOT1:
-            from_slot = SLOT_HAND1;
-            break;
-        case IFACE_INV_SLOT2:
-            from_slot = SLOT_HAND2;
-            break;
-        case IFACE_INV_ARMOR:
-            from_slot = SLOT_ARMOR;
-            break;
-        default:         // IFACE_INV_SLOTS_EXT:
-        {
-            Item* item = Chosen->GetItem( InvHoldId );
-            if( item )
-                from_slot = item->AccCritter.Slot;
-        }
-        break;
-        }
-        IfaceHold = IFACE_NONE;
-
-        if( from_slot == -1 || from_slot == to_slot )
-            return;
-
-        Item* item = Chosen->GetItem( InvHoldId );
-        InvHoldId = 0;
-        if( !item || item->AccCritter.Slot != from_slot )
-            return;
-
-        // Load weapon
-        if( item->IsAmmo() && to_weap )
-        {
-            if( item->Proto->Ammo_Caliber == to_weap->Proto->Weapon_Caliber && ( to_weap->AmmoCount < to_weap->Proto->Weapon_MaxAmmoCount || to_weap->AmmoPid != item->GetProtoId() ) )
-            {
-                AddActionBack( CHOSEN_USE_ITEM, to_weap->GetId(), 0, TARGET_SELF_ITEM, item->GetId(), USE_RELOAD );
-            }
-        }
-        // Transit
-        else
-        {
-            // Split
-            if( to_slot == SLOT_GROUND && item->IsStackable() && item->Count > 1 )
-            {
-                SplitStart( item, to_slot );
-                return;
-            }
-            // Without split
-            else
-            {
-                AddActionBack( CHOSEN_MOVE_ITEM, item->GetId(), item->Count, to_slot );
-            }
-        }
-    }
-    else if( IfaceHold == IFACE_INV_SCRUP && IsCurInRect( InvBScrUp, InvX, InvY ) )
-    {
-        if( InvScroll > 0 )
-            InvScroll--;
-    }
-    else if( IfaceHold == IFACE_INV_SCRDW && IsCurInRect( InvBScrDn, InvX, InvY ) )
-    {
-        if( InvScroll < (int) InvCont.size() - InvWInv.H() / InvHeightItem )
-            InvScroll++;
-    }
-    else if( IfaceHold == IFACE_INV_OK && IsCurInRect( InvBOk, InvX, InvY ) )
-    {
-        ShowScreen( SCREEN_NONE );
-    }
-
-    InvHoldId = 0;
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::InvRMouseDown()
-{
-    if( IfaceHold == IFACE_NONE )
-    {
-        SetCurCastling( CUR_DEFAULT, CUR_HAND );
-        if( IsCurMode( CUR_HAND ) )
-            InvItemInfo = "";
-    }
-}
-
-void FOClient::InvMouseMove()
-{
-    if( IfaceHold == IFACE_INV_MAIN )
-    {
-        InvX = GameOpt.MouseX - InvVectX;
-        InvY = GameOpt.MouseY - InvVectY;
-
-        if( InvX < 0 )
-            InvX = 0;
-        if( InvX + InvWMain[ 2 ] > GameOpt.ScreenWidth )
-            InvX = GameOpt.ScreenWidth - InvWMain[ 2 ];
-        if( InvY < 0 )
-            InvY = 0;
-        // if(InvY+InvMain[3]>IntY) InvY=IntY-InvMain[3];
-        if( InvY + InvWMain[ 3 ] > GameOpt.ScreenHeight )
-            InvY = GameOpt.ScreenHeight - InvWMain[ 3 ];
-    }
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
 void FOClient::UseDraw()
 {
     // Check
@@ -2005,135 +1242,6 @@ void FOClient::UseMouseMove()
 // ==============================================================================================================================
 // ******************************************************************************************************************************
 // ==============================================================================================================================
-bool FOClient::ConsoleActive;
-
-void FOClient::ConsoleDraw()
-{
-    // Pause indicator
-    if( Timer::IsGamePaused() && !IsScreenPresent( SCREEN__MENU_OPTION ) )
-        SprMngr.DrawStr( Rect( 0, 20, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), MsgGame->GetStr( STR_GAME_PAUSED ), FT_CENTERX, COLOR_TEXT_DRED, FONT_BIG );
-
-    // Console
-    if( ConsoleActive )
-    {
-        if( IsMainScreen( SCREEN_GAME ) )
-            SprMngr.DrawSprite( ConsolePic, IntX + ConsolePicX, ( IntVisible ? ( IntAddMess ? IntWAddMess[ 1 ] : IntY ) : GameOpt.ScreenHeight ) + ConsolePicY );
-
-        Rect rect( IntX + ConsoleTextX, ( IntVisible ? ( IntAddMess ? IntWAddMess[ 1 ] : IntY ) : GameOpt.ScreenHeight ) + ConsoleTextY, GameOpt.ScreenWidth, GameOpt.ScreenHeight );
-        if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
-            rect = GmapWPanel;
-
-        char* buf = (char*) Str::FormatBuf( "%s", ConsoleStr.c_str() );
-        Str::Insert( &buf[ ConsoleCur ], Timer::FastTick() % 800 < 400 ? "!" : "." );
-        SprMngr.DrawStr( rect, buf, FT_NOBREAK );
-    }
-}
-
-void FOClient::ConsoleKeyDown( uchar dik, const char* dik_text )
-{
-    if( !IsMainScreen( SCREEN_GAME ) && !IsMainScreen( SCREEN_GLOBAL_MAP ) )
-        return;
-
-    if( dik == DIK_RETURN || dik == DIK_NUMPADENTER )
-    {
-        if( !ConsoleActive )
-        {
-            ConsoleActive = true;
-            ConsoleStr = "";
-            ConsoleCur = 0;
-            ConsoleHistoryCur = (int) ConsoleHistory.size();
-            return;
-        }
-
-        if( ConsoleStr.empty() )
-        {
-            ConsoleActive = false;
-            return;
-        }
-
-        // Modify console history
-        ConsoleHistory.push_back( ConsoleStr );
-        for( uint i = 0; i < ConsoleHistory.size() - 1; i++ )
-        {
-            if( ConsoleHistory[ i ] == ConsoleHistory[ ConsoleHistory.size() - 1 ] )
-            {
-                ConsoleHistory.erase( ConsoleHistory.begin() + i );
-                i = -1;
-            }
-        }
-        while( ConsoleHistory.size() > GameOpt.ConsoleHistorySize )
-            ConsoleHistory.erase( ConsoleHistory.begin() );
-        ConsoleHistoryCur = (int) ConsoleHistory.size();
-
-        // Save console history
-        string history_str = "";
-        for( size_t i = 0, j = ConsoleHistory.size(); i < j; i++ )
-            history_str += ConsoleHistory[ i ] + "\n";
-        Crypt.SetCache( ( GameOpt.Name->c_std_str() + "_console" ).c_str(), history_str );
-
-        // Send text
-        if( Keyb::CtrlDwn )
-            Net_SendText( ConsoleStr.c_str(), SAY_SHOUT );
-        else if( Keyb::AltDwn )
-            Net_SendText( ConsoleStr.c_str(), SAY_WHISP );
-        else if( Keyb::ShiftDwn )
-            Net_SendText( ConsoleStr.c_str(), SAY_RADIO );
-        else
-            Net_SendText( ConsoleStr.c_str(), SAY_NORM );
-
-        ConsoleStr = "";
-        ConsoleCur = 0;
-    }
-
-    if( !ConsoleActive )
-        return;
-
-    switch( dik )
-    {
-    case DIK_UP:
-        if( ConsoleHistoryCur - 1 < 0 )
-            return;
-        ConsoleHistoryCur--;
-        ConsoleStr = ConsoleHistory[ ConsoleHistoryCur ];
-        ConsoleCur = (uint) ConsoleStr.length();
-        return;
-    case DIK_DOWN:
-        if( ConsoleHistoryCur + 1 >= (int) ConsoleHistory.size() )
-        {
-            ConsoleHistoryCur = (int) ConsoleHistory.size();
-            ConsoleStr = "";
-            ConsoleCur = 0;
-            return;
-        }
-        ConsoleHistoryCur++;
-        ConsoleStr = ConsoleHistory[ ConsoleHistoryCur ];
-        ConsoleCur = (uint) ConsoleStr.length();
-        return;
-    default:
-        Keyb::GetChar( dik, dik_text, ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS );
-        if( dik == DIK_PAUSE )
-            break;
-        ConsoleLastKey = dik;
-        ConsoleLastKeyText = dik_text;
-        Timer::StartAccelerator( ACCELERATE_CONSOLE );
-        return;
-    }
-}
-
-void FOClient::ConsoleKeyUp( uchar key )
-{
-    ConsoleLastKey = 0;
-}
-
-void FOClient::ConsoleProcess()
-{
-    if( ConsoleLastKey && Timer::ProcessAccelerator( ACCELERATE_CONSOLE ) )
-        Keyb::GetChar( ConsoleLastKey, ConsoleLastKeyText.c_str(), ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS );
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
 
 void FOClient::GameDraw()
 {
@@ -2227,128 +1335,6 @@ void FOClient::GameDraw()
 
 void FOClient::GameKeyDown( uchar dik, const char* dik_text )
 {
-    if( ConsoleActive )
-        return;
-
-    if( Keyb::AltDwn && GameOpt.DebugInfo )
-    {
-        static int anim_offs = 0;
-        switch( dik )
-        {
-            // Show/Hide sprites
-//              case DIK_1: GameOpt.ShowItem=!GameOpt.ShowItem; HexMngr.RefreshMap(); break;
-//              case DIK_2: GameOpt.ShowScen=!GameOpt.ShowScen; HexMngr.RefreshMap(); break;
-//              case DIK_3: GameOpt.ShowWall=!GameOpt.ShowWall; HexMngr.RefreshMap(); break;
-//              case DIK_4: GameOpt.ShowCrit=!GameOpt.ShowCrit; HexMngr.RefreshMap(); break;
-//              case DIK_5: GameOpt.ShowTile=!GameOpt.ShowTile; HexMngr.RefreshMap(); break;
-//              case DIK_6: GameOpt.ShowRoof=!GameOpt.ShowRoof; HexMngr.RefreshMap(); break;
-
-            #define CHOSEN_ANIMATE( anim2 ) \
-                if( Chosen )                \
-                    Chosen->Animate( 0, anim_offs + ( anim2 ), NULL )
-        case DIK_0:
-            if( Keyb::CtrlDwn )
-                anim_offs = 0;
-            else
-                CHOSEN_ANIMATE( 0 );
-            break;
-        case DIK_1:
-            if( Keyb::CtrlDwn )
-                anim_offs = 10;
-            else
-                CHOSEN_ANIMATE( 1 );
-            break;
-        case DIK_2:
-            if( Keyb::CtrlDwn )
-                anim_offs = 20;
-            else
-                CHOSEN_ANIMATE( 2 );
-            break;
-        case DIK_3:
-            if( Keyb::CtrlDwn )
-                anim_offs = 30;
-            else
-                CHOSEN_ANIMATE( 3 );
-            break;
-        case DIK_4:
-            if( Keyb::CtrlDwn )
-                anim_offs = 40;
-            else
-                CHOSEN_ANIMATE( 4 );
-            break;
-        case DIK_5:
-            if( Keyb::CtrlDwn )
-                anim_offs = 50;
-            else
-                CHOSEN_ANIMATE( 5 );
-            break;
-        case DIK_6:
-            if( Keyb::CtrlDwn )
-                anim_offs = 60;
-            else
-                CHOSEN_ANIMATE( 6 );
-            break;
-        case DIK_7:
-            if( Keyb::CtrlDwn )
-                anim_offs = 70;
-            else
-                CHOSEN_ANIMATE( 7 );
-            break;
-        case DIK_8:
-            if( Keyb::CtrlDwn )
-                anim_offs = 80;
-            else
-                CHOSEN_ANIMATE( 8 );
-            break;
-        case DIK_9:
-            if( Keyb::CtrlDwn )
-                anim_offs = 90;
-            else
-                CHOSEN_ANIMATE( 9 );
-            break;
-        case DIK_A:
-            if( Keyb::CtrlDwn )
-                anim_offs = 100;
-            else
-                CHOSEN_ANIMATE( 10 );
-            break;
-        case DIK_B:
-            if( Keyb::CtrlDwn )
-                anim_offs = 110;
-            else
-                CHOSEN_ANIMATE( 11 );
-            break;
-        case DIK_C:
-            if( Keyb::CtrlDwn )
-                anim_offs = 120;
-            else
-                CHOSEN_ANIMATE( 12 );
-            break;
-        case DIK_D:
-            if( Keyb::CtrlDwn )
-                anim_offs = 130;
-            else
-                CHOSEN_ANIMATE( 13 );
-            break;
-        case DIK_E:
-            if( Keyb::CtrlDwn )
-                anim_offs = 140;
-            else
-                CHOSEN_ANIMATE( 14 );
-            break;
-        case DIK_F:
-            if( Keyb::CtrlDwn )
-                anim_offs = 150;
-            else
-                CHOSEN_ANIMATE( 15 );
-            break;
-        default:
-            break;
-        }
-
-        return;
-    }
-
     if( Keyb::CtrlDwn || Keyb::ShiftDwn || Keyb::AltDwn )
         return;
 
@@ -2381,29 +1367,17 @@ void FOClient::GameKeyDown( uchar dik, const char* dik_text )
             if( Chosen->ItemSlotMain->IsWeapon() && Chosen->GetUse() < MAX_USES )
                 SetCurMode( CUR_USE_WEAPON );
             break;
-        case DIK_C:
-            ShowScreen( SCREEN__CHARACTER );
-            if( Chosen->Params[ ST_UNSPENT_PERKS ] )
-                ShowScreen( SCREEN__PERK );
-            break;
         case DIK_G:
             TryPickItemOnGround();
             break;
         case DIK_T:
             GameOpt.ShowGroups = !GameOpt.ShowGroups;
             break;
-        case DIK_I:
-            ShowScreen( SCREEN__INVENTORY );
-            break;
         case DIK_P:
             ShowScreen( SCREEN__PIP_BOY );
             break;
         case DIK_F:
             ShowScreen( SCREEN__FIX_BOY );
-            break;
-        // case DIK_Z: PipBoy clock
-        case DIK_O:
-            ShowScreen( SCREEN__MENU_OPTION );
             break;
         case DIK_B:
             ChosenChangeSlot();
@@ -2491,7 +1465,7 @@ void FOClient::GameLMouseDown()
     else if( IsCurMode( CUR_MOVE ) )
     {
         ActionEvent* act = ( IsAction( CHOSEN_MOVE ) ? &ChosenAction[ 0 ] : NULL );
-        ushort hx, hy;
+        ushort       hx, hy;
         if( act && Timer::FastTick() - act->Param[ 5 ] < ( GameOpt.DoubleClickTime ? GameOpt.DoubleClickTime : GetDoubleClickTicks() ) )
         {
             act->Param[ 2 ] = ( GameOpt.AlwaysRun ? 0 : 1 );
@@ -2507,7 +1481,7 @@ void FOClient::GameLMouseDown()
     else if( IsCurMode( CUR_USE_ITEM ) || IsCurMode( CUR_USE_WEAPON ) )
     {
         CritterCl* cr;
-        ItemHex* item;
+        ItemHex*   item;
         if( Chosen->ItemSlotMain->IsWeapon() && Chosen->GetUse() < MAX_USES )
         {
             cr = HexMngr.GetCritterPixel( GameOpt.MouseX, GameOpt.MouseY, true );
@@ -2547,7 +1521,7 @@ void FOClient::GameLMouseDown()
     else if( IsCurMode( CUR_USE_SKILL ) )
     {
         CritterCl* cr;
-        ItemHex* item;
+        ItemHex*   item;
         HexMngr.GetSmthPixel( GameOpt.MouseX, GameOpt.MouseY, item, cr );
 
         // Use skill
@@ -2616,373 +1590,8 @@ void FOClient::GameRMouseUp()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::IntDraw()
-{
-    if( !Chosen || !IntVisible )
-        return;
-
-    SprMngr.DrawSprite( IntMainPic, IntX, IntY );
-    SprMngr.DrawSprite( AnimGetCurSpr( IntWCombatAnim ), IntWCombat[ 0 ], IntWCombat[ 1 ] );
-
-    if( IntAddMess )
-    {
-        SprMngr.DrawSprite( IntPWAddMess, IntWAddMess[ 0 ], IntWAddMess[ 1 ] );
-        SprMngr.DrawSprite( IntPBAddMessDn, IntBAddMess[ 0 ], IntBAddMess[ 1 ] );
-    }
-
-    if( std::find( MessBoxFilters.begin(), MessBoxFilters.end(), FOMB_COMBAT_RESULT ) != MessBoxFilters.end() )
-        SprMngr.DrawSprite( IntPBMessFilter1Dn, IntBMessFilter1[ 0 ], IntBMessFilter1[ 1 ] );
-    if( std::find( MessBoxFilters.begin(), MessBoxFilters.end(), FOMB_TALK ) != MessBoxFilters.end() )
-        SprMngr.DrawSprite( IntPBMessFilter2Dn, IntBMessFilter2[ 0 ], IntBMessFilter2[ 1 ] );
-    if( std::find( MessBoxFilters.begin(), MessBoxFilters.end(), FOMB_VIEW ) != MessBoxFilters.end() )
-        SprMngr.DrawSprite( IntPBMessFilter3Dn, IntBMessFilter3[ 0 ], IntBMessFilter3[ 1 ] );
-
-    switch( IfaceHold )
-    {
-    case IFACE_INT_CHSLOT:
-        SprMngr.DrawSprite( IntPBSlotsDn, IntBChangeSlot[ 0 ], IntBChangeSlot[ 1 ] );
-        break;
-    case IFACE_INT_INV:
-        SprMngr.DrawSprite( IntPBInvDn, IntBInv[ 0 ], IntBInv[ 1 ] );
-        break;
-    case IFACE_INT_MENU:
-        SprMngr.DrawSprite( IntPBMenuDn, IntBMenu[ 0 ], IntBMenu[ 1 ] );
-        break;
-    case IFACE_INT_SKILL:
-        SprMngr.DrawSprite( IntPBSkillDn, IntBSkill[ 0 ], IntBSkill[ 1 ] );
-        break;
-    case IFACE_INT_MAP:
-        SprMngr.DrawSprite( IntPBMapDn, IntBMap[ 0 ], IntBMap[ 1 ] );
-        break;
-    case IFACE_INT_CHAR:
-        SprMngr.DrawSprite( IntPBChaDn, IntBChar[ 0 ], IntBChar[ 1 ] );
-        break;
-    case IFACE_INT_PIP:
-        SprMngr.DrawSprite( IntPBPipDn, IntBPip[ 0 ], IntBPip[ 1 ] );
-        break;
-    case IFACE_INT_FIX:
-        SprMngr.DrawSprite( IntPBFixDn, IntBFix[ 0 ], IntBFix[ 1 ] );
-        break;
-    case IFACE_INT_ITEM:
-        SprMngr.DrawSprite( IntBItemPicDn, IntBItem[ 0 ], IntBItem[ 1 ] );
-        break;
-    case IFACE_INT_ADDMESS:
-        SprMngr.DrawSprite( IntPBAddMessDn, IntBAddMess[ 0 ], IntBAddMess[ 1 ] );
-        break;
-    case IFACE_INT_FILTER1:
-        SprMngr.DrawSprite( IntPBMessFilter1Dn, IntBMessFilter1[ 0 ], IntBMessFilter1[ 1 ] );
-        break;
-    case IFACE_INT_FILTER2:
-        SprMngr.DrawSprite( IntPBMessFilter2Dn, IntBMessFilter2[ 0 ], IntBMessFilter2[ 1 ] );
-        break;
-    case IFACE_INT_FILTER3:
-        SprMngr.DrawSprite( IntPBMessFilter3Dn, IntBMessFilter3[ 0 ], IntBMessFilter3[ 1 ] );
-        break;
-    case IFACE_INT_COMBAT_TURN:
-        SprMngr.DrawSprite( IntBCombatTurnPicDown, IntBCombatTurn[ 0 ], IntBCombatTurn[ 1 ] );
-        break;
-    case IFACE_INT_COMBAT_END:
-        SprMngr.DrawSprite( IntBCombatEndPicDown, IntBCombatEnd[ 0 ], IntBCombatEnd[ 1 ] );
-        break;
-    default:
-        break;
-    }
-
-    if( IsTurnBased && Chosen->IsRawParam( MODE_END_COMBAT ) )
-        SprMngr.DrawSprite( IntBCombatEndPicDown, IntBCombatEnd[ 0 ], IntBCombatEnd[ 1 ] );
-
-    // Item offsets
-    int item_offsx, item_offsy;
-    item_offsx = ( IfaceHold == IFACE_INT_ITEM ? IntBItemOffsX : 0 );
-    item_offsy = ( IfaceHold == IFACE_INT_ITEM ? IntBItemOffsY : 0 );
-
-    // Item
-    if( Chosen->ItemSlotMain->GetId() )
-    {
-        SprMngr.DrawSpriteSize(
-            ResMngr.GetInvAnim( Chosen->ItemSlotMain->GetPicInv() ),
-            IntBItem.L + item_offsx, IntBItem.T + item_offsy,
-            IntBItem.W(), IntBItem.H(),
-            false, true, Chosen->ItemSlotMain->GetInvColor() );
-    }
-
-    // Use
-    AnyFrames* use_anim = ResMngr.GetIfaceAnim( Chosen->GetUsePicName( SLOT_HAND1 ) );
-    if( use_anim )
-    {
-        SpriteInfo* si = SprMngr.GetSpriteInfo( use_anim->GetCurSprId() );
-        if( si )
-            SprMngr.DrawSprite( use_anim, IntUseX + item_offsx - si->Width, IntUseY + item_offsy );
-    }
-
-    // Aim
-    if( Chosen->IsAim() )
-        SprMngr.DrawSprite( IntAimPic, IntAimX + item_offsx, IntAimY + item_offsy );
-
-    // Ap cost
-    uint ap_cost = Chosen->GetUseApCost( Chosen->ItemSlotMain, Chosen->GetFullRate() );
-    if( ap_cost )
-    {
-        SprMngr.DrawSprite( IntWApCostPicNone, IntWApCost[ 0 ] + item_offsx, IntWApCost[ 1 ] + item_offsy );
-        SprMngr.DrawStr( Rect( IntWApCost, item_offsx + 20, item_offsy ), Str::FormatBuf( "%u", ap_cost ), 0, COLOR_IFACE_FIX, FONT_SAND_NUM );
-    }
-
-    // Ap
-    if( Chosen->GetParam( ST_CURRENT_AP ) >= 0 )
-    {
-        for( int i = 0, j = Chosen->GetParam( ST_CURRENT_AP ); i < j && i < IntAPMax; i++ )
-            SprMngr.DrawSprite( IntDiodeG, IntAP[ 0 ] + i * IntAPstepX, IntAP[ 1 ] + i * IntAPstepY );
-    }
-    else
-    {
-        for( int i = 0, j = abs( Chosen->GetParam( ST_CURRENT_AP ) ); i < j && i < IntAPMax; i++ )
-            SprMngr.DrawSprite( IntDiodeR, IntAP[ 0 ] + i * IntAPstepX, IntAP[ 1 ] + i * IntAPstepY );
-    }
-
-    // Move Ap
-    if( IsTurnBased )
-    {
-        for( int i = Chosen->GetParam( ST_CURRENT_AP ), j = Chosen->GetParam( ST_CURRENT_AP ) + Chosen->GetParam( ST_MOVE_AP ); i < j && i < IntAPMax; i++ )
-            SprMngr.DrawSprite( IntDiodeY, IntAP[ 0 ] + i * IntAPstepX, IntAP[ 1 ] + i * IntAPstepY );
-    }
-
-    // Break time
-    if( !Chosen->IsFree() )
-        SprMngr.DrawSprite( IntBreakTimePic, IntBreakTime[ 0 ], IntBreakTime[ 1 ] );
-
-    // Hp
-    char bin_str[ 32 ];
-    Str::Format( bin_str, "%c%03d", bin_str[ 0 ] = '9' + 4, abs( Chosen->GetParam( ST_CURRENT_HP ) ) );
-    if( Chosen->GetParam( ST_CURRENT_HP ) < 0 )
-        bin_str[ 0 ] = '9' + 3;
-
-    if( ( Chosen->GetParam( ST_CURRENT_HP ) * 100 ) / Chosen->GetParam( ST_MAX_LIFE ) <= 20 )
-        Str::ChangeValue( bin_str, 0x20 );                                                         // Red
-    else if( ( Chosen->GetParam( ST_CURRENT_HP ) * 100 ) / Chosen->GetParam( ST_MAX_LIFE ) <= 40 ) // TODO:
-        Str::ChangeValue( bin_str, 0x10 );                                                         // Yellow
-
-    SprMngr.DrawStr( IntHP, bin_str, 0, COLOR_IFACE, FONT_NUM );
-
-    // Ac
-    SprMngr.DrawStr( IntAC, Str::FormatBuf( "%c%03d", '9' + 4, Chosen->GetParam( ST_ARMOR_CLASS ) ), 0, COLOR_IFACE, FONT_NUM );
-
-    // Indicator
-    Item* item = Chosen->ItemSlotMain;
-    int indicator_max = item->Proto->IndicatorMax;
-    int indicator_cur = item->Indicator;
-
-    if( item->IsWeapon() && item->WeapGetMaxAmmoCount() )
-    {
-        indicator_max = item->WeapGetMaxAmmoCount();
-        indicator_cur = item->WeapGetAmmoCount();
-    }
-
-    if( indicator_max )
-    {
-        if( GameOpt.IndicatorType == INDICATOR_LINES || GameOpt.IndicatorType == INDICATOR_BOTH )
-            DrawIndicator( IntWAmmoCount, IntAmmoPoints, COLOR_TEXT_GREEN, Procent( indicator_max, indicator_cur ), IntAmmoTick, true, false );
-        if( GameOpt.IndicatorType == INDICATOR_NUMBERS || GameOpt.IndicatorType == INDICATOR_BOTH )
-            SprMngr.DrawStr( Rect( IntWAmmoCountStr, item_offsx, item_offsy ), Str::FormatBuf( "%03d", indicator_cur ), 0, IfaceHold == IFACE_INT_ITEM ? COLOR_TEXT_DGREEN : COLOR_TEXT, FONT_SPECIAL );
-    }
-    else if( GameOpt.IndicatorType == INDICATOR_LINES || GameOpt.IndicatorType == INDICATOR_BOTH )
-    {
-        DrawIndicator( IntWAmmoCount, IntAmmoPoints, COLOR_TEXT_GREEN, 0, IntAmmoTick, true, false );
-    }
-
-    // Deteoration indicator
-    if( item->IsDeteriorable() )
-    {
-        if( GameOpt.IndicatorType == INDICATOR_LINES || GameOpt.IndicatorType == INDICATOR_BOTH )
-            DrawIndicator( IntWWearProcent, IntWearPoints, COLOR_TEXT_RED, item->GetDeteriorationProc(), IntWearTick, true, false );
-        if( GameOpt.IndicatorType == INDICATOR_NUMBERS || GameOpt.IndicatorType == INDICATOR_BOTH )
-            SprMngr.DrawStr( Rect( IntWWearProcentStr, item_offsx, item_offsy ), Str::FormatBuf( "%d%%", item->GetDeteriorationProc() ), 0, IfaceHold == IFACE_INT_ITEM ? COLOR_TEXT_DRED : COLOR_TEXT_RED, FONT_SPECIAL );
-    }
-    else if( GameOpt.IndicatorType == INDICATOR_LINES || GameOpt.IndicatorType == INDICATOR_BOTH )
-    {
-        DrawIndicator( IntWWearProcent, IntWearPoints, COLOR_TEXT_RED, 0, IntWearTick, true, false );
-    }
-}
-
-int FOClient::IntLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-    if( !Chosen || !IntVisible )
-        return IFACE_NONE;
-
-    if( IsCurInRect( IntBItem, 0, 0 ) )
-    {
-        IfaceHold = IFACE_INT_ITEM;
-        return IfaceHold;
-    }
-
-    // if(!IsCurMode(CUR_DEFAULT) && !IsCurMode(CUR_MOVE)) return 0;
-
-    if( IsCurInRect( IntBChangeSlot ) )
-        IfaceHold = IFACE_INT_CHSLOT;
-    else if( IsCurInRect( IntBInv ) )
-        IfaceHold = IFACE_INT_INV;
-    else if( IsCurInRect( IntBMenu ) )
-        IfaceHold = IFACE_INT_MENU;
-    else if( IsCurInRect( IntBSkill ) )
-        IfaceHold = IFACE_INT_SKILL;
-    else if( IsCurInRect( IntBMap ) )
-        IfaceHold = IFACE_INT_MAP;
-    else if( IsCurInRect( IntBChar ) )
-        IfaceHold = IFACE_INT_CHAR;
-    else if( IsCurInRect( IntBPip ) )
-        IfaceHold = IFACE_INT_PIP;
-    else if( IsCurInRect( IntBFix ) )
-        IfaceHold = IFACE_INT_FIX;
-    else if( IsCurInRect( IntBAddMess ) )
-        IfaceHold = IFACE_INT_ADDMESS;
-    else if( IsCurInRect( IntBMessFilter1 ) )
-        IfaceHold = IFACE_INT_FILTER1;
-    else if( IsCurInRect( IntBMessFilter2 ) )
-        IfaceHold = IFACE_INT_FILTER2;
-    else if( IsCurInRect( IntBMessFilter3 ) )
-        IfaceHold = IFACE_INT_FILTER3;
-    else if( IsCurInRect( IntBCombatTurn ) && IsTurnBasedMyTurn() )
-        IfaceHold = IFACE_INT_COMBAT_TURN;
-    else if( IsCurInRect( IntBCombatEnd ) && IsTurnBased )
-        IfaceHold = IFACE_INT_COMBAT_END;
-    else if( IsCurInRectNoTransp( IntMainPic->GetCurSprId(), IntWMain, 0, 0 ) )
-        IfaceHold = IFACE_INT_MAIN;
-    else if( IntAddMess && IsCurInRectNoTransp( IntPWAddMess->GetCurSprId(), IntWAddMess, 0, 0 ) )
-        IfaceHold = IFACE_INT_MAIN;
-
-    return IfaceHold;
-}
-
-void FOClient::IntRMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-    if( !Chosen || !IntVisible )
-        return;
-    if( IsCurInRect( IntBItem ) && Chosen->NextRateItem( false ) )
-        Net_SendRateItem();
-}
-
-void FOClient::IntLMouseUp()
-{
-    if( !Chosen || IfaceHold == IFACE_NONE )
-        return;
-
-    if( IfaceHold == IFACE_INT_CHSLOT && IsCurInRect( IntBChangeSlot ) )
-    {
-        ChosenChangeSlot();
-    }
-    else if( IfaceHold == IFACE_INT_INV && IsCurInRect( IntBInv ) )
-    {
-        ShowScreen( SCREEN__INVENTORY );
-    }
-    else if( IfaceHold == IFACE_INT_MENU && IsCurInRect( IntBMenu ) )
-    {
-        ShowScreen( SCREEN__MENU_OPTION );
-    }
-    else if( IfaceHold == IFACE_INT_SKILL && IsCurInRect( IntBSkill ) )
-    {
-        ShowScreen( SCREEN__SKILLBOX );
-    }
-    else if( IfaceHold == IFACE_INT_MAP && IsCurInRect( IntBMap ) )
-    {
-        ShowScreen( SCREEN__MINI_MAP );
-    }
-    else if( IfaceHold == IFACE_INT_CHAR && IsCurInRect( IntBChar ) )
-    {
-        ShowScreen( SCREEN__CHARACTER );
-        if( Chosen->Params[ ST_UNSPENT_PERKS ] )
-            ShowScreen( SCREEN__PERK );
-    }
-    else if( IfaceHold == IFACE_INT_PIP && IsCurInRect( IntBPip ) )
-    {
-        ShowScreen( SCREEN__PIP_BOY );
-    }
-    else if( IfaceHold == IFACE_INT_FIX && IsCurInRect( IntBFix ) )
-    {
-        ShowScreen( SCREEN__FIX_BOY );
-    }
-    else if( IfaceHold == IFACE_INT_ITEM && IsCurInRect( IntBItem ) )
-    {
-        if( Chosen->GetUse() == USE_RELOAD )
-        {
-            SetAction( CHOSEN_USE_ITEM, Chosen->ItemSlotMain->GetId(), 0, TARGET_SELF_ITEM, 0, USE_RELOAD );
-        }
-        else if( Chosen->GetUse() < MAX_USES && Chosen->ItemSlotMain->IsWeapon() )
-        {
-            SetCurMode( CUR_USE_WEAPON );
-        }
-        else if( Chosen->GetUse() == USE_USE && Chosen->ItemSlotMain->IsCanUseOnSmth() )
-        {
-            SetCurMode( CUR_USE_ITEM );
-        }
-        else if( Chosen->GetUse() == USE_USE && Chosen->ItemSlotMain->IsCanUse() )
-        {
-            if( !Chosen->ItemSlotMain->IsHasTimer() )
-                SetAction( CHOSEN_USE_ITEM, Chosen->ItemSlotMain->GetId(), 0, TARGET_SELF, 0, USE_USE );
-            else
-                TimerStart( Chosen->ItemSlotMain->GetId(), ResMngr.GetInvAnim( Chosen->ItemSlotMain->GetPicInv() ), Chosen->ItemSlotMain->GetInvColor() );
-        }
-    }
-    else if( IfaceHold == IFACE_INT_ADDMESS && IsCurInRect( IntBAddMess ) )
-    {
-        IntAddMess = !IntAddMess;
-        MessBoxGenerate();
-    }
-    else if( IfaceHold == IFACE_INT_FILTER1 && IsCurInRect( IntBMessFilter1 ) )
-    {
-        MessBoxScroll = 0;
-        auto it = std::find( MessBoxFilters.begin(), MessBoxFilters.end(), FOMB_COMBAT_RESULT );
-        if( it != MessBoxFilters.end() )
-            MessBoxFilters.erase( it );
-        else
-            MessBoxFilters.push_back( FOMB_COMBAT_RESULT );
-        MessBoxGenerate();
-    }
-    else if( IfaceHold == IFACE_INT_FILTER2 && IsCurInRect( IntBMessFilter2 ) )
-    {
-        MessBoxScroll = 0;
-        auto it = std::find( MessBoxFilters.begin(), MessBoxFilters.end(), FOMB_TALK );
-        if( it != MessBoxFilters.end() )
-            MessBoxFilters.erase( it );
-        else
-            MessBoxFilters.push_back( FOMB_TALK );
-        MessBoxGenerate();
-    }
-    else if( IfaceHold == IFACE_INT_FILTER3 && IsCurInRect( IntBMessFilter3 ) )
-    {
-        MessBoxScroll = 0;
-        auto it = std::find( MessBoxFilters.begin(), MessBoxFilters.end(), FOMB_VIEW );
-        if( it != MessBoxFilters.end() )
-            MessBoxFilters.erase( it );
-        else
-            MessBoxFilters.push_back( FOMB_VIEW );
-        MessBoxGenerate();
-    }
-    else if( IfaceHold == IFACE_INT_COMBAT_TURN && IsCurInRect( IntBCombatTurn ) && IsTurnBasedMyTurn() )
-    {
-        Net_SendCombat( COMBAT_TB_END_TURN, 1 );
-        TurnBasedTime = 0;
-        TurnBasedCurCritterId = 0;
-    }
-    else if( IfaceHold == IFACE_INT_COMBAT_END && IsCurInRect( IntBCombatEnd ) && IsTurnBased )
-    {
-        if( Chosen->IsRawParam( MODE_END_COMBAT ) )
-            Net_SendCombat( COMBAT_TB_END_COMBAT, 0 );
-        else
-            Net_SendCombat( COMBAT_TB_END_COMBAT, 1 );
-        Chosen->Params[ MODE_END_COMBAT ] = !Chosen->Params[ MODE_END_COMBAT ];
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
 void FOClient::AddMess( int mess_type, const char* msg, bool script_call )
 {
-    // Script callback
     ScriptString* text = ScriptString::Create( msg );
     if( Script::PrepareContext( ClientFunctions.MessageBox, _FUNC_, "Game" ) )
     {
@@ -2991,319 +1600,13 @@ void FOClient::AddMess( int mess_type, const char* msg, bool script_call )
         Script::SetArgBool( script_call );
         Script::RunPrepared();
     }
-
-    // Skip empty or error messages
-    if( !text->length() || ( mess_type == FOMB_GAME && text->c_std_str() == MSG_ERROR_MESSAGE ) )
-    {
-        text->Release();
-        return;
-    }
-
-    // Text
-    const uint str_color[] = { COLOR_TEXT_DGREEN, COLOR_TEXT, COLOR_TEXT_DRED, COLOR_TEXT_DDGREEN };
-    static char str[ MAX_FOTEXT ];
-    if( mess_type < 0 || mess_type > FOMB_VIEW )
-        Str::Format( str, "%s\n", text->c_str() );
-    else
-        Str::Format( str, "|%u %c%c%c |%u %s\n", str_color[ mess_type ], 0xE2, 0x80, 0xA2, COLOR_TEXT, text->c_str() );
-
-    // Time
-    DateTime dt;
-    Timer::GetCurrentDateTime( dt );
-    char mess_time[ 64 ];
-    Str::Format( mess_time, "%02d:%02d:%02d ", dt.Hour, dt.Minute, dt.Second );
-
-    // Add
-    MessBox.push_back( MessBoxMessage( mess_type, str, mess_time ) );
-
-    // Generate mess box
-    if( std::find( MessBoxFilters.begin(), MessBoxFilters.end(), mess_type ) == MessBoxFilters.end() )
-    {
-        if( MessBoxScroll && IsCurInRect( MessBoxCurRectScroll() ) )
-            MessBoxScroll++;
-        else
-            MessBoxScroll = 0;
-    }
-    MessBoxGenerate();
-
-    // Clean up
-    text->Release();
-}
-
-void FOClient::MessBoxGenerate()
-{
-    MessBoxCurText = "";
-    if( MessBox.empty() )
-        return;
-
-    Rect ir = MessBoxCurRectDraw();
-    int max_lines = SprMngr.GetLinesCount( 0, ir.H(), NULL );
-
-    if( ir.IsZero() || max_lines <= 0 )
-    {
-        MessBoxMaxScroll = 0;
-        MessBoxScrollLines = 0;
-        return;
-    }
-
-    MessBoxScrollLines = -1;
-    bool check_filters = IsMainScreen( SCREEN_GAME );
-    int cur_mess = (int) MessBox.size() - 1;
-    int lines = 0;
-    for( ; cur_mess >= 0; cur_mess-- )
-    {
-        MessBoxMessage& m = MessBox[ cur_mess ];
-
-        // Filters
-        if( check_filters && std::find( MessBoxFilters.begin(), MessBoxFilters.end(), m.Type ) != MessBoxFilters.end() )
-            continue;
-
-        // Skip scrolled lines
-        int lines_ = lines;
-        lines += SprMngr.GetLinesCount( ir.W(), 0, m.Mess.c_str() );
-        if( MessBoxScrollLines < 0 )
-        {
-            if( lines <= MessBoxScroll )
-                continue;
-            MessBoxScrollLines = MessBoxScroll - lines_;
-        }
-
-        if( lines_ - MessBoxScroll < max_lines )
-        {
-            // Add to message box
-            if( GameOpt.MsgboxInvert )
-                MessBoxCurText += m.Mess;                          // Back
-            else
-                MessBoxCurText = m.Mess + MessBoxCurText;          // Front
-        }
-        else
-            break;
-    }
-    MessBoxMaxScroll = lines - max_lines;
-    if( MessBoxScrollLines < 0 )
-        MessBoxScrollLines = 0;
-}
-
-void FOClient::MessBoxDraw()
-{
-    if( MessBoxCurText.empty() )
-        return;
-
-    uint flags = 0;
-    if( !GameOpt.MsgboxInvert )
-        flags |= FT_UPPER | FT_BOTTOM;
-
-    Rect ir = MessBoxCurRectDraw();
-    if( ir.IsZero() )
-        return;
-
-    SprMngr.DrawStr( ir, MessBoxCurText.c_str(), flags | ( GameOpt.MsgboxInvert ? FT_SKIPLINES( MessBoxScrollLines ) : FT_SKIPLINES_END( MessBoxScrollLines ) ) );
-}
-
-Rect FOClient::MessBoxCurRectDraw()
-{
-    static Rect r( 0, 0, 0, 0 );
-
-    if( IsMainScreen( SCREEN_LOGIN ) )
-        return LogWChat;
-    else if( IsMainScreen( SCREEN_REGISTRATION ) )
-        return r( 0, 0, GameOpt.ScreenWidth, 60 );
-    else if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
-        return GmapWChat;
-    else if( IsMainScreen( SCREEN_GAME ) && IntVisible && !IsScreenPresent( SCREEN__TOWN_VIEW ) )
-    {
-        if( IntAddMess )
-            return IntWMessLarge;
-        else
-            return IntWMess;
-    }
-
-    return r( 0, 0, 0, 0 );
-}
-
-Rect FOClient::MessBoxCurRectScroll()
-{
-    if( IsCurMode( CUR_WAIT ) || IsLMenu() )
-        return Rect( 0, 0, 0, 0 );
-
-    if( GetActiveScreen() == SCREEN_NONE )
-    {
-        if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
-            return GmapWChat;
-        else if( IsMainScreen( SCREEN_GAME ) && IntVisible && !IsScreenPresent( SCREEN__TOWN_VIEW ) )
-        {
-            if( IntAddMess )
-                return IntWMessLarge;
-            else
-                return IntWMess;
-        }
-    }
-
-    return Rect( 0, 0, 0, 0 );
-}
-
-bool FOClient::MessBoxLMouseDown()
-{
-    Rect rmb = MessBoxCurRectScroll();
-    if( !rmb.IsZero() && IsCurInRect( rmb ) )
-    {
-        if( IsCurInRect( Rect( rmb.L, rmb.T, rmb.R, rmb.CY() ) ) )
-        {
-            if( GameOpt.MsgboxInvert && MessBoxScroll > 0 )
-                MessBoxScroll--;
-            if( !GameOpt.MsgboxInvert && MessBoxScroll < MessBoxMaxScroll )
-                MessBoxScroll++;
-            MessBoxGenerate();
-        }
-        else
-        {
-            if( GameOpt.MsgboxInvert && MessBoxScroll < MessBoxMaxScroll )
-                MessBoxScroll++;
-            if( !GameOpt.MsgboxInvert && MessBoxScroll > 0 )
-                MessBoxScroll--;
-            MessBoxGenerate();
-        }
-        return true;
-    }
-    return false;
 }
 
 // ==============================================================================================================================
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::LogDraw()
-{
-    SprMngr.DrawSprite( Singleplayer ? LogPSingleplayerMain : LogPMain, LogX, LogY );
-
-    if( IfaceHold == IFACE_LOG_PLAY__NEWGAME )
-        SprMngr.DrawSprite( LogPBLogin, LogBOk[ 0 ], LogBOk[ 1 ] );
-    if( IfaceHold == IFACE_LOG_REG__LOADGAME )
-        SprMngr.DrawSprite( LogPBReg, LogBReg[ 0 ], LogBReg[ 1 ] );
-    if( IfaceHold == IFACE_LOG_OPTIONS )
-        SprMngr.DrawSprite( LogPBOptions, LogBOptions[ 0 ], LogBOptions[ 1 ] );
-    if( IfaceHold == IFACE_LOG_CREDITS )
-        SprMngr.DrawSprite( LogPBCredits, LogBCredits[ 0 ], LogBCredits[ 1 ] );
-    if( IfaceHold == IFACE_LOG_EXIT )
-        SprMngr.DrawSprite( LogPBExit, LogBExit[ 0 ], LogBExit[ 1 ] );
-
-    SprMngr.DrawStr( LogBOkText, MsgGame->GetStr( Singleplayer ? STR_LOGIN_NEWGAME : STR_LOGIN_PLAY ), FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( LogBRegText, MsgGame->GetStr( Singleplayer ? STR_LOGIN_LOADGAME : STR_LOGIN_REGISTRATION ), FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( LogBOptionsText, MsgGame->GetStr( STR_LOGIN_OPTIONS ), FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( LogBCreditsText, MsgGame->GetStr( STR_LOGIN_CREDITS ), FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( LogBExitText, MsgGame->GetStr( STR_LOGIN_EXIT ), FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( LogWVersion, MsgGame->GetStr( STR_VERSION_INFO ), FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT );
-
-    if( !Singleplayer )
-    {
-        SprMngr.DrawStr( LogWName, GameOpt.Name->c_str(), FT_CENTERX | FT_CENTERY | FT_NOBREAK, LogFocus == IFACE_LOG_NAME ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
-
-        if( Keyb::CtrlDwn || !GameOpt.HidePassword )
-        {
-            SprMngr.DrawStr( LogWPass, Password.c_str(), FT_CENTERX | FT_CENTERY | FT_NOBREAK, LogFocus == IFACE_LOG_PASS ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
-        }
-        else
-        {
-            char mask[ UTF8_BUF_SIZE( MAX_NAME ) ];
-            uint pass_len = ( uint ) Str::LengthUTF8( Password.c_str() );
-            for( uint i = 0, j = MIN( (uint) MAX_NAME, pass_len ); i < j; i++ )
-                mask[ i ] = '#';
-            mask[ MIN( (uint) MAX_NAME, pass_len ) ] = '\0';
-            SprMngr.DrawStr( LogWPass, mask, FT_CENTERX | FT_CENTERY | FT_NOBREAK, LogFocus == IFACE_LOG_PASS ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
-        }
-    }
-}
-
-void FOClient::LogKeyDown( uchar dik, const char* dik_text )
-{
-    if( Singleplayer )
-        return;
-
-    if( dik == DIK_RETURN || dik == DIK_NUMPADENTER )
-    {
-        LogTryConnect();
-        return;
-    }
-
-    if( dik == DIK_TAB )
-    {
-        if( LogFocus == IFACE_LOG_NAME )
-            LogFocus = IFACE_LOG_PASS;
-        else if( LogFocus == IFACE_LOG_PASS )
-            LogFocus = IFACE_LOG_NAME;
-        return;
-    }
-
-    if( LogFocus == IFACE_LOG_NAME )
-    {
-        string tmp_str = GameOpt.Name->c_std_str();
-        Keyb::GetChar( dik, dik_text, tmp_str, NULL, MIN( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
-        *GameOpt.Name = tmp_str;
-    }
-    else if( LogFocus == IFACE_LOG_PASS )
-    {
-        Keyb::GetChar( dik, dik_text, Password, NULL, MIN( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
-    }
-}
-
-void FOClient::LogLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-    LogFocus = IFACE_NONE;
-
-    if( IsCurInRect( LogWName ) )
-        IfaceHold = ( LogFocus = IFACE_LOG_NAME );
-    else if( IsCurInRect( LogWPass ) )
-        IfaceHold = ( LogFocus = IFACE_LOG_PASS );
-    else if( IsCurInRect( LogBOk ) )
-        IfaceHold = IFACE_LOG_PLAY__NEWGAME;
-    else if( IsCurInRect( LogBReg ) )
-        IfaceHold = IFACE_LOG_REG__LOADGAME;
-    else if( IsCurInRect( LogBOptions ) )
-        IfaceHold = IFACE_LOG_OPTIONS;
-    else if( IsCurInRect( LogBCredits ) )
-        IfaceHold = IFACE_LOG_CREDITS;
-    else if( IsCurInRect( LogBExit ) )
-        IfaceHold = IFACE_LOG_EXIT;
-}
-
-void FOClient::LogLMouseUp()
-{
-    if( IfaceHold == IFACE_LOG_PLAY__NEWGAME && IsCurInRect( LogBOk ) )
-    {
-        if( !Singleplayer )
-            LogTryConnect();
-        else
-            ShowMainScreen( SCREEN_REGISTRATION );
-    }
-    else if( IfaceHold == IFACE_LOG_REG__LOADGAME && IsCurInRect( LogBReg ) )
-    {
-        if( !Singleplayer )
-            ShowMainScreen( SCREEN_REGISTRATION );
-        else
-        {
-            SaveLoadLoginScreen = true;
-            SaveLoadSave = false;
-            ShowScreen( SCREEN__SAVE_LOAD );
-        }
-    }
-    else if( IfaceHold == IFACE_LOG_OPTIONS && IsCurInRect( LogBOptions ) )
-    {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_OPTIONS_NOT_AVIABLE ) );
-    }
-    else if( IfaceHold == IFACE_LOG_CREDITS && IsCurInRect( LogBCredits ) )
-    {
-        ShowMainScreen( SCREEN_CREDITS );
-    }
-    else if( IfaceHold == IFACE_LOG_EXIT && IsCurInRect( LogBExit ) )
-    {
-        TryExit();
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::LogTryConnect()
+void FOClient::ConnectToGame()
 {
     if( !Singleplayer )
     {
@@ -4160,11 +2463,11 @@ void FOClient::FormatTags( char* text, uint text_len, CritterCl* player, Critter
         return;
     }
 
-    char* str = text;
+    char*           str = text;
     vector< char* > dialogs;
-    int sex = 0;
-    bool sex_tags = false;
-    char tag[ MAX_FOTEXT ];
+    int             sex = 0;
+    bool            sex_tags = false;
+    char            tag[ MAX_FOTEXT ];
     tag[ 0 ] = 0;
 
     for( int i = 0; str[ i ];)
@@ -4275,7 +2578,7 @@ void FOClient::FormatTags( char* text, uint text_len, CritterCl* player, Critter
             {
                 char func_name[ MAX_FOTEXT ];
                 Str::CopyWord( func_name, &tag[ 7 ], '$', false );
-                int bind_id = Script::Bind( "client_main", func_name, "string %s(string&)", true );
+                int  bind_id = Script::Bind( "client_main", func_name, "string %s(string&)", true );
                 Str::Copy( tag, "<script function not found>" );
                 if( bind_id > 0 && Script::PrepareContext( bind_id, _FUNC_, "Game" ) )
                 {
@@ -4494,44 +2797,9 @@ void FOClient::LMenuCollect()
             }
         }
         break;
-        case SCREEN__INVENTORY:
-        {
-            if( !Chosen )
-                break;
-            uint item_id = GetCurContainerItemId( Rect( InvWInv, InvX, InvY ), InvHeightItem, InvScroll, InvCont );
-            if( !item_id && IsCurInRect( InvWSlot1, InvX, InvY ) )
-                item_id = Chosen->ItemSlotMain->GetId();
-            if( !item_id && IsCurInRect( InvWSlot2, InvX, InvY ) )
-                item_id = Chosen->ItemSlotExt->GetId();
-            if( !item_id && IsCurInRect( InvWArmor, InvX, InvY ) )
-                item_id = Chosen->ItemSlotArmor->GetId();
-            if( !item_id )
-            {
-                // Find in extended slots
-                for( auto it = SlotsExt.begin(), end = SlotsExt.end(); it != end; ++it )
-                {
-                    SlotExt& se = *it;
-                    if( !se.Region.IsZero() && IsCurInRect( se.Region, InvX, InvY ) )
-                    {
-                        Item* item = Chosen->GetItemSlot( se.Index );
-                        if( item )
-                        {
-                            item_id = item->GetId();
-                            break;
-                        }
-                    }
-                }
-            }
-            if( !item_id )
-                break;
-
-            TargetSmth.SetContItem( item_id, 0 );
-            LMenuSet( LMENU_ITEM_INV );
-        }
-        break;
         case SCREEN__BARTER:
         {
-            int cont_type = 0;
+            int  cont_type = 0;
             uint item_id = GetCurContainerItemId( Rect( BarterWCont1, DlgX, DlgY ), BarterCont1HeightItem, BarterScroll1, BarterCont1 );
             if( !item_id )
                 item_id = GetCurContainerItemId( Rect( BarterWCont2, DlgX, DlgY ), BarterCont2HeightItem, BarterScroll2, BarterCont2 );
@@ -4575,7 +2843,7 @@ void FOClient::LMenuCollect()
                 break;
 
             CritterCl* cr;
-            ItemHex* item;
+            ItemHex*   item;
             HexMngr.GetSmthPixel( GameOpt.MouseX, GameOpt.MouseY, item, cr );
 
             if( cr )
@@ -5041,19 +3309,7 @@ void FOClient::LMenuMouseUp()
         switch( *it_l )
         {
         case LMENU_NODE_LOOK:
-            if( GetActiveScreen() == SCREEN__INVENTORY )
-            {
-                if( !inv_item )
-                    break;
-                const char* str = FmtItemLook( inv_item, ITEM_LOOK_INVENTORY );
-                if( str )
-                {
-                    InvItemInfo = str;
-                    InvItemInfoScroll = 0;
-                    InvItemInfoMaxScroll = SprMngr.GetLinesCount( InvWText.W(), 0, str ) - SprMngr.GetLinesCount( 0, InvWText.H(), NULL );
-                }
-            }
-            else if( GetActiveScreen() == SCREEN__BARTER )
+            if( GetActiveScreen() == SCREEN__BARTER )
             {
                 if( BarterIsPlayers )
                 {
@@ -5217,17 +3473,11 @@ void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NUL
     switch( GetMainScreen() )
     {
     case SCREEN_LOGIN:
-        LogFocus = IFACE_LOG_NAME;
         ScreenFadeOut();
         break;
     case SCREEN_REGISTRATION:
         if( !GameOpt.RegParams )
             RegGenParams();
-        memzero( ChaSkillUp, sizeof( ChaSkillUp ) );
-        ChaUnspentSkillPoints = *(int*) GameOpt.RegParams->At( ST_UNSPENT_SKILL_POINTS );
-        ChaX = ( GameOpt.ScreenWidth - RegWMain.W() ) / 2;
-        ChaY = ( GameOpt.ScreenHeight - RegWMain.H() ) / 2;
-        ChaMouseMove( true );
         ScreenFadeOut();
         break;
     case SCREEN_CREDITS:
@@ -5257,8 +3507,6 @@ void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NUL
     default:
         break;
     }
-
-    MessBoxGenerate();
 }
 
 int FOClient::GetActiveScreen( IntVec** screens /* = NULL */ )
@@ -5296,8 +3544,6 @@ bool FOClient::IsScreenPresent( int screen )
 void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
 {
     SmthSelected smth = TargetSmth;
-    ConsoleLastKey = 0;
-    ConsoleLastKeyText = "";
     ShowScreenType = 0;
     ShowScreenParam = 0;
     ShowScreenNeedAnswer = false;
@@ -5312,10 +3558,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
     {
     case SCREEN__INVENTORY:
         CollectContItems();
-        InvHoldId = 0;
-        InvScroll = 0;
-        InvItemInfo = "";
-        InvMouseMove();
         break;
     case SCREEN__PICKUP:
         CollectContItems();
@@ -5324,23 +3566,8 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         PupMouseMove();
         break;
     case SCREEN__MINI_MAP:
-        //	LmapHold=LMAP_NONE;
         LmapPrepareMap();
         LmapMouseMove();
-        break;
-    case SCREEN__CHARACTER:
-        memzero( ChaSkillUp, sizeof( ChaSkillUp ) );
-        if( Chosen )
-            ChaUnspentSkillPoints = Chosen->Params[ ST_UNSPENT_SKILL_POINTS ];
-        memzero( ChaSwitchScroll, sizeof( ChaSwitchScroll ) );
-        if( !Chosen || ( ChaSkilldexPic >= (int) SKILLDEX_PARAM( PERK_BEGIN ) && ChaSkilldexPic <= (int) SKILLDEX_PARAM( PERK_END ) && !Chosen->IsRawParam( ChaSkilldexPic ) ) )
-        {
-            ChaSkilldexPic = -1;
-            ChaName[ 0 ] = 0;
-            ChaDesc[ 0 ] = 0;
-        }
-        ChaPrepareSwitch();
-        ChaMouseMove( false );
         break;
     case SCREEN__DIALOG:
         DlgMouseMove( true );
@@ -5388,23 +3615,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         DlgboxButtonsCount = 0;
         DlgboxSelectedButton = 0;
         break;
-    case SCREEN__CHA_NAME:
-        IfaceHold = IFACE_CHA_NAME_NAME;
-        ChaNameX = ChaX + ChaNameWMain[ 0 ];
-        ChaNameY = ChaY + ChaNameWMain[ 1 ];
-        break;
-    case SCREEN__CHA_AGE:
-        ChaAgeX = ChaX + ChaAgeWMain[ 0 ];
-        ChaAgeY = ChaY + ChaAgeWMain[ 1 ];
-        if( !IsMainScreen( SCREEN_REGISTRATION ) )
-            ShowScreen( SCREEN_NONE );
-        break;
-    case SCREEN__CHA_SEX:
-        ChaSexX = ChaX + ChaSexWMain[ 0 ];
-        ChaSexY = ChaY + ChaSexWMain[ 1 ];
-        if( !IsMainScreen( SCREEN_REGISTRATION ) )
-            ShowScreen( SCREEN_NONE );
-        break;
     case SCREEN__GM_TOWN:
     {
         GmapTownTextPos.clear();
@@ -5415,9 +3625,9 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         GmapTownPicPos[ 1 ] = 0;
         GmapTownPicPos[ 2 ] = GameOpt.ScreenWidth;
         GmapTownPicPos[ 3 ] = GameOpt.ScreenHeight;
-        int pic_offsx = 0;
-        int pic_offsy = 0;
-        hash loc_pid = GmapTownLoc.LocPid;
+        int        pic_offsx = 0;
+        int        pic_offsy = 0;
+        hash       loc_pid = GmapTownLoc.LocPid;
 
         AnyFrames* anim = ResMngr.GetIfaceAnim( Str::GetHash( MsgLocations->GetStr( STR_LOC_PIC( loc_pid ) ) ) );
         if( !anim )
@@ -5595,16 +3805,16 @@ void FOClient::LmapPrepareMap()
 
     LmapPrepPix.clear();
 
-    int maxpixx = ( LmapWMap[ 2 ] - LmapWMap[ 0 ] ) / 2 / LmapZoom;
-    int maxpixy = ( LmapWMap[ 3 ] - LmapWMap[ 1 ] ) / 2 / LmapZoom;
-    int bx = Chosen->GetHexX() - maxpixx;
-    int by = Chosen->GetHexY() - maxpixy;
-    int ex = Chosen->GetHexX() + maxpixx;
-    int ey = Chosen->GetHexY() + maxpixy;
+    int  maxpixx = ( LmapWMap[ 2 ] - LmapWMap[ 0 ] ) / 2 / LmapZoom;
+    int  maxpixy = ( LmapWMap[ 3 ] - LmapWMap[ 1 ] ) / 2 / LmapZoom;
+    int  bx = Chosen->GetHexX() - maxpixx;
+    int  by = Chosen->GetHexY() - maxpixy;
+    int  ex = Chosen->GetHexX() + maxpixx;
+    int  ey = Chosen->GetHexY() + maxpixy;
 
     uint vis = Chosen->GetLook();
     uint cur_color = 0;
-    int pix_x = LmapWMap[ 2 ] - LmapWMap[ 0 ], pix_y = 0;
+    int  pix_x = LmapWMap[ 2 ] - LmapWMap[ 0 ], pix_y = 0;
 
     for( int i1 = bx; i1 < ex; i1++ )
     {
@@ -5731,11 +3941,11 @@ void FOClient::LmapLMouseUp()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-bool FOClient::GmapActive;
+bool  FOClient::GmapActive;
 float FOClient::GmapZoom;
-int FOClient::GmapOffsetX, FOClient::GmapOffsetY;
-int FOClient::GmapGroupCurX, FOClient::GmapGroupCurY, FOClient::GmapGroupToX, FOClient::GmapGroupToY;
-bool FOClient::GmapWait;
+int   FOClient::GmapOffsetX, FOClient::GmapOffsetY;
+int   FOClient::GmapGroupCurX, FOClient::GmapGroupCurY, FOClient::GmapGroupToX, FOClient::GmapGroupToY;
+bool  FOClient::GmapWait;
 float FOClient::GmapGroupSpeed;
 
 #define GMAP_LOC_ALPHA    ( 60 )
@@ -5959,7 +4169,7 @@ void FOClient::GmapDraw()
     for( auto it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
     {
         GmapLocation& loc = ( *it );
-        int radius = loc.Radius;       // MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
+        int           radius = loc.Radius; // MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
         if( radius <= 0 )
             radius = 6;
         int loc_pic_x1 = (int) ( ( loc.LocWx - radius ) / GmapZoom ) + GmapOffsetX;
@@ -5976,7 +4186,7 @@ void FOClient::GmapDraw()
     // On map
     if( GmapWait )
     {
-        AnyFrames* pic = ( ( Timer::GameTick() % 1000 ) < 500 ? GmapPLightPic0 : GmapPLightPic1 );
+        AnyFrames*  pic = ( ( Timer::GameTick() % 1000 ) < 500 ? GmapPLightPic0 : GmapPLightPic1 );
         SpriteInfo* si = SprMngr.GetSpriteInfo( pic->GetCurSprId() );
         if( si )
             SprMngr.DrawSprite( pic, (int) ( GmapGroupCurX / GmapZoom ) + GmapOffsetX - si->Width / 2, (int) ( GmapGroupCurY / GmapZoom ) + GmapOffsetY - si->Height / 2 );
@@ -6134,7 +4344,7 @@ void FOClient::GmapDraw()
             for( auto it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
             {
                 GmapLocation& loc = ( *it );
-                uint radius = loc.Radius;               // MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
+                uint          radius = loc.Radius;      // MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
                 if( !radius || !MsgLocations->Count( STR_LOC_NAME( loc.LocPid ) ) || !MsgLocations->Count( STR_LOC_INFO( loc.LocPid ) ) )
                     continue;
                 if( DistSqrt( loc.LocWx, loc.LocWy, cx, cy ) <= radius )
@@ -6366,7 +4576,7 @@ void FOClient::GmapLMouseUp()
                     for( auto it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
                     {
                         GmapLocation& loc = ( *it );
-                        uint radius = loc.Radius;
+                        uint          radius = loc.Radius;
                         if( !radius )
                             radius = 6;
 
@@ -6391,7 +4601,7 @@ void FOClient::GmapLMouseUp()
         for( auto it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
         {
             GmapLocation& loc = ( *it );
-            uint radius = loc.Radius;
+            uint          radius = loc.Radius;
             if( !radius )
                 radius = 6;
 
@@ -6424,11 +4634,7 @@ void FOClient::GmapLMouseUp()
     else if( IfaceHold == IFACE_GMAP_MENU && IsCurInRect( GmapBMenu ) )
         ShowScreen( SCREEN__MENU_OPTION );
     else if( IfaceHold == IFACE_GMAP_CHA && IsCurInRect( GmapBCha ) )
-    {
         ShowScreen( SCREEN__CHARACTER );
-        if( Chosen && Chosen->Params[ ST_UNSPENT_PERKS ] )
-            ShowScreen( SCREEN__PERK );
-    }
     else if( IfaceHold == IFACE_GMAP_PIP && IsCurInRect( GmapBPip ) )
         ShowScreen( SCREEN__PIP_BOY );
     else if( IfaceHold == IFACE_GMAP_FIX && IsCurInRect( GmapBFix ) )
@@ -6471,59 +4677,6 @@ void FOClient::GmapMouseMove()
         GmapOffsetY = GameOpt.MouseY - GmapVectY;
 
         GMAP_CHECK_MAPSCR;
-    }
-}
-
-void FOClient::GmapKeyDown( uchar dik, const char* dik_text )
-{
-    if( ConsoleActive )
-        return;
-    if( Keyb::CtrlDwn || Keyb::ShiftDwn || Keyb::AltDwn )
-        return;
-
-    switch( dik )
-    {
-    case DIK_HOME:
-        GmapOffsetX = GmapWMap.W() / 2 + GmapWMap[ 0 ] - (int) ( GmapGroupCurX / GmapZoom );
-        GmapOffsetY = GmapWMap.H() / 2 + GmapWMap[ 1 ] - (int) ( GmapGroupCurY / GmapZoom );
-        GMAP_CHECK_MAPSCR;
-        break;
-    case DIK_C:
-        ShowScreen( SCREEN__CHARACTER );
-        if( Chosen && Chosen->Params[ ST_UNSPENT_PERKS ] )
-            ShowScreen( SCREEN__PERK );
-        break;
-    case DIK_I:
-        ShowScreen( SCREEN__INVENTORY );
-        break;
-    case DIK_P:
-        ShowScreen( SCREEN__PIP_BOY );
-        break;
-    case DIK_F:
-        ShowScreen( SCREEN__FIX_BOY );
-        break;
-    case DIK_O:
-        ShowScreen( SCREEN__MENU_OPTION );
-        break;
-    case DIK_SLASH:
-        AddMess( FOMB_GAME, Str::FormatBuf( "Time: %02d.%02d.%d %02d:%02d:%02d x%u", GameOpt.Day, GameOpt.Month, GameOpt.Year, GameOpt.Hour, GameOpt.Minute, GameOpt.Second, GameOpt.TimeMultiplier ) );
-        break;
-    case DIK_EQUALS:
-    case DIK_ADD:
-        GameOpt.Light += 5;
-        if( GameOpt.Light > 50 )
-            GameOpt.Light = 50;
-        SetDayTime( true );
-        break;
-    case DIK_MINUS:
-    case DIK_SUBTRACT:
-        GameOpt.Light -= 5;
-        if( GameOpt.Light < 0 )
-            GameOpt.Light = 0;
-        SetDayTime( true );
-        break;
-    default:
-        break;
     }
 }
 
@@ -6635,8 +4788,8 @@ void FOClient::SboxDraw()
     // Skills
     #define SBOX_DRAW_SKILL( comp, skill )                                                                                                                                                                               \
         do { SprMngr.DrawStr( Rect( SboxB ## comp, SboxX, SboxY - ( IfaceHold == skill ? 1 : 0 ) ), MsgGame->GetStr( STR_PARAM_NAME_SHORT( skill ) ), FT_CENTERX | FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT ); \
-             int sk_val = ( Chosen ? Chosen->GetRawParam( skill ) : 0 ); if( sk_val < 0 )                                                                                                                                \
-                 sk_val = -sk_val; sk_val = CLAMP( sk_val, 0, MAX_SKILL_VAL ); char str[ 16 ]; Str::Format( str, "%03d", sk_val ); if( Chosen && Chosen->GetRawParam( skill ) < 0 )                                      \
+             int                                                   sk_val = ( Chosen ? Chosen->GetRawParam( skill ) : 0 ); if( sk_val < 0 )                                                                              \
+                 sk_val = -sk_val; sk_val = max( sk_val, 0 ); char str[ 16 ]; Str::Format( str, "%03d", sk_val ); if( Chosen && Chosen->GetRawParam( skill ) < 0 )                                                       \
                  Str::ChangeValue( str, 0x10 );                                                                                                                                                                          \
              SprMngr.DrawStr( Rect( SboxT ## comp, SboxX, SboxY ), str, 0, COLOR_IFACE, FONT_BIG_NUM ); } while( 0 )
 
@@ -6793,75 +4946,6 @@ void FOClient::SboxMouseMove()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::MoptDraw()
-{
-    SprMngr.DrawSprite( Singleplayer ? MoptSingleplayerMainPic : MoptMainPic, MoptMain[ 0 ], MoptMain[ 1 ] );
-
-    if( Singleplayer )
-    {
-        if( IfaceHold == IFACE_MOPT_SAVEGAME )
-            SprMngr.DrawSprite( MoptSaveGamePicDown, MoptSaveGame[ 0 ], MoptSaveGame[ 1 ] );
-        else if( IfaceHold == IFACE_MOPT_LOADGAME )
-            SprMngr.DrawSprite( MoptLoadGamePicDown, MoptLoadGame[ 0 ], MoptLoadGame[ 1 ] );
-        SprMngr.DrawStr( Rect( MoptSaveGame, 0, IfaceHold == IFACE_MOPT_SAVEGAME ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_SAVEGAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( Rect( MoptLoadGame, 0, IfaceHold == IFACE_MOPT_LOADGAME ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_LOADGAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    }
-
-    if( IfaceHold == IFACE_MOPT_OPTIONS )
-        SprMngr.DrawSprite( MoptOptionsPicDown, MoptOptions[ 0 ], MoptOptions[ 1 ] );
-    else if( IfaceHold == IFACE_MOPT_EXIT )
-        SprMngr.DrawSprite( MoptExitPicDown, MoptExit[ 0 ], MoptExit[ 1 ] );
-    else if( IfaceHold == IFACE_MOPT_RESUME )
-        SprMngr.DrawSprite( MoptResumePicDown, MoptResume[ 0 ], MoptResume[ 1 ] );
-    SprMngr.DrawStr( Rect( MoptOptions, 0, IfaceHold == IFACE_MOPT_OPTIONS ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_OPTIONS ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( MoptResume, 0, IfaceHold == IFACE_MOPT_RESUME ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_RESUME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( MoptExit, 0, IfaceHold == IFACE_MOPT_EXIT ? -1 : 0 ), MsgGame->GetStr( STR_MENUOPT_EXIT ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-}
-
-void FOClient::MoptLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-
-    if( Singleplayer && IsCurInRect( MoptSaveGame, 0, 0 ) )
-        IfaceHold = IFACE_MOPT_SAVEGAME;
-    else if( Singleplayer && IsCurInRect( MoptLoadGame, 0, 0 ) )
-        IfaceHold = IFACE_MOPT_LOADGAME;
-    else if( IsCurInRect( MoptOptions, 0, 0 ) )
-        IfaceHold = IFACE_MOPT_OPTIONS;
-    else if( IsCurInRect( MoptExit, 0, 0 ) )
-        IfaceHold = IFACE_MOPT_EXIT;
-    else if( IsCurInRect( MoptResume, 0, 0 ) )
-        IfaceHold = IFACE_MOPT_RESUME;
-}
-
-void FOClient::MoptLMouseUp()
-{
-    if( IfaceHold == IFACE_MOPT_SAVEGAME && Singleplayer && IsCurInRect( MoptSaveGame, 0, 0 ) )
-    {
-        SaveLoadLoginScreen = false;
-        SaveLoadSave = true;
-        ShowScreen( SCREEN__SAVE_LOAD );
-    }
-    else if( IfaceHold == IFACE_MOPT_LOADGAME && Singleplayer && IsCurInRect( MoptLoadGame, 0, 0 ) )
-    {
-        SaveLoadLoginScreen = false;
-        SaveLoadSave = false;
-        ShowScreen( SCREEN__SAVE_LOAD );
-    }
-    else if( IfaceHold == IFACE_MOPT_OPTIONS && IsCurInRect( MoptOptions, 0, 0 ) )
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_OPTIONS_NOT_AVIABLE ) );
-    else if( IfaceHold == IFACE_MOPT_EXIT && IsCurInRect( MoptExit, 0, 0 ) )
-        NetDisconnect();
-    else if( IfaceHold == IFACE_MOPT_RESUME && IsCurInRect( MoptResume, 0, 0 ) )
-        ShowScreen( SCREEN_NONE );
-
-    IfaceHold = IFACE_NONE;
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
 void FOClient::CreditsDraw()
 {
     SprMngr.DrawStr( Rect( 0, CreditsYPos, GameOpt.ScreenWidth, GameOpt.ScreenHeight + 50 ),
@@ -6874,1147 +4958,6 @@ void FOClient::CreditsDraw()
         wait = CLAMP( wait, 10, 1000 );
         CreditsNextTick = Timer::FastTick() + wait;
     }
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-const int ShowStats[] =
-{
-    ST_ARMOR_CLASS, ST_ACTION_POINTS, ST_CARRY_WEIGHT, ST_MELEE_DAMAGE, ST_NORMAL_RESIST,
-    ST_POISON_RESISTANCE, ST_RADIATION_RESISTANCE, ST_SEQUENCE, ST_HEALING_RATE, ST_CRITICAL_CHANCE
-};
-const int ShowStatsCnt = sizeof( ShowStats ) / sizeof( ShowStats[ 0 ] );
-
-void FOClient::ChaPrepareSwitch()
-{
-    ChaSwitchText[ CHA_SWITCH_PERKS ].clear();
-    ChaSwitchText[ CHA_SWITCH_KARMA ].clear();
-    ChaSwitchText[ CHA_SWITCH_KILLS ].clear();
-
-    if( !Chosen )
-        return;
-
-    SwitchElementVec& perks = ChaSwitchText[ CHA_SWITCH_PERKS ];
-    SwitchElementVec& karma = ChaSwitchText[ CHA_SWITCH_KARMA ];
-    SwitchElementVec& kills = ChaSwitchText[ CHA_SWITCH_KILLS ];
-
-    // Perks
-    // Traits
-    for( uint i = TRAIT_BEGIN; i <= TRAIT_END; i++ )
-    {
-        if( !Chosen->IsRawParam( i ) )
-            continue;
-        if( perks.empty() )
-            perks.push_back( SwitchElement( STR_TRAITS_NAME, STR_TRAITS_DESC, SKILLDEX_TRAITS, FT_CENTERX ) );
-        perks.push_back( SwitchElement( STR_PARAM_NAME( i ), STR_PARAM_DESC( i ), SKILLDEX_PARAM( i ), 0 ) );
-    }
-
-    // Perks
-    bool is_add = false;
-    for( uint i = PERK_BEGIN; i <= PERK_END; i++ )
-    {
-        if( !Chosen->IsRawParam( i ) )
-            continue;
-
-        // Title
-        if( !is_add )
-        {
-            perks.push_back( SwitchElement( STR_PERKS_NAME, STR_PERKS_DESC, SKILLDEX_PERKS, FT_CENTERX ) );
-            is_add = true;
-        }
-
-        // Perk info
-        perks.push_back( SwitchElement( STR_PARAM_NAME( i ), STR_PARAM_DESC( i ), SKILLDEX_PARAM( i ), 0 ) );
-
-        // Perk count
-        if( Chosen->GetParam( i ) > 1 )
-            Str::Copy( perks[ perks.size() - 1 ].Addon, Str::FormatBuf( " (%u)", Chosen->GetParam( i ) ) );
-    }
-
-    // Karma
-    // General karma
-    karma.push_back( SwitchElement( STR_KARMA_GEN_GEN_NAME, STR_KARMA_GEN_GEN_DESC, SKILLDEX_KARMA, 0 ) );
-    int karma_gen_count = MsgGame->GetInt( STR_KARMA_GEN_COUNT );
-    for( int i = 0; i < karma_gen_count; i++ )
-    {
-        int val = MsgGame->GetInt( STR_KARMA_GEN_VAL( i ) );
-        if( Chosen->GetParam( ST_KARMA ) < val )
-            continue;
-        string karma_info = MsgGame->GetStr( STR_KARMA_GEN_NAME( i ) );
-        Str::Copy( karma[ karma.size() - 1 ].Addon, FmtGameText( STR_KARMA_GEN_GEN_NAME2, Chosen->GetParam( ST_KARMA ), karma_info.c_str() ) );
-        karma[ karma.size() - 1 ].PictureId = MsgGame->GetInt( STR_KARMA_GEN_SKILLDEX( i ) );
-        break;
-    }
-
-    // Karma perks
-    for( uint i = KARMA_BEGIN; i <= KARMA_END; i++ )
-    {
-        if( !Chosen->IsRawParam( i ) )
-            continue;
-
-        // Karma perks info
-        karma.push_back( SwitchElement( STR_PARAM_NAME( i ), STR_PARAM_DESC( i ), SKILLDEX_PARAM( i ), 0 ) );
-    }
-
-    // Town reputation
-    is_add = false;
-    for( uint i = REPUTATION_BEGIN; i <= REPUTATION_END; i++ )
-    {
-        int val = Chosen->Params[ i ];
-        if( (uint) val == 0x80000000 )
-            continue;
-
-        // Title
-        if( !is_add )
-        {
-            karma.push_back( SwitchElement( STR_TOWNREP_TITLE_NAME, STR_TOWNREP_TITLE_DESC, SKILLDEX_REPUTATION, FT_CENTERX ) );
-            is_add = true;
-        }
-
-        // Reputation
-        karma.push_back( SwitchElement( STR_PARAM_NAME( i ), STR_TOWNREP_RATIO_DESC( val ), SKILLDEX_REPUTATION_RATIO( val ), 0 ) );
-
-        // Perk count
-        Str::Copy( karma[ karma.size() - 1 ].Addon, Str::FormatBuf( ": %s %d", MsgGame->GetStr( STR_TOWNREP_RATIO_NAME( val ) ), val ) );
-    }
-
-    // Addiction
-    is_add = false;
-    for( uint i = ADDICTION_BEGIN; i <= ADDICTION_END; i++ )
-    {
-        if( !Chosen->IsRawParam( i ) )
-            continue;
-
-        // Addiction title
-        if( !is_add )
-        {
-            karma.push_back( SwitchElement( STR_ADDICT_TITLE_NAME, STR_ADDICT_TITLE_DESC, SKILLDEX_DRUG_ADDICT, FT_CENTERX ) );
-            is_add = true;
-        }
-
-        // Addiction info
-        karma.push_back( SwitchElement( STR_PARAM_NAME( i ), STR_PARAM_DESC( i ), SKILLDEX_PARAM( i ), 0 ) );
-    }
-
-    // Kills
-    for( uint i = KILL_BEGIN; i <= KILL_END; i++ )
-    {
-        if( !Chosen->GetParam( i ) )
-            continue;
-
-        kills.push_back( SwitchElement( STR_PARAM_NAME( i ), STR_PARAM_DESC( i ), SKILLDEX_PARAM( i ), 0 ) );
-        Str::Copy( kills[ kills.size() - 1 ].Addon, Str::UItoA( Chosen->GetParam( i ) ) );
-    }
-}
-
-#define CHA_PARAM( index )        ( is_reg ? CritterCl::ParamsReg[ index ] : ( Chosen ? Chosen->GetParam( index ) : 0 ) )
-#define CHA_RAW_PARAM( index )    ( is_reg ? CritterCl::ParamsReg[ index ] : ( Chosen ? Chosen->GetRawParam( index ) : 0 ) )
-#define REG_PARAM( index )        ( *(int*) GameOpt.RegParams->At( index ) )
-bool FOClient::IsTagSkill( bool is_reg, int index )
-{
-    return CHA_PARAM( TAG_SKILL1 ) == index || CHA_PARAM( TAG_SKILL2 ) == index || CHA_PARAM( TAG_SKILL3 ) == index || CHA_PARAM( TAG_SKILL4 ) == index;
-}
-
-void FOClient::ChaDraw( bool is_reg )
-{
-    if( is_reg )
-        SprMngr.DrawSprite( RegPMain, RegWMain[ 0 ] + ChaX, RegWMain[ 1 ] + ChaY );
-    else
-        SprMngr.DrawSprite( ChaPMain, ChaWMain[ 0 ] + ChaX, ChaWMain[ 1 ] + ChaY );
-
-    switch( IfaceHold )
-    {
-    case IFACE_CHA_PRINT:
-        SprMngr.DrawSprite( ChaPBPrintDn, ChaBPrint[ 0 ] + ChaX, ChaBPrint[ 1 ] + ChaY );
-        break;
-    case IFACE_CHA_OK:
-        SprMngr.DrawSprite( ChaPBOkDn, ChaBOk[ 0 ] + ChaX, ChaBOk[ 1 ] + ChaY );
-        break;
-    case IFACE_CHA_CANCEL:
-        SprMngr.DrawSprite( ChaPBCancelDn, ChaBCancel[ 0 ] + ChaX, ChaBCancel[ 1 ] + ChaY );
-        break;
-    case IFACE_CHA_NAME:
-        SprMngr.DrawSprite( ChaPBNameDn, ChaBName[ 0 ] + ChaX, ChaBName[ 1 ] + ChaY );
-        break;
-    case IFACE_CHA_AGE:
-        SprMngr.DrawSprite( ChaPBAgeDn, ChaBAge[ 0 ] + ChaX, ChaBAge[ 1 ] + ChaY );
-        break;
-    case IFACE_CHA_SEX:
-        SprMngr.DrawSprite( ChaPBSexDn, ChaBSex[ 0 ] + ChaX, ChaBSex[ 1 ] + ChaY );
-        break;
-    default:
-        break;
-    }
-
-    if( ChaSkilldexPic >= 0 )
-    {
-        AnyFrames* anim = ResMngr.GetSkDxAnim( Str::GetHash( ConstantsManager::GetPictureName( ChaSkilldexPic ) ) );
-        if( anim )
-            SprMngr.DrawSprite( anim, ChaWPic[ 0 ] + ChaX, ChaWPic[ 1 ] + ChaY );
-        else
-            ChaSkilldexPic = -1;
-    }
-
-    // Traits button
-    if( is_reg )
-    {
-        if( IfaceHold == IFACE_REG_TRAIT_L && IsCurInRect( RegBTraitL, RegTraitNum * RegTraitNextX + ChaX, RegTraitNum * RegTraitNextY + ChaY ) )
-            SprMngr.DrawSprite( RegPBTraitDn, RegBTraitL[ 0 ] + RegTraitNum * RegTraitNextX + ChaX, RegBTraitL[ 1 ] + RegTraitNum * RegTraitNextY + ChaY );
-
-        if( IfaceHold == IFACE_REG_TRAIT_R && IsCurInRect( RegBTraitR, RegTraitNum * RegTraitNextX + ChaX, RegTraitNum * RegTraitNextY + ChaY ) )
-            SprMngr.DrawSprite( RegPBTraitDn, RegBTraitR[ 0 ] + RegTraitNum * RegTraitNextX + ChaX, RegBTraitR[ 1 ] + RegTraitNum * RegTraitNextY + ChaY );
-    }
-
-    // Switch
-    if( !is_reg )
-    {
-        switch( ChaCurSwitch )
-        {
-        case CHA_SWITCH_PERKS:
-            SprMngr.DrawSprite( ChaPBSwitchPerks, ChaBSwitch[ 0 ] + ChaX, ChaBSwitch[ 1 ] + ChaY );
-            break;
-        case CHA_SWITCH_KARMA:
-            SprMngr.DrawSprite( ChaPBSwitchKarma, ChaBSwitch[ 0 ] + ChaX, ChaBSwitch[ 1 ] + ChaY );
-            break;
-        case CHA_SWITCH_KILLS:
-            SprMngr.DrawSprite( ChaPBSwitchKills, ChaBSwitch[ 0 ] + ChaX, ChaBSwitch[ 1 ] + ChaY );
-            break;
-        default:
-            break;
-        }
-
-        if( IfaceHold == IFACE_CHA_SW_SCRUP )
-            SprMngr.DrawSprite( ChaPBSwitchScrUpDn, ChaBSwitchScrUp[ 0 ] + ChaX, ChaBSwitchScrUp[ 1 ] + ChaY );
-        else
-            SprMngr.DrawSprite( ChaPBSwitchScrUpUp, ChaBSwitchScrUp[ 0 ] + ChaX, ChaBSwitchScrUp[ 1 ] + ChaY );
-        if( IfaceHold == IFACE_CHA_SW_SCRDN )
-            SprMngr.DrawSprite( ChaPBSwitchScrDnDn, ChaBSwitchScrDn[ 0 ] + ChaX, ChaBSwitchScrDn[ 1 ] + ChaY );
-        else
-            SprMngr.DrawSprite( ChaPBSwitchScrDnUp, ChaBSwitchScrDn[ 0 ] + ChaX, ChaBSwitchScrDn[ 1 ] + ChaY );
-    }
-
-    // Print, Ok, Cancel button texts
-    SprMngr.DrawStr( Rect( ChaBPrintText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_PRINT ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( ChaBOkText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_OK ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( ChaBCancelText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_CANCEL ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-
-    // Switch
-    if( !is_reg )
-    {
-        int sw = ( ChaBSwitch[ 2 ] - ChaBSwitch[ 0 ] ) / 3;
-        SprMngr.DrawStr( Rect( Rect( ChaBSwitch[ 0 ], ChaBSwitch[ 1 ], ChaBSwitch[ 0 ] + sw, ChaBSwitch[ 3 ] ), ChaX, ChaY - ( ChaCurSwitch == CHA_SWITCH_PERKS ? 2 : 0 ) ), MsgGame->GetStr( STR_SWITCH_PERKS_NAME ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( Rect( Rect( ChaBSwitch[ 0 ] + sw, ChaBSwitch[ 1 ], ChaBSwitch[ 0 ] + sw + sw, ChaBSwitch[ 3 ] ), ChaX, ChaY - ( ChaCurSwitch == CHA_SWITCH_KARMA ? 2 : 0 ) ), MsgGame->GetStr( STR_SWITCH_KARMA_NAME ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( Rect( Rect( ChaBSwitch[ 0 ] + sw + sw, ChaBSwitch[ 1 ], ChaBSwitch[ 2 ], ChaBSwitch[ 3 ] ), ChaX, ChaY - ( ChaCurSwitch == CHA_SWITCH_KILLS ? 2 : 0 ) ), MsgGame->GetStr( STR_SWITCH_KILLS_NAME ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-
-        SwitchElementVec& text = ChaSwitchText[ ChaCurSwitch ];
-        int scroll = ChaSwitchScroll[ ChaCurSwitch ];
-        int end_line = ( ChaTSwitch[ 3 ] - ChaTSwitch[ 1 ] ) / 11 + scroll;
-
-        // Perks, Karma
-        if( ChaCurSwitch == CHA_SWITCH_PERKS || ChaCurSwitch == CHA_SWITCH_KARMA )
-        {
-            for( int i = 0; i < (int) text.size(); i++ )
-            {
-                if( i >= end_line )
-                    break;
-                if( i < scroll )
-                    continue;
-                SwitchElement& e = text[ i ];
-                SprMngr.DrawStr( Rect( ChaTSwitch, ChaX, ChaY + ( i - scroll ) * 11 ), Str::FormatBuf( "%s%s", MsgGame->GetStr( e.NameStrNum ), e.Addon ), e.DrawFlags );
-            }
-        }
-        // Kills
-        else if( ChaCurSwitch == CHA_SWITCH_KILLS )
-        {
-            for( int i = 0; i < (int) text.size(); i++ )
-            {
-                if( i >= end_line )
-                    break;
-                if( i < scroll )
-                    continue;
-
-                SwitchElement& e = text[ i ];
-                SprMngr.DrawStr( Rect( ChaTSwitch, ChaX, ChaY + ( i - scroll ) * 11 ), MsgGame->GetStr( e.NameStrNum ), e.DrawFlags );
-                SprMngr.DrawStr( Rect( Rect( ChaTSwitch[ 2 ] - 35, ChaTSwitch[ 1 ], ChaTSwitch[ 2 ], ChaTSwitch[ 3 ] ), ChaX, ChaY + ( i - scroll ) * 11 ), e.Addon, 0 );
-            }
-        }
-    }
-
-    // Special
-    for( uint i = 0, j = (uint) ChaSpecialParams.size(); i < j; i++ )
-    {
-        int param = ChaSpecialParams[ i ];
-
-        // Text
-        SprMngr.DrawStr( Rect( ChaWSpecialText, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_INV_SHORT_SPECIAL( param ) ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_SAND, FONT_BIG );
-
-        // Value
-        int val = CHA_PARAM( param );
-        val = CLAMP( val, 0, 99 );
-        char str[ 32 ];
-        Str::Format( str, "%02d", val );
-        if( val < 1 || val > 10 )
-            Str::ChangeValue( str, 0x10 );
-        SprMngr.DrawStr( Rect( ChaWSpecialValue, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), str, FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
-
-        // Str level
-        if( is_reg )
-            SprMngr.DrawStr( Rect( ChaWSpecialLevel, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_STAT_LEVEL_ABB( val ) ), FT_NOBREAK | FT_CENTERY );
-        else
-            SprMngr.DrawStr( Rect( ChaWSpecialLevel, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ), MsgGame->GetStr( STR_STAT_LEVEL( val ) ), FT_NOBREAK | FT_CENTERY );
-    }
-
-    // Unspent
-    if( is_reg )
-    {
-        int unspent = GameOpt.StartSpecialPoints;
-        for( uint i = 0, j = (uint) ChaSpecialParams.size(); i < j; i++ )
-            unspent -= REG_PARAM( ChaSpecialParams[ i ] );
-        SprMngr.DrawStr( Rect( RegWUnspentSpecial, ChaX, ChaY ), Str::FormatBuf( "%02d", unspent ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
-        SprMngr.DrawStr( Rect( RegWUnspentSpecialText, ChaX, ChaY ), MsgGame->GetStr( STR_REG_SPECIAL_SUM ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    }
-
-    // Skill
-    SprMngr.DrawStr( Rect( ChaWSkillText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_SKILLS ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-
-    for( uint i = SKILL_BEGIN; i <= SKILL_END; i++ )
-    {
-        int offs = i - SKILL_BEGIN;
-        // Name
-        SprMngr.DrawStr( Rect( ChaWSkillName, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME( i ) ), FT_NOBREAK, IsTagSkill( is_reg, i ) ? 0xFFAAAAAA : COLOR_TEXT );
-        // Value
-        SprMngr.DrawStr( Rect( ChaWSkillValue, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), Str::FormatBuf( "%d%%", CLAMP( CHA_PARAM( i ) + ( is_reg ? 0 : ChaSkillUp[ offs ] ), -MAX_SKILL_VAL, MAX_SKILL_VAL ) ), FT_NOBREAK, IsTagSkill( is_reg, i ) ? 0xFFAAAAAA : COLOR_TEXT );
-    }
-
-    if( is_reg )
-    {
-        SprMngr.DrawStr( Rect( ChaWUnspentSPText, ChaX, ChaY ), MsgGame->GetStr( STR_REG_UNSPENT_TAGS ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        int free_tag_skill = GameOpt.StartTagSkillPoints - ( CHA_PARAM( TAG_SKILL1 ) ? 1 : 0 ) - ( CHA_PARAM( TAG_SKILL2 ) ? 1 : 0 ) - ( CHA_PARAM( TAG_SKILL3 ) ? 1 : 0 ) - ( CHA_PARAM( TAG_SKILL4 ) ? 1 : 0 );
-        SprMngr.DrawStr( Rect( ChaWUnspentSP, ChaX, ChaY ), Str::FormatBuf( "%02d", free_tag_skill ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
-    }
-    else
-    {
-        SprMngr.DrawStr( Rect( ChaWUnspentSPText, ChaX, ChaY ), MsgGame->GetStr( STR_CHA_UNSPENT_SP ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( Rect( ChaWUnspentSP, ChaX, ChaY ), Str::FormatBuf( "%02d", ChaUnspentSkillPoints ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
-    }
-
-    // Tips
-    SprMngr.DrawStr( Rect( ChaWName, ChaX, ChaY ), ChaName, 0, COLOR_TEXT_BLACK, FONT_THIN );
-    SprMngr.DrawStr( Rect( ChaWDesc, ChaX, ChaY ), ChaDesc, 0, COLOR_TEXT_BLACK );
-
-    // Level
-    if( !is_reg )
-    {
-        SprMngr.DrawStr( Rect( ChaWLevel, ChaX, ChaY ), FmtGameText( STR_CHA_LEVEL, CHA_PARAM( ST_LEVEL ) ), 0 );
-        SprMngr.DrawStr( Rect( ChaWExp, ChaX, ChaY ), FmtGameText( STR_CHA_EXPERIENCE, CHA_PARAM( ST_EXPERIENCE ) ), 0 );
-        SprMngr.DrawStr( Rect( ChaWNextLevel, ChaX, ChaY ), FmtGameText( STR_CHA_NEXT_LEVEL, NumericalNumber( CHA_PARAM( ST_LEVEL ) ) * 1000 ), 0 );
-    }
-
-    // Name
-    if( is_reg )
-        SprMngr.DrawStr( Rect( ChaBName, ChaX, ChaY - ( IfaceHold == IFACE_CHA_NAME ? 1 : 0 ) ), GameOpt.RegName->c_str(), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    else
-        SprMngr.DrawStr( Rect( ChaBName, ChaX, ChaY - ( IfaceHold == IFACE_CHA_NAME ? 1 : 0 ) ), Chosen ? Chosen->GetName() : "", FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-
-    // Age
-    SprMngr.DrawStr( Rect( ChaBAge, ChaX, ChaY - ( IfaceHold == IFACE_CHA_AGE ? 1 : 0 ) ), Str::FormatBuf( "%02d", ( is_reg ? REG_PARAM( ST_AGE ) : CHA_PARAM( ST_AGE ) ) ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-
-    // Sex
-    if( ( is_reg ? REG_PARAM( ST_GENDER ) : CHA_PARAM( ST_GENDER ) ) == GENDER_MALE )
-        SprMngr.DrawStr( Rect( ChaBSex, ChaX, ChaY - ( IfaceHold == IFACE_CHA_SEX ? 1 : 0 ) ), MsgGame->GetStr( STR_MALE_NAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    else
-        SprMngr.DrawStr( Rect( ChaBSex, ChaX, ChaY - ( IfaceHold == IFACE_CHA_SEX ? 1 : 0 ) ), MsgGame->GetStr( STR_FEMALE_NAME ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-
-    // Damage
-    // Life
-    if( is_reg )
-        SprMngr.DrawStr( Rect( ChaWDmgLife, ChaX, ChaY ), FmtGameText( STR_DMG_LIFE, CHA_PARAM( ST_MAX_LIFE ), CHA_PARAM( ST_MAX_LIFE ) ), FT_NOBREAK );
-    else
-        SprMngr.DrawStr( Rect( ChaWDmgLife, ChaX, ChaY ), FmtGameText( STR_DMG_LIFE, CHA_PARAM( ST_CURRENT_HP ), CHA_PARAM( ST_MAX_LIFE ) ), FT_NOBREAK );
-
-    // Body damages
-    for( uint i = DAMAGE_BEGIN; i <= DAMAGE_END; ++i )
-    {
-        int offs = i - DAMAGE_BEGIN;
-        uint color;
-        if( i == DAMAGE_RADIATED )
-            color = ( CHA_PARAM( ST_RADIATION_LEVEL ) ? COLOR_TEXT : COLOR_TEXT_DARK );
-        else if( i == DAMAGE_POISONED )
-            color = ( CHA_PARAM( ST_POISONING_LEVEL ) ? COLOR_TEXT : COLOR_TEXT_DARK );
-        else
-            color = ( CHA_PARAM( i ) ? COLOR_TEXT : COLOR_TEXT_DARK );
-        SprMngr.DrawStr( Rect( ChaWDmg, ChaX + ChaWDmgNextX * offs, ChaY + ChaWDmgNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME( i ) ), FT_NOBREAK, color );
-    }
-
-    // Secondary stats
-    for( int i = 0; i < ShowStatsCnt; ++i )
-    {
-        // Name
-        SprMngr.DrawStr( Rect( ChaWStatsName, ChaX + ChaWStatsNextX * i, ChaY + ChaWStatsNextY * i ), MsgGame->GetStr( STR_PARAM_NAME_SHORT( ShowStats[ i ] ) ), FT_NOBREAK, COLOR_TEXT );
-        // Value
-        int val = CHA_PARAM( ShowStats[ i ] );
-        const char* str;
-        switch( ShowStats[ i ] )
-        {
-        case ST_CARRY_WEIGHT:
-            str = Str::FormatBuf( "%d", val / 1000 );
-            break;
-        case ST_NORMAL_RESIST:
-        case ST_CRITICAL_CHANCE:
-            str = Str::FormatBuf( "%d%%", val );
-            break;
-        default:
-            str = Str::FormatBuf( "%d", val );
-            break;
-        }
-        SprMngr.DrawStr( Rect( ChaWStatsValue, ChaX + ChaWStatsNextX * i, ChaY + ChaWStatsNextY * i ), str, FT_NOBREAK, COLOR_TEXT );
-    }
-
-    // Traits text
-    if( is_reg )
-    {
-        // Left
-        for( uint i = TRAIT_BEGIN, k = 0; i < TRAIT_BEGIN + TRAIT_COUNT / 2; ++i, ++k )
-            SprMngr.DrawStr( Rect( RegWTraitL, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ), MsgGame->GetStr( STR_PARAM_NAME( i ) ), FT_NOBREAK, CHA_PARAM( i ) ? 0xFFAAAAAA : COLOR_TEXT );
-
-        // Right
-        for( uint i = TRAIT_BEGIN + TRAIT_COUNT / 2, k = 0; i <= TRAIT_END; ++i, ++k )
-            SprMngr.DrawStr( Rect( RegWTraitR, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ), MsgGame->GetStr( STR_PARAM_NAME( i ) ), FT_NOBREAK, CHA_PARAM( i ) ? 0xFFAAAAAA : COLOR_TEXT );
-    }
-
-    // Slider
-    if( !is_reg )
-    {
-        SprMngr.DrawSprite( ChaPWSlider, ChaCurSkill * ChaWSkillNextX + ChaWSliderX + ChaX, ChaCurSkill * ChaWSkillNextY + ChaWSliderY + ChaY );
-
-        switch( IfaceHold )
-        {
-        case IFACE_CHA_PLUS:
-            SprMngr.DrawSprite( ChaPBSliderPlusDn, ChaBSliderPlus[ 0 ] + ChaCurSkill * ChaWSkillNextX + ChaX, ChaBSliderPlus[ 1 ] + ChaCurSkill * ChaWSkillNextY + ChaY );
-            break;
-        case IFACE_CHA_MINUS:
-            SprMngr.DrawSprite( ChaPBSliderMinusDn, ChaBSliderMinus[ 0 ] + ChaCurSkill * ChaWSkillNextX + ChaX, ChaBSliderMinus[ 1 ] + ChaCurSkill * ChaWSkillNextY + ChaY );
-            break;
-        default:
-            break;
-        }
-    }
-    else
-    {
-        switch( IfaceHold )
-        {
-        case IFACE_REG_SPEC_PL:
-            SprMngr.DrawSprite( RegPBSpecialPlusDn, RegBSpecialPlus[ 0 ] + RegCurSpecial * RegBSpecialNextX + ChaX, RegBSpecialPlus[ 1 ] + RegCurSpecial * RegBSpecialNextY + ChaY );
-            break;
-        case IFACE_REG_SPEC_MN:
-            SprMngr.DrawSprite( RegPBSpecialMinusDn, RegBSpecialMinus[ 0 ] + RegCurSpecial * RegBSpecialNextX + ChaX, RegBSpecialMinus[ 1 ] + RegCurSpecial * RegBSpecialNextY + ChaY );
-            break;
-        case IFACE_REG_TAGSKILL:
-            SprMngr.DrawSprite( RegPBTagSkillDn, RegBTagSkill[ 0 ] + ( RegCurTagSkill - SKILL_BEGIN ) * RegBTagSkillNextX + ChaX, RegBTagSkill[ 1 ] + ( RegCurTagSkill - SKILL_BEGIN ) * RegBTagSkillNextY + ChaY );
-            break;
-        default:
-            break;
-        }
-    }
-}
-
-void FOClient::ChaLMouseDown( bool is_reg )
-{
-    IfaceHold = IFACE_NONE;
-
-    // Special
-    for( uint i = 0, j = (uint) ChaSpecialParams.size(); i < j; i++ )
-    {
-        int param = ChaSpecialParams[ i ];
-        if( is_reg )
-        {
-            if( IsCurInRect( RegBSpecialPlus, RegBSpecialNextX * i + ChaX, RegBSpecialNextY * i + ChaY ) )
-                IfaceHold = IFACE_REG_SPEC_PL;
-            if( IsCurInRect( RegBSpecialMinus, RegBSpecialNextX * i + ChaX, RegBSpecialNextY * i + ChaY ) )
-                IfaceHold = IFACE_REG_SPEC_MN;
-            if( IfaceHold )
-            {
-                RegCurSpecial = i;
-                goto label_DrawSpecial;
-            }
-        }
-
-        if( IsCurInRect( ChaWSpecialValue, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ) ||
-            IsCurInRect( ChaWSpecialLevel, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ) ||
-            IsCurInRect( ChaWSpecialText, ChaX + ChaWSpecialNextX * i, ChaY + ChaWSpecialNextY * i ) )
-        {
-label_DrawSpecial:
-            ChaSkilldexPic = SKILLDEX_PARAM( param );
-            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( param ) ) );
-            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( param ) ) );
-            return;
-        }
-    }
-
-    // Skills
-    for( uint i = SKILL_BEGIN; i <= SKILL_END; i++ )
-    {
-        int offs = i - SKILL_BEGIN;
-        if( is_reg && IsCurInRect( RegBTagSkill, offs * RegBTagSkillNextX + ChaX, offs * RegBTagSkillNextY + ChaY ) )
-        {
-            RegCurTagSkill = i;
-            IfaceHold = IFACE_REG_TAGSKILL;
-            goto label_DrawSkill;
-        }
-
-        if( IsCurInRect( ChaWSkillName, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ) || IsCurInRect( ChaWSkillValue, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ) )
-        {
-label_DrawSkill:
-            ChaSkilldexPic = SKILLDEX_PARAM( i );
-            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( i ) ) );
-            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( i ) ) );
-            ChaCurSkill = offs;
-            return;
-        }
-    }
-
-    // Damage
-    // Life
-    if( IsCurInRect( ChaWDmgLife, ChaX, ChaY ) )
-    {
-        ChaSkilldexPic = SKILLDEX_PARAM( ST_MAX_LIFE );
-        Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( ST_MAX_LIFE ) ) );
-        Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( ST_MAX_LIFE ) ) );
-        return;
-    }
-
-    // Body damages
-    for( uint i = DAMAGE_BEGIN; i <= DAMAGE_END; ++i )
-    {
-        int offs = i - DAMAGE_BEGIN;
-        if( IsCurInRect( ChaWDmg, ChaX + ChaWDmgNextX * offs, ChaY + ChaWDmgNextY * offs ) )
-        {
-            ChaSkilldexPic = SKILLDEX_PARAM( i );
-            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( i ) ) );
-            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( i ) ) );
-            return;
-        }
-    }
-
-    // Sec. Stats
-    for( int i = 0; i < ShowStatsCnt; ++i )
-    {
-        if( IsCurInRect( ChaWStatsName, ChaX + ChaWStatsNextX * i, ChaY + ChaWStatsNextY * i ) ||
-            IsCurInRect( ChaWStatsValue, ChaX + ChaWStatsNextX * i, ChaY + ChaWStatsNextY * i ) )
-        {
-            ChaSkilldexPic = SKILLDEX_PARAM( ShowStats[ i ] );
-            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( ShowStats[ i ] ) ) );
-            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( ShowStats[ i ] ) ) );
-            return;
-        }
-    }
-
-    // Traits
-    if( is_reg )
-    {
-        uint i, k;
-        // Left button
-        for( i = TRAIT_BEGIN, k = 0; i < TRAIT_BEGIN + TRAIT_COUNT / 2; ++i, ++k )
-            if( IsCurInRect( RegBTraitL, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ) )
-            {
-                IfaceHold = IFACE_REG_TRAIT_L;
-                goto label_DrawTrait;
-            }
-        // Right button
-        for( i = TRAIT_BEGIN + TRAIT_COUNT / 2, k = 0; i <= TRAIT_END; ++i, ++k )
-            if( IsCurInRect( RegBTraitR, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ) )
-            {
-                IfaceHold = IFACE_REG_TRAIT_R;
-                goto label_DrawTrait;
-            }
-        // Left text
-        for( i = TRAIT_BEGIN, k = 0; i < TRAIT_BEGIN + TRAIT_COUNT / 2; ++i, ++k )
-            if( IsCurInRect( RegWTraitL, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ) )
-                goto label_DrawTrait;
-        // Right text
-        for( i = TRAIT_BEGIN + TRAIT_COUNT / 2, k = 0; i <= TRAIT_END; ++i, ++k )
-            if( IsCurInRect( RegWTraitR, RegTraitNextX * k + ChaX, RegTraitNextY * k + ChaY ) )
-                goto label_DrawTrait;
-
-        if( 0 )
-        {
-label_DrawTrait:
-            RegTraitNum = k;
-            ChaSkilldexPic = SKILLDEX_PARAM( i );
-            Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( i ) ) );
-            Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( i ) ) );
-            return;
-        }
-    }
-
-    // Switch
-    if( !is_reg )
-    {
-        // 3 Buttons
-        if( IsCurInRect( ChaBSwitch, ChaX, ChaY ) && SprMngr.IsPixNoTransp( ChaPBSwitchMask->GetCurSprId(), GameOpt.MouseX - ChaX - ChaBSwitch[ 0 ], GameOpt.MouseY - ChaY - ChaBSwitch[ 1 ], false ) )
-        {
-            int sw = ( GameOpt.MouseX - ChaX - ChaBSwitch[ 0 ] ) / ( ( ChaBSwitch[ 2 ] - ChaBSwitch[ 0 ] ) / 3 );
-            switch( sw )
-            {
-            case 0:
-                ChaCurSwitch = CHA_SWITCH_PERKS;
-                Str::Copy( ChaName, MsgGame->GetStr( STR_SWITCH_PERKS_NAME ) );
-                Str::Copy( ChaDesc, MsgGame->GetStr( STR_PERKS_DESC ) );
-                ChaSkilldexPic = SKILLDEX_PERKS;
-                break;
-            case 1:
-                ChaCurSwitch = CHA_SWITCH_KARMA;
-                Str::Copy( ChaName, MsgGame->GetStr( STR_SWITCH_KARMA_NAME ) );
-                Str::Copy( ChaDesc, MsgGame->GetStr( STR_KARMA_DESC ) );
-                ChaSkilldexPic = SKILLDEX_KARMA;
-                break;
-            case 2:
-                ChaCurSwitch = CHA_SWITCH_KILLS;
-                Str::Copy( ChaName, MsgGame->GetStr( STR_SWITCH_KILLS_NAME ) );
-                Str::Copy( ChaDesc, MsgGame->GetStr( STR_KILLS_DESC ) );
-                ChaSkilldexPic = SKILLDEX_KILLS;
-                break;
-            default:
-                break;
-            }
-            return;
-        }
-
-        if( IsCurInRect( ChaTSwitch, ChaX, ChaY ) )
-        {
-            SwitchElementVec& text = ChaSwitchText[ ChaCurSwitch ];
-            int scroll = ChaSwitchScroll[ ChaCurSwitch ];
-            int cur_line = scroll + ( GameOpt.MouseY - ChaTSwitch[ 1 ] - ChaY ) / 11;
-            if( cur_line < (int) text.size() )
-            {
-                SwitchElement& e = text[ cur_line ];
-                ChaSkilldexPic = e.PictureId;
-                Str::Copy( ChaName, MsgGame->GetStr( e.NameStrNum ) );
-                if( ChaCurSwitch == CHA_SWITCH_PERKS )
-                    Str::Append( ChaName, e.Addon );
-                Str::Copy( ChaDesc, MsgGame->GetStr( e.DescStrNum ) );
-                return;
-            }
-        }
-    }
-
-    // Holds
-    if( !is_reg && IsCurInRect( ChaWLevel, ChaX, ChaY ) )
-    {
-        ChaSkilldexPic = SKILLDEX_PARAM( ST_LEVEL );
-        Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( ST_LEVEL ) ) );
-        Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( ST_LEVEL ) ) );
-    }
-    else if( !is_reg && IsCurInRect( ChaWExp, ChaX, ChaY ) )
-    {
-        ChaSkilldexPic = SKILLDEX_PARAM( ST_EXPERIENCE );
-        Str::Copy( ChaName, MsgGame->GetStr( STR_PARAM_NAME( ST_EXPERIENCE ) ) );
-        Str::Copy( ChaDesc, MsgGame->GetStr( STR_PARAM_DESC( ST_EXPERIENCE ) ) );
-    }
-    else if( !is_reg && IsCurInRect( ChaWNextLevel, ChaX, ChaY ) )
-    {
-        ChaSkilldexPic = SKILLDEX_NEXT_LEVEL;
-        Str::Copy( ChaName, MsgGame->GetStr( STR_NEXT_LEVEL_NAME ) );
-        Str::Copy( ChaDesc, MsgGame->GetStr( STR_NEXT_LEVEL_DESC ) );
-    }
-    else if( IsCurInRect( ChaBPrint, ChaX, ChaY ) )
-        IfaceHold = IFACE_CHA_PRINT;
-    else if( IsCurInRect( ChaBOk, ChaX, ChaY ) )
-        IfaceHold = IFACE_CHA_OK;
-    else if( IsCurInRect( ChaBCancel, ChaX, ChaY ) )
-        IfaceHold = IFACE_CHA_CANCEL;
-    else if( !is_reg && IsCurInRect( ChaBSwitchScrUp, ChaX, ChaY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_CHA_SW_SCRUP );
-        IfaceHold = IFACE_CHA_SW_SCRUP;
-    }
-    else if( !is_reg && IsCurInRect( ChaBSwitchScrDn, ChaX, ChaY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_CHA_SW_SCRDOWN );
-        IfaceHold = IFACE_CHA_SW_SCRDN;
-    }
-    else if( !is_reg && IsCurInRect( ChaBSliderPlus, ChaCurSkill * ChaWSkillNextX + ChaX, ChaCurSkill * ChaWSkillNextY + ChaY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_CHA_PLUS );
-        IfaceHold = IFACE_CHA_PLUS;
-    }
-    else if( !is_reg && IsCurInRect( ChaBSliderMinus, ChaCurSkill * ChaWSkillNextX + ChaX, ChaCurSkill * ChaWSkillNextY + ChaY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_CHA_MINUS );
-        IfaceHold = IFACE_CHA_MINUS;
-    }
-    else if( is_reg && IsCurInRect( ChaBName, ChaX, ChaY ) )
-        IfaceHold = IFACE_CHA_NAME;
-    else if( is_reg && IsCurInRect( ChaBAge, ChaX, ChaY ) )
-        IfaceHold = IFACE_CHA_AGE;
-    else if( is_reg && IsCurInRect( ChaBSex, ChaX, ChaY ) )
-        IfaceHold = IFACE_CHA_SEX;
-    else if( !is_reg && IsCurInRect( ChaWMain, ChaX, ChaY ) )
-    {
-        ChaVectX = GameOpt.MouseX - ChaX;
-        ChaVectY = GameOpt.MouseY - ChaY;
-        IfaceHold = IFACE_CHA_MAIN;
-    }
-}
-
-void FOClient::ChaLMouseUp( bool is_reg )
-{
-    switch( IfaceHold )
-    {
-    case IFACE_CHA_PRINT:
-        if( !IsCurInRect( ChaBPrint, ChaX, ChaY ) )
-            break;
-        break;
-    case IFACE_CHA_OK:
-        if( !IsCurInRect( ChaBOk, ChaX, ChaY ) )
-            break;
-        if( is_reg )
-        {
-            if( RegCheckData() )
-            {
-                InitNetReason = INIT_NET_REASON_REG;
-                SetCurMode( CUR_WAIT );
-            }
-        }
-        else
-        {
-            if( ChaUnspentSkillPoints < CHA_PARAM( ST_UNSPENT_SKILL_POINTS ) )
-                Net_SendLevelUp( 0xFFFF );
-            ShowScreen( SCREEN_NONE );
-        }
-        break;
-    case IFACE_CHA_CANCEL:
-    {
-        if( !IsCurInRect( ChaBCancel, ChaX, ChaY ) )
-            break;
-        if( is_reg )
-            ShowMainScreen( SCREEN_LOGIN );
-        else
-            ShowScreen( SCREEN_NONE );
-    }
-    break;
-    case IFACE_CHA_SW_SCRUP:
-    {
-        if( is_reg )
-            break;
-        if( !IsCurInRect( ChaBSwitchScrUp, ChaX, ChaY ) )
-            break;
-        if( ChaSwitchScroll[ ChaCurSwitch ] > 0 )
-            ChaSwitchScroll[ ChaCurSwitch ]--;
-    }
-    break;
-    case IFACE_CHA_SW_SCRDN:
-    {
-        if( is_reg )
-            break;
-        if( !IsCurInRect( ChaBSwitchScrDn, ChaX, ChaY ) )
-            break;
-        int max_lines = ( ChaTSwitch[ 3 ] - ChaTSwitch[ 1 ] ) / 11;
-        SwitchElementVec& text = ChaSwitchText[ ChaCurSwitch ];
-        int& scroll = ChaSwitchScroll[ ChaCurSwitch ];
-        if( scroll + max_lines < (int) text.size() )
-            scroll++;
-    }
-    break;
-    case IFACE_CHA_PLUS:
-    {
-        if( is_reg )
-            break;
-        if( !IsCurInRect( ChaBSliderPlus, ChaCurSkill * ChaWSkillNextX + ChaX, ChaCurSkill * ChaWSkillNextY + ChaY ) )
-            break;
-        if( !ChaUnspentSkillPoints )
-            break;
-
-        int skill_val = CHA_RAW_PARAM( ChaCurSkill + SKILL_BEGIN ) + ChaSkillUp[ ChaCurSkill ];
-        if( skill_val >= MAX_SKILL_VAL )
-            break;
-
-        int need_sp = 1;
-        if( skill_val > GameOpt.SkillModAdd6 )
-            need_sp = 6;
-        else if( skill_val > GameOpt.SkillModAdd5 )
-            need_sp = 5;
-        else if( skill_val > GameOpt.SkillModAdd4 )
-            need_sp = 4;
-        else if( skill_val > GameOpt.SkillModAdd3 )
-            need_sp = 3;
-        else if( skill_val > GameOpt.SkillModAdd2 )
-            need_sp = 2;
-
-        if( ChaUnspentSkillPoints < need_sp )
-            break;
-
-        ChaUnspentSkillPoints -= need_sp;
-        ChaSkillUp[ ChaCurSkill ]++;
-        if( IsTagSkill( is_reg, ChaCurSkill + SKILL_BEGIN ) )
-            ChaSkillUp[ ChaCurSkill ]++;
-    }
-    break;
-    case IFACE_CHA_MINUS:
-    {
-        if( is_reg )
-            break;
-        if( !IsCurInRect( ChaBSliderMinus, ChaCurSkill * ChaWSkillNextX + ChaX, ChaCurSkill * ChaWSkillNextY + ChaY ) )
-            break;
-        if( !ChaSkillUp[ ChaCurSkill ] )
-            break;
-
-        ChaSkillUp[ ChaCurSkill ]--;
-        if( IsTagSkill( is_reg, ChaCurSkill + SKILL_BEGIN ) )
-            ChaSkillUp[ ChaCurSkill ]--;
-        int skill_val = CHA_RAW_PARAM( ChaCurSkill + SKILL_BEGIN ) + ChaSkillUp[ ChaCurSkill ];
-
-        if( skill_val > GameOpt.SkillModAdd6 )
-            ChaUnspentSkillPoints += 6;
-        else if( skill_val > GameOpt.SkillModAdd5 )
-            ChaUnspentSkillPoints += 5;
-        else if( skill_val > GameOpt.SkillModAdd4 )
-            ChaUnspentSkillPoints += 4;
-        else if( skill_val > GameOpt.SkillModAdd3 )
-            ChaUnspentSkillPoints += 3;
-        else if( skill_val > GameOpt.SkillModAdd2 )
-            ChaUnspentSkillPoints += 2;
-        else
-            ChaUnspentSkillPoints += 1;
-    }
-    break;
-    case IFACE_REG_SPEC_PL:
-    {
-        if( !is_reg )
-            break;
-        if( !IsCurInRect( RegBSpecialPlus, RegCurSpecial * RegBSpecialNextX + ChaX, RegCurSpecial * RegBSpecialNextY + ChaY ) )
-            break;
-        int cur_count = CHA_PARAM( ChaSpecialParams[ RegCurSpecial ] );
-        int unspent = GameOpt.StartSpecialPoints;
-        for( uint i = 0, j = (uint) ChaSpecialParams.size(); i < j; i++ )
-            unspent -= REG_PARAM( ChaSpecialParams[ i ] );
-        if( unspent <= 0 || cur_count >= 10 )
-            break;
-        REG_PARAM( ChaSpecialParams[ RegCurSpecial ] )++;
-        RegGenParams();
-    }
-    break;
-    case IFACE_REG_SPEC_MN:
-    {
-        if( !is_reg )
-            break;
-        if( !IsCurInRect( RegBSpecialMinus, RegCurSpecial * RegBSpecialNextX + ChaX, RegCurSpecial * RegBSpecialNextY + ChaY ) )
-            break;
-        int cur_count = CHA_PARAM( ChaSpecialParams[ RegCurSpecial ] );
-        if( cur_count <= 1 )
-            break;
-        REG_PARAM( ChaSpecialParams[ RegCurSpecial ] )--;
-        RegGenParams();
-    }
-    break;
-    case IFACE_REG_TAGSKILL:
-    {
-        if( !is_reg )
-            break;
-        int offs = RegCurTagSkill - SKILL_BEGIN;
-        if( !IsCurInRect( RegBTagSkill, offs * RegBTagSkillNextX + ChaX, offs * RegBTagSkillNextY + ChaY ) )
-            break;
-
-        int free_tag_skill = GameOpt.StartTagSkillPoints - ( REG_PARAM( TAG_SKILL1 ) ? 1 : 0 ) - ( REG_PARAM( TAG_SKILL2 ) ? 1 : 0 ) - ( REG_PARAM( TAG_SKILL3 ) ? 1 : 0 ) - ( REG_PARAM( TAG_SKILL4 ) ? 1 : 0 );
-
-        if( REG_PARAM( TAG_SKILL1 ) == RegCurTagSkill )
-            REG_PARAM( TAG_SKILL1 ) = 0;
-        else if( REG_PARAM( TAG_SKILL2 ) == RegCurTagSkill )
-            REG_PARAM( TAG_SKILL2 ) = 0;
-        else if( REG_PARAM( TAG_SKILL3 ) == RegCurTagSkill )
-            REG_PARAM( TAG_SKILL3 ) = 0;
-        else if( REG_PARAM( TAG_SKILL4 ) == RegCurTagSkill )
-            REG_PARAM( TAG_SKILL4 ) = 0;
-        else if( !REG_PARAM( TAG_SKILL1 ) && free_tag_skill > 0 )
-            REG_PARAM( TAG_SKILL1 ) = RegCurTagSkill;
-        else if( !REG_PARAM( TAG_SKILL2 ) && free_tag_skill > 0 )
-            REG_PARAM( TAG_SKILL2 ) = RegCurTagSkill;
-        else if( !REG_PARAM( TAG_SKILL3 ) && free_tag_skill > 0 )
-            REG_PARAM( TAG_SKILL3 ) = RegCurTagSkill;
-        else if( !REG_PARAM( TAG_SKILL4 ) && free_tag_skill > 0 )
-            REG_PARAM( TAG_SKILL4 ) = RegCurTagSkill;
-
-        RegGenParams();
-    }
-    break;
-    case IFACE_REG_TRAIT_L:
-    case IFACE_REG_TRAIT_R:
-    {
-        if( !is_reg )
-            break;
-        if( IfaceHold == IFACE_REG_TRAIT_L && !IsCurInRect( RegBTraitL, RegTraitNum * RegTraitNextX + ChaX, RegTraitNum * RegTraitNextY + ChaY ) )
-            break;
-        if( IfaceHold == IFACE_REG_TRAIT_R && !IsCurInRect( RegBTraitR, RegTraitNum * RegTraitNextX + ChaX, RegTraitNum * RegTraitNextY + ChaY ) )
-            break;
-
-        int trait = RegTraitNum + TRAIT_BEGIN;
-        if( IfaceHold == IFACE_REG_TRAIT_R )
-            trait += TRAIT_COUNT / 2;
-
-        if( CHA_PARAM( trait ) )
-        {
-            REG_PARAM( trait ) = 0;
-        }
-        else
-        {
-            uint j = 0;
-            for( uint i = TRAIT_BEGIN; i <= TRAIT_END; ++i )
-                if( CHA_PARAM( i ) )
-                    j++;
-            if( j < 2 )
-                REG_PARAM( trait ) = 1;
-        }
-
-        RegGenParams();
-    }
-    break;
-    case IFACE_CHA_NAME:
-        if( !is_reg || !IsCurInRect( ChaBName, ChaX, ChaY ) )
-            break;
-        ShowScreen( SCREEN__CHA_NAME );
-        return;
-    case IFACE_CHA_AGE:
-        if( !is_reg || !IsCurInRect( ChaBAge, ChaX, ChaY ) )
-            break;
-        ShowScreen( SCREEN__CHA_AGE );
-        return;
-    case IFACE_CHA_SEX:
-        if( !is_reg || !IsCurInRect( ChaBSex, ChaX, ChaY ) )
-            break;
-        ShowScreen( SCREEN__CHA_SEX );
-        return;
-    default:
-        break;
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::ChaMouseMove( bool is_reg )
-{
-    if( IfaceHold != IFACE_CHA_MAIN )
-        return;
-
-    ChaX = GameOpt.MouseX - ChaVectX;
-    ChaY = GameOpt.MouseY - ChaVectY;
-
-    if( ChaX < 0 )
-        ChaX = 0;
-    if( ChaX + ChaWMain[ 2 ] > GameOpt.ScreenWidth )
-        ChaX = GameOpt.ScreenWidth - ChaWMain[ 2 ];
-    if( ChaY < 0 )
-        ChaY = 0;
-    if( ChaY + ChaWMain[ 3 ] > GameOpt.ScreenHeight )
-        ChaY = GameOpt.ScreenHeight - ChaWMain[ 3 ];
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::ChaNameDraw()
-{
-    SprMngr.DrawSprite( Singleplayer ? ChaNameSingleplayerMainPic : ChaNameMainPic, ChaNameX, ChaNameY );
-
-    SprMngr.DrawStr( Rect( ChaNameWNameText, ChaNameX, ChaNameY ), MsgGame->GetStr( STR_CHA_NAME_NAME ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( ChaNameWName, ChaNameX, ChaNameY ), GameOpt.RegName->c_str(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_NAME ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
-
-    if( !Singleplayer )
-    {
-        SprMngr.DrawStr( Rect( ChaNameWPassText, ChaNameX, ChaNameY ), MsgGame->GetStr( STR_CHA_NAME_PASS ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( Rect( ChaNameWPass, ChaNameX, ChaNameY ), GameOpt.RegPassword->c_str(), FT_NOBREAK | FT_CENTERY, IfaceHold == IFACE_CHA_NAME_PASS ? COLOR_TEXT_LGREEN : COLOR_TEXT_DGREEN );
-    }
-}
-
-void FOClient::ChaNameLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-
-    AnyFrames* anim = ( Singleplayer ? ChaNameSingleplayerMainPic : ChaNameMainPic );
-    if( !IsCurInRectNoTransp( anim->GetCurSprId(), ChaNameWMain, ChaX, ChaY ) )
-    {
-        ShowScreen( SCREEN_NONE );
-        return;
-    }
-
-    if( !IsMainScreen( SCREEN_REGISTRATION ) )
-        return;
-
-    if( IsCurInRect( ChaNameWName, ChaNameX, ChaNameY ) )
-        IfaceHold = IFACE_CHA_NAME_NAME;
-    else if( !Singleplayer && IsCurInRect( ChaNameWPass, ChaNameX, ChaNameY ) )
-        IfaceHold = IFACE_CHA_NAME_PASS;
-}
-
-void FOClient::ChaNameKeyDown( uchar dik, const char* dik_text )
-{
-    if( dik == DIK_TAB && !Singleplayer )
-    {
-        switch( IfaceHold )
-        {
-        case IFACE_CHA_NAME_NAME:
-            IfaceHold = IFACE_CHA_NAME_PASS;
-            return;
-        case IFACE_CHA_NAME_PASS:
-            IfaceHold = IFACE_CHA_NAME_NAME;
-            return;
-        default:
-            IfaceHold = IFACE_CHA_NAME_NAME;
-            return;
-        }
-    }
-
-    if( dik == DIK_RETURN || dik == DIK_NUMPADENTER )
-    {
-        ShowScreen( SCREEN_NONE );
-        return;
-    }
-
-    switch( IfaceHold )
-    {
-    case IFACE_CHA_NAME_NAME:
-    {
-        string tmp_str = GameOpt.RegName->c_std_str();
-        Keyb::GetChar( dik, dik_text, tmp_str, NULL, MIN( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
-        *GameOpt.RegName = tmp_str;
-    }
-    break;
-    case IFACE_CHA_NAME_PASS:
-    {
-        string tmp_str = GameOpt.RegPassword->c_std_str();
-        Keyb::GetChar( dik, dik_text, tmp_str, NULL, MIN( GameOpt.MaxNameLength, (uint) MAX_NAME ), KIF_NO_SPEC_SYMBOLS );
-        *GameOpt.RegPassword = tmp_str;
-    }
-    break;
-    default:
-        break;
-    }
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::ChaAgeDraw()
-{
-    SprMngr.DrawSprite( ChaAgePic, ChaAgeX, ChaAgeY );
-
-    switch( IfaceHold )
-    {
-    case IFACE_CHA_AGE_UP:
-        SprMngr.DrawSprite( ChaAgeBUpDn, ChaAgeBUp[ 0 ] + ChaAgeX, ChaAgeBUp[ 1 ] + ChaAgeY );
-        break;
-    case IFACE_CHA_AGE_DOWN:
-        SprMngr.DrawSprite( ChaAgeBDownDn, ChaAgeBDown[ 0 ] + ChaAgeX, ChaAgeBDown[ 1 ] + ChaAgeY );
-        break;
-    default:
-        break;
-    }
-
-    char str[ 16 ];
-    Str::Format( str, "%02d", REG_PARAM( ST_AGE ) );
-    SprMngr.DrawStr( Rect( ChaAgeWAge, ChaAgeX, ChaAgeY ), str, FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
-}
-
-void FOClient::ChaAgeLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-
-    if( !IsCurInRect( ChaAgeWMain, ChaX, ChaY ) )
-    {
-        ShowScreen( SCREEN_NONE );
-        return;
-    }
-
-    if( IsCurInRect( ChaAgeBUp, ChaAgeX, ChaAgeY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_CHA_AGE_UP );
-        IfaceHold = IFACE_CHA_AGE_UP;
-    }
-    else if( IsCurInRect( ChaAgeBDown, ChaAgeX, ChaAgeY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_CHA_AGE_DOWN );
-        IfaceHold = IFACE_CHA_AGE_DOWN;
-    }
-}
-
-void FOClient::ChaAgeLMouseUp()
-{
-    switch( IfaceHold )
-    {
-    case IFACE_CHA_AGE_UP:
-        if( !IsCurInRect( ChaAgeBUp, ChaAgeX, ChaAgeY ) )
-            break;
-        if( REG_PARAM( ST_AGE ) >= AGE_MAX )
-            REG_PARAM( ST_AGE ) = AGE_MIN;
-        else
-            REG_PARAM( ST_AGE )++;
-        RegGenParams();
-    case IFACE_CHA_AGE_DOWN:
-        if( !IsCurInRect( ChaAgeBDown, ChaAgeX, ChaAgeY ) )
-            break;
-        if( REG_PARAM( ST_AGE ) <= AGE_MIN )
-            REG_PARAM( ST_AGE ) = AGE_MAX;
-        else
-            REG_PARAM( ST_AGE )--;
-        RegGenParams();
-    default:
-        break;
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::ChaSexDraw()
-{
-    SprMngr.DrawSprite( ChaSexPic, ChaSexX, ChaSexY );
-
-    if( REG_PARAM( ST_GENDER ) == GENDER_MALE || IfaceHold == IFACE_CHA_SEX_MALE )
-        SprMngr.DrawSprite( ChaSexBMaleDn, ChaSexBMale[ 0 ] + ChaSexX, ChaSexBMale[ 1 ] + ChaSexY );
-    if( REG_PARAM( ST_GENDER ) == GENDER_FEMALE  || IfaceHold == IFACE_CHA_SEX_FEMALE )
-        SprMngr.DrawSprite( ChaSexBFemaleDn, ChaSexBFemale[ 0 ] + ChaSexX, ChaSexBFemale[ 1 ] + ChaSexY );
-}
-
-void FOClient::ChaSexLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-
-    if( !IsCurInRect( ChaSexWMain, ChaX, ChaY ) )
-    {
-        ShowScreen( SCREEN_NONE );
-        return;
-    }
-
-    if( IsCurInRect( ChaSexBMale, ChaSexX, ChaSexY ) )
-        IfaceHold = IFACE_CHA_SEX_MALE;
-    if( IsCurInRect( ChaSexBFemale, ChaSexX, ChaSexY ) )
-        IfaceHold = IFACE_CHA_SEX_FEMALE;
-}
-
-void FOClient::ChaSexLMouseUp()
-{
-    switch( IfaceHold )
-    {
-    case IFACE_CHA_SEX_MALE:
-        if( !IsCurInRect( ChaSexBMale, ChaSexX, ChaSexY ) )
-            break;
-        REG_PARAM( ST_GENDER ) = GENDER_MALE;
-        RegGenParams();
-    case IFACE_CHA_SEX_FEMALE:
-        if( !IsCurInRect( ChaSexBFemale, ChaSexX, ChaSexY ) )
-            break;
-        REG_PARAM( ST_GENDER ) = GENDER_FEMALE;
-        RegGenParams();
-    default:
-        break;
-    }
-
-    IfaceHold = IFACE_NONE;
 }
 
 // ==============================================================================================================================
@@ -8156,7 +5099,7 @@ void FOClient::PerkLMouseUp()
             break;
         ShowScreen( SCREEN_NONE );
         if( PerkCurPerk >= 0 )
-            Net_SendLevelUp( PerkCurPerk );
+            Net_SendLevelUp( PerkCurPerk, NULL );
         break;
     case IFACE_PERK_CANCEL:
         if( !IsCurInRect( PerkBCancel, PerkX, PerkY ) )
@@ -8304,10 +5247,10 @@ void FOClient::PipDraw()
         break;
     }
 
-    int scr = -(int) PipScroll[ PipMode ];
+    int   scr = -(int) PipScroll[ PipMode ];
     Rect& r = PipWMonitor;
-    int ml = SprMngr.GetLinesCount( 0, r.H(), NULL, FONT_DEFAULT );
-    int h = r.H() / ml;
+    int   ml = SprMngr.GetLinesCount( 0, r.H(), NULL, FONT_DEFAULT );
+    int   h = r.H() / ml;
     #define PIP_DRAW_TEXT( text, flags, color ) \
         do { if( scr >= 0 && scr < ml )         \
                  SprMngr.DrawStr( Rect( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h, PipX, PipY ), text, flags, color ); } while( 0 )
@@ -8455,7 +5398,7 @@ void FOClient::PipDraw()
     break;
     case PIP__AUTOMAPS_MAP:
     {
-        hash map_pid = AutomapSelected.MapPids[ AutomapSelected.CurMap ];
+        hash        map_pid = AutomapSelected.MapPids[ AutomapSelected.CurMap ];
         const char* map_name = AutomapSelected.MapNames[ AutomapSelected.CurMap ].c_str();
 
         scr = 0;
@@ -8465,7 +5408,7 @@ void FOClient::PipDraw()
         // Draw already builded minimap
         if( map_pid == AutomapCurMapPid )
         {
-            RectF stencil( (float) ( PipWMonitor.L + PipX ), (float) ( PipWMonitor.T + PipY ), (float) ( PipWMonitor.R + PipX ), (float) ( PipWMonitor.B + PipY ) );
+            RectF  stencil( (float) ( PipWMonitor.L + PipX ), (float) ( PipWMonitor.T + PipY ), (float) ( PipWMonitor.R + PipX ), (float) ( PipWMonitor.B + PipY ) );
             PointF offset( AutomapScrX, AutomapScrY );
             SprMngr.DrawPoints( AutomapPoints, PRIMITIVE_LINELIST, &AutomapZoom, &stencil, &offset );
             break;
@@ -8479,7 +5422,7 @@ void FOClient::PipDraw()
         }
 
         // Try load map
-        ushort maxhx, maxhy;
+        ushort  maxhx, maxhy;
         ItemVec items;
         if( !HexMngr.GetMapData( map_pid, items, maxhx, maxhy ) )
         {
@@ -8502,7 +5445,7 @@ void FOClient::PipDraw()
         for( auto it = items.begin(), end = items.end(); it != end; ++it )
         {
             Item* item = *it;
-            hash pid = item->GetProtoId();
+            hash  pid = item->GetProtoId();
             if( pid == SP_SCEN_IBLOCK || pid == SP_MISC_SCRBLOCK )
                 continue;
 
@@ -8571,9 +5514,9 @@ void FOClient::PipLMouseDown()
         return;
 
     Rect& r = PipWMonitor;
-    int ml = SprMngr.GetLinesCount( 0, r.H(), NULL, FONT_DEFAULT );
-    int h = r.H() / ml;
-    int scr = -(int) PipScroll[ PipMode ];
+    int   ml = SprMngr.GetLinesCount( 0, r.H(), NULL, FONT_DEFAULT );
+    int   h = r.H() / ml;
+    int   scr = -(int) PipScroll[ PipMode ];
 
     if( IsCurInRect( PipBStatus, PipX, PipY ) )
         IfaceHold = IFACE_PIP_STATUS;
@@ -8594,7 +5537,7 @@ void FOClient::PipLMouseDown()
             for( uint j = TIMEOUT_END; j >= TIMEOUT_BEGIN; j-- )
                 if( MsgGame->Count( STR_PARAM_NAME( j ) ) )
                     scr++;
-            int scr_ = scr;
+            int          scr_ = scr;
 
             QuestTabMap* tabs = QuestMngr.GetTabs();
             for( auto it = tabs->begin(), end = tabs->end(); it != end; ++it )
@@ -9360,223 +6303,15 @@ CritterCl* FOClient::PupGetLootCrit( int scroll )
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::CurDraw()
-{
-    if( GameOpt.HideCursor )
-        return;
-
-    SpriteInfo* si = NULL;
-    int x = 0, y = 0;
-
-    // Wait
-    if( IsCurMode( CUR_WAIT ) )
-    {
-        if( ( si = SprMngr.GetSpriteInfo( CurPWait->GetCurSprId() ) ) )
-        {
-            x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-            y = GameOpt.MouseY - si->Height + si->OffsY;
-            SprMngr.DrawSprite( CurPWait, x, y );
-        }
-        return;
-    }
-
-    // Game scroll
-    if( IsMainScreen( SCREEN_GAME ) && GetActiveScreen() == SCREEN_NONE )
-    {
-        AnyFrames* cur_di = NULL;
-
-        if( GameOpt.ScrollMouseRight )
-            cur_di = CurPScrRt;
-        else if( GameOpt.ScrollMouseLeft )
-            cur_di = CurPScrLt;
-        else if( GameOpt.ScrollMouseUp )
-            cur_di = CurPScrUp;
-        else if( GameOpt.ScrollMouseDown )
-            cur_di = CurPScrDw;
-
-        if( GameOpt.ScrollMouseRight && GameOpt.ScrollMouseUp )
-            cur_di = CurPScrRU;
-        else if( GameOpt.ScrollMouseLeft && GameOpt.ScrollMouseUp )
-            cur_di = CurPScrLU;
-        else if( GameOpt.ScrollMouseRight && GameOpt.ScrollMouseDown )
-            cur_di = CurPScrRD;
-        else if( GameOpt.ScrollMouseLeft && GameOpt.ScrollMouseDown )
-            cur_di = CurPScrLD;
-
-        if( cur_di )
-        {
-            if( !( si = SprMngr.GetSpriteInfo( CurPDef->GetCurSprId() ) ) )
-                return;
-
-            //	x=cur_x-si->offs_x;
-            //	y=cur_y-si->offs_y;
-            x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-            y = GameOpt.MouseY - si->Height + si->OffsY;
-
-            if( cur_di == CurPScrRt )
-            {
-                x -= si->Width;
-                y -= si->Height / 2;
-            }
-            else if( cur_di == CurPScrLt )
-            {
-                y -= si->Height / 2;
-            }
-            else if( cur_di == CurPScrUp )
-            {
-                x -= si->Width / 2;
-            }
-            else if( cur_di == CurPScrDw )
-            {
-                x -= si->Width / 2;
-                y -= si->Height;
-            }
-            else if( cur_di == CurPScrRU )
-            {
-                x -= si->Width;
-            }
-            else if( cur_di == CurPScrRD )
-            {
-                x -= si->Width;
-                y -= si->Height;
-            }
-            else if( cur_di == CurPScrLD )
-            {
-                y -= si->Height;
-            }
-
-            SprMngr.DrawSprite( cur_di, x, y );
-            return;
-        }
-    }
-
-    // Messboxes scroll
-    Rect rmb = MessBoxCurRectScroll();
-    if( !rmb.IsZero() && IsCurInRect( rmb ) )
-    {
-        AnyFrames* anim = IntPBScrDnDn;
-        if( IsCurInRect( Rect( rmb.L, rmb.T, rmb.R, rmb.CY() ) ) )
-            anim = IntPBScrUpDn;
-        if( ( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) ) )
-            SprMngr.DrawSprite( anim, GameOpt.MouseX - si->Width / 2, GameOpt.MouseY - si->Height / 2 );
-        return;
-    }
-
-    // Other cursors
-    switch( GetCurMode() )
-    {
-    case CUR_USE_WEAPON:
-    {
-        if( !( si = SprMngr.GetSpriteInfo( CurPUseItem->GetCurSprId() ) ) )
-            return;
-        x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-        y = GameOpt.MouseY - si->Height + si->OffsY;
-        SprMngr.DrawSprite( CurPUseItem, x, y );
-
-        CritterCl* cr = HexMngr.GetCritterPixel( GameOpt.MouseX, GameOpt.MouseY, true );
-        if( !cr || !Chosen || cr == Chosen )
-            break;
-
-        if( !HexMngr.TraceBullet( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY(), Chosen->GetAttackDist(), 0.0f, cr, false, NULL, 0, NULL, NULL, NULL, true ) )
-            break;
-
-        int hit = ScriptGetHitProc( cr, HIT_LOCATION_NONE );
-        if( !hit )
-            break;
-
-        char str[ 16 ];
-        Str::Format( str, "%d%%", hit );
-
-        SprMngr.Flush();
-        SprMngr.DrawStr( Rect( GameOpt.MouseX + 6, GameOpt.MouseY + 6, x + 500, y + 500 ), str, 0, COLOR_TEXT_RED );
-    }
-    break;
-    case CUR_USE_ITEM:
-    case CUR_USE_SKILL:
-    {
-        if( !( si = SprMngr.GetSpriteInfo( CurPUseSkill->GetCurSprId() ) ) )
-            return;
-        x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-        y = GameOpt.MouseY - si->Height + si->OffsY;
-        SprMngr.DrawSprite( CurPUseSkill, x, y );
-    }
-    break;
-    case CUR_MOVE:
-        ushort hx, hy;
-        if( GetCurHex( hx, hy, false ) )
-            break;
-    /*{
-            Field& f=HexMngr.HexField[TargetY][TargetX];
-            if(!(si=SprMngr.GetSpriteInfo(CurPMove))) return;
-
-            if(HexMngr.IsHexPassed(TargetX,TargetY))
-                    SprMngr.DrawSpriteSize(CurPMove,(f.ScrX+1+GameOpt.ScrOx)/GameOpt.SpritesZoom,(f.ScrY-1+GameOpt.ScrOy)/GameOpt.SpritesZoom,si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,TRUE,FALSE);
-            else
-                    SprMngr.DrawSpriteSize(CurPMoveBlock,(f.ScrX+1+GameOpt.ScrOx)/GameOpt.SpritesZoom,(f.ScrY-1+GameOpt.ScrOy)/GameOpt.SpritesZoom,si->Width/GameOpt.SpritesZoom,si->Height/GameOpt.SpritesZoom,TRUE,FALSE);
-
-            break;
-       }*/
-    // Draw default
-    case CUR_DEFAULT:
-        if( !( si = SprMngr.GetSpriteInfo( CurPDef->GetCurSprId() ) ) )
-            return;
-        if( IsLMenu() )
-        {
-            x = LMenuRestoreCurX - ( si->Width / 2 ) + si->OffsX;
-            y = LMenuRestoreCurY - si->Height + si->OffsY;
-        }
-        else
-        {
-            x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-            y = GameOpt.MouseY - si->Height + si->OffsY;
-        }
-        SprMngr.DrawSprite( CurPDef, x, y );
-        break;
-    case CUR_HAND:
-        CurDrawHand();
-        break;
-    default:
-        SetCurMode( CUR_DEFAULT );
-        break;
-    }
-}
-
 void FOClient::CurDrawHand()
 {
     if( !Chosen )
         return;
 
     SpriteInfo* si = NULL;
-    int x = 0, y = 0;
+    int         x = 0, y = 0;
 
-    if( GetActiveScreen() == SCREEN__INVENTORY )
-    {
-        if( IfaceHold && InvHoldId )
-        {
-            Item* item = Chosen->GetItem( InvHoldId );
-            if( !item )
-                return;
-            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
-            if( !anim )
-                return;
-            if( !( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) ) )
-                return;
-            x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-            y = GameOpt.MouseY - ( si->Height / 2 ) + si->OffsY;
-            SprMngr.DrawSprite( anim, x, y, item->GetInvColor() );
-        }
-        else
-        {
-DrawCurHand:
-            if( !( si = SprMngr.GetSpriteInfo( CurPHand->GetCurSprId() ) ) )
-                return;
-            x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-            y = GameOpt.MouseY - si->Height + si->OffsY;
-            SprMngr.DrawSprite( CurPHand, x, y );
-            return;
-        }
-    }
-    else if( GetActiveScreen() == SCREEN__BARTER )
+    if( GetActiveScreen() == SCREEN__BARTER )
     {
         if( IfaceHold && BarterHoldId )
         {
@@ -9602,7 +6337,7 @@ DrawCurHand:
             auto it = PtrCollectionFind( cont->begin(), cont->end(), BarterHoldId );
             if( it == cont->end() )
                 goto DrawCurHand;
-            Item* item = *it;
+            Item*      item = *it;
 
             AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
             if( !anim )
@@ -9633,8 +6368,13 @@ DrawCurHand:
             }
         }
     }
-    else
-        goto DrawCurHand;
+
+DrawCurHand:
+    if( !( si = SprMngr.GetSpriteInfo( CurPHand->GetCurSprId() ) ) )
+        return;
+    x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
+    y = GameOpt.MouseY - si->Height + si->OffsY;
+    SprMngr.DrawSprite( CurPHand, x, y );
 }
 
 // ==============================================================================================================================
@@ -9826,7 +6566,7 @@ void FOClient::ElevatorLMouseUp()
         {
             ElevatorAnswerDone = true;
             ElevatorSendAnswerTick = Timer::GameTick();
-            int diff = abs( (int) ElevatorCurrentLevel - int(ElevatorStartLevel + ElevatorSelectedButton) );
+            int        diff = abs( (int) ElevatorCurrentLevel - int(ElevatorStartLevel + ElevatorSelectedButton) );
             AnyFrames* anim = AnimGetFrames( ElevatorIndicatorAnim );
             if( anim )
                 ElevatorSendAnswerTick += anim->Ticks / anim->GetCnt() * ( anim->GetCnt() * Procent( ElevatorLevelsCount - 1, diff ) / 100 );
@@ -10166,7 +6906,6 @@ void FOClient::SplitClose( bool change )
     {
     case SCREEN__INVENTORY:
         IfaceHold = IFACE_NONE;
-        InvHoldId = 0;
 label_DropItems:
         if( !change )
             break;
@@ -10608,7 +7347,7 @@ void FOClient::FixGenerate( int fix_mode )
         MrFixit.GetShowCrafts( Chosen, true_crafts );
 
         SCraftVec scraft_vec;
-        UIntVec script_craft;
+        UIntVec   script_craft;
         for( uint i = 0, cur_height = 0; i < true_crafts.size(); ++i )
         {
             CraftItem* craft = true_crafts[ i ];
@@ -10621,7 +7360,7 @@ void FOClient::FixGenerate( int fix_mode )
             }
 
             Rect pos( FixWWin[ 0 ], FixWWin[ 1 ] + cur_height, FixWWin[ 2 ], FixWWin[ 1 ] + cur_height + 100 );
-            int line_height = SprMngr.GetLinesHeight( FixWWin.W(), 0, craft->Name->c_str() );
+            int  line_height = SprMngr.GetLinesHeight( FixWWin.W(), 0, craft->Name->c_str() );
 
             cur_height += line_height;
             pos.B = FixWWin[ 1 ] + cur_height;
@@ -10657,7 +7396,7 @@ void FOClient::FixGenerate( int fix_mode )
             return;
         }
 
-        SCraft* scraft = &( *cur_vec )[ FixCurCraft ];
+        SCraft*    scraft = &( *cur_vec )[ FixCurCraft ];
         CraftItem* craft = MrFixit.GetCraft( scraft->Num );
 
         if( !craft )
@@ -10666,9 +7405,9 @@ void FOClient::FixGenerate( int fix_mode )
             return;
         }
 
-        Rect r( FixWWin[ 0 ], FixWWin[ 1 ], FixWWin[ 2 ], FixWWin[ 1 ] );
+        Rect   r( FixWWin[ 0 ], FixWWin[ 1 ], FixWWin[ 2 ], FixWWin[ 1 ] );
         string str;
-        int x;
+        int    x;
 
         for( uint i = 0, j = (uint) FixDrawComp.size(); i < j; i++ )
             delete FixDrawComp[ i ];
@@ -10915,7 +7654,7 @@ void FOClient::FixDraw()
         for( uint i = 0, j = (uint) cur_vec->size(); i < j; i++ )
         {
             SCraft* scraft = &( *cur_vec )[ i ];
-            uint col = COLOR_TEXT;
+            uint    col = COLOR_TEXT;
             if( !scraft->IsTrue )
                 col = COLOR_TEXT_DRED;
             if( i == (uint) FixCurCraft )
@@ -11047,7 +7786,7 @@ void FOClient::FixLMouseUp()
             break;
 
         SCraft& craft = ( *cur_vec )[ FixCurCraft ];
-        uint num = craft.Num;
+        uint    num = craft.Num;
 
         FixResult = CRAFT_RESULT_NONE;
         FixGenerate( FIX_MODE_RESULT );
@@ -11304,7 +8043,7 @@ void FOClient::SaveLoadCollect()
         te_size = te_size * 16 + 4;
 
         // Picture data
-        uint pic_data_len;
+        uint     pic_data_len;
         UCharVec pic_data;
         FileSetPointer( f, 8 + crname_size + 7404 + 6944 + te_size, SEEK_SET );
         if( !FileRead( f, &pic_data_len, sizeof( pic_data_len ) ) )
@@ -11414,7 +8153,7 @@ void FOClient::SaveLoadFillDraft()
 {
     SaveLoadProcessDraft = false;
     SaveLoadDraftValid = false;
-    int w = 0, h = 0;
+    int           w = 0, h = 0;
     SDL_GetWindowSize( MainWindow, &w, &h );
     RenderTarget* rt = SprMngr.CreateRenderTarget( false, false, w, h, true );
     if( rt )

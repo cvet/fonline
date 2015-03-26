@@ -337,8 +337,6 @@ struct ClientScriptFunctions
     int CritterAnimation;
     int CritterAnimationSubstitute;
     int CritterAnimationFallout;
-    int FilenameLogfile;
-    int FilenameScreenshot;
     int CritterCheckMoveItem;
     int GetUseApCost;
     int GetAttackDistantion;

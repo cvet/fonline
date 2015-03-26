@@ -412,28 +412,13 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define ST_CHARISMA                  ( 3 )
 #define ST_INTELLECT                 ( 4 )
 #define ST_AGILITY                   ( 5 )
-#define ST_MAX_LIFE                  ( 7 )
 #define ST_ACTION_POINTS             ( 8 )
-#define ST_ARMOR_CLASS               ( 9 )
-#define ST_MELEE_DAMAGE              ( 10 )
 #define ST_CARRY_WEIGHT              ( 11 )
-#define ST_SEQUENCE                  ( 12 )
-#define ST_HEALING_RATE              ( 13 )
-#define ST_CRITICAL_CHANCE           ( 14 )
-#define ST_NORMAL_RESIST             ( 23 )
-#define ST_RADIATION_RESISTANCE      ( 30 )
-#define ST_POISON_RESISTANCE         ( 31 )
-#define ST_AGE                       ( 70 )
 #define ST_GENDER                    ( 71 )
 #define ST_CURRENT_HP                ( 72 )
-#define ST_POISONING_LEVEL           ( 73 )
-#define ST_RADIATION_LEVEL           ( 74 )
 #define ST_CURRENT_AP                ( 75 )
 #define ST_EXPERIENCE                ( 76 )
 #define ST_LEVEL                     ( 77 )
-#define ST_UNSPENT_SKILL_POINTS      ( 78 )
-#define ST_UNSPENT_PERKS             ( 79 )
-#define ST_KARMA                     ( 80 )
 #define ST_FOLLOW_CRIT               ( 81 )
 #define ST_REPLICATION_MONEY         ( 82 )
 #define ST_REPLICATION_COUNT         ( 83 )
@@ -465,7 +450,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define SKILL_BEGIN                  ( GameOpt.SkillBegin )
 #define SKILL_END                    ( GameOpt.SkillEnd )
 #define SKILL_COUNT                  ( SKILL_END - SKILL_BEGIN + 1 )
-#define MAX_SKILL_VAL                ( GameOpt.SkillMaxValue )
 #define SK_UNARMED                   ( 203 )
 #define SK_FIRST_AID                 ( 206 )
 #define SK_DOCTOR                    ( 207 )
@@ -477,12 +461,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define SK_REPAIR                    ( 213 )
 #define SK_SPEECH                    ( 214 )
 #define SK_BARTER                    ( 215 )
-
-// Tag skills
-#define TAG_SKILL1                   ( 226 )
-#define TAG_SKILL2                   ( 227 )
-#define TAG_SKILL3                   ( 228 )
-#define TAG_SKILL4                   ( 229 )
 
 // Timeouts
 #define TIMEOUT_BEGIN                ( GameOpt.TimeoutBegin )
@@ -496,10 +474,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define TB_BATTLE_TIMEOUT            ( 100000000 )
 #define TB_BATTLE_TIMEOUT_CHECK( to )         ( ( to ) > 10000000 )
 
-// Kills
-#define KILL_BEGIN                   ( GameOpt.KillBegin )
-#define KILL_END                     ( GameOpt.KillEnd )
-
 // Perks
 #define PERK_BEGIN                   ( GameOpt.PerkBegin )
 #define PERK_END                     ( GameOpt.PerkEnd )
@@ -508,19 +482,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define PE_MASTER_TRADER             ( 318 )
 #define PE_QUICK_POCKETS             ( 349 )
 
-// Addiction
-#define ADDICTION_BEGIN              ( GameOpt.AddictionBegin )
-#define ADDICTION_END                ( GameOpt.AddictionEnd )
-
-// Karma
-#define KARMA_BEGIN                  ( GameOpt.KarmaBegin )
-#define KARMA_END                    ( GameOpt.KarmaEnd )
-
 // Damages
-#define DAMAGE_BEGIN                 ( GameOpt.DamageBegin )
-#define DAMAGE_END                   ( GameOpt.DamageEnd )
-#define DAMAGE_POISONED              ( 500 )
-#define DAMAGE_RADIATED              ( 501 )
 #define DAMAGE_RIGHT_ARM             ( 503 )
 #define DAMAGE_LEFT_ARM              ( 504 )
 #define DAMAGE_RIGHT_LEG             ( 505 )
@@ -550,11 +512,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define MODE_NO_WALK                 ( 539 )
 #define MODE_NO_RUN                  ( 540 )
 #define MODE_NO_TALK                 ( 541 )
-
-// Traits
-#define TRAIT_BEGIN                  ( GameOpt.TraitBegin )
-#define TRAIT_END                    ( GameOpt.TraitEnd )
-#define TRAIT_COUNT                  ( TRAIT_END - TRAIT_BEGIN + 1 )
 
 // Reputation
 #define REPUTATION_BEGIN             ( GameOpt.ReputationBegin )

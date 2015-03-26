@@ -3877,8 +3877,7 @@ void FOServer::Process_LevelUp( Client* cl )
 
     for( int i = 0; i < count_skill_up; i++ )
     {
-        if( skills[ i * 2 ] >= SKILL_BEGIN && skills[ i * 2 ] <= SKILL_END && skills[ i * 2 + 1 ] && cl->Data.Params[ ST_UNSPENT_SKILL_POINTS ] > 0 &&
-            Script::PrepareContext( ServerFunctions.PlayerLevelUp, _FUNC_, cl->GetInfo() ) )
+        if( Script::PrepareContext( ServerFunctions.PlayerLevelUp, _FUNC_, cl->GetInfo() ) )
         {
             Script::SetArgObject( cl );
             Script::SetArgUInt( SKILL_OFFSET( skills[ i * 2 ] ) );
@@ -3888,8 +3887,7 @@ void FOServer::Process_LevelUp( Client* cl )
         }
     }
 
-    if( perk_up >= PERK_BEGIN && perk_up <= PERK_END && cl->Data.Params[ ST_UNSPENT_PERKS ] > 0 &&
-        Script::PrepareContext( ServerFunctions.PlayerLevelUp, _FUNC_, cl->GetInfo() ) )
+    if( Script::PrepareContext( ServerFunctions.PlayerLevelUp, _FUNC_, cl->GetInfo() ) )
     {
         Script::SetArgObject( cl );
         Script::SetArgUInt( -1 );
@@ -3897,9 +3895,6 @@ void FOServer::Process_LevelUp( Client* cl )
         Script::SetArgUInt( PERK_OFFSET( perk_up ) );
         Script::RunPrepared();
     }
-
-    cl->Send_Param( ST_UNSPENT_SKILL_POINTS );
-    cl->Send_Param( ST_UNSPENT_PERKS );
 }
 
 void FOServer::Process_CraftAsk( Client* cl )

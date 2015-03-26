@@ -91,7 +91,7 @@ bool FOServer::InitScriptSystem()
     PropertyRegistrator* registrators[ 1 ] = { new PropertyRegistrator( true, "Item" ) };
 
     // Init
-    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_SERVER, registrators ), "SERVER", AllowServerNativeCalls ) )
+    if( !Script::Init( new ScriptPragmaCallback( PRAGMA_SERVER, registrators ), "SERVER", AllowServerNativeCalls ) )
     {
         WriteLog( "Script System initialization failed.\n" );
         return false;
@@ -257,7 +257,7 @@ int FOServer::DialogGetParam( Critter* master, Critter* slave, uint index )
     {
         Script::SetArgObject( master );
         Script::SetArgObject( slave );
-        Script::SetArgUInt( index - ( Critter::ParametersOffset[ index ] ? Critter::ParametersMin[ index ] : 0 ) );
+        Script::SetArgUInt( index );
         if( Script::RunPrepared() )
             return Script::GetReturnedUInt();
     }
@@ -685,12 +685,6 @@ bool FOServer::ReloadMapperScripts()
 /* Wrapper functions                                                    */
 /************************************************************************/
 
-string FOServer::SScriptFunc::ScriptLastError = "No errors.";
-ScriptString* FOServer::SScriptFunc::Global_GetLastError()
-{
-    return ScriptString::Create( ScriptLastError );
-}
-
 int SortCritterHx = 0, SortCritterHy = 0;
 bool SortCritterByDistPred( Critter* cr1, Critter* cr2 )
 {
@@ -711,18 +705,15 @@ void SortCritterByDist( int hx, int hy, CrVec& critters )
 
 int* FOServer::SScriptFunc::DataRef_Index( CritterPtr& cr, uint index )
 {
-    static int dummy = 0;
     if( cr->IsNotValid )
-        SCRIPT_ERROR_RX( "This nulltptr.", &dummy );
+        SCRIPT_ERROR_R0( "This nulltptr." );
     if( index >= MAX_PARAMS )
-        SCRIPT_ERROR_RX( "Invalid index arg.", &dummy );
+        SCRIPT_ERROR_R0( "Invalid index arg (%d).", (int) index );
     uint data_index = ( ( uint ) & cr - ( uint ) & cr->ThisPtr[ 0 ] ) / sizeof( cr->ThisPtr[ 0 ] );
-    if( Critter::ParametersOffset[ data_index ] )
-        index += Critter::ParametersMin[ data_index ];
     if( index < Critter::ParametersMin[ data_index ] )
-        SCRIPT_ERROR_RX( "Index is less than minimum.", &dummy );
+        SCRIPT_ERROR_R0( "Index is less than minimum." );
     if( index > Critter::ParametersMax[ data_index ] )
-        SCRIPT_ERROR_RX( "Index is greater than maximum.", &dummy );
+        SCRIPT_ERROR_R0( "Index is greater than maximum." );
     cr->ChangeParam( index );
     return &cr->Data.Params[ index ];
 }
@@ -732,10 +723,8 @@ int FOServer::SScriptFunc::DataVal_Index( CritterPtr& cr, uint index )
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nulltptr." );
     if( index >= MAX_PARAMS )
-        SCRIPT_ERROR_R0( "Invalid index arg." );
+        SCRIPT_ERROR_R0( "Invalid index arg (%d).", (int) index );
     uint data_index = ( ( uint ) & cr - ( uint ) & cr->ThisPtr[ 0 ] ) / sizeof( cr->ThisPtr[ 0 ] );
-    if( Critter::ParametersOffset[ data_index ] )
-        index += Critter::ParametersMin[ data_index ];
     if( index < Critter::ParametersMin[ data_index ] )
         SCRIPT_ERROR_R0( "Index is less than minimum." );
     if( index > Critter::ParametersMax[ data_index ] )
@@ -1012,26 +1001,19 @@ void FOServer::SScriptFunc::Item_Animate( Item* item, uchar from_frm, uchar to_f
     {
         //	Critter* cr=CrMngr.GetCrit(item->ACC_CRITTER.Id);
         //	if(cr) cr->Send_AnimateItem(item,from_frm,to_frm);
-        //	else SCRIPT_ERROR("Critter not found, maybe client in offline.");
     }
     break;
     case ITEM_ACCESSORY_HEX:
     {
         Map* map = MapMngr.GetMap( item->AccHex.MapId );
-        if( !map )
-        {
-            SCRIPT_ERROR( "Map not found." );
-            break;
-        }
-        map->AnimateItem( item, from_frm, to_frm );
+        if( map )
+            map->AnimateItem( item, from_frm, to_frm );
     }
     break;
     case ITEM_ACCESSORY_CONTAINER:
         break;
     default:
-        WriteLogF( _FUNC_, " - Unknown accessory<%u>!", item->Accessory );
-        SCRIPT_ERROR( "Unknown accessory." );
-        return;
+        SCRIPT_ERROR_R( "Unknown accessory." );
     }
 }
 
@@ -1063,23 +1045,20 @@ void FOServer::SScriptFunc::Item_SetLexems( Item* item, ScriptString* lexems )
     case ITEM_ACCESSORY_HEX:
     {
         Map* map = MapMngr.GetMap( item->AccHex.MapId, false );
-        if( !map )
+        if( map )
         {
-            SCRIPT_ERROR( "Map not found." );
-            break;
-        }
-
-        ClVec players;
-        map->GetPlayers( players, false );
-        for( auto it = players.begin(), end = players.end(); it != end; ++it )
-        {
-            Client* cl = *it;
-            if( cl->IsOnline() && cl->CountIdVisItem( item->GetId() ) )
+            ClVec players;
+            map->GetPlayers( players, false );
+            for( auto it = players.begin(), end = players.end(); it != end; ++it )
             {
-                if( item->PLexems )
-                    cl->Send_ItemLexems( item );
-                else
-                    cl->Send_ItemLexemsNull( item );
+                Client* cl = *it;
+                if( cl->IsOnline() && cl->CountIdVisItem( item->GetId() ) )
+                {
+                    if( item->PLexems )
+                        cl->Send_ItemLexems( item );
+                    else
+                        cl->Send_ItemLexemsNull( item );
+                }
             }
         }
     }
@@ -1087,9 +1066,7 @@ void FOServer::SScriptFunc::Item_SetLexems( Item* item, ScriptString* lexems )
     case ITEM_ACCESSORY_CONTAINER:
         break;
     default:
-        WriteLogF( _FUNC_, " - Unknown accessory<%u>!", item->Accessory );
-        SCRIPT_ERROR( "Unknown accessory." );
-        return;
+        SCRIPT_ERROR_R( "Unknown accessory." );
     }
 }
 
@@ -2092,7 +2069,7 @@ void FOServer::SScriptFunc::Crit_SetFavoriteItem( Critter* cr, int slot, hash pi
         cr->Data.FavoriteItemPid[ SLOT_ARMOR ] = pid;
         break;
     default:
-        SCRIPT_ERROR( "Invalid slot arg." );
+        SCRIPT_ERROR_R( "Invalid slot arg." );
         break;
     }
 }
@@ -2110,8 +2087,7 @@ hash FOServer::SScriptFunc::Crit_GetFavoriteItem( Critter* cr, int slot )
     case SLOT_ARMOR:
         return cr->Data.FavoriteItemPid[ SLOT_ARMOR ];
     default:
-        SCRIPT_ERROR( "Invalid slot arg." );
-        break;
+        SCRIPT_ERROR_R0( "Invalid slot arg." );
     }
     return 0;
 }
@@ -3206,18 +3182,13 @@ void FOServer::SScriptFunc::Crit_SetInternalBag( Critter* cr, ScriptArray& pids,
         hash       pid = *(hash*) pids.At( i );
         ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
         if( !proto_item )
-        {
-            SCRIPT_ERROR( "Proto item not found, skip." );
             continue;
-        }
+
         uint min_count = ( min_counts ? *(uint*) min_counts->At( i ) : 1 );
         uint max_count = ( max_counts ? *(uint*) max_counts->At( i ) : 1 );
         uint slot = ( slots ? *(int*) slots->At( i ) : SLOT_INV );
         if( min_count > max_count )
-        {
-            SCRIPT_ERROR( "MIN count is greater than max count, skip." );
             continue;
-        }
 
         NpcBagItem& item = cr->Data.Bag[ i ];
         item.ItemPid = pid;
@@ -3904,9 +3875,9 @@ void FOServer::SScriptFunc::Map_EndTurnBased( Map* map )
 int FOServer::SScriptFunc::Map_GetTurnBasedSequence( Map* map, ScriptArray& critters_ids )
 {
     if( map->IsNotValid )
-        SCRIPT_ERROR_RX( "This nullptr.", -1 );
+        SCRIPT_ERROR_R0( "This nullptr." );
     if( !map->IsTurnBasedOn )
-        SCRIPT_ERROR_RX( "Map is not in turn based state.", -1 );
+        SCRIPT_ERROR_R0( "Map is not in turn based state." );
     Script::AppendVectorToArray( map->TurnSequence, &critters_ids );
     return ( map->TurnSequenceCur >= 0 && map->TurnSequenceCur < (int) map->TurnSequence.size() ) ? map->TurnSequenceCur : -1;
 }
@@ -4887,10 +4858,10 @@ uint FOServer::SScriptFunc::Location_GetMaps( Location* loc, ScriptArray* maps )
 bool FOServer::SScriptFunc::Location_GetEntrance( Location* loc, uint entrance, uint& map_index, uint& entire )
 {
     if( loc->IsNotValid )
-        SCRIPT_ERROR_RX( "This nullptr.", false );
+        SCRIPT_ERROR_R0( "This nullptr." );
 
     if( entrance >= loc->Proto->Entrance.size() )
-        SCRIPT_ERROR_RX( "Invalid entrance.", false );
+        SCRIPT_ERROR_R0( "Invalid entrance." );
 
     map_index = loc->Proto->Entrance[ entrance ].first;
     entire = loc->Proto->Entrance[ entrance ].second;
@@ -4958,11 +4929,11 @@ bool FOServer::SScriptFunc::Location_EventEnter( Location* loc, ScriptArray& gro
 uint FOServer::SScriptFunc::Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 )
 {
     if( cr1->IsNotValid )
-        SCRIPT_ERROR_RX( "Critter1 arg nullptr.", -1 );
+        SCRIPT_ERROR_R0( "Critter1 arg nullptr." );
     if( cr2->IsNotValid )
-        SCRIPT_ERROR_RX( "Critter2 arg nullptr.", -1 );
+        SCRIPT_ERROR_R0( "Critter2 arg nullptr." );
     if( cr1->GetMap() != cr2->GetMap() )
-        SCRIPT_ERROR_RX( "Differernt maps.", -1 );
+        SCRIPT_ERROR_R0( "Differernt maps." );
     return DistGame( cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY() );
 }
 
@@ -5261,7 +5232,7 @@ uint FOServer::SScriptFunc::Global_GetPlayerId( ScriptString& name )
 ScriptString* FOServer::SScriptFunc::Global_GetPlayerName( uint id )
 {
     if( !id )
-        return NULL;         // SCRIPT_ERROR_RX("Id arg is zero.",new CScriptString(""));
+        return NULL;         // SCRIPT_ERROR_R0("Id arg is zero.");
 
     if( Singleplayer )
     {
@@ -5273,7 +5244,7 @@ ScriptString* FOServer::SScriptFunc::Global_GetPlayerName( uint id )
     SCOPE_LOCK( ClientsDataLocker );
     ClientData* data = GetClientData( id );
     if( !data )
-        return NULL;           // SCRIPT_ERROR_RX("Player not found.",new CScriptString(""));
+        return NULL;           // SCRIPT_ERROR_R0("Player not found.");
     return ScriptString::Create( data->ClientName );
 }
 
@@ -6227,14 +6198,14 @@ uint FOServer::SScriptFunc::Global_GetCritterAlias( uint cr_type )
 ScriptString* FOServer::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Invalid critter type arg." );
     return ScriptString::Create( CritType::GetCritType( cr_type ).Name );
 }
 
 ScriptString* FOServer::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Invalid critter type arg." );
     return ScriptString::Create( CritType::GetSoundName( cr_type ) );
 }
 

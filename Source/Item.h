@@ -364,19 +364,22 @@ public:
         char AccBuffer[ 8 ];
     };
 
-    ushort& SortValue;
-    uchar&  Indicator;
-    hash&   PicMap;
-    hash&   PicInv;
-    uint&   Flags;
-    uchar&  Mode;
-    char&   LightIntensity;
-    uchar&  LightDistance;
-    uchar&  LightFlags;
-    uint&   LightColor;
+    #ifdef FONLINE_SERVER
     hash&   ScriptId;
-    uint&   Count;
-    uint&   Cost;
+    ushort& LockerComplexity;
+    #endif
+    ushort& SortValue;
+    uchar& Indicator;
+    hash&  PicMap;
+    hash&  PicInv;
+    uint&  Flags;
+    uchar& Mode;
+    char&   LightIntensity;
+    uchar& LightDistance;
+    uchar& LightFlags;
+    uint&  LightColor;
+    uint&  Count;
+    uint&  Cost;
     int&    Val0;
     int&    Val1;
     int&    Val2;
@@ -395,7 +398,6 @@ public:
     short&  TrapValue;
     uint&   LockerId;
     ushort& LockerCondition;
-    ushort& LockerComplexity;
     uint&   HolodiskNumber;
     ushort& RadioChannel;
     ushort& RadioFlags;

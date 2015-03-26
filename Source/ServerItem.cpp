@@ -217,9 +217,9 @@ void FOServer::OnSetItemCount( void* obj, Property* prop, void* cur_value, void*
     {
         item->Count = old;
         if( !item->IsStackable() )
-            Script::RaiseException( "Trying to change count of not stackable item" );
+            SCRIPT_ERROR_R( "Trying to change count of not stackable item." );
         else
-            Script::RaiseException( "Item count can't be zero or negative (%d)", (int) item->Count );
+            SCRIPT_ERROR_R( "Item count can't be zero or negative (%d).", (int) item->Count );
     }
 }
 

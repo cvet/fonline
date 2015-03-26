@@ -72,7 +72,6 @@ int       Critter::SlotDataSendScript[ 0x100 ] = { 0 };
 uint      Critter::ParamsChosenSendMask[ MAX_PARAMS ] = { 0 };
 uint      Critter::ParametersMin[ MAX_PARAMETERS_ARRAYS ] = { 0 };
 uint      Critter::ParametersMax[ MAX_PARAMETERS_ARRAYS ] = { MAX_PARAMS - 1, 0 };
-bool      Critter::ParametersOffset[ MAX_PARAMETERS_ARRAYS ] = { 0 };
 bool      Critter::SlotEnabled[ 0x100 ] = { true, true, true, true, 0 };
 
 Critter::Critter(): CritterIsNpc( false ), RefCounter( 1 ), IsNotValid( false ),
@@ -3155,7 +3154,7 @@ int Critter::GetParam( uint index )
     if( ParamsGetScript[ index ] && Script::PrepareContext( ParamsGetScript[ index ], _FUNC_, "" ) )
     {
         Script::SetArgObject( this );
-        Script::SetArgUInt( index - ( ParametersOffset[ index ] ? ParametersMin[ index ] : 0 ) );
+        Script::SetArgUInt( index );
         if( Script::RunPrepared() )
             return Script::GetReturnedUInt();
     }
@@ -3216,7 +3215,7 @@ void Critter::ProcessChangedParams()
                 if( Script::PrepareContext( CallChange[ i ], _FUNC_, GetInfo() ) )
                 {
                     Script::SetArgObject( this );
-                    Script::SetArgUInt( index - ( ParametersOffset[ index ] ? ParametersMin[ index ] : 0 ) );
+                    Script::SetArgUInt( index );
                     Script::SetArgUInt( CallChange[ i + 2 ] );
                     Script::RunPrepared();
                 }
@@ -3848,7 +3847,8 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
 
     // Lexems
     for( size_t i = 0, j = items_to_send.size(); i < j; i++ )
-        Send_ItemLexems( items_to_send[ i ] );
+        if( items_to_send[ i ]->PLexems )
+            Send_ItemLexems( items_to_send[ i ] );
 }
 
 void Client::Send_CritterItemProperty( Critter* from_cr, Item* item, Property* prop, void* property_data )

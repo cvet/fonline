@@ -19,21 +19,17 @@ void PropertyAccessor::GenericGet( void* obj, void* ret_value )
     {
         if( !prop->GetCallback )
         {
-            #ifndef FONLINE_SCRIPT_COMPILER
-            Script::RaiseException( "'Get' callback is not assigned for virtual property '%s %s::%s'",
-                                    prop->TypeName.c_str(), properties->registrator->scriptClassName.c_str(), prop->Name.c_str() );
-            #endif
             memzero( ret_value, prop->Size );
+            SCRIPT_ERROR_R( "'Get' callback is not assigned for virtual property '%s %s::%s'.",
+                            prop->TypeName.c_str(), properties->registrator->scriptClassName.c_str(), prop->Name.c_str() );
             return;
         }
 
         if( getCallbackLocked )
         {
-            #ifndef FONLINE_SCRIPT_COMPILER
-            Script::RaiseException( "Recursive call for virtual property '%s %s::%s'",
-                                    prop->TypeName.c_str(), properties->registrator->scriptClassName.c_str(), prop->Name.c_str() );
-            #endif
             memzero( ret_value, prop->Size );
+            SCRIPT_ERROR_R( "Recursive call for virtual property '%s %s::%s'.",
+                            prop->TypeName.c_str(), properties->registrator->scriptClassName.c_str(), prop->Name.c_str() );
             return;
         }
 

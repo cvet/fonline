@@ -15,7 +15,6 @@ bool CritterCl::ParamsRegEnabled[ MAX_PARAMS ] = { 0 };
 int  CritterCl::ParamsReg[ MAX_PARAMS ] = { 0 };
 uint CritterCl::ParametersMin[ MAX_PARAMETERS_ARRAYS ] = { 0 };
 uint CritterCl::ParametersMax[ MAX_PARAMETERS_ARRAYS ] = { MAX_PARAMS - 1 };
-bool CritterCl::ParametersOffset[ MAX_PARAMETERS_ARRAYS ] = { false };
 bool CritterCl::SlotEnabled[ 0x100 ] = { true, true, true, true, 0 };
 
 CritterCl::CritterCl()
@@ -578,7 +577,7 @@ int CritterCl::GetParam( uint index )
     if( ParamsGetScript[ index ] && Script::PrepareContext( ParamsGetScript[ index ], _FUNC_, GetInfo() ) )
     {
         Script::SetArgObject( this );
-        Script::SetArgUInt( index - ( ParametersOffset[ index ] ? ParametersMin[ index ] : 0 ) );
+        Script::SetArgUInt( index );
         if( Script::RunPrepared() )
             return Script::GetReturnedUInt();
     }
@@ -654,7 +653,7 @@ void CritterCl::ProcessChangedParams()
                 if( Script::PrepareContext( CallChange_[ i ], _FUNC_, GetInfo() ) )
                 {
                     Script::SetArgObject( this );
-                    Script::SetArgUInt( index - ( ParametersOffset[ index ] ? ParametersMin[ index ] : 0 ) );
+                    Script::SetArgUInt( index );
                     Script::SetArgUInt( CallChange_[ i + 2 ] );
                     Script::RunPrepared();
                 }

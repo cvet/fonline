@@ -495,15 +495,8 @@ public:
     static void ClearBruteForceEntire( uint ip, const char* name );
 
     // Script functions
-    #define SCRIPT_ERROR( error )          do { SScriptFunc::ScriptLastError = error; Script::LogError( _FUNC_, error ); } while( 0 )
-    #define SCRIPT_ERROR_RX( error, x )    do { SScriptFunc::ScriptLastError = error; Script::LogError( _FUNC_, error ); return x; } while( 0 )
-    #define SCRIPT_ERROR_R( error )        do { SScriptFunc::ScriptLastError = error; Script::LogError( _FUNC_, error ); return; } while( 0 )
-    #define SCRIPT_ERROR_R0( error )       do { SScriptFunc::ScriptLastError = error; Script::LogError( _FUNC_, error ); return 0; } while( 0 )
     struct SScriptFunc
     {
-        static string        ScriptLastError;
-        static ScriptString* Global_GetLastError();
-
         static int* DataRef_Index( CritterPtr& cr, uint index );
         static int  DataVal_Index( CritterPtr& cr, uint index );
 

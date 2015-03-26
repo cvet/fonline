@@ -497,7 +497,7 @@ bool FOClient::Init()
     // Begin game
     if( Str::Substring( CommandLine, "-Start" ) && !Singleplayer )
     {
-        LogTryConnect();
+        ConnectToGame();
     }
     // Intro
     else if( !Str::Substring( CommandLine, "-SkipIntro" ) )
@@ -1022,12 +1022,10 @@ int FOClient::MainLoop()
     {
         #ifdef FO_WINDOWS
         bool pause = SingleplayerData.Pause;
-
         if( !pause )
         {
             int main_screen = GetMainScreen();
-            if( ( main_screen != SCREEN_GAME && main_screen != SCREEN_GLOBAL_MAP && main_screen != SCREEN_WAIT ) ||
-                IsScreenPresent( SCREEN__MENU_OPTION ) )
+            if( ( main_screen != SCREEN_GAME && main_screen != SCREEN_GLOBAL_MAP && main_screen != SCREEN_WAIT ) || IsScreenPresent( SCREEN__MENU_OPTION ) )
                 pause = true;
         }
 
@@ -1091,7 +1089,6 @@ int FOClient::MainLoop()
     // Process
     SoundProcess();
     AnimProcess();
-    ConsoleProcess();
     IboxProcess();
     CHECK_MULTIPLY_WINDOWS1;
 
@@ -1497,9 +1494,7 @@ void FOClient::ParseMouse()
     if( Timer::GetAcceleratorNum() != ACCELERATE_NONE && !IsCurMode( CUR_WAIT ) )
     {
         int iface_hold = IfaceHold;
-        if( Timer::ProcessAccelerator( ACCELERATE_MESSBOX ) )
-            MessBoxLMouseDown();
-        else if( Timer::ProcessAccelerator( ACCELERATE_SPLIT_UP ) )
+        if( Timer::ProcessAccelerator( ACCELERATE_SPLIT_UP ) )
             SplitLMouseUp();
         else if( Timer::ProcessAccelerator( ACCELERATE_SPLIT_DOWN ) )
             SplitLMouseUp();
@@ -1511,10 +1506,6 @@ void FOClient::ParseMouse()
             UseLMouseUp();
         else if( Timer::ProcessAccelerator( ACCELERATE_USE_SCRDOWN ) )
             UseLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_INV_SCRUP ) )
-            InvLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_INV_SCRDOWN ) )
-            InvLMouseUp();
         else if( Timer::ProcessAccelerator( ACCELERATE_PUP_SCRUP1 ) )
             PupLMouseUp();
         else if( Timer::ProcessAccelerator( ACCELERATE_PUP_SCRDOWN1 ) )
@@ -1523,18 +1514,6 @@ void FOClient::ParseMouse()
             PupLMouseUp();
         else if( Timer::ProcessAccelerator( ACCELERATE_PUP_SCRDOWN2 ) )
             PupLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_CHA_SW_SCRUP ) )
-            ChaLMouseUp( false );
-        else if( Timer::ProcessAccelerator( ACCELERATE_CHA_SW_SCRDOWN ) )
-            ChaLMouseUp( false );
-        else if( Timer::ProcessAccelerator( ACCELERATE_CHA_PLUS ) )
-            ChaLMouseUp( false );
-        else if( Timer::ProcessAccelerator( ACCELERATE_CHA_MINUS ) )
-            ChaLMouseUp( false );
-        else if( Timer::ProcessAccelerator( ACCELERATE_CHA_AGE_UP ) )
-            ChaAgeLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_CHA_AGE_DOWN ) )
-            ChaAgeLMouseUp();
         else if( Timer::ProcessAccelerator( ACCELERATE_BARTER_CONT1SU ) )
             DlgLMouseUp( false );
         else if( Timer::ProcessAccelerator( ACCELERATE_BARTER_CONT1SD ) )
@@ -1676,46 +1655,7 @@ void FOClient::ProcessMouseWheel( int data )
     }
     else if( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW )
     {
-        Rect r = MessBoxCurRectDraw();
-        if( !r.IsZero() && IsCurInRect( r ) )
-        {
-            if( data > 0 )
-            {
-                if( GameOpt.MsgboxInvert && MessBoxScroll > 0 )
-                    MessBoxScroll--;
-                if( !GameOpt.MsgboxInvert && MessBoxScroll < MessBoxMaxScroll )
-                    MessBoxScroll++;
-                MessBoxGenerate();
-            }
-            else
-            {
-                if( GameOpt.MsgboxInvert && MessBoxScroll < MessBoxMaxScroll )
-                    MessBoxScroll++;
-                if( !GameOpt.MsgboxInvert && MessBoxScroll > 0 )
-                    MessBoxScroll--;
-                MessBoxGenerate();
-            }
-        }
-        else if( IsMainScreen( SCREEN_GAME ) )
-        {
-            if( IntVisible && Chosen && IsCurInRect( IntBItem ) )
-            {
-                bool send = false;
-                if( data > 0 )
-                    send = Chosen->NextRateItem( true );
-                else
-                    send = Chosen->NextRateItem( false );
-                if( send )
-                    Net_SendRateItem();
-            }
-
-            if( GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
-            {
-                HexMngr.ChangeZoom( data > 0 ? -1 : 1 );
-                RebuildLookBorders = true;
-            }
-        }
-        else if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
+        if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
         {
             GmapChangeZoom( (float) -data / 20.0f );
             if( IsCurInRect( GmapWTabs ) )
@@ -1750,24 +1690,6 @@ void FOClient::ProcessMouseWheel( int data )
                     if( GmapTabNextY && GmapTabsScrY > GmapWTab.H() * tabs_count )
                         GmapTabsScrY = GmapWTab.H() * tabs_count;
                 }
-            }
-        }
-    }
-    else if( screen == SCREEN__INVENTORY )
-    {
-        if( IsCurInRect( InvWInv, InvX, InvY ) )
-            ContainerWheelScroll( (int) InvCont.size(), InvWInv.H(), InvHeightItem, InvScroll, data );
-        else if( IsCurInRect( InvWText, InvX, InvY ) )
-        {
-            if( data > 0 )
-            {
-                if( InvItemInfoScroll > 0 )
-                    InvItemInfoScroll--;
-            }
-            else
-            {
-                if( InvItemInfoScroll < InvItemInfoMaxScroll )
-                    InvItemInfoScroll++;
             }
         }
     }
@@ -1809,26 +1731,6 @@ void FOClient::ProcessMouseWheel( int data )
             ContainerWheelScroll( (int) PupCont1.size(), PupWCont1.H(), PupHeightItem1, PupScroll1, data );
         else if( IsCurInRect( PupWCont2, PupX, PupY ) )
             ContainerWheelScroll( (int) PupCont2.size(), PupWCont2.H(), PupHeightItem2, PupScroll2, data );
-    }
-    else if( screen == SCREEN__CHARACTER )
-    {
-        if( data > 0 )
-        {
-            if( IsCurInRect( ChaTSwitch, ChaX, ChaY ) && ChaSwitchScroll[ ChaCurSwitch ] > 0 )
-                ChaSwitchScroll[ ChaCurSwitch ]--;
-        }
-        else
-        {
-            if( IsCurInRect( ChaTSwitch, ChaX, ChaY ) )
-            {
-                int               max_lines = ChaTSwitch.H() / 11;
-                SwitchElementVec& text = ChaSwitchText[ ChaCurSwitch ];
-                int&              scroll = ChaSwitchScroll[ ChaCurSwitch ];
-                if( scroll + max_lines < (int) text.size() )
-                    scroll++;
-            }
-        }
-
     }
     else if( screen == SCREEN__MINI_MAP )
     {
@@ -2429,7 +2331,7 @@ void FOClient::NetProcess()
                 WriteLog( "World loaded, enter to it.\n" );
             }
             NetDisconnect();
-            LogTryConnect();
+            ConnectToGame();
             InitNetReason = INIT_NET_REASON_LOGIN2;
             break;
 
@@ -3087,14 +2989,14 @@ void FOClient::Net_SendRuleGlobal( uchar command, uint param1, uint param2 )
     WaitPing();
 }
 
-void FOClient::Net_SendLevelUp( ushort perk_up )
+void FOClient::Net_SendLevelUp( ushort perk_up, int* params )
 {
     if( !Chosen )
         return;
 
     ushort count = 0;
-    for( uint i = 0; i < SKILL_COUNT; i++ )
-        if( ChaSkillUp[ i ] )
+    for( uint i = 0; i < MAX_PARAMS; i++ )
+        if( params && params[ i ] )
             count++;
     uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( count ) + sizeof( ushort ) * 2 * count + sizeof( perk_up );
 
@@ -3103,16 +3005,12 @@ void FOClient::Net_SendLevelUp( ushort perk_up )
 
     // Skills
     Bout << count;
-    for( uint i = 0; i < SKILL_COUNT; i++ )
+    for( uint i = 0; i < MAX_PARAMS; i++ )
     {
-        if( ChaSkillUp[ i ] )
+        if( params[ i ] )
         {
-            ushort skill_up = ChaSkillUp[ i ];
-            if( IsTagSkill( false, i + SKILL_BEGIN ) )
-                skill_up /= 2;
-
-            Bout << ushort( i + SKILL_BEGIN );
-            Bout << skill_up;
+            Bout << (ushort) i;
+            Bout << (ushort) params[ i ];
         }
     }
 
@@ -3264,21 +3162,6 @@ void FOClient::Net_OnLoginSuccess()
 
     if( !Singleplayer )
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_LOGINOK ) );
-
-    // Load console history
-    ConsoleHistory.clear();
-    string history_str = Crypt.GetCache( ( GameOpt.Name->c_std_str() + "_console" ).c_str() );
-    size_t pos = 0, prev = 0;
-    while( ( pos = history_str.find( "\n", prev ) ) != std::string::npos )
-    {
-        string history_part;
-        history_part.assign( &history_str.c_str()[ prev ], pos - prev );
-        ConsoleHistory.push_back( history_part );
-        prev = pos + 1;
-    }
-    while( ConsoleHistory.size() > GameOpt.ConsoleHistorySize )
-        ConsoleHistory.erase( ConsoleHistory.begin() );
-    ConsoleHistoryCur = (int) ConsoleHistory.size();
 
     // Set encrypt keys
     uint bin_seed, bout_seed;     // Server bin/bout == client bout/bin
@@ -4394,14 +4277,6 @@ void FOClient::Net_OnChosenParams()
     // Params
     Bin.Pop( (char*) Chosen->Params, sizeof( Chosen->Params ) );
 
-    // Process
-    if( Chosen->GetParam( TO_BATTLE ) )
-        AnimRun( IntWCombatAnim, ANIMRUN_SET_FRM( 244 ) );
-    else
-        AnimRun( IntWCombatAnim, ANIMRUN_SET_FRM( 0 ) );
-    if( IsScreenPresent( SCREEN__CHARACTER ) )
-        ChaPrepareSwitch();
-
     // Process all changed parameters
     for( int i = 0; i < MAX_PARAMS; i++ )
         Chosen->ChangeParam( i );
@@ -4454,22 +4329,6 @@ void FOClient::Net_OnChosenParam()
     case ST_CURRENT_AP:
     {
         Chosen->ApRegenerationTick = 0;
-    }
-    break;
-    case TO_BATTLE:
-    {
-        if( Chosen->GetParam( TO_BATTLE ) )
-        {
-            AnimRun( IntWCombatAnim, ANIMRUN_TO_END );
-            if( AnimGetCurSprCnt( IntWCombatAnim ) == 0 )
-                SndMngr.PlaySound( SND_COMBAT_MODE_ON );
-        }
-        else
-        {
-            AnimRun( IntWCombatAnim, ANIMRUN_FROM_END );
-            if( AnimGetCurSprCnt( IntWCombatAnim ) == AnimGetSprCount( IntWCombatAnim ) - 1 )
-                SndMngr.PlaySound( SND_COMBAT_MODE_OFF );
-        }
     }
     break;
     case OTHER_BREAK_TIME:
@@ -4563,9 +4422,8 @@ void FOClient::Net_OnChosenParam()
         break;
     }
 
-    if( IsScreenPresent( SCREEN__CHARACTER ) )
-        ChaPrepareSwitch();
-    RebuildLookBorders = true;     // Maybe changed some parameter influencing on look borders
+    // Maybe changed some parameter influencing on look borders
+    RebuildLookBorders = true;
 }
 
 void FOClient::Net_OnChosenClearItems()
@@ -6864,7 +6722,6 @@ Item* FOClient::GetTargetContItem()
                 return *it;                                                   \
         }                                                                     \
         while( 0 )
-    #define TRY_SEARCH_IN_SLOT( target_item )    do { if( target_item->GetId() == item_id ) { return target_item; } } while( 0 )
 
     uint item_id = TargetSmth.GetId();
     if( GetActiveScreen() != SCREEN_NONE )
@@ -6873,15 +6730,6 @@ Item* FOClient::GetTargetContItem()
         {
         case SCREEN__USE:
             TRY_SEARCH_IN_CONT( UseCont );
-            break;
-        case SCREEN__INVENTORY:
-            TRY_SEARCH_IN_CONT( InvCont );
-            if( Chosen )
-            {
-                Item* item = Chosen->GetItem( item_id );
-                if( item )
-                    TRY_SEARCH_IN_SLOT( item );
-            }
             break;
         case SCREEN__PICKUP:
             TRY_SEARCH_IN_CONT( PupCont1 );
@@ -7029,14 +6877,6 @@ void FOClient::CrittersProcess()
 
     if( IsMainScreen( SCREEN_GAME ) )
     {
-        // Timeout mode
-        if( !Chosen->GetParam( TO_BATTLE ) && AnimGetCurSprCnt( IntWCombatAnim ) > 0 )
-        {
-            AnimRun( IntWCombatAnim, ANIMRUN_FROM_END );
-            if( AnimGetCurSprCnt( IntWCombatAnim ) == AnimGetSprCount( IntWCombatAnim ) - 1 )
-                SndMngr.PlaySound( SND_COMBAT_MODE_OFF );
-        }
-
         // Roof Visible
         static int last_hx = 0;
         static int last_hy = 0;
@@ -8592,79 +8432,6 @@ void FOClient::FmtTextIntellect( char* str, ushort intellect )
     }
 }
 
-bool FOClient::SaveLogFile()
-{
-    DateTime dt;
-    Timer::GetCurrentDateTime( dt );
-    char     log_path[ MAX_FOPATH ];
-    Str::Format( log_path, "messbox_%04d.%02d.%02d_%02d-%02d-%02d.txt",
-                 dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
-
-    if( Script::PrepareContext( ClientFunctions.FilenameLogfile, _FUNC_, "Game" ) )
-    {
-        char*         str = log_path;
-        ScriptString* sstr = ScriptString::Create( str );
-        Script::SetArgObject( sstr );
-        if( Script::RunPrepared() )
-            Str::Copy( log_path, sstr->c_str() );
-        sstr->Release();
-    }
-
-    if( Str::Compare( log_path, "" ) )
-        return false;
-
-    FileManager::FormatPath( log_path );
-
-    void* f = FileOpen( log_path, true );
-    if( !f )
-        return false;
-
-    char   cur_mess[ MAX_FOTEXT ];
-    string fmt_log;
-    for( uint i = 0; i < MessBox.size(); ++i )
-    {
-        MessBoxMessage& m = MessBox[ i ];
-        // Skip
-        if( IsMainScreen( SCREEN_GAME ) && std::find( MessBoxFilters.begin(), MessBoxFilters.end(), m.Type ) != MessBoxFilters.end() )
-            continue;
-        // Concat
-        Str::Copy( cur_mess, m.Mess.c_str() );
-        Str::EraseWords( cur_mess, '|', ' ' );
-        fmt_log += MessBox[ i ].Time + string( cur_mess );
-    }
-
-    FileWrite( f, fmt_log.c_str(), (uint) fmt_log.length() );
-    FileClose( f );
-    return true;
-}
-
-bool FOClient::SaveScreenshot()
-{
-    DateTime dt;
-    Timer::GetCurrentDateTime( dt );
-    char     screen_path[ MAX_FOPATH ];
-    Str::Format( screen_path, "screen_%04d.%02d.%02d_%02d-%02d-%02d.jpg",
-                 dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
-
-    if( Script::PrepareContext( ClientFunctions.FilenameScreenshot, _FUNC_, "Game" ) )
-    {
-        char*         str = screen_path;
-        ScriptString* sstr = ScriptString::Create( str );
-        Script::SetArgObject( sstr );
-        if( Script::RunPrepared() )
-            Str::Copy( screen_path, sstr->c_str() );
-        sstr->Release();
-    }
-
-    if( Str::Compare( screen_path, "" ) )
-        return false;
-
-    FileManager::FormatPath( screen_path );
-    SprMngr.SaveTexture( NULL, screen_path, true );
-
-    return true;
-}
-
 void FOClient::SoundProcess()
 {
     // Ambient
@@ -9314,7 +9081,7 @@ bool FOClient::ReloadScripts()
 
     // Reinitialize engine
     Script::Finish();
-    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_CLIENT, registrators ), "CLIENT", true ) )
+    if( !Script::Init( new ScriptPragmaCallback( PRAGMA_CLIENT, registrators ), "CLIENT", true ) )
     {
         WriteLog( "Unable to start script engine.\n" );
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
@@ -9452,8 +9219,6 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.CritterAnimation, "critter_animation", "string@ %s(int,uint,uint,uint,uint&,uint&,int&,int&)" },
         { &ClientFunctions.CritterAnimationSubstitute, "critter_animation_substitute", "bool %s(int,uint,uint,uint,uint&,uint&,uint&)" },
         { &ClientFunctions.CritterAnimationFallout, "critter_animation_fallout", "bool %s(uint,uint&,uint&,uint&,uint&,uint&)" },
-        { &ClientFunctions.FilenameLogfile, "filename_logfile", "void %s( string& )" },
-        { &ClientFunctions.FilenameScreenshot, "filename_screenshot", "void %s( string& )" },
         { &ClientFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(CritterCl&,ItemCl&,uint8,ItemCl@)" },
         { &ClientFunctions.GetUseApCost, "get_use_ap_cost", "uint %s(CritterCl&,ItemCl&,uint8)" },
         { &ClientFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(CritterCl&,ItemCl&,uint8)" },
@@ -9546,26 +9311,17 @@ void SortCritterByDist( int hx, int hy, CritVec& critters )
     std::sort( critters.begin(), critters.end(), SortCritterByDistPred );
 }
 
-#define SCRIPT_ERROR( error )          do { ScriptLastError = error; Script::LogError( _FUNC_, error ); } while( 0 )
-#define SCRIPT_ERROR_RX( error, x )    do { ScriptLastError = error; Script::LogError( _FUNC_, error ); return x; } while( 0 )
-#define SCRIPT_ERROR_R( error )        do { ScriptLastError = error; Script::LogError( _FUNC_, error ); return; } while( 0 )
-#define SCRIPT_ERROR_R0( error )       do { ScriptLastError = error; Script::LogError( _FUNC_, error ); return 0; } while( 0 )
-static string ScriptLastError;
-
 int* FOClient::SScriptFunc::DataRef_Index( CritterClPtr& cr, uint index )
 {
-    static int dummy = 0;
     if( cr->IsNotValid )
-        SCRIPT_ERROR_RX( "This nulltptr.", &dummy );
+        SCRIPT_ERROR_R0( "This nulltptr." );
     if( index >= MAX_PARAMS )
-        SCRIPT_ERROR_RX( "Invalid index arg.", &dummy );
+        SCRIPT_ERROR_R0( "Invalid index arg." );
     uint data_index = (uint) ( ( (size_t) &cr - (size_t) &cr->ThisPtr[ 0 ] ) / sizeof( cr->ThisPtr[ 0 ] ) );
-    if( CritterCl::ParametersOffset[ data_index ] )
-        index += CritterCl::ParametersMin[ data_index ];
     if( index < CritterCl::ParametersMin[ data_index ] )
-        SCRIPT_ERROR_RX( "Index is less than minimum.", &dummy );
+        SCRIPT_ERROR_R0( "Index is less than minimum." );
     if( index > CritterCl::ParametersMax[ data_index ] )
-        SCRIPT_ERROR_RX( "Index is greater than maximum.", &dummy );
+        SCRIPT_ERROR_R0( "Index is greater than maximum." );
     return &cr->Params[ index ];
 }
 
@@ -9576,8 +9332,6 @@ int FOClient::SScriptFunc::DataVal_Index( CritterClPtr& cr, uint index )
     if( index >= MAX_PARAMS )
         SCRIPT_ERROR_R0( "Invalid index arg." );
     uint data_index = (uint) ( ( (size_t) &cr - (size_t) &cr->ThisPtr[ 0 ] ) / sizeof( cr->ThisPtr[ 0 ] ) );
-    if( CritterCl::ParametersOffset[ data_index ] )
-        index += CritterCl::ParametersMin[ data_index ];
     if( index < CritterCl::ParametersMin[ data_index ] )
         SCRIPT_ERROR_R0( "Index is less than minimum." );
     if( index > CritterCl::ParametersMax[ data_index ] )
@@ -9869,13 +9623,6 @@ bool FOClient::SScriptFunc::Item_IsDeteriorable( Item* item )
     return item->IsDeteriorable();
 }
 
-hash FOClient::SScriptFunc::Item_GetScriptId( Item* item )
-{
-    if( item->IsNotValid )
-        SCRIPT_ERROR_R0( "This nullptr." );
-    return item->ScriptId;
-}
-
 uchar FOClient::SScriptFunc::Item_GetType( Item* item )
 {
     if( item->IsNotValid )
@@ -9970,7 +9717,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         args.push_back( command.c_std_str() );
     }
     if( args.size() < 1 )
-        SCRIPT_ERROR_RX( "Empty custom call command.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Empty custom call command." );
 
     // Execute
     string cmd = args[ 0 ];
@@ -9978,7 +9725,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         *GameOpt.Name = args[ 1 ];
         Self->Password = args[ 2 ];
-        Self->LogTryConnect();
+        Self->ConnectToGame();
     }
     else if( cmd == "Register" )
     {
@@ -9995,26 +9742,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     else if( cmd == "DumpAtlases" )
     {
         SprMngr.DumpAtlases();
-    }
-    else if( cmd == "SaveLogFile" )
-    {
-        if( Self->SaveLogFile() )
-            return ScriptString::Create( "OK" );
-    }
-    else if( cmd == "SaveScreenshot" )
-    {
-        if( Self->SaveScreenshot() )
-            return ScriptString::Create( "OK" );
-    }
-    else if( cmd == "SwitchIntVisible" )
-    {
-        Self->IntVisible = !Self->IntVisible;
-        Self->MessBoxGenerate();
-    }
-    else if( cmd == "SwitchIntAddMess" )
-    {
-        Self->IntAddMess = !Self->IntAddMess;
-        Self->MessBoxGenerate();
     }
     else if( cmd == "SwitchShowTrack" )
     {
@@ -10236,23 +9963,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
             break;
         }
     }
-    else if( cmd == "IsCurInInterface" )
-    {
-        int x = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
-        int y = Str::AtoI( args.size() >= 3 ? args[ 2 ].c_str() : "0" );
-        int old_x = GameOpt.MouseX;
-        int old_y = GameOpt.MouseY;
-        GameOpt.MouseX = x;
-        GameOpt.MouseY = y;
-        bool result = false;
-        if( Self->IntVisible && Self->IsCurInRectNoTransp( Self->IntMainPic->GetCurSprId(), Self->IntWMain, 0, 0 ) )
-            result = true;
-        else if( Self->IntVisible && Self->IntAddMess && Self->IsCurInRectNoTransp( Self->IntPWAddMess->GetCurSprId(), Self->IntWAddMess, 0, 0 ) )
-            result = true;
-        GameOpt.MouseX = old_x;
-        GameOpt.MouseY = old_y;
-        return ScriptString::Create( result ? "true" : "false" );
-    }
     else if( cmd == "TryPickItemOnGround" )
     {
         Self->TryPickItemOnGround();
@@ -10264,10 +9974,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     else if( cmd == "LMenuDraw" )
     {
         Self->LMenuDraw();
-    }
-    else if( cmd == "CurDraw" )
-    {
-        Self->CurDraw();
     }
     else if( cmd == "CurDrawHand" )
     {
@@ -10284,12 +9990,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         uint  item_id = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
         Item* item = Self->Chosen->GetItem( item_id );
         Self->SplitStart( item, SLOT_GROUND );
-    }
-    else if( cmd == "InvItemInfo" )
-    {
-        if( args.size() >= 2 )
-            Self->InvItemInfo = "";
-        return ScriptString::Create( Self->InvItemInfo );
     }
     else if( cmd == "IsLMenu" )
     {
@@ -10311,9 +10011,55 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         Self->SaveLoadSave = false;
         Self->ShowScreen( SCREEN__SAVE_LOAD );
     }
+    else if( cmd == "AssignSkillPoints" )
+    {
+        int params[ MAX_PARAMS ];
+        memzero( params, sizeof( params ) );
+        for( size_t i = 1; i < args.size(); i += 2 )
+            params[ Str::AtoI( args[ i ].c_str() ) ] = Str::AtoI( args[ i + 1 ].c_str() );
+        Self->Net_SendLevelUp( 0xFFFF, params );
+    }
+    else if( cmd == "GmapHome" )
+    {
+        GmapOffsetX = Self->GmapWMap.W() / 2 + Self->GmapWMap[ 0 ] - (int) ( GmapGroupCurX / GmapZoom );
+        GmapOffsetY = Self->GmapWMap.H() / 2 + Self->GmapWMap[ 1 ] - (int) ( GmapGroupCurY / GmapZoom );
+        if( GmapOffsetX > Self->GmapWMap[ 0 ] )
+            GmapOffsetX = Self->GmapWMap[ 0 ];
+        if( GmapOffsetY > Self->GmapWMap[ 1 ] )
+            GmapOffsetY = Self->GmapWMap[ 1 ];
+        if( GmapOffsetX < Self->GmapWMap[ 2 ] - (int) ( GM_MAXX / GmapZoom ) )
+            GmapOffsetX = Self->GmapWMap[ 2 ] - (int) ( GM_MAXX / GmapZoom );
+        if( GmapOffsetY < Self->GmapWMap[ 3 ] - (int) ( GM_MAXY / GmapZoom ) )
+            GmapOffsetY = Self->GmapWMap[ 3 ] - (int) ( GM_MAXY / GmapZoom );
+    }
+    else if( cmd == "SaveLog" && args.size() == 3 )
+    {
+//              if( file_name == "" )
+//              {
+//                      DateTime dt;
+//                      Timer::GetCurrentDateTime(dt);
+//                      char     log_path[MAX_FOPATH];
+//                      Str::Format(log_path, "messbox_%04d.%02d.%02d_%02d-%02d-%02d.txt",
+//                              dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+//              }
+
+//              for (uint i = 0; i < MessBox.size(); ++i)
+//              {
+//                      MessBoxMessage& m = MessBox[i];
+//                      // Skip
+//                      if (IsMainScreen(SCREEN_GAME) && std::find(MessBoxFilters.begin(), MessBoxFilters.end(), m.Type) != MessBoxFilters.end())
+//                              continue;
+//                      // Concat
+//                      Str::Copy(cur_mess, m.Mess.c_str());
+//                      Str::EraseWords(cur_mess, '|', ' ');
+//                      fmt_log += MessBox[i].Time + string(cur_mess);
+//              }
+
+
+    }
     else
     {
-        SCRIPT_ERROR_RX( "Invalid custom call command.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Invalid custom call command." );
     }
     return ScriptString::Create();
 }
@@ -10385,11 +10131,11 @@ Item* FOClient::SScriptFunc::Global_GetItem( uint item_id )
 uint FOClient::SScriptFunc::Global_GetCrittersDistantion( CritterCl* cr1, CritterCl* cr2 )
 {
     if( !Self->HexMngr.IsMapLoaded() )
-        SCRIPT_ERROR_RX( "Map is not loaded.", -1 );
+        SCRIPT_ERROR_R0( "Map is not loaded." );
     if( cr1->IsNotValid )
-        SCRIPT_ERROR_RX( "Critter1 arg nullptr.", -1 );
+        SCRIPT_ERROR_R0( "Critter1 arg nullptr." );
     if( cr2->IsNotValid )
-        SCRIPT_ERROR_RX( "Critter2 arg nullptr.", -1 );
+        SCRIPT_ERROR_R0( "Critter2 arg nullptr." );
     return DistGame( cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY() );
 }
 
@@ -10565,20 +10311,6 @@ hash FOClient::SScriptFunc::Global_GetCurrentMapPid()
     return Self->CurMapPid;
 }
 
-uint FOClient::SScriptFunc::Global_GetMessageFilters( ScriptArray* filters )
-{
-    if( filters )
-        Script::AppendVectorToArray( Self->MessBoxFilters, filters );
-    return (uint) Self->MessBoxFilters.size();
-}
-
-void FOClient::SScriptFunc::Global_SetMessageFilters( ScriptArray* filters )
-{
-    Self->MessBoxFilters.clear();
-    if( filters )
-        Script::AssignScriptArrayInVector( Self->MessBoxFilters, filters );
-}
-
 void FOClient::SScriptFunc::Global_Message( ScriptString& msg )
 {
     Self->AddMess( FOMB_GAME, msg.c_str(), true );
@@ -10628,14 +10360,14 @@ void FOClient::SScriptFunc::Global_MapMessage( ScriptString& text, ushort hx, us
 ScriptString* FOClient::SScriptFunc::Global_GetMsgStr( int text_msg, uint str_num )
 {
     if( text_msg >= TEXTMSG_COUNT )
-        SCRIPT_ERROR_RX( "Invalid text msg arg.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Invalid text msg arg." );
     return ScriptString::Create( text_msg == TEXTMSG_HOLO ? Self->GetHoloText( str_num ) : Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
 }
 
 ScriptString* FOClient::SScriptFunc::Global_GetMsgStrSkip( int text_msg, uint str_num, uint skip_count )
 {
     if( text_msg >= TEXTMSG_COUNT )
-        SCRIPT_ERROR_RX( "Invalid text msg arg.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Invalid text msg arg." );
     return ScriptString::Create( text_msg == TEXTMSG_HOLO ? Self->GetHoloText( str_num ) : Self->CurLang.Msg[ text_msg ].GetStr( str_num, skip_count ) );
 }
 
@@ -10787,214 +10519,9 @@ void FOClient::SScriptFunc::Global_RefreshItemsCollection( int collection )
         Self->ProcessItemsCollection( ITEMS_PICKUP_FROM, Self->PupCont2Init, Self->PupCont2 );
         break;
     default:
-        SCRIPT_ERROR( "Invalid items collection." );
+        SCRIPT_ERROR_R( "Invalid items collection." );
         break;
     }
-}
-
-#define SCROLL_MESSBOX                  ( 0 )
-#define SCROLL_INVENTORY                ( 1 )
-#define SCROLL_INVENTORY_ITEM_INFO      ( 2 )
-#define SCROLL_PICKUP                   ( 3 )
-#define SCROLL_PICKUP_FROM              ( 4 )
-#define SCROLL_USE                      ( 5 )
-#define SCROLL_BARTER                   ( 6 )
-#define SCROLL_BARTER_OFFER             ( 7 )
-#define SCROLL_BARTER_OPPONENT          ( 8 )
-#define SCROLL_BARTER_OPPONENT_OFFER    ( 9 )
-#define SCROLL_GLOBAL_MAP_CITIES_X      ( 10 )
-#define SCROLL_GLOBAL_MAP_CITIES_Y      ( 11 )
-#define SCROLL_SPLIT_VALUE              ( 12 )
-#define SCROLL_TIMER_VALUE              ( 13 )
-#define SCROLL_PERK                     ( 14 )
-#define SCROLL_DIALOG_TEXT              ( 15 )
-#define SCROLL_MAP_ZOOM_VALUE           ( 16 )
-#define SCROLL_CHARACTER_PERKS          ( 17 )
-#define SCROLL_CHARACTER_KARMA          ( 18 )
-#define SCROLL_CHARACTER_KILLS          ( 19 )
-#define SCROLL_PIPBOY_STATUS            ( 20 )
-#define SCROLL_PIPBOY_STATUS_QUESTS     ( 21 )
-#define SCROLL_PIPBOY_STATUS_SCORES     ( 22 )
-#define SCROLL_PIPBOY_AUTOMAPS          ( 23 )
-#define SCROLL_PIPBOY_ARCHIVES          ( 24 )
-#define SCROLL_PIPBOY_ARCHIVES_INFO     ( 25 )
-
-int FOClient::SScriptFunc::Global_GetScroll( int scroll_element )
-{
-    switch( scroll_element )
-    {
-    case SCROLL_MESSBOX:
-        return Self->MessBoxScroll;
-    case SCROLL_INVENTORY:
-        return Self->InvScroll;
-    case SCROLL_INVENTORY_ITEM_INFO:
-        return Self->InvItemInfoScroll;
-    case SCROLL_PICKUP:
-        return Self->PupScroll1;
-    case SCROLL_PICKUP_FROM:
-        return Self->PupScroll2;
-    case SCROLL_USE:
-        return Self->UseScroll;
-    case SCROLL_BARTER:
-        return Self->BarterScroll1;
-    case SCROLL_BARTER_OFFER:
-        return Self->BarterScroll1o;
-    case SCROLL_BARTER_OPPONENT:
-        return Self->BarterScroll2;
-    case SCROLL_BARTER_OPPONENT_OFFER:
-        return Self->BarterScroll2o;
-    case SCROLL_GLOBAL_MAP_CITIES_X:
-        return Self->GmapTabsScrX;
-    case SCROLL_GLOBAL_MAP_CITIES_Y:
-        return Self->GmapTabsScrY;
-    case SCROLL_SPLIT_VALUE:
-        return Self->SplitValue;
-    case SCROLL_TIMER_VALUE:
-        return Self->TimerValue;
-    case SCROLL_PERK:
-        return Self->PerkScroll;
-    case SCROLL_DIALOG_TEXT:
-        return Self->DlgMainTextCur;
-    case SCROLL_MAP_ZOOM_VALUE:
-        return Self->LmapZoom;
-    case SCROLL_CHARACTER_PERKS:
-        return Self->ChaSwitchScroll[ CHA_SWITCH_PERKS ];
-    case SCROLL_CHARACTER_KARMA:
-        return Self->ChaSwitchScroll[ CHA_SWITCH_KARMA ];
-    case SCROLL_CHARACTER_KILLS:
-        return Self->ChaSwitchScroll[ CHA_SWITCH_KILLS ];
-    case SCROLL_PIPBOY_STATUS:
-        return Self->PipScroll[ PIP__STATUS ];
-    case SCROLL_PIPBOY_STATUS_QUESTS:
-        return Self->PipScroll[ PIP__STATUS_QUESTS ];
-    case SCROLL_PIPBOY_STATUS_SCORES:
-        return Self->PipScroll[ PIP__STATUS_SCORES ];
-    case SCROLL_PIPBOY_AUTOMAPS:
-        return Self->PipScroll[ PIP__AUTOMAPS ];
-    case SCROLL_PIPBOY_ARCHIVES:
-        return Self->PipScroll[ PIP__ARCHIVES ];
-    case SCROLL_PIPBOY_ARCHIVES_INFO:
-        return Self->PipScroll[ PIP__ARCHIVES_INFO ];
-    default:
-        break;
-    }
-    return 0;
-}
-
-int ContainerMaxScroll( int items_count, int cont_height, int item_height )
-{
-    int height_items = cont_height / item_height;
-    if( items_count <= height_items )
-        return 0;
-    return items_count - height_items;
-}
-
-void FOClient::SScriptFunc::Global_SetScroll( int scroll_element, int value )
-{
-    int* scroll = NULL;
-    int  min_value = 0;
-    int  max_value = 1000000000;
-    switch( scroll_element )
-    {
-    case SCROLL_MESSBOX:
-        scroll = &Self->MessBoxScroll;
-        max_value = Self->MessBoxMaxScroll;
-        break;
-    case SCROLL_INVENTORY:
-        scroll = &Self->InvScroll;
-        max_value = ContainerMaxScroll( (int) Self->InvCont.size(), Self->InvWInv.H(), Self->InvHeightItem );
-        break;
-    case SCROLL_INVENTORY_ITEM_INFO:
-        scroll = &Self->InvItemInfoScroll;
-        max_value = Self->InvItemInfoMaxScroll;
-        break;
-    case SCROLL_PICKUP:
-        scroll = &Self->PupScroll1;
-        max_value = ContainerMaxScroll( (int) Self->PupCont1.size(), Self->PupWCont1.H(), Self->PupHeightItem1 );
-        break;
-    case SCROLL_PICKUP_FROM:
-        scroll = &Self->PupScroll2;
-        max_value = ContainerMaxScroll( (int) Self->PupCont2.size(), Self->PupWCont2.H(), Self->PupHeightItem2 );
-        break;
-    case SCROLL_USE:
-        scroll = &Self->UseScroll;
-        max_value = ContainerMaxScroll( (int) Self->UseCont.size(), Self->UseWInv.H(), Self->UseHeightItem );
-        break;
-    case SCROLL_BARTER:
-        scroll = &Self->BarterScroll1;
-        max_value = ContainerMaxScroll( (int) Self->BarterCont1.size(), Self->BarterWCont1.H(), Self->BarterCont1HeightItem );
-        break;
-    case SCROLL_BARTER_OFFER:
-        scroll = &Self->BarterScroll1o;
-        max_value = ContainerMaxScroll( (int) Self->BarterCont1o.size(), Self->BarterWCont1o.H(), Self->BarterCont1oHeightItem );
-        break;
-    case SCROLL_BARTER_OPPONENT:
-        scroll = &Self->BarterScroll2;
-        max_value = ContainerMaxScroll( (int) Self->BarterCont2.size(), Self->BarterWCont2.H(), Self->BarterCont2HeightItem );
-        break;
-    case SCROLL_BARTER_OPPONENT_OFFER:
-        scroll = &Self->BarterScroll2o;
-        max_value = ContainerMaxScroll( (int) Self->BarterCont2o.size(), Self->BarterWCont2o.H(), Self->BarterCont2oHeightItem );
-        break;
-    case SCROLL_GLOBAL_MAP_CITIES_X:
-        scroll = &Self->GmapTabsScrX;
-        break;
-    case SCROLL_GLOBAL_MAP_CITIES_Y:
-        scroll = &Self->GmapTabsScrY;
-        break;
-    case SCROLL_SPLIT_VALUE:
-        scroll = &Self->SplitValue;
-        max_value = MAX_SPLIT_VALUE - 1;
-        break;
-    case SCROLL_TIMER_VALUE:
-        scroll = &Self->TimerValue;
-        min_value = TIMER_MIN_VALUE;
-        max_value = TIMER_MAX_VALUE;
-        break;
-    case SCROLL_PERK:
-        scroll = &Self->PerkScroll;
-        max_value = (int) Self->PerkCollection.size() - 1;
-        break;
-    case SCROLL_DIALOG_TEXT:
-        scroll = &Self->DlgMainTextCur;
-        max_value = Self->DlgMainTextLinesReal - Self->DlgMainTextLinesRect;
-        break;
-    case SCROLL_MAP_ZOOM_VALUE:
-        scroll = &Self->LmapZoom;
-        min_value = 2;
-        max_value = 13;
-        break;
-    case SCROLL_CHARACTER_PERKS:
-        scroll = &Self->ChaSwitchScroll[ CHA_SWITCH_PERKS ];
-        break;
-    case SCROLL_CHARACTER_KARMA:
-        scroll = &Self->ChaSwitchScroll[ CHA_SWITCH_KARMA ];
-        break;
-    case SCROLL_CHARACTER_KILLS:
-        scroll = &Self->ChaSwitchScroll[ CHA_SWITCH_KILLS ];
-        break;
-    case SCROLL_PIPBOY_STATUS:
-        scroll = &Self->PipScroll[ PIP__STATUS ];
-        break;
-    case SCROLL_PIPBOY_STATUS_QUESTS:
-        scroll = &Self->PipScroll[ PIP__STATUS_QUESTS ];
-        break;
-    case SCROLL_PIPBOY_STATUS_SCORES:
-        scroll = &Self->PipScroll[ PIP__STATUS_SCORES ];
-        break;
-    case SCROLL_PIPBOY_AUTOMAPS:
-        scroll = &Self->PipScroll[ PIP__AUTOMAPS ];
-        break;
-    case SCROLL_PIPBOY_ARCHIVES:
-        scroll = &Self->PipScroll[ PIP__ARCHIVES ];
-        break;
-    case SCROLL_PIPBOY_ARCHIVES_INFO:
-        scroll = &Self->PipScroll[ PIP__ARCHIVES_INFO ];
-        break;
-    default:
-        return;
-    }
-    *scroll = CLAMP( value, min_value, max_value );
 }
 
 uint FOClient::SScriptFunc::Global_GetDayTime( uint day_part )
@@ -11018,11 +10545,6 @@ void FOClient::SScriptFunc::Global_GetDayColor( uint day_part, uchar& r, uchar& 
         g = col[ 4 + day_part ];
         b = col[ 8 + day_part ];
     }
-}
-
-ScriptString* FOClient::SScriptFunc::Global_GetLastError()
-{
-    return ScriptString::Create( ScriptLastError );
 }
 
 ProtoItem* FOClient::SScriptFunc::Global_GetProtoItem( hash proto_id )
@@ -11412,12 +10934,6 @@ void FOClient::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& ini_opt
     if( index <= SLOT_ARMOR || index == SLOT_GROUND )
         SCRIPT_ERROR_R( "Invalid index arg." );
     CritterCl::SlotEnabled[ index ] = true;
-    SlotExt se;
-    se.Index = index;
-    se.IniName = Str::Duplicate( ini_option.c_str() );
-    if( se.IniName[ 0 ] )
-        Self->IfaceLoadRect( se.Region, se.IniName );
-    Self->SlotsExt.push_back( se );
 }
 
 void FOClient::SScriptFunc::Global_SetRegistrationParam( uint index, bool enabled )
@@ -11531,14 +11047,14 @@ uint FOClient::SScriptFunc::Global_GetCritterAlias( uint cr_type )
 ScriptString* FOClient::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Invalid critter type arg." );
     return ScriptString::Create( CritType::GetCritType( cr_type ).Name );
 }
 
 ScriptString* FOClient::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Invalid critter type arg." );
     return ScriptString::Create( CritType::GetSoundName( cr_type ) );
 }
 
@@ -11893,18 +11409,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
 {
     switch( screen )
     {
-    case SCREEN_LOGIN:
-        x = Self->LogX;
-        y = Self->LogY;
-        break;
-    case SCREEN_REGISTRATION:
-        x = Self->ChaX;
-        y = Self->ChaY;
-        break;
-    case SCREEN_GAME:
-        x = Self->IntX;
-        y = Self->IntY;
-        break;
     case SCREEN_GLOBAL_MAP:
         x = Self->GmapX;
         y = Self->GmapY;
@@ -11913,10 +11417,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
         x = 0;
         y = 0;
         break;
-    case SCREEN__INVENTORY:
-        x = Self->InvX;
-        y = Self->InvY;
-        break;
     case SCREEN__PICKUP:
         x = Self->PupX;
         y = Self->PupY;
@@ -11924,10 +11424,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
     case SCREEN__MINI_MAP:
         x = Self->LmapX;
         y = Self->LmapY;
-        break;
-    case SCREEN__CHARACTER:
-        x = Self->ChaX;
-        y = Self->ChaY;
         break;
     case SCREEN__DIALOG:
         x = Self->DlgX;
@@ -11944,10 +11440,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
     case SCREEN__FIX_BOY:
         x = Self->FixX;
         y = Self->FixY;
-        break;
-    case SCREEN__MENU_OPTION:
-        x = Self->MoptX;
-        y = Self->MoptY;
         break;
     case SCREEN__AIM:
         x = Self->AimX;
@@ -11972,18 +11464,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
     case SCREEN__SAY:
         x = Self->SayX;
         y = Self->SayY;
-        break;
-    case SCREEN__CHA_NAME:
-        x = Self->ChaNameX;
-        y = Self->ChaNameY;
-        break;
-    case SCREEN__CHA_AGE:
-        x = Self->ChaAgeX;
-        y = Self->ChaAgeY;
-        break;
-    case SCREEN__CHA_SEX:
-        x = Self->ChaSexX;
-        y = Self->ChaSexY;
         break;
     case SCREEN__GM_TOWN:
         x = 0;
@@ -12020,43 +11500,20 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
 {
     switch( screen )
     {
-    case SCREEN_LOGIN:
-        Self->LogDraw();
-        Self->MessBoxDraw();
-        break;
-    case SCREEN_REGISTRATION:
-        Self->ChaDraw( true );
-        Self->MessBoxDraw();
-        break;
     case SCREEN_CREDITS:
         Self->CreditsDraw();
         break;
-    case SCREEN_OPTIONS:
-        break;
-    case SCREEN_GAME:
-        Self->IntDraw();
-        Self->ConsoleDraw();
-        Self->MessBoxDraw();
-        break;
     case SCREEN_GLOBAL_MAP:
         Self->GmapDraw();
-        Self->ConsoleDraw();
-        Self->MessBoxDraw();
         break;
     case SCREEN_WAIT:
         Self->WaitDraw();
-        break;
-    case SCREEN__INVENTORY:
-        Self->InvDraw();
         break;
     case SCREEN__PICKUP:
         Self->PupDraw();
         break;
     case SCREEN__MINI_MAP:
         Self->LmapDraw();
-        break;
-    case SCREEN__CHARACTER:
-        Self->ChaDraw( false );
         break;
     case SCREEN__DIALOG:
         Self->DlgDraw( true );
@@ -12069,9 +11526,6 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
         break;
     case SCREEN__FIX_BOY:
         Self->FixDraw();
-        break;
-    case SCREEN__MENU_OPTION:
-        Self->MoptDraw();
         break;
     case SCREEN__AIM:
         Self->AimDraw();
@@ -12090,15 +11544,6 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
         break;
     case SCREEN__SAY:
         Self->SayDraw();
-        break;
-    case SCREEN__CHA_NAME:
-        Self->ChaNameDraw();
-        break;
-    case SCREEN__CHA_AGE:
-        Self->ChaAgeDraw();
-        break;
-    case SCREEN__CHA_SEX:
-        Self->ChaSexDraw();
         break;
     case SCREEN__GM_TOWN:
         Self->GmapTownDraw();
@@ -12133,34 +11578,16 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
 
     switch( screen )
     {
-    case SCREEN_LOGIN:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->LogLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->LogLMouseUp();
-        break;
-    case SCREEN_REGISTRATION:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->ChaLMouseDown( true );
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->ChaLMouseUp( true );
-        else if( move )
-            Self->ChaMouseMove( true );
-        break;
     case SCREEN_CREDITS:
         Self->TryExit();
         break;
-    case SCREEN_OPTIONS:
-        break;
     case SCREEN_GAME:
-        if( button == MOUSE_BUTTON_LEFT && down && Self->IntLMouseDown() == IFACE_NONE )
+        if( button == MOUSE_BUTTON_LEFT && down )
             Self->GameLMouseDown();
         else if( button == MOUSE_BUTTON_LEFT && !down && Self->IfaceHold == IFACE_NONE )
             Self->GameLMouseUp();
-        else if( button == MOUSE_BUTTON_LEFT && !down && Self->IfaceHold != IFACE_NONE )
-            Self->IntLMouseUp();
         else if( button == MOUSE_BUTTON_RIGHT && down )
-            Self->IntRMouseDown(), Self->GameRMouseDown();
+            Self->GameRMouseDown();
         else if( button == MOUSE_BUTTON_RIGHT && !down )
             Self->GameRMouseUp();
         else if( button == MOUSE_BUTTON_MIDDLE && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
@@ -12177,18 +11604,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->GmapRMouseUp();
         else if( move )
             Self->GmapMouseMove();
-        break;
-    case SCREEN_WAIT:
-        break;
-    case SCREEN__INVENTORY:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->InvLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->InvLMouseUp();
-        else if( button == MOUSE_BUTTON_RIGHT && down )
-            Self->InvRMouseDown();
-        else if( move )
-            Self->InvMouseMove();
         break;
     case SCREEN__PICKUP:
         if( button == MOUSE_BUTTON_LEFT && down )
@@ -12207,14 +11622,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->LmapLMouseUp();
         else if( move )
             Self->LmapMouseMove();
-        break;
-    case SCREEN__CHARACTER:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->ChaLMouseDown( false );
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->ChaLMouseUp( false );
-        else if( move )
-            Self->ChaMouseMove( false );
         break;
     case SCREEN__DIALOG:
         if( button == MOUSE_BUTTON_LEFT && down )
@@ -12253,12 +11660,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->FixLMouseUp();
         else if( move )
             Self->FixMouseMove();
-        break;
-    case SCREEN__MENU_OPTION:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->MoptLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->MoptLMouseUp();
         break;
     case SCREEN__AIM:
         if( button == MOUSE_BUTTON_LEFT && down )
@@ -12307,22 +11708,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->SayLMouseUp();
         else if( move )
             Self->SayMouseMove();
-        break;
-    case SCREEN__CHA_NAME:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->ChaNameLMouseDown();
-        break;
-    case SCREEN__CHA_AGE:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->ChaAgeLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->ChaAgeLMouseUp();
-        break;
-    case SCREEN__CHA_SEX:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->ChaSexLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->ChaSexLMouseUp();
         break;
     case SCREEN__GM_TOWN:
         if( button == MOUSE_BUTTON_LEFT && down )
@@ -12390,9 +11775,7 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
         break;
     }
 
-    if( button == MOUSE_BUTTON_LEFT && down && Self->MessBoxLMouseDown() )
-        Timer::StartAccelerator( ACCELERATE_MESSBOX );
-    else if( button == MOUSE_BUTTON_LEFT && !down )
+    if( button == MOUSE_BUTTON_LEFT && !down )
         Timer::StartAccelerator( ACCELERATE_NONE );
     else if( ( button == MOUSE_BUTTON_WHEEL_DOWN || button == MOUSE_BUTTON_WHEEL_UP ) && down )
         Self->ProcessMouseWheel( button == MOUSE_BUTTON_WHEEL_DOWN ? -1 : 1 );
@@ -12404,120 +11787,36 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenKey( int screen, uchar k
 {
     switch( screen )
     {
-    case SCREEN_LOGIN:
-        if( down )
-            Self->LogKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN_REGISTRATION:
-        break;
     case SCREEN_CREDITS:
         Self->TryExit();
         break;
-    case SCREEN_OPTIONS:
-        break;
     case SCREEN_GAME:
         if( down )
-            Self->GameKeyDown( key, text ? text->c_str() : "" ), Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN_GLOBAL_MAP:
-        if( down )
-            Self->GmapKeyDown( key, text ? text->c_str() : "" ), Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+            Self->GameKeyDown( key, text ? text->c_str() : "" );
         break;
     case SCREEN_WAIT:
         break;
-    case SCREEN__INVENTORY:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__PICKUP:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__MINI_MAP:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__CHARACTER:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
     case SCREEN__DIALOG:
         if( down )
-            Self->DlgKeyDown( true, key, text ? text->c_str() : "" ), Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+            Self->DlgKeyDown( true, key, text ? text->c_str() : "" );
         break;
     case SCREEN__BARTER:
         if( down )
-            Self->DlgKeyDown( false, key, text ? text->c_str() : "" ), Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__PIP_BOY:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__FIX_BOY:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__MENU_OPTION:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__AIM:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
+            Self->DlgKeyDown( false, key, text ? text->c_str() : "" );
         break;
     case SCREEN__SPLIT:
         if( down )
             Self->SplitKeyDown( key, text ? text->c_str() : "" );
         break;
-    case SCREEN__TIMER:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__DIALOGBOX:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__ELEVATOR:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
     case SCREEN__SAY:
         if( down )
             Self->SayKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__CHA_NAME:
-        if( down )
-            Self->ChaNameKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__CHA_AGE:
-        break;
-    case SCREEN__CHA_SEX:
-        break;
-    case SCREEN__GM_TOWN:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
         break;
     case SCREEN__INPUT_BOX:
         if( down )
             Self->IboxKeyDown( key, text ? text->c_str() : "" );
         else if( !down )
             Self->IboxKeyUp( key );
-        break;
-    case SCREEN__SKILLBOX:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__USE:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__PERK:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__TOWN_VIEW:
-        if( down )
-            Self->ConsoleKeyDown( key, text ? text->c_str() : "" );
         break;
     case SCREEN__SAVE_LOAD:
         break;
@@ -12526,10 +11825,7 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenKey( int screen, uchar k
     }
 
     if( !down )
-    {
-        Self->ConsoleKeyUp( key );
         Timer::StartAccelerator( ACCELERATE_NONE );
-    }
 }
 
 bool FOClient::SScriptFunc::Global_GetHexPos( ushort hx, ushort hy, int& x, int& y )
@@ -12620,14 +11916,30 @@ void FOClient::SScriptFunc::Global_ChangeCursor( int cursor, uint context_id )
     Self->SetCurMode( cursor );
 }
 
-bool FOClient::SScriptFunc::Global_SaveScreenshot()
+bool FOClient::SScriptFunc::Global_SaveScreenshot( ScriptString& file_path )
 {
-    return Self->SaveScreenshot();
+    char screen_path[ MAX_FOPATH ];
+    Str::Copy( screen_path, file_path.c_str() );
+    FileManager::FormatPath( screen_path );
+
+    SprMngr.SaveTexture( NULL, screen_path, true );
+    return true;
 }
 
-bool FOClient::SScriptFunc::Global_SaveLogFile()
+bool FOClient::SScriptFunc::Global_SaveText( ScriptString& file_path, ScriptString& text )
 {
-    return Self->SaveLogFile();
+    char text_path[ MAX_FOPATH ];
+    Str::Copy( text_path, file_path.c_str() );
+    FileManager::FormatPath( text_path );
+
+    void* f = FileOpen( text_path, true );
+    if( !f )
+        return false;
+
+    if( text.length() > 0 )
+        FileWrite( f, text.c_str(), (uint) text.length() );
+    FileClose( f );
+    return true;
 }
 
 void FOClient::SScriptFunc::Global_SetCacheData( const ScriptString& name, const ScriptArray& data )
@@ -12691,7 +12003,6 @@ void FOClient::SScriptFunc::Global_SetUserConfig( ScriptArray& key_values )
     cfg_user.SaveOutBufToFile( cfg_name, PT_CACHE );
 }
 
-bool&  FOClient::SScriptFunc::ConsoleActive = FOClient::ConsoleActive;
 bool&  FOClient::SScriptFunc::GmapActive = FOClient::GmapActive;
 bool&  FOClient::SScriptFunc::GmapWait = FOClient::GmapWait;
 float& FOClient::SScriptFunc::GmapZoom = FOClient::GmapZoom;

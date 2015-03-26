@@ -513,7 +513,6 @@ public:
         static void          Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name );
         static void          Global_ChangeZoom( float target_zoom );
 
-        static ScriptString* Global_GetLastError();
         static void          Global_Message( ScriptString& msg );
         static void          Global_MessageMsg( int text_msg, uint str_num );
         static void          Global_MapMessage( ScriptString& text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy );

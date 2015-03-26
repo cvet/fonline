@@ -5277,7 +5277,7 @@ bool FOMapper::InitScriptSystem()
     PropertyRegistrator* registrators[ 1 ] = { new PropertyRegistrator( false, "ItemCl" ) };
 
     // Init
-    if( !Script::Init( false, new ScriptPragmaCallback( PRAGMA_MAPPER, registrators ), "MAPPER", true ) )
+    if( !Script::Init( new ScriptPragmaCallback( PRAGMA_MAPPER, registrators ), "MAPPER", true ) )
     {
         WriteLog( "Script system initialization fail.\n" );
         return false;
@@ -5400,12 +5400,6 @@ void FOMapper::DrawIfaceLayer( uint layer )
     }
 }
 
-#define SCRIPT_ERROR( error )          do { ScriptLastError = error; Script::LogError( _FUNC_, error ); } while( 0 )
-#define SCRIPT_ERROR_RX( error, x )    do { ScriptLastError = error; Script::LogError( _FUNC_, error ); return x; } while( 0 )
-#define SCRIPT_ERROR_R( error )        do { ScriptLastError = error; Script::LogError( _FUNC_, error ); return; } while( 0 )
-#define SCRIPT_ERROR_R0( error )       do { ScriptLastError = error; Script::LogError( _FUNC_, error ); return 0; } while( 0 )
-static string ScriptLastError;
-
 ScriptString* FOMapper::SScriptFunc::MapperObject_get_ScriptName( MapObject& mobj )
 {
     return ScriptString::Create( mobj.ScriptName );
@@ -5456,15 +5450,15 @@ void FOMapper::SScriptFunc::MapperObject_set_Critter_Cond( MapObject& mobj, ucha
 ScriptString* FOMapper::SScriptFunc::MapperObject_get_PicMap( MapObject& mobj )
 {
     if( mobj.MapObjType != MAP_OBJECT_ITEM && mobj.MapObjType != MAP_OBJECT_SCENERY )
-        SCRIPT_ERROR_RX( "Map object is not item or scenery.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Map object is not item or scenery." );
     if( mobj.RunTime.PicMapName[ 0 ] )
         return ScriptString::Create( mobj.RunTime.PicMapName );
     ProtoItem* proto_item = ItemMngr.GetProtoItem( mobj.ProtoId );
     if( !proto_item )
-        SCRIPT_ERROR_RX( "Proto item not found.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Proto item not found." );
     const char* name = Str::GetName( proto_item->PicMap );
     if( !name )
-        SCRIPT_ERROR_RX( "Name not found.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Name not found." );
     return ScriptString::Create( name );
 }
 
@@ -5479,16 +5473,16 @@ void FOMapper::SScriptFunc::MapperObject_set_PicMap( MapObject& mobj, ScriptStri
 ScriptString* FOMapper::SScriptFunc::MapperObject_get_PicInv( MapObject& mobj )
 {
     if( mobj.MapObjType != MAP_OBJECT_ITEM && mobj.MapObjType != MAP_OBJECT_SCENERY )
-        SCRIPT_ERROR_RX( "Map object is not item or scenery.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Map object is not item or scenery." );
     return ScriptString::Create( mobj.RunTime.PicInvName );
     if( mobj.RunTime.PicMapName[ 0 ] )
         return ScriptString::Create( mobj.RunTime.PicInvName );
     ProtoItem* proto_item = ItemMngr.GetProtoItem( mobj.ProtoId );
     if( !proto_item )
-        SCRIPT_ERROR_RX( "Proto item not found.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Proto item not found." );
     const char* name = Str::GetName( proto_item->PicInv );
     if( !name )
-        SCRIPT_ERROR_RX( "Name not found.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Name not found." );
     return ScriptString::Create( name );
 }
 
@@ -5599,9 +5593,9 @@ void FOMapper::SScriptFunc::MapperObject_MoveToDir( MapObject& mobj, uchar dir )
 ScriptString* FOMapper::SScriptFunc::MapperObject_CritterParam_Index( MapObject& mobj, uint index )
 {
     if( index >= MAX_PARAMS )
-        SCRIPT_ERROR_RX( "Invalid index arg.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Invalid index arg." );
     if( mobj.MapObjType != MAP_OBJECT_CRITTER )
-        SCRIPT_ERROR_RX( "Mapper object is not critter.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Mapper object is not critter." );
     if( !mobj.MCritter.Params )
         mobj.AllocateCritterParams();
     return mobj.MCritter.Params[ index ];
@@ -5865,9 +5859,9 @@ void FOMapper::SScriptFunc::MapperMap_AddTileHash( ProtoMap& pmap, ushort hx, us
 ScriptString* FOMapper::SScriptFunc::MapperMap_GetTileName( ProtoMap& pmap, ushort hx, ushort hy, bool roof, int layer )
 {
     if( hx >= pmap.Header.MaxHexX )
-        SCRIPT_ERROR_RX( "Invalid hex x arg.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Invalid hex x arg." );
     if( hy >= pmap.Header.MaxHexY )
-        SCRIPT_ERROR_RX( "Invalid hex y arg.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Invalid hex y arg." );
 
     ProtoMap::TileVec& tiles = pmap.GetTiles( hx, hy, roof );
     for( size_t i = 0, j = tiles.size(); i < j; i++ )
@@ -6421,11 +6415,6 @@ void FOMapper::SScriptFunc::Global_TabSetName( int tab, ScriptString* tab_name )
         SCRIPT_ERROR_R( "Wrong tab arg." );
 
     Self->TabsName[ tab ] = ( tab_name ? tab_name->c_std_str() : "" );
-}
-
-ScriptString* FOMapper::SScriptFunc::Global_GetLastError()
-{
-    return ScriptString::Create( ScriptLastError );
 }
 
 ProtoItem* FOMapper::SScriptFunc::Global_GetProtoItem( hash proto_id )
@@ -7212,13 +7201,13 @@ uint FOMapper::SScriptFunc::Global_GetCritterAlias( uint cr_type )
 ScriptString* FOMapper::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Invalid critter type arg." );
     return ScriptString::Create( CritType::GetCritType( cr_type ).Name );
 }
 
 ScriptString* FOMapper::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_RX( "Invalid critter type arg.", ScriptString::Create() );
+        SCRIPT_ERROR_R0( "Invalid critter type arg." );
     return ScriptString::Create( CritType::GetSoundName( cr_type ) );
 }

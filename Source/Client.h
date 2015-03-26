@@ -152,7 +152,7 @@ public:
     void Net_SendText( const char* send_str, uchar how_say );
     void Net_SendDir();
     void Net_SendMove( UCharVec steps );
-    void Net_SendLevelUp( ushort perk_up );
+    void Net_SendLevelUp( ushort perk_up, int* params );
     void Net_SendCraftAsk( UIntVec numbers );
     void Net_SendCraft( uint craft_num );
     void Net_SendPing( uchar ping );
@@ -242,9 +242,6 @@ public:
     void OnMapText( const char* str, ushort hx, ushort hy, uint color, ushort intellect );
 
     void WaitPing();
-
-    bool SaveLogFile();
-    bool SaveScreenshot();
 
     UCharVec MoveDirs;
     ushort   MoveLastHx, MoveLastHy;
@@ -544,7 +541,6 @@ public:
 
         static bool  Item_IsStackable( Item* item );
         static bool  Item_IsDeteriorable( Item* item );
-        static hash  Item_GetScriptId( Item* item );
         static uchar Item_GetType( Item* item );
         static hash  Item_GetProtoId( Item* item );
         static uint  Item_GetCount( Item* item );
@@ -576,8 +572,6 @@ public:
         static uint          Global_GetTurnBasedTime();
 
         static hash          Global_GetCurrentMapPid();
-        static uint          Global_GetMessageFilters( ScriptArray* filters );
-        static void          Global_SetMessageFilters( ScriptArray* filters );
         static void          Global_Message( ScriptString& msg );
         static void          Global_MessageType( ScriptString& msg, int type );
         static void          Global_MessageMsg( int text_msg, uint str_num );
@@ -597,12 +591,9 @@ public:
         static void          Global_LockScreenScroll( CritterCl* cr, bool unlock_if_same );
         static int           Global_GetFog( ushort zone_x, ushort zone_y );
         static void          Global_RefreshItemsCollection( int collection );
-        static int           Global_GetScroll( int scroll_element );
-        static void          Global_SetScroll( int scroll_element, int value );
         static uint          Global_GetDayTime( uint day_part );
         static void          Global_GetDayColor( uint day_part, uchar& r, uchar& g, uchar& b );
 
-        static ScriptString* Global_GetLastError();
         static ProtoItem*    Global_GetProtoItem( hash proto_id );
         static uint          Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static void          Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
@@ -676,8 +667,8 @@ public:
         static void          Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text );
         static void          Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name );
         static void          Global_ChangeZoom( float target_zoom );
-        static bool          Global_SaveScreenshot();
-        static bool          Global_SaveLogFile();
+        static bool          Global_SaveScreenshot( ScriptString& file_path );
+        static bool          Global_SaveText( ScriptString& file_path, ScriptString& text );
         static void          Global_SetCacheData( const ScriptString& name, const ScriptArray& data );
         static void          Global_SetCacheDataSize( const ScriptString& name, const ScriptArray& data, uint data_size );
         static bool          Global_GetCacheData( const ScriptString& name, ScriptArray& data );
@@ -687,7 +678,6 @@ public:
         static void          Global_EraseCacheData( const ScriptString& name );
         static void          Global_SetUserConfig( ScriptArray& key_values );
 
-        static bool&         ConsoleActive;
         static bool&         GmapActive, & GmapWait;
         static float&        GmapZoom;
         static int&          GmapOffsetX, & GmapOffsetY;
@@ -736,60 +726,9 @@ public:
     void  CollectContItems();
     void  ProcessItemsCollection( int collection, ItemVec& init_items, ItemVec& result );
     void  UpdateContLexems( ItemVec& cont, uint item_id, const char* lexems );
-
-/************************************************************************/
-/* Console                                                              */
-/************************************************************************/
-    AnyFrames*  ConsolePic;
-    int         ConsolePicX, ConsolePicY, ConsoleTextX, ConsoleTextY;
-    static bool ConsoleActive;
-    string      ConsoleStr;
-    uint        ConsoleCur;
-    StrVec      ConsoleHistory;
-    int         ConsoleHistoryCur;
-    uchar       ConsoleLastKey;
-    string      ConsoleLastKeyText;
-
-    void ConsoleDraw();
-    void ConsoleKeyDown( uchar dik, const char* dik_text );
-    void ConsoleKeyUp( uchar dik );
-    void ConsoleProcess();
-
-/************************************************************************/
-/* Inventory                                                            */
-/************************************************************************/
-    int InvFocus;
-    #define INVF_NONE           ( 0 )
-    #define INVF_RAD_CHANNEL    ( 1 )
-
-    AnyFrames* InvPWMain, * InvPBOkDw, * InvPBOkUp, * InvPBScrUpDw, * InvPBScrUpUp,
-    * InvPBScrUpOff, * InvPBScrDwDw, * InvPBScrDwUp, * InvPBScrDwOff;
-    uint       InvHoldId;
-    string     InvItemInfo;
-    int        InvItemInfoScroll, InvItemInfoMaxScroll;
-    int        InvScroll;
-    int        InvX, InvY;
-    Rect       InvWMain, InvWChosen;
-    int        InvHeightItem;
-    Rect       InvWInv, InvWSlot1, InvWSlot2, InvWArmor;
-    Rect       InvBScrUp, InvBScrDn, InvBOk;
-    Rect       InvWText;
-    int        InvVectX, InvVectY;
-    // Extended slots
-    struct SlotExt
-    {
-        int   Index;
-        char* IniName;
-        Rect  Region;
-    };
-    typedef vector< SlotExt > SlotExtVec;
-    SlotExtVec SlotsExt;
-
-    void InvDraw();
-    void InvMouseMove();
-    void InvLMouseDown();
-    void InvLMouseUp();
-    void InvRMouseDown();
+    void  ConnectToGame();
+    void  RegGenParams();
+    bool  RegCheckData();
 
 /************************************************************************/
 /* Use                                                                  */
@@ -835,40 +774,6 @@ public:
     void GameRMouseUp();
 
 /************************************************************************/
-/* Main iface                                                           */
-/************************************************************************/
-    AnyFrames* IntMainPic, * IntPWAddMess, * IntPBAddMessDn, * IntPBMessFilter1Dn, * IntPBMessFilter2Dn, * IntPBMessFilter3Dn,
-    * IntPBScrUpDn, * IntPBScrDnDn, * IntPBSlotsDn,
-    * IntPBInvDn, * IntPBMenuDn, * IntPBSkillDn, * IntPBMapDn, * IntPBChaDn, * IntPBPipDn, * IntPBFixDn,
-    * IntDiodeG, * IntDiodeY, * IntDiodeR, * IntBreakTimePic, * IntWApCostPicNone;
-
-    int        IntX, IntY;
-    bool       IntVisible, IntAddMess;
-    Rect       IntWMain, IntWAddMess, IntBAddMess, IntBMessFilter1, IntBMessFilter2, IntBMessFilter3;
-    Rect       IntBItem, IntWApCost;
-    Rect       IntBChangeSlot, IntBInv, IntBMenu, IntBSkill, IntBMap, IntBChar, IntBPip, IntBFix;
-    Rect       IntWMess, IntWMessLarge;
-    Rect       IntAP, IntHP, IntAC, IntBreakTime;
-    int        IntAPstepX, IntAPstepY, IntAPMax;
-    AnyFrames* IntBItemPicDn;
-    int        IntBItemOffsX, IntBItemOffsY;
-    AnyFrames* IntAimPic;
-    int        IntAimX, IntAimY;
-    int        IntUseX, IntUseY;
-    AnyFrames* IntBCombatTurnPicDown, * IntBCombatEndPicDown;
-    uint       IntWCombatAnim;
-    Rect       IntWCombat, IntBCombatTurn, IntBCombatEnd;
-
-    Rect       IntWAmmoCount, IntWWearProcent, IntWAmmoCountStr, IntWWearProcentStr;
-    PointVec   IntAmmoPoints, IntWearPoints;
-    uint       IntAmmoTick, IntWearTick;
-
-    void IntDraw();
-    int  IntLMouseDown();
-    void IntRMouseDown();
-    void IntLMouseUp();
-
-/************************************************************************/
 /* LMenu                                                                */
 /************************************************************************/
     AnyFrames* LmenuPTalkOff, * LmenuPTalkOn, * LmenuPLookOff, * LmenuPLookOn, * LmenuPBreakOff, * LmenuPBreakOn,
@@ -901,22 +806,6 @@ public:
     void LMenuDraw();
     void LMenuMouseMove();
     void LMenuMouseUp();
-
-/************************************************************************/
-/* Login                                                                */
-/************************************************************************/
-    AnyFrames* LogPMain, * LogPSingleplayerMain, * LogPBLogin, * LogPBReg, * LogPBOptions, * LogPBCredits, * LogPBExit;
-    int        LogFocus;
-
-    int        LogX, LogY;
-    Rect       LogMain, LogWName, LogWPass, LogBOk, LogBOkText, LogBOptions, LogBOptionsText, LogBCredits, LogBCreditsText,
-               LogBReg, LogBRegText, LogBExit, LogBExitText, LogWChat, LogWVersion;
-
-    void LogDraw();
-    void LogKeyDown( uchar dik, const char* dik_text );
-    void LogLMouseDown();
-    void LogLMouseUp();
-    void LogTryConnect();
 
 /************************************************************************/
 /* Dialog                                                               */
@@ -1017,7 +906,7 @@ public:
     AnyFrames*   GmapBInvPicDown, * GmapBMenuPicDown, * GmapBChaPicDown, * GmapBPipPicDown, * GmapBFixPicDown;
     AnyFrames*   GmapPLightPic0, * GmapPLightPic1;
     int          GmapX, GmapY, GmapVectX, GmapVectY, GmapWNameStepX, GmapWNameStepY;
-    Rect         GmapWMain, GmapWMap, GmapBTown, GmapWName, GmapWChat, GmapWPanel, GmapWCar, GmapWLock, GmapWTime, GmapWDayTime;
+    Rect         GmapWMain, GmapWMap, GmapBTown, GmapWName, GmapWCar, GmapWLock, GmapWTime, GmapWDayTime;
     Rect         GmapBInv, GmapBMenu, GmapBCha, GmapBPip, GmapBFix;
     PointVec     GmapMapCutOff;
     static bool  GmapActive;
@@ -1089,7 +978,6 @@ public:
     void  GmapRMouseDown();
     void  GmapRMouseUp();
     void  GmapMouseMove();
-    void  GmapKeyDown( uchar dik, const char* dik_text );
     void  GmapChangeZoom( float offs, bool revert = false );
     Item* GmapGetCar();
     uint  GmapGetMouseTabLocId();
@@ -1127,18 +1015,6 @@ public:
     void SboxLMouseUp();
 
 /************************************************************************/
-/* Menu Options                                                         */
-/************************************************************************/
-    AnyFrames* MoptMainPic, * MoptSingleplayerMainPic, * MoptSaveGamePicDown, * MoptLoadGamePicDown,
-    * MoptOptionsPicDown, * MoptExitPicDown, * MoptResumePicDown;
-    Rect       MoptMain, MoptSaveGame, MoptLoadGame, MoptOptions, MoptExit, MoptResume;
-    int        MoptX, MoptY;
-
-    void MoptDraw();
-    void MoptLMouseDown();
-    void MoptLMouseUp();
-
-/************************************************************************/
 /* Credits                                                              */
 /************************************************************************/
     uint CreditsNextTick, CreditsMoveTick;
@@ -1146,135 +1022,6 @@ public:
     bool CreaditsExt;
 
     void CreditsDraw();
-
-/************************************************************************/
-/* Character                                                            */
-/************************************************************************/
-    // Switch
-    int ChaCurSwitch;
-    #define CHA_SWITCH_PERKS    ( 0 )
-    #define CHA_SWITCH_KARMA    ( 1 )
-    #define CHA_SWITCH_KILLS    ( 2 )
-
-    AnyFrames* ChaPBSwitchPerks, * ChaPBSwitchKarma, * ChaPBSwitchKills, * ChaPBSwitchMask,
-    * ChaPBSwitchScrUpUp, * ChaPBSwitchScrUpDn, * ChaPBSwitchScrDnUp, * ChaPBSwitchScrDnDn;
-    Rect       ChaBSwitch, ChaTSwitch, ChaBSwitchScrUp, ChaBSwitchScrDn;
-
-    struct SwitchElement
-    {
-        uint   NameStrNum;
-        uint   DescStrNum;
-        ushort PictureId;
-        uint   DrawFlags;
-        char   Addon[ 64 ];
-
-        SwitchElement( uint name, uint desc, ushort pic, uint flags ): NameStrNum( name ), DescStrNum( desc ), PictureId( pic ), DrawFlags( flags ) { memzero( Addon, sizeof( Addon ) ); }
-        SwitchElement( const char* add, uint flags ): NameStrNum( 0 ), DescStrNum( 0 ), PictureId( 0 ), DrawFlags( flags ) { memcpy( Addon, add, sizeof( Addon ) ); }
-    };
-    typedef vector< SwitchElement > SwitchElementVec;
-
-    SwitchElementVec ChaSwitchText[ 3 ];
-    int              ChaSwitchScroll[ 3 ];
-    void ChaPrepareSwitch();
-
-    // Pics
-    AnyFrames* ChaPMain, * ChaPBPrintDn, * ChaPBOkDn, * ChaPBCancelDn;
-    int        ChaX, ChaY;
-    int        ChaVectX, ChaVectY;
-    Rect       ChaWMain, ChaBPrint, ChaBPrintText, ChaBOk, ChaBOkText, ChaBCancel, ChaBCancelText;
-
-    // Special
-    Rect   ChaWSpecialText, ChaWSpecialValue, ChaWSpecialLevel;
-    int    ChaWSpecialNextX, ChaWSpecialNextY;
-    IntVec ChaSpecialParams;
-
-    // Skills
-    Rect   ChaWSkillText, ChaWSkillName, ChaWSkillValue;
-    int    ChaWSkillNextX, ChaWSkillNextY;
-    ushort ChaSkillUp[ MAX_PARAMS ];
-    Rect   ChaWUnspentSP, ChaWUnspentSPText;
-    int    ChaUnspentSkillPoints;
-
-    // Slider
-    AnyFrames* ChaPWSlider, * ChaPBSliderPlusDn, * ChaPBSliderMinusDn;
-    Rect       ChaBSliderPlus, ChaBSliderMinus;
-    int        ChaWSliderX, ChaWSliderY;
-    int        ChaCurSkill;
-
-    // Level
-    Rect ChaWLevel, ChaWExp, ChaWNextLevel;
-
-    // Damage
-    Rect ChaWDmgLife, ChaWDmg;
-    int  ChaWDmgNextX, ChaWDmgNextY;
-
-    // Stats
-    Rect ChaWStatsName, ChaWStatsValue;
-    int  ChaWStatsNextX, ChaWStatsNextY;
-
-    // Tip
-    Rect ChaWName, ChaWDesc, ChaWPic;
-    char ChaName[ MAX_FOTEXT ];
-    char ChaDesc[ MAX_FOTEXT ];
-    int  ChaSkilldexPic;
-
-    // Buttons
-    AnyFrames* ChaPBNameDn, * ChaPBAgeDn, * ChaPBSexDn, * RegPBAccDn;
-    Rect       ChaBName, ChaBAge, ChaBSex;
-
-    // Registration
-    AnyFrames* RegPMain, * RegPBSpecialPlusDn, * RegPBSpecialMinusDn, * RegPBTagSkillDn;
-    Rect       RegWMain, RegBSpecialPlus, RegBSpecialMinus, RegBTagSkill, RegWUnspentSpecial, RegWUnspentSpecialText;
-    int        RegBSpecialNextX, RegBSpecialNextY, RegBTagSkillNextX, RegBTagSkillNextY;
-    int        RegCurSpecial, RegCurTagSkill;
-
-    // Trait
-    AnyFrames* RegPBTraitDn;
-    Rect       RegBTraitL, RegBTraitR, RegWTraitL, RegWTraitR;
-    int        RegTraitNextX, RegTraitNextY;
-    int        RegTraitNum;
-
-    // Methods
-    void RegGenParams();
-    bool RegCheckData();
-    bool IsTagSkill( bool is_reg, int index );
-    void ChaDraw( bool is_reg );
-    void ChaLMouseDown( bool is_reg );
-    void ChaLMouseUp( bool is_reg );
-    void ChaMouseMove( bool is_reg );
-
-/************************************************************************/
-/* Character name                                                       */
-/************************************************************************/
-    AnyFrames* ChaNameMainPic, * ChaNameSingleplayerMainPic;
-    Rect       ChaNameWMain, ChaNameWName, ChaNameWNameText, ChaNameWPass, ChaNameWPassText;
-    int        ChaNameX, ChaNameY;
-
-    void ChaNameDraw();
-    void ChaNameLMouseDown();
-    void ChaNameKeyDown( uchar dik, const char* dik_text );
-
-/************************************************************************/
-/* Character age                                                        */
-/************************************************************************/
-    AnyFrames* ChaAgePic, * ChaAgeBUpDn, * ChaAgeBDownDn;
-    Rect       ChaAgeWMain, ChaAgeBUp, ChaAgeBDown, ChaAgeWAge;
-    int        ChaAgeX, ChaAgeY;
-
-    void ChaAgeDraw();
-    void ChaAgeLMouseDown();
-    void ChaAgeLMouseUp();
-
-/************************************************************************/
-/* Character sex                                                        */
-/************************************************************************/
-    AnyFrames* ChaSexPic, * ChaSexBMaleDn, * ChaSexBFemaleDn;
-    Rect       ChaSexWMain, ChaSexBMale, ChaSexBFemale;
-    int        ChaSexX, ChaSexY;
-
-    void ChaSexDraw();
-    void ChaSexLMouseDown();
-    void ChaSexLMouseUp();
 
 /************************************************************************/
 /* Perk                                                                 */
@@ -1713,10 +1460,7 @@ public:
 /************************************************************************/
 /* Cursor                                                               */
 /************************************************************************/
-    AnyFrames* CurPDef, * CurPMove, * CurPMoveBlock, * CurPHand, * CurPUseItem, * CurPUseSkill, * CurPWait,
-    * CurPScrRt, * CurPScrLt, * CurPScrUp, * CurPScrDw, * CurPScrRU, * CurPScrLU, * CurPScrRD, * CurPScrLD;
-
-    void CurDraw();
+    AnyFrames* CurPDef, * CurPHand;
     void CurDrawHand();
 
 /************************************************************************/
@@ -1758,44 +1502,7 @@ public:
     #define FOMB_TALK                  ( 1 )
     #define FOMB_COMBAT_RESULT         ( 2 )
     #define FOMB_VIEW                  ( 3 )
-    struct MessBoxMessage
-    {
-        int    Type;
-        string Mess;
-        string Time;
-
-        MessBoxMessage( int type, const char* mess, const char* time ): Type( type ), Mess( mess ), Time( time ) {}
-        MessBoxMessage( const MessBoxMessage& r )
-        {
-            Type = r.Type;
-            Mess = r.Mess;
-            Time = r.Time;
-        }
-        MessBoxMessage& operator=( const MessBoxMessage& r )
-        {
-            Type = r.Type;
-            Mess = r.Mess;
-            Time = r.Time;
-            return *this;
-        }
-    };
-    typedef vector< MessBoxMessage > MessBoxMessageVec;
-
-    MessBoxMessageVec MessBox;
-    string            MessBoxCurText;
-    int               MessBoxScroll, MessBoxMaxScroll, MessBoxScrollLines;
-    IntVec            MessBoxFilters;
-
-    void MessBoxGenerate();
     void AddMess( int mess_type, const char* msg, bool script_call = false );
-    void MessBoxDraw();
-    Rect MessBoxCurRectDraw();
-    Rect MessBoxCurRectScroll();
-    bool MessBoxLMouseDown();
-
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
 };
 
 // Fonts
@@ -1835,9 +1542,6 @@ public:
 #define SCREEN__DIALOGBOX              ( 22 )
 #define SCREEN__ELEVATOR               ( 23 )
 #define SCREEN__SAY                    ( 24 )
-#define SCREEN__CHA_NAME               ( 25 )
-#define SCREEN__CHA_AGE                ( 26 )
-#define SCREEN__CHA_SEX                ( 27 )
 #define SCREEN__GM_TOWN                ( 28 )
 #define SCREEN__INPUT_BOX              ( 29 )
 #define SCREEN__SKILLBOX               ( 30 )
@@ -1927,44 +1631,12 @@ public:
 
 // Interface elements
 #define IFACE_NONE                     ( 0 )
-#define IFACE_INT_ITEM                 ( 1 )
-#define IFACE_INT_CHSLOT               ( 2 )
-#define IFACE_INT_INV                  ( 3 )
-#define IFACE_INT_MENU                 ( 4 )
-#define IFACE_INT_SKILL                ( 5 )
-#define IFACE_INT_MAP                  ( 6 )
-#define IFACE_INT_CHAR                 ( 7 )
-#define IFACE_INT_PIP                  ( 8 )
-#define IFACE_INT_FIX                  ( 9 )
-#define IFACE_INT_ADDMESS              ( 10 )
-#define IFACE_INT_FILTER1              ( 11 )
-#define IFACE_INT_FILTER2              ( 12 )
-#define IFACE_INT_FILTER3              ( 13 )
-#define IFACE_INT_COMBAT_TURN          ( 14 )
-#define IFACE_INT_COMBAT_END           ( 15 )
-#define IFACE_INT_MAIN                 ( 16 )
-#define IFACE_INV_INV                  ( 20 )
-#define IFACE_INV_SLOT1                ( 21 )
-#define IFACE_INV_SLOT2                ( 22 )
-#define IFACE_INV_ARMOR                ( 23 )
-#define IFACE_INV_SLOTS_EXT            ( 24 )
-#define IFACE_INV_SCRUP                ( 25 )
-#define IFACE_INV_SCRDW                ( 26 )
-#define IFACE_INV_OK                   ( 27 )
-#define IFACE_INV_MAIN                 ( 28 )
 #define IFACE_USE_INV                  ( 40 )
 #define IFACE_USE_SCRUP                ( 41 )
 #define IFACE_USE_SCRDW                ( 42 )
 #define IFACE_USE_CANCEL               ( 43 )
 #define IFACE_USE_MAIN                 ( 44 )
 #define IFACE_GAME_MNEXT               ( 60 )
-#define IFACE_LOG_NAME                 ( 80 )
-#define IFACE_LOG_PASS                 ( 81 )
-#define IFACE_LOG_PLAY__NEWGAME        ( 82 )
-#define IFACE_LOG_REG__LOADGAME        ( 83 )
-#define IFACE_LOG_OPTIONS              ( 84 )
-#define IFACE_LOG_CREDITS              ( 85 )
-#define IFACE_LOG_EXIT                 ( 86 )
 #define IFACE_DLG_MAIN                 ( 100 )
 #define IFACE_DLG_SCR_UP               ( 101 )
 #define IFACE_DLG_SCR_DN               ( 102 )
@@ -2013,33 +1685,6 @@ public:
 #define IFACE_SBOX_TRAP                ( 167 )
 #define IFACE_SBOX_SCIENCE             ( 168 )
 #define IFACE_SBOX_REPAIR              ( 169 )
-#define IFACE_MOPT_SAVEGAME            ( 180 )
-#define IFACE_MOPT_LOADGAME            ( 181 )
-#define IFACE_MOPT_OPTIONS             ( 182 )
-#define IFACE_MOPT_EXIT                ( 183 )
-#define IFACE_MOPT_RESUME              ( 184 )
-#define IFACE_CHA_PRINT                ( 200 )
-#define IFACE_CHA_OK                   ( 201 )
-#define IFACE_CHA_CANCEL               ( 202 )
-#define IFACE_CHA_PLUS                 ( 203 )
-#define IFACE_CHA_MINUS                ( 204 )
-#define IFACE_CHA_MAIN                 ( 205 )
-#define IFACE_CHA_NAME                 ( 206 )
-#define IFACE_CHA_AGE                  ( 207 )
-#define IFACE_CHA_SEX                  ( 208 )
-#define IFACE_CHA_SW_SCRUP             ( 209 )
-#define IFACE_CHA_SW_SCRDN             ( 210 )
-#define IFACE_REG_SPEC_PL              ( 211 )
-#define IFACE_REG_SPEC_MN              ( 212 )
-#define IFACE_REG_TAGSKILL             ( 213 )
-#define IFACE_REG_TRAIT_L              ( 214 )
-#define IFACE_REG_TRAIT_R              ( 215 )
-#define IFACE_CHA_NAME_NAME            ( 220 )
-#define IFACE_CHA_NAME_PASS            ( 221 )
-#define IFACE_CHA_AGE_UP               ( 222 )
-#define IFACE_CHA_AGE_DOWN             ( 223 )
-#define IFACE_CHA_SEX_MALE             ( 224 )
-#define IFACE_CHA_SEX_FEMALE           ( 225 )
 #define IFACE_PERK_MAIN                ( 240 )
 #define IFACE_PERK_SCRUP               ( 241 )
 #define IFACE_PERK_SCRDN               ( 242 )
@@ -2118,25 +1763,16 @@ public:
 #define ACCELERATE_IBOX                ( 2 )
 #define ACCELERATE_PAGE_UP             ( 3 )
 #define ACCELERATE_PAGE_DOWN           ( 4 )
-#define ACCELERATE_MESSBOX             ( 5 )
 #define ACCELERATE_SPLIT_UP            ( 6 )
 #define ACCELERATE_SPLIT_DOWN          ( 7 )
 #define ACCELERATE_TIMER_UP            ( 8 )
 #define ACCELERATE_TIMER_DOWN          ( 9 )
 #define ACCELERATE_USE_SCRUP           ( 10 )
 #define ACCELERATE_USE_SCRDOWN         ( 11 )
-#define ACCELERATE_INV_SCRUP           ( 12 )
-#define ACCELERATE_INV_SCRDOWN         ( 13 )
 #define ACCELERATE_PUP_SCRUP1          ( 14 )
 #define ACCELERATE_PUP_SCRDOWN1        ( 15 )
 #define ACCELERATE_PUP_SCRUP2          ( 16 )
 #define ACCELERATE_PUP_SCRDOWN2        ( 17 )
-#define ACCELERATE_CHA_SW_SCRUP        ( 18 )
-#define ACCELERATE_CHA_SW_SCRDOWN      ( 19 )
-#define ACCELERATE_CHA_PLUS            ( 20 )
-#define ACCELERATE_CHA_MINUS           ( 21 )
-#define ACCELERATE_CHA_AGE_UP          ( 22 )
-#define ACCELERATE_CHA_AGE_DOWN        ( 23 )
 #define ACCELERATE_BARTER_CONT1SU      ( 24 )
 #define ACCELERATE_BARTER_CONT1SD      ( 25 )
 #define ACCELERATE_BARTER_CONT2SU      ( 26 )

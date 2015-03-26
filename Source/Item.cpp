@@ -50,6 +50,10 @@ void Item::SetPropertyRegistrator( PropertyRegistrator* registrator )
 }
 
 Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator ),
+#ifdef FONLINE_SERVER
+                                         ScriptId( *( hash* )Props.FindData( "ScriptId" ) ),
+                                         LockerComplexity( *( ushort* )Props.FindData( "LockerComplexity" ) ),
+#endif
                                          SortValue( *( ushort* )Props.FindData( "SortValue" ) ),
                                          Indicator( *( uchar* )Props.FindData( "Indicator" ) ),
                                          PicMap( *( hash* )Props.FindData( "PicMap" ) ),
@@ -60,7 +64,6 @@ Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator ),
                                          LightDistance( *( uchar* )Props.FindData( "LightDistance" ) ),
                                          LightFlags( *( uchar* )Props.FindData( "LightFlags" ) ),
                                          LightColor( *( uint* )Props.FindData( "LightColor" ) ),
-                                         ScriptId( *( hash* )Props.FindData( "ScriptId" ) ),
                                          Count( *( uint* )Props.FindData( "Count" ) ),
                                          Cost( *( uint* )Props.FindData( "Cost" ) ),
                                          Val0( *( int* )Props.FindData( "Val0" ) ),
@@ -81,7 +84,6 @@ Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator ),
                                          TrapValue( *( short* )Props.FindData( "TrapValue" ) ),
                                          LockerId( *( uint* )Props.FindData( "LockerId" ) ),
                                          LockerCondition( *( ushort* )Props.FindData( "LockerCondition" ) ),
-                                         LockerComplexity( *( ushort* )Props.FindData( "LockerComplexity" ) ),
                                          HolodiskNumber( *( uint* )Props.FindData( "HolodiskNumber" ) ),
                                          RadioChannel( *( ushort* )Props.FindData( "RadioChannel" ) ),
                                          RadioFlags( *( ushort* )Props.FindData( "RadioFlags" ) ),

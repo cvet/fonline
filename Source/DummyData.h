@@ -880,7 +880,6 @@ struct BindClass
 
     static void Item_IsStackable()    {}
     static void Item_IsDeteriorable() {}
-    static void Item_GetScriptId()    {}
     static void Item_GetType()        {}
     static void Item_GetProtoId()     {}
     static void Item_GetMapPosition() {}
@@ -907,8 +906,6 @@ struct BindClass
     static void Global_IsTurnBased()            {}
     static void Global_GetTurnBasedTime()       {}
     static void Global_GetCurrentMapPid()       {}
-    static void Global_GetMessageFilters()      {}
-    static void Global_SetMessageFilters()      {}
     static void Global_MessageType()            {}
     static void Global_MessageMsgType()         {}
     static void Global_FormatTags()             {}
@@ -916,8 +913,6 @@ struct BindClass
     static void Global_LockScreenScroll()       {}
     static void Global_GetFog()                 {}
     static void Global_RefreshItemsCollection() {}
-    static void Global_GetScroll()              {}
-    static void Global_SetScroll()              {}
     static void Global_GetDayTime()             {}
     static void Global_GetDayColor()            {}
     static void Global_GetFullSecond()          {}
@@ -943,7 +938,7 @@ struct BindClass
     static void Global_SetEffect()                  {}
     static void Global_RefreshMap()                 {}
     static void Global_SaveScreenshot()             {}
-    static void Global_SaveLogFile()                {}
+    static void Global_SaveText()                   {}
     static void Global_SetCacheData()               {}
     static void Global_SetCacheDataSize()           {}
     static void Global_GetCacheData()               {}
@@ -1116,7 +1111,6 @@ struct BindClass
     static void Global_ChangeZoom()         {}
     #endif
 
-    static void Global_GetLastError()     {}
     static void Global_GetProtoItem()     {}
     static void Global_LoadDataFile()     {}
     static void Global_GetConstantValue() {}

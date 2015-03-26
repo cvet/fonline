@@ -70,9 +70,8 @@ public:
 typedef vector< BindFunction > BindFunctionVec;
 
 asIScriptEngine* Engine = NULL;
-void*            EngineLogFile = NULL;
 int              ScriptsPath = PT_SCRIPTS;
-bool             LogDebugInfo = true;
+bool             LogDebugInfo = false;
 StrVec           WrongGlobalObjects;
 
 BindFunctionVec  BindedFunctions;
@@ -211,14 +210,8 @@ uint   RunTimeoutMessage = 300000;     // 5 minutes
 Thread RunTimeoutThread;
 void RunTimeout( void* );
 
-bool Script::Init( bool with_log, Preprocessor::PragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls )
+bool Script::Init( Preprocessor::PragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls )
 {
-    if( with_log && !StartLog() )
-    {
-        WriteLogF( _FUNC_, " - Log creation error.\n" );
-        return false;
-    }
-
     // Create default engine
     Engine = CreateEngine( pragma_callback, dll_target, allow_native_calls );
     if( !Engine )
@@ -402,7 +395,6 @@ void Script::Finish()
     if( !Engine )
         return;
 
-    EndLog();
     #ifdef FONLINE_SERVER
     Profiler::Finish();
     #endif
@@ -1116,7 +1108,7 @@ void Script::RaiseException( const char* message, ... )
     if( ctx )
         ctx->SetException( buf );
     else
-        WriteLog( "Runtime exception: %s.\n", buf );
+        WriteLog( "Runtime exception: %s\n", buf );
 }
 
 const char* Script::GetActiveModuleName()
@@ -2652,75 +2644,30 @@ bool Script::ResynchronizeThread()
 /* Logging                                                              */
 /************************************************************************/
 
-bool Script::StartLog()
-{
-    if( EngineLogFile )
-        return true;
-    EngineLogFile = FileOpen( DIR_SLASH_SD "FOscript.log", true, true );
-    if( !EngineLogFile )
-        return false;
-    LogA( "Start logging script system.\n" );
-    return true;
-}
-
-void Script::EndLog()
-{
-    if( !EngineLogFile )
-        return;
-    LogA( "End logging script system.\n" );
-    FileClose( EngineLogFile );
-    EngineLogFile = NULL;
-}
-
 void Script::Log( const char* str )
 {
     asIScriptContext* ctx = asGetActiveContext();
     if( !ctx )
     {
-        LogA( str );
+        WriteLog( "<unknown> : %s.\n", str );
         return;
     }
     asIScriptFunction* func = ctx->GetFunction( 0 );
     if( !func )
     {
-        LogA( str );
+        WriteLog( "<unknown> : %s.\n", str );
         return;
     }
     if( LogDebugInfo )
     {
         int line, column;
         line = ctx->GetLineNumber( 0, &column );
-        LogA( Str::FormatBuf( "Script callback: %s : %s : %s : %d, %d : %s.\n", str, func->GetModuleName(), func->GetDeclaration( true ), line, column, ctx->GetUserData() ) );
+        WriteLog( "Script callback: %s : %s : %s : %d, %d : %s.\n", str, func->GetModuleName(), func->GetDeclaration( true ), line, column, ctx->GetUserData() );
     }
     else
-        LogA( Str::FormatBuf( "%s : %s\n", func->GetModuleName(), str ) );
-}
-
-void Script::LogA( const char* str )
-{
-    WriteLog( "%s", str );
-    if( !EngineLogFile )
-        return;
-    FileWrite( EngineLogFile, str, Str::Length( str ) );
-}
-
-void Script::LogError( const char* call_func, const char* error )
-{
-    asIScriptContext* ctx = asGetActiveContext();
-    if( !ctx )
     {
-        LogA( error );
-        return;
+        WriteLog( "%s : %s\n", func->GetModuleName(), str );
     }
-    asIScriptFunction* func = ctx->GetFunction( 0 );
-    if( !func )
-    {
-        LogA( error );
-        return;
-    }
-    int line, column;
-    line = ctx->GetLineNumber( 0, &column );
-    LogA( Str::FormatBuf( "%s : Script error: %s : %s : %s : %d, %d : %s.\n", call_func, error, func->GetModuleName(), func->GetDeclaration( true ), line, column, ctx->GetUserData() ) );
 }
 
 void Script::SetLogDebugInfo( bool enabled )
@@ -2735,20 +2682,14 @@ void Script::CallbackMessage( const asSMessageInfo* msg, void* param )
         type = "Warning";
     else if( msg->type == asMSGTYPE_INFORMATION )
         type = "Info";
-    LogA( Str::FormatBuf( "Script message: %s : %s : %s : %d, %d.\n", msg->section, type, msg->message, msg->row, msg->col ) );
+    WriteLog( "Script message: %s : %s : %s : %d, %d.\n", msg->section, type, msg->message, msg->row, msg->col );
 }
 
 void Script::CallbackException( asIScriptContext* ctx, void* param )
 {
-    int                line, column;
-    line = ctx->GetExceptionLineNumber( &column );
-    asIScriptFunction* func = ctx->GetExceptionFunction();
-    if( !func )
-    {
-        LogA( Str::FormatBuf( "Script exception: %s : %s.\n", ctx->GetExceptionString(), ctx->GetUserData() ) );
-        return;
-    }
-    LogA( Str::FormatBuf( "Script exception: %s : %s : %s : %d, %d : %s.\n", ctx->GetExceptionString(), func->GetModuleName(), func->GetDeclaration( true ), line, column, ctx->GetUserData() ) );
+    const char* str = ctx->GetExceptionString();
+    uint        str_len = Str::Length( str );
+    WriteLog( "Script exception: %s%s\n", str, str_len > 0 && str[ str_len - 1 ] != '.' ? "." : "" );
 }
 
 /************************************************************************/

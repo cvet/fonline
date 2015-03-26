@@ -52,7 +52,6 @@ public:
     static int    ParamsGetScript[ MAX_PARAMS ];
     static uint   ParametersMin[ MAX_PARAMETERS_ARRAYS ];
     static uint   ParametersMax[ MAX_PARAMETERS_ARRAYS ];
-    static bool   ParametersOffset[ MAX_PARAMETERS_ARRAYS ];
     bool          ParamsIsChanged[ MAX_PARAMS ];
     IntVec        ParamsChanged;
     int           ParamLocked;

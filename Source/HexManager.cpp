@@ -3464,7 +3464,7 @@ void HexManager::FindSetCenterDir( ushort& hx, ushort& hy, int dirs[ 2 ], int st
 
 bool HexManager::LoadMap( hash map_pid )
 {
-    WriteLog( "Load map..." );
+    WriteLog( "Load map...\n" );
 
     // Unload previous
     UnloadMap();
