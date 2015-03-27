@@ -3846,16 +3846,16 @@ void Client::Send_ItemProperty( Critter* from_cr, Item* item, Property* prop )
         return;
 
     uint  data_size;
-    void* data = prop->Accessor->GetData( item, data_size );
+    void* data = prop->GetData( item, data_size );
 
-    if( prop->Type == Property::POD )
+    if( prop->IsPOD() )
     {
         BOUT_BEGIN( this );
         Bout << ( from_cr ? NETMSG_CRITTER_ITEM_POD_PROPERTY( data_size ) : NETMSG_MAP_ITEM_POD_PROPERTY( data_size ) );
         if( from_cr )
             Bout << from_cr->GetId();
         Bout << item->GetId();
-        Bout << (ushort) prop->Index;
+        Bout << (ushort) prop->GetIndex();
         Bout.Push( (char*) data, data_size );
         BOUT_END( this );
     }
@@ -3869,7 +3869,7 @@ void Client::Send_ItemProperty( Critter* from_cr, Item* item, Property* prop )
         if( from_cr )
             Bout << from_cr->GetId();
         Bout << item->GetId();
-        Bout << (ushort) prop->Index;
+        Bout << (ushort) prop->GetIndex();
         if( data_size )
             Bout.Push( (char*) data, data_size );
         BOUT_END( this );

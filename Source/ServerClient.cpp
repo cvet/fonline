@@ -4694,11 +4694,11 @@ void FOServer::Process_ItemProperty( Client* cl, uint data_size )
     CHECK_IN_BUFF_ERROR( cl );
 
     Property* prop = Item::PropertiesRegistrator->Get( property_index );
-    if( !prop || !( prop->Access & Property::ModifiableMask ) )
+    if( !prop || !( prop->GetAccess() & Property::ModifiableMask ) )
         return;
-    if( prop->Type == Property::POD && data_size != prop->Size )
+    if( prop->IsPOD() && data_size != prop->GetBaseSize() )
         return;
-    if( prop->Type != Property::POD && data_size != 0 )
+    if( !prop->IsPOD() && data_size != 0 )
         return;
 
     Item* item = cl->GetItem( item_id, true );
@@ -4706,5 +4706,5 @@ void FOServer::Process_ItemProperty( Client* cl, uint data_size )
         return;
 
     #pragma MESSAGE( "Disable send changing field by client to this client" )
-    prop->Accessor->SetData( item, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size(), true );
+    prop->SetData( item, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size(), true );
 }

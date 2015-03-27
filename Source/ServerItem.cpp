@@ -171,8 +171,8 @@ void FOServer::OnSendItemValue( void* obj, Property* prop, void* cur_value, void
     #pragma MESSAGE( "Clean up server 0 and -1 item ids" )
     if( item->Id && item->Id != uint( -1 ) )
     {
-        bool is_public = ( prop->Access & Property::PublicMask ) != 0;
-        bool is_protected = ( prop->Access & Property::ProtectedMask ) != 0;
+        bool is_public = ( prop->GetAccess() & Property::PublicMask ) != 0;
+        bool is_protected = ( prop->GetAccess() & Property::ProtectedMask ) != 0;
         if( item->Accessory == ITEM_ACCESSORY_CRITTER )
         {
             if( is_public || is_protected )

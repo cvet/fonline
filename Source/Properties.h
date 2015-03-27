@@ -3,7 +3,7 @@
 
 #include "Common.h"
 
-struct Property;
+class Property;
 typedef void ( *NativeCallback )( void* obj, Property* prop, void* cur_value, void* old_value );
 
 struct UnresolvedProperty
@@ -15,45 +15,12 @@ struct UnresolvedProperty
 };
 typedef vector< UnresolvedProperty* > UnresolvedPropertyVec;
 
-class PropertyAccessor
+class Property
 {
     friend class PropertyRegistrator;
+    friend class Properties;
 
 public:
-    uchar* GetData( void* obj, uint& data_size );
-    void   SetData( void* obj, uchar* data, uint data_size, bool call_callbacks );
-    void   SetSendIgnore( void* obj );
-
-private:
-    PropertyAccessor( uint index );
-
-    void*  CreateComplexValue( Property* prop, uchar* data, uint data_size );
-    uchar* ExpandComplexValueData( Property* prop, void* base_ptr, uint& data_size, bool& need_delete );
-    void   GenericGet( void* obj, void* ret_value );
-    void   GenericSet( void* obj, void* new_value );
-
-    template< typename T >
-    T Get( void* obj )
-    {
-        T ret_value = 0;
-        GenericGet( obj, &ret_value );
-        return ret_value;
-    }
-
-    template< typename T >
-    void Set( void* obj, T new_value )
-    {
-        GenericSet( obj, &new_value );
-    }
-
-    uint  propertyIndex;
-    bool  getCallbackLocked;
-    bool  setCallbackLocked;
-    void* sendIgnoreObj;
-};
-
-struct Property
-{
     enum AccessType
     {
         Virtual             = 0x0001,
@@ -76,6 +43,15 @@ struct Property
         ModifiableMask      = 0x2200,
     };
 
+    bool       IsPOD();
+    uint       GetIndex();
+    AccessType GetAccess();
+    uint       GetBaseSize();
+    uchar*     GetData( void* obj, uint& data_size );
+    void       SetData( void* obj, uchar* data, uint data_size, bool call_callbacks );
+    void       SetSendIgnore( void* obj );
+
+private:
     enum DataType
     {
         POD,
@@ -84,30 +60,52 @@ struct Property
         // Todo: Dict
     };
 
+    Property();
+    void*  CreateComplexValue( uchar* data, uint data_size );
+    uchar* ExpandComplexValueData( void* base_ptr, uint& data_size, bool& need_delete );
+    void   GenericGet( void* obj, void* ret_value );
+    void   GenericSet( void* obj, void* new_value );
+
+    template< typename T >
+    T Get( void* obj )
+    {
+        T ret_value = 0;
+        GenericGet( obj, &ret_value );
+        return ret_value;
+    }
+
+    template< typename T >
+    void Set( void* obj, T new_value )
+    {
+        GenericSet( obj, &new_value );
+    }
+
     // Static data
-    string            Name;
-    string            TypeName;
-    DataType          Type;
-    AccessType        Access;
-    asIObjectType*    ComplexDataSubType;
-    bool              GenerateRandomValue;
-    bool              SetDefaultValue;
-    bool              CheckMinValue;
-    bool              CheckMaxValue;
-    int64             DefaultValue;
-    int64             MinValue;
-    int64             MaxValue;
+    string         propName;
+    string         typeName;
+    DataType       dataType;
+    AccessType     accessType;
+    asIObjectType* complexDataSubType;
+    bool           generateRandomValue;
+    bool           setDefaultValue;
+    bool           checkMinValue;
+    bool           checkMaxValue;
+    int64          defaultValue;
+    int64          minValue;
+    int64          maxValue;
 
     // Dynamic data
-    uint              Index;
-    uint              PODDataOffset;
-    uint              ComplexDataIndex;
-    uint              Size;
-    PropertyAccessor* Accessor;
-    int               GetCallback;
-    IntVec            SetCallbacks;
-    NativeCallback    NativeSetCallback;
-    NativeCallback    NativeSendCallback;
+    uint           regIndex;
+    uint           podDataOffset;
+    uint           complexDataIndex;
+    uint           baseSize;
+    int            getCallback;
+    IntVec         setCallbacks;
+    NativeCallback nativeSetCallback;
+    NativeCallback nativeSendCallback;
+    bool           getCallbackLocked;
+    bool           setCallbackLocked;
+    void*          sendIgnoreObj;
 };
 typedef vector< Property* > PropertyVec;
 
@@ -115,7 +113,7 @@ class PropertyRegistrator;
 class Properties
 {
     friend class PropertyRegistrator;
-    friend class PropertyAccessor;
+    friend class Property;
 
 public:
     Properties( PropertyRegistrator* reg );
@@ -140,7 +138,7 @@ private:
 class PropertyRegistrator
 {
     friend class Properties;
-    friend class PropertyAccessor;
+    friend class Property;
 
 public:
     PropertyRegistrator( bool is_server, const char* class_name );

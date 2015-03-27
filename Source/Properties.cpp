@@ -2,25 +2,25 @@
 #include "FileSystem.h"
 #include "Script.h"
 
-PropertyAccessor::PropertyAccessor( uint index )
+Property::Property()
 {
-    propertyIndex = index;
     getCallbackLocked = false;
     setCallbackLocked = false;
+    sendIgnoreObj = NULL;
 }
 
-void* PropertyAccessor::CreateComplexValue( Property* prop, uchar* data, uint data_size )
+void* Property::CreateComplexValue( uchar* data, uint data_size )
 {
-    if( prop->Type == Property::String )
+    if( dataType == Property::String )
     {
         return ScriptString::Create( data_size ? (char*) data : "", data_size );
     }
-    else if( prop->Type == Property::Array )
+    else if( dataType == Property::Array )
     {
-        asUINT       arr_size = data_size / prop->ComplexDataSubType->GetSize();
-        ScriptArray* arr = ScriptArray::Create( prop->ComplexDataSubType, arr_size );
+        asUINT       arr_size = data_size / complexDataSubType->GetSize();
+        ScriptArray* arr = ScriptArray::Create( complexDataSubType, arr_size );
         if( arr_size )
-            memcpy( arr->At( 0 ), data, arr_size * prop->ComplexDataSubType->GetSize() );
+            memcpy( arr->At( 0 ), data, arr_size * complexDataSubType->GetSize() );
         return arr;
     }
     else
@@ -30,16 +30,16 @@ void* PropertyAccessor::CreateComplexValue( Property* prop, uchar* data, uint da
     return NULL;
 }
 
-uchar* PropertyAccessor::ExpandComplexValueData( Property* prop, void* base_ptr, uint& data_size, bool& need_delete )
+uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& need_delete )
 {
     need_delete = false;
-    if( prop->Type == Property::String )
+    if( dataType == Property::String )
     {
         ScriptString* str = *(ScriptString**) base_ptr;
         data_size = ( str ? str->length() : 0 );
         return data_size ? (uchar*) str->c_str() : NULL;
     }
-    else if( prop->Type == Property::Array )
+    else if( dataType == Property::Array )
     {
         ScriptArray* arr = *(ScriptArray**) base_ptr;
         data_size = ( arr ? arr->GetSize() * arr->GetElementSize() : 0 );
@@ -52,40 +52,39 @@ uchar* PropertyAccessor::ExpandComplexValueData( Property* prop, void* base_ptr,
     return NULL;
 }
 
-void PropertyAccessor::GenericGet( void* obj, void* ret_value )
+void Property::GenericGet( void* obj, void* ret_value )
 {
     Properties* properties = (Properties*) obj;
-    Property*   prop = properties->registrator->registeredProperties[ propertyIndex ];
 
     // Virtual property
-    if( prop->Access & Property::VirtualMask )
+    if( accessType & Property::VirtualMask )
     {
-        if( !prop->GetCallback )
+        if( !getCallback )
         {
-            memzero( ret_value, prop->Size );
+            memzero( ret_value, baseSize );
             SCRIPT_ERROR_R( "'Get' callback is not assigned for virtual property '%s %s::%s'.",
-                            prop->TypeName.c_str(), properties->registrator->scriptClassName.c_str(), prop->Name.c_str() );
+                            typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
             return;
         }
 
         if( getCallbackLocked )
         {
-            memzero( ret_value, prop->Size );
+            memzero( ret_value, baseSize );
             SCRIPT_ERROR_R( "Recursive call for virtual property '%s %s::%s'.",
-                            prop->TypeName.c_str(), properties->registrator->scriptClassName.c_str(), prop->Name.c_str() );
+                            typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
             return;
         }
 
         getCallbackLocked = true;
 
         #ifndef FONLINE_SCRIPT_COMPILER
-        if( Script::PrepareContext( prop->GetCallback, _FUNC_, "" ) )
+        if( Script::PrepareContext( getCallback, _FUNC_, "" ) )
         {
             Script::SetArgObject( obj );
             if( Script::RunPrepared() )
             {
                 getCallbackLocked = false;
-                memcpy( ret_value, Script::GetReturnedRawAddress(), prop->Size );
+                memcpy( ret_value, Script::GetReturnedRawAddress(), baseSize );
                 return;
             }
         }
@@ -96,86 +95,85 @@ void PropertyAccessor::GenericGet( void* obj, void* ret_value )
         // Error
         #ifndef FONLINE_SCRIPT_COMPILER
         Script::RaiseException( "Error in Get callback execution for virtual property '%s %s::%s'",
-                                prop->TypeName.c_str(), properties->registrator->scriptClassName.c_str(), prop->Name.c_str() );
+                                typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
         #endif
-        memzero( ret_value, prop->Size );
+        memzero( ret_value, baseSize );
         return;
     }
 
     // Raw property
-    if( prop->Type == Property::POD )
+    if( dataType == Property::POD )
     {
-        RUNTIME_ASSERT( prop->PODDataOffset != uint( -1 ) );
-        memcpy( ret_value, &properties->podData[ prop->PODDataOffset ], prop->Size );
+        RUNTIME_ASSERT( podDataOffset != uint( -1 ) );
+        memcpy( ret_value, &properties->podData[ podDataOffset ], baseSize );
     }
     else
     {
-        RUNTIME_ASSERT( prop->ComplexDataIndex != uint( -1 ) );
-        uchar* data = properties->complexData[ prop->ComplexDataIndex ];
-        uint   data_size = properties->complexDataSizes[ prop->ComplexDataIndex ];
-        void*  result = CreateComplexValue( prop, data, data_size );
-        memcpy( ret_value, &result, prop->Size );
+        RUNTIME_ASSERT( complexDataIndex != uint( -1 ) );
+        uchar* data = properties->complexData[ complexDataIndex ];
+        uint   data_size = properties->complexDataSizes[ complexDataIndex ];
+        void*  result = CreateComplexValue( data, data_size );
+        memcpy( ret_value, &result, baseSize );
     }
 }
 
-void PropertyAccessor::GenericSet( void* obj, void* new_value )
+void Property::GenericSet( void* obj, void* new_value )
 {
     Properties* properties = (Properties*) obj;
-    Property*   prop = properties->registrator->registeredProperties[ propertyIndex ];
 
     // Get current POD value
     void* cur_value;
-    if( prop->Type == Property::POD )
+    if( dataType == Property::POD )
     {
-        RUNTIME_ASSERT( prop->PODDataOffset != uint( -1 ) );
-        cur_value = &properties->podData[ prop->PODDataOffset ];
+        RUNTIME_ASSERT( podDataOffset != uint( -1 ) );
+        cur_value = &properties->podData[ podDataOffset ];
 
         // Clamp
-        if( prop->CheckMinValue || prop->CheckMaxValue )
+        if( checkMinValue || checkMaxValue )
         {
             uint64 check_value = 0;
-            if( prop->Size == 1 )
+            if( baseSize == 1 )
                 check_value = *(uchar*) new_value;
-            else if( prop->Size == 2 )
+            else if( baseSize == 2 )
                 check_value = *(ushort*) new_value;
-            else if( prop->Size == 4 )
+            else if( baseSize == 4 )
                 check_value = *(uint*) new_value;
-            else if( prop->Size == 8 )
+            else if( baseSize == 8 )
                 check_value = *(uint64*) new_value;
 
-            if( prop->CheckMinValue && check_value < (uint64) prop->MinValue )
+            if( checkMinValue && check_value < (uint64) minValue )
             {
-                check_value = prop->MinValue;
+                check_value = minValue;
                 GenericSet( obj, &check_value );
                 return;
             }
-            else if( prop->CheckMaxValue && check_value > (uint64) prop->MaxValue )
+            else if( checkMaxValue && check_value > (uint64) maxValue )
             {
-                check_value = prop->MaxValue;
+                check_value = maxValue;
                 GenericSet( obj, &check_value );
                 return;
             }
         }
 
         // Ignore void calls
-        if( !memcmp( new_value, cur_value, prop->Size ) )
+        if( !memcmp( new_value, cur_value, baseSize ) )
             return;
     }
 
     // Get current complex value
     void* complex_value = NULL;
-    if( prop->Type != Property::POD )
+    if( dataType != Property::POD )
     {
-        RUNTIME_ASSERT( prop->ComplexDataIndex != uint( -1 ) );
+        RUNTIME_ASSERT( complexDataIndex != uint( -1 ) );
 
         // Expand new value data for comparison
         bool  need_delete;
         uint  new_value_data_size;
-        void* new_value_data = ExpandComplexValueData( prop, new_value, new_value_data_size, need_delete );
+        void* new_value_data = ExpandComplexValueData( new_value, new_value_data_size, need_delete );
 
         // Get current data for comparison
-        uint  cur_value_data_size = properties->complexDataSizes[ prop->ComplexDataIndex ];
-        void* cur_value_data = properties->complexData[ prop->ComplexDataIndex ];
+        uint  cur_value_data_size = properties->complexDataSizes[ complexDataIndex ];
+        void* cur_value_data = properties->complexData[ complexDataIndex ];
 
         // Compare for ignore void calls
         if( new_value_data_size == cur_value_data_size && ( cur_value_data_size == 0 || !memcmp( new_value_data, cur_value_data, cur_value_data_size ) ) )
@@ -183,21 +181,21 @@ void PropertyAccessor::GenericSet( void* obj, void* new_value )
 
         // Only now create temporary value for use in callbacks as old value
         // Ignore creating complex values for engine callbacks
-        if( !setCallbackLocked && !prop->SetCallbacks.empty() )
+        if( !setCallbackLocked && !setCallbacks.empty() )
         {
-            uchar* data = properties->complexData[ prop->ComplexDataIndex ];
-            uint   data_size = properties->complexDataSizes[ prop->ComplexDataIndex ];
-            complex_value = CreateComplexValue( prop, data, data_size );
+            uchar* data = properties->complexData[ complexDataIndex ];
+            uint   data_size = properties->complexDataSizes[ complexDataIndex ];
+            complex_value = CreateComplexValue( data, data_size );
         }
         cur_value = &complex_value;
 
         // Copy new property data
-        SAFEDELA( properties->complexData[ prop->ComplexDataIndex ] );
-        properties->complexDataSizes[ prop->ComplexDataIndex ] = new_value_data_size;
+        SAFEDELA( properties->complexData[ complexDataIndex ] );
+        properties->complexDataSizes[ complexDataIndex ] = new_value_data_size;
         if( new_value_data_size )
         {
-            properties->complexData[ prop->ComplexDataIndex ] = new uchar[ new_value_data_size ];
-            memcpy( properties->complexData[ prop->ComplexDataIndex ], new_value_data, new_value_data_size );
+            properties->complexData[ complexDataIndex ] = new uchar[ new_value_data_size ];
+            memcpy( properties->complexData[ complexDataIndex ], new_value_data, new_value_data_size );
         }
 
         // Deallocate data
@@ -207,20 +205,20 @@ void PropertyAccessor::GenericSet( void* obj, void* new_value )
 
     // Store old value
     uint64 old_value = 0;
-    memcpy( &old_value, cur_value, prop->Size );
+    memcpy( &old_value, cur_value, baseSize );
 
     // Assign value
-    memcpy( cur_value, new_value, prop->Size );
+    memcpy( cur_value, new_value, baseSize );
 
     // Set callbacks
-    if( !prop->SetCallbacks.empty() && !setCallbackLocked )
+    if( !setCallbacks.empty() && !setCallbackLocked )
     {
         setCallbackLocked = true;
 
-        for( size_t i = 0; i < prop->SetCallbacks.size(); i++ )
+        for( size_t i = 0; i < setCallbacks.size(); i++ )
         {
             #ifndef FONLINE_SCRIPT_COMPILER
-            if( Script::PrepareContext( prop->SetCallbacks[ i ], _FUNC_, "" ) )
+            if( Script::PrepareContext( setCallbacks[ i ], _FUNC_, "" ) )
             {
                 Script::SetArgObject( obj );
                 Script::SetArgAddress( &old_value );
@@ -233,68 +231,86 @@ void PropertyAccessor::GenericSet( void* obj, void* new_value )
     }
 
     // Native set callback
-    if( prop->NativeSetCallback && !setCallbackLocked )
-        prop->NativeSetCallback( obj, prop, cur_value, &old_value );
+    if( nativeSetCallback && !setCallbackLocked )
+        nativeSetCallback( obj, this, cur_value, &old_value );
 
     // Native send callback
-    if( prop->NativeSendCallback && obj != sendIgnoreObj && !setCallbackLocked )
+    if( nativeSendCallback && obj != sendIgnoreObj && !setCallbackLocked )
     {
-        if( ( properties->registrator->isServer && ( prop->Access & ( Property::PublicMask | Property::ProtectedMask ) ) ) ||
-            ( !properties->registrator->isServer && ( prop->Access & Property::ModifiableMask ) ) )
+        if( ( properties->registrator->isServer && ( accessType & ( Property::PublicMask | Property::ProtectedMask ) ) ) ||
+            ( !properties->registrator->isServer && ( accessType & Property::ModifiableMask ) ) )
         {
-            prop->NativeSendCallback( obj, prop, cur_value, &old_value );
+            nativeSendCallback( obj, this, cur_value, &old_value );
         }
     }
 
     // Reference counting
-    if( prop->Type != Property::POD && complex_value )
+    if( dataType != Property::POD && complex_value )
     {
-        if( prop->Type == Property::String )
+        if( dataType == Property::String )
             ( (ScriptString*) complex_value )->Release();
-        else if( prop->Type == Property::Array )
+        else if( dataType == Property::Array )
             ( (ScriptArray*) complex_value )->Release();
     }
 }
 
-uchar* PropertyAccessor::GetData( void* obj, uint& data_size )
+bool Property::IsPOD()
 {
-    Properties* properties = (Properties*) obj;
-    Property*   prop = properties->registrator->registeredProperties[ propertyIndex ];
-
-    if( prop->Type == Property::POD )
-    {
-        RUNTIME_ASSERT( prop->PODDataOffset != uint( -1 ) );
-        data_size = prop->Size;
-        return &properties->podData[ prop->PODDataOffset ];
-    }
-
-    RUNTIME_ASSERT( prop->ComplexDataIndex != uint( -1 ) );
-    data_size = properties->complexDataSizes[ prop->ComplexDataIndex ];
-    return properties->complexData[ prop->ComplexDataIndex ];
+    return dataType == Property::POD;
 }
 
-void PropertyAccessor::SetData( void* obj, uchar* data, uint data_size, bool call_callbacks )
+uint Property::GetIndex()
+{
+    return regIndex;
+}
+
+Property::AccessType Property::GetAccess()
+{
+    return accessType;
+}
+
+uint Property::GetBaseSize()
+{
+    return baseSize;
+}
+
+uchar* Property::GetData( void* obj, uint& data_size )
 {
     Properties* properties = (Properties*) obj;
-    Property*   prop = properties->registrator->registeredProperties[ propertyIndex ];
+
+    if( dataType == Property::POD )
+    {
+        RUNTIME_ASSERT( podDataOffset != uint( -1 ) );
+        data_size = baseSize;
+        return &properties->podData[ podDataOffset ];
+    }
+
+    RUNTIME_ASSERT( complexDataIndex != uint( -1 ) );
+    data_size = properties->complexDataSizes[ complexDataIndex ];
+    return properties->complexData[ complexDataIndex ];
+}
+
+void Property::SetData( void* obj, uchar* data, uint data_size, bool call_callbacks )
+{
+    Properties* properties = (Properties*) obj;
 
     if( !call_callbacks )
-        prop->Accessor->setCallbackLocked = true;
+        setCallbackLocked = true;
 
-    if( prop->Type == Property::POD )
+    if( dataType == Property::POD )
     {
-        RUNTIME_ASSERT( data_size == prop->Size );
+        RUNTIME_ASSERT( data_size == baseSize );
         GenericSet( obj, data );
     }
-    else if( prop->Type == Property::String )
+    else if( dataType == Property::String )
     {
-        ScriptString* str = (ScriptString*) CreateComplexValue( prop, data, data_size );
+        ScriptString* str = (ScriptString*) CreateComplexValue( data, data_size );
         GenericSet( obj, &str );
         str->Release();
     }
-    else if( prop->Type == Property::Array )
+    else if( dataType == Property::Array )
     {
-        ScriptArray* arr = (ScriptArray*) CreateComplexValue( prop, data, data_size );
+        ScriptArray* arr = (ScriptArray*) CreateComplexValue( data, data_size );
         GenericSet( obj, &arr );
         arr->Release();
     }
@@ -304,10 +320,10 @@ void PropertyAccessor::SetData( void* obj, uchar* data, uint data_size, bool cal
     }
 
     if( !call_callbacks )
-        prop->Accessor->setCallbackLocked = false;
+        setCallbackLocked = false;
 }
 
-void PropertyAccessor::SetSendIgnore( void* obj )
+void Property::SetSendIgnore( void* obj )
 {
     sendIgnoreObj = obj;
 }
@@ -338,20 +354,20 @@ Properties::Properties( PropertyRegistrator* reg )
     for( size_t i = 0, j = registrator->registeredProperties.size(); i < j; i++ )
     {
         Property* prop = registrator->registeredProperties[ i ];
-        if( prop->PODDataOffset == uint( -1 ) )
+        if( prop->podDataOffset == uint( -1 ) )
             continue;
 
         // Todo: complex string value
 
-        if( prop->SetDefaultValue )
+        if( prop->setDefaultValue )
         {
-            memcpy( &podData[ prop->PODDataOffset ], &prop->DefaultValue, prop->Size );
+            memcpy( &podData[ prop->podDataOffset ], &prop->defaultValue, prop->baseSize );
         }
-        else if( prop->GenerateRandomValue )
+        else if( prop->generateRandomValue )
         {
             // Todo: fix min/max
-            for( uint i = 0; i < prop->Size; i++ )
-                podData[ prop->PODDataOffset + i ] = Random( 0, 255 );
+            for( uint i = 0; i < prop->baseSize; i++ )
+                podData[ prop->podDataOffset + i ] = Random( 0, 255 );
         }
     }
 }
@@ -380,11 +396,11 @@ Properties& Properties::operator=( const Properties& other )
     for( size_t i = 0; i < registrator->registeredProperties.size(); i++ )
     {
         Property* prop = registrator->registeredProperties[ i ];
-        if( prop->Type != Property::POD )
+        if( prop->dataType != Property::POD )
         {
             uint   data_size;
-            uchar* data = prop->Accessor->GetData( (void*) &other, data_size );
-            prop->Accessor->SetData( this, data, data_size, false );
+            uchar* data = prop->GetData( (void*) &other, data_size );
+            prop->SetData( this, data, data_size, false );
         }
     }
 
@@ -395,8 +411,8 @@ void* Properties::FindData( const char* property_name )
 {
     Property* prop = registrator->Find( property_name );
     RUNTIME_ASSERT( prop );
-    RUNTIME_ASSERT( prop->PODDataOffset != uint( -1 ) );
-    return prop ? &podData[ prop->PODDataOffset ] : NULL;
+    RUNTIME_ASSERT( prop->podDataOffset != uint( -1 ) );
+    return prop ? &podData[ prop->podDataOffset ] : NULL;
 }
 
 uint Properties::StoreData( bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes )
@@ -418,10 +434,10 @@ uint Properties::StoreData( bool with_protected, PUCharVec** all_data, UIntVec**
     for( size_t i = 0; i < registrator->registeredProperties.size(); i++ )
     {
         Property* prop = registrator->registeredProperties[ i ];
-        if( prop->Type != Property::POD && ( prop->Access & Property::PublicMask || ( with_protected && prop->Access & Property::ProtectedMask ) ) )
+        if( prop->dataType != Property::POD && ( prop->accessType & Property::PublicMask || ( with_protected && prop->accessType & Property::ProtectedMask ) ) )
         {
-            storeData.push_back( complexData[ prop->ComplexDataIndex ] );
-            storeDataSizes.push_back( complexDataSizes[ prop->ComplexDataIndex ] );
+            storeData.push_back( complexData[ prop->complexDataIndex ] );
+            storeDataSizes.push_back( complexDataSizes[ prop->complexDataIndex ] );
             whole_size += storeDataSizes.back();
         }
     }
@@ -437,12 +453,12 @@ void Properties::RestoreData( bool with_protected, const UCharVecVec& all_data )
     for( size_t i = 0; i < registrator->registeredProperties.size(); i++ )
     {
         Property* prop = registrator->registeredProperties[ i ];
-        if( prop->Type != Property::POD && ( prop->Access & Property::PublicMask || ( with_protected && prop->Access & Property::ProtectedMask ) ) )
+        if( prop->dataType != Property::POD && ( prop->accessType & Property::PublicMask || ( with_protected && prop->accessType & Property::ProtectedMask ) ) )
         {
-            RUNTIME_ASSERT( prop->ComplexDataIndex < (uint) all_data.size() );
-            uint   data_size = (uint) all_data[ prop->ComplexDataIndex ].size();
-            uchar* data = ( data_size ? (uchar*) &all_data[ prop->ComplexDataIndex ][ 0 ] : NULL );
-            prop->Accessor->SetData( this, data, data_size, false );
+            RUNTIME_ASSERT( prop->complexDataIndex < (uint) all_data.size() );
+            uint   data_size = (uint) all_data[ prop->complexDataIndex ].size();
+            uchar* data = ( data_size ? (uchar*) &all_data[ prop->complexDataIndex ][ 0 ] : NULL );
+            prop->SetData( this, data, data_size, false );
         }
     }
 }
@@ -456,19 +472,19 @@ void Properties::Save( void ( * save_func )( void*, size_t ) )
     for( size_t i = 0, j = registrator->registeredProperties.size(); i < j; i++ )
     {
         Property* prop = registrator->registeredProperties[ i ];
-        if( prop->PODDataOffset == uint( -1 ) && prop->ComplexDataIndex == uint( -1 ) )
+        if( prop->podDataOffset == uint( -1 ) && prop->complexDataIndex == uint( -1 ) )
             continue;
 
-        ushort name_len = (ushort) prop->Name.length();
+        ushort name_len = (ushort) prop->propName.length();
         save_func( &name_len, sizeof( name_len ) );
-        save_func( (void*) prop->Name.c_str(), name_len );
+        save_func( (void*) prop->propName.c_str(), name_len );
 
-        uchar type_name_len = (uchar) prop->TypeName.length();
+        uchar type_name_len = (uchar) prop->typeName.length();
         save_func( &type_name_len, sizeof( type_name_len ) );
-        save_func( (void*) prop->TypeName.c_str(), type_name_len );
+        save_func( (void*) prop->typeName.c_str(), type_name_len );
 
         uint   data_size;
-        uchar* data = prop->Accessor->GetData( this, data_size );
+        uchar* data = prop->GetData( this, data_size );
         save_func( &data_size, sizeof( data_size ) );
         if( data_size )
             save_func( data, data_size );
@@ -521,9 +537,9 @@ void Properties::Load( void* file, uint version )
             FileRead( file, &data[ 0 ], data_size );
 
         Property* prop = registrator->Find( name );
-        if( prop && Str::Compare( prop->TypeName.c_str(), type_name ) )
+        if( prop && Str::Compare( prop->typeName.c_str(), type_name ) )
         {
-            prop->Accessor->SetData( this, data_size ? &data[ 0 ] : NULL, data_size, false );
+            prop->SetData( this, data_size ? &data[ 0 ] : NULL, data_size, false );
         }
         else
         {
@@ -556,8 +572,7 @@ PropertyRegistrator::~PropertyRegistrator()
 
     for( size_t i = 0; i < registeredProperties.size(); i++ )
     {
-        SAFEDEL( registeredProperties[ i ]->Accessor );
-        SAFEREL( registeredProperties[ i ]->ComplexDataSubType );
+        SAFEREL( registeredProperties[ i ]->complexDataSubType );
         SAFEDEL( registeredProperties[ i ] );
     }
     registeredProperties.clear();
@@ -659,9 +674,8 @@ Property* PropertyRegistrator::Register(
         }
     }
 
-    // Cerate accessor
-    uint              property_index = (uint) registeredProperties.size();
-    PropertyAccessor* property_accessor = new PropertyAccessor( property_index );
+    // Allocate property
+    Property* prop = new Property();
 
     // Disallow set or get accessors
     bool disable_get = false;
@@ -682,19 +696,19 @@ Property* PropertyRegistrator::Register(
         Str::Format( decl, "%s%s get_%s() const", type_name, data_type != Property::POD ? "@" : "", name );
         int  result = -1;
         if( data_type != Property::POD )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Get< void* >, (void*), void* ), asCALL_THISCALL_OBJFIRST, property_accessor );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, Get< void* >, (void*), void* ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 1 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Get< uchar >, (void*), uchar ), asCALL_THISCALL_OBJFIRST, property_accessor );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, Get< uchar >, (void*), uchar ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 2 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Get< ushort >, (void*), ushort ), asCALL_THISCALL_OBJFIRST, property_accessor );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, Get< ushort >, (void*), ushort ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 4 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Get< uint >, (void*), uint ), asCALL_THISCALL_OBJFIRST, property_accessor );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, Get< uint >, (void*), uint ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 8 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Get< uint64 >, (void*), uint64 ), asCALL_THISCALL_OBJFIRST, property_accessor );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, Get< uint64 >, (void*), uint64 ), asCALL_THISCALL_OBJFIRST, prop );
         if( result < 0 )
         {
             WriteLogF( _FUNC_, " - Register object property<%s> getter fail, error<%d>.\n", name, result );
-            delete property_accessor;
+            delete prop;
             return NULL;
         }
     }
@@ -706,19 +720,19 @@ Property* PropertyRegistrator::Register(
         Str::Format( decl, "void set_%s(%s%s)", name, type_name, data_type != Property::POD ? "&" : "" );
         int  result = -1;
         if( data_type != Property::POD )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Set< void* >, ( void*, void* ), void ), asCALL_THISCALL_OBJFIRST, property_accessor );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, Set< void* >, ( void*, void* ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 1 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Set< uchar >, ( void*, uchar ), void ), asCALL_THISCALL_OBJFIRST, property_accessor );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, Set< uchar >, ( void*, uchar ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 2 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Set< ushort >, ( void*, ushort ), void ), asCALL_THISCALL_OBJFIRST, property_accessor );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, Set< ushort >, ( void*, ushort ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 4 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Set< uint >, ( void*, uint ), void ), asCALL_THISCALL_OBJFIRST, property_accessor );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, Set< uint >, ( void*, uint ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 8 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( PropertyAccessor, Set< uint64 >, ( void*, uint64 ), void ), asCALL_THISCALL_OBJFIRST, property_accessor );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, Set< uint64 >, ( void*, uint64 ), void ), asCALL_THISCALL_OBJFIRST, prop );
         if( result < 0 )
         {
             WriteLogF( _FUNC_, " - Register object property<%s> setter fail, error<%d>.\n", name, result );
-            delete property_accessor;
+            delete prop;
             return NULL;
         }
     }
@@ -764,35 +778,32 @@ Property* PropertyRegistrator::Register(
     }
 
     // Make entry
-    Property* prop = new Property();
+    prop->regIndex = (uint) registeredProperties.size();
+    prop->complexDataIndex = ( data_type != Property::POD ? complexPropertiesCount++ : uint( -1 ) );
+    prop->podDataOffset = data_base_offset;
+    prop->baseSize = data_size;
+    prop->getCallback = 0;
+    prop->nativeSetCallback = NULL;
 
-    prop->Index = property_index;
-    prop->ComplexDataIndex = ( data_type != Property::POD ? complexPropertiesCount++ : uint( -1 ) );
-    prop->PODDataOffset = data_base_offset;
-    prop->Size = data_size;
-    prop->Accessor = property_accessor;
-    prop->GetCallback = 0;
-    prop->NativeSetCallback = NULL;
-
-    prop->Name = name;
-    prop->TypeName = type_name;
-    prop->Type = data_type;
-    prop->Access = access;
-    prop->ComplexDataSubType = as_obj_sub_type;
-    prop->GenerateRandomValue = generate_random_value;
-    prop->SetDefaultValue = ( default_value != NULL );
-    prop->CheckMinValue = ( min_value != NULL );
-    prop->CheckMaxValue = ( max_value != NULL );
-    prop->DefaultValue = ( default_value ? *default_value : 0 );
-    prop->MinValue = ( min_value ? *min_value : 0 );
-    prop->MaxValue = ( max_value ? *max_value : 0 );
+    prop->propName = name;
+    prop->typeName = type_name;
+    prop->dataType = data_type;
+    prop->accessType = access;
+    prop->complexDataSubType = as_obj_sub_type;
+    prop->generateRandomValue = generate_random_value;
+    prop->setDefaultValue = ( default_value != NULL );
+    prop->checkMinValue = ( min_value != NULL );
+    prop->checkMaxValue = ( max_value != NULL );
+    prop->defaultValue = ( default_value ? *default_value : 0 );
+    prop->minValue = ( min_value ? *min_value : 0 );
+    prop->maxValue = ( max_value ? *max_value : 0 );
 
     registeredProperties.push_back( prop );
 
     if( as_obj_sub_type )
         as_obj_sub_type->AddRef();
 
-    if( prop->PODDataOffset != uint( -1 ) || prop->ComplexDataIndex != uint( -1 ) )
+    if( prop->podDataOffset != uint( -1 ) || prop->complexDataIndex != uint( -1 ) )
         serializedPropertiesCount++;
 
     return prop;
@@ -807,13 +818,13 @@ void PropertyRegistrator::FinishRegistration()
     for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
     {
         Property* prop = registeredProperties[ i ];
-        if( prop->PODDataOffset == uint( -1 ) )
+        if( prop->podDataOffset == uint( -1 ) )
             continue;
 
-        if( prop->Access & Property::ProtectedMask )
-            prop->PODDataOffset += (uint) publicPodDataSpace.size();
-        else if( prop->Access & Property::PrivateMask )
-            prop->PODDataOffset += (uint) publicPodDataSpace.size() + (uint) protectedPodDataSpace.size();
+        if( prop->accessType & Property::ProtectedMask )
+            prop->podDataOffset += (uint) publicPodDataSpace.size();
+        else if( prop->accessType & Property::PrivateMask )
+            prop->podDataOffset += (uint) publicPodDataSpace.size() + (uint) protectedPodDataSpace.size();
     }
 }
 
@@ -827,7 +838,7 @@ Property* PropertyRegistrator::Get( uint property_index )
 Property* PropertyRegistrator::Find( const char* property_name )
 {
     for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
-        if( Str::Compare( property_name, registeredProperties[ i ]->Name.c_str() ) )
+        if( Str::Compare( property_name, registeredProperties[ i ]->propName.c_str() ) )
             return registeredProperties[ i ];
     return NULL;
 }
@@ -840,7 +851,7 @@ string PropertyRegistrator::SetGetCallback( const char* property_name, const cha
         return "Property '" + string( property_name ) + "' in class '" + scriptClassName + "' not found.";
 
     char decl[ MAX_FOTEXT ];
-    Str::Format( decl, "%s %s(%s&)", prop->TypeName.c_str(), "%s", scriptClassName.c_str() );
+    Str::Format( decl, "%s %s(%s&)", prop->typeName.c_str(), "%s", scriptClassName.c_str() );
 
     int bind_id = Script::Bind( script_func, decl, false );
     if( bind_id <= 0 )
@@ -850,7 +861,7 @@ string PropertyRegistrator::SetGetCallback( const char* property_name, const cha
         return "Unable to bind function '" + string( buf ) + "'.";
     }
 
-    prop->GetCallback = bind_id;
+    prop->getCallback = bind_id;
     #endif
     return "";
 }
@@ -863,7 +874,7 @@ string PropertyRegistrator::AddSetCallback( const char* property_name, const cha
         return "Property '" + string( property_name ) + "' in class '" + scriptClassName + "' not found.";
 
     char decl[ MAX_FOTEXT ];
-    Str::Format( decl, "void %s(%s&,%s)", "%s", scriptClassName.c_str(), prop->TypeName.c_str() );
+    Str::Format( decl, "void %s(%s&,%s)", "%s", scriptClassName.c_str(), prop->typeName.c_str() );
 
     int bind_id = Script::Bind( script_func, decl, false );
     if( bind_id <= 0 )
@@ -873,7 +884,7 @@ string PropertyRegistrator::AddSetCallback( const char* property_name, const cha
         return "Unable to bind function '" + string( buf ) + "'.";
     }
 
-    prop->SetCallbacks.push_back( bind_id );
+    prop->setCallbacks.push_back( bind_id );
     #endif
     return "";
 }
@@ -883,18 +894,18 @@ void PropertyRegistrator::SetNativeSetCallback( const char* property_name, Nativ
     if( !property_name )
     {
         for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
-            registeredProperties[ i ]->NativeSetCallback = callback;
+            registeredProperties[ i ]->nativeSetCallback = callback;
     }
     else
     {
-        Find( property_name )->NativeSetCallback = callback;
+        Find( property_name )->nativeSetCallback = callback;
     }
 }
 
 void PropertyRegistrator::SetNativeSendCallback( NativeCallback callback )
 {
     for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
-        registeredProperties[ i ]->NativeSendCallback = callback;
+        registeredProperties[ i ]->nativeSendCallback = callback;
 }
 
 uint PropertyRegistrator::GetWholeDataSize()

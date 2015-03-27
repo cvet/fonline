@@ -2875,13 +2875,13 @@ void FOClient::Net_SendPickCritter( uint crid, uchar pick_type )
 void FOClient::Net_SendItemProperty( Item* item, Property* prop )
 {
     uint  data_size;
-    void* data = prop->Accessor->GetData( item, data_size );
+    void* data = prop->GetData( item, data_size );
 
-    if( prop->Type == Property::POD )
+    if( prop->IsPOD() )
     {
         Bout << NETMSG_SEND_ITEM_POD_PROPERTY( data_size );
         Bout << item->GetId();
-        Bout << (ushort) prop->Index;
+        Bout << (ushort) prop->GetIndex();
         Bout.Push( (char*) data, data_size );
     }
     else
@@ -2891,7 +2891,7 @@ void FOClient::Net_SendItemProperty( Item* item, Property* prop )
         Bout << NETMSG_SEND_ITEM_COMPLEX_PROPERTY;
         Bout << msg_len;
         Bout << item->GetId();
-        Bout << (ushort) prop->Index;
+        Bout << (ushort) prop->GetIndex();
         if( data_size )
             Bout.Push( (char*) data, data_size );
     }
@@ -4880,9 +4880,9 @@ void FOClient::Net_OnItemProperty( bool is_critter, uint data_size )
     if( !prop )
         return;
 
-    prop->Accessor->SetSendIgnore( item );
-    prop->Accessor->SetData( item, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : NULL, (uint) TempPropertyData.size(), true );
-    prop->Accessor->SetSendIgnore( NULL );
+    prop->SetSendIgnore( item );
+    prop->SetData( item, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : NULL, (uint) TempPropertyData.size(), true );
+    prop->SetSendIgnore( NULL );
 
     if( !is_critter && Script::PrepareContext( ClientFunctions.ItemMapChanged, _FUNC_, "Game" ) )
     {
