@@ -4881,7 +4881,7 @@ void FOClient::Net_OnItemProperty( bool is_critter, uint data_size )
         return;
 
     prop->Accessor->SetSendIgnore( item );
-    prop->Accessor->SetData( item, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : NULL, (uint) TempPropertyData.size() );
+    prop->Accessor->SetData( item, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : NULL, (uint) TempPropertyData.size(), true );
     prop->Accessor->SetSendIgnore( NULL );
 
     if( !is_critter && Script::PrepareContext( ClientFunctions.ItemMapChanged, _FUNC_, "Game" ) )

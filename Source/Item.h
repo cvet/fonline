@@ -429,7 +429,7 @@ public:
     template< typename T >
     void SetPropertyValue( Property* prop, T value )
     {
-        prop->Accessor->SetData( this, &value, sizeof( value ) );
+        prop->Accessor->SetData( this, &value, sizeof( value ), true );
     }
 
     #ifdef FONLINE_SERVER

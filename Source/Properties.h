@@ -20,7 +20,7 @@ class PropertyAccessor
 
 public:
     void* GetData( void* obj, uint& data_size );
-    void  SetData( void* obj, void* data, uint data_size );
+    void  SetData( void* obj, void* data, uint data_size, bool call_callbacks );
     void  SetSendIgnore( void* obj );
 
 private:

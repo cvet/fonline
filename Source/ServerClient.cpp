@@ -4706,5 +4706,5 @@ void FOServer::Process_ItemProperty( Client* cl, uint data_size )
         return;
 
     #pragma MESSAGE( "Disable send changing field by client to this client" )
-    prop->Accessor->SetData( item, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size() );
+    prop->Accessor->SetData( item, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size(), true );
 }
