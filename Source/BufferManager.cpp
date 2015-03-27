@@ -398,7 +398,6 @@ bool BufferManager::NeedProcess()
     case NETMSG_ADD_PLAYER:
     case NETMSG_ADD_NPC:
     case NETMSG_CRITTER_LEXEMS:
-    case NETMSG_ITEM_LEXEMS:
     case NETMSG_SEND_COMMAND:
     case NETMSG_SEND_TEXT:
     case NETMSG_CRITTER_TEXT:
@@ -698,7 +697,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_ADD_PLAYER:
     case NETMSG_ADD_NPC:
     case NETMSG_CRITTER_LEXEMS:
-    case NETMSG_ITEM_LEXEMS:
     case NETMSG_SEND_COMMAND:
     case NETMSG_SEND_TEXT:
     case NETMSG_CRITTER_TEXT:

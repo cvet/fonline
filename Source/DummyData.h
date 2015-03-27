@@ -188,7 +188,6 @@ struct Item
     int ViewPlaceOnMap;
     int Accessory;
     int ChildObjects;
-    int Lexems;
     int IsNotValid;
 
     struct
@@ -467,7 +466,6 @@ struct BindClass
     static void Item_GetMapPosition() {}
     static void Item_ChangeProto()    {}
     static void Item_Animate()        {}
-    static void Item_SetLexems()      {}
     static void Item_GetChild()       {}
     static void Item_LockerOpen()     {}
     static void Item_LockerClose()    {}

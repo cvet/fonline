@@ -271,7 +271,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetItems(uint specialId
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Map@+ GetMapPosition(uint16& hexX, uint16& hexY) const", asFUNCTION( BIND_CLASS Item_GetMapPosition ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool ChangeProto(hash protoId) const", asFUNCTION( BIND_CLASS Item_ChangeProto ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void Animate(uint8 fromFrame, uint8 toFrame)", asFUNCTION( BIND_CLASS Item_Animate ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void SetLexems(string@+ lexems)", asFUNCTION( BIND_CLASS Item_SetLexems ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ GetChild(uint childIndex) const", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void EventFinish(bool deleted)", asFUNCTION( BIND_CLASS Item_EventFinish ), asCALL_CDECL_OBJFIRST ) );
@@ -851,7 +850,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "ItemCl", "void Animate(uint8 fromFra
 
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint Id", OFFSETOF( Item, Id ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const ProtoItem@ Proto", OFFSETOF( Item, Proto ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const string@ Lexems", OFFSETOF( Item, Lexems ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint8 Accessory", OFFSETOF( Item, Accessory ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint MapId", OFFSETOF( Item, AccHex.MapId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "ItemCl", "const uint16 HexX", OFFSETOF( Item, AccHex.HexX ) ) );
@@ -1495,6 +1493,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(string& p
 #define BIND_ASSERT_EXT( expr )    BIND_ASSERT( ( expr ) ? 0 : -1 )
 if( registrators[ 0 ] )
 {
+    BIND_ASSERT_EXT( registrators[ 0 ]->Register( "string", "Lexems", Property::Public ) );
     BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint16", "SortValue", Property::PublicModifiable ) );
     BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint8", "Indicator", Property::ProtectedModifiable ) );
     BIND_ASSERT_EXT( registrators[ 0 ]->Register( "uint8", "Info", Property::Public ) );

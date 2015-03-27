@@ -499,17 +499,6 @@ void ItemManager::SaveAllItemsFile( void ( * save_func )( void*, size_t ) )
         save_func( &item->Proto->ProtoId, sizeof( item->Proto->ProtoId ) );
         save_func( &item->Accessory, sizeof( item->Accessory ) );
         save_func( &item->AccBuffer[ 0 ], sizeof( item->AccBuffer ) );
-        if( item->PLexems )
-        {
-            uchar lex_len = Str::Length( item->PLexems );
-            save_func( &lex_len, sizeof( lex_len ) );
-            save_func( item->PLexems, lex_len );
-        }
-        else
-        {
-            uchar zero = 0;
-            save_func( &zero, sizeof( zero ) );
-        }
         item->Props.Save( save_func );
     }
 }
@@ -540,15 +529,6 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
         char  acc_buf[ 8 ];
         FileRead( f, &acc_buf[ 0 ], sizeof( acc_buf ) );
 
-        uchar lex_len;
-        char  lexems[ 1024 ] = { 0 };
-        FileRead( f, &lex_len, sizeof( lex_len ) );
-        if( lex_len )
-        {
-            FileRead( f, lexems, lex_len );
-            lexems[ lex_len ] = 0;
-        }
-
         Item* item = CreateItem( pid, 1, id );
         if( !item )
         {
@@ -566,8 +546,6 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
 
         item->Accessory = acc;
         memcpy( item->AccBuffer, acc_buf, sizeof( acc_buf ) );
-        if( lexems[ 0 ] )
-            item->SetLexems( lexems );
 
         // Radio collection
         if( item->IsRadio() )
@@ -727,8 +705,6 @@ Item* ItemManager::SplitItem( Item* item, uint count )
     item->ChangeCount( -(int) count );
     new_item->Props = item->Props;
     new_item->SetCount( count );
-    if( item->PLexems )
-        new_item->SetLexems( item->PLexems );
 
     // Radio collection
     if( new_item->IsRadio() )

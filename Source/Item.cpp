@@ -110,10 +110,6 @@ Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator ),
     memzero( FuncId, sizeof( FuncId ) );
     ViewByCritter = NULL;
     ChildItems = NULL;
-    PLexems = NULL;
-    #endif
-    #ifdef FONLINE_CLIENT
-    Lexems = ScriptString::Create();
     #endif
 
     SetProto( proto );
@@ -121,14 +117,6 @@ Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator ),
 
 Item::~Item()
 {
-    #ifdef FONLINE_SERVER
-    if( PLexems )
-        MEMORY_PROCESS( MEMORY_ITEM, -LEXEMS_SIZE );
-    SAFEDELA( PLexems );
-    #endif
-    #ifdef FONLINE_CLIENT
-    SAFEREL( Lexems );
-    #endif
     MEMORY_PROCESS( MEMORY_ITEM, -(int) ( sizeof( Item ) + PropertiesRegistrator->GetWholeDataSize() ) );
 }
 
@@ -199,9 +187,6 @@ Item* Item::Clone()
     clone->Accessory = Accessory;
     memcpy( clone->AccBuffer, AccBuffer, sizeof( AccBuffer ) );
     clone->Props = Props;
-    # if defined ( FONLINE_CLIENT )
-    *clone->Lexems = *Lexems;
-    # endif
     return clone;
 }
 #endif
@@ -486,40 +471,6 @@ uint Item::GetCost1st()
         cost = 1;
     return cost;
 }
-
-#ifdef FONLINE_SERVER
-void Item::SetLexems( const char* lexems )
-{
-    if( lexems )
-    {
-        uint len = Str::Length( lexems );
-        if( !len )
-        {
-            SAFEDELA( PLexems );
-            return;
-        }
-
-        if( len >= LEXEMS_SIZE )
-            len = LEXEMS_SIZE - 1;
-
-        if( !PLexems )
-        {
-            MEMORY_PROCESS( MEMORY_ITEM, LEXEMS_SIZE );
-            PLexems = new char[ LEXEMS_SIZE ];
-            if( !PLexems )
-                return;
-        }
-        memcpy( PLexems, lexems, len );
-        PLexems[ len ] = 0;
-    }
-    else
-    {
-        if( PLexems )
-            MEMORY_PROCESS( MEMORY_ITEM, -LEXEMS_SIZE );
-        SAFEDELA( PLexems );
-    }
-}
-#endif
 
 void Item::WeapLoadHolder()
 {

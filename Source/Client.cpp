@@ -2538,9 +2538,6 @@ void FOClient::NetProcess()
         case NETMSG_CRITTER_LEXEMS:
             Net_OnCritterLexems();
             break;
-        case NETMSG_ITEM_LEXEMS:
-            Net_OnItemLexems();
-            break;
 
         case NETMSG_ADD_ITEM_ON_MAP:
             Net_OnAddItemOnMap();
@@ -6141,57 +6138,6 @@ void FOClient::Net_OnCritterLexems()
         if( look )
             *cr->Name = look;
     }
-}
-
-void FOClient::Net_OnItemLexems()
-{
-    uint   msg_len;
-    uint   item_id;
-    ushort lexems_len;
-    char   lexems[ LEXEMS_SIZE ];
-    Bin >> msg_len;
-    Bin >> item_id;
-    Bin >> lexems_len;
-
-    if( lexems_len >= LEXEMS_SIZE )
-    {
-        WriteLogF( _FUNC_, " - Invalid lexems length<%u>, disconnect.\n", lexems_len );
-        NetDisconnect();
-        return;
-    }
-
-    if( lexems_len )
-        Bin.Pop( lexems, lexems_len );
-    lexems[ lexems_len ] = 0;
-
-    CHECK_IN_BUFF_ERROR;
-
-    // Find on map
-    Item* item = GetItem( item_id );
-    if( item )
-        *item->Lexems = lexems;
-    // Find in inventory
-    item = ( Chosen ? Chosen->GetItem( item_id ) : NULL );
-    if( item )
-        *item->Lexems = lexems;
-    // Find in containers
-    UpdateContLexems( InvContInit, item_id, lexems );
-    UpdateContLexems( BarterCont1oInit, item_id, lexems );
-    UpdateContLexems( BarterCont2Init, item_id, lexems );
-    UpdateContLexems( BarterCont2oInit, item_id, lexems );
-    UpdateContLexems( PupCont2Init, item_id, lexems );
-    UpdateContLexems( InvCont, item_id, lexems );
-    UpdateContLexems( BarterCont1, item_id, lexems );
-    UpdateContLexems( PupCont1, item_id, lexems );
-    UpdateContLexems( UseCont, item_id, lexems );
-    UpdateContLexems( BarterCont1o, item_id, lexems );
-    UpdateContLexems( BarterCont2, item_id, lexems );
-    UpdateContLexems( BarterCont2o, item_id, lexems );
-    UpdateContLexems( PupCont2, item_id, lexems );
-
-    // Some item
-    if( SomeItem && SomeItem->GetId() == item_id )
-        *( SomeItem->Lexems ) = lexems;
 }
 
 void FOClient::Net_OnCheckUID3()

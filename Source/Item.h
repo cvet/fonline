@@ -410,11 +410,7 @@ public:
     int        FuncId[ ITEM_EVENT_MAX ];
     Critter*   ViewByCritter;
     ItemVec*   ChildItems;
-    char*      PLexems;
     SyncObject Sync;
-    #endif
-    #ifdef FONLINE_CLIENT
-    ScriptString* Lexems;
     #endif
 
     Item( uint id, ProtoItem* proto );
@@ -505,10 +501,6 @@ public:
 
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
     uint GetCurSprId();
-    #endif
-
-    #ifdef FONLINE_SERVER
-    void SetLexems( const char* lexems );
     #endif
 
     // Deterioration

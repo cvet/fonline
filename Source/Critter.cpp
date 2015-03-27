@@ -3838,11 +3838,6 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
         NET_WRITE_PROPERTIES( Bout, items_data[ i ], items_data_sizes[ i ] );
     }
     BOUT_END( this );
-
-    // Lexems
-    for( size_t i = 0, j = items.size(); i < j; i++ )
-        if( items[ i ]->PLexems )
-            Send_ItemLexems( items[ i ] );
 }
 
 void Client::Send_ItemProperty( Critter* from_cr, Item* item, Property* prop )
@@ -3946,9 +3941,6 @@ void Client::Send_AddItemOnMap( Item* item )
     Bout << is_added;
     NET_WRITE_PROPERTIES( Bout, data, data_sizes );
     BOUT_END( this );
-
-    if( item->PLexems )
-        Send_ItemLexems( item );
 }
 
 void Client::Send_MapItemProperty( Item* item, Property* prop )
@@ -4005,9 +3997,6 @@ void Client::Send_AddItem( Item* item )
     Bout << item->AccCritter.Slot;
     NET_WRITE_PROPERTIES( Bout, data, data_sizes );
     BOUT_END( this );
-
-    if( item->PLexems )
-        Send_ItemLexems( item );
 }
 
 void Client::Send_EraseItem( Item* item )
@@ -4076,13 +4065,6 @@ void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open
     }
     BOUT_END( this );
 
-    for( size_t i = 0, j = items.size(); i < j; i++ )
-    {
-        Item* item = items[ i ];
-        if( item->PLexems )
-            Send_ItemLexems( item );
-    }
-
     AccessContainerId = item_cont->GetId();
 }
 
@@ -4132,13 +4114,6 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
         NET_WRITE_PROPERTIES( Bout, items_data[ i ], items_data_sizes[ i ] );
     }
     BOUT_END( this );
-
-    for( size_t i = 0, j = items.size(); i < j; i++ )
-    {
-        Item* item = items[ i ];
-        if( item->PLexems )
-            Send_ItemLexems( item );
-    }
 
     AccessContainerId = cr_cont->GetId();
 }
@@ -4860,9 +4835,6 @@ void Client::Send_PlayersBarterSetHide( Item* item, uint count )
     Bout << count;
     NET_WRITE_PROPERTIES( Bout, data, data_sizes );
     BOUT_END( this );
-
-    if( item->PLexems )
-        Send_ItemLexems( item );
 }
 
 void Client::Send_ShowScreen( int screen_type, uint param, bool need_answer )
@@ -4926,41 +4898,6 @@ void Client::Send_ViewMap()
     Bout << ViewMapHy;
     Bout << ViewMapLocId;
     Bout << ViewMapLocEnt;
-    BOUT_END( this );
-}
-
-void Client::Send_ItemLexems( Item* item ) // Already checks for client offline and lexems valid
-{
-    if( IsSendDisabled() )
-        return;
-
-    uint   item_id = item->GetId();
-    ushort lexems_len = Str::Length( item->PLexems );
-    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( item_id ) + sizeof( lexems_len ) + lexems_len;
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_ITEM_LEXEMS;
-    Bout << msg_len;
-    Bout << item_id;
-    Bout << lexems_len;
-    Bout.Push( item->PLexems, lexems_len );
-    BOUT_END( this );
-}
-
-void Client::Send_ItemLexemsNull( Item* item ) // Already checks for client offline and lexems valid
-{
-    if( IsSendDisabled() )
-        return;
-
-    uint   item_id = item->GetId();
-    ushort lexems_len = 0;
-    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( item_id ) + sizeof( lexems_len );
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_ITEM_LEXEMS;
-    Bout << msg_len;
-    Bout << item_id;
-    Bout << lexems_len;
     BOUT_END( this );
 }
 

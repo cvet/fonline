@@ -1076,13 +1076,6 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
     }
 }
 
-void FOClient::UpdateContLexems( ItemVec& cont, uint item_id, const char* lexems )
-{
-    auto it = PtrCollectionFind( cont.begin(), cont.end(), item_id );
-    if( it != cont.end() )
-        *( *it )->Lexems = lexems;
-}
-
 // ==============================================================================================================================
 // ******************************************************************************************************************************
 // ==============================================================================================================================

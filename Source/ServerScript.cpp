@@ -1017,59 +1017,6 @@ void FOServer::SScriptFunc::Item_Animate( Item* item, uchar from_frm, uchar to_f
     }
 }
 
-void FOServer::SScriptFunc::Item_SetLexems( Item* item, ScriptString* lexems )
-{
-    if( item->IsNotValid )
-        SCRIPT_ERROR_R( "This nullptr." );
-    if( lexems && lexems->length() >= LEXEMS_SIZE )
-        SCRIPT_ERROR_R( "Lexems arg length is greater than maximum (127 digits)." );
-
-    // Change data
-    item->SetLexems( lexems && lexems->length() ? lexems->c_str() : NULL );
-
-    // Update
-    switch( item->Accessory )
-    {
-    case ITEM_ACCESSORY_CRITTER:
-    {
-        Client* cl = CrMngr.GetPlayer( item->AccCritter.Id, false );
-        if( cl && cl->IsOnline() )
-        {
-            if( item->PLexems )
-                cl->Send_ItemLexems( item );
-            else
-                cl->Send_ItemLexemsNull( item );
-        }
-    }
-    break;
-    case ITEM_ACCESSORY_HEX:
-    {
-        Map* map = MapMngr.GetMap( item->AccHex.MapId, false );
-        if( map )
-        {
-            ClVec players;
-            map->GetPlayers( players, false );
-            for( auto it = players.begin(), end = players.end(); it != end; ++it )
-            {
-                Client* cl = *it;
-                if( cl->IsOnline() && cl->CountIdVisItem( item->GetId() ) )
-                {
-                    if( item->PLexems )
-                        cl->Send_ItemLexems( item );
-                    else
-                        cl->Send_ItemLexemsNull( item );
-                }
-            }
-        }
-    }
-    break;
-    case ITEM_ACCESSORY_CONTAINER:
-        break;
-    default:
-        SCRIPT_ERROR_R( "Unknown accessory." );
-    }
-}
-
 Item* FOServer::SScriptFunc::Item_GetChild( Item* item, uint child_index )
 {
     if( item->IsNotValid )

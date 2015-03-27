@@ -224,7 +224,6 @@ public:
     void Net_OnRunClientScript();
     void Net_OnDropTimers();
     void Net_OnCritterLexems();
-    void Net_OnItemLexems();
     void Net_OnCheckUID3();
 
     void Net_OnUpdateFilesList();
@@ -725,7 +724,6 @@ public:
     Item* GetContainerItem( ItemVec& cont, uint id );
     void  CollectContItems();
     void  ProcessItemsCollection( int collection, ItemVec& init_items, ItemVec& result );
-    void  UpdateContLexems( ItemVec& cont, uint item_id, const char* lexems );
     void  ConnectToGame();
     void  RegGenParams();
     bool  RegCheckData();
