@@ -8,9 +8,10 @@ typedef void ( *NativeCallback )( void* obj, Property* prop, void* cur_value, vo
 
 struct UnresolvedProperty
 {
-    string Name;
-    uint   Size;
-    uint64 Value;
+    char*  Name;
+    char*  TypeName;
+    uchar* Data;
+    uint   DataSize;
 };
 typedef vector< UnresolvedProperty* > UnresolvedPropertyVec;
 
@@ -19,16 +20,17 @@ class PropertyAccessor
     friend class PropertyRegistrator;
 
 public:
-    void* GetData( void* obj, uint& data_size );
-    void  SetData( void* obj, void* data, uint data_size, bool call_callbacks );
-    void  SetSendIgnore( void* obj );
+    uchar* GetData( void* obj, uint& data_size );
+    void   SetData( void* obj, uchar* data, uint data_size, bool call_callbacks );
+    void   SetSendIgnore( void* obj );
 
 private:
     PropertyAccessor( uint index );
 
-    void  GenericGet( void* obj, void* ret_value );
-    void  GenericSet( void* obj, void* new_value );
-    void* GetComplexData( Property* prop, void* base_data, uint& data_size );
+    void*  CreateComplexValue( Property* prop, uchar* data, uint data_size );
+    uchar* ExpandComplexValueData( Property* prop, void* base_ptr, uint& data_size, bool& need_delete );
+    void   GenericGet( void* obj, void* ret_value );
+    void   GenericSet( void* obj, void* new_value );
 
     template< typename T >
     T Get( void* obj )
@@ -98,8 +100,8 @@ struct Property
 
     // Dynamic data
     uint              Index;
-    uint              ComplexTypeIndex;
-    uint              Offset;
+    uint              PODDataOffset;
+    uint              ComplexDataIndex;
     uint              Size;
     PropertyAccessor* Accessor;
     int               GetCallback;
@@ -120,15 +122,16 @@ public:
     ~Properties();
     Properties& operator=( const Properties& other );
     void*       FindData( const char* property_name );
-    uint        StoreData( bool with_protected, PUCharVec** data, UIntVec** data_sizes );
-    void        RestoreData( bool with_protected, const UCharVecVec& data );
+    uint        StoreData( bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes );
+    void        RestoreData( bool with_protected, const UCharVecVec& all_data );
     void        Save( void ( * save_func )( void*, size_t ) );
     void        Load( void* file, uint version );
 
 private:
     PropertyRegistrator*  registrator;
     uchar*                podData;
-    PtrVec                complexData;
+    PUCharVec             complexData;
+    UIntVec               complexDataSizes;
     PUCharVec             storeData;
     UIntVec               storeDataSizes;
     UnresolvedPropertyVec unresolvedProperties;
@@ -157,6 +160,7 @@ private:
     bool        isServer;
     string      scriptClassName;
     PropertyVec registeredProperties;
+    uint        serializedPropertiesCount;
 
     // POD info
     uint      wholePodDataSize;
