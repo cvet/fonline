@@ -4782,7 +4782,7 @@ void FOClient::SboxDraw()
     #define SBOX_DRAW_SKILL( comp, skill )                                                                                                                                                                               \
         do { SprMngr.DrawStr( Rect( SboxB ## comp, SboxX, SboxY - ( IfaceHold == skill ? 1 : 0 ) ), MsgGame->GetStr( STR_PARAM_NAME_SHORT( skill ) ), FT_CENTERX | FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT ); \
              int                                                   sk_val = ( Chosen ? Chosen->GetRawParam( skill ) : 0 ); if( sk_val < 0 )                                                                              \
-                 sk_val = -sk_val; sk_val = max( sk_val, 0 ); char str[ 16 ]; Str::Format( str, "%03d", sk_val ); if( Chosen && Chosen->GetRawParam( skill ) < 0 )                                                       \
+                 sk_val = -sk_val; sk_val = MAX( sk_val, 0 ); char str[ 16 ]; Str::Format( str, "%03d", sk_val ); if( Chosen && Chosen->GetRawParam( skill ) < 0 )                                                       \
                  Str::ChangeValue( str, 0x10 );                                                                                                                                                                          \
              SprMngr.DrawStr( Rect( SboxT ## comp, SboxX, SboxY ), str, 0, COLOR_IFACE, FONT_BIG_NUM ); } while( 0 )
 

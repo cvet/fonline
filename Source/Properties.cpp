@@ -619,7 +619,7 @@ Property* PropertyRegistrator::Register(
 
         data_size = sizeof( void* );
         as_obj_sub_type = as_obj_type->GetSubType();
-        if( as_obj_type->GetTypeId() & asTYPEID_MASK_OBJECT )
+        if( as_obj_type->GetSubTypeId() & asTYPEID_MASK_OBJECT )
         {
             WriteLogF( _FUNC_, " - Invalid property type<%s>, array elements must have POD type.\n", type_name );
             return NULL;
