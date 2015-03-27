@@ -126,8 +126,20 @@ void PropertyAccessor::GenericSet( void* obj, void* new_value )
     }
 
     // Ignore void calls
-    if( !memcmp( new_value, cur_value, prop->Size ) )
-        return;
+    if( prop->Type == Property::POD )
+    {
+        if( !memcmp( new_value, cur_value, prop->Size ) )
+            return;
+    }
+    else
+    {
+        uint  new_value_data_size;
+        void* new_value_data = GetComplexData( prop, new_value, new_value_data_size );
+        uint  cur_value_data_size;
+        void* cur_value_data = GetComplexData( prop, cur_value, cur_value_data_size );
+        if( new_value_data_size == cur_value_data_size && ( cur_value_data_size == 0 || !memcmp( new_value_data, cur_value_data, cur_value_data_size ) ) )
+            return;
+    }
 
     // Store old value
     uint64 old_value = 0;
@@ -200,6 +212,27 @@ void PropertyAccessor::GenericSet( void* obj, void* new_value )
     }
 }
 
+void* PropertyAccessor::GetComplexData( Property* prop, void* base_data, uint& data_size )
+{
+    if( prop->Type == Property::String )
+    {
+        ScriptString* obj = *(ScriptString**) base_data;
+        data_size = ( obj ? obj->length() : 0 );
+        return data_size ? (char*) obj->c_str() : NULL;
+    }
+    else if( prop->Type == Property::Array )
+    {
+        ScriptArray* obj = *(ScriptArray**) base_data;
+        data_size = ( obj ? obj->GetSize() * obj->GetElementSize() : 0 );
+        return data_size ? (char*) obj->At( 0 ) : NULL;
+    }
+    else
+    {
+        RUNTIME_ASSERT( !"Unexpected type" );
+    }
+    return NULL;
+}
+
 void* PropertyAccessor::GetData( void* obj, uint& data_size )
 {
     Properties* properties = (Properties*) obj;
@@ -210,23 +243,7 @@ void* PropertyAccessor::GetData( void* obj, uint& data_size )
         data_size = prop->Size;
         return &properties->podData[ prop->Offset ];
     }
-    else if( prop->Type == Property::String )
-    {
-        ScriptString* obj = *(ScriptString**) &properties->complexData[ prop->ComplexTypeIndex ];
-        data_size = ( obj ? obj->length() : 0 );
-        return data_size ? (char*) obj->c_str() : NULL;
-    }
-    else if( prop->Type == Property::Array )
-    {
-        ScriptArray* obj = *(ScriptArray**) &properties->complexData[ prop->ComplexTypeIndex ];
-        data_size = ( obj ? obj->GetSize() * obj->GetElementSize() : 0 );
-        return data_size ? (char*) obj->At( 0 ) : NULL;
-    }
-    else
-    {
-        RUNTIME_ASSERT( !"Unexpected type" );
-    }
-    return NULL;
+    return GetComplexData( prop, &properties->complexData[ prop->ComplexTypeIndex ], data_size );
 }
 
 void PropertyAccessor::SetData( void* obj, void* data, uint data_size )

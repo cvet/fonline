@@ -26,8 +26,9 @@ public:
 private:
     PropertyAccessor( uint index );
 
-    void GenericGet( void* obj, void* ret_value );
-    void GenericSet( void* obj, void* new_value );
+    void  GenericGet( void* obj, void* ret_value );
+    void  GenericSet( void* obj, void* new_value );
+    void* GetComplexData( Property* prop, void* base_data, uint& data_size );
 
     template< typename T >
     T Get( void* obj )
