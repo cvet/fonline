@@ -763,7 +763,7 @@ void Map::EraseItem( uint item_id )
     item->ViewPlaceOnMap = false;
 }
 
-void Map::SendItemProperty( Item* item, Property* prop, void* cur_value )
+void Map::SendItemProperty( Item* item, Property* prop )
 {
     CrVec critters;
     GetCritters( critters, true );
@@ -774,7 +774,7 @@ void Map::SendItemProperty( Item* item, Property* prop, void* cur_value )
 
         if( cr->CountIdVisItem( item->GetId() ) )
         {
-            cr->Send_MapItemProperty( item, prop, cur_value );
+            cr->Send_MapItemProperty( item, prop );
             cr->EventChangeItemOnMap( item );
         }
     }

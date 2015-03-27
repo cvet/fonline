@@ -118,7 +118,8 @@ public:
     bool          InitNetBegin;
     int           InitNetReason;
     bool          InitialItemsSend;
-    UCharVec      TempItemData;
+    UCharVecVec   TempPropertiesData;
+    UCharVec      TempPropertyData;
 
     bool NetConnect( const char* host, ushort port );
     bool FillSockAddr( sockaddr_in& saddr, const char* host, ushort port );
@@ -137,7 +138,7 @@ public:
     void Net_SendUseItem( uchar ap, uint item_id, hash item_pid, uchar rate, uchar target_type, uint target_id, hash target_pid, uint param );
     void Net_SendPickItem( ushort targ_x, ushort targ_y, hash pid );
     void Net_SendPickCritter( uint crid, uchar pick_type );
-    void Net_SendItemProperty( Item* item, Property* prop, void* data );
+    void Net_SendItemProperty( Item* item, Property* prop );
     void Net_SendChangeItem( uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count );
     void Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags );
     void Net_SendRateItem();
@@ -176,7 +177,6 @@ public:
     void Net_OnMapTextMsg();
     void Net_OnMapTextMsgLex();
     void Net_OnAddItemOnMap();
-    void Net_OnMapItemProperty( uint data_size );
     void Net_OnEraseItemFromMap();
     void Net_OnAnimateItem();
     void Net_OnCombatResult();
@@ -186,6 +186,7 @@ public:
     void Net_OnPing();
     void Net_OnEndParseToGame();
     void Net_OnCheckUID0();
+    void Net_OnItemProperty( bool is_critter, uint data_size );
 
     void Net_OnCritterDir();
     void Net_OnCritterMove();
@@ -193,7 +194,6 @@ public:
     void Net_OnCritterAction();
     void Net_OnCritterKnockout();
     void Net_OnCritterMoveItem();
-    void Net_OnCritterItemProperty( uint data_size );
     void Net_OnCritterAnimate();
     void Net_OnCritterSetAnims();
     void Net_OnCritterParam();

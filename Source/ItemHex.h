@@ -13,7 +13,7 @@ struct AnyFrames;
 class ItemHex: public Item
 {
 public:
-    ItemHex( uint id, ProtoItem* proto, const UCharVec* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut );
+    ItemHex( uint id, ProtoItem* proto, const UCharVecVec* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut );
 
 public:
     uint       SprId;

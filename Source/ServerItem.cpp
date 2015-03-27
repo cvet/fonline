@@ -181,9 +181,9 @@ void FOServer::OnSendItemValue( void* obj, Property* prop, void* cur_value, void
                 if( cr )
                 {
                     if( is_public || is_protected )
-                        cr->Send_CritterItemProperty( cr, item, prop, cur_value );
+                        cr->Send_CritterItemProperty( cr, item, prop );
                     if( is_public )
-                        cr->SendAA_CritterItemProperty( item, prop, cur_value );
+                        cr->SendAA_CritterItemProperty( item, prop );
                 }
             }
         }
@@ -193,7 +193,7 @@ void FOServer::OnSendItemValue( void* obj, Property* prop, void* cur_value, void
             {
                 Map* map = MapMngr.GetMap( item->AccHex.MapId, false );
                 if( map )
-                    map->SendItemProperty( item, prop, cur_value );
+                    map->SendItemProperty( item, prop );
             }
         }
         else if( item->Accessory == ITEM_ACCESSORY_CONTAINER )

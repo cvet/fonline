@@ -341,7 +341,7 @@ void HexManager::ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item 
                               );
 }
 
-bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, const UCharVec* data )
+bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, const UCharVecVec* data )
 {
     if( !id )
     {
@@ -377,7 +377,8 @@ bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
             item_old->IsNotValid = false;
             if( item_old->IsFinishing() )
                 item_old->StopFinishing();
-            item_old->Props.RestoreData( data );
+            if( data )
+                item_old->Props.RestoreData( false, *data );
             return true;
         }
         else

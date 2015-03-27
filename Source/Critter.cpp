@@ -2478,10 +2478,10 @@ void Critter::Send_AddItemOnMap( Item* item )
     if( IsPlayer() )
         ( (Client*) this )->Send_AddItemOnMap( item );
 }
-void Critter::Send_MapItemProperty( Item* item, Property* prop, void* property_data )
+void Critter::Send_MapItemProperty( Item* item, Property* prop )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_MapItemProperty( item, prop, property_data );
+        ( (Client*) this )->Send_MapItemProperty( item, prop );
 }
 void Critter::Send_EraseItemFromMap( Item* item )
 {
@@ -2608,10 +2608,10 @@ void Critter::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar p
     if( IsPlayer() )
         ( (Client*) this )->Send_MoveItem( from_cr, item, action, prev_slot );
 }
-void Critter::Send_CritterItemProperty( Critter* from_cr, Item* item, Property* prop, void* property_data )
+void Critter::Send_CritterItemProperty( Critter* from_cr, Item* item, Property* prop )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_CritterItemProperty( from_cr, item, prop, property_data );
+        ( (Client*) this )->Send_CritterItemProperty( from_cr, item, prop );
 }
 void Critter::Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play )
 {
@@ -2769,7 +2769,7 @@ void Critter::SendAA_MoveItem( Item* item, uchar action, uchar prev_slot )
     }
 }
 
-void Critter::SendAA_CritterItemProperty( Item* item, Property* prop, void* property_data )
+void Critter::SendAA_CritterItemProperty( Item* item, Property* prop )
 {
     uchar slot = item->AccCritter.Slot;
     if( !VisCr.empty() && SlotEnabled[ slot ] && SlotDataSendEnabled[ slot ] )
@@ -2781,7 +2781,7 @@ void Critter::SendAA_CritterItemProperty( Item* item, Property* prop, void* prop
             {
                 Critter* cr = *it;
                 if( cr->IsPlayer() )
-                    cr->Send_CritterItemProperty( this, item, prop, property_data );
+                    cr->Send_CritterItemProperty( this, item, prop );
             }
         }
         else
@@ -2792,7 +2792,7 @@ void Critter::SendAA_CritterItemProperty( Item* item, Property* prop, void* prop
             {
                 Critter* cr = *it;
                 if( cr->IsPlayer() && RunSlotDataSendScript( bind_id, slot, item, this, cr ) )
-                    cr->Send_CritterItemProperty( this, item, prop, property_data );
+                    cr->Send_CritterItemProperty( this, item, prop );
             }
         }
     }
@@ -3795,12 +3795,11 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     if( item )
         Send_SomeItem( item );
 
-    uint     msg = NETMSG_CRITTER_MOVE_ITEM;
-    uint     msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( action ) + sizeof( prev_slot ) + sizeof( bool );
+    uint     msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( action ) + sizeof( prev_slot ) + sizeof( bool );
 
     ItemVec& inv = from_cr->GetInventory();
-    ItemVec  items_to_send;
-    items_to_send.reserve( inv.size() );
+    ItemVec  items;
+    items.reserve( inv.size() );
     for( auto it = inv.begin(), end = inv.end(); it != end; ++it )
     {
         Item* item_ = *it;
@@ -3809,21 +3808,17 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
         {
             int script = SlotDataSendScript[ slot ];
             if( !script || RunSlotDataSendScript( script, slot, item_, from_cr, this ) )
-                items_to_send.push_back( item_ );
+                items.push_back( item_ );
         }
     }
 
     msg_len += sizeof( ushort );
-    UIntVec   items_data_size( items_to_send.size() );
-    PUCharVec items_data( items_to_send.size() );
-    for( size_t i = 0, j = items_to_send.size(); i < j; i++ )
+    vector< PUCharVec* > items_data( items.size() );
+    vector< UIntVec* >   items_data_sizes( items.size() );
+    for( size_t i = 0, j = items.size(); i < j; i++ )
     {
-        Item*  item_ = items_to_send[ i ];
-        uint   data_size;
-        uchar* data = item_->Props.StoreData( false, data_size );
-        msg_len += sizeof( uchar ) + sizeof( uint ) + sizeof( hash ) + sizeof( data_size ) + data_size;
-        items_data_size[ i ] = data_size;
-        items_data[ i ] = data;
+        uint whole_data_size = items[ i ]->Props.StoreData( false, &items_data[ i ], &items_data_sizes[ i ] );
+        msg_len += sizeof( uchar ) + sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) + whole_data_size;
     }
 
     BOUT_BEGIN( this );
@@ -3833,36 +3828,65 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     Bout << action;
     Bout << prev_slot;
     Bout << (bool) ( item ? true : false );
-    Bout << (ushort) items_to_send.size();
-    for( size_t i = 0, j = items_to_send.size(); i < j; i++ )
+    Bout << (ushort) items.size();
+    for( size_t i = 0, j = items.size(); i < j; i++ )
     {
-        Item* item_ = items_to_send[ i ];
+        Item* item_ = items[ i ];
         Bout << item_->AccCritter.Slot;
         Bout << item_->GetId();
         Bout << item_->GetProtoId();
-        Bout << items_data_size[ i ];
-        Bout.Push( (char*) items_data[ i ], items_data_size[ i ] );
+        NET_WRITE_PROPERTIES( Bout, items_data[ i ], items_data_sizes[ i ] );
     }
     BOUT_END( this );
 
     // Lexems
-    for( size_t i = 0, j = items_to_send.size(); i < j; i++ )
-        if( items_to_send[ i ]->PLexems )
-            Send_ItemLexems( items_to_send[ i ] );
+    for( size_t i = 0, j = items.size(); i < j; i++ )
+        if( items[ i ]->PLexems )
+            Send_ItemLexems( items[ i ] );
 }
 
-void Client::Send_CritterItemProperty( Critter* from_cr, Item* item, Property* prop, void* property_data )
+void Client::Send_ItemProperty( Critter* from_cr, Item* item, Property* prop )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    BOUT_BEGIN( this );
-    Bout << NETMSG_CRITTER_ITEM_PROPERTY( prop->Size );
-    Bout << from_cr->GetId();
-    Bout << item->GetId();
-    Bout << (ushort) prop->Index;
-    Bout.Push( (char*) property_data, prop->Size );
-    BOUT_END( this );
+    uint  data_size;
+    void* data = prop->Accessor->GetData( item, data_size );
+
+    if( prop->Type == Property::POD )
+    {
+        BOUT_BEGIN( this );
+        Bout << ( from_cr ? NETMSG_CRITTER_ITEM_POD_PROPERTY( data_size ) : NETMSG_MAP_ITEM_POD_PROPERTY( data_size ) );
+        if( from_cr )
+            Bout << from_cr->GetId();
+        Bout << item->GetId();
+        Bout << (ushort) prop->Index;
+        Bout.Push( (char*) data, data_size );
+        BOUT_END( this );
+    }
+    else
+    {
+        uint msg_len = sizeof( uint ) + sizeof( msg_len ) + ( from_cr ? sizeof( uint ) : 0 ) + sizeof( uint ) + sizeof( ushort ) + data_size;
+
+        BOUT_BEGIN( this );
+        Bout << ( from_cr ? NETMSG_CRITTER_ITEM_COMPLEX_PROPERTY : NETMSG_MAP_ITEM_COMPLEX_PROPERTY );
+        Bout << msg_len;
+        if( from_cr )
+            Bout << from_cr->GetId();
+        Bout << item->GetId();
+        Bout << (ushort) prop->Index;
+        if( data_size )
+            Bout.Push( (char*) data, data_size );
+        BOUT_END( this );
+    }
+}
+
+void Client::Send_CritterItemProperty( Critter* from_cr, Item* item, Property* prop )
+{
+    if( IsSendDisabled() || IsOffline() )
+        return;
+
+    Send_ItemProperty( from_cr, item, prop );
 }
 
 void Client::Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play )
@@ -3904,11 +3928,13 @@ void Client::Send_AddItemOnMap( Item* item )
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    bool   is_added = item->ViewPlaceOnMap;
-    uint   msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) * 2 + sizeof( bool );
-    uint   data_size;
-    uchar* data = item->Props.StoreData( false, data_size );
-    msg_len += sizeof( data_size ) + data_size;
+    bool       is_added = item->ViewPlaceOnMap;
+    uint       msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) * 2 + sizeof( bool );
+
+    PUCharVec* data;
+    UIntVec*   data_sizes;
+    uint       whole_data_size = item->Props.StoreData( false, &data, &data_sizes );
+    msg_len += sizeof( ushort ) + whole_data_size;
 
     BOUT_BEGIN( this );
     Bout << NETMSG_ADD_ITEM_ON_MAP;
@@ -3918,25 +3944,19 @@ void Client::Send_AddItemOnMap( Item* item )
     Bout << item->AccHex.HexX;
     Bout << item->AccHex.HexY;
     Bout << is_added;
-    Bout << data_size;
-    Bout.Push( (char*) data, data_size );
+    NET_WRITE_PROPERTIES( Bout, data, data_sizes );
     BOUT_END( this );
 
     if( item->PLexems )
         Send_ItemLexems( item );
 }
 
-void Client::Send_MapItemProperty( Item* item, Property* prop, void* property_data )
+void Client::Send_MapItemProperty( Item* item, Property* prop )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    BOUT_BEGIN( this );
-    Bout << NETMSG_MAP_ITEM_PROPERTY( prop->Size );
-    Bout << item->GetId();
-    Bout << (ushort) prop->Index;
-    Bout.Push( (char*) property_data, prop->Size );
-    BOUT_END( this );
+    Send_ItemProperty( NULL, item, prop );
 }
 
 void Client::Send_EraseItemFromMap( Item* item )
@@ -3971,10 +3991,11 @@ void Client::Send_AddItem( Item* item )
     if( item->IsHidden() )
         return;
 
-    uint   msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( uchar );
-    uint   data_size;
-    uchar* data = item->Props.StoreData( true, data_size );
-    msg_len += sizeof( data_size ) + data_size;
+    uint       msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( hash ) + sizeof( uchar );
+    PUCharVec* data;
+    UIntVec*   data_sizes;
+    uint       whole_data_size = item->Props.StoreData( true, &data, &data_sizes );
+    msg_len += sizeof( ushort ) + whole_data_size;
 
     BOUT_BEGIN( this );
     Bout << NETMSG_ADD_ITEM;
@@ -3982,8 +4003,7 @@ void Client::Send_AddItem( Item* item )
     Bout << item->GetId();
     Bout << item->GetProtoId();
     Bout << item->AccCritter.Slot;
-    Bout << data_size;
-    Bout.Push( (char*) data, data_size );
+    NET_WRITE_PROPERTIES( Bout, data, data_sizes );
     BOUT_END( this );
 
     if( item->PLexems )
@@ -4025,18 +4045,15 @@ void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open
     if( item_cont->GetType() != ITEM_TYPE_CONTAINER )
         return;
 
-    uint      msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uchar ) + sizeof( uint ) + sizeof( uint ) + sizeof( max_t ) + sizeof( uint );
-    ItemVec   items;
+    uint                 msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uchar ) + sizeof( uint ) + sizeof( uint ) + sizeof( max_t ) + sizeof( uint );
+    ItemVec              items;
     item_cont->ContGetAllItems( items, true, true );
-    UIntVec   items_data_size( items.size() );
-    PUCharVec items_data( items.size() );
+    vector< PUCharVec* > items_data( items.size() );
+    vector< UIntVec* >   items_data_sizes( items.size() );
     for( size_t i = 0, j = items.size(); i < j; i++ )
     {
-        uint   data_size;
-        uchar* data = items[ i ]->Props.StoreData( false, data_size );
-        items_data_size[ i ] = data_size;
-        items_data[ i ] = data;
-        msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( data_size ) + data_size;
+        uint whole_data_size = items[ i ]->Props.StoreData( false, &items_data[ i ], &items_data_sizes[ i ] );
+        msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) + whole_data_size;
     }
     if( open_screen )
         SETFLAG( transfer_type, 0x80 );
@@ -4055,8 +4072,7 @@ void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open
         Item* item = items[ i ];
         Bout << item->GetId();
         Bout << item->GetProtoId();
-        Bout << items_data_size[ i ];
-        Bout.Push( (char*) items_data[ i ], items_data_size[ i ] );
+        NET_WRITE_PROPERTIES( Bout, items_data[ i ], items_data_sizes[ i ] );
     }
     BOUT_END( this );
 
@@ -4091,15 +4107,12 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
     if( open_screen )
         SETFLAG( transfer_type, 0x80 );
 
-    UIntVec   items_data_size( items.size() );
-    PUCharVec items_data( items.size() );
+    vector< PUCharVec* > items_data( items.size() );
+    vector< UIntVec* >   items_data_sizes( items.size() );
     for( size_t i = 0, j = items.size(); i < j; i++ )
     {
-        uint   data_size;
-        uchar* data = items[ i ]->Props.StoreData( false, data_size );
-        items_data_size[ i ] = data_size;
-        items_data[ i ] = data;
-        msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( data_size ) + data_size;
+        uint whole_data_size = items[ i ]->Props.StoreData( false, &items_data[ i ], &items_data_sizes[ i ] );
+        msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) + whole_data_size;
     }
 
     BOUT_BEGIN( this );
@@ -4116,8 +4129,7 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
         Item* item = items[ i ];
         Bout << item->GetId();
         Bout << item->GetProtoId();
-        Bout << items_data_size[ i ];
-        Bout.Push( (char*) items_data[ i ], items_data_size[ i ] );
+        NET_WRITE_PROPERTIES( Bout, items_data[ i ], items_data_sizes[ i ] );
     }
     BOUT_END( this );
 
@@ -4835,18 +4847,18 @@ void Client::Send_PlayersBarterSetHide( Item* item, uint count )
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    uint   msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( uint );
-    uint   data_size;
-    uchar* data = item->Props.StoreData( false, data_size );
-    msg_len += sizeof( data_size ) + data_size;
+    uint       msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( hash ) + sizeof( uint );
+    PUCharVec* data;
+    UIntVec*   data_sizes;
+    uint       whole_data_size = item->Props.StoreData( false, &data, &data_sizes );
+    msg_len += sizeof( ushort ) + whole_data_size;
 
     BOUT_BEGIN( this );
     Bout << NETMSG_PLAYERS_BARTER_SET_HIDE;
     Bout << item->GetId();
     Bout << item->GetProtoId();
     Bout << count;
-    Bout << data_size;
-    Bout.Push( (char*) data, data_size );
+    NET_WRITE_PROPERTIES( Bout, data, data_sizes );
     BOUT_END( this );
 
     if( item->PLexems )
@@ -4989,10 +5001,11 @@ void Client::Send_CheckUIDS()
 
 void Client::Send_SomeItem( Item* item )
 {
-    uint   msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) + sizeof( uchar );
-    uint   data_size;
-    uchar* data = item->Props.StoreData( false, data_size );
-    msg_len += sizeof( data_size ) + data_size;
+    uint       msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( hash ) + sizeof( uchar );
+    PUCharVec* data;
+    UIntVec*   data_sizes;
+    uint       whole_data_size = item->Props.StoreData( false, &data, &data_sizes );
+    msg_len += sizeof( ushort ) + whole_data_size;
 
     BOUT_BEGIN( this );
     Bout << NETMSG_SOME_ITEM;
@@ -5000,8 +5013,7 @@ void Client::Send_SomeItem( Item* item )
     Bout << item->GetId();
     Bout << item->GetProtoId();
     Bout << item->AccCritter.Slot;
-    Bout << data_size;
-    Bout.Push( (char*) data, data_size );
+    NET_WRITE_PROPERTIES( Bout, data, data_sizes );
     BOUT_END( this );
 }
 

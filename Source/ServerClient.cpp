@@ -4663,19 +4663,42 @@ void FOServer::Process_RuleGlobal( Client* cl )
     cl->SetBreakTime( GameOpt.Breaktime );
 }
 
-void FOServer::Process_ItemField( Client* cl, uint data_size )
+void FOServer::Process_ItemProperty( Client* cl, uint data_size )
 {
+    uint   msg_len = 0;
     uint   item_id;
     ushort property_index;
-    uint64 value = 0;
+    if( data_size == 0 )
+        cl->Bin >> msg_len;
     cl->Bin >> item_id;
     cl->Bin >> property_index;
-    cl->Bin.Pop( (char*) &value, data_size );
+
+    CHECK_IN_BUFF_ERROR( cl );
+
+    UCharVec data;
+    if( data_size != 0 )
+    {
+        data.resize( data_size );
+        cl->Bin.Pop( (char*) &data[ 0 ], data_size );
+    }
+    else
+    {
+        uint len = msg_len - sizeof( uint ) - sizeof( msg_len ) - sizeof( uint ) - sizeof( ushort );
+        #pragma MESSAGE( "Control max size explicitly, add option to property registration" )
+        if( len > 0xFFFF )         // For now 64Kb for all
+            return;
+        data.resize( len );
+        cl->Bin.Pop( (char*) &data[ 0 ], len );
+    }
 
     CHECK_IN_BUFF_ERROR( cl );
 
     Property* prop = Item::PropertiesRegistrator->Get( property_index );
     if( !prop || !( prop->Access & Property::ModifiableMask ) )
+        return;
+    if( prop->Type == Property::POD && data_size != prop->Size )
+        return;
+    if( prop->Type != Property::POD && data_size != 0 )
         return;
 
     Item* item = cl->GetItem( item_id, true );
@@ -4683,5 +4706,5 @@ void FOServer::Process_ItemField( Client* cl, uint data_size )
         return;
 
     #pragma MESSAGE( "Disable send changing field by client to this client" )
-    prop->Accessor->GenericSet( item, &value );
+    prop->Accessor->SetData( item, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size() );
 }

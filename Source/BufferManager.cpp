@@ -350,30 +350,30 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_SEND_GET_SCORES_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SCORES:
         return ( NETMSG_SCORES_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_ITEM_PROPERTY( 1 ):
-        return ( NETMSG_SEND_ITEM_PROPERTY_SIZE( 1 ) + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_ITEM_PROPERTY( 2 ):
-        return ( NETMSG_SEND_ITEM_PROPERTY_SIZE( 2 ) + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_ITEM_PROPERTY( 4 ):
-        return ( NETMSG_SEND_ITEM_PROPERTY_SIZE( 4 ) + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_ITEM_PROPERTY( 8 ):
-        return ( NETMSG_SEND_ITEM_PROPERTY_SIZE( 8 ) + bufReadPos <= bufEndPos );
-    case NETMSG_CRITTER_ITEM_PROPERTY( 1 ):
-        return ( NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 1 ) + bufReadPos <= bufEndPos );
-    case NETMSG_CRITTER_ITEM_PROPERTY( 2 ):
-        return ( NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 2 ) + bufReadPos <= bufEndPos );
-    case NETMSG_CRITTER_ITEM_PROPERTY( 4 ):
-        return ( NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 4 ) + bufReadPos <= bufEndPos );
-    case NETMSG_CRITTER_ITEM_PROPERTY( 8 ):
-        return ( NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 8 ) + bufReadPos <= bufEndPos );
-    case NETMSG_MAP_ITEM_PROPERTY( 1 ):
-        return ( NETMSG_MAP_ITEM_PROPERTY_SIZE( 1 ) + bufReadPos <= bufEndPos );
-    case NETMSG_MAP_ITEM_PROPERTY( 2 ):
-        return ( NETMSG_MAP_ITEM_PROPERTY_SIZE( 2 ) + bufReadPos <= bufEndPos );
-    case NETMSG_MAP_ITEM_PROPERTY( 4 ):
-        return ( NETMSG_MAP_ITEM_PROPERTY_SIZE( 4 ) + bufReadPos <= bufEndPos );
-    case NETMSG_MAP_ITEM_PROPERTY( 8 ):
-        return ( NETMSG_MAP_ITEM_PROPERTY_SIZE( 8 ) + bufReadPos <= bufEndPos );
+    case NETMSG_SEND_ITEM_POD_PROPERTY( 1 ):
+        return ( NETMSG_SEND_ITEM_POD_PROPERTY_SIZE( 1 ) + bufReadPos <= bufEndPos );
+    case NETMSG_SEND_ITEM_POD_PROPERTY( 2 ):
+        return ( NETMSG_SEND_ITEM_POD_PROPERTY_SIZE( 2 ) + bufReadPos <= bufEndPos );
+    case NETMSG_SEND_ITEM_POD_PROPERTY( 4 ):
+        return ( NETMSG_SEND_ITEM_POD_PROPERTY_SIZE( 4 ) + bufReadPos <= bufEndPos );
+    case NETMSG_SEND_ITEM_POD_PROPERTY( 8 ):
+        return ( NETMSG_SEND_ITEM_POD_PROPERTY_SIZE( 8 ) + bufReadPos <= bufEndPos );
+    case NETMSG_CRITTER_ITEM_POD_PROPERTY( 1 ):
+        return ( NETMSG_CRITTER_ITEM_POD_PROPERTY_SIZE( 1 ) + bufReadPos <= bufEndPos );
+    case NETMSG_CRITTER_ITEM_POD_PROPERTY( 2 ):
+        return ( NETMSG_CRITTER_ITEM_POD_PROPERTY_SIZE( 2 ) + bufReadPos <= bufEndPos );
+    case NETMSG_CRITTER_ITEM_POD_PROPERTY( 4 ):
+        return ( NETMSG_CRITTER_ITEM_POD_PROPERTY_SIZE( 4 ) + bufReadPos <= bufEndPos );
+    case NETMSG_CRITTER_ITEM_POD_PROPERTY( 8 ):
+        return ( NETMSG_CRITTER_ITEM_POD_PROPERTY_SIZE( 8 ) + bufReadPos <= bufEndPos );
+    case NETMSG_MAP_ITEM_POD_PROPERTY( 1 ):
+        return ( NETMSG_MAP_ITEM_POD_PROPERTY_SIZE( 1 ) + bufReadPos <= bufEndPos );
+    case NETMSG_MAP_ITEM_POD_PROPERTY( 2 ):
+        return ( NETMSG_MAP_ITEM_POD_PROPERTY_SIZE( 2 ) + bufReadPos <= bufEndPos );
+    case NETMSG_MAP_ITEM_POD_PROPERTY( 4 ):
+        return ( NETMSG_MAP_ITEM_POD_PROPERTY_SIZE( 4 ) + bufReadPos <= bufEndPos );
+    case NETMSG_MAP_ITEM_POD_PROPERTY( 8 ):
+        return ( NETMSG_MAP_ITEM_POD_PROPERTY_SIZE( 8 ) + bufReadPos <= bufEndPos );
     default:
         break;
     }
@@ -426,6 +426,9 @@ bool BufferManager::NeedProcess()
     case NETMSG_SEND_SET_USER_HOLO_STR:
     case NETMSG_USER_HOLO_STR:
     case NETMSG_AUTOMAPS_INFO:
+    case NETMSG_CRITTER_ITEM_COMPLEX_PROPERTY:
+    case NETMSG_MAP_ITEM_COMPLEX_PROPERTY:
+    case NETMSG_SEND_ITEM_COMPLEX_PROPERTY:
         return ( msg_len + bufReadPos <= bufEndPos );
     default:
         // Unknown message
@@ -647,41 +650,41 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_SCORES:
         size = NETMSG_SCORES_SIZE;
         break;
-    case NETMSG_SEND_ITEM_PROPERTY( 1 ):
-        size = NETMSG_SEND_ITEM_PROPERTY_SIZE( 1 );
+    case NETMSG_SEND_ITEM_POD_PROPERTY( 1 ):
+        size = NETMSG_SEND_ITEM_POD_PROPERTY_SIZE( 1 );
         break;
-    case NETMSG_SEND_ITEM_PROPERTY( 2 ):
-        size = NETMSG_SEND_ITEM_PROPERTY_SIZE( 2 );
+    case NETMSG_SEND_ITEM_POD_PROPERTY( 2 ):
+        size = NETMSG_SEND_ITEM_POD_PROPERTY_SIZE( 2 );
         break;
-    case NETMSG_SEND_ITEM_PROPERTY( 4 ):
-        size = NETMSG_SEND_ITEM_PROPERTY_SIZE( 4 );
+    case NETMSG_SEND_ITEM_POD_PROPERTY( 4 ):
+        size = NETMSG_SEND_ITEM_POD_PROPERTY_SIZE( 4 );
         break;
-    case NETMSG_SEND_ITEM_PROPERTY( 8 ):
-        size = NETMSG_SEND_ITEM_PROPERTY_SIZE( 8 );
+    case NETMSG_SEND_ITEM_POD_PROPERTY( 8 ):
+        size = NETMSG_SEND_ITEM_POD_PROPERTY_SIZE( 8 );
         break;
-    case NETMSG_CRITTER_ITEM_PROPERTY( 1 ):
-        size = NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 1 );
+    case NETMSG_CRITTER_ITEM_POD_PROPERTY( 1 ):
+        size = NETMSG_CRITTER_ITEM_POD_PROPERTY_SIZE( 1 );
         break;
-    case NETMSG_CRITTER_ITEM_PROPERTY( 2 ):
-        size = NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 2 );
+    case NETMSG_CRITTER_ITEM_POD_PROPERTY( 2 ):
+        size = NETMSG_CRITTER_ITEM_POD_PROPERTY_SIZE( 2 );
         break;
-    case NETMSG_CRITTER_ITEM_PROPERTY( 4 ):
-        size = NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 4 );
+    case NETMSG_CRITTER_ITEM_POD_PROPERTY( 4 ):
+        size = NETMSG_CRITTER_ITEM_POD_PROPERTY_SIZE( 4 );
         break;
-    case NETMSG_CRITTER_ITEM_PROPERTY( 8 ):
-        size = NETMSG_CRITTER_ITEM_PROPERTY_SIZE( 8 );
+    case NETMSG_CRITTER_ITEM_POD_PROPERTY( 8 ):
+        size = NETMSG_CRITTER_ITEM_POD_PROPERTY_SIZE( 8 );
         break;
-    case NETMSG_MAP_ITEM_PROPERTY( 1 ):
-        size = NETMSG_MAP_ITEM_PROPERTY_SIZE( 1 );
+    case NETMSG_MAP_ITEM_POD_PROPERTY( 1 ):
+        size = NETMSG_MAP_ITEM_POD_PROPERTY_SIZE( 1 );
         break;
-    case NETMSG_MAP_ITEM_PROPERTY( 2 ):
-        size = NETMSG_MAP_ITEM_PROPERTY_SIZE( 2 );
+    case NETMSG_MAP_ITEM_POD_PROPERTY( 2 ):
+        size = NETMSG_MAP_ITEM_POD_PROPERTY_SIZE( 2 );
         break;
-    case NETMSG_MAP_ITEM_PROPERTY( 4 ):
-        size = NETMSG_MAP_ITEM_PROPERTY_SIZE( 4 );
+    case NETMSG_MAP_ITEM_POD_PROPERTY( 4 ):
+        size = NETMSG_MAP_ITEM_POD_PROPERTY_SIZE( 4 );
         break;
-    case NETMSG_MAP_ITEM_PROPERTY( 8 ):
-        size = NETMSG_MAP_ITEM_PROPERTY_SIZE( 8 );
+    case NETMSG_MAP_ITEM_POD_PROPERTY( 8 ):
+        size = NETMSG_MAP_ITEM_POD_PROPERTY_SIZE( 8 );
         break;
 
     case NETMSG_CHECK_UID0:
@@ -723,6 +726,9 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_ADD_ITEM_ON_MAP:
     case NETMSG_SOME_ITEM:
     case NETMSG_PLAYERS_BARTER_SET_HIDE:
+    case NETMSG_CRITTER_ITEM_COMPLEX_PROPERTY:
+    case NETMSG_MAP_ITEM_COMPLEX_PROPERTY:
+    case NETMSG_SEND_ITEM_COMPLEX_PROPERTY:
     {
         // Changeable size
         EncryptKey( sizeof( msg ) );

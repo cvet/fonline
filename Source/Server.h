@@ -77,7 +77,7 @@ public:
     static void Process_Combat( Client* cl );
     static void Process_RunServerScript( Client* cl );
     static void Process_KarmaVoting( Client* cl );
-    static void Process_ItemField( Client* cl, uint data_size );
+    static void Process_ItemProperty( Client* cl, uint data_size );
 
     static void Send_MapData( Client* cl, ProtoMap* pmap, uchar send_info );
 

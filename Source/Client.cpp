@@ -2366,18 +2366,6 @@ void FOClient::NetProcess()
         case NETMSG_CRITTER_MOVE_ITEM:
             Net_OnCritterMoveItem();
             break;
-        case NETMSG_CRITTER_ITEM_PROPERTY( 1 ):
-            Net_OnCritterItemProperty( 1 );
-            break;
-        case NETMSG_CRITTER_ITEM_PROPERTY( 2 ):
-            Net_OnCritterItemProperty( 2 );
-            break;
-        case NETMSG_CRITTER_ITEM_PROPERTY( 4 ):
-            Net_OnCritterItemProperty( 4 );
-            break;
-        case NETMSG_CRITTER_ITEM_PROPERTY( 8 ):
-            Net_OnCritterItemProperty( 8 );
-            break;
         case NETMSG_CRITTER_ANIMATE:
             Net_OnCritterAnimate();
             break;
@@ -2398,6 +2386,37 @@ void FOClient::NetProcess()
             break;
         case NETMSG_CHECK_UID1:
             Net_OnCheckUID1();
+            break;
+
+        case NETMSG_CRITTER_ITEM_POD_PROPERTY( 1 ):
+            Net_OnItemProperty( true, 1 );
+            break;
+        case NETMSG_CRITTER_ITEM_POD_PROPERTY( 2 ):
+            Net_OnItemProperty( true, 2 );
+            break;
+        case NETMSG_CRITTER_ITEM_POD_PROPERTY( 4 ):
+            Net_OnItemProperty( true, 4 );
+            break;
+        case NETMSG_CRITTER_ITEM_POD_PROPERTY( 8 ):
+            Net_OnItemProperty( true, 8 );
+            break;
+        case NETMSG_CRITTER_ITEM_COMPLEX_PROPERTY:
+            Net_OnItemProperty( true, 0 );
+            break;
+        case NETMSG_MAP_ITEM_POD_PROPERTY( 1 ):
+            Net_OnItemProperty( false, 1 );
+            break;
+        case NETMSG_MAP_ITEM_POD_PROPERTY( 2 ):
+            Net_OnItemProperty( false, 2 );
+            break;
+        case NETMSG_MAP_ITEM_POD_PROPERTY( 4 ):
+            Net_OnItemProperty( false, 4 );
+            break;
+        case NETMSG_MAP_ITEM_POD_PROPERTY( 8 ):
+            Net_OnItemProperty( false, 8 );
+            break;
+        case NETMSG_MAP_ITEM_COMPLEX_PROPERTY:
+            Net_OnItemProperty( false, 0 );
             break;
 
         case NETMSG_CRITTER_TEXT:
@@ -2525,18 +2544,6 @@ void FOClient::NetProcess()
 
         case NETMSG_ADD_ITEM_ON_MAP:
             Net_OnAddItemOnMap();
-            break;
-        case NETMSG_MAP_ITEM_PROPERTY( 1 ):
-            Net_OnMapItemProperty( 1 );
-            break;
-        case NETMSG_MAP_ITEM_PROPERTY( 2 ):
-            Net_OnMapItemProperty( 2 );
-            break;
-        case NETMSG_MAP_ITEM_PROPERTY( 4 ):
-            Net_OnMapItemProperty( 4 );
-            break;
-        case NETMSG_MAP_ITEM_PROPERTY( 8 ):
-            Net_OnMapItemProperty( 8 );
             break;
         case NETMSG_ERASE_ITEM_FROM_MAP:
             Net_OnEraseItemFromMap();
@@ -2868,12 +2875,29 @@ void FOClient::Net_SendPickCritter( uint crid, uchar pick_type )
     Bout << pick_type;
 }
 
-void FOClient::Net_SendItemProperty( Item* item, Property* prop, void* data )
+void FOClient::Net_SendItemProperty( Item* item, Property* prop )
 {
-    Bout << NETMSG_SEND_ITEM_PROPERTY( prop->Size );
-    Bout << item->GetId();
-    Bout << (ushort) prop->Index;
-    Bout.Push( (char*) data, prop->Size );
+    uint  data_size;
+    void* data = prop->Accessor->GetData( item, data_size );
+
+    if( prop->Type == Property::POD )
+    {
+        Bout << NETMSG_SEND_ITEM_POD_PROPERTY( data_size );
+        Bout << item->GetId();
+        Bout << (ushort) prop->Index;
+        Bout.Push( (char*) data, data_size );
+    }
+    else
+    {
+        uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( ushort ) + data_size;
+
+        Bout << NETMSG_SEND_ITEM_COMPLEX_PROPERTY;
+        Bout << msg_len;
+        Bout << item->GetId();
+        Bout << (ushort) prop->Index;
+        if( data_size )
+            Bout.Push( (char*) data, data_size );
+    }
 }
 
 void FOClient::Net_SendChangeItem( uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count )
@@ -3852,15 +3876,11 @@ void FOClient::Net_OnSomeItem()
     uint  item_id;
     hash  item_pid;
     uchar slot;
-    uint  data_size;
     Bin >> msg_len;
     Bin >> item_id;
     Bin >> item_pid;
     Bin >> slot;
-    Bin >> data_size;
-    TempItemData.resize( data_size );
-    if( data_size )
-        Bin.Pop( (char*) &TempItemData[ 0 ], data_size );
+    NET_READ_PROPERTIES( Bin, TempPropertiesData );
 
     CHECK_IN_BUFF_ERROR;
 
@@ -3875,7 +3895,7 @@ void FOClient::Net_OnSomeItem()
 
     SomeItem = new Item( item_id, proto_item );
     SomeItem->AccCritter.Slot = slot;
-    SomeItem->Props.RestoreData( &TempItemData );
+    SomeItem->Props.RestoreData( false, TempPropertiesData );
 }
 
 void FOClient::Net_OnCritterAction()
@@ -3941,29 +3961,26 @@ void FOClient::Net_OnCritterMoveItem()
     Bin >> is_item;
 
     // Slot items
-    UCharVec           slots_data_slot;
-    UIntVec            slots_data_id;
-    HashVec            slots_data_pid;
-    vector< UCharVec > slots_data_data;
-    ushort             slots_data_count;
+    UCharVec              slots_data_slot;
+    UIntVec               slots_data_id;
+    HashVec               slots_data_pid;
+    vector< UCharVecVec > slots_data_data;
+    ushort                slots_data_count;
     Bin >> slots_data_count;
     for( uchar i = 0; i < slots_data_count; i++ )
     {
         uchar slot;
         uint  id;
         hash  pid;
-        uint  data_size;
         Bin >> slot;
         Bin >> id;
         Bin >> pid;
-        Bin >> data_size;
-        TempItemData.resize( data_size );
-        if( data_size )
-            Bin.Pop( (char*) &TempItemData[ 0 ], data_size );
+        NET_READ_PROPERTIES( Bin, TempPropertiesData );
+
         slots_data_slot.push_back( slot );
         slots_data_id.push_back( id );
         slots_data_pid.push_back( pid );
-        slots_data_data.push_back( TempItemData );
+        slots_data_data.push_back( TempPropertiesData );
     }
 
     CHECK_IN_BUFF_ERROR;
@@ -3991,7 +4008,7 @@ void FOClient::Net_OnCritterMoveItem()
             if( proto_item )
             {
                 Item* item = new Item( slots_data_id[ i ], proto_item );
-                item->Props.RestoreData( &slots_data_data[ i ] );
+                item->Props.RestoreData( false, slots_data_data[ i ] );
                 item->AccCritter.Slot = slots_data_slot[ i ];
                 cr->AddItem( item );
             }
@@ -4008,36 +4025,6 @@ void FOClient::Net_OnCritterMoveItem()
     }
 
     cr->Action( action, prev_slot, is_item ? SomeItem : NULL, false );
-}
-
-void FOClient::Net_OnCritterItemProperty( uint data_size )
-{
-    uint   crid;
-    uint   item_id;
-    ushort property_index;
-    uint64 value = 0;
-    Bin >> crid;
-    Bin >> item_id;
-    Bin >> property_index;
-    Bin.Pop( (char*) &value, data_size );
-
-    CHECK_IN_BUFF_ERROR;
-
-    CritterCl* cr = GetCritter( crid );
-    if( !cr )
-        return;
-
-    Item* item = cr->GetItem( item_id );
-    if( !item )
-        return;
-
-    Property* prop = Item::PropertiesRegistrator->Get( property_index );
-    if( !prop )
-        return;
-
-    prop->Accessor->SetSendIgnore( item );
-    prop->Accessor->GenericSet( item, &value );
-    prop->Accessor->SetSendIgnore( NULL );
 }
 
 void FOClient::Net_OnCritterAnimate()
@@ -4448,15 +4435,11 @@ void FOClient::Net_OnChosenAddItem()
     uint  item_id;
     hash  pid;
     uchar slot;
-    uint  data_size;
     Bin >> msg_len;
     Bin >> item_id;
     Bin >> pid;
     Bin >> slot;
-    Bin >> data_size;
-    TempItemData.resize( data_size );
-    if( data_size )
-        Bin.Pop( (char*) &TempItemData[ 0 ], data_size );
+    NET_READ_PROPERTIES( Bin, TempPropertiesData );
 
     CHECK_IN_BUFF_ERROR;
 
@@ -4484,7 +4467,7 @@ void FOClient::Net_OnChosenAddItem()
     }
 
     Item* item = new Item( item_id, proto_item );
-    item->Props.RestoreData( &TempItemData );
+    item->Props.RestoreData( true, TempPropertiesData );
     item->Accessory = ITEM_ACCESSORY_CRITTER;
     item->AccCritter.Slot = slot;
 
@@ -4570,23 +4553,19 @@ void FOClient::Net_OnAddItemOnMap()
     ushort item_hx;
     ushort item_hy;
     bool   is_added;
-    uint   data_size;
     Bin >> msg_len;
     Bin >> item_id;
     Bin >> item_pid;
     Bin >> item_hx;
     Bin >> item_hy;
     Bin >> is_added;
-    Bin >> data_size;
-    TempItemData.resize( data_size );
-    if( data_size )
-        Bin.Pop( (char*) &TempItemData[ 0 ], data_size );
+    NET_READ_PROPERTIES( Bin, TempPropertiesData );
 
     CHECK_IN_BUFF_ERROR;
 
     if( HexMngr.IsMapLoaded() )
     {
-        HexMngr.AddItem( item_id, item_pid, item_hx, item_hy, is_added, &TempItemData );
+        HexMngr.AddItem( item_id, item_pid, item_hx, item_hy, is_added, &TempPropertiesData );
     }
     else     // Global map car
     {
@@ -4595,7 +4574,7 @@ void FOClient::Net_OnAddItemOnMap()
         {
             SAFEREL( GmapCar.Car );
             GmapCar.Car = new Item( item_id, proto_item );
-            GmapCar.Car->Props.RestoreData( &TempItemData );
+            GmapCar.Car->Props.RestoreData( false, TempPropertiesData );
         }
     }
 
@@ -4609,37 +4588,6 @@ void FOClient::Net_OnAddItemOnMap()
     // Refresh borders
     if( item && !item->IsRaked() )
         RebuildLookBorders = true;
-}
-
-void FOClient::Net_OnMapItemProperty( uint data_size )
-{
-    uint   item_id;
-    ushort property_index;
-    uint64 value = 0;
-    Bin >> item_id;
-    Bin >> property_index;
-    Bin.Pop( (char*) &value, data_size );
-
-    CHECK_IN_BUFF_ERROR;
-
-    Item* item = HexMngr.GetItemById( item_id );
-    if( !item )
-        return;
-
-    Property* prop = Item::PropertiesRegistrator->Get( property_index );
-    if( !prop )
-        return;
-
-    prop->Accessor->SetSendIgnore( item );
-    prop->Accessor->GenericSet( item, &value );
-    prop->Accessor->SetSendIgnore( NULL );
-
-    if( item && Script::PrepareContext( ClientFunctions.ItemMapChanged, _FUNC_, "Game" ) )
-    {
-        Script::SetArgObject( item );
-        Script::SetArgObject( item );
-        Script::RunPrepared();
-    }
 }
 
 void FOClient::Net_OnEraseItemFromMap()
@@ -4883,6 +4831,68 @@ void FOClient::Net_OnEndParseToGame()
         SndMngr.PlayMusic( MsgLocations->GetStr( STR_LOC_MAP_MUSIC( CurMapLocPid, CurMapIndexInLoc ) ) );
 
     WriteLog( "Entering to game complete.\n" );
+}
+
+void FOClient::Net_OnItemProperty( bool is_critter, uint data_size )
+{
+    uint   msg_len = 0;
+    uint   crid = 0;
+    uint   item_id;
+    ushort property_index;
+    if( data_size == 0 )
+        Bin >> msg_len;
+    if( is_critter )
+        Bin >> crid;
+    Bin >> item_id;
+    Bin >> property_index;
+
+    if( data_size != 0 )
+    {
+        TempPropertyData.resize( data_size );
+        Bin.Pop( (char*) &TempPropertyData[ 0 ], data_size );
+    }
+    else
+    {
+        uint len = msg_len - sizeof( uint ) - sizeof( msg_len ) - ( is_critter ? sizeof( uint ) : 0 ) - sizeof( uint ) - sizeof( ushort );
+        TempPropertyData.resize( len );
+        if( len )
+            Bin.Pop( (char*) &TempPropertyData[ 0 ], len );
+    }
+
+    CHECK_IN_BUFF_ERROR;
+
+    Item* item = NULL;
+    if( is_critter )
+    {
+        CritterCl* cr = GetCritter( crid );
+        if( !cr )
+            return;
+
+        item = cr->GetItem( item_id );
+        if( !item )
+            return;
+    }
+    else
+    {
+        item = HexMngr.GetItemById( item_id );
+        if( !item )
+            return;
+    }
+
+    Property* prop = Item::PropertiesRegistrator->Get( property_index );
+    if( !prop )
+        return;
+
+    prop->Accessor->SetSendIgnore( item );
+    prop->Accessor->SetData( item, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : NULL, (uint) TempPropertyData.size() );
+    prop->Accessor->SetSendIgnore( NULL );
+
+    if( !is_critter && Script::PrepareContext( ClientFunctions.ItemMapChanged, _FUNC_, "Game" ) )
+    {
+        Script::SetArgObject( item );
+        Script::SetArgObject( item );
+        Script::RunPrepared();
+    }
 }
 
 void FOClient::Net_OnChosenTalk()
@@ -5540,19 +5550,15 @@ void FOClient::Net_OnContainerInfo()
     {
         uint item_id;
         hash item_pid;
-        uint data_size;
         Bin >> item_id;
         Bin >> item_pid;
-        Bin >> data_size;
-        TempItemData.resize( data_size );
-        if( data_size )
-            Bin.Pop( (char*) &TempItemData[ 0 ], data_size );
+        NET_READ_PROPERTIES( Bin, TempPropertiesData );
 
         ProtoItem* proto_item = ItemMngr.GetProtoItem( item_pid );
         if( item_id && proto_item )
         {
             Item* item = new Item( item_id, proto_item );
-            item->Props.RestoreData( &TempItemData );
+            item->Props.RestoreData( false, TempPropertiesData );
             item_container.push_back( item );
         }
     }
@@ -5904,15 +5910,11 @@ void FOClient::Net_OnPlayersBarterSetHide()
     uint item_id;
     hash pid;
     uint count;
-    uint data_size;
     Bin >> msg_len;
     Bin >> item_id;
     Bin >> pid;
     Bin >> count;
-    Bin >> data_size;
-    TempItemData.resize( data_size );
-    if( data_size )
-        Bin.Pop( (char*) &TempItemData[ 0 ], data_size );
+    NET_READ_PROPERTIES( Bin, TempPropertiesData );
 
     CHECK_IN_BUFF_ERROR;
 
@@ -5934,14 +5936,14 @@ void FOClient::Net_OnPlayersBarterSetHide()
     if( !citem )
     {
         Item* item = new Item( item_id, proto_item );
-        item->Props.RestoreData( &TempItemData );
+        item->Props.RestoreData( false, TempPropertiesData );
         item->SetCount( count );
         BarterCont2oInit.push_back( item );
     }
     else
     {
         uint new_count = citem->Count + count;
-        citem->Props.RestoreData( &TempItemData );
+        citem->Props.RestoreData( false, TempPropertiesData );
         citem->SetCount( new_count );
     }
     CollectContItems();
@@ -8977,7 +8979,7 @@ void FOClient::OnSendItemValue( void* obj, Property* prop, void* cur_value, void
     #pragma MESSAGE( "Clean up client 0 and -1 item ids" )
     if( item->Id && item->Id != uint( -1 ) && Self->Chosen && Self->Chosen->GetItem( item->Id ) )
     {
-        Self->Net_SendItemProperty( item, prop, cur_value );
+        Self->Net_SendItemProperty( item, prop );
     }
 }
 

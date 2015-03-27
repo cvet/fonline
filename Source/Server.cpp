@@ -1817,27 +1817,33 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_ITEM_PROPERTY( 1 ):
+            case NETMSG_SEND_ITEM_POD_PROPERTY( 1 ):
             {
-                Process_ItemField( cl, 1 );
+                Process_ItemProperty( cl, 1 );
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_ITEM_PROPERTY( 2 ):
+            case NETMSG_SEND_ITEM_POD_PROPERTY( 2 ):
             {
-                Process_ItemField( cl, 2 );
+                Process_ItemProperty( cl, 2 );
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_ITEM_PROPERTY( 4 ):
+            case NETMSG_SEND_ITEM_POD_PROPERTY( 4 ):
             {
-                Process_ItemField( cl, 4 );
+                Process_ItemProperty( cl, 4 );
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_ITEM_PROPERTY( 8 ):
+            case NETMSG_SEND_ITEM_POD_PROPERTY( 8 ):
             {
-                Process_ItemField( cl, 8 );
+                Process_ItemProperty( cl, 8 );
+                BIN_END( cl );
+                continue;
+            }
+            case NETMSG_SEND_ITEM_COMPLEX_PROPERTY:
+            {
+                Process_ItemProperty( cl, 0 );
                 BIN_END( cl );
                 continue;
             }

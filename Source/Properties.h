@@ -19,12 +19,15 @@ class PropertyAccessor
     friend class PropertyRegistrator;
 
 public:
-    void GenericGet( void* obj, void* ret_value );
-    void GenericSet( void* obj, void* new_value );
-    void SetSendIgnore( void* obj );
+    void* GetData( void* obj, uint& data_size );
+    void  SetData( void* obj, void* data, uint data_size );
+    void  SetSendIgnore( void* obj );
 
 private:
     PropertyAccessor( uint index );
+
+    void GenericGet( void* obj, void* ret_value );
+    void GenericSet( void* obj, void* new_value );
 
     template< typename T >
     T Get( void* obj )
@@ -70,10 +73,20 @@ struct Property
         ModifiableMask      = 0x2200,
     };
 
+    enum DataType
+    {
+        POD,
+        String,
+        Array,
+        // Todo: Dict
+    };
+
     // Static data
     string            Name;
     string            TypeName;
+    DataType          Type;
     AccessType        Access;
+    asIObjectType*    ComplexDataSubType;
     bool              GenerateRandomValue;
     bool              SetDefaultValue;
     bool              CheckMinValue;
@@ -84,6 +97,7 @@ struct Property
 
     // Dynamic data
     uint              Index;
+    uint              ComplexTypeIndex;
     uint              Offset;
     uint              Size;
     PropertyAccessor* Accessor;
@@ -105,14 +119,17 @@ public:
     ~Properties();
     Properties& operator=( const Properties& other );
     void*       FindData( const char* property_name );
-    uchar*      StoreData( bool with_protected, uint& size );
-    void        RestoreData( const UCharVec* data );
+    uint        StoreData( bool with_protected, PUCharVec** data, UIntVec** data_sizes );
+    void        RestoreData( bool with_protected, const UCharVecVec& data );
     void        Save( void ( * save_func )( void*, size_t ) );
     void        Load( void* file, uint version );
 
 private:
     PropertyRegistrator*  registrator;
-    uchar*                propertiesData;
+    uchar*                podData;
+    PtrVec                complexData;
+    PUCharVec             storeData;
+    UIntVec               storeDataSizes;
     UnresolvedPropertyVec unresolvedProperties;
 };
 
@@ -139,11 +156,16 @@ private:
     bool        isServer;
     string      scriptClassName;
     PropertyVec registeredProperties;
-    uint        wholeDataSize;
-    BoolVec     publicDataSpace;
-    BoolVec     protectedDataSpace;
-    BoolVec     privateDataSpace;
-    PUCharVec   propertiesDataPool;
+
+    // POD info
+    uint      wholePodDataSize;
+    BoolVec   publicPodDataSpace;
+    BoolVec   protectedPodDataSpace;
+    BoolVec   privatePodDataSpace;
+    PUCharVec podDataPool;
+
+    // Complex types info
+    uint complexPropertiesCount;
 };
 
 #endif // __PROPERTIES__

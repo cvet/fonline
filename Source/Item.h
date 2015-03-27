@@ -433,8 +433,7 @@ public:
     template< typename T >
     void SetPropertyValue( Property* prop, T value )
     {
-        RUNTIME_ASSERT( sizeof( T ) == prop->Size );
-        prop->Accessor->GenericSet( this, &value );
+        prop->Accessor->SetData( this, &value, sizeof( value ) );
     }
 
     #ifdef FONLINE_SERVER

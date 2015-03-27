@@ -1098,13 +1098,16 @@ void Script::PrintContextCallstack( asIScriptContext* ctx )
 
 void Script::RaiseException( const char* message, ... )
 {
+    asIScriptContext* ctx = asGetActiveContext();
+    if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
+        return;
+
     va_list list;
     va_start( list, message );
     char    buf[ MAX_FOTEXT ];
     vsnprintf( buf, MAX_FOTEXT, message, list );
     va_end( list );
 
-    asIScriptContext* ctx = asGetActiveContext();
     if( ctx )
         ctx->SetException( buf );
     else

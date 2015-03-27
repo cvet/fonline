@@ -66,6 +66,7 @@ typedef multimap< uint, string > UIntStrMulMap;
 typedef vector< void* >          PtrVec;
 typedef vector< int >            IntVec;
 typedef vector< uchar >          UCharVec;
+typedef vector< UCharVec >       UCharVecVec;
 typedef vector< short >          ShortVec;
 typedef vector< ushort >         UShortVec;
 typedef vector< uint >           UIntVec;
