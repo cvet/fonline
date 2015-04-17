@@ -6,7 +6,9 @@
 #include <strstream>
 #include "IniParser.h"
 
-#ifdef FONLINE_MAPPER
+#ifndef FONLINE_MAPPER
+# include "Critter.h"
+#else
 # include "ResourceManager.h"
 #endif
 
@@ -16,6 +18,7 @@
 #define FO_MAP_VERSION_TEXT4                     ( 4 )
 #define FO_MAP_VERSION_TEXT5                     ( 5 )
 #define FO_MAP_VERSION_TEXT6                     ( 6 )
+#define FO_MAP_VERSION_TEXT7                     ( 7 )
 
 #define APP_HEADER                               "Header"
 #define APP_TILES                                "Tiles"
@@ -200,7 +203,8 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         delete[] header_str;
     }
     if( ( Header.Version != FO_MAP_VERSION_TEXT1 && Header.Version != FO_MAP_VERSION_TEXT2 && Header.Version != FO_MAP_VERSION_TEXT3 &&
-          Header.Version != FO_MAP_VERSION_TEXT4 && Header.Version != FO_MAP_VERSION_TEXT5 && Header.Version != FO_MAP_VERSION_TEXT6 ) ||
+          Header.Version != FO_MAP_VERSION_TEXT4 && Header.Version != FO_MAP_VERSION_TEXT5 && Header.Version != FO_MAP_VERSION_TEXT6 &&
+          Header.Version != FO_MAP_VERSION_TEXT7 ) ||
         Header.MaxHexX < 1 || Header.MaxHexY < 1 )
         return false;
 
@@ -299,11 +303,11 @@ bool ProtoMap::LoadTextFormat( const char* buf )
     char* objects_str = map_ini.GetApp( APP_OBJECTS );
     if( objects_str )
     {
+        int        props_errors = 0;
         istrstream istr( objects_str );
         string     field;
         char       svalue[ MAX_FOTEXT ];
         int        ivalue;
-        int        critter_param_index = -1;
         while( !istr.eof() && !istr.fail() )
         {
             istr >> field;
@@ -389,24 +393,31 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                             mobj.MCritter.Anim1 = ivalue;
                         else if( field == "Critter_Anim2" )
                             mobj.MCritter.Anim2 = ivalue;
-                        else if( field == "Critter_CondExt" )
-                            Deprecated_CondExtToAnim2( mobj.MCritter.Cond, ivalue, mobj.MCritter.Anim2, mobj.MCritter.Anim2 );                                                  // Deprecated
-                        else if( field.size() >= 18 /* "Critter_ParamIndex" or "Critter_ParamValue" */ && field.substr( 0, 13 ) == "Critter_Param" )
+                        else if( field.size() >= 18 /* "Critter_ParamName" or "Critter_ParamValue" */ && field.substr( 0, 13 ) == "Critter_Param" )
                         {
                             if( field.substr( 13, 5 ) == "Index" )
-                            {
-                                critter_param_index = ConstantsManager::GetParamId( svalue );
-                            }
-                            else if( critter_param_index != -1 )
                             {
                                 if( !mobj.MCritter.Params )
                                     mobj.AllocateCritterParams();
                                 #ifndef FONLINE_MAPPER
-                                mobj.MCritter.Params[ critter_param_index ] = (int) ConvertParamValue( svalue );
+                                Property* prop = Critter::PropertiesRegistrator->Find( svalue );
+                                mobj.MCritter.Params->push_back( prop ? prop->GetEnumValue() : -1 );
+                                if( !prop )
+                                {
+                                    WriteLog( "Critter property<%s> not found.\n", svalue );
+                                    props_errors++;
+                                }
                                 #else
-                                *mobj.MCritter.Params[ critter_param_index ] = svalue;
+                                mobj.MCritter.Params->push_back( ScriptString::Create( svalue ) );
                                 #endif
-                                critter_param_index = -1;
+                            }
+                            else if( mobj.MCritter.Params && mobj.MCritter.Params->size() % 2 == 1 )
+                            {
+                                #ifndef FONLINE_MAPPER
+                                mobj.MCritter.Params->push_back( (int) ConvertParamValue( svalue ) );
+                                #else
+                                mobj.MCritter.Params->push_back( ScriptString::Create( svalue ) );
+                                #endif
                             }
                         }
                     }
@@ -530,6 +541,8 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             }
         }
         delete[] objects_str;
+        if( props_errors )
+            return false;
     }
 
     return true;
@@ -673,21 +686,20 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
                 fm.SetStr( "%-20s %d\n", "Critter_Anim2", mobj.MCritter.Anim2 );
             if( mobj.MCritter.Params )
             {
-                for( int i = 0; i < MAX_PARAMS; i++ )
+                for( size_t i = 0, j = mobj.MCritter.Params->size(); i < j; i += 2 )
                 {
-                    if( mobj.MCritter.Params[ i ]->length() > 0 )
+                    if( mobj.MCritter.Params->at( i )->length() > 0 && mobj.MCritter.Params->at( i + 1 )->length() > 0 )
                     {
-                        char param_str[ MAX_FOTEXT ];
-                        Str::Copy( param_str, mobj.MCritter.Params[ i ]->c_str() );
-                        Str::Trim( param_str );
-                        if( Str::Length( param_str ) > 0 && !( Str::IsNumber( param_str ) && Str::AtoI( param_str ) == 0 ) )
+                        char property_name[ MAX_FOTEXT ];
+                        char property_value[ MAX_FOTEXT ];
+                        Str::Copy( property_name, mobj.MCritter.Params->at( i )->c_str() );
+                        Str::Copy( property_value, mobj.MCritter.Params->at( i + 1 )->c_str() );
+                        Str::Trim( property_name );
+                        Str::Trim( property_value );
+                        if( Str::Length( property_name ) > 0 && Str::Length( property_value ) > 0 )
                         {
-                            const char* param_name = ConstantsManager::GetParamName( i );
-                            if( param_name )
-                            {
-                                fm.SetStr( "%-20s %s\n", "Critter_ParamIndex", param_name );
-                                fm.SetStr( "%-20s %s\n", "Critter_ParamValue", param_str );
-                            }
+                            fm.SetStr( "%-20s %s\n", "Critter_ParamName", property_name );
+                            fm.SetStr( "%-20s %s\n", "Critter_ParamValue", property_value );
                         }
                     }
                 }
@@ -819,7 +831,10 @@ bool ProtoMap::LoadCache( FileManager& fm )
         if( mobj->MCritter.Params )
         {
             mobj->AllocateCritterParams();
-            fm.CopyMem( mobj->MCritter.Params, sizeof( int ) * MAX_PARAMS );
+            uint size = fm.GetBEUInt();
+            mobj->MCritter.Params = new IntVec();
+            mobj->MCritter.Params->resize( size );
+            fm.CopyMem( &mobj->MCritter.Params->at( 0 ), size * sizeof( int ) );
         }
         CrittersVec.push_back( mobj );
     }
@@ -930,8 +945,12 @@ void ProtoMap::SaveCache( FileManager& fm )
     for( auto it = CrittersVec.begin(), end = CrittersVec.end(); it != end; ++it )
     {
         fm.SetData( *it, (uint) sizeof( MapObject ) - sizeof( MapObject::_RunTime ) );
-        if( ( *it )->MCritter.Params )
-            fm.SetData( ( *it )->MCritter.Params, sizeof( int ) * MAX_PARAMS );
+        if( ( *it )->MCritter.Params && !( *it )->MCritter.Params->empty() )
+        {
+            uint size = ( *it )->MCritter.Params->size();
+            fm.SetBEUInt( size );
+            fm.SetData( &( *it )->MCritter.Params->at( 0 ), size * sizeof( int ) );
+        }
     }
 
     // Items
@@ -976,10 +995,10 @@ void ProtoMap::SaveCache( FileManager& fm )
 void ProtoMap::BindSceneryScript( MapObject* mobj )
 {
 // ============================================================
-    # define BIND_SCENERY_FUNC( params )                                                                                                         \
-        if( mobj->ProtoId != SP_SCEN_TRIGGER )                                                                                                   \
-            mobj->RunTime.BindScriptId = Script::Bind( mobj->ScriptName, mobj->FuncName, "bool %s(Critter&,Scenery&,int,Item@" params, false );  \
-        else                                                                                                                                     \
+    # define BIND_SCENERY_FUNC( params )                                                                                                                     \
+        if( mobj->ProtoId != SP_SCEN_TRIGGER )                                                                                                               \
+            mobj->RunTime.BindScriptId = Script::Bind( mobj->ScriptName, mobj->FuncName, "bool %s(Critter&,Scenery&,CritterProperty,Item@" params, false );  \
+        else                                                                                                                                                 \
             mobj->RunTime.BindScriptId = Script::Bind( mobj->ScriptName, mobj->FuncName, "void %s(Critter&,Scenery&,bool,uint8" params, false )
 // ============================================================
 
@@ -1120,7 +1139,7 @@ bool ProtoMap::Refresh()
                 if( mobj_->MapObjType == MAP_OBJECT_ITEM )
                 {
                     ProtoItem* proto_item = ItemMngr.GetProtoItem( mobj_->ProtoId );
-                    if( !proto_item || proto_item->Type != ITEM_TYPE_CONTAINER )
+                    if( !proto_item || proto_item->GetType() != ITEM_TYPE_CONTAINER )
                         continue;
                 }
                 if( !mobj_->UID )
@@ -1148,16 +1167,15 @@ bool ProtoMap::Refresh()
                 continue;
 
             ProtoItem* proto_parent = ItemMngr.GetProtoItem( mobj_parent->ProtoId );
-            if( !proto_parent || !proto_parent->ChildPid[ mobj_child->ParentChildIndex ] )
+            if( !proto_parent || !proto_parent->GetChildPid( mobj_child->ParentChildIndex ) )
                 break;
 
             ushort child_hx = mobj_parent->MapX, child_hy = mobj_parent->MapY;
-            FOREACH_PROTO_ITEM_LINES( proto_parent->ChildLines[ mobj_child->ParentChildIndex ], child_hx, child_hy, Header.MaxHexX, Header.MaxHexY,;
-                                      );
+            FOREACH_PROTO_ITEM_LINES( proto_parent->GetChildLinesStr( mobj_child->ParentChildIndex ), child_hx, child_hy, Header.MaxHexX, Header.MaxHexY );
 
             mobj_child->MapX = child_hx;
             mobj_child->MapY = child_hy;
-            mobj_child->ProtoId = proto_parent->ChildPid[ mobj_child->ParentChildIndex ];
+            mobj_child->ProtoId = proto_parent->GetChildPid( mobj_child->ParentChildIndex );
             delete_child = false;
             break;
         }
@@ -1220,14 +1238,14 @@ bool ProtoMap::Refresh()
             continue;
         }
 
-        int type = proto_item->Type;
+        int type = proto_item->GetType();
         switch( type )
         {
         case ITEM_TYPE_WALL:
         {
-            if( !FLAG( proto_item->Flags, ITEM_NO_BLOCK ) )
+            if( !FLAG( proto_item->GetFlags(), ITEM_NO_BLOCK ) )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-            if( !FLAG( proto_item->Flags, ITEM_SHOOT_THRU ) )
+            if( !FLAG( proto_item->GetFlags(), ITEM_SHOOT_THRU ) )
             {
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );
@@ -1265,9 +1283,9 @@ bool ProtoMap::Refresh()
 
             if( type == ITEM_TYPE_GRID )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_SCEN_GRID );
-            if( !FLAG( proto_item->Flags, ITEM_NO_BLOCK ) )
+            if( !FLAG( proto_item->GetFlags(), ITEM_NO_BLOCK ) )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-            if( !FLAG( proto_item->Flags, ITEM_SHOOT_THRU ) )
+            if( !FLAG( proto_item->GetFlags(), ITEM_SHOOT_THRU ) )
             {
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );
@@ -1329,7 +1347,7 @@ bool ProtoMap::Refresh()
                 SETFLAG( cur_scen.Flags, SCEN_CAN_USE );
             if( type == ITEM_TYPE_GENERIC && mobj.MScenery.CanTalk )
                 SETFLAG( cur_scen.Flags, SCEN_CAN_TALK );
-            if( type == ITEM_TYPE_GRID && proto_item->Grid_Type != GRID_EXITGRID )
+            if( type == ITEM_TYPE_GRID && proto_item->GetGrid_Type() != GRID_EXITGRID )
                 SETFLAG( cur_scen.Flags, SCEN_CAN_USE );
 
             // Other
@@ -1440,7 +1458,7 @@ bool ProtoMap::Refresh()
 void ProtoMap::GenNew()
 {
     Clear();
-    Header.Version = FO_MAP_VERSION_TEXT6;
+    Header.Version = FO_MAP_VERSION_TEXT7;
     Header.MaxHexX = MAXHEX_DEF;
     Header.MaxHexY = MAXHEX_DEF;
     pmapName = "";
@@ -1516,7 +1534,7 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
 
     // Save
     FileManager fm;
-    Header.Version = FO_MAP_VERSION_TEXT6;
+    Header.Version = FO_MAP_VERSION_TEXT7;
     SaveTextFormat( fm );
     Tiles.clear();
 

@@ -1,18 +1,58 @@
 #include "Common.h"
 #include "Server.h"
 
-#define CHECK_NPC_AP( npc, map, need_ap )                                                                                        \
-    do { if( npc->GetParam( ST_CURRENT_AP ) < (int) ( need_ap ) ) { if( map->IsTurnBasedOn ) { if( map->IsCritterTurn( npc ) )   \
-                                                                                                   map->EndCritterTurn(); } else \
-                                                                        npc->SetWait( GameOpt.ApRegeneration / npc->GetParam( ST_ACTION_POINTS ) * ( (int) ( need_ap ) - npc->GetParam( ST_CURRENT_AP ) ) ); return; } } while( 0 )
-#define CHECK_NPC_REAL_AP( npc, map, need_ap )                                                                     \
-    do { if( npc->GetRealAp() < (int) ( need_ap ) ) { if( map->IsTurnBasedOn ) { if( map->IsCritterTurn( npc ) )   \
-                                                                                     map->EndCritterTurn(); } else \
-                                                          npc->SetWait( GameOpt.ApRegeneration / npc->GetParam( ST_ACTION_POINTS ) * ( (int) ( need_ap ) - npc->GetRealAp() ) / AP_DIVIDER ); return; } } while( 0 )
-#define CHECK_NPC_AP_R0( npc, map, need_ap )                                                                                     \
-    do { if( npc->GetParam( ST_CURRENT_AP ) < (int) ( need_ap ) ) { if( map->IsTurnBasedOn ) { if( map->IsCritterTurn( npc ) )   \
-                                                                                                   map->EndCritterTurn(); } else \
-                                                                        npc->SetWait( GameOpt.ApRegeneration / npc->GetParam( ST_ACTION_POINTS ) * ( (int) ( need_ap ) - npc->GetParam( ST_CURRENT_AP ) ) ); return false; } } while( 0 )
+#define CHECK_NPC_AP( npc, map, need_ap )                                                                                                   \
+    do                                                                                                                                      \
+    {                                                                                                                                       \
+        if( npc->GetCurrentAp() / AP_DIVIDER < (int) ( need_ap ) )                                                                          \
+        {                                                                                                                                   \
+            if( map->IsTurnBasedOn )                                                                                                        \
+            {                                                                                                                               \
+                if( map->IsCritterTurn( npc ) )                                                                                             \
+                    map->EndCritterTurn();                                                                                                  \
+            }                                                                                                                               \
+            else                                                                                                                            \
+            {                                                                                                                               \
+                npc->SetWait( GameOpt.ApRegeneration / npc->GetActionPoints() * ( (int) ( need_ap ) - npc->GetCurrentAp() / AP_DIVIDER ) ); \
+            }                                                                                                                               \
+            return;                                                                                                                         \
+        }                                                                                                                                   \
+    } while( 0 )
+#define CHECK_NPC_REAL_AP( npc, map, need_ap )                                                                                           \
+    do                                                                                                                                   \
+    {                                                                                                                                    \
+        if( npc->GetRealAp() < (int) ( need_ap ) )                                                                                       \
+        {                                                                                                                                \
+            if( map->IsTurnBasedOn )                                                                                                     \
+            {                                                                                                                            \
+                if( map->IsCritterTurn( npc ) )                                                                                          \
+                    map->EndCritterTurn();                                                                                               \
+            }                                                                                                                            \
+            else                                                                                                                         \
+            {                                                                                                                            \
+                npc->SetWait( GameOpt.ApRegeneration / npc->GetActionPoints() * ( (int) ( need_ap ) - npc->GetRealAp() ) / AP_DIVIDER ); \
+            }                                                                                                                            \
+            return;                                                                                                                      \
+        }                                                                                                                                \
+    } while( 0 )
+#define CHECK_NPC_AP_R0( npc, map, need_ap )                                                                                                \
+    do                                                                                                                                      \
+    {                                                                                                                                       \
+        if( npc->GetCurrentAp() / AP_DIVIDER < (int) ( need_ap ) )                                                                          \
+        {                                                                                                                                   \
+            if( map->IsTurnBasedOn )                                                                                                        \
+            {                                                                                                                               \
+                if( map->IsCritterTurn( npc ) )                                                                                             \
+                    map->EndCritterTurn();                                                                                                  \
+            }                                                                                                                               \
+            else                                                                                                                            \
+            {                                                                                                                               \
+                npc->SetWait( GameOpt.ApRegeneration / npc->GetActionPoints() * ( (int) ( need_ap ) - npc->GetCurrentAp() / AP_DIVIDER ) ); \
+            }                                                                                                                               \
+            return false;                                                                                                                   \
+        }                                                                                                                                   \
+    } while( 0 )
+
 void FOServer::ProcessAI( Npc* npc )
 {
     // Check busy
@@ -67,7 +107,7 @@ void FOServer::ProcessAI( Npc* npc )
         }
 
         // Go home
-        if( !npc->IsRawParam( MODE_NO_HOME ) && map->GetId() == npc->GetHomeMap() && ( npc->GetHexX() != npc->GetHomeX() || npc->GetHexY() != npc->GetHomeY() ) )
+        if( !npc->GetIsNoHome() && map->GetId() == npc->GetHomeMap() && ( npc->GetHexX() != npc->GetHomeX() || npc->GetHexY() != npc->GetHomeY() ) )
         {
             if( CritType::IsCanWalk( npc->GetCrType() ) )
             {
@@ -89,14 +129,14 @@ void FOServer::ProcessAI( Npc* npc )
             }
         }
         // Set home direction
-        else if( !npc->IsRawParam( MODE_NO_HOME ) && CritType::IsCanRotate( npc->GetCrType() ) && map->GetId() == npc->GetHomeMap() && npc->GetDir() != npc->GetHomeOri() )
+        else if( !npc->GetIsNoHome() && CritType::IsCanRotate( npc->GetCrType() ) && map->GetId() == npc->GetHomeMap() && npc->GetDir() != npc->GetHomeOri() )
         {
             npc->Data.Dir = npc->GetHomeOri();
             npc->SendA_Dir();
             npc->SetWait( 200 );
             return;
         }
-        else if( !npc->IsRawParam( MODE_NO_FAVORITE_ITEM ) )
+        else if( !npc->GetIsNoFavoriteItem() )
         {
             hash  favor_item_pid;
             Item* favor_item;
@@ -106,12 +146,12 @@ void FOServer::ProcessAI( Npc* npc )
             {
                 if( npc->ItemSlotMain->GetId() )
                 {
-                    AI_MoveItem( npc, map, npc->ItemSlotMain->AccCritter.Slot, SLOT_INV, npc->ItemSlotMain->GetId(), npc->ItemSlotMain->Count );
+                    AI_MoveItem( npc, map, npc->ItemSlotMain->AccCritter.Slot, SLOT_INV, npc->ItemSlotMain->GetId(), npc->ItemSlotMain->GetCount() );
                     return;
                 }
-                else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && ( !favor_item->IsWeapon() || CritType::IsAnim1( npc->GetCrType(), favor_item->Proto->Weapon_Anim1 ) ) )
+                else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && ( !favor_item->IsWeapon() || CritType::IsAnim1( npc->GetCrType(), favor_item->Proto->GetWeapon_Anim1() ) ) )
                 {
-                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_HAND1, favor_item->GetId(), favor_item->Count );
+                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_HAND1, favor_item->GetId(), favor_item->GetCount() );
                     return;
                 }
             }
@@ -121,12 +161,12 @@ void FOServer::ProcessAI( Npc* npc )
             {
                 if( npc->ItemSlotExt->GetId() )
                 {
-                    AI_MoveItem( npc, map, npc->ItemSlotExt->AccCritter.Slot, SLOT_INV, npc->ItemSlotExt->GetId(), npc->ItemSlotExt->Count );
+                    AI_MoveItem( npc, map, npc->ItemSlotExt->AccCritter.Slot, SLOT_INV, npc->ItemSlotExt->GetId(), npc->ItemSlotExt->GetCount() );
                     return;
                 }
                 else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) )
                 {
-                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_HAND2, favor_item->GetId(), favor_item->Count );
+                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_HAND2, favor_item->GetId(), favor_item->GetCount() );
                     return;
                 }
             }
@@ -136,12 +176,12 @@ void FOServer::ProcessAI( Npc* npc )
             {
                 if( npc->ItemSlotArmor->GetId() )
                 {
-                    AI_MoveItem( npc, map, npc->ItemSlotArmor->AccCritter.Slot, SLOT_INV, npc->ItemSlotArmor->GetId(), npc->ItemSlotArmor->Count );
+                    AI_MoveItem( npc, map, npc->ItemSlotArmor->AccCritter.Slot, SLOT_INV, npc->ItemSlotArmor->GetId(), npc->ItemSlotArmor->GetCount() );
                     return;
                 }
-                else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && favor_item->IsArmor() && !favor_item->Proto->Slot )
+                else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && favor_item->IsArmor() && !favor_item->Proto->GetSlot() )
                 {
-                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_ARMOR, favor_item->GetId(), favor_item->Count );
+                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_ARMOR, favor_item->GetId(), favor_item->GetCount() );
                     return;
                 }
             }
@@ -174,7 +214,7 @@ void FOServer::ProcessAI( Npc* npc )
         // Check ap availability
         int ap_move = npc->GetApCostCritterMove( plane->Move.IsRun );
         if( map->IsTurnBasedOn )
-            ap_move += npc->GetParam( ST_MOVE_AP );
+            ap_move += npc->GetMoveAp();
         plane->IsMove = false;
         CHECK_NPC_REAL_AP( npc, map, ap_move );
         plane->IsMove = true;
@@ -418,7 +458,7 @@ void FOServer::ProcessAI( Npc* npc )
             }
 
             bool attack_to_dead = ( plane->Attack.MinHp <= GameOpt.DeadHitPoints );
-            if( !plane->Attack.IsGag && ( !attack_to_dead && targ->GetParam( ST_CURRENT_HP ) <= plane->Attack.MinHp ) || ( attack_to_dead && targ->IsDead() ) )
+            if( !plane->Attack.IsGag && ( !attack_to_dead && targ->GetCurrentHp() <= plane->Attack.MinHp ) || ( attack_to_dead && targ->IsDead() ) )
             {
                 npc->NextPlane( REASON_SUCCESS );
                 break;
@@ -458,7 +498,7 @@ void FOServer::ProcessAI( Npc* npc )
             }
             else
             {
-                if( npc->IsRawParam( MODE_NO_UNARMED ) )
+                if( npc->GetIsNoUnarmed() )
                 {
                     npc->NextPlane( REASON_NO_UNARMED );
                     break;
@@ -466,7 +506,7 @@ void FOServer::ProcessAI( Npc* npc )
 
                 SETFLAG( way, 0x000002 );
                 ProtoItem* unarmed = ItemMngr.GetProtoItem( r2 );
-                if( unarmed && unarmed->Weapon_IsUnarmed )
+                if( unarmed && unarmed->GetWeapon_IsUnarmed() )
                 {
                     SETFLAG( way, 0x000004 );
                     Item* def_item_main = npc->GetDefaultItemSlotMain();
@@ -490,21 +530,21 @@ void FOServer::ProcessAI( Npc* npc )
                 if( npc->ItemSlotMain->GetId() )                       // Is no hands
                 {
                     Item* item_hand = npc->ItemSlotMain;
-                    AI_MoveItem( npc, map, SLOT_HAND1, SLOT_INV, item_hand->GetId(), item_hand->Count );
+                    AI_MoveItem( npc, map, SLOT_HAND1, SLOT_INV, item_hand->GetId(), item_hand->GetCount() );
                     break;
                 }
 
                 // Show new
                 if( weap->GetId() )                       // Is no hands
                 {
-                    AI_MoveItem( npc, map, weap->AccCritter.Slot, SLOT_HAND1, weap->GetId(), weap->Count );
+                    AI_MoveItem( npc, map, weap->AccCritter.Slot, SLOT_HAND1, weap->GetId(), weap->GetCount() );
                     break;
                 }
             }
-            npc->ItemSlotMain->SetMode( MAKE_ITEM_MODE( use, 0 ) );
+            npc->ItemSlotMain->SetWeaponMode( MAKE_ITEM_MODE( use, 0 ) );
 
             // Load weapon
-            if( !npc->IsRawParam( MODE_UNLIMITED_AMMO ) && weap->WeapGetMaxAmmoCount() && weap->WeapIsEmpty() )
+            if( !npc->GetIsUnlimitedAmmo() && weap->WeapGetMaxAmmoCount() && weap->WeapIsEmpty() )
             {
                 Item* ammo = npc->GetAmmoForWeapon( weap );
                 if( !ammo )
@@ -518,7 +558,7 @@ void FOServer::ProcessAI( Npc* npc )
                     break;
                 }
             }
-            else if( npc->IsRawParam( MODE_UNLIMITED_AMMO ) && weap->WeapGetMaxAmmoCount() )
+            else if( npc->GetIsUnlimitedAmmo() && weap->WeapGetMaxAmmoCount() )
                 weap->WeapLoadHolder();
 
             /************************************************************************/
@@ -566,7 +606,7 @@ void FOServer::ProcessAI( Npc* npc )
             ushort    res_hx = t_hx;
             ushort    res_hy = t_hy;
             bool      is_run = plane->Attack.IsRun;
-            bool      is_range = ( weap->Proto->Weapon_MaxDist[ use ] > 2 );
+            bool      is_range = ( ( use == 0 ? weap->Proto->GetWeapon_MaxDist_0() : ( use == 1 ? weap->Proto->GetWeapon_MaxDist_1() : weap->Proto->GetWeapon_MaxDist_2() ) ) > 2 );
 
             TraceData trace;
             trace.TraceMap = map;
@@ -598,7 +638,7 @@ void FOServer::ProcessAI( Npc* npc )
                 trace.Dist = best_dist;
                 trace.FindCr = npc;
                 trace.IsCheckTeam = true;
-                trace.BaseCrTeamId = npc->Data.Params[ ST_TEAM_ID ];
+                trace.BaseCrTeamId = npc->GetTeamId();
                 MapMngr.TraceBullet( trace );
                 if( !trace.IsCritterFounded )
                 {
@@ -696,10 +736,10 @@ void FOServer::ProcessAI( Npc* npc )
                 use = r0;
 
             int aim = r1;
-            if( !( CritType::IsCanAim( npc->GetCrType() ) && !npc->IsRawParam( MODE_NO_AIM ) && weap->WeapIsCanAim( use ) ) )
+            if( !( CritType::IsCanAim( npc->GetCrType() ) && !npc->GetIsNoAim() && weap->WeapIsCanAim( use ) ) )
                 aim = 0;
 
-            weap->SetMode( MAKE_ITEM_MODE( use, aim ) );
+            weap->SetWeaponMode( MAKE_ITEM_MODE( use, aim ) );
             AI_Attack( npc, map, MAKE_ITEM_MODE( use, aim ), targ->GetId() );
         }
         /************************************************************************/
@@ -1024,8 +1064,8 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
         {
         case DR_PARAM:
         {
-            uint param = (uint) index;
-            int  val = DialogGetParam( master, slave, param );
+            int prop_enum = (int) index;
+            int val = master->Props.GetValueAsInt( prop_enum );
             switch( demand.Op )
             {
             case '>':
@@ -1190,30 +1230,29 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
         {
         case DR_PARAM:
         {
-            uint param = (uint) index;
-            master->ChangeParam( param );
-            if( param >= REPUTATION_BEGIN && param <= REPUTATION_END && master->Data.Params[ param ] == (int) 0x80000000 )
-                master->Data.Params[ param ] = 0;
+            int prop_enum = (int) index;
+            int val = master->Props.GetValueAsInt( prop_enum );
             switch( result.Op )
             {
             case '+':
-                master->Data.Params[ param ] += result.Value;
+                val += result.Value;
                 break;
             case '-':
-                master->Data.Params[ param ] -= result.Value;
+                val -= result.Value;
                 break;
             case '*':
-                master->Data.Params[ param ] *= result.Value;
+                val *= result.Value;
                 break;
             case '/':
-                master->Data.Params[ param ] /= result.Value;
+                val /= result.Value;
                 break;
             case '=':
-                master->Data.Params[ param ] = result.Value;
+                val = result.Value;
                 break;
             default:
                 break;
             }
+            master->Props.SetValueAsInt( prop_enum, val );
         }
             continue;
         case DR_VAR:
@@ -1294,7 +1333,7 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
     return force_dialog;
 }
 
-void FOServer::Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, ushort hy, bool ignore_distance )
+void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance )
 {
     if( cl->Talk.Locked )
     {
@@ -1310,12 +1349,12 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, 
     // Talk with npc
     if( npc )
     {
-        if( npc->IsRawParam( MODE_NO_TALK ) )
+        if( npc->GetIsNoTalk() )
             return;
 
         if( !dlg_pack_id )
         {
-            int npc_dlg_id = npc->Data.Params[ ST_DIALOG_ID ];
+            hash npc_dlg_id = npc->GetDialogId();
             if( !npc_dlg_id )
                 return;
             dlg_pack_id = npc_dlg_id;
@@ -1325,12 +1364,11 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, 
         {
             if( cl->GetMap() != npc->GetMap() )
             {
-                //	cl->Send_Text(cl,"Differense maps, you are hack the game?.",SAY_NETMSG);
                 WriteLogF( _FUNC_, " - Difference maps, npc<%s>, client<%s>.\n", npc->GetInfo(), cl->GetInfo() );
                 return;
             }
 
-            uint talk_dist = npc->GetTalkDistance( cl );
+            uint talk_dist = npc->GetTalkDist( cl );
             if( !CheckDist( cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), talk_dist ) )
             {
                 cl->Send_XY( cl );
@@ -1487,7 +1525,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, 
     cl->Talk.DialogPackId = dlg_pack_id;
     cl->Talk.LastDialogId = go_dialog;
     cl->Talk.StartTick = Timer::GameTick();
-    cl->Talk.TalkTime = MAX( cl->GetRawParam( SK_SPEECH ) * 1000, (int) GameOpt.DlgTalkMinTime );
+    cl->Talk.TalkTime = MAX( cl->GetSkillSpeech() * 1000, (int) GameOpt.DlgTalkMinTime );
     cl->Talk.Barter = false;
     cl->Talk.IgnoreDistance = ignore_distance;
 
@@ -1556,11 +1594,8 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
         }
     }
 
-    if( cl->IsRawParam( MODE_HIDE ) )
-    {
-        cl->ChangeParam( MODE_HIDE );
-        cl->Data.Params[ MODE_HIDE ] = 0;
-    }
+    if( cl->GetIsHide() )
+        cl->SetIsHide( false );
     cl->ProcessTalk( true );
 
     Npc*        npc = NULL;
@@ -1709,12 +1744,12 @@ label_Barter:
                 cl->Send_TextMsg( cl, STR_BARTER_NO_BARTER_MODE, SAY_DIALOG, TEXTMSG_GAME );
                 return;
             }
-            if( cur_dialog->DlgScript != NOT_ANSWER_CLOSE_DIALOG && !npc->IsRawParam( MODE_DLG_SCRIPT_BARTER ) )
+            if( cur_dialog->DlgScript != NOT_ANSWER_CLOSE_DIALOG && !npc->GetIsDlgScriptBarter() )
             {
                 cl->Send_TextMsg( npc, STR_BARTER_NO_BARTER_NOW, SAY_DIALOG, TEXTMSG_GAME );
                 return;
             }
-            if( npc->IsRawParam( MODE_NO_BARTER ) )
+            if( npc->GetIsNoBarter() )
             {
                 cl->Send_TextMsg( npc, STR_BARTER_NO_BARTER_MODE, SAY_DIALOG, TEXTMSG_GAME );
                 return;
@@ -1727,7 +1762,7 @@ label_Barter:
 
             cl->Talk.Barter = true;
             cl->Talk.StartTick = Timer::GameTick();
-            cl->Talk.TalkTime = MAX( cl->GetRawParam( SK_BARTER ) * 1000, (int) GameOpt.DlgBarterMinTime );
+            cl->Talk.TalkTime = MAX( cl->GetSkillBarter() * 1000, (int) GameOpt.DlgBarterMinTime );
             cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, true );
             return;
         case -2:
@@ -1817,7 +1852,7 @@ label_Barter:
     }
 
     cl->Talk.StartTick = Timer::GameTick();
-    cl->Talk.TalkTime = MAX( cl->GetRawParam( SK_SPEECH ) * 1000, (int) GameOpt.DlgTalkMinTime );
+    cl->Talk.TalkTime = MAX( cl->GetSkillSpeech() * 1000, (int) GameOpt.DlgTalkMinTime );
     cl->Send_Talk();
     SetScore( SCORE_SPEAKER, cl, 5 );
 }
@@ -1879,7 +1914,7 @@ void FOServer::Process_Barter( Client* cl )
         return;
     }
 
-    bool is_free = ( npc->Data.Params[ ST_FREE_BARTER_PLAYER ] == (int) cl->GetId() );
+    bool is_free = ( npc->GetFreeBarterPlayer() == cl->GetId() );
     if( !sale_count && !is_free )
     {
         WriteLogF( _FUNC_, " - Player nothing for sale, client<%s>.\n", cl->GetInfo() );
@@ -1902,7 +1937,7 @@ void FOServer::Process_Barter( Client* cl )
         return;
     }
 
-    if( npc->IsRawParam( MODE_NO_BARTER ) )
+    if( npc->GetIsNoBarter() )
     {
         WriteLogF( _FUNC_, " - Npc has NoBarterMode, client<%s>, npc<%s>.\n", cl->GetInfo(), npc->GetInfo() );
         cl->Send_ContainerInfo();
@@ -1916,7 +1951,7 @@ void FOServer::Process_Barter( Client* cl )
         return;
     }
 
-    if( !CheckDist( cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), npc->GetTalkDistance( cl ) ) )
+    if( !CheckDist( cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), npc->GetTalkDist( cl ) ) )
     {
         WriteLogF( _FUNC_, " - Wrong distance, client<%s>, npc<%s>.\n", cl->GetInfo(), npc->GetInfo() );
         cl->Send_XY( cl );
@@ -1933,7 +1968,7 @@ void FOServer::Process_Barter( Client* cl )
     }
 
     // Check cost
-    int     barter_k = npc->GetRawParam( SK_BARTER ) - cl->GetRawParam( SK_BARTER );
+    int     barter_k = npc->GetSkillBarter() - cl->GetSkillBarter();
     barter_k = CLAMP( barter_k, 5, 95 );
     int     sale_cost = 0;
     int     buy_cost = 0;
@@ -1962,9 +1997,9 @@ void FOServer::Process_Barter( Client* cl )
             return;
         }
 
-        if( !sale_item_count[ i ] || sale_item_count[ i ] > item->Count )
+        if( !sale_item_count[ i ] || sale_item_count[ i ] > item->GetCount() )
         {
-            WriteLogF( _FUNC_, " - Sale item count error, id<%u>, count<%u>, real count<%u>, client<%s>, npc<%s>.\n", sale_item_id[ i ], sale_item_count[ i ], item->Count, cl->GetInfo(), npc->GetInfo() );
+            WriteLogF( _FUNC_, " - Sale item count error, id<%u>, count<%u>, real count<%u>, client<%s>, npc<%s>.\n", sale_item_id[ i ], sale_item_count[ i ], item->GetCount(), cl->GetInfo(), npc->GetInfo() );
             cl->Send_ContainerInfo();
             return;
         }
@@ -1996,8 +2031,8 @@ void FOServer::Process_Barter( Client* cl )
                 base_cost++;
         }
         sale_cost += base_cost * sale_item_count[ i ];
-        sale_weight += item->Proto->Weight * sale_item_count[ i ];
-        sale_volume += item->Proto->Volume * sale_item_count[ i ];
+        sale_weight += item->Proto->GetWeight() * sale_item_count[ i ];
+        sale_volume += item->Proto->GetVolume() * sale_item_count[ i ];
         sale_items.push_back( item );
     }
 
@@ -2012,9 +2047,9 @@ void FOServer::Process_Barter( Client* cl )
             return;
         }
 
-        if( !buy_item_count[ i ] || buy_item_count[ i ] > item->Count )
+        if( !buy_item_count[ i ] || buy_item_count[ i ] > item->GetCount() )
         {
-            WriteLogF( _FUNC_, " - Buy item count error, id<%u>, count<%u>, real count<%u>, client<%s>, npc<%s>.\n", buy_item_id[ i ], buy_item_count[ i ], item->Count, cl->GetInfo(), npc->GetInfo() );
+            WriteLogF( _FUNC_, " - Buy item count error, id<%u>, count<%u>, real count<%u>, client<%s>, npc<%s>.\n", buy_item_id[ i ], buy_item_count[ i ], item->GetCount(), cl->GetInfo(), npc->GetInfo() );
             cl->Send_ContainerInfo();
             return;
         }
@@ -2041,13 +2076,13 @@ void FOServer::Process_Barter( Client* cl )
         }
         else
         {
-            base_cost = base_cost * ( 100 + ( cl->IsRawParam( PE_MASTER_TRADER ) ? 0 : barter_k ) ) / 100;
+            base_cost = base_cost * ( 100 + ( cl->GetPerkMasterTrader() ? 0 : barter_k ) ) / 100;
             if( !base_cost )
                 base_cost++;
         }
         buy_cost += base_cost * buy_item_count[ i ];
-        buy_weight += item->Proto->Weight * buy_item_count[ i ];
-        buy_volume += item->Proto->Volume * buy_item_count[ i ];
+        buy_weight += item->Proto->GetWeight() * buy_item_count[ i ];
+        buy_volume += item->Proto->GetVolume() * buy_item_count[ i ];
         buy_items.push_back( item );
 
         if( buy_cost > sale_cost && !is_free )
@@ -2127,7 +2162,7 @@ void FOServer::Process_Barter( Client* cl )
     }
 
     cl->Talk.StartTick = Timer::GameTick();
-    cl->Talk.TalkTime = MAX( cl->GetRawParam( SK_BARTER ) * 1000, (int) GameOpt.DlgBarterMinTime );
+    cl->Talk.TalkTime = MAX( cl->GetSkillBarter() * 1000, (int) GameOpt.DlgBarterMinTime );
     if( !is_free )
         cl->Send_TextMsg( cl, STR_BARTER_GOOD_OFFER, SAY_DIALOG, TEXTMSG_GAME );
     cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, false );

@@ -6,6 +6,7 @@
 #include "preprocessor.h"
 #include "scriptany.h"
 #include "scriptdictionary.h"
+#include "scriptdict.h"
 #include "scriptfile.h"
 #include "scriptmath.h"
 #include "scriptstring.h"
@@ -291,19 +292,26 @@ int main( int argc, char* argv[] )
     RegisterScriptString( Engine );
     RegisterScriptAny( Engine );
     RegisterScriptDictionary( Engine );
+    RegisterScriptDict( Engine );
     RegisterScriptFile( Engine );
     RegisterScriptMath( Engine );
     RegisterScriptWeakRef( Engine );
     RegisterScriptReflection( Engine );
 
     // Properties
-    PropertyRegistrator* registrators[ 1 ] = { NULL };
+    PropertyRegistrator* registrators[ 3 ] = { NULL, NULL, NULL };
     if( IsServer )
-        registrators[ 0 ] = new PropertyRegistrator( true, "Item" );
-    if( IsClient )
-        registrators[ 0 ] = new PropertyRegistrator( false, "ItemCl" );
-    if( IsMapper )
-        registrators[ 0 ] = new PropertyRegistrator( false, "ItemCl" );
+    {
+        registrators[ 0 ] = new PropertyRegistrator( true, "Critter" );
+        registrators[ 1 ] = new PropertyRegistrator( true, "Item" );
+        registrators[ 2 ] = new PropertyRegistrator( true, "ProtoItem" );
+    }
+    if( IsClient || IsMapper )
+    {
+        registrators[ 0 ] = new PropertyRegistrator( false, "CritterCl" );
+        registrators[ 1 ] = new PropertyRegistrator( false, "ItemCl" );
+        registrators[ 2 ] = new PropertyRegistrator( false, "ProtoItem" );
+    }
 
     // Bind
     int bind_errors = 0;

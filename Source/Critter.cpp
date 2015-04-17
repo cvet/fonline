@@ -29,8 +29,8 @@ const char* CritterEventFuncName[ CRITTER_EVENT_MAX ] =
     "void %s(Critter&,Critter&,int,int)",                                         // CRITTER_EVENT_MESSAGE
     "bool %s(Critter&,Item&,Critter@,Item@,Scenery@)",                            // CRITTER_EVENT_USE_ITEM
     "bool %s(Critter&,Critter&,Item&)",                                           // CRITTER_EVENT_USE_ITEM_ON_ME
-    "bool %s(Critter&,int,Critter@,Item@,Scenery@)",                              // CRITTER_EVENT_USE_SKILL
-    "bool %s(Critter&,Critter&,int)",                                             // CRITTER_EVENT_USE_SKILL_ON_ME
+    "bool %s(Critter&,CritterProperty,Critter@,Item@,Scenery@)",                  // CRITTER_EVENT_USE_SKILL
+    "bool %s(Critter&,Critter&,CritterProperty)",                                 // CRITTER_EVENT_USE_SKILL_ON_ME
     "void %s(Critter&,Item&)",                                                    // CRITTER_EVENT_DROP_ITEM
     "void %s(Critter&,Item&,uint8)",                                              // CRITTER_EVENT_MOVE_ITEM
     "void %s(Critter&,uint,uint,uint,uint,uint)",                                 // CRITTER_EVENT_KNOCKOUT
@@ -39,7 +39,7 @@ const char* CritterEventFuncName[ CRITTER_EVENT_MAX ] =
     "void %s(Critter&,Critter&,Critter&)",                                        // CRITTER_EVENT_SMTH_ATTACK
     "void %s(Critter&,Critter&,Critter&)",                                        // CRITTER_EVENT_SMTH_ATTACKED
     "void %s(Critter&,Critter&,Item&,Critter@,Item@,Scenery@)",                   // CRITTER_EVENT_SMTH_USE_ITEM
-    "void %s(Critter&,Critter&,int,Critter@,Item@,Scenery@)",                     // CRITTER_EVENT_SMTH_USE_SKILL
+    "void %s(Critter&,Critter&,CritterProperty,Critter@,Item@,Scenery@)",         // CRITTER_EVENT_SMTH_USE_SKILL
     "void %s(Critter&,Critter&,Item&)",                                           // CRITTER_EVENT_SMTH_DROP_ITEM
     "void %s(Critter&,Critter&,Item&,uint8)",                                     // CRITTER_EVENT_SMTH_MOVE_ITEM
     "void %s(Critter&,Critter&,uint,uint,uint,uint,uint)",                        // CRITTER_EVENT_SMTH_KNOCKOUT
@@ -58,30 +58,213 @@ const char* CritterEventFuncName[ CRITTER_EVENT_MAX ] =
 /*                                                                      */
 /************************************************************************/
 
-bool      Critter::ParamsRegEnabled[ MAX_PARAMS ] = { 0 };
-uint      Critter::ParamsSendMsgLen = sizeof( Critter::ParamsSendCount );
-ushort    Critter::ParamsSendCount = 0;
-UShortVec Critter::ParamsSend;
-bool      Critter::ParamsSendEnabled[ MAX_PARAMS ] = { 0 };
-int       Critter::ParamsSendScript[ MAX_PARAMS ] = { 0 };
-int       Critter::ParamsChangeScript[ MAX_PARAMS ] = { 0 };
-int       Critter::ParamsGetScript[ MAX_PARAMS ] = { 0 };
-int       Critter::ParamsDialogGetScript[ MAX_PARAMS ] = { 0 };
-bool      Critter::SlotDataSendEnabled[ 0x100 ] = { 0 };
-int       Critter::SlotDataSendScript[ 0x100 ] = { 0 };
-uint      Critter::ParamsChosenSendMask[ MAX_PARAMS ] = { 0 };
-uint      Critter::ParametersMin[ MAX_PARAMETERS_ARRAYS ] = { 0 };
-uint      Critter::ParametersMax[ MAX_PARAMETERS_ARRAYS ] = { MAX_PARAMS - 1, 0 };
-bool      Critter::SlotEnabled[ 0x100 ] = { true, true, true, true, 0 };
+bool   Critter::SlotEnabled[ 0x100 ];
+bool   Critter::SlotDataSendEnabled[ 0x100 ];
+IntSet Critter::RegProperties;
 
-Critter::Critter(): CritterIsNpc( false ), RefCounter( 1 ), IsNotValid( false ),
-                    GroupMove( NULL ), PrevHexTick( 0 ), PrevHexX( 0 ), PrevHexY( 0 ),
-                    startBreakTime( 0 ), breakTime( 0 ), waitEndTick( 0 ), KnockoutAp( 0 ), CacheValuesNextTick( 0 ), IntellectCacheValue( 0 ),
-                    Flags( 0 ), AccessContainerId( 0 ), ItemTransferCount( 0 ),
-                    TryingGoHomeTick( 0 ), ApRegenerationTick( 0 ), GlobalIdleNextTick( 0 ), LockMapTransfers( 0 ),
-                    ViewMapId( 0 ), ViewMapPid( 0 ), ViewMapLook( 0 ), ViewMapHx( 0 ), ViewMapHy( 0 ), ViewMapDir( 0 ),
-                    DisableSend( 0 ), CanBeRemoved( false ), NameStr( ScriptString::Create() )
+// Properties
+PROPERTIES_IMPL( Critter );
+CLASS_PROPERTY_IMPL( Critter, Strength );
+CLASS_PROPERTY_IMPL( Critter, Perception );
+CLASS_PROPERTY_IMPL( Critter, Agility );
+CLASS_PROPERTY_IMPL( Critter, Charisma );
+CLASS_PROPERTY_IMPL( Critter, Intellect );
+CLASS_PROPERTY_IMPL( Critter, BaseCrType );
+CLASS_PROPERTY_IMPL( Critter, Gender );
+CLASS_PROPERTY_IMPL( Critter, Level );
+CLASS_PROPERTY_IMPL( Critter, Experience );
+CLASS_PROPERTY_IMPL( Critter, BonusLook );
+CLASS_PROPERTY_IMPL( Critter, DialogId );
+CLASS_PROPERTY_IMPL( Critter, BagId );
+CLASS_PROPERTY_IMPL( Critter, NpcRole );
+CLASS_PROPERTY_IMPL( Critter, TeamId );
+CLASS_PROPERTY_IMPL( Critter, AiId );
+CLASS_PROPERTY_IMPL( Critter, FollowCrit );
+CLASS_PROPERTY_IMPL( Critter, FreeBarterPlayer );
+CLASS_PROPERTY_IMPL( Critter, LastWeaponId );
+CLASS_PROPERTY_IMPL( Critter, HandsItemProtoId );
+CLASS_PROPERTY_IMPL( Critter, HandsItemMode );
+CLASS_PROPERTY_IMPL( Critter, KarmaVoting );
+CLASS_PROPERTY_IMPL( Critter, MaxTalkers );
+CLASS_PROPERTY_IMPL( Critter, TalkDistance );
+CLASS_PROPERTY_IMPL( Critter, CarryWeight );
+CLASS_PROPERTY_IMPL( Critter, CurrentHp );
+CLASS_PROPERTY_IMPL( Critter, ActionPoints );
+CLASS_PROPERTY_IMPL( Critter, CurrentAp );
+CLASS_PROPERTY_IMPL( Critter, MaxMoveAp );
+CLASS_PROPERTY_IMPL( Critter, MoveAp );
+CLASS_PROPERTY_IMPL( Critter, TurnBasedAc );
+CLASS_PROPERTY_IMPL( Critter, ReplicationMoney );
+CLASS_PROPERTY_IMPL( Critter, ReplicationCost );
+CLASS_PROPERTY_IMPL( Critter, ReplicationCount );
+CLASS_PROPERTY_IMPL( Critter, ReplicationTime );
+CLASS_PROPERTY_IMPL( Critter, WalkTime );
+CLASS_PROPERTY_IMPL( Critter, RunTime );
+CLASS_PROPERTY_IMPL( Critter, ScaleFactor );
+CLASS_PROPERTY_IMPL( Critter, SkillUnarmed );
+CLASS_PROPERTY_IMPL( Critter, SkillSneak );
+CLASS_PROPERTY_IMPL( Critter, SkillBarter );
+CLASS_PROPERTY_IMPL( Critter, SkillLockpick );
+CLASS_PROPERTY_IMPL( Critter, SkillSteal );
+CLASS_PROPERTY_IMPL( Critter, SkillTraps );
+CLASS_PROPERTY_IMPL( Critter, SkillFirstAid );
+CLASS_PROPERTY_IMPL( Critter, SkillDoctor );
+CLASS_PROPERTY_IMPL( Critter, SkillScience );
+CLASS_PROPERTY_IMPL( Critter, SkillRepair );
+CLASS_PROPERTY_IMPL( Critter, SkillSpeech );
+CLASS_PROPERTY_IMPL( Critter, TimeoutBattle );
+CLASS_PROPERTY_IMPL( Critter, TimeoutTransfer );
+CLASS_PROPERTY_IMPL( Critter, TimeoutRemoveFromGame );
+CLASS_PROPERTY_IMPL( Critter, TimeoutKarmaVoting );
+CLASS_PROPERTY_IMPL( Critter, TimeoutSkScience );
+CLASS_PROPERTY_IMPL( Critter, TimeoutSkRepair );
+CLASS_PROPERTY_IMPL( Critter, DefaultCombat );
+CLASS_PROPERTY_IMPL( Critter, IsInvulnerable );
+CLASS_PROPERTY_IMPL( Critter, IsDlgScriptBarter );
+CLASS_PROPERTY_IMPL( Critter, IsUnlimitedAmmo );
+CLASS_PROPERTY_IMPL( Critter, IsNoUnarmed );
+CLASS_PROPERTY_IMPL( Critter, IsNoFavoriteItem );
+CLASS_PROPERTY_IMPL( Critter, IsNoPush );
+CLASS_PROPERTY_IMPL( Critter, IsNoItemGarbager );
+CLASS_PROPERTY_IMPL( Critter, IsNoEnemyStack );
+CLASS_PROPERTY_IMPL( Critter, IsGeck );
+CLASS_PROPERTY_IMPL( Critter, IsNoLoot );
+CLASS_PROPERTY_IMPL( Critter, IsNoSteal );
+CLASS_PROPERTY_IMPL( Critter, IsNoHome );
+CLASS_PROPERTY_IMPL( Critter, IsNoWalk );
+CLASS_PROPERTY_IMPL( Critter, IsNoRun );
+CLASS_PROPERTY_IMPL( Critter, IsNoTalk );
+CLASS_PROPERTY_IMPL( Critter, IsHide );
+CLASS_PROPERTY_IMPL( Critter, IsNoFlatten );
+CLASS_PROPERTY_IMPL( Critter, IsNoAim );
+CLASS_PROPERTY_IMPL( Critter, IsNoBarter );
+CLASS_PROPERTY_IMPL( Critter, IsEndCombat );
+CLASS_PROPERTY_IMPL( Critter, IsDamagedEye );
+CLASS_PROPERTY_IMPL( Critter, IsDamagedRightArm );
+CLASS_PROPERTY_IMPL( Critter, IsDamagedLeftArm );
+CLASS_PROPERTY_IMPL( Critter, IsDamagedRightLeg );
+CLASS_PROPERTY_IMPL( Critter, IsDamagedLeftLeg );
+CLASS_PROPERTY_IMPL( Critter, PerkQuickPockets );
+CLASS_PROPERTY_IMPL( Critter, PerkMasterTrader );
+CLASS_PROPERTY_IMPL( Critter, PerkSilentRunning );
+
+void Critter::SetPropertyRegistrator( PropertyRegistrator* registrator )
 {
+    PROPERTIES_FIND();
+    CLASS_PROPERTY_FIND( Strength );
+    CLASS_PROPERTY_FIND( Perception );
+    CLASS_PROPERTY_FIND( Agility );
+    CLASS_PROPERTY_FIND( Charisma );
+    CLASS_PROPERTY_FIND( Intellect );
+    CLASS_PROPERTY_FIND( BaseCrType );
+    CLASS_PROPERTY_FIND( Gender );
+    CLASS_PROPERTY_FIND( Level );
+    CLASS_PROPERTY_FIND( Experience );
+    CLASS_PROPERTY_FIND( BonusLook );
+    CLASS_PROPERTY_FIND( DialogId );
+    CLASS_PROPERTY_FIND( BagId );
+    CLASS_PROPERTY_FIND( NpcRole );
+    CLASS_PROPERTY_FIND( TeamId );
+    CLASS_PROPERTY_FIND( AiId );
+    CLASS_PROPERTY_FIND( FollowCrit );
+    CLASS_PROPERTY_FIND( FreeBarterPlayer );
+    CLASS_PROPERTY_FIND( LastWeaponId );
+    CLASS_PROPERTY_FIND( HandsItemProtoId );
+    CLASS_PROPERTY_FIND( HandsItemMode );
+    CLASS_PROPERTY_FIND( KarmaVoting );
+    CLASS_PROPERTY_FIND( MaxTalkers );
+    CLASS_PROPERTY_FIND( TalkDistance );
+    CLASS_PROPERTY_FIND( CarryWeight );
+    CLASS_PROPERTY_FIND( CurrentHp );
+    CLASS_PROPERTY_FIND( ActionPoints );
+    CLASS_PROPERTY_FIND( CurrentAp );
+    CLASS_PROPERTY_FIND( MaxMoveAp );
+    CLASS_PROPERTY_FIND( MoveAp );
+    CLASS_PROPERTY_FIND( TurnBasedAc );
+    CLASS_PROPERTY_FIND( ReplicationMoney );
+    CLASS_PROPERTY_FIND( ReplicationCost );
+    CLASS_PROPERTY_FIND( ReplicationCount );
+    CLASS_PROPERTY_FIND( ReplicationTime );
+    CLASS_PROPERTY_FIND( WalkTime );
+    CLASS_PROPERTY_FIND( RunTime );
+    CLASS_PROPERTY_FIND( ScaleFactor );
+    CLASS_PROPERTY_FIND( SkillUnarmed );
+    CLASS_PROPERTY_FIND( SkillSneak );
+    CLASS_PROPERTY_FIND( SkillBarter );
+    CLASS_PROPERTY_FIND( SkillLockpick );
+    CLASS_PROPERTY_FIND( SkillSteal );
+    CLASS_PROPERTY_FIND( SkillTraps );
+    CLASS_PROPERTY_FIND( SkillFirstAid );
+    CLASS_PROPERTY_FIND( SkillDoctor );
+    CLASS_PROPERTY_FIND( SkillScience );
+    CLASS_PROPERTY_FIND( SkillRepair );
+    CLASS_PROPERTY_FIND( SkillSpeech );
+    CLASS_PROPERTY_FIND( TimeoutBattle );
+    CLASS_PROPERTY_FIND( TimeoutTransfer );
+    CLASS_PROPERTY_FIND( TimeoutRemoveFromGame );
+    CLASS_PROPERTY_FIND( TimeoutKarmaVoting );
+    CLASS_PROPERTY_FIND( TimeoutSkScience );
+    CLASS_PROPERTY_FIND( TimeoutSkRepair );
+    CLASS_PROPERTY_FIND( DefaultCombat );
+    CLASS_PROPERTY_FIND( IsInvulnerable );
+    CLASS_PROPERTY_FIND( IsDlgScriptBarter );
+    CLASS_PROPERTY_FIND( IsUnlimitedAmmo );
+    CLASS_PROPERTY_FIND( IsNoUnarmed );
+    CLASS_PROPERTY_FIND( IsNoFavoriteItem );
+    CLASS_PROPERTY_FIND( IsNoPush );
+    CLASS_PROPERTY_FIND( IsNoItemGarbager );
+    CLASS_PROPERTY_FIND( IsNoEnemyStack );
+    CLASS_PROPERTY_FIND( IsGeck );
+    CLASS_PROPERTY_FIND( IsNoLoot );
+    CLASS_PROPERTY_FIND( IsNoSteal );
+    CLASS_PROPERTY_FIND( IsNoHome );
+    CLASS_PROPERTY_FIND( IsNoWalk );
+    CLASS_PROPERTY_FIND( IsNoRun );
+    CLASS_PROPERTY_FIND( IsNoTalk );
+    CLASS_PROPERTY_FIND( IsHide );
+    CLASS_PROPERTY_FIND( IsNoFlatten );
+    CLASS_PROPERTY_FIND( IsNoAim );
+    CLASS_PROPERTY_FIND( IsNoBarter );
+    CLASS_PROPERTY_FIND( IsEndCombat );
+    CLASS_PROPERTY_FIND( IsDamagedEye );
+    CLASS_PROPERTY_FIND( IsDamagedRightArm );
+    CLASS_PROPERTY_FIND( IsDamagedLeftArm );
+    CLASS_PROPERTY_FIND( IsDamagedRightLeg );
+    CLASS_PROPERTY_FIND( IsDamagedLeftLeg );
+    CLASS_PROPERTY_FIND( PerkQuickPockets );
+    CLASS_PROPERTY_FIND( PerkMasterTrader );
+    CLASS_PROPERTY_FIND( PerkSilentRunning );
+}
+
+Critter::Critter(): Props( PropertiesRegistrator )
+{
+    CritterIsNpc = false;
+    RefCounter = 1;
+    IsNotValid = false;
+    GroupMove = NULL;
+    PrevHexTick = 0;
+    PrevHexX = PrevHexY = 0;
+    startBreakTime = 0;
+    breakTime = 0;
+    waitEndTick = 0;
+    KnockoutAp = 0;
+    CacheValuesNextTick = 0;
+    IntellectCacheValue = 0;
+    Flags = 0;
+    AccessContainerId = 0;
+    ItemTransferCount = 0;
+    TryingGoHomeTick = 0;
+    ApRegenerationTick = 0;
+    GlobalIdleNextTick = 0;
+    LockMapTransfers = 0;
+    ViewMapId = 0;
+    ViewMapPid = 0;
+    ViewMapLook = 0;
+    ViewMapHx = ViewMapHy = 0;
+    ViewMapDir = 0;
+    DisableSend = 0;
+    CanBeRemoved = false;
+    NameStr = ScriptString::Create();
     memzero( &Data, sizeof( Data ) );
     DataExt = NULL;
     memzero( FuncId, sizeof( FuncId ) );
@@ -92,11 +275,6 @@ Critter::Critter(): CritterIsNpc( false ), RefCounter( 1 ), IsNotValid( false ),
     GroupSelf->ToY = GroupSelf->CurY;
     GroupSelf->Speed = 0.0f;
     GroupSelf->Rule = this;
-    memzero( ParamsIsChanged, sizeof( ParamsIsChanged ) );
-    ParamsChanged.reserve( 10 );
-    ParamLocked = -1;
-    for( int i = 0; i < MAX_PARAMETERS_ARRAYS; i++ )
-        ThisPtr[ i ] = this;
     ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
     ItemSlotArmor = defItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
 }
@@ -144,15 +322,15 @@ void Critter::FullClear()
 
 int Critter::GetLook()
 {
-    int look = GameOpt.LookNormal + GetParam( ST_PERCEPTION ) * 3 + GetParam( ST_BONUS_LOOK ) + GetMultihex();
+    int look = GameOpt.LookNormal + GetPerception() * 3 + GetBonusLook() + GetMultihex();
     if( look < (int) GameOpt.LookMinimum )
         look = GameOpt.LookMinimum;
     return look;
 }
 
-uint Critter::GetTalkDistance( Critter* talker )
+uint Critter::GetTalkDist( Critter* talker )
 {
-    int dist = Data.Params[ ST_TALK_DISTANCE ];
+    int dist = GetTalkDistance();
     if( dist <= 0 )
         dist = GameOpt.TalkDistance;
     if( talker )
@@ -199,6 +377,21 @@ uint Critter::GetMultihex()
     return CLAMP( mh, 0, MAX_HEX_OFFSET );
 }
 
+bool Critter::IsLife()
+{
+    return Data.Cond == COND_LIFE;
+}
+
+bool Critter::IsDead()
+{
+    return Data.Cond == COND_DEAD;
+}
+
+bool Critter::IsKnockout()
+{
+    return Data.Cond == COND_KNOCKOUT;
+}
+
 bool Critter::CheckFind( int find_type )
 {
     if( IsNpc() )
@@ -216,59 +409,51 @@ bool Critter::CheckFind( int find_type )
            ( FLAG( find_type, FIND_DEAD ) && IsDead() );
 }
 
-void Critter::SetLexems( const char* lexems )
+int Critter::GetRealAp()
 {
-    if( lexems )
-    {
-        uint len = Str::Length( lexems );
-        if( !len )
-        {
-            Data.Lexems[ 0 ] = 0;
-            return;
-        }
+    return GetCurrentAp();
+}
 
-        if( len >= LEXEMS_SIZE )
-            len = LEXEMS_SIZE - 1;
-        memcpy( Data.Lexems, lexems, len );
-        Data.Lexems[ len ] = 0;
-    }
-    else
-    {
-        Data.Lexems[ 0 ] = 0;
-    }
+int Critter::GetAllAp()
+{
+    return GetCurrentAp() / AP_DIVIDER + GetMoveAp();
+}
+
+void Critter::SubAp( int val )
+{
+    SetCurrentAp( GetCurrentAp() - val * AP_DIVIDER );
+    ApRegenerationTick = 0;
+}
+
+void Critter::SubMoveAp( int val )
+{
+    SetMoveAp( GetMoveAp() - val );
+}
+
+bool Critter::IsDmgLeg()
+{
+    return GetIsDamagedRightLeg() || GetIsDamagedLeftLeg();
+}
+
+bool Critter::IsDmgTwoLeg()
+{
+    return GetIsDamagedRightLeg() && GetIsDamagedLeftLeg();
+}
+
+bool Critter::IsDmgArm()
+{
+    return GetIsDamagedRightArm() || GetIsDamagedLeftArm();
+}
+
+bool Critter::IsDmgTwoArm()
+{
+    return GetIsDamagedRightArm() && GetIsDamagedLeftArm();
 }
 
 void Critter::SetMaps( uint map_id, hash map_pid )
 {
     Data.MapId = map_id;
     Data.MapPid = map_pid;
-}
-
-int Critter::RunParamsSendScript( int bind_id, uint param_index, Critter* from_cr, Critter* to_cr )
-{
-    if( Script::PrepareContext( bind_id, _FUNC_, from_cr->GetInfo() ) )
-    {
-        Script::SetArgUInt( param_index );
-        Script::SetArgObject( from_cr );
-        Script::SetArgObject( to_cr );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedUInt();
-    }
-    return 0;
-}
-
-bool Critter::RunSlotDataSendScript( int bind_id, uchar slot, Item* item, Critter* from_cr, Critter* to_cr )
-{
-    if( Script::PrepareContext( bind_id, _FUNC_, from_cr->GetInfo() ) )
-    {
-        Script::SetArgUChar( slot );
-        Script::SetArgObject( item );
-        Script::SetArgObject( from_cr );
-        Script::SetArgObject( to_cr );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedBool();
-    }
-    return false;
 }
 
 void Critter::SyncLockCritters( bool self_critters, bool only_players )
@@ -340,7 +525,6 @@ void Critter::ProcessVisibleCritters()
                     SETFLAG( Flags, FCRIT_CHOSEN );
                     cl->Send_AddCritter( this );
                     UNSETFLAG( Flags, FCRIT_CHOSEN );
-                    cl->Send_AllParams();
                     cl->Send_AddAllItems();
                 }
                 else
@@ -362,7 +546,7 @@ void Critter::ProcessVisibleCritters()
     bool show_cr3 = ( ( FuncId[ CRITTER_EVENT_SHOW_CRITTER_3 ] > 0 || FuncId[ CRITTER_EVENT_HIDE_CRITTER_3 ] > 0 ) && Data.ShowCritterDist3 > 0 );
     bool show_cr = ( show_cr1 || show_cr2 || show_cr3 );
     // Sneak self
-    int  sneak_base_self = GetRawParam( SK_SNEAK );
+    int  sneak_base_self = GetSkillSneak();
     if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_WEIGHT ) )
         sneak_base_self -= GetItemsWeight() / GameOpt.LookWeight;
 
@@ -560,9 +744,9 @@ void Critter::ProcessVisibleCritters()
         }
 
         // Self
-        if( cr->IsRawParam( MODE_HIDE ) && dist != MAX_INT )
+        if( cr->GetIsHide() && dist != MAX_INT )
         {
-            int sneak_opp = cr->GetRawParam( SK_SNEAK );
+            int sneak_opp = cr->GetSkillSneak();
             if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_WEIGHT ) )
                 sneak_opp -= cr->GetItemsWeight() / GameOpt.LookWeight;
             if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR ) )
@@ -643,7 +827,7 @@ void Critter::ProcessVisibleCritters()
         }
 
         // Opponent
-        if( IsRawParam( MODE_HIDE ) && dist != MAX_INT )
+        if( GetIsHide() && dist != MAX_INT )
         {
             int sneak_self = sneak_base_self;
             if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR ) )
@@ -769,7 +953,7 @@ void Critter::ProcessVisibleItems()
             {
                 int dist = DistGame( Data.HexX, Data.HexY, item->AccHex.HexX, item->AccHex.HexY );
                 if( item->IsTrap() )
-                    dist += item->TrapValue;
+                    dist += item->GetTrapValue();
                 allowed = look >= dist;
             }
 
@@ -856,9 +1040,9 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
         }
 
         // Hide modifier
-        if( cr->IsRawParam( MODE_HIDE ) )
+        if( cr->GetIsHide() )
         {
-            int sneak_opp = cr->GetRawParam( SK_SNEAK );
+            int sneak_opp = cr->GetSkillSneak();
             if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_WEIGHT ) )
                 sneak_opp -= cr->GetItemsWeight() / GameOpt.LookWeight;
             if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR ) )
@@ -912,7 +1096,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
             {
                 int dist = DistGame( hx, hy, item->AccHex.HexX, item->AccHex.HexY );
                 if( item->IsTrap() )
-                    dist += item->TrapValue;
+                    dist += item->GetTrapValue();
                 allowed = look >= dist;
             }
 
@@ -1151,7 +1335,7 @@ void Critter::AddItem( Item*& item, bool send )
         Item* item_already = GetItemByPid( item->GetProtoId() );
         if( item_already )
         {
-            uint count = item->Count;
+            uint count = item->GetCount();
             ItemMngr.ItemToGarbage( item );
             item = item_already;
             item->ChangeCount( count );
@@ -1208,7 +1392,7 @@ label_InvSlot:
     case SLOT_HAND1:
         if( ItemSlotMain->GetId() )
             goto label_InvSlot;
-        if( item->IsWeapon() && !CritType::IsAnim1( GetCrType(), item->Proto->Weapon_Anim1 ) )
+        if( item->IsWeapon() && !CritType::IsAnim1( GetCrType(), item->Proto->GetWeapon_Anim1() ) )
             goto label_InvSlot;
         ItemSlotMain = item;
         break;
@@ -1290,9 +1474,9 @@ Item* Critter::GetItem( uint item_id, bool skip_hide )
 
 Item* Critter::GetInvItem( uint item_id, int transfer_type )
 {
-    if( transfer_type == TRANSFER_CRIT_LOOT && IsRawParam( MODE_NO_LOOT ) )
+    if( transfer_type == TRANSFER_CRIT_LOOT && GetIsNoLoot() )
         return NULL;
-    if( transfer_type == TRANSFER_CRIT_STEAL && IsRawParam( MODE_NO_STEAL ) )
+    if( transfer_type == TRANSFER_CRIT_STEAL && GetIsNoSteal() )
         return NULL;
 
     Item* item = GetItem( item_id, true );
@@ -1305,9 +1489,9 @@ Item* Critter::GetInvItem( uint item_id, int transfer_type )
 
 void Critter::GetInvItems( ItemVec& items, int transfer_type, bool lock )
 {
-    if( transfer_type == TRANSFER_CRIT_LOOT && IsRawParam( MODE_NO_LOOT ) )
+    if( transfer_type == TRANSFER_CRIT_LOOT && GetIsNoLoot() )
         return;
-    if( transfer_type == TRANSFER_CRIT_STEAL && IsRawParam( MODE_NO_STEAL ) )
+    if( transfer_type == TRANSFER_CRIT_STEAL && GetIsNoSteal() )
         return;
 
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
@@ -1359,7 +1543,7 @@ Item* Critter::GetItemByPidInvPriority( hash item_pid )
     if( !proto_item )
         return NULL;
 
-    if( proto_item->Stackable )
+    if( proto_item->GetStackable() )
     {
         for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
         {
@@ -1399,13 +1583,13 @@ Item* Critter::GetAmmoForWeapon( Item* weap )
     if( !weap->IsWeapon() )
         return NULL;
 
-    Item* ammo = GetItemByPid( weap->AmmoPid );
+    Item* ammo = GetItemByPid( weap->GetAmmoPid() );
     if( ammo )
         return ammo;
-    ammo = GetItemByPid( weap->Proto->Weapon_DefaultAmmoPid );
+    ammo = GetItemByPid( weap->Proto->GetWeapon_DefaultAmmoPid() );
     if( ammo )
         return ammo;
-    ammo = GetAmmo( weap->Proto->Weapon_Caliber );
+    ammo = GetAmmo( weap->Proto->GetWeapon_Caliber() );
 
     // Already synchronized
     return ammo;
@@ -1416,7 +1600,7 @@ Item* Critter::GetAmmo( int caliber )
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->GetType() == ITEM_TYPE_AMMO && item->Proto->Ammo_Caliber == caliber )
+        if( item->GetType() == ITEM_TYPE_AMMO && item->Proto->GetAmmo_Caliber() == caliber )
         {
             SYNC_LOCK( item );
             return item;
@@ -1488,7 +1672,7 @@ uint Critter::CountItemPid( hash pid )
     {
         Item* item = *it;
         if( item->GetProtoId() == pid )
-            res += item->Count;
+            res += item->GetCount();
     }
     return res;
 }
@@ -1561,13 +1745,13 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
 
     if( to_slot == SLOT_GROUND )
     {
-        if( !count || count > item->Count )
+        if( !count || count > item->GetCount() )
         {
             Send_AddItem( item );
             return false;
         }
 
-        bool full_drop = ( !item->IsStackable() || count >= item->Count );
+        bool full_drop = ( !item->IsStackable() || count >= item->GetCount() );
         if( !full_drop )
         {
             if( GetMap() )
@@ -1673,7 +1857,7 @@ uint Critter::CountItems()
 {
     uint count = 0;
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
-        count += ( *it )->Count;
+        count += ( *it )->GetCount();
     return count;
 }
 
@@ -1701,13 +1885,13 @@ void Critter::ToKnockout( uint anim2begin, uint anim2idle, uint anim2end, uint l
 void Critter::TryUpOnKnockout()
 {
     // Critter lie on ground
-    if( GetRawParam( ST_CURRENT_HP ) <= 0 )
+    if( GetCurrentHp() <= 0 )
         return;
 
     // Subtract knockout ap
     if( KnockoutAp )
     {
-        int cur_ap = GetRawParam( ST_CURRENT_AP );
+        int cur_ap = GetCurrentAp() / AP_DIVIDER;
         if( cur_ap <= 0 )
             return;
         int ap = MIN( (int) KnockoutAp, cur_ap );
@@ -1718,7 +1902,7 @@ void Critter::TryUpOnKnockout()
     }
 
     // Wait when ap regenerated to zero
-    if( GetRawParam( ST_CURRENT_AP ) < 0 )
+    if( GetCurrentAp() < 0 )
         return;
 
     // Stand up
@@ -1731,25 +1915,20 @@ void Critter::ToDead( uint anim2, bool send_all )
 {
     bool already_dead = IsDead();
 
-    if( GetParam( ST_CURRENT_HP ) > 0 )
-        Data.Params[ ST_CURRENT_HP ] = 0;
+    if( GetCurrentHp() > 0 )
+        SetCurrentHp( 0 );
     Data.Cond = COND_DEAD;
     Data.Anim2Dead = anim2;
 
     Item* item = ItemSlotMain;
     if( item->GetId() )
-        MoveItem( SLOT_HAND1, SLOT_INV, item->GetId(), item->Count );
+        MoveItem( SLOT_HAND1, SLOT_INV, item->GetId(), item->GetCount() );
     item = ItemSlotExt;
     if( item->GetId() )
-        MoveItem( SLOT_HAND2, SLOT_INV, item->GetId(), item->Count );
-    // if(ItemSlotArmor->GetId()) MoveItem(SLOT_ARMOR,SLOT_INV,ItemSlotArmor->GetId(),ItemSlotArmor->GetCount());
+        MoveItem( SLOT_HAND2, SLOT_INV, item->GetId(), item->GetCount() );
 
     if( send_all )
-    {
         SendAA_Action( ACTION_DEAD, anim2, NULL );
-        if( IsPlayer() )
-            Send_AllParams();
-    }
 
     if( !already_dead )
     {
@@ -2087,7 +2266,7 @@ bool Critter::EventUseSkill( int skill, Critter* on_critter, Item* on_item, MapO
     if( PrepareScriptFunc( CRITTER_EVENT_USE_SKILL ) )
     {
         Script::SetArgObject( this );
-        Script::SetArgUInt( skill < 0 ? skill : SKILL_OFFSET( skill ) );
+        Script::SetArgUInt( skill );
         Script::SetArgObject( on_critter );
         Script::SetArgObject( on_item );
         Script::SetArgObject( on_scenery );
@@ -2114,7 +2293,7 @@ bool Critter::EventUseSkillOnMe( Critter* who_use, int skill )
     {
         Script::SetArgObject( this );
         Script::SetArgObject( who_use );
-        Script::SetArgUInt( skill < 0 ? skill : SKILL_OFFSET( skill ) );
+        Script::SetArgUInt( skill );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
     }
@@ -2253,7 +2432,7 @@ void Critter::EventSmthUseSkill( Critter* from_cr, int skill, Critter* on_critte
         return;
     Script::SetArgObject( this );
     Script::SetArgObject( from_cr );
-    Script::SetArgUInt( skill < 0 ? skill : SKILL_OFFSET( skill ) );
+    Script::SetArgUInt( skill );
     Script::SetArgObject( on_critter );
     Script::SetArgObject( on_item );
     Script::SetArgObject( on_scenery );
@@ -2533,25 +2712,20 @@ void Critter::Send_GlobalMapFog( ushort zx, ushort zy, uchar fog )
     if( IsPlayer() )
         ( (Client*) this )->Send_GlobalMapFog( zx, zy, fog );
 }
-void Critter::Send_AllParams()
+void Critter::Send_AllProperties()
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_AllParams();
+        ( (Client*) this )->Send_AllProperties();
 }
-void Critter::Send_Param( ushort num_param )
+void Critter::Send_CustomCommand( Critter* cr, ushort cmd, int val )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_Param( num_param );
+        ( (Client*) this )->Send_CustomCommand( cr, cmd, val );
 }
-void Critter::Send_ParamOther( ushort num_param, int val )
+void Critter::Send_CritterProperty( Critter* cr, Property* prop )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_ParamOther( num_param, val );
-}
-void Critter::Send_CritterParam( Critter* cr, ushort num_param, int val )
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_CritterParam( cr, num_param, val );
+        ( (Client*) this )->Send_CritterProperty( cr, prop );
 }
 void Critter::Send_Talk()
 {
@@ -2673,11 +2847,6 @@ void Critter::Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar
     if( IsPlayer() )
         ( (Client*) this )->Send_PlaySoundType( crid_synchronize, sound_type, sound_type_ext, sound_id, sound_id_ext );
 }
-void Critter::Send_CritterLexems( Critter* cr )
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_CritterLexems( cr );
-}
 
 void Critter::SendA_Move( uint move_params )
 {
@@ -2769,31 +2938,29 @@ void Critter::SendAA_MoveItem( Item* item, uchar action, uchar prev_slot )
     }
 }
 
-void Critter::SendAA_CritterItemProperty( Item* item, Property* prop )
+void Critter::SendA_CritterProperty( Property* prop )
+{
+    if( VisCr.empty() )
+        return;
+
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    {
+        Critter* cr = *it;
+        if( cr->IsPlayer() )
+            cr->Send_CritterProperty( this, prop );
+    }
+}
+
+void Critter::SendA_CritterItemProperty( Item* item, Property* prop )
 {
     uchar slot = item->AccCritter.Slot;
     if( !VisCr.empty() && SlotEnabled[ slot ] && SlotDataSendEnabled[ slot ] )
     {
-        int bind_id = SlotDataSendScript[ slot ];
-        if( !bind_id )
+        for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
         {
-            for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
-            {
-                Critter* cr = *it;
-                if( cr->IsPlayer() )
-                    cr->Send_CritterItemProperty( this, item, prop );
-            }
-        }
-        else
-        {
-            SyncLockCritters( false, true );
-
-            for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
-            {
-                Critter* cr = *it;
-                if( cr->IsPlayer() && RunSlotDataSendScript( bind_id, slot, item, this, cr ) )
-                    cr->Send_CritterItemProperty( this, item, prop );
-            }
+            Critter* cr = *it;
+            if( cr->IsPlayer() )
+                cr->Send_CritterItemProperty( this, item, prop );
         }
     }
 }
@@ -2973,7 +3140,7 @@ void Critter::SendA_Follow( uchar follow_type, hash map_pid, uint follow_wait )
         Critter* cr = *it;
         if( !cr->IsPlayer() )
             continue;
-        if( cr->GetFollowCrId() != GetId() )
+        if( cr->GetFollowCrit() != GetId() )
             continue;
         if( cr->IsDead() || cr->IsKnockout() )
             continue;
@@ -2983,7 +3150,7 @@ void Critter::SendA_Follow( uchar follow_type, hash map_pid, uint follow_wait )
     }
 }
 
-void Critter::SendA_ParamOther( ushort num_param, int val )
+void Critter::SendA_CustomCommand( ushort num_param, int val )
 {
     if( VisCr.empty() )
         return;
@@ -2993,36 +3160,7 @@ void Critter::SendA_ParamOther( ushort num_param, int val )
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
-            cr->Send_CritterParam( this, num_param, val );
-    }
-}
-
-void Critter::SendA_ParamCheck( ushort num_param )
-{
-    if( VisCr.empty() )
-        return;
-
-    int script = ParamsSendScript[ num_param ];
-    if( !script )
-    {
-        int val = Data.Params[ num_param ];
-        for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
-        {
-            Critter* cr = *it;
-            if( cr->IsPlayer() )
-                cr->Send_CritterParam( this, num_param, val );
-        }
-    }
-    else
-    {
-        SyncLockCritters( false, true );
-
-        for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
-        {
-            Critter* cr = *it;
-            if( cr->IsPlayer() )
-                cr->Send_CritterParam( this, num_param, RunParamsSendScript( script, num_param, this, cr ) );
-        }
+            cr->Send_CustomCommand( this, num_param, val );
     }
 }
 
@@ -3131,116 +3269,34 @@ void Critter::RefreshName()
     }
     else
     {
-        uint        dlg_pack_id = Data.Params[ ST_DIALOG_ID ];
+        hash        dlg_pack_id = GetDialogId();
         DialogPack* dlg_pack = ( dlg_pack_id ? DlgMngr.GetDialog( dlg_pack_id ) : NULL );
         char        buf[ MAX_FOTEXT ];
         if( dlg_pack )
-            *NameStr = Str::Format( buf, "Npc (%s, %u)", dlg_pack->PackName.c_str(), GetId() );
+            *NameStr = Str::Format( buf, "%s (Npc)", dlg_pack->PackName.c_str(), GetId() );
         else
-            *NameStr = Str::Format( buf, "Npc (%u)", GetId() );
+            *NameStr = Str::Format( buf, "%u (Npc)", GetId() );
     }
 }
 
 const char* Critter::GetInfo()
 {
-//	static char buf[1024];
-//	sprintf(buf,"Name<%s>, Id<%u>, MapPid<%u>, HexX<%u>, HexY<%u>",GetName(),GetId(),GetProtoMap(),GetHexX(),GetHexY());
-//	return buf;
     return GetName();
-}
-
-int Critter::GetParam( uint index )
-{
-    if( ParamsGetScript[ index ] && Script::PrepareContext( ParamsGetScript[ index ], _FUNC_, "" ) )
-    {
-        Script::SetArgObject( this );
-        Script::SetArgUInt( index );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedUInt();
-    }
-    return Data.Params[ index ];
-}
-
-void Critter::ChangeParam( uint index )
-{
-    if( !ParamsIsChanged[ index ] && ParamLocked != (int) index )
-    {
-        ParamsChanged.push_back( index );
-        ParamsChanged.push_back( Data.Params[ index ] );
-        ParamsIsChanged[ index ] = true;
-    }
-}
-
-IntVec CallChange;
-void Critter::ProcessChangedParams()
-{
-    if( ParamsChanged.size() )
-    {
-        if( IsNotValid )
-        {
-            ParamsChanged.clear();
-            return;
-        }
-
-        CallChange.clear();
-        for( uint i = 0, j = (uint) ParamsChanged.size(); i < j; i += 2 )
-        {
-            int index = ParamsChanged[ i ];
-            int old_val = ParamsChanged[ i + 1 ];
-            if( Data.Params[ index ] != old_val )
-            {
-                if( ParamsChangeScript[ index ] )
-                {
-                    CallChange.push_back( ParamsChangeScript[ index ] );
-                    CallChange.push_back( index );
-                    CallChange.push_back( old_val );
-                }
-                else
-                {
-                    Send_Param( index );
-                    if( ParamsSendEnabled[ index ] )
-                        SendA_ParamCheck( index );
-                }
-            }
-            ParamsIsChanged[ index ] = false;
-        }
-        ParamsChanged.clear();
-
-        if( CallChange.size() )
-        {
-            for( uint i = 0, j = (uint) CallChange.size(); i < j; i += 3 )
-            {
-                uint index = CallChange[ i + 1 ];
-                ParamLocked = index;
-                if( Script::PrepareContext( CallChange[ i ], _FUNC_, GetInfo() ) )
-                {
-                    Script::SetArgObject( this );
-                    Script::SetArgUInt( index );
-                    Script::SetArgUInt( CallChange[ i + 2 ] );
-                    Script::RunPrepared();
-                }
-                ParamLocked = -1;
-                Send_Param( index );
-                if( ParamsSendEnabled[ index ] )
-                    SendA_ParamCheck( index );
-            }
-        }
-    }
 }
 
 bool Critter::IsCanWalk()
 {
-    return CritType::IsCanWalk( GetCrType() ) && !IsRawParam( MODE_NO_WALK );
+    return CritType::IsCanWalk( GetCrType() ) && !GetIsNoWalk();
 }
 
 bool Critter::IsCanRun()
 {
-    return CritType::IsCanRun( GetCrType() ) && !IsRawParam( MODE_NO_RUN );
+    return CritType::IsCanRun( GetCrType() ) && !GetIsNoRun();
 }
 
 uint Critter::GetTimeWalk()
 {
-    int walk_time = GetRawParam( ST_WALK_TIME );
+    int walk_time = GetWalkTime();
     if( walk_time <= 0 )
         walk_time = CritType::GetTimeWalk( GetCrType() );
     return walk_time > 0 ? walk_time : 400;
@@ -3248,7 +3304,7 @@ uint Critter::GetTimeWalk()
 
 uint Critter::GetTimeRun()
 {
-    int walk_time = GetRawParam( ST_RUN_TIME );
+    int walk_time = GetRunTime();
     if( walk_time <= 0 )
         walk_time = CritType::GetTimeRun( GetCrType() );
     return walk_time > 0 ? walk_time : 200;
@@ -3278,10 +3334,15 @@ uint Critter::GetItemsVolume()
     return res;
 }
 
+bool Critter::IsOverweight()
+{
+    return (int) GetItemsWeight() > GetCarryWeight();
+}
+
 int Critter::GetFreeWeight()
 {
     int cur_weight = GetItemsWeight();
-    int max_weight = GetParam( ST_CARRY_WEIGHT );
+    int max_weight = GetCarryWeight();
     return max_weight - cur_weight;
 }
 
@@ -3290,6 +3351,11 @@ int Critter::GetFreeVolume()
     int cur_volume = GetItemsVolume();
     int max_volume = CRITTER_INV_VOLUME;
     return max_volume - cur_volume;
+}
+
+bool Critter::IsTurnBased()
+{
+    return TB_BATTLE_TIMEOUT_CHECK( GetTimeoutBattle() );
 }
 
 bool Critter::CheckMyTurn( Map* map )
@@ -3303,28 +3369,60 @@ bool Critter::CheckMyTurn( Map* map )
     return false;
 }
 
+int Critter::GetApCostCritterMove( bool is_run )
+{
+    if( IsTurnBased() )
+        return GameOpt.TbApCostCritterMove * AP_DIVIDER * ( IsDmgTwoLeg() ? 4 : ( IsDmgLeg() ? 2 : 1 ) );
+    else
+        return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0;
+}
+
+int Critter::GetApCostMoveItemContainer()
+{
+    return IsTurnBased() ? GameOpt.TbApCostMoveItemContainer : GameOpt.RtApCostMoveItemContainer;
+}
+
+int Critter::GetApCostMoveItemInventory()
+{
+    int val = IsTurnBased() ? GameOpt.TbApCostMoveItemInventory : GameOpt.RtApCostMoveItemInventory;
+    if( GetPerkQuickPockets() )
+        val /= 2;
+    return val;
+}
+
+int Critter::GetApCostPickItem()
+{
+    return IsTurnBased() ? GameOpt.TbApCostPickItem : GameOpt.RtApCostPickItem;
+}
+
+int Critter::GetApCostDropItem()
+{
+    return IsTurnBased() ? GameOpt.TbApCostDropItem : GameOpt.RtApCostDropItem;
+}
+
+int Critter::GetApCostPickCritter()
+{
+    return IsTurnBased() ? GameOpt.TbApCostPickCritter : GameOpt.RtApCostPickCritter;
+}
+
+int Critter::GetApCostUseSkill()
+{
+    return IsTurnBased() ? GameOpt.TbApCostUseSkill : GameOpt.RtApCostUseSkill;
+}
+
 /************************************************************************/
 /* Timeouts                                                             */
 /************************************************************************/
 
-void Critter::SetTimeout( int timeout, uint game_seconds )
-{
-    ChangeParam( timeout );
-    if( game_seconds )
-        Data.Params[ timeout ] = GameOpt.FullSecond + game_seconds;
-    else
-        Data.Params[ timeout ] = 0;
-}
-
 bool Critter::IsTransferTimeouts( bool send )
 {
-    if( GetParam( TO_TRANSFER ) )
+    if( IS_TIMEOUT( GetTimeoutTransfer() ) )
     {
         if( send )
             Send_TextMsg( this, STR_TIMEOUT_TRANSFER_WAIT, SAY_NETMSG, TEXTMSG_GAME );
         return true;
     }
-    if( GetParam( TO_BATTLE ) )
+    if( IS_TIMEOUT( GetTimeoutBattle() ) )
     {
         if( send )
             Send_TextMsg( this, STR_TIMEOUT_BATTLE_WAIT, SAY_NETMSG, TEXTMSG_GAME );
@@ -3363,7 +3461,7 @@ void Critter::AddEnemyInStack( uint crid )
 
 bool Critter::CheckEnemyInStack( uint crid )
 {
-    if( Data.Params[ MODE_NO_ENEMY_STACK ] )
+    if( GetIsNoEnemyStack() )
         return false;
 
     int stack_count = MIN( Data.EnemyStackCount, MAX_ENEMY_STACK );
@@ -3394,7 +3492,7 @@ void Critter::EraseEnemyInStack( uint crid )
 
 Critter* Critter::ScanEnemyStack()
 {
-    if( Data.Params[ MODE_NO_ENEMY_STACK ] )
+    if( GetIsNoEnemyStack() )
         return NULL;
 
     int stack_count = MIN( Data.EnemyStackCount, MAX_ENEMY_STACK );
@@ -3590,6 +3688,38 @@ ushort Client::GetPort()
     return From.sin_port;
 }
 
+bool Client::IsOnline()
+{
+    return !IsDisconnected;
+}
+
+bool Client::IsOffline()
+{
+    return IsDisconnected;
+}
+
+void Client::Disconnect()
+{
+    IsDisconnected = true;
+    if( !DisconnectTick )
+        DisconnectTick = Timer::FastTick();
+}
+
+void Client::RemoveFromGame()
+{
+    CanBeRemoved = true;
+}
+
+uint Client::GetOfflineTime()
+{
+    return Timer::FastTick() - DisconnectTick;
+}
+
+bool Client::IsToPing()
+{
+    return GameState == STATE_PLAYING && Timer::FastTick() >= pingNextTick && !IS_TIMEOUT( GetTimeoutTransfer() ) && !Singleplayer;
+}
+
 void Client::PingClient()
 {
     if( !pingOk )
@@ -3608,6 +3738,12 @@ void Client::PingClient()
     pingOk = false;
 }
 
+void Client::PingOk( uint next_ping )
+{
+    pingOk = true;
+    pingNextTick = Timer::FastTick() + next_ping;
+}
+
 void Client::Send_AddCritter( Critter* cr )
 {
     if( IsSendDisabled() || IsOffline() )
@@ -3617,8 +3753,12 @@ void Client::Send_AddCritter( Critter* cr )
     uint msg = ( is_npc ? NETMSG_ADD_NPC : NETMSG_ADD_PLAYER );
     uint msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( uint ) + sizeof( ushort ) * 2 +
                    sizeof( uchar ) + sizeof( uchar ) + sizeof( uint ) * 6 + sizeof( uint ) + sizeof( short ) +
-                   ( is_npc ? sizeof( hash ) + sizeof( int ) : UTF8_BUF_SIZE( MAX_NAME ) ) + ParamsSendMsgLen;
-    int dialog_id = ( is_npc ? cr->Data.Params[ ST_DIALOG_ID ] : 0 );
+                   ( is_npc ? sizeof( hash ) : UTF8_BUF_SIZE( MAX_NAME ) );
+
+    PUCharVec* data;
+    UIntVec*   data_sizes;
+    uint       whole_data_size = cr->Props.StoreData( FLAG( cr->Flags, FCRIT_CHOSEN ) ? true : false, &data, &data_sizes );
+    msg_len += sizeof( ushort ) + whole_data_size;
 
     BOUT_BEGIN( this );
     Bout << msg;
@@ -3642,7 +3782,6 @@ void Client::Send_AddCritter( Critter* cr )
     {
         Npc* npc = (Npc*) cr;
         Bout << npc->GetProtoId();
-        Bout << dialog_id;
     }
     else
     {
@@ -3650,25 +3789,12 @@ void Client::Send_AddCritter( Critter* cr )
         Bout.Push( cl->Name, UTF8_BUF_SIZE( MAX_NAME ) );
     }
 
-    Bout << ParamsSendCount;
-    for( auto it = ParamsSend.begin(), end = ParamsSend.end(); it != end; ++it )
-    {
-        ushort index = *it;
-        Bout << index;
+    NET_WRITE_PROPERTIES( Bout, data, data_sizes );
 
-        int script = ParamsSendScript[ index ];
-        if( !script )
-            Bout << cr->Data.Params[ index ];
-        else
-            Bout << RunParamsSendScript( script, index, cr, this );
-        #pragma MESSAGE("RunParamsSendScript call before BOUT_END, may be unsafe.")
-    }
     BOUT_END( this );
 
     if( cr != this )
         Send_MoveItem( cr, NULL, ACTION_REFRESH, 0 );
-    if( cr->IsLexems() )
-        Send_CritterLexems( cr );
 }
 
 void Client::Send_RemoveCritter( Critter* cr )
@@ -3805,11 +3931,7 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
         Item* item_ = *it;
         uchar slot = item_->AccCritter.Slot;
         if( SlotEnabled[ slot ] && SlotDataSendEnabled[ slot ] )
-        {
-            int script = SlotDataSendScript[ slot ];
-            if( !script || RunSlotDataSendScript( script, slot, item_, from_cr, this ) )
-                items.push_back( item_ );
-        }
+            items.push_back( item_ );
     }
 
     msg_len += sizeof( ushort );
@@ -3846,7 +3968,7 @@ void Client::Send_ItemProperty( Critter* from_cr, Item* item, Property* prop )
         return;
 
     uint  data_size;
-    void* data = prop->GetData( item, data_size );
+    void* data = prop->GetRawData( item, data_size );
 
     if( prop->IsPOD() )
     {
@@ -3855,7 +3977,7 @@ void Client::Send_ItemProperty( Critter* from_cr, Item* item, Property* prop )
         if( from_cr )
             Bout << from_cr->GetId();
         Bout << item->GetId();
-        Bout << (ushort) prop->GetIndex();
+        Bout << (ushort) prop->GetRegIndex();
         Bout.Push( (char*) data, data_size );
         BOUT_END( this );
     }
@@ -3869,7 +3991,7 @@ void Client::Send_ItemProperty( Critter* from_cr, Item* item, Property* prop )
         if( from_cr )
             Bout << from_cr->GetId();
         Bout << item->GetId();
-        Bout << (ushort) prop->GetIndex();
+        Bout << (ushort) prop->GetRegIndex();
         if( data_size )
             Bout.Push( (char*) data, data_size );
         BOUT_END( this );
@@ -4079,10 +4201,10 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
     ushort  barter_k = 0;
     if( transfer_type == TRANSFER_CRIT_BARTER )
     {
-        if( cr_cont->GetRawParam( SK_BARTER ) > GetRawParam( SK_BARTER ) )
-            barter_k = cr_cont->GetRawParam( SK_BARTER ) - GetRawParam( SK_BARTER );
+        if( cr_cont->GetSkillBarter() > GetSkillBarter() )
+            barter_k = cr_cont->GetSkillBarter() - GetSkillBarter();
         barter_k = CLAMP( barter_k, 5, 95 );
-        if( cr_cont->Data.Params[ ST_FREE_BARTER_PLAYER ] == (int) GetId() )
+        if( cr_cont->GetFreeBarterPlayer() == GetId() )
             barter_k = 0;
     }
 
@@ -4268,54 +4390,68 @@ void Client::Send_XY( Critter* cr )
     BOUT_END( this );
 }
 
-void Client::Send_AllParams()
+void Client::Send_AllProperties()
 {
     if( IsSendDisabled() || IsOffline() )
         return;
 
+    uint       msg_len = sizeof( uint ) + sizeof( uint );
+
+    PUCharVec* data;
+    UIntVec*   data_sizes;
+    uint       whole_data_size = Props.StoreData( true, &data, &data_sizes );
+    msg_len += sizeof( ushort ) + whole_data_size;
+
     BOUT_BEGIN( this );
-    Bout << NETMSG_ALL_PARAMS;
-    Bout.Push( (char*) Data.Params, (char*) &ParamsChosenSendMask[ 0 ], sizeof( Data.Params ) );
+    Bout << NETMSG_ALL_PROPERTIES;
+    Bout << msg_len;
+    NET_WRITE_PROPERTIES( Bout, data, data_sizes );
     BOUT_END( this );
 }
 
-void Client::Send_Param( ushort num_param )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-    if( !ParamsChosenSendMask[ num_param ] )
-        return;
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_PARAM;
-    Bout << num_param;
-    Bout << Data.Params[ num_param ];
-    BOUT_END( this );
-}
-
-void Client::Send_ParamOther( ushort num_param, int val )
+void Client::Send_CustomCommand( Critter* cr, ushort cmd, int val )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_PARAM;
-    Bout << num_param;
-    Bout << val;
-    BOUT_END( this );
-}
-
-void Client::Send_CritterParam( Critter* cr, ushort num_param, int val )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_CRITTER_PARAM;
+    Bout << NETMSG_CUSTOM_COMMAND;
     Bout << cr->GetId();
-    Bout << num_param;
+    Bout << cmd;
     Bout << val;
     BOUT_END( this );
+}
+
+void Client::Send_CritterProperty( Critter* cr, Property* prop )
+{
+    if( IsSendDisabled() || IsOffline() )
+        return;
+
+    uint  data_size;
+    void* data = prop->GetRawData( cr, data_size );
+
+    if( prop->IsPOD() )
+    {
+        BOUT_BEGIN( this );
+        Bout << NETMSG_CRITTER_POD_PROPERTY( data_size );
+        Bout << cr->GetId();
+        Bout << (ushort) prop->GetRegIndex();
+        Bout.Push( (char*) data, data_size );
+        BOUT_END( this );
+    }
+    else
+    {
+        uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( ushort ) + data_size;
+
+        BOUT_BEGIN( this );
+        Bout << NETMSG_CRITTER_COMPLEX_PROPERTY;
+        Bout << msg_len;
+        Bout << cr->GetId();
+        Bout << (ushort) prop->GetRegIndex();
+        if( data_size )
+            Bout.Push( (char*) data, data_size );
+        BOUT_END( this );
+    }
 }
 
 void Client::Send_Talk()
@@ -4786,24 +4922,6 @@ void Client::Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar 
     BOUT_END( this );
 }
 
-void Client::Send_CritterLexems( Critter* cr )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    uint   critter_id = cr->GetId();
-    ushort lexems_len = Str::Length( cr->Data.Lexems );
-    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( critter_id ) + sizeof( lexems_len ) + lexems_len;
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_CRITTER_LEXEMS;
-    Bout << msg_len;
-    Bout << critter_id;
-    Bout << lexems_len;
-    Bout.Push( cr->Data.Lexems, lexems_len );
-    BOUT_END( this );
-}
-
 void Client::Send_PlayersBarter( uchar barter, uint param, uint param_ext )
 {
     if( IsSendDisabled() || IsOffline() )
@@ -5079,7 +5197,7 @@ Client* Client::BarterGetOpponent( uint opponent_id )
     }
 
     Critter* cr = ( GetMap() ? GetCritSelf( opponent_id, true ) : GroupMove->GetCritter( opponent_id ) );
-    if( !cr || !cr->IsPlayer() || !cr->IsLife() || cr->IsBusy() || cr->GetParam( TO_BATTLE ) || ( (Client*) cr )->IsOffline() ||
+    if( !cr || !cr->IsPlayer() || !cr->IsLife() || cr->IsBusy() || IS_TIMEOUT( cr->GetTimeoutBattle() ) || ( (Client*) cr )->IsOffline() ||
         ( GetMap() && !CheckDist( GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), BARTER_DIST + GetMultihex() + cr->GetMultihex() ) ) )
     {
         if( cr && cr->IsPlayer() && BarterOpponent == cr->GetId() )
@@ -5215,7 +5333,7 @@ void Client::ProcessTalk( bool force )
             map_id = npc->GetMap();
             hx = npc->GetHexX();
             hy = npc->GetHexY();
-            talk_distance = npc->GetTalkDistance( this );
+            talk_distance = npc->GetTalkDist( this );
         }
         else if( Talk.TalkType == TALK_WITH_HEX )
         {
@@ -5317,9 +5435,9 @@ void Npc::RefreshBag()
     {
         Item* item = *it;
         if( pids.count( item->GetProtoId() ) )
-            pids[ item->GetProtoId() ] += item->Count;
+            pids[ item->GetProtoId() ] += item->GetCount();
         else
-            pids[ item->GetProtoId() ] = item->Count;
+            pids[ item->GetProtoId() ] = item->GetCount();
 
         // Repair/reload item in slots
         if( item->AccCritter.Slot != SLOT_INV )
@@ -5332,7 +5450,7 @@ void Npc::RefreshBag()
     }
 
     // Item garbager
-    if( !IsRawParam( MODE_NO_ITEM_GARBAGER ) )
+    if( !GetIsNoItemGarbager() )
     {
         // Erase not grouped items
         uint need_count = Random( 2, 4 );
@@ -5341,7 +5459,7 @@ void Npc::RefreshBag()
             if( ( *it ).second <= need_count )
                 continue;
             ProtoItem* proto_item = ItemMngr.GetProtoItem( ( *it ).first );
-            if( !proto_item || proto_item->Stackable )
+            if( !proto_item || proto_item->GetStackable() )
                 continue;
             ItemMngr.SetItemCritter( this, ( *it ).first, need_count );
             ( *it ).second = need_count;
@@ -5353,7 +5471,7 @@ void Npc::RefreshBag()
     bool drop_last_weapon = false;
 
     // Internal bag
-    if( !Data.Params[ ST_BAG_ID ] )
+    if( !GetBagId() )
     {
         if( !Data.BagSize )
             return;
@@ -5375,7 +5493,7 @@ void Npc::RefreshBag()
     // External bags
     else
     {
-        NpcBag& bag = AIMngr.GetBag( Data.Params[ ST_BAG_ID ] );
+        NpcBag& bag = AIMngr.GetBag( GetBagId() );
         if( bag.empty() )
             return;
 
@@ -5434,7 +5552,7 @@ label_EndCycles:
                             if( !GetItemSlot( bag_item.ItemSlot ) )
                             {
                                 Item* item = GetItemByPid( bag_item.ItemPid );
-                                if( item && MoveItem( SLOT_INV, bag_item.ItemSlot, item->GetId(), item->Count ) )
+                                if( item && MoveItem( SLOT_INV, bag_item.ItemSlot, item->GetId(), item->GetCount() ) )
                                     Data.FavoriteItemPid[ bag_item.ItemSlot ] = bag_item.ItemPid;
                             }
                         }
@@ -5445,11 +5563,8 @@ label_EndCycles:
         }
     }
 
-    if( drop_last_weapon && Data.Params[ ST_LAST_WEAPON_ID ] )
-    {
-        ChangeParam( ST_LAST_WEAPON_ID );
-        Data.Params[ ST_LAST_WEAPON_ID ] = 0;
-    }
+    if( drop_last_weapon && GetLastWeaponId() )
+        SetLastWeaponId( 0 );
 }
 
 bool Npc::AddPlane( int reason, AIDataPlane* plane, bool is_child, Critter* some_cr, Item* some_item )
@@ -5577,10 +5692,8 @@ bool Npc::RunPlane( int reason, uint& r0, uint& r1, uint& r2 )
 {
     AIDataPlane* cur = aiPlanes[ 0 ];
     AIDataPlane* last = aiPlanes[ 0 ]->GetCurPlane();
-//	aiPlanes.erase(aiPlanes.begin());
 
-    int result = EventPlaneRun( last, reason, r0, r1, r2 );
-    ;
+    int          result = EventPlaneRun( last, reason, r0, r1, r2 );
     if( result == PLANE_RUN_GLOBAL && Script::PrepareContext( ServerFunctions.NpcPlaneRun, _FUNC_, GetInfo() ) )
     {
         Script::SetArgObject( this );
@@ -5594,24 +5707,6 @@ bool Npc::RunPlane( int reason, uint& r0, uint& r1, uint& r2 )
     }
 
     return result == PLANE_KEEP;
-
-    /*if(result==PLANE_DISCARD)
-       {
-            if(cur!=last) // Child
-            {
-                    cur->DeleteLast();
-                    aiPlanes.insert(aiPlanes.begin(),cur);
-            }
-            else // Main
-            {
-                    cur->Assigned=false;
-                    cur->Release();
-            }
-            return false;
-       }
-
-       aiPlanes.insert(aiPlanes.begin(),cur);
-       return true;*/
 }
 
 bool Npc::IsPlaneAviable( int plane_type )
@@ -5672,7 +5767,7 @@ void Npc::SetBestCurPlane()
         else if( dist == best_dist )
         {
             Critter* cr2 = GetCritSelf( aiPlanes[ best_plane ]->Attack.TargId, false );
-            if( !cr || cr->Data.Params[ ST_CURRENT_HP ] >= cr2->Data.Params[ ST_CURRENT_HP ] )
+            if( !cr || cr->GetCurrentHp() >= cr2->GetCurrentHp() )
                 continue;
         }
 
@@ -5730,7 +5825,7 @@ uint Npc::GetBarterPlayers()
 
 bool Npc::IsFreeToTalk()
 {
-    int max_talkers = GetParam( ST_MAX_TALKERS );
+    int max_talkers = GetMaxTalkers();
     if( max_talkers < 0 )
         return false;
     else if( !max_talkers )

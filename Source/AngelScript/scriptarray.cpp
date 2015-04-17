@@ -9,7 +9,7 @@
 #define AS_USE_STLNAMES    0
 #include "scriptarray.h"
 
-void* AllocMem( size_t size )
+static void* AllocMem( size_t size )
 {
     #ifdef MEMORY_DEBUG
     if( MemoryDebugLevel >= 1 )
@@ -18,23 +18,13 @@ void* AllocMem( size_t size )
     return new char[ size ];
 }
 
-void FreeMem( void* mem, size_t size )
+static void FreeMem( void* mem, size_t size )
 {
     #ifdef MEMORY_DEBUG
     if( MemoryDebugLevel >= 1 )
         MEMORY_PROCESS( MEMORY_SCRIPT_ARRAY, -(int) size );
     #endif
     delete[] (char*) mem;
-}
-
-static auto userAlloc = AllocMem;
-static auto userFree  = FreeMem;
-
-// Allows the application to set which memory routines should be used by the array object
-void ScriptArray::SetMemoryFunctions( asALLOCFUNC_t allocFunc, asFREEFUNC_t freeFunc )
-{
-    // userAlloc = allocFunc;
-    // userFree = freeFunc;
 }
 
 static void RegisterScriptArray_Native( asIScriptEngine* engine );
@@ -55,7 +45,7 @@ static void CleanupObjectTypeArrayCache( asIObjectType* type )
     if( cache )
     {
         cache->~ArrayCache();
-        userFree( cache, sizeof( ArrayCache ) );
+        FreeMem( cache, sizeof( ArrayCache ) );
     }
 }
 
@@ -64,7 +54,7 @@ ScriptArray* ScriptArray::Create( asIObjectType* ot, asUINT length )
     asIScriptContext* ctx = asGetActiveContext();
 
     // Allocate the memory
-    void* mem = userAlloc( sizeof( ScriptArray ) );
+    void* mem = AllocMem( sizeof( ScriptArray ) );
     if( mem == 0 )
     {
         if( ctx )
@@ -92,7 +82,7 @@ ScriptArray* ScriptArray::Create( asIObjectType* ot, void* initList )
     asIScriptContext* ctx = asGetActiveContext();
 
     // Allocate the memory
-    void* mem = userAlloc( sizeof( ScriptArray ) );
+    void* mem = AllocMem( sizeof( ScriptArray ) );
     if( mem == 0 )
     {
         if( ctx )
@@ -120,7 +110,7 @@ ScriptArray* ScriptArray::Create( asIObjectType* ot, asUINT length, void* defVal
     asIScriptContext* ctx = asGetActiveContext();
 
     // Allocate the memory
-    void* mem = userAlloc( sizeof( ScriptArray ) );
+    void* mem = AllocMem( sizeof( ScriptArray ) );
     if( mem == 0 )
     {
         if( ctx )
@@ -686,7 +676,7 @@ void ScriptArray::Reserve( asUINT maxElements )
         return;
 
     // Allocate memory for the buffer
-    ArrayBuffer* newBuffer = reinterpret_cast< ArrayBuffer* >( userAlloc( sizeof( ArrayBuffer ) - 1 + elementSize * maxElements ) );
+    ArrayBuffer* newBuffer = reinterpret_cast< ArrayBuffer* >( AllocMem( sizeof( ArrayBuffer ) - 1 + elementSize * maxElements ) );
     if( newBuffer )
     {
         newBuffer->numElements = buffer->numElements;
@@ -707,7 +697,7 @@ void ScriptArray::Reserve( asUINT maxElements )
     memcpy( newBuffer->data, buffer->data, buffer->numElements * elementSize );
 
     // Release the old buffer
-    userFree( buffer, sizeof( ArrayBuffer ) - 1 + elementSize * buffer->maxElements );
+    FreeMem( buffer, sizeof( ArrayBuffer ) - 1 + elementSize * buffer->maxElements );
 
     buffer = newBuffer;
 }
@@ -770,7 +760,7 @@ void ScriptArray::Resize( int delta, asUINT at )
     if( buffer->maxElements < buffer->numElements + delta )
     {
         // Allocate memory for the buffer
-        ArrayBuffer* newBuffer = reinterpret_cast< ArrayBuffer* >( userAlloc( sizeof( ArrayBuffer ) - 1 + elementSize * ( buffer->numElements + delta ) ) );
+        ArrayBuffer* newBuffer = reinterpret_cast< ArrayBuffer* >( AllocMem( sizeof( ArrayBuffer ) - 1 + elementSize * ( buffer->numElements + delta ) ) );
         if( newBuffer )
         {
             newBuffer->numElements = buffer->numElements + delta;
@@ -795,7 +785,7 @@ void ScriptArray::Resize( int delta, asUINT at )
         Construct( newBuffer, at, at + delta );
 
         // Release the old buffer
-        userFree( buffer, sizeof( ArrayBuffer ) - 1 + elementSize * buffer->maxElements );
+        FreeMem( buffer, sizeof( ArrayBuffer ) - 1 + elementSize * buffer->maxElements );
 
         buffer = newBuffer;
     }
@@ -943,7 +933,7 @@ void* ScriptArray::Last()
 // internal
 void ScriptArray::CreateBuffer( ArrayBuffer** buf, asUINT numElements )
 {
-    *buf = reinterpret_cast< ArrayBuffer* >( userAlloc( sizeof( ArrayBuffer ) - 1 + elementSize * numElements ) );
+    *buf = reinterpret_cast< ArrayBuffer* >( AllocMem( sizeof( ArrayBuffer ) - 1 + elementSize * numElements ) );
 
     if( *buf )
     {
@@ -966,7 +956,7 @@ void ScriptArray::DeleteBuffer( ArrayBuffer* buf )
     Destruct( buf, 0, buf->numElements );
 
     // Free the buffer
-    userFree( buf, sizeof( ArrayBuffer ) - 1 + elementSize * buf->maxElements );
+    FreeMem( buf, sizeof( ArrayBuffer ) - 1 + elementSize * buf->maxElements );
 }
 
 // internal
@@ -1676,7 +1666,7 @@ void ScriptArray::Precache()
     }
 
     // Create the cache
-    cache = reinterpret_cast< ArrayCache* >( userAlloc( sizeof( ArrayCache ) ) );
+    cache = reinterpret_cast< ArrayCache* >( AllocMem( sizeof( ArrayCache ) ) );
     memset( cache, 0, sizeof( ArrayCache ) );
 
     // If the sub type is a handle to const, then the methods must be const too
@@ -1804,7 +1794,7 @@ void ScriptArray::Release() const
         // When reaching 0 no more references to this instance
         // exists and the object should be destroyed
         this->~ScriptArray();
-        userFree( const_cast< ScriptArray* >( this ), sizeof( ScriptArray ) );
+        FreeMem( const_cast< ScriptArray* >( this ), sizeof( ScriptArray ) );
     }
 }
 

@@ -88,7 +88,12 @@ bool FOServer::InitScriptSystem()
     #endif
 
     // Properties
-    PropertyRegistrator* registrators[ 1 ] = { new PropertyRegistrator( true, "Item" ) };
+    PropertyRegistrator* registrators[ 3 ] =
+    {
+        new PropertyRegistrator( true, "Critter" ),
+        new PropertyRegistrator( true, "Item" ),
+        new PropertyRegistrator( true, "ProtoItem" ),
+    };
 
     // Init
     if( !Script::Init( new ScriptPragmaCallback( PRAGMA_SERVER, registrators ), "SERVER", AllowServerNativeCalls ) )
@@ -156,7 +161,7 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.CritterAttacked, "critter_attacked", "void %s(Critter&,Critter&)" },
         { &ServerFunctions.CritterStealing, "critter_stealing", "bool %s(Critter&,Critter&,Item&,uint)" },
         { &ServerFunctions.CritterUseItem, "critter_use_item", "bool %s(Critter&,Item&,Critter@,Item@,Scenery@,uint)" },
-        { &ServerFunctions.CritterUseSkill, "critter_use_skill", "bool %s(Critter&,int,Critter@,Item@,Scenery@)" },
+        { &ServerFunctions.CritterUseSkill, "critter_use_skill", "bool %s(Critter&,CritterProperty,Critter@,Item@,Scenery@)" },
         { &ServerFunctions.CritterReloadWeapon, "critter_reload_weapon", "void %s(Critter&,Item&,Item@)" },
         { &ServerFunctions.CritterInit, "critter_init", "void %s(Critter&,bool)" },
         { &ServerFunctions.CritterFinish, "critter_finish", "void %s(Critter&,bool)" },
@@ -175,7 +180,7 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.ItemCost, "item_cost", "uint %s(Item&,Critter&,Critter&,bool)" },
         { &ServerFunctions.ItemsBarter, "items_barter", "bool %s(Item@[]&,uint[]&,Item@[]&,uint[]&,Critter&,Critter&)" },
         { &ServerFunctions.ItemsCrafted, "items_crafted", "void %s(Item@[]&,uint[]&,Item@[]&,Critter&)" },
-        { &ServerFunctions.PlayerLevelUp, "player_levelup", "void %s(Critter&,uint,uint,uint)" },
+        { &ServerFunctions.PlayerLevelUp, "player_levelup", "void %s(Critter&,CritterProperty,uint,CritterProperty)" },
         { &ServerFunctions.TurnBasedBegin, "turn_based_begin", "void %s(Map&)" },
         { &ServerFunctions.TurnBasedEnd, "turn_based_end", "void %s(Map&)" },
         { &ServerFunctions.TurnBasedProcess, "turn_based_process", "void %s(Map&,Critter&,bool)" },
@@ -201,11 +206,13 @@ bool FOServer::InitScriptSystem()
     if( !Script::RunModuleInitFunctions() )
         return false;
 
-    Item::SetPropertyRegistrator( registrators[ 0 ] );
+    Critter::SetPropertyRegistrator( registrators[ 0 ] );
+    Item::SetPropertyRegistrator( registrators[ 1 ] );
     Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
     Item::PropertiesRegistrator->SetNativeSetCallback( "Count", OnSetItemCount );
     Item::PropertiesRegistrator->SetNativeSetCallback( "Flags", OnSetItemFlags );
     Item::PropertiesRegistrator->SetNativeSetCallback( "TrapValue", OnSetItemTrapValue );
+    ProtoItem::SetPropertyRegistrator( registrators[ 2 ] );
 
     WriteLog( "Script system initialization complete.\n" );
     return true;
@@ -251,19 +258,6 @@ uint FOServer::DialogScriptResult( DemandResult& result, Critter* master, Critte
     return 0;
 }
 
-int FOServer::DialogGetParam( Critter* master, Critter* slave, uint index )
-{
-    if( Critter::ParamsDialogGetScript[ index ] && Script::PrepareContext( Critter::ParamsDialogGetScript[ index ], _FUNC_, "" ) )
-    {
-        Script::SetArgObject( master );
-        Script::SetArgObject( slave );
-        Script::SetArgUInt( index );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedUInt();
-    }
-    return master->GetParam( index );
-}
-
 /************************************************************************/
 /* Client script processing                                             */
 /************************************************************************/
@@ -306,8 +300,12 @@ bool FOServer::ReloadClientScripts()
     #endif
 
     // Properties
-    PropertyRegistrator  reg0( false, "ItemCl" );
-    PropertyRegistrator* registrators[ 1 ] = { &reg0 };
+    PropertyRegistrator* registrators[ 3 ] =
+    {
+        new PropertyRegistrator( false, "CritterCl" ),
+        new PropertyRegistrator( false, "ItemCl" ),
+        new PropertyRegistrator( false, "ProtoItem" ),
+    };
 
     // Swap engine
     asIScriptEngine* old_engine = Script::GetEngine();
@@ -478,6 +476,9 @@ bool FOServer::ReloadClientScripts()
     }
 
     // Finish
+    SAFEDEL( registrators[ 0 ] );
+    SAFEDEL( registrators[ 1 ] );
+    SAFEDEL( registrators[ 2 ] );
     Script::FinishEngine( engine );
     Script::Undef( "__CLIENT" );
     Script::Define( "__SERVER" );
@@ -567,7 +568,12 @@ bool FOServer::ReloadMapperScripts()
     #endif
 
     // Properties
-    PropertyRegistrator* registrators[ 1 ] = { NULL };
+    PropertyRegistrator* registrators[ 3 ] =
+    {
+        new PropertyRegistrator( false, "CritterCl" ),
+        new PropertyRegistrator( false, "ItemCl" ),
+        new PropertyRegistrator( false, "ProtoItem" ),
+    };
 
     // Swap engine
     asIScriptEngine* old_engine = Script::GetEngine();
@@ -654,6 +660,9 @@ bool FOServer::ReloadMapperScripts()
     errors += Script::BindImportedFunctions();
 
     // Finish
+    SAFEDEL( registrators[ 0 ] );
+    SAFEDEL( registrators[ 1 ] );
+    SAFEDEL( registrators[ 2 ] );
     Script::FinishEngine( engine );
     Script::Undef( "__MAPPER" );
     Script::Define( "__SERVER" );
@@ -701,35 +710,6 @@ void SortCritterByDist( int hx, int hy, CrVec& critters )
     SortCritterHx = hx;
     SortCritterHy = hy;
     std::sort( critters.begin(), critters.end(), SortCritterByDistPred );
-}
-
-int* FOServer::SScriptFunc::DataRef_Index( CritterPtr& cr, uint index )
-{
-    if( cr->IsNotValid )
-        SCRIPT_ERROR_R0( "This nulltptr." );
-    if( index >= MAX_PARAMS )
-        SCRIPT_ERROR_R0( "Invalid index arg (%d).", (int) index );
-    uint data_index = ( ( uint ) & cr - ( uint ) & cr->ThisPtr[ 0 ] ) / sizeof( cr->ThisPtr[ 0 ] );
-    if( index < Critter::ParametersMin[ data_index ] )
-        SCRIPT_ERROR_R0( "Index is less than minimum." );
-    if( index > Critter::ParametersMax[ data_index ] )
-        SCRIPT_ERROR_R0( "Index is greater than maximum." );
-    cr->ChangeParam( index );
-    return &cr->Data.Params[ index ];
-}
-
-int FOServer::SScriptFunc::DataVal_Index( CritterPtr& cr, uint index )
-{
-    if( cr->IsNotValid )
-        SCRIPT_ERROR_R0( "This nulltptr." );
-    if( index >= MAX_PARAMS )
-        SCRIPT_ERROR_R0( "Invalid index arg (%d).", (int) index );
-    uint data_index = ( ( uint ) & cr - ( uint ) & cr->ThisPtr[ 0 ] ) / sizeof( cr->ThisPtr[ 0 ] );
-    if( index < Critter::ParametersMin[ data_index ] )
-        SCRIPT_ERROR_R0( "Index is less than minimum." );
-    if( index > Critter::ParametersMax[ data_index ] )
-        SCRIPT_ERROR_R0( "Index is greater than maximum." );
-    return cr->GetParam( index );
 }
 
 ScriptString* FOServer::SScriptFunc::ProtoItem_GetScriptName( ProtoItem* proto )
@@ -839,7 +819,7 @@ bool FOServer::SScriptFunc::Item_SetScript( Item* item, ScriptString* script )
         SCRIPT_ERROR_R0( "This nullptr." );
     if( !script || !script->length() )
     {
-        item->ScriptId = 0;
+        item->SetScriptId( 0 );
     }
     else
     {
@@ -853,7 +833,7 @@ hash FOServer::SScriptFunc::Item_GetScriptId( Item* item )
 {
     if( item->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
-    return item->ScriptId;
+    return item->GetScriptId();
 }
 
 bool FOServer::SScriptFunc::Item_SetEvent( Item* item, int event_type, ScriptString* func_name )
@@ -898,7 +878,7 @@ uint FOServer::SScriptFunc::Item_GetCost( Item* item )
 {
     if( item->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
-    return item->GetCost();
+    return item->GetWholeCost();
 }
 
 Map* FOServer::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& hy )
@@ -959,7 +939,7 @@ bool FOServer::SScriptFunc::Item_ChangeProto( Item* item, hash pid )
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
     if( !proto_item )
         SCRIPT_ERROR_R0( "Proto item not found." );
-    if( item->GetType() != proto_item->Type )
+    if( item->GetType() != proto_item->GetType() )
         SCRIPT_ERROR_R0( "Different types." );
 
     ProtoItem* old_proto_item = item->Proto;
@@ -1037,26 +1017,26 @@ bool FOServer::SScriptFunc::Item_LockerOpen( Item* item )
     if( item->LockerIsOpen() )
         return true;
 
-    ushort locker_condition = item->LockerCondition;
+    ushort locker_condition = item->GetLockerCondition();
     SETFLAG( locker_condition, LOCKER_ISOPEN );
-    item->SetPropertyValue< ushort >( Item::PropertyLockerCondition, locker_condition );
+    item->SetLockerCondition( locker_condition );
 
     if( item->IsDoor() )
     {
-        uint flags = item->Flags;
+        uint flags = item->GetFlags();
         bool recache_block = false;
         bool recache_shoot = false;
-        if( !item->Proto->Door_NoBlockMove )
+        if( !item->Proto->GetDoor_NoBlockMove() )
         {
             SETFLAG( flags, ITEM_NO_BLOCK );
             recache_block = true;
         }
-        if( !item->Proto->Door_NoBlockShoot )
+        if( !item->Proto->GetDoor_NoBlockShoot() )
         {
             SETFLAG( flags, ITEM_SHOOT_THRU );
             recache_shoot = true;
         }
-        if( !item->Proto->Door_NoBlockLight )
+        if( !item->Proto->GetDoor_NoBlockLight() )
             SETFLAG( flags, ITEM_LIGHT_THRU );
 
         if( item->Accessory == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
@@ -1073,7 +1053,7 @@ bool FOServer::SScriptFunc::Item_LockerOpen( Item* item )
             }
         }
 
-        item->SetPropertyValue< uint >( Item::PropertyFlags, flags );
+        item->SetFlags( flags );
     }
     return true;
 }
@@ -1089,26 +1069,26 @@ bool FOServer::SScriptFunc::Item_LockerClose( Item* item )
     if( item->LockerIsClose() )
         return true;
 
-    ushort locker_condition = item->LockerCondition;
+    ushort locker_condition = item->GetLockerCondition();
     UNSETFLAG( locker_condition, LOCKER_ISOPEN );
-    item->SetPropertyValue< ushort >( Item::PropertyLockerCondition, locker_condition );
+    item->SetLockerCondition( locker_condition );
 
     if( item->IsDoor() )
     {
-        uint flags = item->Flags;
+        uint flags = item->GetFlags();
         bool recache_block = false;
         bool recache_shoot = false;
-        if( !item->Proto->Door_NoBlockMove )
+        if( !item->Proto->GetDoor_NoBlockMove() )
         {
             UNSETFLAG( flags, ITEM_NO_BLOCK );
             recache_block = true;
         }
-        if( !item->Proto->Door_NoBlockShoot )
+        if( !item->Proto->GetDoor_NoBlockShoot() )
         {
             UNSETFLAG( flags, ITEM_SHOOT_THRU );
             recache_shoot = true;
         }
-        if( !item->Proto->Door_NoBlockLight )
+        if( !item->Proto->GetDoor_NoBlockLight() )
             UNSETFLAG( flags, ITEM_LIGHT_THRU );
 
         if( item->Accessory == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
@@ -1123,7 +1103,7 @@ bool FOServer::SScriptFunc::Item_LockerClose( Item* item )
             }
         }
 
-        item->SetPropertyValue< uint >( Item::PropertyFlags, flags );
+        item->SetFlags( flags );
     }
     return true;
 }
@@ -1314,7 +1294,7 @@ bool FOServer::SScriptFunc::Crit_IsCanAim( Critter* cr )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
-    return CritType::IsCanAim( cr->GetCrType() ) && !cr->IsRawParam( MODE_NO_AIM );
+    return CritType::IsCanAim( cr->GetCrType() ) && !cr->GetIsNoAim();
 }
 
 bool FOServer::SScriptFunc::Crit_IsAnim1( Critter* cr, uint index )
@@ -1377,36 +1357,6 @@ bool FOServer::SScriptFunc::Crit_SetEvent( Critter* cr, int event_type, ScriptSt
             SCRIPT_ERROR_R0( "Function not found." );
     }
     return true;
-}
-
-void FOServer::SScriptFunc::Crit_SetLexems( Critter* cr, ScriptString* lexems )
-{
-    if( cr->IsNotValid )
-        SCRIPT_ERROR_R( "This nullptr." );
-    if( lexems && lexems->length() >= LEXEMS_SIZE )
-        SCRIPT_ERROR_R( "Lexems arg length is greater than maximum (127 digits)." );
-
-    // Change data
-    cr->SetLexems( lexems && lexems->length() ? lexems->c_str() : NULL );
-
-    // Update
-    if( cr->GetMap() )
-    {
-        cr->Send_CritterLexems( cr );
-        for( auto it = cr->VisCr.begin(), end = cr->VisCr.end(); it != end; ++it )
-        {
-            Critter* cr_ = *it;
-            cr_->Send_CritterLexems( cr );
-        }
-    }
-    else if( cr->GroupMove )
-    {
-        for( auto it = cr->GroupMove->CritMove.begin(), end = cr->GroupMove->CritMove.end(); it != end; ++it )
-        {
-            Critter* cr_ = *it;
-            cr_->Send_CritterLexems( cr );
-        }
-    }
 }
 
 Map* FOServer::SScriptFunc::Crit_GetMap( Critter* cr )
@@ -1479,8 +1429,8 @@ bool FOServer::SScriptFunc::Crit_ChangeCrType( Critter* cr, uint new_type )
         }
 
         cr->Data.BaseType = new_type;
-        cr->Send_ParamOther( OTHER_BASE_TYPE, new_type );
-        cr->SendA_ParamOther( OTHER_BASE_TYPE, new_type );
+        cr->Send_CustomCommand( cr, OTHER_BASE_TYPE, new_type );
+        cr->SendA_CustomCommand( OTHER_BASE_TYPE, new_type );
     }
     return true;
 }
@@ -1746,7 +1696,7 @@ void FOServer::SScriptFunc::Crit_Wait( Critter* cr, uint ms )
     {
         Client* cl = (Client*) cr;
         cl->SetBreakTime( ms );
-        cl->Send_ParamOther( OTHER_BREAK_TIME, ms );
+        cl->Send_CustomCommand( cr, OTHER_BREAK_TIME, ms );
     }
 }
 
@@ -1794,10 +1744,10 @@ bool FOServer::SScriptFunc::Crit_ToLife( Critter* cr )
     }
     else
     {
-        if( cr->Data.Params[ ST_CURRENT_HP ] <= 0 )
-            cr->Data.Params[ ST_CURRENT_HP ] = 1;
-        if( cr->Data.Params[ ST_CURRENT_AP ] <= 0 )
-            cr->Data.Params[ ST_CURRENT_AP ] = AP_DIVIDER;
+        if( cr->GetCurrentHp() <= 0 )
+            cr->SetCurrentHp( 1 );
+        if( cr->GetCurrentAp() <= 0 )
+            cr->SetCurrentAp( AP_DIVIDER );
         cr->KnockoutAp = 0;
         cr->TryUpOnKnockout();
     }
@@ -2071,7 +2021,7 @@ uint FOServer::SScriptFunc::Crit_GetFollowGroup( Critter* cr, int find_type, Scr
     for( auto it = cr->VisCrSelf.begin(), end = cr->VisCrSelf.end(); it != end; ++it )
     {
         Critter* cr_ = *it;
-        if( cr_->GetFollowCrId() == cr->GetId() && cr_->CheckFind( find_type ) )
+        if( cr_->GetFollowCrit() == cr->GetId() && cr_->CheckFind( find_type ) )
             cr_vec.push_back( cr_ );
     }
 
@@ -2089,7 +2039,7 @@ Critter* FOServer::SScriptFunc::Crit_GetFollowLeader( Critter* cr )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
-    uint leader_id = cr->GetFollowCrId();
+    uint leader_id = cr->GetFollowCrit();
     if( !leader_id )
         return NULL;
     return cr->GetCritSelf( leader_id, true );
@@ -2118,7 +2068,6 @@ void FOServer::SScriptFunc::Crit_LeaveGlobalGroup( Critter* cr )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R( "This nullptr." );
-    // if(cr->GetMap() || !cr->GroupMove || cr->GroupMove->GetSize()<2) return;
     MapMngr.GM_LeaveGroup( cr );
 }
 
@@ -2128,7 +2077,6 @@ void FOServer::SScriptFunc::Crit_GiveGlobalGroupLead( Critter* cr, Critter* to_c
         SCRIPT_ERROR_R( "This nullptr." );
     if( to_cr->IsNotValid )
         SCRIPT_ERROR_R( "To critter this nullptr." );
-    // if(cr->GetMap() || !cr->GroupMove || cr->GroupMove->GetSize()<2 || cr==to_cr) return;
     MapMngr.GM_GiveRule( cr, to_cr );
 }
 
@@ -2317,9 +2265,9 @@ ProtoItem* FOServer::SScriptFunc::Crit_GetSlotProto( Critter* cr, int slot, ucha
     if( !item )
         return NULL;
 
-    mode = item->Mode;
+    mode = item->GetMode();
     if( !item->GetId() && ( item == cr->ItemSlotMain || item == cr->ItemSlotExt ) )
-        mode = cr->Data.Params[ ST_HANDS_ITEM_MODE ];
+        mode = cr->GetHandsItemMode();
     return item->Proto;
 }
 
@@ -2333,10 +2281,10 @@ bool FOServer::SScriptFunc::Crit_MoveItem( Critter* cr, uint item_id, uint count
     if( !item )
         SCRIPT_ERROR_R0( "Item not found." );
     if( !count )
-        count = item->Count;
+        count = item->GetCount();
     if( item->AccCritter.Slot == to_slot )
         return true;                                    // SCRIPT_ERROR_R0("To slot arg is equal of current item slot.");
-    if( count > item->Count )
+    if( count > item->GetCount() )
         SCRIPT_ERROR_R0( "Item count arg is greater than items count." );
     bool result = cr->MoveItem( item->AccCritter.Slot, to_slot, item_id, count );
     if( !result )
@@ -2828,8 +2776,8 @@ void FOServer::SScriptFunc::Crit_SetMultihex( Critter* cr, int value )
         }
     }
 
-    cr->Send_ParamOther( OTHER_MULTIHEX, value );
-    cr->SendA_ParamOther( OTHER_MULTIHEX, value );
+    cr->Send_CustomCommand( cr, OTHER_MULTIHEX, value );
+    cr->SendA_CustomCommand( OTHER_MULTIHEX, value );
 }
 
 void FOServer::SScriptFunc::Crit_AddEnemyInStack( Critter* cr, uint critter_id )
@@ -3856,7 +3804,7 @@ Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash p
     ProtoItem* proto_item = ItemMngr.GetProtoItem( proto_id );
     if( !proto_item )
         SCRIPT_ERROR_R0( "Invalid proto id arg." );
-    if( proto_item->IsBlocks() && !map->IsPlaceForItem( hx, hy, proto_item ) )
+    if( proto_item->IsBlockLinesData() && !map->IsPlaceForItem( hx, hy, proto_item ) )
         SCRIPT_ERROR_R0( "No place for item." );
     if( !count )
         count = 1;
@@ -4293,11 +4241,14 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
     if( params )
     {
         Script::AssignScriptArrayInVector( params_, params );
-        for( uint i = 0, j = (uint) params_.size(); i < j; i += 2 )
+        for( size_t i = 0, j = params_.size() / 2; i < j; i++ )
         {
-            int index = params_[ i ];
-            if( index < 0 || index >= MAX_PARAMS )
-                SCRIPT_ERROR_R0( "Invalid params value." );
+            int       enum_value = params_[ i * 2 ];
+            Property* prop = Critter::PropertiesRegistrator->FindByEnum( enum_value );
+            if( !prop )
+                SCRIPT_ERROR_R0( "Some property not found" );
+            if( !prop->IsPOD() )
+                SCRIPT_ERROR_R0( "Some property is not POD" );
         }
     }
 
@@ -4319,9 +4270,7 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
         }
     }
 
-    Critter* npc = CrMngr.CreateNpc( proto_id,
-                                     (uint) params_.size() / 2, params_.size() ? &params_[ 0 ] : NULL, (uint) items_.size() / 3, items_.size() ? &items_[ 0 ] : NULL,
-                                     script && script->length() ? script->c_str() : NULL, map, hx, hy, dir, false );
+    Critter* npc = CrMngr.CreateNpc( proto_id, &params_, &items_, script && script->length() ? script->c_str() : NULL, map, hx, hy, dir, false );
     if( !npc )
         SCRIPT_ERROR_R0( "Create npc fail." );
     return npc;
@@ -4906,8 +4855,8 @@ void FOServer::SScriptFunc::Global_MoveItemCr( Item* item, uint count, Critter* 
     if( to_cr->IsNotValid )
         SCRIPT_ERROR_R( "Critter arg nullptr." );
     if( !count )
-        count = item->Count;
-    if( count > item->Count )
+        count = item->GetCount();
+    if( count > item->GetCount() )
         SCRIPT_ERROR_R( "Count arg is greater than maximum." );
     ItemMngr.MoveItem( item, count, to_cr );
 }
@@ -4921,8 +4870,8 @@ void FOServer::SScriptFunc::Global_MoveItemMap( Item* item, uint count, Map* to_
     if( to_hx >= to_map->GetMaxHexX() || to_hy >= to_map->GetMaxHexY() )
         SCRIPT_ERROR_R( "Invalid hexex args." );
     if( !count )
-        count = item->Count;
-    if( count > item->Count )
+        count = item->GetCount();
+    if( count > item->GetCount() )
         SCRIPT_ERROR_R( "Count arg is greater than maximum." );
     ItemMngr.MoveItem( item, count, to_map, to_hx, to_hy );
 }
@@ -4936,8 +4885,8 @@ void FOServer::SScriptFunc::Global_MoveItemCont( Item* item, uint count, Item* t
     if( !to_cont->IsContainer() )
         SCRIPT_ERROR_R( "Container arg is not container type." );
     if( !count )
-        count = item->Count;
-    if( count > item->Count )
+        count = item->GetCount();
+    if( count > item->GetCount() )
         SCRIPT_ERROR_R( "Count arg is greater than maximum." );
     ItemMngr.MoveItem( item, count, to_cont, stack_id );
 }
@@ -4951,7 +4900,7 @@ void FOServer::SScriptFunc::Global_MoveItemsCr( ScriptArray& items, Critter* to_
         Item* item = *(Item**) items.At( i );
         if( !item || item->IsNotValid )
             continue;
-        ItemMngr.MoveItem( item, item->Count, to_cr );
+        ItemMngr.MoveItem( item, item->GetCount(), to_cr );
     }
 }
 
@@ -4966,7 +4915,7 @@ void FOServer::SScriptFunc::Global_MoveItemsMap( ScriptArray& items, Map* to_map
         Item* item = *(Item**) items.At( i );
         if( !item || item->IsNotValid )
             continue;
-        ItemMngr.MoveItem( item, item->Count, to_map, to_hx, to_hy );
+        ItemMngr.MoveItem( item, item->GetCount(), to_map, to_hx, to_hy );
     }
 }
 
@@ -4981,7 +4930,7 @@ void FOServer::SScriptFunc::Global_MoveItemsCont( ScriptArray& items, Item* to_c
         Item* item = *(Item**) items.At( i );
         if( !item || item->IsNotValid )
             continue;
-        ItemMngr.MoveItem( item, item->Count, to_cont, stack_id );
+        ItemMngr.MoveItem( item, item->GetCount(), to_cont, stack_id );
     }
 }
 
@@ -5120,16 +5069,16 @@ void FOServer::SScriptFunc::Global_DeleteLocation( uint loc_id )
     MapMngr.RunGarbager();
 }
 
-void FOServer::SScriptFunc::Global_GetProtoCritter( hash proto_id, ScriptArray& data )
-{
-    CritData* data_ = CrMngr.GetProto( proto_id );
-    if( !data_ )
-        SCRIPT_ERROR_R( "Proto critter not found." );
-    IntVec data__;
-    data__.resize( MAX_PARAMS );
-    memcpy( &data__[ 0 ], data_->Params, sizeof( data_->Params ) );
-    Script::AppendVectorToArray( data__, &data );
-}
+// void FOServer::SScriptFunc::Global_GetProtoCritter( hash proto_id, ScriptArray& data )
+// {
+//     CritData* data_ = CrMngr.GetProto( proto_id );
+//     if( !data_ )
+//         SCRIPT_ERROR_R( "Proto critter not found." );
+// //     IntVec data__;
+// //     data__.resize( MAX_PARAMS );
+// //     memcpy( &data__[ 0 ], data_->Params, sizeof( data_->Params ) );
+// //     Script::AppendVectorToArray( data__, &data );
+// }
 
 CraftItem* FOServer::SScriptFunc::Global_GetCraftItem( uint num )
 {
@@ -5534,82 +5483,6 @@ uint FOServer::SScriptFunc::Global_GetBagItems( uint bag_id, ScriptArray* pids, 
     return count;
 }
 
-void FOServer::SScriptFunc::Global_SetChosenSendParameter( int index, bool enabled )
-{
-    if( index < 0 || index >= MAX_PARAMS )
-        SCRIPT_ERROR_R( "Invalid index arg." );
-
-    Critter::ParamsChosenSendMask[ index ] = ( enabled ? uint( -1 ) : 0 );
-}
-
-void FOServer::SScriptFunc::Global_SetSendParameter( int index, bool enabled )
-{
-    Global_SetSendParameterFunc( index, enabled, NULL );
-}
-
-void FOServer::SScriptFunc::Global_SetSendParameterFunc( int index, bool enabled, ScriptString* allow_func )
-{
-    if( index < 0 )
-    {
-        index = -index;
-        if( index >= SLOT_GROUND )
-            SCRIPT_ERROR_R( "Invalid index arg." );
-
-        if( allow_func && allow_func->length() )
-        {
-            int bind_id = Script::Bind( allow_func->c_str(), "bool %s(uint8,Item&,Critter&,Critter&)", false );
-            if( bind_id <= 0 )
-                SCRIPT_ERROR_R( "Function not found." );
-            Critter::SlotDataSendScript[ index ] = bind_id;
-        }
-        else
-        {
-            Critter::SlotDataSendScript[ index ] = 0;
-        }
-
-        Critter::SlotDataSendEnabled[ index ] = enabled;
-        return;
-    }
-
-    if( index >= MAX_PARAMS )
-        SCRIPT_ERROR_R( "Invalid index arg." );
-
-    if( allow_func && allow_func->length() )
-    {
-        int bind_id = Script::Bind( allow_func->c_str(), "int %s(uint,Critter&,Critter&)", false );
-        if( bind_id <= 0 )
-            SCRIPT_ERROR_R( "Function not found." );
-        Critter::ParamsSendScript[ index ] = bind_id;
-    }
-    else
-    {
-        Critter::ParamsSendScript[ index ] = 0;
-    }
-
-    UShortVec& vec = Critter::ParamsSend;
-    ushort&    count = Critter::ParamsSendCount;
-    auto       it = std::find( vec.begin(), vec.end(), index );
-
-    if( enabled )
-    {
-        if( it != vec.end() )
-            SCRIPT_ERROR_R( "Index already enabled." );
-        vec.push_back( index );
-        std::sort( vec.begin(), vec.end() );
-        Critter::ParamsSendMsgLen += sizeof( ushort ) + sizeof( int );
-    }
-    else
-    {
-        if( it == vec.end() )
-            SCRIPT_ERROR_R( "Index already disabled." );
-        vec.erase( it );
-        Critter::ParamsSendMsgLen -= sizeof( ushort ) + sizeof( int );
-    }
-
-    count = (uint) vec.size();
-    Critter::ParamsSendEnabled[ index ] = enabled;
-}
-
 template< typename Ty >
 void SwapArray( Ty& arr1, Ty& arr2 )
 {
@@ -5644,7 +5517,7 @@ void SwapCrittersRefreshClient( Client* cl, Map* map, Map* prev_map )
     }
     else
     {
-        cl->Send_AllParams();
+        cl->Send_AllProperties();
         cl->Send_AddAllItems();
         cl->Send_AllQuests();
         cl->Send_HoloInfo( true, 0, cl->Data.HoloInfoCount );
@@ -5653,16 +5526,20 @@ void SwapCrittersRefreshClient( Client* cl, Map* map, Map* prev_map )
         if( map->IsTurnBasedOn )
         {
             if( map->IsCritterTurn( cl ) )
-                cl->Send_ParamOther( OTHER_YOU_TURN, map->GetCritterTurnTime() );
+            {
+                cl->Send_CustomCommand( cl, OTHER_YOU_TURN, map->GetCritterTurnTime() );
+            }
             else
             {
                 Critter* cr = cl->GetCritSelf( map->GetCritterTurnId(), false );
                 if( cr )
-                    cl->Send_CritterParam( cr, OTHER_YOU_TURN, map->GetCritterTurnTime() );
+                    cl->Send_CustomCommand( cr, OTHER_YOU_TURN, map->GetCritterTurnTime() );
             }
         }
-        else if( TB_BATTLE_TIMEOUT_CHECK( cl->GetParam( TO_BATTLE ) ) )
-            cl->SetTimeout( TO_BATTLE, 0 );
+        else if( TB_BATTLE_TIMEOUT_CHECK( cl->GetTimeoutBattle() ) )
+        {
+            cl->SetTimeoutBattle( 0 );
+        }
     }
 }
 
@@ -5786,14 +5663,14 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
         SwapCrittersRefreshClient( (Client*) cr2, map1, map2 );
     if( map1 == map2 )
     {
-        cr1->Send_ParamOther( OTHER_CLEAR_MAP, 0 );
-        cr2->Send_ParamOther( OTHER_CLEAR_MAP, 0 );
+        cr1->Send_CustomCommand( cr1, OTHER_CLEAR_MAP, 0 );
+        cr2->Send_CustomCommand( cr2, OTHER_CLEAR_MAP, 0 );
         cr1->Send_Dir( cr1 );
         cr2->Send_Dir( cr2 );
-        cr1->Send_ParamOther( OTHER_TELEPORT, ( cr1->GetHexX() << 16 ) | ( cr1->GetHexY() ) ); // cr1->Send_XY(cr1);
-        cr2->Send_ParamOther( OTHER_TELEPORT, ( cr2->GetHexX() << 16 ) | ( cr2->GetHexY() ) ); // cr2->Send_XY(cr2);
-        cr1->Send_ParamOther( OTHER_BASE_TYPE, cr1->Data.BaseType );
-        cr2->Send_ParamOther( OTHER_BASE_TYPE, cr2->Data.BaseType );
+        cr1->Send_CustomCommand( cr1, OTHER_TELEPORT, ( cr1->GetHexX() << 16 ) | ( cr1->GetHexY() ) );
+        cr2->Send_CustomCommand( cr2, OTHER_TELEPORT, ( cr2->GetHexX() << 16 ) | ( cr2->GetHexY() ) );
+        cr1->Send_CustomCommand( cr1, OTHER_BASE_TYPE, cr1->Data.BaseType );
+        cr2->Send_CustomCommand( cr2, OTHER_BASE_TYPE, cr2->Data.BaseType );
         cr1->ProcessVisibleCritters();
         cr2->ProcessVisibleCritters();
         cr1->ProcessVisibleItems();
@@ -5955,91 +5832,48 @@ void FOServer::SScriptFunc::Global_SetTime( ushort multiplier, ushort year, usho
     SetGameTime( multiplier, year, month, day, hour, minute, second );
 }
 
-bool FOServer::SScriptFunc::Global_SetPropertyGetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func )
+bool FOServer::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, ScriptString& script_func )
 {
-    PropertyRegistrator* registrator = NULL;
-    if( class_name.c_std_str() == "Item" )
-        registrator = Item::PropertiesRegistrator;
-    else
-        SCRIPT_ERROR_R0( "Invalid class name." );
+    Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum_value );
+    prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    if( !prop )
+        SCRIPT_ERROR_R0( "Property not found." );
 
-    string result = registrator->SetGetCallback( property_name.c_str(), script_func.c_str() );
+    string result = prop->SetGetCallback( script_func.c_str() );
     if( result != "" )
         SCRIPT_ERROR_R0( result.c_str() );
     return true;
 }
 
-bool FOServer::SScriptFunc::Global_AddPropertySetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func )
+bool FOServer::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func )
 {
-    PropertyRegistrator* registrator = NULL;
-    if( class_name.c_std_str() == "Item" )
-        registrator = Item::PropertiesRegistrator;
-    else
-        SCRIPT_ERROR_R0( "Invalid class name." );
+    Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum_value );
+    prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    if( !prop )
+        SCRIPT_ERROR_R0( "Property not found." );
 
-    string result = registrator->AddSetCallback( property_name.c_str(), script_func.c_str() );
+    string result = prop->AddSetCallback( script_func.c_str() );
     if( result != "" )
         SCRIPT_ERROR_R0( result.c_str() );
     return true;
 }
 
-bool FOServer::SScriptFunc::Global_SetParameterGetBehaviour( uint index, ScriptString& func_name )
+void FOServer::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
 {
-    if( index >= MAX_PARAMS )
-        SCRIPT_ERROR_R0( "Invalid index arg." );
-    Critter::ParamsGetScript[ index ] = 0;
-    if( func_name.length() > 0 )
-    {
-        int bind_id = Script::Bind( func_name.c_str(), "int %s(Critter&,uint)", false );
-        if( bind_id <= 0 )
-            SCRIPT_ERROR_R0( "Function not found." );
-        Critter::ParamsGetScript[ index ] = bind_id;
-    }
-    return true;
-}
-
-bool FOServer::SScriptFunc::Global_SetParameterChangeBehaviour( uint index, ScriptString& func_name )
-{
-    if( index >= MAX_PARAMS )
-        SCRIPT_ERROR_R0( "Invalid index arg." );
-    Critter::ParamsChangeScript[ index ] = 0;
-    if( func_name.length() > 0 )
-    {
-        int bind_id = Script::Bind( func_name.c_str(), "void %s(Critter&,uint,int)", false );
-        if( bind_id <= 0 )
-            SCRIPT_ERROR_R0( "Function not found." );
-        Critter::ParamsChangeScript[ index ] = bind_id;
-    }
-    return true;
-}
-
-bool FOServer::SScriptFunc::Global_SetParameterDialogGetBehaviour( uint index, ScriptString& func_name )
-{
-    if( index >= MAX_PARAMS )
-        SCRIPT_ERROR_R0( "Invalid index arg." );
-    Critter::ParamsDialogGetScript[ index ] = 0;
-    if( func_name.length() > 0 )
-    {
-        int bind_id = Script::Bind( func_name.c_str(), "int %s(Critter@,Critter@,uint)", false );
-        if( bind_id <= 0 )
-            SCRIPT_ERROR_R0( "Function not found." );
-        Critter::ParamsDialogGetScript[ index ] = bind_id;
-    }
-    return true;
-}
-
-void FOServer::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& ini_option )
-{
-    if( index <= SLOT_ARMOR || index == SLOT_GROUND )
-        SCRIPT_ERROR_R( "Invalid index arg." );
     Critter::SlotEnabled[ index ] = true;
+    Critter::SlotDataSendEnabled[ index ] = enable_send;
 }
 
-void FOServer::SScriptFunc::Global_SetRegistrationParam( uint index, bool enabled )
+void FOServer::SScriptFunc::Global_AddRegistrationProperty( int cr_prop )
 {
-    if( index >= MAX_PARAMS )
-        SCRIPT_ERROR_R( "Invalid index arg." );
-    Critter::ParamsRegEnabled[ index ] = enabled;
+    Critter::RegProperties.insert( cr_prop );
+
+    ScriptArray* props_array;
+    int          props_array_index = Script::GetEngine()->GetGlobalPropertyIndexByName( "CritterPropertyRegProperties" );
+    Script::GetEngine()->GetGlobalPropertyByIndex( props_array_index, NULL, NULL, NULL, NULL, NULL, (void**) &props_array );
+    props_array->Resize( 0 );
+    for( auto it = Critter::RegProperties.begin(); it != Critter::RegProperties.end(); ++it )
+        props_array->InsertLast( (void*) &( *it ) );
 }
 
 bool FOServer::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
@@ -6065,7 +5899,8 @@ ScriptString* FOServer::SScriptFunc::Global_GetConstantName( int const_collectio
 {
     if( !ConstantsManager::IsCollectionInit( const_collection ) )
         SCRIPT_ERROR_R0( "Invalid namesFile arg." );
-    return ScriptString::Create( ConstantsManager::GetName( const_collection, value ) );
+    const char* name = ConstantsManager::GetName( const_collection, value );
+    return ScriptString::Create( name ? name : "" );
 }
 
 void FOServer::SScriptFunc::Global_AddConstant( int const_collection, ScriptString* name, int value )

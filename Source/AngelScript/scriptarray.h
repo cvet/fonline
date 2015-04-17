@@ -32,9 +32,6 @@ protected:
     #endif
 
     #ifndef FONLINE_DLL
-    // Set the memory functions that should be used by all ScriptArrays
-    static void SetMemoryFunctions( asALLOCFUNC_t allocFunc, asFREEFUNC_t freeFunc );
-
     // Factory functions
     static ScriptArray* Create( asIObjectType* ot );
     static ScriptArray* Create( asIObjectType* ot, asUINT length );

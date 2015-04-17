@@ -120,6 +120,7 @@ public:
     bool          InitialItemsSend;
     UCharVecVec   TempPropertiesData;
     UCharVec      TempPropertyData;
+    IntVec        RegProps;
 
     bool NetConnect( const char* host, ushort port );
     bool FillSockAddr( sockaddr_in& saddr, const char* host, ushort port );
@@ -132,28 +133,27 @@ public:
     void Net_SendLogIn( const char* name, const char* pass );
     void Net_SendCreatePlayer();
     void Net_SendSaveLoad( bool save, const char* fname, UCharVec* pic_data );
-    void Net_SendUseSkill( ushort skill, CritterCl* cr );
-    void Net_SendUseSkill( ushort skill, ItemHex* item );
-    void Net_SendUseSkill( ushort skill, Item* item );
+    void Net_SendUseSkill( int skill, CritterCl* cr );
+    void Net_SendUseSkill( int skill, ItemHex* item );
+    void Net_SendUseSkill( int skill, Item* item );
     void Net_SendUseItem( uchar ap, uint item_id, hash item_pid, uchar rate, uchar target_type, uint target_id, hash target_pid, uint param );
     void Net_SendPickItem( ushort targ_x, ushort targ_y, hash pid );
     void Net_SendPickCritter( uint crid, uchar pick_type );
+    void Net_SendChosenProperty( Property* prop );
     void Net_SendItemProperty( Item* item, Property* prop );
     void Net_SendChangeItem( uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count );
     void Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags );
-    void Net_SendRateItem();
     void Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer );
     void Net_SendSayNpc( uchar is_npc, uint id_to_talk, const char* str );
     void Net_SendBarter( uint npc_id, ItemVec& cont_sale, ItemVec& cont_buy );
     void Net_SendGetGameInfo();
-    void Net_SendGiveGlobalInfo( uchar info_flags );
     void Net_SendRuleGlobal( uchar command, uint param1 = 0, uint param2 = 0 );
     void Net_SendGiveMap( bool automap, hash map_pid, uint loc_id, uint tiles_hash, uint walls_hash, uint scen_hash );
     void Net_SendLoadMapOk();
     void Net_SendText( const char* send_str, uchar how_say );
     void Net_SendDir();
     void Net_SendMove( UCharVec steps );
-    void Net_SendLevelUp( ushort perk_up, int* params );
+    void Net_SendLevelUp( ushort perk_up, IntVec* props_data );
     void Net_SendCraftAsk( UIntVec numbers );
     void Net_SendCraft( uint craft_num );
     void Net_SendPing( uchar ping );
@@ -196,12 +196,12 @@ public:
     void Net_OnCritterMoveItem();
     void Net_OnCritterAnimate();
     void Net_OnCritterSetAnims();
-    void Net_OnCritterParam();
+    void Net_OnCustomCommand();
     void Net_OnCheckUID1();
 
     void Net_OnCritterXY();
-    void Net_OnChosenParams();
-    void Net_OnChosenParam();
+    void Net_OnAllProperties();
+    void Net_OnCritterProperty( uint data_size );
     void Net_OnCraftAsk();
     void Net_OnCraftResult();
     void Net_OnChosenClearItems();
@@ -223,7 +223,6 @@ public:
     void Net_OnShowScreen();
     void Net_OnRunClientScript();
     void Net_OnDropTimers();
-    void Net_OnCritterLexems();
     void Net_OnCheckUID3();
 
     void Net_OnUpdateFilesList();
@@ -481,6 +480,9 @@ public:
     void ProcessScreenEffectQuake();
     void ProcessScreenEffectMirror();
 
+    // Critter properties callback
+    static void OnSendChosenValue( void* obj, Property* prop, void* cur_value, void* old_value );
+
     // Item properties callbacks
     static void OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value );
@@ -500,9 +502,6 @@ public:
 
     struct SScriptFunc
     {
-        static int* DataRef_Index( CritterClPtr& cr, uint index );
-        static int  DataVal_Index( CritterClPtr& cr, uint index );
-
         static bool Crit_IsChosen( CritterCl* cr );
         static bool Crit_IsPlayer( CritterCl* cr );
         static bool Crit_IsNpc( CritterCl* cr );
@@ -597,12 +596,10 @@ public:
         static uint          Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static void          Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
         static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
-        static bool          Global_SetPropertyGetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func );
-        static bool          Global_AddPropertySetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func );
-        static bool          Global_SetParameterGetBehaviour( uint index, ScriptString& func_name );
-        static bool          Global_SetParameterChangeBehaviour( uint index, ScriptString& func_name );
-        static void          Global_AllowSlot( uchar index, ScriptString& ini_option );
-        static void          Global_SetRegistrationParam( uint index, bool enabled );
+        static bool          Global_SetPropertyGetCallback( int prop_enum_value, ScriptString& script_func );
+        static bool          Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func );
+        static void          Global_AllowSlot( uchar index, bool enable_send );
+        static void          Global_AddRegistrationProperty( int cr_prop );
         static bool          Global_LoadDataFile( ScriptString& dat_name );
         static int           Global_GetConstantValue( int const_collection, ScriptString* name );
         static ScriptString* Global_GetConstantName( int const_collection, int value );
@@ -725,7 +722,6 @@ public:
     void  CollectContItems();
     void  ProcessItemsCollection( int collection, ItemVec& init_items, ItemVec& result );
     void  ConnectToGame();
-    void  RegGenParams();
     bool  RegCheckData();
 
 /************************************************************************/
@@ -998,13 +994,13 @@ public:
     AnyFrames*   SboxPMain, * SboxPBCancelDn, * SboxPBSneakDn, * SboxPBLockPickDn, * SboxPBStealDn,
     * SboxPBTrapsDn, * SboxPBFirstaidDn, * SboxPBDoctorDn, * SboxPBScienceDn, * SboxPBRepairDn;
     Rect         SboxWMain, SboxWMainText, SboxBCancel, SboxBCancelText, SboxBSneak, SboxBLockpick, SboxBSteal,
-                 SboxBTrap, SboxBFirstAid, SboxBDoctor, SboxBScience, SboxBRepair;
-    Rect         SboxTSneak, SboxTLockpick, SboxTSteal, SboxTTrap, SboxTFirstAid,
+                 SboxBTraps, SboxBFirstAid, SboxBDoctor, SboxBScience, SboxBRepair;
+    Rect         SboxTSneak, SboxTLockpick, SboxTSteal, SboxTTraps, SboxTFirstAid,
                  SboxTDoctor, SboxTScience, SboxTRepair;
     int          SboxX, SboxY;
     int          SboxVectX, SboxVectY;
 
-    ushort       CurSkill;
+    int          CurSkill;
     SmthSelected SboxUseOn;
 
     void SboxDraw();
@@ -1031,7 +1027,7 @@ public:
     int        PerkNextX, PerkNextY;
     int        PerkScroll;
     int        PerkCurPerk;
-    UShortVec  PerkCollection;
+    IntVec     PerkCollection;
 
     void PerkPrepare();
     void PerkDraw();

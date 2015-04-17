@@ -46,12 +46,6 @@ bool FOMapper::Init()
     }
 
     // Register dll script data
-    struct CritterChangeParameter_
-    {
-        static void CritterChangeParameter( void*, uint ) {}
-    };                               // Dummy
-    GameOpt.CritterChangeParameter = &CritterChangeParameter_::CritterChangeParameter;
-
     GameOpt.CritterTypes = &CritType::GetRealCritType( 0 );
 
     struct GetDrawingSprites_
@@ -223,13 +217,12 @@ bool FOMapper::Init()
         return false;
 
     // Initialize tabs
-    CritDataMap& cr_protos = CrMngr.GetAllProtos();
+    ProtoCritterMap& cr_protos = CrMngr.GetAllProtos();
     for( auto it = cr_protos.begin(), end = cr_protos.end(); it != end; ++it )
     {
-        CritData* data = ( *it ).second;
-        data->BaseType = data->Params[ ST_BASE_CRTYPE ];
-        Tabs[ INT_MODE_CRIT ][ DEFAULT_SUB_TAB ].NpcProtos.push_back( data );
-        Tabs[ INT_MODE_CRIT ][ data->CollectionName ].NpcProtos.push_back( data );
+        ProtoCritter* proto = ( *it ).second;
+        Tabs[ INT_MODE_CRIT ][ DEFAULT_SUB_TAB ].NpcProtos.push_back( proto );
+        Tabs[ INT_MODE_CRIT ][ proto->CollectionName ].NpcProtos.push_back( proto );
     }
 
     ProtoItemMap& item_protos = ItemMngr.GetAllProtos();
@@ -1564,15 +1557,15 @@ void FOMapper::MainLoop()
                 if( cr->SprDrawValid )
                 {
                     MapObject* mobj = FindMapObject( cr->GetHexX(), cr->GetHexY(), MAP_OBJECT_CRITTER, cr->Pid, false );
-                    CritData*  pnpc = CrMngr.GetProto( mobj->ProtoId );
-                    if( !mobj || !pnpc )
+                    ProtoCritter*  proto = CrMngr.GetProto( mobj->ProtoId );
+                    if( !mobj || !proto )
                         continue;
                     char str[ 512 ] = { 0 };
 
                     if( DrawCrExtInfo == 1 )
-                        Str::Format( str, "|0xffaabbcc ProtoId...%u\n|0xffff1122 DialogId...%u\n|0xff4433ff BagId...%u\n|0xff55ff77 TeamId...%u\n", mobj->ProtoId, cr->Params[ ST_DIALOG_ID ], cr->Params[ ST_BAG_ID ], cr->Params[ ST_TEAM_ID ] );
+                        Str::Format( str, "|0xffaabbcc ProtoId...%u\n|0xffff1122 DialogId...%u\n|0xff4433ff BagId...%u\n|0xff55ff77 TeamId...%u\n", mobj->ProtoId, cr->GetDialogId(), cr->GetBagId(), cr->GetTeamId() );
                     else if( DrawCrExtInfo == 2 )
-                        Str::Format( str, "|0xff11ff22 NpcRole...%u\n|0xffccaabb AiPacket...%u (%u)\n|0xffff00ff RespawnTime...%d\n", cr->Params[ ST_NPC_ROLE ], cr->Params[ ST_AI_ID ], pnpc->Params[ ST_AI_ID ], cr->Params[ ST_REPLICATION_TIME ] );
+                        Str::Format( str, "|0xff11ff22 NpcRole...%u\n|0xffccaabb AiPacket...%u\n|0xffff00ff RespawnTime...%d\n", cr->GetNpcRole(), cr->GetAiId(), cr->GetReplicationTime() );
                     else if( DrawCrExtInfo == 3 )
                         Str::Format( str, "|0xff00ff00 ScriptName...%s\n|0xffff0000 FuncName...%s\n", mobj->ScriptName, mobj->FuncName );
 
@@ -1901,7 +1894,7 @@ void FOMapper::IntDraw()
 
             if( proto_item->IsItem() )
             {
-                AnyFrames* anim = ResMngr.GetInvAnim( proto_item->PicInv );
+                AnyFrames* anim = ResMngr.GetInvAnim( proto_item->GetPicInv() );
                 if( anim )
                     SprMngr.DrawSpriteSize( anim->GetCurSprId(), x, y + h / 2, w, h / 2, false, true, col );
             }
@@ -1954,9 +1947,9 @@ void FOMapper::IntDraw()
 
         for( ; i < j; i++, x += w )
         {
-            CritData* pnpc = ( *CurNpcProtos )[ i ];
+            ProtoCritter* proto = ( *CurNpcProtos )[ i ];
 
-            uint      spr_id = ResMngr.GetCritSprId( pnpc->BaseType, 1, 1, NpcDir, &pnpc->Params[ ST_ANIM3D_LAYER_BEGIN ] );
+            uint      spr_id = ResMngr.GetCritSprId( proto->GetBaseType(), 1, 1, NpcDir, NULL ); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
             if( !spr_id )
                 continue;
 
@@ -1965,13 +1958,13 @@ void FOMapper::IntDraw()
                 col = COLOR_IFACE_RED;
 
             SprMngr.DrawSpriteSize( spr_id, x, y, w, h / 2, false, true, col );
-            SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), Str::FormatBuf( "%u", pnpc->ProtoId ), FT_NOBREAK, COLOR_TEXT_WHITE );
+            SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), Str::FormatBuf( "%u", proto->ProtoId ), FT_NOBREAK, COLOR_TEXT_WHITE );
         }
 
         if( GetTabIndex() < CurNpcProtos->size() )
         {
-            CritData* pnpc = ( *CurNpcProtos )[ GetTabIndex() ];
-            SprMngr.DrawStr( Rect( IntWHint, IntX, IntY ), Str::I64toA( pnpc->ProtoId ), 0 );
+            ProtoCritter* proto = ( *CurNpcProtos )[ GetTabIndex() ];
+            SprMngr.DrawStr( Rect( IntWHint, IntX, IntY ), Str::I64toA( proto->ProtoId ), 0 );
         }
     }
     else if( IntMode == INT_MODE_INCONT && !SelectedObj.empty() )
@@ -1990,7 +1983,7 @@ void FOMapper::IntDraw()
             if( !proto_item )
                 continue;
 
-            AnyFrames* anim = ResMngr.GetInvAnim( proto_item->PicInv );
+            AnyFrames* anim = ResMngr.GetInvAnim( proto_item->GetPicInv() );
             if( !anim )
                 continue;
 
@@ -2000,9 +1993,9 @@ void FOMapper::IntDraw()
 
             SprMngr.DrawSpriteSize( anim->GetCurSprId(), x, y, w, h, false, true, col );
 
-            uint cnt = ( proto_item->Stackable ? mobj->MItem.Count : 1 );
-            if( proto_item->Stackable && !cnt )
-                cnt = proto_item->StartCount;
+            uint cnt = ( proto_item->GetStackable() ? mobj->MItem.Count : 1 );
+            if( proto_item->GetStackable() && !cnt )
+                cnt = proto_item->GetStartCount();
             if( !cnt )
                 cnt = 1;
             SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), Str::FormatBuf( "x%u", cnt ), FT_NOBREAK, COLOR_TEXT_WHITE );
@@ -2015,13 +2008,7 @@ void FOMapper::IntDraw()
                 else if( mobj->MItem.ItemSlot == SLOT_ARMOR )
                     SprMngr.DrawStr( Rect( x, y, x + w, y + h ), "Armor", FT_NOBREAK, COLOR_TEXT_WHITE );
                 else
-                {
-                    auto it = Self->SlotsExt.find( mobj->MItem.ItemSlot );
-                    if( it != Self->SlotsExt.end() )
-                        SprMngr.DrawStr( Rect( x, y, x + w, y + h ), ( *it ).second.SlotName, FT_NOBREAK, COLOR_TEXT_WHITE );
-                    else
-                        SprMngr.DrawStr( Rect( x, y, x + w, y + h ), "Error", FT_NOBREAK, COLOR_TEXT_WHITE );
-                }
+                    SprMngr.DrawStr( Rect( x, y, x + w, y + h ), Str::ItoA( mobj->MItem.ItemSlot ), FT_NOBREAK, COLOR_TEXT_WHITE );
             }
         }
     }
@@ -2131,14 +2118,14 @@ void FOMapper::ObjDraw()
 
     if( proto )
     {
-        AnyFrames* anim = ResMngr.GetItemAnim( o->MItem.PicMap ? o->MItem.PicMap : proto->PicMap );
+        AnyFrames* anim = ResMngr.GetItemAnim( o->MItem.PicMap ? o->MItem.PicMap : proto->GetPicMap() );
         if( !anim )
             anim = ResMngr.ItemHexDefaultAnim;
         SprMngr.DrawSpriteSize( anim->GetCurSprId(), x + w - ProtoWidth, y, ProtoWidth, ProtoWidth, false, true );
 
         if( proto->IsItem() )
         {
-            AnyFrames* anim = ResMngr.GetInvAnim( o->MItem.PicInv ? o->MItem.PicInv : proto->PicInv );
+            AnyFrames* anim = ResMngr.GetInvAnim( o->MItem.PicInv ? o->MItem.PicInv : proto->GetPicInv() );
             if( anim )
                 SprMngr.DrawSpriteSize( anim->GetCurSprId(), x + w - ProtoWidth, y + ProtoWidth, ProtoWidth, ProtoWidth, false, true );
         }
@@ -2188,8 +2175,8 @@ void FOMapper::ObjDraw()
     }
     else if( so.MapItem && proto )
     {
-        DRAW_COMPONENT_TEXT( "PicMap", Str::GetName( proto->PicMap ), true );                   // 0
-        DRAW_COMPONENT_TEXT( "PicInv", Str::GetName( proto->PicInv ), true );                   // 1
+        DRAW_COMPONENT_TEXT( "PicMap", Str::GetName( proto->GetPicMap() ), true );                   // 0
+        DRAW_COMPONENT_TEXT( "PicInv", Str::GetName( proto->GetPicInv() ), true );                   // 1
     }
 
     if( o->MapObjType == MAP_OBJECT_CRITTER )
@@ -2218,15 +2205,15 @@ void FOMapper::ObjDraw()
         DRAW_COMPONENT( "Anim1", o->MCritter.Anim1, true, false );                              // 17
         DRAW_COMPONENT( "Anim2", o->MCritter.Anim2, true, false );                              // 18
         y += step;                                                                              // 19
-        for( size_t i = 0, j = ShowCritterParams.size(); i < j; i++ )                           // 20..
-        {
-            string str = ( o->MCritter.Params ? o->MCritter.Params[ ShowCritterParams[ i ] ]->c_std_str() : "" );
-            if( str.length() > 0 && str[ 0 ] == '$' )
-                str += Str::FormatBuf( " (constant: %d)", (int) ConvertParamValue( str.c_str() ) );
-            else if( str.length() > 0 && !Str::IsNumber( str.c_str() ) )
-                str += Str::FormatBuf( " (hash: %08X)", (hash) ConvertParamValue( str.c_str() ) );
-            DRAW_COMPONENT_TEXT( ShowCritterParamNames[ i ].c_str(), str.c_str(), false );
-        }
+//         for( size_t i = 0, j = ShowCritterProps.size(); i < j; i++ )                           // 20..
+//         {
+//             string str = ( o->MCritter.Params ? o->MCritter.Params[ ShowCritterPr[ i ] ]->c_std_str() : "" );
+//             if( str.length() > 0 && str[ 0 ] == '$' )
+//                 str += Str::FormatBuf( " (constant: %d)", (int) ConvertParamValue( str.c_str() ) );
+//             else if( str.length() > 0 && !Str::IsNumber( str.c_str() ) )
+//                 str += Str::FormatBuf( " (hash: %08X)", (hash) ConvertParamValue( str.c_str() ) );
+//             DRAW_COMPONENT_TEXT( ShowCritterParamNames[ i ].c_str(), str.c_str(), false );
+//         }
     }
     else if( o->MapObjType == MAP_OBJECT_ITEM || o->MapObjType == MAP_OBJECT_SCENERY )
     {
@@ -2245,7 +2232,7 @@ void FOMapper::ObjDraw()
             DRAW_COMPONENT( "Value3", o->MItem.Val[ 3 ], false, false );                                 // 24
             DRAW_COMPONENT( "Value4", o->MItem.Val[ 4 ], false, false );                                 // 25
 
-            if( proto->Stackable )
+            if( proto->GetStackable() )
             {
                 DRAW_COMPONENT( "Count", o->MItem.Count, true, false );                                      // 26
             }
@@ -2254,7 +2241,7 @@ void FOMapper::ObjDraw()
                 y += step;                                                                                   // 26
             }
 
-            if( proto->Deteriorable )
+            if( proto->GetDeteriorable() )
             {
                 DRAW_COMPONENT( "BrokenFlags", o->MItem.BrokenFlags, true, false );                          // 27
                 DRAW_COMPONENT( "BrokenCount", o->MItem.BrokenCount, true, false );                          // 28
@@ -2267,10 +2254,10 @@ void FOMapper::ObjDraw()
                 y += step;                                                                                   // 29
             }
 
-            switch( proto->Type )
+            switch( proto->GetType() )
             {
             case ITEM_TYPE_WEAPON:
-                if( !proto->Weapon_MaxAmmoCount )
+                if( !proto->GetWeapon_MaxAmmoCount() )
                     break;
                 DRAW_COMPONENT( "AmmoPid", o->MItem.AmmoPid, true, false );                                  // 30
                 DRAW_COMPONENT( "AmmoCount", o->MItem.AmmoCount, true, false );                              // 31
@@ -2292,7 +2279,7 @@ void FOMapper::ObjDraw()
         {
             DRAW_COMPONENT( "SpriteCut", o->MScenery.SpriteCut, false, false );                          // 20
 
-            if( proto->Type == ITEM_TYPE_GRID )
+            if( proto->GetType() == ITEM_TYPE_GRID )
             {
                 DRAW_COMPONENT_TEXT( "ToMap", o->MScenery.ToMap ? o->MScenery.ToMap->c_str() : "", false );  // 21
                 if( o->ProtoId == SP_GRID_ENTIRE )
@@ -2301,7 +2288,7 @@ void FOMapper::ObjDraw()
                     DRAW_COMPONENT( "ToEntire", o->MScenery.ToEntire, true, false );                         // 22
                 DRAW_COMPONENT( "ToDir", o->MScenery.ToDir, true, false );                                   // 23
             }
-            else if( proto->Type == ITEM_TYPE_GENERIC )
+            else if( proto->GetType() == ITEM_TYPE_GENERIC )
             {
                 DRAW_COMPONENT( "ParamsCount", o->MScenery.ParamsCount, true, false );                       // 21
                 DRAW_COMPONENT( "Parameter0", o->MScenery.Param[ 0 ], false, false );                        // 22
@@ -2347,7 +2334,7 @@ void FOMapper::ObjKeyDown( uchar dik, const char* dik_text )
         MapObject* o2 = SelectedObj[ i ].MapObj;
         ProtoItem* proto2 = ItemMngr.GetProtoItem( o2->ProtoId );
 
-        if( o->MapObjType == o2->MapObjType && ( o->MapObjType == MAP_OBJECT_CRITTER || ( proto && proto2 && proto->Type == proto2->Type ) ) )
+        if( o->MapObjType == o2->MapObjType && ( o->MapObjType == MAP_OBJECT_CRITTER || ( proto && proto2 && proto->GetType() == proto2->GetType() ) ) )
         {
             ObjKeyDownA( o2, dik, dik_text );
 
@@ -2374,17 +2361,17 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
     if( o->MapObjType != MAP_OBJECT_CRITTER && !proto )
         return;
 
-    if( o->MapObjType == MAP_OBJECT_CRITTER && ObjCurLine >= 20 && ObjCurLine - 20 < (int) ShowCritterParams.size() )
-    {
-        if( !o->MCritter.Params )
-            o->AllocateCritterParams();
-        char buf[ MAX_FOTEXT ];
-        Str::Copy( buf, o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ]->c_str() );
-        Keyb::GetChar( dik, dik_text, buf, sizeof( buf ), NULL, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
-        Str::Trim( buf );
-        *o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ] = buf;
-        return;
-    }
+//     if( o->MapObjType == MAP_OBJECT_CRITTER && ObjCurLine >= 20 && ObjCurLine - 20 < (int) ShowCritterProps.size() )
+//     {
+//         if( !o->MCritter.Params )
+//             o->AllocateCritterParams();
+//         char buf[ MAX_FOTEXT ];
+//         Str::Copy( buf, o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ]->c_str() );
+//         Keyb::GetChar( dik, dik_text, buf, sizeof( buf ), NULL, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
+//         Str::Trim( buf );
+//         *o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ] = buf;
+//         return;
+//     }
 
     switch( ObjCurLine )
     {
@@ -2454,9 +2441,9 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
             val_i = &o->MItem.Val[ 0 ];
         else if( o->MapObjType == MAP_OBJECT_SCENERY )
         {
-            if( proto->Type == ITEM_TYPE_GRID )
+            if( proto->GetType() == ITEM_TYPE_GRID )
                 str = &o->MScenery.ToMap;
-            else if( proto->Type == ITEM_TYPE_GENERIC )
+            else if( proto->GetType() == ITEM_TYPE_GENERIC )
                 val_b = &o->MScenery.ParamsCount;
         }
         break;
@@ -2465,9 +2452,9 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
             val_i = &o->MItem.Val[ 1 ];
         else if( o->MapObjType == MAP_OBJECT_SCENERY )
         {
-            if( proto->Type == ITEM_TYPE_GRID )
+            if( proto->GetType() == ITEM_TYPE_GRID )
                 val_dw = &o->MScenery.ToEntire;
-            else if( proto->Type == ITEM_TYPE_GENERIC )
+            else if( proto->GetType() == ITEM_TYPE_GENERIC )
                 val_i = &o->MScenery.Param[ 0 ];
         }
         break;
@@ -2476,9 +2463,9 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
             val_i = &o->MItem.Val[ 2 ];
         else if( o->MapObjType == MAP_OBJECT_SCENERY )
         {
-            if( proto->Type == ITEM_TYPE_GRID )
+            if( proto->GetType() == ITEM_TYPE_GRID )
                 val_b = &o->MScenery.ToDir;
-            else if( proto->Type == ITEM_TYPE_GENERIC )
+            else if( proto->GetType() == ITEM_TYPE_GENERIC )
                 val_i = &o->MScenery.Param[ 1 ];
         }
         break;
@@ -2487,7 +2474,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
             val_i = &o->MItem.Val[ 3 ];
         else if( o->MapObjType == MAP_OBJECT_SCENERY )
         {
-            if( proto->Type == ITEM_TYPE_GENERIC )
+            if( proto->GetType() == ITEM_TYPE_GENERIC )
                 val_i = &o->MScenery.Param[ 2 ];
         }
         break;
@@ -2496,20 +2483,20 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
             val_i = &o->MItem.Val[ 4 ];
         else if( o->MapObjType == MAP_OBJECT_SCENERY )
         {
-            if( proto->Type == ITEM_TYPE_GENERIC )
+            if( proto->GetType() == ITEM_TYPE_GENERIC )
                 val_i = &o->MScenery.Param[ 3 ];
         }
         break;
     case 26:
-        if( o->MapObjType == MAP_OBJECT_ITEM && proto->Stackable )
+        if( o->MapObjType == MAP_OBJECT_ITEM && proto->GetStackable() )
             val_dw = &o->MItem.Count;
-        else if( o->MapObjType == MAP_OBJECT_SCENERY && proto->Type == ITEM_TYPE_GENERIC )
+        else if( o->MapObjType == MAP_OBJECT_SCENERY && proto->GetType() == ITEM_TYPE_GENERIC )
             val_i = &o->MScenery.Param[ 4 ];
         break;
     case 27:
-        if( o->MapObjType == MAP_OBJECT_ITEM && proto->Deteriorable )
+        if( o->MapObjType == MAP_OBJECT_ITEM && proto->GetDeteriorable() )
             val_b = &o->MItem.BrokenFlags;
-        else if( o->MapObjType == MAP_OBJECT_SCENERY && proto->Type == ITEM_TYPE_GENERIC )
+        else if( o->MapObjType == MAP_OBJECT_SCENERY && proto->GetType() == ITEM_TYPE_GENERIC )
         {
             if( o->ProtoId == SP_SCEN_TRIGGER )
                 val_dw = &o->MScenery.TriggerNum;
@@ -2518,29 +2505,29 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
         }
         break;
     case 28:
-        if( o->MapObjType == MAP_OBJECT_ITEM && proto->Deteriorable )
+        if( o->MapObjType == MAP_OBJECT_ITEM && proto->GetDeteriorable() )
             val_b = &o->MItem.BrokenCount;
-        else if( o->MapObjType == MAP_OBJECT_SCENERY && proto->Type == ITEM_TYPE_GENERIC && o->ProtoId != SP_SCEN_TRIGGER )
+        else if( o->MapObjType == MAP_OBJECT_SCENERY && proto->GetType() == ITEM_TYPE_GENERIC && o->ProtoId != SP_SCEN_TRIGGER )
             val_bool = &o->MScenery.CanTalk;
         break;
     case 29:
-        if( o->MapObjType == MAP_OBJECT_ITEM && proto->Deteriorable )
+        if( o->MapObjType == MAP_OBJECT_ITEM && proto->GetDeteriorable() )
             val_w = &o->MItem.Deterioration;
         break;
     case 30:
-        if( o->MapObjType == MAP_OBJECT_ITEM && proto->Type == ITEM_TYPE_WEAPON && proto->Weapon_MaxAmmoCount )
+        if( o->MapObjType == MAP_OBJECT_ITEM && proto->GetType() == ITEM_TYPE_WEAPON && proto->GetWeapon_MaxAmmoCount() )
             str = &o->MItem.AmmoPid;
-        else if( o->MapObjType == MAP_OBJECT_ITEM && ( proto->Type == ITEM_TYPE_KEY || proto->Type == ITEM_TYPE_CONTAINER || proto->Type == ITEM_TYPE_DOOR ) )
+        else if( o->MapObjType == MAP_OBJECT_ITEM && ( proto->GetType() == ITEM_TYPE_KEY || proto->GetType() == ITEM_TYPE_CONTAINER || proto->GetType() == ITEM_TYPE_DOOR ) )
             val_dw = &o->MItem.LockerDoorId;
         break;
     case 31:
-        if( o->MapObjType == MAP_OBJECT_ITEM && proto->Type == ITEM_TYPE_WEAPON && proto->Weapon_MaxAmmoCount )
+        if( o->MapObjType == MAP_OBJECT_ITEM && proto->GetType() == ITEM_TYPE_WEAPON && proto->GetWeapon_MaxAmmoCount() )
             val_dw = &o->MItem.AmmoCount;
-        else if( o->MapObjType == MAP_OBJECT_ITEM && ( proto->Type == ITEM_TYPE_CONTAINER || proto->Type == ITEM_TYPE_DOOR ) )
+        else if( o->MapObjType == MAP_OBJECT_ITEM && ( proto->GetType() == ITEM_TYPE_CONTAINER || proto->GetType() == ITEM_TYPE_DOOR ) )
             val_w = &o->MItem.LockerCondition;
         break;
     case 32:
-        if( o->MapObjType == MAP_OBJECT_ITEM && ( proto->Type == ITEM_TYPE_CONTAINER || proto->Type == ITEM_TYPE_DOOR ) )
+        if( o->MapObjType == MAP_OBJECT_ITEM && ( proto->GetType() == ITEM_TYPE_CONTAINER || proto->GetType() == ITEM_TYPE_DOOR ) )
             val_w = &o->MItem.LockerComplexity;
         break;
     default:
@@ -2833,7 +2820,7 @@ void FOMapper::IntLMouseDown()
                 bool       add = true;
                 ProtoItem* proto_item = ( *CurItemProtos )[ ind ];
 
-                if( proto_item->Stackable )
+                if( proto_item->GetStackable() )
                 {
                     for( uint i = 0, j = (uint) SelectedObj[ 0 ].Childs.size(); i < j; i++ )
                     {
@@ -2898,7 +2885,7 @@ void FOMapper::IntLMouseDown()
                 {
                     ProtoItem* proto_item = ItemMngr.GetProtoItem( InContObject->ProtoId );
                     uchar      crtype = SelectedObj[ 0 ].MapNpc->GetCrType();
-                    uchar      anim1 = ( proto_item->IsWeapon() ? proto_item->Weapon_Anim1 : 0 );
+                    uchar      anim1 = ( proto_item->IsWeapon() ? proto_item->GetWeapon_Anim1() : 0 );
 
                     if( proto_item->IsArmor() && CritType::IsCanArmor( crtype ) )
                     {
@@ -2908,7 +2895,7 @@ void FOMapper::IntLMouseDown()
                         }
                         else
                         {
-                            uchar to_slot = proto_item->Slot;
+                            uchar to_slot = proto_item->GetSlot();
                             to_slot = to_slot ? to_slot : SLOT_ARMOR;
                             for( uint i = 0; i < SelectedObj[ 0 ].Childs.size(); i++ )
                             {
@@ -2969,7 +2956,7 @@ void FOMapper::IntLMouseDown()
                         if( child->MItem.ItemSlot == SLOT_HAND1 )
                         {
                             pitem_main = ItemMngr.GetProtoItem( child->ProtoId );
-                            uchar anim1 = ( pitem_main->IsWeapon() ? pitem_main->Weapon_Anim1 : 0 );
+                            uchar anim1 = ( pitem_main->IsWeapon() ? pitem_main->GetWeapon_Anim1() : 0 );
                             if( anim1 && !CritType::IsAnim1( SelectedObj[ 0 ].MapNpc->GetCrType(), anim1 ) )
                             {
                                 pitem_main = NULL;
@@ -3986,8 +3973,8 @@ bool FOMapper::SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_
 
             obj->MapObj->MItem.OffsetX = ox;
             obj->MapObj->MItem.OffsetY = oy;
-            obj->MapItem->OffsetX = ox;
-            obj->MapItem->OffsetY = oy;
+            obj->MapItem->SetOffsetX( ox );
+            obj->MapItem->SetOffsetY( oy );
             obj->MapItem->RefreshAnim();
         }
         else
@@ -4191,7 +4178,7 @@ MapObject* FOMapper::ParseProto( hash pid, ushort hx, ushort hy, MapObject* owne
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
     if( !proto_item )
         return NULL;
-    if( owner && !proto_item->IsCanPickUp() )
+    if( owner && !FLAG( proto_item->GetFlags(), ITEM_CAN_PICKUP ) )
         return NULL;
     if( hx >= HexMngr.GetMaxHexX() || hy >= HexMngr.GetMaxHexY() )
         return NULL;
@@ -4210,8 +4197,8 @@ MapObject* FOMapper::ParseProto( hash pid, ushort hx, ushort hy, MapObject* owne
     mobj->ProtoId = pid;
     mobj->MapX = hx;
     mobj->MapY = hy;
-    mobj->LightDistance = proto_item->LightDistance;
-    mobj->LightIntensity = proto_item->LightIntensity;
+    mobj->LightDistance = proto_item->GetLightDistance();
+    mobj->LightIntensity = proto_item->GetLightIntensity();
 
     // Object in container or inventory
     if( owner )
@@ -4232,18 +4219,17 @@ MapObject* FOMapper::ParseProto( hash pid, ushort hx, ushort hy, MapObject* owne
     // Add childs
     for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
     {
-        if( !proto_item->ChildPid[ i ] )
+        if( !proto_item->GetChildPid( i ) )
             continue;
 
-        ProtoItem* child = ItemMngr.GetProtoItem( proto_item->ChildPid[ i ] );
+        ProtoItem* child = ItemMngr.GetProtoItem( proto_item->GetChildPid( i ) );
         if( !child )
             continue;
 
         ushort child_hx = hx, child_hy = hy;
-        FOREACH_PROTO_ITEM_LINES( proto_item->ChildLines[ i ], child_hx, child_hy, HexMngr.GetMaxHexX(), HexMngr.GetMaxHexY(),;
-                                  );
+        FOREACH_PROTO_ITEM_LINES( proto_item->GetChildLinesStr( i ), child_hx, child_hy, HexMngr.GetMaxHexX(), HexMngr.GetMaxHexY() );
 
-        MapObject* mobj_child = ParseProto( proto_item->ChildPid[ i ], child_hx, child_hy, NULL, true );
+        MapObject* mobj_child = ParseProto( proto_item->GetChildPid( i ), child_hx, child_hy, NULL, true );
         if( mobj_child )
         {
             if( !mobj->UID )
@@ -4284,8 +4270,8 @@ void FOMapper::ParseTile( hash name, ushort hx, ushort hy, short ox, short oy, u
 
 void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
 {
-    CritData* pnpc = CrMngr.GetProto( pid );
-    if( !pnpc )
+    ProtoCritter* proto = CrMngr.GetProto( pid );
+    if( !proto )
         return;
 
     if( hx >= HexMngr.GetMaxHexX() || hy >= HexMngr.GetMaxHexY() )
@@ -4293,7 +4279,7 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
     if( HexMngr.GetField( hx, hy ).Crit )
         return;
 
-    uint spr_id = ResMngr.GetCritSprId( pnpc->BaseType, 1, 1, NpcDir );
+    uint spr_id = ResMngr.GetCritSprId( proto->GetBaseType(), 1, 1, NpcDir );
     if( !spr_id )
         return;
 
@@ -4311,13 +4297,13 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
     CurProtoMap->MObjects.push_back( mobj );
 
     CritterCl* cr = new CritterCl();
-    cr->SetBaseType( pnpc->BaseType );
+    cr->Props = *proto->Props;
+    cr->SetBaseType( proto->GetBaseType() );
     cr->HexX = hx;
     cr->HexY = hy;
     cr->SetDir( NpcDir );
     cr->Cond = COND_LIFE;
     cr->Pid = pid;
-    memcpy( cr->Params, pnpc->Params, sizeof( pnpc->Params ) );
     cr->Id = AnyId;
     cr->Init();
 
@@ -4354,8 +4340,8 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
             if( !place_founded )
                 return NULL;
         }
-        CritData* pnpc = CrMngr.GetProto( mobj->ProtoId );
-        if( !pnpc )
+        ProtoCritter* proto = CrMngr.GetProto( mobj->ProtoId );
+        if( !proto )
             return NULL;
 
         CurProtoMap->MObjects.push_back( new MapObject( *mobj ) );
@@ -4364,13 +4350,13 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
         mobj->RunTime.MapObjId = ++AnyId;
 
         CritterCl* cr = new CritterCl();
-        cr->SetBaseType( pnpc->BaseType );
+        cr->Props = *proto->Props;
+        cr->SetBaseType( proto->GetBaseType() );
         cr->HexX = mobj->MapX;
         cr->HexY = mobj->MapY;
         cr->SetDir( (uchar) mobj->MCritter.Dir );
         cr->Cond = COND_LIFE;
         cr->Pid = mobj->ProtoId;
-        memcpy( cr->Params, pnpc->Params, sizeof( pnpc->Params ) );
         cr->Id = AnyId;
         cr->Init();
         HexMngr.AddCrit( cr );
@@ -4542,8 +4528,8 @@ void FOMapper::CurDraw()
             SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
             if( si )
             {
-                int x = HexMngr.GetField( hx, hy ).ScrX - ( si->Width / 2 ) + si->OffsX + HEX_OX + GameOpt.ScrOx + proto_item->OffsetX;
-                int y = HexMngr.GetField( hx, hy ).ScrY - si->Height + si->OffsY + HEX_OY + GameOpt.ScrOy + proto_item->OffsetY;
+                int x = HexMngr.GetField( hx, hy ).ScrX - ( si->Width / 2 ) + si->OffsX + HEX_OX + GameOpt.ScrOx + proto_item->GetOffsetX();
+                int y = HexMngr.GetField( hx, hy ).ScrY - si->Height + si->OffsY + HEX_OY + GameOpt.ScrOy + proto_item->GetOffsetY();
 
                 SprMngr.DrawSpriteSize( spr_id, (int) ( x / GameOpt.SpritesZoom ), (int) ( y / GameOpt.SpritesZoom ),
                                         (int) ( si->Width / GameOpt.SpritesZoom ), (int) ( si->Height / GameOpt.SpritesZoom ), true, false );
@@ -4583,7 +4569,7 @@ void FOMapper::CurDraw()
         }
         else if( IsCritMode() && CurNpcProtos->size() )
         {
-            uint spr_id = ResMngr.GetCritSprId( ( *CurNpcProtos )[ GetTabIndex() ]->BaseType, 1, 1, NpcDir );
+            uint spr_id = ResMngr.GetCritSprId( ( *CurNpcProtos )[ GetTabIndex() ]->GetBaseType(), 1, 1, NpcDir );
             if( !spr_id )
                 spr_id = ResMngr.ItemHexDefaultAnim->GetSprId( 0 );
 
@@ -5274,7 +5260,12 @@ bool FOMapper::InitScriptSystem()
     WriteLog( "Script system initialization...\n" );
 
     // Auto fields
-    PropertyRegistrator* registrators[ 1 ] = { new PropertyRegistrator( false, "ItemCl" ) };
+    PropertyRegistrator* registrators[ 3 ] =
+    {
+        new PropertyRegistrator( false, "CritterCl" ),
+        new PropertyRegistrator( false, "ItemCl" ),
+        new PropertyRegistrator( false, "ProtoItem" ),
+    };
 
     // Init
     if( !Script::Init( new ScriptPragmaCallback( PRAGMA_MAPPER, registrators ), "MAPPER", true ) )
@@ -5341,7 +5332,9 @@ bool FOMapper::InitScriptSystem()
         return false;
     }
 
-    Item::SetPropertyRegistrator( registrators[ 0 ] );
+    CritterCl::SetPropertyRegistrator( registrators[ 0 ] );
+    Item::SetPropertyRegistrator( registrators[ 1 ] );
+    ProtoItem::SetPropertyRegistrator( registrators[ 2 ] );
 
     if( !Script::RunModuleInitFunctions() )
     {
@@ -5456,7 +5449,7 @@ ScriptString* FOMapper::SScriptFunc::MapperObject_get_PicMap( MapObject& mobj )
     ProtoItem* proto_item = ItemMngr.GetProtoItem( mobj.ProtoId );
     if( !proto_item )
         SCRIPT_ERROR_R0( "Proto item not found." );
-    const char* name = Str::GetName( proto_item->PicMap );
+    const char* name = Str::GetName( proto_item->GetPicMap() );
     if( !name )
         SCRIPT_ERROR_R0( "Name not found." );
     return ScriptString::Create( name );
@@ -5480,7 +5473,7 @@ ScriptString* FOMapper::SScriptFunc::MapperObject_get_PicInv( MapObject& mobj )
     ProtoItem* proto_item = ItemMngr.GetProtoItem( mobj.ProtoId );
     if( !proto_item )
         SCRIPT_ERROR_R0( "Proto item not found." );
-    const char* name = Str::GetName( proto_item->PicInv );
+    const char* name = Str::GetName( proto_item->GetPicInv() );
     if( !name )
         SCRIPT_ERROR_R0( "Name not found." );
     return ScriptString::Create( name );
@@ -5590,17 +5583,6 @@ void FOMapper::SScriptFunc::MapperObject_MoveToDir( MapObject& mobj, uchar dir )
     Self->MoveMapObject( &mobj, hx, hy );
 }
 
-ScriptString* FOMapper::SScriptFunc::MapperObject_CritterParam_Index( MapObject& mobj, uint index )
-{
-    if( index >= MAX_PARAMS )
-        SCRIPT_ERROR_R0( "Invalid index arg." );
-    if( mobj.MapObjType != MAP_OBJECT_CRITTER )
-        SCRIPT_ERROR_R0( "Mapper object is not critter." );
-    if( !mobj.MCritter.Params )
-        mobj.AllocateCritterParams();
-    return mobj.MCritter.Params[ index ];
-}
-
 ScriptString* FOMapper::SScriptFunc::MapperMap_get_Name( ProtoMap& pmap )
 {
     return ScriptString::Create( pmap.GetName() );
@@ -5618,8 +5600,8 @@ MapObject* FOMapper::SScriptFunc::MapperMap_AddObject( ProtoMap& pmap, ushort hx
                 SCRIPT_ERROR_R0( "Critter already present on this hex." );
         }
 
-        CritData* pnpc = CrMngr.GetProto( pid );
-        if( !pnpc )
+        ProtoCritter* proto = CrMngr.GetProto( pid );
+        if( !proto )
             SCRIPT_ERROR_R0( "Unknown critter prototype." );
     }
     else if( mobj_type == MAP_OBJECT_ITEM || mobj_type == MAP_OBJECT_SCENERY )
@@ -5985,40 +5967,8 @@ void FOMapper::SScriptFunc::MapperMap_set_ScriptFunc( ProtoMap& pmap, ScriptStri
     Str::Copy( pmap.Header.ScriptFunc, str ? str->c_str() : "" );
 }
 
-void FOMapper::SScriptFunc::Global_ShowCritterParam( int param_index, bool show, ScriptString* param_name )
-{
-    if( param_index < 0 || param_index >= MAX_PARAMS )
-        SCRIPT_ERROR_R( "Invalid index arg." );
-
-    // Erase current
-    for( size_t i = 0, j = Self->ShowCritterParams.size(); i < j; i++ )
-    {
-        if( Self->ShowCritterParams[ i ] == param_index )
-        {
-            Self->ShowCritterParams.erase( Self->ShowCritterParams.begin() + i );
-            Self->ShowCritterParamNames.erase( Self->ShowCritterParamNames.begin() + i );
-            break;
-        }
-    }
-
-    // Add new
-    if( show )
-    {
-        Self->ShowCritterParams.push_back( param_index );
-        const char* name = ( param_name ? param_name->c_str() : ConstantsManager::GetParamName( param_index ) );
-        Self->ShowCritterParamNames.push_back( name ? name : "???" );
-    }
-}
-
-void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, ScriptString& slot_name )
-{
-    if( index <= SLOT_ARMOR || index == SLOT_GROUND )
-        SCRIPT_ERROR_R( "Invalid index arg." );
-    SlotExt se;
-    se.Index = index;
-    se.SlotName = Str::Duplicate( slot_name.c_str() );
-    Self->SlotsExt.insert( PAIR( index, se ) );
-}
+void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
+{}
 
 ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( ScriptString& file_name, int path_type )
 {
@@ -6337,11 +6287,11 @@ void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, ScriptString* sub
     // Add protos to sub tab
     if( critter_pids && critter_pids->GetSize() )
     {
-        CritDataVec cr_protos;
+        ProtoCritterVec cr_protos;
         for( int i = 0, j = critter_pids->GetSize(); i < j; i++ )
         {
-            ushort    pid = *(ushort*) critter_pids->At( i );
-            CritData* cr_data = CrMngr.GetProto( pid );
+            ushort        pid = *(ushort*) critter_pids->At( i );
+            ProtoCritter* cr_data = CrMngr.GetProto( pid );
             if( cr_data )
                 cr_protos.push_back( cr_data );
         }
@@ -7010,14 +6960,14 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
         return;
 
     ProtoItem* proto_item = ItemMngr.GetProtoItem( proto_id );
-    bool       is_flat = ( proto_item ? FLAG( proto_item->Flags, ITEM_FLAT ) : false );
+    bool       is_flat = ( proto_item ? FLAG( proto_item->GetFlags(), ITEM_FLAT ) : false );
     bool       is_item = ( proto_item ? proto_item->IsItem() : false );
     bool       no_light = ( is_flat && !is_item );
 
     Field&     f = Self->HexMngr.GetField( hx, hy );
     Sprites&   tree = Self->HexMngr.GetDrawTree();
     Sprite&    spr = tree.InsertSprite( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ),
-                                        hx, hy + ( proto_item ? proto_item->DrawOrderOffsetHexY : 0 ), 0,
+                                        hx, hy + ( proto_item ? proto_item->GetDrawOrderOffsetHexY() : 0 ), 0,
                                         f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ),
                                         NULL, NULL, NULL, NULL, NULL, NULL );
     if( !no_light )
@@ -7025,10 +6975,10 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
 
     if( proto_item )
     {
-        if( !is_flat && !proto_item->DisableEgg )
+        if( !is_flat && !proto_item->GetDisableEgg() )
         {
             int egg_type = 0;
-            switch( proto_item->Corner )
+            switch( proto_item->GetCorner() )
             {
             case CORNER_SOUTH:
                 egg_type = EGG_X_OR_Y;
@@ -7047,13 +6997,14 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
             spr.SetEgg( egg_type );
         }
 
-        if( FLAG( proto_item->Flags, ITEM_COLORIZE ) )
+        if( FLAG( proto_item->GetFlags(), ITEM_COLORIZE ) )
         {
-            spr.SetAlpha( ( (uchar*) &proto_item->LightColor ) + 3 );
-            spr.SetColor( proto_item->LightColor & 0xFFFFFF );
+            uint data_size;
+            spr.SetAlpha( ProtoItem::PropertyLightColor->GetRawData( proto_item, data_size ) + 3 );
+            spr.SetColor( proto_item->GetLightColor() & 0xFFFFFF );
         }
 
-        if( FLAG( proto_item->Flags, ITEM_BAD_ITEM ) )
+        if( FLAG( proto_item->GetFlags(), ITEM_BAD_ITEM ) )
             spr.SetContour( CONTOUR_RED );
     }
 }

@@ -5,8 +5,30 @@
 #include "FileManager.h"
 #include "AI.h"
 #include "Defines.h"
+#include "Properties.h"
+#ifdef FONLINE_MAPPER
+# include "CritterCl.h"
+#endif
 
 #define MAX_STORED_LOCATIONS    ( 1000 )
+
+struct ProtoCritter
+{
+    hash        ProtoId;
+    Properties* Props;
+    #ifdef FONLINE_MAPPER
+    string      CollectionName;
+    #endif
+
+    #ifdef FONLINE_MAPPER
+    uint GetBaseType()
+    {
+        return (uint) Props->GetValueAsInt( CritterCl::PropertyBaseCrType->GetEnumValue() );
+    }
+    #endif
+};
+typedef map< hash, ProtoCritter* > ProtoCritterMap;
+typedef vector< ProtoCritter* >    ProtoCritterVec;
 
 struct CritData
 {
@@ -33,7 +55,6 @@ struct CritData
     uint       MapId;
     hash       MapPid;
     ushort     Reserved2;
-    int        Params[ MAX_PARAMS ];
     uint       Anim1Life;
     uint       Anim1Knockout;
     uint       Anim1Dead;
@@ -42,7 +63,6 @@ struct CritData
     uint       Anim2Dead;
     uint       Anim2KnockoutEnd;
     uint       Reserved3[ 3 ];
-    char       Lexems[ LEXEMS_SIZE ];
     uint       Reserved4[ 8 ];
     bool       ClientToDelete;
     uchar      Reserved5;
@@ -53,7 +73,6 @@ struct CritData
     uint       HoloInfo[ MAX_HOLO_INFO ];
     uint       Reserved9[ 10 ];
     int        Scores[ SCORES_MAX ];
-    uchar      UserData[ CRITTER_USER_DATA_SIZE ];
     // Npc data
     uint       HomeMap;
     ushort     HomeX;
@@ -80,12 +99,7 @@ struct CritData
     uchar      BagSize;
     NpcBagItem Bag[ MAX_NPC_BAGS ];
     uint       Reserved22[ 100 ];
-
-    #ifdef FONLINE_MAPPER
-    string     CollectionName;
-    #endif
 };
-typedef map< hash, CritData* > CritDataMap;
 
 struct CritDataExt
 {

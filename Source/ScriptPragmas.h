@@ -14,9 +14,7 @@
 
 class IgnorePragma;
 class GlobalVarPragma;
-class CrDataPragma;
 class BindFuncPragma;
-class BindFieldPragma;
 class PropertyPragma;
 
 class ScriptPragmaCallback: public Preprocessor::PragmaCallback
@@ -24,16 +22,17 @@ class ScriptPragmaCallback: public Preprocessor::PragmaCallback
 private:
     int              pragmaType;
     set< string >    alreadyProcessed;
+    bool             isError;
     IgnorePragma*    ignorePragma;
     GlobalVarPragma* globalVarPragma;
-    CrDataPragma*    crDataPragma;
     BindFuncPragma*  bindFuncPragma;
-    BindFieldPragma* bindFieldPragma;
     PropertyPragma*  propertyPragma;
 
 public:
     ScriptPragmaCallback( int pragma_type, PropertyRegistrator** property_registrators );
-    void CallPragma( const string& name, const Preprocessor::PragmaInstance& instance );
+    virtual void CallPragma( const string& name, const Preprocessor::PragmaInstance& instance );
+    void         Finish();
+    bool         IsError();
 };
 
 #endif // __SCRIPT_PRAGMAS__

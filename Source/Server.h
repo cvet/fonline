@@ -52,13 +52,11 @@ public:
     static void Process_SingleplayerSaveLoad( Client* cl );
     static void Process_Dir( Client* cl );
     static void Process_ChangeItem( Client* cl );
-    static void Process_RateItem( Client* cl );
     static void Process_UseItem( Client* cl );
     static void Process_PickItem( Client* cl );
     static void Process_PickCritter( Client* cl );
     static void Process_ContainerItem( Client* cl );
     static void Process_UseSkill( Client* cl );
-    static void Process_GiveGlobalInfo( Client* cl );
     static void Process_RuleGlobal( Client* cl );
     static void Process_Text( Client* cl );
     static void Process_Command( BufferManager& buf, void ( * logcb )( const char* ), Client* cl, const char* admin_panel );
@@ -77,7 +75,7 @@ public:
     static void Process_Combat( Client* cl );
     static void Process_RunServerScript( Client* cl );
     static void Process_KarmaVoting( Client* cl );
-    static void Process_ItemProperty( Client* cl, uint data_size );
+    static void Process_Property( Client* cl, uint data_size, bool is_item );
 
     static void Send_MapData( Client* cl, ProtoMap* pmap, uchar send_info );
 
@@ -190,7 +188,6 @@ public:
     // Dialogs demand and result
     static bool DialogScriptDemand( DemandResult& demand, Critter* master, Critter* slave );
     static uint DialogScriptResult( DemandResult& result, Critter* master, Critter* slave );
-    static int  DialogGetParam( Critter* master, Critter* slave, uint index );
 
     // Client script
     static bool RequestReloadClientScripts;
@@ -222,6 +219,8 @@ public:
 //	void GlobalEventCritterIdle(Critter* cr);
 //	void GlobalEventCritterDead(Critter* cr);
 
+    static void OnSendCritterValue( void* obj, Property* prop, void* cur_value, void* old_value );
+
     // Items
     static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, bool check_blocks = true );
     static bool  TransferAllItems();
@@ -244,7 +243,7 @@ public:
     static bool Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg );
     static bool Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, bool recheck );
     static uint Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer );
-    static void Dialog_Begin( Client* cl, Npc* npc, uint dlg_pack_id, ushort hx, ushort hy, bool ignore_distance );
+    static void Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance );
 
     // Main
     static uint    CpuCount;
@@ -497,9 +496,6 @@ public:
     // Script functions
     struct SScriptFunc
     {
-        static int* DataRef_Index( CritterPtr& cr, uint index );
-        static int  DataVal_Index( CritterPtr& cr, uint index );
-
         static ScriptString* ProtoItem_GetScriptName( ProtoItem* proto );
 
         static void Synchronizer_Constructor( void* memory );
@@ -558,7 +554,6 @@ public:
         static int          Cl_GetAccess( Critter* cl );
         static bool         Cl_SetAccess( Critter* cl, int access );
         static bool         Crit_SetEvent( Critter* cr, int event_type, ScriptString* func_name );
-        static void         Crit_SetLexems( Critter* cr, ScriptString* lexems );
         static Map*         Crit_GetMap( Critter* cr );
         static uint         Crit_GetMapId( Critter* cr );
         static hash         Crit_GetMapProtoId( Critter* cr );
@@ -831,27 +826,27 @@ public:
         static void Location_EventFinish( Location* loc, bool deleted );
         static bool Location_EventEnter( Location* loc, ScriptArray& group, uchar entrance );
 
-        static ProtoItem*    Global_GetProtoItem( hash pid );
-        static Item*         Global_GetItem( uint item_id );
-        static uint          Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 );
-        static void          Global_MoveItemCr( Item* item, uint count, Critter* to_cr );
-        static void          Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy );
-        static void          Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id );
-        static void          Global_MoveItemsCr( ScriptArray& items, Critter* to_cr );
-        static void          Global_MoveItemsMap( ScriptArray& items, Map* to_map, ushort to_hx, ushort to_hy );
-        static void          Global_MoveItemsCont( ScriptArray& items, Item* to_cont, uint stack_id );
-        static void          Global_DeleteItem( Item* item );
-        static void          Global_DeleteItems( ScriptArray& items );
-        static void          Global_DeleteNpc( Critter* npc );
-        static void          Global_DeleteNpcForce( Critter* npc );
-        static void          Global_RadioMessage( ushort channel, ScriptString& text );
-        static void          Global_RadioMessageMsg( ushort channel, ushort text_msg, uint num_str );
-        static void          Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, ScriptString* lexems );
-        static uint          Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
-        static void          Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
-        static uint          Global_CreateLocation( hash loc_pid, ushort wx, ushort wy, ScriptArray* critters );
-        static void          Global_DeleteLocation( uint loc_id );
-        static void          Global_GetProtoCritter( hash proto_id, ScriptArray& data );
+        static ProtoItem* Global_GetProtoItem( hash pid );
+        static Item*      Global_GetItem( uint item_id );
+        static uint       Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 );
+        static void       Global_MoveItemCr( Item* item, uint count, Critter* to_cr );
+        static void       Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy );
+        static void       Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id );
+        static void       Global_MoveItemsCr( ScriptArray& items, Critter* to_cr );
+        static void       Global_MoveItemsMap( ScriptArray& items, Map* to_map, ushort to_hx, ushort to_hy );
+        static void       Global_MoveItemsCont( ScriptArray& items, Item* to_cont, uint stack_id );
+        static void       Global_DeleteItem( Item* item );
+        static void       Global_DeleteItems( ScriptArray& items );
+        static void       Global_DeleteNpc( Critter* npc );
+        static void       Global_DeleteNpcForce( Critter* npc );
+        static void       Global_RadioMessage( ushort channel, ScriptString& text );
+        static void       Global_RadioMessageMsg( ushort channel, ushort text_msg, uint num_str );
+        static void       Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, ScriptString* lexems );
+        static uint       Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
+        static void       Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
+        static uint       Global_CreateLocation( hash loc_pid, ushort wx, ushort wy, ScriptArray* critters );
+        static void       Global_DeleteLocation( uint loc_id );
+        // static void*          Global_GetProtoCritter( hash proto_id );
         static Critter*      Global_GetCritter( uint crid );
         static CraftItem*    Global_GetCraftItem( uint num );
         static Critter*      Global_GetPlayer( ScriptString& name );
@@ -888,9 +883,6 @@ public:
         static void          Global_EraseTextListener( int say_type, ScriptString& first_str, uint parameter );
         static AIDataPlane*  Global_CreatePlane();
         static uint          Global_GetBagItems( uint bag_id, ScriptArray* pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots );
-        static void          Global_SetChosenSendParameter( int index, bool enabled );
-        static void          Global_SetSendParameter( int index, bool enabled );
-        static void          Global_SetSendParameterFunc( int index, bool enabled, ScriptString* allow_func );
         static bool          Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory, bool with_vars );
         static uint          Global_GetAllItems( hash pid, ScriptArray* items );
         static uint          Global_GetAllPlayers( ScriptArray* players );
@@ -901,13 +893,10 @@ public:
         static hash          Global_GetScriptId( ScriptString& script_name, ScriptString& func_decl );
         static ScriptString* Global_GetScriptName( hash script_id );
         static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
-        static bool          Global_SetPropertyGetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func );
-        static bool          Global_AddPropertySetCallback( ScriptString& class_name, ScriptString& property_name, ScriptString& script_func );
-        static bool          Global_SetParameterGetBehaviour( uint index, ScriptString& func_name );
-        static bool          Global_SetParameterChangeBehaviour( uint index, ScriptString& func_name );
-        static bool          Global_SetParameterDialogGetBehaviour( uint index, ScriptString& func_name );
-        static void          Global_AllowSlot( uchar index, ScriptString& ini_option );
-        static void          Global_SetRegistrationParam( uint index, bool enabled );
+        static bool          Global_SetPropertyGetCallback( int prop_enum_value, ScriptString& script_func );
+        static bool          Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func );
+        static void          Global_AllowSlot( uchar index, bool enable_send );
+        static void          Global_AddRegistrationProperty( int cr_prop );
         static bool          Global_LoadDataFile( ScriptString& dat_name );
         static int           Global_GetConstantValue( int const_collection, ScriptString* name );
         static ScriptString* Global_GetConstantName( int const_collection, int value );

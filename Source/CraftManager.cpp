@@ -306,9 +306,8 @@ int CraftItem::SetStrParam( const char*& pstr_in, UIntVec& num_vec, IntVec& val_
     char  str[ MAX_FOTEXT ];
     char* pstr = str;
 
-    int   param_num = 0;
-    char  param_name[ 128 ] = { 0 };
-    int   param_val = 0;
+    int   prop_index = 0;
+    int   prop_value = 0;
 
     while( *pstr_in != MRFIXIT_NEXT )
     {
@@ -323,8 +322,14 @@ int CraftItem::SetStrParam( const char*& pstr_in, UIntVec& num_vec, IntVec& val_
         {
             *pstr = '\0';
 
-            if( ( param_num = ConstantsManager::GetParamId( str ) ) < 0 )
+            # ifdef FONLINE_SERVER
+            Property* prop = Critter::PropertiesRegistrator->Find( str );
+            # else
+            Property* prop = CritterCl::PropertiesRegistrator->Find( str );
+            # endif
+            if( !prop || !prop->IsPOD() )
                 return -3;
+            prop_index = prop->GetEnumValue();
 
             pstr = str;
             pstr_in++;
@@ -332,10 +337,10 @@ int CraftItem::SetStrParam( const char*& pstr_in, UIntVec& num_vec, IntVec& val_
         else if( *pstr_in == MRFIXIT_AND || *pstr_in == MRFIXIT_OR || *pstr_in == MRFIXIT_NEXT )
         {
             *pstr = '\0';
-            param_val = atoi( str );
+            prop_value = (int) ConvertParamValue( str );
 
-            num_vec.push_back( param_num );
-            val_vec.push_back( param_val );
+            num_vec.push_back( prop_index );
+            val_vec.push_back( prop_value );
 
             if( *pstr_in == MRFIXIT_AND )
                 or_vec.push_back( 0 );
@@ -345,7 +350,6 @@ int CraftItem::SetStrParam( const char*& pstr_in, UIntVec& num_vec, IntVec& val_
             if( *pstr_in == MRFIXIT_NEXT )
                 break;
 
-            param_name[ 0 ] = '\0';
             pstr = str;
             pstr_in++;
         }
@@ -487,11 +491,15 @@ void CraftItem::GetStrParam( char* pstr_out, UIntVec& num_vec, IntVec& val_vec, 
 {
     for( uint i = 0, j = (uint) num_vec.size(); i < j; i++ )
     {
-        const char* s = ConstantsManager::GetParamName( num_vec[ i ] );
-        if( !s )
-            continue;
+        # ifdef FONLINE_SERVER
+        Property* prop = Critter::PropertiesRegistrator->Get( num_vec[ i ] );
+        # else
+        Property* prop = CritterCl::PropertiesRegistrator->Get( num_vec[ i ] );
+        # endif
+        RUNTIME_ASSERT( prop );
+        const char* s = prop->GetName();
 
-        char str[ 128 ];
+        char        str[ 128 ];
         Str::Format( str, "%s%c%d", s, MRFIXIT_SPACE, val_vec[ i ] );
 
         if( i != j - 1 )
@@ -854,23 +862,23 @@ bool CraftManager::IsTrueParams( Critter* cr, UIntVec& num_vec, IntVec& val_vec,
 {
     for( int i = 0, j = (uint) num_vec.size(); i < j; i++ )
     {
-        uint  param_num = num_vec[ i ];
-        int   param_val = val_vec[ i ];
-        uchar param_or = or_vec[ i ];
+        int   prop_enum = num_vec[ i ];
+        int   prop_value = val_vec[ i ];
+        uchar prop_or = or_vec[ i ];
 
-        if( param_num >= MAX_PARAMS || cr->GetParam( param_num ) < param_val ) // Fail
+        if( cr->Props.GetValueAsInt( prop_enum ) < prop_value ) // Fail
         {
             if( i == j - 1 )
-                return false;                                                  // Is last element
-            if( !param_or )
-                return false;                                                  // AND
+                return false;                                   // Is last element
+            if( !prop_or )
+                return false;                                   // AND
         }
-        else                                                                   // True
+        else                                                    // True
         {
             if( i == j - 1 )
-                return true;                                                   // Is last element
+                return true;                                    // Is last element
             // OR, skip elements
-            if( param_or )
+            if( prop_or )
                 for( i++; i < j - 1 && or_vec[ i ]; i++ )
                     ;
         }
@@ -884,23 +892,23 @@ bool CraftManager::IsTrueParams( CritterCl* cr, UIntVec& num_vec, IntVec& val_ve
 {
     for( uint i = 0, j = (uint) num_vec.size(); i < j; i++ )
     {
-        uint  param_num = num_vec[ i ];
-        int   param_val = val_vec[ i ];
-        uchar param_or = or_vec[ i ];
+        int   prop_enum = num_vec[ i ];
+        int   prop_value = val_vec[ i ];
+        uchar prop_or = or_vec[ i ];
 
-        if( param_num >= MAX_PARAMS || cr->GetParam( param_num ) < param_val ) // Fail
+        if( cr->Props.GetValueAsInt( prop_enum ) < prop_value ) // Fail
         {
             if( i == j - 1 )
-                return false;                                                  // Is last element
-            if( !param_or )
-                return false;                                                  // AND
+                return false;                                   // Is last element
+            if( !prop_or )
+                return false;                                   // AND
         }
-        else                                                                   // True
+        else                                                    // True
         {
             if( i == j - 1 )
-                return true;                                                   // Is last element
+                return true;                                    // Is last element
             // OR, skip elements
-            if( param_or )
+            if( prop_or )
                 for( i++; i < j - 1 && or_vec[ i ]; i++ )
                     ;
         }
@@ -997,7 +1005,7 @@ int CraftManager::ProcessCraft( Critter* cr, uint num )
     if( !FLAG( flags, FIXBOY_ALLOW_CRAFT ) )
         CRAFT_RETURN_FAIL;
 
-    if( FLAG( flags, FIXBOY_CHECK_TIMEOUT ) && ( cr->GetParam( TO_SK_SCIENCE ) || cr->GetParam( TO_SK_REPAIR ) ) )
+    if( FLAG( flags, FIXBOY_CHECK_TIMEOUT ) && ( IS_TIMEOUT( cr->GetTimeoutSkScience() ) || IS_TIMEOUT( cr->GetTimeoutSkRepair() ) ) )
         CRAFT_RETURN_TIMEOUT;
     if( FLAG( flags, FIXBOY_CHECK_PARAMS ) && !IsTrueParams( cr, craft->NeedPNum, craft->NeedPVal, craft->NeedPOr ) )
         CRAFT_RETURN_FAIL;
@@ -1047,7 +1055,7 @@ int CraftManager::ProcessCraft( Critter* cr, uint num )
             if( !proto_item )
                 continue;
 
-            if( proto_item->Stackable )
+            if( proto_item->GetStackable() )
             {
                 Item* item = ItemMngr.AddItemCritter( cr, pid, count );
                 if( item )
@@ -1099,17 +1107,16 @@ int CraftManager::ProcessCraft( Critter* cr, uint num )
 
     if( FLAG( flags, FIXBOY_SET_TIMEOUT ) )
     {
-        cr->SetTimeout( TO_SK_SCIENCE, FIXBOY_TIME_OUT );
-        cr->SetTimeout( TO_SK_REPAIR, FIXBOY_TIME_OUT );
+        cr->SetTimeoutSkScience( GameOpt.FullSecond + FIXBOY_TIME_OUT );
+        cr->SetTimeoutSkRepair( GameOpt.FullSecond + FIXBOY_TIME_OUT );
     }
 
     if( FLAG( flags, FIXBOY_ADD_EXPERIENCE ) )
     {
-        cr->ChangeParam( ST_EXPERIENCE );
         if( craft->Experience )
-            cr->Data.Params[ ST_EXPERIENCE ] += craft->Experience;
+            cr->SetExperience( cr->GetExperience() + craft->Experience );
         else if( GameOpt.FixBoyDefaultExperience )
-            cr->Data.Params[ ST_EXPERIENCE ] += GameOpt.FixBoyDefaultExperience;
+            cr->SetExperience( cr->GetExperience() + GameOpt.FixBoyDefaultExperience );
     }
 
     CRAFT_RETURN_SUCC;

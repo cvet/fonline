@@ -12,6 +12,7 @@
 #include "DataMask.h"
 #include "NetProtocol.h"
 #include "ThreadSync.h"
+#include "Properties.h"
 
 #if defined ( USE_LIBEVENT )
 # include "event2/event.h"
@@ -101,49 +102,115 @@ typedef vector< Npc* >        PcVec;
 class Critter
 {
 public:
+    // Properties
+    PROPERTIES_HEADER();
+    CLASS_PROPERTY( int, Strength );
+    CLASS_PROPERTY( int, Perception );
+    CLASS_PROPERTY( int, Agility );
+    CLASS_PROPERTY( int, Charisma );
+    CLASS_PROPERTY( int, Intellect );
+    CLASS_PROPERTY( hash, BaseCrType );
+    CLASS_PROPERTY( char, Gender );
+    CLASS_PROPERTY( int, Level );
+    CLASS_PROPERTY( int, Experience );
+    CLASS_PROPERTY( int, BonusLook );
+    CLASS_PROPERTY( hash, DialogId );
+    CLASS_PROPERTY( hash, BagId );
+    CLASS_PROPERTY( hash, NpcRole );
+    CLASS_PROPERTY( hash, TeamId );
+    CLASS_PROPERTY( hash, AiId );
+    CLASS_PROPERTY( uint, FollowCrit );
+    CLASS_PROPERTY( uint, FreeBarterPlayer );
+    CLASS_PROPERTY( uint, LastWeaponId );
+    CLASS_PROPERTY( hash, HandsItemProtoId );
+    CLASS_PROPERTY( uchar, HandsItemMode );
+    CLASS_PROPERTY( int, KarmaVoting );
+    CLASS_PROPERTY( int, MaxTalkers );
+    CLASS_PROPERTY( int, TalkDistance );
+    CLASS_PROPERTY( int, CarryWeight );
+    CLASS_PROPERTY( int, CurrentHp );
+    CLASS_PROPERTY( int, ActionPoints );
+    CLASS_PROPERTY( int, CurrentAp );
+    CLASS_PROPERTY( int, MaxMoveAp );
+    CLASS_PROPERTY( int, MoveAp );
+    CLASS_PROPERTY( int, TurnBasedAc );
+    CLASS_PROPERTY( int, ReplicationMoney );
+    CLASS_PROPERTY( int, ReplicationCost );
+    CLASS_PROPERTY( int, ReplicationCount );
+    CLASS_PROPERTY( int, ReplicationTime );
+    CLASS_PROPERTY( int, WalkTime );
+    CLASS_PROPERTY( int, RunTime );
+    CLASS_PROPERTY( int, ScaleFactor );
+    CLASS_PROPERTY( int, SkillUnarmed );
+    CLASS_PROPERTY( int, SkillSneak );
+    CLASS_PROPERTY( int, SkillBarter );
+    CLASS_PROPERTY( int, SkillLockpick );
+    CLASS_PROPERTY( int, SkillSteal );
+    CLASS_PROPERTY( int, SkillTraps );
+    CLASS_PROPERTY( int, SkillFirstAid );
+    CLASS_PROPERTY( int, SkillDoctor );
+    CLASS_PROPERTY( int, SkillScience );
+    CLASS_PROPERTY( int, SkillRepair );
+    CLASS_PROPERTY( int, SkillSpeech );
+    CLASS_PROPERTY( uint, TimeoutBattle );
+    CLASS_PROPERTY( uint, TimeoutTransfer );
+    CLASS_PROPERTY( uint, TimeoutRemoveFromGame );
+    CLASS_PROPERTY( uint, TimeoutKarmaVoting );
+    CLASS_PROPERTY( uint, TimeoutSkScience );
+    CLASS_PROPERTY( uint, TimeoutSkRepair );
+    CLASS_PROPERTY( char, DefaultCombat );
+    CLASS_PROPERTY( bool, IsInvulnerable );
+    CLASS_PROPERTY( bool, IsDlgScriptBarter );
+    CLASS_PROPERTY( bool, IsUnlimitedAmmo );
+    CLASS_PROPERTY( bool, IsNoUnarmed );
+    CLASS_PROPERTY( bool, IsNoFavoriteItem );
+    CLASS_PROPERTY( bool, IsNoPush );
+    CLASS_PROPERTY( bool, IsNoItemGarbager );
+    CLASS_PROPERTY( bool, IsNoEnemyStack );
+    CLASS_PROPERTY( bool, IsGeck );
+    CLASS_PROPERTY( bool, IsNoLoot );
+    CLASS_PROPERTY( bool, IsNoSteal );
+    CLASS_PROPERTY( bool, IsNoHome );
+    CLASS_PROPERTY( bool, IsNoWalk );
+    CLASS_PROPERTY( bool, IsNoRun );
+    CLASS_PROPERTY( bool, IsNoTalk );
+    CLASS_PROPERTY( bool, IsHide );
+    CLASS_PROPERTY( bool, IsNoFlatten );
+    CLASS_PROPERTY( bool, IsNoAim );
+    CLASS_PROPERTY( bool, IsNoBarter );
+    CLASS_PROPERTY( bool, IsEndCombat );
+    CLASS_PROPERTY( bool, IsDamagedEye );
+    CLASS_PROPERTY( bool, IsDamagedRightArm );
+    CLASS_PROPERTY( bool, IsDamagedLeftArm );
+    CLASS_PROPERTY( bool, IsDamagedRightLeg );
+    CLASS_PROPERTY( bool, IsDamagedLeftLeg );
+    CLASS_PROPERTY( uchar, PerkQuickPockets );
+    CLASS_PROPERTY( uchar, PerkMasterTrader );
+    CLASS_PROPERTY( uchar, PerkSilentRunning );
+
+    // Data
+    CritData      Data;       // Saved
+    CritDataExt*  DataExt;    // Saved
+    SyncObject    Sync;
+    bool          CritterIsNpc;
+    uint          Flags;
+    ScriptString* NameStr;
+    TwoBitMask    GMapFog;
+    bool          IsRuning;
+    uint          PrevHexTick;
+    ushort        PrevHexX, PrevHexY;
+    int           LockMapTransfers;
+    uint          AllowedToDownloadMap;
+
+    static bool   SlotEnabled[ 0x100 ];
+    static bool   SlotDataSendEnabled[ 0x100 ];
+    static IntSet RegProperties;
+
     Critter();
     ~Critter();
 
-    CritData         Data;    // Saved
-    CritDataExt*     DataExt; // Saved
-    SyncObject       Sync;
-    bool             CritterIsNpc;
-    uint             Flags;
-    ScriptString*    NameStr;
-    TwoBitMask       GMapFog;
-    bool             IsRuning;
-    uint             PrevHexTick;
-    ushort           PrevHexX, PrevHexY;
-    int              LockMapTransfers;
-    Critter*         ThisPtr[ MAX_PARAMETERS_ARRAYS ];
-    uint             AllowedToDownloadMap;
-
-    static bool      ParamsRegEnabled[ MAX_PARAMS ];
-    static uint      ParamsSendMsgLen;
-    static ushort    ParamsSendCount;
-    static UShortVec ParamsSend;
-    static bool      ParamsSendEnabled[ MAX_PARAMS ];
-    static int       ParamsSendScript[ MAX_PARAMS ];
-    static int       ParamsChangeScript[ MAX_PARAMS ];
-    static int       ParamsGetScript[ MAX_PARAMS ];
-    static int       ParamsDialogGetScript[ MAX_PARAMS ];
-    static bool      SlotDataSendEnabled[ 0x100 ];
-    static int       SlotDataSendScript[ 0x100 ];
-    static uint      ParamsChosenSendMask[ MAX_PARAMS ];
-    static uint      ParametersMin[ MAX_PARAMETERS_ARRAYS ];
-    static uint      ParametersMax[ MAX_PARAMETERS_ARRAYS ];
-    bool             ParamsIsChanged[ MAX_PARAMS ];
-    IntVec           ParamsChanged;
-    int              ParamLocked;
-    static bool      SlotEnabled[ 0x100 ];
-
     CritDataExt* GetDataExt();
     void         SetMaps( uint map_id, hash map_pid );
-    void         SetLexems( const char* lexems );
-    bool         IsLexems() { return Data.Lexems[ 0 ] != 0; }
-
-    int  RunParamsSendScript( int bind_id, uint param_index, Critter* from_cr, Critter* to_cr );
-    bool RunSlotDataSendScript( int bind_id, uchar slot, Item* item, Critter* from_cr, Critter* to_cr );
 
     // Visible critters and items
     CrVec         VisCr;
@@ -347,10 +414,9 @@ public:
     void Send_GlobalInfo( uchar flags );
     void Send_GlobalLocation( Location* loc, bool add );
     void Send_GlobalMapFog( ushort zx, ushort zy, uchar fog );
-    void Send_AllParams();
-    void Send_Param( ushort num_param );
-    void Send_ParamOther( ushort num_param, int val );
-    void Send_CritterParam( Critter* cr, ushort num_param, int val );
+    void Send_CustomCommand( Critter* cr, ushort cmd, int val );
+    void Send_AllProperties();
+    void Send_CritterProperty( Critter* cr, Property* prop );
     void Send_Talk();
     void Send_GameInfo( Map* map );
     void Send_Text( Critter* from_cr, const char* s_str, uchar how_say );
@@ -375,7 +441,6 @@ public:
     void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
     void Send_PlaySound( uint crid_synchronize, const char* sound_name );
     void Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
-    void Send_CritterLexems( Critter* cr );
 
     // Send all
     void SendA_Move( uint move_params );
@@ -384,7 +449,8 @@ public:
     void SendAA_Action( int action, int action_ext, Item* item );
     void SendA_Knockout( uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy );
     void SendAA_MoveItem( Item* item, uchar action, uchar prev_slot );
-    void SendAA_CritterItemProperty( Item* item, Property* prop );
+    void SendA_CritterProperty( Property* prop );
+    void SendA_CritterItemProperty( Item* item, Property* prop );
     void SendAA_Animate( uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void SendAA_SetAnims( int cond, uint anim1, uint anim2 );
     void SendA_GlobalInfo( GlobalMapGroup* group, uchar info_flags );
@@ -393,8 +459,7 @@ public:
     void SendAA_MsgLex( CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
     void SendA_Dir();
     void SendA_Follow( uchar follow_type, hash map_pid, uint follow_wait );
-    void SendA_ParamOther( ushort num_param, int val );
-    void SendA_ParamCheck( ushort num_param );
+    void SendA_CustomCommand( ushort num_param, int val );
 
     // Chosen data
     void Send_AddAllItems();
@@ -419,67 +484,41 @@ public:
     uint        GetTimeRun();
     uint        GetItemsWeight();
     uint        GetItemsVolume();
-    bool        IsOverweight() { return (int) GetItemsWeight() > GetParam( ST_CARRY_WEIGHT ); }
+    bool        IsOverweight();
     int         GetFreeWeight();
     int         GetFreeVolume();
-    int         GetParam( uint index );
-    void        ChangeParam( uint index );
-    void        ProcessChangedParams();
-    uint        GetFollowCrId() { return Data.Params[ ST_FOLLOW_CRIT ]; }
-    void        SetFollowCrId( uint crid )
-    {
-        ChangeParam( ST_FOLLOW_CRIT );
-        Data.Params[ ST_FOLLOW_CRIT ] = crid;
-    }
-    bool IsRawParam( uint index )  { return Data.Params[ index ] != 0; }
-    int  GetRawParam( uint index ) { return Data.Params[ index ]; }
-    bool IsDmgLeg()                { return Data.Params[ DAMAGE_RIGHT_LEG ] != 0 || Data.Params[ DAMAGE_LEFT_LEG ] != 0; }
-    bool IsDmgTwoLeg()             { return Data.Params[ DAMAGE_RIGHT_LEG ] != 0 && Data.Params[ DAMAGE_LEFT_LEG ] != 0; }
-    bool IsDmgArm()                { return Data.Params[ DAMAGE_RIGHT_ARM ] != 0 || Data.Params[ DAMAGE_LEFT_ARM ] != 0; }
-    bool IsDmgTwoArm()             { return Data.Params[ DAMAGE_RIGHT_ARM ] != 0 && Data.Params[ DAMAGE_LEFT_ARM ] != 0; }
-    void SendMessage( int num, int val, int to );
-    int  GetLook();
-    uint GetTalkDistance( Critter* talker );
-    uint GetUseApCost( Item* weap, int use );
-    uint GetAttackDist( Item* weap, int use );
-    uint GetUseDist();
-    uint GetMultihex();
-    bool IsLife()     { return Data.Cond == COND_LIFE; }
-    bool IsDead()     { return Data.Cond == COND_DEAD; }
-    bool IsKnockout() { return Data.Cond == COND_KNOCKOUT; }
-    bool CheckFind( int find_type );
-    int  GetRealAp() { return Data.Params[ ST_CURRENT_AP ]; }
-    int  GetAllAp()  { return GetParam( ST_CURRENT_AP ) + GetParam( ST_MOVE_AP ); }
-    void SubAp( int val )
-    {
-        ChangeParam( ST_CURRENT_AP );
-        Data.Params[ ST_CURRENT_AP ] -= val * AP_DIVIDER;
-        ApRegenerationTick = 0;
-    }
-    void SubMoveAp( int val )
-    {
-        ChangeParam( ST_CURRENT_AP );
-        Data.Params[ ST_MOVE_AP ] -= val;
-    }
+    void        SendMessage( int num, int val, int to );
+    int         GetLook();
+    uint        GetTalkDist( Critter* talker );
+    uint        GetUseApCost( Item* weap, int use );
+    uint        GetAttackDist( Item* weap, int use );
+    uint        GetUseDist();
+    uint        GetMultihex();
+    bool        IsLife();
+    bool        IsDead();
+    bool        IsKnockout();
+    bool        CheckFind( int find_type );
+    int         GetRealAp();
+    int         GetAllAp();
+    void        SubAp( int val );
+    void        SubMoveAp( int val );
+    bool        IsDmgLeg();
+    bool        IsDmgTwoLeg();
+    bool        IsDmgArm();
+    bool        IsDmgTwoArm();
 
     // Turn based
-    bool IsTurnBased() { return TB_BATTLE_TIMEOUT_CHECK( GetParam( TO_BATTLE ) ); }
+    bool IsTurnBased();
     bool CheckMyTurn( Map* map );
-    int  GetApCostCritterMove( bool is_run ) { return IsTurnBased() ? GameOpt.TbApCostCritterMove * AP_DIVIDER * ( IsDmgTwoLeg() ? 4 : ( IsDmgLeg() ? 2 : 1 ) ) : ( GetParam( TO_BATTLE ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0 ); }
-    int  GetApCostMoveItemContainer()        { return IsTurnBased() ? GameOpt.TbApCostMoveItemContainer : GameOpt.RtApCostMoveItemContainer; }
-    int  GetApCostMoveItemInventory()
-    {
-        int val = IsTurnBased() ? GameOpt.TbApCostMoveItemInventory : GameOpt.RtApCostMoveItemInventory;
-        if( IsRawParam( PE_QUICK_POCKETS ) ) val /= 2;
-        return val;
-    }
-    int GetApCostPickItem()    { return IsTurnBased() ? GameOpt.TbApCostPickItem : GameOpt.RtApCostPickItem; }
-    int GetApCostDropItem()    { return IsTurnBased() ? GameOpt.TbApCostDropItem : GameOpt.RtApCostDropItem; }
-    int GetApCostPickCritter() { return IsTurnBased() ? GameOpt.TbApCostPickCritter : GameOpt.RtApCostPickCritter; }
-    int GetApCostUseSkill()    { return IsTurnBased() ? GameOpt.TbApCostUseSkill : GameOpt.RtApCostUseSkill; }
+    int  GetApCostCritterMove( bool is_run );
+    int  GetApCostMoveItemContainer();
+    int  GetApCostMoveItemInventory();
+    int  GetApCostPickItem();
+    int  GetApCostDropItem();
+    int  GetApCostPickCritter();
+    int  GetApCostUseSkill();
 
     // Timeouts
-    void SetTimeout( int timeout, uint game_seconds );
     bool IsTransferTimeouts( bool send );
 
     // Current container
@@ -625,17 +664,11 @@ public:
     uint        GetIp();
     const char* GetIpStr();
     ushort      GetPort();
-
-public:
-    bool IsOnline()  { return !IsDisconnected; }
-    bool IsOffline() { return IsDisconnected; }
-    void Disconnect()
-    {
-        IsDisconnected = true;
-        if( !DisconnectTick ) DisconnectTick = Timer::FastTick();
-    }
-    void RemoveFromGame() { CanBeRemoved = true; }
-    uint GetOfflineTime() { return Timer::FastTick() - DisconnectTick; }
+    bool        IsOnline();
+    bool        IsOffline();
+    void        Disconnect();
+    void        RemoveFromGame();
+    uint        GetOfflineTime();
 
     // Ping
 private:
@@ -643,15 +676,12 @@ private:
     bool pingOk;
 
 public:
-    bool IsToPing() { return GameState == STATE_PLAYING && Timer::FastTick() >= pingNextTick && !GetParam( TO_TRANSFER ) && !Singleplayer; }
+    bool IsToPing();
     void PingClient();
-    void PingOk( uint next_ping )
-    {
-        pingOk = true;
-        pingNextTick = Timer::FastTick() + next_ping;
-    }
+    void PingOk( uint next_ping );
 
     // Sends
+public:
     void Send_Move( Critter* from_cr, uint move_params );
     void Send_Dir( Critter* from_cr );
     void Send_AddCritter( Critter* cr );
@@ -670,10 +700,9 @@ public:
     void Send_GlobalInfo( uchar flags );
     void Send_GlobalLocation( Location* loc, bool add );
     void Send_GlobalMapFog( ushort zx, ushort zy, uchar fog );
-    void Send_AllParams();
-    void Send_Param( ushort num_param );
-    void Send_ParamOther( ushort num_param, int val );
-    void Send_CritterParam( Critter* cr, ushort num_param, int val );
+    void Send_CustomCommand( Critter* cr, ushort cmd, int val );
+    void Send_AllProperties();
+    void Send_CritterProperty( Critter* cr, Property* prop );
     void Send_Talk();
     void Send_GameInfo( Map* map );
     void Send_Text( Critter* from_cr, const char* s_str, uchar how_say );
@@ -699,7 +728,6 @@ public:
     void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
     void Send_PlaySound( uint crid_synchronize, const char* sound_name );
     void Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
-    void Send_CritterLexems( Critter* cr );
     void Send_MapText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, ushort intellect, bool unsafe_text );
     void Send_MapTextMsg( ushort hx, ushort hy, uint color, ushort num_msg, uint num_str );
     void Send_MapTextMsgLex( ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len );

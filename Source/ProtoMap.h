@@ -4,6 +4,8 @@
 #include "Common.h"
 #include "FileManager.h"
 
+typedef vector< ScriptString* > ScriptStringVec;
+
 // Generic
 #define MAPOBJ_SCRIPT_NAME    ( 25 )
 
@@ -41,14 +43,14 @@ public:
     {
         struct
         {
-            uchar          Dir;
-            uchar          Cond;
-            uint           Anim1;
-            uint           Anim2;
+            uchar            Dir;
+            uchar            Cond;
+            uint             Anim1;
+            uint             Anim2;
             #ifndef FONLINE_MAPPER
-            int*           Params;
+            IntVec*          Params;
             #else
-            ScriptString** Params;
+            ScriptStringVec* Params;
             #endif
         } MCritter;
 
@@ -132,15 +134,16 @@ public:
     {
         if( MapObjType == MAP_OBJECT_CRITTER && MCritter.Params )
         {
-            #ifndef FONLINE_MAPPER
-            MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) ( MAX_PARAMS * sizeof( MCritter.Params[ 0 ] ) ) );
-            SAFEDELA( MCritter.Params );
-            #else
-            for( uint i = 0; i < MAX_PARAMS; i++ )
-                MCritter.Params[ i ]->Release();
-            SAFEDELA( MCritter.Params );
-            MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) ( MAX_PARAMS * sizeof( ScriptString* ) ) );
-            #endif
+            if( MCritter.Params )
+            {
+                #ifndef FONLINE_MAPPER
+                SAFEDELA( MCritter.Params );
+                #else
+                for( size_t i = 0; i < MCritter.Params->size(); i++ )
+                    MCritter.Params->at( i )->Release();
+                SAFEDELA( MCritter.Params );
+                #endif
+            }
         }
     }
 
@@ -150,14 +153,9 @@ public:
     void AllocateCritterParams()
     {
         #ifndef FONLINE_MAPPER
-        MCritter.Params = new int[ MAX_PARAMS ];
-        memzero( MCritter.Params, MAX_PARAMS * sizeof( int ) );
-        MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) MAX_PARAMS * sizeof( int ) );
+        MCritter.Params = new IntVec();
         #else
-        MCritter.Params = new ScriptString*[ MAX_PARAMS ];
-        for( uint i = 0; i < MAX_PARAMS; i++ )
-            MCritter.Params[ i ] = ScriptString::Create();
-        MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) MAX_PARAMS * sizeof( ScriptString* ) );
+        MCritter.Params = new ScriptStringVec();
         #endif
     }
 
@@ -181,10 +179,10 @@ public:
         {
             AllocateCritterParams();
             # ifndef FONLINE_MAPPER
-            memcpy( MCritter.Params, other.MCritter.Params, MAX_PARAMS * sizeof( int ) );
+            *MCritter.Params = *other.MCritter.Params;
             # else
-            for( uint i = 0; i < MAX_PARAMS; i++ )
-                *MCritter.Params[ i ] = *other.MCritter.Params[ i ];
+            for( size_t i = 0; i < MCritter.Params->size(); i++ )
+                *MCritter.Params->at( i ) = *other.MCritter.Params->at( i );
             # endif
         }
         RunTime.RefCounter = 1;

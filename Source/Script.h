@@ -17,8 +17,8 @@
 # define SCRIPT_ERROR_R( error, ... )     do { Script::RaiseException( error, ## __VA_ARGS__ ); return; } while( 0 )
 # define SCRIPT_ERROR_R0( error, ... )    do { Script::RaiseException( error, ## __VA_ARGS__ ); return 0; } while( 0 )
 #else
-# define SCRIPT_ERROR_R( error, ... )
-# define SCRIPT_ERROR_R0( error, ... )
+# define SCRIPT_ERROR_R( error, ... )     (void) 0
+# define SCRIPT_ERROR_R0( error, ... )    (void) 0
 #endif
 
 typedef void ( *EndExecutionCallback )();

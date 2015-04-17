@@ -94,87 +94,6 @@ void GameVarCmpGameVar()   {}
 struct ProtoItem
 {
     int  ProtoId;
-    int  PicMap;
-    int  PicInv;
-    int  Type;
-    int  Stackable;
-    int  Deteriorable;
-    int  GroundLevel;
-    int  Slot;
-    int  Flags;
-    int  Corner;
-    int  DisableEgg;
-    int  Weight;
-    int  Volume;
-    int  Cost;
-    int  StartCount;
-    int  SoundId;
-    int  Material;
-    int  LightFlags;
-    int  LightDistance;
-    int  LightIntensity;
-    int  LightColor;
-    int  AnimWaitBase;
-    int  AnimWaitRndMin;
-    int  AnimWaitRndMax;
-    int  AnimStay[ 2 ];
-    int  AnimShow[ 2 ];
-    int  AnimHide[ 2 ];
-    int  OffsetX;
-    int  OffsetY;
-    int  SpriteCut;
-    int  DrawOrderOffsetHexY;
-    int  RadioChannel;
-    int  RadioFlags;
-    int  RadioBroadcastSend;
-    int  RadioBroadcastRecv;
-    int  IndicatorStart;
-    int  IndicatorMax;
-    int  HolodiskNum;
-    int  StartValue[ 10 ];
-    int  BlockLines[ 10 ];
-    int  ChildPid[ 10 ];
-    int  ChildLines[ 10 ][ 10 ];
-    int  UserData[ 100 ];
-    int  Weapon_IsUnarmed;
-    int  Weapon_UnarmedTree;
-    int  Weapon_UnarmedPriority;
-    int  Weapon_UnarmedMinAgility;
-    int  Weapon_UnarmedMinUnarmed;
-    int  Weapon_UnarmedMinLevel;
-    int  Weapon_Anim1;
-    int  Weapon_MaxAmmoCount;
-    int  Weapon_Caliber;
-    int  Weapon_DefaultAmmoPid;
-    int  Weapon_MinStrength;
-    int  Weapon_Perk;
-    int  Weapon_ActiveUses;
-    int  Weapon_Skill[ 3 ];
-    int  Weapon_PicUse[ 3 ];
-    int  Weapon_MaxDist[ 3 ];
-    int  Weapon_Round[ 3 ];
-    int  Weapon_ApCost[ 3 ];
-    int  Weapon_Aim[ 3 ];
-    int  Weapon_SoundId[ 3 ];
-    int  Ammo_Caliber;
-    int  Container_Volume;
-    int  Container_CannotPickUp;
-    int  Container_MagicHandsGrnd;
-    int  Container_Changeble;
-    int  Door_NoBlockMove;
-    int  Door_NoBlockShoot;
-    int  Door_NoBlockLight;
-    int  Locker_Condition;
-    int  Grid_Type;
-    int  Car_Speed;
-    int  Car_Passability;
-    int  Car_DeteriorationRate;
-    int  Car_CrittersCapacity;
-    int  Car_TankVolume;
-    int  Car_MaxDeterioration;
-    int  Car_FuelConsumption;
-    int  Car_Entrance;
-    int  Car_MovementType;
 
     void AddRef()  {}
     void Release() {}
@@ -337,7 +256,6 @@ struct Critter
     int  Anim2Dead;
     int  Name;
     int  NameOnHead;
-    int  Lexems;
     int  Avatar;
     int  DialogId;
     int  NameColor;
@@ -351,7 +269,6 @@ struct Critter
     int  NameStr;
     int  IsRuning;
     int  IsNotValid;
-    int  ThisPtr[ 1 ];
     int  RefCounter;
 
     void AddRef()  {}
@@ -958,25 +875,22 @@ struct BindClass
     static void DataRef_Index() {}
     static void DataVal_Index() {}
 
-    static void Global_GetTime()                        {}
-    static void Global_SetPropertyGetCallback()         {}
-    static void Global_AddPropertySetCallback()         {}
-    static void Global_SetParameterGetBehaviour()       {}
-    static void Global_SetParameterChangeBehaviour()    {}
-    static void Global_SetParameterDialogGetBehaviour() {}
-    static void Global_SetRegistrationParam()           {}
-    static void Global_IsCritterCanWalk()               {}
-    static void Global_IsCritterCanRun()                {}
-    static void Global_IsCritterCanRotate()             {}
-    static void Global_IsCritterCanAim()                {}
-    static void Global_IsCritterCanArmor()              {}
-    static void Global_IsCritterAnim1()                 {}
-    static void Global_GetCritterAnimType()             {}
-    static void Global_GetCritterAlias()                {}
-    static void Global_GetCritterTypeName()             {}
-    static void Global_GetCritterSoundName()            {}
-    static void Global_GetGlobalMapRelief()             {}
-    static void Global_GetCraftItem()                   {}
+    static void Global_GetTime()                 {}
+    static void Global_SetPropertyGetCallback()  {}
+    static void Global_AddPropertySetCallback()  {}
+    static void Global_AddRegistrationProperty() {}
+    static void Global_IsCritterCanWalk()        {}
+    static void Global_IsCritterCanRun()         {}
+    static void Global_IsCritterCanRotate()      {}
+    static void Global_IsCritterCanAim()         {}
+    static void Global_IsCritterCanArmor()       {}
+    static void Global_IsCritterAnim1()          {}
+    static void Global_GetCritterAnimType()      {}
+    static void Global_GetCritterAlias()         {}
+    static void Global_GetCritterTypeName()      {}
+    static void Global_GetCritterSoundName()     {}
+    static void Global_GetGlobalMapRelief()      {}
+    static void Global_GetCraftItem()            {}
     #endif
 
     #ifdef BIND_MAPPER

@@ -5,6 +5,7 @@
 #include "AngelScript/scriptstring.h"
 #include "AngelScript/scriptany.h"
 #include "AngelScript/scriptdictionary.h"
+#include "AngelScript/scriptdict.h"
 #include "AngelScript/scriptfile.h"
 #include "AngelScript/scriptmath.h"
 #include "AngelScript/scriptarray.h"
@@ -984,6 +985,7 @@ asIScriptEngine* Script::CreateEngine( Preprocessor::PragmaCallback* pragma_call
     RegisterScriptString( engine );
     RegisterScriptAny( engine );
     RegisterScriptDictionary( engine );
+    RegisterScriptDict( engine );
     RegisterScriptFile( engine );
     RegisterScriptMath( engine );
     RegisterScriptWeakRef( engine );
@@ -1070,7 +1072,13 @@ void Script::PrintContextCallstack( asIScriptContext* ctx )
     int                      line, column;
     const asIScriptFunction* func;
     int                      stack_size = ctx->GetCallstackSize();
-    WriteLog( "Context<%s>, state<%s>, call stack<%d>:\n", ctx->GetUserData(), ContextStatesStr[ (int) ctx->GetState() ], stack_size );
+    int                      cur_stack = 0;
+    WriteLog( " Traceback: (%s)\n", ctx->GetUserData() );
+
+    // Print system function
+    asIScriptFunction* sys_func = ctx->GetSystemFunction();
+    if( sys_func )
+        WriteLog( "  %d) %s\n", cur_stack++, sys_func->GetDeclaration( true, true, true ) );
 
     // Print current function
     if( ctx->GetState() == asEXECUTION_EXCEPTION )
@@ -1084,7 +1092,7 @@ void Script::PrintContextCallstack( asIScriptContext* ctx )
         func = ctx->GetFunction( 0 );
     }
     if( func )
-        WriteLog( "  %d) %s : %s : %d, %d.\n", stack_size - 1, func->GetModuleName(), func->GetDeclaration(), line, column );
+        WriteLog( "  %d) %s : %s : %d, %d\n", cur_stack++, func->GetModuleName(), func->GetDeclaration(), line, column );
 
     // Print call stack
     for( int i = 1; i < stack_size; i++ )
@@ -1092,7 +1100,7 @@ void Script::PrintContextCallstack( asIScriptContext* ctx )
         func = ctx->GetFunction( i );
         line = ctx->GetLineNumber( i, &column );
         if( func )
-            WriteLog( "  %d) %s : %s : %d, %d.\n", stack_size - i - 1, func->GetModuleName(), func->GetDeclaration(), line, column );
+            WriteLog( "  %d) %s : %s : %d, %d\n", cur_stack++, func->GetModuleName(), func->GetDeclaration(), line, column );
     }
 }
 
@@ -2490,13 +2498,14 @@ bool Script::RunPrepared()
         asEContextState state = ctx->GetState();
         if( state != asEXECUTION_FINISHED )
         {
-            if( state == asEXECUTION_EXCEPTION )
-                WriteLog( "Execution of script stopped due to exception.\n" );
-            else if( state == asEXECUTION_SUSPENDED )
-                WriteLog( "Execution of script stopped due to timeout<%u>.\n", RunTimeoutSuspend );
-            else
-                WriteLog( "Execution of script stopped due to %s.\n", ContextStatesStr[ (int) state ] );
-            PrintContextCallstack( ctx );           // Name and state of context will be printed in this function
+            if( state != asEXECUTION_EXCEPTION )
+            {
+                if( state == asEXECUTION_SUSPENDED )
+                    WriteLog( "Execution of script stopped due to timeout<%u>.\n", RunTimeoutSuspend );
+                else
+                    WriteLog( "Execution of script stopped due to %s.\n", ContextStatesStr[ (int) state ] );
+                PrintContextCallstack( ctx );
+            }
             ctx->Abort();
             EndExecution();
             return false;
@@ -2693,6 +2702,7 @@ void Script::CallbackException( asIScriptContext* ctx, void* param )
     const char* str = ctx->GetExceptionString();
     uint        str_len = Str::Length( str );
     WriteLog( "Script exception: %s%s\n", str, str_len > 0 && str[ str_len - 1 ] != '.' ? "." : "" );
+    PrintContextCallstack( ctx );
 }
 
 /************************************************************************/

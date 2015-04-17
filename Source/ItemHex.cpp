@@ -2,10 +2,10 @@
 #include "ItemHex.h"
 #include "ResourceManager.h"
 
-ItemHex::ItemHex( uint id, ProtoItem* proto, const UCharVecVec* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut ): Item( id, proto )
+ItemHex::ItemHex( uint id, ProtoItem* proto, UCharVecVec* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut ): Item( id, proto )
 {
     if( data )
-        Props.RestoreData( false, *data );
+        Props.RestoreData( *data );
 
     // Init parent
     Accessory = ITEM_ACCESSORY_HEX;
@@ -25,7 +25,7 @@ ItemHex::ItemHex( uint id, ProtoItem* proto, const UCharVecVec* data, int hx, in
     // Sprite cut
     SpriteCut = cut;
     if( !SpriteCut )
-        SpriteCut = Proto->SpriteCut;
+        SpriteCut = Proto->GetSpriteCut();
 
     // Animation
     SprId = 0;
@@ -72,9 +72,9 @@ ItemHex::ItemHex( uint id, ProtoItem* proto, const UCharVecVec* data, int hx, in
 
     // Data
     if( scr_x )
-        OffsetX = scr_x;
+        SetOffsetX( scr_x );
     if( scr_y )
-        OffsetY = scr_y;
+        SetOffsetY( scr_y );
 
     // Draw effect
     DrawEffect = Effect::Generic;
@@ -84,7 +84,7 @@ ItemHex::ItemHex( uint id, ProtoItem* proto, const UCharVecVec* data, int hx, in
     RefreshAlpha();
     if( IsShowAnim() )
         isAnimated = true;
-    animNextTick = Timer::GameTick() + Random( Proto->AnimWaitRndMin * 10, Proto->AnimWaitRndMax * 10 );
+    animNextTick = Timer::GameTick() + Random( Proto->GetAnimWaitRndMin() * 10, Proto->GetAnimWaitRndMax() * 10 );
     SetFade( true );
 }
 
@@ -112,16 +112,9 @@ void ItemHex::Process()
         int anim_proc = Procent( Anim->Ticks, Timer::GameTick() - animTick );
         if( anim_proc >= 100 )
         {
-            /*if(animBegSpr!=curSpr)
-               {
-                    endSpr=animBegSpr;
-                    SetSpr(animBegSpr);
-                    animNextTick=Timer::FastTick()+Data.AnimWaitBase*10+Random(Proto->AnimWaitRndMin*10,Proto->AnimWaitRndMax*10);
-               }*/
-
             begSpr = animEndSpr;
             SetSpr( endSpr );
-            animNextTick = Timer::GameTick() + Proto->AnimWaitBase * 10 + Random( Proto->AnimWaitRndMin * 10, Proto->AnimWaitRndMax * 10 );
+            animNextTick = Timer::GameTick() + Proto->GetAnimWaitBase() * 10 + Random( Proto->GetAnimWaitRndMin() * 10, Proto->GetAnimWaitRndMax() * 10 );
         }
         else
         {
@@ -219,9 +212,9 @@ void ItemHex::SetFade( bool fade_up )
 
 void ItemHex::RefreshAnim()
 {
-    hash name_hash = Proto->PicMap;
-    if( PicMap )
-        name_hash = PicMap;
+    hash name_hash = Proto->GetPicMap();
+    if( GetPicMap() )
+        name_hash = GetPicMap();
     Anim = NULL;
     if( name_hash )
         Anim = ResMngr.GetItemAnim( name_hash );
@@ -234,9 +227,9 @@ void ItemHex::RefreshAnim()
     animBegSpr = begSpr;
     animEndSpr = endSpr;
 
-    if( Proto->Type == ITEM_TYPE_CONTAINER || Proto->Type == ITEM_TYPE_DOOR )
+    if( Proto->GetType() == ITEM_TYPE_CONTAINER || Proto->GetType() == ITEM_TYPE_DOOR )
     {
-        if( FLAG( LockerCondition, LOCKER_ISOPEN ) )
+        if( FLAG( GetLockerCondition(), LOCKER_ISOPEN ) )
             SetSprEnd();
         else
             SetSprStart();
@@ -258,9 +251,10 @@ void ItemHex::SetSprite( Sprite* spr )
 
 int ItemHex::GetEggType()
 {
-    if( Proto->DisableEgg || IsFlat() )
+    if( Proto->GetDisableEgg() || IsFlat() )
         return 0;
-    switch( Proto->Corner )
+
+    switch( Proto->GetCorner() )
     {
     case CORNER_SOUTH:
         return EGG_X_OR_Y;
@@ -278,7 +272,7 @@ int ItemHex::GetEggType()
 void ItemHex::StartAnimate()
 {
     SetStayAnim();
-    animNextTick = Timer::GameTick() + Proto->AnimWaitBase * 10 + Random( Proto->AnimWaitRndMin * 10, Proto->AnimWaitRndMax * 10 );
+    animNextTick = Timer::GameTick() + Proto->GetAnimWaitBase() * 10 + Random( Proto->GetAnimWaitRndMin() * 10, Proto->GetAnimWaitRndMax() * 10 );
     isAnimated = true;
 }
 
@@ -358,7 +352,7 @@ void ItemHex::SetAnimOffs()
 void ItemHex::SetStayAnim()
 {
     if( IsShowAnimExt() )
-        SetAnim( Proto->AnimStay[ 0 ], Proto->AnimStay[ 1 ] );
+        SetAnim( Proto->GetAnimStay_0(), Proto->GetAnimStay_1() );
     else
         SetAnim( 0, Anim->CntFrm - 1 );
 }
@@ -366,7 +360,7 @@ void ItemHex::SetStayAnim()
 void ItemHex::SetShowAnim()
 {
     if( IsShowAnimExt() )
-        SetAnim( Proto->AnimShow[ 0 ], Proto->AnimShow[ 1 ] );
+        SetAnim( Proto->GetAnimShow_0(), Proto->GetAnimShow_1() );
     else
         SetAnim( 0, Anim->CntFrm - 1 );
 }
@@ -375,9 +369,9 @@ void ItemHex::SetHideAnim()
 {
     if( IsShowAnimExt() )
     {
-        SetAnim( Proto->AnimHide[ 0 ], Proto->AnimHide[ 1 ] );
-        animBegSpr = ( Proto->AnimHide[ 1 ] );
-        animEndSpr = ( Proto->AnimHide[ 1 ] );
+        SetAnim( Proto->GetAnimHide_0(), Proto->GetAnimHide_1() );
+        animBegSpr = ( Proto->GetAnimHide_1() );
+        animEndSpr = ( Proto->GetAnimHide_1() );
     }
     else
     {

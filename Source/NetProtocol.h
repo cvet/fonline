@@ -111,7 +111,7 @@
 #define NETMSG_CHECK_UID1                       MAKE_NETMSG_HEADER( 30 )
 #define NETMSG_CHECK_UID2                       MAKE_NETMSG_HEADER( 78 )
 #define NETMSG_CHECK_UID3                       MAKE_NETMSG_HEADER( 139 )
-#define NETMSG_CHECK_UID4                       MAKE_NETMSG_HEADER( 211 )
+#define NETMSG_CHECK_UID4                       MAKE_NETMSG_HEADER( 255 )
 // ////////////////////////////////////////////////////////////////////////
 //
 // uint msg_len
@@ -202,7 +202,7 @@
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
-// Commands, lexems
+// Commands
 // ************************************************************************
 
 #define NETMSG_SEND_COMMAND                     MAKE_NETMSG_HEADER( 21 )
@@ -212,16 +212,6 @@
 // uint msg_len
 // uchar cmd (see Commands in Access.h)
 // Ext parameters
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_CRITTER_LEXEMS                   MAKE_NETMSG_HEADER( 22 )
-// ////////////////////////////////////////////////////////////////////////
-//
-// Params:
-// uint msg_len
-// uint critter_id
-// ushort lexems_length
-// char lexems[lexems_length]
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
@@ -386,30 +376,20 @@
 // CHOSEN Params
 // ************************************************************************
 
-#define NETMSG_ALL_PARAMS                       MAKE_NETMSG_HEADER( 51 )
-#define NETMSG_ALL_PARAMS_SIZE                  ( sizeof( uint ) + MAX_PARAMS * sizeof( int ) )
+#define NETMSG_ALL_PROPERTIES                   MAKE_NETMSG_HEADER( 51 )
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// parameters[]
+// Properties
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_PARAM                            MAKE_NETMSG_HEADER( 52 )
-#define NETMSG_PARAM_SIZE                       ( sizeof( uint ) + sizeof( ushort ) + sizeof( int ) )
-// ////////////////////////////////////////////////////////////////////////
-//
-// Params:
-// ushort num_param
-// int val
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_CRITTER_PARAM                    MAKE_NETMSG_HEADER( 53 )
-#define NETMSG_CRITTER_PARAM_SIZE               ( sizeof( uint ) + sizeof( uint ) + sizeof( ushort ) + sizeof( int ) )
+#define NETMSG_CUSTOM_COMMAND                   MAKE_NETMSG_HEADER( 52 )
+#define NETMSG_CUSTOM_COMMAND_SIZE              ( sizeof( uint ) + sizeof( ushort ) + sizeof( int ) )
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // uint crid
-// ushort num_param
+// ushort cmd
 // int val
 // ////////////////////////////////////////////////////////////////////////
 
@@ -497,15 +477,6 @@
 // ushort item_y
 // uchar is_added
 // Properties data
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_SEND_RATE_ITEM                   MAKE_NETMSG_HEADER( 73 )
-#define NETMSG_SEND_RATE_ITEM_SIZE              ( sizeof( uint ) + sizeof( hash ) + sizeof( uchar ) )
-// ////////////////////////////////////////////////////////////////////////
-//
-// Params:
-// hash proto_id
-// uchar rate
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_ERASE_ITEM_FROM_MAP              MAKE_NETMSG_HEADER( 74 )
@@ -604,13 +575,13 @@
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_USE_SKILL                   MAKE_NETMSG_HEADER( 86 )
-#define NETMSG_SEND_USE_SKILL_SIZE                          \
-    ( sizeof( uint ) + sizeof( ushort ) + sizeof( uchar ) + \
+#define NETMSG_SEND_USE_SKILL_SIZE                       \
+    ( sizeof( uint ) + sizeof( int ) + sizeof( uchar ) + \
       sizeof( uint ) + sizeof( hash ) )
 // ////////////////////////////////////////////////////////////////////////
 // Use some skill.
 // Params:
-// ushort skill
+// int skill
 // uchar targ_type
 // uint target_id
 // hash target_pid
@@ -987,13 +958,6 @@
 // GLOBAL
 // ************************************************************************
 
-#define NETMSG_SEND_GIVE_GLOBAL_INFO            MAKE_NETMSG_HEADER( 134 )
-#define NETMSG_SEND_GIVE_GLOBAL_INFO_SIZE       ( sizeof( uint ) )
-// ////////////////////////////////////////////////////////////////////////
-//
-// uchar info_flag; (see GM Info in FOdefines.h)
-// ////////////////////////////////////////////////////////////////////////
-
 #define NETMSG_GLOBAL_INFO                      MAKE_NETMSG_HEADER( 135 )
 // ////////////////////////////////////////////////////////////////////////
 //
@@ -1155,7 +1119,25 @@
 // uchar data[msg_len - ...]
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SEND_ITEM_POD_PROPERTY( b )            MAKE_NETMSG_HEADER( 200 + ( b ) )
+#define NETMSG_CRITTER_POD_PROPERTY( b )              MAKE_NETMSG_HEADER( 200 + ( b ) )
+#define NETMSG_CRITTER_POD_PROPERTY_SIZE( b )         ( sizeof( uint ) * 2 + sizeof( ushort ) + ( b ) )
+// ////////////////////////////////////////////////////////////////////////
+// Item data changed
+// uint crid
+// ushort property_index
+// uchar data[b]
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_CRITTER_COMPLEX_PROPERTY         MAKE_NETMSG_HEADER( 209 )
+// ////////////////////////////////////////////////////////////////////////
+// Item data changed
+// uint msg_len
+// uint crid
+// ushort property_index
+// uchar data[msg_len - ...]
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_SEND_ITEM_POD_PROPERTY( b )            MAKE_NETMSG_HEADER( 210 + ( b ) )
 #define NETMSG_SEND_ITEM_POD_PROPERTY_SIZE( b )       ( sizeof( uint ) + sizeof( ushort ) + ( b ) )
 // ////////////////////////////////////////////////////////////////////////
 // Client change property
@@ -1165,11 +1147,28 @@
 // uchar data[b]
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SEND_ITEM_COMPLEX_PROPERTY       MAKE_NETMSG_HEADER( 209 )
+#define NETMSG_SEND_ITEM_COMPLEX_PROPERTY       MAKE_NETMSG_HEADER( 219 )
 // ////////////////////////////////////////////////////////////////////////
 // Client change property
 // uint msg_len
 // uint item_id
+// ushort property_index
+// uchar data[msg_len - ...]
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_SEND_CRITTER_POD_PROPERTY( b )         MAKE_NETMSG_HEADER( 220 + ( b ) )
+#define NETMSG_SEND_CRITTER_POD_PROPERTY_SIZE( b )    ( sizeof( ushort ) + ( b ) )
+// ////////////////////////////////////////////////////////////////////////
+// Client change property
+// Params:
+// ushort property_index
+// uchar data[b]
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_SEND_CRITTER_COMPLEX_PROPERTY    MAKE_NETMSG_HEADER( 229 )
+// ////////////////////////////////////////////////////////////////////////
+// Client change property
+// uint msg_len
 // ushort property_index
 // uchar data[msg_len - ...]
 // ////////////////////////////////////////////////////////////////////////

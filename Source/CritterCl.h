@@ -12,11 +12,98 @@
 class CritterCl
 {
 public:
+    // Properties
+    PROPERTIES_HEADER();
+    CLASS_PROPERTY_DATA( Anim3dLayer );
+    CLASS_PROPERTY( int, Strength );
+    CLASS_PROPERTY( int, Perception );
+    CLASS_PROPERTY( int, Agility );
+    CLASS_PROPERTY( int, Charisma );
+    CLASS_PROPERTY( int, Intellect );
+    CLASS_PROPERTY( hash, BaseCrType );
+    CLASS_PROPERTY( char, Gender );
+    CLASS_PROPERTY( int, Level );
+    CLASS_PROPERTY( int, Experience );
+    CLASS_PROPERTY( int, BonusLook );
+    CLASS_PROPERTY( hash, DialogId );
+    CLASS_PROPERTY( int, BagId );
+    CLASS_PROPERTY( int, NpcRole );
+    CLASS_PROPERTY( int, TeamId );
+    CLASS_PROPERTY( int, AiId );
+    CLASS_PROPERTY( uint, FollowCrit );
+    CLASS_PROPERTY( uint, FreeBarterPlayer );
+    CLASS_PROPERTY( uint, LastWeaponId );
+    CLASS_PROPERTY( hash, HandsItemProtoId );
+    CLASS_PROPERTY( uchar, HandsItemMode );
+    CLASS_PROPERTY( int, KarmaVoting );
+    CLASS_PROPERTY( int, MaxTalkers );
+    CLASS_PROPERTY( int, TalkDistance );
+    CLASS_PROPERTY( int, CarryWeight );
+    CLASS_PROPERTY( int, CurrentHp );
+    CLASS_PROPERTY( int, ActionPoints );
+    CLASS_PROPERTY( int, CurrentAp );
+    CLASS_PROPERTY( int, MaxMoveAp );
+    CLASS_PROPERTY( int, MoveAp );
+    CLASS_PROPERTY( int, TurnBasedAc );
+    CLASS_PROPERTY( int, ReplicationMoney );
+    CLASS_PROPERTY( int, ReplicationCost );
+    CLASS_PROPERTY( int, ReplicationCount );
+    CLASS_PROPERTY( int, ReplicationTime );
+    CLASS_PROPERTY( int, WalkTime );
+    CLASS_PROPERTY( int, RunTime );
+    CLASS_PROPERTY( int, ScaleFactor );
+    CLASS_PROPERTY( int, SkillUnarmed );
+    CLASS_PROPERTY( int, SkillSneak );
+    CLASS_PROPERTY( int, SkillBarter );
+    CLASS_PROPERTY( int, SkillLockpick );
+    CLASS_PROPERTY( int, SkillSteal );
+    CLASS_PROPERTY( int, SkillTraps );
+    CLASS_PROPERTY( int, SkillFirstAid );
+    CLASS_PROPERTY( int, SkillDoctor );
+    CLASS_PROPERTY( int, SkillScience );
+    CLASS_PROPERTY( int, SkillRepair );
+    CLASS_PROPERTY( int, SkillSpeech );
+    CLASS_PROPERTY( uint, TimeoutBattle );
+    CLASS_PROPERTY( uint, TimeoutTransfer );
+    CLASS_PROPERTY( uint, TimeoutRemoveFromGame );
+    CLASS_PROPERTY( uint, TimeoutKarmaVoting );
+    CLASS_PROPERTY( uint, TimeoutSkScience );
+    CLASS_PROPERTY( uint, TimeoutSkRepair );
+    CLASS_PROPERTY( char, DefaultCombat );
+    CLASS_PROPERTY( bool, IsInvulnerable );
+    CLASS_PROPERTY( bool, IsDlgScriptBarter );
+    CLASS_PROPERTY( bool, IsUnlimitedAmmo );
+    CLASS_PROPERTY( bool, IsNoUnarmed );
+    CLASS_PROPERTY( bool, IsNoFavoriteItem );
+    CLASS_PROPERTY( bool, IsNoPush );
+    CLASS_PROPERTY( bool, IsNoItemGarbager );
+    CLASS_PROPERTY( bool, IsNoEnemyStack );
+    CLASS_PROPERTY( bool, IsGeck );
+    CLASS_PROPERTY( bool, IsNoLoot );
+    CLASS_PROPERTY( bool, IsNoSteal );
+    CLASS_PROPERTY( bool, IsNoHome );
+    CLASS_PROPERTY( bool, IsNoWalk );
+    CLASS_PROPERTY( bool, IsNoRun );
+    CLASS_PROPERTY( bool, IsNoTalk );
+    CLASS_PROPERTY( bool, IsHide );
+    CLASS_PROPERTY( bool, IsNoFlatten );
+    CLASS_PROPERTY( bool, IsNoAim );
+    CLASS_PROPERTY( bool, IsNoBarter );
+    CLASS_PROPERTY( bool, IsEndCombat );
+    CLASS_PROPERTY( bool, IsDamagedEye );
+    CLASS_PROPERTY( bool, IsDamagedRightArm );
+    CLASS_PROPERTY( bool, IsDamagedLeftArm );
+    CLASS_PROPERTY( bool, IsDamagedRightLeg );
+    CLASS_PROPERTY( bool, IsDamagedLeftLeg );
+    CLASS_PROPERTY( uchar, PerkQuickPockets );
+    CLASS_PROPERTY( uchar, PerkMasterTrader );
+    CLASS_PROPERTY( uchar, PerkSilentRunning );
+
+    // Data
     uint          Id;
     hash          Pid;
     ushort        HexX, HexY;
     uchar         CrDir;
-    int           Params[ MAX_PARAMS ];
     uint          NameColor;
     uint          ContourColor;
     UShortVec     LastHexX, LastHexY;
@@ -35,7 +122,6 @@ public:
 
     ScriptString* Name;
     ScriptString* NameOnHead;
-    ScriptString* Lexems;
     ScriptString* Avatar;
 
     ItemVec       InvItems;
@@ -45,17 +131,8 @@ public:
     Item*         ItemSlotExt;
     Item*         ItemSlotArmor;
 
-    static bool   ParamsRegEnabled[ MAX_PARAMS ];
-    static int    ParamsReg[ MAX_PARAMS ];
-    CritterCl*    ThisPtr[ MAX_PARAMETERS_ARRAYS ];
-    static int    ParamsChangeScript[ MAX_PARAMS ];
-    static int    ParamsGetScript[ MAX_PARAMS ];
-    static uint   ParametersMin[ MAX_PARAMETERS_ARRAYS ];
-    static uint   ParametersMax[ MAX_PARAMETERS_ARRAYS ];
-    bool          ParamsIsChanged[ MAX_PARAMS ];
-    IntVec        ParamsChanged;
-    int           ParamLocked;
     static bool   SlotEnabled[ 0x100 ];
+    static IntSet RegProperties;
 
     CritterCl();
     ~CritterCl();
@@ -79,104 +156,86 @@ public:
     void AnimateStay();
     void Action( int action, int action_ext, Item* item, bool local_call = true );
     void Process();
+    void DrawStay( Rect r );
 
-    int         GetCond() { return Cond; }
-    void        DrawStay( Rect r );
-    const char* GetName() { return Name->c_str(); }
-
-    bool IsNpc()      { return FLAG( Flags, FCRIT_NPC ); }
-    bool IsPlayer()   { return FLAG( Flags, FCRIT_PLAYER ); }
-    bool IsChosen()   { return FLAG( Flags, FCRIT_CHOSEN ); }
-    bool IsGmapRule() { return FLAG( Flags, FCRIT_RULEGROUP ); }
-    bool IsOnline()   { return !FLAG( Flags, FCRIT_DISCONNECT ); }
-    bool IsOffline()  { return FLAG( Flags, FCRIT_DISCONNECT ); }
-    bool IsLife()     { return Cond == COND_LIFE; }
-    bool IsKnockout() { return Cond == COND_KNOCKOUT; }
-    bool IsDead()     { return Cond == COND_DEAD; }
-    bool CheckFind( int find_type );
-    bool IsCanTalk()    { return IsNpc() && IsLife() && IsRawParam( ST_DIALOG_ID ) && !IsRawParam( MODE_NO_TALK ); }
-    bool IsCombatMode() { return GetParam( TO_BATTLE ) != 0; }
-    bool IsTurnBased()  { return TB_BATTLE_TIMEOUT_CHECK( GetParam( TO_BATTLE ) ); }
+    const char* GetName()    { return Name->c_str(); }
+    int         GetCond()    { return Cond; }
+    bool        IsNpc()      { return FLAG( Flags, FCRIT_NPC ); }
+    bool        IsPlayer()   { return FLAG( Flags, FCRIT_PLAYER ); }
+    bool        IsChosen()   { return FLAG( Flags, FCRIT_CHOSEN ); }
+    bool        IsGmapRule() { return FLAG( Flags, FCRIT_RULEGROUP ); }
+    bool        IsOnline()   { return !FLAG( Flags, FCRIT_DISCONNECT ); }
+    bool        IsOffline()  { return FLAG( Flags, FCRIT_DISCONNECT ); }
+    bool        IsLife()     { return Cond == COND_LIFE; }
+    bool        IsKnockout() { return Cond == COND_KNOCKOUT; }
+    bool        IsDead()     { return Cond == COND_DEAD; }
+    bool        IsCanTalk();
+    bool        IsCombatMode();
+    bool        IsTurnBased();
+    bool        CheckFind( int find_type );
 
     uint GetLook();
-    uint GetTalkDistance();
+    uint GetTalkDist();
     uint GetAttackDist();
     uint GetUseDist();
     uint GetMultihex();
 
-    int  GetParam( uint index );
-    bool IsRawParam( uint index )  { return Params[ index ] != 0; }
-    int  GetRawParam( uint index ) { return Params[ index ]; }
-    void ChangeParam( uint index );
-    void ProcessChangedParams();
-
-    uint GetMaxWeightKg() { return GetParam( ST_CARRY_WEIGHT ) / 1000; }
-    uint GetMaxVolume()   { return CRITTER_INV_VOLUME; }
+    uint GetMaxWeightKg();
+    uint GetMaxVolume();
     uint GetCrType();
-    bool IsDmgLeg()    { return IsRawParam( DAMAGE_RIGHT_LEG ) || IsRawParam( DAMAGE_LEFT_LEG ); }
-    bool IsDmgTwoLeg() { return IsRawParam( DAMAGE_RIGHT_LEG ) && IsRawParam( DAMAGE_LEFT_LEG ); }
-    bool IsDmgArm()    { return IsRawParam( DAMAGE_RIGHT_ARM ) || IsRawParam( DAMAGE_LEFT_ARM ); }
-    bool IsDmgTwoArm() { return IsRawParam( DAMAGE_RIGHT_ARM ) && IsRawParam( DAMAGE_LEFT_ARM ); }
-    int  GetRealAp()   { return Params[ ST_CURRENT_AP ]; }
-    int  GetAllAp()    { return GetParam( ST_CURRENT_AP ) + GetParam( ST_MOVE_AP ); }
-    void SubMoveAp( int val )
-    {
-        ChangeParam( ST_CURRENT_AP );
-        Params[ ST_MOVE_AP ] -= val;
-    }
-    void SubAp( int val )
-    {
-        ChangeParam( ST_CURRENT_AP );
-        Params[ ST_CURRENT_AP ] -= val * AP_DIVIDER;
-        ApRegenerationTick = 0;
-    }
-    bool IsHideMode() { return GetRawParam( MODE_HIDE ) != 0; }
+    bool IsDmgLeg();
+    bool IsDmgTwoLeg();
+    bool IsDmgArm();
+    bool IsDmgTwoArm();
+    int  GetRealAp();
+    int  GetAllAp();
+    void SubAp( int val );
+    void SubMoveAp( int val );
 
     // Items
 public:
-    void        AddItem( Item* item );
-    void        EraseItem( Item* item, bool animate );
-    void        EraseAllItems();
-    Item*       GetItem( uint item_id );
-    Item*       GetItemByPid( hash item_pid );
-    Item*       GetItemByPidInvPriority( hash item_pid );
-    Item*       GetItemByPidSlot( hash item_pid, int slot );
-    Item*       GetAmmo( uint caliber );
-    Item*       GetItemSlot( int slot );
-    void        GetItemsSlot( int slot, ItemVec& items );
-    void        GetItemsType( int slot, ItemVec& items );
-    uint        CountItemPid( hash item_pid );
-    uint        CountItemType( uchar type );
-    bool        IsCanSortItems();
-    Item*       GetItemHighSortValue();
-    Item*       GetItemLowSortValue();
-    void        GetInvItems( ItemVec& items );
-    uint        GetItemsCount();
-    uint        GetItemsCountInv();
-    uint        GetItemsWeight();
-    uint        GetItemsWeightKg();
-    uint        GetItemsVolume();
-    int         GetFreeWeight();
-    int         GetFreeVolume();
-    bool        IsHaveLightSources();
-    Item*       GetSlotUse( uchar num_slot, uchar& use );
-    hash        GetUsePicName( uchar num_slot );
-    bool        IsItemAim( uchar num_slot );
-    uchar       GetUse()      { return ItemSlotMain->Mode & 0xF; }
-    uchar       GetFullRate() { return ItemSlotMain->Mode; }
-    bool        NextRateItem( bool prev );
-    uchar       GetAim() { return ( ItemSlotMain->Mode >> 4 ) & 0xF; }
-    bool        IsAim()  { return GetAim() > 0; }
-    void        SetAim( uchar hit_location );
-    uint        GetUseApCost( Item* item, uchar rate );
-    ProtoItem*  GetUnarmedItem( uchar tree, uchar priority );
-    ProtoItem*  GetProtoMain() { return ItemSlotMain->Proto; }
-    ProtoItem*  GetProtoExt()  { return ItemSlotExt->Proto; }
-    ProtoItem*  GetProtoArm()  { return ItemSlotArmor->Proto; }
-    const char* GetMoneyStr();
-    Item*       GetAmmoAvialble( Item* weap );
-    bool        IsOverweight()       { return (int) GetItemsWeight() > GetParam( ST_CARRY_WEIGHT ); }
-    bool        IsDoubleOverweight() { return (int) GetItemsWeight() > GetParam( ST_CARRY_WEIGHT ) * 2; }
+    void       AddItem( Item* item );
+    void       EraseItem( Item* item, bool animate );
+    void       EraseAllItems();
+    Item*      GetItem( uint item_id );
+    Item*      GetItemByPid( hash item_pid );
+    Item*      GetItemByPidInvPriority( hash item_pid );
+    Item*      GetItemByPidSlot( hash item_pid, int slot );
+    Item*      GetAmmo( uint caliber );
+    Item*      GetItemSlot( int slot );
+    void       GetItemsSlot( int slot, ItemVec& items );
+    void       GetItemsType( int slot, ItemVec& items );
+    uint       CountItemPid( hash item_pid );
+    uint       CountItemType( uchar type );
+    bool       IsCanSortItems();
+    Item*      GetItemHighSortValue();
+    Item*      GetItemLowSortValue();
+    void       GetInvItems( ItemVec& items );
+    uint       GetItemsCount();
+    uint       GetItemsCountInv();
+    uint       GetItemsWeight();
+    uint       GetItemsWeightKg();
+    uint       GetItemsVolume();
+    int        GetFreeWeight();
+    int        GetFreeVolume();
+    bool       IsHaveLightSources();
+    Item*      GetSlotUse( uchar num_slot, uchar& use );
+    hash       GetUsePicName( uchar num_slot );
+    bool       IsItemAim( uchar num_slot );
+    uchar      GetUse()      { return ItemSlotMain->GetMode() & 0xF; }
+    uchar      GetFullRate() { return ItemSlotMain->GetMode(); }
+    bool       NextRateItem( bool prev );
+    uchar      GetAim() { return ( ItemSlotMain->GetMode() >> 4 ) & 0xF; }
+    bool       IsAim()  { return GetAim() > 0; }
+    void       SetAim( uchar hit_location );
+    uint       GetUseApCost( Item* item, uchar rate );
+    ProtoItem* GetUnarmedItem( uchar tree, uchar priority );
+    ProtoItem* GetProtoMain() { return ItemSlotMain->Proto; }
+    ProtoItem* GetProtoExt()  { return ItemSlotExt->Proto; }
+    ProtoItem* GetProtoArm()  { return ItemSlotArmor->Proto; }
+    Item*      GetAmmoAvialble( Item* weap );
+    bool       IsOverweight()       { return (int) GetItemsWeight() > GetCarryWeight(); }
+    bool       IsDoubleOverweight() { return (int) GetItemsWeight() > GetCarryWeight() * 2; }
 
     // Moving
 public:
@@ -215,7 +274,6 @@ public:
 
     // Animation
 public:
-    void* Layers3d;
     uint GetAnim1( Item* anim_item = NULL );
     uint GetAnim2();
     void ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, Item* item );
@@ -317,29 +375,20 @@ private:
 
     // Ap cost
 public:
-    int GetApCostCritterMove( bool is_run ) { return IsTurnBased() ? GameOpt.TbApCostCritterMove * AP_DIVIDER * ( IsDmgTwoLeg() ? 4 : ( IsDmgLeg() ? 2 : 1 ) ) : ( GetParam( TO_BATTLE ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0 ); }
-    int GetApCostMoveItemContainer()        { return IsTurnBased() ? GameOpt.TbApCostMoveItemContainer : GameOpt.RtApCostMoveItemContainer; }
-    int GetApCostMoveItemInventory()
-    {
-        int val = IsTurnBased() ? GameOpt.TbApCostMoveItemInventory : GameOpt.RtApCostMoveItemInventory;
-        if( IsRawParam( PE_QUICK_POCKETS ) ) val /= 2;
-        return val;
-    }
-    int GetApCostPickItem()    { return IsTurnBased() ? GameOpt.TbApCostPickItem : GameOpt.RtApCostPickItem; }
-    int GetApCostDropItem()    { return IsTurnBased() ? GameOpt.TbApCostDropItem : GameOpt.RtApCostDropItem; }
-    int GetApCostPickCritter() { return IsTurnBased() ? GameOpt.TbApCostPickCritter : GameOpt.RtApCostPickCritter; }
-    int GetApCostUseSkill()    { return IsTurnBased() ? GameOpt.TbApCostUseSkill : GameOpt.RtApCostUseSkill; }
+    int GetApCostCritterMove( bool is_run );
+    int GetApCostMoveItemContainer();
+    int GetApCostMoveItemInventory();
+    int GetApCostPickItem();
+    int GetApCostDropItem();
+    int GetApCostPickCritter();
+    int GetApCostUseSkill();
 
     // Ref counter
 public:
     short RefCounter;
     bool  IsNotValid;
-    void AddRef() { RefCounter++; }
-    void Release()
-    {
-        RefCounter--;
-        if( RefCounter <= 0 ) delete this;
-    }
+    void AddRef()  { RefCounter++; }
+    void Release() { if( --RefCounter <= 0 ) delete this; }
 };
 
 typedef map< uint, CritterCl* > CritMap;

@@ -70,7 +70,7 @@ bool CritterManager::LoadProtos()
 
     // Load protos
     IniParser protos_txt;
-    int       loaded_count = 0;
+    int       loaded = 0;
     int       errors = 0;
     for( uint i = 0, k = (uint) fnames.size(); i < k; i++ )
     {
@@ -86,83 +86,61 @@ bool CritterManager::LoadProtos()
         {
             while( protos_txt.GotoNextApp( CRPROTO_APP ) )
             {
-                int pid = -1;
-                int params[ MAX_PARAMS ];
-                memzero( params, sizeof( params ) );
-
-                StrVec lines;
-                protos_txt.GetAppLines( lines );
-
-                for( uint j = 0; j < lines.size(); j++ )
+                const char* app = protos_txt.GetApp( CRPROTO_APP );
+                #ifdef FONLINE_SERVER
+                Properties* props = new Properties( Critter::PropertiesRegistrator );
+                #else
+                Properties* props = new Properties( CritterCl::PropertiesRegistrator );
+                #endif
+                hash        pid = props->LoadFromText( app );
+                if( pid )
                 {
-                    char line[ 256 ];
-                    char indent[ 256 ];
-                    int  value;
-                    Str::Copy( line, lines[ j ].c_str() );
-                    Str::Replacement( line, '=', ' ' );
-                    if( sscanf( line, "%s%d", indent, &value ) == 2 )
+                    if( allProtos.count( pid ) )
                     {
-                        if( Str::Compare( indent, "Pid" ) )
-                            pid = value;
-                        else
-                        {
-                            int param_id = ConstantsManager::GetParamId( indent );
-                            if( param_id >= 0 && param_id < MAX_PARAMS )
-                                params[ param_id ] = value;
-                            else
-                            {
-                                WriteLog( "Unknown parameter<%s> in<%s>.\n", indent, fname );
-                                errors++;
-                            }
-                        }
+                        WriteLogF( _FUNC_, " - Critter prototype is already parsed, pid<%u>. Rewrite.\n", pid );
+                        #pragma MESSAGE( "Proto leak, add ref counting." )
+                        allProtos.erase( pid );
                     }
-                }
+                    else
+                    {
+                        loaded++;
+                    }
 
-                if( !pid )
-                {
-                    WriteLogF( _FUNC_, " - Invalid zero pid of critter prototype.\n" );
-                    errors++;
-                    continue;
-                }
+                    ProtoCritter* proto = new ProtoCritter();
+                    proto->ProtoId = pid;
+                    proto->Props = props;
+                    #ifdef FONLINE_MAPPER
+                    proto->CollectionName = collection_name;
+                    #endif
 
-                if( allProtos.count( pid ) )
-                {
-                    WriteLogF( _FUNC_, " - Critter prototype is already parsed, pid<%u>. Rewrite.\n", pid );
-                    #pragma MESSAGE( "Proto leak, add ref counting." )
-                    allProtos.erase( pid );
+                    allProtos.insert( PAIR( pid, proto ) );
                 }
                 else
                 {
-                    loaded_count++;
+                    WriteLog( "Invalid data in proto critter.\n" );
+                    delete props;
+                    errors++;
                 }
-
-                CritData* proto = new CritData();
-                #ifdef FONLINE_MAPPER
-                memzero( proto, OFFSETOF( CritData, CollectionName ) );
-                proto->CollectionName = collection_name;
-                #else
-                memzero( proto, sizeof( CritData ) );
-                #endif
-
-                proto->ProtoId = pid;
-                memcpy( proto->Params, params, sizeof( params ) );
-
-                allProtos.insert( PAIR( pid, proto ) );
             }
+        }
+        else
+        {
+            WriteLog( "Can't load file<%s>.\n", fname );
+            errors++;
         }
     }
 
-    WriteLog( "Load critters prototypes complete, loaded<%d/%d>.\n", loaded_count, loaded_count - errors );
+    WriteLog( "Load critters prototypes complete, loaded<%u>.%s\n", loaded, errors ? " With errors." : "" );
     return errors == 0;
 }
 
-CritData* CritterManager::GetProto( hash proto_id )
+ProtoCritter* CritterManager::GetProto( hash proto_id )
 {
     auto it = allProtos.find( proto_id );
     return it != allProtos.end() ? ( *it ).second : NULL;
 }
 
-CritDataMap& CritterManager::GetAllProtos()
+ProtoCritterMap& CritterManager::GetAllProtos()
 {
     return allProtos;
 }
@@ -369,7 +347,7 @@ void CritterManager::CritterGarbager()
     }
 }
 
-Npc* CritterManager::CreateNpc( hash proto_id, uint params_count, int* params, uint items_count, int* items, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy )
+Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items_data, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy )
 {
     if( !map || hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
     {
@@ -443,27 +421,28 @@ Npc* CritterManager::CreateNpc( hash proto_id, uint params_count, int* params, u
     npc->Data.HexY = hy;
     npc->RefreshName();
 
-    for( uint i = 0; i < params_count; i++ )
+    if( props_data )
     {
-        int index = params[ i * 2 ];
-        int value = params[ i * 2 + 1 ];
-        if( index >= 0 && index < MAX_PARAMS && value )
-            npc->Data.Params[ index ] = value;
+        for( size_t i = 0, j = props_data->size() / 2; i < j; i++ )
+            npc->Props.SetValueAsInt( props_data->at( i * 2 ), props_data->at( i * 2 + 1 ) );
     }
 
     map->AddCritter( npc );
     AddCritter( npc );
 
-    for( uint i = 0; i < items_count; i++ )
+    if( items_data )
     {
-        int pid = items[ i * 3 ];
-        int count = items[ i * 3 + 1 ];
-        int slot = items[ i * 3 + 2 ];
-        if( pid > 0 && count > 0 )
+        for( size_t i = 0, j = items_data->size() / 3; i < j; i++ )
         {
-            Item* item = ItemMngr.AddItemCritter( npc, pid, count );
-            if( item && slot != SLOT_INV )
-                npc->MoveItem( SLOT_INV, slot, item->GetId(), item->Count );
+            hash pid = items_data->at( i * 3 );
+            int  count = items_data->at( i * 3 + 1 );
+            int  slot = items_data->at( i * 3 + 2 );
+            if( pid != 0 && count > 0 && slot >= 0 && slot < 255 && Critter::SlotEnabled[ slot ] )
+            {
+                Item* item = ItemMngr.AddItemCritter( npc, pid, count );
+                if( item && slot != SLOT_INV )
+                    npc->MoveItem( SLOT_INV, slot, item->GetId(), item->GetCount() );
+            }
         }
     }
 
@@ -485,8 +464,8 @@ Npc* CritterManager::CreateNpc( hash proto_id, uint params_count, int* params, u
 
 Npc* CritterManager::CreateNpc( hash proto_id, bool copy_data )
 {
-    CritData* data = GetProto( proto_id );
-    if( !data )
+    ProtoCritter* proto = GetProto( proto_id );
+    if( !proto )
     {
         WriteLogF( _FUNC_, " - Critter data not found, critter proto id<%u>.\n", proto_id );
         return NULL;
@@ -507,7 +486,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, bool copy_data )
     }
 
     if( copy_data )
-        npc->Data = *data;
+        npc->Props = *proto->Props;
     npc->Data.EnemyStackCount = MAX_ENEMY_STACK;
     npc->Data.ProtoId = proto_id;
     npc->Data.Cond = COND_LIFE;

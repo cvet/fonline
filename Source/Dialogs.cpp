@@ -3,6 +3,7 @@
 #include "ConstantsManager.h"
 #include "FileManager.h"
 #include "IniParser.h"
+#include "Critter.h"
 
 DialogManager DlgMngr;
 
@@ -411,10 +412,30 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
 
         // Name
         input >> name;
-        if( (int) ( id = ConstantsManager::GetParamId( name ) ) < 0 )
+        Property* prop = Critter::PropertiesRegistrator->Find( name );
+        if( !prop )
         {
-            WriteLog( "Invalid DR parameter<%s>.\n", name );
+            WriteLog( "DR property<%s> not found.\n", name );
             errors++;
+        }
+        else if( !prop->IsPOD() )
+        {
+            WriteLog( "DR property<%s> is not POD type.\n", name );
+            errors++;
+        }
+        else if( is_demand && !prop->IsReadable() )
+        {
+            WriteLog( "DR property<%s> is not readable.\n", name );
+            errors++;
+        }
+        else if( !is_demand && !prop->IsWritable() )
+        {
+            WriteLog( "DR property<%s> is not writable.\n", name );
+            errors++;
+        }
+        else
+        {
+            id = prop->GetEnumValue();
         }
 
         // Operator

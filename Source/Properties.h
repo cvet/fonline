@@ -3,6 +3,32 @@
 
 #include "Common.h"
 
+#define PROPERTIES_HEADER()                                                  \
+    static PropertyRegistrator * PropertiesRegistrator;                      \
+    static void SetPropertyRegistrator( PropertyRegistrator * registrator ); \
+    Properties Props
+#define PROPERTIES_IMPL( class_name ) \
+    PropertyRegistrator * class_name::PropertiesRegistrator
+#define PROPERTIES_FIND()                \
+    SAFEDEL( PropertiesRegistrator );    \
+    PropertiesRegistrator = registrator; \
+    PropertiesRegistrator->FinishRegistration()
+
+#define CLASS_PROPERTY( prop_type, prop )                                                      \
+    static Property * Property ## prop;                                                        \
+    inline prop_type Get ## prop() { return Property ## prop->GetValue< prop_type >( this ); } \
+    inline void      Set ## prop( prop_type val ) { Property ## prop->SetValue< prop_type >( this, val ); }
+#define CLASS_PROPERTY_DATA( prop )                                                                                                   \
+    static Property * Property ## prop;                                                                                               \
+    inline uchar* Get ## prop ## Data( uint & data_size ) { return Property ## prop->GetRawData( this, data_size ); }                 \
+    inline bool   Is ## prop ## Data() { uint data_size = 0; Property ## prop->GetRawData( this, data_size ); return data_size > 0; } \
+    inline void   Set ## prop ## Data( uchar * data, uint data_size ) { return Property ## prop->SetData( this, data, data_size ); }
+#define CLASS_PROPERTY_IMPL( class_name, prop ) \
+    Property * class_name::Property ## prop
+#define CLASS_PROPERTY_FIND( prop )                           \
+    Property ## prop = PropertiesRegistrator->Find( # prop ); \
+    RUNTIME_ASSERT( Property ## prop && # prop )
+
 class Property;
 typedef void ( *NativeCallback )( void* obj, Property* prop, void* cur_value, void* old_value );
 
@@ -15,6 +41,7 @@ struct UnresolvedProperty
 };
 typedef vector< UnresolvedProperty* > UnresolvedPropertyVec;
 
+class PropertyRegistrator;
 class Property
 {
     friend class PropertyRegistrator;
@@ -23,33 +50,60 @@ class Property
 public:
     enum AccessType
     {
-        Virtual             = 0x0001,
-        VirtualClient       = 0x0002,
-        VirtualServer       = 0x0004,
-        Private             = 0x0010,
-        PrivateClient       = 0x0020,
-        PrivateServer       = 0x0040,
-        Public              = 0x0100,
-        PublicModifiable    = 0x0200,
-        Protected           = 0x1000,
-        ProtectedModifiable = 0x2000,
+        Private              = 0x0010,
+        PrivateClient        = 0x0020,
+        PrivateServer        = 0x0040,
+        Public               = 0x0100,
+        PublicModifiable     = 0x0200,
+        Protected            = 0x1000,
+        ProtectedModifiable  = 0x2000,
+        VirtualPrivate       = 0x0011,
+        VirtualPrivateClient = 0x0021,
+        VirtualPrivateServer = 0x0041,
+        VirtualPublic        = 0x0101,
+        VirtualProtected     = 0x1001,
 
-        VirtualMask         = 0x000F,
-        PrivateMask         = 0x00F0,
-        PublicMask          = 0x0F00,
-        ProtectedMask       = 0xF000,
-        ClientMask          = 0x0022,
-        ServerMask          = 0x0044,
-        ModifiableMask      = 0x2200,
+        VirtualMask          = 0x000F,
+        PrivateMask          = 0x00F0,
+        PublicMask           = 0x0F00,
+        ProtectedMask        = 0xF000,
+        ClientMask           = 0x0022,
+        ServerMask           = 0x0044,
+        ModifiableMask       = 0x2200,
     };
 
-    bool       IsPOD();
-    uint       GetIndex();
-    AccessType GetAccess();
-    uint       GetBaseSize();
-    uchar*     GetData( void* obj, uint& data_size );
-    void       SetData( void* obj, uchar* data, uint data_size, bool call_callbacks );
-    void       SetSendIgnore( void* obj );
+    const char* GetName();
+    uint        GetRegIndex();
+    int         GetEnumValue();
+    AccessType  GetAccess();
+    uint        GetBaseSize();
+    bool        IsPOD();
+    bool        IsReadable();
+    bool        IsWritable();
+    void        SetSendIgnore( void* obj );
+
+    template< typename T >
+    T GetValue( void* obj )
+    {
+        RUNTIME_ASSERT( sizeof( T ) == baseSize );
+        T ret_value = 0;
+        GenericGet( obj, &ret_value );
+        return ret_value;
+    }
+
+    template< typename T >
+    void SetValue( void* obj, T new_value )
+    {
+        RUNTIME_ASSERT( sizeof( T ) == baseSize );
+        GenericSet( obj, &new_value );
+    }
+
+    uchar* GetRawData( void* obj, uint& data_size );
+    void   SetRawData( void* obj, uchar* data, uint data_size );
+    void   SetData( void* obj, uchar* data, uint data_size );
+
+    string SetGetCallback( const char* script_func );
+    string AddSetCallback( const char* script_func );
 
 private:
     enum DataType
@@ -63,29 +117,21 @@ private:
     Property();
     void*  CreateComplexValue( uchar* data, uint data_size );
     uchar* ExpandComplexValueData( void* base_ptr, uint& data_size, bool& need_delete );
+    void   AddRefComplexValue( void* value );
+    void   ReleaseComplexValue( void* value );
     void   GenericGet( void* obj, void* ret_value );
     void   GenericSet( void* obj, void* new_value );
-
-    template< typename T >
-    T Get( void* obj )
-    {
-        T ret_value = 0;
-        GenericGet( obj, &ret_value );
-        return ret_value;
-    }
-
-    template< typename T >
-    void Set( void* obj, T new_value )
-    {
-        GenericSet( obj, &new_value );
-    }
 
     // Static data
     string         propName;
     string         typeName;
     DataType       dataType;
+    asIObjectType* asObjType;
+    bool           isBoolDataType;
+    bool           isEnumDataType;
     AccessType     accessType;
-    asIObjectType* complexDataSubType;
+    bool           isReadable;
+    bool           isWritable;
     bool           generateRandomValue;
     bool           setDefaultValue;
     bool           checkMinValue;
@@ -95,21 +141,25 @@ private:
     int64          maxValue;
 
     // Dynamic data
-    uint           regIndex;
-    uint           podDataOffset;
-    uint           complexDataIndex;
-    uint           baseSize;
-    int            getCallback;
-    IntVec         setCallbacks;
-    NativeCallback nativeSetCallback;
-    NativeCallback nativeSendCallback;
-    bool           getCallbackLocked;
-    bool           setCallbackLocked;
-    void*          sendIgnoreObj;
+    PropertyRegistrator* registrator;
+    uint                 regIndex;
+    int                  enumValue;
+    uint                 podDataOffset;
+    uint                 complexDataIndex;
+    uint                 baseSize;
+    int                  getCallback;
+    uint                 getCallbackArgs;
+    IntVec               setCallbacks;
+    UIntVec              setCallbacksArgs;
+    bool                 setCallbacksAnyOldValue;
+    NativeCallback       nativeSetCallback;
+    NativeCallback       nativeSendCallback;
+    bool                 getCallbackLocked;
+    bool                 setCallbackLocked;
+    void*                sendIgnoreObj;
 };
 typedef vector< Property* > PropertyVec;
 
-class PropertyRegistrator;
 class Properties
 {
     friend class PropertyRegistrator;
@@ -121,9 +171,14 @@ public:
     Properties& operator=( const Properties& other );
     void*       FindData( const char* property_name );
     uint        StoreData( bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes );
-    void        RestoreData( bool with_protected, const UCharVecVec& all_data );
+    void        RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes );
+    void        RestoreData( UCharVecVec& all_data );
     void        Save( void ( * save_func )( void*, size_t ) );
     void        Load( void* file, uint version );
+    hash        LoadFromText( const char* text );
+    int         GetValueAsInt( int enum_value );
+    void        SetValueAsInt( int enum_value, int value );
+    bool        SetValueAsIntByName( const char* enum_name, int value );
 
 private:
     PropertyRegistrator*  registrator;
@@ -143,22 +198,24 @@ class PropertyRegistrator
 public:
     PropertyRegistrator( bool is_server, const char* class_name );
     ~PropertyRegistrator();
-    Property* Register( const char* type_name, const char* name, Property::AccessType access, bool generate_random_value = false, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
+    Property* Register( const char* type_name, const char* name, Property::AccessType access, const char* group = NULL, bool* generate_random_value = NULL, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
+    void      SetDefaults( const char* group = NULL, bool* generate_random_value = NULL, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
     void      FinishRegistration();
     Property* Find( const char* property_name );
+    Property* FindByEnum( int enum_value );
     Property* Get( uint property_index );
-    string    SetGetCallback( const char* property_name, const char* script_func );
-    string    AddSetCallback( const char* property_name, const char* script_func );
     void      SetNativeSetCallback( const char* property_name, NativeCallback callback );
     void      SetNativeSendCallback( NativeCallback callback );
     uint      GetWholeDataSize();
 
 private:
-    bool        registrationFinished;
-    bool        isServer;
-    string      scriptClassName;
-    PropertyVec registeredProperties;
-    uint        serializedPropertiesCount;
+    bool                        registrationFinished;
+    bool                        isServer;
+    string                      scriptClassName;
+    PropertyVec                 registeredProperties;
+    uint                        serializedPropertiesCount;
+    string                      enumTypeName;
+    map< string, ScriptArray* > enumGroups;
 
     // POD info
     uint      wholePodDataSize;
@@ -168,7 +225,18 @@ private:
     PUCharVec podDataPool;
 
     // Complex types info
-    uint complexPropertiesCount;
+    uint      complexPropertiesCount;
+    UShortVec publicComplexDataProps;
+    UShortVec protectedComplexDataProps;
+    UShortVec publicProtectedComplexDataProps;
+    UShortVec privateComplexDataProps;
+
+    // Option defaults
+    char*  defaultGroup;
+    bool*  defaultGenerateRandomValue;
+    int64* defaultDefaultValue;
+    int64* defaultMinValue;
+    int64* defaultMaxValue;
 };
 
 #endif // __PROPERTIES__

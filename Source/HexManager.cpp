@@ -161,7 +161,7 @@ void Field::ProcessCache()
             {
                 Flags.IsWall = true;
                 Flags.IsWallTransp = item->IsLightThru();
-                Corner = item->Proto->Corner;
+                Corner = item->Proto->GetCorner();
                 if( pid == SP_SCEN_IBLOCK )
                     Flags.IsWallSAI = true;
             }
@@ -323,12 +323,12 @@ void HexManager::PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
     if( !proto_item )
         return;
 
-    bool raked = FLAG( proto_item->Flags, ITEM_SHOOT_THRU );
-    FOREACH_PROTO_ITEM_LINES( proto_item->BlockLines, hx, hy, GetMaxHexX(), GetMaxHexY(),
-                              GetField( hx, hy ).Flags.IsNotPassed = true;
-                              if( !raked )
-                                  GetField( hx, hy ).Flags.IsNotRaked = true;
-                              );
+    bool raked = FLAG( proto_item->GetFlags(), ITEM_SHOOT_THRU );
+    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLinesStr(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+                                   GetField( hx, hy ).Flags.IsNotPassed = true;
+                                   if( !raked )
+                                       GetField( hx, hy ).Flags.IsNotRaked = true;
+                                   );
 }
 
 void HexManager::ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
@@ -336,12 +336,12 @@ void HexManager::ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item 
     if( !proto_item )
         return;
 
-    FOREACH_PROTO_ITEM_LINES( proto_item->BlockLines, hx, hy, GetMaxHexX(), GetMaxHexY(),
-                              GetField( hx, hy ).ProcessCache();
-                              );
+    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLinesStr(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+                                   GetField( hx, hy ).ProcessCache();
+                                   );
 }
 
-bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, const UCharVecVec* data )
+bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data )
 {
     if( !id )
     {
@@ -378,7 +378,7 @@ bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
             if( item_old->IsFinishing() )
                 item_old->StopFinishing();
             if( data )
-                item_old->Props.RestoreData( false, *data );
+                item_old->Props.RestoreData( *data );
             return true;
         }
         else
@@ -395,12 +395,12 @@ bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
     PushItem( item );
 
     // Check ViewField size
-    if( !ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetOffsetX(), item->GetOffsetY(), true ) )
+    if( !ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetActualOffsetX(), item->GetActualOffsetY(), true ) )
     {
         // Draw
         if( GetHexToDraw( hx, hy ) && !item->IsHidden() && !item->IsFullyTransparent() )
         {
-            Sprite& spr = mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), hx, hy + item->Proto->DrawOrderOffsetHexY, item->SpriteCut,
+            Sprite& spr = mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), hx, hy + item->Proto->GetDrawOrderOffsetHexY(), item->SpriteCut,
                                                  f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                  &item->DrawEffect, &item->SprDrawValid );
             if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
@@ -442,7 +442,7 @@ ItemHexVec::iterator HexManager::DeleteItem( ItemHex* item, bool with_delete /* 
     ushort hx = item->GetHexX();
     ushort hy = item->GetHexY();
 
-    if( item->IsBlocks() )
+    if( item->Proto->IsBlockLinesData() )
         ReplaceItemBlocks( item->HexX, item->HexY, item->Proto );
     if( item->SprDrawValid )
         item->SprDraw->Unvalidate();
@@ -491,7 +491,7 @@ void HexManager::ProcessItems()
                 item->HexScrY = &f_.ScrY;
                 if( GetHexToDraw( step.first, step.second ) )
                 {
-                    item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), step.first, step.second + item->Proto->DrawOrderOffsetHexY, item->SpriteCut,
+                    item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), step.first, step.second + item->Proto->GetDrawOrderOffsetHexY(), item->SpriteCut,
                                                             f_.ScrX + HEX_OX, f_.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                             &item->DrawEffect, &item->SprDrawValid );
                     if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
@@ -524,7 +524,7 @@ void HexManager::PushItem( ItemHex* item )
     f.AddItem( item );
 
     // Blocks
-    if( item->IsBlocks() )
+    if( item->Proto->IsBlockLinesData() )
         PlaceItemBlocks( hx, hy, item->Proto );
 
     // Sort
@@ -662,7 +662,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
 
     if( GetHexToDraw( from_hx, from_hy ) )
     {
-        item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), from_hx, from_hy + item->Proto->DrawOrderOffsetHexY, item->SpriteCut,
+        item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), from_hx, from_hy + item->Proto->GetDrawOrderOffsetHexY(), item->SpriteCut,
                                                 f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                 &item->DrawEffect, &item->SprDrawValid );
         if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
@@ -990,7 +990,7 @@ void HexManager::RebuildMap( int rx, int ry )
                         continue;
                     #endif
 
-                    Sprite& spr = mainTree.AddSprite( DRAW_ORDER_ITEM_AUTO( item ), nx, ny + item->Proto->DrawOrderOffsetHexY, item->SpriteCut,
+                    Sprite& spr = mainTree.AddSprite( DRAW_ORDER_ITEM_AUTO( item ), nx, ny + item->Proto->GetDrawOrderOffsetHexY(), item->SpriteCut,
                                                       f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                       &item->DrawEffect, &item->SprDrawValid );
                     if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
@@ -1687,7 +1687,7 @@ bool HexManager::IsVisible( uint spr_id, int ox, int oy )
 
 bool HexManager::ProcessHexBorders( ItemHex* item )
 {
-    return ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetOffsetX(), item->GetOffsetY(), true );
+    return ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetActualOffsetX(), item->GetActualOffsetY(), true );
 }
 
 bool HexManager::ProcessHexBorders( uint spr_id, int ox, int oy, bool resize_map )
@@ -3933,13 +3933,13 @@ bool HexManager::ParseScenery( SceneryCl& scen )
 
     // Mapper additional parameters
     bool refresh_anim = false;
-    scenery->LightIntensity = scen.LightIntensity;
-    scenery->LightDistance = scen.LightDistance;
-    scenery->LightColor = scen.LightColor;
-    scenery->LightFlags = scen.LightFlags;
+    scenery->SetLightIntensity( scen.LightIntensity );
+    scenery->SetLightDistance( scen.LightDistance );
+    scenery->SetLightColor( scen.LightColor );
+    scenery->SetLightFlags( scen.LightFlags );
     if( scen.PicMap )
     {
-        scenery->PicMap = scen.PicMap;
+        scenery->SetPicMap( scen.PicMap );
         refresh_anim = true;
     }
 
@@ -3951,7 +3951,7 @@ bool HexManager::ParseScenery( SceneryCl& scen )
         scenery->RefreshAnim();
     PushItem( scenery );
     if( !scenery->IsHidden() && !scenery->IsFullyTransparent() )
-        ProcessHexBorders( scenery->Anim->GetSprId( 0 ), scen.OffsetX ? scen.OffsetX : proto_item->OffsetX, scen.OffsetY ? scen.OffsetY : proto_item->OffsetY, false );
+        ProcessHexBorders( scenery->Anim->GetSprId( 0 ), scen.OffsetX ? scen.OffsetX : proto_item->GetOffsetX(), scen.OffsetY ? scen.OffsetY : proto_item->GetOffsetY(), false );
     return true;
 }
 
@@ -4083,12 +4083,12 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             AffectItem( o, item );
             o->RunTime.MapObjId = cur_id;
 
-            ProcessHexBorders( item->SprId, item->GetOffsetX(), item->GetOffsetY(), false );
+            ProcessHexBorders( item->SprId, item->GetActualOffsetX(), item->GetActualOffsetY(), false );
         }
         else if( o->MapObjType == MAP_OBJECT_CRITTER )
         {
-            CritData* pnpc = CrMngr.GetProto( o->ProtoId );
-            if( !pnpc )
+            ProtoCritter* proto = CrMngr.GetProto( o->ProtoId );
+            if( !proto )
             {
                 WriteLog( "Proto<%u> npc not found.\n", o->ProtoId );
                 continue;
@@ -4112,10 +4112,10 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             }
 
             CritterCl* cr = new CritterCl();
-            cr->SetBaseType( pnpc->BaseType );
+            cr->Props = *proto->Props;
+            cr->SetBaseType( proto->GetBaseType() );
             cr->DefItemSlotHand->SetProto( pitem_main ? pitem_main : ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
             cr->DefItemSlotArmor->SetProto( pitem_armor ? pitem_armor : ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
-            memcpy( cr->Params, pnpc->Params, sizeof( pnpc->Params ) );
             cr->HexX = o->MapX;
             cr->HexY = o->MapY;
             cr->SetDir( (uchar) o->MCritter.Dir );
@@ -4437,28 +4437,28 @@ void HexManager::MarkPassedHexes()
 void HexManager::AffectItem( MapObject* mobj, ItemHex* item )
 {
     uint  old_spr_id = item->SprId;
-    short old_ox = item->OffsetX;
-    short old_oy = item->OffsetY;
+    short old_ox = item->GetOffsetX();
+    short old_oy = item->GetOffsetY();
 
     mobj->LightIntensity = CLAMP( mobj->LightIntensity, -100, 100 );
 
-    item->LightIntensity = mobj->LightIntensity;
-    item->LightColor = mobj->LightColor;
-    item->LightFlags = ( mobj->LightDirOff | ( ( mobj->LightDay & 3 ) << 6 ) );
-    item->LightDistance = mobj->LightDistance;
+    item->SetLightIntensity( mobj->LightIntensity );
+    item->SetLightColor( mobj->LightColor );
+    item->SetLightFlags( mobj->LightDirOff | ( ( mobj->LightDay & 3 ) << 6 ) );
+    item->SetLightDistance( mobj->LightDistance );
 
     mobj->MItem.PicMap = ( mobj->RunTime.PicMapName[ 0 ] ? Str::GetHash( mobj->RunTime.PicMapName ) : 0 );
     mobj->MItem.PicInv = ( mobj->RunTime.PicInvName[ 0 ] ? Str::GetHash( mobj->RunTime.PicInvName ) : 0 );
-    item->PicMap = mobj->MItem.PicMap;
-    item->PicInv = mobj->MItem.PicInv;
+    item->SetPicMap( mobj->MItem.PicMap );
+    item->SetPicInv( mobj->MItem.PicInv );
 
-    item->OffsetX = mobj->MItem.OffsetX;
-    item->OffsetY = mobj->MItem.OffsetY;
+    item->SetOffsetX( mobj->MItem.OffsetX );
+    item->SetOffsetY( mobj->MItem.OffsetY );
 
     if( item->IsHasLocker() )
-        item->LockerCondition = mobj->MItem.LockerCondition;
+        item->SetLockerCondition( mobj->MItem.LockerCondition );
 
-    int cut = ( mobj->MScenery.SpriteCut ? mobj->MScenery.SpriteCut : item->Proto->SpriteCut );
+    int cut = ( mobj->MScenery.SpriteCut ? mobj->MScenery.SpriteCut : item->Proto->GetSpriteCut() );
     if( mobj->MapObjType == MAP_OBJECT_SCENERY && item->SpriteCut != cut )
     {
         item->SpriteCut = cut;
@@ -4467,8 +4467,8 @@ void HexManager::AffectItem( MapObject* mobj, ItemHex* item )
 
     item->RefreshAnim();
 
-    if( item->SprId != old_spr_id || item->OffsetX != old_ox || item->OffsetX != old_oy )
-        ProcessHexBorders( item->SprId, item->OffsetX, item->OffsetY, true );
+    if( item->SprId != old_spr_id || item->GetOffsetX() != old_ox || item->GetOffsetY() != old_oy )
+        ProcessHexBorders( item->SprId, item->GetOffsetX(), item->GetOffsetY(), true );
 }
 
 void HexManager::AffectCritter( MapObject* mobj, CritterCl* cr )
@@ -4504,15 +4504,10 @@ void HexManager::AffectCritter( MapObject* mobj, CritterCl* cr )
 
     if( mobj->MCritter.Params )
     {
-        for( int i = 0; i < MAX_PARAMS; i++ )
+        for( size_t i = 0, j = mobj->MCritter.Params->size() / 2; i < j; i++ )
         {
-            int value = (int) ConvertParamValue( mobj->MCritter.Params[ i ]->c_str() );
-            if( cr->Params[ i ] != value )
-            {
-                cr->Params[ i ] = value;
-                if( i >= ST_ANIM3D_LAYER_BEGIN && i <= ST_ANIM3D_LAYER_END )
-                    refresh = true;
-            }
+            int value = (int) ConvertParamValue( mobj->MCritter.Params->at( i * 2 + 1 )->c_str() );
+            cr->Props.SetValueAsIntByName( mobj->MCritter.Params->at( i * 2 )->c_str(), value );
         }
     }
 

@@ -1205,26 +1205,6 @@ GameOptions::GameOptions()
     SkillModAdd5 = 175;
     SkillModAdd6 = 200;
 
-    AbsoluteOffsets = true;
-    SkillBegin = 200;
-    SkillEnd = 217;
-    TimeoutBegin = 230;
-    TimeoutEnd = 249;
-    KillBegin = 260;
-    KillEnd = 278;
-    PerkBegin = 300;
-    PerkEnd = 435;
-    AddictionBegin = 470;
-    AddictionEnd = 476;
-    KarmaBegin = 480;
-    KarmaEnd = 495;
-    DamageBegin = 500;
-    DamageEnd = 506;
-    TraitBegin = 550;
-    TraitEnd = 565;
-    ReputationBegin = 570;
-    ReputationEnd = 599;
-
     ReputationLoved = 30;
     ReputationLiked = 15;
     ReputationAccepted = 1;
@@ -1343,7 +1323,6 @@ GameOptions::GameOptions()
     ConsoleHistorySize = 20;
     SoundVolume = 100;
     MusicVolume = 100;
-    RegParams = NULL;
     RegName = ScriptString::Create();
     RegPassword = ScriptString::Create();
     ChosenLightColor = 0;
@@ -1360,7 +1339,6 @@ GameOptions::GameOptions()
     SplitTilesCollection = true;
 
     // Engine data
-    CritterChangeParameter = NULL;
     CritterTypes = NULL;
 
     ClientMap = NULL;
@@ -1684,50 +1662,6 @@ void Thread_Sleep( uint ms ) // Used in Mutex.h as extern function
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
-
-void Deprecated_CondExtToAnim2( uchar cond, uchar cond_ext, uint& anim2ko, uint& anim2dead )
-{
-    if( cond == COND_KNOCKOUT )
-    {
-        if( cond_ext == 2 )
-            anim2ko = ANIM2_IDLE_PRONE_FRONT;  // COND_KNOCKOUT_FRONT
-        anim2ko = ANIM2_IDLE_PRONE_BACK;       // COND_KNOCKOUT_BACK
-    }
-    else if( cond == COND_DEAD )
-    {
-        switch( cond_ext )
-        {
-        case 1:
-            anim2dead = ANIM2_DEAD_FRONT; // COND_DEAD_FRONT
-        case 2:
-            anim2dead = ANIM2_DEAD_BACK;  // COND_DEAD_BACK
-        case 3:
-            anim2dead = 112;              // COND_DEAD_BURST -> ANIM2_DEAD_BURST
-        case 4:
-            anim2dead = 110;              // COND_DEAD_BLOODY_SINGLE -> ANIM2_DEAD_BLOODY_SINGLE
-        case 5:
-            anim2dead = 111;              // COND_DEAD_BLOODY_BURST -> ANIM2_DEAD_BLOODY_BURST
-        case 6:
-            anim2dead = 113;              // COND_DEAD_PULSE -> ANIM2_DEAD_PULSE
-        case 7:
-            anim2dead = 114;              // COND_DEAD_PULSE_DUST -> ANIM2_DEAD_PULSE_DUST
-        case 8:
-            anim2dead = 115;              // COND_DEAD_LASER -> ANIM2_DEAD_LASER
-        case 9:
-            anim2dead = 117;              // COND_DEAD_EXPLODE -> ANIM2_DEAD_EXPLODE
-        case 10:
-            anim2dead = 116;              // COND_DEAD_FUSED -> ANIM2_DEAD_FUSED
-        case 11:
-            anim2dead = 118;              // COND_DEAD_BURN -> ANIM2_DEAD_BURN
-        case 12:
-            anim2dead = 118;              // COND_DEAD_BURN2 -> ANIM2_DEAD_BURN
-        case 13:
-            anim2dead = 119;              // COND_DEAD_BURN_RUN -> ANIM2_DEAD_BURN_RUN
-        default:
-            anim2dead = ANIM2_DEAD_FRONT;
-        }
-    }
-}
 
 // Preprocessor output formatting
 int InsertTabs( string& str, int cur_pos, int level )

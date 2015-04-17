@@ -221,7 +221,7 @@ string FOServer::GetIngamePlayersStatistics()
         Str::Format( str_map, "%s (%u, %u)", map ? map->Proto->GetName() : "", map ? map->GetId() : 0, map ? map->GetPid() : 0 );
         Str::Format( str, "%-20s %-9u %-15s %-7s %-8s %-5u %-5u %-30s %-30s %-4d\n",
                      cl->GetName(), cl->GetId(), cl->GetIpStr(), cl->IsOffline() ? "No" : "Yes", cond_states_str[ cl->Data.Cond ],
-                     map ? cl->GetHexX() : cl->Data.WorldX, map ? cl->GetHexY() : cl->Data.WorldY, map ? str_loc : "Global map", map ? str_map : "", cl->Data.Params[ ST_LEVEL ] );
+                     map ? cl->GetHexX() : cl->Data.WorldX, map ? cl->GetHexY() : cl->Data.WorldY, map ? str_loc : "Global map", map ? str_map : "", cl->GetLevel() );
         result += str;
     }
     return result;
@@ -273,7 +273,7 @@ void FOServer::DisconnectClient( Client* cl )
             {
                 Critter* cr = *it;
                 if( cr != cl )
-                    cr->Send_CritterParam( cl, OTHER_FLAGS, cl->Flags );
+                    cr->Send_CustomCommand( cl, OTHER_FLAGS, cl->Flags );
             }
         }
     }
@@ -1533,25 +1533,68 @@ void FOServer::Process( ClientPtr& cl )
     else if( cl->GameState == STATE_PLAYING )
     {
         #define MESSAGES_PER_CYCLE    ( 5 )
-        #define CHECK_BUSY_AND_LIFE                                                                                               \
-            if( !cl->IsLife() )                                                                                                   \
-                break; if( cl->IsBusy() && !Singleplayer ) { cl->Bin.MoveReadPos( -int( sizeof( msg ) ) ); BIN_END( cl ); return; \
+        #define CHECK_BUSY_AND_LIFE                           \
+            if( !cl->IsLife() )                               \
+                break;                                        \
+            if( cl->IsBusy() && !Singleplayer )               \
+            {                                                 \
+                cl->Bin.MoveReadPos( -int( sizeof( msg ) ) ); \
+                BIN_END( cl );                                \
+                return;                                       \
             }
+        #define CHECK_AP_MSG                                                         \
+            uchar ap;                                                                \
+            cl->Bin >> ap;                                                           \
+            if( !Singleplayer )                                                      \
+            {                                                                        \
+                if( !cl->IsTurnBased() )                                             \
+                {                                                                    \
+                    if( ap > cl->GetActionPoints() )                                 \
+                        break;                                                       \
+                    if( (int) ap > cl->GetCurrentAp() / AP_DIVIDER )                 \
+                    {                                                                \
+                        cl->Bin.MoveReadPos( -int( sizeof( msg ) + sizeof( ap ) ) ); \
+                        BIN_END( cl );                                               \
+                        return;                                                      \
+                    }                                                                \
+                }                                                                    \
+            }
+        #define CHECK_AP( ap )                                           \
+            if( !Singleplayer )                                          \
+            {                                                            \
+                if( !cl->IsTurnBased() )                                 \
+                {                                                        \
+                    if( (int) ( ap ) > cl->GetActionPoints() )           \
+                        break;                                           \
+                    if( (int) ( ap ) > cl->GetCurrentAp() / AP_DIVIDER ) \
+                    {                                                    \
+                        cl->Bin.MoveReadPos( -int( sizeof( msg ) ) );    \
+                        BIN_END( cl );                                   \
+                        return;                                          \
+                    }                                                    \
+                }                                                        \
+            }
+        #define CHECK_REAL_AP( ap )                                         \
+            if( !Singleplayer )                                             \
+            {                                                               \
+                if( !cl->IsTurnBased() )                                    \
+                {                                                           \
+                    if( (int) ( ap ) > cl->GetActionPoints() * AP_DIVIDER ) \
+                        break;                                              \
+                    if( (int) ( ap ) > cl->GetRealAp() )                    \
+                    {                                                       \
+                        cl->Bin.MoveReadPos( -int( sizeof( msg ) ) );       \
+                        BIN_END( cl );                                      \
+                        return;                                             \
+                    }                                                       \
+                }                                                           \
+            }
+        #define CHECK_IS_GLOBAL                  \
+            if( cl->GetMap() || !cl->GroupMove ) \
+                break
         #define CHECK_NO_GLOBAL \
             if( !cl->GetMap() ) \
-                break;
-            #define CHECK_IS_GLOBAL                  \
-                if( cl->GetMap() || !cl->GroupMove ) \
-                    break;
-                #define CHECK_AP_MSG                                                                                                      \
-                    uchar ap; cl->Bin >> ap; if( !Singleplayer ) { if( !cl->IsTurnBased() ) { if( ap > cl->GetParam( ST_ACTION_POINTS ) ) \
-                                                                                                  break; if( (int) ap > cl->GetParam( ST_CURRENT_AP ) ) { cl->Bin.MoveReadPos( -int( sizeof( msg ) + sizeof( ap ) ) ); BIN_END( cl ); return; } } }
-        #define CHECK_AP( ap )                                                                                     \
-            if( !Singleplayer ) { if( !cl->IsTurnBased() ) { if( (int) ( ap ) > cl->GetParam( ST_ACTION_POINTS ) ) \
-                                                                 break; if( (int) ( ap ) > cl->GetParam( ST_CURRENT_AP ) ) { cl->Bin.MoveReadPos( -int( sizeof( msg ) ) ); BIN_END( cl ); return; } } }
-        #define CHECK_REAL_AP( ap )                                                                                             \
-            if( !Singleplayer ) { if( !cl->IsTurnBased() ) { if( (int) ( ap ) > cl->GetParam( ST_ACTION_POINTS ) * AP_DIVIDER ) \
-                                                                 break; if( (int) ( ap ) > cl->GetRealAp() ) { cl->Bin.MoveReadPos( -int( sizeof( msg ) ) ); BIN_END( cl ); return; } } }
+                break
 
         for( int i = 0; i < MESSAGES_PER_CYCLE; i++ )
         {
@@ -1684,12 +1727,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_RATE_ITEM:
-            {
-                Process_RateItem( cl );
-                BIN_END( cl );
-                continue;
-            }
             case NETMSG_SEND_USE_SKILL:
             {
                 CHECK_BUSY_AND_LIFE;
@@ -1764,13 +1801,6 @@ void FOServer::Process( ClientPtr& cl )
                 continue;
             }
             break;
-            case NETMSG_SEND_GIVE_GLOBAL_INFO:
-            {
-                CHECK_IS_GLOBAL;
-                Process_GiveGlobalInfo( cl );
-                BIN_END( cl );
-                continue;
-            }
             case NETMSG_SEND_RULE_GLOBAL:
             {
                 CHECK_BUSY_AND_LIFE;
@@ -1817,33 +1847,63 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
+            case NETMSG_SEND_CRITTER_POD_PROPERTY( 1 ):
+            {
+                Process_Property( cl, 1, true );
+                BIN_END( cl );
+                continue;
+            }
+            case NETMSG_SEND_CRITTER_POD_PROPERTY( 2 ):
+            {
+                Process_Property( cl, 2, true );
+                BIN_END( cl );
+                continue;
+            }
+            case NETMSG_SEND_CRITTER_POD_PROPERTY( 4 ):
+            {
+                Process_Property( cl, 4, true );
+                BIN_END( cl );
+                continue;
+            }
+            case NETMSG_SEND_CRITTER_POD_PROPERTY( 8 ):
+            {
+                Process_Property( cl, 8, true );
+                BIN_END( cl );
+                continue;
+            }
+            case NETMSG_SEND_CRITTER_COMPLEX_PROPERTY:
+            {
+                Process_Property( cl, 0, true );
+                BIN_END( cl );
+                continue;
+            }
             case NETMSG_SEND_ITEM_POD_PROPERTY( 1 ):
             {
-                Process_ItemProperty( cl, 1 );
+                Process_Property( cl, 1, false );
                 BIN_END( cl );
                 continue;
             }
             case NETMSG_SEND_ITEM_POD_PROPERTY( 2 ):
             {
-                Process_ItemProperty( cl, 2 );
+                Process_Property( cl, 2, false );
                 BIN_END( cl );
                 continue;
             }
             case NETMSG_SEND_ITEM_POD_PROPERTY( 4 ):
             {
-                Process_ItemProperty( cl, 4 );
+                Process_Property( cl, 4, false );
                 BIN_END( cl );
                 continue;
             }
             case NETMSG_SEND_ITEM_POD_PROPERTY( 8 ):
             {
-                Process_ItemProperty( cl, 8 );
+                Process_Property( cl, 8, false );
                 BIN_END( cl );
                 continue;
             }
             case NETMSG_SEND_ITEM_COMPLEX_PROPERTY:
             {
-                Process_ItemProperty( cl, 0 );
+                Process_Property( cl, 0, false );
                 BIN_END( cl );
                 continue;
             }
@@ -2314,28 +2374,33 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         }
     }
     break;
-    case CMD_PARAM:
+    case CMD_PROPERTY:
     {
-        uint   crid;
-        ushort param_num;
-        int    param_val;
+        uint crid;
+        char property_name[ 256 ];
+        int  property_value;
         buf >> crid;
-        buf >> param_num;
-        buf >> param_val;
+        buf.Pop( property_name, sizeof( property_name ) );
+        buf >> property_value;
 
         CHECK_ALLOW_COMMAND;
 
         Critter* cr = ( !crid ? cl_ : CrMngr.GetCritter( crid, true ) );
         if( cr )
         {
-            if( param_num >= MAX_PARAMS )
+            Property* prop = Critter::PropertiesRegistrator->Find( property_name );
+            if( !prop )
             {
-                logcb( "Wrong param number." );
+                logcb( "Property not found." );
+                return;
+            }
+            if( !prop->IsPOD() || prop->GetBaseSize() != 4 )
+            {
+                logcb( "For now you can modify only int/uint properties." );
                 return;
             }
 
-            cr->ChangeParam( param_num );
-            cr->Data.Params[ param_num ] = param_val;
+            prop->SetValue< int >( cr, property_value );
             logcb( "Done." );
         }
         else
@@ -2453,7 +2518,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         CHECK_ADMIN_PANEL;
 
         Map* map = MapMngr.GetMap( cl_->GetMap() );
-        Npc* npc = CrMngr.CreateNpc( pid, 0, NULL, 0, NULL, NULL, map, hex_x, hex_y, dir, true );
+        Npc* npc = CrMngr.CreateNpc( pid, NULL, NULL, NULL, map, hex_x, hex_y, dir, true );
         if( !npc )
             logcb( "Npc not created." );
         else
@@ -3396,21 +3461,7 @@ bool FOServer::InitReal()
     STATIC_ASSERT( sizeof( void* ) == 8 );
     #endif
 
-    // Critters parameters
-    Critter::ParamsSendMsgLen = sizeof( Critter::ParamsSendCount );
-    Critter::ParamsSendCount = 0;
-    memzero( Critter::ParamsSendEnabled, sizeof( Critter::ParamsSendEnabled ) );
-    memzero( Critter::ParamsChangeScript, sizeof( Critter::ParamsChangeScript ) );
-    memzero( Critter::ParamsGetScript, sizeof( Critter::ParamsGetScript ) );
-    memzero( Critter::SlotDataSendEnabled, sizeof( Critter::SlotDataSendEnabled ) );
-    for( int i = 0; i < MAX_PARAMS; i++ )
-        Critter::ParamsChosenSendMask[ i ] = uint( -1 );
-
     // Register dll script data
-    struct CritterChangeParameter_
-    {
-        static void CritterChangeParameter( void* cr, uint index ) { ( (Critter*) cr )->ChangeParam( index ); } };
-    GameOpt.CritterChangeParameter = &CritterChangeParameter_::CritterChangeParameter;
     GameOpt.CritterTypes = &CritType::GetRealCritType( 0 );
 
     // Cpu count
@@ -4564,13 +4615,14 @@ bool FOServer::LoadWorld( const char* fname )
         version != WORLD_SAVE_V5 && version != WORLD_SAVE_V6 && version != WORLD_SAVE_V7 && version != WORLD_SAVE_V8 &&
         version != WORLD_SAVE_V9 && version != WORLD_SAVE_V10 && version != WORLD_SAVE_V11 && version != WORLD_SAVE_V12 &&
         version != WORLD_SAVE_V13 && version != WORLD_SAVE_V14 && version != WORLD_SAVE_V15 && version != WORLD_SAVE_V16 &&
-        version != WORLD_SAVE_V17 && version != WORLD_SAVE_V18 && version != WORLD_SAVE_V19 && version != WORLD_SAVE_V20 )
+        version != WORLD_SAVE_V17 && version != WORLD_SAVE_V18 && version != WORLD_SAVE_V19 && version != WORLD_SAVE_V20 &&
+        version != WORLD_SAVE_V21 )
     {
         WriteLog( "Unknown version<%u> of world dump file.\n", version );
         FileClose( f );
         return false;
     }
-    if( version < WORLD_SAVE_V20 )
+    if( version < WORLD_SAVE_V21 )
     {
         WriteLog( "Version of save file is not supported.\n" );
         FileClose( f );
@@ -5527,22 +5579,6 @@ string FOServer::GetAnyDataStatistics()
 /*                                                                      */
 /************************************************************************/
 
-template< class T >
-void ModifyVec( UCharVec& vec, T data )
-{
-    size_t cur = vec.size();
-    vec.resize( cur + sizeof( data ) );
-    memcpy( &vec[ cur ], &data, sizeof( data ) );
-}
-
-template< class T >
-void ModifyVecArr( UCharVec& vec, T* data, size_t size )
-{
-    size_t cur = vec.size();
-    vec.resize( cur + size );
-    memcpy( &vec[ cur ], data, size );
-}
-
 void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
 {
     if( !GameOpt.UpdateServer )
@@ -5577,10 +5613,10 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
             char msg_cache_name[ MAX_FOPATH ];
             lang_pack.GetMsgCacheName( i, msg_cache_name );
 
-            ModifyVec( UpdateFilesList, (short) Str::Length( msg_cache_name ) );
-            ModifyVecArr( UpdateFilesList, msg_cache_name, Str::Length( msg_cache_name ) );
-            ModifyVec( UpdateFilesList, update_file.Size );
-            ModifyVec( UpdateFilesList, Crypt.Crc32( update_file.Data, update_file.Size ) );
+            WriteData( UpdateFilesList, (short) Str::Length( msg_cache_name ) );
+            WriteDataArr( UpdateFilesList, msg_cache_name, Str::Length( msg_cache_name ) );
+            WriteData( UpdateFilesList, update_file.Size );
+            WriteData( UpdateFilesList, Crypt.Crc32( update_file.Data, update_file.Size ) );
         }
     }
 
@@ -5597,10 +5633,10 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
     char protos_cache_name[ MAX_FOPATH ];
     Str::Format( protos_cache_name, CACHE_ITEM_PROTOS );
 
-    ModifyVec( UpdateFilesList, (short) Str::Length( protos_cache_name ) );
-    ModifyVecArr( UpdateFilesList, protos_cache_name, Str::Length( protos_cache_name ) );
-    ModifyVec( UpdateFilesList, update_file.Size );
-    ModifyVec( UpdateFilesList, Crypt.Crc32( update_file.Data, update_file.Size ) );
+    WriteData( UpdateFilesList, (short) Str::Length( protos_cache_name ) );
+    WriteDataArr( UpdateFilesList, protos_cache_name, Str::Length( protos_cache_name ) );
+    WriteData( UpdateFilesList, update_file.Size );
+    WriteData( UpdateFilesList, Crypt.Crc32( update_file.Data, update_file.Size ) );
 
     // Fill files
     StrVec file_names, file_names_targets;
@@ -5671,16 +5707,16 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
         update_file.Data = file.ReleaseBuffer();
         UpdateFiles.push_back( update_file );
 
-        ModifyVec( UpdateFilesList, (short) file_name_target.length() );
-        ModifyVecArr( UpdateFilesList, file_name_target.c_str(), (uint) file_name_target.length() );
-        ModifyVec( UpdateFilesList, update_file.Size );
-        ModifyVec( UpdateFilesList, hash );
+        WriteData( UpdateFilesList, (short) file_name_target.length() );
+        WriteDataArr( UpdateFilesList, file_name_target.c_str(), (uint) file_name_target.length() );
+        WriteData( UpdateFilesList, update_file.Size );
+        WriteData( UpdateFilesList, hash );
 
         file_names_targets.push_back( file_name_target );
     }
 
     // Complete files list
-    ModifyVec( UpdateFilesList, (short) -1 );
+    WriteData( UpdateFilesList, (short) -1 );
 
     // Disconnect all connected clients to force data updating
     if( !first_generation )

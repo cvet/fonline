@@ -10,7 +10,7 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint 
         return NULL;
 
     // Check blockers
-    if( check_blocks && proto_item->IsBlocks() && !map->IsPlaceForItem( hx, hy, proto_item ) )
+    if( check_blocks && proto_item->IsBlockLinesData() && !map->IsPlaceForItem( hx, hy, proto_item ) )
         return NULL;
 
     // Create instance
@@ -28,7 +28,7 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint 
     // Create childs
     for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
     {
-        hash child_pid = item->Proto->ChildPid[ i ];
+        hash child_pid = item->Proto->GetChildPid( i );
         if( !child_pid )
             continue;
 
@@ -37,14 +37,13 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint 
             continue;
 
         ushort child_hx = hx, child_hy = hy;
-        FOREACH_PROTO_ITEM_LINES( item->Proto->ChildLines[ i ], child_hx, child_hy, map->GetMaxHexX(), map->GetMaxHexY(),;
-                                  );
+        FOREACH_PROTO_ITEM_LINES( item->Proto->GetChildLinesStr( i ), child_hx, child_hy, map->GetMaxHexX(), map->GetMaxHexY() );
 
         CreateItemOnHex( map, child_hx, child_hy, child_pid, 1, false );
     }
 
     // Recursive non-stacked items
-    if( !proto_item->Stackable && count > 1 )
+    if( !proto_item->GetStackable() && count > 1 )
         return CreateItemOnHex( map, hx, hy, pid, count - 1 );
 
     return item;
@@ -183,7 +182,7 @@ void FOServer::OnSendItemValue( void* obj, Property* prop, void* cur_value, void
                     if( is_public || is_protected )
                         cr->Send_CritterItemProperty( cr, item, prop );
                     if( is_public )
-                        cr->SendAA_CritterItemProperty( item, prop );
+                        cr->SendA_CritterItemProperty( item, prop );
                 }
             }
         }
@@ -207,26 +206,27 @@ void FOServer::OnSendItemValue( void* obj, Property* prop, void* cur_value, void
 void FOServer::OnSetItemCount( void* obj, Property* prop, void* cur_value, void* old_value )
 {
     Item* item = (Item*) obj;
+    uint  cur = *(uint*) cur_value;
     uint  old = *(uint*) old_value;
-    if( item->IsStackable() && (int) item->Count > 0 )
+    if( (int) cur > 0 && ( item->IsStackable() || cur == 1 ) )
     {
-        int diff = (int) item->Count - (int) old;
+        int diff = (int) item->GetCount() - (int) old;
         ItemMngr.ChangeItemStatistics( item->GetProtoId(), diff );
     }
     else
     {
-        item->Count = old;
+        item->SetCount( old );
         if( !item->IsStackable() )
             SCRIPT_ERROR_R( "Trying to change count of not stackable item." );
         else
-            SCRIPT_ERROR_R( "Item count can't be zero or negative (%d).", (int) item->Count );
+            SCRIPT_ERROR_R( "Item count can't be zero or negative (%d).", (int) cur );
     }
 }
 
 void FOServer::OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value )
 {
     Item* item = (Item*) obj;
-    uint  value = item->Flags;
+    uint  value = item->GetCount();
     uint  old = *(uint*) old_value;
     Map*  map = NULL;
 

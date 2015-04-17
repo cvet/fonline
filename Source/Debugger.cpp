@@ -79,7 +79,7 @@ void Debugger::ShowLags( int num_block, double lag_to_show )
     }
 }
 
-#define MAX_MEM_NODES    ( 17 )
+#define MAX_MEM_NODES    ( 18 )
 struct MemNode
 {
     int64 AllocMem;
@@ -106,6 +106,7 @@ const char* MemBlockNames[ MAX_MEM_NODES ] =
     "Images       ",
     "Script string",
     "Script arrays",
+    "Script dict  ",
     "Angel Script ",
 };
 

@@ -66,16 +66,6 @@ void ItemManager::Clear()
 
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_OBJECT_EDITOR ) || defined ( FONLINE_MAPPER )
 
-template< class T >
-T ResolveProtoValue( const char* str )
-{
-    if( Str::IsNumber( str ) )
-        return ( T ) Str::AtoI64( str );
-    else if( Str::Substring( str, "\\" ) || Str::Substring( str, "/" ) )
-        return ( T ) Str::GetHash( str );
-    return ( T ) ConstantsManager::GetDefineValue( str );
-}
-
 bool ItemManager::LoadProtos()
 {
     WriteLog( "Load item prototypes...\n" );
@@ -99,6 +89,7 @@ bool ItemManager::LoadProtos()
 
     allProto.clear();
 
+    int  errors = 0;
     uint loaded = 0;
     for( int i = 0; i < count; i++ )
     {
@@ -112,10 +103,14 @@ bool ItemManager::LoadProtos()
             ParseProtos( item_protos, collection_name );
             loaded += (uint) item_protos.size();
         }
+        else
+        {
+            errors++;
+        }
     }
 
-    WriteLog( "Load item prototypes complete, count<%u>.\n", loaded );
-    return true;
+    WriteLog( "Load item prototypes complete, loaded<%u>.%s\n", loaded, errors ? " With errors." : "" );
+    return errors == 0;
 }
 
 bool ItemManager::LoadProtos( ProtoItemVec& protos, const char* fname )
@@ -123,280 +118,29 @@ bool ItemManager::LoadProtos( ProtoItemVec& protos, const char* fname )
     IniParser fopro;
     if( !fopro.LoadFile( fname, PT_SERVER_PRO_ITEMS ) )
     {
-        WriteLogF( _FUNC_, " - File<%s> not found.\n", fname );
+        WriteLog( "File<%s> not found.\n", fname );
         return false;
     }
 
-    char svalue[ MAX_FOTEXT ];
-    char name_[ MAX_FOTEXT ];      // For deprecated conversion
-    while( true )
+    int errors = 0;
+    while( fopro.GotoNextApp( "Proto" ) )
     {
-        if( !fopro.GotoNextApp( "Proto" ) )
-            break;
-
-        ProtoItem*       proto_item = new ProtoItem();
-        bool             deprecated = fopro.GetStr( "Proto", "Pid", "", svalue ); // Detect deprecated by 'Pid', instead new 'ProtoId'
-        asIScriptEngine* engine = Script::GetEngine();
-        asIObjectType*   ot = engine->GetObjectTypeById( engine->GetTypeIdByDecl( "ProtoItem" ) );
-
-        for( int i = 0, j = ot->GetPropertyCount(); i < j; i++ )
+        const char* app = fopro.GetApp( "Proto" );
+        ProtoItem*  proto = new ProtoItem();
+        proto->ProtoId = proto->Props.LoadFromText( app );
+        if( proto->ProtoId )
         {
-            const char* name;
-            int         type_id;
-            int         offset;
-            ot->GetProperty( i, &name, &type_id, NULL, NULL, &offset );
-
-            if( !fopro.GetStr( "Proto", name, "", svalue ) )
-            {
-                if( deprecated )
-                {
-                    // Convert '_' to '.' and try again
-                    Str::Copy( name_, name );
-                    bool  swapped = false;
-                    char* str = name_;
-                    while( *str )
-                    {
-                        if( *str == '_' )
-                        {
-                            *str = '.';
-                            swapped = true;
-                            break;
-                        }
-                        ++str;
-                    }
-
-                    if( !swapped || !fopro.GetStr( "Proto", name_, "", svalue ) )
-                    {
-                        if( Str::Compare( name, "ProtoId" ) )
-                            Str::Copy( name_, "Pid" );
-                        else if( Str::Compare( name, "PicInv" ) || Str::Compare( name_, "PicMap" ) )
-                            Str::Append( name_, "Name" );
-                        else if( Str::Compare( name, "Armor_CrTypeMale" ) )
-                            Str::Copy( name_, "Armor.Anim0Male" );
-                        else if( Str::Compare( name, "Armor_CrTypeFemale" ) )
-                            Str::Copy( name_, "Armor.Anim0Female" );
-                        else if( Str::Compare( name, "Weapon_CriticalFailture" ) )
-                            Str::Copy( name_, "Weapon.CrFailture" );
-                        else if( Str::Compare( name, "Weapon_MinStrength" ) )
-                            Str::Copy( name_, "Weapon.MinSt" );
-                        else if( Str::Compare( name, "Stackable" ) )
-                            Str::Copy( name_, "Weapon.NoWear" );
-                        else if( Str::Compare( name, "Weapon_ActiveUses" ) )
-                            Str::Copy( name_, "Weapon.CountAttack" );
-                        else if( Str::Compare( name, "Weapon_PicUse_0" ) )
-                            Str::Copy( name_, "Weapon.PicName_0" );
-                        else if( Str::Compare( name, "Weapon_PicUse_1" ) )
-                            Str::Copy( name_, "Weapon.PicName_1" );
-                        else if( Str::Compare( name, "Weapon_PicUse_2" ) )
-                            Str::Copy( name_, "Weapon.PicName_2" );
-                        else if( Str::Compare( name, "Weapon_ApCost_0" ) )
-                            Str::Copy( name_, "Weapon.Time_0" );
-                        else if( Str::Compare( name, "Weapon_ApCost_1" ) )
-                            Str::Copy( name_, "Weapon.Time_1" );
-                        else if( Str::Compare( name, "Weapon_ApCost_2" ) )
-                            Str::Copy( name_, "Weapon.Time_2" );
-                        else if( Str::Compare( name, "Car_Speed" ) )
-                            Str::Copy( name_, "MiscEx.Car.Speed" );
-                        else if( Str::Compare( name, "Car_Passability" ) )
-                            Str::Copy( name_, "MiscEx.Car.Negotiability" );
-                        else if( Str::Compare( name, "Car_DeteriorationRate" ) )
-                            Str::Copy( name_, "MiscEx.Car.WearConsumption" );
-                        else if( Str::Compare( name, "Car_CrittersCapacity" ) )
-                            Str::Copy( name_, "MiscEx.Car.CritCapacity" );
-                        else if( Str::Compare( name, "Car_TankVolume" ) )
-                            Str::Copy( name_, "MiscEx.Car.FuelTank" );
-                        else if( Str::Compare( name, "Car_MaxDeterioration" ) )
-                            Str::Copy( name_, "MiscEx.Car.RunToBreak" );
-                        else if( Str::Compare( name, "Car_FuelConsumption" ) )
-                            Str::Copy( name_, "MiscEx.Car.FuelConsumption" );
-                        else if( Str::Compare( name, "Car_Entrance" ) )
-                            Str::Copy( name_, "MiscEx.Car.Entire" );
-                        else if( Str::Compare( name, "Car_MovementType" ) )
-                            Str::Copy( name_, "MiscEx.Car.WalkType" );
-                        else if( Str::Compare( name, "ChildLines_0" ) )
-                            Str::Copy( name_, "MiscEx.Car.Bag_0" );
-                        else if( Str::Compare( name, "ChildLines_1" ) )
-                            Str::Copy( name_, "MiscEx.Car.Bag_1" );
-                        else if( Str::Compare( name, "BlockLines" ) )
-                            Str::Copy( name_, "MiscEx.Car.Blocks" );
-                        else if( Str::Compare( name, "StartValue_1" ) )
-                            Str::Copy( name_, "MiscEx.StartVal1" );
-                        else if( Str::Compare( name, "StartValue_2" ) )
-                            Str::Copy( name_, "MiscEx.StartVal2" );
-                        else if( Str::Compare( name, "StartValue_3" ) )
-                            Str::Copy( name_, "MiscEx.StartVal3" );
-                        else if( Str::Compare( name, "StartCount" ) )
-                            Str::Copy( name_, "Ammo.StartCount" );
-                        else if( Str::Compare( name, "Weapon_MaxAmmoCount" ) )
-                            Str::Copy( name_, "Weapon.VolHolder" );
-                        else if( Str::Compare( name, "Weapon_DefaultAmmoPid" ) )
-                            Str::Copy( name_, "Weapon.DefAmmo" );
-                        else if( Str::Compare( name, "Container_Volume" ) )
-                            Str::Copy( name_, "Container.ContVolume" );
-                        else if( Str::Compare( name, "Ammo_AcMod" ) )
-                            Str::Copy( name_, "Ammo.ACMod" );
-                        else if( Str::Compare( name, "Ammo_DrMod" ) )
-                            Str::Copy( name_, "Ammo.DRMod" );
-                        else
-                            continue;
-
-                        fopro.GetStr( "Proto", name_, "", svalue );
-                    }
-
-                    if( !svalue[ 0 ] )
-                        continue;
-                }
-                else
-                {
-                    continue;
-                }
-            }
-
-            // Blocks, childs
-            if( Str::Compare( name, "BlockLines" ) || Str::CompareCount( name, "ChildLines_", 11 ) )
-            {
-                // Get lines destination
-                uchar* lines;
-                uint   max_count;
-                if( Str::Compare( name, "BlockLines" ) )
-                {
-                    lines = proto_item->BlockLines;
-                    max_count = sizeof( proto_item->BlockLines );
-                }
-                else
-                {
-                    int child_index = name[ 11 ] - '0';
-                    if( child_index < 0 || child_index >= ITEM_MAX_CHILDS )
-                        continue;
-                    lines = proto_item->ChildLines[ child_index ];
-                    max_count = sizeof( proto_item->ChildLines[ child_index ] );
-
-                    // Convert dir-dir-dir to dir-1-dir-1-dir-1
-                    if( deprecated )
-                    {
-                        char step1[] = "1";
-                        for( int k = 0, l = Str::Length( svalue ); k < l; k++ )
-                            Str::Insert( &svalue[ k * 2 + 1 ], step1 );
-                        for( char* s = svalue; s[ 0 ] && s[ 2 ];)
-                            if( s[ 0 ] == s[ 2 ] )
-                            {
-                                s[ 1 ]++;
-                                Str::EraseInterval( s + 2, 2 );
-                            }
-                            else
-                            {
-                                s += 2;
-                            }
-                    }
-                }
-
-                // Parse lines
-                uint svalue_len = Str::Length( svalue );
-                for( uint k = 0; k / 2 < max_count && k + 1 < svalue_len; k += 2 )
-                {
-                    uchar dir = ( svalue[ k ] - '0' ) & 0xF;
-                    uchar steps = ( svalue[ k + 1 ] - '0' ) & 0xF;
-                    if( dir >= DIRS_COUNT || !steps )
-                        break;
-                    lines[ k / 2 ] = ( dir << 4 ) | steps;
-                }
-            }
-            // Resolve value
-            else
-            {
-                int size = engine->GetSizeOfPrimitiveType( type_id );
-                switch( size )
-                {
-                case sizeof( uchar ):
-                    *(uchar*) ( ( (uchar*) proto_item ) + offset ) = ResolveProtoValue< uchar >( svalue );
-                    break;
-                case sizeof( ushort ):
-                    *(ushort*) ( ( (uchar*) proto_item ) + offset ) = ResolveProtoValue< ushort >( svalue );
-                    break;
-                case sizeof( uint ):
-                    *(uint*) ( ( (uchar*) proto_item ) + offset ) = ResolveProtoValue< uint >( svalue );
-                    break;
-                case sizeof( int64 ):
-                    *(int64*) ( ( (uchar*) proto_item ) + offset ) = ResolveProtoValue< int64 >( svalue );
-                    break;
-                default:
-                    break;
-                }
-            }
+            protos.push_back( proto );
         }
-
-        if( deprecated )
+        else
         {
-            // Car
-            if( fopro.GetStr( "Proto", "MiscEx.IsCar", "", svalue ) )
-            {
-                proto_item->Type = ITEM_TYPE_CAR;
-                proto_item->ChildPid[ 0 ] = proto_item->StartValue[ 1 ];
-                proto_item->ChildPid[ 1 ] = proto_item->StartValue[ 2 ];
-                proto_item->ChildPid[ 2 ] = proto_item->StartValue[ 3 ];
-                proto_item->StartValue[ 1 ] = proto_item->StartValue[ 2 ] = proto_item->StartValue[ 3 ];
-            }
-
-            // Stacking, Deteriorating
-            if( proto_item->Type == ITEM_TYPE_AMMO || proto_item->Type == ITEM_TYPE_DRUG || proto_item->Type == ITEM_TYPE_MISC )
-                proto_item->Stackable = true;
-            if( proto_item->Type == ITEM_TYPE_WEAPON )
-            {
-                if( fopro.GetStr( "Proto", "Weapon.NoWear", "", svalue ) )
-                    proto_item->Stackable = true;
-                else
-                    proto_item->Deteriorable = true;
-            }
-            if( proto_item->Type == ITEM_TYPE_ARMOR )
-                proto_item->Deteriorable = true;
-
-            // ITEM_TYPE_MISC_EX (6)
-            if( proto_item->Type == 6 )
-                proto_item->Type = ITEM_TYPE_MISC;
-
-            // IsGroundLevel
-            proto_item->GroundLevel = true;
-            if( proto_item->Type == ITEM_TYPE_CONTAINER )
-                proto_item->GroundLevel = ( proto_item->Container_MagicHandsGrnd ? true : false );
-            else if( proto_item->IsDoor() || proto_item->IsCar() || proto_item->IsScen() ||
-                     proto_item->IsGrid() || !proto_item->IsCanPickUp() )
-                proto_item->GroundLevel = false;
-
-            // Unarmed
-            if( proto_item->Weapon_IsUnarmed )
-            {
-                proto_item->Stackable = false;
-                proto_item->Deteriorable = false;
-            }
-
-            // No open container
-            if( fopro.GetStr( "Proto", "Container.IsNoOpen", "", svalue ) )
-                SETFLAG( proto_item->Locker_Condition, LOCKER_NOOPEN );
-        }
-
-        if( proto_item->ProtoId )
-        {
-            // Check script
-            # ifdef FONLINE_SERVER
-            char script_module[ MAX_SCRIPT_NAME + 1 ];
-            char script_func[ MAX_SCRIPT_NAME + 1 ];
-            fopro.GetStr( "Proto", "ScriptModule", "", script_module );
-            fopro.GetStr( "Proto", "ScriptFunc", "", script_func );
-            if( script_module[ 0 ] && script_func[ 0 ] )
-                proto_item->ScriptName = Str::FormatBuf( "%s@%s", script_module, script_func );
-            # endif
-
-            // Add to collection
-            protos.push_back( proto_item );
+            WriteLog( "Invalid data in proto item.\n" );
+            delete proto;
+            errors++;
         }
     }
 
-    if( protos.empty() )
-    {
-        WriteLogF( _FUNC_, " - Proto items not found<%s>.\n", fname );
-        return false;
-    }
-    return true;
+    return errors == 0;
 }
 #endif
 
@@ -405,7 +149,7 @@ void ItemManager::ParseProtos( ProtoItemVec& protos, const char* collection_name
 {
     if( protos.empty() )
     {
-        WriteLogF( _FUNC_, " - List is empty, parsing ended.\n" );
+        WriteLog( "List is empty, parsing ended.\n" );
         return;
     }
 
@@ -416,14 +160,14 @@ void ItemManager::ParseProtos( ProtoItemVec& protos, const char* collection_name
 
         if( !pid )
         {
-            WriteLogF( _FUNC_, " - Invalid zero pid of item prototype.\n" );
+            WriteLog( "Invalid zero pid of item prototype.\n" );
             continue;
         }
 
         if( allProto.count( pid ) )
         {
             ClearProto( pid );
-            WriteLogF( _FUNC_, " - Item prototype is already parsed, pid<%u>. Rewrite.\n", pid );
+            WriteLog( "Item prototype is already parsed, pid<%u>. Rewrite.\n", pid );
         }
 
         allProto.insert( PAIR( pid, proto_item ) );
@@ -455,13 +199,24 @@ void ItemManager::ClearProto( hash pid )
 
 void ItemManager::GetBinaryData( UCharVec& data )
 {
-    size_t proto_size = OFFSETOF( ProtoItem, InstanceCount );
-    data.resize( allProto.size() * proto_size );
-    size_t cur_proto = 0;
+    data.resize( 0 );
+    WriteData( data, (uint) allProto.size() );
     for( auto it = allProto.begin(), end = allProto.end(); it != end; ++it )
     {
-        memcpy( &data[ cur_proto * proto_size ], ( *it ).second, proto_size );
-        cur_proto++;
+        hash       proto_id = it->first;
+        ProtoItem* proto = it->second;
+        PUCharVec* props_data;
+        UIntVec*   props_data_sizes;
+        uint       data_size = proto->Props.StoreData( true, &props_data, &props_data_sizes );
+        data.reserve( (uint) data.size() + sizeof( proto_id ) + sizeof( ushort ) + sizeof( uint ) * props_data->size() + data_size );
+        WriteData( data, proto_id );
+        WriteData( data, (ushort) props_data->size() );
+        for( size_t i = 0; i < props_data->size(); i++ )
+        {
+            uint cur_size = props_data_sizes->at( i );
+            WriteData( data, cur_size );
+            WriteDataArr( data, props_data->at( i ), cur_size );
+        }
     }
 
     Crypt.Compress( data );
@@ -473,16 +228,26 @@ void ItemManager::SetBinaryData( UCharVec& data )
 
     if( !Crypt.Uncompress( data, 15 ) )
         return;
-
-    size_t proto_size = OFFSETOF( ProtoItem, InstanceCount );
-    if( data.size() == 0 || data.size() % proto_size != 0 )
+    if( data.size() < sizeof( uint ) )
         return;
 
-    size_t protos_count = data.size() / proto_size;
-    for( size_t i = 0; i < protos_count; i++ )
+    PUCharVec props_data;
+    UIntVec   props_data_sizes;
+    uint      read_pos = 0;
+    uint      protos_count = ReadData< uint >( data, read_pos );
+    for( uint i = 0; i < protos_count; i++ )
     {
         ProtoItem* proto_item = new ProtoItem();
-        memcpy( proto_item, &data[ i * proto_size ], proto_size );
+        proto_item->ProtoId = ReadData< hash >( data, read_pos );
+        uint       data_count = ReadData< ushort >( data, read_pos );
+        props_data.resize( data_count );
+        props_data_sizes.resize( data_count );
+        for( uint j = 0; j < data_count; j++ )
+        {
+            props_data_sizes[ j ] = ReadData< uint >( data, read_pos );
+            props_data[ j ] = ReadDataArr< uchar >( data, props_data_sizes[ j ], read_pos );
+        }
+        proto_item->Props.RestoreData( props_data, props_data_sizes );
         allProto.insert( PAIR( proto_item->ProtoId, proto_item ) );
     }
 }
@@ -570,7 +335,7 @@ void ItemManager::RunInitScriptItems()
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = ( *it ).second;
-        if( item->ScriptId )
+        if( item->GetScriptId() )
             item->ParseScript( NULL, false );
     }
 }
@@ -688,7 +453,7 @@ Item* ItemManager::SplitItem( Item* item, uint count )
         return NULL;
     }
 
-    uint item_count = item->Count;
+    uint item_count = item->GetCount();
     if( !count || count >= item_count )
     {
         WriteLogF( _FUNC_, " - Invalid count, id<%u>, pid<%u>, count<%u>, split count<%u>.\n", item->GetId(), item->GetProtoId(), item_count, count );
@@ -732,7 +497,7 @@ void ItemManager::ItemToGarbage( Item* item )
 {
     SCOPE_LOCK( itemLocker );
     itemToDelete.push_back( item->GetId() );
-    itemToDeleteCount.push_back( item->Count );
+    itemToDeleteCount.push_back( item->GetCount() );
 }
 
 void ItemManager::ItemGarbager()
@@ -767,7 +532,7 @@ void ItemManager::ItemGarbager()
             SYNC_LOCK( item );
 
             // Maybe some items added
-            if( item->IsStackable() && item->Count > count )
+            if( item->IsStackable() && item->GetCount() > count )
             {
                 itemLocker.Lock();
                 gameItems.insert( PAIR( id, item ) );
@@ -788,7 +553,7 @@ void ItemManager::ItemGarbager()
                 EraseItemHolder( item );
 
             // Erase from statistics
-            ChangeItemStatistics( item->GetProtoId(), -(int) item->Count );
+            ChangeItemStatistics( item->GetProtoId(), -(int) item->GetCount() );
 
             // Erase from radio collection
             if( item->IsRadio() )
@@ -839,7 +604,7 @@ void ItemManager::MoveItem( Item* item, uint count, Critter* to_cr )
     if( item->Accessory == ITEM_ACCESSORY_CRITTER && item->AccCritter.Id == to_cr->GetId() )
         return;
 
-    if( count >= item->Count || !item->IsStackable() )
+    if( count >= item->GetCount() || !item->IsStackable() )
     {
         EraseItemHolder( item );
         to_cr->AddItem( item, true );
@@ -857,7 +622,7 @@ void ItemManager::MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, u
     if( item->Accessory == ITEM_ACCESSORY_HEX && item->AccHex.MapId == to_map->GetId() && item->AccHex.HexX == to_hx && item->AccHex.HexY == to_hy )
         return;
 
-    if( count >= item->Count || !item->IsStackable() )
+    if( count >= item->GetCount() || !item->IsStackable() )
     {
         EraseItemHolder( item );
         to_map->AddItem( item, to_hx, to_hy );
@@ -875,7 +640,7 @@ void ItemManager::MoveItem( Item* item, uint count, Item* to_cont, uint stack_id
     if( item->Accessory == ITEM_ACCESSORY_CONTAINER && item->AccContainer.ContainerId == to_cont->GetId() && item->AccContainer.StackId == stack_id )
         return;
 
-    if( count >= item->Count || !item->IsStackable() )
+    if( count >= item->GetCount() || !item->IsStackable() )
     {
         EraseItemHolder( item );
         to_cont->ContAddItem( item, stack_id );
@@ -923,7 +688,7 @@ Item* ItemManager::AddItemContainer( Item* cont, hash pid, uint count, uint stac
         if( !proto_item )
             return result;
 
-        if( proto_item->Stackable )
+        if( proto_item->GetStackable() )
         {
             item = ItemMngr.CreateItem( pid, count );
             if( !item )
@@ -984,7 +749,7 @@ Item* ItemManager::AddItemCritter( Critter* cr, hash pid, uint count )
         if( !proto_item )
             return result;
 
-        if( proto_item->Stackable )
+        if( proto_item->GetStackable() )
         {
             item = ItemMngr.CreateItem( pid, count );
             if( !item )
@@ -1021,7 +786,7 @@ bool ItemManager::SubItemCritter( Critter* cr, hash pid, uint count, ItemVec* er
 
     if( item->IsStackable() )
     {
-        if( count >= item->Count )
+        if( count >= item->GetCount() )
         {
             cr->EraseItem( item, true );
             if( !erased_items )
@@ -1077,10 +842,10 @@ bool ItemManager::MoveItemCritters( Critter* from_cr, Critter* to_cr, uint item_
     if( !item )
         return false;
 
-    if( !count || count > item->Count )
-        count = item->Count;
+    if( !count || count > item->GetCount() )
+        count = item->GetCount();
 
-    if( item->IsStackable() && item->Count > count )
+    if( item->IsStackable() && item->GetCount() > count )
     {
         Item* item_ = to_cr->GetItemByPid( item->GetProtoId() );
         if( !item_ )
@@ -1119,10 +884,10 @@ bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint i
     if( !item )
         return false;
 
-    if( !count || count > item->Count )
-        count = item->Count;
+    if( !count || count > item->GetCount() )
+        count = item->GetCount();
 
-    if( item->IsStackable() && item->Count > count )
+    if( item->IsStackable() && item->GetCount() > count )
     {
         Item* item_ = to_cont->ContGetItemByPid( item->GetProtoId(), stack_id );
         if( !item_ )
@@ -1162,10 +927,10 @@ bool ItemManager::MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, uint
     if( !item )
         return false;
 
-    if( !count || count > item->Count )
-        count = item->Count;
+    if( !count || count > item->GetCount() )
+        count = item->GetCount();
 
-    if( item->IsStackable() && item->Count > count )
+    if( item->IsStackable() && item->GetCount() > count )
     {
         Item* item_ = to_cr->GetItemByPid( item->GetProtoId() );
         if( !item_ )
@@ -1259,9 +1024,9 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
     {
         Item* item = *it;
         if( item->IsRadio() && item->RadioIsSendActive() &&
-            std::find( channels.begin(), channels.end(), item->RadioChannel ) == channels.end() )
+            std::find( channels.begin(), channels.end(), item->GetRadioChannel() ) == channels.end() )
         {
-            channels.push_back( item->RadioChannel );
+            channels.push_back( item->GetRadioChannel() );
             radios.push_back( item );
 
             if( radios.size() > 100 )
@@ -1272,7 +1037,7 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
     for( uint i = 0, j = (uint) radios.size(); i < j; i++ )
     {
         RadioSendTextEx( channels[ i ],
-                         radios[ i ]->RadioBroadcastSend, cr->GetMap(), cr->Data.WorldX, cr->Data.WorldY,
+                         radios[ i ]->GetRadioBroadcastSend(), cr->GetMap(), cr->Data.WorldX, cr->Data.WorldY,
                          text, text_len, cr->IntellectCacheValue, unsafe_text, text_msg, num_str, NULL );
     }
 }
@@ -1308,16 +1073,16 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
     {
         Item* radio = *it;
 
-        if( radio->RadioChannel == channel && radio->RadioIsRecvActive() )
+        if( radio->GetRadioChannel() == channel && radio->RadioIsRecvActive() )
         {
-            if( broadcast_type != RADIO_BROADCAST_FORCE_ALL && radio->RadioBroadcastRecv != RADIO_BROADCAST_FORCE_ALL )
+            if( broadcast_type != RADIO_BROADCAST_FORCE_ALL && radio->GetRadioBroadcastRecv() != RADIO_BROADCAST_FORCE_ALL )
             {
                 if( broadcast_type == RADIO_BROADCAST_WORLD )
-                    broadcast = radio->RadioBroadcastRecv;
-                else if( radio->RadioBroadcastRecv == RADIO_BROADCAST_WORLD )
+                    broadcast = radio->GetRadioBroadcastRecv();
+                else if( radio->GetRadioBroadcastRecv() == RADIO_BROADCAST_WORLD )
                     broadcast = broadcast_type;
                 else
-                    broadcast = MIN( broadcast_type, radio->RadioBroadcastRecv );
+                    broadcast = MIN( broadcast_type, radio->GetRadioBroadcastRecv() );
 
                 if( broadcast == RADIO_BROADCAST_WORLD )
                     broadcast = RADIO_BROADCAST_FORCE_ALL;

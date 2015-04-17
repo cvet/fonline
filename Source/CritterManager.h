@@ -6,13 +6,15 @@
 
 #ifdef FONLINE_SERVER
 # include "Critter.h"
+#else
+# include "CritterCl.h"
 #endif
 
 
 class CritterManager
 {
 private:
-    CritDataMap allProtos;
+    ProtoCritterMap allProtos;
 
 public:
     CritterManager() { MEMORY_PROCESS( MEMORY_STATIC, sizeof( CritterManager ) ); }
@@ -22,9 +24,9 @@ public:
     void Finish();
     void Clear();
 
-    bool         LoadProtos();
-    CritData*    GetProto( hash proto_id );
-    CritDataMap& GetAllProtos();
+    bool             LoadProtos();
+    ProtoCritter*    GetProto( hash proto_id );
+    ProtoCritterMap& GetAllProtos();
 
     #ifdef FONLINE_SERVER
 private:
@@ -43,7 +45,7 @@ public:
     void CritterToGarbage( Critter* cr );
     void CritterGarbager();
 
-    Npc* CreateNpc( hash proto_id, uint params_count, int* params, uint items_count, int* items, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy );
+    Npc* CreateNpc( hash proto_id, IntVec* props_data, IntVec* items_data, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy );
     Npc* CreateNpc( hash proto_id, bool copy_data );
 
     void     AddCritter( Critter* cr );

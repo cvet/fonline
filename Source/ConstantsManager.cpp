@@ -6,10 +6,8 @@
 
 const char* CollectionFiles[] =
 {
-    "ParamNames.lst",
     "ItemNames.lst",
     "DefineNames.lst",
-    "PictureNames.lst",
     "HashNames.lst",
 };
 
@@ -129,16 +127,6 @@ const char* ConstantsManager::GetName( int collection, int value )
     return ( *it ).second.c_str();
 }
 
-int ConstantsManager::GetParamId( const char* str )
-{
-    return GetValue( CONSTANTS_PARAM, str );
-}
-
-const char* ConstantsManager::GetParamName( uint index )
-{
-    return GetName( CONSTANTS_PARAM, index );
-}
-
 uint ConstantsManager::GetItemPid( const char* str )
 {
     int value = GetValue( CONSTANTS_ITEM, str );
@@ -167,9 +155,4 @@ int ConstantsManager::GetDefineValue( const char* str )
         return 0;
     }
     return ( *it ).second;
-}
-
-const char* ConstantsManager::GetPictureName( uint index )
-{
-    return GetName( CONSTANTS_PICTURE, index );
 }

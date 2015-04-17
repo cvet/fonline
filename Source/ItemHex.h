@@ -13,7 +13,7 @@ struct AnyFrames;
 class ItemHex: public Item
 {
 public:
-    ItemHex( uint id, ProtoItem* proto, const UCharVecVec* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut );
+    ItemHex( uint id, ProtoItem* proto, UCharVecVec* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut );
 
 public:
     uint       SprId;
@@ -43,10 +43,10 @@ public:
     bool   IsWall()             { return Proto->IsWall(); }
     ushort GetHexX()            { return HexX; }
     ushort GetHexY()            { return HexY; }
-    short  GetOffsetX()         { return OffsetX ? OffsetX : Proto->OffsetX; }
-    short  GetOffsetY()         { return OffsetY ? OffsetY : Proto->OffsetY; }
+    short  GetActualOffsetX()   { return GetOffsetX() ? GetOffsetX() : Proto->GetOffsetX(); }
+    short  GetActualOffsetY()   { return GetOffsetY() ? GetOffsetY() : Proto->GetOffsetY(); }
     bool   IsAnimated()         { return isAnimated; }
-    bool   IsCanLook()          { return !( Proto->IsGrid() && Proto->Grid_Type == GRID_EXITGRID ); }
+    bool   IsCanLook()          { return !( Proto->IsGrid() && Proto->GetGrid_Type() == GRID_EXITGRID ); }
     bool   IsUsable()           { return !IsWall() && ( IsCanUse() || IsCanUseOnSmth() || IsCanPickUp() || ( IsScenOrGrid() && FLAG( ScenFlags, SCEN_CAN_USE ) ) ); }
     bool   IsTalkable()         { return !IsWall() && ( IsCanTalk() || ( IsScenOrGrid() && FLAG( ScenFlags, SCEN_CAN_TALK ) ) ); }
     bool   IsDrawContour()      { return /*IsFocused && */ IsItem() && !IsNoHighlight() && !IsBadItem(); }

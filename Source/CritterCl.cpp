@@ -9,15 +9,187 @@
 # include "Script.h"
 #endif
 
-int  CritterCl::ParamsChangeScript[ MAX_PARAMS ] = { 0 };
-int  CritterCl::ParamsGetScript[ MAX_PARAMS ] = { 0 };
-bool CritterCl::ParamsRegEnabled[ MAX_PARAMS ] = { 0 };
-int  CritterCl::ParamsReg[ MAX_PARAMS ] = { 0 };
-uint CritterCl::ParametersMin[ MAX_PARAMETERS_ARRAYS ] = { 0 };
-uint CritterCl::ParametersMax[ MAX_PARAMETERS_ARRAYS ] = { MAX_PARAMS - 1 };
-bool CritterCl::SlotEnabled[ 0x100 ] = { true, true, true, true, 0 };
+bool   CritterCl::SlotEnabled[ 0x100 ];
+IntSet CritterCl::RegProperties;
 
-CritterCl::CritterCl()
+PROPERTIES_IMPL( CritterCl );
+CLASS_PROPERTY_IMPL( CritterCl, Anim3dLayer );
+CLASS_PROPERTY_IMPL( CritterCl, Strength );
+CLASS_PROPERTY_IMPL( CritterCl, Perception );
+CLASS_PROPERTY_IMPL( CritterCl, Agility );
+CLASS_PROPERTY_IMPL( CritterCl, Charisma );
+CLASS_PROPERTY_IMPL( CritterCl, Intellect );
+CLASS_PROPERTY_IMPL( CritterCl, BaseCrType );
+CLASS_PROPERTY_IMPL( CritterCl, Gender );
+CLASS_PROPERTY_IMPL( CritterCl, Level );
+CLASS_PROPERTY_IMPL( CritterCl, Experience );
+CLASS_PROPERTY_IMPL( CritterCl, BonusLook );
+CLASS_PROPERTY_IMPL( CritterCl, DialogId );
+CLASS_PROPERTY_IMPL( CritterCl, BagId );
+CLASS_PROPERTY_IMPL( CritterCl, NpcRole );
+CLASS_PROPERTY_IMPL( CritterCl, TeamId );
+CLASS_PROPERTY_IMPL( CritterCl, AiId );
+CLASS_PROPERTY_IMPL( CritterCl, FollowCrit );
+CLASS_PROPERTY_IMPL( CritterCl, FreeBarterPlayer );
+CLASS_PROPERTY_IMPL( CritterCl, LastWeaponId );
+CLASS_PROPERTY_IMPL( CritterCl, HandsItemProtoId );
+CLASS_PROPERTY_IMPL( CritterCl, HandsItemMode );
+CLASS_PROPERTY_IMPL( CritterCl, KarmaVoting );
+CLASS_PROPERTY_IMPL( CritterCl, MaxTalkers );
+CLASS_PROPERTY_IMPL( CritterCl, TalkDistance );
+CLASS_PROPERTY_IMPL( CritterCl, CarryWeight );
+CLASS_PROPERTY_IMPL( CritterCl, CurrentHp );
+CLASS_PROPERTY_IMPL( CritterCl, ActionPoints );
+CLASS_PROPERTY_IMPL( CritterCl, CurrentAp );
+CLASS_PROPERTY_IMPL( CritterCl, MaxMoveAp );
+CLASS_PROPERTY_IMPL( CritterCl, MoveAp );
+CLASS_PROPERTY_IMPL( CritterCl, TurnBasedAc );
+CLASS_PROPERTY_IMPL( CritterCl, ReplicationMoney );
+CLASS_PROPERTY_IMPL( CritterCl, ReplicationCost );
+CLASS_PROPERTY_IMPL( CritterCl, ReplicationCount );
+CLASS_PROPERTY_IMPL( CritterCl, ReplicationTime );
+CLASS_PROPERTY_IMPL( CritterCl, WalkTime );
+CLASS_PROPERTY_IMPL( CritterCl, RunTime );
+CLASS_PROPERTY_IMPL( CritterCl, ScaleFactor );
+CLASS_PROPERTY_IMPL( CritterCl, SkillUnarmed );
+CLASS_PROPERTY_IMPL( CritterCl, SkillSneak );
+CLASS_PROPERTY_IMPL( CritterCl, SkillBarter );
+CLASS_PROPERTY_IMPL( CritterCl, SkillLockpick );
+CLASS_PROPERTY_IMPL( CritterCl, SkillSteal );
+CLASS_PROPERTY_IMPL( CritterCl, SkillTraps );
+CLASS_PROPERTY_IMPL( CritterCl, SkillFirstAid );
+CLASS_PROPERTY_IMPL( CritterCl, SkillDoctor );
+CLASS_PROPERTY_IMPL( CritterCl, SkillScience );
+CLASS_PROPERTY_IMPL( CritterCl, SkillRepair );
+CLASS_PROPERTY_IMPL( CritterCl, SkillSpeech );
+CLASS_PROPERTY_IMPL( CritterCl, TimeoutBattle );
+CLASS_PROPERTY_IMPL( CritterCl, TimeoutTransfer );
+CLASS_PROPERTY_IMPL( CritterCl, TimeoutRemoveFromGame );
+CLASS_PROPERTY_IMPL( CritterCl, TimeoutKarmaVoting );
+CLASS_PROPERTY_IMPL( CritterCl, TimeoutSkScience );
+CLASS_PROPERTY_IMPL( CritterCl, TimeoutSkRepair );
+CLASS_PROPERTY_IMPL( CritterCl, DefaultCombat );
+CLASS_PROPERTY_IMPL( CritterCl, IsInvulnerable );
+CLASS_PROPERTY_IMPL( CritterCl, IsDlgScriptBarter );
+CLASS_PROPERTY_IMPL( CritterCl, IsUnlimitedAmmo );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoUnarmed );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoFavoriteItem );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoPush );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoItemGarbager );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoEnemyStack );
+CLASS_PROPERTY_IMPL( CritterCl, IsGeck );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoLoot );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoSteal );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoHome );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoWalk );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoRun );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoTalk );
+CLASS_PROPERTY_IMPL( CritterCl, IsHide );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoFlatten );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoAim );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoBarter );
+CLASS_PROPERTY_IMPL( CritterCl, IsEndCombat );
+CLASS_PROPERTY_IMPL( CritterCl, IsDamagedEye );
+CLASS_PROPERTY_IMPL( CritterCl, IsDamagedRightArm );
+CLASS_PROPERTY_IMPL( CritterCl, IsDamagedLeftArm );
+CLASS_PROPERTY_IMPL( CritterCl, IsDamagedRightLeg );
+CLASS_PROPERTY_IMPL( CritterCl, IsDamagedLeftLeg );
+CLASS_PROPERTY_IMPL( CritterCl, PerkQuickPockets );
+CLASS_PROPERTY_IMPL( CritterCl, PerkMasterTrader );
+CLASS_PROPERTY_IMPL( CritterCl, PerkSilentRunning );
+
+void CritterCl::SetPropertyRegistrator( PropertyRegistrator* registrator )
+{
+    PROPERTIES_FIND();
+    CLASS_PROPERTY_FIND( Anim3dLayer );
+    CLASS_PROPERTY_FIND( Strength );
+    CLASS_PROPERTY_FIND( Perception );
+    CLASS_PROPERTY_FIND( Agility );
+    CLASS_PROPERTY_FIND( Charisma );
+    CLASS_PROPERTY_FIND( Intellect );
+    CLASS_PROPERTY_FIND( BaseCrType );
+    CLASS_PROPERTY_FIND( Gender );
+    CLASS_PROPERTY_FIND( Level );
+    CLASS_PROPERTY_FIND( Experience );
+    CLASS_PROPERTY_FIND( BonusLook );
+    CLASS_PROPERTY_FIND( DialogId );
+    CLASS_PROPERTY_FIND( BagId );
+    CLASS_PROPERTY_FIND( NpcRole );
+    CLASS_PROPERTY_FIND( TeamId );
+    CLASS_PROPERTY_FIND( AiId );
+    CLASS_PROPERTY_FIND( FollowCrit );
+    CLASS_PROPERTY_FIND( FreeBarterPlayer );
+    CLASS_PROPERTY_FIND( LastWeaponId );
+    CLASS_PROPERTY_FIND( HandsItemProtoId );
+    CLASS_PROPERTY_FIND( HandsItemMode );
+    CLASS_PROPERTY_FIND( KarmaVoting );
+    CLASS_PROPERTY_FIND( MaxTalkers );
+    CLASS_PROPERTY_FIND( TalkDistance );
+    CLASS_PROPERTY_FIND( CarryWeight );
+    CLASS_PROPERTY_FIND( CurrentHp );
+    CLASS_PROPERTY_FIND( ActionPoints );
+    CLASS_PROPERTY_FIND( CurrentAp );
+    CLASS_PROPERTY_FIND( MaxMoveAp );
+    CLASS_PROPERTY_FIND( MoveAp );
+    CLASS_PROPERTY_FIND( TurnBasedAc );
+    CLASS_PROPERTY_FIND( ReplicationMoney );
+    CLASS_PROPERTY_FIND( ReplicationCost );
+    CLASS_PROPERTY_FIND( ReplicationCount );
+    CLASS_PROPERTY_FIND( ReplicationTime );
+    CLASS_PROPERTY_FIND( WalkTime );
+    CLASS_PROPERTY_FIND( RunTime );
+    CLASS_PROPERTY_FIND( ScaleFactor );
+    CLASS_PROPERTY_FIND( SkillUnarmed );
+    CLASS_PROPERTY_FIND( SkillSneak );
+    CLASS_PROPERTY_FIND( SkillBarter );
+    CLASS_PROPERTY_FIND( SkillLockpick );
+    CLASS_PROPERTY_FIND( SkillSteal );
+    CLASS_PROPERTY_FIND( SkillTraps );
+    CLASS_PROPERTY_FIND( SkillFirstAid );
+    CLASS_PROPERTY_FIND( SkillDoctor );
+    CLASS_PROPERTY_FIND( SkillScience );
+    CLASS_PROPERTY_FIND( SkillRepair );
+    CLASS_PROPERTY_FIND( SkillSpeech );
+    CLASS_PROPERTY_FIND( TimeoutBattle );
+    CLASS_PROPERTY_FIND( TimeoutTransfer );
+    CLASS_PROPERTY_FIND( TimeoutRemoveFromGame );
+    CLASS_PROPERTY_FIND( TimeoutKarmaVoting );
+    CLASS_PROPERTY_FIND( TimeoutSkScience );
+    CLASS_PROPERTY_FIND( TimeoutSkRepair );
+    CLASS_PROPERTY_FIND( TimeoutRemoveFromGame );
+    CLASS_PROPERTY_FIND( TimeoutKarmaVoting );
+    CLASS_PROPERTY_FIND( DefaultCombat );
+    CLASS_PROPERTY_FIND( IsInvulnerable );
+    CLASS_PROPERTY_FIND( IsDlgScriptBarter );
+    CLASS_PROPERTY_FIND( IsUnlimitedAmmo );
+    CLASS_PROPERTY_FIND( IsNoUnarmed );
+    CLASS_PROPERTY_FIND( IsNoFavoriteItem );
+    CLASS_PROPERTY_FIND( IsNoPush );
+    CLASS_PROPERTY_FIND( IsNoItemGarbager );
+    CLASS_PROPERTY_FIND( IsNoEnemyStack );
+    CLASS_PROPERTY_FIND( IsGeck );
+    CLASS_PROPERTY_FIND( IsNoLoot );
+    CLASS_PROPERTY_FIND( IsNoSteal );
+    CLASS_PROPERTY_FIND( IsNoHome );
+    CLASS_PROPERTY_FIND( IsNoWalk );
+    CLASS_PROPERTY_FIND( IsNoRun );
+    CLASS_PROPERTY_FIND( IsNoTalk );
+    CLASS_PROPERTY_FIND( IsHide );
+    CLASS_PROPERTY_FIND( IsNoFlatten );
+    CLASS_PROPERTY_FIND( IsNoAim );
+    CLASS_PROPERTY_FIND( IsNoBarter );
+    CLASS_PROPERTY_FIND( IsEndCombat );
+    CLASS_PROPERTY_FIND( IsDamagedEye );
+    CLASS_PROPERTY_FIND( IsDamagedRightArm );
+    CLASS_PROPERTY_FIND( IsDamagedLeftArm );
+    CLASS_PROPERTY_FIND( IsDamagedRightLeg );
+    CLASS_PROPERTY_FIND( IsDamagedLeftLeg );
+    CLASS_PROPERTY_FIND( PerkQuickPockets );
+    CLASS_PROPERTY_FIND( PerkMasterTrader );
+    CLASS_PROPERTY_FIND( PerkSilentRunning );
+}
+
+CritterCl::CritterCl(): Props( PropertiesRegistrator )
 {
     CrDir = 0;
     SprId = 0;
@@ -57,20 +229,13 @@ CritterCl::CritterCl()
     OxExtSpeed = OyExtSpeed = 0;
     OffsExtNextTick = 0;
     Anim3d = Anim3dStay = NULL;
-    Layers3d = NULL;
     Multihex = 0;
     Name = ScriptString::Create();
     NameOnHead = ScriptString::Create();
-    Lexems = ScriptString::Create();
     Avatar = ScriptString::Create();
-    memzero( Params, sizeof( Params ) );
     ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
     ItemSlotArmor = DefItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
     tickFidget = Timer::GameTick() + Random( GameOpt.CritterFidgetTime, GameOpt.CritterFidgetTime * 2 );
-    for( int i = 0; i < MAX_PARAMETERS_ARRAYS; i++ )
-        ThisPtr[ i ] = this;
-    memzero( ParamsIsChanged, sizeof( ParamsIsChanged ) );
-    ParamLocked = -1;
     memzero( &stayAnim, sizeof( stayAnim ) );
     DrawEffect = Effect::Critter;
 }
@@ -80,18 +245,6 @@ CritterCl::~CritterCl()
     SprMngr.FreePure3dAnimation( Anim3d );
     SprMngr.FreePure3dAnimation( Anim3dStay );
     Anim3d = Anim3dStay = NULL;
-
-    if( Layers3d )
-    {
-        #ifdef FONLINE_CLIENT
-        ( (ScriptArray*) Layers3d )->Release();
-        #else
-        uint* layers = (uint*) Layers3d;
-        SAFEDELA( layers );
-        Layers3d = NULL;
-        #endif
-    }
-
     SAFEREL( DefItemSlotHand );
     SAFEREL( DefItemSlotArmor );
     ItemSlotMain = ItemSlotExt = DefItemSlotHand = ItemSlotArmor = DefItemSlotArmor = NULL;
@@ -230,7 +383,7 @@ Item* CritterCl::GetItemByPidInvPriority( hash item_pid )
     if( !proto_item )
         return NULL;
 
-    if( proto_item->Stackable )
+    if( proto_item->GetStackable() )
     {
         for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         {
@@ -271,7 +424,7 @@ Item* CritterCl::GetItemByPidSlot( hash item_pid, int slot )
 Item* CritterCl::GetAmmo( uint caliber )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        if( ( *it )->GetType() == ITEM_TYPE_AMMO && ( *it )->Proto->Ammo_Caliber == (int) caliber )
+        if( ( *it )->GetType() == ITEM_TYPE_AMMO && ( *it )->Proto->GetAmmo_Caliber() == (int) caliber )
             return *it;
     return NULL;
 }
@@ -309,7 +462,7 @@ uint CritterCl::CountItemPid( hash item_pid )
     uint result = 0;
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->GetProtoId() == item_pid )
-            result += ( *it )->Count;
+            result += ( *it )->GetCount();
     return result;
 }
 
@@ -318,7 +471,7 @@ uint CritterCl::CountItemType( uchar type )
     uint res = 0;
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
         if( ( *it )->GetType() == type )
-            res += ( *it )->Count;
+            res += ( *it )->GetCount();
     return res;
 }
 
@@ -344,7 +497,7 @@ Item* CritterCl::GetItemHighSortValue()
         Item* item = *it;
         if( !result )
             result = item;
-        else if( item->SortValue > result->SortValue )
+        else if( item->GetSortValue() > result->GetSortValue() )
             result = item;
     }
     return result;
@@ -358,7 +511,7 @@ Item* CritterCl::GetItemLowSortValue()
         Item* item = *it;
         if( !result )
             result = item;
-        else if( item->SortValue < result->SortValue )
+        else if( item->GetSortValue() < result->GetSortValue() )
             result = item;
     }
     return result;
@@ -380,7 +533,7 @@ uint CritterCl::GetItemsCount()
 {
     uint count = 0;
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        count += ( *it )->Count;
+        count += ( *it )->GetCount();
     return count;
 }
 
@@ -417,7 +570,7 @@ uint CritterCl::GetItemsVolume()
 int CritterCl::GetFreeWeight()
 {
     int cur_weight = GetItemsWeight();
-    int max_weight = GetParam( ST_CARRY_WEIGHT );
+    int max_weight = GetCarryWeight();
     return max_weight - cur_weight;
 }
 
@@ -470,7 +623,7 @@ hash CritterCl::GetUsePicName( uchar num_slot )
             return use_on_pic;
         if( use >= MAX_USES )
             return 0;
-        return item->Proto->Weapon_PicUse[ use ];
+        return ( use == 0 ? item->Proto->GetWeapon_PicUse_0() : ( use == 1 ? item->Proto->GetWeapon_PicUse_1() : item->Proto->GetWeapon_PicUse_2() ) );
     }
     if( item->IsCanUseOnSmth() )
         return use_on_pic;
@@ -486,8 +639,23 @@ bool CritterCl::IsItemAim( uchar num_slot )
     if( !item )
         return false;
     if( item->IsWeapon() && use < MAX_USES )
-        return item->Proto->Weapon_Aim[ use ] != 0;
+        return ( use == 0 ? item->Proto->GetWeapon_Aim_0() : ( use == 1 ? item->Proto->GetWeapon_Aim_1() : item->Proto->GetWeapon_Aim_2() ) ) != 0;
     return false;
+}
+
+bool CritterCl::IsCanTalk()
+{
+    return IsNpc() && IsLife() && GetDialogId() && !GetIsNoTalk();
+}
+
+bool CritterCl::IsCombatMode()
+{
+    return IS_TIMEOUT( GetTimeoutBattle() );
+}
+
+bool CritterCl::IsTurnBased()
+{
+    return TB_BATTLE_TIMEOUT_CHECK( GetTimeoutBattle() );
 }
 
 bool CritterCl::CheckFind( int find_type )
@@ -510,15 +678,15 @@ bool CritterCl::CheckFind( int find_type )
 
 uint CritterCl::GetLook()
 {
-    int look = GameOpt.LookNormal + GetParam( ST_PERCEPTION ) * 3 + GetParam( ST_BONUS_LOOK ) + GetMultihex();
+    int look = GameOpt.LookNormal + GetPerception() * 3 + GetBonusLook() + GetMultihex();
     if( look < (int) GameOpt.LookMinimum )
         look = GameOpt.LookMinimum;
     return look;
 }
 
-uint CritterCl::GetTalkDistance()
+uint CritterCl::GetTalkDist()
 {
-    int dist = GetParam( ST_TALK_DISTANCE );
+    int dist = GetTalkDistance();
     if( dist <= 0 )
         dist = GameOpt.TalkDistance;
     return dist + GetMultihex();
@@ -571,97 +739,55 @@ uint CritterCl::GetMultihex()
     return CLAMP( mh, 0, MAX_HEX_OFFSET );
 }
 
-int CritterCl::GetParam( uint index )
+uint CritterCl::GetMaxWeightKg()
 {
-    #ifdef FONLINE_CLIENT
-    if( ParamsGetScript[ index ] && Script::PrepareContext( ParamsGetScript[ index ], _FUNC_, GetInfo() ) )
-    {
-        Script::SetArgObject( this );
-        Script::SetArgUInt( index );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedUInt();
-    }
-    #endif
-    return Params[ index ];
+    return GetCarryWeight() / 1000;
 }
 
-void CritterCl::ChangeParam( uint index )
+uint CritterCl::GetMaxVolume()
 {
-    if( !ParamsIsChanged[ index ] && ParamLocked != (int) index )
-    {
-        ParamsChanged.push_back( index );
-        ParamsChanged.push_back( Params[ index ] );
-        ParamsIsChanged[ index ] = true;
-    }
+    return CRITTER_INV_VOLUME;
 }
 
-IntVec CallChange_;
-void CritterCl::ProcessChangedParams()
+bool CritterCl::IsDmgLeg()
 {
-    if( ParamsChanged.size() )
-    {
-        CallChange_.clear();
-        for( uint i = 0, j = (uint) ParamsChanged.size(); i < j; i += 2 )
-        {
-            int index = ParamsChanged[ i ];
-            int old_val = ParamsChanged[ i + 1 ];
-            if( ParamsChangeScript[ index ] && Params[ index ] != old_val )
-            {
-                CallChange_.push_back( ParamsChangeScript[ index ] );
-                CallChange_.push_back( index );
-                CallChange_.push_back( old_val );
-            }
-            ParamsIsChanged[ index ] = false;
+    return GetIsDamagedRightLeg() || GetIsDamagedLeftLeg();
+}
 
-            // Internal processing
-            if( index == ST_HANDS_ITEM_PROTO_ID )
-            {
-                hash       pid = Params[ ST_HANDS_ITEM_PROTO_ID ];
-                ProtoItem* unarmed = ItemMngr.GetProtoItem( pid );
-                if( !unarmed || !unarmed->IsWeapon() || !unarmed->Weapon_IsUnarmed )
-                    unarmed = NULL;
-                if( !unarmed )
-                    unarmed = GetUnarmedItem( 0, 0 );
-                DefItemSlotHand->SetProto( unarmed );
-            }
-            else if( index == ST_HANDS_ITEM_MODE )
-            {
-                uchar mode = Params[ ST_HANDS_ITEM_MODE ];
-                DefItemSlotHand->SetMode( mode );
-            }
-            else if( index == ST_SCALE_FACTOR )
-            {
-                if( Anim3d )
-                {
-                    int   value = Params[ ST_SCALE_FACTOR ];
-                    float scale = (float) ( value ? value : 1000 ) / 1000.0f;
-                    Anim3d->SetScale( scale, scale, scale );
-                    SprMngr.RefreshPure3dAnimationSprite( Anim3d );
-                    SprId = Anim3d->SprId;
-                }
-            }
-        }
-        ParamsChanged.clear();
+bool CritterCl::IsDmgTwoLeg()
+{
+    return GetIsDamagedRightLeg() && GetIsDamagedLeftLeg();
+}
 
-        if( CallChange_.size() )
-        {
-            for( uint i = 0, j = (uint) CallChange_.size(); i < j; i += 3 )
-            {
-                uint index = CallChange_[ i + 1 ];
-                ParamLocked = index;
-                #ifdef FONLINE_CLIENT
-                if( Script::PrepareContext( CallChange_[ i ], _FUNC_, GetInfo() ) )
-                {
-                    Script::SetArgObject( this );
-                    Script::SetArgUInt( index );
-                    Script::SetArgUInt( CallChange_[ i + 2 ] );
-                    Script::RunPrepared();
-                }
-                #endif
-                ParamLocked = -1;
-            }
-        }
-    }
+bool CritterCl::IsDmgArm()
+{
+    return GetIsDamagedRightArm() || GetIsDamagedLeftArm();
+}
+
+bool CritterCl::IsDmgTwoArm()
+{
+    return GetIsDamagedRightArm() && GetIsDamagedLeftArm();
+}
+
+int CritterCl::GetRealAp()
+{
+    return GetCurrentAp();
+}
+
+int CritterCl::GetAllAp()
+{
+    return GetCurrentAp() / AP_DIVIDER + GetMoveAp();
+}
+
+void CritterCl::SubAp( int val )
+{
+    SetCurrentAp( GetCurrentAp() - val * AP_DIVIDER );
+    ApRegenerationTick = 0;
+}
+
+void CritterCl::SubMoveAp( int val )
+{
+    SetMoveAp( GetMoveAp() - val );
 }
 
 void CritterCl::DrawStay( Rect r )
@@ -696,25 +822,16 @@ void CritterCl::DrawStay( Rect r )
     }
 }
 
-#pragma MESSAGE("Exclude PID_BOTTLE_CAPS.")
-const char* CritterCl::GetMoneyStr()
-{
-    static char money_str[ 64 ];
-    uint        money_count = CountItemPid( 41 /*PID_BOTTLE_CAPS*/ );
-    Str::Format( money_str, "%u$", money_count );
-    return money_str;
-}
-
 bool CritterCl::NextRateItem( bool prev )
 {
     bool  result = false;
-    uchar old_rate = ItemSlotMain->Mode;
+    uchar old_rate = ItemSlotMain->GetMode();
     if( !ItemSlotMain->IsWeapon() )
     {
         if( ItemSlotMain->IsCanUse() || ItemSlotMain->IsCanUseOnSmth() )
-            ItemSlotMain->SetMode( USE_USE );
+            ItemSlotMain->SetWeaponMode( USE_USE );
         else
-            ItemSlotMain->SetMode( USE_NONE );
+            ItemSlotMain->SetWeaponMode( USE_NONE );
     }
     else
     {
@@ -723,8 +840,8 @@ bool CritterCl::NextRateItem( bool prev )
         {
             ProtoItem* old_unarmed = ItemSlotMain->Proto;
             ProtoItem* unarmed = ItemSlotMain->Proto;
-            uchar      tree = ItemSlotMain->Proto->Weapon_UnarmedTree;
-            uchar      priority = ItemSlotMain->Proto->Weapon_UnarmedPriority;
+            uchar      tree = ItemSlotMain->Proto->GetWeapon_UnarmedTree();
+            uchar      priority = ItemSlotMain->Proto->GetWeapon_UnarmedPriority();
             while( true )
             {
                 if( prev )
@@ -752,7 +869,7 @@ bool CritterCl::NextRateItem( bool prev )
                                 else
                                     break;
                             }
-                            tree = unarmed->Weapon_UnarmedTree;
+                            tree = unarmed->GetWeapon_UnarmedTree();
                         }
 
                         // Find last priority
@@ -771,7 +888,7 @@ bool CritterCl::NextRateItem( bool prev )
                         unarmed = GetUnarmedItem( tree, priority );
                     }
                     ItemSlotMain->SetProto( unarmed );
-                    if( IsItemAim( SLOT_HAND1 ) && !IsRawParam( MODE_NO_AIM ) && CritType::IsCanAim( GetCrType() ) )
+                    if( IsItemAim( SLOT_HAND1 ) && !GetIsNoAim() && CritType::IsCanAim( GetCrType() ) )
                     {
                         SetAim( HIT_LOCATION_TORSO );
                         break;
@@ -779,7 +896,7 @@ bool CritterCl::NextRateItem( bool prev )
                 }
                 else
                 {
-                    if( IsItemAim( SLOT_HAND1 ) && !IsAim() && !IsRawParam( MODE_NO_AIM ) && CritType::IsCanAim( GetCrType() ) )
+                    if( IsItemAim( SLOT_HAND1 ) && !IsAim() && !GetIsNoAim() && CritType::IsCanAim( GetCrType() ) )
                     {
                         SetAim( HIT_LOCATION_TORSO );
                         break;
@@ -813,11 +930,11 @@ bool CritterCl::NextRateItem( bool prev )
                         SetAim( HIT_LOCATION_NONE );
                         break;
                     }
-                    if( !ItemSlotMain->Mode )
-                        ItemSlotMain->SetMode( ItemSlotMain->IsCanUseOnSmth() ? USE_USE : USE_RELOAD );
+                    if( !ItemSlotMain->GetMode() )
+                        ItemSlotMain->SetWeaponMode( ItemSlotMain->IsCanUseOnSmth() ? USE_USE : USE_RELOAD );
                     else
-                        ItemSlotMain->SetMode( ItemSlotMain->Mode - 1 );
-                    if( IsItemAim( SLOT_HAND1 ) && !IsRawParam( MODE_NO_AIM ) && CritType::IsCanAim( GetCrType() ) )
+                        ItemSlotMain->SetWeaponMode( ItemSlotMain->GetMode() - 1 );
+                    if( IsItemAim( SLOT_HAND1 ) && !GetIsNoAim() && CritType::IsCanAim( GetCrType() ) )
                     {
                         SetAim( HIT_LOCATION_TORSO );
                         break;
@@ -825,31 +942,31 @@ bool CritterCl::NextRateItem( bool prev )
                 }
                 else
                 {
-                    if( IsItemAim( SLOT_HAND1 ) && !IsAim() && !IsRawParam( MODE_NO_AIM ) && CritType::IsCanAim( GetCrType() ) )
+                    if( IsItemAim( SLOT_HAND1 ) && !IsAim() && !GetIsNoAim() && CritType::IsCanAim( GetCrType() ) )
                     {
                         SetAim( HIT_LOCATION_TORSO );
                         break;
                     }
-                    ItemSlotMain->SetMode( ItemSlotMain->Mode + 1 );
+                    ItemSlotMain->SetWeaponMode( ItemSlotMain->GetMode() + 1 );
                     SetAim( HIT_LOCATION_NONE );
                 }
 
                 switch( GetUse() )
                 {
                 case USE_PRIMARY:
-                    if( ItemSlotMain->Proto->Weapon_ActiveUses & 0x1 )
+                    if( ItemSlotMain->Proto->GetWeapon_ActiveUses() & 0x1 )
                         break;
                     continue;
                 case USE_SECONDARY:
-                    if( ItemSlotMain->Proto->Weapon_ActiveUses & 0x2 )
+                    if( ItemSlotMain->Proto->GetWeapon_ActiveUses() & 0x2 )
                         break;
                     continue;
                 case USE_THIRD:
-                    if( ItemSlotMain->Proto->Weapon_ActiveUses & 0x4 )
+                    if( ItemSlotMain->Proto->GetWeapon_ActiveUses() & 0x4 )
                         break;
                     continue;
                 case USE_RELOAD:
-                    if( ItemSlotMain->Proto->Weapon_MaxAmmoCount )
+                    if( ItemSlotMain->Proto->GetWeapon_MaxAmmoCount() )
                         break;
                     continue;
                 case USE_USE:
@@ -857,23 +974,23 @@ bool CritterCl::NextRateItem( bool prev )
                         break;
                     continue;
                 default:
-                    ItemSlotMain->SetMode( USE_PRIMARY );
+                    ItemSlotMain->SetWeaponMode( USE_PRIMARY );
                     break;
                 }
                 break;
             }
         }
     }
-    return ItemSlotMain->Mode != old_rate || result;
+    return ItemSlotMain->GetMode() != old_rate || result;
 }
 
 void CritterCl::SetAim( uchar hit_location )
 {
-    uchar mode = ItemSlotMain->Mode;
+    uchar mode = ItemSlotMain->GetMode();
     UNSETFLAG( mode, 0xF0 );
     if( IsItemAim( SLOT_HAND1 ) )
         SETFLAG( mode, hit_location << 4 );
-    ItemSlotMain->SetMode( mode );
+    ItemSlotMain->SetWeaponMode( mode );
 }
 
 ProtoItem* CritterCl::GetUnarmedItem( uchar tree, uchar priority )
@@ -882,13 +999,13 @@ ProtoItem* CritterCl::GetUnarmedItem( uchar tree, uchar priority )
     for( int i = ITEM_SLOT_BEGIN; i <= ITEM_SLOT_END; i++ )
     {
         ProtoItem* unarmed = ItemMngr.GetProtoItem( i );
-        if( !unarmed || !unarmed->IsWeapon() || !unarmed->Weapon_IsUnarmed )
+        if( !unarmed || !unarmed->IsWeapon() || !unarmed->GetWeapon_IsUnarmed() )
             continue;
-        if( unarmed->Weapon_UnarmedTree != tree || unarmed->Weapon_UnarmedPriority != priority )
+        if( unarmed->GetWeapon_UnarmedTree() != tree || unarmed->GetWeapon_UnarmedPriority() != priority )
             continue;
-        if( GetParam( ST_STRENGTH ) < unarmed->Weapon_MinStrength || GetParam( ST_AGILITY ) < unarmed->Weapon_UnarmedMinAgility )
+        if( GetStrength() < unarmed->GetWeapon_MinStrength() || GetAgility() < unarmed->GetWeapon_UnarmedMinAgility() )
             break;
-        if( GetParam( ST_LEVEL ) < unarmed->Weapon_UnarmedMinLevel || GetRawParam( SK_UNARMED ) < unarmed->Weapon_UnarmedMinUnarmed )
+        if( GetLevel() < unarmed->GetWeapon_UnarmedMinLevel() || GetSkillUnarmed() < unarmed->GetWeapon_UnarmedMinUnarmed() )
             break;
         best_unarmed = unarmed;
     }
@@ -897,11 +1014,11 @@ ProtoItem* CritterCl::GetUnarmedItem( uchar tree, uchar priority )
 
 Item* CritterCl::GetAmmoAvialble( Item* weap )
 {
-    Item* ammo = GetItemByPid( weap->AmmoPid );
+    Item* ammo = GetItemByPid( weap->GetAmmoPid() );
     if( !ammo && weap->WeapIsEmpty() )
-        ammo = GetItemByPid( weap->Proto->Weapon_DefaultAmmoPid );
+        ammo = GetItemByPid( weap->Proto->GetWeapon_DefaultAmmoPid() );
     if( !ammo && weap->WeapIsEmpty() )
-        ammo = GetAmmo( weap->Proto->Weapon_Caliber );
+        ammo = GetAmmo( weap->Proto->GetWeapon_Caliber() );
     return ammo;
 }
 
@@ -943,7 +1060,7 @@ void CritterCl::Move( int dir )
 
     if( !IsRunning )
     {
-        time_move = GetRawParam( ST_WALK_TIME );
+        time_move = GetWalkTime();
         if( time_move <= 0 )
             time_move = CritType::GetTimeWalk( crtype );
         if( time_move <= 0 )
@@ -951,7 +1068,7 @@ void CritterCl::Move( int dir )
     }
     else
     {
-        time_move = GetRawParam( ST_RUN_TIME );
+        time_move = GetRunTime();
         if( time_move <= 0 )
             time_move = CritType::GetTimeRun( crtype );
         if( time_move <= 0 )
@@ -1050,7 +1167,7 @@ void CritterCl::Move( int dir )
         {
             uint anim1 = GetAnim1();
             uint anim2 = ( IsRunning ? ANIM2_RUN : ANIM2_WALK );
-            if( IsHideMode() )
+            if( GetIsHide() )
                 anim2 = ( IsRunning ? ANIM2_SNEAK_RUN : ANIM2_SNEAK_WALK );
             if( IsDmgLeg() )
                 anim2 = ANIM2_LIMP;
@@ -1082,7 +1199,7 @@ void CritterCl::Move( int dir )
     {
         uint anim1 = GetAnim1();
         uint anim2 = ( IsRunning ? ANIM2_RUN : ANIM2_WALK );
-        if( IsHideMode() )
+        if( GetIsHide() )
             anim2 = ( IsRunning ? ANIM2_SNEAK_RUN : ANIM2_SNEAK_WALK );
         if( IsDmgLeg() )
             anim2 = ANIM2_LIMP;
@@ -1336,11 +1453,11 @@ uint CritterCl::GetAnim1( Item* anim_item /* = NULL */ )
     switch( Cond )
     {
     case COND_LIFE:
-        return ( Anim1Life ) | ( anim_item->IsWeapon() ? anim_item->Proto->Weapon_Anim1 : ANIM1_UNARMED );
+        return ( Anim1Life ) | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
     case COND_KNOCKOUT:
-        return ( Anim1Knockout ) | ( anim_item->IsWeapon() ? anim_item->Proto->Weapon_Anim1 : ANIM1_UNARMED );
+        return ( Anim1Knockout ) | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
     case COND_DEAD:
-        return ( Anim1Dead ) | ( anim_item->IsWeapon() ? anim_item->Proto->Weapon_Anim1 : ANIM1_UNARMED );
+        return ( Anim1Dead ) | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
     default:
         break;
     }
@@ -1380,16 +1497,10 @@ void CritterCl::ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim
 
 int* CritterCl::GetLayers3dData()
 {
-    #ifdef FONLINE_CLIENT
-    # pragma RACE_CONDITION
-    static int   layers[ LAYERS3D_COUNT ];
-    ScriptArray* arr = (ScriptArray*) Layers3d;
-    memcpy( layers, arr->At( 0 ), sizeof( layers ) );
-    return layers;
-    #endif
-
-    memcpy( Layers3d, &Params[ ST_ANIM3D_LAYER_BEGIN ], LAYERS3D_COUNT * sizeof( int ) );
-    return (int*) Layers3d;
+    uint   data_size;
+    uchar* data = GetAnim3dLayerData( data_size );
+    RUNTIME_ASSERT( data_size == LAYERS3D_COUNT * sizeof( int ) );
+    return (int*) data;
 }
 
 bool CritterCl::IsAnimAviable( uint anim1, uint anim2 )
@@ -1422,19 +1533,6 @@ void CritterCl::SetBaseType( uint type )
         Anim3d->SetDir( CrDir );
         SprId = Anim3d->SprId;
 
-        #ifdef FONLINE_CLIENT
-        if( !Layers3d )
-        {
-            Layers3d = Script::CreateArray( "int[]" );
-            ( (ScriptArray*) Layers3d )->Resize( LAYERS3D_COUNT );
-        }
-        memzero( ( (ScriptArray*) Layers3d )->At( 0 ), LAYERS3D_COUNT * sizeof( int ) );
-        #else
-        if( !Layers3d )
-            Layers3d = new int[ LAYERS3D_COUNT ];
-        memzero( Layers3d, LAYERS3D_COUNT * sizeof( int ) );
-        #endif
-
         Anim3d->SetAnimation( ANIM1_UNARMED, ANIM2_IDLE, GetLayers3dData(), 0 );
 
         // Start mesh generation for Mapper
@@ -1444,10 +1542,6 @@ void CritterCl::SetBaseType( uint type )
         #endif
     }
     SprMngr.PopAtlasType();
-
-    // Allow influence of scale factor
-    ChangeParam( ST_SCALE_FACTOR );
-    ProcessChangedParams();
 }
 
 void CritterCl::SetDir( uchar dir, bool animate /* = true */ )
@@ -1465,9 +1559,6 @@ void CritterCl::SetDir( uchar dir, bool animate /* = true */ )
 
 void CritterCl::Process()
 {
-    // Changed parameters
-    ProcessChangedParams();
-
     // Fading
     if( fadingEnable == true )
         Alpha = GetFadeAlpha();
@@ -1762,4 +1853,45 @@ void CritterCl::DrawTextOnHead()
 
     if( Timer::GameTick() - tickStartText >= tickTextDelay && !strTextOnHead.empty() )
         strTextOnHead = "";
+}
+
+int CritterCl::GetApCostCritterMove( bool is_run )
+{
+    if( IsTurnBased() )
+        return GameOpt.TbApCostCritterMove * AP_DIVIDER * ( IsDmgTwoLeg() ? 4 : ( IsDmgLeg() ? 2 : 1 ) );
+    else
+        return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0;
+}
+
+int CritterCl::GetApCostMoveItemContainer()
+{
+    return IsTurnBased() ? GameOpt.TbApCostMoveItemContainer : GameOpt.RtApCostMoveItemContainer;
+}
+
+int CritterCl::GetApCostMoveItemInventory()
+{
+    int val = IsTurnBased() ? GameOpt.TbApCostMoveItemInventory : GameOpt.RtApCostMoveItemInventory;
+    if( GetPerkQuickPockets() )
+        val /= 2;
+    return val;
+}
+
+int CritterCl::GetApCostPickItem()
+{
+    return IsTurnBased() ? GameOpt.TbApCostPickItem : GameOpt.RtApCostPickItem;
+}
+
+int CritterCl::GetApCostDropItem()
+{
+    return IsTurnBased() ? GameOpt.TbApCostDropItem : GameOpt.RtApCostDropItem;
+}
+
+int CritterCl::GetApCostPickCritter()
+{
+    return IsTurnBased() ? GameOpt.TbApCostPickCritter : GameOpt.RtApCostPickCritter;
+}
+
+int CritterCl::GetApCostUseSkill()
+{
+    return IsTurnBased() ? GameOpt.TbApCostUseSkill : GameOpt.RtApCostUseSkill;
 }

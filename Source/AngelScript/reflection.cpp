@@ -413,6 +413,7 @@ void RegisterScriptReflection( asIScriptEngine* engine )
     engine->RegisterObjectBehaviour( "typeof<T>", asBEHAVE_FACTORY, "typeof<T>@ f(int&in, const T&in)", asFUNCTION( ScriptTypeOfFactory2 ), asCALL_CDECL );
     engine->RegisterObjectBehaviour( "typeof<T>", asBEHAVE_ADDREF, "void f()", asMETHOD( ScriptTypeOf, AddRef ), asCALL_THISCALL );
     engine->RegisterObjectBehaviour( "typeof<T>", asBEHAVE_RELEASE, "void f()", asMETHOD( ScriptTypeOf, Release ), asCALL_THISCALL );
+    engine->RegisterObjectMethod( "typeof<T>", "type opImplConv()", asMETHOD( ScriptTypeOf, ConvertToType ), asCALL_THISCALL );
 
     RegisterMethod( engine, "string@ get_name() const", asMETHOD( ScriptType, GetName ) );
     RegisterMethod( engine, "string@ get_nameWithoutNamespace() const", asMETHOD( ScriptType, GetNameWithoutNamespace ) );

@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 490 )
+#define FONLINE_VERSION                          ( 491 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
@@ -327,9 +327,8 @@ struct ClientScriptFunctions
     int CritterLook;
     int GetElevator;
     int ItemCost;
-    int PerkCheck;
-    int PlayerGeneration;
-    int PlayerGenerationCheck;
+    int PerksCheck;
+    int GetTimeouts;
     int CritterAction;
     int Animation2dProcess;
     int Animation3dProcess;
@@ -549,26 +548,6 @@ struct GameOptions
     int           SkillModAdd5;
     int           SkillModAdd6;
 
-    bool          AbsoluteOffsets;
-    uint          SkillBegin;
-    uint          SkillEnd;
-    uint          TimeoutBegin;
-    uint          TimeoutEnd;
-    uint          KillBegin;
-    uint          KillEnd;
-    uint          PerkBegin;
-    uint          PerkEnd;
-    uint          AddictionBegin;
-    uint          AddictionEnd;
-    uint          KarmaBegin;
-    uint          KarmaEnd;
-    uint          DamageBegin;
-    uint          DamageEnd;
-    uint          TraitBegin;
-    uint          TraitEnd;
-    uint          ReputationBegin;
-    uint          ReputationEnd;
-
     int           ReputationLoved;
     int           ReputationLiked;
     int           ReputationAccepted;
@@ -687,7 +666,6 @@ struct GameOptions
     uint          ConsoleHistorySize;
     int           SoundVolume;
     int           MusicVolume;
-    ScriptArray*  RegParams;
     ScriptString* RegName;
     ScriptString* RegPassword;
     uint          ChosenLightColor;
@@ -704,7 +682,6 @@ struct GameOptions
     bool          SplitTilesCollection;
 
     // Engine data
-    void          ( * CritterChangeParameter )( void*, uint );
     void*         CritterTypes;
 
     void*         ClientMap;
@@ -967,10 +944,47 @@ public:
 };
 
 /************************************************************************/
-/*                                                                      */
+/* Data serialization helpers                                           */
 /************************************************************************/
 
-void Deprecated_CondExtToAnim2( uchar cond, uchar cond_ext, uint& anim2ko, uint& anim2dead );
+template< class T >
+void WriteData( UCharVec& vec, T data )
+{
+    size_t cur = vec.size();
+    vec.resize( cur + sizeof( data ) );
+    memcpy( &vec[ cur ], &data, sizeof( data ) );
+}
+
+template< class T >
+void WriteDataArr( UCharVec& vec, T* data, uint size )
+{
+    if( size )
+    {
+        uint cur = (uint) vec.size();
+        vec.resize( cur + size );
+        memcpy( &vec[ cur ], data, size );
+    }
+}
+
+template< class T >
+T ReadData( UCharVec& vec, uint& pos )
+{
+    T data;
+    memcpy( &data, &vec[ pos ], sizeof( T ) );
+    pos += sizeof( T );
+    return data;
+}
+
+template< class T >
+T* ReadDataArr( UCharVec& vec, uint size, uint& pos )
+{
+    pos += size;
+    return size ? &vec[ pos - size ] : NULL;
+}
+
+/************************************************************************/
+/*                                                                      */
+/************************************************************************/
 
 // Preprocessor output formatting
 void FormatPreprocessorOutput( string& str );

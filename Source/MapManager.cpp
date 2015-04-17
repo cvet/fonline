@@ -242,7 +242,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         if( !map_pid )
         {
             WriteLog( "Invalid hash for map name<%s> in location<%s>.\n", map_name, loc_name );
-            break;
+            return false;
         }
 
         if( !protoMaps.count( map_pid ) )
@@ -252,7 +252,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
             {
                 WriteLog( "Load proto map<%s> in location<%s> fail.\n", map_name, loc_name );
                 delete pmap;
-                break;
+                return false;
             }
 
             protoMaps.insert( PAIR( pmap->GetPid(), pmap ) );
@@ -283,7 +283,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         if( sscanf( entrance_text, "%s%s", map_name, entire_name ) != 2 )
         {
             WriteLog( "Can't parse entrance data<%s> in location<%s>.\n", entrance_text, loc_name );
-            break;
+            return false;
         }
 
         hash map_hash = Str::GetHash( map_name );
@@ -291,7 +291,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         if( it == ploc->ProtoMapPids.end() )
         {
             WriteLog( "Invalid entrance proto map<%s> in location<%s>.\n", map_name, loc_name );
-            break;
+            return false;
         }
 
         uint map_index = ( uint ) std::distance( ploc->ProtoMapPids.begin(), it );
@@ -947,7 +947,7 @@ void MapManager::GM_GroupMove( GlobalMapGroup* group )
         if( group->EncounterForce )
         {
             group->SyncLockGroup();
-            GM_GlobalInvite( group, rule->Data.Params[ MODE_DEFAULT_COMBAT ] );
+            GM_GlobalInvite( group, rule->GetDefaultCombat() );
             return;
         }
 
@@ -1129,7 +1129,7 @@ void MapManager::GM_GlobalProcess( Critter* cr, GlobalMapGroup* group, int type 
         group->EncounterDescriptor = encounter_descriptor;
         if( type == GLOBAL_PROCESS_ENTER )
         {
-            GM_GlobalInvite( group, rule->Data.Params[ MODE_DEFAULT_COMBAT ] );
+            GM_GlobalInvite( group, rule->GetDefaultCombat() );
         }
         else
         {
@@ -1359,7 +1359,7 @@ void MapManager::GM_LeaveGroup( Critter* cr )
             Critter* cr = *it;
             if( cr == group->Rule )
                 continue;
-            int charisma = cr->GetParam( ST_CHARISMA );
+            int charisma = cr->GetCharisma();
             if( !max_charisma || charisma > max_charisma )
             {
                 new_rule = cr;
@@ -1392,8 +1392,8 @@ void MapManager::GM_GiveRule( Critter* cr, Critter* new_rule )
     {
         Critter* cr_ = *it;
         cr_->GroupMove = new_rule->GroupSelf;
-        cr_->Send_CritterParam( cr, OTHER_FLAGS, cr->Flags );
-        cr_->Send_CritterParam( new_rule, OTHER_FLAGS, new_rule->Flags );
+        cr_->Send_CustomCommand( cr, OTHER_FLAGS, cr->Flags );
+        cr_->Send_CustomCommand( new_rule, OTHER_FLAGS, new_rule->Flags );
     }
 }
 
@@ -1706,7 +1706,7 @@ void MapManager::TraceBullet( TraceData& trace )
                     trace.IsCritterFounded = true;
                     break;
                 }
-                if( trace.IsCheckTeam && cr->Data.Params[ ST_TEAM_ID ] == (int) trace.BaseCrTeamId )
+                if( trace.IsCheckTeam && cr->GetTeamId() == trace.BaseCrTeamId )
                 {
                     trace.IsTeammateFounded = true;
                     break;
@@ -2495,8 +2495,8 @@ bool MapManager::TryTransitCrGrid( Critter* cr, Map* map, ushort hx, ushort hy, 
         if( loc->IsAutomaps() )
             cr->Send_AutomapsInfo( NULL, loc );
     }
-    cr->SetTimeout( TO_TRANSFER, 0 );
-    cr->SetTimeout( TO_BATTLE, 0 );
+    cr->SetTimeoutTransfer( 0 );
+    cr->SetTimeoutBattle( 0 );
 
     // To global
     if( !id_map )
@@ -2546,7 +2546,7 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
     // Check force
     if( !force )
     {
-        if( cr->GetParam( TO_TRANSFER ) || cr->GetParam( TO_BATTLE ) )
+        if( IS_TIMEOUT( cr->GetTimeoutTransfer() ) || IS_TIMEOUT( cr->GetTimeoutBattle() ) )
             return false;
         if( cr->IsDead() )
             return false;
@@ -2590,7 +2590,7 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
         cr->Data.HexY = hy;
         map->SetFlagCritter( hx, hy, multihex, is_dead );
         cr->SetBreakTime( 0 );
-        cr->Send_ParamOther( OTHER_TELEPORT, ( cr->GetHexX() << 16 ) | ( cr->GetHexY() ) );
+        cr->Send_CustomCommand( cr, OTHER_TELEPORT, ( cr->GetHexX() << 16 ) | ( cr->GetHexY() ) );
         cr->ClearVisible();
         cr->ProcessVisibleCritters();
         cr->ProcessVisibleItems();
@@ -2652,8 +2652,8 @@ bool MapManager::AddCrToMap( Critter* cr, Map* map, ushort tx, ushort ty, uint r
     if( !map )
     {
         cr->SetMaps( 0, 0 );
-        cr->SetTimeout( TO_BATTLE, 0 );
-        cr->SetTimeout( TO_TRANSFER, GameOpt.TimeoutTransfer );
+        cr->SetTimeoutBattle( 0 );
+        cr->SetTimeoutBattle( GameOpt.FullSecond + GameOpt.TimeoutTransfer );
 
         cr->LockMapTransfers++;
         cr->Data.LastHexX = cr->Data.HexX;
@@ -2677,8 +2677,8 @@ bool MapManager::AddCrToMap( Critter* cr, Map* map, ushort tx, ushort ty, uint r
             return false;
 
         cr->LockMapTransfers++;
-        cr->SetTimeout( TO_BATTLE, 0 );
-        cr->SetTimeout( TO_TRANSFER, GameOpt.TimeoutTransfer );
+        cr->SetTimeoutBattle( 0 );
+        cr->SetTimeoutTransfer( GameOpt.FullSecond + GameOpt.TimeoutTransfer );
         cr->SetMaps( map->GetId(), map->GetPid() );
         cr->Data.LastHexX = cr->Data.HexX;
         cr->Data.LastHexY = cr->Data.HexY;

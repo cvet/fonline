@@ -22,7 +22,7 @@ void FOServer::ProcessCritter( Critter* cr )
     }
 
     // Ap regeneration
-    int max_ap = cr->GetParam( ST_ACTION_POINTS ) * AP_DIVIDER;
+    int max_ap = cr->GetActionPoints() * AP_DIVIDER;
     if( cr->IsFree() && cr->GetRealAp() < max_ap && !cr->IsTurnBased() )
     {
         if( !cr->ApRegenerationTick )
@@ -32,16 +32,15 @@ void FOServer::ProcessCritter( Critter* cr )
             uint delta = tick - cr->ApRegenerationTick;
             if( delta >= 500 )
             {
-                cr->Data.Params[ ST_CURRENT_AP ] += max_ap * delta / GameOpt.ApRegeneration;
-                if( cr->Data.Params[ ST_CURRENT_AP ] > max_ap )
-                    cr->Data.Params[ ST_CURRENT_AP ] = max_ap;
+                cr->SetCurrentAp( cr->GetCurrentAp() + max_ap * delta / GameOpt.ApRegeneration );
+                if( cr->GetCurrentAp() > max_ap )
+                    cr->SetCurrentAp( max_ap );
                 cr->ApRegenerationTick = tick;
-                // if(cr->IsPlayer()) WriteLog("ap<%u.%u>\n",cr->Data.St[ST_CURRENT_AP]/AP_DIVIDER,cr->Data.St[ST_CURRENT_AP]%AP_DIVIDER);
             }
         }
     }
-    if( cr->Data.Params[ ST_CURRENT_AP ] > max_ap )
-        cr->Data.Params[ ST_CURRENT_AP ] = max_ap;
+    if( cr->GetCurrentAp() > max_ap )
+        cr->SetCurrentAp( max_ap );
 
     // Internal misc/drugs time events
     // One event per cycle
@@ -100,8 +99,8 @@ void FOServer::ProcessCritter( Critter* cr )
         }
 
         // Kick from game
-        if( cl->IsOffline() && cl->IsLife() && !cl->GetParam( TO_BATTLE ) &&
-            !cl->GetParam( TO_REMOVE_FROM_GAME ) && cl->GetOfflineTime() >= GameOpt.MinimumOfflineTime &&
+        if( cl->IsOffline() && cl->IsLife() && !IS_TIMEOUT( cl->GetTimeoutBattle() ) &&
+            !cl->GetTimeoutRemoveFromGame() && cl->GetOfflineTime() >= GameOpt.MinimumOfflineTime &&
             !MapMngr.IsProtoMapNoLogOut( cl->GetProtoMap() ) )
         {
             cl->RemoveFromGame();
@@ -110,7 +109,7 @@ void FOServer::ProcessCritter( Critter* cr )
         // Cache intelligence for GetSayIntellect, every 3 seconds
         if( tick >= cl->CacheValuesNextTick )
         {
-            cl->IntellectCacheValue = ( tick & 0xFFF0 ) | cl->GetParam( ST_INTELLECT );
+            cl->IntellectCacheValue = ( tick & 0xFFF0 ) | cl->GetIntellect();
             cl->LookCacheValue = cl->GetLook();
             cl->CacheValuesNextTick = tick + 3000;
         }
@@ -133,9 +132,6 @@ void FOServer::ProcessCritter( Critter* cr )
     // Knockout
     if( cr->IsKnockout() )
         cr->TryUpOnKnockout();
-
-    // Process changed parameters
-    cr->ProcessChangedParams();
 }
 
 void FOServer::SaveHoloInfoFile()
@@ -322,7 +318,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     if( !cr->CheckMyTurn( map ) )
     {
         cr->Send_XY( cr );
-        cr->Send_ParamOther( OTHER_YOU_TURN, 0 );
+        cr->Send_CustomCommand( cr, OTHER_YOU_TURN, 0 );
         WriteLogF( _FUNC_, " - Is not critter<%s> turn.\n", cr->GetInfo() );
         return false;
     }
@@ -330,17 +326,15 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     if( map->IsTurnBasedOn )
     {
         int ap_cost = cr->GetApCostCritterMove( is_run ) / AP_DIVIDER;
-        int move_ap = cr->Data.Params[ ST_MOVE_AP ];
+        int move_ap = cr->GetMoveAp();
         if( ap_cost )
         {
-            if( ( cr->GetParam( ST_CURRENT_AP ) + move_ap ) / ap_cost <= 0 )
+            if( ( cr->GetCurrentAp() / AP_DIVIDER + move_ap ) / ap_cost <= 0 )
             {
                 cr->Send_XY( cr );
-                cr->Send_Param( ST_CURRENT_AP );
-                cr->Send_Param( ST_MOVE_AP );
                 return false;
             }
-            int steps = ( cr->GetParam( ST_CURRENT_AP ) + move_ap ) / ap_cost - 1;
+            int steps = ( cr->GetCurrentAp() / AP_DIVIDER + move_ap ) / ap_cost - 1;
             if( steps < MOVE_PARAM_STEP_COUNT )
                 move_params |= ( MOVE_PARAM_STEP_DISALLOW << ( steps * MOVE_PARAM_STEP_BITS ) );                               // Cut steps
             if( move_ap )
@@ -359,13 +353,12 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
                 map->EndCritterTurn();
         }
     }
-    else if( cr->GetParam( TO_BATTLE ) )
+    else if( IS_TIMEOUT( cr->GetTimeoutBattle() ) )
     {
         int ap_cost = cr->GetApCostCritterMove( is_run );
         if( cr->GetRealAp() < ap_cost && !Singleplayer )
         {
             cr->Send_XY( cr );
-            cr->Send_Param( ST_CURRENT_AP );
             return false;
         }
         if( ap_cost )
@@ -373,7 +366,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
             int steps = cr->GetRealAp() / ap_cost - 1;
             if( steps < MOVE_PARAM_STEP_COUNT )
                 move_params |= ( MOVE_PARAM_STEP_DISALLOW << ( steps * MOVE_PARAM_STEP_BITS ) );                               // Cut steps
-            cr->Data.Params[ ST_CURRENT_AP ] -= ap_cost;
+            cr->SetCurrentAp( cr->GetCurrentAp() - ap_cost );
             cr->ApRegenerationTick = 0;
         }
     }
@@ -414,11 +407,8 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
 
     if( is_run )
     {
-        if( !cr->IsRawParam( PE_SILENT_RUNNING ) && cr->IsRawParam( MODE_HIDE ) )
-        {
-            cr->ChangeParam( MODE_HIDE );
-            cr->Data.Params[ MODE_HIDE ] = 0;
-        }
+        if( !cr->GetPerkSilentRunning() && cr->GetIsHide() )
+            cr->SetIsHide( false );
         cr->SetBreakTimeDelta( cr->GetTimeRun() );
     }
     else
@@ -546,7 +536,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         return false;
     }
 
-    if( !( weap->Proto->Weapon_ActiveUses & ( 1 << use ) ) )
+    if( !( weap->Proto->GetWeapon_ActiveUses() & ( 1 << use ) ) )
     {
         WriteLogF( _FUNC_, " - Use<%u> is not aviable, critter<%s>, target critter<%s>.\n", use, cr->GetInfo(), t_cr->GetInfo() );
         return false;
@@ -564,7 +554,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         return false;
     }
 
-    if( aim && cr->IsRawParam( MODE_NO_AIM ) )
+    if( aim && cr->GetIsNoAim() )
     {
         WriteLogF( _FUNC_, " - Aim is not available with critter no aim mode, aim<%u>, critter<%s>, target critter<%s>.\n", aim, cr->GetInfo(), t_cr->GetInfo() );
         return false;
@@ -576,9 +566,9 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         return false;
     }
 
-    if( !CritType::IsAnim1( cr->GetCrType(), weap->Proto->Weapon_Anim1 ) )
+    if( !CritType::IsAnim1( cr->GetCrType(), weap->Proto->GetWeapon_Anim1() ) )
     {
-        WriteLogF( _FUNC_, " - Anim1 is not available for this critter type, crtype<%u>, anim1<%d>, critter<%s>, target critter<%s>.\n", cr->GetCrType(), weap->Proto->Weapon_Anim1, cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Anim1 is not available for this critter type, crtype<%u>, anim1<%d>, critter<%s>, target critter<%s>.\n", cr->GetCrType(), weap->Proto->GetWeapon_Anim1(), cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
@@ -596,35 +586,32 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     trace.BeginHy = hy;
     trace.EndHx = tx;
     trace.EndHy = ty;
-    trace.Dist = ( weap->Proto->Weapon_MaxDist[ use ] > 2 ? max_dist : 0 );
+    trace.Dist = ( ( use == 0 ? weap->Proto->GetWeapon_MaxDist_0() : ( use == 1 ? weap->Proto->GetWeapon_MaxDist_1() : weap->Proto->GetWeapon_MaxDist_2() ) ) > 2 ? max_dist : 0 );
     trace.FindCr = t_cr;
     MapMngr.TraceBullet( trace );
     if( !trace.IsCritterFounded )
     {
         cr->Send_XY( cr );
         cr->Send_XY( t_cr );
-        // if(cr->IsPlayer()) WriteLogF(_FUNC_," - Distance trace fail, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
         return false;
     }
 
     int ap_cost = cr->GetUseApCost( weap, rate_weap );
-    if( cr->GetParam( ST_CURRENT_AP ) < ap_cost && !Singleplayer )
+    if( cr->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
-        cr->Send_Param( ST_CURRENT_AP );
         WriteLogF( _FUNC_, " - Not enough AP, critter<%s>, target critter<%s>.\n", cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
-    // WriteLog("Proto %u, ap %u.\n",weap->GetProtoId(),ap_cost);
 
     // Ammo
     ProtoItem* ammo = NULL;
     if( weap->WeapGetAmmoCaliber() && weap->WeapGetMaxAmmoCount() )
     {
-        ammo = ItemMngr.GetProtoItem( weap->AmmoPid );
+        ammo = ItemMngr.GetProtoItem( weap->GetAmmoPid() );
         if( !ammo )
         {
-            weap->SetPropertyValue< hash >( Item::PropertyAmmoPid, weap->Proto->Weapon_DefaultAmmoPid );
-            ammo = ItemMngr.GetProtoItem( weap->AmmoPid );
+            weap->SetAmmoPid( weap->Proto->GetWeapon_DefaultAmmoPid() );
+            ammo = ItemMngr.GetProtoItem( weap->GetAmmoPid() );
         }
 
         if( !ammo )
@@ -641,16 +628,16 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     }
 
     // No ammo
-    if( weap->WeapGetMaxAmmoCount() && !cr->IsRawParam( MODE_UNLIMITED_AMMO ) )
+    if( weap->WeapGetMaxAmmoCount() && !cr->GetIsUnlimitedAmmo() )
     {
-        if( !weap->AmmoCount )
+        if( !weap->GetAmmoCount() )
         {
             WriteLogF( _FUNC_, " - Critter bullets count is zero, critter<%s>.\n", cr->GetInfo() );
             return false;
         }
     }
 
-    ushort ammo_round = weap->Proto->Weapon_Round[ use ];
+    ushort ammo_round = ( use == 0 ? weap->Proto->GetWeapon_Round_0() : ( use == 1 ? weap->Proto->GetWeapon_Round_1() : weap->Proto->GetWeapon_Round_2() ) );
     if( !ammo_round )
         ammo_round = 1;
 
@@ -692,7 +679,6 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
     if( !cr->CheckMyTurn( NULL ) )
     {
         WriteLogF( _FUNC_, " - Is not critter<%s> turn.\n", cr->GetInfo() );
-        cr->Send_Param( ST_CURRENT_AP );
         return false;
     }
 
@@ -716,10 +702,9 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
     }
 
     int ap_cost = cr->GetUseApCost( weap, USE_RELOAD );
-    if( cr->GetParam( ST_CURRENT_AP ) < ap_cost && !Singleplayer )
+    if( cr->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
         WriteLogF( _FUNC_, " - Not enough AP, critter<%s>.\n", cr->GetInfo() );
-        cr->Send_Param( ST_CURRENT_AP );
         return false;
     }
     cr->SubAp( ap_cost );
@@ -766,7 +751,6 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     Map* map = MapMngr.GetMap( cr->GetMap() );
     if( map && !cr->CheckMyTurn( map ) )
     {
-        cr->Send_Param( ST_CURRENT_AP );
         WriteLogF( _FUNC_, " - Is not critter<%s> turn.\n", cr->GetInfo() );
         return false;
     }
@@ -783,9 +767,8 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     }
 
     int ap_cost = ( item_id ? cr->GetUseApCost( item, USE_USE ) : cr->GetApCostUseSkill() );
-    if( cr->GetParam( ST_CURRENT_AP ) < ap_cost && !Singleplayer )
+    if( cr->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
-        cr->Send_Param( ST_CURRENT_AP );
         WriteLogF( _FUNC_, " - Not enough AP, critter<%s>.\n", cr->GetInfo() );
         return false;
     }
@@ -793,7 +776,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
 
     if( item_id )
     {
-        if( !item->Count )
+        if( !item->GetCount() )
         {
             WriteLogF( _FUNC_, " - Error, count is zero, id<%u>, critter<%s>.\n", item->GetId(), cr->GetInfo() );
             cr->EraseItem( item, true );
@@ -950,15 +933,14 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         }
         else
         {
-            int skill_index = SKILL_OFFSET( skill );
             if( target_item )
-                cr->SendAA_Action( ACTION_USE_SKILL, skill_index, target_item );
+                cr->SendAA_Action( ACTION_USE_SKILL, skill, target_item );
             else if( target_cr )
-                cr->SendAA_Action( ACTION_USE_SKILL, skill_index, NULL );
+                cr->SendAA_Action( ACTION_USE_SKILL, skill, NULL );
             else if( target_scen )
             {
                 Item* item_scenery = new Item( uint( -1 ), ItemMngr.GetProtoItem( target_scen->ProtoId ) );
-                cr->SendAA_Action( ACTION_USE_SKILL, skill_index, item_scenery );
+                cr->SendAA_Action( ACTION_USE_SKILL, skill, item_scenery );
                 SAFEREL( item_scenery );
             }
         }
@@ -975,7 +957,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             return false;
         Script::SetArgObject( cr );
         Script::SetArgObject( target_scen );
-        Script::SetArgUInt( item ? SKILL_PICK_ON_GROUND : SKILL_OFFSET( skill ) );
+        Script::SetArgUInt( item ? SKILL_PICK_ON_GROUND : skill );
         Script::SetArgObject( item );
         for( int i = 0, j = MIN( target_scen->MScenery.ParamsCount, 5 ); i < j; i++ )
             Script::SetArgUInt( target_scen->MScenery.Param[ i ] );
@@ -1009,7 +991,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         // Default process
         if( item->IsHolodisk() && target_type == TARGET_SELF && cr->IsPlayer() )
         {
-            AddPlayerHoloInfo( (Client*) cr, item->HolodiskNumber, true );
+            AddPlayerHoloInfo( (Client*) cr, item->GetHolodiskNumber(), true );
         }
         // Nothing happens
         else
@@ -1029,7 +1011,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         if( !Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cr->GetInfo() ) )
             return false;
         Script::SetArgObject( cr );
-        Script::SetArgUInt( SKILL_OFFSET( skill ) );
+        Script::SetArgUInt( skill );
         Script::SetArgObject( target_cr );
         Script::SetArgObject( target_item );
         Script::SetArgObject( target_scen );
@@ -1054,15 +1036,13 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
     if( !cr->CheckMyTurn( map ) )
     {
         WriteLogF( _FUNC_, " - Is not critter<%s> turn.\n", cr->GetInfo() );
-        cr->Send_Param( ST_CURRENT_AP );
         return false;
     }
 
     int ap_cost = cr->GetApCostPickItem();
-    if( cr->GetParam( ST_CURRENT_AP ) < ap_cost && !Singleplayer )
+    if( cr->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
         WriteLogF( _FUNC_, " - Not enough AP, critter<%s>.\n", cr->GetInfo() );
-        cr->Send_Param( ST_CURRENT_AP );
         return false;
     }
     cr->SubAp( ap_cost );
@@ -1156,7 +1136,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
     }
     else if( proto->IsGrid() )
     {
-        switch( proto->Grid_Type )
+        switch( proto->GetGrid_Type() )
         {
         case GRID_STAIRS:
         case GRID_LADDERBOT:
@@ -1190,7 +1170,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
 
 void FOServer::KillCritter( Critter* cr, uint anim2, Critter* attacker )
 {
-    if( cr->Data.Params[ MODE_INVULNERABLE ] )
+    if( cr->GetIsInvulnerable() )
         return;
 
     // Close talk
@@ -1201,11 +1181,8 @@ void FOServer::KillCritter( Critter* cr, uint anim2, Critter* attacker )
             cl->CloseTalk();
     }
     // Disable sneaking
-    if( cr->Data.Params[ MODE_HIDE ] )
-    {
-        cr->ChangeParam( MODE_HIDE );
-        cr->Data.Params[ MODE_HIDE ] = 0;
-    }
+    if( cr->GetIsHide() )
+        cr->SetIsHide( false );
 
     // Process dead
     cr->ToDead( anim2, true );
@@ -1243,11 +1220,8 @@ void FOServer::RespawnCritter( Critter* cr )
     map->SetFlagCritter( hx, hy, multihex, false );
 
     cr->Data.Cond = COND_LIFE;
-    if( cr->Data.Params[ ST_CURRENT_HP ] < 1 )
-    {
-        cr->ChangeParam( ST_CURRENT_HP );
-        cr->Data.Params[ ST_CURRENT_HP ] = 1;
-    }
+    if( cr->GetCurrentHp() < 1 )
+        cr->SetCurrentHp( 1 );
     cr->Send_Action( cr, ACTION_RESPAWN, 0, NULL );
     cr->SendAA_Action( ACTION_RESPAWN, 0, NULL );
     cr->EventRespawn();
@@ -1267,12 +1241,10 @@ void FOServer::KnockoutCritter( Critter* cr, uint anim2begin, uint anim2idle, ui
         if( cl->IsTalking() )
             cl->CloseTalk();
     }
+
     // Disable sneaking
-    if( cr->Data.Params[ MODE_HIDE ] )
-    {
-        cr->ChangeParam( MODE_HIDE );
-        cr->Data.Params[ MODE_HIDE ] = 0;
-    }
+    if( cr->GetIsHide() )
+        cr->SetIsHide( true );
 
     // Process knockout
     int  x1 = cr->GetHexX();
@@ -1539,39 +1511,40 @@ void FOServer::Process_CreateClient( Client* cl )
     cl->Bin.Pop( cl->PassHash, PASS_HASH_SIZE );
 
     // Receive params
-    ushort params_count = 0;
-    cl->Bin >> params_count;
+    ushort props_count = 0;
+    cl->Bin >> props_count;
 
-    if( params_count > MAX_PARAMS )
+    if( props_count > ( ushort ) Critter::RegProperties.size() )
     {
         cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
         return;
     }
 
-    memzero( cl->Data.Params, sizeof( cl->Data.Params ) );
-    for( ushort i = 0; i < params_count; i++ )
+    for( ushort i = 0; i < props_count; i++ )
     {
-        ushort index;
-        int    val;
-        cl->Bin >> index;
-        cl->Bin >> val;
+        int enum_value;
+        int value;
+        cl->Bin >> enum_value;
+        cl->Bin >> value;
 
-        if( index >= MAX_PARAMS )
+        if( !Critter::RegProperties.count( enum_value ) )
         {
             cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
         }
 
-        if( !Critter::ParamsRegEnabled[ index ] )
+        Property* prop = Critter::PropertiesRegistrator->FindByEnum( enum_value );
+        if( !prop || !prop->IsPOD() )
         {
+            WriteLogF( _FUNC_, " - Invalid allowed property<%s>.\n", prop ? prop->GetName() : Str::ItoA( enum_value ) );
             cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
         }
 
-        cl->Data.Params[ index ] = val;
+        cl->Props.SetValueAsInt( enum_value, value );
     }
 
     // Check net
@@ -2234,7 +2207,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         #endif
 
         // Other data
-        cl_old->Data.Params[ MODE_DEFAULT_COMBAT ] = cl->Data.Params[ MODE_DEFAULT_COMBAT ];
+        cl_old->SetDefaultCombat( cl->GetDefaultCombat() );
 
         Job::DeferredRelease( cl );
         cl = cl_old;
@@ -2382,7 +2355,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 cl->GroupMove->CarId = car->GetId();
         }
 
-        cl->SetTimeout( TO_TRANSFER, 0 );
+        cl->SetTimeoutTransfer( 0 );
         cl->AddRef();
         CrMngr.AddCritter( cl );
         Job::PushBack( JOB_CRITTER, cl );
@@ -2404,7 +2377,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         cl->DisableSend--;
     }
 
-    cl->Data.Params[ MODE_DEFAULT_COMBAT ] = default_combat_mode;
+    cl->SetDefaultCombat( default_combat_mode );
     for( int i = 0; i < 5; i++ )
         cl->UID[ i ] = uid[ i ];
 
@@ -2570,7 +2543,7 @@ void FOServer::Process_ParseToGame( Client* cl )
         {
             Critter* cr = *it;
             if( cr != cl )
-                cr->Send_CritterParam( cl, OTHER_FLAGS, cl->Flags );
+                cr->Send_CustomCommand( cl, OTHER_FLAGS, cl->Flags );
         }
         cl->Send_AllQuests();
         cl->Send_HoloInfo( true, 0, cl->Data.HoloInfoCount );
@@ -2596,8 +2569,6 @@ void FOServer::Process_ParseToGame( Client* cl )
         UNSETFLAG( cl->Flags, FCRIT_CHOSEN );
 
         // Send all data
-        #pragma MESSAGE("Send all data by demand.")
-        cl->Send_AllParams();
         cl->Send_AddAllItems();
         cl->Send_AllQuests();
         cl->Send_HoloInfo( true, 0, cl->Data.HoloInfoCount );
@@ -2634,17 +2605,19 @@ void FOServer::Process_ParseToGame( Client* cl )
         if( map->IsTurnBasedOn )
         {
             if( map->IsCritterTurn( cl ) )
-                cl->Send_ParamOther( OTHER_YOU_TURN, map->GetCritterTurnTime() );
+            {
+                cl->Send_CustomCommand( cl, OTHER_YOU_TURN, map->GetCritterTurnTime() );
+            }
             else
             {
                 Critter* cr = cl->GetCritSelf( map->GetCritterTurnId(), false );
                 if( cr )
-                    cl->Send_CritterParam( cr, OTHER_YOU_TURN, map->GetCritterTurnTime() );
+                    cl->Send_CustomCommand( cr, OTHER_YOU_TURN, map->GetCritterTurnTime() );
             }
         }
-        else if( TB_BATTLE_TIMEOUT_CHECK( cl->GetParam( TO_BATTLE ) ) )
+        else if( TB_BATTLE_TIMEOUT_CHECK( cl->GetTimeoutBattle() ) )
         {
-            cl->SetTimeout( TO_BATTLE, 0 );
+            cl->SetTimeoutBattle( 0 );
         }
     }
 
@@ -2805,8 +2778,8 @@ void FOServer::Process_Move( Client* cl )
     if( is_run )
     {
         if( !cl->IsCanRun() ||
-            ( GameOpt.RunOnCombat ? 0 : cl->GetParam( TO_BATTLE ) ) ||
-            ( GameOpt.RunOnTransfer ? 0 : cl->GetParam( TO_TRANSFER ) ) )
+            ( GameOpt.RunOnCombat ? false : IS_TIMEOUT( cl->GetTimeoutBattle() ) ) ||
+            ( GameOpt.RunOnTransfer ? false : IS_TIMEOUT( cl->GetTimeoutTransfer() ) ) )
         {
             // Switch to walk
             move_params ^= MOVE_PARAM_RUN;
@@ -2826,7 +2799,7 @@ void FOServer::Process_Move( Client* cl )
 
     // Overweight
     uint cur_weight = cl->GetItemsWeight();
-    uint max_weight = cl->GetParam( ST_CARRY_WEIGHT );
+    uint max_weight = cl->GetCarryWeight();
     if( cur_weight > max_weight )
     {
         if( is_run || cur_weight > max_weight * 2 )
@@ -2872,7 +2845,6 @@ void FOServer::Process_ChangeItem( Client* cl )
     if( !cl->CheckMyTurn( NULL ) )
     {
         WriteLogF( _FUNC_, " - Is not client<%s> turn.\n", cl->GetInfo() );
-        cl->Send_Param( ST_CURRENT_AP );
         cl->Send_AddAllItems();
         return;
     }
@@ -2881,15 +2853,13 @@ void FOServer::Process_ChangeItem( Client* cl )
     int  ap_cost = ( is_castling ? 0 : cl->GetApCostMoveItemInventory() );
     if( to_slot == SLOT_GROUND )
         ap_cost = cl->GetApCostDropItem();
-    if( cl->GetParam( ST_CURRENT_AP ) < ap_cost && !Singleplayer )
+    if( cl->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
         WriteLogF( _FUNC_, " - Not enough AP, client<%s>.\n", cl->GetInfo() );
-        cl->Send_Param( ST_CURRENT_AP );
         cl->Send_AddAllItems();
         return;
     }
     cl->SubAp( ap_cost );
-    // cl->AccessContainerId=cl->GetId();
 
     Map* map = MapMngr.GetMap( cl->GetMap() );
     if( map && map->IsTurnBasedOn && !cl->GetAllAp() )
@@ -2899,25 +2869,7 @@ void FOServer::Process_ChangeItem( Client* cl )
     if( !cl->MoveItem( from_slot, to_slot, item_id, count ) )
     {
         WriteLogF( _FUNC_, " - Move item fail, from<%u>, to<%u>, item_id<%u>, client<%s>.\n", from_slot, to_slot, item_id, cl->GetInfo() );
-        cl->Send_Param( ST_CURRENT_AP );
         cl->Send_AddAllItems();
-    }
-}
-
-void FOServer::Process_RateItem( Client* cl )
-{
-    hash  proto_id;
-    uchar mode;
-    cl->Bin >> proto_id;
-    cl->Bin >> mode;
-
-    cl->ItemSlotMain->SetMode( mode );
-    if( !cl->ItemSlotMain->GetId() )
-    {
-        cl->ChangeParam( ST_HANDS_ITEM_PROTO_ID );
-        cl->Data.Params[ ST_HANDS_ITEM_PROTO_ID ] = proto_id;
-        cl->ChangeParam( ST_HANDS_ITEM_MODE );
-        cl->Data.Params[ ST_HANDS_ITEM_MODE ] = mode;
     }
 }
 
@@ -2969,11 +2921,11 @@ void FOServer::Process_UseItem( Client* cl )
                 if( use != USE_PRIMARY )
                     break;
                 ProtoItem* unarmed = ItemMngr.GetProtoItem( item_pid );
-                if( !unarmed || !unarmed->IsWeapon() || !unarmed->Weapon_IsUnarmed )
+                if( !unarmed || !unarmed->IsWeapon() || !unarmed->GetWeapon_IsUnarmed() )
                     break;
-                if( cl->GetParam( ST_STRENGTH ) < unarmed->Weapon_MinStrength || cl->GetParam( ST_AGILITY ) < unarmed->Weapon_UnarmedMinAgility )
+                if( cl->GetStrength() < unarmed->GetWeapon_MinStrength() || cl->GetAgility() < unarmed->GetWeapon_UnarmedMinAgility() )
                     break;
-                if( cl->Data.Params[ ST_LEVEL ] < unarmed->Weapon_UnarmedMinLevel || cl->GetRawParam( SK_UNARMED ) < unarmed->Weapon_UnarmedMinUnarmed )
+                if( cl->GetLevel() < unarmed->GetWeapon_UnarmedMinLevel() || cl->GetSkillUnarmed() < unarmed->GetWeapon_UnarmedMinUnarmed() )
                     break;
                 cl->ItemSlotMain->SetProto( unarmed );
             }
@@ -3034,15 +2986,13 @@ void FOServer::Process_PickCritter( Client* cl )
     if( !cl->CheckMyTurn( NULL ) )
     {
         WriteLogF( _FUNC_, " - Is not critter<%s> turn.\n", cl->GetInfo() );
-        cl->Send_Param( ST_CURRENT_AP );
         return;
     }
 
     int ap_cost = cl->GetApCostPickCritter();
-    if( cl->GetParam( ST_CURRENT_AP ) < ap_cost && !Singleplayer )
+    if( cl->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
         WriteLogF( _FUNC_, " - Not enough AP, critter<%s>.\n", cl->GetInfo() );
-        cl->Send_Param( ST_CURRENT_AP );
         return;
     }
     cl->SubAp( ap_cost );
@@ -3060,7 +3010,7 @@ void FOServer::Process_PickCritter( Client* cl )
     case PICK_CRIT_LOOT:
         if( !cr->IsDead() )
             break;
-        if( cr->IsRawParam( MODE_NO_LOOT ) )
+        if( cr->GetIsNoLoot() )
             break;
         if( !CheckDist( cl->GetHexX(), cl->GetHexY(), cr->GetHexX(), cr->GetHexY(), cl->GetUseDist() + cr->GetMultihex() ) )
         {
@@ -3091,7 +3041,7 @@ void FOServer::Process_PickCritter( Client* cl )
     case PICK_CRIT_PUSH:
         if( !cr->IsLife() )
             break;
-        if( cr->IsRawParam( MODE_NO_PUSH ) )
+        if( cr->GetIsNoPush() )
             break;
         if( !CheckDist( cl->GetHexX(), cl->GetHexY(), cr->GetHexX(), cr->GetHexY(), cl->GetUseDist() + cr->GetMultihex() ) )
         {
@@ -3141,7 +3091,6 @@ void FOServer::Process_ContainerItem( Client* cl )
     if( !cl->CheckMyTurn( NULL ) )
     {
         WriteLogF( _FUNC_, " - Is not client<%s> turn.\n", cl->GetInfo() );
-        cl->Send_Param( ST_CURRENT_AP );
         return;
     }
 
@@ -3149,17 +3098,15 @@ void FOServer::Process_ContainerItem( Client* cl )
     {
         WriteLogF( _FUNC_, " - Try work with not accessed container, client<%s>.\n", cl->GetInfo() );
         cl->Send_ContainerInfo();
-        cl->Send_Param( ST_CURRENT_AP );
         return;
     }
     cl->ItemTransferCount = item_count;
 
     int ap_cost = cl->GetApCostMoveItemContainer();
-    if( cl->GetParam( ST_CURRENT_AP ) < ap_cost && !Singleplayer )
+    if( cl->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
         WriteLogF( _FUNC_, " - Not enough AP, client<%s>.\n", cl->GetInfo() );
         cl->Send_ContainerInfo();
-        cl->Send_Param( ST_CURRENT_AP );
         return;
     }
     cl->SubAp( ap_cost );
@@ -3209,7 +3156,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check for close
-            if( cont->Proto->Container_Changeble && !cont->LockerIsOpen() )
+            if( cont->Proto->GetContainer_Changeble() && !cont->LockerIsOpen() )
             {
                 cl->Send_ContainerInfo();
                 WriteLogF( _FUNC_, " - Container is not open.\n" );
@@ -3258,7 +3205,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 0, item );
 
             // Check count
-            if( !item_count || item->Count < item_count )
+            if( !item_count || item->GetCount() < item_count )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Error count.", SAY_NETMSG );
@@ -3378,7 +3325,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 2, item );
 
             // Check count
-            if( !item_count || item->Count < item_count )
+            if( !item_count || item->GetCount() < item_count )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Error count.", SAY_NETMSG );
@@ -3462,7 +3409,7 @@ void FOServer::Process_ContainerItem( Client* cl )
         }
 
         // Check NoSteal flag
-        if( is_steal && cr->IsRawParam( MODE_NO_STEAL ) )
+        if( is_steal && cr->GetIsNoSteal() )
         {
             cl->Send_ContainerInfo();
             WriteLogF( _FUNC_, " - Critter has NoSteal flag, critter<%s>.\n", cl->GetInfo() );
@@ -3525,7 +3472,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 0, item );
 
             // Check count
-            if( !item_count || item->Count < item_count )
+            if( !item_count || item->GetCount() < item_count )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Incorrect count.", SAY_NETMSG );
@@ -3658,7 +3605,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 2, item );
 
             // Check count
-            if( !item_count || item->Count < item_count )
+            if( !item_count || item->GetCount() < item_count )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Incorrect count.", SAY_NETMSG );
@@ -3733,10 +3680,10 @@ void FOServer::Process_ContainerItem( Client* cl )
 
 void FOServer::Process_UseSkill( Client* cl )
 {
-    ushort skill;
-    uchar  targ_type;
-    uint   target_id;
-    hash   target_pid;
+    int   skill;
+    uchar targ_type;
+    uint  target_id;
+    hash  target_pid;
 
     cl->Bin >> skill;
     cl->Bin >> targ_type;
@@ -3812,7 +3759,7 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
 
     HolodiskLocker.Lock();
 
-    uint      holo_id = holodisk->HolodiskNumber;
+    uint      holo_id = holodisk->GetHolodiskNumber();
     HoloInfo* hi = GetHoloInfo( holo_id );
     if( hi && hi->CanRewrite )
     {
@@ -3829,7 +3776,7 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
 
     cl->Send_UserHoloStr( STR_HOLO_INFO_NAME( holo_id ), title, title_len );
     cl->Send_UserHoloStr( STR_HOLO_INFO_DESC( holo_id ), text, text_len );
-    holodisk->SetPropertyValue< uint >( Item::PropertyHolodiskNumber, holo_id );
+    holodisk->SetHolodiskNumber( holo_id );
     cl->Send_TextMsg( cl, STR_HOLO_WRITE_SUCC, SAY_NETMSG, TEXTMSG_HOLO );
 }
 
@@ -3859,8 +3806,6 @@ void FOServer::Process_LevelUp( Client* cl )
 
     // Skills up
     cl->Bin >> count_skill_up;
-    if( count_skill_up > SKILL_COUNT )
-        count_skill_up = SKILL_COUNT;
     for( int i = 0; i < count_skill_up; i++ )
     {
         ushort num, val;
@@ -3880,7 +3825,7 @@ void FOServer::Process_LevelUp( Client* cl )
         if( Script::PrepareContext( ServerFunctions.PlayerLevelUp, _FUNC_, cl->GetInfo() ) )
         {
             Script::SetArgObject( cl );
-            Script::SetArgUInt( SKILL_OFFSET( skills[ i * 2 ] ) );
+            Script::SetArgUInt( skills[ i * 2 ] );
             Script::SetArgUInt( skills[ i * 2 + 1 ] );
             Script::SetArgUInt( -1 );
             Script::RunPrepared();
@@ -3892,7 +3837,7 @@ void FOServer::Process_LevelUp( Client* cl )
         Script::SetArgObject( cl );
         Script::SetArgUInt( -1 );
         Script::SetArgUInt( 0 );
-        Script::SetArgUInt( PERK_OFFSET( perk_up ) );
+        Script::SetArgUInt( perk_up );
         Script::RunPrepared();
     }
 }
@@ -4075,7 +4020,7 @@ void FOServer::Process_PlayersBarter( Client* cl )
             {
                 Client::BarterItem& barter_item = cl->BarterItems[ i ];
                 ProtoItem*          proto_item = ItemMngr.GetProtoItem( barter_item.Pid );
-                weigth += proto_item->Weight * barter_item.Count;
+                weigth += proto_item->GetWeight() * barter_item.Count;
             }
             // Opponent
             uint weigth_ = 0;
@@ -4083,7 +4028,7 @@ void FOServer::Process_PlayersBarter( Client* cl )
             {
                 Client::BarterItem& barter_item = opponent->BarterItems[ i ];
                 ProtoItem*          proto_item = ItemMngr.GetProtoItem( barter_item.Pid );
-                weigth_ += proto_item->Weight * barter_item.Count;
+                weigth_ += proto_item->GetWeight() * barter_item.Count;
             }
             // Check
             if( cl->GetFreeWeight() + (int) weigth < (int) weigth_ )
@@ -4165,7 +4110,7 @@ label_EndOffer:
         Item*               item = barter_cl->GetItem( param, true );
         Client::BarterItem* barter_item = barter_cl->BarterGetItem( param );
 
-        if( !item || ( barter_item && barter_item->Count > item->Count ) )
+        if( !item || ( barter_item && barter_item->Count > item->GetCount() ) )
         {
             barter_cl->BarterEraseItem( param );
             cl->BarterRefresh( opponent );
@@ -4175,7 +4120,7 @@ label_EndOffer:
 
         if( is_set )
         {
-            if( param_ext > item->Count - ( barter_item ? barter_item->Count : 0 ) )
+            if( param_ext > item->GetCount() - ( barter_item ? barter_item->Count : 0 ) )
             {
                 barter_cl->BarterEraseItem( param );
                 cl->BarterRefresh( opponent );
@@ -4274,7 +4219,7 @@ void FOServer::Process_Combat( Client* cl )
             return;
         }
         if( map->IsTurnBasedOn )
-            cl->Data.Params[ MODE_END_COMBAT ] = ( val ? 1 : 0 );
+            cl->SetIsEndCombat( val != 0 );
     }
     else
     {
@@ -4374,15 +4319,13 @@ void FOServer::Process_KarmaVoting( Client* cl )
 
     if( cl->GetId() == crid )
         return;
-    if( cl->GetParam( TO_KARMA_VOTING ) )
+    if( cl->GetKarmaVoting() )
         return;
 
     Critter* cr = CrMngr.GetCritter( crid, true );
-//	if(cl->GetMap()) cr=cl->GetCritSelf(crid);
-//	else if(cl->GroupMove) cr=cl->GroupMove->GetCritter(crid);
     if( !cr )
     {
-        cl->SetTimeout( TO_KARMA_VOTING, 1 * GameOpt.TimeMultiplier );    // Wait 1 second
+        cl->SetTimeoutKarmaVoting( GameOpt.FullSecond + 1 * GameOpt.TimeMultiplier );    // Wait 1 second
         return;
     }
 
@@ -4393,13 +4336,6 @@ void FOServer::Process_KarmaVoting( Client* cl )
         Script::SetArgBool( is_up );
         Script::RunPrepared();
     }
-}
-
-void FOServer::Process_GiveGlobalInfo( Client* cl )
-{
-    //	uchar info_flags;
-    //	cl->Bin >> info_flags;
-    //	cl->Send_GlobalInfo(info_flags);
 }
 
 void FOServer::Process_RuleGlobal( Client* cl )
@@ -4422,10 +4358,10 @@ void FOServer::Process_RuleGlobal( Client* cl )
         if( !cr )
             break;
 
-        if( cl->GetFollowCrId() == cr->GetId() )
-            cl->SetFollowCrId( 0 );
+        if( cl->GetFollowCrit() == cr->GetId() )
+            cl->SetFollowCrit( 0 );
         else
-            cl->SetFollowCrId( cr->GetId() );
+            cl->SetFollowCrit( cr->GetId() );
     }
     break;
     case GM_CMD_SETMOVE:
@@ -4446,7 +4382,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
             break;
         if( cl->GroupMove->EncounterDescriptor )
             break;
-        if( cl->GetParam( TO_TRANSFER ) )
+        if( IS_TIMEOUT( cl->GetTimeoutTransfer() ) )
         {
             cl->Send_TextMsg( cl, STR_TIMEOUT_TRANSFER_WAIT, SAY_NETMSG, TEXTMSG_GAME );
             break;
@@ -4663,14 +4599,15 @@ void FOServer::Process_RuleGlobal( Client* cl )
     cl->SetBreakTime( GameOpt.Breaktime );
 }
 
-void FOServer::Process_ItemProperty( Client* cl, uint data_size )
+void FOServer::Process_Property( Client* cl, uint data_size, bool is_critter )
 {
     uint   msg_len = 0;
-    uint   item_id;
+    uint   item_id = 0;
     ushort property_index;
     if( data_size == 0 )
         cl->Bin >> msg_len;
-    cl->Bin >> item_id;
+    if( !is_critter )
+        cl->Bin >> item_id;
     cl->Bin >> property_index;
 
     CHECK_IN_BUFF_ERROR( cl );
@@ -4693,7 +4630,12 @@ void FOServer::Process_ItemProperty( Client* cl, uint data_size )
 
     CHECK_IN_BUFF_ERROR( cl );
 
-    Property* prop = Item::PropertiesRegistrator->Get( property_index );
+    Property* prop;
+    if( is_critter )
+        prop = Critter::PropertiesRegistrator->Get( property_index );
+    else
+        prop = Item::PropertiesRegistrator->Get( property_index );
+
     if( !prop || !( prop->GetAccess() & Property::ModifiableMask ) )
         return;
     if( prop->IsPOD() && data_size != prop->GetBaseSize() )
@@ -4701,10 +4643,29 @@ void FOServer::Process_ItemProperty( Client* cl, uint data_size )
     if( !prop->IsPOD() && data_size != 0 )
         return;
 
-    Item* item = cl->GetItem( item_id, true );
-    if( !item )
-        return;
+    if( is_critter )
+    {
+        #pragma MESSAGE( "Disable send changing field by client to this client" )
+        prop->SetData( cl, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size() );
+    }
+    else
+    {
+        Item* item = cl->GetItem( item_id, true );
+        if( !item )
+            return;
 
-    #pragma MESSAGE( "Disable send changing field by client to this client" )
-    prop->SetData( item, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size(), true );
+        prop->SetData( item, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size() );
+    }
+}
+
+void FOServer::OnSendCritterValue( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    Critter* cr = (Critter*) obj;
+
+    bool     is_public = ( prop->GetAccess() & Property::PublicMask ) != 0;
+    bool     is_protected = ( prop->GetAccess() & Property::ProtectedMask ) != 0;
+    if( is_public || is_protected )
+        cr->Send_CritterProperty( cr, prop );
+    if( is_public )
+        cr->SendA_CritterProperty( prop );
 }

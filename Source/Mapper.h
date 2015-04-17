@@ -30,8 +30,6 @@
 #define FONT_FAT                       ( 7 )
 #define FONT_BIG                       ( 8 )
 
-typedef vector< CritData* > CritDataVec;
-
 class FOMapper
 {
 public:
@@ -192,11 +190,11 @@ public:
     #define DEFAULT_SUB_TAB            "000 - all"
     struct SubTab
     {
-        ProtoItemVec ItemProtos;
-        CritDataVec  NpcProtos;
-        StrVec       TileNames;
-        HashVec      TileHashes;
-        int          Index, Scroll;
+        ProtoItemVec    ItemProtos;
+        ProtoCritterVec NpcProtos;
+        StrVec          TileNames;
+        HashVec         TileHashes;
+        int             Index, Scroll;
         SubTab(): Index( 0 ), Scroll( 0 ) {}
     };
     typedef map< string, SubTab > SubTabMap;
@@ -220,20 +218,20 @@ public:
     int        SubTabsX, SubTabsY;
 
     // Prototypes
-    ProtoItemVec* CurItemProtos;
-    HashVec*      CurTileHashes;
-    StrVec*       CurTileNames;
-    CritDataVec*  CurNpcProtos;
-    int           NpcDir;
-    int*          CurProtoScroll;
-    uint          ProtoWidth;
-    uint          ProtosOnScreen;
-    uint          TabIndex[ INT_MODE_COUNT ];
-    int           InContScroll;
-    int           ListScroll;
-    MapObject*    InContObject;
-    bool          DrawRoof;
-    int           TileLayer;
+    ProtoItemVec*    CurItemProtos;
+    HashVec*         CurTileHashes;
+    StrVec*          CurTileNames;
+    ProtoCritterVec* CurNpcProtos;
+    int              NpcDir;
+    int*             CurProtoScroll;
+    uint             ProtoWidth;
+    uint             ProtosOnScreen;
+    uint             TabIndex[ INT_MODE_COUNT ];
+    int              InContScroll;
+    int              ListScroll;
+    MapObject*       InContObject;
+    bool             DrawRoof;
+    int              TileLayer;
 
     uint GetTabIndex();
     void SetTabIndex( uint index );
@@ -274,7 +272,7 @@ public:
         bool operator==( const MapObject* r ) { return MapObj == r; }
         bool IsItem()                         { return MapItem != NULL; }
         bool IsNpc()                          { return MapNpc != NULL; }
-        bool IsContainer()                    { return IsNpc() || ( IsItem() && MapItem->Proto->Type == ITEM_TYPE_CONTAINER ); }
+        bool IsContainer()                    { return IsNpc() || ( IsItem() && MapItem->Proto->GetType() == ITEM_TYPE_CONTAINER ); }
     };
     typedef vector< SelMapObj > SelMapProtoItemVec;
     SelMapProtoItemVec SelectedObj;
@@ -315,8 +313,8 @@ public:
 
     // Parse new
     uint   AnyId;
-    IntVec ShowCritterParams;
-    StrVec ShowCritterParamNames;
+    IntVec ShowCritterProps;
+    StrVec ShowCritterPropsNames;
 
     MapObject* ParseProto( hash pid, ushort hx, ushort hy, MapObject* owner, bool is_child = false );
     void       ParseTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof );
@@ -413,15 +411,6 @@ public:
     void MessBoxDraw();
     bool SaveLogFile();
 
-    // Extended slots
-    struct SlotExt
-    {
-        uchar Index;
-        char* SlotName;
-    };
-    typedef map< int, SlotExt > SlotExtMap;
-    SlotExtMap SlotsExt;
-
     // Scripts
     static bool SpritesCanDraw;
     bool InitScriptSystem();
@@ -449,7 +438,6 @@ public:
         static void          MapperObject_MoveToHex( MapObject& mobj, ushort hx, ushort hy );
         static void          MapperObject_MoveToHexOffset( MapObject& mobj, int x, int y );
         static void          MapperObject_MoveToDir( MapObject& mobj, uchar dir );
-        static ScriptString* MapperObject_CritterParam_Index( MapObject& mobj, uint index );
 
         static ScriptString* MapperMap_get_Name( ProtoMap& pmap );
         static MapObject*    MapperMap_AddObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, hash pid );
@@ -472,8 +460,8 @@ public:
         static ScriptString* MapperMap_get_ScriptFunc( ProtoMap& pmap );
         static void          MapperMap_set_ScriptFunc( ProtoMap& pmap, ScriptString* str );
 
-        static void       Global_ShowCritterParam( int param_index, bool show, ScriptString* param_name );
-        static void       Global_AllowSlot( uchar index, ScriptString& slot_name );
+        // static void       Global_ShowProperty( ScriptString& class_name, ScriptString& property_name, bool show );
+        static void       Global_AllowSlot( uchar index, bool enable_send );
         static ProtoMap*  Global_LoadMap( ScriptString& file_name, int path_type );
         static void       Global_UnloadMap( ProtoMap* pmap );
         static bool       Global_SaveMap( ProtoMap* pmap, ScriptString* custom_name );

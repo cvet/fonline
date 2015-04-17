@@ -809,15 +809,18 @@ void Preprocessor::ParsePragma( LexemList& args )
     std::string p_name = args.begin()->Value;
     args.pop_front();
     std::string p_args;
-    if( !args.empty() )
+    while( !args.empty() )
     {
-        if( args.begin()->Type != STRING )
-            PrintErrorMessage( "Pragma parameter should be a string literal." );
-        p_args = RemoveQuotes( args.begin()->Value );
+        if( args.begin()->Type == STRING )
+            p_args += RemoveQuotes( args.begin()->Value );
+        else
+            p_args += args.begin()->Value;
+
         args.pop_front();
+
+        if( !args.empty() )
+            p_args += " ";
     }
-    if( !args.empty() )
-        PrintErrorMessage( "Too many parameters to pragma." );
 
     Pragmas.push_back( p_name );
     Pragmas.push_back( p_args );

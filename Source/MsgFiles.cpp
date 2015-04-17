@@ -305,29 +305,49 @@ void FOMsg::LoadFromString( const char* str, uint str_len )
         if( !*pbuf )
             break;
 
-        // Parse number
-        uint num = Str::AtoUI( pbuf );
-        if( !num )
-        {
-            Str::SkipLine( pbuf );
-            continue;
-        }
+        // Goto '}'
+        const char* num1_begin = pbuf;
+        Str::GoTo( pbuf, '}', false );
+        if( !*pbuf )
+            break;
+        *pbuf = 0;
+        pbuf++;
 
-        // Skip 'Number}{}{'
+        // Parse number
+        uint num1 = (uint) ConvertParamValue( num1_begin );
+
+        // Skip '{'
         Str::GoTo( pbuf, '{', true );
+        if( !*pbuf )
+            break;
+
+        // Goto '}'
+        const char* num2_begin = pbuf;
+        Str::GoTo( pbuf, '}', false );
+        if( !*pbuf )
+            break;
+        *pbuf = 0;
+        pbuf++;
+
+        // Parse number
+        uint num2 = ( num2_begin[ 0 ] ? (uint) ConvertParamValue( num2_begin ) : 0 );
+
+        // Goto '{'
         Str::GoTo( pbuf, '{', true );
         if( !*pbuf )
             break;
 
         // Find '}'
         char* _pbuf = pbuf;
-        Str::GoTo( pbuf, '}' );
+        Str::GoTo( pbuf, '}', false );
         if( !*pbuf )
             break;
         *pbuf = 0;
-
-        AddStr( num, _pbuf );
         pbuf++;
+
+        uint num = num1 + num2;
+        if( num )
+            AddStr( num, _pbuf );
     }
 
     SAFEDELA( str_copy );

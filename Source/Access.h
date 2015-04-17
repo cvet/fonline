@@ -21,7 +21,7 @@
 #define CMD_DISCONCRIT               ( 7 )
 #define CMD_TOGLOBAL                 ( 8 )
 #define CMD_RESPAWN                  ( 9 )
-#define CMD_PARAM                    ( 10 )
+#define CMD_PROPERTY                 ( 10 )
 #define CMD_GETACCESS                ( 11 )
 #define CMD_ADDITEM                  ( 12 )
 #define CMD_ADDITEM_SELF             ( 14 )
@@ -66,7 +66,7 @@ const CmdDef cmdlist[] =
     { "disconnect", CMD_DISCONCRIT },
     { "toglobal", CMD_TOGLOBAL },
     { "respawn", CMD_RESPAWN },
-    { "param", CMD_PARAM },
+    { "prop", CMD_PROPERTY },
     { "getaccess", CMD_GETACCESS },
     { "additem", CMD_ADDITEM },
     { "additemself", CMD_ADDITEM_SELF },
@@ -253,24 +253,24 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         buf << crid;
     }
     break;
-    case CMD_PARAM:
+    case CMD_PROPERTY:
     {
-        uint   crid;
-        ushort param_num;
-        int    param_val;
-        if( sscanf( args, "%u%hu%d", &crid, &param_num, &param_val ) != 3 )
+        uint crid;
+        char property_name[ 256 ];
+        int  property_value;
+        if( sscanf( args, "%u%s%d", &crid, property_name, &property_value ) != 3 )
         {
-            logcb( "Invalid arguments. Example: <param crid index value>." );
+            logcb( "Invalid arguments. Example: <prop crid prop_name value>." );
             break;
         }
-        msg_len += sizeof( uint ) + sizeof( ushort ) + sizeof( int );
+        msg_len += sizeof( uint ) + sizeof( property_name ) + sizeof( int );
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
         buf << crid;
-        buf << param_num;
-        buf << param_val;
+        buf.Push( property_name, sizeof( property_name ) );
+        buf << property_value;
     }
     break;
     case CMD_GETACCESS:

@@ -289,7 +289,7 @@ int FOClient::InitIface()
     IfaceLoadRect( SboxBSneak, "SboxSneak" );
     IfaceLoadRect( SboxBLockpick, "SboxLockpick" );
     IfaceLoadRect( SboxBSteal, "SboxSteal" );
-    IfaceLoadRect( SboxBTrap, "SboxTrap" );
+    IfaceLoadRect( SboxBTraps, "SboxTrap" );
     IfaceLoadRect( SboxBFirstAid, "SboxFirstAid" );
     IfaceLoadRect( SboxBDoctor, "SboxDoctor" );
     IfaceLoadRect( SboxBScience, "SboxScience" );
@@ -297,7 +297,7 @@ int FOClient::InitIface()
     IfaceLoadRect( SboxTSneak, "SboxSneakText" );
     IfaceLoadRect( SboxTLockpick, "SboxLockpickText" );
     IfaceLoadRect( SboxTSteal, "SboxStealText" );
-    IfaceLoadRect( SboxTTrap, "SboxTrapText" );
+    IfaceLoadRect( SboxTTraps, "SboxTrapText" );
     IfaceLoadRect( SboxTFirstAid, "SboxFirstAidText" );
     IfaceLoadRect( SboxTDoctor, "SboxDoctorText" );
     IfaceLoadRect( SboxTScience, "SboxScienceText" );
@@ -948,7 +948,7 @@ void FOClient::ContainerDraw( const Rect& pos, int height, int scroll, ItemVec& 
             continue;
         if( i >= scroll && i < scroll + pos.H() / height )
         {
-            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
+            AnyFrames* anim = ResMngr.GetInvAnim( item->GetActualPicInv() );
             if( anim )
                 SprMngr.DrawSpriteSize( anim->GetCurSprId(), pos.L, pos.T + ( i2 * height ), pos.W(), height, false, true, item->GetInvColor() );
             i2++;
@@ -966,8 +966,8 @@ void FOClient::ContainerDraw( const Rect& pos, int height, int scroll, ItemVec& 
             continue;
         if( i >= scroll && i < scroll + pos.H() / height )
         {
-            if( item->Count > 1 )
-                SprMngr.DrawStr( Rect( pos.L, pos.T + ( i2 * height ), pos.R, pos.T + ( i2 * height ) + height ), Str::FormatBuf( "x%u", item->Count ), 0, COLOR_TEXT_WHITE );
+            if( item->GetCount() > 1 )
+                SprMngr.DrawStr( Rect( pos.L, pos.T + ( i2 * height ), pos.R, pos.T + ( i2 * height ) + height ), Str::FormatBuf( "x%u", item->GetCount() ), 0, COLOR_TEXT_WHITE );
             i2++;
         }
         i++;
@@ -997,7 +997,7 @@ void FOClient::CollectContItems()
         {
             Item* item = *it;
             auto  it_ = PtrCollectionFind( InvContInit.begin(), InvContInit.end(), item->GetId() );
-            if( it_ == InvContInit.end() || ( *it_ )->Count < item->Count )
+            if( it_ == InvContInit.end() || ( *it_ )->GetCount() < item->GetCount() )
             {
                 ( *it )->Release();
                 it = BarterCont1oInit.erase( it );
@@ -1015,13 +1015,13 @@ void FOClient::CollectContItems()
             {
                 Item* item_ = *it_;
 
-                uint  count = item_->Count;
+                uint  count = item_->GetCount();
                 item_->Props = item->Props;
                 item_->SetCount( count );
 
                 if( item->IsStackable() )
-                    item->ChangeCount( -(int) item_->Count );
-                if( !item->IsStackable() || !item->Count )
+                    item->ChangeCount( -(int) item_->GetCount() );
+                if( !item->IsStackable() || !item->GetCount() )
                 {
                     ( *it )->Release();
                     it = InvContInit.erase( it );
@@ -1267,7 +1267,7 @@ void FOClient::GameDraw()
         // Follow pic
         if( GameOpt.ShowGroups && cr->SprDrawValid && Chosen )
         {
-            if( cr->GetId() == (uint) Chosen->Params[ ST_FOLLOW_CRIT ] )
+            if( cr->GetId() == Chosen->GetFollowCrit() )
             {
                 SpriteInfo* si = SprMngr.GetSpriteInfo( GmapPFollowCrit->GetCurSprId() );
                 Rect        tr = cr->GetTextRect();
@@ -1276,7 +1276,7 @@ void FOClient::GameDraw()
                 uint        col = ( CheckDist( cr->GetHexX(), cr->GetHexY(), Chosen->GetHexX(), Chosen->GetHexY(), FOLLOW_DIST ) /* && Chosen->IsFree()*/ ) ? COLOR_IFACE : COLOR_IFACE_RED;
                 SprMngr.DrawSprite( GmapPFollowCrit, x, y, col );
             }
-            if( Chosen->GetId() == (uint) cr->Params[ ST_FOLLOW_CRIT ] )
+            if( Chosen->GetId() == cr->GetFollowCrit() )
             {
                 SpriteInfo* si = SprMngr.GetSpriteInfo( GmapPFollowCritSelf->GetCurSprId() );
                 Rect        tr = cr->GetTextRect();
@@ -1380,8 +1380,7 @@ void FOClient::GameKeyDown( uchar dik, const char* dik_text )
             GameRMouseUp();
             break;
         case DIK_N:
-            if( Chosen->NextRateItem( false ) )
-                Net_SendRateItem();
+            Chosen->NextRateItem( false );
             break;
         case DIK_S:
             ShowScreen( SCREEN__SKILLBOX );
@@ -1409,34 +1408,34 @@ void FOClient::GameKeyDown( uchar dik, const char* dik_text )
             break;
         // Skills
         case DIK_1:
-            SetAction( CHOSEN_USE_SKL_ON_CRITTER, SK_SNEAK );
+            SetAction( CHOSEN_USE_SKL_ON_CRITTER, CritterCl::PropertySkillSneak->GetEnumValue() );
             break;
         case DIK_2:
-            CurSkill = SK_LOCKPICK;
+            CurSkill = CritterCl::PropertySkillLockpick->GetEnumValue();
             SetCurMode( CUR_USE_SKILL );
             break;
         case DIK_3:
-            CurSkill = SK_STEAL;
+            CurSkill = CritterCl::PropertySkillSteal->GetEnumValue();
             SetCurMode( CUR_USE_SKILL );
             break;
         case DIK_4:
-            CurSkill = SK_TRAPS;
+            CurSkill = CritterCl::PropertySkillTraps->GetEnumValue();
             SetCurMode( CUR_USE_SKILL );
             break;
         case DIK_5:
-            CurSkill = SK_FIRST_AID;
+            CurSkill = CritterCl::PropertySkillFirstAid->GetEnumValue();
             SetCurMode( CUR_USE_SKILL );
             break;
         case DIK_6:
-            CurSkill = SK_DOCTOR;
+            CurSkill = CritterCl::PropertySkillDoctor->GetEnumValue();
             SetCurMode( CUR_USE_SKILL );
             break;
         case DIK_7:
-            CurSkill = SK_SCIENCE;
+            CurSkill = CritterCl::PropertySkillScience->GetEnumValue();
             SetCurMode( CUR_USE_SKILL );
             break;
         case DIK_8:
-            CurSkill = SK_REPAIR;
+            CurSkill = CritterCl::PropertySkillRepair->GetEnumValue();
             SetCurMode( CUR_USE_SKILL );
             break;
         default:
@@ -1496,8 +1495,8 @@ void FOClient::GameLMouseDown()
             if( Chosen->ItemSlotMain->IsWeapon() && Chosen->GetUse() < MAX_USES && cr != Chosen && Chosen->IsAim() )
             {
                 if( !CritType::IsCanAim( Chosen->GetCrType() ) )
-                    AddMess( FOMB_GAME, "Aim attack is not aviable for this critter type." );
-                else if( !Chosen->IsRawParam( MODE_NO_AIM ) )
+                    AddMess( FOMB_GAME, "Aim attack is not available for this critter type." );
+                else if( !Chosen->GetIsNoAim() )
                     ShowScreen( SCREEN__AIM );
                 return;
             }
@@ -1557,7 +1556,7 @@ void FOClient::GameRMouseUp()
             SetCurMode( CUR_MOVE );
             break;
         case CUR_MOVE:
-            if( Chosen->GetParam( TO_BATTLE ) && Chosen->ItemSlotMain->IsWeapon() )
+            if( IS_TIMEOUT( Chosen->GetTimeoutBattle() ) && Chosen->ItemSlotMain->IsWeapon() )
                 SetCurMode( CUR_USE_WEAPON );
             else
                 SetCurMode( CUR_DEFAULT );
@@ -1709,8 +1708,8 @@ void FOClient::DlgDraw( bool is_dialog )
         }
 
         // Chosen money
-        if( Chosen )
-            SprMngr.DrawStr( Rect( DlgWMoney, DlgX, DlgY ), Chosen->GetMoneyStr(), FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE );
+        // if( Chosen )
+        //    SprMngr.DrawStr( Rect( DlgWMoney, DlgX, DlgY ), Chosen->GetMoneyStr(), FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE );
     }
     // Barter
     else
@@ -1783,7 +1782,7 @@ void FOClient::DlgDraw( bool is_dialog )
         // Cost
         uint c1, w1, v1, c2, w2, v2;
         ContainerCalcInfo( BarterCont1o, c1, w1, v1, -BarterK, true );
-        ContainerCalcInfo( BarterCont2o, c2, w2, v2, Chosen->IsRawParam( PE_MASTER_TRADER ) ? 0 : BarterK, false );
+        ContainerCalcInfo( BarterCont2o, c2, w2, v2, Chosen->GetPerkMasterTrader() ? 0 : BarterK, false );
         if( !BarterIsPlayers && BarterK )
         {
             SprMngr.DrawStr( Rect( BarterWCost1, DlgX, DlgY ), Str::FormatBuf( "$%u", c1 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
@@ -1982,7 +1981,7 @@ void FOClient::DlgLMouseUp( bool is_dialog )
         else if( IfaceHold == IFACE_DLG_BARTER && IsCurInRect( DlgBBarter, DlgX, DlgY ) )
         {
             CritterCl* cr = GetCritter( DlgNpcId );
-            if( !cr || cr->IsRawParam( MODE_NO_BARTER ) )
+            if( !cr || cr->GetIsNoBarter() )
             {
                 DlgMainText = MsgGame->GetStr( STR_BARTER_NO_BARTER_MODE );
                 DlgMainTextCur = 0;
@@ -2020,10 +2019,10 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 if( it != BarterCont1.end() )
                 {
                     Item* item = *it;
-                    if( item->Count > 1 )
+                    if( item->GetCount() > 1 )
                         SplitStart( item, IFACE_BARTER_CONT1 );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1, item->Count );
+                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1, item->GetCount() );
                 }
             }
         }
@@ -2035,10 +2034,10 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 if( it != BarterCont2.end() )
                 {
                     Item* item = *it;
-                    if( item->Count > 1 )
+                    if( item->GetCount() > 1 )
                         SplitStart( item, IFACE_BARTER_CONT2 );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2, item->Count );
+                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2, item->GetCount() );
                 }
             }
         }
@@ -2050,10 +2049,10 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 if( it != BarterCont1o.end() )
                 {
                     Item* item = *it;
-                    if( item->Count > 1 )
+                    if( item->GetCount() > 1 )
                         SplitStart( item, IFACE_BARTER_CONT1O );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1O, item->Count );
+                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1O, item->GetCount() );
                 }
             }
         }
@@ -2065,10 +2064,10 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 if( it != BarterCont2o.end() )
                 {
                     Item* item = *it;
-                    if( item->Count > 1 )
+                    if( item->GetCount() > 1 )
                         SplitStart( item, IFACE_BARTER_CONT2O );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2O, item->Count );
+                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2O, item->GetCount() );
                 }
             }
         }
@@ -2130,10 +2129,6 @@ void FOClient::DlgLMouseUp( bool is_dialog )
             if( BarterScroll2o < (int) BarterCont2o.size() - ( BarterWCont2o[ 3 ] - BarterWCont2o[ 1 ] ) / BarterCont2oHeightItem )
                 BarterScroll2o++;
         }
-        else if( IfaceHold == IFACE_DLG_SCR_UP && IsCurInRect( DlgBScrUp, DlgX, DlgY ) && BarterIsPlayers )
-        {}
-        else if( IfaceHold == IFACE_DLG_SCR_DN && IsCurInRect( DlgBScrDn, DlgX, DlgY ) && BarterIsPlayers )
-        {}
     }
 
     IfaceHold = IFACE_NONE;
@@ -2166,7 +2161,6 @@ void FOClient::DlgMouseMove( bool is_dialog )
             DlgX = GameOpt.ScreenWidth - DlgWMain[ 2 ];
         if( DlgY < 0 )
             DlgY = 0;
-        // if(DlgY+DlgMain[3]>IntY) DlgY=IntY-DlgMain[3];
         if( DlgY + DlgWMain[ 3 ] > GameOpt.ScreenHeight )
             DlgY = GameOpt.ScreenHeight - DlgWMain[ 3 ];
     }
@@ -2297,7 +2291,7 @@ void FOClient::BarterTryOffer()
     {
         uint c1, w1, v1, c2, w2, v2;
         ContainerCalcInfo( BarterCont1oInit, c1, w1, v1, -BarterK, true );
-        ContainerCalcInfo( BarterCont2oInit, c2, w2, v2, Chosen->IsRawParam( PE_MASTER_TRADER ) ? 0 : BarterK, false );
+        ContainerCalcInfo( BarterCont2oInit, c2, w2, v2, Chosen->GetPerkMasterTrader() ? 0 : BarterK, false );
         if( !c1 && !c2 && BarterK )
             return;
         if( c1 < c2 && BarterK )
@@ -2354,7 +2348,7 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
     Item* item = *it;
     Item* to_item = NULL;
 
-    if( item->Count < item_count )
+    if( item->GetCount() < item_count )
         return;
 
     if( item->IsStackable() )
@@ -2377,7 +2371,7 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
     }
 
     item->ChangeCount( -(int) item_count );
-    if( !item->Count || !item->IsStackable() )
+    if( !item->GetCount() || !item->IsStackable() )
     {
         ( *it )->Release();
         from_cont->erase( it );
@@ -2437,7 +2431,7 @@ void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint&
                 if( !cost_ )
                     cost_++;
             }
-            cost += cost_ * item->Count;
+            cost += cost_ * item->GetCount();
         }
         weigth += item->GetWeight();
         volume += item->GetVolume();
@@ -2485,7 +2479,6 @@ void FOClient::FormatTags( char* text, uint text_len, CritterCl* player, Critter
                     {
                         if( Str::Length( str ) + Str::Length( tag ) < text_len )
                             Str::Insert( &str[ i ], tag );
-                        // i+=strlen(tag);
                     }
                     sex--;
                 }
@@ -2524,7 +2517,7 @@ void FOClient::FormatTags( char* text, uint text_len, CritterCl* player, Critter
             // Sex
             else if( Str::CompareCase( tag, "sex" ) )
             {
-                sex = ( player ? player->GetParam( ST_GENDER ) + 1 : 1 );
+                sex = ( player ? player->GetGender() + 1 : 1 );
                 sex_tags = true;
                 continue;
             }
@@ -2645,7 +2638,7 @@ void FOClient::LMenuTryCreate()
     // Check valid current state
     if( GameOpt.DisableLMenu || !Chosen || IsScroll() || !IsCurInWindow() || !IsCurMode( CUR_DEFAULT ) || GameOpt.HideCursor )
     {
-        /*if(IsLMenu()) */ LMenuSet( LMENU_OFF );
+        LMenuSet( LMENU_OFF );
         return;
     }
 
@@ -2910,10 +2903,10 @@ void FOClient::LMenuSet( uchar set_lmenu )
                 // Npc
                 if( cr->IsCanTalk() )
                     LMenuCritNodes.push_back( LMENU_NODE_TALK );
-                if( cr->IsDead() && !cr->IsRawParam( MODE_NO_LOOT ) )
+                if( cr->IsDead() && !cr->GetIsNoLoot() )
                     LMenuCritNodes.push_back( LMENU_NODE_USE );
                 LMenuCritNodes.push_back( LMENU_NODE_LOOK );
-                if( cr->IsLife() && !cr->IsRawParam( MODE_NO_PUSH ) )
+                if( cr->IsLife() && !cr->GetIsNoPush() )
                     LMenuCritNodes.push_back( LMENU_NODE_PUSH );
                 LMenuCritNodes.push_back( LMENU_NODE_BAG );
                 LMenuCritNodes.push_back( LMENU_NODE_SKILL );
@@ -2923,10 +2916,10 @@ void FOClient::LMenuSet( uchar set_lmenu )
                 if( cr != Chosen )
                 {
                     // Player
-                    if( cr->IsDead() && !cr->IsRawParam( MODE_NO_LOOT ) )
+                    if( cr->IsDead() && !cr->GetIsNoLoot() )
                         LMenuCritNodes.push_back( LMENU_NODE_USE );
                     LMenuCritNodes.push_back( LMENU_NODE_LOOK );
-                    if( cr->IsLife() && !cr->IsRawParam( MODE_NO_PUSH ) )
+                    if( cr->IsLife() && !cr->GetIsNoPush() )
                         LMenuCritNodes.push_back( LMENU_NODE_PUSH );
                     LMenuCritNodes.push_back( LMENU_NODE_BAG );
                     LMenuCritNodes.push_back( LMENU_NODE_SKILL );
@@ -2936,7 +2929,7 @@ void FOClient::LMenuSet( uchar set_lmenu )
                         LMenuCritNodes.push_back( LMENU_NODE_BARTER_OPEN );
                         LMenuCritNodes.push_back( LMENU_NODE_BARTER_HIDE );
                     }
-                    if( !Chosen->GetParam( TO_KARMA_VOTING ) )
+                    if( !Chosen->GetKarmaVoting() )
                     {
                         LMenuCritNodes.push_back( LMENU_NODE_VOTE_UP );
                         LMenuCritNodes.push_back( LMENU_NODE_VOTE_DOWN );
@@ -2956,7 +2949,7 @@ void FOClient::LMenuSet( uchar set_lmenu )
         else
         {
             LMenuCritNodes.push_back( LMENU_NODE_LOOK );
-            if( LMenuMode != LMENU_NPC && cr != Chosen && !Chosen->GetParam( TO_KARMA_VOTING ) )
+            if( LMenuMode != LMENU_NPC && cr != Chosen && !Chosen->GetKarmaVoting() )
             {
                 LMenuCritNodes.push_back( LMENU_NODE_VOTE_UP );
                 LMenuCritNodes.push_back( LMENU_NODE_VOTE_DOWN );
@@ -3062,7 +3055,7 @@ void FOClient::LMenuSet( uchar set_lmenu )
                 LMenuNodes.push_back( LMENU_NODE_GMAP_KICK );
         }
 
-        if( cr->IsPlayer() && cr->GetId() != Chosen->GetId() && !Chosen->GetParam( TO_KARMA_VOTING ) )
+        if( cr->IsPlayer() && cr->GetId() != Chosen->GetId() && !Chosen->GetKarmaVoting() )
         {
             LMenuNodes.push_back( LMENU_NODE_VOTE_UP );
             LMenuNodes.push_back( LMENU_NODE_VOTE_DOWN );
@@ -3333,10 +3326,10 @@ void FOClient::LMenuMouseUp()
                 break;
             if( !Chosen->IsLife() || !Chosen->IsFree() )
                 break;
-            if( cont_item->IsStackable() && cont_item->Count > 1 )
+            if( cont_item->IsStackable() && cont_item->GetCount() > 1 )
                 SplitStart( cont_item, SLOT_GROUND | ( ( ( TargetSmth.GetParam() == 1 || TargetSmth.GetParam() == 3 ) ? 1 : 0 ) << 16 ) );
             else
-                AddActionBack( CHOSEN_MOVE_ITEM, cont_item->GetId(), cont_item->Count, SLOT_GROUND, ( TargetSmth.GetParam() == 1 || TargetSmth.GetParam() == 3 ) ? 1 : 0 );
+                AddActionBack( CHOSEN_MOVE_ITEM, cont_item->GetId(), cont_item->GetCount(), SLOT_GROUND, ( TargetSmth.GetParam() == 1 || TargetSmth.GetParam() == 3 ) ? 1 : 0 );
             break;
         case LMENU_NODE_UNLOAD:
             if( !inv_item )
@@ -3347,7 +3340,7 @@ void FOClient::LMenuMouseUp()
             if( !inv_item )
                 break;
             if( inv_item->IsHasTimer() )
-                TimerStart( inv_item->GetId(), ResMngr.GetInvAnim( inv_item->GetPicInv() ), inv_item->GetInvColor() );
+                TimerStart( inv_item->GetId(), ResMngr.GetInvAnim( inv_item->GetActualPicInv() ), inv_item->GetInvColor() );
             else
                 SetAction( CHOSEN_USE_ITEM, inv_item->GetId(), 0, TARGET_SELF, 0, USE_USE );
             break;
@@ -3364,10 +3357,10 @@ void FOClient::LMenuMouseUp()
             Item* item = Chosen->GetItemLowSortValue();
             if( !item || inv_item == item )
                 break;
-            if( inv_item->SortValue < item->SortValue )
+            if( inv_item->GetSortValue() < item->GetSortValue() )
                 break;
             Item* old_inv_item = inv_item->Clone();
-            inv_item->SetPropertyValue< ushort >( Item::PropertySortValue, item->SortValue - 1 );
+            inv_item->SetSortValue( item->GetSortValue() - 1 );
             Item::SortItems( Chosen->InvItems );
             OnItemInvChanged( old_inv_item, inv_item );
             CollectContItems();
@@ -3380,10 +3373,10 @@ void FOClient::LMenuMouseUp()
             Item* item = Chosen->GetItemHighSortValue();
             if( !item || inv_item == item )
                 break;
-            if( inv_item->SortValue > item->SortValue )
+            if( inv_item->GetSortValue() > item->GetSortValue() )
                 break;
             Item* old_inv_item = inv_item->Clone();
-            inv_item->SetPropertyValue< ushort >( Item::PropertySortValue, item->SortValue + 1 );
+            inv_item->SetSortValue( item->GetSortValue() + 1 );
             Item::SortItems( Chosen->InvItems );
             OnItemInvChanged( old_inv_item, inv_item );
             CollectContItems();
@@ -3469,8 +3462,6 @@ void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NUL
         ScreenFadeOut();
         break;
     case SCREEN_REGISTRATION:
-        if( !GameOpt.RegParams )
-            RegGenParams();
         ScreenFadeOut();
         break;
     case SCREEN_CREDITS:
@@ -3825,7 +3816,7 @@ void FOClient::LmapPrepareMap()
             Field& f = HexMngr.GetField( i1, i2 );
             if( f.Crit )
             {
-                cur_color = ( f.Crit == Chosen ? 0xFF0000FF : ( f.Crit->Params[ ST_FOLLOW_CRIT ] == (int) Chosen->GetId() ? 0xFFFF00FF : 0xFFFF0000 ) );
+                cur_color = ( f.Crit == Chosen ? 0xFF0000FF : ( f.Crit->GetFollowCrit() == Chosen->GetId() ? 0xFFFF00FF : 0xFFFF0000 ) );
                 LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x + ( LmapZoom - 1 ), LmapWMap[ 1 ] + pix_y, cur_color, &LmapX, &LmapY ) );
                 LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x, LmapWMap[ 1 ] + pix_y + ( ( LmapZoom - 1 ) / 2 ), cur_color, &LmapX, &LmapY ) );
             }
@@ -4162,7 +4153,7 @@ void FOClient::GmapDraw()
     for( auto it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
     {
         GmapLocation& loc = ( *it );
-        int           radius = loc.Radius; // MsgGM->GetInt(STR_GM_RADIUS(loc.LocPid));
+        int           radius = loc.Radius;
         if( radius <= 0 )
             radius = 6;
         int loc_pic_x1 = (int) ( ( loc.LocWx - radius ) / GmapZoom ) + GmapOffsetX;
@@ -4762,7 +4753,7 @@ void FOClient::SboxDraw()
     if( IfaceHold == IFACE_SBOX_STEAL )
         SprMngr.DrawSprite( SboxPBStealDn, SboxBSteal[ 0 ] + SboxX, SboxBSteal[ 1 ] + SboxY );
     if( IfaceHold == IFACE_SBOX_TRAP )
-        SprMngr.DrawSprite( SboxPBTrapsDn, SboxBTrap[ 0 ] + SboxX, SboxBTrap[ 1 ] + SboxY );
+        SprMngr.DrawSprite( SboxPBTrapsDn, SboxBTraps[ 0 ] + SboxX, SboxBTraps[ 1 ] + SboxY );
     if( IfaceHold == IFACE_SBOX_FIRSTAID )
         SprMngr.DrawSprite( SboxPBFirstaidDn, SboxBFirstAid[ 0 ] + SboxX, SboxBFirstAid[ 1 ] + SboxY );
     if( IfaceHold == IFACE_SBOX_DOCTOR )
@@ -4779,21 +4770,29 @@ void FOClient::SboxDraw()
     SprMngr.DrawStr( Rect( SboxBCancelText, SboxX, SboxY ), MsgGame->GetStr( STR_SKILLDEX_CANCEL ), FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT );
 
     // Skills
-    #define SBOX_DRAW_SKILL( comp, skill )                                                                                                                                                                               \
-        do { SprMngr.DrawStr( Rect( SboxB ## comp, SboxX, SboxY - ( IfaceHold == skill ? 1 : 0 ) ), MsgGame->GetStr( STR_PARAM_NAME_SHORT( skill ) ), FT_CENTERX | FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT ); \
-             int                                                   sk_val = ( Chosen ? Chosen->GetRawParam( skill ) : 0 ); if( sk_val < 0 )                                                                              \
-                 sk_val = -sk_val; sk_val = MAX( sk_val, 0 ); char str[ 16 ]; Str::Format( str, "%03d", sk_val ); if( Chosen && Chosen->GetRawParam( skill ) < 0 )                                                       \
-                 Str::ChangeValue( str, 0x10 );                                                                                                                                                                          \
-             SprMngr.DrawStr( Rect( SboxT ## comp, SboxX, SboxY ), str, 0, COLOR_IFACE, FONT_BIG_NUM ); } while( 0 )
+    #define SBOX_DRAW_SKILL( comp )                                                                                                                                                                                   \
+        do {                                                                                                                                                                                                          \
+            int prop = CritterCl::PropertySkill ## comp->GetEnumValue();                                                                                                                                              \
+            SprMngr.DrawStr( Rect( SboxB ## comp, SboxX, SboxY - ( IfaceHold == prop ? 1 : 0 ) ), MsgGame->GetStr( STR_PARAM_NAME_SHORT( prop ) ), FT_CENTERX | FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT ); \
+            int sk_val = ( Chosen ? Chosen->GetSkill ## comp() : 0 );                                                                                                                                                 \
+            if( sk_val < 0 )                                                                                                                                                                                          \
+                sk_val = -sk_val;                                                                                                                                                                                     \
+            sk_val = MAX( sk_val, 0 );                                                                                                                                                                                \
+            char str[ 16 ];                                                                                                                                                                                           \
+            Str::Format( str, "%03d", sk_val );                                                                                                                                                                       \
+            if( Chosen && Chosen->GetSkill ## comp() < 0 )                                                                                                                                                            \
+                Str::ChangeValue( str, 0x10 );                                                                                                                                                                        \
+            SprMngr.DrawStr( Rect( SboxT ## comp, SboxX, SboxY ), str, 0, COLOR_IFACE, FONT_BIG_NUM );                                                                                                                \
+        } while( 0 )
 
-    SBOX_DRAW_SKILL( Sneak, SK_SNEAK );
-    SBOX_DRAW_SKILL( Lockpick, SK_LOCKPICK );
-    SBOX_DRAW_SKILL( Steal, SK_STEAL );
-    SBOX_DRAW_SKILL( Trap, SK_TRAPS );
-    SBOX_DRAW_SKILL( FirstAid, SK_FIRST_AID );
-    SBOX_DRAW_SKILL( Doctor, SK_DOCTOR );
-    SBOX_DRAW_SKILL( Science, SK_SCIENCE );
-    SBOX_DRAW_SKILL( Repair, SK_REPAIR );
+    SBOX_DRAW_SKILL( Sneak );
+    SBOX_DRAW_SKILL( Lockpick );
+    SBOX_DRAW_SKILL( Steal );
+    SBOX_DRAW_SKILL( Traps );
+    SBOX_DRAW_SKILL( FirstAid );
+    SBOX_DRAW_SKILL( Doctor );
+    SBOX_DRAW_SKILL( Science );
+    SBOX_DRAW_SKILL( Repair );
 }
 
 void FOClient::SboxLMouseDown()
@@ -4807,7 +4806,7 @@ void FOClient::SboxLMouseDown()
         IfaceHold = IFACE_SBOX_LOCKPICK;
     else if( IsCurInRect( SboxBSteal, SboxX, SboxY ) )
         IfaceHold = IFACE_SBOX_STEAL;
-    else if( IsCurInRect( SboxBTrap, SboxX, SboxY ) )
+    else if( IsCurInRect( SboxBTraps, SboxX, SboxY ) )
         IfaceHold = IFACE_SBOX_TRAP;
     else if( IsCurInRect( SboxBFirstAid, SboxX, SboxY ) )
         IfaceHold = IFACE_SBOX_FIRSTAID;
@@ -4833,23 +4832,23 @@ void FOClient::SboxLMouseUp()
     }
     else
     {
-        ushort cur_skill;
+        int cur_skill;
         if( IfaceHold == IFACE_SBOX_SNEAK && IsCurInRect( SboxBSneak, SboxX, SboxY ) )
-            cur_skill = SK_SNEAK;
+            cur_skill = CritterCl::PropertySkillSneak->GetEnumValue();
         else if( IfaceHold == IFACE_SBOX_LOCKPICK && IsCurInRect( SboxBLockpick, SboxX, SboxY ) )
-            cur_skill = SK_LOCKPICK;
+            cur_skill = CritterCl::PropertySkillLockpick->GetEnumValue();
         else if( IfaceHold == IFACE_SBOX_STEAL && IsCurInRect( SboxBSteal, SboxX, SboxY ) )
-            cur_skill = SK_STEAL;
-        else if( IfaceHold == IFACE_SBOX_TRAP && IsCurInRect( SboxBTrap, SboxX, SboxY ) )
-            cur_skill = SK_TRAPS;
+            cur_skill = CritterCl::PropertySkillSteal->GetEnumValue();
+        else if( IfaceHold == IFACE_SBOX_TRAP && IsCurInRect( SboxBTraps, SboxX, SboxY ) )
+            cur_skill = CritterCl::PropertySkillTraps->GetEnumValue();
         else if( IfaceHold == IFACE_SBOX_FIRSTAID && IsCurInRect( SboxBFirstAid, SboxX, SboxY ) )
-            cur_skill = SK_FIRST_AID;
+            cur_skill = CritterCl::PropertySkillFirstAid->GetEnumValue();
         else if( IfaceHold == IFACE_SBOX_DOCTOR && IsCurInRect( SboxBDoctor, SboxX, SboxY ) )
-            cur_skill = SK_DOCTOR;
+            cur_skill = CritterCl::PropertySkillDoctor->GetEnumValue();
         else if( IfaceHold == IFACE_SBOX_SCIENCE && IsCurInRect( SboxBScience, SboxX, SboxY ) )
-            cur_skill = SK_SCIENCE;
+            cur_skill = CritterCl::PropertySkillScience->GetEnumValue();
         else if( IfaceHold == IFACE_SBOX_REPAIR && IsCurInRect( SboxBRepair, SboxX, SboxY ) )
-            cur_skill = SK_REPAIR;
+            cur_skill = CritterCl::PropertySkillRepair->GetEnumValue();
         else
         {
             IfaceHold = IFACE_NONE;
@@ -4865,11 +4864,11 @@ void FOClient::SboxLMouseUp()
         }
         else
         {
-            if( cur_skill == SK_SNEAK )
+            if( cur_skill == CritterCl::PropertySkillSneak->GetEnumValue() )
             {
                 if( !SboxUseOn.IsSmth() || ( SboxUseOn.IsCritter() && SboxUseOn.GetId() == Chosen->GetId() ) )
                 {
-                    SetAction( CHOSEN_USE_SKL_ON_CRITTER, SK_SNEAK );
+                    SetAction( CHOSEN_USE_SKL_ON_CRITTER, CritterCl::PropertySkillSneak->GetEnumValue() );
                     ShowScreen( SCREEN_NONE );
                 }
                 IfaceHold = IFACE_NONE;
@@ -4963,15 +4962,13 @@ void FOClient::PerkPrepare()
     if( !Chosen )
         return;
 
-    for( uint i = PERK_BEGIN; i <= PERK_END; i++ )
+    if( Script::PrepareContext( ClientFunctions.PerksCheck, _FUNC_, "Perk" ) )
     {
-        if( Script::PrepareContext( ClientFunctions.PerkCheck, _FUNC_, "Perk" ) )
-        {
-            Script::SetArgObject( Chosen );
-            Script::SetArgUInt( i - ( GameOpt.AbsoluteOffsets ? 0 : PERK_BEGIN ) );
-            if( Script::RunPrepared() && Script::GetReturnedBool() )
-                PerkCollection.push_back( i );
-        }
+        ScriptArray* arr = Script::CreateArray( "CritterProperty[]" );
+        Script::SetArgObject( arr );
+        if( Script::RunPrepared() )
+            Script::AssignScriptArrayInVector( PerkCollection, arr );
+        arr->Release();
     }
 }
 
@@ -4997,16 +4994,16 @@ void FOClient::PerkDraw()
         break;
     }
 
-    if( PerkCurPerk >= 0 )
-    {
-        const char* name = ConstantsManager::GetPictureName( SKILLDEX_PARAM( PerkCurPerk ) );
-        if( name )
-        {
-            AnyFrames* anim = ResMngr.GetSkDxAnim( Str::GetHash( name ) );
-            if( anim )
-                SprMngr.DrawSprite( anim, PerkWPic[ 0 ] + PerkX, PerkWPic[ 1 ] + PerkY );
-        }
-    }
+//     if( PerkCurPerk >= 0 )
+//     {
+//              const char* name = ConstantsManager::GetPictureName( SKILLDEX_PARAM( PerkCurPerk ) );
+//              if( name )
+//              {
+//                      AnyFrames* anim = ResMngr.GetSkDxAnim( Str::GetHash( name ) );
+//                      if( anim )
+//                              SprMngr.DrawSprite( anim, PerkWPic[ 0 ] + PerkX, PerkWPic[ 1 ] + PerkY );
+//              }
+//     }
 
     SprMngr.DrawStr( Rect( PerkBOkText, PerkX, PerkY ), MsgGame->GetStr( STR_PERK_TAKE ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
     SprMngr.DrawStr( Rect( PerkBCancelText, PerkX, PerkY ), MsgGame->GetStr( STR_PERK_CANCEL ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
@@ -5226,7 +5223,6 @@ void FOClient::PipDraw()
     case IFACE_PIP_STATUS:
         SprMngr.DrawSprite( PipPBStatusDn, PipBStatus[ 0 ] + PipX, PipBStatus[ 1 ] + PipY );
         break;
-    // case IFACE_PIP_GAMES: SprMngr.DrawSprite(PipPBGamesDn,PipBGames[0]+PipX,PipBGames[1]+PipY); break;
     case IFACE_PIP_AUTOMAPS:
         SprMngr.DrawSprite( PipPBAutomapsDn, PipBAutomaps[ 0 ] + PipX, PipBAutomaps[ 1 ] + PipY );
         break;
@@ -5265,36 +5261,45 @@ void FOClient::PipDraw()
         PIP_DRAW_TEXT( FmtGameText( STR_PIP_STATUS ), FT_CENTERX, COLOR_TEXT_DGREEN );
         scr++;
         PIP_DRAW_TEXT( FmtGameText( STR_PIP_REPLICATION_MONEY ), 0, COLOR_TEXT );
-        PIP_DRAW_TEXTR( FmtGameText( STR_PIP_REPLICATION_MONEY_VAL, Chosen->GetParam( ST_REPLICATION_MONEY ) ), 0, COLOR_TEXT );
+        PIP_DRAW_TEXTR( FmtGameText( STR_PIP_REPLICATION_MONEY_VAL, Chosen->GetReplicationMoney() ), 0, COLOR_TEXT );
         scr++;
         PIP_DRAW_TEXT( FmtGameText( STR_PIP_REPLICATION_COST ), 0, COLOR_TEXT );
-        PIP_DRAW_TEXTR( FmtGameText( STR_PIP_REPLICATION_COST_VAL, Chosen->GetParam( ST_REPLICATION_COST ) ), 0, COLOR_TEXT );
+        PIP_DRAW_TEXTR( FmtGameText( STR_PIP_REPLICATION_COST_VAL, Chosen->GetReplicationCost() ), 0, COLOR_TEXT );
         scr++;
         PIP_DRAW_TEXT( FmtGameText( STR_PIP_REPLICATION_COUNT ), 0, COLOR_TEXT );
-        PIP_DRAW_TEXTR( FmtGameText( STR_PIP_REPLICATION_COUNT_VAL, Chosen->GetParam( ST_REPLICATION_COUNT ) ), 0, COLOR_TEXT );
+        PIP_DRAW_TEXTR( FmtGameText( STR_PIP_REPLICATION_COUNT_VAL, Chosen->GetReplicationCount() ), 0, COLOR_TEXT );
         scr++;
 
         // Timeouts
         scr++;
         PIP_DRAW_TEXT( FmtGameText( STR_PIP_TIMEOUTS ), FT_CENTERX, COLOR_TEXT_DGREEN );
         scr++;
-        for( uint j = TIMEOUT_END; j >= TIMEOUT_BEGIN; j-- )
-        {
-            if( !MsgGame->Count( STR_PARAM_NAME( j ) ) )
-                continue;
-            uint val = Chosen->GetParam( j );
 
-            if( j == TO_REMOVE_FROM_GAME )
+        IntVec timeouts;
+        if( Script::PrepareContext( ClientFunctions.GetTimeouts, _FUNC_, "Perk" ) )
+        {
+            ScriptArray* arr = Script::CreateArray( "CritterProperty[]" );
+            Script::SetArgObject( arr );
+            if( Script::RunPrepared() )
+                Script::AssignScriptArrayInVector( timeouts, arr );
+            arr->Release();
+        }
+
+        for( size_t j = 0; j < timeouts.size(); j++ )
+        {
+            uint val = Chosen->Props.GetValueAsInt( timeouts[ j ] );
+
+            if( timeouts[ j ] == CritterCl::PropertyTimeoutRemoveFromGame->GetEnumValue() )
             {
-                uint to_battle = Chosen->GetParam( TO_BATTLE );
+                uint to_battle = Chosen->GetTimeoutBattle();
                 if( val < to_battle )
                     val = to_battle;
             }
 
             val /= ( GameOpt.TimeMultiplier ? GameOpt.TimeMultiplier : 1 );             // Convert to seconds
-            if( j == TO_REMOVE_FROM_GAME && val < GameOpt.MinimumOfflineTime / 1000 )
+            if( timeouts[ j ] == CritterCl::PropertyTimeoutRemoveFromGame->GetEnumValue() && val < GameOpt.MinimumOfflineTime / 1000 )
                 val = GameOpt.MinimumOfflineTime / 1000;
-            if( j == TO_REMOVE_FROM_GAME && NoLogOut )
+            if( timeouts[ j ] == CritterCl::PropertyTimeoutRemoveFromGame->GetEnumValue() && NoLogOut )
                 val = 1000000;                                                      // Infinity
 
             uint str_num = STR_TIMEOUT_SECONDS;
@@ -5363,8 +5368,6 @@ void FOClient::PipDraw()
         }
     }
     break;
-//	case PIP__GAMES:
-//		break;
     case PIP__AUTOMAPS:
     {
         PIP_DRAW_TEXT( FmtGameText( STR_PIP_MAPS ), FT_CENTERX, COLOR_TEXT_DGREEN );
@@ -5513,7 +5516,6 @@ void FOClient::PipLMouseDown()
 
     if( IsCurInRect( PipBStatus, PipX, PipY ) )
         IfaceHold = IFACE_PIP_STATUS;
-    // else if(IsCurInRect(PipBGames,PipX,PipY)) PipHold=IFACE_PIP_GAMES;
     else if( IsCurInRect( PipBAutomaps, PipX, PipY ) )
         IfaceHold = IFACE_PIP_AUTOMAPS;
     else if( IsCurInRect( PipBArchives, PipX, PipY ) )
@@ -5527,9 +5529,17 @@ void FOClient::PipLMouseDown()
         case PIP__STATUS:
         {
             scr += 8;
-            for( uint j = TIMEOUT_END; j >= TIMEOUT_BEGIN; j-- )
-                if( MsgGame->Count( STR_PARAM_NAME( j ) ) )
-                    scr++;
+
+            IntVec timeouts;
+            if( Script::PrepareContext( ClientFunctions.GetTimeouts, _FUNC_, "Perk" ) )
+            {
+                ScriptArray* arr = Script::CreateArray( "CritterProperty[]" );
+                Script::SetArgObject( arr );
+                if( Script::RunPrepared() )
+                    Script::AssignScriptArrayInVector( timeouts, arr );
+                arr->Release();
+            }
+            scr += (int) timeouts.size();
             int          scr_ = scr;
 
             QuestTabMap* tabs = QuestMngr.GetTabs();
@@ -5561,9 +5571,6 @@ void FOClient::PipLMouseDown()
             }
         }
         break;
-//		case PIP__GAMES:
-//			PipMode=PIP__STATUS;
-//			break;
         case PIP__AUTOMAPS:
         {
             scr += 2;
@@ -5644,10 +5651,6 @@ void FOClient::PipLMouseUp()
             break;
         PipMode = PIP__STATUS;
         break;
-//	case IFACE_PIP_GAMES:
-//		if(!IsCurInRect(PipBGames,PipX,PipY)) break;
-//		PipMode=PIP__GAMES;
-//		break;
     case IFACE_PIP_AUTOMAPS:
         if( !IsCurInRect( PipBAutomaps, PipX, PipY ) )
             break;
@@ -5937,7 +5940,7 @@ void FOClient::PupDraw()
         ProtoItem* proto_item = ItemMngr.GetProtoItem( PupContPid );
         if( proto_item )
         {
-            AnyFrames* anim = ResMngr.GetItemAnim( proto_item->PicMap );
+            AnyFrames* anim = ResMngr.GetItemAnim( proto_item->GetPicMap() );
             if( anim )
                 SprMngr.DrawSpriteSize( anim->GetSprId( anim->GetCnt() - 1 ), PupWInfo[ 0 ] + PupX, PupWInfo[ 1 ] + PupY, PupWInfo.W(), PupWInfo.H(), false, true );
         }
@@ -6083,7 +6086,7 @@ void FOClient::PupLMouseUp()
         if( it != PupCont2.end() )
         {
             Item* item = *it;
-            if( item->Count > 1 )
+            if( item->GetCount() > 1 )
                 SplitStart( item, IFACE_PUP_CONT2 );
             else
                 SetAction( CHOSEN_MOVE_ITEM_CONT, PupHoldId, IFACE_PUP_CONT2, 1 );
@@ -6099,7 +6102,7 @@ void FOClient::PupLMouseUp()
         if( it != PupCont1.end() )
         {
             Item* item = *it;
-            if( item->Count > 1 )
+            if( item->GetCount() > 1 )
                 SplitStart( item, IFACE_PUP_CONT1 );
             else
                 SetAction( CHOSEN_MOVE_ITEM_CONT, PupHoldId, IFACE_PUP_CONT1, 1 );
@@ -6248,7 +6251,7 @@ void FOClient::PupTransfer( uint item_id, uint cont, uint count )
             return;
         Item* item = *it;
 
-        if( item->IsStackable() && count < item->Count )
+        if( item->IsStackable() && count < item->GetCount() )
         {
             item->ChangeCount( -(int) count );
         }
@@ -6277,7 +6280,7 @@ CritVec& FOClient::PupGetLootCrits()
     if( f.DeadCrits )
     {
         for( uint i = 0, j = (uint) f.DeadCrits->size(); i < j; i++ )
-            if( !f.DeadCrits->at( i )->IsRawParam( MODE_NO_LOOT ) )
+            if( !f.DeadCrits->at( i )->GetIsNoLoot() )
                 loot.push_back( f.DeadCrits->at( i ) );
     }
     return loot;
@@ -6332,7 +6335,7 @@ void FOClient::CurDrawHand()
                 goto DrawCurHand;
             Item*      item = *it;
 
-            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
+            AnyFrames* anim = ResMngr.GetInvAnim( item->GetActualPicInv() );
             if( !anim )
                 goto DrawCurHand;
 
@@ -6350,7 +6353,7 @@ void FOClient::CurDrawHand()
         Item* item = GetContainerItem( IfaceHold == IFACE_PUP_CONT1 ? PupCont1 : PupCont2, PupHoldId );
         if( item )
         {
-            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
+            AnyFrames* anim = ResMngr.GetInvAnim( item->GetActualPicInv() );
             if( anim )
             {
                 if( !( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) ) )
@@ -6879,9 +6882,9 @@ void FOClient::SplitStart( Item* item, int to_cont )
     SplitCont = to_cont;
     SplitValue = 1;
     SplitMinValue = 1;
-    SplitMaxValue = item->Count;
+    SplitMaxValue = item->GetCount();
     SplitValueKeyPressed = false;
-    SplitItemPic = ResMngr.GetInvAnim( item->GetPicInv() );
+    SplitItemPic = ResMngr.GetInvAnim( item->GetActualPicInv() );
     SplitItemColor = item->GetInvColor();
     SplitParentScreen = GetActiveScreen();
 
@@ -7434,13 +7437,10 @@ void FOClient::FixGenerate( int fix_mode )
                 str += " ";
                 str += Str::ItoA( craft->NeedPVal[ i ] );
 
-                if( craft->NeedPNum[ i ] >= SKILL_BEGIN && craft->NeedPNum[ i ] <= SKILL_END )
-                    str += "%";
-
                 // You have
                 str += " (";
                 str += MsgGame->GetStr( STR_FIX_YOUHAVE );
-                str += Str::ItoA( Chosen->GetParam( craft->NeedPNum[ i ] ) );
+                str += Str::ItoA( Chosen->Props.GetValueAsInt( craft->NeedPNum[ i ] ) );
                 str += ")";
 
                 // And, or
@@ -7552,7 +7552,7 @@ void FOClient::FixGenerateItems( HashVec& items_vec, UIntVec& val_vec, UCharVec&
         if( !proto )
             continue;
 
-        AnyFrames* anim = ResMngr.GetInvAnim( proto->PicInv );
+        AnyFrames* anim = ResMngr.GetInvAnim( proto->GetPicInv() );
         if( !anim )
             continue;
 

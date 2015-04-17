@@ -256,12 +256,8 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_CRITTER_MOVE_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CRITTER_XY:
         return ( NETMSG_CRITTER_XY_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_ALL_PARAMS:
-        return ( NETMSG_ALL_PARAMS_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_PARAM:
-        return ( NETMSG_PARAM_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_CRITTER_PARAM:
-        return ( NETMSG_CRITTER_PARAM_SIZE + bufReadPos <= bufEndPos );
+    case NETMSG_CUSTOM_COMMAND:
+        return ( NETMSG_CUSTOM_COMMAND_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_CRAFT:
         return ( NETMSG_SEND_CRAFT_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CRAFT_RESULT:
@@ -276,8 +272,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_ERASE_ITEM_FROM_MAP_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_ANIMATE_ITEM:
         return ( NETMSG_ANIMATE_ITEM_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_RATE_ITEM:
-        return ( NETMSG_SEND_RATE_ITEM_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_CHANGE_ITEM:
         return ( NETMSG_SEND_CHANGE_ITEM_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_PICK_ITEM:
@@ -336,8 +330,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_SEND_REFRESH_ME_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_VIEW_MAP:
         return ( NETMSG_VIEW_MAP_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_GIVE_GLOBAL_INFO:
-        return ( NETMSG_SEND_GIVE_GLOBAL_INFO_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_RULE_GLOBAL:
         return ( NETMSG_SEND_RULE_GLOBAL_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_FOLLOW:
@@ -374,6 +366,14 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_MAP_ITEM_POD_PROPERTY_SIZE( 4 ) + bufReadPos <= bufEndPos );
     case NETMSG_MAP_ITEM_POD_PROPERTY( 8 ):
         return ( NETMSG_MAP_ITEM_POD_PROPERTY_SIZE( 8 ) + bufReadPos <= bufEndPos );
+    case NETMSG_CRITTER_POD_PROPERTY( 1 ):
+        return ( NETMSG_CRITTER_POD_PROPERTY_SIZE( 1 ) + bufReadPos <= bufEndPos );
+    case NETMSG_CRITTER_POD_PROPERTY( 2 ):
+        return ( NETMSG_CRITTER_POD_PROPERTY_SIZE( 2 ) + bufReadPos <= bufEndPos );
+    case NETMSG_CRITTER_POD_PROPERTY( 4 ):
+        return ( NETMSG_CRITTER_POD_PROPERTY_SIZE( 4 ) + bufReadPos <= bufEndPos );
+    case NETMSG_CRITTER_POD_PROPERTY( 8 ):
+        return ( NETMSG_CRITTER_POD_PROPERTY_SIZE( 8 ) + bufReadPos <= bufEndPos );
     default:
         break;
     }
@@ -397,7 +397,6 @@ bool BufferManager::NeedProcess()
     case NETMSG_UPDATE_FILES_LIST:
     case NETMSG_ADD_PLAYER:
     case NETMSG_ADD_NPC:
-    case NETMSG_CRITTER_LEXEMS:
     case NETMSG_SEND_COMMAND:
     case NETMSG_SEND_TEXT:
     case NETMSG_CRITTER_TEXT:
@@ -427,7 +426,9 @@ bool BufferManager::NeedProcess()
     case NETMSG_AUTOMAPS_INFO:
     case NETMSG_CRITTER_ITEM_COMPLEX_PROPERTY:
     case NETMSG_MAP_ITEM_COMPLEX_PROPERTY:
+    case NETMSG_CRITTER_COMPLEX_PROPERTY:
     case NETMSG_SEND_ITEM_COMPLEX_PROPERTY:
+    case NETMSG_ALL_PROPERTIES:
         return ( msg_len + bufReadPos <= bufEndPos );
     default:
         // Unknown message
@@ -508,14 +509,8 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_CRITTER_XY:
         size = NETMSG_CRITTER_XY_SIZE;
         break;
-    case NETMSG_ALL_PARAMS:
-        size = NETMSG_ALL_PARAMS_SIZE;
-        break;
-    case NETMSG_PARAM:
-        size = NETMSG_PARAM_SIZE;
-        break;
-    case NETMSG_CRITTER_PARAM:
-        size = NETMSG_CRITTER_PARAM_SIZE;
+    case NETMSG_CUSTOM_COMMAND:
+        size = NETMSG_CUSTOM_COMMAND_SIZE;
         break;
     case NETMSG_SEND_CRAFT:
         size = NETMSG_SEND_CRAFT_SIZE;
@@ -537,9 +532,6 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_ANIMATE_ITEM:
         size = NETMSG_ANIMATE_ITEM_SIZE;
-        break;
-    case NETMSG_SEND_RATE_ITEM:
-        size = NETMSG_SEND_RATE_ITEM_SIZE;
         break;
     case NETMSG_SEND_CHANGE_ITEM:
         size = NETMSG_SEND_CHANGE_ITEM_SIZE;
@@ -628,9 +620,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_VIEW_MAP:
         size = NETMSG_VIEW_MAP_SIZE;
         break;
-    case NETMSG_SEND_GIVE_GLOBAL_INFO:
-        size = NETMSG_SEND_GIVE_GLOBAL_INFO_SIZE;
-        break;
     case NETMSG_SEND_RULE_GLOBAL:
         size = NETMSG_SEND_RULE_GLOBAL_SIZE;
         break;
@@ -661,6 +650,18 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_SEND_ITEM_POD_PROPERTY( 8 ):
         size = NETMSG_SEND_ITEM_POD_PROPERTY_SIZE( 8 );
         break;
+    case NETMSG_SEND_CRITTER_POD_PROPERTY( 1 ):
+        size = NETMSG_SEND_CRITTER_POD_PROPERTY_SIZE( 1 );
+        break;
+    case NETMSG_SEND_CRITTER_POD_PROPERTY( 2 ):
+        size = NETMSG_SEND_CRITTER_POD_PROPERTY_SIZE( 2 );
+        break;
+    case NETMSG_SEND_CRITTER_POD_PROPERTY( 4 ):
+        size = NETMSG_SEND_CRITTER_POD_PROPERTY_SIZE( 4 );
+        break;
+    case NETMSG_SEND_CRITTER_POD_PROPERTY( 8 ):
+        size = NETMSG_SEND_CRITTER_POD_PROPERTY_SIZE( 8 );
+        break;
     case NETMSG_CRITTER_ITEM_POD_PROPERTY( 1 ):
         size = NETMSG_CRITTER_ITEM_POD_PROPERTY_SIZE( 1 );
         break;
@@ -685,6 +686,18 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_MAP_ITEM_POD_PROPERTY( 8 ):
         size = NETMSG_MAP_ITEM_POD_PROPERTY_SIZE( 8 );
         break;
+    case NETMSG_CRITTER_POD_PROPERTY( 1 ):
+        size = NETMSG_CRITTER_POD_PROPERTY_SIZE( 1 );
+        break;
+    case NETMSG_CRITTER_POD_PROPERTY( 2 ):
+        size = NETMSG_CRITTER_POD_PROPERTY_SIZE( 2 );
+        break;
+    case NETMSG_CRITTER_POD_PROPERTY( 4 ):
+        size = NETMSG_CRITTER_POD_PROPERTY_SIZE( 4 );
+        break;
+    case NETMSG_CRITTER_POD_PROPERTY( 8 ):
+        size = NETMSG_CRITTER_POD_PROPERTY_SIZE( 8 );
+        break;
 
     case NETMSG_CHECK_UID0:
     case NETMSG_CHECK_UID1:
@@ -696,7 +709,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_UPDATE_FILES_LIST:
     case NETMSG_ADD_PLAYER:
     case NETMSG_ADD_NPC:
-    case NETMSG_CRITTER_LEXEMS:
     case NETMSG_SEND_COMMAND:
     case NETMSG_SEND_TEXT:
     case NETMSG_CRITTER_TEXT:
@@ -727,6 +739,8 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_CRITTER_ITEM_COMPLEX_PROPERTY:
     case NETMSG_MAP_ITEM_COMPLEX_PROPERTY:
     case NETMSG_SEND_ITEM_COMPLEX_PROPERTY:
+    case NETMSG_SEND_CRITTER_COMPLEX_PROPERTY:
+    case NETMSG_ALL_PROPERTIES:
     {
         // Changeable size
         EncryptKey( sizeof( msg ) );

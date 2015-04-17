@@ -47,7 +47,8 @@
 #define WORLD_SAVE_V18               ( 0x01AB0F18 )
 #define WORLD_SAVE_V19               ( 0x01AB0F19 )
 #define WORLD_SAVE_V20               ( 0x01AB0F20 )
-#define WORLD_SAVE_LAST              WORLD_SAVE_V20
+#define WORLD_SAVE_V21               ( 0x01AB0F21 )
+#define WORLD_SAVE_LAST              WORLD_SAVE_V21
 #define SINGLEPLAYER_SAVE_V1         ( 1 )
 #define SINGLEPLAYER_SAVE_V2         ( 2 )
 #define SINGLEPLAYER_SAVE_LAST       ( SINGLEPLAYER_SAVE_V2 )
@@ -62,9 +63,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define WORLD_START_TIME             "07:00 30:10:2246 x00"
 #define MAX_FOPATH                   UTF8_BUF_SIZE( 1024 )
 #define CRAFT_SEND_TIME              ( 60000 )
-#define LEXEMS_SIZE                  ( 128 )
 #define MAX_HOLO_INFO                ( 250 )
-#define MAX_PARAMETERS_ARRAYS        ( 100 )
 #define AMBIENT_SOUND_TIME           ( 60000 ) // Random(X/2,X);
 #define EFFECT_SCRIPT_VALUES         ( 10 )
 #define ABC_SIZE                     ( 26 )
@@ -75,10 +74,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define DLG_STR_ID( dlg_id, idx )             ( ( ( dlg_id ) & DLGID_MASK ) | ( ( idx ) & ~DLGID_MASK ) )
 #define LOCPID_MASK                  ( 0xFFFFF000 )
 #define LOC_STR_ID( loc_pid, idx )            ( ( ( loc_pid ) & LOCPID_MASK ) | ( ( idx ) & ~LOCPID_MASK ) )
-
-// Script pragma bindfield sizes
-#define PROTO_ITEM_USER_DATA_SIZE    ( 500 )
-#define CRITTER_USER_DATA_SIZE       ( 400 )
 
 // Critters
 #define GENDER_MALE                  ( 0 )
@@ -403,131 +398,20 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define SHOW_SCREEN_PIPBOY           ( 10 )   // Pip-boy.
 #define SHOW_SCREEN_MINIMAP          ( 11 )   // Mini-map.
 
-// Parameters
-#define MAX_PARAMS                   ( 1000 )
-#define SKILL_OFFSET( skill )                 ( ( skill ) - ( GameOpt.AbsoluteOffsets ? 0 : SKILL_BEGIN ) )
-#define PERK_OFFSET( perk )                   ( ( perk ) - ( GameOpt.AbsoluteOffsets ? 0 : PERK_BEGIN ) )
-
-// Stats
-#define ST_STRENGTH                  ( 0 )
-#define ST_PERCEPTION                ( 1 )
-#define ST_CHARISMA                  ( 3 )
-#define ST_INTELLECT                 ( 4 )
-#define ST_AGILITY                   ( 5 )
-#define ST_ACTION_POINTS             ( 8 )
-#define ST_CARRY_WEIGHT              ( 11 )
-#define ST_GENDER                    ( 71 )
-#define ST_CURRENT_HP                ( 72 )
-#define ST_CURRENT_AP                ( 75 )
-#define ST_EXPERIENCE                ( 76 )
-#define ST_LEVEL                     ( 77 )
-#define ST_FOLLOW_CRIT               ( 81 )
-#define ST_REPLICATION_MONEY         ( 82 )
-#define ST_REPLICATION_COUNT         ( 83 )
-#define ST_REPLICATION_TIME          ( 84 )
-#define ST_REPLICATION_COST          ( 85 )
-#define ST_TURN_BASED_AC             ( 86 )
-#define ST_MAX_MOVE_AP               ( 87 )
-#define ST_MOVE_AP                   ( 88 )
-#define ST_NPC_ROLE                  ( 89 )
-#define ST_BONUS_LOOK                ( 101 )
-#define ST_HANDS_ITEM_PROTO_ID       ( 102 )
-#define ST_FREE_BARTER_PLAYER        ( 103 )
-#define ST_DIALOG_ID                 ( 104 )
-#define ST_AI_ID                     ( 105 )
-#define ST_TEAM_ID                   ( 106 )
-#define ST_BAG_ID                    ( 107 )
-#define ST_LAST_WEAPON_ID            ( 110 )
-#define ST_BASE_CRTYPE               ( 112 )
-#define ST_TALK_DISTANCE             ( 115 )
-#define ST_SCALE_FACTOR              ( 116 )
-#define ST_WALK_TIME                 ( 117 )
-#define ST_RUN_TIME                  ( 118 )
-#define ST_MAX_TALKERS               ( 119 )
-#define ST_HANDS_ITEM_MODE           ( 120 )
-#define ST_ANIM3D_LAYER_BEGIN        ( 150 )
-#define ST_ANIM3D_LAYER_END          ( 179 )
-
-// Skills
-#define SKILL_BEGIN                  ( GameOpt.SkillBegin )
-#define SKILL_END                    ( GameOpt.SkillEnd )
-#define SKILL_COUNT                  ( SKILL_END - SKILL_BEGIN + 1 )
-#define SK_UNARMED                   ( 203 )
-#define SK_FIRST_AID                 ( 206 )
-#define SK_DOCTOR                    ( 207 )
-#define SK_SNEAK                     ( 208 )
-#define SK_LOCKPICK                  ( 209 )
-#define SK_STEAL                     ( 210 )
-#define SK_TRAPS                     ( 211 )
-#define SK_SCIENCE                   ( 212 )
-#define SK_REPAIR                    ( 213 )
-#define SK_SPEECH                    ( 214 )
-#define SK_BARTER                    ( 215 )
-
 // Timeouts
-#define TIMEOUT_BEGIN                ( GameOpt.TimeoutBegin )
-#define TIMEOUT_END                  ( GameOpt.TimeoutEnd )
-#define TO_SK_REPAIR                 ( 232 )
-#define TO_SK_SCIENCE                ( 233 )
-#define TO_BATTLE                    ( 238 )
-#define TO_TRANSFER                  ( 239 )
-#define TO_REMOVE_FROM_GAME          ( 240 )
-#define TO_KARMA_VOTING              ( 242 )
-#define TB_BATTLE_TIMEOUT            ( 100000000 )
-#define TB_BATTLE_TIMEOUT_CHECK( to )         ( ( to ) > 10000000 )
-
-// Perks
-#define PERK_BEGIN                   ( GameOpt.PerkBegin )
-#define PERK_END                     ( GameOpt.PerkEnd )
-#define PERK_COUNT                   ( PERK_END - PERK_BEGIN + 1 )
-#define PE_SILENT_RUNNING            ( 316 )
-#define PE_MASTER_TRADER             ( 318 )
-#define PE_QUICK_POCKETS             ( 349 )
-
-// Damages
-#define DAMAGE_RIGHT_ARM             ( 503 )
-#define DAMAGE_LEFT_ARM              ( 504 )
-#define DAMAGE_RIGHT_LEG             ( 505 )
-#define DAMAGE_LEFT_LEG              ( 506 )
-
-// Modes
-#define MODE_HIDE                    ( 510 )
-#define MODE_NO_STEAL                ( 511 )
-#define MODE_NO_BARTER               ( 512 )
-#define MODE_NO_ENEMY_STACK          ( 513 )
-#define MODE_NO_PVP                  ( 514 )
-#define MODE_END_COMBAT              ( 515 )
-#define MODE_DEFAULT_COMBAT          ( 516 )
-#define MODE_NO_HOME                 ( 517 )
-#define MODE_GECK                    ( 518 )
-#define MODE_NO_FAVORITE_ITEM        ( 519 )
-#define MODE_NO_ITEM_GARBAGER        ( 520 )
-#define MODE_DLG_SCRIPT_BARTER       ( 521 )
-#define MODE_UNLIMITED_AMMO          ( 522 )
-#define MODE_INVULNERABLE            ( 527 )
-#define MODE_NO_FLATTEN              ( 528 ) // Client
-#define MODE_RANGE_HTH               ( 530 )
-#define MODE_NO_LOOT                 ( 532 )
-#define MODE_NO_PUSH                 ( 536 )
-#define MODE_NO_UNARMED              ( 537 )
-#define MODE_NO_AIM                  ( 538 )
-#define MODE_NO_WALK                 ( 539 )
-#define MODE_NO_RUN                  ( 540 )
-#define MODE_NO_TALK                 ( 541 )
-
-// Reputation
-#define REPUTATION_BEGIN             ( GameOpt.ReputationBegin )
-#define REPUTATION_END               ( GameOpt.ReputationEnd )
+#define IS_TIMEOUT( to )                      ( ( to ) > GameOpt.FullSecond )
+#define TB_BATTLE_TIMEOUT            ( GameOpt.FullSecond + 100000000 )
+#define TB_BATTLE_TIMEOUT_CHECK( to )         ( ( to ) > GameOpt.FullSecond && ( to ) - GameOpt.FullSecond > 10000000 )
 
 // Special send params
-#define OTHER_BREAK_TIME             ( 0 + MAX_PARAMS )
-#define OTHER_WAIT_TIME              ( 1 + MAX_PARAMS )
-#define OTHER_FLAGS                  ( 2 + MAX_PARAMS )
-#define OTHER_BASE_TYPE              ( 3 + MAX_PARAMS )
-#define OTHER_MULTIHEX               ( 4 + MAX_PARAMS )
-#define OTHER_YOU_TURN               ( 5 + MAX_PARAMS )
-#define OTHER_CLEAR_MAP              ( 6 + MAX_PARAMS )
-#define OTHER_TELEPORT               ( 7 + MAX_PARAMS )
+#define OTHER_BREAK_TIME             ( 0 )
+#define OTHER_WAIT_TIME              ( 1 )
+#define OTHER_FLAGS                  ( 2 )
+#define OTHER_BASE_TYPE              ( 3 )
+#define OTHER_MULTIHEX               ( 4 )
+#define OTHER_YOU_TURN               ( 5 )
+#define OTHER_CLEAR_MAP              ( 6 )
+#define OTHER_TELEPORT               ( 7 )
 
 // Critter actions
 // Flags for chosen:
