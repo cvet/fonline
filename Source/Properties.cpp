@@ -866,8 +866,7 @@ void Properties::SetValueAsInt( int enum_value, int value )
 
 bool Properties::SetValueAsIntByName( const char* enum_name, int value )
 {
-    int       enum_value = Str::GetHash( enum_name );
-    Property* prop = registrator->FindByEnum( enum_value );
+    Property* prop = registrator->Find( enum_name );
     if( !prop )
         SCRIPT_ERROR_R0( "Enum '%s' not found", enum_name );
     if( !prop->IsPOD() )

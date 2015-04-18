@@ -39,19 +39,20 @@ public:
 
     int    UserData[ 10 ];
 
+    #ifdef FONLINE_MAPPER
+    ScriptStringVec* Props;
+    #else
+    IntVec*          Props;
+    #endif
+
     union
     {
         struct
         {
-            uchar            Dir;
-            uchar            Cond;
-            uint             Anim1;
-            uint             Anim2;
-            #ifndef FONLINE_MAPPER
-            IntVec*          Params;
-            #else
-            ScriptStringVec* Params;
-            #endif
+            uchar Dir;
+            uchar Cond;
+            uint  Anim1;
+            uint  Anim2;
         } MCritter;
 
         struct
@@ -68,10 +69,10 @@ public:
             uchar         BrokenCount;
             ushort        Deterioration;
 
-            #ifndef FONLINE_MAPPER
-            hash          AmmoPid;
-            #else
+            #ifdef FONLINE_MAPPER
             ScriptString* AmmoPid;
+            #else
+            hash          AmmoPid;
             #endif
             uint          AmmoCount;
 
@@ -98,10 +99,10 @@ public:
             uchar         ParamsCount;
             int           Param[ 5 ];
 
-            #ifndef FONLINE_MAPPER
-            hash          ToMap;
-            #else
+            #ifdef FONLINE_MAPPER
             ScriptString* ToMap;
+            #else
+            hash          ToMap;
             #endif
             uint          ToEntire;
             uchar         ToDir;
@@ -117,8 +118,7 @@ public:
         uint      MapObjId;
         char      PicMapName[ 64 ];
         char      PicInvName[ 64 ];
-        #endif
-        #ifdef FONLINE_SERVER
+        #else
         int       BindScriptId;
         #endif
         long      RefCounter;
@@ -132,34 +132,29 @@ public:
 
     ~MapObject()
     {
-        if( MapObjType == MAP_OBJECT_CRITTER && MCritter.Params )
+        if( Props )
         {
-            if( MCritter.Params )
-            {
-                #ifndef FONLINE_MAPPER
-                SAFEDELA( MCritter.Params );
-                #else
-                for( size_t i = 0; i < MCritter.Params->size(); i++ )
-                    MCritter.Params->at( i )->Release();
-                SAFEDELA( MCritter.Params );
-                #endif
-            }
+            #ifdef FONLINE_MAPPER
+            for( size_t i = 0; i < Props->size(); i++ )
+                Props->at( i )->Release();
+            #endif
+            SAFEDELA( Props );
         }
     }
 
     void AddRef()  { ++RunTime.RefCounter; }
     void Release() { if( !--RunTime.RefCounter ) delete this; }
 
-    void AllocateCritterParams()
+    void AllocateProps()
     {
-        #ifndef FONLINE_MAPPER
-        MCritter.Params = new IntVec();
+        #ifdef FONLINE_MAPPER
+        Props = new ScriptStringVec();
         #else
-        MCritter.Params = new ScriptStringVec();
+        Props = new IntVec();
         #endif
     }
 
-    #ifndef FONLINE_SERVER
+    #ifdef FONLINE_MAPPER
     MapObject( const MapObject& r )
     {
         CopyObject( r );
@@ -175,17 +170,23 @@ public:
     void CopyObject( const MapObject& other )
     {
         memcpy( this, &other, sizeof( MapObject ) );
-        if( other.MapObjType == MAP_OBJECT_CRITTER && MCritter.Params )
+        if( Props )
         {
-            AllocateCritterParams();
-            # ifndef FONLINE_MAPPER
-            *MCritter.Params = *other.MCritter.Params;
-            # else
-            for( size_t i = 0; i < MCritter.Params->size(); i++ )
-                *MCritter.Params->at( i ) = *other.MCritter.Params->at( i );
-            # endif
+            AllocateProps();
+            for( size_t i = 0; i < Props->size(); i++ )
+                *Props->at( i ) = *other.Props->at( i );
         }
         RunTime.RefCounter = 1;
+    }
+
+    ScriptString* GetPropValue( const char* prop )
+    {
+        for( size_t i = 0; i < Props->size(); i += 2 )
+            if( Str::Compare( Props->at( i )->c_str(), prop ) )
+                return Props->at( i + 1 );
+        Props->push_back( ScriptString::Create( prop ) );
+        Props->push_back( ScriptString::Create() );
+        return Props->back();
     }
     #else
 private:

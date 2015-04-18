@@ -4502,12 +4502,12 @@ void HexManager::AffectCritter( MapObject* mobj, CritterCl* cr )
     anim1 = mobj->MCritter.Anim1;
     anim2 = mobj->MCritter.Anim2;
 
-    if( mobj->MCritter.Params )
+    if( mobj->Props )
     {
-        for( size_t i = 0, j = mobj->MCritter.Params->size() / 2; i < j; i++ )
+        for( size_t i = 0, j = mobj->Props->size() / 2; i < j; i++ )
         {
-            int value = (int) ConvertParamValue( mobj->MCritter.Params->at( i * 2 + 1 )->c_str() );
-            cr->Props.SetValueAsIntByName( mobj->MCritter.Params->at( i * 2 )->c_str(), value );
+            int value = (int) ConvertParamValue( mobj->Props->at( i * 2 + 1 )->c_str() );
+            cr->Props.SetValueAsIntByName( mobj->Props->at( i * 2 )->c_str(), value );
         }
     }
 

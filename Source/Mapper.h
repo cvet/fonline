@@ -313,8 +313,7 @@ public:
 
     // Parse new
     uint   AnyId;
-    IntVec ShowCritterProps;
-    StrVec ShowCritterPropsNames;
+    StrVec ShowCritterProps;
 
     MapObject* ParseProto( hash pid, ushort hx, ushort hy, MapObject* owner, bool is_child = false );
     void       ParseTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof );
@@ -422,6 +421,7 @@ public:
 
     struct SScriptFunc
     {
+        static ScriptString* MapperObject_opIndex( MapObject& mobj, int prop_enum );
         static ScriptString* MapperObject_get_ScriptName( MapObject& mobj );
         static void          MapperObject_set_ScriptName( MapObject& mobj, ScriptString* str );
         static ScriptString* MapperObject_get_FuncName( MapObject& mobj );
@@ -460,7 +460,7 @@ public:
         static ScriptString* MapperMap_get_ScriptFunc( ProtoMap& pmap );
         static void          MapperMap_set_ScriptFunc( ProtoMap& pmap, ScriptString* str );
 
-        // static void       Global_ShowProperty( ScriptString& class_name, ScriptString& property_name, bool show );
+        static void       Global_ShowProperty( int prop_enum );
         static void       Global_AllowSlot( uchar index, bool enable_send );
         static ProtoMap*  Global_LoadMap( ScriptString& file_name, int path_type );
         static void       Global_UnloadMap( ProtoMap* pmap );

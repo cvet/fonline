@@ -894,23 +894,23 @@ struct BindClass
     #endif
 
     #ifdef BIND_MAPPER
-    static void MapperObject_CritterParam_Index() {}
-    static void MapperObject_get_ScriptName()     {}
-    static void MapperObject_set_ScriptName()     {}
-    static void MapperObject_get_FuncName()       {}
-    static void MapperObject_set_FuncName()       {}
-    static void MapperObject_get_Critter_Cond()   {}
-    static void MapperObject_set_Critter_Cond()   {}
-    static void MapperObject_get_PicMap()         {}
-    static void MapperObject_set_PicMap()         {}
-    static void MapperObject_get_PicInv()         {}
-    static void MapperObject_set_PicInv()         {}
-    static void MapperObject_Update()             {}
-    static void MapperObject_AddChild()           {}
-    static void MapperObject_GetChilds()          {}
-    static void MapperObject_MoveToHex()          {}
-    static void MapperObject_MoveToHexOffset()    {}
-    static void MapperObject_MoveToDir()          {}
+    static void MapperObject_opIndex()          {}
+    static void MapperObject_get_ScriptName()   {}
+    static void MapperObject_set_ScriptName()   {}
+    static void MapperObject_get_FuncName()     {}
+    static void MapperObject_set_FuncName()     {}
+    static void MapperObject_get_Critter_Cond() {}
+    static void MapperObject_set_Critter_Cond() {}
+    static void MapperObject_get_PicMap()       {}
+    static void MapperObject_set_PicMap()       {}
+    static void MapperObject_get_PicInv()       {}
+    static void MapperObject_set_PicInv()       {}
+    static void MapperObject_Update()           {}
+    static void MapperObject_AddChild()         {}
+    static void MapperObject_GetChilds()        {}
+    static void MapperObject_MoveToHex()        {}
+    static void MapperObject_MoveToHexOffset()  {}
+    static void MapperObject_MoveToDir()        {}
 
     static void MapperMap_get_Name()         {}
     static void MapperMap_AddObject()        {}
@@ -935,7 +935,7 @@ struct BindClass
     static void MapperMap_get_ScriptFunc()   {}
     static void MapperMap_set_ScriptFunc()   {}
 
-    static void Global_ShowCritterParam()   {}
+    static void Global_ShowProperty()       {}
     static void Global_GetFastPrototypes()  {}
     static void Global_SetFastPrototypes()  {}
     static void Global_LoadMap()            {}

@@ -2200,20 +2200,16 @@ void FOMapper::ObjDraw()
 
     if( o->MapObjType == MAP_OBJECT_CRITTER )
     {
-        DRAW_COMPONENT( "Dir", o->MCritter.Dir, true, o->MapObjType == MAP_OBJECT_CRITTER );    // 15
-        DRAW_COMPONENT( "Cond", o->MCritter.Cond, true, false );                                // 16
-        DRAW_COMPONENT( "Anim1", o->MCritter.Anim1, true, false );                              // 17
-        DRAW_COMPONENT( "Anim2", o->MCritter.Anim2, true, false );                              // 18
-        y += step;                                                                              // 19
-//         for( size_t i = 0, j = ShowCritterProps.size(); i < j; i++ )                           // 20..
-//         {
-//             string str = ( o->MCritter.Params ? o->MCritter.Params[ ShowCritterPr[ i ] ]->c_std_str() : "" );
-//             if( str.length() > 0 && str[ 0 ] == '$' )
-//                 str += Str::FormatBuf( " (constant: %d)", (int) ConvertParamValue( str.c_str() ) );
-//             else if( str.length() > 0 && !Str::IsNumber( str.c_str() ) )
-//                 str += Str::FormatBuf( " (hash: %08X)", (hash) ConvertParamValue( str.c_str() ) );
-//             DRAW_COMPONENT_TEXT( ShowCritterParamNames[ i ].c_str(), str.c_str(), false );
-//         }
+        DRAW_COMPONENT( "Dir", o->MCritter.Dir, true, o->MapObjType == MAP_OBJECT_CRITTER );   // 15
+        DRAW_COMPONENT( "Cond", o->MCritter.Cond, true, false );                               // 16
+        DRAW_COMPONENT( "Anim1", o->MCritter.Anim1, true, false );                             // 17
+        DRAW_COMPONENT( "Anim2", o->MCritter.Anim2, true, false );                             // 18
+        y += step;                                                                             // 19
+        for( size_t i = 0, j = ShowCritterProps.size(); i < j; i++ )                           // 20..
+        {
+            ScriptString* str = o->GetPropValue( ShowCritterProps[ i ].c_str() );
+            DRAW_COMPONENT_TEXT( ShowCritterProps[ i ].c_str(), str->c_str(), false );
+        }
     }
     else if( o->MapObjType == MAP_OBJECT_ITEM || o->MapObjType == MAP_OBJECT_SCENERY )
     {
@@ -2361,17 +2357,18 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
     if( o->MapObjType != MAP_OBJECT_CRITTER && !proto )
         return;
 
-//     if( o->MapObjType == MAP_OBJECT_CRITTER && ObjCurLine >= 20 && ObjCurLine - 20 < (int) ShowCritterProps.size() )
-//     {
-//         if( !o->MCritter.Params )
-//             o->AllocateCritterParams();
-//         char buf[ MAX_FOTEXT ];
-//         Str::Copy( buf, o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ]->c_str() );
-//         Keyb::GetChar( dik, dik_text, buf, sizeof( buf ), NULL, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
-//         Str::Trim( buf );
-//         *o->MCritter.Params[ ShowCritterParams[ ObjCurLine - 20 ] ] = buf;
-//         return;
-//     }
+    if( o->MapObjType == MAP_OBJECT_CRITTER && ObjCurLine >= 20 && ObjCurLine - 20 < (int) ShowCritterProps.size() )
+    {
+        if( !o->Props )
+            o->AllocateProps();
+        char buf[ MAX_FOTEXT ];
+        ScriptString* val_str = o->GetPropValue( ShowCritterProps[ ObjCurLine - 20 ].c_str() );
+        Str::Copy( buf, val_str->c_str() );
+        Keyb::GetChar( dik, dik_text, buf, sizeof( buf ), NULL, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
+        Str::Trim( buf );
+        *val_str = buf;
+        return;
+    }
 
     switch( ObjCurLine )
     {
@@ -5393,6 +5390,16 @@ void FOMapper::DrawIfaceLayer( uint layer )
     }
 }
 
+ScriptString* FOMapper::SScriptFunc::MapperObject_opIndex( MapObject& mobj, int prop_enum )
+{
+    if( mobj.MapObjType != MAP_OBJECT_CRITTER )
+        SCRIPT_ERROR_R0( "Invalid map object type." );
+    Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum );
+    if( !prop )
+        SCRIPT_ERROR_R0( "Property not found." );
+    return mobj.GetPropValue( prop->GetName() );
+}
+
 ScriptString* FOMapper::SScriptFunc::MapperObject_get_ScriptName( MapObject& mobj )
 {
     return ScriptString::Create( mobj.ScriptName );
@@ -5967,8 +5974,18 @@ void FOMapper::SScriptFunc::MapperMap_set_ScriptFunc( ProtoMap& pmap, ScriptStri
     Str::Copy( pmap.Header.ScriptFunc, str ? str->c_str() : "" );
 }
 
+void FOMapper::SScriptFunc::Global_ShowProperty( int prop_enum )
+{
+    Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum );
+    if( !prop )
+        SCRIPT_ERROR_R( "Property not found" );
+    Self->ShowCritterProps.push_back( prop->GetName() );
+}
+
 void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
-{}
+{
+    //
+}
 
 ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( ScriptString& file_name, int path_type )
 {

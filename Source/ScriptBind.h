@@ -967,6 +967,7 @@ BIND_ASSERT( engine->RegisterObjectBehaviour( "MapperMap", asBEHAVE_ADDREF, "voi
 BIND_ASSERT( engine->RegisterObjectBehaviour( "MapperMap", asBEHAVE_RELEASE, "void f()", asMETHOD( ProtoMap, Release ), asCALL_THISCALL ) );
 
 // MapperObject
+BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "string& opIndex(int prop)", asFUNCTION( BIND_CLASS MapperObject_opIndex ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "void Update() const", asFUNCTION( BIND_CLASS MapperObject_Update ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "MapperObject@+ AddChild(hash pid)", asFUNCTION( BIND_CLASS MapperObject_AddChild ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "uint GetChilds(MapperObject@[]@+ objects) const", asFUNCTION( BIND_CLASS MapperObject_GetChilds ), asCALL_CDECL_OBJFIRST ) );
@@ -1086,7 +1087,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "string@ get_ScriptFunc(
 BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void set_ScriptFunc(const string& name)", asFUNCTION( BIND_CLASS MapperMap_set_ScriptFunc ), asCALL_CDECL_OBJFIRST ) );
 
 // Global
-// BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowCritterParam(int paramIndex, bool show, string@+ paramName = null)", asFUNCTION( BIND_CLASS Global_ShowCritterParam ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowProperty(int prop)", asFUNCTION( BIND_CLASS Global_ShowProperty ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "MapperMap@+ LoadMap(string& fileName, int pathType)", asFUNCTION( BIND_CLASS Global_LoadMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void UnloadMap(MapperMap@+ map)", asFUNCTION( BIND_CLASS Global_UnloadMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SaveMap(MapperMap@+ map, string@+ customName = null)", asFUNCTION( BIND_CLASS Global_SaveMap ), asCALL_CDECL ) );

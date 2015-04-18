@@ -18,7 +18,6 @@
 #define FO_MAP_VERSION_TEXT4                     ( 4 )
 #define FO_MAP_VERSION_TEXT5                     ( 5 )
 #define FO_MAP_VERSION_TEXT6                     ( 6 )
-#define FO_MAP_VERSION_TEXT7                     ( 7 )
 
 #define APP_HEADER                               "Header"
 #define APP_TILES                                "Tiles"
@@ -203,8 +202,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         delete[] header_str;
     }
     if( ( Header.Version != FO_MAP_VERSION_TEXT1 && Header.Version != FO_MAP_VERSION_TEXT2 && Header.Version != FO_MAP_VERSION_TEXT3 &&
-          Header.Version != FO_MAP_VERSION_TEXT4 && Header.Version != FO_MAP_VERSION_TEXT5 && Header.Version != FO_MAP_VERSION_TEXT6 &&
-          Header.Version != FO_MAP_VERSION_TEXT7 ) ||
+          Header.Version != FO_MAP_VERSION_TEXT4 && Header.Version != FO_MAP_VERSION_TEXT5 && Header.Version != FO_MAP_VERSION_TEXT6 ) ||
         Header.MaxHexX < 1 || Header.MaxHexY < 1 )
         return false;
 
@@ -393,30 +391,30 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                             mobj.MCritter.Anim1 = ivalue;
                         else if( field == "Critter_Anim2" )
                             mobj.MCritter.Anim2 = ivalue;
-                        else if( field.size() >= 18 /* "Critter_ParamName" or "Critter_ParamValue" */ && field.substr( 0, 13 ) == "Critter_Param" )
+                        else if( field.size() >= 18 /* "Critter_ParamIndex" or "Critter_ParamValue" */ && field.substr( 0, 13 ) == "Critter_Param" )
                         {
                             if( field.substr( 13, 5 ) == "Index" )
                             {
-                                if( !mobj.MCritter.Params )
-                                    mobj.AllocateCritterParams();
+                                if( !mobj.Props )
+                                    mobj.AllocateProps();
                                 #ifndef FONLINE_MAPPER
                                 Property* prop = Critter::PropertiesRegistrator->Find( svalue );
-                                mobj.MCritter.Params->push_back( prop ? prop->GetEnumValue() : -1 );
+                                mobj.Props->push_back( prop ? prop->GetEnumValue() : -1 );
                                 if( !prop )
                                 {
                                     WriteLog( "Critter property<%s> not found.\n", svalue );
                                     props_errors++;
                                 }
                                 #else
-                                mobj.MCritter.Params->push_back( ScriptString::Create( svalue ) );
+                                mobj.Props->push_back( ScriptString::Create( svalue ) );
                                 #endif
                             }
-                            else if( mobj.MCritter.Params && mobj.MCritter.Params->size() % 2 == 1 )
+                            else if( mobj.Props && mobj.Props->size() % 2 == 1 )
                             {
                                 #ifndef FONLINE_MAPPER
-                                mobj.MCritter.Params->push_back( (int) ConvertParamValue( svalue ) );
+                                mobj.Props->push_back( (int) ConvertParamValue( svalue ) );
                                 #else
-                                mobj.MCritter.Params->push_back( ScriptString::Create( svalue ) );
+                                mobj.Props->push_back( ScriptString::Create( svalue ) );
                                 #endif
                             }
                         }
@@ -684,21 +682,21 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
                 fm.SetStr( "%-20s %d\n", "Critter_Anim1", mobj.MCritter.Anim1 );
             if( mobj.MCritter.Anim2 )
                 fm.SetStr( "%-20s %d\n", "Critter_Anim2", mobj.MCritter.Anim2 );
-            if( mobj.MCritter.Params )
+            if( mobj.Props )
             {
-                for( size_t i = 0, j = mobj.MCritter.Params->size(); i < j; i += 2 )
+                for( size_t i = 0, j = mobj.Props->size(); i < j; i += 2 )
                 {
-                    if( mobj.MCritter.Params->at( i )->length() > 0 && mobj.MCritter.Params->at( i + 1 )->length() > 0 )
+                    if( mobj.Props->at( i )->length() > 0 && mobj.Props->at( i + 1 )->length() > 0 )
                     {
                         char property_name[ MAX_FOTEXT ];
                         char property_value[ MAX_FOTEXT ];
-                        Str::Copy( property_name, mobj.MCritter.Params->at( i )->c_str() );
-                        Str::Copy( property_value, mobj.MCritter.Params->at( i + 1 )->c_str() );
+                        Str::Copy( property_name, mobj.Props->at( i )->c_str() );
+                        Str::Copy( property_value, mobj.Props->at( i + 1 )->c_str() );
                         Str::Trim( property_name );
                         Str::Trim( property_value );
                         if( Str::Length( property_name ) > 0 && Str::Length( property_value ) > 0 )
                         {
-                            fm.SetStr( "%-20s %s\n", "Critter_ParamName", property_name );
+                            fm.SetStr( "%-20s %s\n", "Critter_ParamIndex", property_name );
                             fm.SetStr( "%-20s %s\n", "Critter_ParamValue", property_value );
                         }
                     }
@@ -828,13 +826,13 @@ bool ProtoMap::LoadCache( FileManager& fm )
     {
         MapObject* mobj = new MapObject();
         fm.CopyMem( mobj, sizeof( MapObject ) - sizeof( MapObject::_RunTime ) );
-        if( mobj->MCritter.Params )
+        if( mobj->Props )
         {
-            mobj->AllocateCritterParams();
+            mobj->AllocateProps();
             uint size = fm.GetBEUInt();
-            mobj->MCritter.Params = new IntVec();
-            mobj->MCritter.Params->resize( size );
-            fm.CopyMem( &mobj->MCritter.Params->at( 0 ), size * sizeof( int ) );
+            mobj->Props = new IntVec();
+            mobj->Props->resize( size );
+            fm.CopyMem( &mobj->Props->at( 0 ), size * sizeof( int ) );
         }
         CrittersVec.push_back( mobj );
     }
@@ -945,11 +943,11 @@ void ProtoMap::SaveCache( FileManager& fm )
     for( auto it = CrittersVec.begin(), end = CrittersVec.end(); it != end; ++it )
     {
         fm.SetData( *it, (uint) sizeof( MapObject ) - sizeof( MapObject::_RunTime ) );
-        if( ( *it )->MCritter.Params && !( *it )->MCritter.Params->empty() )
+        if( ( *it )->Props && !( *it )->Props->empty() )
         {
-            uint size = ( *it )->MCritter.Params->size();
+            uint size = ( *it )->Props->size();
             fm.SetBEUInt( size );
-            fm.SetData( &( *it )->MCritter.Params->at( 0 ), size * sizeof( int ) );
+            fm.SetData( &( *it )->Props->at( 0 ), size * sizeof( int ) );
         }
     }
 
@@ -1458,7 +1456,7 @@ bool ProtoMap::Refresh()
 void ProtoMap::GenNew()
 {
     Clear();
-    Header.Version = FO_MAP_VERSION_TEXT7;
+    Header.Version = FO_MAP_VERSION_TEXT6;
     Header.MaxHexX = MAXHEX_DEF;
     Header.MaxHexY = MAXHEX_DEF;
     pmapName = "";
@@ -1534,7 +1532,7 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
 
     // Save
     FileManager fm;
-    Header.Version = FO_MAP_VERSION_TEXT7;
+    Header.Version = FO_MAP_VERSION_TEXT6;
     SaveTextFormat( fm );
     Tiles.clear();
 
