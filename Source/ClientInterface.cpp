@@ -8076,7 +8076,7 @@ void FOClient::SaveLoadCollect()
         Str::Append( fname_ex, ".fo" );
 
         // Convert time
-        DateTime dt;
+        DateTimeStamp dt;
         Timer::FullTimeToDateTime( tw, dt );
 
         // Fill slot data

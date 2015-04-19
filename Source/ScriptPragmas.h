@@ -12,16 +12,20 @@
 #define PRAGMA_CLIENT     ( 2 )
 #define PRAGMA_MAPPER     ( 3 )
 
+class PropertyRegistrator;
 class IgnorePragma;
 class GlobalVarPragma;
 class BindFuncPragma;
 class PropertyPragma;
+
+typedef vector< Preprocessor::PragmaInstance > Pragmas;
 
 class ScriptPragmaCallback: public Preprocessor::PragmaCallback
 {
 private:
     int              pragmaType;
     set< string >    alreadyProcessed;
+    Pragmas          processedPragmas;
     bool             isError;
     IgnorePragma*    ignorePragma;
     GlobalVarPragma* globalVarPragma;
@@ -30,9 +34,10 @@ private:
 
 public:
     ScriptPragmaCallback( int pragma_type, PropertyRegistrator** property_registrators );
-    virtual void CallPragma( const string& name, const Preprocessor::PragmaInstance& instance );
-    void         Finish();
-    bool         IsError();
+    virtual void   CallPragma( const Preprocessor::PragmaInstance& pragma );
+    const Pragmas& GetProcessedPragmas();
+    void           Finish();
+    bool           IsError();
 };
 
 #endif // __SCRIPT_PRAGMAS__

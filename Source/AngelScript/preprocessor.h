@@ -56,6 +56,7 @@ namespace Preprocessor
     class FileLoader;
     class PragmaCallback;
     class LineNumberTranslator;
+    class PragmaInstance;
 
     // Preprocess
     int Preprocess( std::string file_path, OutStream& result, OutStream* errors = NULL, FileLoader* loader = NULL, bool skip_pragmas = false );
@@ -66,7 +67,7 @@ namespace Preprocessor
     void UndefAll();
     bool IsDefined( const std::string& str );
     void SetPragmaCallback( PragmaCallback* callback );
-    void CallPragma( const std::string& name, std::string pragma );
+    void CallPragma( const PragmaInstance& pragma );
 
     // Post preprocess settings
     LineNumberTranslator*       GetLineNumberTranslator();
@@ -74,7 +75,6 @@ namespace Preprocessor
     unsigned int                ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt = NULL );
     std::vector< std::string >& GetFileDependencies();
     std::vector< std::string >& GetFilesPreprocessed();
-    std::vector< std::string >& GetParsedPragmas();
 
     /************************************************************************/
     /* Streams                                                              */
@@ -137,6 +137,7 @@ public:
     class PragmaInstance
     {
 public:
+        std::string  Name;
         std::string  Text;
         std::string  CurrentFile;
         unsigned int CurrentFileLine;
@@ -148,7 +149,7 @@ public:
     {
 public:
         virtual ~PragmaCallback() {}
-        virtual void CallPragma( const std::string& name, const PragmaInstance& pi ) = 0;
+        virtual void CallPragma( const PragmaInstance& pragma ) = 0;
     };
 };
 

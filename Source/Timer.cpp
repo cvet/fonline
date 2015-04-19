@@ -137,7 +137,7 @@ int Timer::GetAcceleratorNum()
     return AcceleratorNum;
 }
 
-void Timer::GetCurrentDateTime( DateTime& dt )
+void Timer::GetCurrentDateTime( DateTimeStamp& dt )
 {
     #ifdef FO_WINDOWS
     SYSTEMTIME st;
@@ -161,7 +161,7 @@ void Timer::GetCurrentDateTime( DateTime& dt )
 #ifdef FO_MSVC
 # pragma optimize( "", off )
 #endif
-void Timer::DateTimeToFullTime( const DateTime& dt, uint64& ft )
+void Timer::DateTimeToFullTime( const DateTimeStamp& dt, uint64& ft )
 {
     // Minor year
     ft = (uint64) ( dt.Year - 1601 ) * 365 * 24 * 60 * 60 * 1000 * 1000;
@@ -191,7 +191,7 @@ void Timer::DateTimeToFullTime( const DateTime& dt, uint64& ft )
 # pragma optimize( "", on )
 #endif
 
-void Timer::FullTimeToDateTime( uint64 ft, DateTime& dt )
+void Timer::FullTimeToDateTime( uint64 ft, DateTimeStamp& dt )
 {
     // Base
     ft /= 10000;
@@ -243,7 +243,7 @@ void Timer::FullTimeToDateTime( uint64 ft, DateTime& dt )
     dt.DayOfWeek = ( 7000 + ( dt.Day + y + y / 4 - y / 100 + y / 400 + ( 31 * m ) / 12 ) ) % 7;
 }
 
-int Timer::GetTimeDifference( const DateTime& dt1, const DateTime& dt2 )
+int Timer::GetTimeDifference( const DateTimeStamp& dt1, const DateTimeStamp& dt2 )
 {
     uint64 ft1 = 0, ft2 = 0;
     DateTimeToFullTime( dt1, ft1 );
@@ -251,7 +251,7 @@ int Timer::GetTimeDifference( const DateTime& dt1, const DateTime& dt2 )
     return (int) ( ( ft1 - ft2 ) / 10000000 );
 }
 
-void Timer::ContinueTime( DateTime& td, int seconds )
+void Timer::ContinueTime( DateTimeStamp& td, int seconds )
 {
     uint64 ft;
     DateTimeToFullTime( td, ft );
@@ -261,17 +261,17 @@ void Timer::ContinueTime( DateTime& td, int seconds )
 
 uint Timer::GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
 {
-    DateTime dt = { year, month, 0, day, hour, minute, second, 0 };
-    uint64   ft = 0;
+    DateTimeStamp dt = { year, month, 0, day, hour, minute, second, 0 };
+    uint64        ft = 0;
     Timer::DateTimeToFullTime( dt, ft );
     ft -= PACKUINT64( GameOpt.YearStartFTHi, GameOpt.YearStartFTLo );
     return (uint) ( ft / 10000000 );
 }
 
-DateTime Timer::GetGameTime( uint full_second )
+DateTimeStamp Timer::GetGameTime( uint full_second )
 {
-    uint64   ft = PACKUINT64( GameOpt.YearStartFTHi, GameOpt.YearStartFTLo ) + uint64( full_second ) * 10000000;
-    DateTime dt;
+    uint64        ft = PACKUINT64( GameOpt.YearStartFTHi, GameOpt.YearStartFTLo ) + uint64( full_second ) * 10000000;
+    DateTimeStamp dt;
     Timer::FullTimeToDateTime( ft, dt );
     return dt;
 }
@@ -307,7 +307,7 @@ void Timer::ProcessGameTime()
     if( GameOpt.FullSecond != fs )
     {
         GameOpt.FullSecond = fs;
-        DateTime st = GetGameTime( GameOpt.FullSecond );
+        DateTimeStamp st = GetGameTime( GameOpt.FullSecond );
         GameOpt.Year = st.Year;
         GameOpt.Month = st.Month;
         GameOpt.Day = st.Day;

@@ -141,7 +141,7 @@ const char* ConstantsManager::GetItemName( ushort pid )
 int ConstantsManager::GetDefineValue( const char* str )
 {
     if( Str::IsNumber( str ) )
-        return atoi( str );
+        return Str::AtoI( str );
 
     if( Str::CompareCase( str, "true" ) )
         return 1;

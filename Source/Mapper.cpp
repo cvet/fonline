@@ -5155,7 +5155,7 @@ void FOMapper::AddMess( const char* message_text )
     Str::Format( str, "|%u %c |%u %s\n", COLOR_TEXT, 149, COLOR_TEXT, message_text );
 
     // Time
-    DateTime dt;
+    DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
     char     mess_time[ 64 ];
     Str::Format( mess_time, "%02d:%02d:%02d ", dt.Hour, dt.Minute, dt.Second );
@@ -5227,7 +5227,7 @@ bool FOMapper::SaveLogFile()
     if( MessBox.empty() )
         return false;
 
-    DateTime dt;
+    DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
     char     log_path[ MAX_FOPATH ];
     Str::Format( log_path, DIR_SLASH_SD "mapper_messbox_%02d-%02d-%d_%02d-%02d-%02d.txt",

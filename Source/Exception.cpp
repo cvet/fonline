@@ -80,14 +80,14 @@ void CatchExceptions( const char* app_name, int app_ver )
 # endif
 LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 {
-    LONG        retval = EXCEPTION_CONTINUE_SEARCH;
-    char        mess[ MAX_FOTEXT ];
-    char        dump_path[ MAX_FOPATH ];
-    char        dump_path_dir[ MAX_FOPATH ];
+    LONG          retval = EXCEPTION_CONTINUE_SEARCH;
+    char          mess[ MAX_FOTEXT ];
+    char          dump_path[ MAX_FOPATH ];
+    char          dump_path_dir[ MAX_FOPATH ];
 
-    DateTime    dt;
+    DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
-    const char* dump_str = except ? "CrashDump" : ManualDumpAppendix;
+    const char*   dump_str = except ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER
     FileManager::GetWritePath( "", PT_SERVER_DUMPS, dump_path_dir );
     # else
@@ -462,7 +462,7 @@ LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
     char       dump_path[ MAX_FOPATH ];
     char       dump_path_dir[ MAX_FOPATH ];
 
-    DateTime    dt;
+    DateTimeStamp    dt;
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = except ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER
@@ -591,7 +591,7 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     char        dump_path[ MAX_FOPATH ];
     char        dump_path_dir[ MAX_FOPATH ];
 
-    DateTime    dt;
+    DateTimeStamp    dt;
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = siginfo ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER

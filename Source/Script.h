@@ -2,6 +2,7 @@
 #define __SCRIPT__
 
 #include "Common.h"
+#include "ScriptPragmas.h"
 #include "angelscript.h"
 #include "scriptarray.h"
 #include "scriptstring.h"
@@ -25,7 +26,7 @@ typedef void ( *EndExecutionCallback )();
 
 struct EngineData
 {
-    Preprocessor::PragmaCallback*        PragmaCB;
+    ScriptPragmaCallback*                PragmaCB;
     string                               DllTarget;
     bool                                 AllowNativeCalls;
     map< string, pair< string, void* > > LoadedDlls;
@@ -40,7 +41,7 @@ struct ReservedScriptFunction
 
 namespace Script
 {
-    bool Init( Preprocessor::PragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls );
+    bool Init( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls );
     void Finish();
     bool InitThread();
     void FinishThread();
@@ -74,7 +75,7 @@ namespace Script
 
     asIScriptEngine* GetEngine();
     void             SetEngine( asIScriptEngine* engine );
-    asIScriptEngine* CreateEngine( Preprocessor::PragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls );
+    asIScriptEngine* CreateEngine( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls );
     void             FinishEngine( asIScriptEngine*& engine );
 
     asIScriptContext* CreateContext();
@@ -93,7 +94,7 @@ namespace Script
     void SetScriptsPath( int path_type );
     void Define( const char* def, ... );
     void Undef( const char* def );
-    void CallPragmas( const StrVec& pragmas );
+    void CallPragmas( const Pragmas& pragmas );
     bool LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_prefix = NULL );
     bool LoadScript( const char* module_name, const uchar* bytecode, uint len );
 

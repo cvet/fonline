@@ -89,6 +89,7 @@ public:
 
     void SetData( void* data, uint len );
     void SetStr( const char* fmt, ... );
+    void SetStrNT( const char* fmt, ... );
     void SetUChar( uchar data );
     void SetBEUShort( ushort data );
     void SetBEShort( short data ) { SetBEUShort( (ushort) data ); }

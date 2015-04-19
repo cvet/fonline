@@ -3372,8 +3372,8 @@ void FOServer::InitGameTime()
         GameOpt.Second = 0;
     }
 
-    DateTime dt = { GameOpt.YearStart, 1, 0, 1, 0, 0, 0, 0 };
-    uint64   start_ft;
+    DateTimeStamp dt = { GameOpt.YearStart, 1, 0, 1, 0, 0, 0, 0 };
+    uint64        start_ft;
     Timer::DateTimeToFullTime( dt, start_ft );
     GameOpt.YearStartFTHi = ( start_ft >> 32 ) & 0xFFFFFFFF;
     GameOpt.YearStartFTLo = start_ft & 0xFFFFFFFF;
@@ -3996,9 +3996,9 @@ void FOServer::LogToClients( const char* str )
 
 uint FOServer::GetBanTime( ClientBanned& ban )
 {
-    DateTime time;
+    DateTimeStamp time;
     Timer::GetCurrentDateTime( time );
-    int      diff = Timer::GetTimeDifference( ban.EndTime, time ) / 60 + 1;
+    int           diff = Timer::GetTimeDifference( ban.EndTime, time ) / 60 + 1;
     return diff > 0 ? diff : 1;
 }
 
@@ -4006,12 +4006,12 @@ void FOServer::ProcessBans()
 {
     SCOPE_LOCK( BannedLocker );
 
-    bool     resave = false;
-    DateTime time;
+    bool          resave = false;
+    DateTimeStamp time;
     Timer::GetCurrentDateTime( time );
     for( auto it = Banned.begin(); it != Banned.end();)
     {
-        DateTime& ban_time = ( *it ).EndTime;
+        DateTimeStamp& ban_time = ( *it ).EndTime;
         if( time.Year >= ban_time.Year && time.Month >= ban_time.Month && time.Day >= ban_time.Day &&
             time.Hour >= ban_time.Hour && time.Minute >= ban_time.Minute )
         {
@@ -4100,9 +4100,9 @@ void FOServer::LoadBans()
     char buf[ MAX_FOTEXT ];
     while( bans_txt.GotoNextApp( "Ban" ) )
     {
-        ClientBanned ban;
+        ClientBanned  ban;
         memzero( &ban, sizeof( ban ) );
-        DateTime     time;
+        DateTimeStamp time;
         memzero( &time, sizeof( time ) );
         if( bans_txt.GetStr( "Ban", "User", "", buf ) )
             Str::Copy( ban.ClientName, buf );
@@ -5408,7 +5408,7 @@ string FOServer::GetTimeEventsStatistics()
     char          str[ 1024 ];
     Str::Format( str, "Time events: %u\n", TimeEvents.size() );
     result = str;
-    DateTime st = Timer::GetGameTime( GameOpt.FullSecond );
+    DateTimeStamp st = Timer::GetGameTime( GameOpt.FullSecond );
     Str::Format( str, "Game time: %02u.%02u.%04u %02u:%02u:%02u\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second );
     result += str;
     result += "Number    Date       Time     Rate Saved Function                            Values\n";

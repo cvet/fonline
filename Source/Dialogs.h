@@ -2,7 +2,6 @@
 #define __DIALOGS__
 
 #include "Common.h"
-#include "Vars.h"
 #include "Text.h"
 #include "MsgFiles.h"
 
@@ -180,7 +179,6 @@ public:
     DialogPack* GetDialog( hash pack_id );
     DialogPack* GetDialogByIndex( uint index );
     void        EraseDialog( hash pack_id );
-    ushort      GetTempVarId( const char* str );
 
 private:
     DialogPackMap dialogPacks;
@@ -189,7 +187,7 @@ private:
     DemandResult* LoadDemandResult( istrstream& input, bool is_demand );
     bool          CheckLockTime( int time );
     int           GetNotAnswerAction( const char* str, bool& ret_val );
-    int           GetDRType( const char* str, bool& deprecated );
+    int           GetDRType( const char* str );
     bool          CheckOper( char oper );
     bool          CheckWho( char who );
 };

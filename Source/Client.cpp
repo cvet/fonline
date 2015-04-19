@@ -5052,8 +5052,8 @@ void FOClient::Net_OnGameInfo()
 
     CHECK_IN_BUFF_ERROR;
 
-    DateTime dt = { GameOpt.YearStart, 1, 0, 1, 0, 0, 0, 0 };
-    uint64   start_ft;
+    DateTimeStamp dt = { GameOpt.YearStart, 1, 0, 1, 0, 0, 0, 0 };
+    uint64        start_ft;
     Timer::DateTimeToFullTime( dt, start_ft );
     GameOpt.YearStartFTHi = ( start_ft >> 32 ) & 0xFFFFFFFF;
     GameOpt.YearStartFTLo = start_ft & 0xFFFFFFFF;
@@ -8942,8 +8942,6 @@ void FOClient::OnSetItemLockerCondition( void* obj, Property* prop, void* cur_va
 /* Scripts                                                              */
 /************************************************************************/
 
-#include "ScriptPragmas.h"
-
 bool FOClient::ReloadScripts()
 {
     WriteLog( "Load scripts...\n" );
@@ -9024,13 +9022,17 @@ bool FOClient::ReloadScripts()
     }
 
     // Pragmas
-    StrVec pragmas;
+    Pragmas pragmas;
     for( int i = STR_INTERNAL_SCRIPT_PRAGMAS; ; i += 2 )
     {
         if( !msg_script.Count( i ) || !msg_script.Count( i + 1 ) )
             break;
-        pragmas.push_back( msg_script.GetStr( i ) );
-        pragmas.push_back( msg_script.GetStr( i + 1 ) );
+        Preprocessor::PragmaInstance pragma;
+        pragma.Name = msg_script.GetStr( i );
+        pragma.Text = msg_script.GetStr( i + 1 );
+        pragma.CurrentFile = "main";
+        pragma.CurrentFileLine = i;
+        pragmas.push_back( pragma );
     }
     Script::CallPragmas( pragmas );
 
@@ -9114,7 +9116,7 @@ bool FOClient::ReloadScripts()
         errors++;
 
     CritterCl::SetPropertyRegistrator( registrators[ 0 ] );
-    Item::PropertiesRegistrator->SetNativeSendCallback( OnSendChosenValue );
+    CritterCl::PropertiesRegistrator->SetNativeSendCallback( OnSendChosenValue );
     Item::SetPropertyRegistrator( registrators[ 1 ] );
     Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
     Item::PropertiesRegistrator->SetNativeSetCallback( "Flags", OnSetItemFlags );
@@ -10447,7 +10449,7 @@ uint FOClient::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ush
 
 void FOClient::SScriptFunc::Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second )
 {
-    DateTime dt = Timer::GetGameTime( full_second );
+    DateTimeStamp dt = Timer::GetGameTime( full_second );
     year = dt.Year;
     month = dt.Month;
     day_of_week = dt.DayOfWeek;
@@ -10726,7 +10728,7 @@ void FOClient::SScriptFunc::Global_ChangeZoom( float target_zoom )
 
 void FOClient::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds )
 {
-    DateTime dt;
+    DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
     year = dt.Year;
     month = dt.Month;

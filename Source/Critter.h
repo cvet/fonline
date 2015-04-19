@@ -7,7 +7,6 @@
 #include "Item.h"
 #include "Dialogs.h"
 #include "AI.h"
-#include "Vars.h"
 #include "CritterData.h"
 #include "DataMask.h"
 #include "NetProtocol.h"

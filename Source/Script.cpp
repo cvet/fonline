@@ -211,7 +211,7 @@ uint   RunTimeoutMessage = 300000;     // 5 minutes
 Thread RunTimeoutThread;
 void RunTimeout( void* );
 
-bool Script::Init( Preprocessor::PragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls )
+bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls )
 {
     // Create default engine
     Engine = CreateEngine( pragma_callback, dll_target, allow_native_calls );
@@ -762,7 +762,7 @@ void Script::Profiler::Init()
     if( !ProfilerSaveInterval )
         return;
 
-    DateTime dt;
+    DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
 
     char dump_file_path[ MAX_FOPATH ];
@@ -971,7 +971,7 @@ void Script::SetEngine( asIScriptEngine* engine )
     Engine = engine;
 }
 
-asIScriptEngine* Script::CreateEngine( Preprocessor::PragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls )
+asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls )
 {
     asIScriptEngine* engine = asCreateScriptEngine( ANGELSCRIPT_VERSION );
     if( !engine )
@@ -1300,7 +1300,7 @@ void Script::Undef( const char* def )
         Preprocessor::UndefAll();
 }
 
-void Script::CallPragmas( const StrVec& pragmas )
+void Script::CallPragmas( const Pragmas& pragmas )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
 
@@ -1308,8 +1308,8 @@ void Script::CallPragmas( const StrVec& pragmas )
     Preprocessor::SetPragmaCallback( edata->PragmaCB );
 
     // Call pragmas
-    for( uint i = 0, j = (uint) pragmas.size() / 2; i < j; i++ )
-        Preprocessor::CallPragma( pragmas[ i * 2 ], pragmas[ i * 2 + 1 ] );
+    for( size_t i = 0; i < pragmas.size(); i++ )
+        Preprocessor::CallPragma( pragmas[ i ] );
 }
 
 bool Script::LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_prefix /* = NULL */ )
@@ -1362,8 +1362,8 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
 
         if( file_bin.IsLoaded() && file_bin.GetFsize() > sizeof( uint ) )
         {
-            // Load file dependencies and pragmas
-            char   str[ 1024 ];
+            // Load file dependencies
+            char   str[ MAX_FOTEXT ];
             uint   bin_version = file_bin.GetBEUInt();
             uint   dependencies_size = file_bin.GetBEUInt();
             StrVec dependencies;
@@ -1372,12 +1372,24 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
                 file_bin.GetStrNT( str );
                 dependencies.push_back( str );
             }
-            uint   pragmas_size = file_bin.GetBEUInt();
-            StrVec pragmas;
-            for( uint i = 0; i < pragmas_size; i++ )
+
+            // Load pragmas
+            uint    pragmas_count = file_bin.GetBEUInt();
+            Pragmas pragmas;
+            for( uint i = 0; i < pragmas_count; i++ )
             {
+                Preprocessor::PragmaInstance pragma;
                 file_bin.GetStrNT( str );
-                pragmas.push_back( str );
+                pragma.Name = str;
+                file_bin.GetStrNT( str );
+                pragma.Text = str;
+                file_bin.GetStrNT( str );
+                pragma.CurrentFile = str;
+                pragma.CurrentFileLine = file_bin.GetBEUInt();
+                file_bin.GetStrNT( str );
+                pragma.RootFile = str;
+                pragma.GlobalLine = file_bin.GetBEUInt();
+                pragmas.push_back( pragma );
             }
 
             // Check for outdated
@@ -1420,15 +1432,14 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
                 asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
                 if( module )
                 {
-                    for( uint i = 0, j = (uint) pragmas.size() / 2; i < j; i++ )
-                        Preprocessor::CallPragma( pragmas[ i * 2 ], pragmas[ i * 2 + 1 ] );
+                    for( size_t i = 0; i < pragmas.size(); i++ )
+                        Preprocessor::CallPragma( pragmas[ i ] );
 
                     CBytecodeStream binary;
                     binary.Write( file_bin.GetCurBuf(), file_bin.GetFsize() - file_bin.GetCurPos() );
 
                     if( module->LoadByteCode( &binary ) >= 0 )
                     {
-                        Preprocessor::GetParsedPragmas() = pragmas;
                         return true;
                     }
                     else
@@ -1611,7 +1622,7 @@ public:
         {
             std::vector< asBYTE >& data = binary.GetBuf();
             const StrVec&          dependencies = Preprocessor::GetFileDependencies();
-            const StrVec&          pragmas = Preprocessor::GetParsedPragmas();
+            const Pragmas&         pragmas = edata->PragmaCB->GetProcessedPragmas();
 
             file_bin.SetBEUInt( version );
             file_bin.SetBEUInt( (uint) dependencies.size() );
@@ -1619,7 +1630,15 @@ public:
                 file_bin.SetData( (uchar*) dependencies[ i ].c_str(), (uint) dependencies[ i ].length() + 1 );
             file_bin.SetBEUInt( (uint) pragmas.size() );
             for( uint i = 0, j = (uint) pragmas.size(); i < j; i++ )
-                file_bin.SetData( (uchar*) pragmas[ i ].c_str(), (uint) pragmas[ i ].length() + 1 );
+            {
+                const Preprocessor::PragmaInstance& pragma = pragmas[ i ];
+                file_bin.SetStrNT( "%s", pragma.Name.c_str() );
+                file_bin.SetStrNT( "%s", pragma.Text.c_str() );
+                file_bin.SetStrNT( "%s", pragma.CurrentFile.c_str() );
+                file_bin.SetBEUInt( pragma.CurrentFileLine );
+                file_bin.SetStrNT( "%s", pragma.RootFile.c_str() );
+                file_bin.SetBEUInt( pragma.GlobalLine );
+            }
             file_bin.SetData( &data[ 0 ], (uint) data.size() );
 
             if( !file_bin.SaveOutBufToFile( Str::FormatBuf( "%sb", fname_script ), ScriptsPath ) )

@@ -393,7 +393,7 @@ void GUICallback( Fl_Widget* widget, void* data )
     }
     else if( widget == GuiBtnSaveLog || widget == GuiBtnSaveInfo )
     {
-        DateTime         dt;
+        DateTimeStamp    dt;
         Timer::GetCurrentDateTime( dt );
         char             log_name[ MAX_FOTEXT ];
         char             log_name_dir[ MAX_FOTEXT ];
@@ -542,7 +542,7 @@ void UpdateInfo()
 
     if( Server.Started() )
     {
-        DateTime st = Timer::GetGameTime( GameOpt.FullSecond );
+        DateTimeStamp st = Timer::GetGameTime( GameOpt.FullSecond );
         Label::Update( GuiLabelGameTime, Str::Format( str, "Time: %02u.%02u.%04u %02u:%02u:%02u x%u", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, GameOpt.TimeMultiplier ) );
         Label::Update( GuiLabelClients, Str::Format( str, "Connections: %u", Server.Statistics.CurOnline ) );
         Label::Update( GuiLabelIngame, Str::Format( str, "Players in game: %u", Server.PlayersInGame() ) );
@@ -1027,12 +1027,12 @@ void GameLoopThread( void* )
 
 struct Session
 {
-    int         RefCount;
-    SOCKET      Sock;
-    sockaddr_in From;
-    Thread      WorkThread;
-    DateTime    StartWork;
-    bool        Authorized;
+    int           RefCount;
+    SOCKET        Sock;
+    sockaddr_in   From;
+    Thread        WorkThread;
+    DateTimeStamp StartWork;
+    bool          Authorized;
 };
 typedef vector< Session* > SessionVec;
 
@@ -1152,7 +1152,7 @@ void AdminManager( void* port_ )
         // Manage sessions
         if( !sessions.empty() )
         {
-            DateTime cur_dt;
+            DateTimeStamp cur_dt;
             Timer::GetCurrentDateTime( cur_dt );
             for( auto it = sessions.begin(); it != sessions.end();)
             {

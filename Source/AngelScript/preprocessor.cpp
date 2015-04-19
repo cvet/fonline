@@ -176,7 +176,7 @@ public:
     void        PrintWarningMessage( const std::string& warnmsg );
     std::string RemoveQuotes( const std::string& in );
     void        SetPragmaCallback( PragmaCallback* callback );
-    void        CallPragma( const std::string& name, std::string pragma );
+    void        CallPragma( const PragmaInstance& pragma );
     std::string PrependRootPath( const std::string& filename );
     LLITR       ParsePreprocessor( LexemList& lexems, LLITR itr, LLITR end );
     LLITR       ParseStatement( LLITR itr, LLITR end, LexemList& dest );
@@ -209,7 +209,6 @@ public:
     bool                       SkipPragmas = false;
     std::vector< std::string > FileDependencies;
     std::vector< std::string > FilesPreprocessed;
-    std::vector< std::string > Pragmas;
 }
 
 /************************************************************************/
@@ -282,18 +281,10 @@ void Preprocessor::SetPragmaCallback( PragmaCallback* callback )
     CurPragmaCallback = callback;
 }
 
-void Preprocessor::CallPragma( const std::string& name, std::string pragma )
+void Preprocessor::CallPragma( const PragmaInstance& pragma )
 {
     if( CurPragmaCallback )
-    {
-        PragmaInstance pi;
-        pi.Text = pragma;
-        pi.CurrentFile = "";
-        pi.CurrentFileLine = 0;
-        pi.RootFile = "";
-        pi.GlobalLine = 0;
-        CurPragmaCallback->CallPragma( name, pi );
-    }
+        CurPragmaCallback->CallPragma( pragma );
 }
 
 std::string Preprocessor::PrependRootPath( const std::string& filename )
@@ -822,17 +813,15 @@ void Preprocessor::ParsePragma( LexemList& args )
             p_args += " ";
     }
 
-    Pragmas.push_back( p_name );
-    Pragmas.push_back( p_args );
-
     PragmaInstance pi;
+    pi.Name = p_name;
     pi.Text = p_args;
     pi.CurrentFile = CurrentFile;
     pi.CurrentFileLine = LinesThisFile;
     pi.RootFile = RootFile;
     pi.GlobalLine = CurrentLine;
     if( CurPragmaCallback )
-        CurPragmaCallback->CallPragma( p_name, pi );
+        CurPragmaCallback->CallPragma( pi );
 }
 
 void Preprocessor::ParseTextLine( LexemList& directive, std::string& message )
@@ -1063,7 +1052,6 @@ int Preprocessor::Preprocess( std::string file_path, OutStream& result, OutStrea
     FileDependencies.clear();
     FilesPreprocessed.clear();
 
-    Pragmas.clear();
     SkipPragmas = skip_pragmas;
 
     size_t n = file_path.find_last_of( "\\/" );
@@ -1145,11 +1133,6 @@ std::vector< std::string >& Preprocessor::GetFileDependencies()
 std::vector< std::string >& Preprocessor::GetFilesPreprocessed()
 {
     return FilesPreprocessed;
-}
-
-std::vector< std::string >& Preprocessor::GetParsedPragmas()
-{
-    return Pragmas;
 }
 
 void Preprocessor::PrintLexemList( LexemList& out, OutStream& destination )

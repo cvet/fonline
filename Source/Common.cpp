@@ -7,7 +7,6 @@
 #include "FileManager.h"
 #include "IniParser.h"
 #include <stdarg.h>
-#include "ConstantsManager.h"
 
 #pragma MESSAGE("Add TARGET_HEX.")
 
@@ -470,6 +469,8 @@ uint GetDoubleClickTicks()
     #endif
 }
 
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+# include "ConstantsManager.h"
 int64 ConvertParamValue( const char* str )
 {
     if( !str[ 0 ] )
@@ -477,16 +478,24 @@ int64 ConvertParamValue( const char* str )
 
     if( str[ 0 ] == '$' )
     {
-        #ifndef FONLINE_SCRIPT_COMPILER
+        # ifndef FONLINE_SCRIPT_COMPILER
         return ConstantsManager::GetDefineValue( str + 1 );
-        #else
+        # else
         return 0;
-        #endif
+        # endif
     }
     if( !Str::IsNumber( str ) )
         return Str::GetHash( str );
     return Str::AtoI64( str );
 }
+#else
+int64 ConvertParamValue( const char* str )
+{
+    if( !Str::IsNumber( str ) )
+        return Str::GetHash( str );
+    return Str::AtoI64( str );
+}
+#endif
 
 /************************************************************************/
 /* Hex offsets                                                          */

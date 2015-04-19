@@ -381,16 +381,16 @@ public:
     #define BANS_FNAME_EXPIRED             "expired.txt"
     struct ClientBanned
     {
-        DateTime    BeginTime;
-        DateTime    EndTime;
-        uint        ClientIp;
-        char        ClientName[ UTF8_BUF_SIZE( MAX_NAME ) ];
-        char        BannedBy[ UTF8_BUF_SIZE( MAX_NAME ) ];
-        char        BanInfo[ UTF8_BUF_SIZE( 128 ) ];
+        DateTimeStamp BeginTime;
+        DateTimeStamp EndTime;
+        uint          ClientIp;
+        char          ClientName[ UTF8_BUF_SIZE( MAX_NAME ) ];
+        char          BannedBy[ UTF8_BUF_SIZE( MAX_NAME ) ];
+        char          BanInfo[ UTF8_BUF_SIZE( 128 ) ];
         bool operator==( const char* name ) { return Str::CompareCaseUTF8( name, ClientName ); }
         bool operator==( const uint ip )    { return ClientIp == ip; }
 
-        const char* GetBanLexems() { return Str::FormatBuf( "$banby%s$time%d$reason%s", BannedBy[ 0 ] ? BannedBy : "?", Timer::GetTimeDifference( EndTime, BeginTime ) / 60 / 60, BanInfo[ 0 ] ? BanInfo : "just for fun" ); }
+        const char*   GetBanLexems() { return Str::FormatBuf( "$banby%s$time%d$reason%s", BannedBy[ 0 ] ? BannedBy : "?", Timer::GetTimeDifference( EndTime, BeginTime ) / 60 / 60, BanInfo[ 0 ] ? BanInfo : "just for fun" ); }
     };
     typedef vector< ClientBanned > ClientBannedVec;
     static ClientBannedVec Banned;

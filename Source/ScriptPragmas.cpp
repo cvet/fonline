@@ -502,25 +502,37 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type, PropertyRegistrator
     }
 }
 
-void ScriptPragmaCallback::CallPragma( const string& name, const Preprocessor::PragmaInstance& instance )
+void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragma )
 {
-    if( alreadyProcessed.count( name + instance.Text ) )
+    string pragma_instance = pragma.CurrentFile + Str::ItoA( pragma.CurrentFileLine );
+    if( alreadyProcessed.count( pragma_instance ) )
         return;
-    alreadyProcessed.insert( name + instance.Text );
+    alreadyProcessed.insert( pragma_instance );
 
-    if( ignorePragma && ignorePragma->IsIgnored( name ) )
+    if( ignorePragma && ignorePragma->IsIgnored( pragma.Name ) )
         return;
 
-    if( Str::CompareCase( name.c_str(), "ignore" ) && ignorePragma )
-        isError |= ignorePragma->Call( instance.Text );
-    else if( Str::CompareCase( name.c_str(), "globalvar" ) && globalVarPragma )
-        isError |= globalVarPragma->Call( instance.Text );
-    else if( Str::CompareCase( name.c_str(), "bindfunc" ) && bindFuncPragma )
-        isError |= bindFuncPragma->Call( instance.Text );
-    else if( Str::CompareCase( name.c_str(), "property" ) && propertyPragma )
-        isError |= propertyPragma->Call( instance.Text );
+    bool ok = false;
+    if( Str::CompareCase( pragma.Name.c_str(), "ignore" ) && ignorePragma )
+        ok = ignorePragma->Call( pragma.Text );
+    else if( Str::CompareCase( pragma.Name.c_str(), "globalvar" ) && globalVarPragma )
+        ok = globalVarPragma->Call( pragma.Text );
+    else if( Str::CompareCase( pragma.Name.c_str(), "bindfunc" ) && bindFuncPragma )
+        ok = bindFuncPragma->Call( pragma.Text );
+    else if( Str::CompareCase( pragma.Name.c_str(), "property" ) && propertyPragma )
+        ok = propertyPragma->Call( pragma.Text );
     else
-        WriteLog( "Unknown pragma instance, name<%s> text<%s>.\n", name.c_str(), instance.Text.c_str() ), isError |= true;
+        WriteLog( "Unknown pragma instance, name<%s> text<%s>.\n", pragma.Name.c_str(), pragma.Text.c_str() ), ok = false;
+
+    if( ok )
+        processedPragmas.push_back( pragma );
+    else
+        isError = true;
+}
+
+const Pragmas& ScriptPragmaCallback::GetProcessedPragmas()
+{
+    return processedPragmas;
 }
 
 void ScriptPragmaCallback::Finish()

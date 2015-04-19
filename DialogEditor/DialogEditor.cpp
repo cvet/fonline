@@ -1,4 +1,3 @@
-#include "StdAfx.h"
 #include "DialogEditor.h"
 
 using namespace DialogEditor;

@@ -5,6 +5,7 @@
 #include "CritterType.h"
 #include "Access.h"
 #include "CritterManager.h"
+#include "Vars.h"
 
 const char* CritterEventFuncName[ CRITTER_EVENT_MAX ] =
 {

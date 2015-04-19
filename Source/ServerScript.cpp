@@ -1,7 +1,6 @@
 #include "Common.h"
 #include "Server.h"
 #include "AngelScript/preprocessor.h"
-#include "ScriptPragmas.h"
 #include "ScriptFunctions.h"
 
 // Global_LoadImage
@@ -353,7 +352,6 @@ bool FOServer::ReloadClientScripts()
     int    errors = 0;
     char   buf[ MAX_FOTEXT ];
     string value, config;
-    StrVec pragmas;
     while( scripts_cfg.GetLine( buf, MAX_FOTEXT ) )
     {
         if( buf[ 0 ] != '@' )
@@ -388,26 +386,6 @@ bool FOServer::ReloadClientScripts()
                 continue;
             }
             std::vector< asBYTE >& buf = binary.GetBuf();
-
-            // Pragmas
-            const StrVec& pr = Preprocessor::GetParsedPragmas();
-            for( size_t i = 0, j = pr.size(); i < j; i += 2 )
-            {
-                bool found = false;
-                for( size_t k = 0, l = pragmas.size(); k < l; k += 2 )
-                {
-                    if( pragmas[ k ] == pr[ i ] && pragmas[ k + 1 ] == pr[ i + 1 ] )
-                    {
-                        found = true;
-                        break;
-                    }
-                }
-                if( !found )
-                {
-                    pragmas.push_back( pr[ i ] );
-                    pragmas.push_back( pr[ i + 1 ] );
-                }
-            }
 
             // Add module name and bytecode
             msg_script.AddStr( num, value.c_str() );
@@ -476,6 +454,7 @@ bool FOServer::ReloadClientScripts()
     }
 
     // Finish
+    Pragmas pragmas = ed->PragmaCB->GetProcessedPragmas();
     SAFEDEL( registrators[ 0 ] );
     SAFEDEL( registrators[ 1 ] );
     SAFEDEL( registrators[ 2 ] );
@@ -503,8 +482,11 @@ bool FOServer::ReloadClientScripts()
         return false;
 
     // Add config text and pragmas
-    for( uint i = 0, j = (uint) pragmas.size(); i < j; i++ )
-        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + i, pragmas[ i ].c_str() );
+    for( size_t i = 0; i < pragmas.size(); i++ )
+    {
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + i * 2, pragmas[ i ].Name.c_str() );
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + i * 2 + 1, pragmas[ i ].Text.c_str() );
+    }
 
     // Copy critter types
     LanguagePack& default_lang = *LangPacks.begin();
@@ -5013,7 +4995,7 @@ uint FOServer::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ush
 
 void FOServer::SScriptFunc::Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second )
 {
-    DateTime dt = Timer::GetGameTime( full_second );
+    DateTimeStamp dt = Timer::GetGameTime( full_second );
     year = dt.Year;
     month = dt.Month;
     day_of_week = dt.DayOfWeek;
@@ -5815,7 +5797,7 @@ ScriptString* FOServer::SScriptFunc::Global_GetScriptName( hash script_id )
 
 void FOServer::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds )
 {
-    DateTime cur_time;
+    DateTimeStamp cur_time;
     Timer::GetCurrentDateTime( cur_time );
     year = cur_time.Year;
     month = cur_time.Month;

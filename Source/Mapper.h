@@ -15,7 +15,6 @@
 #include "ResourceManager.h"
 #include "CritterType.h"
 #include "Script.h"
-#include "ScriptPragmas.h"
 #include "MsgFiles.h"
 #include "IniParser.h"
 

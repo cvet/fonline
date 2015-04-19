@@ -1,11 +1,61 @@
 #include "Common.h"
 #include "Dialogs.h"
-#include "ConstantsManager.h"
 #include "FileManager.h"
 #include "IniParser.h"
-#include "Critter.h"
+#ifdef FONLINE_SERVER
+# include "ConstantsManager.h"
+# include "Critter.h"
+# include "Vars.h"
+#endif
 
 DialogManager DlgMngr;
+
+int ReadValue( const char* str )
+{
+    #ifdef FONLINE_SERVER
+    return ConstantsManager::GetDefineValue( str );
+    #else
+    if( Str::IsNumber( str ) )
+        return Str::AtoI( str );
+    if( Str::CompareCase( str, "true" ) )
+        return 1;
+    else if( Str::CompareCase( str, "false" ) )
+        return 0;
+    return -1;
+    #endif
+}
+
+int GetParamId( const char* str, bool is_demand )
+{
+    #ifdef FONLINE_SERVER
+    Property* prop = Critter::PropertiesRegistrator->Find( str );
+    if( !prop )
+        WriteLog( "DR property<%s> not found.\n", str );
+    else if( !prop->IsPOD() )
+        WriteLog( "DR property<%s> is not POD type.\n", str );
+    else if( is_demand && !prop->IsReadable() )
+        WriteLog( "DR property<%s> is not readable.\n", str );
+    else if( !is_demand && !prop->IsWritable() )
+        WriteLog( "DR property<%s> is not writable.\n", str );
+    else
+        return prop->GetEnumValue();
+    return -1;
+    #else
+    return 0;
+    #endif
+}
+
+ushort GetTempVarId( const char* str )
+{
+    #ifdef FONLINE_SERVER
+    ushort tid = VarMngr.GetTemplateVarId( str );
+    if( !tid )
+        WriteLog( "Template var not found, name<%s>.\n", str );
+    return tid;
+    #else
+    return 1;
+    #endif
+}
 
 bool DialogManager::LoadDialogs()
 {
@@ -282,30 +332,14 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
             current_answer.Link = link;
             current_answer.TextId = DLG_STR_ID( pack->PackId, text_id / 10 );
 
-            bool read_demands = true;           // Deprecated
             while( true )
             {
                 input >> ch;
                 if( input.fail() )
                     LOAD_FAIL( "Parse answer character fail." );
 
-                // Demands, results; Deprecated
-                if( ch == 'd' )
-                    read_demands = true;
-                else if( ch == 'r' )
-                    read_demands = false;
-                else if( ch == '*' )
-                {
-                    DemandResult* dr = LoadDemandResult( input, read_demands );
-                    if( !dr )
-                        LOAD_FAIL( "Demand or result not loaded." );
-                    if( read_demands )
-                        current_answer.Demands.push_back( *dr );
-                    else
-                        current_answer.Results.push_back( *dr );
-                }
                 // Demands
-                else if( ch == 'D' )
+                if( ch == 'D' )
                 {
                     DemandResult* d = LoadDemandResult( input, true );
                     if( !d )
@@ -320,8 +354,14 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
                         LOAD_FAIL( "Result not loaded." );
                     current_answer.Results.push_back( *r );
                 }
+                else if( ch == '*' || ch == 'd' || ch == 'r' )
+                {
+                    LOAD_FAIL( "Found old token, update dialog file to actual format (resave in version 2.22)." );
+                }
                 else
+                {
                     break;
+                }
             }
             current_dialog.Answers.push_back( current_answer );
 
@@ -365,12 +405,12 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     bool  no_recheck = false;
     bool  ret_value = false;
 
-    #define READ_VALUE    if( !deprecated ) { input >> svalue; ivalue = ConstantsManager::GetDefineValue( svalue ); } else { input >> ivalue; Str::Format( svalue, "%d", ivalue ); }
+    #define READ_VALUE    input >> svalue; ivalue = ReadValue( svalue )
 
     #ifdef FONLINE_NPCEDITOR
     string script_val[ 5 ];
     #else
-    int    script_val[ 5 ] = { 0, 0, 0, 0, 0 };
+    int script_val[ 5 ] = { 0, 0, 0, 0, 0 };
     #endif
 
     input >> type_str;
@@ -380,9 +420,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         return NULL;
     }
 
-    bool deprecated = false;
-    int  type = GetDRType( type_str, deprecated );
-
+    int type = GetDRType( type_str );
     if( type == DR_NO_RECHECK )
     {
         no_recheck = true;
@@ -392,7 +430,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
             WriteLog( "Parse DR type fail2.\n" );
             return NULL;
         }
-        type = GetDRType( type_str, deprecated );
+        type = GetDRType( type_str );
     }
 
     switch( type )
@@ -400,43 +438,18 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     case DR_PARAM:
     {
         // Who
-        if( !Str::CompareCase( type_str, "loy" ) && !Str::CompareCase( type_str, "kill" ) )         // Deprecated
+        input >> who;
+        if( !CheckWho( who ) )
         {
-            input >> who;
-            if( !CheckWho( who ) )
-            {
-                WriteLog( "Invalid DR param who<%c>.\n", who );
-                errors++;
-            }
+            WriteLog( "Invalid DR param who<%c>.\n", who );
+            errors++;
         }
 
         // Name
         input >> name;
-        Property* prop = Critter::PropertiesRegistrator->Find( name );
-        if( !prop )
-        {
-            WriteLog( "DR property<%s> not found.\n", name );
+        id = GetParamId( name, is_demand );
+        if( id == -1 )
             errors++;
-        }
-        else if( !prop->IsPOD() )
-        {
-            WriteLog( "DR property<%s> is not POD type.\n", name );
-            errors++;
-        }
-        else if( is_demand && !prop->IsReadable() )
-        {
-            WriteLog( "DR property<%s> is not readable.\n", name );
-            errors++;
-        }
-        else if( !is_demand && !prop->IsWritable() )
-        {
-            WriteLog( "DR property<%s> is not writable.\n", name );
-            errors++;
-        }
-        else
-        {
-            id = prop->GetEnumValue();
-        }
 
         // Operator
         input >> oper;
@@ -492,10 +505,11 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
 
         // Name
         input >> name;
+        #ifdef FONLINE_SERVER
         id = ConstantsManager::GetItemPid( name );
         if( id == 0 )
         {
-            id = atoi( name );
+            id = Str::AtoI( name );
             const char* name_ = ConstantsManager::GetItemName( id );
             if( !name_ )
             {
@@ -505,6 +519,9 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
             if( name_ != 0 )
                 Str::Copy( name, name_ );
         }
+        #else
+        id = 1;
+        #endif
 
         // Operator
         input >> oper;
@@ -523,125 +540,95 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         // Script name
         input >> name;
 
-        // Operator, not used
-        if( deprecated && is_demand )
-            input >> oper;
-
         // Values count
         input >> values_count;
 
         // Values
-        if( !deprecated )
+        #ifdef FONLINE_NPCEDITOR
+        # define READ_SCRIPT_VALUE_( val )         \
+            { input >> value_str; val = value_str; \
+            }
+        #else
+        # define READ_SCRIPT_VALUE_( val )    { input >> value_str; val = ReadValue( value_str ); }
+        #endif
+        char value_str[ MAX_FOTEXT ];
+        if( values_count > 0 )
+            READ_SCRIPT_VALUE_( script_val[ 0 ] );
+        if( values_count > 1 )
+            READ_SCRIPT_VALUE_( script_val[ 1 ] );
+        if( values_count > 2 )
+            READ_SCRIPT_VALUE_( script_val[ 2 ] );
+        if( values_count > 3 )
+            READ_SCRIPT_VALUE_( script_val[ 3 ] );
+        if( values_count > 4 )
+            READ_SCRIPT_VALUE_( script_val[ 4 ] );
+        if( values_count > 5 )
         {
-            #ifdef FONLINE_NPCEDITOR
-            # define READ_SCRIPT_VALUE_( val )         \
-                { input >> value_str; val = value_str; \
-                }
-            #else
-            # define READ_SCRIPT_VALUE_( val )       { input >> value_str; val = ConstantsManager::GetDefineValue( value_str ); }
-            #endif
-            char value_str[ MAX_FOTEXT ];
-            if( values_count > 0 )
-                READ_SCRIPT_VALUE_( script_val[ 0 ] );
-            if( values_count > 1 )
-                READ_SCRIPT_VALUE_( script_val[ 1 ] );
-            if( values_count > 2 )
-                READ_SCRIPT_VALUE_( script_val[ 2 ] );
-            if( values_count > 3 )
-                READ_SCRIPT_VALUE_( script_val[ 3 ] );
-            if( values_count > 4 )
-                READ_SCRIPT_VALUE_( script_val[ 4 ] );
-            if( values_count > 5 )
-            {
-                WriteLog( "Invalid DR script values count<%d>.\n", values_count );
-                values_count = 0;
-                errors++;
-            }
-        }
-        else
-        {
-            char ch = input.rdbuf()->sgetc();
-            if( ch == ' ' )
-            {
-                #ifdef FONLINE_NPCEDITOR
-                # define READ_SCRIPT_VALUE( val )    { input >> value_int; char buf[ MAX_FOTEXT ]; val = itoa( value_int, buf, 10 ); }
-                #else
-                # define READ_SCRIPT_VALUE( val )    { input >> value_int; val = value_int; }
-                #endif
-                int value_int;
-                if( values_count > 0 )
-                    READ_SCRIPT_VALUE( script_val[ 0 ] );
-                if( values_count > 1 )
-                    READ_SCRIPT_VALUE( script_val[ 1 ] );
-                if( values_count > 2 )
-                    READ_SCRIPT_VALUE( script_val[ 2 ] );
-                if( values_count > 3 )
-                    READ_SCRIPT_VALUE( script_val[ 3 ] );
-                if( values_count > 4 )
-                    READ_SCRIPT_VALUE( script_val[ 4 ] );
-                if( values_count > 5 )
-                {
-                    WriteLog( "Invalid DR script values count<%d>.\n", values_count );
-                    values_count = 0;
-                    errors++;
-                }
-            }
-            else
-            {
-                #ifdef FONLINE_NPCEDITOR
-                char buf[ MAX_FOTEXT ];
-                script_val[ 0 ] = _itoa( values_count, buf, 10 );
-                #else
-                script_val[ 0 ] = values_count;
-                #endif
-                values_count = 1;
-            }
+            WriteLog( "Invalid DR script values count<%d>.\n", values_count );
+            values_count = 0;
+            errors++;
         }
 
         #ifdef FONLINE_SERVER
         // Bind function
-        # define BIND_D_FUNC( params )               { id = Script::Bind( name, "bool %s(Critter&,Critter@" params, false ); }
-        # define BIND_R_FUNC( params )                                                                                     \
-            { if( ( id = Script::Bind( name, "uint %s(Critter&,Critter@" params, false, true ) ) > 0 ) { ret_value = true; \
-              } else                                                                                                       \
-                  id = Script::Bind( name, "void %s(Critter&,Critter@" params, false ); }
+        # define BIND_D_FUNC( params )                                                \
+            do {                                                                      \
+                id = Script::Bind( name, "bool %s(Critter&,Critter@" params, false ); \
+            } while( 0 )
+        # define BIND_R_FUNC( params )                                                                   \
+            do {                                                                                         \
+                if( ( id = Script::Bind( name, "uint %s(Critter&,Critter@" params, false, true ) ) > 0 ) \
+                    ret_value = true;                                                                    \
+                else                                                                                     \
+                    id = Script::Bind( name, "void %s(Critter&,Critter@" params, false );                \
+            } while( 0 )
         switch( values_count )
         {
         case 1:
             if( is_demand )
-                BIND_D_FUNC( ",int)" ) else
-                    BIND_R_FUNC( ",int)" ) break;
+                BIND_D_FUNC( ",int)" );
+            else
+                BIND_R_FUNC( ",int)" );
+            break;
         case 2:
             if( is_demand )
-                BIND_D_FUNC( ",int,int)" ) else
-                    BIND_R_FUNC( ",int,int)" ) break;
+                BIND_D_FUNC( ",int,int)" );
+            else
+                BIND_R_FUNC( ",int,int)" );
+            break;
         case 3:
             if( is_demand )
-                BIND_D_FUNC( ",int,int,int)" ) else
-                    BIND_R_FUNC( ",int,int,int)" ) break;
+                BIND_D_FUNC( ",int,int,int)" );
+            else
+                BIND_R_FUNC( ",int,int,int)" );
+            break;
         case 4:
             if( is_demand )
-                BIND_D_FUNC( ",int,int,int,int)" ) else
-                    BIND_R_FUNC( ",int,int,int,int)" ) break;
+                BIND_D_FUNC( ",int,int,int,int)" );
+            else
+                BIND_R_FUNC( ",int,int,int,int)" );
+            break;
         case 5:
             if( is_demand )
-                BIND_D_FUNC( ",int,int,int,int,int)" ) else
-                    BIND_R_FUNC( ",int,int,int,int,int)" ) break;
+                BIND_D_FUNC( ",int,int,int,int,int)" );
+            else
+                BIND_R_FUNC( ",int,int,int,int,int)" );
+            break;
         default:
             if( is_demand )
-                BIND_D_FUNC( ")" ) else
-                    BIND_R_FUNC( ")" ) break;
+                BIND_D_FUNC( ")" );
+            else
+                BIND_R_FUNC( ")" );
+            break;
         }
         if( id <= 0 )
         {
             WriteLog( "Script<%s> bind error.\n", name );
             return NULL;
         }
-        if( id > 0xFFFF )
-            WriteLog( "Id greater than 0xFFFF.\n" );
         #endif
     }
-        break;
+    break;
     case DR_LOCK:
     {
         READ_VALUE;
@@ -690,14 +677,6 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     return &result;
 }
 
-ushort DialogManager::GetTempVarId( const char* str )
-{
-    ushort tid = VarMngr.GetTemplateVarId( str );
-    if( !tid )
-        WriteLog( "Template var not found, name<%s>.\n", str );
-    return tid;
-}
-
 int DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
 {
     ret_val = false;
@@ -722,11 +701,8 @@ int DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
     return -1;
 }
 
-int DialogManager::GetDRType( const char* str, bool& deprecated )
+int DialogManager::GetDRType( const char* str )
 {
-    deprecated = false;
-    if( !str )
-        return DR_NONE;
     if( Str::CompareCase( str, "_param" ) )
         return DR_PARAM;
     else if( Str::CompareCase( str, "_item" ) )
@@ -741,66 +717,6 @@ int DialogManager::GetDRType( const char* str, bool& deprecated )
         return DR_NO_RECHECK;
     else if( Str::CompareCase( str, "or" ) )
         return DR_OR;
-    else if( Str::CompareCase( str, "stat" ) )
-    {
-        deprecated = true;
-        return DR_PARAM;
-    }                                                                               // Deprecated
-    else if( Str::CompareCase( str, "skill" ) )
-    {
-        deprecated = true;
-        return DR_PARAM;
-    }                                                                               // Deprecated
-    else if( Str::CompareCase( str, "perk" ) )
-    {
-        deprecated = true;
-        return DR_PARAM;
-    }                                                                               // Deprecated
-    else if( Str::CompareCase( str, "var" ) )
-    {
-        deprecated = true;
-        return DR_VAR;
-    }                                                                               // Deprecated
-    else if( Str::CompareCase( str, "gvar" ) )
-    {
-        deprecated = true;
-        return DR_VAR;
-    }                                                                               // Deprecated
-    else if( Str::CompareCase( str, "lvar" ) )
-    {
-        deprecated = true;
-        return DR_VAR;
-    }                                                                               // Deprecated
-    else if( Str::CompareCase( str, "uvar" ) )
-    {
-        deprecated = true;
-        return DR_VAR;
-    }                                                                               // Deprecated
-    else if( Str::CompareCase( str, "item" ) )
-    {
-        deprecated = true;
-        return DR_ITEM;
-    }                                                                               // Deprecated
-    else if( Str::CompareCase( str, "lock" ) )
-    {
-        deprecated = true;
-        return DR_LOCK;
-    }                                                                               // Deprecated
-    else if( Str::CompareCase( str, "script" ) )
-    {
-        deprecated = true;
-        return DR_SCRIPT;
-    }                                                                               // Deprecated
-    else if( Str::CompareCase( str, "kill" ) )
-    {
-        deprecated = true;
-        return DR_PARAM;
-    }                                                                               // Deprecated
-    else if( Str::CompareCase( str, "loy" ) )
-    {
-        deprecated = true;
-        return DR_PARAM;
-    }                                                                               // Deprecated
     return DR_NONE;
 }
 

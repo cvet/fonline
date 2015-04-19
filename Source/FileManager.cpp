@@ -563,7 +563,7 @@ void FileManager::SetData( void* data, uint len )
 
 void FileManager::SetStr( const char* fmt, ... )
 {
-    char    str[ 2048 ];
+    char    str[ MAX_FOTEXT ];
 
     va_list list;
     va_start( list, fmt );
@@ -571,6 +571,18 @@ void FileManager::SetStr( const char* fmt, ... )
     va_end( list );
 
     SetData( str, Str::Length( str ) );
+}
+
+void FileManager::SetStrNT( const char* fmt, ... )
+{
+    char    str[ MAX_FOTEXT ];
+
+    va_list list;
+    va_start( list, fmt );
+    vsprintf( str, fmt, list );
+    va_end( list );
+
+    SetData( str, Str::Length( str ) + 1 );
 }
 
 void FileManager::SetUChar( uchar data )

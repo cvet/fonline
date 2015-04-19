@@ -1,7 +1,7 @@
 #ifndef __TIMER__
 #define __TIMER__
 
-struct DateTime
+struct DateTimeStamp
 {
     ushort Year;         // 1601 .. 30827
     ushort Month;        // 1 .. 12
@@ -29,17 +29,17 @@ namespace Timer
     bool ProcessAccelerator( int num );
     int  GetAcceleratorNum();
 
-    void GetCurrentDateTime( DateTime& dt );
-    void DateTimeToFullTime( const DateTime& dt, uint64& ft );
-    void FullTimeToDateTime( uint64 ft, DateTime& dt );
-    int  GetTimeDifference( const DateTime& dt1, const DateTime& dt2 );
-    void ContinueTime( DateTime& dt, int seconds );
+    void GetCurrentDateTime( DateTimeStamp& dt );
+    void DateTimeToFullTime( const DateTimeStamp& dt, uint64& ft );
+    void FullTimeToDateTime( uint64 ft, DateTimeStamp& dt );
+    int  GetTimeDifference( const DateTimeStamp& dt1, const DateTimeStamp& dt2 );
+    void ContinueTime( DateTimeStamp& dt, int seconds );
 
     // Game time
-    uint     GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
-    DateTime GetGameTime( uint full_second );
-    uint     GameTimeMonthDay( ushort year, ushort month );
-    void     ProcessGameTime();
+    uint          GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
+    DateTimeStamp GetGameTime( uint full_second );
+    uint          GameTimeMonthDay( ushort year, ushort month );
+    void          ProcessGameTime();
 };
 
 #endif // __TIMER__
