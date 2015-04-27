@@ -1,9 +1,8 @@
 #ifndef __CONSTANTS_MANAGER__
 #define __CONSTANTS_MANAGER__
 
-#define CONSTANTS_ITEM      ( 0 )
-#define CONSTANTS_DEFINE    ( 1 )
-#define CONSTANTS_HASH      ( 2 )
+#define CONSTANTS_DEFINE    ( 0 )
+#define CONSTANTS_HASH      ( 1 )
 
 namespace ConstantsManager
 {
@@ -15,8 +14,6 @@ namespace ConstantsManager
 
     int         GetValue( int collection, const char* str );
     const char* GetName( int collection, int value );
-    uint        GetItemPid( const char* str );
-    const char* GetItemName( ushort pid );
     int         GetDefineValue( const char* str );
 };
 

@@ -2,6 +2,7 @@
 #include "ItemManager.h"
 #include "ConstantsManager.h"
 #include "IniParser.h"
+#include "MsgFiles.h"
 
 #ifdef FONLINE_SERVER
 # include "Critter.h"
@@ -64,119 +65,127 @@ void ItemManager::Clear()
     #endif
 }
 
-#if defined ( FONLINE_SERVER ) || defined ( FONLINE_OBJECT_EDITOR ) || defined ( FONLINE_MAPPER )
-
 bool ItemManager::LoadProtos()
 {
     WriteLog( "Load item prototypes...\n" );
 
-    FileManager fm;
-    if( !fm.LoadFile( "items.lst", PT_SERVER_PRO_ITEMS ) )
+    FilesCollection files = FilesCollection( PT_SERVER_PRO_ITEMS, "foitem", true );
+    uint            files_loaded = 0;
+    int             errors = 0;
+    while( files.IsNextFile() )
     {
-        WriteLog( "Can't open \"items.lst\".\n" );
-        return false;
-    }
-
-    char   buf[ 256 ];
-    StrVec fnames;
-    int    count = 0;
-    while( fm.GetLine( buf, sizeof( buf ) ) )
-    {
-        fnames.push_back( string( buf ) );
-        count++;
-    }
-    fm.UnloadFile();
-
-    allProto.clear();
-
-    int  errors = 0;
-    uint loaded = 0;
-    for( int i = 0; i < count; i++ )
-    {
-        char collection_name[ MAX_FOPATH ];
-        Str::Format( collection_name, "%03d - %s", i + 1, fnames[ i ].c_str() );
-        FileManager::EraseExtension( collection_name );
-
-        ProtoItemVec item_protos;
-        if( LoadProtos( item_protos, fnames[ i ].c_str() ) )
+        const char*  file_name;
+        FileManager& file = files.GetNextFile( &file_name );
+        if( !file.IsLoaded() )
         {
-            ParseProtos( item_protos, collection_name );
-            loaded += (uint) item_protos.size();
-        }
-        else
-        {
+            WriteLog( "Unable to open file<%s>.\n", file_name );
             errors++;
-        }
-    }
-
-    WriteLog( "Load item prototypes complete, loaded<%u>.%s\n", loaded, errors ? " With errors." : "" );
-    return errors == 0;
-}
-
-bool ItemManager::LoadProtos( ProtoItemVec& protos, const char* fname )
-{
-    IniParser fopro;
-    if( !fopro.LoadFile( fname, PT_SERVER_PRO_ITEMS ) )
-    {
-        WriteLog( "File<%s> not found.\n", fname );
-        return false;
-    }
-
-    int errors = 0;
-    while( fopro.GotoNextApp( "Proto" ) )
-    {
-        const char* app = fopro.GetApp( "Proto" );
-        ProtoItem*  proto = new ProtoItem();
-        proto->ProtoId = proto->Props.LoadFromText( app );
-        if( proto->ProtoId )
-        {
-            protos.push_back( proto );
-        }
-        else
-        {
-            WriteLog( "Invalid data in proto item.\n" );
-            delete proto;
-            errors++;
-        }
-    }
-
-    return errors == 0;
-}
-#endif
-
-bool CompProtoByPid( ProtoItem o1, ProtoItem o2 ) { return o1.ProtoId < o2.ProtoId; }
-void ItemManager::ParseProtos( ProtoItemVec& protos, const char* collection_name /* = NULL */ )
-{
-    if( protos.empty() )
-    {
-        WriteLog( "List is empty, parsing ended.\n" );
-        return;
-    }
-
-    for( uint i = 0, j = (uint) protos.size(); i < j; i++ )
-    {
-        ProtoItem* proto_item = protos[ i ];
-        hash       pid = proto_item->ProtoId;
-
-        if( !pid )
-        {
-            WriteLog( "Invalid zero pid of item prototype.\n" );
             continue;
         }
 
+        uint pid = Str::GetHash( file_name );
         if( allProto.count( pid ) )
         {
-            ClearProto( pid );
-            WriteLog( "Item prototype is already parsed, pid<%u>. Rewrite.\n", pid );
+            WriteLog( "Proto item<%s> already loaded.\n", file_name );
+            errors++;
+            continue;
         }
 
-        allProto.insert( PAIR( pid, proto_item ) );
+        ProtoItem* proto = new ProtoItem( pid );
+
+        IniParser  foitem;
+        foitem.LoadFilePtr( (char*) file.GetBuf(), file.GetFsize() );
+        if( foitem.GotoNextApp( "Item" ) )
+        {
+            if( !proto->ItemProps.LoadFromText( foitem.GetApp( "Item" ) ) )
+                errors++;
+        }
+        if( foitem.GotoNextApp( "ProtoItem" ) )
+        {
+            if( !proto->Props.LoadFromText( foitem.GetApp( "ProtoItem" ) ) )
+                errors++;
+        }
+
+        // Texts
+        foitem.CacheApps();
+        StrSet& apps = foitem.GetCachedApps();
+        for( auto it = apps.begin(), end = apps.end(); it != end; ++it )
+        {
+            const string& app_name = *it;
+            if( !( app_name.size() == 9 && app_name.find( "Text_" ) == 0 ) )
+                continue;
+
+            char* app_content = foitem.GetApp( app_name.c_str() );
+            FOMsg temp_msg;
+            temp_msg.LoadFromString( app_content, Str::Length( app_content ) );
+            SAFEDELA( app_content );
+
+            FOMsg* msg = new FOMsg();
+            uint   str_num = 0;
+            while( str_num = temp_msg.GetStrNumUpper( str_num ) )
+            {
+                uint count = temp_msg.Count( str_num );
+                uint new_str_num = ITEM_STR_ID( proto->ProtoId, str_num );
+                for( uint n = 0; n < count; n++ )
+                    msg->AddStr( new_str_num, temp_msg.GetStr( str_num, n ) );
+            }
+
+            proto->TextsLang.push_back( *(uint*) app_name.substr( 5 ).c_str() );
+            proto->Texts.push_back( msg );
+        }
+
+        allProto.insert( PAIR( proto->ProtoId, proto ) );
 
         #ifdef FONLINE_MAPPER
-        if( collection_name )
-            allProto[ pid ]->CollectionName = collection_name;
+        switch( proto->GetType() )
+        {
+        case ITEM_TYPE_ARMOR:
+            proto->CollectionName = "armor";
+            break;
+        case ITEM_TYPE_DRUG:
+            proto->CollectionName = "drug";
+            break;
+        case ITEM_TYPE_WEAPON:
+            proto->CollectionName = "weapon";
+            break;
+        case ITEM_TYPE_AMMO:
+            proto->CollectionName = "ammo";
+            break;
+        case ITEM_TYPE_MISC:
+            proto->CollectionName = "misc";
+            break;
+        case ITEM_TYPE_KEY:
+            proto->CollectionName = "key";
+            break;
+        case ITEM_TYPE_CONTAINER:
+            proto->CollectionName = "container";
+            break;
+        case ITEM_TYPE_DOOR:
+            proto->CollectionName = "door";
+            break;
+        case ITEM_TYPE_GRID:
+            proto->CollectionName = "grid";
+            break;
+        case ITEM_TYPE_GENERIC:
+            proto->CollectionName = "generic";
+            break;
+        case ITEM_TYPE_WALL:
+            proto->CollectionName = "wall";
+            break;
+        case ITEM_TYPE_CAR:
+            proto->CollectionName = "car";
+            break;
+        default:
+            proto->CollectionName = "other";
+            break;
+        }
         #endif
+
+        files_loaded++;
     }
+
+    WriteLog( "Load item prototypes complete, loaded<%u/%u>.\n", files_loaded, files.GetFilesCount() );
+    return errors == 0;
 }
 
 ProtoItem* ItemManager::GetProtoItem( hash pid )
@@ -190,13 +199,6 @@ ProtoItemMap& ItemManager::GetAllProtos()
     return allProto;
 }
 
-void ItemManager::ClearProto( hash pid )
-{
-    auto it = allProto.find( pid );
-    if( it != allProto.end() )
-        allProto.erase( it );
-}
-
 void ItemManager::GetBinaryData( UCharVec& data )
 {
     data.resize( 0 );
@@ -204,18 +206,21 @@ void ItemManager::GetBinaryData( UCharVec& data )
     for( auto it = allProto.begin(), end = allProto.end(); it != end; ++it )
     {
         hash       proto_id = it->first;
-        ProtoItem* proto = it->second;
-        PUCharVec* props_data;
-        UIntVec*   props_data_sizes;
-        uint       data_size = proto->Props.StoreData( true, &props_data, &props_data_sizes );
-        data.reserve( (uint) data.size() + sizeof( proto_id ) + sizeof( ushort ) + sizeof( uint ) * props_data->size() + data_size );
+        ProtoItem* proto_item = it->second;
         WriteData( data, proto_id );
-        WriteData( data, (ushort) props_data->size() );
-        for( size_t i = 0; i < props_data->size(); i++ )
+        for( uint part = 0; part < 2; part++ )
         {
-            uint cur_size = props_data_sizes->at( i );
-            WriteData( data, cur_size );
-            WriteDataArr( data, props_data->at( i ), cur_size );
+            Properties& props = ( part == 0 ? proto_item->Props : proto_item->ItemProps );
+            PUCharVec*  props_data;
+            UIntVec*    props_data_sizes;
+            props.StoreData( true, &props_data, &props_data_sizes );
+            WriteData( data, (ushort) props_data->size() );
+            for( size_t i = 0; i < props_data->size(); i++ )
+            {
+                uint cur_size = props_data_sizes->at( i );
+                WriteData( data, cur_size );
+                WriteDataArr( data, props_data->at( i ), cur_size );
+            }
         }
     }
 
@@ -237,17 +242,22 @@ void ItemManager::SetBinaryData( UCharVec& data )
     uint      protos_count = ReadData< uint >( data, read_pos );
     for( uint i = 0; i < protos_count; i++ )
     {
-        ProtoItem* proto_item = new ProtoItem();
-        proto_item->ProtoId = ReadData< hash >( data, read_pos );
-        uint       data_count = ReadData< ushort >( data, read_pos );
-        props_data.resize( data_count );
-        props_data_sizes.resize( data_count );
-        for( uint j = 0; j < data_count; j++ )
+        hash       pid = ReadData< hash >( data, read_pos );
+        ProtoItem* proto_item = new ProtoItem( pid );
+        for( uint part = 0; part < 2; part++ )
         {
-            props_data_sizes[ j ] = ReadData< uint >( data, read_pos );
-            props_data[ j ] = ReadDataArr< uchar >( data, props_data_sizes[ j ], read_pos );
+            Properties& props = ( part == 0 ? proto_item->Props : proto_item->ItemProps );
+            uint        data_count = ReadData< ushort >( data, read_pos );
+            props_data.resize( data_count );
+            props_data_sizes.resize( data_count );
+            for( uint j = 0; j < data_count; j++ )
+            {
+                props_data_sizes[ j ] = ReadData< uint >( data, read_pos );
+                props_data[ j ] = ReadDataArr< uchar >( data, props_data_sizes[ j ], read_pos );
+            }
+            props.RestoreData( props_data, props_data_sizes );
         }
-        proto_item->Props.RestoreData( props_data, props_data_sizes );
+        RUNTIME_ASSERT( !allProto.count( proto_item->ProtoId ) );
         allProto.insert( PAIR( proto_item->ProtoId, proto_item ) );
     }
 }
@@ -313,7 +323,7 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
         memcpy( item->AccBuffer, acc_buf, sizeof( acc_buf ) );
 
         // Radio collection
-        if( item->IsRadio() )
+        if( item->GetIsRadio() )
             RadioRegister( item, true );
     }
     if( errors )
@@ -380,7 +390,7 @@ void ItemManager::SetCritterItems( Critter* cr )
         if( item->Accessory == ITEM_ACCESSORY_CRITTER && item->AccCritter.Id == crid )
         {
             cr->SetItem( item );
-            if( item->IsRadio() )
+            if( item->GetIsRadio() )
                 RadioRegister( item, true );
         }
     }
@@ -430,7 +440,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, uint item_id /* =
     itemLocker.Unlock();
 
     // Radio collection
-    if( item->IsRadio() )
+    if( item->GetIsRadio() )
         RadioRegister( item, true );
 
     // Prototype script
@@ -472,7 +482,7 @@ Item* ItemManager::SplitItem( Item* item, uint count )
     new_item->SetCount( count );
 
     // Radio collection
-    if( new_item->IsRadio() )
+    if( new_item->GetIsRadio() )
         RadioRegister( new_item, true );
 
     return new_item;
@@ -556,7 +566,7 @@ void ItemManager::ItemGarbager()
             ChangeItemStatistics( item->GetProtoId(), -(int) item->GetCount() );
 
             // Erase from radio collection
-            if( item->IsRadio() )
+            if( item->GetIsRadio() )
                 RadioRegister( item, false );
 
             // Clear, release
@@ -575,7 +585,7 @@ void ItemManager::EraseItemHolder( Item* item )
         Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, true );
         if( cr )
             cr->EraseItem( item, true );
-        else if( item->IsRadio() )
+        else if( item->GetIsRadio() )
             ItemMngr.RadioRegister( item, true );
     }
     break;
@@ -1023,7 +1033,7 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->IsRadio() && item->RadioIsSendActive() &&
+        if( item->GetIsRadio() && item->RadioIsSendActive() &&
             std::find( channels.begin(), channels.end(), item->GetRadioChannel() ) == channels.end() )
         {
             channels.push_back( item->GetRadioChannel() );
@@ -1209,7 +1219,7 @@ string ItemManager::GetItemsStatistics()
         ProtoItem* proto_item = ( *it ).second;
         if( proto_item->IsItem() )
         {
-            char* s = (char*) ConstantsManager::GetItemName( proto_item->ProtoId );
+            const char* s = Str::GetName( proto_item->ProtoId );
             Str::Format( str, "%-40s %-20s\n", s ? s : Str::ItoA( proto_item->ProtoId ), Str::I64toA( proto_item->InstanceCount ) );
             result += str;
         }

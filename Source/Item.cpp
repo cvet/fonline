@@ -8,6 +8,16 @@
 # include "AI.h"
 #endif
 
+HASH_IMPL( ITEM_DEF_SLOT, "internal_0" );
+HASH_IMPL( ITEM_DEF_ARMOR, "internal_100" );
+HASH_IMPL( SP_SCEN_IBLOCK, "minimap_invisible_block" );
+HASH_IMPL( SP_SCEN_TRIGGER, "trigger" );
+HASH_IMPL( SP_WALL_BLOCK_LIGHT, "block_light" );
+HASH_IMPL( SP_WALL_BLOCK, "block" );
+HASH_IMPL( SP_GRID_EXITGRID, "exit_grid" );
+HASH_IMPL( SP_GRID_ENTIRE, "entrance" );
+HASH_IMPL( SP_MISC_SCRBLOCK, "scroll_block" );
+
 const char* ItemEventFuncName[ ITEM_EVENT_MAX ] =
 {
     "void %s(Item&,bool)",                             // ITEM_EVENT_FINISH
@@ -21,25 +31,25 @@ const char* ItemEventFuncName[ ITEM_EVENT_MAX ] =
 };
 
 PROPERTIES_IMPL( ProtoItem );
-CLASS_PROPERTY_IMPL( ProtoItem, Type );
-CLASS_PROPERTY_IMPL( ProtoItem, Flags );
-CLASS_PROPERTY_IMPL( ProtoItem, Stackable );
-CLASS_PROPERTY_IMPL( ProtoItem, Deteriorable );
 CLASS_PROPERTY_IMPL( ProtoItem, PicMap );
 CLASS_PROPERTY_IMPL( ProtoItem, PicInv );
+CLASS_PROPERTY_IMPL( ProtoItem, OffsetX );
+CLASS_PROPERTY_IMPL( ProtoItem, OffsetY );
+CLASS_PROPERTY_IMPL( ProtoItem, Cost );
+CLASS_PROPERTY_IMPL( ProtoItem, LightIntensity );
+CLASS_PROPERTY_IMPL( ProtoItem, LightDistance );
+CLASS_PROPERTY_IMPL( ProtoItem, LightFlags );
+CLASS_PROPERTY_IMPL( ProtoItem, LightColor );
+CLASS_PROPERTY_IMPL( ProtoItem, Type );
+CLASS_PROPERTY_IMPL( ProtoItem, Stackable );
+CLASS_PROPERTY_IMPL( ProtoItem, Deteriorable );
 CLASS_PROPERTY_IMPL( ProtoItem, GroundLevel );
 CLASS_PROPERTY_IMPL( ProtoItem, Corner );
 CLASS_PROPERTY_IMPL( ProtoItem, Slot );
 CLASS_PROPERTY_IMPL( ProtoItem, Weight );
 CLASS_PROPERTY_IMPL( ProtoItem, Volume );
-CLASS_PROPERTY_IMPL( ProtoItem, Cost );
-CLASS_PROPERTY_IMPL( ProtoItem, StartCount );
 CLASS_PROPERTY_IMPL( ProtoItem, SoundId );
 CLASS_PROPERTY_IMPL( ProtoItem, Material );
-CLASS_PROPERTY_IMPL( ProtoItem, LightFlags );
-CLASS_PROPERTY_IMPL( ProtoItem, LightDistance );
-CLASS_PROPERTY_IMPL( ProtoItem, LightIntensity );
-CLASS_PROPERTY_IMPL( ProtoItem, LightColor );
 CLASS_PROPERTY_IMPL( ProtoItem, DisableEgg );
 CLASS_PROPERTY_IMPL( ProtoItem, AnimWaitBase );
 CLASS_PROPERTY_IMPL( ProtoItem, AnimWaitRndMin );
@@ -50,27 +60,10 @@ CLASS_PROPERTY_IMPL( ProtoItem, AnimShow_0 );
 CLASS_PROPERTY_IMPL( ProtoItem, AnimShow_1 );
 CLASS_PROPERTY_IMPL( ProtoItem, AnimHide_0 );
 CLASS_PROPERTY_IMPL( ProtoItem, AnimHide_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, OffsetX );
-CLASS_PROPERTY_IMPL( ProtoItem, OffsetY );
 CLASS_PROPERTY_IMPL( ProtoItem, SpriteCut );
 CLASS_PROPERTY_IMPL( ProtoItem, DrawOrderOffsetHexY );
-CLASS_PROPERTY_IMPL( ProtoItem, RadioChannel );
-CLASS_PROPERTY_IMPL( ProtoItem, RadioFlags );
-CLASS_PROPERTY_IMPL( ProtoItem, RadioBroadcastSend );
-CLASS_PROPERTY_IMPL( ProtoItem, RadioBroadcastRecv );
-CLASS_PROPERTY_IMPL( ProtoItem, IndicatorStart );
 CLASS_PROPERTY_IMPL( ProtoItem, IndicatorMax );
 CLASS_PROPERTY_IMPL( ProtoItem, HolodiskNum );
-CLASS_PROPERTY_IMPL( ProtoItem, StartValue_0 );
-CLASS_PROPERTY_IMPL( ProtoItem, StartValue_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, StartValue_2 );
-CLASS_PROPERTY_IMPL( ProtoItem, StartValue_3 );
-CLASS_PROPERTY_IMPL( ProtoItem, StartValue_4 );
-CLASS_PROPERTY_IMPL( ProtoItem, StartValue_5 );
-CLASS_PROPERTY_IMPL( ProtoItem, StartValue_6 );
-CLASS_PROPERTY_IMPL( ProtoItem, StartValue_7 );
-CLASS_PROPERTY_IMPL( ProtoItem, StartValue_8 );
-CLASS_PROPERTY_IMPL( ProtoItem, StartValue_9 );
 CLASS_PROPERTY_IMPL( ProtoItem, BlockLines );
 CLASS_PROPERTY_IMPL( ProtoItem, ChildPid_0 );
 CLASS_PROPERTY_IMPL( ProtoItem, ChildPid_1 );
@@ -94,6 +87,7 @@ CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Caliber );
 CLASS_PROPERTY_IMPL( ProtoItem, Weapon_DefaultAmmoPid );
 CLASS_PROPERTY_IMPL( ProtoItem, Weapon_MinStrength );
 CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Perk );
+CLASS_PROPERTY_IMPL( ProtoItem, Weapon_IsTwoHanded );
 CLASS_PROPERTY_IMPL( ProtoItem, Weapon_ActiveUses );
 CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Skill_0 );
 CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Skill_1 );
@@ -139,25 +133,25 @@ CLASS_PROPERTY_IMPL( ProtoItem, Car_MovementType );
 void ProtoItem::SetPropertyRegistrator( PropertyRegistrator* registrator )
 {
     PROPERTIES_FIND();
-    CLASS_PROPERTY_FIND( Type );
-    CLASS_PROPERTY_FIND( Flags );
-    CLASS_PROPERTY_FIND( Stackable );
-    CLASS_PROPERTY_FIND( Deteriorable );
     CLASS_PROPERTY_FIND( PicMap );
     CLASS_PROPERTY_FIND( PicInv );
+    CLASS_PROPERTY_FIND( OffsetX );
+    CLASS_PROPERTY_FIND( OffsetY );
+    CLASS_PROPERTY_FIND( Cost );
+    CLASS_PROPERTY_FIND( LightFlags );
+    CLASS_PROPERTY_FIND( LightDistance );
+    CLASS_PROPERTY_FIND( LightIntensity );
+    CLASS_PROPERTY_FIND( LightColor );
+    CLASS_PROPERTY_FIND( Type );
+    CLASS_PROPERTY_FIND( Stackable );
+    CLASS_PROPERTY_FIND( Deteriorable );
     CLASS_PROPERTY_FIND( GroundLevel );
     CLASS_PROPERTY_FIND( Corner );
     CLASS_PROPERTY_FIND( Slot );
     CLASS_PROPERTY_FIND( Weight );
     CLASS_PROPERTY_FIND( Volume );
-    CLASS_PROPERTY_FIND( Cost );
-    CLASS_PROPERTY_FIND( StartCount );
     CLASS_PROPERTY_FIND( SoundId );
     CLASS_PROPERTY_FIND( Material );
-    CLASS_PROPERTY_FIND( LightFlags );
-    CLASS_PROPERTY_FIND( LightDistance );
-    CLASS_PROPERTY_FIND( LightIntensity );
-    CLASS_PROPERTY_FIND( LightColor );
     CLASS_PROPERTY_FIND( DisableEgg );
     CLASS_PROPERTY_FIND( AnimWaitBase );
     CLASS_PROPERTY_FIND( AnimWaitRndMin );
@@ -168,27 +162,10 @@ void ProtoItem::SetPropertyRegistrator( PropertyRegistrator* registrator )
     CLASS_PROPERTY_FIND( AnimShow_1 );
     CLASS_PROPERTY_FIND( AnimHide_0 );
     CLASS_PROPERTY_FIND( AnimHide_1 );
-    CLASS_PROPERTY_FIND( OffsetX );
-    CLASS_PROPERTY_FIND( OffsetY );
     CLASS_PROPERTY_FIND( SpriteCut );
     CLASS_PROPERTY_FIND( DrawOrderOffsetHexY );
-    CLASS_PROPERTY_FIND( RadioChannel );
-    CLASS_PROPERTY_FIND( RadioFlags );
-    CLASS_PROPERTY_FIND( RadioBroadcastSend );
-    CLASS_PROPERTY_FIND( RadioBroadcastRecv );
-    CLASS_PROPERTY_FIND( IndicatorStart );
     CLASS_PROPERTY_FIND( IndicatorMax );
     CLASS_PROPERTY_FIND( HolodiskNum );
-    CLASS_PROPERTY_FIND( StartValue_0 );
-    CLASS_PROPERTY_FIND( StartValue_1 );
-    CLASS_PROPERTY_FIND( StartValue_2 );
-    CLASS_PROPERTY_FIND( StartValue_3 );
-    CLASS_PROPERTY_FIND( StartValue_4 );
-    CLASS_PROPERTY_FIND( StartValue_5 );
-    CLASS_PROPERTY_FIND( StartValue_6 );
-    CLASS_PROPERTY_FIND( StartValue_7 );
-    CLASS_PROPERTY_FIND( StartValue_8 );
-    CLASS_PROPERTY_FIND( StartValue_9 );
     CLASS_PROPERTY_FIND( BlockLines );
     CLASS_PROPERTY_FIND( ChildPid_0 );
     CLASS_PROPERTY_FIND( ChildPid_1 );
@@ -212,6 +189,7 @@ void ProtoItem::SetPropertyRegistrator( PropertyRegistrator* registrator )
     CLASS_PROPERTY_FIND( Weapon_DefaultAmmoPid );
     CLASS_PROPERTY_FIND( Weapon_MinStrength );
     CLASS_PROPERTY_FIND( Weapon_Perk );
+    CLASS_PROPERTY_FIND( Weapon_IsTwoHanded );
     CLASS_PROPERTY_FIND( Weapon_ActiveUses );
     CLASS_PROPERTY_FIND( Weapon_Skill_0 );
     CLASS_PROPERTY_FIND( Weapon_Skill_1 );
@@ -255,9 +233,9 @@ void ProtoItem::SetPropertyRegistrator( PropertyRegistrator* registrator )
     CLASS_PROPERTY_FIND( Car_MovementType );
 }
 
-ProtoItem::ProtoItem(): Props( PropertiesRegistrator )
+ProtoItem::ProtoItem( hash pid ): Props( PropertiesRegistrator ), ItemProps( Item::PropertiesRegistrator )
 {
-    // Dummy
+    ProtoId = pid;
 }
 
 const char* ProtoItem::GetBlockLinesStr()
@@ -304,11 +282,40 @@ PROPERTIES_IMPL( Item );
 CLASS_PROPERTY_IMPL( Item, ScriptId );
 CLASS_PROPERTY_IMPL( Item, LockerComplexity );
 #endif
+CLASS_PROPERTY_IMPL( Item, IsHidden );
+CLASS_PROPERTY_IMPL( Item, IsFlat );
+CLASS_PROPERTY_IMPL( Item, IsNoBlock );
+CLASS_PROPERTY_IMPL( Item, IsShootThru );
+CLASS_PROPERTY_IMPL( Item, IsLightThru );
+CLASS_PROPERTY_IMPL( Item, IsMultiHex );
+CLASS_PROPERTY_IMPL( Item, IsWallTransEnd );
+CLASS_PROPERTY_IMPL( Item, IsBigGun );
+CLASS_PROPERTY_IMPL( Item, IsAlwaysView );
+CLASS_PROPERTY_IMPL( Item, IsHasTimer );
+CLASS_PROPERTY_IMPL( Item, IsBadItem );
+CLASS_PROPERTY_IMPL( Item, IsNoHighlight );
+CLASS_PROPERTY_IMPL( Item, IsShowAnim );
+CLASS_PROPERTY_IMPL( Item, IsShowAnimExt );
+CLASS_PROPERTY_IMPL( Item, IsLight );
+CLASS_PROPERTY_IMPL( Item, IsGeck );
+CLASS_PROPERTY_IMPL( Item, IsTrap );
+CLASS_PROPERTY_IMPL( Item, IsNoLightInfluence );
+CLASS_PROPERTY_IMPL( Item, IsNoLoot );
+CLASS_PROPERTY_IMPL( Item, IsNoSteal );
+CLASS_PROPERTY_IMPL( Item, IsGag );
+CLASS_PROPERTY_IMPL( Item, IsColorize );
+CLASS_PROPERTY_IMPL( Item, IsColorizeInv );
+CLASS_PROPERTY_IMPL( Item, IsCanUseOnSmth );
+CLASS_PROPERTY_IMPL( Item, IsCanLook );
+CLASS_PROPERTY_IMPL( Item, IsCanTalk );
+CLASS_PROPERTY_IMPL( Item, IsCanPickUp );
+CLASS_PROPERTY_IMPL( Item, IsCanUse );
+CLASS_PROPERTY_IMPL( Item, IsHolodisk );
+CLASS_PROPERTY_IMPL( Item, IsRadio );
 CLASS_PROPERTY_IMPL( Item, SortValue );
 CLASS_PROPERTY_IMPL( Item, Indicator );
 CLASS_PROPERTY_IMPL( Item, PicMap );
 CLASS_PROPERTY_IMPL( Item, PicInv );
-CLASS_PROPERTY_IMPL( Item, Flags );
 CLASS_PROPERTY_IMPL( Item, Mode );
 CLASS_PROPERTY_IMPL( Item, LightIntensity );
 CLASS_PROPERTY_IMPL( Item, LightDistance );
@@ -334,7 +341,7 @@ CLASS_PROPERTY_IMPL( Item, AmmoCount );
 CLASS_PROPERTY_IMPL( Item, TrapValue );
 CLASS_PROPERTY_IMPL( Item, LockerId );
 CLASS_PROPERTY_IMPL( Item, LockerCondition );
-CLASS_PROPERTY_IMPL( Item, HolodiskNumber );
+CLASS_PROPERTY_IMPL( Item, HolodiskNum );
 CLASS_PROPERTY_IMPL( Item, RadioChannel );
 CLASS_PROPERTY_IMPL( Item, RadioFlags );
 CLASS_PROPERTY_IMPL( Item, RadioBroadcastSend );
@@ -349,11 +356,40 @@ void Item::SetPropertyRegistrator( PropertyRegistrator* registrator )
     CLASS_PROPERTY_FIND( ScriptId );
     CLASS_PROPERTY_FIND( LockerComplexity );
     #endif
+    CLASS_PROPERTY_FIND( IsHidden );
+    CLASS_PROPERTY_FIND( IsFlat );
+    CLASS_PROPERTY_FIND( IsNoBlock );
+    CLASS_PROPERTY_FIND( IsShootThru );
+    CLASS_PROPERTY_FIND( IsLightThru );
+    CLASS_PROPERTY_FIND( IsMultiHex );
+    CLASS_PROPERTY_FIND( IsWallTransEnd );
+    CLASS_PROPERTY_FIND( IsBigGun );
+    CLASS_PROPERTY_FIND( IsAlwaysView );
+    CLASS_PROPERTY_FIND( IsHasTimer );
+    CLASS_PROPERTY_FIND( IsBadItem );
+    CLASS_PROPERTY_FIND( IsNoHighlight );
+    CLASS_PROPERTY_FIND( IsShowAnim );
+    CLASS_PROPERTY_FIND( IsShowAnimExt );
+    CLASS_PROPERTY_FIND( IsLight );
+    CLASS_PROPERTY_FIND( IsGeck );
+    CLASS_PROPERTY_FIND( IsTrap );
+    CLASS_PROPERTY_FIND( IsNoLightInfluence );
+    CLASS_PROPERTY_FIND( IsNoLoot );
+    CLASS_PROPERTY_FIND( IsNoSteal );
+    CLASS_PROPERTY_FIND( IsGag );
+    CLASS_PROPERTY_FIND( IsColorize );
+    CLASS_PROPERTY_FIND( IsColorizeInv );
+    CLASS_PROPERTY_FIND( IsCanUseOnSmth );
+    CLASS_PROPERTY_FIND( IsCanLook );
+    CLASS_PROPERTY_FIND( IsCanTalk );
+    CLASS_PROPERTY_FIND( IsCanPickUp );
+    CLASS_PROPERTY_FIND( IsCanUse );
+    CLASS_PROPERTY_FIND( IsHolodisk );
+    CLASS_PROPERTY_FIND( IsRadio );
     CLASS_PROPERTY_FIND( SortValue );
     CLASS_PROPERTY_FIND( Indicator );
     CLASS_PROPERTY_FIND( PicMap );
     CLASS_PROPERTY_FIND( PicInv );
-    CLASS_PROPERTY_FIND( Flags );
     CLASS_PROPERTY_FIND( Mode );
     CLASS_PROPERTY_FIND( LightIntensity );
     CLASS_PROPERTY_FIND( LightDistance );
@@ -379,7 +415,7 @@ void Item::SetPropertyRegistrator( PropertyRegistrator* registrator )
     CLASS_PROPERTY_FIND( TrapValue );
     CLASS_PROPERTY_FIND( LockerId );
     CLASS_PROPERTY_FIND( LockerCondition );
-    CLASS_PROPERTY_FIND( HolodiskNumber );
+    CLASS_PROPERTY_FIND( HolodiskNum );
     CLASS_PROPERTY_FIND( RadioChannel );
     CLASS_PROPERTY_FIND( RadioFlags );
     CLASS_PROPERTY_FIND( RadioBroadcastSend );
@@ -409,7 +445,8 @@ Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator )
     #endif
 
     SetProto( proto );
-    SetCount( 1 );
+    if( GetCount() == 0 )
+        SetCount( 1 );
 
     Id = id;
 }
@@ -423,20 +460,7 @@ void Item::SetProto( ProtoItem* proto )
 {
     Proto = proto;
     Accessory = ITEM_ACCESSORY_NONE;
-    SetSortValue( 0x7FFF );
-    SetFlags( Proto->GetFlags() );
-    SetIndicator( Proto->GetIndicatorStart() );
-
-    SetVal0( Proto->GetStartValue_0() );
-    SetVal1( Proto->GetStartValue_1() );
-    SetVal2( Proto->GetStartValue_2() );
-    SetVal3( Proto->GetStartValue_3() );
-    SetVal4( Proto->GetStartValue_4() );
-    SetVal5( Proto->GetStartValue_5() );
-    SetVal6( Proto->GetStartValue_6() );
-    SetVal7( Proto->GetStartValue_7() );
-    SetVal8( Proto->GetStartValue_8() );
-    SetVal9( Proto->GetStartValue_9() );
+    Props = Proto->ItemProps;
 
     switch( GetType() )
     {
@@ -445,17 +469,13 @@ void Item::SetProto( ProtoItem* proto )
         SetAmmoPid( Proto->GetWeapon_DefaultAmmoPid() );
         break;
     case ITEM_TYPE_DOOR:
-    {
-        uint flags = GetFlags();
-        SETFLAG( flags, ITEM_GAG );
+        SetIsGag( true );
         if( !Proto->GetDoor_NoBlockMove() )
-            UNSETFLAG( flags, ITEM_NO_BLOCK );
+            SetIsNoBlock( false );
         if( !Proto->GetDoor_NoBlockShoot() )
-            UNSETFLAG( flags, ITEM_SHOOT_THRU );
+            SetIsShootThru( false );
         if( !Proto->GetDoor_NoBlockLight() )
-            UNSETFLAG( flags, ITEM_LIGHT_THRU );
-        SetFlags( flags );
-    }
+            SetIsLightThru( false );
         SetLockerCondition( Proto->GetLocker_Condition() );
         break;
     case  ITEM_TYPE_CONTAINER:
@@ -463,23 +483,6 @@ void Item::SetProto( ProtoItem* proto )
         break;
     default:
         break;
-    }
-
-    if( IsRadio() )
-    {
-        SetRadioChannel( Proto->GetRadioChannel() );
-        SetRadioFlags( Proto->GetRadioFlags() );
-        SetRadioBroadcastSend( Proto->GetRadioBroadcastSend() );
-        SetRadioBroadcastRecv( Proto->GetRadioBroadcastRecv() );
-    }
-
-    if( IsHolodisk() )
-    {
-        SetHolodiskNumber( Proto->GetHolodiskNum() );
-        #ifdef FONLINE_SERVER
-        if( !GetHolodiskNumber() )
-            SetHolodiskNumber( Random( 1, 42 ) );
-        #endif
     }
 }
 
@@ -698,9 +701,9 @@ void Item::SetWeaponMode( uchar mode )
     if( !IsWeapon() )
     {
         mode &= 0xF;
-        if( mode == USE_USE && !IsCanUse() && !IsCanUseOnSmth() )
+        if( mode == USE_USE && !GetIsCanUse() && !GetIsCanUseOnSmth() )
             mode = USE_NONE;
-        else if( IsCanUse() || IsCanUseOnSmth() )
+        else if( GetIsCanUse() || GetIsCanUseOnSmth() )
             mode = USE_USE;
         else
             mode = USE_NONE;
@@ -738,7 +741,7 @@ void Item::SetWeaponMode( uchar mode )
             break;
         case USE_USE:
             aim = 0;
-            if( IsCanUseOnSmth() )
+            if( GetIsCanUseOnSmth() )
                 break;
             use = USE_PRIMARY;
             break;
@@ -869,7 +872,7 @@ Item* Item::ContGetItem( uint item_id, bool skip_hide )
         Item* item = *it;
         if( item->GetId() == item_id )
         {
-            if( skip_hide && item->IsHidden() )
+            if( skip_hide && item->GetIsHidden() )
                 return NULL;
             SYNC_LOCK( item );
             return item;
@@ -886,7 +889,7 @@ void Item::ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock )
     for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
     {
         Item* item = *it;
-        if( !skip_hide || !item->IsHidden() )
+        if( !skip_hide || !item->GetIsHidden() )
             items.push_back( item );
     }
 
@@ -996,20 +999,23 @@ uint ProtoItem::GetCurSprId()
         return 0;
 
     uint beg = 0, end = 0;
-    if( FLAG( GetFlags(), ITEM_SHOW_ANIM ) )
+    if( Item::PropertyIsShowAnim->GetValue< bool >( &ItemProps ) )
+    {
+        beg = 0;
         end = anim->CntFrm - 1;
-    if( FLAG( GetFlags(), ITEM_SHOW_ANIM_EXT ) )
+    }
+    if( Item::PropertyIsShowAnimExt->GetValue< bool >( &ItemProps ) )
     {
         beg = GetAnimStay_0();
         end = GetAnimStay_1();
     }
-
     if( beg >= anim->CntFrm )
         beg = anim->CntFrm - 1;
     if( end >= anim->CntFrm )
         end = anim->CntFrm - 1;
     if( beg > end )
         std::swap( beg, end );
+
     uint count = end - beg + 1;
     uint ticks = anim->Ticks / anim->CntFrm * count;
     return anim->Ind[ beg + ( ( Timer::GameTick() % ticks ) * 100 / ticks ) * count / 100 ];
@@ -1022,20 +1028,23 @@ uint Item::GetCurSprId()
         return 0;
 
     uint beg = 0, end = 0;
-    if( IsShowAnim() )
+    if( GetIsShowAnim() )
+    {
+        beg = 0;
         end = anim->CntFrm - 1;
-    if( IsShowAnimExt() )
+    }
+    if( GetIsShowAnimExt() )
     {
         beg = Proto->GetAnimStay_0();
         end = Proto->GetAnimStay_1();
     }
-
     if( beg >= anim->CntFrm )
         beg = anim->CntFrm - 1;
     if( end >= anim->CntFrm )
         end = anim->CntFrm - 1;
     if( beg > end )
         std::swap( beg, end );
+
     uint count = end - beg + 1;
     uint ticks = anim->Ticks / anim->CntFrm * count;
     return anim->Ind[ beg + ( ( Timer::GameTick() % ticks ) * 100 / ticks ) * count / 100 ];

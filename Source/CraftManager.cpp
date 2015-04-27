@@ -135,7 +135,7 @@ void CraftItem::SetName( FOMsg& msg_game, FOMsg& msg_item )
         if( !proto )
             *Name += "???";
         else
-            *Name += msg_item.GetStr( proto->ProtoId * 100 );
+            *Name += msg_item.GetStr( ITEM_STR_ID( proto->ProtoId, 100 ) );
 
         if( OutItemsVal[ i ] > 1 )
         {
@@ -382,7 +382,8 @@ int CraftItem::SetStrItem( const char*& pstr_in, HashVec& pid_vec, UIntVec& coun
         {
             *pstr = '\0';
 
-            item_pid = ConstantsManager::GetItemPid( str );
+            const char* proto_name = ConvertProtoIdByStr( str );
+            item_pid = ( proto_name ? Str::GetHash( proto_name ) : 0 );
             if( !item_pid )
                 return -2;
 
@@ -393,7 +394,7 @@ int CraftItem::SetStrItem( const char*& pstr_in, HashVec& pid_vec, UIntVec& coun
         {
             *pstr = '\0';
 
-            item_count = atoi( str );
+            item_count = Str::AtoI( str );
             if( !item_count )
                 return -3;
 
@@ -520,7 +521,7 @@ void CraftItem::GetStrItem( char* pstr_out, HashVec& pid_vec, UIntVec& count_vec
 {
     for( uint i = 0, j = (uint) pid_vec.size(); i < j; i++ )
     {
-        const char* s = ConstantsManager::GetItemName( pid_vec[ i ] );
+        const char* s = Str::GetName( pid_vec[ i ] );
         if( !s )
             continue;
 

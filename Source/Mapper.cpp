@@ -1905,9 +1905,9 @@ void FOMapper::IntDraw()
         if( GetTabIndex() < (uint) ( *CurItemProtos ).size() )
         {
             ProtoItem* proto_item = ( *CurItemProtos )[ GetTabIndex() ];
-            string     info = MsgItem->GetStr( proto_item->ProtoId * 100 );
+            string     info = MsgItem->GetStr( ITEM_STR_ID( proto_item->ProtoId, 1 ) );
             info += " - ";
-            info += MsgItem->GetStr( proto_item->ProtoId * 100 + 1 );
+            info += MsgItem->GetStr( ITEM_STR_ID( proto_item->ProtoId, 2 ) );
             SprMngr.DrawStr( Rect( IntWHint, IntX, IntY ), info.c_str(), 0 );
         }
     }
@@ -1995,7 +1995,7 @@ void FOMapper::IntDraw()
 
             uint cnt = ( proto_item->GetStackable() ? mobj->MItem.Count : 1 );
             if( proto_item->GetStackable() && !cnt )
-                cnt = proto_item->GetStartCount();
+                cnt = Item::PropertyCount->GetValue< uint >( &proto_item->ItemProps );
             if( !cnt )
                 cnt = 1;
             SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), Str::FormatBuf( "x%u", cnt ), FT_NOBREAK, COLOR_TEXT_WHITE );
@@ -4175,7 +4175,7 @@ MapObject* FOMapper::ParseProto( hash pid, ushort hx, ushort hy, MapObject* owne
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
     if( !proto_item )
         return NULL;
-    if( owner && !FLAG( proto_item->GetFlags(), ITEM_CAN_PICKUP ) )
+    if( owner && !Item::PropertyIsCanPickUp->GetValue< bool >( &proto_item->ItemProps ) )
         return NULL;
     if( hx >= HexMngr.GetMaxHexX() || hy >= HexMngr.GetMaxHexY() )
         return NULL;
@@ -6251,7 +6251,13 @@ void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, ScriptString* sub_ta
         ProtoItemVec proto_items;
         for( int i = 0, j = item_pids->GetSize(); i < j; i++ )
         {
-            ushort     pid = *(ushort*) item_pids->At( i );
+            hash pid = *(hash*) item_pids->At( i );
+            if( pid < 0xFFFF )
+            {
+                const char* proto_name = ConvertProtoIdByInt( pid );
+                pid = ( proto_name ? Str::GetHash( proto_name ) : 0 );
+            }
+
             ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
             if( proto_item )
                 proto_items.push_back( proto_item );
@@ -6977,7 +6983,7 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
         return;
 
     ProtoItem* proto_item = ItemMngr.GetProtoItem( proto_id );
-    bool       is_flat = ( proto_item ? FLAG( proto_item->GetFlags(), ITEM_FLAT ) : false );
+    bool       is_flat = ( proto_item ? Item::PropertyIsFlat->GetValue< bool >( &proto_item->ItemProps ) : false );
     bool       is_item = ( proto_item ? proto_item->IsItem() : false );
     bool       no_light = ( is_flat && !is_item );
 
@@ -7014,14 +7020,14 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
             spr.SetEgg( egg_type );
         }
 
-        if( FLAG( proto_item->GetFlags(), ITEM_COLORIZE ) )
+        if( Item::PropertyIsColorize->GetValue< bool >( &proto_item->ItemProps ) )
         {
             uint data_size;
             spr.SetAlpha( ProtoItem::PropertyLightColor->GetRawData( proto_item, data_size ) + 3 );
             spr.SetColor( proto_item->GetLightColor() & 0xFFFFFF );
         }
 
-        if( FLAG( proto_item->GetFlags(), ITEM_BAD_ITEM ) )
+        if( Item::PropertyIsBadItem->GetValue< bool >( &proto_item->ItemProps ) )
             spr.SetContour( CONTOUR_RED );
     }
 }

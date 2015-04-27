@@ -92,8 +92,8 @@ bool CritterManager::LoadProtos()
                 #else
                 Properties* props = new Properties( CritterCl::PropertiesRegistrator );
                 #endif
-                hash        pid = props->LoadFromText( app );
-                if( pid )
+                hash        pid = 0;
+                if( props->LoadFromText( app, &pid ) && pid )
                 {
                     if( allProtos.count( pid ) )
                     {

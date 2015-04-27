@@ -267,8 +267,6 @@ bool Map::Generate()
         {
             if( mobj.MItem.Count > 1 )
                 item->SetCount( mobj.MItem.Count );
-            else if( item->Proto->GetStartCount() > 1 )
-                item->SetCount( item->Proto->GetStartCount() );
         }
 
         // Trap value
@@ -285,14 +283,12 @@ bool Map::Generate()
         item->SetLockerComplexity( mobj.MItem.LockerComplexity );
         if( item->IsDoor() && FLAG( item->GetLockerCondition(), LOCKER_ISOPEN ) )
         {
-            uint flags = item->GetFlags();
             if( !item->Proto->GetDoor_NoBlockMove() )
-                SETFLAG( flags, ITEM_NO_BLOCK );
+                item->SetIsNoBlock( true );
             if( !item->Proto->GetDoor_NoBlockShoot() )
-                SETFLAG( flags, ITEM_SHOOT_THRU );
+                item->SetIsShootThru( true );
             if( !item->Proto->GetDoor_NoBlockLight() )
-                SETFLAG( flags, ITEM_LIGHT_THRU );
-            item->SetFlags( flags );
+                item->SetIsLightThru( true );
         }
 
         // Mapper additional parameters
@@ -628,12 +624,12 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = *it;
-        if( !item->IsHidden() || item->IsAlwaysView() )
+        if( !item->GetIsHidden() || item->GetIsAlwaysView() )
         {
-            if( !item->IsAlwaysView() )           // Check distance for non-hide items
+            if( !item->GetIsAlwaysView() )           // Check distance for non-hide items
             {
                 bool allowed = false;
-                if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
+                if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
                 {
                     if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, cr->GetInfo() ) )
                     {
@@ -647,7 +643,7 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
                 else
                 {
                     int dist = DistGame( cr->GetHexX(), cr->GetHexY(), hx, hy );
-                    if( item->IsTrap() )
+                    if( item->GetIsTrap() )
                         dist += item->GetTrapValue();
                     allowed = dist <= cr->GetLook();
                 }
@@ -681,18 +677,18 @@ void Map::SetItem( Item* item, ushort hx, ushort hy )
     hexItems.push_back( item );
     SetHexFlag( hx, hy, FH_ITEM );
 
-    if( !item->IsPassed() )
+    if( !item->GetIsNoBlock() )
         SetHexFlag( hx, hy, FH_BLOCK_ITEM );
-    if( !item->IsRaked() )
+    if( !item->GetIsShootThru() )
         SetHexFlag( hx, hy, FH_NRAKE_ITEM );
-    if( item->IsGag() )
+    if( item->GetIsGag() )
         SetHexFlag( hx, hy, FH_GAG_ITEM );
     if( item->Proto->IsBlockLinesData() )
         PlaceItemBlocks( hx, hy, item->Proto );
 
     if( item->FuncId[ ITEM_EVENT_WALK ] > 0 )
         SetHexFlag( hx, hy, FH_WALK_ITEM );
-    if( item->IsGeck() )
+    if( item->GetIsGeck() )
         mapLocation->GeckCount++;
 }
 
@@ -720,13 +716,13 @@ void Map::EraseItem( uint item_id )
 
     item->Accessory = 0xd1;
 
-    if( item->IsGeck() )
+    if( item->GetIsGeck() )
         mapLocation->GeckCount--;
-    if( !item->IsPassed() && !item->IsRaked() )
+    if( !item->GetIsNoBlock() && !item->GetIsShootThru() )
         RecacheHexBlockShoot( hx, hy );
-    else if( !item->IsPassed() )
+    else if( !item->GetIsNoBlock() )
         RecacheHexBlock( hx, hy );
-    else if( !item->IsRaked() )
+    else if( !item->GetIsShootThru() )
         RecacheHexShoot( hx, hy );
     if( item->Proto->IsBlockLinesData() )
         ReplaceItemBlocks( hx, hy, item->Proto );
@@ -777,16 +773,16 @@ void Map::ChangeViewItem( Item* item )
 
         if( cr->CountIdVisItem( item->GetId() ) )
         {
-            if( item->IsHidden() )
+            if( item->GetIsHidden() )
             {
                 cr->DelIdVisItem( item->GetId() );
                 cr->Send_EraseItemFromMap( item );
                 cr->EventHideItemOnMap( item, false, NULL );
             }
-            else if( !item->IsAlwaysView() )           // Check distance for non-hide items
+            else if( !item->GetIsAlwaysView() )           // Check distance for non-hide items
             {
                 bool allowed = false;
-                if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
+                if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
                 {
                     if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, cr->GetInfo() ) )
                     {
@@ -800,7 +796,7 @@ void Map::ChangeViewItem( Item* item )
                 else
                 {
                     int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->AccHex.HexX, item->AccHex.HexY );
-                    if( item->IsTrap() )
+                    if( item->GetIsTrap() )
                         dist += item->GetTrapValue();
                     allowed = dist <= cr->GetLook();
                 }
@@ -812,12 +808,12 @@ void Map::ChangeViewItem( Item* item )
                 }
             }
         }
-        else if( !item->IsHidden() || item->IsAlwaysView() )
+        else if( !item->GetIsHidden() || item->GetIsAlwaysView() )
         {
-            if( !item->IsAlwaysView() )           // Check distance for non-hide items
+            if( !item->GetIsAlwaysView() )           // Check distance for non-hide items
             {
                 bool allowed = false;
-                if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
+                if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
                 {
                     if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, cr->GetInfo() ) )
                     {
@@ -831,7 +827,7 @@ void Map::ChangeViewItem( Item* item )
                 else
                 {
                     int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->AccHex.HexX, item->AccHex.HexY );
-                    if( item->IsTrap() )
+                    if( item->GetIsTrap() )
                         dist += item->GetTrapValue();
                     allowed = dist <= cr->GetLook();
                 }
@@ -879,7 +875,7 @@ Item* Map::GetItemHex( ushort hx, ushort hy, hash item_pid, Critter* picker )
     {
         Item* item = *it;
         if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && ( item_pid == 0 || item->GetProtoId() == item_pid ) &&
-            ( !picker || ( !item->IsHidden() && picker->CountIdVisItem( item->GetId() ) ) ) )
+            ( !picker || ( !item->GetIsHidden() && picker->CountIdVisItem( item->GetId() ) ) ) )
         {
             SYNC_LOCK( item );
             return item;
@@ -935,7 +931,7 @@ Item* Map::GetItemGag( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && item->IsGag() )
+        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && item->GetIsGag() )
         {
             SYNC_LOCK( item );
             return item;
@@ -1027,9 +1023,9 @@ void Map::RecacheHexBlock( ushort hx, ushort hy )
         Item* item = *it;
         if( item->AccHex.HexX == hx && item->AccHex.HexY == hy )
         {
-            if( !is_block && !item->IsPassed() )
+            if( !is_block && !item->GetIsNoBlock() )
                 is_block = true;
-            if( !is_gag && item->IsGag() )
+            if( !is_gag && item->GetIsGag() )
                 is_gag = true;
             if( is_block && is_gag )
                 break;
@@ -1047,7 +1043,7 @@ void Map::RecacheHexShoot( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && !item->IsRaked() )
+        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && !item->GetIsShootThru() )
         {
             SetHexFlag( hx, hy, FH_NRAKE_ITEM );
             break;
@@ -1068,11 +1064,11 @@ void Map::RecacheHexBlockShoot( ushort hx, ushort hy )
         Item* item = *it;
         if( item->AccHex.HexX == hx && item->AccHex.HexY == hy )
         {
-            if( !is_block && !item->IsPassed() )
+            if( !is_block && !item->GetIsNoBlock() )
                 is_block = true;
-            if( !is_nrake && !item->IsRaked() )
+            if( !is_nrake && !item->GetIsShootThru() )
                 is_nrake = true;
-            if( !is_gag && item->IsGag() )
+            if( !is_gag && item->GetIsGag() )
                 is_gag = true;
             if( is_block && is_nrake && is_gag )
                 break;
@@ -1553,9 +1549,7 @@ void Map::GetCritterCar( Critter* cr, Item* car )
 
     // Move car from map to inventory
     EraseItem( car->GetId() );
-    uint flags = car->GetFlags();
-    SETFLAG( flags, ITEM_HIDDEN );
-    car->SetFlags( flags );
+    car->SetIsHidden( true );
     cr->AddItem( car, false );
 
     // Move car bags from map to inventory
@@ -1566,9 +1560,7 @@ void Map::GetCritterCar( Critter* cr, Item* car )
             continue;
 
         EraseItem( child->GetId() );
-        uint child_flags = child->GetFlags();
-        SETFLAG( child_flags, ITEM_HIDDEN );
-        child->SetFlags( child_flags );
+        child->SetIsHidden( true );
         cr->AddItem( child, false );
     }
 }
@@ -1584,9 +1576,7 @@ void Map::SetCritterCar( ushort hx, ushort hy, Critter* cr, Item* car )
 
     // Move car from inventory to map
     cr->EraseItem( car, false );
-    uint flags = car->GetFlags();
-    UNSETFLAG( flags, ITEM_HIDDEN );
-    car->SetFlags( flags );
+    car->SetIsHidden( false );
     AddItem( car, hx, hy );
 
     // Move car bags from inventory to map
@@ -1605,9 +1595,7 @@ void Map::SetCritterCar( ushort hx, ushort hy, Critter* cr, Item* car )
         ushort child_hy = hy;
         FOREACH_PROTO_ITEM_LINES( car->Proto->GetChildLinesStr( i ), child_hx, child_hy, GetMaxHexX(), GetMaxHexY() );
         cr->EraseItem( child, false );
-        uint child_flags = child->GetFlags();
-        UNSETFLAG( child_flags, ITEM_HIDDEN );
-        child->SetFlags( child_flags );
+        child->SetIsHidden( false );
         AddItem( child, child_hx, child_hy );
     }
 }
@@ -1629,7 +1617,7 @@ bool Map::IsPlaceForItem( ushort hx, ushort hy, ProtoItem* proto_item )
 
 void Map::PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
 {
-    bool raked = FLAG( proto_item->GetFlags(), ITEM_SHOOT_THRU );
+    bool raked = Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemProps );
     FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLinesStr(), hx, hy, GetMaxHexX(), GetMaxHexY(),
                                    SetHexFlag( hx, hy, FH_BLOCK_ITEM );
                                    if( !raked )
@@ -1639,7 +1627,7 @@ void Map::PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
 
 void Map::ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
 {
-    bool raked = FLAG( proto_item->GetFlags(), ITEM_SHOOT_THRU );
+    bool raked = Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemProps );
     FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLinesStr(), hx, hy, GetMaxHexX(), GetMaxHexY(),
                                    UnsetHexFlag( hx, hy, FH_BLOCK_ITEM );
                                    if( !raked )

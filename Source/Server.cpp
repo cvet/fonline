@@ -345,7 +345,7 @@ void FOServer::RemoveClient( Client* cl )
         for( auto it = items.begin(), end = items.end(); it != end; ++it )
         {
             Item* item = *it;
-            if( item->IsRadio() )
+            if( item->GetIsRadio() )
                 ItemMngr.RadioRegister( item, false );
         }
 
@@ -2851,7 +2851,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         SynchronizeLogicThreads();
 
         LangPackVec lang_packs;
-        if( InitLangPacks( lang_packs ) && InitLangPacksDialogs( lang_packs ) && InitLangPacksLocations( lang_packs ) && InitCrafts( lang_packs ) )
+        if( InitLangPacks( lang_packs ) && InitLangPacksDialogs( lang_packs ) && InitLangPacksLocations( lang_packs ) && InitLangPacksItems( lang_packs ) && InitCrafts( lang_packs ) )
         {
             LangPacks = lang_packs;
             GenerateUpdateFiles();
@@ -3553,6 +3553,12 @@ bool FOServer::InitReal()
         return false;                            // Create FODLG.MSG, need call after InitLangPacks and DlgMngr.LoadDialogs
     if( !InitLangPacksLocations( LangPacks ) )
         return false;                            // Create FOLOCATIONS.MSG, need call after InitLangPacks and MapMngr.LoadLocationsProtos
+    if( !InitLangPacksItems( LangPacks ) )
+        return false;                            // Create FOITEM.MSG, need call after InitLangPacks and ItemMngr.LoadProtos
+
+    // Scripts post check
+    if( !PostInitScriptSystem() )
+        return false;                                          // Script system
 
     // Initialization script
     Script::PrepareContext( ServerFunctions.Init, _FUNC_, "Game" );
@@ -3933,6 +3939,34 @@ bool FOServer::InitLangPacksLocations( LangPackVec& lang_packs )
                     WriteLog( "Warning! Location<%s> text intersection detected, send notification about this to developers.\n", ploc->Name.c_str() );
 
                 lang.Msg[ TEXTMSG_LOCATIONS ] += *ploc->Texts[ i ];
+            }
+        }
+    }
+
+    return true;
+}
+
+bool FOServer::InitLangPacksItems( LangPackVec& lang_packs )
+{
+    for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
+        it->Msg[ TEXTMSG_ITEM ].Clear();
+
+    ProtoItemMap& all_protos = ItemMngr.GetAllProtos();
+    for( auto it = all_protos.begin(); it != all_protos.end(); ++it )
+    {
+        ProtoItem* proto = it->second;
+        for( uint i = 0, j = (uint) proto->TextsLang.size(); i < j; i++ )
+        {
+            for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
+            {
+                LanguagePack& lang = *it;
+                if( proto->TextsLang[ i ] != lang.Name )
+                    continue;
+
+                if( lang.Msg[ TEXTMSG_LOCATIONS ].IsIntersects( *proto->Texts[ i ] ) )
+                    WriteLog( "Warning! Proto item<%s> text intersection detected, send notification about this to developers.\n", proto->GetName() );
+
+                lang.Msg[ TEXTMSG_ITEM ] += *proto->Texts[ i ];
             }
         }
     }

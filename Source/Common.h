@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 494 )
+#define FONLINE_VERSION                          ( 495 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
@@ -988,5 +988,9 @@ T* ReadDataArr( UCharVec& vec, uint size, uint& pos )
 
 // Preprocessor output formatting
 void FormatPreprocessorOutput( string& str );
+
+// Deprecated stuff
+const char* ConvertProtoIdByInt( uint pid );
+const char* ConvertProtoIdByStr( const char* pid );
 
 #endif // __COMMON__

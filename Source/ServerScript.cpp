@@ -206,14 +206,33 @@ bool FOServer::InitScriptSystem()
         return false;
 
     Critter::SetPropertyRegistrator( registrators[ 0 ] );
+    Critter::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
     Item::SetPropertyRegistrator( registrators[ 1 ] );
     Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
     Item::PropertiesRegistrator->SetNativeSetCallback( "Count", OnSetItemCount );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "Flags", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "TrapValue", OnSetItemTrapValue );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsHidden", OnSetItemChangeView );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsAlwaysView", OnSetItemChangeView );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsTrap", OnSetItemChangeView );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "TrapValue", OnSetItemChangeView );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsNoBlock", OnSetItemRecacheHex );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemRecacheHex );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsGag", OnSetItemRecacheHex );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsGeck", OnSetItemIsGeck );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsRadio", OnSetItemIsRadio );
     ProtoItem::SetPropertyRegistrator( registrators[ 2 ] );
 
     WriteLog( "Script system initialization complete.\n" );
+    return true;
+}
+
+bool FOServer::PostInitScriptSystem()
+{
+    EngineData* ed = (EngineData*) Script::GetEngine()->GetUserData();
+    if( ed->PragmaCB->IsError() )
+        return false;
+    ed->PragmaCB->Finish();
+    if( ed->PragmaCB->IsError() )
+        return false;
     return true;
 }
 
@@ -842,18 +861,18 @@ bool FOServer::SScriptFunc::Item_SetEvent( Item* item, int event_type, ScriptStr
     return true;
 }
 
-uchar FOServer::SScriptFunc::Item_GetType( Item* item )
-{
-    if( item->IsNotValid )
-        SCRIPT_ERROR_R0( "This nullptr." );
-    return item->GetType();
-}
-
-hash FOServer::SScriptFunc::Item_GetProtoId( Item* item )
+hash FOServer::SScriptFunc::Item_get_ProtoId( Item* item )
 {
     if( item->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
     return item->GetProtoId();
+}
+
+int FOServer::SScriptFunc::Item_get_Type( Item* item )
+{
+    if( item->IsNotValid )
+        SCRIPT_ERROR_R0( "This nullptr." );
+    return item->GetType();
 }
 
 uint FOServer::SScriptFunc::Item_GetCost( Item* item )
@@ -1005,21 +1024,22 @@ bool FOServer::SScriptFunc::Item_LockerOpen( Item* item )
 
     if( item->IsDoor() )
     {
-        uint flags = item->GetFlags();
         bool recache_block = false;
         bool recache_shoot = false;
         if( !item->Proto->GetDoor_NoBlockMove() )
         {
-            SETFLAG( flags, ITEM_NO_BLOCK );
+            item->SetIsNoBlock( true );
             recache_block = true;
         }
         if( !item->Proto->GetDoor_NoBlockShoot() )
         {
-            SETFLAG( flags, ITEM_SHOOT_THRU );
+            item->SetIsShootThru( true );
             recache_shoot = true;
         }
         if( !item->Proto->GetDoor_NoBlockLight() )
-            SETFLAG( flags, ITEM_LIGHT_THRU );
+        {
+            item->SetIsLightThru( true );
+        }
 
         if( item->Accessory == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
         {
@@ -1034,8 +1054,6 @@ bool FOServer::SScriptFunc::Item_LockerOpen( Item* item )
                     map->RecacheHexShoot( item->AccHex.HexX, item->AccHex.HexY );
             }
         }
-
-        item->SetFlags( flags );
     }
     return true;
 }
@@ -1057,21 +1075,22 @@ bool FOServer::SScriptFunc::Item_LockerClose( Item* item )
 
     if( item->IsDoor() )
     {
-        uint flags = item->GetFlags();
         bool recache_block = false;
         bool recache_shoot = false;
         if( !item->Proto->GetDoor_NoBlockMove() )
         {
-            UNSETFLAG( flags, ITEM_NO_BLOCK );
+            item->SetIsNoBlock( false );
             recache_block = true;
         }
         if( !item->Proto->GetDoor_NoBlockShoot() )
         {
-            UNSETFLAG( flags, ITEM_SHOOT_THRU );
+            item->SetIsShootThru( false );
             recache_shoot = true;
         }
         if( !item->Proto->GetDoor_NoBlockLight() )
-            UNSETFLAG( flags, ITEM_LIGHT_THRU );
+        {
+            item->SetIsLightThru( false );
+        }
 
         if( item->Accessory == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
         {
@@ -1084,8 +1103,6 @@ bool FOServer::SScriptFunc::Item_LockerClose( Item* item )
                     map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_NRAKE_ITEM );
             }
         }
-
-        item->SetFlags( flags );
     }
     return true;
 }
@@ -2136,7 +2153,7 @@ Item* FOServer::SScriptFunc::Crit_AddItem( Critter* cr, hash pid, uint count )
     if( !pid )
         SCRIPT_ERROR_R0( "Proto id arg is zero." );
     if( !ItemMngr.GetProtoItem( pid ) )
-        SCRIPT_ERROR_R0( "Invalid pid." );
+        SCRIPT_ERROR_R0( "Invalid proto '%s'.", pid, HASH_STR( pid ) );
     if( !count )
         count = 1;
     return ItemMngr.AddItemCritter( cr, pid, count );
@@ -2721,7 +2738,7 @@ hash FOServer::SScriptFunc::Crit_GetScriptId( Critter* cr )
     return cr->Data.ScriptId;
 }
 
-hash FOServer::SScriptFunc::Crit_GetProtoId( Critter* cr )
+hash FOServer::SScriptFunc::Crit_get_ProtoId( Critter* cr )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -3564,7 +3581,7 @@ uint FOServer::SScriptFunc::Map_GetId( Map* map )
     return map->GetId();
 }
 
-hash FOServer::SScriptFunc::Map_GetProtoId( Map* map )
+hash FOServer::SScriptFunc::Map_get_ProtoId( Map* map )
 {
     if( map->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -4663,7 +4680,7 @@ void FOServer::SScriptFunc::Map_EventTurnBasedProcess( Map* map, Critter* cr, bo
     map->EventTurnBasedProcess( cr, begin_turn );
 }
 
-hash FOServer::SScriptFunc::Location_GetProtoId( Location* loc )
+hash FOServer::SScriptFunc::Location_get_ProtoId( Location* loc )
 {
     if( loc->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );

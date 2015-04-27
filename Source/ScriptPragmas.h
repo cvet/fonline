@@ -17,6 +17,7 @@ class IgnorePragma;
 class GlobalVarPragma;
 class BindFuncPragma;
 class PropertyPragma;
+class ContentPragma;
 
 typedef vector< Preprocessor::PragmaInstance > Pragmas;
 
@@ -31,9 +32,11 @@ private:
     GlobalVarPragma* globalVarPragma;
     BindFuncPragma*  bindFuncPragma;
     PropertyPragma*  propertyPragma;
+    ContentPragma*   contentPragma;
 
 public:
     ScriptPragmaCallback( int pragma_type, PropertyRegistrator** property_registrators );
+    ~ScriptPragmaCallback();
     virtual void   CallPragma( const Preprocessor::PragmaInstance& pragma );
     const Pragmas& GetProcessedPragmas();
     void           Finish();

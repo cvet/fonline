@@ -18,21 +18,15 @@ public:
     bool Init();
     void Finish();
     void Clear();
-
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_OBJECT_EDITOR ) || defined ( FONLINE_MAPPER )
     bool LoadProtos();
-    bool LoadProtos( ProtoItemVec& protos, const char* fname );
-    #endif
 
     #ifdef FONLINE_OBJECT_EDITOR
     void SaveProtos( const char* full_path );
     void SaveProtos( ProtoItemVec& protos, const char* full_path );
     #endif
 
-    void          ParseProtos( ProtoItemVec& protos, const char* collection_name = NULL );
     ProtoItem*    GetProtoItem( hash pid );
     ProtoItemMap& GetAllProtos();
-    void          ClearProto( hash pid );
     void          GetBinaryData( UCharVec& data );
     void          SetBinaryData( UCharVec& data );
 

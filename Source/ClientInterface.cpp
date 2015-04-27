@@ -2996,7 +2996,7 @@ void FOClient::LMenuSet( uchar set_lmenu )
         {
             if( inv_item->IsWeapon() && inv_item->WeapGetMaxAmmoCount() && !inv_item->WeapIsEmpty() && inv_item->WeapGetAmmoCaliber() )
                 LMenuNodes.push_back( LMENU_NODE_UNLOAD );
-            if( inv_item->IsCanUse() || inv_item->IsCanUseOnSmth() )
+            if( inv_item->GetIsCanUse() || inv_item->GetIsCanUseOnSmth() )
                 LMenuNodes.push_back( LMENU_NODE_USE );
             LMenuNodes.push_back( LMENU_NODE_SKILL );
             if( inv_item->AccCritter.Slot == SLOT_INV && Chosen->IsCanSortItems() )
@@ -3339,7 +3339,7 @@ void FOClient::LMenuMouseUp()
         case LMENU_NODE_USE:
             if( !inv_item )
                 break;
-            if( inv_item->IsHasTimer() )
+            if( inv_item->GetIsHasTimer() )
                 TimerStart( inv_item->GetId(), ResMngr.GetInvAnim( inv_item->GetActualPicInv() ), inv_item->GetInvColor() );
             else
                 SetAction( CHOSEN_USE_ITEM, inv_item->GetId(), 0, TARGET_SELF, 0, USE_USE );
@@ -7530,7 +7530,7 @@ void FOClient::FixGenerateItems( HashVec& items_vec, UIntVec& val_vec, UCharVec&
         if( !proto )
             str += "???";
         else
-            str += MsgItem->GetStr( proto->ProtoId * 100 );
+            str += MsgItem->GetStr( ITEM_STR_ID( proto->ProtoId, 1 ) );
 
         if( val_vec[ i ] > 1 )
         {

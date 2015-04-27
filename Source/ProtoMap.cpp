@@ -18,6 +18,7 @@
 #define FO_MAP_VERSION_TEXT4                     ( 4 )
 #define FO_MAP_VERSION_TEXT5                     ( 5 )
 #define FO_MAP_VERSION_TEXT6                     ( 6 )
+#define FO_MAP_VERSION_TEXT7                     ( 7 )
 
 #define APP_HEADER                               "Header"
 #define APP_TILES                                "Tiles"
@@ -202,7 +203,8 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         delete[] header_str;
     }
     if( ( Header.Version != FO_MAP_VERSION_TEXT1 && Header.Version != FO_MAP_VERSION_TEXT2 && Header.Version != FO_MAP_VERSION_TEXT3 &&
-          Header.Version != FO_MAP_VERSION_TEXT4 && Header.Version != FO_MAP_VERSION_TEXT5 && Header.Version != FO_MAP_VERSION_TEXT6 ) ||
+          Header.Version != FO_MAP_VERSION_TEXT4 && Header.Version != FO_MAP_VERSION_TEXT5 && Header.Version != FO_MAP_VERSION_TEXT6 &&
+          Header.Version != FO_MAP_VERSION_TEXT7 ) ||
         Header.MaxHexX < 1 || Header.MaxHexY < 1 )
         return false;
 
@@ -333,7 +335,30 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                     MapObject& mobj = *MObjects.back();
                     // Shared
                     if( field == "ProtoId" )
-                        mobj.ProtoId = ivalue;
+                    {
+                        if( mobj.MapObjType == MAP_OBJECT_ITEM || mobj.MapObjType == MAP_OBJECT_SCENERY )
+                        {
+                            const char* proto_name = ConvertProtoIdByInt( ivalue );
+                            mobj.ProtoId = ( proto_name ? Str::GetHash( proto_name ) : ivalue );
+                            #ifdef FONLINE_MAPPER
+                            mobj.ProtoName = ScriptString::Create( proto_name ? proto_name : Str::ItoA( ivalue ) );
+                            #endif
+                        }
+                        else
+                        {
+                            mobj.ProtoId = ivalue;
+                            #ifdef FONLINE_MAPPER
+                            mobj.ProtoName = ScriptString::Create( Str::ItoA( ivalue ) );
+                            #endif
+                        }
+                    }
+                    else if( field == "ProtoName" )
+                    {
+                        mobj.ProtoId = Str::GetHash( svalue );
+                        #ifdef FONLINE_MAPPER
+                        mobj.ProtoName = ScriptString::Create( svalue );
+                        #endif
+                    }
                     else if( field == "MapX" )
                         mobj.MapX = ivalue;
                     else if( field == "MapY" )
@@ -624,7 +649,10 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
         MapObject& mobj = *MObjects[ k ];
         // Shared
         fm.SetStr( "%-20s %d\n", "MapObjType", mobj.MapObjType );
-        fm.SetStr( "%-20s %d\n", "ProtoId", mobj.ProtoId );
+        if( mobj.MapObjType == MAP_OBJECT_ITEM || mobj.MapObjType == MAP_OBJECT_SCENERY )
+            fm.SetStr( "%-20s %s\n", "ProtoName", mobj.ProtoName->c_str() );
+        else
+            fm.SetStr( "%-20s %u\n", "ProtoId", mobj.ProtoId );
         if( mobj.MapX )
             fm.SetStr( "%-20s %d\n", "MapX", mobj.MapX );
         if( mobj.MapY )
@@ -1241,14 +1269,13 @@ bool ProtoMap::Refresh()
         {
         case ITEM_TYPE_WALL:
         {
-            if( !FLAG( proto_item->GetFlags(), ITEM_NO_BLOCK ) )
+            if( !Item::PropertyIsNoBlock->GetValue< bool >( &proto_item->ItemProps ) )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-            if( !FLAG( proto_item->GetFlags(), ITEM_SHOOT_THRU ) )
+            if( !Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemProps ) )
             {
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );
             }
-
             SETFLAG( HexFlags[ hy * maxhx + hx ], FH_WALL );
 
             // To client
@@ -1281,9 +1308,9 @@ bool ProtoMap::Refresh()
 
             if( type == ITEM_TYPE_GRID )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_SCEN_GRID );
-            if( !FLAG( proto_item->GetFlags(), ITEM_NO_BLOCK ) )
+            if( !Item::PropertyIsNoBlock->GetValue< bool >( &proto_item->ItemProps ) )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-            if( !FLAG( proto_item->GetFlags(), ITEM_SHOOT_THRU ) )
+            if( !Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemProps ) )
             {
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );
@@ -1456,7 +1483,7 @@ bool ProtoMap::Refresh()
 void ProtoMap::GenNew()
 {
     Clear();
-    Header.Version = FO_MAP_VERSION_TEXT6;
+    Header.Version = FO_MAP_VERSION_TEXT7;
     Header.MaxHexX = MAXHEX_DEF;
     Header.MaxHexY = MAXHEX_DEF;
     pmapName = "";
@@ -1532,7 +1559,7 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
 
     // Save
     FileManager fm;
-    Header.Version = FO_MAP_VERSION_TEXT6;
+    Header.Version = FO_MAP_VERSION_TEXT7;
     SaveTextFormat( fm );
     Tiles.clear();
 

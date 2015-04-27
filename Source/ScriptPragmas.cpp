@@ -486,6 +486,113 @@ public:
     }
 };
 
+// #pragma content Group fileName
+#ifdef FONLINE_SERVER
+# include "Dialogs.h"
+# include "ItemManager.h"
+# include "CritterManager.h"
+#endif
+class ContentPragma
+{
+private:
+    list< hash > dataStorage;
+    StrUIntMap   filesToCheck[ 3 ];
+
+public:
+    bool Call( const string& text )
+    {
+        // Read all
+        istrstream str( text.c_str() );
+        string     group, file_name;
+        str >> group >> file_name;
+        if( str.fail() )
+        {
+            WriteLog( "Unable to parse 'content' pragma<%s>.\n", text.c_str() );
+            return false;
+        }
+
+        // Make hash
+        hash h = Str::GetHash( file_name.c_str() );
+
+        // Verify file
+        asIScriptEngine* engine = Script::GetEngine();
+        int              group_index;
+        const char*      ns;
+        if( Str::CompareCase( group.c_str(), "Dialog" ) )
+        {
+            group_index = 0;
+            ns = "Content::Dialog";
+        }
+        else if( Str::CompareCase( group.c_str(), "Item" ) )
+        {
+            group_index = 1;
+            ns = "Content::Item";
+        }
+        else if( Str::CompareCase( group.c_str(), "Critter" ) )
+        {
+            group_index = 2;
+            ns = "Content::Critter";
+        }
+        else
+        {
+            WriteLog( "Invalid group name in 'content' pragma<%s>.\n", text.c_str() );
+            return false;
+        }
+
+        if( filesToCheck[ group_index ].count( file_name ) )
+            return true;
+        filesToCheck[ group_index ].insert( PAIR( file_name, h ) );
+
+        // Register file
+        dataStorage.push_back( h );
+        engine->SetDefaultNamespace( "Content" );
+        engine->SetDefaultNamespace( ns );
+        char prop_name[ MAX_FOTEXT ];
+        Str::Format( prop_name, "const hash %s", file_name.c_str() );
+        int  result = engine->RegisterGlobalProperty( prop_name, &dataStorage.back() );
+        engine->SetDefaultNamespace( "" );
+        if( result < 0 )
+        {
+            WriteLog( "Error in 'content' pragma<%s>, error<%d>.\n", text.c_str(), result );
+            return false;
+        }
+
+        return true;
+    }
+
+    bool Finish()
+    {
+        int errors = 0;
+        #ifdef FONLINE_SERVER
+        for( auto it = filesToCheck[ 0 ].begin(); it != filesToCheck[ 0 ].end(); ++it )
+        {
+            if( !DlgMngr.GetDialog( it->second ) )
+            {
+                WriteLog( "Dialog file '%s' not found.\n", it->first.c_str() );
+                errors++;
+            }
+        }
+        for( auto it = filesToCheck[ 1 ].begin(); it != filesToCheck[ 1 ].end(); ++it )
+        {
+            if( !ItemMngr.GetProtoItem( it->second ) )
+            {
+                WriteLog( "Item file '%s' not found.\n", it->first.c_str() );
+                errors++;
+            }
+        }
+        for( auto it = filesToCheck[ 2 ].begin(); it != filesToCheck[ 2 ].end(); ++it )
+        {
+            if( !CrMngr.GetProto( it->second ) )
+            {
+                WriteLog( "Critter file '%s' not found.\n", it->first.c_str() );
+                errors++;
+            }
+        }
+        #endif
+        return errors == 0;
+    }
+};
+
 ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type, PropertyRegistrator** properties_registrators )
 {
     isError = false;
@@ -493,13 +600,29 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type, PropertyRegistrator
     if( pragmaType != PRAGMA_SERVER && pragmaType != PRAGMA_CLIENT && pragmaType != PRAGMA_MAPPER )
         pragmaType = PRAGMA_UNKNOWN;
 
+    ignorePragma = NULL;
+    globalVarPragma = NULL;
+    bindFuncPragma = NULL;
+    propertyPragma = NULL;
+    contentPragma = NULL;
+
     if( pragmaType != PRAGMA_UNKNOWN )
     {
         ignorePragma = new IgnorePragma();
         globalVarPragma = new GlobalVarPragma();
         bindFuncPragma = new BindFuncPragma();
         propertyPragma = new PropertyPragma( properties_registrators );
+        contentPragma = new ContentPragma();
     }
+}
+
+ScriptPragmaCallback::~ScriptPragmaCallback()
+{
+    SAFEDEL( ignorePragma );
+    SAFEDEL( globalVarPragma );
+    SAFEDEL( bindFuncPragma );
+    SAFEDEL( propertyPragma );
+    SAFEDEL( contentPragma );
 }
 
 void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragma )
@@ -521,6 +644,8 @@ void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragm
         ok = bindFuncPragma->Call( pragma.Text );
     else if( Str::CompareCase( pragma.Name.c_str(), "property" ) && propertyPragma )
         ok = propertyPragma->Call( pragma.Text );
+    else if( Str::CompareCase( pragma.Name.c_str(), "content" ) && contentPragma )
+        ok = contentPragma->Call( pragma.Text );
     else
         WriteLog( "Unknown pragma instance, name<%s> text<%s>.\n", pragma.Name.c_str(), pragma.Text.c_str() ), ok = false;
 
@@ -537,7 +662,10 @@ const Pragmas& ScriptPragmaCallback::GetProcessedPragmas()
 
 void ScriptPragmaCallback::Finish()
 {
-    isError |= propertyPragma->Finish();
+    if( !propertyPragma->Finish() )
+        isError = true;
+    if( !contentPragma->Finish() )
+        isError = true;
 }
 
 bool ScriptPragmaCallback::IsError()

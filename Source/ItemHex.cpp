@@ -82,7 +82,7 @@ ItemHex::ItemHex( uint id, ProtoItem* proto, UCharVecVec* data, int hx, int hy, 
     // Refresh item
     RefreshAnim();
     RefreshAlpha();
-    if( IsShowAnim() )
+    if( GetIsShowAnim() )
         isAnimated = true;
     animNextTick = Timer::GameTick() + Random( Proto->GetAnimWaitRndMin() * 10, Proto->GetAnimWaitRndMax() * 10 );
     SetFade( true );
@@ -244,14 +244,14 @@ void ItemHex::SetSprite( Sprite* spr )
     {
         SprDraw->SetColor( IsColorize() ? GetColor() : 0 );
         SprDraw->SetEgg( GetEggType() );
-        if( IsBadItem() )
+        if( GetIsBadItem() )
             SprDraw->SetContour( CONTOUR_RED );
     }
 }
 
 int ItemHex::GetEggType()
 {
-    if( Proto->GetDisableEgg() || IsFlat() )
+    if( Proto->GetDisableEgg() || GetIsFlat() )
         return 0;
 
     switch( Proto->GetCorner() )
@@ -351,7 +351,7 @@ void ItemHex::SetAnimOffs()
 
 void ItemHex::SetStayAnim()
 {
-    if( IsShowAnimExt() )
+    if( GetIsShowAnimExt() )
         SetAnim( Proto->GetAnimStay_0(), Proto->GetAnimStay_1() );
     else
         SetAnim( 0, Anim->CntFrm - 1 );
@@ -359,7 +359,7 @@ void ItemHex::SetStayAnim()
 
 void ItemHex::SetShowAnim()
 {
-    if( IsShowAnimExt() )
+    if( GetIsShowAnimExt() )
         SetAnim( Proto->GetAnimShow_0(), Proto->GetAnimShow_1() );
     else
         SetAnim( 0, Anim->CntFrm - 1 );
@@ -367,7 +367,7 @@ void ItemHex::SetShowAnim()
 
 void ItemHex::SetHideAnim()
 {
-    if( IsShowAnimExt() )
+    if( GetIsShowAnimExt() )
     {
         SetAnim( Proto->GetAnimHide_0(), Proto->GetAnimHide_1() );
         animBegSpr = ( Proto->GetAnimHide_1() );

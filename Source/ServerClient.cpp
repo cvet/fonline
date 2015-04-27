@@ -515,7 +515,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         return false;
     }
 
-    if( weap->IsTwoHands() && cr->IsDmgArm() )
+    if( weap->Proto->GetWeapon_IsTwoHanded() && cr->IsDmgArm() )
     {
         WriteLogF( _FUNC_, " - Critter is damaged arm on two hands weapon, critter<%s>, target critter<%s>.\n", cr->GetInfo(), t_cr->GetInfo() );
         return false;
@@ -861,7 +861,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             return false;
         }
 
-        if( target_item->IsHidden() )
+        if( target_item->GetIsHidden() )
         {
             WriteLogF( _FUNC_, " - Target item is hidden, id<%u>, critter<%s>.\n", target_id, cr->GetInfo() );
             return false;
@@ -905,9 +905,9 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             return false;
         }
 
-        if( !proto_scenery->IsGeneric() )
+        if( !proto_scenery->IsScen() )
         {
-            WriteLogF( _FUNC_, " - Target scenery is not generic. Critter<%s>.\n", cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Target scenery is not scenery. Critter<%s>.\n", cr->GetInfo() );
             return false;
         }
 
@@ -989,9 +989,9 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         }
 
         // Default process
-        if( item->IsHolodisk() && target_type == TARGET_SELF && cr->IsPlayer() )
+        if( item->GetIsHolodisk() && target_type == TARGET_SELF && cr->IsPlayer() )
         {
-            AddPlayerHoloInfo( (Client*) cr, item->GetHolodiskNumber(), true );
+            AddPlayerHoloInfo( (Client*) cr, item->GetHolodiskNum(), true );
         }
         // Nothing happens
         else
@@ -1105,7 +1105,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
         cr->SendAA_Action( ACTION_PICK_ITEM, 0, pick_item );
         SAFEREL( pick_item )
 
-        if( proto->IsGeneric() && pick_scenery->RunTime.BindScriptId > 0 )
+        if( proto->IsScen() && pick_scenery->RunTime.BindScriptId > 0 )
         {
             if( !Script::PrepareContext( pick_scenery->RunTime.BindScriptId, _FUNC_, cr->GetInfo() ) )
                 return false;
@@ -3759,7 +3759,7 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
 
     HolodiskLocker.Lock();
 
-    uint      holo_id = holodisk->GetHolodiskNumber();
+    uint      holo_id = holodisk->GetHolodiskNum();
     HoloInfo* hi = GetHoloInfo( holo_id );
     if( hi && hi->CanRewrite )
     {
@@ -3776,7 +3776,7 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
 
     cl->Send_UserHoloStr( STR_HOLO_INFO_NAME( holo_id ), title, title_len );
     cl->Send_UserHoloStr( STR_HOLO_INFO_DESC( holo_id ), text, text_len );
-    holodisk->SetHolodiskNumber( holo_id );
+    holodisk->SetHolodiskNum( holo_id );
     cl->Send_TextMsg( cl, STR_HOLO_WRITE_SUCC, SAY_NETMSG, TEXTMSG_HOLO );
 }
 

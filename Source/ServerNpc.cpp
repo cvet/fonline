@@ -1990,7 +1990,7 @@ void FOServer::Process_Barter( Client* cl )
             return;
         }
 
-        if( item->IsBadItem() )
+        if( item->GetIsBadItem() )
         {
             cl->Send_TextMsg( cl, STR_BARTER_BAD_OFFER, SAY_DIALOG, TEXTMSG_GAME );
             cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, false );

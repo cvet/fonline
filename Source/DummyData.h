@@ -138,6 +138,7 @@ struct MapObject
 {
     int MapObjType;
     int ProtoId;
+    int ProtoName;
     int MapX;
     int MapY;
 
@@ -377,8 +378,8 @@ struct BindClass
     static void Item_SetScript()      {}
     static void Item_GetScriptId()    {}
     static void Item_SetEvent()       {}
-    static void Item_GetType()        {}
-    static void Item_GetProtoId()     {}
+    static void Item_get_ProtoId()    {}
+    static void Item_get_Type()       {}
     static void Item_GetCost()        {}
     static void Item_GetMapPosition() {}
     static void Item_ChangeProto()    {}
@@ -515,7 +516,7 @@ struct BindClass
     static void Crit_GetBagRefreshTime() {}
     static void Crit_SetInternalBag()    {}
     static void Crit_GetInternalBag()    {}
-    static void Crit_GetProtoId()        {}
+    static void Crit_get_ProtoId()       {}
     static void Crit_GetMultihex()       {}
     static void Crit_SetMultihex()       {}
 
@@ -585,7 +586,7 @@ struct BindClass
     static void Global_GetLocalVar()  {}
     static void Global_GetUnicumVar() {}
 
-    static void Map_GetProtoId()               {}
+    static void Map_get_ProtoId()              {}
     static void Map_GetLocation()              {}
     static void Map_SetScript()                {}
     static void Map_GetScriptId()              {}
@@ -672,7 +673,7 @@ struct BindClass
     static void Map_EventTurnBasedEnd()     {}
     static void Map_EventTurnBasedProcess() {}
 
-    static void Location_GetProtoId()    {}
+    static void Location_get_ProtoId()   {}
     static void Location_SetEvent()      {}
     static void Location_GetMapCount()   {}
     static void Location_GetMap()        {}
@@ -795,8 +796,8 @@ struct BindClass
 
     static void Item_IsStackable()    {}
     static void Item_IsDeteriorable() {}
-    static void Item_GetType()        {}
-    static void Item_GetProtoId()     {}
+    static void Item_get_ProtoId()    {}
+    static void Item_get_Type()       {}
     static void Item_GetMapPosition() {}
     static void Item_Animate()        {}
     static void Item_GetChild()       {}

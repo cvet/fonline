@@ -926,9 +926,9 @@ void Critter::ProcessVisibleItems()
     {
         Item* item = *it;
 
-        if( item->IsHidden() )
+        if( item->GetIsHidden() )
             continue;
-        else if( item->IsAlwaysView() )
+        else if( item->GetIsAlwaysView() )
         {
             if( AddIdVisItem( item->GetId() ) )
             {
@@ -939,7 +939,7 @@ void Critter::ProcessVisibleItems()
         else
         {
             bool allowed = false;
-            if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
+            if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
             {
                 if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, GetInfo() ) )
                 {
@@ -953,7 +953,7 @@ void Critter::ProcessVisibleItems()
             else
             {
                 int dist = DistGame( Data.HexX, Data.HexY, item->AccHex.HexX, item->AccHex.HexY );
-                if( item->IsTrap() )
+                if( item->GetIsTrap() )
                     dist += item->GetTrapValue();
                 allowed = look >= dist;
             }
@@ -1075,14 +1075,14 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
     {
         Item* item = *it;
 
-        if( item->IsHidden() )
+        if( item->GetIsHidden() )
             continue;
-        else if( item->IsAlwaysView() )
+        else if( item->GetIsAlwaysView() )
             Send_AddItemOnMap( item );
         else
         {
             bool allowed = false;
-            if( item->IsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
+            if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
             {
                 if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, GetInfo() ) )
                 {
@@ -1096,7 +1096,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
             else
             {
                 int dist = DistGame( hx, hy, item->AccHex.HexX, item->AccHex.HexY );
-                if( item->IsTrap() )
+                if( item->GetIsTrap() )
                     dist += item->GetTrapValue();
                 allowed = look >= dist;
             }
@@ -1463,7 +1463,7 @@ Item* Critter::GetItem( uint item_id, bool skip_hide )
         Item* item = *it;
         if( item->GetId() == item_id )
         {
-            if( skip_hide && item->IsHidden() )
+            if( skip_hide && item->GetIsHidden() )
                 return NULL;
 
             SYNC_LOCK( item );
@@ -1482,8 +1482,8 @@ Item* Critter::GetInvItem( uint item_id, int transfer_type )
 
     Item* item = GetItem( item_id, true );
     if( !item || item->AccCritter.Slot != SLOT_INV ||
-        ( transfer_type == TRANSFER_CRIT_LOOT && item->IsNoLoot() ) ||
-        ( transfer_type == TRANSFER_CRIT_STEAL && item->IsNoSteal() ) )
+        ( transfer_type == TRANSFER_CRIT_LOOT && item->GetIsNoLoot() ) ||
+        ( transfer_type == TRANSFER_CRIT_STEAL && item->GetIsNoSteal() ) )
         return NULL;
     return item;
 }
@@ -1498,9 +1498,9 @@ void Critter::GetInvItems( ItemVec& items, int transfer_type, bool lock )
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccCritter.Slot == SLOT_INV && !item->IsHidden() &&
-            !( transfer_type == TRANSFER_CRIT_LOOT && item->IsNoLoot() ) &&
-            !( transfer_type == TRANSFER_CRIT_STEAL && item->IsNoSteal() ) )
+        if( item->AccCritter.Slot == SLOT_INV && !item->GetIsHidden() &&
+            !( transfer_type == TRANSFER_CRIT_LOOT && item->GetIsNoLoot() ) &&
+            !( transfer_type == TRANSFER_CRIT_STEAL && item->GetIsNoSteal() ) )
             items.push_back( item );
     }
 
@@ -1867,7 +1867,7 @@ bool Critter::IsHaveGeckItem()
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->IsGeck() )
+        if( item->GetIsGeck() )
             return true;
     }
     return false;
@@ -3317,7 +3317,7 @@ uint Critter::GetItemsWeight()
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( !item->IsHidden() )
+        if( !item->GetIsHidden() )
             res += item->GetWeight();
     }
     return res;
@@ -3329,7 +3329,7 @@ uint Critter::GetItemsVolume()
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( !item->IsHidden() )
+        if( !item->GetIsHidden() )
             res += item->GetVolume();
     }
     return res;
@@ -4103,7 +4103,7 @@ void Client::Send_AddItem( Item* item )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
-    if( item->IsHidden() )
+    if( item->GetIsHidden() )
         return;
 
     uint       msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( hash ) + sizeof( uchar );

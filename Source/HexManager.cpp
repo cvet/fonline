@@ -160,7 +160,7 @@ void Field::ProcessCache()
             if( item->IsWall() )
             {
                 Flags.IsWall = true;
-                Flags.IsWallTransp = item->IsLightThru();
+                Flags.IsWallTransp = item->GetIsLightThru();
                 Corner = item->Proto->GetCorner();
                 if( pid == SP_SCEN_IBLOCK )
                     Flags.IsWallSAI = true;
@@ -173,13 +173,13 @@ void Field::ProcessCache()
                 else if( pid == SP_GRID_EXITGRID )
                     Flags.IsExitGrid = true;
             }
-            if( !item->IsPassed() )
+            if( !item->GetIsNoBlock() )
                 Flags.IsNotPassed = true;
-            if( !item->IsRaked() )
+            if( !item->GetIsShootThru() )
                 Flags.IsNotRaked = true;
             if( pid == SP_MISC_SCRBLOCK )
                 Flags.ScrollBlock = true;
-            if( !item->IsLightThru() )
+            if( !item->GetIsLightThru() )
                 Flags.IsNoLight = true;
         }
     }
@@ -323,7 +323,7 @@ void HexManager::PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
     if( !proto_item )
         return;
 
-    bool raked = FLAG( proto_item->GetFlags(), ITEM_SHOOT_THRU );
+    bool raked = Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemProps );
     FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLinesStr(), hx, hy, GetMaxHexX(), GetMaxHexY(),
                                    GetField( hx, hy ).Flags.IsNotPassed = true;
                                    if( !raked )
@@ -398,17 +398,17 @@ bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
     if( !ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetActualOffsetX(), item->GetActualOffsetY(), true ) )
     {
         // Draw
-        if( GetHexToDraw( hx, hy ) && !item->IsHidden() && !item->IsFullyTransparent() )
+        if( GetHexToDraw( hx, hy ) && !item->GetIsHidden() && !item->IsFullyTransparent() )
         {
             Sprite& spr = mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), hx, hy + item->Proto->GetDrawOrderOffsetHexY(), item->SpriteCut,
                                                  f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                  &item->DrawEffect, &item->SprDrawValid );
-            if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
+            if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsScenOrGrid() ) )
                 spr.SetLight( hexLight, maxHexX, maxHexY );
             item->SetSprite( &spr );
         }
 
-        if( item->IsLight() || !item->IsLightThru() )
+        if( item->GetIsLight() || !item->GetIsLightThru() )
             RebuildLight();
     }
 
@@ -452,7 +452,7 @@ ItemHexVec::iterator HexManager::DeleteItem( ItemHex* item, bool with_delete /* 
         it = hexItems.erase( it );
     GetField( hx, hy ).EraseItem( item );
 
-    if( item->IsLight() || !item->IsLightThru() )
+    if( item->GetIsLight() || !item->GetIsLightThru() )
         RebuildLight();
 
     if( with_delete )
@@ -494,7 +494,7 @@ void HexManager::ProcessItems()
                     item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), step.first, step.second + item->Proto->GetDrawOrderOffsetHexY(), item->SpriteCut,
                                                             f_.ScrX + HEX_OX, f_.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                             &item->DrawEffect, &item->SprDrawValid );
-                    if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
+                    if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsScenOrGrid() ) )
                         item->SprDraw->SetLight( hexLight, maxHexX, maxHexY );
                 }
                 item->SetAnimOffs();
@@ -665,7 +665,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
         item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), from_hx, from_hy + item->Proto->GetDrawOrderOffsetHexY(), item->SpriteCut,
                                                 f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                 &item->DrawEffect, &item->SprDrawValid );
-        if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
+        if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsScenOrGrid() ) )
             item->SprDraw->SetLight( hexLight, maxHexX, maxHexY );
     }
 
@@ -968,7 +968,7 @@ void HexManager::RebuildMap( int rx, int ry )
                     ItemHex* item = *it;
 
                     #ifdef FONLINE_CLIENT
-                    if( item->IsHidden() || item->IsFullyTransparent() )
+                    if( item->GetIsHidden() || item->IsFullyTransparent() )
                         continue;
                     if( item->IsScenOrGrid() && !GameOpt.ShowScen )
                         continue;
@@ -993,7 +993,7 @@ void HexManager::RebuildMap( int rx, int ry )
                     Sprite& spr = mainTree.AddSprite( DRAW_ORDER_ITEM_AUTO( item ), nx, ny + item->Proto->GetDrawOrderOffsetHexY(), item->SpriteCut,
                                                       f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                       &item->DrawEffect, &item->SprDrawValid );
-                    if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
+                    if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsScenOrGrid() ) )
                         spr.SetLight( hexLight, maxHexX, maxHexY );
                     item->SetSprite( &spr );
                 }
@@ -1494,7 +1494,7 @@ void HexManager::CollectLightSources()
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         ItemHex* item = ( *it );
-        if( item->IsItem() && item->IsLight() )
+        if( item->IsItem() && item->GetIsLight() )
             lightSources.push_back( LightSource( item->GetHexX(), item->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags() ) );
     }
 
@@ -1506,7 +1506,7 @@ void HexManager::CollectLightSources()
         for( auto it_ = cr->InvItems.begin(), end_ = cr->InvItems.end(); it_ != end_; ++it_ )
         {
             Item* item = *it_;
-            if( item->IsLight() && item->AccCritter.Slot != SLOT_INV )
+            if( item->GetIsLight() && item->AccCritter.Slot != SLOT_INV )
             {
                 lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags() ) );
                 added = true;
@@ -2668,7 +2668,7 @@ ItemHex* HexManager::GetItemPixel( int x, int y, bool& item_egg )
             continue;
 
         #ifdef FONLINE_CLIENT
-        if( item->IsHidden() || item->IsFullyTransparent() )
+        if( item->GetIsHidden() || item->IsFullyTransparent() )
             continue;
         if( item->IsScenOrGrid() && !GameOpt.ShowScen )
             continue;
@@ -3943,14 +3943,14 @@ bool HexManager::ParseScenery( SceneryCl& scen )
         refresh_anim = true;
     }
 
-    if( scenery->IsLight() || scen.LightIntensity )
+    if( scenery->GetIsLight() || scen.LightIntensity )
         lightSourcesScen.push_back( LightSource( hx, hy, scenery->LightGetColor(), scenery->LightGetDistance(), scenery->LightGetIntensity(), scenery->LightGetFlags() ) );
 
     scenery->RefreshAlpha();
     if( refresh_anim )
         scenery->RefreshAnim();
     PushItem( scenery );
-    if( !scenery->IsHidden() && !scenery->IsFullyTransparent() )
+    if( !scenery->GetIsHidden() && !scenery->IsFullyTransparent() )
         ProcessHexBorders( scenery->Anim->GetSprId( 0 ), scen.OffsetX ? scen.OffsetX : proto_item->GetOffsetX(), scen.OffsetY ? scen.OffsetY : proto_item->GetOffsetY(), false );
     return true;
 }

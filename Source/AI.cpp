@@ -27,13 +27,14 @@ label_ParseNext:
     NpcBagItem i;
     while( *str == ' ' )
         str++;
-    char  buf[ 128 ];
+    char  buf[ MAX_FOTEXT ];
     char* pbuf = buf;
     // Parse pid
     for( ; *str != ':' && *str != '+' && *str != '^' && *str; str++, pbuf++ )
         *pbuf = *str;
     *pbuf = 0;
-    hash pid = ConstantsManager::GetItemPid( buf );
+    const char* proto_name = ConvertProtoIdByStr( buf );
+    hash        pid = ( proto_name ? Str::GetHash( proto_name ) : 0 );
     if( !pid )
         return items;
     i.ItemPid = pid;
@@ -58,7 +59,7 @@ label_ParseNext:
         for( ; *str != '-' && *str != '+' && *str; str++, pbuf++ )
             *pbuf = *str;
         *pbuf = 0;
-        i.MinCnt = atoi( buf );
+        i.MinCnt = Str::AtoI( buf );
     }
     else
     {
@@ -72,7 +73,7 @@ label_ParseNext:
         for( ; *str != '+' && *str; str++, pbuf++ )
             *pbuf = *str;
         *pbuf = 0;
-        i.MaxCnt = atoi( buf );
+        i.MaxCnt = Str::AtoI( buf );
     }
     else
     {

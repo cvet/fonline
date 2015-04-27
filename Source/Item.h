@@ -6,6 +6,7 @@
 #include "Text.h"
 #include "Crypt.h"
 #include "Properties.h"
+#include "MsgFiles.h"
 
 class Critter;
 class MapObject;
@@ -21,9 +22,10 @@ class MapObject;
 #define ITEM_EVENT_MAX                ( 8 )
 extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 
-// Prototypes
+// Generic
 #define ITEM_MAX_SCRIPT_VALUES        ( 10 )
 #define ITEM_MAX_CHILDS               ( 5 )
+#define MAX_ADDED_NOGROUP_ITEMS       ( 30 )
 
 // Types
 #define ITEM_TYPE_OTHER               ( 0 )
@@ -72,40 +74,6 @@ extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 #define CORNER_NORTH                  ( 4 )
 #define CORNER_EAST_WEST              ( 5 )
 
-// Flags
-#define ITEM_HIDDEN                   ( 0x00000001 )
-#define ITEM_FLAT                     ( 0x00000002 )
-#define ITEM_NO_BLOCK                 ( 0x00000004 )
-#define ITEM_SHOOT_THRU               ( 0x00000008 )
-#define ITEM_LIGHT_THRU               ( 0x00000010 )
-#define ITEM_MULTI_HEX                ( 0x00000020 ) // Not used
-#define ITEM_WALL_TRANS_END           ( 0x00000040 ) // Not used
-#define ITEM_TWO_HANDS                ( 0x00000080 )
-#define ITEM_BIG_GUN                  ( 0x00000100 )
-#define ITEM_ALWAYS_VIEW              ( 0x00000200 )
-#define ITEM_HAS_TIMER                ( 0x00000400 )
-#define ITEM_BAD_ITEM                 ( 0x00000800 )
-#define ITEM_NO_HIGHLIGHT             ( 0x00001000 )
-#define ITEM_SHOW_ANIM                ( 0x00002000 )
-#define ITEM_SHOW_ANIM_EXT            ( 0x00004000 )
-#define ITEM_LIGHT                    ( 0x00008000 )
-#define ITEM_GECK                     ( 0x00010000 )
-#define ITEM_TRAP                     ( 0x00020000 )
-#define ITEM_NO_LIGHT_INFLUENCE       ( 0x00040000 )
-#define ITEM_NO_LOOT                  ( 0x00080000 )
-#define ITEM_NO_STEAL                 ( 0x00100000 )
-#define ITEM_GAG                      ( 0x00200000 )
-#define ITEM_COLORIZE                 ( 0x00400000 )
-#define ITEM_COLORIZE_INV             ( 0x00800000 )
-#define ITEM_CAN_USE_ON_SMTH          ( 0x01000000 )
-#define ITEM_CAN_LOOK                 ( 0x02000000 )
-#define ITEM_CAN_TALK                 ( 0x04000000 )
-#define ITEM_CAN_PICKUP               ( 0x08000000 )
-#define ITEM_CAN_USE                  ( 0x10000000 )
-#define ITEM_HOLODISK                 ( 0x20000000 )
-#define ITEM_RADIO                    ( 0x40000000 )
-#define ITEM_CACHED                   ( 0x80000000 ) // Not used
-
 // Item deterioration info
 #define MAX_DETERIORATION             ( 10000 )
 #define BI_BROKEN                     ( 0x0F )
@@ -135,19 +103,17 @@ extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 #define ITEM_DATA_MASK_MAX            ( 5 )
 
 // Special item pids
-#define SP_SCEN_IBLOCK                ( 2344 )         // Block Hex Auto Inviso
-#define SP_SCEN_TRIGGER               ( 3852 )
-#define SP_WALL_BLOCK_LIGHT           ( 5621 )         // Wall s.t. with light
-#define SP_WALL_BLOCK                 ( 5622 )         // Wall s.t.
-#define SP_GRID_EXITGRID              ( 2049 )         // Exit Grid Map Marker
-#define SP_GRID_ENTIRE                ( 3853 )
-#define SP_MISC_SCRBLOCK              ( 4012 )         // Scroll block
-
-// Slot protos offsets
-// 1000 - 1100 protos reserved
-#define SLOT_MAIN_PROTO_OFFSET        ( 1000 )
-#define SLOT_EXT_PROTO_OFFSET         ( 1030 )
-#define SLOT_ARMOR_PROTO_OFFSET       ( 1060 )
+#define HASH_DECL( var, name )        extern hash var
+#define HASH_IMPL( var, name )        extern hash var = Str::GetHash( name )
+HASH_DECL( ITEM_DEF_SLOT, "internal_0" );
+HASH_DECL( ITEM_DEF_ARMOR, "internal_100" );
+HASH_DECL( SP_SCEN_IBLOCK, "minimap_invisible_block" );
+HASH_DECL( SP_SCEN_TRIGGER, "trigger" );
+HASH_DECL( SP_WALL_BLOCK_LIGHT, "block_light" );
+HASH_DECL( SP_WALL_BLOCK, "block" );
+HASH_DECL( SP_GRID_EXITGRID, "exit_grid" );
+HASH_DECL( SP_GRID_ENTIRE, "entrance" );
+HASH_DECL( SP_MISC_SCRBLOCK, "scroll_block" );
 
 /************************************************************************/
 /* ProtoItem                                                            */
@@ -158,25 +124,25 @@ class ProtoItem
 public:
     // Properties
     PROPERTIES_HEADER();
-    CLASS_PROPERTY( int, Type );
-    CLASS_PROPERTY( uint, Flags );
-    CLASS_PROPERTY( bool, Stackable );
-    CLASS_PROPERTY( bool, Deteriorable );
     CLASS_PROPERTY( hash, PicMap );
     CLASS_PROPERTY( hash, PicInv );
+    CLASS_PROPERTY( short, OffsetX );
+    CLASS_PROPERTY( short, OffsetY );
+    CLASS_PROPERTY( uint, Cost );
+    CLASS_PROPERTY( char, LightIntensity );
+    CLASS_PROPERTY( uchar, LightDistance );
+    CLASS_PROPERTY( uchar, LightFlags );
+    CLASS_PROPERTY( uint, LightColor );
+    CLASS_PROPERTY( int, Type );
+    CLASS_PROPERTY( bool, Stackable );
+    CLASS_PROPERTY( bool, Deteriorable );
     CLASS_PROPERTY( bool, GroundLevel );
     CLASS_PROPERTY( int, Corner );
     CLASS_PROPERTY( uchar, Slot );
     CLASS_PROPERTY( uint, Weight );
     CLASS_PROPERTY( uint, Volume );
-    CLASS_PROPERTY( uint, Cost );
-    CLASS_PROPERTY( uint, StartCount );
     CLASS_PROPERTY( uchar, SoundId );
     CLASS_PROPERTY( uchar, Material );
-    CLASS_PROPERTY( uchar, LightFlags );
-    CLASS_PROPERTY( uchar, LightDistance );
-    CLASS_PROPERTY( char, LightIntensity );
-    CLASS_PROPERTY( uint, LightColor );
     CLASS_PROPERTY( bool, DisableEgg );
     CLASS_PROPERTY( ushort, AnimWaitBase );
     CLASS_PROPERTY( ushort, AnimWaitRndMin );
@@ -187,27 +153,10 @@ public:
     CLASS_PROPERTY( uchar, AnimShow_1 );
     CLASS_PROPERTY( uchar, AnimHide_0 );
     CLASS_PROPERTY( uchar, AnimHide_1 );
-    CLASS_PROPERTY( short, OffsetX );
-    CLASS_PROPERTY( short, OffsetY );
     CLASS_PROPERTY( uchar, SpriteCut );
     CLASS_PROPERTY( char, DrawOrderOffsetHexY );
-    CLASS_PROPERTY( ushort, RadioChannel );
-    CLASS_PROPERTY( ushort, RadioFlags );
-    CLASS_PROPERTY( uchar, RadioBroadcastSend );
-    CLASS_PROPERTY( uchar, RadioBroadcastRecv );
-    CLASS_PROPERTY( uchar, IndicatorStart );
     CLASS_PROPERTY( uchar, IndicatorMax );
     CLASS_PROPERTY( uint, HolodiskNum );
-    CLASS_PROPERTY( int, StartValue_0 );
-    CLASS_PROPERTY( int, StartValue_1 );
-    CLASS_PROPERTY( int, StartValue_2 );
-    CLASS_PROPERTY( int, StartValue_3 );
-    CLASS_PROPERTY( int, StartValue_4 );
-    CLASS_PROPERTY( int, StartValue_5 );
-    CLASS_PROPERTY( int, StartValue_6 );
-    CLASS_PROPERTY( int, StartValue_7 );
-    CLASS_PROPERTY( int, StartValue_8 );
-    CLASS_PROPERTY( int, StartValue_9 );
     CLASS_PROPERTY_DATA( BlockLines );
     CLASS_PROPERTY( hash, ChildPid_0 );
     CLASS_PROPERTY( hash, ChildPid_1 );
@@ -231,6 +180,7 @@ public:
     CLASS_PROPERTY( hash, Weapon_DefaultAmmoPid );
     CLASS_PROPERTY( int, Weapon_MinStrength );
     CLASS_PROPERTY( int, Weapon_Perk );
+    CLASS_PROPERTY( bool, Weapon_IsTwoHanded );
     CLASS_PROPERTY( uint, Weapon_ActiveUses );
     CLASS_PROPERTY( int, Weapon_Skill_0 );
     CLASS_PROPERTY( int, Weapon_Skill_1 );
@@ -275,11 +225,15 @@ public:
 
     // Internal data
 public:
-    ProtoItem();
-    bool operator==( const hash& pid ) { return ( ProtoId == pid ); }
+    ProtoItem( hash pid );
+    bool operator==( hash pid ) { return ProtoId == pid; }
 
-    hash  ProtoId;
-    int64 InstanceCount;
+    hash       ProtoId;
+    Properties ItemProps;
+    int64      InstanceCount;
+
+    UIntVec    TextsLang;
+    FOMsgVec   Texts;
 
     #ifdef FONLINE_SERVER
     string ScriptName;
@@ -301,19 +255,17 @@ public:
     void AddRef()  {}
     void Release() {}
 
+    const char* GetName() { return HASH_STR( ProtoId ); }
+
     bool IsItem()      { return !IsScen() && !IsWall() && !IsGrid(); }
     bool IsScen()      { return GetType() == ITEM_TYPE_GENERIC; }
     bool IsWall()      { return GetType() == ITEM_TYPE_WALL; }
     bool IsGrid()      { return GetType() == ITEM_TYPE_GRID; }
     bool IsArmor()     { return GetType() == ITEM_TYPE_ARMOR; }
-    bool IsDrug()      { return GetType() == ITEM_TYPE_DRUG; }
     bool IsWeapon()    { return GetType() == ITEM_TYPE_WEAPON; }
     bool IsAmmo()      { return GetType() == ITEM_TYPE_AMMO; }
-    bool IsMisc()      { return GetType() == ITEM_TYPE_MISC; }
-    bool IsKey()       { return GetType() == ITEM_TYPE_KEY; }
     bool IsContainer() { return GetType() == ITEM_TYPE_CONTAINER; }
     bool IsDoor()      { return GetType() == ITEM_TYPE_DOOR; }
-    bool IsGeneric()   { return GetType() == ITEM_TYPE_GENERIC; }
     bool IsCar()       { return GetType() == ITEM_TYPE_CAR; }
 
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
@@ -345,11 +297,40 @@ public:
     CLASS_PROPERTY( hash, ScriptId );
     CLASS_PROPERTY( ushort, LockerComplexity );
     #endif
+    CLASS_PROPERTY( bool, IsHidden );
+    CLASS_PROPERTY( bool, IsFlat );
+    CLASS_PROPERTY( bool, IsNoBlock );
+    CLASS_PROPERTY( bool, IsShootThru );
+    CLASS_PROPERTY( bool, IsLightThru );
+    CLASS_PROPERTY( bool, IsMultiHex );
+    CLASS_PROPERTY( bool, IsWallTransEnd );
+    CLASS_PROPERTY( bool, IsBigGun );
+    CLASS_PROPERTY( bool, IsAlwaysView );
+    CLASS_PROPERTY( bool, IsHasTimer );
+    CLASS_PROPERTY( bool, IsBadItem );
+    CLASS_PROPERTY( bool, IsNoHighlight );
+    CLASS_PROPERTY( bool, IsShowAnim );
+    CLASS_PROPERTY( bool, IsShowAnimExt );
+    CLASS_PROPERTY( bool, IsLight );
+    CLASS_PROPERTY( bool, IsGeck );
+    CLASS_PROPERTY( bool, IsTrap );
+    CLASS_PROPERTY( bool, IsNoLightInfluence );
+    CLASS_PROPERTY( bool, IsNoLoot );
+    CLASS_PROPERTY( bool, IsNoSteal );
+    CLASS_PROPERTY( bool, IsGag );
+    CLASS_PROPERTY( bool, IsColorize );
+    CLASS_PROPERTY( bool, IsColorizeInv );
+    CLASS_PROPERTY( bool, IsCanUseOnSmth );
+    CLASS_PROPERTY( bool, IsCanLook );
+    CLASS_PROPERTY( bool, IsCanTalk );
+    CLASS_PROPERTY( bool, IsCanPickUp );
+    CLASS_PROPERTY( bool, IsCanUse );
+    CLASS_PROPERTY( bool, IsHolodisk );
+    CLASS_PROPERTY( bool, IsRadio );
     CLASS_PROPERTY( ushort, SortValue );
     CLASS_PROPERTY( uchar, Indicator );
     CLASS_PROPERTY( hash, PicMap );
     CLASS_PROPERTY( hash, PicInv );
-    CLASS_PROPERTY( uint, Flags );
     CLASS_PROPERTY( uchar, Mode );
     CLASS_PROPERTY( char, LightIntensity );
     CLASS_PROPERTY( uchar, LightDistance );
@@ -375,7 +356,7 @@ public:
     CLASS_PROPERTY( short, TrapValue );
     CLASS_PROPERTY( uint, LockerId );
     CLASS_PROPERTY( ushort, LockerCondition );
-    CLASS_PROPERTY( uint, HolodiskNumber );
+    CLASS_PROPERTY( uint, HolodiskNum );
     CLASS_PROPERTY( ushort, RadioChannel );
     CLASS_PROPERTY( ushort, RadioFlags );
     CLASS_PROPERTY( uchar, RadioBroadcastSend );
@@ -465,31 +446,6 @@ public:
     void SetWeaponMode( uchar mode );
     bool IsStackable() { return Proto->GetStackable(); }
 
-    bool IsPassed()           { return FLAG( GetFlags(), ITEM_NO_BLOCK ) && FLAG( GetFlags(), ITEM_SHOOT_THRU ); }
-    bool IsRaked()            { return FLAG( GetFlags(), ITEM_SHOOT_THRU ); }
-    bool IsFlat()             { return FLAG( GetFlags(), ITEM_FLAT ); }
-    bool IsHidden()           { return FLAG( GetFlags(), ITEM_HIDDEN ); }
-    bool IsCanPickUp()        { return FLAG( GetFlags(), ITEM_CAN_PICKUP ); }
-    bool IsCanTalk()          { return FLAG( GetFlags(), ITEM_CAN_TALK ); }
-    bool IsCanUse()           { return FLAG( GetFlags(), ITEM_CAN_USE ); }
-    bool IsCanUseOnSmth()     { return FLAG( GetFlags(), ITEM_CAN_USE_ON_SMTH ); }
-    bool IsHasTimer()         { return FLAG( GetFlags(), ITEM_HAS_TIMER ); }
-    bool IsBadItem()          { return FLAG( GetFlags(), ITEM_BAD_ITEM ); }
-    bool IsTwoHands()         { return FLAG( GetFlags(), ITEM_TWO_HANDS ); }
-    bool IsBigGun()           { return FLAG( GetFlags(), ITEM_BIG_GUN ); }
-    bool IsNoHighlight()      { return FLAG( GetFlags(), ITEM_NO_HIGHLIGHT ); }
-    bool IsShowAnim()         { return FLAG( GetFlags(), ITEM_SHOW_ANIM ); }
-    bool IsShowAnimExt()      { return FLAG( GetFlags(), ITEM_SHOW_ANIM_EXT ); }
-    bool IsLightThru()        { return FLAG( GetFlags(), ITEM_LIGHT_THRU ); }
-    bool IsAlwaysView()       { return FLAG( GetFlags(), ITEM_ALWAYS_VIEW ); }
-    bool IsGeck()             { return FLAG( GetFlags(), ITEM_GECK ); }
-    bool IsNoLightInfluence() { return FLAG( GetFlags(), ITEM_NO_LIGHT_INFLUENCE ); }
-    bool IsNoLoot()           { return FLAG( GetFlags(), ITEM_NO_LOOT ); }
-    bool IsNoSteal()          { return FLAG( GetFlags(), ITEM_NO_STEAL ); }
-    bool IsGag()              { return FLAG( GetFlags(), ITEM_GAG ); }
-    bool IsHolodisk()         { return FLAG( GetFlags(), ITEM_HOLODISK ); }
-    bool IsTrap()             { return FLAG( GetFlags(), ITEM_TRAP ); }
-
     uint GetVolume()    { return GetCount() * Proto->GetVolume(); }
     uint GetVolume1st() { return Proto->GetVolume(); }
     uint GetWeight()    { return GetCount() * Proto->GetWeight(); }
@@ -555,32 +511,20 @@ public:
     bool IsAmmo()         { return Proto->IsAmmo(); }
     int  AmmoGetCaliber() { return Proto->GetAmmo_Caliber(); }
 
-    // Key
-    bool IsKey()     { return Proto->IsKey(); }
-    uint KeyDoorId() { return GetLockerId(); }
-
-    // Drug
-    bool IsDrug() { return Proto->IsDrug(); }
-
-    // Misc
-    bool IsMisc() { return Proto->IsMisc(); }
-
     // Colorize
-    bool  IsColorize()  { return FLAG( GetFlags(), ITEM_COLORIZE ); }
+    bool  IsColorize()  { return GetIsColorize(); }
     uint  GetColor()    { return ( GetLightColor() ? GetLightColor() : Proto->GetLightColor() ) & 0xFFFFFF; }
     uchar GetAlpha()    { return ( GetLightColor() ? GetLightColor() : Proto->GetLightColor() ) >> 24; }
-    uint  GetInvColor() { return FLAG( GetFlags(), ITEM_COLORIZE_INV ) ? ( GetLightColor() ? GetLightColor() : Proto->GetLightColor() ) : 0; }
+    uint  GetInvColor() { return GetIsColorizeInv() ? ( GetLightColor() ? GetLightColor() : Proto->GetLightColor() ) : 0; }
 
     // Light
-    bool IsLight()           { return FLAG( GetFlags(), ITEM_LIGHT ); }
-    uint LightGetHash()      { return IsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0; }
+    uint LightGetHash()      { return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0; }
     int  LightGetIntensity() { return GetLightIntensity() ? GetLightIntensity() : Proto->GetLightIntensity(); }
     int  LightGetDistance()  { return GetLightDistance() ? GetLightDistance() : Proto->GetLightDistance(); }
     int  LightGetFlags()     { return GetLightFlags() ? GetLightFlags() : Proto->GetLightFlags(); }
     uint LightGetColor()     { return ( GetLightColor() ? GetLightColor() : Proto->GetLightColor() ) & 0xFFFFFF; }
 
     // Radio
-    bool IsRadio()           { return FLAG( GetFlags(), ITEM_RADIO ); }
     bool RadioIsSendActive() { return !FLAG( GetRadioFlags(), RADIO_DISABLE_SEND ); }
     bool RadioIsRecvActive() { return !FLAG( GetRadioFlags(), RADIO_DISABLE_RECV ); }
 

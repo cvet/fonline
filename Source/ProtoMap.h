@@ -18,26 +18,29 @@ class ProtoMap;
 class MapObject // Available in fonline.h
 {
 public:
-    uchar  MapObjType;
-    hash   ProtoId;
-    ushort MapX;
-    ushort MapY;
+    uchar         MapObjType;
+    hash          ProtoId;
+    #ifdef FONLINE_MAPPER
+    ScriptString* ProtoName;
+    #endif
+    ushort        MapX;
+    ushort        MapY;
 
-    uint   UID;
-    uint   ContainerUID;
-    uint   ParentUID;
-    uint   ParentChildIndex;
+    uint          UID;
+    uint          ContainerUID;
+    uint          ParentUID;
+    uint          ParentChildIndex;
 
-    uint   LightColor;
-    uchar  LightDay;
-    uchar  LightDirOff;
-    uchar  LightDistance;
-    char   LightIntensity;
+    uint          LightColor;
+    uchar         LightDay;
+    uchar         LightDirOff;
+    uchar         LightDistance;
+    char          LightIntensity;
 
-    char   ScriptName[ MAPOBJ_SCRIPT_NAME + 1 ];
-    char   FuncName[ MAPOBJ_SCRIPT_NAME + 1 ];
+    char          ScriptName[ MAPOBJ_SCRIPT_NAME + 1 ];
+    char          FuncName[ MAPOBJ_SCRIPT_NAME + 1 ];
 
-    int    UserData[ 10 ];
+    int           UserData[ 10 ];
 
     #ifdef FONLINE_MAPPER
     ScriptStringVec* Props;

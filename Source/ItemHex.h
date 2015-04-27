@@ -47,9 +47,9 @@ public:
     short  GetActualOffsetY()   { return GetOffsetY() ? GetOffsetY() : Proto->GetOffsetY(); }
     bool   IsAnimated()         { return isAnimated; }
     bool   IsCanLook()          { return !( Proto->IsGrid() && Proto->GetGrid_Type() == GRID_EXITGRID ); }
-    bool   IsUsable()           { return !IsWall() && ( IsCanUse() || IsCanUseOnSmth() || IsCanPickUp() || ( IsScenOrGrid() && FLAG( ScenFlags, SCEN_CAN_USE ) ) ); }
-    bool   IsTalkable()         { return !IsWall() && ( IsCanTalk() || ( IsScenOrGrid() && FLAG( ScenFlags, SCEN_CAN_TALK ) ) ); }
-    bool   IsDrawContour()      { return /*IsFocused && */ IsItem() && !IsNoHighlight() && !IsBadItem(); }
+    bool   IsUsable()           { return !IsWall() && ( GetIsCanUse() || GetIsCanUseOnSmth() || GetIsCanPickUp() || ( IsScenOrGrid() && FLAG( ScenFlags, SCEN_CAN_USE ) ) ); }
+    bool   IsTalkable()         { return !IsWall() && ( GetIsCanTalk() || ( IsScenOrGrid() && FLAG( ScenFlags, SCEN_CAN_TALK ) ) ); }
+    bool   IsDrawContour()      { return /*IsFocused && */ IsItem() && !GetIsNoHighlight() && !GetIsBadItem(); }
     bool   IsTransparent()      { return maxAlpha < 0xFF; }
     bool   IsFullyTransparent() { return maxAlpha == 0; }
     void   RefreshAnim();

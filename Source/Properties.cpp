@@ -728,10 +728,9 @@ void Properties::Load( void* file, uint version )
     }
 }
 
-hash Properties::LoadFromText( const char* text )
+bool Properties::LoadFromText( const char* text, hash* pid /* = NULL */ )
 {
     bool      is_error = false;
-    hash      pid = 0;
     IniParser ini;
     ini.LoadFilePtr( text, Str::Length( text ) );
     ini.CacheKeys();
@@ -742,9 +741,9 @@ hash Properties::LoadFromText( const char* text )
         char        value[ MAX_FOTEXT ];
         ini.GetStr( key, "", value );
 
-        if( !pid && Str::Compare( key, "ProtoId" ) )
+        if( pid && !*pid && Str::Compare( key, "ProtoId" ) )
         {
-            pid = (hash) ConvertParamValue( value );
+            *pid = (hash) ConvertParamValue( value );
             continue;
         }
 
@@ -815,7 +814,7 @@ hash Properties::LoadFromText( const char* text )
             is_error = true;
         }
     }
-    return !is_error ? pid : 0;
+    return !is_error;
 }
 
 int Properties::GetValueAsInt( int enum_value )

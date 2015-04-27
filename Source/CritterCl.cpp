@@ -424,7 +424,7 @@ Item* CritterCl::GetItemByPidSlot( hash item_pid, int slot )
 Item* CritterCl::GetAmmo( uint caliber )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        if( ( *it )->GetType() == ITEM_TYPE_AMMO && ( *it )->Proto->GetAmmo_Caliber() == (int) caliber )
+        if( ( *it )->IsAmmo() && ( *it )->Proto->GetAmmo_Caliber() == (int) caliber )
             return *it;
     return NULL;
 }
@@ -594,7 +594,7 @@ Item* CritterCl::GetSlotUse( uchar num_slot, uchar& use )
         item = ItemSlotExt;
         if( item->IsWeapon() )
             use = USE_PRIMARY;
-        else if( item->IsCanUse() || item->IsCanUseOnSmth() )
+        else if( item->GetIsCanUse() || item->GetIsCanUseOnSmth() )
             use = USE_USE;
         else
             use = 0xF;
@@ -625,9 +625,9 @@ hash CritterCl::GetUsePicName( uchar num_slot )
             return 0;
         return ( use == 0 ? item->Proto->GetWeapon_PicUse_0() : ( use == 1 ? item->Proto->GetWeapon_PicUse_1() : item->Proto->GetWeapon_PicUse_2() ) );
     }
-    if( item->IsCanUseOnSmth() )
+    if( item->GetIsCanUseOnSmth() )
         return use_on_pic;
-    if( item->IsCanUse() )
+    if( item->GetIsCanUse() )
         return use_pic;
     return 0;
 }
@@ -828,7 +828,7 @@ bool CritterCl::NextRateItem( bool prev )
     uchar old_rate = ItemSlotMain->GetMode();
     if( !ItemSlotMain->IsWeapon() )
     {
-        if( ItemSlotMain->IsCanUse() || ItemSlotMain->IsCanUseOnSmth() )
+        if( ItemSlotMain->GetIsCanUse() || ItemSlotMain->GetIsCanUseOnSmth() )
             ItemSlotMain->SetWeaponMode( USE_USE );
         else
             ItemSlotMain->SetWeaponMode( USE_NONE );
@@ -931,7 +931,7 @@ bool CritterCl::NextRateItem( bool prev )
                         break;
                     }
                     if( !ItemSlotMain->GetMode() )
-                        ItemSlotMain->SetWeaponMode( ItemSlotMain->IsCanUseOnSmth() ? USE_USE : USE_RELOAD );
+                        ItemSlotMain->SetWeaponMode( ItemSlotMain->GetIsCanUseOnSmth() ? USE_USE : USE_RELOAD );
                     else
                         ItemSlotMain->SetWeaponMode( ItemSlotMain->GetMode() - 1 );
                     if( IsItemAim( SLOT_HAND1 ) && !GetIsNoAim() && CritType::IsCanAim( GetCrType() ) )
@@ -970,7 +970,7 @@ bool CritterCl::NextRateItem( bool prev )
                         break;
                     continue;
                 case USE_USE:
-                    if( ItemSlotMain->IsCanUseOnSmth() )
+                    if( ItemSlotMain->GetIsCanUseOnSmth() )
                         break;
                     continue;
                 default:
@@ -996,9 +996,12 @@ void CritterCl::SetAim( uchar hit_location )
 ProtoItem* CritterCl::GetUnarmedItem( uchar tree, uchar priority )
 {
     ProtoItem* best_unarmed = NULL;
-    for( int i = ITEM_SLOT_BEGIN; i <= ITEM_SLOT_END; i++ )
+    for( int i = 0; i < 100; i++ )
     {
-        ProtoItem* unarmed = ItemMngr.GetProtoItem( i );
+        char       item_name[ MAX_FOTEXT ];
+        Str::Format( item_name, "internal_%d", i );
+        hash       pid = Str::GetHash( item_name );
+        ProtoItem* unarmed = ItemMngr.GetProtoItem( pid );
         if( !unarmed || !unarmed->IsWeapon() || !unarmed->GetWeapon_IsUnarmed() )
             continue;
         if( unarmed->GetWeapon_UnarmedTree() != tree || unarmed->GetWeapon_UnarmedPriority() != priority )
@@ -1429,7 +1432,7 @@ bool CritterCl::IsHaveLightSources()
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->IsLight() )
+        if( item->GetIsLight() )
             return true;
     }
     return false;

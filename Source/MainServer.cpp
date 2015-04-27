@@ -545,8 +545,8 @@ void UpdateInfo()
         DateTimeStamp st = Timer::GetGameTime( GameOpt.FullSecond );
         Label::Update( GuiLabelGameTime, Str::Format( str, "Time: %02u.%02u.%04u %02u:%02u:%02u x%u", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, GameOpt.TimeMultiplier ) );
         Label::Update( GuiLabelClients, Str::Format( str, "Connections: %u", Server.Statistics.CurOnline ) );
-        Label::Update( GuiLabelIngame, Str::Format( str, "Players in game: %u", Server.PlayersInGame() ) );
-        Label::Update( GuiLabelNPC, Str::Format( str, "NPC in game: %u", Server.NpcInGame() ) );
+        Label::Update( GuiLabelIngame, Str::Format( str, "Players in game: %u", CrMngr.PlayersInGame() ) );
+        Label::Update( GuiLabelNPC, Str::Format( str, "NPC in game: %u", CrMngr.NpcInGame() ) );
         Label::Update( GuiLabelLocCount, Str::Format( str, "Locations: %u (%u)", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount() ) );
         Label::Update( GuiLabelItemsCount, Str::Format( str, "Items: %u", ItemMngr.GetItemsCount() ) );
         Label::Update( GuiLabelVarsCount, Str::Format( str, "Vars: %u", VarMngr.GetVarsCount() ) );

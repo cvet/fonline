@@ -182,6 +182,7 @@ public:
 
     // Init/Finish system
     static bool InitScriptSystem();
+    static bool PostInitScriptSystem();
     static void FinishScriptSystem();
     static void ScriptSystemUpdate();
 
@@ -226,7 +227,10 @@ public:
     static bool  TransferAllItems();
     static void  OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemCount( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemChangeView( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemRecacheHex( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemIsGeck( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemIsRadio( void* obj, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemTrapValue( void* obj, Property* prop, void* cur_value, void* old_value );
 
     // Npc
@@ -278,6 +282,7 @@ public:
     static bool InitLangPacks( LangPackVec& lang_packs );
     static bool InitLangPacksDialogs( LangPackVec& lang_packs );
     static bool InitLangPacksLocations( LangPackVec& lang_packs );
+    static bool InitLangPacksItems( LangPackVec& lang_packs );
     static void FinishLangPacks();
     static bool InitLangCrTypes( LangPackVec& lang_packs );
 
@@ -465,8 +470,6 @@ public:
         uint  LagsCount;
     } static Statistics;
 
-    static uint   PlayersInGame() { return CrMngr.PlayersInGame(); }
-    static uint   NpcInGame()     { return CrMngr.NpcInGame(); }
     static string GetIngamePlayersStatistics();
 
     // Scores
@@ -515,8 +518,8 @@ public:
         static bool  Item_SetScript( Item* item, ScriptString* script );
         static hash  Item_GetScriptId( Item* item );
         static bool  Item_SetEvent( Item* item, int event_type, ScriptString* func_name );
-        static uchar Item_GetType( Item* item );
-        static hash  Item_GetProtoId( Item* item );
+        static hash  Item_get_ProtoId( Item* item );
+        static int   Item_get_Type( Item* item );
         static uint  Item_GetCount( Item* item );
         static void  Item_SetCount( Item* item, uint count );
         static uint  Item_GetCost( Item* item );
@@ -654,7 +657,7 @@ public:
         static uint Crit_GetBagRefreshTime( Critter* cr );
         static void Crit_SetInternalBag( Critter* cr, ScriptArray& pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots );
         static uint Crit_GetInternalBag( Critter* cr, ScriptArray* pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots );
-        static hash Crit_GetProtoId( Critter* cr );
+        static hash Crit_get_ProtoId( Critter* cr );
         static uint Crit_GetMultihex( Critter* cr );
         static void Crit_SetMultihex( Critter* cr, int value );
 
@@ -725,7 +728,7 @@ public:
         static GameVar* Global_GetUnicumVar( ushort tvar_id, uint master_id, uint slave_id );
 
         static uint       Map_GetId( Map* map );
-        static hash       Map_GetProtoId( Map* map );
+        static hash       Map_get_ProtoId( Map* map );
         static Location*  Map_GetLocation( Map* map );
         static bool       Map_SetScript( Map* map, ScriptString* script );
         static hash       Map_GetScriptId( Map* map );
@@ -812,7 +815,7 @@ public:
         static void Map_EventTurnBasedEnd( Map* map );
         static void Map_EventTurnBasedProcess( Map* map, Critter* cr, bool begin_turn );
 
-        static hash Location_GetProtoId( Location* loc );
+        static hash Location_get_ProtoId( Location* loc );
         static bool Location_SetEvent( Location* loc, int event_type, ScriptString* func_name );
         static uint Location_GetMapCount( Location* loc );
         static Map* Location_GetMap( Location* loc, hash map_pid );

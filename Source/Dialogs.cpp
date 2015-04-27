@@ -505,23 +505,25 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
 
         // Name
         input >> name;
-        #ifdef FONLINE_SERVER
-        id = ConstantsManager::GetItemPid( name );
-        if( id == 0 )
+        if( Str::Length( name ) > 4 && Str::CompareCount( name, "PID_", 4 ) )
         {
-            id = Str::AtoI( name );
-            const char* name_ = ConstantsManager::GetItemName( id );
-            if( !name_ )
+            const char* new_name = ConvertProtoIdByStr( name );
+            if( new_name )
+            {
+                id = Str::GetHash( new_name );
+                Str::Copy( name, new_name );
+            }
+            else
             {
                 WriteLog( "Invalid DR item<%s>.\n", name );
                 errors++;
+                id = 0;
             }
-            if( name_ != 0 )
-                Str::Copy( name, name_ );
         }
-        #else
-        id = 1;
-        #endif
+        else
+        {
+            id = Str::GetHash( name );
+        }
 
         // Operator
         input >> oper;

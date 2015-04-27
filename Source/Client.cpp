@@ -4453,7 +4453,7 @@ void FOClient::Net_OnChosenAddItem()
         RebuildLookBorders = true;
     if( item->LightGetHash() != prev_light_hash && ( slot != SLOT_INV || prev_slot != SLOT_INV ) )
         HexMngr.RebuildLight();
-    if( item->IsHidden() )
+    if( item->GetIsHidden() )
         Chosen->EraseItem( item, true );
     CollectContItems();
 
@@ -4488,7 +4488,7 @@ void FOClient::Net_OnChosenEraseItem()
 
     item->AddRef();
 
-    if( item->IsLight() && item->AccCritter.Slot != SLOT_INV )
+    if( item->GetIsLight() && item->AccCritter.Slot != SLOT_INV )
         HexMngr.RebuildLight();
     Chosen->EraseItem( item, true );
     CollectContItems();
@@ -4560,7 +4560,7 @@ void FOClient::Net_OnAddItemOnMap()
     }
 
     // Refresh borders
-    if( item && !item->IsRaked() )
+    if( item && !item->GetIsShootThru() )
         RebuildLookBorders = true;
 }
 
@@ -4583,7 +4583,7 @@ void FOClient::Net_OnEraseItemFromMap()
     HexMngr.FinishItem( item_id, is_deleted );
 
     // Refresh borders
-    if( item && !item->IsRaked() )
+    if( item && !item->GetIsShootThru() )
         RebuildLookBorders = true;
 }
 
@@ -7157,7 +7157,7 @@ label_EndMove:
                 SndMngr.PlaySoundType( 'W', 'O', use == 0 ? item->Proto->GetWeapon_SoundId_0() : ( use == 1 ? item->Proto->GetWeapon_SoundId_1() : item->Proto->GetWeapon_SoundId_2() ), '1' );
                 break;
             }
-            if( item->IsTwoHands() && Chosen->IsDmgArm() )
+            if( item->Proto->GetWeapon_IsTwoHanded() && Chosen->IsDmgArm() )
             {
                 AddMess( FOMB_GAME, FmtCombatText( STR_COMBAT_NEED_DMG_ARM ) );
                 break;
@@ -7447,7 +7447,7 @@ label_EndMove:
         // Light
         if( to_slot == SLOT_HAND1 || from_slot == SLOT_HAND1 )
             RebuildLookBorders = true;
-        if( item->IsLight() && ( to_slot == SLOT_INV || ( from_slot == SLOT_INV && to_slot != SLOT_GROUND ) ) )
+        if( item->GetIsLight() && ( to_slot == SLOT_INV || ( from_slot == SLOT_INV && to_slot != SLOT_GROUND ) ) )
             HexMngr.RebuildLight();
 
         // Notice server
@@ -7586,13 +7586,13 @@ label_EndMove:
                 break;
             item_action = item;
 
-            if( skill == CritterCl::PropertySkillScience->GetEnumValue() && item->IsHolodisk() )
+            if( skill == CritterCl::PropertySkillScience->GetEnumValue() && item->GetIsHolodisk() )
             {
                 ShowScreen( SCREEN__INPUT_BOX );
                 IboxMode = IBOX_MODE_HOLO;
                 IboxHolodiskId = item->GetId();
-                IboxTitle = GetHoloText( STR_HOLO_INFO_NAME( item->GetHolodiskNumber() ) );
-                IboxText = GetHoloText( STR_HOLO_INFO_DESC( item->GetHolodiskNumber() ) );
+                IboxTitle = GetHoloText( STR_HOLO_INFO_NAME( item->GetHolodiskNum() ) );
+                IboxText = GetHoloText( STR_HOLO_INFO_DESC( item->GetHolodiskNum() ) );
                 if( IboxTitle.length() > USER_HOLO_MAX_TITLE_LEN )
                     IboxTitle.resize( USER_HOLO_MAX_TITLE_LEN );
                 if( IboxText.length() > USER_HOLO_MAX_LEN )
@@ -7841,10 +7841,10 @@ label_EndMove:
         if( holodisk_id != IboxHolodiskId )
             break;
         Item* holo = Chosen->GetItem( IboxHolodiskId );
-        if( !holo->IsHolodisk() )
+        if( !holo->GetIsHolodisk() )
             break;
-        const char* old_title = GetHoloText( STR_HOLO_INFO_NAME( holo->GetHolodiskNumber() ) );
-        const char* old_text = GetHoloText( STR_HOLO_INFO_DESC( holo->GetHolodiskNumber() ) );
+        const char* old_title = GetHoloText( STR_HOLO_INFO_NAME( holo->GetHolodiskNum() ) );
+        const char* old_text = GetHoloText( STR_HOLO_INFO_DESC( holo->GetHolodiskNum() ) );
         if( holo && IboxTitle.length() && IboxText.length() && ( IboxTitle != old_title || IboxText != old_text ) )
         {
             Net_SendSetUserHoloStr( holo, IboxTitle.c_str(), IboxText.c_str() );
@@ -8864,26 +8864,22 @@ void FOClient::OnSendItemValue( void* obj, Property* prop, void* cur_value, void
 
 void FOClient::OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value )
 {
+    // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
+
     Item* item = (Item*) obj;
-    uint  cur = *(uint*) cur_value;
-    uint  old = *(uint*) old_value;
-
-    if( FLAG( cur, ITEM_LIGHT ) != FLAG( old, ITEM_LIGHT ) )
-        Self->HexMngr.RebuildLight();
-
     if( item->Accessory == ITEM_ACCESSORY_HEX )
     {
         ItemHex* hex_item = (ItemHex*) item;
         bool     rebuild_cache = false;
-        if( FLAG( cur, ITEM_COLORIZE ) != FLAG( old, ITEM_COLORIZE ) )
+        if( prop == Item::PropertyIsColorize )
             hex_item->RefreshAlpha();
-        if( FLAG( cur, ITEM_BAD_ITEM ) != FLAG( old, ITEM_BAD_ITEM ) )
+        else if( prop == Item::PropertyIsBadItem )
             hex_item->SetSprite( NULL );
-        if( FLAG( cur, ITEM_SHOOT_THRU ) != FLAG( old, ITEM_SHOOT_THRU ) )
+        else if( prop == Item::PropertyIsShootThru )
             Self->RebuildLookBorders = true, rebuild_cache = true;
-        if( FLAG( cur, ITEM_LIGHT_THRU ) != FLAG( old, ITEM_LIGHT_THRU ) )
+        else if( prop == Item::PropertyIsLightThru )
             Self->HexMngr.RebuildLight(), rebuild_cache = true;
-        if( FLAG( cur, ITEM_NO_BLOCK ) != FLAG( old, ITEM_NO_BLOCK ) )
+        else if( prop == Item::PropertyIsNoBlock )
             rebuild_cache = true;
         if( rebuild_cache )
             Self->HexMngr.GetField( hex_item->GetHexX(), hex_item->GetHexY() ).ProcessCache();
@@ -8892,7 +8888,7 @@ void FOClient::OnSetItemFlags( void* obj, Property* prop, void* cur_value, void*
 
 void FOClient::OnSetItemSomeLight( void* obj, Property* prop, void* cur_value, void* old_value )
 {
-    // LightIntensity, LightDistance, LightFlags, LightColor
+    // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
     Self->HexMngr.RebuildLight();
 }
@@ -9119,7 +9115,12 @@ bool FOClient::ReloadScripts()
     CritterCl::PropertiesRegistrator->SetNativeSendCallback( OnSendChosenValue );
     Item::SetPropertyRegistrator( registrators[ 1 ] );
     Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "Flags", OnSetItemFlags );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemFlags );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsLightThru", OnSetItemFlags );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsNoBlock", OnSetItemFlags );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsLight", OnSetItemSomeLight );
     Item::PropertiesRegistrator->SetNativeSetCallback( "LightIntensity", OnSetItemSomeLight );
     Item::PropertiesRegistrator->SetNativeSetCallback( "LightDistance", OnSetItemSomeLight );
     Item::PropertiesRegistrator->SetNativeSetCallback( "LightFlags", OnSetItemSomeLight );
@@ -9485,25 +9486,18 @@ bool FOClient::SScriptFunc::Item_IsDeteriorable( Item* item )
     return item->IsDeteriorable();
 }
 
-uchar FOClient::SScriptFunc::Item_GetType( Item* item )
-{
-    if( item->IsNotValid )
-        SCRIPT_ERROR_R0( "This nullptr." );
-    return item->GetType();
-}
-
-hash FOClient::SScriptFunc::Item_GetProtoId( Item* item )
+hash FOClient::SScriptFunc::Item_get_ProtoId( Item* item )
 {
     if( item->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
     return item->GetProtoId();
 }
 
-uint FOClient::SScriptFunc::Item_GetCount( Item* item )
+int FOClient::SScriptFunc::Item_get_Type( Item* item )
 {
     if( item->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
-    return item->GetCount();
+    return item->GetProtoId();
 }
 
 bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& hy )
@@ -9755,13 +9749,13 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         {
             Self->SetCurMode( CUR_USE_WEAPON );
         }
-        else if( Self->Chosen->GetUse() == USE_USE && Self->Chosen->ItemSlotMain->IsCanUseOnSmth() )
+        else if( Self->Chosen->GetUse() == USE_USE && Self->Chosen->ItemSlotMain->GetIsCanUseOnSmth() )
         {
             Self->SetCurMode( CUR_USE_ITEM );
         }
-        else if( Self->Chosen->GetUse() == USE_USE && Self->Chosen->ItemSlotMain->IsCanUse() )
+        else if( Self->Chosen->GetUse() == USE_USE && Self->Chosen->ItemSlotMain->GetIsCanUse() )
         {
-            if( !Self->Chosen->ItemSlotMain->IsHasTimer() )
+            if( !Self->Chosen->ItemSlotMain->GetIsHasTimer() )
                 Self->SetAction( CHOSEN_USE_ITEM, Self->Chosen->ItemSlotMain->GetId(), 0, TARGET_SELF, 0, USE_USE );
             else
                 Self->TimerStart( Self->Chosen->ItemSlotMain->GetId(), ResMngr.GetInvAnim( Self->Chosen->ItemSlotMain->GetActualPicInv() ), Self->Chosen->ItemSlotMain->GetInvColor() );
@@ -11100,7 +11094,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
         return;
 
     ProtoItem* proto_item = ItemMngr.GetProtoItem( proto_id );
-    bool       is_flat = ( proto_item ? FLAG( proto_item->GetFlags(), ITEM_FLAT ) : false );
+    bool       is_flat = ( proto_item ? Item::PropertyIsFlat->GetValue< bool >( &proto_item->ItemProps ) : false );
     bool       is_item = ( proto_item ? proto_item->IsItem() : false );
     bool       no_light = ( is_flat && !is_item );
 
@@ -11136,14 +11130,14 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
             spr.SetEgg( egg_type );
         }
 
-        if( FLAG( proto_item->GetFlags(), ITEM_COLORIZE ) )
+        if( Item::PropertyIsColorize->GetValue< bool >( &proto_item->ItemProps ) )
         {
             uint data_size;
             spr.SetAlpha( ProtoItem::PropertyLightColor->GetRawData( proto_item, data_size ) + 3 );
             spr.SetColor( proto_item->GetLightColor() & 0xFFFFFF );
         }
 
-        if( FLAG( proto_item->GetFlags(), ITEM_BAD_ITEM ) )
+        if( Item::PropertyIsBadItem->GetValue< bool >( &proto_item->ItemProps ) )
             spr.SetContour( CONTOUR_RED );
     }
 }

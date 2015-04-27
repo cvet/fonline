@@ -421,7 +421,7 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
     {
         if( !Msg[ i ].LoadFromFile( Str::FormatBuf( "%s" DIR_SLASH_S "%s", NameStr, TextMsgFileName[ i ] ), PT_SERVER_TEXTS ) )
         {
-            if( i != TEXTMSG_INTERNAL && i != TEXTMSG_DLG && i != TEXTMSG_LOCATIONS )
+            if( i != TEXTMSG_INTERNAL && i != TEXTMSG_DLG && i != TEXTMSG_LOCATIONS && i != TEXTMSG_ITEM )
             {
                 errors++;
                 WriteLogF( _FUNC_, " - Unable to load MSG<%s> from file.\n", TextMsgFileName[ i ] );

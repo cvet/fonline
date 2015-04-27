@@ -74,6 +74,8 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define DLG_STR_ID( dlg_id, idx )             ( ( ( dlg_id ) & DLGID_MASK ) | ( ( idx ) & ~DLGID_MASK ) )
 #define LOCPID_MASK                  ( 0xFFFFF000 )
 #define LOC_STR_ID( loc_pid, idx )            ( ( ( loc_pid ) & LOCPID_MASK ) | ( ( idx ) & ~LOCPID_MASK ) )
+#define ITEMPID_MASK                 ( 0xFFFFFFF0 )
+#define ITEM_STR_ID( item_pid, idx )          ( ( ( item_pid ) & ITEMPID_MASK ) | ( ( idx ) & ~ITEMPID_MASK ) )
 
 // Critters
 #define GENDER_MALE                  ( 0 )
@@ -83,15 +85,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define AGGRESSOR_TICK               ( 60000 )
 #define MAX_ENEMY_STACK              ( 30 )
 #define MAX_STORED_IP                ( 20 )
-
-// Items
-#define MAX_ADDED_NOGROUP_ITEMS      ( 30 )
-#define ITEM_SLOT_BEGIN              ( 1000 )
-#define ITEM_SLOT_END                ( 1099 )
-#define ITEM_DEF_SLOT                ( 1000 )
-#define ITEM_DEF_ARMOR               ( 1100 )
-#define UNARMED_PUNCH                ( 1000 )
-#define UNARMED_KICK                 ( 1020 )
 
 // SceneryCl flags
 #define SCEN_CAN_USE                 ( 0x01 )

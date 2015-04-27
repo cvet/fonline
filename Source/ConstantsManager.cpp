@@ -6,7 +6,6 @@
 
 const char* CollectionFiles[] =
 {
-    "ItemNames.lst",
     "DefineNames.lst",
     "HashNames.lst",
 };
@@ -125,17 +124,6 @@ const char* ConstantsManager::GetName( int collection, int value )
     if( it == ConstCollections[ collection ].ValueName.end() )
         return NULL;
     return ( *it ).second.c_str();
-}
-
-uint ConstantsManager::GetItemPid( const char* str )
-{
-    int value = GetValue( CONSTANTS_ITEM, str );
-    return (uint) ( value < 0 ? 0 : value );
-}
-
-const char* ConstantsManager::GetItemName( ushort pid )
-{
-    return GetName( CONSTANTS_ITEM, pid );
 }
 
 int ConstantsManager::GetDefineValue( const char* str )

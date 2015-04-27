@@ -539,9 +539,8 @@ public:
 
         static bool  Item_IsStackable( Item* item );
         static bool  Item_IsDeteriorable( Item* item );
-        static uchar Item_GetType( Item* item );
-        static hash  Item_GetProtoId( Item* item );
-        static uint  Item_GetCount( Item* item );
+        static hash  Item_get_ProtoId( Item* item );
+        static int   Item_get_Type( Item* item );
         static bool  Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
         static void  Item_Animate( Item* item, uchar from_frame, uchar to_frame );
         static Item* Item_GetChild( Item* item, uint childIndex );

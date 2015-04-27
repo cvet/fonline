@@ -1717,3 +1717,45 @@ void FormatPreprocessorOutput( string& str )
         if( str[ i ] == '{' )
             i = InsertTabs( str, i + 1, 1 );
 }
+
+// Deprecated stuff
+// item pids conversion
+static bool       PidMapsGenerated = false;
+static StrMap     PidNameToName;
+static UIntStrMap PidIdToName;
+
+#include "ItemManager.h"
+static void GeneratePidMaps()
+{
+    if( PidMapsGenerated )
+        return;
+    PidMapsGenerated = true;
+
+    FileManager pid_map;
+    if( pid_map.LoadFile( "ItemPidsConversion.txt", PT_SERVER_CONFIGS ) )
+    {
+        istrstream str( (char*) pid_map.GetBuf() );
+        string     new_name, old_name;
+        uint       old_pid;
+        while( !str.eof() )
+        {
+            str >> new_name >> old_name >> old_pid;
+            PidNameToName.insert( PAIR( old_name, new_name ) );
+            PidIdToName.insert( PAIR( old_pid, new_name ) );
+        }
+    }
+}
+
+const char* ConvertProtoIdByInt( uint pid )
+{
+    GeneratePidMaps();
+    auto it = PidIdToName.find( pid );
+    return it != PidIdToName.end() ? it->second.c_str() : NULL;
+}
+
+const char* ConvertProtoIdByStr( const char* pid )
+{
+    GeneratePidMaps();
+    auto it = PidNameToName.find( pid );
+    return it != PidNameToName.end() ? it->second.c_str() : NULL;
+}

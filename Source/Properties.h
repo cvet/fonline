@@ -17,7 +17,7 @@
 #define CLASS_PROPERTY( prop_type, prop )                                                      \
     static Property * Property ## prop;                                                        \
     inline prop_type Get ## prop() { return Property ## prop->GetValue< prop_type >( this ); } \
-    inline void      Set ## prop( prop_type val ) { Property ## prop->SetValue< prop_type >( this, val ); }
+    inline void      Set ## prop( prop_type value ) { Property ## prop->SetValue< prop_type >( this, value ); }
 #define CLASS_PROPERTY_DATA( prop )                                                                                                   \
     static Property * Property ## prop;                                                                                               \
     inline uchar* Get ## prop ## Data( uint & data_size ) { return Property ## prop->GetRawData( this, data_size ); }                 \
@@ -105,7 +105,7 @@ public:
     string SetGetCallback( const char* script_func );
     string AddSetCallback( const char* script_func );
 
-private:
+public:
     enum DataType
     {
         POD,
@@ -175,7 +175,7 @@ public:
     void        RestoreData( UCharVecVec& all_data );
     void        Save( void ( * save_func )( void*, size_t ) );
     void        Load( void* file, uint version );
-    hash        LoadFromText( const char* text );
+    bool        LoadFromText( const char* text, hash* pid = NULL );
     int         GetValueAsInt( int enum_value );
     void        SetValueAsInt( int enum_value, int value );
     bool        SetValueAsIntByName( const char* enum_name, int value );
