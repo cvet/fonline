@@ -105,7 +105,7 @@ public:
     string SetGetCallback( const char* script_func );
     string AddSetCallback( const char* script_func );
 
-public:
+private:
     enum DataType
     {
         POD,
@@ -127,6 +127,9 @@ public:
     string         typeName;
     DataType       dataType;
     asIObjectType* asObjType;
+    bool           isIntDataType;
+    bool           isSignedIntDataType;
+    bool           isFloatDataType;
     bool           isBoolDataType;
     bool           isEnumDataType;
     AccessType     accessType;

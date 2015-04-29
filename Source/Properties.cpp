@@ -164,30 +164,91 @@ void Property::GenericSet( void* obj, void* new_value )
         cur_value = &properties->podData[ podDataOffset ];
 
         // Clamp
-        if( checkMinValue || checkMaxValue )
+        if( checkMaxValue )
         {
-            uint64 check_value = 0;
-            if( baseSize == 1 )
-                check_value = *(uchar*) new_value;
-            else if( baseSize == 2 )
-                check_value = *(ushort*) new_value;
-            else if( baseSize == 4 )
-                check_value = *(uint*) new_value;
-            else if( baseSize == 8 )
-                check_value = *(uint64*) new_value;
-
-            if( checkMinValue && check_value < (uint64) minValue )
+            #define CHECK_MAX_VALUE( type )          \
+                do {                                 \
+                    type max_v = (type) maxValue;    \
+                    if( *(type*) new_value > max_v ) \
+                    {                                \
+                        GenericSet( obj, &max_v );   \
+                        return;                      \
+                    }                                \
+                }                                    \
+                while( 0 )
+            if( isIntDataType && isSignedIntDataType )
             {
-                check_value = minValue;
-                GenericSet( obj, &check_value );
-                return;
+                if( baseSize == 1 )
+                    CHECK_MAX_VALUE( char );
+                else if( baseSize == 2 )
+                    CHECK_MAX_VALUE( short );
+                else if( baseSize == 4 )
+                    CHECK_MAX_VALUE( int );
+                else if( baseSize == 8 )
+                    CHECK_MAX_VALUE( int64 );
             }
-            else if( checkMaxValue && check_value > (uint64) maxValue )
+            else if( isIntDataType && !isSignedIntDataType )
             {
-                check_value = maxValue;
-                GenericSet( obj, &check_value );
-                return;
+                if( baseSize == 1 )
+                    CHECK_MAX_VALUE( uchar );
+                else if( baseSize == 2 )
+                    CHECK_MAX_VALUE( ushort );
+                else if( baseSize == 4 )
+                    CHECK_MAX_VALUE( uint );
+                else if( baseSize == 8 )
+                    CHECK_MAX_VALUE( uint64 );
             }
+            else if( isFloatDataType )
+            {
+                if( baseSize == 4 )
+                    CHECK_MAX_VALUE( float );
+                else if( baseSize == 8 )
+                    CHECK_MAX_VALUE( double );
+            }
+            #undef CHECK_MAX_VALUE
+        }
+        if( checkMinValue )
+        {
+            #define CHECK_MIN_VALUE( type )          \
+                do {                                 \
+                    type min_v = (type) minValue;    \
+                    if( *(type*) new_value < min_v ) \
+                    {                                \
+                        GenericSet( obj, &min_v );   \
+                        return;                      \
+                    }                                \
+                }                                    \
+                while( 0 )
+            if( isIntDataType && isSignedIntDataType )
+            {
+                if( baseSize == 1 )
+                    CHECK_MIN_VALUE( char );
+                else if( baseSize == 2 )
+                    CHECK_MIN_VALUE( short );
+                else if( baseSize == 4 )
+                    CHECK_MIN_VALUE( int );
+                else if( baseSize == 8 )
+                    CHECK_MIN_VALUE( int64 );
+            }
+            else if( isIntDataType && !isSignedIntDataType )
+            {
+                if( baseSize == 1 )
+                    CHECK_MIN_VALUE( uchar );
+                else if( baseSize == 2 )
+                    CHECK_MIN_VALUE( ushort );
+                else if( baseSize == 4 )
+                    CHECK_MIN_VALUE( uint );
+                else if( baseSize == 8 )
+                    CHECK_MIN_VALUE( uint64 );
+            }
+            else if( isFloatDataType )
+            {
+                if( baseSize == 4 )
+                    CHECK_MIN_VALUE( float );
+                else if( baseSize == 8 )
+                    CHECK_MIN_VALUE( double );
+            }
+            #undef CHECK_MIN_VALUE
         }
 
         // Ignore void calls
@@ -957,6 +1018,9 @@ Property* PropertyRegistrator::Register(
     Property::DataType data_type;
     uint               data_size = 0;
     asIObjectType*     as_obj_type = engine->GetObjectTypeById( type_id );
+    bool               is_int_data_type = false;
+    bool               is_signed_int_data_type = false;
+    bool               is_float_data_type = false;
     bool               is_bool_data_type = false;
     bool               is_enum_data_type = false;
     if( type_id & asTYPEID_OBJHANDLE )
@@ -983,6 +1047,9 @@ Property* PropertyRegistrator::Register(
             return NULL;
         }
 
+        is_int_data_type = ( type_id >= asTYPEID_INT8 && type_id <= asTYPEID_UINT64 );
+        is_signed_int_data_type = ( type_id >= asTYPEID_INT8 && asTYPEID_UINT8 <= asTYPEID_INT64 );
+        is_float_data_type = ( type_id == asTYPEID_FLOAT || type_id == asTYPEID_DOUBLE );
         is_bool_data_type = ( type_id == asTYPEID_BOOL );
         is_enum_data_type = ( type_id > asTYPEID_DOUBLE );
     }
@@ -1256,14 +1323,17 @@ Property* PropertyRegistrator::Register(
     prop->dataType = data_type;
     prop->accessType = access;
     prop->asObjType = as_obj_type;
+    prop->isIntDataType = is_int_data_type;
+    prop->isSignedIntDataType = is_signed_int_data_type;
+    prop->isFloatDataType = is_float_data_type;
     prop->isEnumDataType = is_enum_data_type;
     prop->isBoolDataType = is_bool_data_type;
     prop->isReadable = !disable_get;
     prop->isWritable = !disable_set;
     prop->generateRandomValue = ( generate_random_value ? *generate_random_value : false );
     prop->setDefaultValue = ( default_value != NULL );
-    prop->checkMinValue = ( min_value != NULL );
-    prop->checkMaxValue = ( max_value != NULL );
+    prop->checkMinValue = ( min_value != NULL && ( is_int_data_type || is_float_data_type ) );
+    prop->checkMaxValue = ( max_value != NULL && ( is_int_data_type || is_float_data_type ) );
     prop->defaultValue = ( default_value ? *default_value : 0 );
     prop->minValue = ( min_value ? *min_value : 0 );
     prop->maxValue = ( max_value ? *max_value : 0 );
