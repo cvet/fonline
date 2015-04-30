@@ -456,6 +456,11 @@ void Property::SetSendIgnore( void* obj )
     sendIgnoreObj = obj;
 }
 
+bool Property::IsQuestValue()
+{
+    return questValue != 0;
+}
+
 string Property::SetGetCallback( const char* script_func )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
@@ -634,26 +639,26 @@ uint Properties::StoreData( bool with_protected, PUCharVec** all_data, UIntVec**
     whole_size += storeDataSizes.back();
 
     // Calculate complex data to send
-    UShortVec complex_indicies = ( with_protected ? registrator->publicProtectedComplexDataProps : registrator->publicComplexDataProps );
-    for( size_t i = 0; i < complex_indicies.size();)
+    storeDataComplexIndicies = ( with_protected ? registrator->publicProtectedComplexDataProps : registrator->publicComplexDataProps );
+    for( size_t i = 0; i < storeDataComplexIndicies.size();)
     {
-        Property* prop = registrator->registeredProperties[ complex_indicies[ i ] ];
+        Property* prop = registrator->registeredProperties[ storeDataComplexIndicies[ i ] ];
         RUNTIME_ASSERT( prop->complexDataIndex != uint( -1 ) );
         if( !complexDataSizes[ prop->complexDataIndex ] )
-            complex_indicies.erase( complex_indicies.begin() + i );
+            storeDataComplexIndicies.erase( storeDataComplexIndicies.begin() + i );
         else
             i++;
     }
 
     // Store complex properties data
-    if( complex_indicies.empty() )
+    if( !storeDataComplexIndicies.empty() )
     {
-        storeData.push_back( !complex_indicies.empty() ? (uchar*) &complex_indicies[ 0 ] : NULL );
-        storeDataSizes.push_back( (uint) complex_indicies.size() * sizeof( short ) );
+        storeData.push_back( (uchar*) &storeDataComplexIndicies[ 0 ] );
+        storeDataSizes.push_back( (uint) storeDataComplexIndicies.size() * sizeof( short ) );
         whole_size += storeDataSizes.back();
-        for( size_t i = 0; i < complex_indicies.size(); i++ )
+        for( size_t i = 0; i < storeDataComplexIndicies.size(); i++ )
         {
-            Property* prop = registrator->registeredProperties[ complex_indicies[ i ] ];
+            Property* prop = registrator->registeredProperties[ storeDataComplexIndicies[ i ] ];
             storeData.push_back( complexData[ prop->complexDataIndex ] );
             storeDataSizes.push_back( complexDataSizes[ prop->complexDataIndex ] );
             whole_size += storeDataSizes.back();
@@ -670,7 +675,9 @@ void Properties::RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes )
     // Restore complex data
     if( all_data.size() > 1 )
     {
-        UShortVec complex_indicies( all_data_sizes[ 1 ] / sizeof( ushort ) );
+        uint      comlplex_data_count = all_data_sizes[ 1 ] / sizeof( ushort );
+        RUNTIME_ASSERT( comlplex_data_count > 0 );
+        UShortVec complex_indicies( comlplex_data_count );
         memcpy( &complex_indicies[ 0 ], all_data[ 1 ], all_data_sizes[ 1 ] );
 
         for( size_t i = 0; i < complex_indicies.size(); i++ )
@@ -945,6 +952,12 @@ bool Properties::SetValueAsIntByName( const char* enum_name, int value )
     return true;
 }
 
+uint Properties::GetQuestStr( uint property_index )
+{
+    Property* prop = registrator->Get( property_index );
+    return prop->questValue * 1000 + GetValueAsInt( prop->GetEnumValue() );
+}
+
 PropertyRegistrator::PropertyRegistrator( bool is_server, const char* script_class_name )
 {
     registrationFinished = false;
@@ -983,6 +996,7 @@ Property* PropertyRegistrator::Register(
     const char* type_name,
     const char* name,
     Property::AccessType access,
+    uint quest_value /* = 0 */,
     const char* group /* = NULL */,
     bool* generate_random_value /* = NULL */,
     int64* default_value /* = NULL */,
@@ -1337,6 +1351,7 @@ Property* PropertyRegistrator::Register(
     prop->defaultValue = ( default_value ? *default_value : 0 );
     prop->minValue = ( min_value ? *min_value : 0 );
     prop->maxValue = ( max_value ? *max_value : 0 );
+    prop->questValue = quest_value;
 
     registeredProperties.push_back( prop );
 
@@ -1392,6 +1407,11 @@ void PropertyRegistrator::FinishRegistration()
         else if( prop->accessType & Property::PrivateMask )
             prop->podDataOffset += (uint) publicPodDataSpace.size() + (uint) protectedPodDataSpace.size();
     }
+}
+
+uint PropertyRegistrator::GetCount()
+{
+    return (uint) registeredProperties.size();
 }
 
 Property* PropertyRegistrator::Get( uint property_index )

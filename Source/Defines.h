@@ -495,6 +495,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define CACHE_MAGIC_CHAR             "*"
 #define CACHE_HASH_APPENDIX          "_hash"
 #define CACHE_MSG_PREFIX             CACHE_MAGIC_CHAR "msg"
-#define CACHE_ITEM_PROTOS            CACHE_MAGIC_CHAR "item_protos"
+#define CACHE_ITEM_PROTOS            CACHE_MAGIC_CHAR "_item_protos"
 
 #endif // ___DEFINES___

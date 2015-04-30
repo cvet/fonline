@@ -396,6 +396,7 @@ public:
         int64  max_value = 0;
         string get_callback;
         StrVec set_callbacks;
+        uint   quest_value = 0;
         StrVec opt_entries;
         Str::ParseLine( options_buf, ',', opt_entries, Str::ParseLineDummy );
         for( size_t i = 0, j = opt_entries.size(); i < j; i++ )
@@ -443,6 +444,10 @@ public:
             {
                 set_callbacks.push_back( opt_svalue );
             }
+            else if( Str::CompareCase( opt_name, "Quest" ) )
+            {
+                quest_value = (uint) opt_ivalue;
+            }
         }
 
         // Choose registrator
@@ -461,7 +466,7 @@ public:
         // Register
         if( !is_defaults )
         {
-            if( !registrator->Register( property_type_name.c_str(), property_name.c_str(), access,
+            if( !registrator->Register( property_type_name.c_str(), property_name.c_str(), access, quest_value,
                                         group.length() > 0 ? group.c_str() : NULL, generate_random_value ? &generate_random_value : NULL,
                                         set_default_value ? &default_value : NULL, check_min_value ? &min_value : NULL, check_max_value ? &max_value : NULL ) )
             {
@@ -492,6 +497,7 @@ public:
 # include "ItemManager.h"
 # include "CritterManager.h"
 #endif
+
 class ContentPragma
 {
 private:

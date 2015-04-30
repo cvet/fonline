@@ -5518,7 +5518,6 @@ void SwapCrittersRefreshClient( Client* cl, Map* map, Map* prev_map )
     {
         cl->Send_AllProperties();
         cl->Send_AddAllItems();
-        cl->Send_AllQuests();
         cl->Send_HoloInfo( true, 0, cl->Data.HoloInfoCount );
         cl->Send_AllAutomapsInfo();
 

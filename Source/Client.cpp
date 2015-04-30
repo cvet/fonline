@@ -2484,12 +2484,6 @@ void FOClient::NetProcess()
             Net_OnGameInfo();
             break;
 
-        case NETMSG_QUEST:
-            Net_OnQuest( false );
-            break;
-        case NETMSG_QUESTS:
-            Net_OnQuest( true );
-            break;
         case NETMSG_HOLO_INFO:
             Net_OnHoloInfo();
             break;
@@ -3286,7 +3280,14 @@ void FOClient::Net_OnAddCritter( bool is_npc )
         cr->Init();
 
         if( FLAG( cr->Flags, FCRIT_CHOSEN ) )
+        {
             SetAction( CHOSEN_NONE );
+
+            QuestMngr.Finish();
+            for( uint i = 0; i < CritterCl::PropertiesRegistrator->GetCount(); i++ )
+                if( CritterCl::PropertiesRegistrator->Get( i )->IsQuestValue() )
+                    QuestMngr.OnQuest( cr->Props.GetQuestStr( i ) );
+        }
 
         AddCritter( cr );
 
@@ -4385,6 +4386,16 @@ void FOClient::Net_OnCritterProperty( uint data_size )
     prop->SetSendIgnore( cr );
     prop->SetData( cr, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : NULL, (uint) TempPropertyData.size() );
     prop->SetSendIgnore( NULL );
+
+    if( cr->IsChosen() && prop->IsQuestValue() )
+    {
+        uint q_num = cr->Props.GetQuestStr( prop->GetRegIndex() );
+        QuestMngr.OnQuest( q_num );
+
+        // Inform player
+        Quest* quest = QuestMngr.GetQuest( q_num );
+        AddMess( FOMB_GAME, quest->str.c_str() );
+    }
 }
 
 void FOClient::Net_OnChosenClearItems()
@@ -6219,46 +6230,6 @@ void FOClient::Net_OnUpdateFileData()
         UpdateFilesList->erase( UpdateFilesList->begin() );
         UpdateFileActive = false;
     }
-}
-
-void FOClient::Net_OnQuest( bool many )
-{
-    many ? \
-    WriteLog( "Quests..." ) :
-    WriteLog( "Quest..." );
-
-    if( many )
-    {
-        uint msg_len;
-        uint q_count;
-        Bin >> msg_len;
-        Bin >> q_count;
-
-        QuestMngr.Finish();
-        if( q_count )
-        {
-            UIntVec quests;
-            quests.resize( q_count );
-            Bin.Pop( (char*) &quests[ 0 ], q_count * sizeof( uint ) );
-            for( uint i = 0; i < quests.size(); ++i )
-                QuestMngr.OnQuest( quests[ i ] );
-        }
-    }
-    else
-    {
-        uint q_num;
-        Bin >> q_num;
-        QuestMngr.OnQuest( q_num );
-
-        // Inform player
-        Quest* quest = QuestMngr.GetQuest( q_num );
-        if( quest )
-            AddMess( FOMB_GAME, quest->str.c_str() );
-    }
-
-    CHECK_IN_BUFF_ERROR;
-
-    WriteLog( "Complete.\n" );
 }
 
 void FOClient::Net_OnHoloInfo()
@@ -8867,7 +8838,7 @@ void FOClient::OnSetItemFlags( void* obj, Property* prop, void* cur_value, void*
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
     Item* item = (Item*) obj;
-    if( item->Accessory == ITEM_ACCESSORY_HEX )
+    if( item->Accessory == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
     {
         ItemHex* hex_item = (ItemHex*) item;
         bool     rebuild_cache = false;
@@ -8890,7 +8861,8 @@ void FOClient::OnSetItemSomeLight( void* obj, Property* prop, void* cur_value, v
 {
     // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
-    Self->HexMngr.RebuildLight();
+    if( Self->HexMngr.IsMapLoaded() )
+        Self->HexMngr.RebuildLight();
 }
 
 void FOClient::OnSetItemPicMap( void* obj, Property* prop, void* cur_value, void* old_value )
@@ -8910,7 +8882,7 @@ void FOClient::OnSetItemOffsetXY( void* obj, Property* prop, void* cur_value, vo
 
     Item* item = (Item*) obj;
 
-    if( item->Accessory == ITEM_ACCESSORY_HEX )
+    if( item->Accessory == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
     {
         ItemHex* hex_item = (ItemHex*) item;
         hex_item->SetAnimOffs();

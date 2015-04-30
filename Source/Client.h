@@ -228,7 +228,6 @@ public:
     void Net_OnUpdateFilesList();
     void Net_OnUpdateFileData();
 
-    void Net_OnQuest( bool many );
     void Net_OnHoloInfo();
     void Net_OnScores();
     void Net_OnUserHoloStr();

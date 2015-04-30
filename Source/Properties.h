@@ -81,6 +81,7 @@ public:
     bool        IsReadable();
     bool        IsWritable();
     void        SetSendIgnore( void* obj );
+    bool        IsQuestValue();
 
     template< typename T >
     T GetValue( void* obj )
@@ -142,6 +143,7 @@ private:
     int64          defaultValue;
     int64          minValue;
     int64          maxValue;
+    uint           questValue;
 
     // Dynamic data
     PropertyRegistrator* registrator;
@@ -182,6 +184,7 @@ public:
     int         GetValueAsInt( int enum_value );
     void        SetValueAsInt( int enum_value, int value );
     bool        SetValueAsIntByName( const char* enum_name, int value );
+    uint        GetQuestStr( uint property_index );
 
 private:
     PropertyRegistrator*  registrator;
@@ -190,6 +193,7 @@ private:
     UIntVec               complexDataSizes;
     PUCharVec             storeData;
     UIntVec               storeDataSizes;
+    UShortVec             storeDataComplexIndicies;
     UnresolvedPropertyVec unresolvedProperties;
 };
 
@@ -201,9 +205,10 @@ class PropertyRegistrator
 public:
     PropertyRegistrator( bool is_server, const char* class_name );
     ~PropertyRegistrator();
-    Property* Register( const char* type_name, const char* name, Property::AccessType access, const char* group = NULL, bool* generate_random_value = NULL, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
+    Property* Register( const char* type_name, const char* name, Property::AccessType access, uint quest_value = 0, const char* group = NULL, bool* generate_random_value = NULL, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
     void      SetDefaults( const char* group = NULL, bool* generate_random_value = NULL, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
     void      FinishRegistration();
+    uint      GetCount();
     Property* Find( const char* property_name );
     Property* FindByEnum( int enum_value );
     Property* Get( uint property_index );

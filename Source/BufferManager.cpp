@@ -334,8 +334,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_SEND_RULE_GLOBAL_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_FOLLOW:
         return ( NETMSG_FOLLOW_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_QUEST:
-        return ( NETMSG_QUEST_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_GET_USER_HOLO_STR:
         return ( NETMSG_SEND_GET_USER_HOLO_STR_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_GET_SCORES:
@@ -419,7 +417,6 @@ bool BufferManager::NeedProcess()
     case NETMSG_SEND_RUN_SERVER_SCRIPT:
     case NETMSG_GLOBAL_INFO:
     case NETMSG_GLOBAL_ENTRANCES:
-    case NETMSG_QUESTS:
     case NETMSG_HOLO_INFO:
     case NETMSG_SEND_SET_USER_HOLO_STR:
     case NETMSG_USER_HOLO_STR:
@@ -626,9 +623,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_FOLLOW:
         size = NETMSG_FOLLOW_SIZE;
         break;
-    case NETMSG_QUEST:
-        size = NETMSG_QUEST_SIZE;
-        break;
     case NETMSG_SEND_GET_USER_HOLO_STR:
         size = NETMSG_SEND_GET_USER_HOLO_STR_SIZE;
         break;
@@ -727,7 +721,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_SEND_RUN_SERVER_SCRIPT:
     case NETMSG_GLOBAL_INFO:
     case NETMSG_GLOBAL_ENTRANCES:
-    case NETMSG_QUESTS:
     case NETMSG_HOLO_INFO:
     case NETMSG_SEND_SET_USER_HOLO_STR:
     case NETMSG_USER_HOLO_STR:

@@ -67,8 +67,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Synchronizer", "void Lock()", asMETH
 BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int GetValue() const", asMETHOD( GameVar, GetValue ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int GetMin() const", asMETHOD( GameVar, GetMin ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int GetMax() const", asMETHOD( GameVar, GetMax ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "bool IsQuest() const", asMETHOD( GameVar, IsQuest ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "uint GetQuestStr() const", asMETHOD( GameVar, GetQuestStr ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "GameVar& opAddAssign(const int)", asMETHODPR( GameVar, operator+=, (const int), GameVar & ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "GameVar& opSubAssign(const int)", asMETHODPR( GameVar, operator-=, (const int), GameVar & ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "GameVar& opMulAssign(const int)", asMETHODPR( GameVar, operator*=, (const int), GameVar & ), asCALL_THISCALL ) );

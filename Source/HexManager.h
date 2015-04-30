@@ -181,7 +181,7 @@ private:
     uint  curHashScen;
 
 public:
-    bool   IsMapLoaded() { return hexField != NULL; }
+    bool   IsMapLoaded() { return curPidMap != 0; }
     bool   LoadMap( hash map_pid );
     void   UnloadMap();
     void   GetMapHash( hash map_pid, uint& hash_tiles, uint& hash_walls, uint& hash_scen );

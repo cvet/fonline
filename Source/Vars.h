@@ -7,7 +7,7 @@
 #define VAR_DESC_LEN          ( 2048 )
 #define VAR_FNAME_VARS        "_vars.fos"
 #define VAR_DESC_MARK         "**********"
-#define VAR_CALC_QUEST( tid, val )    ( ( tid ) * 1000 + ( val ) )
+
 
 // Types
 #define VAR_GLOBAL            ( 0 )
@@ -18,7 +18,6 @@
 #define VAR_LOCAL_ITEM        ( 5 )
 
 // Flags
-#define VAR_FLAG_QUEST        ( 0x1 )
 #define VAR_FLAG_RANDOM       ( 0x2 )
 #define VAR_FLAG_NO_CHECK     ( 0x4 )
 
@@ -47,8 +46,7 @@ public:
     VarsMap64 VarsUnicum;
 
     bool IsNotUnicum() { return Type != VAR_UNICUM; }
-    bool IsError()     { return ( !TempId || !Name.size() || ( IsNoBorders() && ( MinVal > MaxVal || StartVal < MinVal || StartVal > MaxVal ) ) || ( IsQuest() && Type != VAR_LOCAL ) ); }
-    bool IsQuest()     { return FLAG( Flags, VAR_FLAG_QUEST ); }
+    bool IsError()     { return !TempId || !Name.size() || ( IsNoBorders() && ( MinVal > MaxVal || StartVal < MinVal || StartVal > MaxVal ) ); }
     bool IsRandom()    { return FLAG( Flags, VAR_FLAG_RANDOM ); }
     bool IsNoBorders() { return FLAG( Flags, VAR_FLAG_NO_CHECK ); }
     TemplateVar(): Type( VAR_GLOBAL ), TempId( 0 ), StartVal( 0 ), MinVal( 0 ), MaxVal( 0 ), Flags( 0 ) {}
@@ -64,7 +62,6 @@ public:
     uint SlaveId;
     int VarValue;
     TemplateVar* VarTemplate;
-    uint QuestVarIndex;
     ushort Type;
     short RefCount;
     SyncObject Sync;
@@ -103,8 +100,6 @@ public:
     int          GetValue()       { return VarValue; }
     int          GetMin()         { return VarTemplate->MinVal; }
     int          GetMax()         { return VarTemplate->MaxVal; }
-    bool         IsQuest()        { return VarTemplate->IsQuest(); }
-    uint         GetQuestStr()    { return VAR_CALC_QUEST( VarTemplate->TempId, VarValue ); }
     bool         IsRandom()       { return VarTemplate->IsRandom(); }
     TemplateVar* GetTemplateVar() { return VarTemplate; }
     uint64       GetUid()         { return ( ( (uint64) SlaveId ) << 32 ) | ( (uint64) MasterId ); }
@@ -114,7 +109,7 @@ public:
     void AddRef()  { RefCount++; }
     void Release() { if( !--RefCount ) delete this; }
 
-    GameVar( uint master_id, uint slave_id, TemplateVar* var_template, int val ): MasterId( master_id ), SlaveId( slave_id ), VarTemplate( var_template ), QuestVarIndex( 0 ),
+    GameVar( uint master_id, uint slave_id, TemplateVar* var_template, int val ): MasterId( master_id ), SlaveId( slave_id ), VarTemplate( var_template ),
                                                                                   Type( var_template->Type ), VarValue( val ), RefCount( 1 ) { MEMORY_PROCESS( MEMORY_VAR, sizeof( GameVar ) ); }
     ~GameVar() { MEMORY_PROCESS( MEMORY_VAR, -(int) sizeof( GameVar ) ); }
 private: GameVar() {}
@@ -170,13 +165,10 @@ public:
     GameVar* GetVar( ushort temp_id, uint master_id, uint slave_id,  bool create );
     void     SwapVars( uint id1, uint id2 );
     uint     ClearUnusedVars( UIntSet& ids1, UIntSet& ids2, UIntSet& ids_locs, UIntSet& ids_maps, UIntSet& ids_items );
-    void     GetQuestVars( uint master_id, UIntVec& vars );
-    VarsVec& GetQuestVars() { return allQuestVars; }
     uint     GetVarsCount() { return varsCount; }
 
 private:
-    VarsVec allQuestVars;
-    uint    varsCount;
+    uint varsCount;
 
     bool     CheckVar( GameVar* var, char oper, int val );
     void     ChangeVar( GameVar* var, char oper, int val );

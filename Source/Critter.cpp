@@ -2803,16 +2803,6 @@ void Critter::Send_CombatResult( uint* combat_res, uint len )
     if( IsPlayer() )
         ( (Client*) this )->Send_CombatResult( combat_res, len );
 }
-void Critter::Send_Quest( uint num )
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_Quest( num );
-}
-void Critter::Send_Quests( UIntVec& nums )
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_Quests( nums );
-}
 void Critter::Send_HoloInfo( bool clear, ushort offset, ushort count )
 {
     if( IsPlayer() )
@@ -3183,16 +3173,6 @@ void Critter::Send_AddAllItems()
     BOUT_BEGIN( cl );
     cl->Bout << NETMSG_ALL_ITEMS_SEND;
     BOUT_END( cl );
-}
-
-void Critter::Send_AllQuests()
-{
-    if( !IsPlayer() )
-        return;
-
-    UIntVec quests;
-    VarMngr.GetQuestVars( GetId(), quests );
-    Send_Quests( quests );
 }
 
 void Critter::Send_AllAutomapsInfo()
@@ -4726,33 +4706,6 @@ void Client::Send_CombatResult( uint* combat_res, uint len )
     Bout << len;
     if( len )
         Bout.Push( (char*) combat_res, len * sizeof( uint ) );
-    BOUT_END( this );
-}
-
-void Client::Send_Quest( uint num )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_QUEST;
-    Bout << num;
-    BOUT_END( this );
-}
-
-void Client::Send_Quests( UIntVec& nums )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( uint ) * (uint) nums.size();
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_QUESTS;
-    Bout << msg_len;
-    Bout << (uint) nums.size();
-    if( nums.size() )
-        Bout.Push( (char*) &nums[ 0 ], (uint) nums.size() * sizeof( uint ) );
     BOUT_END( this );
 }
 

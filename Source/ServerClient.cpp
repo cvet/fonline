@@ -2545,7 +2545,6 @@ void FOServer::Process_ParseToGame( Client* cl )
             if( cr != cl )
                 cr->Send_CustomCommand( cl, OTHER_FLAGS, cl->Flags );
         }
-        cl->Send_AllQuests();
         cl->Send_HoloInfo( true, 0, cl->Data.HoloInfoCount );
         cl->Send_AllAutomapsInfo();
         if( cl->Talk.TalkType != TALK_NONE )
@@ -2570,7 +2569,6 @@ void FOServer::Process_ParseToGame( Client* cl )
 
         // Send all data
         cl->Send_AddAllItems();
-        cl->Send_AllQuests();
         cl->Send_HoloInfo( true, 0, cl->Data.HoloInfoCount );
         cl->Send_AllAutomapsInfo();
 

@@ -68,11 +68,9 @@ struct GameVar
     GameVar& operator/=( const GameVar& ) { return *this; }
     GameVar& operator=( const GameVar& )  { return *this; }
 
-    void GetValue()    {}
-    void GetMin()      {}
-    void GetMax()      {}
-    void IsQuest()     {}
-    void GetQuestStr() {}
+    void GetValue() {}
+    void GetMin()   {}
+    void GetMax()   {}
 
     void AddRef()  {}
     void Release() {}

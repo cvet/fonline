@@ -58,7 +58,6 @@ void VarManager::SaveVarsDataFile( void ( * save_func )( void*, size_t ) )
 bool VarManager::LoadVarsDataFile( void* f, int version )
 {
     WriteLog( "Load vars...\n" );
-    allQuestVars.reserve( 10000 );   // 40kb
 
     UShortUIntMap failed_tvars;
 
@@ -596,28 +595,6 @@ GameVar* VarManager::CreateVar( uint master_id, TemplateVar* tvar )
         return NULL;
 
     tvar->Vars.insert( PAIR( master_id, var ) );
-
-    if( tvar->IsQuest() )
-    {
-        bool founded = false;
-        for( uint i = 0, j = (uint) allQuestVars.size(); i < j; i++ )
-        {
-            if( !allQuestVars[ i ] )
-            {
-                var->QuestVarIndex = i;
-                allQuestVars[ i ] = var;
-                founded = true;
-                break;
-            }
-        }
-
-        if( !founded )
-        {
-            var->QuestVarIndex = (uint) allQuestVars.size();
-            allQuestVars.push_back( var );
-        }
-    }
-
     varsCount++;
     return var;
 }
@@ -785,7 +762,7 @@ uint VarManager::ClearUnusedVars( UIntSet& ids1, UIntSet& ids2, UIntSet& ids_loc
         GameVar*     var = *it;
         TemplateVar* tvar = var->VarTemplate;
 
-        if( var->VarValue != var->VarTemplate->StartVal || tvar->IsRandom() || tvar->IsQuest() )
+        if( var->VarValue != var->VarTemplate->StartVal || tvar->IsRandom() )
         {
             switch( var->Type )
             {
@@ -829,7 +806,7 @@ uint VarManager::ClearUnusedVars( UIntSet& ids1, UIntSet& ids2, UIntSet& ids_loc
         TemplateVar* tvar = var->VarTemplate;
 
         // Be sure what var not changed between collection
-        if( var->VarValue != var->VarTemplate->StartVal || tvar->IsRandom() || tvar->IsQuest() )
+        if( var->VarValue != var->VarTemplate->StartVal || tvar->IsRandom() )
         {
             switch( var->Type )
             {
@@ -861,9 +838,6 @@ uint VarManager::ClearUnusedVars( UIntSet& ids1, UIntSet& ids2, UIntSet& ids_loc
         }
 
         // Delete it
-        if( tvar->IsQuest() )
-            allQuestVars[ var->QuestVarIndex ] = NULL;
-
         if( tvar->IsNotUnicum() )
             tvar->Vars.erase( var->MasterId );
         else
@@ -877,18 +851,6 @@ uint VarManager::ClearUnusedVars( UIntSet& ids1, UIntSet& ids2, UIntSet& ids_loc
     varsLocker.Unlock();
 
     return del_count;
-}
-
-void VarManager::GetQuestVars( uint master_id, UIntVec& vars )
-{
-    SCOPE_LOCK( varsLocker );
-
-    for( auto it = allQuestVars.begin(), end = allQuestVars.end(); it != end; ++it )
-    {
-        GameVar* var = *it;
-        if( var && var->MasterId == master_id )
-            vars.push_back( VAR_CALC_QUEST( var->VarTemplate->TempId, var->VarValue ) );
-    }
 }
 
 /**************************************************************************************************
@@ -908,20 +870,11 @@ void DebugLog( GameVar* var, const char* op, int value )
         DbgLog->Write( "Changing uvar<%s> masterId<%u> slaveId<%u> op<%s> value<%d> result<%d>.\n", tvar->Name.c_str(), master_id, slave_id, op, value, var->GetValue() );
 }
 
-void SendQuestVar( GameVar* var )
-{
-    Client* cl = CrMngr.GetPlayer( var->GetMasterId(), false );
-    if( cl )
-        cl->Send_Quest( var->GetQuestStr() );
-}
-
 GameVar& GameVar::operator+=( const int _right )
 {
     VarValue += _right;
     if( !VarTemplate->IsNoBorders() && VarValue > VarTemplate->MaxVal )
         VarValue = VarTemplate->MaxVal;
-    if( IsQuest() )
-        SendQuestVar( this );
     if( DbgLog )
         DebugLog( this, "+=", _right );
     return *this;
@@ -932,8 +885,6 @@ GameVar& GameVar::operator-=( const int _right )
     VarValue -= _right;
     if( !VarTemplate->IsNoBorders() && VarValue < VarTemplate->MinVal )
         VarValue = VarTemplate->MinVal;
-    if( IsQuest() )
-        SendQuestVar( this );
     if( DbgLog )
         DebugLog( this, "-=", _right );
     return *this;
@@ -944,8 +895,6 @@ GameVar& GameVar::operator*=( const int _right )
     VarValue *= _right;
     if( !VarTemplate->IsNoBorders() && VarValue > VarTemplate->MaxVal )
         VarValue = VarTemplate->MaxVal;
-    if( IsQuest() )
-        SendQuestVar( this );
     if( DbgLog )
         DebugLog( this, "*=", _right );
     return *this;
@@ -956,8 +905,6 @@ GameVar& GameVar::operator/=( const int _right )
     VarValue /= _right;
     if( !VarTemplate->IsNoBorders() && VarValue < VarTemplate->MinVal )
         VarValue = VarTemplate->MinVal;
-    if( IsQuest() )
-        SendQuestVar( this );
     if( DbgLog )
         DebugLog( this, "/=", _right );
     return *this;
@@ -973,8 +920,6 @@ GameVar& GameVar::operator=( const int _right )
         if( VarValue < VarTemplate->MinVal )
             VarValue = VarTemplate->MinVal;
     }
-    if( IsQuest() )
-        SendQuestVar( this );
     if( DbgLog )
         DebugLog( this, "=", _right );
     return *this;
@@ -985,8 +930,6 @@ GameVar& GameVar::operator+=( const GameVar& _right )
     VarValue += _right.VarValue;
     if( !VarTemplate->IsNoBorders() && VarValue > VarTemplate->MaxVal )
         VarValue = VarTemplate->MaxVal;
-    if( IsQuest() )
-        SendQuestVar( this );
     if( DbgLog )
         DebugLog( this, "+=", _right.VarValue );
     return *this;
@@ -997,8 +940,6 @@ GameVar& GameVar::operator-=( const GameVar& _right )
     VarValue -= _right.VarValue;
     if( !VarTemplate->IsNoBorders() && VarValue < VarTemplate->MinVal )
         VarValue = VarTemplate->MinVal;
-    if( IsQuest() )
-        SendQuestVar( this );
     if( DbgLog )
         DebugLog( this, "-=", _right.VarValue );
     return *this;
@@ -1009,8 +950,6 @@ GameVar& GameVar::operator*=( const GameVar& _right )
     VarValue *= _right.VarValue;
     if( !VarTemplate->IsNoBorders() && VarValue > VarTemplate->MaxVal )
         VarValue = VarTemplate->MaxVal;
-    if( IsQuest() )
-        SendQuestVar( this );
     if( DbgLog )
         DebugLog( this, "*=", _right.VarValue );
     return *this;
@@ -1021,8 +960,6 @@ GameVar& GameVar::operator/=( const GameVar& _right )
     VarValue /= _right.VarValue;
     if( !VarTemplate->IsNoBorders() && VarValue < VarTemplate->MinVal )
         VarValue = VarTemplate->MinVal;
-    if( IsQuest() )
-        SendQuestVar( this );
     if( DbgLog )
         DebugLog( this, "/=", _right.VarValue );
     return *this;
@@ -1038,8 +975,6 @@ GameVar& GameVar::operator=( const GameVar& _right )
         if( VarValue < VarTemplate->MinVal )
             VarValue = VarTemplate->MinVal;
     }
-    if( IsQuest() )
-        SendQuestVar( this );
     if( DbgLog )
         DebugLog( this, "=", _right.VarValue );
     return *this;

@@ -431,8 +431,6 @@ public:
     void Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void Send_SetAnims( Critter* from_cr, int cond, uint anim1, uint anim2 );
     void Send_CombatResult( uint* combat_res, uint len );
-    void Send_Quest( uint num );
-    void Send_Quests( UIntVec& nums );
     void Send_HoloInfo( bool clear, ushort offset, ushort count );
     void Send_AutomapsInfo( void* locs_vec, Location* loc );
     void Send_Follow( uint rule, uchar follow_type, hash map_pid, uint follow_wait );
@@ -462,7 +460,6 @@ public:
 
     // Chosen data
     void Send_AddAllItems();
-    void Send_AllQuests();
     void Send_AllAutomapsInfo();
 
     bool        IsPlayer()    { return !CritterIsNpc; }
@@ -718,8 +715,6 @@ public:
     void Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void Send_SetAnims( Critter* from_cr, int cond, uint anim1, uint anim2 );
     void Send_CombatResult( uint* combat_res, uint len );
-    void Send_Quest( uint num );
-    void Send_Quests( UIntVec& nums );
     void Send_HoloInfo( bool clear, ushort offset, ushort count );
     void Send_AutomapsInfo( void* locs_vec, Location* loc );
     void Send_Follow( uint rule, uchar follow_type, hash map_pid, uint follow_wait );

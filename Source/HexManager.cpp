@@ -3686,6 +3686,15 @@ void HexManager::UnloadMap()
     if( !IsMapLoaded() )
         return;
 
+    curPidMap = 0;
+    curMapTime = -1;
+    curHashTiles = 0;
+    curHashWalls = 0;
+    curHashScen = 0;
+
+    crittersContour = 0;
+    critterContour = 0;
+
     SAFEDELA( viewField );
 
     hTop = 0;
@@ -3714,15 +3723,6 @@ void HexManager::UnloadMap()
 
     ResizeField( 0, 0 );
     ClearCritters();
-
-    curPidMap = 0;
-    curMapTime = -1;
-    curHashTiles = 0;
-    curHashWalls = 0;
-    curHashScen = 0;
-
-    crittersContour = 0;
-    critterContour = 0;
 }
 
 void HexManager::GetMapHash( hash map_pid, uint& hash_tiles, uint& hash_walls, uint& hash_scen )
