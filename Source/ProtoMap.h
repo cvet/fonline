@@ -172,6 +172,7 @@ public:
 
     void CopyObject( const MapObject& other )
     {
+        SAFEDEL( Props );
         memcpy( this, &other, sizeof( MapObject ) );
         if( Props )
         {
@@ -184,6 +185,8 @@ public:
 
     ScriptString* GetPropValue( const char* prop )
     {
+        if( !Props )
+            AllocateProps();
         for( size_t i = 0; i < Props->size(); i += 2 )
             if( Str::Compare( Props->at( i )->c_str(), prop ) )
                 return Props->at( i + 1 );
