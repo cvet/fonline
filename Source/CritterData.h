@@ -16,9 +16,15 @@ struct ProtoCritter
 {
     hash        ProtoId;
     Properties* Props;
+
+    UIntVec     TextsLang;
+    FOMsgVec    Texts;
+
     #ifdef FONLINE_MAPPER
     string      CollectionName;
     #endif
+
+    const char* GetName() { return HASH_STR( ProtoId ); }
 
     #ifdef FONLINE_MAPPER
     uint GetBaseType()

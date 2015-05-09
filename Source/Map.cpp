@@ -156,7 +156,7 @@ bool Map::Generate()
         Npc* npc = CrMngr.CreateNpc( mobj.ProtoId, mobj.Props, NULL, script[ 0 ] ? script : NULL, this, mobj.MapX, mobj.MapY, (uchar) mobj.MCritter.Dir, true );
         if( !npc )
         {
-            WriteLogF( _FUNC_, " - Create npc on map<%s> with pid<%u> failture - continue generate.\n", Proto->GetName(), mobj.ProtoId );
+            WriteLogF( _FUNC_, " - Create npc<%s> on map<%s> failture - continue generate.\n", HASH_STR( mobj.ProtoId ), Proto->GetName() );
             continue;
         }
 

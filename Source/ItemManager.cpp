@@ -23,7 +23,7 @@ bool ItemManager::Init()
     WriteLog( "Item manager initialization...\n" );
 
     Clear();
-    allProto.clear();
+    allProtos.clear();
 
     WriteLog( "Item manager initialization complete.\n" );
     return true;
@@ -47,7 +47,7 @@ void ItemManager::Finish()
     #endif
 
     Clear();
-    allProto.clear();
+    allProtos.clear();
 
     WriteLog( "Item manager finish complete.\n" );
 }
@@ -84,7 +84,7 @@ bool ItemManager::LoadProtos()
         }
 
         uint pid = Str::GetHash( file_name );
-        if( allProto.count( pid ) )
+        if( allProtos.count( pid ) )
         {
             WriteLog( "Proto item<%s> already loaded.\n", file_name );
             errors++;
@@ -134,8 +134,6 @@ bool ItemManager::LoadProtos()
             proto->Texts.push_back( msg );
         }
 
-        allProto.insert( PAIR( proto->ProtoId, proto ) );
-
         #ifdef FONLINE_MAPPER
         switch( proto->GetType() )
         {
@@ -181,6 +179,7 @@ bool ItemManager::LoadProtos()
         }
         #endif
 
+        allProtos.insert( PAIR( proto->ProtoId, proto ) );
         files_loaded++;
     }
 
@@ -190,20 +189,20 @@ bool ItemManager::LoadProtos()
 
 ProtoItem* ItemManager::GetProtoItem( hash pid )
 {
-    auto it = allProto.find( pid );
-    return it != allProto.end() ? ( *it ).second : NULL;
+    auto it = allProtos.find( pid );
+    return it != allProtos.end() ? ( *it ).second : NULL;
 }
 
 ProtoItemMap& ItemManager::GetAllProtos()
 {
-    return allProto;
+    return allProtos;
 }
 
 void ItemManager::GetBinaryData( UCharVec& data )
 {
     data.resize( 0 );
-    WriteData( data, (uint) allProto.size() );
-    for( auto it = allProto.begin(), end = allProto.end(); it != end; ++it )
+    WriteData( data, (uint) allProtos.size() );
+    for( auto it = allProtos.begin(), end = allProtos.end(); it != end; ++it )
     {
         hash       proto_id = it->first;
         ProtoItem* proto_item = it->second;
@@ -229,7 +228,7 @@ void ItemManager::GetBinaryData( UCharVec& data )
 
 void ItemManager::SetBinaryData( UCharVec& data )
 {
-    allProto.clear();
+    allProtos.clear();
 
     if( !Crypt.Uncompress( data, 15 ) )
         return;
@@ -257,8 +256,8 @@ void ItemManager::SetBinaryData( UCharVec& data )
             }
             props.RestoreData( props_data, props_data_sizes );
         }
-        RUNTIME_ASSERT( !allProto.count( proto_item->ProtoId ) );
-        allProto.insert( PAIR( proto_item->ProtoId, proto_item ) );
+        RUNTIME_ASSERT( !allProtos.count( proto_item->ProtoId ) );
+        allProtos.insert( PAIR( proto_item->ProtoId, proto_item ) );
     }
 }
 
@@ -1214,7 +1213,7 @@ string ItemManager::GetItemsStatistics()
 
     string result = "Name                                     Count\n";
     char   str[ MAX_FOTEXT ];
-    for( auto it = allProto.begin(), end = allProto.end(); it != end; ++it )
+    for( auto it = allProtos.begin(), end = allProtos.end(); it != end; ++it )
     {
         ProtoItem* proto_item = ( *it ).second;
         if( proto_item->IsItem() )

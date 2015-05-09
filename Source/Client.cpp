@@ -3267,7 +3267,10 @@ void FOClient::Net_OnAddCritter( bool is_npc )
         if( is_npc )
         {
             cr->Pid = npc_pid;
-            *cr->Name = MsgDlg->GetStr( STR_NPC_NAME( cr->GetDialogId() ) );
+            if( cr->GetDialogId() && MsgDlg->Count( STR_NPC_NAME( cr->GetDialogId() ) ) )
+                *cr->Name = MsgDlg->GetStr( STR_NPC_NAME( cr->GetDialogId() ) );
+            else
+                *cr->Name = MsgDlg->GetStr( STR_NPC_PID_NAME( npc_pid ) );
             if( MsgDlg->Count( STR_NPC_AVATAR( cr->GetDialogId() ) ) )
                 *cr->Avatar = MsgDlg->GetStr( STR_NPC_AVATAR( cr->GetDialogId() ) );
         }

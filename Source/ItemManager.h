@@ -12,7 +12,7 @@ class Map;
 class ItemManager
 {
 private:
-    ProtoItemMap allProto;
+    ProtoItemMap allProtos;
 
 public:
     bool Init();

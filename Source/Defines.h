@@ -76,6 +76,8 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define LOC_STR_ID( loc_pid, idx )            ( ( ( loc_pid ) & LOCPID_MASK ) | ( ( idx ) & ~LOCPID_MASK ) )
 #define ITEMPID_MASK                 ( 0xFFFFFFF0 )
 #define ITEM_STR_ID( item_pid, idx )          ( ( ( item_pid ) & ITEMPID_MASK ) | ( ( idx ) & ~ITEMPID_MASK ) )
+#define CRPID_MASK                   ( 0xFFFFFFF0 )
+#define CR_STR_ID( cr_pid, idx )              ( ( ( cr_pid ) & CRPID_MASK ) | ( ( idx ) & ~CRPID_MASK ) )
 
 // Critters
 #define GENDER_MALE                  ( 0 )

@@ -1723,6 +1723,7 @@ void FormatPreprocessorOutput( string& str )
 static bool       PidMapsGenerated = false;
 static StrMap     PidNameToName;
 static UIntStrMap PidIdToName;
+static UIntStrMap PidCrIdToName;
 
 #include "ItemManager.h"
 static void GeneratePidMaps()
@@ -1744,6 +1745,17 @@ static void GeneratePidMaps()
             PidIdToName.insert( PAIR( old_pid, new_name ) );
         }
     }
+    if( pid_map.LoadFile( "CritterPidsConversion.txt", PT_SERVER_CONFIGS ) )
+    {
+        istrstream str( (char*) pid_map.GetBuf() );
+        string     new_name;
+        uint       old_pid;
+        while( !str.eof() )
+        {
+            str >> new_name >> old_pid;
+            PidCrIdToName.insert( PAIR( old_pid, new_name ) );
+        }
+    }
 }
 
 const char* ConvertProtoIdByInt( uint pid )
@@ -1758,4 +1770,11 @@ const char* ConvertProtoIdByStr( const char* pid )
     GeneratePidMaps();
     auto it = PidNameToName.find( pid );
     return it != PidNameToName.end() ? it->second.c_str() : NULL;
+}
+
+const char* ConvertProtoCritterIdByInt( uint pid )
+{
+    GeneratePidMaps();
+    auto it = PidCrIdToName.find( pid );
+    return it != PidCrIdToName.end() ? it->second.c_str() : NULL;
 }

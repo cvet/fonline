@@ -52,85 +52,83 @@ void CritterManager::Clear()
 
 bool CritterManager::LoadProtos()
 {
-    WriteLog( "Load critters prototypes...\n" );
+    WriteLog( "Load critter prototypes...\n" );
 
-    // Get names of proto
-    FileManager fm;
-    if( !fm.LoadFile( "critters.lst", PT_SERVER_PRO_CRITTERS ) )
+    FilesCollection files = FilesCollection( PT_SERVER_PRO_CRITTERS, "focr", true );
+    uint            files_loaded = 0;
+    int             errors = 0;
+    while( files.IsNextFile() )
     {
-        WriteLog( "Cannot open \"critters.lst\".\n" );
-        return false;
-    }
+        const char*  file_name;
+        FileManager& file = files.GetNextFile( &file_name );
+        if( !file.IsLoaded() )
+        {
+            WriteLog( "Unable to open file<%s>.\n", file_name );
+            errors++;
+            continue;
+        }
 
-    char   buf[ 256 ];
-    StrVec fnames;
-    while( fm.GetLine( buf, sizeof( buf ) ) )
-        fnames.push_back( string( buf ) );
-    fm.UnloadFile();
+        uint pid = Str::GetHash( file_name );
+        if( allProtos.count( pid ) )
+        {
+            WriteLog( "Proto critter<%s> already loaded.\n", file_name );
+            errors++;
+            continue;
+        }
 
-    // Load protos
-    IniParser protos_txt;
-    int       loaded = 0;
-    int       errors = 0;
-    for( uint i = 0, k = (uint) fnames.size(); i < k; i++ )
-    {
-        const char* fname = fnames[ i ].c_str();
-
-        #ifdef FONLINE_MAPPER
-        char collection_name[ MAX_FOPATH ];
-        Str::Format( collection_name, "%03d - %s", i + 1, fname );
-        FileManager::EraseExtension( collection_name );
+        ProtoCritter* proto = new ProtoCritter();
+        proto->ProtoId = pid;
+        #ifdef FONLINE_SERVER
+        proto->Props = new Properties( Critter::PropertiesRegistrator );
+        #else
+        proto->Props = new Properties( CritterCl::PropertiesRegistrator );
         #endif
 
-        if( protos_txt.LoadFile( fname, PT_SERVER_PRO_CRITTERS ) )
+        IniParser focr;
+        focr.LoadFilePtr( (char*) file.GetBuf(), file.GetFsize() );
+        if( focr.GotoNextApp( "Critter" ) )
         {
-            while( protos_txt.GotoNextApp( CRPROTO_APP ) )
+            if( !proto->Props->LoadFromText( focr.GetApp( "Critter" ) ) )
+                errors++;
+        }
+
+        // Texts
+        focr.CacheApps();
+        StrSet& apps = focr.GetCachedApps();
+        for( auto it = apps.begin(), end = apps.end(); it != end; ++it )
+        {
+            const string& app_name = *it;
+            if( !( app_name.size() == 9 && app_name.find( "Text_" ) == 0 ) )
+                continue;
+
+            char* app_content = focr.GetApp( app_name.c_str() );
+            FOMsg temp_msg;
+            temp_msg.LoadFromString( app_content, Str::Length( app_content ) );
+            SAFEDELA( app_content );
+
+            FOMsg* msg = new FOMsg();
+            uint   str_num = 0;
+            while( str_num = temp_msg.GetStrNumUpper( str_num ) )
             {
-                const char* app = protos_txt.GetApp( CRPROTO_APP );
-                #ifdef FONLINE_SERVER
-                Properties* props = new Properties( Critter::PropertiesRegistrator );
-                #else
-                Properties* props = new Properties( CritterCl::PropertiesRegistrator );
-                #endif
-                hash        pid = 0;
-                if( props->LoadFromText( app, &pid ) && pid )
-                {
-                    if( allProtos.count( pid ) )
-                    {
-                        WriteLogF( _FUNC_, " - Critter prototype is already parsed, pid<%u>. Rewrite.\n", pid );
-                        #pragma MESSAGE( "Proto leak, add ref counting." )
-                        allProtos.erase( pid );
-                    }
-                    else
-                    {
-                        loaded++;
-                    }
-
-                    ProtoCritter* proto = new ProtoCritter();
-                    proto->ProtoId = pid;
-                    proto->Props = props;
-                    #ifdef FONLINE_MAPPER
-                    proto->CollectionName = collection_name;
-                    #endif
-
-                    allProtos.insert( PAIR( pid, proto ) );
-                }
-                else
-                {
-                    WriteLog( "Invalid data in proto critter.\n" );
-                    delete props;
-                    errors++;
-                }
+                uint count = temp_msg.Count( str_num );
+                uint new_str_num = CR_STR_ID( proto->ProtoId, str_num );
+                for( uint n = 0; n < count; n++ )
+                    msg->AddStr( new_str_num, temp_msg.GetStr( str_num, n ) );
             }
+
+            proto->TextsLang.push_back( *(uint*) app_name.substr( 5 ).c_str() );
+            proto->Texts.push_back( msg );
         }
-        else
-        {
-            WriteLog( "Can't load file<%s>.\n", fname );
-            errors++;
-        }
+
+        #ifdef FONLINE_MAPPER
+        proto->CollectionName = "all";
+        #endif
+
+        allProtos.insert( PAIR( proto->ProtoId, proto ) );
+        files_loaded++;
     }
 
-    WriteLog( "Load critters prototypes complete, loaded<%u>.%s\n", loaded, errors ? " With errors." : "" );
+    WriteLog( "Load critter prototypes complete, loaded<%u/%u>.\n", files_loaded, files.GetFilesCount() );
     return errors == 0;
 }
 
@@ -398,7 +396,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     Npc* npc = CreateNpc( proto_id, true );
     if( !npc )
     {
-        WriteLogF( _FUNC_, " - Create npc with pid <%u> failture.\n", proto_id );
+        WriteLogF( _FUNC_, " - Create npc with proto<%s> fail.\n", HASH_STR( proto_id ) );
         return NULL;
     }
 
@@ -467,21 +465,15 @@ Npc* CritterManager::CreateNpc( hash proto_id, bool copy_data )
     ProtoCritter* proto = GetProto( proto_id );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Critter data not found, critter proto id<%u>.\n", proto_id );
+        WriteLogF( _FUNC_, " - Critter proto<%s> not found.\n", HASH_STR( proto_id ) );
         return NULL;
     }
 
     Npc* npc = new Npc();
-    if( !npc )
-    {
-        WriteLogF( _FUNC_, " - Allocation fail, critter proto id<%u>.\n", proto_id );
-        return NULL;
-    }
-
     if( !npc->SetDefaultItems( ItemMngr.GetProtoItem( ITEM_DEF_SLOT ), ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) ) )
     {
         delete npc;
-        WriteLogF( _FUNC_, " - Can't set default items, critter proto id<%u>.\n", proto_id );
+        WriteLogF( _FUNC_, " - Can't set default items, critter proto<%s>.\n", HASH_STR( proto_id ) );
         return NULL;
     }
 

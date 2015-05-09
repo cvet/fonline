@@ -3895,6 +3895,26 @@ bool FOServer::InitLangPacksDialogs( LangPackVec& lang_packs )
     for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
         it->Msg[ TEXTMSG_DLG ].Clear();
 
+    ProtoCritterMap& all_protos = CrMngr.GetAllProtos();
+    for( auto it = all_protos.begin(); it != all_protos.end(); ++it )
+    {
+        ProtoCritter* proto = it->second;
+        for( uint i = 0, j = (uint) proto->TextsLang.size(); i < j; i++ )
+        {
+            for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
+            {
+                LanguagePack& lang = *it;
+                if( proto->TextsLang[ i ] != lang.Name )
+                    continue;
+
+                if( lang.Msg[ TEXTMSG_DLG ].IsIntersects( *proto->Texts[ i ] ) )
+                    WriteLog( "Warning! Proto item<%s> text intersection detected, send notification about this to developers.\n", proto->GetName() );
+
+                lang.Msg[ TEXTMSG_DLG ] += *proto->Texts[ i ];
+            }
+        }
+    }
+
     DialogPack* pack = NULL;
     uint        index = 0;
     while( pack = DlgMngr.GetDialogByIndex( index++ ) )
@@ -3963,7 +3983,7 @@ bool FOServer::InitLangPacksItems( LangPackVec& lang_packs )
                 if( proto->TextsLang[ i ] != lang.Name )
                     continue;
 
-                if( lang.Msg[ TEXTMSG_LOCATIONS ].IsIntersects( *proto->Texts[ i ] ) )
+                if( lang.Msg[ TEXTMSG_ITEM ].IsIntersects( *proto->Texts[ i ] ) )
                     WriteLog( "Warning! Proto item<%s> text intersection detected, send notification about this to developers.\n", proto->GetName() );
 
                 lang.Msg[ TEXTMSG_ITEM ] += *proto->Texts[ i ];

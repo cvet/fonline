@@ -336,21 +336,16 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                     // Shared
                     if( field == "ProtoId" )
                     {
+                        const char* proto_name = NULL;
                         if( mobj.MapObjType == MAP_OBJECT_ITEM || mobj.MapObjType == MAP_OBJECT_SCENERY )
-                        {
-                            const char* proto_name = ConvertProtoIdByInt( ivalue );
-                            mobj.ProtoId = ( proto_name ? Str::GetHash( proto_name ) : ivalue );
-                            #ifdef FONLINE_MAPPER
-                            mobj.ProtoName = ScriptString::Create( proto_name ? proto_name : Str::ItoA( ivalue ) );
-                            #endif
-                        }
-                        else
-                        {
-                            mobj.ProtoId = ivalue;
-                            #ifdef FONLINE_MAPPER
-                            mobj.ProtoName = ScriptString::Create( Str::ItoA( ivalue ) );
-                            #endif
-                        }
+                            proto_name = ConvertProtoIdByInt( ivalue );
+                        else if( mobj.MapObjType == MAP_OBJECT_CRITTER )
+                            proto_name = ConvertProtoCritterIdByInt( ivalue );
+                        RUNTIME_ASSERT( proto_name );
+                        mobj.ProtoId = ( proto_name ? Str::GetHash( proto_name ) : ivalue );
+                        #ifdef FONLINE_MAPPER
+                        mobj.ProtoName = ScriptString::Create( proto_name ? proto_name : Str::ItoA( ivalue ) );
+                        #endif
                     }
                     else if( field == "ProtoName" )
                     {
@@ -649,10 +644,7 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
         MapObject& mobj = *MObjects[ k ];
         // Shared
         fm.SetStr( "%-20s %d\n", "MapObjType", mobj.MapObjType );
-        if( mobj.MapObjType == MAP_OBJECT_ITEM || mobj.MapObjType == MAP_OBJECT_SCENERY )
-            fm.SetStr( "%-20s %s\n", "ProtoName", mobj.ProtoName->c_str() );
-        else
-            fm.SetStr( "%-20s %u\n", "ProtoId", mobj.ProtoId );
+        fm.SetStr( "%-20s %s\n", "ProtoName", mobj.ProtoName->c_str() );
         if( mobj.MapX )
             fm.SetStr( "%-20s %d\n", "MapX", mobj.MapX );
         if( mobj.MapY )

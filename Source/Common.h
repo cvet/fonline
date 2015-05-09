@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 496 )
+#define FONLINE_VERSION                          ( 499 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
@@ -992,5 +992,6 @@ void FormatPreprocessorOutput( string& str );
 // Deprecated stuff
 const char* ConvertProtoIdByInt( uint pid );
 const char* ConvertProtoIdByStr( const char* pid );
+const char* ConvertProtoCritterIdByInt( uint pid );
 
 #endif // __COMMON__
