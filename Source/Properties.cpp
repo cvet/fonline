@@ -31,6 +31,21 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
             memcpy( arr->At( 0 ), data, arr_size * element_size );
         return arr;
     }
+    else if( dataType == Property::Dict )
+    {
+        asUINT      key_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
+        asUINT      value_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 1 ) );
+        asUINT      whole_element_size = key_element_size + value_element_size;
+        asUINT      dict_size = data_size / whole_element_size;
+        ScriptDict* dict = ScriptDict::Create( asObjType );
+        RUNTIME_ASSERT( dict );
+        if( dict_size )
+        {
+            for( asUINT i = 0; i < dict_size; i++ )
+                dict->Insert( data + i * whole_element_size, data + i * whole_element_size + key_element_size );
+        }
+        return dict;
+    }
     else
     {
         RUNTIME_ASSERT( !"Unexpected type" );
@@ -44,6 +59,8 @@ void Property::AddRefComplexValue( void* value )
         ( (ScriptString*) value )->AddRef();
     else if( dataType == Property::Array )
         ( (ScriptArray*) value )->AddRef();
+    else if( dataType == Property::Dict )
+        ( (ScriptDict*) value )->AddRef();
     else
         RUNTIME_ASSERT( !"Unexpected type" );
 }
@@ -54,6 +71,8 @@ void Property::ReleaseComplexValue( void* value )
         ( (ScriptString*) value )->Release();
     else if( dataType == Property::Array )
         ( (ScriptArray*) value )->Release();
+    else if( dataType == Property::Dict )
+        ( (ScriptDict*) value )->Release();
     else
         RUNTIME_ASSERT( !"Unexpected type" );
 }
@@ -72,6 +91,29 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
         ScriptArray* arr = *(ScriptArray**) base_ptr;
         data_size = ( arr ? arr->GetSize() * arr->GetElementSize() : 0 );
         return data_size ? (uchar*) arr->At( 0 ) : NULL;
+    }
+    else if( dataType == Property::Dict )
+    {
+        ScriptDict* dict = *(ScriptDict**) base_ptr;
+        asUINT      key_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
+        asUINT      value_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 1 ) );
+        asUINT      whole_element_size = key_element_size + value_element_size;
+        data_size = ( dict ? dict->GetSize() * whole_element_size : 0 );
+        if( data_size )
+        {
+            need_delete = true;
+            uchar*               buf = new uchar[ data_size ];
+            map< void*, void* >* dict_map = ( map< void*, void* >* )dict->GetMap();
+            for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+            {
+                memcpy( buf, it->first, key_element_size );
+                buf += key_element_size;
+                memcpy( buf, it->second, value_element_size );
+                buf += value_element_size;
+            }
+            return buf;
+        }
+        return NULL;
     }
     else
     {
@@ -1081,6 +1123,17 @@ Property* PropertyRegistrator::Register(
         if( as_obj_type->GetSubTypeId() & asTYPEID_MASK_OBJECT )
         {
             WriteLogF( _FUNC_, " - Invalid property type<%s>, array elements must have POD type.\n", type_name );
+            return NULL;
+        }
+    }
+    else if( Str::Compare( as_obj_type->GetName(), "dict" ) )
+    {
+        data_type = Property::Dict;
+
+        data_size = sizeof( void* );
+        if( as_obj_type->GetSubTypeId( 0 ) & asTYPEID_MASK_OBJECT || as_obj_type->GetSubTypeId( 1 ) & asTYPEID_MASK_OBJECT )
+        {
+            WriteLogF( _FUNC_, " - Invalid property type<%s>, dict elements must have POD type.\n", type_name );
             return NULL;
         }
     }

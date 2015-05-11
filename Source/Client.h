@@ -22,6 +22,7 @@
 #include "zlib.h"
 #include "IniParser.h"
 #include "MsgFiles.h"
+#include "scriptdictionary.h"
 
 // Video
 #include "Theora/theoradec.h"

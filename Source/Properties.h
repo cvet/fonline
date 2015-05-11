@@ -112,7 +112,7 @@ private:
         POD,
         String,
         Array,
-        // Todo: Dict
+        Dict,
     };
 
     Property();

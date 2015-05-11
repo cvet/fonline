@@ -32,8 +32,10 @@ static void RegisterScriptDict_Native( asIScriptEngine* engine );
 // Usually where the variables are only used in debug mode.
 #define UNUSED_VAR( x )    (void) ( x )
 
-static bool Less( int typeId, const void* a, const void* b );
-static bool Equals( int typeId, const void* a, const void* b );
+static void* CopyObject( asIObjectType* objType, int subTypeIndex, void* value );
+static void  DestroyObject( asIObjectType* objType, int subTypeIndex, void* value );
+static bool  Less( int typeId, const void* a, const void* b );
+static bool  Equals( int typeId, const void* a, const void* b );
 
 struct DictMapComparator
 {
@@ -113,11 +115,11 @@ ScriptDict* ScriptDict::Create( asIObjectType* ot, void* initList )
 // subtype at compile time, instead of at runtime. The output argument dontGarbageCollect
 // allow the callback to tell the engine if the template instance type shouldn't be garbage collected,
 // i.e. no asOBJ_GC flag.
-static bool ScriptDictTemplateCallbackExt( asIObjectType* ot, bool& dontGarbageCollect )
+static bool ScriptDictTemplateCallbackExt( asIObjectType* ot, int subTypeIndex, bool& dontGarbageCollect )
 {
     // Make sure the subtype can be instanciated with a default factory/constructor,
     // otherwise we won't be able to instanciate the elements.
-    int typeId = ot->GetTypeId();
+    int typeId = ot->GetSubTypeId( subTypeIndex );
     if( typeId == asTYPEID_VOID )
         return false;
     if( ( typeId & asTYPEID_MASK_OBJECT ) && !( typeId & asTYPEID_OBJHANDLE ) )
@@ -229,15 +231,15 @@ static bool ScriptDictTemplateCallbackExt( asIObjectType* ot, bool& dontGarbageC
 
 static bool ScriptDictTemplateCallback( asIObjectType* ot, bool& dontGarbageCollect )
 {
-    return ScriptDictTemplateCallbackExt( ot->GetSubType( 0 ), dontGarbageCollect ) &&
-           ScriptDictTemplateCallbackExt( ot->GetSubType( 1 ), dontGarbageCollect );
+    return ScriptDictTemplateCallbackExt( ot, 0, dontGarbageCollect ) &&
+           ScriptDictTemplateCallbackExt( ot, 1, dontGarbageCollect );
 }
 
 // Registers the template dict type
 void RegisterScriptDict( asIScriptEngine* engine )
 {
-    // if( strstr( asGetLibraryOptions(), "AS_MAX_PORTABILITY" ) == 0 )
-    //    RegisterScriptDict_Native( engine );
+    if( strstr( asGetLibraryOptions(), "AS_MAX_PORTABILITY" ) == 0 )
+        RegisterScriptDict_Native( engine );
 }
 
 static void RegisterScriptDict_Native( asIScriptEngine* engine )
@@ -258,8 +260,8 @@ static void RegisterScriptDict_Native( asIScriptEngine* engine )
     assert( r >= 0 );
 
     // Register the factory that will be used for initialization lists
-    // r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_LIST_FACTORY, "dict<T1>@ f(int&in type, int&in list) {repeat T1}", asFUNCTIONPR( ScriptDict::Create, ( asIObjectType*, void* ), ScriptDict* ), asCALL_CDECL );
-    // assert( r >= 0 );
+    r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_LIST_FACTORY, "dict<T1,T2>@ f(int&in type, int&in list) {repeat {T1, T2}}", asFUNCTIONPR( ScriptDict::Create, ( asIObjectType *, void* ), ScriptDict* ), asCALL_CDECL );
+    assert( r >= 0 );
 
     // The memory management methods
     r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_ADDREF, "void f()", asMETHOD( ScriptDict, AddRef ), asCALL_THISCALL );
@@ -268,9 +270,9 @@ static void RegisterScriptDict_Native( asIScriptEngine* engine )
     assert( r >= 0 );
 
     // The index operator returns the template subtype
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get_opIndex(const T1&in) const", asMETHODPR( ScriptDict, Find, (void*) const, const void* ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get_opIndex(const T1&in) const", asMETHOD( ScriptDict, Find ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "void set_opIndex(const T1&in, const T2&in)", asMETHODPR( ScriptDict, Find, (void*), void* ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "void set_opIndex(const T1&in, const T2&in)", asMETHOD( ScriptDict, Insert ), asCALL_THISCALL );
     assert( r >= 0 );
 
     // The assignment operator
@@ -278,19 +280,21 @@ static void RegisterScriptDict_Native( asIScriptEngine* engine )
     assert( r >= 0 );
 
     // Other methods
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "void insert(const T1&in, const T2&in)", asMETHOD( ScriptDict, Insert ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "void set(const T1&in, const T2&in)", asMETHOD( ScriptDict, Insert ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool remove(const T1&in)", asMETHOD( ScriptDict, Remove ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool removeValues(const T2&in)", asMETHOD( ScriptDict, RemoveValues ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "uint removeValues(const T2&in)", asMETHOD( ScriptDict, RemoveValues ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dict<T1,T2>", "uint length() const", asMETHOD( ScriptDict, GetSize ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "void clear()", asMETHODPR( ScriptDict, Clear, ( ), void ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "void clear()", asMETHOD( ScriptDict, Clear ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get(const T1&in, const T2&in)", asMETHODPR( ScriptDict, FindInsert, ( void*, void* ), void* ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get(const T1&in)", asMETHOD( ScriptDict, Find ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool contains(const T1&in) const", asMETHODPR( ScriptDict, Contains, (void*) const, bool ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get(const T1&in, const T2&in)", asMETHOD( ScriptDict, FindInsert ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool contains(const T1&in) const", asMETHOD( ScriptDict, Contains ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool opEquals(const dict<T1,T2>&in) const", asMETHOD( ScriptDict, operator== ), asCALL_THISCALL );
     assert( r >= 0 );
@@ -316,7 +320,9 @@ ScriptDict::ScriptDict( asIObjectType* ot )
     gcFlag = false;
     objType = ot;
     objType->AddRef();
-    dictMap = new DictMap( DictMapComparator( ot->GetSubTypeId( 0 ) ) );
+    keyTypeId = objType->GetSubTypeId( 0 );
+    valueTypeId = objType->GetSubTypeId( 1 );
+    dictMap = new DictMap( DictMapComparator( keyTypeId ) );
 
     // Notify the GC of the successful creation
     if( objType->GetFlags() & asOBJ_GC )
@@ -329,83 +335,64 @@ ScriptDict::ScriptDict( asIObjectType* ot, void* listBuffer )
     gcFlag = false;
     objType = ot;
     objType->AddRef();
-    dictMap = new DictMap( DictMapComparator( ot->GetSubTypeId( 0 ) ) );
+    keyTypeId = objType->GetSubTypeId( 0 );
+    valueTypeId = objType->GetSubTypeId( 1 );
+    dictMap = new DictMap( DictMapComparator( keyTypeId ) );
 
-/*
     asIScriptEngine* engine = ot->GetEngine();
+    DictMap*         dict = (DictMap*) dictMap;
 
-    // Determine element size
-    if( subTypeId & asTYPEID_MASK_OBJECT )
-        elementSize = sizeof( asPWORD );
-    else
-        elementSize = engine->GetSizeOfPrimitiveType( subTypeId );
+    asBYTE*          buffer = (asBYTE*) listBuffer;
+    asUINT           length = *(asUINT*) buffer;
+    buffer += 4;
 
-    // Determine the initial size from the buffer
-    asUINT length = *(asUINT*) buf;
-
-    // Make sure the array size isn't too large for us to handle
-    if( !CheckMaxSize( length ) )
+    while( length-- )
     {
-        // Don't continue with the initialization
-        return;
-    }
+        if( asPWORD( buffer ) & 0x3 )
+            buffer += 4 - ( asPWORD( buffer ) & 0x3 );
 
-    // Copy the values of the array elements from the buffer
-    if( ( ot->GetSubTypeId() & asTYPEID_MASK_OBJECT ) == 0 )
-    {
-        CreateBuffer( &buffer, length );
-
-        // Copy the values of the primitive type into the internal buffer
-        if( length > 0 )
-            memcpy( At( 0 ), ( ( (asUINT*) buf ) + 1 ), length * elementSize );
-    }
-    else if( ot->GetSubTypeId() & asTYPEID_OBJHANDLE )
-    {
-        CreateBuffer( &buffer, length );
-
-        // Copy the handles into the internal buffer
-        if( length > 0 )
-            memcpy( At( 0 ), ( ( (asUINT*) buf ) + 1 ), length * elementSize );
-
-        // With object handles it is safe to clear the memory in the received buffer
-        // instead of increasing the ref count. It will save time both by avoiding the
-        // call the increase ref, and also relieve the engine from having to release
-        // its references too
-        memset( ( ( (asUINT*) buf ) + 1 ), 0, length * elementSize );
-    }
-    else if( ot->GetSubType()->GetFlags() & asOBJ_REF )
-    {
-        // Only allocate the buffer, but not the objects
-        subTypeId |= asTYPEID_OBJHANDLE;
-        CreateBuffer( &buffer, length );
-        subTypeId &= ~asTYPEID_OBJHANDLE;
-
-        // Copy the handles into the internal buffer
-        if( length > 0 )
-            memcpy( buffer->data, ( ( (asUINT*) buf ) + 1 ), length * elementSize );
-
-        // For ref types we can do the same as for handles, as they are
-        // implicitly stored as handles.
-        memset( ( ( (asUINT*) buf ) + 1 ), 0, length * elementSize );
-    }
-    else
-    {
-        // TODO: Optimize by calling the copy constructor of the object instead of
-        //       constructing with the default constructor and then assigning the value
-        // TODO: With C++11 ideally we should be calling the move constructor, instead
-        //       of the copy constructor as the engine will just discard the objects in the
-        //       buffer afterwards.
-        CreateBuffer( &buffer, length );
-
-        // For value types we need to call the opAssign for each individual object
-        for( asUINT n = 0; n < length; n++ )
+        void* key = buffer;
+        if( keyTypeId & asTYPEID_MASK_OBJECT )
         {
-            void*                obj = At( n );
-            asBYTE*              srcObj = (asBYTE*) buf;
-            srcObj += 4 + n* ot->GetSubType()->GetSize();
-            engine->AssignScriptObject( obj, srcObj, ot->GetSubType() );
+            asIObjectType* ot = engine->GetObjectTypeById( keyTypeId );
+            if( ot->GetFlags() & asOBJ_VALUE )
+                buffer += ot->GetSize();
+            else
+                buffer += sizeof( void* );
+            if( ot->GetFlags() & asOBJ_REF )
+                key = *(void**) key;
         }
-    }*/
+        else if( keyTypeId == asTYPEID_VOID )
+        {
+            buffer += sizeof( void* );
+        }
+        else
+        {
+            buffer += engine->GetSizeOfPrimitiveType( keyTypeId );
+        }
+
+        void* value = buffer;
+        if( valueTypeId & asTYPEID_MASK_OBJECT )
+        {
+            asIObjectType* ot = engine->GetObjectTypeById( valueTypeId );
+            if( ot->GetFlags() & asOBJ_VALUE )
+                buffer += ot->GetSize();
+            else
+                buffer += sizeof( void* );
+            if( ot->GetFlags() & asOBJ_REF )
+                value = *(void**) value;
+        }
+        else if( valueTypeId == asTYPEID_VOID )
+        {
+            buffer += sizeof( void* );
+        }
+        else
+        {
+            buffer += engine->GetSizeOfPrimitiveType( valueTypeId );
+        }
+
+        Insert( key, value );
+    }
 
     // Notify the GC of the successful creation
     if( objType->GetFlags() & asOBJ_GC )
@@ -418,8 +405,13 @@ ScriptDict::ScriptDict( const ScriptDict& other )
     gcFlag = false;
     objType = other.objType;
     objType->AddRef();
+    keyTypeId = objType->GetSubTypeId( 0 );
+    valueTypeId = objType->GetSubTypeId( 1 );
+    dictMap = new DictMap( DictMapComparator( keyTypeId ) );
 
-    *(DictMap*) dictMap = *(DictMap*) other.dictMap;
+    DictMap* dict = (DictMap*) other.dictMap;
+    for( auto it = dict->begin(); it != dict->end(); ++it )
+        Insert( it->first, it->second );
 
     if( objType->GetFlags() & asOBJ_GC )
         objType->GetEngine()->NotifyGarbageCollectorOfNewObject( this, objType );
@@ -429,7 +421,13 @@ ScriptDict& ScriptDict::operator=( const ScriptDict& other )
 {
     // Only perform the copy if the array types are the same
     if( &other != this && other.objType == objType )
-        *(DictMap*) dictMap = *(DictMap*) other.dictMap;
+    {
+        Clear();
+
+        DictMap* dict = (DictMap*) other.dictMap;
+        for( auto it = dict->begin(); it != dict->end(); ++it )
+            Insert( it->first, it->second );
+    }
 
     return *this;
 }
@@ -457,72 +455,79 @@ bool ScriptDict::IsEmpty() const
     return dict->empty();
 }
 
-void ScriptDict::Insert( void* key, void* value )
+void* ScriptDict::Insert( void* key, void* value )
 {
     DictMap* dict = (DictMap*) dictMap;
 
-    dict->insert( PAIR( key, value ) );
+    auto     it = dict->find( key );
+    if( it == dict->end() )
+    {
+        key = CopyObject( objType, 0, key );
+        value = CopyObject( objType, 1, value );
+        dict->insert( PAIR( key, value ) );
+    }
+    else
+    {
+        DestroyObject( objType, 1, it->second );
+        value = CopyObject( objType, 1, value );
+        it->second = value;
+    }
+
+    return value;
 }
 
 bool ScriptDict::Remove( void* key )
 {
-//     if( index >= buffer->numElements )
-//     {
-//         // If this is called from a script we raise a script exception
-//         asIScriptContext* ctx = asGetActiveContext();
-//         if( ctx )
-//             ctx->SetException( "Index out of bounds" );
-//         return;
-//     }
-//
-//     // Remove the element
-//     Resize( -1, index );
-    return 0;
+    DictMap* dict = (DictMap*) dictMap;
+
+    auto     it = dict->find( key );
+    if( it != dict->end() )
+    {
+        DestroyObject( objType, 0, it->first );
+        DestroyObject( objType, 1, it->second );
+        dict->erase( it );
+        return true;
+    }
+
+    return false;
 }
 
 uint ScriptDict::RemoveValues( void* value )
 {
-//     if( index >= buffer->numElements )
-//     {
-//         // If this is called from a script we raise a script exception
-//         asIScriptContext* ctx = asGetActiveContext();
-//         if( ctx )
-//             ctx->SetException( "Index out of bounds" );
-//         return;
-//     }
-//
-//     // Remove the element
-//     Resize( -1, index );
-    return 0;
+    DictMap* dict = (DictMap*) dictMap;
+    uint     result = 0;
+
+    for( auto it = dict->begin(); it != dict->end();)
+    {
+        if( Equals( valueTypeId, it->second, value ) )
+        {
+            DestroyObject( objType, 0, it->first );
+            DestroyObject( objType, 1, it->second );
+            it = dict->erase( it );
+            result++;
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    return result;
 }
 
 void ScriptDict::Clear()
 {
-    DictMap*       dict = (DictMap*) dictMap;
+    DictMap* dict = (DictMap*) dictMap;
 
-    asIObjectType* otKey = objType->GetSubType( 0 );
-    asIObjectType* otValue = objType->GetSubType( 0 );
-
-    bool           releaseKeys = ( otKey->GetTypeId() & asTYPEID_MASK_OBJECT ) != 0;
-    bool           releaseValues = ( otValue->GetTypeId() & asTYPEID_MASK_OBJECT ) != 0;
-
-    if( releaseKeys || releaseValues )
+    for( auto it = dict->begin(), end = dict->end(); it != end; ++it )
     {
-        asIScriptEngine* engine = objType->GetEngine();
-        for( auto it = dict->begin(), end = dict->end(); it != end; ++it )
-        {
-            if( releaseKeys && ( *it ).first )
-                engine->ReleaseScriptObject( ( *it ).first, otKey );
-            if( releaseKeys && ( *it ).second )
-                engine->ReleaseScriptObject( ( *it ).second, otValue );
-        }
+        DestroyObject( objType, 0, it->first );
+        DestroyObject( objType, 1, it->second );
     }
-
     dict->clear();
 }
 
-// Return a pointer to the array element. Returns 0 if the index is out of bounds
-const void* ScriptDict::Find( void* key ) const
+void* ScriptDict::Find( void* key )
 {
     DictMap* dict = (DictMap*) dictMap;
 
@@ -538,21 +543,13 @@ const void* ScriptDict::Find( void* key ) const
     return ( *it ).second;
 }
 
-void* ScriptDict::Find( void* key )
-{
-    return const_cast< void* >( const_cast< const ScriptDict* >( this )->Find( key ) );
-}
-
 void* ScriptDict::FindInsert( void* key, void* value )
 {
     DictMap* dict = (DictMap*) dictMap;
 
     auto     it = dict->find( key );
     if( it == dict->end() )
-    {
-        Insert( key, value );
-        return value;
-    }
+        return Insert( key, value );
 
     return ( *it ).second;
 }
@@ -571,9 +568,6 @@ bool ScriptDict::operator==( const ScriptDict& other ) const
 
     if( GetSize() != other.GetSize() )
         return false;
-
-    int      keyTypeId = objType->GetSubTypeId( 0 );
-    int      valueTypeId = objType->GetSubTypeId( 1 );
 
     DictMap* dict1 = (DictMap*) dictMap;
     DictMap* dict2 = (DictMap*) other.dictMap;
@@ -604,8 +598,8 @@ void ScriptDict::EnumReferences( asIScriptEngine* engine )
     // If the array is holding handles, then we need to notify the GC of them
     DictMap* dict = (DictMap*) dictMap;
 
-    bool     keysHandle = ( objType->GetSubTypeId( 0 ) & asTYPEID_MASK_OBJECT ) != 0;
-    bool     valuesHandle = ( objType->GetSubTypeId( 1 ) & asTYPEID_MASK_OBJECT ) != 0;
+    bool     keysHandle = ( keyTypeId & asTYPEID_MASK_OBJECT ) != 0;
+    bool     valuesHandle = ( valueTypeId & asTYPEID_MASK_OBJECT ) != 0;
 
     if( keysHandle || valuesHandle )
     {
@@ -664,7 +658,73 @@ bool ScriptDict::GetFlag()
     return gcFlag;
 }
 
+void* ScriptDict::GetMap()
+{
+	return dictMap;
+}
+
 // internal
+static void* CopyObject( asIObjectType* objType, int subTypeIndex, void* value )
+{
+    int              subTypeId = objType->GetSubTypeId( subTypeIndex );
+    asIObjectType*   subType = objType->GetSubType( subTypeIndex );
+    asIScriptEngine* engine = objType->GetEngine();
+
+    int              elementSize;
+    if( subTypeId & asTYPEID_MASK_OBJECT )
+        elementSize = sizeof( asPWORD );
+    else
+        elementSize = engine->GetSizeOfPrimitiveType( subTypeId );
+
+    void* ptr = AllocMem( elementSize );
+    memzero( ptr, elementSize );
+
+    if( ( subTypeId & ~asTYPEID_MASK_SEQNBR ) && !( subTypeId & asTYPEID_OBJHANDLE ) )
+    {
+        ptr = engine->CreateScriptObjectCopy( value, subType );
+    }
+    else if( subTypeId & asTYPEID_OBJHANDLE )
+    {
+        void* tmp = *(void**) ptr;
+        *(void**) ptr = *(void**) value;
+        subType->GetEngine()->AddRefScriptObject( *(void**) value, subType );
+        if( tmp )
+            subType->GetEngine()->ReleaseScriptObject( tmp, subType );
+    }
+    else if( subTypeId == asTYPEID_BOOL ||
+             subTypeId == asTYPEID_INT8 ||
+             subTypeId == asTYPEID_UINT8 )
+        *(char*) ptr = *(char*) value;
+    else if( subTypeId == asTYPEID_INT16 ||
+             subTypeId == asTYPEID_UINT16 )
+        *(short*) ptr = *(short*) value;
+    else if( subTypeId == asTYPEID_INT32 ||
+             subTypeId == asTYPEID_UINT32 ||
+             subTypeId == asTYPEID_FLOAT ||
+             subTypeId > asTYPEID_DOUBLE )      // enums have a type id larger than doubles
+        *(int*) ptr = *(int*) value;
+    else if( subTypeId == asTYPEID_INT64 ||
+             subTypeId == asTYPEID_UINT64 ||
+             subTypeId == asTYPEID_DOUBLE )
+        *(double*) ptr = *(double*) value;
+
+    return ptr;
+}
+
+static void DestroyObject( asIObjectType* objType, int subTypeIndex, void* value )
+{
+    int              subTypeId = objType->GetSubTypeId( subTypeIndex );
+    asIScriptEngine* engine = objType->GetEngine();
+
+    int              elementSize;
+    if( subTypeId & asTYPEID_MASK_OBJECT )
+        elementSize = sizeof( asPWORD );
+    else
+        elementSize = engine->GetSizeOfPrimitiveType( subTypeId );
+
+    FreeMem( value, elementSize );
+}
+
 static bool Less( int typeId, const void* a, const void* b )
 {
     if( !( typeId & ~asTYPEID_MASK_SEQNBR ) )

@@ -312,7 +312,6 @@ static void RegisterScriptArray_Native( asIScriptEngine* engine )
     r = engine->RegisterObjectMethod( "array<T>", "const T &opIndex(uint) const", asMETHODPR( ScriptArray, At, ( asUINT ) const, const void* ), asCALL_THISCALL );
     assert( r >= 0 );
 
-
     // The assignment operator
     r = engine->RegisterObjectMethod( "array<T>", "array<T> &opAssign(const array<T>&in)", asMETHOD( ScriptArray, operator= ), asCALL_THISCALL );
     assert( r >= 0 );

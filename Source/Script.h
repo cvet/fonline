@@ -6,7 +6,7 @@
 #include "angelscript.h"
 #include "scriptarray.h"
 #include "scriptstring.h"
-#include "scriptdictionary.h"
+#include "scriptdict.h"
 #include "preprocessor.h"
 #include <vector>
 #include <string>

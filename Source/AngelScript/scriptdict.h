@@ -35,19 +35,16 @@ public:
     virtual bool operator==( const ScriptDict& ) const;
 
     // Dict manipulation
-    virtual uint        GetSize() const;
-    virtual bool        IsEmpty() const;
-    virtual void        Insert( void* key, void* value );
-    virtual bool        Remove( void* key );
-    virtual uint        RemoveValues( void* value );
-    virtual void        Clear();
-    virtual const void* Find( void* key ) const;
-    virtual void*       Find( void* key );
-    virtual void*       FindInsert( void* key, void* value );
-    virtual bool        Contains( void* key ) const;
-    // insertIf
-    // GetKeys
-    // GetValues
+    virtual uint  GetSize() const;
+    virtual bool  IsEmpty() const;
+    virtual void* Insert( void* key, void* value );
+    virtual bool  Remove( void* key );
+    virtual uint  RemoveValues( void* value );
+    virtual void  Clear();
+    virtual void* Find( void* key );
+    virtual void* FindInsert( void* key, void* value );
+    virtual bool  Contains( void* key ) const;
+	virtual void* GetMap();
 
     // GC methods
     virtual int  GetRefCount();
@@ -60,6 +57,8 @@ protected:
     mutable int    refCount;
     mutable bool   gcFlag;
     asIObjectType* objType;
+    int            keyTypeId;
+    int            valueTypeId;
     void*          dictMap;
 
     ScriptDict();
