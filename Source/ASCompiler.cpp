@@ -19,6 +19,8 @@
 # define _stricmp    strcasecmp
 #endif
 
+int Compile( const char* fname, const char* fname_prep, vector< char* >& defines, vector< char* >& run_func );
+
 bool RaiseAssert( const char* message, const char* file, int line ) // For RUNTIME_ASSERT
 {
     ExitProcess( 0 );
@@ -26,7 +28,7 @@ bool RaiseAssert( const char* message, const char* file, int line ) // For RUNTI
 }
 
 asIScriptEngine* Engine = NULL;
-bool             IsServer = true;
+bool             IsServer = false;
 bool             IsClient = false;
 bool             IsMapper = false;
 char*            Buf = NULL;
@@ -224,8 +226,9 @@ int main( int argc, char* argv[] )
     {
         printf( "FOnline AngleScript compiler. Usage:\n"
                 "ASCompiler script_name.fos\n"
-                " [-client] (compile client scripts)\n"
-                " [-mapper] (compile mapper scripts)\n"
+                " [-server] (compile as server script)\n"
+                " [-client] (compile as client script)\n"
+                " [-mapper] (compile as mapper script)\n"
                 " [-p preprocessor_output.txt]\n"
                 " [-d SOME_DEFINE]*\n"
                 " [-run func_name]*\n"
@@ -242,7 +245,9 @@ int main( int argc, char* argv[] )
     for( int i = 2; i < argc; i++ )
     {
         // Server / Client / Mapper
-        if( !_stricmp( argv[ i ], "-client" ) )
+        if( !_stricmp( argv[ i ], "-server" ) )
+            IsServer = true, IsClient = false, IsMapper = false;
+        else if( !_stricmp( argv[ i ], "-client" ) )
             IsServer = false, IsClient = true, IsMapper = false;
         else if( !_stricmp( argv[ i ], "-mapper" ) )
             IsServer = false, IsClient = false, IsMapper = true;
@@ -278,6 +283,68 @@ int main( int argc, char* argv[] )
         #endif
     }
 
+    if( !IsServer && !IsClient && !IsMapper )
+    {
+        FILE* f = fopen( str_fname, "rb" );
+        if( !f )
+        {
+            printf( "File<%s> not found.\n", str_fname );
+            return -1;
+        }
+
+        char line[ MAX_FOTEXT ];
+        if( !fgets( line, sizeof( line ), f ) )
+        {
+            printf( "File<%s> empty.\n", str_fname );
+            return -1;
+        }
+        fclose( f );
+
+        // Trim UTF-8 BOM signature
+        Str::Trim( line );
+        if( line[ 0 ] && line[ 1 ] && line[ 2 ] && (uchar) line[ 0 ] == 0xEF && (uchar) line[ 1 ] == 0xBB && (uchar) line[ 2 ] == 0xBF )
+        {
+            Str::CopyBack( line );
+            Str::CopyBack( line );
+            Str::CopyBack( line );
+        }
+
+        // Compile as server script
+        if( Str::Substring( line, "Server" ) || Str::Substring( line, "Common" ) )
+        {
+            IsServer = true, IsClient = false, IsMapper = false;
+            int result = Compile( str_fname, str_prep, defines, run_func );
+            if( result != 0 )
+                return result;
+        }
+
+        // Compile as client script
+        if( Str::Substring( line, "Client" ) || Str::Substring( line, "Common" ) )
+        {
+            IsServer = false, IsClient = true, IsMapper = false;
+            int result = Compile( str_fname, str_prep, defines, run_func );
+            if( result != 0 )
+                return result;
+        }
+
+        // Compile as mapper script
+        if( Str::Substring( line, "Mapper" ) || Str::Substring( line, "Common" ) )
+        {
+            IsServer = false, IsClient = false, IsMapper = true;
+            int result = Compile( str_fname, str_prep, defines, run_func );
+            if( result != 0 )
+                return result;
+        }
+    }
+    else
+    {
+        return Compile( str_fname, str_prep, defines, run_func );
+    }
+    return 0;
+}
+
+int Compile( const char* fname, const char* fname_prep, vector< char* >& defines, vector< char* >& run_func )
+{
     // Engine
     Engine = asCreateScriptEngine( ANGELSCRIPT_VERSION );
     if( !Engine )
@@ -325,7 +392,7 @@ int main( int argc, char* argv[] )
         printf( "Warning, bind result: %d.\n", bind_errors );
 
     // Start compilation
-    printf( "Compiling %s ...\n", str_fname );
+    printf( "Compiling '%s' as %s script...\n", fname, IsServer ? "server" : ( IsClient ? "client" : "mapper" ) );
     double tick = Timer::AccurateTick();
 
     // Preprocessor
@@ -354,7 +421,7 @@ int main( int argc, char* argv[] )
 
     Preprocessor::StringOutStream result, errors;
     int                           res;
-    res = Preprocessor::Preprocess( str_fname, result, &errors, NULL, false );
+    res = Preprocessor::Preprocess( fname, result, &errors, NULL, false );
 
     Buf = Str::Duplicate( errors.String.c_str() );
 
@@ -369,9 +436,9 @@ int main( int argc, char* argv[] )
             printf( "%s", Buf );
     }
 
-    if( str_prep )
+    if( fname_prep )
     {
-        FILE* f = fopen( str_prep, "wt" );
+        FILE* f = fopen( fname_prep, "wt" );
         if( f )
         {
             string result_formatted = result.String;
@@ -381,7 +448,7 @@ int main( int argc, char* argv[] )
         }
         else
         {
-            printf( "Unable to create preprocessed file<%s>.\n", str_prep );
+            printf( "Unable to create preprocessed file<%s>.\n", fname_prep );
         }
     }
 
@@ -392,7 +459,7 @@ int main( int argc, char* argv[] )
 
     // Make module name
     char module_name[ MAX_FOTEXT ];
-    FileManager::ExtractFileName( str_fname, module_name );
+    FileManager::ExtractFileName( fname, module_name );
     FileManager::EraseExtension( module_name );
 
     // AS compilation
@@ -515,14 +582,14 @@ int main( int argc, char* argv[] )
     for( size_t i = 0; i < run_func.size(); i++ )
         RunMain( module, run_func[ i ] );
 
-    // Fast exit from program
-    return 0;
-
     // Collect garbage
     if( CollectGarbage )
         Engine->GarbageCollect( asGC_FULL_CYCLE );
 
     // Clean up
+    SAFEDEL( registrators[ 0 ] );
+    SAFEDEL( registrators[ 1 ] );
+    SAFEDEL( registrators[ 2 ] );
     Engine->Release();
     if( Buf )
         delete Buf;

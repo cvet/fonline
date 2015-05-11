@@ -52,7 +52,7 @@ namespace Script
     void  SetLoadLibraryCompiler( bool enabled );
 
     void UnloadScripts();
-    bool ReloadScripts( const char* config, const char* key, bool skip_binaries, const char* file_pefix = NULL );
+    bool ReloadScripts( const char* target, bool skip_binaries, const char* file_pefix = NULL );
     bool BindReservedFunctions( ReservedScriptFunction* bind_func, uint bind_func_count );
     bool RunModuleInitFunctions();
 
@@ -91,7 +91,6 @@ namespace Script
 
     void SetRunTimeout( uint suspend_timeout, uint message_timeout );
 
-    void SetScriptsPath( int path_type );
     void Define( const char* def, ... );
     void Undef( const char* def );
     void CallPragmas( const Pragmas& pragmas );

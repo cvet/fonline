@@ -8959,7 +8959,6 @@ bool FOClient::ReloadScripts()
     }
 
     // Options
-    Script::SetScriptsPath( PT_CACHE );
     Script::Undef( NULL );
     Script::Define( "__CLIENT" );
     Script::Define( "__VERSION %d", FONLINE_VERSION );

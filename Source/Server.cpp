@@ -2551,23 +2551,13 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
 
         SynchronizeLogicThreads();
 
-        // Get config file
-        FileManager scripts_cfg;
-        if( scripts_cfg.LoadFile( SCRIPTS_LST, PT_SERVER_SCRIPTS ) )
-        {
-            // Reload script modules
-            Script::Undef( NULL );
-            Script::Define( "__SERVER" );
-            Script::Define( "__VERSION %d", FONLINE_VERSION );
-            if( Script::ReloadScripts( (char*) scripts_cfg.GetBuf(), "server", false ) )
-                logcb( "Success." );
-            else
-                logcb( "Fail." );
-        }
+        Script::Undef( NULL );
+        Script::Define( "__SERVER" );
+        Script::Define( "__VERSION %d", FONLINE_VERSION );
+        if( Script::ReloadScripts( "Server", false ) )
+            logcb( "Success." );
         else
-        {
-            logcb( "Scripts config file not found." );
-        }
+            logcb( "Fail." );
 
         ResynchronizeLogicThreads();
     }

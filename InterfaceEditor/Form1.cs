@@ -369,6 +369,8 @@ namespace InterfaceEditor
 			StringBuilder initScript = new StringBuilder(100000);
 			StringBuilder contentScript = new StringBuilder(100000);
 
+			initScript.AppendLine("//$ Client");
+			initScript.AppendLine();
 			initScript.AppendLine("// GUI scheme name: " + SchemeName);
 			initScript.AppendLine();
 			initScript.AppendLine("#include \"_macros.fos\"");

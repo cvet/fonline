@@ -100,7 +100,6 @@ bool FOServer::InitScriptSystem()
         WriteLog( "Script System initialization failed.\n" );
         return false;
     }
-    Script::SetScriptsPath( PT_SERVER_SCRIPTS );
     Script::Profiler::Init();
 
     // Wrong global objects
@@ -125,20 +124,11 @@ bool FOServer::InitScriptSystem()
     #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line<%d>.\n", __LINE__ ); return false; }
     #include "ScriptBind.h"
 
-    // Get config file
-    FileManager scripts_cfg;
-    scripts_cfg.LoadFile( SCRIPTS_LST, PT_SERVER_SCRIPTS );
-    if( !scripts_cfg.IsLoaded() )
-    {
-        WriteLog( "Config file<%s> not found.\n", FileManager::GetDataPath( SCRIPTS_LST, PT_SERVER_SCRIPTS ) );
-        return false;
-    }
-
     // Load script modules
     Script::Undef( NULL );
     Script::Define( "__SERVER" );
     Script::Define( "__VERSION %d", FONLINE_VERSION );
-    if( !Script::ReloadScripts( (char*) scripts_cfg.GetBuf(), "server", false ) )
+    if( !Script::ReloadScripts( "Server", false ) )
     {
         Script::Finish();
         WriteLog( "Reload scripts fail.\n" );
@@ -302,15 +292,6 @@ bool FOServer::ReloadClientScripts()
 {
     WriteLog( "Reload client scripts...\n" );
 
-    // Get config file
-    FileManager scripts_cfg;
-    scripts_cfg.LoadFile( SCRIPTS_LST, PT_SERVER_SCRIPTS );
-    if( !scripts_cfg.IsLoaded() )
-    {
-        WriteLog( "Config file<%s> not found.\n", SCRIPTS_LST );
-        return false;
-    }
-
     // Disable debug allocators
     #ifdef MEMORY_DEBUG
     asThreadCleanup();
@@ -360,75 +341,39 @@ bool FOServer::ReloadClientScripts()
     // Load script modules
     Script::Undef( "__SERVER" );
     Script::Define( "__CLIENT" );
+    Script::Define( "__VERSION %d", FONLINE_VERSION );
 
     StrVec empty;
     Script::SetWrongGlobalObjects( empty );
-
     Script::SetLoadLibraryCompiler( true );
 
-    FOMsg  msg_script;
-    int    num = STR_INTERNAL_SCRIPT_MODULES;
-    int    errors = 0;
-    char   buf[ MAX_FOTEXT ];
-    string value, config;
-    while( scripts_cfg.GetLine( buf, MAX_FOTEXT ) )
+    FOMsg msg_script;
+    int   num = STR_INTERNAL_SCRIPT_MODULES;
+    int   errors = 0;
+    if( Script::ReloadScripts( "Client", false, "CLIENT_" ) )
     {
-        if( buf[ 0 ] != '@' )
-            continue;
-        istrstream str( &buf[ 1 ] );
-        str >> value;
-        if( str.fail() || value != "client" )
-            continue;
-        str >> value;
-        if( str.fail() || ( value != "module" && value != "bind" ) )
-            continue;
-
-        if( value == "module" )
+        for( asUINT i = 0; i < engine->GetModuleCount(); i++ )
         {
-            str >> value;
-            if( str.fail() )
-                continue;
-
-            if( !Script::LoadScript( value.c_str(), NULL, false, "CLIENT_" ) )
-            {
-                WriteLogF( _FUNC_, " - Unable to load client script<%s>.\n", value.c_str() );
-                errors++;
-                continue;
-            }
-
-            asIScriptModule* module = engine->GetModule( value.c_str(), asGM_ONLY_IF_EXISTS );
+            asIScriptModule* module = engine->GetModuleByIndex( i );
             CBytecodeStream  binary;
             if( !module || module->SaveByteCode( &binary ) < 0 )
             {
-                WriteLogF( _FUNC_, " - Unable to save bytecode of client script<%s>.\n", value.c_str() );
+                WriteLogF( _FUNC_, " - Unable to save bytecode of client script<%s>.\n", module->GetName() );
                 errors++;
                 continue;
             }
             std::vector< asBYTE >& buf = binary.GetBuf();
 
             // Add module name and bytecode
-            msg_script.AddStr( num, value.c_str() );
+            msg_script.AddStr( num, module->GetName() );
             msg_script.AddBinary( num + 1, (uchar*) &buf[ 0 ], (uint) buf.size() );
             num += 2;
         }
-        else
-        {
-            // Make bind line
-            string config_ = "@ client bind ";
-            str >> value;
-            if( str.fail() )
-                continue;
-            config_ += value + " ";
-            str >> value;
-            if( str.fail() )
-                continue;
-            config_ += value;
-            config += config_ + "\n";
-        }
     }
-
-    // Imported functions
-    errors += Script::BindImportedFunctions();
+    else
+    {
+        errors++;
+    }
 
     // Add native dlls to MSG
     int         dll_num = STR_INTERNAL_SCRIPT_DLLS;
@@ -553,15 +498,6 @@ bool FOServer::ReloadMapperScripts()
 {
     WriteLog( "Reload mapper scripts...\n" );
 
-    // Get config file
-    FileManager scripts_cfg;
-    scripts_cfg.LoadFile( SCRIPTS_LST, PT_SERVER_SCRIPTS );
-    if( !scripts_cfg.IsLoaded() )
-    {
-        WriteLog( "Config file<%s> not found.\n", SCRIPTS_LST );
-        return false;
-    }
-
     // Disable debug allocators
     #ifdef MEMORY_DEBUG
     asThreadCleanup();
@@ -611,51 +547,15 @@ bool FOServer::ReloadMapperScripts()
     // Load script modules
     Script::Undef( "__SERVER" );
     Script::Define( "__MAPPER" );
+    Script::Define( "__VERSION %d", FONLINE_VERSION );
 
     StrVec empty;
     Script::SetWrongGlobalObjects( empty );
-
     Script::SetLoadLibraryCompiler( true );
 
-    int    errors = 0;
-    char   buf[ MAX_FOTEXT ];
-    string value, config;
-    StrVec pragmas;
-    while( scripts_cfg.GetLine( buf, MAX_FOTEXT ) )
-    {
-        if( buf[ 0 ] != '@' )
-            continue;
-        istrstream str( &buf[ 1 ] );
-        str >> value;
-        if( str.fail() || value != "mapper" )
-            continue;
-        str >> value;
-        if( str.fail() || ( value != "module" && value != "bind" ) )
-            continue;
-
-        if( value == "module" )
-        {
-            str >> value;
-            if( str.fail() )
-                continue;
-
-            if( !Script::LoadScript( value.c_str(), NULL, false, "MAPPER_" ) )
-            {
-                WriteLogF( _FUNC_, " - Unable to load mapper script<%s>.\n", value.c_str() );
-                errors++;
-                continue;
-            }
-
-            asIScriptModule* module = engine->GetModule( value.c_str(), asGM_ONLY_IF_EXISTS );
-            CBytecodeStream  binary;
-            if( !module || module->SaveByteCode( &binary ) < 0 )
-            {
-                WriteLogF( _FUNC_, " - Unable to save bytecode of mapper script<%s>.\n", value.c_str() );
-                errors++;
-                continue;
-            }
-        }
-    }
+    int errors = 0;
+    if( !Script::ReloadScripts( "Client", false, "MAPPER_" ) )
+        errors++;
 
     // Imported functions
     errors += Script::BindImportedFunctions();

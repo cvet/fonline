@@ -312,7 +312,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define MAX_ANSWERS                  ( 100 )
 #define PROCESS_TALK_TICK            ( 1000 )
 #define MAX_SCRIPT_NAME              ( 64 )
-#define SCRIPTS_LST                  "scripts.cfg"
 #define TURN_BASED_TIMEOUT           ( 1000 )
 #define FADING_PERIOD                ( 1000 )
 

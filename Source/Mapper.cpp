@@ -5283,23 +5283,12 @@ bool FOMapper::InitScriptSystem()
 
     // Load scripts
     FileManager::SetWritePath( ServerWritePath );
-    Script::SetScriptsPath( PT_SERVER_SCRIPTS );
-
-    // Get config file
-    FileManager scripts_cfg;
-    scripts_cfg.LoadFile( SCRIPTS_LST, PT_SERVER_SCRIPTS );
-    if( !scripts_cfg.IsLoaded() )
-    {
-        WriteLog( "Config file<%s> not found.\n", SCRIPTS_LST );
-        FileManager::SetWritePath( ClientWritePath );
-        return false;
-    }
 
     // Load script modules
     Script::Undef( NULL );
     Script::Define( "__MAPPER" );
     Script::Define( "__VERSION %d", FONLINE_VERSION );
-    Script::ReloadScripts( (char*) scripts_cfg.GetBuf(), "mapper", false, "MAPPER_" );
+    Script::ReloadScripts( "Mapper", false, "MAPPER_" );
     FileManager::SetWritePath( ClientWritePath );
 
     // Bind game functions

@@ -71,7 +71,11 @@ public:
 typedef vector< BindFunction > BindFunctionVec;
 
 asIScriptEngine* Engine = NULL;
-int              ScriptsPath = PT_SCRIPTS;
+#ifndef FONLINE_CLIENT
+int              ScriptsPath = PT_SERVER_SCRIPTS;
+#else
+int              ScriptsPath = PT_CACHE;
+#endif
 bool             LogDebugInfo = false;
 StrVec           WrongGlobalObjects;
 
@@ -577,41 +581,73 @@ void Script::UnloadScripts()
         Engine->GetModuleByIndex( 0 )->Discard();
 }
 
-bool Script::ReloadScripts( const char* config, const char* key, bool skip_binaries, const char* file_pefix /* = NULL */ )
+bool Script::ReloadScripts( const char* target, bool skip_binaries, const char* file_pefix /* = NULL */ )
 {
     WriteLog( "Reload scripts...\n" );
 
     Script::UnloadScripts();
 
-    int        errors = 0;
-    char       buf[ 1024 ];
-    string     value;
-
-    istrstream config_( config );
-    while( !config_.eof() )
+    FilesCollection files = FilesCollection( PT_SERVER_SCRIPTS, "fos", true );
+    uint            files_loaded = 0;
+    int             errors = 0;
+    while( files.IsNextFile() )
     {
-        config_.getline( buf, 1024 );
-        if( buf[ 0 ] != '@' )
-            continue;
-
-        istrstream str( &buf[ 1 ] );
-        str >> value;
-        if( str.fail() || value != key )
-            continue;
-        str >> value;
-        if( str.fail() || value != "module" )
-            continue;
-
-        str >> value;
-        if( str.fail() || !LoadScript( value.c_str(), NULL, skip_binaries, file_pefix ) )
+        const char*  file_name;
+        FileManager& file = files.GetNextFile( &file_name );
+        if( !file.IsLoaded() )
         {
-            WriteLog( "Load module fail, name<%s>.\n", value.c_str() );
+            WriteLog( "Unable to open file<%s>.\n", file_name );
+            errors++;
+            continue;
+        }
+
+        // Get first line
+        char line[ MAX_FOTEXT ];
+        if( !file.GetLine( line, sizeof( line ) ) )
+        {
+            WriteLog( "Error in script<%s>, file empty.\n", file_name );
+            errors++;
+            continue;
+        }
+
+        // Trim UTF-8 BOM signature
+        Str::Trim( line );
+        if( line[ 0 ] && line[ 1 ] && line[ 2 ] && (uchar) line[ 0 ] == 0xEF && (uchar) line[ 1 ] == 0xBB && (uchar) line[ 2 ] == 0xBF )
+        {
+            Str::CopyBack( line );
+            Str::CopyBack( line );
+            Str::CopyBack( line );
+        }
+
+        // Check signature
+        if( !Str::CompareCount( line, "//$", 3 ) )
+        {
+            WriteLog( "Error in script<%s>, invalid header<%s>.\n", file_name, line );
+            errors++;
+            continue;
+        }
+
+        // Skip headers
+        if( Str::Substring( line, "Header" ) )
+            continue;
+
+        // Skip different targets
+        if( !Str::Substring( line, target ) && !Str::Substring( line, "Common" ) )
+            continue;
+
+        // Load script
+        file.UnloadFile();
+        if( !LoadScript( file_name, NULL, skip_binaries, file_pefix ) )
+        {
+            WriteLog( "Load module fail, name<%s>.\n", file_name );
             errors++;
         }
+
         #ifdef FONLINE_SERVER
-        Script::Profiler::AddModule( value.c_str() );
+        Script::Profiler::AddModule( file_name );
         #endif
     }
+
     #ifdef FONLINE_SERVER
     Script::Profiler::EndModules();
     Script::Profiler::SaveFunctionsData();
@@ -619,8 +655,11 @@ bool Script::ReloadScripts( const char* config, const char* key, bool skip_binar
 
     if( !errors )
         errors += BindImportedFunctions();
-    if( !errors )
+
+    #ifdef FONLINE_SERVER
+    if( !errors && Str::CompareCase( target, "Server" ) )
         errors += RebindFunctions();
+    #endif
 
     if( errors )
     {
@@ -1276,11 +1315,6 @@ void Script::SetRunTimeout( uint suspend_timeout, uint message_timeout )
 /************************************************************************/
 /* Load / Bind                                                          */
 /************************************************************************/
-
-void Script::SetScriptsPath( int path_type )
-{
-    ScriptsPath = path_type;
-}
 
 void Script::Define( const char* def, ... )
 {
