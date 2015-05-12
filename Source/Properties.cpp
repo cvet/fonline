@@ -102,7 +102,8 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
         if( data_size )
         {
             need_delete = true;
-            uchar*               buf = new uchar[ data_size ];
+            uchar*               init_buf = new uchar[ data_size ];
+            uchar*               buf = init_buf;
             map< void*, void* >* dict_map = ( map< void*, void* >* )dict->GetMap();
             for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
             {
@@ -111,7 +112,7 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
                 memcpy( buf, it->second, value_element_size );
                 buf += value_element_size;
             }
-            return buf;
+            return init_buf;
         }
         return NULL;
     }
@@ -329,15 +330,25 @@ void Property::GenericSet( void* obj, void* new_value )
         cur_value = &cur_complex_value;
 
         // Copy new property data
-        if( properties->complexDataSizes[ complexDataIndex ] != new_value_data_size )
+        if( properties->complexDataSizes[ complexDataIndex ] != new_value_data_size && new_value_data_size && need_delete )
         {
+            need_delete = false;
             SAFEDELA( properties->complexData[ complexDataIndex ] );
             properties->complexDataSizes[ complexDataIndex ] = new_value_data_size;
-            if( new_value_data_size )
-                properties->complexData[ complexDataIndex ] = new uchar[ new_value_data_size ];
+            properties->complexData[ complexDataIndex ] = new_value_data;
         }
-        if( new_value_data_size )
-            memcpy( properties->complexData[ complexDataIndex ], new_value_data, new_value_data_size );
+        else
+        {
+            if( properties->complexDataSizes[ complexDataIndex ] != new_value_data_size )
+            {
+                SAFEDELA( properties->complexData[ complexDataIndex ] );
+                properties->complexDataSizes[ complexDataIndex ] = new_value_data_size;
+                if( new_value_data_size )
+                    properties->complexData[ complexDataIndex ] = new uchar[ new_value_data_size ];
+            }
+            if( new_value_data_size )
+                memcpy( properties->complexData[ complexDataIndex ], new_value_data, new_value_data_size );
+        }
 
         // Deallocate data
         if( need_delete && new_value_data_size )
@@ -750,28 +761,38 @@ void Properties::Save( void ( * save_func )( void*, size_t ) )
 {
     RUNTIME_ASSERT( registrator->registrationFinished );
 
-    uint count = registrator->serializedPropertiesCount + (uint) unresolvedProperties.size();
-    save_func( &count, sizeof( count ) );
     for( size_t i = 0, j = registrator->registeredProperties.size(); i < j; i++ )
     {
         Property* prop = registrator->registeredProperties[ i ];
         if( prop->podDataOffset == uint( -1 ) && prop->complexDataIndex == uint( -1 ) )
             continue;
 
-        ushort name_len = (ushort) prop->propName.length();
-        save_func( &name_len, sizeof( name_len ) );
-        save_func( (void*) prop->propName.c_str(), name_len );
-
-        uchar type_name_len = (uchar) prop->typeName.length();
-        save_func( &type_name_len, sizeof( type_name_len ) );
-        save_func( (void*) prop->typeName.c_str(), type_name_len );
-
         uint   data_size;
         uchar* data = prop->GetRawData( this, data_size );
-        save_func( &data_size, sizeof( data_size ) );
-        if( data_size )
+
+        bool all_zero = true;
+        for( uint i = 0; i < data_size; i++ )
+        {
+            if( data[ i ] != 0 )
+            {
+                all_zero = false;
+                break;
+            }
+        }
+
+        if( !all_zero )
+        {
+            ushort name_len = (ushort) prop->propName.length();
+            save_func( &name_len, sizeof( name_len ) );
+            save_func( (void*) prop->propName.c_str(), name_len );
+            uchar type_name_len = (uchar) prop->typeName.length();
+            save_func( &type_name_len, sizeof( type_name_len ) );
+            save_func( (void*) prop->typeName.c_str(), type_name_len );
+            save_func( &data_size, sizeof( data_size ) );
             save_func( data, data_size );
+        }
     }
+
     for( size_t i = 0, j = unresolvedProperties.size(); i < j; i++ )
     {
         UnresolvedProperty* unresolved_property = unresolvedProperties[ i ];
@@ -790,34 +811,49 @@ void Properties::Save( void ( * save_func )( void*, size_t ) )
         if( data_size )
             save_func( data, data_size );
     }
+
+    ushort end_mark = 0xFFFF;
+    save_func( &end_mark, sizeof( end_mark ) );
 }
 
-void Properties::Load( void* file, uint version )
+bool Properties::Load( void* file, uint version )
 {
     RUNTIME_ASSERT( registrator->registrationFinished );
 
     UCharVec data;
-    uint     count = 0;
-    FileRead( file, &count, sizeof( count ) );
-    for( uint i = 0; i < count; i++ )
+    while( true )
     {
         ushort name_len = 0;
-        FileRead( file, &name_len, sizeof( name_len ) );
+        if( !FileRead( file, &name_len, sizeof( name_len ) ) )
+            return false;
+
+        if( name_len == 0xFFFF )
+            break;
+
         char   name[ MAX_FOTEXT ];
-        FileRead( file, name, name_len );
+        if( !FileRead( file, name, name_len ) )
+            return false;
         name[ name_len ] = 0;
 
         uchar type_name_len = 0;
-        FileRead( file, &type_name_len, sizeof( type_name_len ) );
+        if( !FileRead( file, &type_name_len, sizeof( type_name_len ) ) )
+            return false;
+
         char  type_name[ MAX_FOTEXT ];
-        FileRead( file, type_name, type_name_len );
+        if( !FileRead( file, type_name, type_name_len ) )
+            return false;
         type_name[ type_name_len ] = 0;
 
         uint data_size = 0;
-        FileRead( file, &data_size, sizeof( data_size ) );
+        if( !FileRead( file, &data_size, sizeof( data_size ) ) )
+            return false;
+
         data.resize( data_size );
         if( data_size )
-            FileRead( file, &data[ 0 ], data_size );
+        {
+            if( !FileRead( file, &data[ 0 ], data_size ) )
+                return false;
+        }
 
         Property* prop = registrator->Find( name );
         if( prop && Str::Compare( prop->typeName.c_str(), type_name ) )
@@ -836,6 +872,7 @@ void Properties::Load( void* file, uint version )
             unresolvedProperties.push_back( unresolved_property );
         }
     }
+    return true;
 }
 
 bool Properties::LoadFromText( const char* text, hash* pid /* = NULL */ )
@@ -1007,7 +1044,6 @@ PropertyRegistrator::PropertyRegistrator( bool is_server, const char* script_cla
     scriptClassName = script_class_name;
     wholePodDataSize = 0;
     complexPropertiesCount = 0;
-    serializedPropertiesCount = 0;
     defaultGroup = NULL;
     defaultGenerateRandomValue = NULL;
     defaultDefaultValue = NULL;
@@ -1410,9 +1446,6 @@ Property* PropertyRegistrator::Register(
 
     if( prop->asObjType )
         prop->asObjType->AddRef();
-
-    if( prop->podDataOffset != uint( -1 ) || prop->complexDataIndex != uint( -1 ) )
-        serializedPropertiesCount++;
 
     return prop;
 }

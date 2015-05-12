@@ -4429,6 +4429,14 @@ bool FOServer::SaveClient( Client* cl, bool deferred )
         FileWrite( f, cl->PassHash, sizeof( cl->PassHash ) );
         FileWrite( f, &cl->Data, sizeof( cl->Data ) );
         FileWrite( f, data_ext, sizeof( CritDataExt ) );
+        #pragma MESSAGE( "Rework props storing workaround 1" )
+        static THREAD void* File = NULL;
+        File = f;
+        auto                save_func = [] ( void* buf, size_t len )
+        {
+            FileWrite( File, buf, len );
+        };
+        cl->Props.Save( save_func );
         uint te_count = (uint) cl->CrTimeEvents.size();
         FileWrite( f, &te_count, sizeof( te_count ) );
         if( te_count )
@@ -4471,6 +4479,8 @@ bool FOServer::LoadClient( Client* cl )
     if( !FileRead( f, &cl->Data, sizeof( cl->Data ) ) )
         goto label_FileTruncated;
     if( !FileRead( f, data_ext, sizeof( CritDataExt ) ) )
+        goto label_FileTruncated;
+    if( !cl->Props.Load( f, 0 ) )
         goto label_FileTruncated;
     uint te_count;
     if( !FileRead( f, &te_count, sizeof( te_count ) ) )
@@ -4792,6 +4802,7 @@ void FOServer::AddClientSaveData( Client* cl )
     memcpy( csd.PasswordHash, cl->PassHash, sizeof( csd.PasswordHash ) );
     memcpy( &csd.Data, &cl->Data, sizeof( cl->Data ) );
     memcpy( &csd.DataExt, cl->GetDataExt(), sizeof( CritDataExt ) );
+    csd.Props = cl->Props;
     csd.TimeEvents = cl->CrTimeEvents;
 
     ClientsSaveDataCount++;
@@ -4854,6 +4865,14 @@ void FOServer::Dump_Work( void* data )
             FileWrite( fc, csd.PasswordHash, sizeof( csd.PasswordHash ) );
             FileWrite( fc, &csd.Data, sizeof( csd.Data ) );
             FileWrite( fc, &csd.DataExt, sizeof( csd.DataExt ) );
+            #pragma MESSAGE( "Rework props storing workaround 2" )
+            static THREAD void* File = NULL;
+            File = fc;
+            auto                save_func = [] ( void* buf, size_t len )
+            {
+                FileWrite( File, buf, len );
+            };
+            csd.Props.Save( save_func );
             uint te_count = (uint) csd.TimeEvents.size();
             FileWrite( fc, &te_count, sizeof( te_count ) );
             if( te_count )

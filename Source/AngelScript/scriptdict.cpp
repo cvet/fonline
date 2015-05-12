@@ -290,7 +290,7 @@ static void RegisterScriptDict_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dict<T1,T2>", "void clear()", asMETHOD( ScriptDict, Clear ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get(const T1&in)", asMETHOD( ScriptDict, Find ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get(const T1&in) const", asMETHOD( ScriptDict, Find ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get(const T1&in, const T2&in)", asMETHOD( ScriptDict, FindInsert ), asCALL_THISCALL );
     assert( r >= 0 );

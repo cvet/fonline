@@ -179,7 +179,7 @@ public:
     void        RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes );
     void        RestoreData( UCharVecVec& all_data );
     void        Save( void ( * save_func )( void*, size_t ) );
-    void        Load( void* file, uint version );
+    bool        Load( void* file, uint version );
     bool        LoadFromText( const char* text, hash* pid = NULL );
     int         GetValueAsInt( int enum_value );
     void        SetValueAsInt( int enum_value, int value );
@@ -221,7 +221,6 @@ private:
     bool                        isServer;
     string                      scriptClassName;
     PropertyVec                 registeredProperties;
-    uint                        serializedPropertiesCount;
     string                      enumTypeName;
     map< string, ScriptArray* > enumGroups;
 

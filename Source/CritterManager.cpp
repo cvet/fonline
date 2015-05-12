@@ -146,27 +146,28 @@ ProtoCritterMap& CritterManager::GetAllProtos()
 #ifdef FONLINE_SERVER
 void CritterManager::SaveCrittersFile( void ( * save_func )( void*, size_t ) )
 {
-    CrVec crits;
+    CrVec npcs;
     for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
         if( cr->IsNpc() )
-            crits.push_back( cr );
+            npcs.push_back( cr );
     }
 
-    uint count = (uint) crits.size();  // npcCount
+    uint count = (uint) npcs.size();
     save_func( &count, sizeof( count ) );
-    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
+    for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
     {
-        Critter* cr = *it;
-        cr->Data.IsDataExt = ( cr->DataExt ? true : false );
-        save_func( &cr->Data, sizeof( cr->Data ) );
-        if( cr->Data.IsDataExt )
-            save_func( cr->DataExt, sizeof( CritDataExt ) );
-        uint te_count = (uint) cr->CrTimeEvents.size();
+        Critter* npc = *it;
+        npc->Data.IsDataExt = ( npc->DataExt ? true : false );
+        save_func( &npc->Data, sizeof( npc->Data ) );
+        if( npc->Data.IsDataExt )
+            save_func( npc->DataExt, sizeof( CritDataExt ) );
+        npc->Props.Save( save_func );
+        uint te_count = (uint) npc->CrTimeEvents.size();
         save_func( &te_count, sizeof( te_count ) );
         if( te_count )
-            save_func( &cr->CrTimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
+            save_func( &npc->CrTimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
     }
 }
 
@@ -190,6 +191,9 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
         CritDataExt data_ext;
         if( data.IsDataExt )
             FileRead( f, &data_ext, sizeof( data_ext ) );
+
+        Properties props( Critter::PropertiesRegistrator );
+        props.Load( f, version );
 
         Critter::CrTimeEventVec tevents;
         uint                    te_count;
@@ -218,6 +222,9 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
             if( pdata_ext )
                 *pdata_ext = data_ext;
         }
+
+        npc->Props = props;
+
         if( te_count )
             npc->CrTimeEvents = tevents;
 

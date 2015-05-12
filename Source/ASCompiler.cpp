@@ -309,11 +309,19 @@ int main( int argc, char* argv[] )
             Str::CopyBack( line );
         }
 
+        // Check script signature
+        if( !Str::CompareCount( line, "//$", 3 ) )
+        {
+            printf( "FOnline script signature '//$' not found.\n" );
+            return -1;
+        }
+
         // Compile as server script
+        int result = -1;
         if( Str::Substring( line, "Server" ) || Str::Substring( line, "Common" ) )
         {
             IsServer = true, IsClient = false, IsMapper = false;
-            int result = Compile( str_fname, str_prep, defines, run_func );
+            result = Compile( str_fname, str_prep, defines, run_func );
             if( result != 0 )
                 return result;
         }
@@ -322,7 +330,7 @@ int main( int argc, char* argv[] )
         if( Str::Substring( line, "Client" ) || Str::Substring( line, "Common" ) )
         {
             IsServer = false, IsClient = true, IsMapper = false;
-            int result = Compile( str_fname, str_prep, defines, run_func );
+            result = Compile( str_fname, str_prep, defines, run_func );
             if( result != 0 )
                 return result;
         }
@@ -331,9 +339,16 @@ int main( int argc, char* argv[] )
         if( Str::Substring( line, "Mapper" ) || Str::Substring( line, "Common" ) )
         {
             IsServer = false, IsClient = false, IsMapper = true;
-            int result = Compile( str_fname, str_prep, defines, run_func );
+            result = Compile( str_fname, str_prep, defines, run_func );
             if( result != 0 )
                 return result;
+        }
+
+        // No one target seleted
+        if( result == -1 )
+        {
+            printf( "Compile target (Server/Client/Mapper) not specified.\n" );
+            return -1;
         }
     }
     else
@@ -576,7 +591,7 @@ int Compile( const char* fname, const char* fname_prep, vector< char* >& defines
     }
 
     // Print compilation time
-    printf( "Success.\nTime: %g ms.\n", Timer::AccurateTick() - tick );
+    printf( "Success (%g ms).\n", Timer::AccurateTick() - tick );
 
     // Execute functions
     for( size_t i = 0; i < run_func.size(); i++ )

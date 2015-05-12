@@ -342,9 +342,15 @@ public:
         char                    PasswordHash[ PASS_HASH_SIZE ];
         CritData                Data;
         CritDataExt             DataExt;
+        Properties              Props;
         Critter::CrTimeEventVec TimeEvents;
 
-        void                    Clear()
+        ClientSaveData::ClientSaveData(): Props( Critter::PropertiesRegistrator )
+        {
+            Clear();
+        }
+
+        void Clear()
         {
             memzero( Name, sizeof( Name ) );
             memzero( PasswordHash, sizeof( PasswordHash ) );
