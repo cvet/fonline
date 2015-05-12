@@ -292,7 +292,7 @@ static void RegisterScriptDict_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get(const T1&in) const", asMETHOD( ScriptDict, Find ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get(const T1&in, const T2&in)", asMETHOD( ScriptDict, FindInsert ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get(const T1&in, const T2&in) const", asMETHOD( ScriptDict, FindDefault ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool contains(const T1&in) const", asMETHOD( ScriptDict, Contains ), asCALL_THISCALL );
     assert( r >= 0 );
@@ -543,13 +543,13 @@ void* ScriptDict::Find( void* key )
     return ( *it ).second;
 }
 
-void* ScriptDict::FindInsert( void* key, void* value )
+void* ScriptDict::FindDefault( void* key, void* defaultValue )
 {
     DictMap* dict = (DictMap*) dictMap;
 
     auto     it = dict->find( key );
     if( it == dict->end() )
-        return Insert( key, value );
+        return defaultValue;
 
     return ( *it ).second;
 }

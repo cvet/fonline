@@ -104,7 +104,7 @@ extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 
 // Special item pids
 #define HASH_DECL( var, name )        extern hash var
-#define HASH_IMPL( var, name )        extern hash var = Str::GetHash( name )
+#define HASH_IMPL( var, name )        hash var = Str::GetHash( name )
 HASH_DECL( ITEM_DEF_SLOT, "internal_0" );
 HASH_DECL( ITEM_DEF_ARMOR, "internal_100" );
 HASH_DECL( SP_SCEN_IBLOCK, "minimap_invisible_block" );

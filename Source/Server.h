@@ -345,7 +345,7 @@ public:
         Properties              Props;
         Critter::CrTimeEventVec TimeEvents;
 
-        ClientSaveData::ClientSaveData(): Props( Critter::PropertiesRegistrator )
+        ClientSaveData(): Props( Critter::PropertiesRegistrator )
         {
             Clear();
         }

@@ -42,7 +42,7 @@ public:
     virtual uint  RemoveValues( void* value );
     virtual void  Clear();
     virtual void* Find( void* key );
-    virtual void* FindInsert( void* key, void* value );
+    virtual void* FindDefault( void* key, void* defaultValue );
     virtual bool  Contains( void* key ) const;
 	virtual void* GetMap();
 
