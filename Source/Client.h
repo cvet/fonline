@@ -140,8 +140,7 @@ public:
     void Net_SendUseItem( uchar ap, uint item_id, hash item_pid, uchar rate, uchar target_type, uint target_id, hash target_pid, uint param );
     void Net_SendPickItem( ushort targ_x, ushort targ_y, hash pid );
     void Net_SendPickCritter( uint crid, uchar pick_type );
-    void Net_SendChosenProperty( Property* prop );
-    void Net_SendItemProperty( Item* item, Property* prop );
+    void Net_SendProperty( Property* prop, NetProperty::Type type, CritterCl* cr, Item* item );
     void Net_SendChangeItem( uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count );
     void Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags );
     void Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer );
@@ -187,7 +186,7 @@ public:
     void Net_OnPing();
     void Net_OnEndParseToGame();
     void Net_OnCheckUID0();
-    void Net_OnItemProperty( bool is_critter, uint data_size );
+    void Net_OnProperty( uint data_size );
 
     void Net_OnCritterDir();
     void Net_OnCritterMove();
@@ -202,7 +201,6 @@ public:
 
     void Net_OnCritterXY();
     void Net_OnAllProperties();
-    void Net_OnCritterProperty( uint data_size );
     void Net_OnCraftAsk();
     void Net_OnCraftResult();
     void Net_OnChosenClearItems();

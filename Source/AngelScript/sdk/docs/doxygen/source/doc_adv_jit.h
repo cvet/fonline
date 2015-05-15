@@ -435,6 +435,7 @@ Make a jump to a relative position depending on the value in the value register
 Call an application registered function
 
  - \ref asBC_CALLSYS
+ - \ref asBC_Thiscall1
 
 Save the state and suspend execution, then return control to the application
 

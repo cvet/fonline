@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdio.h> // sprintf
+#include <string>
 
 #include "scriptarray.h"
 
@@ -61,12 +62,11 @@ static void CleanupObjectTypeArrayCache(asIObjectType *type)
 
 CScriptArray* CScriptArray::Create(asIObjectType *ot, asUINT length)
 {
-	asIScriptContext *ctx = asGetActiveContext();
-
 	// Allocate the memory
 	void *mem = userAlloc(sizeof(CScriptArray));
 	if( mem == 0 )
 	{
+		asIScriptContext *ctx = asGetActiveContext();
 		if( ctx )
 			ctx->SetException("Out of memory");
 
@@ -76,25 +76,16 @@ CScriptArray* CScriptArray::Create(asIObjectType *ot, asUINT length)
 	// Initialize the object
 	CScriptArray *a = new(mem) CScriptArray(length, ot);
 
-	// It's possible the constructor raised a script exception, in which case we
-	// need to free the memory and return null instead, else we get a memory leak.
-	if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-	{
-		a->Release();
-		return 0;
-	}
-
 	return a;
 }
 
 CScriptArray* CScriptArray::Create(asIObjectType *ot, void *initList)
 {
-	asIScriptContext *ctx = asGetActiveContext();
-
 	// Allocate the memory
 	void *mem = userAlloc(sizeof(CScriptArray));
 	if( mem == 0 )
 	{
+		asIScriptContext *ctx = asGetActiveContext();
 		if( ctx )
 			ctx->SetException("Out of memory");
 
@@ -104,25 +95,16 @@ CScriptArray* CScriptArray::Create(asIObjectType *ot, void *initList)
 	// Initialize the object
 	CScriptArray *a = new(mem) CScriptArray(ot, initList);
 
-	// It's possible the constructor raised a script exception, in which case we
-	// need to free the memory and return null instead, else we get a memory leak.
-	if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-	{
-		a->Release();
-		return 0;
-	}
-
 	return a;
 }
 
 CScriptArray* CScriptArray::Create(asIObjectType *ot, asUINT length, void *defVal)
 {
-	asIScriptContext *ctx = asGetActiveContext();
-
 	// Allocate the memory
 	void *mem = userAlloc(sizeof(CScriptArray));
 	if( mem == 0 )
 	{
+		asIScriptContext *ctx = asGetActiveContext();
 		if( ctx )
 			ctx->SetException("Out of memory");
 
@@ -131,14 +113,6 @@ CScriptArray* CScriptArray::Create(asIObjectType *ot, asUINT length, void *defVa
 
 	// Initialize the object
 	CScriptArray *a = new(mem) CScriptArray(length, defVal, ot);
-
-	// It's possible the constructor raised a script exception, in which case we
-	// need to free the memory and return null instead, else we get a memory leak.
-	if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-	{
-		a->Release();
-		return 0;
-	}
 
 	return a;
 }
@@ -380,6 +354,9 @@ CScriptArray &CScriptArray::operator=(const CScriptArray &other)
 
 CScriptArray::CScriptArray(asIObjectType *ot, void *buf)
 {
+	// The object type should be the template instance of the array
+	assert( ot && string(ot->GetName()) == "array" );
+
 	refCount = 1;
 	gcFlag = false;
 	objType = ot;
@@ -470,6 +447,9 @@ CScriptArray::CScriptArray(asIObjectType *ot, void *buf)
 
 CScriptArray::CScriptArray(asUINT length, asIObjectType *ot)
 {
+	// The object type should be the template instance of the array
+	assert( ot && string(ot->GetName()) == "array" );
+
 	refCount = 1;
 	gcFlag = false;
 	objType = ot;
@@ -521,6 +501,9 @@ CScriptArray::CScriptArray(const CScriptArray &other)
 
 CScriptArray::CScriptArray(asUINT length, void *defVal, asIObjectType *ot)
 {
+	// The object type should be the template instance of the array
+	assert( ot && string(ot->GetName()) == "array" );
+
 	refCount = 1;
 	gcFlag = false;
 	objType = ot;
@@ -827,6 +810,11 @@ const void *CScriptArray::At(asUINT index) const
 void *CScriptArray::At(asUINT index)
 {
 	return const_cast<void*>(const_cast<const CScriptArray *>(this)->At(index));
+}
+
+void *CScriptArray::GetBuffer()
+{
+	return buffer->data;
 }
 
 

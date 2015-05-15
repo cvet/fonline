@@ -4301,6 +4301,67 @@ void asCContext::ExecuteNext()
 		}
 		l_bc += 2;
 		break;
+	case asBC_Thiscall1:
+		// This instruction is a faster version of asBC_CALLSYS. It is faster because
+		// it has much less runtime overhead with determining the calling convention 
+		// and no dynamic code for loading the parameters. The instruction can only
+		// be used to call functions with the following signatures:
+		//
+		//  type &obj::func(int)
+		//  type &obj::func(uint)
+		//  void  obj::func(int)
+		//  void  obj::func(uint)
+		{
+			// Get function ID from the argument
+			int i = asBC_INTARG(l_bc);
+
+			// Need to move the values back to the context as the called functions
+			// may use the debug interface to inspect the registers
+			m_regs.programPointer    = l_bc;
+			m_regs.stackPointer      = l_sp;
+			m_regs.stackFramePointer = l_fp;
+
+			// Pop the thispointer from the stack
+			void *obj = *(void**)l_sp;
+			l_sp += AS_PTR_SIZE;
+
+			// Pop the int arg from the stack
+			int arg = *(int*)l_sp;
+			l_sp++;
+
+			// Call the method
+			m_callingSystemFunction = m_engine->scriptFunctions[i];
+			void *ptr = m_engine->CallObjectMethodRetPtr(obj, arg, m_callingSystemFunction);
+			m_callingSystemFunction = 0;
+			*(asPWORD*)&m_regs.valueRegister = (asPWORD)ptr;
+
+			// Update the program position after the call so that line number is correct
+			l_bc += 2;
+
+			if( m_regs.doProcessSuspend )
+			{
+				// Should the execution be suspended?
+				if( m_doSuspend )
+				{
+					m_regs.programPointer    = l_bc;
+					m_regs.stackPointer      = l_sp;
+					m_regs.stackFramePointer = l_fp;
+
+					m_status = asEXECUTION_SUSPENDED;
+					return;
+				}
+				// An exception might have been raised
+				if( m_status != asEXECUTION_ACTIVE )
+				{
+					m_regs.programPointer    = l_bc;
+					m_regs.stackPointer      = l_sp;
+					m_regs.stackFramePointer = l_fp;
+
+					return;
+				}
+			}
+		}
+		break;
 
 	// Don't let the optimizer optimize for size,
 	// since it requires extra conditions and jumps

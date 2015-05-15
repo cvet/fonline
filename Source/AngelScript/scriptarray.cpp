@@ -51,12 +51,11 @@ static void CleanupObjectTypeArrayCache( asIObjectType* type )
 
 ScriptArray* ScriptArray::Create( asIObjectType* ot, asUINT length )
 {
-    asIScriptContext* ctx = asGetActiveContext();
-
     // Allocate the memory
     void* mem = AllocMem( sizeof( ScriptArray ) );
     if( mem == 0 )
     {
+        asIScriptContext* ctx = asGetActiveContext();
         if( ctx )
             ctx->SetException( "Out of memory" );
 
@@ -66,25 +65,16 @@ ScriptArray* ScriptArray::Create( asIObjectType* ot, asUINT length )
     // Initialize the object
     ScriptArray* a = new (mem) ScriptArray( length, ot );
 
-    // It's possible the constructor raised a script exception, in which case we
-    // need to free the memory and return null instead, else we get a memory leak.
-    if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-    {
-        a->Release();
-        return 0;
-    }
-
     return a;
 }
 
 ScriptArray* ScriptArray::Create( asIObjectType* ot, void* initList )
 {
-    asIScriptContext* ctx = asGetActiveContext();
-
     // Allocate the memory
     void* mem = AllocMem( sizeof( ScriptArray ) );
     if( mem == 0 )
     {
+        asIScriptContext* ctx = asGetActiveContext();
         if( ctx )
             ctx->SetException( "Out of memory" );
 
@@ -94,25 +84,16 @@ ScriptArray* ScriptArray::Create( asIObjectType* ot, void* initList )
     // Initialize the object
     ScriptArray* a = new (mem) ScriptArray( ot, initList );
 
-    // It's possible the constructor raised a script exception, in which case we
-    // need to free the memory and return null instead, else we get a memory leak.
-    if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-    {
-        a->Release();
-        return 0;
-    }
-
     return a;
 }
 
 ScriptArray* ScriptArray::Create( asIObjectType* ot, asUINT length, void* defVal )
 {
-    asIScriptContext* ctx = asGetActiveContext();
-
     // Allocate the memory
     void* mem = AllocMem( sizeof( ScriptArray ) );
     if( mem == 0 )
     {
+        asIScriptContext* ctx = asGetActiveContext();
         if( ctx )
             ctx->SetException( "Out of memory" );
 
@@ -121,14 +102,6 @@ ScriptArray* ScriptArray::Create( asIObjectType* ot, asUINT length, void* defVal
 
     // Initialize the object
     ScriptArray* a = new (mem) ScriptArray( length, defVal, ot );
-
-    // It's possible the constructor raised a script exception, in which case we
-    // need to free the memory and return null instead, else we get a memory leak.
-    if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-    {
-        a->Release();
-        return 0;
-    }
 
     return a;
 }

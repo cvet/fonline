@@ -7887,9 +7887,9 @@ int asCCompiler::CompileCondition(asCScriptNode *expr, asSExprContext *ctx)
 
 					// In case the options were to objects, it is necessary to dereference the pointer on 
 					// the stack so it will point to the actual object, instead of the variable
-					if( le.type.dataType.IsReference() && le.type.isVariable && le.type.dataType.IsObject() && !le.type.dataType.IsObjectHandle() )
+					if( le.type.dataType.IsReference() && le.type.dataType.IsObject() && !le.type.dataType.IsObjectHandle() )
 					{
-						asASSERT( re.type.dataType.IsReference() && re.type.isVariable && re.type.dataType.IsObject() && !re.type.dataType.IsObjectHandle() );
+						asASSERT( re.type.dataType.IsReference() && re.type.dataType.IsObject() && !re.type.dataType.IsObjectHandle() );
 
 						ctx->bc.Instr(asBC_RDSPtr);
 					}
@@ -9668,6 +9668,9 @@ void asCCompiler::CompileConstructCall(asCScriptNode *node, asSExprContext *ctx)
 
 					// Push a reference to the temporary variable on the stack
 					ctx->bc.InstrSHORT(asBC_PSF, (short)returnOffset);
+
+					// Clean up arguments
+					ReleaseTemporaryVariable(args[0]->type, &ctx->bc);
 				}
 				else
 				{
@@ -14077,7 +14080,19 @@ void asCCompiler::PerformFunctionCall(int funcId, asSExprContext *ctx, bool isCo
 		else if( descr->funcType == asFUNC_SCRIPT )
 			ctx->bc.Call(asBC_CALL    , descr->id, argSize);
 		else if( descr->funcType == asFUNC_SYSTEM )
-			ctx->bc.Call(asBC_CALLSYS , descr->id, argSize);
+		{
+			// Check if we can use the faster asBC_Thiscall1 instruction, i.e. one of
+			//    type &obj::func(int) 
+			//    type &obj::func(uint)
+			if( descr->GetObjectType() && descr->returnType.IsReference() && 
+				descr->parameterTypes.GetLength() == 1 && 
+				(descr->parameterTypes[0].IsIntegerType() || descr->parameterTypes[0].IsUnsignedType()) && 
+				descr->parameterTypes[0].GetSizeInMemoryBytes() == 4 &&
+				!descr->parameterTypes[0].IsReference() )
+				ctx->bc.Call(asBC_Thiscall1, descr->id, argSize);
+			else
+				ctx->bc.Call(asBC_CALLSYS , descr->id, argSize);
+		}
 		else if( descr->funcType == asFUNC_FUNCDEF )
 			ctx->bc.CallPtr(asBC_CallPtr, funcPtrVar, argSize);
 	}

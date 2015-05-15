@@ -395,6 +395,7 @@ public:
     // Send
     volatile int DisableSend;
     bool IsSendDisabled() { return DisableSend > 0; }
+    void Send_Property( Property* prop, NetProperty::Type type, Critter* cr, Item* item );
     void Send_Move( Critter* from_cr, uint move_params );
     void Send_Dir( Critter* from_cr );
     void Send_AddCritter( Critter* cr );
@@ -402,7 +403,6 @@ public:
     void Send_LoadMap( Map* map );
     void Send_XY( Critter* cr );
     void Send_AddItemOnMap( Item* item );
-    void Send_MapItemProperty( Item* item, Property* prop );
     void Send_EraseItemFromMap( Item* item );
     void Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm );
     void Send_AddItem( Item* item );
@@ -415,7 +415,6 @@ public:
     void Send_GlobalMapFog( ushort zx, ushort zy, uchar fog );
     void Send_CustomCommand( Critter* cr, ushort cmd, int val );
     void Send_AllProperties();
-    void Send_CritterProperty( Critter* cr, Property* prop );
     void Send_Talk();
     void Send_GameInfo( Map* map );
     void Send_Text( Critter* from_cr, const char* s_str, uchar how_say );
@@ -427,7 +426,6 @@ public:
     void Send_Action( Critter* from_cr, int action, int action_ext, Item* item );
     void Send_Knockout( Critter* from_cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy );
     void Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar prev_slot );
-    void Send_CritterItemProperty( Critter* from_cr, Item* item, Property* prop );
     void Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void Send_SetAnims( Critter* from_cr, int cond, uint anim1, uint anim2 );
     void Send_CombatResult( uint* combat_res, uint len );
@@ -440,14 +438,13 @@ public:
     void Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
 
     // Send all
+    void SendA_Property( Property* prop, NetProperty::Type type, Critter* cr, Item* item );
     void SendA_Move( uint move_params );
     void SendA_XY();
     void SendA_Action( int action, int action_ext, Item* item );
     void SendAA_Action( int action, int action_ext, Item* item );
     void SendA_Knockout( uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy );
     void SendAA_MoveItem( Item* item, uchar action, uchar prev_slot );
-    void SendA_CritterProperty( Property* prop );
-    void SendA_CritterItemProperty( Item* item, Property* prop );
     void SendAA_Animate( uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void SendAA_SetAnims( int cond, uint anim1, uint anim2 );
     void SendA_GlobalInfo( GlobalMapGroup* group, uchar info_flags );
@@ -678,6 +675,7 @@ public:
 
     // Sends
 public:
+    void Send_Property( Property* prop, NetProperty::Type type, Critter* cr, Item* item );
     void Send_Move( Critter* from_cr, uint move_params );
     void Send_Dir( Critter* from_cr );
     void Send_AddCritter( Critter* cr );
@@ -685,7 +683,6 @@ public:
     void Send_LoadMap( Map* map );
     void Send_XY( Critter* cr );
     void Send_AddItemOnMap( Item* item );
-    void Send_MapItemProperty( Item* item, Property* prop );
     void Send_EraseItemFromMap( Item* item );
     void Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm );
     void Send_AddItem( Item* item );
@@ -698,7 +695,6 @@ public:
     void Send_GlobalMapFog( ushort zx, ushort zy, uchar fog );
     void Send_CustomCommand( Critter* cr, ushort cmd, int val );
     void Send_AllProperties();
-    void Send_CritterProperty( Critter* cr, Property* prop );
     void Send_Talk();
     void Send_GameInfo( Map* map );
     void Send_Text( Critter* from_cr, const char* s_str, uchar how_say );
@@ -710,8 +706,6 @@ public:
     void Send_Action( Critter* from_cr, int action, int action_ext, Item* item );
     void Send_Knockout( Critter* from_cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy );
     void Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar prev_slot );
-    void Send_ItemProperty( Critter* from_cr, Item* item, Property* prop );
-    void Send_CritterItemProperty( Critter* from_cr, Item* item, Property* prop );
     void Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void Send_SetAnims( Critter* from_cr, int cond, uint anim1, uint anim2 );
     void Send_CombatResult( uint* combat_res, uint len );

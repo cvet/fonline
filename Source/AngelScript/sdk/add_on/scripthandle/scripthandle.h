@@ -36,6 +36,9 @@ public:
 	asIObjectType *GetType() const;
 	int            GetTypeId() const;
 
+	// Get the reference
+	void *GetRef();
+
 protected:
 	// These functions need to have access to protected
 	// members in order to call them from the script engine

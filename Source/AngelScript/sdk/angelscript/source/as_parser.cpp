@@ -408,9 +408,11 @@ asCScriptNode *asCParser::ParseType(bool allowConst, bool allowVariableType, boo
 	if( isSyntaxError ) return node;
 
 	// If the datatype is a template type, then parse the subtype within the < >
+	GetToken(&t);
+	RewindTo(&t);
 	asCScriptNode *type = node->lastChild;
 	tempString.Assign(&script->code[type->tokenPos], type->tokenLength);
-	if( engine->IsTemplateType(tempString.AddressOf()) )
+	if( engine->IsTemplateType(tempString.AddressOf()) && t.type == ttLessThan )
 	{
 		GetToken(&t);
 		if( t.type != ttLessThan )
@@ -1110,10 +1112,13 @@ bool asCParser::CheckTemplateType(sToken &t)
 	tempString.Assign(&script->code[t.pos], t.length);
 	if( engine->IsTemplateType(tempString.AddressOf()) )
 	{
-		// Expect the sub type within < >
+		// If the next token is a < then parse the sub-type too
 		GetToken(&t);
 		if( t.type != ttLessThan )
-			return false;
+		{
+			RewindTo(&t);
+			return true;
+		}
 
 		for(;;)
 		{
@@ -1280,13 +1285,15 @@ asCScriptNode *asCParser::ParseExprValue()
 			if( engine->IsTemplateType(tempString.AddressOf()) )
 				isTemplateType = true;
 		}
+
+		GetToken(&t2);
 		
 		// Rewind so the real parsing can be done, after deciding what to parse
 		RewindTo(&t1);
 
 		// Check if this is a construct call
 		if( isDataType && (t.type == ttOpenParanthesis ||  // type()
-			               t.type == ttOpenBracket) )      // type[]()
+			               (t.type == ttOpenBracket && t2.type == ttCloseBracket)) )      // type[]()
 			node->AddChildLast(ParseConstructCall());
 		else if( isTemplateType && t.type == ttLessThan )  // type<t>()
 			node->AddChildLast(ParseConstructCall());

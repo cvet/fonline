@@ -42,7 +42,7 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
         if( dict_size )
         {
             for( asUINT i = 0; i < dict_size; i++ )
-                dict->Insert( data + i * whole_element_size, data + i * whole_element_size + key_element_size );
+                dict->Set( data + i * whole_element_size, data + i * whole_element_size + key_element_size );
         }
         return dict;
     }
@@ -723,7 +723,10 @@ uint Properties::StoreData( bool with_protected, PUCharVec** all_data, UIntVec**
 void Properties::RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes )
 {
     // Restore POD data
-    memcpy( &podData[ 0 ], all_data[ 0 ], all_data_sizes[ 0 ] );
+    uint publicSize = (uint) registrator->publicPodDataSpace.size();
+    uint protectedSize = (uint) registrator->protectedPodDataSpace.size();
+    RUNTIME_ASSERT( all_data_sizes[ 0 ] == publicSize || all_data_sizes[ 0 ] == publicSize + protectedSize );
+    memcpy( podData, all_data[ 0 ], all_data_sizes[ 0 ] );
 
     // Restore complex data
     if( all_data.size() > 1 )

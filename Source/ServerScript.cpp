@@ -135,6 +135,17 @@ bool FOServer::InitScriptSystem()
         return false;
     }
 
+    // Store property pragmas to synchronize with client
+    ServerPropertyPragmas.clear();
+    EngineData*    ed = (EngineData*) engine->GetUserData();
+    const Pragmas& pragmas = ed->PragmaCB->GetProcessedPragmas();
+    for( auto it = pragmas.begin(); it != pragmas.end(); ++it )
+    {
+        const Preprocessor::PragmaInstance& pragma = *it;
+        if( pragma.Name == "property" )
+            ServerPropertyPragmas.push_back( pragma );
+    }
+
     // Bind game functions
     ReservedScriptFunction BindGameFunc[] =
     {
@@ -446,10 +457,21 @@ bool FOServer::ReloadClientScripts()
         return false;
 
     // Add config text and pragmas
+    uint pragma_index = 0;
     for( size_t i = 0; i < pragmas.size(); i++ )
     {
-        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + i * 2, pragmas[ i ].Name.c_str() );
-        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + i * 2 + 1, pragmas[ i ].Text.c_str() );
+        if( pragmas[ i ].Name != "property" )
+        {
+            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2, pragmas[ i ].Name.c_str() );
+            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2 + 1, pragmas[ i ].Text.c_str() );
+            pragma_index++;
+        }
+    }
+    for( size_t i = 0; i < ServerPropertyPragmas.size(); i++ )
+    {
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2, ServerPropertyPragmas[ i ].Name.c_str() );
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2 + 1, ServerPropertyPragmas[ i ].Text.c_str() );
+        pragma_index++;
     }
 
     // Copy critter types

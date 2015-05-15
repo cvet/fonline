@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2015 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -173,6 +173,24 @@ static void ScriptObject_ReleaseAllHandles_Generic(asIScriptGeneric *gen)
 	self->ReleaseAllHandles(engine);
 }
 
+static void ScriptObject_Assignment_Generic(asIScriptGeneric *gen)
+{
+	asCScriptObject *other = *(asCScriptObject**)gen->GetAddressOfArg(0);
+	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
+
+	*self = *other;
+
+	*(asCScriptObject**)gen->GetAddressOfReturnLocation() = self;
+}
+
+static void ScriptObject_Construct_Generic(asIScriptGeneric *gen)
+{
+	asCObjectType *objType = *(asCObjectType**)gen->GetAddressOfArg(0);
+	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
+
+	ScriptObject_Construct(objType, self);
+}
+
 #endif
 
 void RegisterScriptObject(asCScriptEngine *engine)
@@ -214,14 +232,6 @@ void RegisterScriptObject(asCScriptEngine *engine)
 	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_ENUMREFS, "void f(int&in)", asFUNCTION(ScriptObject_EnumReferences_Generic), asCALL_GENERIC, 0); asASSERT( r >= 0 );
 	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_RELEASEREFS, "void f(int&in)", asFUNCTION(ScriptObject_ReleaseAllHandles_Generic), asCALL_GENERIC, 0); asASSERT( r >= 0 );
 #endif
-}
-
-void ScriptObject_Construct_Generic(asIScriptGeneric *gen)
-{
-	asCObjectType *objType = *(asCObjectType**)gen->GetAddressOfArg(0);
-	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
-
-	ScriptObject_Construct(objType, self);
 }
 
 void ScriptObject_Construct(asCObjectType *objType, asCScriptObject *self)
@@ -742,16 +752,6 @@ void asCScriptObject::ReleaseAllHandles(asIScriptEngine *engine)
 			}
 		}
 	}
-}
-
-void ScriptObject_Assignment_Generic(asIScriptGeneric *gen)
-{
-	asCScriptObject *other = *(asCScriptObject**)gen->GetAddressOfArg(0);
-	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
-
-	*self = *other;
-
-	*(asCScriptObject**)gen->GetAddressOfReturnLocation() = self;
 }
 
 asCScriptObject &ScriptObject_Assignment(asCScriptObject *other, asCScriptObject *self)

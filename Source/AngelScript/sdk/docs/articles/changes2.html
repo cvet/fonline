@@ -15,7 +15,7 @@ BODY { FONT-SIZE: 12px; FONT-FAMILY: Arial; }
 
 <h1>AngelScript Change Log</h1>
 
-<h2>Version 2.30.1 WIP - 2015/03/13</h2>
+<h2>Version 2.30.1 WIP - 2015/05/05</h2>
 
 <ul>
 <li>Bug fixes
@@ -23,16 +23,33 @@ BODY { FONT-SIZE: 12px; FONT-FAMILY: Arial; }
 <li>Fixed bug in compiler when using compound assignment on virtual property on temporary variable (Thanks Violet CLM)
 <li>Compiler no longer gives error when access global variable in global namespace from class in namespace (Thanks Sir Ementaler)
 <li>Fixed bug with compiler accepting null handle in initialization lists that didn't support it (Thanks Phong Ba)
+<li>Parser properly handles template type and non-template type of same name in different namespaces (Thanks Polyák István)
+<li>Fixed problem with ternary conditions returning references to global variables (Thanks Jonathan Sandusky)
+<li>Fixed bug with opIndex when global variable had same name as datatype in a different namespace (Thanks dkrusu)
+<li>Saving bytecode that used templates with multiple subtypes is now working properly (Thanks Phong Ba)
+<li>Fixed assert failure in compiler when creating delegate from temporary object (Thanks Solokiller)
+<li>Fixed crash on Win64 when calling native function that takes object by value that requires clean-up after call and the function also return an object by value (Thanks Jason Goepel)
+<li>Fixed a bug with native calling conventions on Win32 when using Clang with MinGW 4.7+ (Thanks Joshua Cearley)
 </ul>
 <li>Library
 <ul>
 <li>It is now possible to register member properties as references if the member should be dereferenced before access (Thanks cvet)
+<li>Added supported for native calling conventions on Linux with MIPS
+</ul>
+<li>Virtual machine
+<ul>
+<li>Implemented asBC_Thiscall1 for faster calls to class methods that take an int argument and return a reference
 </ul>
 <li>Add-ons
 <ul>
 <li>Fixed memory leak in serializer when using extra objects
 <li>Fixed bug in serializer with incorrect refcount on registered types when restoring the script object that references them
 <li>Serializer attempted to backup non-pod types that had no user type registered with bitwise copy potentially causing errors 
+<li>Added GetBuffer to the CScriptArray object (Thanks Solokiller)
+<li>Added GetRef to the CScriptHandle (Thanks zerochen)
+<li>Added formatUInt for strings (Thanks iraxef)
+<li>Included asserts in CScriptAny to detect improper usage from application (Thanks Solokiller)
+<li>Script array is now constructed even if the current script context has a script exception set (Thanks iraxef)
 </ul>
 </ul>
 

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2015 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -73,7 +73,7 @@ static asQWORD __attribute__((noinline)) X64_CallFunction(const asQWORD *args, i
 
 	__asm__ __volatile__ (
 
-		"  movq %0, %%rcx \n" 	// rcx = cnt
+		"  movq %0, %%rcx \n"	// rcx = cnt
 		"  movq %1, %%r10 \n"	// r10 = args
 		"  movq %2, %%r11 \n"	// r11 = func
 
@@ -128,7 +128,7 @@ static asQWORD __attribute__((noinline)) X64_CallFunction(const asQWORD *args, i
 		"  movsd 56(%%rax), %%xmm7 \n"
 
 	// Call the function
-		"  call	*%%r11 \n"
+		"  call *%%r11 \n"
 
 	// Restore stack pointer
 		"  mov %%r15, %%rsp \n"

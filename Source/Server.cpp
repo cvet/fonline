@@ -52,6 +52,7 @@ Mutex                       FOServer::TimeEventsLocker;
 FOServer::AnyDataMap        FOServer::AnyData;
 Mutex                       FOServer::AnyDataLocker;
 StrVec                      FOServer::ServerWrongGlobalObjects;
+Pragmas                     FOServer::ServerPropertyPragmas;
 FOServer::TextListenVec     FOServer::TextListeners;
 Mutex                       FOServer::TextListenersLocker;
 bool                        FOServer::Active = false;
@@ -1847,63 +1848,41 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_CRITTER_POD_PROPERTY( 1 ):
+            case NETMSG_SEND_POD_PROPERTY( 1, 0 ):
+            case NETMSG_SEND_POD_PROPERTY( 1, 1 ):
+            case NETMSG_SEND_POD_PROPERTY( 1, 2 ):
             {
-                Process_Property( cl, 1, true );
+                Process_Property( cl, 1 );
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_CRITTER_POD_PROPERTY( 2 ):
+            case NETMSG_SEND_POD_PROPERTY( 2, 0 ):
+            case NETMSG_SEND_POD_PROPERTY( 2, 1 ):
+            case NETMSG_SEND_POD_PROPERTY( 2, 2 ):
             {
-                Process_Property( cl, 2, true );
+                Process_Property( cl, 2 );
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_CRITTER_POD_PROPERTY( 4 ):
+            case NETMSG_SEND_POD_PROPERTY( 4, 0 ):
+            case NETMSG_SEND_POD_PROPERTY( 4, 1 ):
+            case NETMSG_SEND_POD_PROPERTY( 4, 2 ):
             {
-                Process_Property( cl, 4, true );
+                Process_Property( cl, 4 );
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_CRITTER_POD_PROPERTY( 8 ):
+            case NETMSG_SEND_POD_PROPERTY( 8, 0 ):
+            case NETMSG_SEND_POD_PROPERTY( 8, 1 ):
+            case NETMSG_SEND_POD_PROPERTY( 8, 2 ):
             {
-                Process_Property( cl, 8, true );
+                Process_Property( cl, 8 );
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_CRITTER_COMPLEX_PROPERTY:
+            case NETMSG_SEND_COMPLEX_PROPERTY:
             {
-                Process_Property( cl, 0, true );
-                BIN_END( cl );
-                continue;
-            }
-            case NETMSG_SEND_ITEM_POD_PROPERTY( 1 ):
-            {
-                Process_Property( cl, 1, false );
-                BIN_END( cl );
-                continue;
-            }
-            case NETMSG_SEND_ITEM_POD_PROPERTY( 2 ):
-            {
-                Process_Property( cl, 2, false );
-                BIN_END( cl );
-                continue;
-            }
-            case NETMSG_SEND_ITEM_POD_PROPERTY( 4 ):
-            {
-                Process_Property( cl, 4, false );
-                BIN_END( cl );
-                continue;
-            }
-            case NETMSG_SEND_ITEM_POD_PROPERTY( 8 ):
-            {
-                Process_Property( cl, 8, false );
-                BIN_END( cl );
-                continue;
-            }
-            case NETMSG_SEND_ITEM_COMPLEX_PROPERTY:
-            {
-                Process_Property( cl, 0, false );
+                Process_Property( cl, 0 );
                 BIN_END( cl );
                 continue;
             }

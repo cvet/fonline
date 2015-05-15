@@ -7,18 +7,18 @@ namespace Test_Addon_ScriptHandle
 
 static const char *TESTNAME = "Test_Addon_ScriptHandle";
 
-static void ReceiveRefByValue(CScriptHandle hndl)
+void ReceiveRefByValue(CScriptHandle hndl)
 {
 	asIObjectType *type = hndl.GetType();
 	if( type )
 		std::string str(type->GetName());
 }
 
-static void ReceiveRefByRef(CScriptHandle &/*hndl*/)
+void ReceiveRefByRef(CScriptHandle &/*hndl*/)
 {
 }
 
-static CScriptHandle GetFunc1()
+CScriptHandle GetFunc1()
 {
 	asIScriptContext *ctx = asGetActiveContext();
 	asIScriptEngine *engine = ctx->GetEngine();
@@ -32,7 +32,7 @@ static CScriptHandle GetFunc1()
 	return ref;
 }
 
-static CScriptHandle ReturnRef()
+CScriptHandle ReturnRef()
 {
 	asIScriptContext *ctx = asGetActiveContext();
 	asIScriptEngine *engine = ctx->GetEngine();

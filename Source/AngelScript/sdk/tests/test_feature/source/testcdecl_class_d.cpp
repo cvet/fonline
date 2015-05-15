@@ -69,6 +69,11 @@ static void class3ByVal(ClassD3 c)
 	assert( c.a == 0xDEADC0DE && c.b == 0x01234567 && c.c == 0x89ABCDEF );
 }
 
+static ClassD2 test(ClassD2 c)
+{
+	return c;
+}
+
 bool TestCDecl_ClassD()
 {
 	RET_ON_MAX_PORT
@@ -88,6 +93,7 @@ bool TestCDecl_ClassD()
 	engine->RegisterGlobalFunction("class1 _class1()", asFUNCTION(classD1), asCALL_CDECL);
 	engine->RegisterGlobalFunction("class2 _class2()", asFUNCTION(classD2), asCALL_CDECL);
 	engine->RegisterGlobalFunction("class3 _class3()", asFUNCTION(classD3), asCALL_CDECL);
+
 
 	COutStream out;
 	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
@@ -172,6 +178,13 @@ bool TestCDecl_ClassD()
 
 	r = engine->RegisterGlobalFunction("void class3ByVal(class3)", asFUNCTION(class3ByVal), asCALL_CDECL); assert( r >= 0 );
 	r = ExecuteString(engine, "class3 c = _class3(); class3ByVal(c)");
+	if( r != asEXECUTION_FINISHED )
+		TEST_FAILED;
+
+	// Test returning the same object that was passed in
+	// http://www.gamedev.net/topic/667966-calling-convention-bug/
+	r = engine->RegisterGlobalFunction("class2 test(class2)", asFUNCTION(test), asCALL_CDECL); assert( r >= 0 );
+	r = ExecuteString(engine, "class2 c = _class2(); c = test(c); class2ByVal(c)");
 	if( r != asEXECUTION_FINISHED )
 		TEST_FAILED;
 

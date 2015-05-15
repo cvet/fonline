@@ -419,6 +419,9 @@ public:
   int  Find(asUINT startAt, void *value) const;
   int  FindByRef(void *ref) const;
   int  FindByRef(asUINT startAt, void *ref) const;
+  
+  // Returns the address of the inner buffer for direct manipulation
+  void *GetBuffer();
 };
 \endcode
 
@@ -719,6 +722,9 @@ public:
   // Returns the type of the reference held
   asIObjectType *GetType() const;
   int            GetTypeId() const;
+  
+  // Returns the reference
+  void *GetRef();
 };
 \endcode
 

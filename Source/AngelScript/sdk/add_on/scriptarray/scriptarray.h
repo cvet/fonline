@@ -87,6 +87,9 @@ public:
 	int  FindByRef(void *ref) const;
 	int  FindByRef(asUINT startAt, void *ref) const;
 
+	// Return the address of internal buffer for direct manipulation of elements
+	void *GetBuffer();
+
 	// GC methods
 	int  GetRefCount();
 	void SetFlag();

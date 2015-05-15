@@ -1,6 +1,6 @@
 /*
   AngelCode Scripting Library
-  Copyright (c) 2003-2014 Andreas Jonsson
+  Copyright (c) 2003-2015 Andreas Jonsson
 
   This software is provided 'as-is', without any express or implied
   warranty. In no event will the authors be held liable for any
@@ -39,11 +39,13 @@
    The assembler routines for Linux were written by Carlos Luna in December 2012
 */
 
+#if !defined(AS_MAX_PORTABILITY)
+
 #if defined(__arm__) || defined(__ARM__) || defined(I3D_ARCH_ARM)
 
 #if !defined(__linux__) || defined(__ANDROID__) || defined(ANDROID) || defined(__SOFTFP__)
 
-/* iOS, Android, and Marmalade goes here */
+/* iOS, Android, Marmalade, and Linux with soft-float ABI goes here */
 
 .global armFunc
 .global armFuncR0
@@ -262,7 +264,7 @@ nomoreargsarmFuncR0R1:
 /* --------------------------------------------------------------------------------------------*/
 #elif defined(__linux__) && !defined(__SOFTFP__)
 
-/* The Linux code goes here */
+/* The Linux with hard-float ABI code goes here */
 
 
 /* These codes are suitable for armeabi + vfp  / armeabihf */
@@ -696,4 +698,6 @@ nomoreargsarmFuncR0R1:
 #endif
 
 #endif /* arm */
+
+#endif /* !AS_MAX_PORTABILITY
 

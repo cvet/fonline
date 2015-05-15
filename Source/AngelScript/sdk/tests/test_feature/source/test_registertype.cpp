@@ -265,6 +265,7 @@ bool Test()
 
 	// Registering a type that has member value types as references
 	// http://www.gamedev.net/topic/658589-register-handle-as-reference/
+	SKIP_ON_MAX_PORT
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);

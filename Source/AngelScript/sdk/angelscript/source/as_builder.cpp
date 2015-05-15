@@ -5078,6 +5078,12 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 								ot = otInstance;
 							}
 						}
+						else if( n && n->next && n->next->nodeType == snDataType )
+						{
+							asCString str;
+							str.Format(TXT_TYPE_s_NOT_TEMPLATE, ot->name.AddressOf());
+							WriteError(str, file, n);
+						}
 
 						// Create object data type
 						if( ot )

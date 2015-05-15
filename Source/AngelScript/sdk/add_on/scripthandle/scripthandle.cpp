@@ -94,6 +94,11 @@ void CScriptHandle::Set(void *ref, asIObjectType *type)
 	AddRefHandle();
 }
 
+void *CScriptHandle::GetRef()
+{
+	return m_ref;
+}
+
 asIObjectType *CScriptHandle::GetType() const
 {
 	return m_type;

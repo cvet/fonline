@@ -342,6 +342,44 @@ bool Test()
 	asIScriptEngine* engine;
 	asIScriptModule* mod;
 
+	// Test problem with saving/loading bytecode containing templates with multiple subtypes
+	// Reported by Phong Ba
+	{
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		bout.buffer = "";
+
+		r = engine->RegisterObjectType("dictionary<class K, class V>", 0, asOBJ_REF | asOBJ_TEMPLATE); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("dictionary<K, V>", asBEHAVE_FACTORY, "dictionary<K, V>@ f(int&in)", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("dictionary<K, V>", asBEHAVE_ADDREF, "void f()", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("dictionary<K, V>", asBEHAVE_RELEASE, "void f()", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
+		r = engine->RegisterObjectMethod("dictionary<K, V>", "int get_Count() const", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", "void main(){ dictionary<int,int> d; int cnt = d.Count; }");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		CBytecodeStream stream(__FILE__"1");
+		r = mod->SaveByteCode(&stream);
+		if( r < 0 )
+			TEST_FAILED;
+
+		r = mod->LoadByteCode(&stream);
+		if( r < 0 )
+			TEST_FAILED;
+
+		if( bout.buffer != "" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test WriteConfigToStream/ConfigEngineFromStream with template types and dependencies
 	// http://www.gamedev.net/topic/664405-scripthelper-config-helpers-not-working-correctly/
 	{
@@ -1049,7 +1087,7 @@ bool Test()
 			// Mac OS X PPC has more zeroes, probably due to the bool type being 4 bytes
 		}
 		asDWORD crc32 = ComputeCRC32(&stream.buffer[0], asUINT(stream.buffer.size()));
-		if( crc32 != 0xBAE6E6EC )
+		if( crc32 != 0x8EE8BFA0 )
 			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 
 		// Without debug info

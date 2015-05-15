@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "../../../add_on/scriptarray/scriptarray.h"
 #include "../../../add_on/scriptmath/scriptmath.h"
+#include "../../../add_on/scriptmath/scriptmathcomplex.h"
 
 static const char * const TESTNAME = "TestCondition";
 
@@ -65,7 +66,7 @@ static void AssignStringGeneric(asIScriptGeneric *gen) {
   gen->SetReturnAddress(self);
 }
 
-static bool StringEquals(const std::string& lhs, const std::string& rhs)
+bool StringEquals(const std::string& lhs, const std::string& rhs)
 {
     return lhs == rhs;
 }
@@ -77,6 +78,52 @@ bool TestCondition()
 	COutStream out;
 	CBufferedOutStream bout;
 	asIScriptEngine *engine;
+
+	// Test nested conditions returning global values
+	// Problem reported by Jonathan Sandusky
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		RegisterScriptMathComplex(engine);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"complex a(1,0), b(2,0), c(1,1); \n"
+			"void Test() { \n"
+			"   complex d; \n"
+			"   bool editable = true; \n"
+			"   bool modified = true; \n"
+			"   d = (editable ? (modified ? a : b) : c); \n"
+			"   assert( d == a ); \n"
+			"   editable = false; \n"
+			"   d = (editable ? (modified ? a : b) : c); \n"
+			"   assert( d == c ); \n"
+			"   editable = true; \n"
+			"   modified = false; \n"
+			"   d = (editable ? (modified ? a : b) : c); \n"
+			"   assert( d == b ); \n"
+			"} \n");
+		// TODO: run-time optimize: The produced bytecode can be improved by placing the RDSPtr in both expressions so the bytecode optimization can exchange the instructions to PshGPtr
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		if( bout.buffer != "" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = ExecuteString(engine, "Test()", mod);
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test condition used as lvalue
 	// If both expressions are lvalues of the same type and neither have

@@ -61,6 +61,7 @@ bool Test()
  	asIScriptEngine *engine;
 	asIScriptModule *mod;
 	
+	SKIP_ON_MAX_PORT
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
@@ -183,6 +184,7 @@ bool Test()
 	}
 
 	// Report proper error when missing user type for non-POD type
+	SKIP_ON_MAX_PORT
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);

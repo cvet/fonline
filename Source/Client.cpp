@@ -2382,35 +2382,28 @@ void FOClient::NetProcess()
             Net_OnCheckUID1();
             break;
 
-        case NETMSG_CRITTER_ITEM_POD_PROPERTY( 1 ):
-            Net_OnItemProperty( true, 1 );
+        case NETMSG_POD_PROPERTY( 1, 0 ):
+        case NETMSG_POD_PROPERTY( 1, 1 ):
+        case NETMSG_POD_PROPERTY( 1, 2 ):
+            Net_OnProperty( 1 );
             break;
-        case NETMSG_CRITTER_ITEM_POD_PROPERTY( 2 ):
-            Net_OnItemProperty( true, 2 );
+        case NETMSG_POD_PROPERTY( 2, 0 ):
+        case NETMSG_POD_PROPERTY( 2, 1 ):
+        case NETMSG_POD_PROPERTY( 2, 2 ):
+            Net_OnProperty( 2 );
             break;
-        case NETMSG_CRITTER_ITEM_POD_PROPERTY( 4 ):
-            Net_OnItemProperty( true, 4 );
+        case NETMSG_POD_PROPERTY( 4, 0 ):
+        case NETMSG_POD_PROPERTY( 4, 1 ):
+        case NETMSG_POD_PROPERTY( 4, 2 ):
+            Net_OnProperty( 4 );
             break;
-        case NETMSG_CRITTER_ITEM_POD_PROPERTY( 8 ):
-            Net_OnItemProperty( true, 8 );
+        case NETMSG_POD_PROPERTY( 8, 0 ):
+        case NETMSG_POD_PROPERTY( 8, 1 ):
+        case NETMSG_POD_PROPERTY( 8, 2 ):
+            Net_OnProperty( 8 );
             break;
-        case NETMSG_CRITTER_ITEM_COMPLEX_PROPERTY:
-            Net_OnItemProperty( true, 0 );
-            break;
-        case NETMSG_MAP_ITEM_POD_PROPERTY( 1 ):
-            Net_OnItemProperty( false, 1 );
-            break;
-        case NETMSG_MAP_ITEM_POD_PROPERTY( 2 ):
-            Net_OnItemProperty( false, 2 );
-            break;
-        case NETMSG_MAP_ITEM_POD_PROPERTY( 4 ):
-            Net_OnItemProperty( false, 4 );
-            break;
-        case NETMSG_MAP_ITEM_POD_PROPERTY( 8 ):
-            Net_OnItemProperty( false, 8 );
-            break;
-        case NETMSG_MAP_ITEM_COMPLEX_PROPERTY:
-            Net_OnItemProperty( false, 0 );
+        case NETMSG_COMPLEX_PROPERTY:
+            Net_OnProperty( 0 );
             break;
 
         case NETMSG_CRITTER_TEXT:
@@ -2437,21 +2430,6 @@ void FOClient::NetProcess()
 
         case NETMSG_ALL_PROPERTIES:
             Net_OnAllProperties();
-            break;
-        case NETMSG_CRITTER_POD_PROPERTY( 1 ):
-            Net_OnCritterProperty( 1 );
-            break;
-        case NETMSG_CRITTER_POD_PROPERTY( 2 ):
-            Net_OnCritterProperty( 2 );
-            break;
-        case NETMSG_CRITTER_POD_PROPERTY( 4 ):
-            Net_OnCritterProperty( 4 );
-            break;
-        case NETMSG_CRITTER_POD_PROPERTY( 8 ):
-            Net_OnCritterProperty( 8 );
-            break;
-        case NETMSG_CRITTER_COMPLEX_PROPERTY:
-            Net_OnCritterProperty( 0 );
             break;
 
         case NETMSG_CRAFT_ASK:
@@ -2866,48 +2844,84 @@ void FOClient::Net_SendPickCritter( uint crid, uchar pick_type )
     Bout << pick_type;
 }
 
-void FOClient::Net_SendChosenProperty( Property* prop )
+void FOClient::Net_SendProperty( Property* prop, NetProperty::Type type, CritterCl* cr, Item* item )
 {
-    uint  data_size;
-    void* data = prop->GetRawData( Chosen, data_size );
-
-    if( prop->IsPOD() )
+    void* prop_obj = NULL;
+    uint  additional_args = 0;
+    switch( type )
     {
-        Bout << NETMSG_SEND_CRITTER_POD_PROPERTY( data_size );
+    case NetProperty::Global:
+        break;
+    case NetProperty::Critter:
+        prop_obj = cr;
+        additional_args = 1;
+        break;
+    case NetProperty::Chosen:
+        prop_obj = Chosen;
+        break;
+    case NetProperty::MapItem:
+        prop_obj = item;
+        additional_args = 1;
+        break;
+    case NetProperty::CritterItem:
+        prop_obj = item;
+        additional_args = 2;
+        break;
+    case NetProperty::ChosenItem:
+        prop_obj = item;
+        additional_args = 1;
+        break;
+    case NetProperty::Map:
+        break;
+    case NetProperty::Location:
+        break;
+    default:
+        break;
+    }
+
+    uint  data_size;
+    void* data = prop->GetRawData( prop_obj, data_size );
+
+    bool  is_pod = prop->IsPOD();
+    if( is_pod )
+    {
+        Bout << NETMSG_SEND_POD_PROPERTY( data_size, additional_args );
+    }
+    else
+    {
+        uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( char ) + additional_args * sizeof( uint ) + sizeof( ushort ) + data_size;
+        Bout << NETMSG_SEND_COMPLEX_PROPERTY;
+        Bout << msg_len;
+    }
+
+    Bout << (char) type;
+
+    switch( type )
+    {
+    case NetProperty::CritterItem:
+        Bout << cr->GetId();
+        Bout << item->GetId();
+        break;
+    case NetProperty::Critter:
+        Bout << cr->GetId();
+        break;
+    case NetProperty::MapItem:
+        Bout << item->GetId();
+        break;
+    case NetProperty::ChosenItem:
+        Bout << item->GetId();
+        break;
+    default:
+        break;
+    }
+
+    if( is_pod )
+    {
         Bout << (ushort) prop->GetRegIndex();
         Bout.Push( (char*) data, data_size );
     }
     else
     {
-        uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( ushort ) + data_size;
-
-        Bout << NETMSG_SEND_CRITTER_COMPLEX_PROPERTY;
-        Bout << msg_len;
-        Bout << (ushort) prop->GetRegIndex();
-        if( data_size )
-            Bout.Push( (char*) data, data_size );
-    }
-}
-
-void FOClient::Net_SendItemProperty( Item* item, Property* prop )
-{
-    uint  data_size;
-    void* data = prop->GetRawData( item, data_size );
-
-    if( prop->IsPOD() )
-    {
-        Bout << NETMSG_SEND_ITEM_POD_PROPERTY( data_size );
-        Bout << item->GetId();
-        Bout << (ushort) prop->GetRegIndex();
-        Bout.Push( (char*) data, data_size );
-    }
-    else
-    {
-        uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( ushort ) + data_size;
-
-        Bout << NETMSG_SEND_ITEM_COMPLEX_PROPERTY;
-        Bout << msg_len;
-        Bout << item->GetId();
         Bout << (ushort) prop->GetRegIndex();
         if( data_size )
             Bout.Push( (char*) data, data_size );
@@ -4353,54 +4367,6 @@ void FOClient::Net_OnAllProperties()
     WriteLog( "complete.\n" );
 }
 
-void FOClient::Net_OnCritterProperty( uint data_size )
-{
-    uint   msg_len = 0;
-    uint   crid = 0;
-    ushort property_index;
-    if( data_size == 0 )
-        Bin >> msg_len;
-    Bin >> crid;
-    Bin >> property_index;
-
-    if( data_size != 0 )
-    {
-        TempPropertyData.resize( data_size );
-        Bin.Pop( (char*) &TempPropertyData[ 0 ], data_size );
-    }
-    else
-    {
-        uint len = msg_len - sizeof( uint ) - sizeof( msg_len ) - sizeof( uint ) - sizeof( ushort );
-        TempPropertyData.resize( len );
-        if( len )
-            Bin.Pop( (char*) &TempPropertyData[ 0 ], len );
-    }
-
-    CHECK_IN_BUFF_ERROR;
-
-    CritterCl* cr = ( Chosen && Chosen->GetId() == crid ? Chosen : GetCritter( crid ) );
-    if( !cr )
-        return;
-
-    Property* prop = CritterCl::PropertiesRegistrator->Get( property_index );
-    if( !prop )
-        return;
-
-    prop->SetSendIgnore( cr );
-    prop->SetData( cr, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : NULL, (uint) TempPropertyData.size() );
-    prop->SetSendIgnore( NULL );
-
-    if( cr->IsChosen() && prop->IsQuestValue() )
-    {
-        uint q_num = cr->Props.GetQuestStr( prop->GetRegIndex() );
-        QuestMngr.OnQuest( q_num );
-
-        // Inform player
-        Quest* quest = QuestMngr.GetQuest( q_num );
-        AddMess( FOMB_GAME, quest->str.c_str() );
-    }
-}
-
 void FOClient::Net_OnChosenClearItems()
 {
     InitialItemsSend = true;
@@ -4821,17 +4787,45 @@ void FOClient::Net_OnEndParseToGame()
     WriteLog( "Entering to game complete.\n" );
 }
 
-void FOClient::Net_OnItemProperty( bool is_critter, uint data_size )
+void FOClient::Net_OnProperty( uint data_size )
 {
-    uint   msg_len = 0;
-    uint   crid = 0;
-    uint   item_id;
-    ushort property_index;
+    uint              msg_len = 0;
+    NetProperty::Type type = NetProperty::None;
+    uint              cr_id = 0;
+    uint              item_id = 0;
+    ushort            property_index = 0;
+
     if( data_size == 0 )
         Bin >> msg_len;
-    if( is_critter )
-        Bin >> crid;
-    Bin >> item_id;
+
+    char type_ = 0;
+    Bin >> type_;
+    type = (NetProperty::Type) type_;
+
+    uint additional_args = 0;
+    switch( type )
+    {
+    case NetProperty::CritterItem:
+        additional_args = 2;
+        Bin >> cr_id;
+        Bin >> item_id;
+        break;
+    case NetProperty::Critter:
+        additional_args = 1;
+        Bin >> cr_id;
+        break;
+    case NetProperty::MapItem:
+        additional_args = 1;
+        Bin >> item_id;
+        break;
+    case NetProperty::ChosenItem:
+        additional_args = 1;
+        Bin >> item_id;
+        break;
+    default:
+        break;
+    }
+
     Bin >> property_index;
 
     if( data_size != 0 )
@@ -4841,7 +4835,7 @@ void FOClient::Net_OnItemProperty( bool is_critter, uint data_size )
     }
     else
     {
-        uint len = msg_len - sizeof( uint ) - sizeof( msg_len ) - ( is_critter ? sizeof( uint ) : 0 ) - sizeof( uint ) - sizeof( ushort );
+        uint len = msg_len - sizeof( uint ) - sizeof( msg_len ) - sizeof( char ) - additional_args * sizeof( uint ) - sizeof( ushort );
         TempPropertyData.resize( len );
         if( len )
             Bin.Pop( (char*) &TempPropertyData[ 0 ], len );
@@ -4849,37 +4843,71 @@ void FOClient::Net_OnItemProperty( bool is_critter, uint data_size )
 
     CHECK_IN_BUFF_ERROR;
 
-    Item* item = NULL;
-    if( is_critter )
+    Property* prop = NULL;
+    void*     prop_obj = NULL;
+    switch( type )
     {
-        CritterCl* cr = GetCritter( crid );
-        if( !cr )
-            return;
-
-        item = cr->GetItem( item_id );
-        if( !item )
-            return;
+    case NetProperty::Global:
+        break;
+    case NetProperty::Critter:
+        prop = Item::PropertiesRegistrator->Get( property_index );
+        if( prop )
+            prop_obj = GetCritter( cr_id );
+        break;
+    case NetProperty::Chosen:
+        prop = CritterCl::PropertiesRegistrator->Get( property_index );
+        if( prop )
+            prop_obj = Chosen;
+        break;
+    case NetProperty::MapItem:
+        prop = Item::PropertiesRegistrator->Get( property_index );
+        if( prop )
+            prop_obj = HexMngr.GetItemById( item_id );
+        break;
+    case NetProperty::CritterItem:
+        prop = Item::PropertiesRegistrator->Get( property_index );
+        if( prop )
+        {
+            CritterCl* cr = GetCritter( cr_id );
+            if( cr )
+                prop_obj = cr->GetItem( item_id );
+        }
+        break;
+    case NetProperty::ChosenItem:
+        prop = Item::PropertiesRegistrator->Get( property_index );
+        if( prop )
+            prop_obj = ( Chosen ? Chosen->GetItem( item_id ) : NULL );
+        break;
+    case NetProperty::Map:
+        break;
+    case NetProperty::Location:
+        break;
+    default:
+        RUNTIME_ASSERT( false );
+        break;
     }
-    else
-    {
-        item = HexMngr.GetItemById( item_id );
-        if( !item )
-            return;
-    }
-
-    Property* prop = Item::PropertiesRegistrator->Get( property_index );
-    if( !prop )
+    if( !prop || !prop_obj )
         return;
 
-    prop->SetSendIgnore( item );
-    prop->SetData( item, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : NULL, (uint) TempPropertyData.size() );
+    prop->SetSendIgnore( prop_obj );
+    prop->SetData( prop_obj, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : NULL, (uint) TempPropertyData.size() );
     prop->SetSendIgnore( NULL );
 
-    if( !is_critter && Script::PrepareContext( ClientFunctions.ItemMapChanged, _FUNC_, "Game" ) )
+    if( type == NetProperty::MapItem && Script::PrepareContext( ClientFunctions.ItemMapChanged, _FUNC_, "Game" ) )
     {
-        Script::SetArgObject( item );
-        Script::SetArgObject( item );
+        Script::SetArgObject( prop_obj );
+        Script::SetArgObject( prop_obj );
         Script::RunPrepared();
+    }
+
+    if( type == NetProperty::Chosen && Chosen && prop->IsQuestValue() )
+    {
+        uint q_num = Chosen->Props.GetQuestStr( prop->GetRegIndex() );
+        QuestMngr.OnQuest( q_num );
+
+        // Inform player
+        Quest* quest = QuestMngr.GetQuest( q_num );
+        AddMess( FOMB_GAME, quest->str.c_str() );
     }
 }
 
@@ -8825,15 +8853,30 @@ void FOClient::OnSendChosenValue( void* obj, Property* prop, void* cur_value, vo
 {
     CritterCl* cr = (CritterCl*) obj;
     if( cr->IsChosen() )
-        Self->Net_SendChosenProperty( prop );
+        Self->Net_SendProperty( prop, NetProperty::Chosen, NULL, NULL );
+    else
+        Self->Net_SendProperty( prop, NetProperty::Critter, cr, NULL );
 }
 
 void FOClient::OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value )
 {
     Item* item = (Item*) obj;
     #pragma MESSAGE( "Clean up client 0 and -1 item ids" )
-    if( item->Id && item->Id != uint( -1 ) && Self->Chosen && Self->Chosen->GetItem( item->Id ) )
-        Self->Net_SendItemProperty( item, prop );
+    if( item->Id && item->Id != uint( -1 ) )
+    {
+        if( item->Accessory == ITEM_ACCESSORY_CRITTER )
+        {
+            CritterCl* cr = Self->GetCritter( item->AccCritter.Id );
+            if( cr && cr->IsChosen() )
+                Self->Net_SendProperty( prop, NetProperty::ChosenItem, NULL, item );
+            else if( cr )
+                Self->Net_SendProperty( prop, NetProperty::CritterItem, cr, item );
+        }
+        else if( item->Accessory == ITEM_ACCESSORY_HEX )
+        {
+            Self->Net_SendProperty( prop, NetProperty::MapItem, NULL, item );
+        }
+    }
 }
 
 void FOClient::OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value )

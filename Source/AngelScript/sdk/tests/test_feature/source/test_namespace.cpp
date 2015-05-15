@@ -11,6 +11,77 @@ bool Test()
 	COutStream out;
 	CBufferedOutStream bout;
 
+	// Test bug with namespace
+	// http://www.gamedev.net/topic/667516-namespace-bug/
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
+
+		engine->SetDefaultNamespace("NSBugTest");
+		engine->RegisterObjectType("FooObj", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		engine->RegisterObjectMethod("FooObj", "int opIndex(int)", asFUNCTION(0), asCALL_THISCALL);
+		engine->RegisterObjectMethod("FooObj", "void test()", asFUNCTION(0), asCALL_THISCALL);
+		engine->SetDefaultNamespace("");
+
+		r = engine->RegisterGlobalProperty("NSBugTest::FooObj FooObj", (void*)1);
+		if( r < 0 )
+			TEST_FAILED;
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+				"void main() \n"
+				"{ \n"
+				"   FooObj.test();\n"
+				"   int num = FooObj[0];\n"
+				"} \n");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// test name conflict between template and non-template in different namespaces
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->SetDefaultNamespace("A");
+		RegisterScriptArray(engine, false);
+		engine->SetDefaultNamespace("B");
+		engine->RegisterObjectType("array", 4, asOBJ_VALUE|asOBJ_POD);
+		engine->SetDefaultNamespace("");
+
+		// Positive
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"A::array<int> a; \n"
+			"B::array b; \n");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		// Negative
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"A::array a; \n"
+			"B::array<int> b; \n");
+		r = mod->Build();
+		if( r >= 0 )
+			TEST_FAILED;
+
+		if( bout.buffer != "test (1, 4) : Error   : Template 'array' expects 1 sub type(s)\n"
+		                   "test (2, 4) : Error   : Type 'array' is not a template type\n" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+		
+		engine->Release();
+	}
+
 	// class in namespace referring to variable in global namespace
 	// http://www.gamedev.net/topic/666308-errors-produced-by-classes-in-namespaces-accessing-global-properties/
 	{

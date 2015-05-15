@@ -252,6 +252,7 @@
 #define TXT_TOO_MANY_JUMP_LABELS               "The function has too many jump labels to handle. Split the function into smaller ones."
 #define TXT_TOO_MANY_VALUES_FOR_LIST           "Too many values to match pattern"
 #define TXT_TYPE_s_NOT_AVAILABLE_FOR_MODULE    "Type '%s' is not available for this module"
+#define TXT_TYPE_s_NOT_TEMPLATE                "Type '%s' is not a template type"
 
 #define TXT_UNEXPECTED_END_OF_FILE             "Unexpected end of file"
 #define TXT_UNEXPECTED_TOKEN_s                 "Unexpected token '%s'"

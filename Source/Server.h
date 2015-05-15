@@ -75,7 +75,7 @@ public:
     static void Process_Combat( Client* cl );
     static void Process_RunServerScript( Client* cl );
     static void Process_KarmaVoting( Client* cl );
-    static void Process_Property( Client* cl, uint data_size, bool is_item );
+    static void Process_Property( Client* cl, uint data_size );
 
     static void Send_MapData( Client* cl, ProtoMap* pmap, uchar send_info );
 
@@ -178,7 +178,8 @@ public:
     static string GetAnyDataStatistics();
 
     // Scripting
-    static StrVec ServerWrongGlobalObjects;
+    static StrVec  ServerWrongGlobalObjects;
+    static Pragmas ServerPropertyPragmas;
 
     // Init/Finish system
     static bool InitScriptSystem();

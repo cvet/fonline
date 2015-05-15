@@ -4597,15 +4597,45 @@ void FOServer::Process_RuleGlobal( Client* cl )
     cl->SetBreakTime( GameOpt.Breaktime );
 }
 
-void FOServer::Process_Property( Client* cl, uint data_size, bool is_critter )
+void FOServer::Process_Property( Client* cl, uint data_size )
 {
-    uint   msg_len = 0;
-    uint   item_id = 0;
-    ushort property_index;
+    uint              msg_len = 0;
+    NetProperty::Type type = NetProperty::None;
+    uint              cr_id = 0;
+    uint              item_id = 0;
+    ushort            property_index = 0;
+
     if( data_size == 0 )
         cl->Bin >> msg_len;
-    if( !is_critter )
+
+    char type_ = 0;
+    cl->Bin >> type_;
+    type = (NetProperty::Type) type_;
+
+    uint additional_args = 0;
+    switch( type )
+    {
+    case NetProperty::CritterItem:
+        additional_args = 2;
+        cl->Bin >> cr_id;
         cl->Bin >> item_id;
+        break;
+    case NetProperty::Critter:
+        additional_args = 1;
+        cl->Bin >> cr_id;
+        break;
+    case NetProperty::MapItem:
+        additional_args = 1;
+        cl->Bin >> item_id;
+        break;
+    case NetProperty::ChosenItem:
+        additional_args = 1;
+        cl->Bin >> item_id;
+        break;
+    default:
+        break;
+    }
+
     cl->Bin >> property_index;
 
     CHECK_IN_BUFF_ERROR( cl );
@@ -4618,7 +4648,7 @@ void FOServer::Process_Property( Client* cl, uint data_size, bool is_critter )
     }
     else
     {
-        uint len = msg_len - sizeof( uint ) - sizeof( msg_len ) - sizeof( uint ) - sizeof( ushort );
+        uint len = msg_len - sizeof( uint ) - sizeof( msg_len ) - sizeof( char ) - additional_args * sizeof( uint ) - sizeof( ushort );
         #pragma MESSAGE( "Control max size explicitly, add option to property registration" )
         if( len > 0xFFFF )         // For now 64Kb for all
             return;
@@ -4628,32 +4658,71 @@ void FOServer::Process_Property( Client* cl, uint data_size, bool is_critter )
 
     CHECK_IN_BUFF_ERROR( cl );
 
-    Property* prop;
-    if( is_critter )
-        prop = Critter::PropertiesRegistrator->Get( property_index );
-    else
+    bool      check_public = false;
+    Property* prop = NULL;
+    void*     prop_obj = NULL;
+    switch( type )
+    {
+    case NetProperty::Global:
+        break;
+    case NetProperty::Critter:
+        check_public = true;
         prop = Item::PropertiesRegistrator->Get( property_index );
+        if( prop )
+            prop_obj = CrMngr.GetCritter( cr_id, true );
+        break;
+    case NetProperty::Chosen:
+        prop = Critter::PropertiesRegistrator->Get( property_index );
+        if( prop )
+            prop_obj = cl;
+        break;
+    case NetProperty::MapItem:
+        check_public = true;
+        prop = Item::PropertiesRegistrator->Get( property_index );
+        if( prop )
+            prop_obj = ItemMngr.GetItem( item_id, true );
+        break;
+    case NetProperty::CritterItem:
+        check_public = true;
+        prop = Item::PropertiesRegistrator->Get( property_index );
+        if( prop )
+        {
+            Critter* cr = CrMngr.GetCritter( cr_id, true );
+            if( cr )
+                prop_obj = cr->GetItem( item_id, true );
+        }
+        break;
+    case NetProperty::ChosenItem:
+        prop = Item::PropertiesRegistrator->Get( property_index );
+        if( prop )
+            prop_obj = cl->GetItem( item_id, true );
+        break;
+    case NetProperty::Map:
+        check_public = true;
+        break;
+    case NetProperty::Location:
+        check_public = true;
+        break;
+    default:
+        RUNTIME_ASSERT( false );
+        break;
+    }
+    if( !prop || !prop_obj )
+        return;
 
-    if( !prop || !( prop->GetAccess() & Property::ModifiableMask ) )
+
+    Property::AccessType access = prop->GetAccess();
+    if( check_public && !( access & Property::PublicMask ) )
+        return;
+    if( !( access & Property::ModifiableMask ) )
         return;
     if( prop->IsPOD() && data_size != prop->GetBaseSize() )
         return;
     if( !prop->IsPOD() && data_size != 0 )
         return;
 
-    if( is_critter )
-    {
-        #pragma MESSAGE( "Disable send changing field by client to this client" )
-        prop->SetData( cl, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size() );
-    }
-    else
-    {
-        Item* item = cl->GetItem( item_id, true );
-        if( !item )
-            return;
-
-        prop->SetData( item, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size() );
-    }
+    #pragma MESSAGE( "Disable send changing field by client to this client" )
+    prop->SetData( prop_obj, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size() );
 }
 
 void FOServer::OnSendCritterValue( void* obj, Property* prop, void* cur_value, void* old_value )
@@ -4663,7 +4732,7 @@ void FOServer::OnSendCritterValue( void* obj, Property* prop, void* cur_value, v
     bool     is_public = ( prop->GetAccess() & Property::PublicMask ) != 0;
     bool     is_protected = ( prop->GetAccess() & Property::ProtectedMask ) != 0;
     if( is_public || is_protected )
-        cr->Send_CritterProperty( cr, prop );
+        cr->Send_Property( prop, NetProperty::Chosen, NULL, NULL );
     if( is_public )
-        cr->SendA_CritterProperty( prop );
+        cr->SendA_Property( prop, NetProperty::Critter, cr, NULL );
 }

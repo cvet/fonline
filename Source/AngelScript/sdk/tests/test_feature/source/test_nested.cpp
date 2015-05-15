@@ -27,7 +27,7 @@ static void CallExecuteString_gen(asIScriptGeneric *gen)
 
 static int i = 0;
 
-static CScriptHandle CreateObject(const string &s)
+CScriptHandle CreateObject(const string &s)
 {
 	asIScriptContext *ctx = asGetActiveContext();
 	asIScriptEngine *engine = ctx->GetEngine();

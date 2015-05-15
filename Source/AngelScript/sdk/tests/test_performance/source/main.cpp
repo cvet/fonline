@@ -21,59 +21,61 @@ namespace TestString2      { void Test(double *time); }
 namespace TestThisProp     { void Test(double *time); }
 namespace TestVector3      { void Test(double *time); }
 namespace TestAssign       { void Test(double *times); }
-namespace TestArray        { void Test(double *time); }
+namespace TestArray        { void Test(double *times); }
 namespace TestGlobalVar    { void Test(double *time); }
 
-const int NUM_TESTS = 20;
+const int NUM_TESTS = 21;
 
-// Times for 2.30.0 WIP (64bit)
+// Times for 2.30.0 (64bit)
 double testTimesOrig[NUM_TESTS] = 
 {
-1.328,  // Basic
-0.234,  // Basic2
-0.563,  // Call
-0.953,  // Call2
-2.016,  // Fib
-0.297,  // Int
-0.703,  // Intf
-0.672,  // Mthd
-1.563,  // String
-0.688,  // String2
-0.984,  // StringPooled
-1.641,  // ThisProp
-0.375,  // Vector3
-0.594,  // Assign.1
-0.953,  // Assign.2
-0.516,  // Assign.3
-0.813,  // Assign.4
-0.813,  // Assign.5
-0.766,  // Array
-0.0     // GlobalVar
+1.375,  // Basic
+0.244,  // Basic2
+0.574,  // Call
+0.969,  // Call2
+2.127,  // Fib
+0.301,  // Int
+0.704,  // Intf
+0.670,  // Mthd
+1.502,  // String
+0.665,  // String2
+0.912,  // StringPooled
+1.049,  // ThisProp
+0.327,  // Vector3
+0.607,  // Assign.1
+0.970,  // Assign.2
+0.538,  // Assign.3
+0.761,  // Assign.4
+0.761,  // Assign.5
+1.526,  // Array.1
+1.222,  // Array.2
+0.635   // GlobalVar
 };
 
-// Times for 2.30.0 WIP (64bit) (localized optimizations)
+// Times for 2.30.1 WIP (64bit) (localized optimizations)
 double testTimesOrig2[NUM_TESTS] = 
 {
-1.258,  // Basic
-0.243,  // Basic2
-0.672,  // Call
-0.965,  // Call2
-1.988,  // Fib
-0.293,  // Int
-0.731,  // Intf
-0.695,  // Mthd
-1.579,  // String
-0.676,  // String2
-0.995,  // StringPooled
-0.864,  // ThisProp
-0.363,  // Vector3
-0.608,  // Assign.1
-0.820,  // Assign.2
-0.540,  // Assign.3
-0.760,  // Assign.4
-0.760,  // Assign.5
-0.791,  // Array
-0.789   // GlobalVar
+1.328,  // Basic
+0.244,  // Basic2
+0.574,  // Call
+0.969,  // Call2
+2.127,  // Fib
+0.301,  // Int
+0.704,  // Intf
+0.670,  // Mthd
+1.502,  // String
+0.647,  // String2
+0.912,  // StringPooled
+0.599,  // ThisProp
+0.327,  // Vector3
+0.595,  // Assign.1
+0.815,  // Assign.2
+0.538,  // Assign.3
+0.761,  // Assign.4
+0.761,  // Assign.5
+1.153,  // Array.1
+0.426,  // Array.2
+0.242   // GlobalVar
 };
 
 double testTimesBest[NUM_TESTS];
@@ -120,7 +122,7 @@ int main(int argc, char **argv)
 		TestVector3::Test(&testTimes[12]); printf("."); fflush(stdout);
 		TestAssign::Test(&testTimes[13]); printf("."); fflush(stdout);
 		TestArray::Test(&testTimes[18]); printf("."); fflush(stdout);
-		TestGlobalVar::Test(&testTimes[19]); printf("."); fflush(stdout);
+		TestGlobalVar::Test(&testTimes[20]); printf("."); fflush(stdout);
 
 		for( int t = 0; t < NUM_TESTS; t++ )
 		{
@@ -149,8 +151,9 @@ int main(int argc, char **argv)
 	printf("Assign.3       %.3f    %.3f    %.3f%s\n", testTimesOrig[15], testTimesOrig2[15], testTimesBest[15], testTimesBest[15] < testTimesOrig2[15] ? " +" : " -"); 
 	printf("Assign.4       %.3f    %.3f    %.3f%s\n", testTimesOrig[16], testTimesOrig2[16], testTimesBest[16], testTimesBest[16] < testTimesOrig2[16] ? " +" : " -"); 
 	printf("Assign.5       %.3f    %.3f    %.3f%s\n", testTimesOrig[17], testTimesOrig2[17], testTimesBest[17], testTimesBest[17] < testTimesOrig2[17] ? " +" : " -"); 
-	printf("Array          %.3f    %.3f    %.3f%s\n", testTimesOrig[18], testTimesOrig2[18], testTimesBest[18], testTimesBest[18] < testTimesOrig2[18] ? " +" : " -"); 
-	printf("GlobalVar      %.3f    %.3f    %.3f%s\n", testTimesOrig[19], testTimesOrig2[19], testTimesBest[19], testTimesBest[19] < testTimesOrig2[19] ? " +" : " -"); 
+	printf("Array.1        %.3f    %.3f    %.3f%s\n", testTimesOrig[18], testTimesOrig2[18], testTimesBest[18], testTimesBest[18] < testTimesOrig2[18] ? " +" : " -"); 
+	printf("Array.2        %.3f    %.3f    %.3f%s\n", testTimesOrig[19], testTimesOrig2[19], testTimesBest[19], testTimesBest[19] < testTimesOrig2[19] ? " +" : " -"); 
+	printf("GlobalVar      %.3f    %.3f    %.3f%s\n", testTimesOrig[20], testTimesOrig2[20], testTimesBest[20], testTimesBest[20] < testTimesOrig2[20] ? " +" : " -"); 
 
 	printf("--------------------------------------------\n");
 	printf("Press any key to quit.\n");

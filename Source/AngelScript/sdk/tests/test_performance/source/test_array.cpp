@@ -19,9 +19,47 @@ static const char *script =
 "        for( uint p = 0; p < 10; p++ )        \n"
 "            a[p]++;                           \n"
 "    }                                         \n"
+"}                                             \n"
+"void TestArray2()                             \n"
+"{                                             \n"
+"    array<int> a = {0};                       \n"
+"    for( uint i = 0; i < 2000000; i++ )       \n"
+"    {                                         \n"
+"        a[0]++;                               \n"
+"        a[0]++;                               \n"
+"        a[0]++;                               \n"
+"        a[0]++;                               \n"
+"        a[0]++;                               \n"
+"        a[0]++;                               \n"
+"        a[0]++;                               \n"
+"        a[0]++;                               \n"
+"        a[0]++;                               \n"
+"        a[0]++;                               \n"
+"    }                                         \n"
 "}                                             \n";
 
-void Test(double *testTime)
+// The same function in C++ for comparison
+void TestArray2(asIScriptEngine *engine)
+{
+	int val = 0;
+	CScriptArray *a = CScriptArray::Create(engine->GetObjectTypeByDecl("array<int>"), 1, &val);
+	for( asUINT i = 0; i < 2000000; i++ )
+	{
+		(*(int*)a->At(0))++;
+		(*(int*)a->At(0))++;
+		(*(int*)a->At(0))++;
+		(*(int*)a->At(0))++;
+		(*(int*)a->At(0))++;
+		(*(int*)a->At(0))++;
+		(*(int*)a->At(0))++;
+		(*(int*)a->At(0))++;
+		(*(int*)a->At(0))++;
+		(*(int*)a->At(0))++;
+	}
+	a->Release();
+}
+
+void Test(double *testTimes)
 {
  	asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 	COutStream out;
@@ -37,8 +75,11 @@ void Test(double *testTime)
 	ctx->Prepare(mod->GetFunctionByDecl("void TestArray()"));
 
 	double time = GetSystemTimer();
+	
+	int r = 0;
 
-	int r = ctx->Execute();
+	// Test mixed creation of array object and access of elements
+	r = ctx->Execute();
 
 	time = GetSystemTimer() - time;
 
@@ -55,7 +96,48 @@ void Test(double *testTime)
 		}
 	}
 	else
-		*testTime = time;
+		testTimes[0] = time;
+
+	ctx->Prepare(mod->GetFunctionByDecl("void TestArray2()"));
+
+	time = GetSystemTimer();
+
+	// Test pure access of elements
+	// http://www.gamedev.net/topic/661177-qtscript-vs-angelscript/
+
+	// TODO: run-time optimize: By allowing the application to tell the compiler how a call can be inlined
+	//                          it would be possible to optimize this further. The inlined version of opIndex
+	//                          would look something like:
+	//
+	//                            ChkIdx   index, length        // Check if the index is valid
+	//                            ADDSi    v24                  // Move the this pointer to the internal buffer
+	//                            RDSPtr                        // Dereference pointer
+	//                            ADDSi    v8                   // Move the this pointer to the start of the array
+	//                            ADDSi    index, element size  // Move the this pointer to the correct element
+	//                            PopRPtr                       // Load the address of the reference into the register
+	//                            Pop      4                    // Remove the index argument from the stack
+	//
+	//                          Without JIT the above would be pretty much the same as the quick Thiscall1 instruction,
+	//                          but with JIT it would quite possibly be even faster.
+
+	r = ctx->Execute();
+
+	time = GetSystemTimer() - time;
+
+	if( r != 0 )
+	{
+		printf("Execution didn't terminate with asEXECUTION_FINISHED\n", TESTNAME);
+		if( r == asEXECUTION_EXCEPTION )
+		{
+			printf("Script exception\n");
+			asIScriptFunction *func = ctx->GetExceptionFunction();
+			printf("Func: %s\n", func->GetName());
+			printf("Line: %d\n", ctx->GetExceptionLineNumber());
+			printf("Desc: %s\n", ctx->GetExceptionString());
+		}
+	}
+	else
+		testTimes[1] = time;
 
 	ctx->Release();
 #endif

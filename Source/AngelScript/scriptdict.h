@@ -37,14 +37,17 @@ public:
     // Dict manipulation
     virtual uint  GetSize() const;
     virtual bool  IsEmpty() const;
-    virtual void* Insert( void* key, void* value );
+    virtual void  Set( void* key, void* value );
+    virtual void  SetIfNotExist( void* key, void* value );
     virtual bool  Remove( void* key );
     virtual uint  RemoveValues( void* value );
     virtual void  Clear();
-    virtual void* Find( void* key );
-    virtual void* FindDefault( void* key, void* defaultValue );
+    virtual void* Get( void* key );
+    virtual void* GetDefault( void* key, void* defaultValue );
+    virtual void* GetKey( uint index );
+    virtual void* GetValue( uint index );
     virtual bool  Contains( void* key ) const;
-	virtual void* GetMap();
+    virtual void* GetMap();
 
     // GC methods
     virtual int  GetRefCount();

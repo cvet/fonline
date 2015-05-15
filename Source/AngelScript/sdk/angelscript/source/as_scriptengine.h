@@ -238,6 +238,7 @@ public:
 	bool  CallObjectMethodRetBool(void *obj, int func) const;
 	int   CallObjectMethodRetInt(void *obj, int func) const;
 	void *CallObjectMethodRetPtr(void *obj, int func) const;
+	void *CallObjectMethodRetPtr(void *obj, int param1, asCScriptFunction *func) const;
 	void  CallGlobalFunction(void *param1, void *param2, asSSystemFunctionInterface *func, asCScriptFunction *desc) const;
 	bool  CallGlobalFunctionRetBool(void *param1, void *param2, asSSystemFunctionInterface *func, asCScriptFunction *desc) const;
 

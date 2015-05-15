@@ -421,6 +421,8 @@ int Compile( const char* fname, const char* fname_prep, vector< char* >& defines
 
     Preprocessor::SetPragmaCallback( new ScriptPragmaCallback( pragma_type, registrators ) );
 
+    Preprocessor::UndefAll();
+
     char buf[ MAX_FOTEXT ];
     Preprocessor::Define( Str::Format( buf, "__VERSION %d", FONLINE_VERSION ) );
 

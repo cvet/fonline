@@ -180,9 +180,9 @@ void FOServer::OnSendItemValue( void* obj, Property* prop, void* cur_value, void
                 if( cr )
                 {
                     if( is_public || is_protected )
-                        cr->Send_CritterItemProperty( cr, item, prop );
+                        cr->Send_Property( prop, NetProperty::ChosenItem, NULL, item );
                     if( is_public )
-                        cr->SendA_CritterItemProperty( item, prop );
+                        cr->SendA_Property( prop, NetProperty::CritterItem, cr, item );
                 }
             }
         }

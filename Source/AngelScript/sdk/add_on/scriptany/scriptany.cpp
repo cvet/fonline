@@ -271,6 +271,9 @@ CScriptAny::~CScriptAny()
 
 void CScriptAny::Store(void *ref, int refTypeId)
 {
+	// This method is not expected to be used for primitive types, except for bool, int64, or double
+	assert( refTypeId > asTYPEID_DOUBLE || refTypeId == asTYPEID_VOID || refTypeId == asTYPEID_BOOL || refTypeId == asTYPEID_INT64 || refTypeId == asTYPEID_DOUBLE );
+
 	// Hold on to the object type reference so it isn't destroyed too early
 	if( *(void**)ref && (refTypeId & asTYPEID_MASK_OBJECT) )
 	{
@@ -318,6 +321,9 @@ void CScriptAny::Store(asINT64 &ref)
 
 bool CScriptAny::Retrieve(void *ref, int refTypeId) const
 {
+	// This method is not expected to be used for primitive types, except for bool, int64, or double
+	assert( refTypeId > asTYPEID_DOUBLE || refTypeId == asTYPEID_BOOL || refTypeId == asTYPEID_INT64 || refTypeId == asTYPEID_DOUBLE );
+
 	if( refTypeId & asTYPEID_OBJHANDLE )
 	{
 		// Is the handle type compatible with the stored value?

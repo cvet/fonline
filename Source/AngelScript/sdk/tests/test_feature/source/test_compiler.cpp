@@ -4668,17 +4668,17 @@ public:
 	std::string val;
 };
 
-static void ConstructVariant(Variant *self)
+void ConstructVariant(Variant *self)
 {
 	new(self) Variant();
 }
 
-static void ConstructVariantCopy(Variant &other, Variant *self)
+void ConstructVariantCopy(Variant &other, Variant *self)
 {
 	new(self) Variant(other);
 }
 
-static void DestructVariant(Variant *self)
+void DestructVariant(Variant *self)
 {
 	self->~Variant();
 }
@@ -4690,12 +4690,12 @@ public:
 	Variant &opIndex(const string &) { return var; }
 };
 
-static void ConstructVariantMap(VariantMap *self)
+void ConstructVariantMap(VariantMap *self)
 {
 	new(self) VariantMap();
 }
 
-static void DestructVariantMap(VariantMap *self)
+void DestructVariantMap(VariantMap *self)
 {
 	self->~VariantMap();
 }
@@ -4711,7 +4711,7 @@ public:
 	VariantMap vars;
 };
 
-static Node *NodeFactory()
+Node *NodeFactory()
 {
 	return new Node();
 }

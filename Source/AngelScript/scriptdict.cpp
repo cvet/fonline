@@ -56,12 +56,11 @@ typedef map< void*, void*, DictMapComparator > DictMap;
 
 ScriptDict* ScriptDict::Create( asIObjectType* ot )
 {
-    asIScriptContext* ctx = asGetActiveContext();
-
     // Allocate the memory
     void* mem = AllocMem( sizeof( ScriptDict ) );
     if( mem == 0 )
     {
+        asIScriptContext* ctx = asGetActiveContext();
         if( ctx )
             ctx->SetException( "Out of memory" );
 
@@ -71,25 +70,16 @@ ScriptDict* ScriptDict::Create( asIObjectType* ot )
     // Initialize the object
     ScriptDict* d = new (mem) ScriptDict( ot );
 
-    // It's possible the constructor raised a script exception, in which case we
-    // need to free the memory and return null instead, else we get a memory leak.
-    if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-    {
-        d->Release();
-        return 0;
-    }
-
     return d;
 }
 
 ScriptDict* ScriptDict::Create( asIObjectType* ot, void* initList )
 {
-    asIScriptContext* ctx = asGetActiveContext();
-
     // Allocate the memory
     void* mem = AllocMem( sizeof( ScriptDict ) );
     if( mem == 0 )
     {
+        asIScriptContext* ctx = asGetActiveContext();
         if( ctx )
             ctx->SetException( "Out of memory" );
 
@@ -98,14 +88,6 @@ ScriptDict* ScriptDict::Create( asIObjectType* ot, void* initList )
 
     // Initialize the object
     ScriptDict* d = new (mem) ScriptDict( ot, initList );
-
-    // It's possible the constructor raised a script exception, in which case we
-    // need to free the memory and return null instead, else we get a memory leak.
-    if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-    {
-        d->Release();
-        return 0;
-    }
 
     return d;
 }
@@ -270,9 +252,9 @@ static void RegisterScriptDict_Native( asIScriptEngine* engine )
     assert( r >= 0 );
 
     // The index operator returns the template subtype
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get_opIndex(const T1&in) const", asMETHOD( ScriptDict, Find ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get_opIndex(const T1&in) const", asMETHOD( ScriptDict, Get ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "void set_opIndex(const T1&in, const T2&in)", asMETHOD( ScriptDict, Insert ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "void set_opIndex(const T1&in, const T2&in)", asMETHOD( ScriptDict, Set ), asCALL_THISCALL );
     assert( r >= 0 );
 
     // The assignment operator
@@ -280,7 +262,9 @@ static void RegisterScriptDict_Native( asIScriptEngine* engine )
     assert( r >= 0 );
 
     // Other methods
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "void set(const T1&in, const T2&in)", asMETHOD( ScriptDict, Insert ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "void set(const T1&in, const T2&in)", asMETHOD( ScriptDict, Set ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "void setIfNotExist(const T1&in, const T2&in)", asMETHOD( ScriptDict, SetIfNotExist ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool remove(const T1&in)", asMETHOD( ScriptDict, Remove ), asCALL_THISCALL );
     assert( r >= 0 );
@@ -290,9 +274,13 @@ static void RegisterScriptDict_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dict<T1,T2>", "void clear()", asMETHOD( ScriptDict, Clear ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get(const T1&in) const", asMETHOD( ScriptDict, Find ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get(const T1&in) const", asMETHOD( ScriptDict, Get ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get(const T1&in, const T2&in) const", asMETHOD( ScriptDict, FindDefault ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& get(const T1&in, const T2&in) const", asMETHOD( ScriptDict, GetDefault ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T1& getKey(uint index) const", asMETHOD( ScriptDict, GetKey ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& getValue(uint index) const", asMETHOD( ScriptDict, GetValue ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool contains(const T1&in) const", asMETHOD( ScriptDict, Contains ), asCALL_THISCALL );
     assert( r >= 0 );
@@ -391,7 +379,7 @@ ScriptDict::ScriptDict( asIObjectType* ot, void* listBuffer )
             buffer += engine->GetSizeOfPrimitiveType( valueTypeId );
         }
 
-        Insert( key, value );
+        Set( key, value );
     }
 
     // Notify the GC of the successful creation
@@ -411,7 +399,7 @@ ScriptDict::ScriptDict( const ScriptDict& other )
 
     DictMap* dict = (DictMap*) other.dictMap;
     for( auto it = dict->begin(); it != dict->end(); ++it )
-        Insert( it->first, it->second );
+        Set( it->first, it->second );
 
     if( objType->GetFlags() & asOBJ_GC )
         objType->GetEngine()->NotifyGarbageCollectorOfNewObject( this, objType );
@@ -426,7 +414,7 @@ ScriptDict& ScriptDict::operator=( const ScriptDict& other )
 
         DictMap* dict = (DictMap*) other.dictMap;
         for( auto it = dict->begin(); it != dict->end(); ++it )
-            Insert( it->first, it->second );
+            Set( it->first, it->second );
     }
 
     return *this;
@@ -455,7 +443,7 @@ bool ScriptDict::IsEmpty() const
     return dict->empty();
 }
 
-void* ScriptDict::Insert( void* key, void* value )
+void ScriptDict::Set( void* key, void* value )
 {
     DictMap* dict = (DictMap*) dictMap;
 
@@ -472,8 +460,19 @@ void* ScriptDict::Insert( void* key, void* value )
         value = CopyObject( objType, 1, value );
         it->second = value;
     }
+}
 
-    return value;
+void ScriptDict::SetIfNotExist( void* key, void* value )
+{
+    DictMap* dict = (DictMap*) dictMap;
+
+    auto     it = dict->find( key );
+    if( it == dict->end() )
+    {
+        key = CopyObject( objType, 0, key );
+        value = CopyObject( objType, 1, value );
+        dict->insert( PAIR( key, value ) );
+    }
 }
 
 bool ScriptDict::Remove( void* key )
@@ -527,7 +526,7 @@ void ScriptDict::Clear()
     dict->clear();
 }
 
-void* ScriptDict::Find( void* key )
+void* ScriptDict::Get( void* key )
 {
     DictMap* dict = (DictMap*) dictMap;
 
@@ -543,13 +542,51 @@ void* ScriptDict::Find( void* key )
     return ( *it ).second;
 }
 
-void* ScriptDict::FindDefault( void* key, void* defaultValue )
+void* ScriptDict::GetDefault( void* key, void* defaultValue )
 {
     DictMap* dict = (DictMap*) dictMap;
 
     auto     it = dict->find( key );
     if( it == dict->end() )
         return defaultValue;
+
+    return ( *it ).second;
+}
+
+void* ScriptDict::GetKey( uint index )
+{
+    DictMap* dict = (DictMap*) dictMap;
+
+    if( index >= (uint) dict->size() )
+    {
+        asIScriptContext* ctx = asGetActiveContext();
+        if( ctx )
+            ctx->SetException( "Index out of bounds" );
+        return NULL;
+    }
+
+    auto it = dict->begin();
+    while( index-- )
+        it++;
+
+    return ( *it ).first;
+}
+
+void* ScriptDict::GetValue( uint index )
+{
+    DictMap* dict = (DictMap*) dictMap;
+
+    if( index >= (uint) dict->size() )
+    {
+        asIScriptContext* ctx = asGetActiveContext();
+        if( ctx )
+            ctx->SetException( "Index out of bounds" );
+        return NULL;
+    }
+
+    auto it = dict->begin();
+    while( index-- )
+        it++;
 
     return ( *it ).second;
 }
@@ -660,7 +697,7 @@ bool ScriptDict::GetFlag()
 
 void* ScriptDict::GetMap()
 {
-	return dictMap;
+    return dictMap;
 }
 
 // internal

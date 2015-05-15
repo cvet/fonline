@@ -2623,6 +2623,11 @@ void Critter::EventSmthTurnBasedProcess( Critter* from_cr, Map* map, bool begin_
     }
 }
 
+void Critter::Send_Property( Property* prop, NetProperty::Type type, Critter* cr, Item* item )
+{
+    if( IsPlayer() )
+        ( (Client*) this )->Send_Property( prop, type, cr, item );
+}
 void Critter::Send_Move( Critter* from_cr, uint move_params )
 {
     if( IsPlayer() )
@@ -2657,11 +2662,6 @@ void Critter::Send_AddItemOnMap( Item* item )
 {
     if( IsPlayer() )
         ( (Client*) this )->Send_AddItemOnMap( item );
-}
-void Critter::Send_MapItemProperty( Item* item, Property* prop )
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_MapItemProperty( item, prop );
 }
 void Critter::Send_EraseItemFromMap( Item* item )
 {
@@ -2723,11 +2723,6 @@ void Critter::Send_CustomCommand( Critter* cr, ushort cmd, int val )
     if( IsPlayer() )
         ( (Client*) this )->Send_CustomCommand( cr, cmd, val );
 }
-void Critter::Send_CritterProperty( Critter* cr, Property* prop )
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_CritterProperty( cr, prop );
-}
 void Critter::Send_Talk()
 {
     if( IsPlayer() )
@@ -2783,11 +2778,6 @@ void Critter::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar p
     if( IsPlayer() )
         ( (Client*) this )->Send_MoveItem( from_cr, item, action, prev_slot );
 }
-void Critter::Send_CritterItemProperty( Critter* from_cr, Item* item, Property* prop )
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_CritterItemProperty( from_cr, item, prop );
-}
 void Critter::Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play )
 {
     if( IsPlayer() )
@@ -2837,6 +2827,19 @@ void Critter::Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar
 {
     if( IsPlayer() )
         ( (Client*) this )->Send_PlaySoundType( crid_synchronize, sound_type, sound_type_ext, sound_id, sound_id_ext );
+}
+
+void Critter::SendA_Property( Property* prop, NetProperty::Type type, Critter* cr, Item* item )
+{
+    if( VisCr.empty() )
+        return;
+
+    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
+    {
+        Critter* cr = *it;
+        if( cr->IsPlayer() )
+            cr->Send_Property( prop, type, cr, item );
+    }
 }
 
 void Critter::SendA_Move( uint move_params )
@@ -2926,33 +2929,6 @@ void Critter::SendAA_MoveItem( Item* item, uchar action, uchar prev_slot )
         Critter* cr = *it;
         if( cr->IsPlayer() )
             cr->Send_MoveItem( this, item, action, prev_slot );
-    }
-}
-
-void Critter::SendA_CritterProperty( Property* prop )
-{
-    if( VisCr.empty() )
-        return;
-
-    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        if( cr->IsPlayer() )
-            cr->Send_CritterProperty( this, prop );
-    }
-}
-
-void Critter::SendA_CritterItemProperty( Item* item, Property* prop )
-{
-    uchar slot = item->AccCritter.Slot;
-    if( !VisCr.empty() && SlotEnabled[ slot ] && SlotDataSendEnabled[ slot ] )
-    {
-        for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
-        {
-            Critter* cr = *it;
-            if( cr->IsPlayer() )
-                cr->Send_CritterItemProperty( this, item, prop );
-        }
     }
 }
 
@@ -3833,6 +3809,97 @@ void Client::Send_LoadMap( Map* map )
     GameState = STATE_TRANSFERRING;
 }
 
+void Client::Send_Property( Property* prop, NetProperty::Type type, Critter* cr, Item* item )
+{
+    if( IsSendDisabled() || IsOffline() )
+        return;
+
+    void* prop_obj = NULL;
+    uint  additional_args = 0;
+    switch( type )
+    {
+    case NetProperty::Global:
+        break;
+    case NetProperty::Critter:
+        prop_obj = cr;
+        additional_args = 1;
+        break;
+    case NetProperty::Chosen:
+        prop_obj = this;
+        break;
+    case NetProperty::MapItem:
+        prop_obj = item;
+        additional_args = 1;
+        break;
+    case NetProperty::CritterItem:
+        prop_obj = item;
+        additional_args = 2;
+        break;
+    case NetProperty::ChosenItem:
+        prop_obj = item;
+        additional_args = 1;
+        break;
+    case NetProperty::Map:
+        break;
+    case NetProperty::Location:
+        break;
+    default:
+        break;
+    }
+
+    uint  data_size;
+    void* data = prop->GetRawData( prop_obj, data_size );
+
+    bool  is_pod = prop->IsPOD();
+    if( is_pod )
+    {
+        BOUT_BEGIN( this );
+        Bout << NETMSG_POD_PROPERTY( data_size, additional_args );
+    }
+    else
+    {
+        uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( char ) + additional_args * sizeof( uint ) + sizeof( ushort ) + data_size;
+        BOUT_BEGIN( this );
+        Bout << NETMSG_COMPLEX_PROPERTY;
+        Bout << msg_len;
+    }
+
+    Bout << (char) type;
+
+    switch( type )
+    {
+    case NetProperty::CritterItem:
+        Bout << cr->GetId();
+        Bout << item->GetId();
+        break;
+    case NetProperty::Critter:
+        Bout << cr->GetId();
+        break;
+    case NetProperty::MapItem:
+        Bout << item->GetId();
+        break;
+    case NetProperty::ChosenItem:
+        Bout << item->GetId();
+        break;
+    default:
+        break;
+    }
+
+    if( is_pod )
+    {
+        Bout << (ushort) prop->GetRegIndex();
+        Bout.Push( (char*) data, data_size );
+        BOUT_END( this );
+    }
+    else
+    {
+        Bout << (ushort) prop->GetRegIndex();
+        if( data_size )
+            Bout.Push( (char*) data, data_size );
+        BOUT_END( this );
+    }
+}
+
 void Client::Send_Move( Critter* from_cr, uint move_params )
 {
     if( IsSendDisabled() || IsOffline() )
@@ -3943,50 +4010,6 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     BOUT_END( this );
 }
 
-void Client::Send_ItemProperty( Critter* from_cr, Item* item, Property* prop )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    uint  data_size;
-    void* data = prop->GetRawData( item, data_size );
-
-    if( prop->IsPOD() )
-    {
-        BOUT_BEGIN( this );
-        Bout << ( from_cr ? NETMSG_CRITTER_ITEM_POD_PROPERTY( data_size ) : NETMSG_MAP_ITEM_POD_PROPERTY( data_size ) );
-        if( from_cr )
-            Bout << from_cr->GetId();
-        Bout << item->GetId();
-        Bout << (ushort) prop->GetRegIndex();
-        Bout.Push( (char*) data, data_size );
-        BOUT_END( this );
-    }
-    else
-    {
-        uint msg_len = sizeof( uint ) + sizeof( msg_len ) + ( from_cr ? sizeof( uint ) : 0 ) + sizeof( uint ) + sizeof( ushort ) + data_size;
-
-        BOUT_BEGIN( this );
-        Bout << ( from_cr ? NETMSG_CRITTER_ITEM_COMPLEX_PROPERTY : NETMSG_MAP_ITEM_COMPLEX_PROPERTY );
-        Bout << msg_len;
-        if( from_cr )
-            Bout << from_cr->GetId();
-        Bout << item->GetId();
-        Bout << (ushort) prop->GetRegIndex();
-        if( data_size )
-            Bout.Push( (char*) data, data_size );
-        BOUT_END( this );
-    }
-}
-
-void Client::Send_CritterItemProperty( Critter* from_cr, Item* item, Property* prop )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    Send_ItemProperty( from_cr, item, prop );
-}
-
 void Client::Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play )
 {
     if( IsSendDisabled() || IsOffline() )
@@ -4044,14 +4067,6 @@ void Client::Send_AddItemOnMap( Item* item )
     Bout << is_added;
     NET_WRITE_PROPERTIES( Bout, data, data_sizes );
     BOUT_END( this );
-}
-
-void Client::Send_MapItemProperty( Item* item, Property* prop )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    Send_ItemProperty( NULL, item, prop );
 }
 
 void Client::Send_EraseItemFromMap( Item* item )
@@ -4401,38 +4416,6 @@ void Client::Send_CustomCommand( Critter* cr, ushort cmd, int val )
     Bout << cmd;
     Bout << val;
     BOUT_END( this );
-}
-
-void Client::Send_CritterProperty( Critter* cr, Property* prop )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    uint  data_size;
-    void* data = prop->GetRawData( cr, data_size );
-
-    if( prop->IsPOD() )
-    {
-        BOUT_BEGIN( this );
-        Bout << NETMSG_CRITTER_POD_PROPERTY( data_size );
-        Bout << cr->GetId();
-        Bout << (ushort) prop->GetRegIndex();
-        Bout.Push( (char*) data, data_size );
-        BOUT_END( this );
-    }
-    else
-    {
-        uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( ushort ) + data_size;
-
-        BOUT_BEGIN( this );
-        Bout << NETMSG_CRITTER_COMPLEX_PROPERTY;
-        Bout << msg_len;
-        Bout << cr->GetId();
-        Bout << (ushort) prop->GetRegIndex();
-        if( data_size )
-            Bout.Push( (char*) data, data_size );
-        BOUT_END( this );
-    }
 }
 
 void Client::Send_Talk()

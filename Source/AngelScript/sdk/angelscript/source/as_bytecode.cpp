@@ -2233,6 +2233,7 @@ void asCByteCode::DebugOutput(const char *name, asCScriptEngine *engine, asCScri
 			case asBC_CALLSYS:
 			case asBC_CALLBND:
 			case asBC_CALLINTF:
+			case asBC_Thiscall1:
 				{
 					int funcID = *(int*)ARG_DW(instr->arg);
 					asCString decl = engine->GetFunctionDeclaration(funcID);

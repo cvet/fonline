@@ -28,6 +28,40 @@ bool Test()
 	CBufferedOutStream bout;
 	const char *script;
 
+	// Test assert failure with taking address of method on temporary object
+	// http://www.gamedev.net/topic/667853-assertion-failure-in-compiler-when-using-delegate/
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("name", 
+			"funcdef void Callback(); \n"
+			"class Foo \n"
+			"{ \n"
+			"	void Bar() \n"
+			"	{ \n"
+			"	} \n"
+			"} \n"
+			"void test() \n"
+			"{ \n"
+			"	Callback@ cb = Callback( Foo().Bar ); \n"
+			"} \n");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		if( bout.buffer != "" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test proper error when taking address of method by mistake
 	// Reported by Polyak Istvan
 	{

@@ -72,6 +72,11 @@ static void class3ByVal(ClassK3 c)
 	assert( c.a == 0xDEADC0DE && c.b == 0x01234567 && c.c == 0x89ABCDEF );
 }
 
+static ClassK2 test(ClassK2 c)
+{
+	return c;
+}
+
 bool TestCDecl_ClassK()
 {
 	RET_ON_MAX_PORT
@@ -175,6 +180,13 @@ bool TestCDecl_ClassK()
 
 	r = engine->RegisterGlobalFunction("void class3ByVal(class3)", asFUNCTION(class3ByVal), asCALL_CDECL); assert( r >= 0 );
 	r = ExecuteString(engine, "class3 c = _class3(); class3ByVal(c)");
+	if( r != asEXECUTION_FINISHED )
+		TEST_FAILED;
+
+	// Test returning the same object that was passed in
+	// http://www.gamedev.net/topic/667966-calling-convention-bug/
+	r = engine->RegisterGlobalFunction("class2 test(class2)", asFUNCTION(test), asCALL_CDECL); assert( r >= 0 );
+	r = ExecuteString(engine, "class2 c = _class2(); c = test(c); class2ByVal(c)");
 	if( r != asEXECUTION_FINISHED )
 		TEST_FAILED;
 

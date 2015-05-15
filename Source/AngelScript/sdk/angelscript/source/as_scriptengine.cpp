@@ -118,6 +118,9 @@ AS_API const char * asGetLibraryOptions()
 #ifdef WIP_16BYTE_ALIGN
 		"WIP_16BYTE_ALIGN "
 #endif
+#ifdef AS_BIG_ENDIAN
+		"AS_BIG_ENDIAN "
+#endif
 
 	// Target system
 #ifdef AS_WIN
@@ -4228,6 +4231,62 @@ void *asCScriptEngine::CallObjectMethodRetPtr(void *obj, int func) const
 		return f(obj);
 	}
 #endif
+}
+
+void *asCScriptEngine::CallObjectMethodRetPtr(void *obj, int param1, asCScriptFunction *func) const
+{
+	asASSERT( func != 0 );
+	asSSystemFunctionInterface *i = func->sysFuncIntf;
+
+#ifndef AS_NO_CLASS_METHODS
+	if( i->callConv == ICC_THISCALL || i->callConv == ICC_VIRTUAL_THISCALL )
+	{
+#if defined(__GNUC__) || defined(AS_PSVITA)
+		// For virtual thiscalls we must call the method as a true class method so that the compiler will lookup the function address in the vftable
+		union
+		{
+			asSIMPLEMETHOD_t mthd;
+			struct
+			{
+				asFUNCTION_t func;
+				asPWORD baseOffset;
+			} f;
+		} p;
+		p.f.func = (asFUNCTION_t)(i->func);
+		p.f.baseOffset = asPWORD(i->baseOffset);
+		void *(asCSimpleDummy::*f)(int) = (void *(asCSimpleDummy::*)(int))(p.mthd);
+		return (((asCSimpleDummy*)obj)->*f)(param1);
+#else
+		union
+		{
+			asSIMPLEMETHOD_t mthd;
+			asFUNCTION_t func;
+		} p;
+		p.func = (asFUNCTION_t)(i->func);
+		void *(asCSimpleDummy::*f)(int) = (void *(asCSimpleDummy::*)(int))p.mthd;
+		obj = (void*)(asPWORD(obj) + i->baseOffset);
+		return (((asCSimpleDummy*)obj)->*f)(param1);
+#endif
+	}
+	else
+#endif
+	if( i->callConv == ICC_GENERIC_METHOD )
+	{
+		asCGeneric gen(const_cast<asCScriptEngine*>(this), func, obj, reinterpret_cast<asDWORD*>(&param1));
+		void (*f)(asIScriptGeneric *) = (void (*)(asIScriptGeneric *))(i->func);
+		f(&gen);
+		return *(void **)gen.GetReturnPointer();
+	}
+	else if( i->callConv == ICC_CDECL_OBJLAST )
+	{
+		void *(*f)(int, void *) = (void *(*)(int, void *))(i->func);
+		return f(param1, obj);
+	}
+	else /*if( i->callConv == ICC_CDECL_OBJFIRST )*/
+	{
+		void *(*f)(void *, int) = (void *(*)(void *, int))(i->func);
+		return f(obj, param1);
+	}
 }
 
 void *asCScriptEngine::CallGlobalFunctionRetPtr(int func) const

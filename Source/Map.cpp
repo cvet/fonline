@@ -756,7 +756,7 @@ void Map::SendItemProperty( Item* item, Property* prop )
 
         if( cr->CountIdVisItem( item->GetId() ) )
         {
-            cr->Send_MapItemProperty( item, prop );
+            cr->Send_Property( prop, NetProperty::MapItem, NULL, item );
             cr->EventChangeItemOnMap( item );
         }
     }

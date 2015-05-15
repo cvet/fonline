@@ -38,12 +38,11 @@ CScriptGrid *CScriptGrid::Create(asIObjectType *ot)
 
 CScriptGrid *CScriptGrid::Create(asIObjectType *ot, asUINT w, asUINT h)
 {
-	asIScriptContext *ctx = asGetActiveContext();
-
 	// Allocate the memory
 	void *mem = userAlloc(sizeof(CScriptGrid));
 	if( mem == 0 )
 	{
+		asIScriptContext *ctx = asGetActiveContext();
 		if( ctx )
 			ctx->SetException("Out of memory");
 
@@ -53,25 +52,16 @@ CScriptGrid *CScriptGrid::Create(asIObjectType *ot, asUINT w, asUINT h)
 	// Initialize the object
 	CScriptGrid *a = new(mem) CScriptGrid(w, h, ot);
 
-	// It's possible the constructor raised a script exception, in which case we
-	// need to free the memory and return null instead, else we get a memory leak.
-	if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-	{
-		a->Release();
-		return 0;
-	}
-
 	return a;
 }
 
 CScriptGrid *CScriptGrid::Create(asIObjectType *ot, void *initList)
 {
-	asIScriptContext *ctx = asGetActiveContext();
-
 	// Allocate the memory
 	void *mem = userAlloc(sizeof(CScriptGrid));
 	if( mem == 0 )
 	{
+		asIScriptContext *ctx = asGetActiveContext();
 		if( ctx )
 			ctx->SetException("Out of memory");
 
@@ -81,25 +71,16 @@ CScriptGrid *CScriptGrid::Create(asIObjectType *ot, void *initList)
 	// Initialize the object
 	CScriptGrid *a = new(mem) CScriptGrid(ot, initList);
 
-	// It's possible the constructor raised a script exception, in which case we
-	// need to free the memory and return null instead, else we get a memory leak.
-	if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-	{
-		a->Release();
-		return 0;
-	}
-
 	return a;
 }
 
 CScriptGrid *CScriptGrid::Create(asIObjectType *ot, asUINT w, asUINT h, void *defVal)
 {
-	asIScriptContext *ctx = asGetActiveContext();
-
 	// Allocate the memory
 	void *mem = userAlloc(sizeof(CScriptGrid));
 	if( mem == 0 )
 	{
+		asIScriptContext *ctx = asGetActiveContext();
 		if( ctx )
 			ctx->SetException("Out of memory");
 
@@ -108,14 +89,6 @@ CScriptGrid *CScriptGrid::Create(asIObjectType *ot, asUINT w, asUINT h, void *de
 
 	// Initialize the object
 	CScriptGrid *a = new(mem) CScriptGrid(w, h, defVal, ot);
-
-	// It's possible the constructor raised a script exception, in which case we
-	// need to free the memory and return null instead, else we get a memory leak.
-	if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
-	{
-		a->Release();
-		return 0;
-	}
 
 	return a;
 }
