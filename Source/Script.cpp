@@ -610,15 +610,6 @@ bool Script::ReloadScripts( const char* target, bool skip_binaries, const char* 
             continue;
         }
 
-        // Trim UTF-8 BOM signature
-        Str::Trim( line );
-        if( line[ 0 ] && line[ 1 ] && line[ 2 ] && (uchar) line[ 0 ] == 0xEF && (uchar) line[ 1 ] == 0xBB && (uchar) line[ 2 ] == 0xBF )
-        {
-            Str::CopyBack( line );
-            Str::CopyBack( line );
-            Str::CopyBack( line );
-        }
-
         // Check signature
         if( !Str::Substring( line, "FOS" ) )
         {
