@@ -620,7 +620,7 @@ bool Script::ReloadScripts( const char* target, bool skip_binaries, const char* 
         }
 
         // Check signature
-        if( !Str::CompareCount( line, "//$", 3 ) )
+        if( !Str::Substring( line, "FOS" ) )
         {
             WriteLog( "Error in script<%s>, invalid header<%s>.\n", file_name, line );
             errors++;

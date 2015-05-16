@@ -309,9 +309,9 @@ int main( int argc, char* argv[] )
         }
 
         // Check script signature
-        if( !Str::CompareCount( line, "//$", 3 ) )
+        if( !Str::Substring( line, "FOS" ) )
         {
-            printf( "FOnline script signature '//$' not found.\n" );
+            printf( "FOnline script signature 'FOS' not found in first line.\n" );
             return -1;
         }
 

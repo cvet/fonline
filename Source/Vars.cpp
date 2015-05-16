@@ -161,7 +161,7 @@ bool VarManager::UpdateVarsTemplate()
     }
 
     TempVarVec load_vars;
-    if( fm.GetFsize() < 6 || !LoadTemplateVars( (char*) fm.GetBuf() + 6, load_vars ) ) // BOM + FOS signature
+    if( !LoadTemplateVars( (char*) fm.GetBuf(), load_vars ) )
         return false;
 
     for( auto it = load_vars.begin(), it_end = load_vars.end(); it != it_end; ++it )

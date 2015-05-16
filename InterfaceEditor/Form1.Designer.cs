@@ -269,7 +269,7 @@
             this.Controls.Add(this.tabControl1);
             this.DoubleBuffered = true;
             this.Name = "MainForm";
-            this.Text = "Interface Editor v.1.8";
+            this.Text = "Interface Editor v.1.9";
             this.tabControl2.ResumeLayout(false);
             this.tabPage4.ResumeLayout(false);
             this.tabPage3.ResumeLayout(false);
