@@ -2844,36 +2844,24 @@ void FOClient::Net_SendPickCritter( uint crid, uchar pick_type )
     Bout << pick_type;
 }
 
-void FOClient::Net_SendProperty( Property* prop, NetProperty::Type type, CritterCl* cr, Item* item )
+void FOClient::Net_SendProperty( NetProperty::Type type, Property* prop, void* prop_obj )
 {
-    void* prop_obj = NULL;
-    uint  additional_args = 0;
+    RUNTIME_ASSERT( prop_obj );
+
+    uint additional_args = 0;
     switch( type )
     {
-    case NetProperty::Global:
-        break;
     case NetProperty::Critter:
-        prop_obj = cr;
         additional_args = 1;
         break;
-    case NetProperty::Chosen:
-        prop_obj = Chosen;
-        break;
     case NetProperty::MapItem:
-        prop_obj = item;
         additional_args = 1;
         break;
     case NetProperty::CritterItem:
-        prop_obj = item;
         additional_args = 2;
         break;
     case NetProperty::ChosenItem:
-        prop_obj = item;
         additional_args = 1;
-        break;
-    case NetProperty::Map:
-        break;
-    case NetProperty::Location:
         break;
     default:
         break;
@@ -2899,17 +2887,17 @@ void FOClient::Net_SendProperty( Property* prop, NetProperty::Type type, Critter
     switch( type )
     {
     case NetProperty::CritterItem:
-        Bout << cr->GetId();
-        Bout << item->GetId();
+        Bout << ( (Item*) prop_obj )->AccCritter.Id;
+        Bout << ( (Item*) prop_obj )->Id;
         break;
     case NetProperty::Critter:
-        Bout << cr->GetId();
+        Bout << ( (CritterCl*) prop_obj )->Id;
         break;
     case NetProperty::MapItem:
-        Bout << item->GetId();
+        Bout << ( (Item*) prop_obj )->Id;
         break;
     case NetProperty::ChosenItem:
-        Bout << item->GetId();
+        Bout << ( (Item*) prop_obj )->Id;
         break;
     default:
         break;
@@ -3194,14 +3182,19 @@ void FOClient::Net_OnLoginSuccess()
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_LOGINOK ) );
 
     // Set encrypt keys
-    uint bin_seed, bout_seed;     // Server bin/bout == client bout/bin
+    uint msg_len;
+    uint bin_seed, bout_seed;         // Server bin/bout == client bout/bin
+
+    Bin >> msg_len;
     Bin >> bin_seed;
     Bin >> bout_seed;
+    NET_READ_PROPERTIES( Bin, GlovalVarsPropertiesData );
 
     CHECK_IN_BUFF_ERROR;
 
     Bout.SetEncryptKey( bin_seed );
     Bin.SetEncryptKey( bout_seed );
+    Globals->Props.RestoreData( GlovalVarsPropertiesData );
 }
 
 void FOClient::Net_OnAddCritter( bool is_npc )
@@ -3248,7 +3241,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
         cl_name[ sizeof( cl_name ) - 1 ] = 0;
     }
 
-    // Parameters
+    // Properties
     NET_READ_PROPERTIES( Bin, TempPropertiesData );
 
     CHECK_IN_BUFF_ERROR;
@@ -4907,7 +4900,8 @@ void FOClient::Net_OnProperty( uint data_size )
 
         // Inform player
         Quest* quest = QuestMngr.GetQuest( q_num );
-        AddMess( FOMB_GAME, quest->str.c_str() );
+        if( quest )
+            AddMess( FOMB_GAME, quest->str.c_str() );
     }
 }
 
@@ -5115,6 +5109,7 @@ void FOClient::Net_OnLoadMap()
 {
     WriteLog( "Change map...\n" );
 
+    uint  msg_len;
     hash  map_pid;
     hash  loc_pid;
     uchar map_index_in_loc;
@@ -5123,6 +5118,7 @@ void FOClient::Net_OnLoadMap()
     uint  hash_tiles;
     uint  hash_walls;
     uint  hash_scen;
+    Bin >> msg_len;
     Bin >> map_pid;
     Bin >> loc_pid;
     Bin >> map_index_in_loc;
@@ -5131,8 +5127,23 @@ void FOClient::Net_OnLoadMap()
     Bin >> hash_tiles;
     Bin >> hash_walls;
     Bin >> hash_scen;
+    if( map_pid )
+    {
+        NET_READ_PROPERTIES( Bin, TempPropertiesData );
+        NET_READ_PROPERTIES( Bin, TempPropertiesDataExt );
+    }
 
     CHECK_IN_BUFF_ERROR;
+
+    SAFEDEL( ClientCurMap );
+    SAFEDEL( ClientCurLocation );
+    if( map_pid )
+    {
+        ClientCurMap = new ClientMap();
+        ClientCurMap->Props.RestoreData( TempPropertiesData );
+        ClientCurLocation = new ClientLocation();
+        ClientCurLocation->Props.RestoreData( TempPropertiesDataExt );
+    }
 
     GameOpt.SpritesZoom = 1.0f;
     GmapZoom = 1.0f;
@@ -6137,10 +6148,14 @@ void FOClient::Net_OnCheckUID3()
 void FOClient::Net_OnUpdateFilesList()
 {
     uint     msg_len;
+    uint     data_size;
     UCharVec data;
     Bin >> msg_len;
-    data.resize( msg_len - ( sizeof( uint ) + sizeof( msg_len ) ) );
-    Bin.Pop( (char*) &data[ 0 ], (uint) data.size() );
+    Bin >> data_size;
+    data.resize( data_size );
+    if( data_size )
+        Bin.Pop( (char*) &data[ 0 ], (uint) data.size() );
+    NET_READ_PROPERTIES( Bin, GlovalVarsPropertiesData );
 
     CHECK_IN_BUFF_ERROR;
 
@@ -8849,13 +8864,19 @@ void FOClient::AnimProcess()
     }
 }
 
-void FOClient::OnSendChosenValue( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSendGlobalValue( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
+        Self->Net_SendProperty( NetProperty::Global, prop, Globals );
+}
+
+void FOClient::OnSendCritterValue( void* obj, Property* prop, void* cur_value, void* old_value )
 {
     CritterCl* cr = (CritterCl*) obj;
     if( cr->IsChosen() )
-        Self->Net_SendProperty( prop, NetProperty::Chosen, NULL, NULL );
-    else
-        Self->Net_SendProperty( prop, NetProperty::Critter, cr, NULL );
+        Self->Net_SendProperty( NetProperty::Chosen, prop, cr );
+    else if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
+        Self->Net_SendProperty( NetProperty::Critter, prop, cr );
 }
 
 void FOClient::OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value )
@@ -8868,13 +8889,14 @@ void FOClient::OnSendItemValue( void* obj, Property* prop, void* cur_value, void
         {
             CritterCl* cr = Self->GetCritter( item->AccCritter.Id );
             if( cr && cr->IsChosen() )
-                Self->Net_SendProperty( prop, NetProperty::ChosenItem, NULL, item );
-            else if( cr )
-                Self->Net_SendProperty( prop, NetProperty::CritterItem, cr, item );
+                Self->Net_SendProperty( NetProperty::ChosenItem, prop, item );
+            else if( cr && ( prop->GetAccess() & Property::PublicMask ) != 0 )
+                Self->Net_SendProperty( NetProperty::CritterItem, prop, item );
         }
         else if( item->Accessory == ITEM_ACCESSORY_HEX )
         {
-            Self->Net_SendProperty( prop, NetProperty::MapItem, NULL, item );
+            if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
+                Self->Net_SendProperty( NetProperty::MapItem, prop, item );
         }
     }
 }
@@ -8952,6 +8974,18 @@ void FOClient::OnSetItemLockerCondition( void* obj, Property* prop, void* cur_va
     }
 }
 
+void FOClient::OnSendMapValue( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
+        Self->Net_SendProperty( NetProperty::Map, prop, Globals );
+}
+
+void FOClient::OnSendLocationValue( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
+        Self->Net_SendProperty( NetProperty::Location, prop, Globals );
+}
+
 /************************************************************************/
 /* Scripts                                                              */
 /************************************************************************/
@@ -8970,11 +9004,14 @@ bool FOClient::ReloadScripts()
     }
 
     // Properties
-    PropertyRegistrator* registrators[ 3 ] =
+    PropertyRegistrator* registrators[ 6 ] =
     {
+        new PropertyRegistrator( false, "GlobalVars" ),
         new PropertyRegistrator( false, "CritterCl" ),
         new PropertyRegistrator( false, "ItemCl" ),
         new PropertyRegistrator( false, "ProtoItem" ),
+        new PropertyRegistrator( false, "Map" ),
+        new PropertyRegistrator( false, "Location" ),
     };
 
     // Reinitialize engine
@@ -9128,9 +9165,13 @@ bool FOClient::ReloadScripts()
     if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
         errors++;
 
-    CritterCl::SetPropertyRegistrator( registrators[ 0 ] );
-    CritterCl::PropertiesRegistrator->SetNativeSendCallback( OnSendChosenValue );
-    Item::SetPropertyRegistrator( registrators[ 1 ] );
+    GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
+    GlobalVars::PropertiesRegistrator->SetNativeSendCallback( OnSendGlobalValue );
+    SAFEDEL( Globals );
+    Globals = new GlobalVars();
+    CritterCl::SetPropertyRegistrator( registrators[ 1 ] );
+    CritterCl::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
+    Item::SetPropertyRegistrator( registrators[ 2 ] );
     Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
@@ -9146,7 +9187,11 @@ bool FOClient::ReloadScripts()
     Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
     Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
     Item::PropertiesRegistrator->SetNativeSetCallback( "LockerCondition", OnSetItemLockerCondition );
-    ProtoItem::SetPropertyRegistrator( registrators[ 2 ] );
+    ProtoItem::SetPropertyRegistrator( registrators[ 3 ] );
+    ClientMap::SetPropertyRegistrator( registrators[ 4 ] );
+    ClientMap::PropertiesRegistrator->SetNativeSendCallback( OnSendMapValue );
+    ClientLocation::SetPropertyRegistrator( registrators[ 5 ] );
+    ClientLocation::PropertiesRegistrator->SetNativeSendCallback( OnSendLocationValue );
 
     if( errors || !Script::RunModuleInitFunctions() )
     {

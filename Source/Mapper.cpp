@@ -5257,11 +5257,14 @@ bool FOMapper::InitScriptSystem()
     WriteLog( "Script system initialization...\n" );
 
     // Auto fields
-    PropertyRegistrator* registrators[ 3 ] =
+    PropertyRegistrator* registrators[ 6 ] =
     {
+        new PropertyRegistrator( false, "GlobalVars" ),
         new PropertyRegistrator( false, "CritterCl" ),
         new PropertyRegistrator( false, "ItemCl" ),
         new PropertyRegistrator( false, "ProtoItem" ),
+        new PropertyRegistrator( false, "Map" ),
+        new PropertyRegistrator( false, "Location" ),
     };
 
     // Init
@@ -5318,9 +5321,14 @@ bool FOMapper::InitScriptSystem()
         return false;
     }
 
-    CritterCl::SetPropertyRegistrator( registrators[ 0 ] );
-    Item::SetPropertyRegistrator( registrators[ 1 ] );
-    ProtoItem::SetPropertyRegistrator( registrators[ 2 ] );
+    GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
+    SAFEDEL( Globals );
+    Globals = new GlobalVars();
+    CritterCl::SetPropertyRegistrator( registrators[ 1 ] );
+    Item::SetPropertyRegistrator( registrators[ 2 ] );
+    ProtoItem::SetPropertyRegistrator( registrators[ 3 ] );
+    ClientMap::SetPropertyRegistrator( registrators[ 4 ] );
+    ClientLocation::SetPropertyRegistrator( registrators[ 5 ] );
 
     if( !Script::RunModuleInitFunctions() )
     {

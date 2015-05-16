@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 501 )
+#define FONLINE_VERSION                          ( 502 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
@@ -70,6 +70,13 @@ const char* GetLastSocketError();
 # define DLL_Error()                      dlerror()
 #endif
 
+// Generic helpers
+#define RUNTIME_ASSERT( a )               ( !!( a ) || RaiseAssert( # a, __FILE__, __LINE__ ) )
+#define STATIC_ASSERT( a )                static_assert( a, # a )
+#define OFFSETOF( s, m )                  ( (int) (size_t) ( &reinterpret_cast< s* >( 100000 )->m ) - 100000 )
+#define UNUSED_VARIABLE( x )              (void) ( x )
+#define memzero( ptr, size )              memset( ptr, 0, size )
+
 // FOnline stuff
 #include "Types.h"
 #include "Defines.h"
@@ -85,6 +92,7 @@ const char* GetLastSocketError();
 #include "FileSystem.h"
 #include "AngelScript/scriptstring.h"
 #include "AngelScript/scriptarray.h"
+#include "Properties.h"
 
 #define ___MSG1( x )                      # x
 #define ___MSG0( x )                      ___MSG1( x )
@@ -99,19 +107,6 @@ const char* GetLastSocketError();
 #define SAFEDELA( x ) \
     { if( x )         \
           delete[] ( x ); ( x ) = NULL; }
-
-#define RUNTIME_ASSERT( a )               ( !!( a ) || RaiseAssert( # a, __FILE__, __LINE__ ) )
-#define STATIC_ASSERT( a )                static_assert( a, # a )
-#define OFFSETOF( s, m )                  ( (int) (size_t) ( &reinterpret_cast< s* >( 100000 )->m ) - 100000 )
-#define UNUSED_VARIABLE( x )              (void) ( x )
-#define memzero( ptr, size )              memset( ptr, 0, size )
-
-#define PI_FLOAT                                 ( 3.14159265f )
-#define PIBY2_FLOAT                              ( 1.5707963f )
-#define SQRT3T2_FLOAT                            ( 3.4641016151f )
-#define SQRT3_FLOAT                              ( 1.732050807568877f )
-#define BIAS_FLOAT                               ( 0.02f )
-#define RAD2DEG                                  ( 57.29577951f )
 
 #define MAX( a, b )                       ( ( ( a ) > ( b ) ) ? ( a ) : ( b ) )
 #define MIN( a, b )                       ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
@@ -981,6 +976,34 @@ T* ReadDataArr( UCharVec& vec, uint size, uint& pos )
     pos += size;
     return size ? &vec[ pos - size ] : NULL;
 }
+
+/************************************************************************/
+/* Properties                                                           */
+/************************************************************************/
+
+class GlobalVars
+{
+public:
+    PROPERTIES_HEADER();
+    GlobalVars();
+};
+extern GlobalVars* Globals;
+
+class ClientMap
+{
+public:
+    PROPERTIES_HEADER();
+    ClientMap();
+};
+extern ClientMap* ClientCurMap;
+
+class ClientLocation
+{
+public:
+    PROPERTIES_HEADER();
+    ClientLocation();
+};
+extern ClientLocation* ClientCurLocation;
 
 /************************************************************************/
 /*                                                                      */

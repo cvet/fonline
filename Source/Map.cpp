@@ -24,18 +24,53 @@ const char* MapEventFuncName[ MAP_EVENT_MAX ] =
 /* Map                                                                  */
 /************************************************************************/
 
-Map::Map(): RefCounter( 1 ), IsNotValid( false ), hexFlags( NULL ),
-            mapLocation( NULL ), Proto( NULL ), NeedProcess( false ),
-            IsTurnBasedOn( false ), TurnBasedEndTick( 0 ), TurnSequenceCur( 0 ),
-            IsTurnBasedTimeout( false ), TurnBasedBeginSecond( 0 ), NeedEndTurnBased( false ),
-            TurnBasedRound( 0 ), TurnBasedTurn( 0 ), TurnBasedWholeTurn( 0 )
+PROPERTIES_IMPL( Map );
+
+Map::Map( uint id, ProtoMap* proto, Location* location ): Props( PropertiesRegistrator )
 {
+    RUNTIME_ASSERT( id );
+    RUNTIME_ASSERT( proto );
+    RUNTIME_ASSERT( location );
+
     MEMORY_PROCESS( MEMORY_MAP, sizeof( Map ) );
-    memzero( &Data, sizeof( Data ) );
+    MEMORY_PROCESS( MEMORY_MAP_FIELD, proto->Header.MaxHexX * proto->Header.MaxHexY );
+
+    Proto = proto;
+    mapLocation = location;
+
+    RefCounter = 1;
+    IsNotValid = false;
+    hexFlags = NULL;
+    NeedProcess = false;
+    IsTurnBasedOn = false;
+    TurnBasedEndTick = 0;
+    TurnSequenceCur = 0;
+    IsTurnBasedTimeout = false;
+    TurnBasedBeginSecond = 0;
+    NeedEndTurnBased = false;
+    TurnBasedRound = 0;
+    TurnBasedTurn = 0;
+    TurnBasedWholeTurn = 0;
+
     memzero( FuncId, sizeof( FuncId ) );
     memzero( LoopEnabled, sizeof( LoopEnabled ) );
     memzero( LoopLastTick, sizeof( LoopLastTick ) );
     memzero( LoopWaitTick, sizeof( LoopWaitTick ) );
+
+    hexFlags = new uchar[ proto->Header.MaxHexX * proto->Header.MaxHexY ];
+    memzero( hexFlags, proto->Header.MaxHexX * proto->Header.MaxHexY );
+
+    memzero( &Data, sizeof( Data ) );
+    Data.MapPid = proto->GetPid();
+    Data.MapTime = proto->Header.Time;
+    Data.MapRain = 0;
+    Data.ScriptId = 0;
+    Data.IsTurnBasedAviable = false;
+
+    for( int i = 0; i < MAP_LOOP_FUNC_MAX; i++ )
+        LoopWaitTick[ i ] = MAP_LOOP_DEFAULT_TICK;
+
+    Data.MapId = id;
 }
 
 Map::~Map()
@@ -43,37 +78,6 @@ Map::~Map()
     MEMORY_PROCESS( MEMORY_MAP, -(int) sizeof( Map ) );
     MEMORY_PROCESS( MEMORY_MAP_FIELD, -( Proto->Header.MaxHexX * Proto->Header.MaxHexY ) );
     SAFEDELA( hexFlags );
-}
-
-bool Map::Init( uint id, ProtoMap* proto, Location* location )
-{
-    if( !proto || !location )
-        return false;
-
-    MEMORY_PROCESS( MEMORY_MAP_FIELD, proto->Header.MaxHexX * proto->Header.MaxHexY );
-    hexFlags = new uchar[ proto->Header.MaxHexX * proto->Header.MaxHexY ];
-    if( !hexFlags )
-        return false;
-    memzero( hexFlags, proto->Header.MaxHexX * proto->Header.MaxHexY );
-    memzero( &Data, sizeof( Data ) );
-    Data.MapId = id;
-    Data.MapPid = proto->GetPid();
-    Proto = proto;
-    mapLocation = location;
-    Data.MapTime = Proto->Header.Time;
-    Data.MapRain = 0;
-    Data.ScriptId = 0;
-    Data.IsTurnBasedAviable = false;
-    IsTurnBasedOn = false;
-    TurnBasedEndTick = 0;
-    TurnSequenceCur = 0;
-    TurnSequence.clear();
-    IsTurnBasedTimeout = false;
-    for( int i = 0; i < MAP_LOOP_FUNC_MAX; i++ )
-        LoopWaitTick[ i ] = MAP_LOOP_DEFAULT_TICK;
-    NeedProcess = false;
-    IsNotValid = false;
-    return true;
 }
 
 void Map::Clear( bool full )
@@ -745,20 +749,36 @@ void Map::EraseItem( uint item_id )
     item->ViewPlaceOnMap = false;
 }
 
-void Map::SendItemProperty( Item* item, Property* prop )
+void Map::SendProperty( NetProperty::Type type, Property* prop, void* prop_obj )
 {
-    CrVec critters;
-    GetCritters( critters, true );
-
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
+    if( type == NetProperty::MapItem )
     {
-        Critter* cr = *it;
-
-        if( cr->CountIdVisItem( item->GetId() ) )
+        Item* item = (Item*) prop_obj;
+        CrVec critters;
+        GetCritters( critters, true );
+        for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
-            cr->Send_Property( prop, NetProperty::MapItem, NULL, item );
-            cr->EventChangeItemOnMap( item );
+            Critter* cr = *it;
+            if( cr->CountIdVisItem( item->GetId() ) )
+            {
+                cr->Send_Property( type, prop, prop_obj );
+                cr->EventChangeItemOnMap( item );
+            }
         }
+    }
+    else if( type == NetProperty::Map || type == NetProperty::Location )
+    {
+        CrVec critters;
+        GetCritters( critters, false );
+        for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
+        {
+            Critter* cr = *it;
+            cr->Send_Property( type, prop, prop_obj );
+        }
+    }
+    else
+    {
+        RUNTIME_ASSERT( false );
     }
 }
 
@@ -2219,11 +2239,16 @@ const char* LocationEventFuncName[ LOCATION_EVENT_MAX ] =
     "bool %s(Location&,Critter@[]&,uint8)",         // LOCATION_EVENT_ENTER
 };
 
-bool Location::Init( ProtoLocation* proto, ushort wx, ushort wy )
+PROPERTIES_IMPL( Location );
+
+Location::Location( uint id, ProtoLocation* proto, ushort wx, ushort wy ): Props( PropertiesRegistrator )
 {
-    if( !proto )
-        return false;
+    RUNTIME_ASSERT( id );
+    RUNTIME_ASSERT( proto );
+
     Proto = proto;
+    RefCounter = 1;
+    IsNotValid = false;
     memzero( &Data, sizeof( Data ) );
     memzero( FuncId, sizeof( FuncId ) );
     Data.LocPid = Proto->LocPid;
@@ -2234,7 +2259,13 @@ bool Location::Init( ProtoLocation* proto, ushort wx, ushort wy )
     Data.GeckVisible = Proto->GeckVisible;
     Data.AutoGarbage = Proto->AutoGarbage;
     GeckCount = 0;
-    return true;
+
+    Data.LocId = id;
+}
+
+Location::~Location()
+{
+    //
 }
 
 void Location::Clear( bool full )

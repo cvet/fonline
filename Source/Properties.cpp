@@ -1,3 +1,4 @@
+#include "Common.h"
 #include "Properties.h"
 #include "FileSystem.h"
 #include "Script.h"
@@ -587,8 +588,6 @@ string Property::AddSetCallback( const char* script_func )
 Properties::Properties( PropertyRegistrator* reg )
 {
     registrator = reg;
-    if( !reg )
-        return;
     RUNTIME_ASSERT( registrator );
     RUNTIME_ASSERT( registrator->registrationFinished );
 
@@ -726,7 +725,8 @@ void Properties::RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes )
     uint publicSize = (uint) registrator->publicPodDataSpace.size();
     uint protectedSize = (uint) registrator->protectedPodDataSpace.size();
     RUNTIME_ASSERT( all_data_sizes[ 0 ] == publicSize || all_data_sizes[ 0 ] == publicSize + protectedSize );
-    memcpy( podData, all_data[ 0 ], all_data_sizes[ 0 ] );
+    if( all_data_sizes[ 0 ] )
+        memcpy( podData, all_data[ 0 ], all_data_sizes[ 0 ] );
 
     // Restore complex data
     if( all_data.size() > 1 )
@@ -1073,6 +1073,49 @@ PropertyRegistrator::~PropertyRegistrator()
     SetDefaults();
 }
 
+bool PropertyRegistrator::Init()
+{
+    // Register common stuff on first property registration
+    string enum_type = ( scriptClassName.find( "Cl" ) != string::npos ? scriptClassName.substr( 0, scriptClassName.size() - 2 ) : scriptClassName ) + "Property";
+    enumTypeName = enum_type;
+
+    asIScriptEngine* engine = Script::GetEngine();
+    RUNTIME_ASSERT( engine );
+
+    int result = engine->RegisterEnum( enum_type.c_str() );
+    if( result < 0 )
+    {
+        WriteLogF( _FUNC_, " - Register object property enum<%s> fail, error<%d>.\n", enum_type.c_str(), result );
+        return false;
+    }
+
+    result = engine->RegisterEnumValue( enum_type.c_str(), "Invalid", 0 );
+    if( result < 0 )
+    {
+        WriteLogF( _FUNC_, " - Register object property enum<%s::Invalid> zero value fail, error<%d>.\n", enum_type.c_str(), result );
+        return false;
+    }
+
+    char decl[ MAX_FOTEXT ];
+    Str::Format( decl, "int GetAsInt(%s)", enum_type.c_str() );
+    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHOD( Properties, GetValueAsInt ), asCALL_THISCALL );
+    if( result < 0 )
+    {
+        WriteLogF( _FUNC_, " - Register object method<%s> fail, error<%d>.\n", decl, result );
+        return false;
+    }
+
+    Str::Format( decl, "void SetAsInt(%s,int)", enum_type.c_str() );
+    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHOD( Properties, SetValueAsInt ), asCALL_THISCALL );
+    if( result < 0 )
+    {
+        WriteLogF( _FUNC_, " - Register object method<%s> fail, error<%d>.\n", decl, result );
+        return false;
+    }
+
+    return true;
+}
+
 Property* PropertyRegistrator::Register(
     const char* type_name,
     const char* name,
@@ -1212,44 +1255,6 @@ Property* PropertyRegistrator::Register(
     if( !isServer && ( ( access & Property::PublicMask ) || ( access & Property::ProtectedMask ) ) && !( access & Property::ModifiableMask ) )
         disable_set = true;
 
-    // Register common stuff on first property registration
-    string enum_type = ( scriptClassName.find( "Cl" ) != string::npos ? scriptClassName.substr( 0, scriptClassName.size() - 2 ) : scriptClassName ) + "Property";
-    if( registeredProperties.empty() )
-    {
-        enumTypeName = enum_type;
-
-        int result = engine->RegisterEnum( enum_type.c_str() );
-        if( result < 0 )
-        {
-            WriteLogF( _FUNC_, " - Register object property enum<%s> fail, error<%d>.\n", enum_type.c_str(), result );
-            return NULL;
-        }
-
-        result = engine->RegisterEnumValue( enum_type.c_str(), "Invalid", 0 );
-        if( result < 0 )
-        {
-            WriteLogF( _FUNC_, " - Register object property enum<%s::%s> zero value fail, error<%d>.\n", enum_type.c_str(), name, result );
-            return NULL;
-        }
-
-        char decl[ MAX_FOTEXT ];
-        Str::Format( decl, "int GetAsInt(%s)", enum_type.c_str() );
-        result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHOD( Properties, GetValueAsInt ), asCALL_THISCALL );
-        if( result < 0 )
-        {
-            WriteLogF( _FUNC_, " - Register object method<%s> fail, error<%d>.\n", decl, result );
-            return NULL;
-        }
-
-        Str::Format( decl, "void SetAsInt(%s,int)", enum_type.c_str() );
-        result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHOD( Properties, SetValueAsInt ), asCALL_THISCALL );
-        if( result < 0 )
-        {
-            WriteLogF( _FUNC_, " - Register object method<%s> fail, error<%d>.\n", decl, result );
-            return NULL;
-        }
-    }
-
     // Register default getter
     if( !disable_get )
     {
@@ -1298,12 +1303,12 @@ Property* PropertyRegistrator::Register(
 
     // Register enum values for property reflection
     char enum_value_name[ MAX_FOTEXT ];
-    Str::Format( enum_value_name, "%s::%s", enum_type.c_str(), name );
+    Str::Format( enum_value_name, "%s::%s", enumTypeName.c_str(), name );
     int  enum_value = (int) Str::GetHash( enum_value_name );
-    int  result = engine->RegisterEnumValue( enum_type.c_str(), name, enum_value );
+    int  result = engine->RegisterEnumValue( enumTypeName.c_str(), name, enum_value );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register object property enum<%s::%s> value<%d> fail, error<%d>.\n", enum_type.c_str(), name, enum_value, result );
+        WriteLogF( _FUNC_, " - Register object property enum<%s::%s> value<%d> fail, error<%d>.\n", enumTypeName.c_str(), name, enum_value, result );
         return NULL;
     }
 
@@ -1311,7 +1316,7 @@ Property* PropertyRegistrator::Register(
     if( group )
     {
         char full_decl[ MAX_FOTEXT ];
-        Str::Format( full_decl, "const %s[] %s%s", enum_type.c_str(), enum_type.c_str(), group );
+        Str::Format( full_decl, "const %s[] %s%s", enumTypeName.c_str(), enumTypeName.c_str(), group );
 
         ScriptArray* group_array = NULL;
         if( enumGroups.count( full_decl ) )
@@ -1320,7 +1325,7 @@ Property* PropertyRegistrator::Register(
         if( !group_array )
         {
             char           decl[ MAX_FOTEXT ];
-            Str::Format( decl, "%s[]", enum_type.c_str() );
+            Str::Format( decl, "%s[]", enumTypeName.c_str() );
             asIObjectType* enum_array_type = engine->GetObjectTypeByDecl( decl );
             if( !enum_array_type )
             {

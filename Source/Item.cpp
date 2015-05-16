@@ -130,112 +130,10 @@ CLASS_PROPERTY_IMPL( ProtoItem, Car_FuelConsumption );
 CLASS_PROPERTY_IMPL( ProtoItem, Car_Entrance );
 CLASS_PROPERTY_IMPL( ProtoItem, Car_MovementType );
 
-void ProtoItem::SetPropertyRegistrator( PropertyRegistrator* registrator )
-{
-    PROPERTIES_FIND();
-    CLASS_PROPERTY_FIND( PicMap );
-    CLASS_PROPERTY_FIND( PicInv );
-    CLASS_PROPERTY_FIND( OffsetX );
-    CLASS_PROPERTY_FIND( OffsetY );
-    CLASS_PROPERTY_FIND( Cost );
-    CLASS_PROPERTY_FIND( LightFlags );
-    CLASS_PROPERTY_FIND( LightDistance );
-    CLASS_PROPERTY_FIND( LightIntensity );
-    CLASS_PROPERTY_FIND( LightColor );
-    CLASS_PROPERTY_FIND( Type );
-    CLASS_PROPERTY_FIND( Stackable );
-    CLASS_PROPERTY_FIND( Deteriorable );
-    CLASS_PROPERTY_FIND( GroundLevel );
-    CLASS_PROPERTY_FIND( Corner );
-    CLASS_PROPERTY_FIND( Slot );
-    CLASS_PROPERTY_FIND( Weight );
-    CLASS_PROPERTY_FIND( Volume );
-    CLASS_PROPERTY_FIND( SoundId );
-    CLASS_PROPERTY_FIND( Material );
-    CLASS_PROPERTY_FIND( DisableEgg );
-    CLASS_PROPERTY_FIND( AnimWaitBase );
-    CLASS_PROPERTY_FIND( AnimWaitRndMin );
-    CLASS_PROPERTY_FIND( AnimWaitRndMax );
-    CLASS_PROPERTY_FIND( AnimStay_0 );
-    CLASS_PROPERTY_FIND( AnimStay_1 );
-    CLASS_PROPERTY_FIND( AnimShow_0 );
-    CLASS_PROPERTY_FIND( AnimShow_1 );
-    CLASS_PROPERTY_FIND( AnimHide_0 );
-    CLASS_PROPERTY_FIND( AnimHide_1 );
-    CLASS_PROPERTY_FIND( SpriteCut );
-    CLASS_PROPERTY_FIND( DrawOrderOffsetHexY );
-    CLASS_PROPERTY_FIND( IndicatorMax );
-    CLASS_PROPERTY_FIND( HolodiskNum );
-    CLASS_PROPERTY_FIND( BlockLines );
-    CLASS_PROPERTY_FIND( ChildPid_0 );
-    CLASS_PROPERTY_FIND( ChildPid_1 );
-    CLASS_PROPERTY_FIND( ChildPid_2 );
-    CLASS_PROPERTY_FIND( ChildPid_3 );
-    CLASS_PROPERTY_FIND( ChildPid_4 );
-    CLASS_PROPERTY_FIND( ChildLines_0 );
-    CLASS_PROPERTY_FIND( ChildLines_1 );
-    CLASS_PROPERTY_FIND( ChildLines_2 );
-    CLASS_PROPERTY_FIND( ChildLines_3 );
-    CLASS_PROPERTY_FIND( ChildLines_4 );
-    CLASS_PROPERTY_FIND( Weapon_IsUnarmed );
-    CLASS_PROPERTY_FIND( Weapon_UnarmedTree );
-    CLASS_PROPERTY_FIND( Weapon_UnarmedPriority );
-    CLASS_PROPERTY_FIND( Weapon_UnarmedMinAgility );
-    CLASS_PROPERTY_FIND( Weapon_UnarmedMinUnarmed );
-    CLASS_PROPERTY_FIND( Weapon_UnarmedMinLevel );
-    CLASS_PROPERTY_FIND( Weapon_Anim1 );
-    CLASS_PROPERTY_FIND( Weapon_MaxAmmoCount );
-    CLASS_PROPERTY_FIND( Weapon_Caliber );
-    CLASS_PROPERTY_FIND( Weapon_DefaultAmmoPid );
-    CLASS_PROPERTY_FIND( Weapon_MinStrength );
-    CLASS_PROPERTY_FIND( Weapon_Perk );
-    CLASS_PROPERTY_FIND( Weapon_IsTwoHanded );
-    CLASS_PROPERTY_FIND( Weapon_ActiveUses );
-    CLASS_PROPERTY_FIND( Weapon_Skill_0 );
-    CLASS_PROPERTY_FIND( Weapon_Skill_1 );
-    CLASS_PROPERTY_FIND( Weapon_Skill_2 );
-    CLASS_PROPERTY_FIND( Weapon_PicUse_0 );
-    CLASS_PROPERTY_FIND( Weapon_PicUse_1 );
-    CLASS_PROPERTY_FIND( Weapon_PicUse_2 );
-    CLASS_PROPERTY_FIND( Weapon_MaxDist_0 );
-    CLASS_PROPERTY_FIND( Weapon_MaxDist_1 );
-    CLASS_PROPERTY_FIND( Weapon_MaxDist_2 );
-    CLASS_PROPERTY_FIND( Weapon_Round_0 );
-    CLASS_PROPERTY_FIND( Weapon_Round_1 );
-    CLASS_PROPERTY_FIND( Weapon_Round_2 );
-    CLASS_PROPERTY_FIND( Weapon_ApCost_0 );
-    CLASS_PROPERTY_FIND( Weapon_ApCost_1 );
-    CLASS_PROPERTY_FIND( Weapon_ApCost_2 );
-    CLASS_PROPERTY_FIND( Weapon_Aim_0 );
-    CLASS_PROPERTY_FIND( Weapon_Aim_1 );
-    CLASS_PROPERTY_FIND( Weapon_Aim_2 );
-    CLASS_PROPERTY_FIND( Weapon_SoundId_0 );
-    CLASS_PROPERTY_FIND( Weapon_SoundId_1 );
-    CLASS_PROPERTY_FIND( Weapon_SoundId_2 );
-    CLASS_PROPERTY_FIND( Ammo_Caliber );
-    CLASS_PROPERTY_FIND( Door_NoBlockMove );
-    CLASS_PROPERTY_FIND( Door_NoBlockShoot );
-    CLASS_PROPERTY_FIND( Door_NoBlockLight );
-    CLASS_PROPERTY_FIND( Container_Volume );
-    CLASS_PROPERTY_FIND( Container_Changeble );
-    CLASS_PROPERTY_FIND( Container_CannotPickUp );
-    CLASS_PROPERTY_FIND( Container_MagicHandsGrnd );
-    CLASS_PROPERTY_FIND( Locker_Condition );
-    CLASS_PROPERTY_FIND( Grid_Type );
-    CLASS_PROPERTY_FIND( Car_Speed );
-    CLASS_PROPERTY_FIND( Car_Passability );
-    CLASS_PROPERTY_FIND( Car_DeteriorationRate );
-    CLASS_PROPERTY_FIND( Car_CrittersCapacity );
-    CLASS_PROPERTY_FIND( Car_TankVolume );
-    CLASS_PROPERTY_FIND( Car_MaxDeterioration );
-    CLASS_PROPERTY_FIND( Car_FuelConsumption );
-    CLASS_PROPERTY_FIND( Car_Entrance );
-    CLASS_PROPERTY_FIND( Car_MovementType );
-}
-
 ProtoItem::ProtoItem( hash pid ): Props( PropertiesRegistrator ), ItemProps( Item::PropertiesRegistrator )
 {
     ProtoId = pid;
+    InstanceCount = 0;
 }
 
 const char* ProtoItem::GetBlockLinesStr()
@@ -349,81 +247,6 @@ CLASS_PROPERTY_IMPL( Item, RadioBroadcastRecv );
 CLASS_PROPERTY_IMPL( Item, OffsetX );
 CLASS_PROPERTY_IMPL( Item, OffsetY );
 
-void Item::SetPropertyRegistrator( PropertyRegistrator* registrator )
-{
-    PROPERTIES_FIND();
-    #ifdef FONLINE_SERVER
-    CLASS_PROPERTY_FIND( ScriptId );
-    CLASS_PROPERTY_FIND( LockerComplexity );
-    #endif
-    CLASS_PROPERTY_FIND( IsHidden );
-    CLASS_PROPERTY_FIND( IsFlat );
-    CLASS_PROPERTY_FIND( IsNoBlock );
-    CLASS_PROPERTY_FIND( IsShootThru );
-    CLASS_PROPERTY_FIND( IsLightThru );
-    CLASS_PROPERTY_FIND( IsMultiHex );
-    CLASS_PROPERTY_FIND( IsWallTransEnd );
-    CLASS_PROPERTY_FIND( IsBigGun );
-    CLASS_PROPERTY_FIND( IsAlwaysView );
-    CLASS_PROPERTY_FIND( IsHasTimer );
-    CLASS_PROPERTY_FIND( IsBadItem );
-    CLASS_PROPERTY_FIND( IsNoHighlight );
-    CLASS_PROPERTY_FIND( IsShowAnim );
-    CLASS_PROPERTY_FIND( IsShowAnimExt );
-    CLASS_PROPERTY_FIND( IsLight );
-    CLASS_PROPERTY_FIND( IsGeck );
-    CLASS_PROPERTY_FIND( IsTrap );
-    CLASS_PROPERTY_FIND( IsNoLightInfluence );
-    CLASS_PROPERTY_FIND( IsNoLoot );
-    CLASS_PROPERTY_FIND( IsNoSteal );
-    CLASS_PROPERTY_FIND( IsGag );
-    CLASS_PROPERTY_FIND( IsColorize );
-    CLASS_PROPERTY_FIND( IsColorizeInv );
-    CLASS_PROPERTY_FIND( IsCanUseOnSmth );
-    CLASS_PROPERTY_FIND( IsCanLook );
-    CLASS_PROPERTY_FIND( IsCanTalk );
-    CLASS_PROPERTY_FIND( IsCanPickUp );
-    CLASS_PROPERTY_FIND( IsCanUse );
-    CLASS_PROPERTY_FIND( IsHolodisk );
-    CLASS_PROPERTY_FIND( IsRadio );
-    CLASS_PROPERTY_FIND( SortValue );
-    CLASS_PROPERTY_FIND( Indicator );
-    CLASS_PROPERTY_FIND( PicMap );
-    CLASS_PROPERTY_FIND( PicInv );
-    CLASS_PROPERTY_FIND( Mode );
-    CLASS_PROPERTY_FIND( LightIntensity );
-    CLASS_PROPERTY_FIND( LightDistance );
-    CLASS_PROPERTY_FIND( LightFlags );
-    CLASS_PROPERTY_FIND( LightColor );
-    CLASS_PROPERTY_FIND( Count );
-    CLASS_PROPERTY_FIND( Cost );
-    CLASS_PROPERTY_FIND( Val0 );
-    CLASS_PROPERTY_FIND( Val1 );
-    CLASS_PROPERTY_FIND( Val2 );
-    CLASS_PROPERTY_FIND( Val3 );
-    CLASS_PROPERTY_FIND( Val4 );
-    CLASS_PROPERTY_FIND( Val5 );
-    CLASS_PROPERTY_FIND( Val6 );
-    CLASS_PROPERTY_FIND( Val7 );
-    CLASS_PROPERTY_FIND( Val8 );
-    CLASS_PROPERTY_FIND( Val9 );
-    CLASS_PROPERTY_FIND( BrokenFlags );
-    CLASS_PROPERTY_FIND( BrokenCount );
-    CLASS_PROPERTY_FIND( Deterioration );
-    CLASS_PROPERTY_FIND( AmmoPid );
-    CLASS_PROPERTY_FIND( AmmoCount );
-    CLASS_PROPERTY_FIND( TrapValue );
-    CLASS_PROPERTY_FIND( LockerId );
-    CLASS_PROPERTY_FIND( LockerCondition );
-    CLASS_PROPERTY_FIND( HolodiskNum );
-    CLASS_PROPERTY_FIND( RadioChannel );
-    CLASS_PROPERTY_FIND( RadioFlags );
-    CLASS_PROPERTY_FIND( RadioBroadcastSend );
-    CLASS_PROPERTY_FIND( RadioBroadcastRecv );
-    CLASS_PROPERTY_FIND( OffsetX );
-    CLASS_PROPERTY_FIND( OffsetY );
-}
-
 Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator )
 {
     RUNTIME_ASSERT( proto );
@@ -431,11 +254,11 @@ Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator )
     MEMORY_PROCESS( MEMORY_ITEM, sizeof( Item ) + PropertiesRegistrator->GetWholeDataSize() );
 
     Id = 0;
-
-    RefCounter = 1;
-    IsNotValid = false;
-    ViewPlaceOnMap = false;
+    Proto = NULL;
     Accessory = 0;
+    ViewPlaceOnMap = false;
+    IsNotValid = false;
+    RefCounter = 1;
     memzero( AccBuffer, sizeof( AccBuffer ) );
 
     #ifdef FONLINE_SERVER

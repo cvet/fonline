@@ -192,7 +192,7 @@ private:
     uint        pathNumCur;
 
 public:
-    Map*         CreateMap( hash map_pid, Location* loc_map, uint map_id );
+    Map*         CreateMap( hash map_pid, Location* loc, uint map_id );
     Map*         GetMap( uint map_id, bool sync_lock = true );
     Map*         GetMapByPid( hash map_pid, uint skip_count );
     void         GetMaps( MapVec& maps, bool lock );

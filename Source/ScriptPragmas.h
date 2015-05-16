@@ -5,7 +5,6 @@
 #include "preprocessor.h"
 #include <set>
 #include <string>
-#include "Properties.h"
 
 #define PRAGMA_UNKNOWN    ( 0 )
 #define PRAGMA_SERVER     ( 1 )

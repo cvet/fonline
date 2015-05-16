@@ -149,94 +149,6 @@ CLASS_PROPERTY_IMPL( Critter, PerkQuickPockets );
 CLASS_PROPERTY_IMPL( Critter, PerkMasterTrader );
 CLASS_PROPERTY_IMPL( Critter, PerkSilentRunning );
 
-void Critter::SetPropertyRegistrator( PropertyRegistrator* registrator )
-{
-    PROPERTIES_FIND();
-    CLASS_PROPERTY_FIND( Strength );
-    CLASS_PROPERTY_FIND( Perception );
-    CLASS_PROPERTY_FIND( Agility );
-    CLASS_PROPERTY_FIND( Charisma );
-    CLASS_PROPERTY_FIND( Intellect );
-    CLASS_PROPERTY_FIND( BaseCrType );
-    CLASS_PROPERTY_FIND( Gender );
-    CLASS_PROPERTY_FIND( Level );
-    CLASS_PROPERTY_FIND( Experience );
-    CLASS_PROPERTY_FIND( BonusLook );
-    CLASS_PROPERTY_FIND( DialogId );
-    CLASS_PROPERTY_FIND( BagId );
-    CLASS_PROPERTY_FIND( NpcRole );
-    CLASS_PROPERTY_FIND( TeamId );
-    CLASS_PROPERTY_FIND( AiId );
-    CLASS_PROPERTY_FIND( FollowCrit );
-    CLASS_PROPERTY_FIND( FreeBarterPlayer );
-    CLASS_PROPERTY_FIND( LastWeaponId );
-    CLASS_PROPERTY_FIND( HandsItemProtoId );
-    CLASS_PROPERTY_FIND( HandsItemMode );
-    CLASS_PROPERTY_FIND( KarmaVoting );
-    CLASS_PROPERTY_FIND( MaxTalkers );
-    CLASS_PROPERTY_FIND( TalkDistance );
-    CLASS_PROPERTY_FIND( CarryWeight );
-    CLASS_PROPERTY_FIND( CurrentHp );
-    CLASS_PROPERTY_FIND( ActionPoints );
-    CLASS_PROPERTY_FIND( CurrentAp );
-    CLASS_PROPERTY_FIND( MaxMoveAp );
-    CLASS_PROPERTY_FIND( MoveAp );
-    CLASS_PROPERTY_FIND( TurnBasedAc );
-    CLASS_PROPERTY_FIND( ReplicationMoney );
-    CLASS_PROPERTY_FIND( ReplicationCost );
-    CLASS_PROPERTY_FIND( ReplicationCount );
-    CLASS_PROPERTY_FIND( ReplicationTime );
-    CLASS_PROPERTY_FIND( WalkTime );
-    CLASS_PROPERTY_FIND( RunTime );
-    CLASS_PROPERTY_FIND( ScaleFactor );
-    CLASS_PROPERTY_FIND( SkillUnarmed );
-    CLASS_PROPERTY_FIND( SkillSneak );
-    CLASS_PROPERTY_FIND( SkillBarter );
-    CLASS_PROPERTY_FIND( SkillLockpick );
-    CLASS_PROPERTY_FIND( SkillSteal );
-    CLASS_PROPERTY_FIND( SkillTraps );
-    CLASS_PROPERTY_FIND( SkillFirstAid );
-    CLASS_PROPERTY_FIND( SkillDoctor );
-    CLASS_PROPERTY_FIND( SkillScience );
-    CLASS_PROPERTY_FIND( SkillRepair );
-    CLASS_PROPERTY_FIND( SkillSpeech );
-    CLASS_PROPERTY_FIND( TimeoutBattle );
-    CLASS_PROPERTY_FIND( TimeoutTransfer );
-    CLASS_PROPERTY_FIND( TimeoutRemoveFromGame );
-    CLASS_PROPERTY_FIND( TimeoutKarmaVoting );
-    CLASS_PROPERTY_FIND( TimeoutSkScience );
-    CLASS_PROPERTY_FIND( TimeoutSkRepair );
-    CLASS_PROPERTY_FIND( DefaultCombat );
-    CLASS_PROPERTY_FIND( IsInvulnerable );
-    CLASS_PROPERTY_FIND( IsDlgScriptBarter );
-    CLASS_PROPERTY_FIND( IsUnlimitedAmmo );
-    CLASS_PROPERTY_FIND( IsNoUnarmed );
-    CLASS_PROPERTY_FIND( IsNoFavoriteItem );
-    CLASS_PROPERTY_FIND( IsNoPush );
-    CLASS_PROPERTY_FIND( IsNoItemGarbager );
-    CLASS_PROPERTY_FIND( IsNoEnemyStack );
-    CLASS_PROPERTY_FIND( IsGeck );
-    CLASS_PROPERTY_FIND( IsNoLoot );
-    CLASS_PROPERTY_FIND( IsNoSteal );
-    CLASS_PROPERTY_FIND( IsNoHome );
-    CLASS_PROPERTY_FIND( IsNoWalk );
-    CLASS_PROPERTY_FIND( IsNoRun );
-    CLASS_PROPERTY_FIND( IsNoTalk );
-    CLASS_PROPERTY_FIND( IsHide );
-    CLASS_PROPERTY_FIND( IsNoFlatten );
-    CLASS_PROPERTY_FIND( IsNoAim );
-    CLASS_PROPERTY_FIND( IsNoBarter );
-    CLASS_PROPERTY_FIND( IsEndCombat );
-    CLASS_PROPERTY_FIND( IsDamagedEye );
-    CLASS_PROPERTY_FIND( IsDamagedRightArm );
-    CLASS_PROPERTY_FIND( IsDamagedLeftArm );
-    CLASS_PROPERTY_FIND( IsDamagedRightLeg );
-    CLASS_PROPERTY_FIND( IsDamagedLeftLeg );
-    CLASS_PROPERTY_FIND( PerkQuickPockets );
-    CLASS_PROPERTY_FIND( PerkMasterTrader );
-    CLASS_PROPERTY_FIND( PerkSilentRunning );
-}
-
 Critter::Critter(): Props( PropertiesRegistrator )
 {
     CritterIsNpc = false;
@@ -2623,10 +2535,10 @@ void Critter::EventSmthTurnBasedProcess( Critter* from_cr, Map* map, bool begin_
     }
 }
 
-void Critter::Send_Property( Property* prop, NetProperty::Type type, Critter* cr, Item* item )
+void Critter::Send_Property( NetProperty::Type type, Property* prop, void* prop_obj )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_Property( prop, type, cr, item );
+        ( (Client*) this )->Send_Property( type, prop, prop_obj );
 }
 void Critter::Send_Move( Critter* from_cr, uint move_params )
 {
@@ -2829,7 +2741,7 @@ void Critter::Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar
         ( (Client*) this )->Send_PlaySoundType( crid_synchronize, sound_type, sound_type_ext, sound_id, sound_id_ext );
 }
 
-void Critter::SendA_Property( Property* prop, NetProperty::Type type, Critter* cr, Item* item )
+void Critter::SendA_Property( NetProperty::Type type, Property* prop, void* prop_obj )
 {
     if( VisCr.empty() )
         return;
@@ -2838,7 +2750,7 @@ void Critter::SendA_Property( Property* prop, NetProperty::Type type, Critter* c
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
-            cr->Send_Property( prop, type, cr, item );
+            cr->Send_Property( type, prop, prop_obj );
     }
 }
 
@@ -3770,32 +3682,46 @@ void Client::Send_LoadMap( Map* map )
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    hash  pid_map = 0;
-    hash  pid_loc = 0;
-    uchar map_index_in_loc = 0;
-    int   map_time = -1;
-    uchar map_rain = 0;
-    uint  hash_tiles = 0;
-    uint  hash_walls = 0;
-    uint  hash_scen = 0;
+    Location* loc = NULL;
+    hash      pid_map = 0;
+    hash      pid_loc = 0;
+    uchar     map_index_in_loc = 0;
+    int       map_time = -1;
+    uchar     map_rain = 0;
+    uint      hash_tiles = 0;
+    uint      hash_walls = 0;
+    uint      hash_scen = 0;
 
     if( !map )
         map = MapMngr.GetMap( GetMap(), false );
     if( map )
     {
+        loc = map->GetLocation( false );
         pid_map = map->GetPid();
-        pid_loc = map->GetLocation( false )->GetPid();
-        map_index_in_loc = (uchar) map->GetLocation( false )->GetMapIndex( pid_map );
+        pid_loc = loc->GetPid();
+        map_index_in_loc = (uchar) loc->GetMapIndex( pid_map );
         map_time = map->GetTime();
         map_rain = map->GetRain();
         hash_tiles = map->Proto->HashTiles;
         hash_walls = map->Proto->HashWalls;
         hash_scen = map->Proto->HashScen;
+    }
 
+    uint       msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) * 2 + sizeof( uchar ) + sizeof( int ) + sizeof( uchar ) + sizeof( uint ) * 3;
+    PUCharVec* map_data;
+    UIntVec*   map_data_sizes;
+    PUCharVec* loc_data;
+    UIntVec*   loc_data_sizes;
+    if( map )
+    {
+        uint map_whole_data_size = map->Props.StoreData( false, &map_data, &map_data_sizes );
+        uint loc_whole_data_size = loc->Props.StoreData( false, &loc_data, &loc_data_sizes );
+        msg_len += sizeof( ushort ) + map_whole_data_size + sizeof( ushort ) + loc_whole_data_size;
     }
 
     BOUT_BEGIN( this );
     Bout << NETMSG_LOADMAP;
+    Bout << msg_len;
     Bout << pid_map;
     Bout << pid_loc;
     Bout << map_index_in_loc;
@@ -3804,44 +3730,37 @@ void Client::Send_LoadMap( Map* map )
     Bout << hash_tiles;
     Bout << hash_walls;
     Bout << hash_scen;
+    if( map )
+    {
+        NET_WRITE_PROPERTIES( Bout, map_data, map_data_sizes );
+        NET_WRITE_PROPERTIES( Bout, loc_data, loc_data_sizes );
+    }
     BOUT_END( this );
 
     GameState = STATE_TRANSFERRING;
 }
 
-void Client::Send_Property( Property* prop, NetProperty::Type type, Critter* cr, Item* item )
+void Client::Send_Property( NetProperty::Type type, Property* prop, void* prop_obj )
 {
+    RUNTIME_ASSERT( prop_obj );
+
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    void* prop_obj = NULL;
-    uint  additional_args = 0;
+    uint additional_args = 0;
     switch( type )
     {
-    case NetProperty::Global:
-        break;
     case NetProperty::Critter:
-        prop_obj = cr;
         additional_args = 1;
         break;
-    case NetProperty::Chosen:
-        prop_obj = this;
-        break;
     case NetProperty::MapItem:
-        prop_obj = item;
         additional_args = 1;
         break;
     case NetProperty::CritterItem:
-        prop_obj = item;
         additional_args = 2;
         break;
     case NetProperty::ChosenItem:
-        prop_obj = item;
         additional_args = 1;
-        break;
-    case NetProperty::Map:
-        break;
-    case NetProperty::Location:
         break;
     default:
         break;
@@ -3869,17 +3788,17 @@ void Client::Send_Property( Property* prop, NetProperty::Type type, Critter* cr,
     switch( type )
     {
     case NetProperty::CritterItem:
-        Bout << cr->GetId();
-        Bout << item->GetId();
+        Bout << ( (Item*) prop_obj )->AccCritter.Id;
+        Bout << ( (Item*) prop_obj )->Id;
         break;
     case NetProperty::Critter:
-        Bout << cr->GetId();
+        Bout << ( (Critter*) prop_obj )->Data.Id;
         break;
     case NetProperty::MapItem:
-        Bout << item->GetId();
+        Bout << ( (Item*) prop_obj )->Id;
         break;
     case NetProperty::ChosenItem:
-        Bout << item->GetId();
+        Bout << ( (Item*) prop_obj )->Id;
         break;
     default:
         break;

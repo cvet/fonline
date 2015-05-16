@@ -220,8 +220,6 @@ bool BufferManager::NeedProcess()
         return true;                                                                 // Ping
     case NETMSG_LOGIN:
         return ( NETMSG_LOGIN_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_LOGIN_SUCCESS:
-        return ( NETMSG_LOGIN_SUCCESS_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_WRONG_NET_PROTO:
         return ( NETMSG_WRONG_NET_PROTO_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_REGISTER_SUCCESS:
@@ -314,8 +312,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_GAME_INFO_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_COMBAT:
         return ( NETMSG_SEND_COMBAT_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_LOADMAP:
-        return ( NETMSG_LOADMAP_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_GIVE_MAP:
         return ( NETMSG_SEND_GIVE_MAP_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_LOAD_MAP_OK:
@@ -406,6 +402,8 @@ bool BufferManager::NeedProcess()
     case NETMSG_CHECK_UID2:
     case NETMSG_CHECK_UID3:
     case NETMSG_CHECK_UID4:
+    case NETMSG_LOGIN_SUCCESS:
+    case NETMSG_LOADMAP:
     case NETMSG_CREATE_CLIENT:
     case NETMSG_SINGLEPLAYER_SAVE_LOAD:
     case NETMSG_UPDATE_FILES_LIST:
@@ -465,9 +463,6 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_LOGIN:
         size = NETMSG_LOGIN_SIZE;
-        break;
-    case NETMSG_LOGIN_SUCCESS:
-        size = NETMSG_LOGIN_SUCCESS_SIZE;
         break;
     case NETMSG_WRONG_NET_PROTO:
         size = NETMSG_WRONG_NET_PROTO_SIZE;
@@ -607,9 +602,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_SEND_COMBAT:
         size = NETMSG_SEND_COMBAT_SIZE;
         break;
-    case NETMSG_LOADMAP:
-        size = NETMSG_LOADMAP_SIZE;
-        break;
     case NETMSG_SEND_GIVE_MAP:
         size = NETMSG_SEND_GIVE_MAP_SIZE;
         break;
@@ -724,6 +716,8 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_CHECK_UID2:
     case NETMSG_CHECK_UID3:
     case NETMSG_CHECK_UID4:
+    case NETMSG_LOGIN_SUCCESS:
+    case NETMSG_LOADMAP:
     case NETMSG_CREATE_CLIENT:
     case NETMSG_SINGLEPLAYER_SAVE_LOAD:
     case NETMSG_UPDATE_FILES_LIST:

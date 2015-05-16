@@ -452,12 +452,18 @@ public:
 
         // Choose registrator
         PropertyRegistrator* registrator = NULL;
-        if( class_name == "Critter" )
+        if( class_name == "Global" )
             registrator = propertyRegistrators[ 0 ];
-        else if( class_name == "Item" )
+        else if( class_name == "Critter" )
             registrator = propertyRegistrators[ 1 ];
-        else if( class_name == "ProtoItem" )
+        else if( class_name == "Item" )
             registrator = propertyRegistrators[ 2 ];
+        else if( class_name == "ProtoItem" )
+            registrator = propertyRegistrators[ 3 ];
+        else if( class_name == "Map" )
+            registrator = propertyRegistrators[ 4 ];
+        else if( class_name == "Location" )
+            registrator = propertyRegistrators[ 5 ];
         else
             WriteLog( "Invalid class in 'property' pragma<%s>.\n", text.c_str() );
         if( !registrator )

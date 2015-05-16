@@ -87,11 +87,14 @@ bool FOServer::InitScriptSystem()
     #endif
 
     // Properties
-    PropertyRegistrator* registrators[ 3 ] =
+    PropertyRegistrator* registrators[ 6 ] =
     {
+        new PropertyRegistrator( true, "GlobalVars" ),
         new PropertyRegistrator( true, "Critter" ),
         new PropertyRegistrator( true, "Item" ),
         new PropertyRegistrator( true, "ProtoItem" ),
+        new PropertyRegistrator( true, "Map" ),
+        new PropertyRegistrator( true, "Location" ),
     };
 
     // Init
@@ -103,6 +106,8 @@ bool FOServer::InitScriptSystem()
     Script::Profiler::Init();
 
     // Wrong global objects
+    ServerWrongGlobalObjects.push_back( "GlobalVars@" );
+    ServerWrongGlobalObjects.push_back( "GlobalVars@[]" );
     ServerWrongGlobalObjects.push_back( "Critter@" );
     ServerWrongGlobalObjects.push_back( "Critter@[]" );
     ServerWrongGlobalObjects.push_back( "Item@" );
@@ -206,9 +211,12 @@ bool FOServer::InitScriptSystem()
     if( !Script::RunModuleInitFunctions() )
         return false;
 
-    Critter::SetPropertyRegistrator( registrators[ 0 ] );
+    GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
+    GlobalVars::PropertiesRegistrator->SetNativeSendCallback( OnSendGlobalValue );
+    Globals = new GlobalVars();
+    Critter::SetPropertyRegistrator( registrators[ 1 ] );
     Critter::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
-    Item::SetPropertyRegistrator( registrators[ 1 ] );
+    Item::SetPropertyRegistrator( registrators[ 2 ] );
     Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
     Item::PropertiesRegistrator->SetNativeSetCallback( "Count", OnSetItemCount );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsHidden", OnSetItemChangeView );
@@ -220,7 +228,11 @@ bool FOServer::InitScriptSystem()
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsGag", OnSetItemRecacheHex );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsGeck", OnSetItemIsGeck );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsRadio", OnSetItemIsRadio );
-    ProtoItem::SetPropertyRegistrator( registrators[ 2 ] );
+    ProtoItem::SetPropertyRegistrator( registrators[ 3 ] );
+    Map::SetPropertyRegistrator( registrators[ 4 ] );
+    Map::PropertiesRegistrator->SetNativeSendCallback( OnSendMapValue );
+    Location::SetPropertyRegistrator( registrators[ 5 ] );
+    Location::PropertiesRegistrator->SetNativeSendCallback( OnSendLocationValue );
 
     WriteLog( "Script system initialization complete.\n" );
     return true;
@@ -310,11 +322,14 @@ bool FOServer::ReloadClientScripts()
     #endif
 
     // Properties
-    PropertyRegistrator* registrators[ 3 ] =
+    PropertyRegistrator* registrators[ 6 ] =
     {
+        new PropertyRegistrator( false, "GlobalVars" ),
         new PropertyRegistrator( false, "CritterCl" ),
         new PropertyRegistrator( false, "ItemCl" ),
         new PropertyRegistrator( false, "ProtoItem" ),
+        new PropertyRegistrator( false, "Map" ),
+        new PropertyRegistrator( false, "Location" ),
     };
 
     // Swap engine
@@ -433,6 +448,9 @@ bool FOServer::ReloadClientScripts()
     SAFEDEL( registrators[ 0 ] );
     SAFEDEL( registrators[ 1 ] );
     SAFEDEL( registrators[ 2 ] );
+    SAFEDEL( registrators[ 3 ] );
+    SAFEDEL( registrators[ 4 ] );
+    SAFEDEL( registrators[ 5 ] );
     Script::FinishEngine( engine );
     Script::Undef( "__CLIENT" );
     Script::Define( "__SERVER" );
@@ -452,10 +470,6 @@ bool FOServer::ReloadClientScripts()
     #endif
     Script::SetEngine( old_engine );
 
-    // Exit if have errors
-    if( errors )
-        return false;
-
     // Add config text and pragmas
     uint pragma_index = 0;
     for( size_t i = 0; i < pragmas.size(); i++ )
@@ -466,6 +480,24 @@ bool FOServer::ReloadClientScripts()
             msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2 + 1, pragmas[ i ].Text.c_str() );
             pragma_index++;
         }
+        else
+        {
+            // Verify client property, it is must present in server scripts
+            bool found = false;
+            for( size_t j = 0; j < ServerPropertyPragmas.size(); j++ )
+            {
+                if( ServerPropertyPragmas[ j ].Text == pragmas[ i ].Text )
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if( !found )
+            {
+                WriteLog( "Property '%s' not registered in server scripts.\n", pragmas[ i ].Text.c_str() );
+                errors++;
+            }
+        }
     }
     for( size_t i = 0; i < ServerPropertyPragmas.size(); i++ )
     {
@@ -473,6 +505,10 @@ bool FOServer::ReloadClientScripts()
         msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2 + 1, ServerPropertyPragmas[ i ].Text.c_str() );
         pragma_index++;
     }
+
+    // Exit if have errors
+    if( errors )
+        return false;
 
     // Copy critter types
     LanguagePack& default_lang = *LangPacks.begin();
@@ -527,11 +563,14 @@ bool FOServer::ReloadMapperScripts()
     #endif
 
     // Properties
-    PropertyRegistrator* registrators[ 3 ] =
+    PropertyRegistrator* registrators[ 6 ] =
     {
+        new PropertyRegistrator( false, "GlobalVars" ),
         new PropertyRegistrator( false, "CritterCl" ),
         new PropertyRegistrator( false, "ItemCl" ),
         new PropertyRegistrator( false, "ProtoItem" ),
+        new PropertyRegistrator( false, "Map" ),
+        new PropertyRegistrator( false, "Location" ),
     };
 
     // Swap engine

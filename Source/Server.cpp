@@ -92,7 +92,9 @@ FOServer::FOServer()
 }
 
 FOServer::~FOServer()
-{}
+{
+    //
+}
 
 void FOServer::Finish()
 {
@@ -4561,6 +4563,9 @@ void FOServer::SaveWorld( const char* fname )
     // SaveTimeEventsFile
     SaveTimeEventsFile();
 
+    // Global vars
+    Globals->Props.Save( AddWorldSaveData );
+
     // End signature
     AddWorldSaveData( &version, sizeof( version ) );
 
@@ -4649,13 +4654,13 @@ bool FOServer::LoadWorld( const char* fname )
         version != WORLD_SAVE_V9 && version != WORLD_SAVE_V10 && version != WORLD_SAVE_V11 && version != WORLD_SAVE_V12 &&
         version != WORLD_SAVE_V13 && version != WORLD_SAVE_V14 && version != WORLD_SAVE_V15 && version != WORLD_SAVE_V16 &&
         version != WORLD_SAVE_V17 && version != WORLD_SAVE_V18 && version != WORLD_SAVE_V19 && version != WORLD_SAVE_V20 &&
-        version != WORLD_SAVE_V21 && version != WORLD_SAVE_V22 )
+        version != WORLD_SAVE_V21 && version != WORLD_SAVE_V22 && version != WORLD_SAVE_V23 )
     {
         WriteLog( "Unknown version<%u> of world dump file.\n", version );
         FileClose( f );
         return false;
     }
-    if( version < WORLD_SAVE_V22 )
+    if( version < WORLD_SAVE_V23 )
     {
         WriteLog( "Version of save file is not supported.\n" );
         FileClose( f );
@@ -4678,6 +4683,8 @@ bool FOServer::LoadWorld( const char* fname )
     if( !LoadAnyDataFile( f, version ) )
         return false;
     if( !LoadTimeEventsFile( f, version ) )
+        return false;
+    if( !Globals->Props.Load( f, version ) )
         return false;
 
     // File end
@@ -4773,6 +4780,7 @@ void FOServer::AddClientSaveData( Client* cl )
     if( ClientsSaveDataCount >= ClientsSaveData.size() )
     {
         ClientsSaveData.push_back( ClientSaveData() );
+        ClientsSaveData.back().Props = new Properties( Critter::PropertiesRegistrator );
         MEMORY_PROCESS( MEMORY_SAVE_DATA, sizeof( ClientSaveData ) );
     }
 
@@ -4781,7 +4789,7 @@ void FOServer::AddClientSaveData( Client* cl )
     memcpy( csd.PasswordHash, cl->PassHash, sizeof( csd.PasswordHash ) );
     memcpy( &csd.Data, &cl->Data, sizeof( cl->Data ) );
     memcpy( &csd.DataExt, cl->GetDataExt(), sizeof( CritDataExt ) );
-    csd.Props = cl->Props;
+    *csd.Props = cl->Props;
     csd.TimeEvents = cl->CrTimeEvents;
 
     ClientsSaveDataCount++;
@@ -4851,7 +4859,7 @@ void FOServer::Dump_Work( void* data )
             {
                 FileWrite( File, buf, len );
             };
-            csd.Props.Save( save_func );
+            csd.Props->Save( save_func );
             uint te_count = (uint) csd.TimeEvents.size();
             FileWrite( fc, &te_count, sizeof( te_count ) );
             if( te_count )

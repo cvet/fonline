@@ -10,6 +10,18 @@ BIND_ASSERT( engine->RegisterTypedef( "hash", "uint" ) );
 // Todo: register new type with automating string - number convertation, exclude GetStrHash
 // BIND_ASSERT( engine->RegisterObjectType( "hash", 0, asOBJ_VALUE | asOBJ_POD ) );
 
+// Global vars
+BIND_ASSERT( engine->RegisterObjectType( "GlobalVars", 0, asOBJ_REF | asOBJ_NOCOUNT ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "GlobalVars@ Globals", &Globals ) );
+
+// Map and location for client and mapper
+#if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
+BIND_ASSERT( engine->RegisterObjectType( "Map", 0, asOBJ_REF | asOBJ_NOCOUNT ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "Map@ CurMap", &ClientCurMap ) );
+BIND_ASSERT( engine->RegisterObjectType( "Location", 0, asOBJ_REF | asOBJ_NOCOUNT ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "Location@ CurLocation", &ClientCurLocation ) );
+#endif
+
 // Item prototype
 BIND_ASSERT( engine->RegisterObjectType( "ProtoItem", 0, asOBJ_REF ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "ProtoItem", asBEHAVE_ADDREF, "void f()", asMETHOD( ProtoItem, AddRef ), asCALL_THISCALL ) );
@@ -1325,9 +1337,12 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool DeleteFile(string& fileName)"
 BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(string& path)", asFUNCTION( Global_CreateDirectoryTree ), asCALL_CDECL ) );
 
 #define BIND_ASSERT_EXT( expr )    BIND_ASSERT( ( expr ) ? 0 : -1 )
-BIND_ASSERT_EXT( registrators[ 0 ]->Register( "int", "Dummy", Property::Private ) );
-BIND_ASSERT_EXT( registrators[ 1 ]->Register( "int", "Dummy", Property::Private ) );
-BIND_ASSERT_EXT( registrators[ 2 ]->Register( "int", "Dummy", Property::Private ) );
+BIND_ASSERT_EXT( registrators[ 0 ]->Init() );
+BIND_ASSERT_EXT( registrators[ 1 ]->Init() );
+BIND_ASSERT_EXT( registrators[ 2 ]->Init() );
+BIND_ASSERT_EXT( registrators[ 3 ]->Init() );
+BIND_ASSERT_EXT( registrators[ 4 ]->Init() );
+BIND_ASSERT_EXT( registrators[ 5 ]->Init() );
 
 #if defined ( BIND_CLIENT ) || defined ( BIND_SERVER )
 BIND_ASSERT( engine->RegisterGlobalFunction( "void AddRegistrationProperty(CritterProperty prop)", asFUNCTION( BIND_CLASS Global_AddRegistrationProperty ), asCALL_CDECL ) );

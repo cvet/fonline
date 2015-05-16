@@ -1338,8 +1338,9 @@ bool FOServer::RegenerateMap( Map* map )
         }
     }
 
+    #pragma MESSAGE( "Process correct map regeneration." )
     map->Clear( true );
-    map->Init( map_id, map_proto, map_loc );
+    map->IsNotValid = false;
     map->Generate();
     return true;
 }
@@ -1399,8 +1400,20 @@ void FOServer::Process_Update( Client* cl )
     cl->Bin.SetEncryptKey( encrypt_key + 521 );
     cl->Bout.SetEncryptKey( encrypt_key + 3491 );
 
-    // Send update files list
-    cl->Send_CustomMessage( NETMSG_UPDATE_FILES_LIST, &UpdateFilesList[ 0 ], (uint) UpdateFilesList.size() );
+    // Send update files list with global properties
+    uint       msg_len = sizeof( NETMSG_UPDATE_FILES_LIST ) + sizeof( msg_len ) + sizeof( uint ) + (uint) UpdateFilesList.size();
+    PUCharVec* global_vars_data;
+    UIntVec*   global_vars_data_sizes;
+    uint       whole_data_size = Globals->Props.StoreData( false, &global_vars_data, &global_vars_data_sizes );
+    msg_len += sizeof( ushort ) + whole_data_size;
+    BOUT_BEGIN( cl );
+    cl->Bout << NETMSG_UPDATE_FILES_LIST;
+    cl->Bout << msg_len;
+    cl->Bout << (uint) UpdateFilesList.size();
+    if( !UpdateFilesList.empty() )
+        cl->Bout.Push( (char*) &UpdateFilesList[ 0 ], (uint) UpdateFilesList.size() );
+    NET_WRITE_PROPERTIES( cl->Bout, global_vars_data, global_vars_data_sizes );
+    BOUT_END( cl );
 }
 
 void FOServer::Process_UpdateFile( Client* cl )
@@ -2423,15 +2436,24 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     }
 
     // Login ok
-    uint bin_seed = Random( 100000, 2000000000 );
-    uint bout_seed = Random( 100000, 2000000000 );
+    uint       msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) * 2;
+    uint       bin_seed = Random( 100000, 2000000000 );
+    uint       bout_seed = Random( 100000, 2000000000 );
+    PUCharVec* global_vars_data;
+    UIntVec*   global_vars_data_sizes;
+    uint       whole_data_size = Globals->Props.StoreData( false, &global_vars_data, &global_vars_data_sizes );
+    msg_len += sizeof( ushort ) + whole_data_size;
     BOUT_BEGIN( cl );
     cl->Bout << NETMSG_LOGIN_SUCCESS;
+    cl->Bout << msg_len;
     cl->Bout << bin_seed;
     cl->Bout << bout_seed;
+    NET_WRITE_PROPERTIES( cl->Bout, global_vars_data, global_vars_data_sizes );
     BOUT_END( cl );
+
     cl->Bin.SetEncryptKey( bin_seed );
     cl->Bout.SetEncryptKey( bout_seed );
+
     cl->Send_LoadMap( NULL );
 }
 
@@ -4664,6 +4686,10 @@ void FOServer::Process_Property( Client* cl, uint data_size )
     switch( type )
     {
     case NetProperty::Global:
+        check_public = true;
+        prop = GlobalVars::PropertiesRegistrator->Get( property_index );
+        if( prop )
+            prop_obj = Globals;
         break;
     case NetProperty::Critter:
         check_public = true;
@@ -4699,9 +4725,19 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         break;
     case NetProperty::Map:
         check_public = true;
+        prop = Map::PropertiesRegistrator->Get( property_index );
+        if( prop )
+            prop_obj = MapMngr.GetMap( cl->GetMap(), true );
         break;
     case NetProperty::Location:
         check_public = true;
+        prop = Location::PropertiesRegistrator->Get( property_index );
+        if( prop )
+        {
+            Map* map = MapMngr.GetMap( cl->GetMap(), false );
+            if( map )
+                prop_obj = map->GetLocation( true );
+        }
         break;
     default:
         RUNTIME_ASSERT( false );
@@ -4709,7 +4745,6 @@ void FOServer::Process_Property( Client* cl, uint data_size )
     }
     if( !prop || !prop_obj )
         return;
-
 
     Property::AccessType access = prop->GetAccess();
     if( check_public && !( access & Property::PublicMask ) )
@@ -4725,6 +4760,20 @@ void FOServer::Process_Property( Client* cl, uint data_size )
     prop->SetData( prop_obj, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size() );
 }
 
+void FOServer::OnSendGlobalValue( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
+    {
+        ClVec players;
+        CrMngr.GetCopyPlayers( players, false );
+        for( auto it = players.begin(); it != players.end(); ++it )
+        {
+            Client* cl = *it;
+            cl->Send_Property( NetProperty::Global, prop, Globals );
+        }
+    }
+}
+
 void FOServer::OnSendCritterValue( void* obj, Property* prop, void* cur_value, void* old_value )
 {
     Critter* cr = (Critter*) obj;
@@ -4732,7 +4781,31 @@ void FOServer::OnSendCritterValue( void* obj, Property* prop, void* cur_value, v
     bool     is_public = ( prop->GetAccess() & Property::PublicMask ) != 0;
     bool     is_protected = ( prop->GetAccess() & Property::ProtectedMask ) != 0;
     if( is_public || is_protected )
-        cr->Send_Property( prop, NetProperty::Chosen, NULL, NULL );
+        cr->Send_Property( NetProperty::Chosen, prop, cr );
     if( is_public )
-        cr->SendA_Property( prop, NetProperty::Critter, cr, NULL );
+        cr->SendA_Property( NetProperty::Critter, prop, cr );
+}
+
+void FOServer::OnSendMapValue( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
+    {
+        Map* map = (Map*) obj;
+        map->SendProperty( NetProperty::Map, prop, map );
+    }
+}
+
+void FOServer::OnSendLocationValue( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
+    {
+        Location* loc = (Location*) obj;
+        MapVec    maps;
+        loc->GetMaps( maps, false );
+        for( auto it = maps.begin(); it != maps.end(); ++it )
+        {
+            Map* map = *it;
+            map->SendProperty( NetProperty::Location, prop, loc );
+        }
+    }
 }

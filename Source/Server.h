@@ -221,7 +221,10 @@ public:
 //	void GlobalEventCritterIdle(Critter* cr);
 //	void GlobalEventCritterDead(Critter* cr);
 
+    static void OnSendGlobalValue( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSendCritterValue( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSendMapValue( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSendLocationValue( void* obj, Property* prop, void* cur_value, void* old_value );
 
     // Items
     static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, bool check_blocks = true );
@@ -343,11 +346,12 @@ public:
         char                    PasswordHash[ PASS_HASH_SIZE ];
         CritData                Data;
         CritDataExt             DataExt;
-        Properties              Props;
+        Properties*             Props;
         Critter::CrTimeEventVec TimeEvents;
 
-        ClientSaveData(): Props( Critter::PropertiesRegistrator )
+        ClientSaveData()
         {
+            Props = NULL;
             Clear();
         }
 
@@ -485,7 +489,7 @@ public:
 
     static void        SetScore( int score, Critter* cr, int val );
     static void        SetScore( int score, const char* name );
-    static const char* GetScores();     // size == MAX_NAME*SCORES_MAX
+    static const char* GetScores();     // size == MAX_NAME * SCORES_MAX
     static void        ClearScore( int score );
 
     // Singleplayer save

@@ -119,7 +119,9 @@ public:
     bool          InitNetBegin;
     int           InitNetReason;
     bool          InitialItemsSend;
+    UCharVecVec   GlovalVarsPropertiesData;
     UCharVecVec   TempPropertiesData;
+    UCharVecVec   TempPropertiesDataExt;
     UCharVec      TempPropertyData;
     IntVec        RegProps;
 
@@ -140,7 +142,7 @@ public:
     void Net_SendUseItem( uchar ap, uint item_id, hash item_pid, uchar rate, uchar target_type, uint target_id, hash target_pid, uint param );
     void Net_SendPickItem( ushort targ_x, ushort targ_y, hash pid );
     void Net_SendPickCritter( uint crid, uchar pick_type );
-    void Net_SendProperty( Property* prop, NetProperty::Type type, CritterCl* cr, Item* item );
+    void Net_SendProperty( NetProperty::Type type, Property* prop, void* prop_obj );
     void Net_SendChangeItem( uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count );
     void Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags );
     void Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer );
@@ -478,16 +480,17 @@ public:
     void ProcessScreenEffectQuake();
     void ProcessScreenEffectMirror();
 
-    // Critter properties callback
-    static void OnSendChosenValue( void* obj, Property* prop, void* cur_value, void* old_value );
-
-    // Item properties callbacks
+    // Properties callbacks
+    static void OnSendGlobalValue( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSendCritterValue( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemSomeLight( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemPicMap( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemOffsetXY( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemLockerCondition( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSendMapValue( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSendLocationValue( void* obj, Property* prop, void* cur_value, void* old_value );
 
 /************************************************************************/
 /* Scripting                                                            */

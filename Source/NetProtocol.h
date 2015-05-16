@@ -50,11 +50,11 @@
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_LOGIN_SUCCESS                  MAKE_NETMSG_HEADER( 2 )
-#define NETMSG_LOGIN_SUCCESS_SIZE             ( sizeof( uint ) + sizeof( uint ) * 2 )
 // ////////////////////////////////////////////////////////////////////////
 // Login accepted
 // uint bin_seed
 // uint bout_seed
+// Properties global
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_WRONG_NET_PROTO                MAKE_NETMSG_HEADER( 8 )
@@ -157,6 +157,7 @@
 //   short path_len
 //   char path[path_len]
 //   uint size
+// Properties global
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_GET_UPDATE_FILE                MAKE_NETMSG_HEADER( 16 )
@@ -854,11 +855,9 @@
 // ************************************************************************
 
 #define NETMSG_LOADMAP                        MAKE_NETMSG_HEADER( 121 )
-#define NETMSG_LOADMAP_SIZE                                   \
-    ( sizeof( uint ) + sizeof( hash ) * 2 + sizeof( uchar ) + \
-      sizeof( int ) + sizeof( uchar ) + sizeof( uint ) * 3 )
 // ////////////////////////////////////////////////////////////////////////
 //
+// uint mag_len
 // hash map_pid
 // hash loc_pid
 // uchar map_index_in_loc
@@ -867,6 +866,8 @@
 // uint ver_tiles
 // uint ver_walls
 // uint ver_scen
+// Properties map
+// Properties location
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_MAP                            MAKE_NETMSG_HEADER( 122 )
@@ -1084,7 +1085,7 @@ public:
 };
 
 #define NETMSG_POD_PROPERTY( b, x )              MAKE_NETMSG_HEADER( 190 + ( b ) + ( x ) * 10 )
-#define NETMSG_POD_PROPERTY_SIZE( b, x )         ( sizeof( char ) + sizeof( uint ) * ( x ) + sizeof( ushort ) + ( b ) )
+#define NETMSG_POD_PROPERTY_SIZE( b, x )         ( sizeof( uint ) + sizeof( char ) + sizeof( uint ) * ( x ) + sizeof( ushort ) + ( b ) )
 // ////////////////////////////////////////////////////////////////////////
 // Property changed
 // NetProperty::Type type
@@ -1104,7 +1105,7 @@ public:
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_POD_PROPERTY( b, x )         MAKE_NETMSG_HEADER( 220 + ( b ) + ( x ) * 10 )
-#define NETMSG_SEND_POD_PROPERTY_SIZE( b, x )    ( sizeof( char ) + sizeof( uint ) * ( x ) + sizeof( ushort ) + ( b ) )
+#define NETMSG_SEND_POD_PROPERTY_SIZE( b, x )    ( sizeof( uint ) + sizeof( char ) + sizeof( uint ) * ( x ) + sizeof( ushort ) + ( b ) )
 // ////////////////////////////////////////////////////////////////////////
 // Client change property
 // NetProperty::Type type
@@ -1127,27 +1128,31 @@ public:
 // Properties serialization helpers
 // ////////////////////////////////////////////////////////////////////////
 
-#define NET_WRITE_PROPERTIES( bout, data_vec, data_sizes_vec )    \
-    bout << (ushort) data_vec->size();                            \
-    for( size_t i_ = 0, j_ = data_vec->size(); i_ < j_; i_++ )    \
-    {                                                             \
-        uint data_size_ = data_sizes_vec->at( i_ );               \
-        bout << data_size_;                                       \
-        if( data_size_ )                                          \
-            bout.Push( (char*) data_vec->at( i_ ), data_size_ );  \
+#define NET_WRITE_PROPERTIES( bout, data_vec, data_sizes_vec )        \
+    {                                                                 \
+        bout << (ushort) data_vec->size();                            \
+        for( size_t i_ = 0, j_ = data_vec->size(); i_ < j_; i_++ )    \
+        {                                                             \
+            uint data_size_ = data_sizes_vec->at( i_ );               \
+            bout << data_size_;                                       \
+            if( data_size_ )                                          \
+                bout.Push( (char*) data_vec->at( i_ ), data_size_ );  \
+        }                                                             \
     }
 
-#define NET_READ_PROPERTIES( bin, data_vec )                      \
-    ushort data_count_;                                           \
-    bin >> data_count_;                                           \
-    data_vec.resize( data_count_ );                               \
-    for( ushort i_ = 0; i_ < data_count_; i_++ )                  \
-    {                                                             \
-        uint data_size_;                                          \
-        Bin >> data_size_;                                        \
-        data_vec[ i_ ].resize( data_size_ );                      \
-        if( data_size_ )                                          \
-            Bin.Pop( (char*) &data_vec[ i_ ][ 0 ], data_size_ );  \
+#define NET_READ_PROPERTIES( bin, data_vec )                          \
+    {                                                                 \
+        ushort data_count_;                                           \
+        bin >> data_count_;                                           \
+        data_vec.resize( data_count_ );                               \
+        for( ushort i_ = 0; i_ < data_count_; i_++ )                  \
+        {                                                             \
+            uint data_size_;                                          \
+            Bin >> data_size_;                                        \
+            data_vec[ i_ ].resize( data_size_ );                      \
+            if( data_size_ )                                          \
+                Bin.Pop( (char*) &data_vec[ i_ ][ 0 ], data_size_ );  \
+        }                                                             \
     }
 
 #endif // __NET_PROTOCOL__

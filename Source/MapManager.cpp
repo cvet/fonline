@@ -399,6 +399,7 @@ void MapManager::SaveAllLocationsAndMapsFile( void ( * save_func )( void*, size_
     {
         Location* loc = ( *it ).second;
         save_func( &loc->Data, sizeof( loc->Data ) );
+        loc->Props.Save( save_func );
 
         MapVec& maps = loc->GetMapsNoLock();
         uint    map_count = (uint) maps.size();
@@ -407,6 +408,7 @@ void MapManager::SaveAllLocationsAndMapsFile( void ( * save_func )( void*, size_
         {
             Map* map = *it_;
             save_func( &map->Data, sizeof( map->Data ) );
+            map->Props.Save( save_func );
         }
     }
 }
@@ -434,15 +436,20 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
         FileRead( f, &data, sizeof( data ) );
         if( data.LocId > lastLocId )
             lastLocId = data.LocId;
+        Properties loc_props( Location::PropertiesRegistrator );
+        loc_props.Load( f, version );
 
         uint                   map_count;
         FileRead( f, &map_count, sizeof( map_count ) );
         vector< Map::MapData > map_data( map_count );
+        vector< Properties* >  map_props( map_count );
         for( uint j = 0; j < map_count; j++ )
         {
             FileRead( f, &map_data[ j ], sizeof( map_data[ j ] ) );
             if( map_data[ j ].MapId > lastMapId )
                 lastMapId = map_data[ j ].MapId;
+            map_props[ j ] = new Properties( Map::PropertiesRegistrator );
+            map_props[ j ]->Load( f, version );
         }
 
         // Check pids
@@ -471,6 +478,7 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
             return false;
         }
         loc->Data = data;
+        loc->Props = loc_props;
 
         for( uint j = 0; j < map_count; j++ )
         {
@@ -481,6 +489,8 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
                 return false;
             }
             map->Data = map_data[ j ];
+            map->Props = *map_props[ j ];
+            SAFEDEL( map_props[ j ] );
         }
 
         locaded++;
@@ -586,21 +596,14 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
         return NULL;
     }
 
-    Location* loc = new Location();
-    if( !loc || !loc->Init( protoLoc[ loc_pid ], wx, wy ) )
-    {
-        WriteLogF( _FUNC_, " - Location<%s> init fail.\n", HASH_STR( loc_pid ) );
-        loc->Release();
-        return NULL;
-    }
-
+    Location* loc = NULL;
     if( !loc_id )
     {
         mapLocker.Lock();
-        loc->Data.LocId = lastLocId + 1;
-        lastLocId++;
+        loc_id = ++lastLocId;
         mapLocker.Unlock();
 
+        loc = new Location( loc_id, protoLoc[ loc_pid ], wx, wy );
         for( uint i = 0; i < loc->Proto->ProtoMapPids.size(); ++i )
         {
             hash map_pid = loc->Proto->ProtoMapPids[ i ];
@@ -624,7 +627,8 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
             loc->Release();
             return NULL;
         }
-        loc->Data.LocId = loc_id;
+
+        loc = new Location( loc_id, protoLoc[ loc_pid ], wx, wy );
     }
 
     SYNC_LOCK( loc );
@@ -650,11 +654,8 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
     return loc;
 }
 
-Map* MapManager::CreateMap( hash map_pid, Location* loc_map, uint map_id )
+Map* MapManager::CreateMap( hash map_pid, Location* loc, uint map_id )
 {
-    if( !loc_map )
-        return NULL;
-
     ProtoMap* proto_map = GetProtoMap( map_pid );
     if( !proto_map )
     {
@@ -662,21 +663,11 @@ Map* MapManager::CreateMap( hash map_pid, Location* loc_map, uint map_id )
         return NULL;
     }
 
-    Map* map = new Map();
-    if( !map || !map->Init( map_id, protoMaps[ map_pid ], loc_map ) )
-    {
-        WriteLogF( _FUNC_, " - Map<%s> init fail.\n", HASH_STR( map_pid ) );
-        delete map;
-        return NULL;
-    }
-
     if( !map_id )
     {
-        mapLocker.Lock();
-        map->Data.MapId = lastMapId + 1;
-        lastMapId++;
-        loc_map->GetMapsNoLock().push_back( map );
-        mapLocker.Unlock();
+        SCOPE_LOCK( mapLocker );
+
+        map_id = ++lastMapId;
     }
     else
     {
@@ -685,12 +676,14 @@ Map* MapManager::CreateMap( hash map_pid, Location* loc_map, uint map_id )
         if( allMaps.count( map_id ) )
         {
             WriteLogF( _FUNC_, " - Map already created, id<%u>.\n", map_id );
-            delete map;
             return NULL;
         }
-
-        loc_map->GetMapsNoLock().push_back( map );
     }
+
+    Map* map = new Map( map_id, protoMaps[ map_pid ], loc );
+
+    SYNC_LOCK( loc );
+    loc->GetMapsNoLock().push_back( map );
 
     SYNC_LOCK( map );
     Job::PushBack( JOB_MAP, map );

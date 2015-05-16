@@ -1,7 +1,6 @@
 #include "Common.h"
 #include "ScriptPragmas.h"
 #include "ScriptEngine.h"
-#include "Properties.h"
 #include "angelscript.h"
 #include "preprocessor.h"
 #include "scriptany.h"
@@ -381,18 +380,24 @@ int Compile( const char* fname, const char* fname_prep, vector< char* >& defines
     RegisterScriptReflection( Engine );
 
     // Properties
-    PropertyRegistrator* registrators[ 3 ] = { NULL, NULL, NULL };
+    PropertyRegistrator* registrators[ 6 ] = { NULL, NULL, NULL, NULL, NULL, NULL };
     if( IsServer )
     {
-        registrators[ 0 ] = new PropertyRegistrator( true, "Critter" );
-        registrators[ 1 ] = new PropertyRegistrator( true, "Item" );
-        registrators[ 2 ] = new PropertyRegistrator( true, "ProtoItem" );
+        registrators[ 0 ] = new PropertyRegistrator( true, "GlobalVars" );
+        registrators[ 1 ] = new PropertyRegistrator( true, "Critter" );
+        registrators[ 2 ] = new PropertyRegistrator( true, "Item" );
+        registrators[ 3 ] = new PropertyRegistrator( true, "ProtoItem" );
+        registrators[ 4 ] = new PropertyRegistrator( true, "Map" );
+        registrators[ 5 ] = new PropertyRegistrator( true, "Location" );
     }
     if( IsClient || IsMapper )
     {
-        registrators[ 0 ] = new PropertyRegistrator( false, "CritterCl" );
-        registrators[ 1 ] = new PropertyRegistrator( false, "ItemCl" );
-        registrators[ 2 ] = new PropertyRegistrator( false, "ProtoItem" );
+        registrators[ 0 ] = new PropertyRegistrator( false, "GlobalVars" );
+        registrators[ 1 ] = new PropertyRegistrator( false, "CritterCl" );
+        registrators[ 2 ] = new PropertyRegistrator( false, "ItemCl" );
+        registrators[ 3 ] = new PropertyRegistrator( false, "ProtoItem" );
+        registrators[ 4 ] = new PropertyRegistrator( false, "Map" );
+        registrators[ 5 ] = new PropertyRegistrator( false, "Location" );
     }
 
     // Bind
@@ -504,6 +509,8 @@ int Compile( const char* fname, const char* fname_prep, vector< char* >& defines
     {
         int bad_typeids[] =
         {
+            Engine->GetTypeIdByDecl( "GlobalVars@" ),
+            Engine->GetTypeIdByDecl( "GlobalVars@[]" ),
             Engine->GetTypeIdByDecl( "Critter@" ),
             Engine->GetTypeIdByDecl( "Critter@[]" ),
             Engine->GetTypeIdByDecl( "Item@" ),
@@ -607,6 +614,9 @@ int Compile( const char* fname, const char* fname_prep, vector< char* >& defines
     SAFEDEL( registrators[ 0 ] );
     SAFEDEL( registrators[ 1 ] );
     SAFEDEL( registrators[ 2 ] );
+    SAFEDEL( registrators[ 3 ] );
+    SAFEDEL( registrators[ 4 ] );
+    SAFEDEL( registrators[ 5 ] );
     Engine->Release();
     if( Buf )
         delete Buf;

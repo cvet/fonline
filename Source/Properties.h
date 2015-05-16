@@ -1,18 +1,25 @@
 #ifndef __PROPERTIES__
 #define __PROPERTIES__
 
-#include "Common.h"
-
 #define PROPERTIES_HEADER()                                                  \
     static PropertyRegistrator * PropertiesRegistrator;                      \
+    static vector< pair< const char*, Property** > > PropertiesList;         \
     static void SetPropertyRegistrator( PropertyRegistrator * registrator ); \
-    Properties Props
-#define PROPERTIES_IMPL( class_name ) \
-    PropertyRegistrator * class_name::PropertiesRegistrator
-#define PROPERTIES_FIND()                \
-    SAFEDEL( PropertiesRegistrator );    \
-    PropertiesRegistrator = registrator; \
-    PropertiesRegistrator->FinishRegistration()
+    Properties                                       Props
+#define PROPERTIES_IMPL( class_name )                                             \
+    PropertyRegistrator * class_name::PropertiesRegistrator;                      \
+    vector< pair< const char*, Property** > > class_name::PropertiesList;         \
+    void class_name::SetPropertyRegistrator( PropertyRegistrator * registrator )  \
+    {                                                                             \
+        SAFEDEL( PropertiesRegistrator );                                         \
+        PropertiesRegistrator = registrator;                                      \
+        PropertiesRegistrator->FinishRegistration();                              \
+        for( auto it = PropertiesList.begin(); it != PropertiesList.end(); it++ ) \
+        {                                                                         \
+            *it->second = PropertiesRegistrator->Find( it->first );               \
+            RUNTIME_ASSERT( *it->second );                                        \
+        }                                                                         \
+    }
 
 #define CLASS_PROPERTY( prop_type, prop )                                                      \
     static Property * Property ## prop;                                                        \
@@ -23,11 +30,15 @@
     inline uchar* Get ## prop ## Data( uint & data_size ) { return Property ## prop->GetRawData( this, data_size ); }                 \
     inline bool   Is ## prop ## Data() { uint data_size = 0; Property ## prop->GetRawData( this, data_size ); return data_size > 0; } \
     inline void   Set ## prop ## Data( uchar * data, uint data_size ) { return Property ## prop->SetData( this, data, data_size ); }
-#define CLASS_PROPERTY_IMPL( class_name, prop ) \
-    Property * class_name::Property ## prop
-#define CLASS_PROPERTY_FIND( prop )                           \
-    Property ## prop = PropertiesRegistrator->Find( # prop ); \
-    RUNTIME_ASSERT( Property ## prop && # prop )
+#define CLASS_PROPERTY_IMPL( class_name, prop )                                                    \
+    Property * class_name::Property ## prop;                                                       \
+    struct _ ## class_name ## Property ## prop ## Initializer                                      \
+    {                                                                                              \
+        _ ## class_name ## Property ## prop ## Initializer()                                       \
+        {                                                                                          \
+            class_name::PropertiesList.push_back( PAIR( # prop, &class_name::Property ## prop ) ); \
+        }                                                                                          \
+    } _ ## class_name ## Property ## prop ## Initializer
 
 class Property;
 typedef void ( *NativeCallback )( void* obj, Property* prop, void* cur_value, void* old_value );
@@ -205,6 +216,7 @@ class PropertyRegistrator
 public:
     PropertyRegistrator( bool is_server, const char* class_name );
     ~PropertyRegistrator();
+    bool      Init();
     Property* Register( const char* type_name, const char* name, Property::AccessType access, uint quest_value = 0, const char* group = NULL, bool* generate_random_value = NULL, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
     void      SetDefaults( const char* group = NULL, bool* generate_random_value = NULL, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
     void      FinishRegistration();

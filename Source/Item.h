@@ -5,7 +5,6 @@
 #include "FileManager.h"
 #include "Text.h"
 #include "Crypt.h"
-#include "Properties.h"
 #include "MsgFiles.h"
 
 class Critter;

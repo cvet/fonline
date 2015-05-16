@@ -33,7 +33,16 @@ class Location;
 class Map
 {
 public:
+    PROPERTIES_HEADER();
+
+    Map( uint id, ProtoMap* proto, Location* location );
+    ~Map();
+
     SyncObject Sync;
+    bool       IsNotValid;
+    int        RefCounter;
+    void AddRef()  { RefCounter++; }
+    void Release() { if( --RefCounter <= 0 ) delete this; }
 
 private:
     Mutex     dataLocker;
@@ -67,7 +76,6 @@ public:
     uint      LoopLastTick[ MAP_LOOP_FUNC_MAX ];
     uint      LoopWaitTick[ MAP_LOOP_FUNC_MAX ];
 
-    bool Init( uint id, ProtoMap* proto, Location* location );
     bool Generate();
     void Clear( bool full );
     void Process();
@@ -109,7 +117,7 @@ public:
     bool AddItem( Item* item, ushort hx, ushort hy );
     void SetItem( Item* item, ushort hx, ushort hy );
     void EraseItem( uint item_id );
-    void SendItemProperty( Item* item, Property* prop );
+    void SendProperty( NetProperty::Type type, Property* prop, void* prop_obj );
     void ChangeViewItem( Item* item );
     void AnimateItem( Item* item, uchar from_frm, uchar to_frm );
 
@@ -219,20 +227,6 @@ public:
     void EndCritterTurn();
     void NextCritterTurn();
     void GenerateSequence( Critter* first_cr );
-
-    // Constructor, destructor
-public:
-    Map();
-    ~Map();
-
-    bool  IsNotValid;
-    short RefCounter;
-    void AddRef() { RefCounter++; }
-    void Release()
-    {
-        RefCounter--;
-        if( RefCounter <= 0 ) delete this;
-    }
 };
 typedef map< uint, Map* > MapMap;
 typedef vector< Map* >    MapVec;
@@ -269,7 +263,16 @@ extern const char* LocationEventFuncName[ LOCATION_EVENT_MAX ];
 class Location
 {
 public:
+    PROPERTIES_HEADER();
+
+    Location( uint id, ProtoLocation* proto, ushort wx, ushort wy );
+    ~Location();
+
     SyncObject Sync;
+    bool       IsNotValid;
+    int        RefCounter;
+    void AddRef()  { RefCounter++; }
+    void Release() { if( --RefCounter <= 0 ) delete this; }
 
 private:
     MapVec locMaps;
@@ -294,7 +297,6 @@ public:
     volatile int   GeckCount;
     int            FuncId[ LOCATION_EVENT_MAX ];
 
-    bool     Init( ProtoLocation* proto, ushort wx, ushort wy );
     void     Clear( bool full );
     void     Update();
     bool     IsVisible()     { return Data.Visible || ( Data.GeckVisible && GeckCount > 0 ); }
@@ -324,17 +326,6 @@ private:
 public:
     void EventFinish( bool to_delete );
     bool EventEnter( ScriptArray* group, uchar entrance );
-
-public:
-    bool  IsNotValid;
-    short RefCounter;
-    void AddRef() { RefCounter++; }
-    void Release()
-    {
-        RefCounter--;
-        if( RefCounter <= 0 ) delete this;
-    }
-    Location(): RefCounter( 1 ), Proto( NULL ), IsNotValid( false ) { memzero( (void*) &Data, sizeof( Data ) ); }
 };
 typedef map< uint, Location* > LocMap;
 typedef vector< Location* >    LocVec;

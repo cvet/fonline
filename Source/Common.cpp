@@ -1669,6 +1669,22 @@ void Thread_Sleep( uint ms ) // Used in Mutex.h as extern function
 #endif
 
 /************************************************************************/
+/* Properties                                                           */
+/************************************************************************/
+
+PROPERTIES_IMPL( GlobalVars );
+GlobalVars::GlobalVars(): Props( PropertiesRegistrator ) {}
+GlobalVars* Globals;
+
+PROPERTIES_IMPL( ClientMap );
+ClientMap::ClientMap(): Props( PropertiesRegistrator ) {}
+ClientMap* ClientCurMap;
+
+PROPERTIES_IMPL( ClientLocation );
+ClientLocation::ClientLocation(): Props( PropertiesRegistrator ) {}
+ClientLocation* ClientCurLocation;
+
+/************************************************************************/
 /*                                                                      */
 /************************************************************************/
 

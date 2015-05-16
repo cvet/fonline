@@ -5,7 +5,6 @@
 #include "FileManager.h"
 #include "AI.h"
 #include "Defines.h"
-#include "Properties.h"
 #ifdef FONLINE_MAPPER
 # include "CritterCl.h"
 #endif

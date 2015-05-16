@@ -1,6 +1,14 @@
 #ifndef ___DEFINES___
 #define ___DEFINES___
 
+// Floats
+#define PI_FLOAT                     ( 3.14159265f )
+#define PIBY2_FLOAT                  ( 1.5707963f )
+#define SQRT3T2_FLOAT                ( 3.4641016151f )
+#define SQRT3_FLOAT                  ( 1.732050807568877f )
+#define BIAS_FLOAT                   ( 0.02f )
+#define RAD2DEG                      ( 57.29577951f )
+
 // Bits
 #define BIN__N( x )                           ( x ) | x >> 3 | x >> 6 | x >> 9
 #define BIN__B( x )                           ( x ) & 0xf | ( x ) >> 12 & 0xf0
@@ -49,7 +57,8 @@
 #define WORLD_SAVE_V20               ( 0x01AB0F20 )
 #define WORLD_SAVE_V21               ( 0x01AB0F21 )
 #define WORLD_SAVE_V22               ( 0x01AB0F22 )
-#define WORLD_SAVE_LAST              WORLD_SAVE_V22
+#define WORLD_SAVE_V23               ( 0x01AB0F23 )
+#define WORLD_SAVE_LAST              WORLD_SAVE_V23
 #define SINGLEPLAYER_SAVE_V1         ( 1 )
 #define SINGLEPLAYER_SAVE_V2         ( 2 )
 #define SINGLEPLAYER_SAVE_LAST       ( SINGLEPLAYER_SAVE_V2 )
