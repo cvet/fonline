@@ -1170,9 +1170,6 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
 
 void FOServer::KillCritter( Critter* cr, uint anim2, Critter* attacker )
 {
-    if( cr->GetIsInvulnerable() )
-        return;
-
     // Close talk
     if( cr->IsPlayer() )
     {

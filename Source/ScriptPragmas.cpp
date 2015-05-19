@@ -354,8 +354,8 @@ public:
         Property::AccessType access = (Property::AccessType) 0;
         if( !is_defaults )
         {
-            if( Str::CompareCase( access_str.c_str(), "Private" ) )
-                access = Property::Private;
+            if( Str::CompareCase( access_str.c_str(), "PrivateCommon" ) )
+                access = Property::PrivateCommon;
             else if( Str::CompareCase( access_str.c_str(), "PrivateClient" ) )
                 access = Property::PrivateClient;
             else if( Str::CompareCase( access_str.c_str(), "PrivateServer" ) )
@@ -368,8 +368,8 @@ public:
                 access = Property::Protected;
             else if( Str::CompareCase( access_str.c_str(), "ProtectedModifiable" ) )
                 access = Property::ProtectedModifiable;
-            else if( Str::CompareCase( access_str.c_str(), "VirtualPrivate" ) )
-                access = Property::VirtualPrivate;
+            else if( Str::CompareCase( access_str.c_str(), "VirtualPrivateCommon" ) )
+                access = Property::VirtualPrivateCommon;
             else if( Str::CompareCase( access_str.c_str(), "VirtualPrivateClient" ) )
                 access = Property::VirtualPrivateClient;
             else if( Str::CompareCase( access_str.c_str(), "VirtualPrivateServer" ) )

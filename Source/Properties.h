@@ -61,14 +61,14 @@ class Property
 public:
     enum AccessType
     {
-        Private              = 0x0010,
+        PrivateCommon        = 0x0010,
         PrivateClient        = 0x0020,
         PrivateServer        = 0x0040,
         Public               = 0x0100,
         PublicModifiable     = 0x0200,
         Protected            = 0x1000,
         ProtectedModifiable  = 0x2000,
-        VirtualPrivate       = 0x0011,
+        VirtualPrivateCommon = 0x0011,
         VirtualPrivateClient = 0x0021,
         VirtualPrivateServer = 0x0041,
         VirtualPublic        = 0x0101,

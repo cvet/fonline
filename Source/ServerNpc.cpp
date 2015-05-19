@@ -1744,7 +1744,7 @@ label_Barter:
                 cl->Send_TextMsg( cl, STR_BARTER_NO_BARTER_MODE, SAY_DIALOG, TEXTMSG_GAME );
                 return;
             }
-            if( cur_dialog->DlgScript != NOT_ANSWER_CLOSE_DIALOG && !npc->GetIsDlgScriptBarter() )
+            if( cur_dialog->DlgScript != NOT_ANSWER_CLOSE_DIALOG )
             {
                 cl->Send_TextMsg( npc, STR_BARTER_NO_BARTER_NOW, SAY_DIALOG, TEXTMSG_GAME );
                 return;

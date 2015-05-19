@@ -102,43 +102,64 @@ class Critter
 public:
     // Properties
     PROPERTIES_HEADER();
-    CLASS_PROPERTY( int, Strength );
-    CLASS_PROPERTY( int, Perception );
-    CLASS_PROPERTY( int, Agility );
-    CLASS_PROPERTY( int, Charisma );
-    CLASS_PROPERTY( int, Intellect );
-    CLASS_PROPERTY( hash, BaseCrType );
-    CLASS_PROPERTY( char, Gender );
-    CLASS_PROPERTY( int, Level );
-    CLASS_PROPERTY( int, Experience );
-    CLASS_PROPERTY( int, BonusLook );
+    // Core
+    // Check properties in CritData
+    // CLASS_PROPERTY( int, LookDistance );
+    CLASS_PROPERTY( uint, FollowCrit );       // Rename to FollowCritterId
     CLASS_PROPERTY( hash, DialogId );
-    CLASS_PROPERTY( hash, BagId );
-    CLASS_PROPERTY( hash, NpcRole );
-    CLASS_PROPERTY( hash, TeamId );
-    CLASS_PROPERTY( hash, AiId );
-    CLASS_PROPERTY( uint, FollowCrit );
-    CLASS_PROPERTY( uint, FreeBarterPlayer );
-    CLASS_PROPERTY( uint, LastWeaponId );
-    CLASS_PROPERTY( hash, HandsItemProtoId );
-    CLASS_PROPERTY( uchar, HandsItemMode );
-    CLASS_PROPERTY( int, KarmaVoting );
-    CLASS_PROPERTY( int, MaxTalkers );
+    CLASS_PROPERTY( bool, IsNoTalk );
+    CLASS_PROPERTY( bool, IsNoBarter );
+    CLASS_PROPERTY( int, MaxTalkers );   // Callback on begin dialog?
     CLASS_PROPERTY( int, TalkDistance );
-    CLASS_PROPERTY( int, CarryWeight );
-    CLASS_PROPERTY( int, CurrentHp );
-    CLASS_PROPERTY( int, ActionPoints );
+    CLASS_PROPERTY( int, CurrentHp );    // CurHp, CurAp, CurMoveAp or MaximumHp, MaximumAp, MaximumMoveAp?
+    // CLASS_PROPERTY( int, MaxHp ); Need?
     CLASS_PROPERTY( int, CurrentAp );
+    CLASS_PROPERTY( int, ActionPoints ); // Rename MaxAp
+    CLASS_PROPERTY( int, MoveAp );       // Rename CurrentMoveAp
     CLASS_PROPERTY( int, MaxMoveAp );
-    CLASS_PROPERTY( int, MoveAp );
-    CLASS_PROPERTY( int, TurnBasedAc );
-    CLASS_PROPERTY( int, ReplicationMoney );
-    CLASS_PROPERTY( int, ReplicationCost );
-    CLASS_PROPERTY( int, ReplicationCount );
-    CLASS_PROPERTY( int, ReplicationTime );
+    CLASS_PROPERTY( bool, IsNoWalk );
+    CLASS_PROPERTY( bool, IsNoRun );
     CLASS_PROPERTY( int, WalkTime );
     CLASS_PROPERTY( int, RunTime );
     CLASS_PROPERTY( int, ScaleFactor );
+    CLASS_PROPERTY( uint, TimeoutBattle );
+    CLASS_PROPERTY( uint, TimeoutTransfer );
+    CLASS_PROPERTY( uint, TimeoutRemoveFromGame );
+    CLASS_PROPERTY( bool, IsGeck );    // Rename
+    CLASS_PROPERTY( bool, IsNoLoot );  // ?
+    CLASS_PROPERTY( bool, IsNoSteal ); // ?
+    CLASS_PROPERTY( bool, IsNoHome );  // HomeMapId == 0 ?
+    // CLASS_PROPERTY( uint, HomeMapId );
+    // CLASS_PROPERTY( ushort, HomeHexX );
+    // CLASS_PROPERTY( ushort, HomeHexY );
+    // CLASS_PROPERTY( short, HomeDir );
+    CLASS_PROPERTY( bool, IsHide );
+    CLASS_PROPERTY( bool, IsEndCombat );        // ?
+    // Exclude
+    CLASS_PROPERTY( hash, HandsItemProtoId );   // Add setting proto and mode for every slot? Or - add default hidden item for unarmed attacks?
+    CLASS_PROPERTY( uchar, HandsItemMode );
+    CLASS_PROPERTY( int, Strength );            // Unarmed item selection
+    CLASS_PROPERTY( int, Agility );             // Unarmed item selection
+    CLASS_PROPERTY( int, Level );               // Unarmed item selection
+    CLASS_PROPERTY( int, Perception );          // Look distance generation
+    CLASS_PROPERTY( int, BonusLook );           // Look distance generation
+    CLASS_PROPERTY( int, Charisma );            // Used in check next rule on global map
+    CLASS_PROPERTY( int, Intellect );           // Intellect worlds system
+    CLASS_PROPERTY( int, ReplicationTime );     // Used in map dead npc generation
+    CLASS_PROPERTY( int, Experience );          // Craft
+    CLASS_PROPERTY( uint, TimeoutSkScience );   // Craft
+    CLASS_PROPERTY( uint, TimeoutSkRepair );    // Craft
+    CLASS_PROPERTY( hash, BagId );              // Bags (migrate bags to scripts)
+    CLASS_PROPERTY( uint, LastWeaponId );       // Bags
+    CLASS_PROPERTY( bool, IsNoItemGarbager );   // Bags
+    CLASS_PROPERTY( hash, NpcRole );            // Find Npc criteria (maybe swap to some universal prop/value array as input)
+    CLASS_PROPERTY( hash, TeamId );             // Trace check criteria (maybe swap to some universal prop/value array)
+    CLASS_PROPERTY( uint, FreeBarterPlayer );   // Used for barter coef
+    CLASS_PROPERTY( int, KarmaVoting );         // Migrate karma voting to scripts
+    CLASS_PROPERTY( uint, TimeoutKarmaVoting ); // Migrate karma voting to scripts
+    CLASS_PROPERTY( int, CarryWeight );         // Overweight checking
+    CLASS_PROPERTY( int, TurnBasedAc );         // Turn based
+    CLASS_PROPERTY( char, DefaultCombat );      // Just exclude
     CLASS_PROPERTY( int, SkillUnarmed );
     CLASS_PROPERTY( int, SkillSneak );
     CLASS_PROPERTY( int, SkillBarter );
@@ -150,33 +171,14 @@ public:
     CLASS_PROPERTY( int, SkillScience );
     CLASS_PROPERTY( int, SkillRepair );
     CLASS_PROPERTY( int, SkillSpeech );
-    CLASS_PROPERTY( uint, TimeoutBattle );
-    CLASS_PROPERTY( uint, TimeoutTransfer );
-    CLASS_PROPERTY( uint, TimeoutRemoveFromGame );
-    CLASS_PROPERTY( uint, TimeoutKarmaVoting );
-    CLASS_PROPERTY( uint, TimeoutSkScience );
-    CLASS_PROPERTY( uint, TimeoutSkRepair );
-    CLASS_PROPERTY( char, DefaultCombat );
-    CLASS_PROPERTY( bool, IsInvulnerable );
-    CLASS_PROPERTY( bool, IsDlgScriptBarter );
-    CLASS_PROPERTY( bool, IsUnlimitedAmmo );
-    CLASS_PROPERTY( bool, IsNoUnarmed );
-    CLASS_PROPERTY( bool, IsNoFavoriteItem );
-    CLASS_PROPERTY( bool, IsNoPush );
-    CLASS_PROPERTY( bool, IsNoItemGarbager );
-    CLASS_PROPERTY( bool, IsNoEnemyStack );
-    CLASS_PROPERTY( bool, IsGeck );
-    CLASS_PROPERTY( bool, IsNoLoot );
-    CLASS_PROPERTY( bool, IsNoSteal );
-    CLASS_PROPERTY( bool, IsNoHome );
-    CLASS_PROPERTY( bool, IsNoWalk );
-    CLASS_PROPERTY( bool, IsNoRun );
-    CLASS_PROPERTY( bool, IsNoTalk );
-    CLASS_PROPERTY( bool, IsHide );
-    CLASS_PROPERTY( bool, IsNoFlatten );
-    CLASS_PROPERTY( bool, IsNoAim );
-    CLASS_PROPERTY( bool, IsNoBarter );
-    CLASS_PROPERTY( bool, IsEndCombat );
+    // CLASS_PROPERTY( bool, IsInvulnerable ); // Resolve in scripts
+    CLASS_PROPERTY( bool, IsUnlimitedAmmo );  // AI, check shoot possibility
+    CLASS_PROPERTY( bool, IsNoUnarmed );      // AI
+    CLASS_PROPERTY( bool, IsNoFavoriteItem ); // AI
+    CLASS_PROPERTY( bool, IsNoPush );         // Can puck checks
+    CLASS_PROPERTY( bool, IsNoEnemyStack );   // Migrate enemy stack to scripts
+    CLASS_PROPERTY( bool, IsNoFlatten );      // Draw order (migrate to critter type option)
+    CLASS_PROPERTY( bool, IsNoAim );          // AI
     CLASS_PROPERTY( bool, IsDamagedEye );
     CLASS_PROPERTY( bool, IsDamagedRightArm );
     CLASS_PROPERTY( bool, IsDamagedLeftArm );

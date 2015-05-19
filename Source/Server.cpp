@@ -222,9 +222,9 @@ string FOServer::GetIngamePlayersStatistics()
 
         Str::Format( str_loc, "%s (%u, %u)", map ? loc->Proto->Name.c_str() : "", map ? loc->GetId() : 0, map ? loc->GetPid() : 0 );
         Str::Format( str_map, "%s (%u, %u)", map ? map->Proto->GetName() : "", map ? map->GetId() : 0, map ? map->GetPid() : 0 );
-        Str::Format( str, "%-20s %-9u %-15s %-7s %-8s %-5u %-5u %-30s %-30s %-4d\n",
+        Str::Format( str, "%-20s %-9u %-15s %-7s %-8s %-5u %-5u %-30s %-30s\n",
                      cl->GetName(), cl->GetId(), cl->GetIpStr(), cl->IsOffline() ? "No" : "Yes", cond_states_str[ cl->Data.Cond ],
-                     map ? cl->GetHexX() : cl->Data.WorldX, map ? cl->GetHexY() : cl->Data.WorldY, map ? str_loc : "Global map", map ? str_map : "", cl->GetLevel() );
+                     map ? cl->GetHexX() : cl->Data.WorldX, map ? cl->GetHexY() : cl->Data.WorldY, map ? str_loc : "Global map", map ? str_map : "" );
         result += str;
     }
     return result;

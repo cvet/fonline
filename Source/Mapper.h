@@ -50,7 +50,7 @@ public:
     void ParseKeyboard();
     void ParseMouse();
 
-    #define DRAW_CR_INFO_MAX           ( 3 )
+    #define DRAW_CR_INFO_MAX           ( 2 )
     int DrawCrExtInfo;
 
     // Game color

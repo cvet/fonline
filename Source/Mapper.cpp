@@ -1563,10 +1563,8 @@ void FOMapper::MainLoop()
                     char str[ 512 ] = { 0 };
 
                     if( DrawCrExtInfo == 1 )
-                        Str::Format( str, "|0xffaabbcc ProtoId...%u\n|0xffff1122 DialogId...%u\n|0xff4433ff BagId...%u\n|0xff55ff77 TeamId...%u\n", mobj->ProtoId, cr->GetDialogId(), cr->GetBagId(), cr->GetTeamId() );
+                        Str::Format( str, "|0xffaabbcc ProtoId...%u\n|0xffff1122 DialogId...%u\n", mobj->ProtoId, cr->GetDialogId() );
                     else if( DrawCrExtInfo == 2 )
-                        Str::Format( str, "|0xff11ff22 NpcRole...%u\n|0xffccaabb AiPacket...%u\n|0xffff00ff RespawnTime...%d\n", cr->GetNpcRole(), cr->GetAiId(), cr->GetReplicationTime() );
-                    else if( DrawCrExtInfo == 3 )
                         Str::Format( str, "|0xff00ff00 ScriptName...%s\n|0xffff0000 FuncName...%s\n", mobj->ScriptName, mobj->FuncName );
 
                     cr->SetText( str, COLOR_TEXT_WHITE, 60000000 );
