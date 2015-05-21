@@ -31,8 +31,10 @@ int GetParamId( const char* str, bool is_demand )
     Property* prop = Critter::PropertiesRegistrator->Find( str );
     if( !prop )
         WriteLog( "DR property<%s> not found.\n", str );
-    else if( !prop->IsPOD() )
-        WriteLog( "DR property<%s> is not POD type.\n", str );
+    else if( !prop->IsPOD() && !prop->IsDict() )
+        WriteLog( "DR property<%s> is not POD or Dict type.\n", str );
+    else if( prop->IsDict() && prop->GetASObjectType()->GetSubTypeId( 0 ) != asTYPEID_UINT32 )
+        WriteLog( "DR property<%s> Dict must have 'uint' in key.\n", str );
     else if( is_demand && !prop->IsReadable() )
         WriteLog( "DR property<%s> is not readable.\n", str );
     else if( !is_demand && !prop->IsWritable() )

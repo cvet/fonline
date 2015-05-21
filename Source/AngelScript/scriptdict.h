@@ -46,7 +46,7 @@ public:
     virtual void* GetDefault( void* key, void* defaultValue );
     virtual void* GetKey( uint index );
     virtual void* GetValue( uint index );
-    virtual bool  Contains( void* key ) const;
+    virtual bool  Exists( void* key ) const;
     virtual void* GetMap();
 
     // GC methods

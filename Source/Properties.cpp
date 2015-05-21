@@ -432,9 +432,19 @@ uint Property::GetBaseSize()
     return baseSize;
 }
 
+asIObjectType* Property::GetASObjectType()
+{
+    return asObjType;
+}
+
 bool Property::IsPOD()
 {
     return dataType == Property::POD;
+}
+
+bool Property::IsDict()
+{
+    return dataType == Property::Dict;
 }
 
 bool Property::IsReadable()

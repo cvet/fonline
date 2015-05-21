@@ -1064,8 +1064,48 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
         {
         case DR_PARAM:
         {
-            int prop_enum = (int) index;
-            int val = master->Props.GetValueAsInt( prop_enum );
+            int       prop_enum = (int) index;
+            Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum );
+            int       val = 0;
+            if( prop->IsDict() )
+            {
+                ScriptDict* dict = (ScriptDict*) prop->GetValue< void* >( master );
+                void*       pvalue = dict->GetDefault( &master->Data.Id, NULL );
+                dict->Release();
+                if( !pvalue )
+                    break;
+
+                int value_type_id = prop->GetASObjectType()->GetSubTypeId( 1 );
+                if( value_type_id == asTYPEID_BOOL )
+                    val = *(bool*) pvalue ? 1 : 0;
+                else if( value_type_id == asTYPEID_INT8 )
+                    val = *(char*) pvalue;
+                else if( value_type_id == asTYPEID_INT16 )
+                    val = *(short*) pvalue;
+                else if( value_type_id == asTYPEID_INT32 )
+                    val = *(char*) pvalue;
+                else if( value_type_id == asTYPEID_INT64 )
+                    val = *(int64*) pvalue;
+                else if( value_type_id == asTYPEID_UINT8 )
+                    val = *(uchar*) pvalue;
+                else if( value_type_id == asTYPEID_UINT16 )
+                    val = *(ushort*) pvalue;
+                else if( value_type_id == asTYPEID_UINT32 )
+                    val = *(uint*) pvalue;
+                else if( value_type_id == asTYPEID_UINT64 )
+                    val = *(uint64*) pvalue;
+                else if( value_type_id == asTYPEID_FLOAT )
+                    val = *(float*) pvalue;
+                else if( value_type_id == asTYPEID_DOUBLE )
+                    val = *(double*) pvalue;
+                else
+                    RUNTIME_ASSERT( false );
+            }
+            else
+            {
+                val = master->Props.GetValueAsInt( prop_enum );
+            }
+
             switch( demand.Op )
             {
             case '>':
@@ -1230,8 +1270,49 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
         {
         case DR_PARAM:
         {
-            int prop_enum = (int) index;
-            int val = master->Props.GetValueAsInt( prop_enum );
+            int       prop_enum = (int) index;
+            Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum );
+            int       val = 0;
+            void*     pvalue = NULL;
+            if( prop->IsDict() )
+            {
+                ScriptDict* dict = (ScriptDict*) prop->GetValue< void* >( master );
+                pvalue = dict->GetDefault( &master->Data.Id, NULL );
+                dict->Release();
+                if( !pvalue )
+                    break;
+
+                int value_type_id = prop->GetASObjectType()->GetSubTypeId( 1 );
+                if( value_type_id == asTYPEID_BOOL )
+                    val = *(bool*) pvalue ? 1 : 0;
+                else if( value_type_id == asTYPEID_INT8 )
+                    val = *(char*) pvalue;
+                else if( value_type_id == asTYPEID_INT16 )
+                    val = *(short*) pvalue;
+                else if( value_type_id == asTYPEID_INT32 )
+                    val = *(char*) pvalue;
+                else if( value_type_id == asTYPEID_INT64 )
+                    val = *(int64*) pvalue;
+                else if( value_type_id == asTYPEID_UINT8 )
+                    val = *(uchar*) pvalue;
+                else if( value_type_id == asTYPEID_UINT16 )
+                    val = *(ushort*) pvalue;
+                else if( value_type_id == asTYPEID_UINT32 )
+                    val = *(uint*) pvalue;
+                else if( value_type_id == asTYPEID_UINT64 )
+                    val = *(uint64*) pvalue;
+                else if( value_type_id == asTYPEID_FLOAT )
+                    val = *(float*) pvalue;
+                else if( value_type_id == asTYPEID_DOUBLE )
+                    val = *(double*) pvalue;
+                else
+                    RUNTIME_ASSERT( false );
+            }
+            else
+            {
+                val = master->Props.GetValueAsInt( prop_enum );
+            }
+
             switch( result.Op )
             {
             case '+':
@@ -1252,7 +1333,39 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
             default:
                 break;
             }
-            master->Props.SetValueAsInt( prop_enum, val );
+
+            if( prop->IsDict() )
+            {
+                int value_type_id = prop->GetASObjectType()->GetSubTypeId( 1 );
+                if( value_type_id == asTYPEID_BOOL )
+                    *(bool*) pvalue = val != 0;
+                else if( value_type_id == asTYPEID_INT8 )
+                    *(char*) pvalue = (char) val;
+                else if( value_type_id == asTYPEID_INT16 )
+                    *(short*) pvalue = (short) val;
+                else if( value_type_id == asTYPEID_INT32 )
+                    *(int*) pvalue = (int) val;
+                else if( value_type_id == asTYPEID_INT64 )
+                    *(int64*) pvalue = (int64) val;
+                else if( value_type_id == asTYPEID_UINT8 )
+                    *(uchar*) pvalue = (uchar) val;
+                else if( value_type_id == asTYPEID_UINT16 )
+                    *(ushort*) pvalue = (ushort) val;
+                else if( value_type_id == asTYPEID_UINT32 )
+                    *(uint*) pvalue = (uint) val;
+                else if( value_type_id == asTYPEID_UINT64 )
+                    *(uint64*) pvalue = (uint64) val;
+                else if( value_type_id == asTYPEID_FLOAT )
+                    *(float*) pvalue = (float) val;
+                else if( value_type_id == asTYPEID_DOUBLE )
+                    *(double*) pvalue = (double) val;
+                else
+                    RUNTIME_ASSERT( false );
+            }
+            else
+            {
+                master->Props.SetValueAsInt( prop_enum, val );
+            }
         }
             continue;
         case DR_VAR:

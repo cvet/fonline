@@ -282,7 +282,7 @@ static void RegisterScriptDict_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dict<T1,T2>", "const T2& getValue(uint index) const", asMETHOD( ScriptDict, GetValue ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool contains(const T1&in) const", asMETHOD( ScriptDict, Contains ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool exists(const T1&in) const", asMETHOD( ScriptDict, Exists ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool opEquals(const dict<T1,T2>&in) const", asMETHOD( ScriptDict, operator== ), asCALL_THISCALL );
     assert( r >= 0 );
@@ -591,7 +591,7 @@ void* ScriptDict::GetValue( uint index )
     return ( *it ).second;
 }
 
-bool ScriptDict::Contains( void* key ) const
+bool ScriptDict::Exists( void* key ) const
 {
     DictMap* dict = (DictMap*) dictMap;
 

@@ -345,12 +345,16 @@ static void RegisterScriptArray_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "array<T>", "const T &last() const", asMETHOD( ScriptArray, Last ), asCALL_THISCALL );
     assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "array<T>", "void clear()", asMETHODPR( ScriptArray, Clear, ( ), void ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "array<T>", "bool exists(const T&in) const", asMETHODPR( ScriptArray, Exists, (void*) const, bool ), asCALL_THISCALL );
+    assert( r >= 0 );
 
     // Register virtual properties
-    r = engine->RegisterObjectMethod( "array<T>", "uint get_length() const", asMETHOD( ScriptArray, GetSize ), asCALL_THISCALL );
-    assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void set_length(uint)", asMETHODPR( ScriptArray, Resize, ( asUINT ), void ), asCALL_THISCALL );
-    assert( r >= 0 );
+    // r = engine->RegisterObjectMethod( "array<T>", "uint get_length() const", asMETHOD( ScriptArray, GetSize ), asCALL_THISCALL );
+    // assert( r >= 0 );
+    // r = engine->RegisterObjectMethod( "array<T>", "void set_length(uint)", asMETHODPR( ScriptArray, Resize, ( asUINT ), void ), asCALL_THISCALL );
+    // assert( r >= 0 );
 
     // Register GC behaviours in case the array needs to be garbage collected
     r = engine->RegisterObjectBehaviour( "array<T>", asBEHAVE_GETREFCOUNT, "int f()", asMETHOD( ScriptArray, GetRefCount ), asCALL_THISCALL );
@@ -704,6 +708,12 @@ void ScriptArray::Reduce( asUINT numElements )
         return;
     }
     Resize( size - numElements );
+}
+
+void ScriptArray::Clear()
+{
+    if( buffer->numElements > 0 )
+        Resize( -(int) buffer->numElements, ( asUINT ) - 1 );
 }
 
 // Internal
@@ -1380,6 +1390,10 @@ int ScriptArray::Find( asUINT startAt, void* value ) const
     return ret;
 }
 
+bool ScriptArray::Exists( void* value ) const
+{
+    return Find( 0, value ) != -1;
+}
 
 
 // internal

@@ -83,16 +83,18 @@ public:
         ModifiableMask       = 0x2200,
     };
 
-    const char* GetName();
-    uint        GetRegIndex();
-    int         GetEnumValue();
-    AccessType  GetAccess();
-    uint        GetBaseSize();
-    bool        IsPOD();
-    bool        IsReadable();
-    bool        IsWritable();
-    void        SetSendIgnore( void* obj );
-    bool        IsQuestValue();
+    const char*    GetName();
+    uint           GetRegIndex();
+    int            GetEnumValue();
+    AccessType     GetAccess();
+    uint           GetBaseSize();
+    asIObjectType* GetASObjectType();
+    bool           IsPOD();
+    bool           IsDict();
+    bool           IsReadable();
+    bool           IsWritable();
+    void           SetSendIgnore( void* obj );
+    bool           IsQuestValue();
 
     template< typename T >
     T GetValue( void* obj )

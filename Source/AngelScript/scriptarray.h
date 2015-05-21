@@ -63,6 +63,7 @@ public:
     virtual void Resize( asUINT numElements );
     virtual void Grow( asUINT numElements );
     virtual void Reduce( asUINT numElements );
+    virtual void Clear();
 
     // Get a pointer to an element. Returns 0 if out of bounds
     virtual void*       At( asUINT index );
@@ -99,6 +100,7 @@ public:
     virtual int  Find( asUINT startAt, void* value ) const;
     virtual int  FindByRef( void* ref ) const;
     virtual int  FindByRef( asUINT startAt, void* ref ) const;
+    virtual bool Exists( void* value ) const;
 
     // GC methods
     virtual int  GetRefCount();
