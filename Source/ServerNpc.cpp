@@ -1069,8 +1069,11 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
             int       val = 0;
             if( prop->IsDict() )
             {
+                if( !slave )
+                    break;
+
                 ScriptDict* dict = (ScriptDict*) prop->GetValue< void* >( master );
-                void*       pvalue = dict->GetDefault( &master->Data.Id, NULL );
+                void*       pvalue = dict->GetDefault( &slave->Data.Id, NULL );
                 dict->Release();
                 if( !pvalue )
                     break;
@@ -1276,11 +1279,15 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
             void*     pvalue = NULL;
             if( prop->IsDict() )
             {
+                if( !slave )
+                    continue;
+
                 ScriptDict* dict = (ScriptDict*) prop->GetValue< void* >( master );
-                pvalue = dict->GetDefault( &master->Data.Id, NULL );
+                uint64      zero = 0;
+                dict->SetIfNotExist( &slave->Data.Id, &zero );
+                pvalue = dict->Get( &slave->Data.Id );
+                RUNTIME_ASSERT( pvalue );
                 dict->Release();
-                if( !pvalue )
-                    break;
 
                 int value_type_id = prop->GetASObjectType()->GetSubTypeId( 1 );
                 if( value_type_id == asTYPEID_BOOL )
