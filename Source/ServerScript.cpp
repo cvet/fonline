@@ -5118,52 +5118,6 @@ uint FOServer::SScriptFunc::Global_GetTimeEventList( ScriptArray* ids )
     return GetTimeEventsList( ids );
 }
 
-bool FOServer::SScriptFunc::Global_SetAnyData( ScriptString& name, ScriptArray& data )
-{
-    if( !name.length() )
-        SCRIPT_ERROR_R0( "Name arg length is zero." );
-    uint data_size_bytes = data.GetSize() * data.GetElementSize();
-    return SetAnyData( name.c_std_str(), data_size_bytes ? (uchar*) data.At( 0 ) : NULL, data_size_bytes );
-}
-
-bool FOServer::SScriptFunc::Global_SetAnyDataSize( ScriptString& name, ScriptArray& data, uint data_size )
-{
-    if( !name.length() )
-        SCRIPT_ERROR_R0( "Name arg length is zero." );
-    uint element_size = data.GetElementSize();
-    uint data_size_bytes = data_size * element_size;
-    uint real_data_size_bytes = data.GetSize() * element_size;
-    if( real_data_size_bytes < data_size_bytes )
-        SCRIPT_ERROR_R0( "Array length is less than data size in bytes arg." );
-    return SetAnyData( name.c_std_str(), data_size_bytes ? (uchar*) data.At( 0 ) : NULL, data_size_bytes );
-}
-
-bool FOServer::SScriptFunc::Global_GetAnyData( ScriptString& name, ScriptArray& data )
-{
-    if( !name.length() )
-        SCRIPT_ERROR_R0( "Name arg length is zero." );
-    return GetAnyData( name.c_std_str(), data );
-}
-
-uint FOServer::SScriptFunc::Global_GetAnyDataList( ScriptArray* names )
-{
-    return GetAnyDataList( names );
-}
-
-bool FOServer::SScriptFunc::Global_IsAnyData( ScriptString& name )
-{
-    if( !name.length() )
-        SCRIPT_ERROR_R0( "Name arg length is zero." );
-    return IsAnyData( name.c_std_str() );
-}
-
-void FOServer::SScriptFunc::Global_EraseAnyData( ScriptString& name )
-{
-    if( !name.length() )
-        SCRIPT_ERROR_R( "Name arg length is zero." );
-    EraseAnyData( name.c_std_str() );
-}
-
 Map* FOServer::SScriptFunc::Global_GetMap( uint map_id )
 {
     if( !map_id )

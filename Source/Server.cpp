@@ -49,8 +49,6 @@ uint                        FOServer::LastHoloId = 0;
 FOServer::TimeEventVec      FOServer::TimeEvents;
 uint                        FOServer::TimeEventsLastNum = 0;
 Mutex                       FOServer::TimeEventsLocker;
-FOServer::AnyDataMap        FOServer::AnyData;
-Mutex                       FOServer::AnyDataLocker;
 StrVec                      FOServer::ServerWrongGlobalObjects;
 Pragmas                     FOServer::ServerPropertyPragmas;
 FOServer::TextListenVec     FOServer::TextListeners;
@@ -2159,7 +2157,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
             result = GetTimeEventsStatistics();
             break;
         case 4:
-            result = GetAnyDataStatistics();
+            result = "WIP";
             break;
         case 5:
             result = ItemMngr.GetItemsStatistics();
@@ -4467,9 +4465,6 @@ void FOServer::SaveWorld( const char* fname )
     // SaveHoloInfoFile
     SaveHoloInfoFile();
 
-    // SaveAnyDataFile
-    SaveAnyDataFile();
-
     // SaveTimeEventsFile
     SaveTimeEventsFile();
 
@@ -4588,8 +4583,6 @@ bool FOServer::LoadWorld( const char* fname )
         return false;
     if( !LoadHoloInfoFile( f, version ) )
         return false;
-    if( !LoadAnyDataFile( f, version ) )
-        return false;
     if( !LoadTimeEventsFile( f, version ) )
         return false;
     if( !Globals->Props.Load( f, version ) )
@@ -4635,9 +4628,6 @@ void FOServer::UnloadWorld()
     // Holo info
     HolodiskInfo.clear();
     LastHoloId = USER_HOLO_START_NUM;
-
-    // Any data
-    AnyData.clear();
 
     // Time events
     for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
@@ -5335,153 +5325,6 @@ string FOServer::GetTimeEventsStatistics()
         for( uint k = 0, l = (uint) te->Values.size(); k < l; k++ )
         {
             Str::Format( str, " %-10u", te->Values[ k ] );
-            result += str;
-        }
-        result += "\n";
-    }
-    return result;
-}
-
-/************************************************************************/
-/* Any data                                                             */
-/************************************************************************/
-void FOServer::SaveAnyDataFile()
-{
-    uint count = (uint) AnyData.size();
-    AddWorldSaveData( &count, sizeof( count ) );
-    for( auto it = AnyData.begin(), end = AnyData.end(); it != end; ++it )
-    {
-        const string& name = ( *it ).first;
-        UCharVec&     data = ( *it ).second;
-        uint          name_len = (uint) name.length();
-        AddWorldSaveData( &name_len, sizeof( name_len ) );
-        AddWorldSaveData( (void*) name.c_str(), name_len );
-        uint data_len = (uint) data.size();
-        AddWorldSaveData( &data_len, sizeof( data_len ) );
-        if( data_len )
-            AddWorldSaveData( &data[ 0 ], data_len );
-    }
-}
-
-bool FOServer::LoadAnyDataFile( void* f, uint version )
-{
-    UCharVec data;
-    uint     count = 0;
-    if( !FileRead( f, &count, sizeof( count ) ) )
-        return false;
-    for( uint i = 0; i < count; i++ )
-    {
-        char name[ MAX_FOTEXT ];
-        uint name_len;
-        if( !FileRead( f, &name_len, sizeof( name_len ) ) )
-            return false;
-        if( !FileRead( f, name, name_len ) )
-            return false;
-        name[ name_len ] = 0;
-
-        uint data_len;
-        if( !FileRead( f, &data_len, sizeof( data_len ) ) )
-            return false;
-        data.resize( data_len );
-        if( data_len && !FileRead( f, &data[ 0 ], data_len ) )
-            return false;
-
-        auto result = AnyData.insert( PAIR( string( name ), data ) );
-        MEMORY_PROCESS( MEMORY_ANY_DATA, (int) ( *result.first ).second.capacity() );
-    }
-    return true;
-}
-
-bool FOServer::SetAnyData( const string& name, const uchar* data, uint data_size )
-{
-    SCOPE_LOCK( AnyDataLocker );
-
-    auto      result = AnyData.insert( PAIR( name, UCharVec() ) );
-    UCharVec& data_ = ( *result.first ).second;
-
-    MEMORY_PROCESS( MEMORY_ANY_DATA, -(int) data_.capacity() );
-    data_.resize( data_size );
-    if( data_size )
-        memcpy( &data_[ 0 ], data, data_size );
-    MEMORY_PROCESS( MEMORY_ANY_DATA, (int) data_.capacity() );
-    return true;
-}
-
-bool FOServer::GetAnyData( const string& name, ScriptArray& script_array )
-{
-    SCOPE_LOCK( AnyDataLocker );
-
-    auto it = AnyData.find( name );
-    if( it == AnyData.end() )
-        return false;
-
-    UCharVec& data = ( *it ).second;
-    uint      length = (uint) data.size();
-
-    if( !length )
-    {
-        script_array.Resize( 0 );
-        return true;
-    }
-
-    uint element_size = script_array.GetElementSize();
-    script_array.Resize( length / element_size + ( ( length % element_size ) ? 1 : 0 ) );
-    memcpy( script_array.At( 0 ), &data[ 0 ], length );
-    return true;
-}
-
-uint FOServer::GetAnyDataList( ScriptArray* script_array )
-{
-    SCOPE_LOCK( AnyDataLocker );
-
-    if( script_array )
-    {
-        for( auto it = AnyData.begin(), end = AnyData.end(); it != end; ++it )
-        {
-            const string& name = ( *it ).first;
-            script_array->InsertLast( ScriptString::Create( name ) );
-        }
-    }
-
-    return (uint) AnyData.size();
-}
-
-bool FOServer::IsAnyData( const string& name )
-{
-    SCOPE_LOCK( AnyDataLocker );
-
-    auto it = AnyData.find( name );
-    bool present = ( it != AnyData.end() );
-    return present;
-}
-
-void FOServer::EraseAnyData( const string& name )
-{
-    SCOPE_LOCK( AnyDataLocker );
-
-    AnyData.erase( name );
-}
-
-string FOServer::GetAnyDataStatistics()
-{
-    SCOPE_LOCK( AnyDataLocker );
-
-    static string result;
-    char          str[ MAX_FOTEXT ];
-    result = "Any data count: ";
-    result += Str::ItoA( (int) AnyData.size() );
-    result += "\nName                          Length    Data\n";
-    for( auto it = AnyData.begin(), end = AnyData.end(); it != end; ++it )
-    {
-        const string& name = ( *it ).first;
-        UCharVec&     data = ( *it ).second;
-        Str::Format( str, "%-30s", name.c_str() );
-        result += str;
-        Str::Format( str, "%-10u", data.size() );
-        result += str;
-        for( uint i = 0, j = (uint) data.size(); i < j; i++ )
-        {
-            Str::Format( str, "%02X", data[ i ] );
             result += str;
         }
         result += "\n";

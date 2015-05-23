@@ -678,12 +678,6 @@ struct BindClass
     static void Global_GetTimeEvent()           {}
     static void Global_SetTimeEvent()           {}
     static void Global_GetTimeEventList()       {}
-    static void Global_SetAnyData()             {}
-    static void Global_SetAnyDataSize()         {}
-    static void Global_GetAnyData()             {}
-    static void Global_GetAnyDataList()         {}
-    static void Global_IsAnyData()              {}
-    static void Global_EraseAnyData()           {}
     static void Global_SetStartLocation()       {}
     static void Global_GetMap()                 {}
     static void Global_GetMapByPid()            {}

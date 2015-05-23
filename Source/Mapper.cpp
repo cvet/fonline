@@ -1563,7 +1563,7 @@ void FOMapper::MainLoop()
                     char str[ 512 ] = { 0 };
 
                     if( DrawCrExtInfo == 1 )
-                        Str::Format( str, "|0xffaabbcc ProtoId...%u\n|0xffff1122 DialogId...%u\n", mobj->ProtoId, cr->GetDialogId() );
+                        Str::Format( str, "|0xffaabbcc ProtoId...%s\n|0xffff1122 DialogId...%s\n", HASH_STR( mobj->ProtoId ), cr->GetDialogId() );
                     else if( DrawCrExtInfo == 2 )
                         Str::Format( str, "|0xff00ff00 ScriptName...%s\n|0xffff0000 FuncName...%s\n", mobj->ScriptName, mobj->FuncName );
 
@@ -1897,7 +1897,7 @@ void FOMapper::IntDraw()
                     SprMngr.DrawSpriteSize( anim->GetCurSprId(), x, y + h / 2, w, h / 2, false, true, col );
             }
 
-            SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), Str::FormatBuf( "%u", proto_item->ProtoId ), FT_NOBREAK, COLOR_TEXT_WHITE );
+            SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), proto_item->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE );
         }
 
         if( GetTabIndex() < (uint) ( *CurItemProtos ).size() )
@@ -1956,13 +1956,13 @@ void FOMapper::IntDraw()
                 col = COLOR_IFACE_RED;
 
             SprMngr.DrawSpriteSize( spr_id, x, y, w, h / 2, false, true, col );
-            SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), Str::FormatBuf( "%u", proto->ProtoId ), FT_NOBREAK, COLOR_TEXT_WHITE );
+            SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), proto->GetName(), FT_NOBREAK, COLOR_TEXT_WHITE );
         }
 
         if( GetTabIndex() < CurNpcProtos->size() )
         {
             ProtoCritter* proto = ( *CurNpcProtos )[ GetTabIndex() ];
-            SprMngr.DrawStr( Rect( IntWHint, IntX, IntY ), Str::I64toA( proto->ProtoId ), 0 );
+            SprMngr.DrawStr( Rect( IntWHint, IntX, IntY ), proto->GetName(), 0 );
         }
     }
     else if( IntMode == INT_MODE_INCONT && !SelectedObj.empty() )
@@ -2183,7 +2183,7 @@ void FOMapper::ObjDraw()
         DRAW_COMPONENT_TEXT( "MapObjType", "Item", true );                                  // 2
     if( o->MapObjType == MAP_OBJECT_SCENERY )
         DRAW_COMPONENT_TEXT( "MapObjType", "Scenery", true );                               // 2
-    DRAW_COMPONENT( "ProtoId", o->ProtoId, true, true );                                    // 3
+    DRAW_COMPONENT_TEXT( "ProtoName", HASH_STR( o->ProtoId ), true );                       // 3
     DRAW_COMPONENT( "MapX", o->MapX, true, true );                                          // 4
     DRAW_COMPONENT( "MapY", o->MapY, true, true );                                          // 5
     y += step;                                                                              // 6

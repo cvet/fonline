@@ -162,20 +162,6 @@ public:
     static uint   GetTimeEventsList( ScriptArray* nums );
     static string GetTimeEventsStatistics();
 
-    // Any data
-    typedef map< string, UCharVec > AnyDataMap;
-    static AnyDataMap AnyData;
-    static Mutex      AnyDataLocker;
-
-    static void   SaveAnyDataFile();
-    static bool   LoadAnyDataFile( void* f, uint version );
-    static bool   SetAnyData( const string& name, const uchar* data, uint data_size );
-    static bool   GetAnyData( const string& name, ScriptArray& script_array );
-    static uint   GetAnyDataList( ScriptArray* script_array );
-    static bool   IsAnyData( const string& name );
-    static void   EraseAnyData( const string& name );
-    static string GetAnyDataStatistics();
-
     // Scripting
     static StrVec  ServerWrongGlobalObjects;
     static Pragmas ServerPropertyPragmas;
@@ -865,12 +851,6 @@ public:
         static bool          Global_GetTimeEvent( uint num, uint& duration, ScriptArray* data );
         static bool          Global_SetTimeEvent( uint num, uint duration, ScriptArray* data );
         static uint          Global_GetTimeEventList( ScriptArray* nums );
-        static bool          Global_SetAnyData( ScriptString& name, ScriptArray& data );
-        static bool          Global_SetAnyDataSize( ScriptString& name, ScriptArray& data, uint data_size_bytes );
-        static bool          Global_GetAnyData( ScriptString& name, ScriptArray& data );
-        static uint          Global_GetAnyDataList( ScriptArray* names );
-        static bool          Global_IsAnyData( ScriptString& name );
-        static void          Global_EraseAnyData( ScriptString& name );
         static void          Global_SetTime( ushort multiplier, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static Map*          Global_GetMap( uint map_id );
         static Map*          Global_GetMapByPid( hash map_pid, uint skip_count );

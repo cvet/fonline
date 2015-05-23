@@ -336,7 +336,11 @@ void ItemHex::SetSpr( uint num_spr )
 void ItemHex::SetAnimOffs()
 {
     ScrX = GetOffsetX();
+    if( !ScrX )
+        ScrX = Proto->GetOffsetX();
     ScrY = GetOffsetY();
+    if( !ScrY )
+        ScrY = Proto->GetOffsetX();
     for( int i = 1; i <= curSpr; i++ )
     {
         ScrX += Anim->NextX[ i ];
