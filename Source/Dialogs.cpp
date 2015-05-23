@@ -5,7 +5,7 @@
 #ifdef FONLINE_SERVER
 # include "ConstantsManager.h"
 # include "Critter.h"
-# include "Vars.h"
+# include "Map.h"
 #endif
 
 DialogManager DlgMngr;
@@ -25,37 +25,70 @@ int ReadValue( const char* str )
     #endif
 }
 
-int GetParamId( const char* str, bool is_demand )
+int GetPropEnumIndex( const char* str, bool is_demand, int& type )
 {
     #ifdef FONLINE_SERVER
-    Property* prop = Critter::PropertiesRegistrator->Find( str );
-    if( !prop )
-        WriteLog( "DR property<%s> not found.\n", str );
-    else if( !prop->IsPOD() && !prop->IsDict() )
-        WriteLog( "DR property<%s> is not POD or Dict type.\n", str );
-    else if( prop->IsDict() && prop->GetASObjectType()->GetSubTypeId( 0 ) != asTYPEID_UINT32 )
-        WriteLog( "DR property<%s> Dict must have 'uint' in key.\n", str );
-    else if( is_demand && !prop->IsReadable() )
-        WriteLog( "DR property<%s> is not readable.\n", str );
-    else if( !is_demand && !prop->IsWritable() )
-        WriteLog( "DR property<%s> is not writable.\n", str );
+    Property* prop_global = GlobalVars::PropertiesRegistrator->Find( str );
+    Property* prop_critter = Critter::PropertiesRegistrator->Find( str );
+    Property* prop_item = Item::PropertiesRegistrator->Find( str );
+    Property* prop_location = Location::PropertiesRegistrator->Find( str );
+    Property* prop_map = Map::PropertiesRegistrator->Find( str );
+    int       count = ( prop_global ? 1 : 0 ) + ( prop_critter ? 1 : 0 ) + ( prop_item ? 1 : 0 ) + ( prop_location ? 1 : 0 ) + ( prop_map ? 1 : 0 );
+    if( count == 0 )
+    {
+        WriteLog( "DR property<%s> not found in GlobalVars/Critter/Item/Location/Map.\n", str );
+        return -1;
+    }
+    else if( count > 1 )
+    {
+        WriteLog( "DR property<%s> found multiple instances in GlobalVars/Critter/Item/Location/Map.\n", str );
+        return -1;
+    }
+
+    Property* prop = NULL;
+    if( prop_global )
+        prop = prop_global, type = DR_PROP_GLOBAL;
+    else if( prop_critter )
+        prop = prop_critter, type = DR_PROP_CRITTER;
+    else if( prop_item )
+        prop = prop_item, type = DR_PROP_ITEM;
+    else if( prop_location )
+        prop = prop_location, type = DR_PROP_LOCATION;
+    else if( prop_map )
+        prop = prop_map, type = DR_PROP_MAP;
+
+    if( type == DR_PROP_CRITTER && prop->IsDict() )
+    {
+        type = DR_PROP_CRITTER_DICT;
+        if( prop->GetASObjectType()->GetSubTypeId( 0 ) != asTYPEID_UINT32 )
+        {
+            WriteLog( "DR property<%s> Dict must have 'uint' in key.\n", str );
+            return -1;
+        }
+    }
     else
-        return prop->GetEnumValue();
-    return -1;
+    {
+        if( !prop->IsPOD() )
+        {
+            WriteLog( "DR property<%s> is not POD type.\n", str );
+            return -1;
+        }
+    }
+
+    if( is_demand && !prop->IsReadable() )
+    {
+        WriteLog( "DR property<%s> is not readable.\n", str );
+        return -1;
+    }
+    else if( !is_demand && !prop->IsWritable() )
+    {
+        WriteLog( "DR property<%s> is not writable.\n", str );
+        return -1;
+    }
+
+    return prop->GetRegIndex();
     #else
     return 0;
-    #endif
-}
-
-ushort GetTempVarId( const char* str )
-{
-    #ifdef FONLINE_SERVER
-    ushort tid = VarMngr.GetTemplateVarId( str );
-    if( !tid )
-        WriteLog( "Template var not found, name<%s>.\n", str );
-    return tid;
-    #else
-    return 1;
     #endif
 }
 
@@ -396,7 +429,7 @@ load_false:
 DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand )
 {
     int   errors = 0;
-    char  who = 'p';
+    char  who = DR_WHO_NONE;
     char  oper = '=';
     int   values_count = 0;
     char  svalue[ MAX_FOTEXT ] = { 0 };
@@ -437,57 +470,28 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
 
     switch( type )
     {
-    case DR_PARAM:
+    case DR_PROP_CRITTER:
     {
         // Who
         input >> who;
-        if( !CheckWho( who ) )
+        who = GetWho( who );
+        if( who == DR_WHO_NONE )
         {
-            WriteLog( "Invalid DR param who<%c>.\n", who );
+            WriteLog( "Invalid DR property who<%c>.\n", who );
             errors++;
         }
 
         // Name
         input >> name;
-        id = GetParamId( name, is_demand );
-        if( id == -1 )
+        id = (max_t) GetPropEnumIndex( name, is_demand, type );
+        if( id == (max_t) -1 )
             errors++;
 
         // Operator
         input >> oper;
         if( !CheckOper( oper ) )
         {
-            WriteLog( "Invalid DR param oper<%c>.\n", oper );
-            errors++;
-        }
-
-        // Value
-        READ_VALUE;
-    }
-    break;
-    case DR_VAR:
-    {
-        // Who
-        input >> who;
-        if( !CheckWho( who ) )
-        {
-            WriteLog( "Invalid DR var who<%c>.\n", who );
-            errors++;
-        }
-
-        // Name
-        input >> name;
-        if( ( id = GetTempVarId( name ) ) == 0 )
-        {
-            WriteLog( "Invalid DR var name<%s>.\n", name );
-            errors++;
-        }
-
-        // Operator
-        input >> oper;
-        if( !CheckOper( oper ) )
-        {
-            WriteLog( "Invalid DR var oper<%c>.\n", oper );
+            WriteLog( "Invalid DR property oper<%c>.\n", oper );
             errors++;
         }
 
@@ -499,7 +503,8 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     {
         // Who
         input >> who;
-        if( !CheckWho( who ) )
+        who = GetWho( who );
+        if( who == DR_WHO_NONE )
         {
             WriteLog( "Invalid DR item who<%c>.\n", who );
             errors++;
@@ -633,11 +638,6 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         #endif
     }
     break;
-    case DR_LOCK:
-    {
-        READ_VALUE;
-    }
-    break;
     case DR_OR:
         break;
     default:
@@ -705,32 +705,32 @@ int DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
     return -1;
 }
 
-int DialogManager::GetDRType( const char* str )
+char DialogManager::GetDRType( const char* str )
 {
-    if( Str::CompareCase( str, "_param" ) )
-        return DR_PARAM;
-    else if( Str::CompareCase( str, "_item" ) )
+    if( Str::Compare( str, "Property" ) || Str::Compare( str, "_param" ) )
+        return DR_PROP_CRITTER;
+    else if( Str::Compare( str, "Item" ) || Str::Compare( str, "_item" ) )
         return DR_ITEM;
-    else if( Str::CompareCase( str, "_lock" ) )
-        return DR_LOCK;
-    else if( Str::CompareCase( str, "_script" ) )
+    else if( Str::Compare( str, "Script" ) || Str::Compare( str, "_script" ) )
         return DR_SCRIPT;
-    else if( Str::CompareCase( str, "_var" ) )
-        return DR_VAR;
-    else if( Str::CompareCase( str, "no_recheck" ) )
+    else if( Str::Compare( str, "NoRecheck" ) || Str::Compare( str, "no_recheck" ) )
         return DR_NO_RECHECK;
-    else if( Str::CompareCase( str, "or" ) )
+    else if( Str::Compare( str, "Or" ) || Str::Compare( str, "or" ) )
         return DR_OR;
     return DR_NONE;
+}
+
+char DialogManager::GetWho( char who )
+{
+    if( who == 'P' || who == 'p' )
+        return DR_WHO_PLAYER;
+    else if( who == 'N' || who == 'n' )
+        return DR_WHO_PLAYER;
+    return DR_WHO_NONE;
 }
 
 bool DialogManager::CheckOper( char oper )
 {
     return oper == '>' || oper == '<' || oper == '=' || oper == '+' || oper == '-' || oper == '*' ||
            oper == '/' || oper == '=' || oper == '!' || oper == '}' || oper == '{';
-}
-
-bool DialogManager::CheckWho( char who )
-{
-    return who == 'p' || who == 'n';
 }

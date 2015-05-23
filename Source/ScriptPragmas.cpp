@@ -502,13 +502,14 @@ public:
 # include "Dialogs.h"
 # include "ItemManager.h"
 # include "CritterManager.h"
+# include "MapManager.h"
 #endif
 
 class ContentPragma
 {
 private:
     list< hash > dataStorage;
-    StrUIntMap   filesToCheck[ 3 ];
+    StrUIntMap   filesToCheck[ 5 ];
 
 public:
     bool Call( const string& text )
@@ -544,6 +545,16 @@ public:
         {
             group_index = 2;
             ns = "Content::Critter";
+        }
+        else if( Str::CompareCase( group.c_str(), "Location" ) )
+        {
+            group_index = 3;
+            ns = "Content::Location";
+        }
+        else if( Str::CompareCase( group.c_str(), "Map" ) )
+        {
+            group_index = 4;
+            ns = "Content::Map";
         }
         else
         {
@@ -597,6 +608,22 @@ public:
             if( !CrMngr.GetProto( it->second ) )
             {
                 WriteLog( "Critter file '%s' not found.\n", it->first.c_str() );
+                errors++;
+            }
+        }
+        for( auto it = filesToCheck[ 3 ].begin(); it != filesToCheck[ 3 ].end(); ++it )
+        {
+            if( !MapMngr.GetProtoLocation( it->second ) )
+            {
+                WriteLog( "Location file '%s' not found.\n", it->first.c_str() );
+                errors++;
+            }
+        }
+        for( auto it = filesToCheck[ 4 ].begin(); it != filesToCheck[ 4 ].end(); ++it )
+        {
+            if( !MapMngr.GetProtoMap( it->second ) )
+            {
+                WriteLog( "Map file '%s' not found.\n", it->first.c_str() );
                 errors++;
             }
         }

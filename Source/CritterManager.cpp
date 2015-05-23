@@ -776,18 +776,6 @@ void CritterManager::EraseCritter( Critter* cr )
     }
 }
 
-void CritterManager::GetNpcIds( UIntSet& npc_ids )
-{
-    SCOPE_LOCK( crLocker );
-
-    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
-    {
-        Critter* cr = ( *it ).second;
-        if( cr->IsNpc() )
-            npc_ids.insert( cr->GetId() );
-    }
-}
-
 uint CritterManager::PlayersInGame()
 {
     SCOPE_LOCK( crLocker );

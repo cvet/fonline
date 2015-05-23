@@ -1194,6 +1194,10 @@ bool ProtoMap::Refresh()
             mobj_child->MapX = child_hx;
             mobj_child->MapY = child_hy;
             mobj_child->ProtoId = proto_parent->GetChildPid( mobj_child->ParentChildIndex );
+            #ifdef FONLINE_MAPPER
+            SAFEREL( mobj_child->ProtoName );
+            mobj_child->ProtoName = ScriptString::Create( HASH_STR( mobj_child->ProtoId ) );
+            #endif
             delete_child = false;
             break;
         }

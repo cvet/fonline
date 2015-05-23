@@ -139,7 +139,6 @@ public:
     string GetLocationsMapsStatistics();
     void   RunInitScriptMaps();
     bool   GenerateWorld();
-    void   GetLocationAndMapIds( UIntSet& loc_ids, UIntSet& map_ids );
 
     // Maps stuff
 public:

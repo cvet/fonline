@@ -20,19 +20,27 @@
 
 // Types
 #define DR_NONE                    ( 0 )
-#define DR_PARAM                   ( 1 )
-#define DR_ITEM                    ( 2 )
-#define DR_VAR                     ( 3 )
-#define DR_SCRIPT                  ( 4 )
-#define DR_LOCK                    ( 5 )
-#define DR_NO_RECHECK              ( 6 )
-#define DR_OR                      ( 7 )
+#define DR_PROP_GLOBAL             ( 1 )
+#define DR_PROP_CRITTER            ( 2 )
+#define DR_PROP_CRITTER_DICT       ( 3 )
+#define DR_PROP_ITEM               ( 4 )
+#define DR_PROP_LOCATION           ( 5 )
+#define DR_PROP_MAP                ( 6 )
+#define DR_ITEM                    ( 7 )
+#define DR_SCRIPT                  ( 8 )
+#define DR_NO_RECHECK              ( 9 )
+#define DR_OR                      ( 10 )
+
+// Who types
+#define DR_WHO_NONE                ( 0 )
+#define DR_WHO_PLAYER              ( 1 )
+#define DR_WHO_NPC                 ( 2 )
 
 class DemandResult
 {
 public:
     char  Type;                 // Type of demand or result
-    char  Who;                  // Direction ('p' - player, 'n' - npc)
+    char  Who;                  // Direction
     max_t ParamId;              // Parameter Id
     bool  NoRecheck;            // Disable demand rechecking
     bool  RetValue;             // Reserved
@@ -49,14 +57,9 @@ public:
     #endif
 
     #ifdef FONLINE_NPCEDITOR
-    DemandResult(): Type( DR_NONE ), Who( 'p' ), ParamId( 0 ), NoRecheck( false ), RetValue( false ), Op( 0 ), ValuesCount( 0 ) {}
+    DemandResult(): Type( DR_NONE ), Who( DR_WHO_NONE ), ParamId( 0 ), NoRecheck( false ), RetValue( false ), Op( 0 ), ValuesCount( 0 ) {}
     #else
-    DemandResult(): Type( DR_NONE ), Who( 'p' ), ParamId( 0 ), NoRecheck( false ), RetValue( false ), Op( 0 ), Value( 0 ), ValuesCount( 0 ) { MEMORY_PROCESS( MEMORY_DIALOG, sizeof( DemandResult ) ); }
-    DemandResult( const DemandResult& r )
-    {
-        *this = r;
-        MEMORY_PROCESS( MEMORY_DIALOG, sizeof( DemandResult ) );
-    }
+    DemandResult(): Type( DR_NONE ), Who( DR_WHO_NONE ), ParamId( 0 ), NoRecheck( false ), RetValue( false ), Op( 0 ), Value( 0 ), ValuesCount( 0 ) { MEMORY_PROCESS( MEMORY_DIALOG, sizeof( DemandResult ) ); }
     ~DemandResult() { MEMORY_PROCESS( MEMORY_DIALOG, -(int) sizeof( DemandResult ) ); }
     #endif
 };
@@ -187,9 +190,9 @@ private:
     DemandResult* LoadDemandResult( istrstream& input, bool is_demand );
     bool          CheckLockTime( int time );
     int           GetNotAnswerAction( const char* str, bool& ret_val );
-    int           GetDRType( const char* str );
+    char          GetDRType( const char* str );
+    char          GetWho( char who );
     bool          CheckOper( char oper );
-    bool          CheckWho( char who );
 };
 
 extern DialogManager DlgMngr;

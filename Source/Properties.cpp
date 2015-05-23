@@ -1,8 +1,24 @@
 #include "Common.h"
 #include "Properties.h"
 #include "FileSystem.h"
-#include "Script.h"
 #include "IniParser.h"
+
+#if defined ( FONLINE_SCRIPT_COMPILER ) || defined ( FONLINE_NPCEDITOR )
+# define DISABLE_SCRIPT
+# define SCRIPT_ERROR_R( error, ... )     (void) 0
+# define SCRIPT_ERROR_R0( error, ... )    (void) 0
+#else
+# include "Script.h"
+#endif
+
+#if defined ( FONLINE_SCRIPT_COMPILER )
+# include "ScriptEngine.h"
+static asIScriptEngine* GetASEngine() { return (asIScriptEngine*) GetScriptEngine(); }
+#elif defined ( FONLINE_NPCEDITOR )
+static asIScriptEngine* GetASEngine() { return NULL; }
+#else
+static asIScriptEngine* GetASEngine() { return Script::GetEngine(); }
+#endif
 
 Property::Property()
 {
@@ -147,7 +163,7 @@ void Property::GenericGet( void* obj, void* ret_value )
 
         getCallbackLocked = true;
 
-        #ifndef FONLINE_SCRIPT_COMPILER
+        #ifndef DISABLE_SCRIPT
         if( Script::PrepareContext( getCallback, _FUNC_, GetName() ) )
         {
             if( getCallbackArgs > 0 )
@@ -370,7 +386,7 @@ void Property::GenericSet( void* obj, void* new_value )
 
         for( size_t i = 0; i < setCallbacks.size(); i++ )
         {
-            #ifndef FONLINE_SCRIPT_COMPILER
+            #ifndef DISABLE_SCRIPT
             if( Script::PrepareContext( setCallbacks[ i ], _FUNC_, GetName() ) )
             {
                 if( setCallbacksArgs[ i ] > 0 )
@@ -515,6 +531,84 @@ void Property::SetData( void* obj, uchar* data, uint data_size )
     }
 }
 
+int Property::GetPODValueAsInt( void* obj )
+{
+    RUNTIME_ASSERT( dataType == Property::POD );
+    if( isBoolDataType )
+    {
+        return GetValue< bool >( obj ) ? 1 : 0;
+    }
+    else if( isFloatDataType )
+    {
+        if( baseSize == 4 )
+            return (int) GetValue< float >( obj );
+        else if( baseSize == 8 )
+            return (int) GetValue< double >( obj );
+    }
+    else if( isSignedIntDataType )
+    {
+        if( baseSize == 1 )
+            return (int) GetValue< char >( obj );
+        if( baseSize == 2 )
+            return (int) GetValue< short >( obj );
+        if( baseSize == 4 )
+            return (int) GetValue< int >( obj );
+        if( baseSize == 8 )
+            return (int) GetValue< int64 >( obj );
+    }
+    else
+    {
+        if( baseSize == 1 )
+            return (int) GetValue< uchar >( obj );
+        if( baseSize == 2 )
+            return (int) GetValue< ushort >( obj );
+        if( baseSize == 4 )
+            return (int) GetValue< uint >( obj );
+        if( baseSize == 8 )
+            return (int) GetValue< uint64 >( obj );
+    }
+    RUNTIME_ASSERT( !"Unreachable place" );
+    return 0;
+}
+
+void Property::SetPODValueAsInt( void* obj, int value )
+{
+    RUNTIME_ASSERT( dataType == Property::POD );
+    if( isBoolDataType )
+    {
+        SetValue< bool >( this, value != 0 );
+    }
+    else if( isFloatDataType )
+    {
+        if( baseSize == 4 )
+            SetValue< float >( this, (float) value );
+        else if( baseSize == 8 )
+            SetValue< double >( this, (double) value );
+    }
+    else if( isSignedIntDataType )
+    {
+        if( baseSize == 1 )
+            SetValue< char >( this, (char) value );
+        else if( baseSize == 2 )
+            SetValue< short >( this, (short) value );
+        else if( baseSize == 4 )
+            SetValue< int >( this, (int) value );
+        else if( baseSize == 8 )
+            SetValue< int64 >( this, (int64) value );
+    }
+    else
+    {
+        if( baseSize == 1 )
+            SetValue< uchar >( this, (uchar) value );
+        else if( baseSize == 2 )
+            SetValue< ushort >( this, (ushort) value );
+        else if( baseSize == 4 )
+            SetValue< uint >( this, (uint) value );
+        else if( baseSize == 8 )
+            SetValue< uint64 >( this, (uint64) value );
+    }
+}
+
 void Property::SetSendIgnore( void* obj )
 {
     sendIgnoreObj = obj;
@@ -527,7 +621,7 @@ bool Property::IsQuestValue()
 
 string Property::SetGetCallback( const char* script_func )
 {
-    #ifndef FONLINE_SCRIPT_COMPILER
+    #ifndef DISABLE_SCRIPT
     // Todo: Check can get
 
     char decl[ MAX_FOTEXT ];
@@ -557,7 +651,7 @@ string Property::SetGetCallback( const char* script_func )
 
 string Property::AddSetCallback( const char* script_func )
 {
-    #ifndef FONLINE_SCRIPT_COMPILER
+    #ifndef DISABLE_SCRIPT
     // Todo: Check can set
 
     char decl[ MAX_FOTEXT ];
@@ -922,7 +1016,8 @@ bool Properties::LoadFromText( const char* text, hash* pid /* = NULL */ )
             {
                 int              enum_value = 0;
                 bool             enum_found = false;
-                asIScriptEngine* engine = Script::GetEngine();
+                asIScriptEngine* engine = GetASEngine();
+                RUNTIME_ASSERT( engine );
                 for( asUINT i = 0, j = engine->GetEnumCount(); i < j; i++ )
                 {
                     int         enum_type_id;
@@ -987,16 +1082,7 @@ int Properties::GetValueAsInt( int enum_value )
     if( !prop->IsReadable() )
         SCRIPT_ERROR_R0( "Can't retreive integer value from non readable property '%s'", prop->GetName() );
 
-    if( prop->baseSize == 1 )
-        return (int) prop->GetValue< char >( this );
-    if( prop->baseSize == 2 )
-        return (int) prop->GetValue< short >( this );
-    if( prop->baseSize == 4 )
-        return (int) prop->GetValue< int >( this );
-    if( prop->baseSize == 8 )
-        return (int) prop->GetValue< int64 >( this );
-    RUNTIME_ASSERT( !"Unreachable place" );
-    return 0;
+    return prop->GetPODValueAsInt( this );
 }
 
 void Properties::SetValueAsInt( int enum_value, int value )
@@ -1009,18 +1095,7 @@ void Properties::SetValueAsInt( int enum_value, int value )
     if( !prop->IsWritable() )
         SCRIPT_ERROR_R( "Can't set integer value to non writable property '%s'", prop->GetName() );
 
-    if( prop->isBoolDataType )
-        prop->SetValue< char >( this, value != 0 ? 1 : 0 );
-    else if( prop->baseSize == 1 )
-        prop->SetValue< char >( this, (char) value );
-    else if( prop->baseSize == 2 )
-        prop->SetValue< short >( this, (short) value );
-    else if( prop->baseSize == 4 )
-        prop->SetValue< int >( this, (int) value );
-    else if( prop->baseSize == 8 )
-        prop->SetValue< int64 >( this, (int64) value );
-    else
-        RUNTIME_ASSERT( !"Unreachable place" );
+    prop->SetPODValueAsInt( this, value );
 }
 
 bool Properties::SetValueAsIntByName( const char* enum_name, int value )
@@ -1030,17 +1105,10 @@ bool Properties::SetValueAsIntByName( const char* enum_name, int value )
         SCRIPT_ERROR_R0( "Enum '%s' not found", enum_name );
     if( !prop->IsPOD() )
         SCRIPT_ERROR_R0( "Can't set by name integer value from non POD property '%s'", prop->GetName() );
+    if( !prop->IsWritable() )
+        SCRIPT_ERROR_R0( "Can't set integer value to non writable property '%s'", prop->GetName() );
 
-    if( prop->baseSize == 1 )
-        prop->SetValue< char >( this, (char) value );
-    else if( prop->baseSize == 2 )
-        prop->SetValue< short >( this, (short) value );
-    else if( prop->baseSize == 4 )
-        prop->SetValue< int >( this, (int) value );
-    else if( prop->baseSize == 8 )
-        prop->SetValue< int64 >( this, (int64) value );
-    else
-        RUNTIME_ASSERT( !"Unreachable place" );
+    prop->SetPODValueAsInt( this, value );
     return true;
 }
 
@@ -1089,7 +1157,7 @@ bool PropertyRegistrator::Init()
     string enum_type = ( scriptClassName.find( "Cl" ) != string::npos ? scriptClassName.substr( 0, scriptClassName.size() - 2 ) : scriptClassName ) + "Property";
     enumTypeName = enum_type;
 
-    asIScriptEngine* engine = Script::GetEngine();
+    asIScriptEngine* engine = GetASEngine();
     RUNTIME_ASSERT( engine );
 
     int result = engine->RegisterEnum( enum_type.c_str() );
@@ -1152,7 +1220,7 @@ Property* PropertyRegistrator::Register(
     max_value = ( max_value ? max_value : defaultMaxValue );
 
     // Get engine
-    asIScriptEngine* engine = Script::GetEngine();
+    asIScriptEngine* engine = GetASEngine();
     RUNTIME_ASSERT( engine );
 
     // Extract type

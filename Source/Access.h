@@ -40,8 +40,6 @@
 #define CMD_LOADDIALOG               ( 27 )
 #define CMD_RELOADTEXTS              ( 28 )
 #define CMD_RELOADAI                 ( 29 )
-#define CMD_CHECKVAR                 ( 30 )
-#define CMD_SETVAR                   ( 31 )
 #define CMD_SETTIME                  ( 32 )
 #define CMD_BAN                      ( 33 )
 #define CMD_DELETE_ACCOUNT           ( 34 )
@@ -89,10 +87,6 @@ const CmdDef cmdlist[] =
     { "loaddialog", CMD_LOADDIALOG },
     { "reloadtexts", CMD_RELOADTEXTS },
     { "reloadai", CMD_RELOADAI },
-    { "checkvar", CMD_CHECKVAR },
-    { "cvar", CMD_CHECKVAR },
-    { "setvar", CMD_SETVAR },
-    { "svar", CMD_SETVAR },
     { "settime", CMD_SETTIME },
     { "ban", CMD_BAN },
     { "deleteself", CMD_DELETE_ACCOUNT },
@@ -525,54 +519,6 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-    }
-    break;
-    case CMD_CHECKVAR:
-    {
-        ushort tid_var;
-        uchar  master_is_npc;
-        uint   master_id;
-        uint   slave_id;
-        uchar  full_info;
-        if( sscanf( args, "%hu%hhu%u%u%hhu", &tid_var, &master_is_npc, &master_id, &slave_id, &full_info ) != 5 )
-        {
-            logcb( "Invalid arguments. Example: <checkvar tid_var master_is_npc master_id slave_id full_info>." );
-            break;
-        }
-        msg_len += sizeof( tid_var ) + sizeof( master_is_npc ) + sizeof( master_id ) + sizeof( slave_id ) + sizeof( full_info );
-
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-        buf << tid_var;
-        buf << master_is_npc;
-        buf << master_id;
-        buf << slave_id;
-        buf << full_info;
-    }
-    break;
-    case CMD_SETVAR:
-    {
-        ushort tid_var;
-        uchar  master_is_npc;
-        uint   master_id;
-        uint   slave_id;
-        int    value;
-        if( sscanf( args, "%hu%hhu%u%u%d", &tid_var, &master_is_npc, &master_id, &slave_id, &value ) != 5 )
-        {
-            logcb( "Invalid arguments. Example: <setvar tid_var master_is_npc master_id slave_id value>." );
-            break;
-        }
-        msg_len += sizeof( tid_var ) + sizeof( master_is_npc ) + sizeof( master_id ) + sizeof( slave_id ) + sizeof( value );
-
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-        buf << tid_var;
-        buf << master_is_npc;
-        buf << master_id;
-        buf << slave_id;
-        buf << value;
     }
     break;
     case CMD_SETTIME:

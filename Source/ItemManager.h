@@ -47,7 +47,6 @@ public:
     void GetGameItems( ItemVec& items );
     uint GetItemsCount();
     void SetCritterItems( Critter* cr );
-    void GetItemIds( UIntSet& item_ids );
 
     Item* CreateItem( hash pid, uint count = 0, uint item_id = 0 );
     Item* SplitItem( Item* item, uint count );

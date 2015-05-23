@@ -3505,36 +3505,6 @@ void FOServer::SScriptFunc::Crit_EventSmthTurnBasedProcess( Critter* cr, Critter
     cr->EventSmthTurnBasedProcess( from_cr, map, begin_turn );
 }
 
-GameVar* FOServer::SScriptFunc::Global_GetGlobalVar( ushort tvar_id )
-{
-    GameVar* gvar = VarMngr.GetVar( tvar_id, 0, 0, true );
-    if( !gvar )
-        SCRIPT_ERROR_R0( "Global var not found." );
-    return gvar;
-}
-
-GameVar* FOServer::SScriptFunc::Global_GetLocalVar( ushort tvar_id, uint master_id )
-{
-    if( !master_id )
-        SCRIPT_ERROR_R0( "Master id is zero." );
-    GameVar* lvar = VarMngr.GetVar( tvar_id, master_id, 0, true );
-    if( !lvar )
-        SCRIPT_ERROR_R0( "Local var not found." );
-    return lvar;
-}
-
-GameVar* FOServer::SScriptFunc::Global_GetUnicumVar( ushort tvar_id, uint master_id, uint slave_id )
-{
-    if( !master_id )
-        SCRIPT_ERROR_R0( "Master id is zero." );
-    if( !slave_id )
-        SCRIPT_ERROR_R0( "Slave id is zero." );
-    GameVar* uvar = VarMngr.GetVar( tvar_id, master_id, slave_id, true );
-    if( !uvar )
-        SCRIPT_ERROR_R0( "Unicum var not found." );
-    return uvar;
-}
-
 uint FOServer::SScriptFunc::Map_GetId( Map* map )
 {
     if( map->IsNotValid )
@@ -5502,7 +5472,7 @@ void SwapCrittersRefreshClient( Client* cl, Map* map, Map* prev_map )
     }
 }
 
-bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory, bool with_vars )
+bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory )
 {
     // Check
     if( cr1->IsNotValid )
@@ -5604,9 +5574,8 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
             cr1->AddItem( *it, false );
     }
 
-    // Swap vars
-    if( with_vars )
-        VarMngr.SwapVars( cr1->GetId(), cr2->GetId() );
+    // Swap properties
+    cr2->Props = cr1->Props;
 
     // Refresh
     cr1->ClearVisible();

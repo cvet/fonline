@@ -4,7 +4,6 @@
 #include "Map.h"
 #include "Critter.h"
 #include "Item.h"
-#include "Vars.h"
 
 static Mutex JobLocker; // Defense code from simultaneously execution
 
@@ -114,7 +113,6 @@ static LocVec  DeferredReleaseLocs;
 static UIntVec DeferredReleaseLocsCycle;
 static ItemVec DeferredReleaseItems;
 static UIntVec DeferredReleaseItemsCycle;
-static VarsVec DeferredReleaseVars;
 static UIntVec DeferredReleaseVarsCycle;
 static uint    DeferredReleaseCycle = 0;
 static Mutex   DeferredReleaseLocker;
@@ -149,14 +147,6 @@ void Job::DeferredRelease( Item* item )
 
     DeferredReleaseItems.push_back( item );
     DeferredReleaseItemsCycle.push_back( DeferredReleaseCycle );
-}
-
-void Job::DeferredRelease( GameVar* var )
-{
-    SCOPE_LOCK( DeferredReleaseLocker );
-
-    DeferredReleaseVars.push_back( var );
-    DeferredReleaseVarsCycle.push_back( DeferredReleaseCycle );
 }
 
 void Job::SetDeferredReleaseCycle( uint cycle )
@@ -198,5 +188,4 @@ void Job::ProcessDeferredReleasing()
     ProcessDeferredReleasing_( DeferredReleaseMaps, DeferredReleaseMapsCycle );
     ProcessDeferredReleasing_( DeferredReleaseLocs, DeferredReleaseLocsCycle );
     ProcessDeferredReleasing_( DeferredReleaseItems, DeferredReleaseItemsCycle );
-    ProcessDeferredReleasing_( DeferredReleaseVars, DeferredReleaseVarsCycle );
 }

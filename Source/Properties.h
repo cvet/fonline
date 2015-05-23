@@ -17,7 +17,7 @@
         for( auto it = PropertiesList.begin(); it != PropertiesList.end(); it++ ) \
         {                                                                         \
             *it->second = PropertiesRegistrator->Find( it->first );               \
-            RUNTIME_ASSERT( *it->second );                                        \
+            RUNTIME_ASSERT_STR( *it->second, it->first );                         \
         }                                                                         \
     }
 
@@ -115,6 +115,8 @@ public:
     uchar* GetRawData( void* obj, uint& data_size );
     void   SetRawData( void* obj, uchar* data, uint data_size );
     void   SetData( void* obj, uchar* data, uint data_size );
+    int    GetPODValueAsInt( void* obj );
+    void   SetPODValueAsInt( void* obj, int value );
 
     string SetGetCallback( const char* script_func );
     string AddSetCallback( const char* script_func );

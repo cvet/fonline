@@ -9559,7 +9559,7 @@ int FOClient::SScriptFunc::Item_get_Type( Item* item )
 {
     if( item->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
-    return item->GetProtoId();
+    return item->GetType();
 }
 
 bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& hy )

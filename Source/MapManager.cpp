@@ -557,16 +557,6 @@ bool MapManager::GenerateWorld()
     return false;
 }
 
-void MapManager::GetLocationAndMapIds( UIntSet& loc_ids, UIntSet& map_ids )
-{
-    SCOPE_LOCK( mapLocker );
-
-    for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
-        loc_ids.insert( ( *it ).second->GetId() );
-    for( auto it = allMaps.begin(), end = allMaps.end(); it != end; ++it )
-        map_ids.insert( ( *it ).second->GetId() );
-}
-
 ProtoLocation* MapManager::GetProtoLocation( hash loc_pid )
 {
     auto it = protoLoc.find( loc_pid );

@@ -10,15 +10,14 @@
 #define JOB_GARBAGE_ITEMS         ( 5 )
 #define JOB_GARBAGE_CRITTERS      ( 6 )
 #define JOB_GARBAGE_LOCATIONS     ( 7 )
-#define JOB_GARBAGE_VARS          ( 8 )
-#define JOB_DEFERRED_RELEASE      ( 9 )
-#define JOB_GAME_TIME             ( 10 )
-#define JOB_BANS                  ( 11 )
-#define JOB_LOOP_SCRIPT           ( 12 )
-#define JOB_THREAD_LOOP           ( 13 )
-#define JOB_THREAD_SYNCHRONIZE    ( 14 )
-#define JOB_THREAD_FINISH         ( 15 )
-#define JOB_COUNT                 ( 16 )
+#define JOB_DEFERRED_RELEASE      ( 8 )
+#define JOB_GAME_TIME             ( 9 )
+#define JOB_BANS                  ( 10 )
+#define JOB_LOOP_SCRIPT           ( 11 )
+#define JOB_THREAD_LOOP           ( 12 )
+#define JOB_THREAD_SYNCHRONIZE    ( 13 )
+#define JOB_THREAD_FINISH         ( 14 )
+#define JOB_COUNT                 ( 15 )
 
 class Critter;
 class Map;
@@ -49,7 +48,6 @@ public:
     static void DeferredRelease( Map* cr );
     static void DeferredRelease( Location* cr );
     static void DeferredRelease( Item* cr );
-    static void DeferredRelease( GameVar* cr );
     static void SetDeferredReleaseCycle( uint cycle );
     static void ProcessDeferredReleasing();
 };

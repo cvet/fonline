@@ -45,7 +45,7 @@ Thread     GUIUpdateThread;
 // GUI
 Fl_Window* GuiWindow;
 Fl_Box*    GuiLabelGameTime, * GuiLabelClients, * GuiLabelIngame, * GuiLabelNPC, * GuiLabelLocCount,
-* GuiLabelItemsCount, * GuiLabelVarsCount, * GuiLabelAnyDataCount, * GuiLabelTECount,
+* GuiLabelItemsCount, * GuiLabelAnyDataCount, * GuiLabelTECount,
 * GuiLabelFPS, * GuiLabelDelta, * GuiLabelUptime, * GuiLabelSend, * GuiLabelRecv, * GuiLabelCompress;
 Fl_Button* GuiBtnRlClScript, * GuiBtnSaveWorld, * GuiBtnSaveLog, * GuiBtnSaveInfo,
 * GuiBtnCreateDump, * GuiBtnMemory, * GuiBtnPlayers, * GuiBtnLocsMaps, * GuiBtnTimeEvents,
@@ -310,15 +310,14 @@ void GUIInit( IniParser& cfg )
     GUISetup.Setup( GuiLabelNPC         = new Fl_Box( GUI_SIZE4( 5, 30, 124, 8 ), "NPC in game:" ) );
     GUISetup.Setup( GuiLabelLocCount    = new Fl_Box( GUI_SIZE4( 5, 38, 124, 8 ), "Locations:" ) );
     GUISetup.Setup( GuiLabelItemsCount  = new Fl_Box( GUI_SIZE4( 5, 46, 124, 8 ), "Items:" ) );
-    GUISetup.Setup( GuiLabelVarsCount   = new Fl_Box( GUI_SIZE4( 5, 54, 124, 8 ), "Vars:" ) );
-    GUISetup.Setup( GuiLabelAnyDataCount = new Fl_Box( GUI_SIZE4( 5, 62, 124, 8 ), "Any data:" ) );
-    GUISetup.Setup( GuiLabelTECount     = new Fl_Box( GUI_SIZE4( 5, 70, 124, 8 ), "Time events:" ) );
-    GUISetup.Setup( GuiLabelFPS         = new Fl_Box( GUI_SIZE4( 5, 78, 124, 8 ), "Cycles per second:" ) );
-    GUISetup.Setup( GuiLabelDelta       = new Fl_Box( GUI_SIZE4( 5, 86, 124, 8 ), "Cycle time:" ) );
-    GUISetup.Setup( GuiLabelUptime      = new Fl_Box( GUI_SIZE4( 5, 94, 124, 8 ), "Uptime:" ) );
-    GUISetup.Setup( GuiLabelSend        = new Fl_Box( GUI_SIZE4( 5, 102, 124, 8 ), "KBytes send:" ) );
-    GUISetup.Setup( GuiLabelRecv        = new Fl_Box( GUI_SIZE4( 5, 110, 124, 8 ), "KBytes recv:" ) );
-    GUISetup.Setup( GuiLabelCompress    = new Fl_Box( GUI_SIZE4( 5, 118, 124, 8 ), "Compress ratio:" ) );
+    GUISetup.Setup( GuiLabelAnyDataCount = new Fl_Box( GUI_SIZE4( 5, 54, 124, 8 ), "Any data:" ) );
+    GUISetup.Setup( GuiLabelTECount     = new Fl_Box( GUI_SIZE4( 5, 62, 124, 8 ), "Time events:" ) );
+    GUISetup.Setup( GuiLabelFPS         = new Fl_Box( GUI_SIZE4( 5, 70, 124, 8 ), "Cycles per second:" ) );
+    GUISetup.Setup( GuiLabelDelta       = new Fl_Box( GUI_SIZE4( 5, 78, 124, 8 ), "Cycle time:" ) );
+    GUISetup.Setup( GuiLabelUptime      = new Fl_Box( GUI_SIZE4( 5, 86, 124, 8 ), "Uptime:" ) );
+    GUISetup.Setup( GuiLabelSend        = new Fl_Box( GUI_SIZE4( 5, 94, 124, 8 ), "KBytes send:" ) );
+    GUISetup.Setup( GuiLabelRecv        = new Fl_Box( GUI_SIZE4( 5, 102, 124, 8 ), "KBytes recv:" ) );
+    GUISetup.Setup( GuiLabelCompress    = new Fl_Box( GUI_SIZE4( 5, 110, 124, 8 ), "Compress ratio:" ) );
 
     // Buttons
     GUISetup.Setup( GuiBtnRlClScript = new Fl_Button( GUI_SIZE4( 5, 128, 124, 14 ), "Reload client scripts" ) );
@@ -549,7 +548,6 @@ void UpdateInfo()
         Label::Update( GuiLabelNPC, Str::Format( str, "NPC in game: %u", CrMngr.NpcInGame() ) );
         Label::Update( GuiLabelLocCount, Str::Format( str, "Locations: %u (%u)", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount() ) );
         Label::Update( GuiLabelItemsCount, Str::Format( str, "Items: %u", ItemMngr.GetItemsCount() ) );
-        Label::Update( GuiLabelVarsCount, Str::Format( str, "Vars: %u", VarMngr.GetVarsCount() ) );
         Label::Update( GuiLabelAnyDataCount, Str::Format( str, "Any data: %u", Server.AnyData.size() ) );
         Label::Update( GuiLabelTECount, Str::Format( str, "Time events: %u", Server.GetTimeEventsCount() ) );
         Label::Update( GuiLabelFPS, Str::Format( str, "Cycles per second: %u", Server.Statistics.FPS ) );
@@ -563,7 +561,6 @@ void UpdateInfo()
         Label::Update( GuiLabelNPC, Str::Format( str, "NPC in game: n/a" ) );
         Label::Update( GuiLabelLocCount, Str::Format( str, "Locations: n/a" ) );
         Label::Update( GuiLabelItemsCount, Str::Format( str, "Items: n/a" ) );
-        Label::Update( GuiLabelVarsCount, Str::Format( str, "Vars: n/a" ) );
         Label::Update( GuiLabelAnyDataCount, Str::Format( str, "Any data: n/a" ) );
         Label::Update( GuiLabelTECount, Str::Format( str, "Time events: n/a" ) );
         Label::Update( GuiLabelFPS, Str::Format( str, "Cycles per second: n/a" ) );

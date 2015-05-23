@@ -58,7 +58,8 @@
 #define WORLD_SAVE_V21               ( 0x01AB0F21 )
 #define WORLD_SAVE_V22               ( 0x01AB0F22 )
 #define WORLD_SAVE_V23               ( 0x01AB0F23 )
-#define WORLD_SAVE_LAST              WORLD_SAVE_V23
+#define WORLD_SAVE_V24               ( 0x01AB0F24 )
+#define WORLD_SAVE_LAST              WORLD_SAVE_V24
 #define SINGLEPLAYER_SAVE_V1         ( 1 )
 #define SINGLEPLAYER_SAVE_V2         ( 2 )
 #define SINGLEPLAYER_SAVE_LAST       ( SINGLEPLAYER_SAVE_V2 )

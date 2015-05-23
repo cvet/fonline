@@ -395,14 +395,6 @@ void ItemManager::SetCritterItems( Critter* cr )
     }
 }
 
-void ItemManager::GetItemIds( UIntSet& item_ids )
-{
-    SCOPE_LOCK( itemLocker );
-
-    for( auto it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
-        item_ids.insert( ( *it ).second->GetId() );
-}
-
 Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, uint item_id /* = 0 */ )
 {
     ProtoItem* proto = GetProtoItem( pid );

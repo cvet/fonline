@@ -35,10 +35,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "ProtoItem", "string@ GetScriptName()
 /************************************************************************/
 /* Types                                                                */
 /************************************************************************/
-BIND_ASSERT( engine->RegisterObjectType( "GameVar", 0, asOBJ_REF ) );
-BIND_ASSERT( engine->RegisterObjectBehaviour( "GameVar", asBEHAVE_ADDREF, "void f()", asMETHOD( GameVar, AddRef ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectBehaviour( "GameVar", asBEHAVE_RELEASE, "void f()", asMETHOD( GameVar, Release ), asCALL_THISCALL ) );
-
 BIND_ASSERT( engine->RegisterObjectType( "NpcPlane", 0, asOBJ_REF ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "NpcPlane", asBEHAVE_ADDREF, "void f()", asMETHOD( AIDataPlane, AddRef ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "NpcPlane", asBEHAVE_RELEASE, "void f()", asMETHOD( AIDataPlane, Release ), asCALL_THISCALL ) );
@@ -72,35 +68,6 @@ BIND_ASSERT( engine->RegisterObjectBehaviour( "Synchronizer", asBEHAVE_CONSTRUCT
 BIND_ASSERT( engine->RegisterObjectBehaviour( "Synchronizer", asBEHAVE_DESTRUCT, "void f()", asFUNCTION( BIND_CLASS Synchronizer_Destructor ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Synchronizer", "void Lock()", asMETHOD( SyncObject, Lock ), asCALL_THISCALL ) );
-
-/************************************************************************/
-/* GameVar                                                              */
-/************************************************************************/
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int GetValue() const", asMETHOD( GameVar, GetValue ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int GetMin() const", asMETHOD( GameVar, GetMin ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int GetMax() const", asMETHOD( GameVar, GetMax ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "GameVar& opAddAssign(const int)", asMETHODPR( GameVar, operator+=, (const int), GameVar & ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "GameVar& opSubAssign(const int)", asMETHODPR( GameVar, operator-=, (const int), GameVar & ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "GameVar& opMulAssign(const int)", asMETHODPR( GameVar, operator*=, (const int), GameVar & ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "GameVar& opDivAssign(const int)", asMETHODPR( GameVar, operator/=, (const int), GameVar & ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "GameVar& opAssign(const int)", asMETHODPR( GameVar, operator=, (const int), GameVar & ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "GameVar& opAddAssign(const GameVar&)", asMETHODPR( GameVar, operator+=, ( const GameVar & ), GameVar & ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "GameVar& opSubAssign(const GameVar&)", asMETHODPR( GameVar, operator-=, ( const GameVar & ), GameVar & ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "GameVar& opMulAssign(const GameVar&)", asMETHODPR( GameVar, operator*=, ( const GameVar & ), GameVar & ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "GameVar& opDivAssign(const GameVar&)", asMETHODPR( GameVar, operator/=, ( const GameVar & ), GameVar & ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "GameVar& opAssign(const GameVar&)", asMETHODPR( GameVar, operator=, ( const GameVar & ), GameVar & ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int opAdd(const int)", asFUNCTION( GameVarAddInt ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int opSub(const int)", asFUNCTION( GameVarSubInt ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int opMul(const int)", asFUNCTION( GameVarMulInt ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int opDiv(const int)", asFUNCTION( GameVarDivInt ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int opAdd(const GameVar&)", asFUNCTION( GameVarAddGameVar ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int opSub(const GameVar&)", asFUNCTION( GameVarSubGameVar ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int opMul(const GameVar&)", asFUNCTION( GameVarMulGameVar ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int opDiv(const GameVar&)", asFUNCTION( GameVarDivGameVar ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "bool opEquals(const int)", asFUNCTION( GameVarEqualInt ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int opCmp(const int)", asFUNCTION( GameVarCmpInt ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "bool opEquals(const GameVar&)", asFUNCTION( GameVarEqualGameVar ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "GameVar", "int opCmp(const GameVar&)", asFUNCTION( GameVarCmpGameVar ), asCALL_CDECL_OBJFIRST ) );
 
 /************************************************************************/
 /* NpcPlane                                                             */
@@ -554,9 +521,6 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Location", "const bool IsNotValid"
 /************************************************************************/
 /* Global                                                               */
 /************************************************************************/
-BIND_ASSERT( engine->RegisterGlobalFunction( "GameVar@+ GetGlobalVar(uint16 varId)", asFUNCTION( BIND_CLASS Global_GetGlobalVar ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "GameVar@+ GetLocalVar(uint16 varId, uint masterId)", asFUNCTION( BIND_CLASS Global_GetLocalVar ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "GameVar@+ GetUnicumVar(uint16 varId, uint masterId, uint slaveId)", asFUNCTION( BIND_CLASS Global_GetUnicumVar ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ GetItem(uint itemId)", asFUNCTION( BIND_CLASS Global_GetItem ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItem(Item& item, uint count, Critter& toCr)", asFUNCTION( BIND_CLASS Global_MoveItemCr ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItem(Item& item, uint count, Item& toCont, uint stackId)", asFUNCTION( BIND_CLASS Global_MoveItemCont ), asCALL_CDECL ) );
@@ -634,7 +598,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void EraseTextListener(int sayType
 // BIND_ASSERT( engine->RegisterGlobalFunction( "uint8 ReverseDir(uint8 dir)", asFUNCTION( BIND_CLASS Global_ReverseDir ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "NpcPlane@ CreatePlane()", asFUNCTION( BIND_CLASS Global_CreatePlane ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetBagItems(uint bagId, hash[]@+ pids, uint[]@+ minCounts, uint[]@+ maxCounts, int[]@+ slots)", asFUNCTION( BIND_CLASS Global_GetBagItems ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool SwapCritters(Critter& cr1, Critter& cr2, bool withInventory, bool withVars)", asFUNCTION( BIND_CLASS Global_SwapCritters ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool SwapCritters(Critter& cr1, Critter& cr2, bool withInventory)", asFUNCTION( BIND_CLASS Global_SwapCritters ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllItems(hash pid, Item@[]@+ items)", asFUNCTION( BIND_CLASS Global_GetAllItems ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllPlayers(Critter@[]@+ players)", asFUNCTION( BIND_CLASS Global_GetAllPlayers ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetRegisteredPlayers(uint[]& ids, string@[]& names)", asFUNCTION( BIND_CLASS Global_GetRegisteredPlayers ), asCALL_CDECL ) );

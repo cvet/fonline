@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 504 )
+#define FONLINE_VERSION                          ( 505 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
@@ -72,6 +72,7 @@ const char* GetLastSocketError();
 
 // Generic helpers
 #define RUNTIME_ASSERT( a )               ( !!( a ) || RaiseAssert( # a, __FILE__, __LINE__ ) )
+#define RUNTIME_ASSERT_STR( a, str )      ( !!( a ) || RaiseAssert( str, __FILE__, __LINE__ ) )
 #define STATIC_ASSERT( a )                static_assert( a, # a )
 #define OFFSETOF( s, m )                  ( (int) (size_t) ( &reinterpret_cast< s* >( 100000 )->m ) - 100000 )
 #define UNUSED_VARIABLE( x )              (void) ( x )
@@ -92,6 +93,7 @@ const char* GetLastSocketError();
 #include "FileSystem.h"
 #include "AngelScript/scriptstring.h"
 #include "AngelScript/scriptarray.h"
+#include "AngelScript/scriptdict.h"
 #include "Properties.h"
 
 #define ___MSG1( x )                      # x

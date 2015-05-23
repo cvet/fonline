@@ -55,40 +55,6 @@ struct AIDataPlane
     void Release() {}
 };
 
-struct GameVar
-{
-    GameVar& operator+=( const int )      { return *this; }
-    GameVar& operator-=( const int )      { return *this; }
-    GameVar& operator*=( const int )      { return *this; }
-    GameVar& operator/=( const int )      { return *this; }
-    GameVar& operator=( const int )       { return *this; }
-    GameVar& operator+=( const GameVar& ) { return *this; }
-    GameVar& operator-=( const GameVar& ) { return *this; }
-    GameVar& operator*=( const GameVar& ) { return *this; }
-    GameVar& operator/=( const GameVar& ) { return *this; }
-    GameVar& operator=( const GameVar& )  { return *this; }
-
-    void GetValue() {}
-    void GetMin()   {}
-    void GetMax()   {}
-
-    void AddRef()  {}
-    void Release() {}
-};
-
-void GameVarAddInt()       {}
-void GameVarSubInt()       {}
-void GameVarMulInt()       {}
-void GameVarDivInt()       {}
-void GameVarAddGameVar()   {}
-void GameVarSubGameVar()   {}
-void GameVarMulGameVar()   {}
-void GameVarDivGameVar()   {}
-void GameVarEqualInt()     {}
-void GameVarCmpInt()       {}
-void GameVarEqualGameVar() {}
-void GameVarCmpGameVar()   {}
-
 struct ProtoItem
 {
     int  ProtoId;
@@ -579,10 +545,6 @@ struct BindClass
     static void Crit_EventGlobalInvite()         {}
     static void Crit_EventTurnBasedProcess()     {}
     static void Crit_EventSmthTurnBasedProcess() {}
-
-    static void Global_GetGlobalVar() {}
-    static void Global_GetLocalVar()  {}
-    static void Global_GetUnicumVar() {}
 
     static void Map_get_ProtoId()              {}
     static void Map_GetLocation()              {}

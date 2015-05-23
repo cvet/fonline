@@ -62,7 +62,6 @@ ClVec                       FOServer::SaveClients;
 Mutex                       FOServer::SaveClientsLocker;
 UIntMap                     FOServer::RegIp;
 Mutex                       FOServer::RegIpLocker;
-uint                        FOServer::VarsGarbageLastTick = 0;
 FOServer::ClientBannedVec   FOServer::Banned;
 Mutex                       FOServer::BannedLocker;
 FOServer::ClientDataVec     FOServer::ClientsData;
@@ -86,7 +85,6 @@ FOServer::FOServer()
     memzero( &ServerFunctions, sizeof( ServerFunctions ) );
     LastClientId = 0;
     SingleplayerSave.Valid = false;
-    VarsGarbageLastTick = 0;
     RequestReloadClientScripts = false;
     MEMORY_PROCESS( MEMORY_STATIC, sizeof( FOServer ) );
 }
@@ -175,7 +173,6 @@ void FOServer::Finish()
     CrMngr.Finish();
     ItemMngr.Finish();
     DlgMngr.Finish();
-    VarMngr.Finish();
     FinishScriptSystem();
     FinishLangPacks();
     FileManager::ClearDataFiles();
@@ -441,7 +438,6 @@ void FOServer::MainLoop()
     Job::PushBack( JOB_GARBAGE_ITEMS );
     Job::PushBack( JOB_GARBAGE_CRITTERS );
     Job::PushBack( JOB_GARBAGE_LOCATIONS );
-    Job::PushBack( JOB_GARBAGE_VARS );
     Job::PushBack( JOB_DEFERRED_RELEASE );
     Job::PushBack( JOB_GAME_TIME );
     Job::PushBack( JOB_BANS );
@@ -733,11 +729,6 @@ void FOServer::Logic_Work( void* data )
             sync_mngr->PushPriority( 2 );
             MapMngr.LocationGarbager();
             sync_mngr->PopPriority();
-        }
-        else if( job.Type == JOB_GARBAGE_VARS )
-        {
-            // Game vars garbage
-            VarsGarbarger( false );
         }
         else if( job.Type == JOB_DEFERRED_RELEASE )
         {
@@ -2857,78 +2848,6 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         ResynchronizeLogicThreads();
     }
     break;
-    case CMD_CHECKVAR:
-    {
-        ushort tid_var;
-        uchar  master_is_npc;
-        uint   master_id;
-        uint   slave_id;
-        uchar  full_info;
-        buf >> tid_var;
-        buf >> master_is_npc;
-        buf >> master_id;
-        buf >> slave_id;
-        buf >> full_info;
-
-        CHECK_ALLOW_COMMAND;
-
-        if( master_is_npc )
-            master_id += NPC_START_ID - 1;
-        GameVar* var = VarMngr.GetVar( tid_var, master_id, slave_id, true );
-        if( !var )
-        {
-            logcb( "Var not found." );
-            break;
-        }
-
-        if( !full_info )
-        {
-            logcb( Str::FormatBuf( "Value<%d>.", var->GetValue() ) );
-        }
-        else
-        {
-            TemplateVar* tvar = var->GetTemplateVar();
-            logcb( Str::FormatBuf( "Value<%d>, Name<%s>, Start<%d>, MIN<%d>, Max<%d>.",
-                                   var->GetValue(), tvar->Name.c_str(), tvar->StartVal, tvar->MinVal, tvar->MaxVal ) );
-        }
-    }
-    break;
-    case CMD_SETVAR:
-    {
-        ushort tid_var;
-        uchar  master_is_npc;
-        uint   master_id;
-        uint   slave_id;
-        int    value;
-        buf >> tid_var;
-        buf >> master_is_npc;
-        buf >> master_id;
-        buf >> slave_id;
-        buf >> value;
-
-        CHECK_ALLOW_COMMAND;
-
-        if( master_is_npc )
-            master_id += NPC_START_ID - 1;
-        GameVar* var = VarMngr.GetVar( tid_var, master_id, slave_id, true );
-        if( !var )
-        {
-            logcb( "Var not found." );
-            break;
-        }
-
-        TemplateVar* tvar = var->GetTemplateVar();
-        if( value < tvar->MinVal )
-            logcb( "Incorrect new value. Less than minimum." );
-        if( value > tvar->MaxVal )
-            logcb( "Incorrect new value. Greater than maximum." );
-        else
-        {
-            *var = value;
-            logcb( "Var changed." );
-        }
-    }
-    break;
     case CMD_SETTIME:
     {
         int multiplier;
@@ -3450,7 +3369,6 @@ bool FOServer::InitReal()
     RegIp.clear();
     LastHoloId = USER_HOLO_START_NUM;
     TimeEventsLastNum = 0;
-    VarsGarbageLastTick = Timer::FastTick();
 
     // Profiler
     uint sample_time = cfg.GetInt( "ProfilerSampleInterval", 0 );
@@ -3500,8 +3418,6 @@ bool FOServer::InitReal()
         return false;                    // Critter manager
     if( !MapMngr.Init() )
         return false;                    // Map manager
-    if( !VarMngr.Init() )
-        return false;                    // Var Manager (only before dialog manager!)
     if( !DlgMngr.LoadDialogs() )
         return false;                    // Dialog manager
     if( !InitCrafts( LangPacks ) )
@@ -3548,9 +3464,6 @@ bool FOServer::InitReal()
         // Try generate world if not exist
         if( !MapMngr.GetLocationsCount() && !NewWorld() )
             return false;
-
-        // Clear unused variables
-        VarsGarbarger( true );
     }
 
     // End of initialization
@@ -4551,9 +4464,6 @@ void FOServer::SaveWorld( const char* fname )
     // SaveAllItemsFile
     ItemMngr.SaveAllItemsFile( AddWorldSaveData );
 
-    // SaveVarsDataFile
-    VarMngr.SaveVarsDataFile( AddWorldSaveData );
-
     // SaveHoloInfoFile
     SaveHoloInfoFile();
 
@@ -4654,13 +4564,13 @@ bool FOServer::LoadWorld( const char* fname )
         version != WORLD_SAVE_V9 && version != WORLD_SAVE_V10 && version != WORLD_SAVE_V11 && version != WORLD_SAVE_V12 &&
         version != WORLD_SAVE_V13 && version != WORLD_SAVE_V14 && version != WORLD_SAVE_V15 && version != WORLD_SAVE_V16 &&
         version != WORLD_SAVE_V17 && version != WORLD_SAVE_V18 && version != WORLD_SAVE_V19 && version != WORLD_SAVE_V20 &&
-        version != WORLD_SAVE_V21 && version != WORLD_SAVE_V22 && version != WORLD_SAVE_V23 )
+        version != WORLD_SAVE_V21 && version != WORLD_SAVE_V22 && version != WORLD_SAVE_V23 && version != WORLD_SAVE_V24 )
     {
         WriteLog( "Unknown version<%u> of world dump file.\n", version );
         FileClose( f );
         return false;
     }
-    if( version < WORLD_SAVE_V23 )
+    if( version < WORLD_SAVE_V24 )
     {
         WriteLog( "Version of save file is not supported.\n" );
         FileClose( f );
@@ -4675,8 +4585,6 @@ bool FOServer::LoadWorld( const char* fname )
     if( !CrMngr.LoadCrittersFile( f, version ) )
         return false;
     if( !ItemMngr.LoadAllItemsFile( f, version ) )
-        return false;
-    if( !VarMngr.LoadVarsDataFile( f, version ) )
         return false;
     if( !LoadHoloInfoFile( f, version ) )
         return false;
@@ -4723,9 +4631,6 @@ void FOServer::UnloadWorld()
 
     // Items
     ItemMngr.Clear();
-
-    // Vars
-    VarMngr.Clear();
 
     // Holo info
     HolodiskInfo.clear();
@@ -4951,47 +4856,6 @@ void FOServer::Process_GetScores( Client* cl )
     cl->Bout << msg;
     cl->Bout.Push( scores, SCORE_NAME_LEN * SCORES_MAX );
     BOUT_END( cl );
-}
-
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
-
-void FOServer::VarsGarbarger( bool force )
-{
-    if( !force )
-    {
-        uint tick = Timer::FastTick();
-        if( tick - VarsGarbageLastTick < VarsGarbageTime )
-            return;
-    }
-
-    // Get client and npc ids
-    UIntSet ids_clients;
-    if( !Singleplayer )
-    {
-        for( auto it = ClientsData.begin(), end = ClientsData.end(); it != end; ++it )
-            ids_clients.insert( ( *it ).ClientId );
-    }
-    else
-    {
-        ids_clients.insert( 1 );
-    }
-
-    // Get npc ids
-    UIntSet ids_npcs;
-    CrMngr.GetNpcIds( ids_npcs );
-
-    // Get location and map ids
-    UIntSet ids_locs, ids_maps;
-    MapMngr.GetLocationAndMapIds( ids_locs, ids_maps );
-
-    // Get item ids
-    UIntSet ids_items;
-    ItemMngr.GetItemIds( ids_items );
-
-    VarMngr.ClearUnusedVars( ids_npcs, ids_clients, ids_locs, ids_maps, ids_items );
-    VarsGarbageLastTick = Timer::FastTick();
 }
 
 /************************************************************************/

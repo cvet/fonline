@@ -9,7 +9,6 @@
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "Dialogs.h"
-#include "Vars.h"
 #include "CraftManager.h"
 #include "ConstantsManager.h"
 #include "CritterType.h"
@@ -334,10 +333,6 @@ public:
     static void NetIO_Input( Client::NetIOArg* io );
     static void NetIO_Output( Client::NetIOArg* io );
     #endif
-
-    // Service
-    static uint VarsGarbageLastTick;
-    static void VarsGarbarger( bool force );
 
     // Dump save/load
     struct ClientSaveData
@@ -734,10 +729,6 @@ public:
         static void Crit_EventTurnBasedProcess( Critter* cr, Map* map, bool begin_turn );
         static void Crit_EventSmthTurnBasedProcess( Critter* cr, Critter* from_cr, Map* map, bool begin_turn );
 
-        static GameVar* Global_GetGlobalVar( ushort tvar_id );
-        static GameVar* Global_GetLocalVar( ushort tvar_id, uint master_id );
-        static GameVar* Global_GetUnicumVar( ushort tvar_id, uint master_id, uint slave_id );
-
         static uint       Map_GetId( Map* map );
         static hash       Map_get_ProtoId( Map* map );
         static Location*  Map_GetLocation( Map* map );
@@ -897,7 +888,7 @@ public:
         static void          Global_EraseTextListener( int say_type, ScriptString& first_str, uint parameter );
         static AIDataPlane*  Global_CreatePlane();
         static uint          Global_GetBagItems( uint bag_id, ScriptArray* pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots );
-        static bool          Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory, bool with_vars );
+        static bool          Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory );
         static uint          Global_GetAllItems( hash pid, ScriptArray* items );
         static uint          Global_GetAllPlayers( ScriptArray* players );
         static uint          Global_GetRegisteredPlayers( ScriptArray* ids, ScriptArray* names );

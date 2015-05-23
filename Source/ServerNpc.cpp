@@ -1044,11 +1044,11 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
 
         switch( demand.Who )
         {
-        case 'p':
+        case DR_WHO_PLAYER:
             master = cl;
             slave = npc;
             break;
-        case 'n':
+        case DR_WHO_NPC:
             master = npc;
             slave = cl;
             break;
@@ -1062,17 +1062,58 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
         max_t index = demand.ParamId;
         switch( demand.Type )
         {
-        case DR_PARAM:
+        case DR_PROP_GLOBAL:
+        case DR_PROP_CRITTER:
+        case DR_PROP_CRITTER_DICT:
+        case DR_PROP_ITEM:
+        case DR_PROP_LOCATION:
+        case DR_PROP_MAP:
         {
-            int       prop_enum = (int) index;
-            Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum );
+            void*                prop_obj = NULL;
+            PropertyRegistrator* prop_registrator = NULL;
+            if( demand.Type == DR_PROP_GLOBAL )
+            {
+                prop_obj = master;
+                prop_registrator = GlobalVars::PropertiesRegistrator;
+            }
+            else if( demand.Type == DR_PROP_CRITTER )
+            {
+                prop_obj = master;
+                prop_registrator = Critter::PropertiesRegistrator;
+            }
+            else if( demand.Type == DR_PROP_CRITTER_DICT )
+            {
+                prop_obj = master;
+                prop_registrator = Critter::PropertiesRegistrator;
+            }
+            else if( demand.Type == DR_PROP_ITEM )
+            {
+                prop_obj = master->ItemSlotMain;
+                prop_registrator = Item::PropertiesRegistrator;
+            }
+            else if( demand.Type == DR_PROP_LOCATION )
+            {
+                Map* map = MapMngr.GetMap( master->GetMap(), false );
+                prop_obj = ( map ? map->GetLocation( false ) : NULL );
+                prop_registrator = Location::PropertiesRegistrator;
+            }
+            else if( demand.Type == DR_PROP_MAP )
+            {
+                prop_obj = MapMngr.GetMap( master->GetMap(), false );
+                prop_registrator = Map::PropertiesRegistrator;
+            }
+            if( !prop_obj )
+                break;
+
+            uint      prop_index = (uint) index;
+            Property* prop = prop_registrator->Get( prop_index );
             int       val = 0;
-            if( prop->IsDict() )
+            if( demand.Type == DR_PROP_CRITTER_DICT )
             {
                 if( !slave )
                     break;
 
-                ScriptDict* dict = (ScriptDict*) prop->GetValue< void* >( master );
+                ScriptDict* dict = (ScriptDict*) prop->GetValue< void* >( prop_obj );
                 void*       pvalue = dict->GetDefault( &slave->Data.Id, NULL );
                 dict->Release();
                 if( !pvalue )
@@ -1080,33 +1121,33 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
 
                 int value_type_id = prop->GetASObjectType()->GetSubTypeId( 1 );
                 if( value_type_id == asTYPEID_BOOL )
-                    val = *(bool*) pvalue ? 1 : 0;
+                    val = (int) *(bool*) pvalue ? 1 : 0;
                 else if( value_type_id == asTYPEID_INT8 )
-                    val = *(char*) pvalue;
+                    val = (int) *(char*) pvalue;
                 else if( value_type_id == asTYPEID_INT16 )
-                    val = *(short*) pvalue;
+                    val = (int) *(short*) pvalue;
                 else if( value_type_id == asTYPEID_INT32 )
-                    val = *(char*) pvalue;
+                    val = (int) *(char*) pvalue;
                 else if( value_type_id == asTYPEID_INT64 )
-                    val = *(int64*) pvalue;
+                    val = (int) *(int64*) pvalue;
                 else if( value_type_id == asTYPEID_UINT8 )
-                    val = *(uchar*) pvalue;
+                    val = (int) *(uchar*) pvalue;
                 else if( value_type_id == asTYPEID_UINT16 )
-                    val = *(ushort*) pvalue;
+                    val = (int) *(ushort*) pvalue;
                 else if( value_type_id == asTYPEID_UINT32 )
-                    val = *(uint*) pvalue;
+                    val = (int) *(uint*) pvalue;
                 else if( value_type_id == asTYPEID_UINT64 )
-                    val = *(uint64*) pvalue;
+                    val = (int) *(uint64*) pvalue;
                 else if( value_type_id == asTYPEID_FLOAT )
-                    val = *(float*) pvalue;
+                    val = (int) *(float*) pvalue;
                 else if( value_type_id == asTYPEID_DOUBLE )
-                    val = *(double*) pvalue;
+                    val = (int) *(double*) pvalue;
                 else
                     RUNTIME_ASSERT( false );
             }
             else
             {
-                val = master->Props.GetValueAsInt( prop_enum );
+                val = prop->GetPODValueAsInt( prop_obj );
             }
 
             switch( demand.Op )
@@ -1139,37 +1180,7 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
                 break;
             }
         }
-        break;                                 // or
-        case DR_VAR:
-        {
-            ushort       temp_id = (ushort) index;
-            TemplateVar* tvar = VarMngr.GetTemplateVar( temp_id );
-            if( !tvar )
-                break;
-
-            uint master_id = 0, slave_id = 0;
-            if( tvar->Type == VAR_LOCAL )
-                master_id = master->GetId();
-            else if( tvar->Type == VAR_UNICUM )
-            {
-                master_id = master->GetId();
-                slave_id = ( slave ? slave->GetId() : 0 );
-            }
-            else if( tvar->Type == VAR_LOCAL_LOCATION )
-            {
-                Map* map = MapMngr.GetMap( master->GetMap(), false );
-                if( map )
-                    master_id = map->GetLocation( false )->GetId();
-            }
-            else if( tvar->Type == VAR_LOCAL_MAP )
-                master_id = master->GetMap();
-            else if( tvar->Type == VAR_LOCAL_ITEM )
-                master_id = master->ItemSlotMain->GetId();
-
-            if( VarMngr.CheckVar( temp_id, master_id, slave_id, demand.Op, demand.Value ) )
-                continue;
-        }
-        break;                                 // or
+        break;
         case DR_ITEM:
         {
             hash pid = (hash) index;
@@ -1203,7 +1214,7 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
                 break;
             }
         }
-        break;             // or
+        break;
         case DR_SCRIPT:
         {
             GameOpt.DialogDemandRecheck = recheck;
@@ -1215,7 +1226,7 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
             }
             cl->Talk.Locked = false;
         }
-        break;                             // or
+        break;
         case DR_OR:
             return true;
         default:
@@ -1253,11 +1264,11 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
 
         switch( result.Who )
         {
-        case 'p':
+        case DR_WHO_PLAYER:
             master = cl;
             slave = npc;
             break;
-        case 'n':
+        case DR_WHO_NPC:
             master = npc;
             slave = cl;
             break;
@@ -1271,53 +1282,92 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
         max_t index = result.ParamId;
         switch( result.Type )
         {
-        case DR_PARAM:
+        case DR_PROP_GLOBAL:
+        case DR_PROP_CRITTER:
+        case DR_PROP_CRITTER_DICT:
+        case DR_PROP_ITEM:
+        case DR_PROP_LOCATION:
+        case DR_PROP_MAP:
         {
-            int       prop_enum = (int) index;
-            Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum );
-            int       val = 0;
-            void*     pvalue = NULL;
-            if( prop->IsDict() )
+            void*                prop_obj = NULL;
+            PropertyRegistrator* prop_registrator = NULL;
+            if( result.Type == DR_PROP_GLOBAL )
+            {
+                prop_obj = master;
+                prop_registrator = GlobalVars::PropertiesRegistrator;
+            }
+            else if( result.Type == DR_PROP_CRITTER )
+            {
+                prop_obj = master;
+                prop_registrator = Critter::PropertiesRegistrator;
+            }
+            else if( result.Type == DR_PROP_CRITTER_DICT )
+            {
+                prop_obj = master;
+                prop_registrator = Critter::PropertiesRegistrator;
+            }
+            else if( result.Type == DR_PROP_ITEM )
+            {
+                prop_obj = master->ItemSlotMain;
+                prop_registrator = Item::PropertiesRegistrator;
+            }
+            else if( result.Type == DR_PROP_LOCATION )
+            {
+                Map* map = MapMngr.GetMap( master->GetMap(), false );
+                prop_obj = ( map ? map->GetLocation( false ) : NULL );
+                prop_registrator = Location::PropertiesRegistrator;
+            }
+            else if( result.Type == DR_PROP_MAP )
+            {
+                prop_obj = MapMngr.GetMap( master->GetMap(), false );
+                prop_registrator = Map::PropertiesRegistrator;
+            }
+            if( !prop_obj )
+                break;
+
+            uint        prop_index = (uint) index;
+            Property*   prop = prop_registrator->Get( prop_index );
+            int         val = 0;
+            ScriptDict* dict = NULL;
+            if( result.Type == DR_PROP_CRITTER_DICT )
             {
                 if( !slave )
                     continue;
 
-                ScriptDict* dict = (ScriptDict*) prop->GetValue< void* >( master );
-                uint64      zero = 0;
-                dict->SetIfNotExist( &slave->Data.Id, &zero );
-                pvalue = dict->Get( &slave->Data.Id );
-                RUNTIME_ASSERT( pvalue );
-                dict->Release();
-
-                int value_type_id = prop->GetASObjectType()->GetSubTypeId( 1 );
-                if( value_type_id == asTYPEID_BOOL )
-                    val = *(bool*) pvalue ? 1 : 0;
-                else if( value_type_id == asTYPEID_INT8 )
-                    val = *(char*) pvalue;
-                else if( value_type_id == asTYPEID_INT16 )
-                    val = *(short*) pvalue;
-                else if( value_type_id == asTYPEID_INT32 )
-                    val = *(char*) pvalue;
-                else if( value_type_id == asTYPEID_INT64 )
-                    val = *(int64*) pvalue;
-                else if( value_type_id == asTYPEID_UINT8 )
-                    val = *(uchar*) pvalue;
-                else if( value_type_id == asTYPEID_UINT16 )
-                    val = *(ushort*) pvalue;
-                else if( value_type_id == asTYPEID_UINT32 )
-                    val = *(uint*) pvalue;
-                else if( value_type_id == asTYPEID_UINT64 )
-                    val = *(uint64*) pvalue;
-                else if( value_type_id == asTYPEID_FLOAT )
-                    val = *(float*) pvalue;
-                else if( value_type_id == asTYPEID_DOUBLE )
-                    val = *(double*) pvalue;
-                else
-                    RUNTIME_ASSERT( false );
+                dict = (ScriptDict*) prop->GetValue< void* >( master );
+                void* pvalue = dict->GetDefault( &slave->Data.Id, NULL );
+                if( pvalue )
+                {
+                    int value_type_id = prop->GetASObjectType()->GetSubTypeId( 1 );
+                    if( value_type_id == asTYPEID_BOOL )
+                        val = (int) *(bool*) pvalue ? 1 : 0;
+                    else if( value_type_id == asTYPEID_INT8 )
+                        val = (int) *(char*) pvalue;
+                    else if( value_type_id == asTYPEID_INT16 )
+                        val = (int) *(short*) pvalue;
+                    else if( value_type_id == asTYPEID_INT32 )
+                        val = (int) *(char*) pvalue;
+                    else if( value_type_id == asTYPEID_INT64 )
+                        val = (int) *(int64*) pvalue;
+                    else if( value_type_id == asTYPEID_UINT8 )
+                        val = (int) *(uchar*) pvalue;
+                    else if( value_type_id == asTYPEID_UINT16 )
+                        val = (int) *(ushort*) pvalue;
+                    else if( value_type_id == asTYPEID_UINT32 )
+                        val = (int) *(uint*) pvalue;
+                    else if( value_type_id == asTYPEID_UINT64 )
+                        val = (int) *(uint64*) pvalue;
+                    else if( value_type_id == asTYPEID_FLOAT )
+                        val = (int) *(float*) pvalue;
+                    else if( value_type_id == asTYPEID_DOUBLE )
+                        val = (int) *(double*) pvalue;
+                    else
+                        RUNTIME_ASSERT( false );
+                }
             }
             else
             {
-                val = master->Props.GetValueAsInt( prop_enum );
+                val = prop->GetPODValueAsInt( prop_obj );
             }
 
             switch( result.Op )
@@ -1341,9 +1391,11 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
                 break;
             }
 
-            if( prop->IsDict() )
+            if( result.Type == DR_PROP_CRITTER_DICT )
             {
-                int value_type_id = prop->GetASObjectType()->GetSubTypeId( 1 );
+                uint64 buf = 0;
+                void*  pvalue = &buf;
+                int    value_type_id = prop->GetASObjectType()->GetSubTypeId( 1 );
                 if( value_type_id == asTYPEID_BOOL )
                     *(bool*) pvalue = val != 0;
                 else if( value_type_id == asTYPEID_INT8 )
@@ -1368,40 +1420,15 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
                     *(double*) pvalue = (double) val;
                 else
                     RUNTIME_ASSERT( false );
+
+                dict->Set( &slave->Data.Id, pvalue );
+                prop->SetValue< void* >( prop_obj, dict );
+                dict->Release();
             }
             else
             {
-                master->Props.SetValueAsInt( prop_enum, val );
+                prop->SetPODValueAsInt( prop_obj, val );
             }
-        }
-            continue;
-        case DR_VAR:
-        {
-            ushort       temp_id = (ushort) index;
-            TemplateVar* tvar = VarMngr.GetTemplateVar( temp_id );
-            if( !tvar )
-                break;
-
-            uint master_id = 0, slave_id = 0;
-            if( tvar->Type == VAR_LOCAL )
-                master_id = master->GetId();
-            else if( tvar->Type == VAR_UNICUM )
-            {
-                master_id = master->GetId();
-                slave_id = ( slave ? slave->GetId() : 0 );
-            }
-            else if( tvar->Type == VAR_LOCAL_LOCATION )
-            {
-                Map* map = MapMngr.GetMap( master->GetMap(), false );
-                if( map )
-                    master_id = map->GetLocation( false )->GetId();
-            }
-            else if( tvar->Type == VAR_LOCAL_MAP )
-                master_id = master->GetMap();
-            else if( tvar->Type == VAR_LOCAL_ITEM )
-                master_id = master->ItemSlotMain->GetId();
-
-            VarMngr.ChangeVar( temp_id, master_id, slave_id, result.Op, result.Value );
         }
             continue;
         case DR_ITEM:

@@ -4190,6 +4190,7 @@ MapObject* FOMapper::ParseProto( hash pid, ushort hx, ushort hy, MapObject* owne
     if( proto_item->IsScen() || proto_item->IsGrid() || proto_item->IsWall() )
         mobj->MapObjType = MAP_OBJECT_SCENERY;
     mobj->ProtoId = pid;
+    mobj->ProtoName = ScriptString::Create( HASH_STR( pid ) );
     mobj->MapX = hx;
     mobj->MapY = hy;
     mobj->LightDistance = proto_item->GetLightDistance();
@@ -4285,6 +4286,7 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
     mobj->RunTime.MapObjId = ++AnyId;
     mobj->MapObjType = MAP_OBJECT_CRITTER;
     mobj->ProtoId = pid;
+    mobj->ProtoName = ScriptString::Create( HASH_STR( pid ) );
     mobj->MapX = hx;
     mobj->MapY = hy;
     mobj->MCritter.Dir = NpcDir;
@@ -5510,6 +5512,7 @@ MapObject* FOMapper::SScriptFunc::MapperObject_AddChild( MapObject& mobj, hash p
     mobj_->RunTime.FromMap = mobj.RunTime.FromMap;
     mobj_->MapObjType = MAP_OBJECT_ITEM;
     mobj_->ProtoId = pid;
+    mobj_->ProtoName = ScriptString::Create( HASH_STR( pid ) );
     mobj_->MapX = mobj.MapX;
     mobj_->MapY = mobj.MapY;
     if( !mobj.UID )
@@ -5623,6 +5626,7 @@ MapObject* FOMapper::SScriptFunc::MapperMap_AddObject( ProtoMap& pmap, ushort hx
     mobj->RunTime.FromMap = &pmap;
     mobj->MapObjType = mobj_type;
     mobj->ProtoId = pid;
+    mobj->ProtoName = ScriptString::Create( HASH_STR( pid ) );
     mobj->MapX = hx;
     mobj->MapY = hy;
     if( mobj_type == MAP_OBJECT_CRITTER )

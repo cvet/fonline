@@ -59,7 +59,6 @@ public:
     Client*  GetPlayer( const char* name, bool sync_lock );
     Npc*     GetNpc( uint crid, bool sync_lock );
     void     EraseCritter( Critter* cr );
-    void     GetNpcIds( UIntSet& npc_ids );
 
     uint PlayersInGame();
     uint NpcInGame();

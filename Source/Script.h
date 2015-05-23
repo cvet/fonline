@@ -14,13 +14,8 @@
 #define GLOBAL_CONTEXT_STACK_SIZE    ( 10 )
 #define CONTEXT_BUFFER_SIZE          ( 512 )
 
-#ifndef FONLINE_SCRIPT_COMPILER
-# define SCRIPT_ERROR_R( error, ... )     do { Script::RaiseException( error, ## __VA_ARGS__ ); return; } while( 0 )
-# define SCRIPT_ERROR_R0( error, ... )    do { Script::RaiseException( error, ## __VA_ARGS__ ); return 0; } while( 0 )
-#else
-# define SCRIPT_ERROR_R( error, ... )     (void) 0
-# define SCRIPT_ERROR_R0( error, ... )    (void) 0
-#endif
+#define SCRIPT_ERROR_R( error, ... )     do { Script::RaiseException( error, ## __VA_ARGS__ ); return; } while( 0 )
+#define SCRIPT_ERROR_R0( error, ... )    do { Script::RaiseException( error, ## __VA_ARGS__ ); return 0; } while( 0 )
 
 typedef void ( *EndExecutionCallback )();
 
