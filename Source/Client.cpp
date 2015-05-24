@@ -8868,6 +8868,8 @@ void FOClient::OnSendGlobalValue( void* obj, Property* prop, void* cur_value, vo
 {
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
         Self->Net_SendProperty( NetProperty::Global, prop, Globals );
+    else
+        SCRIPT_ERROR_R( "Unable to send global modifiable property '%s'", prop->GetName() );
 }
 
 void FOClient::OnSendCritterValue( void* obj, Property* prop, void* cur_value, void* old_value )
@@ -8877,6 +8879,8 @@ void FOClient::OnSendCritterValue( void* obj, Property* prop, void* cur_value, v
         Self->Net_SendProperty( NetProperty::Chosen, prop, cr );
     else if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
         Self->Net_SendProperty( NetProperty::Critter, prop, cr );
+    else
+        SCRIPT_ERROR_R( "Unable to send critter modifiable property '%s'", prop->GetName() );
 }
 
 void FOClient::OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value )
@@ -8892,11 +8896,19 @@ void FOClient::OnSendItemValue( void* obj, Property* prop, void* cur_value, void
                 Self->Net_SendProperty( NetProperty::ChosenItem, prop, item );
             else if( cr && ( prop->GetAccess() & Property::PublicMask ) != 0 )
                 Self->Net_SendProperty( NetProperty::CritterItem, prop, item );
+            else
+                SCRIPT_ERROR_R( "Unable to send item (a critter) modifiable property '%s'", prop->GetName() );
         }
         else if( item->Accessory == ITEM_ACCESSORY_HEX )
         {
             if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
                 Self->Net_SendProperty( NetProperty::MapItem, prop, item );
+            else
+                SCRIPT_ERROR_R( "Unable to send item (a map) modifiable property '%s'", prop->GetName() );
+        }
+        else
+        {
+            SCRIPT_ERROR_R( "Unable to send item (a container) modifiable property '%s'", prop->GetName() );
         }
     }
 }
@@ -8978,12 +8990,16 @@ void FOClient::OnSendMapValue( void* obj, Property* prop, void* cur_value, void*
 {
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
         Self->Net_SendProperty( NetProperty::Map, prop, Globals );
+    else
+        SCRIPT_ERROR_R( "Unable to send map modifiable property '%s'", prop->GetName() );
 }
 
 void FOClient::OnSendLocationValue( void* obj, Property* prop, void* cur_value, void* old_value )
 {
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
         Self->Net_SendProperty( NetProperty::Location, prop, Globals );
+    else
+        SCRIPT_ERROR_R( "Unable to send location modifiable property '%s'", prop->GetName() );
 }
 
 /************************************************************************/
