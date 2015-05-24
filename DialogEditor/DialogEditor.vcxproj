@@ -28,7 +28,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\sdk\Tools\DialogEditor</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\LFO\Tools\DialogEditor</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
@@ -95,6 +95,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\scriptarray.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptdict.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\scriptdictionary.cpp">
@@ -235,6 +238,9 @@
     <ClCompile Include="..\Source\MsgFiles.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\Source\Properties.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\Source\SHA2\sha2.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
@@ -371,6 +377,7 @@
     <ClInclude Include="..\Source\AngelScript\reflection.h" />
     <ClInclude Include="..\Source\AngelScript\scriptany.h" />
     <ClInclude Include="..\Source\AngelScript\scriptarray.h" />
+    <ClInclude Include="..\Source\AngelScript\scriptdict.h" />
     <ClInclude Include="..\Source\AngelScript\scriptdictionary.h" />
     <ClInclude Include="..\Source\AngelScript\scriptfile.h" />
     <ClInclude Include="..\Source\AngelScript\scriptmath.h" />
@@ -420,6 +427,7 @@
     <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\IniParser.h" />
     <ClInclude Include="..\Source\MsgFiles.h" />
+    <ClInclude Include="..\Source\Properties.h" />
     <ClInclude Include="..\Source\SHA2\sha2.h" />
     <ClInclude Include="..\Source\zlib\contrib\minizip\crypt.h" />
     <ClInclude Include="..\Source\zlib\contrib\minizip\ioapi.h" />

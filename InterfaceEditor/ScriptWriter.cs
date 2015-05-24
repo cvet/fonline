@@ -197,7 +197,7 @@ namespace InterfaceEditor
 				if (!string.IsNullOrEmpty(messageBox.InvertMessages))
 					_Script.AppendLine(_BaseIdent + "        SetInvertMessages( " + messageBox.InvertMessages + " );");
 				if (!string.IsNullOrEmpty(messageBox.DisplayedMessages))
-					_Script.AppendLine(_BaseIdent + "        SetDisplayedMessages( " + messageBox.DisplayedMessages + ", true );");
+					_Script.AppendLine(_BaseIdent + "        SetDisplayedMessages( " + messageBox.DisplayedMessages + " );");
 			}
 			if (obj is GUIConsole)
 			{
