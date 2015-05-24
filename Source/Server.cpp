@@ -4972,10 +4972,13 @@ void FOServer::AddTimeEvent( TimeEvent* te )
 
 uint FOServer::CreateTimeEvent( uint begin_second, const char* script_name, int values, uint val1, ScriptArray* val2, bool save )
 {
+    if( begin_second < GameOpt.FullSecond )
+        SCRIPT_ERROR_R0( "Begin time is less than current time", script_name );
+
     char module_name[ MAX_FOTEXT ];
     char func_name[ MAX_FOTEXT ];
     if( !Script::ReparseScriptName( script_name, module_name, func_name ) )
-        return 0;
+        SCRIPT_ERROR_R0( "Invalid script '%s'", script_name );
 
     bool singed = false;
     int  bind_id = Script::Bind( module_name, func_name, "uint %s(int[]@)", false, true );
@@ -4983,15 +4986,13 @@ uint FOServer::CreateTimeEvent( uint begin_second, const char* script_name, int 
         bind_id = Script::Bind( module_name, func_name, "uint %s(uint[]@)", false );
     else
         singed = true;
-    if( bind_id <= 0 )
-        return 0;
 
-    TimeEvent* te = new TimeEvent();
-    if( !te )
-        return 0;
+    if( bind_id <= 0 )
+        SCRIPT_ERROR_R0( "Unable to bind script '%s'", script_name );
 
     SCOPE_LOCK( TimeEventsLocker );
 
+    TimeEvent* te = new TimeEvent();
     te->FullSecond = begin_second;
     te->Num = TimeEventsLastNum + 1;
     te->FuncName = Str::FormatBuf( "%s@%s", module_name, func_name );
@@ -5042,7 +5043,9 @@ void FOServer::TimeEventEndScriptCallback()
             }
         }
         else
+        {
             ++it;
+        }
     }
 }
 
