@@ -4525,8 +4525,10 @@ void FOMapper::CurDraw()
             SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
             if( si )
             {
-                int x = HexMngr.GetField( hx, hy ).ScrX - ( si->Width / 2 ) + si->OffsX + HEX_OX + GameOpt.ScrOx + proto_item->GetOffsetX();
-                int y = HexMngr.GetField( hx, hy ).ScrY - si->Height + si->OffsY + HEX_OY + GameOpt.ScrOy + proto_item->GetOffsetY();
+                int x = HexMngr.GetField( hx, hy ).ScrX - ( si->Width / 2 ) + si->OffsX + HEX_OX + GameOpt.ScrOx;
+                x += proto_item->GetOffsetX() + proto_item->ItemProps.GetValueAsInt( Item::PropertyOffsetX->GetEnumValue() );
+                int y = HexMngr.GetField( hx, hy ).ScrY - si->Height + si->OffsY + HEX_OY + GameOpt.ScrOy;
+                y += proto_item->GetOffsetY() + proto_item->ItemProps.GetValueAsInt( Item::PropertyOffsetY->GetEnumValue() );
 
                 SprMngr.DrawSpriteSize( spr_id, (int) ( x / GameOpt.SpritesZoom ), (int) ( y / GameOpt.SpritesZoom ),
                                         (int) ( si->Width / GameOpt.SpritesZoom ), (int) ( si->Height / GameOpt.SpritesZoom ), true, false );

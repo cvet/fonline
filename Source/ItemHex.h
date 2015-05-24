@@ -37,14 +37,14 @@ private:
     uint  animNextTick;
 
 public:
-    bool   IsCanUseSkill()      { return IsScenOrGrid() || IsItem(); }
-    bool   IsScenOrGrid()       { return Proto->IsScen() || Proto->IsGrid(); }
-    bool   IsItem()             { return Proto->IsItem(); }
-    bool   IsWall()             { return Proto->IsWall(); }
-    ushort GetHexX()            { return HexX; }
-    ushort GetHexY()            { return HexY; }
-    short  GetActualOffsetX()   { return GetOffsetX() ? GetOffsetX() : Proto->GetOffsetX(); }
-    short  GetActualOffsetY()   { return GetOffsetY() ? GetOffsetY() : Proto->GetOffsetY(); }
+    bool   IsCanUseSkill() { return IsScenOrGrid() || IsItem(); }
+    bool   IsScenOrGrid()  { return Proto->IsScen() || Proto->IsGrid(); }
+    bool   IsItem()        { return Proto->IsItem(); }
+    bool   IsWall()        { return Proto->IsWall(); }
+    ushort GetHexX()       { return HexX; }
+    ushort GetHexY()       { return HexY; }
+    short  GetActualOffsetX();
+    short  GetActualOffsetY();
     bool   IsAnimated()         { return isAnimated; }
     bool   IsCanLook()          { return !( Proto->IsGrid() && Proto->GetGrid_Type() == GRID_EXITGRID ); }
     bool   IsUsable()           { return !IsWall() && ( GetIsCanUse() || GetIsCanUseOnSmth() || GetIsCanPickUp() || ( IsScenOrGrid() && FLAG( ScenFlags, SCEN_CAN_USE ) ) ); }

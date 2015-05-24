@@ -335,12 +335,8 @@ void ItemHex::SetSpr( uint num_spr )
 
 void ItemHex::SetAnimOffs()
 {
-    ScrX = GetOffsetX();
-    if( !ScrX )
-        ScrX = Proto->GetOffsetX();
-    ScrY = GetOffsetY();
-    if( !ScrY )
-        ScrY = Proto->GetOffsetX();
+    ScrX = GetActualOffsetX();
+    ScrY = GetActualOffsetY();
     for( int i = 1; i <= curSpr; i++ )
     {
         ScrX += Anim->NextX[ i ];
@@ -383,4 +379,16 @@ void ItemHex::SetHideAnim()
         animBegSpr = Anim->CntFrm - 1;
         animEndSpr = Anim->CntFrm - 1;
     }
+}
+
+short ItemHex::GetActualOffsetX()
+{
+    short offset = GetOffsetX();
+    return offset ? offset : Proto->GetOffsetX();
+}
+
+short ItemHex::GetActualOffsetY()
+{
+    short offset = GetOffsetY();
+    return offset ? offset : Proto->GetOffsetY();
 }

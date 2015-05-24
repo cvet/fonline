@@ -3951,7 +3951,7 @@ bool HexManager::ParseScenery( SceneryCl& scen )
         scenery->RefreshAnim();
     PushItem( scenery );
     if( !scenery->GetIsHidden() && !scenery->IsFullyTransparent() )
-        ProcessHexBorders( scenery->Anim->GetSprId( 0 ), scen.OffsetX ? scen.OffsetX : proto_item->GetOffsetX(), scen.OffsetY ? scen.OffsetY : proto_item->GetOffsetY(), false );
+        ProcessHexBorders( scenery->Anim->GetSprId( 0 ), scenery->GetActualOffsetX(), scenery->GetActualOffsetY(), false );
     return true;
 }
 
@@ -4437,8 +4437,8 @@ void HexManager::MarkPassedHexes()
 void HexManager::AffectItem( MapObject* mobj, ItemHex* item )
 {
     uint  old_spr_id = item->SprId;
-    short old_ox = item->GetOffsetX();
-    short old_oy = item->GetOffsetY();
+    short old_ox = item->GetActualOffsetX();
+    short old_oy = item->GetActualOffsetY();
 
     mobj->LightIntensity = CLAMP( mobj->LightIntensity, -100, 100 );
 
@@ -4467,8 +4467,8 @@ void HexManager::AffectItem( MapObject* mobj, ItemHex* item )
 
     item->RefreshAnim();
 
-    if( item->SprId != old_spr_id || item->GetOffsetX() != old_ox || item->GetOffsetY() != old_oy )
-        ProcessHexBorders( item->SprId, item->GetOffsetX(), item->GetOffsetY(), true );
+    if( item->SprId != old_spr_id || item->GetActualOffsetX() != old_ox || item->GetActualOffsetY() != old_oy )
+        ProcessHexBorders( item->SprId, item->GetActualOffsetX(), item->GetActualOffsetY(), true );
 }
 
 void HexManager::AffectCritter( MapObject* mobj, CritterCl* cr )
