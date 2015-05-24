@@ -3,6 +3,10 @@
 #include "minizip/unzip.h"
 #include "FileManager.h"
 
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_MAPPER )
+# define DISABLE_FOLDER_CACHING
+#endif
+
 /************************************************************************/
 /* Folder/Dat/Zip loaders                                               */
 /************************************************************************/
@@ -45,8 +49,12 @@ private:
     };
     typedef map< string, FileEntry > IndexMap;
 
+    #ifndef DISABLE_FOLDER_CACHING
     IndexMap filesTree;
+    #endif
     string   basePath;
+
+    void CollectFilesTree( IndexMap& files_tree );
 
 public:
     bool Init( const char* fname );
@@ -166,10 +174,20 @@ DataFile* OpenDataFile( const char* fname )
 bool FolderFile::Init( const char* fname )
 {
     basePath = fname;
+    #ifndef DISABLE_FOLDER_CACHING
+    CollectFilesTree( filesTree );
+    #endif
+
+    return true;
+}
+
+void FolderFile::CollectFilesTree( IndexMap& files_tree )
+{
+    files_tree.clear();
 
     StrVec              files;
     vector< FIND_DATA > find_data;
-    FileManager::GetFolderFileNames( fname, true, NULL, files, &find_data );
+    FileManager::GetFolderFileNames( basePath.c_str(), true, NULL, files, &find_data );
 
     char name[ MAX_FOPATH ];
     for( size_t i = 0, j = files.size(); i < j; i++ )
@@ -184,29 +202,17 @@ bool FolderFile::Init( const char* fname )
         Str::Lower( name );
         #ifndef FO_WINDOWS
         for( char* str = name; *str; str++ )
-        {
             if( *str == '/' )
                 *str = '\\';
-        }
         #endif
 
-        filesTree.insert( PAIR( string( name ), fe ) );
+        files_tree.insert( PAIR( string( name ), fe ) );
     }
-
-    return true;
 }
 
 bool FolderFile::IsFilePresent( const char* fname, const char* original_fname, uint& size, uint64& write_time )
 {
-    #ifdef FONLINE_SERVER
-    void* f = FileOpen( original_fname, false );
-    if( !f )
-        return false;
-    write_time = FileGetWriteTime( f );
-    FileClose( f );
-    return true;
-
-    #else
+    #ifndef DISABLE_FOLDER_CACHING
     auto it = filesTree.find( fname );
     if( it == filesTree.end() )
         return NULL;
@@ -214,32 +220,24 @@ bool FolderFile::IsFilePresent( const char* fname, const char* original_fname, u
     FileEntry& fe = ( *it ).second;
     size = fe.FileSize;
     write_time = fe.WriteTime;
+    return true;
 
+    #else
+    char fname_[ MAX_FOPATH ];
+    Str::Copy( fname_, basePath.c_str() );
+    Str::Append( fname_, original_fname );
+    void* f = FileOpen( fname_, false );
+    if( !f )
+        return false;
+    write_time = FileGetWriteTime( f );
+    FileClose( f );
     return true;
     #endif
 }
 
 uchar* FolderFile::OpenFile( const char* fname, const char* original_fname, uint& size, uint64& write_time )
 {
-    #ifdef FONLINE_SERVER
-    void* f = FileOpen( original_fname, false );
-    if( !f )
-        return NULL;
-
-    size = FileGetSize( f );
-    uchar* buf = new uchar[ size + 1 ];
-    if( !FileRead( f, buf, size ) )
-    {
-        FileClose( f );
-        delete[] buf;
-        return NULL;
-    }
-    write_time = FileGetWriteTime( f );
-    FileClose( f );
-    buf[ size ] = 0;
-    return buf;
-
-    #else
+    #ifndef DISABLE_FOLDER_CACHING
     auto it = filesTree.find( fname );
     if( it == filesTree.end() )
         return NULL;
@@ -261,15 +259,43 @@ uchar* FolderFile::OpenFile( const char* fname, const char* original_fname, uint
     buf[ size ] = 0;
     write_time = fe.WriteTime;
     return buf;
+
+    #else
+    char fname_[ MAX_FOPATH ];
+    Str::Copy( fname_, basePath.c_str() );
+    Str::Append( fname_, original_fname );
+    void* f = FileOpen( fname_, false );
+    if( !f )
+        return NULL;
+
+    size = FileGetSize( f );
+    uchar* buf = new uchar[ size + 1 ];
+    if( !FileRead( f, buf, size ) )
+    {
+        FileClose( f );
+        delete[] buf;
+        return NULL;
+    }
+    write_time = FileGetWriteTime( f );
+    FileClose( f );
+    buf[ size ] = 0;
+    return buf;
     #endif
 }
 
 void FolderFile::GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result )
 {
+    #ifndef DISABLE_FOLDER_CACHING
+    IndexMap& files_tree = filesTree;
+    #else
+    IndexMap  files_tree;
+    CollectFilesTree( files_tree );
+    #endif
+
     StrVec result_;
-    GetFileNames_( filesTree, path, include_subdirs, ext, result_ );
+    GetFileNames_( files_tree, path, include_subdirs, ext, result_ );
     for( size_t i = 0, j = result_.size(); i < j; i++ )
-        result_[ i ] = filesTree[ result_[ i ] ].ShortFileName;
+        result_[ i ] = files_tree[ result_[ i ] ].ShortFileName;
     if( !result_.empty() )
         result.insert( result.begin(), result_.begin(), result_.end() );
 }

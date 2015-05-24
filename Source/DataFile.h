@@ -1,9 +1,10 @@
 #ifndef _DATA_FILE_
 #define _DATA_FILE_
 
-// Supports:
-//  - Fallout DAT
-//  - Zip
+// Support:
+// - Plane folder
+// - Fallout DAT
+// - Zip
 
 #include "Defines.h"
 
