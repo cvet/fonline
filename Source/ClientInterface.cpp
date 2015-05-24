@@ -8073,7 +8073,7 @@ void FOClient::SaveLoadCollect()
         char fname_ex[ MAX_FOPATH ];
         FileManager::GetWritePath( name, PT_SAVE, fname_ex );
         ResolvePath( fname_ex );
-        Str::Append( fname_ex, ".fo" );
+        Str::Append( fname_ex, ".foworld" );
 
         // Convert time
         DateTimeStamp dt;
@@ -8117,7 +8117,7 @@ void FOClient::SaveLoadSaveGame( const char* name )
     FileManager::GetWritePath( "", PT_SAVE, fname );
     ResolvePath( fname );
     Str::Append( fname, name );
-    Str::Append( fname, ".fo" );
+    Str::Append( fname, ".foworld" );
 
     // Delete old files
     if( SaveLoadFileName != "" )

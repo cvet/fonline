@@ -67,7 +67,8 @@
 // Client save
 #define CLIENT_SAVE_V1               ( 1 ) // Corrupted
 #define CLIENT_SAVE_V2               ( 2 )
-#define CLIENT_SAVE_LAST             ( CLIENT_SAVE_V2 )
+#define CLIENT_SAVE_V3               ( 3 )
+#define CLIENT_SAVE_LAST             ( CLIENT_SAVE_V3 )
 const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 
 // Generic
@@ -316,8 +317,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 
 // Critters
 #define MAX_CRIT_TYPES               ( 1000 )
-#define NPC_START_ID                 ( 5000001 )
-#define USERS_START_ID               ( 1 )
+#define NPC_START_ID                 ( 100000001 )
 #define IS_USER_ID( id )                      ( ( id ) > 0 && ( id ) < NPC_START_ID )
 #define IS_NPC_ID( id )                       ( ( id ) >= NPC_START_ID )
 #define MAX_ANSWERS                  ( 100 )

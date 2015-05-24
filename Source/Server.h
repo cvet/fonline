@@ -374,8 +374,8 @@ public:
     static void GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names );
 
     // Banned
-    #define BANS_FNAME_ACTIVE              "active.txt"
-    #define BANS_FNAME_EXPIRED             "expired.txt"
+    #define BANS_FNAME_ACTIVE              "Active.txt"
+    #define BANS_FNAME_EXPIRED             "Expired.txt"
     struct ClientBanned
     {
         DateTimeStamp BeginTime;

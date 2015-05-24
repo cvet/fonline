@@ -1589,7 +1589,7 @@ void FOServer::Process_CreateClient( Client* cl )
             // Avoid created files rewriting
             char fname[ MAX_FOPATH ];
             FileManager::GetWritePath( cl->Name, PT_SERVER_CLIENTS, fname );
-            Str::Append( fname, ".client" );
+            Str::Append( fname, ".foclient" );
             exist = FileExist( fname );
         }
 
@@ -1686,6 +1686,7 @@ void FOServer::Process_CreateClient( Client* cl )
         cl->Data.Id = 1;
     else
         cl->Data.Id = ++LastClientId;
+    RUNTIME_ASSERT( IS_USER_ID( cl->Data.Id ) );
 
     // Assign base access
     cl->Access = ACCESS_DEFAULT;
@@ -1699,21 +1700,9 @@ void FOServer::Process_CreateClient( Client* cl )
         return;
     }
 
-    // Refresh last id
-    char  last_id_fname[ MAX_FOPATH ];
-    FileManager::GetWritePath( "last_id.txt", PT_SERVER_CLIENTS, last_id_fname );
-    void* last_id_file = FileOpen( last_id_fname, true );
-    if( last_id_file )
-    {
-        char last_id_str[ 128 ];
-        Str::Format( last_id_str, "%u", LastClientId );
-        FileWrite( last_id_file, last_id_str, Str::Length( last_id_str ) );
-        FileClose( last_id_file );
-    }
-
     // Add name in clients names cache file
     char  cache_fname[ MAX_FOPATH ];
-    FileManager::GetWritePath( "clients_list.txt", PT_SERVER_CLIENTS, cache_fname );
+    FileManager::GetWritePath( "ClientsList.txt", PT_SERVER_CLIENTS, cache_fname );
     void* cache_file = FileOpenForAppend( cache_fname );
     if( cache_file )
     {

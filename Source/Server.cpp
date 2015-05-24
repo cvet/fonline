@@ -381,9 +381,9 @@ void FOServer::DeleteClientFile( const char* client_name )
     for( uint i = 0; ; i++ )
     {
         if( !i )
-            Str::Format( new_client_fname, "%s%s.client_deleted", clients_path, client_name, i );
+            Str::Format( new_client_fname, "%s%s.foclient_deleted", clients_path, client_name, i );
         else
-            Str::Format( new_client_fname, "%s%s~%u.client_deleted", clients_path, client_name, i );
+            Str::Format( new_client_fname, "%s%s~%u.foclient_deleted", clients_path, client_name, i );
         if( FileExist( new_client_fname ) )
             continue;
         break;
@@ -4062,33 +4062,15 @@ bool FOServer::LoadClientsData()
     LastClientId = 0;
     ClientsData.reserve( 10000 );
 
-    bool success = false;
     char client_name[ MAX_FOPATH ];
     char clients_path[ MAX_FOPATH ];
     FileManager::GetReadPath( "", PT_SERVER_CLIENTS, clients_path );
-
-    // Last id
-    char  last_id_fname[ MAX_FOPATH ];
-    Str::Format( last_id_fname, "%slast_id.txt", clients_path );
-    void* last_id_file = FileOpen( last_id_fname, false );
-    if( last_id_file )
-    {
-        uint  fsize = FileGetSize( last_id_file );
-        char* buf = new char[ fsize + 1 ];
-        if( FileRead( last_id_file, buf, fsize ) )
-        {
-            buf[ fsize ] = 0;
-            sscanf( buf, "%u", &LastClientId );
-        }
-        FileClose( last_id_file );
-        delete[] buf;
-    }
 
     // Get cache for clients
     istrstream* cache_str = NULL;
     char*       cache_buf = NULL;
     char        cache_fname[ MAX_FOPATH ];
-    Str::Format( cache_fname, "%sclients_list.txt", clients_path );
+    Str::Copy( cache_fname, FileManager::GetDataPath( "ClientsList.txt", PT_SERVER_CACHE ) );
 
     if( FileExist( "cache_fail" ) )
     {
@@ -4106,13 +4088,6 @@ bool FOServer::LoadClientsData()
             FileClose( cache_file );
             cache_buf[ fsize ] = 0;
             cache_str = new istrstream( cache_buf );
-            cache_str->getline( client_name, sizeof( client_name ) );
-            Str::Trim( client_name );
-            if( !client_name[ 0 ] )
-            {
-                SAFEDEL( cache_str );
-                SAFEDELA( cache_buf );
-            }
         }
         else
         {
@@ -4125,25 +4100,39 @@ bool FOServer::LoadClientsData()
     FIND_DATA   file_find_data;
     void*       file_find = NULL;
     FileManager file_cache_write;
-    if( !cache_str )
-    {
-        // Find file
-        file_find = FileFindFirst( clients_path, "client", file_find_data );
-        if( !file_find )
-        {
-            WriteLog( "Clients data not found.\n" );
-            return true;
-        }
-        Str::Copy( client_name, file_find_data.FileName );
-    }
 
     // Index clients
     UIntSet id_already;
-    bool    first_iteration = true;
-    while( true )
+    int     step = 0; // 0 - first iteration for client, 1 - next iterations, 2 - first iteration for deleted clients, 3 - next iterations
+    int     errors = 0;
+    while( step < 4 )
     {
         // Next
-        if( !first_iteration )
+        if( step == 0 || step == 2 )
+        {
+            if( !cache_str )
+            {
+                // Find file
+                file_find = FileFindFirst( clients_path, step == 0 ? "foclient" : "foclient_deleted", file_find_data );
+                if( !file_find )
+                {
+                    step += 2;
+                    continue;
+                }
+                Str::Copy( client_name, file_find_data.FileName );
+            }
+            else
+            {
+                cache_str->getline( client_name, sizeof( client_name ) );
+                Str::Trim( client_name );
+                if( cache_str->eof() )
+                {
+                    step = 4;
+                    continue;
+                }
+            }
+        }
+        else
         {
             if( file_find )
             {
@@ -4152,8 +4141,8 @@ bool FOServer::LoadClientsData()
 
                 if( !FileFindNext( file_find, file_find_data ) )
                 {
-                    success = true;
-                    break;
+                    step++;
+                    continue;
                 }
                 Str::Copy( client_name, file_find_data.FileName );
             }
@@ -4161,28 +4150,26 @@ bool FOServer::LoadClientsData()
             {
                 cache_str->getline( client_name, sizeof( client_name ) );
                 Str::Trim( client_name );
-                if( cache_str->eof() || !client_name[ 0 ] )
+                if( cache_str->eof() )
                 {
-                    success = true;
-                    break;
+                    step = 4;
+                    continue;
                 }
             }
-        }
-        else
-        {
-            first_iteration = false;
         }
 
         // Take name from file title
         char        name[ MAX_FOPATH ];
         const char* ext = FileManager::GetExtension( client_name );
-        if( !ext || !Str::CompareCase( ext, "client" ) )
+        if( !ext || ( !Str::CompareCase( ext, "foclient" ) && !Str::CompareCase( ext, "foclient_deleted" ) ) )
         {
-            WriteLog( "Wrong name<%s> of client file in cache. Cache file deleted, restart server.\n", client_name );
-            break;
+            WriteLog( "Wrong name<%s> of client file in cache.\n", client_name );
+            errors++;
+            continue;
         }
+        bool is_deleted = Str::CompareCase( ext, "foclient_deleted" );
         Str::Copy( name, client_name );
-        name[ Str::Length( name ) - 7 ] = 0; // Erase extension, 7 == ".client"
+        FileManager::EraseExtension( name );
 
         // Take id and password from file
         char  client_fname[ MAX_FOPATH ];
@@ -4190,17 +4177,17 @@ bool FOServer::LoadClientsData()
         void* f = FileOpen( client_fname, false );
         if( !f )
         {
-            if( !file_find && !FileExist( client_fname ) ) // Client deleted
-                continue;
             WriteLog( "Unable to open client save file<%s>.\n", client_fname );
-            break;
+            errors++;
+            continue;
         }
 
         // Header - signature, password and id
         char header[ 4 + PASS_HASH_SIZE + sizeof( uint ) ];
         if( !FileRead( f, header, sizeof( header ) ) )
         {
-            WriteLog( "Unable to read header of client save file<%s>. Skipped.\n", client_fname );
+            WriteLog( "Unable to read header of client save file<%s>.\n", client_fname );
+            errors++;
             FileClose( f );
             continue;
         }
@@ -4208,10 +4195,17 @@ bool FOServer::LoadClientsData()
 
         // Check client save version
         int version = header[ 3 ];
-        if( !( header[ 0 ] == 'F' && header[ 1 ] == 'O' && header[ 2 ] == 0 && version >= CLIENT_SAVE_V2 ) )
+        if( !( header[ 0 ] == 'F' && header[ 1 ] == 'O' && header[ 2 ] == 0 ) )
         {
-            WriteLog( "Save file<%s> outdated, please run DataPatcher and type 'patchSaves'.\n", client_fname );
-            break;
+            WriteLog( "Save file<%s> file truncated.\n", client_fname );
+            errors++;
+            continue;
+        }
+        if( version < CLIENT_SAVE_V3 )
+        {
+            WriteLog( "Save file<%s> format not supported.\n", client_fname );
+            errors++;
+            continue;
         }
 
         // Get id and password hash
@@ -4223,17 +4217,27 @@ bool FOServer::LoadClientsData()
         // Check id
         if( !IS_USER_ID( id ) )
         {
-            WriteLog( "Wrong id<%u> of client<%s>. Skipped.\n", id, name );
+            WriteLog( "Wrong id<%u> of client<%s>.\n", id, name );
+            errors++;
             continue;
         }
+
+        // Process ids
+        if( id > LastClientId )
+            LastClientId = id;
 
         // Check uniqueness of id
         if( id_already.count( id ) )
         {
-            WriteLog( "Id<%u> of user<%s> already used by another client. Skipped.\n", id, name );
+            WriteLog( "Id<%u> of user<%s> already used by another client.\n", id, name );
+            errors++;
             continue;
         }
         id_already.insert( id );
+
+        // Skip indexing of deleted clients
+        if( is_deleted )
+            continue;
 
         // Add client information, only for non marked as deleted
         ClientData data;
@@ -4242,38 +4246,28 @@ bool FOServer::LoadClientsData()
         memcpy( data.ClientPassHash, pass_hash, PASS_HASH_SIZE );
         data.ClientId = id;
         ClientsData.push_back( data );
-
-        // Process ids
-        if( id > LastClientId )
-            LastClientId = id;
     }
 
-    // Clean up
-    if( file_find )
-        FileFindClose( file_find );
-    SAFEDEL( cache_str );
-    SAFEDELA( cache_buf );
-
-    // Fail
-    if( !success )
+    // Fail, next start will without cache
+    if( errors && cache_str )
     {
-        FileDelete( cache_fname ); // Next try will be without cache
+        WriteLog( "Cache file deleted, restart server.\n" );
+        FileDelete( cache_fname );
         return false;
     }
 
-    // Refresh last id
-    last_id_file = FileOpen( last_id_fname, true );
-    if( last_id_file )
-    {
-        char last_id_str[ 128 ];
-        Str::Format( last_id_str, "%u", LastClientId );
-        FileWrite( last_id_file, last_id_str, Str::Length( last_id_str ) );
-        FileClose( last_id_file );
-    }
-
     // Save cache
+    if( !cache_str )
+        file_cache_write.SaveOutBufToFile( cache_fname, PT_ROOT );
+
+    // Clean up
     if( file_find )
-        file_cache_write.SaveOutBufToFile( cache_fname, -1 );
+    {
+        FileFindClose( file_find );
+        file_find = NULL;
+    }
+    SAFEDEL( cache_str );
+    SAFEDELA( cache_buf );
 
     // Reserve memory for future clients data
     if( ClientsData.size() > 10000 )
@@ -4309,7 +4303,7 @@ bool FOServer::SaveClient( Client* cl, bool deferred )
     {
         char fname[ MAX_FOPATH ];
         FileManager::GetWritePath( cl->Name, PT_SERVER_CLIENTS, fname );
-        Str::Append( fname, ".client" );
+        Str::Append( fname, ".foclient" );
         void* f = FileOpen( fname, true );
         if( !f )
         {
@@ -4354,7 +4348,7 @@ bool FOServer::LoadClient( Client* cl )
 
     char fname[ MAX_FOPATH ];
     FileManager::GetWritePath( cl->Name, PT_SERVER_CLIENTS, fname );
-    Str::Append( fname, ".client" );
+    Str::Append( fname, ".foclient" );
     void* f = FileOpen( fname, false );
     if( !f )
     {
@@ -4425,7 +4419,7 @@ void FOServer::SaveWorld( const char* fname )
         // Save directly to file
         tick = Timer::AccurateTick();
         char auto_fname[ MAX_FOPATH ];
-        Str::Format( auto_fname, "%sworld%04d.fo", FileManager::GetWritePath( "", PT_SERVER_SAVE ), SaveWorldIndex + 1 );
+        Str::Format( auto_fname, "%sAuto%04d.foworld", FileManager::GetWritePath( "", PT_SERVER_SAVE ), SaveWorldIndex + 1 );
         DumpFile = FileOpen( fname ? fname : auto_fname, true );
         if( !DumpFile )
         {
@@ -4522,7 +4516,7 @@ bool FOServer::LoadWorld( const char* fname )
         for( int i = WORLD_SAVE_MAX_INDEX; i >= 1; i-- )
         {
             char auto_fname[ MAX_FOPATH ];
-            Str::Format( auto_fname, "%sworld%04d.fo", FileManager::GetWritePath( "", PT_SERVER_SAVE ), i );
+            Str::Format( auto_fname, "%sAuto%04d.foworld", FileManager::GetWritePath( "", PT_SERVER_SAVE ), i );
             f = FileOpen( auto_fname, false );
             if( f )
             {
@@ -4707,7 +4701,7 @@ void FOServer::Dump_Work( void* data )
         FileManager::GetWritePath( "", PT_SERVER_CLIENTS, clients_path );
 
         // Save world data
-        void* fworld = FileOpen( Str::Format( fname, "%sworld%04d.fo", save_path, SaveWorldIndex + 1 ), true );
+        void* fworld = FileOpen( Str::Format( fname, "%sAuto%04d.foworld", save_path, SaveWorldIndex + 1 ), true );
         if( fworld )
         {
             for( uint i = 0; i < WorldSaveDataBufCount; i++ )
@@ -4766,7 +4760,7 @@ void FOServer::Dump_Work( void* data )
         // Clear old dump files
         for( auto it = SaveWorldDeleteIndexes.begin(), end = SaveWorldDeleteIndexes.end(); it != end; ++it )
         {
-            void* fold = FileOpen( Str::Format( fname, "%sworld%04d.fo", save_path, *it ), true );
+            void* fold = FileOpen( Str::Format( fname, "%sAuto%04d.foworld", save_path, *it ), true );
             if( fold )
             {
                 FileClose( fold );

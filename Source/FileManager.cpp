@@ -51,9 +51,9 @@ const char* PathList[ PATH_LIST_COUNT ] =
     "dumps" DIR_SLASH_S,
     "profiler" DIR_SLASH_S,
     "update" DIR_SLASH_S,
-    "",
-    "",
-    "",
+    "cache" DIR_SLASH_S,
+    "cache" DIR_SLASH_S "scripts" DIR_SLASH_S,
+    "cache" DIR_SLASH_S "maps" DIR_SLASH_S,
     "",
     "",
 };
@@ -509,8 +509,8 @@ void FileManager::SetPosOutBuf( uint pos )
 
 bool FileManager::SaveOutBufToFile( const char* fname, int path_type )
 {
-    if( !dataOutBuf )
-        return false;
+    RUNTIME_ASSERT( dataOutBuf || !endOutBuf );
+
     if( !fname )
         return false;
 

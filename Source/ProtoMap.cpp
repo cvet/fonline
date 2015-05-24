@@ -1007,7 +1007,7 @@ void ProtoMap::SaveCache( FileManager& fm )
     // Save
     char fname[ MAX_FOPATH ];
     Str::Format( fname, "%s%sb", pmapName.c_str(), MAP_PROTO_EXT );
-    fm.SaveOutBufToFile( fname, PT_SERVER_MAPS );
+    fm.SaveOutBufToFile( fname, PT_SERVER_CACHE_MAPS );
 }
 
 void ProtoMap::BindSceneryScript( MapObject* mobj )
@@ -1061,7 +1061,7 @@ bool ProtoMap::Refresh()
     #ifdef FONLINE_SERVER
     // Cached binary
     FileManager cached;
-    cached.LoadFile( fname_bin.c_str(), PT_SERVER_MAPS );
+    cached.LoadFile( fname_bin.c_str(), PT_SERVER_CACHE_MAPS );
 
     // Load text or binary
     FileManager fm;

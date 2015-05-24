@@ -73,8 +73,10 @@ typedef vector< BindFunction > BindFunctionVec;
 asIScriptEngine* Engine = NULL;
 #ifndef FONLINE_CLIENT
 int              ScriptsPath = PT_SERVER_SCRIPTS;
+int              ScriptsPathCache = PT_SERVER_CACHE_SCRIPTS;
 #else
 int              ScriptsPath = PT_CACHE;
+int              ScriptsPathCache = PT_CACHE;
 #endif
 bool             LogDebugInfo = false;
 StrVec           WrongGlobalObjects;
@@ -490,7 +492,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
 
     // Client path fixes
     #ifdef FONLINE_CLIENT
-    Str::Insert( dll_path, FileManager::GetDataPath( "", PT_SERVER_SCRIPTS ) );
+    Str::Insert( dll_path, FileManager::GetDataPath( "", ScriptsPath ) );
     Str::Replacement( dll_path, '\\', '.' );
     Str::Replacement( dll_path, '/', '.' );
     #endif
@@ -587,7 +589,7 @@ bool Script::ReloadScripts( const char* target, bool skip_binaries, const char* 
 
     Script::UnloadScripts();
 
-    FilesCollection files = FilesCollection( PT_SERVER_SCRIPTS, "fos", true );
+    FilesCollection files = FilesCollection( ScriptsPath, "fos", true );
     uint            files_loaded = 0;
     int             errors = 0;
     while( files.IsNextFile() )
@@ -1383,7 +1385,7 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
     {
         FileManager file;
         file.LoadFile( fname_real, ScriptsPath );
-        file_bin.LoadFile( Str::FormatBuf( "%sb", fname_script ), ScriptsPath );
+        file_bin.LoadFile( Str::FormatBuf( "%sb", fname_script ), ScriptsPathCache );
 
         if( file_bin.IsLoaded() && file_bin.GetFsize() > sizeof( uint ) )
         {
@@ -1666,7 +1668,7 @@ public:
             }
             file_bin.SetData( &data[ 0 ], (uint) data.size() );
 
-            if( !file_bin.SaveOutBufToFile( Str::FormatBuf( "%sb", fname_script ), ScriptsPath ) )
+            if( !file_bin.SaveOutBufToFile( Str::FormatBuf( "%sb", fname_script ), ScriptsPathCache ) )
                 WriteLogF( _FUNC_, " - Can't save bytecode, script<%s>.\n", module_name );
         }
         else
@@ -1677,7 +1679,7 @@ public:
         FileManager file_prep;
         FormatPreprocessorOutput( result.String );
         file_prep.SetData( (void*) result.String.c_str(), (uint) result.String.length() );
-        if( !file_prep.SaveOutBufToFile( Str::FormatBuf( "%sp", fname_script ), ScriptsPath ) )
+        if( !file_prep.SaveOutBufToFile( Str::FormatBuf( "%sp", fname_script ), ScriptsPathCache ) )
             WriteLogF( _FUNC_, " - Can't write preprocessed file, script<%s>.\n", module_name );
     }
     return true;
