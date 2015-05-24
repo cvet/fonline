@@ -1391,8 +1391,11 @@ int* CritterCl::GetLayers3dData()
 {
     uint   data_size;
     uchar* data = GetAnim3dLayerData( data_size );
-    RUNTIME_ASSERT( data_size == LAYERS3D_COUNT * sizeof( int ) );
-    return (int*) data;
+    RUNTIME_ASSERT( !data_size || data_size == LAYERS3D_COUNT * sizeof( int ) );
+    if( data_size )
+        return (int*) data;
+    static int zero_data[ LAYERS3D_COUNT ];
+    return zero_data;
 }
 
 bool CritterCl::IsAnimAviable( uint anim1, uint anim2 )
