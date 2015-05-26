@@ -546,8 +546,8 @@ public:
     int maxhx__ = maxhx, maxhy__ = maxhy;                                    \
     for( uint i__ = 0, j__ = Str::Length( lines ) / 2; i__ < j__; i__++ )    \
     {                                                                        \
-        uchar steps__ = lines[ i__ * 2 ] - '0';                              \
-        uchar dir__ = lines[ i__ * 2 + 1 ] - '0';                            \
+        uchar dir__ = lines[ i__ * 2 ] - '0';                                \
+        uchar steps__ = lines[ i__ * 2 + 1 ] - '0';                          \
         if( dir__ >= DIRS_COUNT || !steps__ || steps__ > 9 )                 \
             break;                                                           \
         for( uchar k__ = 0; k__ < steps__; k__++ )                           \

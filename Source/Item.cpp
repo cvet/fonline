@@ -147,13 +147,13 @@ hash ProtoItem::GetChildPid( uint index )
 {
     if( index == 0 )
         return GetChildPid_0();
-    else if( index == 0 )
+    else if( index == 1 )
         return GetChildPid_1();
-    else if( index == 0 )
+    else if( index == 2 )
         return GetChildPid_2();
-    else if( index == 0 )
+    else if( index == 3 )
         return GetChildPid_3();
-    else if( index == 0 )
+    else if( index == 4 )
         return GetChildPid_4();
     return 0;
 }
@@ -164,13 +164,13 @@ const char* ProtoItem::GetChildLinesStr( uint index )
     uchar* data = NULL;
     if( index == 0 )
         data = GetChildLines_0Data( data_size );
-    else if( index == 0 )
+    else if( index == 1 )
         data = GetChildLines_1Data( data_size );
-    else if( index == 0 )
+    else if( index == 2 )
         data = GetChildLines_2Data( data_size );
-    else if( index == 0 )
+    else if( index == 3 )
         data = GetChildLines_3Data( data_size );
-    else if( index == 0 )
+    else if( index == 4 )
         data = GetChildLines_4Data( data_size );
     return data ? (char*) data : "";
 }
