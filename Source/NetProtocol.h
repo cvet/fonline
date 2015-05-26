@@ -1070,9 +1070,9 @@
 class NetProperty
 {
 public:
-    enum Type : char
+    enum Type
     {
-        None,
+        None = 0,
         Global,              // 0
         Critter,             // 1 cr_id
         Chosen,              // 0
