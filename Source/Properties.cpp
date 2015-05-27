@@ -576,36 +576,36 @@ void Property::SetPODValueAsInt( void* obj, int value )
     RUNTIME_ASSERT( dataType == Property::POD );
     if( isBoolDataType )
     {
-        SetValue< bool >( this, value != 0 );
+        SetValue< bool >( obj, value != 0 );
     }
     else if( isFloatDataType )
     {
         if( baseSize == 4 )
-            SetValue< float >( this, (float) value );
+            SetValue< float >( obj, (float) value );
         else if( baseSize == 8 )
-            SetValue< double >( this, (double) value );
+            SetValue< double >( obj, (double) value );
     }
     else if( isSignedIntDataType )
     {
         if( baseSize == 1 )
-            SetValue< char >( this, (char) value );
+            SetValue< char >( obj, (char) value );
         else if( baseSize == 2 )
-            SetValue< short >( this, (short) value );
+            SetValue< short >( obj, (short) value );
         else if( baseSize == 4 )
-            SetValue< int >( this, (int) value );
+            SetValue< int >( obj, (int) value );
         else if( baseSize == 8 )
-            SetValue< int64 >( this, (int64) value );
+            SetValue< int64 >( obj, (int64) value );
     }
     else
     {
         if( baseSize == 1 )
-            SetValue< uchar >( this, (uchar) value );
+            SetValue< uchar >( obj, (uchar) value );
         else if( baseSize == 2 )
-            SetValue< ushort >( this, (ushort) value );
+            SetValue< ushort >( obj, (ushort) value );
         else if( baseSize == 4 )
-            SetValue< uint >( this, (uint) value );
+            SetValue< uint >( obj, (uint) value );
         else if( baseSize == 8 )
-            SetValue< uint64 >( this, (uint64) value );
+            SetValue< uint64 >( obj, (uint64) value );
     }
 }
 
