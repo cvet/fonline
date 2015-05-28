@@ -1702,12 +1702,12 @@ void FOServer::Process_CreateClient( Client* cl )
 
     // Add name in clients names cache file
     char  cache_fname[ MAX_FOPATH ];
-    FileManager::GetWritePath( "ClientsList.txt", PT_SERVER_CLIENTS, cache_fname );
+    FileManager::GetWritePath( "ClientsList.txt", PT_SERVER_CACHE, cache_fname );
     void* cache_file = FileOpenForAppend( cache_fname );
     if( cache_file )
     {
         FileWrite( cache_file, cl->Name, Str::Length( cl->Name ) );
-        FileWrite( cache_file, ".client\n", 8 );
+        FileWrite( cache_file, ".foclient\n", 10 );
         FileClose( cache_file );
     }
     else

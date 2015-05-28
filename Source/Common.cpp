@@ -1566,17 +1566,18 @@ Thread::~Thread()
     Finish();
 }
 
-bool Thread::Start( void ( * func )( void* ), const char* name, void* arg /* = NULL */ )
+void Thread::Start( void ( * func )( void* ), const char* name, void* arg /* = NULL */ )
 {
     void** args = (void**) malloc( sizeof( void* ) * 3 );
     char*  name_ = Str::Duplicate( name );
     args[ 0 ] = (void*) func, args[ 1 ] = arg, args[ 2 ] = name_;
     # ifdef FO_WINDOWS
     threadId = CreateThread( NULL, 0, ThreadBeginExecution, args, 0, NULL );
+    isStarted = ( threadId != NULL );
     # else
     isStarted = ( pthread_create( &threadId, NULL, ThreadBeginExecution, args ) == 0 );
     # endif
-    return isStarted;
+    RUNTIME_ASSERT( isStarted );
 }
 
 void Thread::Wait()

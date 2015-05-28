@@ -4131,6 +4131,7 @@ bool FOServer::LoadClientsData()
                     continue;
                 }
             }
+            step++;
         }
         else
         {
