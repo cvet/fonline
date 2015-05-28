@@ -67,18 +67,16 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
             else
             {
                 uint           key_element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
-                int            arr_type_id = asObjType->GetSubTypeId( 1 );
                 asIObjectType* arr_type = asObjType->GetSubType( 1 );
                 uint           arr_element_size = engine->GetSizeOfPrimitiveType( arr_type->GetSubTypeId() );
                 uchar*         data_end = data + data_size;
                 while( data < data_end )
                 {
                     uint         arr_data_size = *(uint*) ( data + key_element_size );
-                    uint         arr_size = arr_data_size / arr_element_size;
-                    ScriptArray* arr = ScriptArray::Create( arr_type, arr_size );
+                    ScriptArray* arr = ScriptArray::Create( arr_type, arr_data_size / arr_element_size );
                     RUNTIME_ASSERT( arr );
-                    if( arr_size )
-                        memcpy( arr->At( 0 ), data + key_element_size + sizeof( uint ), arr_size * arr_element_size );
+                    if( arr_data_size )
+                        memcpy( arr->At( 0 ), data + key_element_size + sizeof( uint ), arr_data_size );
                     dict->Set( data, arr );
                     arr->Release();
                     data += key_element_size + sizeof( uint ) + arr_data_size;
@@ -160,20 +158,20 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
         }
         else
         {
-            uint dict_size = ( dict ? dict->GetSize() : 0 );
-            if( dict_size )
+            data_size = ( dict ? dict->GetSize() : 0 );
+            if( data_size )
             {
                 need_delete = true;
                 uint key_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
                 uint arr_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubType( 1 )->GetSubTypeId() );
 
                 // Calculate size
-                dict_size = 0;
+                data_size = 0;
                 map< void*, void* >* dict_map = ( map< void*, void* >* )dict->GetMap();
                 for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
                 {
                     ScriptArray* arr = (ScriptArray*) it->second;
-                    dict_size += key_element_size + sizeof( uint ) + arr->GetSize() * arr_element_size;
+                    data_size += key_element_size + sizeof( uint ) + arr->GetSize() * arr_element_size;
                 }
 
                 // Make buffer
@@ -185,11 +183,11 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
                     memcpy( buf, it->first, key_element_size );
                     buf += key_element_size;
                     uint arr_data_size = arr->GetSize() * arr_element_size;
-                    memcpy( buf, &arr_data_size, sizeof( uint ) );
-                    buf += sizeof( uint );
+                    memcpy( buf, &arr_data_size, sizeof( arr_data_size ) );
+                    buf += sizeof( arr_data_size );
                     if( arr_data_size )
                     {
-                        memcpy( buf, it->second, arr_data_size );
+                        memcpy( buf, arr->At( 0 ), arr_data_size );
                         buf += arr_data_size;
                     }
                 }
