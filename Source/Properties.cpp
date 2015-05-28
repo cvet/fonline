@@ -32,6 +32,7 @@ Property::Property()
 
 void* Property::CreateComplexValue( uchar* data, uint data_size )
 {
+    asIScriptEngine* engine = asObjType->GetEngine();
     if( dataType == Property::String )
     {
         ScriptString* str = ScriptString::Create( data_size ? (char*) data : "", data_size );
@@ -40,8 +41,8 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
     }
     else if( dataType == Property::Array )
     {
-        asUINT       element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId() );
-        asUINT       arr_size = data_size / element_size;
+        uint         element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId() );
+        uint         arr_size = data_size / element_size;
         ScriptArray* arr = ScriptArray::Create( asObjType, arr_size );
         RUNTIME_ASSERT( arr );
         if( arr_size )
@@ -50,16 +51,39 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
     }
     else if( dataType == Property::Dict )
     {
-        asUINT      key_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
-        asUINT      value_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 1 ) );
-        asUINT      whole_element_size = key_element_size + value_element_size;
-        asUINT      dict_size = data_size / whole_element_size;
         ScriptDict* dict = ScriptDict::Create( asObjType );
         RUNTIME_ASSERT( dict );
-        if( dict_size )
+        if( data_size )
         {
-            for( asUINT i = 0; i < dict_size; i++ )
-                dict->Set( data + i * whole_element_size, data + i * whole_element_size + key_element_size );
+            if( !isDictArray )
+            {
+                uint key_element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
+                uint value_element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 1 ) );
+                uint whole_element_size = key_element_size + value_element_size;
+                uint dict_size = data_size / whole_element_size;
+                for( uint i = 0; i < dict_size; i++ )
+                    dict->Set( data + i * whole_element_size, data + i * whole_element_size + key_element_size );
+            }
+            else
+            {
+                uint           key_element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
+                int            arr_type_id = asObjType->GetSubTypeId( 1 );
+                asIObjectType* arr_type = asObjType->GetSubType( 1 );
+                uint           arr_element_size = engine->GetSizeOfPrimitiveType( arr_type->GetSubTypeId() );
+                uchar*         data_end = data + data_size;
+                while( data < data_end )
+                {
+                    uint         arr_data_size = *(uint*) ( data + key_element_size );
+                    uint         arr_size = arr_data_size / arr_element_size;
+                    ScriptArray* arr = ScriptArray::Create( arr_type, arr_size );
+                    RUNTIME_ASSERT( arr );
+                    if( arr_size )
+                        memcpy( arr->At( 0 ), data + key_element_size + sizeof( uint ), arr_size * arr_element_size );
+                    dict->Set( data, arr );
+                    arr->Release();
+                    data += key_element_size + sizeof( uint ) + arr_data_size;
+                }
+            }
         }
         return dict;
     }
@@ -112,24 +136,65 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
     else if( dataType == Property::Dict )
     {
         ScriptDict* dict = *(ScriptDict**) base_ptr;
-        asUINT      key_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
-        asUINT      value_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 1 ) );
-        asUINT      whole_element_size = key_element_size + value_element_size;
-        data_size = ( dict ? dict->GetSize() * whole_element_size : 0 );
-        if( data_size )
+        if( !isDictArray )
         {
-            need_delete = true;
-            uchar*               init_buf = new uchar[ data_size ];
-            uchar*               buf = init_buf;
-            map< void*, void* >* dict_map = ( map< void*, void* >* )dict->GetMap();
-            for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+            uint key_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
+            uint value_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 1 ) );
+            uint whole_element_size = key_element_size + value_element_size;
+            data_size = ( dict ? dict->GetSize() * whole_element_size : 0 );
+            if( data_size )
             {
-                memcpy( buf, it->first, key_element_size );
-                buf += key_element_size;
-                memcpy( buf, it->second, value_element_size );
-                buf += value_element_size;
+                need_delete = true;
+                uchar*               init_buf = new uchar[ data_size ];
+                uchar*               buf = init_buf;
+                map< void*, void* >* dict_map = ( map< void*, void* >* )dict->GetMap();
+                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+                {
+                    memcpy( buf, it->first, key_element_size );
+                    buf += key_element_size;
+                    memcpy( buf, it->second, value_element_size );
+                    buf += value_element_size;
+                }
+                return init_buf;
             }
-            return init_buf;
+        }
+        else
+        {
+            uint dict_size = ( dict ? dict->GetSize() : 0 );
+            if( dict_size )
+            {
+                need_delete = true;
+                uint key_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
+                uint arr_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubType( 1 )->GetSubTypeId() );
+
+                // Calculate size
+                dict_size = 0;
+                map< void*, void* >* dict_map = ( map< void*, void* >* )dict->GetMap();
+                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+                {
+                    ScriptArray* arr = (ScriptArray*) it->second;
+                    dict_size += key_element_size + sizeof( uint ) + arr->GetSize() * arr_element_size;
+                }
+
+                // Make buffer
+                uchar* init_buf = new uchar[ data_size ];
+                uchar* buf = init_buf;
+                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+                {
+                    ScriptArray* arr = (ScriptArray*) it->second;
+                    memcpy( buf, it->first, key_element_size );
+                    buf += key_element_size;
+                    uint arr_data_size = arr->GetSize() * arr_element_size;
+                    memcpy( buf, &arr_data_size, sizeof( uint ) );
+                    buf += sizeof( uint );
+                    if( arr_data_size )
+                    {
+                        memcpy( buf, it->second, arr_data_size );
+                        buf += arr_data_size;
+                    }
+                }
+                return init_buf;
+            }
         }
         return NULL;
     }
@@ -1239,6 +1304,7 @@ Property* PropertyRegistrator::Register(
     bool               is_float_data_type = false;
     bool               is_bool_data_type = false;
     bool               is_enum_data_type = false;
+    bool               is_dict_array = false;
     if( type_id & asTYPEID_OBJHANDLE )
     {
         WriteLogF( _FUNC_, " - Invalid property type<%s>, handles not allowed.\n", type_name );
@@ -1272,14 +1338,13 @@ Property* PropertyRegistrator::Register(
     else if( Str::Compare( as_obj_type->GetName(), "string" ) )
     {
         data_type = Property::String;
-
         data_size = sizeof( void* );
     }
     else if( Str::Compare( as_obj_type->GetName(), "array" ) )
     {
         data_type = Property::Array;
-
         data_size = sizeof( void* );
+
         if( as_obj_type->GetSubTypeId() & asTYPEID_MASK_OBJECT )
         {
             WriteLogF( _FUNC_, " - Invalid property type<%s>, array elements must have POD type.\n", type_name );
@@ -1289,13 +1354,22 @@ Property* PropertyRegistrator::Register(
     else if( Str::Compare( as_obj_type->GetName(), "dict" ) )
     {
         data_type = Property::Dict;
-
         data_size = sizeof( void* );
-        if( as_obj_type->GetSubTypeId( 0 ) & asTYPEID_MASK_OBJECT || as_obj_type->GetSubTypeId( 1 ) & asTYPEID_MASK_OBJECT )
+
+        if( as_obj_type->GetSubTypeId( 0 ) & asTYPEID_MASK_OBJECT )
         {
-            WriteLogF( _FUNC_, " - Invalid property type<%s>, dict elements must have POD type.\n", type_name );
+            WriteLogF( _FUNC_, " - Invalid property type<%s>, dict key must have POD type.\n", type_name );
             return NULL;
         }
+
+        int value_sub_type_id = as_obj_type->GetSubTypeId( 1 );
+        asIObjectType* value_sub_type = as_obj_type->GetSubType( 1 );
+        if( value_sub_type_id & asTYPEID_MASK_OBJECT && !( Str::Compare( value_sub_type->GetName(), "array" ) && !( value_sub_type->GetSubTypeId() & asTYPEID_MASK_OBJECT ) ) )
+        {
+            WriteLogF( _FUNC_, " - Invalid property type<%s>, dict value must have POD type or array of POD type.\n", type_name );
+            return NULL;
+        }
+        is_dict_array = ( value_sub_type_id & asTYPEID_MASK_OBJECT ) != 0;
     }
     else
     {
@@ -1517,6 +1591,7 @@ Property* PropertyRegistrator::Register(
     prop->isFloatDataType = is_float_data_type;
     prop->isEnumDataType = is_enum_data_type;
     prop->isBoolDataType = is_bool_data_type;
+    prop->isDictArray = is_dict_array;
     prop->isReadable = !disable_get;
     prop->isWritable = !disable_set;
     prop->generateRandomValue = ( generate_random_value ? *generate_random_value : false );

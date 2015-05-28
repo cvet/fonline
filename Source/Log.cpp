@@ -178,10 +178,12 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
     {
         #ifdef FO_WINDOWS
         OutputDebugString( str );
-        #else
-        printf( "%s", str );
         #endif
     }
+
+    #if !defined ( FO_WINDOWS ) || defined ( FONLINE_SCRIPT_COMPILER )
+    printf( "%s", str );
+    #endif
 }
 
 void LogWithTime( bool enable )

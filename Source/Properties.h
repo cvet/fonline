@@ -148,6 +148,7 @@ private:
     bool           isFloatDataType;
     bool           isBoolDataType;
     bool           isEnumDataType;
+    bool           isDictArray;
     AccessType     accessType;
     bool           isReadable;
     bool           isWritable;
