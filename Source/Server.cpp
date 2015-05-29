@@ -62,9 +62,8 @@ UIntMap                     FOServer::RegIp;
 Mutex                       FOServer::RegIpLocker;
 FOServer::ClientBannedVec   FOServer::Banned;
 Mutex                       FOServer::BannedLocker;
-FOServer::ClientDataVec     FOServer::ClientsData;
+FOServer::ClientDataMap     FOServer::ClientsData;
 Mutex                       FOServer::ClientsDataLocker;
-volatile uint               FOServer::LastClientId = 0;
 ScoreType                   FOServer::BestScores[ SCORES_MAX ];
 Mutex                       FOServer::BestScoresLocker;
 FOServer::SingleplayerSave_ FOServer::SingleplayerSave;
@@ -81,7 +80,6 @@ FOServer::FOServer()
     ActiveOnce = false;
     memzero( &Statistics, sizeof( Statistics ) );
     memzero( &ServerFunctions, sizeof( ServerFunctions ) );
-    LastClientId = 0;
     SingleplayerSave.Valid = false;
     RequestReloadClientScripts = false;
     MEMORY_PROCESS( MEMORY_STATIC, sizeof( FOServer ) );
@@ -351,9 +349,9 @@ void FOServer::RemoveClient( Client* cl )
         if( cl->Data.ClientToDelete )
         {
             SaveClientsLocker.Lock();
-            ClientData* data = GetClientData( id );
-            if( data )
-                data->Clear();
+            auto it = ClientsData.find( id );
+            delete it->second;
+            ClientsData.erase( it );
             SaveClientsLocker.Unlock();
 
             cl->FullClear();
@@ -2205,9 +2203,10 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
 
         SaveClientsLocker.Lock();
 
-        ClientData* cd = GetClientData( name );
+        uint        id = MAKE_CLIENT_ID( name );
+        ClientData* cd = GetClientData( id );
         if( cd )
-            logcb( Str::FormatBuf( "Client id is %u.", cd->ClientId ) );
+            logcb( Str::FormatBuf( "Client id is %u.", id ) );
         else
             logcb( "Client not found." );
 
@@ -4059,8 +4058,6 @@ void FOServer::LoadBans()
 bool FOServer::LoadClientsData()
 {
     WriteLog( "Indexing client data.\n" );
-    LastClientId = 0;
-    ClientsData.reserve( 10000 );
 
     char client_name[ MAX_FOPATH ];
     char clients_path[ MAX_FOPATH ];
@@ -4102,23 +4099,20 @@ bool FOServer::LoadClientsData()
     FileManager file_cache_write;
 
     // Index clients
-    UIntSet id_already;
-    int     step = 0; // 0 - first iteration for client, 1 - next iterations, 2 - first iteration for deleted clients, 3 - next iterations
-    int     errors = 0;
-    while( step < 4 )
+    int  errors = 0;
+    bool first_iteration = true;
+    while( true )
     {
         // Next
-        if( step == 0 || step == 2 )
+        if( first_iteration )
         {
+            first_iteration = false;
             if( !cache_str )
             {
                 // Find file
-                file_find = FileFindFirst( clients_path, step == 0 ? "foclient" : "foclient_deleted", file_find_data );
+                file_find = FileFindFirst( clients_path, "foclient", file_find_data );
                 if( !file_find )
-                {
-                    step += 2;
-                    continue;
-                }
+                    break;
                 Str::Copy( client_name, file_find_data.FileName );
             }
             else
@@ -4126,12 +4120,8 @@ bool FOServer::LoadClientsData()
                 cache_str->getline( client_name, sizeof( client_name ) );
                 Str::Trim( client_name );
                 if( cache_str->eof() )
-                {
-                    step = 4;
-                    continue;
-                }
+                    break;
             }
-            step++;
         }
         else
         {
@@ -4141,10 +4131,7 @@ bool FOServer::LoadClientsData()
                 file_cache_write.SetStr( "\n" );
 
                 if( !FileFindNext( file_find, file_find_data ) )
-                {
-                    step++;
-                    continue;
-                }
+                    break;
                 Str::Copy( client_name, file_find_data.FileName );
             }
             else
@@ -4152,23 +4139,19 @@ bool FOServer::LoadClientsData()
                 cache_str->getline( client_name, sizeof( client_name ) );
                 Str::Trim( client_name );
                 if( cache_str->eof() )
-                {
-                    step = 4;
-                    continue;
-                }
+                    break;
             }
         }
 
         // Take name from file title
         char        name[ MAX_FOPATH ];
         const char* ext = FileManager::GetExtension( client_name );
-        if( !ext || ( !Str::CompareCase( ext, "foclient" ) && !Str::CompareCase( ext, "foclient_deleted" ) ) )
+        if( cache_str && ( !ext || !Str::CompareCase( ext, "foclient" ) ) )
         {
             WriteLog( "Wrong name<%s> of client file in cache.\n", client_name );
             errors++;
             continue;
         }
-        bool is_deleted = Str::CompareCase( ext, "foclient_deleted" );
         Str::Copy( name, client_name );
         FileManager::EraseExtension( name );
 
@@ -4209,51 +4192,38 @@ bool FOServer::LoadClientsData()
             continue;
         }
 
-        // Get id and password hash
-        uint id;
+        // Generate user id
+        uint id = MAKE_CLIENT_ID( name );
+
+        // Get password hash
         char pass_hash[ PASS_HASH_SIZE ];
         memcpy( pass_hash, header + 4, PASS_HASH_SIZE );
-        memcpy( &id, header + 4 + PASS_HASH_SIZE, sizeof( uint ) );
-
-        // Check id
-        if( !IS_USER_ID( id ) )
-        {
-            WriteLog( "Wrong id<%u> of client<%s>.\n", id, name );
-            errors++;
-            continue;
-        }
-
-        // Process ids
-        if( id > LastClientId )
-            LastClientId = id;
 
         // Check uniqueness of id
-        if( id_already.count( id ) )
+        auto it = ClientsData.find( id );
+        if( it != ClientsData.end() )
         {
-            WriteLog( "Id<%u> of user<%s> already used by another client.\n", id, name );
+            WriteLog( "Collisions of user id for client<%s> and client<%s>.\n", name, it->second->ClientName );
             errors++;
             continue;
         }
-        id_already.insert( id );
 
-        // Skip indexing of deleted clients
-        if( is_deleted )
-            continue;
-
-        // Add client information, only for non marked as deleted
-        ClientData data;
-        data.Clear();
-        Str::Copy( data.ClientName, name );
-        memcpy( data.ClientPassHash, pass_hash, PASS_HASH_SIZE );
-        data.ClientId = id;
-        ClientsData.push_back( data );
+        // Add client information
+        ClientData* data = new ClientData();
+        memzero( data, sizeof( ClientData ) );
+        Str::Copy( data->ClientName, name );
+        memcpy( data->ClientPassHash, pass_hash, PASS_HASH_SIZE );
+        ClientsData.insert( PAIR( id, data ) );
     }
 
     // Fail, next start will without cache
-    if( errors && cache_str )
+    if( errors )
     {
-        WriteLog( "Cache file deleted, restart server.\n" );
-        FileDelete( cache_fname );
+        if( cache_str )
+        {
+            WriteLog( "Cache file deleted, restart server.\n" );
+            FileDelete( cache_fname );
+        }
         return false;
     }
 
@@ -4270,12 +4240,14 @@ bool FOServer::LoadClientsData()
     SAFEDEL( cache_str );
     SAFEDELA( cache_buf );
 
-    // Reserve memory for future clients data
-    if( ClientsData.size() > 10000 )
-        ClientsData.reserve( ClientsData.size() * 2 );
-
     WriteLog( "Indexing complete, clients found<%u>.\n", ClientsData.size() );
     return true;
+}
+
+FOServer::ClientData* FOServer::GetClientData( uint id )
+{
+    auto it = ClientsData.find( id );
+    return it != ClientsData.end() ? it->second : NULL;
 }
 
 bool FOServer::SaveClient( Client* cl, bool deferred )

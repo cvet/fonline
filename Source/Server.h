@@ -414,31 +414,16 @@ public:
     {
         char ClientName[ UTF8_BUF_SIZE( MAX_NAME ) ];
         char ClientPassHash[ PASS_HASH_SIZE ];
-        uint ClientId;
         uint SaveIndex;
         uint UID[ 5 ];
         uint UIDEndTick;
-        void Clear()                        { memzero( this, sizeof( ClientData ) ); }
-        bool operator==( const char* name ) { return Str::CompareCaseUTF8( name, ClientName ); }
-        bool operator==( const uint id )    { return ClientId == id; }
-        ClientData() { Clear(); }
     };
-    typedef vector< ClientData > ClientDataVec;
-    static ClientDataVec ClientsData;
+    typedef map< uint, ClientData* > ClientDataMap;
+    static ClientDataMap ClientsData;
     static Mutex         ClientsDataLocker;
-    static volatile uint LastClientId;
 
     static bool        LoadClientsData();
-    static ClientData* GetClientData( const char* name )
-    {
-        auto it = std::find( ClientsData.begin(), ClientsData.end(), name );
-        return it != ClientsData.end() ? &( *it ) : NULL;
-    }
-    static ClientData* GetClientData( uint id )
-    {
-        auto it = std::find( ClientsData.begin(), ClientsData.end(), id );
-        return it != ClientsData.end() ? &( *it ) : NULL;
-    }
+    static ClientData* GetClientData( uint id );
 
     // Statistics
     struct Statistics_

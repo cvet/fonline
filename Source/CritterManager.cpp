@@ -46,7 +46,7 @@ void CritterManager::Clear()
     crToDelete.clear();
     playersCount = 0;
     npcCount = 0;
-    lastNpcId = NPC_START_ID;
+    lastNpcId = 0;
     #endif
 }
 
@@ -204,7 +204,8 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
             FileRead( f, &tevents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
         }
 
-        if( data.Id > lastNpcId )
+        RUNTIME_ASSERT( IS_NPC_ID( data.Id ) );
+        if( data.Id < lastNpcId )
             lastNpcId = data.Id;
 
         Npc* npc = CreateNpc( data.ProtoId, false );
@@ -408,8 +409,8 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     }
 
     crLocker.Lock();
-    npc->Data.Id = lastNpcId + 1;
-    lastNpcId++;
+    npc->Data.Id = --lastNpcId;
+    RUNTIME_ASSERT( IS_NPC_ID( npc->Data.Id ) );
     crLocker.Unlock();
 
     // Flags and coords
@@ -702,7 +703,7 @@ Critter* CritterManager::GetCritter( uint crid, bool sync_lock )
 
 Client* CritterManager::GetPlayer( uint crid, bool sync_lock )
 {
-    if( !IS_USER_ID( crid ) )
+    if( !IS_CLIENT_ID( crid ) )
         return NULL;
 
     Critter* cr = NULL;

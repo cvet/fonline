@@ -78,7 +78,7 @@ bool FOServer::TransferAllItems()
         {
         case ITEM_ACCESSORY_CRITTER:
         {
-            if( IS_USER_ID( item->AccCritter.Id ) )
+            if( IS_CLIENT_ID( item->AccCritter.Id ) )
                 continue;                                                      // Skip player
 
             Critter* npc = CrMngr.GetNpc( item->AccCritter.Id, false );

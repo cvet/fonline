@@ -5041,18 +5041,13 @@ uint FOServer::SScriptFunc::Global_GetPlayerId( ScriptString& name )
     if( len_utf8 > MAX_NAME || len_utf8 > GameOpt.MaxNameLength )
         return 0;                                               // SCRIPT_ERROR_R0("Name length is greater than maximum.");
 
-    if( Singleplayer )
-    {
-        if( Str::CompareCaseUTF8( name.c_str(), SingleplayerSave.CrData.Name ) )
-            return 1;
-        return 0;
-    }
+    uint id = MAKE_CLIENT_ID( name.c_str() );
 
     SCOPE_LOCK( ClientsDataLocker );
-    ClientData* data = GetClientData( name.c_str() );
-    if( !data )
-        return 0;           // SCRIPT_ERROR_R0("Player not found.");
-    return data->ClientId;
+    ClientData* data = GetClientData( id );
+    if( data )
+        return id;
+    return 0;
 }
 
 ScriptString* FOServer::SScriptFunc::Global_GetPlayerName( uint id )
@@ -5608,9 +5603,8 @@ uint FOServer::SScriptFunc::Global_GetRegisteredPlayers( ScriptArray* ids, Scrip
         vector< ScriptString* > names_;
         for( auto it = ClientsData.begin(), end = ClientsData.end(); it != end; ++it )
         {
-            ClientData data = *it;
-            ids_.push_back( data.ClientId );
-            names_.push_back( ScriptString::Create( data.ClientName ) );
+            ids_.push_back( it->first );
+            names_.push_back( ScriptString::Create( it->second->ClientName ) );
         }
 
         if( !ids_.size() )

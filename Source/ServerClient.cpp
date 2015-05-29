@@ -1578,10 +1578,12 @@ void FOServer::Process_CreateClient( Client* cl )
     }
 
     // Check for exist
+    uint id = MAKE_CLIENT_ID( name );
+    RUNTIME_ASSERT( IS_CLIENT_ID( id ) );
     if( !Singleplayer )
     {
         SaveClientsLocker.Lock();
-        bool exist = ( GetClientData( cl->Name ) != NULL );
+        bool exist = ( GetClientData( id ) != NULL );
         SaveClientsLocker.Unlock();
 
         if( !exist )
@@ -1659,6 +1661,7 @@ void FOServer::Process_CreateClient( Client* cl )
     }
 
     // Register
+    cl->Data.Id = id;
     cl->RefreshName();
     cl->Data.HexX = 0;
     cl->Data.HexY = 0;
@@ -1680,13 +1683,6 @@ void FOServer::Process_CreateClient( Client* cl )
         cl->Disconnect();
         return;
     }
-
-    // Assign id
-    if( Singleplayer )
-        cl->Data.Id = 1;
-    else
-        cl->Data.Id = ++LastClientId;
-    RUNTIME_ASSERT( IS_USER_ID( cl->Data.Id ) );
 
     // Assign base access
     cl->Access = ACCESS_DEFAULT;
@@ -1762,14 +1758,13 @@ void FOServer::Process_CreateClient( Client* cl )
 
     if( !Singleplayer )
     {
-        ClientData data;
-        data.Clear();
-        Str::Copy( data.ClientName, cl->Name );
-        memcpy( data.ClientPassHash, cl->PassHash, PASS_HASH_SIZE );
-        data.ClientId = cl->GetId();
+        ClientData* data = new ClientData();
+        memzero( data, sizeof( ClientData ) );
+        Str::Copy( data->ClientName, cl->Name );
+        memcpy( data->ClientPassHash, cl->PassHash, PASS_HASH_SIZE );
 
         SCOPE_LOCK( ClientsDataLocker );
-        ClientsData.push_back( data );
+        ClientsData.insert( PAIR( cl->Data.Id, data ) );
     }
     else
     {
@@ -1913,12 +1908,13 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     }
 
     // Get client account data
+    uint       id = MAKE_CLIENT_ID( cl->Name );
     ClientData data;
     if( !Singleplayer )
     {
         SCOPE_LOCK( ClientsDataLocker );
 
-        ClientData* data_ = GetClientData( cl->Name );
+        ClientData* data_ = GetClientData( id );
         if( !data_ || memcmp( cl->PassHash, data_->ClientPassHash, PASS_HASH_SIZE ) )
         {
             // WriteLogF(_FUNC_," - Wrong name<%s> or password.\n",cl->Name);
@@ -1932,7 +1928,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     else
     {
         Str::Copy( data.ClientName, SingleplayerSave.CrData.Name );
-        data.ClientId = SingleplayerSave.CrData.Data.Id;
+        id = MAKE_CLIENT_ID( SingleplayerSave.CrData.Name );
     }
 
     // Check for ban by name
@@ -1960,7 +1956,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         ScriptString* lexems = ScriptString::Create();
         Script::SetArgUInt( cl->GetIp() );
         Script::SetArgObject( name );
-        Script::SetArgUInt( data.ClientId );
+        Script::SetArgUInt( id );
         Script::SetArgAddress( &disallow_msg_num );
         Script::SetArgAddress( &disallow_str_num );
         Script::SetArgObject( lexems );
@@ -1981,7 +1977,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     }
 
     // Copy data
-    uint id = data.ClientId;
     Str::Copy( cl->Name, data.ClientName );
     cl->RefreshName();
 
@@ -2034,33 +2029,33 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         uint tick = Timer::FastTick();
         for( auto it = ClientsData.begin(), end = ClientsData.end(); it != end; ++it )
         {
-            ClientData& cd = *it;
-            if( cd.ClientId == data.ClientId )
+            ClientData* cd = it->second;
+            if( it->first == id )
                 continue;
 
             int matches = 0;
-            if( !uid[ 0 ] || uid[ 0 ] == cd.UID[ 0 ] )
+            if( !uid[ 0 ] || uid[ 0 ] == cd->UID[ 0 ] )
                 matches++;
-            if( !uid[ 1 ] || uid[ 1 ] == cd.UID[ 1 ] )
+            if( !uid[ 1 ] || uid[ 1 ] == cd->UID[ 1 ] )
                 matches++;
-            if( !uid[ 2 ] || uid[ 2 ] == cd.UID[ 2 ] )
+            if( !uid[ 2 ] || uid[ 2 ] == cd->UID[ 2 ] )
                 matches++;
-            if( !uid[ 3 ] || uid[ 3 ] == cd.UID[ 3 ] )
+            if( !uid[ 3 ] || uid[ 3 ] == cd->UID[ 3 ] )
                 matches++;
-            if( !uid[ 4 ] || uid[ 4 ] == cd.UID[ 4 ] )
+            if( !uid[ 4 ] || uid[ 4 ] == cd->UID[ 4 ] )
                 matches++;
 
             if( matches >= 5 )
             {
-                if( !cd.UIDEndTick || tick >= cd.UIDEndTick )
+                if( !cd->UIDEndTick || tick >= cd->UIDEndTick )
                 {
                     for( int i = 0; i < 5; i++ )
-                        cd.UID[ i ] = 0;
-                    cd.UIDEndTick = 0;
+                        cd->UID[ i ] = 0;
+                    cd->UIDEndTick = 0;
                 }
                 else
                 {
-                    WriteLogF( _FUNC_, " - UID already used by critter<%s>, client<%s>.\n", cd.ClientName, cl->Name );
+                    WriteLogF( _FUNC_, " - UID already used by critter<%s>, client<%s>.\n", cd->ClientName, cl->Name );
                     cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
                     cl->Disconnect();
                     return;
@@ -2075,7 +2070,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 if( !data.UIDEndTick || tick >= data.UIDEndTick )
                 {
                     // Set new uids on this account and start play timeout
-                    ClientData* data_ = GetClientData( cl->Name );
+                    ClientData* data_ = GetClientData( id );
                     for( int j = 0; j < 5; j++ )
                         data_->UID[ j ] = uid[ j ];
                     data_->UIDEndTick = tick + GameOpt.AccountPlayTime * 1000;
