@@ -4702,7 +4702,7 @@ void FOServer::Dump_Work( void* data )
             ClientSaveData& csd = ClientsSaveData[ i ];
 
             char            fname[ MAX_FOPATH ];
-            Str::Format( fname, "%s%s.client", clients_path, csd.Name );
+            Str::Format( fname, "%s%s.foclient", clients_path, csd.Name );
             void*           fc = FileOpen( fname, true );
             if( !fc )
             {
