@@ -141,7 +141,7 @@ public:
             for( size_t i = 0; i < Props->size(); i++ )
                 Props->at( i )->Release();
             #endif
-            SAFEDELA( Props );
+            SAFEDEL( Props );
         }
     }
 
@@ -160,6 +160,7 @@ public:
     #ifdef FONLINE_MAPPER
     MapObject( const MapObject& r )
     {
+        memzero( this, sizeof( MapObject ) );
         CopyObject( r );
         RunTime.RefCounter = 1;
     }
@@ -173,13 +174,27 @@ public:
     void CopyObject( const MapObject& other )
     {
         SAFEDEL( Props );
+        SAFEREL( ProtoName );
+        if( MapObjType == MAP_OBJECT_ITEM )
+            SAFEREL( MItem.AmmoPid );
+        if( MapObjType == MAP_OBJECT_SCENERY )
+            SAFEREL( MScenery.ToMap );
+
+        int ref_count = RunTime.RefCounter;
         memcpy( this, &other, sizeof( MapObject ) );
+        RunTime.RefCounter = ref_count;
+
         if( Props )
         {
             AllocateProps();
             for( size_t i = 0; i < Props->size(); i++ )
                 *Props->at( i ) = *other.Props->at( i );
         }
+        if( MapObjType == MAP_OBJECT_ITEM && MItem.AmmoPid )
+            MItem.AmmoPid = ScriptString::Create( *MItem.AmmoPid );
+        if( MapObjType == MAP_OBJECT_SCENERY && MScenery.ToMap )
+            MScenery.ToMap = ScriptString::Create( *MScenery.ToMap );
+
         RunTime.RefCounter = 1;
     }
 

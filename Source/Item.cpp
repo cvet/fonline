@@ -136,13 +136,6 @@ ProtoItem::ProtoItem( hash pid ): Props( PropertiesRegistrator ), ItemProps( Ite
     InstanceCount = 0;
 }
 
-const char* ProtoItem::GetBlockLinesStr()
-{
-    uint   data_size;
-    uchar* data = GetBlockLinesData( data_size );
-    return data ? (char*) data : "";
-}
-
 hash ProtoItem::GetChildPid( uint index )
 {
     if( index == 0 )
@@ -158,21 +151,20 @@ hash ProtoItem::GetChildPid( uint index )
     return 0;
 }
 
-const char* ProtoItem::GetChildLinesStr( uint index )
+ScriptString* ProtoItem::GetChildLinesStr( uint index )
 {
-    uint   data_size;
-    uchar* data = NULL;
+    ScriptString* result = NULL;
     if( index == 0 )
-        data = GetChildLines_0Data( data_size );
+        result = GetChildLines_0();
     else if( index == 1 )
-        data = GetChildLines_1Data( data_size );
+        result = GetChildLines_1();
     else if( index == 2 )
-        data = GetChildLines_2Data( data_size );
+        result = GetChildLines_2();
     else if( index == 3 )
-        data = GetChildLines_3Data( data_size );
+        result = GetChildLines_3();
     else if( index == 4 )
-        data = GetChildLines_4Data( data_size );
-    return data ? (char*) data : "";
+        result = GetChildLines_4();
+    return result;
 }
 
 PROPERTIES_IMPL( Item );
@@ -257,7 +249,7 @@ Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator )
     Proto = NULL;
     Accessory = 0;
     ViewPlaceOnMap = false;
-    IsNotValid = false;
+    IsDestroyed = false;
     RefCounter = 1;
     memzero( AccBuffer, sizeof( AccBuffer ) );
 
@@ -323,7 +315,7 @@ Item* Item::Clone()
 #ifdef FONLINE_SERVER
 void Item::FullClear()
 {
-    IsNotValid = true;
+    IsDestroyed = true;
     Accessory = 0x20 + GetType();
 
     if( IsContainer() && ChildItems )

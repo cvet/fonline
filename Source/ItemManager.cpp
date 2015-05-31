@@ -439,7 +439,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, uint item_id /* =
     if( !item_id && count && proto->ScriptName.length() > 0 )         // Only for new items
     {
         item->ParseScript( proto->ScriptName.c_str(), true );
-        if( item->IsNotValid )
+        if( item->IsDestroyed )
             return NULL;
     }
     # endif
@@ -546,10 +546,10 @@ void ItemManager::ItemGarbager()
             // Call finish event
             if( item->IsValidAccessory() )
                 EraseItemHolder( item );
-            if( !item->IsNotValid && item->FuncId[ ITEM_EVENT_FINISH ] > 0 )
+            if( !item->IsDestroyed && item->FuncId[ ITEM_EVENT_FINISH ] > 0 )
                 item->EventFinish( true );
 
-            item->IsNotValid = true;
+            item->IsDestroyed = true;
             if( item->IsValidAccessory() )
                 EraseItemHolder( item );
 
@@ -1038,7 +1038,7 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
     for( uint i = 0, j = (uint) radios.size(); i < j; i++ )
     {
         RadioSendTextEx( channels[ i ],
-                         radios[ i ]->GetRadioBroadcastSend(), cr->GetMap(), cr->Data.WorldX, cr->Data.WorldY,
+                         radios[ i ]->GetRadioBroadcastSend(), cr->GetMapId(), cr->Data.WorldX, cr->Data.WorldY,
                          text, text_len, cr->IntellectCacheValue, unsafe_text, text_msg, num_str, NULL );
     }
 }
@@ -1115,12 +1115,12 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                     {
                         if( broadcast == RADIO_BROADCAST_MAP )
                         {
-                            if( broadcast_map_id != cl->GetMap() )
+                            if( broadcast_map_id != cl->GetMapId() )
                                 continue;
                         }
                         else if( broadcast == RADIO_BROADCAST_LOCATION )
                         {
-                            Map* map = MapMngr.GetMap( cl->GetMap(), false );
+                            Map* map = MapMngr.GetMap( cl->GetMapId(), false );
                             if( !map || broadcast_loc_id != map->GetLocation( false )->GetId() )
                                 continue;
                         }

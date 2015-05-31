@@ -3,7 +3,7 @@
 
 void FOServer::ProcessCritter( Critter* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         return;
     if( Timer::IsGamePaused() )
         return;
@@ -66,7 +66,7 @@ void FOServer::ProcessCritter( Critter* cr )
     }
 
     // Global map
-    if( !cr->GetMap() && cr->GroupMove && cr == cr->GroupMove->Rule )
+    if( !cr->GetMapId() && cr->GroupMove && cr == cr->GroupMove->Rule )
         MapMngr.GM_GroupMove( cr->GroupMove );
 
     // Client
@@ -86,8 +86,8 @@ void FOServer::ProcessCritter( Critter* cr )
                 cl->Send_CheckUIDS();
             #endif
             cl->PingClient();
-            if( cl->GetMap() )
-                MapMngr.TryTransitCrGrid( cr, MapMngr.GetMap( cr->GetMap() ), cr->GetHexX(), cr->GetHexY(), false );
+            if( cl->GetMapId() )
+                MapMngr.TryTransitCrGrid( cr, MapMngr.GetMap( cr->GetMapId() ), cr->GetHexX(), cr->GetHexY(), false );
         }
 
         // Idle
@@ -101,7 +101,7 @@ void FOServer::ProcessCritter( Critter* cr )
         // Kick from game
         if( cl->IsOffline() && cl->IsLife() && !IS_TIMEOUT( cl->GetTimeoutBattle() ) &&
             !cl->GetTimeoutRemoveFromGame() && cl->GetOfflineTime() >= GameOpt.MinimumOfflineTime &&
-            !MapMngr.IsProtoMapNoLogOut( cl->GetProtoMap() ) )
+            !MapMngr.IsProtoMapNoLogOut( cl->GetMapProtoId() ) )
         {
             cl->RemoveFromGame();
         }
@@ -207,31 +207,36 @@ void FOServer::AddPlayerHoloInfo( Critter* cr, uint holo_num, bool send )
         return;
     }
 
-    if( cr->Data.HoloInfoCount >= MAX_HOLO_INFO )
+    ScriptArray* holo_info = cr->GetHoloInfo();
+    uint         holo_count = holo_info->GetSize();
+    if( holo_count >= MAX_HOLO_INFO )
     {
         if( send )
             cr->Send_TextMsg( cr, STR_HOLO_READ_MEMORY_FULL, SAY_NETMSG, TEXTMSG_HOLO );
+        SAFEREL( holo_info );
         return;
     }
 
-    for( int i = 0, j = cr->Data.HoloInfoCount; i < j; i++ )
+    for( uint i = 0; i < holo_count; i++ )
     {
-        if( cr->Data.HoloInfo[ i ] == holo_num )
+        if( *(uint*) holo_info->At( i ) == holo_num )
         {
             if( send )
                 cr->Send_TextMsg( cr, STR_HOLO_READ_ALREADY, SAY_NETMSG, TEXTMSG_HOLO );
+            SAFEREL( holo_info );
             return;
         }
     }
 
-    cr->Data.HoloInfo[ cr->Data.HoloInfoCount ] = holo_num;
-    cr->Data.HoloInfoCount++;
+    holo_info->InsertLast( &holo_num );
+    cr->SetHoloInfo( holo_info );
+    SAFEREL( holo_info );
 
     if( send )
     {
         if( holo_num >= USER_HOLO_START_NUM )
             Send_PlayerHoloInfo( cr, holo_num, true );
-        cr->Send_HoloInfo( false, cr->Data.HoloInfoCount - 1, 1 );
+        cr->Send_HoloInfo( false, holo_count, 1 );
         cr->Send_TextMsg( cr, STR_HOLO_READ_SUCC, SAY_NETMSG, TEXTMSG_HOLO );
     }
 
@@ -248,21 +253,22 @@ void FOServer::AddPlayerHoloInfo( Critter* cr, uint holo_num, bool send )
 
 void FOServer::ErasePlayerHoloInfo( Critter* cr, uint index, bool send )
 {
-    if( index >= MAX_HOLO_INFO || index >= cr->Data.HoloInfoCount )
+    ScriptArray* holo_info = cr->GetHoloInfo();
+    if( index >= holo_info->GetSize() )
     {
         if( send )
             cr->Send_TextMsg( cr, STR_HOLO_ERASE_FAIL, SAY_NETMSG, TEXTMSG_HOLO );
+        SAFEREL( holo_info );
         return;
     }
 
-    cr->Data.HoloInfo[ index ] = 0;
-    for( int i = index, j = cr->Data.HoloInfoCount; i < j && i < MAX_HOLO_INFO - 1; i++ )
-        cr->Data.HoloInfo[ i ] = cr->Data.HoloInfo[ i + 1 ];
-    cr->Data.HoloInfoCount--;
+    holo_info->RemoveAt( index );
+    cr->SetHoloInfo( holo_info );
+    SAFEREL( holo_info );
 
     if( send )
     {
-        cr->Send_HoloInfo( true, 0, cr->Data.HoloInfoCount );
+        cr->Send_HoloInfo( true, 0, 0 );
         cr->Send_TextMsg( cr, STR_HOLO_ERASE_SUCC, SAY_NETMSG, TEXTMSG_HOLO );
     }
 }
@@ -294,7 +300,7 @@ void FOServer::Send_PlayerHoloInfo( Critter* cr, uint holo_num, bool send_text )
 
 bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
 {
-    uint map_id = cr->GetMap();
+    uint map_id = cr->GetMapId();
     if( !map_id )
         return false;
 
@@ -311,7 +317,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
 
     // Check
     Map* map = MapMngr.GetMap( map_id, true );
-    if( !map || map_id != cr->GetMap() || hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
+    if( !map || map_id != cr->GetMapId() || hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
         return false;
 
     // Check turn based
@@ -420,7 +426,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     cr->ProcessVisibleCritters();
     cr->ProcessVisibleItems();
 
-    if( cr->GetMap() == map->GetId() )
+    if( cr->GetMapId() == map->GetId() )
     {
         // Triggers
         VerifyTrigger( map, cr, fx, fy, hx, hy, dir );
@@ -463,10 +469,10 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         return false;
     }
 
-    Map* map = MapMngr.GetMap( cr->GetMap() );
+    Map* map = MapMngr.GetMap( cr->GetMapId() );
     if( !map )
     {
-        WriteLogF( _FUNC_, " - Map not found, map id<%u>, critter<%s>.\n", cr->GetMap(), cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Map not found, map id<%u>, critter<%s>.\n", cr->GetMapId(), cr->GetInfo() );
         return false;
     }
 
@@ -483,7 +489,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         return false;
     }
 
-    if( cr->GetMap() != t_cr->GetMap() )
+    if( cr->GetMapId() != t_cr->GetMapId() )
     {
         WriteLogF( _FUNC_, " - Other maps, critter<%s>, target critter<%s>.\n", cr->GetInfo(), t_cr->GetInfo() );
         return false;
@@ -737,7 +743,7 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
         return false;
 
     cr->SendAA_Action( ACTION_RELOAD_WEAPON, 0, weap );
-    Map* map = MapMngr.GetMap( cr->GetMap() );
+    Map* map = MapMngr.GetMap( cr->GetMapId() );
     if( map && map->IsTurnBasedOn && !cr->GetAllAp() )
         map->EndCritterTurn();
     return true;
@@ -748,7 +754,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
 {
     cr->SetBreakTime( GameOpt.Breaktime );
 
-    Map* map = MapMngr.GetMap( cr->GetMap() );
+    Map* map = MapMngr.GetMap( cr->GetMapId() );
     if( map && !cr->CheckMyTurn( map ) )
     {
         WriteLogF( _FUNC_, " - Is not critter<%s> turn.\n", cr->GetInfo() );
@@ -793,7 +799,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     {
         if( cr->GetId() != target_id )
         {
-            if( cr->GetMap() )
+            if( cr->GetMapId() )
             {
                 target_cr = cr->GetCritSelf( target_id, true );
                 if( !target_cr )
@@ -842,7 +848,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     }
     else if( target_type == TARGET_ITEM )
     {
-        if( !cr->GetMap() )
+        if( !cr->GetMapId() )
         {
             WriteLogF( _FUNC_, " - Can't get item, critter<%s> on global map.\n", cr->GetInfo() );
             return false;
@@ -850,7 +856,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
 
         if( !map )
         {
-            WriteLogF( _FUNC_, " - Map not found, map id<%u>, critter<%s>.\n", cr->GetMap(), cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Map not found, map id<%u>, critter<%s>.\n", cr->GetMapId(), cr->GetInfo() );
             return false;
         }
 
@@ -876,7 +882,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     }
     else if( target_type == TARGET_SCENERY )
     {
-        if( !cr->GetMap() )
+        if( !cr->GetMapId() )
         {
             WriteLogF( _FUNC_, " - Can't get scenery, critter<%s> on global map.\n", cr->GetInfo() );
             return false;
@@ -884,7 +890,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
 
         if( !map )
         {
-            WriteLogF( _FUNC_, " - Map not found_, map id<%u>, critter<%s>.\n", cr->GetMap(), cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Map not found_, map id<%u>, critter<%s>.\n", cr->GetMapId(), cr->GetInfo() );
             return false;
         }
 
@@ -925,7 +931,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     }
 
     // Send action
-    if( cr->GetMap() )
+    if( cr->GetMapId() )
     {
         if( item )
         {
@@ -1029,7 +1035,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
 {
     cr->SetBreakTime( GameOpt.Breaktime );
 
-    Map* map = MapMngr.GetMap( cr->GetMap() );
+    Map* map = MapMngr.GetMap( cr->GetMapId() );
     if( !map )
         return false;
 
@@ -1184,7 +1190,7 @@ void FOServer::KillCritter( Critter* cr, uint anim2, Critter* attacker )
     // Process dead
     cr->ToDead( anim2, true );
     cr->EventDead( attacker );
-    Map* map = MapMngr.GetMap( cr->GetMap() );
+    Map* map = MapMngr.GetMap( cr->GetMapId() );
     if( map )
         map->EventCritterDead( cr, attacker );
     if( Script::PrepareContext( ServerFunctions.CritterDead, _FUNC_, cr->GetInfo() ) )
@@ -1197,7 +1203,7 @@ void FOServer::KillCritter( Critter* cr, uint anim2, Critter* attacker )
 
 void FOServer::RespawnCritter( Critter* cr )
 {
-    Map* map = MapMngr.GetMap( cr->GetMap() );
+    Map* map = MapMngr.GetMap( cr->GetMapId() );
     if( !map )
     {
         WriteLogF( _FUNC_, " - Current map not found, continue dead. Critter<%s>.\n", cr->GetInfo() );
@@ -1249,7 +1255,7 @@ void FOServer::KnockoutCritter( Critter* cr, uint anim2begin, uint anim2idle, ui
     int  x2 = knock_hx;
     int  y2 = knock_hy;
 
-    Map* map = MapMngr.GetMap( cr->GetMap() );
+    Map* map = MapMngr.GetMap( cr->GetMapId() );
     if( !map || x2 >= map->GetMaxHexX() || y2 >= map->GetMaxHexY() )
         return;
 
@@ -1264,7 +1270,7 @@ void FOServer::KnockoutCritter( Critter* cr, uint anim2begin, uint anim2idle, ui
     MapMngr.TraceBullet( td );
 
     // Map can be changed on some trigger
-    if( cr->GetMap() != map->GetId() )
+    if( cr->GetMapId() != map->GetId() )
         return;
 
     if( x1 != x2 || y1 != y2 )
@@ -1288,7 +1294,7 @@ bool FOServer::MoveRandom( Critter* cr )
         dirs[ i ] = i;
     std::random_shuffle( dirs.begin(), dirs.end() );
 
-    Map* map = MapMngr.GetMap( cr->GetMap() );
+    Map* map = MapMngr.GetMap( cr->GetMapId() );
     if( !map )
         return false;
 
@@ -1337,7 +1343,7 @@ bool FOServer::RegenerateMap( Map* map )
 
     #pragma MESSAGE( "Process correct map regeneration." )
     map->Clear( true );
-    map->IsNotValid = false;
+    map->IsDestroyed = false;
     map->Generate();
     return true;
 }
@@ -1671,10 +1677,16 @@ void FOServer::Process_CreateClient( Client* cl )
     cl->Data.Cond = COND_LIFE;
     cl->Data.Multihex = -1;
 
-    CritDataExt* data_ext = cl->GetDataExt();
-    data_ext->PlayIp[ 0 ] = cl->GetIp();
-    data_ext->PlayPort[ 0 ] = cl->GetPort();
-    data_ext->CurrentIp = 0;
+    ScriptArray* arr_reg_ip = Script::CreateArray( "uint[]" );
+    uint         reg_ip = cl->GetIp();
+    arr_reg_ip->InsertLast( &reg_ip );
+    cl->SetConnectionIp( arr_reg_ip );
+    SAFEREL( arr_reg_ip );
+    ScriptArray* arr_reg_port = Script::CreateArray( "uint16[]" );
+    ushort       reg_port = cl->GetPort();
+    arr_reg_port->InsertLast( &reg_port );
+    cl->SetConnectionPort( arr_reg_port );
+    SAFEREL( arr_reg_port );
 
     if( !cl->SetDefaultItems( ItemMngr.GetProtoItem( ITEM_DEF_SLOT ), ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) ) )
     {
@@ -2188,8 +2200,8 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         cl->NetIOOut->PClient = cl;
         #endif
 
-        cl->IsNotValid = true;
-        cl_old->IsNotValid = false;
+        cl->IsDestroyed = true;
+        cl_old->IsDestroyed = false;
 
         #if defined ( USE_LIBEVENT )
         io_arg->Locker.Unlock();
@@ -2224,7 +2236,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         {
             Str::Copy( cl->Name, SingleplayerSave.CrData.Name );
             cl->Data = SingleplayerSave.CrData.Data;
-            *cl->GetDataExt() = SingleplayerSave.CrData.DataExt;
             cl->CrTimeEvents = SingleplayerSave.CrData.TimeEvents;
         }
 
@@ -2255,18 +2266,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         if( cl_saved )
         {
             // Data
-            CritDataExt* data_ext = cl->GetDataExt();
-            if( !data_ext )
-            {
-                WriteLogF( _FUNC_, " - Can't allocate extended data, client<%s>.\n", cl->GetInfo() );
-                cl->Send_TextMsg( cl, STR_NET_SETPROTO_ERR, SAY_NETMSG, TEXTMSG_GAME );
-                cl->Disconnect();
-                cl->Data.Id = 0;
-                cl->SetMaps( 0, 0 );
-                return;
-            }
             memcpy( &cl->Data, &cl_saved->Data, sizeof( cl->Data ) );
-            memcpy( data_ext, cl_saved->GetDataExt(), sizeof( CritDataExt ) );
             size_t te_count = cl_saved->CrTimeEvents.size();
             if( te_count )
             {
@@ -2290,14 +2290,14 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         ItemMngr.SetCritterItems( cl );
 
         // Add to map
-        Map* map = MapMngr.GetMap( cl->GetMap() );
-        if( cl->GetMap() )
+        Map* map = MapMngr.GetMap( cl->GetMapId() );
+        if( cl->GetMapId() )
         {
-            if( !map || map->IsNoLogOut() || map->GetPid() != cl->GetProtoMap() )
+            if( !map || map->IsNoLogOut() || map->GetPid() != cl->GetMapProtoId() )
             {
                 ushort hx, hy;
                 uchar  dir;
-                if( map && map->GetPid() == cl->GetProtoMap() && map->GetStartCoord( hx, hy, dir, ENTIRE_LOG_OUT ) )
+                if( map && map->GetPid() == cl->GetMapProtoId() && map->GetStartCoord( hx, hy, dir, ENTIRE_LOG_OUT ) )
                 {
                     cl->Data.HexX = hx;
                     cl->Data.HexY = hy;
@@ -2313,11 +2313,11 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             }
         }
 
-        if( !cl->GetMap() && ( cl->GetHexX() || cl->GetHexY() ) )
+        if( !cl->GetMapId() && ( cl->GetHexX() || cl->GetHexY() ) )
         {
             uint     rule_id = ( cl->GetHexX() << 16 ) | cl->GetHexY();
             Critter* rule = CrMngr.GetCritter( rule_id, false );
-            if( !rule || rule->GetMap() || cl->Data.GlobalGroupUid != rule->Data.GlobalGroupUid )
+            if( !rule || rule->GetMapId() || cl->Data.GlobalGroupUid != rule->Data.GlobalGroupUid )
             {
                 cl->Data.HexX = 0;
                 cl->Data.HexY = 0;
@@ -2342,7 +2342,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             map->AddCritterEvents( cl );
 
         // Add car, if on global
-        if( !cl->GetMap() && !cl->GroupMove->CarId )
+        if( !cl->GetMapId() && !cl->GroupMove->CarId )
         {
             Item* car = cl->GetItemCar();
             if( car )
@@ -2355,7 +2355,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         Job::PushBack( JOB_CRITTER, cl );
 
         cl->DisableSend++;
-        if( cl->GetMap() )
+        if( cl->GetMapId() )
         {
             cl->ProcessVisibleCritters();
             cl->ProcessVisibleItems();
@@ -2375,46 +2375,44 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     for( int i = 0; i < 5; i++ )
         cl->UID[ i ] = uid[ i ];
 
-    // Play ip
-    CritDataExt* data_ext = cl->GetDataExt();
+    // Connection info
     uint         ip = cl->GetIp();
     ushort       port = cl->GetPort();
-    bool         ip_stored = false;
-    for( int i = 0; i < MAX_STORED_IP; i++ )
+    ScriptArray* conn_ip = cl->GetConnectionIp();
+    ScriptArray* conn_port = cl->GetConnectionPort();
+    RUNTIME_ASSERT( conn_ip->GetSize() == conn_port->GetSize() );
+    bool         ip_found = false;
+    for( uint i = 0, j = conn_ip->GetSize(); i < j; i++ )
     {
-        if( data_ext->PlayIp[ i ] == ip )
+        if( *(uint*) conn_ip->At( i ) == ip )
         {
-            ip_stored = true;
-            data_ext->PlayPort[ i ] = port;
-            data_ext->CurrentIp = i;
+            if( i < j - 1 )
+            {
+                conn_ip->RemoveAt( i );
+                conn_ip->InsertLast( &ip );
+                cl->SetConnectionIp( conn_ip );
+                conn_port->RemoveAt( i );
+                conn_port->InsertLast( &port );
+                cl->SetConnectionPort( conn_port );
+            }
+            else if( *(ushort*) conn_port->At( j - 1 ) != port )
+            {
+                conn_port->SetValue( i, &port );
+                cl->SetConnectionPort( conn_port );
+            }
+            ip_found = true;
             break;
         }
     }
-    if( !ip_stored )
+    if( !ip_found )
     {
-        // Check free slots
-        if( data_ext->PlayIp[ MAX_STORED_IP - 1 ] )
-        {
-            // Free 1/2 slots
-            for( int i = MAX_STORED_IP / 2; i < MAX_STORED_IP; i++ )
-            {
-                data_ext->PlayIp[ i ] = 0;
-                data_ext->PlayPort[ i ] = 0;
-            }
-        }
-
-        // Store ip
-        for( int i = 0; i < MAX_STORED_IP; i++ )
-        {
-            if( !data_ext->PlayIp[ i ] )
-            {
-                data_ext->PlayIp[ i ] = ip;
-                data_ext->PlayPort[ i ] = port;
-                data_ext->CurrentIp = i;
-                break;
-            }
-        }
+        conn_ip->InsertLast( &ip );
+        cl->SetConnectionIp( conn_ip );
+        conn_port->InsertLast( &port );
+        cl->SetConnectionPort( conn_port );
     }
+    SAFEREL( conn_ip );
+    SAFEREL( conn_port );
 
     // Login ok
     uint       msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) * 2;
@@ -2527,12 +2525,12 @@ void FOServer::Process_ParseToGame( Client* cl )
     }
 
     // Parse
-    Map* map = MapMngr.GetMap( cl->GetMap(), true );
+    Map* map = MapMngr.GetMap( cl->GetMapId(), true );
     cl->Send_GameInfo( map );
     cl->DropTimers( true );
 
     // Parse to global
-    if( !cl->GetMap() )
+    if( !cl->GetMapId() )
     {
         if( !cl->GroupMove )
         {
@@ -2548,7 +2546,7 @@ void FOServer::Process_ParseToGame( Client* cl )
             if( cr != cl )
                 cr->Send_CustomCommand( cl, OTHER_FLAGS, cl->Flags );
         }
-        cl->Send_HoloInfo( true, 0, cl->Data.HoloInfoCount );
+        cl->Send_HoloInfo( true, 0, 0 );
         cl->Send_AllAutomapsInfo();
         if( cl->Talk.TalkType != TALK_NONE )
         {
@@ -2572,7 +2570,7 @@ void FOServer::Process_ParseToGame( Client* cl )
 
         // Send all data
         cl->Send_AddAllItems();
-        cl->Send_HoloInfo( true, 0, cl->Data.HoloInfoCount );
+        cl->Send_HoloInfo( true, 0, 0 );
         cl->Send_AllAutomapsInfo();
 
         // Send current critters
@@ -2661,7 +2659,7 @@ void FOServer::Process_GiveMap( Client* cl )
         return;
     }
 
-    if( !automap && map_pid != cl->GetProtoMap() && cl->ViewMapPid != map_pid )
+    if( !automap && map_pid != cl->GetMapProtoId() && cl->ViewMapPid != map_pid )
     {
         WriteLogF( _FUNC_, " - Request for loading incorrect map, client<%s>.\n", cl->GetInfo() );
         return;
@@ -2763,7 +2761,7 @@ void FOServer::Process_Move( Client* cl )
     cl->Bin >> hy;
     CHECK_IN_BUFF_ERROR( cl );
 
-    if( !cl->GetMap() )
+    if( !cl->GetMapId() )
         return;
 
     // The player informs that has stopped
@@ -2862,7 +2860,7 @@ void FOServer::Process_ChangeItem( Client* cl )
     }
     cl->SubAp( ap_cost );
 
-    Map* map = MapMngr.GetMap( cl->GetMap() );
+    Map* map = MapMngr.GetMap( cl->GetMapId() );
     if( map && map->IsTurnBasedOn && !cl->GetAllAp() )
         map->EndCritterTurn();
 
@@ -2911,7 +2909,7 @@ void FOServer::Process_UseItem( Client* cl )
         case USE_PRIMARY:
         case USE_SECONDARY:
         case USE_THIRD:
-            if( !cl->GetMap() )
+            if( !cl->GetMapId() )
                 break;
             if( item != cl->ItemSlotMain )
                 break;
@@ -2948,7 +2946,7 @@ void FOServer::Process_UseItem( Client* cl )
         if( target_type != TARGET_CRITTER && target_type != TARGET_ITEM && target_type != TARGET_SCENERY &&
             target_type != TARGET_SELF && target_type != TARGET_SELF_ITEM )
             return;
-        if( !cl->GetMap() && ( target_type == TARGET_ITEM || target_type == TARGET_SCENERY ) )
+        if( !cl->GetMapId() && ( target_type == TARGET_ITEM || target_type == TARGET_SCENERY ) )
             return;
         if( !Act_Use( cl, item_id, -1, target_type, target_id, target_pid, param ) )
             cl->Send_TextMsg( cl, STR_USE_NOTHING, SAY_NETMSG, TEXTMSG_GAME );
@@ -2998,7 +2996,7 @@ void FOServer::Process_PickCritter( Client* cl )
     }
     cl->SubAp( ap_cost );
 
-    Map* map = MapMngr.GetMap( cl->GetMap() );
+    Map* map = MapMngr.GetMap( cl->GetMapId() );
     if( map && map->IsTurnBasedOn && !cl->GetAllAp() )
         map->EndCritterTurn();
 
@@ -3112,12 +3110,12 @@ void FOServer::Process_ContainerItem( Client* cl )
     }
     cl->SubAp( ap_cost );
 
-    Map* map = MapMngr.GetMap( cl->GetMap() );
+    Map* map = MapMngr.GetMap( cl->GetMapId() );
     if( map && map->IsTurnBasedOn && !cl->GetAllAp() )
         map->EndCritterTurn();
 
-    if( !cl->GetMap() && ( transfer_type != TRANSFER_CRIT_STEAL && transfer_type != TRANSFER_FAR_CONT && transfer_type != TRANSFER_FAR_CRIT &&
-                           transfer_type != TRANSFER_CRIT_BARTER && transfer_type != TRANSFER_SELF_CONT ) )
+    if( !cl->GetMapId() && ( transfer_type != TRANSFER_CRIT_STEAL && transfer_type != TRANSFER_FAR_CONT && transfer_type != TRANSFER_FAR_CRIT &&
+                             transfer_type != TRANSFER_CRIT_BARTER && transfer_type != TRANSFER_SELF_CONT ) )
         return;
 
 /************************************************************************/
@@ -3140,7 +3138,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check map
-            if( cont->AccHex.MapId != cl->GetMap() )
+            if( cont->AccHex.MapId != cl->GetMapId() )
             {
                 cl->Send_ContainerInfo();
                 WriteLogF( _FUNC_, " - Attempt to take a subject from the container on other map.\n" );
@@ -3392,7 +3390,7 @@ void FOServer::Process_ContainerItem( Client* cl )
         bool is_loot = ( transfer_type == TRANSFER_CRIT_LOOT );
 
         // Get critter target
-        Critter* cr = ( is_far ? CrMngr.GetCritter( cont_id, true ) : ( cl->GetMap() ? cl->GetCritSelf( cont_id, true ) : cl->GroupMove->GetCritter( cont_id ) ) );
+        Critter* cr = ( is_far ? CrMngr.GetCritter( cont_id, true ) : ( cl->GetMapId() ? cl->GetCritSelf( cont_id, true ) : cl->GroupMove->GetCritter( cont_id ) ) );
         if( !cr )
         {
             cl->Send_ContainerInfo();
@@ -3707,7 +3705,7 @@ void FOServer::Process_Dir( Client* cl )
     cl->Bin >> dir;
     CHECK_IN_BUFF_ERROR( cl );
 
-    if( !cl->GetMap() || dir >= DIRS_COUNT || cl->GetDir() == dir || cl->IsTalking() || !cl->CheckMyTurn( NULL ) )
+    if( !cl->GetMapId() || dir >= DIRS_COUNT || cl->GetDir() == dir || cl->IsTalking() || !cl->CheckMyTurn( NULL ) )
     {
         if( cl->GetDir() != dir )
             cl->Send_Dir( cl );
@@ -4070,7 +4068,7 @@ label_EndOffer:
                 cl->BarterRefresh( opponent );
                 opponent->SetBreakTime( GameOpt.Breaktime );
                 opponent->BarterRefresh( cl );
-                if( cl->GetMap() )
+                if( cl->GetMapId() )
                 {
                     cl->Send_Action( cl, ACTION_BARTER, 0, NULL );
                     cl->SendAA_Action( ACTION_BARTER, 0, NULL );
@@ -4202,7 +4200,7 @@ void FOServer::Process_Combat( Client* cl )
 
     if( type == COMBAT_TB_END_TURN )
     {
-        Map* map = MapMngr.GetMap( cl->GetMap() );
+        Map* map = MapMngr.GetMap( cl->GetMapId() );
         if( !map )
         {
             WriteLogF( _FUNC_, " - Map not found on end turn, client<%s>.\n", cl->GetInfo() );
@@ -4213,7 +4211,7 @@ void FOServer::Process_Combat( Client* cl )
     }
     else if( type == COMBAT_TB_END_COMBAT )
     {
-        Map* map = MapMngr.GetMap( cl->GetMap() );
+        Map* map = MapMngr.GetMap( cl->GetMapId() );
         if( !map )
         {
             WriteLogF( _FUNC_, " - Map not found on end combat, client<%s>.\n", cl->GetInfo() );
@@ -4366,7 +4364,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
     }
     break;
     case GM_CMD_SETMOVE:
-        if( cl->GetMap() || !cl->GroupMove || cl != cl->GroupMove->Rule )
+        if( cl->GetMapId() || !cl->GroupMove || cl != cl->GroupMove->Rule )
             break;
         if( param1 >= GM_MAXX || param2 >= GM_MAXY )
             break;
@@ -4379,7 +4377,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
     case GM_CMD_STOP:
         break;
     case GM_CMD_TOLOCAL:
-        if( cl->GetMap() || !cl->GroupMove || cl != cl->GroupMove->Rule )
+        if( cl->GetMapId() || !cl->GroupMove || cl != cl->GroupMove->Rule )
             break;
         if( cl->GroupMove->EncounterDescriptor )
             break;
@@ -4391,7 +4389,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
 
         if( !param1 )
         {
-            if( cl->GetMap() || !cl->GroupMove || cl != cl->GroupMove->Rule )
+            if( cl->GetMapId() || !cl->GroupMove || cl != cl->GroupMove->Rule )
                 break;
             cl->GroupMove->EncounterDescriptor = 0;
             MapMngr.GM_GlobalProcess( cl, cl->GroupMove, GLOBAL_PROCESS_ENTER );
@@ -4402,7 +4400,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
         }
         return;
     case GM_CMD_ANSWER:
-        if( cl->GetMap() || !cl->GroupMove || cl != cl->GroupMove->Rule )
+        if( cl->GetMapId() || !cl->GroupMove || cl != cl->GroupMove->Rule )
             break;
         if( !cl->GroupMove->EncounterDescriptor || cl->GroupMove->EncounterForce )
             break;
@@ -4422,13 +4420,13 @@ void FOServer::Process_RuleGlobal( Client* cl )
     {
         // Find rule
         Critter* rule = CrMngr.GetCritter( param1, true );
-        if( !rule || rule->GetMap() || !rule->GroupMove || rule != rule->GroupMove->Rule )
+        if( !rule || rule->GetMapId() || !rule->GroupMove || rule != rule->GroupMove->Rule )
             break;
 
         // Check for follow
         if( !rule->GroupMove->CheckForFollow( cl ) )
             break;
-        if( !CheckDist( rule->Data.LastHexX, rule->Data.LastHexY, cl->GetHexX(), cl->GetHexY(), FOLLOW_DIST + rule->GetMultihex() + cl->GetMultihex() ) )
+        if( !CheckDist( rule->Data.LastMapHexX, rule->Data.LastMapHexY, cl->GetHexX(), cl->GetHexY(), FOLLOW_DIST + rule->GetMultihex() + cl->GetMultihex() ) )
             break;
 
         // Transit
@@ -4443,7 +4441,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
         return;
     case GM_CMD_KICKCRIT:
     {
-        if( cl->GetMap() || !cl->GroupMove || cl->GroupMove->GetSize() < 2 || cl->GroupMove->EncounterDescriptor )
+        if( cl->GetMapId() || !cl->GroupMove || cl->GroupMove->GetSize() < 2 || cl->GroupMove->EncounterDescriptor )
             break;
 
         GlobalMapGroup* group = cl->GroupMove;
@@ -4470,7 +4468,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
     case GM_CMD_GIVE_RULE:
     {
         // Check
-        if( cl->GetId() == param1 || cl->GetMap() || !cl->GroupMove || cl != cl->GroupMove->Rule || cl->GroupMove->EncounterDescriptor )
+        if( cl->GetId() == param1 || cl->GetMapId() || !cl->GroupMove || cl != cl->GroupMove->Rule || cl->GroupMove->EncounterDescriptor )
             break;
         Critter* new_rule = cl->GroupMove->GetCritter( param1 );
         if( !new_rule || !new_rule->IsPlayer() || !( (Client*) new_rule )->IsOnline() )
@@ -4482,7 +4480,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
     break;
     case GM_CMD_ENTRANCES:
     {
-        if( cl->GetMap() || !cl->GroupMove || cl->GroupMove->EncounterDescriptor )
+        if( cl->GetMapId() || !cl->GroupMove || cl->GroupMove->EncounterDescriptor )
             break;
 
         uint      loc_id = param1;
@@ -4547,7 +4545,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
     break;
     case GM_CMD_VIEW_MAP:
     {
-        if( cl->GetMap() || !cl->GroupMove || cl->GroupMove->EncounterDescriptor )
+        if( cl->GetMapId() || !cl->GroupMove || cl->GroupMove->EncounterDescriptor )
             break;
 
         uint      loc_id = param1;
@@ -4708,14 +4706,14 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         check_public = true;
         prop = Map::PropertiesRegistrator->Get( property_index );
         if( prop )
-            prop_obj = MapMngr.GetMap( cl->GetMap(), true );
+            prop_obj = MapMngr.GetMap( cl->GetMapId(), true );
         break;
     case NetProperty::Location:
         check_public = true;
         prop = Location::PropertiesRegistrator->Get( property_index );
         if( prop )
         {
-            Map* map = MapMngr.GetMap( cl->GetMap(), false );
+            Map* map = MapMngr.GetMap( cl->GetMapId(), false );
             if( map )
                 prop_obj = map->GetLocation( true );
         }

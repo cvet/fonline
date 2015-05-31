@@ -21,15 +21,11 @@
         }                                                                         \
     }
 
-#define CLASS_PROPERTY( prop_type, prop )                                                      \
-    static Property * Property ## prop;                                                        \
-    inline prop_type Get ## prop() { return Property ## prop->GetValue< prop_type >( this ); } \
-    inline void      Set ## prop( prop_type value ) { Property ## prop->SetValue< prop_type >( this, value ); }
-#define CLASS_PROPERTY_DATA( prop )                                                                                                   \
-    static Property * Property ## prop;                                                                                               \
-    inline uchar* Get ## prop ## Data( uint & data_size ) { return Property ## prop->GetRawData( this, data_size ); }                 \
-    inline bool   Is ## prop ## Data() { uint data_size = 0; Property ## prop->GetRawData( this, data_size ); return data_size > 0; } \
-    inline void   Set ## prop ## Data( uchar * data, uint data_size ) { return Property ## prop->SetData( this, data, data_size ); }
+#define CLASS_PROPERTY( prop_type, prop )                                                                       \
+    static Property * Property ## prop;                                                                         \
+    inline prop_type Get ## prop() { return Property ## prop->GetValue< prop_type >( this ); }                  \
+    inline void      Set ## prop( prop_type value ) { Property ## prop->SetValue< prop_type >( this, value ); } \
+    inline bool      Is ## prop() { uint data_size = 0; Property ## prop->GetRawData( this, data_size ); return data_size > 0; }
 #define CLASS_PROPERTY_IMPL( class_name, prop )                                                    \
     Property * class_name::Property ## prop;                                                       \
     struct _ ## class_name ## Property ## prop ## Initializer                                      \
@@ -78,8 +74,8 @@ public:
         PrivateMask          = 0x00F0,
         PublicMask           = 0x0F00,
         ProtectedMask        = 0xF000,
-        ClientMask           = 0x0022,
-        ServerMask           = 0x0044,
+        ClientOnlyMask       = 0x0020,
+        ServerOnlyMask       = 0x0040,
         ModifiableMask       = 0x2200,
     };
 
@@ -117,7 +113,6 @@ public:
     void   SetData( void* obj, uchar* data, uint data_size );
     int    GetPODValueAsInt( void* obj );
     void   SetPODValueAsInt( void* obj, int value );
-
     string SetGetCallback( const char* script_func );
     string AddSetCallback( const char* script_func );
 
@@ -148,7 +143,10 @@ private:
     bool           isFloatDataType;
     bool           isBoolDataType;
     bool           isEnumDataType;
-    bool           isDictArray;
+    bool           isArrayOfString;
+    bool           isDictOfString;
+    bool           isDictOfArray;
+    bool           isDictOfArrayOfString;
     AccessType     accessType;
     bool           isReadable;
     bool           isWritable;

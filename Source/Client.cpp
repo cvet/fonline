@@ -2465,9 +2465,6 @@ void FOClient::NetProcess()
         case NETMSG_HOLO_INFO:
             Net_OnHoloInfo();
             break;
-        case NETMSG_SCORES:
-            Net_OnScores();
-            break;
         case NETMSG_USER_HOLO_STR:
             Net_OnUserHoloStr();
             break;
@@ -3079,11 +3076,6 @@ void FOClient::Net_SendScreenAnswer( uint answer_i, const char* answer_s )
     Bout.Push( answer_s_buf, MAX_SAY_NPC_TEXT );
 }
 
-void FOClient::Net_SendGetScores()
-{
-    Bout << NETMSG_SEND_GET_SCORES;
-}
-
 void FOClient::Net_SendSetUserHoloStr( Item* holodisk, const char* title, const char* text )
 {
     if( !holodisk || !title || !text )
@@ -3217,7 +3209,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     uint  anim1life, anim1ko, anim1dead;
     uint  anim2life, anim2ko, anim2dead;
     uint  flags;
-    short multihex;
+    int   multihex;
     Bin >> cond;
     Bin >> anim1life;
     Bin >> anim1ko;
@@ -3286,7 +3278,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
             *cr->Name = cl_name;
         }
 
-        cr->SetBaseType( base_type );
+        cr->SetCrType( base_type );
         cr->Init();
 
         if( FLAG( cr->Flags, FCRIT_CHOSEN ) )
@@ -4165,7 +4157,7 @@ void FOClient::Net_OnCustomCommand()
                 HexMngr.SetMultihex( Chosen->GetHexX(), Chosen->GetHexY(), CritType::GetMultihex( value ), true );
             }
 
-            Chosen->SetBaseType( value );
+            Chosen->SetCrType( value );
             if( !Chosen->IsAnim() )
                 Chosen->Action( ACTION_REFRESH, 0, NULL, false );
         }
@@ -4250,7 +4242,7 @@ void FOClient::Net_OnCustomCommand()
                 HexMngr.SetMultihex( cr->GetHexX(), cr->GetHexY(), CritType::GetMultihex( value ), true );
             }
 
-            cr->SetBaseType( value );
+            cr->SetCrType( value );
             if( !cr->IsAnim() )
                 cr->Action( ACTION_REFRESH, 0, NULL, false );
         }
@@ -6131,7 +6123,6 @@ void FOClient::Net_OnRunClientScript()
 
 void FOClient::Net_OnDropTimers()
 {
-    ScoresNextUploadTick = 0;
     FixNextShowCraftTick = 0;
     GmapNextShowEntrancesTick = 0;
     GmapShowEntrancesLocId = 0;
@@ -6295,13 +6286,6 @@ void FOClient::Net_OnHoloInfo()
         Bin.Pop( (char*) &HoloInfo[ offset ], count * sizeof( uint ) );
 
     CHECK_IN_BUFF_ERROR;
-}
-
-void FOClient::Net_OnScores()
-{
-    Bin.Pop( &BestScores[ 0 ][ 0 ], SCORE_NAME_LEN * SCORES_MAX );
-    for( int i = 0; i < SCORES_MAX; i++ )
-        BestScores[ i ][ SCORE_NAME_LEN - 1 ] = '\0';
 }
 
 void FOClient::Net_OnUserHoloStr()
@@ -9282,154 +9266,154 @@ void SortCritterByDist( int hx, int hy, CritVec& critters )
 
 bool FOClient::SScriptFunc::Crit_IsChosen( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->IsChosen();
 }
 
 bool FOClient::SScriptFunc::Crit_IsPlayer( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->IsPlayer();
 }
 
 bool FOClient::SScriptFunc::Crit_IsNpc( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->IsNpc();
 }
 
 bool FOClient::SScriptFunc::Crit_IsLife( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->IsLife();
 }
 
 bool FOClient::SScriptFunc::Crit_IsKnockout( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->IsKnockout();
 }
 
 bool FOClient::SScriptFunc::Crit_IsDead( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->IsDead();
 }
 
 bool FOClient::SScriptFunc::Crit_IsFree( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->IsFree();
 }
 
 bool FOClient::SScriptFunc::Crit_IsBusy( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return !cr->IsFree();
 }
 
 bool FOClient::SScriptFunc::Crit_IsAnim3d( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->Anim3d != NULL;
 }
 
 bool FOClient::SScriptFunc::Crit_IsAnimAviable( CritterCl* cr, uint anim1, uint anim2 )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->IsAnimAviable( anim1, anim2 );
 }
 
 bool FOClient::SScriptFunc::Crit_IsAnimPlaying( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->IsAnim();
 }
 
 uint FOClient::SScriptFunc::Crit_GetAnim1( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->GetAnim1();
 }
 
 void FOClient::SScriptFunc::Crit_Animate( CritterCl* cr, uint anim1, uint anim2 )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "This nullptr." );
     cr->Animate( anim1, anim2, NULL );
 }
 
 void FOClient::SScriptFunc::Crit_AnimateEx( CritterCl* cr, uint anim1, uint anim2, Item* item )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "This nullptr." );
     cr->Animate( anim1, anim2, item );
 }
 
 void FOClient::SScriptFunc::Crit_ClearAnim( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "This nullptr." );
     cr->ClearAnim();
 }
 
 void FOClient::SScriptFunc::Crit_Wait( CritterCl* cr, uint ms )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "This nullptr." );
     cr->TickStart( ms );
 }
 
 uint FOClient::SScriptFunc::Crit_ItemsCount( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->GetItemsCount();
 }
 
 uint FOClient::SScriptFunc::Crit_ItemsWeight( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->GetItemsWeight();
 }
 
 uint FOClient::SScriptFunc::Crit_ItemsVolume( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->GetItemsVolume();
 }
 
 uint FOClient::SScriptFunc::Crit_CountItem( CritterCl* cr, hash proto_id )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->CountItemPid( proto_id );
 }
 
 uint FOClient::SScriptFunc::Crit_CountItemByType( CritterCl* cr, uchar type )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->CountItemType( type );
 }
 
 Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, hash proto_id, int slot )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     if( proto_id && slot >= 0 && slot < SLOT_GROUND )
         return cr->GetItemByPidSlot( proto_id, slot );
@@ -9442,14 +9426,14 @@ Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, hash proto_id, int slo
 
 Item* FOClient::SScriptFunc::Crit_GetItemById( CritterCl* cr, uint item_id )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->GetItem( item_id );
 }
 
 uint FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr, int slot, ScriptArray* items )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     ItemVec items_;
     cr->GetItemsSlot( slot, items_ );
@@ -9460,7 +9444,7 @@ uint FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr, int slot, ScriptArray*
 
 uint FOClient::SScriptFunc::Crit_GetItemsByType( CritterCl* cr, int type, ScriptArray* items )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     ItemVec items_;
     cr->GetItemsType( type, items_ );
@@ -9471,7 +9455,7 @@ uint FOClient::SScriptFunc::Crit_GetItemsByType( CritterCl* cr, int type, Script
 
 ProtoItem* FOClient::SScriptFunc::Crit_GetSlotProto( CritterCl* cr, int slot, uchar& mode )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
 
     Item* item = NULL;
@@ -9499,7 +9483,7 @@ ProtoItem* FOClient::SScriptFunc::Crit_GetSlotProto( CritterCl* cr, int slot, uc
 
 void FOClient::SScriptFunc::Crit_SetVisible( CritterCl* cr, bool visible )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "This nullptr." );
     cr->Visible = visible;
     Self->HexMngr.RefreshMap();
@@ -9507,14 +9491,14 @@ void FOClient::SScriptFunc::Crit_SetVisible( CritterCl* cr, bool visible )
 
 bool FOClient::SScriptFunc::Crit_GetVisible( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->Visible;
 }
 
 void FOClient::SScriptFunc::Crit_set_ContourColor( CritterCl* cr, uint value )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "This nullptr." );
     if( cr->SprDrawValid )
         cr->SprDraw->SetContour( cr->SprDraw->ContourType, value );
@@ -9523,28 +9507,28 @@ void FOClient::SScriptFunc::Crit_set_ContourColor( CritterCl* cr, uint value )
 
 uint FOClient::SScriptFunc::Crit_get_ContourColor( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->ContourColor;
 }
 
 uint FOClient::SScriptFunc::Crit_GetMultihex( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return cr->GetMultihex();
 }
 
 bool FOClient::SScriptFunc::Crit_IsTurnBasedTurn( CritterCl* cr )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return Self->IsTurnBased && cr->GetId() == Self->TurnBasedCurCritterId;
 }
 
 void FOClient::SScriptFunc::Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "This nullptr." );
 
     cr->GetNameTextInfo( nameVisible, x, y, w, h, lines );
@@ -9552,35 +9536,35 @@ void FOClient::SScriptFunc::Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisib
 
 bool FOClient::SScriptFunc::Item_IsStackable( Item* item )
 {
-    if( item->IsNotValid )
+    if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return item->IsStackable();
 }
 
 bool FOClient::SScriptFunc::Item_IsDeteriorable( Item* item )
 {
-    if( item->IsNotValid )
+    if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return item->IsDeteriorable();
 }
 
 hash FOClient::SScriptFunc::Item_get_ProtoId( Item* item )
 {
-    if( item->IsNotValid )
+    if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return item->GetProtoId();
 }
 
 int FOClient::SScriptFunc::Item_get_Type( Item* item )
 {
-    if( item->IsNotValid )
+    if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     return item->GetType();
 }
 
 bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& hy )
 {
-    if( item->IsNotValid )
+    if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R0( "Map is not loaded." );
@@ -9621,14 +9605,14 @@ bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
 
 void FOClient::SScriptFunc::Item_Animate( Item* item, uchar from_frame, uchar to_frame )
 {
-    if( item->IsNotValid )
+    if( item->IsDestroyed )
         SCRIPT_ERROR_R( "This nullptr." );
     #pragma MESSAGE("Implement Item_Animate.")
 }
 
 Item* FOClient::SScriptFunc::Item_GetChild( Item* item, uint childIndex )
 {
-    if( item->IsNotValid )
+    if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     // Need implement
     #pragma MESSAGE("Implement Item_GetChild.")
@@ -10007,7 +9991,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
 
 CritterCl* FOClient::SScriptFunc::Global_GetChosen()
 {
-    if( Self->Chosen && Self->Chosen->IsNotValid )
+    if( Self->Chosen && Self->Chosen->IsDestroyed )
         return NULL;
     return Self->Chosen;
 }
@@ -10064,7 +10048,7 @@ Item* FOClient::SScriptFunc::Global_GetItem( uint item_id )
     if( !item_id )
         SCRIPT_ERROR_R0( "Item id arg is zero." );
     Item* item = Self->GetItem( item_id );
-    if( !item || item->IsNotValid )
+    if( !item || item->IsDestroyed )
         return NULL;
     return item;
 }
@@ -10073,9 +10057,9 @@ uint FOClient::SScriptFunc::Global_GetCrittersDistantion( CritterCl* cr1, Critte
 {
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R0( "Map is not loaded." );
-    if( cr1->IsNotValid )
+    if( cr1->IsDestroyed )
         SCRIPT_ERROR_R0( "Critter1 arg nullptr." );
-    if( cr2->IsNotValid )
+    if( cr2->IsDestroyed )
         SCRIPT_ERROR_R0( "Critter2 arg nullptr." );
     return DistGame( cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY() );
 }
@@ -10085,7 +10069,7 @@ CritterCl* FOClient::SScriptFunc::Global_GetCritter( uint critter_id )
     if( !critter_id )
         return NULL;                // SCRIPT_ERROR_R0("CritterCl id arg is zero.");
     CritterCl* cr = Self->GetCritter( critter_id );
-    if( !cr || cr->IsNotValid )
+    if( !cr || cr->IsDestroyed )
         return NULL;
     return cr;
 }
@@ -10189,7 +10173,7 @@ uint FOClient::SScriptFunc::Global_GetPathLengthHex( ushort from_hx, ushort from
 
 uint FOClient::SScriptFunc::Global_GetPathLengthCr( CritterCl* cr, ushort to_hx, ushort to_hy, uint cut )
 {
-    if( cr->IsNotValid )
+    if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Critter arg nullptr." );
     if( to_hx >= Self->HexMngr.GetMaxHexX() || to_hy >= Self->HexMngr.GetMaxHexY() )
         SCRIPT_ERROR_R0( "Invalid to hexes args." );
@@ -10411,7 +10395,7 @@ void FOClient::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed,
 
 void FOClient::SScriptFunc::Global_LockScreenScroll( CritterCl* cr, bool unlock_if_same )
 {
-    if( cr && cr->IsNotValid )
+    if( cr && cr->IsDestroyed )
         SCRIPT_ERROR_R( "CritterCl arg nullptr." );
 
     uint id = ( cr ? cr->GetId() : 0 );
@@ -10424,7 +10408,7 @@ void FOClient::SScriptFunc::Global_LockScreenScroll( CritterCl* cr, bool unlock_
 
 int FOClient::SScriptFunc::Global_GetFog( ushort zone_x, ushort zone_y )
 {
-    if( !Self->Chosen || Self->Chosen->IsNotValid )
+    if( !Self->Chosen || Self->Chosen->IsDestroyed )
         SCRIPT_ERROR_R0( "Chosen data not valid." );
     if( zone_x >= GameOpt.GlobalMapWidth || zone_y >= GameOpt.GlobalMapHeight )
         SCRIPT_ERROR_R0( "Invalid world map pos arg." );

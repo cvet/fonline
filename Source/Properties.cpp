@@ -41,13 +41,43 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
     }
     else if( dataType == Property::Array )
     {
-        uint         element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId() );
-        uint         arr_size = data_size / element_size;
-        ScriptArray* arr = ScriptArray::Create( asObjType, arr_size );
-        RUNTIME_ASSERT( arr );
-        if( arr_size )
-            memcpy( arr->At( 0 ), data, arr_size * element_size );
-        return arr;
+        if( isArrayOfString )
+        {
+            if( data_size )
+            {
+                uint         arr_size = *(uint*) data;
+                data += sizeof( uint );
+                ScriptArray* arr = ScriptArray::Create( asObjType, arr_size );
+                RUNTIME_ASSERT( arr );
+                for( uint i = 0; i < arr_size; i++ )
+                {
+                    uint          str_size = *(uint*) data;
+                    data += sizeof( uint );
+                    ScriptString* str = ScriptString::Create( (char*) data, str_size );
+                    RUNTIME_ASSERT( str );
+                    arr->SetValue( i, str );
+                    str->Release();
+                    data += str_size;
+                }
+                return arr;
+            }
+            else
+            {
+                ScriptArray* arr = ScriptArray::Create( asObjType );
+                RUNTIME_ASSERT( arr );
+                return arr;
+            }
+        }
+        else
+        {
+            uint         element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId() );
+            uint         arr_size = data_size / element_size;
+            ScriptArray* arr = ScriptArray::Create( asObjType, arr_size );
+            RUNTIME_ASSERT( arr );
+            if( arr_size )
+                memcpy( arr->At( 0 ), data, arr_size * element_size );
+            return arr;
+        }
     }
     else if( dataType == Property::Dict )
     {
@@ -55,32 +85,67 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
         RUNTIME_ASSERT( dict );
         if( data_size )
         {
-            if( !isDictArray )
+            uint key_element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
+            if( isDictOfArray )
             {
-                uint key_element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
-                uint value_element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 1 ) );
-                uint whole_element_size = key_element_size + value_element_size;
-                uint dict_size = data_size / whole_element_size;
-                for( uint i = 0; i < dict_size; i++ )
-                    dict->Set( data + i * whole_element_size, data + i * whole_element_size + key_element_size );
-            }
-            else
-            {
-                uint           key_element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
                 asIObjectType* arr_type = asObjType->GetSubType( 1 );
                 uint           arr_element_size = engine->GetSizeOfPrimitiveType( arr_type->GetSubTypeId() );
                 uchar*         data_end = data + data_size;
                 while( data < data_end )
                 {
-                    uint         arr_data_size = *(uint*) ( data + key_element_size );
-                    ScriptArray* arr = ScriptArray::Create( arr_type, arr_data_size / arr_element_size );
+                    void*        key = data;
+                    data += key_element_size;
+                    uint         arr_size = *(uint*) data;
+                    data += sizeof( uint );
+                    ScriptArray* arr = ScriptArray::Create( arr_type, arr_size );
                     RUNTIME_ASSERT( arr );
-                    if( arr_data_size )
-                        memcpy( arr->At( 0 ), data + key_element_size + sizeof( uint ), arr_data_size );
-                    dict->Set( data, arr );
+                    if( arr_size )
+                    {
+                        if( isDictOfArrayOfString )
+                        {
+                            for( uint i = 0; i < arr_size; i++ )
+                            {
+                                uint          str_size = *(uint*) data;
+                                data += sizeof( uint );
+                                ScriptString* str = ScriptString::Create( (char*) data, str_size );
+                                RUNTIME_ASSERT( str );
+                                arr->SetValue( i, str );
+                                str->Release();
+                                data += str_size;
+                            }
+                        }
+                        else
+                        {
+                            memcpy( arr->At( 0 ), data, arr_size * arr_element_size );
+                            data += arr_size * arr_element_size;
+                        }
+                    }
+                    dict->Set( key, arr );
                     arr->Release();
-                    data += key_element_size + sizeof( uint ) + arr_data_size;
                 }
+            }
+            else if( isDictOfString )
+            {
+                uchar* data_end = data + data_size;
+                while( data < data_end )
+                {
+                    void*         key = data;
+                    data += key_element_size;
+                    uint          str_size = *(uint*) data;
+                    data += sizeof( uint );
+                    ScriptString* str = ScriptString::Create( (char*) data, str_size );
+                    dict->Set( key, str );
+                    str->Release();
+                    data += str_size;
+                }
+            }
+            else
+            {
+                uint value_element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 1 ) );
+                uint whole_element_size = key_element_size + value_element_size;
+                uint dict_size = data_size / whole_element_size;
+                for( uint i = 0; i < dict_size; i++ )
+                    dict->Set( data + i * whole_element_size, data + i * whole_element_size + key_element_size );
             }
         }
         return dict;
@@ -128,13 +193,159 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
     else if( dataType == Property::Array )
     {
         ScriptArray* arr = *(ScriptArray**) base_ptr;
-        data_size = ( arr ? arr->GetSize() * arr->GetElementSize() : 0 );
-        return data_size ? (uchar*) arr->At( 0 ) : NULL;
+        if( isArrayOfString )
+        {
+            need_delete = true;
+            data_size = 0;
+            uint arr_size = arr->GetSize();
+            if( arr_size )
+            {
+                // Calculate size
+                data_size += sizeof( uint );
+                for( uint i = 0; i < arr_size; i++ )
+                {
+                    ScriptString* str = (ScriptString*) arr->At( i );
+                    data_size += sizeof( uint ) + str->length();
+                }
+
+                // Make buffer
+                uchar* init_buf = new uchar[ data_size ];
+                uchar* buf = init_buf;
+                memcpy( buf, &arr_size, sizeof( uint ) );
+                buf += sizeof( uint );
+                for( uint i = 0; i < arr_size; i++ )
+                {
+                    ScriptString* str = (ScriptString*) arr->At( i );
+                    uint          str_size = str->length();
+                    memcpy( buf, &str_size, sizeof( uint ) );
+                    buf += sizeof( uint );
+                    if( str_size )
+                    {
+                        memcpy( buf, str->c_str(), str_size );
+                        buf += sizeof( uint );
+                    }
+                }
+                return init_buf;
+            }
+            return NULL;
+        }
+        else
+        {
+            data_size = ( arr ? arr->GetSize() * arr->GetElementSize() : 0 );
+            return data_size ? (uchar*) arr->At( 0 ) : NULL;
+        }
     }
     else if( dataType == Property::Dict )
     {
         ScriptDict* dict = *(ScriptDict**) base_ptr;
-        if( !isDictArray )
+        if( isDictOfArray )
+        {
+            data_size = ( dict ? dict->GetSize() : 0 );
+            if( data_size )
+            {
+                need_delete = true;
+                uint key_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
+                uint arr_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubType( 1 )->GetSubTypeId() );
+
+                // Calculate size
+                data_size = 0;
+                map< void*, void* >* dict_map = ( map< void*, void* >* )dict->GetMap();
+                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+                {
+                    ScriptArray* arr = (ScriptArray*) it->second;
+                    uint         arr_size = arr->GetSize();
+                    data_size += key_element_size + sizeof( uint );
+                    if( isDictOfArrayOfString )
+                    {
+                        for( uint i = 0; i < arr_size; i++ )
+                        {
+                            ScriptString* str = (ScriptString*) arr->At( i );
+                            data_size += sizeof( uint ) + str->length();
+                        }
+                    }
+                    else
+                    {
+                        data_size += arr_size * arr_element_size;
+                    }
+                }
+
+                // Make buffer
+                uchar* init_buf = new uchar[ data_size ];
+                uchar* buf = init_buf;
+                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+                {
+                    ScriptArray* arr = (ScriptArray*) it->second;
+                    memcpy( buf, it->first, key_element_size );
+                    buf += key_element_size;
+                    uint arr_size = arr->GetSize();
+                    memcpy( buf, &arr_size, sizeof( uint ) );
+                    buf += sizeof( uint );
+                    if( arr_size )
+                    {
+                        if( isDictOfArrayOfString )
+                        {
+                            for( uint i = 0; i < arr_size; i++ )
+                            {
+                                ScriptString* str = (ScriptString*) arr->At( i );
+                                uint          str_size = str->length();
+                                memcpy( buf, &str_size, sizeof( uint ) );
+                                buf += sizeof( uint );
+                                if( str_size )
+                                {
+                                    memcpy( buf, str->c_str(), str_size );
+                                    buf += arr_size;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            memcpy( buf, arr->At( 0 ), arr_size * arr_element_size );
+                            buf += arr_size * arr_element_size;
+                        }
+                    }
+                }
+                return init_buf;
+            }
+        }
+        else if( isDictOfString )
+        {
+            uint key_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
+            data_size = ( dict ? dict->GetSize() : 0 );
+            if( data_size )
+            {
+                need_delete = true;
+
+                // Calculate size
+                data_size = 0;
+                map< void*, void* >* dict_map = ( map< void*, void* >* )dict->GetMap();
+                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+                {
+                    ScriptString* str = (ScriptString*) it->second;
+                    uint          str_size = str->length();
+                    data_size += key_element_size + sizeof( uint ) + str_size;
+                }
+
+                // Make buffer
+                uchar* init_buf = new uchar[ data_size ];
+                uchar* buf = init_buf;
+                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+                {
+                    ScriptString* str = (ScriptString*) it->second;
+                    memcpy( buf, it->first, key_element_size );
+                    buf += key_element_size;
+                    uint str_size = str->length();
+                    memcpy( buf, &str_size, sizeof( uint ) );
+                    buf += sizeof( uint );
+                    if( str_size )
+                    {
+                        memcpy( buf, str->c_str(), str_size );
+                        buf += str_size;
+                    }
+                }
+                return init_buf;
+            }
+        }
+        else
         {
             uint key_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
             uint value_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 1 ) );
@@ -152,44 +363,6 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
                     buf += key_element_size;
                     memcpy( buf, it->second, value_element_size );
                     buf += value_element_size;
-                }
-                return init_buf;
-            }
-        }
-        else
-        {
-            data_size = ( dict ? dict->GetSize() : 0 );
-            if( data_size )
-            {
-                need_delete = true;
-                uint key_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
-                uint arr_element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( asObjType->GetSubType( 1 )->GetSubTypeId() );
-
-                // Calculate size
-                data_size = 0;
-                map< void*, void* >* dict_map = ( map< void*, void* >* )dict->GetMap();
-                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
-                {
-                    ScriptArray* arr = (ScriptArray*) it->second;
-                    data_size += key_element_size + sizeof( uint ) + arr->GetSize() * arr_element_size;
-                }
-
-                // Make buffer
-                uchar* init_buf = new uchar[ data_size ];
-                uchar* buf = init_buf;
-                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
-                {
-                    ScriptArray* arr = (ScriptArray*) it->second;
-                    memcpy( buf, it->first, key_element_size );
-                    buf += key_element_size;
-                    uint arr_data_size = arr->GetSize() * arr_element_size;
-                    memcpy( buf, &arr_data_size, sizeof( arr_data_size ) );
-                    buf += sizeof( arr_data_size );
-                    if( arr_data_size )
-                    {
-                        memcpy( buf, arr->At( 0 ), arr_data_size );
-                        buf += arr_data_size;
-                    }
                 }
                 return init_buf;
             }
@@ -1302,7 +1475,10 @@ Property* PropertyRegistrator::Register(
     bool               is_float_data_type = false;
     bool               is_bool_data_type = false;
     bool               is_enum_data_type = false;
-    bool               is_dict_array = false;
+    bool               is_array_of_string = false;
+    bool               is_dict_of_string = false;
+    bool               is_dict_of_array = false;
+    bool               is_dict_of_array_of_string = false;
     if( type_id & asTYPEID_OBJHANDLE )
     {
         WriteLogF( _FUNC_, " - Invalid property type<%s>, handles not allowed.\n", type_name );
@@ -1343,9 +1519,11 @@ Property* PropertyRegistrator::Register(
         data_type = Property::Array;
         data_size = sizeof( void* );
 
-        if( as_obj_type->GetSubTypeId() & asTYPEID_MASK_OBJECT )
+        bool is_array_of_pod = !( as_obj_type->GetSubTypeId() & asTYPEID_MASK_OBJECT );
+        is_array_of_string = ( !is_array_of_pod && Str::Compare( as_obj_type->GetSubType()->GetName(), "string" ) );
+        if( !is_array_of_pod && !is_array_of_string )
         {
-            WriteLogF( _FUNC_, " - Invalid property type<%s>, array elements must have POD type.\n", type_name );
+            WriteLogF( _FUNC_, " - Invalid property type<%s>, array elements must have POD/string type.\n", type_name );
             return NULL;
         }
     }
@@ -1362,12 +1540,18 @@ Property* PropertyRegistrator::Register(
 
         int value_sub_type_id = as_obj_type->GetSubTypeId( 1 );
         asIObjectType* value_sub_type = as_obj_type->GetSubType( 1 );
-        if( value_sub_type_id & asTYPEID_MASK_OBJECT && !( Str::Compare( value_sub_type->GetName(), "array" ) && !( value_sub_type->GetSubTypeId() & asTYPEID_MASK_OBJECT ) ) )
+        if( value_sub_type_id & asTYPEID_MASK_OBJECT )
         {
-            WriteLogF( _FUNC_, " - Invalid property type<%s>, dict value must have POD type or array of POD type.\n", type_name );
-            return NULL;
+            is_dict_of_string = Str::Compare( value_sub_type->GetName(), "string" );
+            is_dict_of_array = Str::Compare( value_sub_type->GetName(), "array" );
+            is_dict_of_array_of_string = ( is_dict_of_array && value_sub_type->GetSubType() && Str::Compare( value_sub_type->GetSubType()->GetName(), "string" ) );
+            bool is_dict_array_of_pod = !( value_sub_type->GetSubTypeId() & asTYPEID_MASK_OBJECT );
+            if( !is_dict_of_string && !is_dict_array_of_pod && !is_dict_of_array_of_string )
+            {
+                WriteLogF( _FUNC_, " - Invalid property type<%s>, dict value must have POD/string type or array of POD/string type.\n", type_name );
+                return NULL;
+            }
         }
-        is_dict_array = ( value_sub_type_id & asTYPEID_MASK_OBJECT ) != 0;
     }
     else
     {
@@ -1398,9 +1582,9 @@ Property* PropertyRegistrator::Register(
     bool disable_set = false;
     if( access & Property::VirtualMask )
         disable_set = true;
-    if( isServer && ( access & Property::ClientMask ) )
+    if( isServer && ( access & Property::ClientOnlyMask ) )
         disable_get = disable_set = true;
-    if( !isServer && ( access & Property::ServerMask ) )
+    if( !isServer && ( access & Property::ServerOnlyMask ) )
         disable_get = disable_set = true;
     if( !isServer && ( ( access & Property::PublicMask ) || ( access & Property::ProtectedMask ) ) && !( access & Property::ModifiableMask ) )
         disable_set = true;
@@ -1589,7 +1773,10 @@ Property* PropertyRegistrator::Register(
     prop->isFloatDataType = is_float_data_type;
     prop->isEnumDataType = is_enum_data_type;
     prop->isBoolDataType = is_bool_data_type;
-    prop->isDictArray = is_dict_array;
+    prop->isArrayOfString = is_array_of_string;
+    prop->isDictOfString = is_dict_of_string;
+    prop->isDictOfArray = is_dict_of_array;
+    prop->isDictOfArrayOfString = is_dict_of_array_of_string;
     prop->isReadable = !disable_get;
     prop->isWritable = !disable_set;
     prop->generateRandomValue = ( generate_random_value ? *generate_random_value : false );

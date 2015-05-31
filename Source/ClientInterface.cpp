@@ -443,9 +443,6 @@ int FOClient::InitIface()
     PipMode = PIP__NONE;
     memzero( PipScroll, sizeof( PipScroll ) );
     PipInfoNum = 0;
-    memzero( HoloInfo, sizeof( HoloInfo ) );
-    ScoresNextUploadTick = 0;
-    memzero( BestScores, sizeof( BestScores ) );
     Automaps.clear();
     AutomapWaitPids.clear();
     AutomapReceivedPids.clear();
@@ -5343,15 +5340,19 @@ void FOClient::PipDraw()
     break;
     case PIP__STATUS_SCORES:
     {
-        bool is_first_title = true;
-        char last_title[ 256 ];
-        for( int i = 0; i < SCORES_MAX; i++ )
+        bool         is_first_title = true;
+        char         last_title[ 256 ];
+
+        ScriptArray* best_scores = Globals->GetBestScores();
+        for( int i = 0; i < (int) best_scores->GetSize(); i++ )
         {
             if( MsgGame->Count( STR_SCORES_TITLE( i ) ) )
                 Str::Copy( last_title, MsgGame->GetStr( STR_SCORES_TITLE( i ) ) );
-            char* name = &BestScores[ i ][ 0 ];
+
+            const char* name = ( *(ScriptString**) best_scores->At( i ) )->c_str();
             if( !name[ 0 ] )
                 continue;
+
             if( last_title[ 0 ] )
             {
                 if( !is_first_title )
@@ -5366,6 +5367,7 @@ void FOClient::PipDraw()
             PIP_DRAW_TEXT( name, FT_CENTERX, COLOR_TEXT );
             scr++;
         }
+        SAFEREL( best_scores );
     }
     break;
     case PIP__AUTOMAPS:
@@ -5561,11 +5563,6 @@ void FOClient::PipLMouseDown()
                 {
                     PipMode = PIP__STATUS_SCORES;
                     PipScroll[ PipMode ] = 0;
-                    if( Timer::FastTick() >= ScoresNextUploadTick )
-                    {
-                        Net_SendGetScores();
-                        ScoresNextUploadTick = Timer::FastTick() + SCORES_SEND_TIME;
-                    }
                     break;
                 }
             }

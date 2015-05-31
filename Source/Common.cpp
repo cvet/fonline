@@ -1674,6 +1674,7 @@ void Thread_Sleep( uint ms ) // Used in Mutex.h as extern function
 /************************************************************************/
 
 PROPERTIES_IMPL( GlobalVars );
+CLASS_PROPERTY_IMPL( GlobalVars, BestScores );
 GlobalVars::GlobalVars(): Props( PropertiesRegistrator ) {}
 GlobalVars* Globals;
 

@@ -161,7 +161,6 @@ public:
     void Net_SendPing( uchar ping );
     void Net_SendPlayersBarter( uchar barter, uint param, uint param_ext );
     void Net_SendScreenAnswer( uint answer_i, const char* answer_s );
-    void Net_SendGetScores();
     void Net_SendSetUserHoloStr( Item* holodisk, const char* title, const char* text );
     void Net_SendGetUserHoloStr( uint str_num );
     void Net_SendCombat( uchar type, int val );
@@ -230,7 +229,6 @@ public:
     void Net_OnUpdateFileData();
 
     void Net_OnHoloInfo();
-    void Net_OnScores();
     void Net_OnUserHoloStr();
     void Net_OnAutomapsInfo();
     void Net_OnCheckUID4();
@@ -1087,9 +1085,6 @@ public:
     // HoloInfo
     uint         HoloInfo[ MAX_HOLO_INFO ];
     uint         PipInfoNum;
-    // Scores
-    uint         ScoresNextUploadTick;
-    char         BestScores[ SCORES_MAX ][ SCORE_NAME_LEN ];
     // Automaps
     struct Automap
     {

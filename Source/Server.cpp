@@ -64,8 +64,6 @@ FOServer::ClientBannedVec   FOServer::Banned;
 Mutex                       FOServer::BannedLocker;
 FOServer::ClientDataMap     FOServer::ClientsData;
 Mutex                       FOServer::ClientsDataLocker;
-ScoreType                   FOServer::BestScores[ SCORES_MAX ];
-Mutex                       FOServer::BestScoresLocker;
 FOServer::SingleplayerSave_ FOServer::SingleplayerSave;
 MutexSynchronizer           FOServer::LogicThreadSync;
 FOServer::UpdateFileVec     FOServer::UpdateFiles;
@@ -210,7 +208,7 @@ string FOServer::GetIngamePlayersStatistics()
     {
         Client*     cl = players[ i ];
         const char* name = cl->GetName();
-        Map*        map = MapMngr.GetMap( cl->GetMap(), false );
+        Map*        map = MapMngr.GetMap( cl->GetMapId(), false );
         Location*   loc = ( map ? map->GetLocation( false ) : NULL );
 
         Str::Format( str_loc, "%s (%u, %u)", map ? loc->Proto->Name.c_str() : "", map ? loc->GetId() : 0, map ? loc->GetPid() : 0 );
@@ -259,7 +257,7 @@ void FOServer::DisconnectClient( Client* cl )
         AddSaveClient( cl );
 
         SETFLAG( cl->Flags, FCRIT_DISCONNECT );
-        if( cl->GetMap() )
+        if( cl->GetMapId() )
         {
             cl->SendA_Action( ACTION_DISCONNECT, 0, NULL );
         }
@@ -289,9 +287,9 @@ void FOServer::RemoveClient( Client* cl )
             Script::RunPrepared();
         }
 
-        if( cl->GetMap() )
+        if( cl->GetMapId() )
         {
-            Map* map = MapMngr.GetMap( cl->GetMap(), true );
+            Map* map = MapMngr.GetMap( cl->GetMapId(), true );
             if( map )
             {
                 MapMngr.EraseCrFromMap( cl, map, cl->GetHexX(), cl->GetHexY() );
@@ -334,7 +332,7 @@ void FOServer::RemoveClient( Client* cl )
             AddSaveClient( cl );
 
         CrMngr.EraseCritter( cl );
-        cl->IsNotValid = true;
+        cl->IsDestroyed = true;
 
         // Erase radios from collection
         ItemVec items = cl->GetItemsNoLock();
@@ -362,7 +360,7 @@ void FOServer::RemoveClient( Client* cl )
     }
     else
     {
-        cl->IsNotValid = true;
+        cl->IsDestroyed = true;
     }
 }
 
@@ -682,7 +680,7 @@ void FOServer::Logic_Work( void* data )
                 RemoveClient( (Client*) cr );                           // Todo: rework, add to garbage collector
 
             // Check for removing
-            if( cr->IsNotValid )
+            if( cr->IsDestroyed )
                 continue;
 
             // Process logic
@@ -694,7 +692,7 @@ void FOServer::Logic_Work( void* data )
             SYNC_LOCK( map );
 
             // Check for removing
-            if( map->IsNotValid )
+            if( map->IsDestroyed )
                 continue;
 
             // Process logic
@@ -1380,7 +1378,7 @@ void FOServer::NetIO_Output( Client::NetIOArg* io )
 
 void FOServer::Process( ClientPtr& cl )
 {
-    if( cl->IsOffline() || cl->IsNotValid )
+    if( cl->IsOffline() || cl->IsDestroyed )
     {
         cl->Bin.LockReset();
         return;
@@ -1579,11 +1577,11 @@ void FOServer::Process( ClientPtr& cl )
                     }                                                       \
                 }                                                           \
             }
-        #define CHECK_IS_GLOBAL                  \
-            if( cl->GetMap() || !cl->GroupMove ) \
+        #define CHECK_IS_GLOBAL                    \
+            if( cl->GetMapId() || !cl->GroupMove ) \
                 break
-        #define CHECK_NO_GLOBAL \
-            if( !cl->GetMap() ) \
+        #define CHECK_NO_GLOBAL   \
+            if( !cl->GetMapId() ) \
                 break
 
         for( int i = 0; i < MESSAGES_PER_CYCLE; i++ )
@@ -1778,7 +1776,7 @@ void FOServer::Process( ClientPtr& cl )
             }
             case NETMSG_SEND_GET_INFO:
             {
-                Map* map = MapMngr.GetMap( cl->GetMap(), false );
+                Map* map = MapMngr.GetMap( cl->GetMapId(), false );
                 cl->Send_GameInfo( map );
                 BIN_END( cl );
                 continue;
@@ -1809,13 +1807,6 @@ void FOServer::Process( ClientPtr& cl )
             {
                 CHECK_BUSY_AND_LIFE;
                 Process_GetUserHoloStr( cl );
-                BIN_END( cl );
-                continue;
-            }
-            case NETMSG_SEND_GET_SCORES:
-            {
-                CHECK_BUSY;
-                Process_GetScores( cl );
                 BIN_END( cl );
                 continue;
             }
@@ -1939,7 +1930,7 @@ void FOServer::Process_Text( Client* cl )
     {
     case SAY_NORM:
     {
-        if( cl->GetMap() )
+        if( cl->GetMapId() )
             cl->SendAA_Text( cl->VisCr, str, SAY_NORM, true );
         else
             cl->SendAA_Text( cl->GroupMove->CritMove, str, SAY_NORM, true );
@@ -1947,9 +1938,9 @@ void FOServer::Process_Text( Client* cl )
     break;
     case SAY_SHOUT:
     {
-        if( cl->GetMap() )
+        if( cl->GetMapId() )
         {
-            Map* map = MapMngr.GetMap( cl->GetMap() );
+            Map* map = MapMngr.GetMap( cl->GetMapId() );
             if( !map )
                 return;
 
@@ -1966,7 +1957,7 @@ void FOServer::Process_Text( Client* cl )
     break;
     case SAY_EMOTE:
     {
-        if( cl->GetMap() )
+        if( cl->GetMapId() )
             cl->SendAA_Text( cl->VisCr, str, SAY_EMOTE, true );
         else
             cl->SendAA_Text( cl->GroupMove->CritMove, str, SAY_EMOTE, true );
@@ -1974,7 +1965,7 @@ void FOServer::Process_Text( Client* cl )
     break;
     case SAY_WHISP:
     {
-        if( cl->GetMap() )
+        if( cl->GetMapId() )
             cl->SendAA_Text( cl->VisCr, str, SAY_WHISP, true );
         else
             cl->Send_TextEx( cl->GetId(), str, len, SAY_WHISP, cl->IntellectCacheValue, true );
@@ -1987,7 +1978,7 @@ void FOServer::Process_Text( Client* cl )
     break;
     case SAY_RADIO:
     {
-        if( cl->GetMap() )
+        if( cl->GetMapId() )
             cl->SendAA_Text( cl->VisCr, str, SAY_WHISP, true );
         else
             cl->Send_TextEx( cl->GetId(), str, len, SAY_WHISP, cl->IntellectCacheValue, true );
@@ -2003,9 +1994,6 @@ void FOServer::Process_Text( Client* cl )
     default:
         return;
     }
-
-    // Best score
-    SetScore( SCORE_SPEAKER, cl, 1 );
 
     // Text listen
     int           listen_count = 0;
@@ -2031,7 +2019,7 @@ void FOServer::Process_Text( Client* cl )
     }
     else
     {
-        hash pid = cl->GetProtoMap();
+        hash pid = cl->GetMapProtoId();
         for( uint i = 0; i < TextListeners.size(); i++ )
         {
             TextListen& tl = TextListeners[ i ];
@@ -2231,7 +2219,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
             break;
         }
 
-        Map* map = MapMngr.GetMap( cr->GetMap(), true );
+        Map* map = MapMngr.GetMap( cr->GetMapId(), true );
         if( !map )
         {
             logcb( "Critter is on global." );
@@ -2439,7 +2427,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         CHECK_ALLOW_COMMAND;
         CHECK_ADMIN_PANEL;
 
-        Map* map = MapMngr.GetMap( cl_->GetMap() );
+        Map* map = MapMngr.GetMap( cl_->GetMapId() );
         if( !map || hex_x >= map->GetMaxHexX() || hex_y >= map->GetMaxHexY() )
         {
             logcb( "Wrong hexes or critter on global map." );
@@ -2486,7 +2474,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         CHECK_ALLOW_COMMAND;
         CHECK_ADMIN_PANEL;
 
-        Map* map = MapMngr.GetMap( cl_->GetMap() );
+        Map* map = MapMngr.GetMap( cl_->GetMapId() );
         Npc* npc = CrMngr.CreateNpc( pid, NULL, NULL, NULL, map, hex_x, hex_y, dir, true );
         if( !npc )
             logcb( "Npc not created." );
@@ -2717,14 +2705,14 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         CHECK_ADMIN_PANEL;
 
         // Check global
-        if( !cl_->GetMap() )
+        if( !cl_->GetMapId() )
         {
             logcb( "Only on local map." );
             return;
         }
 
         // Find map
-        Map* map = MapMngr.GetMap( cl_->GetMap() );
+        Map* map = MapMngr.GetMap( cl_->GetMapId() );
         if( !map )
         {
             logcb( "Map not found." );
@@ -3132,7 +3120,6 @@ void FOServer::SaveGameInfoFile()
         ClientSaveData& csd = SingleplayerSave.CrData;
         AddWorldSaveData( csd.Name, sizeof( csd.Name ) );
         AddWorldSaveData( &csd.Data, sizeof( csd.Data ) );
-        AddWorldSaveData( &csd.DataExt, sizeof( csd.DataExt ) );
         uint te_count = (uint) csd.TimeEvents.size();
         AddWorldSaveData( &te_count, sizeof( te_count ) );
         if( te_count )
@@ -3154,9 +3141,6 @@ void FOServer::SaveGameInfoFile()
     AddWorldSaveData( &GameOpt.Minute, sizeof( GameOpt.Minute ) );
     AddWorldSaveData( &GameOpt.Second, sizeof( GameOpt.Second ) );
     AddWorldSaveData( &GameOpt.TimeMultiplier, sizeof( GameOpt.TimeMultiplier ) );
-
-    // Scores
-    AddWorldSaveData( &BestScores[ 0 ], sizeof( BestScores ) );
 }
 
 bool FOServer::LoadGameInfoFile( void* f, uint version )
@@ -3187,8 +3171,6 @@ bool FOServer::LoadGameInfoFile( void* f, uint version )
         }
 
         if( !FileRead( f, &csd.Data, sizeof( csd.Data ) ) )
-            return false;
-        if( !FileRead( f, &csd.DataExt, sizeof( csd.DataExt ) ) )
             return false;
         uint te_count = (uint) csd.TimeEvents.size();
         if( !FileRead( f, &te_count, sizeof( te_count ) ) )
@@ -3229,10 +3211,6 @@ bool FOServer::LoadGameInfoFile( void* f, uint version )
     if( !FileRead( f, &GameOpt.Second, sizeof( GameOpt.Second ) ) )
         return false;
     if( !FileRead( f, &GameOpt.TimeMultiplier, sizeof( GameOpt.TimeMultiplier ) ) )
-        return false;
-
-    // Scores
-    if( !FileRead( f, &BestScores[ 0 ], sizeof( BestScores ) ) )
         return false;
 
     WriteLog( "Load game info complete.\n" );
@@ -3305,7 +3283,7 @@ void FOServer::SetGameTime( int multiplier, int year, int month, int day, int ho
     {
         Client* cl = *it;
         if( cl->IsOnline() )
-            cl->Send_GameInfo( MapMngr.GetMap( cl->GetMap(), false ) );
+            cl->Send_GameInfo( MapMngr.GetMap( cl->GetMapId(), false ) );
     }
     ConnectedClientsLocker.Unlock();
 
@@ -4185,7 +4163,7 @@ bool FOServer::LoadClientsData()
             errors++;
             continue;
         }
-        if( version < CLIENT_SAVE_V3 )
+        if( version < CLIENT_SAVE_V4 )
         {
             WriteLog( "Save file<%s> format not supported.\n", client_fname );
             errors++;
@@ -4261,13 +4239,6 @@ bool FOServer::SaveClient( Client* cl, bool deferred )
         return false;
     }
 
-    CritDataExt* data_ext = cl->GetDataExt();
-    if( !data_ext )
-    {
-        WriteLogF( _FUNC_, " - Can't get extended critter data.\n" );
-        return false;
-    }
-
     if( deferred && WorldSaveManager )
     {
         AddClientSaveData( cl );
@@ -4287,7 +4258,6 @@ bool FOServer::SaveClient( Client* cl, bool deferred )
         FileWrite( f, ClientSaveSignature, sizeof( ClientSaveSignature ) );
         FileWrite( f, cl->PassHash, sizeof( cl->PassHash ) );
         FileWrite( f, &cl->Data, sizeof( cl->Data ) );
-        FileWrite( f, data_ext, sizeof( CritDataExt ) );
         #pragma MESSAGE( "Rework props storing workaround 1" )
         static THREAD void* File = NULL;
         File = f;
@@ -4301,8 +4271,6 @@ bool FOServer::SaveClient( Client* cl, bool deferred )
         if( te_count )
             FileWrite( f, &cl->CrTimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
         FileClose( f );
-
-        cl->Data.Temp = 0;
     }
     return true;
 }
@@ -4311,13 +4279,6 @@ bool FOServer::LoadClient( Client* cl )
 {
     if( Singleplayer )
         return true;
-
-    CritDataExt* data_ext = cl->GetDataExt();
-    if( !data_ext )
-    {
-        WriteLogF( _FUNC_, " - Can't get extended critter data.\n" );
-        return false;
-    }
 
     char fname[ MAX_FOPATH ];
     FileManager::GetWritePath( cl->Name, PT_SERVER_CLIENTS, fname );
@@ -4336,8 +4297,6 @@ bool FOServer::LoadClient( Client* cl )
     if( !FileRead( f, cl->PassHash, sizeof( cl->PassHash ) ) )
         goto label_FileTruncated;
     if( !FileRead( f, &cl->Data, sizeof( cl->Data ) ) )
-        goto label_FileTruncated;
-    if( !FileRead( f, data_ext, sizeof( CritDataExt ) ) )
         goto label_FileTruncated;
     if( !cl->Props.Load( f, 0 ) )
         goto label_FileTruncated;
@@ -4650,7 +4609,6 @@ void FOServer::AddClientSaveData( Client* cl )
     memcpy( csd.Name, cl->Name, sizeof( csd.Name ) );
     memcpy( csd.PasswordHash, cl->PassHash, sizeof( csd.PasswordHash ) );
     memcpy( &csd.Data, &cl->Data, sizeof( cl->Data ) );
-    memcpy( &csd.DataExt, cl->GetDataExt(), sizeof( CritDataExt ) );
     *csd.Props = cl->Props;
     csd.TimeEvents = cl->CrTimeEvents;
 
@@ -4713,7 +4671,6 @@ void FOServer::Dump_Work( void* data )
             FileWrite( fc, ClientSaveSignature, sizeof( ClientSaveSignature ) );
             FileWrite( fc, csd.PasswordHash, sizeof( csd.PasswordHash ) );
             FileWrite( fc, &csd.Data, sizeof( csd.Data ) );
-            FileWrite( fc, &csd.DataExt, sizeof( csd.DataExt ) );
             #pragma MESSAGE( "Rework props storing workaround 2" )
             static THREAD void* File = NULL;
             File = fc;
@@ -4744,75 +4701,6 @@ void FOServer::Dump_Work( void* data )
         // Notify about end of processing
         DumpEndEvent.Allow();
     }
-}
-
-/************************************************************************/
-/* Scores                                                               */
-/************************************************************************/
-
-void FOServer::SetScore( int score, Critter* cr, int val )
-{
-    SCOPE_LOCK( BestScoresLocker );
-
-    cr->Data.Scores[ score ] += val;
-    if( BestScores[ score ].ClientId == cr->GetId() )
-        return;
-    if( BestScores[ score ].Value >= cr->Data.Scores[ score ] )
-        return;                                                     // TODO: less/greater
-    BestScores[ score ].Value = cr->Data.Scores[ score ];
-    BestScores[ score ].ClientId = cr->GetId();
-    Str::Copy( BestScores[ score ].ClientName, cr->GetName() );
-}
-
-void FOServer::SetScore( int score, const char* name )
-{
-    SCOPE_LOCK( BestScoresLocker );
-
-    BestScores[ score ].ClientId = 0;
-    BestScores[ score ].Value = 0;
-    Str::Copy( BestScores[ score ].ClientName, name );
-}
-
-const char* FOServer::GetScores()
-{
-    SCOPE_LOCK( BestScoresLocker );
-
-    static THREAD char scores[ SCORE_NAME_LEN * SCORES_MAX ]; // Only names
-    for( int i = 0; i < SCORES_MAX; i++ )
-    {
-        char* offs = &scores[ i * SCORE_NAME_LEN ];           // Name
-        memcpy( offs, BestScores[ i ].ClientName, SCORE_NAME_LEN );
-    }
-
-    return scores;
-}
-
-void FOServer::ClearScore( int score )
-{
-    SCOPE_LOCK( BestScoresLocker );
-
-    BestScores[ score ].ClientId = 0;
-    BestScores[ score ].ClientName[ 0 ] = '\0';
-    BestScores[ score ].Value = 0;
-}
-
-void FOServer::Process_GetScores( Client* cl )
-{
-    uint tick = Timer::FastTick();
-    if( tick < cl->LastSendScoresTick + SCORES_SEND_TIME )
-    {
-        WriteLogF( _FUNC_, " - Client<%s> ignore send scores timeout.\n", cl->GetInfo() );
-        return;
-    }
-    cl->LastSendScoresTick = tick;
-
-    uint        msg = NETMSG_SCORES;
-    const char* scores = GetScores();
-
-    BOUT_BEGIN( cl );
-    cl->Bout << msg;
-    cl->Bout.Push( scores, SCORE_NAME_LEN * SCORES_MAX );
-    BOUT_END( cl );
 }
 
 /************************************************************************/

@@ -159,10 +159,7 @@ void CritterManager::SaveCrittersFile( void ( * save_func )( void*, size_t ) )
     for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
     {
         Critter* npc = *it;
-        npc->Data.IsDataExt = ( npc->DataExt ? true : false );
         save_func( &npc->Data, sizeof( npc->Data ) );
-        if( npc->Data.IsDataExt )
-            save_func( npc->DataExt, sizeof( CritDataExt ) );
         npc->Props.Save( save_func );
         uint te_count = (uint) npc->CrTimeEvents.size();
         save_func( &te_count, sizeof( te_count ) );
@@ -185,16 +182,10 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
     uint errors = 0;
     for( uint i = 0; i < count; i++ )
     {
-        CritData data;
+        CritData                data;
         FileRead( f, &data, sizeof( data ) );
-
-        CritDataExt data_ext;
-        if( data.IsDataExt )
-            FileRead( f, &data_ext, sizeof( data_ext ) );
-
-        Properties props( Critter::PropertiesRegistrator );
+        Properties              props( Critter::PropertiesRegistrator );
         props.Load( f, version );
-
         Critter::CrTimeEventVec tevents;
         uint                    te_count;
         FileRead( f, &te_count, sizeof( te_count ) );
@@ -217,19 +208,11 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
         }
 
         npc->Data = data;
-        if( data.IsDataExt )
-        {
-            CritDataExt* pdata_ext = npc->GetDataExt();
-            if( pdata_ext )
-                *pdata_ext = data_ext;
-        }
-
         npc->Props = props;
-
         if( te_count )
             npc->CrTimeEvents = tevents;
 
-        npc->NextRefreshBagTick = Timer::GameTick() + ( npc->Data.BagRefreshTime ? npc->Data.BagRefreshTime : GameOpt.BagRefreshTime ) * 60 * 1000;
+        npc->NextRefreshBagTick = Timer::GameTick() + GameOpt.BagRefreshTime * 60 * 1000;
         npc->RefreshName();
 
         AddCritter( npc );
@@ -253,7 +236,7 @@ void CritterManager::RunInitScriptCritters()
             Script::SetArgBool( false );
             Script::RunPrepared();
         }
-        if( cr->Data.ScriptId )
+        if( cr->GetScriptId() )
             cr->ParseScript( NULL, false );
     }
 }
@@ -296,7 +279,7 @@ void CritterManager::CritterGarbager()
             // Finish critter
             cr->LockMapTransfers++;
 
-            Map* map = MapMngr.GetMap( cr->GetMap() );
+            Map* map = MapMngr.GetMap( cr->GetMapId() );
             if( map )
             {
                 cr->ClearVisible();
@@ -346,7 +329,7 @@ void CritterManager::CritterGarbager()
                 cr->GroupMove = NULL;
             }
 
-            cr->IsNotValid = true;
+            cr->IsDestroyed = true;
             cr->FullClear();
             Job::DeferredRelease( cr );
         }
@@ -487,7 +470,6 @@ Npc* CritterManager::CreateNpc( hash proto_id, bool copy_data )
 
     if( copy_data )
         npc->Props = *proto->Props;
-    npc->Data.EnemyStackCount = MAX_ENEMY_STACK;
     npc->Data.ProtoId = proto_id;
     npc->Data.Cond = COND_LIFE;
     npc->Data.Multihex = -1;
@@ -649,7 +631,7 @@ void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, in
     for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
-        if( !cr->GetMap() && cr->GroupMove && DistSqrt( (int) cr->GroupMove->CurX, (int) cr->GroupMove->CurY, wx, wy ) <= radius &&
+        if( !cr->GetMapId() && cr->GroupMove && DistSqrt( (int) cr->GroupMove->CurX, (int) cr->GroupMove->CurY, wx, wy ) <= radius &&
             cr->CheckFind( find_type ) )
             find_critters.push_back( cr );
     }
@@ -670,7 +652,7 @@ void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, in
         for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
         {
             Critter* cr = ( *it ).second;
-            if( !cr->GetMap() && cr->GroupMove && DistSqrt( (int) cr->GroupMove->CurX, (int) cr->GroupMove->CurY, wx, wy ) <= radius &&
+            if( !cr->GetMapId() && cr->GroupMove && DistSqrt( (int) cr->GroupMove->CurX, (int) cr->GroupMove->CurY, wx, wy ) <= radius &&
                 cr->CheckFind( find_type ) )
                 find_critters2.push_back( cr );
         }

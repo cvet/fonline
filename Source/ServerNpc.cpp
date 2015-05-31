@@ -60,18 +60,18 @@ void FOServer::ProcessAI( Npc* npc )
         return;
 
     // Global map
-    if( !npc->GetMap() )
+    if( !npc->GetMapId() )
     {
         if( !npc->GroupMove )
             return;
         MapMngr.GM_GlobalProcess( npc, npc->GroupMove, GLOBAL_PROCESS_NPC_IDLE );
-        if( !npc->GetMap() && !npc->IsWait() )
+        if( !npc->GetMapId() && !npc->IsWait() )
             npc->SetWait( GameOpt.CritterIdleTick );
         return;
     }
 
     // Get map
-    Map* map = MapMngr.GetMap( npc->GetMap() );
+    Map* map = MapMngr.GetMap( npc->GetMapId() );
     if( !map )
         return;
 
@@ -107,7 +107,7 @@ void FOServer::ProcessAI( Npc* npc )
         }
 
         // Go home
-        if( !npc->GetIsNoHome() && map->GetId() == npc->GetHomeMap() && ( npc->GetHexX() != npc->GetHomeX() || npc->GetHexY() != npc->GetHomeY() ) )
+        if( !npc->GetIsNoHome() && map->GetId() == npc->GetHomeMapId() && ( npc->GetHexX() != npc->GetHomeHexX() || npc->GetHexY() != npc->GetHomeHexY() ) )
         {
             if( CritType::IsCanWalk( npc->GetCrType() ) )
             {
@@ -119,19 +119,19 @@ void FOServer::ProcessAI( Npc* npc )
                 }
 
                 npc->TryingGoHomeTick = tick + NPC_GO_HOME_WAIT_TICK;
-                npc->MoveToHex( REASON_GO_HOME, npc->GetHomeX(), npc->GetHomeY(), npc->GetHomeOri(), false, 0 );
+                npc->MoveToHex( REASON_GO_HOME, npc->GetHomeHexX(), npc->GetHomeHexY(), npc->GetHomeDir(), false, 0 );
                 return;
             }
-            else if( map->IsHexesPassed( npc->GetHomeX(), npc->GetHomeY(), npc->GetMultihex() ) )
+            else if( map->IsHexesPassed( npc->GetHomeHexX(), npc->GetHomeHexY(), npc->GetMultihex() ) )
             {
-                MapMngr.Transit( npc, map, npc->GetHomeX(), npc->GetHomeY(), npc->GetDir(), 2, true );
+                MapMngr.Transit( npc, map, npc->GetHomeHexX(), npc->GetHomeHexY(), npc->GetDir(), 2, true );
                 return;
             }
         }
         // Set home direction
-        else if( !npc->GetIsNoHome() && CritType::IsCanRotate( npc->GetCrType() ) && map->GetId() == npc->GetHomeMap() && npc->GetDir() != npc->GetHomeOri() )
+        else if( !npc->GetIsNoHome() && CritType::IsCanRotate( npc->GetCrType() ) && map->GetId() == npc->GetHomeMapId() && npc->GetDir() != npc->GetHomeDir() )
         {
-            npc->Data.Dir = npc->GetHomeOri();
+            npc->Data.Dir = npc->GetHomeDir();
             npc->SendA_Dir();
             npc->SetWait( 200 );
             return;
@@ -141,7 +141,7 @@ void FOServer::ProcessAI( Npc* npc )
             hash  favor_item_pid;
             Item* favor_item;
             // Set favorite item to slot1
-            favor_item_pid = npc->Data.FavoriteItemPid[ SLOT_HAND1 ];
+            favor_item_pid = npc->GetFavoriteItemPid( SLOT_HAND1 );
             if( favor_item_pid != npc->ItemSlotMain->GetProtoId() )
             {
                 if( npc->ItemSlotMain->GetId() )
@@ -156,7 +156,7 @@ void FOServer::ProcessAI( Npc* npc )
                 }
             }
             // Set favorite item to slot2
-            favor_item_pid = npc->Data.FavoriteItemPid[ SLOT_HAND2 ];
+            favor_item_pid = npc->GetFavoriteItemPid( SLOT_HAND2 );
             if( favor_item_pid != npc->ItemSlotExt->GetProtoId() )
             {
                 if( npc->ItemSlotExt->GetId() )
@@ -171,7 +171,7 @@ void FOServer::ProcessAI( Npc* npc )
                 }
             }
             // Set favorite item to slot armor
-            favor_item_pid = npc->Data.FavoriteItemPid[ SLOT_ARMOR ];
+            favor_item_pid = npc->GetFavoriteItemPid( SLOT_ARMOR );
             if( favor_item_pid != npc->ItemSlotArmor->GetProtoId() )
             {
                 if( npc->ItemSlotArmor->GetId() )
@@ -270,7 +270,7 @@ void FOServer::ProcessAI( Npc* npc )
 
             PathFindData pfd;
             pfd.Clear();
-            pfd.MapId = npc->GetMap();
+            pfd.MapId = npc->GetMapId();
             pfd.FromCritter = npc;
             pfd.FromX = npc->GetHexX();
             pfd.FromY = npc->GetHexY();
@@ -954,17 +954,17 @@ bool FOServer::TransferAllNpc()
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
-        if( !cr->GetMap() && ( cr->GetHexX() || cr->GetHexY() ) )
+        if( !cr->GetMapId() && ( cr->GetHexX() || cr->GetHexY() ) )
         {
             critters_groups.push_back( cr );
             continue;
         }
 
-        Map* map = MapMngr.GetMap( cr->GetMap() );
+        Map* map = MapMngr.GetMap( cr->GetMapId() );
 
-        if( cr->GetMap() && !map )
+        if( cr->GetMapId() && !map )
         {
-            WriteLog( "Map not found, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>. Transfered to global map.\n", cr->GetInfo(), cr->GetMap(), cr->Data.MapPid, cr->GetHexX(), cr->GetHexY() );
+            WriteLog( "Map not found, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>. Transfered to global map.\n", cr->GetInfo(), cr->GetMapId(), cr->Data.MapPid, cr->GetHexX(), cr->GetHexY() );
             errors++;
             cr->SetMaps( 0, 0 );
             cr->Data.HexX = 0;
@@ -973,7 +973,7 @@ bool FOServer::TransferAllNpc()
 
         if( !MapMngr.AddCrToMap( cr, map, cr->GetHexX(), cr->GetHexY(), 2 ) )
         {
-            WriteLog( "Error parsing npc to map, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>.\n", cr->GetInfo(), cr->GetMap(), cr->Data.MapPid, cr->GetHexX(), cr->GetHexY() );
+            WriteLog( "Error parsing npc to map, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>.\n", cr->GetInfo(), cr->GetMapId(), cr->Data.MapPid, cr->GetHexX(), cr->GetHexY() );
             errors++;
             continue;
         }
@@ -988,7 +988,7 @@ bool FOServer::TransferAllNpc()
         Critter* cr = *it;
         if( !MapMngr.AddCrToMap( cr, NULL, cr->GetHexX(), cr->GetHexY(), 2 ) )
         {
-            WriteLog( "Error parsing npc to global group, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>.\n", cr->GetInfo(), cr->GetMap(), cr->Data.MapPid, cr->GetHexX(), cr->GetHexY() );
+            WriteLog( "Error parsing npc to global group, critter<%s>, map id<%u>, map pid<%u>, hx<%u>, hy<%u>.\n", cr->GetInfo(), cr->GetMapId(), cr->Data.MapPid, cr->GetHexX(), cr->GetHexY() );
             errors++;
             continue;
         }
@@ -1093,13 +1093,13 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
             }
             else if( demand.Type == DR_PROP_LOCATION )
             {
-                Map* map = MapMngr.GetMap( master->GetMap(), false );
+                Map* map = MapMngr.GetMap( master->GetMapId(), false );
                 prop_obj = ( map ? map->GetLocation( false ) : NULL );
                 prop_registrator = Location::PropertiesRegistrator;
             }
             else if( demand.Type == DR_PROP_MAP )
             {
-                prop_obj = MapMngr.GetMap( master->GetMap(), false );
+                prop_obj = MapMngr.GetMap( master->GetMapId(), false );
                 prop_registrator = Map::PropertiesRegistrator;
             }
             if( !prop_obj )
@@ -1313,13 +1313,13 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
             }
             else if( result.Type == DR_PROP_LOCATION )
             {
-                Map* map = MapMngr.GetMap( master->GetMap(), false );
+                Map* map = MapMngr.GetMap( master->GetMapId(), false );
                 prop_obj = ( map ? map->GetLocation( false ) : NULL );
                 prop_registrator = Location::PropertiesRegistrator;
             }
             else if( result.Type == DR_PROP_MAP )
             {
-                prop_obj = MapMngr.GetMap( master->GetMap(), false );
+                prop_obj = MapMngr.GetMap( master->GetMapId(), false );
                 prop_registrator = Map::PropertiesRegistrator;
             }
             if( !prop_obj )
@@ -1509,7 +1509,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
 
         if( !ignore_distance )
         {
-            if( cl->GetMap() != npc->GetMap() )
+            if( cl->GetMapId() != npc->GetMapId() )
             {
                 WriteLogF( _FUNC_, " - Difference maps, npc<%s>, client<%s>.\n", npc->GetInfo(), cl->GetInfo() );
                 return;
@@ -1525,7 +1525,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
                 return;
             }
 
-            Map* map = MapMngr.GetMap( cl->GetMap() );
+            Map* map = MapMngr.GetMap( cl->GetMapId() );
             if( !map )
             {
                 cl->Send_TextMsg( cl, STR_FINDPATH_AIMBLOCK, SAY_NETMSG, TEXTMSG_GAME );
@@ -1664,7 +1664,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
     else
     {
         cl->Talk.TalkType = TALK_WITH_HEX;
-        cl->Talk.TalkHexMap = cl->GetMap();
+        cl->Talk.TalkHexMap = cl->GetMapId();
         cl->Talk.TalkHexX = hx;
         cl->Talk.TalkHexY = hy;
     }
@@ -1702,7 +1702,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         }
         else
         {
-            Map* map = MapMngr.GetMap( cl->GetMap() );
+            Map* map = MapMngr.GetMap( cl->GetMapId() );
             if( map )
                 map->SetTextMsg( hx, hy, 0, TEXTMSG_DLG, cl->Talk.CurDialog.TextId );
         }
@@ -1713,7 +1713,6 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
 
     // Open dialog window
     cl->Send_Talk();
-    SetScore( SCORE_SPEAKER, cl, 5 );
 }
 
 void FOServer::Process_Dialog( Client* cl, bool is_say )
@@ -1790,7 +1789,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
         dialogs = dialog_pack ? &dialog_pack->Dialogs : NULL;
         if( !dialogs || !dialogs->size() )
         {
-            Map* map = MapMngr.GetMap( cl->GetMap() );
+            Map* map = MapMngr.GetMap( cl->GetMapId() );
             if( map )
                 map->SetTextMsg( cl->Talk.TalkHexX, cl->Talk.TalkHexY, 0, TEXTMSG_GAME, STR_DIALOG_NO_DIALOGS );
             WriteLogF( _FUNC_, " - No dialogs, hx<%u>, hy<%u>, client<%s>.\n", cl->Talk.TalkHexX, cl->Talk.TalkHexY, cl->GetInfo() );
@@ -1989,7 +1988,7 @@ label_Barter:
         }
         else
         {
-            Map* map = MapMngr.GetMap( cl->GetMap() );
+            Map* map = MapMngr.GetMap( cl->GetMapId() );
             if( map )
                 map->SetTextMsg( cl->Talk.TalkHexX, cl->Talk.TalkHexY, 0, TEXTMSG_DLG, cl->Talk.CurDialog.TextId );
         }
@@ -2001,7 +2000,6 @@ label_Barter:
     cl->Talk.StartTick = Timer::GameTick();
     cl->Talk.TalkTime = MAX( cl->GetSkillSpeech() * 1000, (int) GameOpt.DlgTalkMinTime );
     cl->Send_Talk();
-    SetScore( SCORE_SPEAKER, cl, 5 );
 }
 
 void FOServer::Process_Barter( Client* cl )
@@ -2046,7 +2044,7 @@ void FOServer::Process_Barter( Client* cl )
     }
 
     // Check
-    if( !cl->GetMap() )
+    if( !cl->GetMapId() )
     {
         WriteLogF( _FUNC_, " - Player try to barter from global map, client<%s>.\n", cl->GetInfo() );
         cl->Send_ContainerInfo();
@@ -2091,7 +2089,7 @@ void FOServer::Process_Barter( Client* cl )
         return;
     }
 
-    if( cl->GetMap() != npc->GetMap() )
+    if( cl->GetMapId() != npc->GetMapId() )
     {
         WriteLogF( _FUNC_, " - Difference maps, client<%s>, npc<%s>.\n", cl->GetInfo(), npc->GetInfo() );
         cl->Send_ContainerInfo();
@@ -2313,5 +2311,4 @@ void FOServer::Process_Barter( Client* cl )
     if( !is_free )
         cl->Send_TextMsg( cl, STR_BARTER_GOOD_OFFER, SAY_DIALOG, TEXTMSG_GAME );
     cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, false );
-    SetScore( SCORE_TRADER, cl, 1 );
 }

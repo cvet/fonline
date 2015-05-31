@@ -1100,7 +1100,7 @@ int CraftManager::ProcessCraft( Critter* cr, uint num )
             for( auto it = sub_items.begin(), end = sub_items.end(); it != end; ++it )
             {
                 Item* sub_item = *it;
-                if( !sub_item->IsNotValid && !sub_item->IsValidAccessory() )
+                if( !sub_item->IsDestroyed && !sub_item->IsValidAccessory() )
                     ItemMngr.ItemToGarbage( sub_item );
             }
         }

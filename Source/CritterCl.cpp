@@ -89,7 +89,7 @@ CritterCl::CritterCl(): Props( PropertiesRegistrator )
     Cond = 0;
     Anim1Life = Anim1Knockout = Anim1Dead = Anim2Life = Anim2Knockout = Anim2Dead = 0;
     Flags = 0;
-    BaseType = BaseTypeAlias = 0;
+    CrType = CrTypeAlias = 0;
     curSpr = 0;
     lastEndSpr = 0;
     animStartTick = 0;
@@ -111,7 +111,7 @@ CritterCl::CritterCl(): Props( PropertiesRegistrator )
     CurMoveStep = 0;
     Visible = true;
     SprDrawValid = false;
-    IsNotValid = false;
+    IsDestroyed = false;
     RefCounter = 1;
     OxExtI = OyExtI = 0;
     OxExtF = OyExtF = 0.0f;
@@ -127,6 +127,7 @@ CritterCl::CritterCl(): Props( PropertiesRegistrator )
     tickFidget = Timer::GameTick() + Random( GameOpt.CritterFidgetTime, GameOpt.CritterFidgetTime * 2 );
     memzero( &stayAnim, sizeof( stayAnim ) );
     DrawEffect = Effect::Critter;
+    memzero( anim3dLayers, sizeof( anim3dLayers ) );
 }
 
 CritterCl::~CritterCl()
@@ -232,7 +233,7 @@ void CritterCl::EraseItem( Item* item, bool animate )
         }
     }
 
-    item->IsNotValid = true;
+    item->IsDestroyed = true;
     item->Release();
 
     if( animate && !IsAnim() )
@@ -1327,9 +1328,25 @@ bool CritterCl::IsHaveLightSources()
     return false;
 }
 
+void CritterCl::TickStart( uint ms )
+{
+    TickCount = ms;
+    StartTick = Timer::GameTick();
+}
+
+void CritterCl::TickNull()
+{
+    TickCount = 0;
+}
+
+bool CritterCl::IsFree()
+{
+    return Timer::GameTick() - StartTick >= TickCount;
+}
+
 uint CritterCl::GetCrType()
 {
-    return BaseType;
+    return CrType;
 }
 
 uint CritterCl::GetCrTypeAlias()
@@ -1345,11 +1362,11 @@ uint CritterCl::GetAnim1( Item* anim_item /* = NULL */ )
     switch( Cond )
     {
     case COND_LIFE:
-        return ( Anim1Life ) | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
+        return Anim1Life | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
     case COND_KNOCKOUT:
-        return ( Anim1Knockout ) | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
+        return Anim1Knockout | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
     case COND_DEAD:
-        return ( Anim1Dead ) | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
+        return Anim1Dead | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
     default:
         break;
     }
@@ -1389,13 +1406,13 @@ void CritterCl::ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim
 
 int* CritterCl::GetLayers3dData()
 {
-    uint   data_size;
-    uchar* data = GetAnim3dLayerData( data_size );
-    RUNTIME_ASSERT( !data_size || data_size == LAYERS3D_COUNT * sizeof( int ) );
-    if( data_size )
-        return (int*) data;
-    static int zero_data[ LAYERS3D_COUNT ];
-    return zero_data;
+    ScriptArray* layers = GetAnim3dLayer();
+    if( layers->GetSize() == LAYERS3D_COUNT )
+        memcpy( anim3dLayers, layers->At( 0 ), sizeof( anim3dLayers ) );
+    else
+        memzero( anim3dLayers, sizeof( anim3dLayers ) );
+    SAFEREL( layers );
+    return anim3dLayers;
 }
 
 bool CritterCl::IsAnimAviable( uint anim1, uint anim2 )
@@ -1409,21 +1426,21 @@ bool CritterCl::IsAnimAviable( uint anim1, uint anim2 )
     return ResMngr.GetCrit2dAnim( GetCrType(), anim1, anim2, GetDir() ) != NULL;
 }
 
-void CritterCl::SetBaseType( uint type )
+void CritterCl::SetCrType( uint type )
 {
-    BaseType = type;
-    BaseTypeAlias = CritType::GetAlias( type );
+    CrType = type;
+    CrTypeAlias = CritType::GetAlias( type );
 
     // Check 3d availability
     SprMngr.FreePure3dAnimation( Anim3d );
     SprMngr.FreePure3dAnimation( Anim3dStay );
     Anim3d = Anim3dStay = NULL;
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( BaseType ) ), PT_ART_CRITTERS, true );
+    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( CrType ) ), PT_ART_CRITTERS, true );
     if( anim3d )
     {
         Anim3d = anim3d;
-        Anim3dStay = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( BaseType ) ), PT_ART_CRITTERS, false );
+        Anim3dStay = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( CrType ) ), PT_ART_CRITTERS, false );
 
         Anim3d->SetDir( CrDir );
         SprId = Anim3d->SprId;

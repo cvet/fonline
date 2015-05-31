@@ -429,7 +429,7 @@ load_false:
 DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand )
 {
     int   errors = 0;
-    char  who = DR_WHO_NONE;
+    char  who = DR_WHO_PLAYER;
     char  oper = '=';
     int   values_count = 0;
     char  svalue[ MAX_FOTEXT ] = { 0 };

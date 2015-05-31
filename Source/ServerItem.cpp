@@ -10,7 +10,7 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint 
         return NULL;
 
     // Check blockers
-    if( check_blocks && proto_item->IsBlockLinesData() && !map->IsPlaceForItem( hx, hy, proto_item ) )
+    if( check_blocks && proto_item->IsBlockLines() && !map->IsPlaceForItem( hx, hy, proto_item ) )
         return NULL;
 
     // Create instance

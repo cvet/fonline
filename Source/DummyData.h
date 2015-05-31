@@ -71,7 +71,7 @@ struct Item
     int ViewPlaceOnMap;
     int Accessory;
     int ChildObjects;
-    int IsNotValid;
+    int IsDestroyed;
 
     struct
     {
@@ -190,7 +190,7 @@ struct CritData
     int HexY;
     int WorldX;
     int WorldY;
-    int BaseType;
+    int CrType;
     int Dir;
     int Cond;
     int Anim1Life;
@@ -208,8 +208,8 @@ struct Critter
 {
     #ifdef BIND_CLIENT
     int  Pid;
-    int  BaseType;
-    int  BaseTypeAlias;
+    int  CrType;
+    int  CrTypeAlias;
     int  HexX, HexY;
     int  CrDir;
     int  Cond;
@@ -233,7 +233,7 @@ struct Critter
     int  Flags;
     int  NameStr;
     int  IsRuning;
-    int  IsNotValid;
+    int  IsDestroyed;
     int  RefCounter;
 
     void AddRef()  {}
@@ -259,7 +259,7 @@ struct Map
     int  TurnBasedTurn;
     int  TurnBasedWholeTurn;
 
-    int  IsNotValid;
+    int  IsDestroyed;
     int  RefCounter;
 
     void AddRef()  {}
@@ -285,7 +285,7 @@ struct Location
     } Data;
 
     int  GeckCount;
-    int  IsNotValid;
+    int  IsDestroyed;
     int  RefCounter;
 
     void AddRef()  {}
@@ -384,8 +384,6 @@ struct BindClass
     static void Crit_GetMap()                   {}
     static void Crit_GetMapId()                 {}
     static void Crit_GetMapProtoId()            {}
-    static void Crit_SetHomePos()               {}
-    static void Crit_GetHomePos()               {}
     static void Crit_ChangeCrType()             {}
     static void Cl_DropTimers()                 {}
     static void Crit_MoveRandom()               {}
@@ -407,8 +405,6 @@ struct BindClass
     static void Crit_ToKnockout()               {}
     static void Crit_RefreshVisible()           {}
     static void Crit_ViewMap()                  {}
-    static void Crit_AddScore()                 {}
-    static void Crit_GetScore()                 {}
     static void Crit_AddHolodiskInfo()          {}
     static void Crit_EraseHolodiskInfo()        {}
     static void Crit_IsHolodiskInfo()           {}
@@ -462,35 +458,27 @@ struct BindClass
     static void Crit_PlaySound()        {}
     static void Crit_PlaySoundType()    {}
 
-    static void Cl_IsKnownLoc()      {}
-    static void Cl_SetKnownLoc()     {}
-    static void Cl_UnsetKnownLoc()   {}
-    static void Cl_SetFog()          {}
-    static void Cl_GetFog()          {}
-    static void Crit_SetTimeout()    {}
-    static void Crit_GetParam()      {}
+    static void Crit_IsKnownLoc()    {}
+    static void Crit_SetKnownLoc()   {}
+    static void Crit_UnsetKnownLoc() {}
+    static void Crit_SetFog()        {}
+    static void Crit_GetFog()        {}
+
     static void Cl_ShowContainer()   {}
     static void Cl_ShowScreen()      {}
     static void Cl_RunClientScript() {}
     static void Cl_Disconnect()      {}
 
-    static void Crit_SetScript()         {}
-    static void Crit_GetScriptId()       {}
-    static void Crit_SetBagRefreshTime() {}
-    static void Crit_GetBagRefreshTime() {}
-    static void Crit_SetInternalBag()    {}
-    static void Crit_GetInternalBag()    {}
-    static void Crit_get_ProtoId()       {}
-    static void Crit_GetMultihex()       {}
-    static void Crit_SetMultihex()       {}
+    static void Crit_SetScript()   {}
+    static void Crit_get_ProtoId() {}
+    static void Crit_GetMultihex() {}
+    static void Crit_SetMultihex() {}
 
-    static void Crit_AddEnemyInStack()      {}
-    static void Crit_CheckEnemyInStack()    {}
-    static void Crit_EraseEnemyFromStack()  {}
-    static void Crit_ChangeEnemyStackSize() {}
-    static void Crit_GetEnemyStack()        {}
-    static void Crit_ClearEnemyStack()      {}
-    static void Crit_ClearEnemyStackNpc()   {}
+    static void Crit_AddEnemyToStack()     {}
+    static void Crit_CheckEnemyInStack()   {}
+    static void Crit_EraseEnemyFromStack() {}
+    static void Crit_ClearEnemyStack()     {}
+    static void Crit_ClearEnemyStackNpc()  {}
 
     static void Crit_AddTimeEvent()       {}
     static void Crit_AddTimeEventRate()   {}
@@ -690,7 +678,6 @@ struct BindClass
     static void Global_RunDialogNpcDlgPack()    {}
     static void Global_RunDialogHex()           {}
     static void Global_WorldItemCount()         {}
-    static void Global_SetBestScore()           {}
     static void Global_AddTextListener()        {}
     static void Global_EraseTextListener()      {}
     static void Global_CreatePlane()            {}

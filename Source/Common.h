@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 506 )
+#define FONLINE_VERSION                          ( 507 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
@@ -177,14 +177,6 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 
 // Window name
 const char* GetWindowName();
-
-// Shared structure
-struct ScoreType
-{
-    uint ClientId;
-    char ClientName[ SCORE_NAME_LEN ];
-    int  Value;
-};
 
 /************************************************************************/
 /* Client & Mapper                                                      */
@@ -987,6 +979,7 @@ class GlobalVars
 {
 public:
     PROPERTIES_HEADER();
+    CLASS_PROPERTY( ScriptArray *, BestScores );
     GlobalVars();
 };
 extern GlobalVars* Globals;

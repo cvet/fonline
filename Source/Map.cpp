@@ -39,7 +39,7 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Props( PropertiesRegis
     mapLocation = location;
 
     RefCounter = 1;
-    IsNotValid = false;
+    IsDestroyed = false;
     hexFlags = NULL;
     NeedProcess = false;
     IsTurnBasedOn = false;
@@ -86,7 +86,7 @@ void Map::Clear( bool full )
 
     dataLocker.Lock();
 
-    IsNotValid = true;
+    IsDestroyed = true;
 
     PcVec del_npc = mapNpcs;
     mapCritters.clear();
@@ -165,7 +165,7 @@ bool Map::Generate()
         }
 
         // Check condition
-        if( mobj.MCritter.Cond != COND_LIFE && npc->Data.Cond == COND_LIFE && npc->GetMap() == GetId() )
+        if( mobj.MCritter.Cond != COND_LIFE && npc->Data.Cond == COND_LIFE && npc->GetMapId() == GetId() )
         {
             npc->Data.Cond = CLAMP( mobj.MCritter.Cond, COND_LIFE, COND_DEAD );
 
@@ -326,11 +326,11 @@ bool Map::Generate()
             {
                 cr_cont->AddItem( item, false );
                 if( mobj.MItem.ItemSlot == SLOT_HAND1 )
-                    cr_cont->Data.FavoriteItemPid[ SLOT_HAND1 ] = item->GetProtoId();
+                    cr_cont->SetFavoriteItemPid( SLOT_HAND1, item->GetProtoId() );
                 else if( mobj.MItem.ItemSlot == SLOT_HAND2 )
-                    cr_cont->Data.FavoriteItemPid[ SLOT_HAND2 ] = item->GetProtoId();
+                    cr_cont->SetFavoriteItemPid( SLOT_HAND2, item->GetProtoId() );
                 else if( mobj.MItem.ItemSlot == SLOT_ARMOR )
-                    cr_cont->Data.FavoriteItemPid[ SLOT_ARMOR ] = item->GetProtoId();
+                    cr_cont->SetFavoriteItemPid( SLOT_ARMOR, item->GetProtoId() );
             }
             else if( item_cont )
             {
@@ -363,30 +363,25 @@ bool Map::Generate()
 
         // Generate internal bag
         ItemVec& items = npc->GetInventory();
-        if( !npc->GetBagId() )
+        if( !npc->GetBagId() && !items.empty() )
         {
-            int cur_item = 0;
-            for( auto it_ = items.begin(), end_ = items.end(); it_ != end_; ++it_ )
+            uint         bag_size = (uint) items.size();
+            ScriptArray* item_pid = Script::CreateArray( "hash[]" );
+            ScriptArray* item_count = Script::CreateArray( "uint[]" );
+
+            for( uint i = 0; i < bag_size; i++ )
             {
-                Item*       item = *it_;
-                NpcBagItem& bag_item = npc->Data.Bag[ cur_item ];
-                bag_item.ItemPid = item->GetProtoId();
-                bag_item.MaxCnt = item->GetCount();
-                bag_item.MinCnt = item->GetCount();
-                if( npc->Data.FavoriteItemPid[ SLOT_HAND1 ] == item->GetProtoId() )
-                    bag_item.ItemSlot = SLOT_HAND1;
-                else if( npc->Data.FavoriteItemPid[ SLOT_HAND2 ] == item->GetProtoId() )
-                    bag_item.ItemSlot = SLOT_HAND2;
-                else if( npc->Data.FavoriteItemPid[ SLOT_ARMOR ] == item->GetProtoId() )
-                    bag_item.ItemSlot = SLOT_ARMOR;
-                else
-                    bag_item.ItemSlot = SLOT_INV;
-                cur_item++;
-                if( cur_item == MAX_NPC_BAGS )
-                    break;
+                Item* item = items[ i ];
+                hash  pid = item->GetProtoId();
+                uint  count = item->GetCount();
+                item_pid->InsertLast( &pid );
+                item_count->InsertLast( &count );
             }
 
-            npc->Data.BagSize = cur_item;
+            npc->SetInternalBagItemPid( item_pid );
+            npc->SetInternalBagItemCount( item_count );
+            SAFEREL( item_pid );
+            SAFEREL( item_count );
         }
 
         // Visible
@@ -687,7 +682,7 @@ void Map::SetItem( Item* item, ushort hx, ushort hy )
         SetHexFlag( hx, hy, FH_NRAKE_ITEM );
     if( item->GetIsGag() )
         SetHexFlag( hx, hy, FH_GAG_ITEM );
-    if( item->Proto->IsBlockLinesData() )
+    if( item->Proto->IsBlockLines() )
         PlaceItemBlocks( hx, hy, item->Proto );
 
     if( item->FuncId[ ITEM_EVENT_WALK ] > 0 )
@@ -728,7 +723,7 @@ void Map::EraseItem( uint item_id )
         RecacheHexBlock( hx, hy );
     else if( !item->GetIsShootThru() )
         RecacheHexShoot( hx, hy );
-    if( item->Proto->IsBlockLinesData() )
+    if( item->Proto->IsBlockLines() )
         ReplaceItemBlocks( hx, hy, item->Proto );
 
     // Process critters view
@@ -1308,7 +1303,7 @@ Critter* Map::GetCritter( uint crid, bool sync_lock )
         SYNC_LOCK( cr );
 
         // Recheck
-        if( cr->GetMap() != GetId() )
+        if( cr->GetMapId() != GetId() )
             return NULL;
     }
 
@@ -1342,7 +1337,7 @@ Critter* Map::GetNpc( int npc_role, int find_type, uint skip_count, bool sync_lo
         SYNC_LOCK( npc );
 
         // Recheck
-        if( npc->GetMap() != GetId() || npc->GetNpcRole() != npc_role || !npc->CheckFind( find_type ) )
+        if( npc->GetMapId() != GetId() || npc->GetNpcRole() != npc_role || !npc->CheckFind( find_type ) )
             return GetNpc( npc_role, find_type, skip_count, sync_lock );
     }
 
@@ -1386,7 +1381,7 @@ Critter* Map::GetHexCritter( ushort hx, ushort hy, bool dead, bool sync_lock )
     if( cr && sync_lock && LogicMT )
     {
         SYNC_LOCK( cr );
-        if( cr->GetMap() != GetId() || !CheckDist( cr->GetHexX(), cr->GetHexY(), hx, hy, cr->GetMultihex() ) )
+        if( cr->GetMapId() != GetId() || !CheckDist( cr->GetHexX(), cr->GetHexY(), hx, hy, cr->GetMultihex() ) )
             return GetHexCritter( hx, hy, dead, sync_lock );
     }
 
@@ -1625,7 +1620,7 @@ bool Map::IsPlaceForItem( ushort hx, ushort hy, ProtoItem* proto_item )
     if( !IsHexPassed( hx, hy ) )
         return false;
 
-    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLinesStr(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
                                    if( IsHexCritter( hx, hy ) )
                                        return false;
                                    // if( !IsHexPassed( hx, hy ) )
@@ -1638,7 +1633,7 @@ bool Map::IsPlaceForItem( ushort hx, ushort hy, ProtoItem* proto_item )
 void Map::PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
 {
     bool raked = Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemProps );
-    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLinesStr(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
                                    SetHexFlag( hx, hy, FH_BLOCK_ITEM );
                                    if( !raked )
                                        SetHexFlag( hx, hy, FH_NRAKE_ITEM );
@@ -1648,7 +1643,7 @@ void Map::PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
 void Map::ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
 {
     bool raked = Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemProps );
-    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLinesStr(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
                                    UnsetHexFlag( hx, hy, FH_BLOCK_ITEM );
                                    if( !raked )
                                    {
@@ -2224,7 +2219,7 @@ void Map::GenerateSequence( Critter* first_cr )
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = *it;
-        if( cr->GetMap() == GetId() )
+        if( cr->GetMapId() == GetId() )
             TurnSequence.push_back( cr->GetId() );
     }
 }
@@ -2248,7 +2243,7 @@ Location::Location( uint id, ProtoLocation* proto, ushort wx, ushort wy ): Props
 
     Proto = proto;
     RefCounter = 1;
-    IsNotValid = false;
+    IsDestroyed = false;
     memzero( &Data, sizeof( Data ) );
     memzero( FuncId, sizeof( FuncId ) );
     Data.LocPid = Proto->LocPid;
@@ -2272,7 +2267,7 @@ void Location::Clear( bool full )
 {
     EventFinish( full );
 
-    IsNotValid = true;
+    IsDestroyed = true;
 
     MapVec maps = locMaps;
     locMaps.clear();
@@ -2293,7 +2288,7 @@ void Location::Update()
     for( auto it = players.begin(), end = players.end(); it != end; ++it )
     {
         Client* cl = *it;
-        if( !cl->GetMap() && cl->CheckKnownLocById( Data.LocId ) )
+        if( !cl->GetMapId() && cl->CheckKnownLocById( Data.LocId ) )
             cl->Send_GlobalLocation( this, true );
     }
 }
@@ -2439,7 +2434,7 @@ bool Location::IsCanDelete()
         for( auto it_ = npcs.begin(), end_ = npcs.end(); it_ != end_; ++it_ )
         {
             Npc* npc = *it_;
-            if( npc->GetIsGeck() || ( !npc->GetIsNoHome() && npc->GetHomeMap() != map->GetId() ) || npc->IsHaveGeckItem() )
+            if( npc->GetIsGeck() || ( !npc->GetIsNoHome() && npc->GetHomeMapId() != map->GetId() ) || npc->IsHaveGeckItem() )
                 return false;
         }
     }

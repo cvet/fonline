@@ -324,7 +324,7 @@ void HexManager::PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
         return;
 
     bool raked = Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemProps );
-    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLinesStr(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
                                    GetField( hx, hy ).Flags.IsNotPassed = true;
                                    if( !raked )
                                        GetField( hx, hy ).Flags.IsNotRaked = true;
@@ -336,7 +336,7 @@ void HexManager::ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item 
     if( !proto_item )
         return;
 
-    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLinesStr(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
                                    GetField( hx, hy ).ProcessCache();
                                    );
 }
@@ -374,7 +374,7 @@ bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
     {
         if( item_old->GetProtoId() == pid && item_old->GetHexX() == hx && item_old->GetHexY() == hy )
         {
-            item_old->IsNotValid = false;
+            item_old->IsDestroyed = false;
             if( item_old->IsFinishing() )
                 item_old->StopFinishing();
             if( data )
@@ -434,7 +434,7 @@ void HexManager::FinishItem( uint id, bool is_deleted )
     if( is_deleted )
         item->SetHideAnim();
 
-    item->IsNotValid = true;
+    item->IsDestroyed = true;
 }
 
 ItemHexVec::iterator HexManager::DeleteItem( ItemHex* item, bool with_delete /* = true */ )
@@ -442,7 +442,7 @@ ItemHexVec::iterator HexManager::DeleteItem( ItemHex* item, bool with_delete /* 
     ushort hx = item->GetHexX();
     ushort hy = item->GetHexY();
 
-    if( item->Proto->IsBlockLinesData() )
+    if( item->Proto->IsBlockLines() )
         ReplaceItemBlocks( item->HexX, item->HexY, item->Proto );
     if( item->SprDrawValid )
         item->SprDraw->Unvalidate();
@@ -524,7 +524,7 @@ void HexManager::PushItem( ItemHex* item )
     f.AddItem( item );
 
     // Blocks
-    if( item->Proto->IsBlockLinesData() )
+    if( item->Proto->IsBlockLines() )
         PlaceItemBlocks( hx, hy, item->Proto );
 
     // Sort
@@ -2440,7 +2440,7 @@ void HexManager::EraseCrit( uint crid )
         chosenId = 0;
     RemoveCrit( cr );
     cr->EraseAllItems();
-    cr->IsNotValid = true;
+    cr->IsDestroyed = true;
     cr->Release();
     allCritters.erase( it );
 }
@@ -2452,7 +2452,7 @@ void HexManager::ClearCritters()
         CritterCl* cr = ( *it ).second;
         RemoveCrit( cr );
         cr->EraseAllItems();
-        cr->IsNotValid = true;
+        cr->IsDestroyed = true;
         cr->Release();
     }
     allCritters.clear();
@@ -4001,6 +4001,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     }
 
     CurProtoMap = &pmap;
+    curPidMap = 0xFFFF;
 
     for( int i = 0; i < 4; i++ )
         dayTime[ i ] = pmap.Header.DayTime[ i ];
@@ -4113,7 +4114,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
 
             CritterCl* cr = new CritterCl();
             cr->Props = *proto->Props;
-            cr->SetBaseType( proto->GetBaseType() );
+            cr->SetCrType( proto->GetCrType() );
             cr->DefItemSlotHand->SetProto( pitem_main ? pitem_main : ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
             cr->DefItemSlotArmor->SetProto( pitem_armor ? pitem_armor : ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
             cr->HexX = o->MapX;
@@ -4130,7 +4131,6 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
 
     ResizeView();
 
-    curPidMap = 0xFFFF;
     curHashTiles = 0xFFFF;
     curHashWalls = 0xFFFF;
     curHashScen = 0xFFFF;

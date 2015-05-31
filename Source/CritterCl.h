@@ -14,8 +14,8 @@ class CritterCl
 public:
     // Properties
     PROPERTIES_HEADER();
-    CLASS_PROPERTY_DATA( Anim3dLayer );
     // Core
+    CLASS_PROPERTY( ScriptArray *, Anim3dLayer );
     CLASS_PROPERTY( hash, DialogId );
     CLASS_PROPERTY( uint, FollowCrit );
     CLASS_PROPERTY( bool, IsNoTalk );
@@ -97,9 +97,9 @@ public:
     uint          Anim2Knockout;
     uint          Anim2Dead;
     uint          Flags;
-    uint          BaseType, BaseTypeAlias;
+    uint          CrType, CrTypeAlias;
     uint          ApRegenerationTick;
-    short         Multihex;
+    int           Multihex;
     Effect*       DrawEffect;
 
     ScriptString* Name;
@@ -129,7 +129,7 @@ public:
     void        FixLastHexes();
     ushort      PopLastHexX();
     ushort      PopLastHexY();
-    void        SetBaseType( uint type );
+    void        SetCrType( uint type );
     void        SetDir( uchar dir, bool animate = true );
     uchar       GetDir() { return CrDir; }
     uint        GetCrTypeAlias();
@@ -246,13 +246,9 @@ public:
     uint TickCount;
     uint StartTick;
 
-    void TickStart( uint ms )
-    {
-        TickCount = ms;
-        StartTick = Timer::GameTick();
-    }
-    void TickNull() { TickCount = 0; }
-    bool IsFree()   { return ( Timer::GameTick() - StartTick >= TickCount ); }
+    void TickStart( uint ms );
+    void TickNull();
+    bool IsFree();
 
     // Animation
 public:
@@ -265,6 +261,7 @@ public:
 private:
     uint curSpr, lastEndSpr;
     uint animStartTick;
+    int  anim3dLayers[ LAYERS3D_COUNT ];
 
     struct CritterAnim
     {
@@ -368,7 +365,7 @@ public:
     // Ref counter
 public:
     short RefCounter;
-    bool  IsNotValid;
+    bool  IsDestroyed;
     void AddRef()  { RefCounter++; }
     void Release() { if( --RefCounter <= 0 ) delete this; }
 };

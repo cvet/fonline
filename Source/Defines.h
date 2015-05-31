@@ -68,7 +68,8 @@
 #define CLIENT_SAVE_V1               ( 1 ) // Corrupted
 #define CLIENT_SAVE_V2               ( 2 )
 #define CLIENT_SAVE_V3               ( 3 )
-#define CLIENT_SAVE_LAST             ( CLIENT_SAVE_V3 )
+#define CLIENT_SAVE_V4               ( 4 )
+#define CLIENT_SAVE_LAST             ( CLIENT_SAVE_V4 )
 const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 
 // Generic
@@ -98,7 +99,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define AGE_MIN                      ( 14 )
 #define AGGRESSOR_TICK               ( 60000 )
 #define MAX_ENEMY_STACK              ( 30 )
-#define MAX_STORED_IP                ( 20 )
 
 // SceneryCl flags
 #define SCEN_CAN_USE                 ( 0x01 )
@@ -379,13 +379,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define BARTER_UNSET_OPPONENT        ( 7 )
 #define BARTER_OFFER                 ( 8 ) // isSet, isOpponent
 #define BARTER_REFRESH               ( 9 )
-
-// Scores
-#define SCORE_SPEAKER                ( 3 )
-#define SCORE_TRADER                 ( 4 )
-#define SCORES_MAX                   ( 50 )
-#define SCORES_SEND_TIME             ( 60000 )
-#define SCORE_NAME_LEN               ( 64 )
 
 // Show screen modes
 // Ouput: it is 'uint param' in Critter::ShowScreen.

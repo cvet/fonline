@@ -4,8 +4,6 @@
 #include "Common.h"
 
 #define BAGS_FILE_NAME               "Bags.cfg"
-#define MAX_NPC_BAGS                 ( 50 )
-#define MAX_NPC_BAGS_PACKS           ( 20 )
 #define NPC_GO_HOME_WAIT_TICK        ( Random( 4000, 6000 ) )
 
 #define AI_PLANE_MISC                ( 0 )

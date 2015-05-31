@@ -156,17 +156,17 @@ public:
     CLASS_PROPERTY( char, DrawOrderOffsetHexY );
     CLASS_PROPERTY( uchar, IndicatorMax );
     CLASS_PROPERTY( uint, HolodiskNum );
-    CLASS_PROPERTY_DATA( BlockLines );
+    CLASS_PROPERTY( ScriptString*, BlockLines );
     CLASS_PROPERTY( hash, ChildPid_0 );
     CLASS_PROPERTY( hash, ChildPid_1 );
     CLASS_PROPERTY( hash, ChildPid_2 );
     CLASS_PROPERTY( hash, ChildPid_3 );
     CLASS_PROPERTY( hash, ChildPid_4 );
-    CLASS_PROPERTY_DATA( ChildLines_0 );
-    CLASS_PROPERTY_DATA( ChildLines_1 );
-    CLASS_PROPERTY_DATA( ChildLines_2 );
-    CLASS_PROPERTY_DATA( ChildLines_3 );
-    CLASS_PROPERTY_DATA( ChildLines_4 );
+    CLASS_PROPERTY( ScriptString*, ChildLines_0 );
+    CLASS_PROPERTY( ScriptString*, ChildLines_1 );
+    CLASS_PROPERTY( ScriptString*, ChildLines_2 );
+    CLASS_PROPERTY( ScriptString*, ChildLines_3 );
+    CLASS_PROPERTY( ScriptString*, ChildLines_4 );
     CLASS_PROPERTY( bool, Weapon_IsUnarmed );
     CLASS_PROPERTY( int, Weapon_UnarmedTree );
     CLASS_PROPERTY( int, Weapon_UnarmedPriority );
@@ -271,9 +271,8 @@ public:
     uint GetCurSprId();
     #endif
 
-    const char* GetBlockLinesStr();
-    hash        GetChildPid( uint index );
-    const char* GetChildLinesStr( uint index );
+    hash          GetChildPid( uint index );
+    ScriptString* GetChildLinesStr( uint index );
 };
 
 typedef vector< ProtoItem* >    ProtoItemVec;
@@ -368,7 +367,7 @@ public:
     ProtoItem* Proto;
     uchar      Accessory;
     bool       ViewPlaceOnMap;
-    bool       IsNotValid;
+    bool       IsDestroyed;
     int        RefCounter;
 
     union     // 8
@@ -543,11 +542,13 @@ public:
     FOREACH_PROTO_ITEM_LINES_WORK( lines, hx, hy, maxhx, maxhy, {} )
 #define FOREACH_PROTO_ITEM_LINES_WORK( lines, hx, hy, maxhx, maxhy, work )   \
     int hx__ = hx, hy__ = hy;                                                \
-    int maxhx__ = maxhx, maxhy__ = maxhy;                                    \
-    for( uint i__ = 0, j__ = Str::Length( lines ) / 2; i__ < j__; i__++ )    \
+    int           maxhx__ = maxhx, maxhy__ = maxhy;                          \
+    ScriptString* lines__ = lines;                                           \
+    const char*   lines___ = lines__->c_str();                               \
+    for( uint i__ = 0, j__ = Str::Length( lines___ ) / 2; i__ < j__; i__++ ) \
     {                                                                        \
-        uchar dir__ = lines[ i__ * 2 ] - '0';                                \
-        uchar steps__ = lines[ i__ * 2 + 1 ] - '0';                          \
+        uchar dir__ = lines___[ i__ * 2 ] - '0';                             \
+        uchar steps__ = lines___[ i__ * 2 + 1 ] - '0';                       \
         if( dir__ >= DIRS_COUNT || !steps__ || steps__ > 9 )                 \
             break;                                                           \
         for( uchar k__ = 0; k__ < steps__; k__++ )                           \
@@ -558,7 +559,8 @@ public:
             hx = hx__, hy = hy__;                                            \
             work                                                             \
         }                                                                    \
-    }
+    }                                                                        \
+    SAFEREL( lines__ )
 
 /************************************************************************/
 /*                                                                      */

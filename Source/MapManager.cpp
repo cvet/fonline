@@ -874,13 +874,13 @@ void MapManager::LocationGarbager()
             if( loc->Data.ToGarbage || ( loc->Data.AutoGarbage && loc->IsCanDelete() ) )
             {
                 SYNC_LOCK( loc );
-                loc->IsNotValid = true;
+                loc->IsDestroyed = true;
 
                 // Send all active clients about this
                 for( auto it_ = players.begin(), end_ = players.end(); it_ != end_; ++it_ )
                 {
                     Client* cl = *it_;
-                    if( !cl->GetMap() && cl->CheckKnownLocById( loc->GetId() ) )
+                    if( !cl->GetMapId() && cl->CheckKnownLocById( loc->GetId() ) )
                         cl->Send_GlobalLocation( loc, false );
                 }
 
@@ -1227,7 +1227,7 @@ ScriptArray* MapManager::GM_CreateGroupArray( GlobalMapGroup* group )
         Critter** p = (Critter**) arr->At( ind );
         if( !p )
         {
-            WriteLogF( _FUNC_, " - Critical bug, rule critter<%s>, not valid<%d>.\n", group->Rule->GetInfo(), group->Rule->IsNotValid );
+            WriteLogF( _FUNC_, " - Critical bug, rule critter<%s>, not valid<%d>.\n", group->Rule->GetInfo(), group->Rule->IsDestroyed );
             return NULL;
         }
         *p = cr;
@@ -1239,7 +1239,7 @@ ScriptArray* MapManager::GM_CreateGroupArray( GlobalMapGroup* group )
 
 void MapManager::GM_GroupStartMove( Critter* cr )
 {
-    if( cr->GetMap() )
+    if( cr->GetMapId() )
     {
         WriteLogF( _FUNC_, " - Critter<%s> is on map.\n", cr->GetInfo() );
         TransitToGlobal( cr, 0, 0, false );
@@ -1285,7 +1285,7 @@ void MapManager::GM_AddCritToGroup( Critter* cr, uint rule_id )
     }
 
     Critter* rule = CrMngr.GetCritter( rule_id, true );
-    if( !rule || rule->GetMap() || !rule->GroupMove || rule != rule->GroupMove->Rule )
+    if( !rule || rule->GetMapId() || !rule->GroupMove || rule != rule->GroupMove->Rule )
     {
         if( cr->IsNpc() )
             WriteLogF( _FUNC_, " - Invalid rule on global map. Start move alone.\n" );
@@ -1311,7 +1311,7 @@ void MapManager::GM_AddCritToGroup( Critter* cr, uint rule_id )
 
 void MapManager::GM_LeaveGroup( Critter* cr )
 {
-    if( cr->GetMap() || !cr->GroupMove || cr->GroupMove->GetSize() < 2 )
+    if( cr->GetMapId() || !cr->GroupMove || cr->GroupMove->GetSize() < 2 )
         return;
 
     GlobalMapGroup* group = cr->GroupMove;
@@ -1359,7 +1359,7 @@ void MapManager::GM_LeaveGroup( Critter* cr )
 
 void MapManager::GM_GiveRule( Critter* cr, Critter* new_rule )
 {
-    if( cr->GetMap() || !cr->GroupMove || cr->GroupMove->GetSize() < 2 || cr->GroupMove->Rule != cr || cr == new_rule )
+    if( cr->GetMapId() || !cr->GroupMove || cr->GroupMove->GetSize() < 2 || cr->GroupMove->Rule != cr || cr == new_rule )
         return;
 
     cr->GroupSelf->SyncLockGroup();
@@ -1382,7 +1382,7 @@ void MapManager::GM_GiveRule( Critter* cr, Critter* new_rule )
 
 void MapManager::GM_StopGroup( Critter* cr )
 {
-    if( cr->GetMap() || !cr->GroupMove )
+    if( cr->GetMapId() || !cr->GroupMove )
         return;
 
     cr->GroupMove->ToX = cr->GroupMove->CurX;
@@ -1487,7 +1487,7 @@ bool MapManager::GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, us
 
 bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool force /* = false */ )
 {
-    if( rule->GetMap() )
+    if( rule->GetMapId() )
         return false;
     if( !rule->GroupMove )
         return false;
@@ -1502,7 +1502,7 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
         return false;
     }
 
-    if( !force && rule->IsPlayer() && !( (Client*) rule )->CheckKnownLocById( loc_id ) )
+    if( !force && !rule->CheckKnownLocById( loc_id ) )
     {
         WriteLogF( _FUNC_, " - Critter<%s> is not known location.\n", rule->GetInfo() );
         return false;
@@ -2540,13 +2540,13 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
     }
 
     uint   map_id = ( map ? map->GetId() : 0 );
-    uint   old_map_id = cr->GetMap();
+    uint   old_map_id = cr->GetMapId();
     Map*   old_map = MapMngr.GetMap( old_map_id, true );
     ushort old_hx = cr->GetHexX();
     ushort old_hy = cr->GetHexY();
 
     // Recheck after synchronization
-    if( cr->GetMap() != old_map_id )
+    if( cr->GetMapId() != old_map_id )
         return false;
 
     // One map
@@ -2639,8 +2639,8 @@ bool MapManager::AddCrToMap( Critter* cr, Map* map, ushort tx, ushort ty, uint r
         cr->SetTimeoutBattle( GameOpt.FullSecond + GameOpt.TimeoutTransfer );
 
         cr->LockMapTransfers++;
-        cr->Data.LastHexX = cr->Data.HexX;
-        cr->Data.LastHexY = cr->Data.HexY;
+        cr->Data.LastMapHexX = cr->Data.HexX;
+        cr->Data.LastMapHexY = cr->Data.HexY;
         // tx,ty == rule_id
         uint to_group = ( tx << 16 ) | ty;
         if( !to_group )
@@ -2663,8 +2663,8 @@ bool MapManager::AddCrToMap( Critter* cr, Map* map, ushort tx, ushort ty, uint r
         cr->SetTimeoutBattle( 0 );
         cr->SetTimeoutTransfer( GameOpt.FullSecond + GameOpt.TimeoutTransfer );
         cr->SetMaps( map->GetId(), map->GetPid() );
-        cr->Data.LastHexX = cr->Data.HexX;
-        cr->Data.LastHexY = cr->Data.HexY;
+        cr->Data.LastMapHexX = cr->Data.HexX;
+        cr->Data.LastMapHexY = cr->Data.HexY;
         cr->Data.HexX = tx;
         cr->Data.HexY = ty;
         map->AddCritter( cr );

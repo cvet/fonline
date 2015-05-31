@@ -332,10 +332,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_FOLLOW_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_GET_USER_HOLO_STR:
         return ( NETMSG_SEND_GET_USER_HOLO_STR_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_GET_SCORES:
-        return ( NETMSG_SEND_GET_SCORES_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SCORES:
-        return ( NETMSG_SCORES_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_POD_PROPERTY( 1, 0 ):
         return ( NETMSG_SEND_POD_PROPERTY_SIZE( 1, 0  ) + bufReadPos <= bufEndPos );
     case NETMSG_SEND_POD_PROPERTY( 2, 0  ):
@@ -631,12 +627,6 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_SEND_GET_USER_HOLO_STR:
         size = NETMSG_SEND_GET_USER_HOLO_STR_SIZE;
-        break;
-    case NETMSG_SEND_GET_SCORES:
-        size = NETMSG_SEND_GET_SCORES_SIZE;
-        break;
-    case NETMSG_SCORES:
-        size = NETMSG_SCORES_SIZE;
         break;
     case NETMSG_SEND_POD_PROPERTY( 1, 0 ):
         size = NETMSG_SEND_POD_PROPERTY_SIZE( 1, 0 );

@@ -39,7 +39,7 @@ public:
     ~Map();
 
     SyncObject Sync;
-    bool       IsNotValid;
+    bool       IsDestroyed;
     int        RefCounter;
     void AddRef()  { RefCounter++; }
     void Release() { if( --RefCounter <= 0 ) delete this; }
@@ -269,7 +269,7 @@ public:
     ~Location();
 
     SyncObject Sync;
-    bool       IsNotValid;
+    bool       IsDestroyed;
     int        RefCounter;
     void AddRef()  { RefCounter++; }
     void Release() { if( --RefCounter <= 0 ) delete this; }

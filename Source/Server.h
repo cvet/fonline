@@ -70,7 +70,6 @@ public:
     static void Process_Ping( Client* cl );
     static void Process_PlayersBarter( Client* cl );
     static void Process_ScreenAnswer( Client* cl );
-    static void Process_GetScores( Client* cl );
     static void Process_Combat( Client* cl );
     static void Process_RunServerScript( Client* cl );
     static void Process_KarmaVoting( Client* cl );
@@ -326,7 +325,6 @@ public:
         char                    Name[ UTF8_BUF_SIZE( MAX_NAME ) ];
         char                    PasswordHash[ PASS_HASH_SIZE ];
         CritData                Data;
-        CritDataExt             DataExt;
         Properties*             Props;
         Critter::CrTimeEventVec TimeEvents;
 
@@ -341,7 +339,6 @@ public:
             memzero( Name, sizeof( Name ) );
             memzero( PasswordHash, sizeof( PasswordHash ) );
             memzero( &Data, sizeof( Data ) );
-            memzero( &DataExt, sizeof( DataExt ) );
             TimeEvents.clear();
         }
     };
@@ -449,15 +446,6 @@ public:
 
     static string GetIngamePlayersStatistics();
 
-    // Scores
-    static ScoreType BestScores[ SCORES_MAX ];
-    static Mutex     BestScoresLocker;
-
-    static void        SetScore( int score, Critter* cr, int val );
-    static void        SetScore( int score, const char* name );
-    static const char* GetScores();     // size == MAX_NAME * SCORES_MAX
-    static void        ClearScore( int score );
-
     // Singleplayer save
     struct SingleplayerSave_
     {
@@ -537,8 +525,6 @@ public:
         static Map*         Crit_GetMap( Critter* cr );
         static uint         Crit_GetMapId( Critter* cr );
         static hash         Crit_GetMapProtoId( Critter* cr );
-        static void         Crit_SetHomePos( Critter* cr, ushort hx, ushort hy, uchar dir );
-        static void         Crit_GetHomePos( Critter* cr, uint& map_id, ushort& hx, ushort& hy, uchar& dir );
         static bool         Crit_ChangeCrType( Critter* cr, uint new_type );
         static void         Cl_DropTimers( Critter* cl );
         static bool         Crit_MoveRandom( Critter* cr );
@@ -560,8 +546,6 @@ public:
         static bool         Crit_ToKnockout( Critter* cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, ushort knock_hx, ushort knock_hy );
         static void         Crit_RefreshVisible( Critter* cr );
         static void         Crit_ViewMap( Critter* cr, Map* map, uint look, ushort hx, ushort hy, uchar dir );
-        static void         Crit_AddScore( Critter* cr, uint score, int val );
-        static int          Crit_GetScore( Critter* cr, uint score );
         static void         Crit_AddHolodiskInfo( Critter* cr, uint holodisk_num );
         static void         Crit_EraseHolodiskInfo( Critter* cr, uint holodisk_num );
         static bool         Crit_IsHolodiskInfo( Critter* cr, uint holodisk_num );
@@ -615,30 +599,23 @@ public:
         static void Crit_PlaySound( Critter* cr, ScriptString& sound_name, bool send_self );
         static void Crit_PlaySoundType( Critter* cr, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext, bool send_self );
 
-        static bool Cl_IsKnownLoc( Critter* cl, bool by_id, uint loc_num );
-        static bool Cl_SetKnownLoc( Critter* cl, bool by_id, uint loc_num );
-        static bool Cl_UnsetKnownLoc( Critter* cl, bool by_id, uint loc_num );
-        static void Cl_SetFog( Critter* cl, ushort zone_x, ushort zone_y, int fog );
-        static int  Cl_GetFog( Critter* cl, ushort zone_x, ushort zone_y );
-        static void Crit_SetTimeout( Critter* cr, int num_timeout, uint time );
-        static uint Crit_GetParam( Critter* cr, uint num_timeout );
+        static bool Crit_IsKnownLoc( Critter* cr, bool by_id, uint loc_num );
+        static bool Crit_SetKnownLoc( Critter* cr, bool by_id, uint loc_num );
+        static bool Crit_UnsetKnownLoc( Critter* cr, bool by_id, uint loc_num );
+        static void Crit_SetFog( Critter* cr, ushort zone_x, ushort zone_y, int fog );
+        static int  Crit_GetFog( Critter* cr, ushort zone_x, ushort zone_y );
+
         static void Cl_ShowContainer( Critter* cl, Critter* cr_cont, Item* item_cont, uchar transfer_type );
         static void Cl_ShowScreen( Critter* cl, int screen_type, uint param, ScriptString* func_name );
         static void Cl_RunClientScript( Critter* cl, ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
         static void Cl_Disconnect( Critter* cl );
 
         static bool Crit_SetScript( Critter* cr, ScriptString* script );
-        static hash Crit_GetScriptId( Critter* cr );
-        static uint Crit_GetBagId( Critter* cr );
-        static void Crit_SetBagRefreshTime( Critter* cr, uint real_minutes );
-        static uint Crit_GetBagRefreshTime( Critter* cr );
-        static void Crit_SetInternalBag( Critter* cr, ScriptArray& pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots );
-        static uint Crit_GetInternalBag( Critter* cr, ScriptArray* pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots );
         static hash Crit_get_ProtoId( Critter* cr );
         static uint Crit_GetMultihex( Critter* cr );
         static void Crit_SetMultihex( Critter* cr, int value );
 
-        static void Crit_AddEnemyInStack( Critter* cr, uint critter_id );
+        static void Crit_AddEnemyToStack( Critter* cr, uint critter_id );
         static bool Crit_CheckEnemyInStack( Critter* cr, uint critter_id );
         static void Crit_EraseEnemyFromStack( Critter* cr, uint critter_id );
         static void Crit_ChangeEnemyStackSize( Critter* cr, uint new_size );
@@ -848,7 +825,6 @@ public:
         static bool          Global_RunDialogNpcDlgPack( Critter* player, Critter* npc, uint dlg_pack, bool ignore_distance );
         static bool          Global_RunDialogHex( Critter* player, uint dlg_pack, ushort hx, ushort hy, bool ignore_distance );
         static int64         Global_WorldItemCount( hash pid );
-        static void          Global_SetBestScore( int score, Critter* cl, ScriptString& name );
         static bool          Global_AddTextListener( int say_type, ScriptString& first_str, uint parameter, ScriptString& script_name );
         static void          Global_EraseTextListener( int say_type, ScriptString& first_str, uint parameter );
         static AIDataPlane*  Global_CreatePlane();

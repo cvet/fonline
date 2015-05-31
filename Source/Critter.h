@@ -128,13 +128,26 @@ public:
     CLASS_PROPERTY( bool, IsGeck );    // Rename
     CLASS_PROPERTY( bool, IsNoLoot );  // ?
     CLASS_PROPERTY( bool, IsNoSteal ); // ?
-    CLASS_PROPERTY( bool, IsNoHome );  // HomeMapId == 0 ?
-    // CLASS_PROPERTY( uint, HomeMapId );
-    // CLASS_PROPERTY( ushort, HomeHexX );
-    // CLASS_PROPERTY( ushort, HomeHexY );
-    // CLASS_PROPERTY( short, HomeDir );
+    CLASS_PROPERTY( bool, IsNoHome );
+    CLASS_PROPERTY( uint, HomeMapId );
+    CLASS_PROPERTY( ushort, HomeHexX );
+    CLASS_PROPERTY( ushort, HomeHexY );
+    CLASS_PROPERTY( uchar, HomeDir );
     CLASS_PROPERTY( bool, IsHide );
-    CLASS_PROPERTY( bool, IsEndCombat );        // ?
+    CLASS_PROPERTY( bool, IsEndCombat );           // ?
+    CLASS_PROPERTY( ScriptArray *, KnownLocations );
+    CLASS_PROPERTY( ScriptArray *, ConnectionIp );
+    CLASS_PROPERTY( ScriptArray *, ConnectionPort );
+    CLASS_PROPERTY( ScriptArray *, HoloInfo );
+    CLASS_PROPERTY( uint, ShowCritterDist1 );
+    CLASS_PROPERTY( uint, ShowCritterDist2 );
+    CLASS_PROPERTY( uint, ShowCritterDist3 );
+    CLASS_PROPERTY( hash, ScriptId );
+    CLASS_PROPERTY( ScriptArray *, EnemyStack );
+    CLASS_PROPERTY( ScriptArray *, InternalBagItemPid );
+    CLASS_PROPERTY( ScriptArray *, InternalBagItemCount );
+    CLASS_PROPERTY( ScriptArray *, ExternalBagCurrentSet );
+    CLASS_PROPERTY( ScriptArray *, FavoriteItemPid );
     // Exclude
     CLASS_PROPERTY( hash, HandsItemProtoId );   // Add setting proto and mode for every slot? Or - add default hidden item for unarmed attacks?
     CLASS_PROPERTY( uchar, HandsItemMode );
@@ -189,8 +202,7 @@ public:
     CLASS_PROPERTY( uchar, PerkSilentRunning );
 
     // Data
-    CritData      Data;       // Saved
-    CritDataExt*  DataExt;    // Saved
+    CritData      Data;
     SyncObject    Sync;
     bool          CritterIsNpc;
     uint          Flags;
@@ -209,8 +221,10 @@ public:
     Critter();
     ~Critter();
 
-    CritDataExt* GetDataExt();
-    void         SetMaps( uint map_id, hash map_pid );
+    void FullClear();
+    void SetMaps( uint map_id, hash map_pid );
+    hash GetFavoriteItemPid( uchar slot );
+    void SetFavoriteItemPid( uchar slot, hash pid );
 
     // Visible critters and items
     CrVec         VisCr;
@@ -303,7 +317,6 @@ protected:
 public:
     int FuncId[ CRITTER_EVENT_MAX ];
     bool ParseScript( const char* script, bool first_time );
-    hash GetScriptId() { return Data.ScriptId; }
 
     void EventIdle();
     void EventFinish( bool deleted );
@@ -371,27 +384,12 @@ private:
     uint waitEndTick;
 
 public:
-    bool IsFree() { return ( Timer::GameTick() - startBreakTime >= breakTime ); }
+    bool IsFree() { return Timer::GameTick() - startBreakTime >= breakTime; }
     bool IsBusy() { return !IsFree(); }
-    void SetBreakTime( uint ms )
-    {
-        breakTime = ms;
-        startBreakTime = Timer::GameTick();
-        ApRegenerationTick = 0;
-    }
-    void SetBreakTimeDelta( uint ms )
-    {
-        uint dt = ( Timer::GameTick() - startBreakTime );
-        if( dt > breakTime ) dt -= breakTime;
-        else dt = 0;
-        if( dt > ms ) dt = 0;
-        SetBreakTime( ms - dt );
-    }
-
+    void SetBreakTime( uint ms );
+    void SetBreakTimeDelta( uint ms );
     void SetWait( uint ms ) { waitEndTick = Timer::GameTick() + ms; }
     bool IsWait()           { return Timer::GameTick() < waitEndTick; }
-
-    void FullClear();
 
     // Send
     volatile int DisableSend;
@@ -460,15 +458,15 @@ public:
     void Send_AddAllItems();
     void Send_AllAutomapsInfo();
 
-    bool        IsPlayer()    { return !CritterIsNpc; }
-    bool        IsNpc()       { return CritterIsNpc; }
-    uint        GetId()       { return Data.Id; }
-    uint        GetMap()      { return Data.MapId; }
-    hash        GetProtoMap() { return Data.MapPid; }
+    bool        IsPlayer()      { return !CritterIsNpc; }
+    bool        IsNpc()         { return CritterIsNpc; }
+    uint        GetId()         { return Data.Id; }
+    uint        GetMapId()      { return Data.MapId; }
+    hash        GetMapProtoId() { return Data.MapPid; }
     void        RefreshName();
     const char* GetName() { return NameStr->c_str(); }
     const char* GetInfo();
-    uint        GetCrType() { return Data.BaseType; }
+    uint        GetCrType() { return Data.CrType; }
     ushort      GetHexX()   { return Data.HexX; }
     ushort      GetHexY()   { return Data.HexY; }
     uchar       GetDir()    { return Data.Dir; }
@@ -522,24 +520,20 @@ public:
     // Home
     uint TryingGoHomeTick;
 
-    void SetHome( uint map_id, ushort hx, ushort hy, uchar dir )
-    {
-        Data.HomeMap = map_id;
-        Data.HomeX = hx;
-        Data.HomeY = hy;
-        Data.HomeOri = dir;
-    }
-    uint   GetHomeMap() { return Data.HomeMap; }
-    ushort GetHomeX()   { return Data.HomeX; }
-    ushort GetHomeY()   { return Data.HomeY; }
-    uchar  GetHomeOri() { return Data.HomeOri; }
-    bool   IsInHome()   { return !GetMap() || ( Data.HomeOri == GetDir() && Data.HomeX == GetHexX() && Data.HomeY == GetHexY() && Data.HomeMap == GetMap() ); }
+    void SetHome( uint map_id, ushort hx, ushort hy, uchar dir );
+    bool IsInHome();
 
     // Enemy stack
-    void     AddEnemyInStack( uint crid );
+    void     AddEnemyToStack( uint crid );
     bool     CheckEnemyInStack( uint crid );
     void     EraseEnemyInStack( uint crid );
     Critter* ScanEnemyStack();
+
+    // Locations
+    bool CheckKnownLocById( uint loc_id );
+    bool CheckKnownLocByPid( hash loc_pid );
+    void AddKnownLoc( uint loc_id );
+    void EraseKnownLoc( uint loc_id );
 
     // Time events
     struct CrTimeEvent
@@ -561,7 +555,7 @@ public:
     uint ApRegenerationTick;
 
     // Reference counter
-    bool IsNotValid;
+    bool IsDestroyed;
     bool CanBeRemoved;
     long RefCounter;
     void AddRef()  { InterlockedIncrement( &RefCounter ); }
@@ -732,12 +726,6 @@ public:
     void Send_CustomMessage( uint msg );
     void Send_CustomMessage( uint msg, uchar* data, uint data_size );
 
-    // Locations
-    bool CheckKnownLocById( uint loc_id );
-    bool CheckKnownLocByPid( hash loc_pid );
-    void AddKnownLoc( uint loc_id );
-    void EraseKnownLoc( uint loc_id );
-
     // Players barter
     bool BarterOffer;
     bool BarterHide;
@@ -760,7 +748,7 @@ public:
     void        BarterEraseItem( uint item_id );
 
     // Timers
-    uint LastSendScoresTick, LastSendCraftTick, LastSendEntrancesTick, LastSendEntrancesLocId;
+    uint LastSendCraftTick, LastSendEntrancesTick, LastSendEntrancesLocId;
     void DropTimers( bool send );
 
     // Dialogs
@@ -782,26 +770,26 @@ public:
 
 class Npc: public Critter
 {
-    // Bag
+public:
+    Npc();
+    ~Npc();
+
+    // Bags
 public:
     uint NextRefreshBagTick;
     bool IsNeedRefreshBag() { return IsLife() && Timer::GameTick() > NextRefreshBagTick && IsNoPlanes(); }
     void RefreshBag();
 
-    // AI plane
+    // AI
 private:
     AIDataPlaneVec aiPlanes;
 
 public:
-    bool AddPlane( int reason, AIDataPlane* plane, bool is_child, Critter* some_cr = NULL, Item* some_item = NULL );
-    void NextPlane( int reason, Critter* some_cr = NULL, Item* some_item = NULL );
-    bool RunPlane( int reason, uint& r0, uint& r1, uint& r2 );
-    bool IsPlaneAviable( int plane_type );
-    bool IsCurPlane( int plane_type )
-    {
-        AIDataPlane* p = GetCurPlane();
-        return p ? p->Type == plane_type : false;
-    }
+    bool            AddPlane( int reason, AIDataPlane* plane, bool is_child, Critter* some_cr = NULL, Item* some_item = NULL );
+    void            NextPlane( int reason, Critter* some_cr = NULL, Item* some_item = NULL );
+    bool            RunPlane( int reason, uint& r0, uint& r1, uint& r2 );
+    bool            IsPlaneAviable( int plane_type );
+    bool            IsCurPlane( int plane_type );
     AIDataPlane*    GetCurPlane() { return aiPlanes.size() ? aiPlanes[ 0 ]->GetCurPlane() : NULL; }
     AIDataPlaneVec& GetPlanes()   { return aiPlanes; }
     void            DropPlanes();
@@ -820,14 +808,6 @@ public:
 public:
     void MoveToHex( int reason, ushort hx, ushort hy, uchar ori, bool is_run, uchar cut );
     void SetTarget( int reason, Critter* target, int min_hp, bool is_gag );
-
-    // Params
-    hash GetProtoId() { return Data.ProtoId; }
-
-    uint Reserved;
-
-    Npc();
-    ~Npc();
 };
 
 #endif // __CRITTER__

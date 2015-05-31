@@ -1947,7 +1947,7 @@ void FOMapper::IntDraw()
         {
             ProtoCritter* proto = ( *CurNpcProtos )[ i ];
 
-            uint      spr_id = ResMngr.GetCritSprId( proto->GetBaseType(), 1, 1, NpcDir, NULL ); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
+            uint      spr_id = ResMngr.GetCritSprId( proto->GetCrType(), 1, 1, NpcDir, NULL ); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
             if( !spr_id )
                 continue;
 
@@ -4275,7 +4275,7 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
     if( HexMngr.GetField( hx, hy ).Crit )
         return;
 
-    uint spr_id = ResMngr.GetCritSprId( proto->GetBaseType(), 1, 1, NpcDir );
+    uint spr_id = ResMngr.GetCritSprId( proto->GetCrType(), 1, 1, NpcDir );
     if( !spr_id )
         return;
 
@@ -4295,7 +4295,7 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
 
     CritterCl* cr = new CritterCl();
     cr->Props = *proto->Props;
-    cr->SetBaseType( proto->GetBaseType() );
+    cr->SetCrType( proto->GetCrType() );
     cr->HexX = hx;
     cr->HexY = hy;
     cr->SetDir( NpcDir );
@@ -4348,7 +4348,7 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
 
         CritterCl* cr = new CritterCl();
         cr->Props = *proto->Props;
-        cr->SetBaseType( proto->GetBaseType() );
+        cr->SetCrType( proto->GetCrType() );
         cr->HexX = mobj->MapX;
         cr->HexY = mobj->MapY;
         cr->SetDir( (uchar) mobj->MCritter.Dir );
@@ -4568,7 +4568,7 @@ void FOMapper::CurDraw()
         }
         else if( IsCritMode() && CurNpcProtos->size() )
         {
-            uint spr_id = ResMngr.GetCritSprId( ( *CurNpcProtos )[ GetTabIndex() ]->GetBaseType(), 1, 1, NpcDir );
+            uint spr_id = ResMngr.GetCritSprId( ( *CurNpcProtos )[ GetTabIndex() ]->GetCrType(), 1, 1, NpcDir );
             if( !spr_id )
                 spr_id = ResMngr.ItemHexDefaultAnim->GetSprId( 0 );
 
@@ -5261,12 +5261,12 @@ bool FOMapper::InitScriptSystem()
     // Auto fields
     PropertyRegistrator* registrators[ 6 ] =
     {
-        new PropertyRegistrator( false, "GlobalVars" ),
-        new PropertyRegistrator( false, "CritterCl" ),
-        new PropertyRegistrator( false, "ItemCl" ),
-        new PropertyRegistrator( false, "ProtoItem" ),
-        new PropertyRegistrator( false, "Map" ),
-        new PropertyRegistrator( false, "Location" ),
+        new PropertyRegistrator( true, "GlobalVars" ),
+        new PropertyRegistrator( true, "CritterCl" ),
+        new PropertyRegistrator( true, "ItemCl" ),
+        new PropertyRegistrator( true, "ProtoItem" ),
+        new PropertyRegistrator( true, "Map" ),
+        new PropertyRegistrator( true, "Location" ),
     };
 
     // Init
