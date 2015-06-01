@@ -124,6 +124,7 @@ public:
     UCharVecVec   TempPropertiesDataExt;
     UCharVec      TempPropertyData;
     IntVec        RegProps;
+    int           CurSkill;
 
     bool NetConnect( const char* host, ushort port );
     bool FillSockAddr( sockaddr_in& saddr, const char* host, ushort port );
@@ -155,7 +156,7 @@ public:
     void Net_SendText( const char* send_str, uchar how_say );
     void Net_SendDir();
     void Net_SendMove( UCharVec steps );
-    void Net_SendLevelUp( ushort perk_up, IntVec* props_data );
+    void Net_SendLevelUp( int perk_up, IntVec* props_data );
     void Net_SendCraftAsk( UIntVec numbers );
     void Net_SendCraft( uint craft_num );
     void Net_SendPing( uchar ping );
@@ -987,26 +988,6 @@ public:
         } while( 0 )
 
 /************************************************************************/
-/* Skillbox                                                             */
-/************************************************************************/
-    AnyFrames*   SboxPMain, * SboxPBCancelDn, * SboxPBSneakDn, * SboxPBLockPickDn, * SboxPBStealDn,
-    * SboxPBTrapsDn, * SboxPBFirstaidDn, * SboxPBDoctorDn, * SboxPBScienceDn, * SboxPBRepairDn;
-    Rect         SboxWMain, SboxWMainText, SboxBCancel, SboxBCancelText, SboxBSneak, SboxBLockpick, SboxBSteal,
-                 SboxBTraps, SboxBFirstAid, SboxBDoctor, SboxBScience, SboxBRepair;
-    Rect         SboxTSneak, SboxTLockpick, SboxTSteal, SboxTTraps, SboxTFirstAid,
-                 SboxTDoctor, SboxTScience, SboxTRepair;
-    int          SboxX, SboxY;
-    int          SboxVectX, SboxVectY;
-
-    int          CurSkill;
-    SmthSelected SboxUseOn;
-
-    void SboxDraw();
-    void SboxLMouseDown();
-    void SboxMouseMove();
-    void SboxLMouseUp();
-
-/************************************************************************/
 /* Credits                                                              */
 /************************************************************************/
     uint CreditsNextTick, CreditsMoveTick;
@@ -1014,24 +995,6 @@ public:
     bool CreaditsExt;
 
     void CreditsDraw();
-
-/************************************************************************/
-/* Perk                                                                 */
-/************************************************************************/
-    AnyFrames* PerkPMain, * PerkPBScrUpDn, * PerkPBScrDnDn, * PerkPBOkDn, * PerkPBCancelDn;
-    Rect       PerkWMain, PerkWText, PerkWPerks, PerkWPic, PerkBScrUp, PerkBScrDn, PerkBOk, PerkBCancel, PerkBOkText, PerkBCancelText;
-    int        PerkX, PerkY;
-    int        PerkVectX, PerkVectY;
-    int        PerkNextX, PerkNextY;
-    int        PerkScroll;
-    int        PerkCurPerk;
-    IntVec     PerkCollection;
-
-    void PerkPrepare();
-    void PerkDraw();
-    void PerkLMouseDown();
-    void PerkLMouseUp();
-    void PerkMouseMove();
 
 /************************************************************************/
 /* Town view                                                            */
@@ -1664,22 +1627,6 @@ public:
 #define IFACE_GMAP_PIP                 ( 151 )
 #define IFACE_GMAP_FIX                 ( 152 )
 #define IFACE_GMAP_MOVE_MAP            ( 153 )
-#define IFACE_SBOX_CANCEL              ( 160 )
-#define IFACE_SBOX_MAIN                ( 161 )
-#define IFACE_SBOX_FIRSTAID            ( 162 )
-#define IFACE_SBOX_DOCTOR              ( 163 )
-#define IFACE_SBOX_SNEAK               ( 164 )
-#define IFACE_SBOX_LOCKPICK            ( 165 )
-#define IFACE_SBOX_STEAL               ( 166 )
-#define IFACE_SBOX_TRAP                ( 167 )
-#define IFACE_SBOX_SCIENCE             ( 168 )
-#define IFACE_SBOX_REPAIR              ( 169 )
-#define IFACE_PERK_MAIN                ( 240 )
-#define IFACE_PERK_SCRUP               ( 241 )
-#define IFACE_PERK_SCRDN               ( 242 )
-#define IFACE_PERK_OK                  ( 243 )
-#define IFACE_PERK_CANCEL              ( 244 )
-#define IFACE_PERK_PERKS               ( 245 )
 #define IFACE_TOWN_VIEW_MAIN           ( 250 )
 #define IFACE_TOWN_VIEW_BACK           ( 251 )
 #define IFACE_TOWN_VIEW_ENTER          ( 252 )
@@ -1770,8 +1717,6 @@ public:
 #define ACCELERATE_BARTER_CONT1OSD     ( 29 )
 #define ACCELERATE_BARTER_CONT2OSU     ( 30 )
 #define ACCELERATE_BARTER_CONT2OSD     ( 31 )
-#define ACCELERATE_PERK_SCRUP          ( 32 )
-#define ACCELERATE_PERK_SCRDOWN        ( 33 )
 #define ACCELERATE_DLG_TEXT_UP         ( 34 )
 #define ACCELERATE_DLG_TEXT_DOWN       ( 35 )
 #define ACCELERATE_SAVE_LOAD_SCR_UP    ( 36 )

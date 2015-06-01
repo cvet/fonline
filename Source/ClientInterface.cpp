@@ -281,58 +281,6 @@ int FOClient::InitIface()
     IfaceLoadRect( LmapBScan, "LmapScan" );
     IfaceLoadRect( LmapBLoHi, "LmapLoHi" );
 
-    // Skillbox
-    IfaceLoadRect( SboxWMain, "SboxMain" );
-    IfaceLoadRect( SboxWMainText, "SboxMainText" );
-    IfaceLoadRect( SboxBCancel, "SboxCancel" );
-    IfaceLoadRect( SboxBCancelText, "SboxCancelText" );
-    IfaceLoadRect( SboxBSneak, "SboxSneak" );
-    IfaceLoadRect( SboxBLockpick, "SboxLockpick" );
-    IfaceLoadRect( SboxBSteal, "SboxSteal" );
-    IfaceLoadRect( SboxBTraps, "SboxTrap" );
-    IfaceLoadRect( SboxBFirstAid, "SboxFirstAid" );
-    IfaceLoadRect( SboxBDoctor, "SboxDoctor" );
-    IfaceLoadRect( SboxBScience, "SboxScience" );
-    IfaceLoadRect( SboxBRepair, "SboxRepair" );
-    IfaceLoadRect( SboxTSneak, "SboxSneakText" );
-    IfaceLoadRect( SboxTLockpick, "SboxLockpickText" );
-    IfaceLoadRect( SboxTSteal, "SboxStealText" );
-    IfaceLoadRect( SboxTTraps, "SboxTrapText" );
-    IfaceLoadRect( SboxTFirstAid, "SboxFirstAidText" );
-    IfaceLoadRect( SboxTDoctor, "SboxDoctorText" );
-    IfaceLoadRect( SboxTScience, "SboxScienceText" );
-    IfaceLoadRect( SboxTRepair, "SboxRepairText" );
-
-    SboxX = IfaceIni.GetInt( "SboxX", -1 );
-    SboxY = IfaceIni.GetInt( "SboxY", -1 );
-    if( SboxX < 0 )
-        SboxX = GameOpt.ScreenWidth - SboxWMain[ 2 ];
-    if( SboxY < 0 )
-        SboxY = ( GameOpt.ScreenHeight - SboxWMain[ 3 ] ) / 2;
-    SboxVectX = 0;
-    SboxVectY = 0;
-    CurSkill = 0;
-
-    // Perk
-    IfaceLoadRect( PerkWMain, "PerkMain" );
-    IfaceLoadRect( PerkWText, "PerkText" );
-    IfaceLoadRect( PerkWPerks, "PerkPerks" );
-    IfaceLoadRect( PerkWPic, "PerkPic" );
-    IfaceLoadRect( PerkBScrUp, "PerkScrUp" );
-    IfaceLoadRect( PerkBScrDn, "PerkScrDn" );
-    IfaceLoadRect( PerkBOk, "PerkOk" );
-    IfaceLoadRect( PerkBCancel, "PerkCancel" );
-    IfaceLoadRect( PerkBOkText, "PerkOkText" );
-    IfaceLoadRect( PerkBCancelText, "PerkCancelText" );
-    PerkX = ( GameOpt.ScreenWidth - PerkWMain.W() ) / 2;
-    PerkY = ( GameOpt.ScreenHeight - PerkWMain.H() ) / 2;
-    PerkNextX = IfaceIni.GetInt( "PerkNextX", 0 );
-    PerkNextY = IfaceIni.GetInt( "PerkNextY", 11 );
-    PerkVectX = 0;
-    PerkVectY = 0;
-    PerkScroll = 0;
-    PerkCurPerk = -1;
-
     // Town view
     IfaceLoadRect( TViewWMain, "TViewMain" );
     IfaceLoadRect( TViewBBack, "TViewBack" );
@@ -745,25 +693,6 @@ int FOClient::InitIface()
     LmapPPix = SprMngr.LoadAnimation( "green_pix.png", PT_ART_INTRFACE, true );
     if( !LmapPPix )
         return __LINE__;
-
-    // Skillbox
-    IfaceLoadSpr( SboxPMain, "SboxMainPic" );
-    IfaceLoadSpr( SboxPBCancelDn, "SboxCancelPicDn" );
-    IfaceLoadSpr( SboxPBSneakDn, "SboxSneakPicDn" );
-    IfaceLoadSpr( SboxPBLockPickDn, "SboxLockpickPicDn" );
-    IfaceLoadSpr( SboxPBStealDn, "SboxStealPicDn" );
-    IfaceLoadSpr( SboxPBTrapsDn, "SboxTrapPicDn" );
-    IfaceLoadSpr( SboxPBFirstaidDn, "SboxFirstAidPicDn" );
-    IfaceLoadSpr( SboxPBDoctorDn, "SboxDoctorPicDn" );
-    IfaceLoadSpr( SboxPBScienceDn, "SboxSciencePicDn" );
-    IfaceLoadSpr( SboxPBRepairDn, "SboxRepairPicDn" );
-
-    // Perk
-    IfaceLoadSpr( PerkPMain, "PerkMainPic" );
-    IfaceLoadSpr( PerkPBScrUpDn, "PerkScrUpPic" );
-    IfaceLoadSpr( PerkPBScrDnDn, "PerkScrDnPic" );
-    IfaceLoadSpr( PerkPBOkDn, "PerkOkPic" );
-    IfaceLoadSpr( PerkPBCancelDn, "PerkCancelPic" );
 
     // Town view
     IfaceLoadSpr( TViewWMainPic, "TViewMainPic" );
@@ -1379,9 +1308,6 @@ void FOClient::GameKeyDown( uchar dik, const char* dik_text )
         case DIK_N:
             Chosen->NextRateItem( false );
             break;
-        case DIK_S:
-            ShowScreen( SCREEN__SKILLBOX );
-            break;
         case DIK_SLASH:
             AddMess( FOMB_GAME, Str::FormatBuf( "Time: %02d.%02d.%d %02d:%02d:%02d x%u", GameOpt.Day, GameOpt.Month, GameOpt.Year, GameOpt.Hour, GameOpt.Minute, GameOpt.Second, GameOpt.TimeMultiplier ) );
             break;
@@ -1402,38 +1328,6 @@ void FOClient::GameKeyDown( uchar dik, const char* dik_text )
                 HexMngr.AutoScroll.LockedCritter = 0;
             else
                 HexMngr.AutoScroll.LockedCritter = Chosen->GetId();
-            break;
-        // Skills
-        case DIK_1:
-            SetAction( CHOSEN_USE_SKL_ON_CRITTER, CritterCl::PropertySkillSneak->GetEnumValue() );
-            break;
-        case DIK_2:
-            CurSkill = CritterCl::PropertySkillLockpick->GetEnumValue();
-            SetCurMode( CUR_USE_SKILL );
-            break;
-        case DIK_3:
-            CurSkill = CritterCl::PropertySkillSteal->GetEnumValue();
-            SetCurMode( CUR_USE_SKILL );
-            break;
-        case DIK_4:
-            CurSkill = CritterCl::PropertySkillTraps->GetEnumValue();
-            SetCurMode( CUR_USE_SKILL );
-            break;
-        case DIK_5:
-            CurSkill = CritterCl::PropertySkillFirstAid->GetEnumValue();
-            SetCurMode( CUR_USE_SKILL );
-            break;
-        case DIK_6:
-            CurSkill = CritterCl::PropertySkillDoctor->GetEnumValue();
-            SetCurMode( CUR_USE_SKILL );
-            break;
-        case DIK_7:
-            CurSkill = CritterCl::PropertySkillScience->GetEnumValue();
-            SetCurMode( CUR_USE_SKILL );
-            break;
-        case DIK_8:
-            CurSkill = CritterCl::PropertySkillRepair->GetEnumValue();
-            SetCurMode( CUR_USE_SKILL );
             break;
         default:
             break;
@@ -1509,21 +1403,24 @@ void FOClient::GameLMouseDown()
     }
     else if( IsCurMode( CUR_USE_SKILL ) )
     {
-        CritterCl* cr;
-        ItemHex*   item;
-        HexMngr.GetSmthPixel( GameOpt.MouseX, GameOpt.MouseY, item, cr );
+        if( CurSkill != 0 )
+        {
+            CritterCl* cr;
+            ItemHex*   item;
+            HexMngr.GetSmthPixel( GameOpt.MouseX, GameOpt.MouseY, item, cr );
 
-        // Use skill
-        if( cr )
-        {
-            SetAction( CHOSEN_USE_SKL_ON_CRITTER, CurSkill, cr->GetId(), Chosen->GetFullRate() );
-        }
-        else if( item && item->IsCanUseSkill() )
-        {
-            if( item->IsScenOrGrid() )
-                SetAction( CHOSEN_USE_SKL_ON_SCEN, CurSkill, item->GetProtoId(), item->GetHexX(), item->GetHexY() );
-            else
-                SetAction( CHOSEN_USE_SKL_ON_ITEM, false, CurSkill, item->GetId() );
+            // Use skill
+            if( cr )
+            {
+                SetAction( CHOSEN_USE_SKL_ON_CRITTER, CurSkill, cr->GetId(), Chosen->GetFullRate() );
+            }
+            else if( item && item->IsCanUseSkill() )
+            {
+                if( item->IsScenOrGrid() )
+                    SetAction( CHOSEN_USE_SKL_ON_SCEN, CurSkill, item->GetProtoId(), item->GetHexX(), item->GetHexY() );
+                else
+                    SetAction( CHOSEN_USE_SKL_ON_ITEM, false, CurSkill, item->GetId() );
+            }
         }
 
         SetCurMode( CUR_DEFAULT );
@@ -3189,9 +3086,18 @@ void FOClient::LMenuMouseUp()
             UseSelect = TargetSmth;
             break;
         case LMENU_NODE_SKILL:
-            ShowScreen( SCREEN__SKILLBOX );
-            SboxUseOn = TargetSmth;
-            break;
+        {
+            ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+            uint              critter_id = TargetSmth.GetId();
+            uint              item_id = 0;
+            bool              is_inventory = false;
+            dict->Set( "TargetCritterId", &critter_id, asTYPEID_UINT32 );
+            dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
+            dict->Set( "IsInventory", &is_inventory, asTYPEID_BOOL );
+            ShowScreen( SCREEN__SKILLBOX, dict );
+            dict->Release();
+        }
+        break;
         case LMENU_NODE_BARTER_OPEN:
             Net_SendPlayersBarter( BARTER_TRY, cr->GetId(), false );
             break;
@@ -3241,9 +3147,18 @@ void FOClient::LMenuMouseUp()
             UseSelect = TargetSmth;
             break;
         case LMENU_NODE_SKILL:
-            ShowScreen( SCREEN__SKILLBOX );
-            SboxUseOn = TargetSmth;
-            break;
+        {
+            ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+            uint              critter_id = TargetSmth.GetId();
+            uint              item_id = 0;
+            bool              is_inventory = false;
+            dict->Set( "TargetCritterId", &critter_id, asTYPEID_UINT32 );
+            dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
+            dict->Set( "IsInventory", &is_inventory, asTYPEID_BOOL );
+            ShowScreen( SCREEN__SKILLBOX, dict );
+            dict->Release();
+        }
+        break;
         case LMENU_NODE_BREAK:
             break;
         default:
@@ -3272,9 +3187,18 @@ void FOClient::LMenuMouseUp()
             UseSelect = TargetSmth;
             break;
         case LMENU_NODE_SKILL:
-            ShowScreen( SCREEN__SKILLBOX );
-            SboxUseOn = TargetSmth;
-            break;
+        {
+            ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+            uint              critter_id = 0;
+            uint              item_id = TargetSmth.GetId();
+            bool              is_inventory = false;
+            dict->Set( "TargetCritterId", &critter_id, asTYPEID_UINT32 );
+            dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
+            dict->Set( "IsInventory", &is_inventory, asTYPEID_BOOL );
+            ShowScreen( SCREEN__SKILLBOX, dict );
+            dict->Release();
+        }
+        break;
         case LMENU_NODE_BREAK:
             break;
         default:
@@ -3342,11 +3266,20 @@ void FOClient::LMenuMouseUp()
                 SetAction( CHOSEN_USE_ITEM, inv_item->GetId(), 0, TARGET_SELF, 0, USE_USE );
             break;
         case LMENU_NODE_SKILL:
+        {
             if( !inv_item )
                 break;
-            ShowScreen( SCREEN__SKILLBOX );
-            SboxUseOn.SetContItem( inv_item->GetId(), 0 );
-            break;
+            ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+            uint              critter_id = 0;
+            uint              item_id = inv_item->GetId();
+            bool              is_inventory = true;
+            dict->Set( "TargetCritterId", &critter_id, asTYPEID_UINT32 );
+            dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
+            dict->Set( "IsInventory", &is_inventory, asTYPEID_BOOL );
+            ShowScreen( SCREEN__SKILLBOX, dict );
+            dict->Release();
+        }
+        break;
         case LMENU_NODE_SORT_UP:
         {
             if( !inv_item )
@@ -3400,9 +3333,18 @@ void FOClient::LMenuMouseUp()
             AddMess( FOMB_VIEW, FmtCritLook( cr, CRITTER_LOOK_FULL ) );
             break;
         case LMENU_NODE_SKILL:
-            ShowScreen( SCREEN__SKILLBOX );
-            SboxUseOn = TargetSmth;
-            break;
+        {
+            ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+            uint              critter_id = TargetSmth.GetId();
+            uint              item_id = 0;
+            bool              is_inventory = false;
+            dict->Set( "TargetCritterId", &critter_id, asTYPEID_UINT32 );
+            dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
+            dict->Set( "IsInventory", &is_inventory, asTYPEID_BOOL );
+            ShowScreen( SCREEN__SKILLBOX, dict );
+            dict->Release();
+        }
+        break;
         case LMENU_NODE_BAG:
             ShowScreen( SCREEN__USE );
             UseSelect = TargetSmth;
@@ -3654,9 +3596,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         IboxTitleCur = 0;
         IboxTextCur = 0;
         break;
-    case SCREEN__SKILLBOX:
-        SboxUseOn.Clear();
-        break;
     case SCREEN__USE:
         UseSelect.Clear();
         TargetSmth = smth;
@@ -3664,12 +3603,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         UseHoldId = 0;
         UseScroll = 0;
         UseMouseMove();
-        break;
-    case SCREEN__PERK:
-        PerkScroll = 0;
-        PerkCurPerk = -1;
-        PerkPrepare();
-        PerkMouseMove();
         break;
     case SCREEN__TOWN_VIEW:
         TViewShowCountours = false;
@@ -4737,204 +4670,6 @@ uint FOClient::GmapGetMouseTabLocId()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::SboxDraw()
-{
-    SprMngr.DrawSprite( SboxPMain, SboxWMain[ 0 ] + SboxX, SboxWMain[ 1 ] + SboxY );
-
-    if( IfaceHold == IFACE_SBOX_CANCEL )
-        SprMngr.DrawSprite( SboxPBCancelDn, SboxBCancel[ 0 ] + SboxX, SboxBCancel[ 1 ] + SboxY );
-    if( IfaceHold == IFACE_SBOX_SNEAK )
-        SprMngr.DrawSprite( SboxPBSneakDn, SboxBSneak[ 0 ] + SboxX, SboxBSneak[ 1 ] + SboxY );
-    if( IfaceHold == IFACE_SBOX_LOCKPICK )
-        SprMngr.DrawSprite( SboxPBLockPickDn, SboxBLockpick[ 0 ] + SboxX, SboxBLockpick[ 1 ] + SboxY );
-    if( IfaceHold == IFACE_SBOX_STEAL )
-        SprMngr.DrawSprite( SboxPBStealDn, SboxBSteal[ 0 ] + SboxX, SboxBSteal[ 1 ] + SboxY );
-    if( IfaceHold == IFACE_SBOX_TRAP )
-        SprMngr.DrawSprite( SboxPBTrapsDn, SboxBTraps[ 0 ] + SboxX, SboxBTraps[ 1 ] + SboxY );
-    if( IfaceHold == IFACE_SBOX_FIRSTAID )
-        SprMngr.DrawSprite( SboxPBFirstaidDn, SboxBFirstAid[ 0 ] + SboxX, SboxBFirstAid[ 1 ] + SboxY );
-    if( IfaceHold == IFACE_SBOX_DOCTOR )
-        SprMngr.DrawSprite( SboxPBDoctorDn, SboxBDoctor[ 0 ] + SboxX, SboxBDoctor[ 1 ] + SboxY );
-    if( IfaceHold == IFACE_SBOX_SCIENCE )
-        SprMngr.DrawSprite( SboxPBScienceDn, SboxBScience[ 0 ] + SboxX, SboxBScience[ 1 ] + SboxY );
-    if( IfaceHold == IFACE_SBOX_REPAIR )
-        SprMngr.DrawSprite( SboxPBRepairDn, SboxBRepair[ 0 ] + SboxX, SboxBRepair[ 1 ] + SboxY );
-
-    SprMngr.Flush();
-
-    // Cancel, title
-    SprMngr.DrawStr( Rect( SboxWMainText, SboxX, SboxY ), MsgGame->GetStr( STR_SKILLDEX_NAME ), FT_CENTERX | FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( SboxBCancelText, SboxX, SboxY ), MsgGame->GetStr( STR_SKILLDEX_CANCEL ), FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT );
-
-    // Skills
-    #define SBOX_DRAW_SKILL( comp )                                                                                                                                                                                   \
-        do {                                                                                                                                                                                                          \
-            int prop = CritterCl::PropertySkill ## comp->GetEnumValue();                                                                                                                                              \
-            SprMngr.DrawStr( Rect( SboxB ## comp, SboxX, SboxY - ( IfaceHold == prop ? 1 : 0 ) ), MsgGame->GetStr( STR_PARAM_NAME_SHORT( prop ) ), FT_CENTERX | FT_CENTERY | FT_NOBREAK, COLOR_TEXT_SAND, FONT_FAT ); \
-            int sk_val = ( Chosen ? Chosen->GetSkill ## comp() : 0 );                                                                                                                                                 \
-            if( sk_val < 0 )                                                                                                                                                                                          \
-                sk_val = -sk_val;                                                                                                                                                                                     \
-            sk_val = MAX( sk_val, 0 );                                                                                                                                                                                \
-            char str[ 16 ];                                                                                                                                                                                           \
-            Str::Format( str, "%03d", sk_val );                                                                                                                                                                       \
-            if( Chosen && Chosen->GetSkill ## comp() < 0 )                                                                                                                                                            \
-                Str::ChangeValue( str, 0x10 );                                                                                                                                                                        \
-            SprMngr.DrawStr( Rect( SboxT ## comp, SboxX, SboxY ), str, 0, COLOR_IFACE, FONT_BIG_NUM );                                                                                                                \
-        } while( 0 )
-
-    SBOX_DRAW_SKILL( Sneak );
-    SBOX_DRAW_SKILL( Lockpick );
-    SBOX_DRAW_SKILL( Steal );
-    SBOX_DRAW_SKILL( Traps );
-    SBOX_DRAW_SKILL( FirstAid );
-    SBOX_DRAW_SKILL( Doctor );
-    SBOX_DRAW_SKILL( Science );
-    SBOX_DRAW_SKILL( Repair );
-}
-
-void FOClient::SboxLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-    if( IsCurInRect( SboxBCancel, SboxX, SboxY ) )
-        IfaceHold = IFACE_SBOX_CANCEL;
-    else if( IsCurInRect( SboxBSneak, SboxX, SboxY ) )
-        IfaceHold = IFACE_SBOX_SNEAK;
-    else if( IsCurInRect( SboxBLockpick, SboxX, SboxY ) )
-        IfaceHold = IFACE_SBOX_LOCKPICK;
-    else if( IsCurInRect( SboxBSteal, SboxX, SboxY ) )
-        IfaceHold = IFACE_SBOX_STEAL;
-    else if( IsCurInRect( SboxBTraps, SboxX, SboxY ) )
-        IfaceHold = IFACE_SBOX_TRAP;
-    else if( IsCurInRect( SboxBFirstAid, SboxX, SboxY ) )
-        IfaceHold = IFACE_SBOX_FIRSTAID;
-    else if( IsCurInRect( SboxBDoctor, SboxX, SboxY ) )
-        IfaceHold = IFACE_SBOX_DOCTOR;
-    else if( IsCurInRect( SboxBScience, SboxX, SboxY ) )
-        IfaceHold = IFACE_SBOX_SCIENCE;
-    else if( IsCurInRect( SboxBRepair, SboxX, SboxY ) )
-        IfaceHold = IFACE_SBOX_REPAIR;
-    else if( IsCurInRect( SboxWMain, SboxX, SboxY ) )
-    {
-        SboxVectX = GameOpt.MouseX - SboxX;
-        SboxVectY = GameOpt.MouseY - SboxY;
-        IfaceHold = IFACE_SBOX_MAIN;
-    }
-}
-
-void FOClient::SboxLMouseUp()
-{
-    if( !Chosen || ( IfaceHold == IFACE_SBOX_CANCEL && IsCurInRect( SboxBCancel, SboxX, SboxY ) ) )
-    {
-        ShowScreen( SCREEN_NONE );
-    }
-    else
-    {
-        int cur_skill;
-        if( IfaceHold == IFACE_SBOX_SNEAK && IsCurInRect( SboxBSneak, SboxX, SboxY ) )
-            cur_skill = CritterCl::PropertySkillSneak->GetEnumValue();
-        else if( IfaceHold == IFACE_SBOX_LOCKPICK && IsCurInRect( SboxBLockpick, SboxX, SboxY ) )
-            cur_skill = CritterCl::PropertySkillLockpick->GetEnumValue();
-        else if( IfaceHold == IFACE_SBOX_STEAL && IsCurInRect( SboxBSteal, SboxX, SboxY ) )
-            cur_skill = CritterCl::PropertySkillSteal->GetEnumValue();
-        else if( IfaceHold == IFACE_SBOX_TRAP && IsCurInRect( SboxBTraps, SboxX, SboxY ) )
-            cur_skill = CritterCl::PropertySkillTraps->GetEnumValue();
-        else if( IfaceHold == IFACE_SBOX_FIRSTAID && IsCurInRect( SboxBFirstAid, SboxX, SboxY ) )
-            cur_skill = CritterCl::PropertySkillFirstAid->GetEnumValue();
-        else if( IfaceHold == IFACE_SBOX_DOCTOR && IsCurInRect( SboxBDoctor, SboxX, SboxY ) )
-            cur_skill = CritterCl::PropertySkillDoctor->GetEnumValue();
-        else if( IfaceHold == IFACE_SBOX_SCIENCE && IsCurInRect( SboxBScience, SboxX, SboxY ) )
-            cur_skill = CritterCl::PropertySkillScience->GetEnumValue();
-        else if( IfaceHold == IFACE_SBOX_REPAIR && IsCurInRect( SboxBRepair, SboxX, SboxY ) )
-            cur_skill = CritterCl::PropertySkillRepair->GetEnumValue();
-        else
-        {
-            IfaceHold = IFACE_NONE;
-            return;
-        }
-
-        if( ShowScreenType )
-        {
-            if( ShowScreenNeedAnswer )
-                Net_SendScreenAnswer( cur_skill, "" );
-            ShowScreen( SCREEN_NONE );
-            return;
-        }
-        else
-        {
-            if( cur_skill == CritterCl::PropertySkillSneak->GetEnumValue() )
-            {
-                if( !SboxUseOn.IsSmth() || ( SboxUseOn.IsCritter() && SboxUseOn.GetId() == Chosen->GetId() ) )
-                {
-                    SetAction( CHOSEN_USE_SKL_ON_CRITTER, CritterCl::PropertySkillSneak->GetEnumValue() );
-                    ShowScreen( SCREEN_NONE );
-                }
-                IfaceHold = IFACE_NONE;
-                return;
-            }
-
-            CurSkill = cur_skill;
-            if( SboxUseOn.IsSmth() )
-            {
-                if( SboxUseOn.IsCritter() )
-                {
-                    CritterCl* cr = GetCritter( SboxUseOn.GetId() );
-                    if( cr )
-                        SetAction( CHOSEN_USE_SKL_ON_CRITTER, CurSkill, cr->GetId(), Chosen->GetFullRate() );
-                }
-                else if( SboxUseOn.IsItem() )
-                {
-                    ItemHex* item = GetItem( SboxUseOn.GetId() );
-                    if( item && item->IsCanUseSkill() )
-                    {
-                        if( item->IsScenOrGrid() )
-                            SetAction( CHOSEN_USE_SKL_ON_SCEN, CurSkill, item->GetProtoId(), item->GetHexX(), item->GetHexY() );
-                        else
-                            SetAction( CHOSEN_USE_SKL_ON_ITEM, false, CurSkill, item->GetId() );
-                    }
-                }
-                else if( SboxUseOn.IsContItem() )
-                {
-                    Item* item = Chosen->GetItem( SboxUseOn.GetId() );
-                    if( item )
-                        SetAction( CHOSEN_USE_SKL_ON_ITEM, true, CurSkill, item->GetId() );
-                }
-
-                SboxUseOn.Clear();
-                ShowScreen( SCREEN_NONE );
-            }
-            else
-            {
-                ShowScreen( SCREEN_NONE );
-                SetCurMode( CUR_USE_SKILL );
-            }
-        }
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::SboxMouseMove()
-{
-    if( IfaceHold == IFACE_SBOX_MAIN )
-    {
-        SboxX = GameOpt.MouseX - SboxVectX;
-        SboxY = GameOpt.MouseY - SboxVectY;
-
-        if( SboxX < 0 )
-            SboxX = 0;
-        if( SboxX + SboxWMain[ 2 ] > GameOpt.ScreenWidth )
-            SboxX = GameOpt.ScreenWidth - SboxWMain[ 2 ];
-        if( SboxY < 0 )
-            SboxY = 0;
-        if( SboxY + SboxWMain[ 3 ] > GameOpt.ScreenHeight )
-            SboxY = GameOpt.ScreenHeight - SboxWMain[ 3 ];
-    }
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
 void FOClient::CreditsDraw()
 {
     SprMngr.DrawStr( Rect( 0, CreditsYPos, GameOpt.ScreenWidth, GameOpt.ScreenHeight + 50 ),
@@ -4946,175 +4681,6 @@ void FOClient::CreditsDraw()
         uint wait = MsgGame->GetInt( STR_GAME_CREDITS_SPEED );
         wait = CLAMP( wait, 10, 1000 );
         CreditsNextTick = Timer::FastTick() + wait;
-    }
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::PerkPrepare()
-{
-    PerkCollection.clear();
-    if( !Chosen )
-        return;
-
-    if( Script::PrepareContext( ClientFunctions.PerksCheck, _FUNC_, "Perk" ) )
-    {
-        ScriptArray* arr = Script::CreateArray( "CritterProperty[]" );
-        Script::SetArgObject( arr );
-        if( Script::RunPrepared() )
-            Script::AssignScriptArrayInVector( PerkCollection, arr );
-        arr->Release();
-    }
-}
-
-void FOClient::PerkDraw()
-{
-    SprMngr.DrawSprite( PerkPMain, PerkWMain[ 0 ] + PerkX, PerkWMain[ 1 ] + PerkY );
-
-    switch( IfaceHold )
-    {
-    case IFACE_PERK_SCRUP:
-        SprMngr.DrawSprite( PerkPBScrUpDn, PerkBScrUp[ 0 ] + PerkX, PerkBScrUp[ 1 ] + PerkY );
-        break;
-    case IFACE_PERK_SCRDN:
-        SprMngr.DrawSprite( PerkPBScrDnDn, PerkBScrDn[ 0 ] + PerkX, PerkBScrDn[ 1 ] + PerkY );
-        break;
-    case IFACE_PERK_OK:
-        SprMngr.DrawSprite( PerkPBOkDn, PerkBOk[ 0 ] + PerkX, PerkBOk[ 1 ] + PerkY );
-        break;
-    case IFACE_PERK_CANCEL:
-        SprMngr.DrawSprite( PerkPBCancelDn, PerkBCancel[ 0 ] + PerkX, PerkBCancel[ 1 ] + PerkY );
-        break;
-    default:
-        break;
-    }
-
-//     if( PerkCurPerk >= 0 )
-//     {
-//              const char* name = ConstantsManager::GetPictureName( SKILLDEX_PARAM( PerkCurPerk ) );
-//              if( name )
-//              {
-//                      AnyFrames* anim = ResMngr.GetSkDxAnim( Str::GetHash( name ) );
-//                      if( anim )
-//                              SprMngr.DrawSprite( anim, PerkWPic[ 0 ] + PerkX, PerkWPic[ 1 ] + PerkY );
-//              }
-//     }
-
-    SprMngr.DrawStr( Rect( PerkBOkText, PerkX, PerkY ), MsgGame->GetStr( STR_PERK_TAKE ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( PerkBCancelText, PerkX, PerkY ), MsgGame->GetStr( STR_PERK_CANCEL ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-
-    for( int i = PerkScroll, j = (int) PerkCollection.size(), k = 0; i < j; i++, k++ )
-    {
-        if( PerkNextX && PerkNextX * ( k + 1 ) >= PerkWPerks[ 2 ] - PerkWPerks[ 0 ] )
-            break;
-        if( PerkNextY && PerkNextY * ( k + 1 ) >= PerkWPerks[ 3 ] - PerkWPerks[ 1 ] )
-            break;
-
-        uint col = COLOR_TEXT;
-        if( PerkCollection[ i ] == PerkCurPerk )
-            col = COLOR_TEXT_DGREEN;
-        SprMngr.DrawStr( Rect( PerkWPerks, PerkX + PerkNextX * k, PerkY + PerkNextY * k ), MsgGame->GetStr( STR_PARAM_NAME( PerkCollection[ i ] ) ), 0, col );
-    }
-
-    if( PerkCurPerk >= 0 )
-        SprMngr.DrawStr( Rect( PerkWText, PerkX, PerkY ), MsgGame->GetStr( STR_PARAM_DESC( PerkCurPerk ) ), 0, COLOR_TEXT_BLACK );
-}
-
-void FOClient::PerkLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-    if( !IsCurInRect( PerkWMain, PerkX, PerkY ) )
-        return;
-
-    if( IsCurInRect( PerkWPerks, PerkX, PerkY ) )
-    {
-        IfaceHold = IFACE_PERK_PERKS;
-        int cur_perk = -1;
-
-        if( PerkNextX )
-            cur_perk = PerkScroll + ( GameOpt.MouseX - PerkWPerks[ 0 ] - PerkX ) / PerkNextX;
-        if( PerkNextY )
-            cur_perk = PerkScroll + ( GameOpt.MouseY - PerkWPerks[ 1 ] - PerkY ) / PerkNextY;
-
-        if( cur_perk >= 0 && cur_perk < (int) PerkCollection.size() )
-            PerkCurPerk = PerkCollection[ cur_perk ];
-        else
-            PerkCurPerk = -1;
-    }
-    else if( IsCurInRect( PerkBScrUp, PerkX, PerkY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_PERK_SCRUP );
-        IfaceHold = IFACE_PERK_SCRUP;
-    }
-    else if( IsCurInRect( PerkBScrDn, PerkX, PerkY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_PERK_SCRDOWN );
-        IfaceHold = IFACE_PERK_SCRDN;
-    }
-    else if( IsCurInRect( PerkBOk, PerkX, PerkY ) )
-        IfaceHold = IFACE_PERK_OK;
-    else if( IsCurInRect( PerkBCancel, PerkX, PerkY ) )
-        IfaceHold = IFACE_PERK_CANCEL;
-    else
-    {
-        PerkVectX = GameOpt.MouseX - PerkX;
-        PerkVectY = GameOpt.MouseY - PerkY;
-        IfaceHold = IFACE_PERK_MAIN;
-    }
-}
-
-void FOClient::PerkLMouseUp()
-{
-    switch( IfaceHold )
-    {
-    case IFACE_PERK_SCRUP:
-        if( !IsCurInRect( PerkBScrUp, PerkX, PerkY ) )
-            break;
-        if( PerkScroll > 0 )
-            PerkScroll--;
-        break;
-    case IFACE_PERK_SCRDN:
-        if( !IsCurInRect( PerkBScrDn, PerkX, PerkY ) )
-            break;
-        if( PerkScroll < (int) PerkCollection.size() - 1 )
-            PerkScroll++;
-        break;
-    case IFACE_PERK_OK:
-        if( !IsCurInRect( PerkBOk, PerkX, PerkY ) )
-            break;
-        ShowScreen( SCREEN_NONE );
-        if( PerkCurPerk >= 0 )
-            Net_SendLevelUp( PerkCurPerk, NULL );
-        break;
-    case IFACE_PERK_CANCEL:
-        if( !IsCurInRect( PerkBCancel, PerkX, PerkY ) )
-            break;
-        ShowScreen( SCREEN_NONE );
-        break;
-    default:
-        break;
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::PerkMouseMove()
-{
-    if( IfaceHold == IFACE_PERK_MAIN )
-    {
-        PerkX = GameOpt.MouseX - PerkVectX;
-        PerkY = GameOpt.MouseY - PerkVectY;
-
-        if( PerkX < 0 )
-            PerkX = 0;
-        if( PerkX + PerkWMain[ 2 ] > GameOpt.ScreenWidth )
-            PerkX = GameOpt.ScreenWidth - PerkWMain[ 2 ];
-        if( PerkY < 0 )
-            PerkY = 0;
-        if( PerkY + PerkWMain[ 3 ] > GameOpt.ScreenHeight )
-            PerkY = GameOpt.ScreenHeight - PerkWMain[ 3 ];
     }
 }
 

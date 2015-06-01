@@ -3799,7 +3799,7 @@ void FOServer::Process_LevelUp( Client* cl )
     uint    msg_len;
     ushort  count_skill_up;
     UIntVec skills;
-    ushort  perk_up;
+    int     perk_up;
 
     cl->Bin >> msg_len;
 
@@ -3826,7 +3826,7 @@ void FOServer::Process_LevelUp( Client* cl )
             Script::SetArgObject( cl );
             Script::SetArgUInt( skills[ i * 2 ] );
             Script::SetArgUInt( skills[ i * 2 + 1 ] );
-            Script::SetArgUInt( -1 );
+            Script::SetArgUInt( 0 );
             Script::RunPrepared();
         }
     }

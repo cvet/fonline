@@ -119,6 +119,7 @@ FOClient::FOClient()
     CurMapIndexInLoc = 0;
 
     SomeItem = NULL;
+    CurSkill = 0;
 }
 
 uint* UID1;
@@ -1525,10 +1526,6 @@ void FOClient::ParseMouse()
             DlgLMouseUp( false );
         else if( Timer::ProcessAccelerator( ACCELERATE_BARTER_CONT2OSD ) )
             DlgLMouseUp( false );
-        else if( Timer::ProcessAccelerator( ACCELERATE_PERK_SCRUP ) )
-            PerkLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_PERK_SCRDOWN ) )
-            PerkLMouseUp();
         else if( Timer::ProcessAccelerator( ACCELERATE_DLG_TEXT_UP ) )
             DlgLMouseUp( true );
         else if( Timer::ProcessAccelerator( ACCELERATE_DLG_TEXT_DOWN ) )
@@ -1640,13 +1637,6 @@ void FOClient::ProcessMouseWheel( int data )
     {
         if( IsCurInRect( UseWInv, UseX, UseY ) )
             ContainerWheelScroll( (int) UseCont.size(), UseWInv.H(), UseHeightItem, UseScroll, data );
-    }
-    else if( screen == SCREEN__PERK )
-    {
-        if( data > 0 && IsCurInRect( PerkWPerks, PerkX, PerkY ) && PerkScroll > 0 )
-            PerkScroll--;
-        else if( data < 0 && IsCurInRect( PerkWPerks, PerkX, PerkY ) && PerkScroll < (int) PerkCollection.size() - 1 )
-            PerkScroll++;
     }
     else if( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW )
     {
@@ -3010,7 +3000,7 @@ void FOClient::Net_SendRuleGlobal( uchar command, uint param1, uint param2 )
     WaitPing();
 }
 
-void FOClient::Net_SendLevelUp( ushort perk_up, IntVec* props_data )
+void FOClient::Net_SendLevelUp( int perk_up, IntVec* props_data )
 {
     if( !Chosen )
         return;
@@ -9147,7 +9137,6 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.CritterLook, "critter_description", "string %s(CritterCl&,int)" },
         { &ClientFunctions.GetElevator, "get_elevator", "bool %s(uint,uint[]&)" },
         { &ClientFunctions.ItemCost, "item_cost", "uint %s(ItemCl&,CritterCl&,CritterCl&,bool)" },
-        { &ClientFunctions.PerksCheck, "get_available_perks", "void %s(CritterProperty[]&)" },
         { &ClientFunctions.GetTimeouts, "get_available_timeouts", "void %s(CritterProperty[]&)" },
         { &ClientFunctions.CritterAction, "critter_action", "void %s(bool,CritterCl&,int,int,ItemCl@)" },
         { &ClientFunctions.Animation2dProcess, "animation2d_process", "void %s(bool,CritterCl&,uint,uint,ItemCl@)" },
@@ -9942,7 +9931,12 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
             props_data.push_back( Str::AtoI( args[ i ].c_str() ) );
             props_data.push_back( Str::AtoI( args[ i + 1 ].c_str() ) );
         }
-        Self->Net_SendLevelUp( 0xFFFF, &props_data );
+        Self->Net_SendLevelUp( 0, &props_data );
+    }
+    else if( cmd == "AssignPerk" && args.size() == 2 )
+    {
+        int perk = Str::AtoI( args[ 1 ].c_str() );
+        Self->Net_SendLevelUp( perk, NULL );
     }
     else if( cmd == "GmapHome" )
     {
@@ -11371,17 +11365,9 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
         x = Self->IboxX;
         y = Self->IboxY;
         break;
-    case SCREEN__SKILLBOX:
-        x = Self->SboxX;
-        y = Self->SboxY;
-        break;
     case SCREEN__USE:
         x = Self->UseX;
         y = Self->UseY;
-        break;
-    case SCREEN__PERK:
-        x = Self->PerkX;
-        y = Self->PerkY;
         break;
     case SCREEN__SAVE_LOAD:
         x = Self->SaveLoadX;
@@ -11449,14 +11435,8 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
     case SCREEN__INPUT_BOX:
         Self->IboxDraw();
         break;
-    case SCREEN__SKILLBOX:
-        Self->SboxDraw();
-        break;
     case SCREEN__USE:
         Self->UseDraw();
-        break;
-    case SCREEN__PERK:
-        Self->PerkDraw();
         break;
     case SCREEN__TOWN_VIEW:
         Self->TViewDraw();
@@ -11625,14 +11605,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
         else if( button == MOUSE_BUTTON_LEFT && !down )
             Self->IboxLMouseUp();
         break;
-    case SCREEN__SKILLBOX:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->SboxLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->SboxLMouseUp();
-        else if( move )
-            Self->SboxMouseMove();
-        break;
     case SCREEN__USE:
         if( button == MOUSE_BUTTON_LEFT && down )
             Self->UseLMouseDown();
@@ -11642,14 +11614,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->UseRMouseDown();
         else if( move )
             Self->UseMouseMove();
-        break;
-    case SCREEN__PERK:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->PerkLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->PerkLMouseUp();
-        else if( move )
-            Self->PerkMouseMove();
         break;
     case SCREEN__TOWN_VIEW:
         if( button == MOUSE_BUTTON_LEFT && down )

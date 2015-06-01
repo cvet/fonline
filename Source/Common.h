@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 507 )
+#define FONLINE_VERSION                          ( 508 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
@@ -316,7 +316,6 @@ struct ClientScriptFunctions
     int CritterLook;
     int GetElevator;
     int ItemCost;
-    int PerksCheck;
     int GetTimeouts;
     int CritterAction;
     int Animation2dProcess;
