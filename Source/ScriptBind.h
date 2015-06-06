@@ -5,6 +5,8 @@ BIND_ASSERT( engine->SetEngineProperty( asEP_SCRIPT_SCANNER, 1 ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_USE_CHARACTER_LITERALS, true ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_BUILD_WITHOUT_LINE_CUES, true ) );
+BIND_ASSERT( engine->SetEngineProperty( asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true ) );
+BIND_ASSERT( engine->SetEngineProperty( asEP_PRIVATE_PROP_AS_PROTECTED, true ) );
 
 BIND_ASSERT( engine->RegisterTypedef( "hash", "uint" ) );
 // Todo: register new type with automating string - number convertation, exclude GetStrHash

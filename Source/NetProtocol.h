@@ -561,13 +561,12 @@
 #define NETMSG_SEND_USE_ITEM                  MAKE_NETMSG_HEADER( 85 )
 #define NETMSG_SEND_USE_ITEM_SIZE                         \
     ( sizeof( uint ) + sizeof( uchar ) + sizeof( uint ) + \
-      sizeof( hash ) + sizeof( uchar ) + sizeof( uchar ) + sizeof( uint ) + sizeof( hash ) + sizeof( uint ) )
+      sizeof( uchar ) + sizeof( uchar ) + sizeof( uint ) + sizeof( hash ) + sizeof( uint ) )
 // ////////////////////////////////////////////////////////////////////////
 // Use some item.
 // Params:
 // uchar ap
 // uint item_id
-// hash item_pid
 // uchar rate
 // uchar target_type
 // uint target_id

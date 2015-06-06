@@ -216,6 +216,8 @@ bool FOServer::InitScriptSystem()
     Globals = new GlobalVars();
     Critter::SetPropertyRegistrator( registrators[ 1 ] );
     Critter::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
+    Critter::PropertiesRegistrator->SetNativeSetCallback( "HandsItemProtoId", OnSetCritterHandsItemProtoId );
+    Critter::PropertiesRegistrator->SetNativeSetCallback( "HandsItemMode", OnSetCritterHandsItemMode );
     Item::SetPropertyRegistrator( registrators[ 2 ] );
     Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
     Item::PropertiesRegistrator->SetNativeSetCallback( "Count", OnSetItemCount );
@@ -1757,7 +1759,7 @@ void FOServer::SScriptFunc::Crit_ViewMap( Critter* cr, Map* map, uint look, usho
     if( dir >= DIRS_COUNT )
         dir = cr->GetDir();
     if( !look )
-        look = cr->GetLook();
+        look = cr->GetLookDistance();
 
     cr->ViewMapId = map->GetId();
     cr->ViewMapPid = map->GetPid();
@@ -2180,7 +2182,7 @@ ProtoItem* FOServer::SScriptFunc::Crit_GetSlotProto( Critter* cr, int slot, ucha
         item = cr->ItemSlotMain;
         break;
     case SLOT_HAND2:
-        item = ( cr->ItemSlotExt->GetId() ? cr->ItemSlotExt : cr->GetDefaultItemSlotMain() );
+        item = ( cr->ItemSlotExt->GetId() ? cr->ItemSlotExt : cr->GetHandsItem() );
         break;
     case SLOT_ARMOR:
         item = cr->ItemSlotArmor;
@@ -3872,7 +3874,7 @@ uint FOServer::SScriptFunc::Map_GetCrittersWhoViewPath( Map* map, ushort from_hx
         Critter* cr = *it;
         if( cr->CheckFind( find_type ) &&
             std::find( cr_vec.begin(), cr_vec.end(), cr ) == cr_vec.end() &&
-            IntersectCircleLine( cr->GetHexX(), cr->GetHexY(), cr->GetLook(), from_hx, from_hy, to_hx, to_hy ) )
+            IntersectCircleLine( cr->GetHexX(), cr->GetHexY(), cr->GetLookDistance(), from_hx, from_hy, to_hx, to_hy ) )
             cr_vec.push_back( cr );
     }
 
@@ -4005,13 +4007,13 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "This nullptr." );
     if( params && params->GetSize() & 1 )
-        SCRIPT_ERROR_R0( "Invalid params array size." );
+        SCRIPT_ERROR_R0( "Invalid params array size (%u).", items->GetSize() );
     if( items && items->GetSize() % 3 )
-        SCRIPT_ERROR_R0( "Invalid items array size." );
+        SCRIPT_ERROR_R0( "Invalid items array size (%u).", items->GetSize() );
     if( hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
         SCRIPT_ERROR_R0( "Invalid hexes args." );
     if( !CrMngr.GetProto( proto_id ) )
-        SCRIPT_ERROR_R0( "Proto not found." );
+        SCRIPT_ERROR_R0( "Proto '%s' not found.", HASH_STR( proto_id ) );
 
     IntVec params_;
     if( params )

@@ -140,7 +140,7 @@ public:
     void Net_SendUseSkill( int skill, CritterCl* cr );
     void Net_SendUseSkill( int skill, ItemHex* item );
     void Net_SendUseSkill( int skill, Item* item );
-    void Net_SendUseItem( uchar ap, uint item_id, hash item_pid, uchar rate, uchar target_type, uint target_id, hash target_pid, uint param );
+    void Net_SendUseItem( uchar ap, uint item_id, uchar rate, uchar target_type, uint target_id, hash target_pid, uint param );
     void Net_SendPickItem( ushort targ_x, ushort targ_y, hash pid );
     void Net_SendPickCritter( uint crid, uchar pick_type );
     void Net_SendProperty( NetProperty::Type type, Property* prop, void* prop_obj );
@@ -483,6 +483,8 @@ public:
     static void OnSendGlobalValue( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSendCritterValue( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSetCritterHandsItemProtoId( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSetCritterHandsItemMode( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemSomeLight( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemPicMap( void* obj, Property* prop, void* cur_value, void* old_value );
@@ -1547,7 +1549,7 @@ public:
 #define CHOSEN_MOVE                    ( 1 )  // HexX, HexY, Is run, Cut path, Wait double click, Double click tick
 #define CHOSEN_MOVE_TO_CRIT            ( 2 )  // Critter id, None, Is run, Cut path, Wait double click, Double click tick
 #define CHOSEN_DIR                     ( 3 )  // 0 (CW) or 1 (CCW)
-#define CHOSEN_USE_ITEM                ( 6 )  // Item id, Item pid, Target type, Target id, Item mode, Some param (timer)
+#define CHOSEN_USE_ITEM                ( 6 )  // Item id, -, Target type, Target id, Item mode, Some param (timer)
 #define CHOSEN_MOVE_ITEM               ( 7 )  // Item id, Item count, To slot, Is barter container, Is second try
 #define CHOSEN_MOVE_ITEM_CONT          ( 8 )  // From container, Item id, Count
 #define CHOSEN_TAKE_ALL                ( 9 )  //

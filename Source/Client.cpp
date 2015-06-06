@@ -828,7 +828,7 @@ void FOClient::LookBordersPrepare()
     ShootBorders.clear();
     if( HexMngr.IsMapLoaded() && Chosen )
     {
-        uint   dist = Chosen->GetLook();
+        uint   dist = Chosen->GetLookDistance();
         ushort base_hx = Chosen->GetHexX();
         ushort base_hy = Chosen->GetHexY();
         int    hx = base_hx;
@@ -2803,12 +2803,11 @@ void FOClient::Net_SendUseSkill( int skill, Item* item )
     Bout << (hash) 0;
 }
 
-void FOClient::Net_SendUseItem( uchar ap, uint item_id, hash item_pid, uchar rate, uchar target_type, uint target_id, hash target_pid, uint param )
+void FOClient::Net_SendUseItem( uchar ap, uint item_id, uchar rate, uchar target_type, uint target_id, hash target_pid, uint param )
 {
     Bout << NETMSG_SEND_USE_ITEM;
     Bout << ap;
     Bout << item_id;
-    Bout << item_pid;
     Bout << rate;
     Bout << target_type;
     Bout << target_id;
@@ -3974,8 +3973,6 @@ void FOClient::Net_OnCritterMoveItem()
         }
 
         cr->EraseAllItems();
-        cr->DefItemSlotHand->SetProto( ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
-        cr->DefItemSlotArmor->SetProto( ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
 
         for( uchar i = 0; i < slots_data_count; i++ )
         {
@@ -6660,14 +6657,6 @@ void FOClient::ChosenChangeSlot()
         AddActionBack( CHOSEN_MOVE_ITEM, Chosen->ItemSlotExt->GetId(), Chosen->ItemSlotExt->GetCount(), SLOT_HAND1 );
     else if( Chosen->ItemSlotMain->GetId() )
         AddActionBack( CHOSEN_MOVE_ITEM, Chosen->ItemSlotMain->GetId(), Chosen->ItemSlotMain->GetCount(), SLOT_HAND2 );
-    else
-    {
-        uchar      tree = Chosen->DefItemSlotHand->Proto->GetWeapon_UnarmedTree() + 1;
-        ProtoItem* unarmed = Chosen->GetUnarmedItem( tree, 0 );
-        if( !unarmed )
-            unarmed = Chosen->GetUnarmedItem( 0, 0 );
-        Chosen->DefItemSlotHand->SetProto( unarmed );
-    }
 }
 
 void FOClient::WaitPing()
@@ -7056,7 +7045,6 @@ label_EndMove:
     case CHOSEN_USE_ITEM:
     {
         uint  item_id = (uint) act.Param[ 0 ];
-        hash  item_pid = (hash) act.Param[ 1 ];
         uchar target_type = (uchar) act.Param[ 2 ];
         uint  target_id = (uint) act.Param[ 3 ];
         uchar rate = (uchar) act.Param[ 4 ];
@@ -7069,15 +7057,6 @@ label_EndMove:
         if( !item )
             break;
         bool is_main_item = ( item == Chosen->ItemSlotMain );
-
-        // Check proto item
-        if( !item_pid )
-            item_pid = item->GetProtoId();
-        ProtoItem* proto_item = ItemMngr.GetProtoItem( item_pid );
-        if( !proto_item )
-            break;
-        if( item->GetProtoId() != item_pid )             // Unarmed proto
-            item->SetProto( proto_item );
 
         // Find target
         CritterCl* target_cr = NULL;
@@ -7271,11 +7250,11 @@ label_EndMove:
         CHECK_NEED_AP( ap_cost );
 
         if( target_item && target_item->IsScenOrGrid() )
-            Net_SendUseItem( ap_cost, item_id, item_pid, rate, target_type, ( target_item->GetHexX() << 16 ) | ( target_item->GetHexY() & 0xFFFF ), target_item->GetProtoId(), param );
+            Net_SendUseItem( ap_cost, item_id, rate, target_type, ( target_item->GetHexX() << 16 ) | ( target_item->GetHexY() & 0xFFFF ), target_item->GetProtoId(), param );
         else
-            Net_SendUseItem( ap_cost, item_id, item_pid, rate, target_type, target_id, 0, param );  // Item or critter
+            Net_SendUseItem( ap_cost, item_id, rate, target_type, target_id, 0, param );  // Item or critter
 
-        int usei = use;                                                                             // Avoid 'warning: comparison is always true due to limited range of data type' for GCC
+        int usei = use;                                                                   // Avoid 'warning: comparison is always true due to limited range of data type' for GCC
         if( usei >= USE_PRIMARY && use <= USE_THIRD )
             Chosen->Action( ACTION_USE_WEAPON, rate, item );
         else if( use == USE_RELOAD )
@@ -7517,42 +7496,30 @@ label_EndMove:
         if( !cr )
             break;
 
-        if( skill == CritterCl::PropertySkillSteal->GetEnumValue() && cr->GetIsNoSteal() )
-            break;
-
-        if( cr != Chosen && HexMngr.IsMapLoaded() )
+        if( cr != Chosen )
         {
-            // Check distantance
+            // Check distance
             uint dist = DistGame( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() );
-            if( skill == CritterCl::PropertySkillLockpick->GetEnumValue() || skill == CritterCl::PropertySkillSteal->GetEnumValue() ||
-                skill == CritterCl::PropertySkillTraps->GetEnumValue() || skill == CritterCl::PropertySkillFirstAid->GetEnumValue() ||
-                skill == CritterCl::PropertySkillDoctor->GetEnumValue() || skill == CritterCl::PropertySkillScience->GetEnumValue() ||
-                skill == CritterCl::PropertySkillRepair->GetEnumValue() )
+            if( dist > Chosen->GetUseDist() + cr->GetMultihex() )
             {
-                if( dist > Chosen->GetUseDist() + cr->GetMultihex() )
-                {
-                    if( IsTurnBased )
-                        break;
-                    bool   is_run = ( GameOpt.AlwaysRun && dist >= GameOpt.AlwaysRunUseDist );
-                    uint   cut_dist = Chosen->GetUseDist() + cr->GetMultihex();
-                    SetAction( CHOSEN_MOVE_TO_CRIT, cr->GetId(), 0, is_run, cut_dist );
-                    ushort hx = cr->GetHexX(), hy = cr->GetHexY();
-                    if( HexMngr.CutPath( Chosen, Chosen->GetHexX(), Chosen->GetHexY(), hx, hy, cut_dist ) )
-                        AddActionBack( act );
-                    return;
-                }
+                if( IsTurnBased )
+                    break;
+                bool   is_run = ( GameOpt.AlwaysRun && dist >= GameOpt.AlwaysRunUseDist );
+                uint   cut_dist = Chosen->GetUseDist() + cr->GetMultihex();
+                SetAction( CHOSEN_MOVE_TO_CRIT, cr->GetId(), 0, is_run, cut_dist );
+                ushort hx = cr->GetHexX(), hy = cr->GetHexY();
+                if( HexMngr.CutPath( Chosen, Chosen->GetHexX(), Chosen->GetHexY(), hx, hy, cut_dist ) )
+                    AddActionBack( act );
+                return;
             }
 
-            if( cr != Chosen )
+            // Refresh orientation
+            CHECK_NEED_AP( Chosen->GetApCostUseSkill() );
+            uchar dir = GetFarDir( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() );
+            if( DistGame( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() ) >= 1 && Chosen->GetDir() != dir )
             {
-                // Refresh orientation
-                CHECK_NEED_AP( Chosen->GetApCostUseSkill() );
-                uchar dir = GetFarDir( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() );
-                if( DistGame( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() ) >= 1 && Chosen->GetDir() != dir )
-                {
-                    Chosen->SetDir( dir );
-                    Net_SendDir();
-                }
+                Chosen->SetDir( dir );
+                Net_SendDir();
             }
         }
 
@@ -7577,7 +7544,7 @@ label_EndMove:
                 break;
             item_action = item;
 
-            if( skill == CritterCl::PropertySkillScience->GetEnumValue() && item->GetIsHolodisk() )
+            if( item->GetIsHolodisk() )
             {
                 ShowScreen( SCREEN__INPUT_BOX );
                 IboxMode = IBOX_MODE_HOLO;
@@ -7698,7 +7665,8 @@ label_EndMove:
         }
 
         uint dist = DistGame( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() );
-        uint talk_distance = cr->GetTalkDist() + Chosen->GetMultihex();
+        uint talk_distance = cr->GetTalkDistance();
+        talk_distance = ( talk_distance ? talk_distance : GameOpt.TalkDistance ) + Chosen->GetMultihex();
         if( dist > talk_distance )
         {
             if( IsTurnBased )
@@ -8887,6 +8855,27 @@ void FOClient::OnSendItemValue( void* obj, Property* prop, void* cur_value, void
     }
 }
 
+void FOClient::OnSetCritterHandsItemProtoId( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    CritterCl* cr = (CritterCl*) obj;
+    hash       value = *(hash*) cur_value;
+
+    ProtoItem* unarmed = ItemMngr.GetProtoItem( value ? value : ITEM_DEF_SLOT );
+    if( !unarmed )
+        unarmed = ItemMngr.GetProtoItem( ITEM_DEF_SLOT );
+    RUNTIME_ASSERT( unarmed );
+    cr->DefItemSlotHand->SetProto( unarmed );
+    cr->DefItemSlotHand->SetMode( 0 );
+}
+
+void FOClient::OnSetCritterHandsItemMode( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    CritterCl* cr = (CritterCl*) obj;
+    uchar      value = *(uchar*) cur_value;
+
+    cr->DefItemSlotHand->SetMode( value );
+}
+
 void FOClient::OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value )
 {
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
@@ -9160,6 +9149,8 @@ bool FOClient::ReloadScripts()
     Globals = new GlobalVars();
     CritterCl::SetPropertyRegistrator( registrators[ 1 ] );
     CritterCl::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
+    CritterCl::PropertiesRegistrator->SetNativeSetCallback( "HandsItemProtoId", OnSetCritterHandsItemProtoId );
+    CritterCl::PropertiesRegistrator->SetNativeSetCallback( "HandsItemMode", OnSetCritterHandsItemMode );
     Item::SetPropertyRegistrator( registrators[ 2 ] );
     Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );

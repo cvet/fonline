@@ -64,14 +64,10 @@ IntSet Critter::RegProperties;
 
 // Properties
 PROPERTIES_IMPL( Critter );
-CLASS_PROPERTY_IMPL( Critter, Strength );
-CLASS_PROPERTY_IMPL( Critter, Perception );
-CLASS_PROPERTY_IMPL( Critter, Agility );
+CLASS_PROPERTY_IMPL( Critter, LookDistance );
 CLASS_PROPERTY_IMPL( Critter, Charisma );
 CLASS_PROPERTY_IMPL( Critter, Intellect );
-CLASS_PROPERTY_IMPL( Critter, Level );
 CLASS_PROPERTY_IMPL( Critter, Experience );
-CLASS_PROPERTY_IMPL( Critter, BonusLook );
 CLASS_PROPERTY_IMPL( Critter, DialogId );
 CLASS_PROPERTY_IMPL( Critter, BagId );
 CLASS_PROPERTY_IMPL( Critter, NpcRole );
@@ -95,17 +91,8 @@ CLASS_PROPERTY_IMPL( Critter, ReplicationTime );
 CLASS_PROPERTY_IMPL( Critter, WalkTime );
 CLASS_PROPERTY_IMPL( Critter, RunTime );
 CLASS_PROPERTY_IMPL( Critter, ScaleFactor );
-CLASS_PROPERTY_IMPL( Critter, SkillUnarmed );
-CLASS_PROPERTY_IMPL( Critter, SkillSneak );
-CLASS_PROPERTY_IMPL( Critter, SkillBarter );
-CLASS_PROPERTY_IMPL( Critter, SkillLockpick );
-CLASS_PROPERTY_IMPL( Critter, SkillSteal );
-CLASS_PROPERTY_IMPL( Critter, SkillTraps );
-CLASS_PROPERTY_IMPL( Critter, SkillFirstAid );
-CLASS_PROPERTY_IMPL( Critter, SkillDoctor );
-CLASS_PROPERTY_IMPL( Critter, SkillScience );
-CLASS_PROPERTY_IMPL( Critter, SkillRepair );
-CLASS_PROPERTY_IMPL( Critter, SkillSpeech );
+CLASS_PROPERTY_IMPL( Critter, SneakCoefficient );
+CLASS_PROPERTY_IMPL( Critter, BarterCoefficient );
 CLASS_PROPERTY_IMPL( Critter, TimeoutBattle );
 CLASS_PROPERTY_IMPL( Critter, TimeoutTransfer );
 CLASS_PROPERTY_IMPL( Critter, TimeoutRemoveFromGame );
@@ -197,6 +184,10 @@ Critter::Critter(): Props( PropertiesRegistrator )
     GroupSelf->Rule = this;
     ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
     ItemSlotArmor = defItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
+    defItemSlotHand->Accessory = ITEM_ACCESSORY_CRITTER;
+    defItemSlotArmor->Accessory = ITEM_ACCESSORY_CRITTER;
+    defItemSlotHand->AccCritter.Slot = SLOT_HAND1;
+    defItemSlotArmor->AccCritter.Slot = SLOT_ARMOR;
     GMapFog.Create( GM__MAXZONEX, GM__MAXZONEY, Data.GlobalMapFog );
 }
 
@@ -236,24 +227,6 @@ void Critter::FullClear()
         ItemMngr.ItemToGarbage( item );
     }
     invItems.clear();
-}
-
-int Critter::GetLook()
-{
-    int look = GameOpt.LookNormal + GetPerception() * 3 + GetBonusLook() + GetMultihex();
-    if( look < (int) GameOpt.LookMinimum )
-        look = GameOpt.LookMinimum;
-    return look;
-}
-
-uint Critter::GetTalkDist( Critter* talker )
-{
-    int dist = GetTalkDistance();
-    if( dist <= 0 )
-        dist = GameOpt.TalkDistance;
-    if( talker )
-        dist += talker->GetMultihex();
-    return dist + GetMultihex();
 }
 
 uint Critter::GetUseApCost( Item* weap, int use )
@@ -479,7 +452,7 @@ void Critter::ProcessVisibleCritters()
 
     // Local map
     int  vis;
-    int  look_base_self = GetLook();
+    int  look_base_self = GetLookDistance();
     int  dir_self = GetDir();
     int  dirs_count = DIRS_COUNT;
     bool is_show_cr_func1 = ( FuncId[ CRITTER_EVENT_SHOW_CRITTER_1 ] > 0 || FuncId[ CRITTER_EVENT_HIDE_CRITTER_1 ] > 0 );
@@ -494,7 +467,7 @@ void Critter::ProcessVisibleCritters()
 
     bool show_cr = ( show_cr1 || show_cr2 || show_cr3 );
     // Sneak self
-    int  sneak_base_self = GetSkillSneak();
+    int  sneak_base_self = GetSneakCoefficient();
     if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_WEIGHT ) )
         sneak_base_self -= GetItemsWeight() / GameOpt.LookWeight;
 
@@ -666,7 +639,7 @@ void Critter::ProcessVisibleCritters()
         }
 
         int look_self = look_base_self;
-        int look_opp = cr->GetLook();
+        int look_opp = cr->GetLookDistance();
 
         // Dir modifier
         if( FLAG( GameOpt.LookChecks, LOOK_CHECK_DIR ) )
@@ -706,7 +679,7 @@ void Critter::ProcessVisibleCritters()
         // Self
         if( cr->GetIsHide() && dist != MAX_INT )
         {
-            int sneak_opp = cr->GetSkillSneak();
+            int sneak_opp = cr->GetSneakCoefficient();
             if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_WEIGHT ) )
                 sneak_opp -= cr->GetItemsWeight() / GameOpt.LookWeight;
             if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR ) )
@@ -891,7 +864,7 @@ void Critter::ProcessVisibleItems()
     if( !map )
         return;
 
-    int     look = GetLook();
+    int     look = GetLookDistance();
     ItemVec items = map->GetItemsNoLock();
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
@@ -1014,7 +987,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
         // Hide modifier
         if( cr->GetIsHide() )
         {
-            int sneak_opp = cr->GetSkillSneak();
+            int sneak_opp = cr->GetSneakCoefficient();
             if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_WEIGHT ) )
                 sneak_opp -= cr->GetItemsWeight() / GameOpt.LookWeight;
             if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR ) )
@@ -1274,22 +1247,6 @@ void Critter::SyncLockItems()
         SYNC_LOCK( *it );
     if( !CompareContainers( inv_items, invItems ) )
         SyncLockItems();
-}
-
-bool Critter::SetDefaultItems( ProtoItem* proto_hand, ProtoItem* proto_armor )
-{
-    if( !proto_hand || !proto_armor )
-        return false;
-
-    defItemSlotHand->SetProto( proto_hand );
-    defItemSlotArmor->SetProto( proto_armor );
-    defItemSlotHand->Accessory = ITEM_ACCESSORY_CRITTER;
-    defItemSlotArmor->Accessory = ITEM_ACCESSORY_CRITTER;
-    defItemSlotHand->AccCritter.Id = GetId();
-    defItemSlotArmor->AccCritter.Id = GetId();
-    defItemSlotHand->AccCritter.Slot = SLOT_HAND1;
-    defItemSlotArmor->AccCritter.Slot = SLOT_ARMOR;
-    return true;
 }
 
 void Critter::AddItem( Item*& item, bool send )
@@ -1823,6 +1780,28 @@ void Critter::TakeDefaultItem( uchar slot )
     default:
         break;
     }
+
+    if( slot == SLOT_HAND1 || slot == SLOT_HAND2 )
+    {
+        hash       hands_pid = GetHandsItemProtoId();
+        ProtoItem* proto_hand = ( hands_pid ? ItemMngr.GetProtoItem( hands_pid ) : NULL );
+        if( !proto_hand )
+            proto_hand = ItemMngr.GetProtoItem( ITEM_DEF_SLOT );
+        RUNTIME_ASSERT( proto_hand );
+
+        defItemSlotHand->SetProto( proto_hand );
+        defItemSlotHand->SetMode( GetHandsItemMode() );
+    }
+    else if( slot == SLOT_ARMOR )
+    {
+        hash       armor_pid = ITEM_DEF_ARMOR;
+        ProtoItem* proto_armor = ( armor_pid ? ItemMngr.GetProtoItem( armor_pid ) : NULL );
+        if( !proto_armor )
+            proto_armor = ItemMngr.GetProtoItem( ITEM_DEF_ARMOR );
+        RUNTIME_ASSERT( proto_armor );
+
+        defItemSlotArmor->SetProto( proto_armor );
+    }
 }
 
 uint Critter::CountItems()
@@ -1831,6 +1810,12 @@ uint Critter::CountItems()
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
         count += ( *it )->GetCount();
     return count;
+}
+
+ItemVec& Critter::GetInventory()
+{
+    SyncLockItems();
+    return invItems;
 }
 
 bool Critter::IsHaveGeckItem()
@@ -4273,8 +4258,10 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
     ushort  barter_k = 0;
     if( transfer_type == TRANSFER_CRIT_BARTER )
     {
-        if( cr_cont->GetSkillBarter() > GetSkillBarter() )
-            barter_k = cr_cont->GetSkillBarter() - GetSkillBarter();
+        int cr_cont_k = cr_cont->GetBarterCoefficient();
+        int k = GetBarterCoefficient();
+        if( cr_cont_k > k )
+            barter_k = cr_cont_k - k;
         barter_k = CLAMP( barter_k, 5, 95 );
         if( cr_cont->GetFreeBarterPlayer() == GetId() )
             barter_k = 0;
@@ -5267,7 +5254,8 @@ void Client::ProcessTalk( bool force )
             map_id = npc->GetMapId();
             hx = npc->GetHexX();
             hy = npc->GetHexY();
-            talk_distance = npc->GetTalkDist( this );
+            talk_distance = npc->GetTalkDistance();
+            talk_distance = ( talk_distance ? talk_distance : GameOpt.TalkDistance ) + GetMultihex();
         }
         else if( Talk.TalkType == TALK_WITH_HEX )
         {

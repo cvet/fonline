@@ -15,12 +15,13 @@ public:
     // Properties
     PROPERTIES_HEADER();
     // Core
+    CLASS_PROPERTY( uint, LookDistance );
     CLASS_PROPERTY( ScriptArray *, Anim3dLayer );
     CLASS_PROPERTY( hash, DialogId );
     CLASS_PROPERTY( uint, FollowCrit );
     CLASS_PROPERTY( bool, IsNoTalk );
     CLASS_PROPERTY( bool, IsNoBarter );
-    CLASS_PROPERTY( int, TalkDistance );
+    CLASS_PROPERTY( uint, TalkDistance );
     CLASS_PROPERTY( int, CurrentHp );
     CLASS_PROPERTY( int, CurrentAp );
     CLASS_PROPERTY( int, ActionPoints );
@@ -35,17 +36,11 @@ public:
     CLASS_PROPERTY( uint, TimeoutTransfer );
     CLASS_PROPERTY( uint, TimeoutRemoveFromGame );
     CLASS_PROPERTY( bool, IsNoLoot );
-    CLASS_PROPERTY( bool, IsNoSteal );
     CLASS_PROPERTY( bool, IsHide );
     CLASS_PROPERTY( bool, IsEndCombat );
-    // Exclude
     CLASS_PROPERTY( hash, HandsItemProtoId );
     CLASS_PROPERTY( uchar, HandsItemMode );
-    CLASS_PROPERTY( int, Strength );            // Unarmed item selection
-    CLASS_PROPERTY( int, Agility );             // Unarmed item selection
-    CLASS_PROPERTY( int, Level );               // Unarmed item selection
-    CLASS_PROPERTY( int, Perception );          // Look distance generation
-    CLASS_PROPERTY( int, BonusLook );           // Look distance generation
+    // Exclude
     CLASS_PROPERTY( hash, BaseCrType );         // Mapper character base type
     CLASS_PROPERTY( int, Experience );          // Craft
     CLASS_PROPERTY( uint, TimeoutSkScience );   // Craft
@@ -59,19 +54,8 @@ public:
     CLASS_PROPERTY( int, KarmaVoting );         // Migrate karma voting to scripts
     CLASS_PROPERTY( uint, TimeoutKarmaVoting ); // Migrate karma voting to scripts
     CLASS_PROPERTY( int, CarryWeight );         // Overweight checking
-    CLASS_PROPERTY( int, SkillUnarmed );
-    CLASS_PROPERTY( int, SkillSneak );
-    CLASS_PROPERTY( int, SkillBarter );
-    CLASS_PROPERTY( int, SkillLockpick );
-    CLASS_PROPERTY( int, SkillSteal );
-    CLASS_PROPERTY( int, SkillTraps );
-    CLASS_PROPERTY( int, SkillFirstAid );
-    CLASS_PROPERTY( int, SkillDoctor );
-    CLASS_PROPERTY( int, SkillScience );
-    CLASS_PROPERTY( int, SkillRepair );
-    CLASS_PROPERTY( int, SkillSpeech );
-    CLASS_PROPERTY( bool, IsUnlimitedAmmo ); // Play shoot sound
-    CLASS_PROPERTY( bool, IsNoFlatten );     // Draw order (migrate to proto? to critter type option?)
+    CLASS_PROPERTY( bool, IsUnlimitedAmmo );    // Play shoot sound
+    CLASS_PROPERTY( bool, IsNoFlatten );        // Draw order (migrate to proto? to critter type option?)
     CLASS_PROPERTY( bool, IsDamagedEye );
     CLASS_PROPERTY( bool, IsDamagedRightArm );
     CLASS_PROPERTY( bool, IsDamagedLeftArm );
@@ -156,8 +140,6 @@ public:
     bool        IsTurnBased();
     bool        CheckFind( int find_type );
 
-    uint GetLook();
-    uint GetTalkDist();
     uint GetAttackDist();
     uint GetUseDist();
     uint GetMultihex();
@@ -206,12 +188,11 @@ public:
     bool       IsItemAim( uchar num_slot );
     uchar      GetUse()      { return ItemSlotMain->GetMode() & 0xF; }
     uchar      GetFullRate() { return ItemSlotMain->GetMode(); }
-    bool       NextRateItem( bool prev );
+    void       NextRateItem( bool prev );
     uchar      GetAim() { return ( ItemSlotMain->GetMode() >> 4 ) & 0xF; }
     bool       IsAim()  { return GetAim() > 0; }
     void       SetAim( uchar hit_location );
     uint       GetUseApCost( Item* item, uchar rate );
-    ProtoItem* GetUnarmedItem( uchar tree, uchar priority );
     ProtoItem* GetProtoMain() { return ItemSlotMain->Proto; }
     ProtoItem* GetProtoExt()  { return ItemSlotExt->Proto; }
     ProtoItem* GetProtoArm()  { return ItemSlotArmor->Proto; }

@@ -53,20 +53,8 @@ bool FOServer::TransferAllItems()
 {
     WriteLog( "Transfer all items to npc, maps and containers...\n" );
 
-    // Set default items
-    CrMap critters = CrMngr.GetCrittersNoLock();
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-    {
-        Critter* cr = ( *it ).second;
-
-        if( !cr->SetDefaultItems( ItemMngr.GetProtoItem( ITEM_DEF_SLOT ), ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) ) )
-        {
-            WriteLog( "Unable to set default game_items to critter<%s>.\n", cr->GetInfo() );
-            return false;
-        }
-    }
-
     // Transfer items
+    CrMap   critters = CrMngr.GetCrittersNoLock();
     ItemVec bad_items;
     ItemVec game_items;
     ItemMngr.GetGameItems( game_items );

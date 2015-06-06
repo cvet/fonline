@@ -4115,14 +4115,16 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             CritterCl* cr = new CritterCl();
             cr->Props = *proto->Props;
             cr->SetCrType( proto->GetCrType() );
-            cr->DefItemSlotHand->SetProto( pitem_main ? pitem_main : ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
-            cr->DefItemSlotArmor->SetProto( pitem_armor ? pitem_armor : ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
             cr->HexX = o->MapX;
             cr->HexY = o->MapY;
             cr->SetDir( (uchar) o->MCritter.Dir );
             cr->Id = ++cur_id;
             cr->Pid = o->ProtoId;
             cr->Init();
+            if( pitem_main )
+                cr->DefItemSlotHand->SetProto( pitem_main );
+            if( pitem_armor )
+                cr->DefItemSlotArmor->SetProto( pitem_armor );
             AffectCritter( o, cr );
             AddCrit( cr );
             o->RunTime.MapObjId = cur_id;

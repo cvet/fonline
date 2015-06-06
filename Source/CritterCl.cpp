@@ -13,15 +13,11 @@ bool   CritterCl::SlotEnabled[ 0x100 ];
 IntSet CritterCl::RegProperties;
 
 PROPERTIES_IMPL( CritterCl );
+CLASS_PROPERTY_IMPL( CritterCl, LookDistance );
 CLASS_PROPERTY_IMPL( CritterCl, Anim3dLayer );
-CLASS_PROPERTY_IMPL( CritterCl, Strength );
-CLASS_PROPERTY_IMPL( CritterCl, Perception );
-CLASS_PROPERTY_IMPL( CritterCl, Agility );
 CLASS_PROPERTY_IMPL( CritterCl, BaseCrType );
 CLASS_PROPERTY_IMPL( CritterCl, Gender );
-CLASS_PROPERTY_IMPL( CritterCl, Level );
 CLASS_PROPERTY_IMPL( CritterCl, Experience );
-CLASS_PROPERTY_IMPL( CritterCl, BonusLook );
 CLASS_PROPERTY_IMPL( CritterCl, DialogId );
 CLASS_PROPERTY_IMPL( CritterCl, FollowCrit );
 CLASS_PROPERTY_IMPL( CritterCl, HandsItemProtoId );
@@ -40,17 +36,6 @@ CLASS_PROPERTY_IMPL( CritterCl, ReplicationCount );
 CLASS_PROPERTY_IMPL( CritterCl, WalkTime );
 CLASS_PROPERTY_IMPL( CritterCl, RunTime );
 CLASS_PROPERTY_IMPL( CritterCl, ScaleFactor );
-CLASS_PROPERTY_IMPL( CritterCl, SkillUnarmed );
-CLASS_PROPERTY_IMPL( CritterCl, SkillSneak );
-CLASS_PROPERTY_IMPL( CritterCl, SkillBarter );
-CLASS_PROPERTY_IMPL( CritterCl, SkillLockpick );
-CLASS_PROPERTY_IMPL( CritterCl, SkillSteal );
-CLASS_PROPERTY_IMPL( CritterCl, SkillTraps );
-CLASS_PROPERTY_IMPL( CritterCl, SkillFirstAid );
-CLASS_PROPERTY_IMPL( CritterCl, SkillDoctor );
-CLASS_PROPERTY_IMPL( CritterCl, SkillScience );
-CLASS_PROPERTY_IMPL( CritterCl, SkillRepair );
-CLASS_PROPERTY_IMPL( CritterCl, SkillSpeech );
 CLASS_PROPERTY_IMPL( CritterCl, TimeoutBattle );
 CLASS_PROPERTY_IMPL( CritterCl, TimeoutTransfer );
 CLASS_PROPERTY_IMPL( CritterCl, TimeoutRemoveFromGame );
@@ -60,7 +45,6 @@ CLASS_PROPERTY_IMPL( CritterCl, TimeoutSkRepair );
 CLASS_PROPERTY_IMPL( CritterCl, IsUnlimitedAmmo );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoPush );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoLoot );
-CLASS_PROPERTY_IMPL( CritterCl, IsNoSteal );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoWalk );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoRun );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoTalk );
@@ -124,6 +108,10 @@ CritterCl::CritterCl(): Props( PropertiesRegistrator )
     Avatar = ScriptString::Create();
     ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
     ItemSlotArmor = DefItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
+    DefItemSlotHand->Accessory = ITEM_ACCESSORY_CRITTER;
+    DefItemSlotArmor->Accessory = ITEM_ACCESSORY_CRITTER;
+    DefItemSlotHand->AccCritter.Slot = SLOT_HAND1;
+    DefItemSlotArmor->AccCritter.Slot = SLOT_ARMOR;
     tickFidget = Timer::GameTick() + Random( GameOpt.CritterFidgetTime, GameOpt.CritterFidgetTime * 2 );
     memzero( &stayAnim, sizeof( stayAnim ) );
     DrawEffect = Effect::Critter;
@@ -142,6 +130,12 @@ CritterCl::~CritterCl()
 
 void CritterCl::Init()
 {
+    ProtoItem* unarmed = ItemMngr.GetProtoItem( GetHandsItemProtoId() );
+    if( unarmed )
+    {
+        ItemSlotMain->SetProto( unarmed );
+        ItemSlotMain->SetMode( GetHandsItemMode() );
+    }
     textOnHeadColor = COLOR_CRITTER_NAME;
     AnimateStay();
     SpriteInfo* si = SprMngr.GetSpriteInfo( SprId );
@@ -566,22 +560,6 @@ bool CritterCl::CheckFind( int find_type )
            ( IsDead() && FLAG( find_type, FIND_DEAD ) );
 }
 
-uint CritterCl::GetLook()
-{
-    int look = GameOpt.LookNormal + GetPerception() * 3 + GetBonusLook() + GetMultihex();
-    if( look < (int) GameOpt.LookMinimum )
-        look = GameOpt.LookMinimum;
-    return look;
-}
-
-uint CritterCl::GetTalkDist()
-{
-    int dist = GetTalkDistance();
-    if( dist <= 0 )
-        dist = GameOpt.TalkDistance;
-    return dist + GetMultihex();
-}
-
 uint CritterCl::GetUseApCost( Item* item, uchar rate )
 {
     #ifdef FONLINE_CLIENT
@@ -712,9 +690,8 @@ void CritterCl::DrawStay( Rect r )
     }
 }
 
-bool CritterCl::NextRateItem( bool prev )
+void CritterCl::NextRateItem( bool prev )
 {
-    bool  result = false;
     uchar old_rate = ItemSlotMain->GetMode();
     if( !ItemSlotMain->IsWeapon() )
     {
@@ -728,85 +705,7 @@ bool CritterCl::NextRateItem( bool prev )
         // Unarmed
         if( !ItemSlotMain->GetId() )
         {
-            ProtoItem* old_unarmed = ItemSlotMain->Proto;
-            ProtoItem* unarmed = ItemSlotMain->Proto;
-            uchar      tree = ItemSlotMain->Proto->GetWeapon_UnarmedTree();
-            uchar      priority = ItemSlotMain->Proto->GetWeapon_UnarmedPriority();
-            while( true )
-            {
-                if( prev )
-                {
-                    if( IsItemAim( SLOT_HAND1 ) && IsAim() )
-                    {
-                        SetAim( HIT_LOCATION_NONE );
-                        break;
-                    }
-                    if( !priority )
-                    {
-                        // Find prev tree
-                        if( tree )
-                        {
-                            tree--;
-                        }
-                        else
-                        {
-                            // Find last tree
-                            for( int i = 0; i < 200; i++ )
-                            {
-                                ProtoItem* ua = GetUnarmedItem( i, 0 );
-                                if( ua )
-                                    unarmed = ua;
-                                else
-                                    break;
-                            }
-                            tree = unarmed->GetWeapon_UnarmedTree();
-                        }
-
-                        // Find last priority
-                        for( int i = 0; i < 200; i++ )
-                        {
-                            ProtoItem* ua = GetUnarmedItem( tree, i );
-                            if( ua )
-                                unarmed = ua;
-                            else
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        priority--;
-                        unarmed = GetUnarmedItem( tree, priority );
-                    }
-                    ItemSlotMain->SetProto( unarmed );
-                    if( IsItemAim( SLOT_HAND1 ) && !GetIsNoAim() && CritType::IsCanAim( GetCrType() ) )
-                    {
-                        SetAim( HIT_LOCATION_TORSO );
-                        break;
-                    }
-                }
-                else
-                {
-                    if( IsItemAim( SLOT_HAND1 ) && !IsAim() && !GetIsNoAim() && CritType::IsCanAim( GetCrType() ) )
-                    {
-                        SetAim( HIT_LOCATION_TORSO );
-                        break;
-                    }
-                    priority++;
-                    unarmed = GetUnarmedItem( tree, priority );
-                    if( !unarmed )
-                    {
-                        // Find next tree
-                        tree++;
-                        unarmed = GetUnarmedItem( tree, 0 );
-                        if( !unarmed )
-                            unarmed = GetUnarmedItem( 0, 0 );
-                    }
-                    ItemSlotMain->SetProto( unarmed );
-                    SetAim( HIT_LOCATION_NONE );
-                }
-                break;
-            }
-            result = ( old_unarmed != unarmed );
+            RUNTIME_ASSERT( !"Unarmed weapon must handling in scripts." );
         }
         // Armed
         else
@@ -871,7 +770,6 @@ bool CritterCl::NextRateItem( bool prev )
             }
         }
     }
-    return ItemSlotMain->GetMode() != old_rate || result;
 }
 
 void CritterCl::SetAim( uchar hit_location )
@@ -881,28 +779,6 @@ void CritterCl::SetAim( uchar hit_location )
     if( IsItemAim( SLOT_HAND1 ) )
         SETFLAG( mode, hit_location << 4 );
     ItemSlotMain->SetWeaponMode( mode );
-}
-
-ProtoItem* CritterCl::GetUnarmedItem( uchar tree, uchar priority )
-{
-    ProtoItem* best_unarmed = NULL;
-    for( int i = 0; i < 100; i++ )
-    {
-        char       item_name[ MAX_FOTEXT ];
-        Str::Format( item_name, "internal_%d", i );
-        hash       pid = Str::GetHash( item_name );
-        ProtoItem* unarmed = ItemMngr.GetProtoItem( pid );
-        if( !unarmed || !unarmed->IsWeapon() || !unarmed->GetWeapon_IsUnarmed() )
-            continue;
-        if( unarmed->GetWeapon_UnarmedTree() != tree || unarmed->GetWeapon_UnarmedPriority() != priority )
-            continue;
-        if( GetStrength() < unarmed->GetWeapon_MinStrength() || GetAgility() < unarmed->GetWeapon_UnarmedMinAgility() )
-            break;
-        if( GetLevel() < unarmed->GetWeapon_UnarmedMinLevel() || GetSkillUnarmed() < unarmed->GetWeapon_UnarmedMinUnarmed() )
-            break;
-        best_unarmed = unarmed;
-    }
-    return best_unarmed;
 }
 
 Item* CritterCl::GetAmmoAvialble( Item* weap )

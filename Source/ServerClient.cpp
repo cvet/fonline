@@ -110,7 +110,7 @@ void FOServer::ProcessCritter( Critter* cr )
         if( tick >= cl->CacheValuesNextTick )
         {
             cl->IntellectCacheValue = ( tick & 0xFFF0 ) | cl->GetIntellect();
-            cl->LookCacheValue = cl->GetLook();
+            cl->LookCacheValue = cl->GetLookDistance();
             cl->CacheValuesNextTick = tick + 3000;
         }
     }
@@ -1688,14 +1688,6 @@ void FOServer::Process_CreateClient( Client* cl )
     cl->SetConnectionPort( arr_reg_port );
     SAFEREL( arr_reg_port );
 
-    if( !cl->SetDefaultItems( ItemMngr.GetProtoItem( ITEM_DEF_SLOT ), ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) ) )
-    {
-        WriteLogF( _FUNC_, " - Error set default items.\n" );
-        cl->Send_TextMsg( cl, STR_NET_SETPROTO_ERR, SAY_NETMSG, TEXTMSG_GAME );
-        cl->Disconnect();
-        return;
-    }
-
     // Assign base access
     cl->Access = ACCESS_DEFAULT;
 
@@ -2273,17 +2265,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 cl->CrTimeEvents.resize( te_count );
                 memcpy( &cl->CrTimeEvents[ 0 ], &cl_saved->CrTimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
             }
-        }
-
-        // Unarmed
-        if( !cl->SetDefaultItems( ItemMngr.GetProtoItem( ITEM_DEF_SLOT ), ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) ) )
-        {
-            WriteLogF( _FUNC_, " - Error set default items, client<%s>.\n", cl->GetInfo() );
-            cl->Send_TextMsg( cl, STR_NET_SETPROTO_ERR, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            cl->Data.Id = 0;
-            cl->SetMaps( 0, 0 );
-            return;
         }
 
         // Find items
@@ -2875,7 +2856,6 @@ void FOServer::Process_ChangeItem( Client* cl )
 void FOServer::Process_UseItem( Client* cl )
 {
     uint  item_id;
-    hash  item_pid;
     uchar rate;
     uchar target_type;
     uint  target_id;
@@ -2883,7 +2863,6 @@ void FOServer::Process_UseItem( Client* cl )
     uint  param;
 
     cl->Bin >> item_id;
-    cl->Bin >> item_pid;
     cl->Bin >> rate;
     cl->Bin >> target_type;
     cl->Bin >> target_id;
@@ -2913,21 +2892,6 @@ void FOServer::Process_UseItem( Client* cl )
                 break;
             if( item != cl->ItemSlotMain )
                 break;
-
-            // Unarmed
-            if( !item->GetId() )
-            {
-                if( use != USE_PRIMARY )
-                    break;
-                ProtoItem* unarmed = ItemMngr.GetProtoItem( item_pid );
-                if( !unarmed || !unarmed->IsWeapon() || !unarmed->GetWeapon_IsUnarmed() )
-                    break;
-                if( cl->GetStrength() < unarmed->GetWeapon_MinStrength() || cl->GetAgility() < unarmed->GetWeapon_UnarmedMinAgility() )
-                    break;
-                if( cl->GetLevel() < unarmed->GetWeapon_UnarmedMinLevel() || cl->GetSkillUnarmed() < unarmed->GetWeapon_UnarmedMinUnarmed() )
-                    break;
-                cl->ItemSlotMain->SetProto( unarmed );
-            }
 
             Act_Attack( cl, rate, target_id );
             break;
@@ -4581,7 +4545,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
         cl->Data.Dir = dir;
         cl->ViewMapId = map->GetId();
         cl->ViewMapPid = map->GetPid();
-        cl->ViewMapLook = cl->GetLook();
+        cl->ViewMapLook = cl->GetLookDistance();
         cl->ViewMapHx = hx;
         cl->ViewMapHy = hy;
         cl->ViewMapDir = dir;
@@ -4787,4 +4751,25 @@ void FOServer::OnSendLocationValue( void* obj, Property* prop, void* cur_value, 
             map->SendProperty( NetProperty::Location, prop, loc );
         }
     }
+}
+
+void FOServer::OnSetCritterHandsItemProtoId( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    Critter*   cr = (Critter*) obj;
+    hash       value = *(hash*) cur_value;
+
+    ProtoItem* unarmed = ItemMngr.GetProtoItem( value ? value : ITEM_DEF_SLOT );
+    if( !unarmed )
+        unarmed = ItemMngr.GetProtoItem( ITEM_DEF_SLOT );
+    RUNTIME_ASSERT( unarmed );
+    cr->GetHandsItem()->SetProto( unarmed );
+    cr->GetHandsItem()->SetMode( 0 );
+}
+
+void FOServer::OnSetCritterHandsItemMode( void* obj, Property* prop, void* cur_value, void* old_value )
+{
+    Critter* cr = (Critter*) obj;
+    uchar    value = *(uchar*) cur_value;
+
+    cr->GetHandsItem()->SetMode( value );
 }

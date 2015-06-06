@@ -102,17 +102,17 @@ extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 #define ITEM_DATA_MASK_MAX            ( 5 )
 
 // Special item pids
-#define HASH_DECL( var, name )        extern hash var
+#define HASH_DECL( var )              extern hash var
 #define HASH_IMPL( var, name )        hash var = Str::GetHash( name )
-HASH_DECL( ITEM_DEF_SLOT, "internal_0" );
-HASH_DECL( ITEM_DEF_ARMOR, "internal_100" );
-HASH_DECL( SP_SCEN_IBLOCK, "minimap_invisible_block" );
-HASH_DECL( SP_SCEN_TRIGGER, "trigger" );
-HASH_DECL( SP_WALL_BLOCK_LIGHT, "block_light" );
-HASH_DECL( SP_WALL_BLOCK, "block" );
-HASH_DECL( SP_GRID_EXITGRID, "exit_grid" );
-HASH_DECL( SP_GRID_ENTIRE, "entrance" );
-HASH_DECL( SP_MISC_SCRBLOCK, "scroll_block" );
+HASH_DECL( ITEM_DEF_SLOT );
+HASH_DECL( ITEM_DEF_ARMOR );
+HASH_DECL( SP_SCEN_IBLOCK );
+HASH_DECL( SP_SCEN_TRIGGER );
+HASH_DECL( SP_WALL_BLOCK_LIGHT );
+HASH_DECL( SP_WALL_BLOCK );
+HASH_DECL( SP_GRID_EXITGRID );
+HASH_DECL( SP_GRID_ENTIRE );
+HASH_DECL( SP_MISC_SCRBLOCK );
 
 /************************************************************************/
 /* ProtoItem                                                            */
@@ -168,8 +168,6 @@ public:
     CLASS_PROPERTY( ScriptString*, ChildLines_3 );
     CLASS_PROPERTY( ScriptString*, ChildLines_4 );
     CLASS_PROPERTY( bool, Weapon_IsUnarmed );
-    CLASS_PROPERTY( int, Weapon_UnarmedTree );
-    CLASS_PROPERTY( int, Weapon_UnarmedPriority );
     CLASS_PROPERTY( int, Weapon_UnarmedMinAgility );
     CLASS_PROPERTY( int, Weapon_UnarmedMinUnarmed );
     CLASS_PROPERTY( int, Weapon_UnarmedMinLevel );

@@ -210,6 +210,10 @@ public:
     static void OnSendMapValue( void* obj, Property* prop, void* cur_value, void* old_value );
     static void OnSendLocationValue( void* obj, Property* prop, void* cur_value, void* old_value );
 
+    // Critters
+    static void OnSetCritterHandsItemProtoId( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSetCritterHandsItemMode( void* obj, Property* prop, void* cur_value, void* old_value );
+
     // Items
     static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, bool check_blocks = true );
     static bool  TransferAllItems();

@@ -461,13 +461,6 @@ Npc* CritterManager::CreateNpc( hash proto_id, bool copy_data )
     }
 
     Npc* npc = new Npc();
-    if( !npc->SetDefaultItems( ItemMngr.GetProtoItem( ITEM_DEF_SLOT ), ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) ) )
-    {
-        delete npc;
-        WriteLogF( _FUNC_, " - Can't set default items, critter proto<%s>.\n", HASH_STR( proto_id ) );
-        return NULL;
-    }
-
     if( copy_data )
         npc->Props = *proto->Props;
     npc->Data.ProtoId = proto_id;

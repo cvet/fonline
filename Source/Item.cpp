@@ -8,8 +8,8 @@
 # include "AI.h"
 #endif
 
-HASH_IMPL( ITEM_DEF_SLOT, "internal_0" );
-HASH_IMPL( ITEM_DEF_ARMOR, "internal_100" );
+HASH_IMPL( ITEM_DEF_SLOT, "default_weapon" );
+HASH_IMPL( ITEM_DEF_ARMOR, "default_armor" );
 HASH_IMPL( SP_SCEN_IBLOCK, "minimap_invisible_block" );
 HASH_IMPL( SP_SCEN_TRIGGER, "trigger" );
 HASH_IMPL( SP_WALL_BLOCK_LIGHT, "block_light" );
@@ -76,8 +76,6 @@ CLASS_PROPERTY_IMPL( ProtoItem, ChildLines_2 );
 CLASS_PROPERTY_IMPL( ProtoItem, ChildLines_3 );
 CLASS_PROPERTY_IMPL( ProtoItem, ChildLines_4 );
 CLASS_PROPERTY_IMPL( ProtoItem, Weapon_IsUnarmed );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_UnarmedTree );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_UnarmedPriority );
 CLASS_PROPERTY_IMPL( ProtoItem, Weapon_UnarmedMinAgility );
 CLASS_PROPERTY_IMPL( ProtoItem, Weapon_UnarmedMinUnarmed );
 CLASS_PROPERTY_IMPL( ProtoItem, Weapon_UnarmedMinLevel );
@@ -247,7 +245,7 @@ Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator )
 
     Id = 0;
     Proto = NULL;
-    Accessory = 0;
+    Accessory = ITEM_ACCESSORY_NONE;
     ViewPlaceOnMap = false;
     IsDestroyed = false;
     RefCounter = 1;
@@ -273,8 +271,10 @@ Item::~Item()
 
 void Item::SetProto( ProtoItem* proto )
 {
+    if( proto == Proto )
+        return;
+
     Proto = proto;
-    Accessory = ITEM_ACCESSORY_NONE;
     Props = Proto->ItemProps;
 
     switch( GetType() )

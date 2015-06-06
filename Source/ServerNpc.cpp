@@ -509,7 +509,7 @@ void FOServer::ProcessAI( Npc* npc )
                 if( unarmed && unarmed->GetWeapon_IsUnarmed() )
                 {
                     SETFLAG( way, 0x000004 );
-                    Item* def_item_main = npc->GetDefaultItemSlotMain();
+                    Item* def_item_main = npc->GetHandsItem();
                     if( def_item_main->Proto != unarmed )
                         def_item_main->SetProto( unarmed );
                     weap = def_item_main;
@@ -587,7 +587,7 @@ void FOServer::ProcessAI( Npc* npc )
 
             if( max_dist <= 0 )
             {
-                uint look = npc->GetLook();
+                uint look = npc->GetLookDistance();
                 max_dist = npc->GetAttackDist( weap, use );
                 if( max_dist > look )
                     max_dist = look;
@@ -757,7 +757,7 @@ void FOServer::ProcessAI( Npc* npc )
                 break;
             }
 
-            AI_Move( npc, plane->Attack.LastHexX, plane->Attack.LastHexY, plane->Attack.IsRun, 1 + npc->GetMultihex(), npc->GetLook() / 2 );
+            AI_Move( npc, plane->Attack.LastHexX, plane->Attack.LastHexY, plane->Attack.IsRun, 1 + npc->GetMultihex(), npc->GetLookDistance() / 2 );
             plane->Attack.LastHexX = 0;
             plane->Attack.LastHexY = 0;
         }
@@ -1515,8 +1515,9 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
                 return;
             }
 
-            uint talk_dist = npc->GetTalkDist( cl );
-            if( !CheckDist( cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), talk_dist ) )
+            uint talk_distance = npc->GetTalkDistance();
+            talk_distance = ( talk_distance ? talk_distance : GameOpt.TalkDistance ) + cl->GetMultihex();
+            if( !CheckDist( cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), talk_distance ) )
             {
                 cl->Send_XY( cl );
                 cl->Send_XY( npc );
@@ -1545,7 +1546,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
             trace.BeginHy = cl->GetHexY();
             trace.EndHx = npc->GetHexX();
             trace.EndHy = npc->GetHexY();
-            trace.Dist = talk_dist;
+            trace.Dist = talk_distance;
             trace.FindCr = npc;
             MapMngr.TraceBullet( trace );
             if( !trace.IsCritterFounded )
@@ -1672,7 +1673,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
     cl->Talk.DialogPackId = dlg_pack_id;
     cl->Talk.LastDialogId = go_dialog;
     cl->Talk.StartTick = Timer::GameTick();
-    cl->Talk.TalkTime = MAX( cl->GetSkillSpeech() * 1000, (int) GameOpt.DlgTalkMinTime );
+    cl->Talk.TalkTime = GameOpt.DlgTalkMinTime;
     cl->Talk.Barter = false;
     cl->Talk.IgnoreDistance = ignore_distance;
 
@@ -1908,7 +1909,7 @@ label_Barter:
 
             cl->Talk.Barter = true;
             cl->Talk.StartTick = Timer::GameTick();
-            cl->Talk.TalkTime = MAX( cl->GetSkillBarter() * 1000, (int) GameOpt.DlgBarterMinTime );
+            cl->Talk.TalkTime = GameOpt.DlgBarterMinTime;
             cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, true );
             return;
         case -2:
@@ -1998,7 +1999,7 @@ label_Barter:
     }
 
     cl->Talk.StartTick = Timer::GameTick();
-    cl->Talk.TalkTime = MAX( cl->GetSkillSpeech() * 1000, (int) GameOpt.DlgTalkMinTime );
+    cl->Talk.TalkTime = GameOpt.DlgTalkMinTime;
     cl->Send_Talk();
 }
 
@@ -2096,7 +2097,9 @@ void FOServer::Process_Barter( Client* cl )
         return;
     }
 
-    if( !CheckDist( cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), npc->GetTalkDist( cl ) ) )
+    uint talk_distance = npc->GetTalkDistance();
+    talk_distance = ( talk_distance ? talk_distance : GameOpt.TalkDistance ) + cl->GetMultihex();
+    if( !CheckDist( cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), talk_distance ) )
     {
         WriteLogF( _FUNC_, " - Wrong distance, client<%s>, npc<%s>.\n", cl->GetInfo(), npc->GetInfo() );
         cl->Send_XY( cl );
@@ -2113,7 +2116,7 @@ void FOServer::Process_Barter( Client* cl )
     }
 
     // Check cost
-    int     barter_k = npc->GetSkillBarter() - cl->GetSkillBarter();
+    int     barter_k = npc->GetBarterCoefficient() - cl->GetBarterCoefficient();
     barter_k = CLAMP( barter_k, 5, 95 );
     int     sale_cost = 0;
     int     buy_cost = 0;
@@ -2307,7 +2310,7 @@ void FOServer::Process_Barter( Client* cl )
     }
 
     cl->Talk.StartTick = Timer::GameTick();
-    cl->Talk.TalkTime = MAX( cl->GetSkillBarter() * 1000, (int) GameOpt.DlgBarterMinTime );
+    cl->Talk.TalkTime = GameOpt.DlgBarterMinTime;
     if( !is_free )
         cl->Send_TextMsg( cl, STR_BARTER_GOOD_OFFER, SAY_DIALOG, TEXTMSG_GAME );
     cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, false );

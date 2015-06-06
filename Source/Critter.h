@@ -104,13 +104,13 @@ public:
     PROPERTIES_HEADER();
     // Core
     // Check properties in CritData
-    // CLASS_PROPERTY( int, LookDistance );
+    CLASS_PROPERTY( uint, LookDistance );
     CLASS_PROPERTY( uint, FollowCrit );       // Rename to FollowCritterId
     CLASS_PROPERTY( hash, DialogId );
     CLASS_PROPERTY( bool, IsNoTalk );
     CLASS_PROPERTY( bool, IsNoBarter );
     CLASS_PROPERTY( int, MaxTalkers );   // Callback on begin dialog?
-    CLASS_PROPERTY( int, TalkDistance );
+    CLASS_PROPERTY( uint, TalkDistance );
     CLASS_PROPERTY( int, CurrentHp );    // CurHp, CurAp, CurMoveAp or MaximumHp, MaximumAp, MaximumMoveAp?
     // CLASS_PROPERTY( int, MaxHp ); Need?
     CLASS_PROPERTY( int, CurrentAp );
@@ -135,6 +135,8 @@ public:
     CLASS_PROPERTY( uchar, HomeDir );
     CLASS_PROPERTY( bool, IsHide );
     CLASS_PROPERTY( bool, IsEndCombat );           // ?
+    CLASS_PROPERTY( hash, HandsItemProtoId );
+    CLASS_PROPERTY( uchar, HandsItemMode );
     CLASS_PROPERTY( ScriptArray *, KnownLocations );
     CLASS_PROPERTY( ScriptArray *, ConnectionIp );
     CLASS_PROPERTY( ScriptArray *, ConnectionPort );
@@ -148,14 +150,9 @@ public:
     CLASS_PROPERTY( ScriptArray *, InternalBagItemCount );
     CLASS_PROPERTY( ScriptArray *, ExternalBagCurrentSet );
     CLASS_PROPERTY( ScriptArray *, FavoriteItemPid );
+    CLASS_PROPERTY( int, SneakCoefficient );
+    CLASS_PROPERTY( int, BarterCoefficient );
     // Exclude
-    CLASS_PROPERTY( hash, HandsItemProtoId );   // Add setting proto and mode for every slot? Or - add default hidden item for unarmed attacks?
-    CLASS_PROPERTY( uchar, HandsItemMode );
-    CLASS_PROPERTY( int, Strength );            // Unarmed item selection
-    CLASS_PROPERTY( int, Agility );             // Unarmed item selection
-    CLASS_PROPERTY( int, Level );               // Unarmed item selection
-    CLASS_PROPERTY( int, Perception );          // Look distance generation
-    CLASS_PROPERTY( int, BonusLook );           // Look distance generation
     CLASS_PROPERTY( int, Charisma );            // Used in check next rule on global map
     CLASS_PROPERTY( int, Intellect );           // Intellect worlds system
     CLASS_PROPERTY( int, ReplicationTime );     // Used in map dead npc generation
@@ -173,25 +170,14 @@ public:
     CLASS_PROPERTY( int, CarryWeight );         // Overweight checking
     CLASS_PROPERTY( int, TurnBasedAc );         // Turn based
     CLASS_PROPERTY( char, DefaultCombat );      // Just exclude
-    CLASS_PROPERTY( int, SkillUnarmed );
-    CLASS_PROPERTY( int, SkillSneak );
-    CLASS_PROPERTY( int, SkillBarter );
-    CLASS_PROPERTY( int, SkillLockpick );
-    CLASS_PROPERTY( int, SkillSteal );
-    CLASS_PROPERTY( int, SkillTraps );
-    CLASS_PROPERTY( int, SkillFirstAid );
-    CLASS_PROPERTY( int, SkillDoctor );
-    CLASS_PROPERTY( int, SkillScience );
-    CLASS_PROPERTY( int, SkillRepair );
-    CLASS_PROPERTY( int, SkillSpeech );
     // CLASS_PROPERTY( bool, IsInvulnerable ); // Resolve in scripts
-    CLASS_PROPERTY( bool, IsUnlimitedAmmo );  // AI, check shoot possibility
-    CLASS_PROPERTY( bool, IsNoUnarmed );      // AI
-    CLASS_PROPERTY( bool, IsNoFavoriteItem ); // AI
-    CLASS_PROPERTY( bool, IsNoPush );         // Can puck checks
-    CLASS_PROPERTY( bool, IsNoEnemyStack );   // Migrate enemy stack to scripts
-    CLASS_PROPERTY( bool, IsNoFlatten );      // Draw order (migrate to critter type option)
-    CLASS_PROPERTY( bool, IsNoAim );          // AI
+    CLASS_PROPERTY( bool, IsUnlimitedAmmo );    // AI, check shoot possibility
+    CLASS_PROPERTY( bool, IsNoUnarmed );        // AI
+    CLASS_PROPERTY( bool, IsNoFavoriteItem );   // AI
+    CLASS_PROPERTY( bool, IsNoPush );           // Can puck checks
+    CLASS_PROPERTY( bool, IsNoEnemyStack );     // Migrate enemy stack to scripts
+    CLASS_PROPERTY( bool, IsNoFlatten );        // Draw order (migrate to critter type option)
+    CLASS_PROPERTY( bool, IsNoAim );            // AI
     CLASS_PROPERTY( bool, IsDamagedEye );
     CLASS_PROPERTY( bool, IsDamagedRightArm );
     CLASS_PROPERTY( bool, IsDamagedLeftArm );
@@ -274,14 +260,15 @@ protected:
     Item*   defItemSlotHand;
     Item*   defItemSlotArmor;
 
+    void TakeDefaultItem( uchar slot );
+
 public:
     Item* ItemSlotMain;
     Item* ItemSlotExt;
     Item* ItemSlotArmor;
 
     void     SyncLockItems();
-    bool     SetDefaultItems( ProtoItem* proto_hand, ProtoItem* proto_armor );
-    Item*    GetDefaultItemSlotMain() { return defItemSlotHand; }
+    Item*    GetHandsItem() { return defItemSlotHand; }
     void     AddItem( Item*& item, bool send );
     void     SetItem( Item* item );
     void     EraseItem( Item* item, bool send );
@@ -299,16 +286,11 @@ public:
     void     GetItemsSlot( int slot, ItemVec& items, bool lock );
     void     GetItemsType( int type, ItemVec& items, bool lock );
     uint     CountItemPid( hash item_pid );
-    void     TakeDefaultItem( uchar slot );
     bool     MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count );
     uint     RealCountItems() { return (uint) invItems.size(); }
     uint     CountItems();
-    ItemVec& GetInventory()
-    {
-        SyncLockItems();
-        return invItems;
-    }
-    bool IsHaveGeckItem();
+    ItemVec& GetInventory();
+    bool     IsHaveGeckItem();
 
     // Scripts
 protected:
@@ -480,8 +462,6 @@ public:
     int         GetFreeWeight();
     int         GetFreeVolume();
     void        SendMessage( int num, int val, int to );
-    int         GetLook();
-    uint        GetTalkDist( Critter* talker );
     uint        GetUseApCost( Item* weap, int use );
     uint        GetAttackDist( Item* weap, int use );
     uint        GetUseDist();

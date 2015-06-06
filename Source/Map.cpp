@@ -218,7 +218,7 @@ bool Map::Generate()
         ProtoItem* proto = ItemMngr.GetProtoItem( pid );
         if( !proto )
         {
-            WriteLogF( _FUNC_, " - Proto object on map<%s> with pid<%u> not found, continue generate.\n", Proto->GetName(), pid );
+            WriteLogF( _FUNC_, " - Proto object on map<%s> with pid<%u> not found, continue generate.\n", Proto->GetName(), HASH_STR( pid ) );
             continue;
         }
 
@@ -644,7 +644,7 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
                     int dist = DistGame( cr->GetHexX(), cr->GetHexY(), hx, hy );
                     if( item->GetIsTrap() )
                         dist += item->GetTrapValue();
-                    allowed = dist <= cr->GetLook();
+                    allowed = ( dist <= (int) cr->GetLookDistance() );
                 }
                 if( !allowed )
                     continue;
@@ -813,7 +813,7 @@ void Map::ChangeViewItem( Item* item )
                     int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->AccHex.HexX, item->AccHex.HexY );
                     if( item->GetIsTrap() )
                         dist += item->GetTrapValue();
-                    allowed = dist <= cr->GetLook();
+                    allowed = ( dist <= (int) cr->GetLookDistance() );
                 }
                 if( !allowed )
                 {
@@ -844,7 +844,7 @@ void Map::ChangeViewItem( Item* item )
                     int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->AccHex.HexX, item->AccHex.HexY );
                     if( item->GetIsTrap() )
                         dist += item->GetTrapValue();
-                    allowed = dist <= cr->GetLook();
+                    allowed = ( dist <= (int) cr->GetLookDistance() );
                 }
                 if( !allowed )
                     continue;

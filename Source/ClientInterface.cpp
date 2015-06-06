@@ -1276,63 +1276,6 @@ void FOClient::GameKeyDown( uchar dik, const char* dik_text )
     default:
         break;
     }
-
-    if( Chosen )
-    {
-        switch( dik )
-        {
-        // Hot keys
-        case DIK_A:
-            if( Chosen->ItemSlotMain->IsWeapon() && Chosen->GetUse() < MAX_USES )
-                SetCurMode( CUR_USE_WEAPON );
-            break;
-        case DIK_G:
-            TryPickItemOnGround();
-            break;
-        case DIK_T:
-            GameOpt.ShowGroups = !GameOpt.ShowGroups;
-            break;
-        case DIK_P:
-            ShowScreen( SCREEN__PIP_BOY );
-            break;
-        case DIK_F:
-            ShowScreen( SCREEN__FIX_BOY );
-            break;
-        case DIK_B:
-            ChosenChangeSlot();
-            break;
-        case DIK_M:
-            IfaceHold = IFACE_GAME_MNEXT;
-            GameRMouseUp();
-            break;
-        case DIK_N:
-            Chosen->NextRateItem( false );
-            break;
-        case DIK_SLASH:
-            AddMess( FOMB_GAME, Str::FormatBuf( "Time: %02d.%02d.%d %02d:%02d:%02d x%u", GameOpt.Day, GameOpt.Month, GameOpt.Year, GameOpt.Hour, GameOpt.Minute, GameOpt.Second, GameOpt.TimeMultiplier ) );
-            break;
-        case DIK_COMMA:
-            SetAction( CHOSEN_DIR, 1 /*CW*/ );
-            break;
-        case DIK_PERIOD:
-            SetAction( CHOSEN_DIR, 0 /*CCW*/ );
-            break;
-        case DIK_TAB:
-            ShowScreen( SCREEN__MINI_MAP );
-            break;
-        case DIK_HOME:
-            HexMngr.ScrollToHex( Chosen->HexX, Chosen->HexY, 0.1, true );
-            break;
-        case DIK_SCROLL:
-            if( HexMngr.AutoScroll.LockedCritter )
-                HexMngr.AutoScroll.LockedCritter = 0;
-            else
-                HexMngr.AutoScroll.LockedCritter = Chosen->GetId();
-            break;
-        default:
-            break;
-        }
-    }
 }
 
 void FOClient::GameLMouseDown()
@@ -1393,12 +1336,12 @@ void FOClient::GameLMouseDown()
             }
 
             // Use item
-            SetAction( CHOSEN_USE_ITEM, Chosen->ItemSlotMain->GetId(), Chosen->ItemSlotMain->GetProtoId(), TARGET_CRITTER, cr->GetId(), Chosen->GetFullRate() );
+            SetAction( CHOSEN_USE_ITEM, Chosen->ItemSlotMain->GetId(), 0, TARGET_CRITTER, cr->GetId(), Chosen->GetFullRate() );
         }
         else if( item )
         {
             TargetSmth.SetItem( item->GetId() );
-            SetAction( CHOSEN_USE_ITEM, Chosen->ItemSlotMain->GetId(), Chosen->ItemSlotMain->GetProtoId(), item->IsItem() ? TARGET_ITEM : TARGET_SCENERY, item->GetId(), USE_USE );
+            SetAction( CHOSEN_USE_ITEM, Chosen->ItemSlotMain->GetId(), 0, item->IsItem() ? TARGET_ITEM : TARGET_SCENERY, item->GetId(), USE_USE );
         }
     }
     else if( IsCurMode( CUR_USE_SKILL ) )
@@ -3726,7 +3669,7 @@ void FOClient::LmapPrepareMap()
     int  ex = Chosen->GetHexX() + maxpixx;
     int  ey = Chosen->GetHexY() + maxpixy;
 
-    uint vis = Chosen->GetLook();
+    uint vis = Chosen->GetLookDistance();
     uint cur_color = 0;
     int  pix_x = LmapWMap[ 2 ] - LmapWMap[ 0 ], pix_y = 0;
 
@@ -5443,7 +5386,7 @@ void FOClient::AimLMouseUp()
 Label_Attack:
     CritterCl * cr = GetCritter( AimTargetId );
     if( cr )
-        SetAction( CHOSEN_USE_ITEM, Chosen->ItemSlotMain->GetId(), Chosen->ItemSlotMain->GetProtoId(), TARGET_CRITTER, AimTargetId, Chosen->GetFullRate() );
+        SetAction( CHOSEN_USE_ITEM, Chosen->ItemSlotMain->GetId(), 0, TARGET_CRITTER, AimTargetId, Chosen->GetFullRate() );
 
     IfaceHold = IFACE_NONE;
     if( !Keyb::ShiftDwn )
