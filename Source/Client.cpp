@@ -10786,7 +10786,7 @@ bool FOClient::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, 
     Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R0( "Property not found." );
+        SCRIPT_ERROR_R0( "Property '%s' not found.", HASH_STR( prop_enum_value ) );
 
     string result = prop->SetGetCallback( script_func.c_str() );
     if( result != "" )
@@ -10799,7 +10799,7 @@ bool FOClient::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, 
     Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R0( "Property not found." );
+        SCRIPT_ERROR_R0( "Property '%s' not found.", HASH_STR( prop_enum_value ) );
 
     string result = prop->AddSetCallback( script_func.c_str() );
     if( result != "" )

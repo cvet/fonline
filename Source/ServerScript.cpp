@@ -1349,7 +1349,7 @@ bool FOServer::SScriptFunc::Crit_ChangeCrType( Critter* cr, uint new_type )
     if( !new_type )
         SCRIPT_ERROR_R0( "New type arg is zero." );
     if( !CritType::IsEnabled( new_type ) )
-        SCRIPT_ERROR_R0( "New type arg is not enabled." );
+        SCRIPT_ERROR_R0( "New type '%u' is not enabled.", new_type );
 
     if( cr->GetCrType() != new_type )
     {
@@ -1512,7 +1512,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, uint map_id, i
     ushort hx, hy;
     uchar  dir;
     if( !map->GetStartCoord( hx, hy, dir, entire ) )
-        SCRIPT_ERROR_R0( "Entire not found." );
+        SCRIPT_ERROR_R0( "Entire '%d' not found.", entire );
     if( !cr->GetMapId() )
     {
         if( !with_group )
@@ -5534,7 +5534,7 @@ bool FOServer::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, 
     Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R0( "Property not found." );
+        SCRIPT_ERROR_R0( "Property '%s' not found.", HASH_STR( prop_enum_value ) );
 
     string result = prop->SetGetCallback( script_func.c_str() );
     if( result != "" )
@@ -5547,7 +5547,7 @@ bool FOServer::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, 
     Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R0( "Property not found." );
+        SCRIPT_ERROR_R0( "Property '%s' not found.", HASH_STR( prop_enum_value ) );
 
     string result = prop->AddSetCallback( script_func.c_str() );
     if( result != "" )

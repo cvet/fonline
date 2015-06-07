@@ -93,10 +93,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define CR_STR_ID( cr_pid, idx )              ( ( ( cr_pid ) & CRPID_MASK ) | ( ( idx ) & ~CRPID_MASK ) )
 
 // Critters
-#define GENDER_MALE                  ( 0 )
-#define GENDER_FEMALE                ( 1 )
-#define AGE_MAX                      ( 60 )
-#define AGE_MIN                      ( 14 )
 #define AGGRESSOR_TICK               ( 60000 )
 #define MAX_ENEMY_STACK              ( 30 )
 

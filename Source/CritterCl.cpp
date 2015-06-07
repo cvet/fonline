@@ -130,17 +130,28 @@ CritterCl::~CritterCl()
 
 void CritterCl::Init()
 {
+    #ifdef FONLINE_CLIENT
+    ScriptArray* arr = Script::CreateArray( "int[]" );
+    arr->Resize( LAYERS3D_COUNT );
+    SetAnim3dLayer( arr );
+    arr->Release();
+    #endif
+
     ProtoItem* unarmed = ItemMngr.GetProtoItem( GetHandsItemProtoId() );
     if( unarmed )
     {
         ItemSlotMain->SetProto( unarmed );
         ItemSlotMain->SetMode( GetHandsItemMode() );
     }
+
     textOnHeadColor = COLOR_CRITTER_NAME;
+
     AnimateStay();
+
     SpriteInfo* si = SprMngr.GetSpriteInfo( SprId );
     if( si )
         textRect( 0, 0, si->Width, si->Height );
+
     SetFade( true );
 }
 

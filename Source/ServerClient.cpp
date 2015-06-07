@@ -2159,7 +2159,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         // Assign to ConnectedClients
         cl_old->AddRef();
-        ( *it ) = cl_old;
+        *it = cl_old;
 
         // Swap net data
         cl_old->Bin = cl->Bin;
@@ -2203,9 +2203,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         cl_old->NetIOOut->Locker.Unlock();
         cl_old->NetIOIn->Locker.Unlock();
         #endif
-
-        // Other data
-        cl_old->SetDefaultCombat( cl->GetDefaultCombat() );
 
         Job::DeferredRelease( cl );
         cl = cl_old;
@@ -2259,6 +2256,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         {
             // Data
             memcpy( &cl->Data, &cl_saved->Data, sizeof( cl->Data ) );
+            cl->Props = cl_saved->Props;
             size_t te_count = cl_saved->CrTimeEvents.size();
             if( te_count )
             {
