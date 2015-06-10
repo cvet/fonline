@@ -412,6 +412,12 @@ int FOMsg::GetMsgType( const char* type_name )
     return -1;
 }
 
+LanguagePack::LanguagePack()
+{
+    memzero( NameStr, sizeof( NameStr ) );
+    IsAllMsgLoaded = false;
+}
+
 bool LanguagePack::LoadFromFiles( const char* lang_name )
 {
     memcpy( NameStr, lang_name, 4 );
@@ -429,7 +435,8 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
         }
     }
 
-    return errors == 0;
+    IsAllMsgLoaded = errors == 0;
+    return IsAllMsgLoaded;
 }
 
 bool LanguagePack::LoadFromCache( const char* lang_name )
@@ -461,7 +468,8 @@ bool LanguagePack::LoadFromCache( const char* lang_name )
     if( errors )
         WriteLogF( _FUNC_, " - Cached language<%s> not found.\n", NameStr );
 
-    return errors == 0;
+    IsAllMsgLoaded = errors == 0;
+    return IsAllMsgLoaded;
 }
 
 char* LanguagePack::GetMsgCacheName( int msg_num, char* result )

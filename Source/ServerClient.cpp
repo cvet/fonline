@@ -4634,7 +4634,7 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         break;
     case NetProperty::Critter:
         check_public = true;
-        prop = Item::PropertiesRegistrator->Get( property_index );
+        prop = Critter::PropertiesRegistrator->Get( property_index );
         if( prop )
             prop_obj = CrMngr.GetCritter( cr_id, true );
         break;

@@ -311,7 +311,7 @@ bool FOClient::Init()
         Str::Copy( lang_name, DEFAULT_LANGUAGE );
     Str::Lower( lang_name );
 
-    bool lang_ok = CurLang.LoadFromCache( lang_name );
+    CurLang.LoadFromCache( lang_name );
 
     MsgText = &CurLang.Msg[ TEXTMSG_TEXT ];
     MsgDlg = &CurLang.Msg[ TEXTMSG_DLG ];
@@ -330,7 +330,7 @@ bool FOClient::Init()
     UpdateFiles( true );
 
     // Find valid cache
-    if( !lang_ok )
+    if( !CurLang.IsAllMsgLoaded )
     {
         StrVec processed_langs;
         processed_langs.push_back( CurLang.NameStr );
@@ -342,13 +342,12 @@ bool FOClient::Init()
             if( lang.length() == 4 && std::find( processed_langs.begin(), processed_langs.end(), lang ) == processed_langs.end() )
             {
                 processed_langs.push_back( lang );
-                lang_ok = CurLang.LoadFromCache( lang.c_str() );
-                if( lang_ok )
+                if( CurLang.LoadFromCache( lang.c_str() ) )
                     break;
             }
         }
     }
-    if( !lang_ok )
+    if( !CurLang.IsAllMsgLoaded )
     {
         WriteLog( "Language packs not found!\n" );
         return false;
@@ -4822,7 +4821,7 @@ void FOClient::Net_OnProperty( uint data_size )
     case NetProperty::Global:
         break;
     case NetProperty::Critter:
-        prop = Item::PropertiesRegistrator->Get( property_index );
+        prop = CritterCl::PropertiesRegistrator->Get( property_index );
         if( prop )
             prop_obj = GetCritter( cr_id );
         break;
