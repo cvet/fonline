@@ -2083,7 +2083,7 @@ Item* FOServer::SScriptFunc::Crit_AddItem( Critter* cr, hash pid, uint count )
     if( !pid )
         SCRIPT_ERROR_R0( "Proto id arg is zero." );
     if( !ItemMngr.GetProtoItem( pid ) )
-        SCRIPT_ERROR_R0( "Invalid proto '%s'.", pid, HASH_STR( pid ) );
+        SCRIPT_ERROR_R0( "Invalid proto '%s'.", HASH_STR( pid ) );
     if( !count )
         count = 1;
     return ItemMngr.AddItemCritter( cr, pid, count );
