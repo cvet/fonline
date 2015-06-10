@@ -281,7 +281,7 @@ void Item::SetProto( ProtoItem* proto )
     {
     case ITEM_TYPE_WEAPON:
         SetAmmoCount( Proto->GetWeapon_MaxAmmoCount() );
-        SetAmmoPid( Proto->GetWeapon_DefaultAmmoPid() );
+        SetAmmoPid( Str::GetHash( ConvertProtoIdByInt( Proto->GetWeapon_DefaultAmmoPid() ) ) );
         break;
     case ITEM_TYPE_DOOR:
         SetIsGag( true );
