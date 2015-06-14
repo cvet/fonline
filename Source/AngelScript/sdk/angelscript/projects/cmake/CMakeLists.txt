@@ -154,3 +154,4 @@ endif()
 
 #add_subdirectory(../../../samples/game/projects/cmake/ ./game)
 
+set_target_properties(${ANGELSCRIPT_LIBRARY_NAME} PROPERTIES COMPILE_FLAGS "-DAS_NO_EXCEPTIONS" )

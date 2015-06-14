@@ -195,11 +195,12 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
         ScriptArray* arr = *(ScriptArray**) base_ptr;
         if( isArrayOfString )
         {
-            need_delete = true;
             data_size = 0;
             uint arr_size = arr->GetSize();
             if( arr_size )
             {
+                need_delete = true;
+
                 // Calculate size
                 data_size += sizeof( uint );
                 for( uint i = 0; i < arr_size; i++ )
@@ -222,7 +223,7 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
                     if( str_size )
                     {
                         memcpy( buf, str->c_str(), str_size );
-                        buf += sizeof( uint );
+                        buf += str_size;
                     }
                 }
                 return init_buf;

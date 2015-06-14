@@ -218,7 +218,7 @@ bool Map::Generate()
         ProtoItem* proto = ItemMngr.GetProtoItem( pid );
         if( !proto )
         {
-            WriteLogF( _FUNC_, " - Proto object on map<%s> with pid<%u> not found, continue generate.\n", Proto->GetName(), HASH_STR( pid ) );
+            WriteLogF( _FUNC_, " - Proto object on map<%s> with pid<%s> not found, continue generate.\n", Proto->GetName(), HASH_STR( pid ) );
             continue;
         }
 

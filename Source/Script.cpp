@@ -7,11 +7,12 @@
 #include "AngelScript/scriptdictionary.h"
 #include "AngelScript/scriptdict.h"
 #include "AngelScript/scriptfile.h"
-#include "AngelScript/scriptmath.h"
 #include "AngelScript/scriptarray.h"
-#include "AngelScript/weakref.h"
 #include "AngelScript/reflection.h"
 #include "AngelScript/preprocessor.h"
+#include "AngelScript/sdk/add_on/scriptmath/scriptmath.h"
+#include "AngelScript/sdk/add_on/weakref/weakref.h"
+#include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
 #include <strstream>
 
 const char* ContextStatesStr[] =

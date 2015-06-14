@@ -7,11 +7,12 @@
 #include "scriptdictionary.h"
 #include "scriptdict.h"
 #include "scriptfile.h"
-#include "scriptmath.h"
 #include "scriptstring.h"
 #include "scriptarray.h"
-#include "weakref.h"
 #include "reflection.h"
+#include "AngelScript/sdk/add_on/scriptmath/scriptmath.h"
+#include "AngelScript/sdk/add_on/weakref/weakref.h"
+#include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
 
 #ifdef FO_LINUX
 # include <unistd.h>

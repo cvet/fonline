@@ -471,6 +471,7 @@ uint GetDoubleClickTicks()
 
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 # include "ConstantsManager.h"
+#endif
 int64 ConvertParamValue( const char* str )
 {
     if( !str[ 0 ] )
@@ -478,24 +479,16 @@ int64 ConvertParamValue( const char* str )
 
     if( str[ 0 ] == '$' )
     {
-        # ifndef FONLINE_SCRIPT_COMPILER
+        #ifndef FONLINE_SCRIPT_COMPILER
         return ConstantsManager::GetDefineValue( str + 1 );
-        # else
+        #else
         return 0;
-        # endif
+        #endif
     }
     if( !Str::IsNumber( str ) )
         return Str::GetHash( str );
     return Str::AtoI64( str );
 }
-#else
-int64 ConvertParamValue( const char* str )
-{
-    if( !Str::IsNumber( str ) )
-        return Str::GetHash( str );
-    return Str::AtoI64( str );
-}
-#endif
 
 /************************************************************************/
 /* Hex offsets                                                          */

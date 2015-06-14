@@ -779,9 +779,10 @@ char* Str::GetBigBuf()
     return BigBuf;
 }
 
+#pragma RACE_CONDITION
 static map< hash, const char* > HashRawNames;
 static map< hash, const char* > HashFormattedNames;
-void AddNameHash( hash hash, const char* raw_name, const char* formatted_name )
+static void AddNameHash( hash hash, const char* raw_name, const char* formatted_name )
 {
     auto ins = HashFormattedNames.insert( PAIR( hash, Str::Duplicate( formatted_name ) ) );
     if( !ins.second && !Str::Compare( ( *ins.first ).second, formatted_name ) )
@@ -790,7 +791,7 @@ void AddNameHash( hash hash, const char* raw_name, const char* formatted_name )
         HashRawNames.insert( PAIR( hash, Str::Duplicate( raw_name ) ) );
 }
 
-uint FormatForHash( char* name )
+static uint FormatForHash( char* name )
 {
     Str::Trim( name );
     Str::Lower( name );
@@ -810,17 +811,21 @@ hash Str::GetHash( const char* name )
     Copy( name_, name );
     uint len = FormatForHash( name_ );
     hash h = Crypt.Crc32( (uchar*) name_, len );
-    AddNameHash( h, name, name_ );
+    if( h )
+        AddNameHash( h, name, name_ );
     return h;
 }
 
 const char* Str::GetName( hash h )
 {
-    if( !h )
-        return NULL;
-
     auto it = HashRawNames.find( h );
-    return it != HashRawNames.end() ? ( *it ).second : NULL;
+    if( it == HashRawNames.end() )
+    {
+        static THREAD char error[ MAX_FOTEXT ];
+        Format( error, "(unknown hash %u)", h );
+        return error;
+    }
+    return it->second;
 }
 
 const char* Str::ParseLineDummy( const char* str )

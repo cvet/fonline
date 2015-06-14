@@ -348,7 +348,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     {
         if( accuracy )
         {
-            WriteLogF( _FUNC_, " - Accuracy position busy, map pid<%u>, hx<%u>, hy<%u>.\n", map->GetPid(), hx, hy );
+            WriteLogF( _FUNC_, " - Accuracy position busy, map<%s>, hx<%u>, hy<%u>.\n", map->GetName(), hx, hy );
             return NULL;
         }
 
@@ -363,7 +363,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
         {
             if( i >= 18 )
             {
-                WriteLogF( _FUNC_, " - All positions busy, map pid<%u>, hx<%u>, hy<%u>.\n", map->GetPid(), hx, hy );
+                WriteLogF( _FUNC_, " - All positions busy, map<%s>, hx<%u>, hy<%u>.\n", map->GetName(), hx, hy );
                 return NULL;
             }
             cur_step++;

@@ -125,10 +125,10 @@ if( NOT WIN32 )
 	set( EVENT2_PTHREADS "libevent_pthreads.a" )
 endif()
 
-file( GLOB Assimp_SOURCE Assimp/*.* Assimp/Compiler/*.* )
+file( GLOB "Assimp_SOURCE Assimp/*.* Assimp/Compiler/*.*" )
 source_group( Assimp FILES ${Assimp_SOURCE} )
 
-file( GLOB fbxsdk_SOURCE fbxsdk/*.* )
+file( GLOB "fbxsdk_SOURCE fbxsdk/*.*" )
 source_group( fbxsdk FILES ${fbxsdk_SOURCE} )
 if( WIN32 )
 	set( FBXSDK "libfbxsdk" )

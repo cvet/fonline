@@ -1,6 +1,7 @@
 #include "Common.h"
 #include "ProtoMap.h"
 #include "ItemManager.h"
+#include "CritterManager.h"
 #include "Crypt.h"
 #include "ConstantsManager.h"
 #include <strstream>
@@ -303,7 +304,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
     char* objects_str = map_ini.GetApp( APP_OBJECTS );
     if( objects_str )
     {
-        int        props_errors = 0;
+        int        errors = 0;
         istrstream istr( objects_str );
         string     field;
         char       svalue[ MAX_FOTEXT ];
@@ -346,6 +347,16 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                         #ifdef FONLINE_MAPPER
                         mobj.ProtoName = ScriptString::Create( proto_name ? proto_name : Str::ItoA( ivalue ) );
                         #endif
+                        if( mobj.MapObjType == MAP_OBJECT_CRITTER && !CrMngr.GetProto( mobj.ProtoId ) )
+                        {
+                            WriteLog( "Critter prototype '%s' (%u) not found.\n", proto_name, ivalue );
+                            errors++;
+                        }
+                        else if( mobj.MapObjType != MAP_OBJECT_CRITTER && !ItemMngr.GetProtoItem( mobj.ProtoId ) )
+                        {
+                            WriteLog( "Item prototype '%s' (%u) not found.\n", proto_name, ivalue );
+                            errors++;
+                        }
                     }
                     else if( field == "ProtoName" )
                     {
@@ -353,6 +364,16 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                         #ifdef FONLINE_MAPPER
                         mobj.ProtoName = ScriptString::Create( svalue );
                         #endif
+                        if( mobj.MapObjType == MAP_OBJECT_CRITTER && !CrMngr.GetProto( mobj.ProtoId ) )
+                        {
+                            WriteLog( "Critter prototype '%s' not found.\n", svalue );
+                            errors++;
+                        }
+                        else if( mobj.MapObjType != MAP_OBJECT_CRITTER && !ItemMngr.GetProtoItem( mobj.ProtoId ) )
+                        {
+                            WriteLog( "Item prototype '%s' not found.\n", svalue );
+                            errors++;
+                        }
                     }
                     else if( field == "MapX" )
                         mobj.MapX = ivalue;
@@ -423,7 +444,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                                 if( !prop )
                                 {
                                     WriteLog( "Critter property<%s> not found.\n", svalue );
-                                    props_errors++;
+                                    errors++;
                                 }
                                 #else
                                 mobj.Props->push_back( ScriptString::Create( svalue ) );
@@ -559,7 +580,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             }
         }
         delete[] objects_str;
-        if( props_errors )
+        if( errors )
             return false;
     }
 

@@ -46,6 +46,7 @@
 #define CMD_CHANGE_PASSWORD          ( 35 )
 #define CMD_DROP_UID                 ( 36 )
 #define CMD_LOG                      ( 37 )
+#define CMD_DEV_CONSOLE              ( 38 )
 
 struct CmdDef
 {
@@ -95,6 +96,7 @@ const CmdDef cmdlist[] =
     { "dropuid", CMD_DROP_UID },
     { "drop", CMD_DROP_UID },
     { "log", CMD_LOG },
+    { "console", CMD_DEV_CONSOLE },
 };
 
 inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( const char* ), const char* name )

@@ -482,7 +482,6 @@ void FOServer::ProcessAI( Npc* npc )
             int   use;
             Item* weap = NULL;
             uint  r0 = targ->GetId(), r1 = 0, r2 = 0;
-            int   way = 0;
             if( !npc->RunPlane( REASON_ATTACK_WEAPON, r0, r1, r2 ) )
             {
                 WriteLog( "REASON_ATTACK_WEAPON fail. Skip attack.\n" );
@@ -494,7 +493,6 @@ void FOServer::ProcessAI( Npc* npc )
             if( r0 )
             {
                 weap = npc->GetItem( r0, false );
-                SETFLAG( way, 0x000001 );
             }
             else
             {
@@ -504,22 +502,20 @@ void FOServer::ProcessAI( Npc* npc )
                     break;
                 }
 
-                SETFLAG( way, 0x000002 );
                 ProtoItem* unarmed = ItemMngr.GetProtoItem( r2 );
-                if( unarmed && unarmed->GetWeapon_IsUnarmed() )
-                {
-                    SETFLAG( way, 0x000004 );
-                    Item* def_item_main = npc->GetHandsItem();
-                    if( def_item_main->Proto != unarmed )
-                        def_item_main->SetProto( unarmed );
-                    weap = def_item_main;
-                }
+                if( !unarmed || !unarmed->GetWeapon_IsUnarmed() )
+                    unarmed = ItemMngr.GetProtoItem( ITEM_DEF_SLOT );
+
+                Item* def_item_main = npc->GetHandsItem();
+                if( def_item_main->Proto != unarmed )
+                    def_item_main->SetProto( unarmed );
+                weap = def_item_main;
             }
             use = r1;
 
             if( !weap || !weap->IsWeapon() || !weap->WeapIsUseAviable( use ) )
             {
-                WriteLog( "REASON_ATTACK_WEAPON fail, debug values<%u><%p><%d><%d>.\n", way, weap, weap ? weap->IsWeapon() : -1, weap ? weap->WeapIsUseAviable( use ) : -1 );
+                WriteLog( "REASON_ATTACK_WEAPON fail, debug values<%p><%d><%d>.\n", weap, weap ? weap->IsWeapon() : -1, weap ? weap->WeapIsUseAviable( use ) : -1 );
                 break;
             }
 

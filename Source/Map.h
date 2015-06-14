@@ -105,8 +105,9 @@ public:
     bool GetStartCoordCar( ushort& hx, ushort& hy, ProtoItem* proto_item );
     bool FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe );
 
-    uint GetId()  { return Data.MapId; }
-    hash GetPid() { return Data.MapPid; }
+    uint        GetId()   { return Data.MapId; }
+    hash        GetPid()  { return Data.MapPid; }
+    const char* GetName() { return HASH_STR( Data.MapPid ); }
 
     void AddCritter( Critter* cr );
     void AddCritterEvents( Critter* cr );
@@ -297,22 +298,23 @@ public:
     volatile int   GeckCount;
     int            FuncId[ LOCATION_EVENT_MAX ];
 
-    void     Clear( bool full );
-    void     Update();
-    bool     IsVisible()     { return Data.Visible || ( Data.GeckVisible && GeckCount > 0 ); }
-    uint     GetId()         { return Data.LocId; }
-    hash     GetPid()        { return Data.LocPid; }
-    uint     GetRadius()     { return Data.Radius; }
-    MapVec&  GetMapsNoLock() { return locMaps; };
-    void     GetMaps( MapVec& maps, bool lock );
-    uint     GetMapsCount() { return (uint) locMaps.size(); }
-    Map*     GetMap( uint count );
-    uint     GetMapIndex( hash map_pid );
-    bool     GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, uchar& dir );
-    bool     IsAutomaps()              { return !Proto->AutomapsPids.empty(); }
-    bool     IsAutomap( hash map_pid ) { return std::find( Proto->AutomapsPids.begin(), Proto->AutomapsPids.end(), map_pid ) != Proto->AutomapsPids.end(); }
-    HashVec& GetAutomaps()             { return Proto->AutomapsPids; }
-    bool     IsCanEnter( uint players_count );
+    void        Clear( bool full );
+    void        Update();
+    bool        IsVisible()     { return Data.Visible || ( Data.GeckVisible && GeckCount > 0 ); }
+    uint        GetId()         { return Data.LocId; }
+    hash        GetPid()        { return Data.LocPid; }
+    const char* GetName()       { return HASH_STR( Data.LocPid ); }
+    uint        GetRadius()     { return Data.Radius; }
+    MapVec&     GetMapsNoLock() { return locMaps; };
+    void        GetMaps( MapVec& maps, bool lock );
+    uint        GetMapsCount() { return (uint) locMaps.size(); }
+    Map*        GetMap( uint count );
+    uint        GetMapIndex( hash map_pid );
+    bool        GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, uchar& dir );
+    bool        IsAutomaps()              { return !Proto->AutomapsPids.empty(); }
+    bool        IsAutomap( hash map_pid ) { return std::find( Proto->AutomapsPids.begin(), Proto->AutomapsPids.end(), map_pid ) != Proto->AutomapsPids.end(); }
+    HashVec&    GetAutomaps()             { return Proto->AutomapsPids; }
+    bool        IsCanEnter( uint players_count );
 
     bool IsNoCrit();
     bool IsNoPlayer();

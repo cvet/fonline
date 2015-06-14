@@ -3103,6 +3103,31 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         ResynchronizeLogicThreads();
     }
     break;
+    case CMD_DEV_CONSOLE:
+    {
+//              uint command_len = 0;
+//              char command[ MAX_FOTEXT ];
+//              buf >> command_len;
+//              buf.Pop(command, command_len);
+//              command[ command_len ] = 0;
+//
+//              const char* console_name = (cl_ ? cl_->GetName() : admin_panel);
+//              static map<string, asIScriptContext*> console_contexts;
+//              auto it = console_contexts.find(console_name);
+//              asIScriptContext* context;
+//              if(it == console_contexts.end())
+//              {
+//                      context = Script::CreateContext();
+//                      console_contexts.insert(PAIR(console_name, context));
+//              }
+//              else
+//              {
+//                      context = it->second;
+//              }
+//
+//              context->
+    }
+    break;
     default:
         logcb( "Unknown command." );
         break;

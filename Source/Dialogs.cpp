@@ -12,17 +12,7 @@ DialogManager DlgMngr;
 
 int ReadValue( const char* str )
 {
-    #ifdef FONLINE_SERVER
-    return ConstantsManager::GetDefineValue( str );
-    #else
-    if( Str::IsNumber( str ) )
-        return Str::AtoI( str );
-    if( Str::CompareCase( str, "true" ) )
-        return 1;
-    else if( Str::CompareCase( str, "false" ) )
-        return 0;
-    return -1;
-    #endif
+    return (int) ConvertParamValue( str );
 }
 
 int GetPropEnumIndex( const char* str, bool is_demand, int& type )
