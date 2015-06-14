@@ -192,7 +192,6 @@ string FOServer::GetIngamePlayersStatistics()
     const char*   cond_states_str[] = { "None", "Life", "Knockout", "Dead" };
     char          str[ MAX_FOTEXT ];
     char          str_loc[ MAX_FOTEXT ];
-    char          str_map[ MAX_FOTEXT ];
 
     ConnectedClientsLocker.Lock();
     uint conn_count = (uint) ConnectedClients.size();
@@ -203,7 +202,7 @@ string FOServer::GetIngamePlayersStatistics()
 
     Str::Format( str, "Players in game: %u\nConnections: %u\n", players.size(), conn_count );
     result = str;
-    result += "Name                 Id        Ip              Online  Cond     X     Y     Location (Id, Pid)             Map (Id, Pid)                  Level\n";
+    result += "Name                 Id         Ip              Online  Cond     X     Y     Location and map\n";
     for( uint i = 0, j = (uint) players.size(); i < j; i++ )
     {
         Client*     cl = players[ i ];
@@ -211,11 +210,10 @@ string FOServer::GetIngamePlayersStatistics()
         Map*        map = MapMngr.GetMap( cl->GetMapId(), false );
         Location*   loc = ( map ? map->GetLocation( false ) : NULL );
 
-        Str::Format( str_loc, "%s (%u, %u)", map ? loc->Proto->Name.c_str() : "", map ? loc->GetId() : 0, map ? loc->GetPid() : 0 );
-        Str::Format( str_map, "%s (%u, %u)", map ? map->Proto->GetName() : "", map ? map->GetId() : 0, map ? map->GetPid() : 0 );
-        Str::Format( str, "%-20s %-9u %-15s %-7s %-8s %-5u %-5u %-30s %-30s\n",
+        Str::Format( str_loc, "%s (%u) %s (%u)", map ? loc->GetName() : "", map ? loc->GetId() : 0, map ? map->GetName() : "", map ? map->GetId() : 0 );
+        Str::Format( str, "%-20s %-10u %-15s %-7s %-8s %-5u %-5u %s\n",
                      cl->GetName(), cl->GetId(), cl->GetIpStr(), cl->IsOffline() ? "No" : "Yes", cond_states_str[ cl->Data.Cond ],
-                     map ? cl->GetHexX() : cl->Data.WorldX, map ? cl->GetHexY() : cl->Data.WorldY, map ? str_loc : "Global map", map ? str_map : "" );
+                     map ? cl->GetHexX() : cl->Data.WorldX, map ? cl->GetHexY() : cl->Data.WorldY, map ? str_loc : "Global map" );
         result += str;
     }
     return result;
@@ -2417,7 +2415,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
     {
         ushort hex_x;
         ushort hex_y;
-        ushort pid;
+        hash   pid;
         uint   count;
         buf >> hex_x;
         buf >> hex_y;
@@ -2446,8 +2444,8 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
     break;
     case CMD_ADDITEM_SELF:
     {
-        ushort pid;
-        uint   count;
+        hash pid;
+        uint count;
         buf >> pid;
         buf >> count;
 
@@ -2465,7 +2463,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         ushort hex_x;
         ushort hex_y;
         uchar  dir;
-        ushort pid;
+        hash   pid;
         buf >> hex_x;
         buf >> hex_y;
         buf >> dir;
@@ -2486,7 +2484,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
     {
         ushort wx;
         ushort wy;
-        ushort pid;
+        hash   pid;
         buf >> wx;
         buf >> wy;
         buf >> pid;
@@ -5203,7 +5201,7 @@ string FOServer::GetTimeEventsStatistics()
     {
         TimeEvent* te = TimeEvents[ i ];
         st = Timer::GetGameTime( te->FullSecond );
-        Str::Format( str, "%09u %02u.%02u.%04u %02u:%02u:%02u %04u %-5s %-35s", te->Num, st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, te->Rate, te->IsSaved ? "true" : "false", te->FuncName.c_str() );
+        Str::Format( str, "%-9u %02u.%02u.%04u %02u:%02u:%02u %-4u %-5s %-35s", te->Num, st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, te->Rate, te->IsSaved ? "true" : "false", te->FuncName.c_str() );
         result += str;
         for( uint k = 0, l = (uint) te->Values.size(); k < l; k++ )
         {

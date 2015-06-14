@@ -510,13 +510,13 @@ string MapManager::GetLocationsMapsStatistics()
     result = str;
     Str::Format( str, "Maps count: %u\n", allMaps.size() );
     result += str;
-    result += "Location Name        Id          Pid  X     Y     Radius Color    Visible GeckVisible GeckCount AutoGarbage ToGarbage\n";
-    result += "          Map Name            Id          Pid  Time Rain TbAviable TbOn   Script\n";
+    result += "Location             Id           X     Y     Radius Color    Visible GeckVisible GeckCount AutoGarbage ToGarbage\n";
+    result += "          Map                 Id          Time Rain TbAviable TbOn   Script\n";
     for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
     {
         Location* loc = ( *it ).second;
-        Str::Format( str, "%-20s %09u   %-4u %-5u %-5u %-6u %08X %-7s %-11s %-9d %-11s %-5s\n",
-                     loc->Proto->Name.c_str(), loc->Data.LocId, loc->Data.LocPid, loc->Data.WX, loc->Data.WY, loc->Data.Radius, loc->Data.Color, loc->Data.Visible ? "true" : "false",
+        Str::Format( str, "%-20s %-10u   %-5u %-5u %-6u %08X %-7s %-11s %-9d %-11s %-5s\n",
+                     loc->Proto->Name.c_str(), loc->Data.LocId, loc->Data.WX, loc->Data.WY, loc->Data.Radius, loc->Data.Color, loc->Data.Visible ? "true" : "false",
                      loc->Data.GeckVisible ? "true" : "false", loc->GeckCount, loc->Data.AutoGarbage ? "true" : "false", loc->Data.ToGarbage ? "true" : "false" );
         result += str;
 
@@ -525,8 +525,8 @@ string MapManager::GetLocationsMapsStatistics()
         for( auto it_ = maps.begin(), end_ = maps.end(); it_ != end_; ++it_ )
         {
             Map* map = *it_;
-            Str::Format( str, "     %2u) %-20s %09u   %-4u %-4d %-4u %-9s %-6s %-50s\n",
-                         map_index, map->Proto->GetName(), map->GetId(), map->GetPid(), map->GetTime(), map->GetRain(),
+            Str::Format( str, "     %2u) %-20s %-9u   %-4d %-4u %-9s %-6s %-50s\n",
+                         map_index, map->Proto->GetName(), map->GetId(), map->GetTime(), map->GetRain(),
                          map->Data.IsTurnBasedAviable ? "true" : "false", map->IsTurnBasedOn ? "true" : "false",
                          map->Data.ScriptId ? Script::GetScriptFuncName( map->Data.ScriptId ).c_str() : "" );
             result += str;

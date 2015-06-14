@@ -1201,13 +1201,25 @@ int64 ItemManager::GetItemStatistics( hash pid )
 
 string ItemManager::GetItemsStatistics()
 {
-    SCOPE_LOCK( itemCountLocker );
+    itemCountLocker.Lock();
+
+    vector< ProtoItem* > protos;
+    protos.reserve( allProtos.size() );
+    for( auto it = allProtos.begin(), end = allProtos.end(); it != end; ++it )
+        protos.push_back( it->second );
+
+    itemCountLocker.Unlock();
+
+    std::sort( protos.begin(), protos.end(), [] ( ProtoItem * p1, ProtoItem * p2 )
+               {
+                   return strcmp( p1->GetName(), p2->GetName() ) < 0;
+               } );
 
     string result = "Name                                     Count\n";
     char   str[ MAX_FOTEXT ];
-    for( auto it = allProtos.begin(), end = allProtos.end(); it != end; ++it )
+    for( auto it = protos.begin(), end = protos.end(); it != end; ++it )
     {
-        ProtoItem* proto_item = ( *it ).second;
+        ProtoItem* proto_item = *it;
         if( proto_item->IsItem() )
         {
             const char* s = Str::GetName( proto_item->ProtoId );

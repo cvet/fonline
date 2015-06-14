@@ -299,13 +299,14 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     {
         ushort hex_x;
         ushort hex_y;
-        ushort pid;
+        char   proto_name[ MAX_FOTEXT ];
         uint   count;
-        if( sscanf( args, "%hu%hu%hu%u", &hex_x, &hex_y, &pid, &count ) != 4 )
+        if( sscanf( args, "%hu%hu%s%u", &hex_x, &hex_y, proto_name, &count ) != 4 )
         {
-            logcb( "Invalid arguments. Example: <additem hx hy pid count>." );
+            logcb( "Invalid arguments. Example: <additem hx hy name count>." );
             break;
         }
+        hash pid = Str::GetHash( proto_name );
         msg_len += sizeof( hex_x ) + sizeof( hex_y ) + sizeof( pid ) + sizeof( count );
 
         buf << msg;
@@ -319,13 +320,14 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     break;
     case CMD_ADDITEM_SELF:
     {
-        ushort pid;
-        uint   count;
-        if( sscanf( args, "%hu%u", &pid, &count ) != 2 )
+        char proto_name[ MAX_FOTEXT ];
+        uint count;
+        if( sscanf( args, "%s%u", proto_name, &count ) != 2 )
         {
-            logcb( "Invalid arguments. Example: <additemself pid count>." );
+            logcb( "Invalid arguments. Example: <additemself name count>." );
             break;
         }
+        hash pid = Str::GetHash( proto_name );
         msg_len += sizeof( pid ) + sizeof( count );
 
         buf << msg;
@@ -340,12 +342,13 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         ushort hex_x;
         ushort hex_y;
         uchar  dir;
-        ushort pid;
-        if( sscanf( args, "%hd%hd%hhd%hd", &hex_x, &hex_y, &dir, &pid ) != 4 )
+        char   proto_name[ MAX_FOTEXT ];
+        if( sscanf( args, "%hd%hd%hhd%s", &hex_x, &hex_y, &dir, proto_name ) != 4 )
         {
-            logcb( "Invalid arguments. Example: <addnpc hx hy dir pid>." );
+            logcb( "Invalid arguments. Example: <addnpc hx hy dir name>." );
             break;
         }
+        hash pid = Str::GetHash( proto_name );
         msg_len += sizeof( hex_x ) + sizeof( hex_y ) + sizeof( dir ) + sizeof( pid );
 
         buf << msg;
@@ -361,12 +364,13 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     {
         ushort wx;
         ushort wy;
-        ushort pid;
-        if( sscanf( args, "%hd%hd%hd", &wx, &wy, &pid ) != 3 )
+        char   proto_name[ MAX_FOTEXT ];
+        if( sscanf( args, "%hd%hd%s", &wx, &wy, proto_name ) != 3 )
         {
-            logcb( "Invalid arguments. Example: <addloc wx wy pid>." );
+            logcb( "Invalid arguments. Example: <addloc wx wy name>." );
             break;
         }
+        hash pid = Str::GetHash( proto_name );
         msg_len += sizeof( wx ) + sizeof( wy ) + sizeof( pid );
 
         buf << msg;
