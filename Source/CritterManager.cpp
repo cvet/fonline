@@ -172,7 +172,7 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
 {
     WriteLog( "Load npc...\n" );
 
-    lastNpcId = 0;
+    lastNpcId = uint( -1 );
 
     uint count;
     FileRead( f, &count, sizeof( count ) );
@@ -476,6 +476,7 @@ void CritterManager::AddCritter( Critter* cr )
 {
     SCOPE_LOCK( crLocker );
 
+    RUNTIME_ASSERT( !allCritters.count( cr->GetId() ) );
     allCritters.insert( PAIR( cr->GetId(), cr ) );
     if( cr->IsPlayer() )
         playersCount++;

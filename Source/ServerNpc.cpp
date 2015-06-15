@@ -1507,7 +1507,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         {
             if( cl->GetMapId() != npc->GetMapId() )
             {
-                WriteLogF( _FUNC_, " - Difference maps, npc<%s>, client<%s>.\n", npc->GetInfo(), cl->GetInfo() );
+                WriteLogF( _FUNC_, " - Different maps, npc<%s><%u>, client<%s><%u>.\n", npc->GetInfo(), npc->GetMapId(), cl->GetInfo(), cl->GetMapId() );
                 return;
             }
 
@@ -2088,7 +2088,7 @@ void FOServer::Process_Barter( Client* cl )
 
     if( cl->GetMapId() != npc->GetMapId() )
     {
-        WriteLogF( _FUNC_, " - Difference maps, client<%s>, npc<%s>.\n", cl->GetInfo(), npc->GetInfo() );
+        WriteLogF( _FUNC_, " - Different maps, npc<%s><%u>, client<%s><%u>.\n", npc->GetInfo(), npc->GetMapId(), cl->GetInfo(), cl->GetMapId() );
         cl->Send_ContainerInfo();
         return;
     }
