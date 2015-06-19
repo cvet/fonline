@@ -43,17 +43,22 @@ string     UpdateLogName;
 Thread     GUIUpdateThread;
 
 // GUI
-Fl_Window* GuiWindow;
-Fl_Box*    GuiLabelGameTime, * GuiLabelClients, * GuiLabelIngame, * GuiLabelNPC, * GuiLabelLocCount,
+static Fl_Window* GuiWindow;
+static Fl_Box*    GuiLabelGameTime, * GuiLabelClients, * GuiLabelIngame, * GuiLabelNPC, * GuiLabelLocCount,
 * GuiLabelItemsCount, * GuiLabelTECount,
 * GuiLabelFPS, * GuiLabelDelta, * GuiLabelUptime, * GuiLabelSend, * GuiLabelRecv, * GuiLabelCompress;
-Fl_Button* GuiBtnRlClScript, * GuiBtnSaveWorld, * GuiBtnSaveLog, * GuiBtnSaveInfo,
+static Fl_Button* GuiBtnRlClScript, * GuiBtnSaveWorld, * GuiBtnSaveLog, * GuiBtnSaveInfo,
 * GuiBtnCreateDump, * GuiBtnMemory, * GuiBtnPlayers, * GuiBtnLocsMaps, * GuiBtnTimeEvents,
 * GuiBtnProperties, * GuiBtnItemsCount, * GuiBtnProfiler, * GuiBtnStartStop, * GuiBtnSplitUp, * GuiBtnSplitDown;
-Fl_Check_Button* GuiCBtnScriptDebug, * GuiCBtnLogging, * GuiCBtnLoggingTime,
+static Fl_Check_Button* GuiCBtnScriptDebug, * GuiCBtnLogging, * GuiCBtnLoggingTime,
 * GuiCBtnLoggingThread, * GuiCBtnAutoUpdate;
-Fl_Text_Display* GuiLog, * GuiInfo;
-int              GUISizeMod = 0;
+static Fl_Text_Display* GuiLog, * GuiInfo;
+static int              GUISizeMod = 0;
+
+static bool             GracefulShutdown = false;
+
+static int              GUIMessageUpdate = 0;
+static int              GUIMessageExit = 1;
 
 # define GUI_SIZE1( x )                 ( (int) ( x ) * 175 * ( 100 + GUISizeMod ) / 100 / 100 )
 # define GUI_SIZE2( x1, x2 )            GUI_SIZE1( x1 ), GUI_SIZE1( x2 )
@@ -206,12 +211,26 @@ int main( int argc, char** argv )
         GUIUpdateThread.Start( GUIUpdate, "GUIUpdate" );
         while( Fl::wait() )
         {
-            void* pmsg = Fl::thread_message();
-            if( pmsg )
+            int* msg = (int*) Fl::thread_message();
+            if( msg == &GUIMessageUpdate )
             {
                 UpdateLog();
                 UpdateInfo();
                 CheckTextBoxSize( false );
+            }
+            else if( msg == &GUIMessageExit )
+            {
+                // Disable buttons
+                GuiBtnRlClScript->deactivate();
+                GuiBtnSaveWorld->deactivate();
+                GuiBtnPlayers->deactivate();
+                GuiBtnLocsMaps->deactivate();
+                GuiBtnTimeEvents->deactivate();
+                GuiBtnProperties->deactivate();
+                GuiBtnItemsCount->deactivate();
+                GuiBtnProfiler->deactivate();
+                GuiBtnSaveInfo->deactivate();
+                break;
             }
         }
         Fl::unlock();
@@ -377,7 +396,16 @@ void GUICallback( Fl_Widget* widget, void* data )
 {
     if( widget == GuiWindow )
     {
-        ExitProcess( 0 );
+        if( FOQuit || Fl::get_key( FL_Shift_L ) )
+        {
+            ExitProcess( 0 );
+        }
+        else
+        {
+            GuiWindow->label( "Graceful shutdown. Please wait..." );
+            GracefulShutdown = true;
+            FOQuit = true;
+        }
     }
     else if( widget == GuiBtnRlClScript )
     {
@@ -515,8 +543,7 @@ void GUIUpdate( void* )
 {
     while( true )
     {
-        static int dummy = 0;
-        Fl::awake( &dummy );
+        Fl::awake( &GUIMessageUpdate );
         Thread::Sleep( 50 );
     }
 }
@@ -714,6 +741,8 @@ void GameLoopThread( void* )
     LogFinish();
     if( Singleplayer )
         ExitProcess( 0 );
+    if( GuiWindow && GracefulShutdown )
+        Fl::awake( &GUIMessageExit );
 }
 
 #endif // !SERVER_DAEMON
