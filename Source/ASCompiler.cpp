@@ -609,7 +609,8 @@ int Compile( const char* fname, const char* fname_prep, vector< char* >& defines
     SAFEDEL( registrators[ 3 ] );
     SAFEDEL( registrators[ 4 ] );
     SAFEDEL( registrators[ 5 ] );
-    Engine->Release();
+    Engine->ShutDownAndRelease();
+    Engine = NULL;
     if( Buf )
         delete Buf;
     Buf = NULL;

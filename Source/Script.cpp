@@ -198,25 +198,21 @@ void ProcessStack( CallStack* stack )
 bool LoadLibraryCompiler = false;
 
 // Contexts
-THREAD asIScriptContext* GlobalCtx[ GLOBAL_CONTEXT_STACK_SIZE ] = { 0 };
-THREAD uint              GlobalCtxIndex = 0;
-class ActiveContext
+struct ContextData
 {
-public:
-    asIScriptContext** Contexts;
-    uint               StartTick;
-    ActiveContext( asIScriptContext** ctx, uint tick ): Contexts( ctx ), StartTick( tick ) {}
-    bool operator==( asIScriptContext** ctx ) { return ctx == Contexts; }
+    char Info[ MAX_FOTEXT ];
+    uint StartTick;
 };
-typedef vector< ActiveContext > ActiveContextVec;
-ActiveContextVec ActiveContexts;
-Mutex            ActiveGlobalCtxLocker;
+static vector< asIScriptContext* > FreeContexts;
+static vector< asIScriptContext* > BusyContexts;
+static Mutex                       ContextsLocker;
 
-// Timeouts
-uint   RunTimeoutSuspend = 600000;     // 10 minutes
-uint   RunTimeoutMessage = 300000;     // 5 minutes
-Thread RunTimeoutThread;
-void RunTimeout( void* );
+// Script watcher
+Thread ScriptWatcherThread;
+bool   ScriptWatcherFinish = false;
+void ScriptWatcher( void* );
+uint   RunTimeoutSuspend = 600000;   // 10 minutes
+uint   RunTimeoutMessage = 300000;   // 5 minutes
 
 bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls )
 {
@@ -235,6 +231,9 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
     BindedFunctions.push_back( BindFunction() );     // None
     BindedFunctions.push_back( BindFunction() );     // Temp
     ScriptFuncBinds.clear();
+
+    while( FreeContexts.size() < 10 )
+        CreateContext( true );
 
     if( !InitThread() )
         return false;
@@ -394,7 +393,8 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
     GameOpt.ScriptGetReturnedObject = &GameOptScript::ScriptGetReturnedObject;
     GameOpt.ScriptGetReturnedAddress = &GameOptScript::ScriptGetReturnedAddress;
 
-    RunTimeoutThread.Start( RunTimeout, "ScriptTimeout" );
+    ScriptWatcherFinish = false;
+    ScriptWatcherThread.Start( ScriptWatcher, "ScriptWatcher" );
     return true;
 }
 
@@ -408,7 +408,8 @@ void Script::Finish()
     #endif
     RunTimeoutSuspend = 0;
     RunTimeoutMessage = 0;
-    RunTimeoutThread.Wait();
+    ScriptWatcherFinish = true;
+    ScriptWatcherThread.Wait();
 
     for( auto it = BindedFunctions.begin(), end = BindedFunctions.end(); it != end; ++it )
         ( *it ).Clear();
@@ -419,38 +420,22 @@ void Script::Finish()
     Preprocessor::UndefAll();
     UnloadScripts();
 
+    RUNTIME_ASSERT( BusyContexts.empty() );
+    while( !FreeContexts.empty() )
+        FinishContext( FreeContexts[ 0 ] );
+
     FinishEngine( Engine );     // Finish default engine
     FinishThread();
 }
 
 bool Script::InitThread()
 {
-    for( int i = 0; i < GLOBAL_CONTEXT_STACK_SIZE; i++ )
-    {
-        GlobalCtx[ i ] = CreateContext();
-        if( !GlobalCtx[ i ] )
-        {
-            WriteLogF( _FUNC_, " - Create global contexts fail.\n" );
-            Engine->Release();
-            Engine = NULL;
-            return false;
-        }
-    }
-
+    // Dummy
     return true;
 }
 
 void Script::FinishThread()
 {
-    ActiveGlobalCtxLocker.Lock();
-    auto it = std::find( ActiveContexts.begin(), ActiveContexts.end(), (asIScriptContext**) GlobalCtx );
-    if( it != ActiveContexts.end() )
-        ActiveContexts.erase( it );
-    ActiveGlobalCtxLocker.Unlock();
-
-    for( int i = 0; i < GLOBAL_CONTEXT_STACK_SIZE; i++ )
-        FinishContext( GlobalCtx[ i ] );
-
     asThreadCleanup();
 }
 
@@ -1041,100 +1026,76 @@ void Script::FinishEngine( asIScriptEngine*& engine )
         for( auto it = edata->LoadedDlls.begin(), end = edata->LoadedDlls.end(); it != end; ++it )
             DLL_Free( ( *it ).second.second );
         delete edata;
-        engine->Release();
+        engine->ShutDownAndRelease();
         engine = NULL;
     }
 }
 
-asIScriptContext* Script::CreateContext()
+asIScriptContext* Script::CreateContext( bool free )
 {
     asIScriptContext* ctx = Engine->CreateContext();
-    if( !ctx )
-    {
-        WriteLogF( _FUNC_, " - CreateContext fail.\n" );
-        return NULL;
-    }
+    RUNTIME_ASSERT( ctx );
+    int               r = ctx->SetExceptionCallback( asFUNCTION( CallbackException ), NULL, asCALL_CDECL );
+    RUNTIME_ASSERT( r >= 0 );
 
-    if( ctx->SetExceptionCallback( asFUNCTION( CallbackException ), NULL, asCALL_CDECL ) < 0 )
-    {
-        WriteLogF( _FUNC_, " - SetExceptionCallback to fail.\n" );
-        ctx->Release();
-        return NULL;
-    }
+    ContextData* ctx_data = new ContextData();
+    memzero( ctx_data, sizeof( ContextData ) );
+    ctx->SetUserData( ctx_data );
 
-    char* buf = new char[ CONTEXT_BUFFER_SIZE ];
-    if( !buf )
-    {
-        WriteLogF( _FUNC_, " - Allocate memory for buffer fail.\n" );
-        ctx->Release();
-        return NULL;
-    }
-
-    Str::Copy( buf, CONTEXT_BUFFER_SIZE, "<error>" );
-    ctx->SetUserData( buf );
+    SCOPE_LOCK( ContextsLocker );
+    if( free )
+        FreeContexts.push_back( ctx );
+    else
+        BusyContexts.push_back( ctx );
     return ctx;
 }
 
-void Script::FinishContext( asIScriptContext*& ctx )
+void Script::FinishContext( asIScriptContext* ctx )
 {
-    if( ctx )
-    {
-        char* buf = (char*) ctx->GetUserData();
-        if( buf )
-            delete[] buf;
-        ctx->Release();
-        ctx = NULL;
-    }
+    ContextsLocker.Lock();
+    auto it = std::find( FreeContexts.begin(), FreeContexts.end(), ctx );
+    RUNTIME_ASSERT( it != FreeContexts.end() );
+    FreeContexts.erase( it );
+    ContextsLocker.Unlock();
+
+    delete (ContextData*) ctx->GetUserData();
+    ctx->Release();
+    ctx = NULL;
 }
 
-asIScriptContext* Script::GetGlobalContext()
+asIScriptContext* Script::RequestContext()
 {
-    if( GlobalCtxIndex >= GLOBAL_CONTEXT_STACK_SIZE )
+    asIScriptContext* ctx = NULL;
+
+    ContextsLocker.Lock();
+    if( !FreeContexts.empty() )
     {
-        WriteLogF( _FUNC_, " - Script context stack overflow! Context call stack:\n" );
-        for( int i = GLOBAL_CONTEXT_STACK_SIZE - 1; i >= 0; i-- )
-            WriteLog( "  %d) %s.\n", i, GlobalCtx[ i ]->GetUserData() );
-        return NULL;
+        ctx = FreeContexts.back();
+        FreeContexts.pop_back();
+        BusyContexts.push_back( ctx );
     }
-    GlobalCtxIndex++;
-    return GlobalCtx[ GlobalCtxIndex - 1 ];
+    ContextsLocker.Unlock();
+
+    if( !ctx )
+        ctx = CreateContext( false );
+
+    return ctx;
 }
 
-void Script::PrintContextCallstack( asIScriptContext* ctx )
+void Script::ReturnContext( asIScriptContext* ctx )
 {
-    int                      line, column;
-    const asIScriptFunction* func;
-    int                      stack_size = ctx->GetCallstackSize();
-    int                      cur_stack = 0;
-    WriteLog( " Traceback: (%s)\n", ctx->GetUserData() );
+    ContextsLocker.Lock();
+    auto it = std::find( BusyContexts.begin(), BusyContexts.end(), ctx );
+    RUNTIME_ASSERT( it != BusyContexts.end() );
+    BusyContexts.erase( it );
+    FreeContexts.push_back( ctx );
+    ContextsLocker.Unlock();
+}
 
-    // Print system function
-    asIScriptFunction* sys_func = ctx->GetSystemFunction();
-    if( sys_func )
-        WriteLog( "  %d) %s\n", cur_stack++, sys_func->GetDeclaration( true, true, true ) );
-
-    // Print current function
-    if( ctx->GetState() == asEXECUTION_EXCEPTION )
-    {
-        line = ctx->GetExceptionLineNumber( &column );
-        func = ctx->GetExceptionFunction();
-    }
-    else
-    {
-        line = ctx->GetLineNumber( 0, &column );
-        func = ctx->GetFunction( 0 );
-    }
-    if( func )
-        WriteLog( "  %d) %s : %s : %d, %d\n", cur_stack++, func->GetModuleName(), func->GetDeclaration(), line, column );
-
-    // Print call stack
-    for( int i = 1; i < stack_size; i++ )
-    {
-        func = ctx->GetFunction( i );
-        line = ctx->GetLineNumber( i, &column );
-        if( func )
-            WriteLog( "  %d) %s : %s : %d, %d\n", cur_stack++, func->GetModuleName(), func->GetDeclaration(), line, column );
-    }
+asIScriptContext* Script::GetExecutionContext()
+{
+    SCOPE_LOCK( ContextsLocker );
+    return !BusyContexts.empty() ? BusyContexts.back() : NULL;
 }
 
 void Script::RaiseException( const char* message, ... )
@@ -1153,6 +1114,68 @@ void Script::RaiseException( const char* message, ... )
         ctx->SetException( buf );
     else
         WriteLog( "Runtime exception: %s\n", buf );
+}
+
+void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
+{
+    va_list list;
+    va_start( list, message );
+    char    buf[ MAX_FOTEXT ];
+    vsnprintf( buf, MAX_FOTEXT, message, list );
+    va_end( list );
+
+    Str::Append( buf, "\n" );
+    Str::Append( buf, MakeContextTraceback( ctx ).c_str() );
+
+    WriteLog( "%s", buf );
+
+    #ifndef FONLINE_SERVER
+    // CreateDump( "ScriptException" );
+    // ShowMessage( buf );
+    // ExitProcess( 0 );
+    #endif
+}
+
+string Script::MakeContextTraceback( asIScriptContext* ctx )
+{
+    string                   result = "";
+    char                     buf[ MAX_FOTEXT ];
+
+    int                      line, column;
+    const asIScriptFunction* func;
+    int                      stack_size = ctx->GetCallstackSize();
+    int                      cur_stack = 0;
+    result += Str::Format( buf, " Traceback: (%s)\n", ctx->GetUserData() );
+
+    // Print system function
+    asIScriptFunction* sys_func = ctx->GetSystemFunction();
+    if( sys_func )
+        result += Str::Format( buf, "  %d) %s\n", cur_stack++, sys_func->GetDeclaration( true, true, true ) );
+
+    // Print current function
+    if( ctx->GetState() == asEXECUTION_EXCEPTION )
+    {
+        line = ctx->GetExceptionLineNumber( &column );
+        func = ctx->GetExceptionFunction();
+    }
+    else
+    {
+        line = ctx->GetLineNumber( 0, &column );
+        func = ctx->GetFunction( 0 );
+    }
+    if( func )
+        result += Str::Format( buf, "  %d) %s : %s : %d, %d\n", cur_stack++, func->GetModuleName(), func->GetDeclaration(), line, column );
+
+    // Print call stack
+    for( int i = 1; i < stack_size; i++ )
+    {
+        func = ctx->GetFunction( i );
+        line = ctx->GetLineNumber( i, &column );
+        if( func )
+            result += Str::Format( buf, "  %d) %s : %s : %d, %d\n", cur_stack++, func->GetModuleName(), func->GetDeclaration(), line, column );
+    }
+
+    return result;
 }
 
 const char* Script::GetActiveModuleName()
@@ -1189,50 +1212,46 @@ asIScriptModule* Script::CreateModule( const char* module_name )
     return Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
 }
 
-void RunTimeout( void* data )
+void ScriptWatcher( void* data )
 {
-    while( RunTimeoutSuspend )
+    while( !ScriptWatcherFinish )
     {
+        // Profiler
         #ifndef FONLINE_SERVER
         Thread::Sleep( 100 );
         #else
         if( ProfilerSampleInterval )
         {
             Thread::Sleep( ProfilerSampleInterval );
-            CallStack*                                         stack = NULL;
+            CallStack* stack = NULL;
 
-            volatile MutexLocker< decltype( ProfilerLocker ) > scope_lock__2( ProfilerLocker );
-            SCOPE_LOCK( ActiveGlobalCtxLocker );
+            SCOPE_LOCK( ProfilerLocker );
+            SCOPE_LOCK( ContextsLocker );
 
-            for( auto it = ActiveContexts.begin(), end = ActiveContexts.end(); it != end; ++it )
+            for( auto it = BusyContexts.begin(), end = BusyContexts.end(); it != end; ++it )
             {
-                ActiveContext& actx = *it;
-
-                // Fetch the call stacks
-                for( int i = GLOBAL_CONTEXT_STACK_SIZE - 1; i >= 0; i-- )
+                asIScriptContext* ctx = *it;
+                if( ctx->GetState() == asEXECUTION_ACTIVE )
                 {
-                    asIScriptContext* ctx = actx.Contexts[ i ];
-                    if( ctx->GetState() == asEXECUTION_ACTIVE )
+                    asIScriptFunction* func;
+                    int                line, column = 0;
+                    uint               stack_size = ctx->GetCallstackSize();
+
+                    // Add new entry
+                    if( !stack )
+                        stack = new CallStack();
+
+                    for( uint j = 0; j < stack_size; j++ )
                     {
-                        asIScriptFunction* func;
-                        int                line, column = 0;
-                        uint               stack_size = ctx->GetCallstackSize();
-
-                        // Add new entry
-                        if( !stack )
-                            stack = new CallStack();
-
-                        for( uint j = 0; j < stack_size; j++ )
+                        func = ctx->GetFunction( j );
+                        if( func )
                         {
-                            func = ctx->GetFunction( j );
-                            if( func )
-                            {
-                                line = ctx->GetLineNumber( j );
-                                stack->push_back( Call( func->GetId(), line ) );
-                                // WriteLog("%d> %i) %s\n", i, j, func->GetName());
-                            }
-                            else
-                                stack->push_back( Call( 0, 0 ) );
+                            line = ctx->GetLineNumber( j );
+                            stack->push_back( Call( func->GetId(), line ) );
+                        }
+                        else
+                        {
+                            stack->push_back( Call( 0, 0 ) );
                         }
                     }
                 }
@@ -1277,24 +1296,23 @@ void RunTimeout( void* data )
             ScriptTimeoutTime = cur_tick;
         }
         else
-            Thread::Sleep( 100 );
-        #endif
-        SCOPE_LOCK( ActiveGlobalCtxLocker );
-        uint cur_tick = Timer::FastTick();
-
-        for( auto it = ActiveContexts.begin(), end = ActiveContexts.end(); it != end; ++it )
         {
-            ActiveContext& actx = *it;
-            if( cur_tick >= actx.StartTick + RunTimeoutSuspend )
-            {
-                // Suspend all contexts
-                for( int i = GLOBAL_CONTEXT_STACK_SIZE - 1; i >= 0; i-- )
-                    if( actx.Contexts[ i ]->GetState() == asEXECUTION_ACTIVE )
-                        actx.Contexts[ i ]->Suspend();
+            Thread::Sleep( 100 );
+        }
+        #endif
 
-                // Erase from collection
-                ActiveContexts.erase( it );
-                break;
+        // Timeout
+        if( RunTimeoutSuspend )
+        {
+            SCOPE_LOCK( ContextsLocker );
+
+            uint cur_tick = Timer::FastTick();
+            for( auto it = BusyContexts.begin(), end = BusyContexts.end(); it != end; ++it )
+            {
+                asIScriptContext* ctx = *it;
+                ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
+                if( ctx->GetState() == asEXECUTION_ACTIVE && ctx_data->StartTick && cur_tick >= ctx_data->StartTick + RunTimeoutSuspend )
+                    ctx->Abort();
             }
         }
     }
@@ -2144,7 +2162,7 @@ THREAD bool              ScriptCall = false;
 THREAD asIScriptContext* CurrentCtx = NULL;
 THREAD size_t            NativeFuncAddr = 0;
 THREAD size_t            NativeArgs[ 256 ] = { 0 };
-THREAD size_t            NativeRetValue[ 2 ] = { 0 }; // EAX:EDX
+THREAD size_t            RetValue[ 2 ] = { 0 }; // EAX:EDX
 THREAD size_t            CurrentArg = 0;
 THREAD int               ExecutionRecursionCounter = 0;
 
@@ -2280,25 +2298,27 @@ bool Script::PrepareContext( int bind_id, const char* call_func, const char* ctx
         if( !script_func )
             return false;
 
-        asIScriptContext* ctx = GetGlobalContext();
-        if( !ctx )
-            return false;
+        asIScriptContext* ctx = RequestContext();
+        RUNTIME_ASSERT( ctx );
 
         BeginExecution();
 
-        Str::Copy( (char*) ctx->GetUserData(), CONTEXT_BUFFER_SIZE, call_func );
-        Str::Append( (char*) ctx->GetUserData(), CONTEXT_BUFFER_SIZE, " : " );
-        Str::Append( (char*) ctx->GetUserData(), CONTEXT_BUFFER_SIZE, ctx_info );
+        ContextData* ctx_data = (ContextData*) ctx->GetUserData();
+        Str::Copy( ctx_data->Info, call_func );
+        Str::Append( ctx_data->Info, " : " );
+        Str::Append( ctx_data->Info, ctx_info );
 
         int result = ctx->Prepare( script_func );
         if( result < 0 )
         {
             WriteLogF( _FUNC_, " - Prepare error, context name<%s>, bind_id<%d>, func<%s>, error<%d>.\n", ctx->GetUserData(), bind_id, script_func->GetDeclaration(), result );
-            GlobalCtxIndex--;
+            ctx->Abort();
+            ReturnContext( ctx );
             EndExecution();
             return false;
         }
 
+        RUNTIME_ASSERT( !CurrentCtx );
         CurrentCtx = ctx;
         ScriptCall = true;
     }
@@ -2520,25 +2540,12 @@ bool Script::RunPrepared()
 {
     if( ScriptCall )
     {
+        RUNTIME_ASSERT( CurrentCtx );
         asIScriptContext* ctx = CurrentCtx;
         uint              tick = Timer::FastTick();
+        CurrentCtx = NULL;
 
-        if( GlobalCtxIndex == 1 )     // First context from stack, add timing
-        {
-            SCOPE_LOCK( ActiveGlobalCtxLocker );
-            ActiveContexts.push_back( ActiveContext( GlobalCtx, tick ) );
-        }
-
-        int result = ctx->Execute();
-
-        GlobalCtxIndex--;
-        if( GlobalCtxIndex == 0 )     // All scripts execution complete, erase timing
-        {
-            SCOPE_LOCK( ActiveGlobalCtxLocker );
-            auto it = std::find( ActiveContexts.begin(), ActiveContexts.end(), (asIScriptContext**) GlobalCtx );
-            if( it != ActiveContexts.end() )
-                ActiveContexts.erase( it );
-        }
+        int             result = ctx->Execute();
 
         uint            delta = Timer::FastTick() - tick;
 
@@ -2547,13 +2554,13 @@ bool Script::RunPrepared()
         {
             if( state != asEXECUTION_EXCEPTION )
             {
-                if( state == asEXECUTION_SUSPENDED )
-                    WriteLog( "Execution of script stopped due to timeout<%u>.\n", RunTimeoutSuspend );
+                if( state == asEXECUTION_ABORTED )
+                    HandleException( ctx, "Execution of script stopped due to timeout %u (ms).", RunTimeoutSuspend );
                 else
-                    WriteLog( "Execution of script stopped due to %s.\n", ContextStatesStr[ (int) state ] );
-                PrintContextCallstack( ctx );
+                    HandleException( ctx, "Execution of script stopped due to %s.", ContextStatesStr[ (int) state ] );
             }
             ctx->Abort();
+            ReturnContext( ctx );
             EndExecution();
             return false;
         }
@@ -2565,16 +2572,19 @@ bool Script::RunPrepared()
         if( result < 0 )
         {
             WriteLogF( _FUNC_, " - Context<%s> execute error<%d>, state<%s>.\n", ctx->GetUserData(), result, ContextStatesStr[ (int) state ] );
+            ctx->Abort();
+            ReturnContext( ctx );
             EndExecution();
             return false;
         }
 
-        CurrentCtx = ctx;
+        *(uint64*) RetValue = *(uint64*) ctx->GetAddressOfReturnValue();
+        ReturnContext( ctx );
         ScriptCall = true;
     }
     else
     {
-        *( (uint64*) NativeRetValue ) = CallCDeclFunction32( NativeArgs, CurrentArg * 4, NativeFuncAddr );
+        *(uint64*) RetValue = CallCDeclFunction32( NativeArgs, CurrentArg * 4, NativeFuncAddr );
         ScriptCall = false;
     }
 
@@ -2584,48 +2594,62 @@ bool Script::RunPrepared()
 
 uint Script::GetReturnedUInt()
 {
-    return ScriptCall ? CurrentCtx->GetReturnDWord() : (uint) NativeRetValue[ 0 ];
+    return *(uint*) RetValue;
 }
 
 bool Script::GetReturnedBool()
 {
-    return ScriptCall ? ( CurrentCtx->GetReturnByte() != 0 ) : ( ( NativeRetValue[ 0 ] & 1 ) != 0 );
+    return *(bool*) RetValue;
 }
 
 void* Script::GetReturnedObject()
 {
-    return ScriptCall ? CurrentCtx->GetReturnObject() : (void*) NativeRetValue[ 0 ];
+    return *(void**) RetValue;
 }
 
 float Script::GetReturnedFloat()
 {
-    float            f;
-    #if defined ( FO_MSVC ) && defined ( FO_X86 )
-    __asm fstp dword ptr[ f ]
-    #elif defined ( FO_GCC ) && !defined ( FO_OSX_IOS )
-    asm ( "fstps %0 \n" : "=m" ( f ) );
-    #else
-    f = 0.0f;
-    #endif
-    return f;
+    if( ScriptCall )
+    {
+        return *(float*) RetValue;
+    }
+    else
+    {
+        float            f;
+        #if defined ( FO_MSVC ) && defined ( FO_X86 )
+        __asm fstp dword ptr[ f ]
+        #elif defined ( FO_GCC ) && !defined ( FO_OSX_IOS )
+        asm ( "fstps %0 \n" : "=m" ( f ) );
+        #else
+        f = 0.0f;
+        #endif
+        return f;
+    }
 }
 
 double Script::GetReturnedDouble()
 {
-    double           d;
-    #if defined ( FO_MSVC ) && defined ( FO_X86 )
-    __asm fstp qword ptr[ d ]
-    #elif defined ( FO_GCC ) && !defined ( FO_OSX_IOS )
-    asm ( "fstpl %0 \n" : "=m" ( d ) );
-    #else
-    d = 0.0;
-    #endif
-    return d;
+    if( ScriptCall )
+    {
+        return *(double*) RetValue;
+    }
+    else
+    {
+        double           d;
+        #if defined ( FO_MSVC ) && defined ( FO_X86 )
+        __asm fstp qword ptr[ d ]
+        #elif defined ( FO_GCC ) && !defined ( FO_OSX_IOS )
+        asm ( "fstpl %0 \n" : "=m" ( d ) );
+        #else
+        d = 0.0;
+        #endif
+        return d;
+    }
 }
 
 void* Script::GetReturnedRawAddress()
 {
-    return ScriptCall ? CurrentCtx->GetAddressOfReturnValue() : (void*) NativeRetValue;
+    return (void*) RetValue;
 }
 
 bool Script::SynchronizeThread()
@@ -2748,8 +2772,7 @@ void Script::CallbackException( asIScriptContext* ctx, void* param )
 {
     const char* str = ctx->GetExceptionString();
     uint        str_len = Str::Length( str );
-    WriteLog( "Script exception: %s%s\n", str, str_len > 0 && str[ str_len - 1 ] != '.' ? "." : "" );
-    PrintContextCallstack( ctx );
+    HandleException( ctx, "Script exception: %s%s", str, str_len > 0 && str[ str_len - 1 ] != '.' ? "." : "" );
 }
 
 /************************************************************************/

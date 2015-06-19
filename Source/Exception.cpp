@@ -705,40 +705,15 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 
 void DumpAngelScript( FILE* f )
 {
-    asIScriptContext* ctx = Script::GetGlobalContext();
+    asIScriptContext* ctx = Script::GetExecutionContext();
     if( !ctx )
     {
         fprintf( f, "\tNot available\n" );
         return;
     }
 
-    asUINT stack_size = ctx->GetCallstackSize();
-    if( stack_size > 0 )
-    {
-        int line, column;
-        const asIScriptFunction* func;
-
-        for( asUINT i = 0; i < stack_size; i++ )
-        {
-            func = ctx->GetFunction( i );
-            line = ctx->GetLineNumber( i, &column );
-
-            if( func )
-            {
-                bool include_ns = ( Str::Length( func->GetNamespace() ) > 0 );
-                const char* module = func->GetModuleName();
-                const char* decl = func->GetDeclaration( true, include_ns, true );
-
-                fprintf( f, "\t%d) %s : %s : %d, %d\n", i, module, decl, line, column );
-            }
-            else
-            {
-                fprintf( f, "\t%d) <unknown function> : %d, %d\n", i, line, column );
-            }
-        }
-
-        fprintf( f, "\n" );
-    }
+    string traceback = Script::MakeContextTraceback( ctx );
+    fprintf( f, "%s", traceback.c_str() );
 }
 
 bool RaiseAssert( const char* message, const char* file, int line )

@@ -4,7 +4,7 @@
 #include "Common.h"
 
 #define DEFAULT_SPIN_COUNT              ( 4000 )
-#define SCOPE_LOCK( mutex )                               volatile MutexLocker< decltype( mutex ) > scope_lock__( mutex )
+#define SCOPE_LOCK( mutex )                               volatile MutexLocker< decltype( mutex ) > scope_lock_ ## mutex( mutex )
 
 extern void Thread_Sleep( uint ms ); // Definition in Common.cpp
 

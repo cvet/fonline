@@ -116,7 +116,7 @@ void Debugger::Memory( int block, int value )
 {
     if( !MemLocker )
         MemLocker = new Mutex();
-    SCOPE_LOCK( *MemLocker );
+    MemLocker->Lock();
 
     if( value )
     {
@@ -134,6 +134,8 @@ void Debugger::Memory( int block, int value )
             node.DeallocMem -= value;
         }
     }
+
+    MemLocker->Unlock();
 }
 
 struct MemNodeStr
@@ -152,7 +154,7 @@ void Debugger::MemoryStr( const char* block, int value )
 {
     if( !MemLocker )
         MemLocker = new Mutex();
-    SCOPE_LOCK( *MemLocker );
+    MemLocker->Lock();
 
     if( block && value )
     {
@@ -187,14 +189,17 @@ void Debugger::MemoryStr( const char* block, int value )
             node->DeallocMem -= value;
         }
     }
+
+    MemLocker->Unlock();
 }
 
 const char* Debugger::GetMemoryStatistics()
 {
     if( !MemLocker )
         MemLocker = new Mutex();
-    SCOPE_LOCK( *MemLocker );
+    MemLocker->Lock();
 
+    #pragma MESSAGE("Exclude static var.")
     static string result;
     result = "Memory statistics:\n";
 
@@ -259,6 +264,7 @@ const char* Debugger::GetMemoryStatistics()
         result += "\n  Disabled\n";
     #endif
 
+    MemLocker->Unlock();
     return result.c_str();
 }
 

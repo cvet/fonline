@@ -11,9 +11,6 @@
 #include <vector>
 #include <string>
 
-#define GLOBAL_CONTEXT_STACK_SIZE    ( 10 )
-#define CONTEXT_BUFFER_SIZE          ( 512 )
-
 #define SCRIPT_ERROR_R( error, ... )     do { Script::RaiseException( error, ## __VA_ARGS__ ); return; } while( 0 )
 #define SCRIPT_ERROR_R0( error, ... )    do { Script::RaiseException( error, ## __VA_ARGS__ ); return 0; } while( 0 )
 
@@ -73,11 +70,14 @@ namespace Script
     asIScriptEngine* CreateEngine( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls );
     void             FinishEngine( asIScriptEngine*& engine );
 
-    asIScriptContext* CreateContext();
-    void              FinishContext( asIScriptContext*& ctx );
-    asIScriptContext* GetGlobalContext();
-    void              PrintContextCallstack( asIScriptContext* ctx );
+    asIScriptContext* CreateContext( bool free );
+    void              FinishContext( asIScriptContext* ctx );
+    asIScriptContext* RequestContext();
+    void              ReturnContext( asIScriptContext* ctx );
+    asIScriptContext* GetExecutionContext();
     void              RaiseException( const char* message, ... );
+    void              HandleException( asIScriptContext* ctx, const char* message, ... );
+    string            MakeContextTraceback( asIScriptContext* ctx );
 
     const char*      GetActiveModuleName();
     const char*      GetActiveFuncName();
