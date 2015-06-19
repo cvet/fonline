@@ -55,7 +55,7 @@ static Fl_Check_Button* GuiCBtnScriptDebug, * GuiCBtnLogging, * GuiCBtnLoggingTi
 static Fl_Text_Display* GuiLog, * GuiInfo;
 static int              GUISizeMod = 0;
 
-static bool             GracefulShutdown = false;
+static bool             GracefulExit = false;
 
 static int              GUIMessageUpdate = 0;
 static int              GUIMessageExit = 1;
@@ -396,15 +396,18 @@ void GUICallback( Fl_Widget* widget, void* data )
 {
     if( widget == GuiWindow )
     {
-        if( FOQuit || Fl::get_key( FL_Shift_L ) )
+        if( !GracefulExit )
         {
-            ExitProcess( 0 );
-        }
-        else
-        {
-            GuiWindow->label( "Graceful shutdown. Please wait..." );
-            GracefulShutdown = true;
-            FOQuit = true;
+            if( !Server.Started() || Fl::get_key( FL_Shift_L ) )
+            {
+                ExitProcess( 0 );
+            }
+            else
+            {
+                GuiWindow->label( "Graceful exit. Please wait..." );
+                GracefulExit = true;
+                FOQuit = true;
+            }
         }
     }
     else if( widget == GuiBtnRlClScript )
@@ -741,7 +744,7 @@ void GameLoopThread( void* )
     LogFinish();
     if( Singleplayer )
         ExitProcess( 0 );
-    if( GuiWindow && GracefulShutdown )
+    if( GuiWindow && GracefulExit )
         Fl::awake( &GUIMessageExit );
 }
 
