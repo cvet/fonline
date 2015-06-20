@@ -3436,8 +3436,7 @@ Critter* Critter::ScanEnemyStack()
         return NULL;
 
     ScriptArray* enemy_stack = GetEnemyStack();
-    uint         stack_count = enemy_stack->GetSize();
-    for( uint i = 0; i < stack_count; i++ )
+    for( int i = (int) enemy_stack->GetSize() - 1; i >= 0; i-- )
     {
         Critter* enemy = GetCritSelf( *(uint*) enemy_stack->At( i ), true );
         if( enemy && !enemy->IsDead() )

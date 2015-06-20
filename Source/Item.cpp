@@ -343,7 +343,7 @@ bool Item::ParseScript( const char* script, bool first_time )
         hash func_num = Script::BindScriptFuncNum( script, "void %s(Item&,bool)" );
         if( !func_num )
         {
-            WriteLogF( _FUNC_, " - Script<%s> bind fail, item pid<%u>.\n", script, GetProtoId() );
+            WriteLogF( _FUNC_, " - Script '%s' bind fail, item '%s'.\n", script, GetName() );
             return false;
         }
         SetScriptId( func_num );

@@ -432,15 +432,16 @@ public:
     static void ClearItems( ItemVec& items );
 
     // All
-    uint GetId()            { return Id; }
-    hash GetProtoId()       { return Proto->ProtoId; }
-    hash GetActualPicMap()  { return GetPicMap() ? GetPicMap() : Proto->GetPicMap(); }
-    hash GetActualPicInv()  { return GetPicInv() ? GetPicInv() : Proto->GetPicInv(); }
-    bool IsValidAccessory() { return Accessory == ITEM_ACCESSORY_CRITTER || Accessory == ITEM_ACCESSORY_HEX || Accessory == ITEM_ACCESSORY_CONTAINER; }
-    void ChangeCount( int val );
-    int  GetType() { return Proto->GetType(); }
-    void SetWeaponMode( uchar mode );
-    bool IsStackable() { return Proto->GetStackable(); }
+    uint        GetId()            { return Id; }
+    hash        GetProtoId()       { return Proto->ProtoId; }
+    const char* GetName()          { return Proto->GetName(); }
+    hash        GetActualPicMap()  { return GetPicMap() ? GetPicMap() : Proto->GetPicMap(); }
+    hash        GetActualPicInv()  { return GetPicInv() ? GetPicInv() : Proto->GetPicInv(); }
+    bool        IsValidAccessory() { return Accessory == ITEM_ACCESSORY_CRITTER || Accessory == ITEM_ACCESSORY_HEX || Accessory == ITEM_ACCESSORY_CONTAINER; }
+    void        ChangeCount( int val );
+    int         GetType() { return Proto->GetType(); }
+    void        SetWeaponMode( uchar mode );
+    bool        IsStackable() { return Proto->GetStackable(); }
 
     uint GetVolume()    { return GetCount() * Proto->GetVolume(); }
     uint GetVolume1st() { return Proto->GetVolume(); }
