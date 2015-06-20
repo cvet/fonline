@@ -233,7 +233,7 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
     ScriptFuncBinds.clear();
 
     while( FreeContexts.size() < 10 )
-        CreateContext( true );
+        CreateContext();
 
     if( !InitThread() )
         return false;
@@ -1031,7 +1031,7 @@ void Script::FinishEngine( asIScriptEngine*& engine )
     }
 }
 
-asIScriptContext* Script::CreateContext( bool free )
+void Script::CreateContext()
 {
     asIScriptContext* ctx = Engine->CreateContext();
     RUNTIME_ASSERT( ctx );
@@ -1043,11 +1043,7 @@ asIScriptContext* Script::CreateContext( bool free )
     ctx->SetUserData( ctx_data );
 
     SCOPE_LOCK( ContextsLocker );
-    if( free )
-        FreeContexts.push_back( ctx );
-    else
-        BusyContexts.push_back( ctx );
-    return ctx;
+    FreeContexts.push_back( ctx );
 }
 
 void Script::FinishContext( asIScriptContext* ctx )
@@ -1065,37 +1061,39 @@ void Script::FinishContext( asIScriptContext* ctx )
 
 asIScriptContext* Script::RequestContext()
 {
-    asIScriptContext* ctx = NULL;
+    SCOPE_LOCK( ContextsLocker );
 
-    ContextsLocker.Lock();
-    if( !FreeContexts.empty() )
-    {
-        ctx = FreeContexts.back();
-        FreeContexts.pop_back();
-        BusyContexts.push_back( ctx );
-    }
-    ContextsLocker.Unlock();
+    if( FreeContexts.empty() )
+        CreateContext();
 
-    if( !ctx )
-        ctx = CreateContext( false );
-
+    asIScriptContext* ctx = FreeContexts.back();
+    FreeContexts.pop_back();
+    BusyContexts.push_back( ctx );
     return ctx;
 }
 
 void Script::ReturnContext( asIScriptContext* ctx )
 {
-    ContextsLocker.Lock();
+    SCOPE_LOCK( ContextsLocker );
+
     auto it = std::find( BusyContexts.begin(), BusyContexts.end(), ctx );
     RUNTIME_ASSERT( it != BusyContexts.end() );
     BusyContexts.erase( it );
     FreeContexts.push_back( ctx );
-    ContextsLocker.Unlock();
+
+    ContextData* ctx_data = (ContextData*) ctx->GetUserData();
+    memzero( ctx_data, sizeof( ContextData ) );
 }
 
-asIScriptContext* Script::GetExecutionContext()
+void Script::GetExecutionContexts( vector< asIScriptContext* >& contexts )
 {
-    SCOPE_LOCK( ContextsLocker );
-    return !BusyContexts.empty() ? BusyContexts.back() : NULL;
+    ContextsLocker.Lock();
+    contexts = BusyContexts;
+}
+
+void Script::ReleaseExecutionContexts()
+{
+    ContextsLocker.Unlock();
 }
 
 void Script::RaiseException( const char* message, ... )
@@ -1141,16 +1139,16 @@ string Script::MakeContextTraceback( asIScriptContext* ctx )
     string                   result = "";
     char                     buf[ MAX_FOTEXT ];
 
+    ContextData*             ctx_data = (ContextData*) ctx->GetUserData();
     int                      line, column;
     const asIScriptFunction* func;
     int                      stack_size = ctx->GetCallstackSize();
-    int                      cur_stack = 0;
-    result += Str::Format( buf, " Traceback: (%s)\n", ctx->GetUserData() );
+    result += Str::Format( buf, " Traceback: (%s)\n", ctx_data->Info );
 
     // Print system function
     asIScriptFunction* sys_func = ctx->GetSystemFunction();
     if( sys_func )
-        result += Str::Format( buf, "  %d) %s\n", cur_stack++, sys_func->GetDeclaration( true, true, true ) );
+        result += Str::Format( buf, "  %s\n", sys_func->GetDeclaration( true, true, true ) );
 
     // Print current function
     if( ctx->GetState() == asEXECUTION_EXCEPTION )
@@ -1164,7 +1162,7 @@ string Script::MakeContextTraceback( asIScriptContext* ctx )
         func = ctx->GetFunction( 0 );
     }
     if( func )
-        result += Str::Format( buf, "  %d) %s : %s : %d, %d\n", cur_stack++, func->GetModuleName(), func->GetDeclaration(), line, column );
+        result += Str::Format( buf, "  %s : %s : %d, %d\n", func->GetModuleName(), func->GetDeclaration(), line, column );
 
     // Print call stack
     for( int i = 1; i < stack_size; i++ )
@@ -1172,7 +1170,7 @@ string Script::MakeContextTraceback( asIScriptContext* ctx )
         func = ctx->GetFunction( i );
         line = ctx->GetLineNumber( i, &column );
         if( func )
-            result += Str::Format( buf, "  %d) %s : %s : %d, %d\n", cur_stack++, func->GetModuleName(), func->GetDeclaration(), line, column );
+            result += Str::Format( buf, "  %s : %s : %d, %d\n", func->GetModuleName(), func->GetDeclaration(), line, column );
     }
 
     return result;
@@ -2304,14 +2302,12 @@ bool Script::PrepareContext( int bind_id, const char* call_func, const char* ctx
         BeginExecution();
 
         ContextData* ctx_data = (ContextData*) ctx->GetUserData();
-        Str::Copy( ctx_data->Info, call_func );
-        Str::Append( ctx_data->Info, " : " );
-        Str::Append( ctx_data->Info, ctx_info );
+        Str::Format( ctx_data->Info, "Caller '%s', CallFunc '%s', Thread '%s'", ctx_info, call_func, Thread::GetCurrentName() );
 
         int result = ctx->Prepare( script_func );
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Prepare error, context name<%s>, bind_id<%d>, func<%s>, error<%d>.\n", ctx->GetUserData(), bind_id, script_func->GetDeclaration(), result );
+            WriteLogF( _FUNC_, " - Prepare error, context name<%s>, bind_id<%d>, func<%s>, error<%d>.\n", ctx_data->Info, bind_id, script_func->GetDeclaration(), result );
             ctx->Abort();
             ReturnContext( ctx );
             EndExecution();
@@ -2542,8 +2538,10 @@ bool Script::RunPrepared()
     {
         RUNTIME_ASSERT( CurrentCtx );
         asIScriptContext* ctx = CurrentCtx;
+        ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
         uint              tick = Timer::FastTick();
         CurrentCtx = NULL;
+        ctx_data->StartTick = tick;
 
         int             result = ctx->Execute();
 
@@ -2566,12 +2564,12 @@ bool Script::RunPrepared()
         }
         else if( RunTimeoutMessage && delta >= RunTimeoutMessage )
         {
-            WriteLog( "Script work time<%u> in context<%s>.\n", delta, ctx->GetUserData() );
+            WriteLog( "Script work time<%u> in context<%s>.\n", delta, ctx_data->Info );
         }
 
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Context<%s> execute error<%d>, state<%s>.\n", ctx->GetUserData(), result, ContextStatesStr[ (int) state ] );
+            WriteLogF( _FUNC_, " - Context<%s> execute error<%d>, state<%s>.\n", ctx_data->Info, result, ContextStatesStr[ (int) state ] );
             ctx->Abort();
             ReturnContext( ctx );
             EndExecution();
@@ -2743,9 +2741,10 @@ void Script::Log( const char* str )
     }
     if( LogDebugInfo )
     {
-        int line, column;
+        int          line, column;
         line = ctx->GetLineNumber( 0, &column );
-        WriteLog( "Script callback: %s : %s : %s : %d, %d : %s.\n", str, func->GetModuleName(), func->GetDeclaration( true ), line, column, ctx->GetUserData() );
+        ContextData* ctx_data = (ContextData*) ctx->GetUserData();
+        WriteLog( "Script callback: %s : %s : %s : %d, %d : %s.\n", str, func->GetModuleName(), func->GetDeclaration( true ), line, column, ctx_data->Info );
     }
     else
     {

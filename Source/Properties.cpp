@@ -626,12 +626,20 @@ void Property::GenericSet( void* obj, void* new_value )
             #ifndef DISABLE_SCRIPT
             if( Script::PrepareContext( setCallbacks[ i ], _FUNC_, GetName() ) )
             {
-                if( setCallbacksArgs[ i ] > 0 )
-                    Script::SetArgObject( obj );
+                Script::SetArgObject( obj );
                 if( setCallbacksArgs[ i ] > 1 )
+                {
                     Script::SetArgUInt( enumValue );
-                if( setCallbacksArgs[ i ] > 2 )
+                    if( setCallbacksArgs[ i ] == 3 )
+                        Script::SetArgAddress( &old_value );
+                }
+                else if( setCallbacksArgs[ i ] < -1 )
+                {
                     Script::SetArgAddress( &old_value );
+                    if( setCallbacksArgs[ i ] == -3 )
+                        Script::SetArgUInt( enumValue );
+                }
+
                 if( !Script::RunPrepared() )
                     break;
             }
@@ -896,23 +904,46 @@ string Property::AddSetCallback( const char* script_func )
     int  bind_id = Script::Bind( script_func, decl, false, true );
     if( bind_id <= 0 )
     {
-        Str::Format( decl, "void %s(%s&,%s)", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
-        bind_id = Script::Bind( script_func, decl, false, true );
+        Str::Format( decl, "void %s(%s&,%s&,%s)", "%s", registrator->scriptClassName.c_str(), typeName.c_str(), registrator->enumTypeName.c_str() );
+        int  bind_id = Script::Bind( script_func, decl, false, true );
         if( bind_id <= 0 )
         {
-            Str::Format( decl, "void %s(%s&)", "%s", registrator->scriptClassName.c_str() );
+            Str::Format( decl, "void %s(%s&,%s)", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
             bind_id = Script::Bind( script_func, decl, false, true );
             if( bind_id <= 0 )
             {
-                char buf[ MAX_FOTEXT ];
-                Str::Format( buf, decl, script_func );
-                return "Unable to bind function '" + string( buf ) + "'.";
+                Str::Format( decl, "void %s(%s&,%s&)", "%s", registrator->scriptClassName.c_str(), typeName.c_str() );
+                bind_id = Script::Bind( script_func, decl, false, true );
+                if( bind_id <= 0 )
+                {
+                    Str::Format( decl, "void %s(%s&)", "%s", registrator->scriptClassName.c_str() );
+                    bind_id = Script::Bind( script_func, decl, false, true );
+                    if( bind_id <= 0 )
+                    {
+                        char buf[ MAX_FOTEXT ];
+                        Str::Format( buf, decl, script_func );
+                        return "Unable to bind function '" + string( buf ) + "'.";
+                    }
+                    else
+                    {
+                        setCallbacksArgs.push_back( 1 );
+                    }
+                }
+                else
+                {
+                    setCallbacksArgs.push_back( -2 );
+                    setCallbacksAnyOldValue = true;
+                }
             }
-            setCallbacksArgs.push_back( 1 );
+            else
+            {
+                setCallbacksArgs.push_back( 2 );
+            }
         }
         else
         {
-            setCallbacksArgs.push_back( 2 );
+            setCallbacksArgs.push_back( -3 );
+            setCallbacksAnyOldValue = true;
         }
     }
     else

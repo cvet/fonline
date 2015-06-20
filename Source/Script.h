@@ -70,11 +70,12 @@ namespace Script
     asIScriptEngine* CreateEngine( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls );
     void             FinishEngine( asIScriptEngine*& engine );
 
-    asIScriptContext* CreateContext( bool free );
+    void              CreateContext();
     void              FinishContext( asIScriptContext* ctx );
     asIScriptContext* RequestContext();
     void              ReturnContext( asIScriptContext* ctx );
-    asIScriptContext* GetExecutionContext();
+    void              GetExecutionContexts( vector< asIScriptContext* >& contexts );
+    void              ReleaseExecutionContexts();
     void              RaiseException( const char* message, ... );
     void              HandleException( asIScriptContext* ctx, const char* message, ... );
     string            MakeContextTraceback( asIScriptContext* ctx );

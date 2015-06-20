@@ -175,6 +175,9 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             fprintf( f, "\n" );
         }
 
+        // AngelScript dump
+        DumpAngelScript( f );
+
         // Collect current threads
         HANDLE process = GetCurrentProcess();
         DWORD  threads_ids[ 1024 ] = { GetCurrentThreadId() };
@@ -438,8 +441,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 
         SymCleanup( process );
         CloseHandle( process );
-        fprintf( f, "\nAngelScript\n" );
-        DumpAngelScript( f );
+
         fclose( f );
 
         Str::Format( mess, DumpMess, dump_path );
@@ -648,6 +650,10 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
             fprintf( f, "\n" );
         }
 
+        // AngelScript dump
+        DumpAngelScript( f );
+
+        // Threads
         fprintf( f, "Thread '%s' (%zu%s)\n", Thread::GetCurrentName(), Thread::GetCurrentId(), ", current" );
 
         // Stack
@@ -683,8 +689,6 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         }
 
         free( symbols );
-        fprintf( f, "\nAngelScript\n" );
-        DumpAngelScript( f );
         fclose( f );
 
         Str::Format( mess, DumpMess, dump_path );
@@ -705,15 +709,16 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 
 void DumpAngelScript( FILE* f )
 {
-    asIScriptContext* ctx = Script::GetExecutionContext();
-    if( !ctx )
+    vector< asIScriptContext* > contexts;
+    Script::GetExecutionContexts( contexts );
+    if( !contexts.empty() )
     {
-        fprintf( f, "\tNot available\n" );
-        return;
+        fprintf( f, "AngelScript\n" );
+        for( int i = (int) contexts.size() - 1; i >= 0; i-- )
+            fprintf( f, "%s", Script::MakeContextTraceback( contexts[ i ] ).c_str() );
+        fprintf( f, "\n" );
     }
-
-    string traceback = Script::MakeContextTraceback( ctx );
-    fprintf( f, "%s", traceback.c_str() );
+    Script::ReleaseExecutionContexts();
 }
 
 bool RaiseAssert( const char* message, const char* file, int line )
