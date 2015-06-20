@@ -3443,7 +3443,11 @@ bool FOServer::InitReal()
 
     // Scripts post check
     if( !PostInitScriptSystem() )
-        return false;                                          // Script system
+        return false;
+
+    // Modules initialization
+    if( !Script::RunModuleInitFunctions() )
+        return false;
 
     // Initialization script
     Script::PrepareContext( ServerFunctions.Init, _FUNC_, "Game" );

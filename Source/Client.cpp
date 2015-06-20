@@ -393,6 +393,13 @@ bool FOClient::Init()
     SprMngr.AccumulateAtlasData();
     SprMngr.PushAtlasType( RES_ATLAS_STATIC );
 
+    // Modules initialization
+    if( !Script::RunModuleInitFunctions() )
+    {
+        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
+        return false;
+    }
+
     // Start script
     if( !Script::PrepareContext( ClientFunctions.Start, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
     {
@@ -9171,12 +9178,6 @@ bool FOClient::ReloadScripts()
     ClientMap::PropertiesRegistrator->SetNativeSendCallback( OnSendMapValue );
     ClientLocation::SetPropertyRegistrator( registrators[ 5 ] );
     ClientLocation::PropertiesRegistrator->SetNativeSendCallback( OnSendLocationValue );
-
-    if( errors || !Script::RunModuleInitFunctions() )
-    {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
-        return false;
-    }
 
     WriteLog( "Load scripts complete.\n" );
     return true;

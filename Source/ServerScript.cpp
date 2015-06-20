@@ -208,9 +208,6 @@ bool FOServer::InitScriptSystem()
 
     ASDbgMemoryCanWork = true;
 
-    if( !Script::RunModuleInitFunctions() )
-        return false;
-
     GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
     GlobalVars::PropertiesRegistrator->SetNativeSendCallback( OnSendGlobalValue );
     Globals = new GlobalVars();
