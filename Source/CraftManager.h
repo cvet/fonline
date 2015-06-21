@@ -52,7 +52,7 @@ public:
 
     // Other
     ScriptString* Script;
-    int           ScriptBindId; // In runtime
+    uint          ScriptBindId; // In runtime
     uint          Experience;
 
     // Operator =

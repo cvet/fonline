@@ -71,7 +71,7 @@ public:
     ProtoMap* Proto;
 
     bool      NeedProcess;
-    int       FuncId[ MAP_EVENT_MAX ];
+    uint      FuncId[ MAP_EVENT_MAX ];
     uint      LoopEnabled[ MAP_LOOP_FUNC_MAX ];
     uint      LoopLastTick[ MAP_LOOP_FUNC_MAX ];
     uint      LoopWaitTick[ MAP_LOOP_FUNC_MAX ];
@@ -247,7 +247,7 @@ public:
     HashVec     ProtoMapPids;
     HashVec     AutomapsPids;
     UIntPairVec Entrance;
-    int         EntranceScriptBindId;
+    uint        EntranceScriptBindId;
 
     UIntVec     TextsLang;
     FOMsgVec    Texts;
@@ -296,7 +296,7 @@ public:
 
     ProtoLocation* Proto;
     volatile int   GeckCount;
-    int            FuncId[ LOCATION_EVENT_MAX ];
+    uint           FuncId[ LOCATION_EVENT_MAX ];
 
     void        Clear( bool full );
     void        Update();

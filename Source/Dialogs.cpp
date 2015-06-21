@@ -620,7 +620,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
                 BIND_R_FUNC( ")" );
             break;
         }
-        if( id <= 0 )
+        if( !id )
         {
             WriteLog( "Script<%s> bind error.\n", name );
             return NULL;
@@ -671,7 +671,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     return &result;
 }
 
-int DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
+uint DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
 {
     ret_val = false;
 
@@ -682,8 +682,8 @@ int DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
     #ifdef FONLINE_SERVER
     else
     {
-        int id = Script::Bind( str, "uint %s(Critter&,Critter@,string@)", false, true );
-        if( id > 0 )
+        uint id = Script::Bind( str, "uint %s(Critter&,Critter@,string@)", false, true );
+        if( id )
         {
             ret_val = true;
             return id;
@@ -691,8 +691,7 @@ int DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
         return Script::Bind( str, "void %s(Critter&,Critter@,string@)", false );
     }
     #endif // FONLINE_SERVER
-
-    return -1;
+    return 0;
 }
 
 char DialogManager::GetDRType( const char* str )

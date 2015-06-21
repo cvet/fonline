@@ -99,7 +99,7 @@ public:
     #ifdef FONLINE_NPCEDITOR
     string DlgScript;
     #else
-    int    DlgScript;
+    uint   DlgScript;
     #endif
 
     bool IsNoShuffle() { return Flags & DIALOG_FLAG_NO_SHUFFLE; }
@@ -189,7 +189,7 @@ private:
 
     DemandResult* LoadDemandResult( istrstream& input, bool is_demand );
     bool          CheckLockTime( int time );
-    int           GetNotAnswerAction( const char* str, bool& ret_val );
+    uint          GetNotAnswerAction( const char* str, bool& ret_val );
     char          GetDRType( const char* str );
     char          GetWho( char who );
     bool          CheckOper( char oper );

@@ -166,9 +166,9 @@ private:
     uint                 podDataOffset;
     uint                 complexDataIndex;
     uint                 baseSize;
-    int                  getCallback;
+    uint                 getCallback;
     uint                 getCallbackArgs;
-    IntVec               setCallbacks;
+    UIntVec              setCallbacks;
     UIntVec              setCallbacksArgs;
     bool                 setCallbacksAnyOldValue;
     NativeCallback       nativeSetCallback;

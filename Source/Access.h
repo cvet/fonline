@@ -46,7 +46,9 @@
 #define CMD_CHANGE_PASSWORD          ( 35 )
 #define CMD_DROP_UID                 ( 36 )
 #define CMD_LOG                      ( 37 )
-#define CMD_DEV_CONSOLE              ( 38 )
+#define CMD_DEV_EXEC                 ( 38 )
+#define CMD_DEV_FUNC                 ( 39 )
+#define CMD_DEV_GVAR                 ( 40 )
 
 struct CmdDef
 {
@@ -96,7 +98,9 @@ const CmdDef cmdlist[] =
     { "dropuid", CMD_DROP_UID },
     { "drop", CMD_DROP_UID },
     { "log", CMD_LOG },
-    { "console", CMD_DEV_CONSOLE },
+    { "exec", CMD_DEV_EXEC },
+    { "func", CMD_DEV_FUNC },
+    { "gvar", CMD_DEV_GVAR },
 };
 
 inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( const char* ), const char* name )
@@ -682,6 +686,23 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         buf << msg_len;
         buf << cmd;
         buf.Push( flags, 16 );
+    }
+    break;
+    case CMD_DEV_EXEC:
+    case CMD_DEV_FUNC:
+    case CMD_DEV_GVAR:
+    {
+        ushort command_len = Str::Length( args );
+        if( !command_len )
+            break;
+
+        msg_len += sizeof( command_len ) + command_len;
+
+        buf << msg;
+        buf << msg_len;
+        buf << cmd;
+        buf << command_len;
+        buf.Push( args, command_len );
     }
     break;
     default:

@@ -297,7 +297,7 @@ protected:
     bool PrepareScriptFunc( int num_scr_func );
 
 public:
-    int FuncId[ CRITTER_EVENT_MAX ];
+    uint FuncId[ CRITTER_EVENT_MAX ];
     bool ParseScript( const char* script, bool first_time );
 
     void EventIdle();
@@ -742,7 +742,7 @@ public:
     void CloseTalk();
 
     // Screen callback
-    int ScreenCallbackBindId;
+    uint ScreenCallbackBindId;
 
     Client();
     ~Client();

@@ -785,6 +785,7 @@ public:
     bool      LMenuTryActivated;
     uint      LMenuStartTime;
     int       LMenuX, LMenuY, LMenuRestoreCurX, LMenuRestoreCurY;
+    int       LMenuOX, LMenuOY;
     int       LMenuHeightOffset;
     int       LMenuNodeHeight;
     UCharVec* LMenuCurNodes;

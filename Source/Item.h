@@ -393,7 +393,7 @@ public:
     };
 
     #ifdef FONLINE_SERVER
-    int        FuncId[ ITEM_EVENT_MAX ];
+    uint       FuncId[ ITEM_EVENT_MAX ];
     Critter*   ViewByCritter;
     ItemVec*   ChildItems;
     SyncObject Sync;

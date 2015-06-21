@@ -93,13 +93,13 @@ namespace Script
     bool LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_prefix = NULL );
     bool LoadScript( const char* module_name, const uchar* bytecode, uint len );
 
-    int    BindImportedFunctions();
-    int    Bind( const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log = false );
-    int    Bind( const char* script_name, const char* decl, bool is_temp, bool disable_log = false );
-    int    Bind( asIScriptFunction* func, bool is_temp, bool disable_log = false );
-    int    RebindFunctions();
+    bool   BindImportedFunctions();
+    uint   Bind( const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log = false );
+    uint   Bind( const char* script_name, const char* decl, bool is_temp, bool disable_log = false );
+    uint   Bind( asIScriptFunction* func, bool is_temp, bool disable_log = false );
+    bool   RebindFunctions();
     bool   ReparseScriptName( const char* script_name, char* module_name, char* func_name, bool disable_log = false );
-    string GetBindFuncName( int bind_id );
+    string GetBindFuncName( uint bind_id );
 
     hash   BindScriptFuncNum( const char* script_name, const char* decl );
     hash   BindScriptFuncNum( asIScriptFunction* func );
@@ -111,7 +111,7 @@ namespace Script
     void EndExecution();
     void AddEndExecutionCallback( EndExecutionCallback func );
 
-    bool   PrepareContext( int bind_id, const char* call_func, const char* ctx_info );
+    bool   PrepareContext( uint bind_id, const char* call_func, const char* ctx_info );
     void   SetArgUChar( uchar value );
     void   SetArgUShort( ushort value );
     void   SetArgUInt( uint value );

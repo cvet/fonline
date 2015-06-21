@@ -1,5 +1,6 @@
 #include "Common.h"
 #include "Server.h"
+#include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
 
 void* zlib_alloc( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
 void  zlib_free( void* opaque, void* address )                          { free( address ); }
@@ -2047,6 +2048,13 @@ void FOServer::Process_Text( Client* cl )
 
 void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char* ), Client* cl_, const char* admin_panel )
 {
+    LogToFunc( logcb, true );
+    Process_Command2( buf, logcb, cl_, admin_panel );
+    LogToFunc( logcb, false );
+}
+
+void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const char* ), Client* cl_, const char* admin_panel )
+{
     uint  msg_len = 0;
     uchar cmd = 0;
 
@@ -2537,11 +2545,10 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
 
         if( Script::LoadScript( module_name, NULL, true ) )
         {
-            int errors = Script::BindImportedFunctions();
-            if( !errors )
+            if( Script::BindImportedFunctions() )
                 logcb( "Complete." );
             else
-                logcb( Str::FormatBuf( "Complete, bind errors<%d>.", errors ) );
+                logcb( Str::FormatBuf( "Complete, with errors." ) );
         }
         else
         {
@@ -2589,7 +2596,7 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         if( !cl_ )
             SynchronizeLogicThreads();
 
-        int bind_id = Script::Bind( module_name, func_name, "void %s(Critter&,int,int,int)", true );
+        uint bind_id = Script::Bind( module_name, func_name, "void %s(Critter&,int,int,int)", true );
         if( !bind_id )
         {
             if( !cl_ )
@@ -3101,29 +3108,79 @@ void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char
         ResynchronizeLogicThreads();
     }
     break;
-    case CMD_DEV_CONSOLE:
+    case CMD_DEV_EXEC:
+    case CMD_DEV_FUNC:
+    case CMD_DEV_GVAR:
     {
-//              uint command_len = 0;
-//              char command[ MAX_FOTEXT ];
-//              buf >> command_len;
-//              buf.Pop(command, command_len);
-//              command[ command_len ] = 0;
-//
-//              const char* console_name = (cl_ ? cl_->GetName() : admin_panel);
-//              static map<string, asIScriptContext*> console_contexts;
-//              auto it = console_contexts.find(console_name);
-//              asIScriptContext* context;
-//              if(it == console_contexts.end())
-//              {
-//                      context = Script::CreateContext();
-//                      console_contexts.insert(PAIR(console_name, context));
-//              }
-//              else
-//              {
-//                      context = it->second;
-//              }
-//
-//              context->
+        ushort command_len = 0;
+        char   command[ MAX_FOTEXT ];
+        buf >> command_len;
+        buf.Pop( command, command_len );
+        command[ command_len ] = 0;
+
+        char console_name[ MAX_FOTEXT ];
+        Str::Format( console_name, "DevConsole (%s)", cl_ ? cl_->GetName() : admin_panel );
+
+        // Get module
+        asIScriptEngine* engine = Script::GetEngine();
+        asIScriptModule* mod = engine->GetModule( console_name );
+        if( !mod )
+        {
+            string      base_code;
+            FileManager dev_file;
+            if( dev_file.LoadFile( "dev.fos", PT_SCRIPTS ) )
+                base_code = (char*) dev_file.GetBuf();
+            else
+                base_code = "void Dummy(){}";
+
+            mod = engine->GetModule( console_name, asGM_ALWAYS_CREATE );
+            int r = mod->AddScriptSection( "DevConsole", base_code.c_str() );
+            if( r < 0 )
+            {
+                mod->Discard();
+                break;
+            }
+
+            r = mod->Build();
+            if( r < 0 )
+            {
+                mod->Discard();
+                break;
+            }
+
+            r = mod->BindAllImportedFunctions();
+            if( r < 0 )
+            {
+                mod->Discard();
+                break;
+            }
+        }
+
+        // Execute command
+        if( cmd == CMD_DEV_EXEC )
+        {
+            char               func_code[ MAX_FOTEXT ];
+            Str::Format( func_code, "void Execute(){\n%s;\n}", command );
+            asIScriptFunction* func = NULL;
+            int                r = mod->CompileFunction( "DevConsole", func_code, -1, asCOMP_ADD_TO_MODULE, &func );
+            if( r >= 0 )
+            {
+                asIScriptContext* ctx = engine->RequestContext();
+                if( ctx->Prepare( func ) >= 0 )
+                    ctx->Execute();
+                mod->RemoveFunction( func );
+                func->Release();
+                engine->ReturnContext( ctx );
+            }
+        }
+        else if( cmd == CMD_DEV_FUNC )
+        {
+            mod->CompileFunction( "DevConsole", command, 0, asCOMP_ADD_TO_MODULE, NULL );
+        }
+        else if( cmd == CMD_DEV_GVAR )
+        {
+            mod->CompileGlobalVar( "DevConsole", command, 0 );
+        }
     }
     break;
     default:
@@ -4801,12 +4858,12 @@ bool FOServer::LoadTimeEventsFile( void* f, uint version )
         }
 
         bool singed = false;
-        int  bind_id = Script::Bind( script_name, "uint %s(int[]@)", false, true );
-        if( bind_id <= 0 )
+        uint bind_id = Script::Bind( script_name, "uint %s(int[]@)", false, true );
+        if( !bind_id )
             bind_id = Script::Bind( script_name, "uint %s(uint[]@)", false );
         else
             singed = true;
-        if( bind_id <= 0 )
+        if( !bind_id )
         {
             WriteLog( "Unable to bind script function, event num<%u>, name<%s>.\n", num, script_name );
             continue;
@@ -4863,13 +4920,13 @@ uint FOServer::CreateTimeEvent( uint begin_second, const char* script_name, int 
         SCRIPT_ERROR_R0( "Invalid script '%s'", script_name );
 
     bool singed = false;
-    int  bind_id = Script::Bind( module_name, func_name, "uint %s(int[]@)", false, true );
-    if( bind_id <= 0 )
+    uint bind_id = Script::Bind( module_name, func_name, "uint %s(int[]@)", false, true );
+    if( !bind_id )
         bind_id = Script::Bind( module_name, func_name, "uint %s(uint[]@)", false );
     else
         singed = true;
 
-    if( bind_id <= 0 )
+    if( !bind_id )
         SCRIPT_ERROR_R0( "Unable to bind script '%s'", script_name );
 
     SCOPE_LOCK( TimeEventsLocker );

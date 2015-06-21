@@ -871,12 +871,12 @@ string Property::SetGetCallback( const char* script_func )
 
     char decl[ MAX_FOTEXT ];
     Str::Format( decl, "%s%s %s(%s&,%s)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
-    int  bind_id = Script::Bind( script_func, decl, false, true );
-    if( bind_id <= 0 )
+    uint bind_id = Script::Bind( script_func, decl, false, true );
+    if( !bind_id )
     {
         Str::Format( decl, "%s%s %s(%s&)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str() );
         bind_id = Script::Bind( script_func, decl, false, true );
-        if( bind_id <= 0 )
+        if( !bind_id )
         {
             char buf[ MAX_FOTEXT ];
             Str::Format( buf, decl, script_func );
@@ -901,24 +901,24 @@ string Property::AddSetCallback( const char* script_func )
 
     char decl[ MAX_FOTEXT ];
     Str::Format( decl, "void %s(%s&,%s,%s&)", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str(), typeName.c_str() );
-    int  bind_id = Script::Bind( script_func, decl, false, true );
-    if( bind_id <= 0 )
+    uint  bind_id = Script::Bind( script_func, decl, false, true );
+    if( !bind_id )
     {
         Str::Format( decl, "void %s(%s&,%s&,%s)", "%s", registrator->scriptClassName.c_str(), typeName.c_str(), registrator->enumTypeName.c_str() );
-        int  bind_id = Script::Bind( script_func, decl, false, true );
-        if( bind_id <= 0 )
+        bind_id = Script::Bind( script_func, decl, false, true );
+        if( !bind_id )
         {
             Str::Format( decl, "void %s(%s&,%s)", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
             bind_id = Script::Bind( script_func, decl, false, true );
-            if( bind_id <= 0 )
+            if( !bind_id )
             {
                 Str::Format( decl, "void %s(%s&,%s&)", "%s", registrator->scriptClassName.c_str(), typeName.c_str() );
                 bind_id = Script::Bind( script_func, decl, false, true );
-                if( bind_id <= 0 )
+                if( !bind_id )
                 {
                     Str::Format( decl, "void %s(%s&)", "%s", registrator->scriptClassName.c_str() );
                     bind_id = Script::Bind( script_func, decl, false, true );
-                    if( bind_id <= 0 )
+                    if( !bind_id )
                     {
                         char buf[ MAX_FOTEXT ];
                         Str::Format( buf, decl, script_func );
@@ -1620,6 +1620,9 @@ Property* PropertyRegistrator::Register(
         disable_get = disable_set = true;
     if( !isServer && ( ( access & Property::PublicMask ) || ( access & Property::ProtectedMask ) ) && !( access & Property::ModifiableMask ) )
         disable_set = true;
+    #ifdef FONLINE_MAPPER
+    disable_get = false;
+    #endif
 
     // Register default getter
     if( !disable_get )

@@ -59,6 +59,7 @@ public:
     static void Process_RuleGlobal( Client* cl );
     static void Process_Text( Client* cl );
     static void Process_Command( BufferManager& buf, void ( * logcb )( const char* ), Client* cl, const char* admin_panel );
+    static void Process_Command2( BufferManager& buf, void ( * logcb )( const char* ), Client* cl, const char* admin_panel );
     static void Process_Dialog( Client* cl, bool is_say );
     static void Process_Barter( Client* cl );
     static void Process_GiveMap( Client* cl );
@@ -134,7 +135,7 @@ public:
         uint    Num;
         uint    FullSecond;
         string  FuncName;
-        int     BindId;
+        uint    BindId;
         uint    Rate;
         UIntVec Values;
         bool    SignedValues;
@@ -188,7 +189,7 @@ public:
     #define TEXT_LISTEN_FIRST_STR_MAX_LEN    ( 63 )
     struct TextListen
     {
-        int    FuncId;
+        uint   FuncId;
         int    SayType;
         char   FirstStr[ TEXT_LISTEN_FIRST_STR_MAX_LEN + 1 ];
         uint   FirstStrLen;

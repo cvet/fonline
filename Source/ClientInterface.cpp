@@ -642,6 +642,11 @@ int FOClient::InitIface()
     // Cursors
     CurPDef = SprMngr.LoadAnimation( "cursor_default.png", PT_ART_INTRFACE, true );
     CurPHand = SprMngr.LoadAnimation( "cursor_hand.png", PT_ART_INTRFACE, true );
+    if( !LMenuOX && !LMenuOY )
+    {
+        SpriteInfo* si_cur = SprMngr.GetSpriteInfo( CurPDef->GetCurSprId() );
+        LMenuOX = GameOpt.MouseX + ( si_cur ? si_cur->Width : 0 );
+    }
 
     // LMenu
     IfaceLoadSpr( LmenuPTalkOff, "LMenuTalkPic" );
@@ -2401,9 +2406,9 @@ void FOClient::FormatTags( char* text, uint text_len, CritterCl* player, Critter
             {
                 char func_name[ MAX_FOTEXT ];
                 Str::CopyWord( func_name, &tag[ 7 ], '$', false );
-                int  bind_id = Script::Bind( "client_main", func_name, "string %s(string&)", true );
+                uint bind_id = Script::Bind( "client_main", func_name, "string %s(string&)", true );
                 Str::Copy( tag, "<script function not found>" );
-                if( bind_id > 0 && Script::PrepareContext( bind_id, _FUNC_, "Game" ) )
+                if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Game" ) )
                 {
                     ScriptString* script_lexems = ScriptString::Create( lexems ? lexems : "" );
                     Script::SetArgObject( script_lexems );
@@ -2579,9 +2584,8 @@ void FOClient::LMenuCollect()
     LMenuStayOff();
     GameMouseStay = Timer::FastTick();
 
-    SpriteInfo* si_cur = SprMngr.GetSpriteInfo( CurPDef->GetCurSprId() );
-    LMenuX = GameOpt.MouseX + ( si_cur ? si_cur->Width : 0 );
-    LMenuY = GameOpt.MouseY;
+    LMenuX = GameOpt.MouseX + LMenuOX;
+    LMenuY = GameOpt.MouseY + LMenuOY;
     LMenuRestoreCurX = GameOpt.MouseX;
     LMenuRestoreCurY = GameOpt.MouseY;
     LMenuHeightOffset = 0;

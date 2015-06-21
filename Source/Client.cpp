@@ -120,6 +120,9 @@ FOClient::FOClient()
 
     SomeItem = NULL;
     CurSkill = 0;
+
+    LMenuOX = 0;
+    LMenuOY = 0;
 }
 
 uint* UID1;
@@ -6091,13 +6094,13 @@ void FOClient::Net_OnRunClientScript()
     CHECK_IN_BUFF_ERROR;
 
     // Reparse module
-    int bind_id;
+    uint bind_id;
     if( Str::Substring( func_name->c_str(), "@" ) )
         bind_id = Script::Bind( func_name->c_str(), "void %s(int,int,int,string@,int[]@)", true );
     else
         bind_id = Script::Bind( "client_main", func_name->c_str(), "void %s(int,int,int,string@,int[]@)", true );
 
-    if( bind_id > 0 && Script::PrepareContext( bind_id, _FUNC_, "Game" ) )
+    if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Game" ) )
     {
         Script::SetArgUInt( p0 );
         Script::SetArgUInt( p1 );
@@ -9092,8 +9095,10 @@ bool FOClient::ReloadScripts()
     }
 
     // Bind functions
-    errors += Script::BindImportedFunctions();
-    errors += Script::RebindFunctions();
+    if( !Script::BindImportedFunctions() )
+        errors++;
+    if( !Script::RebindFunctions() )
+        errors++;
 
     // Bind reserved functions
     ReservedScriptFunction BindGameFunc[] =
@@ -9148,6 +9153,9 @@ bool FOClient::ReloadScripts()
     };
     if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
         errors++;
+
+    if( errors )
+        return false;
 
     GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
     GlobalVars::PropertiesRegistrator->SetNativeSendCallback( OnSendGlobalValue );
@@ -9898,9 +9906,18 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         return ScriptString::Create( Self->IsLMenu() ? "true" : "false" );
     }
+    else if( cmd == "IsLMenuNodes" )
+    {
+        return ScriptString::Create( Self->LMenuCurNodes ? "true" : "false" );
+    }
     else if( cmd == "LMenuTryActivate" )
     {
         Self->LMenuTryActivate();
+    }
+    else if( cmd == "LMenuSetOffsets" )
+    {
+        Self->LMenuOX = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
+        Self->LMenuOY = Str::AtoI( args.size() >= 3 ? args[ 2 ].c_str() : "0" );
     }
     else if( cmd == "SaveGame" )
     {

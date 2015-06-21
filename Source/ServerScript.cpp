@@ -618,7 +618,8 @@ bool FOServer::ReloadMapperScripts()
         errors++;
 
     // Imported functions
-    errors += Script::BindImportedFunctions();
+    if( !Script::BindImportedFunctions() )
+        errors++;
 
     // Finish
     SAFEDEL( registrators[ 0 ] );
@@ -715,8 +716,8 @@ AIDataPlane* FOServer::SScriptFunc::NpcPlane_GetChild( AIDataPlane* plane, uint 
 
 bool FOServer::SScriptFunc::NpcPlane_Misc_SetScript( AIDataPlane* plane, ScriptString& func_name )
 {
-    int bind_id = Script::Bind( func_name.c_str(), "void %s(Critter&)", false );
-    if( bind_id <= 0 )
+    uint bind_id = Script::Bind( func_name.c_str(), "void %s(Critter&)", false );
+    if( !bind_id )
         SCRIPT_ERROR_R0( "Script not found." );
     plane->Misc.ScriptBindId = bind_id;
     return true;
@@ -808,7 +809,7 @@ bool FOServer::SScriptFunc::Item_SetEvent( Item* item, int event_type, ScriptStr
     else
     {
         item->FuncId[ event_type ] = Script::Bind( func_name->c_str(), ItemEventFuncName[ event_type ], false );
-        if( item->FuncId[ event_type ] <= 0 )
+        if( !item->FuncId[ event_type ] )
             SCRIPT_ERROR_R0( "Function not found." );
 
         if( event_type == ITEM_EVENT_WALK && item->Accessory == ITEM_ACCESSORY_HEX )
@@ -1312,7 +1313,7 @@ bool FOServer::SScriptFunc::Crit_SetEvent( Critter* cr, int event_type, ScriptSt
     else
     {
         cr->FuncId[ event_type ] = Script::Bind( func_name->c_str(), CritterEventFuncName[ event_type ], false );
-        if( cr->FuncId[ event_type ] <= 0 )
+        if( !cr->FuncId[ event_type ] )
             SCRIPT_ERROR_R0( "Function not found." );
     }
     return true;
@@ -2587,11 +2588,11 @@ void FOServer::SScriptFunc::Cl_ShowScreen( Critter* cl, int screen_type, uint pa
     if( !cl->IsPlayer() )
         return;                     // SCRIPT_ERROR_R("Critter is not player.");
 
-    int bind_id = 0;
+    uint bind_id = 0;
     if( func_name && func_name->length() )
     {
         bind_id = Script::Bind( func_name->c_str(), "void %s(Critter&,uint,string&)", false );
-        if( bind_id <= 0 )
+        if( !bind_id )
             SCRIPT_ERROR_R( "Function not found." );
     }
 
@@ -3410,7 +3411,7 @@ bool FOServer::SScriptFunc::Map_SetEvent( Map* map, int event_type, ScriptString
         map->NeedProcess = false;
         for( int i = 0; i < MAP_LOOP_FUNC_MAX; i++ )
         {
-            if( map->FuncId[ MAP_EVENT_LOOP_0 + i ] <= 0 )
+            if( !map->FuncId[ MAP_EVENT_LOOP_0 + i ] )
             {
                 map->LoopEnabled[ i ] = false;
             }
@@ -4474,7 +4475,7 @@ bool FOServer::SScriptFunc::Location_SetEvent( Location* loc, int event_type, Sc
     else
         loc->FuncId[ event_type ] = Script::Bind( func_name->c_str(), LocationEventFuncName[ event_type ], false );
 
-    if( func_name && func_name->length() && loc->FuncId[ event_type ] <= 0 )
+    if( func_name && func_name->length() && !loc->FuncId[ event_type ] )
         SCRIPT_ERROR_R0( "Function not found." );
     return true;
 }
@@ -5099,8 +5100,8 @@ bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, ScriptString& 
     if( first_str.length() > TEXT_LISTEN_FIRST_STR_MAX_LEN )
         SCRIPT_ERROR_R0( "First string arg length greater than maximum." );
 
-    int func_id = Script::Bind( script_name.c_str(), "void %s(Critter&,string&)", false );
-    if( func_id <= 0 )
+    uint func_id = Script::Bind( script_name.c_str(), "void %s(Critter&,string&)", false );
+    if( !func_id )
         SCRIPT_ERROR_R0( "Unable to bind script function." );
 
     TextListen tl;

@@ -4133,13 +4133,13 @@ void FOServer::Process_ScreenAnswer( Client* cl )
     cl->Bin.Pop( answer_s, MAX_SAY_NPC_TEXT );
     answer_s[ MAX_SAY_NPC_TEXT ] = 0;
 
-    if( cl->ScreenCallbackBindId <= 0 )
+    if( !cl->ScreenCallbackBindId )
     {
         WriteLogF( _FUNC_, " - Client<%s> answered on not not specified screen.\n", cl->GetInfo() );
         return;
     }
 
-    int bind_id = cl->ScreenCallbackBindId;
+    uint bind_id = cl->ScreenCallbackBindId;
     cl->ScreenCallbackBindId = 0;
 
     if( !Script::PrepareContext( bind_id, _FUNC_, cl->GetInfo() ) )
@@ -4253,8 +4253,8 @@ void FOServer::Process_RunServerScript( Client* cl )
 
     CHECK_IN_BUFF_ERROR( cl );
 
-    int bind_id = Script::Bind( module_name, func_name, "void %s(Critter&,int,int,int,string@,int[]@)", true );
-    if( bind_id > 0 && Script::PrepareContext( bind_id, _FUNC_, Str::FormatBuf( "Critter<%s>, func<%s@%s>", cl->GetInfo(), module_name, func_name ) ) )
+    uint bind_id = Script::Bind( module_name, func_name, "void %s(Critter&,int,int,int,string@,int[]@)", true );
+    if( bind_id && Script::PrepareContext( bind_id, _FUNC_, Str::FormatBuf( "Critter<%s>, func<%s@%s>", cl->GetInfo(), module_name, func_name ) ) )
     {
         Script::SetArgObject( cl );
         Script::SetArgUInt( p0 );
@@ -4459,7 +4459,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
         cl->LastSendEntrancesLocId = loc_id;
         cl->LastSendEntrancesTick = tick;
 
-        if( loc->Proto->EntranceScriptBindId > 0 )
+        if( loc->Proto->EntranceScriptBindId )
         {
             uchar        count = 0;
             uchar        show[ 0x100 ];
@@ -4518,7 +4518,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
         uint entrance = param2;
         if( entrance >= loc->Proto->Entrance.size() )
             break;
-        if( loc->Proto->EntranceScriptBindId > 0 )
+        if( loc->Proto->EntranceScriptBindId )
         {
             ScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
             if( !arr )

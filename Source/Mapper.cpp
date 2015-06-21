@@ -4899,13 +4899,13 @@ void FOMapper::ParseCommand( const char* cmd )
             Str::CopyBack( str );
 
         // Reparse module
-        int bind_id;
+        uint bind_id;
         if( Str::Substring( func_name, "@" ) )
             bind_id = Script::Bind( func_name, "string %s(string)", true );
         else
             bind_id = Script::Bind( "mapper_main", func_name, "string %s(string)", true );
 
-        if( bind_id > 0 && Script::PrepareContext( bind_id, _FUNC_, "Mapper" ) )
+        if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Mapper" ) )
         {
             ScriptString* sstr = ScriptString::Create( str );
             Script::SetArgObject( sstr );

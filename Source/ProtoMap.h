@@ -122,7 +122,7 @@ public:
         char      PicMapName[ 64 ];
         char      PicInvName[ 64 ];
         #else
-        int       BindScriptId;
+        uint      BindScriptId;
         #endif
         long      RefCounter;
     } RunTime;

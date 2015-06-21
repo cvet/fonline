@@ -247,7 +247,7 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
         }
         static uint ScriptBind( const char* module_name, const char* func_decl, bool temporary_id )
         {
-            return ( uint ) Script::Bind( module_name, func_decl, NULL, temporary_id, false );
+            return Script::Bind( module_name, func_decl, NULL, temporary_id, false );
         }
         static bool ScriptPrepare( uint bind_id )
         {
@@ -632,12 +632,12 @@ bool Script::ReloadScripts( const char* target, bool skip_binaries, const char* 
     Script::Profiler::SaveFunctionsData();
     #endif
 
-    if( !errors )
-        errors += BindImportedFunctions();
+    if( !errors && !BindImportedFunctions() )
+        errors++;
 
     #ifdef FONLINE_SERVER
-    if( !errors && Str::CompareCase( target, "Server" ) )
-        errors += RebindFunctions();
+    if( !errors && Str::CompareCase( target, "Server" ) && !RebindFunctions() )
+        errors++;
     #endif
 
     if( errors )
@@ -720,6 +720,8 @@ bool Script::RunModuleInitFunctions()
     {
         asIScriptModule* module = Engine->GetModuleByIndex( i );
         uint             bind_id = Script::Bind( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
+        if( !bind_id )
+            bind_id = Script::Bind( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
         if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Script" ) )
         {
             if( !Script::RunPrepared() )
@@ -1741,7 +1743,7 @@ bool Script::LoadScript( const char* module_name, const uchar* bytecode, uint le
     return true;
 }
 
-int Script::BindImportedFunctions()
+bool Script::BindImportedFunctions()
 {
     int errors = 0;
     for( asUINT i = 0; i < Engine->GetModuleCount(); i++ )
@@ -1786,10 +1788,10 @@ int Script::BindImportedFunctions()
                 module->UnbindAllImportedFunctions();
         }
     }
-    return errors;
+    return errors == 0;
 }
 
-int Script::Bind( const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
+uint Script::Bind( const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
 {
     #ifdef SCRIPT_MULTITHREADING
     SCOPE_LOCK( BindedFunctionsLocker );
@@ -1881,10 +1883,10 @@ int Script::Bind( const char* module_name, const char* func_name, const char* de
         // Create new bind
         BindedFunctions.push_back( BindFunction( func, module_name, func_name ) );
     }
-    return (int) BindedFunctions.size() - 1;
+    return (uint) BindedFunctions.size() - 1;
 }
 
-int Script::Bind( const char* script_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
+uint Script::Bind( const char* script_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
 {
     char module_name[ MAX_FOTEXT ];
     char func_name[ MAX_FOTEXT ];
@@ -1896,7 +1898,7 @@ int Script::Bind( const char* script_name, const char* decl, bool is_temp, bool 
     return Bind( module_name, func_name, decl, is_temp, disable_log );
 }
 
-int Script::Bind( asIScriptFunction* func, bool is_temp, bool disable_log /* = false */ )
+uint Script::Bind( asIScriptFunction* func, bool is_temp, bool disable_log /* = false */ )
 {
     // Save to temporary bind
     if( is_temp )
@@ -1917,10 +1919,10 @@ int Script::Bind( asIScriptFunction* func, bool is_temp, bool disable_log /* = f
 
     // Create new bind
     BindedFunctions.push_back( BindFunction( func ) );
-    return (int) BindedFunctions.size() - 1;
+    return (uint) BindedFunctions.size() - 1;
 }
 
-int Script::RebindFunctions()
+bool Script::RebindFunctions()
 {
     #ifdef SCRIPT_MULTITHREADING
     SCOPE_LOCK( BindedFunctionsLocker );
@@ -1949,7 +1951,7 @@ int Script::RebindFunctions()
             }
         }
     }
-    return errors;
+    return errors == 0;
 }
 
 bool Script::ReparseScriptName( const char* script_name, char* module_name, char* func_name, bool disable_log /* = false */ )
@@ -1995,15 +1997,15 @@ bool Script::ReparseScriptName( const char* script_name, char* module_name, char
     return true;
 }
 
-string Script::GetBindFuncName( int bind_id )
+string Script::GetBindFuncName( uint bind_id )
 {
     #ifdef SCRIPT_MULTITHREADING
     SCOPE_LOCK( BindedFunctionsLocker );
     #endif
 
-    if( bind_id <= 0 || bind_id >= (int) BindedFunctions.size() )
+    if( !bind_id || bind_id >= (uint) BindedFunctions.size() )
     {
-        WriteLogF( _FUNC_, " - Wrong bind id<%d>, bind buffer size<%u>.\n", bind_id, BindedFunctions.size() );
+        WriteLogF( _FUNC_, " - Wrong bind id %u, bind buffer size %u.\n", bind_id, BindedFunctions.size() );
         return "";
     }
 
@@ -2264,16 +2266,16 @@ void Script::AddEndExecutionCallback( EndExecutionCallback func )
     #endif
 }
 
-bool Script::PrepareContext( int bind_id, const char* call_func, const char* ctx_info )
+bool Script::PrepareContext( uint bind_id, const char* call_func, const char* ctx_info )
 {
     #ifdef SCRIPT_MULTITHREADING
     if( LogicMT )
         BindedFunctionsLocker.Lock();
     #endif
 
-    if( bind_id <= 0 || bind_id >= (int) BindedFunctions.size() )
+    if( !bind_id || bind_id >= (uint) BindedFunctions.size() )
     {
-        WriteLogF( _FUNC_, " - Invalid bind id<%d>. Context info<%s>.\n", bind_id, ctx_info );
+        WriteLogF( _FUNC_, " - Invalid bind id '%u'. Context info '%s'.\n", bind_id, ctx_info );
         #ifdef SCRIPT_MULTITHREADING
         if( LogicMT )
             BindedFunctionsLocker.Unlock();
@@ -2307,7 +2309,7 @@ bool Script::PrepareContext( int bind_id, const char* call_func, const char* ctx
         int result = ctx->Prepare( script_func );
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Prepare error, context name<%s>, bind_id<%d>, func<%s>, error<%d>.\n", ctx_data->Info, bind_id, script_func->GetDeclaration(), result );
+            WriteLogF( _FUNC_, " - Prepare error, context name '%s', bind_id '%u', func '%s', error '%d'.\n", ctx_data->Info, bind_id, script_func->GetDeclaration(), result );
             ctx->Abort();
             ReturnContext( ctx );
             EndExecution();
@@ -2748,7 +2750,8 @@ void Script::Log( const char* str )
     }
     else
     {
-        WriteLog( "%s : %s\n", func->GetModuleName(), str );
+        const char* module_name = func->GetModuleName();
+        WriteLog( "%s : %s\n", module_name ? module_name : "<unknown>", str );
     }
 }
 

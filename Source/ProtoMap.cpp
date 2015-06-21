@@ -1063,11 +1063,10 @@ void ProtoMap::BindSceneryScript( MapObject* mobj )
         break;
     }
 
-    if( mobj->RunTime.BindScriptId <= 0 )
+    if( !mobj->RunTime.BindScriptId )
     {
         WriteLogF( _FUNC_, " - Map<%s>, Can't bind scenery function<%s> in module<%s>. Scenery hexX<%u>, hexY<%u>.\n",
                    pmapName.c_str(), mobj->FuncName, mobj->ScriptName, mobj->MapX, mobj->MapY );
-        mobj->RunTime.BindScriptId = 0;
     }
 }
 #endif // FONLINE_SERVER

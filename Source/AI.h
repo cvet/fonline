@@ -35,7 +35,7 @@ struct AIDataPlane
         {
             bool IsRun;
             uint WaitSecond;
-            int  ScriptBindId;
+            uint ScriptBindId;
         } Misc;
 
         struct
