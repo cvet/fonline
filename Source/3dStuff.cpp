@@ -3,7 +3,6 @@
 #include "3dAnimation.h"
 #include "GraphicLoader.h"
 #include "Text.h"
-#include "ConstantsManager.h"
 #include "Script.h"
 #include "CritterType.h"
 #include "GL/glu_stuff.h"
@@ -1470,9 +1469,9 @@ bool Animation3dEntity::Load( const char* name )
             {
                 if( layer < 0 )
                     link = &animDataDefault;
-                else if( layer_val <= 0 )
+                else if( !layer_val )
                 {
-                    WriteLogF( _FUNC_, "Wrong layer<%d> value<%d>.\n", layer, layer_val );
+                    WriteLogF( _FUNC_, " - Wrong layer<%d> zero value.\n", layer );
                     link = &dummy_link;
                 }
                 else
@@ -1504,9 +1503,9 @@ bool Animation3dEntity::Load( const char* name )
             {
                 ( *istr ) >> buf;
                 if( Str::CompareCase( token, "Layer" ) )
-                    layer = ConstantsManager::GetDefineValue( buf );
+                    layer = (int) ConvertParamValue( buf );
                 else
-                    layer_val = ConstantsManager::GetDefineValue( buf );
+                    layer_val = (int) ConvertParamValue( buf );
 
                 link = &dummy_link;
                 mesh = 0;
@@ -1514,7 +1513,7 @@ bool Animation3dEntity::Load( const char* name )
             else if( Str::CompareCase( token, "Attach" ) )
             {
                 ( *istr ) >> buf;
-                if( layer < 0 || layer_val <= 0 )
+                if( layer < 0 || !layer_val )
                     continue;
 
                 animData.push_back( AnimParams() );
@@ -1560,7 +1559,7 @@ bool Animation3dEntity::Load( const char* name )
                     Str::ParseLine( buf, '-', layers, Str::ParseLineDummy );
                     for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                     {
-                        int layer = ConstantsManager::GetDefineValue( layers[ m ].c_str() );
+                        int layer = (int) ConvertParamValue( layers[ m ].c_str() );
                         if( Str::Compare( layers[ m ].c_str(), "All" ) )
                             layer = -1;
                         cut->Layers.push_back( layer );
@@ -1751,7 +1750,7 @@ bool Animation3dEntity::Load( const char* name )
                 Str::ParseLine( buf, '-', layers, Str::ParseLineDummy );
                 for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                 {
-                    int layer = ConstantsManager::GetDefineValue( layers[ m ].c_str() );
+                    int layer = (int) ConvertParamValue( layers[ m ].c_str() );
                     if( layer >= 0 && layer < LAYERS3D_COUNT )
                     {
                         int* tmp = link->DisabledLayers;
@@ -1791,7 +1790,7 @@ bool Animation3dEntity::Load( const char* name )
             else if( Str::CompareCase( token, "Texture" ) )
             {
                 ( *istr ) >> buf;
-                int index = ConstantsManager::GetDefineValue( buf );
+                int index = (int) ConvertParamValue( buf );
                 ( *istr ) >> buf;
                 if( index >= 0 && index < EFFECT_TEXTURES )
                 {
@@ -1877,7 +1876,7 @@ bool Animation3dEntity::Load( const char* name )
                     type = EffectDefault::Dword;
                     data_len = sizeof( uint );
                     data = new uchar[ data_len ];
-                    *( (uint*) data ) = ConstantsManager::GetDefineValue( def_value );
+                    *( (uint*) data ) = (uint) ConvertParamValue( def_value );
                 }
                 else
                     continue;
@@ -1900,9 +1899,9 @@ bool Animation3dEntity::Load( const char* name )
                 // Index animation
                 int ind1 = 0, ind2 = 0;
                 ( *istr ) >> buf;
-                ind1 = ConstantsManager::GetDefineValue( buf );
+                ind1 = (int) ConvertParamValue( buf );
                 ( *istr ) >> buf;
-                ind2 = ConstantsManager::GetDefineValue( buf );
+                ind2 = (int) ConvertParamValue( buf );
 
                 if( Str::CompareCase( token, "Anim" ) || Str::CompareCase( token, "AnimExt" ) )
                 {
@@ -1942,9 +1941,9 @@ bool Animation3dEntity::Load( const char* name )
 
                 int ind1 = 0, ind2 = 0;
                 ( *istr ) >> buf;
-                ind1 = ConstantsManager::GetDefineValue( buf );
+                ind1 = (int) ConvertParamValue( buf );
                 ( *istr ) >> buf;
-                ind2 = ConstantsManager::GetDefineValue( buf );
+                ind2 = (int) ConvertParamValue( buf );
 
                 if( valuei == 1 )
                     anim1Equals.insert( PAIR( ind1, ind2 ) );
@@ -1978,7 +1977,7 @@ bool Animation3dEntity::Load( const char* name )
             {
                 ( *istr ) >> buf;
 
-                renderAnimDir = ConstantsManager::GetDefineValue( buf );
+                renderAnimDir = (int) ConvertParamValue( buf );
             }
             else if( Str::CompareCase( token, "DisableShadow" ) )
             {
@@ -1988,9 +1987,9 @@ bool Animation3dEntity::Load( const char* name )
             {
                 int w = 0, h = 0;
                 ( *istr ) >> buf;
-                w = ConstantsManager::GetDefineValue( buf );
+                w = (int) ConvertParamValue( buf );
                 ( *istr ) >> buf;
-                h = ConstantsManager::GetDefineValue( buf );
+                h = (int) ConvertParamValue( buf );
 
                 drawWidth = w;
                 drawHeight = h;

@@ -23,7 +23,6 @@ class Critter;
 class Map;
 class Location;
 class Item;
-class GameVar;
 
 class Job
 {

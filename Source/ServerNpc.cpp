@@ -410,13 +410,13 @@ void FOServer::ProcessAI( Npc* npc )
             break;
 
         uint wait = plane->Misc.WaitSecond;
-        int  bind_id = plane->Misc.ScriptBindId;
+        uint bind_id = plane->Misc.ScriptBindId;
 
         if( wait > GameOpt.FullSecond )
         {
             AI_Stay( npc, ( wait - GameOpt.FullSecond ) * 1000 / GameOpt.TimeMultiplier );
         }
-        else if( bind_id > 0 )
+        else if( bind_id )
         {
             plane->Misc.ScriptBindId = 0;
             if( Script::PrepareContext( bind_id, _FUNC_, npc->GetInfo() ) )

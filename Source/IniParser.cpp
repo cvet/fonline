@@ -576,7 +576,7 @@ void IniParser::CacheKeys()
         {
             *key_end = 0;
             Str::Trim( line );
-            if( Str::Length( line ) )
+            if( Str::Length( line ) && line[ 0 ] != '#' )
                 cachedKeys.insert( line );
         }
     }

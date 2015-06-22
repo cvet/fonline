@@ -511,8 +511,6 @@ int Compile( const char* fname, const char* fname_prep, vector< char* >& defines
             Engine->GetTypeIdByDecl( "Map@[]" ),
             Engine->GetTypeIdByDecl( "Location@" ),
             Engine->GetTypeIdByDecl( "Location@[]" ),
-            Engine->GetTypeIdByDecl( "GameVar@" ),
-            Engine->GetTypeIdByDecl( "GameVar@[]" ),
             Engine->GetTypeIdByDecl( "CraftItem@" ),
             Engine->GetTypeIdByDecl( "CraftItem@[]" ),
         };

@@ -82,7 +82,7 @@ BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "int Identifier", OFFSE
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint IdentifierExt", OFFSETOF( AIDataPlane, IdentifierExt ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "bool Run", OFFSETOF( AIDataPlane, Pick.IsRun ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Misc_WaitSecond", OFFSETOF( AIDataPlane, Misc.WaitSecond ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "int Misc_ScriptId", OFFSETOF( AIDataPlane, Misc.ScriptBindId ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Misc_ScriptId", OFFSETOF( AIDataPlane, Misc.ScriptBindId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Attack_TargId", OFFSETOF( AIDataPlane, Attack.TargId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "int Attack_MinHp", OFFSETOF( AIDataPlane, Attack.MinHp ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "bool Attack_IsGag", OFFSETOF( AIDataPlane, Attack.IsGag ) ) );

@@ -116,8 +116,6 @@ bool FOServer::InitScriptSystem()
     ServerWrongGlobalObjects.push_back( "Map@[]" );
     ServerWrongGlobalObjects.push_back( "Location@" );
     ServerWrongGlobalObjects.push_back( "Location@[]" );
-    ServerWrongGlobalObjects.push_back( "GameVar@" );
-    ServerWrongGlobalObjects.push_back( "GameVar@[]" );
     ServerWrongGlobalObjects.push_back( "CraftItem@" );
     ServerWrongGlobalObjects.push_back( "CraftItem@[]" );
     Script::SetWrongGlobalObjects( ServerWrongGlobalObjects );
