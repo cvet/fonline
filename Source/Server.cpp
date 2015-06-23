@@ -3117,6 +3117,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         buf >> command_len;
         buf.Pop( command, command_len );
         command[ command_len ] = 0;
+        Str::Trim( command );
 
         char console_name[ MAX_FOTEXT ];
         Str::Format( console_name, "DevConsole (%s)", cl_ ? cl_->GetName() : admin_panel );
@@ -3128,7 +3129,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         {
             string      base_code;
             FileManager dev_file;
-            if( dev_file.LoadFile( "dev.fos", PT_SCRIPTS ) )
+            if( dev_file.LoadFile( "__dev.fos", PT_SCRIPTS ) )
                 base_code = (char*) dev_file.GetBuf();
             else
                 base_code = "void Dummy(){}";
@@ -3159,6 +3160,8 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         // Execute command
         if( cmd == CMD_DEV_EXEC )
         {
+            WriteLog( "%s : Execute '%s'.\n", console_name, command );
+
             char               func_code[ MAX_FOTEXT ];
             Str::Format( func_code, "void Execute(){\n%s;\n}", command );
             asIScriptFunction* func = NULL;
@@ -3175,10 +3178,14 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         }
         else if( cmd == CMD_DEV_FUNC )
         {
+            WriteLog( "%s : Set function '%s'.\n", console_name, command );
+
             mod->CompileFunction( "DevConsole", command, 0, asCOMP_ADD_TO_MODULE, NULL );
         }
         else if( cmd == CMD_DEV_GVAR )
         {
+            WriteLog( "%s : Set global var '%s'.\n", console_name, command );
+
             mod->CompileGlobalVar( "DevConsole", command, 0 );
         }
     }

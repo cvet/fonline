@@ -2767,7 +2767,7 @@ void Script::CallbackMessage( const asSMessageInfo* msg, void* param )
         type = "Warning";
     else if( msg->type == asMSGTYPE_INFORMATION )
         type = "Info";
-    WriteLog( "Script message: %s : %s : %s : %d, %d.\n", msg->section, type, msg->message, msg->row, msg->col );
+    WriteLog( "%s : %s : %s : %d, %d.\n", msg->section, type, msg->message, msg->row, msg->col );
 }
 
 void Script::CallbackException( asIScriptContext* ctx, void* param )
