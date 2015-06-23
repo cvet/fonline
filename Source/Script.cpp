@@ -202,17 +202,18 @@ struct ContextData
 {
     char Info[ MAX_FOTEXT ];
     uint StartTick;
+    uint SuspendEndTick;
 };
-static vector< asIScriptContext* > FreeContexts;
-static vector< asIScriptContext* > BusyContexts;
-static Mutex                       ContextsLocker;
+static ContextVec FreeContexts;
+static ContextVec BusyContexts;
+static Mutex      ContextsLocker;
 
 // Script watcher
 Thread ScriptWatcherThread;
 bool   ScriptWatcherFinish = false;
 void ScriptWatcher( void* );
-uint   RunTimeoutSuspend = 600000;   // 10 minutes
-uint   RunTimeoutMessage = 300000;   // 5 minutes
+uint   RunTimeoutAbort = 600000;   // 10 minutes
+uint   RunTimeoutMessage = 300000; // 5 minutes
 
 bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls )
 {
@@ -406,7 +407,7 @@ void Script::Finish()
     #ifdef FONLINE_SERVER
     Profiler::Finish();
     #endif
-    RunTimeoutSuspend = 0;
+    RunTimeoutAbort = 0;
     RunTimeoutMessage = 0;
     ScriptWatcherFinish = true;
     ScriptWatcherThread.Wait();
@@ -1087,7 +1088,7 @@ void Script::ReturnContext( asIScriptContext* ctx )
     memzero( ctx_data, sizeof( ContextData ) );
 }
 
-void Script::GetExecutionContexts( vector< asIScriptContext* >& contexts )
+void Script::GetExecutionContexts( ContextVec& contexts )
 {
     ContextsLocker.Lock();
     contexts = BusyContexts;
@@ -1145,7 +1146,7 @@ string Script::MakeContextTraceback( asIScriptContext* ctx )
     int                      line, column;
     const asIScriptFunction* func;
     int                      stack_size = ctx->GetCallstackSize();
-    result += Str::Format( buf, " Traceback: (%s)\n", ctx_data->Info );
+    result += Str::Format( buf, " Traceback: (%s, %s)\n", ContextStatesStr[ (int) ctx->GetState() ], ctx_data->Info );
 
     // Print system function
     asIScriptFunction* sys_func = ctx->GetSystemFunction();
@@ -1302,7 +1303,7 @@ void ScriptWatcher( void* data )
         #endif
 
         // Timeout
-        if( RunTimeoutSuspend )
+        if( RunTimeoutAbort )
         {
             SCOPE_LOCK( ContextsLocker );
 
@@ -1311,16 +1312,16 @@ void ScriptWatcher( void* data )
             {
                 asIScriptContext* ctx = *it;
                 ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
-                if( ctx->GetState() == asEXECUTION_ACTIVE && ctx_data->StartTick && cur_tick >= ctx_data->StartTick + RunTimeoutSuspend )
+                if( ctx->GetState() == asEXECUTION_ACTIVE && ctx_data->StartTick && cur_tick >= ctx_data->StartTick + RunTimeoutAbort )
                     ctx->Abort();
             }
         }
     }
 }
 
-void Script::SetRunTimeout( uint suspend_timeout, uint message_timeout )
+void Script::SetRunTimeout( uint abort_timeout, uint message_timeout )
 {
-    RunTimeoutSuspend = suspend_timeout;
+    RunTimeoutAbort = abort_timeout;
     RunTimeoutMessage = message_timeout;
 }
 
@@ -2550,12 +2551,18 @@ bool Script::RunPrepared()
         uint            delta = Timer::FastTick() - tick;
 
         asEContextState state = ctx->GetState();
-        if( state != asEXECUTION_FINISHED )
+        if( state == asEXECUTION_SUSPENDED )
+        {
+            *(uint64*) RetValue = 0;
+            EndExecution();
+            return true;
+        }
+        else if( state != asEXECUTION_FINISHED )
         {
             if( state != asEXECUTION_EXCEPTION )
             {
                 if( state == asEXECUTION_ABORTED )
-                    HandleException( ctx, "Execution of script stopped due to timeout %u (ms).", RunTimeoutSuspend );
+                    HandleException( ctx, "Execution of script stopped due to timeout %u (ms).", RunTimeoutAbort );
                 else
                     HandleException( ctx, "Execution of script stopped due to %s.", ContextStatesStr[ (int) state ] );
             }
@@ -2580,16 +2587,57 @@ bool Script::RunPrepared()
 
         *(uint64*) RetValue = *(uint64*) ctx->GetAddressOfReturnValue();
         ReturnContext( ctx );
-        ScriptCall = true;
     }
     else
     {
         *(uint64*) RetValue = CallCDeclFunction32( NativeArgs, CurrentArg * 4, NativeFuncAddr );
-        ScriptCall = false;
     }
 
     EndExecution();
     return true;
+}
+
+void Script::SuspendCurrentContext( uint time )
+{
+    asIScriptContext* ctx = asGetActiveContext();
+    ContextsLocker.Lock();
+    RUNTIME_ASSERT( std::find( BusyContexts.begin(), BusyContexts.end(), ctx ) != BusyContexts.end() );
+    ContextsLocker.Unlock();
+    ctx->Suspend();
+    ContextData* ctx_data = (ContextData*) ctx->GetUserData();
+    ctx_data->SuspendEndTick = Timer::FastTick() + time;
+}
+
+void Script::RunSuspended()
+{
+    // Collect contexts to resume
+    ContextVec resume_contexts;
+    {
+        SCOPE_LOCK( ContextsLocker );
+
+        if( BusyContexts.empty() )
+            return;
+
+        uint tick = Timer::FastTick();
+        for( auto it = BusyContexts.begin(), end = BusyContexts.end(); it != end; ++it )
+        {
+            asIScriptContext* ctx = *it;
+            ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
+            if( ctx->GetState() == asEXECUTION_SUSPENDED && tick >= ctx_data->SuspendEndTick )
+                resume_contexts.push_back( ctx );
+        }
+
+        if( resume_contexts.empty() )
+            return;
+    }
+
+    for( auto it = resume_contexts.begin(); it != resume_contexts.end(); ++it )
+    {
+        asIScriptContext* ctx = *it;
+        CurrentCtx = ctx;
+        ScriptCall = true;
+        RunPrepared();
+    }
 }
 
 uint Script::GetReturnedUInt()

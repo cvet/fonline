@@ -1258,6 +1258,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetFilePath(int path)", as
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFolderFileNames(string& path, string@+ extension, bool includeSubdirs, string[]@+ result)", asFUNCTION( Global_GetFolderFileNames ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool DeleteFile(string& fileName)", asFUNCTION( Global_DeleteFile ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(string& path)", asFUNCTION( Global_CreateDirectoryTree ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Yield(uint time)", asFUNCTION( Global_Yield ), asCALL_CDECL ) );
 
 #define BIND_ASSERT_EXT( expr )    BIND_ASSERT( ( expr ) ? 0 : -1 )
 BIND_ASSERT_EXT( registrators[ 0 ]->Init() );

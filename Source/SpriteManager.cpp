@@ -264,7 +264,7 @@ void SpriteManager::Finish()
     WriteLog( "Sprite manager finish complete.\n" );
 }
 
-bool SpriteManager::BeginScene( uint clear_color )
+void SpriteManager::BeginScene( uint clear_color )
 {
     // Render 3d animations
     if( GameOpt.Enable3dRendering && !autoRedrawAnim3d.empty() )
@@ -282,7 +282,6 @@ bool SpriteManager::BeginScene( uint clear_color )
         ClearCurrentRenderTarget( clear_color );
 
     sceneBeginned = true;
-    return true;
 }
 
 void SpriteManager::EndScene()

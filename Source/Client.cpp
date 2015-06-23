@@ -374,11 +374,9 @@ bool FOClient::Init()
     ScreenModeMain = SCREEN_WAIT;
     CurMode = CUR_WAIT;
     WaitPic = ResMngr.GetRandomSplash();
-    if( SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) ) )
-    {
-        WaitDraw();
-        SprMngr.EndScene();
-    }
+    SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
+    WaitDraw();
+    SprMngr.EndScene();
 
     // Constants
     ConstantsManager::Initialize( PT_DATA );
@@ -1135,6 +1133,18 @@ int FOClient::MainLoop()
 
     CHECK_MULTIPLY_WINDOWS2;
 
+    // Video
+    if( IsVideoPlayed() )
+    {
+        RenderVideo();
+        return 1;
+    }
+
+    CHECK_MULTIPLY_WINDOWS3;
+
+    // Start render
+    SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
+
     // Script loop
     static uint next_call = 0;
     if( Timer::FastTick() >= next_call )
@@ -1145,21 +1155,13 @@ int FOClient::MainLoop()
         next_call = Timer::FastTick() + wait_tick;
     }
 
-    // Video
-    if( IsVideoPlayed() )
-    {
-        RenderVideo();
-        return 1;
-    }
+    // Suspended contexts
+    Script::RunSuspended();
 
-    CHECK_MULTIPLY_WINDOWS3;
-
-    // Render
-    if( !SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) ) )
-        return 0;
-
+    // Quake effect
     ProcessScreenEffectQuake();
 
+    // Render
     DrawIfaceLayer( 1 );
 
     if( GetMainScreen() == SCREEN_GAME && HexMngr.IsMapLoaded() )
@@ -8321,8 +8323,8 @@ void FOClient::AddVideo( const char* video_name, bool can_stop, bool clear_seque
     if( ShowVideos.size() == 1 )
     {
         // Clear screen
-        if( SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) ) )
-            SprMngr.EndScene();
+        SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
+        SprMngr.EndScene();
 
         // Play
         PlayVideo();
@@ -8602,14 +8604,12 @@ void FOClient::RenderVideo()
     float k = MIN( mw / w, mh / h );
     w = (uint) ( (float) w * k );
     h = (uint) ( (float) h * k );
-    int x = ( GameOpt.ScreenWidth - w ) / 2;
-    int y = ( GameOpt.ScreenHeight - h ) / 2;
-    if( SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) ) )
-    {
-        Rect r = Rect( x, y, x + w, y + h );
-        SprMngr.DrawRenderTarget( CurVideo->RT, false, NULL, &r );
-        SprMngr.EndScene();
-    }
+    int  x = ( GameOpt.ScreenWidth - w ) / 2;
+    int  y = ( GameOpt.ScreenHeight - h ) / 2;
+    SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
+    Rect r = Rect( x, y, x + w, y + h );
+    SprMngr.DrawRenderTarget( CurVideo->RT, false, NULL, &r );
+    SprMngr.EndScene();
 
     // Store render time
     render_time = Timer::AccurateTick() - render_time;
@@ -8628,8 +8628,8 @@ void FOClient::NextVideo()
     if( ShowVideos.size() )
     {
         // Clear screen
-        if( SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) ) )
-            SprMngr.EndScene();
+        SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
+        SprMngr.EndScene();
 
         // Stop current
         StopVideo();

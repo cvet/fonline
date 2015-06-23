@@ -120,7 +120,7 @@ public:
     SpriteManager();
     bool Init();
     void Finish();
-    bool BeginScene( uint clear_color );
+    void BeginScene( uint clear_color );
     void EndScene();
     void OnResolutionChanged();
 

@@ -709,7 +709,7 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 
 void DumpAngelScript( FILE* f )
 {
-    vector< asIScriptContext* > contexts;
+    ContextVec contexts;
     Script::GetExecutionContexts( contexts );
     if( !contexts.empty() )
     {

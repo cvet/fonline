@@ -15,6 +15,7 @@
 #define SCRIPT_ERROR_R0( error, ... )    do { Script::RaiseException( error, ## __VA_ARGS__ ); return 0; } while( 0 )
 
 typedef void ( *EndExecutionCallback )();
+typedef vector< asIScriptContext* > ContextVec;
 
 struct EngineData
 {
@@ -74,7 +75,7 @@ namespace Script
     void              FinishContext( asIScriptContext* ctx );
     asIScriptContext* RequestContext();
     void              ReturnContext( asIScriptContext* ctx );
-    void              GetExecutionContexts( vector< asIScriptContext* >& contexts );
+    void              GetExecutionContexts( ContextVec& contexts );
     void              ReleaseExecutionContexts();
     void              RaiseException( const char* message, ... );
     void              HandleException( asIScriptContext* ctx, const char* message, ... );
@@ -85,7 +86,7 @@ namespace Script
     asIScriptModule* GetModule( const char* name );
     asIScriptModule* CreateModule( const char* module_name );
 
-    void SetRunTimeout( uint suspend_timeout, uint message_timeout );
+    void SetRunTimeout( uint abort_timeout, uint message_timeout );
 
     void Define( const char* def, ... );
     void Undef( const char* def );
@@ -122,6 +123,8 @@ namespace Script
     void   SetArgObject( void* value );
     void   SetArgAddress( void* value );
     bool   RunPrepared();
+    void   SuspendCurrentContext( uint time );
+    void   RunSuspended();
     uint   GetReturnedUInt();
     bool   GetReturnedBool();
     void*  GetReturnedObject();

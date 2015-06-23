@@ -752,6 +752,9 @@ void FOServer::Logic_Work( void* data )
                 else
                     game_loop_tick = Timer::FastTick() + wait;
             }
+
+            // Suspended contexts
+            Script::RunSuspended();
         }
         else if( job.Type == JOB_THREAD_LOOP )
         {

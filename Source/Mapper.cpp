@@ -161,8 +161,8 @@ bool FOMapper::Init()
     // Resource manager
     ResMngr.Refresh();
 
-    if( SprMngr.BeginScene( COLOR_RGB( 100, 100, 100 ) ) )
-        SprMngr.EndScene();
+    SprMngr.BeginScene( COLOR_RGB( 100, 100, 100 ) );
+    SprMngr.EndScene();
 
     int res = InitIface();
     if( res != 0 )
@@ -1536,12 +1536,11 @@ void FOMapper::MainLoop()
         HexMngr.ProcessRain();
     }
 
-    // Render
-    if( !SprMngr.BeginScene( COLOR_RGB( 100, 100, 100 ) ) )
-    {
-        Thread::Sleep( 100 );
-        return;
-    }
+    // Start render
+    SprMngr.BeginScene( COLOR_RGB( 100, 100, 100 ) );
+
+    // Suspended contexts
+    Script::RunSuspended();
 
     DrawIfaceLayer( 0 );
     if( HexMngr.IsMapLoaded() )

@@ -126,3 +126,10 @@ void Global_CreateDirectoryTree( ScriptString& path )
     FileManager::FormatPath( tmp );
     CreateDirectoryTree( tmp );
 }
+
+void Global_Yield( uint time )
+{
+    #ifndef FONLINE_SCRIPT_COMPILER
+    Script::SuspendCurrentContext( time );
+    #endif
+}
