@@ -124,7 +124,8 @@ public:
     UCharVecVec   TempPropertiesDataExt;
     UCharVec      TempPropertyData;
     IntVec        RegProps;
-    int           CurSkill;
+    int           CurUseSkill;
+    uint          CurUseItem;
 
     bool NetConnect( const char* host, ushort port );
     bool FillSockAddr( sockaddr_in& saddr, const char* host, ushort port );

@@ -119,7 +119,7 @@ FOClient::FOClient()
     CurMapIndexInLoc = 0;
 
     SomeItem = NULL;
-    CurSkill = 0;
+    CurUseSkill = 0;
 
     LMenuOX = 0;
     LMenuOY = 0;
@@ -9801,6 +9801,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         }
         else if( Self->Chosen->GetUse() == USE_USE && Self->Chosen->ItemSlotMain->GetIsCanUseOnSmth() )
         {
+            Self->CurUseItem = 0;
             Self->SetCurMode( CUR_USE_ITEM );
         }
         else if( Self->Chosen->GetUse() == USE_USE && Self->Chosen->ItemSlotMain->GetIsCanUse() )
@@ -11781,7 +11782,9 @@ int FOClient::SScriptFunc::Global_GetLastCursor()
 void FOClient::SScriptFunc::Global_ChangeCursor( int cursor, uint context_id )
 {
     if( cursor == CUR_USE_SKILL )
-        Self->CurSkill = (ushort) context_id;
+        Self->CurUseSkill = (int) context_id;
+    if( cursor == CUR_USE_ITEM )
+        Self->CurUseItem = (uint) context_id;
 
     Self->SetCurMode( cursor );
 }

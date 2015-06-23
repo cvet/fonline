@@ -1311,47 +1311,45 @@ void FOClient::GameLMouseDown()
     }
     else if( IsCurMode( CUR_USE_ITEM ) || IsCurMode( CUR_USE_WEAPON ) )
     {
-        CritterCl* cr;
-        ItemHex*   item;
-        if( Chosen->ItemSlotMain->IsWeapon() && Chosen->GetUse() < MAX_USES )
+        bool  is_attack = IsCurMode( CUR_USE_WEAPON );
+        Item* use_item = ( !is_attack && CurUseItem != 0 ? Chosen->GetItem( CurUseItem ) : Chosen->ItemSlotMain );
+        if( use_item )
         {
-            cr = HexMngr.GetCritterPixel( GameOpt.MouseX, GameOpt.MouseY, true );
-            if( cr == Chosen )
-                cr = NULL;
-            item = NULL;
-        }
-        else
-        {
-            HexMngr.GetSmthPixel( GameOpt.MouseX, GameOpt.MouseY, item, cr );
-        }
+            CritterCl* cr = NULL;
+            ItemHex*   item = NULL;
+            if( is_attack )
+                cr = HexMngr.GetCritterPixel( GameOpt.MouseX, GameOpt.MouseY, true );
+            else
+                HexMngr.GetSmthPixel( GameOpt.MouseX, GameOpt.MouseY, item, cr );
 
-        if( cr )
-        {
-            // Memory target id
-            TargetSmth.SetCritter( cr->GetId() );
-
-            // Aim shoot
-            if( Chosen->ItemSlotMain->IsWeapon() && Chosen->GetUse() < MAX_USES && cr != Chosen && Chosen->IsAim() )
+            if( cr )
             {
-                if( !CritType::IsCanAim( Chosen->GetCrType() ) )
-                    AddMess( FOMB_GAME, "Aim attack is not available for this critter type." );
-                else if( !Chosen->GetIsNoAim() )
-                    ShowScreen( SCREEN__AIM );
-                return;
-            }
+                // Memory target id
+                TargetSmth.SetCritter( cr->GetId() );
 
-            // Use item
-            SetAction( CHOSEN_USE_ITEM, Chosen->ItemSlotMain->GetId(), 0, TARGET_CRITTER, cr->GetId(), Chosen->GetFullRate() );
-        }
-        else if( item )
-        {
-            TargetSmth.SetItem( item->GetId() );
-            SetAction( CHOSEN_USE_ITEM, Chosen->ItemSlotMain->GetId(), 0, item->IsItem() ? TARGET_ITEM : TARGET_SCENERY, item->GetId(), USE_USE );
+                // Aim shoot
+                if( is_attack && Chosen->IsAim() )
+                {
+                    if( !CritType::IsCanAim( Chosen->GetCrType() ) )
+                        AddMess( FOMB_GAME, "Aim attack is not available for this critter type." );
+                    else if( !Chosen->GetIsNoAim() )
+                        ShowScreen( SCREEN__AIM );
+                    return;
+                }
+
+                // Use item
+                SetAction( CHOSEN_USE_ITEM, use_item->GetId(), 0, TARGET_CRITTER, cr->GetId(), is_attack ? Chosen->GetFullRate() : USE_USE );
+            }
+            else if( item )
+            {
+                TargetSmth.SetItem( item->GetId() );
+                SetAction( CHOSEN_USE_ITEM, use_item->GetId(), 0, item->IsItem() ? TARGET_ITEM : TARGET_SCENERY, item->GetId(), USE_USE );
+            }
         }
     }
     else if( IsCurMode( CUR_USE_SKILL ) )
     {
-        if( CurSkill != 0 )
+        if( CurUseSkill != 0 )
         {
             CritterCl* cr;
             ItemHex*   item;
@@ -1360,14 +1358,14 @@ void FOClient::GameLMouseDown()
             // Use skill
             if( cr )
             {
-                SetAction( CHOSEN_USE_SKL_ON_CRITTER, CurSkill, cr->GetId(), Chosen->GetFullRate() );
+                SetAction( CHOSEN_USE_SKL_ON_CRITTER, CurUseSkill, cr->GetId(), Chosen->GetFullRate() );
             }
             else if( item && item->IsCanUseSkill() )
             {
                 if( item->IsScenOrGrid() )
-                    SetAction( CHOSEN_USE_SKL_ON_SCEN, CurSkill, item->GetProtoId(), item->GetHexX(), item->GetHexY() );
+                    SetAction( CHOSEN_USE_SKL_ON_SCEN, CurUseSkill, item->GetProtoId(), item->GetHexX(), item->GetHexY() );
                 else
-                    SetAction( CHOSEN_USE_SKL_ON_ITEM, false, CurSkill, item->GetId() );
+                    SetAction( CHOSEN_USE_SKL_ON_ITEM, false, CurUseSkill, item->GetId() );
             }
         }
 
