@@ -179,7 +179,6 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
     if( !count )
         return true;
 
-    uint errors = 0;
     for( uint i = 0; i < count; i++ )
     {
         CritData                data;
@@ -202,8 +201,7 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
         Npc* npc = CreateNpc( data.ProtoId, false );
         if( !npc )
         {
-            WriteLog( "Unable to create npc with id<%u>, pid<%u> on map with id<%u>, pid<%u>.\n", data.Id, data.ProtoId, data.MapId, data.MapPid );
-            errors++;
+            WriteLog( "Fail to create npc '%s' with id %u on map '%s'. Skip.\n", HASH_STR( data.ProtoId ), data.Id, HASH_STR( data.MapPid ) );
             continue;
         }
 
@@ -218,10 +216,7 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
         AddCritter( npc );
     }
 
-    if( errors )
-        WriteLog( "Load npc complete, count<%u>, errors<%u>.\n", count - errors, errors );
-    else
-        WriteLog( "Load npc complete, count<%u>.\n", count );
+    WriteLog( "Load npc complete, count<%u>.\n", count );
     return true;
 }
 

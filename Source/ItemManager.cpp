@@ -294,41 +294,37 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
     PropertyRegistrator dummy_fields_registrator( false, "Dummy" );
     dummy_fields_registrator.FinishRegistration();
 
-    int errors = 0;
     for( uint i = 0; i < count; ++i )
     {
-        uint  id;
+        uint       id;
         FileRead( f, &id, sizeof( id ) );
-        hash  pid;
+        hash       pid;
         FileRead( f, &pid, sizeof( pid ) );
-        uchar acc;
+        uchar      acc;
         FileRead( f, &acc, sizeof( acc ) );
-        char  acc_buf[ 8 ];
+        char       acc_buf[ 8 ];
         FileRead( f, &acc_buf[ 0 ], sizeof( acc_buf ) );
+        Properties props( Item::PropertiesRegistrator );
+        props.Load( f, version );
+
+        if( id > lastItemId )
+            lastItemId = id;
 
         Item* item = CreateItem( pid, 1, id );
         if( !item )
         {
-            WriteLog( "Create item error id %u, pid '%s'. Skip.\n", id, HASH_STR( pid ) );
-            Properties dummy_fields( &dummy_fields_registrator );
-            dummy_fields.Load( f, version );
-            errors++;
+            WriteLog( "Fail to create item '%s' with id %u. Skip.\n", HASH_STR( pid ), id );
             continue;
         }
-        if( id > lastItemId )
-            lastItemId = id;
-
-        item->Props.Load( f, version );
 
         item->Accessory = acc;
         memcpy( item->AccBuffer, acc_buf, sizeof( acc_buf ) );
+        item->Props = props;
 
-        // Radio collection
+        // Radio
         if( item->GetIsRadio() )
             RadioRegister( item, true );
     }
-    if( errors )
-        return false;
 
     WriteLog( "Load items complete, count %u.\n", count );
     return true;

@@ -424,7 +424,7 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
     FileRead( f, &count, sizeof( count ) );
     if( !count )
     {
-        WriteLog( "Locations not found.\n" );
+        WriteLog( "Locations not available.\n" );
         return true;
     }
 
@@ -455,7 +455,7 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
         // Check pids
         if( !GetProtoLocation( data.LocPid ) )
         {
-            WriteLog( "Proto location<%s> is not loaded. Skip location.\n", HASH_STR( data.LocPid ) );
+            WriteLog( "Proto location '%s' is not loaded. Skip.\n", HASH_STR( data.LocPid ) );
             continue;
         }
         bool map_fail = false;
@@ -463,7 +463,7 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
         {
             if( !GetProtoMap( map_data[ j ].MapPid ) )
             {
-                WriteLog( "Proto map<%s> of proto location<%s> is not loaded. Skip location.\n", HASH_STR( map_data[ j ].MapPid ), HASH_STR( data.LocPid ) );
+                WriteLog( "Proto map '%s' of proto location '%s' is not loaded. Skip.\n", HASH_STR( map_data[ j ].MapPid ), HASH_STR( data.LocPid ) );
                 map_fail = true;
             }
         }
@@ -474,7 +474,7 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
         Location* loc = CreateLocation( data.LocPid, data.WX, data.WY, data.LocId );
         if( !loc )
         {
-            WriteLog( "Can't create location<%s>.\n", HASH_STR( data.LocPid ) );
+            WriteLog( "Can't create location '%s'.\n", HASH_STR( data.LocPid ) );
             return false;
         }
         loc->Data = data;
@@ -485,7 +485,7 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
             Map* map = CreateMap( map_data[ j ].MapPid, loc, map_data[ j ].MapId );
             if( !map )
             {
-                WriteLog( "Can't create map<%s> for location<%s>.\n", HASH_STR( map_data[ j ].MapPid ), HASH_STR( data.LocPid ) );
+                WriteLog( "Can't create map '%s' for location '%s'.\n", HASH_STR( map_data[ j ].MapPid ), HASH_STR( data.LocPid ) );
                 return false;
             }
             map->Data = map_data[ j ];
