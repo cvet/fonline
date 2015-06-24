@@ -804,15 +804,20 @@ static uint FormatForHash( char* name )
 
 hash Str::GetHash( const char* name )
 {
-    if( !name )
+    if( !name || !name[ 0 ] )
         return 0;
 
     char name_[ MAX_FOTEXT ];
     Copy( name_, name );
     uint len = FormatForHash( name_ );
+    if( !len )
+        return 0;
+
     hash h = Crypt.Crc32( (uchar*) name_, len );
-    if( h )
-        AddNameHash( h, name, name_ );
+    if( !h )
+        return 0;
+
+    AddNameHash( h, name, name_ );
     return h;
 }
 
@@ -826,6 +831,39 @@ const char* Str::GetName( hash h )
         return error;
     }
     return it->second;
+}
+
+void Str::SaveHashes( void ( * save_func )( void*, size_t ) )
+{
+    for( auto it = HashRawNames.begin(); it != HashRawNames.end(); ++it )
+    {
+        const string& name = it->second;
+        if( name.length() <= 255 )
+        {
+            uchar name_len = (uchar) name.length();
+            save_func( &name_len, sizeof( name_len ) );
+            save_func( (void*) name.c_str(), name_len );
+        }
+    }
+    uchar zero = 0;
+    save_func( &zero, sizeof( zero ) );
+}
+
+void Str::LoadHashes( void* f, uint version )
+{
+    char buf[ 256 ];
+    while( true )
+    {
+        uchar name_len = 0;
+        FileRead( f, &name_len, sizeof( name_len ) );
+        if( !name_len )
+            break;
+
+        FileRead( f, buf, name_len );
+        buf[ name_len ] = 0;
+
+        GetHash( buf );
+    }
 }
 
 const char* Str::ParseLineDummy( const char* str )

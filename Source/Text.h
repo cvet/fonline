@@ -77,6 +77,8 @@ namespace Str
     // Name hashes
     hash        GetHash( const char* name );
     const char* GetName( hash h );
+    void        SaveHashes( void ( * save_func )( void*, size_t ) );
+    void        LoadHashes( void* f, uint version );
 
     // Parse str
     const char* ParseLineDummy( const char* str );

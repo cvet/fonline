@@ -177,7 +177,10 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
     uint count;
     FileRead( f, &count, sizeof( count ) );
     if( !count )
+    {
+        WriteLog( "There is no npc.\n" );
         return true;
+    }
 
     for( uint i = 0; i < count; i++ )
     {

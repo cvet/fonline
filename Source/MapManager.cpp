@@ -424,7 +424,7 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
     FileRead( f, &count, sizeof( count ) );
     if( !count )
     {
-        WriteLog( "Locations not available.\n" );
+        WriteLog( "There is no locations.\n" );
         return true;
     }
 

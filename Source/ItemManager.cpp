@@ -287,7 +287,7 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
     FileRead( f, &count, sizeof( count ) );
     if( !count )
     {
-        WriteLog( "Items not found.\n" );
+        WriteLog( "There is no items.\n" );
         return true;
     }
 
