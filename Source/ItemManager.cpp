@@ -291,6 +291,9 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
         return true;
     }
 
+    PropertyRegistrator dummy_fields_registrator( false, "Dummy" );
+    dummy_fields_registrator.FinishRegistration();
+
     int errors = 0;
     for( uint i = 0; i < count; ++i )
     {
@@ -306,9 +309,8 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
         Item* item = CreateItem( pid, 1, id );
         if( !item )
         {
-            WriteLog( "Create item error id<%u>, pid<%u>.\n", id, pid );
-            PropertyRegistrator dummy_fields_registrator( false, "Dummy" );
-            Properties          dummy_fields( &dummy_fields_registrator );
+            WriteLog( "Create item error id %u, pid '%s'. Skip.\n", id, HASH_STR( pid ) );
+            Properties dummy_fields( &dummy_fields_registrator );
             dummy_fields.Load( f, version );
             errors++;
             continue;
@@ -328,7 +330,7 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
     if( errors )
         return false;
 
-    WriteLog( "Load items complete, count<%u>.\n", count );
+    WriteLog( "Load items complete, count %u.\n", count );
     return true;
 }
 
@@ -399,7 +401,10 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, uint item_id /* =
 {
     ProtoItem* proto = GetProtoItem( pid );
     if( !proto )
+    {
+        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", HASH_STR( pid ) );
         return NULL;
+    }
 
     if( item_id )
     {
@@ -407,7 +412,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, uint item_id /* =
 
         if( gameItems.count( item_id ) )
         {
-            WriteLogF( _FUNC_, " - Item already created, id<%u>.\n", item_id );
+            WriteLogF( _FUNC_, " - Item already created, id %u.\n", item_id );
             return NULL;
         }
     }
@@ -440,7 +445,10 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, uint item_id /* =
     {
         item->ParseScript( proto->ScriptName.c_str(), true );
         if( item->IsDestroyed )
+        {
+            WriteLogF( _FUNC_, " - Item destroyed after prototype '%s' initialization, id %u.\n", HASH_STR( pid ), item_id );
             return NULL;
+        }
     }
     # endif
     return item;

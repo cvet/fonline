@@ -169,7 +169,7 @@ private:
     uint                 getCallback;
     uint                 getCallbackArgs;
     UIntVec              setCallbacks;
-    UIntVec              setCallbacksArgs;
+    IntVec               setCallbacksArgs;
     bool                 setCallbacksAnyOldValue;
     NativeCallback       nativeSetCallback;
     NativeCallback       nativeSendCallback;
