@@ -318,25 +318,23 @@ void HexManager::ReloadSprites()
     SetRainAnimation( NULL, NULL );
 }
 
-void HexManager::PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
+void HexManager::PlaceItemBlocks( ushort hx, ushort hy, Item* item )
 {
-    if( !proto_item )
-        return;
-
-    bool raked = Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemProps );
-    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
-                                   GetField( hx, hy ).Flags.IsNotPassed = true;
+    bool raked = item->GetIsShootThru();
+    bool light = item->GetIsLightThru();
+    FOREACH_PROTO_ITEM_LINES_WORK( item->Proto->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+                                   Field& field = GetField( hx, hy );
+                                   field.Flags.IsNotPassed = true;
                                    if( !raked )
-                                       GetField( hx, hy ).Flags.IsNotRaked = true;
+                                       field.Flags.IsNotRaked = true;
+                                   if( !light )
+                                       field.Flags.IsNoLight = true;
                                    );
 }
 
-void HexManager::ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
+void HexManager::ReplaceItemBlocks( ushort hx, ushort hy, Item* item )
 {
-    if( !proto_item )
-        return;
-
-    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+    FOREACH_PROTO_ITEM_LINES_WORK( item->Proto->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
                                    GetField( hx, hy ).ProcessCache();
                                    );
 }
@@ -443,7 +441,7 @@ ItemHexVec::iterator HexManager::DeleteItem( ItemHex* item, bool with_delete /* 
     ushort hy = item->GetHexY();
 
     if( item->Proto->IsBlockLines() )
-        ReplaceItemBlocks( item->HexX, item->HexY, item->Proto );
+        ReplaceItemBlocks( item->HexX, item->HexY, item );
     if( item->SprDrawValid )
         item->SprDraw->Unvalidate();
 
@@ -525,7 +523,7 @@ void HexManager::PushItem( ItemHex* item )
 
     // Blocks
     if( item->Proto->IsBlockLines() )
-        PlaceItemBlocks( hx, hy, item->Proto );
+        PlaceItemBlocks( hx, hy, item );
 
     // Sort
     std::sort( f.Items->begin(), f.Items->end(), ItemCompScen );

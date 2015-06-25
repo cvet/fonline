@@ -3,6 +3,7 @@
 #include "ItemManager.h"
 
 #ifdef FONLINE_SERVER
+# include "Script.h"
 # include "MapManager.h"
 # include "CritterManager.h"
 # include "AI.h"

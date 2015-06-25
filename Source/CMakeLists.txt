@@ -140,11 +140,11 @@ if( MSVC_IDE )
 endif()
 
 set( COMMON_SOURCE
+	Common.cpp Common.h
+	Crypt.cpp Crypt.h
 	DataFile.cpp DataFile.h
 	Debugger.cpp Debugger.h
 	Defines.h
-	Common.cpp Common.h
-	Crypt.cpp Crypt.h
 	FileManager.cpp FileManager.h
 	FileSystem.cpp FileSystem.h
 	IniParser.cpp IniParser.h
@@ -154,7 +154,9 @@ set( COMMON_SOURCE
 	Randomizer.h
 	ScriptBind.h
 	ScriptFunctions.h
+	ScriptInvoker.cpp ScriptInvoker.h
 	ScriptPragmas.cpp ScriptPragmas.h
+	ScriptProfiler.cpp ScriptProfiler.h
 	Text.cpp Text.h
 	Timer.cpp Timer.h
 	Types.h

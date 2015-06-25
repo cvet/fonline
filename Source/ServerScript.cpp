@@ -97,13 +97,20 @@ bool FOServer::InitScriptSystem()
         new PropertyRegistrator( true, "Location" ),
     };
 
+    // Profiler settings
+    IniParser& cfg = IniParser::GetServerConfig();
+    uint       sample_time = cfg.GetInt( "ProfilerSampleInterval", 0 );
+    uint       profiler_mode = cfg.GetInt( "ProfilerMode", 0 );
+    if( !profiler_mode )
+        sample_time = 0;
+
     // Init
-    if( !Script::Init( new ScriptPragmaCallback( PRAGMA_SERVER, registrators ), "SERVER", AllowServerNativeCalls ) )
+    if( !Script::Init( new ScriptPragmaCallback( PRAGMA_SERVER, registrators ), "SERVER", AllowServerNativeCalls,
+                       sample_time, ( ( profiler_mode & 1 ) != 0 ) ? 300000 : 0, ( profiler_mode & 2 ) != 0 ) )
     {
-        WriteLog( "Script System initialization failed.\n" );
+        WriteLog( "Script system initialization failed.\n" );
         return false;
     }
-    Script::Profiler::Init();
 
     // Wrong global objects
     ServerWrongGlobalObjects.push_back( "GlobalVars@" );
@@ -4917,41 +4924,6 @@ uint FOServer::SScriptFunc::Global_GetGlobalMapCritters( ushort wx, ushort wy, u
     if( critters )
         Script::AppendVectorToArrayRef( critters_, critters );
     return (uint) critters_.size();
-}
-
-uint FOServer::SScriptFunc::Global_CreateTimeEventEmpty( uint begin_second, ScriptString& script_name, bool save )
-{
-    return CreateTimeEvent( begin_second, script_name.c_str(), 0, 0, NULL, save );
-}
-
-uint FOServer::SScriptFunc::Global_CreateTimeEventValue( uint begin_second, ScriptString& script_name, uint value, bool save )
-{
-    return CreateTimeEvent( begin_second, script_name.c_str(), 1, value, NULL, save );
-}
-
-uint FOServer::SScriptFunc::Global_CreateTimeEventValues( uint begin_second, ScriptString& script_name, ScriptArray& values, bool save )
-{
-    return CreateTimeEvent( begin_second, script_name.c_str(), 2, 0, &values, save );
-}
-
-bool FOServer::SScriptFunc::Global_EraseTimeEvent( uint num )
-{
-    return EraseTimeEvent( num );
-}
-
-bool FOServer::SScriptFunc::Global_GetTimeEvent( uint num, uint& duration, ScriptArray* values )
-{
-    return GetTimeEvent( num, duration, values );
-}
-
-bool FOServer::SScriptFunc::Global_SetTimeEvent( uint num, uint duration, ScriptArray* values )
-{
-    return SetTimeEvent( num, duration, values );
-}
-
-uint FOServer::SScriptFunc::Global_GetTimeEventList( ScriptArray* ids )
-{
-    return GetTimeEventsList( ids );
 }
 
 Map* FOServer::SScriptFunc::Global_GetMap( uint map_id )

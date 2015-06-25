@@ -47,9 +47,6 @@ LangPackVec                 FOServer::LangPacks;
 FOServer::HoloInfoMap       FOServer::HolodiskInfo;
 Mutex                       FOServer::HolodiskLocker;
 uint                        FOServer::LastHoloId = 0;
-FOServer::TimeEventVec      FOServer::TimeEvents;
-uint                        FOServer::TimeEventsLastNum = 0;
-Mutex                       FOServer::TimeEventsLocker;
 StrVec                      FOServer::ServerWrongGlobalObjects;
 Pragmas                     FOServer::ServerPropertyPragmas;
 FOServer::TextListenVec     FOServer::TextListeners;
@@ -426,15 +423,15 @@ void FOServer::MainLoop()
         return;
 
     // Add general jobs
-    for( int i = 0; i < TIME_EVENTS_PER_CYCLE; i++ )
-        Job::PushBack( JOB_TIME_EVENTS );
     Job::PushBack( JOB_GARBAGE_ITEMS );
     Job::PushBack( JOB_GARBAGE_CRITTERS );
     Job::PushBack( JOB_GARBAGE_LOCATIONS );
     Job::PushBack( JOB_DEFERRED_RELEASE );
     Job::PushBack( JOB_GAME_TIME );
     Job::PushBack( JOB_BANS );
+    Job::PushBack( JOB_INVOCATIONS );
     Job::PushBack( JOB_LOOP_SCRIPT );
+    Job::PushBack( JOB_SUSPENDED_CONTEXTS );
 
     // Start logic threads
     WriteLog( "Starting logic threads, count<%u>.\n", LogicThreadCount );
@@ -697,11 +694,6 @@ void FOServer::Logic_Work( void* data )
             // Process logic
             map->Process();
         }
-        else if( job.Type == JOB_TIME_EVENTS )
-        {
-            // Time events
-            ProcessTimeEvents();
-        }
         else if( job.Type == JOB_GARBAGE_ITEMS )
         {
             // Items garbage
@@ -738,6 +730,11 @@ void FOServer::Logic_Work( void* data )
             // Bans
             ProcessBans();
         }
+        else if( job.Type == JOB_INVOCATIONS )
+        {
+            // Process pending invocations
+            Script::ProcessInvocations();
+        }
         else if( job.Type == JOB_LOOP_SCRIPT )
         {
             // Script game loop
@@ -752,7 +749,9 @@ void FOServer::Logic_Work( void* data )
                 else
                     game_loop_tick = Timer::FastTick() + wait;
             }
-
+        }
+        else if( job.Type == JOB_SUSPENDED_CONTEXTS )
+        {
             // Suspended contexts
             Script::RunSuspended();
         }
@@ -2149,7 +2148,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             result = MapMngr.GetLocationsMapsStatistics();
             break;
         case 3:
-            result = GetTimeEventsStatistics();
+            result = Script::GetInvocationsStatistics();
             break;
         case 4:
             result = "WIP";
@@ -2512,8 +2511,6 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     case CMD_RELOADSCRIPTS:
     {
         CHECK_ALLOW_COMMAND;
-        if( Script::Profiler::IsActive() )
-            return;
 
         SynchronizeLogicThreads();
 
@@ -2535,8 +2532,6 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         module_name[ MAX_SCRIPT_NAME ] = 0;
 
         CHECK_ALLOW_COMMAND;
-        if( Script::Profiler::IsActive() )
-            return;
 
         if( !Str::Length( module_name ) )
         {
@@ -3439,14 +3434,12 @@ bool FOServer::InitReal()
     SaveClients.clear();
     RegIp.clear();
     LastHoloId = USER_HOLO_START_NUM;
-    TimeEventsLastNum = 0;
 
     // Profiler
     uint sample_time = cfg.GetInt( "ProfilerSampleInterval", 0 );
     uint profiler_mode = cfg.GetInt( "ProfilerMode", 0 );
     if( !profiler_mode )
         sample_time = 0;
-    Script::Profiler::SetData( sample_time, ( ( profiler_mode & 1 ) != 0 ) ? 300000 : 0, ( ( profiler_mode & 2 ) != 0 ) );
 
     // Threading
     LogicThreadSetAffinity = cfg.GetInt( "LogicThreadSetAffinity", 0 ) != 0;
@@ -4493,7 +4486,7 @@ void FOServer::SaveWorld( const char* fname )
     SaveHoloInfoFile();
 
     // SaveTimeEventsFile
-    SaveTimeEventsFile();
+    Script::SaveInvocations( AddWorldSaveData );
 
     // Global vars
     Globals->Props.Save( AddWorldSaveData );
@@ -4611,7 +4604,7 @@ bool FOServer::LoadWorld( const char* fname )
         return false;
     if( !LoadHoloInfoFile( f, version ) )
         return false;
-    if( !LoadTimeEventsFile( f, version ) )
+    if( !Script::LoadInvocations( f, version ) )
         return false;
     if( !Globals->Props.Load( f, version ) )
         return false;
@@ -4656,12 +4649,6 @@ void FOServer::UnloadWorld()
     // Holo info
     HolodiskInfo.clear();
     LastHoloId = USER_HOLO_START_NUM;
-
-    // Time events
-    for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
-        delete *it;
-    TimeEvents.clear();
-    TimeEventsLastNum = 0;
 
     // Singleplayer header
     SingleplayerSave.Valid = false;
@@ -4803,493 +4790,6 @@ void FOServer::Dump_Work( void* data )
         // Notify about end of processing
         DumpEndEvent.Allow();
     }
-}
-
-/************************************************************************/
-/* Time events                                                          */
-/************************************************************************/
-
-void FOServer::SaveTimeEventsFile()
-{
-    uint count = 0;
-    for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
-        if( ( *it )->IsSaved )
-            count++;
-    AddWorldSaveData( &count, sizeof( count ) );
-    for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
-    {
-        TimeEvent* te = *it;
-        if( !te->IsSaved )
-            continue;
-        AddWorldSaveData( &te->Num, sizeof( te->Num ) );
-        ushort script_name_len = (ushort) te->FuncName.length();
-        AddWorldSaveData( &script_name_len, sizeof( script_name_len ) );
-        AddWorldSaveData( (void*) te->FuncName.c_str(), script_name_len );
-        AddWorldSaveData( &te->FullSecond, sizeof( te->FullSecond ) );
-        AddWorldSaveData( &te->Rate, sizeof( te->Rate ) );
-        uint values_size = (uint) te->Values.size();
-        AddWorldSaveData( &values_size, sizeof( values_size ) );
-        if( values_size )
-            AddWorldSaveData( &te->Values[ 0 ], values_size * sizeof( uint ) );
-    }
-}
-
-bool FOServer::LoadTimeEventsFile( void* f, uint version )
-{
-    WriteLog( "Load time events...\n" );
-
-    TimeEventsLastNum = 0;
-
-    uint count = 0;
-    if( !FileRead( f, &count, sizeof( count ) ) )
-        return false;
-    for( uint i = 0; i < count; i++ )
-    {
-        uint num;
-        if( !FileRead( f, &num, sizeof( num ) ) )
-            return false;
-
-        char   script_name[ MAX_SCRIPT_NAME * 2 + 2 ];
-        ushort script_name_len;
-        if( !FileRead( f, &script_name_len, sizeof( script_name_len ) ) )
-            return false;
-        if( !FileRead( f, script_name, script_name_len ) )
-            return false;
-        script_name[ script_name_len ] = 0;
-
-        uint begin_second;
-        if( !FileRead( f, &begin_second, sizeof( begin_second ) ) )
-            return false;
-        uint rate;
-        if( !FileRead( f, &rate, sizeof( rate ) ) )
-            return false;
-
-        UIntVec values;
-        uint    values_size;
-        if( !FileRead( f, &values_size, sizeof( values_size ) ) )
-            return false;
-        if( values_size )
-        {
-            values.resize( values_size );
-            if( !FileRead( f, &values[ 0 ], values_size * sizeof( uint ) ) )
-                return false;
-        }
-
-        bool singed = false;
-        uint bind_id = Script::Bind( script_name, "uint %s(int[]@)", false, true );
-        if( !bind_id )
-            bind_id = Script::Bind( script_name, "uint %s(uint[]@)", false );
-        else
-            singed = true;
-        if( !bind_id )
-        {
-            WriteLog( "Unable to bind script function, event num<%u>, name<%s>.\n", num, script_name );
-            continue;
-        }
-
-        TimeEvent* te = new TimeEvent();
-        if( !te )
-            return false;
-        te->FullSecond = begin_second;
-        te->Num = num;
-        te->FuncName = script_name;
-        te->BindId = bind_id;
-        te->Rate = rate;
-        te->SignedValues = singed;
-        te->IsSaved = true;
-        te->InProcess = 0;
-        te->EraseMe = false;
-        if( values_size )
-            te->Values = values;
-
-        TimeEvents.push_back( te );
-        if( num > TimeEventsLastNum )
-            TimeEventsLastNum = num;
-    }
-
-    WriteLog( "Load time events complete, count<%u>.\n", count );
-    return true;
-}
-
-void FOServer::AddTimeEvent( TimeEvent* te )
-{
-    // Invoked in locked scope
-
-    for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
-    {
-        TimeEvent* te_ = *it;
-        if( te->FullSecond < te_->FullSecond )
-        {
-            TimeEvents.insert( it, te );
-            return;
-        }
-    }
-    TimeEvents.push_back( te );
-}
-
-uint FOServer::CreateTimeEvent( uint begin_second, const char* script_name, int values, uint val1, ScriptArray* val2, bool save )
-{
-    if( begin_second < GameOpt.FullSecond )
-        SCRIPT_ERROR_R0( "Begin time is less than current time", script_name );
-
-    char module_name[ MAX_FOTEXT ];
-    char func_name[ MAX_FOTEXT ];
-    if( !Script::ReparseScriptName( script_name, module_name, func_name ) )
-        SCRIPT_ERROR_R0( "Invalid script '%s'", script_name );
-
-    bool singed = false;
-    uint bind_id = Script::Bind( module_name, func_name, "uint %s(int[]@)", false, true );
-    if( !bind_id )
-        bind_id = Script::Bind( module_name, func_name, "uint %s(uint[]@)", false );
-    else
-        singed = true;
-
-    if( !bind_id )
-        SCRIPT_ERROR_R0( "Unable to bind script '%s'", script_name );
-
-    SCOPE_LOCK( TimeEventsLocker );
-
-    TimeEvent* te = new TimeEvent();
-    te->FullSecond = begin_second;
-    te->Num = TimeEventsLastNum + 1;
-    te->FuncName = Str::FormatBuf( "%s@%s", module_name, func_name );
-    te->BindId = bind_id;
-    te->SignedValues = singed;
-    te->IsSaved = save;
-    te->InProcess = 0;
-    te->EraseMe = false;
-    te->Rate = 0;
-
-    if( values == 1 )
-    {
-        // Single value
-        te->Values.push_back( val1 );
-    }
-    else if( values == 2 )
-    {
-        // Array values
-        uint count = val2->GetSize();
-        if( count )
-        {
-            te->Values.resize( count );
-            memcpy( &te->Values[ 0 ], val2->At( 0 ), count * sizeof( uint ) );
-        }
-    }
-
-    AddTimeEvent( te );
-    TimeEventsLastNum++;
-    return TimeEventsLastNum;
-}
-
-void FOServer::TimeEventEndScriptCallback()
-{
-    SCOPE_LOCK( TimeEventsLocker );
-
-    size_t tid = Thread::GetCurrentId();
-    for( auto it = TimeEvents.begin(); it != TimeEvents.end();)
-    {
-        TimeEvent* te = *it;
-        if( te->InProcess == tid )
-        {
-            te->InProcess = 0;
-
-            if( te->EraseMe )
-            {
-                it = TimeEvents.erase( it );
-                delete te;
-            }
-        }
-        else
-        {
-            ++it;
-        }
-    }
-}
-
-bool FOServer::GetTimeEvent( uint num, uint& duration, ScriptArray* values )
-{
-    TimeEventsLocker.Lock();
-
-    TimeEvent* te = NULL;
-    size_t     tid = Thread::GetCurrentId();
-
-    // Find event
-    while( true )
-    {
-        for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
-        {
-            TimeEvent* te_ = *it;
-            if( te_->Num == num )
-            {
-                te = te_;
-                break;
-            }
-        }
-
-        // Event not found or erased
-        if( !te || te->EraseMe )
-        {
-            TimeEventsLocker.Unlock();
-            return false;
-        }
-
-        // Wait of other threads end work with event
-        if( te->InProcess && te->InProcess != tid )
-        {
-            TimeEventsLocker.Unlock();
-            Thread::Sleep( 0 );
-            TimeEventsLocker.Lock();
-        }
-        else
-        {
-            // Begin work with event
-            break;
-        }
-    }
-
-    // Fill data
-    if( values )
-        Script::AppendVectorToArray( te->Values, values );
-    duration = ( te->FullSecond > GameOpt.FullSecond ? te->FullSecond - GameOpt.FullSecond : 0 );
-
-    // Lock for current thread
-    if( LogicMT )
-        te->InProcess = tid;
-
-    // Add end of script execution callback to unlock event if SetTimeEvent not be called
-    if( LogicMT )
-        Script::AddEndExecutionCallback( TimeEventEndScriptCallback );
-
-    TimeEventsLocker.Unlock();
-    return true;
-}
-
-bool FOServer::SetTimeEvent( uint num, uint duration, ScriptArray* values )
-{
-    TimeEventsLocker.Lock();
-
-    TimeEvent* te = NULL;
-    size_t     tid = Thread::GetCurrentId();
-
-    // Find event
-    while( true )
-    {
-        for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
-        {
-            TimeEvent* te_ = *it;
-            if( te_->Num == num )
-            {
-                te = te_;
-                break;
-            }
-        }
-
-        // Event not found or erased
-        if( !te || te->EraseMe )
-        {
-            TimeEventsLocker.Unlock();
-            return false;
-        }
-
-        // Wait of other threads end work with event
-        if( te->InProcess && te->InProcess != tid )
-        {
-            TimeEventsLocker.Unlock();
-            Thread::Sleep( 0 );
-            TimeEventsLocker.Lock();
-        }
-        else
-        {
-            // Begin work with event
-            break;
-        }
-    }
-
-    // Fill data, lock event to current thread
-    if( values )
-        Script::AssignScriptArrayInVector( te->Values, values );
-    te->FullSecond = GameOpt.FullSecond + duration;
-
-    // Unlock from current thread
-    te->InProcess = 0;
-
-    TimeEventsLocker.Unlock();
-    return true;
-}
-
-bool FOServer::EraseTimeEvent( uint num )
-{
-    SCOPE_LOCK( TimeEventsLocker );
-
-    for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
-    {
-        TimeEvent* te = *it;
-        if( te->Num == num )
-        {
-            if( te->InProcess )
-            {
-                te->EraseMe = true;
-            }
-            else
-            {
-                delete te;
-                TimeEvents.erase( it );
-            }
-            return true;
-        }
-    }
-
-    return false;
-}
-
-void FOServer::ProcessTimeEvents()
-{
-    TimeEventsLocker.Lock();
-
-    TimeEvent* cur_event = NULL;
-    for( auto it = TimeEvents.begin(), end = TimeEvents.end(); it != end; ++it )
-    {
-        TimeEvent* te = *it;
-        if( !te->InProcess && te->FullSecond <= GameOpt.FullSecond )
-        {
-            te->InProcess = Thread::GetCurrentId();
-            cur_event = te;
-            break;
-        }
-    }
-
-    TimeEventsLocker.Unlock();
-
-    if( !cur_event )
-        return;
-
-    uint wait_time = 0;
-    if( Script::PrepareContext( cur_event->BindId, _FUNC_, Str::FormatBuf( "Time event<%u>, name<%s>", cur_event->Num, cur_event->FuncName.c_str() ) ) )
-    {
-        ScriptArray* values = NULL;
-        uint         size = (uint) cur_event->Values.size();
-
-        if( size > 0 )
-        {
-            if( cur_event->SignedValues )
-                values = Script::CreateArray( "int[]" );
-            else
-                values = Script::CreateArray( "uint[]" );
-
-            if( !values )
-            {
-                WriteLogF( _FUNC_, " - Create values array fail. Wait 10 real minutes.\n" );
-                wait_time = GameOpt.TimeMultiplier * 600;
-            }
-            else
-            {
-                values->Resize( size );
-                memcpy( values->At( 0 ), (void*) &cur_event->Values[ 0 ], size * sizeof( uint ) );
-            }
-        }
-
-        if( !size || values )
-        {
-            Script::SetArgObject( values );
-            if( !Script::RunPrepared() )
-            {
-                WriteLogF( _FUNC_, " - RunPrepared fail. Wait 10 real minutes.\n" );
-                wait_time = GameOpt.TimeMultiplier * 600;
-            }
-            else
-            {
-                wait_time = Script::GetReturnedUInt();
-                if( wait_time && values )               // Refresh array
-                {
-                    uint arr_size = values->GetSize();
-                    cur_event->Values.resize( arr_size );
-                    if( arr_size )
-                        memcpy( &cur_event->Values[ 0 ], values->At( 0 ), arr_size * sizeof( cur_event->Values[ 0 ] ) );
-                }
-            }
-
-            if( values )
-                values->Release();
-        }
-    }
-    else
-    {
-        WriteLogF( _FUNC_, " - Game contexts prepare fail. Wait 10 real minutes.\n" );
-        wait_time = GameOpt.TimeMultiplier * 600;
-    }
-
-    TimeEventsLocker.Lock();
-
-    auto it = std::find( TimeEvents.begin(), TimeEvents.end(), cur_event );
-    TimeEvents.erase( it );
-
-    if( wait_time && !cur_event->EraseMe )
-    {
-        cur_event->FullSecond = GameOpt.FullSecond + wait_time;
-        cur_event->Rate++;
-        cur_event->InProcess = 0;
-        AddTimeEvent( cur_event );
-    }
-    else
-    {
-        delete cur_event;
-    }
-
-    TimeEventsLocker.Unlock();
-}
-
-uint FOServer::GetTimeEventsCount()
-{
-    SCOPE_LOCK( TimeEventsLocker );
-
-    uint count = (uint) TimeEvents.size();
-    return count;
-}
-
-uint FOServer::GetTimeEventsList( ScriptArray* nums )
-{
-    SCOPE_LOCK( TimeEventsLocker );
-
-    uint size = (uint) TimeEvents.size();
-
-    if( nums )
-    {
-        for( uint i = 0; i < size; i++ )
-        {
-            TimeEvent* te = TimeEvents[ i ];
-            nums->InsertLast( &te->Num );
-        }
-    }
-
-    return size;
-}
-
-string FOServer::GetTimeEventsStatistics()
-{
-    SCOPE_LOCK( TimeEventsLocker );
-
-    static string result;
-    char          str[ 1024 ];
-    Str::Format( str, "Time events: %u\n", TimeEvents.size() );
-    result = str;
-    DateTimeStamp st = Timer::GetGameTime( GameOpt.FullSecond );
-    Str::Format( str, "Game time: %02u.%02u.%04u %02u:%02u:%02u\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second );
-    result += str;
-    result += "Number    Date       Time     Rate Saved Function                            Values\n";
-    for( uint i = 0, j = (uint) TimeEvents.size(); i < j; i++ )
-    {
-        TimeEvent* te = TimeEvents[ i ];
-        st = Timer::GetGameTime( te->FullSecond );
-        Str::Format( str, "%-9u %02u.%02u.%04u %02u:%02u:%02u %-4u %-5s %-35s", te->Num, st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, te->Rate, te->IsSaved ? "true" : "false", te->FuncName.c_str() );
-        result += str;
-        for( uint k = 0, l = (uint) te->Values.size(); k < l; k++ )
-        {
-            Str::Format( str, " %-10u", te->Values[ k ] );
-            result += str;
-        }
-        result += "\n";
-    }
-    return result;
 }
 
 /************************************************************************/

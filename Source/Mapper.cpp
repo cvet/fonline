@@ -1,5 +1,6 @@
 #include "Common.h"
 #include "Mapper.h"
+#include "Script.h"
 #include "ScriptFunctions.h"
 
 bool      FOMapper::SpritesCanDraw = false;
@@ -1538,6 +1539,9 @@ void FOMapper::MainLoop()
 
     // Start render
     SprMngr.BeginScene( COLOR_RGB( 100, 100, 100 ) );
+
+    // Process pending invocations
+    Script::ProcessInvocations();
 
     // Suspended contexts
     Script::RunSuspended();
@@ -5269,7 +5273,7 @@ bool FOMapper::InitScriptSystem()
     };
 
     // Init
-    if( !Script::Init( new ScriptPragmaCallback( PRAGMA_MAPPER, registrators ), "MAPPER", true ) )
+    if( !Script::Init( new ScriptPragmaCallback( PRAGMA_MAPPER, registrators ), "MAPPER", true, 0, 0, false ) )
     {
         WriteLog( "Script system initialization fail.\n" );
         return false;

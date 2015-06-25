@@ -5,6 +5,7 @@
 #include "IniParser.h"
 
 #ifdef FONLINE_SERVER
+# include "Script.h"
 # include "MapManager.h"
 #endif
 

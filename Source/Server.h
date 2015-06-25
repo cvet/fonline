@@ -2,6 +2,7 @@
 #define __SERVER__
 
 #include "Common.h"
+#include "Script.h"
 #include "Item.h"
 #include "Critter.h"
 #include "Map.h"
@@ -127,40 +128,6 @@ public:
     static bool MoveRandom( Critter* cr );
     static bool RegenerateMap( Map* map );
     static bool VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir );
-
-    // Time events
-    #define TIME_EVENTS_PER_CYCLE            ( 10 )
-    struct TimeEvent
-    {
-        uint    Num;
-        uint    FullSecond;
-        string  FuncName;
-        uint    BindId;
-        uint    Rate;
-        UIntVec Values;
-        bool    SignedValues;
-        bool    IsSaved;
-        size_t  InProcess;
-        bool    EraseMe;
-    };
-    typedef vector< TimeEvent* > TimeEventVec;
-    static TimeEventVec TimeEvents;
-    static TimeEventVec TimeEventsInProcess;
-    static uint         TimeEventsLastNum;
-    static Mutex        TimeEventsLocker;
-
-    static void   SaveTimeEventsFile();
-    static bool   LoadTimeEventsFile( void* f, uint version );
-    static void   AddTimeEvent( TimeEvent* te );
-    static uint   CreateTimeEvent( uint begin_second, const char* script_name, int values, uint val1, ScriptArray* val2, bool save );
-    static void   TimeEventEndScriptCallback();
-    static bool   GetTimeEvent( uint num, uint& duration, ScriptArray* values );
-    static bool   SetTimeEvent( uint num, uint duration, ScriptArray* values );
-    static bool   EraseTimeEvent( uint num );
-    static void   ProcessTimeEvents();
-    static uint   GetTimeEventsCount();
-    static uint   GetTimeEventsList( ScriptArray* nums );
-    static string GetTimeEventsStatistics();
 
     // Scripting
     static StrVec  ServerWrongGlobalObjects;
@@ -811,13 +778,6 @@ public:
         static uint          Global_GetPlayerId( ScriptString& name );
         static ScriptString* Global_GetPlayerName( uint id );
         static uint          Global_GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type, ScriptArray* critters );
-        static uint          Global_CreateTimeEventEmpty( uint begin_second, ScriptString& script_name, bool save );
-        static uint          Global_CreateTimeEventValue( uint begin_second, ScriptString& script_name, uint value, bool save );
-        static uint          Global_CreateTimeEventValues( uint begin_second, ScriptString& script_name, ScriptArray& values, bool save );
-        static bool          Global_EraseTimeEvent( uint num );
-        static bool          Global_GetTimeEvent( uint num, uint& duration, ScriptArray* data );
-        static bool          Global_SetTimeEvent( uint num, uint duration, ScriptArray* data );
-        static uint          Global_GetTimeEventList( ScriptArray* nums );
         static void          Global_SetTime( ushort multiplier, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static Map*          Global_GetMap( uint map_id );
         static Map*          Global_GetMapByPid( hash map_pid, uint skip_count );

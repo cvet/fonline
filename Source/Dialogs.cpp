@@ -3,6 +3,7 @@
 #include "FileManager.h"
 #include "IniParser.h"
 #ifdef FONLINE_SERVER
+# include "Script.h"
 # include "ConstantsManager.h"
 # include "Critter.h"
 # include "Map.h"

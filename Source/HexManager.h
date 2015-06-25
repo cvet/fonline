@@ -286,8 +286,8 @@ public:
 private:
     ItemHexVec hexItems;
 
-    void PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item );
-    void ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item );
+    void PlaceItemBlocks( ushort hx, ushort hy, Item* item );
+    void ReplaceItemBlocks( ushort hx, ushort hy, Item* item );
 
 public:
     bool                 AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data );

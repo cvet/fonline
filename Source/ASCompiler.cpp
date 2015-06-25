@@ -1,6 +1,7 @@
 #include "Common.h"
 #include "ScriptPragmas.h"
 #include "ScriptEngine.h"
+#include "ScriptInvoker.h"
 #include "angelscript.h"
 #include "preprocessor.h"
 #include "scriptany.h"

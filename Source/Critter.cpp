@@ -1,5 +1,6 @@
 #include "Common.h"
 #include "Critter.h"
+#include "Script.h"
 #include "MapManager.h"
 #include "ItemManager.h"
 #include "CritterType.h"

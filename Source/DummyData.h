@@ -659,13 +659,6 @@ struct BindClass
     static void Global_GetPlayerId()            {}
     static void Global_GetPlayerName()          {}
     static void Global_GetGlobalMapCritters()   {}
-    static void Global_CreateTimeEventEmpty()   {}
-    static void Global_CreateTimeEventValue()   {}
-    static void Global_CreateTimeEventValues()  {}
-    static void Global_EraseTimeEvent()         {}
-    static void Global_GetTimeEvent()           {}
-    static void Global_SetTimeEvent()           {}
-    static void Global_GetTimeEventList()       {}
     static void Global_SetStartLocation()       {}
     static void Global_GetMap()                 {}
     static void Global_GetMapByPid()            {}

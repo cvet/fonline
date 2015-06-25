@@ -360,7 +360,6 @@ struct MapperScriptFunctions
 
 #ifdef FONLINE_SERVER
 
-# include "Script.h"
 # include "ThreadSync.h"
 # include "Jobs.h"
 

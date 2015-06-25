@@ -45,10 +45,9 @@ Thread     GUIUpdateThread;
 // GUI
 static Fl_Window* GuiWindow;
 static Fl_Box*    GuiLabelGameTime, * GuiLabelClients, * GuiLabelIngame, * GuiLabelNPC, * GuiLabelLocCount,
-* GuiLabelItemsCount, * GuiLabelTECount,
-* GuiLabelFPS, * GuiLabelDelta, * GuiLabelUptime, * GuiLabelSend, * GuiLabelRecv, * GuiLabelCompress;
+* GuiLabelItemsCount, * GuiLabelFPS, * GuiLabelDelta, * GuiLabelUptime, * GuiLabelSend, * GuiLabelRecv, * GuiLabelCompress;
 static Fl_Button* GuiBtnRlClScript, * GuiBtnSaveWorld, * GuiBtnSaveLog, * GuiBtnSaveInfo,
-* GuiBtnCreateDump, * GuiBtnMemory, * GuiBtnPlayers, * GuiBtnLocsMaps, * GuiBtnTimeEvents,
+* GuiBtnCreateDump, * GuiBtnMemory, * GuiBtnPlayers, * GuiBtnLocsMaps, * GuiBtnInvocations,
 * GuiBtnProperties, * GuiBtnItemsCount, * GuiBtnProfiler, * GuiBtnStartStop, * GuiBtnSplitUp, * GuiBtnSplitDown;
 static Fl_Check_Button* GuiCBtnScriptDebug, * GuiCBtnLogging, * GuiCBtnLoggingTime,
 * GuiCBtnLoggingThread, * GuiCBtnAutoUpdate;
@@ -225,7 +224,7 @@ int main( int argc, char** argv )
                 GuiBtnSaveWorld->deactivate();
                 GuiBtnPlayers->deactivate();
                 GuiBtnLocsMaps->deactivate();
-                GuiBtnTimeEvents->deactivate();
+                GuiBtnInvocations->deactivate();
                 GuiBtnProperties->deactivate();
                 GuiBtnItemsCount->deactivate();
                 GuiBtnProfiler->deactivate();
@@ -329,13 +328,12 @@ void GUIInit( IniParser& cfg )
     GUISetup.Setup( GuiLabelNPC         = new Fl_Box( GUI_SIZE4( 5, 30, 124, 8 ), "NPC in game:" ) );
     GUISetup.Setup( GuiLabelLocCount    = new Fl_Box( GUI_SIZE4( 5, 38, 124, 8 ), "Locations:" ) );
     GUISetup.Setup( GuiLabelItemsCount  = new Fl_Box( GUI_SIZE4( 5, 46, 124, 8 ), "Items:" ) );
-    GUISetup.Setup( GuiLabelTECount     = new Fl_Box( GUI_SIZE4( 5, 54, 124, 8 ), "Time events:" ) );
-    GUISetup.Setup( GuiLabelFPS         = new Fl_Box( GUI_SIZE4( 5, 62, 124, 8 ), "Cycles per second:" ) );
-    GUISetup.Setup( GuiLabelDelta       = new Fl_Box( GUI_SIZE4( 5, 70, 124, 8 ), "Cycle time:" ) );
-    GUISetup.Setup( GuiLabelUptime      = new Fl_Box( GUI_SIZE4( 5, 78, 124, 8 ), "Uptime:" ) );
-    GUISetup.Setup( GuiLabelSend        = new Fl_Box( GUI_SIZE4( 5, 86, 124, 8 ), "KBytes send:" ) );
-    GUISetup.Setup( GuiLabelRecv        = new Fl_Box( GUI_SIZE4( 5, 94, 124, 8 ), "KBytes recv:" ) );
-    GUISetup.Setup( GuiLabelCompress    = new Fl_Box( GUI_SIZE4( 5, 102, 124, 8 ), "Compress ratio:" ) );
+    GUISetup.Setup( GuiLabelFPS         = new Fl_Box( GUI_SIZE4( 5, 54, 124, 8 ), "Cycles per second:" ) );
+    GUISetup.Setup( GuiLabelDelta       = new Fl_Box( GUI_SIZE4( 5, 62, 124, 8 ), "Cycle time:" ) );
+    GUISetup.Setup( GuiLabelUptime      = new Fl_Box( GUI_SIZE4( 5, 70, 124, 8 ), "Uptime:" ) );
+    GUISetup.Setup( GuiLabelSend        = new Fl_Box( GUI_SIZE4( 5, 78, 124, 8 ), "KBytes send:" ) );
+    GUISetup.Setup( GuiLabelRecv        = new Fl_Box( GUI_SIZE4( 5, 86, 124, 8 ), "KBytes recv:" ) );
+    GUISetup.Setup( GuiLabelCompress    = new Fl_Box( GUI_SIZE4( 5, 94, 124, 8 ), "Compress ratio:" ) );
 
     // Buttons
     GUISetup.Setup( GuiBtnRlClScript = new Fl_Button( GUI_SIZE4( 5, 128, 124, 14 ), "Reload client scripts" ) );
@@ -346,7 +344,7 @@ void GUIInit( IniParser& cfg )
     GUISetup.Setup( GuiBtnMemory    = new Fl_Button( GUI_SIZE4( 5, 219, 124, 14 ), "Memory usage" ) );
     GUISetup.Setup( GuiBtnPlayers   = new Fl_Button( GUI_SIZE4( 5, 235, 124, 14 ), "Players" ) );
     GUISetup.Setup( GuiBtnLocsMaps  = new Fl_Button( GUI_SIZE4( 5, 251, 124, 14 ), "Locations and maps" ) );
-    GUISetup.Setup( GuiBtnTimeEvents = new Fl_Button( GUI_SIZE4( 5, 267, 124, 14 ), "Time events" ) );
+    GUISetup.Setup( GuiBtnInvocations = new Fl_Button( GUI_SIZE4( 5, 267, 124, 14 ), "Deferred invocations" ) );
     GUISetup.Setup( GuiBtnProperties   = new Fl_Button( GUI_SIZE4( 5, 283, 124, 14 ), "Properties" ) );
     GUISetup.Setup( GuiBtnItemsCount = new Fl_Button( GUI_SIZE4( 5, 299, 124, 14 ), "Items count" ) );
     GUISetup.Setup( GuiBtnProfiler = new Fl_Button( GUI_SIZE4( 5, 315, 124, 14 ), "Profiler" ) );
@@ -370,7 +368,7 @@ void GUIInit( IniParser& cfg )
     GuiBtnSaveWorld->deactivate();
     GuiBtnPlayers->deactivate();
     GuiBtnLocsMaps->deactivate();
-    GuiBtnTimeEvents->deactivate();
+    GuiBtnInvocations->deactivate();
     GuiBtnProperties->deactivate();
     GuiBtnItemsCount->deactivate();
     GuiBtnProfiler->deactivate();
@@ -454,7 +452,7 @@ void GUICallback( Fl_Widget* widget, void* data )
         FOServer::UpdateIndex = 2;
         FOServer::UpdateLastIndex = 2;
     }
-    else if( widget == GuiBtnTimeEvents )
+    else if( widget == GuiBtnInvocations )
     {
         FOServer::UpdateIndex = 3;
         FOServer::UpdateLastIndex = 3;
@@ -487,7 +485,7 @@ void GUICallback( Fl_Widget* widget, void* data )
             GuiBtnSaveWorld->deactivate();
             GuiBtnPlayers->deactivate();
             GuiBtnLocsMaps->deactivate();
-            GuiBtnTimeEvents->deactivate();
+            GuiBtnInvocations->deactivate();
             GuiBtnProperties->deactivate();
             GuiBtnItemsCount->deactivate();
         }
@@ -577,7 +575,6 @@ void UpdateInfo()
         Label::Update( GuiLabelNPC, Str::Format( str, "NPC in game: %u", CrMngr.NpcInGame() ) );
         Label::Update( GuiLabelLocCount, Str::Format( str, "Locations: %u (%u)", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount() ) );
         Label::Update( GuiLabelItemsCount, Str::Format( str, "Items: %u", ItemMngr.GetItemsCount() ) );
-        Label::Update( GuiLabelTECount, Str::Format( str, "Time events: %u", Server.GetTimeEventsCount() ) );
         Label::Update( GuiLabelFPS, Str::Format( str, "Cycles per second: %u", Server.Statistics.FPS ) );
         Label::Update( GuiLabelDelta, Str::Format( str, "Cycle time: %d", Server.Statistics.CycleTime ) );
     }
@@ -589,7 +586,6 @@ void UpdateInfo()
         Label::Update( GuiLabelNPC, Str::Format( str, "NPC in game: n/a" ) );
         Label::Update( GuiLabelLocCount, Str::Format( str, "Locations: n/a" ) );
         Label::Update( GuiLabelItemsCount, Str::Format( str, "Items: n/a" ) );
-        Label::Update( GuiLabelTECount, Str::Format( str, "Time events: n/a" ) );
         Label::Update( GuiLabelFPS, Str::Format( str, "Cycles per second: n/a" ) );
         Label::Update( GuiLabelDelta, Str::Format( str, "Cycle time: n/a" ) );
     }
@@ -626,11 +622,11 @@ void UpdateInfo()
             std_str = MapMngr.GetLocationsMapsStatistics();
             UpdateLogName = "LocationsAndMaps";
             break;
-        case 3:         // Time events
+        case 3:         // Invocations
             if( !Server.Started() )
                 break;
-            std_str = Server.GetTimeEventsStatistics();
-            UpdateLogName = "TimeEvents";
+            std_str = Script::GetInvocationsStatistics();
+            UpdateLogName = "Invocations";
             break;
         case 4:         // Properties
             if( !Server.Started() )
@@ -645,7 +641,7 @@ void UpdateInfo()
             UpdateLogName = "ItemsCount";
             break;
         case 6:         // Profiler
-            std_str = Script::Profiler::GetStatistics();
+            std_str = Script::GetProfilerStatistics();
             UpdateLogName = "Profiler";
             break;
         default:
@@ -721,7 +717,7 @@ void GameLoopThread( void* )
             GuiBtnSaveWorld->activate();
             GuiBtnPlayers->activate();
             GuiBtnLocsMaps->activate();
-            GuiBtnTimeEvents->activate();
+            GuiBtnInvocations->activate();
             GuiBtnProperties->activate();
             GuiBtnItemsCount->activate();
             GuiBtnStartStop->activate();

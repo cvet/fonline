@@ -4,6 +4,7 @@
 #include "FileManager.h"
 
 #ifdef FONLINE_SERVER
+# include "Script.h"
 # include "Critter.h"
 # include "CritterManager.h"
 # include "ItemManager.h"

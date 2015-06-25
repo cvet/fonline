@@ -8,6 +8,7 @@
 #include "IniParser.h"
 
 #ifndef FONLINE_MAPPER
+# include "Script.h"
 # include "Critter.h"
 #else
 # include "ResourceManager.h"

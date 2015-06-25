@@ -1145,6 +1145,9 @@ int FOClient::MainLoop()
     // Start render
     SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
 
+    // Process pending invocations
+    Script::ProcessInvocations();
+
     // Script loop
     static uint next_call = 0;
     if( Timer::FastTick() >= next_call )
@@ -9004,7 +9007,7 @@ bool FOClient::ReloadScripts()
 
     // Reinitialize engine
     Script::Finish();
-    if( !Script::Init( new ScriptPragmaCallback( PRAGMA_CLIENT, registrators ), "CLIENT", true ) )
+    if( !Script::Init( new ScriptPragmaCallback( PRAGMA_CLIENT, registrators ), "CLIENT", true, 0, 0, false ) )
     {
         WriteLog( "Unable to start script engine.\n" );
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );

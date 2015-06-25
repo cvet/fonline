@@ -530,17 +530,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetPlayer(string& name)"
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetPlayerId(string& name)", asFUNCTION( BIND_CLASS Global_GetPlayerId ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetPlayerName(uint playerId)", asFUNCTION( BIND_CLASS Global_GetPlayerName ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetGlobalMapCritters(uint16 worldX, uint16 worldY, uint radius, int findType, Critter@[]@+ critters)", asFUNCTION( BIND_CLASS Global_GetGlobalMapCritters ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint CreateTimeEvent(uint beginSecond, string& funcName, bool save)", asFUNCTION( BIND_CLASS Global_CreateTimeEventEmpty ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint CreateTimeEvent(uint beginSecond, string& funcName, uint value, bool save)", asFUNCTION( BIND_CLASS Global_CreateTimeEventValue ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint CreateTimeEvent(uint beginSecond, string& funcName, int value, bool save)", asFUNCTION( BIND_CLASS Global_CreateTimeEventValue ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint CreateTimeEvent(uint beginSecond, string& funcName, uint[]& values, bool save)", asFUNCTION( BIND_CLASS Global_CreateTimeEventValues ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint CreateTimeEvent(uint beginSecond, string& funcName, int[]& values, bool save)", asFUNCTION( BIND_CLASS Global_CreateTimeEventValues ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool EraseTimeEvent(uint num)", asFUNCTION( BIND_CLASS Global_EraseTimeEvent ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetTimeEvent(uint num, uint& duration, uint[]@+ values)", asFUNCTION( BIND_CLASS Global_GetTimeEvent ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetTimeEvent(uint num, uint& duration, int[]@+ values)", asFUNCTION( BIND_CLASS Global_GetTimeEvent ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool SetTimeEvent(uint num, uint duration, uint[]@+ values)", asFUNCTION( BIND_CLASS Global_SetTimeEvent ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool SetTimeEvent(uint num, uint duration, int[]@+ values)", asFUNCTION( BIND_CLASS Global_SetTimeEvent ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetTimeEventList(uint[]@+ nums)", asFUNCTION( BIND_CLASS Global_GetTimeEventList ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "Map@+ GetMap(uint mapId)", asFUNCTION( BIND_CLASS Global_GetMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "Map@+ GetMapByPid(hash mapPid, uint skipCount)", asFUNCTION( BIND_CLASS Global_GetMapByPid ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "Location@+ GetLocation(uint locId)", asFUNCTION( BIND_CLASS Global_GetLocation ), asCALL_CDECL ) );
@@ -1259,6 +1248,24 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFolderFileNames(string& pa
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool DeleteFile(string& fileName)", asFUNCTION( Global_DeleteFile ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(string& path)", asFUNCTION( Global_CreateDirectoryTree ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Yield(uint time)", asFUNCTION( Global_Yield ), asCALL_CDECL ) );
+
+// Invoker
+BIND_ASSERT( engine->RegisterFuncdef( "void InvokeFunc()" ) );
+BIND_ASSERT( engine->RegisterFuncdef( "void InvokeFuncWithValues(int[]& values)" ) );
+BIND_ASSERT( engine->RegisterFuncdef( "uint RepeatableInvokeFunc()" ) );
+BIND_ASSERT( engine->RegisterFuncdef( "uint RepeatableInvokeFuncWithValues(int[]& values)" ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint Invoke(InvokeFunc@+ func, uint delay = 0)", asFUNCTION( ScriptInvoker::Global_Invoke ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint Invoke(RepeatableInvokeFunc@+ func, uint delay = 0)", asFUNCTION( ScriptInvoker::Global_Invoke ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint Invoke(InvokeFuncWithValues@+ func, const int[]& values, uint delay = 0)", asFUNCTION( ScriptInvoker::Global_InvokeWithValues ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint Invoke(RepeatableInvokeFuncWithValues@+ func, const int[]& values, uint delay = 0)", asFUNCTION( ScriptInvoker::Global_InvokeWithValues ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsInvoking(uint id)", asFUNCTION( ScriptInvoker::Global_CancelInvoke ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool CancelInvoke(uint id)", asFUNCTION( ScriptInvoker::Global_CancelInvoke ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetInvokeData(uint id, uint& delay, uint[]@+ values)", asFUNCTION( ScriptInvoker::Global_GetInvokeData ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetInvokeList(uint[]@+ ids)", asFUNCTION( ScriptInvoker::Global_GetInvokeList ), asCALL_CDECL ) );
+#ifdef BIND_SERVER
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedInvoke(RepeatableInvokeFunc@+ func, uint delay = 0)", asFUNCTION( ScriptInvoker::Global_SavedInvoke ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedInvoke(RepeatableInvokeFuncWithValues@+ func, const int[]& values, uint delay = 0)", asFUNCTION( ScriptInvoker::Global_SavedInvokeWithValues ), asCALL_CDECL ) );
+#endif
 
 #define BIND_ASSERT_EXT( expr )    BIND_ASSERT( ( expr ) ? 0 : -1 )
 BIND_ASSERT_EXT( registrators[ 0 ]->Init() );
