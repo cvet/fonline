@@ -267,8 +267,8 @@ string ScriptInvoker::GetStatistics()
     char   buf[ MAX_FOTEXT ];
     uint   tick = Timer::FastTick();
     string result = Str::Format( buf, "Invocations count: %u\n", (uint) deferredInvocations.size() );
-    result += "Id        Date       Time     Rate Saved Function                            Values\n";
-    for( auto it = deferredInvocations.begin(); it != deferredInvocations.end();)
+    result += "Id         Delay      Rate Saved Function                            Values\n";
+    for( auto it = deferredInvocations.begin(); it != deferredInvocations.end(); ++it )
     {
         Invocation* invocation = *it;
         string      func_name = Script::GetBindFuncName( invocation->BindId );
@@ -277,7 +277,7 @@ string ScriptInvoker::GetStatistics()
         if( invocation->Values )
         {
             for( size_t i = 0; i < invocation->Values->size(); i++ )
-                result += Str::Format( buf, " %-10u", invocation->Values->at( i ) );
+                result += Str::Format( buf, " %u", invocation->Values->at( i ) );
         }
         result += "\n";
     }
