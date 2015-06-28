@@ -39,12 +39,10 @@ private:
     asIScriptEngine* scriptEngine;
     ProfilerStage    curStage;
     uint             sampleInterval;
+    CallStack        callStack;
 
     // Save stacks
-    uint                 saveInterval;
-    void*                saveFileHandle;
-    vector< CallStack* > stacksToSave;
-    uint                 lastSaveTime;
+    void* saveFileHandle;
 
     // Dynamic display
     bool           isDynamicDisplay;
@@ -53,12 +51,12 @@ private:
     uint           totalCallPaths;
 
     ScriptProfiler();
-    bool   Init( asIScriptEngine* engine, uint sample_time, uint save_time, bool dynamic_display );
+    bool   Init( asIScriptEngine* engine, uint sample_time, bool save_to_file, bool dynamic_display );
     void   AddModule( const char* module_name );
     void   EndModules();
     bool   IsNeedProcess();
-    void   Process( asIScriptContext* ctx, uint& tick );
-    void   ProcessStack( CallStack* stack );
+    void   Process( asIScriptContext* ctx );
+    void   ProcessStack( CallStack& stack );
     void   Finish();
     string GetStatistics();
 };

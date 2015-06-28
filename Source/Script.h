@@ -39,7 +39,7 @@ struct ReservedScriptFunction
 class Script
 {
 public:
-    static bool Init( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls, uint profiler_sample_time, uint profiler_save_time, bool profiler_dynamic_display );
+    static bool Init( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls, uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display );
     static void Finish();
     static bool InitThread();
     static void FinishThread();
@@ -73,10 +73,10 @@ public:
     static string            MakeContextTraceback( asIScriptContext* ctx );
 
     static ScriptInvoker* GetInvoker();
-    static string         GetInvocationsStatistics();
-    static void           ProcessInvocations();
-    static void           SaveInvocations( void ( * save_func )( void*, size_t ) );
-    static bool           LoadInvocations( void* f, uint version );
+    static string         GetDeferredCallsStatistics();
+    static void           ProcessDeferredCalls();
+    static void           SaveDeferredCalls( void ( * save_func )( void*, size_t ) );
+    static bool           LoadDeferredCalls( void* f, uint version );
 
     static void   ProfilerContextCallback( asIScriptContext* ctx, void* obj );
     static string GetProfilerStatistics();

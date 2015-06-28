@@ -12,31 +12,24 @@ ScriptProfiler::ScriptProfiler()
     scriptEngine = NULL;
     curStage = ProfilerUninitialized;
     sampleInterval = 0;
-    saveInterval = 0;
     saveFileHandle = NULL;
-    lastSaveTime = 0;
     isDynamicDisplay = false;
     totalCallPaths = 0;
 }
 
-bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, uint save_time, bool dynamic_display )
+bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, bool save_to_file, bool dynamic_display )
 {
     RUNTIME_ASSERT( curStage == ProfilerUninitialized );
     RUNTIME_ASSERT( engine );
     RUNTIME_ASSERT( sample_time > 0 );
 
-    scriptEngine = engine;
-    sampleInterval = sample_time;
-    saveInterval = save_time;
-    isDynamicDisplay = dynamic_display;
-
-    if( !saveInterval && !isDynamicDisplay )
+    if( !save_to_file && !dynamic_display )
     {
         WriteLog( "Profiler may not be active with both saving and dynamic display disabled.\n" );
         return false;
     }
 
-    if( saveInterval )
+    if( save_to_file )
     {
         DateTimeStamp dt;
         Timer::GetCurrentDateTime( dt );
@@ -61,6 +54,9 @@ bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, uint save_
         FileWrite( saveFileHandle, &dummy, 4 );
     }
 
+    scriptEngine = engine;
+    sampleInterval = sample_time;
+    isDynamicDisplay = dynamic_display;
     curStage = ProfilerInitialized;
     return true;
 }
@@ -69,7 +65,7 @@ void ScriptProfiler::AddModule( const char* module_name )
 {
     RUNTIME_ASSERT( curStage == ProfilerInitialized );
 
-    if( !saveInterval )
+    if( saveFileHandle )
     {
         char fname_real[ MAX_FOPATH ];
         Str::Copy( fname_real, module_name );
@@ -91,7 +87,7 @@ void ScriptProfiler::EndModules()
 {
     RUNTIME_ASSERT( curStage == ProfilerInitialized );
 
-    if( saveInterval )
+    if( saveFileHandle )
     {
         int dummy = 0;
         FileWrite( saveFileHandle, &dummy, 1 );
@@ -119,19 +115,14 @@ void ScriptProfiler::EndModules()
     curStage = ProfilerWorking;
 }
 
-void ScriptProfiler::Process( asIScriptContext* ctx, uint& tick )
+void ScriptProfiler::Process( asIScriptContext* ctx )
 {
     RUNTIME_ASSERT( curStage == ProfilerWorking );
 
     if( ctx->GetState() != asEXECUTION_ACTIVE )
         return;
 
-    uint cur_tick = Timer::FastTick();
-    if( cur_tick - tick < sampleInterval )
-        return;
-    tick = cur_tick;
-
-    CallStack*         stack = new CallStack();
+    callStack.clear();
     asIScriptFunction* func;
     int                line, column = 0;
     uint               stack_size = ctx->GetCallstackSize();
@@ -141,50 +132,35 @@ void ScriptProfiler::Process( asIScriptContext* ctx, uint& tick )
         if( func )
         {
             line = ctx->GetLineNumber( j );
-            stack->push_back( Call( func->GetId(), line ) );
+            callStack.push_back( Call( func->GetId(), line ) );
         }
         else
         {
-            stack->push_back( Call( 0, 0 ) );
+            callStack.push_back( Call( 0, 0 ) );
         }
     }
 
     if( isDynamicDisplay )
-        ProcessStack( stack );
-    if( saveInterval )
-        stacksToSave.push_back( stack );
-    else
-        delete stack;
+        ProcessStack( callStack );
 
-    if( saveInterval && cur_tick - lastSaveTime >= saveInterval )
+    if( saveFileHandle )
     {
-        uint time = Timer::FastTick();
-        uint size = (uint) stacksToSave.size();
-
-        for( auto it = stacksToSave.begin(), end = stacksToSave.end(); it != end; ++it )
+        for( auto it = callStack.begin(), end = callStack.end(); it != end; ++it )
         {
-            CallStack* stack = *it;
-            for( auto it2 = stack->begin(), end2 = stack->end(); it2 != end2; ++it2 )
-            {
-                FileWrite( saveFileHandle, &it2->Id, 4 );
-                FileWrite( saveFileHandle, &it2->Line, 4 );
-            }
-            static int dummy = -1;
-            FileWrite( saveFileHandle, &dummy, 4 );
-            delete *it;
+            FileWrite( saveFileHandle, &it->Id, 4 );
+            FileWrite( saveFileHandle, &it->Line, 4 );
         }
-
-        stacksToSave.clear();
-        lastSaveTime = cur_tick;
+        static int dummy = -1;
+        FileWrite( saveFileHandle, &dummy, 4 );
     }
 }
 
-void ScriptProfiler::ProcessStack( CallStack* stack )
+void ScriptProfiler::ProcessStack( CallStack& stack )
 {
     SCOPE_LOCK( callPathsLocker );
 
     totalCallPaths++;
-    int       top_id = stack->back().Id;
+    int       top_id = stack.back().Id;
     CallPath* path;
 
     auto      itp = callPaths.find( top_id );
@@ -199,7 +175,7 @@ void ScriptProfiler::ProcessStack( CallStack* stack )
         path->Incl++;
     }
 
-    for( CallStack::reverse_iterator it = stack->rbegin() + 1, end = stack->rend(); it != end; ++it )
+    for( CallStack::reverse_iterator it = stack.rbegin() + 1, end = stack.rend(); it != end; ++it )
         path = path->AddChild( it->Id );
 
     path->StackEnd();
@@ -209,7 +185,7 @@ void ScriptProfiler::Finish()
 {
     RUNTIME_ASSERT( curStage == ProfilerWorking );
 
-    if( saveInterval )
+    if( saveFileHandle )
     {
         FileClose( saveFileHandle );
         saveFileHandle = NULL;

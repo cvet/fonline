@@ -5,346 +5,381 @@
 
 ScriptInvoker::ScriptInvoker()
 {
-    lastInvocationId = 0;
+    lastDeferredCallId = 0;
 }
 
-uint ScriptInvoker::Invoke( uint delay, bool saved, asIScriptFunction* func, ScriptArray* values )
+uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* func, int* value, ScriptArray* values )
 {
-    uint    func_num = Script::GetFuncNum( func );
-    uint    bind_id = Script::Bind( func, false );
+    if( !func )
+        SCRIPT_ERROR_R0( "Function arg is null." );
+
+    RUNTIME_ASSERT( func->GetReturnTypeId() == asTYPEID_VOID );
+    uint func_num = Script::GetFuncNum( func );
+    uint bind_id = Script::Bind( func, false );
     RUNTIME_ASSERT( bind_id );
-    IntVec* values_ = NULL;
-    if( values )
-    {
-        values_ = new IntVec();
-        Script::AssignScriptArrayInVector( *values_, values );
-    }
-    return Invoke( delay, saved, func_num, bind_id, func->GetReturnTypeId() != asTYPEID_VOID, values_ );
-}
 
-uint ScriptInvoker::Invoke( uint delay, bool saved, hash func_num, uint bind_id, bool repeatable, IntVec* values )
-{
-    Invocation* invocation = new Invocation();
-    invocation->Id = ++lastInvocationId;
-    invocation->FireTick = Timer::FastTick() + delay;
-    invocation->FuncNum = func_num;
-    invocation->BindId = bind_id;
-    invocation->Repeatable = repeatable;
-    invocation->Values = values;
-    invocation->Rate = 0;
-    invocation->Saved = saved;
-
-    if( delay > 0 )
+    DeferredCall call;
+    call.Id = ++lastDeferredCallId;
+    call.FireTick = Timer::FastTick() + delay;
+    call.FuncNum = func_num;
+    call.BindId = bind_id;
+    call.Saved = saved;
+    if( value )
     {
-        SCOPE_LOCK( deferredInvocationsLocker );
-        deferredInvocations.push_back( invocation );
+        call.IsValue = true;
+        call.Value = *value;
     }
     else
     {
-        RunInvocation( invocation );
+        call.IsValue = false;
+        call.Value = 0;
     }
-    return invocation->Id;
+    if( values )
+    {
+        call.IsValues = true;
+        Script::AssignScriptArrayInVector( call.Values, values );
+        RUNTIME_ASSERT( values->GetElementTypeId() == asTYPEID_INT32 || values->GetElementTypeId() == asTYPEID_UINT32 );
+        call.ValuesSigned = ( values->GetElementTypeId() == asTYPEID_INT32 );
+    }
+    else
+    {
+        call.IsValues = false;
+        call.ValuesSigned = false;
+    }
+
+    if( delay == uint( -1 ) )
+    {
+        RunDeferredCall( call );
+    }
+    else
+    {
+        SCOPE_LOCK( deferredCallsLocker );
+        deferredCalls.push_back( call );
+    }
+    return call.Id;
 }
 
-bool ScriptInvoker::IsInvoking( uint id )
+bool ScriptInvoker::IsDeferredCallPending( uint id )
 {
-    SCOPE_LOCK( deferredInvocationsLocker );
+    SCOPE_LOCK( deferredCallsLocker );
 
-    for( auto it = deferredInvocations.begin(); it != deferredInvocations.end(); ++it )
-    {
-        Invocation* invocation = *it;
-        if( invocation->Id == id )
+    for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
+        if( it->Id == id )
             return true;
-    }
     return false;
 }
 
-bool ScriptInvoker::CancelInvoke( uint id )
+bool ScriptInvoker::CancelDeferredCall( uint id )
 {
-    SCOPE_LOCK( deferredInvocationsLocker );
+    SCOPE_LOCK( deferredCallsLocker );
 
-    for( auto it = deferredInvocations.begin(); it != deferredInvocations.end(); ++it )
+    for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
     {
-        Invocation* invocation = *it;
-        if( invocation->Id == id )
+        if( it->Id == id )
         {
-            delete invocation;
-            deferredInvocations.erase( it );
+            deferredCalls.erase( it );
             return true;
         }
     }
     return false;
 }
 
-bool ScriptInvoker::GetInvokeData( uint id, Invocation& data )
+bool ScriptInvoker::GetDeferredCallData( uint id, DeferredCall& data )
 {
-    SCOPE_LOCK( deferredInvocationsLocker );
+    SCOPE_LOCK( deferredCallsLocker );
 
-    for( auto it = deferredInvocations.begin(); it != deferredInvocations.end(); ++it )
+    for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
     {
-        if( ( *it )->Id == id )
+        DeferredCall& call = *it;
+        if( call.Id == id )
         {
-            data = **it;
+            data = call;
             return true;
         }
     }
     return false;
 }
 
-void ScriptInvoker::GetInvokeList( IntVec& ids )
+void ScriptInvoker::GetDeferredCallsList( IntVec& ids )
 {
-    SCOPE_LOCK( deferredInvocationsLocker );
+    SCOPE_LOCK( deferredCallsLocker );
 
-    ids.reserve( deferredInvocations.size() );
-    for( auto it = deferredInvocations.begin(); it != deferredInvocations.end(); ++it )
-        ids.push_back( ( *it )->Id );
+    ids.reserve( deferredCalls.size() );
+    for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
+        ids.push_back( it->Id );
 }
 
 void ScriptInvoker::Process()
 {
-    InvocationVec fired_entries;
+    bool done = false;
+    while( !done )
     {
-        SCOPE_LOCK( deferredInvocationsLocker );
+        done = true;
+
+        deferredCallsLocker.Lock();
 
         uint tick = Timer::FastTick();
-        for( auto it = deferredInvocations.begin(); it != deferredInvocations.end();)
+        for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
         {
-            Invocation* invocation = *it;
-            if( Timer::FastTick() >= invocation->FireTick )
+            if( tick >= it->FireTick )
             {
-                fired_entries.push_back( invocation );
-                it = deferredInvocations.erase( it );
-            }
-            else
-            {
-                ++it;
+                DeferredCall call = *it;
+                it = deferredCalls.erase( it );
+                deferredCallsLocker.Unlock();
+
+                RunDeferredCall( call );
+                done = false;
+                break;
             }
         }
-    }
 
-    for( auto it = fired_entries.begin(); it != fired_entries.end(); ++it )
-        RunInvocation( *it );
+        if( done )
+            deferredCallsLocker.Unlock();
+    }
 }
 
-void ScriptInvoker::RunInvocation( Invocation* invocation )
+void ScriptInvoker::RunDeferredCall( DeferredCall& call )
 {
-    asIScriptContext* ctx = Script::RequestContext();
-    if( Script::PrepareContext( invocation->BindId, _FUNC_, "Invoker" ) )
+    if( Script::PrepareContext( call.BindId, _FUNC_, "Invoker" ) )
     {
-        if( invocation->Values )
-            Script::SetArgObject( invocation->Values );
-
-        if( Script::RunPrepared() )
+        if( call.IsValue )
         {
-            invocation->Rate++;
-            if( invocation->Repeatable )
-            {
-                uint new_delay = Script::GetReturnedUInt();
-                if( new_delay > 0 )
-                {
-                    invocation->FireTick = Timer::FastTick() + new_delay;
-                    SCOPE_LOCK( deferredInvocationsLocker );
-                    deferredInvocations.push_back( invocation );
-                    return;
-                }
-            }
+            Script::SetArgUInt( call.Value );
+            Script::RunPrepared();
+        }
+        else if( call.IsValues )
+        {
+            ScriptArray* arr = Script::CreateArray( call.ValuesSigned ? "int[]" : "uint[]" );
+            Script::AppendVectorToArray( call.Values, arr );
+            Script::SetArgObject( arr );
+            Script::RunPrepared();
+            arr->Release();
+        }
+        else
+        {
+            Script::RunPrepared();
         }
     }
-    delete invocation;
 }
 
-void ScriptInvoker::SaveInvocations( void ( * save_func )( void*, size_t ) )
+void ScriptInvoker::SaveDeferredCalls( void ( * save_func )( void*, size_t ) )
 {
-    SCOPE_LOCK( deferredInvocationsLocker );
+    SCOPE_LOCK( deferredCallsLocker );
 
-    save_func( &lastInvocationId, sizeof( lastInvocationId ) );
+    save_func( &lastDeferredCallId, sizeof( lastDeferredCallId ) );
 
     uint count = 0;
-    for( auto it = deferredInvocations.begin(); it != deferredInvocations.end();)
-    {
-        Invocation* invocation = *it;
-        if( invocation->Saved )
+    for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
+        if( it->Saved )
             count++;
-    }
     save_func( &count, sizeof( count ) );
 
     uint tick = Timer::FastTick();
-    for( auto it = deferredInvocations.begin(); it != deferredInvocations.end();)
+    for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
     {
-        Invocation* invocation = *it;
-        if( !invocation->Saved )
+        DeferredCall& call = *it;
+        if( !call.Saved )
             continue;
 
-        save_func( &invocation->Id, sizeof( invocation->Id ) );
-        save_func( &invocation->FuncNum, sizeof( invocation->FuncNum ) );
-        uint delay = ( invocation->FireTick > tick ? invocation->FireTick - tick : 0 );
+        save_func( &call.Id, sizeof( call.Id ) );
+        save_func( &call.FuncNum, sizeof( call.FuncNum ) );
+        uint delay = ( call.FireTick > tick ? call.FireTick - tick : 0 );
         save_func( &delay, sizeof( delay ) );
-        save_func( &invocation->Rate, sizeof( invocation->Rate ) );
-        save_func( &invocation->Repeatable, sizeof( invocation->Repeatable ) );
-        uint values_size = (uint) ( invocation->Values ? invocation->Values->size() : 0 );
-        save_func( &values_size, sizeof( values_size ) );
-        if( values_size )
-            save_func( &invocation->Values->at( 0 ), values_size * sizeof( int ) );
+        save_func( &call.IsValue, sizeof( call.IsValue ) );
+        if( call.IsValue )
+            save_func( &call.Value, sizeof( call.Value ) );
+        save_func( &call.IsValues, sizeof( call.IsValues ) );
+        if( call.IsValues )
+        {
+            save_func( &call.ValuesSigned, sizeof( call.ValuesSigned ) );
+            uint values_size = (uint) ( call.IsValues ? call.Values.size() : 0 );
+            save_func( &values_size, sizeof( values_size ) );
+            if( values_size )
+                save_func( &call.Values[ 0 ], values_size * sizeof( int ) );
+        }
     }
 }
 
-bool ScriptInvoker::LoadInvocations( void* f, uint version )
+bool ScriptInvoker::LoadDeferredCalls( void* f, uint version )
 {
-    SCOPE_LOCK( deferredInvocationsLocker );
+    SCOPE_LOCK( deferredCallsLocker );
 
-    WriteLog( "Load invocations...\n" );
+    WriteLog( "Load deferred calls...\n" );
 
-    if( !FileRead( f, &lastInvocationId, sizeof( lastInvocationId ) ) )
+    if( !FileRead( f, &lastDeferredCallId, sizeof( lastDeferredCallId ) ) )
         return false;
 
     uint count = 0;
     if( !FileRead( f, &count, sizeof( count ) ) )
         return false;
 
-    uint tick = Timer::FastTick();
+    uint         tick = Timer::FastTick();
+    DeferredCall call;
     for( uint i = 0; i < count; i++ )
     {
-        uint id;
-        if( !FileRead( f, &id, sizeof( id ) ) )
+        if( !FileRead( f, &call.Id, sizeof( call.Id ) ) )
             return false;
-        hash func_num;
-        if( !FileRead( f, &func_num, sizeof( func_num ) ) )
-            return false;
-        uint delay;
-        if( !FileRead( f, &delay, sizeof( delay ) ) )
-            return false;
-        uint rate;
-        if( !FileRead( f, &rate, sizeof( rate ) ) )
-            return false;
-        bool repeatable;
-        if( !FileRead( f, &repeatable, sizeof( repeatable ) ) )
+        if( !FileRead( f, &call.FuncNum, sizeof( call.FuncNum ) ) )
             return false;
 
-        IntVec values;
-        uint   values_size;
-        if( !FileRead( f, &values_size, sizeof( values_size ) ) )
+        if( !FileRead( f, &call.FireTick, sizeof( call.FireTick ) ) )
             return false;
-        if( values_size )
+        call.FireTick += tick;
+
+        if( !FileRead( f, &call.IsValue, sizeof( call.IsValue ) ) )
+            return false;
+        if( call.IsValue )
         {
-            values.resize( values_size );
-            if( !FileRead( f, &values[ 0 ], values_size * sizeof( int ) ) )
+            if( !FileRead( f, &call.Value, sizeof( call.Value ) ) )
                 return false;
         }
-
-        uint bind_id = Script::Bind( func_num, false );
-        if( !bind_id )
+        else
         {
-            WriteLog( "Unable to bind script function '%s' for event %u. Skip event.\n", HASH_STR( func_num ), id );
+            call.Value = 0;
+        }
+
+        if( !FileRead( f, &call.IsValues, sizeof( call.IsValues ) ) )
+            return false;
+        if( call.IsValues )
+        {
+            if( !FileRead( f, &call.ValuesSigned, sizeof( call.ValuesSigned ) ) )
+                return false;
+            uint values_size;
+            if( !FileRead( f, &values_size, sizeof( values_size ) ) )
+                return false;
+            if( values_size )
+            {
+                call.Values.resize( values_size );
+                if( !FileRead( f, &call.Values[ 0 ], values_size * sizeof( int ) ) )
+                    return false;
+            }
+        }
+        else
+        {
+            call.ValuesSigned = false;
+            call.Values.clear();
+        }
+
+        call.BindId = Script::Bind( call.FuncNum, false );
+        if( !call.BindId )
+        {
+            WriteLog( "Unable to bind script function '%s' for event %u. Skip event.\n", HASH_STR( call.FuncNum ), call.Id );
             continue;
         }
 
-        Invocation* invocation = new Invocation();
-        invocation->Id = id;
-        invocation->FireTick = tick + delay;
-        invocation->FuncNum = func_num;
-        invocation->BindId = bind_id;
-        invocation->Repeatable = repeatable;
-        invocation->Rate = rate;
-        invocation->Saved = true;
-        if( values_size )
-        {
-            invocation->Values = new IntVec();
-            *invocation->Values = values;
-        }
-
-        deferredInvocations.push_back( invocation );
+        deferredCalls.push_back( call );
     }
 
-    WriteLog( "Load invocations complete, count %u.\n", count );
+    WriteLog( "Load deferred calls complete, count %u.\n", count );
     return true;
-
 }
 
 string ScriptInvoker::GetStatistics()
 {
-    SCOPE_LOCK( deferredInvocationsLocker );
+    SCOPE_LOCK( deferredCallsLocker );
 
     char   buf[ MAX_FOTEXT ];
     uint   tick = Timer::FastTick();
-    string result = Str::Format( buf, "Invocations count: %u\n", (uint) deferredInvocations.size() );
-    result += "Id         Delay      Rate Saved Function                            Values\n";
-    for( auto it = deferredInvocations.begin(); it != deferredInvocations.end(); ++it )
+    string result = Str::Format( buf, "Deferred calls count: %u\n", (uint) deferredCalls.size() );
+    result += "Id         Delay      Saved    Function                                                              Values\n";
+    for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
     {
-        Invocation* invocation = *it;
-        string      func_name = Script::GetBindFuncName( invocation->BindId );
-        result += Str::Format( buf, "%-10u %-10u %-4u %-5s %-35s", invocation->Id, tick < invocation->FireTick ? invocation->FireTick - tick : 0,
-                               invocation->Rate, invocation->Saved ? "true" : "false", func_name.c_str() );
-        if( invocation->Values )
+        DeferredCall& call = *it;
+        string        func_name = Script::GetBindFuncName( call.BindId );
+        result += Str::Format( buf, "%-10u %-10u %-8s %-70s", call.Id, tick < call.FireTick ? call.FireTick - tick : 0,
+                               call.Saved ? "true" : "false", func_name.c_str() );
+        if( call.IsValue )
         {
-            for( size_t i = 0; i < invocation->Values->size(); i++ )
-                result += Str::Format( buf, " %u", invocation->Values->at( i ) );
+            result += "Single:";
+            result += Str::Format( buf, " %u", call.Value );
+        }
+        else if( call.IsValues )
+        {
+            result += "Multiple:";
+            for( size_t i = 0; i < call.Values.size(); i++ )
+                result += Str::Format( buf, " %u", call.Values[ i ] );
+        }
+        else
+        {
+            result += "None";
         }
         result += "\n";
     }
     return result;
 }
 
-uint ScriptInvoker::Global_Invoke( asIScriptFunction* func, uint delay )
+uint ScriptInvoker::Global_DeferredCall( uint delay, asIScriptFunction* func )
 {
-    ScriptInvoker* self = Script::GetInvoker();
-    return self->Invoke( delay, false, func, NULL );
+    # pragma MESSAGE( "Take Invoker from func." )
+    return Script::GetInvoker()->AddDeferredCall( delay, false, func, NULL, NULL );
 }
 
-uint ScriptInvoker::Global_InvokeWithValues( asIScriptFunction* func, ScriptArray* values, uint delay )
+uint ScriptInvoker::Global_DeferredCallWithValue( uint delay, asIScriptFunction* func, int value )
 {
-    ScriptInvoker* self = Script::GetInvoker();
-    return self->Invoke( delay, false, func, values );
+    return Script::GetInvoker()->AddDeferredCall( delay, false, func, &value, NULL );
 }
 
-uint ScriptInvoker::Global_SavedInvoke( asIScriptFunction* func, uint delay )
+uint ScriptInvoker::Global_DeferredCallWithValues( uint delay, asIScriptFunction* func, ScriptArray* values )
 {
-    ScriptInvoker* self = Script::GetInvoker();
-    RUNTIME_ASSERT( func->GetReturnTypeId() == asTYPEID_VOID );
-    return self->Invoke( delay, true, func, NULL );
+    return Script::GetInvoker()->AddDeferredCall( delay, false, func, NULL, values );
 }
 
-uint ScriptInvoker::Global_SavedInvokeWithValues( asIScriptFunction* func, ScriptArray* values, uint delay )
+uint ScriptInvoker::Global_SavedDeferredCall( uint delay, asIScriptFunction* func )
 {
-    ScriptInvoker* self = Script::GetInvoker();
-    RUNTIME_ASSERT( func->GetReturnTypeId() == asTYPEID_VOID );
-    return self->Invoke( delay, true, func, values );
+    return Script::GetInvoker()->AddDeferredCall( delay, true, func, NULL, NULL );
 }
 
-bool ScriptInvoker::Global_IsInvoking( uint id )
+uint ScriptInvoker::Global_SavedDeferredCallWithValue( uint delay, asIScriptFunction* func, int value )
 {
-    ScriptInvoker* self = Script::GetInvoker();
-    return self->IsInvoking( id );
+    return Script::GetInvoker()->AddDeferredCall( delay, true, func, &value, NULL );
 }
 
-bool ScriptInvoker::Global_CancelInvoke( uint id )
+uint ScriptInvoker::Global_SavedDeferredCallWithValues( uint delay, asIScriptFunction* func, ScriptArray* values )
 {
-    ScriptInvoker* self = Script::GetInvoker();
-    return self->CancelInvoke( id );
+    return Script::GetInvoker()->AddDeferredCall( delay, true, func, NULL, values );
 }
 
-bool ScriptInvoker::Global_GetInvokeData( uint id, uint& delay, ScriptArray* values )
+bool ScriptInvoker::Global_IsDeferredCallPending( uint id )
+{
+    return Script::GetInvoker()->IsDeferredCallPending( id );
+}
+
+bool ScriptInvoker::Global_CancelDeferredCall( uint id )
+{
+    return Script::GetInvoker()->CancelDeferredCall( id );
+}
+
+bool ScriptInvoker::Global_GetDeferredCallData( uint id, uint& delay, ScriptArray* values )
 {
     ScriptInvoker* self = Script::GetInvoker();
-    Invocation     invocation;
-    if( self->GetInvokeData( id, invocation ) )
+    DeferredCall   call;
+    if( self->GetDeferredCallData( id, call ) )
     {
         uint tick = Timer::FastTick();
-        delay = ( invocation.FireTick > tick ? invocation.FireTick - tick : 0 );
-        if( values && invocation.Values )
+        delay = ( call.FireTick > tick ? call.FireTick - tick : 0 );
+        if( values )
         {
-            values->Clear();
-            Script::AppendVectorToArray( *invocation.Values, values );
+            if( call.IsValue )
+            {
+                values->Resize( 1 );
+                *(int*) values->At( 0 ) = call.Value;
+            }
+            else if( call.IsValues )
+            {
+                values->Clear();
+                Script::AppendVectorToArray( call.Values, values );
+            }
         }
         return true;
     }
     return false;
 }
 
-uint ScriptInvoker::Global_GetInvokeList( ScriptArray* ids )
+uint ScriptInvoker::Global_GetDeferredCallsList( ScriptArray* ids )
 {
     ScriptInvoker* self = Script::GetInvoker();
     IntVec         ids_;
-    self->GetInvokeList( ids_ );
+    self->GetDeferredCallsList( ids_ );
     if( ids )
         Script::AppendVectorToArray( ids_, ids );
     return (uint) ids_.size();
@@ -352,42 +387,52 @@ uint ScriptInvoker::Global_GetInvokeList( ScriptArray* ids )
 
 #else
 
-uint ScriptInvoker::Global_Invoke( asIScriptFunction* func, uint delay )
+uint ScriptInvoker::Global_DeferredCall( uint delay, asIScriptFunction* func )
 {
     return 0;
 }
 
-uint ScriptInvoker::Global_InvokeWithValues( asIScriptFunction* func, ScriptArray* values, uint delay )
+uint ScriptInvoker::Global_DeferredCallWithValue( uint delay, asIScriptFunction* func, int value )
 {
     return 0;
 }
 
-uint ScriptInvoker::Global_SavedInvoke( asIScriptFunction* func, uint delay )
+uint ScriptInvoker::Global_DeferredCallWithValues( uint delay, asIScriptFunction* func, ScriptArray* values )
 {
     return 0;
 }
 
-uint ScriptInvoker::Global_SavedInvokeWithValues( asIScriptFunction* func, ScriptArray* values, uint delay )
+uint ScriptInvoker::Global_SavedDeferredCall( uint delay, asIScriptFunction* func )
 {
     return 0;
 }
 
-bool ScriptInvoker::Global_IsInvoking( uint id )
+uint ScriptInvoker::Global_SavedDeferredCallWithValue( uint delay, asIScriptFunction* func, int value )
+{
+    return 0;
+}
+
+uint ScriptInvoker::Global_SavedDeferredCallWithValues( uint delay, asIScriptFunction* func, ScriptArray* values )
+{
+    return 0;
+}
+
+bool ScriptInvoker::Global_IsDeferredCallPending( uint id )
 {
     return false;
 }
 
-bool ScriptInvoker::Global_CancelInvoke( uint id )
+bool ScriptInvoker::Global_CancelDeferredCall( uint id )
 {
     return false;
 }
 
-bool ScriptInvoker::Global_GetInvokeData( uint id, uint& delay, ScriptArray* values )
+bool ScriptInvoker::Global_GetDeferredCallData( uint id, uint& delay, ScriptArray* values )
 {
     return false;
 }
 
-uint ScriptInvoker::Global_GetInvokeList( ScriptArray* ids )
+uint ScriptInvoker::Global_GetDeferredCallsList( ScriptArray* ids )
 {
     return 0;
 }

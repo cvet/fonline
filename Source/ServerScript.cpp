@@ -106,7 +106,7 @@ bool FOServer::InitScriptSystem()
 
     // Init
     if( !Script::Init( new ScriptPragmaCallback( PRAGMA_SERVER, registrators ), "SERVER", AllowServerNativeCalls,
-                       sample_time, ( ( profiler_mode & 1 ) != 0 ) ? 300000 : 0, ( profiler_mode & 2 ) != 0 ) )
+                       sample_time, ( profiler_mode & 1 ) != 0, ( profiler_mode & 2 ) != 0 ) )
     {
         WriteLog( "Script system initialization failed.\n" );
         return false;

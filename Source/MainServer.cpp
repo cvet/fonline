@@ -47,7 +47,7 @@ static Fl_Window* GuiWindow;
 static Fl_Box*    GuiLabelGameTime, * GuiLabelClients, * GuiLabelIngame, * GuiLabelNPC, * GuiLabelLocCount,
 * GuiLabelItemsCount, * GuiLabelFPS, * GuiLabelDelta, * GuiLabelUptime, * GuiLabelSend, * GuiLabelRecv, * GuiLabelCompress;
 static Fl_Button* GuiBtnRlClScript, * GuiBtnSaveWorld, * GuiBtnSaveLog, * GuiBtnSaveInfo,
-* GuiBtnCreateDump, * GuiBtnMemory, * GuiBtnPlayers, * GuiBtnLocsMaps, * GuiBtnInvocations,
+* GuiBtnCreateDump, * GuiBtnMemory, * GuiBtnPlayers, * GuiBtnLocsMaps, * GuiBtnDeferredCalls,
 * GuiBtnProperties, * GuiBtnItemsCount, * GuiBtnProfiler, * GuiBtnStartStop, * GuiBtnSplitUp, * GuiBtnSplitDown;
 static Fl_Check_Button* GuiCBtnScriptDebug, * GuiCBtnLogging, * GuiCBtnLoggingTime,
 * GuiCBtnLoggingThread, * GuiCBtnAutoUpdate;
@@ -224,7 +224,7 @@ int main( int argc, char** argv )
                 GuiBtnSaveWorld->deactivate();
                 GuiBtnPlayers->deactivate();
                 GuiBtnLocsMaps->deactivate();
-                GuiBtnInvocations->deactivate();
+                GuiBtnDeferredCalls->deactivate();
                 GuiBtnProperties->deactivate();
                 GuiBtnItemsCount->deactivate();
                 GuiBtnProfiler->deactivate();
@@ -344,7 +344,7 @@ void GUIInit( IniParser& cfg )
     GUISetup.Setup( GuiBtnMemory    = new Fl_Button( GUI_SIZE4( 5, 219, 124, 14 ), "Memory usage" ) );
     GUISetup.Setup( GuiBtnPlayers   = new Fl_Button( GUI_SIZE4( 5, 235, 124, 14 ), "Players" ) );
     GUISetup.Setup( GuiBtnLocsMaps  = new Fl_Button( GUI_SIZE4( 5, 251, 124, 14 ), "Locations and maps" ) );
-    GUISetup.Setup( GuiBtnInvocations = new Fl_Button( GUI_SIZE4( 5, 267, 124, 14 ), "Deferred invocations" ) );
+    GUISetup.Setup( GuiBtnDeferredCalls = new Fl_Button( GUI_SIZE4( 5, 267, 124, 14 ), "Deferred calls" ) );
     GUISetup.Setup( GuiBtnProperties   = new Fl_Button( GUI_SIZE4( 5, 283, 124, 14 ), "Properties" ) );
     GUISetup.Setup( GuiBtnItemsCount = new Fl_Button( GUI_SIZE4( 5, 299, 124, 14 ), "Items count" ) );
     GUISetup.Setup( GuiBtnProfiler = new Fl_Button( GUI_SIZE4( 5, 315, 124, 14 ), "Profiler" ) );
@@ -368,7 +368,7 @@ void GUIInit( IniParser& cfg )
     GuiBtnSaveWorld->deactivate();
     GuiBtnPlayers->deactivate();
     GuiBtnLocsMaps->deactivate();
-    GuiBtnInvocations->deactivate();
+    GuiBtnDeferredCalls->deactivate();
     GuiBtnProperties->deactivate();
     GuiBtnItemsCount->deactivate();
     GuiBtnProfiler->deactivate();
@@ -452,7 +452,7 @@ void GUICallback( Fl_Widget* widget, void* data )
         FOServer::UpdateIndex = 2;
         FOServer::UpdateLastIndex = 2;
     }
-    else if( widget == GuiBtnInvocations )
+    else if( widget == GuiBtnDeferredCalls )
     {
         FOServer::UpdateIndex = 3;
         FOServer::UpdateLastIndex = 3;
@@ -485,7 +485,7 @@ void GUICallback( Fl_Widget* widget, void* data )
             GuiBtnSaveWorld->deactivate();
             GuiBtnPlayers->deactivate();
             GuiBtnLocsMaps->deactivate();
-            GuiBtnInvocations->deactivate();
+            GuiBtnDeferredCalls->deactivate();
             GuiBtnProperties->deactivate();
             GuiBtnItemsCount->deactivate();
         }
@@ -622,11 +622,11 @@ void UpdateInfo()
             std_str = MapMngr.GetLocationsMapsStatistics();
             UpdateLogName = "LocationsAndMaps";
             break;
-        case 3:         // Invocations
+        case 3:         // Deferred calls
             if( !Server.Started() )
                 break;
-            std_str = Script::GetInvocationsStatistics();
-            UpdateLogName = "Invocations";
+            std_str = Script::GetDeferredCallsStatistics();
+            UpdateLogName = "DeferredCalls";
             break;
         case 4:         // Properties
             if( !Server.Started() )
@@ -717,7 +717,7 @@ void GameLoopThread( void* )
             GuiBtnSaveWorld->activate();
             GuiBtnPlayers->activate();
             GuiBtnLocsMaps->activate();
-            GuiBtnInvocations->activate();
+            GuiBtnDeferredCalls->activate();
             GuiBtnProperties->activate();
             GuiBtnItemsCount->activate();
             GuiBtnStartStop->activate();

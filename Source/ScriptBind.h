@@ -1250,21 +1250,27 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(string& p
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Yield(uint time)", asFUNCTION( Global_Yield ), asCALL_CDECL ) );
 
 // Invoker
-BIND_ASSERT( engine->RegisterFuncdef( "void InvokeFunc()" ) );
-BIND_ASSERT( engine->RegisterFuncdef( "void InvokeFuncWithValues(int[]& values)" ) );
-BIND_ASSERT( engine->RegisterFuncdef( "uint RepeatableInvokeFunc()" ) );
-BIND_ASSERT( engine->RegisterFuncdef( "uint RepeatableInvokeFuncWithValues(int[]& values)" ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint Invoke(InvokeFunc@+ func, uint delay = 0)", asFUNCTION( ScriptInvoker::Global_Invoke ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint Invoke(RepeatableInvokeFunc@+ func, uint delay = 0)", asFUNCTION( ScriptInvoker::Global_Invoke ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint Invoke(InvokeFuncWithValues@+ func, const int[]& values, uint delay = 0)", asFUNCTION( ScriptInvoker::Global_InvokeWithValues ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint Invoke(RepeatableInvokeFuncWithValues@+ func, const int[]& values, uint delay = 0)", asFUNCTION( ScriptInvoker::Global_InvokeWithValues ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsInvoking(uint id)", asFUNCTION( ScriptInvoker::Global_CancelInvoke ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool CancelInvoke(uint id)", asFUNCTION( ScriptInvoker::Global_CancelInvoke ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetInvokeData(uint id, uint& delay, uint[]@+ values)", asFUNCTION( ScriptInvoker::Global_GetInvokeData ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetInvokeList(uint[]@+ ids)", asFUNCTION( ScriptInvoker::Global_GetInvokeList ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterFuncdef( "void CallFunc()" ) );
+BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithIValue(int value)" ) );
+BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithUValue(uint value)" ) );
+BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithIValues(int[]& values)" ) );
+BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithUValues(uint[]& values)" ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFunc@+ func)", asFUNCTION( ScriptInvoker::Global_DeferredCall ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithIValue@+ func, int value)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValue ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithUValue@+ func, uint value)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValue ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithIValues@+ func, const int[]& values)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValues ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithUValues@+ func, const uint[]& values)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValues ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsDeferredCallPending(uint id)", asFUNCTION( ScriptInvoker::Global_IsDeferredCallPending ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool CancelDeferredCall(uint id)", asFUNCTION( ScriptInvoker::Global_CancelDeferredCall ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetDeferredCallData(uint id, uint& delay, int[]@+ values)", asFUNCTION( ScriptInvoker::Global_GetDeferredCallData ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetDeferredCallData(uint id, uint& delay, uint[]@+ values)", asFUNCTION( ScriptInvoker::Global_GetDeferredCallData ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetDeferredCallsList(uint[]@+ ids)", asFUNCTION( ScriptInvoker::Global_GetDeferredCallsList ), asCALL_CDECL ) );
 #ifdef BIND_SERVER
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedInvoke(RepeatableInvokeFunc@+ func, uint delay = 0)", asFUNCTION( ScriptInvoker::Global_SavedInvoke ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedInvoke(RepeatableInvokeFuncWithValues@+ func, const int[]& values, uint delay = 0)", asFUNCTION( ScriptInvoker::Global_SavedInvokeWithValues ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFunc@+ func)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCall ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithIValue@+ func, int value)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValue ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithUValue@+ func, uint value)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValue ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithIValues@+ func, const int[]& values)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValues ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithUValues@+ func, const uint[]& values)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValues ), asCALL_CDECL ) );
 #endif
 
 #define BIND_ASSERT_EXT( expr )    BIND_ASSERT( ( expr ) ? 0 : -1 )

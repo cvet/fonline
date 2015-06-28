@@ -1146,7 +1146,7 @@ int FOClient::MainLoop()
     SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
 
     // Process pending invocations
-    Script::ProcessInvocations();
+    Script::ProcessDeferredCalls();
 
     // Script loop
     static uint next_call = 0;

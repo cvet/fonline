@@ -733,7 +733,7 @@ void FOServer::Logic_Work( void* data )
         else if( job.Type == JOB_INVOCATIONS )
         {
             // Process pending invocations
-            Script::ProcessInvocations();
+            Script::ProcessDeferredCalls();
         }
         else if( job.Type == JOB_LOOP_SCRIPT )
         {
@@ -1054,7 +1054,8 @@ void FOServer::NetIO_Event( bufferevent* bev, short what, void* arg )
     CheckThreadName();
 
     Client::NetIOArg* arg_ = (Client::NetIOArg*) arg;
-    SCOPE_LOCK( arg_->Locker );
+    Mutex&            locker = arg_->Locker;
+    SCOPE_LOCK( locker );
     Client*           cl = arg_->PClient;
 
     # if !defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
@@ -1102,7 +1103,8 @@ void FOServer::NetIO_Input( bufferevent* bev, void* arg )
     CheckThreadName();
 
     Client::NetIOArg* arg_ = (Client::NetIOArg*) arg;
-    SCOPE_LOCK( arg_->Locker );
+    Mutex&            locker = arg_->Locker;
+    SCOPE_LOCK( locker );
     Client*           cl = arg_->PClient;
 
     if( cl->IsOffline() )
@@ -1154,7 +1156,8 @@ void FOServer::NetIO_Output( bufferevent* bev, void* arg )
     CheckThreadName();
 
     Client::NetIOArg* arg_ = (Client::NetIOArg*) arg;
-    SCOPE_LOCK( arg_->Locker );
+    Mutex&            locker = arg_->Locker;
+    SCOPE_LOCK( locker );
     Client*           cl = arg_->PClient;
 
     cl->Bout.Lock();
@@ -2148,7 +2151,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             result = MapMngr.GetLocationsMapsStatistics();
             break;
         case 3:
-            result = Script::GetInvocationsStatistics();
+            result = Script::GetDeferredCallsStatistics();
             break;
         case 4:
             result = "WIP";
@@ -4486,7 +4489,7 @@ void FOServer::SaveWorld( const char* fname )
     SaveHoloInfoFile();
 
     // SaveTimeEventsFile
-    Script::SaveInvocations( AddWorldSaveData );
+    Script::SaveDeferredCalls( AddWorldSaveData );
 
     // Global vars
     Globals->Props.Save( AddWorldSaveData );
@@ -4604,7 +4607,7 @@ bool FOServer::LoadWorld( const char* fname )
         return false;
     if( !LoadHoloInfoFile( f, version ) )
         return false;
-    if( !Script::LoadInvocations( f, version ) )
+    if( !Script::LoadDeferredCalls( f, version ) )
         return false;
     if( !Globals->Props.Load( f, version ) )
         return false;

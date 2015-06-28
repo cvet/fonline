@@ -47,7 +47,8 @@ public:
     {
         IsScriptCall = true;
         ScriptFunc = func;
-        ModuleName = func->GetModuleName();
+        const char* module_name = func->GetModuleName();
+        ModuleName = ( module_name ? module_name : "unknown" );
         FuncName = func->GetDeclaration();
         func->AddRef();
         NativeFuncAddr = 0;
@@ -101,7 +102,6 @@ struct ContextData
     char Info[ MAX_FOTEXT ];
     uint StartTick;
     uint SuspendEndTick;
-    uint ProfilerTick;
 };
 static ContextVec FreeContexts;
 static ContextVec BusyContexts;
@@ -115,7 +115,7 @@ static uint   RunTimeoutAbort = 600000;   // 10 minutes
 static uint   RunTimeoutMessage = 300000; // 5 minutes
 
 bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls,
-                   uint profiler_sample_time, uint profiler_save_time, bool profiler_dynamic_display )
+                   uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display )
 {
     // Create default engine
     Engine = CreateEngine( pragma_callback, dll_target, allow_native_calls );
@@ -130,7 +130,7 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
     {
         EngineData* edata = (EngineData*) Engine->GetUserData();
         edata->Profiler = new ScriptProfiler();
-        if( !edata->Profiler->Init( Engine, profiler_sample_time, profiler_save_time, profiler_dynamic_display ) )
+        if( !edata->Profiler->Init( Engine, profiler_sample_time, profiler_save_to_file, profiler_dynamic_display ) )
             return false;
     }
 
@@ -729,7 +729,7 @@ void Script::CreateContext()
 
     EngineData* edata = (EngineData*) Engine->GetUserData();
     if( edata->Profiler )
-        ctx->SetLineCallback( asFUNCTION( ProfilerContextCallback ), NULL, asCALL_CDECL );
+        ctx->SetLineCallback( asFUNCTION( ProfilerContextCallback ), edata->Profiler, asCALL_CDECL );
 
     SCOPE_LOCK( ContextsLocker );
     FreeContexts.push_back( ctx );
@@ -871,38 +871,34 @@ ScriptInvoker* Script::GetInvoker()
     return edata->Invoker;
 }
 
-string Script::GetInvocationsStatistics()
+string Script::GetDeferredCallsStatistics()
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     return edata->Invoker->GetStatistics();
 }
 
-void Script::ProcessInvocations()
+void Script::ProcessDeferredCalls()
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     edata->Invoker->Process();
 }
 
-void Script::SaveInvocations( void ( * save_func )( void*, size_t ) )
+void Script::SaveDeferredCalls( void ( * save_func )( void*, size_t ) )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
-    edata->Invoker->SaveInvocations( save_func );
+    edata->Invoker->SaveDeferredCalls( save_func );
 }
 
-bool Script::LoadInvocations( void* f, uint version )
+bool Script::LoadDeferredCalls( void* f, uint version )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
-    return edata->Invoker->LoadInvocations( f, version );
+    return edata->Invoker->LoadDeferredCalls( f, version );
 }
 
 void Script::ProfilerContextCallback( asIScriptContext* ctx, void* obj )
 {
-    EngineData* edata = (EngineData*) ctx->GetEngine()->GetUserData();
-    if( edata->Profiler )
-    {
-        ContextData* ctx_data = (ContextData*) ctx->GetUserData();
-        edata->Profiler->Process( ctx, ctx_data->ProfilerTick );
-    }
+    ScriptProfiler* profiler = (ScriptProfiler*) obj;
+    profiler->Process( ctx );
 }
 
 string Script::GetProfilerStatistics()
@@ -1682,7 +1678,7 @@ string Script::GetBindFuncName( uint bind_id )
     BindFunction& bf = BindedFunctions[ bind_id ];
     string        result;
     result += bf.ModuleName;
-    result += "@";
+    result += " : ";
     result += bf.FuncName;
     return result;
 }

@@ -644,8 +644,8 @@ int FOClient::InitIface()
     CurPHand = SprMngr.LoadAnimation( "cursor_hand.png", PT_ART_INTRFACE, true );
     if( !LMenuOX && !LMenuOY )
     {
-        SpriteInfo* si_cur = SprMngr.GetSpriteInfo( CurPDef->GetCurSprId() );
-        LMenuOX = GameOpt.MouseX + ( si_cur ? si_cur->Width : 0 );
+        SpriteInfo* si_cur = SprMngr.GetSpriteInfo( CurPDef->GetSprId( 0 ) );
+        LMenuOX = ( si_cur ? si_cur->Width : 0 );
     }
 
     // LMenu

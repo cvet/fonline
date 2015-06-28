@@ -1541,7 +1541,7 @@ void FOMapper::MainLoop()
     SprMngr.BeginScene( COLOR_RGB( 100, 100, 100 ) );
 
     // Process pending invocations
-    Script::ProcessInvocations();
+    Script::ProcessDeferredCalls();
 
     // Suspended contexts
     Script::RunSuspended();
