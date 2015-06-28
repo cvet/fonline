@@ -67,21 +67,50 @@ SPRITE_SETTER( SetColor, uint, Color );
 SPRITE_SETTER( SetAlpha, uchar *, Alpha );
 SPRITE_SETTER( SetFlash, uint, FlashMask );
 
-void Sprite::SetLight( uchar* light, int maxhx, int maxhy )
+void Sprite::SetLight( int corner, uchar* light, int maxhx, int maxhy )
 {
     if( !Valid )
         return;
     Valid = false;
 
-    if( HexX >= 0 && HexX < maxhx && HexY >= 0 && HexY < maxhy )
+    if( HexX >= 1 && HexX < maxhx - 1 && HexY >= 1 && HexY < maxhy - 1 )
+    {
         Light = &light[ HexY * maxhx * 3 + HexX * 3 ];
+
+        switch( corner )
+        {
+        default:
+        case CORNER_EAST_WEST:
+        case CORNER_EAST:
+            LightRight = Light - 3;
+            LightLeft = Light + 3;
+            break;
+        case CORNER_NORTH_SOUTH:
+        case CORNER_WEST:
+            LightRight = Light + ( maxhx * 3 );
+            LightLeft = Light - ( maxhx * 3 );
+            break;
+        case CORNER_SOUTH:
+            LightRight = Light - 3;
+            LightLeft = Light - ( maxhx * 3 );
+            break;
+        case CORNER_NORTH:
+            LightRight = Light + ( maxhx * 3 );
+            LightLeft = Light + 3;
+            break;
+        }
+    }
     else
+    {
         Light = NULL;
+        LightRight = NULL;
+        LightLeft = NULL;
+    }
 
     if( Parent )
-        Parent->SetLight( light, maxhx, maxhy );
+        Parent->SetLight( corner, light, maxhx, maxhy );
     if( Child )
-        Child->SetLight( light, maxhx, maxhy );
+        Child->SetLight( corner, light, maxhx, maxhy );
     Valid = true;
 }
 
@@ -125,6 +154,8 @@ Sprite& Sprites::PutSprite( uint index, int draw_order, int hx, int hy, int cut,
     spr->OffsY = oy;
     spr->Alpha = alpha;
     spr->Light = NULL;
+    spr->LightRight = NULL;
+    spr->LightLeft = NULL;
     spr->Valid = true;
     spr->ValidCallback = callback;
     if( callback )

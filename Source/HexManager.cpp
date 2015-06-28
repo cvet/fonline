@@ -402,7 +402,7 @@ bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
                                                  f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                  &item->DrawEffect, &item->SprDrawValid );
             if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsScenOrGrid() ) )
-                spr.SetLight( hexLight, maxHexX, maxHexY );
+                spr.SetLight( item->Proto->GetCorner(), hexLight, maxHexX, maxHexY );
             item->SetSprite( &spr );
         }
 
@@ -493,7 +493,7 @@ void HexManager::ProcessItems()
                                                             f_.ScrX + HEX_OX, f_.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                             &item->DrawEffect, &item->SprDrawValid );
                     if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsScenOrGrid() ) )
-                        item->SprDraw->SetLight( hexLight, maxHexX, maxHexY );
+                        item->SprDraw->SetLight( item->Proto->GetCorner(), hexLight, maxHexX, maxHexY );
                 }
                 item->SetAnimOffs();
             }
@@ -664,7 +664,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
                                                 f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                 &item->DrawEffect, &item->SprDrawValid );
         if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsScenOrGrid() ) )
-            item->SprDraw->SetLight( hexLight, maxHexX, maxHexY );
+            item->SprDraw->SetLight( item->Proto->GetCorner(), hexLight, maxHexX, maxHexY );
     }
 
     return true;
@@ -938,7 +938,7 @@ void HexManager::RebuildMap( int rx, int ry )
                         rainData.push_back( new_drop );
 
                         mainTree.AddSprite( DRAW_ORDER_RAIN, nx, ny, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &new_drop->CurSprId,
-                                            &new_drop->OffsX, &new_drop->OffsY, NULL, &Effect::Rain, NULL ).SetLight( hexLight, maxHexX, maxHexY );
+                                            &new_drop->OffsX, &new_drop->OffsY, NULL, &Effect::Rain, NULL ).SetLight( CORNER_EAST_WEST, hexLight, maxHexX, maxHexY );
                     }
                     else if( !roofSkip || roofSkip != GetField( rofx, rofy ).RoofNum )
                     {
@@ -946,7 +946,7 @@ void HexManager::RebuildMap( int rx, int ry )
                         rainData.push_back( new_drop );
 
                         roofRainTree.AddSprite( DRAW_ORDER_RAIN, nx, ny, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &new_drop->CurSprId,
-                                                &new_drop->OffsX, &new_drop->OffsY, NULL, &Effect::Rain, NULL ).SetLight( hexLight, maxHexX, maxHexY );
+                                                &new_drop->OffsX, &new_drop->OffsY, NULL, &Effect::Rain, NULL ).SetLight( CORNER_EAST_WEST, hexLight, maxHexX, maxHexY );
                     }
                     if( new_drop )
                     {
@@ -992,7 +992,7 @@ void HexManager::RebuildMap( int rx, int ry )
                                                       f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                       &item->DrawEffect, &item->SprDrawValid );
                     if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsScenOrGrid() ) )
-                        spr.SetLight( hexLight, maxHexX, maxHexY );
+                        spr.SetLight( item->Proto->GetCorner(), hexLight, maxHexX, maxHexY );
                     item->SetSprite( &spr );
                 }
             }
@@ -1004,7 +1004,7 @@ void HexManager::RebuildMap( int rx, int ry )
                 Sprite& spr = mainTree.AddSprite( DRAW_ORDER_CRIT_AUTO( cr ), nx, ny, 0,
                                                   f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy,
                                                   &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid );
-                spr.SetLight( hexLight, maxHexX, maxHexY );
+                spr.SetLight( CORNER_EAST_WEST, hexLight, maxHexX, maxHexY );
                 cr->SprDraw = &spr;
 
                 cr->SetSprRect();
@@ -1029,7 +1029,7 @@ void HexManager::RebuildMap( int rx, int ry )
                     Sprite& spr = mainTree.AddSprite( DRAW_ORDER_CRIT_AUTO( cr ), nx, ny, 0,
                                                       f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy,
                                                       &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid );
-                    spr.SetLight( hexLight, maxHexX, maxHexY );
+                    spr.SetLight( CORNER_EAST_WEST, hexLight, maxHexX, maxHexY );
                     cr->SprDraw = &spr;
 
                     cr->SetSprRect();
@@ -1093,7 +1093,7 @@ void HexManager::MarkLight( ushort hx, ushort hy, uint inten )
     int    lr = light * LightProcentR / 100;
     int    lg = light * LightProcentG / 100;
     int    lb = light * LightProcentB / 100;
-    uchar* p = GetLightHex( hx, hy );
+    uchar* p = &hexLight[ hy * maxHexX * 3 + hx * 3 ];
     if( lr > *p )
         *p = lr;
     if( lg > *( p + 1 ) )
@@ -1112,7 +1112,7 @@ void HexManager::MarkLightEndNeighbor( ushort hx, ushort hy, bool north_south, u
             ( !north_south && ( lt == CORNER_EAST_WEST || lt == CORNER_EAST ) ) ||
             lt == CORNER_SOUTH )
         {
-            uchar* p = GetLightHex( hx, hy );
+            uchar* p = &hexLight[ hy * maxHexX * 3 + hx * 3 ];
             int    light_full = inten * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * LightCapacity / 100;
             int    light_self = ( inten / 2 ) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * LightCapacity / 100;
             int    lr_full = light_full * LightProcentR / 100;
@@ -2375,7 +2375,7 @@ void HexManager::SetCrit( CritterCl* cr )
     {
         Sprite& spr = mainTree.InsertSprite( DRAW_ORDER_CRIT_AUTO( cr ), hx, hy, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY,
                                              0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid );
-        spr.SetLight( hexLight, maxHexX, maxHexY );
+        spr.SetLight( CORNER_EAST_WEST, hexLight, maxHexX, maxHexY );
         cr->SprDraw = &spr;
 
         cr->SetSprRect();
@@ -2416,6 +2416,22 @@ void HexManager::RemoveCrit( CritterCl* cr )
     if( cr->SprDrawValid )
         cr->SprDraw->Unvalidate();
     f.ProcessCache();
+}
+
+CritterCl* HexManager::GetCritter( uint crid )
+{
+    if( !crid )
+        return NULL;
+    auto it = allCritters.find( crid );
+    return it != allCritters.end() ? ( *it ).second : NULL;
+}
+
+CritterCl* HexManager::GetChosen()
+{
+    if( !chosenId )
+        return NULL;
+    auto it = allCritters.find( chosenId );
+    return it != allCritters.end() ? ( *it ).second : NULL;
 }
 
 void HexManager::AddCrit( CritterCl* cr )

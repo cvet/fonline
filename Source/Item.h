@@ -65,14 +65,6 @@ extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 #define USE_NONE                      ( 15 )
 #define MAKE_ITEM_MODE( use, aim )    ( ( ( ( aim ) << 4 ) | ( ( use ) & 0xF ) ) & 0xFF )
 
-// Corner type
-#define CORNER_NORTH_SOUTH            ( 0 )
-#define CORNER_WEST                   ( 1 )
-#define CORNER_EAST                   ( 2 )
-#define CORNER_SOUTH                  ( 3 )
-#define CORNER_NORTH                  ( 4 )
-#define CORNER_EAST_WEST              ( 5 )
-
 // Item deterioration info
 #define MAX_DETERIORATION             ( 10000 )
 #define BI_BROKEN                     ( 0x0F )

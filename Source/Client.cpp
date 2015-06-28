@@ -11172,7 +11172,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
                                         hx, hy + ( proto_item ? proto_item->GetDrawOrderOffsetHexY() : 0 ), 0,
                                         f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), NULL, NULL, NULL, NULL, NULL, NULL );
     if( !no_light )
-        spr.SetLight( Self->HexMngr.GetLightHex( 0, 0 ), Self->HexMngr.GetMaxHexX(), Self->HexMngr.GetMaxHexY() );
+        spr.SetLight( proto_item ? proto_item->GetCorner() : CORNER_EAST_WEST, Self->HexMngr.GetLightHex( 0, 0 ), Self->HexMngr.GetMaxHexX(), Self->HexMngr.GetMaxHexY() );
 
     if( proto_item )
     {

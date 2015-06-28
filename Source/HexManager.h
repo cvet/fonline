@@ -96,7 +96,6 @@ struct Field
     } Flags;
 
     uchar Corner;
-    uchar LightValues[ 3 ];
 
     Field();
     ~Field();
@@ -260,23 +259,13 @@ private:
     int     critterContour, crittersContour;
 
 public:
-    CritterCl* GetCritter( uint crid )
-    {
-        if( !crid ) return NULL;
-        auto it = allCritters.find( crid );
-        return it != allCritters.end() ? ( *it ).second : NULL;
-    }
-    CritterCl* GetChosen()
-    {
-        if( !chosenId ) return NULL;
-        auto it = allCritters.find( chosenId );
-        return it != allCritters.end() ? ( *it ).second : NULL;
-    }
-    void     AddCrit( CritterCl* cr );
-    void     RemoveCrit( CritterCl* cr );
-    void     EraseCrit( uint crid );
-    void     ClearCritters();
-    void     GetCritters( ushort hx, ushort hy, CritVec& crits, int find_type );
+    CritterCl* GetCritter( uint crid );
+    CritterCl* GetChosen();
+    void       AddCrit( CritterCl* cr );
+    void       RemoveCrit( CritterCl* cr );
+    void       EraseCrit( uint crid );
+    void       ClearCritters();
+    void       GetCritters( ushort hx, ushort hy, CritVec& crits, int find_type );
     CritMap& GetCritters() { return allCritters; }
     void     SetCritterContour( uint crid, int contour );
     void     SetCrittersContour( int contour );

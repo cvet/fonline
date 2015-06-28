@@ -22,6 +22,8 @@ public:
     float    CutX, CutW, CutTexL, CutTexR;
     uchar*   Alpha;
     uchar*   Light;
+    uchar*   LightRight;
+    uchar*   LightLeft;
     int      EggType;
     int      ContourType;
     uint     ContourColor;
@@ -45,7 +47,7 @@ public:
     void SetColor( uint color );
     void SetAlpha( uchar* alpha );
     void SetFlash( uint mask );
-    void SetLight( uchar* light, int maxhx, int maxhy );
+    void SetLight( int corner, uchar* light, int maxhx, int maxhy );
 };
 typedef vector< Sprite* > SpriteVec;
 

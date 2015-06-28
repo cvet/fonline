@@ -3837,39 +3837,42 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         float zoom = GameOpt.SpritesZoom;
 
         // Base color
-        uint cur_color;
+        uint color_r, color_l;
         if( spr->Color )
-            cur_color = ( spr->Color | 0xFF000000 );
+            color_r = color_l = ( spr->Color | 0xFF000000 );
         else
-            cur_color = baseColor;
+            color_r = color_l = baseColor;
 
         // Light
         if( spr->Light )
         {
-            int    lr = *spr->Light;
-            int    lg = *( spr->Light + 1 );
-            int    lb = *( spr->Light + 2 );
-            uchar& r = ( (uchar*) &cur_color )[ 2 ];
-            uchar& g = ( (uchar*) &cur_color )[ 1 ];
-            uchar& b = ( (uchar*) &cur_color )[ 0 ];
-            int    ir = (int) r + lr;
-            int    ig = (int) g + lg;
-            int    ib = (int) b + lb;
-            if( ir > 0xFF )
-                ir = 0xFF;
-            if( ig > 0xFF )
-                ig = 0xFF;
-            if( ib > 0xFF )
-                ib = 0xFF;
-            r = ir;
-            g = ig;
-            b = ib;
+            static auto light_func = [] ( uint & c, uchar * l, uchar * l2 )
+            {
+                int    lr = *l;
+                int    lg = *( l + 1 );
+                int    lb = *( l + 2 );
+                int    lr2 = *l2;
+                int    lg2 = *( l2 + 1 );
+                int    lb2 = *( l2 + 2 );
+                uchar& r = ( (uchar*) &c )[ 2 ];
+                uchar& g = ( (uchar*) &c )[ 1 ];
+                uchar& b = ( (uchar*) &c )[ 0 ];
+                int    ir = (int) r + ( lr + lr2 ) / 2;
+                int    ig = (int) g + ( lg + lg2 ) / 2;
+                int    ib = (int) b + ( lb + lb2 ) / 2;
+                r = MIN( ir, 255 );
+                g = MIN( ig, 255 );
+                b = MIN( ib, 255 );
+            };
+            light_func( color_r, spr->Light, spr->LightRight );
+            light_func( color_l, spr->Light, spr->LightLeft );
         }
 
         // Alpha
         if( spr->Alpha )
         {
-            ( (uchar*) &cur_color )[ 3 ] = *spr->Alpha;
+            ( (uchar*) &color_r )[ 3 ] = *spr->Alpha;
+            ( (uchar*) &color_l )[ 3 ] = *spr->Alpha;
         }
 
         // Process flashing
@@ -3893,20 +3896,26 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
                 }
                 tick = cur_tick + 100;
             }
-            int r = ( ( cur_color >> 16 ) & 0xFF ) + cnt;
-            int g = ( ( cur_color >> 8 ) & 0xFF ) + cnt;
-            int b = ( cur_color & 0xFF ) + cnt;
-            r = CLAMP( r, 0, 0xFF );
-            g = CLAMP( g, 0, 0xFF );
-            b = CLAMP( b, 0, 0xFF );
-            ( (uchar*) &cur_color )[ 2 ] = r;
-            ( (uchar*) &cur_color )[ 1 ] = g;
-            ( (uchar*) &cur_color )[ 0 ] = b;
-            cur_color &= spr->FlashMask;
+            static auto flush_func = [] ( uint & c, int cnt, uint mask )
+            {
+                int r = ( ( c >> 16 ) & 0xFF ) + cnt;
+                int g = ( ( c >> 8 ) & 0xFF ) + cnt;
+                int b = ( c & 0xFF ) + cnt;
+                r = CLAMP( r, 0, 0xFF );
+                g = CLAMP( g, 0, 0xFF );
+                b = CLAMP( b, 0, 0xFF );
+                ( (uchar*) &c )[ 2 ] = r;
+                ( (uchar*) &c )[ 1 ] = g;
+                ( (uchar*) &c )[ 0 ] = b;
+                c &= mask;
+            };
+            flush_func( color_r, cnt, spr->FlashMask );
+            flush_func( color_l, cnt, spr->FlashMask );
         }
 
         // Fix color
-        cur_color = COLOR_SWAP_RB( cur_color );
+        color_r = COLOR_SWAP_RB( color_r );
+        color_l = COLOR_SWAP_RB( color_l );
 
         // Check borders
         if( x / zoom > GameOpt.ScreenWidth || ( x + si->Width ) / zoom < 0 || y / zoom > GameOpt.ScreenHeight || ( y + si->Height ) / zoom < 0 )
@@ -3980,25 +3989,25 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         vBuffer[ pos ].Y = yf + hf;
         vBuffer[ pos ].TU = si->SprRect.L;
         vBuffer[ pos ].TV = si->SprRect.B;
-        vBuffer[ pos++ ].Diffuse = cur_color;
+        vBuffer[ pos++ ].Diffuse = color_l;
 
         vBuffer[ pos ].X = xf;
         vBuffer[ pos ].Y = yf;
         vBuffer[ pos ].TU = si->SprRect.L;
         vBuffer[ pos ].TV = si->SprRect.T;
-        vBuffer[ pos++ ].Diffuse = cur_color;
+        vBuffer[ pos++ ].Diffuse = color_l;
 
         vBuffer[ pos ].X = xf + wf;
         vBuffer[ pos ].Y = yf;
         vBuffer[ pos ].TU = si->SprRect.R;
         vBuffer[ pos ].TV = si->SprRect.T;
-        vBuffer[ pos++ ].Diffuse = cur_color;
+        vBuffer[ pos++ ].Diffuse = color_r;
 
         vBuffer[ pos ].X = xf + wf;
         vBuffer[ pos ].Y = yf + hf;
         vBuffer[ pos ].TU = si->SprRect.R;
         vBuffer[ pos ].TV = si->SprRect.B;
-        vBuffer[ pos++ ].Diffuse = cur_color;
+        vBuffer[ pos++ ].Diffuse = color_r;
 
         // Cutted sprite
         if( spr->CutType )

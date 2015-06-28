@@ -6998,7 +6998,7 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
                                         f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ),
                                         NULL, NULL, NULL, NULL, NULL, NULL );
     if( !no_light )
-        spr.SetLight( Self->HexMngr.GetLightHex( 0, 0 ), Self->HexMngr.GetMaxHexX(), Self->HexMngr.GetMaxHexY() );
+        spr.SetLight( proto_item ? proto_item->GetCorner() : CORNER_EAST_WEST, Self->HexMngr.GetLightHex( 0, 0 ), Self->HexMngr.GetMaxHexX(), Self->HexMngr.GetMaxHexY() );
 
     if( proto_item )
     {
