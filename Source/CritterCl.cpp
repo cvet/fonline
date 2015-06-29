@@ -62,7 +62,7 @@ CLASS_PROPERTY_IMPL( CritterCl, PerkQuickPockets );
 CLASS_PROPERTY_IMPL( CritterCl, PerkMasterTrader );
 CLASS_PROPERTY_IMPL( CritterCl, PerkSilentRunning );
 
-CritterCl::CritterCl(): Props( PropertiesRegistrator )
+CritterCl::CritterCl(): Props( PropertiesRegistrator, &IsDestroyed )
 {
     CrDir = 0;
     SprId = 0;

@@ -381,6 +381,13 @@ void Property::GenericGet( void* obj, void* ret_value )
 {
     Properties* properties = (Properties*) obj;
 
+    // Validate object
+    if( properties->objIsDestroyed && *properties->objIsDestroyed )
+    {
+        SCRIPT_ERROR_R( "Attempt to get property '%s %s::%s' on destroyed object.",
+                        typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
+    }
+
     // Virtual property
     if( accessType & Property::VirtualMask )
     {
@@ -452,6 +459,13 @@ void Property::GenericGet( void* obj, void* ret_value )
 void Property::GenericSet( void* obj, void* new_value )
 {
     Properties* properties = (Properties*) obj;
+
+    // Validate object
+    if( properties->objIsDestroyed && *properties->objIsDestroyed )
+    {
+        SCRIPT_ERROR_R( "Attempt to set property '%s %s::%s' on destroyed object.",
+                        typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
+    }
 
     // Get current POD value
     void* cur_value;
@@ -957,11 +971,12 @@ string Property::AddSetCallback( const char* script_func )
     return "";
 }
 
-Properties::Properties( PropertyRegistrator* reg )
+Properties::Properties( PropertyRegistrator* reg, bool* obj_is_destroyed )
 {
     registrator = reg;
     RUNTIME_ASSERT( registrator );
     RUNTIME_ASSERT( registrator->registrationFinished );
+    objIsDestroyed = obj_is_destroyed;
 
     // Allocate POD data
     if( !registrator->podDataPool.empty() )

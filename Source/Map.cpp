@@ -27,7 +27,7 @@ const char* MapEventFuncName[ MAP_EVENT_MAX ] =
 
 PROPERTIES_IMPL( Map );
 
-Map::Map( uint id, ProtoMap* proto, Location* location ): Props( PropertiesRegistrator )
+Map::Map( uint id, ProtoMap* proto, Location* location ): Props( PropertiesRegistrator, &IsDestroyed )
 {
     RUNTIME_ASSERT( id );
     RUNTIME_ASSERT( proto );
@@ -2237,7 +2237,7 @@ const char* LocationEventFuncName[ LOCATION_EVENT_MAX ] =
 
 PROPERTIES_IMPL( Location );
 
-Location::Location( uint id, ProtoLocation* proto, ushort wx, ushort wy ): Props( PropertiesRegistrator )
+Location::Location( uint id, ProtoLocation* proto, ushort wx, ushort wy ): Props( PropertiesRegistrator, &IsDestroyed )
 {
     RUNTIME_ASSERT( id );
     RUNTIME_ASSERT( proto );

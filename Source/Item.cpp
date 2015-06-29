@@ -129,7 +129,7 @@ CLASS_PROPERTY_IMPL( ProtoItem, Car_FuelConsumption );
 CLASS_PROPERTY_IMPL( ProtoItem, Car_Entrance );
 CLASS_PROPERTY_IMPL( ProtoItem, Car_MovementType );
 
-ProtoItem::ProtoItem( hash pid ): Props( PropertiesRegistrator ), ItemProps( Item::PropertiesRegistrator )
+ProtoItem::ProtoItem( hash pid ): Props( PropertiesRegistrator, NULL ), ItemProps( Item::PropertiesRegistrator, NULL )
 {
     ProtoId = pid;
     InstanceCount = 0;
@@ -238,7 +238,7 @@ CLASS_PROPERTY_IMPL( Item, RadioBroadcastRecv );
 CLASS_PROPERTY_IMPL( Item, OffsetX );
 CLASS_PROPERTY_IMPL( Item, OffsetY );
 
-Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator )
+Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator, &IsDestroyed )
 {
     RUNTIME_ASSERT( proto );
 

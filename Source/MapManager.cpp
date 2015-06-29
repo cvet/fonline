@@ -436,7 +436,7 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
         FileRead( f, &data, sizeof( data ) );
         if( data.LocId > lastLocId )
             lastLocId = data.LocId;
-        Properties loc_props( Location::PropertiesRegistrator );
+        Properties loc_props( Location::PropertiesRegistrator, NULL );
         loc_props.Load( f, version );
 
         uint                   map_count;
@@ -448,7 +448,7 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
             FileRead( f, &map_data[ j ], sizeof( map_data[ j ] ) );
             if( map_data[ j ].MapId > lastMapId )
                 lastMapId = map_data[ j ].MapId;
-            map_props[ j ] = new Properties( Map::PropertiesRegistrator );
+            map_props[ j ] = new Properties( Map::PropertiesRegistrator, NULL );
             map_props[ j ]->Load( f, version );
         }
 

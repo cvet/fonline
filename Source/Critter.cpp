@@ -145,7 +145,7 @@ CLASS_PROPERTY_IMPL( Critter, InternalBagItemCount );
 CLASS_PROPERTY_IMPL( Critter, ExternalBagCurrentSet );
 CLASS_PROPERTY_IMPL( Critter, FavoriteItemPid );
 
-Critter::Critter(): Props( PropertiesRegistrator )
+Critter::Critter(): Props( PropertiesRegistrator, &IsDestroyed )
 {
     CritterIsNpc = false;
     RefCounter = 1;

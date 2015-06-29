@@ -80,9 +80,9 @@ bool CritterManager::LoadProtos()
         ProtoCritter* proto = new ProtoCritter();
         proto->ProtoId = pid;
         #ifdef FONLINE_SERVER
-        proto->Props = new Properties( Critter::PropertiesRegistrator );
+        proto->Props = new Properties( Critter::PropertiesRegistrator, NULL );
         #else
-        proto->Props = new Properties( CritterCl::PropertiesRegistrator );
+        proto->Props = new Properties( CritterCl::PropertiesRegistrator, NULL );
         #endif
 
         IniParser focr;
@@ -187,7 +187,7 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
     {
         CritData                data;
         FileRead( f, &data, sizeof( data ) );
-        Properties              props( Critter::PropertiesRegistrator );
+        Properties              props( Critter::PropertiesRegistrator, NULL );
         props.Load( f, version );
         Critter::CrTimeEventVec tevents;
         uint                    te_count;

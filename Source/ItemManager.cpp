@@ -304,7 +304,7 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
         FileRead( f, &acc, sizeof( acc ) );
         char       acc_buf[ 8 ];
         FileRead( f, &acc_buf[ 0 ], sizeof( acc_buf ) );
-        Properties props( Item::PropertiesRegistrator );
+        Properties props( Item::PropertiesRegistrator, NULL );
         props.Load( f, version );
 
         if( id > lastItemId )

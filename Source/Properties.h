@@ -185,7 +185,7 @@ class Properties
     friend class Property;
 
 public:
-    Properties( PropertyRegistrator* reg );
+    Properties( PropertyRegistrator* reg, bool* obj_is_destroyed );
     ~Properties();
     Properties& operator=( const Properties& other );
     void*       FindData( const char* property_name );
@@ -209,6 +209,7 @@ private:
     UIntVec               storeDataSizes;
     UShortVec             storeDataComplexIndicies;
     UnresolvedPropertyVec unresolvedProperties;
+    bool*                 objIsDestroyed;
 };
 
 class PropertyRegistrator

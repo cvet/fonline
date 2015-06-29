@@ -9258,154 +9258,154 @@ void SortCritterByDist( int hx, int hy, CritVec& critters )
 bool FOClient::SScriptFunc::Crit_IsChosen( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->IsChosen();
 }
 
 bool FOClient::SScriptFunc::Crit_IsPlayer( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->IsPlayer();
 }
 
 bool FOClient::SScriptFunc::Crit_IsNpc( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->IsNpc();
 }
 
 bool FOClient::SScriptFunc::Crit_IsLife( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->IsLife();
 }
 
 bool FOClient::SScriptFunc::Crit_IsKnockout( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->IsKnockout();
 }
 
 bool FOClient::SScriptFunc::Crit_IsDead( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->IsDead();
 }
 
 bool FOClient::SScriptFunc::Crit_IsFree( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->IsFree();
 }
 
 bool FOClient::SScriptFunc::Crit_IsBusy( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return !cr->IsFree();
 }
 
 bool FOClient::SScriptFunc::Crit_IsAnim3d( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->Anim3d != NULL;
 }
 
 bool FOClient::SScriptFunc::Crit_IsAnimAviable( CritterCl* cr, uint anim1, uint anim2 )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->IsAnimAviable( anim1, anim2 );
 }
 
 bool FOClient::SScriptFunc::Crit_IsAnimPlaying( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->IsAnim();
 }
 
 uint FOClient::SScriptFunc::Crit_GetAnim1( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->GetAnim1();
 }
 
 void FOClient::SScriptFunc::Crit_Animate( CritterCl* cr, uint anim1, uint anim2 )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "This nullptr." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     cr->Animate( anim1, anim2, NULL );
 }
 
 void FOClient::SScriptFunc::Crit_AnimateEx( CritterCl* cr, uint anim1, uint anim2, Item* item )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "This nullptr." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     cr->Animate( anim1, anim2, item );
 }
 
 void FOClient::SScriptFunc::Crit_ClearAnim( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "This nullptr." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     cr->ClearAnim();
 }
 
 void FOClient::SScriptFunc::Crit_Wait( CritterCl* cr, uint ms )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "This nullptr." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     cr->TickStart( ms );
 }
 
 uint FOClient::SScriptFunc::Crit_ItemsCount( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->GetItemsCount();
 }
 
 uint FOClient::SScriptFunc::Crit_ItemsWeight( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->GetItemsWeight();
 }
 
 uint FOClient::SScriptFunc::Crit_ItemsVolume( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->GetItemsVolume();
 }
 
 uint FOClient::SScriptFunc::Crit_CountItem( CritterCl* cr, hash proto_id )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->CountItemPid( proto_id );
 }
 
 uint FOClient::SScriptFunc::Crit_CountItemByType( CritterCl* cr, uchar type )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->CountItemType( type );
 }
 
 Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, hash proto_id, int slot )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( proto_id && slot >= 0 && slot < SLOT_GROUND )
         return cr->GetItemByPidSlot( proto_id, slot );
     else if( proto_id )
@@ -9418,14 +9418,14 @@ Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, hash proto_id, int slo
 Item* FOClient::SScriptFunc::Crit_GetItemById( CritterCl* cr, uint item_id )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->GetItem( item_id );
 }
 
 uint FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr, int slot, ScriptArray* items )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     ItemVec items_;
     cr->GetItemsSlot( slot, items_ );
     if( items )
@@ -9436,7 +9436,7 @@ uint FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr, int slot, ScriptArray*
 uint FOClient::SScriptFunc::Crit_GetItemsByType( CritterCl* cr, int type, ScriptArray* items )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     ItemVec items_;
     cr->GetItemsType( type, items_ );
     if( items )
@@ -9447,7 +9447,7 @@ uint FOClient::SScriptFunc::Crit_GetItemsByType( CritterCl* cr, int type, Script
 ProtoItem* FOClient::SScriptFunc::Crit_GetSlotProto( CritterCl* cr, int slot, uchar& mode )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
     Item* item = NULL;
     switch( slot )
@@ -9475,7 +9475,7 @@ ProtoItem* FOClient::SScriptFunc::Crit_GetSlotProto( CritterCl* cr, int slot, uc
 void FOClient::SScriptFunc::Crit_SetVisible( CritterCl* cr, bool visible )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "This nullptr." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     cr->Visible = visible;
     Self->HexMngr.RefreshMap();
 }
@@ -9483,14 +9483,14 @@ void FOClient::SScriptFunc::Crit_SetVisible( CritterCl* cr, bool visible )
 bool FOClient::SScriptFunc::Crit_GetVisible( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->Visible;
 }
 
 void FOClient::SScriptFunc::Crit_set_ContourColor( CritterCl* cr, uint value )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "This nullptr." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( cr->SprDrawValid )
         cr->SprDraw->SetContour( cr->SprDraw->ContourType, value );
     cr->ContourColor = value;
@@ -9499,28 +9499,28 @@ void FOClient::SScriptFunc::Crit_set_ContourColor( CritterCl* cr, uint value )
 uint FOClient::SScriptFunc::Crit_get_ContourColor( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->ContourColor;
 }
 
 uint FOClient::SScriptFunc::Crit_GetMultihex( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->GetMultihex();
 }
 
 bool FOClient::SScriptFunc::Crit_IsTurnBasedTurn( CritterCl* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return Self->IsTurnBased && cr->GetId() == Self->TurnBasedCurCritterId;
 }
 
 void FOClient::SScriptFunc::Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "This nullptr." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
 
     cr->GetNameTextInfo( nameVisible, x, y, w, h, lines );
 }
@@ -9528,35 +9528,35 @@ void FOClient::SScriptFunc::Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisib
 bool FOClient::SScriptFunc::Item_IsStackable( Item* item )
 {
     if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return item->IsStackable();
 }
 
 bool FOClient::SScriptFunc::Item_IsDeteriorable( Item* item )
 {
     if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return item->IsDeteriorable();
 }
 
 hash FOClient::SScriptFunc::Item_get_ProtoId( Item* item )
 {
     if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return item->GetProtoId();
 }
 
 int FOClient::SScriptFunc::Item_get_Type( Item* item )
 {
     if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return item->GetType();
 }
 
 bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& hy )
 {
     if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R0( "Map is not loaded." );
     switch( item->Accessory )
@@ -9597,14 +9597,14 @@ bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
 void FOClient::SScriptFunc::Item_Animate( Item* item, uchar from_frame, uchar to_frame )
 {
     if( item->IsDestroyed )
-        SCRIPT_ERROR_R( "This nullptr." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     #pragma MESSAGE("Implement Item_Animate.")
 }
 
 Item* FOClient::SScriptFunc::Item_GetChild( Item* item, uint childIndex )
 {
     if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "This nullptr." );
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     // Need implement
     #pragma MESSAGE("Implement Item_GetChild.")
     return NULL;
@@ -10064,9 +10064,9 @@ uint FOClient::SScriptFunc::Global_GetCrittersDistantion( CritterCl* cr1, Critte
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R0( "Map is not loaded." );
     if( cr1->IsDestroyed )
-        SCRIPT_ERROR_R0( "Critter1 arg nullptr." );
+        SCRIPT_ERROR_R0( "Critter1 arg is destroyed." );
     if( cr2->IsDestroyed )
-        SCRIPT_ERROR_R0( "Critter2 arg nullptr." );
+        SCRIPT_ERROR_R0( "Critter2 arg is destroyed." );
     return DistGame( cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY() );
 }
 
@@ -10180,7 +10180,7 @@ uint FOClient::SScriptFunc::Global_GetPathLengthHex( ushort from_hx, ushort from
 uint FOClient::SScriptFunc::Global_GetPathLengthCr( CritterCl* cr, ushort to_hx, ushort to_hy, uint cut )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Critter arg nullptr." );
+        SCRIPT_ERROR_R0( "Critter arg is destroyed." );
     if( to_hx >= Self->HexMngr.GetMaxHexX() || to_hy >= Self->HexMngr.GetMaxHexY() )
         SCRIPT_ERROR_R0( "Invalid to hexes args." );
 
@@ -10402,7 +10402,7 @@ void FOClient::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed,
 void FOClient::SScriptFunc::Global_LockScreenScroll( CritterCl* cr, bool unlock_if_same )
 {
     if( cr && cr->IsDestroyed )
-        SCRIPT_ERROR_R( "CritterCl arg nullptr." );
+        SCRIPT_ERROR_R( "CritterCl arg is destroyed." );
 
     uint id = ( cr ? cr->GetId() : 0 );
     if( unlock_if_same && id == Self->HexMngr.AutoScroll.LockedCritter )
@@ -10415,7 +10415,7 @@ void FOClient::SScriptFunc::Global_LockScreenScroll( CritterCl* cr, bool unlock_
 int FOClient::SScriptFunc::Global_GetFog( ushort zone_x, ushort zone_y )
 {
     if( !Self->Chosen || Self->Chosen->IsDestroyed )
-        SCRIPT_ERROR_R0( "Chosen data not valid." );
+        SCRIPT_ERROR_R0( "Chosen is destroyed." );
     if( zone_x >= GameOpt.GlobalMapWidth || zone_y >= GameOpt.GlobalMapHeight )
         SCRIPT_ERROR_R0( "Invalid world map pos arg." );
     return Self->GmapFog.Get2Bit( zone_x, zone_y );
