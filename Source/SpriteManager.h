@@ -210,7 +210,7 @@ public:
     bool DrawSpriteSize( uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color = 0 );
     bool DrawSpriteSizeExt( uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color );
     bool DrawSpritePattern( uint id, int x, int y, int w, int h, int spr_width = 0, int spr_height = 0, uint color = 0 );
-    bool DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to );
+    bool DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to, bool prerender = false, int prerender_ox = 0, int prerender_oy = 0 );
     bool DrawPoints( PointVec& points, int prim, float* zoom = NULL, RectF* scissor = NULL, PointF* offset = NULL, Effect* effect = NULL );
     bool Draw3d( int x, int y, Animation3d* anim3d, uint color, RectF* scissor = NULL );
 

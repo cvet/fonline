@@ -195,8 +195,10 @@ public:
     // Init, finish, restore
 private:
     RenderTarget* rtMap;
+    RenderTarget* rtTiles;
+    RenderTarget* rtRoof;
     RenderTarget* rtLight;
-    uint          lightOX, lightOY;
+    uint          rtScreenOX, rtScreenOY;
     Sprites       mainTree;
     ViewField*    viewField;
 
@@ -332,9 +334,9 @@ public:
 
     // Tiles, roof
 private:
-    Sprites tilesTree;
+    Sprites tilesTree, tilesAnimatedTree;
     int     roofSkip;
-    Sprites roofTree;
+    Sprites roofTree, roofAnimatedTree;
 
     bool CheckTilesBorder( Field::Tile& tile, bool is_roof );
 

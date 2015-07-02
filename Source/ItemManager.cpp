@@ -553,16 +553,16 @@ void ItemManager::ItemGarbager()
             if( !item->IsDestroyed && item->FuncId[ ITEM_EVENT_FINISH ] > 0 )
                 item->EventFinish( true );
 
-            item->IsDestroyed = true;
-            if( item->IsValidAccessory() )
-                EraseItemHolder( item );
-
             // Erase from statistics
             ChangeItemStatistics( item->GetProtoId(), -(int) item->GetCount() );
 
             // Erase from radio collection
             if( item->GetIsRadio() )
                 RadioRegister( item, false );
+
+            item->IsDestroyed = true;
+            if( item->IsValidAccessory() )
+                EraseItemHolder( item );
 
             // Clear, release
             item->FullClear();

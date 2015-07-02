@@ -250,7 +250,8 @@ HexManager::HexManager()
     picRainFall = NULL;
     picRainDrop = NULL;
     picTrack1 = picTrack2 = picHexMask = NULL;
-    lightOX = lightOY = 0;
+    rtMap = rtTiles = rtRoof = rtLight = NULL;
+    rtScreenOX = rtScreenOY = 0;
 }
 
 bool HexManager::Init()
@@ -259,9 +260,11 @@ bool HexManager::Init()
 
     rtMap = SprMngr.CreateRenderTarget( false, false, true, 0, 0, false, Effect::FlushMap );
 
-    lightOX = (uint) ceilf( (float) SCROLL_OX / MIN_ZOOM );
-    lightOY = (uint) ceilf( (float) SCROLL_OY / MIN_ZOOM );
-    rtLight = SprMngr.CreateRenderTarget( false, false, true, lightOX * 2, lightOY * 2, false, Effect::FlushLight );
+    rtScreenOX = (uint) ceilf( (float) SCROLL_OX / MIN_ZOOM );
+    rtScreenOY = (uint) ceilf( (float) SCROLL_OY / MIN_ZOOM );
+    rtTiles = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false );
+    rtRoof = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false );
+    rtLight = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushLight );
 
     isShowTrack = false;
     curPidMap = 0;
@@ -1543,6 +1546,7 @@ void HexManager::RebuildTiles()
         return;
 
     tilesTree.Unvalidate();
+    tilesAnimatedTree.Unvalidate();
 
     int vpos;
     int y2 = 0;
@@ -1572,14 +1576,15 @@ void HexManager::RebuildTiles()
                 int          oy = f.ScrY + tile.OffsY + TILE_OY;
 
                 if( IsVisible( spr_id, ox, oy ) )
-                #ifdef FONLINE_MAPPER
                 {
+                    Sprites&           tree = ( tile.Anim->GetCnt() == 1 && rtTiles ? tilesTree : tilesAnimatedTree );
+                    #ifdef FONLINE_MAPPER
                     ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, false );
-                    tilesTree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, tiles[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : NULL, &Effect::Tile, NULL );
+                    tree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, tiles[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : NULL, &Effect::Tile, NULL );
+                    #else
+                    tree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, NULL, &Effect::Tile, NULL );
+                    #endif
                 }
-                #else
-                    tilesTree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, NULL, &Effect::Tile, NULL );
-                #endif
             }
         }
         y2 += wVisible;
@@ -1588,6 +1593,17 @@ void HexManager::RebuildTiles()
     // Sort
     tilesTree.SortBySurfaces();
     tilesTree.SortByMapPos();
+    tilesAnimatedTree.SortBySurfaces();
+    tilesAnimatedTree.SortByMapPos();
+
+    // Prerender
+    if( tilesTree.Size() > 0 )
+    {
+        SprMngr.PushRenderTarget( rtTiles );
+        SprMngr.ClearCurrentRenderTarget( 0 );
+        SprMngr.DrawSprites( tilesTree, false, false, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END, true, rtScreenOX, rtScreenOY );
+        SprMngr.PopRenderTarget();
+    }
 }
 
 void HexManager::RebuildRoof()
@@ -1596,6 +1612,7 @@ void HexManager::RebuildRoof()
         return;
 
     roofTree.Unvalidate();
+    roofAnimatedTree.Unvalidate();
 
     int vpos;
     int y2 = 0;
@@ -1625,14 +1642,15 @@ void HexManager::RebuildRoof()
                     int          oy = f.ScrY + roof.OffsY + ROOF_OY;
 
                     if( IsVisible( spr_id, ox, oy ) )
-                    #ifdef FONLINE_MAPPER
                     {
+                        Sprites&           tree = ( roof.Anim->GetCnt() == 1 && rtRoof ? roofTree : roofAnimatedTree );
+                        #ifdef FONLINE_MAPPER
                         ProtoMap::TileVec& roofs = CurProtoMap->GetTiles( hx, hy, true );
                         roofTree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, roofs[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : &GameOpt.RoofAlpha, &Effect::Roof, NULL ).SetEgg( EGG_ALWAYS );
-                    }
-                    #else
+                        #else
                         roofTree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, &GameOpt.RoofAlpha, &Effect::Roof, NULL ).SetEgg( EGG_ALWAYS );
-                    #endif
+                        #endif
+                    }
                 }
             }
         }
@@ -1642,6 +1660,17 @@ void HexManager::RebuildRoof()
     // Sort
     roofTree.SortBySurfaces();
     roofTree.SortByMapPos();
+    roofAnimatedTree.SortBySurfaces();
+    roofAnimatedTree.SortByMapPos();
+
+    // Prerender
+    if( roofTree.Size() > 0 )
+    {
+        SprMngr.PushRenderTarget( rtRoof );
+        SprMngr.ClearCurrentRenderTarget( 0 );
+        SprMngr.DrawSprites( roofTree, false, true, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END, true, rtScreenOX, rtScreenOY );
+        SprMngr.PopRenderTarget();
+    }
 }
 
 void HexManager::SetSkipRoof( int hx, int hy )
@@ -1983,6 +2012,10 @@ void HexManager::GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y )
 
 void HexManager::DrawMap()
 {
+    int  ox = rtScreenOX - (int) ( (float) GameOpt.ScrOx / GameOpt.SpritesZoom + 0.5f );
+    int  oy = rtScreenOY - (int) ( (float) GameOpt.ScrOy / GameOpt.SpritesZoom + 0.5f );
+    Rect prerenderedRect = Rect( ox, oy, ox + GameOpt.ScreenWidth, oy + GameOpt.ScreenHeight );
+
     // Rebuild light
     if( requestRebuildLight )
     {
@@ -1996,7 +2029,7 @@ void HexManager::DrawMap()
         requestRenderLight = false;
         SprMngr.PushRenderTarget( rtLight );
         SprMngr.ClearCurrentRenderTarget( 0 );
-        PointF offset( (float) lightOX, (float) lightOY );
+        PointF offset( (float) rtScreenOX, (float) rtScreenOY );
         for( uint i = 0; i < lightPointsCount; i++ )
             SprMngr.DrawPoints( lightPoints[ i ], PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, NULL, &offset, Effect::Light );
         SprMngr.DrawPoints( lightSoftPoints, PRIMITIVE_TRIANGLELIST, &GameOpt.SpritesZoom, NULL, &offset, Effect::Light );
@@ -2012,18 +2045,18 @@ void HexManager::DrawMap()
 
     // Tiles
     if( GameOpt.ShowTile )
-        SprMngr.DrawSprites( tilesTree, false, false, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
+    {
+        if( rtTiles && tilesTree.Size() > 0 )
+            SprMngr.DrawRenderTarget( rtTiles, false, &prerenderedRect );
+        SprMngr.DrawSprites( tilesAnimatedTree, false, false, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
+    }
 
     // Flat sprites
     SprMngr.DrawSprites( mainTree, true, false, DRAW_ORDER_FLAT, DRAW_ORDER_LIGHT - 1 );
 
     // Light
     if( rtLight )
-    {
-        int ox = lightOX - (int) ( (float) GameOpt.ScrOx / GameOpt.SpritesZoom + 0.5f );
-        int oy = lightOY - (int) ( (float) GameOpt.ScrOy / GameOpt.SpritesZoom + 0.5f );
-        SprMngr.DrawRenderTarget( rtLight, true, &Rect( ox, oy, ox + GameOpt.ScreenWidth, oy + GameOpt.ScreenHeight ) );
-    }
+        SprMngr.DrawRenderTarget( rtLight, true, &prerenderedRect );
 
     // Cursor flat
     DrawCursor( cursorPrePic->GetCurSprId() );
@@ -2034,7 +2067,9 @@ void HexManager::DrawMap()
     // Roof
     if( GameOpt.ShowRoof )
     {
-        SprMngr.DrawSprites( roofTree, false, true, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
+        if( rtRoof && roofTree.Size() > 0 )
+            SprMngr.DrawRenderTarget( rtRoof, true, &prerenderedRect );
+        SprMngr.DrawSprites( roofAnimatedTree, false, true, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
         if( rainCapacity )
             SprMngr.DrawSprites( roofRainTree, false, false, DRAW_ORDER_RAIN, DRAW_ORDER_RAIN );
     }

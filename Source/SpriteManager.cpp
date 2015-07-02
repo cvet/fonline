@@ -3813,8 +3813,11 @@ void SpriteManager::SetEgg( ushort hx, ushort hy, Sprite* spr )
     eggValid = true;
 }
 
-bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to )
+bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to, bool prerender /* = false */, int prerender_ox /* = 0 */, int prerender_oy /* = 0 */ )
 {
+    if( !dtree.Size() )
+        return true;
+
     PointVec borders;
 
     if( !eggValid )
@@ -3843,8 +3846,11 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         // Coords
         int x = spr->ScrX - si->Width / 2 + si->OffsX;
         int y = spr->ScrY - si->Height + si->OffsY;
-        x += GameOpt.ScrOx;
-        y += GameOpt.ScrOy;
+        if( !prerender )
+        {
+            x += GameOpt.ScrOx;
+            y += GameOpt.ScrOy;
+        }
         if( spr->OffsX )
             x += *spr->OffsX;
         if( spr->OffsY )
@@ -3933,8 +3939,11 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         color_l = COLOR_SWAP_RB( color_l );
 
         // Check borders
-        if( x / zoom > GameOpt.ScreenWidth || ( x + si->Width ) / zoom < 0 || y / zoom > GameOpt.ScreenHeight || ( y + si->Height ) / zoom < 0 )
-            continue;
+        if( !prerender )
+        {
+            if( x / zoom > GameOpt.ScreenWidth || ( x + si->Width ) / zoom < 0 || y / zoom > GameOpt.ScreenHeight || ( y + si->Height ) / zoom < 0 )
+                continue;
+        }
 
         // 2d sprite
         // Egg process
@@ -3992,8 +4001,8 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             dipQueue.back().SpritesCount++;
 
         // Casts
-        float xf = (float) x / zoom;
-        float yf = (float) y / zoom;
+        float xf = (float) x / zoom + ( prerender ? (float) prerender_ox : 0.0f );
+        float yf = (float) y / zoom + ( prerender ? (float) prerender_oy : 0.0f );
         float wf = (float) si->Width / zoom;
         float hf = (float) si->Height / zoom;
 
