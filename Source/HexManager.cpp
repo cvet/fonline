@@ -218,7 +218,16 @@ HexManager::HexManager()
     cursorY = 0;
     memzero( (void*) &AutoScroll, sizeof( AutoScroll ) );
     requestRebuildLight = false;
+    requestRenderLight = false;
     lightPointsCount = 0;
+    lightCapacity = 0;
+    lightMinHx = 0;
+    lightMaxHx = 0;
+    lightMinHy = 0;
+    lightMaxHy = 0;
+    lightProcentR = 0;
+    lightProcentG = 0;
+    lightProcentB = 0;
     SpritesCanDrawMap = false;
     dayTime[ 0 ] = 300;
     dayTime[ 1 ] = 600;
@@ -241,15 +250,18 @@ HexManager::HexManager()
     picRainFall = NULL;
     picRainDrop = NULL;
     picTrack1 = picTrack2 = picHexMask = NULL;
+    lightOX = lightOY = 0;
 }
 
 bool HexManager::Init()
 {
     WriteLog( "Hex field initialization...\n" );
 
-    rtMap = SprMngr.CreateRenderTarget( false, false, 0, 0, false );
-    if( rtMap )
-        rtMap->DrawEffect = Effect::FlushMap;
+    rtMap = SprMngr.CreateRenderTarget( false, false, true, 0, 0, false, Effect::FlushMap );
+
+    lightOX = (uint) ceilf( (float) SCROLL_OX / MIN_ZOOM );
+    lightOY = (uint) ceilf( (float) SCROLL_OY / MIN_ZOOM );
+    rtLight = SprMngr.CreateRenderTarget( false, false, true, lightOX * 2, lightOY * 2, false, Effect::FlushLight );
 
     isShowTrack = false;
     curPidMap = 0;
@@ -860,6 +872,7 @@ void HexManager::RebuildMap( int rx, int ry )
     // Light
     RealRebuildLight();
     requestRebuildLight = false;
+    requestRenderLight = true;
 
     // Tiles, roof
     RebuildTiles();
@@ -1076,23 +1089,15 @@ void HexManager::RebuildMap( int rx, int ry )
 
 #define MAX_LIGHT_VALUE      ( 10000 )
 #define MAX_LIGHT_HEX        ( 200 )
-#define MAX_LIGHT_ALPHA      ( 100 )
+#define MAX_LIGHT_ALPHA      ( 255 )
 #define LIGHT_SOFT_LENGTH    ( HEX_W )
-int LightCapacity = 0;
-int LightMinHx = 0;
-int LightMaxHx = 0;
-int LightMinHy = 0;
-int LightMaxHy = 0;
-int LightProcentR = 0;
-int LightProcentG = 0;
-int LightProcentB = 0;
 
 void HexManager::MarkLight( ushort hx, ushort hy, uint inten )
 {
-    int    light = inten * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * LightCapacity / 100;
-    int    lr = light * LightProcentR / 100;
-    int    lg = light * LightProcentG / 100;
-    int    lb = light * LightProcentB / 100;
+    int    light = inten * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * lightCapacity / 100;
+    int    lr = light * lightProcentR / 100;
+    int    lg = light * lightProcentG / 100;
+    int    lb = light * lightProcentB / 100;
     uchar* p = &hexLight[ hy * maxHexX * 3 + hx * 3 ];
     if( lr > *p )
         *p = lr;
@@ -1113,14 +1118,14 @@ void HexManager::MarkLightEndNeighbor( ushort hx, ushort hy, bool north_south, u
             lt == CORNER_SOUTH )
         {
             uchar* p = &hexLight[ hy * maxHexX * 3 + hx * 3 ];
-            int    light_full = inten * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * LightCapacity / 100;
-            int    light_self = ( inten / 2 ) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * LightCapacity / 100;
-            int    lr_full = light_full * LightProcentR / 100;
-            int    lg_full = light_full * LightProcentG / 100;
-            int    lb_full = light_full * LightProcentB / 100;
-            int    lr_self = int(*p) + light_self * LightProcentR / 100;
-            int    lg_self = int( *( p + 1 ) ) + light_self * LightProcentG / 100;
-            int    lb_self = int( *( p + 2 ) ) + light_self * LightProcentB / 100;
+            int    light_full = inten * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * lightCapacity / 100;
+            int    light_self = ( inten / 2 ) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * lightCapacity / 100;
+            int    lr_full = light_full * lightProcentR / 100;
+            int    lg_full = light_full * lightProcentG / 100;
+            int    lb_full = light_full * lightProcentB / 100;
+            int    lr_self = int(*p) + light_self * lightProcentR / 100;
+            int    lg_self = int( *( p + 1 ) ) + light_self * lightProcentG / 100;
+            int    lb_self = int( *( p + 2 ) ) + light_self * lightProcentB / 100;
             if( lr_self > lr_full )
                 lr_self = lr_full;
             if( lg_self > lg_full )
@@ -1230,7 +1235,7 @@ void HexManager::TraceLight( ushort from_hx, ushort from_hy, ushort& hx, ushort&
         cury1i = (int) cury1f;
         if( cury1f - (float) cury1i >= 0.5f )
             cury1i++;
-        bool can_mark = ( curx1i >= LightMinHx && curx1i <= LightMaxHx && cury1i >= LightMinHy && cury1i <= LightMaxHy );
+        bool can_mark = ( curx1i >= lightMinHx && curx1i <= lightMaxHx && cury1i >= lightMinHy && cury1i <= lightMaxHy );
 
         // Left&Right trace
         int ox = 0;
@@ -1312,32 +1317,33 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
 {
     ushort hx = ls.HexX;
     ushort hy = ls.HexY;
+
     // Distance
-    int    dist = ls.Distance;
+    int dist = ls.Distance;
     if( dist < 1 )
-        dist = 1;
+        return;
+
     // Intensity
     int inten = abs( ls.Intensity );
     if( inten > 100 )
-        inten = 50;
+        inten = 100;
     inten *= 100;
     if( FLAG( ls.Flags, LIGHT_GLOBAL ) )
-        GetColorDay( GetMapDayTime(), GetMapDayColor(), GetDayTime(), &LightCapacity );
+        GetColorDay( GetMapDayTime(), GetMapDayColor(), GetDayTime(), &lightCapacity );
     else if( ls.Intensity >= 0 )
-        GetColorDay( GetMapDayTime(), GetMapDayColor(), GetMapTime(), &LightCapacity );
+        GetColorDay( GetMapDayTime(), GetMapDayColor(), GetMapTime(), &lightCapacity );
     else
-        LightCapacity = 100;
+        lightCapacity = 100;
     if( FLAG( ls.Flags, LIGHT_INVERSE ) )
-        LightCapacity = 100 - LightCapacity;
+        lightCapacity = 100 - lightCapacity;
+
     // Color
     uint color = ls.ColorRGB;
-    if( color == 0 )
-        color = 0xFFFFFF;
-    int alpha = MAX_LIGHT_ALPHA * LightCapacity / 100 * inten / MAX_LIGHT_VALUE;
+    int  alpha = MAX_LIGHT_ALPHA * lightCapacity / 100 * inten / MAX_LIGHT_VALUE;
     color = COLOR_RGBA( alpha, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
-    LightProcentR = ( ( color >> 16 ) & 0xFF ) * 100 / 0xFF;
-    LightProcentG = ( ( color >> 8 ) & 0xFF ) * 100 / 0xFF;
-    LightProcentB = ( color & 0xFF ) * 100 / 0xFF;
+    lightProcentR = ( ( color >> 16 ) & 0xFF ) * 100 / 0xFF;
+    lightProcentG = ( ( color >> 8 ) & 0xFF ) * 100 / 0xFF;
+    lightProcentB = ( color & 0xFF ) * 100 / 0xFF;
 
     // Begin
     MarkLight( hx, hy, inten );
@@ -1352,8 +1358,7 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
     PointVec& points = lightPoints[ lightPointsCount - 1 ];
     points.clear();
     points.reserve( 3 + dist * DIRS_COUNT );
-    points.push_back( PrepPoint( base_x, base_y, color, (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) ); // Center of light
-    color = COLOR_RGBA( 0, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
+    points.push_back( PrepPoint( base_x, base_y, color, NULL, NULL ) ); // Center of light
 
     int    hx_far = hx, hy_far = hy;
     bool   seek_start = true;
@@ -1400,10 +1405,12 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
                     color = COLOR_RGBA( a, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
                 }
                 else
+                {
                     color = COLOR_RGBA( 0, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
+                }
                 int x, y;
                 GetHexInterval( hx, hy, hx_, hy_, x, y );
-                points.push_back( PrepPoint( base_x + x, base_y + y, color, (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
+                points.push_back( PrepPoint( base_x + x, base_y + y, color, NULL, NULL ) );
                 last_hx = hx_;
                 last_hy = hy_;
             }
@@ -1417,39 +1424,40 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
         if( DistSqrt( cur.PointX, cur.PointY, next.PointX, next.PointY ) > (uint) LIGHT_SOFT_LENGTH )
         {
             bool dist_comp = ( DistSqrt( base_x, base_y, cur.PointX, cur.PointY ) > DistSqrt( base_x, base_y, next.PointX, next.PointY ) );
-            lightSoftPoints.push_back( PrepPoint( next.PointX, next.PointY, next.PointColor, (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
-            lightSoftPoints.push_back( PrepPoint( cur.PointX, cur.PointY, cur.PointColor, (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
+            lightSoftPoints.push_back( PrepPoint( next.PointX, next.PointY, next.PointColor, NULL, NULL ) );
+            lightSoftPoints.push_back( PrepPoint( cur.PointX, cur.PointY, cur.PointColor, NULL, NULL ) );
             float x = (float) ( dist_comp ? next.PointX - cur.PointX : cur.PointX - next.PointX );
             float y = (float) ( dist_comp ? next.PointY - cur.PointY : cur.PointY - next.PointY );
             ChangeStepsXY( x, y, dist_comp ? -2.5f : 2.5f );
             if( dist_comp )
-                lightSoftPoints.push_back( PrepPoint( cur.PointX + int(x), cur.PointY + int(y), cur.PointColor, (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
+                lightSoftPoints.push_back( PrepPoint( cur.PointX + int(x), cur.PointY + int(y), cur.PointColor, NULL, NULL ) );
             else
-                lightSoftPoints.push_back( PrepPoint( next.PointX + int(x), next.PointY + int(y), next.PointColor, (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
+                lightSoftPoints.push_back( PrepPoint( next.PointX + int(x), next.PointY + int(y), next.PointColor, NULL, NULL ) );
         }
     }
 }
 
 void HexManager::RealRebuildLight()
 {
+    RUNTIME_ASSERT( viewField );
+
     lightPointsCount = 0;
     lightSoftPoints.clear();
-    if( !viewField )
-        return;
-
     ClearHexLight();
     CollectLightSources();
 
-    LightMinHx = viewField[ 0 ].HexX;
-    LightMaxHx = viewField[ hVisible * wVisible - 1 ].HexX;
-    LightMinHy = viewField[ wVisible - 1 ].HexY;
-    LightMaxHy = viewField[ hVisible * wVisible - wVisible ].HexY;
+    lightMinHx = viewField[ 0 ].HexX;
+    lightMaxHx = viewField[ hVisible * wVisible - 1 ].HexX;
+    lightMinHy = viewField[ wVisible - 1 ].HexY;
+    lightMaxHy = viewField[ hVisible * wVisible - wVisible ].HexY;
 
     for( auto it = lightSources.begin(), end = lightSources.end(); it != end; ++it )
     {
-        LightSource& ls = ( *it );
-        //	if( (int)ls.HexX<LightMinHx-(int)ls.Distance || (int)ls.HexX>LightMaxHx+(int)ls.Distance ||
-        //		(int)ls.HexY<LightMinHy-(int)ls.Distance || (int)ls.HexY>LightMaxHy+(int)ls.Distance) continue;
+        LightSource& ls = *it;
+        #pragma MESSAGE( "Optimize lighting rebuilding to skip unvisible lights." )
+        // if( (int) ls.HexX < lightMinHx - (int) ls.Distance || (int) ls.HexX > lightMaxHx + (int) ls.Distance ||
+        //    (int) ls.HexY < lightMinHy - (int) ls.Distance || (int) ls.HexY > lightMaxHy + (int) ls.Distance )
+        //    continue;
         ParseLightTriangleFan( ls );
     }
 }
@@ -1975,18 +1983,31 @@ void HexManager::GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y )
 
 void HexManager::DrawMap()
 {
+    // Rebuild light
+    if( requestRebuildLight )
+    {
+        requestRebuildLight = false;
+        RealRebuildLight();
+    }
+
+    // Render light
+    if( requestRenderLight )
+    {
+        requestRenderLight = false;
+        SprMngr.PushRenderTarget( rtLight );
+        SprMngr.ClearCurrentRenderTarget( 0 );
+        PointF offset( (float) lightOX, (float) lightOY );
+        for( uint i = 0; i < lightPointsCount; i++ )
+            SprMngr.DrawPoints( lightPoints[ i ], PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, NULL, &offset, Effect::Light );
+        SprMngr.DrawPoints( lightSoftPoints, PRIMITIVE_TRIANGLELIST, &GameOpt.SpritesZoom, NULL, &offset, Effect::Light );
+        SprMngr.PopRenderTarget();
+    }
+
     // Separate render target
     if( rtMap )
     {
         SprMngr.PushRenderTarget( rtMap );
         SprMngr.ClearCurrentRenderTarget( 0 );
-    }
-
-    // Rebuild light
-    if( requestRebuildLight )
-    {
-        RealRebuildLight();
-        requestRebuildLight = false;
     }
 
     // Tiles
@@ -1997,9 +2018,12 @@ void HexManager::DrawMap()
     SprMngr.DrawSprites( mainTree, true, false, DRAW_ORDER_FLAT, DRAW_ORDER_LIGHT - 1 );
 
     // Light
-    for( uint i = 0; i < lightPointsCount; i++ )
-        SprMngr.DrawPoints( lightPoints[ i ], PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom );
-    SprMngr.DrawPoints( lightSoftPoints, PRIMITIVE_TRIANGLELIST, &GameOpt.SpritesZoom );
+    if( rtLight )
+    {
+        int ox = lightOX - (int) ( (float) GameOpt.ScrOx / GameOpt.SpritesZoom + 0.5f );
+        int oy = lightOY - (int) ( (float) GameOpt.ScrOy / GameOpt.SpritesZoom + 0.5f );
+        SprMngr.DrawRenderTarget( rtLight, true, &Rect( ox, oy, ox + GameOpt.ScreenWidth, oy + GameOpt.ScreenHeight ) );
+    }
 
     // Cursor flat
     DrawCursor( cursorPrePic->GetCurSprId() );
@@ -3679,13 +3703,16 @@ bool HexManager::LoadMap( hash map_pid )
         }
     }
 
+    // Visible
+    ResizeView();
+
     // Light
     CollectLightSources();
     lightPoints.clear();
     lightPointsCount = 0;
-
-    // Visible
-    ResizeView();
+    RealRebuildLight();
+    requestRebuildLight = false;
+    requestRenderLight = true;
 
     // Finish
     curPidMap = map_pid;

@@ -195,6 +195,8 @@ public:
     // Init, finish, restore
 private:
     RenderTarget* rtMap;
+    RenderTarget* rtLight;
+    uint          lightOX, lightOY;
     Sprites       mainTree;
     ViewField*    viewField;
 
@@ -294,12 +296,23 @@ public:
     // Light
 private:
     bool           requestRebuildLight;
+    bool           requestRenderLight;
     uchar*         hexLight;
     uint           lightPointsCount;
     PointVecVec    lightPoints;
     PointVec       lightSoftPoints;
     LightSourceVec lightSources;
     LightSourceVec lightSourcesScen;
+
+    // Rebuild data
+    int lightCapacity;
+    int lightMinHx;
+    int lightMaxHx;
+    int lightMinHy;
+    int lightMaxHy;
+    int lightProcentR;
+    int lightProcentG;
+    int lightProcentB;
 
     void MarkLight( ushort hx, ushort hy, uint inten );
     void MarkLightEndNeighbor( ushort hx, ushort hy, bool north_south, uint inten );
@@ -314,7 +327,7 @@ private:
 public:
     void            ClearHexLight()                     { memzero( hexLight, maxHexX * maxHexY * sizeof( uchar ) * 3 ); }
     uchar*          GetLightHex( ushort hx, ushort hy ) { return &hexLight[ hy * maxHexX * 3 + hx * 3 ]; }
-    void            RebuildLight()                      { requestRebuildLight = true; }
+    void            RebuildLight()                      { requestRebuildLight = requestRenderLight = true; }
     LightSourceVec& GetLights()                         { return lightSources; }
 
     // Tiles, roof

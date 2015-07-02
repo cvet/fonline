@@ -1073,18 +1073,15 @@ void Animation3d::DrawCombinedMeshes()
         GL( glEnable( GL_CULL_FACE ) );
     GL( glEnable( GL_DEPTH_TEST ) );
 
-    if( !shadowDisabled && !animEntity->shadowDisabled )
-        for( size_t i = 0; i < combinedMeshesSize; i++ )
-            DrawCombinedMesh( combinedMeshes[ i ], true );
     for( size_t i = 0; i < combinedMeshesSize; i++ )
-        DrawCombinedMesh( combinedMeshes[ i ], false );
+        DrawCombinedMesh( combinedMeshes[ i ], shadowDisabled || animEntity->shadowDisabled );
 
     if( !disableCulling )
         GL( glDisable( GL_CULL_FACE ) );
     GL( glDisable( GL_DEPTH_TEST ) );
 }
 
-void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow )
+void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow_disabled )
 {
     if( combined_mesh->VAO )
     {
@@ -1108,43 +1105,55 @@ void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow )
             GL( glEnableVertexAttribArray( i ) );
     }
 
-    Effect*       effect = ( !shadow ? ( combined_mesh->DrawEffect ? combined_mesh->DrawEffect : Effect::Skinned3d ) : Effect::Skinned3dShadow );
+    Effect*       effect = ( combined_mesh->DrawEffect ? combined_mesh->DrawEffect : Effect::Skinned3d );
     MeshTexture** textures = combined_mesh->Textures;
 
-    GL( glUseProgram( effect->Program ) );
+    bool          matrices_combined = false;
+    for( size_t pass = 0; pass < effect->Passes.size(); pass++ )
+    {
+        EffectPass& effect_pass = effect->Passes[ pass ];
 
-    if( effect->ZoomFactor != -1 )
-        GL( glUniform1f( effect->ZoomFactor, GameOpt.SpritesZoom ) );
-    if( effect->ProjectionMatrix != -1 )
-        GL( glUniformMatrix4fv( effect->ProjectionMatrix, 1, GL_FALSE, MatrixProjCM[ 0 ] ) );
-    if( effect->ColorMap != -1 && textures[ 0 ] )
-    {
-        GL( glBindTexture( GL_TEXTURE_2D, textures[ 0 ]->Id ) );
-        GL( glUniform1i( effect->ColorMap, 0 ) );
-        if( effect->ColorMapSize != -1 )
-            GL( glUniform4fv( effect->ColorMapSize, 1, textures[ 0 ]->SizeData ) );
-    }
-    if( effect->LightColor != -1 )
-        GL( glUniform4fv( effect->LightColor, 1, (float*) &LightColor ) );
-    if( effect->WorldMatrices != -1 )
-    {
-        for( size_t i = 0; i < combined_mesh->CurBoneMatrix; i++ )
+        if( shadow_disabled && effect_pass.IsShadow )
+            continue;
+
+        GL( glUseProgram( effect_pass.Program ) );
+
+        if( IS_EFFECT_VALUE( effect_pass.ZoomFactor ) )
+            GL( glUniform1f( effect_pass.ZoomFactor, GameOpt.SpritesZoom ) );
+        if( IS_EFFECT_VALUE( effect_pass.ProjectionMatrix ) )
+            GL( glUniformMatrix4fv( effect_pass.ProjectionMatrix, 1, GL_FALSE, MatrixProjCM[ 0 ] ) );
+        if( IS_EFFECT_VALUE( effect_pass.ColorMap ) && textures[ 0 ] )
         {
-            WorldMatrices[ i ] = combined_mesh->SkinBones[ i ]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[ i ];
-            WorldMatrices[ i ].Transpose();                                         // Convert to column major order
+            GL( glBindTexture( GL_TEXTURE_2D, textures[ 0 ]->Id ) );
+            GL( glUniform1i( effect_pass.ColorMap, 0 ) );
+            if( IS_EFFECT_VALUE( effect_pass.ColorMapSize ) )
+                GL( glUniform4fv( effect_pass.ColorMapSize, 1, textures[ 0 ]->SizeData ) );
         }
-        GL( glUniformMatrix4fv( effect->WorldMatrices, combined_mesh->CurBoneMatrix, GL_FALSE, (float*) &WorldMatrices[ 0 ] ) );
-    }
-    if( effect->GroundPosition != -1 )
-        GL( glUniform3fv( effect->GroundPosition, 1, (float*) &groundPos ) );
+        if( IS_EFFECT_VALUE( effect_pass.LightColor ) )
+            GL( glUniform4fv( effect_pass.LightColor, 1, (float*) &LightColor ) );
+        if( IS_EFFECT_VALUE( effect_pass.WorldMatrices ) )
+        {
+            if( !matrices_combined )
+            {
+                matrices_combined = true;
+                for( size_t i = 0; i < combined_mesh->CurBoneMatrix; i++ )
+                {
+                    WorldMatrices[ i ] = combined_mesh->SkinBones[ i ]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[ i ];
+                    WorldMatrices[ i ].Transpose();                                                             // Convert to column major order
+                }
+            }
+            GL( glUniformMatrix4fv( effect_pass.WorldMatrices, combined_mesh->CurBoneMatrix, GL_FALSE, (float*) &WorldMatrices[ 0 ] ) );
+        }
+        if( IS_EFFECT_VALUE( effect_pass.GroundPosition ) )
+            GL( glUniform3fv( effect_pass.GroundPosition, 1, (float*) &groundPos ) );
 
-    if( effect->IsNeedProcess )
-        GraphicLoader::EffectProcessVariables( effect, -1, animPosProc, animPosTime, textures );
-    for( uint pass = 0; pass < effect->Passes; pass++ )
-    {
-        if( effect->IsNeedProcess )
-            GraphicLoader::EffectProcessVariables( effect, pass );
+        if( effect_pass.IsNeedProcess )
+            GraphicLoader::EffectProcessVariables( effect_pass, true, animPosProc, animPosTime, textures );
+
         GL( glDrawElements( GL_TRIANGLES, (uint) combined_mesh->Indices.size(), GL_UNSIGNED_SHORT, (void*) 0 ) );
+
+        if( effect_pass.IsNeedProcess )
+            GraphicLoader::EffectProcessVariables( effect_pass, false, animPosProc, animPosTime, textures );
     }
 
     GL( glUseProgram( 0 ) );

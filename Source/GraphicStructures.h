@@ -148,57 +148,59 @@ struct EffectInstance
 #define IS_EFFECT_VALUE( pos )                 ( ( pos ) != -1 )
 #define SET_EFFECT_VALUE( eff, pos, value )    GL( glUniform1f( pos, value ) )
 
+struct EffectPass
+{
+    GLuint Program;
+    bool   IsShadow;
+
+    GLint  ZoomFactor;
+    GLint  ColorMap;
+    GLint  ColorMapSize;
+    GLint  ColorMapSamples;
+    GLint  EggMap;
+    GLint  EggMapSize;
+    GLint  SpriteBorder;
+    GLint  ProjectionMatrix;
+    GLint  GroundPosition;
+    GLint  LightColor;
+    GLint  WorldMatrices;
+
+    bool   IsNeedProcess;
+    bool   IsTime;
+    GLint  Time;
+    float  TimeCurrent;
+    double TimeLastTick;
+    GLint  TimeGame;
+    float  TimeGameCurrent;
+    double TimeGameLastTick;
+    bool   IsRandom;
+    GLint  Random1;
+    GLint  Random2;
+    GLint  Random3;
+    GLint  Random4;
+    bool   IsTextures;
+    GLint  Textures[ EFFECT_TEXTURES ];
+    GLint  TexturesSize[ EFFECT_TEXTURES ];
+    GLint  TexturesAtlasOffset[ EFFECT_TEXTURES ];
+    bool   IsScriptValues;
+    GLint  ScriptValues[ EFFECT_SCRIPT_VALUES ];
+    bool   IsAnimPos;
+    GLint  AnimPosProc;
+    GLint  AnimPosTime;
+    bool   IsChangeStates;
+    int    BlendFuncParam1;
+    int    BlendFuncParam2;
+    int    BlendEquation;
+};
+typedef vector< EffectPass > EffectPassVec;
+
 struct Effect
 {
-    int            Id;
-    const char*    Name;
-    const char*    Defines;
-
-    GLuint         Program;
-    uint           Passes;
-    GLint          ZoomFactor;
-    GLint          ColorMap;
-    GLint          ColorMapSize;
-    GLint          ColorMapSamples;
-    GLint          EggMap;
-    GLint          EggMapSize;
-    GLint          SpriteBorder;
-
+    uint           Id;
+    string         Name;
+    string         Defines;
     EffectDefault* Defaults;
-    GLint          ProjectionMatrix;
-    GLint          GroundPosition;
-    GLint          LightColor;
-    GLint          WorldMatrices;
-
-    // Automatic variables
-    bool           IsNeedProcess;
-    GLint          PassIndex;
-    bool           IsTime;
-    GLint          Time;
-    float          TimeCurrent;
-    double         TimeLastTick;
-    GLint          TimeGame;
-    float          TimeGameCurrent;
-    double         TimeGameLastTick;
-    bool           IsRandomPass;
-    GLint          Random1Pass;
-    GLint          Random2Pass;
-    GLint          Random3Pass;
-    GLint          Random4Pass;
-    bool           IsRandomEffect;
-    GLint          Random1Effect;
-    GLint          Random2Effect;
-    GLint          Random3Effect;
-    GLint          Random4Effect;
-    bool           IsTextures;
-    GLint          Textures[ EFFECT_TEXTURES ];
-    GLint          TexturesSize[ EFFECT_TEXTURES ];
-    GLint          TexturesAtlasOffset[ EFFECT_TEXTURES ];
-    bool           IsScriptValues;
-    GLint          ScriptValues[ EFFECT_SCRIPT_VALUES ];
-    bool           IsAnimPos;
-    GLint          AnimPosProc;
-    GLint          AnimPosTime;
+    EffectPassVec  Passes;
 
     // Default effects
     static Effect* Contour, * ContourDefault;
@@ -214,9 +216,9 @@ struct Effect
     static Effect* FlushRenderTargetMS, * FlushRenderTargetMSDefault;
     static Effect* FlushPrimitive, * FlushPrimitiveDefault;
     static Effect* FlushMap, * FlushMapDefault;
+    static Effect* FlushLight, * FlushLightDefault;
     static Effect* Font, * FontDefault;
     static Effect* Skinned3d, * Skinned3dDefault;
-    static Effect* Skinned3dShadow, * Skinned3dShadowDefault;
 };
 typedef vector< Effect* > EffectVec;
 
@@ -267,6 +269,8 @@ struct RenderTarget
     Effect*      DrawEffect;
     bool         Multisampling;
     bool         ScreenSize;
+    uint         Width;
+    uint         Height;
     bool         TexLinear;
     UIntPairVec* LastPixelPicks;
 };

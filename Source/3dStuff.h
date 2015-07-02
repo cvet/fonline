@@ -105,7 +105,7 @@ private:
     void  ProcessAnimation( float elapsed, int x, int y, float scale );
     void  UpdateBoneMatrices( Bone* bone, const Matrix* parent_matrix );
     void  DrawCombinedMeshes();
-    void  DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow );
+    void  DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow_disabled );
     void  TransformMesh( CombinedMesh* combined_mesh );
     float GetSpeed();
     uint  GetTick();

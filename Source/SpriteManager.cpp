@@ -221,9 +221,9 @@ bool SpriteManager::Init()
         ( *it ) = NULL;
 
     // Render targets
-    rtMain = CreateRenderTarget( false, false, 0, 0, true );
-    rtContours = CreateRenderTarget( false, false, 0, 0, false );
-    rtContoursMid = CreateRenderTarget( false, false, 0, 0, false );
+    rtMain = CreateRenderTarget( false, false, true, 0, 0, true );
+    rtContours = CreateRenderTarget( false, false, true, 0, 0, false );
+    rtContoursMid = CreateRenderTarget( false, false, true, 0, 0, false );
 
     // Clear scene
     GL( glClear( GL_COLOR_BUFFER_BIT ) );
@@ -314,13 +314,13 @@ void SpriteManager::OnResolutionChanged()
     {
         RenderTarget* rt = *it;
         if( rt->ScreenSize )
-            CreateRenderTarget( rt->DepthStencilBuffer != 0, rt->Multisampling, 0, 0, rt->TexLinear, rt );
+            CreateRenderTarget( rt->DepthStencilBuffer != 0, rt->Multisampling, rt->ScreenSize, rt->Width, rt->Height, rt->TexLinear, rt->DrawEffect, rt );
     }
 
     RefreshViewport();
 }
 
-RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multisampling, uint width, uint height, bool tex_linear, RenderTarget* rt_refresh /* = NULL */ )
+RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multisampling, bool screen_size, uint width, uint height, bool tex_linear, Effect* effect /* = NULL */, RenderTarget* rt_refresh /* = NULL */ )
 {
     // Flush current sprites
     Flush();
@@ -334,9 +334,12 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
 
     // Zero data
     memzero( rt, sizeof( RenderTarget ) );
-    rt->ScreenSize = ( !width && !height );
-    width = ( width ? width : GameOpt.ScreenWidth );
-    height = ( height ? height : GameOpt.ScreenHeight );
+    RUNTIME_ASSERT( screen_size || ( width && height ) );
+    rt->ScreenSize = screen_size;
+    rt->Width = width;
+    rt->Height = height;
+    width = ( screen_size ? GameOpt.ScreenWidth + width : width );
+    height = ( screen_size ? GameOpt.ScreenHeight + height : height );
 
     // Multisampling
     static int samples = -1;
@@ -504,10 +507,17 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
     }
 
     // Effect
-    if( !multisampling )
-        rt->DrawEffect = Effect::FlushRenderTarget;
+    if( !effect )
+    {
+        if( !multisampling )
+            rt->DrawEffect = Effect::FlushRenderTarget;
+        else
+            rt->DrawEffect = Effect::FlushRenderTargetMS;
+    }
     else
-        rt->DrawEffect = Effect::FlushRenderTargetMS;
+    {
+        rt->DrawEffect = effect;
+    }
 
     // Clear
     PushRenderTarget( rt );
@@ -722,9 +732,10 @@ void SpriteManager::RefreshViewport()
     bool screen_size;
     if( !rtStack.empty() )
     {
-        w = rtStack.back()->TargetTexture->Width;
-        h = rtStack.back()->TargetTexture->Height;
-        screen_size = rtStack.back()->ScreenSize;
+        RenderTarget* rt = rtStack.back();
+        w = rt->TargetTexture->Width;
+        h = rt->TargetTexture->Height;
+        screen_size = ( rt->ScreenSize && !rt->Width && !rt->Height );
     }
     else
     {
@@ -753,7 +764,7 @@ RenderTarget* SpriteManager::Get3dRenderTarget( uint width, uint height )
         if( rt->TargetTexture->Width == width && rt->TargetTexture->Height == height )
             return rt;
     }
-    rt3D.push_back( CreateRenderTarget( true, true, width, height, false ) );
+    rt3D.push_back( CreateRenderTarget( true, true, false, width, height, false ) );
     return rt3D.back();
 }
 
@@ -922,7 +933,7 @@ TextureAtlas* SpriteManager::CreateAtlas( int w, int h )
         h = atlasHeight;
     }
 
-    atlas->RT = CreateRenderTarget( false, false, w, h, true );
+    atlas->RT = CreateRenderTarget( false, false, false, w, h, true );
     atlas->RT->LastPixelPicks = new UIntPairVec();
     atlas->RT->LastPixelPicks->reserve( MAX_STORED_PIXEL_PICKS );
     atlas->TextureOwner = atlas->RT->TargetTexture;
@@ -3385,48 +3396,52 @@ bool SpriteManager::Flush()
         DipData& dip = *it;
         Effect*  effect = dip.SourceEffect;
 
-        GL( glUseProgram( effect->Program ) );
+        for( size_t pass = 0; pass < effect->Passes.size(); pass++ )
+        {
+            EffectPass& effect_pass = effect->Passes[ pass ];
 
-        if( effect->ZoomFactor != -1 )
-            GL( glUniform1f( effect->ZoomFactor, GameOpt.SpritesZoom ) );
-        if( effect->ProjectionMatrix != -1 )
-            GL( glUniformMatrix4fv( effect->ProjectionMatrix, 1, GL_FALSE, projectionMatrixCM[ 0 ] ) );
-        if( effect->ColorMap != -1 && dip.SourceTexture )
-        {
-            if( dip.SourceTexture->Samples == 0.0f )
-            {
-                GL( glBindTexture( GL_TEXTURE_2D, dip.SourceTexture->Id ) );
-            }
-            else
-            {
-                GL( glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, dip.SourceTexture->Id ) );
-                if( effect->ColorMapSamples != -1 )
-                    GL( glUniform1f( effect->ColorMapSamples, dip.SourceTexture->Samples ) );
-            }
-            GL( glUniform1i( effect->ColorMap, 0 ) );
-            if( effect->ColorMapSize != -1 )
-                GL( glUniform4fv( effect->ColorMapSize, 1, dip.SourceTexture->SizeData ) );
-        }
-        if( effect->EggMap != -1 && sprEgg )
-        {
-            GL( glActiveTexture( GL_TEXTURE1 ) );
-            GL( glBindTexture( GL_TEXTURE_2D, sprEgg->Atlas->TextureOwner->Id ) );
-            GL( glActiveTexture( GL_TEXTURE0 ) );
-            GL( glUniform1i( effect->EggMap, 1 ) );
-            if( effect->EggMapSize != -1 )
-                GL( glUniform4fv( effect->EggMapSize, 1, sprEgg->Atlas->TextureOwner->SizeData ) );
-        }
-        if( effect->SpriteBorder != -1 )
-            GL( glUniform4f( effect->SpriteBorder, dip.SpriteBorder.L, dip.SpriteBorder.T, dip.SpriteBorder.R, dip.SpriteBorder.B ) );
+            GL( glUseProgram( effect_pass.Program ) );
 
-        GLsizei count = 6 * dip.SpritesCount;
-        if( effect->IsNeedProcess )
-            GraphicLoader::EffectProcessVariables( effect, -1 );
-        for( uint pass = 0; pass < effect->Passes; pass++ )
-        {
-            if( effect->IsNeedProcess )
-                GraphicLoader::EffectProcessVariables( effect, pass );
+            if( IS_EFFECT_VALUE( effect_pass.ZoomFactor ) )
+                GL( glUniform1f( effect_pass.ZoomFactor, GameOpt.SpritesZoom ) );
+            if( IS_EFFECT_VALUE( effect_pass.ProjectionMatrix ) )
+                GL( glUniformMatrix4fv( effect_pass.ProjectionMatrix, 1, GL_FALSE, projectionMatrixCM[ 0 ] ) );
+            if( IS_EFFECT_VALUE( effect_pass.ColorMap ) && dip.SourceTexture )
+            {
+                if( dip.SourceTexture->Samples == 0.0f )
+                {
+                    GL( glBindTexture( GL_TEXTURE_2D, dip.SourceTexture->Id ) );
+                }
+                else
+                {
+                    GL( glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, dip.SourceTexture->Id ) );
+                    if( IS_EFFECT_VALUE( effect_pass.ColorMapSamples ) )
+                        GL( glUniform1f( effect_pass.ColorMapSamples, dip.SourceTexture->Samples ) );
+                }
+                GL( glUniform1i( effect_pass.ColorMap, 0 ) );
+                if( IS_EFFECT_VALUE( effect_pass.ColorMapSize ) )
+                    GL( glUniform4fv( effect_pass.ColorMapSize, 1, dip.SourceTexture->SizeData ) );
+            }
+            if( IS_EFFECT_VALUE( effect_pass.EggMap ) && sprEgg )
+            {
+                GL( glActiveTexture( GL_TEXTURE1 ) );
+                GL( glBindTexture( GL_TEXTURE_2D, sprEgg->Atlas->TextureOwner->Id ) );
+                GL( glActiveTexture( GL_TEXTURE0 ) );
+                GL( glUniform1i( effect_pass.EggMap, 1 ) );
+                if( IS_EFFECT_VALUE( effect_pass.EggMapSize ) )
+                    GL( glUniform4fv( effect_pass.EggMapSize, 1, sprEgg->Atlas->TextureOwner->SizeData ) );
+            }
+            if( IS_EFFECT_VALUE( effect_pass.SpriteBorder ) )
+                GL( glUniform4f( effect_pass.SpriteBorder, dip.SpriteBorder.L, dip.SpriteBorder.T, dip.SpriteBorder.R, dip.SpriteBorder.B ) );
+
+            if( effect_pass.IsNeedProcess )
+                GraphicLoader::EffectProcessVariables( effect_pass, true );
+
+            GLsizei count = 6 * dip.SpritesCount;
             GL( glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_SHORT, (void*) (size_t) ( pos * 2 ) ) );
+
+            if( effect_pass.IsNeedProcess )
+                GraphicLoader::EffectProcessVariables( effect_pass, false );
         }
 
         pos += 6 * dip.SpritesCount;
@@ -4260,18 +4275,23 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
 
     // Draw
     EnableVertexArray( pointsVertexArray, count );
-    GL( glUseProgram( effect->Program ) );
 
-    if( effect->ProjectionMatrix != -1 )
-        GL( glUniformMatrix4fv( effect->ProjectionMatrix, 1, GL_FALSE, projectionMatrixCM[ 0 ] ) );
-
-    if( effect->IsNeedProcess )
-        GraphicLoader::EffectProcessVariables( effect, -1 );
-    for( uint pass = 0; pass < effect->Passes; pass++ )
+    for( size_t pass = 0; pass < effect->Passes.size(); pass++ )
     {
-        if( effect->IsNeedProcess )
-            GraphicLoader::EffectProcessVariables( effect, pass );
+        EffectPass& effect_pass = effect->Passes[ pass ];
+
+        GL( glUseProgram( effect_pass.Program ) );
+
+        if( IS_EFFECT_VALUE( effect_pass.ProjectionMatrix ) )
+            GL( glUniformMatrix4fv( effect_pass.ProjectionMatrix, 1, GL_FALSE, projectionMatrixCM[ 0 ] ) );
+
+        if( effect_pass.IsNeedProcess )
+            GraphicLoader::EffectProcessVariables( effect_pass, true );
+
         GL( glDrawElements( prim_type, count, GL_UNSIGNED_SHORT, (void*) 0 ) );
+
+        if( effect_pass.IsNeedProcess )
+            GraphicLoader::EffectProcessVariables( effect_pass, false );
     }
 
     GL( glUseProgram( 0 ) );

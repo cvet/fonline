@@ -125,7 +125,7 @@ public:
     void OnResolutionChanged();
 
     // Render targets
-    RenderTarget* CreateRenderTarget( bool depth_stencil, bool multisampling, uint width, uint height, bool tex_linear, RenderTarget* rt_refresh = NULL );
+    RenderTarget* CreateRenderTarget( bool depth_stencil, bool multisampling, bool screen_size, uint width, uint height, bool tex_linear, Effect* effect = NULL, RenderTarget* rt_refresh = NULL );
     void          CleanRenderTarget( RenderTarget* rt );
     void          DeleteRenderTarget( RenderTarget*& rt );
     void          PushRenderTarget( RenderTarget* rt );

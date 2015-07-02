@@ -599,7 +599,7 @@ int FOClient::InitIface()
     if( Singleplayer )
     {
         if( !SaveLoadDraft )
-            SaveLoadDraft = SprMngr.CreateRenderTarget( false, false, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, true );
+            SaveLoadDraft = SprMngr.CreateRenderTarget( false, false, false, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, true );
     }
     SaveLoadProcessDraft = false;
     SaveLoadDraftValid = false;
@@ -7656,7 +7656,7 @@ void FOClient::SaveLoadFillDraft()
     SaveLoadDraftValid = false;
     int           w = 0, h = 0;
     SDL_GetWindowSize( MainWindow, &w, &h );
-    RenderTarget* rt = SprMngr.CreateRenderTarget( false, false, w, h, true );
+    RenderTarget* rt = SprMngr.CreateRenderTarget( false, false, false, w, h, true );
     if( rt )
     {
         GL( glBindTexture( GL_TEXTURE_2D, rt->TargetTexture->Id ) );

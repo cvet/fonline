@@ -8402,7 +8402,7 @@ void FOClient::PlayVideo()
     CurVideo->Context = th_decode_alloc( &CurVideo->VideoInfo, CurVideo->SetupInfo );
 
     // Create texture
-    CurVideo->RT = SprMngr.CreateRenderTarget( false, false, CurVideo->VideoInfo.pic_width, CurVideo->VideoInfo.pic_height, true );
+    CurVideo->RT = SprMngr.CreateRenderTarget( false, false, false, CurVideo->VideoInfo.pic_width, CurVideo->VideoInfo.pic_height, true );
     if( !CurVideo->RT )
     {
         WriteLogF( _FUNC_, " - Can't create render target.\n" );
@@ -10600,7 +10600,6 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     #define EFFECT_2D_ROOF                   ( 0x00000008 )
     #define EFFECT_2D_RAIN                   ( 0x00000010 )
     #define EFFECT_3D_SKINNED                ( 0x00000400 )
-    #define EFFECT_3D_SKINNED_SHADOW         ( 0x00000800 )
     #define EFFECT_INTERFACE_BASE            ( 0x00001000 )
     #define EFFECT_INTERFACE_CONTOUR         ( 0x00002000 )
     #define EFFECT_FONT                      ( 0x00010000 ) // Subtype is FONT_*, -1 default for all fonts
@@ -10610,11 +10609,12 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     #define EFFECT_FLUSH_RENDER_TARGET_MS    ( 0x02000000 ) // Multisample
     #define EFFECT_FLUSH_PRIMITIVE           ( 0x04000000 )
     #define EFFECT_FLUSH_MAP                 ( 0x08000000 )
+    #define EFFECT_FLUSH_LIGHT               ( 0x10000000 )
 
     Effect* effect = NULL;
     if( effect_name && effect_name->length() )
     {
-        bool use_in_2d = !( effect_type & ( EFFECT_3D_SKINNED | EFFECT_3D_SKINNED_SHADOW ) );
+        bool use_in_2d = !( effect_type & EFFECT_3D_SKINNED );
         effect = GraphicLoader::LoadEffect( effect_name->c_str(), use_in_2d, effect_defines ? effect_defines->c_str() : NULL );
         if( !effect )
             SCRIPT_ERROR_R0( "Effect not found or have some errors, see log file." );
@@ -10646,8 +10646,6 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
 
     if( effect_type & EFFECT_3D_SKINNED )
         *Effect::Skinned3d = ( effect ? *effect : *Effect::Skinned3dDefault );
-    if( effect_type & EFFECT_3D_SKINNED_SHADOW )
-        *Effect::Skinned3dShadow = ( effect ? *effect : *Effect::Skinned3dShadowDefault );
 
     if( effect_type & EFFECT_INTERFACE_BASE )
         *Effect::Iface = ( effect ? *effect : *Effect::IfaceDefault );
@@ -10672,6 +10670,8 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
         *Effect::FlushPrimitive = ( effect ? *effect : *Effect::FlushPrimitiveDefault );
     if( effect_type & EFFECT_FLUSH_MAP )
         *Effect::FlushMap = ( effect ? *effect : *Effect::FlushMapDefault );
+    if( effect_type & EFFECT_FLUSH_LIGHT )
+        *Effect::FlushLight = ( effect ? *effect : *Effect::FlushLightDefault );
 
     return true;
 }

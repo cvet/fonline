@@ -1177,12 +1177,9 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         Effect* effect = *it;
-        if( Str::CompareCase( effect->Name, loaded_fname ) && Str::Compare( effect->Defines, defines ? defines : "" ) && effect->Defaults == defaults )
+        if( Str::CompareCase( effect->Name.c_str(), loaded_fname ) && Str::Compare( effect->Defines.c_str(), defines ? defines : "" ) && effect->Defaults == defaults )
             return effect;
     }
-
-    // Shader program
-    GLuint program = 0;
 
     // Add extension
     Str::Append( fname, ".glsl" );
@@ -1199,9 +1196,153 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     }
     if( !file.IsLoaded() )
     {
-        WriteLogF( _FUNC_, " - Effect file<%s> not found.\n", fname );
+        WriteLogF( _FUNC_, " - Effect file '%s' not found.\n", fname );
         return NULL;
     }
+
+    // Parse effect commands
+    vector< StrVec > commands;
+    char line[ MAX_FOTEXT ];
+    while( file.GetLine( line, sizeof( line ) ) )
+    {
+        Str::Trim( line );
+        if( Str::CompareCaseCount( line, "Effect ", Str::Length( "Effect " ) ) )
+        {
+            StrVec tokens;
+            Str::ParseLine( line + Str::Length( "Effect " ), ' ', tokens, Str::ParseLineDummy );
+            if( !tokens.empty() )
+                commands.push_back( tokens );
+        }
+        else if( Str::CompareCaseCount( line, "#version", Str::Length( "#version" ) ) )
+        {
+            break;
+        }
+    }
+
+    // Find passes count
+    uint passes = 1;
+    for( size_t i = 0; i < commands.size(); i++ )
+        if( commands[ i ].size() >= 2 && Str::CompareCase( commands[ i ][ 0 ].c_str(), "Passes" ) )
+            passes = (uint) ConvertParamValue( commands[ i ][ 1 ].c_str() );
+
+    // New effect
+    Effect effect;
+    effect.Name = loaded_fname;
+    effect.Defines = ( defines ? defines : "" );
+
+    // Load passes
+    for( uint pass = 0; pass < passes; pass++ )
+        if( !LoadEffectPass( &effect, fname, file, pass, use_in_2d, defines, defaults, defaults_count ) )
+            return NULL;
+
+    // Process commands
+    int set_errors = 0;
+    for( size_t i = 0; i < commands.size(); i++ )
+    {
+        static auto get_gl_blend_func = [] (const char* s)
+        {
+            if( Str::Compare( s, "GL_ZERO" ) )
+                return GL_ZERO;
+            if( Str::Compare( s, "GL_ONE" ) )
+                return GL_ONE;
+            if( Str::Compare( s, "GL_SRC_COLOR" ) )
+                return GL_SRC_COLOR;
+            if( Str::Compare( s, "GL_ONE_MINUS_SRC_COLOR" ) )
+                return GL_ONE_MINUS_SRC_COLOR;
+            if( Str::Compare( s, "GL_DST_COLOR" ) )
+                return GL_DST_COLOR;
+            if( Str::Compare( s, "GL_ONE_MINUS_DST_COLOR" ) )
+                return GL_ONE_MINUS_DST_COLOR;
+            if( Str::Compare( s, "GL_SRC_ALPHA" ) )
+                return GL_SRC_ALPHA;
+            if( Str::Compare( s, "GL_ONE_MINUS_SRC_ALPHA" ) )
+                return GL_ONE_MINUS_SRC_ALPHA;
+            if( Str::Compare( s, "GL_DST_ALPHA" ) )
+                return GL_DST_ALPHA;
+            if( Str::Compare( s, "GL_ONE_MINUS_DST_ALPHA" ) )
+                return GL_ONE_MINUS_DST_ALPHA;
+            if( Str::Compare( s, "GL_CONSTANT_COLOR" ) )
+                return GL_CONSTANT_COLOR;
+            if( Str::Compare( s, "GL_ONE_MINUS_CONSTANT_COLOR" ) )
+                return GL_ONE_MINUS_CONSTANT_COLOR;
+            if( Str::Compare( s, "GL_CONSTANT_ALPHA" ) )
+                return GL_CONSTANT_ALPHA;
+            if( Str::Compare( s, "GL_ONE_MINUS_CONSTANT_ALPHA" ) )
+                return GL_ONE_MINUS_CONSTANT_ALPHA;
+            if( Str::Compare( s, "GL_SRC_ALPHA_SATURATE" ) )
+                return GL_SRC_ALPHA_SATURATE;
+            return -1;
+        };
+        static auto get_gl_blend_equation = [] (const char* s)
+        {
+            if( Str::Compare( s, "GL_FUNC_ADD" ) )
+                return GL_FUNC_ADD;
+            if( Str::Compare( s, "GL_FUNC_SUBTRACT" ) )
+                return GL_FUNC_SUBTRACT;
+            if( Str::Compare( s, "GL_FUNC_REVERSE_SUBTRACT" ) )
+                return GL_FUNC_REVERSE_SUBTRACT;
+            if( Str::Compare( s, "GL_MAX" ) )
+                return GL_MAX;
+            if( Str::Compare( s, "GL_MIN" ) )
+                return GL_MIN;
+            return -1;
+        };
+
+        StrVec& tokens = commands[ i ];
+        if( tokens[ 0 ] == "Pass" && tokens.size() >= 3 )
+        {
+            uint pass = (uint) ConvertParamValue( tokens[ 1 ].c_str() );
+            if( pass < passes )
+            {
+                EffectPass& effect_pass = effect.Passes[ pass ];
+                if( tokens[ 2 ] == "BlendFunc" && tokens.size() >= 5 )
+                {
+                    effect_pass.IsNeedProcess = effect_pass.IsChangeStates = true;
+                    effect_pass.BlendFuncParam1 = get_gl_blend_func( tokens[ 3 ].c_str() );
+                    effect_pass.BlendFuncParam2 = get_gl_blend_func( tokens[ 4 ].c_str() );
+                    if( effect_pass.BlendFuncParam1 == -1 || effect_pass.BlendFuncParam2 == -1 )
+                        set_errors++;
+                }
+                else if( tokens[ 2 ] == "BlendEquation" && tokens.size() >= 4 )
+                {
+                    effect_pass.IsNeedProcess = effect_pass.IsChangeStates = true;
+                    effect_pass.BlendEquation = get_gl_blend_equation( tokens[ 3 ].c_str() );
+                    if( effect_pass.BlendEquation == -1 )
+                        set_errors++;
+                }
+                else if( tokens[ 2 ] == "Shadow" )
+                {
+                    effect_pass.IsShadow = true;
+                }
+                else
+                {
+                    set_errors++;
+                }
+            }
+            else
+            {
+                set_errors++;
+            }
+        }
+    }
+    if( set_errors )
+    {
+        WriteLogF( _FUNC_, " - Invalid commands in effect '%s'.\n", fname );
+        return NULL;
+    }
+
+    // Assign identifier and return
+    static uint effect_id = 0;
+    effect.Id = ++effect_id;
+    loadedEffects.push_back( new Effect( effect ) );
+    return loadedEffects.back();
+}
+
+bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManager& file, uint pass, bool use_in_2d, const char* defines, EffectDefault* defaults, uint defaults_count )
+{
+    EffectPass effect_pass;
+    memzero( &effect_pass, sizeof( effect_pass ) );
+    GLuint program = 0;
 
     // Make effect binary file name
     char binary_fname[ MAX_FOPATH ] = { 0 };
@@ -1213,14 +1354,16 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         {
             char binary_fname_defines[ MAX_FOPATH ];
             Str::Copy( binary_fname_defines, defines );
-            Str::Replacement( binary_fname_defines, '\t', ' ' );       // Tabs to spaces
-            Str::Replacement( binary_fname_defines, ' ', ' ', ' ' );   // Multiple spaces to single
-            Str::Replacement( binary_fname_defines, '\r', '\n', '_' ); // EOL's to '_'
-            Str::Replacement( binary_fname_defines, '\r', '_' );       // EOL's to '_'
-            Str::Replacement( binary_fname_defines, '\n', '_' );       // EOL's to '_'
+            Str::Replacement( binary_fname_defines, '\t', ' ' );                   // Tabs to spaces
+            Str::Replacement( binary_fname_defines, ' ', ' ', ' ' );               // Multiple spaces to single
+            Str::Replacement( binary_fname_defines, '\r', '\n', '_' );             // EOL's to '_'
+            Str::Replacement( binary_fname_defines, '\r', '_' );                   // EOL's to '_'
+            Str::Replacement( binary_fname_defines, '\n', '_' );                   // EOL's to '_'
             Str::Append( binary_fname, "_" );
             Str::Append( binary_fname, binary_fname_defines );
         }
+        Str::Append( binary_fname, "_" );
+        Str::Append( binary_fname, Str::UItoA( pass ) );
         Str::Append( binary_fname, ".glslb" );
     }
 
@@ -1231,7 +1374,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         if( file_binary.LoadFile( binary_fname, PT_CACHE ) )
         {
             if( file.GetWriteTime() > file_binary.GetWriteTime() )
-                file_binary.UnloadFile();      // Disable loading from this binary, because its outdated
+                file_binary.UnloadFile();                      // Disable loading from this binary, because its outdated
         }
     }
     if( file_binary.IsLoaded() )
@@ -1241,13 +1384,13 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         if( version == FONLINE_VERSION )
         {
             GLenum  format = file_binary.GetBEUInt();
-            UNUSED_VARIABLE( format ); // OGL ES
+            UNUSED_VARIABLE( format );             // OGL ES
             GLsizei length = file_binary.GetBEUInt();
             if( file_binary.GetFsize() >= length + sizeof( uint ) * 3 )
             {
                 GL( program = glCreateProgram() );
                 glProgramBinary( program, format, file_binary.GetCurBuf(), length );
-                glGetError(); // Skip error from glProgramBinary, if it has
+                glGetError();                 // Skip error from glProgramBinary, if it has
                 GLint linked;
                 GL( glGetProgramiv( program, GL_LINK_STATUS, &linked ) );
                 if( linked )
@@ -1256,13 +1399,13 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
                 }
                 else
                 {
-                    WriteLogF( _FUNC_, " - Failed to link binary shader program<%s>, effect<%s>.\n", binary_fname, fname );
+                    WriteLogF( _FUNC_, " - Failed to link binary shader program '%s', effect '%s'.\n", binary_fname, fname );
                     GL( glDeleteProgram( program ) );
                 }
             }
             else
             {
-                WriteLogF( _FUNC_, " - Binary shader program<%s> truncated, effect<%s>.\n", binary_fname, fname );
+                WriteLogF( _FUNC_, " - Binary shader program '%s' truncated, effect '%s'.\n", binary_fname, fname );
             }
         }
         if( !loaded )
@@ -1272,9 +1415,11 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     // Load from text
     if( !file_binary.IsLoaded() )
     {
-        char* str = (char*) file.GetBuf();
-
         // Get version
+        CharVec file_buf;
+        file_buf.resize( file.GetFsize() + 1 );
+        Str::Copy( &file_buf[ 0 ], (uint) file_buf.size(), (char*) file.GetBuf() );
+        char* str = &file_buf[ 0 ];
         char* ver = Str::Substring( str, "#version" );
         if( ver )
         {
@@ -1290,16 +1435,20 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         ver = ios_data;
         #endif
 
+        // Pass definition
+        char pass_str[ MAX_FOTEXT ];
+        Str::Format( pass_str, "#define PASS%u\n", pass );
+
         // Create shaders
         GLuint vs, fs;
         GL( vs = glCreateShader( GL_VERTEX_SHADER ) );
         GL( fs = glCreateShader( GL_FRAGMENT_SHADER ) );
-        GLchar buf[ MAX_FOTEXT ];
-        Str::Format( buf, "%s%s%s%s%s%s", ver ? ver : "", "\n", "#define VERTEX_SHADER\n", defines ? defines : "", "\n", str );
-        const GLchar* vs_str = buf;
+        CharVec buf( file_buf.size() + MAX_FOTEXT );
+        Str::Format( &buf[ 0 ], "%s%s%s%s%s%s%s", ver ? ver : "", "\n", "#define VERTEX_SHADER\n", pass_str, defines ? defines : "", "\n", str );
+        const GLchar* vs_str = &buf[ 0 ];
         GL( glShaderSource( vs, 1, &vs_str, NULL ) );
-        Str::Format( buf, "%s%s%s%s%s%s", ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", defines ? defines : "", "\n", str );
-        const GLchar* fs_str = buf;
+        Str::Format( &buf[ 0 ], "%s%s%s%s%s%s%s", ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", pass_str, defines ? defines : "", "\n", str );
+        const GLchar* fs_str = &buf[ 0 ];
         GL( glShaderSource( fs, 1, &fs_str, NULL ) );
 
         // Info parser
@@ -1339,11 +1488,11 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         GL( glGetShaderiv( vs, GL_COMPILE_STATUS, &compiled ) );
         if( !compiled )
         {
-            WriteLogF( _FUNC_, " - Vertex shader not compiled, effect<%s>.\n", fname );
+            WriteLogF( _FUNC_, " - Vertex shader not compiled, effect '%s'.\n", fname, str );
             ShaderInfo::Log( "Vertex shader", vs );
             GL( glDeleteShader( vs ) );
             GL( glDeleteShader( fs ) );
-            return NULL;
+            return false;
         }
 
         // Compile fs
@@ -1351,11 +1500,11 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         GL( glGetShaderiv( fs, GL_COMPILE_STATUS, &compiled ) );
         if( !compiled )
         {
-            WriteLogF( _FUNC_, " - Fragment shader not compiled, effect<%s>.\n", fname );
+            WriteLogF( _FUNC_, " - Fragment shader not compiled, effect '%s'.\n", fname );
             ShaderInfo::Log( "Fragment shader", fs );
             GL( glDeleteShader( vs ) );
             GL( glDeleteShader( fs ) );
-            return NULL;
+            return false;
         }
 
         // Make program
@@ -1392,14 +1541,14 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         GL( glGetProgramiv( program, GL_LINK_STATUS, &linked ) );
         if( !linked )
         {
-            WriteLogF( _FUNC_, " - Failed to link shader program, effect<%s>.\n", fname );
+            WriteLogF( _FUNC_, " - Failed to link shader program, effect '%s'.\n", fname );
             ShaderInfo::LogProgram( program );
             GL( glDetachShader( program, vs ) );
             GL( glDetachShader( program, fs ) );
             GL( glDeleteShader( vs ) );
             GL( glDeleteShader( fs ) );
             GL( glDeleteProgram( program ) );
-            return NULL;
+            return false;
         }
 
         // Save in binary
@@ -1412,103 +1561,80 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             UCharVec buf;
             buf.resize( buf_size );
             GL( glGetProgramBinary( program, buf_size, &length, &format, &buf[ 0 ] ) );
-            Str::Append( fname, "b" );
             file_binary.SetBEUInt( FONLINE_VERSION );
             file_binary.SetBEUInt( format );
             file_binary.SetBEUInt( length );
             file_binary.SetData( &buf[ 0 ], length );
             if( !file_binary.SaveOutBufToFile( binary_fname, PT_CACHE ) )
-                WriteLogF( _FUNC_, " - Can't save effect<%s> in binary<%s>.\n", fname, binary_fname );
+                WriteLogF( _FUNC_, " - Can't save effect '%s' pass %u in binary '%s'.\n", fname, pass, binary_fname );
         }
     }
 
-    // Create effect instance
-    Effect* effect = new Effect();
-    memzero( effect, sizeof( Effect ) );
-    effect->Name = Str::Duplicate( loaded_fname );
-    effect->Defines = Str::Duplicate( defines ? defines : "" );
-    effect->Program = program;
-    effect->Passes = 1;
-
-    // Get data
-    GLint passes;
-    GL( passes = effect->SpriteBorder = glGetUniformLocation( program, "Passes" ) );
-    if( passes != -1 )
-        glGetUniformiv( program, passes, (GLint*) &effect->Passes );
-
     // Bind data
-    GL( effect->ProjectionMatrix = glGetUniformLocation( program, "ProjectionMatrix" ) );
-    GL( effect->ZoomFactor = glGetUniformLocation( program, "ZoomFactor" ) );
-    GL( effect->ColorMap = glGetUniformLocation( program, "ColorMap" ) );
-    GL( effect->ColorMapSize = glGetUniformLocation( program, "ColorMapSize" ) );
-    GL( effect->ColorMapSamples = glGetUniformLocation( program, "ColorMapSamples" ) );
-    GL( effect->EggMap = glGetUniformLocation( program, "EggMap" ) );
-    GL( effect->EggMapSize = glGetUniformLocation( program, "EggMapSize" ) );
-    GL( effect->SpriteBorder = glGetUniformLocation( program, "SpriteBorder" ) );
-    GL( effect->GroundPosition = glGetUniformLocation( program, "GroundPosition" ) );
-    GL( effect->LightColor = glGetUniformLocation( program, "LightColor" ) );
-    GL( effect->WorldMatrices = glGetUniformLocation( program, "WorldMatrices" ) );
+    GL( effect_pass.ProjectionMatrix = glGetUniformLocation( program, "ProjectionMatrix" ) );
+    GL( effect_pass.ZoomFactor = glGetUniformLocation( program, "ZoomFactor" ) );
+    GL( effect_pass.ColorMap = glGetUniformLocation( program, "ColorMap" ) );
+    GL( effect_pass.ColorMapSize = glGetUniformLocation( program, "ColorMapSize" ) );
+    GL( effect_pass.ColorMapSamples = glGetUniformLocation( program, "ColorMapSamples" ) );
+    GL( effect_pass.EggMap = glGetUniformLocation( program, "EggMap" ) );
+    GL( effect_pass.EggMapSize = glGetUniformLocation( program, "EggMapSize" ) );
+    GL( effect_pass.SpriteBorder = glGetUniformLocation( program, "SpriteBorder" ) );
+    GL( effect_pass.GroundPosition = glGetUniformLocation( program, "GroundPosition" ) );
+    GL( effect_pass.LightColor = glGetUniformLocation( program, "LightColor" ) );
+    GL( effect_pass.WorldMatrices = glGetUniformLocation( program, "WorldMatrices" ) );
 
-    GL( effect->PassIndex = glGetUniformLocation( program, "PassIndex" ) );
-    GL( effect->Time = glGetUniformLocation( program, "Time" ) );
-    effect->TimeCurrent = 0.0f;
-    effect->TimeLastTick = Timer::AccurateTick();
-    GL( effect->TimeGame = glGetUniformLocation( program, "TimeGame" ) );
-    effect->TimeGameCurrent = 0.0f;
-    effect->TimeGameLastTick = Timer::AccurateTick();
-    effect->IsTime = ( effect->Time != -1 || effect->TimeGame != -1 );
-    GL( effect->Random1Pass = glGetUniformLocation( program, "Random1Pass" ) );
-    GL( effect->Random2Pass = glGetUniformLocation( program, "Random2Pass" ) );
-    GL( effect->Random3Pass = glGetUniformLocation( program, "Random3Pass" ) );
-    GL( effect->Random4Pass = glGetUniformLocation( program, "Random4Pass" ) );
-    effect->IsRandomPass = ( effect->Random1Pass != -1 || effect->Random2Pass != -1 || effect->Random3Pass != -1 || effect->Random4Pass != -1 );
-    GL( effect->Random1Effect = glGetUniformLocation( program, "Random1Effect" ) );
-    GL( effect->Random2Effect = glGetUniformLocation( program, "Random2Effect" ) );
-    GL( effect->Random3Effect = glGetUniformLocation( program, "Random3Effect" ) );
-    GL( effect->Random4Effect = glGetUniformLocation( program, "Random4Effect" ) );
-    effect->IsRandomEffect = ( effect->Random1Effect != -1 || effect->Random2Effect != -1 || effect->Random3Effect != -1 || effect->Random4Effect != -1 );
-    effect->IsTextures = false;
+    GL( effect_pass.Time = glGetUniformLocation( program, "Time" ) );
+    effect_pass.TimeCurrent = 0.0f;
+    effect_pass.TimeLastTick = Timer::AccurateTick();
+    GL( effect_pass.TimeGame = glGetUniformLocation( program, "TimeGame" ) );
+    effect_pass.TimeGameCurrent = 0.0f;
+    effect_pass.TimeGameLastTick = Timer::AccurateTick();
+    effect_pass.IsTime = ( effect_pass.Time != -1 || effect_pass.TimeGame != -1 );
+    GL( effect_pass.Random1 = glGetUniformLocation( program, "Random1Effect" ) );
+    GL( effect_pass.Random2 = glGetUniformLocation( program, "Random2Effect" ) );
+    GL( effect_pass.Random3 = glGetUniformLocation( program, "Random3Effect" ) );
+    GL( effect_pass.Random4 = glGetUniformLocation( program, "Random4Effect" ) );
+    effect_pass.IsRandom = ( effect_pass.Random1 != -1 || effect_pass.Random2 != -1 || effect_pass.Random3 != -1 || effect_pass.Random4 != -1 );
+    effect_pass.IsTextures = false;
     for( int i = 0; i < EFFECT_TEXTURES; i++ )
     {
         char tex_name[ 32 ];
         Str::Format( tex_name, "Texture%d", i );
-        GL( effect->Textures[ i ] = glGetUniformLocation( program, tex_name ) );
-        if( effect->Textures[ i ] != -1 )
+        GL( effect_pass.Textures[ i ] = glGetUniformLocation( program, tex_name ) );
+        if( effect_pass.Textures[ i ] != -1 )
         {
-            effect->IsTextures = true;
+            effect_pass.IsTextures = true;
             Str::Format( tex_name, "Texture%dSize", i );
-            GL( effect->TexturesSize[ i ] = glGetUniformLocation( program, tex_name ) );
+            GL( effect_pass.TexturesSize[ i ] = glGetUniformLocation( program, tex_name ) );
             Str::Format( tex_name, "Texture%dAtlasOffset", i );
-            GL( effect->TexturesAtlasOffset[ i ] = glGetUniformLocation( program, tex_name ) );
+            GL( effect_pass.TexturesAtlasOffset[ i ] = glGetUniformLocation( program, tex_name ) );
         }
     }
-    effect->IsScriptValues = false;
+    effect_pass.IsScriptValues = false;
     for( int i = 0; i < EFFECT_SCRIPT_VALUES; i++ )
     {
         char val_name[ 32 ];
         Str::Format( val_name, "EffectValue%d", i );
-        GL( effect->ScriptValues[ i ] = glGetUniformLocation( program, val_name ) );
-        if( effect->ScriptValues[ i ] != -1 )
-            effect->IsScriptValues = true;
+        GL( effect_pass.ScriptValues[ i ] = glGetUniformLocation( program, val_name ) );
+        if( effect_pass.ScriptValues[ i ] != -1 )
+            effect_pass.IsScriptValues = true;
     }
-    GL( effect->AnimPosProc = glGetUniformLocation( program, "AnimPosProc" ) );
-    GL( effect->AnimPosTime = glGetUniformLocation( program, "AnimPosTime" ) );
-    effect->IsAnimPos = ( effect->AnimPosProc != -1 || effect->AnimPosTime != -1 );
-    effect->IsNeedProcess = ( effect->PassIndex != -1 || effect->IsTime || effect->IsRandomPass || effect->IsRandomEffect ||
-                              effect->IsTextures || effect->IsScriptValues || effect->IsAnimPos );
+    GL( effect_pass.AnimPosProc = glGetUniformLocation( program, "AnimPosProc" ) );
+    GL( effect_pass.AnimPosTime = glGetUniformLocation( program, "AnimPosTime" ) );
+    effect_pass.IsAnimPos = ( effect_pass.AnimPosProc != -1 || effect_pass.AnimPosTime != -1 );
+    effect_pass.IsNeedProcess = ( effect_pass.IsTime || effect_pass.IsRandom || effect_pass.IsTextures ||
+                                  effect_pass.IsScriptValues || effect_pass.IsAnimPos || effect_pass.IsChangeStates );
 
-    // Defaults
-    effect->Defaults = NULL;
+    // Set defaults
     if( defaults )
     {
-        bool something_binded = false;
         for( uint d = 0; d < defaults_count; d++ )
         {
             EffectDefault& def = defaults[ d ];
 
             GLint          location = -1;
             GL( location = glGetUniformLocation( program, def.Name ) );
-            if( location == -1 )
+            if( !IS_EFFECT_VALUE( location ) )
                 continue;
 
             switch( def.Type )
@@ -1517,124 +1643,119 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
                 break;
             case EffectDefault::Floats:
                 GL( glUniform1fv( location, def.Size / sizeof( GLfloat ), (GLfloat*) def.Data ) );
-                something_binded = true;
                 break;
             case EffectDefault::Dword:
                 GL( glUniform1i( location, *(GLint*) def.Data ) );
-                something_binded = true;
                 break;
             default:
                 break;
             }
         }
-        if( something_binded )
-            effect->Defaults = defaults;
     }
 
-    static int effect_id = 0;
-    effect->Id = ++effect_id;
-
-    loadedEffects.push_back( effect );
-    return effect;
+    effect_pass.Program = program;
+    effect->Passes.push_back( effect_pass );
+    return true;
 }
 
-void GraphicLoader::EffectProcessVariables( Effect* effect, int pass,  float anim_proc /* = 0.0f */, float anim_time /* = 0.0f */, MeshTexture** textures /* = NULL */ )
+void GraphicLoader::EffectProcessVariables( EffectPass& effect_pass, bool start,  float anim_proc /* = 0.0f */, float anim_time /* = 0.0f */, MeshTexture** textures /* = NULL */ )
 {
     // Process effect
-    if( pass == -1 )
+    if( start )
     {
-        if( effect->IsTime )
+        if( effect_pass.IsTime )
         {
             double tick = Timer::AccurateTick();
-            if( IS_EFFECT_VALUE( effect->Time ) )
+            if( IS_EFFECT_VALUE( effect_pass.Time ) )
             {
-                effect->TimeCurrent += (float) ( tick - effect->TimeLastTick );
-                effect->TimeLastTick = tick;
-                if( effect->TimeCurrent >= 120.0f )
-                    effect->TimeCurrent = fmod( effect->TimeCurrent, 120.0f );
+                effect_pass.TimeCurrent += (float) ( tick - effect_pass.TimeLastTick );
+                effect_pass.TimeLastTick = tick;
+                if( effect_pass.TimeCurrent >= 120.0f )
+                    effect_pass.TimeCurrent = fmod( effect_pass.TimeCurrent, 120.0f );
 
-                SET_EFFECT_VALUE( effect, effect->Time, effect->TimeCurrent );
+                SET_EFFECT_VALUE( effect, effect_pass.Time, effect_pass.TimeCurrent );
             }
-            if( IS_EFFECT_VALUE( effect->TimeGame ) )
+            if( IS_EFFECT_VALUE( effect_pass.TimeGame ) )
             {
                 if( !Timer::IsGamePaused() )
                 {
-                    effect->TimeGameCurrent += (float) ( tick - effect->TimeGameLastTick ) / 1000.0f;
-                    effect->TimeGameLastTick = tick;
-                    if( effect->TimeGameCurrent >= 120.0f )
-                        effect->TimeGameCurrent = fmod( effect->TimeGameCurrent, 120.0f );
+                    effect_pass.TimeGameCurrent += (float) ( tick - effect_pass.TimeGameLastTick ) / 1000.0f;
+                    effect_pass.TimeGameLastTick = tick;
+                    if( effect_pass.TimeGameCurrent >= 120.0f )
+                        effect_pass.TimeGameCurrent = fmod( effect_pass.TimeGameCurrent, 120.0f );
                 }
                 else
                 {
-                    effect->TimeGameLastTick = tick;
+                    effect_pass.TimeGameLastTick = tick;
                 }
 
-                SET_EFFECT_VALUE( effect, effect->TimeGame, effect->TimeGameCurrent );
+                SET_EFFECT_VALUE( effect, effect_pass.TimeGame, effect_pass.TimeGameCurrent );
             }
         }
 
-        if( effect->IsRandomEffect )
+        if( effect_pass.IsRandom )
         {
-            if( IS_EFFECT_VALUE( effect->Random1Effect ) )
-                SET_EFFECT_VALUE( effect, effect->Random1Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
-            if( IS_EFFECT_VALUE( effect->Random2Effect ) )
-                SET_EFFECT_VALUE( effect, effect->Random2Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
-            if( IS_EFFECT_VALUE( effect->Random3Effect ) )
-                SET_EFFECT_VALUE( effect, effect->Random3Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
-            if( IS_EFFECT_VALUE( effect->Random4Effect ) )
-                SET_EFFECT_VALUE( effect, effect->Random4Effect, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+            if( IS_EFFECT_VALUE( effect_pass.Random1 ) )
+                SET_EFFECT_VALUE( effect, effect_pass.Random1, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+            if( IS_EFFECT_VALUE( effect_pass.Random2 ) )
+                SET_EFFECT_VALUE( effect, effect_pass.Random2, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+            if( IS_EFFECT_VALUE( effect_pass.Random3 ) )
+                SET_EFFECT_VALUE( effect, effect_pass.Random3, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+            if( IS_EFFECT_VALUE( effect_pass.Random4 ) )
+                SET_EFFECT_VALUE( effect, effect_pass.Random4, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
         }
 
-        if( effect->IsTextures )
+        if( effect_pass.IsTextures )
         {
             for( int i = 0; i < EFFECT_TEXTURES; i++ )
             {
-                if( IS_EFFECT_VALUE( effect->Textures[ i ] ) )
+                if( IS_EFFECT_VALUE( effect_pass.Textures[ i ] ) )
                 {
                     GLuint id = ( textures && textures[ i ] ? textures[ i ]->Id : 0 );
                     GL( glActiveTexture( GL_TEXTURE2 + i ) );
                     GL( glBindTexture( GL_TEXTURE_2D, id ) );
                     GL( glActiveTexture( GL_TEXTURE0 ) );
-                    GL( glUniform1i( effect->Textures[ i ], 2 + i ) );
-                    if( effect->TexturesSize[ i ] != -1 && textures && textures[ i ] )
-                        GL( glUniform4fv( effect->TexturesSize[ i ], 1, textures[ i ]->SizeData ) );
-                    if( effect->TexturesAtlasOffset[ i ] != -1 && textures && textures[ i ] )
-                        GL( glUniform4fv( effect->TexturesAtlasOffset[ i ], 1, textures[ i ]->AtlasOffsetData ) );
+                    GL( glUniform1i( effect_pass.Textures[ i ], 2 + i ) );
+                    if( effect_pass.TexturesSize[ i ] != -1 && textures && textures[ i ] )
+                        GL( glUniform4fv( effect_pass.TexturesSize[ i ], 1, textures[ i ]->SizeData ) );
+                    if( effect_pass.TexturesAtlasOffset[ i ] != -1 && textures && textures[ i ] )
+                        GL( glUniform4fv( effect_pass.TexturesAtlasOffset[ i ], 1, textures[ i ]->AtlasOffsetData ) );
                 }
             }
         }
 
-        if( effect->IsScriptValues )
+        if( effect_pass.IsScriptValues )
         {
             for( int i = 0; i < EFFECT_SCRIPT_VALUES; i++ )
-                if( IS_EFFECT_VALUE( effect->ScriptValues[ i ] ) )
-                    SET_EFFECT_VALUE( effect, effect->ScriptValues[ i ], GameOpt.EffectValues[ i ] );
+                if( IS_EFFECT_VALUE( effect_pass.ScriptValues[ i ] ) )
+                    SET_EFFECT_VALUE( effect, effect_pass.ScriptValues[ i ], GameOpt.EffectValues[ i ] );
         }
 
-        if( effect->IsAnimPos )
+        if( effect_pass.IsAnimPos )
         {
-            if( IS_EFFECT_VALUE( effect->AnimPosProc ) )
-                SET_EFFECT_VALUE( effect, effect->AnimPosProc, anim_proc );
-            if( IS_EFFECT_VALUE( effect->AnimPosTime ) )
-                SET_EFFECT_VALUE( effect, effect->AnimPosTime, anim_time );
+            if( IS_EFFECT_VALUE( effect_pass.AnimPosProc ) )
+                SET_EFFECT_VALUE( effect, effect_pass.AnimPosProc, anim_proc );
+            if( IS_EFFECT_VALUE( effect_pass.AnimPosTime ) )
+                SET_EFFECT_VALUE( effect, effect_pass.AnimPosTime, anim_time );
+        }
+
+        if( effect_pass.IsChangeStates )
+        {
+            if( effect_pass.BlendFuncParam1 )
+                GL( glBlendFunc( effect_pass.BlendFuncParam1, effect_pass.BlendFuncParam2 ) );
+            if( effect_pass.BlendEquation )
+                GL( glBlendEquation( effect_pass.BlendEquation ) );
         }
     }
-    // Process pass
+    // Finish processing
     else
     {
-        if( IS_EFFECT_VALUE( effect->PassIndex ) )
-            SET_EFFECT_VALUE( effect, effect->Random1Pass, (float) pass );
-
-        if( effect->IsRandomPass )
+        if( effect_pass.IsChangeStates )
         {
-            if( IS_EFFECT_VALUE( effect->Random1Pass ) )
-                SET_EFFECT_VALUE( effect, effect->Random1Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
-            if( IS_EFFECT_VALUE( effect->Random2Pass ) )
-                SET_EFFECT_VALUE( effect, effect->Random2Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
-            if( IS_EFFECT_VALUE( effect->Random3Pass ) )
-                SET_EFFECT_VALUE( effect, effect->Random3Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
-            if( IS_EFFECT_VALUE( effect->Random4Pass ) )
-                SET_EFFECT_VALUE( effect, effect->Random4Pass, (float) ( (double) Random( 0, 2000000000 ) / 2000000000.0 ) );
+            if( effect_pass.BlendFuncParam1 )
+                GL( glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA ) );
+            if( effect_pass.BlendEquation )
+                GL( glBlendEquation( GL_FUNC_ADD ) );
         }
     }
 }
@@ -1663,9 +1784,9 @@ Effect* Effect::FlushRenderTarget, * Effect::FlushRenderTargetDefault;
 Effect* Effect::FlushRenderTargetMS, * Effect::FlushRenderTargetMSDefault;
 Effect* Effect::FlushPrimitive, * Effect::FlushPrimitiveDefault;
 Effect* Effect::FlushMap, * Effect::FlushMapDefault;
+Effect* Effect::FlushLight, * Effect::FlushLightDefault;
 Effect* Effect::Font, * Effect::FontDefault;
 Effect* Effect::Skinned3d, * Effect::Skinned3dDefault;
-Effect* Effect::Skinned3dShadow, * Effect::Skinned3dShadowDefault;
 
 bool GraphicLoader::LoadDefaultEffects()
 {
@@ -1689,13 +1810,14 @@ bool GraphicLoader::LoadDefaultEffects()
     LOAD_EFFECT( Effect::Rain, "2D_WithoutEgg", true, NULL );
     LOAD_EFFECT( Effect::Iface, "Interface_Default", true, NULL );
     LOAD_EFFECT( Effect::Primitive, "Primitive_Default", true, NULL );
-    LOAD_EFFECT( Effect::Light, "Primitive_Default", true, NULL );
+    LOAD_EFFECT( Effect::Light, "Primitive_Light", true, NULL );
     LOAD_EFFECT( Effect::Font, "Font_Default", true, NULL );
     LOAD_EFFECT( Effect::Contour, "Contour_Default", true, NULL );
     LOAD_EFFECT( Effect::Tile, "2D_WithoutEgg", true, NULL );
     LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, NULL );
     LOAD_EFFECT( Effect::FlushPrimitive, "Flush_Primitive", true, NULL );
     LOAD_EFFECT( Effect::FlushMap, "Flush_Map", true, NULL );
+    LOAD_EFFECT( Effect::FlushLight, "Flush_Light", true, NULL );
     if( effect_errors > 0 )
     {
         WriteLog( "Default effects not loaded.\n" );
@@ -1708,7 +1830,6 @@ bool GraphicLoader::Load3dEffects()
 {
     uint effect_errors = 0;
     LOAD_EFFECT( Effect::Skinned3d, "3D_Skinned", false, NULL );
-    LOAD_EFFECT( Effect::Skinned3dShadow, "3D_Skinned", false, "#define SHADOW" );
     if( effect_errors > 0 )
     {
         WriteLog( "3D effects not loaded.\n" );
