@@ -62,11 +62,10 @@ CLASS_PROPERTY_IMPL( CritterCl, PerkQuickPockets );
 CLASS_PROPERTY_IMPL( CritterCl, PerkMasterTrader );
 CLASS_PROPERTY_IMPL( CritterCl, PerkSilentRunning );
 
-CritterCl::CritterCl(): Props( PropertiesRegistrator, &IsDestroyed )
+CritterCl::CritterCl( uint id ): Entity( id, EntityType::CritterCl, PropertiesRegistrator )
 {
     CrDir = 0;
     SprId = 0;
-    Id = 0;
     Pid = 0;
     NameColor = 0;
     ContourColor = 0;
@@ -95,8 +94,6 @@ CritterCl::CritterCl(): Props( PropertiesRegistrator, &IsDestroyed )
     CurMoveStep = 0;
     Visible = true;
     SprDrawValid = false;
-    IsDestroyed = false;
-    RefCounter = 1;
     OxExtI = OyExtI = 0;
     OxExtF = OyExtF = 0.0f;
     OxExtSpeed = OyExtSpeed = 0;
@@ -106,8 +103,8 @@ CritterCl::CritterCl(): Props( PropertiesRegistrator, &IsDestroyed )
     Name = ScriptString::Create();
     NameOnHead = ScriptString::Create();
     Avatar = ScriptString::Create();
-    ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
-    ItemSlotArmor = DefItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
+    ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item( Entity::DeferredId, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
+    ItemSlotArmor = DefItemSlotArmor = new Item( Entity::DeferredId, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
     DefItemSlotHand->Accessory = ITEM_ACCESSORY_CRITTER;
     DefItemSlotArmor->Accessory = ITEM_ACCESSORY_CRITTER;
     DefItemSlotHand->AccCritter.Slot = SLOT_HAND1;

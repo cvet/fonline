@@ -196,7 +196,7 @@ string FOServer::GetIngamePlayersStatistics()
     ConnectedClientsLocker.Unlock();
 
     ClVec players;
-    CrMngr.GetCopyPlayers( players, false );
+    CrMngr.GetClients( players, false );
 
     Str::Format( str, "Players in game: %u\nConnections: %u\n", players.size(), conn_count );
     result = str;
@@ -327,7 +327,7 @@ void FOServer::RemoveClient( Client* cl )
         if( !cl->Data.ClientToDelete )
             AddSaveClient( cl );
 
-        CrMngr.EraseCritter( cl );
+        EntityMngr.UnregisterEntity( cl );
         cl->IsDestroyed = true;
 
         // Erase radios from collection
@@ -530,27 +530,8 @@ void FOServer::MainLoop()
     for( int i = 0; i < JOB_COUNT; i++ )
         Job::Erase( i );
 
-    // Finish all critters
-    CrMap& critters = CrMngr.GetCrittersNoLock();
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-    {
-        Critter* cr = ( *it ).second;
-        bool     to_delete = ( cr->IsPlayer() && ( (Client*) cr )->Data.ClientToDelete );
-
-        cr->EventFinish( to_delete );
-        if( Script::PrepareContext( ServerFunctions.CritterFinish, _FUNC_, cr->GetInfo() ) )
-        {
-            Script::SetArgObject( cr );
-            Script::SetArgBool( to_delete );
-            Script::RunPrepared();
-        }
-
-        if( to_delete )
-        {
-            cr->DeleteInventory();
-            DeleteClientFile( ( (Client*) cr )->Name );
-        }
-    }
+    // Finish entities
+    EntityMngr.FinishEntities();
 
     // Last process
     ProcessBans();
@@ -3481,8 +3462,6 @@ bool FOServer::InitReal()
         return false;                          // Proto critters
     if( !MapMngr.LoadLocationsProtos() )
         return false;                          // Proto locations and maps
-    if( !ItemMngr.CheckProtoFunctions() )
-        return false;                          // Check valid of proto functions
 
     // Language packs
     if( !InitLangPacksDialogs( LangPacks ) )
@@ -4461,11 +4440,8 @@ void FOServer::SaveWorld( const char* fname )
     // SaveAllLocationsAndMapsFile
     MapMngr.SaveAllLocationsAndMapsFile( AddWorldSaveData );
 
-    // SaveCrittersFile
-    CrMngr.SaveCrittersFile( AddWorldSaveData );
-
-    // SaveAllItemsFile
-    ItemMngr.SaveAllItemsFile( AddWorldSaveData );
+    // Entities
+    EntityMngr.SaveEntities( AddWorldSaveData );
 
     // SaveHoloInfoFile
     SaveHoloInfoFile();
@@ -4583,9 +4559,7 @@ bool FOServer::LoadWorld( const char* fname )
         return false;
     if( !MapMngr.LoadAllLocationsAndMapsFile( f, version ) )
         return false;
-    if( !CrMngr.LoadCrittersFile( f, version ) )
-        return false;
-    if( !ItemMngr.LoadAllItemsFile( f, version ) )
+    if( !EntityMngr.LoadEntities( f, version ) )
         return false;
     if( !LoadHoloInfoFile( f, version ) )
         return false;
@@ -4611,8 +4585,7 @@ bool FOServer::LoadWorld( const char* fname )
     if( !TransferAllItems() )
         return false;                // Transfer items copies to critters and maps
     MapMngr.RunInitScriptMaps();     // Init scripts for maps
-    CrMngr.RunInitScriptCritters();  // Init scripts for critters
-    ItemMngr.RunInitScriptItems();   // Init scripts for maps
+    EntityMngr.InitEntities();       // Init scripts for entities
     return true;
 }
 

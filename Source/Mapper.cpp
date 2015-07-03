@@ -267,7 +267,6 @@ bool FOMapper::Init()
     HexMngr.SwitchShowTrack();
     DayTime = 432720;
     ChangeGameTime();
-    AnyId = 0x7FFFFFFF;
 
     if( Str::Substring( CommandLine, "-Map" ) )
     {
@@ -4210,8 +4209,8 @@ MapObject* FOMapper::ParseProto( hash pid, ushort hx, ushort hy, MapObject* owne
     }
 
     // Add base object
-    mobj->RunTime.MapObjId = ++AnyId;
-    if( !HexMngr.AddItem( AnyId, pid, hx, hy, 0, NULL ) )
+    mobj->RunTime.MapObjId = HexMngr.AddItem( Entity::GenerateId, pid, hx, hy, 0, NULL );
+    if( !mobj->RunTime.MapObjId )
         return NULL;
     CurProtoMap->MObjects.push_back( mobj );
 
@@ -4284,9 +4283,19 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
 
     SelectClear();
 
+    CritterCl* cr = new CritterCl( Entity::GenerateId );
+    cr->Props = *proto->Props;
+    cr->SetCrType( proto->GetCrType() );
+    cr->HexX = hx;
+    cr->HexY = hy;
+    cr->SetDir( NpcDir );
+    cr->Cond = COND_LIFE;
+    cr->Pid = pid;
+    cr->Init();
+
     MapObject* mobj = new MapObject();
     mobj->RunTime.FromMap = CurProtoMap;
-    mobj->RunTime.MapObjId = ++AnyId;
+    mobj->RunTime.MapObjId = cr->GetId();
     mobj->MapObjType = MAP_OBJECT_CRITTER;
     mobj->ProtoId = pid;
     mobj->ProtoName = ScriptString::Create( HASH_STR( pid ) );
@@ -4295,17 +4304,6 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
     mobj->MCritter.Dir = NpcDir;
     mobj->MCritter.Cond = COND_LIFE;
     CurProtoMap->MObjects.push_back( mobj );
-
-    CritterCl* cr = new CritterCl();
-    cr->Props = *proto->Props;
-    cr->SetCrType( proto->GetCrType() );
-    cr->HexX = hx;
-    cr->HexY = hy;
-    cr->SetDir( NpcDir );
-    cr->Cond = COND_LIFE;
-    cr->Pid = pid;
-    cr->Id = AnyId;
-    cr->Init();
 
     HexMngr.AddCritter( cr );
     SelectAdd( mobj );
@@ -4347,9 +4345,8 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
         CurProtoMap->MObjects.push_back( new MapObject( *mobj ) );
         mobj = CurProtoMap->MObjects[ CurProtoMap->MObjects.size() - 1 ];
         mobj->RunTime.FromMap = CurProtoMap;
-        mobj->RunTime.MapObjId = ++AnyId;
 
-        CritterCl* cr = new CritterCl();
+        CritterCl* cr = new CritterCl( Entity::GenerateId );
         cr->Props = *proto->Props;
         cr->SetCrType( proto->GetCrType() );
         cr->HexX = mobj->MapX;
@@ -4357,8 +4354,8 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
         cr->SetDir( (uchar) mobj->MCritter.Dir );
         cr->Cond = COND_LIFE;
         cr->Pid = mobj->ProtoId;
-        cr->Id = AnyId;
         cr->Init();
+        mobj->RunTime.MapObjId = cr->GetId();
         HexMngr.AddCritter( cr );
         HexMngr.AffectCritter( mobj, cr );
         SelectAdd( mobj );
@@ -4376,10 +4373,10 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
         if( mobj->MapObjType == MAP_OBJECT_ITEM && mobj->ContainerUID )
             return mobj;
 
-        mobj->RunTime.MapObjId = ++AnyId;
-        if( HexMngr.AddItem( AnyId, mobj->ProtoId, mobj->MapX, mobj->MapY, 0, NULL ) )
+        mobj->RunTime.MapObjId = HexMngr.AddItem( Entity::GenerateId, mobj->ProtoId, mobj->MapX, mobj->MapY, 0, NULL );
+        if( mobj->RunTime.MapObjId )
         {
-            HexMngr.AffectItem( mobj, HexMngr.GetItemById( AnyId ) );
+            HexMngr.AffectItem( mobj, HexMngr.GetItemById( mobj->RunTime.MapObjId ) );
             SelectAdd( mobj );
         }
     }

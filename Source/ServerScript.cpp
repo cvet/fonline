@@ -2730,7 +2730,7 @@ void FOServer::SScriptFunc::Crit_ClearEnemyStackNpc( Critter* cr )
     bool         removed = false;
     for( uint i = 0; i < enemy_stack->GetSize();)
     {
-        if( IS_NPC_ID( *(uint*) enemy_stack->At( i ) ) )
+        if( !IS_CLIENT_ID( *(uint*) enemy_stack->At( i ) ) )
         {
             enemy_stack->RemoveAt( i );
             removed = true;
@@ -5416,7 +5416,7 @@ uint FOServer::SScriptFunc::Global_GetAllPlayers( ScriptArray* players )
 {
     ClVec players_;
     CrVec players__;
-    CrMngr.GetCopyPlayers( players_, true );
+    CrMngr.GetClients( players_, true );
     players__.reserve( players_.size() );
     for( auto it = players_.begin(), end = players_.end(); it != end; ++it )
     {
@@ -5461,7 +5461,7 @@ uint FOServer::SScriptFunc::Global_GetAllNpc( hash pid, ScriptArray* npc )
 {
     PcVec npcs;
     CrVec npcs_;
-    CrMngr.GetCopyNpcs( npcs, true );
+    CrMngr.GetNpcs( npcs, true );
     npcs_.reserve( npcs.size() );
     for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
     {

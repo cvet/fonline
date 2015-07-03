@@ -15,6 +15,7 @@
 #include "CritterType.h"
 #include "NetProtocol.h"
 #include "Access.h"
+#include "EntityManager.h"
 
 #if defined ( USE_LIBEVENT )
 # include "event2/event.h"

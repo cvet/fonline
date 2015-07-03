@@ -165,6 +165,7 @@ set( SERVER_CLIENT_MAPPER_SOURCE
 	ConstantsManager.cpp ConstantsManager.h
 	CritterManager.h
 	CritterType.cpp CritterType.h
+	Entity.cpp Entity.h
 	Exception.cpp Exception.h
 	Item.cpp Item.h
 	ItemManager.cpp ItemManager.h
@@ -216,6 +217,7 @@ set( SERVER_SOURCE
 	Critter.cpp Critter.h
 	CritterData.h
 	Dialogs.cpp Dialogs.h
+	EntityManager.cpp EntityManager.h
 	Jobs.cpp Jobs.h
 	MainServer.cpp
 	Map.cpp Map.h

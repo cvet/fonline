@@ -316,7 +316,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define MAX_CRIT_TYPES               ( 1000 )
 #define MAKE_CLIENT_ID( name )                ( Str::GetHash( name ) & 0x7FFFFFFF )
 #define IS_CLIENT_ID( id )                    ( ( ( id ) >> 31 ) == 0 )
-#define IS_NPC_ID( id )                       ( ( ( id ) >> 31 ) != 0 )
 #define MAX_ANSWERS                  ( 100 )
 #define PROCESS_TALK_TICK            ( 1000 )
 #define MAX_SCRIPT_NAME              ( 64 )

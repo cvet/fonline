@@ -145,12 +145,9 @@ CLASS_PROPERTY_IMPL( Critter, InternalBagItemCount );
 CLASS_PROPERTY_IMPL( Critter, ExternalBagCurrentSet );
 CLASS_PROPERTY_IMPL( Critter, FavoriteItemPid );
 
-Critter::Critter(): Props( PropertiesRegistrator, &IsDestroyed )
+Critter::Critter( uint id, EntityType type ): Entity( id, type, PropertiesRegistrator )
 {
     CritterIsNpc = false;
-    RefCounter = 1;
-    IsDestroyed = false;
-    IsDestroying = false;
     GroupMove = NULL;
     PrevHexTick = 0;
     PrevHexX = PrevHexY = 0;
@@ -184,8 +181,8 @@ Critter::Critter(): Props( PropertiesRegistrator, &IsDestroyed )
     GroupSelf->ToY = GroupSelf->CurY;
     GroupSelf->Speed = 0.0f;
     GroupSelf->Rule = this;
-    ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
-    ItemSlotArmor = defItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
+    ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item( Entity::DeferredId, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
+    ItemSlotArmor = defItemSlotArmor = new Item( Entity::DeferredId, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
     defItemSlotHand->Accessory = ITEM_ACCESSORY_CRITTER;
     defItemSlotArmor->Accessory = ITEM_ACCESSORY_CRITTER;
     defItemSlotHand->AccCritter.Slot = SLOT_HAND1;
@@ -3544,14 +3541,6 @@ void Critter::ContinueTimeEvents( int offs_time )
     }
 }
 
-void Critter::Delete()
-{
-    if( IsPlayer() )
-        delete (Client*) this;
-    else
-        delete (Npc*) this;
-}
-
 /************************************************************************/
 /* Client                                                               */
 /************************************************************************/
@@ -3560,7 +3549,7 @@ void Critter::Delete()
 Client::SendCallback Client::SendData = NULL;
 #endif
 
-Client::Client()
+Client::Client(): Critter( Entity::DeferredId, EntityType::Client )
 {
     ZstrmInit = false;
     Access = ACCESS_DEFAULT;
@@ -3925,7 +3914,7 @@ void Client::Send_Property( NetProperty::Type type, Property* prop, void* prop_o
         Bout << ( (Item*) prop_obj )->Id;
         break;
     case NetProperty::Critter:
-        Bout << ( (Critter*) prop_obj )->Data.Id;
+        Bout << ( (Critter*) prop_obj )->Id;
         break;
     case NetProperty::MapItem:
         Bout << ( (Item*) prop_obj )->Id;
@@ -5316,7 +5305,7 @@ void Client::CloseTalk()
 /* NPC                                                                  */
 /************************************************************************/
 
-Npc::Npc()
+Npc::Npc( uint id ): Critter( id, EntityType::Npc )
 {
     NextRefreshBagTick = 0;
     CritterIsNpc = true;

@@ -10,6 +10,7 @@
 # include "CritterManager.h"
 # include "MapManager.h"
 # include "Script.h"
+# include "EntityManager.h"
 #endif
 
 #ifdef FONLINE_MAPPER
@@ -33,22 +34,6 @@ void ItemManager::Finish()
 {
     WriteLog( "Item manager finish...\n" );
 
-    #ifdef FONLINE_SERVER
-    while( !gameItems.empty() )
-    {
-        Item* item = gameItems.begin()->second;
-        item->EventFinish( false );
-        if( !item->IsDestroyed )
-        {
-            auto it_ = gameItems.find( item->GetId() );
-            RUNTIME_ASSERT( it_ != gameItems.end() );
-            gameItems.erase( it_ );
-            item->IsDestroyed = true;
-            item->Release();
-        }
-    }
-    #endif
-
     Clear();
     allProtos.clear();
 
@@ -58,14 +43,7 @@ void ItemManager::Finish()
 void ItemManager::Clear()
 {
     #ifdef FONLINE_SERVER
-    for( auto it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
-    {
-        it->second->IsDestroyed = true;
-        SAFEREL( it->second );
-    }
-    gameItems.clear();
     radioItems.clear();
-    lastItemId = 0;
     #endif
 }
 
@@ -266,138 +244,33 @@ void ItemManager::SetBinaryData( UCharVec& data )
 }
 
 #ifdef FONLINE_SERVER
-void ItemManager::SaveAllItemsFile( void ( * save_func )( void*, size_t ) )
-{
-    uint count = (uint) gameItems.size();
-    save_func( &count, sizeof( count ) );
-    for( auto it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
-    {
-        Item* item = ( *it ).second;
-        save_func( &item->Id, sizeof( item->Id ) );
-        save_func( &item->Proto->ProtoId, sizeof( item->Proto->ProtoId ) );
-        save_func( &item->Accessory, sizeof( item->Accessory ) );
-        save_func( &item->AccBuffer[ 0 ], sizeof( item->AccBuffer ) );
-        item->Props.Save( save_func );
-    }
-}
-
-bool ItemManager::LoadAllItemsFile( void* f, int version )
-{
-    WriteLog( "Load items...\n" );
-
-    lastItemId = 0;
-
-    uint count;
-    FileRead( f, &count, sizeof( count ) );
-    if( !count )
-    {
-        WriteLog( "There is no items.\n" );
-        return true;
-    }
-
-    PropertyRegistrator dummy_fields_registrator( false, "Dummy" );
-    dummy_fields_registrator.FinishRegistration();
-
-    for( uint i = 0; i < count; ++i )
-    {
-        uint       id;
-        FileRead( f, &id, sizeof( id ) );
-        hash       pid;
-        FileRead( f, &pid, sizeof( pid ) );
-        uchar      acc;
-        FileRead( f, &acc, sizeof( acc ) );
-        char       acc_buf[ 8 ];
-        FileRead( f, &acc_buf[ 0 ], sizeof( acc_buf ) );
-        Properties props( Item::PropertiesRegistrator, NULL );
-        props.Load( f, version );
-
-        if( id > lastItemId )
-            lastItemId = id;
-
-        Item* item = CreateItem( pid, 1, id );
-        if( !item )
-        {
-            WriteLog( "Fail to create item '%s' with id %u. Skip.\n", HASH_STR( pid ), id );
-            continue;
-        }
-
-        item->Accessory = acc;
-        memcpy( item->AccBuffer, acc_buf, sizeof( acc_buf ) );
-        item->Props = props;
-
-        // Radio
-        if( item->GetIsRadio() )
-            RadioRegister( item, true );
-    }
-
-    WriteLog( "Load items complete, count %u.\n", count );
-    return true;
-}
-
-# pragma MESSAGE("Add item proto functions checker.")
-bool ItemManager::CheckProtoFunctions()
-{
-    return true;
-}
-
-void ItemManager::RunInitScriptItems()
-{
-    ItemMap items = gameItems;
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
-    {
-        Item* item = ( *it ).second;
-        if( item->GetScriptId() )
-            item->ParseScript( NULL, false );
-    }
-}
-
 void ItemManager::GetGameItems( ItemVec& items )
 {
-    SCOPE_LOCK( itemLocker );
-    items.reserve( gameItems.size() );
-    for( auto it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
-    {
-        Item* item = ( *it ).second;
-        items.push_back( item );
-    }
+    EntityMngr.GetItems( items );
 }
 
 uint ItemManager::GetItemsCount()
 {
-    SCOPE_LOCK( itemLocker );
-    uint count = (uint) gameItems.size();
-    return count;
+    return EntityMngr.GetEntitiesCount( EntityType::Item );
 }
 
 void ItemManager::SetCritterItems( Critter* cr )
 {
     ItemVec items;
-    uint    crid = cr->GetId();
+    EntityMngr.GetCritterItems( cr->GetId(), items );
 
-    itemLocker.Lock();
-    for( auto it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
-    {
-        Item* item = ( *it ).second;
-        if( item->Accessory == ITEM_ACCESSORY_CRITTER && item->AccCritter.Id == crid )
-            items.push_back( item );
-    }
-    itemLocker.Unlock();
-
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
+    for( auto it = items.begin(); it != items.end(); ++it )
     {
         Item* item = *it;
         SYNC_LOCK( item );
 
-        if( item->Accessory == ITEM_ACCESSORY_CRITTER && item->AccCritter.Id == crid )
-        {
-            cr->SetItem( item );
-            if( item->GetIsRadio() )
-                RadioRegister( item, true );
-        }
+        cr->SetItem( item );
+        if( item->GetIsRadio() )
+            RadioRegister( item, true );
     }
 }
 
-Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, uint item_id /* = 0 */ )
+Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */ )
 {
     ProtoItem* proto = GetProtoItem( pid );
     if( !proto )
@@ -406,100 +279,54 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, uint item_id /* =
         return NULL;
     }
 
-    if( item_id )
-    {
-        SCOPE_LOCK( itemLocker );
-
-        if( gameItems.count( item_id ) )
-        {
-            WriteLogF( _FUNC_, " - Item already created, id %u.\n", item_id );
-            return NULL;
-        }
-    }
-    else
-    {
-        SCOPE_LOCK( itemLocker );
-
-        item_id = lastItemId + 1;
-        lastItemId++;
-    }
-
-    Item* item = new Item( item_id, proto );
-    if( count > 1 && item->IsStackable() )
-        item->SetCount( count );
-
+    Item* item = new Item( Entity::GenerateId, proto );
     SYNC_LOCK( item );
 
     // Main collection
-    itemLocker.Lock();
-    gameItems.insert( PAIR( item_id, item ) );
-    itemLocker.Unlock();
+    EntityMngr.RegisterEntity( item );
+
+    // Count
+    if( count > 1 && item->IsStackable() )
+        item->SetCount( count );
 
     // Radio collection
     if( item->GetIsRadio() )
         RadioRegister( item, true );
 
     // Prototype script
-    # ifdef FONLINE_SERVER
-    if( !item_id && count && proto->ScriptName.length() > 0 )         // Only for new items
+    if( proto->ScriptName.length() > 0 )         // Only for new items
     {
         item->ParseScript( proto->ScriptName.c_str(), true );
         if( item->IsDestroyed )
         {
-            WriteLogF( _FUNC_, " - Item destroyed after prototype '%s' initialization, id %u.\n", HASH_STR( pid ), item_id );
+            WriteLogF( _FUNC_, " - Item destroyed after prototype '%s' initialization.\n", HASH_STR( pid ) );
             return NULL;
         }
     }
-    # endif
     return item;
 }
 
-Item* ItemManager::SplitItem( Item* item, uint count )
+bool ItemManager::RestoreItem( uint id, hash pid, Properties& props, uchar acc, char* acc_buf )
 {
-    if( !item->IsStackable() )
+    ProtoItem* proto = GetProtoItem( pid );
+    if( !proto )
     {
-        WriteLogF( _FUNC_, " - Splitted item is not stackable, id<%u>, pid<%u>.\n", item->GetId(), item->GetProtoId() );
-        return NULL;
+        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", HASH_STR( pid ) );
+        return false;
     }
 
-    uint item_count = item->GetCount();
-    if( !count || count >= item_count )
-    {
-        WriteLogF( _FUNC_, " - Invalid count, id<%u>, pid<%u>, count<%u>, split count<%u>.\n", item->GetId(), item->GetProtoId(), item_count, count );
-        return NULL;
-    }
+    Item* item = new Item( id, proto );
+    SYNC_LOCK( item );
 
-    Item* new_item = CreateItem( item->GetProtoId() ); // Ignore init script
-    if( !new_item )
-    {
-        WriteLogF( _FUNC_, " - Create item fail, pid<%u>, count<%u>.\n", item->GetProtoId(), count );
-        return NULL;
-    }
+    // Restore accessory
+    item->Props = props;
+    item->Accessory = acc;
+    memcpy( item->AccBuffer, acc_buf, sizeof( item->AccBuffer ) );
 
-    item->ChangeCount( -(int) count );
-    new_item->Props = item->Props;
-    new_item->SetCount( count );
+    // Main collection
+    EntityMngr.RegisterEntity( item );
 
-    // Radio collection
-    if( new_item->GetIsRadio() )
-        RadioRegister( new_item, true );
-
-    return new_item;
-}
-
-Item* ItemManager::GetItem( uint item_id, bool sync_lock )
-{
-    Item* item = NULL;
-
-    itemLocker.Lock();
-    auto it = gameItems.find( item_id );
-    if( it != gameItems.end() )
-        item = ( *it ).second;
-    itemLocker.Unlock();
-
-    if( item && sync_lock )
-        SYNC_LOCK( item );
-    return item;
+    return true;
 }
 
 void ItemManager::DeleteItem( Item* item )
@@ -542,18 +369,54 @@ void ItemManager::DeleteItem( Item* item )
         RadioRegister( item, false );
 
     // Erase from main collection
-    {
-        SCOPE_LOCK( itemLocker );
-        auto it = gameItems.find( item->GetId() );
-        RUNTIME_ASSERT( it != gameItems.end() );
-        gameItems.erase( it );
-    }
+    EntityMngr.UnregisterEntity( item );
 
     // Invalidate for use
     item->IsDestroyed = true;
 
     // Release after some time
     Job::DeferredRelease( item );
+}
+
+Item* ItemManager::SplitItem( Item* item, uint count )
+{
+    if( !item->IsStackable() )
+    {
+        WriteLogF( _FUNC_, " - Splitted item is not stackable, id<%u>, pid<%u>.\n", item->GetId(), item->GetProtoId() );
+        return NULL;
+    }
+
+    uint item_count = item->GetCount();
+    if( !count || count >= item_count )
+    {
+        WriteLogF( _FUNC_, " - Invalid count, id<%u>, pid<%u>, count<%u>, split count<%u>.\n", item->GetId(), item->GetProtoId(), item_count, count );
+        return NULL;
+    }
+
+    Item* new_item = CreateItem( item->GetProtoId() ); // Ignore init script
+    if( !new_item )
+    {
+        WriteLogF( _FUNC_, " - Create item fail, pid<%u>, count<%u>.\n", item->GetProtoId(), count );
+        return NULL;
+    }
+
+    item->ChangeCount( -(int) count );
+    new_item->Props = item->Props;
+    new_item->SetCount( count );
+
+    // Radio collection
+    if( new_item->GetIsRadio() )
+        RadioRegister( new_item, true );
+
+    return new_item;
+}
+
+Item* ItemManager::GetItem( uint item_id, bool sync_lock )
+{
+    Item* item = (Item*) EntityMngr.GetEntity( item_id, EntityType::Item );
+    if( item && sync_lock )
+        SYNC_LOCK( item );
+    return item;
 }
 
 void ItemManager::EraseItemHolder( Item* item )

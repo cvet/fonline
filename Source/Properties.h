@@ -1,11 +1,10 @@
 #ifndef __PROPERTIES__
 #define __PROPERTIES__
 
-#define PROPERTIES_HEADER()                                                  \
-    static PropertyRegistrator * PropertiesRegistrator;                      \
-    static vector< pair< const char*, Property** > > PropertiesList;         \
-    static void SetPropertyRegistrator( PropertyRegistrator * registrator ); \
-    Properties                                       Props
+#define PROPERTIES_HEADER()                                          \
+    static PropertyRegistrator * PropertiesRegistrator;              \
+    static vector< pair< const char*, Property** > > PropertiesList; \
+    static void SetPropertyRegistrator( PropertyRegistrator * registrator )
 #define PROPERTIES_IMPL( class_name )                                             \
     PropertyRegistrator * class_name::PropertiesRegistrator;                      \
     vector< pair< const char*, Property** > > class_name::PropertiesList;         \

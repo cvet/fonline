@@ -11,6 +11,7 @@
 #include "DataMask.h"
 #include "NetProtocol.h"
 #include "ThreadSync.h"
+#include "Entity.h"
 
 #if defined ( USE_LIBEVENT )
 # include "event2/event.h"
@@ -97,7 +98,7 @@ typedef vector< Critter* >    CrVec;
 typedef vector< Client* >     ClVec;
 typedef vector< Npc* >        PcVec;
 
-class Critter
+class Critter: public Entity
 {
 public:
     // Properties
@@ -187,6 +188,11 @@ public:
     CLASS_PROPERTY( uchar, PerkMasterTrader );
     CLASS_PROPERTY( uchar, PerkSilentRunning );
 
+protected:
+    Critter( uint id, EntityType type );
+    ~Critter();
+
+public:
     // Data
     CritData      Data;
     SyncObject    Sync;
@@ -203,9 +209,6 @@ public:
     static bool   SlotEnabled[ 0x100 ];
     static bool   SlotDataSendEnabled[ 0x100 ];
     static IntSet RegProperties;
-
-    Critter();
-    ~Critter();
 
     void DeleteInventory();
     void SetMaps( uint map_id, hash map_pid );
@@ -442,7 +445,6 @@ public:
 
     bool        IsPlayer()      { return !CritterIsNpc; }
     bool        IsNpc()         { return CritterIsNpc; }
-    uint        GetId()         { return Data.Id; }
     uint        GetMapId()      { return Data.MapId; }
     hash        GetMapProtoId() { return Data.MapPid; }
     void        RefreshName();
@@ -534,19 +536,15 @@ public:
     uint GlobalIdleNextTick;
     uint ApRegenerationTick;
 
-    // Reference counter
-    bool IsDestroyed;
-    bool IsDestroying;
     bool CanBeRemoved;
-    long RefCounter;
-    void AddRef()  { InterlockedIncrement( &RefCounter ); }
-    void Release() { if( !InterlockedDecrement( &RefCounter ) ) Delete(); }
-    void Delete();
 };
 
 class Client: public Critter
 {
 public:
+    Client();
+    ~Client();
+
     char          Name[ UTF8_BUF_SIZE( MAX_NAME ) ]; // Saved
     char          PassHash[ PASS_HASH_SIZE ];        // Saved
     uchar         Access;
@@ -744,15 +742,12 @@ public:
 
     // Screen callback
     uint ScreenCallbackBindId;
-
-    Client();
-    ~Client();
 };
 
 class Npc: public Critter
 {
 public:
-    Npc();
+    Npc( uint id );
     ~Npc();
 
     // Bags

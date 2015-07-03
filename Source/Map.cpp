@@ -27,9 +27,8 @@ const char* MapEventFuncName[ MAP_EVENT_MAX ] =
 
 PROPERTIES_IMPL( Map );
 
-Map::Map( uint id, ProtoMap* proto, Location* location ): Props( PropertiesRegistrator, &IsDestroyed )
+Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType::Map, PropertiesRegistrator )
 {
-    RUNTIME_ASSERT( id );
     RUNTIME_ASSERT( proto );
     RUNTIME_ASSERT( location );
 
@@ -39,9 +38,6 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Props( PropertiesRegis
     Proto = proto;
     mapLocation = location;
 
-    RefCounter = 1;
-    IsDestroyed = false;
-    IsDestroying = false;
     hexFlags = NULL;
     NeedProcess = false;
     IsTurnBasedOn = false;
@@ -71,8 +67,6 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Props( PropertiesRegis
 
     for( int i = 0; i < MAP_LOOP_FUNC_MAX; i++ )
         LoopWaitTick[ i ] = MAP_LOOP_DEFAULT_TICK;
-
-    Data.MapId = id;
 }
 
 Map::~Map()
@@ -2227,15 +2221,11 @@ const char* LocationEventFuncName[ LOCATION_EVENT_MAX ] =
 
 PROPERTIES_IMPL( Location );
 
-Location::Location( uint id, ProtoLocation* proto, ushort wx, ushort wy ): Props( PropertiesRegistrator, &IsDestroyed )
+Location::Location( uint id, ProtoLocation* proto, ushort wx, ushort wy ): Entity( id, EntityType::Location, PropertiesRegistrator )
 {
-    RUNTIME_ASSERT( id );
     RUNTIME_ASSERT( proto );
 
     Proto = proto;
-    RefCounter = 1;
-    IsDestroyed = false;
-    IsDestroying = false;
     memzero( &Data, sizeof( Data ) );
     memzero( FuncId, sizeof( FuncId ) );
     Data.LocPid = Proto->LocPid;
@@ -2246,8 +2236,6 @@ Location::Location( uint id, ProtoLocation* proto, ushort wx, ushort wy ): Props
     Data.GeckVisible = Proto->GeckVisible;
     Data.AutoGarbage = Proto->AutoGarbage;
     GeckCount = 0;
-
-    Data.LocId = id;
 }
 
 Location::~Location()
@@ -2258,12 +2246,12 @@ Location::~Location()
 void Location::Update()
 {
     ClVec players;
-    CrMngr.GetCopyPlayers( players, true );
+    CrMngr.GetClients( players, true );
 
     for( auto it = players.begin(), end = players.end(); it != end; ++it )
     {
         Client* cl = *it;
-        if( !cl->GetMapId() && cl->CheckKnownLocById( Data.LocId ) )
+        if( !cl->GetMapId() && cl->CheckKnownLocById( GetId() ) )
             cl->Send_GlobalLocation( this, true );
     }
 }

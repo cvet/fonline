@@ -54,7 +54,8 @@ bool FOServer::TransferAllItems()
     WriteLog( "Transfer all items to npc, maps and containers...\n" );
 
     // Transfer items
-    CrMap   critters = CrMngr.GetCrittersNoLock();
+    CrVec   critters;
+    CrMngr.GetCritters( critters, false );
     ItemVec bad_items;
     ItemVec game_items;
     ItemMngr.GetGameItems( game_items );
@@ -144,7 +145,7 @@ bool FOServer::TransferAllItems()
     // Process visible for all npc
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
-        Critter* cr = ( *it ).second;
+        Critter* cr = *it;
         cr->ProcessVisibleItems();
     }
 

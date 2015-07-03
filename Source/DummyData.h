@@ -55,6 +55,17 @@ struct AIDataPlane
     void Release() {}
 };
 
+struct Entity
+{
+    int  Id;
+    int  RefCounter;
+    int  IsDestroyed;
+    int  IsDestroying;
+
+    void AddRef()  {}
+    void Release() {}
+};
+
 struct ProtoItem
 {
     int  ProtoId;
@@ -63,16 +74,13 @@ struct ProtoItem
     void Release() {}
 };
 
-struct Item
+struct Item: public Entity
 {
-    int Id;
     int Proto;
     int ViewByCritter;
     int ViewPlaceOnMap;
     int Accessory;
     int ChildObjects;
-    int IsDestroyed;
-    int IsDestroying;
 
     struct
     {
@@ -92,11 +100,6 @@ struct Item
         int ContainerId;
         int StackId;
     } AccContainer;
-
-    int  RefCounter;
-
-    void AddRef()  {}
-    void Release() {}
 };
 
 struct MapObject
@@ -186,7 +189,6 @@ struct MapObject
 
 struct CritData
 {
-    int Id;
     int HexX;
     int HexY;
     int WorldX;
@@ -205,49 +207,41 @@ struct CritData
     int ShowCritterDist3;
 };
 
-struct Critter
+struct Critter: public Entity
 {
     #ifdef BIND_CLIENT
-    int  Pid;
-    int  CrType;
-    int  CrTypeAlias;
-    int  HexX, HexY;
-    int  CrDir;
-    int  Cond;
-    int  Anim1Life;
-    int  Anim1Knockout;
-    int  Anim1Dead;
-    int  Anim2Life;
-    int  Anim2Knockout;
-    int  Anim2Dead;
-    int  Name;
-    int  NameOnHead;
-    int  Avatar;
-    int  DialogId;
-    int  NameColor;
-    int  ContourColor;
-    int  Layers3d;
+    int Pid;
+    int CrType;
+    int CrTypeAlias;
+    int HexX, HexY;
+    int CrDir;
+    int Cond;
+    int Anim1Life;
+    int Anim1Knockout;
+    int Anim1Dead;
+    int Anim2Life;
+    int Anim2Knockout;
+    int Anim2Dead;
+    int Name;
+    int NameOnHead;
+    int Avatar;
+    int DialogId;
+    int NameColor;
+    int ContourColor;
+    int Layers3d;
     #endif
 
-    int  Data;
-    int  Id;
-    int  Flags;
-    int  NameStr;
-    int  IsRuning;
-    int  IsDestroyed;
-    int  IsDestroying;
-    int  RefCounter;
-
-    void AddRef()  {}
-    void Release() {}
+    int Data;
+    int Flags;
+    int NameStr;
+    int IsRuning;
 };
 typedef Critter CritterCl;
 
-struct Map
+struct Map: public Entity
 {
     struct MapData
     {
-        int MapId;
         int MapPid;
         int MapRain;
         int IsTurnBasedAviable;
@@ -257,23 +251,15 @@ struct Map
         int MapDayColor[ 12 ];
     } Data;
 
-    int  TurnBasedRound;
-    int  TurnBasedTurn;
-    int  TurnBasedWholeTurn;
-
-    int  IsDestroyed;
-    int  IsDestroying;
-    int  RefCounter;
-
-    void AddRef()  {}
-    void Release() {}
+    int TurnBasedRound;
+    int TurnBasedTurn;
+    int TurnBasedWholeTurn;
 };
 
-struct Location
+struct Location: public Entity
 {
     struct LocData
     {
-        int LocId;
         int LocPid;
         int WX;
         int WY;
@@ -287,13 +273,7 @@ struct Location
         int MapIds[ 1 ];
     } Data;
 
-    int  GeckCount;
-    int  IsDestroyed;
-    int  IsDestroying;
-    int  RefCounter;
-
-    void AddRef()  {}
-    void Release() {}
+    int GeckCount;
 };
 
 struct ProtoMap

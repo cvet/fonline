@@ -7,6 +7,7 @@
 #ifdef FONLINE_SERVER
 # include "Script.h"
 # include "MapManager.h"
+# include "EntityManager.h"
 #endif
 
 CritterManager CrMngr;
@@ -28,35 +29,6 @@ void CritterManager::Finish()
 {
     WriteLog( "Critter manager finish...\n" );
 
-    #ifdef FONLINE_SERVER
-    while( !allCritters.empty() )
-    {
-        Critter* cr = allCritters.begin()->second;
-        cr->EventFinish( false );
-        if( !cr->IsDestroyed && Script::PrepareContext( ServerFunctions.CritterFinish, _FUNC_, cr->GetInfo() ) )
-        {
-            Script::SetArgObject( cr );
-            Script::SetArgBool( false );
-            Script::RunPrepared();
-        }
-        if( !cr->IsDestroyed )
-        {
-            auto it_ = allCritters.find( cr->GetId() );
-            RUNTIME_ASSERT( it_ != allCritters.end() );
-            allCritters.erase( it_ );
-            if( cr->IsPlayer() )
-                playersCount--;
-            else
-                npcCount--;
-            cr->IsDestroyed = true;
-            cr->Release();
-        }
-    }
-
-    RUNTIME_ASSERT( playersCount == 0 );
-    RUNTIME_ASSERT( npcCount == 0 );
-    #endif
-
     allProtos.clear();
     Clear();
 
@@ -65,17 +37,7 @@ void CritterManager::Finish()
 
 void CritterManager::Clear()
 {
-    #ifdef FONLINE_SERVER
-    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
-    {
-        it->second->IsDestroyed = true;
-        SAFEREL( it->second );
-    }
-    allCritters.clear();
-    playersCount = 0;
-    npcCount = 0;
-    lastNpcId = 0;
-    #endif
+    // ...
 }
 
 bool CritterManager::LoadProtos()
@@ -172,102 +134,6 @@ ProtoCritterMap& CritterManager::GetAllProtos()
 }
 
 #ifdef FONLINE_SERVER
-void CritterManager::SaveCrittersFile( void ( * save_func )( void*, size_t ) )
-{
-    CrVec npcs;
-    for( auto it = allCritters.begin(); it != allCritters.end(); ++it )
-    {
-        Critter* cr = ( *it ).second;
-        if( cr->IsNpc() )
-            npcs.push_back( cr );
-    }
-
-    uint count = (uint) npcs.size();
-    save_func( &count, sizeof( count ) );
-    for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
-    {
-        Critter* npc = *it;
-        save_func( &npc->Data, sizeof( npc->Data ) );
-        npc->Props.Save( save_func );
-        uint te_count = (uint) npc->CrTimeEvents.size();
-        save_func( &te_count, sizeof( te_count ) );
-        if( te_count )
-            save_func( &npc->CrTimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
-    }
-}
-
-bool CritterManager::LoadCrittersFile( void* f, uint version )
-{
-    WriteLog( "Load npc...\n" );
-
-    lastNpcId = uint( -1 );
-
-    uint count;
-    FileRead( f, &count, sizeof( count ) );
-    if( !count )
-    {
-        WriteLog( "There is no npc.\n" );
-        return true;
-    }
-
-    for( uint i = 0; i < count; i++ )
-    {
-        CritData                data;
-        FileRead( f, &data, sizeof( data ) );
-        Properties              props( Critter::PropertiesRegistrator, NULL );
-        props.Load( f, version );
-        Critter::CrTimeEventVec tevents;
-        uint                    te_count;
-        FileRead( f, &te_count, sizeof( te_count ) );
-        if( te_count )
-        {
-            tevents.resize( te_count );
-            FileRead( f, &tevents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
-        }
-
-        RUNTIME_ASSERT( IS_NPC_ID( data.Id ) );
-        if( data.Id < lastNpcId )
-            lastNpcId = data.Id;
-
-        Npc* npc = CreateNpc( data.ProtoId, false );
-        if( !npc )
-        {
-            WriteLog( "Fail to create npc '%s' with id %u on map '%s'. Skip.\n", HASH_STR( data.ProtoId ), data.Id, HASH_STR( data.MapPid ) );
-            continue;
-        }
-
-        npc->Data = data;
-        npc->Props = props;
-        if( te_count )
-            npc->CrTimeEvents = tevents;
-
-        npc->NextRefreshBagTick = Timer::GameTick() + GameOpt.BagRefreshTime * 60 * 1000;
-        npc->RefreshName();
-
-        AddCritter( npc );
-    }
-
-    WriteLog( "Load npc complete, count<%u>.\n", count );
-    return true;
-}
-
-void CritterManager::RunInitScriptCritters()
-{
-    CrMap all_critters = allCritters;
-    for( auto it = all_critters.begin(); it != all_critters.end(); ++it )
-    {
-        Critter* cr = it->second;
-        if( !cr->IsDestroyed && Script::PrepareContext( ServerFunctions.CritterInit, _FUNC_, cr->GetInfo() ) )
-        {
-            Script::SetArgObject( cr );
-            Script::SetArgBool( false );
-            Script::RunPrepared();
-        }
-        if( !cr->IsDestroyed && cr->GetScriptId() )
-            cr->ParseScript( NULL, false );
-    }
-}
-
 void CritterManager::DeleteNpc( Critter* cr )
 {
     SYNC_LOCK( cr );
@@ -342,13 +208,7 @@ void CritterManager::DeleteNpc( Critter* cr )
     cr->LockMapTransfers--;
 
     // Erase from main collection
-    {
-        SCOPE_LOCK( crLocker );
-        auto it = allCritters.find( cr->GetId() );
-        RUNTIME_ASSERT( it != allCritters.end() );
-        allCritters.erase( it );
-        npcCount--;
-    }
+    EntityMngr.UnregisterEntity( cr );
 
     // Invalidate for use
     cr->IsDestroyed = true;
@@ -359,6 +219,13 @@ void CritterManager::DeleteNpc( Critter* cr )
 
 Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items_data, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy )
 {
+    ProtoCritter* proto = GetProto( proto_id );
+    if( !proto )
+    {
+        WriteLogF( _FUNC_, " - Critter proto<%s> not found.\n", HASH_STR( proto_id ) );
+        return NULL;
+    }
+
     if( !map || hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
     {
         WriteLogF( _FUNC_, " - Wrong map values, hx<%u>, hy<%u>, map is nullptr<%s>.\n", hx, hy, !map ? "true" : "false" );
@@ -405,17 +272,16 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
         hy = hy_;
     }
 
-    Npc* npc = CreateNpc( proto_id, true );
-    if( !npc )
-    {
-        WriteLogF( _FUNC_, " - Create npc with proto<%s> fail.\n", HASH_STR( proto_id ) );
-        return NULL;
-    }
+    Npc* npc = new Npc( Entity::GenerateId );
 
-    crLocker.Lock();
-    npc->Data.Id = --lastNpcId;
-    RUNTIME_ASSERT( IS_NPC_ID( npc->Data.Id ) );
-    crLocker.Unlock();
+    SYNC_LOCK( npc );
+    EntityMngr.RegisterEntity( npc );
+    Job::PushBack( JOB_CRITTER, npc );
+
+    npc->Props = *proto->Props;
+    npc->Data.ProtoId = proto_id;
+    npc->Data.Cond = COND_LIFE;
+    npc->Data.Multihex = -1;
 
     // Flags and coords
     Location* loc = map->GetLocation( true );
@@ -438,7 +304,6 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     }
 
     map->AddCritter( npc );
-    AddCritter( npc );
 
     if( items_data )
     {
@@ -472,49 +337,34 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     return npc;
 }
 
-Npc* CritterManager::CreateNpc( hash proto_id, bool copy_data )
+bool CritterManager::RestoreNpc( uint id, CritData& data, Properties& props, Critter::CrTimeEventVec time_events )
 {
-    ProtoCritter* proto = GetProto( proto_id );
+    ProtoCritter* proto = GetProto( data.ProtoId );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Critter proto<%s> not found.\n", HASH_STR( proto_id ) );
-        return NULL;
+        WriteLogF( _FUNC_, " - Critter proto<%s> not found.\n", HASH_STR( data.ProtoId ) );
+        return false;
     }
 
-    Npc* npc = new Npc();
-    if( copy_data )
-        npc->Props = *proto->Props;
-    npc->Data.ProtoId = proto_id;
-    npc->Data.Cond = COND_LIFE;
-    npc->Data.Multihex = -1;
+    Npc* npc = new Npc( id );
+    npc->Data = data;
+    npc->Props = props;
 
     SYNC_LOCK( npc );
+    EntityMngr.RegisterEntity( npc );
     Job::PushBack( JOB_CRITTER, npc );
-    return npc;
+    return true;
 }
 
-void CritterManager::AddCritter( Critter* cr )
+void CritterManager::GetCritters( CrVec& critters, bool sync_lock )
 {
-    SCOPE_LOCK( crLocker );
-
-    RUNTIME_ASSERT( !allCritters.count( cr->GetId() ) );
-    allCritters.insert( PAIR( cr->GetId(), cr ) );
-    if( cr->IsPlayer() )
-        playersCount++;
-    else
-        npcCount++;
-}
-
-void CritterManager::GetCopyCritters( CrVec& critters, bool sync_lock )
-{
-    crLocker.Lock();
-    CrMap all_critters = allCritters;
-    crLocker.Unlock();
+    CrVec all_critters;
+    EntityMngr.GetCritters( all_critters );
 
     CrVec find_critters;
     find_critters.reserve( all_critters.size() );
     for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
-        find_critters.push_back( ( *it ).second );
+        find_critters.push_back( *it );
 
     if( sync_lock && LogicMT )
     {
@@ -523,19 +373,17 @@ void CritterManager::GetCopyCritters( CrVec& critters, bool sync_lock )
             SYNC_LOCK( *it );
 
         // Recheck
-        crLocker.Lock();
-        all_critters = allCritters;
-        crLocker.Unlock();
+        EntityMngr.GetCritters( all_critters );
 
         CrVec find_critters2;
         find_critters2.reserve( find_critters.size() );
         for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
-            find_critters2.push_back( ( *it ).second );
+            find_critters2.push_back( *it );
 
         // Search again, if different
         if( !CompareContainers( find_critters, find_critters2 ) )
         {
-            GetCopyCritters( critters, sync_lock );
+            GetCritters( critters, sync_lock );
             return;
         }
     }
@@ -543,17 +391,16 @@ void CritterManager::GetCopyCritters( CrVec& critters, bool sync_lock )
     critters = find_critters;
 }
 
-void CritterManager::GetCopyNpcs( PcVec& npcs, bool sync_lock )
+void CritterManager::GetNpcs( PcVec& npcs, bool sync_lock )
 {
-    crLocker.Lock();
-    CrMap all_critters = allCritters;
-    crLocker.Unlock();
+    CrVec all_critters;
+    EntityMngr.GetCritters( all_critters );
 
     PcVec find_npcs;
     find_npcs.reserve( all_critters.size() );
     for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
     {
-        Critter* cr = ( *it ).second;
+        Critter* cr = *it;
         if( cr->IsNpc() )
             find_npcs.push_back( (Npc*) cr );
     }
@@ -565,15 +412,13 @@ void CritterManager::GetCopyNpcs( PcVec& npcs, bool sync_lock )
             SYNC_LOCK( *it );
 
         // Recheck
-        crLocker.Lock();
-        all_critters = allCritters;
-        crLocker.Unlock();
+        EntityMngr.GetCritters( all_critters );
 
         PcVec find_npcs2;
         find_npcs2.reserve( find_npcs.size() );
         for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
         {
-            Critter* cr = ( *it ).second;
+            Critter* cr = *it;
             if( cr->IsNpc() )
                 find_npcs2.push_back( (Npc*) cr );
         }
@@ -581,7 +426,7 @@ void CritterManager::GetCopyNpcs( PcVec& npcs, bool sync_lock )
         // Search again, if different
         if( !CompareContainers( find_npcs, find_npcs2 ) )
         {
-            GetCopyNpcs( npcs, sync_lock );
+            GetNpcs( npcs, sync_lock );
             return;
         }
     }
@@ -589,17 +434,16 @@ void CritterManager::GetCopyNpcs( PcVec& npcs, bool sync_lock )
     npcs = find_npcs;
 }
 
-void CritterManager::GetCopyPlayers( ClVec& players, bool sync_lock, bool on_global_map /* = false */ )
+void CritterManager::GetClients( ClVec& players, bool sync_lock, bool on_global_map /* = false */ )
 {
-    crLocker.Lock();
-    CrMap all_critters = allCritters;
-    crLocker.Unlock();
+    CrVec all_critters;
+    EntityMngr.GetCritters( all_critters );
 
     ClVec find_players;
     find_players.reserve( all_critters.size() );
     for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
     {
-        Critter* cr = ( *it ).second;
+        Critter* cr = *it;
         if( cr->IsPlayer() && ( !on_global_map || !cr->GetMapId() ) )
             find_players.push_back( (Client*) cr );
     }
@@ -611,15 +455,13 @@ void CritterManager::GetCopyPlayers( ClVec& players, bool sync_lock, bool on_glo
             SYNC_LOCK( *it );
 
         // Recheck
-        crLocker.Lock();
-        all_critters = allCritters;
-        crLocker.Unlock();
+        EntityMngr.GetCritters( all_critters );
 
         ClVec find_players2;
         find_players2.reserve( find_players.size() );
         for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
         {
-            Critter* cr = ( *it ).second;
+            Critter* cr = *it;
             if( cr->IsPlayer() && ( !on_global_map || !cr->GetMapId() ) )
                 find_players2.push_back( (Client*) cr );
         }
@@ -627,7 +469,7 @@ void CritterManager::GetCopyPlayers( ClVec& players, bool sync_lock, bool on_glo
         // Search again, if different
         if( !CompareContainers( find_players, find_players2 ) )
         {
-            GetCopyPlayers( players, sync_lock, on_global_map );
+            GetClients( players, sync_lock, on_global_map );
             return;
         }
     }
@@ -637,15 +479,14 @@ void CritterManager::GetCopyPlayers( ClVec& players, bool sync_lock, bool on_glo
 
 void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type, CrVec& critters, bool sync_lock )
 {
-    crLocker.Lock();
-    CrMap all_critters = allCritters;
-    crLocker.Unlock();
+    CrVec all_critters;
+    EntityMngr.GetCritters( all_critters );
 
     CrVec find_critters;
     find_critters.reserve( all_critters.size() );
     for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
     {
-        Critter* cr = ( *it ).second;
+        Critter* cr = *it;
         if( !cr->GetMapId() && cr->GroupMove && DistSqrt( (int) cr->GroupMove->CurX, (int) cr->GroupMove->CurY, wx, wy ) <= radius &&
             cr->CheckFind( find_type ) )
             find_critters.push_back( cr );
@@ -658,15 +499,13 @@ void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, in
             SYNC_LOCK( *it );
 
         // Recheck
-        crLocker.Lock();
-        all_critters = allCritters;
-        crLocker.Unlock();
+        EntityMngr.GetCritters( all_critters );
 
         CrVec find_critters2;
         find_critters2.reserve( find_critters.size() );
         for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
         {
-            Critter* cr = ( *it ).second;
+            Critter* cr = *it;
             if( !cr->GetMapId() && cr->GroupMove && DistSqrt( (int) cr->GroupMove->CurX, (int) cr->GroupMove->CurY, wx, wy ) <= radius &&
                 cr->CheckFind( find_type ) )
                 find_critters2.push_back( cr );
@@ -685,14 +524,7 @@ void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, in
 
 Critter* CritterManager::GetCritter( uint crid, bool sync_lock )
 {
-    Critter* cr = NULL;
-
-    crLocker.Lock();
-    auto it = allCritters.find( crid );
-    if( it != allCritters.end() )
-        cr = ( *it ).second;
-    crLocker.Unlock();
-
+    Critter* cr = EntityMngr.GetCritter( crid );
     if( cr && sync_lock )
         SYNC_LOCK( cr );
     return cr;
@@ -703,36 +535,29 @@ Client* CritterManager::GetPlayer( uint crid, bool sync_lock )
     if( !IS_CLIENT_ID( crid ) )
         return NULL;
 
-    Critter* cr = NULL;
-
-    crLocker.Lock();
-    auto it = allCritters.find( crid );
-    if( it != allCritters.end() )
-        cr = ( *it ).second;
-    crLocker.Unlock();
-
-    if( !cr || !cr->IsPlayer() )
+    Client* cl = (Client*) EntityMngr.GetEntity( crid, EntityType::Client );
+    if( !cl )
         return NULL;
     if( sync_lock )
-        SYNC_LOCK( cr );
-    return (Client*) cr;
+        SYNC_LOCK( cl );
+    return cl;
 }
 
 Client* CritterManager::GetPlayer( const char* name, bool sync_lock )
 {
-    Client* cl = NULL;
+    EntityVec entities;
+    EntityMngr.GetEntities( EntityType::Client, entities );
 
-    crLocker.Lock();
-    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
+    Client* cl = NULL;
+    for( auto it = entities.begin(); it != entities.end(); ++it )
     {
-        Critter* cr = ( *it ).second;
-        if( cr->IsPlayer() && Str::CompareCaseUTF8( name, cr->GetName() ) )
+        Client* cl_ = (Client*) *it;
+        if( Str::CompareCaseUTF8( name, cl_->GetName() ) )
         {
-            cl = (Client*) cr;
+            cl = cl_;
             break;
         }
     }
-    crLocker.Unlock();
 
     if( cl && sync_lock )
         SYNC_LOCK( cl );
@@ -741,58 +566,30 @@ Client* CritterManager::GetPlayer( const char* name, bool sync_lock )
 
 Npc* CritterManager::GetNpc( uint crid, bool sync_lock )
 {
-    if( !IS_NPC_ID( crid ) )
+    if( IS_CLIENT_ID( crid ) )
         return NULL;
 
-    Critter* cr = NULL;
-
-    crLocker.Lock();
-    auto it = allCritters.find( crid );
-    if( it != allCritters.end() )
-        cr = ( *it ).second;
-    crLocker.Unlock();
-
-    if( !cr || !cr->IsNpc() )
+    Npc* npc = (Npc*) EntityMngr.GetEntity( crid, EntityType::Npc );
+    if( !npc )
         return NULL;
     if( sync_lock )
-        SYNC_LOCK( cr );
-    return (Npc*) cr;
-}
-
-void CritterManager::EraseCritter( Critter* cr )
-{
-    SCOPE_LOCK( crLocker );
-
-    auto it = allCritters.find( cr->GetId() );
-    if( it != allCritters.end() )
-    {
-        if( cr->IsPlayer() )
-            playersCount--;
-        else
-            npcCount--;
-        allCritters.erase( it );
-    }
+        SYNC_LOCK( npc );
+    return npc;
 }
 
 uint CritterManager::PlayersInGame()
 {
-    SCOPE_LOCK( crLocker );
-
-    return playersCount;
+    return EntityMngr.GetEntitiesCount( EntityType::Client );
 }
 
 uint CritterManager::NpcInGame()
 {
-    SCOPE_LOCK( crLocker );
-
-    return npcCount;
+    return EntityMngr.GetEntitiesCount( EntityType::Npc );
 }
 
 uint CritterManager::CrittersInGame()
 {
-    SCOPE_LOCK( crLocker );
-
-    return (uint) allCritters.size();
+    return PlayersInGame() + NpcInGame();
 }
 
 #endif

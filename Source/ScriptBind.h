@@ -360,7 +360,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventTurnBasedProces
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthTurnBasedProcess(Critter& fromCr, Map& map, bool beginTurn)", asFUNCTION( BIND_CLASS Crit_EventSmthTurnBasedProcess ), asCALL_CDECL_OBJFIRST ) );
 
 // Parameters
-BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const uint Id", OFFSETOF( Critter, Data ) + OFFSETOF( CritData, Id ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const uint Id", OFFSETOF( Critter, Id ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const uint CrType", OFFSETOF( Critter, Data ) + OFFSETOF( CritData, CrType ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const uint16 HexX", OFFSETOF( Critter, Data ) + OFFSETOF( CritData, HexX ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const uint16 HexY", OFFSETOF( Critter, Data ) + OFFSETOF( CritData, HexY ) ) );
@@ -475,7 +475,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventTurnBasedBegin()", 
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventTurnBasedEnd()", asFUNCTION( BIND_CLASS Map_EventTurnBasedEnd ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventTurnBasedProcess(Critter& cr, bool beginTurn)", asFUNCTION( BIND_CLASS Map_EventTurnBasedProcess ), asCALL_CDECL_OBJFIRST ) );
 
-BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint Id", OFFSETOF( Map, Data.MapId ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint Id", OFFSETOF( Map, Id ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedRound", OFFSETOF( Map, TurnBasedRound ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedTurn", OFFSETOF( Map, TurnBasedTurn ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedWholeTurn", OFFSETOF( Map, TurnBasedWholeTurn ) ) );
@@ -497,7 +497,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Location", "void Update()", asFUNCTI
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "void EventFinish(bool deleted)", asFUNCTION( BIND_CLASS Location_EventFinish ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool EventEnter(Critter@[]& group, uint8 entrance)", asFUNCTION( BIND_CLASS Location_EventEnter ), asCALL_CDECL_OBJFIRST ) );
 
-BIND_ASSERT( engine->RegisterObjectProperty( "Location", "const uint Id", OFFSETOF( Location, Data.LocId ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Location", "const uint Id", OFFSETOF( Location, Id ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Location", "uint16 WorldX", OFFSETOF( Location, Data.WX ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Location", "uint16 WorldY", OFFSETOF( Location, Data.WY ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Location", "bool Visible", OFFSETOF( Location, Data.Visible ) ) );

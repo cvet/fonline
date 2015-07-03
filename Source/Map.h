@@ -5,6 +5,7 @@
 #include "ProtoMap.h"
 #include "Item.h"
 #include "Critter.h"
+#include "Entity.h"
 
 // Script events
 #define MAP_EVENT_FINISH                ( 0 )
@@ -30,20 +31,13 @@ extern const char* MapEventFuncName[ MAP_EVENT_MAX ];
 class Map;
 class Location;
 
-class Map
+class Map: public Entity
 {
 public:
     PROPERTIES_HEADER();
 
     Map( uint id, ProtoMap* proto, Location* location );
     ~Map();
-
-    SyncObject Sync;
-    bool       IsDestroyed;
-    bool       IsDestroying;
-    int        RefCounter;
-    void AddRef()  { RefCounter++; }
-    void Release() { if( --RefCounter <= 0 ) delete this; }
 
 private:
     Mutex     dataLocker;
@@ -55,9 +49,10 @@ private:
     Location* mapLocation;
 
 public:
+    SyncObject Sync;
+
     struct MapData
     {
-        uint  MapId;
         hash  MapPid;
         uchar MapRain;
         bool  IsTurnBasedAviable;
@@ -106,7 +101,6 @@ public:
     bool GetStartCoordCar( ushort& hx, ushort& hy, ProtoItem* proto_item );
     bool FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe );
 
-    uint        GetId()   { return Data.MapId; }
     hash        GetPid()  { return Data.MapPid; }
     const char* GetName() { return HASH_STR( Data.MapPid ); }
 
@@ -262,7 +256,7 @@ typedef map< hash, ProtoLocation* > ProtoLocMap;
 #define LOCATION_EVENT_MAX       ( 2 )
 extern const char* LocationEventFuncName[ LOCATION_EVENT_MAX ];
 
-class Location
+class Location: public Entity
 {
 public:
     PROPERTIES_HEADER();
@@ -270,20 +264,14 @@ public:
     Location( uint id, ProtoLocation* proto, ushort wx, ushort wy );
     ~Location();
 
-    SyncObject Sync;
-    bool       IsDestroyed;
-    bool       IsDestroying;
-    int        RefCounter;
-    void AddRef()  { RefCounter++; }
-    void Release() { if( --RefCounter <= 0 ) delete this; }
-
 private:
     MapVec locMaps;
 
 public:
+    SyncObject Sync;
+
     struct LocData
     {
-        uint   LocId;
         hash   LocPid;
         ushort WX;
         ushort WY;
@@ -302,7 +290,6 @@ public:
 
     void        Update();
     bool        IsVisible()     { return Data.Visible || ( Data.GeckVisible && GeckCount > 0 ); }
-    uint        GetId()         { return Data.LocId; }
     hash        GetPid()        { return Data.LocPid; }
     const char* GetName()       { return HASH_STR( Data.LocPid ); }
     uint        GetRadius()     { return Data.Radius; }

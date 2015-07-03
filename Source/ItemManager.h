@@ -31,26 +31,17 @@ public:
     void          SetBinaryData( UCharVec& data );
 
     #ifdef FONLINE_SERVER
-private:
-    ItemMap gameItems;
-    uint    lastItemId;
-    Mutex   itemLocker;
-
 public:
-    void SaveAllItemsFile( void ( * save_func )( void*, size_t ) );
-    bool LoadAllItemsFile( void* f, int version );
-    bool CheckProtoFunctions();
-    void RunInitScriptItems();
-
     void GetGameItems( ItemVec& items );
     uint GetItemsCount();
     void SetCritterItems( Critter* cr );
 
-    Item* CreateItem( hash pid, uint count = 0, uint item_id = 0 );
+    Item* CreateItem( hash pid, uint count = 0 );
+    bool  RestoreItem( uint id, hash pid, Properties& props, uchar acc, char* acc_buf );
+    void  DeleteItem( Item* item );
+
     Item* SplitItem( Item* item, uint count );
     Item* GetItem( uint item_id, bool sync_lock );
-
-    void DeleteItem( Item* item );
 
     void EraseItemHolder( Item* item );
     void MoveItem( Item* item, uint count, Critter* to_cr );

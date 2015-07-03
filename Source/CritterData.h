@@ -35,7 +35,6 @@ typedef vector< ProtoCritter* >    ProtoCritterVec;
 
 struct CritData
 {
-    uint   Id;
     hash   ProtoId;
     uint   CrType;
     uchar  Cond;

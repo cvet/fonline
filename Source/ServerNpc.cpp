@@ -942,14 +942,15 @@ bool FOServer::TransferAllNpc()
     WriteLog( "Transfer all npc to game...\n" );
 
     int   errors = 0;
-    CrMap critters = CrMngr.GetCrittersNoLock();
+    CrVec critters;
+    CrMngr.GetCritters( critters, false );
     CrVec critters_groups;
     critters_groups.reserve( critters.size() );
 
     // Move all critters to local maps and global map rules
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
-        Critter* cr = ( *it ).second;
+        Critter* cr = *it;
         if( !cr->GetMapId() && ( cr->GetHexX() || cr->GetHexY() ) )
         {
             critters_groups.push_back( cr );
@@ -993,7 +994,7 @@ bool FOServer::TransferAllNpc()
     // Process critters visible
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
-        Critter* cr = ( *it ).second;
+        Critter* cr = *it;
         cr->ProcessVisibleCritters();
         cr->ProcessVisibleItems();
     }
@@ -1110,7 +1111,8 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
                     break;
 
                 ScriptDict* dict = (ScriptDict*) prop->GetValue< void* >( prop_obj );
-                void*       pvalue = dict->GetDefault( &slave->Data.Id, NULL );
+                uint        slave_id = slave->GetId();
+                void*       pvalue = dict->GetDefault( &slave_id, NULL );
                 dict->Release();
                 if( !pvalue )
                     break;
@@ -1331,7 +1333,8 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
                     continue;
 
                 dict = (ScriptDict*) prop->GetValue< void* >( master );
-                void* pvalue = dict->GetDefault( &slave->Data.Id, NULL );
+                uint  slave_id = slave->GetId();
+                void* pvalue = dict->GetDefault( &slave_id, NULL );
                 if( pvalue )
                 {
                     int value_type_id = prop->GetASObjectType()->GetSubTypeId( 1 );
@@ -1417,7 +1420,8 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
                 else
                     RUNTIME_ASSERT( false );
 
-                dict->Set( &slave->Data.Id, pvalue );
+                uint slave_id = slave->GetId();
+                dict->Set( &slave_id, pvalue );
                 prop->SetValue< void* >( prop_obj, dict );
                 dict->Release();
             }

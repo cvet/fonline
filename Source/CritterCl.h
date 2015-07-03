@@ -8,8 +8,9 @@
 #include "Item.h"
 #include "ItemManager.h"
 #include "3dStuff.h"
+#include "Entity.h"
 
-class CritterCl
+class CritterCl: public Entity
 {
 public:
     // Properties
@@ -66,7 +67,6 @@ public:
     CLASS_PROPERTY( uchar, PerkSilentRunning );
 
     // Data
-    uint          Id;
     hash          Pid;
     ushort        HexX, HexY;
     uchar         CrDir;
@@ -100,7 +100,7 @@ public:
     static bool   SlotEnabled[ 0x100 ];
     static IntSet RegProperties;
 
-    CritterCl();
+    CritterCl( uint id );
     ~CritterCl();
     void Init();
     void Finish();
@@ -342,13 +342,6 @@ public:
     int GetApCostDropItem();
     int GetApCostPickCritter();
     int GetApCostUseSkill();
-
-    // Ref counter
-public:
-    short RefCounter;
-    bool  IsDestroyed;
-    void AddRef()  { RefCounter++; }
-    void Release() { if( --RefCounter <= 0 ) delete this; }
 };
 
 typedef map< uint, CritterCl* > CritMap;

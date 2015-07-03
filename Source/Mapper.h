@@ -311,7 +311,6 @@ public:
     void       SelectDelete();
 
     // Parse new
-    uint   AnyId;
     StrVec ShowCritterProps;
 
     MapObject* ParseProto( hash pid, ushort hx, ushort hy, MapObject* owner, bool is_child = false );

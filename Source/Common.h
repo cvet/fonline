@@ -976,6 +976,7 @@ T* ReadDataArr( UCharVec& vec, uint size, uint& pos )
 class GlobalVars
 {
 public:
+    Properties Props;
     PROPERTIES_HEADER();
     CLASS_PROPERTY( ScriptArray *, BestScores );
     GlobalVars();
@@ -985,6 +986,7 @@ extern GlobalVars* Globals;
 class ClientMap
 {
 public:
+    Properties Props;
     PROPERTIES_HEADER();
     ClientMap();
 };
@@ -993,6 +995,7 @@ extern ClientMap* ClientCurMap;
 class ClientLocation
 {
 public:
+    Properties Props;
     PROPERTIES_HEADER();
     ClientLocation();
 };

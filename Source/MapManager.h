@@ -121,8 +121,6 @@ class MapManager
 private:
     ProtoMapMap protoMaps;
     ProtoLocMap protoLoc;
-    uint        lastMapId;
-    uint        lastLocId;
     Mutex       mapLocker;
 
 public:

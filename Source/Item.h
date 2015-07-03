@@ -6,6 +6,7 @@
 #include "Text.h"
 #include "Crypt.h"
 #include "MsgFiles.h"
+#include "Entity.h"
 
 class Critter;
 class MapObject;
@@ -113,6 +114,7 @@ class ProtoItem
 {
 public:
     // Properties
+    Properties Props;
     PROPERTIES_HEADER();
     CLASS_PROPERTY( hash, PicMap );
     CLASS_PROPERTY( hash, PicInv );
@@ -275,7 +277,7 @@ typedef vector< Item* >         ItemVec;
 /* Item                                                                 */
 /************************************************************************/
 
-class Item
+class Item: public Entity
 {
 public:
     // Properties
@@ -351,14 +353,14 @@ public:
     CLASS_PROPERTY( short, OffsetX );
     CLASS_PROPERTY( short, OffsetY );
 
+public:
+    Item( uint id, ProtoItem* proto );
+    ~Item();
+
     // Internal fields
-    uint       Id;
     ProtoItem* Proto;
     uchar      Accessory;
     bool       ViewPlaceOnMap;
-    bool       IsDestroyed;
-    bool       IsDestroying;
-    int        RefCounter;
 
     union     // 8
     {
@@ -391,8 +393,6 @@ public:
     SyncObject Sync;
     #endif
 
-    Item( uint id, ProtoItem* proto );
-    ~Item();
     void SetProto( ProtoItem* proto );
 
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
@@ -400,9 +400,6 @@ public:
     #endif
 
     bool operator==( const uint& id ) { return ( Id == id ); }
-
-    void AddRef()  { RefCounter++; }
-    void Release() { if( --RefCounter <= 0 ) delete this; }
 
     #ifdef FONLINE_SERVER
     bool ParseScript( const char* script, bool first_time );
@@ -422,7 +419,6 @@ public:
     static void ClearItems( ItemVec& items );
 
     // All
-    uint        GetId()            { return Id; }
     hash        GetProtoId()       { return Proto->ProtoId; }
     const char* GetName()          { return Proto->GetName(); }
     hash        GetActualPicMap()  { return GetPicMap() ? GetPicMap() : Proto->GetPicMap(); }

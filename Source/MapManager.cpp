@@ -5,6 +5,7 @@
 #include "ItemManager.h"
 #include "Script.h"
 #include "LineTracer.h"
+#include "EntityManager.h"
 
 MapManager MapMngr;
 
@@ -110,7 +111,7 @@ void GlobalMapGroup::Clear()
 /* MapMngr                                                              */
 /************************************************************************/
 
-MapManager::MapManager(): lastMapId( 0 ), lastLocId( 0 ), runGarbager( true )
+MapManager::MapManager(): runGarbager( true )
 {
     MEMORY_PROCESS( MEMORY_STATIC, sizeof( MapManager ) );
     MEMORY_PROCESS( MEMORY_STATIC, ( FPATH_MAX_PATH * 2 + 2 ) * ( FPATH_MAX_PATH * 2 + 2 ) ); // Grid, see below
@@ -174,8 +175,6 @@ void MapManager::Finish()
 
 void MapManager::Clear()
 {
-    lastMapId = 0;
-    lastLocId = 0;
     runGarbager = false;
 
     for( auto it = allLocations.begin(); it != allLocations.end(); ++it )
@@ -428,6 +427,8 @@ void MapManager::SaveAllLocationsAndMapsFile( void ( * save_func )( void*, size_
     for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
     {
         Location* loc = ( *it ).second;
+        uint      loc_id = loc->GetId();
+        save_func( &loc_id, sizeof( loc_id ) );
         save_func( &loc->Data, sizeof( loc->Data ) );
         loc->Props.Save( save_func );
 
@@ -437,6 +438,8 @@ void MapManager::SaveAllLocationsAndMapsFile( void ( * save_func )( void*, size_
         for( auto it_ = maps.begin(), end_ = maps.end(); it_ != end_; ++it_ )
         {
             Map* map = *it_;
+            uint map_id = map->GetId();
+            save_func( &map_id, sizeof( map_id ) );
             save_func( &map->Data, sizeof( map->Data ) );
             map->Props.Save( save_func );
         }
@@ -446,9 +449,6 @@ void MapManager::SaveAllLocationsAndMapsFile( void ( * save_func )( void*, size_
 bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
 {
     WriteLog( "Load locations...\n" );
-
-    lastLocId = 0;
-    lastMapId = 0;
 
     uint count;
     FileRead( f, &count, sizeof( count ) );
@@ -462,22 +462,22 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
     for( uint i = 0; i < count; ++i )
     {
         // Read data
+        uint              loc_id = 0;
+        FileRead( f, &loc_id, sizeof( loc_id ) );
         Location::LocData data;
         FileRead( f, &data, sizeof( data ) );
-        if( data.LocId > lastLocId )
-            lastLocId = data.LocId;
-        Properties loc_props( Location::PropertiesRegistrator, NULL );
+        Properties        loc_props( Location::PropertiesRegistrator, NULL );
         loc_props.Load( f, version );
 
         uint                   map_count;
         FileRead( f, &map_count, sizeof( map_count ) );
+        vector< uint >         map_ids( map_count );
         vector< Map::MapData > map_data( map_count );
         vector< Properties* >  map_props( map_count );
         for( uint j = 0; j < map_count; j++ )
         {
+            FileRead( f, &map_ids[ j ], sizeof( map_ids[ j ] ) );
             FileRead( f, &map_data[ j ], sizeof( map_data[ j ] ) );
-            if( map_data[ j ].MapId > lastMapId )
-                lastMapId = map_data[ j ].MapId;
             map_props[ j ] = new Properties( Map::PropertiesRegistrator, NULL );
             map_props[ j ]->Load( f, version );
         }
@@ -501,7 +501,7 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
             continue;
 
         // Try create
-        Location* loc = CreateLocation( data.LocPid, data.WX, data.WY, data.LocId );
+        Location* loc = CreateLocation( data.LocPid, data.WX, data.WY, loc_id );
         if( !loc )
         {
             WriteLog( "Can't create location '%s'.\n", HASH_STR( data.LocPid ) );
@@ -512,7 +512,7 @@ bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
 
         for( uint j = 0; j < map_count; j++ )
         {
-            Map* map = CreateMap( map_data[ j ].MapPid, loc, map_data[ j ].MapId );
+            Map* map = CreateMap( map_data[ j ].MapPid, loc, map_ids[ j ] );
             if( !map )
             {
                 WriteLog( "Can't create map '%s' for location '%s'.\n", HASH_STR( map_data[ j ].MapPid ), HASH_STR( data.LocPid ) );
@@ -546,7 +546,7 @@ string MapManager::GetLocationsMapsStatistics()
     {
         Location* loc = ( *it ).second;
         Str::Format( str, "%-20s %-10u   %-5u %-5u %-6u %08X %-7s %-11s %-9d %-11s %-5s\n",
-                     loc->Proto->Name.c_str(), loc->Data.LocId, loc->Data.WX, loc->Data.WY, loc->Data.Radius, loc->Data.Color, loc->Data.Visible ? "true" : "false",
+                     loc->Proto->Name.c_str(), loc->GetId(), loc->Data.WX, loc->Data.WY, loc->Data.Radius, loc->Data.Color, loc->Data.Visible ? "true" : "false",
                      loc->Data.GeckVisible ? "true" : "false", loc->GeckCount, loc->Data.AutoGarbage ? "true" : "false", loc->Data.ToGarbage ? "true" : "false" );
         result += str;
 
@@ -619,11 +619,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
     Location* loc = NULL;
     if( !loc_id )
     {
-        mapLocker.Lock();
-        loc_id = ++lastLocId;
-        mapLocker.Unlock();
-
-        loc = new Location( loc_id, protoLoc[ loc_pid ], wx, wy );
+        loc = new Location( Entity::GenerateId, protoLoc[ loc_pid ], wx, wy );
         for( uint i = 0; i < loc->Proto->ProtoMapPids.size(); ++i )
         {
             hash map_pid = loc->Proto->ProtoMapPids[ i ];
@@ -685,13 +681,7 @@ Map* MapManager::CreateMap( hash map_pid, Location* loc, uint map_id )
         return NULL;
     }
 
-    if( !map_id )
-    {
-        SCOPE_LOCK( mapLocker );
-
-        map_id = ++lastMapId;
-    }
-    else
+    if( map_id )
     {
         SCOPE_LOCK( mapLocker );
 
@@ -702,7 +692,7 @@ Map* MapManager::CreateMap( hash map_pid, Location* loc, uint map_id )
         }
     }
 
-    Map* map = new Map( map_id, protoMaps[ map_pid ], loc );
+    Map* map = new Map( map_id ? map_id : Entity::GenerateId, protoMaps[ map_pid ], loc );
 
     SYNC_LOCK( loc );
     loc->GetMapsNoLock().push_back( map );
@@ -908,7 +898,7 @@ void MapManager::LocationGarbager()
             {
                 if( !gmap_players )
                 {
-                    CrMngr.GetCopyPlayers( players, true, true );
+                    CrMngr.GetClients( players, true, true );
                     gmap_players = &players;
                 }
                 DeleteLocation( loc, gmap_players );
@@ -940,7 +930,7 @@ void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
     ClVec players;
     if( !gmap_players )
     {
-        CrMngr.GetCopyPlayers( players, true, true );
+        CrMngr.GetClients( players, true, true );
         gmap_players = &players;
     }
     for( auto it = gmap_players->begin(); it != gmap_players->end(); ++it )

@@ -238,19 +238,15 @@ CLASS_PROPERTY_IMPL( Item, RadioBroadcastRecv );
 CLASS_PROPERTY_IMPL( Item, OffsetX );
 CLASS_PROPERTY_IMPL( Item, OffsetY );
 
-Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator, &IsDestroyed )
+Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, PropertiesRegistrator )
 {
     RUNTIME_ASSERT( proto );
 
     MEMORY_PROCESS( MEMORY_ITEM, sizeof( Item ) + PropertiesRegistrator->GetWholeDataSize() );
 
-    Id = 0;
     Proto = NULL;
     Accessory = ITEM_ACCESSORY_NONE;
     ViewPlaceOnMap = false;
-    IsDestroyed = false;
-    IsDestroying = false;
-    RefCounter = 1;
     memzero( AccBuffer, sizeof( AccBuffer ) );
 
     #ifdef FONLINE_SERVER
@@ -262,8 +258,6 @@ Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator, &IsDestro
     SetProto( proto );
     if( GetCount() == 0 )
         SetCount( 1 );
-
-    Id = id;
 }
 
 Item::~Item()

@@ -3250,8 +3250,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
         WriteLogF( _FUNC_, " - Invalid positions hx<%u>, hy<%u>, dir<%u>.\n", hx, hy, dir );
     else
     {
-        CritterCl* cr = new CritterCl();
-        cr->Id = crid;
+        CritterCl* cr = new CritterCl( crid );
         cr->HexX = hx;
         cr->HexY = hy;
         cr->CrDir = dir;

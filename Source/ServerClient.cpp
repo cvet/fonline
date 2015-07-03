@@ -1635,7 +1635,7 @@ void FOServer::Process_CreateClient( Client* cl )
     }
 
     // Register
-    cl->Data.Id = id;
+    cl->SetDeferredId( id );
     cl->RefreshName();
     cl->Data.HexX = 0;
     cl->Data.HexY = 0;
@@ -1716,7 +1716,7 @@ void FOServer::Process_CreateClient( Client* cl )
     cl->Disconnect();
 
     cl->AddRef();
-    CrMngr.AddCritter( cl );
+    EntityMngr.RegisterEntity( cl );
     MapMngr.AddCrToMap( cl, NULL, 0, 0, 0 );
     Job::PushBack( JOB_CRITTER, cl );
 
@@ -1736,7 +1736,7 @@ void FOServer::Process_CreateClient( Client* cl )
         memcpy( data->ClientPassHash, cl->PassHash, PASS_HASH_SIZE );
 
         SCOPE_LOCK( ClientsDataLocker );
-        ClientsData.insert( PAIR( cl->Data.Id, data ) );
+        ClientsData.insert( PAIR( cl->GetId(), data ) );
     }
     else
     {
@@ -2186,7 +2186,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     // Avatar not in game
     else
     {
-        cl->Data.Id = id;
+        cl->SetDeferredId( id );
 
         // Singleplayer data
         if( Singleplayer )
@@ -2215,7 +2215,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             WriteLogF( _FUNC_, " - Error load from data base, client<%s>.\n", cl->GetInfo() );
             cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
-            cl->Data.Id = 0;
             cl->SetMaps( 0, 0 );
             return;
         }
@@ -2276,7 +2275,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             WriteLogF( _FUNC_, " - Error add critter to map, client<%s>.\n", cl->GetInfo() );
             cl->Send_TextMsg( cl, STR_NET_HEXES_BUSY, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
-            cl->Data.Id = 0;
             cl->SetMaps( 0, 0 );
             return;
         }
@@ -2298,7 +2296,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         cl->SetTimeoutTransfer( 0 );
         cl->AddRef();
-        CrMngr.AddCritter( cl );
+        EntityMngr.RegisterEntity( cl );
         Job::PushBack( JOB_CRITTER, cl );
 
         cl->DisableSend++;
@@ -4674,7 +4672,7 @@ void FOServer::OnSendGlobalValue( void* obj, Property* prop, void* cur_value, vo
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
     {
         ClVec players;
-        CrMngr.GetCopyPlayers( players, false );
+        CrMngr.GetClients( players, false );
         for( auto it = players.begin(); it != players.end(); ++it )
         {
             Client* cl = *it;

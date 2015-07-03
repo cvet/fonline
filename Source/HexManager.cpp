@@ -354,31 +354,31 @@ void HexManager::ReplaceItemBlocks( ushort hx, ushort hy, Item* item )
                                    );
 }
 
-bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data )
+uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data )
 {
     if( !id )
     {
         WriteLogF( _FUNC_, " - Item id is zero.\n" );
-        return false;
+        return 0;
     }
 
     if( !IsMapLoaded() )
     {
         WriteLogF( _FUNC_, " - Map is not loaded." );
-        return false;
+        return 0;
     }
 
     if( hx >= maxHexX || hy >= maxHexY )
     {
         WriteLogF( _FUNC_, " - Position hx<%u> or hy<%u> error value.\n", hx, hy );
-        return false;
+        return 0;
     }
 
     ProtoItem* proto = ItemMngr.GetProtoItem( pid );
     if( !proto )
     {
         WriteLogF( _FUNC_, " - Proto not found<%u>.\n", pid );
-        return false;
+        return 0;
     }
 
     // Change
@@ -392,7 +392,7 @@ bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
                 item_old->StopFinishing();
             if( data )
                 item_old->Props.RestoreData( *data );
-            return true;
+            return item_old->GetId();
         }
         else
         {
@@ -425,7 +425,7 @@ bool HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
             RebuildLight();
     }
 
-    return true;
+    return item->GetId();
 }
 
 void HexManager::FinishItem( uint id, bool is_deleted )
@@ -3972,7 +3972,7 @@ bool HexManager::GetMapData( hash map_pid, ItemVec& items, ushort& maxhx, ushort
         ProtoItem* proto_item = ItemMngr.GetProtoItem( scenwall.ProtoId );
         if( proto_item )
         {
-            Item* item = new Item( 0, proto_item );
+            Item* item = new Item( Entity::DeferredId, proto_item );
             item->Accessory = ITEM_ACCESSORY_NONE;
             item->AccHex.HexX = scenwall.MapX;
             item->AccHex.HexY = scenwall.MapY;
@@ -4113,7 +4113,6 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     }
 
     // Objects
-    uint cur_id = 0;
     for( uint i = 0, j = (uint) pmap.MObjects.size(); i < j; i++ )
     {
         MapObject* o = pmap.MObjects[ i ];
@@ -4158,10 +4157,10 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
                 continue;
 
             Field&   f = GetField( o->MapX, o->MapY );
-            ItemHex* item = new ItemHex( ++cur_id, proto, NULL, o->MapX, o->MapY, o->MItem.OffsetX, o->MItem.OffsetY, &f.ScrX, &f.ScrY, 0 );
+            ItemHex* item = new ItemHex( Entity::GenerateId, proto, NULL, o->MapX, o->MapY, o->MItem.OffsetX, o->MItem.OffsetY, &f.ScrX, &f.ScrY, 0 );
             PushItem( item );
             AffectItem( o, item );
-            o->RunTime.MapObjId = cur_id;
+            o->RunTime.MapObjId = item->Id;
 
             ProcessHexBorders( item->SprId, item->GetActualOffsetX(), item->GetActualOffsetY(), false );
         }
@@ -4191,13 +4190,12 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
                 }
             }
 
-            CritterCl* cr = new CritterCl();
+            CritterCl* cr = new CritterCl( uint( -1 ) );
             cr->Props = *proto->Props;
             cr->SetCrType( proto->GetCrType() );
             cr->HexX = o->MapX;
             cr->HexY = o->MapY;
             cr->SetDir( (uchar) o->MCritter.Dir );
-            cr->Id = ++cur_id;
             cr->Pid = o->ProtoId;
             cr->Init();
             if( pitem_main )
@@ -4206,7 +4204,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
                 cr->DefItemSlotArmor->SetProto( pitem_armor );
             AffectCritter( o, cr );
             AddCritter( cr );
-            o->RunTime.MapObjId = cur_id;
+            o->RunTime.MapObjId = cr->Id;
         }
     }
 

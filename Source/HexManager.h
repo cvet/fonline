@@ -283,7 +283,7 @@ private:
     void ReplaceItemBlocks( ushort hx, ushort hy, Item* item );
 
 public:
-    bool        AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data );
+    uint        AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data );
     void        FinishItem( uint id, bool is_deleted );
     void        DeleteItem( ItemHex* item, bool destroy_item = true, ItemHexVec::iterator* it_hex_items = NULL );
     void        PushItem( ItemHex* item );
