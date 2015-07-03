@@ -1,6 +1,7 @@
 #include "EntityManager.h"
 #include "ItemManager.h"
 #include "CritterManager.h"
+#include "MapManager.h"
 #include "Script.h"
 
 EntityManager EntityMngr;
@@ -86,6 +87,16 @@ void EntityManager::GetCritterItems( uint crid, ItemVec& items )
     }
 }
 
+Critter* EntityManager::GetCritter( uint id )
+{
+    SCOPE_LOCK( entitiesLocker );
+
+    auto it = allEntities.find( id );
+    if( it != allEntities.end() && ( it->second->Type == EntityType::Npc || it->second->Type == EntityType::Client ) )
+        return (Critter*) it->second;
+    return NULL;
+}
+
 void EntityManager::GetCritters( CrVec& critters )
 {
     SCOPE_LOCK( entitiesLocker );
@@ -98,14 +109,70 @@ void EntityManager::GetCritters( CrVec& critters )
     }
 }
 
-Critter* EntityManager::GetCritter( uint id )
+Map* EntityManager::GetMapByPid( hash pid, uint skip_count )
 {
     SCOPE_LOCK( entitiesLocker );
 
-    auto it = allEntities.find( id );
-    if( it != allEntities.end() && ( it->second->Type == EntityType::Npc || it->second->Type == EntityType::Client ) )
-        return (Critter*) it->second;
+    for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
+    {
+        if( it->second->Type == EntityType::Map )
+        {
+            Map* map = (Map*) it->second;
+            if( map->Data.MapPid == pid )
+            {
+                if( !skip_count )
+                    return map;
+                else
+                    skip_count--;
+            }
+        }
+    }
     return NULL;
+}
+
+void EntityManager::GetMaps( MapVec& maps )
+{
+    SCOPE_LOCK( entitiesLocker );
+
+    maps.reserve( maps.size() + entitiesCount[ (int) EntityType::Map ] );
+    for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
+    {
+        if( it->second->Type == EntityType::Map )
+            maps.push_back( (Map*) it->second );
+    }
+}
+
+Location* EntityManager::GetLocationByPid( hash pid, uint skip_count )
+{
+    SCOPE_LOCK( entitiesLocker );
+
+    for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
+    {
+        if( it->second->Type == EntityType::Location )
+        {
+            Location* loc = (Location*) it->second;
+            if( loc->Data.LocPid == pid )
+            {
+                if( !skip_count )
+                    return loc;
+                else
+                    skip_count--;
+            }
+        }
+    }
+    return NULL;
+}
+
+void EntityManager::GetLocations( LocVec& locs )
+{
+    SCOPE_LOCK( entitiesLocker );
+
+    locs.reserve( locs.size() + entitiesCount[ (int) EntityType::Location ] );
+    for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
+    {
+        if( it->second->Type == EntityType::Location )
+            locs.push_back( (Location*) it->second );
+    }
 }
 
 void EntityManager::SaveEntities( void ( * save_func )( void*, size_t ) )
@@ -116,13 +183,12 @@ void EntityManager::SaveEntities( void ( * save_func )( void*, size_t ) )
     {
         Entity*    entity = it->second;
         EntityType type = entity->Type;
-        if( type != EntityType::Item && type != EntityType::Npc )
+        if( type != EntityType::Item && type != EntityType::Npc && type != EntityType::Location )
             continue;
 
         uint id = entity->GetId();
         RUNTIME_ASSERT( id );
         save_func( &id, sizeof( id ) );
-        entity->Props.Save( save_func );
         char type_c = (char) type;
         save_func( &type_c, sizeof( type_c ) );
         entity->Props.Save( save_func );
@@ -138,11 +204,27 @@ void EntityManager::SaveEntities( void ( * save_func )( void*, size_t ) )
         {
             Npc* npc = (Npc*) entity;
             save_func( &npc->Data, sizeof( npc->Data ) );
-            npc->Props.Save( save_func );
             uint te_count = (uint) npc->CrTimeEvents.size();
             save_func( &te_count, sizeof( te_count ) );
             if( te_count )
                 save_func( &npc->CrTimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
+        }
+        else if( type == EntityType::Location )
+        {
+            Location* loc = (Location*) entity;
+            save_func( &loc->Data, sizeof( loc->Data ) );
+
+            MapVec& maps = loc->GetMapsNoLock();
+            uint    map_count = (uint) maps.size();
+            save_func( &map_count, sizeof( map_count ) );
+            for( auto it_ = maps.begin(), end_ = maps.end(); it_ != end_; ++it_ )
+            {
+                Map* map = *it_;
+                uint map_id = map->GetId();
+                save_func( &map_id, sizeof( map_id ) );
+                save_func( &map->Data, sizeof( map->Data ) );
+                map->Props.Save( save_func );
+            }
         }
     }
     uint zero = 0;
@@ -194,21 +276,55 @@ bool EntityManager::LoadEntities( void* file, uint version )
         }
         else if( type == EntityType::Npc )
         {
-            CritData                data;
-            FileRead( file, &data, sizeof( data ) );
-            Properties              props( Critter::PropertiesRegistrator, NULL );
-            props.Load( file, version );
+            Properties props( Critter::PropertiesRegistrator, NULL );
+            if( !props.Load( file, version ) )
+                return false;
+
+            CritData data;
+            if( !FileRead( file, &data, sizeof( data ) ) )
+                return false;
             Critter::CrTimeEventVec tevents;
             uint                    te_count;
-            FileRead( file, &te_count, sizeof( te_count ) );
+            if( !FileRead( file, &te_count, sizeof( te_count ) ) )
+                return false;
             if( te_count )
             {
                 tevents.resize( te_count );
-                FileRead( file, &tevents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
+                if( !FileRead( file, &tevents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) ) )
+                    return false;
             }
 
             if( !CrMngr.RestoreNpc( id, data, props, tevents ) )
-                WriteLog( "Fail to create npc '%s' with id %u on map '%s'.\n", HASH_STR( data.ProtoId ), id, HASH_STR( data.MapPid ) );
+                WriteLog( "Fail to restore npc '%s' with id %u on map '%s'.\n", HASH_STR( data.ProtoId ), id, HASH_STR( data.MapPid ) );
+        }
+        else if( type == EntityType::Location )
+        {
+            Properties loc_props( Location::PropertiesRegistrator, NULL );
+            if( !loc_props.Load( file, version ) )
+                return false;
+            Location::LocData data;
+            if( !FileRead( file, &data, sizeof( data ) ) )
+                return false;
+
+            uint map_count;
+            if( !FileRead( file, &map_count, sizeof( map_count ) ) )
+                return false;
+            vector< uint >         map_ids( map_count );
+            vector< Map::MapData > map_datas( map_count );
+            vector< Properties* >  map_props( map_count );
+            for( uint j = 0; j < map_count; j++ )
+            {
+                if( !FileRead( file, &map_ids[ j ], sizeof( map_ids[ j ] ) ) )
+                    return false;
+                if( !FileRead( file, &map_datas[ j ], sizeof( map_datas[ j ] ) ) )
+                    return false;
+                map_props[ j ] = new Properties( Map::PropertiesRegistrator, NULL );
+                if( !map_props[ j ]->Load( file, version ) )
+                    return false;
+            }
+
+            if( !MapMngr.RestoreLocation( id, data, loc_props, map_ids, map_datas, map_props ) )
+                WriteLog( "Fail to restore location '%s' with id %u.\n", HASH_STR( data.LocPid ), id );
         }
         else
         {
@@ -253,23 +369,29 @@ void EntityManager::InitEntities()
             if( !npc->IsDestroyed && npc->GetScriptId() )
                 npc->ParseScript( NULL, false );
         }
-        else if( entity->Type == EntityType::Location )
+        else if( entity->Type == EntityType::Map )
         {
-            Location* loc = (Location*) entity;
+            Map* map = (Map*) entity;
+            if( map->Data.ScriptId )
+                map->ParseScript( NULL, false );
         }
     }
 }
 
 void EntityManager::FinishEntities()
 {
-    while( !allEntities.empty() )
+    WriteLog( "Finish entities...\n" );
+
+    EntityMap entities = allEntities;
+    for( auto it = entities.begin(); it != entities.end(); ++it )
     {
-        Entity* entity = allEntities.begin()->second;
+        Entity* entity = it->second;
         RUNTIME_ASSERT( !entity->IsDestroyed );
 
         if( entity->Type == EntityType::Item )
         {
             Item* item = (Item*) entity;
+
             item->EventFinish( false );
         }
         else if( entity->Type == EntityType::Npc || entity->Type == EntityType::Client )
@@ -307,18 +429,17 @@ void EntityManager::FinishEntities()
         else if( entity->Type == EntityType::Location )
         {
             Location* loc = (Location*) entity;
-        }
 
-        if( !entity->IsDestroyed )
-        {
-            auto it_ = allEntities.find( entity->GetId() );
-            RUNTIME_ASSERT( it_ != allEntities.end() );
-            allEntities.erase( it_ );
-            entity->IsDestroyed = true;
-            entitiesCount[ (int) entity->Type ]--;
-            entity->Release();
+            MapVec    maps;
+            loc->GetMaps( maps, false );
+
+            loc->EventFinish( false );
+            for( auto it_ = maps.begin(); it_ != maps.end() && !loc->IsDestroyed; ++it_ )
+                ( *it_ )->EventFinish( false );
         }
     }
+
+    WriteLog( "Finish entities complete.\n" );
 }
 
 void EntityManager::ClearEntities()
@@ -326,6 +447,11 @@ void EntityManager::ClearEntities()
     for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
     {
         it->second->IsDestroyed = true;
+        entitiesCount[ (int) it->second->Type ]--;
         SAFEREL( it->second );
     }
+    allEntities.clear();
+
+    for( int i = 0; i < (int) EntityType::Max; i++ )
+        RUNTIME_ASSERT( entitiesCount[ i ] == 0 );
 }

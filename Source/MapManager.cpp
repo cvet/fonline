@@ -133,39 +133,6 @@ void MapManager::Finish()
 {
     WriteLog( "Map manager finish...\n" );
 
-    while( !allLocations.empty() )
-    {
-        Location* loc = allLocations.begin()->second;
-        MapVec    maps;
-        loc->GetMaps( maps, true );
-
-        loc->EventFinish( false );
-        for( auto it_ = maps.begin(); it_ != maps.end() && !loc->IsDestroyed; ++it_ )
-            ( *it_ )->EventFinish( false );
-
-        if( !loc->IsDestroyed )
-        {
-            auto it_ = allLocations.find( loc->GetId() );
-            RUNTIME_ASSERT( it_ != allLocations.end() );
-            allLocations.erase( it_ );
-            loc->IsDestroyed = true;
-            for( auto it_ = maps.begin(); it_ != maps.end(); ++it_ )
-            {
-                Map* map = *it_;
-                auto it__ = allMaps.find( map->GetId() );
-                RUNTIME_ASSERT( it__ != allMaps.end() );
-                allMaps.erase( it__ );
-                map->IsDestroyed = true;
-            }
-
-            for( auto it_ = maps.begin(); it_ != maps.end(); ++it_ )
-                ( *it_ )->Release();
-            loc->GetMapsNoLock().clear();
-            loc->Release();
-        }
-    }
-    RUNTIME_ASSERT( allMaps.empty() );
-
     #pragma MESSAGE( "Ref counting for protos." )
     protoMaps.clear();
     protoLoc.clear();
@@ -176,19 +143,6 @@ void MapManager::Finish()
 void MapManager::Clear()
 {
     runGarbager = false;
-
-    for( auto it = allLocations.begin(); it != allLocations.end(); ++it )
-    {
-        it->second->IsDestroyed = true;
-        SAFEREL( it->second );
-    }
-    allLocations.clear();
-    for( auto it = allMaps.begin(); it != allMaps.end(); ++it )
-    {
-        it->second->IsDestroyed = true;
-        SAFEREL( it->second );
-    }
-    allMaps.clear();
 }
 
 UIntPair EntranceParser( const char* str )
@@ -419,132 +373,69 @@ int MapManager::ReloadMaps( const char* map_name )
     return fails;
 }
 
-void MapManager::SaveAllLocationsAndMapsFile( void ( * save_func )( void*, size_t ) )
+bool MapManager::RestoreLocation( uint id, Location::LocData& data, Properties& props, UIntVec& map_ids, vector< Map::MapData >& map_datas, vector< Properties* > map_props )
 {
-    uint count = (uint) allLocations.size();
-    save_func( &count, sizeof( count ) );
-
-    for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
+    // Check pids
+    if( !GetProtoLocation( data.LocPid ) )
     {
-        Location* loc = ( *it ).second;
-        uint      loc_id = loc->GetId();
-        save_func( &loc_id, sizeof( loc_id ) );
-        save_func( &loc->Data, sizeof( loc->Data ) );
-        loc->Props.Save( save_func );
-
-        MapVec& maps = loc->GetMapsNoLock();
-        uint    map_count = (uint) maps.size();
-        save_func( &map_count, sizeof( map_count ) );
-        for( auto it_ = maps.begin(), end_ = maps.end(); it_ != end_; ++it_ )
+        WriteLog( "Proto location '%s' is not loaded.\n", HASH_STR( data.LocPid ) );
+        return false;
+    }
+    bool map_fail = false;
+    for( size_t j = 0; j < map_datas.size(); j++ )
+    {
+        if( !GetProtoMap( map_datas[ j ].MapPid ) )
         {
-            Map* map = *it_;
-            uint map_id = map->GetId();
-            save_func( &map_id, sizeof( map_id ) );
-            save_func( &map->Data, sizeof( map->Data ) );
-            map->Props.Save( save_func );
+            WriteLog( "Proto map '%s' of proto location '%s' is not loaded.\n", HASH_STR( map_datas[ j ].MapPid ), HASH_STR( data.LocPid ) );
+            map_fail = true;
         }
     }
-}
+    if( map_fail )
+        return false;
 
-bool MapManager::LoadAllLocationsAndMapsFile( void* f, uint version )
-{
-    WriteLog( "Load locations...\n" );
-
-    uint count;
-    FileRead( f, &count, sizeof( count ) );
-    if( !count )
+    // Try create
+    Location* loc = CreateLocation( data.LocPid, data.WX, data.WY, id );
+    if( !loc )
     {
-        WriteLog( "There is no locations.\n" );
-        return true;
+        WriteLog( "Can't create location '%s'.\n", HASH_STR( data.LocPid ) );
+        return false;
     }
+    loc->Data = data;
+    loc->Props = props;
 
-    uint locaded = 0;
-    for( uint i = 0; i < count; ++i )
+    for( size_t j = 0; j < map_datas.size(); j++ )
     {
-        // Read data
-        uint              loc_id = 0;
-        FileRead( f, &loc_id, sizeof( loc_id ) );
-        Location::LocData data;
-        FileRead( f, &data, sizeof( data ) );
-        Properties        loc_props( Location::PropertiesRegistrator, NULL );
-        loc_props.Load( f, version );
-
-        uint                   map_count;
-        FileRead( f, &map_count, sizeof( map_count ) );
-        vector< uint >         map_ids( map_count );
-        vector< Map::MapData > map_data( map_count );
-        vector< Properties* >  map_props( map_count );
-        for( uint j = 0; j < map_count; j++ )
+        Map* map = CreateMap( map_datas[ j ].MapPid, loc, map_ids[ j ] );
+        if( !map )
         {
-            FileRead( f, &map_ids[ j ], sizeof( map_ids[ j ] ) );
-            FileRead( f, &map_data[ j ], sizeof( map_data[ j ] ) );
-            map_props[ j ] = new Properties( Map::PropertiesRegistrator, NULL );
-            map_props[ j ]->Load( f, version );
-        }
-
-        // Check pids
-        if( !GetProtoLocation( data.LocPid ) )
-        {
-            WriteLog( "Proto location '%s' is not loaded. Skip.\n", HASH_STR( data.LocPid ) );
-            continue;
-        }
-        bool map_fail = false;
-        for( uint j = 0; j < map_count; j++ )
-        {
-            if( !GetProtoMap( map_data[ j ].MapPid ) )
-            {
-                WriteLog( "Proto map '%s' of proto location '%s' is not loaded. Skip.\n", HASH_STR( map_data[ j ].MapPid ), HASH_STR( data.LocPid ) );
-                map_fail = true;
-            }
-        }
-        if( map_fail )
-            continue;
-
-        // Try create
-        Location* loc = CreateLocation( data.LocPid, data.WX, data.WY, loc_id );
-        if( !loc )
-        {
-            WriteLog( "Can't create location '%s'.\n", HASH_STR( data.LocPid ) );
+            WriteLog( "Can't create map '%s' for location '%s'.\n", HASH_STR( map_datas[ j ].MapPid ), HASH_STR( data.LocPid ) );
             return false;
         }
-        loc->Data = data;
-        loc->Props = loc_props;
-
-        for( uint j = 0; j < map_count; j++ )
-        {
-            Map* map = CreateMap( map_data[ j ].MapPid, loc, map_ids[ j ] );
-            if( !map )
-            {
-                WriteLog( "Can't create map '%s' for location '%s'.\n", HASH_STR( map_data[ j ].MapPid ), HASH_STR( data.LocPid ) );
-                return false;
-            }
-            map->Data = map_data[ j ];
-            map->Props = *map_props[ j ];
-            SAFEDEL( map_props[ j ] );
-        }
-
-        locaded++;
+        map->Data = map_datas[ j ];
+        map->Props = *map_props[ j ];
+        SAFEDEL( map_props[ j ] );
     }
-
-    WriteLog( "Load locations complete, count<%u>.\n", locaded );
     return true;
 }
 
 string MapManager::GetLocationsMapsStatistics()
 {
-    SCOPE_LOCK( mapLocker );
+    EntityVec locations;
+    EntityMngr.GetEntities( EntityType::Location, locations );
+    EntityVec maps;
+    EntityMngr.GetEntities( EntityType::Map, maps );
 
     static string result;
     char          str[ MAX_FOTEXT ];
-    Str::Format( str, "Locations count: %u\n", allLocations.size() );
+    Str::Format( str, "Locations count: %u\n", (uint) locations.size() );
     result = str;
-    Str::Format( str, "Maps count: %u\n", allMaps.size() );
+    Str::Format( str, "Maps count: %u\n", (uint) maps.size() );
     result += str;
     result += "Location             Id           X     Y     Radius Color    Visible GeckVisible GeckCount AutoGarbage ToGarbage\n";
     result += "          Map                 Id          Time Rain TbAviable TbOn   Script\n";
-    for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
+    for( auto it = locations.begin(), end = locations.end(); it != end; ++it )
     {
-        Location* loc = ( *it ).second;
+        Location* loc = (Location*) *it;
         Str::Format( str, "%-20s %-10u   %-5u %-5u %-6u %08X %-7s %-11s %-9d %-11s %-5s\n",
                      loc->Proto->Name.c_str(), loc->GetId(), loc->Data.WX, loc->Data.WY, loc->Data.Radius, loc->Data.Color, loc->Data.Visible ? "true" : "false",
                      loc->Data.GeckVisible ? "true" : "false", loc->GeckCount, loc->Data.AutoGarbage ? "true" : "false", loc->Data.ToGarbage ? "true" : "false" );
@@ -564,17 +455,6 @@ string MapManager::GetLocationsMapsStatistics()
         }
     }
     return result;
-}
-
-void MapManager::RunInitScriptMaps()
-{
-    MapMap maps = allMaps;
-    for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
-    {
-        Map* map = ( *it ).second;
-        if( map->Data.ScriptId )
-            map->ParseScript( NULL, false );
-    }
 }
 
 bool MapManager::GenerateWorld()
@@ -637,23 +517,11 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
     }
     else
     {
-        SCOPE_LOCK( mapLocker );
-
-        if( allLocations.count( loc_id ) )
-        {
-            WriteLogF( _FUNC_, " - Location id<%u> is busy.\n", loc_id );
-            loc->Release();
-            return NULL;
-        }
-
         loc = new Location( loc_id, protoLoc[ loc_pid ], wx, wy );
     }
 
     SYNC_LOCK( loc );
-
-    mapLocker.Lock();
-    allLocations.insert( PAIR( loc->GetId(), loc ) );
-    mapLocker.Unlock();
+    EntityMngr.RegisterEntity( loc );
 
     // Generate location maps
     MapVec maps = loc->GetMapsNoLock();   // Already locked
@@ -681,17 +549,6 @@ Map* MapManager::CreateMap( hash map_pid, Location* loc, uint map_id )
         return NULL;
     }
 
-    if( map_id )
-    {
-        SCOPE_LOCK( mapLocker );
-
-        if( allMaps.count( map_id ) )
-        {
-            WriteLogF( _FUNC_, " - Map already created, id<%u>.\n", map_id );
-            return NULL;
-        }
-    }
-
     Map* map = new Map( map_id ? map_id : Entity::GenerateId, protoMaps[ map_pid ], loc );
 
     SYNC_LOCK( loc );
@@ -700,9 +557,7 @@ Map* MapManager::CreateMap( hash map_pid, Location* loc, uint map_id )
     SYNC_LOCK( map );
     Job::PushBack( JOB_MAP, map );
 
-    mapLocker.Lock();
-    allMaps.insert( PAIR( map->GetId(), map ) );
-    mapLocker.Unlock();
+    EntityMngr.RegisterEntity( map );
 
     return map;
 }
@@ -712,14 +567,7 @@ Map* MapManager::GetMap( uint map_id, bool sync_lock )
     if( !map_id )
         return NULL;
 
-    Map* map = NULL;
-
-    mapLocker.Lock();
-    auto it = allMaps.find( map_id );
-    if( it != allMaps.end() )
-        map = ( *it ).second;
-    mapLocker.Unlock();
-
+    Map* map = (Map*) EntityMngr.GetEntity( map_id, EntityType::Map );
     if( map && sync_lock )
         SYNC_LOCK( map );
     return map;
@@ -730,34 +578,15 @@ Map* MapManager::GetMapByPid( hash map_pid, uint skip_count )
     if( !map_pid )
         return NULL;
 
-    mapLocker.Lock();
-    for( auto it = allMaps.begin(), end = allMaps.end(); it != end; ++it )
-    {
-        Map* map = ( *it ).second;
-        if( map->GetPid() == map_pid )
-        {
-            if( !skip_count )
-            {
-                mapLocker.Unlock();
-
-                SYNC_LOCK( map );
-                return map;
-            }
-            else
-                skip_count--;
-        }
-    }
-    mapLocker.Unlock();
-    return NULL;
+    Map* map = EntityMngr.GetMapByPid( map_pid, skip_count );
+    if( map )
+        SYNC_LOCK( map );
+    return map;
 }
 
 void MapManager::GetMaps( MapVec& maps, bool lock )
 {
-    SCOPE_LOCK( mapLocker );
-
-    maps.reserve( allMaps.size() );
-    for( auto it = allMaps.begin(), end = allMaps.end(); it != end; ++it )
-        maps.push_back( ( *it ).second );
+    EntityMngr.GetMaps( maps );
 
     if( lock )
         for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
@@ -766,9 +595,7 @@ void MapManager::GetMaps( MapVec& maps, bool lock )
 
 uint MapManager::GetMapsCount()
 {
-    SCOPE_LOCK( mapLocker );
-    uint count = (uint) allMaps.size();
-    return count;
+    return EntityMngr.GetEntitiesCount( EntityType::Map );
 }
 
 ProtoMap* MapManager::GetProtoMap( hash map_pid )
@@ -796,45 +623,21 @@ Location* MapManager::GetLocation( uint loc_id )
     if( !loc_id )
         return NULL;
 
-    mapLocker.Lock();
-    auto it = allLocations.find( loc_id );
-    if( it == allLocations.end() )
-    {
-        mapLocker.Unlock();
-        return NULL;
-    }
-    Location* loc = ( *it ).second;
-    mapLocker.Unlock();
-
-    SYNC_LOCK( loc );
+    Location* loc = (Location*) EntityMngr.GetEntity( loc_id, EntityType::Location );
+    if( loc )
+        SYNC_LOCK( loc );
     return loc;
 }
 
 Location* MapManager::GetLocationByPid( hash loc_pid, uint skip_count )
 {
-    ProtoLocation* ploc = GetProtoLocation( loc_pid );
-    if( !ploc )
+    if( !loc_pid )
         return NULL;
 
-    mapLocker.Lock();
-    for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
-    {
-        Location* loc = ( *it ).second;
-        if( loc->GetPid() == loc_pid )
-        {
-            if( !skip_count )
-            {
-                mapLocker.Unlock();
-
-                SYNC_LOCK( loc );
-                return loc;
-            }
-            else
-                skip_count--;
-        }
-    }
-    mapLocker.Unlock();
-    return NULL;
+    Location* loc = (Location*) EntityMngr.GetLocationByPid( loc_pid, skip_count );
+    if( loc )
+        SYNC_LOCK( loc );
+    return loc;
 }
 
 bool MapManager::IsIntersectZone( int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones )
@@ -847,13 +650,13 @@ bool MapManager::IsIntersectZone( int wx1, int wy1, int w1_radius, int wx2, int 
 
 void MapManager::GetZoneLocations( int zx, int zy, int zone_radius, UIntVec& loc_ids )
 {
-    SCOPE_LOCK( mapLocker );
-
-    int wx = zx * GM_ZONE_LEN;
-    int wy = zy * GM_ZONE_LEN;
-    for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
+    LocVec locs;
+    EntityMngr.GetLocations( locs );
+    int    wx = zx * GM_ZONE_LEN;
+    int    wy = zy * GM_ZONE_LEN;
+    for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
     {
-        Location* loc = ( *it ).second;
+        Location* loc = *it;
         if( loc->IsVisible() && IsIntersectZone( wx, wy, 0, loc->Data.WX, loc->Data.WY, loc->GetRadius(), zone_radius ) )
             loc_ids.push_back( loc->GetId() );
     }
@@ -861,11 +664,7 @@ void MapManager::GetZoneLocations( int zx, int zy, int zone_radius, UIntVec& loc
 
 void MapManager::GetLocations( LocVec& locs, bool lock )
 {
-    SCOPE_LOCK( mapLocker );
-
-    locs.reserve( allLocations.size() );
-    for( auto it = allLocations.begin(), end = allLocations.end(); it != end; ++it )
-        locs.push_back( ( *it ).second );
+    EntityMngr.GetLocations( locs );
 
     if( lock )
         for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
@@ -874,9 +673,7 @@ void MapManager::GetLocations( LocVec& locs, bool lock )
 
 uint MapManager::GetLocationsCount()
 {
-    SCOPE_LOCK( mapLocker );
-    uint count = (uint) allLocations.size();
-    return count;
+    return EntityMngr.GetEntitiesCount( EntityType::Location );
 }
 
 void MapManager::LocationGarbager()
@@ -885,15 +682,14 @@ void MapManager::LocationGarbager()
     {
         runGarbager = false;
 
-        mapLocker.Lock();
-        LocMap locs = allLocations;
-        mapLocker.Unlock();
+        LocVec locs;
+        EntityMngr.GetLocations( locs );
 
         ClVec* gmap_players = NULL;
         ClVec  players;
         for( auto it = locs.begin(); it != locs.end(); ++it )
         {
-            Location* loc = it->second;
+            Location* loc = *it;
             if( loc->Data.AutoGarbage && loc->IsCanDelete() )
             {
                 if( !gmap_players )
@@ -946,20 +742,9 @@ void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
     loc->GetMapsNoLock().clear();
 
     // Erase from main collections
-    {
-        SCOPE_LOCK( mapLocker );
-        auto it = allLocations.find( loc->GetId() );
-        RUNTIME_ASSERT( it != allLocations.end() );
-        allLocations.erase( it );
-    }
+    EntityMngr.UnregisterEntity( loc );
     for( auto it = maps.begin(); it != maps.end(); ++it )
-    {
-        Map* map = *it;
-        SCOPE_LOCK( mapLocker );
-        auto it_ = allMaps.find( map->GetId() );
-        RUNTIME_ASSERT( it_ != allMaps.end() );
-        allMaps.erase( it_ );
-    }
+        EntityMngr.UnregisterEntity( *it );
 
     // Invalidate for use
     loc->IsDestroyed = true;

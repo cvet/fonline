@@ -160,6 +160,7 @@ void FOServer::Finish()
     #endif
 
     // Managers
+    EntityMngr.ClearEntities();
     AIMngr.Finish();
     MapMngr.Finish();
     CrMngr.Finish();
@@ -4437,9 +4438,6 @@ void FOServer::SaveWorld( const char* fname )
     // SaveGameInfoFile
     SaveGameInfoFile();
 
-    // SaveAllLocationsAndMapsFile
-    MapMngr.SaveAllLocationsAndMapsFile( AddWorldSaveData );
-
     // Entities
     EntityMngr.SaveEntities( AddWorldSaveData );
 
@@ -4557,8 +4555,6 @@ bool FOServer::LoadWorld( const char* fname )
     // Main data
     if( !LoadGameInfoFile( f, version ) )
         return false;
-    if( !MapMngr.LoadAllLocationsAndMapsFile( f, version ) )
-        return false;
     if( !EntityMngr.LoadEntities( f, version ) )
         return false;
     if( !LoadHoloInfoFile( f, version ) )
@@ -4580,12 +4576,18 @@ bool FOServer::LoadWorld( const char* fname )
 
     // Initialize data
     InitGameTime();
+
+    // Transfer critter copies to maps
     if( !TransferAllNpc() )
-        return false;                // Transfer critter copies to maps
+        return false;
+
+    // Transfer items copies to critters and maps
     if( !TransferAllItems() )
-        return false;                // Transfer items copies to critters and maps
-    MapMngr.RunInitScriptMaps();     // Init scripts for maps
-    EntityMngr.InitEntities();       // Init scripts for entities
+        return false;
+
+    // Init scripts for entities
+    EntityMngr.InitEntities();
+
     return true;
 }
 
@@ -4603,6 +4605,9 @@ void FOServer::UnloadWorld()
 
     // Items
     ItemMngr.Clear();
+
+    // Entities
+    EntityMngr.ClearEntities();
 
     // Holo info
     HolodiskInfo.clear();

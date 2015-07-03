@@ -121,7 +121,6 @@ class MapManager
 private:
     ProtoMapMap protoMaps;
     ProtoLocMap protoLoc;
-    Mutex       mapLocker;
 
 public:
     MapManager();
@@ -132,10 +131,7 @@ public:
     bool   LoadLocationsProtos();
     bool   LoadLocationProto( const char* loc_name, FileManager& file );
     int    ReloadMaps( const char* map_name );
-    void   SaveAllLocationsAndMapsFile( void ( * save_func )( void*, size_t ) );
-    bool   LoadAllLocationsAndMapsFile( void* f, uint version );
     string GetLocationsMapsStatistics();
-    void   RunInitScriptMaps();
     bool   GenerateWorld();
 
     // Maps stuff
@@ -167,10 +163,10 @@ public:
 
     // Locations
 private:
-    LocMap        allLocations;
     volatile bool runGarbager;
 
 public:
+    bool           RestoreLocation( uint id, Location::LocData& data, Properties& props, UIntVec& map_ids, vector< Map::MapData >& map_datas, vector< Properties* > map_props );
     ProtoLocation* GetProtoLocation( hash loc_pid );
     ProtoLocation* GetProtoLocationByIndex( uint index );
     Location*      CreateLocation( hash loc_pid, ushort wx, ushort wy, uint loc_id );
@@ -185,7 +181,6 @@ public:
 
     // Maps
 private:
-    MapMap      allMaps;
     PathStepVec pathesPool[ FPATH_DATA_SIZE ];
     uint        pathNumCur;
 

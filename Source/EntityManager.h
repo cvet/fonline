@@ -23,10 +23,14 @@ public:
     void    GetEntities( EntityType type, EntityVec& entities );
     uint    GetEntitiesCount( EntityType type );
 
-    void     GetItems( ItemVec& items );
-    void     GetCritterItems( uint crid, ItemVec& items );
-    Critter* GetCritter( uint crid );
-    void     GetCritters( CrVec& critters );
+    void      GetItems( ItemVec& items );
+    void      GetCritterItems( uint crid, ItemVec& items );
+    Critter*  GetCritter( uint crid );
+    void      GetCritters( CrVec& critters );
+    Map*      GetMapByPid( hash pid, uint skip_count );
+    void      GetMaps( MapVec& maps );
+    Location* GetLocationByPid( hash pid, uint skip_count );
+    void      GetLocations( LocVec& locations );
 
     void SaveEntities( void ( * save_func )( void*, size_t ) );
     bool LoadEntities( void* file, uint version );
