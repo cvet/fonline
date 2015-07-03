@@ -249,6 +249,7 @@ Item::Item( uint id, ProtoItem* proto ): Props( PropertiesRegistrator, &IsDestro
     Accessory = ITEM_ACCESSORY_NONE;
     ViewPlaceOnMap = false;
     IsDestroyed = false;
+    IsDestroying = false;
     RefCounter = 1;
     memzero( AccBuffer, sizeof( AccBuffer ) );
 
@@ -314,29 +315,6 @@ Item* Item::Clone()
 #endif
 
 #ifdef FONLINE_SERVER
-void Item::FullClear()
-{
-    IsDestroyed = true;
-    Accessory = 0x20 + GetType();
-
-    if( IsContainer() && ChildItems )
-    {
-        MEMORY_PROCESS( MEMORY_ITEM, -(int) sizeof( ItemMap ) );
-
-        ItemVec del_items = *ChildItems;
-        ChildItems->clear();
-        SAFEDEL( ChildItems );
-
-        for( auto it = del_items.begin(), end = del_items.end(); it != end; ++it )
-        {
-            Item* item = *it;
-            SYNC_LOCK( item );
-            item->Accessory = 0xB1;
-            ItemMngr.ItemToGarbage( item );
-        }
-    }
-}
-
 bool Item::ParseScript( const char* script, bool first_time )
 {
     if( script && script[ 0 ] )
@@ -363,7 +341,7 @@ bool Item::PrepareScriptFunc( int num_scr_func )
 {
     if( num_scr_func >= ITEM_EVENT_MAX )
         return false;
-    if( FuncId[ num_scr_func ] <= 0 )
+    if( !FuncId[ num_scr_func ] )
         return false;
     return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Item id<%u>, pid<%u>", GetId(), GetProtoId() ) );
 }
@@ -616,7 +594,7 @@ void Item::ContAddItem( Item*& item, uint stack_id )
         if( item_ )
         {
             item_->ChangeCount( item->GetCount() );
-            ItemMngr.ItemToGarbage( item );
+            ItemMngr.DeleteItem( item );
             item = item_;
             return;
         }
@@ -672,7 +650,7 @@ void Item::ContEraseItem( Item* item )
     else
         WriteLogF( _FUNC_, " - Item not found, id<%u>, pid<%u>, container<%u>.\n", item->GetId(), item->GetProtoId(), GetId() );
 
-    item->Accessory = 0xd3;
+    item->Accessory = ITEM_ACCESSORY_NONE;
 
     if( ChildItems->empty() )
         SAFEDEL( ChildItems );
@@ -773,6 +751,15 @@ int Item::ContGetFreeVolume( uint stack_id )
 bool Item::ContIsItems()
 {
     return ChildItems && ChildItems->size();
+}
+
+void Item::ContDeleteItems()
+{
+    while( ChildItems )
+    {
+        RUNTIME_ASSERT( !ChildItems->empty() );
+        ItemMngr.DeleteItem( *ChildItems->begin() );
+    }
 }
 
 Item* Item::GetChild( uint child_index )

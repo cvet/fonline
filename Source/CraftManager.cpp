@@ -1040,8 +1040,8 @@ int CraftManager::ProcessCraft( Critter* cr, uint num )
 
             // Skip or
             if( or_cmd )
-                for( ; i < j - 1 && craft->NeedItemsOr[ i ]; i++ )
-                    ;
+                while( i < j - 1 && craft->NeedItemsOr[ i ] )
+                    i++;
         }
     }
 
@@ -1102,7 +1102,7 @@ int CraftManager::ProcessCraft( Critter* cr, uint num )
             {
                 Item* sub_item = *it;
                 if( !sub_item->IsDestroyed && !sub_item->IsValidAccessory() )
-                    ItemMngr.ItemToGarbage( sub_item );
+                    ItemMngr.DeleteItem( sub_item );
             }
         }
     }

@@ -800,7 +800,7 @@ void Script::RaiseException( const char* message, ... )
     if( ctx )
         ctx->SetException( buf );
     else
-        WriteLog( "Runtime exception: %s\n", buf );
+        HandleException( NULL, "Unhandled exception: %s\n", buf );
 }
 
 void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
@@ -811,16 +811,19 @@ void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
     vsnprintf( buf, MAX_FOTEXT, message, list );
     va_end( list );
 
-    Str::Append( buf, "\n" );
-    Str::Append( buf, MakeContextTraceback( ctx ).c_str() );
+    if( ctx )
+    {
+        Str::Append( buf, "\n" );
+        Str::Append( buf, MakeContextTraceback( ctx ).c_str() );
+    }
 
     WriteLog( "%s", buf );
 
-    #ifndef FONLINE_SERVER
-    // CreateDump( "ScriptException" );
-    // ShowMessage( buf );
-    // ExitProcess( 0 );
-    #endif
+    // #ifndef FONLINE_SERVER
+    CreateDump( "ScriptException" );
+    ShowMessage( buf );
+    ExitProcess( 0 );
+    // #endif
 }
 
 string Script::MakeContextTraceback( asIScriptContext* ctx )

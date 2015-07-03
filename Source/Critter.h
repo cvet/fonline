@@ -207,7 +207,7 @@ public:
     Critter();
     ~Critter();
 
-    void FullClear();
+    void DeleteInventory();
     void SetMaps( uint map_id, hash map_pid );
     hash GetFavoriteItemPid( uchar slot );
     void SetFavoriteItemPid( uchar slot, hash pid );
@@ -536,6 +536,7 @@ public:
 
     // Reference counter
     bool IsDestroyed;
+    bool IsDestroying;
     bool CanBeRemoved;
     long RefCounter;
     void AddRef()  { InterlockedIncrement( &RefCounter ); }

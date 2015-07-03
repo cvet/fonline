@@ -40,6 +40,7 @@ public:
 
     SyncObject Sync;
     bool       IsDestroyed;
+    bool       IsDestroying;
     int        RefCounter;
     void AddRef()  { RefCounter++; }
     void Release() { if( --RefCounter <= 0 ) delete this; }
@@ -77,7 +78,7 @@ public:
     uint      LoopWaitTick[ MAP_LOOP_FUNC_MAX ];
 
     bool Generate();
-    void Clear( bool full );
+    void DeleteContent();
     void Process();
     void Lock()   { dataLocker.Lock(); }
     void Unlock() { dataLocker.Unlock(); }
@@ -271,6 +272,7 @@ public:
 
     SyncObject Sync;
     bool       IsDestroyed;
+    bool       IsDestroying;
     int        RefCounter;
     void AddRef()  { RefCounter++; }
     void Release() { if( --RefCounter <= 0 ) delete this; }
@@ -298,7 +300,6 @@ public:
     volatile int   GeckCount;
     uint           FuncId[ LOCATION_EVENT_MAX ];
 
-    void        Clear( bool full );
     void        Update();
     bool        IsVisible()     { return Data.Visible || ( Data.GeckVisible && GeckCount > 0 ); }
     uint        GetId()         { return Data.LocId; }

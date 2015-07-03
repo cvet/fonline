@@ -132,14 +132,38 @@ void MapManager::Finish()
 {
     WriteLog( "Map manager finish...\n" );
 
-    for( auto it = allLocations.begin(); it != allLocations.end(); ++it )
+    while( !allLocations.empty() )
     {
-        Location* loc = ( *it ).second;
-        loc->Clear( false );
-        loc->Release();
+        Location* loc = allLocations.begin()->second;
+        MapVec    maps;
+        loc->GetMaps( maps, true );
+
+        loc->EventFinish( false );
+        for( auto it_ = maps.begin(); it_ != maps.end() && !loc->IsDestroyed; ++it_ )
+            ( *it_ )->EventFinish( false );
+
+        if( !loc->IsDestroyed )
+        {
+            auto it_ = allLocations.find( loc->GetId() );
+            RUNTIME_ASSERT( it_ != allLocations.end() );
+            allLocations.erase( it_ );
+            loc->IsDestroyed = true;
+            for( auto it_ = maps.begin(); it_ != maps.end(); ++it_ )
+            {
+                Map* map = *it_;
+                auto it__ = allMaps.find( map->GetId() );
+                RUNTIME_ASSERT( it__ != allMaps.end() );
+                allMaps.erase( it__ );
+                map->IsDestroyed = true;
+            }
+
+            for( auto it_ = maps.begin(); it_ != maps.end(); ++it_ )
+                ( *it_ )->Release();
+            loc->GetMapsNoLock().clear();
+            loc->Release();
+        }
     }
-    allLocations.clear();
-    allMaps.clear();
+    RUNTIME_ASSERT( allMaps.empty() );
 
     #pragma MESSAGE( "Ref counting for protos." )
     protoMaps.clear();
@@ -155,10 +179,16 @@ void MapManager::Clear()
     runGarbager = false;
 
     for( auto it = allLocations.begin(); it != allLocations.end(); ++it )
-        SAFEREL( ( *it ).second );
+    {
+        it->second->IsDestroyed = true;
+        SAFEREL( it->second );
+    }
     allLocations.clear();
     for( auto it = allMaps.begin(); it != allMaps.end(); ++it )
-        SAFEREL( ( *it ).second );
+    {
+        it->second->IsDestroyed = true;
+        SAFEREL( it->second );
+    }
     allMaps.clear();
 }
 
@@ -601,7 +631,9 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
             if( !map )
             {
                 WriteLogF( _FUNC_, " - Create map<%s> fail.\n", HASH_STR( map_pid ) );
-                loc->Clear( true );
+                MapVec& maps = loc->GetMapsNoLock();
+                for( auto it = maps.begin(); it != maps.end(); ++it )
+                    ( *it )->Release();
                 loc->Release();
                 return NULL;
             }
@@ -861,58 +893,93 @@ void MapManager::LocationGarbager()
 {
     if( runGarbager )
     {
-        ClVec players;
-        CrMngr.GetCopyPlayers( players, true );
+        runGarbager = false;
 
         mapLocker.Lock();
         LocMap locs = allLocations;
         mapLocker.Unlock();
 
-        for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
+        ClVec* gmap_players = NULL;
+        ClVec  players;
+        for( auto it = locs.begin(); it != locs.end(); ++it )
         {
-            Location* loc = ( *it ).second;
-            if( loc->Data.ToGarbage || ( loc->Data.AutoGarbage && loc->IsCanDelete() ) )
+            Location* loc = it->second;
+            if( loc->Data.AutoGarbage && loc->IsCanDelete() )
             {
-                SYNC_LOCK( loc );
-                loc->IsDestroyed = true;
-
-                // Send all active clients about this
-                for( auto it_ = players.begin(), end_ = players.end(); it_ != end_; ++it_ )
+                if( !gmap_players )
                 {
-                    Client* cl = *it_;
-                    if( !cl->GetMapId() && cl->CheckKnownLocById( loc->GetId() ) )
-                        cl->Send_GlobalLocation( loc, false );
+                    CrMngr.GetCopyPlayers( players, true, true );
+                    gmap_players = &players;
                 }
-
-                // Delete
-                mapLocker.Lock();
-                auto it = allLocations.find( loc->GetId() );
-                if( it != allLocations.end() )
-                    allLocations.erase( it );
-                mapLocker.Unlock();
-
-                // Delete maps
-                MapVec maps;
-                loc->GetMaps( maps, true );
-                for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
-                {
-                    Map* map = *it;
-
-                    // Transit players to global map
-                    map->KickPlayersToGlobalMap();
-
-                    // Delete from main array
-                    mapLocker.Lock();
-                    allMaps.erase( map->GetId() );
-                    mapLocker.Unlock();
-                }
-
-                loc->Clear( true );
-                Job::DeferredRelease( loc );
+                DeleteLocation( loc, gmap_players );
             }
         }
-        runGarbager = false;
     }
+}
+
+void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
+{
+    // Start deleting
+    SYNC_LOCK( loc );
+    MapVec maps;
+    loc->GetMaps( maps, true );
+
+    // Redundant calls
+    if( loc->IsDestroying || loc->IsDestroyed )
+        return;
+    loc->IsDestroying = true;
+    for( auto it = maps.begin(); it != maps.end(); ++it )
+        ( *it )->IsDestroying = true;
+
+    // Finish events
+    loc->EventFinish( true );
+    for( auto it = maps.begin(); it != maps.end(); ++it )
+        ( *it )->EventFinish( true );
+
+    // Send players on global map about this
+    ClVec players;
+    if( !gmap_players )
+    {
+        CrMngr.GetCopyPlayers( players, true, true );
+        gmap_players = &players;
+    }
+    for( auto it = gmap_players->begin(); it != gmap_players->end(); ++it )
+    {
+        Client* cl = *it;
+        if( cl->CheckKnownLocById( loc->GetId() ) )
+            cl->Send_GlobalLocation( loc, false );
+    }
+
+    // Delete maps
+    for( auto it = maps.begin(); it != maps.end(); ++it )
+        ( *it )->DeleteContent();
+    loc->GetMapsNoLock().clear();
+
+    // Erase from main collections
+    {
+        SCOPE_LOCK( mapLocker );
+        auto it = allLocations.find( loc->GetId() );
+        RUNTIME_ASSERT( it != allLocations.end() );
+        allLocations.erase( it );
+    }
+    for( auto it = maps.begin(); it != maps.end(); ++it )
+    {
+        Map* map = *it;
+        SCOPE_LOCK( mapLocker );
+        auto it_ = allMaps.find( map->GetId() );
+        RUNTIME_ASSERT( it_ != allMaps.end() );
+        allMaps.erase( it_ );
+    }
+
+    // Invalidate for use
+    loc->IsDestroyed = true;
+    for( auto it = maps.begin(); it != maps.end(); ++it )
+        ( *it )->IsDestroyed = true;
+
+    // Release after some time
+    Job::DeferredRelease( loc );
+    for( auto it = maps.begin(); it != maps.end(); ++it )
+        Job::DeferredRelease( *it );
 }
 
 void MapManager::GM_GroupMove( GlobalMapGroup* group )

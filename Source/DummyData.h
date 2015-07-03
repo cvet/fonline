@@ -72,6 +72,7 @@ struct Item
     int Accessory;
     int ChildObjects;
     int IsDestroyed;
+    int IsDestroying;
 
     struct
     {
@@ -234,6 +235,7 @@ struct Critter
     int  NameStr;
     int  IsRuning;
     int  IsDestroyed;
+    int  IsDestroying;
     int  RefCounter;
 
     void AddRef()  {}
@@ -260,6 +262,7 @@ struct Map
     int  TurnBasedWholeTurn;
 
     int  IsDestroyed;
+    int  IsDestroying;
     int  RefCounter;
 
     void AddRef()  {}
@@ -286,6 +289,7 @@ struct Location
 
     int  GeckCount;
     int  IsDestroyed;
+    int  IsDestroying;
     int  RefCounter;
 
     void AddRef()  {}
@@ -644,8 +648,11 @@ struct BindClass
     static void Global_MoveItemsMap()           {}
     static void Global_MoveItemsCont()          {}
     static void Global_DeleteItem()             {}
+    static void Global_DeleteItemById()         {}
     static void Global_DeleteItems()            {}
+    static void Global_DeleteItemsById()        {}
     static void Global_DeleteNpc()              {}
+    static void Global_DeleteNpcById()          {}
     static void Global_RadioMessage()           {}
     static void Global_RadioMessageMsg()        {}
     static void Global_RadioMessageMsgLex()     {}
@@ -653,6 +660,7 @@ struct BindClass
     static void Global_GetGameTime()            {}
     static void Global_CreateLocation()         {}
     static void Global_DeleteLocation()         {}
+    static void Global_DeleteLocationById()     {}
     static void Global_GetProtoCritter()        {}
     static void Global_GetCritter()             {}
     static void Global_GetPlayer()              {}

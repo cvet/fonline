@@ -41,6 +41,7 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Props( PropertiesRegis
 
     RefCounter = 1;
     IsDestroyed = false;
+    IsDestroying = false;
     hexFlags = NULL;
     NeedProcess = false;
     IsTurnBasedOn = false;
@@ -81,37 +82,26 @@ Map::~Map()
     SAFEDELA( hexFlags );
 }
 
-void Map::Clear( bool full )
+void Map::DeleteContent()
 {
-    EventFinish( full );
-
-    dataLocker.Lock();
-
-    IsDestroyed = true;
-
-    PcVec del_npc = mapNpcs;
-    mapCritters.clear();
-    mapPlayers.clear();
-    mapNpcs.clear();
-
-    ItemVec del_items = hexItems;
-    hexItems.clear();
-
-    dataLocker.Unlock();
-
-    if( full )
+    while( !mapCritters.empty() || !hexItems.empty() )
     {
-        for( auto it = del_npc.begin(), end = del_npc.end(); it != end; ++it )
-        {
-            Critter* cr = *it;
-            CrMngr.CritterToGarbage( cr );
-        }
+        // Transit players to global map
+        KickPlayersToGlobalMap();
 
-        for( auto it = del_items.begin(), end = del_items.end(); it != end; ++it )
-        {
-            Item* item = *it;
-            ItemMngr.ItemToGarbage( item );
-        }
+        // Delete npc
+        dataLocker.Lock();
+        PcVec del_npc = mapNpcs;
+        dataLocker.Unlock();
+        for( auto it = del_npc.begin(); it != del_npc.end(); ++it )
+            CrMngr.DeleteNpc( *it );
+
+        // Delete items
+        dataLocker.Lock();
+        ItemVec del_items = hexItems;
+        dataLocker.Unlock();
+        for( auto it = del_items.begin(); it != del_items.end(); ++it )
+            ItemMngr.DeleteItem( *it );
     }
 }
 
@@ -343,8 +333,8 @@ bool Map::Generate()
         {
             if( !AddItem( item, mobj.MapX, mobj.MapY ) )
             {
-                WriteLogF( _FUNC_, " - Add item to Map<%s> with pid<%u> failture, continue generate.\n", Proto->GetName(), pid );
-                ItemMngr.ItemToGarbage( item );
+                WriteLogF( _FUNC_, " - Add item '%s' to map '%s' failture, continue generate.\n", HASH_STR( pid ), Proto->GetName() );
+                ItemMngr.DeleteItem( item );
                 continue;
             }
         }
@@ -559,19 +549,19 @@ void Map::EraseCritter( Critter* cr )
         if( cr->IsPlayer() )
         {
             auto it = std::find( mapPlayers.begin(), mapPlayers.end(), (Client*) cr );
-            if( it != mapPlayers.end() )
-                mapPlayers.erase( it );
+            RUNTIME_ASSERT( it != mapPlayers.end() );
+            mapPlayers.erase( it );
         }
         else
         {
             auto it = std::find( mapNpcs.begin(), mapNpcs.end(), (Npc*) cr );
-            if( it != mapNpcs.end() )
-                mapNpcs.erase( it );
+            RUNTIME_ASSERT( it != mapNpcs.end() );
+            mapNpcs.erase( it );
         }
 
         auto it = std::find( mapCritters.begin(), mapCritters.end(), cr );
-        if( it != mapCritters.end() )
-            mapCritters.erase( it );
+        RUNTIME_ASSERT( it != mapCritters.end() );
+        mapCritters.erase( it );
     }
 
     cr->SetTimeoutBattle( 0 );
@@ -714,7 +704,7 @@ void Map::EraseItem( uint item_id )
     ushort hx = item->AccHex.HexX;
     ushort hy = item->AccHex.HexY;
 
-    item->Accessory = 0xd1;
+    item->Accessory = ITEM_ACCESSORY_NONE;
 
     if( item->GetIsGeck() )
         mapLocation->GeckCount--;
@@ -2245,6 +2235,7 @@ Location::Location( uint id, ProtoLocation* proto, ushort wx, ushort wy ): Props
     Proto = proto;
     RefCounter = 1;
     IsDestroyed = false;
+    IsDestroying = false;
     memzero( &Data, sizeof( Data ) );
     memzero( FuncId, sizeof( FuncId ) );
     Data.LocPid = Proto->LocPid;
@@ -2262,23 +2253,6 @@ Location::Location( uint id, ProtoLocation* proto, ushort wx, ushort wy ): Props
 Location::~Location()
 {
     //
-}
-
-void Location::Clear( bool full )
-{
-    EventFinish( full );
-
-    IsDestroyed = true;
-
-    MapVec maps = locMaps;
-    locMaps.clear();
-
-    for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
-    {
-        Map* map = *it;
-        map->Clear( full );
-        Job::DeferredRelease( map );
-    }
 }
 
 void Location::Update()

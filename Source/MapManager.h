@@ -182,6 +182,7 @@ public:
     void           GetLocations( LocVec& locs, bool lock );
     uint           GetLocationsCount();
     void           LocationGarbager();
+    void           DeleteLocation( Location* loc, ClVec* gmap_players );
     void           RunGarbager() { runGarbager = true; }
 
     // Maps

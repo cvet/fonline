@@ -33,8 +33,6 @@ public:
     #ifdef FONLINE_SERVER
 private:
     ItemMap gameItems;
-    UIntVec itemToDelete;
-    UIntVec itemToDeleteCount;
     uint    lastItemId;
     Mutex   itemLocker;
 
@@ -52,8 +50,7 @@ public:
     Item* SplitItem( Item* item, uint count );
     Item* GetItem( uint item_id, bool sync_lock );
 
-    void ItemToGarbage( Item* item );
-    void ItemGarbager();
+    void DeleteItem( Item* item );
 
     void EraseItemHolder( Item* item );
     void MoveItem( Item* item, uint count, Critter* to_cr );

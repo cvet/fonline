@@ -780,17 +780,6 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     }
     cr->SubAp( ap_cost );
 
-    if( item_id )
-    {
-        if( !item->GetCount() )
-        {
-            WriteLogF( _FUNC_, " - Error, count is zero, id<%u>, critter<%s>.\n", item->GetId(), cr->GetInfo() );
-            cr->EraseItem( item, true );
-            ItemMngr.ItemToGarbage( item );
-            return false;
-        }
-    }
-
     Critter*   target_cr = NULL;
     Item*      target_item = NULL;
     MapObject* target_scen = NULL;
@@ -1322,28 +1311,7 @@ bool FOServer::MoveRandom( Critter* cr )
 
 bool FOServer::RegenerateMap( Map* map )
 {
-    // Copy need params
-    uint      map_id = map->GetId();
-    hash      map_pid = map->GetPid();
-    ProtoMap* map_proto = map->Proto;
-    Location* map_loc = map->GetLocation( true );
-
-    // Kick clients to global
-    ClVec players;
-    map->GetPlayers( players, true );
-    for( auto it = players.begin(), end = players.end(); it != end; ++it )
-    {
-        Client* cl = *it;
-        if( !MapMngr.TransitToGlobal( cl, 0, FOLLOW_FORCE, true ) )
-        {
-            WriteLogF( _FUNC_, " - Can't kick client<%s> to global.\n", cl->GetInfo() );
-            return false;
-        }
-    }
-
-    #pragma MESSAGE( "Process correct map regeneration." )
-    map->Clear( true );
-    map->IsDestroyed = false;
+    map->DeleteContent();
     map->Generate();
     return true;
 }

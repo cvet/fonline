@@ -3541,12 +3541,12 @@ void FOMapper::MoveMapObject( MapObject* mobj, ushort hx, ushort hy )
             CritterCl* cr = HexMngr.GetCritter( mobj->RunTime.MapObjId );
             if( cr && ( cr->IsDead() || !HexMngr.GetField( hx, hy ).Crit ) )
             {
-                HexMngr.RemoveCrit( cr );
+                HexMngr.RemoveCritter( cr );
                 cr->HexX = hx;
                 cr->HexY = hy;
                 mobj->MapX = hx;
                 mobj->MapY = hy;
-                HexMngr.SetCrit( cr );
+                HexMngr.SetCritter( cr );
             }
         }
         else if( mobj->MapObjType == MAP_OBJECT_ITEM || mobj->MapObjType == MAP_OBJECT_SCENERY )
@@ -3612,7 +3612,7 @@ void FOMapper::DeleteMapObject( MapObject* mobj )
         {
             CritterCl* cr = HexMngr.GetCritter( mobj->RunTime.MapObjId );
             if( cr )
-                HexMngr.EraseCrit( cr->GetId() );
+                HexMngr.DeleteCritter( cr->GetId() );
         }
         else if( mobj->MapObjType == MAP_OBJECT_ITEM || mobj->MapObjType == MAP_OBJECT_SCENERY )
         {
@@ -4006,10 +4006,10 @@ bool FOMapper::SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_
             }
             else if( obj->IsNpc() )
             {
-                HexMngr.RemoveCrit( obj->MapNpc );
+                HexMngr.RemoveCritter( obj->MapNpc );
                 obj->MapNpc->HexX = hx;
                 obj->MapNpc->HexY = hy;
-                HexMngr.SetCrit( obj->MapNpc );
+                HexMngr.SetCritter( obj->MapNpc );
             }
             else
             {
@@ -4130,7 +4130,7 @@ void FOMapper::SelectDelete()
         if( o->IsItem() )
             HexMngr.FinishItem( o->MapItem->GetId(), 0 );
         else if( o->IsNpc() )
-            HexMngr.EraseCrit( o->MapNpc->GetId() );
+            HexMngr.DeleteCritter( o->MapNpc->GetId() );
 
         for( uint k = 0, l = (uint) o->Childs.size(); k < l; k++ )
         {
@@ -4307,7 +4307,7 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
     cr->Id = AnyId;
     cr->Init();
 
-    HexMngr.AddCrit( cr );
+    HexMngr.AddCritter( cr );
     SelectAdd( mobj );
 
     HexMngr.RefreshMap();
@@ -4359,7 +4359,7 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
         cr->Pid = mobj->ProtoId;
         cr->Id = AnyId;
         cr->Init();
-        HexMngr.AddCrit( cr );
+        HexMngr.AddCritter( cr );
         HexMngr.AffectCritter( mobj, cr );
         SelectAdd( mobj );
     }

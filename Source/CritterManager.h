@@ -30,11 +30,10 @@ public:
 
     #ifdef FONLINE_SERVER
 private:
-    CrMap   allCritters;
-    UIntVec crToDelete;
-    uint    lastNpcId;
-    uint    playersCount, npcCount;
-    Mutex   crLocker;
+    CrMap allCritters;
+    uint  lastNpcId;
+    uint  playersCount, npcCount;
+    Mutex crLocker;
 
 public:
     void SaveCrittersFile( void ( * save_func )( void*, size_t ) );
@@ -42,8 +41,7 @@ public:
 
     void RunInitScriptCritters();
 
-    void CritterToGarbage( Critter* cr );
-    void CritterGarbager();
+    void DeleteNpc( Critter* cr );
 
     Npc* CreateNpc( hash proto_id, IntVec* props_data, IntVec* items_data, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy );
     Npc* CreateNpc( hash proto_id, bool copy_data );
@@ -52,7 +50,7 @@ public:
     CrMap&   GetCrittersNoLock() { return allCritters; }
     void     GetCopyCritters( CrVec& critters, bool sync_lock );
     void     GetCopyNpcs( PcVec& npcs, bool sync_lock );
-    void     GetCopyPlayers( ClVec& players, bool sync_lock );
+    void     GetCopyPlayers( ClVec& players, bool sync_lock, bool on_global_map = false );
     void     GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type, CrVec& critters, bool sync_lock );
     Critter* GetCritter( uint crid, bool sync_lock );
     Client*  GetPlayer( uint crid, bool sync_lock );

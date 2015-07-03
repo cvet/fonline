@@ -150,6 +150,7 @@ Critter::Critter(): Props( PropertiesRegistrator, &IsDestroyed )
     CritterIsNpc = false;
     RefCounter = 1;
     IsDestroyed = false;
+    IsDestroying = false;
     GroupMove = NULL;
     PrevHexTick = 0;
     PrevHexX = PrevHexY = 0;
@@ -218,16 +219,10 @@ void Critter::SetBreakTimeDelta( uint ms )
     SetBreakTime( ms - dt );
 }
 
-void Critter::FullClear()
+void Critter::DeleteInventory()
 {
-    IsDestroyed = true;
-    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        item->Accessory = 0xB0;
-        ItemMngr.ItemToGarbage( item );
-    }
-    invItems.clear();
+    while( !invItems.empty() )
+        ItemMngr.DeleteItem( *invItems.begin() );
 }
 
 uint Critter::GetUseApCost( Item* weap, int use )
@@ -422,12 +417,7 @@ void Critter::ProcessVisibleCritters()
     // Global map
     if( !GetMapId() )
     {
-        if( !GroupMove )
-        {
-            WriteLogF( _FUNC_, " - GroupMove nullptr, critter<%s>. Creating dump file.\n", GetInfo() );
-            CreateDump( "ProcessVisibleCritters" );
-            return;
-        }
+        RUNTIME_ASSERT( GroupMove );
 
         if( IsPlayer() )
         {
@@ -448,6 +438,7 @@ void Critter::ProcessVisibleCritters()
                 }
             }
         }
+
         return;
     }
 
@@ -1266,7 +1257,7 @@ void Critter::AddItem( Item*& item, bool send )
         if( item_already )
         {
             uint count = item->GetCount();
-            ItemMngr.ItemToGarbage( item );
+            ItemMngr.DeleteItem( item );
             item = item_already;
             item->ChangeCount( count );
             return;
@@ -1365,7 +1356,7 @@ void Critter::EraseItem( Item* item, bool send )
         SendA_GlobalInfo( GroupMove, GM_INFO_GROUP_PARAM );
     }
 
-    item->Accessory = 0xd0;
+    item->Accessory = ITEM_ACCESSORY_NONE;
     TakeDefaultItem( item->AccCritter.Slot );
     if( send )
         Send_EraseItem( item );
@@ -1705,7 +1696,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
             EraseItem( item, false );
             if( !GetMapId() )
             {
-                ItemMngr.ItemToGarbage( item );
+                ItemMngr.DeleteItem( item );
                 item = NULL;
             }
         }
@@ -1717,7 +1708,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         if( !map )
         {
             WriteLogF( _FUNC_, " - Map not found, map id<%u>, critter<%s>.\n", GetMapId(), GetInfo() );
-            ItemMngr.ItemToGarbage( item );
+            ItemMngr.DeleteItem( item );
             return true;
         }
 

@@ -22,7 +22,6 @@ class MapObject;
 extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 
 // Generic
-#define ITEM_MAX_SCRIPT_VALUES        ( 10 )
 #define ITEM_MAX_CHILDS               ( 5 )
 #define MAX_ADDED_NOGROUP_ITEMS       ( 30 )
 
@@ -358,6 +357,7 @@ public:
     uchar      Accessory;
     bool       ViewPlaceOnMap;
     bool       IsDestroyed;
+    bool       IsDestroying;
     int        RefCounter;
 
     union     // 8
@@ -405,8 +405,6 @@ public:
     void Release() { if( --RefCounter <= 0 ) delete this; }
 
     #ifdef FONLINE_SERVER
-    void FullClear();
-
     bool ParseScript( const char* script, bool first_time );
     bool PrepareScriptFunc( int num_scr_func );
     void EventFinish( bool deleted );
@@ -485,6 +483,7 @@ public:
     void  ContGetItems( ItemVec& items, uint stack_id, bool sync_lock );
     int   ContGetFreeVolume( uint stack_id );
     bool  ContIsItems();
+    void  ContDeleteItems();
     #endif
 
     // Door

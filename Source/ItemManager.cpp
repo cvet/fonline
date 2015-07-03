@@ -34,16 +34,19 @@ void ItemManager::Finish()
     WriteLog( "Item manager finish...\n" );
 
     #ifdef FONLINE_SERVER
-    ItemGarbager();
-
-    ItemMap items = gameItems;
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
+    while( !gameItems.empty() )
     {
-        Item* item = ( *it ).second;
+        Item* item = gameItems.begin()->second;
         item->EventFinish( false );
-        item->Release();
+        if( !item->IsDestroyed )
+        {
+            auto it_ = gameItems.find( item->GetId() );
+            RUNTIME_ASSERT( it_ != gameItems.end() );
+            gameItems.erase( it_ );
+            item->IsDestroyed = true;
+            item->Release();
+        }
     }
-    gameItems.clear();
     #endif
 
     Clear();
@@ -56,11 +59,12 @@ void ItemManager::Clear()
 {
     #ifdef FONLINE_SERVER
     for( auto it = gameItems.begin(), end = gameItems.end(); it != end; ++it )
-        SAFEREL( ( *it ).second );
+    {
+        it->second->IsDestroyed = true;
+        SAFEREL( it->second );
+    }
     gameItems.clear();
     radioItems.clear();
-    itemToDelete.clear();
-    itemToDeleteCount.clear();
     lastItemId = 0;
     #endif
 }
@@ -498,77 +502,58 @@ Item* ItemManager::GetItem( uint item_id, bool sync_lock )
     return item;
 }
 
-void ItemManager::ItemToGarbage( Item* item )
+void ItemManager::DeleteItem( Item* item )
 {
-    SCOPE_LOCK( itemLocker );
-    itemToDelete.push_back( item->GetId() );
-    itemToDeleteCount.push_back( item->GetCount() );
-}
+    // Synchronize
+    SYNC_LOCK( item );
 
-void ItemManager::ItemGarbager()
-{
-    if( !itemToDelete.empty() )
+    // Redundant calls
+    if( item->IsDestroying || item->IsDestroyed )
+        return;
+    item->IsDestroying = true;
+
+    // Finish events
+    item->EventFinish( true );
+
+    // Delete children
+    for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
     {
-        itemLocker.Lock();
-        UIntVec to_del = itemToDelete;
-        UIntVec to_del_count = itemToDeleteCount;
-        itemToDelete.clear();
-        itemToDeleteCount.clear();
-        itemLocker.Unlock();
-
-        for( uint i = 0, j = (uint) to_del.size(); i < j; i++ )
-        {
-            uint id = to_del[ i ];
-            uint count = to_del_count[ i ];
-
-            // Erase from main collection
-            itemLocker.Lock();
-            auto it = gameItems.find( id );
-            if( it == gameItems.end() )
-            {
-                itemLocker.Unlock();
-                continue;
-            }
-            Item* item = ( *it ).second;
-            gameItems.erase( it );
-            itemLocker.Unlock();
-
-            // Synchronize
-            SYNC_LOCK( item );
-
-            // Maybe some items added
-            if( item->IsStackable() && item->GetCount() > count )
-            {
-                itemLocker.Lock();
-                gameItems.insert( PAIR( id, item ) );
-                itemLocker.Unlock();
-
-                item->ChangeCount( -(int) count );
-                continue;
-            }
-
-            // Call finish event
-            if( item->IsValidAccessory() )
-                EraseItemHolder( item );
-            if( !item->IsDestroyed && item->FuncId[ ITEM_EVENT_FINISH ] > 0 )
-                item->EventFinish( true );
-
-            // Erase from statistics
-            ChangeItemStatistics( item->GetProtoId(), -(int) item->GetCount() );
-
-            // Erase from radio collection
-            if( item->GetIsRadio() )
-                RadioRegister( item, false );
-
-            item->IsDestroyed = true;
-            if( item->IsValidAccessory() )
-                EraseItemHolder( item );
-
-            // Clear, release
-            item->FullClear();
-            Job::DeferredRelease( item );
-        }
+        Item* child = item->GetChild( i );
+        if( child )
+            DeleteItem( child );
     }
+
+    // Tear off from environment
+    while( item->Accessory != ITEM_ACCESSORY_NONE || item->ContIsItems() )
+    {
+        // Delete from owner
+        EraseItemHolder( item );
+
+        // Delete container items
+        if( item->IsContainer() )
+            item->ContDeleteItems();
+    }
+
+    // Erase from statistics
+    ChangeItemStatistics( item->GetProtoId(), -(int) item->GetCount() );
+
+    // Erase from radio collection
+    if( item->GetIsRadio() )
+        RadioRegister( item, false );
+
+    // Erase from main collection
+    {
+        SCOPE_LOCK( itemLocker );
+        auto it = gameItems.find( item->GetId() );
+        RUNTIME_ASSERT( it != gameItems.end() );
+        gameItems.erase( it );
+    }
+
+    // Invalidate for use
+    item->IsDestroyed = true;
+
+    // Release after some time
+    Job::DeferredRelease( item );
 }
 
 void ItemManager::EraseItemHolder( Item* item )
@@ -601,7 +586,7 @@ void ItemManager::EraseItemHolder( Item* item )
     default:
         break;
     }
-    item->Accessory = 45;
+    item->Accessory = ITEM_ACCESSORY_NONE;
 }
 
 void ItemManager::MoveItem( Item* item, uint count, Critter* to_cr )
@@ -795,7 +780,7 @@ bool ItemManager::SubItemCritter( Critter* cr, hash pid, uint count, ItemVec* er
         {
             cr->EraseItem( item, true );
             if( !erased_items )
-                ItemMngr.ItemToGarbage( item );
+                ItemMngr.DeleteItem( item );
             else
                 erased_items->push_back( item );
         }
@@ -819,7 +804,7 @@ bool ItemManager::SubItemCritter( Critter* cr, hash pid, uint count, ItemVec* er
         {
             cr->EraseItem( item, true );
             if( !erased_items )
-                ItemMngr.ItemToGarbage( item );
+                ItemMngr.DeleteItem( item );
             else
                 erased_items->push_back( item );
             item = cr->GetItemByPidInvPriority( pid );

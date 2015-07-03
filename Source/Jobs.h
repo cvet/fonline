@@ -6,8 +6,6 @@
 #define JOB_CLIENT                ( 1 )
 #define JOB_CRITTER               ( 2 )
 #define JOB_MAP                   ( 3 )
-#define JOB_GARBAGE_ITEMS         ( 4 )
-#define JOB_GARBAGE_CRITTERS      ( 5 )
 #define JOB_GARBAGE_LOCATIONS     ( 6 )
 #define JOB_DEFERRED_RELEASE      ( 7 )
 #define JOB_GAME_TIME             ( 8 )

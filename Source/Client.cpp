@@ -779,9 +779,9 @@ void FOClient::Finish()
     WriteLog( "Engine finish complete.\n" );
 }
 
-void FOClient::ClearCritters()
+void FOClient::DeleteCritters()
 {
-    HexMngr.ClearCritters();
+    HexMngr.DeleteCritters();
     Chosen = NULL;
     ChosenAction.clear();
     Item::ClearItems( InvContInit );
@@ -806,24 +806,24 @@ void FOClient::AddCritter( CritterCl* cr )
     CritterCl* cr_ = GetCritter( cr->GetId() );
     if( cr_ )
         fading = cr_->FadingTick;
-    EraseCritter( cr->GetId() );
+    DeleteCritter( cr->GetId() );
     if( HexMngr.IsMapLoaded() )
     {
         Field& f = HexMngr.GetField( cr->GetHexX(), cr->GetHexY() );
         if( f.Crit && f.Crit->IsFinishing() )
-            EraseCritter( f.Crit->GetId() );
+            DeleteCritter( f.Crit->GetId() );
     }
     if( cr->IsChosen() )
         Chosen = cr;
-    HexMngr.AddCrit( cr );
+    HexMngr.AddCritter( cr );
     cr->FadingTick = Timer::GameTick() + FADING_PERIOD - ( fading > Timer::GameTick() ? fading - Timer::GameTick() : 0 );
 }
 
-void FOClient::EraseCritter( uint remid )
+void FOClient::DeleteCritter( uint remid )
 {
     if( Chosen && Chosen->GetId() == remid )
         Chosen = NULL;
-    HexMngr.EraseCrit( remid );
+    HexMngr.DeleteCritter( remid );
 }
 
 void FOClient::LookBordersPrepare()
@@ -2096,7 +2096,7 @@ void FOClient::NetDisconnect()
 
     SetCurMode( CUR_DEFAULT );
     HexMngr.UnloadMap();
-    ClearCritters();
+    DeleteCritters();
     QuestMngr.Finish();
     Bin.Reset();
     Bout.Reset();
@@ -3986,7 +3986,7 @@ void FOClient::Net_OnCritterMoveItem()
             prev_hash_sum += item->LightGetHash();
         }
 
-        cr->EraseAllItems();
+        cr->DeleteAllItems();
 
         for( uchar i = 0; i < slots_data_count; i++ )
         {
@@ -4192,7 +4192,7 @@ void FOClient::Net_OnCustomCommand()
             {
                 CritterCl* cr = ( *it ).second;
                 if( cr != Chosen )
-                    EraseCritter( cr->GetId() );
+                    DeleteCritter( cr->GetId() );
             }
             ItemHexVec items = HexMngr.GetItems();
             for( auto it = items.begin(), end = items.end(); it != end; ++it )
@@ -4213,11 +4213,11 @@ void FOClient::Net_OnCustomCommand()
                 if( Chosen == cr )
                     break;
                 if( !Chosen->IsDead() && cr )
-                    EraseCritter( cr->GetId() );
-                HexMngr.RemoveCrit( Chosen );
+                    DeleteCritter( cr->GetId() );
+                HexMngr.RemoveCritter( Chosen );
                 Chosen->HexX = hx;
                 Chosen->HexY = hy;
-                HexMngr.SetCrit( Chosen );
+                HexMngr.SetCritter( Chosen );
                 HexMngr.ScrollToHex( Chosen->GetHexX(), Chosen->GetHexY(), 0.1, true );
             }
         }
@@ -4309,7 +4309,7 @@ void FOClient::Net_OnCritterXY()
     {
         Field& f = HexMngr.GetField( hx, hy );
         if( f.Crit && f.Crit->IsFinishing() )
-            EraseCritter( f.Crit->GetId() );
+            DeleteCritter( f.Crit->GetId() );
 
         HexMngr.TransitCritter( cr, hx, hy, false, true );
         cr->AnimateStay();
@@ -4365,7 +4365,7 @@ void FOClient::Net_OnChosenClearItems()
 
     if( Chosen->IsHaveLightSources() )
         HexMngr.RebuildLight();
-    Chosen->EraseAllItems();
+    Chosen->DeleteAllItems();
     CollectContItems();
 }
 
@@ -4396,7 +4396,7 @@ void FOClient::Net_OnChosenAddItem()
     {
         prev_slot = prev_item->AccCritter.Slot;
         prev_light_hash = prev_item->LightGetHash();
-        Chosen->EraseItem( prev_item, false );
+        Chosen->DeleteItem( prev_item, false );
     }
 
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
@@ -4420,7 +4420,7 @@ void FOClient::Net_OnChosenAddItem()
     if( item->LightGetHash() != prev_light_hash && ( slot != SLOT_INV || prev_slot != SLOT_INV ) )
         HexMngr.RebuildLight();
     if( item->GetIsHidden() )
-        Chosen->EraseItem( item, true );
+        Chosen->DeleteItem( item, true );
     CollectContItems();
 
     if( !InitialItemsSend && Script::PrepareContext( ClientFunctions.ItemInvIn, _FUNC_, "Game" ) )
@@ -4456,7 +4456,7 @@ void FOClient::Net_OnChosenEraseItem()
 
     if( item->GetIsLight() && item->AccCritter.Slot != SLOT_INV )
         HexMngr.RebuildLight();
-    Chosen->EraseItem( item, true );
+    Chosen->DeleteItem( item, true );
     CollectContItems();
 
     if( Script::PrepareContext( ClientFunctions.ItemInvOut, _FUNC_, "Game" ) )
@@ -4546,11 +4546,11 @@ void FOClient::Net_OnEraseItemFromMap()
         Script::RunPrepared();
     }
 
-    HexMngr.FinishItem( item_id, is_deleted );
-
     // Refresh borders
     if( item && !item->GetIsShootThru() )
         RebuildLookBorders = true;
+
+    HexMngr.FinishItem( item_id, is_deleted );
 }
 
 void FOClient::Net_OnAnimateItem()
@@ -5148,7 +5148,7 @@ void FOClient::Net_OnLoadMap()
     HexMngr.UnloadMap();
     SndMngr.ClearSounds();
     ShowMainScreen( SCREEN_WAIT );
-    ClearCritters();
+    DeleteCritters();
     ResMngr.ReinitializeDynamicAtlas();
     for( size_t i = 0, j = GmapPic.size(); i < j; i++ )
         GmapPic[ i ] = NULL;
@@ -5506,7 +5506,7 @@ void FOClient::Net_OnGlobalInfo()
 
     if( FLAG( info_flags, GM_INFO_CRITTERS ) )
     {
-        ClearCritters();
+        DeleteCritters();
         // After wait AddCritters
     }
 
@@ -6693,8 +6693,8 @@ void FOClient::CrittersProcess()
 
         if( crit->IsNeedReSet() )
         {
-            HexMngr.RemoveCrit( crit );
-            HexMngr.SetCrit( crit );
+            HexMngr.RemoveCritter( crit );
+            HexMngr.SetCritter( crit );
             crit->ReSetOk();
         }
 
@@ -6706,7 +6706,7 @@ void FOClient::CrittersProcess()
 
         if( crit->IsFinish() )
         {
-            EraseCritter( crit->GetId() );
+            DeleteCritter( crit->GetId() );
         }
     }
 
@@ -7372,7 +7372,7 @@ label_EndMove:
             if( item_count < item->GetCount() )
                 item->ChangeCount( -(int) item_count );
             else
-                Chosen->EraseItem( item, true );
+                Chosen->DeleteItem( item, true );
         }
         else
         {

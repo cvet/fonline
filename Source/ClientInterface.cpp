@@ -3830,7 +3830,7 @@ void FOClient::GmapNullParams()
     GmapCar.MasterId = 0;
     GmapFog.Fill( 0 );
     GmapActive = false;
-    ClearCritters();
+    DeleteCritters();
     GmapTrace.clear();
 }
 

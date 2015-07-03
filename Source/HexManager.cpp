@@ -446,11 +446,9 @@ void HexManager::FinishItem( uint id, bool is_deleted )
     item->Finish();
     if( is_deleted )
         item->SetHideAnim();
-
-    item->IsDestroyed = true;
 }
 
-ItemHexVec::iterator HexManager::DeleteItem( ItemHex* item, bool with_delete /* = true */ )
+void HexManager::DeleteItem( ItemHex* item, bool destroy_item /* = true */, ItemHexVec::iterator* it_hex_items /* = NULL */ )
 {
     ushort hx = item->GetHexX();
     ushort hy = item->GetHexY();
@@ -461,16 +459,21 @@ ItemHexVec::iterator HexManager::DeleteItem( ItemHex* item, bool with_delete /* 
         item->SprDraw->Unvalidate();
 
     auto it = std::find( hexItems.begin(), hexItems.end(), item );
-    if( it != hexItems.end() )
-        it = hexItems.erase( it );
+    RUNTIME_ASSERT( it != hexItems.end() );
+    it = hexItems.erase( it );
+    if( it_hex_items )
+        *it_hex_items = it;
+
     GetField( hx, hy ).EraseItem( item );
 
     if( item->GetIsLight() || !item->GetIsLightThru() )
         RebuildLight();
 
-    if( with_delete )
+    if( destroy_item )
+    {
+        item->IsDestroyed = true;
         item->Release();
-    return it;
+    }
 }
 
 void HexManager::ProcessItems()
@@ -515,7 +518,7 @@ void HexManager::ProcessItems()
         }
 
         if( item->IsFinish() )
-            it = DeleteItem( item );
+            DeleteItem( item, true, &it );
         else
             ++it;
     }
@@ -2405,7 +2408,7 @@ void HexManager::ScrollToHex( int hx, int hy, double speed, bool can_stop )
     AutoScroll.Speed = speed;
 }
 
-void HexManager::SetCrit( CritterCl* cr )
+void HexManager::SetCritter( CritterCl* cr )
 {
     if( !IsMapLoaded() )
         return;
@@ -2451,7 +2454,7 @@ void HexManager::SetCrit( CritterCl* cr )
     f.ProcessCache();
 }
 
-void HexManager::RemoveCrit( CritterCl* cr )
+void HexManager::RemoveCritter( CritterCl* cr )
 {
     if( !IsMapLoaded() )
         return;
@@ -2493,17 +2496,17 @@ CritterCl* HexManager::GetChosen()
     return it != allCritters.end() ? ( *it ).second : NULL;
 }
 
-void HexManager::AddCrit( CritterCl* cr )
+void HexManager::AddCritter( CritterCl* cr )
 {
     if( allCritters.count( cr->GetId() ) )
         return;
     allCritters.insert( PAIR( cr->GetId(), cr ) );
     if( cr->IsChosen() )
         chosenId = cr->GetId();
-    SetCrit( cr );
+    SetCritter( cr );
 }
 
-void HexManager::EraseCrit( uint crid )
+void HexManager::DeleteCritter( uint crid )
 {
     auto it = allCritters.find( crid );
     if( it == allCritters.end() )
@@ -2511,20 +2514,20 @@ void HexManager::EraseCrit( uint crid )
     CritterCl* cr = ( *it ).second;
     if( cr->IsChosen() )
         chosenId = 0;
-    RemoveCrit( cr );
-    cr->EraseAllItems();
+    RemoveCritter( cr );
+    cr->DeleteAllItems();
     cr->IsDestroyed = true;
     cr->Release();
     allCritters.erase( it );
 }
 
-void HexManager::ClearCritters()
+void HexManager::DeleteCritters()
 {
     for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
     {
         CritterCl* cr = ( *it ).second;
-        RemoveCrit( cr );
-        cr->EraseAllItems();
+        RemoveCritter( cr );
+        cr->DeleteAllItems();
         cr->IsDestroyed = true;
         cr->Release();
     }
@@ -2591,10 +2594,10 @@ bool HexManager::TransitCritter( CritterCl* cr, int hx, int hy, bool animate, bo
     // Dead transit
     if( cr->IsDead() )
     {
-        RemoveCrit( cr );
+        RemoveCritter( cr );
         cr->HexX = hx;
         cr->HexY = hy;
-        SetCrit( cr );
+        SetCritter( cr );
 
         if( cr->IsChosen() || cr->IsHaveLightSources() )
             RebuildLight();
@@ -2616,7 +2619,7 @@ bool HexManager::TransitCritter( CritterCl* cr, int hx, int hy, bool animate, bo
         }
     }
 
-    RemoveCrit( cr );
+    RemoveCritter( cr );
 
     int old_hx = cr->GetHexX();
     int old_hy = cr->GetHexY();
@@ -2644,7 +2647,7 @@ bool HexManager::TransitCritter( CritterCl* cr, int hx, int hy, bool animate, bo
         cr->AddOffsExt( ox, oy );
     }
 
-    SetCrit( cr );
+    SetCritter( cr );
     return true;
 }
 
@@ -2733,7 +2736,7 @@ ItemHex* HexManager::GetItemPixel( int x, int y, bool& item_egg )
 
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
-        ItemHex* item = ( *it );
+        ItemHex* item = *it;
         ushort   hx = item->GetHexX();
         ushort   hy = item->GetHexY();
 
@@ -3798,7 +3801,7 @@ void HexManager::UnloadMap()
     hexItems.clear();
 
     ResizeField( 0, 0 );
-    ClearCritters();
+    DeleteCritters();
 }
 
 void HexManager::GetMapHash( hash map_pid, uint& hash_tiles, uint& hash_walls, uint& hash_scen )
@@ -4202,7 +4205,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             if( pitem_armor )
                 cr->DefItemSlotArmor->SetProto( pitem_armor );
             AffectCritter( o, cr );
-            AddCrit( cr );
+            AddCritter( cr );
             o->RunTime.MapObjId = cur_id;
         }
     }

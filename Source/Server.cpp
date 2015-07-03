@@ -348,7 +348,7 @@ void FOServer::RemoveClient( Client* cl )
             ClientsData.erase( it );
             SaveClientsLocker.Unlock();
 
-            cl->FullClear();
+            cl->DeleteInventory();
             DeleteClientFile( cl->Name );
         }
 
@@ -423,8 +423,6 @@ void FOServer::MainLoop()
         return;
 
     // Add general jobs
-    Job::PushBack( JOB_GARBAGE_ITEMS );
-    Job::PushBack( JOB_GARBAGE_CRITTERS );
     Job::PushBack( JOB_GARBAGE_LOCATIONS );
     Job::PushBack( JOB_DEFERRED_RELEASE );
     Job::PushBack( JOB_GAME_TIME );
@@ -549,7 +547,7 @@ void FOServer::MainLoop()
 
         if( to_delete )
         {
-            cr->FullClear();
+            cr->DeleteInventory();
             DeleteClientFile( ( (Client*) cr )->Name );
         }
     }
@@ -557,8 +555,6 @@ void FOServer::MainLoop()
     // Last process
     ProcessBans();
     Timer::ProcessGameTime();
-    ItemMngr.ItemGarbager();
-    CrMngr.CritterGarbager();
     MapMngr.LocationGarbager();
     Job::SetDeferredReleaseCycle( 0xFFFFFFFF );
     Job::ProcessDeferredReleasing();
@@ -693,20 +689,6 @@ void FOServer::Logic_Work( void* data )
 
             // Process logic
             map->Process();
-        }
-        else if( job.Type == JOB_GARBAGE_ITEMS )
-        {
-            // Items garbage
-            sync_mngr->PushPriority( 2 );
-            ItemMngr.ItemGarbager();
-            sync_mngr->PopPriority();
-        }
-        else if( job.Type == JOB_GARBAGE_CRITTERS )
-        {
-            // Critters garbage
-            sync_mngr->PushPriority( 2 );
-            CrMngr.CritterGarbager();
-            sync_mngr->PopPriority();
         }
         else if( job.Type == JOB_GARBAGE_LOCATIONS )
         {

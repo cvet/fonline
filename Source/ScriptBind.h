@@ -148,6 +148,7 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Item", "const uint8 CritSlot", OFF
 BIND_ASSERT( engine->RegisterObjectProperty( "Item", "const uint ContainerId", OFFSETOF( Item, AccContainer.ContainerId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Item", "const uint StackId", OFFSETOF( Item, AccContainer.StackId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Item", "const bool IsDestroyed", OFFSETOF( Item, IsDestroyed ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Item", "const bool IsDestroying", OFFSETOF( Item, IsDestroying ) ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool LockerOpen()", asFUNCTION( BIND_CLASS Item_LockerOpen ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool LockerClose()", asFUNCTION( BIND_CLASS Item_LockerClose ), asCALL_CDECL_OBJFIRST ) );
@@ -377,12 +378,14 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const uint Flags", OFFS
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const string@ Name", OFFSETOF( Critter, NameStr ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "bool IsRuning", OFFSETOF( Critter, IsRuning ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const bool IsDestroyed", OFFSETOF( Critter, IsDestroyed ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const bool IsDestroying", OFFSETOF( Critter, IsDestroying ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const int RefCounter", OFFSETOF( Critter, RefCounter ) ) );
 
 /************************************************************************/
 /* Map                                                                  */
 /************************************************************************/
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const bool IsDestroyed", OFFSETOF( Map, IsDestroyed ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const bool IsDestroying", OFFSETOF( Map, IsDestroying ) ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "hash get_ProtoId() const", asFUNCTION( BIND_CLASS Map_get_ProtoId ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Location@+ GetLocation() const", asFUNCTION( BIND_CLASS Map_GetLocation ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool SetScript(string@+ script)", asFUNCTION( BIND_CLASS Map_SetScript ), asCALL_CDECL_OBJFIRST ) );
@@ -504,6 +507,7 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Location", "int GeckCount", OFFSET
 BIND_ASSERT( engine->RegisterObjectProperty( "Location", "uint16 Radius", OFFSETOF( Location, Data.Radius ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Location", "uint Color", OFFSETOF( Location, Data.Color ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Location", "const bool IsDestroyed", OFFSETOF( Location, IsDestroyed ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Location", "const bool IsDestroying", OFFSETOF( Location, IsDestroying ) ) );
 
 /************************************************************************/
 /* Global                                                               */
@@ -516,14 +520,18 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItems(Item@[]& items, Cri
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItems(Item@[]& items, Item& toCont, uint stackId)", asFUNCTION( BIND_CLASS Global_MoveItemsCont ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItems(Item@[]& items, Map& toMap, uint16 toHx, uint16 toHy)", asFUNCTION( BIND_CLASS Global_MoveItemsMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteItem(Item& item)", asFUNCTION( BIND_CLASS Global_DeleteItem ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteItem(uint itemId)", asFUNCTION( BIND_CLASS Global_DeleteItemById ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteItems(Item@[]& items)", asFUNCTION( BIND_CLASS Global_DeleteItems ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteItems(uint[]& itemIds)", asFUNCTION( BIND_CLASS Global_DeleteItemsById ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteNpc(Critter& npc)", asFUNCTION( BIND_CLASS Global_DeleteNpc ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteNpc(uint npcId)", asFUNCTION( BIND_CLASS Global_DeleteNpcById ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCrittersDistantion(Critter& cr1, Critter& cr2)", asFUNCTION( BIND_CLASS Global_GetCrittersDistantion ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RadioMessage(uint16 channel, string& text)", asFUNCTION( BIND_CLASS Global_RadioMessage ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RadioMessageMsg(uint16 channel, uint16 textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_RadioMessageMsg ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RadioMessageMsg(uint16 channel, uint16 textMsg, uint strNum, string@+ lexems)", asFUNCTION( BIND_CLASS Global_RadioMessageMsgLex ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint CreateLocation(hash locPid, uint16 worldX, uint16 worldY, Critter@[]@+ critters)", asFUNCTION( BIND_CLASS Global_CreateLocation ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteLocation(uint locId)", asFUNCTION( BIND_CLASS Global_DeleteLocation ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteLocation(Location& loc)", asFUNCTION( BIND_CLASS Global_DeleteLocation ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteLocation(uint locId)", asFUNCTION( BIND_CLASS Global_DeleteLocationById ), asCALL_CDECL ) );
 // BIND_ASSERT( engine->RegisterGlobalFunction( "void GetProtoCritter(hash protoId, int[]& data)", asFUNCTION( BIND_CLASS Global_GetProtoCritter ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetCritter(uint critterId)", asFUNCTION( BIND_CLASS Global_GetCritter ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetPlayer(string& name)", asFUNCTION( BIND_CLASS Global_GetPlayer ), asCALL_CDECL ) );

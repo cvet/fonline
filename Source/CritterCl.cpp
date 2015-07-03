@@ -218,7 +218,7 @@ void CritterCl::AddItem( Item* item )
         AnimateStay();
 }
 
-void CritterCl::EraseItem( Item* item, bool animate )
+void CritterCl::DeleteItem( Item* item, bool animate )
 {
     if( ItemSlotMain == item )
         ItemSlotMain = DefItemSlotHand;
@@ -226,17 +226,11 @@ void CritterCl::EraseItem( Item* item, bool animate )
         ItemSlotExt = DefItemSlotHand;
     if( ItemSlotArmor == item )
         ItemSlotArmor = DefItemSlotArmor;
-    item->Accessory = 0;
+    item->Accessory = ITEM_ACCESSORY_NONE;
 
-    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-    {
-        Item* item_ = *it;
-        if( item_ == item )
-        {
-            InvItems.erase( it );
-            break;
-        }
-    }
+    auto it = std::find( InvItems.begin(), InvItems.end(), item );
+    RUNTIME_ASSERT( it != InvItems.end() );
+    InvItems.erase( it );
 
     item->IsDestroyed = true;
     item->Release();
@@ -245,12 +239,10 @@ void CritterCl::EraseItem( Item* item, bool animate )
         AnimateStay();
 }
 
-void CritterCl::EraseAllItems()
+void CritterCl::DeleteAllItems()
 {
-    ItemVec items = InvItems;
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
-        EraseItem( *it, false );
-    InvItems.clear();
+    while( !InvItems.empty() )
+        DeleteItem( *InvItems.begin(), false );
 }
 
 Item* CritterCl::GetItem( uint item_id )

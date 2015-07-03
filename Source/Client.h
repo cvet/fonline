@@ -1433,8 +1433,8 @@ public:
     void       AddCritter( CritterCl* cr );
     CritterCl* GetCritter( uint crid ) { return HexMngr.GetCritter( crid ); }
     ItemHex*   GetItem( uint item_id ) { return HexMngr.GetItemById( item_id ); }
-    void       ClearCritters();
-    void       EraseCritter( uint remid );
+    void       DeleteCritters();
+    void       DeleteCritter( uint remid );
 
     bool  IsTurnBased;
     uint  TurnBasedTime;

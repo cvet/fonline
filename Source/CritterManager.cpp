@@ -29,7 +29,32 @@ void CritterManager::Finish()
     WriteLog( "Critter manager finish...\n" );
 
     #ifdef FONLINE_SERVER
-    CritterGarbager();
+    while( !allCritters.empty() )
+    {
+        Critter* cr = allCritters.begin()->second;
+        cr->EventFinish( false );
+        if( !cr->IsDestroyed && Script::PrepareContext( ServerFunctions.CritterFinish, _FUNC_, cr->GetInfo() ) )
+        {
+            Script::SetArgObject( cr );
+            Script::SetArgBool( false );
+            Script::RunPrepared();
+        }
+        if( !cr->IsDestroyed )
+        {
+            auto it_ = allCritters.find( cr->GetId() );
+            RUNTIME_ASSERT( it_ != allCritters.end() );
+            allCritters.erase( it_ );
+            if( cr->IsPlayer() )
+                playersCount--;
+            else
+                npcCount--;
+            cr->IsDestroyed = true;
+            cr->Release();
+        }
+    }
+
+    RUNTIME_ASSERT( playersCount == 0 );
+    RUNTIME_ASSERT( npcCount == 0 );
     #endif
 
     allProtos.clear();
@@ -42,9 +67,11 @@ void CritterManager::Clear()
 {
     #ifdef FONLINE_SERVER
     for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
-        SAFEREL( ( *it ).second );
+    {
+        it->second->IsDestroyed = true;
+        SAFEREL( it->second );
+    }
     allCritters.clear();
-    crToDelete.clear();
     playersCount = 0;
     npcCount = 0;
     lastNpcId = 0;
@@ -148,7 +175,7 @@ ProtoCritterMap& CritterManager::GetAllProtos()
 void CritterManager::SaveCrittersFile( void ( * save_func )( void*, size_t ) )
 {
     CrVec npcs;
-    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
+    for( auto it = allCritters.begin(); it != allCritters.end(); ++it )
     {
         Critter* cr = ( *it ).second;
         if( cr->IsNpc() )
@@ -226,58 +253,47 @@ bool CritterManager::LoadCrittersFile( void* f, uint version )
 
 void CritterManager::RunInitScriptCritters()
 {
-    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
+    CrMap all_critters = allCritters;
+    for( auto it = all_critters.begin(); it != all_critters.end(); ++it )
     {
-        Critter* cr = ( *it ).second;
-        if( Script::PrepareContext( ServerFunctions.CritterInit, _FUNC_, cr->GetInfo() ) )
+        Critter* cr = it->second;
+        if( !cr->IsDestroyed && Script::PrepareContext( ServerFunctions.CritterInit, _FUNC_, cr->GetInfo() ) )
         {
             Script::SetArgObject( cr );
             Script::SetArgBool( false );
             Script::RunPrepared();
         }
-        if( cr->GetScriptId() )
+        if( !cr->IsDestroyed && cr->GetScriptId() )
             cr->ParseScript( NULL, false );
     }
 }
 
-void CritterManager::CritterToGarbage( Critter* cr )
+void CritterManager::DeleteNpc( Critter* cr )
 {
-    SCOPE_LOCK( crLocker );
-    crToDelete.push_back( cr->GetId() );
-}
+    SYNC_LOCK( cr );
+    RUNTIME_ASSERT( cr->IsNpc() );
 
-void CritterManager::CritterGarbager()
-{
-    if( !crToDelete.empty() )
+    // Redundant calls
+    if( cr->IsDestroying || cr->IsDestroyed )
+        return;
+    cr->IsDestroying = true;
+
+    // Finish events
+    cr->EventFinish( true );
+    if( Script::PrepareContext( ServerFunctions.CritterFinish, _FUNC_, cr->GetInfo() ) )
     {
-        crLocker.Lock();
-        UIntVec to_del = crToDelete;
-        crToDelete.clear();
-        crLocker.Unlock();
+        Script::SetArgObject( cr );
+        Script::SetArgBool( true );
+        Script::RunPrepared();
+    }
 
-        for( auto it = to_del.begin(), end = to_del.end(); it != end; ++it )
+    // Tear off from environment
+    cr->LockMapTransfers++;
+    while( cr->GetMapId() || cr->GroupMove || cr->RealCountItems() )
+    {
+        // Delete from map
+        if( cr->GetMapId() )
         {
-            // Find and erase
-            Critter* cr = NULL;
-
-            crLocker.Lock();
-            auto it_cr = allCritters.find( *it );
-            if( it_cr != allCritters.end() )
-                cr = ( *it_cr ).second;
-            if( !cr || !cr->IsNpc() )
-            {
-                crLocker.Unlock();
-                continue;
-            }
-            allCritters.erase( it_cr );
-            npcCount--;
-            crLocker.Unlock();
-
-            SYNC_LOCK( cr );
-
-            // Finish critter
-            cr->LockMapTransfers++;
-
             Map* map = MapMngr.GetMap( cr->GetMapId() );
             if( map )
             {
@@ -286,53 +302,59 @@ void CritterManager::CritterGarbager()
                 map->EraseCritterEvents( cr );
                 map->UnsetFlagCritter( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead() );
             }
-
-            cr->EventFinish( true );
-            if( Script::PrepareContext( ServerFunctions.CritterFinish, _FUNC_, cr->GetInfo() ) )
-            {
-                Script::SetArgObject( cr );
-                Script::SetArgBool( true );
-                Script::RunPrepared();
-            }
-
-            cr->LockMapTransfers--;
-
-            // Erase from global
-            if( cr->GroupMove )
-            {
-                GlobalMapGroup* group = cr->GroupMove;
-                group->EraseCrit( cr );
-                if( cr == group->Rule )
-                {
-                    for( auto it_ = group->CritMove.begin(), end_ = group->CritMove.end(); it_ != end_; ++it_ )
-                    {
-                        Critter* cr_ = *it_;
-                        MapMngr.GM_GroupStartMove( cr_ );
-                    }
-                }
-                else
-                {
-                    for( auto it_ = group->CritMove.begin(), end_ = group->CritMove.end(); it_ != end_; ++it_ )
-                    {
-                        Critter* cr_ = *it_;
-                        cr_->Send_RemoveCritter( cr );
-                    }
-
-                    Item* car = cr->GetItemCar();
-                    if( car && car->GetId() == group->CarId )
-                    {
-                        group->CarId = 0;
-                        MapMngr.GM_GroupSetMove( group, group->ToX, group->ToY, 0.0f );                    // Stop others
-                    }
-                }
-                cr->GroupMove = NULL;
-            }
-
-            cr->IsDestroyed = true;
-            cr->FullClear();
-            Job::DeferredRelease( cr );
+            cr->SetMaps( 0, 0 );
         }
+
+        // Delete from global
+        if( cr->GroupMove )
+        {
+            GlobalMapGroup* group = cr->GroupMove;
+            group->EraseCrit( cr );
+            if( cr == group->Rule )
+            {
+                for( auto it_ = group->CritMove.begin(), end_ = group->CritMove.end(); it_ != end_; ++it_ )
+                {
+                    Critter* cr_ = *it_;
+                    MapMngr.GM_GroupStartMove( cr_ );
+                }
+            }
+            else
+            {
+                for( auto it_ = group->CritMove.begin(), end_ = group->CritMove.end(); it_ != end_; ++it_ )
+                {
+                    Critter* cr_ = *it_;
+                    cr_->Send_RemoveCritter( cr );
+                }
+
+                Item* car = cr->GetItemCar();
+                if( car && car->GetId() == group->CarId )
+                {
+                    group->CarId = 0;
+                    MapMngr.GM_GroupSetMove( group, group->ToX, group->ToY, 0.0f );                                      // Stop others
+                }
+            }
+            cr->GroupMove = NULL;
+        }
+
+        // Delete inventory
+        cr->DeleteInventory();
     }
+    cr->LockMapTransfers--;
+
+    // Erase from main collection
+    {
+        SCOPE_LOCK( crLocker );
+        auto it = allCritters.find( cr->GetId() );
+        RUNTIME_ASSERT( it != allCritters.end() );
+        allCritters.erase( it );
+        npcCount--;
+    }
+
+    // Invalidate for use
+    cr->IsDestroyed = true;
+
+    // Release after some time
+    Job::DeferredRelease( cr );
 }
 
 Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items_data, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy )
@@ -567,7 +589,7 @@ void CritterManager::GetCopyNpcs( PcVec& npcs, bool sync_lock )
     npcs = find_npcs;
 }
 
-void CritterManager::GetCopyPlayers( ClVec& players, bool sync_lock )
+void CritterManager::GetCopyPlayers( ClVec& players, bool sync_lock, bool on_global_map /* = false */ )
 {
     crLocker.Lock();
     CrMap all_critters = allCritters;
@@ -578,7 +600,7 @@ void CritterManager::GetCopyPlayers( ClVec& players, bool sync_lock )
     for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
     {
         Critter* cr = ( *it ).second;
-        if( cr->IsPlayer() )
+        if( cr->IsPlayer() && ( !on_global_map || !cr->GetMapId() ) )
             find_players.push_back( (Client*) cr );
     }
 
@@ -598,14 +620,14 @@ void CritterManager::GetCopyPlayers( ClVec& players, bool sync_lock )
         for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
         {
             Critter* cr = ( *it ).second;
-            if( cr->IsPlayer() )
+            if( cr->IsPlayer() && ( !on_global_map || !cr->GetMapId() ) )
                 find_players2.push_back( (Client*) cr );
         }
 
         // Search again, if different
         if( !CompareContainers( find_players, find_players2 ) )
         {
-            GetCopyPlayers( players, sync_lock );
+            GetCopyPlayers( players, sync_lock, on_global_map );
             return;
         }
     }
@@ -756,24 +778,21 @@ uint CritterManager::PlayersInGame()
 {
     SCOPE_LOCK( crLocker );
 
-    uint count = playersCount;
-    return count;
+    return playersCount;
 }
 
 uint CritterManager::NpcInGame()
 {
     SCOPE_LOCK( crLocker );
 
-    uint count = npcCount;
-    return count;
+    return npcCount;
 }
 
 uint CritterManager::CrittersInGame()
 {
     SCOPE_LOCK( crLocker );
 
-    uint count = (uint) allCritters.size();
-    return count;
+    return (uint) allCritters.size();
 }
 
 #endif

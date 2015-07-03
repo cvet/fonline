@@ -21,7 +21,7 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint 
     // Add on map
     if( !map->AddItem( item, hx, hy ) )
     {
-        ItemMngr.ItemToGarbage( item );
+        ItemMngr.DeleteItem( item );
         return NULL;
     }
 
@@ -138,7 +138,7 @@ bool FOServer::TransferAllItems()
     for( auto it = bad_items.begin(), end = bad_items.end(); it != end; ++it )
     {
         Item* item = *it;
-        ItemMngr.ItemToGarbage( item );
+        ItemMngr.DeleteItem( item );
     }
 
     // Process visible for all npc

@@ -252,7 +252,7 @@ public:
     void SwitchShowRain();
     void SetWeather( int time, uchar rain );
 
-    void SetCrit( CritterCl* cr );
+    void SetCritter( CritterCl* cr );
     bool TransitCritter( CritterCl* cr, int hx, int hy, bool animate, bool force );
 
     // Critters
@@ -265,10 +265,10 @@ private:
 public:
     CritterCl* GetCritter( uint crid );
     CritterCl* GetChosen();
-    void       AddCrit( CritterCl* cr );
-    void       RemoveCrit( CritterCl* cr );
-    void       EraseCrit( uint crid );
-    void       ClearCritters();
+    void       AddCritter( CritterCl* cr );
+    void       RemoveCritter( CritterCl* cr );
+    void       DeleteCritter( uint crid );
+    void       DeleteCritters();
     void       GetCritters( ushort hx, ushort hy, CritVec& crits, int find_type );
     CritMap& GetCritters() { return allCritters; }
     void     SetCritterContour( uint crid, int contour );
@@ -283,14 +283,14 @@ private:
     void ReplaceItemBlocks( ushort hx, ushort hy, Item* item );
 
 public:
-    bool                 AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data );
-    void                 FinishItem( uint id, bool is_deleted );
-    ItemHexVec::iterator DeleteItem( ItemHex* item, bool with_delete = true );
-    void                 PushItem( ItemHex* item );
-    ItemHex*             GetItem( ushort hx, ushort hy, hash pid );
-    ItemHex*             GetItemById( ushort hx, ushort hy, uint id );
-    ItemHex*             GetItemById( uint id );
-    void                 GetItems( ushort hx, ushort hy, ItemHexVec& items );
+    bool        AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data );
+    void        FinishItem( uint id, bool is_deleted );
+    void        DeleteItem( ItemHex* item, bool destroy_item = true, ItemHexVec::iterator* it_hex_items = NULL );
+    void        PushItem( ItemHex* item );
+    ItemHex*    GetItem( ushort hx, ushort hy, hash pid );
+    ItemHex*    GetItemById( ushort hx, ushort hy, uint id );
+    ItemHex*    GetItemById( uint id );
+    void        GetItems( ushort hx, ushort hy, ItemHexVec& items );
     ItemHexVec& GetItems() { return hexItems; }
     Rect        GetRectForText( ushort hx, ushort hy );
     void        ProcessItems();

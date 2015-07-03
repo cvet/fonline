@@ -159,8 +159,8 @@ public:
     // Items
 public:
     void       AddItem( Item* item );
-    void       EraseItem( Item* item, bool animate );
-    void       EraseAllItems();
+    void       DeleteItem( Item* item, bool animate );
+    void       DeleteAllItems();
     Item*      GetItem( uint item_id );
     Item*      GetItemByPid( hash item_pid );
     Item*      GetItemByPidInvPriority( hash item_pid );
