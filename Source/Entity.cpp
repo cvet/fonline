@@ -71,7 +71,7 @@ void Entity::Release() const
 
 void Entity::SetDeferredId( uint id ) const
 {
-    RUNTIME_ASSERT( !id );
+    RUNTIME_ASSERT( !Id );
     Id = id;
 }
 

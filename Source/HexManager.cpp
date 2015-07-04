@@ -1093,6 +1093,44 @@ void HexManager::RebuildMap( int rx, int ry )
 /* Light                                                                */
 /************************************************************************/
 
+void HexManager::PrepareLightToDraw()
+{
+    // Rebuild light
+    if( requestRebuildLight )
+    {
+        requestRebuildLight = false;
+        RealRebuildLight();
+    }
+
+    // Check dynamic light sources
+    if( !requestRenderLight )
+    {
+        for( size_t i = 0; i < lightSources.size(); i++ )
+        {
+            LightSource& ls = lightSources[ i ];
+            if( ls.OffsX && ( *ls.OffsX != ls.LastOffsX || *ls.OffsY != ls.LastOffsY ) )
+            {
+                ls.LastOffsX = *ls.OffsX;
+                ls.LastOffsY = *ls.OffsY;
+                requestRenderLight = true;
+            }
+        }
+    }
+
+    // Prerender light
+    if( requestRenderLight )
+    {
+        requestRenderLight = false;
+        SprMngr.PushRenderTarget( rtLight );
+        SprMngr.ClearCurrentRenderTarget( 0 );
+        PointF offset( (float) rtScreenOX, (float) rtScreenOY );
+        for( uint i = 0; i < lightPointsCount; i++ )
+            SprMngr.DrawPoints( lightPoints[ i ], PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, NULL, &offset, Effect::Light );
+        SprMngr.DrawPoints( lightSoftPoints, PRIMITIVE_TRIANGLELIST, &GameOpt.SpritesZoom, NULL, &offset, Effect::Light );
+        SprMngr.PopRenderTarget();
+    }
+}
+
 #define MAX_LIGHT_VALUE      ( 10000 )
 #define MAX_LIGHT_HEX        ( 200 )
 #define MAX_LIGHT_ALPHA      ( 255 )
@@ -1364,7 +1402,7 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
     PointVec& points = lightPoints[ lightPointsCount - 1 ];
     points.clear();
     points.reserve( 3 + dist * DIRS_COUNT );
-    points.push_back( PrepPoint( base_x, base_y, color, NULL, NULL ) ); // Center of light
+    points.push_back( PrepPoint( base_x, base_y, color, ls.OffsX, ls.OffsY ) ); // Center of light
 
     int    hx_far = hx, hy_far = hy;
     bool   seek_start = true;
@@ -1404,6 +1442,8 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
 
             if( hx_ != last_hx || hy_ != last_hy )
             {
+                short* ox = NULL;
+                short* oy = NULL;
                 if( (int) hx_ != hx_far || (int) hy_ != hy_far )
                 {
                     int a = alpha - DistGame( hx, hy, hx_, hy_ ) * alpha / dist;
@@ -1413,10 +1453,12 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
                 else
                 {
                     color = COLOR_RGBA( 0, ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
+                    ox = ls.OffsX;
+                    oy = ls.OffsY;
                 }
                 int x, y;
                 GetHexInterval( hx, hy, hx_, hy_, x, y );
-                points.push_back( PrepPoint( base_x + x, base_y + y, color, NULL, NULL ) );
+                points.push_back( PrepPoint( base_x + x, base_y + y, color, ox, oy ) );
                 last_hx = hx_;
                 last_hy = hy_;
             }
@@ -1430,15 +1472,15 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
         if( DistSqrt( cur.PointX, cur.PointY, next.PointX, next.PointY ) > (uint) LIGHT_SOFT_LENGTH )
         {
             bool dist_comp = ( DistSqrt( base_x, base_y, cur.PointX, cur.PointY ) > DistSqrt( base_x, base_y, next.PointX, next.PointY ) );
-            lightSoftPoints.push_back( PrepPoint( next.PointX, next.PointY, next.PointColor, NULL, NULL ) );
-            lightSoftPoints.push_back( PrepPoint( cur.PointX, cur.PointY, cur.PointColor, NULL, NULL ) );
+            lightSoftPoints.push_back( PrepPoint( next.PointX, next.PointY, next.PointColor, next.PointOffsX, next.PointOffsY ) );
+            lightSoftPoints.push_back( PrepPoint( cur.PointX, cur.PointY, cur.PointColor, cur.PointOffsX, cur.PointOffsY ) );
             float x = (float) ( dist_comp ? next.PointX - cur.PointX : cur.PointX - next.PointX );
             float y = (float) ( dist_comp ? next.PointY - cur.PointY : cur.PointY - next.PointY );
             ChangeStepsXY( x, y, dist_comp ? -2.5f : 2.5f );
             if( dist_comp )
-                lightSoftPoints.push_back( PrepPoint( cur.PointX + int(x), cur.PointY + int(y), cur.PointColor, NULL, NULL ) );
+                lightSoftPoints.push_back( PrepPoint( cur.PointX + int(x), cur.PointY + int(y), cur.PointColor, cur.PointOffsX, cur.PointOffsY ) );
             else
-                lightSoftPoints.push_back( PrepPoint( next.PointX + int(x), next.PointY + int(y), next.PointColor, NULL, NULL ) );
+                lightSoftPoints.push_back( PrepPoint( next.PointX + int(x), next.PointY + int(y), next.PointColor, next.PointOffsX, next.PointOffsY ) );
         }
     }
 }
@@ -1520,14 +1562,14 @@ void HexManager::CollectLightSources()
             Item* item = *it_;
             if( item->GetIsLight() && item->AccCritter.Slot != SLOT_INV )
             {
-                lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags() ) );
+                lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags(), &cr->SprOx, &cr->SprOy ) );
                 added = true;
             }
         }
 
         // Default chosen light
         if( cr->IsChosen() && !added )
-            lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), GameOpt.ChosenLightColor, GameOpt.ChosenLightDistance, GameOpt.ChosenLightIntensity, GameOpt.ChosenLightFlags ) );
+            lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), GameOpt.ChosenLightColor, GameOpt.ChosenLightDistance, GameOpt.ChosenLightIntensity, GameOpt.ChosenLightFlags, &cr->SprOx, &cr->SprOy ) );
     }
     #endif
 }
@@ -2015,29 +2057,13 @@ void HexManager::GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y )
 
 void HexManager::DrawMap()
 {
+    // Prepare light
+    PrepareLightToDraw();
+
+    // Prerendered offsets
     int  ox = rtScreenOX - (int) ( (float) GameOpt.ScrOx / GameOpt.SpritesZoom + 0.5f );
     int  oy = rtScreenOY - (int) ( (float) GameOpt.ScrOy / GameOpt.SpritesZoom + 0.5f );
     Rect prerenderedRect = Rect( ox, oy, ox + GameOpt.ScreenWidth, oy + GameOpt.ScreenHeight );
-
-    // Rebuild light
-    if( requestRebuildLight )
-    {
-        requestRebuildLight = false;
-        RealRebuildLight();
-    }
-
-    // Render light
-    if( requestRenderLight )
-    {
-        requestRenderLight = false;
-        SprMngr.PushRenderTarget( rtLight );
-        SprMngr.ClearCurrentRenderTarget( 0 );
-        PointF offset( (float) rtScreenOX, (float) rtScreenOY );
-        for( uint i = 0; i < lightPointsCount; i++ )
-            SprMngr.DrawPoints( lightPoints[ i ], PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, NULL, &offset, Effect::Light );
-        SprMngr.DrawPoints( lightSoftPoints, PRIMITIVE_TRIANGLELIST, &GameOpt.SpritesZoom, NULL, &offset, Effect::Light );
-        SprMngr.PopRenderTarget();
-    }
 
     // Separate render target
     if( rtMap )

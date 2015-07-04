@@ -52,8 +52,13 @@ struct LightSource
     uchar  Distance;
     uchar  Flags;
     int    Intensity;
+    short* OffsX;
+    short* OffsY;
+    short  LastOffsX;
+    short  LastOffsY;
 
-    LightSource( ushort hx, ushort hy, uint color, uchar distance, int inten, uchar flags ): HexX( hx ), HexY( hy ), ColorRGB( color ), Distance( distance ), Flags( flags ), Intensity( inten ) {}
+    LightSource( ushort hx, ushort hy, uint color, uchar distance, int inten, uchar flags, short* ox = NULL, short* oy = NULL ): HexX( hx ), HexY( hy ), ColorRGB( color ), Distance( distance ), Flags( flags ), Intensity( inten ),
+                                                                                                                                 OffsX( ox ), OffsY( oy ), LastOffsX( ox ? *ox : 0 ), LastOffsY( oy ? *oy : 0 ) {}
 };
 typedef vector< LightSource > LightSourceVec;
 
@@ -316,6 +321,7 @@ private:
     int lightProcentG;
     int lightProcentB;
 
+    void PrepareLightToDraw();
     void MarkLight( ushort hx, ushort hy, uint inten );
     void MarkLightEndNeighbor( ushort hx, ushort hy, bool north_south, uint inten );
     void MarkLightEnd( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint inten );
