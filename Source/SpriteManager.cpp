@@ -4205,6 +4205,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
 {
     if( points.empty() )
         return true;
+
     Flush();
 
     if( !effect )

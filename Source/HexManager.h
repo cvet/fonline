@@ -203,6 +203,7 @@ private:
     RenderTarget* rtTiles;
     RenderTarget* rtRoof;
     RenderTarget* rtLight;
+    RenderTarget* rtFog;
     uint          rtScreenOX, rtScreenOY;
     Sprites       mainTree;
     ViewField*    viewField;
@@ -216,11 +217,9 @@ private:
     bool IsVisible( uint spr_id, int ox, int oy );
     bool ProcessHexBorders( uint spr_id, int ox, int oy, bool resize_map );
 
-public:
-    void ChangeZoom( int zoom );   // <0 in, >0 out, 0 normalize
-    void GetScreenHexes( int& sx, int& sy );
-    void GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y );
-    bool ProcessHexBorders( ItemHex* item );
+    PointVec fogLookPoints;
+    PointVec fogShootPoints;
+    void PrepareFogToDraw();
 
 public:
     bool SpritesCanDrawMap;
@@ -230,12 +229,19 @@ public:
     void Finish();
     void ReloadSprites();
 
+    void ChangeZoom( int zoom );     // <0 in, >0 out, 0 normalize
+    void GetScreenHexes( int& sx, int& sy );
+    void GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y );
+    bool ProcessHexBorders( ItemHex* item );
+
     void     RebuildMap( int rx, int ry );
     void     DrawMap();
-    bool     Scroll();
+    void     SetFog( PointVec& look_points, PointVec& shoot_points );
     Sprites& GetDrawTree() { return mainTree; }
     void     RefreshMap()  { RebuildMap( screenHexX, screenHexY ); }
 
+    // Scroll
+public:
     struct AutoScroll_
     {
         bool   Active;
@@ -246,19 +252,18 @@ public:
         uint   LockedCritter;
     } AutoScroll;
 
+    bool Scroll();
     void ScrollToHex( int hx, int hy, double speed, bool can_stop );
 
 private:
     bool ScrollCheckPos( int(&positions)[ 4 ], int dir1, int dir2 );
     bool ScrollCheck( int xmod, int ymod );
 
+    // Weather
 public:
     void SwitchShowHex();
     void SwitchShowRain();
     void SetWeather( int time, uchar rain );
-
-    void SetCritter( CritterCl* cr );
-    bool TransitCritter( CritterCl* cr, int hx, int hy, bool animate, bool force );
 
     // Critters
 private:
@@ -268,6 +273,8 @@ private:
     int     critterContour, crittersContour;
 
 public:
+    void       SetCritter( CritterCl* cr );
+    bool       TransitCritter( CritterCl* cr, int hx, int hy, bool animate, bool force );
     CritterCl* GetCritter( uint crid );
     CritterCl* GetChosen();
     void       AddCritter( CritterCl* cr );

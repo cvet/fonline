@@ -1184,11 +1184,15 @@ void FOClient::GameDraw()
         }
     }
 
+    // Look borders
+    if( RebuildLookBorders )
+    {
+        LookBordersPrepare();
+        RebuildLookBorders = false;
+    }
+
     // Map
     HexMngr.DrawMap();
-
-    // Look borders
-    LookBordersDraw();
 
     // Critters
     for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++ )

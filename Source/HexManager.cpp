@@ -250,7 +250,7 @@ HexManager::HexManager()
     picRainFall = NULL;
     picRainDrop = NULL;
     picTrack1 = picTrack2 = picHexMask = NULL;
-    rtMap = rtTiles = rtRoof = rtLight = NULL;
+    rtMap = rtTiles = rtRoof = rtLight = rtFog = NULL;
     rtScreenOX = rtScreenOY = 0;
 }
 
@@ -265,6 +265,7 @@ bool HexManager::Init()
     rtTiles = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false );
     rtRoof = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false );
     rtLight = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushLight );
+    rtFog = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushFogAttackAreas );
 
     isShowTrack = false;
     curPidMap = 0;
@@ -2060,6 +2061,9 @@ void HexManager::DrawMap()
     // Prepare light
     PrepareLightToDraw();
 
+    // Prepare fog
+    PrepareFogToDraw();
+
     // Prerendered offsets
     int  ox = rtScreenOX - (int) ( (float) GameOpt.ScrOx / GameOpt.SpritesZoom + 0.5f );
     int  oy = rtScreenOY - (int) ( (float) GameOpt.ScrOy / GameOpt.SpritesZoom + 0.5f );
@@ -2106,6 +2110,10 @@ void HexManager::DrawMap()
     // Contours
     SprMngr.DrawContours();
 
+    // Fog
+    if( rtFog )
+        SprMngr.DrawRenderTarget( rtFog, true, &prerenderedRect );
+
     // Cursor
     DrawCursor( cursorPostPic->GetCurSprId() );
     if( drawCursorX < 0 )
@@ -2119,6 +2127,25 @@ void HexManager::DrawMap()
         SprMngr.PopRenderTarget();
         SprMngr.DrawRenderTarget( rtMap, false );
     }
+}
+
+void HexManager::SetFog( PointVec& look_points, PointVec& shoot_points )
+{
+    if( !rtFog )
+        return;
+
+    fogLookPoints = look_points;
+    fogShootPoints = shoot_points;
+}
+
+void HexManager::PrepareFogToDraw()
+{
+    PointF offset( (float) rtScreenOX, (float) rtScreenOY );
+    SprMngr.PushRenderTarget( rtFog );
+    SprMngr.ClearCurrentRenderTarget( 0 );
+    SprMngr.DrawPoints( fogLookPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, NULL, &offset, Effect::FogArea );
+    SprMngr.DrawPoints( fogShootPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, NULL, &offset, Effect::AttackArea );
+    SprMngr.PopRenderTarget();
 }
 
 bool HexManager::Scroll()

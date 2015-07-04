@@ -1449,7 +1449,6 @@ public:
     PointVec LookBorders, ShootBorders;
 
     void LookBordersPrepare();
-    void LookBordersDraw();
 
 /************************************************************************/
 /* MessBox                                                              */

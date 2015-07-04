@@ -488,7 +488,7 @@ bool FOClient::Init()
     ScreenMirrorEndTick = 0;
     ScreenMirrorStart = false;
     RebuildLookBorders = false;
-    DrawLookBorders = false;
+    DrawLookBorders = true;
     DrawShootBorders = false;
 
     LookBorders.clear();
@@ -828,11 +828,15 @@ void FOClient::DeleteCritter( uint remid )
 
 void FOClient::LookBordersPrepare()
 {
-    if( !DrawLookBorders && !DrawShootBorders )
-        return;
-
     LookBorders.clear();
     ShootBorders.clear();
+
+    if( !DrawLookBorders && !DrawShootBorders )
+    {
+        HexMngr.SetFog( LookBorders, ShootBorders );
+        return;
+    }
+
     if( HexMngr.IsMapLoaded() && Chosen )
     {
         uint   dist = Chosen->GetLookDistance();
@@ -888,44 +892,51 @@ void FOClient::LookBordersPrepare()
                     hy_ = block.second;
                 }
 
-                ushort     hx__ = hx_;
-                ushort     hy__ = hy_;
-                uint       dist_look = DistGame( base_hx, base_hy, hx_, hy_ );
-                UShortPair block;
-                HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, MIN( dist_look, dist_shoot ), 0.0f, NULL, false, NULL, 0, NULL, &block, NULL, true );
-                hx__ = block.first;
-                hy__ = block.second;
+                uint dist_look = DistGame( base_hx, base_hy, hx_, hy_ );
+                if( DrawLookBorders )
+                {
+                    int    x, y;
+                    HexMngr.GetHexCurrentPosition( hx_, hy_, x, y );
+                    short* ox = ( dist_look == dist ? &Chosen->SprOx : NULL );
+                    short* oy = ( dist_look == dist ? &Chosen->SprOy : NULL );
+                    LookBorders.push_back( PrepPoint( x + HEX_OX, y + HEX_OY, COLOR_RGBA( 255, 0, 0, 0 ), ox, oy ) );
+                }
 
-                int x, y, x_, y_;
-                HexMngr.GetHexCurrentPosition( hx_, hy_, x, y );
-                HexMngr.GetHexCurrentPosition( hx__, hy__, x_, y_ );
-                LookBorders.push_back( PrepPoint( x + HEX_OX, y + HEX_OY, COLOR_RGBA( 80, 0, 255, 0 ), (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
-                ShootBorders.push_back( PrepPoint( x_ + HEX_OX, y_ + HEX_OY, COLOR_RGBA( 80, 255, 0, 0 ), (short*) &GameOpt.ScrOx, (short*) &GameOpt.ScrOy ) );
+                if( DrawShootBorders )
+                {
+                    ushort     hx__ = hx_;
+                    ushort     hy__ = hy_;
+                    UShortPair block;
+                    uint       max_shoot_dist = MIN( dist_look, dist_shoot );
+                    HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, max_shoot_dist, 0.0f, NULL, false, NULL, 0, NULL, &block, NULL, true );
+                    hx__ = block.first;
+                    hy__ = block.second;
+
+                    int    x_, y_;
+                    HexMngr.GetHexCurrentPosition( hx__, hy__, x_, y_ );
+                    uint   result_shoot_dist = DistGame( base_hx, base_hy, hx__, hy__ );
+                    short* ox = ( result_shoot_dist == max_shoot_dist ? &Chosen->SprOx : NULL );
+                    short* oy = ( result_shoot_dist == max_shoot_dist ? &Chosen->SprOy : NULL );
+                    ShootBorders.push_back( PrepPoint( x_ + HEX_OX, y_ + HEX_OY, COLOR_RGBA( 255, 0, 0, 0 ), ox, oy ) );
+                }
             }
         }
 
-        if( LookBorders.size() < 2 )
-            LookBorders.clear();
-        else
+        int base_x, base_y;
+        HexMngr.GetHexCurrentPosition( base_hx, base_hy, base_x, base_y );
+        if( !LookBorders.empty() )
+        {
             LookBorders.push_back( *LookBorders.begin() );
-        if( ShootBorders.size() < 2 )
-            ShootBorders.clear();
-        else
+            LookBorders.insert( LookBorders.begin(), PrepPoint( base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA( 0, 0, 0, 0 ), &Chosen->SprOx, &Chosen->SprOy ) );
+        }
+        if( !ShootBorders.empty() )
+        {
             ShootBorders.push_back( *ShootBorders.begin() );
+            ShootBorders.insert( ShootBorders.begin(), PrepPoint( base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA( 0, 0, 0, 0 ), &Chosen->SprOx, &Chosen->SprOy ) );
+        }
     }
-}
 
-void FOClient::LookBordersDraw()
-{
-    if( RebuildLookBorders )
-    {
-        LookBordersPrepare();
-        RebuildLookBorders = false;
-    }
-    if( DrawLookBorders )
-        SprMngr.DrawPoints( LookBorders, PRIMITIVE_LINESTRIP, &GameOpt.SpritesZoom );
-    if( DrawShootBorders )
-        SprMngr.DrawPoints( ShootBorders, PRIMITIVE_LINESTRIP, &GameOpt.SpritesZoom );
+    HexMngr.SetFog( LookBorders, ShootBorders );
 }
 
 int FOClient::MainLoop()
@@ -9685,8 +9696,8 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     }
     else if( cmd == "SwitchLookBorders" )
     {
-        Self->DrawLookBorders = !Self->DrawLookBorders;
-        Self->RebuildLookBorders = true;
+        // Self->DrawLookBorders = !Self->DrawLookBorders;
+        // Self->RebuildLookBorders = true;
     }
     else if( cmd == "SwitchShootBorders" )
     {
@@ -10604,11 +10615,14 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     #define EFFECT_FONT                      ( 0x00010000 ) // Subtype is FONT_*, -1 default for all fonts
     #define EFFECT_PRIMITIVE_GENERIC         ( 0x00100000 )
     #define EFFECT_PRIMITIVE_LIGHT           ( 0x00200000 )
+    #define EFFECT_PRIMITIVE_FOG_AREA        ( 0x00400000 )
+    #define EFFECT_PRIMITIVE_ATTACK_AREA     ( 0x00800000 )
     #define EFFECT_FLUSH_RENDER_TARGET       ( 0x01000000 )
     #define EFFECT_FLUSH_RENDER_TARGET_MS    ( 0x02000000 ) // Multisample
     #define EFFECT_FLUSH_PRIMITIVE           ( 0x04000000 )
     #define EFFECT_FLUSH_MAP                 ( 0x08000000 )
     #define EFFECT_FLUSH_LIGHT               ( 0x10000000 )
+    #define EFFECT_FLUSH_FOG_ATTACK_AREAS    ( 0x20000000 )
 
     Effect* effect = NULL;
     if( effect_name && effect_name->length() )
@@ -10660,6 +10674,10 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
         *Effect::Primitive = ( effect ? *effect : *Effect::PrimitiveDefault );
     if( effect_type & EFFECT_PRIMITIVE_LIGHT )
         *Effect::Light = ( effect ? *effect : *Effect::LightDefault );
+    if( effect_type & EFFECT_PRIMITIVE_FOG_AREA )
+        *Effect::FogArea = ( effect ? *effect : *Effect::FogAreaDefault );
+    if( effect_type & EFFECT_PRIMITIVE_ATTACK_AREA )
+        *Effect::AttackArea = ( effect ? *effect : *Effect::AttackAreaDefault );
 
     if( effect_type & EFFECT_FLUSH_RENDER_TARGET )
         *Effect::FlushRenderTarget = ( effect ? *effect : *Effect::FlushRenderTargetDefault );
@@ -10671,6 +10689,8 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
         *Effect::FlushMap = ( effect ? *effect : *Effect::FlushMapDefault );
     if( effect_type & EFFECT_FLUSH_LIGHT )
         *Effect::FlushLight = ( effect ? *effect : *Effect::FlushLightDefault );
+    if( effect_type & EFFECT_FLUSH_FOG_ATTACK_AREAS )
+        *Effect::FlushFogAttackAreas = ( effect ? *effect : *Effect::FlushFogAttackAreasDefault );
 
     return true;
 }

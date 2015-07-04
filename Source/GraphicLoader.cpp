@@ -1780,11 +1780,14 @@ Effect* Effect::Rain, * Effect::RainDefault;
 Effect* Effect::Iface, * Effect::IfaceDefault;
 Effect* Effect::Primitive, * Effect::PrimitiveDefault;
 Effect* Effect::Light, * Effect::LightDefault;
+Effect* Effect::FogArea, * Effect::FogAreaDefault;
+Effect* Effect::AttackArea, * Effect::AttackAreaDefault;
 Effect* Effect::FlushRenderTarget, * Effect::FlushRenderTargetDefault;
 Effect* Effect::FlushRenderTargetMS, * Effect::FlushRenderTargetMSDefault;
 Effect* Effect::FlushPrimitive, * Effect::FlushPrimitiveDefault;
 Effect* Effect::FlushMap, * Effect::FlushMapDefault;
 Effect* Effect::FlushLight, * Effect::FlushLightDefault;
+Effect* Effect::FlushFogAttackAreas, * Effect::FlushFogAttackAreasDefault;
 Effect* Effect::Font, * Effect::FontDefault;
 Effect* Effect::Skinned3d, * Effect::Skinned3dDefault;
 
@@ -1811,6 +1814,8 @@ bool GraphicLoader::LoadDefaultEffects()
     LOAD_EFFECT( Effect::Iface, "Interface_Default", true, NULL );
     LOAD_EFFECT( Effect::Primitive, "Primitive_Default", true, NULL );
     LOAD_EFFECT( Effect::Light, "Primitive_Light", true, NULL );
+    LOAD_EFFECT( Effect::FogArea, "Primitive_FogArea", true, NULL );
+    LOAD_EFFECT( Effect::AttackArea, "Primitive_AttackArea", true, NULL );
     LOAD_EFFECT( Effect::Font, "Font_Default", true, NULL );
     LOAD_EFFECT( Effect::Contour, "Contour_Default", true, NULL );
     LOAD_EFFECT( Effect::Tile, "2D_WithoutEgg", true, NULL );
@@ -1818,6 +1823,7 @@ bool GraphicLoader::LoadDefaultEffects()
     LOAD_EFFECT( Effect::FlushPrimitive, "Flush_Primitive", true, NULL );
     LOAD_EFFECT( Effect::FlushMap, "Flush_Map", true, NULL );
     LOAD_EFFECT( Effect::FlushLight, "Flush_Light", true, NULL );
+    LOAD_EFFECT( Effect::FlushFogAttackAreas, "Flush_FogAttackAreas", true, NULL );
     if( effect_errors > 0 )
     {
         WriteLog( "Default effects not loaded.\n" );
