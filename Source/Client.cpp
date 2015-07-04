@@ -831,112 +831,109 @@ void FOClient::LookBordersPrepare()
     LookBorders.clear();
     ShootBorders.clear();
 
-    if( !DrawLookBorders && !DrawShootBorders )
+    if( !Chosen || !HexMngr.IsMapLoaded() || ( !DrawLookBorders && !DrawShootBorders ) )
     {
-        HexMngr.SetFog( LookBorders, ShootBorders );
+        HexMngr.SetFog( LookBorders, ShootBorders, NULL, NULL );
         return;
     }
 
-    if( HexMngr.IsMapLoaded() && Chosen )
+    uint   dist = Chosen->GetLookDistance();
+    ushort base_hx = Chosen->GetHexX();
+    ushort base_hy = Chosen->GetHexY();
+    int    hx = base_hx;
+    int    hy = base_hy;
+    int    chosen_dir = Chosen->GetDir();
+    uint   dist_shoot = Chosen->GetAttackDist();
+    ushort maxhx = HexMngr.GetMaxHexX();
+    ushort maxhy = HexMngr.GetMaxHexY();
+    bool   seek_start = true;
+    for( int i = 0; i < ( GameOpt.MapHexagonal ? 6 : 4 ); i++ )
     {
-        uint   dist = Chosen->GetLookDistance();
-        ushort base_hx = Chosen->GetHexX();
-        ushort base_hy = Chosen->GetHexY();
-        int    hx = base_hx;
-        int    hy = base_hy;
-        int    chosen_dir = Chosen->GetDir();
-        uint   dist_shoot = Chosen->GetAttackDist();
-        ushort maxhx = HexMngr.GetMaxHexX();
-        ushort maxhy = HexMngr.GetMaxHexY();
-        bool   seek_start = true;
-        for( int i = 0; i < ( GameOpt.MapHexagonal ? 6 : 4 ); i++ )
-        {
-            int dir = ( GameOpt.MapHexagonal ? ( i + 2 ) % 6 : ( ( i + 1 ) * 2 ) % 8 );
+        int dir = ( GameOpt.MapHexagonal ? ( i + 2 ) % 6 : ( ( i + 1 ) * 2 ) % 8 );
 
-            for( uint j = 0, jj = ( GameOpt.MapHexagonal ? dist : dist * 2 ); j < jj; j++ )
+        for( uint j = 0, jj = ( GameOpt.MapHexagonal ? dist : dist * 2 ); j < jj; j++ )
+        {
+            if( seek_start )
             {
-                if( seek_start )
-                {
-                    // Move to start position
-                    for( uint l = 0; l < dist; l++ )
-                        MoveHexByDirUnsafe( hx, hy, GameOpt.MapHexagonal ? 0 : 7 );
-                    seek_start = false;
-                    j = -1;
-                }
-                else
-                {
-                    // Move to next hex
-                    MoveHexByDirUnsafe( hx, hy, dir );
-                }
-
-                ushort hx_ = CLAMP( hx, 0, maxhx - 1 );
-                ushort hy_ = CLAMP( hy, 0, maxhy - 1 );
-                if( FLAG( GameOpt.LookChecks, LOOK_CHECK_DIR ) )
-                {
-                    int dir_ = GetFarDir( base_hx, base_hy, hx_, hy_ );
-                    int ii = ( chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir );
-                    if( ii > DIRS_COUNT / 2 )
-                        ii = DIRS_COUNT - ii;
-                    uint       dist_ = dist - dist * GameOpt.LookDir[ ii ] / 100;
-                    UShortPair block;
-                    HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, dist_, 0.0f, NULL, false, NULL, 0, NULL, &block, NULL, false );
-                    hx_ = block.first;
-                    hy_ = block.second;
-                }
-
-                if( FLAG( GameOpt.LookChecks, LOOK_CHECK_TRACE ) )
-                {
-                    UShortPair block;
-                    HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, 0, 0.0f, NULL, false, NULL, 0, NULL, &block, NULL, true );
-                    hx_ = block.first;
-                    hy_ = block.second;
-                }
-
-                uint dist_look = DistGame( base_hx, base_hy, hx_, hy_ );
-                if( DrawLookBorders )
-                {
-                    int    x, y;
-                    HexMngr.GetHexCurrentPosition( hx_, hy_, x, y );
-                    short* ox = ( dist_look == dist ? &Chosen->SprOx : NULL );
-                    short* oy = ( dist_look == dist ? &Chosen->SprOy : NULL );
-                    LookBorders.push_back( PrepPoint( x + HEX_OX, y + HEX_OY, COLOR_RGBA( 255, 0, 0, 0 ), ox, oy ) );
-                }
-
-                if( DrawShootBorders )
-                {
-                    ushort     hx__ = hx_;
-                    ushort     hy__ = hy_;
-                    UShortPair block;
-                    uint       max_shoot_dist = MIN( dist_look, dist_shoot );
-                    HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, max_shoot_dist, 0.0f, NULL, false, NULL, 0, NULL, &block, NULL, true );
-                    hx__ = block.first;
-                    hy__ = block.second;
-
-                    int    x_, y_;
-                    HexMngr.GetHexCurrentPosition( hx__, hy__, x_, y_ );
-                    uint   result_shoot_dist = DistGame( base_hx, base_hy, hx__, hy__ );
-                    short* ox = ( result_shoot_dist == max_shoot_dist ? &Chosen->SprOx : NULL );
-                    short* oy = ( result_shoot_dist == max_shoot_dist ? &Chosen->SprOy : NULL );
-                    ShootBorders.push_back( PrepPoint( x_ + HEX_OX, y_ + HEX_OY, COLOR_RGBA( 255, 0, 0, 0 ), ox, oy ) );
-                }
+                // Move to start position
+                for( uint l = 0; l < dist; l++ )
+                    MoveHexByDirUnsafe( hx, hy, GameOpt.MapHexagonal ? 0 : 7 );
+                seek_start = false;
+                j = -1;
             }
-        }
+            else
+            {
+                // Move to next hex
+                MoveHexByDirUnsafe( hx, hy, dir );
+            }
 
-        int base_x, base_y;
-        HexMngr.GetHexCurrentPosition( base_hx, base_hy, base_x, base_y );
-        if( !LookBorders.empty() )
-        {
-            LookBorders.push_back( *LookBorders.begin() );
-            LookBorders.insert( LookBorders.begin(), PrepPoint( base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA( 0, 0, 0, 0 ), &Chosen->SprOx, &Chosen->SprOy ) );
-        }
-        if( !ShootBorders.empty() )
-        {
-            ShootBorders.push_back( *ShootBorders.begin() );
-            ShootBorders.insert( ShootBorders.begin(), PrepPoint( base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA( 0, 0, 0, 0 ), &Chosen->SprOx, &Chosen->SprOy ) );
+            ushort hx_ = CLAMP( hx, 0, maxhx - 1 );
+            ushort hy_ = CLAMP( hy, 0, maxhy - 1 );
+            if( FLAG( GameOpt.LookChecks, LOOK_CHECK_DIR ) )
+            {
+                int dir_ = GetFarDir( base_hx, base_hy, hx_, hy_ );
+                int ii = ( chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir );
+                if( ii > DIRS_COUNT / 2 )
+                    ii = DIRS_COUNT - ii;
+                uint       dist_ = dist - dist * GameOpt.LookDir[ ii ] / 100;
+                UShortPair block;
+                HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, dist_, 0.0f, NULL, false, NULL, 0, NULL, &block, NULL, false );
+                hx_ = block.first;
+                hy_ = block.second;
+            }
+
+            if( FLAG( GameOpt.LookChecks, LOOK_CHECK_TRACE ) )
+            {
+                UShortPair block;
+                HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, 0, 0.0f, NULL, false, NULL, 0, NULL, &block, NULL, true );
+                hx_ = block.first;
+                hy_ = block.second;
+            }
+
+            uint dist_look = DistGame( base_hx, base_hy, hx_, hy_ );
+            if( DrawLookBorders )
+            {
+                int    x, y;
+                HexMngr.GetHexCurrentPosition( hx_, hy_, x, y );
+                short* ox = ( dist_look == dist ? &Chosen->SprOx : NULL );
+                short* oy = ( dist_look == dist ? &Chosen->SprOy : NULL );
+                LookBorders.push_back( PrepPoint( x + HEX_OX, y + HEX_OY, COLOR_RGBA( 0, 255, dist_look * 255 / dist, 0 ), ox, oy ) );
+            }
+
+            if( DrawShootBorders )
+            {
+                ushort     hx__ = hx_;
+                ushort     hy__ = hy_;
+                UShortPair block;
+                uint       max_shoot_dist = MAX( MIN( dist_look, dist_shoot ), 0 );
+                HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, max_shoot_dist, 0.0f, NULL, false, NULL, 0, NULL, &block, NULL, true );
+                hx__ = block.first;
+                hy__ = block.second;
+
+                int    x_, y_;
+                HexMngr.GetHexCurrentPosition( hx__, hy__, x_, y_ );
+                uint   result_shoot_dist = DistGame( base_hx, base_hy, hx__, hy__ );
+                short* ox = ( result_shoot_dist == max_shoot_dist ? &Chosen->SprOx : NULL );
+                short* oy = ( result_shoot_dist == max_shoot_dist ? &Chosen->SprOy : NULL );
+                ShootBorders.push_back( PrepPoint( x_ + HEX_OX, y_ + HEX_OY, COLOR_RGBA( 255, 255, result_shoot_dist * 255 / max_shoot_dist, 0 ), ox, oy ) );
+            }
         }
     }
 
-    HexMngr.SetFog( LookBorders, ShootBorders );
+    int base_x, base_y;
+    HexMngr.GetHexCurrentPosition( base_hx, base_hy, base_x, base_y );
+    if( !LookBorders.empty() )
+    {
+        LookBorders.push_back( *LookBorders.begin() );
+        LookBorders.insert( LookBorders.begin(), PrepPoint( base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA( 0, 0, 0, 0 ), &Chosen->SprOx, &Chosen->SprOy ) );
+    }
+    if( !ShootBorders.empty() )
+    {
+        ShootBorders.push_back( *ShootBorders.begin() );
+        ShootBorders.insert( ShootBorders.begin(), PrepPoint( base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA( 0, 0, 0, 0 ), &Chosen->SprOx, &Chosen->SprOy ) );
+    }
+
+    HexMngr.SetFog( LookBorders, ShootBorders, &Chosen->SprOx, &Chosen->SprOy );
 }
 
 int FOClient::MainLoop()
@@ -7376,6 +7373,7 @@ label_EndMove:
         Item* old_item = item->Clone();
 
         // Move
+        bool is_light = item->GetIsLight();
         if( to_slot == SLOT_GROUND )
         {
             Chosen->Action( ACTION_DROP_ITEM, from_slot, item );
@@ -7441,7 +7439,7 @@ label_EndMove:
         // Light
         if( to_slot == SLOT_HAND1 || from_slot == SLOT_HAND1 )
             RebuildLookBorders = true;
-        if( item->GetIsLight() && ( to_slot == SLOT_INV || ( from_slot == SLOT_INV && to_slot != SLOT_GROUND ) ) )
+        if( is_light && ( to_slot == SLOT_INV || ( from_slot == SLOT_INV && to_slot != SLOT_GROUND ) ) )
             HexMngr.RebuildLight();
 
         // Notice server
@@ -10615,14 +10613,13 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     #define EFFECT_FONT                      ( 0x00010000 ) // Subtype is FONT_*, -1 default for all fonts
     #define EFFECT_PRIMITIVE_GENERIC         ( 0x00100000 )
     #define EFFECT_PRIMITIVE_LIGHT           ( 0x00200000 )
-    #define EFFECT_PRIMITIVE_FOG_AREA        ( 0x00400000 )
-    #define EFFECT_PRIMITIVE_ATTACK_AREA     ( 0x00800000 )
+    #define EFFECT_PRIMITIVE_FOG             ( 0x00400000 )
     #define EFFECT_FLUSH_RENDER_TARGET       ( 0x01000000 )
     #define EFFECT_FLUSH_RENDER_TARGET_MS    ( 0x02000000 ) // Multisample
     #define EFFECT_FLUSH_PRIMITIVE           ( 0x04000000 )
     #define EFFECT_FLUSH_MAP                 ( 0x08000000 )
     #define EFFECT_FLUSH_LIGHT               ( 0x10000000 )
-    #define EFFECT_FLUSH_FOG_ATTACK_AREAS    ( 0x20000000 )
+    #define EFFECT_FLUSH_FOG                 ( 0x20000000 )
 
     Effect* effect = NULL;
     if( effect_name && effect_name->length() )
@@ -10674,10 +10671,8 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
         *Effect::Primitive = ( effect ? *effect : *Effect::PrimitiveDefault );
     if( effect_type & EFFECT_PRIMITIVE_LIGHT )
         *Effect::Light = ( effect ? *effect : *Effect::LightDefault );
-    if( effect_type & EFFECT_PRIMITIVE_FOG_AREA )
-        *Effect::FogArea = ( effect ? *effect : *Effect::FogAreaDefault );
-    if( effect_type & EFFECT_PRIMITIVE_ATTACK_AREA )
-        *Effect::AttackArea = ( effect ? *effect : *Effect::AttackAreaDefault );
+    if( effect_type & EFFECT_PRIMITIVE_FOG )
+        *Effect::Fog = ( effect ? *effect : *Effect::FogDefault );
 
     if( effect_type & EFFECT_FLUSH_RENDER_TARGET )
         *Effect::FlushRenderTarget = ( effect ? *effect : *Effect::FlushRenderTargetDefault );
@@ -10689,8 +10684,8 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
         *Effect::FlushMap = ( effect ? *effect : *Effect::FlushMapDefault );
     if( effect_type & EFFECT_FLUSH_LIGHT )
         *Effect::FlushLight = ( effect ? *effect : *Effect::FlushLightDefault );
-    if( effect_type & EFFECT_FLUSH_FOG_ATTACK_AREAS )
-        *Effect::FlushFogAttackAreas = ( effect ? *effect : *Effect::FlushFogAttackAreasDefault );
+    if( effect_type & EFFECT_FLUSH_FOG )
+        *Effect::FlushFog = ( effect ? *effect : *Effect::FlushFogDefault );
 
     return true;
 }

@@ -217,6 +217,9 @@ private:
     bool IsVisible( uint spr_id, int ox, int oy );
     bool ProcessHexBorders( uint spr_id, int ox, int oy, bool resize_map );
 
+    short*   fogOffsX, * fogOffsY;
+    short    fogLastOffsX, fogLastOffsY;
+    bool     fogForceRerender;
     PointVec fogLookPoints;
     PointVec fogShootPoints;
     void PrepareFogToDraw();
@@ -236,7 +239,7 @@ public:
 
     void     RebuildMap( int rx, int ry );
     void     DrawMap();
-    void     SetFog( PointVec& look_points, PointVec& shoot_points );
+    void     SetFog( PointVec& look_points, PointVec& shoot_points, short* offs_x, short* offs_y );
     Sprites& GetDrawTree() { return mainTree; }
     void     RefreshMap()  { RebuildMap( screenHexX, screenHexY ); }
 

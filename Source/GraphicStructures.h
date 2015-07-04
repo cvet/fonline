@@ -212,14 +212,13 @@ struct Effect
     static Effect* Iface, * IfaceDefault;
     static Effect* Primitive, * PrimitiveDefault;
     static Effect* Light, * LightDefault;
-    static Effect* FogArea, * FogAreaDefault;
-    static Effect* AttackArea, * AttackAreaDefault;
+    static Effect* Fog, * FogDefault;
     static Effect* FlushRenderTarget, * FlushRenderTargetDefault;
     static Effect* FlushRenderTargetMS, * FlushRenderTargetMSDefault;
     static Effect* FlushPrimitive, * FlushPrimitiveDefault;
     static Effect* FlushMap, * FlushMapDefault;
     static Effect* FlushLight, * FlushLightDefault;
-    static Effect* FlushFogAttackAreas, * FlushFogAttackAreasDefault;
+    static Effect* FlushFog, * FlushFogDefault;
     static Effect* Font, * FontDefault;
     static Effect* Skinned3d, * Skinned3dDefault;
 };
