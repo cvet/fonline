@@ -658,7 +658,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
     }
 
     Field&   f = GetField( from_hx, from_hy );
-    ItemHex* item = new ItemHex( 0, proto, NULL, from_hx, from_hy, 0, 0, &f.ScrX, &f.ScrY, 0 );
+    ItemHex* item = new ItemHex( Entity::GenerateId, proto, NULL, from_hx, from_hy, 0, 0, &f.ScrX, &f.ScrY, 0 );
 
     float    sx = 0;
     float    sy = 0;
@@ -1099,6 +1099,9 @@ void HexManager::RebuildMap( int rx, int ry )
 
 void HexManager::PrepareLightToDraw()
 {
+    if( !rtLight )
+        return;
+
     // Rebuild light
     if( requestRebuildLight )
     {
@@ -3859,6 +3862,10 @@ void HexManager::UnloadMap()
 
     lightSources.clear();
     lightSourcesScen.clear();
+
+    fogLookPoints.clear();
+    fogShootPoints.clear();
+    fogForceRerender = true;
 
     mainTree.Unvalidate();
     roofTree.Unvalidate();

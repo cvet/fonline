@@ -3312,6 +3312,9 @@ void FOClient::Net_OnAddCritter( bool is_npc )
             Script::SetArgObject( cr );
             Script::RunPrepared();
         }
+
+        if( cr->IsChosen() )
+            RebuildLookBorders = true;
     }
 }
 
