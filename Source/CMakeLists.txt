@@ -145,6 +145,7 @@ set( COMMON_SOURCE
 	DataFile.cpp DataFile.h
 	Debugger.cpp Debugger.h
 	Defines.h
+	Entity.cpp Entity.h
 	FileManager.cpp FileManager.h
 	FileSystem.cpp FileSystem.h
 	IniParser.cpp IniParser.h
@@ -165,7 +166,6 @@ set( SERVER_CLIENT_MAPPER_SOURCE
 	ConstantsManager.cpp ConstantsManager.h
 	CritterManager.h
 	CritterType.cpp CritterType.h
-	Entity.cpp Entity.h
 	Exception.cpp Exception.h
 	Item.cpp Item.h
 	ItemManager.cpp ItemManager.h

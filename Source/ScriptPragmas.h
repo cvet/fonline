@@ -15,6 +15,7 @@ class PropertyRegistrator;
 class IgnorePragma;
 class GlobalVarPragma;
 class BindFuncPragma;
+class EntityPragma;
 class PropertyPragma;
 class ContentPragma;
 
@@ -30,16 +31,19 @@ private:
     IgnorePragma*    ignorePragma;
     GlobalVarPragma* globalVarPragma;
     BindFuncPragma*  bindFuncPragma;
+    EntityPragma*    entityPragma;
     PropertyPragma*  propertyPragma;
     ContentPragma*   contentPragma;
 
 public:
     ScriptPragmaCallback( int pragma_type, PropertyRegistrator** property_registrators );
     ~ScriptPragmaCallback();
-    virtual void   CallPragma( const Preprocessor::PragmaInstance& pragma );
-    const Pragmas& GetProcessedPragmas();
-    void           Finish();
-    bool           IsError();
+    virtual void         CallPragma( const Preprocessor::PragmaInstance& pragma );
+    const Pragmas&       GetProcessedPragmas();
+    void                 Finish();
+    bool                 IsError();
+    PropertyRegistrator* FindEntityRegistrator( const char* class_name );
+    void                 RestoreEntity( const char* class_name, uint id, Properties& props );
 };
 
 #endif // __SCRIPT_PRAGMAS__

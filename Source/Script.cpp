@@ -632,7 +632,7 @@ bool Script::RunModuleInitFunctions()
         asIScriptModule* module = Engine->GetModuleByIndex( i );
         uint             bind_id = Script::Bind( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
         if( !bind_id )
-            bind_id = Script::Bind( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
+            bind_id = Script::Bind( Str::FormatBuf( "%s@ModuleInit", module->GetName() ), "bool %s()", true, true );
         if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Script" ) )
         {
             if( !Script::RunPrepared() )
@@ -650,16 +650,6 @@ bool Script::RunModuleInitFunctions()
     }
 
     return true;
-}
-
-void Script::DummyAddRef( void* )
-{
-    // Dummy
-}
-
-void Script::DummyRelease( void* )
-{
-    // Dummy
 }
 
 asIScriptEngine* Script::GetEngine()
@@ -910,6 +900,18 @@ string Script::GetProfilerStatistics()
     if( edata->Profiler )
         return edata->Profiler->GetStatistics();
     return "Profiler not enabled.";
+}
+
+PropertyRegistrator* Script::FindEntityRegistrator( const char* class_name )
+{
+    EngineData* edata = (EngineData*) Engine->GetUserData();
+    return edata->PragmaCB->FindEntityRegistrator( class_name );
+}
+
+void Script::RestoreEntity( const char* class_name, uint id, Properties& props )
+{
+    EngineData* edata = (EngineData*) Engine->GetUserData();
+    edata->PragmaCB->RestoreEntity( class_name, id, props );
 }
 
 const char* Script::GetActiveModuleName()

@@ -54,9 +54,6 @@ public:
     static bool BindReservedFunctions( ReservedScriptFunction* bind_func, uint bind_func_count );
     static bool RunModuleInitFunctions();
 
-    static void DummyAddRef( void* );
-    static void DummyRelease( void* );
-
     static asIScriptEngine* GetEngine();
     static void             SetEngine( asIScriptEngine* engine );
     static asIScriptEngine* CreateEngine( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls );
@@ -80,6 +77,9 @@ public:
 
     static void   ProfilerContextCallback( asIScriptContext* ctx, void* obj );
     static string GetProfilerStatistics();
+
+    static PropertyRegistrator* FindEntityRegistrator( const char* class_name );
+    static void                 RestoreEntity( const char* class_name, uint id, Properties& props );
 
     static const char*      GetActiveModuleName();
     static const char*      GetActiveFuncName();

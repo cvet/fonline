@@ -1401,6 +1401,11 @@ uint Properties::GetQuestStr( uint property_index )
     return prop->questValue * 1000 + GetValueAsInt( prop->GetEnumValue() );
 }
 
+string Properties::GetClassName()
+{
+    return registrator->scriptClassName;
+}
+
 PropertyRegistrator::PropertyRegistrator( bool is_server, const char* script_class_name )
 {
     registrationFinished = false;
@@ -1439,6 +1444,7 @@ bool PropertyRegistrator::Init()
     // Register common stuff on first property registration
     string enum_type = ( scriptClassName.find( "Cl" ) != string::npos ? scriptClassName.substr( 0, scriptClassName.size() - 2 ) : scriptClassName ) + "Property";
     enumTypeName = enum_type;
+    RUNTIME_ASSERT( enumTypeName.length() > 0 );
 
     asIScriptEngine* engine = GetASEngine();
     RUNTIME_ASSERT( engine );
@@ -1941,4 +1947,9 @@ void PropertyRegistrator::SetNativeSendCallback( NativeCallback callback )
 uint PropertyRegistrator::GetWholeDataSize()
 {
     return wholePodDataSize;
+}
+
+string PropertyRegistrator::GetClassName()
+{
+    return scriptClassName;
 }

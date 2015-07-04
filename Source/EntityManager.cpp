@@ -183,7 +183,7 @@ void EntityManager::SaveEntities( void ( * save_func )( void*, size_t ) )
     {
         Entity*    entity = it->second;
         EntityType type = entity->Type;
-        if( type != EntityType::Item && type != EntityType::Npc && type != EntityType::Location )
+        if( type != EntityType::Item && type != EntityType::Npc && type != EntityType::Location && type != EntityType::Custom )
             continue;
 
         uint id = entity->GetId();
@@ -191,11 +191,11 @@ void EntityManager::SaveEntities( void ( * save_func )( void*, size_t ) )
         save_func( &id, sizeof( id ) );
         char type_c = (char) type;
         save_func( &type_c, sizeof( type_c ) );
-        entity->Props.Save( save_func );
 
         if( type == EntityType::Item )
         {
             Item* item = (Item*) entity;
+            entity->Props.Save( save_func );
             save_func( &item->Proto->ProtoId, sizeof( item->Proto->ProtoId ) );
             save_func( &item->Accessory, sizeof( item->Accessory ) );
             save_func( &item->AccBuffer[ 0 ], sizeof( item->AccBuffer ) );
@@ -203,6 +203,7 @@ void EntityManager::SaveEntities( void ( * save_func )( void*, size_t ) )
         else if( type == EntityType::Npc )
         {
             Npc* npc = (Npc*) entity;
+            entity->Props.Save( save_func );
             save_func( &npc->Data, sizeof( npc->Data ) );
             uint te_count = (uint) npc->CrTimeEvents.size();
             save_func( &te_count, sizeof( te_count ) );
@@ -212,8 +213,8 @@ void EntityManager::SaveEntities( void ( * save_func )( void*, size_t ) )
         else if( type == EntityType::Location )
         {
             Location* loc = (Location*) entity;
+            entity->Props.Save( save_func );
             save_func( &loc->Data, sizeof( loc->Data ) );
-
             MapVec& maps = loc->GetMapsNoLock();
             uint    map_count = (uint) maps.size();
             save_func( &map_count, sizeof( map_count ) );
@@ -226,6 +227,20 @@ void EntityManager::SaveEntities( void ( * save_func )( void*, size_t ) )
                 map->Props.Save( save_func );
             }
         }
+        else if( type == EntityType::Custom )
+        {
+            CustomEntity* custom_entity = (CustomEntity*) entity;
+            string        class_name = custom_entity->Props.GetClassName();
+            ushort        class_name_len = (ushort) class_name.length();
+            RUNTIME_ASSERT( class_name_len );
+            save_func( &class_name_len, sizeof( class_name_len ) );
+            save_func( (void*) class_name.c_str(), class_name_len );
+            entity->Props.Save( save_func );
+        }
+        else
+        {
+            RUNTIME_ASSERT( !"Unreachable place" );
+        }
     }
     uint zero = 0;
     save_func( &zero, sizeof( zero ) );
@@ -235,8 +250,8 @@ bool EntityManager::LoadEntities( void* file, uint version )
 {
     WriteLog( "Load entities...\n" );
 
-    PropertyRegistrator dummy_fields_registrator( false, "Dummy" );
-    dummy_fields_registrator.FinishRegistration();
+    PropertyRegistrator dummy_registrator( false, "Dummy" );
+    dummy_registrator.FinishRegistration();
 
     if( !FileRead( file, &Entity::CurrentId, sizeof( Entity::CurrentId ) ) )
         return false;
@@ -325,6 +340,34 @@ bool EntityManager::LoadEntities( void* file, uint version )
 
             if( !MapMngr.RestoreLocation( id, data, loc_props, map_ids, map_datas, map_props ) )
                 WriteLog( "Fail to restore location '%s' with id %u.\n", HASH_STR( data.LocPid ), id );
+        }
+        else if( type == EntityType::Custom )
+        {
+            char   class_name[ MAX_FOTEXT ];
+            ushort class_name_len;
+            if( !FileRead( file, &class_name_len, sizeof( class_name_len ) ) )
+                return false;
+            if( !FileRead( file, class_name, class_name_len ) )
+                return false;
+            class_name[ class_name_len ] = 0;
+
+            PropertyRegistrator* registrator = Script::FindEntityRegistrator( class_name );
+            if( registrator )
+            {
+                Properties props( registrator, NULL );
+                if( !props.Load( file, version ) )
+                    return false;
+
+                Script::RestoreEntity( class_name, id, props );
+            }
+            else
+            {
+                Properties props( &dummy_registrator, NULL );
+                if( !props.Load( file, version ) )
+                    return false;
+
+                WriteLog( "Fail to restore entity '%s' with id %u.\n", class_name, id );
+            }
         }
         else
         {

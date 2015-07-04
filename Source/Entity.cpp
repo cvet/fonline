@@ -1,10 +1,11 @@
 #include "Entity.h"
-#include "Item.h"
 #if defined ( FONLINE_SERVER )
+# include "Item.h"
 # include "Critter.h"
 # include "Map.h"
 #endif
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+# include "Item.h"
 # include "ItemHex.h"
 # include "CritterCl.h"
 #endif
@@ -43,9 +44,9 @@ void Entity::Release() const
     {
         if( Type == EntityType::Custom )
             delete (CustomEntity*) this;
+        #if defined ( FONLINE_SERVER )
         else if( Type == EntityType::Item )
             delete (Item*) this;
-        #if defined ( FONLINE_SERVER )
         else if( Type == EntityType::Client )
             delete (Client*) this;
         else if( Type == EntityType::Npc )
@@ -56,6 +57,8 @@ void Entity::Release() const
             delete (Map*) this;
         #endif
         #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+        else if( Type == EntityType::Item )
+            delete (Item*) this;
         else if( Type == EntityType::CritterCl )
             delete (CritterCl*) this;
         else if( Type == EntityType::ItemHex )
@@ -72,7 +75,8 @@ void Entity::SetDeferredId( uint id ) const
     Id = id;
 }
 
-CustomEntity::CustomEntity( uint id, PropertyRegistrator* registrator ): Entity( id, EntityType::Custom, registrator )
+CustomEntity::CustomEntity( uint id, uint sub_type, PropertyRegistrator* registrator ): Entity( id, EntityType::Custom, registrator ),
+                                                                                        SubType( sub_type )
 {
-    // ...
+    //
 }

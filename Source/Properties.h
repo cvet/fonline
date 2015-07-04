@@ -198,6 +198,7 @@ public:
     void        SetValueAsInt( int enum_value, int value );
     bool        SetValueAsIntByName( const char* enum_name, int value );
     uint        GetQuestStr( uint property_index );
+    string      GetClassName();
 
 private:
     PropertyRegistrator*  registrator;
@@ -230,6 +231,7 @@ public:
     void      SetNativeSetCallback( const char* property_name, NativeCallback callback );
     void      SetNativeSendCallback( NativeCallback callback );
     uint      GetWholeDataSize();
+    string    GetClassName();
 
 private:
     bool                        registrationFinished;

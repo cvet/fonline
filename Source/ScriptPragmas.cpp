@@ -291,16 +291,194 @@ public:
     }
 };
 
+// #pragma entity EntityName Movable = true
+#include "Entity.h"
+#ifdef FONLINE_SERVER
+# include "EntityManager.h"
+#endif
+
+class EntityCreator
+{
+public:
+    EntityCreator( bool is_server, const char* class_name )
+    {
+        ClassName = class_name;
+        Registrator = new PropertyRegistrator( is_server, class_name );
+        static uint sub_type_id = 0;
+        SubType = ++sub_type_id;
+    }
+
+    string               ClassName;
+    PropertyRegistrator* Registrator;
+    uint                 SubType;
+
+    #ifdef FONLINE_SERVER
+    CustomEntity* CreateEntity()
+    {
+        CustomEntity* entity = new CustomEntity( Entity::GenerateId, SubType, Registrator );
+        EntityMngr.RegisterEntity( entity );
+        return entity;
+    }
+
+    void RestoreEntity( uint id, Properties& props )
+    {
+        CustomEntity* entity = new CustomEntity( id, SubType, Registrator );
+        entity->Props = props;
+        EntityMngr.RegisterEntity( entity );
+    }
+
+    void DeleteEntity( CustomEntity* entity )
+    {
+        RUNTIME_ASSERT( entity->SubType == SubType );
+        entity->IsDestroyed = true;
+        EntityMngr.UnregisterEntity( entity );
+    }
+
+    void DeleteEntityById( uint id )
+    {
+        CustomEntity* entity = (CustomEntity*) EntityMngr.GetEntity( id, EntityType::Custom );
+        if( !entity || entity->SubType != SubType )
+            SCRIPT_ERROR_R( "%s %u not found.", ClassName.c_str(), id );
+        entity->IsDestroyed = true;
+        EntityMngr.UnregisterEntity( entity );
+    }
+
+    CustomEntity* GetEntity( uint id )
+    {
+        CustomEntity* entity = (CustomEntity*) EntityMngr.GetEntity( id, EntityType::Custom );
+        if( entity && entity->SubType == SubType )
+            return entity;
+        return NULL;
+    }
+
+    #else
+    CustomEntity* CreateEntity()
+    {
+        return NULL;
+    }
+
+    void RestoreEntity( uint id, Properties& props )
+    {
+        //
+    }
+
+    void DeleteEntity( CustomEntity* entity )
+    {
+        //
+    }
+
+    void DeleteEntityById( uint id )
+    {
+        //
+    }
+
+    CustomEntity* GetEntity( uint id )
+    {
+        return NULL;
+    }
+    #endif
+};
+
+class EntityPragma
+{
+    friend class PropertyPragma;
+
+private:
+    map< string, EntityCreator* > entityCreators;
+    bool                          isServer;
+
+public:
+    EntityPragma( int pragma_type )
+    {
+        isServer = ( pragma_type == PRAGMA_SERVER || pragma_type == PRAGMA_MAPPER );
+    }
+
+    bool Call( const string& text )
+    {
+        // Read all
+        istrstream str( text.c_str() );
+        string     class_name;
+        str >> class_name;
+
+        // Check already registered classes
+        asIScriptEngine* engine = Script::GetEngine();
+        if( engine->GetObjectTypeByName( class_name.c_str() ) )
+        {
+            WriteLog( "Error in 'entity' pragma '%s', class already registered.\n", text.c_str() );
+            return false;
+        }
+
+        // Create object
+        if( engine->RegisterObjectType( class_name.c_str(), 0, asOBJ_REF ) < 0 ||
+            engine->RegisterObjectBehaviour( class_name.c_str(), asBEHAVE_ADDREF, "void f()", asMETHOD( Entity, AddRef ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectBehaviour( class_name.c_str(), asBEHAVE_RELEASE, "void f()", asMETHOD( Entity, Release ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectProperty( class_name.c_str(), "const uint Id", OFFSETOF( Entity, Id ) ) < 0 ||
+            engine->RegisterObjectProperty( class_name.c_str(), "const bool IsDestroyed", OFFSETOF( Entity, IsDestroyed ) ) < 0 ||
+            engine->RegisterObjectProperty( class_name.c_str(), "const bool IsDestroying", OFFSETOF( Entity, IsDestroying ) ) < 0 )
+        {
+            WriteLog( "Error in 'entity' pragma '%s', fail to register object type.\n", text.c_str() );
+            return false;
+        }
+
+        // Create creator
+        EntityCreator* entity_creator = new EntityCreator( isServer, class_name.c_str() );
+        if( isServer )
+        {
+            char buf[ MAX_FOTEXT ];
+            if( engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Create%s()", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, CreateEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(%s& entity)", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, DeleteEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(uint id)", class_name.c_str() ), asMETHOD( EntityCreator, DeleteEntityById ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Get%s(uint id)", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, GetEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 )
+            {
+                WriteLog( "Error in 'entity' pragma '%s', fail to register management functions.\n", text.c_str() );
+                return false;
+            }
+        }
+
+        // Init registrator
+        if( !entity_creator->Registrator->Init() )
+        {
+            WriteLog( "Error in 'entity' pragma '%s', fail to initialize property registrator.\n", text.c_str() );
+            return false;
+        }
+
+        // Add creator
+        RUNTIME_ASSERT( !entityCreators.count( class_name ) );
+        entityCreators.insert( PAIR( class_name, entity_creator ) );
+        return true;
+    }
+
+    void FinishRegistrators()
+    {
+        for( auto it = entityCreators.begin(); it != entityCreators.end(); ++it )
+            it->second->Registrator->FinishRegistration();
+    }
+
+    PropertyRegistrator* FindEntityRegistrator( const char* class_name )
+    {
+        auto it = entityCreators.find( class_name );
+        return it != entityCreators.end() ? it->second->Registrator : NULL;
+    }
+
+    void RestoreEntity( const char* class_name, uint id, Properties& props )
+    {
+        EntityCreator* entity_creator = entityCreators[ class_name ];
+        entity_creator->RestoreEntity( id, props );
+    }
+};
+
 // #pragma property "MyObject Virtual int PropName Default = 100 Min = 10 Max = 50 Random = true"
 class PropertyPragma
 {
 private:
     PropertyRegistrator** propertyRegistrators;
+    EntityPragma*         entitiesRegistrators;
 
 public:
-    PropertyPragma( PropertyRegistrator** property_registrators )
+    PropertyPragma( PropertyRegistrator** property_registrators, EntityPragma* entities_registrators )
     {
         propertyRegistrators = property_registrators;
+        entitiesRegistrators = entities_registrators;
     }
 
     bool Call( const string& text )
@@ -464,6 +642,8 @@ public:
             registrator = propertyRegistrators[ 4 ];
         else if( class_name == "Location" )
             registrator = propertyRegistrators[ 5 ];
+        else if( entitiesRegistrators->entityCreators.count( class_name ) )
+            registrator = entitiesRegistrators->entityCreators[ class_name ]->Registrator;
         else
             WriteLog( "Invalid class in 'property' pragma<%s>.\n", text.c_str() );
         if( !registrator )
@@ -642,6 +822,7 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type, PropertyRegistrator
     ignorePragma = NULL;
     globalVarPragma = NULL;
     bindFuncPragma = NULL;
+    entityPragma = NULL;
     propertyPragma = NULL;
     contentPragma = NULL;
 
@@ -650,7 +831,8 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type, PropertyRegistrator
         ignorePragma = new IgnorePragma();
         globalVarPragma = new GlobalVarPragma();
         bindFuncPragma = new BindFuncPragma();
-        propertyPragma = new PropertyPragma( properties_registrators );
+        entityPragma = new EntityPragma( pragmaType );
+        propertyPragma = new PropertyPragma( properties_registrators, entityPragma );
         contentPragma = new ContentPragma();
     }
 }
@@ -660,6 +842,7 @@ ScriptPragmaCallback::~ScriptPragmaCallback()
     SAFEDEL( ignorePragma );
     SAFEDEL( globalVarPragma );
     SAFEDEL( bindFuncPragma );
+    SAFEDEL( entityPragma );
     SAFEDEL( propertyPragma );
     SAFEDEL( contentPragma );
 }
@@ -683,6 +866,8 @@ void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragm
         ok = bindFuncPragma->Call( pragma.Text );
     else if( Str::CompareCase( pragma.Name.c_str(), "property" ) && propertyPragma )
         ok = propertyPragma->Call( pragma.Text );
+    else if( Str::CompareCase( pragma.Name.c_str(), "entity" ) && entityPragma )
+        ok = entityPragma->Call( pragma.Text );
     else if( Str::CompareCase( pragma.Name.c_str(), "content" ) && contentPragma )
         ok = contentPragma->Call( pragma.Text );
     else
@@ -701,6 +886,7 @@ const Pragmas& ScriptPragmaCallback::GetProcessedPragmas()
 
 void ScriptPragmaCallback::Finish()
 {
+    entityPragma->FinishRegistrators();
     if( !propertyPragma->Finish() )
         isError = true;
     if( !contentPragma->Finish() )
@@ -710,4 +896,14 @@ void ScriptPragmaCallback::Finish()
 bool ScriptPragmaCallback::IsError()
 {
     return isError;
+}
+
+PropertyRegistrator* ScriptPragmaCallback::FindEntityRegistrator( const char* class_name )
+{
+    return entityPragma->FindEntityRegistrator( class_name );
+}
+
+void ScriptPragmaCallback::RestoreEntity( const char* class_name, uint id, Properties& props )
+{
+    entityPragma->RestoreEntity( class_name, id, props );
 }

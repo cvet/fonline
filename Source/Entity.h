@@ -43,10 +43,11 @@ public:
 typedef vector< Entity* >    EntityVec;
 typedef map< uint, Entity* > EntityMap;
 
-class CustomEntity: Entity
+class CustomEntity: public Entity
 {
 public:
-    CustomEntity( uint id, PropertyRegistrator* registrator );
+    CustomEntity( uint id, uint sub_type, PropertyRegistrator* registrator );
+    const uint SubType;
 };
 
 #endif // __ENTITY__
