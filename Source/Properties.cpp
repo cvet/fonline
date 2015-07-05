@@ -873,11 +873,6 @@ void Property::SetSendIgnore( void* obj )
     sendIgnoreObj = obj;
 }
 
-bool Property::IsQuestValue()
-{
-    return questValue != 0;
-}
-
 string Property::SetGetCallback( const char* script_func )
 {
     #ifndef DISABLE_SCRIPT
@@ -1395,12 +1390,6 @@ bool Properties::SetValueAsIntByName( const char* enum_name, int value )
     return true;
 }
 
-uint Properties::GetQuestStr( uint property_index )
-{
-    Property* prop = registrator->Get( property_index );
-    return prop->questValue * 1000 + GetValueAsInt( prop->GetEnumValue() );
-}
-
 string Properties::GetClassName()
 {
     return registrator->scriptClassName;
@@ -1487,7 +1476,6 @@ Property* PropertyRegistrator::Register(
     const char* type_name,
     const char* name,
     Property::AccessType access,
-    uint quest_value /* = 0 */,
     const char* group /* = NULL */,
     bool* generate_random_value /* = NULL */,
     int64* default_value /* = NULL */,
@@ -1842,7 +1830,6 @@ Property* PropertyRegistrator::Register(
     prop->defaultValue = ( default_value ? *default_value : 0 );
     prop->minValue = ( min_value ? *min_value : 0 );
     prop->maxValue = ( max_value ? *max_value : 0 );
-    prop->questValue = quest_value;
 
     registeredProperties.push_back( prop );
 

@@ -809,11 +809,11 @@ void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
 
     WriteLog( "%s", buf );
 
-    // #ifndef FONLINE_SERVER
-    CreateDump( "ScriptException" );
-    ShowMessage( buf );
-    ExitProcess( 0 );
-    // #endif
+//     #ifndef FONLINE_SERVER
+//     CreateDump( "ScriptException" );
+//     ShowMessage( buf );
+//     ExitProcess( 0 );
+//     #endif
 }
 
 string Script::MakeContextTraceback( asIScriptContext* ctx )

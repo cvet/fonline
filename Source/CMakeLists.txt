@@ -242,7 +242,6 @@ set( CLIENT_SOURCE
 	ClientInterface.cpp
 	Defence.h
 	MainClient.cpp
-	QuestManager.h
 	SoundManager.cpp SoundManager.h
 )
 set( MAPPER_SOURCE

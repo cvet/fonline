@@ -4717,30 +4717,18 @@ void FOServer::SScriptFunc::Global_MoveItemsCont( ScriptArray& items, Item* to_c
 
 void FOServer::SScriptFunc::Global_DeleteItem( Item* item )
 {
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R( "Item %u already destroyed.", item->GetId() );
-
     ItemMngr.DeleteItem( item );
 }
 
 void FOServer::SScriptFunc::Global_DeleteItemById( uint item_id )
 {
     Item* item = ItemMngr.GetItem( item_id, false );
-    if( !item )
-        SCRIPT_ERROR_R( "Item %u not found.", item_id );
-
-    ItemMngr.DeleteItem( item );
+    if( item )
+        ItemMngr.DeleteItem( item );
 }
 
 void FOServer::SScriptFunc::Global_DeleteItems( ScriptArray& items )
 {
-    for( int i = 0, j = items.GetSize(); i < j; i++ )
-    {
-        Item* item = *(Item**) items.At( i );
-        if( item && item->IsDestroyed )
-            SCRIPT_ERROR_R( "Item %u in array already destroyed.", item->GetId() );
-    }
-
     for( int i = 0, j = items.GetSize(); i < j; i++ )
     {
         Item* item = *(Item**) items.At( i );
@@ -4758,23 +4746,14 @@ void FOServer::SScriptFunc::Global_DeleteItemsById( ScriptArray& items )
         if( item_id )
         {
             Item* item = ItemMngr.GetItem( item_id, false );
-            if( !item )
-                SCRIPT_ERROR_R( "Item %u in array not found.", item_id );
-            items_to_delete.push_back( item );
+            if( item )
+                ItemMngr.DeleteItem( item );
         }
     }
-
-    for( auto it = items_to_delete.begin(); it != items_to_delete.end(); ++it )
-        ItemMngr.DeleteItem( *it );
 }
 
 void FOServer::SScriptFunc::Global_DeleteNpc( Critter* npc )
 {
-    if( npc->IsDestroyed )
-        SCRIPT_ERROR_R( "Npc %u is already destroyed.", npc->GetId() );
-    if( !npc->IsNpc() )
-        SCRIPT_ERROR_R( "Critter is not npc." );
-
     CrMngr.DeleteNpc( npc );
 }
 
@@ -4782,11 +4761,7 @@ void FOServer::SScriptFunc::Global_DeleteNpcById( uint npc_id )
 {
     Critter* npc = CrMngr.GetNpc( npc_id, false );
     if( !npc )
-        SCRIPT_ERROR_R( "Npc %u not found.", npc_id );
-    if( !npc->IsNpc() )
-        SCRIPT_ERROR_R( "Critter is not npc." );
-
-    CrMngr.DeleteNpc( npc );
+        CrMngr.DeleteNpc( npc );
 }
 
 void FOServer::SScriptFunc::Global_RadioMessage( ushort channel, ScriptString& text )
@@ -4879,19 +4854,14 @@ uint FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, usho
 
 void FOServer::SScriptFunc::Global_DeleteLocation( Location* loc )
 {
-    if( loc->IsDestroyed )
-        SCRIPT_ERROR_R( "Location %u already destroyed.", loc->GetId() );
-
     MapMngr.DeleteLocation( loc, NULL );
 }
 
 void FOServer::SScriptFunc::Global_DeleteLocationById( uint loc_id )
 {
     Location* loc = MapMngr.GetLocation( loc_id );
-    if( !loc )
-        SCRIPT_ERROR_R( "Location %u not found.", loc_id );
-
-    MapMngr.DeleteLocation( loc, NULL );
+    if( loc )
+        MapMngr.DeleteLocation( loc, NULL );
 }
 
 // void FOServer::SScriptFunc::Global_GetProtoCritter( hash proto_id, ScriptArray& data )

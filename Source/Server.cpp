@@ -4539,13 +4539,13 @@ bool FOServer::LoadWorld( const char* fname )
         version != WORLD_SAVE_V13 && version != WORLD_SAVE_V14 && version != WORLD_SAVE_V15 && version != WORLD_SAVE_V16 &&
         version != WORLD_SAVE_V17 && version != WORLD_SAVE_V18 && version != WORLD_SAVE_V19 && version != WORLD_SAVE_V20 &&
         version != WORLD_SAVE_V21 && version != WORLD_SAVE_V22 && version != WORLD_SAVE_V23 && version != WORLD_SAVE_V24 &&
-        version != WORLD_SAVE_V25 )
+        version != WORLD_SAVE_V25 && version != WORLD_SAVE_V26 )
     {
         WriteLog( "Unknown version<%u> of world dump file.\n", version );
         FileClose( f );
         return false;
     }
-    if( version < WORLD_SAVE_V25 )
+    if( version < WORLD_SAVE_V26 )
     {
         WriteLog( "Version of save file is not supported.\n" );
         FileClose( f );

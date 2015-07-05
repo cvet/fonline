@@ -155,25 +155,6 @@ int FOClient::InitIface()
     IfaceHold = IFACE_NONE;
     TargetSmth.Clear();
 
-    // Use
-    IfaceLoadRect( UseWMain, "UseMain" );
-    IfaceLoadRect( UseWChosen, "UseChosen" );
-    IfaceLoadRect( UseWInv, "UseInv" );
-    IfaceLoadRect( UseBScrUp, "UseScrUp" );
-    IfaceLoadRect( UseBScrDown, "UseScrDown" );
-    IfaceLoadRect( UseBCancel, "UseCancel" );
-    UseX = IfaceIni.GetInt( "UseX", -1 );
-    if( UseX == -1 )
-        UseX = ( GameOpt.ScreenWidth - UseWMain[ 2 ] ) / 2;
-    UseY = IfaceIni.GetInt( "UseY", -1 );
-    if( UseY == -1 )
-        UseY = ( GameOpt.ScreenHeight - UseWMain[ 3 ] ) / 2;
-    UseVectX = 0;
-    UseVectY = 0;
-    UseScroll = 0;
-    UseHeightItem = IfaceIni.GetInt( "UseHeightItem", 30 );
-    UseHoldId = 0;
-
     // Dialog
     DlgCurAnswPage = 0;
     DlgMaxAnswPage = 0;
@@ -376,21 +357,6 @@ int FOClient::InitIface()
     PupLastPutId = 0;
 
     // Pipboy
-    IfaceLoadRect( PipWMain, "PipMain" );
-    IfaceLoadRect( PipWMonitor, "PipMonitor" );
-    IfaceLoadRect( PipBStatus, "PipStatus" );
-    // IfaceLoadRect(PipBGames,"PipGames");
-    IfaceLoadRect( PipBAutomaps, "PipAutomaps" );
-    IfaceLoadRect( PipBArchives, "PipArchives" );
-    IfaceLoadRect( PipBClose, "PipClose" );
-    IfaceLoadRect( PipWTime, "PipTime" );
-    PipX = ( GameOpt.ScreenWidth - PipWMain.W() ) / 2;
-    PipY = ( GameOpt.ScreenHeight - PipWMain.H() ) / 2;
-    PipVectX = 0;
-    PipVectY = 0;
-    PipMode = PIP__NONE;
-    memzero( PipScroll, sizeof( PipScroll ) );
-    PipInfoNum = 0;
     Automaps.clear();
     AutomapWaitPids.clear();
     AutomapReceivedPids.clear();
@@ -510,24 +476,6 @@ int FOClient::InitIface()
     SplitItemColor = 0;
     SplitParentScreen = SCREEN_NONE;
 
-    // Timer
-    IfaceLoadRect( TimerWMain, "TimerMain" );
-    IfaceLoadRect( TimerWTitle, "TimerTitle" );
-    IfaceLoadRect( TimerWItem, "TimerItem" );
-    IfaceLoadRect( TimerBUp, "TimerUp" );
-    IfaceLoadRect( TimerBDown, "TimerDown" );
-    IfaceLoadRect( TimerWValue, "TimerValue" );
-    IfaceLoadRect( TimerBDone, "TimerDone" );
-    IfaceLoadRect( TimerBCancel, "TimerCancel" );
-    TimerVectX = 0;
-    TimerVectY = 0;
-    TimerItemId = 0;
-    TimerValue = 0;
-    TimerX = ( GameOpt.ScreenWidth - TimerWMain.W() ) / 2;
-    TimerY = ( GameOpt.ScreenHeight - TimerWMain.H() ) / 2;
-    TimerItemPic = 0;
-    TimerItemColor = 0;
-
     // FixBoy
     IfaceLoadRect( FixWMain, "FixMain" );
     IfaceLoadRect( FixBScrUp, "FixScrUp" );
@@ -609,16 +557,6 @@ int FOClient::InitIface()
 /************************************************************************/
     // Hex field sprites
     HexMngr.ReloadSprites();
-
-    // Use
-    IfaceLoadSpr( UseWMainPicNone, "UseMainPic" );
-    IfaceLoadSpr( UseBCancelPicDown, "UseCancelPicDn" );
-    IfaceLoadSpr( UseBScrUpPicDown, "UseScrUpPicDn" );
-    IfaceLoadSpr( UseBScrUpPicUp, "UseScrUpPic" );
-    IfaceLoadSpr( UseBScrUpPicOff, "UseScrUpPicOff" );
-    IfaceLoadSpr( UseBScrDownPicDown, "UseScrDownPicDn" );
-    IfaceLoadSpr( UseBScrDownPicUp, "UseScrDownPic" );
-    IfaceLoadSpr( UseBScrDownPicOff, "UseScrDownPicOff" );
 
     // Dialog
     IfaceLoadSpr( DlgPMain, "DlgMainPic" );
@@ -753,15 +691,6 @@ int FOClient::InitIface()
     IfaceLoadSpr( PupBNextCritRightPicUp, "PupNextCritRightPic" );
     IfaceLoadSpr( PupBNextCritRightPicDown, "PupNextCritRightPicDn" );
 
-    // Pipboy
-    IfaceLoadSpr( PipPMain, "PipMainPic" );
-    IfaceLoadSpr( PipPWMonitor, "PipMonitorPic" );
-    IfaceLoadSpr( PipPBStatusDn, "PipStatusPicDn" );
-    // IfaceLoadSpr(PipPBGamesDn,"PipGamesPicDn");
-    IfaceLoadSpr( PipPBAutomapsDn, "PipAutomapsPicDn" );
-    IfaceLoadSpr( PipPBArchivesDn, "PipArchivesPicDn" );
-    IfaceLoadSpr( PipPBCloseDn, "PipClosePicDn" );
-
     // Aim
     IfaceLoadSpr( AimPWMain, "AimMainPic" );
     IfaceLoadSpr( AimPBCancelDn, "AimCancelPicDn" );
@@ -785,12 +714,6 @@ int FOClient::InitIface()
     IfaceLoadSpr( SplitPBDoneDn, "SplitDonePic" );
     IfaceLoadSpr( SplitPBCancelDn, "SplitCancelPic" );
 
-    // Timer
-    IfaceLoadSpr( TimerMainPic, "TimerMainPic" );
-    IfaceLoadSpr( TimerBUpPicDown, "TimerUpPicDn" );
-    IfaceLoadSpr( TimerBDownPicDown, "TimerDownPicDn" );
-    IfaceLoadSpr( TimerBDonePicDown, "TimerDonePicDn" );
-    IfaceLoadSpr( TimerBCancelPicDown, "TimerCancelPicDn" );
 
     // FixBoy
     IfaceLoadSpr( FixMainPic, "FixMainPic" );
@@ -1004,162 +927,6 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
             // Release array
             arr->Release();
         }
-    }
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::UseDraw()
-{
-    // Check
-    if( !Chosen )
-        return;
-
-    // Main
-    SprMngr.DrawSprite( UseWMainPicNone, UseX, UseY );
-
-    // Scroll up
-    if( UseScroll <= 0 )
-        SprMngr.DrawSprite( UseBScrUpPicOff, UseBScrUp[ 0 ] + UseX, UseBScrUp[ 1 ] + UseY );
-    else
-    {
-        if( IfaceHold == IFACE_USE_SCRUP )
-            SprMngr.DrawSprite( UseBScrUpPicDown, UseBScrUp[ 0 ] + UseX, UseBScrUp[ 1 ] + UseY );
-        else
-            SprMngr.DrawSprite( UseBScrUpPicUp, UseBScrUp[ 0 ] + UseX, UseBScrUp[ 1 ] + UseY );
-    }
-
-    // Scroll down
-    if( UseScroll >= (int) UseCont.size() - UseWInv.H() / UseHeightItem )
-        SprMngr.DrawSprite( UseBScrDownPicOff, UseBScrDown[ 0 ] + UseX, UseBScrDown[ 1 ] + UseY );
-    else
-    {
-        if( IfaceHold == IFACE_USE_SCRDW )
-            SprMngr.DrawSprite( UseBScrDownPicDown, UseBScrDown[ 0 ] + UseX, UseBScrDown[ 1 ] + UseY );
-        else
-            SprMngr.DrawSprite( UseBScrDownPicUp, UseBScrDown[ 0 ] + UseX, UseBScrDown[ 1 ] + UseY );
-    }
-
-    // Cancel button
-    if( IfaceHold == IFACE_USE_CANCEL )
-        SprMngr.DrawSprite( UseBCancelPicDown, UseBCancel[ 0 ] + UseX, UseBCancel[ 1 ] + UseY );
-
-    // Chosen
-    Chosen->DrawStay( Rect( UseWChosen, UseX, UseY ) );
-
-    // Items
-    ContainerDraw( Rect( UseWInv, UseX, UseY ), UseHeightItem, UseScroll, UseCont, 0 );
-}
-
-void FOClient::UseLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-
-    if( !IsCurInRect( UseWMain, UseX, UseY ) )
-        return;
-
-    if( IsCurInRect( UseWInv, UseX, UseY ) )
-    {
-        UseHoldId = GetCurContainerItemId( Rect( UseWInv, UseX, UseY ), UseHeightItem, UseScroll, UseCont );
-        if( UseHoldId && IsCurMode( CUR_HAND ) )
-            IfaceHold = IFACE_USE_INV;
-        if( UseHoldId && IsCurMode( CUR_DEFAULT ) )
-            LMenuTryActivate();
-    }
-    else if( IsCurInRect( UseBScrUp, UseX, UseY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_USE_SCRUP );
-        IfaceHold = IFACE_USE_SCRUP;
-    }
-    else if( IsCurInRect( UseBScrDown, UseX, UseY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_USE_SCRDOWN );
-        IfaceHold = IFACE_USE_SCRDW;
-    }
-    else if( IsCurInRect( UseBCancel, UseX, UseY ) )
-        IfaceHold = IFACE_USE_CANCEL;
-    else
-    {
-        UseVectX = GameOpt.MouseX - UseX;
-        UseVectY = GameOpt.MouseY - UseY;
-        IfaceHold = IFACE_USE_MAIN;
-    }
-}
-
-void FOClient::UseLMouseUp()
-{
-    switch( IfaceHold )
-    {
-    case IFACE_USE_INV:
-        if( !IsCurInRect( UseWInv, UseX, UseY ) || !IsCurMode( CUR_HAND ) || !UseHoldId )
-            break;
-
-        if( ShowScreenType )
-        {
-            if( ShowScreenNeedAnswer )
-                Net_SendScreenAnswer( UseHoldId, "" );
-        }
-        else
-        {
-            if( UseSelect.IsCritter() )
-            {
-                AddActionBack( CHOSEN_USE_ITEM, UseHoldId, 0, TARGET_CRITTER, UseSelect.GetId(), USE_USE );
-            }
-            else if( UseSelect.IsItem() )
-            {
-                ItemHex* item = GetItem( UseSelect.GetId() );
-                if( item )
-                    AddActionBack( CHOSEN_USE_ITEM, UseHoldId, 0, item->IsItem() ? TARGET_ITEM : TARGET_SCENERY, UseSelect.GetId(), USE_USE );
-            }
-        }
-
-        ShowScreen( SCREEN_NONE );
-        break;
-    case IFACE_USE_SCRUP:
-        if( !IsCurInRect( UseBScrUp, UseX, UseY ) || UseScroll <= 0 )
-            break;
-        UseScroll--;
-        break;
-    case IFACE_USE_SCRDW:
-        if( !IsCurInRect( UseBScrDown, UseX, UseY ) || UseScroll >= (int) UseCont.size() - UseWInv.H() / UseHeightItem )
-            break;
-        UseScroll++;
-        break;
-    case IFACE_USE_CANCEL:
-        if( !IsCurInRect( UseBCancel, UseX, UseY ) )
-            break;
-        ShowScreen( SCREEN_NONE );
-        break;
-    default:
-        break;
-    }
-
-    UseHoldId = 0;
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::UseRMouseDown()
-{
-    if( IfaceHold == IFACE_NONE )
-        SetCurCastling( CUR_DEFAULT, CUR_HAND );
-}
-
-void FOClient::UseMouseMove()
-{
-    if( IfaceHold == IFACE_USE_MAIN )
-    {
-        UseX = GameOpt.MouseX - UseVectX;
-        UseY = GameOpt.MouseY - UseVectY;
-        if( UseX < 0 )
-            UseX = 0;
-        if( UseX + UseWMain[ 2 ] > GameOpt.ScreenWidth )
-            UseX = GameOpt.ScreenWidth - UseWMain[ 2 ];
-        if( UseY < 0 )
-            UseY = 0;
-        if( UseY + UseWMain[ 3 ] > GameOpt.ScreenHeight )
-            UseY = GameOpt.ScreenHeight - UseWMain[ 3 ];
     }
 }
 
@@ -2616,16 +2383,6 @@ void FOClient::LMenuCollect()
     {
         switch( screen )
         {
-        case SCREEN__USE:
-        {
-            uint item_id = GetCurContainerItemId( Rect( UseWInv, UseX, UseY ), UseHeightItem, UseScroll, UseCont );
-            if( item_id )
-            {
-                TargetSmth.SetContItem( item_id, 0 );
-                LMenuSet( LMENU_ITEM_INV );
-            }
-        }
-        break;
         case SCREEN__BARTER:
         {
             int  cont_type = 0;
@@ -3031,9 +2788,16 @@ void FOClient::LMenuMouseUp()
             SetAction( CHOSEN_PICK_CRIT, cr->GetId(), 1 );
             break;
         case LMENU_NODE_BAG:
-            ShowScreen( SCREEN__USE );
-            UseSelect = TargetSmth;
-            break;
+        {
+            ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+            uint              critter_id = ( TargetSmth.IsCritter() ? TargetSmth.GetId() : 0 );
+            uint              item_id = ( TargetSmth.IsItem() ? TargetSmth.GetId() : 0 );
+            dict->Set( "TargetCritterId", &critter_id, asTYPEID_UINT32 );
+            dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
+            ShowScreen( SCREEN__USE, dict );
+            dict->Release();
+        }
+        break;
         case LMENU_NODE_SKILL:
         {
             ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
@@ -3092,9 +2856,16 @@ void FOClient::LMenuMouseUp()
             SetAction( CHOSEN_PICK_CRIT, cr->GetId(), 1 );
             break;
         case LMENU_NODE_BAG:
-            ShowScreen( SCREEN__USE );
-            UseSelect = TargetSmth;
-            break;
+        {
+            ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+            uint              critter_id = ( TargetSmth.IsCritter() ? TargetSmth.GetId() : 0 );
+            uint              item_id = ( TargetSmth.IsItem() ? TargetSmth.GetId() : 0 );
+            dict->Set( "TargetCritterId", &critter_id, asTYPEID_UINT32 );
+            dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
+            ShowScreen( SCREEN__USE, dict );
+            dict->Release();
+        }
+        break;
         case LMENU_NODE_SKILL:
         {
             ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
@@ -3132,9 +2903,16 @@ void FOClient::LMenuMouseUp()
             SetAction( CHOSEN_PICK_ITEM, item->GetProtoId(), item->HexX, item->HexY );
             break;
         case LMENU_NODE_BAG:
-            ShowScreen( SCREEN__USE );
-            UseSelect = TargetSmth;
-            break;
+        {
+            ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+            uint              critter_id = ( TargetSmth.IsCritter() ? TargetSmth.GetId() : 0 );
+            uint              item_id = ( TargetSmth.IsItem() ? TargetSmth.GetId() : 0 );
+            dict->Set( "TargetCritterId", &critter_id, asTYPEID_UINT32 );
+            dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
+            ShowScreen( SCREEN__USE, dict );
+            dict->Release();
+        }
+        break;
         case LMENU_NODE_SKILL:
         {
             ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
@@ -3210,9 +2988,17 @@ void FOClient::LMenuMouseUp()
             if( !inv_item )
                 break;
             if( inv_item->GetIsHasTimer() )
-                TimerStart( inv_item->GetId(), ResMngr.GetInvAnim( inv_item->GetActualPicInv() ), inv_item->GetInvColor() );
+            {
+                ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+                uint              item_id = inv_item->GetId();
+                dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
+                ShowScreen( SCREEN__TIMER, dict );
+                dict->Release();
+            }
             else
+            {
                 SetAction( CHOSEN_USE_ITEM, inv_item->GetId(), 0, TARGET_SELF, 0, USE_USE );
+            }
             break;
         case LMENU_NODE_SKILL:
         {
@@ -3295,9 +3081,16 @@ void FOClient::LMenuMouseUp()
         }
         break;
         case LMENU_NODE_BAG:
-            ShowScreen( SCREEN__USE );
-            UseSelect = TargetSmth;
-            break;
+        {
+            ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+            uint              critter_id = ( TargetSmth.IsCritter() ? TargetSmth.GetId() : 0 );
+            uint              item_id = ( TargetSmth.IsItem() ? TargetSmth.GetId() : 0 );
+            dict->Set( "TargetCritterId", &critter_id, asTYPEID_UINT32 );
+            dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
+            ShowScreen( SCREEN__USE, dict );
+            dict->Release();
+        }
+        break;
         case LMENU_NODE_GMAP_KICK:
             Net_SendRuleGlobal( GM_CMD_KICKCRIT, cr->GetId() );
             break;
@@ -3448,10 +3241,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         BarterHoldId = 0;
         BarterIsPlayers = false;
         break;
-    case SCREEN__PIP_BOY:
-        PipMode = PIP__NONE;
-        PipMouseMove();
-        break;
     case SCREEN__FIX_BOY:
         FixMode = FIX_MODE_LIST;
         FixCurCraft = -1;
@@ -3544,14 +3333,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         IboxHolodiskId = 0;
         IboxTitleCur = 0;
         IboxTextCur = 0;
-        break;
-    case SCREEN__USE:
-        UseSelect.Clear();
-        TargetSmth = smth;
-        CollectContItems();
-        UseHoldId = 0;
-        UseScroll = 0;
-        UseMouseMove();
         break;
     case SCREEN__TOWN_VIEW:
         TViewShowCountours = false;
@@ -4724,525 +4505,6 @@ void FOClient::TViewMouseMove()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::PipDraw()
-{
-    SprMngr.DrawSprite( PipPMain, PipWMain[ 0 ] + PipX, PipWMain[ 1 ] + PipY );
-    if( !Chosen )
-        return;
-
-    switch( IfaceHold )
-    {
-    case IFACE_PIP_STATUS:
-        SprMngr.DrawSprite( PipPBStatusDn, PipBStatus[ 0 ] + PipX, PipBStatus[ 1 ] + PipY );
-        break;
-    case IFACE_PIP_AUTOMAPS:
-        SprMngr.DrawSprite( PipPBAutomapsDn, PipBAutomaps[ 0 ] + PipX, PipBAutomaps[ 1 ] + PipY );
-        break;
-    case IFACE_PIP_ARCHIVES:
-        SprMngr.DrawSprite( PipPBArchivesDn, PipBArchives[ 0 ] + PipX, PipBArchives[ 1 ] + PipY );
-        break;
-    case IFACE_PIP_CLOSE:
-        SprMngr.DrawSprite( PipPBCloseDn, PipBClose[ 0 ] + PipX, PipBClose[ 1 ] + PipY );
-        break;
-    default:
-        break;
-    }
-
-    int   scr = -(int) PipScroll[ PipMode ];
-    Rect& r = PipWMonitor;
-    int   ml = SprMngr.GetLinesCount( 0, r.H(), NULL, FONT_DEFAULT );
-    int   h = r.H() / ml;
-    #define PIP_DRAW_TEXT( text, flags, color ) \
-        do { if( scr >= 0 && scr < ml )         \
-                 SprMngr.DrawStr( Rect( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h, PipX, PipY ), text, flags, color ); } while( 0 )
-    #define PIP_DRAW_TEXTR( text, flags, color ) \
-        do { if( scr >= 0 && scr < ml )          \
-                 SprMngr.DrawStr( Rect( r[ 2 ] - r.W() / 3, r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h, PipX, PipY ), text, flags, color ); } while( 0 )
-
-    switch( PipMode )
-    {
-    case PIP__NONE:
-    {
-        SpriteInfo* si = SprMngr.GetSpriteInfo( PipPWMonitor->GetCurSprId() );
-        SprMngr.DrawSprite( PipPWMonitor, PipWMonitor[ 0 ] + ( PipWMonitor[ 2 ] - PipWMonitor[ 0 ] - si->Width ) / 2 + PipX, PipWMonitor[ 1 ] + ( PipWMonitor[ 3 ] - PipWMonitor[ 1 ] - si->Height ) / 2 + PipY );
-    }
-    break;
-    case PIP__STATUS:
-    {
-        // Status
-        PIP_DRAW_TEXT( FmtGameText( STR_PIP_STATUS ), FT_CENTERX, COLOR_TEXT_DGREEN );
-        scr++;
-        PIP_DRAW_TEXT( FmtGameText( STR_PIP_REPLICATION_MONEY ), 0, COLOR_TEXT );
-        PIP_DRAW_TEXTR( FmtGameText( STR_PIP_REPLICATION_MONEY_VAL, Chosen->GetReplicationMoney() ), 0, COLOR_TEXT );
-        scr++;
-        PIP_DRAW_TEXT( FmtGameText( STR_PIP_REPLICATION_COST ), 0, COLOR_TEXT );
-        PIP_DRAW_TEXTR( FmtGameText( STR_PIP_REPLICATION_COST_VAL, Chosen->GetReplicationCost() ), 0, COLOR_TEXT );
-        scr++;
-        PIP_DRAW_TEXT( FmtGameText( STR_PIP_REPLICATION_COUNT ), 0, COLOR_TEXT );
-        PIP_DRAW_TEXTR( FmtGameText( STR_PIP_REPLICATION_COUNT_VAL, Chosen->GetReplicationCount() ), 0, COLOR_TEXT );
-        scr++;
-
-        // Timeouts
-        scr++;
-        PIP_DRAW_TEXT( FmtGameText( STR_PIP_TIMEOUTS ), FT_CENTERX, COLOR_TEXT_DGREEN );
-        scr++;
-
-        IntVec timeouts;
-        if( Script::PrepareContext( ClientFunctions.GetTimeouts, _FUNC_, "Perk" ) )
-        {
-            ScriptArray* arr = Script::CreateArray( "CritterProperty[]" );
-            Script::SetArgObject( arr );
-            if( Script::RunPrepared() )
-                Script::AssignScriptArrayInVector( timeouts, arr );
-            arr->Release();
-        }
-
-        for( size_t j = 0; j < timeouts.size(); j++ )
-        {
-            uint val = Chosen->Props.GetValueAsInt( timeouts[ j ] );
-
-            if( timeouts[ j ] == CritterCl::PropertyTimeoutRemoveFromGame->GetEnumValue() )
-            {
-                uint to_battle = Chosen->GetTimeoutBattle();
-                if( val < to_battle )
-                    val = to_battle;
-            }
-
-            val /= ( GameOpt.TimeMultiplier ? GameOpt.TimeMultiplier : 1 );             // Convert to seconds
-            if( timeouts[ j ] == CritterCl::PropertyTimeoutRemoveFromGame->GetEnumValue() && val < GameOpt.MinimumOfflineTime / 1000 )
-                val = GameOpt.MinimumOfflineTime / 1000;
-            if( timeouts[ j ] == CritterCl::PropertyTimeoutRemoveFromGame->GetEnumValue() && NoLogOut )
-                val = 1000000;                                                      // Infinity
-
-            uint str_num = STR_TIMEOUT_SECONDS;
-            if( val > 300 )
-            {
-                val /= 60;
-                str_num = STR_TIMEOUT_MINUTES;
-            }
-            PIP_DRAW_TEXT( FmtGameText( STR_PARAM_NAME( j ) ), 0, COLOR_TEXT );
-            if( val > 1440 )
-                PIP_DRAW_TEXTR( FmtGameText( str_num, "?" ), 0, COLOR_TEXT );
-            else
-                PIP_DRAW_TEXTR( FmtGameText( str_num, Str::FormatBuf( "%u", val ) ), 0, COLOR_TEXT );
-            scr++;
-        }
-
-        // Quests
-        scr++;
-        if( scr >= 0 && scr < ml )
-            SprMngr.DrawStr( Rect( PipWMonitor[ 0 ], PipWMonitor[ 1 ] + scr * h, PipWMonitor[ 2 ], PipWMonitor[ 1 ] + scr * h + h, PipX, PipY ), FmtGameText( STR_PIP_QUESTS ), FT_CENTERX, COLOR_TEXT_DGREEN );
-        scr++;
-        QuestTabMap* tabs = QuestMngr.GetTabs();
-        for( auto it = tabs->begin(), end = tabs->end(); it != end; ++it )
-        {
-            PIP_DRAW_TEXT( ( *it ).first.c_str(), FT_NOBREAK, COLOR_TEXT );
-            scr++;
-        }
-
-        // Scores title
-        scr++;
-        PIP_DRAW_TEXT( FmtGameText( STR_PIP_SCORES ), FT_CENTERX, COLOR_TEXT_DGREEN );
-    }
-    break;
-    case PIP__STATUS_QUESTS:
-    {
-        QuestTab* tab = QuestMngr.GetTab( QuestNumTab );
-        if( !tab )
-            break;
-        SprMngr.DrawStr( Rect( PipWMonitor, PipX, PipY ), tab->GetText(), FT_SKIPLINES( PipScroll[ PipMode ] ) );
-    }
-    break;
-    case PIP__STATUS_SCORES:
-    {
-        bool         is_first_title = true;
-        char         last_title[ 256 ];
-
-        ScriptArray* best_scores = Globals->GetBestScores();
-        for( int i = 0; i < (int) best_scores->GetSize(); i++ )
-        {
-            if( MsgGame->Count( STR_SCORES_TITLE( i ) ) )
-                Str::Copy( last_title, MsgGame->GetStr( STR_SCORES_TITLE( i ) ) );
-
-            const char* name = ( *(ScriptString**) best_scores->At( i ) )->c_str();
-            if( !name[ 0 ] )
-                continue;
-
-            if( last_title[ 0 ] )
-            {
-                if( !is_first_title )
-                    scr++;
-                PIP_DRAW_TEXT( last_title, FT_CENTERX, COLOR_TEXT_DGREEN );
-                scr += 2;
-                last_title[ 0 ] = '\0';
-                is_first_title = false;
-            }
-            PIP_DRAW_TEXT( MsgGame->GetStr( STR_SCORES_NAME( i ) ), FT_CENTERX, COLOR_TEXT );
-            scr++;
-            PIP_DRAW_TEXT( name, FT_CENTERX, COLOR_TEXT );
-            scr++;
-        }
-        SAFEREL( best_scores );
-    }
-    break;
-    case PIP__AUTOMAPS:
-    {
-        PIP_DRAW_TEXT( FmtGameText( STR_PIP_MAPS ), FT_CENTERX, COLOR_TEXT_DGREEN );
-        scr += 2;
-        for( uint i = 0, j = (uint) Automaps.size(); i < j; i++ )
-        {
-            Automap& amap = Automaps[ i ];
-            PIP_DRAW_TEXT( amap.LocName.c_str(), FT_CENTERX, COLOR_TEXT );
-            scr++;
-
-            for( uint k = 0, l = (uint) amap.MapNames.size(); k < l; k++ )
-            {
-                PIP_DRAW_TEXT( amap.MapNames[ k ].c_str(), FT_CENTERX, COLOR_TEXT_GREEN );
-                scr++;
-            }
-            scr++;
-        }
-    }
-    break;
-    case PIP__AUTOMAPS_LOC:
-    {
-        SprMngr.DrawStr( Rect( PipWMonitor, PipX, PipY ), MsgLocations->GetStr( STR_LOC_INFO( AutomapSelected.LocPid ) ), FT_SKIPLINES( PipScroll[ PipMode ] ) | FT_ALIGN );
-    }
-    break;
-    case PIP__AUTOMAPS_MAP:
-    {
-        hash        map_pid = AutomapSelected.MapPids[ AutomapSelected.CurMap ];
-        const char* map_name = AutomapSelected.MapNames[ AutomapSelected.CurMap ].c_str();
-
-        scr = 0;
-        PIP_DRAW_TEXT( map_name, FT_CENTERX, COLOR_TEXT_GREEN );
-        scr += 2;
-
-        // Draw already builded minimap
-        if( map_pid == AutomapCurMapPid )
-        {
-            RectF  stencil( (float) ( PipWMonitor.L + PipX ), (float) ( PipWMonitor.T + PipY ), (float) ( PipWMonitor.R + PipX ), (float) ( PipWMonitor.B + PipY ) );
-            PointF offset( AutomapScrX, AutomapScrY );
-            SprMngr.DrawPoints( AutomapPoints, PRIMITIVE_LINELIST, &AutomapZoom, &stencil, &offset );
-            break;
-        }
-
-        // Check wait of data
-        if( AutomapWaitPids.count( map_pid ) )
-        {
-            PIP_DRAW_TEXT( MsgGame->GetStr( STR_AUTOMAP_LOADING ), FT_CENTERX, COLOR_TEXT );
-            break;
-        }
-
-        // Try load map
-        ushort  maxhx, maxhy;
-        ItemVec items;
-        if( !HexMngr.GetMapData( map_pid, items, maxhx, maxhy ) )
-        {
-            // Check for already received
-            if( AutomapReceivedPids.count( map_pid ) )
-            {
-                PIP_DRAW_TEXT( MsgGame->GetStr( STR_AUTOMAP_LOADING_ERROR ), FT_CENTERX, COLOR_TEXT );
-                break;
-            }
-
-            Net_SendGiveMap( true, map_pid, AutomapSelected.LocId, 0, 0, 0 );
-            AutomapWaitPids.insert( map_pid );
-            break;
-        }
-
-        // Build minimap
-        AutomapPoints.clear();
-        AutomapScrX = (float) ( PipX - maxhx * 2 / 2 + PipWMonitor.W() / 2 );
-        AutomapScrY = (float) ( PipY - maxhy * 2 / 2 + PipWMonitor.H() / 2 );
-        for( auto it = items.begin(), end = items.end(); it != end; ++it )
-        {
-            Item* item = *it;
-            hash  pid = item->GetProtoId();
-            if( pid == SP_SCEN_IBLOCK || pid == SP_MISC_SCRBLOCK )
-                continue;
-
-            uint color;
-            if( pid == SP_GRID_EXITGRID )
-                color = 0x3FFF7F00;
-            else if( item->Proto->IsWall() )
-                color = 0xFF00FF00;
-            else if( item->Proto->IsScen() )
-                color = 0x7F00FF00;
-            else if( item->Proto->IsGrid() )
-                color = 0x7F00FF00;
-            else
-                continue;
-
-            int x = PipWMonitor.L + maxhx * 2 - item->AccHex.HexX * 2;
-            int y = PipWMonitor.T + item->AccHex.HexY * 2;
-
-            AutomapPoints.push_back( PrepPoint( x, y, color ) );
-            AutomapPoints.push_back( PrepPoint( x + 1, y + 1, color ) );
-        }
-        for( auto it = items.begin(), end = items.end(); it != end; ++it )
-            ( *it )->Release();
-        AutomapCurMapPid = map_pid;
-        AutomapZoom = 1.0f;
-    }
-    break;
-    case PIP__ARCHIVES:
-    {
-        PIP_DRAW_TEXT( FmtGameText( STR_PIP_INFO ), FT_CENTERX, COLOR_TEXT_DGREEN );
-        scr++;
-        for( int i = 0; i < MAX_HOLO_INFO; i++ )
-        {
-            uint num = HoloInfo[ i ];
-            if( !num )
-            {
-                scr++;
-                continue;
-            }
-            PIP_DRAW_TEXT( GetHoloText( STR_HOLO_INFO_NAME( num ) ), 0, COLOR_TEXT );
-            scr++;
-        }
-    }
-    break;
-    case PIP__ARCHIVES_INFO:
-    {
-        SprMngr.DrawStr( Rect( PipWMonitor, PipX, PipY ), GetHoloText( STR_HOLO_INFO_DESC( PipInfoNum ) ), FT_SKIPLINES( PipScroll[ PipMode ] ) | FT_ALIGN );
-    }
-    break;
-    default:
-        break;
-    }
-
-    // Time
-    SprMngr.DrawStr( Rect( PipWTime, PipX, PipY ), Str::FormatBuf( "%02d", GameOpt.Day ), 0, COLOR_IFACE, FONT_NUM );                            // Day
-    char mval = '0' + GameOpt.Month - 1 + 0x30;                                                                                                  // Month
-    SprMngr.DrawStr( Rect( PipWTime, PipX + 26, PipY + 1 ), Str::FormatBuf( "%c", mval ), 0, COLOR_IFACE, FONT_NUM );                            // Month
-    SprMngr.DrawStr( Rect( PipWTime, PipX + 63, PipY ), Str::FormatBuf( "%04d", GameOpt.Year ), 0, COLOR_IFACE, FONT_NUM );                      // Year
-    SprMngr.DrawStr( Rect( PipWTime, PipX + 135, PipY ), Str::FormatBuf( "%02d%02d", GameOpt.Hour, GameOpt.Minute ), 0, COLOR_IFACE, FONT_NUM ); // Hour,Minute
-}
-
-void FOClient::PipLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-    if( !Chosen )
-        return;
-
-    Rect& r = PipWMonitor;
-    int   ml = SprMngr.GetLinesCount( 0, r.H(), NULL, FONT_DEFAULT );
-    int   h = r.H() / ml;
-    int   scr = -(int) PipScroll[ PipMode ];
-
-    if( IsCurInRect( PipBStatus, PipX, PipY ) )
-        IfaceHold = IFACE_PIP_STATUS;
-    else if( IsCurInRect( PipBAutomaps, PipX, PipY ) )
-        IfaceHold = IFACE_PIP_AUTOMAPS;
-    else if( IsCurInRect( PipBArchives, PipX, PipY ) )
-        IfaceHold = IFACE_PIP_ARCHIVES;
-    else if( IsCurInRect( PipBClose, PipX, PipY ) )
-        IfaceHold = IFACE_PIP_CLOSE;
-    else if( IsCurInRect( PipWMonitor, PipX, PipY ) )
-    {
-        switch( PipMode )
-        {
-        case PIP__STATUS:
-        {
-            scr += 8;
-
-            IntVec timeouts;
-            if( Script::PrepareContext( ClientFunctions.GetTimeouts, _FUNC_, "Perk" ) )
-            {
-                ScriptArray* arr = Script::CreateArray( "CritterProperty[]" );
-                Script::SetArgObject( arr );
-                if( Script::RunPrepared() )
-                    Script::AssignScriptArrayInVector( timeouts, arr );
-                arr->Release();
-            }
-            scr += (int) timeouts.size();
-            int          scr_ = scr;
-
-            QuestTabMap* tabs = QuestMngr.GetTabs();
-            for( auto it = tabs->begin(), end = tabs->end(); it != end; ++it )
-            {
-                if( scr >= 0 && scr < ml && IsCurInRect( Rect( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
-                {
-                    QuestNumTab = scr - scr_ + PipScroll[ PipMode ];
-                    PipMode = PIP__STATUS_QUESTS;
-                    PipScroll[ PipMode ] = 0;
-                    break;
-                }
-                scr++;
-            }
-            if( PipMode == PIP__STATUS )
-            {
-                scr++;
-                if( scr >= 0 && scr < ml && IsCurInRect( Rect( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
-                {
-                    PipMode = PIP__STATUS_SCORES;
-                    PipScroll[ PipMode ] = 0;
-                    break;
-                }
-            }
-        }
-        break;
-        case PIP__AUTOMAPS:
-        {
-            scr += 2;
-            for( uint i = 0, j = (uint) Automaps.size(); i < j; i++ )
-            {
-                Automap& amap = Automaps[ i ];
-
-                if( scr >= 0 && scr < ml && IsCurInRect( Rect( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
-                {
-                    PipMode = PIP__AUTOMAPS_LOC;
-                    AutomapSelected = amap;
-                    PipScroll[ PipMode ] = 0;
-                    break;
-                }
-                scr++;
-
-                for( uint k = 0, l = (uint) amap.MapNames.size(); k < l; k++ )
-                {
-                    if( scr >= 0 && scr < ml && IsCurInRect( Rect( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
-                    {
-                        PipMode = PIP__AUTOMAPS_MAP;
-                        AutomapSelected = amap;
-                        AutomapSelected.CurMap = k;
-                        PipScroll[ PipMode ] = 0;
-                        AutomapCurMapPid = 0;
-                        i = j;
-                        break;
-                    }
-                    scr++;
-                }
-                scr++;
-            }
-        }
-        break;
-        case PIP__AUTOMAPS_MAP:
-        {
-            PipVectX = GameOpt.MouseX - (int) AutomapScrX;
-            PipVectY = GameOpt.MouseY - (int) AutomapScrY;
-            IfaceHold = IFACE_PIP_AUTOMAPS_SCR;
-        }
-        break;
-        case PIP__ARCHIVES:
-        {
-            scr += 1;
-            for( int i = 0; i < MAX_HOLO_INFO; i++ )
-            {
-                if( scr >= 0 && scr < ml && IsCurInRect( Rect( r[ 0 ], r[ 1 ] + scr * h, r[ 2 ], r[ 1 ] + scr * h + h ), PipX, PipY ) )
-                {
-                    PipInfoNum = HoloInfo[ scr - 1 + PipScroll[ PipMode ] ];
-                    if( !PipInfoNum )
-                        break;
-                    PipMode = PIP__ARCHIVES_INFO;
-                    PipScroll[ PipMode ] = 0;
-                    break;
-                }
-                scr++;
-            }
-        }
-        break;
-        default:
-            break;
-        }
-    }
-    else if( IsCurInRect( PipWMain, PipX, PipY ) )
-    {
-        PipVectX = GameOpt.MouseX - PipX;
-        PipVectY = GameOpt.MouseY - PipY;
-        IfaceHold = IFACE_PIP_MAIN;
-    }
-}
-
-void FOClient::PipLMouseUp()
-{
-    switch( IfaceHold )
-    {
-    case IFACE_PIP_STATUS:
-        if( !IsCurInRect( PipBStatus, PipX, PipY ) )
-            break;
-        PipMode = PIP__STATUS;
-        break;
-    case IFACE_PIP_AUTOMAPS:
-        if( !IsCurInRect( PipBAutomaps, PipX, PipY ) )
-            break;
-        PipMode = PIP__AUTOMAPS;
-        break;
-    case IFACE_PIP_ARCHIVES:
-        if( !IsCurInRect( PipBArchives, PipX, PipY ) )
-            break;
-        PipMode = PIP__ARCHIVES;
-        break;
-    case IFACE_PIP_CLOSE:
-        if( !IsCurInRect( PipBClose, PipX, PipY ) )
-            break;
-        ShowScreen( SCREEN_NONE );
-        break;
-    default:
-        break;
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::PipRMouseDown()
-{
-    if( IsCurInRect( PipWMonitor, PipX, PipY ) )
-    {
-        switch( PipMode )
-        {
-        case PIP__STATUS_QUESTS:
-            PipMode = PIP__STATUS;
-            break;
-        case PIP__STATUS_SCORES:
-            PipMode = PIP__STATUS;
-            break;
-        case PIP__AUTOMAPS_LOC:
-            PipMode = PIP__AUTOMAPS;
-            break;
-        case PIP__AUTOMAPS_MAP:
-            PipMode = PIP__AUTOMAPS;
-            break;
-        case PIP__ARCHIVES_INFO:
-            PipMode = PIP__ARCHIVES;
-            break;
-        default:
-            break;
-        }
-    }
-}
-
-void FOClient::PipMouseMove()
-{
-    if( IfaceHold == IFACE_PIP_MAIN )
-    {
-        AutomapScrX -= (float) PipX;
-        AutomapScrY -= (float) PipY;
-        PipX = GameOpt.MouseX - PipVectX;
-        PipY = GameOpt.MouseY - PipVectY;
-
-        if( PipX < 0 )
-            PipX = 0;
-        if( PipX + PipWMain[ 2 ] > GameOpt.ScreenWidth )
-            PipX = GameOpt.ScreenWidth - PipWMain[ 2 ];
-        if( PipY < 0 )
-            PipY = 0;
-        if( PipY + PipWMain[ 3 ] > GameOpt.ScreenHeight )
-            PipY = GameOpt.ScreenHeight - PipWMain[ 3 ];
-        AutomapScrX += (float) PipX;
-        AutomapScrY += (float) PipY;
-    }
-    else if( IfaceHold == IFACE_PIP_AUTOMAPS_SCR )
-    {
-        AutomapScrX = (float) ( GameOpt.MouseX - PipVectX );
-        AutomapScrY = (float) ( GameOpt.MouseY - PipVectY );
-    }
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
 void FOClient::AimDraw()
 {
     SprMngr.DrawSprite( AimPWMain, AimWMain[ 0 ] + AimX, AimWMain[ 1 ] + AimY );
@@ -5880,9 +5142,7 @@ void FOClient::CurDrawHand()
 DrawCurHand:
     if( !( si = SprMngr.GetSpriteInfo( CurPHand->GetCurSprId() ) ) )
         return;
-    x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-    y = GameOpt.MouseY - si->Height + si->OffsY;
-    SprMngr.DrawSprite( CurPHand, x, y );
+    SprMngr.DrawSprite( CurPHand, GameOpt.MouseX, GameOpt.MouseY );
 }
 
 // ==============================================================================================================================
@@ -6637,199 +5897,6 @@ void FOClient::SplitMouseMove()
             SplitY = 0;
         if( SplitY + SplitWMain[ 3 ] > GameOpt.ScreenHeight )
             SplitY = GameOpt.ScreenHeight - SplitWMain[ 3 ];
-    }
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::TimerStart( uint item_id, AnyFrames* pic, uint pic_color )
-{
-    TimerItemId = item_id;
-    TimerValue = TIMER_MIN_VALUE;
-    TimerItemPic = pic;
-    TimerItemColor = pic_color;
-
-    ShowScreen( SCREEN__TIMER );
-}
-
-void FOClient::TimerClose( bool done )
-{
-    if( done )
-    {
-        if( ShowScreenType )
-        {
-            if( ShowScreenNeedAnswer )
-                Net_SendScreenAnswer( TimerValue, "" );
-        }
-        else
-            AddActionBack( CHOSEN_USE_ITEM, TimerItemId, 0, TARGET_SELF, 0, USE_USE, TimerValue );
-    }
-    ShowScreen( SCREEN_NONE, NULL );
-}
-
-void FOClient::TimerDraw()
-{
-    SprMngr.DrawSprite( TimerMainPic, TimerWMain[ 0 ] + TimerX, TimerWMain[ 1 ] + TimerY );
-
-    switch( IfaceHold )
-    {
-    case IFACE_TIMER_UP:
-        SprMngr.DrawSprite( TimerBUpPicDown, TimerBUp[ 0 ] + TimerX, TimerBUp[ 1 ] + TimerY );
-        break;
-    case IFACE_TIMER_DOWN:
-        SprMngr.DrawSprite( TimerBDownPicDown, TimerBDown[ 0 ] + TimerX, TimerBDown[ 1 ] + TimerY );
-        break;
-    case IFACE_TIMER_DONE:
-        SprMngr.DrawSprite( TimerBDonePicDown, TimerBDone[ 0 ] + TimerX, TimerBDone[ 1 ] + TimerY );
-        break;
-    case IFACE_TIMER_CANCEL:
-        SprMngr.DrawSprite( TimerBCancelPicDown, TimerBCancel[ 0 ] + TimerX, TimerBCancel[ 1 ] + TimerY );
-        break;
-    default:
-        break;
-    }
-
-    if( TimerItemPic )
-        SprMngr.DrawSpriteSize( TimerItemPic, TimerWItem[ 0 ] + TimerX, TimerWItem[ 1 ] + TimerY, TimerWItem.W(), TimerWItem.H(), false, true, TimerItemColor );
-    SprMngr.Flush();
-
-    SprMngr.DrawStr( Rect( TimerWTitle, TimerX, TimerY ), MsgGame->GetStr( STR_TIMER_TITLE ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( TimerWValue, TimerX, TimerY ), Str::FormatBuf( "%d%c%02d", TimerValue / 60, '9' + 3, TimerValue % 60 ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
-}
-
-void FOClient::TimerKeyDown( uchar dik, const char* dik_text )
-{
-    switch( dik )
-    {
-    case DIK_RETURN:
-    case DIK_NUMPADENTER:
-        TimerClose( true );
-        return;
-    case DIK_ESCAPE:
-        TimerClose( false );
-        return;
-    // Numetric +, -
-    // Arrow Right, Left
-    case DIK_EQUALS:
-    case DIK_ADD:
-    case DIK_RIGHT:
-        TimerValue += 1;
-        break;
-    case DIK_MINUS:
-    case DIK_SUBTRACT:
-    case DIK_LEFT:
-        TimerValue -= 1;
-        break;
-    // PageUp, PageDown
-    case DIK_PRIOR:
-        TimerValue += 60;
-        break;
-    case DIK_NEXT:
-        TimerValue -= 60;
-        break;
-    // Arrow Up, Down
-    case DIK_UP:
-        TimerValue += 10;
-        break;
-    case DIK_DOWN:
-        TimerValue -= 10;
-        break;
-    // End, Home
-    case DIK_END:
-        TimerValue = TIMER_MAX_VALUE;
-        break;
-    case DIK_HOME:
-        TimerValue = TIMER_MIN_VALUE;
-        break;
-    default:
-        return;
-    }
-
-    if( TimerValue < TIMER_MIN_VALUE )
-        TimerValue = TIMER_MIN_VALUE;
-    if( TimerValue > TIMER_MAX_VALUE )
-        TimerValue = TIMER_MAX_VALUE;
-}
-
-void FOClient::TimerLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-
-    if( !IsCurInRect( TimerWMain, TimerX, TimerY ) )
-        return;
-
-    if( IsCurInRect( TimerBUp, TimerX, TimerY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_TIMER_UP );
-        IfaceHold = IFACE_TIMER_UP;
-    }
-    else if( IsCurInRect( TimerBDown, TimerX, TimerY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_TIMER_DOWN );
-        IfaceHold = IFACE_TIMER_DOWN;
-    }
-    else if( IsCurInRect( TimerBDone, TimerX, TimerY ) )
-        IfaceHold = IFACE_TIMER_DONE;
-    else if( IsCurInRect( TimerBCancel, TimerX, TimerY ) )
-        IfaceHold = IFACE_TIMER_CANCEL;
-    else
-    {
-        TimerVectX = GameOpt.MouseX - TimerX;
-        TimerVectY = GameOpt.MouseY - TimerY;
-        IfaceHold = IFACE_TIMER_MAIN;
-    }
-}
-
-void FOClient::TimerLMouseUp()
-{
-    switch( IfaceHold )
-    {
-    case IFACE_TIMER_UP:
-        if( !IsCurInRect( TimerBUp, TimerX, TimerY ) )
-            break;
-        if( TimerValue < TIMER_MAX_VALUE )
-            TimerValue++;
-        break;
-    case IFACE_TIMER_DOWN:
-        if( !IsCurInRect( TimerBDown, TimerX, TimerY ) )
-            break;
-        if( TimerValue > TIMER_MIN_VALUE )
-            TimerValue--;
-        break;
-    case IFACE_TIMER_DONE:
-        if( !IsCurInRect( TimerBDone, TimerX, TimerY ) )
-            break;
-        TimerClose( true );
-        break;
-    case IFACE_TIMER_CANCEL:
-        if( !IsCurInRect( TimerBCancel, TimerX, TimerY ) )
-            break;
-        TimerClose( false );
-        break;
-    default:
-        break;
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::TimerMouseMove()
-{
-    if( IfaceHold == IFACE_TIMER_MAIN )
-    {
-        TimerX = GameOpt.MouseX - TimerVectX;
-        TimerY = GameOpt.MouseY - TimerVectY;
-
-        if( TimerX < 0 )
-            TimerX = 0;
-        if( TimerX + TimerWMain[ 2 ] > GameOpt.ScreenWidth )
-            TimerX = GameOpt.ScreenWidth - TimerWMain[ 2 ];
-        if( TimerY < 0 )
-            TimerY = 0;
-        if( TimerY + TimerWMain[ 3 ] > GameOpt.ScreenHeight )
-            TimerY = GameOpt.ScreenHeight - TimerWMain[ 3 ];
     }
 }
 

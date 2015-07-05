@@ -322,7 +322,6 @@ bool FOClient::Init()
     MsgGame = &CurLang.Msg[ TEXTMSG_GAME ];
     MsgLocations = &CurLang.Msg[ TEXTMSG_LOCATIONS ];
     MsgCombat = &CurLang.Msg[ TEXTMSG_COMBAT ];
-    MsgQuest = &CurLang.Msg[ TEXTMSG_QUEST ];
     MsgHolo = &CurLang.Msg[ TEXTMSG_HOLO ];
     MsgCraft = &CurLang.Msg[ TEXTMSG_CRAFT ];
     MsgInternal = &CurLang.Msg[ TEXTMSG_INTERNAL ];
@@ -455,9 +454,6 @@ bool FOClient::Init()
             Animation3dEntity::GetEntity( Preload3dFiles[ i ].c_str() );
         WriteLog( "Preload 3d files complete.\n" );
     }
-
-    // Quest Manager
-    QuestMngr.Init( MsgQuest );
 
     // Item manager
     if( !ItemMngr.Init() )
@@ -755,7 +751,6 @@ void FOClient::Finish()
     HexMngr.Finish();
     SprMngr.Finish();
     SndMngr.Finish();
-    QuestMngr.Finish();
     MrFixit.Finish();
     Script::Finish();
 
@@ -1516,14 +1511,6 @@ void FOClient::ParseMouse()
             SplitLMouseUp();
         else if( Timer::ProcessAccelerator( ACCELERATE_SPLIT_DOWN ) )
             SplitLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_TIMER_UP ) )
-            TimerLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_TIMER_DOWN ) )
-            TimerLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_USE_SCRUP ) )
-            UseLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_USE_SCRDOWN ) )
-            UseLMouseUp();
         else if( Timer::ProcessAccelerator( ACCELERATE_PUP_SCRUP1 ) )
             PupLMouseUp();
         else if( Timer::ProcessAccelerator( ACCELERATE_PUP_SCRDOWN1 ) )
@@ -1645,21 +1632,6 @@ void FOClient::ProcessMouseWheel( int data )
                 SplitValue--;
         }
     }
-    else if( screen == SCREEN__TIMER )
-    {
-        if( IsCurInRect( TimerWValue, TimerX, TimerY ) || IsCurInRect( TimerWItem, TimerX, TimerY ) )
-        {
-            if( data > 0 && TimerValue < TIMER_MAX_VALUE )
-                TimerValue++;
-            else if( data < 0 && TimerValue > TIMER_MIN_VALUE )
-                TimerValue--;
-        }
-    }
-    else if( screen == SCREEN__USE )
-    {
-        if( IsCurInRect( UseWInv, UseX, UseY ) )
-            ContainerWheelScroll( (int) UseCont.size(), UseWInv.H(), UseHeightItem, UseScroll, data );
-    }
     else if( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW )
     {
         if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
@@ -1749,36 +1721,6 @@ void FOClient::ProcessMouseWheel( int data )
                 LmapZoom--;
             LmapZoom = CLAMP( LmapZoom, 2, 13 );
             LmapPrepareMap();
-        }
-    }
-    else if( screen == SCREEN__PIP_BOY )
-    {
-        if( IsCurInRect( PipWMonitor, PipX, PipY ) )
-        {
-            if( PipMode != PIP__AUTOMAPS_MAP )
-            {
-                int scroll = 1;
-                if( Keyb::ShiftDwn )
-                    scroll = SprMngr.GetLinesCount( 0, PipWMonitor.H(), NULL, FONT_DEFAULT );
-                if( data > 0 )
-                    scroll = -scroll;
-                PipScroll[ PipMode ] += scroll;
-                if( PipScroll[ PipMode ] < 0 )
-                    PipScroll[ PipMode ] = 0;
-                #pragma MESSAGE("Check maximums in PipBoy scrolling.")
-            }
-            else
-            {
-                float scr_x = ( (float) ( PipWMonitor.CX() + PipX ) - AutomapScrX ) * AutomapZoom;
-                float scr_y = ( (float) ( PipWMonitor.CY() + PipY ) - AutomapScrY ) * AutomapZoom;
-                if( data > 0 )
-                    AutomapZoom -= 0.1f;
-                else
-                    AutomapZoom += 0.1f;
-                AutomapZoom = CLAMP( AutomapZoom, 0.1f, 10.0f );
-                AutomapScrX = (float) ( PipWMonitor.CX() + PipX ) - scr_x / AutomapZoom;
-                AutomapScrY = (float) ( PipWMonitor.CY() + PipY ) - scr_y / AutomapZoom;
-            }
         }
     }
     else if( screen == SCREEN__SAVE_LOAD )
@@ -2105,7 +2047,6 @@ void FOClient::NetDisconnect()
     SetCurMode( CUR_DEFAULT );
     HexMngr.UnloadMap();
     DeleteCritters();
-    QuestMngr.Finish();
     Bin.Reset();
     Bout.Reset();
     Bin.SetEncryptKey( 0 );
@@ -3292,14 +3233,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
         cr->Init();
 
         if( FLAG( cr->Flags, FCRIT_CHOSEN ) )
-        {
             SetAction( CHOSEN_NONE );
-
-            QuestMngr.Finish();
-            for( uint i = 0; i < CritterCl::PropertiesRegistrator->GetCount(); i++ )
-                if( CritterCl::PropertiesRegistrator->Get( i )->IsQuestValue() )
-                    QuestMngr.OnQuest( cr->Props.GetQuestStr( i ) );
-        }
 
         AddCritter( cr );
 
@@ -4895,17 +4829,6 @@ void FOClient::Net_OnProperty( uint data_size )
         Script::SetArgObject( prop_obj );
         Script::RunPrepared();
     }
-
-    if( type == NetProperty::Chosen && Chosen && prop->IsQuestValue() )
-    {
-        uint q_num = Chosen->Props.GetQuestStr( prop->GetRegIndex() );
-        QuestMngr.OnQuest( q_num );
-
-        // Inform player
-        Quest* quest = QuestMngr.GetQuest( q_num );
-        if( quest )
-            AddMess( FOMB_GAME, quest->str.c_str() );
-    }
 }
 
 void FOClient::Net_OnChosenTalk()
@@ -6009,8 +5932,13 @@ void FOClient::Net_OnShowScreen()
     switch( screen_type )
     {
     case SHOW_SCREEN_TIMER:
-        TimerStart( 0, ResMngr.GetInvAnim( param ), 0 );
-        break;
+    {
+        ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+        dict->Set( "TargetItemId", &param, asTYPEID_UINT32 );
+        ShowScreen( SCREEN__TIMER, dict );
+        dict->Release();
+    }
+    break;
     case SHOW_SCREEN_DIALOGBOX:
         ShowScreen( SCREEN__DIALOGBOX );
         DlgboxWait = 0;
@@ -7869,7 +7797,6 @@ void FOClient::TryExit()
         switch( active )
         {
         case SCREEN__TIMER:
-            TimerClose( false );
             break;
         case SCREEN__SPLIT:
             SplitClose( false );
@@ -9201,6 +9128,8 @@ bool FOClient::ReloadScripts()
     ClientLocation::SetPropertyRegistrator( registrators[ 5 ] );
     ClientLocation::PropertiesRegistrator->SetNativeSendCallback( OnSendLocationValue );
 
+    Globals->Props.RestoreData( GlovalVarsPropertiesData );
+
     WriteLog( "Load scripts complete.\n" );
     return true;
 }
@@ -9821,9 +9750,17 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         else if( Self->Chosen->GetUse() == USE_USE && Self->Chosen->ItemSlotMain->GetIsCanUse() )
         {
             if( !Self->Chosen->ItemSlotMain->GetIsHasTimer() )
+            {
                 Self->SetAction( CHOSEN_USE_ITEM, Self->Chosen->ItemSlotMain->GetId(), 0, TARGET_SELF, 0, USE_USE );
+            }
             else
-                Self->TimerStart( Self->Chosen->ItemSlotMain->GetId(), ResMngr.GetInvAnim( Self->Chosen->ItemSlotMain->GetActualPicInv() ), Self->Chosen->ItemSlotMain->GetInvColor() );
+            {
+                ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+                uint              item_id = Self->Chosen->ItemSlotMain->GetId();
+                dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
+                Self->ShowScreen( SCREEN__TIMER, dict );
+                dict->Release();
+            }
         }
     }
     else if( cmd == "IsTurnBasedMyTurn" )
@@ -11354,10 +11291,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
         x = Self->DlgX;
         y = Self->DlgY;
         break;
-    case SCREEN__PIP_BOY:
-        x = Self->PipX;
-        y = Self->PipY;
-        break;
     case SCREEN__FIX_BOY:
         x = Self->FixX;
         y = Self->FixY;
@@ -11369,10 +11302,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
     case SCREEN__SPLIT:
         x = Self->SplitX;
         y = Self->SplitY;
-        break;
-    case SCREEN__TIMER:
-        x = Self->TimerX;
-        y = Self->TimerY;
         break;
     case SCREEN__DIALOGBOX:
         x = Self->DlgboxX;
@@ -11393,10 +11322,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
     case SCREEN__INPUT_BOX:
         x = Self->IboxX;
         y = Self->IboxY;
-        break;
-    case SCREEN__USE:
-        x = Self->UseX;
-        y = Self->UseY;
         break;
     case SCREEN__SAVE_LOAD:
         x = Self->SaveLoadX;
@@ -11434,9 +11359,6 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
     case SCREEN__BARTER:
         Self->DlgDraw( false );
         break;
-    case SCREEN__PIP_BOY:
-        Self->PipDraw();
-        break;
     case SCREEN__FIX_BOY:
         Self->FixDraw();
         break;
@@ -11445,9 +11367,6 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
         break;
     case SCREEN__SPLIT:
         Self->SplitDraw();
-        break;
-    case SCREEN__TIMER:
-        Self->TimerDraw();
         break;
     case SCREEN__DIALOGBOX:
         Self->DlgboxDraw();
@@ -11463,9 +11382,6 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
         break;
     case SCREEN__INPUT_BOX:
         Self->IboxDraw();
-        break;
-    case SCREEN__USE:
-        Self->UseDraw();
         break;
     case SCREEN__TOWN_VIEW:
         Self->TViewDraw();
@@ -11550,16 +11466,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
         else if( move )
             Self->DlgMouseMove( false );
         break;
-    case SCREEN__PIP_BOY:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->PipLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->PipLMouseUp();
-        else if( button == MOUSE_BUTTON_RIGHT && down )
-            Self->PipRMouseDown();
-        else if( move )
-            Self->PipMouseMove();
-        break;
     case SCREEN__FIX_BOY:
         if( button == MOUSE_BUTTON_LEFT && down )
             Self->FixLMouseDown();
@@ -11583,14 +11489,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->SplitLMouseUp();
         else if( move )
             Self->SplitMouseMove();
-        break;
-    case SCREEN__TIMER:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->TimerLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->TimerLMouseUp();
-        else if( move )
-            Self->TimerMouseMove();
         break;
     case SCREEN__DIALOGBOX:
         if( button == MOUSE_BUTTON_LEFT && down )
@@ -11633,16 +11531,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->IboxLMouseDown();
         else if( button == MOUSE_BUTTON_LEFT && !down )
             Self->IboxLMouseUp();
-        break;
-    case SCREEN__USE:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->UseLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->UseLMouseUp();
-        else if( button == MOUSE_BUTTON_RIGHT && down )
-            Self->UseRMouseDown();
-        else if( move )
-            Self->UseMouseMove();
         break;
     case SCREEN__TOWN_VIEW:
         if( button == MOUSE_BUTTON_LEFT && down )

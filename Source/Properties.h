@@ -89,7 +89,6 @@ public:
     bool           IsReadable();
     bool           IsWritable();
     void           SetSendIgnore( void* obj );
-    bool           IsQuestValue();
 
     template< typename T >
     T GetValue( void* obj )
@@ -156,7 +155,6 @@ private:
     int64          defaultValue;
     int64          minValue;
     int64          maxValue;
-    uint           questValue;
 
     // Dynamic data
     PropertyRegistrator* registrator;
@@ -197,7 +195,6 @@ public:
     int         GetValueAsInt( int enum_value );
     void        SetValueAsInt( int enum_value, int value );
     bool        SetValueAsIntByName( const char* enum_name, int value );
-    uint        GetQuestStr( uint property_index );
     string      GetClassName();
 
 private:
@@ -221,7 +218,7 @@ public:
     PropertyRegistrator( bool is_server, const char* class_name );
     ~PropertyRegistrator();
     bool      Init();
-    Property* Register( const char* type_name, const char* name, Property::AccessType access, uint quest_value = 0, const char* group = NULL, bool* generate_random_value = NULL, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
+    Property* Register( const char* type_name, const char* name, Property::AccessType access, const char* group = NULL, bool* generate_random_value = NULL, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
     void      SetDefaults( const char* group = NULL, bool* generate_random_value = NULL, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
     void      FinishRegistration();
     uint      GetCount();

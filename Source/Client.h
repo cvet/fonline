@@ -12,7 +12,6 @@
 #include "NetProtocol.h"
 #include "BufferManager.h"
 #include "Text.h"
-#include "QuestManager.h"
 #include "CraftManager.h"
 #include "ConstantsManager.h"
 #include "ResourceManager.h"
@@ -251,7 +250,7 @@ public:
 
     // MSG File
     LanguagePack CurLang;
-    FOMsg*       MsgText, * MsgDlg, * MsgItem, * MsgGame, * MsgLocations, * MsgCombat, * MsgQuest, * MsgHolo, * MsgUserHolo, * MsgCraft, * MsgInternal;
+    FOMsg*       MsgText, * MsgDlg, * MsgItem, * MsgGame, * MsgLocations, * MsgCombat, * MsgHolo, * MsgUserHolo, * MsgCraft, * MsgInternal;
 
     const char* GetHoloText( uint str_num );
     const char* FmtGameText( uint str_num, ... );
@@ -727,23 +726,6 @@ public:
     bool  RegCheckData();
 
 /************************************************************************/
-/* Use                                                                  */
-/************************************************************************/
-    AnyFrames*   UseWMainPicNone, * UseBCancelPicDown, * UseBScrUpPicDown, * UseBScrDownPicDown,
-    * UseBScrUpPicUp, * UseBScrDownPicUp, * UseBScrUpPicOff, * UseBScrDownPicOff;
-    int          UseX, UseY, UseVectX, UseVectY;
-    int          UseScroll, UseHeightItem;
-    Rect         UseWMain, UseWChosen, UseWInv, UseBScrUp, UseBScrDown, UseBCancel;
-    uint         UseHoldId;
-    SmthSelected UseSelect;
-
-    void UseDraw();
-    void UseLMouseDown();
-    void UseLMouseUp();
-    void UseRMouseDown();
-    void UseMouseMove();
-
-/************************************************************************/
 /* Game                                                                 */
 /************************************************************************/
     struct MapText
@@ -1008,8 +990,8 @@ public:
     int        TViewX, TViewY, TViewVectX, TViewVectY;
     bool       TViewShowCountours;
 
-    #define TOWN_VIEW_FROM_NONE      ( 0 )
-    #define TOWN_VIEW_FROM_GLOBAL    ( 1 )
+    #define TOWN_VIEW_FROM_NONE        ( 0 )
+    #define TOWN_VIEW_FROM_GLOBAL      ( 1 )
     int  TViewType;
     uint TViewGmapLocId, TViewGmapLocEntrance;    // TOWN_VIEW_FROM_GLOBAL
 
@@ -1021,37 +1003,9 @@ public:
 /************************************************************************/
 /* PipBoy                                                               */
 /************************************************************************/
-    int PipMode;
-    #define PIP__NONE                ( 0 )
-    #define PIP__STATUS              ( 1 )
-    #define PIP__STATUS_QUESTS       ( 2 )
-    #define PIP__STATUS_SCORES       ( 3 )
-    #define PIP__GAMES               ( 4 )
-    #define PIP__AUTOMAPS            ( 5 )
-    #define PIP__AUTOMAPS_LOC        ( 6 )
-    #define PIP__AUTOMAPS_MAP        ( 7 )
-    #define PIP__ARCHIVES            ( 8 )
-    #define PIP__ARCHIVES_INFO       ( 9 )
-
-    AnyFrames* PipPMain, * PipPBStatusDn /*,*PipPBGamesDn*/, * PipPBAutomapsDn, * PipPBArchivesDn, * PipPBCloseDn, * PipPWMonitor;
-    int        PipX, PipY;
-    int        PipVectX, PipVectY;
-    Rect       PipWMain, PipWMonitor, PipBStatus /*,PipBGames*/, PipBAutomaps, PipBArchives, PipBClose, PipWTime;
-    int        PipScroll[ PIP__ARCHIVES_INFO + 1 ];
-
-    void PipDraw();
-    void PipLMouseDown();
-    void PipLMouseUp();
-    void PipRMouseDown();
-    void PipMouseMove();
-
-    // Quests
-    QuestManager QuestMngr;
-    uint         QuestNumTab;
-    ushort       QuestNumQuest;
     // HoloInfo
-    uint         HoloInfo[ MAX_HOLO_INFO ];
-    uint         PipInfoNum;
+    uint HoloInfo[ MAX_HOLO_INFO ];
+
     // Automaps
     struct Automap
     {
@@ -1066,6 +1020,7 @@ public:
         bool operator==( const uint id ) const { return LocId == id; }
     };
     typedef vector< Automap > AutomapVec;
+
     AutomapVec Automaps;
     Automap    AutomapSelected;
     HashSet    AutomapWaitPids;
@@ -1232,30 +1187,6 @@ public:
     void SplitLMouseDown();
     void SplitLMouseUp();
     void SplitMouseMove();
-
-/************************************************************************/
-/* Timer                                                                */
-/************************************************************************/
-    #define TIMER_MIN_VALUE            ( 1 )
-    #define TIMER_MAX_VALUE            ( 599 )
-
-    AnyFrames* TimerMainPic, * TimerBUpPicDown, * TimerBDownPicDown, * TimerBDonePicDown,
-    * TimerBCancelPicDown, * TimerItemPic;
-    uint       TimerItemColor;
-    int        TimerX, TimerY;
-    int        TimerVectX, TimerVectY;
-    Rect       TimerWMain, TimerWTitle, TimerWItem, TimerBUp, TimerBDown, TimerWValue,
-               TimerBDone, TimerBCancel;
-    int        TimerValue;
-    uint       TimerItemId;
-
-    void TimerStart( uint item_id, AnyFrames* pic, uint pic_color );
-    void TimerClose( bool done );
-    void TimerDraw();
-    void TimerKeyDown( uchar dik, const char* dik_text );
-    void TimerLMouseDown();
-    void TimerLMouseUp();
-    void TimerMouseMove();
 
 /************************************************************************/
 /* FixBoy                                                               */
@@ -1634,13 +1565,6 @@ public:
 #define IFACE_TOWN_VIEW_BACK           ( 251 )
 #define IFACE_TOWN_VIEW_ENTER          ( 252 )
 #define IFACE_TOWN_VIEW_CONTOUR        ( 253 )
-#define IFACE_PIP_STATUS               ( 260 )
-// #define IFACE_PIP_GAMES        (261)
-#define IFACE_PIP_AUTOMAPS             ( 262 )
-#define IFACE_PIP_AUTOMAPS_SCR         ( 263 )
-#define IFACE_PIP_ARCHIVES             ( 264 )
-#define IFACE_PIP_CLOSE                ( 265 )
-#define IFACE_PIP_MAIN                 ( 266 )
 #define IFACE_AIM_CANCEL               ( 280 )
 #define IFACE_AIM_HEAD                 ( 281 )
 #define IFACE_AIM_LARM                 ( 282 )
@@ -1704,10 +1628,7 @@ public:
 #define ACCELERATE_PAGE_DOWN           ( 4 )
 #define ACCELERATE_SPLIT_UP            ( 6 )
 #define ACCELERATE_SPLIT_DOWN          ( 7 )
-#define ACCELERATE_TIMER_UP            ( 8 )
 #define ACCELERATE_TIMER_DOWN          ( 9 )
-#define ACCELERATE_USE_SCRUP           ( 10 )
-#define ACCELERATE_USE_SCRDOWN         ( 11 )
 #define ACCELERATE_PUP_SCRUP1          ( 14 )
 #define ACCELERATE_PUP_SCRDOWN1        ( 15 )
 #define ACCELERATE_PUP_SCRUP2          ( 16 )

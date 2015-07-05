@@ -39,6 +39,8 @@ public:
     Map( uint id, ProtoMap* proto, Location* location );
     ~Map();
 
+    SyncObject Sync;
+
 private:
     Mutex     dataLocker;
     uchar*    hexFlags;
@@ -49,8 +51,6 @@ private:
     Location* mapLocation;
 
 public:
-    SyncObject Sync;
-
     struct MapData
     {
         hash  MapPid;
@@ -264,12 +264,12 @@ public:
     Location( uint id, ProtoLocation* proto, ushort wx, ushort wy );
     ~Location();
 
+    SyncObject Sync;
+
 private:
     MapVec locMaps;
 
 public:
-    SyncObject Sync;
-
     struct LocData
     {
         hash   LocPid;
