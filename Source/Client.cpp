@@ -900,7 +900,7 @@ void FOClient::LookBordersPrepare()
                 ushort     hx__ = hx_;
                 ushort     hy__ = hy_;
                 UShortPair block;
-                uint       max_shoot_dist = MAX( MIN( dist_look, dist_shoot ), 0 );
+                uint       max_shoot_dist = MAX( MIN( dist_look, dist_shoot ), 0 ) + 1;
                 HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, max_shoot_dist, 0.0f, NULL, false, NULL, 0, NULL, &block, NULL, true );
                 hx__ = block.first;
                 hy__ = block.second;
@@ -9631,8 +9631,21 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     }
     else if( cmd == "SwitchShootBorders" )
     {
-        Self->DrawShootBorders = !Self->DrawShootBorders;
-        Self->RebuildLookBorders = true;
+        // Self->DrawShootBorders = !Self->DrawShootBorders;
+        // Self->RebuildLookBorders = true;
+    }
+    else if( cmd == "GetShootBorders" )
+    {
+        return ScriptString::Create( Self->DrawShootBorders ? "true" : "false" );
+    }
+    else if( cmd == "SetShootBorders" && args.size() >= 2 )
+    {
+        bool set = ( args[ 1 ] == "true" );
+        if( Self->DrawShootBorders != set )
+        {
+            Self->DrawShootBorders = set;
+            Self->RebuildLookBorders = true;
+        }
     }
     else if( cmd == "SwitchSingleplayerPause" )
     {

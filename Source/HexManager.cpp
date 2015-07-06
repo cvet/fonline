@@ -268,7 +268,9 @@ bool HexManager::Init()
     rtTiles = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false );
     rtRoof = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false );
     rtLight = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushLight );
+    #ifdef FONLINE_CLIENT
     rtFog = SprMngr.CreateRenderTarget( false, false, true, rtScreenOX * 2, rtScreenOY * 2, false, Effect::FlushFog );
+    #endif
 
     isShowTrack = false;
     curPidMap = 0;
