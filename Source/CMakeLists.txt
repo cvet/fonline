@@ -146,13 +146,16 @@ set( COMMON_SOURCE
 	Debugger.cpp Debugger.h
 	Defines.h
 	Entity.cpp Entity.h
+	Exception.cpp Exception.h
 	FileManager.cpp FileManager.h
 	FileSystem.cpp FileSystem.h
 	IniParser.cpp IniParser.h
 	Log.cpp Log.h
+	Methods.cpp Methods.h
 	PlatformSpecific.h
 	Properties.cpp Properties.h
 	Randomizer.h
+	Script.cpp Script.h
 	ScriptBind.h
 	ScriptFunctions.h
 	ScriptInvoker.cpp ScriptInvoker.h
@@ -166,14 +169,12 @@ set( SERVER_CLIENT_MAPPER_SOURCE
 	ConstantsManager.cpp ConstantsManager.h
 	CritterManager.h
 	CritterType.cpp CritterType.h
-	Exception.cpp Exception.h
 	Item.cpp Item.h
 	ItemManager.cpp ItemManager.h
 	LineTracer.h
 	MsgFiles.cpp MsgFiles.h
 	MsgStr.h
 	NetProtocol.h
-	Script.cpp Script.h
 )
 set( SERVER_CLIENT_SOURCE
 	Access.h
@@ -256,7 +257,6 @@ set( ASCOMPILER_SOURCE
 	${COMMON_SOURCE}
 	${SERVER_ASCOMPILER_SOURCE}
 	ASCompiler.cpp
-	ScriptEngine.h
 )
 
 #

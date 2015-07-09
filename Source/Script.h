@@ -45,7 +45,6 @@ public:
     static void FinishThread();
 
     static void* LoadDynamicLibrary( const char* dll_name );
-    static void  SetWrongGlobalObjects( StrVec& names );
     static void  SetConcurrentExecution( bool enabled );
     static void  SetLoadLibraryCompiler( bool enabled );
 
@@ -66,8 +65,9 @@ public:
     static void              GetExecutionContexts( ContextVec& contexts );
     static void              ReleaseExecutionContexts();
     static void              RaiseException( const char* message, ... );
+    static void              PassException();
     static void              HandleException( asIScriptContext* ctx, const char* message, ... );
-    static string            MakeContextTraceback( asIScriptContext* ctx );
+    static string            MakeContextTraceback( asIScriptContext* ctx, bool include_header, bool extended_header );
 
     static ScriptInvoker* GetInvoker();
     static string         GetDeferredCallsStatistics();

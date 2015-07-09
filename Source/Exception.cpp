@@ -715,7 +715,7 @@ void DumpAngelScript( FILE* f )
     {
         fprintf( f, "AngelScript\n" );
         for( int i = (int) contexts.size() - 1; i >= 0; i-- )
-            fprintf( f, "%s", Script::MakeContextTraceback( contexts[ i ] ).c_str() );
+            fprintf( f, "%s", Script::MakeContextTraceback( contexts[ i ], true, true ).c_str() );
         fprintf( f, "\n" );
     }
     Script::ReleaseExecutionContexts();

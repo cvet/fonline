@@ -17,6 +17,7 @@ class GlobalVarPragma;
 class BindFuncPragma;
 class EntityPragma;
 class PropertyPragma;
+class MethodPragma;
 class ContentPragma;
 
 typedef vector< Preprocessor::PragmaInstance > Pragmas;
@@ -33,17 +34,19 @@ private:
     BindFuncPragma*  bindFuncPragma;
     EntityPragma*    entityPragma;
     PropertyPragma*  propertyPragma;
+    MethodPragma*    methodPragma;
     ContentPragma*   contentPragma;
 
 public:
-    ScriptPragmaCallback( int pragma_type, PropertyRegistrator** property_registrators );
+    ScriptPragmaCallback( int pragma_type );
     ~ScriptPragmaCallback();
-    virtual void         CallPragma( const Preprocessor::PragmaInstance& pragma );
-    const Pragmas&       GetProcessedPragmas();
-    void                 Finish();
-    bool                 IsError();
-    PropertyRegistrator* FindEntityRegistrator( const char* class_name );
-    void                 RestoreEntity( const char* class_name, uint id, Properties& props );
+    virtual void          CallPragma( const Preprocessor::PragmaInstance& pragma );
+    const Pragmas&        GetProcessedPragmas();
+    void                  Finish();
+    bool                  IsError();
+    PropertyRegistrator** GetPropertyRegistrators();
+    PropertyRegistrator*  FindEntityRegistrator( const char* class_name );
+    void                  RestoreEntity( const char* class_name, uint id, Properties& props );
 };
 
 #endif // __SCRIPT_PRAGMAS__

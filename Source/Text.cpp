@@ -607,6 +607,22 @@ void Str::CopyBack( char* str )
     }
 }
 
+void Str::ReplaceText( char* str, const char* from, const char* to )
+{
+    uint from_len = Length( from );
+    uint to_len = Length( to );
+    while( true )
+    {
+        str = Substring( str, from );
+        if( !str )
+            break;
+
+        EraseInterval( str, from_len );
+        Insert( str, to, to_len );
+        str += to_len;
+    }
+}
+
 void Str::Replacement( char* str, char from, char to )
 {
     while( *str )

@@ -81,7 +81,6 @@ static int              ScriptsPath = PT_CACHE;
 static int              ScriptsPathCache = PT_CACHE;
 #endif
 static bool             LogDebugInfo = false;
-static StrVec           WrongGlobalObjects;
 
 static BindFunctionVec  BindedFunctions;
 #ifdef SCRIPT_MULTITHREADING
@@ -99,9 +98,10 @@ static bool LoadLibraryCompiler = false;
 // Contexts
 struct ContextData
 {
-    char Info[ MAX_FOTEXT ];
-    uint StartTick;
-    uint SuspendEndTick;
+    char              Info[ MAX_FOTEXT ];
+    uint              StartTick;
+    uint              SuspendEndTick;
+    asIScriptContext* Parent;
 };
 static ContextVec FreeContexts;
 static ContextVec BusyContexts;
@@ -449,11 +449,6 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     return dll;
 }
 
-void Script::SetWrongGlobalObjects( StrVec& names )
-{
-    WrongGlobalObjects = names;
-}
-
 void Script::SetConcurrentExecution( bool enabled )
 {
     ConcurrentExecution = enabled;
@@ -790,7 +785,12 @@ void Script::RaiseException( const char* message, ... )
     if( ctx )
         ctx->SetException( buf );
     else
-        HandleException( NULL, "Unhandled exception: %s\n", buf );
+        HandleException( NULL, "Engine exception: %s\n", buf );
+}
+
+void Script::PassException()
+{
+    RaiseException( "Pass" );
 }
 
 void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
@@ -804,7 +804,14 @@ void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
     if( ctx )
     {
         Str::Append( buf, "\n" );
-        Str::Append( buf, MakeContextTraceback( ctx ).c_str() );
+
+        asIScriptContext* ctx_ = ctx;
+        while( ctx_ )
+        {
+            Str::Append( buf, MakeContextTraceback( ctx_, ctx_ == ctx, false ).c_str() );
+            ContextData* ctx_data = (ContextData*) ctx_->GetUserData();
+            ctx_ = ctx_data->Parent;
+        }
     }
 
     WriteLog( "%s", buf );
@@ -816,7 +823,7 @@ void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
 //     #endif
 }
 
-string Script::MakeContextTraceback( asIScriptContext* ctx )
+string Script::MakeContextTraceback( asIScriptContext* ctx, bool include_header, bool extended_header )
 {
     string                   result = "";
     char                     buf[ MAX_FOTEXT ];
@@ -825,7 +832,15 @@ string Script::MakeContextTraceback( asIScriptContext* ctx )
     int                      line, column;
     const asIScriptFunction* func;
     int                      stack_size = ctx->GetCallstackSize();
-    result += Str::Format( buf, " Traceback: (%s, %s)\n", ContextStatesStr[ (int) ctx->GetState() ], ctx_data->Info );
+
+    // Header
+    if( include_header )
+    {
+        if( !extended_header )
+            result += Str::Format( buf, " Traceback:\n" );
+        else
+            result += Str::Format( buf, " Traceback: (%s, %s)\n", ContextStatesStr[ (int) ctx->GetState() ], ctx_data->Info );
+    }
 
     // Print system function
     asIScriptFunction* sys_func = ctx->GetSystemFunction();
@@ -1242,80 +1257,6 @@ public:
         WriteLogF( _FUNC_, " - Unable to Build module<%s>, result<%d>.\n", module_name, as_result );
         module->Discard();
         return false;
-    }
-
-    // Check not allowed global variables
-    if( WrongGlobalObjects.size() )
-    {
-        IntVec bad_typeids;
-        bad_typeids.reserve( WrongGlobalObjects.size() );
-        for( auto it = WrongGlobalObjects.begin(), end = WrongGlobalObjects.end(); it != end; ++it )
-            bad_typeids.push_back( Engine->GetTypeIdByDecl( ( *it ).c_str() ) & asTYPEID_MASK_SEQNBR );
-
-        IntVec bad_typeids_class;
-        for( int m = 0, n = module->GetObjectTypeCount(); m < n; m++ )
-        {
-            asIObjectType* ot = module->GetObjectTypeByIndex( m );
-            for( int i = 0, j = ot->GetPropertyCount(); i < j; i++ )
-            {
-                int type = 0;
-                ot->GetProperty( i, NULL, &type, NULL, NULL );
-                type &= asTYPEID_MASK_SEQNBR;
-                for( uint k = 0; k < bad_typeids.size(); k++ )
-                {
-                    if( type == bad_typeids[ k ] )
-                    {
-                        bad_typeids_class.push_back( ot->GetTypeId() & asTYPEID_MASK_SEQNBR );
-                        break;
-                    }
-                }
-            }
-        }
-
-        bool global_fail = false;
-        for( int i = 0, j = module->GetGlobalVarCount(); i < j; i++ )
-        {
-            int type = 0;
-            module->GetGlobalVar( i, NULL, NULL, &type, NULL );
-
-            while( type & asTYPEID_TEMPLATE )
-            {
-                asIObjectType* obj = (asIObjectType*) Engine->GetObjectTypeById( type );
-                if( !obj )
-                    break;
-                type = obj->GetSubTypeId();
-            }
-
-            type &= asTYPEID_MASK_SEQNBR;
-
-            for( uint k = 0; k < bad_typeids.size(); k++ )
-            {
-                if( type == bad_typeids[ k ] )
-                {
-                    const char* name = NULL;
-                    module->GetGlobalVar( i, &name, NULL, NULL );
-                    string      msg = "The global variable '" + string( name ) + "' uses a type that cannot be stored globally";
-                    Engine->WriteMessage( "", 0, 0, asMSGTYPE_ERROR, msg.c_str() );
-                    global_fail = true;
-                    break;
-                }
-            }
-            if( std::find( bad_typeids_class.begin(), bad_typeids_class.end(), type ) != bad_typeids_class.end() )
-            {
-                const char* name = NULL;
-                module->GetGlobalVar( i, &name, NULL, NULL );
-                string      msg = "The global variable '" + string( name ) + "' uses a type in class property that cannot be stored globally";
-                Engine->WriteMessage( "", 0, 0, asMSGTYPE_ERROR, msg.c_str() );
-                global_fail = true;
-            }
-        }
-
-        if( global_fail )
-        {
-            WriteLogF( _FUNC_, " - Wrong global variables in module<%s>.\n", module_name );
-            module->Discard();
-            return false;
-        }
     }
 
     // Save binary version of script and preprocessed version
@@ -2215,6 +2156,7 @@ bool Script::RunPrepared()
         uint              tick = Timer::FastTick();
         CurrentCtx = NULL;
         ctx_data->StartTick = tick;
+        ctx_data->Parent = asGetActiveContext();
 
         int             result = ctx->Execute();
 
@@ -2494,7 +2436,8 @@ void Script::CallbackException( asIScriptContext* ctx, void* param )
 {
     const char* str = ctx->GetExceptionString();
     uint        str_len = Str::Length( str );
-    HandleException( ctx, "Script exception: %s%s", str, str_len > 0 && str[ str_len - 1 ] != '.' ? "." : "" );
+    if( !Str::Compare( str, "Pass" ) )
+        HandleException( ctx, "Script exception: %s%s", str, str_len > 0 && str[ str_len - 1 ] != '.' ? "." : "" );
 }
 
 /************************************************************************/

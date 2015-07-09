@@ -5258,23 +5258,16 @@ bool FOMapper::InitScriptSystem()
 {
     WriteLog( "Script system initialization...\n" );
 
-    // Auto fields
-    PropertyRegistrator* registrators[ 6 ] =
-    {
-        new PropertyRegistrator( true, "GlobalVars" ),
-        new PropertyRegistrator( true, "CritterCl" ),
-        new PropertyRegistrator( true, "ItemCl" ),
-        new PropertyRegistrator( true, "ProtoItem" ),
-        new PropertyRegistrator( true, "Map" ),
-        new PropertyRegistrator( true, "Location" ),
-    };
-
     // Init
-    if( !Script::Init( new ScriptPragmaCallback( PRAGMA_MAPPER, registrators ), "MAPPER", true, 0, 0, false ) )
+    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_MAPPER );
+    if( !Script::Init( pragma_callback, "MAPPER", true, 0, 0, false ) )
     {
         WriteLog( "Script system initialization fail.\n" );
         return false;
     }
+
+    // Properties
+    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
 
     // Bind vars and functions, look bind.h
     asIScriptEngine* engine = Script::GetEngine();

@@ -131,7 +131,6 @@ public:
     static bool VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir );
 
     // Scripting
-    static StrVec  ServerWrongGlobalObjects;
     static Pragmas ServerPropertyPragmas;
 
     // Init/Finish system

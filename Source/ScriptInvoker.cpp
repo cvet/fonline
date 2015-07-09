@@ -1,8 +1,6 @@
 #include "ScriptInvoker.h"
 #include "Script.h"
 
-#ifndef FONLINE_SCRIPT_COMPILER
-
 ScriptInvoker::ScriptInvoker()
 {
     lastDeferredCallId = 0;
@@ -310,7 +308,7 @@ string ScriptInvoker::GetStatistics()
 
 uint ScriptInvoker::Global_DeferredCall( uint delay, asIScriptFunction* func )
 {
-    # pragma MESSAGE( "Take Invoker from func." )
+    #pragma MESSAGE( "Take Invoker from func." )
     return Script::GetInvoker()->AddDeferredCall( delay, false, func, NULL, NULL );
 }
 
@@ -384,57 +382,3 @@ uint ScriptInvoker::Global_GetDeferredCallsList( ScriptArray* ids )
         Script::AppendVectorToArray( ids_, ids );
     return (uint) ids_.size();
 }
-
-#else
-
-uint ScriptInvoker::Global_DeferredCall( uint delay, asIScriptFunction* func )
-{
-    return 0;
-}
-
-uint ScriptInvoker::Global_DeferredCallWithValue( uint delay, asIScriptFunction* func, int value )
-{
-    return 0;
-}
-
-uint ScriptInvoker::Global_DeferredCallWithValues( uint delay, asIScriptFunction* func, ScriptArray* values )
-{
-    return 0;
-}
-
-uint ScriptInvoker::Global_SavedDeferredCall( uint delay, asIScriptFunction* func )
-{
-    return 0;
-}
-
-uint ScriptInvoker::Global_SavedDeferredCallWithValue( uint delay, asIScriptFunction* func, int value )
-{
-    return 0;
-}
-
-uint ScriptInvoker::Global_SavedDeferredCallWithValues( uint delay, asIScriptFunction* func, ScriptArray* values )
-{
-    return 0;
-}
-
-bool ScriptInvoker::Global_IsDeferredCallPending( uint id )
-{
-    return false;
-}
-
-bool ScriptInvoker::Global_CancelDeferredCall( uint id )
-{
-    return false;
-}
-
-bool ScriptInvoker::Global_GetDeferredCallData( uint id, uint& delay, ScriptArray* values )
-{
-    return false;
-}
-
-uint ScriptInvoker::Global_GetDeferredCallsList( ScriptArray* ids )
-{
-    return 0;
-}
-
-#endif

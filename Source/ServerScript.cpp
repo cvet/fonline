@@ -86,17 +86,6 @@ bool FOServer::InitScriptSystem()
         asSetGlobalMemoryFunctions( malloc, free );
     #endif
 
-    // Properties
-    PropertyRegistrator* registrators[ 6 ] =
-    {
-        new PropertyRegistrator( true, "GlobalVars" ),
-        new PropertyRegistrator( true, "Critter" ),
-        new PropertyRegistrator( true, "Item" ),
-        new PropertyRegistrator( true, "ProtoItem" ),
-        new PropertyRegistrator( true, "Map" ),
-        new PropertyRegistrator( true, "Location" ),
-    };
-
     // Profiler settings
     IniParser& cfg = IniParser::GetServerConfig();
     uint       sample_time = cfg.GetInt( "ProfilerSampleInterval", 0 );
@@ -105,27 +94,16 @@ bool FOServer::InitScriptSystem()
         sample_time = 0;
 
     // Init
-    if( !Script::Init( new ScriptPragmaCallback( PRAGMA_SERVER, registrators ), "SERVER", AllowServerNativeCalls,
+    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_SERVER );
+    if( !Script::Init( pragma_callback, "SERVER", AllowServerNativeCalls,
                        sample_time, ( profiler_mode & 1 ) != 0, ( profiler_mode & 2 ) != 0 ) )
     {
         WriteLog( "Script system initialization failed.\n" );
         return false;
     }
 
-    // Wrong global objects
-    ServerWrongGlobalObjects.push_back( "GlobalVars@" );
-    ServerWrongGlobalObjects.push_back( "GlobalVars@[]" );
-    ServerWrongGlobalObjects.push_back( "Critter@" );
-    ServerWrongGlobalObjects.push_back( "Critter@[]" );
-    ServerWrongGlobalObjects.push_back( "Item@" );
-    ServerWrongGlobalObjects.push_back( "Item@[]" );
-    ServerWrongGlobalObjects.push_back( "Map@" );
-    ServerWrongGlobalObjects.push_back( "Map@[]" );
-    ServerWrongGlobalObjects.push_back( "Location@" );
-    ServerWrongGlobalObjects.push_back( "Location@[]" );
-    ServerWrongGlobalObjects.push_back( "CraftItem@" );
-    ServerWrongGlobalObjects.push_back( "CraftItem@[]" );
-    Script::SetWrongGlobalObjects( ServerWrongGlobalObjects );
+    // Properties
+    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
 
     // Bind vars and functions, look bind.h
     asIScriptEngine* engine = Script::GetEngine();
@@ -325,22 +303,15 @@ bool FOServer::ReloadClientScripts()
     asSetGlobalMemoryFunctions( malloc, free );
     #endif
 
-    // Properties
-    PropertyRegistrator* registrators[ 6 ] =
-    {
-        new PropertyRegistrator( false, "GlobalVars" ),
-        new PropertyRegistrator( false, "CritterCl" ),
-        new PropertyRegistrator( false, "ItemCl" ),
-        new PropertyRegistrator( false, "ProtoItem" ),
-        new PropertyRegistrator( false, "Map" ),
-        new PropertyRegistrator( false, "Location" ),
-    };
-
     // Swap engine
-    asIScriptEngine* old_engine = Script::GetEngine();
-    asIScriptEngine* engine = Script::CreateEngine( new ScriptPragmaCallback( PRAGMA_CLIENT, registrators ), "CLIENT", AllowClientNativeCalls );
+    asIScriptEngine*      old_engine = Script::GetEngine();
+    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_CLIENT );
+    asIScriptEngine*      engine = Script::CreateEngine( pragma_callback, "CLIENT", AllowClientNativeCalls );
     if( engine )
         Script::SetEngine( engine );
+
+    // Properties
+    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
 
     // Bind vars and functions
     int bind_errors = 0;
@@ -372,9 +343,6 @@ bool FOServer::ReloadClientScripts()
     Script::Undef( "__SERVER" );
     Script::Define( "__CLIENT" );
     Script::Define( "__VERSION %d", FONLINE_VERSION );
-
-    StrVec empty;
-    Script::SetWrongGlobalObjects( empty );
     Script::SetLoadLibraryCompiler( true );
 
     FOMsg msg_script;
@@ -449,18 +417,9 @@ bool FOServer::ReloadClientScripts()
 
     // Finish
     Pragmas pragmas = ed->PragmaCB->GetProcessedPragmas();
-    SAFEDEL( registrators[ 0 ] );
-    SAFEDEL( registrators[ 1 ] );
-    SAFEDEL( registrators[ 2 ] );
-    SAFEDEL( registrators[ 3 ] );
-    SAFEDEL( registrators[ 4 ] );
-    SAFEDEL( registrators[ 5 ] );
     Script::FinishEngine( engine );
     Script::Undef( "__CLIENT" );
     Script::Define( "__SERVER" );
-
-    Script::SetWrongGlobalObjects( ServerWrongGlobalObjects );
-
     Script::SetLoadLibraryCompiler( false );
 
     #ifdef MEMORY_DEBUG
@@ -566,22 +525,15 @@ bool FOServer::ReloadMapperScripts()
     asSetGlobalMemoryFunctions( malloc, free );
     #endif
 
-    // Properties
-    PropertyRegistrator* registrators[ 6 ] =
-    {
-        new PropertyRegistrator( false, "GlobalVars" ),
-        new PropertyRegistrator( false, "CritterCl" ),
-        new PropertyRegistrator( false, "ItemCl" ),
-        new PropertyRegistrator( false, "ProtoItem" ),
-        new PropertyRegistrator( false, "Map" ),
-        new PropertyRegistrator( false, "Location" ),
-    };
-
     // Swap engine
-    asIScriptEngine* old_engine = Script::GetEngine();
-    asIScriptEngine* engine = Script::CreateEngine( new ScriptPragmaCallback( PRAGMA_MAPPER, registrators ), "MAPPER", true );
+    asIScriptEngine*      old_engine = Script::GetEngine();
+    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_MAPPER );
+    asIScriptEngine*      engine = Script::CreateEngine( pragma_callback, "MAPPER", true );
     if( engine )
         Script::SetEngine( engine );
+
+    // Properties
+    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
 
     // Bind vars and functions
     int bind_errors = 0;
@@ -613,9 +565,6 @@ bool FOServer::ReloadMapperScripts()
     Script::Undef( "__SERVER" );
     Script::Define( "__MAPPER" );
     Script::Define( "__VERSION %d", FONLINE_VERSION );
-
-    StrVec empty;
-    Script::SetWrongGlobalObjects( empty );
     Script::SetLoadLibraryCompiler( true );
 
     int errors = 0;
@@ -627,15 +576,9 @@ bool FOServer::ReloadMapperScripts()
         errors++;
 
     // Finish
-    SAFEDEL( registrators[ 0 ] );
-    SAFEDEL( registrators[ 1 ] );
-    SAFEDEL( registrators[ 2 ] );
     Script::FinishEngine( engine );
     Script::Undef( "__MAPPER" );
     Script::Define( "__SERVER" );
-
-    Script::SetWrongGlobalObjects( ServerWrongGlobalObjects );
-
     Script::SetLoadLibraryCompiler( false );
 
     #ifdef MEMORY_DEBUG
@@ -5516,7 +5459,8 @@ void FOServer::SScriptFunc::Global_SetTime( ushort multiplier, ushort year, usho
 
 bool FOServer::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, ScriptString& script_func )
 {
-    Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum_value );
+    Property* prop = GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value );
+    prop = ( prop ? prop : Critter::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R0( "Property '%s' not found.", HASH_STR( prop_enum_value ) );

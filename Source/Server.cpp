@@ -47,7 +47,6 @@ LangPackVec                 FOServer::LangPacks;
 FOServer::HoloInfoMap       FOServer::HolodiskInfo;
 Mutex                       FOServer::HolodiskLocker;
 uint                        FOServer::LastHoloId = 0;
-StrVec                      FOServer::ServerWrongGlobalObjects;
 Pragmas                     FOServer::ServerPropertyPragmas;
 FOServer::TextListenVec     FOServer::TextListeners;
 Mutex                       FOServer::TextListenersLocker;

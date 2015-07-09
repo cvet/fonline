@@ -1,6 +1,6 @@
 #include "Common.h"
+#include "Script.h"
 #include "ScriptPragmas.h"
-#include "ScriptEngine.h"
 #include "ScriptInvoker.h"
 #include "angelscript.h"
 #include "preprocessor.h"
@@ -22,20 +22,13 @@
 
 int Compile( const char* fname, const char* fname_prep, vector< char* >& defines, vector< char* >& run_func );
 
-bool RaiseAssert( const char* message, const char* file, int line ) // For RUNTIME_ASSERT
-{
-    ExitProcess( 0 );
-    return 0;
-}
+bool        IsServer = false;
+bool        IsClient = false;
+bool        IsMapper = false;
+char*       Buf = NULL;
+bool        CollectGarbage = false;
 
-asIScriptEngine* Engine = NULL;
-bool             IsServer = false;
-bool             IsClient = false;
-bool             IsMapper = false;
-char*            Buf = NULL;
-bool             CollectGarbage = false;
-
-const char*      ContextStatesStr[] =
+const char* ContextStatesStr[] =
 {
     "Finished",
     "Suspended",
@@ -52,7 +45,7 @@ void PrintContextCallstack( asIScriptContext* ctx )
     int                      line, column;
     const asIScriptFunction* func;
     int                      stack_size = ctx->GetCallstackSize();
-    printf( "State<%s>, call stack<%d>:\n", ContextStatesStr[ (int) ctx->GetState() ], stack_size );
+    WriteLog( "State<%s>, call stack<%d>:\n", ContextStatesStr[ (int) ctx->GetState() ], stack_size );
 
     // Print current function
     if( ctx->GetState() == asEXECUTION_EXCEPTION )
@@ -66,7 +59,7 @@ void PrintContextCallstack( asIScriptContext* ctx )
         func = ctx->GetFunction( 0 );
     }
     if( func )
-        printf( "  %d) %s : %s : %d, %d.\n", stack_size - 1, func->GetModuleName(), func->GetDeclaration(), line, column );
+        WriteLog( "  %d) %s : %s : %d, %d.\n", stack_size - 1, func->GetModuleName(), func->GetDeclaration(), line, column );
 
     // Print call stack
     for( int i = 1; i < stack_size; i++ )
@@ -74,7 +67,7 @@ void PrintContextCallstack( asIScriptContext* ctx )
         func = ctx->GetFunction( i );
         line = ctx->GetLineNumber( i, &column );
         if( func )
-            printf( "  %d) %s : %s : %d, %d.\n", stack_size - i - 1, func->GetModuleName(), func->GetDeclaration(), line, column );
+            WriteLog( "  %d) %s : %s : %d, %d.\n", stack_size - i - 1, func->GetModuleName(), func->GetDeclaration(), line, column );
     }
 }
 
@@ -85,18 +78,18 @@ void RunMain( asIScriptModule* module, const char* func_str )
     sprintf( func_decl, "void %s()", func_str );
 
     // Run
-    printf( "Executing '%s'.\n", func_str );
-    asIScriptContext*  ctx = Engine->CreateContext();
+    WriteLog( "Executing '%s'.\n", func_str );
+    asIScriptContext*  ctx = module->GetEngine()->CreateContext();
     asIScriptFunction* func = module->GetFunctionByDecl( func_decl );
     if( !func )
     {
-        printf( "Function '%s' not found.\n", func_decl );
+        WriteLog( "Function '%s' not found.\n", func_decl );
         return;
     }
     int result = ctx->Prepare( func );
     if( result < 0 )
     {
-        printf( "Context preparation failure, error code<%d>.\n", result );
+        WriteLog( "Context preparation failure, error code<%d>.\n", result );
         return;
     }
 
@@ -105,37 +98,19 @@ void RunMain( asIScriptModule* module, const char* func_str )
     if( state != asEXECUTION_FINISHED )
     {
         if( state == asEXECUTION_EXCEPTION )
-            printf( "Execution of script stopped due to exception '%s'.\n", ctx->GetExceptionString() );
+            WriteLog( "Execution of script stopped due to exception '%s'.\n", ctx->GetExceptionString() );
         else if( state == asEXECUTION_SUSPENDED )
-            printf( "Execution of script stopped due to timeout.\n" );
+            WriteLog( "Execution of script stopped due to timeout.\n" );
         else
-            printf( "Execution of script stopped due to '%s'.\n", ContextStatesStr[ (int) state ] );
+            WriteLog( "Execution of script stopped due to '%s'.\n", ContextStatesStr[ (int) state ] );
         PrintContextCallstack( ctx );
         ctx->Abort();
         return;
     }
 
     if( result < 0 )
-    {
-        printf( "Execution error<%d>, state<%s>.\n", result, ContextStatesStr[ (int) state ] );
-    }
-    printf( "Execution finished.\n" );
-}
-
-void* GetScriptEngine()
-{
-    return Engine;
-}
-
-const char* GetDllTarget()
-{
-    if( IsServer )
-        return "SERVER";
-    if( IsClient )
-        return "CLIENT";
-    if( IsMapper )
-        return "MAPPER";
-    return "UNKNOWN";
+        WriteLog( "Execution error<%d>, state<%s>.\n", result, ContextStatesStr[ (int) state ] );
+    WriteLog( "Execution finished.\n" );
 }
 
 void CallBack( const asSMessageInfo* msg, void* param )
@@ -150,23 +125,23 @@ void CallBack( const asSMessageInfo* msg, void* param )
     {
         if( msg->row )
         {
-            printf( "%s(%d) : %s : %s.\n", Preprocessor::ResolveOriginalFile( msg->row ).c_str(), Preprocessor::ResolveOriginalLine( msg->row ), type, msg->message );
+            WriteLog( "%s(%d) : %s : %s.\n", Preprocessor::ResolveOriginalFile( msg->row ).c_str(), Preprocessor::ResolveOriginalLine( msg->row ), type, msg->message );
         }
         else
         {
-            printf( "%s : %s.\n", type, msg->message );
+            WriteLog( "%s : %s.\n", type, msg->message );
         }
     }
     else
     {
-        printf( "%s(%d) : %s : %s.\n", Preprocessor::ResolveOriginalFile( msg->row ).c_str(), Preprocessor::ResolveOriginalLine( msg->row ), type, msg->message );
+        WriteLog( "%s(%d) : %s : %s.\n", Preprocessor::ResolveOriginalFile( msg->row ).c_str(), Preprocessor::ResolveOriginalLine( msg->row ), type, msg->message );
     }
 }
 
 // Server
 #define BIND_SERVER
 #define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { printf( "Bind error, line<" # x ">.\n" ); bind_errors++; }
+#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line<" # x ">.\n" ); bind_errors++; }
 namespace ServerBind
 {
     #include "DummyData.h"
@@ -184,7 +159,7 @@ namespace ServerBind
 #undef BIND_ASSERT
 #define BIND_CLIENT
 #define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { printf( "Bind error, line<" # x ">.\n" ); bind_errors++; }
+#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line<" # x ">.\n" ); bind_errors++; }
 namespace ClientBind
 {
     #include "DummyData.h"
@@ -202,7 +177,7 @@ namespace ClientBind
 #undef BIND_ASSERT
 #define BIND_MAPPER
 #define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { printf( "Bind error, line<" # x ">.\n" ); bind_errors++; }
+#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line<" # x ">.\n" ); bind_errors++; }
 namespace MapperBind
 {
     #include "DummyData.h"
@@ -225,16 +200,16 @@ int main( int argc, char* argv[] )
     // Show usage
     if( argc < 2 )
     {
-        printf( "FOnline AngleScript compiler. Usage:\n"
-                "ASCompiler script_name.fos\n"
-                " [-server] (compile as server script)\n"
-                " [-client] (compile as client script)\n"
-                " [-mapper] (compile as mapper script)\n"
-                " [-p preprocessor_output.txt]\n"
-                " [-d SOME_DEFINE]*\n"
-                " [-run func_name]*\n"
-                " [-gc] (collect garbage after execution)\n"
-                "*can be used multiple times\n" );
+        WriteLog( "FOnline AngleScript compiler. Usage:\n"
+                  "ASCompiler script_name.fos\n"
+                  " [-server] (compile as server script)\n"
+                  " [-client] (compile as client script)\n"
+                  " [-mapper] (compile as mapper script)\n"
+                  " [-p preprocessor_output.txt]\n"
+                  " [-d SOME_DEFINE]*\n"
+                  " [-run func_name]*\n"
+                  " [-gc] (collect garbage after execution)\n"
+                  "*can be used multiple times\n" );
         return 0;
     }
 
@@ -289,14 +264,14 @@ int main( int argc, char* argv[] )
         FILE* f = fopen( str_fname, "rb" );
         if( !f )
         {
-            printf( "File<%s> not found.\n", str_fname );
+            WriteLog( "File<%s> not found.\n", str_fname );
             return -1;
         }
 
         char line[ MAX_FOTEXT ];
         if( !fgets( line, sizeof( line ), f ) )
         {
-            printf( "File<%s> empty.\n", str_fname );
+            WriteLog( "File<%s> empty.\n", str_fname );
             return -1;
         }
         fclose( f );
@@ -304,7 +279,7 @@ int main( int argc, char* argv[] )
         // Check script signature
         if( !Str::Substring( line, "FOS" ) )
         {
-            printf( "FOnline script signature 'FOS' not found in first line.\n" );
+            WriteLog( "FOnline script signature 'FOS' not found in first line.\n" );
             return -1;
         }
 
@@ -339,7 +314,7 @@ int main( int argc, char* argv[] )
         // No one target seleted
         if( result == -1 )
         {
-            printf( "Compile target (Server/Client/Mapper) not specified.\n" );
+            WriteLog( "Compile target (Server/Client/Mapper) not specified.\n" );
             return -1;
         }
     }
@@ -352,63 +327,7 @@ int main( int argc, char* argv[] )
 
 int Compile( const char* fname, const char* fname_prep, vector< char* >& defines, vector< char* >& run_func )
 {
-    // Engine
-    Engine = asCreateScriptEngine( ANGELSCRIPT_VERSION );
-    if( !Engine )
-    {
-        printf( "Register failed.\n" );
-        return -1;
-    }
-    Engine->SetMessageCallback( asFUNCTION( CallBack ), NULL, asCALL_CDECL );
-
-    // Extensions
-    RegisterScriptArray( Engine, true );
-    RegisterScriptString( Engine );
-    RegisterScriptAny( Engine );
-    RegisterScriptDictionary( Engine );
-    RegisterScriptDict( Engine );
-    RegisterScriptFile( Engine );
-    RegisterScriptMath( Engine );
-    RegisterScriptWeakRef( Engine );
-    RegisterScriptReflection( Engine );
-
-    // Properties
-    PropertyRegistrator* registrators[ 6 ] = { NULL, NULL, NULL, NULL, NULL, NULL };
-    if( IsServer )
-    {
-        registrators[ 0 ] = new PropertyRegistrator( true, "GlobalVars" );
-        registrators[ 1 ] = new PropertyRegistrator( true, "Critter" );
-        registrators[ 2 ] = new PropertyRegistrator( true, "Item" );
-        registrators[ 3 ] = new PropertyRegistrator( true, "ProtoItem" );
-        registrators[ 4 ] = new PropertyRegistrator( true, "Map" );
-        registrators[ 5 ] = new PropertyRegistrator( true, "Location" );
-    }
-    if( IsClient || IsMapper )
-    {
-        registrators[ 0 ] = new PropertyRegistrator( false, "GlobalVars" );
-        registrators[ 1 ] = new PropertyRegistrator( false, "CritterCl" );
-        registrators[ 2 ] = new PropertyRegistrator( false, "ItemCl" );
-        registrators[ 3 ] = new PropertyRegistrator( false, "ProtoItem" );
-        registrators[ 4 ] = new PropertyRegistrator( false, "Map" );
-        registrators[ 5 ] = new PropertyRegistrator( false, "Location" );
-    }
-
-    // Bind
-    int bind_errors = 0;
-    if( IsServer )
-        bind_errors = ServerBind::Bind( Engine, registrators );
-    else if( IsClient )
-        bind_errors = ClientBind::Bind( Engine, registrators );
-    else if( IsMapper )
-        bind_errors = MapperBind::Bind( Engine, registrators );
-    if( bind_errors )
-        printf( "Warning, bind result: %d.\n", bind_errors );
-
-    // Start compilation
-    printf( "Compiling '%s' as %s script...\n", fname, IsServer ? "server" : ( IsClient ? "client" : "mapper" ) );
-    double tick = Timer::AccurateTick();
-
-    // Preprocessor
+    // Pragma callback
     int pragma_type = PRAGMA_UNKNOWN;
     if( IsServer )
         pragma_type = PRAGMA_SERVER;
@@ -417,8 +336,32 @@ int Compile( const char* fname, const char* fname_prep, vector< char* >& defines
     else if( IsMapper )
         pragma_type = PRAGMA_MAPPER;
 
-    Preprocessor::SetPragmaCallback( new ScriptPragmaCallback( pragma_type, registrators ) );
+    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( pragma_type );
+    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
 
+    // Engine
+    if( !Script::Init( pragma_callback, IsServer ? "SERVER" : ( IsClient ? "CLIENT" : "MAPPER" ), true, 0, false, false ) )
+        return -1;
+    asIScriptEngine* engine = Script::GetEngine();
+    engine->SetMessageCallback( asFUNCTION( CallBack ), NULL, asCALL_CDECL );
+
+    // Bind
+    int bind_errors = 0;
+    if( IsServer )
+        bind_errors = ServerBind::Bind( engine, registrators );
+    else if( IsClient )
+        bind_errors = ClientBind::Bind( engine, registrators );
+    else if( IsMapper )
+        bind_errors = MapperBind::Bind( engine, registrators );
+    if( bind_errors )
+        WriteLog( "Warning, bind result: %d.\n", bind_errors );
+
+    // Start compilation
+    WriteLog( "Compiling '%s' as %s script...\n", fname, IsServer ? "server" : ( IsClient ? "client" : "mapper" ) );
+    double tick = Timer::AccurateTick();
+
+    // Preprocessor
+    Preprocessor::SetPragmaCallback( pragma_callback );
     Preprocessor::UndefAll();
 
     char buf[ MAX_FOTEXT ];
@@ -442,13 +385,13 @@ int Compile( const char* fname, const char* fname_prep, vector< char* >& defines
 
     if( res )
     {
-        printf( "Unable to preprocess. Errors:\n%s\n", Buf );
+        WriteLog( "Unable to preprocess. Errors:\n%s\n", Buf );
         return -1;
     }
     else
     {
         if( Str::Length( Buf ) > 0 )
-            printf( "%s", Buf );
+            WriteLog( "%s", Buf );
     }
 
     if( fname_prep )
@@ -463,7 +406,7 @@ int Compile( const char* fname, const char* fname_prep, vector< char* >& defines
         }
         else
         {
-            printf( "Unable to create preprocessed file<%s>.\n", fname_prep );
+            WriteLog( "Unable to create preprocessed file<%s>.\n", fname_prep );
         }
     }
 
@@ -472,147 +415,48 @@ int Compile( const char* fname, const char* fname_prep, vector< char* >& defines
         if( Buf[ i ] == '\n' )
             Buf[ i ] = '\0';
 
+    // Finish pragmas
+    pragma_callback->Finish();
+    if( pragma_callback->IsError() )
+    {
+        WriteLog( "Finish pragmas fail.\n" );
+        return -1;
+    }
+
     // Make module name
     char module_name[ MAX_FOTEXT ];
     FileManager::ExtractFileName( fname, module_name );
     FileManager::EraseExtension( module_name );
 
     // AS compilation
-    asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
+    asIScriptModule* module = engine->GetModule( module_name, asGM_ALWAYS_CREATE );
     if( !module )
     {
-        printf( "Can't create module.\n" );
+        WriteLog( "Can't create module.\n" );
         return -1;
     }
 
     if( module->AddScriptSection( module_name, result.String.c_str() ) < 0 )
     {
-        printf( "Unable to add section.\n" );
+        WriteLog( "Unable to add section.\n" );
         return -1;
     }
 
     if( module->Build() < 0 )
     {
-        printf( "Unable to build.\n" );
+        WriteLog( "Unable to build.\n" );
         return -1;
     }
 
-    // Check global not allowed types, only for server
-    if( IsServer )
-    {
-        int bad_typeids[] =
-        {
-            Engine->GetTypeIdByDecl( "GlobalVars@" ),
-            Engine->GetTypeIdByDecl( "GlobalVars@[]" ),
-            Engine->GetTypeIdByDecl( "Critter@" ),
-            Engine->GetTypeIdByDecl( "Critter@[]" ),
-            Engine->GetTypeIdByDecl( "Item@" ),
-            Engine->GetTypeIdByDecl( "Item@[]" ),
-            Engine->GetTypeIdByDecl( "Map@" ),
-            Engine->GetTypeIdByDecl( "Map@[]" ),
-            Engine->GetTypeIdByDecl( "Location@" ),
-            Engine->GetTypeIdByDecl( "Location@[]" ),
-            Engine->GetTypeIdByDecl( "CraftItem@" ),
-            Engine->GetTypeIdByDecl( "CraftItem@[]" ),
-        };
-        int bad_typeids_count = sizeof( bad_typeids ) / sizeof( int );
-        for( int k = 0; k < bad_typeids_count; k++ )
-            bad_typeids[ k ] &= asTYPEID_MASK_SEQNBR;
-
-        vector< int > bad_typeids_class;
-        for( int m = 0, n = module->GetObjectTypeCount(); m < n; m++ )
-        {
-            asIObjectType* ot = module->GetObjectTypeByIndex( m );
-            for( int i = 0, j = ot->GetPropertyCount(); i < j; i++ )
-            {
-                int type = 0;
-                ot->GetProperty( i, NULL, &type, NULL, NULL );
-                type &= asTYPEID_MASK_SEQNBR;
-                for( int k = 0; k < bad_typeids_count; k++ )
-                {
-                    if( type == bad_typeids[ k ] )
-                    {
-                        bad_typeids_class.push_back( ot->GetTypeId() & asTYPEID_MASK_SEQNBR );
-                        break;
-                    }
-                }
-            }
-        }
-
-        bool g_fail = false;
-        bool g_fail_class = false;
-        for( int i = 0, j = module->GetGlobalVarCount(); i < j; i++ )
-        {
-            int type = 0;
-            module->GetGlobalVar( i, NULL, NULL, &type, NULL );
-
-            while( type & asTYPEID_TEMPLATE )
-            {
-                asIObjectType* obj = (asIObjectType*) Engine->GetObjectTypeById( type );
-                if( !obj )
-                    break;
-                type = obj->GetSubTypeId();
-            }
-
-            type &= asTYPEID_MASK_SEQNBR;
-
-            for( int k = 0; k < bad_typeids_count; k++ )
-            {
-                if( type == bad_typeids[ k ] )
-                {
-                    const char* name = NULL;
-                    module->GetGlobalVar( i, &name, NULL, NULL );
-                    string      msg = "The global variable '" + string( name ) + "' uses a type that cannot be stored globally";
-                    Engine->WriteMessage( "", 0, 0, asMSGTYPE_ERROR, msg.c_str() );
-                    g_fail = true;
-                    break;
-                }
-            }
-            if( std::find( bad_typeids_class.begin(), bad_typeids_class.end(), type ) != bad_typeids_class.end() )
-            {
-                const char* name = NULL;
-                module->GetGlobalVar( i, &name, NULL, NULL );
-                string      msg = "The global variable '" + string( name ) + "' uses a type in class property that cannot be stored globally";
-                Engine->WriteMessage( "", 0, 0, asMSGTYPE_ERROR, msg.c_str() );
-                g_fail_class = true;
-            }
-        }
-
-        if( g_fail || g_fail_class )
-        {
-            if( !g_fail_class )
-                printf( "Erase global variable listed above.\n" );
-            else
-                printf( "Erase global variable or class property listed above.\n" );
-            printf( "Classes that cannot be stored in global scope: Critter, Item, ProtoItem, Map, Location, GlobalVar.\n" );
-            printf( "Hint: store their Ids, instead of pointers.\n" );
-            return -1;
-        }
-    }
-
     // Print compilation time
-    printf( "Success (%g ms).\n", Timer::AccurateTick() - tick );
+    WriteLog( "Success (%g ms).\n", Timer::AccurateTick() - tick );
 
     // Execute functions
     for( size_t i = 0; i < run_func.size(); i++ )
         RunMain( module, run_func[ i ] );
 
-    // Collect garbage
-    if( CollectGarbage )
-        Engine->GarbageCollect( asGC_FULL_CYCLE );
-
     // Clean up
-    SAFEDEL( registrators[ 0 ] );
-    SAFEDEL( registrators[ 1 ] );
-    SAFEDEL( registrators[ 2 ] );
-    SAFEDEL( registrators[ 3 ] );
-    SAFEDEL( registrators[ 4 ] );
-    SAFEDEL( registrators[ 5 ] );
-    Engine->ShutDownAndRelease();
-    Engine = NULL;
-    if( Buf )
-        delete Buf;
-    Buf = NULL;
-
+    Script::FinishEngine( engine );
+    SAFEDEL( Buf );
     return 0;
 }

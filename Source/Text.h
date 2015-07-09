@@ -54,6 +54,7 @@ namespace Str
     void  EraseChars( char* str, char ch );
     void  CopyWord( char* to, const char* from, char end, bool include_end = false );
     void  CopyBack( char* str );
+    void  ReplaceText( char* str, const char* from, const char* to );
     void  Replacement( char* str, char from, char to );
     void  Replacement( char* str, char from1, char from2, char to );
     char* Trim( char* str );

@@ -2,123 +2,7 @@
 #include "ScriptPragmas.h"
 #include "angelscript.h"
 #include "ConstantsManager.h"
-
-#ifdef FONLINE_SCRIPT_COMPILER
-# include "ScriptEngine.h"
-
-namespace Script
-{
-    asIScriptEngine* GetEngine()
-    {
-        return (asIScriptEngine*) GetScriptEngine();
-    }
-
-    void* LoadDynamicLibrary( const char* dll_name )
-    {
-        char dll_name_[ MAX_FOPATH ] = { 0 };
-        # ifndef FO_WINDOWS
-        strcat( dll_name_, "./" );
-        # endif
-        strcat( dll_name_, dll_name );
-
-        // Erase extension
-        char* str = dll_name_;
-        char* last_dot = NULL;
-        for( ; *str; str++ )
-            if( *str == '.' )
-                last_dot = str;
-        if( !last_dot || !last_dot[ 1 ] )
-            return NULL;
-        *last_dot = 0;
-
-        # if defined ( FO_X64 )
-        // Add '64' appendix
-        strcat( dll_name_, "64" );
-        # endif
-
-        // DLL extension
-        # ifdef FO_WINDOWS
-        strcat( dll_name_, ".dll" );
-        # else
-        strcat( dll_name_, ".so" );
-        # endif
-
-        // Register global function and vars
-        static map< string, void* > alreadyLoadedDll;
-        string                      dll_name_str = dll_name_;
-        # ifdef FO_WINDOWS
-        for( uint i = 0, j = dll_name_str.length(); i < j; i++ )
-            tolower( dll_name_str[ i ] );
-        # endif
-        auto it = alreadyLoadedDll.find( dll_name_str );
-        if( it != alreadyLoadedDll.end() )
-            return ( *it ).second;
-        alreadyLoadedDll.insert( PAIR( dll_name_str, (void*) NULL ) );
-
-        // Load dynamic library
-        void* dll = DLL_Load( dll_name_str.c_str() );
-        if( !dll )
-            return NULL;
-
-        // Verify compilation target
-        const char* target = GetDllTarget();
-        size_t*     ptr = DLL_GetAddress( dll, target );
-        if( !ptr )
-        {
-            printf( "Wrong script DLL<%s>, expected target<%s>, but found<%s%s%s%s>.\n", dll_name, target,
-                    DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "",
-                    !DLL_GetAddress( dll, "SERVER" ) && !DLL_GetAddress( dll, "CLIENT" ) && !DLL_GetAddress( dll, "MAPPER" ) ? "Nothing" : "" );
-            DLL_Free( dll );
-            return NULL;
-        }
-
-        // Register variables
-        ptr = DLL_GetAddress( dll, "FOnline" );
-        if( ptr )
-            *ptr = (size_t) NULL;
-        ptr = DLL_GetAddress( dll, "ASEngine" );
-        if( ptr )
-            *ptr = (size_t) GetEngine();
-
-        // Register functions
-        ptr = DLL_GetAddress( dll, "Log" );
-        if( ptr )
-            *ptr = (size_t) &printf;
-        ptr = DLL_GetAddress( dll, "ScriptGetActiveContext" );
-        if( ptr )
-            *ptr = (size_t) &asGetActiveContext;
-        ptr = DLL_GetAddress( dll, "ScriptGetLibraryOptions" );
-        if( ptr )
-            *ptr = (size_t) &asGetLibraryOptions;
-        ptr = DLL_GetAddress( dll, "ScriptGetLibraryVersion" );
-        if( ptr )
-            *ptr = (size_t) &asGetLibraryVersion;
-
-        // Call init function
-        typedef void ( *DllMainEx )( bool );
-        DllMainEx func = (DllMainEx) DLL_GetAddress( dll, "DllMainEx" );
-        if( func )
-            ( *func )( true );
-
-        alreadyLoadedDll[ dll_name_str ] = dll;
-        return dll;
-    }
-}
-
-# define WriteLog    printf
-
-#else
-
-# include "Script.h"
-
-# ifdef FONLINE_SERVER
-#  include "Critter.h"
-# else
-#  include "CritterCl.h"
-# endif
-# include "Item.h"
-
-#endif
+#include "Script.h"
 
 // #pragma ignore "other_pragma"
 // #pragma other_pragma "arguments" <- not processed
@@ -352,30 +236,11 @@ public:
     }
 
     #else
-    CustomEntity* CreateEntity()
-    {
-        return NULL;
-    }
-
-    void RestoreEntity( uint id, Properties& props )
-    {
-        //
-    }
-
-    void DeleteEntity( CustomEntity* entity )
-    {
-        //
-    }
-
-    void DeleteEntityById( uint id )
-    {
-        //
-    }
-
-    CustomEntity* GetEntity( uint id )
-    {
-        return NULL;
-    }
+    CustomEntity* CreateEntity()                              { return NULL; }
+    void          RestoreEntity( uint id, Properties& props ) {}
+    void          DeleteEntity( CustomEntity* entity )        {}
+    void          DeleteEntityById( uint id )                 {}
+    CustomEntity* GetEntity( uint id )                        { return NULL; }
     #endif
 };
 
@@ -391,6 +256,13 @@ public:
     EntityPragma( int pragma_type )
     {
         isServer = ( pragma_type == PRAGMA_SERVER || pragma_type == PRAGMA_MAPPER );
+    }
+
+    ~EntityPragma()
+    {
+        for( auto it = entityCreators.begin(); it != entityCreators.end(); ++it )
+            SAFEDEL( it->second );
+        entityCreators.clear();
     }
 
     bool Call( const string& text )
@@ -448,10 +320,11 @@ public:
         return true;
     }
 
-    void FinishRegistrators()
+    bool Finish()
     {
         for( auto it = entityCreators.begin(); it != entityCreators.end(); ++it )
             it->second->Registrator->FinishRegistration();
+        return true;
     }
 
     PropertyRegistrator* FindEntityRegistrator( const char* class_name )
@@ -475,10 +348,29 @@ private:
     EntityPragma*         entitiesRegistrators;
 
 public:
-    PropertyPragma( PropertyRegistrator** property_registrators, EntityPragma* entities_registrators )
+    PropertyPragma( bool is_server, EntityPragma* entities_registrators )
     {
-        propertyRegistrators = property_registrators;
+        propertyRegistrators = new PropertyRegistrator*[ 6 ];
+        propertyRegistrators[ 0 ] = new PropertyRegistrator( is_server, "GlobalVars" );
+        propertyRegistrators[ 1 ] = new PropertyRegistrator( is_server, is_server ? "Critter" : "CritterCl" );
+        propertyRegistrators[ 2 ] = new PropertyRegistrator( is_server, is_server ? "Item" : "ItemCl" );
+        propertyRegistrators[ 3 ] = new PropertyRegistrator( is_server, "ProtoItem" );
+        propertyRegistrators[ 4 ] = new PropertyRegistrator( is_server, "Map" );
+        propertyRegistrators[ 5 ] = new PropertyRegistrator( is_server, "Location" );
+
         entitiesRegistrators = entities_registrators;
+    }
+
+    ~PropertyPragma()
+    {
+        for( int i = 0; i < 6; i++ )
+            SAFEDEL( propertyRegistrators[ i ] );
+        SAFEDEL( propertyRegistrators );
+    }
+
+    PropertyRegistrator** GetPropertyRegistrators()
+    {
+        return propertyRegistrators;
     }
 
     bool Call( const string& text )
@@ -672,6 +564,82 @@ public:
     }
 };
 
+// #pragma method MyObject CallType void Foo(int a, int b) FuncToBind
+class MethodPragma
+{
+private:
+    MethodRegistrator* methodRegistrator;
+
+public:
+    MethodPragma( bool is_server )
+    {
+        methodRegistrator = new MethodRegistrator( is_server );
+    }
+
+    bool Call( const string& text )
+    {
+        // Read all
+        istrstream str( text.c_str() );
+        string     class_name, call_type_str;
+        str >> class_name >> call_type_str;
+        char       buf[ MAX_FOTEXT ];
+        str.getline( buf, MAX_FOTEXT );
+        if( str.fail() )
+        {
+            WriteLog( "Error in 'method' pragma '%s'.\n", text.c_str() );
+            return false;
+        }
+
+        // Decl
+        char* separator = Str::Substring( buf, "=" );
+        if( !separator )
+        {
+            WriteLog( "Error in 'method' pragma declaration '%s'.\n", text.c_str() );
+            return false;
+        }
+        *separator = 0;
+
+        char decl[ MAX_FOTEXT ];
+        char script_func[ MAX_FOTEXT ];
+        Str::Copy( decl, buf );
+        Str::Copy( script_func, separator + 1 );
+        Str::Trim( decl );
+        Str::Trim( script_func );
+
+        // Parse access type
+        Method::CallType call_type = (Method::CallType) 0;
+        if( Str::CompareCase( call_type_str.c_str(), "LocalServer" ) )
+            call_type = Method::LocalServer;
+        else if( Str::CompareCase( call_type_str.c_str(), "LocalClient" ) )
+            call_type = Method::LocalClient;
+        else if( Str::CompareCase( call_type_str.c_str(), "LocalCommon" ) )
+            call_type = Method::LocalCommon;
+        else if( Str::CompareCase( call_type_str.c_str(), "RemoteServer" ) )
+            call_type = Method::RemoteServer;
+        else if( Str::CompareCase( call_type_str.c_str(), "RemoteClient" ) )
+            call_type = Method::RemoteClient;
+        if( call_type == (Method::CallType) 0 )
+        {
+            WriteLog( "Error in 'method' pragma '%s', invalid call type '%s'.\n", text.c_str(), call_type_str.c_str() );
+            return false;
+        }
+
+        // Register
+        if( !methodRegistrator->Register( class_name.c_str(), decl, script_func, call_type ) )
+        {
+            WriteLog( "Unable to register 'method' pragma '%s'.\n", text.c_str() );
+            return false;
+        }
+
+        return true;
+    }
+
+    bool Finish()
+    {
+        return methodRegistrator->FinishRegistration();
+    }
+};
+
 // #pragma content Group fileName
 #ifdef FONLINE_SERVER
 # include "Dialogs.h"
@@ -807,7 +775,7 @@ public:
     }
 };
 
-ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type, PropertyRegistrator** properties_registrators )
+ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
 {
     isError = false;
     pragmaType = pragma_type;
@@ -819,6 +787,7 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type, PropertyRegistrator
     bindFuncPragma = NULL;
     entityPragma = NULL;
     propertyPragma = NULL;
+    methodPragma = NULL;
     contentPragma = NULL;
 
     if( pragmaType != PRAGMA_UNKNOWN )
@@ -827,7 +796,8 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type, PropertyRegistrator
         globalVarPragma = new GlobalVarPragma();
         bindFuncPragma = new BindFuncPragma();
         entityPragma = new EntityPragma( pragmaType );
-        propertyPragma = new PropertyPragma( properties_registrators, entityPragma );
+        propertyPragma = new PropertyPragma( pragmaType == PRAGMA_SERVER || pragmaType == PRAGMA_MAPPER, entityPragma );
+        methodPragma = new MethodPragma( pragmaType == PRAGMA_SERVER || pragmaType == PRAGMA_MAPPER );
         contentPragma = new ContentPragma();
     }
 }
@@ -839,6 +809,7 @@ ScriptPragmaCallback::~ScriptPragmaCallback()
     SAFEDEL( bindFuncPragma );
     SAFEDEL( entityPragma );
     SAFEDEL( propertyPragma );
+    SAFEDEL( methodPragma );
     SAFEDEL( contentPragma );
 }
 
@@ -861,6 +832,8 @@ void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragm
         ok = bindFuncPragma->Call( pragma.Text );
     else if( Str::CompareCase( pragma.Name.c_str(), "property" ) && propertyPragma )
         ok = propertyPragma->Call( pragma.Text );
+    else if( Str::CompareCase( pragma.Name.c_str(), "method" ) && methodPragma )
+        ok = methodPragma->Call( pragma.Text );
     else if( Str::CompareCase( pragma.Name.c_str(), "entity" ) && entityPragma )
         ok = entityPragma->Call( pragma.Text );
     else if( Str::CompareCase( pragma.Name.c_str(), "content" ) && contentPragma )
@@ -881,8 +854,11 @@ const Pragmas& ScriptPragmaCallback::GetProcessedPragmas()
 
 void ScriptPragmaCallback::Finish()
 {
-    entityPragma->FinishRegistrators();
+    if( !entityPragma->Finish() )
+        isError = true;
     if( !propertyPragma->Finish() )
+        isError = true;
+    if( !methodPragma->Finish() )
         isError = true;
     if( !contentPragma->Finish() )
         isError = true;
@@ -891,6 +867,11 @@ void ScriptPragmaCallback::Finish()
 bool ScriptPragmaCallback::IsError()
 {
     return isError;
+}
+
+PropertyRegistrator** ScriptPragmaCallback::GetPropertyRegistrators()
+{
+    return propertyPragma->GetPropertyRegistrators();
 }
 
 PropertyRegistrator* ScriptPragmaCallback::FindEntityRegistrator( const char* class_name )

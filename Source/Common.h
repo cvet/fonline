@@ -95,6 +95,7 @@ const char* GetLastSocketError();
 #include "AngelScript/scriptarray.h"
 #include "AngelScript/scriptdict.h"
 #include "Properties.h"
+#include "Methods.h"
 
 #define ___MSG1( x )                      # x
 #define ___MSG0( x )                      ___MSG1( x )

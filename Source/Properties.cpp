@@ -2,23 +2,7 @@
 #include "Properties.h"
 #include "FileSystem.h"
 #include "IniParser.h"
-
-#if defined ( FONLINE_SCRIPT_COMPILER ) || defined ( FONLINE_NPCEDITOR )
-# define DISABLE_SCRIPT
-# define SCRIPT_ERROR_R( error, ... )     (void) 0
-# define SCRIPT_ERROR_R0( error, ... )    (void) 0
-#else
-# include "Script.h"
-#endif
-
-#if defined ( FONLINE_SCRIPT_COMPILER )
-# include "ScriptEngine.h"
-static asIScriptEngine* GetASEngine() { return (asIScriptEngine*) GetScriptEngine(); }
-#elif defined ( FONLINE_NPCEDITOR )
-static asIScriptEngine* GetASEngine() { return NULL; }
-#else
-static asIScriptEngine* GetASEngine() { return Script::GetEngine(); }
-#endif
+#include "Script.h"
 
 Property::Property()
 {
@@ -407,7 +391,6 @@ void Property::GenericGet( void* obj, void* ret_value )
 
         getCallbackLocked = true;
 
-        #ifndef DISABLE_SCRIPT
         if( Script::PrepareContext( getCallback, _FUNC_, GetName() ) )
         {
             if( getCallbackArgs > 0 )
@@ -430,14 +413,13 @@ void Property::GenericGet( void* obj, void* ret_value )
                 return;
             }
         }
-        #endif
 
         getCallbackLocked = false;
 
         // Error
         memzero( ret_value, baseSize );
-        SCRIPT_ERROR_R( "Error in Get callback execution for virtual property '%s %s::%s'",
-                        typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
+        Script::PassException();
+        return;
     }
 
     // Raw property
@@ -637,7 +619,6 @@ void Property::GenericSet( void* obj, void* new_value )
 
         for( size_t i = 0; i < setCallbacks.size(); i++ )
         {
-            #ifndef DISABLE_SCRIPT
             if( Script::PrepareContext( setCallbacks[ i ], _FUNC_, GetName() ) )
             {
                 Script::SetArgObject( obj );
@@ -657,7 +638,6 @@ void Property::GenericSet( void* obj, void* new_value )
                 if( !Script::RunPrepared() )
                     break;
             }
-            #endif
         }
 
         setCallbackLocked = false;
@@ -875,7 +855,6 @@ void Property::SetSendIgnore( void* obj )
 
 string Property::SetGetCallback( const char* script_func )
 {
-    #ifndef DISABLE_SCRIPT
     // Todo: Check can get
 
     char decl[ MAX_FOTEXT ];
@@ -899,13 +878,11 @@ string Property::SetGetCallback( const char* script_func )
     }
 
     getCallback = bind_id;
-    #endif
     return "";
 }
 
 string Property::AddSetCallback( const char* script_func )
 {
-    #ifndef DISABLE_SCRIPT
     // Todo: Check can set
 
     char decl[ MAX_FOTEXT ];
@@ -962,7 +939,6 @@ string Property::AddSetCallback( const char* script_func )
     }
 
     setCallbacks.push_back( bind_id );
-    #endif
     return "";
 }
 
@@ -1294,7 +1270,7 @@ bool Properties::LoadFromText( const char* text, hash* pid /* = NULL */ )
             {
                 int              enum_value = 0;
                 bool             enum_found = false;
-                asIScriptEngine* engine = GetASEngine();
+                asIScriptEngine* engine = Script::GetEngine();
                 RUNTIME_ASSERT( engine );
                 for( asUINT i = 0, j = engine->GetEnumCount(); i < j; i++ )
                 {
@@ -1435,7 +1411,7 @@ bool PropertyRegistrator::Init()
     enumTypeName = enum_type;
     RUNTIME_ASSERT( enumTypeName.length() > 0 );
 
-    asIScriptEngine* engine = GetASEngine();
+    asIScriptEngine* engine = Script::GetEngine();
     RUNTIME_ASSERT( engine );
 
     int result = engine->RegisterEnum( enum_type.c_str() );
@@ -1497,7 +1473,7 @@ Property* PropertyRegistrator::Register(
     max_value = ( max_value ? max_value : defaultMaxValue );
 
     // Get engine
-    asIScriptEngine* engine = GetASEngine();
+    asIScriptEngine* engine = Script::GetEngine();
     RUNTIME_ASSERT( engine );
 
     // Extract type

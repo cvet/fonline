@@ -8932,25 +8932,18 @@ bool FOClient::ReloadScripts()
         return false;
     }
 
-    // Properties
-    PropertyRegistrator* registrators[ 6 ] =
-    {
-        new PropertyRegistrator( false, "GlobalVars" ),
-        new PropertyRegistrator( false, "CritterCl" ),
-        new PropertyRegistrator( false, "ItemCl" ),
-        new PropertyRegistrator( false, "ProtoItem" ),
-        new PropertyRegistrator( false, "Map" ),
-        new PropertyRegistrator( false, "Location" ),
-    };
-
     // Reinitialize engine
     Script::Finish();
-    if( !Script::Init( new ScriptPragmaCallback( PRAGMA_CLIENT, registrators ), "CLIENT", true, 0, 0, false ) )
+    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_CLIENT );
+    if( !Script::Init( pragma_callback, "CLIENT", true, 0, 0, false ) )
     {
         WriteLog( "Unable to start script engine.\n" );
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
         return false;
     }
+
+    // Properties
+    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
 
     // Bind stuff
     #define BIND_CLIENT
@@ -10771,7 +10764,8 @@ void FOClient::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort&
 
 bool FOClient::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, ScriptString& script_func )
 {
-    Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value );
+    Property* prop = GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value );
+    prop = ( prop ? prop : CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R0( "Property '%s' not found.", HASH_STR( prop_enum_value ) );
