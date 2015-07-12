@@ -29,6 +29,7 @@ public:
     static const uint  DeferredId = uint( -2 );
 
     Properties         Props;
+    Methods            Meths;
     mutable uint       Id;
     mutable EntityType Type;
     mutable long       RefCounter;

@@ -568,12 +568,21 @@ public:
 class MethodPragma
 {
 private:
-    MethodRegistrator* methodRegistrator;
+    MethodRegistrator** methodRegistrator;
+    EntityPragma*       entitiesRegistrators;
 
 public:
-    MethodPragma( bool is_server )
+    MethodPragma( bool is_server, EntityPragma* entities_registrators )
     {
-        methodRegistrator = new MethodRegistrator( is_server );
+        methodRegistrator = new MethodRegistrator*[ 6 ];
+        methodRegistrator[ 0 ] = new MethodRegistrator( is_server, "GlobalVars" );
+        methodRegistrator[ 1 ] = new MethodRegistrator( is_server, is_server ? "Critter" : "CritterCl" );
+        methodRegistrator[ 2 ] = new MethodRegistrator( is_server, is_server ? "Item" : "ItemCl" );
+        methodRegistrator[ 3 ] = new MethodRegistrator( is_server, "ProtoItem" );
+        methodRegistrator[ 4 ] = new MethodRegistrator( is_server, "Map" );
+        methodRegistrator[ 5 ] = new MethodRegistrator( is_server, "Location" );
+
+        entitiesRegistrators = entities_registrators;
     }
 
     bool Call( const string& text )
@@ -624,8 +633,29 @@ public:
             return false;
         }
 
+        // Choose registrator
+        MethodRegistrator* registrator = NULL;
+        if( class_name == "Global" )
+            registrator = methodRegistrator[ 0 ];
+        else if( class_name == "Critter" )
+            registrator = methodRegistrator[ 1 ];
+        else if( class_name == "Item" )
+            registrator = methodRegistrator[ 2 ];
+        else if( class_name == "ProtoItem" )
+            registrator = methodRegistrator[ 3 ];
+        else if( class_name == "Map" )
+            registrator = methodRegistrator[ 4 ];
+        else if( class_name == "Location" )
+            registrator = methodRegistrator[ 5 ];
+        // else if (entitiesRegistrators->entityCreators.count(class_name))
+        //	registrator = entitiesRegistrators->entityCreators[class_name]->Registrator;
+        else
+            WriteLog( "Invalid class in 'property' pragma<%s>.\n", text.c_str() );
+        if( !registrator )
+            return false;
+
         // Register
-        if( !methodRegistrator->Register( class_name.c_str(), decl, script_func, call_type ) )
+        if( !registrator->Register( decl, script_func, call_type ) )
         {
             WriteLog( "Unable to register 'method' pragma '%s'.\n", text.c_str() );
             return false;
@@ -636,7 +666,7 @@ public:
 
     bool Finish()
     {
-        return methodRegistrator->FinishRegistration();
+        return true; // methodRegistrator->FinishRegistration();
     }
 };
 
@@ -797,7 +827,7 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
         bindFuncPragma = new BindFuncPragma();
         entityPragma = new EntityPragma( pragmaType );
         propertyPragma = new PropertyPragma( pragmaType == PRAGMA_SERVER || pragmaType == PRAGMA_MAPPER, entityPragma );
-        methodPragma = new MethodPragma( pragmaType == PRAGMA_SERVER || pragmaType == PRAGMA_MAPPER );
+        methodPragma = new MethodPragma( pragmaType == PRAGMA_SERVER || pragmaType == PRAGMA_MAPPER, entityPragma );
         contentPragma = new ContentPragma();
     }
 }

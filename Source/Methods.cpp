@@ -7,12 +7,20 @@ Method::Method()
     callType = (CallType) 0;
     registrator = NULL;
     regIndex = 0;
+    callbackBindId = 0;
 }
 
 void Method::Wrap( asIScriptGeneric* gen )
 {
-    Method* self = NULL;    // gen->GetObjForThiscall();
-    UIntVec bind_ids = self->callbackBindIds;
+    Method*  self = NULL;    // gen->GetObjForThiscall();
+    void*    obj = gen->GetObject();
+    Methods* methods = (Methods*) ( (uchar*) obj + sizeof( Properties ) );
+
+    UIntVec  bind_ids;
+    bind_ids.push_back( self->callbackBindId );
+    bind_ids.insert( bind_ids.end(), self->watcherBindIds.begin(), self->watcherBindIds.end() );
+    bind_ids.insert( bind_ids.end(), methods->watcherBindIds.begin(), methods->watcherBindIds.end() );
+
     for( size_t cbk = 0; cbk < bind_ids.size(); cbk++ )
     {
         if( Script::PrepareContext( bind_ids[ cbk ], _FUNC_, "Method" ) )
@@ -26,22 +34,26 @@ void Method::Wrap( asIScriptGeneric* gen )
                 Script::SetArgAddress( gen->GetArgAddress( i ) );
 
             // Run
-            if( Script::RunPrepared() )
+            if( cbk == 0 )
             {
-                int type_id = gen->GetReturnTypeId();
-                if( cbk == 0 && type_id != asTYPEID_VOID )
+                if( Script::RunPrepared() )
                 {
-                    RUNTIME_ASSERT( false );
-                    // gen->SetReturnAddress( Script::GetReturnedRawAddress() );
+                    int type_id = gen->GetReturnTypeId();
+                    if( cbk == 0 && type_id != asTYPEID_VOID )
+                    {
+                        RUNTIME_ASSERT( false );
+                        // gen->SetReturnAddress( Script::GetReturnedRawAddress() );
+                    }
                 }
-            }
-            else
-            {
-                if( cbk == 0 )
+                else
                 {
                     Script::PassException();
                     break;
                 }
+            }
+            else
+            {
+                Script::RunPrepared();
             }
         }
     }
@@ -72,7 +84,7 @@ string Method::AddWatcherCallback( const char* script_func )
     return "";
 }
 
-MethodRegistrator::MethodRegistrator( bool is_server )
+MethodRegistrator::MethodRegistrator( bool is_server, const char* class_name )
 {
     registrationFinished = false;
     isServer = is_server;
@@ -88,7 +100,7 @@ bool MethodRegistrator::Init()
     return true;
 }
 
-Method* MethodRegistrator::Register( const char* class_name, const char* decl, const char* bind_func, Method::CallType call )
+Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Method::CallType call )
 {
     if( registrationFinished )
     {
@@ -99,6 +111,29 @@ Method* MethodRegistrator::Register( const char* class_name, const char* decl, c
     // Get engine
     asIScriptEngine* engine = Script::GetEngine();
     RUNTIME_ASSERT( engine );
+
+    // Register enum
+
+//      char enum_type[ MAX_FOTEXT ];
+//      Str::Format( enum_type, "%sFunc",  )
+//      bool is_client = (class_name[ Str::Length( class_name ) - 2 ] == 'C' && class_name[ Str::Length( class_name ) - 1 ] == 'l');
+//      RUNTIME_ASSERT(enumTypeName.length() > 0);
+//
+//      engine->RegisterFuncdef( "void CallFunc()" );
+//
+//      int result = engine->RegisterEnum(enum_type.c_str());
+//      if (result < 0)
+//      {
+//              WriteLogF(_FUNC_, " - Register object property enum<%s> fail, error<%d>.\n", enum_type.c_str(), result);
+//              return false;
+//      }
+//
+//      result = engine->RegisterEnumValue(enum_type.c_str(), "Invalid", 0);
+//      if (result < 0)
+//      {
+//              WriteLogF(_FUNC_, " - Register object property enum<%s::Invalid> zero value fail, error<%d>.\n", enum_type.c_str(), result);
+//              return false;
+//      }
 
     // Allocate method
     Method* method = new Method();
@@ -117,7 +152,11 @@ Method* MethodRegistrator::Register( const char* class_name, const char* decl, c
     // Register
     if( !disable_registration )
     {
-        int result = engine->RegisterObjectMethod( class_name, decl, asFUNCTION( Method::Wrap ), asCALL_GENERIC, method );
+        // void DonThisThing(int a, int b)
+        // funcdef void DonThisThingFunc(int a, int b)
+        // void SetWatcher_DoThisThing( DonThisThingFunc@ func )
+
+        int result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Method::Wrap ), asCALL_GENERIC, method );
         if( result < 0 )
         {
             WriteLogF( _FUNC_, " - Register object method '%s' fail, error %d.\n", decl, result );
@@ -129,7 +168,7 @@ Method* MethodRegistrator::Register( const char* class_name, const char* decl, c
         Str::Copy( bind_decl, decl );
         Str::ReplaceText( bind_decl, func->GetName(), "%s" );
         char* args = Str::Substring( bind_decl, "(" );
-        Str::Insert( args + 1, Str::FormatBuf( "%s&%s", class_name, func->GetParamCount() > 0 ? ", " : "" ) );
+        Str::Insert( args + 1, Str::FormatBuf( "%s&%s", scriptClassName.c_str(), func->GetParamCount() > 0 ? ", " : "" ) );
         method->bindFunc = bind_func;
         method->bindDecl = bind_decl;
     }
@@ -150,14 +189,10 @@ bool MethodRegistrator::FinishRegistration()
     for( size_t i = 0; i < registeredMethods.size(); i++ )
     {
         Method* method = registeredMethods[ i ];
-        if( method->bindFunc.length() > 0 )
-        {
-            uint bind_id = Script::Bind( method->bindFunc.c_str(), method->bindDecl.c_str(), false );
-            if( bind_id )
-                method->callbackBindIds.push_back( bind_id );
-            else
-                errors++;
-        }
+        RUNTIME_ASSERT( method->bindFunc.length() > 0 );
+        method->callbackBindId = Script::Bind( method->bindFunc.c_str(), method->bindDecl.c_str(), false );
+        if( !method->callbackBindId )
+            errors++;
     }
     #endif
     return errors == 0;

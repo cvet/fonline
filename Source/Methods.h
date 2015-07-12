@@ -38,25 +38,40 @@ private:
     // Dynamic data
     MethodRegistrator* registrator;
     uint               regIndex;
-    UIntVec            callbackBindIds;
+    uint               callbackBindId;
+    UIntVec            watcherBindIds;
 };
 typedef vector< Method* > MethodVec;
+
+class Methods
+{
+    friend class Method;
+
+public:
+    // void SetWatcher(asIScriptFunction* func, bool enable);
+
+private:
+    MethodRegistrator* registrator;
+    UIntVec            watcherBindIds;
+    bool*              objIsDestroyed;
+};
 
 class MethodRegistrator
 {
     friend class Method;
 
 public:
-    MethodRegistrator( bool is_server );
+    MethodRegistrator( bool is_server, const char* class_name );
     ~MethodRegistrator();
     bool    Init();
-    Method* Register( const char* class_name, const char* decl, const char* bind_func, Method::CallType call );
+    Method* Register( const char* decl, const char* bind_func, Method::CallType call );
     bool    FinishRegistration();
     Method* Get( uint reg_index );
 
 private:
     bool      registrationFinished;
     bool      isServer;
+    string    scriptClassName;
     MethodVec registeredMethods;
 };
 
