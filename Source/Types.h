@@ -104,6 +104,7 @@ typedef vector< PCharPair >      PCharPairVec;
 typedef vector< UCharPair >      UCharPairVec;
 
 typedef map< uint, UIntPair >    UIntUIntPairMap;
-typedef map< int, IntPair >      IntIntPairMap;
+typedef map< uint, IntPairVec >  UIntIntPairVecMap;
+typedef map< uint, HashVec >     UIntHashVecMap;
 
 #endif // ___TYPES___

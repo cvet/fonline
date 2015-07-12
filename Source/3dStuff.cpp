@@ -142,16 +142,10 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
         memcpy( new_layers, currentLayers, sizeof( int ) * LAYERS3D_COUNT );
 
     // Animation layers
-    uint anim_layers_count = (uint) animEntity->animLayerValues.count( anim_pair );
-    if( anim_layers_count )
-    {
-        auto it = animEntity->animLayerValues.find( anim_pair );
-        while( anim_layers_count-- )
-        {
-            new_layers[ it->second.first ] = it->second.second;
-            it++;
-        }
-    }
+    auto it = animEntity->animLayerValues.find( anim_pair );
+    if( it != animEntity->animLayerValues.end() )
+        for( auto it_ = it->second.begin(); it_ != it->second.end(); ++it_ )
+            new_layers[ it_->first ] = it_->second;
 
     // Check for change
     bool layer_changed = ( FLAG( flags, ANIMATION_INIT ) ? true : false );
@@ -174,7 +168,8 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
     memcpy( currentLayers, new_layers, sizeof( int ) * LAYERS3D_COUNT );
     currentLayers[ LAYERS3D_COUNT ] = anim_pair;
 
-    bool mesh_changed = false;
+    bool    mesh_changed = false;
+    HashVec fast_transition_bones;
 
     if( layer_changed )
     {
@@ -284,6 +279,9 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                                     anim3d->SetAnimData( link, false );
                                     childAnimations.push_back( anim3d );
                                 }
+
+                                if( animEntity->fastTransitionBones.count( link.LinkBoneHash ) )
+                                    fast_transition_bones.push_back( link.LinkBoneHash );
                             }
                         }
                         // Link all bones
@@ -367,6 +365,10 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
 
         // Assign to our track
         animController->SetTrackAnimationSet( new_track, set );
+
+        // Turn off fast transition bones on other tracks
+        if( !fast_transition_bones.empty() )
+            animController->ResetBonesTransition( new_track, fast_transition_bones );
 
         // Prepare to new tracking
         animController->Reset();
@@ -1373,7 +1375,6 @@ bool Animation3dEntity::Load( const char* name )
         char             render_anim[ MAX_FOPATH ] = { 0 };
         vector< size_t > anim_indexes;
         bool             disable_animation_interpolation = false;
-        HashVec          fast_transition_bones;
 
         uint             mesh = 0;
         int              layer = -1;
@@ -1974,7 +1975,15 @@ bool Animation3dEntity::Load( const char* name )
                 ( *istr ) >> buf;
                 value = (int) ConvertParamValue( buf );
 
-                animLayerValues.insert( PAIR( ( ind1 << 16 ) | ind2, IntPair( CLAMP( layer, 0, LAYERS3D_COUNT - 1 ), value ) ) );
+                uint index = ( ind1 << 16 ) | ind2;
+                if( !animLayerValues.count( index ) )
+                    animLayerValues.insert( PAIR( index, IntPairVec() ) );
+                animLayerValues[ index ].push_back( IntPair( layer, value ) );
+            }
+            else if( Str::CompareCase( token, "FastTransitionBone" ) )
+            {
+                ( *istr ) >> buf;
+                fastTransitionBones.insert( Bone::GetHash( buf ) );
             }
             else if( Str::CompareCase( token, "AnimEqual" ) )
             {
@@ -2038,11 +2047,6 @@ bool Animation3dEntity::Load( const char* name )
             else if( Str::CompareCase( token, "DisableAnimationInterpolation" ) )
             {
                 disable_animation_interpolation = true;
-            }
-            else if( Str::CompareCase( token, "FastTransitionBone" ) )
-            {
-                ( *istr ) >> buf;
-                fast_transition_bones.push_back( Bone::GetHash( buf ) );
             }
             else
             {
@@ -2145,7 +2149,6 @@ bool Animation3dEntity::Load( const char* name )
                     }
                 }
 
-                animController->SetFastTransitionBones( fast_transition_bones );
                 animController->SetInterpolation( !disable_animation_interpolation );
                 xFile->SetupAnimationOutput( animController );
             }

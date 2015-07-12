@@ -208,7 +208,6 @@ private:
     TrackVec    tracks;
     float       curTime;
     bool        interpolationDisabled;
-    HashVec     fastTransitionBones;
 
 public:
     AnimController(): sets( NULL ), outputs( NULL ), curTime( 0.0f ), interpolationDisabled( false )
@@ -248,7 +247,6 @@ public:
         clone->tracks = tracks;
         clone->curTime = 0.0f;
         clone->interpolationDisabled = interpolationDisabled;
-        clone->fastTransitionBones = fastTransitionBones;
         return clone;
     }
 
@@ -268,11 +266,6 @@ public:
     void RegisterAnimationSet( AnimSet* animation )
     {
         sets->push_back( animation );
-    }
-
-    void SetFastTransitionBones( HashVec& bone_name_hashes )
-    {
-        fastTransitionBones = bone_name_hashes;
     }
 
     AnimSet* GetAnimationSet( uint index )
@@ -304,26 +297,6 @@ public:
 
     void SetTrackAnimationSet( uint track, AnimSet* anim )
     {
-        // Turn off fast transition bones on other tracks
-        for( size_t b = 0; b < fastTransitionBones.size(); b++ )
-        {
-            hash bone_name_hash = fastTransitionBones[ b ];
-            for( uint i = 0, j = (uint) tracks.size(); i < j; i++ )
-            {
-                if( i == track )
-                    continue;
-
-                for( uint k = 0, l = (uint) tracks[ i ].animOutput.size(); k < l; k++ )
-                {
-                    if( tracks[ i ].animOutput[ k ] && tracks[ i ].animOutput[ k ]->nameHash == bone_name_hash )
-                    {
-                        tracks[ i ].animOutput[ k ]->valid[ i ] = false;
-                        tracks[ i ].animOutput[ k ] = NULL;
-                    }
-                }
-            }
-        }
-
         // Set and link animation
         tracks[ track ].anim = anim;
         uint count = anim->GetBoneOutputCount();
@@ -341,6 +314,29 @@ public:
                 }
             }
             tracks[ track ].animOutput[ i ] = output;
+        }
+    }
+
+    void ResetBonesTransition( uint skip_track, const HashVec& bone_name_hashes )
+    {
+        // Turn off fast transition bones on other tracks
+        for( size_t b = 0; b < bone_name_hashes.size(); b++ )
+        {
+            hash bone_name_hash = bone_name_hashes[ b ];
+            for( uint i = 0, j = (uint) tracks.size(); i < j; i++ )
+            {
+                if( i == skip_track )
+                    continue;
+
+                for( uint k = 0, l = (uint) tracks[ i ].animOutput.size(); k < l; k++ )
+                {
+                    if( tracks[ i ].animOutput[ k ] && tracks[ i ].animOutput[ k ]->nameHash == bone_name_hash )
+                    {
+                        tracks[ i ].animOutput[ k ]->valid[ i ] = false;
+                        tracks[ i ].animOutput[ k ] = NULL;
+                    }
+                }
+            }
         }
     }
 
