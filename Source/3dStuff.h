@@ -164,6 +164,7 @@ private:
     IntMap                      anim1Equals, anim2Equals;
     IntMap                      animIndexes;
     IntFloatMap                 animSpeed;
+    IntIntPairMap               animLayerValues;
     AnimParams                  animDataDefault;
     AnimParamsVec               animData;
     int                         renderAnim;

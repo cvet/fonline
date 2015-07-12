@@ -112,10 +112,6 @@ void FOServer::Finish()
     SaveWorldTime = 0;
     SaveWorldNextTick = 0;
 
-    // End script
-    if( Script::PrepareContext( ServerFunctions.Finish, _FUNC_, "Game" ) )
-        Script::RunPrepared();
-
     // Logging clients
     LogToFunc( &FOServer::LogToClients, false );
     for( auto it = LogClients.begin(), end = LogClients.end(); it != end; ++it )
@@ -3646,15 +3642,6 @@ bool FOServer::InitReal()
     Client::SendData = &NetIO_Output;
     #endif
 
-    // Start script
-    if( !Script::PrepareContext( ServerFunctions.Start, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
-    {
-        WriteLogF( _FUNC_, " - Start script fail.\n" );
-        shutdown( ListenSock, SD_BOTH );
-        closesocket( ListenSock );
-        return false;
-    }
-
     // Process command line definitions
     const char*      cmd_line = CommandLine;
     asIScriptEngine* engine = Script::GetEngine();
@@ -4383,6 +4370,16 @@ bool FOServer::NewWorld()
     InitGameTime();
     if( !GameOpt.GenerateWorldDisabled && !MapMngr.GenerateWorld() )
         return false;
+
+    // Start script
+    if( !Script::PrepareContext( ServerFunctions.Start, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
+    {
+        WriteLogF( _FUNC_, " - Start script fail.\n" );
+        shutdown( ListenSock, SD_BOTH );
+        closesocket( ListenSock );
+        return false;
+    }
+
     return true;
 }
 
@@ -4587,11 +4584,24 @@ bool FOServer::LoadWorld( const char* fname )
     // Init scripts for entities
     EntityMngr.InitEntities();
 
+    // Start script
+    if( !Script::PrepareContext( ServerFunctions.Start, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
+    {
+        WriteLogF( _FUNC_, " - Start script fail.\n" );
+        shutdown( ListenSock, SD_BOTH );
+        closesocket( ListenSock );
+        return false;
+    }
+
     return true;
 }
 
 void FOServer::UnloadWorld()
 {
+    // End script
+    if( Script::PrepareContext( ServerFunctions.Finish, _FUNC_, "Game" ) )
+        Script::RunPrepared();
+
     // Delete critter and map jobs
     Job::Erase( JOB_CRITTER );
     Job::Erase( JOB_MAP );

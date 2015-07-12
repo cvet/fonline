@@ -300,7 +300,7 @@ void Item::SetProto( ProtoItem* proto )
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 Item* Item::Clone()
 {
-    Item* clone = new Item( Id, Proto );
+    Item* clone = new Item( Id != 0 ? Id : Entity::DeferredId, Proto );
     clone->Accessory = Accessory;
     memcpy( clone->AccBuffer, AccBuffer, sizeof( AccBuffer ) );
     clone->Props = Props;

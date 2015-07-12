@@ -80,6 +80,7 @@ typedef vector< uint64 >         UInt64Vec;
 typedef vector< bool >           BoolVec;
 typedef vector< size_t >         SizeVec;
 typedef vector< hash >           HashVec;
+typedef vector< HashVec >        HashVecVec;
 typedef vector< max_t >          MaxTVec;
 
 typedef set< string >            StrSet;
@@ -103,5 +104,6 @@ typedef vector< PCharPair >      PCharPairVec;
 typedef vector< UCharPair >      UCharPairVec;
 
 typedef map< uint, UIntPair >    UIntUIntPairMap;
+typedef map< int, IntPair >      IntIntPairMap;
 
 #endif // ___TYPES___

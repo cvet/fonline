@@ -10,7 +10,7 @@ private:
     friend class AnimController;
     struct BoneOutput
     {
-        uint          nameHash;
+        hash          nameHash;
         FloatVec      scaleTime;
         VectorVec     scaleValue;
         FloatVec      rotationTime;
@@ -25,7 +25,7 @@ private:
     float         durationTicks;
     float         ticksPerSecond;
     BoneOutputVec boneOutputs;
-    UIntVecVec    bonesHierarchy;
+    HashVecVec    bonesHierarchy;
 
 public:
     void SetData( const char* fname, const char* name, float ticks, float tps )
@@ -36,7 +36,7 @@ public:
         ticksPerSecond = tps;
     }
 
-    void AddBoneOutput( UIntVec hierarchy, const FloatVec& st, const VectorVec& sv,
+    void AddBoneOutput( HashVec hierarchy, const FloatVec& st, const VectorVec& sv,
                         const FloatVec& rt, const QuaternionVec& rv, const FloatVec& tt, const VectorVec& tv  )
     {
         boneOutputs.push_back( BoneOutput() );
@@ -71,7 +71,7 @@ public:
         return durationTicks / ticksPerSecond;
     }
 
-    UIntVecVec& GetBonesHierarchy()
+    HashVecVec& GetBonesHierarchy()
     {
         return bonesHierarchy;
     }
@@ -167,7 +167,7 @@ class AnimController
 private:
     struct Output
     {
-        uint          nameHash;
+        hash          nameHash;
         Matrix*       matrix;
         // Data for tracks blending
         BoolVec       valid;
@@ -208,10 +208,13 @@ private:
     TrackVec    tracks;
     float       curTime;
     bool        interpolationDisabled;
+    HashVec     fastTransitionBones;
 
 public:
     AnimController(): sets( NULL ), outputs( NULL ), curTime( 0.0f ), interpolationDisabled( false )
-    {}
+    {
+        //
+    }
 
     ~AnimController()
     {
@@ -245,10 +248,11 @@ public:
         clone->tracks = tracks;
         clone->curTime = 0.0f;
         clone->interpolationDisabled = interpolationDisabled;
+        clone->fastTransitionBones = fastTransitionBones;
         return clone;
     }
 
-    void RegisterAnimationOutput( uint bone_name_hash, Matrix& output_matrix )
+    void RegisterAnimationOutput( hash bone_name_hash, Matrix& output_matrix )
     {
         outputs->push_back( Output() );
         Output& o = outputs->back();
@@ -264,6 +268,11 @@ public:
     void RegisterAnimationSet( AnimSet* animation )
     {
         sets->push_back( animation );
+    }
+
+    void SetFastTransitionBones( HashVec& bone_name_hashes )
+    {
+        fastTransitionBones = bone_name_hashes;
     }
 
     AnimSet* GetAnimationSet( uint index )
@@ -295,15 +304,35 @@ public:
 
     void SetTrackAnimationSet( uint track, AnimSet* anim )
     {
+        // Turn off fast transition bones on other tracks
+        for( size_t b = 0; b < fastTransitionBones.size(); b++ )
+        {
+            hash bone_name_hash = fastTransitionBones[ b ];
+            for( uint i = 0, j = (uint) tracks.size(); i < j; i++ )
+            {
+                if( i == track )
+                    continue;
+
+                for( uint k = 0, l = (uint) tracks[ i ].animOutput.size(); k < l; k++ )
+                {
+                    if( tracks[ i ].animOutput[ k ] && tracks[ i ].animOutput[ k ]->nameHash == bone_name_hash )
+                    {
+                        tracks[ i ].animOutput[ k ]->valid[ i ] = false;
+                        tracks[ i ].animOutput[ k ] = NULL;
+                    }
+                }
+            }
+        }
+
         // Set and link animation
         tracks[ track ].anim = anim;
         uint count = anim->GetBoneOutputCount();
         tracks[ track ].animOutput.resize( count );
         for( uint i = 0; i < count; i++ )
         {
-            uint    link_name_hash = anim->boneOutputs[ i ].nameHash;
+            hash    link_name_hash = anim->boneOutputs[ i ].nameHash;
             Output* output = NULL;
-            for( uint j = 0; j < outputs->size(); j++ )
+            for( uint j = 0; j < (uint) outputs->size(); j++ )
             {
                 if( ( *outputs )[ j ].nameHash == link_name_hash )
                 {
@@ -318,7 +347,7 @@ public:
     void Reset()
     {
         curTime = 0.0f;
-        for( uint i = 0; i < tracks.size(); i++ )
+        for( uint i = 0; i < (uint) tracks.size(); i++ )
             tracks[ i ].events.clear();
     }
 
