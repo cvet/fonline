@@ -1635,7 +1635,7 @@ void FOServer::Process_CreateClient( Client* cl )
     }
 
     // Register
-    cl->SetDeferredId( id );
+    cl->SetId( id );
     cl->RefreshName();
     cl->Data.HexX = 0;
     cl->Data.HexY = 0;
@@ -2186,7 +2186,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     // Avatar not in game
     else
     {
-        cl->SetDeferredId( id );
+        cl->SetId( id );
 
         // Singleplayer data
         if( Singleplayer )

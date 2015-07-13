@@ -15,6 +15,7 @@ FOMapper::FOMapper()
     Animations.resize( 10000 );
     ConsoleHistory.clear();
     ConsoleHistoryCur = 0;
+    AnyId = 0;
 }
 
 bool FOMapper::Init()
@@ -4209,7 +4210,7 @@ MapObject* FOMapper::ParseProto( hash pid, ushort hx, ushort hy, MapObject* owne
     }
 
     // Add base object
-    mobj->RunTime.MapObjId = HexMngr.AddItem( Entity::GenerateId, pid, hx, hy, 0, NULL );
+    mobj->RunTime.MapObjId = HexMngr.AddItem( ++AnyId, pid, hx, hy, 0, NULL );
     if( !mobj->RunTime.MapObjId )
         return NULL;
     CurProtoMap->MObjects.push_back( mobj );
@@ -4283,7 +4284,7 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
 
     SelectClear();
 
-    CritterCl* cr = new CritterCl( Entity::GenerateId );
+    CritterCl* cr = new CritterCl( ++AnyId );
     cr->Props = *proto->Props;
     cr->SetCrType( proto->GetCrType() );
     cr->HexX = hx;
@@ -4346,7 +4347,7 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
         mobj = CurProtoMap->MObjects[ CurProtoMap->MObjects.size() - 1 ];
         mobj->RunTime.FromMap = CurProtoMap;
 
-        CritterCl* cr = new CritterCl( Entity::GenerateId );
+        CritterCl* cr = new CritterCl( ++AnyId );
         cr->Props = *proto->Props;
         cr->SetCrType( proto->GetCrType() );
         cr->HexX = mobj->MapX;
@@ -4373,7 +4374,7 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
         if( mobj->MapObjType == MAP_OBJECT_ITEM && mobj->ContainerUID )
             return mobj;
 
-        mobj->RunTime.MapObjId = HexMngr.AddItem( Entity::GenerateId, mobj->ProtoId, mobj->MapX, mobj->MapY, 0, NULL );
+        mobj->RunTime.MapObjId = HexMngr.AddItem( ++AnyId, mobj->ProtoId, mobj->MapX, mobj->MapY, 0, NULL );
         if( mobj->RunTime.MapObjId )
         {
             HexMngr.AffectItem( mobj, HexMngr.GetItemById( mobj->RunTime.MapObjId ) );

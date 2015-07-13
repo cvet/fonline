@@ -8,6 +8,7 @@ EntityManager EntityMngr;
 
 EntityManager::EntityManager()
 {
+    currentId = 0;
     memzero( entitiesCount, sizeof( entitiesCount ) );
 }
 
@@ -15,7 +16,9 @@ void EntityManager::RegisterEntity( Entity* entity )
 {
     SCOPE_LOCK( entitiesLocker );
 
-    RUNTIME_ASSERT( entity->GetId() );
+    if( !entity->GetId() )
+        entity->SetId( ++currentId );
+
     auto it = allEntities.insert( PAIR( entity->GetId(), entity ) );
     RUNTIME_ASSERT( it.second );
     entitiesCount[ (int) entity->Type ]++;
@@ -177,7 +180,7 @@ void EntityManager::GetLocations( LocVec& locs )
 
 void EntityManager::SaveEntities( void ( * save_func )( void*, size_t ) )
 {
-    save_func( &Entity::CurrentId, sizeof( Entity::CurrentId ) );
+    save_func( &currentId, sizeof( currentId ) );
 
     for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
     {
@@ -253,7 +256,7 @@ bool EntityManager::LoadEntities( void* file, uint version )
     PropertyRegistrator dummy_registrator( false, "Dummy" );
     dummy_registrator.FinishRegistration();
 
-    if( !FileRead( file, &Entity::CurrentId, sizeof( Entity::CurrentId ) ) )
+    if( !FileRead( file, &currentId, sizeof( currentId ) ) )
         return false;
 
     uint count = 0;

@@ -279,7 +279,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */ )
         return NULL;
     }
 
-    Item* item = new Item( Entity::GenerateId, proto );
+    Item* item = new Item( 0, proto );
     SYNC_LOCK( item );
 
     // Main collection

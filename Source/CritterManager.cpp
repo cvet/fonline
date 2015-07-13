@@ -272,7 +272,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
         hy = hy_;
     }
 
-    Npc* npc = new Npc( Entity::GenerateId );
+    Npc* npc = new Npc( 0 );
 
     SYNC_LOCK( npc );
     EntityMngr.RegisterEntity( npc );

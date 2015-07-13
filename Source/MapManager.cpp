@@ -499,7 +499,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
     Location* loc = NULL;
     if( !loc_id )
     {
-        loc = new Location( Entity::GenerateId, protoLoc[ loc_pid ], wx, wy );
+        loc = new Location( 0, protoLoc[ loc_pid ], wx, wy );
         for( uint i = 0; i < loc->Proto->ProtoMapPids.size(); ++i )
         {
             hash map_pid = loc->Proto->ProtoMapPids[ i ];
@@ -549,7 +549,7 @@ Map* MapManager::CreateMap( hash map_pid, Location* loc, uint map_id )
         return NULL;
     }
 
-    Map* map = new Map( map_id ? map_id : Entity::GenerateId, protoMaps[ map_pid ], loc );
+    Map* map = new Map( map_id ? map_id : 0, protoMaps[ map_pid ], loc );
 
     SYNC_LOCK( loc );
     loc->GetMapsNoLock().push_back( map );

@@ -10,18 +10,9 @@
 # include "CritterCl.h"
 #endif
 
-uint Entity::CurrentId;
-
-Entity::Entity( uint id, EntityType type, PropertyRegistrator* registartor ): Type( type ), Props( registartor, &IsDestroyed )
+Entity::Entity( uint id, EntityType type, PropertyRegistrator* registartor ): Id( id ), Type( type ), Props( registartor, &IsDestroyed )
 {
-    RUNTIME_ASSERT( id );
     RUNTIME_ASSERT( Type != EntityType::Invalid );
-
-    if( id == GenerateId )
-        id = ++CurrentId;
-    else if( id == DeferredId )
-        id = 0;
-    Id = id;
 
     RefCounter = 1;
     IsDestroyed = false;
@@ -31,6 +22,12 @@ Entity::Entity( uint id, EntityType type, PropertyRegistrator* registartor ): Ty
 uint Entity::GetId()
 {
     return Id;
+}
+
+void Entity::SetId( uint id )
+{
+    RUNTIME_ASSERT( !Id );
+    const_cast< uint& >( Id ) = id;
 }
 
 void Entity::AddRef() const
@@ -67,12 +64,6 @@ void Entity::Release() const
         else
             RUNTIME_ASSERT( !"Unreachable place" );
     }
-}
-
-void Entity::SetDeferredId( uint id ) const
-{
-    RUNTIME_ASSERT( !Id );
-    Id = id;
 }
 
 CustomEntity::CustomEntity( uint id, uint sub_type, PropertyRegistrator* registrator ): Entity( id, EntityType::Custom, registrator ),

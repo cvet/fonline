@@ -10,6 +10,7 @@
 class EntityManager
 {
 private:
+    uint      currentId;
     EntityMap allEntities;
     uint      entitiesCount[ (int) EntityType::Max ];
     Mutex     entitiesLocker;

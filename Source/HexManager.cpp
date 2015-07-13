@@ -660,7 +660,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
     }
 
     Field&   f = GetField( from_hx, from_hy );
-    ItemHex* item = new ItemHex( Entity::GenerateId, proto, NULL, from_hx, from_hy, 0, 0, &f.ScrX, &f.ScrY, 0 );
+    ItemHex* item = new ItemHex( 0, proto, NULL, from_hx, from_hy, 0, 0, &f.ScrX, &f.ScrY, 0 );
 
     float    sx = 0;
     float    sy = 0;
@@ -4053,7 +4053,7 @@ bool HexManager::GetMapData( hash map_pid, ItemVec& items, ushort& maxhx, ushort
         ProtoItem* proto_item = ItemMngr.GetProtoItem( scenwall.ProtoId );
         if( proto_item )
         {
-            Item* item = new Item( Entity::DeferredId, proto_item );
+            Item* item = new Item( 0, proto_item );
             item->Accessory = ITEM_ACCESSORY_NONE;
             item->AccHex.HexX = scenwall.MapX;
             item->AccHex.HexY = scenwall.MapY;
@@ -4237,8 +4237,9 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             if( !proto )
                 continue;
 
-            Field&   f = GetField( o->MapX, o->MapY );
-            ItemHex* item = new ItemHex( Entity::GenerateId, proto, NULL, o->MapX, o->MapY, o->MItem.OffsetX, o->MItem.OffsetY, &f.ScrX, &f.ScrY, 0 );
+            Field&      f = GetField( o->MapX, o->MapY );
+            static uint any_id = 0;
+            ItemHex*    item = new ItemHex( --any_id, proto, NULL, o->MapX, o->MapY, o->MItem.OffsetX, o->MItem.OffsetY, &f.ScrX, &f.ScrY, 0 );
             PushItem( item );
             AffectItem( o, item );
             o->RunTime.MapObjId = item->Id;

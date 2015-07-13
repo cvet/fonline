@@ -199,7 +199,7 @@ public:
     #ifdef FONLINE_SERVER
     CustomEntity* CreateEntity()
     {
-        CustomEntity* entity = new CustomEntity( Entity::GenerateId, SubType, Registrator );
+        CustomEntity* entity = new CustomEntity( 0, SubType, Registrator );
         EntityMngr.RegisterEntity( entity );
         return entity;
     }
@@ -348,15 +348,18 @@ private:
     EntityPragma*         entitiesRegistrators;
 
 public:
-    PropertyPragma( bool is_server, EntityPragma* entities_registrators )
+    PropertyPragma( int pragma_type, EntityPragma* entities_registrators )
     {
+        bool is_server = ( pragma_type == PRAGMA_SERVER );
+        bool is_mapper = ( pragma_type == PRAGMA_MAPPER );
+
         propertyRegistrators = new PropertyRegistrator*[ 6 ];
-        propertyRegistrators[ 0 ] = new PropertyRegistrator( is_server, "GlobalVars" );
-        propertyRegistrators[ 1 ] = new PropertyRegistrator( is_server, is_server ? "Critter" : "CritterCl" );
-        propertyRegistrators[ 2 ] = new PropertyRegistrator( is_server, is_server ? "Item" : "ItemCl" );
-        propertyRegistrators[ 3 ] = new PropertyRegistrator( is_server, "ProtoItem" );
-        propertyRegistrators[ 4 ] = new PropertyRegistrator( is_server, "Map" );
-        propertyRegistrators[ 5 ] = new PropertyRegistrator( is_server, "Location" );
+        propertyRegistrators[ 0 ] = new PropertyRegistrator( is_server || is_mapper, "GlobalVars" );
+        propertyRegistrators[ 1 ] = new PropertyRegistrator( is_server || is_mapper, is_server ? "Critter" : "CritterCl" );
+        propertyRegistrators[ 2 ] = new PropertyRegistrator( is_server || is_mapper, is_server ? "Item" : "ItemCl" );
+        propertyRegistrators[ 3 ] = new PropertyRegistrator( is_server || is_mapper, "ProtoItem" );
+        propertyRegistrators[ 4 ] = new PropertyRegistrator( is_server || is_mapper, "Map" );
+        propertyRegistrators[ 5 ] = new PropertyRegistrator( is_server || is_mapper, "Location" );
 
         entitiesRegistrators = entities_registrators;
     }
@@ -572,15 +575,18 @@ private:
     EntityPragma*       entitiesRegistrators;
 
 public:
-    MethodPragma( bool is_server, EntityPragma* entities_registrators )
+    MethodPragma( int pragma_type, EntityPragma* entities_registrators )
     {
+        bool is_server = ( pragma_type == PRAGMA_SERVER );
+        bool is_mapper = ( pragma_type == PRAGMA_MAPPER );
+
         methodRegistrator = new MethodRegistrator*[ 6 ];
-        methodRegistrator[ 0 ] = new MethodRegistrator( is_server, "GlobalVars" );
-        methodRegistrator[ 1 ] = new MethodRegistrator( is_server, is_server ? "Critter" : "CritterCl" );
-        methodRegistrator[ 2 ] = new MethodRegistrator( is_server, is_server ? "Item" : "ItemCl" );
-        methodRegistrator[ 3 ] = new MethodRegistrator( is_server, "ProtoItem" );
-        methodRegistrator[ 4 ] = new MethodRegistrator( is_server, "Map" );
-        methodRegistrator[ 5 ] = new MethodRegistrator( is_server, "Location" );
+        methodRegistrator[ 0 ] = new MethodRegistrator( is_server || is_mapper, "GlobalVars" );
+        methodRegistrator[ 1 ] = new MethodRegistrator( is_server || is_mapper, is_server ? "Critter" : "CritterCl" );
+        methodRegistrator[ 2 ] = new MethodRegistrator( is_server || is_mapper, is_server ? "Item" : "ItemCl" );
+        methodRegistrator[ 3 ] = new MethodRegistrator( is_server || is_mapper, "ProtoItem" );
+        methodRegistrator[ 4 ] = new MethodRegistrator( is_server || is_mapper, "Map" );
+        methodRegistrator[ 5 ] = new MethodRegistrator( is_server || is_mapper, "Location" );
 
         entitiesRegistrators = entities_registrators;
     }
@@ -826,8 +832,8 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
         globalVarPragma = new GlobalVarPragma();
         bindFuncPragma = new BindFuncPragma();
         entityPragma = new EntityPragma( pragmaType );
-        propertyPragma = new PropertyPragma( pragmaType == PRAGMA_SERVER || pragmaType == PRAGMA_MAPPER, entityPragma );
-        methodPragma = new MethodPragma( pragmaType == PRAGMA_SERVER || pragmaType == PRAGMA_MAPPER, entityPragma );
+        propertyPragma = new PropertyPragma( pragmaType, entityPragma );
+        methodPragma = new MethodPragma( pragmaType, entityPragma );
         contentPragma = new ContentPragma();
     }
 }

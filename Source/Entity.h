@@ -23,23 +23,18 @@ protected:
     Entity( uint id, EntityType type, PropertyRegistrator* registartor );
 
 public:
-    static uint        CurrentId;
-
-    static const uint  GenerateId = uint( -1 );
-    static const uint  DeferredId = uint( -2 );
-
-    Properties         Props;
-    Methods            Meths;
-    mutable uint       Id;
-    mutable EntityType Type;
-    mutable long       RefCounter;
-    bool               IsDestroyed;
-    bool               IsDestroying;
+    Properties       Props;
+    Methods          Meths;
+    const uint       Id;
+    const EntityType Type;
+    mutable long     RefCounter;
+    bool             IsDestroyed;
+    bool             IsDestroying;
 
     uint GetId();
+    void SetId( uint id );
     void AddRef() const;
     void Release() const;
-    void SetDeferredId( uint id ) const;
 };
 typedef vector< Entity* >    EntityVec;
 typedef map< uint, Entity* > EntityMap;

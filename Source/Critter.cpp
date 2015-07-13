@@ -181,8 +181,8 @@ Critter::Critter( uint id, EntityType type ): Entity( id, type, PropertiesRegist
     GroupSelf->ToY = GroupSelf->CurY;
     GroupSelf->Speed = 0.0f;
     GroupSelf->Rule = this;
-    ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item( Entity::DeferredId, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
-    ItemSlotArmor = defItemSlotArmor = new Item( Entity::DeferredId, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
+    ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
+    ItemSlotArmor = defItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
     defItemSlotHand->Accessory = ITEM_ACCESSORY_CRITTER;
     defItemSlotArmor->Accessory = ITEM_ACCESSORY_CRITTER;
     defItemSlotHand->AccCritter.Slot = SLOT_HAND1;
@@ -3549,7 +3549,7 @@ void Critter::ContinueTimeEvents( int offs_time )
 Client::SendCallback Client::SendData = NULL;
 #endif
 
-Client::Client(): Critter( Entity::DeferredId, EntityType::Client )
+Client::Client(): Critter( 0, EntityType::Client )
 {
     ZstrmInit = false;
     Access = ACCESS_DEFAULT;

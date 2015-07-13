@@ -103,8 +103,8 @@ CritterCl::CritterCl( uint id ): Entity( id, EntityType::CritterCl, PropertiesRe
     Name = ScriptString::Create();
     NameOnHead = ScriptString::Create();
     Avatar = ScriptString::Create();
-    ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item( Entity::DeferredId, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
-    ItemSlotArmor = DefItemSlotArmor = new Item( Entity::DeferredId, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
+    ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
+    ItemSlotArmor = DefItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
     DefItemSlotHand->Accessory = ITEM_ACCESSORY_CRITTER;
     DefItemSlotArmor->Accessory = ITEM_ACCESSORY_CRITTER;
     DefItemSlotHand->AccCritter.Slot = SLOT_HAND1;
