@@ -286,7 +286,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */ )
     EntityMngr.RegisterEntity( item );
 
     // Count
-    if( count > 1 && item->IsStackable() )
+    if( count )
         item->SetCount( count );
 
     // Radio collection

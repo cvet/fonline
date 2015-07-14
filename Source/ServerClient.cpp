@@ -3269,7 +3269,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check volume
-            if( cont->ContGetFreeVolume( 0 ) < (int) ( item->GetVolume1st() * item_count ) )
+            if( !cont->ContHaveFreeVolume( 0, item->GetVolume1st() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
                 break;

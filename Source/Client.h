@@ -589,7 +589,7 @@ public:
         static void          Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop );
         static void          Global_LockScreenScroll( CritterCl* cr, bool unlock_if_same );
         static int           Global_GetFog( ushort zone_x, ushort zone_y );
-        static void          Global_RefreshItemsCollection( int collection );
+        static ScriptArray*  Global_RefreshItemsCollection( int collection );
         static uint          Global_GetDayTime( uint day_part );
         static void          Global_GetDayColor( uint day_part, uchar& r, uchar& g, uchar& b );
 
@@ -1506,14 +1506,15 @@ public:
 #define INIT_NET_REASON_LOGIN2         ( 4 )
 
 // Items collections
-#define ITEMS_INVENTORY                ( 0 )
-#define ITEMS_USE                      ( 1 )
-#define ITEMS_BARTER                   ( 2 )
-#define ITEMS_BARTER_OFFER             ( 3 )
-#define ITEMS_BARTER_OPPONENT          ( 4 )
-#define ITEMS_BARTER_OPPONENT_OFFER    ( 5 )
-#define ITEMS_PICKUP                   ( 6 )
-#define ITEMS_PICKUP_FROM              ( 7 )
+#define ITEMS_CHOSEN_ALL               ( 0 )
+#define ITEMS_INVENTORY                ( 1 )
+#define ITEMS_USE                      ( 2 )
+#define ITEMS_BARTER                   ( 3 )
+#define ITEMS_BARTER_OFFER             ( 4 )
+#define ITEMS_BARTER_OPPONENT          ( 5 )
+#define ITEMS_BARTER_OPPONENT_OFFER    ( 6 )
+#define ITEMS_PICKUP                   ( 7 )
+#define ITEMS_PICKUP_FROM              ( 8 )
 
 // Interface elements
 #define IFACE_NONE                     ( 0 )

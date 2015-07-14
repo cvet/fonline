@@ -477,7 +477,7 @@ public:
     void  ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock );
     Item* ContGetItemByPid( hash pid, uint stack_id );
     void  ContGetItems( ItemVec& items, uint stack_id, bool sync_lock );
-    int   ContGetFreeVolume( uint stack_id );
+    bool  ContHaveFreeVolume( uint stack_id, uint volume );
     bool  ContIsItems();
     void  ContDeleteItems();
     #endif

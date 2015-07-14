@@ -5592,6 +5592,9 @@ void FOClient::Net_OnContainerInfo()
     }
 
     CollectContItems();
+
+    if( Script::PrepareContext( ClientFunctions.ContainerChanged, _FUNC_, "Game" ) )
+        Script::RunPrepared();
 }
 
 void FOClient::Net_OnFollow()
@@ -9059,6 +9062,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.ItemInvIn, "item_inv_in", "void %s(ItemCl&)" },
         { &ClientFunctions.ItemInvChanged, "item_inv_changed", "void %s(ItemCl&,ItemCl&)" },
         { &ClientFunctions.ItemInvOut, "item_inv_out", "void %s(ItemCl&)" },
+        { &ClientFunctions.ContainerChanged, "container_changed", "void %s()" },
         { &ClientFunctions.MapMessage, "map_message", "bool %s(string&,uint16&,uint16&,uint&,uint&)" },
         { &ClientFunctions.InMessage, "in_message", "bool %s(string&,int&,uint&,uint&)" },
         { &ClientFunctions.OutMessage, "out_message", "bool %s(string&,int&)" },
@@ -9858,7 +9862,26 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         uint  item_id = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
         Item* item = Self->Chosen->GetItem( item_id );
-        Self->SplitStart( item, SLOT_GROUND );
+        if( item )
+            Self->SplitStart( item, SLOT_GROUND );
+    }
+    else if( cmd == "SplitMagic" )
+    {
+        uint  item_id = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
+        int   magic = Str::AtoI( args.size() >= 3 ? args[ 2 ].c_str() : "0" );
+        Item* item = Self->Chosen->GetItem( item_id );
+        if( magic == 300 )
+        {
+            auto it = PtrCollectionFind( Self->PupCont1.begin(), Self->PupCont1.end(), item_id );
+            if( it != Self->PupCont1.end() )
+                Self->SplitStart( *it, magic );
+        }
+        else if( magic == 301 )
+        {
+            auto it = PtrCollectionFind( Self->PupCont2.begin(), Self->PupCont2.end(), item_id );
+            if( it != Self->PupCont2.end() )
+                Self->SplitStart( *it, magic );
+        }
     }
     else if( cmd == "IsLMenu" )
     {
@@ -10375,38 +10398,60 @@ int FOClient::SScriptFunc::Global_GetFog( ushort zone_x, ushort zone_y )
     return Self->GmapFog.Get2Bit( zone_x, zone_y );
 }
 
-void FOClient::SScriptFunc::Global_RefreshItemsCollection( int collection )
+ScriptArray* FOClient::SScriptFunc::Global_RefreshItemsCollection( int collection )
 {
+    ScriptArray* result = Script::CreateArray( "ItemCl@[]" );
     switch( collection )
     {
+    case ITEMS_CHOSEN_ALL:
+    {
+        ItemVec items;
+        if( Self->Chosen )
+            items = Self->Chosen->InvItems;
+        Item::SortItems( items );
+        ItemVec items2;
+        Self->ProcessItemsCollection( ITEMS_CHOSEN_ALL, items, items2 );
+        Script::AppendVectorToArrayRef( items2, result );
+    }
+    break;
     case ITEMS_INVENTORY:
         Self->ProcessItemsCollection( ITEMS_INVENTORY, Self->InvContInit, Self->InvCont );
+        Script::AppendVectorToArrayRef( Self->InvCont, result );
         break;
     case ITEMS_USE:
         Self->ProcessItemsCollection( ITEMS_USE, Self->InvContInit, Self->UseCont );
+        Script::AppendVectorToArrayRef( Self->UseCont, result );
         break;
     case ITEMS_BARTER:
         Self->ProcessItemsCollection( ITEMS_BARTER, Self->InvContInit, Self->BarterCont1 );
+        Script::AppendVectorToArrayRef( Self->BarterCont1, result );
         break;
     case ITEMS_BARTER_OFFER:
         Self->ProcessItemsCollection( ITEMS_BARTER_OFFER, Self->BarterCont1oInit, Self->BarterCont1o );
+        Script::AppendVectorToArrayRef( Self->BarterCont1o, result );
         break;
     case ITEMS_BARTER_OPPONENT:
         Self->ProcessItemsCollection( ITEMS_BARTER_OPPONENT, Self->BarterCont2Init, Self->BarterCont2 );
+        Script::AppendVectorToArrayRef( Self->BarterCont2, result );
         break;
     case ITEMS_BARTER_OPPONENT_OFFER:
         Self->ProcessItemsCollection( ITEMS_BARTER_OPPONENT_OFFER, Self->BarterCont2oInit, Self->BarterCont2o );
+        Script::AppendVectorToArrayRef( Self->BarterCont2o, result );
         break;
     case ITEMS_PICKUP:
         Self->ProcessItemsCollection( ITEMS_PICKUP, Self->InvContInit, Self->PupCont1 );
+        Script::AppendVectorToArrayRef( Self->PupCont1, result );
         break;
     case ITEMS_PICKUP_FROM:
         Self->ProcessItemsCollection( ITEMS_PICKUP_FROM, Self->PupCont2Init, Self->PupCont2 );
+        Script::AppendVectorToArrayRef( Self->PupCont2, result );
         break;
     default:
-        SCRIPT_ERROR_R( "Invalid items collection." );
+        result->Release();
+        SCRIPT_ERROR_R0( "Invalid items collection." );
         break;
     }
+    return result;
 }
 
 uint FOClient::SScriptFunc::Global_GetDayTime( uint day_part )

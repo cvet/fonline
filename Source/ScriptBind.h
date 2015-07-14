@@ -694,7 +694,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSomeValue(int var)", asFUNC
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveScreen(uint16 hexX, uint16 hexY, uint speed, bool canStop = false)", asFUNCTION( BIND_CLASS Global_MoveScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void LockScreenScroll(CritterCl@+ cr, bool unlockIfSame = false)", asFUNCTION( BIND_CLASS Global_LockScreenScroll ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetFog(uint16 zoneX, uint16 zoneY)", asFUNCTION( BIND_CLASS Global_GetFog ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void RefreshItemsCollection(int collection)", asFUNCTION( BIND_CLASS Global_RefreshItemsCollection ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "ItemCl@[]@ RefreshItemsCollection(int collection)", asFUNCTION( BIND_CLASS Global_RefreshItemsCollection ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetDayTime(uint dayPart)", asFUNCTION( BIND_CLASS Global_GetDayTime ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void GetDayColor(uint dayPart, uint8& r, uint8& g, uint8& b)", asFUNCTION( BIND_CLASS Global_GetDayColor ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RunServerScript(string& funcName, int p0, int p1, int p2, string@+ p3, int[]@+ p4)", asFUNCTION( BIND_CLASS Global_RunServerScript ), asCALL_CDECL ) );

@@ -723,23 +723,29 @@ void Item::ContGetItems( ItemVec& items, uint stack_id, bool sync_lock )
             SYNC_LOCK( *it );
 }
 
-int Item::ContGetFreeVolume( uint stack_id )
+bool Item::ContHaveFreeVolume( uint stack_id, uint volume )
 {
     if( !IsContainer() )
-        return 0;
+        return false;
 
-    int cur_volume = 0;
-    int max_volume = Proto->GetContainer_Volume();
-    if( !ChildItems )
-        return max_volume;
+    uint max_volume = Proto->GetContainer_Volume();
+    if( max_volume == 0 )
+        return true;
 
-    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
+    if( volume > max_volume )
+        return false;
+
+    uint cur_volume = 0;
+    if( ChildItems )
     {
-        Item* item = *it;
-        if( stack_id == uint( -1 ) || item->AccContainer.StackId == stack_id )
-            cur_volume += item->GetVolume();
+        for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
+        {
+            Item* item = *it;
+            if( stack_id == uint( -1 ) || item->AccContainer.StackId == stack_id )
+                cur_volume += item->GetVolume();
+        }
     }
-    return max_volume - cur_volume;
+    return max_volume >= cur_volume + volume;
 }
 
 bool Item::ContIsItems()
