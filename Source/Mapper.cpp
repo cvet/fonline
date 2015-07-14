@@ -2256,7 +2256,10 @@ void FOMapper::ObjDraw()
             case ITEM_TYPE_WEAPON:
                 if( !proto->GetWeapon_MaxAmmoCount() )
                     break;
-                DRAW_COMPONENT( "AmmoPid", o->MItem.AmmoPid, true, false );                                  // 30
+                if( o->MItem.AmmoPid )
+                    DRAW_COMPONENT_TEXT( "AmmoPid", o->MItem.AmmoPid->c_str(), false );                      // 30
+                else
+                    DRAW_COMPONENT_TEXT( "AmmoPid", "", false );                                             // 30
                 DRAW_COMPONENT( "AmmoCount", o->MItem.AmmoCount, true, false );                              // 31
                 break;
             case ITEM_TYPE_KEY:
@@ -2514,7 +2517,13 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
         break;
     case 30:
         if( o->MapObjType == MAP_OBJECT_ITEM && proto->GetType() == ITEM_TYPE_WEAPON && proto->GetWeapon_MaxAmmoCount() )
-            str = &o->MItem.AmmoPid;
+        {
+            string str = ( o->MItem.AmmoPid ? o->MItem.AmmoPid->c_str() : "" );
+            Keyb::GetChar( dik, dik_text, str, NULL, MAPOBJ_SCRIPT_NAME, KIF_NO_SPEC_SYMBOLS );
+            SAFEREL( o->MItem.AmmoPid );
+            o->MItem.AmmoPid = ScriptString::Create( str.c_str() );
+            return;
+        }
         else if( o->MapObjType == MAP_OBJECT_ITEM && ( proto->GetType() == ITEM_TYPE_KEY || proto->GetType() == ITEM_TYPE_CONTAINER || proto->GetType() == ITEM_TYPE_DOOR ) )
             val_dw = &o->MItem.LockerDoorId;
         break;
