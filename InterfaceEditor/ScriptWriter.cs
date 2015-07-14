@@ -12,7 +12,7 @@ namespace InterfaceEditor
 		private StringBuilder _Script;
 		private string _BaseIdent;
 
-		public string Write(GUIScreen root, string ident)
+		public string Write(GUIObject root, string ident)
 		{
 			_Script = new StringBuilder(100000);
 			_BaseIdent = ident;
@@ -20,10 +20,18 @@ namespace InterfaceEditor
 			ProcessObject(root);
 
 			_Script.AppendLine();
-			_Script.AppendLine(_BaseIdent + "void Init( int screenIndex )");
+			if( root is GUIScreen )
+				_Script.AppendLine(_BaseIdent + "GUIScreen@ CreateScreen()");
+			else
+				_Script.AppendLine(_BaseIdent + "GUIObject@ CreateHierarchy( GUIObject@ parent = null )");
 			_Script.AppendLine(_BaseIdent + "{");
 			ProcessObjectCreation(root);
-			_Script.AppendLine(_BaseIdent + "    GUI_RegisterScreen( screenIndex, _" + root.Name + " );");
+			if (!(root is GUIScreen))
+			{
+				_Script.AppendLine(_BaseIdent + "    if( parent !is null )");
+				_Script.AppendLine(_BaseIdent + "        _" + root.Name + ".Init( parent );");
+			}
+			_Script.AppendLine(_BaseIdent + "    return _" + root.Name + ";");
 			_Script.AppendLine(_BaseIdent + "}");
 
 			return _Script.ToString();
@@ -46,7 +54,7 @@ namespace InterfaceEditor
 		private void WriteClass(GUIObject obj)
 		{
 			string className = obj.Name;
-			GUIScreen root = (obj is GUIScreen ? (GUIScreen)obj : null);
+			GUIObject root = (obj.GetParent() == null ? obj : null);
 
 			// Global scope
 			if (root == null)
@@ -71,18 +79,19 @@ namespace InterfaceEditor
 			// Constructor
 			_Script.AppendLine(_BaseIdent + "    void OnConstruct() override");
 			_Script.AppendLine(_BaseIdent + "    {");
-			if (root != null)
+			if (root != null && root is GUIScreen)
 			{
-				if (root.IsModal)
+				GUIScreen screen = (GUIScreen)root;
+				if (screen.IsModal)
 					_Script.AppendLine(_BaseIdent + "        SetModal( true );");
-				if (root.IsMultiinstance)
+				if (screen.IsMultiinstance)
 					_Script.AppendLine(_BaseIdent + "        SetMultiinstance( true );");
-				if (root.IsCloseOnMiss)
+				if (screen.IsCloseOnMiss)
 					_Script.AppendLine(_BaseIdent + "        SetCloseOnMiss( true );");
-				if (!string.IsNullOrEmpty(root.AvailableCursors))
-					_Script.AppendLine(_BaseIdent + "        SetAvailableCursors( " + root.AvailableCursors + " );");
-				if (root.IsCanMove)
-					_Script.AppendLine(_BaseIdent + "        SetCanMove( true, " + root.IsMoveIgnoreBorders.ToString().ToLower() + " );");
+				if (!string.IsNullOrEmpty(screen.AvailableCursors))
+					_Script.AppendLine(_BaseIdent + "        SetAvailableCursors( " + screen.AvailableCursors + " );");
+				if (screen.IsCanMove)
+					_Script.AppendLine(_BaseIdent + "        SetCanMove( true, " + screen.IsMoveIgnoreBorders.ToString().ToLower() + " );");
 			}
 
 			if (!obj.Active)
@@ -303,7 +312,7 @@ namespace InterfaceEditor
 		{
 			string className = obj.Name;
 			string instanceName = "_" + className;
-			GUIScreen root = (obj is GUIScreen ? (GUIScreen)obj : null);
+			GUIObject root = (obj.GetParent() == null ? obj : null);
 			string identPrefix = _BaseIdent + "    " + instanceName;
 
 			if (root != null)

@@ -20,7 +20,7 @@ namespace InterfaceEditor
 
 		internal string TreeFileName;
 		internal string SchemeName;
-		internal GUIScreen LoadedTree;
+		internal GUIObject LoadedTree;
 
 		public MainForm()
 		{
@@ -134,7 +134,7 @@ namespace InterfaceEditor
 
 			ContextMenuStrip hierarchyMenuStrip = new ContextMenuStrip();
 			hierarchyMenuStrip.Items.Add(addMenuStrip);
-			//hierarchyMenuStrip.Items.Add(convertMenuStrip);
+			hierarchyMenuStrip.Items.Add(convertMenuStrip);
 			hierarchyMenuStrip.Items.Add(moveUpMenuStrip);
 			hierarchyMenuStrip.Items.Add(moveDownMenuStrip);
 			hierarchyMenuStrip.Items.Add(deleteMenuStrip);
@@ -152,11 +152,24 @@ namespace InterfaceEditor
 					GUIObject curObj = (Hierarchy.SelectedNode != null ? (GUIObject)Hierarchy.SelectedNode.Tag : null);
 					if (convertMenuStrip.DropDownItems.Contains(e.ClickedItem))
 					{
-						if (curObj != null && !(curObj is GUIScreen))
+						if (curObj != null)
 						{
-							GUIObject newObj = ((Func<GUIObject, GUIObject>)e.ClickedItem.Tag)(curObj.GetParent());
 							curObj.Delete();
-							CopyObject(curObj, newObj);
+
+							GUIObject newObj = ((Func<GUIObject, GUIObject>)e.ClickedItem.Tag)(curObj.GetParent());
+							newObj.RefreshRepresentation(false);
+
+							while (curObj.Children.Count > 0)
+								curObj.Children[0].AssignParent(newObj);
+
+							if (curObj.GetParent() == null)
+								LoadedTree = newObj;
+
+							List<FieldInfo> sourceFields = GetAllFields(curObj.GetType());
+							List<FieldInfo> destFields = GetAllFields(newObj.GetType());
+							foreach (FieldInfo fi in destFields)
+								if (destFields.FindIndex(fi2 => fi2.Name == fi.Name) != -1 && fi.Name != "_HierarchyNode" && fi.Name != "_Children")
+									fi.SetValue(newObj, fi.GetValue(curObj));
 							newObj.RefreshRepresentation(false);
 						}
 						else
@@ -224,7 +237,7 @@ namespace InterfaceEditor
 			if (saveAs && !GetTreeFileName(true))
 				return;
 
-			GUIScreen root = obj.GetScreen();
+			GUIObject root = obj.GetRoot();
 
 			JsonSerializerSettings settings = new JsonSerializerSettings();
 			settings.TypeNameHandling = TypeNameHandling.Objects;
@@ -241,7 +254,7 @@ namespace InterfaceEditor
 
 			LoadedTree = null;
 
-			GUIScreen root = LoadTree(TreeFileName);
+			GUIObject root = LoadTree(TreeFileName);
 
 			while (Hierarchy.Nodes.Count > 0)
 				((GUIObject)Hierarchy.Nodes[0].Tag).Delete();
@@ -257,7 +270,7 @@ namespace InterfaceEditor
 			LoadedTree = root;
 		}
 
-		private GUIScreen LoadTree(string fileName)
+		private GUIObject LoadTree(string fileName)
 		{
 			string data = File.ReadAllText(fileName, Encoding.UTF8);
 			JsonSerializerSettings settings = new JsonSerializerSettings();
@@ -266,10 +279,10 @@ namespace InterfaceEditor
 			settings.Converters.Add(new StringEnumConverter());
 			GUIObject obj = JsonConvert.DeserializeObject<GUIObject>(data, settings);
 			obj.FixAfterLoad();
-			return obj.GetScreen();
+			return obj.GetRoot();
 		}
 
-		private GUIScreen NewTree()
+		private GUIObject NewTree()
 		{
 			if (!GetTreeFileName(true))
 				return null;
@@ -393,7 +406,7 @@ namespace InterfaceEditor
 				{
 					string guiFileFullPath = Path.GetDirectoryName(Application.ExecutablePath) + "\\gui\\" + guiFile;
 					string scriptPrefix = Path.GetFileNameWithoutExtension(guiFile);
-					GUIScreen root = LoadTree(guiFileFullPath);
+					GUIObject root = LoadTree(guiFileFullPath);
 
 					if (!writedScripts.Contains(scriptPrefix))
 					{
@@ -409,7 +422,10 @@ namespace InterfaceEditor
 						contentScript.AppendLine("}");
 					}
 
-					initScript.AppendLine("    " + scriptPrefix + "::Init( " + screen + " );");
+					if (screen != "CUSTOM")
+						initScript.AppendLine("    GUI_RegisterScreen( " + screen + ", " + scriptPrefix + "::CreateScreen );");
+					else
+						initScript.AppendLine("    // Custom hierarchy: " + scriptPrefix + "::CreateHierarchy");
 				}
 			}
 
@@ -430,17 +446,6 @@ namespace InterfaceEditor
 					obj.DrawPass1(e.Graphics);
 					obj.DrawPass2(e.Graphics);
 				}
-			}
-		}
-
-		public void CopyObject(object source, object dest)
-		{
-			FieldInfo[] sourceFields = source.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
-			FieldInfo[] destFields = dest.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
-			foreach (FieldInfo fi in sourceFields)
-			{
-				if (Array.FindIndex(destFields, fi2 => fi2.Name == fi.Name) != -1)
-					fi.SetValue(dest, fi.GetValue(source));
 			}
 		}
 
@@ -477,6 +482,18 @@ namespace InterfaceEditor
 						((GUIPanel)obj).SetBackgroundSize();
 				}
 			}
+		}
+
+		public static List<FieldInfo> GetAllFields(Type t)
+		{
+			if (t == null)
+				return new List<FieldInfo>();
+			BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic |
+								BindingFlags.Static | BindingFlags.Instance |
+								BindingFlags.DeclaredOnly;
+			List<FieldInfo> fileds = new List<FieldInfo>(t.GetFields(flags));
+			fileds.AddRange(GetAllFields(t.BaseType));
+			return fileds;
 		}
 	}
 

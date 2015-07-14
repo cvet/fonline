@@ -452,14 +452,6 @@ namespace InterfaceEditor
 			return obj;
 		}
 
-		public GUIScreen GetScreen()
-		{
-			GUIObject obj = this;
-			while (obj._Parent != null)
-				obj = obj._Parent;
-			return (GUIScreen)obj;
-		}
-
 		public GUIObject GetParent()
 		{
 			return _Parent;
