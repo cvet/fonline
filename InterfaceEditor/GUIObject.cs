@@ -644,6 +644,8 @@ namespace InterfaceEditor
 
 				if (context.PropertyDescriptor.ComponentType == typeof(GUIText) && context.PropertyDescriptor.Name == "Font")
 					cb.Items.AddRange(GUIText.FontNames);
+				if (context.PropertyDescriptor.ComponentType == typeof(GUIItemView) && context.PropertyDescriptor.Name == "ItemsCollection")
+					cb.Items.AddRange(GUIItemView.ItemsCollectionNames);
 
 				if (svc.ShowDialog(frm) == DialogResult.OK)
 					value = cb.Text;

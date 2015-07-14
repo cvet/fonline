@@ -231,6 +231,8 @@ namespace InterfaceEditor
 			if (obj is GUIItemView)
 			{
 				GUIItemView itemView = (GUIItemView)obj;
+				if (!string.IsNullOrEmpty(itemView.ItemsCollection))
+					_Script.AppendLine(_BaseIdent + "        SetItemsCollection( " + itemView.ItemsCollection + " );");
 				if (!string.IsNullOrEmpty(itemView.UserData))
 					_Script.AppendLine(_BaseIdent + "        SetUserData( " + itemView.UserData + " );");
 				if (itemView.UseSorting)
