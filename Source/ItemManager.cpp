@@ -79,7 +79,7 @@ bool ItemManager::LoadProtos()
         foitem.LoadFilePtr( (char*) file.GetBuf(), file.GetFsize() );
         if( foitem.GotoNextApp( "Item" ) )
         {
-            if( !proto->ItemProps.LoadFromText( foitem.GetApp( "Item" ) ) )
+            if( !proto->ItemPropsEntity.Props.LoadFromText( foitem.GetApp( "Item" ) ) )
                 errors++;
         }
         if( foitem.GotoNextApp( "ProtoItem" ) )
@@ -191,7 +191,7 @@ void ItemManager::GetBinaryData( UCharVec& data )
         WriteData( data, proto_id );
         for( uint part = 0; part < 2; part++ )
         {
-            Properties& props = ( part == 0 ? proto_item->Props : proto_item->ItemProps );
+            Properties& props = ( part == 0 ? proto_item->Props : proto_item->ItemPropsEntity.Props );
             PUCharVec*  props_data;
             UIntVec*    props_data_sizes;
             props.StoreData( true, &props_data, &props_data_sizes );
@@ -227,7 +227,7 @@ void ItemManager::SetBinaryData( UCharVec& data )
         ProtoItem* proto_item = new ProtoItem( pid );
         for( uint part = 0; part < 2; part++ )
         {
-            Properties& props = ( part == 0 ? proto_item->Props : proto_item->ItemProps );
+            Properties& props = ( part == 0 ? proto_item->Props : proto_item->ItemPropsEntity.Props );
             uint        data_count = ReadData< ushort >( data, read_pos );
             props_data.resize( data_count );
             props_data_sizes.resize( data_count );

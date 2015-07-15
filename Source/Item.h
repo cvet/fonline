@@ -110,11 +110,10 @@ HASH_DECL( SP_MISC_SCRBLOCK );
 /* ProtoItem                                                            */
 /************************************************************************/
 
-class ProtoItem
+class ProtoItem: public Entity
 {
 public:
     // Properties
-    Properties Props;
     PROPERTIES_HEADER();
     CLASS_PROPERTY( hash, PicMap );
     CLASS_PROPERTY( hash, PicInv );
@@ -218,12 +217,16 @@ public:
     ProtoItem( hash pid );
     bool operator==( hash pid ) { return ProtoId == pid; }
 
-    hash       ProtoId;
-    Properties ItemProps;
-    int64      InstanceCount;
+    struct ProtoItemExt: public Entity
+    {
+        ProtoItemExt();
+    } ItemPropsEntity;
 
-    UIntVec    TextsLang;
-    FOMsgVec   Texts;
+    hash     ProtoId;
+    int64    InstanceCount;
+
+    UIntVec  TextsLang;
+    FOMsgVec Texts;
 
     #ifdef FONLINE_SERVER
     string ScriptName;

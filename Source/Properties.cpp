@@ -1,8 +1,11 @@
 #include "Common.h"
 #include "Properties.h"
+#include "Entity.h"
 #include "FileSystem.h"
 #include "IniParser.h"
 #include "Script.h"
+
+NativeCallbackVec PropertyRegistrator::GlobalSetCallbacks;
 
 Property::Property()
 {
@@ -11,7 +14,7 @@ Property::Property()
     setCallbacksAnyOldValue = false;
     getCallbackLocked = false;
     setCallbackLocked = false;
-    sendIgnoreObj = NULL;
+    sendIgnoreEntity = NULL;
 }
 
 void* Property::CreateComplexValue( uchar* data, uint data_size )
@@ -361,14 +364,14 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
     return NULL;
 }
 
-void Property::GenericGet( void* obj, void* ret_value )
+void Property::GenericGet( Entity* entity, void* ret_value )
 {
-    Properties* properties = (Properties*) obj;
+    Properties* properties = &entity->Props;
 
-    // Validate object
-    if( properties->objIsDestroyed && *properties->objIsDestroyed )
+    // Validate entity
+    if( entity->IsDestroyed )
     {
-        SCRIPT_ERROR_R( "Attempt to get property '%s %s::%s' on destroyed object.",
+        SCRIPT_ERROR_R( "Attempt to get property '%s %s::%s' on destroyed entity.",
                         typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
     }
 
@@ -394,7 +397,7 @@ void Property::GenericGet( void* obj, void* ret_value )
         if( Script::PrepareContext( getCallback, _FUNC_, GetName() ) )
         {
             if( getCallbackArgs > 0 )
-                Script::SetArgObject( obj );
+                Script::SetArgObject( entity );
             if( getCallbackArgs > 1 )
                 Script::SetArgUInt( enumValue );
             if( Script::RunPrepared() )
@@ -438,14 +441,14 @@ void Property::GenericGet( void* obj, void* ret_value )
     }
 }
 
-void Property::GenericSet( void* obj, void* new_value )
+void Property::GenericSet( Entity* entity, void* new_value )
 {
-    Properties* properties = (Properties*) obj;
+    Properties* properties = &entity->Props;
 
-    // Validate object
-    if( properties->objIsDestroyed && *properties->objIsDestroyed )
+    // Validate entity
+    if( entity->IsDestroyed )
     {
-        SCRIPT_ERROR_R( "Attempt to set property '%s %s::%s' on destroyed object.",
+        SCRIPT_ERROR_R( "Attempt to set property '%s %s::%s' on destroyed entity.",
                         typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
     }
 
@@ -459,15 +462,15 @@ void Property::GenericSet( void* obj, void* new_value )
         // Clamp
         if( checkMaxValue )
         {
-            #define CHECK_MAX_VALUE( type )          \
-                do {                                 \
-                    type max_v = (type) maxValue;    \
-                    if( *(type*) new_value > max_v ) \
-                    {                                \
-                        GenericSet( obj, &max_v );   \
-                        return;                      \
-                    }                                \
-                }                                    \
+            #define CHECK_MAX_VALUE( type )           \
+                do {                                  \
+                    type max_v = (type) maxValue;     \
+                    if( *(type*) new_value > max_v )  \
+                    {                                 \
+                        GenericSet( entity, &max_v ); \
+                        return;                       \
+                    }                                 \
+                }                                     \
                 while( 0 )
             if( isIntDataType && isSignedIntDataType )
             {
@@ -502,15 +505,15 @@ void Property::GenericSet( void* obj, void* new_value )
         }
         if( checkMinValue )
         {
-            #define CHECK_MIN_VALUE( type )          \
-                do {                                 \
-                    type min_v = (type) minValue;    \
-                    if( *(type*) new_value < min_v ) \
-                    {                                \
-                        GenericSet( obj, &min_v );   \
-                        return;                      \
-                    }                                \
-                }                                    \
+            #define CHECK_MIN_VALUE( type )           \
+                do {                                  \
+                    type min_v = (type) minValue;     \
+                    if( *(type*) new_value < min_v )  \
+                    {                                 \
+                        GenericSet( entity, &min_v ); \
+                        return;                       \
+                    }                                 \
+                }                                     \
                 while( 0 )
             if( isIntDataType && isSignedIntDataType )
             {
@@ -621,7 +624,7 @@ void Property::GenericSet( void* obj, void* new_value )
         {
             if( Script::PrepareContext( setCallbacks[ i ], _FUNC_, GetName() ) )
             {
-                Script::SetArgObject( obj );
+                Script::SetArgObject( entity );
                 if( setCallbacksArgs[ i ] > 1 )
                 {
                     Script::SetArgUInt( enumValue );
@@ -643,17 +646,19 @@ void Property::GenericSet( void* obj, void* new_value )
         setCallbackLocked = false;
     }
 
-    // Native set callback
+    // Native set callbacks
     if( nativeSetCallback && !setCallbackLocked )
-        nativeSetCallback( obj, this, cur_value, &old_value );
+        nativeSetCallback( entity, this, cur_value, &old_value );
+    for( size_t i = 0, j = PropertyRegistrator::GlobalSetCallbacks.size(); i < j; i++ )
+        PropertyRegistrator::GlobalSetCallbacks[ i ] ( entity, this, cur_value, &old_value );
 
     // Native send callback
-    if( nativeSendCallback && obj != sendIgnoreObj && !setCallbackLocked )
+    if( nativeSendCallback && entity != sendIgnoreEntity && !setCallbackLocked )
     {
         if( ( properties->registrator->isServer && ( accessType & ( Property::PublicMask | Property::ProtectedMask ) ) ) ||
             ( !properties->registrator->isServer && ( accessType & Property::ModifiableMask ) ) )
         {
-            nativeSendCallback( obj, this, cur_value, &old_value );
+            nativeSendCallback( entity, this, cur_value, &old_value );
         }
     }
 
@@ -712,10 +717,13 @@ bool Property::IsWritable()
     return isWritable;
 }
 
-uchar* Property::GetRawData( void* obj, uint& data_size )
+uchar* Property::GetRawData( Entity* entity, uint& data_size )
 {
-    Properties* properties = (Properties*) obj;
+    return GetRawData( &entity->Props, data_size );
+}
 
+uchar* Property::GetRawData( Properties* properties, uint& data_size )
+{
     if( dataType == Property::POD )
     {
         RUNTIME_ASSERT( podDataOffset != uint( -1 ) );
@@ -728,10 +736,8 @@ uchar* Property::GetRawData( void* obj, uint& data_size )
     return properties->complexData[ complexDataIndex ];
 }
 
-void Property::SetRawData( void* obj, uchar* data, uint data_size )
+void Property::SetRawData( Properties* properties, uchar* data, uint data_size )
 {
-    Properties* properties = (Properties*) obj;
-
     if( IsPOD() )
     {
         RUNTIME_ASSERT( podDataOffset != uint( -1 ) );
@@ -753,104 +759,104 @@ void Property::SetRawData( void* obj, uchar* data, uint data_size )
     }
 }
 
-void Property::SetData( void* obj, uchar* data, uint data_size )
+void Property::SetData( Entity* entity, uchar* data, uint data_size )
 {
-    Properties* properties = (Properties*) obj;
+    Properties* properties = &entity->Props;
 
     if( dataType == Property::POD )
     {
         RUNTIME_ASSERT( data_size == baseSize );
-        GenericSet( obj, data );
+        GenericSet( entity, data );
     }
     else
     {
         void* value = CreateComplexValue( data, data_size );
-        GenericSet( obj, &value );
+        GenericSet( entity, &value );
         ReleaseComplexValue( value );
     }
 }
 
-int Property::GetPODValueAsInt( void* obj )
+int Property::GetPODValueAsInt( Entity* entity )
 {
     RUNTIME_ASSERT( dataType == Property::POD );
     if( isBoolDataType )
     {
-        return GetValue< bool >( obj ) ? 1 : 0;
+        return GetValue< bool >( entity ) ? 1 : 0;
     }
     else if( isFloatDataType )
     {
         if( baseSize == 4 )
-            return (int) GetValue< float >( obj );
+            return (int) GetValue< float >( entity );
         else if( baseSize == 8 )
-            return (int) GetValue< double >( obj );
+            return (int) GetValue< double >( entity );
     }
     else if( isSignedIntDataType )
     {
         if( baseSize == 1 )
-            return (int) GetValue< char >( obj );
+            return (int) GetValue< char >( entity );
         if( baseSize == 2 )
-            return (int) GetValue< short >( obj );
+            return (int) GetValue< short >( entity );
         if( baseSize == 4 )
-            return (int) GetValue< int >( obj );
+            return (int) GetValue< int >( entity );
         if( baseSize == 8 )
-            return (int) GetValue< int64 >( obj );
+            return (int) GetValue< int64 >( entity );
     }
     else
     {
         if( baseSize == 1 )
-            return (int) GetValue< uchar >( obj );
+            return (int) GetValue< uchar >( entity );
         if( baseSize == 2 )
-            return (int) GetValue< ushort >( obj );
+            return (int) GetValue< ushort >( entity );
         if( baseSize == 4 )
-            return (int) GetValue< uint >( obj );
+            return (int) GetValue< uint >( entity );
         if( baseSize == 8 )
-            return (int) GetValue< uint64 >( obj );
+            return (int) GetValue< uint64 >( entity );
     }
     RUNTIME_ASSERT( !"Unreachable place" );
     return 0;
 }
 
-void Property::SetPODValueAsInt( void* obj, int value )
+void Property::SetPODValueAsInt( Entity* entity, int value )
 {
     RUNTIME_ASSERT( dataType == Property::POD );
     if( isBoolDataType )
     {
-        SetValue< bool >( obj, value != 0 );
+        SetValue< bool >( entity, value != 0 );
     }
     else if( isFloatDataType )
     {
         if( baseSize == 4 )
-            SetValue< float >( obj, (float) value );
+            SetValue< float >( entity, (float) value );
         else if( baseSize == 8 )
-            SetValue< double >( obj, (double) value );
+            SetValue< double >( entity, (double) value );
     }
     else if( isSignedIntDataType )
     {
         if( baseSize == 1 )
-            SetValue< char >( obj, (char) value );
+            SetValue< char >( entity, (char) value );
         else if( baseSize == 2 )
-            SetValue< short >( obj, (short) value );
+            SetValue< short >( entity, (short) value );
         else if( baseSize == 4 )
-            SetValue< int >( obj, (int) value );
+            SetValue< int >( entity, (int) value );
         else if( baseSize == 8 )
-            SetValue< int64 >( obj, (int64) value );
+            SetValue< int64 >( entity, (int64) value );
     }
     else
     {
         if( baseSize == 1 )
-            SetValue< uchar >( obj, (uchar) value );
+            SetValue< uchar >( entity, (uchar) value );
         else if( baseSize == 2 )
-            SetValue< ushort >( obj, (ushort) value );
+            SetValue< ushort >( entity, (ushort) value );
         else if( baseSize == 4 )
-            SetValue< uint >( obj, (uint) value );
+            SetValue< uint >( entity, (uint) value );
         else if( baseSize == 8 )
-            SetValue< uint64 >( obj, (uint64) value );
+            SetValue< uint64 >( entity, (uint64) value );
     }
 }
 
-void Property::SetSendIgnore( void* obj )
+void Property::SetSendIgnore( Entity* entity )
 {
-    sendIgnoreObj = obj;
+    sendIgnoreEntity = entity;
 }
 
 string Property::SetGetCallback( const char* script_func )
@@ -942,12 +948,11 @@ string Property::AddSetCallback( const char* script_func )
     return "";
 }
 
-Properties::Properties( PropertyRegistrator* reg, bool* obj_is_destroyed )
+Properties::Properties( PropertyRegistrator* reg )
 {
     registrator = reg;
     RUNTIME_ASSERT( registrator );
     RUNTIME_ASSERT( registrator->registrationFinished );
-    objIsDestroyed = obj_is_destroyed;
 
     // Allocate POD data
     if( !registrator->podDataPool.empty() )
@@ -1326,9 +1331,9 @@ bool Properties::LoadFromText( const char* text, hash* pid /* = NULL */ )
     return !is_error;
 }
 
-int Properties::GetValueAsInt( int enum_value )
+int Properties::GetValueAsInt( Entity* entity, int enum_value )
 {
-    Property* prop = registrator->FindByEnum( enum_value );
+    Property* prop = entity->Props.registrator->FindByEnum( enum_value );
     if( !prop )
         SCRIPT_ERROR_R0( "Enum '%d' not found", enum_value );
     if( !prop->IsPOD() )
@@ -1336,12 +1341,12 @@ int Properties::GetValueAsInt( int enum_value )
     if( !prop->IsReadable() )
         SCRIPT_ERROR_R0( "Can't retreive integer value from non readable property '%s'", prop->GetName() );
 
-    return prop->GetPODValueAsInt( this );
+    return prop->GetPODValueAsInt( entity );
 }
 
-void Properties::SetValueAsInt( int enum_value, int value )
+void Properties::SetValueAsInt( Entity* entity, int enum_value, int value )
 {
-    Property* prop = registrator->FindByEnum( enum_value );
+    Property* prop = entity->Props.registrator->FindByEnum( enum_value );
     if( !prop )
         SCRIPT_ERROR_R( "Enum '%d' not found", enum_value );
     if( !prop->IsPOD() )
@@ -1349,12 +1354,12 @@ void Properties::SetValueAsInt( int enum_value, int value )
     if( !prop->IsWritable() )
         SCRIPT_ERROR_R( "Can't set integer value to non writable property '%s'", prop->GetName() );
 
-    prop->SetPODValueAsInt( this, value );
+    prop->SetPODValueAsInt( entity, value );
 }
 
-bool Properties::SetValueAsIntByName( const char* enum_name, int value )
+bool Properties::SetValueAsIntByName( Entity* entity, const char* enum_name, int value )
 {
-    Property* prop = registrator->Find( enum_name );
+    Property* prop = entity->Props.registrator->Find( enum_name );
     if( !prop )
         SCRIPT_ERROR_R0( "Enum '%s' not found", enum_name );
     if( !prop->IsPOD() )
@@ -1362,7 +1367,7 @@ bool Properties::SetValueAsIntByName( const char* enum_name, int value )
     if( !prop->IsWritable() )
         SCRIPT_ERROR_R0( "Can't set integer value to non writable property '%s'", prop->GetName() );
 
-    prop->SetPODValueAsInt( this, value );
+    prop->SetPODValueAsInt( entity, value );
     return true;
 }
 
@@ -1417,31 +1422,31 @@ bool PropertyRegistrator::Init()
     int result = engine->RegisterEnum( enum_type.c_str() );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register object property enum<%s> fail, error<%d>.\n", enum_type.c_str(), result );
+        WriteLogF( _FUNC_, " - Register entity property enum<%s> fail, error<%d>.\n", enum_type.c_str(), result );
         return false;
     }
 
     result = engine->RegisterEnumValue( enum_type.c_str(), "Invalid", 0 );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register object property enum<%s::Invalid> zero value fail, error<%d>.\n", enum_type.c_str(), result );
+        WriteLogF( _FUNC_, " - Register entity property enum<%s::Invalid> zero value fail, error<%d>.\n", enum_type.c_str(), result );
         return false;
     }
 
     char decl[ MAX_FOTEXT ];
     Str::Format( decl, "int GetAsInt(%s)", enum_type.c_str() );
-    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHOD( Properties, GetValueAsInt ), asCALL_THISCALL );
+    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Properties::GetValueAsInt ), asCALL_CDECL_OBJFIRST );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register object method<%s> fail, error<%d>.\n", decl, result );
+        WriteLogF( _FUNC_, " - Register entity method<%s> fail, error<%d>.\n", decl, result );
         return false;
     }
 
     Str::Format( decl, "void SetAsInt(%s,int)", enum_type.c_str() );
-    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHOD( Properties, SetValueAsInt ), asCALL_THISCALL );
+    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Properties::SetValueAsInt ), asCALL_CDECL_OBJFIRST );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register object method<%s> fail, error<%d>.\n", decl, result );
+        WriteLogF( _FUNC_, " - Register entity method<%s> fail, error<%d>.\n", decl, result );
         return false;
     }
 
@@ -1616,18 +1621,18 @@ Property* PropertyRegistrator::Register(
         Str::Format( decl, "const %s%s get_%s() const", type_name, data_type != Property::POD ? "@" : "", name );
         int  result = -1;
         if( data_type != Property::POD )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< void* >, (void*), void* ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< void* >, (Entity*), void* ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 1 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< char >, (void*), char ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< char >, (Entity*), char ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 2 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< short >, (void*), short ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< short >, (Entity*), short ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 4 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< int >, (void*), int ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< int >, (Entity*), int ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 8 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< int64 >, (void*), int64 ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< int64 >, (Entity*), int64 ), asCALL_THISCALL_OBJFIRST, prop );
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Register object property<%s> getter fail, error<%d>.\n", name, result );
+            WriteLogF( _FUNC_, " - Register entity property<%s> getter fail, error<%d>.\n", name, result );
             return NULL;
         }
     }
@@ -1639,18 +1644,18 @@ Property* PropertyRegistrator::Register(
         Str::Format( decl, "void set_%s(%s%s)", name, type_name, data_type != Property::POD ? "&" : "" );
         int  result = -1;
         if( data_type != Property::POD )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< void* >, ( void*, void* ), void ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< void* >, ( Entity *, void* ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 1 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< char >, ( void*, char ), void ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< char >, ( Entity *, char ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 2 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< short >, ( void*, short ), void ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< short >, ( Entity *, short ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 4 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< int >, ( void*, int ), void ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< int >, ( Entity *, int ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 8 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< int64 >, ( void*, int64 ), void ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< int64 >, ( Entity *, int64 ), void ), asCALL_THISCALL_OBJFIRST, prop );
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Register object property<%s> setter fail, error<%d>.\n", name, result );
+            WriteLogF( _FUNC_, " - Register entity property<%s> setter fail, error<%d>.\n", name, result );
             return NULL;
         }
     }
@@ -1662,7 +1667,7 @@ Property* PropertyRegistrator::Register(
     int  result = engine->RegisterEnumValue( enumTypeName.c_str(), name, enum_value );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register object property enum<%s::%s> value<%d> fail, error<%d>.\n", enumTypeName.c_str(), name, enum_value, result );
+        WriteLogF( _FUNC_, " - Register entity property enum<%s::%s> value<%d> fail, error<%d>.\n", enumTypeName.c_str(), name, enum_value, result );
         return NULL;
     }
 
@@ -1697,7 +1702,7 @@ Property* PropertyRegistrator::Register(
             int result = engine->RegisterGlobalProperty( full_decl, group_array );
             if( result < 0 )
             {
-                WriteLogF( _FUNC_, " - Register object property group<%s> fail, error<%d>.\n", full_decl, result );
+                WriteLogF( _FUNC_, " - Register entity property group<%s> fail, error<%d>.\n", full_decl, result );
                 return NULL;
             }
 
@@ -1890,15 +1895,8 @@ Property* PropertyRegistrator::FindByEnum( int enum_value )
 
 void PropertyRegistrator::SetNativeSetCallback( const char* property_name, NativeCallback callback )
 {
-    if( !property_name )
-    {
-        for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
-            registeredProperties[ i ]->nativeSetCallback = callback;
-    }
-    else
-    {
-        Find( property_name )->nativeSetCallback = callback;
-    }
+    RUNTIME_ASSERT( property_name );
+    Find( property_name )->nativeSetCallback = callback;
 }
 
 void PropertyRegistrator::SetNativeSendCallback( NativeCallback callback )

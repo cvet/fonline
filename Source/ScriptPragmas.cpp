@@ -176,7 +176,6 @@ public:
 };
 
 // #pragma entity EntityName Movable = true
-#include "Entity.h"
 #ifdef FONLINE_SERVER
 # include "EntityManager.h"
 #endif

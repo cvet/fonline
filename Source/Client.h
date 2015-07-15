@@ -143,7 +143,7 @@ public:
     void Net_SendUseItem( uchar ap, uint item_id, uchar rate, uchar target_type, uint target_id, hash target_pid, uint param );
     void Net_SendPickItem( ushort targ_x, ushort targ_y, hash pid );
     void Net_SendPickCritter( uint crid, uchar pick_type );
-    void Net_SendProperty( NetProperty::Type type, Property* prop, void* prop_obj );
+    void Net_SendProperty( NetProperty::Type type, Property* prop, Entity* entity );
     void Net_SendChangeItem( uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count );
     void Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags );
     void Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer );
@@ -480,18 +480,18 @@ public:
     void ProcessScreenEffectMirror();
 
     // Properties callbacks
-    static void OnSendGlobalValue( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSendCritterValue( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSetCritterHandsItemProtoId( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSetCritterHandsItemMode( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSetItemSomeLight( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSetItemPicMap( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSetItemOffsetXY( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSetItemLockerCondition( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSendMapValue( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSendLocationValue( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSendGlobalValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSendCritterValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSendItemValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetCritterHandsItemProtoId( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetCritterHandsItemMode( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemSomeLight( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemPicMap( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemLockerCondition( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSendMapValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSendLocationValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
 
 /************************************************************************/
 /* Scripting                                                            */

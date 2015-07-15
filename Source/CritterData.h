@@ -9,16 +9,16 @@
 # include "CritterCl.h"
 #endif
 
-struct ProtoCritter
+struct ProtoCritter: public Entity
 {
-    hash        ProtoId;
-    Properties* Props;
+    ProtoCritter();
 
-    UIntVec     TextsLang;
-    FOMsgVec    Texts;
+    hash     ProtoId;
+    UIntVec  TextsLang;
+    FOMsgVec Texts;
 
     #ifdef FONLINE_MAPPER
-    string      CollectionName;
+    string   CollectionName;
     #endif
 
     const char* GetName() { return HASH_STR( ProtoId ); }
@@ -26,7 +26,7 @@ struct ProtoCritter
     #ifdef FONLINE_MAPPER
     uint GetCrType()
     {
-        return (uint) Props->GetValueAsInt( CritterCl::PropertyBaseCrType->GetEnumValue() );
+        return ( uint ) Properties::GetValueAsInt( this, CritterCl::PropertyBaseCrType->GetEnumValue() );
     }
     #endif
 };

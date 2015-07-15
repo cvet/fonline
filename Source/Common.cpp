@@ -1091,6 +1091,11 @@ const char* GetLastSocketError()
 /*                                                                      */
 /************************************************************************/
 
+static void AddPropertyCallback( void ( * function )( void*, void*, void*, void* ) )
+{
+    PropertyRegistrator::GlobalSetCallbacks.push_back( (NativeCallback) function );
+}
+
 GameOptions GameOpt;
 GameOptions::GameOptions()
 {
@@ -1353,8 +1358,8 @@ GameOptions::GameOptions()
     GetSpriteColor = NULL;
     IsSpriteHit = NULL;
 
-    GetNameByHash = NULL;
-    GetHashByName = NULL;
+    GetNameByHash = &Str::GetName;
+    GetHashByName = &Str::GetHash;
 
     ScriptLoadModule = NULL;
     ScriptBind = NULL;
@@ -1390,6 +1395,7 @@ GameOptions::GameOptions()
     Random = &::Random;
     GetTick = &Timer::FastTick;
     SetLogCallback = &LogToFunc;
+    AddPropertyCallback = &::AddPropertyCallback;
 }
 
 /************************************************************************/
@@ -1661,23 +1667,6 @@ void Thread_Sleep( uint ms ) // Used in Mutex.h as extern function
 }
 
 #endif
-
-/************************************************************************/
-/* Properties                                                           */
-/************************************************************************/
-
-PROPERTIES_IMPL( GlobalVars );
-CLASS_PROPERTY_IMPL( GlobalVars, BestScores );
-GlobalVars::GlobalVars(): Props( PropertiesRegistrator, NULL ) {}
-GlobalVars* Globals;
-
-PROPERTIES_IMPL( ClientMap );
-ClientMap::ClientMap(): Props( PropertiesRegistrator, NULL ) {}
-ClientMap* ClientCurMap;
-
-PROPERTIES_IMPL( ClientLocation );
-ClientLocation::ClientLocation(): Props( PropertiesRegistrator, NULL ) {}
-ClientLocation* ClientCurLocation;
 
 /************************************************************************/
 /*                                                                      */

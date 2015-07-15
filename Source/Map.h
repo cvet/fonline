@@ -113,7 +113,7 @@ public:
     bool AddItem( Item* item, ushort hx, ushort hy );
     void SetItem( Item* item, ushort hx, ushort hy );
     void EraseItem( uint item_id );
-    void SendProperty( NetProperty::Type type, Property* prop, void* prop_obj );
+    void SendProperty( NetProperty::Type type, Property* prop, Entity* entity );
     void ChangeViewItem( Item* item );
     void AnimateItem( Item* item, uchar from_frm, uchar to_frm );
 

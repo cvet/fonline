@@ -2,6 +2,8 @@
 #define __ENTITY__
 
 #include "Common.h"
+#include "Properties.h"
+#include "Methods.h"
 
 enum class EntityType
 {
@@ -14,6 +16,12 @@ enum class EntityType
     Map,
     CritterCl,
     ItemHex,
+    Global,
+    ClientMap,
+    ClientLocation,
+    ProtoItem,
+    ProtoItemExt,
+    ProtoCritter,
     Max,
 };
 
@@ -45,5 +53,30 @@ public:
     CustomEntity( uint id, uint sub_type, PropertyRegistrator* registrator );
     const uint SubType;
 };
+
+class GlobalVars: public Entity
+{
+public:
+    PROPERTIES_HEADER();
+    CLASS_PROPERTY( ScriptArray *, BestScores );
+    GlobalVars();
+};
+extern GlobalVars* Globals;
+
+class ClientMap: public Entity
+{
+public:
+    PROPERTIES_HEADER();
+    ClientMap();
+};
+extern ClientMap* ClientCurMap;
+
+class ClientLocation: public Entity
+{
+public:
+    PROPERTIES_HEADER();
+    ClientLocation();
+};
+extern ClientLocation* ClientCurLocation;
 
 #endif // __ENTITY__

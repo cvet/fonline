@@ -1,4 +1,5 @@
 #include "Common.h"
+#include "Entity.h"
 #include "Script.h"
 #include "ScriptPragmas.h"
 #include "ScriptInvoker.h"
@@ -344,6 +345,7 @@ int Compile( const char* fname, const char* fname_prep, vector< char* >& defines
         return -1;
     asIScriptEngine* engine = Script::GetEngine();
     engine->SetMessageCallback( asFUNCTION( CallBack ), NULL, asCALL_CDECL );
+    Script::SetLoadLibraryCompiler( true );
 
     // Bind
     int bind_errors = 0;

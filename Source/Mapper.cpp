@@ -97,17 +97,6 @@ bool FOMapper::Init()
     };
     GameOpt.IsSpriteHit = &IsSpriteHit_::IsSpriteHit;
 
-    struct GetNameByHash_
-    {
-        static const char* GetNameByHash( hash h ) { return Str::GetName( h ); }
-    };
-    GameOpt.GetNameByHash = &GetNameByHash_::GetNameByHash;
-    struct GetHashByName_
-    {
-        static hash GetHashByName( const char* name ) { return Str::GetHash( name ); }
-    };
-    GameOpt.GetHashByName = &GetHashByName_::GetHashByName;
-
     // Input
     Keyb::Init();
 
@@ -1996,7 +1985,7 @@ void FOMapper::IntDraw()
 
             uint cnt = ( proto_item->GetStackable() ? mobj->MItem.Count : 1 );
             if( proto_item->GetStackable() && !cnt )
-                cnt = Item::PropertyCount->GetValue< uint >( &proto_item->ItemProps );
+                cnt = Item::PropertyCount->GetValue< uint >( &proto_item->ItemPropsEntity );
             if( !cnt )
                 cnt = 1;
             SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), Str::FormatBuf( "x%u", cnt ), FT_NOBREAK, COLOR_TEXT_WHITE );
@@ -4185,7 +4174,7 @@ MapObject* FOMapper::ParseProto( hash pid, ushort hx, ushort hy, MapObject* owne
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
     if( !proto_item )
         return NULL;
-    if( owner && !Item::PropertyIsCanPickUp->GetValue< bool >( &proto_item->ItemProps ) )
+    if( owner && !Item::PropertyIsCanPickUp->GetValue< bool >( &proto_item->ItemPropsEntity ) )
         return NULL;
     if( hx >= HexMngr.GetMaxHexX() || hy >= HexMngr.GetMaxHexY() )
         return NULL;
@@ -4294,7 +4283,7 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
     SelectClear();
 
     CritterCl* cr = new CritterCl( ++AnyId );
-    cr->Props = *proto->Props;
+    cr->Props = proto->Props;
     cr->SetCrType( proto->GetCrType() );
     cr->HexX = hx;
     cr->HexY = hy;
@@ -4357,7 +4346,7 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
         mobj->RunTime.FromMap = CurProtoMap;
 
         CritterCl* cr = new CritterCl( ++AnyId );
-        cr->Props = *proto->Props;
+        cr->Props = proto->Props;
         cr->SetCrType( proto->GetCrType() );
         cr->HexX = mobj->MapX;
         cr->HexY = mobj->MapY;
@@ -4536,9 +4525,9 @@ void FOMapper::CurDraw()
             if( si )
             {
                 int x = HexMngr.GetField( hx, hy ).ScrX - ( si->Width / 2 ) + si->OffsX + HEX_OX + GameOpt.ScrOx;
-                x += proto_item->GetOffsetX() + proto_item->ItemProps.GetValueAsInt( Item::PropertyOffsetX->GetEnumValue() );
+                x += proto_item->GetOffsetX() + Properties::GetValueAsInt( &proto_item->ItemPropsEntity, Item::PropertyOffsetX->GetEnumValue() );
                 int y = HexMngr.GetField( hx, hy ).ScrY - si->Height + si->OffsY + HEX_OY + GameOpt.ScrOy;
-                y += proto_item->GetOffsetY() + proto_item->ItemProps.GetValueAsInt( Item::PropertyOffsetY->GetEnumValue() );
+                y += proto_item->GetOffsetY() + Properties::GetValueAsInt( &proto_item->ItemPropsEntity, Item::PropertyOffsetY->GetEnumValue() );
 
                 SprMngr.DrawSpriteSize( spr_id, (int) ( x / GameOpt.SpritesZoom ), (int) ( y / GameOpt.SpritesZoom ),
                                         (int) ( si->Width / GameOpt.SpritesZoom ), (int) ( si->Height / GameOpt.SpritesZoom ), true, false );
@@ -6987,7 +6976,7 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
         return;
 
     ProtoItem* proto_item = ItemMngr.GetProtoItem( proto_id );
-    bool       is_flat = ( proto_item ? Item::PropertyIsFlat->GetValue< bool >( &proto_item->ItemProps ) : false );
+    bool       is_flat = ( proto_item ? Item::PropertyIsFlat->GetValue< bool >( &proto_item->ItemPropsEntity ) : false );
     bool       is_item = ( proto_item ? proto_item->IsItem() : false );
     bool       no_light = ( is_flat && !is_item );
 
@@ -7024,14 +7013,14 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
             spr.SetEgg( egg_type );
         }
 
-        if( Item::PropertyIsColorize->GetValue< bool >( &proto_item->ItemProps ) )
+        if( Item::PropertyIsColorize->GetValue< bool >( &proto_item->ItemPropsEntity ) )
         {
             uint data_size;
             spr.SetAlpha( ProtoItem::PropertyLightColor->GetRawData( proto_item, data_size ) + 3 );
             spr.SetColor( proto_item->GetLightColor() & 0xFFFFFF );
         }
 
-        if( Item::PropertyIsBadItem->GetValue< bool >( &proto_item->ItemProps ) )
+        if( Item::PropertyIsBadItem->GetValue< bool >( &proto_item->ItemPropsEntity ) )
             spr.SetContour( CONTOUR_RED );
     }
 }

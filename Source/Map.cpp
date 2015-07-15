@@ -729,11 +729,11 @@ void Map::EraseItem( uint item_id )
     item->ViewPlaceOnMap = false;
 }
 
-void Map::SendProperty( NetProperty::Type type, Property* prop, void* prop_obj )
+void Map::SendProperty( NetProperty::Type type, Property* prop, Entity* entity )
 {
     if( type == NetProperty::MapItem )
     {
-        Item* item = (Item*) prop_obj;
+        Item* item = (Item*) entity;
         CrVec critters;
         GetCritters( critters, true );
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
@@ -741,7 +741,7 @@ void Map::SendProperty( NetProperty::Type type, Property* prop, void* prop_obj )
             Critter* cr = *it;
             if( cr->CountIdVisItem( item->GetId() ) )
             {
-                cr->Send_Property( type, prop, prop_obj );
+                cr->Send_Property( type, prop, entity );
                 cr->EventChangeItemOnMap( item );
             }
         }
@@ -753,7 +753,7 @@ void Map::SendProperty( NetProperty::Type type, Property* prop, void* prop_obj )
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
-            cr->Send_Property( type, prop, prop_obj );
+            cr->Send_Property( type, prop, entity );
         }
     }
     else
@@ -1617,7 +1617,7 @@ bool Map::IsPlaceForItem( ushort hx, ushort hy, ProtoItem* proto_item )
 
 void Map::PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
 {
-    bool raked = Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemProps );
+    bool raked = Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemPropsEntity );
     FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
                                    SetHexFlag( hx, hy, FH_BLOCK_ITEM );
                                    if( !raked )
@@ -1627,7 +1627,7 @@ void Map::PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
 
 void Map::ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
 {
-    bool raked = Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemProps );
+    bool raked = Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemPropsEntity );
     FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
                                    UnsetHexFlag( hx, hy, FH_BLOCK_ITEM );
                                    if( !raked )

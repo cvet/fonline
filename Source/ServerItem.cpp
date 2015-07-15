@@ -153,9 +153,9 @@ bool FOServer::TransferAllItems()
     return true;
 }
 
-void FOServer::OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSendItemValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Item* item = (Item*) obj;
+    Item* item = (Item*) entity;
     #pragma MESSAGE( "Clean up server 0 and -1 item ids" )
     if( item->Id && item->Id != uint( -1 ) )
     {
@@ -192,9 +192,9 @@ void FOServer::OnSendItemValue( void* obj, Property* prop, void* cur_value, void
     }
 }
 
-void FOServer::OnSetItemCount( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSetItemCount( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Item* item = (Item*) obj;
+    Item* item = (Item*) entity;
     uint  cur = *(uint*) cur_value;
     uint  old = *(uint*) old_value;
     if( (int) cur > 0 && ( item->IsStackable() || cur == 1 ) )
@@ -212,10 +212,10 @@ void FOServer::OnSetItemCount( void* obj, Property* prop, void* cur_value, void*
     }
 }
 
-void FOServer::OnSetItemChangeView( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSetItemChangeView( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     // IsHidden, IsAlwaysView, IsTrap, TrapValue
-    Item* item = (Item*) obj;
+    Item* item = (Item*) entity;
 
     if( item->Accessory == ITEM_ACCESSORY_HEX )
     {
@@ -238,10 +238,10 @@ void FOServer::OnSetItemChangeView( void* obj, Property* prop, void* cur_value, 
     }
 }
 
-void FOServer::OnSetItemRecacheHex( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     // IsNoBlock, IsShootThru, IsGag
-    Item* item = (Item*) obj;
+    Item* item = (Item*) entity;
     bool  value = *(bool*) cur_value;
 
     if( item->Accessory == ITEM_ACCESSORY_HEX )
@@ -285,9 +285,9 @@ void FOServer::OnSetItemRecacheHex( void* obj, Property* prop, void* cur_value, 
     }
 }
 
-void FOServer::OnSetItemIsGeck( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSetItemIsGeck( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Item* item = (Item*) obj;
+    Item* item = (Item*) entity;
     bool  value = *(bool*) cur_value;
 
     if( item->Accessory == ITEM_ACCESSORY_HEX )
@@ -298,9 +298,9 @@ void FOServer::OnSetItemIsGeck( void* obj, Property* prop, void* cur_value, void
     }
 }
 
-void FOServer::OnSetItemIsRadio( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSetItemIsRadio( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Item* item = (Item*) obj;
+    Item* item = (Item*) entity;
     bool  value = *(bool*) cur_value;
 
     ItemMngr.RadioRegister( item, value );

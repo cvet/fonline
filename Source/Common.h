@@ -94,8 +94,6 @@ const char* GetLastSocketError();
 #include "AngelScript/scriptstring.h"
 #include "AngelScript/scriptarray.h"
 #include "AngelScript/scriptdict.h"
-#include "Properties.h"
-#include "Methods.h"
 
 #define ___MSG1( x )                      # x
 #define ___MSG0( x )                      ___MSG1( x )
@@ -719,7 +717,8 @@ struct GameOptions
 
     int           ( * Random )( int, int );
     uint          ( * GetTick )();
-    void          ( * SetLogCallback )( void ( * )( const char* str ), bool );
+    void          ( * SetLogCallback )( void ( * )( const char* ), bool );
+    void          ( * AddPropertyCallback )( void ( * )( void*, void*, void*, void* ) );
 
     GameOptions();
 } extern GameOpt;
@@ -970,38 +969,6 @@ T* ReadDataArr( UCharVec& vec, uint size, uint& pos )
     pos += size;
     return size ? &vec[ pos - size ] : NULL;
 }
-
-/************************************************************************/
-/* Properties                                                           */
-/************************************************************************/
-
-class GlobalVars
-{
-public:
-    Properties Props;
-    PROPERTIES_HEADER();
-    CLASS_PROPERTY( ScriptArray *, BestScores );
-    GlobalVars();
-};
-extern GlobalVars* Globals;
-
-class ClientMap
-{
-public:
-    Properties Props;
-    PROPERTIES_HEADER();
-    ClientMap();
-};
-extern ClientMap* ClientCurMap;
-
-class ClientLocation
-{
-public:
-    Properties Props;
-    PROPERTIES_HEADER();
-    ClientLocation();
-};
-extern ClientLocation* ClientCurLocation;
 
 /************************************************************************/
 /*                                                                      */

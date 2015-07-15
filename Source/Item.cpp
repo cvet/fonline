@@ -129,10 +129,15 @@ CLASS_PROPERTY_IMPL( ProtoItem, Car_FuelConsumption );
 CLASS_PROPERTY_IMPL( ProtoItem, Car_Entrance );
 CLASS_PROPERTY_IMPL( ProtoItem, Car_MovementType );
 
-ProtoItem::ProtoItem( hash pid ): Props( PropertiesRegistrator, NULL ), ItemProps( Item::PropertiesRegistrator, NULL )
+ProtoItem::ProtoItem( hash pid ): Entity( 0, EntityType::ProtoItem, PropertiesRegistrator ) // , ItemPropsEntity( Item::PropertiesRegistrator )
 {
     ProtoId = pid;
     InstanceCount = 0;
+}
+
+ProtoItem::ProtoItemExt::ProtoItemExt(): Entity( 0, EntityType::ProtoItemExt, Item::PropertiesRegistrator )
+{
+    //
 }
 
 hash ProtoItem::GetChildPid( uint index )
@@ -271,7 +276,7 @@ void Item::SetProto( ProtoItem* proto )
         return;
 
     Proto = proto;
-    Props = Proto->ItemProps;
+    Props = Proto->ItemPropsEntity.Props;
 
     switch( GetType() )
     {
@@ -802,12 +807,12 @@ uint ProtoItem::GetCurSprId()
         return 0;
 
     uint beg = 0, end = 0;
-    if( Item::PropertyIsShowAnim->GetValue< bool >( &ItemProps ) )
+    if( Item::PropertyIsShowAnim->GetValue< bool >( &ItemPropsEntity ) )
     {
         beg = 0;
         end = anim->CntFrm - 1;
     }
-    if( Item::PropertyIsShowAnimExt->GetValue< bool >( &ItemProps ) )
+    if( Item::PropertyIsShowAnimExt->GetValue< bool >( &ItemPropsEntity ) )
     {
         beg = GetAnimStay_0();
         end = GetAnimStay_1();

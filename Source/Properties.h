@@ -35,8 +35,10 @@
         }                                                                                          \
     } _ ## class_name ## Property ## prop ## Initializer
 
+class Entity;
 class Property;
-typedef void ( *NativeCallback )( void* obj, Property* prop, void* cur_value, void* old_value );
+typedef void ( *NativeCallback )( Entity* entity, Property* prop, void* cur_value, void* old_value );
+typedef vector< NativeCallback > NativeCallbackVec;
 
 struct UnresolvedProperty
 {
@@ -88,29 +90,28 @@ public:
     bool           IsDict();
     bool           IsReadable();
     bool           IsWritable();
-    void           SetSendIgnore( void* obj );
+    void           SetSendIgnore( Entity* entity );
 
     template< typename T >
-    T GetValue( void* obj )
+    T GetValue( Entity* entity )
     {
         RUNTIME_ASSERT( sizeof( T ) == baseSize );
         T ret_value = 0;
-        GenericGet( obj, &ret_value );
+        GenericGet( entity, &ret_value );
         return ret_value;
     }
 
     template< typename T >
-    void SetValue( void* obj, T new_value )
+    void SetValue( Entity* entity, T new_value )
     {
         RUNTIME_ASSERT( sizeof( T ) == baseSize );
-        GenericSet( obj, &new_value );
+        GenericSet( entity, &new_value );
     }
 
-    uchar* GetRawData( void* obj, uint& data_size );
-    void   SetRawData( void* obj, uchar* data, uint data_size );
-    void   SetData( void* obj, uchar* data, uint data_size );
-    int    GetPODValueAsInt( void* obj );
-    void   SetPODValueAsInt( void* obj, int value );
+    uchar* GetRawData( Entity* entity, uint& data_size );
+    void   SetData( Entity* entity, uchar* data, uint data_size );
+    int    GetPODValueAsInt( Entity* entity );
+    void   SetPODValueAsInt( Entity* entity, int value );
     string SetGetCallback( const char* script_func );
     string AddSetCallback( const char* script_func );
 
@@ -128,8 +129,10 @@ private:
     uchar* ExpandComplexValueData( void* base_ptr, uint& data_size, bool& need_delete );
     void   AddRefComplexValue( void* value );
     void   ReleaseComplexValue( void* value );
-    void   GenericGet( void* obj, void* ret_value );
-    void   GenericSet( void* obj, void* new_value );
+    void   GenericGet( Entity* entity, void* ret_value );
+    void   GenericSet( Entity* entity, void* new_value );
+    uchar* GetRawData( Properties* properties, uint& data_size );
+    void   SetRawData( Properties* properties, uchar* data, uint data_size );
 
     // Static data
     string         propName;
@@ -172,7 +175,7 @@ private:
     NativeCallback       nativeSendCallback;
     bool                 getCallbackLocked;
     bool                 setCallbackLocked;
-    void*                sendIgnoreObj;
+    Entity*              sendIgnoreEntity;
 };
 typedef vector< Property* > PropertyVec;
 
@@ -182,7 +185,7 @@ class Properties
     friend class Property;
 
 public:
-    Properties( PropertyRegistrator* reg, bool* obj_is_destroyed );
+    Properties( PropertyRegistrator* reg );
     ~Properties();
     Properties& operator=( const Properties& other );
     void*       FindData( const char* property_name );
@@ -192,9 +195,9 @@ public:
     void        Save( void ( * save_func )( void*, size_t ) );
     bool        Load( void* file, uint version );
     bool        LoadFromText( const char* text, hash* pid = NULL );
-    int         GetValueAsInt( int enum_value );
-    void        SetValueAsInt( int enum_value, int value );
-    bool        SetValueAsIntByName( const char* enum_name, int value );
+    static int  GetValueAsInt( Entity* entity, int enum_value );
+    static void SetValueAsInt( Entity* entity, int enum_value, int value );
+    static bool SetValueAsIntByName( Entity* entity, const char* enum_name, int value );
     string      GetClassName();
 
 private:
@@ -206,7 +209,6 @@ private:
     UIntVec               storeDataSizes;
     UShortVec             storeDataComplexIndicies;
     UnresolvedPropertyVec unresolvedProperties;
-    bool*                 objIsDestroyed;
 };
 
 class PropertyRegistrator
@@ -229,6 +231,8 @@ public:
     void      SetNativeSendCallback( NativeCallback callback );
     uint      GetWholeDataSize();
     string    GetClassName();
+
+    static NativeCallbackVec GlobalSetCallbacks;
 
 private:
     bool                        registrationFinished;

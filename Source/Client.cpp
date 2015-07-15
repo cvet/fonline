@@ -229,17 +229,6 @@ bool FOClient::Init()
     };
     GameOpt.IsSpriteHit = &IsSpriteHit_::IsSpriteHit;
 
-    struct GetNameByHash_
-    {
-        static const char* GetNameByHash( hash h ) { return Str::GetName( h ); }
-    };
-    GameOpt.GetNameByHash = &GetNameByHash_::GetNameByHash;
-    struct GetHashByName_
-    {
-        static hash GetHashByName( const char* name ) { return Str::GetHash( name ); }
-    };
-    GameOpt.GetHashByName = &GetHashByName_::GetHashByName;
-
     // Input
     Keyb::Init();
     GET_UID2( UID2 );
@@ -2793,9 +2782,9 @@ void FOClient::Net_SendPickCritter( uint crid, uchar pick_type )
     Bout << pick_type;
 }
 
-void FOClient::Net_SendProperty( NetProperty::Type type, Property* prop, void* prop_obj )
+void FOClient::Net_SendProperty( NetProperty::Type type, Property* prop, Entity* entity )
 {
-    RUNTIME_ASSERT( prop_obj );
+    RUNTIME_ASSERT( entity );
 
     uint additional_args = 0;
     switch( type )
@@ -2817,7 +2806,7 @@ void FOClient::Net_SendProperty( NetProperty::Type type, Property* prop, void* p
     }
 
     uint  data_size;
-    void* data = prop->GetRawData( prop_obj, data_size );
+    void* data = prop->GetRawData( entity, data_size );
 
     bool  is_pod = prop->IsPOD();
     if( is_pod )
@@ -2836,17 +2825,17 @@ void FOClient::Net_SendProperty( NetProperty::Type type, Property* prop, void* p
     switch( type )
     {
     case NetProperty::CritterItem:
-        Bout << ( (Item*) prop_obj )->AccCritter.Id;
-        Bout << ( (Item*) prop_obj )->Id;
+        Bout << ( (Item*) entity )->AccCritter.Id;
+        Bout << entity->Id;
         break;
     case NetProperty::Critter:
-        Bout << ( (CritterCl*) prop_obj )->Id;
+        Bout << entity->Id;
         break;
     case NetProperty::MapItem:
-        Bout << ( (Item*) prop_obj )->Id;
+        Bout << entity->Id;
         break;
     case NetProperty::ChosenItem:
-        Bout << ( (Item*) prop_obj )->Id;
+        Bout << entity->Id;
         break;
     default:
         break;
@@ -4774,7 +4763,7 @@ void FOClient::Net_OnProperty( uint data_size )
     CHECK_IN_BUFF_ERROR;
 
     Property* prop = NULL;
-    void*     prop_obj = NULL;
+    Entity*   entity = NULL;
     switch( type )
     {
     case NetProperty::Global:
@@ -4782,17 +4771,17 @@ void FOClient::Net_OnProperty( uint data_size )
     case NetProperty::Critter:
         prop = CritterCl::PropertiesRegistrator->Get( property_index );
         if( prop )
-            prop_obj = GetCritter( cr_id );
+            entity = GetCritter( cr_id );
         break;
     case NetProperty::Chosen:
         prop = CritterCl::PropertiesRegistrator->Get( property_index );
         if( prop )
-            prop_obj = Chosen;
+            entity = Chosen;
         break;
     case NetProperty::MapItem:
         prop = Item::PropertiesRegistrator->Get( property_index );
         if( prop )
-            prop_obj = HexMngr.GetItemById( item_id );
+            entity = HexMngr.GetItemById( item_id );
         break;
     case NetProperty::CritterItem:
         prop = Item::PropertiesRegistrator->Get( property_index );
@@ -4800,13 +4789,13 @@ void FOClient::Net_OnProperty( uint data_size )
         {
             CritterCl* cr = GetCritter( cr_id );
             if( cr )
-                prop_obj = cr->GetItem( item_id );
+                entity = cr->GetItem( item_id );
         }
         break;
     case NetProperty::ChosenItem:
         prop = Item::PropertiesRegistrator->Get( property_index );
         if( prop )
-            prop_obj = ( Chosen ? Chosen->GetItem( item_id ) : NULL );
+            entity = ( Chosen ? Chosen->GetItem( item_id ) : NULL );
         break;
     case NetProperty::Map:
         break;
@@ -4816,17 +4805,17 @@ void FOClient::Net_OnProperty( uint data_size )
         RUNTIME_ASSERT( false );
         break;
     }
-    if( !prop || !prop_obj )
+    if( !prop || !entity )
         return;
 
-    prop->SetSendIgnore( prop_obj );
-    prop->SetData( prop_obj, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : NULL, (uint) TempPropertyData.size() );
+    prop->SetSendIgnore( entity );
+    prop->SetData( entity, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : NULL, (uint) TempPropertyData.size() );
     prop->SetSendIgnore( NULL );
 
     if( type == NetProperty::MapItem && Script::PrepareContext( ClientFunctions.ItemMapChanged, _FUNC_, "Game" ) )
     {
-        Script::SetArgObject( prop_obj );
-        Script::SetArgObject( prop_obj );
+        Script::SetArgObject( entity );
+        Script::SetArgObject( entity );
         Script::RunPrepared();
     }
 }
@@ -8759,7 +8748,7 @@ void FOClient::AnimProcess()
     }
 }
 
-void FOClient::OnSendGlobalValue( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSendGlobalValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
         Self->Net_SendProperty( NetProperty::Global, prop, Globals );
@@ -8767,9 +8756,9 @@ void FOClient::OnSendGlobalValue( void* obj, Property* prop, void* cur_value, vo
         SCRIPT_ERROR_R( "Unable to send global modifiable property '%s'", prop->GetName() );
 }
 
-void FOClient::OnSendCritterValue( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSendCritterValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    CritterCl* cr = (CritterCl*) obj;
+    CritterCl* cr = (CritterCl*) entity;
     if( cr->IsChosen() )
         Self->Net_SendProperty( NetProperty::Chosen, prop, cr );
     else if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
@@ -8778,9 +8767,9 @@ void FOClient::OnSendCritterValue( void* obj, Property* prop, void* cur_value, v
         SCRIPT_ERROR_R( "Unable to send critter modifiable property '%s'", prop->GetName() );
 }
 
-void FOClient::OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSendItemValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Item* item = (Item*) obj;
+    Item* item = (Item*) entity;
     #pragma MESSAGE( "Clean up client 0 and -1 item ids" )
     if( item->Id && item->Id != uint( -1 ) )
     {
@@ -8808,9 +8797,9 @@ void FOClient::OnSendItemValue( void* obj, Property* prop, void* cur_value, void
     }
 }
 
-void FOClient::OnSetCritterHandsItemProtoId( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSetCritterHandsItemProtoId( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    CritterCl* cr = (CritterCl*) obj;
+    CritterCl* cr = (CritterCl*) entity;
     hash       value = *(hash*) cur_value;
 
     ProtoItem* unarmed = ItemMngr.GetProtoItem( value ? value : ITEM_DEF_SLOT );
@@ -8821,19 +8810,19 @@ void FOClient::OnSetCritterHandsItemProtoId( void* obj, Property* prop, void* cu
     cr->DefItemSlotHand->SetMode( 0 );
 }
 
-void FOClient::OnSetCritterHandsItemMode( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSetCritterHandsItemMode( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    CritterCl* cr = (CritterCl*) obj;
+    CritterCl* cr = (CritterCl*) entity;
     uchar      value = *(uchar*) cur_value;
 
     cr->DefItemSlotHand->SetMode( value );
 }
 
-void FOClient::OnSetItemFlags( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
-    Item* item = (Item*) obj;
+    Item* item = (Item*) entity;
     if( item->Accessory == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
     {
         ItemHex* hex_item = (ItemHex*) item;
@@ -8853,7 +8842,7 @@ void FOClient::OnSetItemFlags( void* obj, Property* prop, void* cur_value, void*
     }
 }
 
-void FOClient::OnSetItemSomeLight( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSetItemSomeLight( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
@@ -8861,9 +8850,9 @@ void FOClient::OnSetItemSomeLight( void* obj, Property* prop, void* cur_value, v
         Self->HexMngr.RebuildLight();
 }
 
-void FOClient::OnSetItemPicMap( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSetItemPicMap( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Item* item = (Item*) obj;
+    Item* item = (Item*) entity;
 
     if( item->Accessory == ITEM_ACCESSORY_HEX )
     {
@@ -8872,11 +8861,11 @@ void FOClient::OnSetItemPicMap( void* obj, Property* prop, void* cur_value, void
     }
 }
 
-void FOClient::OnSetItemOffsetXY( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     // OffsetX, OffsetY
 
-    Item* item = (Item*) obj;
+    Item* item = (Item*) entity;
 
     if( item->Accessory == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
     {
@@ -8886,9 +8875,9 @@ void FOClient::OnSetItemOffsetXY( void* obj, Property* prop, void* cur_value, vo
     }
 }
 
-void FOClient::OnSetItemLockerCondition( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSetItemLockerCondition( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Item* item = (Item*) obj;
+    Item* item = (Item*) entity;
     uint  cur = *(uint*) cur_value;
     uint  old = *(uint*) old_value;
 
@@ -8902,7 +8891,7 @@ void FOClient::OnSetItemLockerCondition( void* obj, Property* prop, void* cur_va
     }
 }
 
-void FOClient::OnSendMapValue( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSendMapValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
         Self->Net_SendProperty( NetProperty::Map, prop, Globals );
@@ -8910,7 +8899,7 @@ void FOClient::OnSendMapValue( void* obj, Property* prop, void* cur_value, void*
         SCRIPT_ERROR_R( "Unable to send map modifiable property '%s'", prop->GetName() );
 }
 
-void FOClient::OnSendLocationValue( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSendLocationValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
         Self->Net_SendProperty( NetProperty::Location, prop, Globals );
@@ -11168,7 +11157,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
         return;
 
     ProtoItem* proto_item = ItemMngr.GetProtoItem( proto_id );
-    bool       is_flat = ( proto_item ? Item::PropertyIsFlat->GetValue< bool >( &proto_item->ItemProps ) : false );
+    bool       is_flat = ( proto_item ? Item::PropertyIsFlat->GetValue< bool >( &proto_item->ItemPropsEntity ) : false );
     bool       is_item = ( proto_item ? proto_item->IsItem() : false );
     bool       no_light = ( is_flat && !is_item );
 
@@ -11204,14 +11193,14 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
             spr.SetEgg( egg_type );
         }
 
-        if( Item::PropertyIsColorize->GetValue< bool >( &proto_item->ItemProps ) )
+        if( Item::PropertyIsColorize->GetValue< bool >( &proto_item->ItemPropsEntity ) )
         {
             uint data_size;
             spr.SetAlpha( ProtoItem::PropertyLightColor->GetRawData( proto_item, data_size ) + 3 );
             spr.SetColor( proto_item->GetLightColor() & 0xFFFFFF );
         }
 
-        if( Item::PropertyIsBadItem->GetValue< bool >( &proto_item->ItemProps ) )
+        if( Item::PropertyIsBadItem->GetValue< bool >( &proto_item->ItemPropsEntity ) )
             spr.SetContour( CONTOUR_RED );
     }
 }

@@ -868,17 +868,17 @@ bool CraftManager::IsTrueParams( Critter* cr, UIntVec& num_vec, IntVec& val_vec,
         int   prop_value = val_vec[ i ];
         uchar prop_or = or_vec[ i ];
 
-        if( cr->Props.GetValueAsInt( prop_enum ) < prop_value ) // Fail
+        if( Properties::GetValueAsInt( cr, prop_enum ) < prop_value ) // Fail
         {
             if( i == j - 1 )
-                return false;                                   // Is last element
+                return false;                                         // Is last element
             if( !prop_or )
-                return false;                                   // AND
+                return false;                                         // AND
         }
-        else                                                    // True
+        else                                                          // True
         {
             if( i == j - 1 )
-                return true;                                    // Is last element
+                return true;                                          // Is last element
             // OR, skip elements
             if( prop_or )
                 for( i++; i < j - 1 && or_vec[ i ]; i++ )
@@ -898,17 +898,17 @@ bool CraftManager::IsTrueParams( CritterCl* cr, UIntVec& num_vec, IntVec& val_ve
         int   prop_value = val_vec[ i ];
         uchar prop_or = or_vec[ i ];
 
-        if( cr->Props.GetValueAsInt( prop_enum ) < prop_value ) // Fail
+        if( Properties::GetValueAsInt( cr, prop_enum ) < prop_value ) // Fail
         {
             if( i == j - 1 )
-                return false;                                   // Is last element
+                return false;                                         // Is last element
             if( !prop_or )
-                return false;                                   // AND
+                return false;                                         // AND
         }
-        else                                                    // True
+        else                                                          // True
         {
             if( i == j - 1 )
-                return true;                                    // Is last element
+                return true;                                          // Is last element
             // OR, skip elements
             if( prop_or )
                 for( i++; i < j - 1 && or_vec[ i ]; i++ )

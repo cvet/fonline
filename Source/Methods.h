@@ -53,7 +53,6 @@ public:
 private:
     MethodRegistrator* registrator;
     UIntVec            watcherBindIds;
-    bool*              objIsDestroyed;
 };
 
 class MethodRegistrator

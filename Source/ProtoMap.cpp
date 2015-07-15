@@ -1286,9 +1286,9 @@ bool ProtoMap::Refresh()
         {
         case ITEM_TYPE_WALL:
         {
-            if( !Item::PropertyIsNoBlock->GetValue< bool >( &proto_item->ItemProps ) )
+            if( !Item::PropertyIsNoBlock->GetValue< bool >( &proto_item->ItemPropsEntity ) )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-            if( !Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemProps ) )
+            if( !Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemPropsEntity ) )
             {
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );
@@ -1325,9 +1325,9 @@ bool ProtoMap::Refresh()
 
             if( type == ITEM_TYPE_GRID )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_SCEN_GRID );
-            if( !Item::PropertyIsNoBlock->GetValue< bool >( &proto_item->ItemProps ) )
+            if( !Item::PropertyIsNoBlock->GetValue< bool >( &proto_item->ItemPropsEntity ) )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-            if( !Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemProps ) )
+            if( !Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemPropsEntity ) )
             {
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );

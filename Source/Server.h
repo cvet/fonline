@@ -173,25 +173,25 @@ public:
 //	void GlobalEventCritterIdle(Critter* cr);
 //	void GlobalEventCritterDead(Critter* cr);
 
-    static void OnSendGlobalValue( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSendCritterValue( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSendMapValue( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSendLocationValue( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSendGlobalValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSendCritterValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSendMapValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSendLocationValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
 
     // Critters
-    static void OnSetCritterHandsItemProtoId( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void OnSetCritterHandsItemMode( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void OnSetCritterHandsItemProtoId( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetCritterHandsItemMode( Entity* entity, Property* prop, void* cur_value, void* old_value );
 
     // Items
     static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, bool check_blocks = true );
     static bool  TransferAllItems();
-    static void  OnSendItemValue( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemCount( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemChangeView( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemRecacheHex( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemIsGeck( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemIsRadio( void* obj, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemTrapValue( void* obj, Property* prop, void* cur_value, void* old_value );
+    static void  OnSendItemValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemCount( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemChangeView( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemIsGeck( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemIsRadio( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemTrapValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
 
     // Npc
     static void ProcessAI( Npc* npc );

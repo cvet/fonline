@@ -68,17 +68,12 @@ bool CritterManager::LoadProtos()
 
         ProtoCritter* proto = new ProtoCritter();
         proto->ProtoId = pid;
-        #ifdef FONLINE_SERVER
-        proto->Props = new Properties( Critter::PropertiesRegistrator, NULL );
-        #else
-        proto->Props = new Properties( CritterCl::PropertiesRegistrator, NULL );
-        #endif
 
         IniParser focr;
         focr.LoadFilePtr( (char*) file.GetBuf(), file.GetFsize() );
         if( focr.GotoNextApp( "Critter" ) )
         {
-            if( !proto->Props->LoadFromText( focr.GetApp( "Critter" ) ) )
+            if( !proto->Props.LoadFromText( focr.GetApp( "Critter" ) ) )
                 errors++;
         }
 
@@ -278,7 +273,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     EntityMngr.RegisterEntity( npc );
     Job::PushBack( JOB_CRITTER, npc );
 
-    npc->Props = *proto->Props;
+    npc->Props = proto->Props;
     npc->Data.ProtoId = proto_id;
     npc->Data.Cond = COND_LIFE;
     npc->Data.Multihex = -1;
@@ -300,7 +295,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     if( props_data )
     {
         for( size_t i = 0, j = props_data->size() / 2; i < j; i++ )
-            npc->Props.SetValueAsInt( props_data->at( i * 2 ), props_data->at( i * 2 + 1 ) );
+            Properties::SetValueAsInt( npc, props_data->at( i * 2 ), props_data->at( i * 2 + 1 ) );
     }
 
     map->AddCritter( npc );

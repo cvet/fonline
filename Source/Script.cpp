@@ -395,11 +395,33 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     Str::Replacement( dll_path, '/', '.' );
     #endif
 
-    // Insert base path
+    // Server path fixes
+    #ifdef FONLINE_SERVER
     Str::Insert( dll_path, FileManager::GetReadPath( "", ScriptsPath ) );
+    #endif
+
+    // Set current directory to DLL
+    char new_path[ MAX_FOPATH ];
+    FileManager::ExtractPath( dll_path, new_path );
+    ResolvePath( new_path );
+    char cur_path[ MAX_FOPATH ];
+    #ifdef FO_WINDOWS
+    GetCurrentDirectory( MAX_FOPATH, cur_path );
+    SetCurrentDirectory( new_path );
+    #else
+    getcwd( cur_path, MAX_FOPATH );
+    chdir( new_path );
+    #endif
+    char file_name[ MAX_FOPATH ];
+    FileManager::ExtractFileName( dll_path, file_name );
 
     // Load dynamic library
-    void* dll = DLL_Load( dll_path );
+    void* dll = DLL_Load( file_name );
+    #ifdef FO_WINDOWS
+    SetCurrentDirectory( cur_path );
+    #else
+    chdir( cur_path );
+    #endif
     if( !dll )
         return NULL;
 
@@ -423,6 +445,9 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
         *ptr = (size_t) Engine;
 
     // Register functions
+    ptr = DLL_GetAddress( dll, "RaiseAssert" );
+    if( ptr )
+        *ptr = (size_t) &RaiseAssert;
     ptr = DLL_GetAddress( dll, "Log" );
     if( ptr )
         *ptr = (size_t) &WriteLog;

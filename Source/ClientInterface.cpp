@@ -6019,7 +6019,7 @@ void FOClient::FixGenerate( int fix_mode )
                 // You have
                 str += " (";
                 str += MsgGame->GetStr( STR_FIX_YOUHAVE );
-                str += Str::ItoA( Chosen->Props.GetValueAsInt( craft->NeedPNum[ i ] ) );
+                str += Str::ItoA( Properties::GetValueAsInt( Chosen, craft->NeedPNum[ i ] ) );
                 str += ")";
 
                 // And, or

@@ -7,6 +7,8 @@
 #include "Access.h"
 #include "CritterManager.h"
 
+ProtoCritter::ProtoCritter(): Entity( 0, EntityType::ProtoCritter, Critter::PropertiesRegistrator ) {}
+
 const char* CritterEventFuncName[ CRITTER_EVENT_MAX ] =
 {
     "void %s(Critter&)",                                                          // CRITTER_EVENT_IDLE
@@ -2573,10 +2575,10 @@ void Critter::EventSmthTurnBasedProcess( Critter* from_cr, Map* map, bool begin_
     }
 }
 
-void Critter::Send_Property( NetProperty::Type type, Property* prop, void* prop_obj )
+void Critter::Send_Property( NetProperty::Type type, Property* prop, Entity* entity )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_Property( type, prop, prop_obj );
+        ( (Client*) this )->Send_Property( type, prop, entity );
 }
 void Critter::Send_Move( Critter* from_cr, uint move_params )
 {
@@ -2779,7 +2781,7 @@ void Critter::Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar
         ( (Client*) this )->Send_PlaySoundType( crid_synchronize, sound_type, sound_type_ext, sound_id, sound_id_ext );
 }
 
-void Critter::SendA_Property( NetProperty::Type type, Property* prop, void* prop_obj )
+void Critter::SendA_Property( NetProperty::Type type, Property* prop, Entity* entity )
 {
     if( VisCr.empty() )
         return;
@@ -2788,7 +2790,7 @@ void Critter::SendA_Property( NetProperty::Type type, Property* prop, void* prop
     {
         Critter* cr = *it;
         if( cr->IsPlayer() )
-            cr->Send_Property( type, prop, prop_obj );
+            cr->Send_Property( type, prop, entity );
     }
 }
 
@@ -3862,9 +3864,9 @@ void Client::Send_LoadMap( Map* map )
     GameState = STATE_TRANSFERRING;
 }
 
-void Client::Send_Property( NetProperty::Type type, Property* prop, void* prop_obj )
+void Client::Send_Property( NetProperty::Type type, Property* prop, Entity* entity )
 {
-    RUNTIME_ASSERT( prop_obj );
+    RUNTIME_ASSERT( entity );
 
     if( IsSendDisabled() || IsOffline() )
         return;
@@ -3889,7 +3891,7 @@ void Client::Send_Property( NetProperty::Type type, Property* prop, void* prop_o
     }
 
     uint  data_size;
-    void* data = prop->GetRawData( prop_obj, data_size );
+    void* data = prop->GetRawData( entity, data_size );
 
     bool  is_pod = prop->IsPOD();
     if( is_pod )
@@ -3910,17 +3912,17 @@ void Client::Send_Property( NetProperty::Type type, Property* prop, void* prop_o
     switch( type )
     {
     case NetProperty::CritterItem:
-        Bout << ( (Item*) prop_obj )->AccCritter.Id;
-        Bout << ( (Item*) prop_obj )->Id;
+        Bout << ( (Item*) entity )->AccCritter.Id;
+        Bout << entity->Id;
         break;
     case NetProperty::Critter:
-        Bout << ( (Critter*) prop_obj )->Id;
+        Bout << entity->Id;
         break;
     case NetProperty::MapItem:
-        Bout << ( (Item*) prop_obj )->Id;
+        Bout << entity->Id;
         break;
     case NetProperty::ChosenItem:
-        Bout << ( (Item*) prop_obj )->Id;
+        Bout << entity->Id;
         break;
     default:
         break;

@@ -275,7 +275,7 @@ bool EntityManager::LoadEntities( void* file, uint version )
 
         if( type == EntityType::Item )
         {
-            Properties props( Item::PropertiesRegistrator, NULL );
+            Properties props( Item::PropertiesRegistrator );
             if( !props.Load( file, version ) )
                 return false;
 
@@ -294,7 +294,7 @@ bool EntityManager::LoadEntities( void* file, uint version )
         }
         else if( type == EntityType::Npc )
         {
-            Properties props( Critter::PropertiesRegistrator, NULL );
+            Properties props( Critter::PropertiesRegistrator );
             if( !props.Load( file, version ) )
                 return false;
 
@@ -317,7 +317,7 @@ bool EntityManager::LoadEntities( void* file, uint version )
         }
         else if( type == EntityType::Location )
         {
-            Properties loc_props( Location::PropertiesRegistrator, NULL );
+            Properties loc_props( Location::PropertiesRegistrator );
             if( !loc_props.Load( file, version ) )
                 return false;
             Location::LocData data;
@@ -336,7 +336,7 @@ bool EntityManager::LoadEntities( void* file, uint version )
                     return false;
                 if( !FileRead( file, &map_datas[ j ], sizeof( map_datas[ j ] ) ) )
                     return false;
-                map_props[ j ] = new Properties( Map::PropertiesRegistrator, NULL );
+                map_props[ j ] = new Properties( Map::PropertiesRegistrator );
                 if( !map_props[ j ]->Load( file, version ) )
                     return false;
             }
@@ -357,7 +357,7 @@ bool EntityManager::LoadEntities( void* file, uint version )
             PropertyRegistrator* registrator = Script::FindEntityRegistrator( class_name );
             if( registrator )
             {
-                Properties props( registrator, NULL );
+                Properties props( registrator );
                 if( !props.Load( file, version ) )
                     return false;
 
@@ -365,7 +365,7 @@ bool EntityManager::LoadEntities( void* file, uint version )
             }
             else
             {
-                Properties props( &dummy_registrator, NULL );
+                Properties props( &dummy_registrator );
                 if( !props.Load( file, version ) )
                     return false;
 

@@ -1066,40 +1066,40 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
         case DR_PROP_LOCATION:
         case DR_PROP_MAP:
         {
-            void*                prop_obj = NULL;
+            Entity*              entity = NULL;
             PropertyRegistrator* prop_registrator = NULL;
             if( demand.Type == DR_PROP_GLOBAL )
             {
-                prop_obj = master;
+                entity = master;
                 prop_registrator = GlobalVars::PropertiesRegistrator;
             }
             else if( demand.Type == DR_PROP_CRITTER )
             {
-                prop_obj = master;
+                entity = master;
                 prop_registrator = Critter::PropertiesRegistrator;
             }
             else if( demand.Type == DR_PROP_CRITTER_DICT )
             {
-                prop_obj = master;
+                entity = master;
                 prop_registrator = Critter::PropertiesRegistrator;
             }
             else if( demand.Type == DR_PROP_ITEM )
             {
-                prop_obj = master->ItemSlotMain;
+                entity = master->ItemSlotMain;
                 prop_registrator = Item::PropertiesRegistrator;
             }
             else if( demand.Type == DR_PROP_LOCATION )
             {
                 Map* map = MapMngr.GetMap( master->GetMapId(), false );
-                prop_obj = ( map ? map->GetLocation( false ) : NULL );
+                entity = ( map ? map->GetLocation( false ) : NULL );
                 prop_registrator = Location::PropertiesRegistrator;
             }
             else if( demand.Type == DR_PROP_MAP )
             {
-                prop_obj = MapMngr.GetMap( master->GetMapId(), false );
+                entity = MapMngr.GetMap( master->GetMapId(), false );
                 prop_registrator = Map::PropertiesRegistrator;
             }
-            if( !prop_obj )
+            if( !entity )
                 break;
 
             uint      prop_index = (uint) index;
@@ -1110,7 +1110,7 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
                 if( !slave )
                     break;
 
-                ScriptDict* dict = (ScriptDict*) prop->GetValue< void* >( prop_obj );
+                ScriptDict* dict = (ScriptDict*) prop->GetValue< void* >( entity );
                 uint        slave_id = slave->GetId();
                 void*       pvalue = dict->GetDefault( &slave_id, NULL );
                 dict->Release();
@@ -1145,7 +1145,7 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
             }
             else
             {
-                val = prop->GetPODValueAsInt( prop_obj );
+                val = prop->GetPODValueAsInt( entity );
             }
 
             switch( demand.Op )
@@ -1287,40 +1287,40 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
         case DR_PROP_LOCATION:
         case DR_PROP_MAP:
         {
-            void*                prop_obj = NULL;
+            Entity*              entity = NULL;
             PropertyRegistrator* prop_registrator = NULL;
             if( result.Type == DR_PROP_GLOBAL )
             {
-                prop_obj = master;
+                entity = master;
                 prop_registrator = GlobalVars::PropertiesRegistrator;
             }
             else if( result.Type == DR_PROP_CRITTER )
             {
-                prop_obj = master;
+                entity = master;
                 prop_registrator = Critter::PropertiesRegistrator;
             }
             else if( result.Type == DR_PROP_CRITTER_DICT )
             {
-                prop_obj = master;
+                entity = master;
                 prop_registrator = Critter::PropertiesRegistrator;
             }
             else if( result.Type == DR_PROP_ITEM )
             {
-                prop_obj = master->ItemSlotMain;
+                entity = master->ItemSlotMain;
                 prop_registrator = Item::PropertiesRegistrator;
             }
             else if( result.Type == DR_PROP_LOCATION )
             {
                 Map* map = MapMngr.GetMap( master->GetMapId(), false );
-                prop_obj = ( map ? map->GetLocation( false ) : NULL );
+                entity = ( map ? map->GetLocation( false ) : NULL );
                 prop_registrator = Location::PropertiesRegistrator;
             }
             else if( result.Type == DR_PROP_MAP )
             {
-                prop_obj = MapMngr.GetMap( master->GetMapId(), false );
+                entity = MapMngr.GetMap( master->GetMapId(), false );
                 prop_registrator = Map::PropertiesRegistrator;
             }
-            if( !prop_obj )
+            if( !entity )
                 break;
 
             uint        prop_index = (uint) index;
@@ -1366,7 +1366,7 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
             }
             else
             {
-                val = prop->GetPODValueAsInt( prop_obj );
+                val = prop->GetPODValueAsInt( entity );
             }
 
             switch( result.Op )
@@ -1422,12 +1422,12 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
 
                 uint slave_id = slave->GetId();
                 dict->Set( &slave_id, pvalue );
-                prop->SetValue< void* >( prop_obj, dict );
+                prop->SetValue< void* >( entity, dict );
                 dict->Release();
             }
             else
             {
-                prop->SetPODValueAsInt( prop_obj, val );
+                prop->SetPODValueAsInt( entity, val );
             }
         }
             continue;

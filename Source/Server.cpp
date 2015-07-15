@@ -4662,7 +4662,7 @@ void FOServer::AddClientSaveData( Client* cl )
     if( ClientsSaveDataCount >= ClientsSaveData.size() )
     {
         ClientsSaveData.push_back( ClientSaveData() );
-        ClientsSaveData.back().Props = new Properties( Critter::PropertiesRegistrator, NULL );
+        ClientsSaveData.back().Props = new Properties( Critter::PropertiesRegistrator );
         MEMORY_PROCESS( MEMORY_SAVE_DATA, sizeof( ClientSaveData ) );
     }
 

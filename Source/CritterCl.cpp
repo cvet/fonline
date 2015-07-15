@@ -3,11 +3,14 @@
 #include "CritterType.h"
 #include "ResourceManager.h"
 #include "ItemManager.h"
+#include "CritterData.h"
 
 #ifdef FONLINE_CLIENT
 # include "SoundManager.h"
 # include "Script.h"
 #endif
+
+ProtoCritter::ProtoCritter(): Entity( 0, EntityType::ProtoCritter, CritterCl::PropertiesRegistrator ) {}
 
 bool   CritterCl::SlotEnabled[ 0x100 ];
 IntSet CritterCl::RegProperties;

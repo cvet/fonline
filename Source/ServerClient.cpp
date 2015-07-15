@@ -1528,7 +1528,7 @@ void FOServer::Process_CreateClient( Client* cl )
             return;
         }
 
-        cl->Props.SetValueAsInt( enum_value, value );
+        Properties::SetValueAsInt( cl, enum_value, value );
     }
 
     // Check net
@@ -4589,31 +4589,31 @@ void FOServer::Process_Property( Client* cl, uint data_size )
 
     bool      check_public = false;
     Property* prop = NULL;
-    void*     prop_obj = NULL;
+    Entity*   entity = NULL;
     switch( type )
     {
     case NetProperty::Global:
         check_public = true;
         prop = GlobalVars::PropertiesRegistrator->Get( property_index );
         if( prop )
-            prop_obj = Globals;
+            entity = Globals;
         break;
     case NetProperty::Critter:
         check_public = true;
         prop = Critter::PropertiesRegistrator->Get( property_index );
         if( prop )
-            prop_obj = CrMngr.GetCritter( cr_id, true );
+            entity = CrMngr.GetCritter( cr_id, true );
         break;
     case NetProperty::Chosen:
         prop = Critter::PropertiesRegistrator->Get( property_index );
         if( prop )
-            prop_obj = cl;
+            entity = cl;
         break;
     case NetProperty::MapItem:
         check_public = true;
         prop = Item::PropertiesRegistrator->Get( property_index );
         if( prop )
-            prop_obj = ItemMngr.GetItem( item_id, true );
+            entity = ItemMngr.GetItem( item_id, true );
         break;
     case NetProperty::CritterItem:
         check_public = true;
@@ -4622,19 +4622,19 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         {
             Critter* cr = CrMngr.GetCritter( cr_id, true );
             if( cr )
-                prop_obj = cr->GetItem( item_id, true );
+                entity = cr->GetItem( item_id, true );
         }
         break;
     case NetProperty::ChosenItem:
         prop = Item::PropertiesRegistrator->Get( property_index );
         if( prop )
-            prop_obj = cl->GetItem( item_id, true );
+            entity = cl->GetItem( item_id, true );
         break;
     case NetProperty::Map:
         check_public = true;
         prop = Map::PropertiesRegistrator->Get( property_index );
         if( prop )
-            prop_obj = MapMngr.GetMap( cl->GetMapId(), true );
+            entity = MapMngr.GetMap( cl->GetMapId(), true );
         break;
     case NetProperty::Location:
         check_public = true;
@@ -4643,14 +4643,14 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         {
             Map* map = MapMngr.GetMap( cl->GetMapId(), false );
             if( map )
-                prop_obj = map->GetLocation( true );
+                entity = map->GetLocation( true );
         }
         break;
     default:
         RUNTIME_ASSERT( false );
         break;
     }
-    if( !prop || !prop_obj )
+    if( !prop || !entity )
         return;
 
     Property::AccessType access = prop->GetAccess();
@@ -4664,10 +4664,10 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         return;
 
     #pragma MESSAGE( "Disable send changing field by client to this client" )
-    prop->SetData( prop_obj, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size() );
+    prop->SetData( entity, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size() );
 }
 
-void FOServer::OnSendGlobalValue( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSendGlobalValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
     {
@@ -4681,9 +4681,9 @@ void FOServer::OnSendGlobalValue( void* obj, Property* prop, void* cur_value, vo
     }
 }
 
-void FOServer::OnSendCritterValue( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSendCritterValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Critter* cr = (Critter*) obj;
+    Critter* cr = (Critter*) entity;
 
     bool     is_public = ( prop->GetAccess() & Property::PublicMask ) != 0;
     bool     is_protected = ( prop->GetAccess() & Property::ProtectedMask ) != 0;
@@ -4693,20 +4693,20 @@ void FOServer::OnSendCritterValue( void* obj, Property* prop, void* cur_value, v
         cr->SendA_Property( NetProperty::Critter, prop, cr );
 }
 
-void FOServer::OnSendMapValue( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSendMapValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
     {
-        Map* map = (Map*) obj;
+        Map* map = (Map*) entity;
         map->SendProperty( NetProperty::Map, prop, map );
     }
 }
 
-void FOServer::OnSendLocationValue( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSendLocationValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
     {
-        Location* loc = (Location*) obj;
+        Location* loc = (Location*) entity;
         MapVec    maps;
         loc->GetMaps( maps, false );
         for( auto it = maps.begin(); it != maps.end(); ++it )
@@ -4717,9 +4717,9 @@ void FOServer::OnSendLocationValue( void* obj, Property* prop, void* cur_value, 
     }
 }
 
-void FOServer::OnSetCritterHandsItemProtoId( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSetCritterHandsItemProtoId( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Critter*   cr = (Critter*) obj;
+    Critter*   cr = (Critter*) entity;
     hash       value = *(hash*) cur_value;
 
     ProtoItem* unarmed = ItemMngr.GetProtoItem( value ? value : ITEM_DEF_SLOT );
@@ -4730,9 +4730,9 @@ void FOServer::OnSetCritterHandsItemProtoId( void* obj, Property* prop, void* cu
     cr->GetHandsItem()->SetMode( 0 );
 }
 
-void FOServer::OnSetCritterHandsItemMode( void* obj, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSetCritterHandsItemMode( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    Critter* cr = (Critter*) obj;
+    Critter* cr = (Critter*) entity;
     uchar    value = *(uchar*) cur_value;
 
     cr->GetHandsItem()->SetMode( value );

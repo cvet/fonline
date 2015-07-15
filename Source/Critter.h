@@ -379,7 +379,7 @@ public:
     // Send
     volatile int DisableSend;
     bool IsSendDisabled() { return DisableSend > 0; }
-    void Send_Property( NetProperty::Type type, Property* prop, void* prop_obj );
+    void Send_Property( NetProperty::Type type, Property* prop, Entity* entity );
     void Send_Move( Critter* from_cr, uint move_params );
     void Send_Dir( Critter* from_cr );
     void Send_AddCritter( Critter* cr );
@@ -422,7 +422,7 @@ public:
     void Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
 
     // Send all
-    void SendA_Property( NetProperty::Type type, Property* prop, void* prop_obj );
+    void SendA_Property( NetProperty::Type type, Property* prop, Entity* entity );
     void SendA_Move( uint move_params );
     void SendA_XY();
     void SendA_Action( int action, int action_ext, Item* item );
@@ -649,7 +649,7 @@ public:
 
     // Sends
 public:
-    void Send_Property( NetProperty::Type type, Property* prop, void* prop_obj );
+    void Send_Property( NetProperty::Type type, Property* prop, Entity* entity );
     void Send_Move( Critter* from_cr, uint move_params );
     void Send_Dir( Critter* from_cr );
     void Send_AddCritter( Critter* cr );

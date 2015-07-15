@@ -1,5 +1,6 @@
 #include "Common.h"
 #include "Methods.h"
+#include "Entity.h"
 #include "Script.h"
 
 Method::Method()
@@ -13,8 +14,8 @@ Method::Method()
 void Method::Wrap( asIScriptGeneric* gen )
 {
     Method*  self = NULL;    // gen->GetObjForThiscall();
-    void*    obj = gen->GetObject();
-    Methods* methods = (Methods*) ( (uchar*) obj + sizeof( Properties ) );
+    Entity*  entity = (Entity*) gen->GetObject();
+    Methods* methods = &entity->Meths;
 
     UIntVec  bind_ids;
     bind_ids.push_back( self->callbackBindId );
@@ -25,8 +26,8 @@ void Method::Wrap( asIScriptGeneric* gen )
     {
         if( Script::PrepareContext( bind_ids[ cbk ], _FUNC_, "Method" ) )
         {
-            // First arg is object
-            Script::SetArgObject( gen->GetObject() );
+            // First arg is entity
+            Script::SetArgObject( entity );
 
             // Arguments
             int arg_count = gen->GetArgCount();
@@ -159,7 +160,7 @@ Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Me
         int result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Method::Wrap ), asCALL_GENERIC, method );
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Register object method '%s' fail, error %d.\n", decl, result );
+            WriteLogF( _FUNC_, " - Register entity method '%s' fail, error %d.\n", decl, result );
             return NULL;
         }
 

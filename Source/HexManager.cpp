@@ -4273,7 +4273,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             }
 
             CritterCl* cr = new CritterCl( uint( -1 ) );
-            cr->Props = *proto->Props;
+            cr->Props = proto->Props;
             cr->SetCrType( proto->GetCrType() );
             cr->HexX = o->MapX;
             cr->HexY = o->MapY;
@@ -4668,7 +4668,7 @@ void HexManager::AffectCritter( MapObject* mobj, CritterCl* cr )
         for( size_t i = 0, j = mobj->Props->size() / 2; i < j; i++ )
         {
             int value = (int) ConvertParamValue( mobj->Props->at( i * 2 + 1 )->c_str() );
-            cr->Props.SetValueAsIntByName( mobj->Props->at( i * 2 )->c_str(), value );
+            Properties::SetValueAsIntByName( cr, mobj->Props->at( i * 2 )->c_str(), value );
         }
     }
 

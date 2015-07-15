@@ -10,7 +10,7 @@
 # include "CritterCl.h"
 #endif
 
-Entity::Entity( uint id, EntityType type, PropertyRegistrator* registartor ): Id( id ), Type( type ), Props( registartor, &IsDestroyed )
+Entity::Entity( uint id, EntityType type, PropertyRegistrator* registartor ): Id( id ), Type( type ), Props( registartor )
 {
     RUNTIME_ASSERT( Type != EntityType::Invalid );
 
@@ -71,3 +71,16 @@ CustomEntity::CustomEntity( uint id, uint sub_type, PropertyRegistrator* registr
 {
     //
 }
+
+PROPERTIES_IMPL( GlobalVars );
+CLASS_PROPERTY_IMPL( GlobalVars, BestScores );
+GlobalVars::GlobalVars(): Entity( 0, EntityType::Global, PropertiesRegistrator ) {}
+GlobalVars* Globals;
+
+PROPERTIES_IMPL( ClientMap );
+ClientMap::ClientMap(): Entity( 0, EntityType::ClientMap, PropertiesRegistrator ) {}
+ClientMap* ClientCurMap;
+
+PROPERTIES_IMPL( ClientLocation );
+ClientLocation::ClientLocation(): Entity( 0, EntityType::ClientLocation, PropertiesRegistrator ) {}
+ClientLocation* ClientCurLocation;
