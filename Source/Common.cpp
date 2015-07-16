@@ -479,7 +479,7 @@ int64 ConvertParamValue( const char* str )
 
     if( str[ 0 ] == '$' )
     {
-        #ifndef FONLINE_SCRIPT_COMPILER
+        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
         return ConstantsManager::GetDefineValue( str + 1 );
         #else
         return 0;
@@ -1093,7 +1093,9 @@ const char* GetLastSocketError()
 
 static void AddPropertyCallback( void ( * function )( void*, void*, void*, void* ) )
 {
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
     PropertyRegistrator::GlobalSetCallbacks.push_back( (NativeCallback) function );
+    #endif
 }
 
 GameOptions GameOpt;

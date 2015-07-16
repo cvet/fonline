@@ -319,7 +319,7 @@ public:
     CLASS_PROPERTY( bool, IsCanUse );
     CLASS_PROPERTY( bool, IsHolodisk );
     CLASS_PROPERTY( bool, IsRadio );
-    CLASS_PROPERTY( ushort, SortValue );
+    CLASS_PROPERTY( short, SortValue );
     CLASS_PROPERTY( uchar, Indicator );
     CLASS_PROPERTY( hash, PicMap );
     CLASS_PROPERTY( hash, PicInv );

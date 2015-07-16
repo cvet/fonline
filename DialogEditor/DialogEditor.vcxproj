@@ -17,7 +17,7 @@
     <CharacterSet>MultiByte</CharacterSet>
     <CLRSupport>true</CLRSupport>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v110_xp</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -28,7 +28,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\LFO\Tools\DialogEditor</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\sdk\Tools\DialogEditor</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
@@ -104,9 +104,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\scriptfile.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptmath.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
@@ -226,9 +223,6 @@
     <ClCompile Include="..\Source\AngelScript\sdk\angelscript\source\as_variablescope.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\weakref.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\Source\FileSystem.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -236,9 +230,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\MsgFiles.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\Source\Properties.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\SHA2\sha2.c">
@@ -380,7 +371,6 @@
     <ClInclude Include="..\Source\AngelScript\scriptdict.h" />
     <ClInclude Include="..\Source\AngelScript\scriptdictionary.h" />
     <ClInclude Include="..\Source\AngelScript\scriptfile.h" />
-    <ClInclude Include="..\Source\AngelScript\scriptmath.h" />
     <ClInclude Include="..\Source\AngelScript\scriptstring.h" />
     <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_array.h" />
     <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_atomic.h" />
@@ -419,7 +409,6 @@
     <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_tokenizer.h" />
     <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_typeinfo.h" />
     <ClInclude Include="..\Source\AngelScript\sdk\angelscript\source\as_variablescope.h" />
-    <ClInclude Include="..\Source\AngelScript\weakref.h" />
     <ClInclude Include="..\Source\Common.h" />
     <ClInclude Include="..\Source\Crypt.h" />
     <ClInclude Include="..\Source\DataFile.h" />
@@ -427,7 +416,6 @@
     <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\IniParser.h" />
     <ClInclude Include="..\Source\MsgFiles.h" />
-    <ClInclude Include="..\Source\Properties.h" />
     <ClInclude Include="..\Source\SHA2\sha2.h" />
     <ClInclude Include="..\Source\zlib\contrib\minizip\crypt.h" />
     <ClInclude Include="..\Source\zlib\contrib\minizip\ioapi.h" />

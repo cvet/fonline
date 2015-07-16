@@ -446,7 +446,7 @@ void Item::EventWalk( Critter* cr, bool entered, uchar dir )
 
 void Item::SetSortValue( ItemVec& items )
 {
-    ushort sort_value = 0x7FFF;
+    short sort_value = 0;
     for( auto it = items.begin(), end = items.end(); it != end; ++it )
     {
         Item* item = *it;

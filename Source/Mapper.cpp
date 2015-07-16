@@ -182,16 +182,6 @@ bool FOMapper::Init()
     if( !CurLang.LoadFromFiles( lang_name ) )
         return false;
 
-    MsgText = &CurLang.Msg[ TEXTMSG_TEXT ];
-    MsgDlg = &CurLang.Msg[ TEXTMSG_DLG ];
-    MsgItem = &CurLang.Msg[ TEXTMSG_ITEM ];
-    MsgGame = &CurLang.Msg[ TEXTMSG_GAME ];
-    MsgGM = &CurLang.Msg[ TEXTMSG_GM ];
-    MsgCombat = &CurLang.Msg[ TEXTMSG_COMBAT ];
-    MsgQuest = &CurLang.Msg[ TEXTMSG_QUEST ];
-    MsgHolo = &CurLang.Msg[ TEXTMSG_HOLO ];
-    MsgCraft = &CurLang.Msg[ TEXTMSG_CRAFT ];
-
     // Critter types
     CritType::InitFromFile( NULL );
 
@@ -1895,10 +1885,15 @@ void FOMapper::IntDraw()
         if( GetTabIndex() < (uint) ( *CurItemProtos ).size() )
         {
             ProtoItem* proto_item = ( *CurItemProtos )[ GetTabIndex() ];
-            string     info = MsgItem->GetStr( ITEM_STR_ID( proto_item->ProtoId, 1 ) );
-            info += " - ";
-            info += MsgItem->GetStr( ITEM_STR_ID( proto_item->ProtoId, 2 ) );
-            SprMngr.DrawStr( Rect( IntWHint, IntX, IntY ), info.c_str(), 0 );
+            auto it = std::find( proto_item->TextsLang.begin(), proto_item->TextsLang.end(), CurLang.Name );
+            if( it != proto_item->TextsLang.end() )
+            {
+                uint index = ( uint ) std::distance( proto_item->TextsLang.begin(), it );
+                string     info = proto_item->Texts[ 0 ]->GetStr( ITEM_STR_ID( proto_item->ProtoId, 1 ) );
+                info += " - ";
+                info += proto_item->Texts[ 0 ]->GetStr( ITEM_STR_ID( proto_item->ProtoId, 2 ) );
+                SprMngr.DrawStr( Rect( IntWHint, IntX, IntY ), info.c_str(), 0 );
+            }
         }
     }
     else if( IsTileMode() )

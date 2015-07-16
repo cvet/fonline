@@ -206,13 +206,7 @@
     <ClCompile Include="..\Source\AngelScript\scriptfile.cpp">
       <Filter>DialogEditor\AngelScript</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\scriptmath.cpp">
-      <Filter>DialogEditor\AngelScript</Filter>
-    </ClCompile>
     <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
-      <Filter>DialogEditor\AngelScript</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\AngelScript\weakref.cpp">
       <Filter>DialogEditor\AngelScript</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\zlib\adler32.c">
@@ -277,9 +271,6 @@
     </ClCompile>
     <ClCompile Include="..\Source\zlib\contrib\minizip\zip.c">
       <Filter>Zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Properties.cpp">
-      <Filter>DialogEditor</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\scriptdict.cpp">
       <Filter>DialogEditor\AngelScript</Filter>
@@ -478,13 +469,7 @@
     <ClInclude Include="..\Source\AngelScript\scriptfile.h">
       <Filter>DialogEditor\AngelScript</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\scriptmath.h">
-      <Filter>DialogEditor\AngelScript</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\AngelScript\scriptstring.h">
-      <Filter>DialogEditor\AngelScript</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\AngelScript\weakref.h">
       <Filter>DialogEditor\AngelScript</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\zlib\crc32.h">
@@ -534,9 +519,6 @@
     </ClInclude>
     <ClInclude Include="..\Source\zlib\contrib\minizip\zip.h">
       <Filter>Zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Properties.h">
-      <Filter>DialogEditor</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\AngelScript\scriptdict.h">
       <Filter>DialogEditor\AngelScript</Filter>
