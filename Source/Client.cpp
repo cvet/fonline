@@ -5561,7 +5561,19 @@ void FOClient::Net_OnContainerInfo()
         if( open_screen )
         {
             if( !IsScreenPresent( SCREEN__PICKUP ) )
-                ShowScreen( SCREEN__PICKUP );
+            {
+                ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+                uint              critter_id = 0;
+                uint              item_id = 0;
+                if( PupTransferType == TRANSFER_CRIT_LOOT || PupTransferType == TRANSFER_CRIT_STEAL || PupTransferType == TRANSFER_FAR_CRIT )
+                    critter_id = PupContId;
+                else if( PupTransferType == TRANSFER_HEX_CONT_UP || PupTransferType == TRANSFER_HEX_CONT_DOWN || PupTransferType == TRANSFER_SELF_CONT || PupTransferType == TRANSFER_FAR_CONT )
+                    item_id = PupContId;
+                dict->Set( "TargetCritterId", &critter_id, asTYPEID_UINT32 );
+                dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
+                ShowScreen( SCREEN__PICKUP, dict );
+                dict->Release();
+            }
             PupScroll1 = 0;
             PupScroll2 = 0;
         }
