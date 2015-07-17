@@ -4206,6 +4206,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
         if( o->ContainerUID )
             continue;
 
+        static uint any_id = 0;
         if( o->MapObjType == MAP_OBJECT_SCENERY )
         {
             SceneryCl s;
@@ -4237,9 +4238,8 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             if( !proto )
                 continue;
 
-            Field&      f = GetField( o->MapX, o->MapY );
-            static uint any_id = 0;
-            ItemHex*    item = new ItemHex( --any_id, proto, NULL, o->MapX, o->MapY, o->MItem.OffsetX, o->MItem.OffsetY, &f.ScrX, &f.ScrY, 0 );
+            Field&   f = GetField( o->MapX, o->MapY );
+            ItemHex* item = new ItemHex( --any_id, proto, NULL, o->MapX, o->MapY, o->MItem.OffsetX, o->MItem.OffsetY, &f.ScrX, &f.ScrY, 0 );
             PushItem( item );
             AffectItem( o, item );
             o->RunTime.MapObjId = item->Id;
@@ -4272,7 +4272,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
                 }
             }
 
-            CritterCl* cr = new CritterCl( uint( -1 ) );
+            CritterCl* cr = new CritterCl( --any_id );
             cr->Props = proto->Props;
             cr->SetCrType( proto->GetCrType() );
             cr->HexX = o->MapX;
