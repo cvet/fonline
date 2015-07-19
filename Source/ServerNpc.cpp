@@ -1762,12 +1762,14 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
         }
 
         // Close another talk
-        if( cl->Talk.TalkType != TALK_WITH_NPC || cl->Talk.TalkNpc != npc->GetId() )
+        if( cl->Talk.TalkType != TALK_NONE && ( cl->Talk.TalkType != TALK_WITH_NPC || cl->Talk.TalkNpc != npc->GetId() ) )
             cl->CloseTalk();
 
         // Begin dialog
         if( cl->Talk.TalkType == TALK_NONE )
         {
+            if( num_answer != ANSWER_BEGIN )
+                return;
             Dialog_Begin( cl, npc, 0, 0, 0, false );
             return;
         }

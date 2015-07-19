@@ -4887,13 +4887,16 @@ void FOClient::Net_OnChosenTalk()
         answers_texts.push_back( text_id );
     }
 
-    const char answ_beg[] = { ' ', ' ', (char) 0xE2, (char) 0x80, (char) 0xA2, ' ', 0 };
-    const char page_up[] = { 24, 24, 24, 0 };
-    const int  page_up_height = SprMngr.GetLinesHeight( DlgAnswText.W(), 0, page_up );
-    const char page_down[] = { 25, 25, 25, 0 };
-    const int  page_down_height = SprMngr.GetLinesHeight( DlgAnswText.W(), 0, page_down );
+    const char    answ_beg[] = { ' ', ' ', (char) 0xE2, (char) 0x80, (char) 0xA2, ' ', 0 };
+    const char    page_up[] = { 24, 24, 24, 0 };
+    const int     page_up_height = SprMngr.GetLinesHeight( DlgAnswText.W(), 0, page_up );
+    const char    page_down[] = { 25, 25, 25, 0 };
+    const int     page_down_height = SprMngr.GetLinesHeight( DlgAnswText.W(), 0, page_down );
 
-    int        line = 0, height = 0, page = 0, answ = 0;
+    ScriptString* text_to_script = ScriptString::Create( DlgMainText );
+    ScriptArray*  answers_to_script = Script::CreateArray( "string@[]" );
+
+    int           line = 0, height = 0, page = 0, answ = 0;
     while( true )
     {
         Rect pos(
@@ -4914,6 +4917,9 @@ void FOClient::Net_OnChosenTalk()
 
         Str::Copy( str, MsgDlg->GetStr( answers_texts[ answ ] ) );
         FormatTags( str, MAX_FOTEXT, Chosen, npc, lexems );
+        ScriptString* sstr = ScriptString::Create( str );
+        answers_to_script->InsertLast( &sstr );
+        sstr->Release();
         Str::Insert( str, answ_beg );      // TODO: GetStr
 
         height += SprMngr.GetLinesHeight( DlgAnswText.W(), 0, str );
@@ -4967,7 +4973,17 @@ void FOClient::Net_OnChosenTalk()
         DlgEndTick = 0;
     if( IsScreenPresent( SCREEN__BARTER ) )
         HideScreen( SCREEN__BARTER );
-    ShowScreen( SCREEN__DIALOG );
+
+    ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+    dict->Set( "TalkerIsNpc", &is_npc, asTYPEID_BOOL );
+    dict->Set( "TalkerId", &talk_id, asTYPEID_UINT32 );
+    dict->Set( "Text", &text_to_script, Script::GetEngine()->GetTypeIdByDecl( "string@" ) );
+    dict->Set( "Answers", &answers_to_script, Script::GetEngine()->GetTypeIdByDecl( "string@[]@" ) );
+    dict->Set( "TalkTime", &talk_time, asTYPEID_UINT32 );
+    ShowScreen( SCREEN__DIALOG, dict );
+    text_to_script->Release();
+    answers_to_script->Release();
+    dict->Release();
 }
 
 void FOClient::Net_OnCheckUID2()
@@ -9965,6 +9981,25 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
 //              }
 
 
+    }
+    else if( cmd == "DialogAnswer" && args.size() >= 4 )
+    {
+        bool is_npc = Str::Compare( args[ 1 ].c_str(), "true" );
+        uint talker_id = Str::AtoI( args[ 2 ].c_str() );
+        uint answer_index = Str::AtoI( args[ 3 ].c_str() );
+        Self->Net_SendTalk( is_npc, talker_id, answer_index );
+    }
+    else if( cmd == "DialogSay" )
+    {
+        bool is_npc = Str::AtoI( args[ 1 ].c_str() ) != 0;
+        uint talker_id = Str::AtoI( args[ 2 ].c_str() );
+        Self->Net_SendSayNpc( is_npc, talker_id, args[ 3 ].c_str() );
+    }
+    else if( cmd == "BarterOffer" && args.size() >= 2 )
+    {
+        // uint talker_id;
+        // uint answer_index;
+        // Self->Net_SendBarter(DlgIsNpc, DlgNpcId, DlgAnswers[DlgCurAnsw].AnswerNum);
     }
     else
     {

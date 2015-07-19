@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 10009 )
+#define FONLINE_VERSION                          ( 525 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging

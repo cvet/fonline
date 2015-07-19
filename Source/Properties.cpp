@@ -1117,7 +1117,7 @@ void Properties::RestoreData( UCharVecVec& all_data )
     UIntVec   all_data_sizes( all_data.size() );
     for( size_t i = 0; i < all_data.size(); i++ )
     {
-        all_data_ext[ i ] = &all_data[ i ][ 0 ];
+        all_data_ext[ i ] = ( !all_data[ i ].empty() ? &all_data[ i ][ 0 ] : NULL );
         all_data_sizes[ i ] = (uint) all_data[ i ].size();
     }
     RestoreData( all_data_ext, all_data_sizes );
