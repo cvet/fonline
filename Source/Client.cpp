@@ -10067,6 +10067,8 @@ Item* FOClient::SScriptFunc::Global_GetItem( uint item_id )
     if( !item_id )
         SCRIPT_ERROR_R0( "Item id arg is zero." );
     Item* item = Self->GetItem( item_id );
+    if( !item && Self->Chosen )
+        item = Self->Chosen->GetItem( item_id );
     if( !item || item->IsDestroyed )
         return NULL;
     return item;

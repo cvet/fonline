@@ -5660,7 +5660,11 @@ void FOClient::SplitStart( Item* item, int to_cont )
     SplitItemColor = item->GetInvColor();
     SplitParentScreen = GetActiveScreen();
 
-    ShowScreen( SCREEN__SPLIT );
+    ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+    dict->Set( "TargetItemId", &SplitItemId, asTYPEID_UINT32 );
+    dict->Set( "MagicNumber", &SplitCont, asTYPEID_INT32 );
+    ShowScreen( SCREEN__SPLIT, dict );
+    dict->Release();
 }
 
 void FOClient::SplitClose( bool change )
