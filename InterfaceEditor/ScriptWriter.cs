@@ -244,7 +244,7 @@ namespace InterfaceEditor
 			WriteClassFunction("void OnInit() override", obj.OnInit);
 			WriteClassFunction("void OnShow( dictionary@ params ) override", obj.OnShow);
 			WriteClassFunction("void OnHide() override", obj.OnHide);
-			WriteClassFunction("void OnAppear( dictionary@ params ) override", obj.OnAppear);
+			WriteClassFunction("void OnAppear() override", obj.OnAppear);
 			WriteClassFunction("void OnDisappear() override", obj.OnDisappear);
 			WriteClassFunction("void OnDraw() override", obj.OnDraw);
 			WriteClassFunction("void OnMove( int deltaX, int deltaY ) override", obj.OnMove);

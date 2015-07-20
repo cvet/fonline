@@ -10069,6 +10069,12 @@ Item* FOClient::SScriptFunc::Global_GetItem( uint item_id )
     Item* item = Self->GetItem( item_id );
     if( !item && Self->Chosen )
         item = Self->Chosen->GetItem( item_id );
+    if( !item )
+    {
+        for( auto it = Self->HexMngr.GetCritters().begin(); !item && it != Self->HexMngr.GetCritters().end(); ++it )
+            if( !it->second->IsChosen() )
+                item = it->second->GetItem( item_id );
+    }
     if( !item || item->IsDestroyed )
         return NULL;
     return item;
