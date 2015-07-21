@@ -7083,7 +7083,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         float sy = ( count > 6 ? *(float*) position->At( 6 ) : 1.0f );
         float sz = ( count > 7 ? *(float*) position->At( 7 ) : 1.0f );
         float speed = ( count > 8 ? *(float*) position->At( 8 ) : 1.0f );
-        // 9 reserved
+        float period = ( count > 9 ? *(float*) position->At( 9 ) : 0.0f );
         float stl = ( count > 10 ? *(float*) position->At( 10 ) : 0.0f );
         float stt = ( count > 11 ? *(float*) position->At( 11 ) : 0.0f );
         float str = ( count > 12 ? *(float*) position->At( 12 ) : 0.0f );
@@ -7098,7 +7098,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         anim3d->SetRotation( rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f );
         anim3d->SetScale( sx, sy, sz );
         anim3d->SetSpeed( speed );
-        anim3d->SetAnimation( anim1, anim2, DrawCritter3dLayers, 0 );
+        anim3d->SetAnimation( anim1, anim2, DrawCritter3dLayers, ANIMATION_PERIOD( (int) ( period * 100.0f ) ) );
 
         SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ), !scissor.IsZero() ? &scissor : NULL );
     }

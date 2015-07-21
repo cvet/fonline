@@ -1603,7 +1603,10 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 Net_SendTalk( DlgIsNpc, DlgNpcId, ANSWER_BARTER );
                 WaitPing();
                 HideScreen( SCREEN__DIALOG );
-                ShowScreen( SCREEN__BARTER );
+                ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+                dict->Set( "CritterId", &DlgNpcId, asTYPEID_UINT32 );
+                ShowScreen( SCREEN__BARTER, dict );
+                dict->Release();
                 CollectContItems();
                 Item::ClearItems( BarterCont1o );
                 Item::ClearItems( BarterCont2 );
