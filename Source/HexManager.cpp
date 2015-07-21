@@ -4207,7 +4207,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
         if( o->ContainerUID )
             continue;
 
-        static uint any_id = 0;
+        static uint any_id = 0x7FFFFFFF;
         if( o->MapObjType == MAP_OBJECT_SCENERY )
         {
             SceneryCl s;
