@@ -490,18 +490,22 @@ int FOMapper::InitIface()
     ConsoleStr = "";
     ConsoleCur = 0;
 
-    ResMngr.ItemHexDefaultAnim = SprMngr.LoadAnimation( "art\\items\\reserved.frm", PT_DATA, true );
-    ResMngr.CritterDefaultAnim = SprMngr.LoadAnimation( "art\\critters\\reservaa.frm", PT_DATA, true );
+    char f_name[ MAX_FOTEXT ];
+    ini.GetStr( "ItemStub", "art/items/reserved.frm", f_name );
+    ResMngr.ItemHexDefaultAnim = SprMngr.LoadAnimation( f_name, PT_DATA, true );
+    ini.GetStr( "CritterStub", "art/critters/reservaa.frm", f_name );
+    ResMngr.CritterDefaultAnim = SprMngr.LoadAnimation( f_name, PT_DATA, true );
 
     // Messbox
     MessBoxScroll = 0;
 
     // Cursor
-    CurPDef = SprMngr.LoadAnimation( "actarrow.frm", PT_ART_INTRFACE, true );
-    CurPHand = SprMngr.LoadAnimation( "hand.frm", PT_ART_INTRFACE, true );
+    ini.GetStr( "CurDefault", "actarrow.frm", f_name );
+    CurPDef = SprMngr.LoadAnimation( f_name, PT_DATA, true );
+    ini.GetStr( "CurHand", "hand.frm", f_name );
+    CurPHand = SprMngr.LoadAnimation( f_name, PT_DATA, true );
 
     // Iface
-    char f_name[ 1024 ];
     ini.GetStr( "IntMainPic", "error", f_name );
     IntMainPic = SprMngr.LoadAnimation( f_name, PT_DATA, true );
     ini.GetStr( "IntTabPic", "error", f_name );
