@@ -1407,12 +1407,12 @@ public:
 // Primary screens
 #define SCREEN_LOGIN                   ( 1 )
 #define SCREEN_REGISTRATION            ( 2 )
-#define SCREEN_CREDITS                 ( 3 )
-#define SCREEN_OPTIONS                 ( 4 )
-#define SCREEN_GAME                    ( 5 )
-#define SCREEN_GLOBAL_MAP              ( 6 )
-#define SCREEN_WAIT                    ( 7 )
+#define SCREEN_GAME                    ( 3 )
+#define SCREEN_GLOBAL_MAP              ( 4 )
+#define SCREEN_WAIT                    ( 5 )
 // Secondary screens
+#define SCREEN__CREDITS                ( 8 )
+#define SCREEN__OPTIONS                ( 9 )
 #define SCREEN__INVENTORY              ( 10 )
 #define SCREEN__PICKUP                 ( 11 )
 #define SCREEN__MINI_MAP               ( 12 )

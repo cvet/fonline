@@ -3131,6 +3131,7 @@ void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NUL
 {
     while( GetActiveScreen() != SCREEN_NONE )
         ShowScreen( SCREEN_NONE );
+
     int prev_main_screen = ScreenModeMain;
     if( ScreenModeMain )
         RunScreenScript( false, ScreenModeMain, NULL );
@@ -3143,14 +3144,6 @@ void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NUL
         ScreenFadeOut();
         break;
     case SCREEN_REGISTRATION:
-        ScreenFadeOut();
-        break;
-    case SCREEN_CREDITS:
-        CreditsNextTick = Timer::FastTick();
-        CreditsYPos = GameOpt.ScreenHeight;
-        CreaditsExt = Keyb::ShiftDwn;
-        break;
-    case SCREEN_OPTIONS:
         ScreenFadeOut();
         break;
     case SCREEN_GAME:
@@ -3217,10 +3210,18 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
     DropScroll();
 
     if( screen == SCREEN_NONE )
+    {
         HideScreen( screen );
+        return;
+    }
 
     switch( screen )
     {
+    case SCREEN__CREDITS:
+        CreditsNextTick = Timer::FastTick();
+        CreditsYPos = GameOpt.ScreenHeight;
+        CreaditsExt = Keyb::ShiftDwn;
+        break;
     case SCREEN__INVENTORY:
         CollectContItems();
         break;

@@ -4139,6 +4139,7 @@ uchar* HexManager::GetMapDayColor()
 
 void HexManager::OnResolutionChanged()
 {
+    fogForceRerender = true;
     ResizeView();
     RefreshMap();
 }

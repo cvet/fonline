@@ -1074,7 +1074,7 @@ int FOClient::MainLoop()
         ParseSocket();
 
     // Exit in Login screen if net disconnect
-    if( !IsConnected && !IsMainScreen( SCREEN_LOGIN ) && !IsMainScreen( SCREEN_REGISTRATION ) && !IsMainScreen( SCREEN_CREDITS ) && !IsMainScreen( SCREEN_OPTIONS ) )
+    if( !IsConnected && !IsMainScreen( SCREEN_LOGIN ) && !IsMainScreen( SCREEN_REGISTRATION ) )
         ShowMainScreen( SCREEN_LOGIN );
 
     // Input
@@ -1114,10 +1114,6 @@ int FOClient::MainLoop()
         HexMngr.ProcessItems();
         HexMngr.ProcessRain();
         LMenuTryCreate();
-    }
-    else if( IsMainScreen( SCREEN_CREDITS ) )
-    {
-        // CreditsDraw();
     }
 
     if( IsScreenPresent( SCREEN__ELEVATOR ) )
@@ -7847,6 +7843,7 @@ void FOClient::TryExit()
         case SCREEN__FIX_BOY:
         case SCREEN__MENU_OPTION:
         case SCREEN__SAVE_LOAD:
+        case SCREEN__CREDITS:
         default:
             ShowScreen( SCREEN_NONE );
             break;
@@ -7860,7 +7857,6 @@ void FOClient::TryExit()
             GameOpt.Quit = true;
             break;
         case SCREEN_REGISTRATION:
-        case SCREEN_CREDITS:
             ShowMainScreen( SCREEN_LOGIN );
             break;
         case SCREEN_WAIT:
@@ -11348,7 +11344,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
 
 void FOClient::SScriptFunc::Global_ShowScreen( int screen, ScriptDictionary* params )
 {
-    if( screen >= SCREEN_LOGIN && screen <= 9 )
+    if( screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT )
         Self->ShowMainScreen( screen, params );
     else
         Self->ShowScreen( screen, params );
@@ -11434,7 +11430,7 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
 {
     switch( screen )
     {
-    case SCREEN_CREDITS:
+    case SCREEN__CREDITS:
         Self->CreditsDraw();
         break;
     case SCREEN_GLOBAL_MAP:
@@ -11497,7 +11493,7 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
 
     switch( screen )
     {
-    case SCREEN_CREDITS:
+    case SCREEN__CREDITS:
         Self->TryExit();
         break;
     case SCREEN_GAME:
@@ -11662,7 +11658,7 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenKey( int screen, uchar k
 {
     switch( screen )
     {
-    case SCREEN_CREDITS:
+    case SCREEN__CREDITS:
         Self->TryExit();
         break;
     case SCREEN_GAME:

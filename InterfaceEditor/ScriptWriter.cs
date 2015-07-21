@@ -18,20 +18,18 @@ namespace InterfaceEditor
 			_BaseIdent = ident;
 
 			ProcessObject(root);
+			ProcessObjectHierarchyCreation(root);
 
 			_Script.AppendLine();
-			if( root is GUIScreen )
-				_Script.AppendLine(_BaseIdent + "GUIScreen@ CreateScreen()");
+			if (root is GUIScreen)
+				_Script.AppendLine(_BaseIdent + root.GetType().ToString().Substring(root.GetType().ToString().IndexOf("GUI")) + "@ CreateScreen()");
 			else
-				_Script.AppendLine(_BaseIdent + "GUIObject@ CreateHierarchy( GUIObject@ parent = null )");
+				_Script.AppendLine(_BaseIdent + root.Name + "@ CreateHierarchy( GUIObject@ parent )");
 			_Script.AppendLine(_BaseIdent + "{");
-			ProcessObjectCreation(root);
-			if (!(root is GUIScreen))
-			{
-				_Script.AppendLine(_BaseIdent + "    if( parent !is null )");
-				_Script.AppendLine(_BaseIdent + "        _" + root.Name + ".Init( parent );");
-			}
-			_Script.AppendLine(_BaseIdent + "    return _" + root.Name + ";");
+			if (root is GUIScreen)
+				_Script.AppendLine(_BaseIdent + "    return Create" + root.Name + "Hierarchy( null );");
+			else
+				_Script.AppendLine(_BaseIdent + "    return Create" + root.Name + "Hierarchy( parent );");
 			_Script.AppendLine(_BaseIdent + "}");
 
 			return _Script.ToString();
@@ -44,11 +42,21 @@ namespace InterfaceEditor
 				ProcessObject(child);
 		}
 
-		private void ProcessObjectCreation(GUIObject obj)
+		private void ProcessObjectHierarchyCreation(GUIObject obj)
 		{
-			WriteClassCreation(obj);
+			// Hierarchy creation
+			_Script.AppendLine();
+			_Script.AppendLine(_BaseIdent + obj.Name + "@ Create" + obj.Name + "Hierarchy( GUIObject@ parent )");
+			_Script.AppendLine(_BaseIdent + "{");
+			_Script.AppendLine(_BaseIdent + "    " + obj.Name + " obj();");
 			foreach (GUIObject child in obj.Children)
-				ProcessObjectCreation(child);
+				_Script.AppendLine(_BaseIdent + "    Create" + child.Name + "Hierarchy( obj );");
+			_Script.AppendLine(_BaseIdent + "    obj.Init( parent );");
+			_Script.AppendLine(_BaseIdent + "    return obj;");
+			_Script.AppendLine(_BaseIdent + "}");
+
+			foreach (GUIObject child in obj.Children)
+				ProcessObjectHierarchyCreation(child);
 		}
 
 		private void WriteClass(GUIObject obj)
@@ -307,27 +315,6 @@ namespace InterfaceEditor
 				_Script.AppendLine(_BaseIdent + "    {");
 				AppendCode(code, _BaseIdent + "        ");
 				_Script.AppendLine(_BaseIdent + "    }");
-			}
-		}
-
-		private void WriteClassCreation(GUIObject obj)
-		{
-			string className = obj.Name;
-			string instanceName = "_" + className;
-			GUIObject root = (obj.GetParent() == null ? obj : null);
-			string identPrefix = _BaseIdent + "    " + instanceName;
-
-			if (root != null)
-			{
-				_Script.AppendLine(_BaseIdent + "    " + className + " " + instanceName + "();");
-				_Script.AppendLine(_BaseIdent + "    " + instanceName + ".Init( null );");
-			}
-			else
-			{
-				string parentClassName = obj.GetParent().Name;
-				string parentInstanceName = "_" + parentClassName;
-				_Script.AppendLine(_BaseIdent + "    " + className + " " + instanceName + "();");
-				_Script.AppendLine(_BaseIdent + "    " + instanceName + ".Init( " + parentInstanceName + " );");
 			}
 		}
 
