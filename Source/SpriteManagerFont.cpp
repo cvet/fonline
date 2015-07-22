@@ -1244,6 +1244,9 @@ bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint co
 
 int SpriteManager::GetLinesCount( int width, int height, const char* str, int num_font /* = -1 */ )
 {
+    if( width <= 0 || height <= 0 )
+        return 0;
+
     FontData* font = GetFont( num_font );
     if( !font )
         return 0;
@@ -1256,17 +1259,23 @@ int SpriteManager::GetLinesCount( int width, int height, const char* str, int nu
     FormatText( fi, FORMAT_TYPE_LCOUNT );
     if( fi.IsError )
         return 0;
+
     return fi.LinesInRect;
 }
 
 int SpriteManager::GetLinesHeight( int width, int height, const char* str, int num_font /* = -1 */ )
 {
+    if( width <= 0 || height <= 0 )
+        return 0;
+
     FontData* font = GetFont( num_font );
     if( !font )
         return 0;
+
     int cnt = GetLinesCount( width, height, str, num_font );
     if( cnt <= 0 )
         return 0;
+
     return cnt * font->LineHeight + ( cnt - 1 ) * font->YAdvance;
 }
 
@@ -1275,6 +1284,7 @@ int SpriteManager::GetLineHeight( int num_font /* = -1 */ )
     FontData* font = GetFont( num_font );
     if( !font )
         return 0;
+
     return font->LineHeight;
 }
 
