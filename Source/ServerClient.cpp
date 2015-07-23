@@ -4171,7 +4171,7 @@ void FOServer::Process_RunServerScript( Client* cl )
     cl->Bin >> unsafe;
     if( !unsafe && !( cl->Access == ACCESS_MODER || cl->Access == ACCESS_ADMIN ) )
     {
-        WriteLogF( _FUNC_, " - Attempt to execute script without privilege. Client<%s>.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Attempt to execute script without privilege. Client '%s'.\n", cl->GetInfo() );
         cl->Send_Text( cl, "Access denied. Disconnect.", SAY_NETMSG );
         cl->Disconnect();
         return;
@@ -4190,7 +4190,7 @@ void FOServer::Process_RunServerScript( Client* cl )
 
     if( unsafe && ( Str::Length( func_name ) <= 7 || !Str::CompareCount( func_name, "unsafe_", 7 ) ) ) // Check unsafe_ prefix
     {
-        WriteLogF( _FUNC_, " - Attempt to execute script without \"unsafe_\" prefix. Client<%s>.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Attempt to execute '%s' script without 'unsafe_' prefix. Client '%s'.\n", func_name, cl->GetInfo() );
         cl->Send_Text( cl, "Access denied. Disconnect.", SAY_NETMSG );
         cl->Disconnect();
         return;

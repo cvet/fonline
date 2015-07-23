@@ -9,10 +9,7 @@ bool FOClient::IfaceLoadRect( Rect& comp, const char* name )
 {
     char res[ MAX_FOTEXT ];
     if( !IfaceIni.GetStr( name, "", res ) )
-    {
-        WriteLog( "Signature<%s> not found.\n", name );
         return false;
-    }
 
     if( sscanf( res, "%d%d%d%d", &comp[ 0 ], &comp[ 1 ], &comp[ 2 ], &comp[ 3 ] ) != 4 )
     {
@@ -33,20 +30,15 @@ void FOClient::IfaceLoadRect2( Rect& comp, const char* name, int ox, int oy )
 void FOClient::IfaceLoadSpr( AnyFrames*& comp, const char* name )
 {
     char res[ MAX_FOTEXT ];
-    if( !IfaceIni.GetStr( name, "none.png", res ) )
-        WriteLog( "Signature<%s> not found.\n", name );
+    IfaceIni.GetStr( name, "none.png", res );
     comp = SprMngr.LoadAnimation( res, PT_ART_INTRFACE, true );
-    if( comp == SpriteManager::DummyAnimation )
-        WriteLog( "File<%s> not found.\n", res );
 }
 
 void FOClient::IfaceLoadAnim( uint& comp, const char* name )
 {
     char res[ MAX_FOTEXT ];
-    if( !IfaceIni.GetStr( name, "none.png", res ) )
-        WriteLog( "Signature<%s> not found.\n", name );
-    if( !( comp = AnimLoad( res, PT_ART_INTRFACE, RES_ATLAS_STATIC ) ) )
-        WriteLog( "Can't load animation<%s>.\n", res );
+    IfaceIni.GetStr( name, "none.png", res );
+    comp = AnimLoad( res, PT_ART_INTRFACE, RES_ATLAS_STATIC );
 }
 
 void FOClient::IfaceLoadArray( IntVec& arr, const char* name )
@@ -54,8 +46,6 @@ void FOClient::IfaceLoadArray( IntVec& arr, const char* name )
     char res[ MAX_FOTEXT ];
     if( IfaceIni.GetStr( name, "", res ) )
         Str::ParseLine( res, ' ', arr, Str::AtoI );
-    else
-        WriteLog( "Signature<%s> not found.\n", name );
 }
 
 bool FOClient::AppendIfaceIni( const char* ini_name )
@@ -1209,55 +1199,52 @@ void FOClient::AddMess( int mess_type, const char* msg, bool script_call )
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::ConnectToGame()
+bool FOClient::LoginCheckData()
 {
-    if( !Singleplayer )
+    if( Singleplayer )
+        return true;
+
+    string tmp_str = GameOpt.Name->c_std_str();
+    while( !tmp_str.empty() && tmp_str[ 0 ] == ' ' )
+        tmp_str.erase( 0, 1 );
+    while( !tmp_str.empty() && tmp_str[ tmp_str.length() - 1 ] == ' ' )
+        tmp_str.erase( tmp_str.length() - 1, 1 );
+    *GameOpt.Name = tmp_str;
+
+    uint name_len_utf8 = Str::LengthUTF8( GameOpt.Name->c_str() );
+    if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
+        name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
     {
-        string tmp_str = GameOpt.Name->c_std_str();
-        while( !tmp_str.empty() && tmp_str[ 0 ] == ' ' )
-            tmp_str.erase( 0, 1 );
-        while( !tmp_str.empty() && tmp_str[ tmp_str.length() - 1 ] == ' ' )
-            tmp_str.erase( tmp_str.length() - 1, 1 );
-        *GameOpt.Name = tmp_str;
-
-        uint name_len_utf8 = Str::LengthUTF8( GameOpt.Name->c_str() );
-        if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
-            name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
-        {
-            AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_WRONG_LOGIN ) );
-            return;
-        }
-
-        if( !Str::IsValidUTF8( GameOpt.Name->c_str() ) || Str::Substring( GameOpt.Name->c_str(), "*" ) )
-        {
-            AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_NAME_WRONG_CHARS ) );
-            return;
-        }
-
-        uint pass_len_utf8 = Str::LengthUTF8( Password.c_str() );
-        if( pass_len_utf8 < MIN_NAME || pass_len_utf8 < GameOpt.MinNameLength ||
-            pass_len_utf8 > MAX_NAME || pass_len_utf8 > GameOpt.MaxNameLength )
-        {
-            AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_WRONG_PASS ) );
-            return;
-        }
-
-        if( !Str::IsValidUTF8( Password.c_str() ) || Str::Substring( Password.c_str(), "*" ) )
-        {
-            AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_PASS_WRONG_CHARS ) );
-            return;
-        }
-
-        // Save login and password
-        Crypt.SetCache( "__name", (uchar*) GameOpt.Name->c_str(), (uint) GameOpt.Name->length() + 1 );
-        Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
-
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_CONNECTION ) );
+        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_WRONG_LOGIN ) );
+        return false;
     }
 
-    // Connect to server
-    InitNetReason = INIT_NET_REASON_LOGIN;
-    ScreenEffects.clear();
+    if( !Str::IsValidUTF8( GameOpt.Name->c_str() ) || Str::Substring( GameOpt.Name->c_str(), "*" ) )
+    {
+        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_NAME_WRONG_CHARS ) );
+        return false;
+    }
+
+    uint pass_len_utf8 = Str::LengthUTF8( Password.c_str() );
+    if( pass_len_utf8 < MIN_NAME || pass_len_utf8 < GameOpt.MinNameLength ||
+        pass_len_utf8 > MAX_NAME || pass_len_utf8 > GameOpt.MaxNameLength )
+    {
+        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_WRONG_PASS ) );
+        return false;
+    }
+
+    if( !Str::IsValidUTF8( Password.c_str() ) || Str::Substring( Password.c_str(), "*" ) )
+    {
+        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_PASS_WRONG_CHARS ) );
+        return false;
+    }
+
+    // Save login and password
+    Crypt.SetCache( "__name", (uchar*) GameOpt.Name->c_str(), (uint) GameOpt.Name->length() + 1 );
+    Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
+
+    AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_CONNECTION ) );
+    return true;
 }
 
 // ==============================================================================================================================

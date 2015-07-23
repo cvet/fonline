@@ -485,7 +485,8 @@ bool FOClient::Init()
     // Begin game
     if( Str::Substring( CommandLine, "-Start" ) && !Singleplayer )
     {
-        ConnectToGame();
+        if( LoginCheckData() )
+            InitNetReason = INIT_NET_REASON_LOGIN;
     }
     // Intro
     else if( !Str::Substring( CommandLine, "-SkipIntro" ) )
@@ -1065,8 +1066,8 @@ int FOClient::MainLoop()
             Net_SendCreatePlayer();
         else if( reason == INIT_NET_REASON_LOAD )
             Net_SendSaveLoad( false, SaveLoadFileName.c_str(), NULL );
-        else
-            NetDisconnect();
+        else if( reason != INIT_NET_REASON_CUSTOM )
+            RUNTIME_ASSERT( !"Unreachable place" );
     }
 
     // Parse Net
@@ -2018,6 +2019,9 @@ bool FOClient::FillSockAddr( sockaddr_in& saddr, const char* host, ushort port )
 
 void FOClient::NetDisconnect()
 {
+    if( !IsConnected )
+        return;
+
     WriteLog( "Disconnect. Session traffic: send<%u>, receive<%u>, whole<%u>, receive real<%u>.\n",
               BytesSend, BytesReceive, BytesReceive + BytesSend, BytesRealReceive );
 
@@ -2262,9 +2266,8 @@ void FOClient::NetProcess()
             {
                 WriteLog( "World loaded, enter to it.\n" );
             }
-            NetDisconnect();
-            ConnectToGame();
-            InitNetReason = INIT_NET_REASON_LOGIN2;
+            if( LoginCheckData() )
+                InitNetReason = INIT_NET_REASON_LOGIN2;
             break;
 
         case NETMSG_PING:
@@ -9595,7 +9598,8 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         *GameOpt.Name = args[ 1 ];
         Self->Password = args[ 2 ];
-        Self->ConnectToGame();
+        if( Self->LoginCheckData() )
+            Self->InitNetReason = INIT_NET_REASON_LOGIN;
     }
     else if( cmd == "Register" )
     {
@@ -9610,6 +9614,10 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
             Self->InitNetReason = INIT_NET_REASON_REG;
             Self->SetCurMode( CUR_WAIT );
         }
+    }
+    else if( cmd == "CustomConnect" )
+    {
+        Self->InitNetReason = INIT_NET_REASON_CUSTOM;
     }
     else if( cmd == "GetPassword" )
     {

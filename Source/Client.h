@@ -722,7 +722,7 @@ public:
     Item* GetContainerItem( ItemVec& cont, uint id );
     void  CollectContItems();
     void  ProcessItemsCollection( int collection, ItemVec& init_items, ItemVec& result );
-    void  ConnectToGame();
+    bool  LoginCheckData();
     bool  RegCheckData();
 
 /************************************************************************/
@@ -1504,6 +1504,7 @@ public:
 #define INIT_NET_REASON_REG            ( 2 )
 #define INIT_NET_REASON_LOAD           ( 3 )
 #define INIT_NET_REASON_LOGIN2         ( 4 )
+#define INIT_NET_REASON_CUSTOM         ( 5 )
 
 // Items collections
 #define ITEMS_CHOSEN_ALL               ( 0 )

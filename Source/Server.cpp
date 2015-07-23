@@ -1418,6 +1418,10 @@ void FOServer::Process( ClientPtr& cl )
                     cl->Disconnect();
                 BIN_END( cl );
                 break;
+            case NETMSG_SEND_RUN_SERVER_SCRIPT:
+                Process_RunServerScript( cl );
+                BIN_END( cl );
+                break;
             default:
                 cl->Bin.SkipMsg( msg );
                 BIN_END( cl );
