@@ -266,3 +266,12 @@ ScriptString* Global_SHA2( ScriptString& text )
     return NULL;
     #endif
 }
+
+void Global_OpenLink( ScriptString& link )
+{
+    #ifdef FO_WINDOWS
+    ShellExecute( NULL, "open", link.c_str(), NULL, NULL, SW_SHOWNORMAL );
+    #else
+    system( ( string( "xdg-open " ) + link.c_std_str() ).c_str() );
+    #endif
+}

@@ -25,6 +25,7 @@
 # define WINVER                                  0x0501 // Windows XP
 # define WIN32_LEAN_AND_MEAN
 # include <Windows.h>
+# include <Shellapi.h>
 #else
 # include <errno.h>
 # include <string.h> // strerror
