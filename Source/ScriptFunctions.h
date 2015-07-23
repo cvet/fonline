@@ -137,9 +137,26 @@ void Global_Yield( uint time )
     #endif
 }
 
+#ifndef FONLINE_SCRIPT_COMPILER
+static size_t WriteMemoryCallback( char* ptr, size_t size, size_t nmemb, void* userdata )
+{
+    string& result = *(string*) userdata;
+    size_t  len = size * nmemb;
+    if( len )
+    {
+        result.resize( result.size() + len );
+        memcpy( &result[ result.size() - len ], ptr, len );
+    }
+    return len;
+}
+#endif
+
 void Global_YieldWebRequest( ScriptString& url, ScriptString& post, bool& success, ScriptString& result )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
+    success = false;
+    result = "";
+
     asIScriptContext* ctx = Script::SuspendCurrentContext( uint( -1 ) );
     if( !ctx )
         return;
@@ -179,32 +196,20 @@ void Global_YieldWebRequest( ScriptString& url, ScriptString& post, bool& succes
         CURL*        curl = curl_easy_init();
         if( curl )
         {
-            auto write_func = [] ( char* ptr, size_t size, size_t nmemb, void* userdata )
-            {
-                string& result = *(string*) userdata;
-                size_t  len = size * nmemb;
-                if( len )
-                {
-                    result.resize( result.size() + len );
-                    memcpy( &result[ result.size() - len ], ptr, len );
-                }
-                return len;
-            };
-
             curl_easy_setopt( curl, CURLOPT_URL, request_data->Url.c_str() );
             curl_easy_setopt( curl, CURLOPT_POSTFIELDS, request_data->Post.c_str() );
-            curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, write_func );
+            curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
             curl_easy_setopt( curl, CURLOPT_WRITEDATA, &result );
 
-            CURLcode curlRes = curl_easy_perform( curl );
-            if( curlRes == CURLE_OK )
+            CURLcode curl_res = curl_easy_perform( curl );
+            if( curl_res == CURLE_OK )
             {
                 success = true;
             }
             else
             {
                 result = "curl_easy_perform() failed: ";
-                result += curl_easy_strerror( curlRes );
+                result += curl_easy_strerror( curl_res );
             }
             curl_easy_cleanup( curl );
         }
@@ -213,8 +218,8 @@ void Global_YieldWebRequest( ScriptString& url, ScriptString& post, bool& succes
             result = "curl_easy_init fail";
         }
 
-		*request_data->Success = success;
-		*request_data->Result = result;
+        *request_data->Success = success;
+        *request_data->Result = result;
         Script::ResumeContext( request_data->Context );
         request_data->WorkThread->Release();
         delete request_data->WorkThread;
