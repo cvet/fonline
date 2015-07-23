@@ -870,6 +870,7 @@ public:
     void Start( void ( * func )( void* ), const char* name, void* arg = NULL );
     void Wait();
     void Finish();
+    void Release();
 
     # if defined ( FO_WINDOWS )
     HANDLE GetWindowsHandle();

@@ -2234,17 +2234,26 @@ bool Script::RunPrepared()
     return true;
 }
 
-void Script::SuspendCurrentContext( uint time )
+asIScriptContext* Script::SuspendCurrentContext( uint time )
 {
     asIScriptContext* ctx = asGetActiveContext();
     ContextsLocker.Lock();
     RUNTIME_ASSERT( std::find( BusyContexts.begin(), BusyContexts.end(), ctx ) != BusyContexts.end() );
     ContextsLocker.Unlock();
     if( ctx->GetFunction( ctx->GetCallstackSize() - 1 )->GetReturnTypeId() != asTYPEID_VOID )
-        SCRIPT_ERROR_R( "Can't yield context which must return value." );
+        SCRIPT_ERROR_R0( "Can't yield context which must return value." );
     ctx->Suspend();
     ContextData* ctx_data = (ContextData*) ctx->GetUserData();
-    ctx_data->SuspendEndTick = Timer::FastTick() + time;
+    ctx_data->SuspendEndTick = ( time != uint( -1 ) ? Timer::FastTick() + time : uint( -1 ) );
+    return ctx;
+}
+
+void Script::ResumeContext( asIScriptContext* ctx )
+{
+    RUNTIME_ASSERT( ctx->GetState() == asEXECUTION_SUSPENDED );
+    ContextData* ctx_data = (ContextData*) ctx->GetUserData();
+    RUNTIME_ASSERT( ctx_data->SuspendEndTick == uint( -1 ) );
+    ctx_data->SuspendEndTick = Timer::FastTick();
 }
 
 void Script::RunSuspended()
@@ -2262,7 +2271,7 @@ void Script::RunSuspended()
         {
             asIScriptContext* ctx = *it;
             ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
-            if( ctx->GetState() == asEXECUTION_SUSPENDED && tick >= ctx_data->SuspendEndTick )
+            if( ctx->GetState() == asEXECUTION_SUSPENDED && ctx_data->SuspendEndTick != uint( -1 ) && tick >= ctx_data->SuspendEndTick )
                 resume_contexts.push_back( ctx );
         }
 

@@ -1607,6 +1607,12 @@ void Thread::Finish()
     }
 }
 
+void Thread::Release()
+{
+    isStarted = false;
+    threadId = NULL;
+}
+
 # if defined ( FO_WINDOWS )
 HANDLE Thread::GetWindowsHandle()
 {

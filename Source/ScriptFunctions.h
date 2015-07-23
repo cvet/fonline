@@ -1,5 +1,8 @@
 // Common functions for server, client, mapper
 // Works in scripts compiler
+#ifndef FONLINE_SCRIPT_COMPILER
+# include "curl/curl.h"
+#endif
 
 int Global_Random( int min, int max )
 {
@@ -131,5 +134,92 @@ void Global_Yield( uint time )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     Script::SuspendCurrentContext( time );
+    #endif
+}
+
+void Global_YieldWebRequest( ScriptString& url, ScriptString& post, bool& success, ScriptString& result )
+{
+    #ifndef FONLINE_SCRIPT_COMPILER
+    asIScriptContext* ctx = Script::SuspendCurrentContext( uint( -1 ) );
+    if( !ctx )
+        return;
+
+    struct RequestData
+    {
+        asIScriptContext* Context;
+        Thread*           WorkThread;
+        string            Url;
+        string            Post;
+        bool*             Success;
+        ScriptString*     Result;
+    };
+
+    RequestData* request_data = new RequestData();
+    request_data->Context = ctx;
+    request_data->WorkThread = new Thread();
+    request_data->Url = url.c_std_str();
+    request_data->Post = post.c_std_str();
+    request_data->Success = &success;
+    request_data->Result = &result;
+
+    auto request_func = [] (void* data)
+    {
+        static bool curl_inited = false;
+        if( !curl_inited )
+        {
+            curl_inited = true;
+            curl_global_init( CURL_GLOBAL_ALL );
+        }
+
+        RequestData* request_data = (RequestData*) data;
+
+        bool         success = false;
+        string       result;
+
+        CURL*        curl = curl_easy_init();
+        if( curl )
+        {
+            auto write_func = [] ( char* ptr, size_t size, size_t nmemb, void* userdata )
+            {
+                string& result = *(string*) userdata;
+                size_t  len = size * nmemb;
+                if( len )
+                {
+                    result.resize( result.size() + len );
+                    memcpy( &result[ result.size() - len ], ptr, len );
+                }
+                return len;
+            };
+
+            curl_easy_setopt( curl, CURLOPT_URL, request_data->Url.c_str() );
+            curl_easy_setopt( curl, CURLOPT_POSTFIELDS, request_data->Post.c_str() );
+            curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, write_func );
+            curl_easy_setopt( curl, CURLOPT_WRITEDATA, &result );
+
+            CURLcode curlRes = curl_easy_perform( curl );
+            if( curlRes == CURLE_OK )
+            {
+                success = true;
+            }
+            else
+            {
+                result = "curl_easy_perform() failed: ";
+                result += curl_easy_strerror( curlRes );
+            }
+            curl_easy_cleanup( curl );
+        }
+        else
+        {
+            result = "curl_easy_init fail";
+        }
+
+		*request_data->Success = success;
+		*request_data->Result = result;
+        Script::ResumeContext( request_data->Context );
+        request_data->WorkThread->Release();
+        delete request_data->WorkThread;
+        delete request_data;
+    };
+    request_data->WorkThread->Start( request_func, "WebRequest", request_data );
     #endif
 }

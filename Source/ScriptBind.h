@@ -1256,6 +1256,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFolderFileNames(string& pa
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool DeleteFile(string& fileName)", asFUNCTION( Global_DeleteFile ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(string& path)", asFUNCTION( Global_CreateDirectoryTree ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Yield(uint time)", asFUNCTION( Global_Yield ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void YieldWebRequest(string& url, string& post, bool& success, string& result)", asFUNCTION( Global_YieldWebRequest ), asCALL_CDECL ) );
 
 // Invoker
 BIND_ASSERT( engine->RegisterFuncdef( "void CallFunc()" ) );

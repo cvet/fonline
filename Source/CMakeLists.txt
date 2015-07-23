@@ -139,6 +139,13 @@ if( MSVC_IDE )
 	set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DELAYLOAD:libfbxsdk.dll" )
 endif()
 
+set( CURL_DIR "cURL" ) # curl-7.43.0
+set( CURL_STATICLIB ON )
+set( BUILD_CURL_EXE OFF )
+set( BUILD_CURL_TESTS OFF )
+add_definitions( "-DCURL_STATICLIB" )
+add_subdirectory( "cURL" )
+
 set( COMMON_SOURCE
 	Common.cpp Common.h
 	Crypt.cpp Crypt.h
@@ -273,6 +280,7 @@ include_directories( "${VORBIS_DIR}/include" )
 include_directories( "${VORBIS_DIR}/lib" )
 include_directories( "${THEORA_DIR}/include" )
 include_directories( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/include" "${ANGEL_SCRIPT_DIR}" )
+include_directories( "${CURL_DIR}/include" )
 link_directories( "${CMAKE_CURRENT_SOURCE_DIR}/Lib/${OS}/${ARCH_STR}" )
 link_directories( "$ENV{DXSDK_DIR}/lib/${ARCH_STR}" )
 
@@ -292,28 +300,28 @@ add_executable( FOnline WIN32 ${CLIENT_SOURCE} "Client.rc" )
 set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/../SDK/Client/" )
 set_target_properties( FOnline PROPERTIES ${RO1} ${CLIENT_OUTPUT} ${RO2} ${CLIENT_OUTPUT} ${RO3} ${CLIENT_OUTPUT} ${RO4} ${CLIENT_OUTPUT} )
 set_target_properties( FOnline PROPERTIES COMPILE_FLAGS "${CLIENT_DEFINES}" )
-target_link_libraries( FOnline "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SDL2main" "SDL2-static" "Acm" "SHA2" "${NCODEHOOK}" "${GL}" "GLExt" "${FBXSDK}" "${CMAKE_DL_LIBS}" )
+target_link_libraries( FOnline "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SDL2main" "SDL2-static" "Acm" "SHA2" "libcurl" "${NCODEHOOK}" "${GL}" "GLExt" "${FBXSDK}" "${CMAKE_DL_LIBS}" )
 
 if( NOT BUILD_ONLY_CLIENT )
 	add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} "Server.rc" )
 	set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../SDK/Server/" )
 	set_target_properties( FOnlineServer PROPERTIES ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 	set_target_properties( FOnlineServer PROPERTIES COMPILE_FLAGS "${SERVER_DEFINES}" )
-	target_link_libraries( FOnlineServer "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SHA2" "${NCODEHOOK}" "fltk" "${EVENT2}" "${EVENT2_PTHREADS}" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( FOnlineServer "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SHA2" "libcurl" "${NCODEHOOK}" "fltk" "${EVENT2}" "${EVENT2_PTHREADS}" "${CMAKE_DL_LIBS}" )
 
 	if( NOT WIN32 )
 		add_executable( FOnlineServerDaemon ${SERVER_SOURCE} "Server.rc" )
 		set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../SDK/Server/" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerDaemon PROPERTIES COMPILE_FLAGS "${SERVER_DEFINES} -DSERVER_DAEMON" )
-		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SHA2" "${NCODEHOOK}" "${EVENT2}" "${EVENT2_PTHREADS}" "${CMAKE_DL_LIBS}" )
+		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SHA2" "libcurl" "${NCODEHOOK}" "${EVENT2}" "${EVENT2_PTHREADS}" "${CMAKE_DL_LIBS}" )
 	endif()
 
 	add_executable( Mapper WIN32 ${MAPPER_SOURCE} "Mapper.rc" )
 	set( MAPPER_OUTPUT "${CMAKE_BINARY_DIR}/../SDK/Tools/Mapper/" )
 	set_target_properties( Mapper PROPERTIES ${RO1} ${MAPPER_OUTPUT} ${RO2} ${MAPPER_OUTPUT} ${RO3} ${MAPPER_OUTPUT} ${RO4} ${MAPPER_OUTPUT} )
 	set_target_properties( Mapper PROPERTIES COMPILE_FLAGS "${MAPPER_DEFINES}" )
-	target_link_libraries( Mapper "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SDL2main" "SDL2-static" "SHA2" "${NCODEHOOK}" "${GL}" "GLExt" "${FBXSDK}" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( Mapper "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SDL2main" "SDL2-static" "SHA2" "libcurl" "${NCODEHOOK}" "${GL}" "GLExt" "${FBXSDK}" "${CMAKE_DL_LIBS}" )
 
 	add_executable( ASCompiler ${ASCOMPILER_SOURCE} )
 	set( ASCOMPILER_OUTPUT "${CMAKE_BINARY_DIR}/../SDK/Tools/ASCompiler/" )
@@ -323,5 +331,5 @@ if( NOT BUILD_ONLY_CLIENT )
 
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 	set_property( TARGET FOnlineServer FOnline Mapper ASCompiler PROPERTY FOLDER "Binaries")
-	set_property( TARGET Acm Angelscript AngelscriptExt fltk GLExt ${NCODEHOOK} png16_static SDL2main SDL2-static SHA2 zlibstatic PROPERTY FOLDER "Libraries")
+	set_property( TARGET Acm Angelscript AngelscriptExt fltk GLExt ${NCODEHOOK} png16_static SDL2main SDL2-static SHA2 zlibstatic libcurl PROPERTY FOLDER "Libraries")
 endif()
