@@ -1238,25 +1238,27 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void AllowSlot(uint8 index, bool e
 
 // ScriptFunctions.h
 BIND_ASSERT( engine->RegisterGlobalFunction( "int Random(int min, int max)", asFUNCTION( Global_Random ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void Log(string& text)", asFUNCTION( Global_Log ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool StrToInt(string@+ text, int& result)", asFUNCTION( Global_StrToInt ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool StrToFloat(string@+ text, float& result)", asFUNCTION( Global_StrToFloat ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Log(const string& text)", asFUNCTION( Global_Log ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool StrToInt(const string@+ text, int& result)", asFUNCTION( Global_StrToInt ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool StrToFloat(const string@+ text, float& result)", asFUNCTION( Global_StrToFloat ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetDistantion(uint16 hexX1, uint16 hexY1, uint16 hexX2, uint16 hexY2)", asFUNCTION( Global_GetDistantion ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint8 GetDirection(uint16 fromHexX, uint16 fromHexY, uint16 toHexX, uint16 toHexY)", asFUNCTION( Global_GetDirection ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint8 GetOffsetDir(uint16 fromHexX, uint16 fromHexY, uint16 toHexX, uint16 toHexY, float offset)", asFUNCTION( Global_GetOffsetDir ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetTick()", asFUNCTION( Global_GetTick ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAngelScriptProperty(int property)", asFUNCTION( Global_GetAngelScriptProperty ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetAngelScriptProperty(int property, uint value)", asFUNCTION( Global_SetAngelScriptProperty ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "hash GetStrHash(string@+ str)", asFUNCTION( Global_GetStrHash ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "hash GetStrHash(const string@+ str)", asFUNCTION( Global_GetStrHash ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetHashStr(hash h)", asFUNCTION( Global_GetHashStr ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint DecodeUTF8(const string& text, uint& length)", asFUNCTION( Global_DecodeUTF8 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ EncodeUTF8(uint ucs)", asFUNCTION( Global_EncodeUTF8 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetFilePath(int path)", asFUNCTION( Global_GetFilePath ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFolderFileNames(string& path, string@+ extension, bool includeSubdirs, string[]@+ result)", asFUNCTION( Global_GetFolderFileNames ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool DeleteFile(string& fileName)", asFUNCTION( Global_DeleteFile ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(string& path)", asFUNCTION( Global_CreateDirectoryTree ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFolderFileNames(const string& path, const string@+ extension, bool includeSubdirs, string[]@+ result)", asFUNCTION( Global_GetFolderFileNames ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool DeleteFile(const string& fileName)", asFUNCTION( Global_DeleteFile ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(const string& path)", asFUNCTION( Global_CreateDirectoryTree ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Yield(uint time)", asFUNCTION( Global_Yield ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void YieldWebRequest(string& url, string& post, bool& success, string& result)", asFUNCTION( Global_YieldWebRequest ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void YieldWebRequest(const string& url, const string& post, bool& success, string& result)", asFUNCTION( Global_YieldWebRequest ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "string@ SHA1(const string& text)", asFUNCTION( Global_SHA1 ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "string@ SHA2(const string& text)", asFUNCTION( Global_SHA2 ), asCALL_CDECL ) );
 
 // Invoker
 BIND_ASSERT( engine->RegisterFuncdef( "void CallFunc()" ) );

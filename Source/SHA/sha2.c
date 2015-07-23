@@ -36,7 +36,6 @@
 #endif
 
 #include <string.h>
-
 #include "sha2.h"
 
 #define SHFR(x, n)    (x >> n)

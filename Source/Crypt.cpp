@@ -1,7 +1,7 @@
 #include "Common.h"
 #include "Crypt.h"
 #include "zlib.h"
-#include "SHA2/sha2.h"
+#include "SHA/sha2.h"
 
 CryptManager Crypt;
 

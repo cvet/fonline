@@ -2,6 +2,8 @@
 // Works in scripts compiler
 #ifndef FONLINE_SCRIPT_COMPILER
 # include "curl/curl.h"
+# include "SHA/sha1.h"
+# include "SHA/sha2.h"
 #endif
 
 int Global_Random( int min, int max )
@@ -226,5 +228,41 @@ void Global_YieldWebRequest( ScriptString& url, ScriptString& post, bool& succes
         delete request_data;
     };
     request_data->WorkThread->Start( request_func, "WebRequest", request_data );
+    #endif
+}
+
+ScriptString* Global_SHA1( ScriptString& text )
+{
+    #ifndef FONLINE_SCRIPT_COMPILER
+    SHA1_CTX ctx;
+    SHA1_Init( &ctx );
+    SHA1_Update( &ctx, (uchar*) text.c_str(), text.length() );
+    uchar digest[ SHA1_DIGEST_SIZE ];
+    SHA1_Final( &ctx, digest );
+
+    static const char* nums = "0123456789abcdef";
+    char               hex_digest[ SHA1_DIGEST_SIZE * 2 ];
+    for( uint i = 0; i < sizeof( hex_digest ); i++ )
+        hex_digest[ i ] = nums[ i % 2 ? digest[ i / 2 ] & 0xF : digest[ i / 2 ] >> 4 ];
+    return ScriptString::Create( hex_digest, sizeof( hex_digest ) );
+    #else
+    return NULL;
+    #endif
+}
+
+ScriptString* Global_SHA2( ScriptString& text )
+{
+    #ifndef FONLINE_SCRIPT_COMPILER
+    const uint digest_size = 32;
+    uchar      digest[ digest_size ];
+    sha256( (uchar*) text.c_str(), text.length(), digest );
+
+    static const char* nums = "0123456789abcdef";
+    char               hex_digest[ digest_size * 2 ];
+    for( uint i = 0; i < sizeof( hex_digest ); i++ )
+        hex_digest[ i ] = nums[ i % 2 ? digest[ i / 2 ] & 0xF : digest[ i / 2 ] >> 4 ];
+    return ScriptString::Create( hex_digest, sizeof( hex_digest ) );
+    #else
+    return NULL;
     #endif
 }
