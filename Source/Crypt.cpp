@@ -516,7 +516,7 @@ label_PlaceFound:
 
 void CryptManager::SetCache( const char* data_name, const string& str )
 {
-    SetCache( data_name, (uchar*) str.c_str(), (uint) str.length() + 1 );
+    SetCache( data_name, (uchar*) str.c_str(), (uint) str.length() );
 }
 
 void CryptManager::SetCache( const char* data_name, UCharVec& data )
