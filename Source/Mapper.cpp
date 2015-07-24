@@ -4502,11 +4502,7 @@ void FOMapper::CurDraw()
         {
             SpriteInfo* si = SprMngr.GetSpriteInfo( anim->GetCurSprId() );
             if( si )
-            {
-                int x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-                int y = GameOpt.MouseY - si->Height + si->OffsY;
-                SprMngr.DrawSprite( anim, x, y, COLOR_IFACE );
-            }
+                SprMngr.DrawSprite( anim, GameOpt.MouseX, GameOpt.MouseY, COLOR_IFACE );
         }
     }
     break;
