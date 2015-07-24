@@ -221,7 +221,8 @@ void ItemHex::RefreshAnim()
     if( Anim && isEffect )
         Anim = Anim->GetDir( effDir );
     if( !Anim )
-        Anim = ResMngr.ItemHexDefaultAnim;
+		RUNTIME_ASSERT(false);
+        //Anim = ResMngr.ItemHexDefaultAnim;
 
     SetStayAnim();
     animBegSpr = begSpr;

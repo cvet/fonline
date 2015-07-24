@@ -16,11 +16,6 @@
 /* FIELD                                                                */
 /************************************************************************/
 
-Field::Field()
-{
-    memzero( this, sizeof( Field ) );
-}
-
 Field::~Field()
 {
     SAFEDEL( DeadCrits );
@@ -1596,11 +1591,11 @@ bool HexManager::CheckTilesBorder( Field::Tile& tile, bool is_roof )
 
 void HexManager::RebuildTiles()
 {
-    if( !GameOpt.ShowTile )
-        return;
-
     tilesTree.Unvalidate();
     tilesAnimatedTree.Unvalidate();
+
+    if( !GameOpt.ShowTile )
+        return;
 
     int vpos;
     int y2 = 0;
@@ -1662,11 +1657,11 @@ void HexManager::RebuildTiles()
 
 void HexManager::RebuildRoof()
 {
-    if( !GameOpt.ShowRoof )
-        return;
-
     roofTree.Unvalidate();
     roofAnimatedTree.Unvalidate();
+
+    if( !GameOpt.ShowRoof )
+        return;
 
     int vpos;
     int y2 = 0;
@@ -1834,7 +1829,7 @@ void HexManager::SetWeather( int time, uchar rain )
     rainCapacity = rain;
 }
 
-bool HexManager::ResizeField( ushort w, ushort h )
+void HexManager::ResizeField( ushort w, ushort h )
 {
     GameOpt.ClientMap = NULL;
     GameOpt.ClientMapLight = NULL;
@@ -1848,29 +1843,21 @@ bool HexManager::ResizeField( ushort w, ushort h )
     SAFEDELA( hexTrack );
     SAFEDELA( hexLight );
     if( !w || !h )
-        return true;
+        return;
 
     hexField = new Field[ w * h ];
-    if( !hexField )
-        return false;
+    memzero( hexField, w * h * sizeof( Field ) );
     hexToDraw = new bool[ w * h ];
-    if( !hexToDraw )
-        return false;
     memzero( hexToDraw, w * h * sizeof( bool ) );
     hexTrack = new char[ w * h ];
-    if( !hexTrack )
-        return false;
     memzero( hexTrack, w * h * sizeof( char ) );
     hexLight = new uchar[ w * h * 3 ];
-    if( !hexLight )
-        return false;
     memzero( hexLight, w * h * 3 * sizeof( uchar ) );
 
     GameOpt.ClientMap = hexField;
     GameOpt.ClientMapLight = hexLight;
     GameOpt.ClientMapWidth = w;
     GameOpt.ClientMapHeight = h;
-    return true;
 }
 
 void HexManager::SwitchShowTrack()
@@ -3710,11 +3697,7 @@ bool HexManager::LoadMap( hash map_pid )
     }
 
     // Create field
-    if( !ResizeField( maxhx, maxhy ) )
-    {
-        WriteLog( "Buffer allocation fail.\n" );
-        return false;
-    }
+    ResizeField( maxhx, maxhy );
 
     // Tiles
     fm.SetCurPos( 0x2C );
@@ -3841,6 +3824,8 @@ void HexManager::UnloadMap()
 {
     if( !IsMapLoaded() )
         return;
+
+    WriteLog( "Unload map.\n" );
 
     curPidMap = 0;
     curMapTime = -1;
@@ -4155,11 +4140,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     if( curDataPrefix != GameOpt.MapDataPrefix->c_std_str() )
         ReloadSprites();
 
-    if( !ResizeField( pmap.Header.MaxHexX, pmap.Header.MaxHexY ) )
-    {
-        WriteLog( "Buffer allocation fail.\n" );
-        return false;
-    }
+    ResizeField( pmap.Header.MaxHexX, pmap.Header.MaxHexY );
 
     CurProtoMap = &pmap;
     curPidMap = 0xFFFF;

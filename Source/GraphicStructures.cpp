@@ -20,7 +20,7 @@ AnyFrames* AnyFrames::Create( uint frames, uint ticks )
 
 void AnyFrames::Destroy( AnyFrames* anim )
 {
-    if( !anim )
+    if( !anim || anim == SprMngr.DummyAnimation )
         return;
     for( int dir = 1; dir < anim->DirCount(); dir++ )
         AnyFramesPool.Put( anim->GetDir( dir ) );

@@ -102,7 +102,6 @@ struct Field
 
     uchar Corner;
 
-    Field();
     ~Field();
     void  AddItem( ItemHex* item );
     void  EraseItem( ItemHex* item );
@@ -152,7 +151,7 @@ private:
     string     curDataPrefix;
 
 public:
-    bool   ResizeField( ushort w, ushort h );
+    void   ResizeField( ushort w, ushort h );
     Field& GetField( ushort hx, ushort hy )     { return hexField[ hy * maxHexX + hx ]; }
     bool&  GetHexToDraw( ushort hx, ushort hy ) { return hexToDraw[ hy * maxHexX + hx ]; }
     char&  GetHexTrack( ushort hx, ushort hy )  { return hexTrack[ hy * maxHexX + hx ]; }

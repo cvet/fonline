@@ -107,8 +107,8 @@ void ResourceManager::ReinitializeDynamicAtlas()
     SprMngr.InitializeEgg( "egg.png" );
     AnyFrames::Destroy( CritterDefaultAnim );
     AnyFrames::Destroy( ItemHexDefaultAnim );
-    CritterDefaultAnim = SprMngr.LoadAnimation( "art\\critters\\reservaa.frm", PT_DATA, true );
-    ItemHexDefaultAnim = SprMngr.LoadAnimation( "art\\items\\reserved.frm", PT_DATA, true );
+    CritterDefaultAnim = SprMngr.LoadAnimation( "art/misc/CritterStub.png", PT_DATA, true );
+    ItemHexDefaultAnim = SprMngr.LoadAnimation( "art/misc/ItemStub.png", PT_DATA, true );
     SprMngr.PopAtlasType();
 }
 
