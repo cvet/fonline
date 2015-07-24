@@ -153,7 +153,7 @@ static size_t WriteMemoryCallback( char* ptr, size_t size, size_t nmemb, void* u
 }
 #endif
 
-void Global_YieldWebRequest( ScriptString& url, ScriptString& post, bool& success, ScriptString& result )
+void Global_YieldWebRequest( ScriptString& url, ScriptDict* post, bool& success, ScriptString& result )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     success = false;
@@ -167,8 +167,8 @@ void Global_YieldWebRequest( ScriptString& url, ScriptString& post, bool& succes
     {
         asIScriptContext* Context;
         Thread*           WorkThread;
-        string            Url;
-        string            Post;
+        ScriptString*     Url;
+        ScriptDict*       Post;
         bool*             Success;
         ScriptString*     Result;
     };
@@ -176,8 +176,8 @@ void Global_YieldWebRequest( ScriptString& url, ScriptString& post, bool& succes
     RequestData* request_data = new RequestData();
     request_data->Context = ctx;
     request_data->WorkThread = new Thread();
-    request_data->Url = url.c_std_str();
-    request_data->Post = post.c_std_str();
+    request_data->Url = &url;
+    request_data->Post = post;
     request_data->Success = &success;
     request_data->Result = &result;
 
@@ -198,10 +198,29 @@ void Global_YieldWebRequest( ScriptString& url, ScriptString& post, bool& succes
         CURL*        curl = curl_easy_init();
         if( curl )
         {
-            curl_easy_setopt( curl, CURLOPT_URL, request_data->Url.c_str() );
-            curl_easy_setopt( curl, CURLOPT_POSTFIELDS, request_data->Post.c_str() );
+            curl_easy_setopt( curl, CURLOPT_URL, request_data->Url->c_str() );
             curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
             curl_easy_setopt( curl, CURLOPT_WRITEDATA, &result );
+
+            string post;
+            if( request_data->Post )
+            {
+                for( uint i = 0, j = request_data->Post->GetSize(); i < j; i++ )
+                {
+                    ScriptString* key = (ScriptString*) request_data->Post->GetKey( i );
+                    ScriptString* value = (ScriptString*) request_data->Post->GetValue( i );
+                    char*         escaped_key = curl_easy_escape( curl, key->c_str(), key->length() );
+                    char*         escaped_value = curl_easy_escape( curl, value->c_str(), value->length() );
+                    if( i > 0 )
+                        post += "&";
+                    post += escaped_key;
+                    post += "=";
+                    post += escaped_value;
+                    curl_free( escaped_key );
+                    curl_free( escaped_value );
+                }
+                curl_easy_setopt( curl, CURLOPT_POSTFIELDS, post.c_str() );
+            }
 
             CURLcode curl_res = curl_easy_perform( curl );
             if( curl_res == CURLE_OK )

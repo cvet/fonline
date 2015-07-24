@@ -9619,6 +9619,11 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->InitNetReason = INIT_NET_REASON_CUSTOM;
     }
+    else if( cmd == "SaveLoginPassCache" && args.size() >= 3 )
+    {
+        Crypt.SetCache( "__name", (uchar*) args[ 1 ].c_str(), (uint) args[ 1 ].length() + 1 );
+        Crypt.SetCache( "__pass", (uchar*) args[ 2 ].c_str(), (uint) args[ 2 ].length() + 1 );
+    }
     else if( cmd == "GetPassword" )
     {
         return ScriptString::Create( Self->Password );

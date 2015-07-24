@@ -1256,7 +1256,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFolderFileNames(const stri
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool DeleteFile(const string& fileName)", asFUNCTION( Global_DeleteFile ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(const string& path)", asFUNCTION( Global_CreateDirectoryTree ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Yield(uint time)", asFUNCTION( Global_Yield ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void YieldWebRequest(const string& url, const string& post, bool& success, string& result)", asFUNCTION( Global_YieldWebRequest ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void YieldWebRequest(const string& url, const dict< string, string >@+ post, bool& success, string& result)", asFUNCTION( Global_YieldWebRequest ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ SHA1(const string& text)", asFUNCTION( Global_SHA1 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ SHA2(const string& text)", asFUNCTION( Global_SHA2 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void OpenLink(const string& link)", asFUNCTION( Global_OpenLink ), asCALL_CDECL ) );
