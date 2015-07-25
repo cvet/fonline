@@ -7104,6 +7104,16 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
     }
 }
 
+void FOMapper::SScriptFunc::Global_EnableDrawScissor( int x, int y, int w, int h )
+{
+    SprMngr.EnableScissor( x, y, w, h );
+}
+
+void FOMapper::SScriptFunc::Global_DisableDrawScissor()
+{
+    SprMngr.DisableScissor();
+}
+
 bool FOMapper::SScriptFunc::Global_IsCritterCanWalk( uint cr_type )
 {
     if( !CritType::IsEnabled( cr_type ) )

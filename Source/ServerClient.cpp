@@ -1532,7 +1532,7 @@ void FOServer::Process_CreateClient( Client* cl )
     }
 
     // Check net
-    CHECK_IN_BUFF_ERROR_EX( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ) );
+    CHECK_IN_BUFF_ERROR_EXT( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ), return );
 
     // Check data
     if( !Str::IsValidUTF8( cl->Name ) || Str::Substring( cl->Name, "*" ) )
@@ -1817,7 +1817,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     cl->Bin >> uid[ 0 ];
     char dummy[ 100 ];
     cl->Bin.Pop( dummy, 100 );
-    CHECK_IN_BUFF_ERROR_EX( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ) );
+    CHECK_IN_BUFF_ERROR_EXT( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ), return );
 
     // Language
     auto it_l = std::find( LangPacks.begin(), LangPacks.end(), msg_language );
@@ -3724,10 +3724,10 @@ void FOServer::Process_GetUserHoloStr( Client* cl )
 
 void FOServer::Process_LevelUp( Client* cl )
 {
-    uint    msg_len;
-    ushort  count_skill_up;
-    UIntVec skills;
-    int     perk_up;
+    uint   msg_len;
+    ushort count_skill_up;
+    IntVec skills;
+    int    perk_up;
 
     cl->Bin >> msg_len;
 
@@ -3735,7 +3735,7 @@ void FOServer::Process_LevelUp( Client* cl )
     cl->Bin >> count_skill_up;
     for( int i = 0; i < count_skill_up; i++ )
     {
-        ushort num, val;
+        int num, val;
         cl->Bin >> num;
         cl->Bin >> val;
         skills.push_back( num );
@@ -3762,7 +3762,7 @@ void FOServer::Process_LevelUp( Client* cl )
     if( Script::PrepareContext( ServerFunctions.PlayerLevelUp, _FUNC_, cl->GetInfo() ) )
     {
         Script::SetArgObject( cl );
-        Script::SetArgUInt( -1 );
+        Script::SetArgUInt( 0 );
         Script::SetArgUInt( 0 );
         Script::SetArgUInt( perk_up );
         Script::RunPrepared();

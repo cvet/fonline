@@ -644,16 +644,12 @@ void FOServer::Logic_Work( void* data )
             Critter* cr = (Critter*) job.Data;
             SYNC_LOCK( cr );
 
-            // Player specific
-            if( cr->CanBeRemoved )
-                RemoveClient( (Client*) cr );                           // Todo: rework, add to garbage collector
-
-            // Check for removing
-            if( cr->IsDestroyed )
-                continue;
-
             // Process logic
             ProcessCritter( cr );
+
+            // Player specific
+            if( cr->CanBeRemoved )
+                RemoveClient( (Client*) cr );
         }
         else if( job.Type == JOB_MAP )
         {
@@ -1219,9 +1215,7 @@ void FOServer::NetIO_Work( void* )
                 NetIO_Input( io );
                 break;
             default:
-                WriteLogF( _FUNC_, " - Unknown operation<%d>, is send<%d>.\n", io->Operation, io == cl->NetIOOut );
-                InterlockedExchange( &io->Operation, WSAOP_FREE );
-                cl->Disconnect();
+                RUNTIME_ASSERT( !"Unreachable place" );
                 break;
             }
         }
@@ -1432,7 +1426,7 @@ void FOServer::Process( ClientPtr& cl )
         }
         else
         {
-            CHECK_IN_BUFF_ERROR( cl );
+            CHECK_IN_BUFF_ERROR_EXT( cl, 0, 0 );
             BIN_END( cl );
         }
 
@@ -1481,7 +1475,7 @@ void FOServer::Process( ClientPtr& cl )
         }
         else
         {
-            CHECK_IN_BUFF_ERROR( cl );
+            CHECK_IN_BUFF_ERROR_EXT( cl, 0, 0 );
             BIN_END( cl );
         }
     }
@@ -1559,7 +1553,7 @@ void FOServer::Process( ClientPtr& cl )
             cl->Bin.Refresh();
             if( !cl->Bin.NeedProcess() )
             {
-                CHECK_IN_BUFF_ERROR( cl );
+                CHECK_IN_BUFF_ERROR_EXT( cl, 0, 0 );
                 BIN_END( cl );
                 break;
             }

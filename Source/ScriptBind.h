@@ -1107,6 +1107,8 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawPrimitive(int primitiveTy
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSprite(uint16 hx, uint16 hy, hash effectPid, uint sprId, int frameIndex, int offsX, int offsY)", asFUNCTION( BIND_CLASS Global_DrawMapSprite ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter2d(uint crType, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter2d ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter3d(uint instance, uint crType, uint anim1, uint anim2, const int[]@+ layers, const float[]@+ position, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter3d ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void EnableDrawScissor(int x, int y, int w, int h)", asFUNCTION( BIND_CLASS Global_EnableDrawScissor ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DisableDrawScissor(int x, int y, int w, int h)", asFUNCTION( BIND_CLASS Global_DisableDrawScissor ), asCALL_CDECL ) );
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __Quit", &GameOpt.Quit ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __OpenGLRendering", &GameOpt.OpenGLRendering ) );

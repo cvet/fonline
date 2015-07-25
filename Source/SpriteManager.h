@@ -204,6 +204,9 @@ public:
     void PrepareSquare( PointVec& points, Rect r, uint color );
     void PrepareSquare( PointVec& points, Point lt, Point rt, Point lb, Point rb, uint color );
     bool PrepareBuffer( Sprites& dtree, GLuint atlas, int ox, int oy, uchar alpha );
+    void EnableScissor( RectF& r );
+    void EnableScissor( int x, int y, int w, int h );
+    void DisableScissor();
     bool Flush();
 
     bool DrawSprite( uint id, int x, int y, uint color = 0 );
@@ -251,8 +254,6 @@ private:
     void BindVertexArray( VertexArray* va );
     void EnableVertexArray( VertexArray* va, uint vertices_count );
     void DisableVertexArray( VertexArray*& va );
-    void EnableScissor( RectF& r );
-    void DisableScissor();
 
     // Contours
 public:

@@ -871,12 +871,21 @@ void SpriteManager::DisableVertexArray( VertexArray*& va )
 
 void SpriteManager::EnableScissor( RectF& r )
 {
+    Flush();
     GL( glEnable( GL_SCISSOR_TEST ) );
     GL( glScissor( (int) r.L, rtStack.back()->TargetTexture->Height - (int) r.B, (int) ( r.R - r.L ), (int) ( r.B - r.T ) ) );
 }
 
+void SpriteManager::EnableScissor( int x, int y, int w, int h )
+{
+    Flush();
+    GL( glEnable( GL_SCISSOR_TEST ) );
+    GL( glScissor( x, rtStack.back()->TargetTexture->Height - ( x + h ), w, h ) );
+}
+
 void SpriteManager::DisableScissor()
 {
+    Flush();
     GL( glDisable( GL_SCISSOR_TEST ) );
 }
 
@@ -3205,19 +3214,13 @@ bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color, RectF
     Render3d( anim3d );
 
     if( scissor )
-    {
-        Flush();
         EnableScissor( *scissor );
-    }
 
     SpriteInfo* si = sprData[ anim3d->SprId ];
     DrawSprite( anim3d->SprId, x - si->Width / 2 + si->OffsX, y - si->Height + si->OffsY, color );
 
     if( scissor )
-    {
-        Flush();
         DisableScissor();
-    }
 
     return true;
 }

@@ -4894,8 +4894,16 @@ void FOClient::Net_OnChosenTalk()
 
     ScriptString* text_to_script = ScriptString::Create( DlgMainText );
     ScriptArray*  answers_to_script = Script::CreateArray( "string@[]" );
+    for( size_t i = 0; i < answers_texts.size(); i++ )
+    {
+        Str::Copy( str, MsgDlg->GetStr( answers_texts[ i ] ) );
+        FormatTags( str, MAX_FOTEXT, Chosen, npc, lexems );
+        ScriptString* sstr = ScriptString::Create( str );
+        answers_to_script->InsertLast( &sstr );
+        sstr->Release();
+    }
 
-    int           line = 0, height = 0, page = 0, answ = 0;
+    int line = 0, height = 0, page = 0, answ = 0;
     while( true )
     {
         Rect pos(
@@ -4916,9 +4924,6 @@ void FOClient::Net_OnChosenTalk()
 
         Str::Copy( str, MsgDlg->GetStr( answers_texts[ answ ] ) );
         FormatTags( str, MAX_FOTEXT, Chosen, npc, lexems );
-        ScriptString* sstr = ScriptString::Create( str );
-        answers_to_script->InsertLast( &sstr );
-        sstr->Release();
         Str::Insert( str, answ_beg );      // TODO: GetStr
 
         height += SprMngr.GetLinesHeight( DlgAnswText.W(), 0, str );
@@ -11364,6 +11369,16 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
 
         SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ), !scissor.IsZero() ? &scissor : NULL );
     }
+}
+
+void FOClient::SScriptFunc::Global_EnableDrawScissor( int x, int y, int w, int h )
+{
+    SprMngr.EnableScissor( x, y, w, h );
+}
+
+void FOClient::SScriptFunc::Global_DisableDrawScissor()
+{
+    SprMngr.DisableScissor();
 }
 
 void FOClient::SScriptFunc::Global_ShowScreen( int screen, ScriptDictionary* params )
