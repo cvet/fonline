@@ -204,9 +204,8 @@ public:
     void PrepareSquare( PointVec& points, Rect r, uint color );
     void PrepareSquare( PointVec& points, Point lt, Point rt, Point lb, Point rb, uint color );
     bool PrepareBuffer( Sprites& dtree, GLuint atlas, int ox, int oy, uchar alpha );
-    void EnableScissor( RectF& r );
-    void EnableScissor( int x, int y, int w, int h );
-    void DisableScissor();
+    void PushScissor( int l, int t, int r, int b );
+    void PopScissor();
     bool Flush();
 
     bool DrawSprite( uint id, int x, int y, uint color = 0 );
@@ -214,8 +213,8 @@ public:
     bool DrawSpriteSizeExt( uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color );
     bool DrawSpritePattern( uint id, int x, int y, int w, int h, int spr_width = 0, int spr_height = 0, uint color = 0 );
     bool DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to, bool prerender = false, int prerender_ox = 0, int prerender_oy = 0 );
-    bool DrawPoints( PointVec& points, int prim, float* zoom = NULL, RectF* scissor = NULL, PointF* offset = NULL, Effect* effect = NULL );
-    bool Draw3d( int x, int y, Animation3d* anim3d, uint color, RectF* scissor = NULL );
+    bool DrawPoints( PointVec& points, int prim, float* zoom = NULL, PointF* offset = NULL, Effect* effect = NULL );
+    bool Draw3d( int x, int y, Animation3d* anim3d, uint color );
 
     inline bool DrawSprite( AnyFrames* frames, int x, int y, uint color = 0 )
     {
@@ -249,11 +248,16 @@ private:
     uint         baseColor;
     int          drawQuadCount;
     int          curDrawQuad;
+    IntVec       scissorStack;
+    Rect         scissorRect;
 
     void InitVertexArray( VertexArray* va, bool quads, uint count );
     void BindVertexArray( VertexArray* va );
     void EnableVertexArray( VertexArray* va, uint vertices_count );
     void DisableVertexArray( VertexArray*& va );
+    void RefreshScissor();
+    void EnableScissor();
+    void DisableScissor();
 
     // Contours
 public:

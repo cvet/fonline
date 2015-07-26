@@ -935,8 +935,8 @@ struct BindClass
     static void Global_DrawMapSprite()      {}
     static void Global_DrawCritter2d()      {}
     static void Global_DrawCritter3d()      {}
-    static void Global_EnableDrawScissor()  {}
-    static void Global_DisableDrawScissor() {}
+    static void Global_PushDrawScissor()    {}
+    static void Global_PopDrawScissor()     {}
     static void Global_GetKeybLang()        {}
     static void Global_GetHexPos()          {}
     static void Global_GetMonitorHex()      {}

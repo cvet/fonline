@@ -3,7 +3,7 @@
 
 void FOServer::ProcessCritter( Critter* cr )
 {
-    if( cr->IsDestroyed )
+    if( cr->CanBeRemoved || cr->IsDestroyed )
         return;
     if( Timer::IsGamePaused() )
         return;

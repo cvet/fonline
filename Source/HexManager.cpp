@@ -1129,8 +1129,8 @@ void HexManager::PrepareLightToDraw()
         SprMngr.ClearCurrentRenderTarget( 0 );
         PointF offset( (float) rtScreenOX, (float) rtScreenOY );
         for( uint i = 0; i < lightPointsCount; i++ )
-            SprMngr.DrawPoints( lightPoints[ i ], PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, NULL, &offset, Effect::Light );
-        SprMngr.DrawPoints( lightSoftPoints, PRIMITIVE_TRIANGLELIST, &GameOpt.SpritesZoom, NULL, &offset, Effect::Light );
+            SprMngr.DrawPoints( lightPoints[ i ], PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, Effect::Light );
+        SprMngr.DrawPoints( lightSoftPoints, PRIMITIVE_TRIANGLELIST, &GameOpt.SpritesZoom, &offset, Effect::Light );
         SprMngr.PopRenderTarget();
     }
 }
@@ -2154,8 +2154,8 @@ void HexManager::PrepareFogToDraw()
     PointF offset( (float) rtScreenOX, (float) rtScreenOY );
     SprMngr.PushRenderTarget( rtFog );
     SprMngr.ClearCurrentRenderTarget( 0 );
-    SprMngr.DrawPoints( fogLookPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, NULL, &offset, Effect::Fog );
-    SprMngr.DrawPoints( fogShootPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, NULL, &offset, Effect::Fog );
+    SprMngr.DrawPoints( fogLookPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, Effect::Fog );
+    SprMngr.DrawPoints( fogShootPoints, PRIMITIVE_TRIANGLEFAN, &GameOpt.SpritesZoom, &offset, Effect::Fog );
     SprMngr.PopRenderTarget();
 }
 

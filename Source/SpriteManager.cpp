@@ -869,24 +869,65 @@ void SpriteManager::DisableVertexArray( VertexArray*& va )
         va = va->Next;
 }
 
-void SpriteManager::EnableScissor( RectF& r )
+void SpriteManager::PushScissor( int l, int t, int r, int b )
 {
     Flush();
-    GL( glEnable( GL_SCISSOR_TEST ) );
-    GL( glScissor( (int) r.L, rtStack.back()->TargetTexture->Height - (int) r.B, (int) ( r.R - r.L ), (int) ( r.B - r.T ) ) );
+    scissorStack.push_back( l );
+    scissorStack.push_back( t );
+    scissorStack.push_back( r );
+    scissorStack.push_back( b );
+    RefreshScissor();
 }
 
-void SpriteManager::EnableScissor( int x, int y, int w, int h )
+void SpriteManager::PopScissor()
 {
-    Flush();
-    GL( glEnable( GL_SCISSOR_TEST ) );
-    GL( glScissor( x, rtStack.back()->TargetTexture->Height - ( x + h ), w, h ) );
+    if( !scissorStack.empty() )
+    {
+        Flush();
+        scissorStack.resize( scissorStack.size() - 4 );
+        RefreshScissor();
+    }
+}
+
+void SpriteManager::RefreshScissor()
+{
+    if( !scissorStack.empty() )
+    {
+        scissorRect.L = scissorStack[ 0 ];
+        scissorRect.T = scissorStack[ 1 ];
+        scissorRect.R = scissorStack[ 2 ];
+        scissorRect.B = scissorStack[ 3 ];
+        for( size_t i = 4; i < scissorStack.size(); i += 4 )
+        {
+            if( scissorStack[ i + 0 ] > scissorRect.L )
+                scissorRect.L = scissorStack[ i + 0 ];
+            if( scissorStack[ i + 1 ] > scissorRect.T )
+                scissorRect.T = scissorStack[ i + 1 ];
+            if( scissorStack[ i + 2 ] < scissorRect.R )
+                scissorRect.R = scissorStack[ i + 2 ];
+            if( scissorStack[ i + 3 ] < scissorRect.B )
+                scissorRect.B = scissorStack[ i + 3 ];
+        }
+        if( scissorRect.L > scissorRect.R )
+            scissorRect.L = scissorRect.R;
+        if( scissorRect.T > scissorRect.B )
+            scissorRect.T = scissorRect.B;
+    }
+}
+
+void SpriteManager::EnableScissor()
+{
+    if( !scissorStack.empty() && !rtStack.empty() && rtStack.back() == rtMain )
+    {
+        GL( glEnable( GL_SCISSOR_TEST ) );
+        GL( glScissor( scissorRect.L, rtStack.back()->TargetTexture->Height - scissorRect.B, scissorRect.R - scissorRect.L, scissorRect.B - scissorRect.T ) );
+    }
 }
 
 void SpriteManager::DisableScissor()
 {
-    Flush();
-    GL( glDisable( GL_SCISSOR_TEST ) );
+    if( !scissorStack.empty() && !rtStack.empty() && rtStack.back() == rtMain )
+        GL( glDisable( GL_SCISSOR_TEST ) );
 }
 
 void SpriteManager::PushAtlasType( int atlas_type, bool one_image /* = false */ )
@@ -3205,7 +3246,7 @@ bool SpriteManager::Render3d( Animation3d* anim3d )
     return true;
 }
 
-bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color, RectF* scissor /* = NULL */ )
+bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color )
 {
     if( !GameOpt.Enable3dRendering )
         return false;
@@ -3213,14 +3254,8 @@ bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color, RectF
     anim3d->StartMeshGeneration();
     Render3d( anim3d );
 
-    if( scissor )
-        EnableScissor( *scissor );
-
     SpriteInfo* si = sprData[ anim3d->SprId ];
     DrawSprite( anim3d->SprId, x - si->Width / 2 + si->OffsX, y - si->Height + si->OffsY, color );
-
-    if( scissor )
-        DisableScissor();
 
     return true;
 }
@@ -3392,6 +3427,7 @@ bool SpriteManager::Flush()
         return true;
 
     EnableVertexArray( quadsVertexArray, 4 * curDrawQuad );
+    EnableScissor();
 
     uint pos = 0;
     for( auto it = dipQueue.begin(), end = dipQueue.end(); it != end; ++it )
@@ -3454,6 +3490,7 @@ bool SpriteManager::Flush()
 
     GL( glUseProgram( 0 ) );
     DisableVertexArray( quadsVertexArray );
+    DisableScissor();
 
     return true;
 }
@@ -3512,7 +3549,6 @@ bool SpriteManager::DrawSpriteSize( uint id, int x, int y, int w, int h, bool zo
 {
     return DrawSpriteSizeExt( id, x, y, w, h, zoom_up, center, false, color );
 }
-
 
 bool SpriteManager::DrawSpriteSizeExt( uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color )
 {
@@ -3687,6 +3723,8 @@ bool SpriteManager::DrawSpritePattern( uint id, int x, int y, int w, int h, int 
                 Flush();
         }
     }
+
+    DisableScissor();
     return true;
 }
 
@@ -4204,7 +4242,7 @@ bool SpriteManager::IsEggTransp( int pix_x, int pix_y )
     return ( egg_color >> 24 ) < 127;
 }
 
-bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NULL */, RectF* scissor /* = NULL */, PointF* offset /* = NULL */, Effect* effect /* = NULL */ )
+bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NULL */, PointF* offset /* = NULL */, Effect* effect /* = NULL */ )
 {
     if( points.empty() )
         return true;
@@ -4249,10 +4287,6 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
     if( prim_count <= 0 )
         return false;
 
-    // Enable scissor
-    if( scissor )
-        EnableScissor( *scissor );
-
     // Resize buffers
     if( vBuffer.size() < count )
         vBuffer.resize( count );
@@ -4288,6 +4322,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
 
     // Draw
     EnableVertexArray( pointsVertexArray, count );
+    EnableScissor();
 
     for( size_t pass = 0; pass < effect->Passes.size(); pass++ )
     {
@@ -4309,6 +4344,7 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
 
     GL( glUseProgram( 0 ) );
     DisableVertexArray( pointsVertexArray );
+    DisableScissor();
 
     // Disable smooth
     #ifndef FO_OGL_ES
@@ -4316,9 +4352,6 @@ bool SpriteManager::DrawPoints( PointVec& points, int prim, float* zoom /* = NUL
         GL( glDisable( prim == PRIMITIVE_POINTLIST ? GL_POINT_SMOOTH : GL_LINE_SMOOTH ) );
     #endif
 
-    // Disable scissor
-    if( scissor )
-        DisableScissor();
     return true;
 }
 

@@ -7088,7 +7088,8 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         float stt = ( count > 11 ? *(float*) position->At( 11 ) : 0.0f );
         float str = ( count > 12 ? *(float*) position->At( 12 ) : 0.0f );
         float stb = ( count > 13 ? *(float*) position->At( 13 ) : 0.0f );
-        RectF scissor = RectF( stl, stt, str, stb );
+        if( count > 13 )
+            SprMngr.PushScissor( (int) stl, (int) stt, (int) str, (int) stb );
 
         memzero( DrawCritter3dLayers, sizeof( DrawCritter3dLayers ) );
         for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
@@ -7100,18 +7101,21 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
         anim3d->SetSpeed( speed );
         anim3d->SetAnimation( anim1, anim2, DrawCritter3dLayers, ANIMATION_PERIOD( (int) ( period * 100.0f ) ) );
 
-        SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ), !scissor.IsZero() ? &scissor : NULL );
+        SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ) );
+
+        if( count > 13 )
+            SprMngr.PopScissor();
     }
 }
 
-void FOMapper::SScriptFunc::Global_EnableDrawScissor( int x, int y, int w, int h )
+void FOMapper::SScriptFunc::Global_PushDrawScissor( int x, int y, int w, int h )
 {
-    SprMngr.EnableScissor( x, y, w, h );
+    SprMngr.PushScissor( x, y, x + w, y + h );
 }
 
-void FOMapper::SScriptFunc::Global_DisableDrawScissor()
+void FOMapper::SScriptFunc::Global_PopDrawScissor()
 {
-    SprMngr.DisableScissor();
+    SprMngr.PopScissor();
 }
 
 bool FOMapper::SScriptFunc::Global_IsCritterCanWalk( uint cr_type )

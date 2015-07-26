@@ -635,8 +635,8 @@ public:
         static void Global_DrawMapSprite( ushort hx, ushort hy, hash proto_id, uint spr_id, int frame_index, int ox, int oy );
         static void Global_DrawCritter2d( uint crtype, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color );
         static void Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color );
-        static void Global_EnableDrawScissor( int x, int y, int w, int h );
-        static void Global_DisableDrawScissor();
+        static void Global_PushDrawScissor( int x, int y, int w, int h );
+        static void Global_PopDrawScissor();
 
         static void          Global_ShowScreen( int screen, ScriptDictionary* params );
         static void          Global_HideScreen( int screen );
