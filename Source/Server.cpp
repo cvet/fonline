@@ -644,12 +644,16 @@ void FOServer::Logic_Work( void* data )
             Critter* cr = (Critter*) job.Data;
             SYNC_LOCK( cr );
 
-            // Process logic
-            ProcessCritter( cr );
-
             // Player specific
             if( cr->CanBeRemoved )
                 RemoveClient( (Client*) cr );
+
+            // Check for removing
+            if( cr->IsDestroyed )
+                continue;
+
+            // Process logic
+            ProcessCritter( cr );
         }
         else if( job.Type == JOB_MAP )
         {
