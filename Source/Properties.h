@@ -50,6 +50,7 @@ struct UnresolvedProperty
 typedef vector< UnresolvedProperty* > UnresolvedPropertyVec;
 
 class PropertyRegistrator;
+class Properties;
 class Property
 {
     friend class PropertyRegistrator;
@@ -131,8 +132,8 @@ private:
     void   ReleaseComplexValue( void* value );
     void   GenericGet( Entity* entity, void* ret_value );
     void   GenericSet( Entity* entity, void* new_value );
-    uchar* GetRawData( Properties* properties, uint& data_size );
-    void   SetRawData( Properties* properties, uchar* data, uint data_size );
+    uchar* GetPropRawData( Properties* properties, uint& data_size );
+    void   SetPropRawData( Properties* properties, uchar* data, uint data_size );
 
     // Static data
     string         propName;

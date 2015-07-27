@@ -129,6 +129,10 @@ namespace InterfaceEditor
 					else
 						_Script.AppendLine(_BaseIdent + "        SetBackgroundImage( \"" + panel.BackgroundImage + "\" );");
 				}
+				if (panel.CropContent)
+					_Script.AppendLine(_BaseIdent + "        SetCropContent( true );");
+				if (panel.IsVerticalScroll || panel.IsHorizontalScroll)
+					_Script.AppendLine(_BaseIdent + "        SetAutoScroll( " + (panel.IsVerticalScroll ? "true" : "false") + ", " + (panel.IsHorizontalScroll ? "true" : "false") + " );");
 			}
 			if (obj is GUIButton)
 			{

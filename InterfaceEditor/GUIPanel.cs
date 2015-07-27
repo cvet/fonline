@@ -41,6 +41,10 @@ namespace InterfaceEditor
 			}
 		}
 
+		public bool CropContent { get; set; }
+		public bool IsVerticalScroll { get; set; }
+		public bool IsHorizontalScroll { get; set; }
+
 		public GUIPanel(GUIObject parent)
 			: base(parent)
 		{

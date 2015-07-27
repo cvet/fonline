@@ -719,10 +719,10 @@ bool Property::IsWritable()
 
 uchar* Property::GetRawData( Entity* entity, uint& data_size )
 {
-    return GetRawData( &entity->Props, data_size );
+    return GetPropRawData( &entity->Props, data_size );
 }
 
-uchar* Property::GetRawData( Properties* properties, uint& data_size )
+uchar* Property::GetPropRawData( Properties* properties, uint& data_size )
 {
     if( dataType == Property::POD )
     {
@@ -736,7 +736,7 @@ uchar* Property::GetRawData( Properties* properties, uint& data_size )
     return properties->complexData[ complexDataIndex ];
 }
 
-void Property::SetRawData( Properties* properties, uchar* data, uint data_size )
+void Property::SetPropRawData( Properties* properties, uchar* data, uint data_size )
 {
     if( IsPOD() )
     {
@@ -1024,7 +1024,7 @@ Properties& Properties::operator=( const Properties& other )
     {
         Property* prop = registrator->registeredProperties[ i ];
         if( prop->complexDataIndex != uint( -1 ) )
-            prop->SetRawData( this, other.complexData[ prop->complexDataIndex ], other.complexDataSizes[ prop->complexDataIndex ] );
+            prop->SetPropRawData( this, other.complexData[ prop->complexDataIndex ], other.complexDataSizes[ prop->complexDataIndex ] );
     }
 
     return *this;
@@ -1106,7 +1106,7 @@ void Properties::RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes )
             RUNTIME_ASSERT( prop->complexDataIndex != uint( -1 ) );
             uint      data_size = all_data_sizes[ 2 + i ];
             uchar*    data = all_data[ 2 + i ];
-            prop->SetRawData( this, data, data_size );
+            prop->SetPropRawData( this, data, data_size );
         }
     }
 }
@@ -1134,7 +1134,7 @@ void Properties::Save( void ( * save_func )( void*, size_t ) )
             continue;
 
         uint   data_size;
-        uchar* data = prop->GetRawData( this, data_size );
+        uchar* data = prop->GetPropRawData( this, data_size );
 
         bool all_zero = true;
         for( uint i = 0; i < data_size; i++ )
@@ -1224,7 +1224,7 @@ bool Properties::Load( void* file, uint version )
         Property* prop = registrator->Find( name );
         if( prop && Str::Compare( prop->typeName.c_str(), type_name ) )
         {
-            prop->SetRawData( this, data_size ? &data[ 0 ] : NULL, data_size );
+            prop->SetPropRawData( this, data_size ? &data[ 0 ] : NULL, data_size );
         }
         else
         {
@@ -1316,11 +1316,11 @@ bool Properties::LoadFromText( const char* text, hash* pid /* = NULL */ )
                     RUNTIME_ASSERT( !"Unreachable place" );
             }
 
-            prop->SetRawData( this, pod, prop->baseSize );
+            prop->SetPropRawData( this, pod, prop->baseSize );
         }
         else if( prop->dataType == Property::String )
         {
-            prop->SetRawData( this, (uchar*) value, Str::Length( value ) );
+            prop->SetPropRawData( this, (uchar*) value, Str::Length( value ) );
         }
         else
         {
