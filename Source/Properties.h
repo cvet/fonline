@@ -64,6 +64,7 @@ public:
         PrivateServer        = 0x0040,
         Public               = 0x0100,
         PublicModifiable     = 0x0200,
+        PublicFullModifiable = 0x0400,
         Protected            = 0x1000,
         ProtectedModifiable  = 0x2000,
         VirtualPrivateCommon = 0x0011,
@@ -78,7 +79,7 @@ public:
         ProtectedMask        = 0xF000,
         ClientOnlyMask       = 0x0020,
         ServerOnlyMask       = 0x0040,
-        ModifiableMask       = 0x2200,
+        ModifiableMask       = 0x2600,
     };
 
     const char*    GetName();

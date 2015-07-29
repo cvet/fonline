@@ -436,6 +436,8 @@ public:
                 access = Property::Public;
             else if( Str::CompareCase( access_str.c_str(), "PublicModifiable" ) )
                 access = Property::PublicModifiable;
+            else if( Str::CompareCase( access_str.c_str(), "PublicFullModifiable" ) )
+                access = Property::PublicFullModifiable;
             else if( Str::CompareCase( access_str.c_str(), "Protected" ) )
                 access = Property::Protected;
             else if( Str::CompareCase( access_str.c_str(), "ProtectedModifiable" ) )

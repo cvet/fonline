@@ -4587,19 +4587,19 @@ void FOServer::Process_Property( Client* cl, uint data_size )
 
     CHECK_IN_BUFF_ERROR( cl );
 
-    bool      check_public = false;
+    bool      is_public = false;
     Property* prop = NULL;
     Entity*   entity = NULL;
     switch( type )
     {
     case NetProperty::Global:
-        check_public = true;
+        is_public = true;
         prop = GlobalVars::PropertiesRegistrator->Get( property_index );
         if( prop )
             entity = Globals;
         break;
     case NetProperty::Critter:
-        check_public = true;
+        is_public = true;
         prop = Critter::PropertiesRegistrator->Get( property_index );
         if( prop )
             entity = CrMngr.GetCritter( cr_id, true );
@@ -4610,13 +4610,13 @@ void FOServer::Process_Property( Client* cl, uint data_size )
             entity = cl;
         break;
     case NetProperty::MapItem:
-        check_public = true;
+        is_public = true;
         prop = Item::PropertiesRegistrator->Get( property_index );
         if( prop )
             entity = ItemMngr.GetItem( item_id, true );
         break;
     case NetProperty::CritterItem:
-        check_public = true;
+        is_public = true;
         prop = Item::PropertiesRegistrator->Get( property_index );
         if( prop )
         {
@@ -4631,13 +4631,13 @@ void FOServer::Process_Property( Client* cl, uint data_size )
             entity = cl->GetItem( item_id, true );
         break;
     case NetProperty::Map:
-        check_public = true;
+        is_public = true;
         prop = Map::PropertiesRegistrator->Get( property_index );
         if( prop )
             entity = MapMngr.GetMap( cl->GetMapId(), true );
         break;
     case NetProperty::Location:
-        check_public = true;
+        is_public = true;
         prop = Location::PropertiesRegistrator->Get( property_index );
         if( prop )
         {
@@ -4647,16 +4647,19 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         }
         break;
     default:
-        RUNTIME_ASSERT( false );
         break;
     }
     if( !prop || !entity )
         return;
 
     Property::AccessType access = prop->GetAccess();
-    if( check_public && !( access & Property::PublicMask ) )
+    if( is_public && !( access & Property::PublicMask ) )
+        return;
+    if( !is_public && !( access & ( Property::ProtectedMask | Property::PublicMask ) ) )
         return;
     if( !( access & Property::ModifiableMask ) )
+        return;
+    if( is_public && access != Property::PublicFullModifiable )
         return;
     if( prop->IsPOD() && data_size != prop->GetBaseSize() )
         return;
