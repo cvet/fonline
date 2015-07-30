@@ -7,6 +7,7 @@ namespace InterfaceEditor
 {
 	class GUIConsole : GUITextInput
 	{
+		public bool DisableDeactivation { get; set; }
 		public string HistoryStorageName { get; set; }
 		public string HistoryMaxLength { get; set; }
 

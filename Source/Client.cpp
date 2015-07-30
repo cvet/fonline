@@ -10026,6 +10026,31 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         // uint answer_index;
         // Self->Net_SendBarter(DlgIsNpc, DlgNpcId, DlgAnswers[DlgCurAnsw].AnswerNum);
     }
+    else if( cmd == "DrawMiniMap" && args.size() >= 6 )
+    {
+        static int zoom, x, y, x2, y2;
+        zoom = Str::AtoI( args[ 1 ].c_str() );
+        x = Str::AtoI( args[ 2 ].c_str() );
+        y = Str::AtoI( args[ 3 ].c_str() );
+        x2 = x + Str::AtoI( args[ 4 ].c_str() );
+        y2 = y + Str::AtoI( args[ 5 ].c_str() );
+        Self->LmapX = 0;
+        Self->LmapY = 0;
+        if( zoom != Self->LmapZoom || x != Self->LmapWMap[ 0 ] || y != Self->LmapWMap[ 1 ] || x2 != Self->LmapWMap[ 2 ] || y2 != Self->LmapWMap[ 3 ] )
+        {
+            Self->LmapZoom = zoom;
+            Self->LmapWMap[ 0 ] = x;
+            Self->LmapWMap[ 1 ] = y;
+            Self->LmapWMap[ 2 ] = x2;
+            Self->LmapWMap[ 3 ] = y2;
+            Self->LmapPrepareMap();
+        }
+        else if( Timer::FastTick() >= Self->LmapPrepareNextTick )
+        {
+            Self->LmapPrepareMap();
+        }
+        SprMngr.DrawPoints( Self->LmapPrepPix, PRIMITIVE_LINELIST );
+    }
     else
     {
         SCRIPT_ERROR_R0( "Invalid custom call command." );

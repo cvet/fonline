@@ -223,6 +223,8 @@ namespace InterfaceEditor
 			if (obj is GUIConsole)
 			{
 				GUIConsole console = (GUIConsole)obj;
+				if (console.DisableDeactivation)
+					_Script.AppendLine(_BaseIdent + "        SetDisableDeactivation( true );");
 				if (!string.IsNullOrEmpty(console.HistoryStorageName))
 					_Script.AppendLine(_BaseIdent + "        SetHistoryStorage( " + console.HistoryStorageName + " );");
 				if (!string.IsNullOrEmpty(console.HistoryMaxLength))
