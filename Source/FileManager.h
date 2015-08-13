@@ -44,16 +44,18 @@
 #define PT_SERVER_DUMPS            ( 42 )
 #define PT_SERVER_PROFILER         ( 43 )
 #define PT_SERVER_UPDATE           ( 44 )
-#define PT_SERVER_CACHE            ( 45 )
-#define PT_SERVER_CACHE_SCRIPTS    ( 46 )
-#define PT_SERVER_CACHE_MAPS       ( 47 )
+#define PT_SERVER_UPDATE_PACKS     ( 45 )
+#define PT_SERVER_CACHE            ( 46 )
+#define PT_SERVER_CACHE_SCRIPTS    ( 47 )
+#define PT_SERVER_CACHE_MAPS       ( 48 )
+#define PT_SERVER_RESOURCES        ( 49 )
 #define PATH_LIST_COUNT            ( 50 )
 extern const char* PathList[ PATH_LIST_COUNT ];
 
 class FileManager
 {
 public:
-    static void InitDataFiles( const char* path );
+    static void InitDataFiles( const char* path, bool base_path );
     static bool LoadDataFile( const char* path );
     static void ClearDataFiles();
 
@@ -127,7 +129,7 @@ public:
     int    ParseLinesInt( const char* fname, int path_type, IntVec& lines );
 
     static DataFileVec& GetDataFiles() { return dataFiles; }
-    static void         GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result, vector< FIND_DATA >* find_data = NULL );
+    static void         GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result, vector< FIND_DATA >* files = NULL, vector< FIND_DATA >* dirs = NULL );
     static void         GetDataFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
 
     FileManager();
@@ -148,22 +150,25 @@ private:
 
     uint64             writeTime;
 
-    static void RecursiveDirLook( const char* base_dir, const char* cur_dir, bool include_subdirs, const char* ext, StrVec& result, vector< FIND_DATA >* find_data );
+    static void RecursiveDirLook( const char* base_dir, const char* cur_dir, bool include_subdirs, const char* ext, StrVec& result, vector< FIND_DATA >* files, vector< FIND_DATA >* dirs );
 };
 
 class FilesCollection
 {
 public:
     FilesCollection( int path_type, const char* ext, bool include_subdirs );
+    FilesCollection( int path_type, const char* dir, const char* ext, bool include_subdirs );
     bool         IsNextFile();
-    FileManager& GetNextFile( const char** name = NULL );
+    FileManager& GetNextFile( const char** name = NULL, bool name_with_path = false, bool no_read_data = false );
     uint         GetFilesCount();
+    void         ResetCounter();
 
 private:
+    string      searchPath;
     StrVec      fileNames;
     uint        curFileIndex;
     FileManager curFile;
-    char        curFileName[ MAX_FOPATH ];
+    string      curFileName;
 };
 
 #endif // __FILE_MANAGER__

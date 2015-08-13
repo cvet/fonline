@@ -14,12 +14,24 @@
 template< class T >
 void GetFileNames_( const T& index_map, const char* path, bool include_subdirs, const char* ext, StrVec& result )
 {
-    size_t path_len = Str::Length( path );
+    char path_[ MAX_FOPATH ];
+    Str::Copy( path_, path );
+    Str::Lower( path_ );
+    for( char* str = path_; *str; str++ )
+        if( *str == '/' )
+            *str = '\\';
+    size_t path_len = Str::Length( path_ );
+    if( path_len > 0 && path_[ path_len - 1 ] != '\\' )
+    {
+        path_[ path_len++ ] = '\\';
+        path_[ path_len ] = 0;
+    }
+
     for( auto it = index_map.begin(), end = index_map.end(); it != end; ++it )
     {
         bool          add = false;
         const string& fname = ( *it ).first;
-        if( !fname.compare( 0, path_len, path ) && ( include_subdirs || fname.find_last_of( '\\' ) < path_len ) )
+        if( !fname.compare( 0, path_len, path_ ) && ( include_subdirs || fname.find_last_of( '\\' ) < path_len ) )
         {
             if( ext && *ext )
             {

@@ -34,9 +34,9 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
     // Data files
     #ifdef FO_OSX_IOS
-    FileManager::InitDataFiles( "../../Documents/" );
+    FileManager::InitDataFiles( "../../Documents/", true );
     #endif
-    FileManager::InitDataFiles( DIR_SLASH_SD "data" DIR_SLASH_S );
+    FileManager::InitDataFiles( DIR_SLASH_SD CLIENT_DATA, true );
 
     // Singleplayer mode initialization
     #ifdef FO_WINDOWS

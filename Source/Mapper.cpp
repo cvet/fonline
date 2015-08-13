@@ -105,7 +105,7 @@ bool FOMapper::Init()
 
     // Setup write paths
     Str::Copy( ServerWritePath, GameOpt.ServerPath->c_str() );
-    Str::Copy( ClientWritePath, ( GameOpt.ClientPath->c_std_str() + "data" + DIR_SLASH_S ).c_str() );
+    Str::Copy( ClientWritePath, ( GameOpt.ClientPath->c_std_str() + CLIENT_DATA ).c_str() );
     FileManager::SetWritePath( ClientWritePath );
 
     // Cache

@@ -533,7 +533,7 @@ void FOClient::UpdateFiles( bool early_call )
     SprMngr.PopAtlasType();
 
     // Update
-    UpdateFilesAddText( STR_CHECK_UPDATES, "CHECK_UPDATES" );
+    UpdateFilesAddText( STR_CHECK_UPDATES, "Check updates..." );
     UpdateFilesInProgress = true;
     UpdateFilesText = "";
     bool cache_changed = false;
@@ -541,19 +541,19 @@ void FOClient::UpdateFiles( bool early_call )
     for( int t = 0; t < 5; t++ )
     {
         // Connect to server
-        UpdateFilesAddText( STR_CONNECT_TO_SERVER, "CONNECT_TO_SERVER" );
+        UpdateFilesAddText( STR_CONNECT_TO_SERVER, "Connect to server..." );
         const char* host = ( GameOpt.UpdateServerHost->length() > 0 ? GameOpt.UpdateServerHost->c_str() : GameOpt.Host->c_str() );
         ushort      port = ( GameOpt.UpdateServerPort != 0 ? GameOpt.UpdateServerPort : GameOpt.Port );
         if( !NetConnect( host, port ) )
         {
-            UpdateFilesAddText( STR_CANT_CONNECT_TO_SERVER, "CANT_CONNECT_TO_SERVER" );
+            UpdateFilesAddText( STR_CANT_CONNECT_TO_SERVER, "Can't connect to server!" );
             UpdateFilesWait( 10000 );
             continue;
         }
-        UpdateFilesAddText( STR_CONNECTION_ESTABLISHED, "CONNECTION_ESTABLISHED" );
+        UpdateFilesAddText( STR_CONNECTION_ESTABLISHED, "Connection establihed." );
 
         // Data synchronization
-        UpdateFilesAddText( STR_DATA_SYNCHRONIZATION, "DATA_SYNCHRONIZATION" );
+        UpdateFilesAddText( STR_DATA_SYNCHRONIZATION, "Data Synchronization..." );
 
         UpdateFilesAborted = false;
         SAFEDEL( UpdateFilesList );
@@ -566,7 +566,7 @@ void FOClient::UpdateFiles( bool early_call )
         while( IsConnected )
         {
             if( !early_call && UpdateFilesList && !UpdateFilesList->empty() )
-                UpdateFilesAbort( STR_CLIENT_DATA_OUTDATED, "STR_CLIENT_DATA_OUTDATED" );
+                UpdateFilesAbort( STR_CLIENT_DATA_OUTDATED, "Client data outdated!" );
 
             int    dots = ( Timer::FastTick() - tick ) / 100 % 50 + 1;
             string dots_str = "";
@@ -611,7 +611,7 @@ void FOClient::UpdateFiles( bool early_call )
                     UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp", PT_DATA ), true );
                     if( !UpdateFileTemp )
                     {
-                        UpdateFilesAddText( STR_FILESYSTEM_ERROR, "FILESYSTEM_ERROR0" );
+                        UpdateFilesAddText( STR_FILESYSTEM_ERROR, "File system error!" );
                         NetDisconnect();
                         UpdateFilesWait( 10000 );
                         continue;
@@ -643,9 +643,9 @@ void FOClient::UpdateFiles( bool early_call )
                     {
                         FileManager::ClearDataFiles();
                         #ifdef FO_OSX_IOS
-                        FileManager::InitDataFiles( "../../Documents/" );
+                        FileManager::InitDataFiles( "../../Documents/", true );
                         #endif
-                        FileManager::InitDataFiles( DIR_SLASH_SD "data" DIR_SLASH_S );
+                        FileManager::InitDataFiles( DIR_SLASH_SD CLIENT_DATA, true );
                     }
 
                     return;
@@ -658,7 +658,7 @@ void FOClient::UpdateFiles( bool early_call )
         }
 
         if( !UpdateFilesAborted )
-            UpdateFilesAddText( STR_CONNECTION_FAILTURE, "CONNECTION_FAILTURE" );
+            UpdateFilesAddText( STR_CONNECTION_FAILTURE, "Connection failure!" );
         UpdateFilesWait( 10000 );
     }
 
@@ -671,12 +671,12 @@ void FOClient::UpdateFilesAddText( uint num_str, const char* num_str_str )
     {
         UpdateFilesText = "";
         num_str = STR_START_SINGLEPLAYER;
-        num_str_str = "STR_START_SINGLEPLAYER";
+        num_str_str = "Start singleplayer...";
     }
 
     if( !UpdateFilesFontLoaded )
     {
-        WriteLog( "Update files message<%s>.\n", num_str_str );
+        WriteLog( "Update files message '%s'.\n", num_str_str );
         SprMngr.BeginScene( COLOR_RGB( Random( 0, 255 ), Random( 0, 255 ), Random( 0, 255 ) ) );
         SprMngr.EndScene();
     }

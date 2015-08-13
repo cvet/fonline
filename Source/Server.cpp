@@ -1,6 +1,7 @@
 #include "Common.h"
 #include "Server.h"
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
+#include "minizip/zip.h"
 
 void* zlib_alloc( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
 void  zlib_free( void* opaque, void* address )                          { free( address ); }
@@ -885,7 +886,7 @@ void FOServer::Net_Listen( void* )
         cl->Zstrm.zalloc = zlib_alloc;
         cl->Zstrm.zfree = zlib_free;
         cl->Zstrm.opaque = NULL;
-        int result = deflateInit( &cl->Zstrm, Z_DEFAULT_COMPRESSION );
+        int result = deflateInit( &cl->Zstrm, Z_BEST_SPEED );
         if( result != Z_OK )
         {
             WriteLogF( _FUNC_, " - Client Zlib deflateInit fail, error<%d, %s>.\n", result, zError( result ) );
@@ -3359,7 +3360,7 @@ bool FOServer::InitReal()
 {
     WriteLog( "***   Starting initialization   ****\n" );
 
-    FileManager::InitDataFiles( DIR_SLASH_SD );
+    FileManager::InitDataFiles( DIR_SLASH_SD, true );
 
     IniParser& cfg = IniParser::GetServerConfig();
 
@@ -4778,6 +4779,111 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
         return;
 
     WriteLog( "Generate update files...\n" );
+
+    // Generate resources
+    StrSet              update_file_names;
+    StrVec              dummy_vec;
+    vector< FIND_DATA > resources_dirs;
+    FileManager::GetFolderFileNames( FileManager::GetDataPath( "", PT_SERVER_RESOURCES ), false, NULL, dummy_vec, NULL, &resources_dirs );
+    for( size_t r = 0; r < resources_dirs.size(); r++ )
+    {
+        const char*     res_name = resources_dirs[ r ].FileName;
+        bool            is_zip = ( Str::Length( res_name ) > 4 && Str::CompareCase( res_name + Str::Length( res_name ) - 4, ".zip" ) );
+        FilesCollection resources( PT_SERVER_RESOURCES, res_name, NULL, true );
+
+        WriteLog( "Process resources '%s', files %u...\n", res_name, resources.GetFilesCount() );
+
+        if( is_zip )
+        {
+            bool        skip_making_zip = true;
+            FileManager zip_file;
+            if( zip_file.LoadFile( res_name, PT_SERVER_UPDATE_PACKS, true ) )
+            {
+                while( resources.IsNextFile() )
+                {
+                    const char*  name;
+                    FileManager& file = resources.GetNextFile( &name, true );
+                    if( file.GetWriteTime() > zip_file.GetWriteTime() )
+                    {
+                        skip_making_zip = false;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                skip_making_zip = false;
+            }
+
+            if( !skip_making_zip )
+            {
+                string  zip_path = FileManager::GetDataPath( res_name, PT_SERVER_UPDATE_PACKS );
+                CreateDirectoryTree( zip_path.c_str() );
+                zipFile zip = zipOpen( zip_path.c_str(), APPEND_STATUS_CREATE );
+                if( zip )
+                {
+                    resources.ResetCounter();
+                    while( resources.IsNextFile() )
+                    {
+                        const char*  name;
+                        FileManager& file = resources.GetNextFile( &name, true );
+                        zip_fileinfo zfi;
+                        memzero( &zfi, sizeof( zfi ) );
+                        if( zipOpenNewFileInZip( zip, name, &zfi, NULL, 0, NULL, 0, NULL, Z_DEFLATED, Z_BEST_SPEED ) == S_OK )
+                        {
+                            if( zipWriteInFileInZip( zip, file.GetBuf(), file.GetFsize() ) )
+                                WriteLog( "Can't write file '%s' in zip file '%s'.\n", name, zip_path.c_str() );
+
+                            zipCloseFileInZip( zip );
+                        }
+                        else
+                        {
+                            WriteLog( "Can't open file '%s' in zip file '%s'.\n", name, zip_path.c_str() );
+                        }
+                    }
+                    zipClose( zip, NULL );
+                }
+                else
+                {
+                    WriteLog( "Can't open zip file '%s'.\n", zip_path.c_str() );
+                }
+            }
+
+            string packs_fname = "packs" DIR_SLASH_S;
+            packs_fname.append( res_name );
+            update_file_names.insert( packs_fname );
+        }
+        else
+        {
+            while( resources.IsNextFile() )
+            {
+                const char*  name;
+                FileManager& file = resources.GetNextFile( &name, true );
+                FileManager  update_file;
+                if( !update_file.LoadFile( name, PT_SERVER_UPDATE, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
+                {
+                    string from = res_name;
+                    from.append( DIR_SLASH_S );
+                    from.append( name );
+                    from = FileManager::GetDataPath( from.c_str(), PT_SERVER_RESOURCES );
+                    if( !FileManager::CopyFile( from.c_str(), FileManager::GetDataPath( name, PT_SERVER_UPDATE ) ) )
+                        WriteLog( "Can't copy update file '%s'.\n", name );
+                }
+
+                update_file_names.insert( name );
+            }
+        }
+    }
+
+    // Delete unnecessary update files
+    FilesCollection update_files( PT_SERVER_UPDATE, NULL, true );
+    while( update_files.IsNextFile() )
+    {
+        const char* name;
+        update_files.GetNextFile( &name, true );
+        if( !update_file_names.count( name ) )
+            FileManager::DeleteFile( FileManager::GetDataPath( name, PT_SERVER_UPDATE ) );
+    }
 
     // Clear collections
     for( auto it = UpdateFiles.begin(), end = UpdateFiles.end(); it != end; ++it )

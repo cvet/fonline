@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 527 )
+#define FONLINE_VERSION                          ( 10012 )
 #define MODELS_BINARY_VERSION                    ( 9 )
 
 // Debugging
@@ -272,9 +272,6 @@ extern IntVec        MainWindowMouseEvents;
 const uchar SELECT_ALPHA    = 100;
 #  define CFG_DEF_INT_FILE                       "mapper_default.ini"
 # endif
-
-# define PATH_MAP_FLAGS                          DIR_SLASH_SD "Data" DIR_SLASH_S "maps" DIR_SLASH_S ""
-# define PATH_TEXT_FILES                         DIR_SLASH_SD "Data" DIR_SLASH_S "text" DIR_SLASH_S ""
 
 uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light );
 void GetClientOptions();

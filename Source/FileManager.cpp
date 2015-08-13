@@ -51,11 +51,11 @@ const char* PathList[ PATH_LIST_COUNT ] =
     "dumps" DIR_SLASH_S,
     "profiler" DIR_SLASH_S,
     "update" DIR_SLASH_S,
+    "update" DIR_SLASH_S "packs" DIR_SLASH_S,
     "cache" DIR_SLASH_S,
     "cache" DIR_SLASH_S "scripts" DIR_SLASH_S,
     "cache" DIR_SLASH_S "maps" DIR_SLASH_S,
-    "",
-    "",
+    "resources" DIR_SLASH_S,
 };
 
 DataFileVec FileManager::dataFiles;
@@ -78,30 +78,31 @@ FileManager::~FileManager()
     ClearOutBuf();
 }
 
-void FileManager::InitDataFiles( const char* path )
+void FileManager::InitDataFiles( const char* path, bool base_path )
 {
-    static bool write_path_ckecked = false;
-    if( write_path_ckecked )
+    // Redirect path
+    void* redirection_link = FileOpen( ( string( path ) + "Redirection.link" ).c_str(), false );
+    if( redirection_link )
     {
-        write_path_ckecked = true;
-
-        void* link_file = FileOpen( ( string( path ) + "write.path" ).c_str(), false );
-        if( !link_file )
-            return;
-
-        char link[ MAX_FOTEXT ];
-        uint len = FileGetSize( link_file );
-        FileRead( link_file, link, len );
+        char link[ MAX_FOPATH ];
+        uint len = FileGetSize( redirection_link );
+        FileRead( redirection_link, link, len );
         link[ len ] = 0;
         FormatPath( link );
-        InitDataFiles( link );
+        InitDataFiles( link, base_path );
+        return;
     }
 
-    if( basePathes[ 0 ].empty() )
-        basePathes[ 0 ] = basePathes[ 1 ] = path;
-    else if( basePathes[ 0 ] == basePathes[ 1 ] )
-        basePathes[ 1 ] = path;
+    // Main read and write paths
+    if( base_path )
+    {
+        if( basePathes[ 0 ].empty() )
+            basePathes[ 0 ] = basePathes[ 1 ] = path;
+        else if( basePathes[ 0 ] == basePathes[ 1 ] )
+            basePathes[ 1 ] = path;
+    }
 
+    // Process dir
     if( LoadDataFile( path ) )
     {
         StrVec files;
@@ -113,6 +114,18 @@ void FileManager::InitDataFiles( const char* path )
 
         for( size_t i = 0, j = files.size(); i < j; i++ )
             LoadDataFile( ( string( "" ) + path + files[ i ] ).c_str() );
+    }
+
+    // Extension of this path
+    void* extension_link = FileOpen( ( string( path ) + "Extension.link" ).c_str(), false );
+    if( extension_link )
+    {
+        char link[ MAX_FOPATH ];
+        uint len = FileGetSize( extension_link );
+        FileRead( extension_link, link, len );
+        link[ len ] = 0;
+        FormatPath( link );
+        InitDataFiles( link, false );
     }
 }
 
@@ -700,6 +713,9 @@ hash FileManager::GetPathHash( const char* fname, int path_type )
 
 void FileManager::FormatPath( char* path )
 {
+    // Trim
+    Str::Trim( path );
+
     // Change to valid slash
     for( char* str = path; *str; str++ )
     {
@@ -926,7 +942,7 @@ int FileManager::ParseLinesInt( const char* fname, int path_type, IntVec& lines 
     return (int) lines.size();
 }
 
-void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, bool include_subdirs, const char* ext, StrVec& result, vector< FIND_DATA >* find_data )
+void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, bool include_subdirs, const char* ext, StrVec& result, vector< FIND_DATA >* files, vector< FIND_DATA >* dirs )
 {
     char path[ MAX_FOPATH ];
     Str::Copy( path, base_dir );
@@ -938,10 +954,13 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
     {
         if( fd.IsDirectory )
         {
+            if( dirs )
+                dirs->push_back( fd );
+
             if( include_subdirs )
             {
                 Str::Format( path, "%s%s%s", cur_dir, fd.FileName, DIR_SLASH_S );
-                RecursiveDirLook( base_dir, path, include_subdirs, ext, result, find_data );
+                RecursiveDirLook( base_dir, path, include_subdirs, ext, result, files, dirs );
             }
         }
         else
@@ -954,8 +973,8 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
                     Str::Copy( path, cur_dir );
                     Str::Append( path, fd.FileName );
                     result.push_back( path );
-                    if( find_data )
-                        find_data->push_back( fd );
+                    if( files )
+                        files->push_back( fd );
                 }
             }
             else
@@ -963,8 +982,8 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
                 Str::Copy( path, cur_dir );
                 Str::Append( path, fd.FileName );
                 result.push_back( path );
-                if( find_data )
-                    find_data->push_back( fd );
+                if( files )
+                    files->push_back( fd );
             }
         }
 
@@ -975,7 +994,7 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
         FileFindClose( h );
 }
 
-void FileManager::GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result, vector< FIND_DATA >* find_data /* = NULL */ )
+void FileManager::GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result, vector< FIND_DATA >* files /* = NULL */, vector< FIND_DATA >* dirs /* = NULL */ )
 {
     // Format path
     char path_[ MAX_FOPATH ];
@@ -983,7 +1002,7 @@ void FileManager::GetFolderFileNames( const char* path, bool include_subdirs, co
     FormatPath( path_ );
 
     // Find in folder files
-    RecursiveDirLook( path_, "", include_subdirs, ext, result, find_data );
+    RecursiveDirLook( path_, "", include_subdirs, ext, result, files, dirs );
 }
 
 void FileManager::GetDataFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result )
@@ -1009,8 +1028,17 @@ void FileManager::GetDataFileNames( const char* path, bool include_subdirs, cons
 FilesCollection::FilesCollection( int path_type, const char* ext, bool include_subdirs )
 {
     curFileIndex = 0;
-    memzero( curFileName, sizeof( curFileName ) );
-    FileManager::GetDataFileNames( FileManager::GetDataPath( "", path_type ), include_subdirs, ext, fileNames );
+    searchPath = FileManager::GetDataPath( "", path_type );
+    FileManager::GetDataFileNames( searchPath.c_str(), include_subdirs, ext, fileNames );
+}
+
+FilesCollection::FilesCollection( int path_type, const char* dir, const char* ext, bool include_subdirs )
+{
+    curFileIndex = 0;
+    searchPath = FileManager::GetDataPath( dir, path_type );
+    if( searchPath.length() > 0 && searchPath[ searchPath.length() - 1 ] != DIR_SLASH_C )
+        searchPath.append( DIR_SLASH_S );
+    FileManager::GetDataFileNames( searchPath.c_str(), include_subdirs, ext, fileNames );
 }
 
 bool FilesCollection::IsNextFile()
@@ -1018,15 +1046,27 @@ bool FilesCollection::IsNextFile()
     return curFileIndex < fileNames.size();
 }
 
-FileManager& FilesCollection::GetNextFile( const char** name /* = NULL */ )
+FileManager& FilesCollection::GetNextFile( const char** name /* = NULL */, bool name_with_path /* = false */, bool no_read_data /* = false */ )
 {
     curFileIndex++;
-    curFile.LoadFile( fileNames[ curFileIndex - 1 ].c_str(), PT_DATA );
+    curFile.LoadFile( fileNames[ curFileIndex - 1 ].c_str(), PT_DATA, no_read_data );
     if( name )
     {
-        FileManager::ExtractFileName( fileNames[ curFileIndex - 1 ].c_str(), curFileName );
-        FileManager::EraseExtension( curFileName );
-        *name = curFileName;
+        char fname[ MAX_FOPATH ];
+        if( !name_with_path )
+        {
+            FileManager::ExtractFileName( fileNames[ curFileIndex - 1 ].c_str(), fname );
+            FileManager::EraseExtension( fname );
+            curFileName = fname;
+        }
+        else
+        {
+            Str::Copy( fname, fileNames[ curFileIndex - 1 ].c_str() );
+            char* s = Str::Substring( fname, searchPath.c_str() );
+            RUNTIME_ASSERT( s );
+            curFileName = s + searchPath.length();
+        }
+        *name = curFileName.c_str();
     }
     return curFile;
 }
@@ -1034,4 +1074,9 @@ FileManager& FilesCollection::GetNextFile( const char** name /* = NULL */ )
 uint FilesCollection::GetFilesCount()
 {
     return (uint) fileNames.size();
+}
+
+void FilesCollection::ResetCounter()
+{
+    curFileIndex = 0;
 }

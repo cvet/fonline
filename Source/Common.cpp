@@ -795,8 +795,12 @@ void GetClientOptions()
         *GameOpt.ServerPath += DIR_SLASH_S;
 
     // Server and client data
-    FileManager::InitDataFiles( GameOpt.ServerPath->c_str() );
-    FileManager::InitDataFiles( ( GameOpt.ClientPath->c_std_str() + "data" + DIR_SLASH_S ).c_str() );
+    FileManager::InitDataFiles( GameOpt.ServerPath->c_str(), true );
+    StrVec              dummy_vec;
+    vector< FIND_DATA > resources_dirs;
+    FileManager::GetFolderFileNames( ( GameOpt.ServerPath->c_std_str() + FileManager::GetDataPath( "", PT_SERVER_RESOURCES ) ).c_str(), false, NULL, dummy_vec, NULL, &resources_dirs );
+    for( size_t r = 0; r < resources_dirs.size(); r++ )
+        FileManager::InitDataFiles( ( ( GameOpt.ServerPath->c_std_str() + FileManager::GetDataPath( resources_dirs[ r ].FileName, PT_SERVER_RESOURCES ) ) + DIR_SLASH_S ).c_str(), false );
     # endif
 
     // Client config

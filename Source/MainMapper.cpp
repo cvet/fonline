@@ -23,7 +23,7 @@ int main( int argc, char** argv )
     LogToFile( "FOMapper.log" );
 
     // Data files
-    FileManager::InitDataFiles( DIR_SLASH_SD "data" DIR_SLASH_S );
+    FileManager::InitDataFiles( DIR_SLASH_SD MAPPER_DATA, true );
 
     // Options
     GetClientOptions();
