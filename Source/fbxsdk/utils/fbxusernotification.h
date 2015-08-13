@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -17,7 +17,7 @@
 
 #include <fbxsdk/core/base/fbxarray.h>
 #include <fbxsdk/core/base/fbxstring.h>
-#include <fbxsdk/core/base/fbxset.h>
+#include <fbxsdk/core/base/fbxmultimap.h>
 
 #include <fbxsdk/fbxsdk_nsbegin.h>
 
@@ -236,7 +236,7 @@ public:
       * \return             Pointer to the specified entry, otherwise \c NULL if either the id is invalid or the Accumulator
       *                     is not properly initialized.
       */
-    const FbxAccumulatorEntry* GetEntry(int pEntryId) const;
+    const FbxAccumulatorEntry* GetEntry(int pEntryId);
 
     /** Get the FbxAccumulatorEntry at the specified index.
       * \param pEntryIndex     index of the entry to retrieve.
@@ -444,7 +444,7 @@ private:
     FbxString mSessionDescription;
     bool mProperlyCleaned;
 
-    FbxSet mAccuHT;                             // The set establish a relationship between an FbxAccumulatorEntry and it's ID
+    FbxMultiMap mAccuHT;                             // The set establish a relationship between an FbxAccumulatorEntry and it's ID
     FbxArray<FbxAccumulatorEntry*> mAccu;  // The array defines the order the FbxAccumulatorEntry objects have been 
                                               // added to the accumulator (calls to AddEntry)
                                               // Both structures share the same pointers.

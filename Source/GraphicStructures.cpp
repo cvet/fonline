@@ -1,6 +1,20 @@
 #include "Common.h"
 #include "GraphicStructures.h"
-#include "SpriteManager.h"
+
+bool Is3dExtensionSupported( const char* ext )
+{
+    static const char* arr[] =
+    {
+        "fo3d", "fbx", "x", "3ds", "obj", "dae", "blend", "ase", "ply", "dxf", "lwo", "lxo", "stl", "ms3d",
+        "scn", "smd", "vta", "mdl", "md2", "md3", "pk3", "mdc", "md5", "bvh", "csm", "b3d", "q3d", "cob",
+        "q3s", "mesh", "xml", "irrmesh", "irr", "nff", "nff", "off", "raw", "ter", "mdl", "hmp", "ndo", "ac"
+    };
+
+    for( int i = 0, j = sizeof( arr ) / sizeof( arr[ 0 ] ); i < j; i++ )
+        if( Str::CompareCase( ext, arr[ i ] ) )
+            return true;
+    return false;
+}
 
 //
 // AnyFrames
@@ -20,7 +34,7 @@ AnyFrames* AnyFrames::Create( uint frames, uint ticks )
 
 void AnyFrames::Destroy( AnyFrames* anim )
 {
-    if( !anim || anim == SprMngr.DummyAnimation )
+    if( !anim )
         return;
     for( int dir = 1; dir < anim->DirCount(); dir++ )
         AnyFramesPool.Put( anim->GetDir( dir ) );
@@ -112,7 +126,6 @@ TextureAtlas::TextureAtlas()
 
 TextureAtlas::~TextureAtlas()
 {
-    SprMngr.DeleteRenderTarget( RT );
     SAFEDEL( RootNode );
 }
 

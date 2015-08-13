@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -182,8 +182,6 @@
 #define IOSN_3DS                		"Max_3ds"  // can't start by a number for xml node name
 #define IOSN_COLLADA            		"Collada"
 
-#define IOSN_EXTRACT_FOLDER				"ExtractFolder"
-
 #define IOSN_MOTION_BASE				"Motion_Base"  // for commond Motion Readers/Writers stream options
 #define IOSN_BIOVISION_BVH       		"Biovision_BVH"
 #define IOSN_MOTIONANALYSIS_HTR  		"MotionAnalysis_HTR"
@@ -207,7 +205,7 @@
 
 #define IOSN_EMBEDTEXTURE_GRP      		"EmbedTextureGrp"
 #define IOSN_EMBEDTEXTURE       		"EmbedTexture"
-#define IOSN_EMBEDDED_FOLDER       		"EmbededMediaFolder"
+#define IOSN_EMBEDDED_FOLDER       		"ExtractFolder"
 #define IOSN_CONVERTTOTIFF      		"Convert_2Tiff"
 
 #define IOSN_UNLOCK_NORMALS             "UnlockNormals"
@@ -411,7 +409,7 @@
 #define IMP_CAMERA_GRP                  IMP_INCLUDE_GRP "|" IOSN_CAMERA_GRP
 #define IMP_LIGHT_GRP					IMP_INCLUDE_GRP "|" IOSN_LIGHT_GRP
 #define IMP_EMBEDDED_GRP        		IMP_INCLUDE_GRP "|" IOSN_EMBEDTEXTURE
-#define IMP_EMBEDDED_FOLDER             IMP_EMBEDDED_GRP "|" IOSN_EMBEDDED_FOLDER
+#define IMP_EXTRACT_FOLDER				IMP_EMBEDDED_GRP "|" IOSN_EMBEDDED_FOLDER
 
 #define IMP_LIGHT						IMP_LIGHT_GRP "|" IOSN_LIGHT
 #define IMP_ENVIRONMENT                 IMP_LIGHT_GRP "|" IOSN_ENVIRONMENT
@@ -463,7 +461,6 @@
 #define IMP_UI                  		IMP_ADV_OPT_GRP "|" IOSN_UI 
 #define IMP_FILEFORMAT          		IMP_ADV_OPT_GRP "|" IOSN_FILE_FORMAT
 #define IMP_PERF_GRP					IMP_ADV_OPT_GRP "|" IOSN_PERF_GRP
-#define IMP_EXTRACT_FOLDER				IMP_ADV_OPT_GRP "|" IOSN_EXTRACT_FOLDER
 
 #define IMP_REMOVEBADPOLYSFROMMESH      IMP_PERF_GRP "|" IOSN_REMOVEBADPOLYSFROMMESH
 #define IMP_META_DATA					IMP_PERF_GRP "|" IOSN_META_DATA

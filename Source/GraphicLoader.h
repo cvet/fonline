@@ -15,7 +15,6 @@ public:
     static Bone*    LoadModel( const char* fname );
     static void     DestroyModel( Bone* root_bone );
     static AnimSet* LoadAnimation( const char* anim_fname, const char* anim_name );
-    static bool     IsExtensionSupported( const char* ext );
 
 private:
     static StrVec  processedFiles;

@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -30,41 +30,46 @@
 #define FBXSDK_ASSERT_ENVSTR "FBXSDK_ASSERT"
 
 /** The assertion procedure signature. If a different assertion procedure must be provided, it should have this signature.
-  * \param pFileName The file name where the assertion occurred.
-  * \param pFunctionName The function name where the assertion occurred.
-  * \param pLineNumber The line number in the file where the assertion occurred.
-  * \param pMessage The message to display when the assertion occurs.
-  */
+* \param pFileName The file name where the assertion occurred.
+* \param pFunctionName The function name where the assertion occurred.
+* \param pLineNumber The line number in the file where the assertion occurred.
+* \param pMessage The message to display when the assertion occurs. */
 typedef void (*FbxAssertProc)(const char* pFileName, const char* pFunctionName, const unsigned int pLineNumber, const char* pMessage);
 
-//! The assertion function caller. This function is called by most of the assertion macros and should not be called directly.
-FBXSDK_DLL void FbxAssert(const char* pFileName, const char* pFunctionName, const unsigned int pLineNumber, bool pFormat, const char* pMessage, ...);
-
 /** Change the procedure used when assertion occurs.
-  * \param pAssertProc The procedure to be called when assertions occurs.
-  */
+* \param pAssertProc The procedure to be called when assertions occurs. */
 FBXSDK_DLL void FbxAssertSetProc(FbxAssertProc pAssertProc);
 
 //! Change the procedure back to the default one.
 FBXSDK_DLL void FbxAssertSetDefaultProc();
 
+/*****************************************************************************************************************************
+** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
+*****************************************************************************************************************************/
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+
+FBXSDK_DLL void _FbxAssert(const char* pFileName, const char* pFunctionName, const unsigned int pLineNumber, bool pFormat, const char* pMessage, ...);
+FBXSDK_DLL void _FbxTrace(const char* pMessage, ...);
+
 #ifdef _DEBUG
     template <bool x> struct FbxStaticAssertType;
     template<> struct FbxStaticAssertType<true>			{enum{value=1};};
     template<> struct FbxStaticAssertType<false>		{enum{value=-1};};
-	#define FBX_ASSERT(Condition)						if(!(Condition)){FbxAssert(__FILE__,__FUNCTION__,__LINE__,false,#Condition);}
-	#define FBX_ASSERT_MSG(Condition, Message, ...)		if(!(Condition)){FbxAssert(__FILE__,__FUNCTION__,__LINE__,true,Message,##__VA_ARGS__);}
-	#define FBX_ASSERT_NOW(Message, ...)				FbxAssert(__FILE__,__FUNCTION__,__LINE__,true,Message,##__VA_ARGS__);
-	#define FBX_ASSERT_RETURN(Condition)				if(!(Condition)){FBX_ASSERT_NOW(#Condition); return;}
-	#define FBX_ASSERT_RETURN_VALUE(Condition, Value)	if(!(Condition)){FBX_ASSERT_NOW(#Condition); return Value;}
+	#define FBX_ASSERT(Condition)						{if(!(Condition)){_FbxAssert(__FILE__,__FUNCTION__,__LINE__,false,#Condition);}}
+	#define FBX_ASSERT_MSG(Condition, Message, ...)		{if(!(Condition)){_FbxAssert(__FILE__,__FUNCTION__,__LINE__,true,Message,##__VA_ARGS__);}}
+	#define FBX_ASSERT_NOW(Message, ...)				_FbxAssert(__FILE__,__FUNCTION__,__LINE__,true,Message,##__VA_ARGS__);
+	#define FBX_ASSERT_RETURN(Condition)				{if(!(Condition)){FBX_ASSERT_NOW(#Condition); return;}}
+	#define FBX_ASSERT_RETURN_VALUE(Condition, Value)	{if(!(Condition)){FBX_ASSERT_NOW(#Condition); return Value;}}
 	#define FBX_ASSERT_STATIC(Condition)				typedef char FbxBuildBreakIfFalse[FbxStaticAssertType<(bool)(Condition)>::value];
+	#define FBX_TRACE(Message, ...)						{_FbxTrace(Message,##__VA_ARGS__);}
 #else
 	#define FBX_ASSERT(Condition)						((void)0)
 	#define FBX_ASSERT_MSG(Condition, Message, ...)		((void)0)
 	#define FBX_ASSERT_NOW(Message, ...)				((void)0)
 	#define FBX_ASSERT_RETURN(Condition)				if(!(Condition)){return;}
 	#define FBX_ASSERT_RETURN_VALUE(Condition, Value)	if(!(Condition)){return Value;}
-    #define FBX_ASSERT_STATIC(Condition)
+	#define FBX_ASSERT_STATIC(Condition)
+	#define FBX_TRACE(Message, ...)						((void)0)
 #endif
 
 template<typename T> struct FbxIncompatibleWithArray{ enum {value = 0}; };
@@ -80,6 +85,8 @@ template<typename T> struct FbxIncompatibleWithArray{ enum {value = 0}; };
 	template<> FBXSDK_INCOMPATIBLE_WITH_ARRAY_TEMPLATE(T)
 
 #define FBXSDK_IS_INCOMPATIBLE_WITH_ARRAY(T) ((bool) FbxIncompatibleWithArray<T>::value)
+
+#endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 
 #include <fbxsdk/fbxsdk_nsend.h>
 

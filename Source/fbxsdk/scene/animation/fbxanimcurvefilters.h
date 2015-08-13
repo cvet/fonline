@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -19,6 +19,7 @@
 #include <fbxsdk/core/base/fbxstatus.h>
 #include <fbxsdk/scene/animation/fbxanimcurve.h>
 #include <fbxsdk/fileio/fbxiosettings.h>
+#include <fbxsdk/core/math/fbxtransforms.h>		// for FbxLimits
 
 #include <fbxsdk/fbxsdk_nsbegin.h>
 
@@ -1139,16 +1140,16 @@ public:
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-    void SetRotationOrder(int pOrder);
+    void SetRotationOrder(FbxEuler::EOrder pOrder);
 
 private:
     double  InterpolationQualityFactor(FbxVector4& lV1, FbxVector4& lV2);
 
-    double          mQualityTolerance;
-    bool            mTestForPath;
-    bool            mForceAutoTangents;
-    int	            mRotationOrder;
-    int             mRotationLayerType;
+    double           mQualityTolerance;
+    bool             mTestForPath;
+    bool             mForceAutoTangents;
+    FbxEuler::EOrder mRotationOrder;
+    int              mRotationLayerType;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 
@@ -1413,12 +1414,12 @@ public:
     /** Set the rotation order of the source matrix.
       * \param pOrder     The rotation order to be set.
       */
-    void SetSrcRotateOrder(int pOrder);
+    void SetSrcRotateOrder(FbxEuler::EOrder pOrder);
 
     /** Set the rotation order of the destination matrix.
       * \param pOrder     The rotation order to be set.
       */
-    void SetDestRotateOrder(int pOrder);
+    void SetDestRotateOrder(FbxEuler::EOrder pOrder);
 
     /** Set the state of the flag to force usage of the filter even if source and destination matrices are equivalent.
       * \param pVal     Set to \c true to force usage of the filter, set to \c false otherwise.
@@ -1429,6 +1430,21 @@ public:
       * \return     \c true to force usage of the filter, \c false otherwise.
       */
     bool GetForceApply() const;
+
+    /** Set the Translation limits to be applied during conversion. Only active limits are applied.
+      * \param limit     The rotation limit to be set.
+      */
+    void SetTranslationLimits(FbxLimits &limit );
+
+    /** Set the rotation limits to be applied during conversion. Only active limits are applied.
+      * \param limit     The rotation limit to be set.
+      */
+    void SetRotationLimits(FbxLimits &limit );
+
+    /** Set the scaling limits to be applied during conversion. Only active limits are applied.
+      * \param limit     The scaling limit to be set.
+      */
+    void SetScalingLimits(FbxLimits &limit );
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
@@ -1514,6 +1530,11 @@ private:
 
     // Force Apply
     bool mForceApply;
+
+    // Limits
+    FbxLimits mTranslationLimits;
+    FbxLimits mRotationLimits;
+    FbxLimits mScalingLimits;
 
     // internal usage
     FbxAnimCurveNode* mRotationCurveNode;

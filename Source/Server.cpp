@@ -2,6 +2,7 @@
 #include "Server.h"
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
 #include "minizip/zip.h"
+#include "ResourceConverter.h"
 
 void* zlib_alloc( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
 void  zlib_free( void* opaque, void* address )                          { free( address ); }
@@ -3360,7 +3361,7 @@ bool FOServer::InitReal()
 {
     WriteLog( "***   Starting initialization   ****\n" );
 
-    FileManager::InitDataFiles( DIR_SLASH_SD, true );
+    FileManager::InitDataFiles( DIR_SLASH_SD );
 
     IniParser& cfg = IniParser::GetServerConfig();
 
@@ -4827,11 +4828,12 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                     {
                         const char*  name;
                         FileManager& file = resources.GetNextFile( &name, true );
+                        FileManager* converted_file = ResourceConverter::Convert( name, file );
                         zip_fileinfo zfi;
                         memzero( &zfi, sizeof( zfi ) );
                         if( zipOpenNewFileInZip( zip, name, &zfi, NULL, 0, NULL, 0, NULL, Z_DEFLATED, Z_BEST_SPEED ) == S_OK )
                         {
-                            if( zipWriteInFileInZip( zip, file.GetBuf(), file.GetFsize() ) )
+                            if( zipWriteInFileInZip( zip, converted_file->GetOutBuf(), converted_file->GetOutBufLen() ) )
                                 WriteLog( "Can't write file '%s' in zip file '%s'.\n", name, zip_path.c_str() );
 
                             zipCloseFileInZip( zip );
@@ -4840,6 +4842,8 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                         {
                             WriteLog( "Can't open file '%s' in zip file '%s'.\n", name, zip_path.c_str() );
                         }
+                        if( converted_file != &file )
+                            delete converted_file;
                     }
                     zipClose( zip, NULL );
                 }
@@ -4866,8 +4870,10 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                     from.append( DIR_SLASH_S );
                     from.append( name );
                     from = FileManager::GetDataPath( from.c_str(), PT_SERVER_RESOURCES );
-                    if( !FileManager::CopyFile( from.c_str(), FileManager::GetDataPath( name, PT_SERVER_UPDATE ) ) )
-                        WriteLog( "Can't copy update file '%s'.\n", name );
+                    FileManager* converted_file = ResourceConverter::Convert( name, file );
+                    converted_file->SaveOutBufToFile( name, PT_SERVER_UPDATE );
+                    if( converted_file != &file )
+                        delete converted_file;
                 }
 
                 update_file_names.insert( name );

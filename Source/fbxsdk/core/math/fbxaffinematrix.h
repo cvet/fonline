@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -266,6 +266,12 @@ public:
 		  * \return     The transposed matrix of \e this.
 		  */
 		FbxAMatrix Transpose() const;
+
+		/** Calculate a spherical linear interpolation matrix.
+		* \param pOther The other rotation matrix to interpolate with.
+		* \param pWeight A value between 0.0 and 1.0 to specify the interpolation amount.
+		* \remark This matrix and other matrix should contain only rotations, otherwise result may be undefined. */
+		FbxAMatrix Slerp(const FbxAMatrix& pOther, double pWeight) const;
 	//@}
 
 	/**
@@ -296,7 +302,7 @@ public:
 		//! Define 4*4 array as a new type 
 		typedef const double(kDouble44)[4][4] ;
 		//! Cast the matrix in a reference to a 4*4 array.
-		inline kDouble44 & Double44() const { return *((kDouble44 *)&mData); }
+		inline kDouble44 & Double44() const { return *((kDouble44 *)&mData[0][0]); }
 	//@}
 
 	/** Find out if the matrix is equal to identity matrix.
@@ -311,13 +317,15 @@ public:
 
 	void SetTRS(const FbxVector4& pT, const FbxAMatrix& pRM, const FbxVector4& pS);
     void SetRow(int pY, const FbxVector4& pRow);
-    void SetR(const FbxVector4& pV, const int pOrd); 
     void SetTOnly(const FbxVector4& pT);
     void SetROnly(const FbxVector4& pR);
     void SetQOnly(const FbxQuaternion& pQ);
 	FbxVector4 GetROnly() const;
-	FbxVector4 GetR(const int pOrd) const;
     FbxQuaternion GetUnnormalizedQ() const;
+
+	// pOrd is assumed to be an FbxEuler::EOrder (or its synonym EFbxRotationOrder)
+    void SetR(const FbxVector4& pV, const int pOrd); 
+	FbxVector4 GetR(const int pOrd) const;
 
     void MultRM(const FbxVector4& pR);
     void MultSM(const FbxVector4& pS);

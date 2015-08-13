@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -150,6 +150,17 @@ private:
     FBXSDK_FRIEND_NEW();
 	friend class FbxManager;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
+};
+
+//! Functor to compare FbxCriteria
+struct FbxCriteriaCompare
+{
+	inline int operator()(const FbxCriteria& pKeyA, const FbxCriteria& pKeyB) const
+	{
+		const FbxQuery* lKeyA = pKeyA.GetQuery();
+		const FbxQuery* lKeyB = pKeyB.GetQuery();
+		return lKeyA < lKeyB ? -1 : (lKeyA > lKeyB ? 1 : 0);
+	}
 };
 
 /*****************************************************************************************************************************

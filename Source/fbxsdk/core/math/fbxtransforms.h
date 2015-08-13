@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -80,24 +80,24 @@ public:
 	/** Set the active state of the minimum X component.
 	  * \param pActive If true, the X component minimum limit will be active.
 	  */
-	void SetMinXActive(const bool pActive);
+	void SetMinXActive(bool pActive);
 
 	/** Set the active state of the minimum Y component.
 	  * \param pActive If true, the Y component minimum limit will be active.
 	  */
-	void SetMinYActive(const bool pActive);
+	void SetMinYActive(bool pActive);
 
 	/** Set the active state of the minimum Z component.
 	  * \param pActive If true, the Z component minimum limit will be active.
 	  */
-	void SetMinZActive(const bool pActive);
+	void SetMinZActive(bool pActive);
 
 	/** Set the active states of the three components of the minimum limits.
 	  * \param pXActive If true, the X component minimum limit will be active.
 	  * \param pYActive If true, the Y component minimum limit will be active.
 	  * \param pZActive If true, the Z component minimum limit will be active.
 	  */
-	void SetMinActive(const bool pXActive, const bool pYActive, const bool pZActive);
+	void SetMinActive(bool pXActive, bool pYActive, bool pZActive);
 
 	/** Set the minimum limits.
 	  * \param pMin The X, Y and Z values for the minimum limits.
@@ -134,24 +134,24 @@ public:
 	/** Set the active state of the maximum X component.
 	  * \param pActive If true, the X component maximum limit will be active.
 	  */
-	void SetMaxXActive(const bool pActive);
+	void SetMaxXActive(bool pActive);
 
 	/** Set the active state of the maximum Y component.
 	  * \param pActive If true, the Y component maximum limit will be active.
 	  */
-	void SetMaxYActive(const bool pActive);
+	void SetMaxYActive(bool pActive);
 
 	/** Set the active state of the maximum Z component.
 	  * \param pActive If true, the Z component maximum limit will be active.
 	  */
-	void SetMaxZActive(const bool pActive);
+	void SetMaxZActive(bool pActive);
 
 	/** Set the active states of the three components of the maximum limits.
 	  * \param pXActive If true, the X component maximum limit will be active.
 	  * \param pYActive If true, the Y component maximum limit will be active.
 	  * \param pZActive If true, the Z component maximum limit will be active.
 	  */
-	void SetMaxActive(const bool pXActive, const bool pYActive, const bool pZActive);
+	void SetMaxActive(bool pXActive, bool pYActive, bool pZActive);
 
 	/** Set the maximum limits.
 	  * \param pMax The X, Y and Z values for the maximum limits.
@@ -185,16 +185,16 @@ private:
 class FBXSDK_DLL FbxRotationOrder
 {
 public:	
-	FbxRotationOrder(int pOrder=FbxEuler::eOrderXYZ);
+	FbxRotationOrder(FbxEuler::EOrder pOrder=FbxEuler::eOrderXYZ);
 
-	int		GetOrder();
-	void	SetOrder(int pOrder);
-	void	V2M(FbxAMatrix& pRM, const FbxVector4& pV);
-	void	M2V(FbxVector4& pV, FbxAMatrix& pRM);
-	bool	V2VRef(FbxVector4& pVOut, FbxVector4& pVIn, FbxVector4& pVRef);
+	FbxEuler::EOrder	GetOrder() const;
+	void				SetOrder(FbxEuler::EOrder pOrder);
+	void				V2M(FbxAMatrix& pRM, const FbxVector4& pV);
+	void				M2V(FbxVector4& pV, const FbxAMatrix& pRM);
+	bool				V2VRef(FbxVector4& pVOut, const FbxVector4& pVIn, const FbxVector4& pVRef);
 
 private:
-    int		mOrder;
+    FbxEuler::EOrder mOrder;
 };
 
 /** Handle transform behaviors such as pivots, limits and offets, etc.
@@ -206,36 +206,36 @@ public:
 
 	FbxTransform();
 
-	EInheritType		GetInheritType();
+	EInheritType		GetInheritType() const;
 	void				SetInheritType(EInheritType pType);
 	FbxLimits&			GetTranslationLimits();
 	FbxLimits&			GetRotationLimits();
 	FbxLimits&			GetScalingLimits();
 	FbxRotationOrder&	GetRotationOrder();
-	bool				HasROffset();
-	bool				HasRPivot();
-	bool				HasSOffset();
-	bool				HasSPivot();
-	bool				HasPreRM();
-	bool				HasPostRM();
-	void				SetROffset(FbxVector4& pROffset);
-	void				SetRPivot(FbxVector4& pRPivot);
-	void				SetSOffset(FbxVector4& pSOffset);
-	void				SetSPivot(FbxVector4& pSPivot);
-	void				SetPreRM(FbxVector4& pPreR);
-	void				SetPostRM(FbxVector4& pPostR);
-	bool				GetRotationSpaceForLimitOnly();
+	bool				HasROffset() const;
+	bool				HasRPivot() const;
+	bool				HasSOffset() const;
+	bool				HasSPivot() const;
+	bool				HasPreRM() const;
+	bool				HasPostRM() const;
+	void				SetROffset(const FbxVector4& pROffset);
+	void				SetRPivot(const FbxVector4& pRPivot);
+	void				SetSOffset(const FbxVector4& pSOffset);
+	void				SetSPivot(const FbxVector4& pSPivot);
+	void				SetPreRM(const FbxVector4& pPreR);
+	void				SetPostRM(const FbxVector4& pPostR);
+	bool				GetRotationSpaceForLimitOnly() const;
 	void				SetRotationSpaceForLimitOnly(bool pRotationSpaceForLimitOnly);
 
-	void				DoF2LT(FbxVector4& pLT, FbxVector4& pDoF, FbxAMatrix& pLRM, FbxAMatrix& pLSM);
-	void				LT2DoF(FbxVector4& pDoF, FbxVector4 pLT, FbxAMatrix& pLRM, FbxAMatrix& pLSM);
-	void				DoF2LRM(FbxAMatrix& pLRM, FbxVector4& pRDoF, bool pForLimit=false);
-	void				LRM2DoF(FbxVector4& pRDoF, FbxAMatrix& pLRM, bool pForLimit=false);
-	void				LSM2GSM(FbxAMatrix& pGSM, FbxAMatrix& pPGSM, FbxAMatrix& pLSM, FbxAMatrix& pLRM, FbxVector4& pPLS);
-	void				GTRSM2GX(FbxAMatrix& pGX, FbxVector4& pGT, FbxAMatrix& pGRM, FbxAMatrix& pGSM);
+	void				DoF2LT(FbxVector4& pLT, const FbxVector4& pDoF, const FbxAMatrix& pLRM, const FbxAMatrix& pLSM);
+	void				LT2DoF(FbxVector4& pDoF, const FbxVector4& pLT, const FbxAMatrix& pLRM, const FbxAMatrix& pLSM);
+	void				DoF2LRM(FbxAMatrix& pLRM, const FbxVector4& pRDoF, bool pForLimit=false);
+	void				LRM2DoF(FbxVector4& pRDoF, const FbxAMatrix& pLRM, bool pForLimit=false);
+	void				LSM2GSM(FbxAMatrix& pGSM, const FbxAMatrix& pPGSM, const FbxAMatrix& pLSM, const FbxAMatrix& pLRM, const FbxVector4& pPLS);
+	void				GTRSM2GX(FbxAMatrix& pGX, const FbxVector4& pGT, const FbxAMatrix& pGRM, const FbxAMatrix& pGSM);
 
 private:
-	void				SumPivots(FbxVector4& pSum, FbxAMatrix& pLRM, FbxAMatrix& pLSM);
+	void				SumPivots(FbxVector4& pSum, const FbxAMatrix& pLRM, const FbxAMatrix& pLSM);
 
 	class RotationSpace
 	{
@@ -244,14 +244,14 @@ private:
 
 		RotationSpace();
 
-		bool				HasPreRM();
-		bool				HasPostRM();
-		void				GetPreRM(FbxAMatrix& pPreRM);
-		void				GetPostRM(FbxAMatrix& pPostRM);
-		void				SetPreRM(FbxVector4& pPreR);
-		void				SetPostRM(FbxVector4& pPostR);
-		void				DoF2LRM(FbxAMatrix& pLRM, FbxVector4& pRDoF);
-		void				LRM2DoF(FbxVector4& pRDoF, FbxAMatrix& pLRM);
+		bool				HasPreRM() const;
+		bool				HasPostRM() const;
+		void				GetPreRM(FbxAMatrix& pPreRM) const;
+		void				GetPostRM(FbxAMatrix& pPostRM) const;
+		void				SetPreRM(const FbxVector4& pPreR);
+		void				SetPostRM(const FbxVector4& pPostR);
+		void				DoF2LRM(FbxAMatrix& pLRM, const FbxVector4& pRDoF);
+		void				LRM2DoF(FbxVector4& pRDoF, const FbxAMatrix& pLRM);
 
 		FbxUInt8			mMask;
 		FbxAMatrix			mPreRM;
@@ -274,8 +274,8 @@ private:
 	RotationSpace	mRotationSpace;
 };
 
-FBXSDK_DLL bool FbxGetContinuousRotation(FbxVector4& pRes, FbxVector4 pRot, FbxVector4 pRef, const int* pOrder);
-FBXSDK_DLL void FbxGetContinuousRotation(FbxVector4& pRes, FbxVector4 pRot, FbxVector4 pRef);
+FBXSDK_DLL bool FbxGetContinuousRotation(FbxVector4& pRes, const FbxVector4& pRot, const FbxVector4& pRef, const int* pOrder);
+FBXSDK_DLL void FbxGetContinuousRotation(FbxVector4& pRes, const FbxVector4& pRot, const FbxVector4& pRef);
 
 #include <fbxsdk/fbxsdk_nsend.h>
 

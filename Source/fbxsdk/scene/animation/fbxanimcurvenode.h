@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -34,7 +34,7 @@
 
 class FbxAnimStack;
 class FbxAnimCurve;
-class FbxSet;
+class FbxMultiMap;
 class KFCurveNode;
 
 /** This class is an composite of animation curves and is called as animation curve node.
@@ -319,7 +319,7 @@ private:
     FbxProperty GetChannel(const char* pChnl);
     FbxProperty GetChannel(unsigned int pChnlId);
 
-	friend void CollectAnimFromCurveNode(void **lSrc, void *fcn, unsigned int nbCrvs, FbxAnimCurveNode *cn, FbxSet* pNickToAnimCurveTimeWarpsSet, FbxSet& pNickToKFCurveNodeWarpSet);
+	friend void CollectAnimFromCurveNode(void **lSrc, void *fcn, unsigned int nbCrvs, FbxAnimCurveNode *cn, FbxMultiMap* pNickToAnimCurveTimeWarpsSet, FbxMultiMap& pNickToKFCurveNodeWarpSet);
 
     unsigned char	mNonRemovableChannels;
     FbxProperty		mChannels;

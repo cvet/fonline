@@ -55,7 +55,7 @@ extern const char* PathList[ PATH_LIST_COUNT ];
 class FileManager
 {
 public:
-    static void InitDataFiles( const char* path, bool base_path );
+    static void InitDataFiles( const char* path );
     static bool LoadDataFile( const char* path );
     static void ClearDataFiles();
 

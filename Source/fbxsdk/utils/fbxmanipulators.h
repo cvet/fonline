@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -49,27 +49,46 @@ public:
 	void Begin(EAction pAction, float pX, float pY);
 
 	/** Notify manipulation of latest input.
+	* \param pTimeDelta Elapsed time since the last notify. Only used if Smoothing is enabled.
 	* \param pX Horizontal position of the manipulation, in pixels.
 	* \param pY Vertical position of the manipulation, in pixels.
-	* \param pZ Depth position of the manipulation, in pixels. Only used by eDollyPan action. */
-	void Notify(float pX, float pY, float pZ=0);
+	* \param pScale Scaling value of the manipulation. Only used by eFreePan action. */
+	void Notify(float pX, float pY, float pScale=0);
 
 	//! End current manipulation.
 	void End();
 
-	/** Change camera position, rotation and LookAt node to frame all objects.
-	* \param pTime Current time.
-	* \param pOnAnimLayer Specify which animation layer to use for the evaluation. */
-	void FrameAll(const FbxTime& pTime=FBXSDK_TIME_INFINITE, int pOnAnimLayer=0);
+	/** Update the camera position. This must be called periodically in order for the camera to update its position.
+	* \param pTimeDelta Elapsed time since the last update. If Smooth is disabled, you can leave this value to zero.
+	* \remark Begin, Notify and End will not change the current camera position. */
+	void Update(const FbxTime& pTimeDelta=FBXSDK_TIME_ZERO);
 
-	/** Change camera position, rotation and LookAt to frame all selected objects.
-	* \param pTime Current time.
-	* \param pOnAnimLayer Specify which animation layer to use for the evaluation. */
-	void FrameSelected(const FbxTime& pTime=FBXSDK_TIME_INFINITE, int pOnAnimLayer=0);
+	/** Do a complete manipulation action in a single operation. This is the equivalent of calling Begin, Notify and End successively.
+	* \param pAction The action performed for this manipulation scope.
+	* \param pX Horizontal position of the manipulation, in pixels.
+	* \param pY Vertical position of the manipulation, in pixels.
+	* \param pScale Scaling value of the manipulation. Only used by eFreePan action. */
+	void Action(EAction pAction, float pX, float pY, float pScale=0);
 
 	/** Retrieve current manipulation action.
 	* \return The action currently performed by the camera manipulator. */
 	EAction GetCurrentAction() const;
+
+	/** Change camera position and LookAt node to frame all objects.
+	* \param pTime Time to use to evaluate mesh deformations. Leave at default value to cancel mesh evaluation. */
+	void FrameAll(const FbxTime& pTime=FBXSDK_TIME_INFINITE);
+
+	/** Change camera position and LookAt to frame all selected objects.
+	* \param pTime Time to use to evaluate mesh deformations. Leave at default value to cancel mesh evaluation. */
+	void FrameSelected(const FbxTime& pTime=FBXSDK_TIME_INFINITE);
+
+	/** Change camera position and LookAt to frame the selected position on screen. The LookAt will be placed
+	* at first closest intersecting geometry, and the distance between camera and LookAt will be preserved.
+	* \param pX The horizontal screen coordinate.
+	* \param pY The vertical screen coordinate.
+	* \param pCulling If \c true, only test triangles that are front-facing, otherwise test both sides.
+	* \param pTime Time to use to evaluate mesh deformations. Leave at default value to cancel mesh evaluation. */
+	void FrameScreenPosition(float pX, float pY, bool pCulling=false, const FbxTime& pTime=FBXSDK_TIME_INFINITE);
 
 	/** The camera controlled by the manipulator. */
 	FbxPropertyT<FbxReference> Camera;
@@ -81,6 +100,12 @@ public:
 	/** Height of the camera viewport, in pixels. This is used to accurately calculate to movement speed.
 	* \remark If this property is not correctly set, movements will be erronous. */
 	FbxPropertyT<FbxFloat> ViewportHeight;
+
+	/** Camera manipulations will be smooth if enabled. True by default. */
+	FbxPropertyT<FbxBool> Smooth;
+
+	/** Camera manipulations smoothing speed. Higher speed will stabilize the camera more quickly. Default is 10.0 */
+	FbxPropertyT<FbxDouble> SmoothSpeed;
 
 	/** Invert the camera horizontal manipulation direction if set to true. False by default. */
 	FbxPropertyT<FbxBool> InvertX;
@@ -99,6 +124,7 @@ protected:
 	virtual void Construct(const FbxObject* pFrom);
 	virtual void Destruct(bool pRecursive);
 	virtual void ConstructProperties(bool pForceSet);
+	virtual bool ConnectNotify(const FbxConnectEvent& pEvent);
 	virtual bool PropertyNotify(EPropertyNotifyType pType, FbxProperty& pProperty);
 
 private:
@@ -115,20 +141,26 @@ private:
 	void		SetCameraLookAtPosition(const FbxVector4& pPosition);
 	FbxVector4	GetCameraTargetUpPosition() const;
 	void		SetCameraTargetUpPosition(const FbxVector4& pPosition);
+	FbxAMatrix	GetCameraRotationMatrix() const;
+	void		SetCameraRotationMatrix(const FbxAMatrix& pRM);
 
-	double		ComputeRotationAxis(FbxVector4& pFront, FbxVector4& pUp, FbxVector4& pRight) const;
-	void		ComputeRotationMatrix(FbxAMatrix& pRM);
+	double		ComputeRotationAxis(FbxVector4& pFront, FbxVector4& pUp, FbxVector4& pRight, const FbxVector4& pEye, const FbxVector4& pLookAt, const FbxVector4& pUpVector) const;
+	void		ComputeRotationMatrix(FbxAMatrix& pRM, const FbxVector4& pEye, const FbxVector4& pLookAt, const FbxVector4& pUpVector);
 	void		UpdateCameraRotation();
 
-	void		MoveCameraToFitBBoxInFrustum(int pOnAnimLayer, const FbxTime& pTime, const FbxVector4& pBBoxMin, const FbxVector4& pBBoxMax);
-	bool		Frame(int pOnAnimLayer, const FbxTime& pTime, bool pSelected);
-	void		Evaluate(double& v, const FbxTime& pTime, FbxProperty& p, FbxAnimLayer* pAnimLayer);
+	bool		FrameObjects(bool pSelected, const FbxTime& pTime);
+	FbxVector4	ComputePositionToFitBBoxInFrustum(const FbxVector4& pBBoxMin, const FbxVector4& pBBoxMax, const FbxVector4& pBBoxCenter, const FbxVector4& pCameraPosition, const FbxAMatrix& pCameraRM, const FbxTime& pTime);
 
 	EAction		mCurrentAction;
-	float		mBeginMousePos[3], mLastMousePos[3];
-	FbxVector4	mBeginPosition, mBeginLookAtPosition, mBeginTargetUpPosition, mRotationAxis[3];
+	FbxFloat	mBeginMouse[3], mLastMouse[3];
+	FbxVector4	mBeginPosition, mBeginAxis[3];
+	FbxBool		mBeginFlipped;
+
+	FbxDouble	mDestOrthoZoom;
+	FbxVector4	mDestPosition, mDestLookAt, mDestTargetUp;
+	FbxAMatrix	mDestRotation;
+
   	FbxVector4	mInitialPosition, mInitialRotation, mInitialLookAt;
-    bool        mReverseX;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

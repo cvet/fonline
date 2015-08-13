@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -22,7 +22,7 @@
 
 class FbxObject;
 
-/** Default compare functor for FbxMap and FbxSet2, which assumes operator < is defined.
+/** Default compare functor for FbxMap and FbxSet, which assumes operator < is defined.
 Here is examples of different compare class implementations:
 With Key = int
 \code
@@ -30,7 +30,7 @@ class IntCompare
 {
     inline int operator()(int pKeyA, int pKeyB) const
     {
-        return (pKeyA < pKeyB) ? -1 : ((pKeyB < pKeyA) ? 1 : 0);
+        return pKeyA < pKeyB ? -1 : (pKeyA > pKeyB ? 1 : 0);
     }
 };
 \endcode
@@ -40,7 +40,7 @@ class ClassCompare
 {
 	inline int operator()(const Class& pKeyA, const Class& pKeyB) const
 	{
-		return (pKeyA < pKeyB) ? -1 : ((pKeyB < pKeyA) ? 1 : 0);
+		return pKeyA < pKeyB ? -1 : (pKeyA > pKeyB ? 1 : 0);
 	}
 };
 \endcode
@@ -363,7 +363,7 @@ public:
 
 /** A class that maps strings to objects with a basic string comparator.
 * \nosubgrouping */
-class FBXSDK_DLL FbxObjectStringMap : public FbxObjectMap<class FbxString, class FbxStringCompare>
+class FBXSDK_DLL FbxObjectStringMap : public FbxObjectMap<FbxString, FbxStringCompare>
 {
 public:
     //! Constructor
@@ -399,6 +399,9 @@ template <typename K, typename V, typename C, typename A> inline void FbxMapDest
 	}
 	pMap.Clear();
 }
+
+template class FbxSimpleMap<FbxString, FbxObject*, FbxStringCompare>;
+template class FbxObjectMap<FbxString, FbxStringCompare>;
 
 #include <fbxsdk/fbxsdk_nsend.h>
 

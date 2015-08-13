@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -22,7 +22,7 @@
 
 #include <fbxsdk/fbxsdk_nsbegin.h>
 
-class FbxSet;
+class FbxMultiMap;
 class FbxObject;
 class FbxProperty;
 class FbxScene;
@@ -163,7 +163,7 @@ public:
     static void ShareAnimCurves(FbxProperty& pDstProperty, FbxProperty& pSrcProperty, FbxScene* pScene);
 
     // Encapsulate use of private animation data
-    static void             SetTimeWarpSet(FbxSet* pTWset);
+    static void             SetTimeWarpSet(FbxMultiMap* pTWset);
 
     static CurveNodeIntfce  CreateCurveNode(const char* pName);
     static CurveNodeIntfce  CreateCurveNode(FbxIO* pFileObject);
@@ -177,7 +177,7 @@ public:
     static void             DestroyCurveNode(CurveNodeIntfce& pData);
     static void             DestroyCurve(CurveIntfce& pData);
 
-    static void             ConnectTimeWarp(FbxAnimCurveNode* pCurveNode, CurveNodeIntfce& pData, FbxSet& pTimeWarpsKFCurveNodes);
+    static void             ConnectTimeWarp(FbxAnimCurveNode* pCurveNode, CurveNodeIntfce& pData, FbxMultiMap& pTimeWarpsKFCurveNodes);
     static void             MergeLayerAndTimeWarp(FbxObject* pObj, FbxAnimLayer* pAnimLayer);
 
     static void             CopyFrom(FbxAnimCurve* pAC, CurveIntfce& pFC);

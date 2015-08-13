@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -18,35 +18,43 @@
 #include <fbxsdk/fbxsdk_nsbegin.h>
 
 /** This class template holds a pair of objects.
-* \nosubgrouping
-*/
-template <typename S, typename T> class FbxPair
+* \nosubgrouping */
+template <typename First, typename Second> class FbxPair
 {
 public:
-    //! Constructor.
+	//! Constructor.
 	inline FbxPair() : mFirst(), mSecond() {}
 
-    /** Constructor.
-    * \param pFirst The first object.
-    * \param pSecond The second object.
-    */
-	inline FbxPair(const S& pFirst, const T& pSecond) : mFirst(pFirst), mSecond(pSecond) {}
+	/** Constructor.
+	* \param pFirst The first object.
+	* \param pSecond The second object. */
+	inline FbxPair(const First& pFirst, const Second& pSecond) : mFirst(pFirst), mSecond(pSecond) {}
 
-    /** Assignment operator.
-    * \param pPair The pair to be copied.
-    */
-	inline FbxPair<S,T>& operator=(const FbxPair<S,T>& pPair)
+	/** Assignment operator.
+	* \param pOther The pair to be copied. */
+	inline FbxPair<First, Second>& operator=(const FbxPair<First, Second>& pOther)
 	{
-		mFirst = pPair.mFirst;
-		mSecond = pPair.mSecond;
-
+		mFirst = pOther.mFirst;
+		mSecond = pOther.mSecond;
 		return *this;
 	}
 
-    //! The first object in the pair.
-	S mFirst;
-    //! The second object in the pair.
-	T mSecond;
+	/** Comparison operator.
+	* \param pOther The pair to be compared. */
+	inline bool operator==(const FbxPair<First, Second>& pOther)
+	{
+		return mFirst == pOther.mFirst && mSecond == pOther.mSecond;
+	}
+
+	/** Inverse comparison operator.
+	* \param pOther The pair to be compared. */
+	inline bool operator!=(const FbxPair<First, Second>& pOther)
+	{
+		return !operator==(pOther);
+	}
+
+	First mFirst;	//!< The first object in the pair.
+	Second mSecond;	//!< The second object in the pair.
 };
 
 #include <fbxsdk/fbxsdk_nsend.h>

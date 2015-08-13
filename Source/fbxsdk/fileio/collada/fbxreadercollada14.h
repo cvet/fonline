@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -288,9 +288,11 @@ private:
       * If it contains lines or line strips elements, a FBX line will be created.
       * \param pXmlNode The COLLADA mesh element.
       * \param pMaterialSequence A ordered sequence of material symbols connecting to the geometry.
+	  * \param pObjects List of all the created objects. If this mesh contains lines or line strips as well as
+	  *                 the polymesh, the array will be filled with: [mesh, line, line strip]
       * \return The created geometry object and return \c NULL if failed.
       */
-    FbxGeometry * ImportMesh(xmlNode* pXmlNode, const FbxDynamicArray<FbxString> & pMaterialSequence);
+    FbxGeometry * ImportMesh(xmlNode* pXmlNode, const FbxDynamicArray<FbxString> & pMaterialSequence, FbxArray<FbxObject*>& pObjects);
 
     /** Import a COLLADA vertices element.
       * \param pVerticesElement The COLLADA vertices element.
@@ -328,7 +330,7 @@ private:
       * \param pNode The node whose rotation order is updated.
       * \param pRotationOrder The int list representing the rotation order.
       */
-    void SetRotationOrder(FbxNode * pNode, const std::vector<int> & pRotationOrder);
+    void SetRotationOrder(FbxNode * pNode, const FbxArray<int> & pRotationOrder);
 
      /** Import Collada look at node, and computed camera position, interest, up vector, etc.
     * \param pXmlNode Pointer to XML look at Node.
@@ -500,8 +502,9 @@ private:
             : mColladaElement(pElement), mFBXObject(NULL) {}
         xmlNode * mColladaElement;
         FbxObject * mFBXObject;
+		FbxArray<FbxObject*> mFBXObjects;
     };
-    typedef std::map<FbxString, ColladaElementData> ColladaElementMapType;
+	typedef FbxMap<FbxString, ColladaElementData> ColladaElementMapType;
     ColladaElementMapType mColladaElements;
 
     LibraryTypeTraits mEffectTypeTraits;
@@ -514,33 +517,36 @@ private:
     LibraryTypeTraits mNodeTypeTraits;
     LibraryTypeTraits mAnimationTypeTraits;
 
-    typedef std::map< FbxString, std::vector<xmlNode*> > AnimationMapType;
+	typedef FbxMap<FbxString, FbxArray<xmlNode*> > AnimationMapType;
     AnimationMapType mAnimationElements;
 
     SourceElementMapType mSourceElements;
 
-    struct AnimationClipData
-    {
-        AnimationClipData(const FbxString & pID) : mID(pID), mAnimLayer(NULL) {}
+	struct AnimationClipData
+	{
+		AnimationClipData(const FbxString & pID) : mID(pID), mAnimLayer(NULL) {}
+		AnimationClipData(const AnimationClipData& pOther){ *this = pOther; }
+		AnimationClipData& operator=(const AnimationClipData& pOther){ mID = pOther.mID; mAnimationElementIDs = pOther.mAnimationElementIDs; mAnimLayer = pOther.mAnimLayer; return *this; }
 
-        FbxString mID;                                // ID of animation clip
-        std::set<FbxString> mAnimationElementIDs;     // IDs of animation belong to this animation clip
-        FbxAnimLayer * mAnimLayer;                 // The corresponding animation layer
-    };
-    std::vector<AnimationClipData> mAnimationClipData;
+		FbxString mID;                                // ID of animation clip
+		FbxSet<FbxString> mAnimationElementIDs;     // IDs of animation belong to this animation clip
+		FbxAnimLayer * mAnimLayer;                 // The corresponding animation layer
+	};
+	FbxDynamicArray<AnimationClipData> mAnimationClipData;
 
     // Map from skin ID to skin element.
     SkinMapType mSkinElements;
 
     // There are two distinct namespaces for node ID & SID mapping.
     // One with ID and the other with SID.
-    typedef std::map<FbxString, FbxNode *> NodeMapType;
+    typedef FbxMap<FbxString, FbxNode *> NodeMapType;
     NodeMapType mIDNamespaceNodes;
     NodeMapType mSIDNamespaceNodes;
 
     // Record the nodes which are to connect to its target node.
     // Save the ID of the target node if a node has its target
-    std::map<FbxNode *, FbxString> mTargetIDs;
+	typedef FbxMap<FbxNode *, FbxString> TargetIDMapType;
+    TargetIDMapType mTargetIDs;
 
     FbxColladaNamespace mNamespace;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/

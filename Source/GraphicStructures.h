@@ -1,10 +1,18 @@
 #ifndef __GRAPHIC_STRUCTURES__
 #define __GRAPHIC_STRUCTURES__
 
+// #include "GL/glew.h"
 #include "Defines.h"
 #include "Assimp/aiTypes.h"
 #include "Assimp/aiScene.h"
 #include "FileManager.h"
+
+#ifdef FONLINE_SERVER
+# define GL( x )        (void) 0
+# define GL_HAS( x )    false
+# define GLuint                 uint
+# define GLint                  int
+#endif
 
 #define EFFECT_TEXTURES         ( 10 )
 #define MAX_BONE_MATRICES       ( 128 )
@@ -21,6 +29,8 @@ typedef vector< Matrix* >    MatrixPtrVec;
 
 struct Bone;
 typedef vector< Bone* >      BoneVec;
+
+extern bool Is3dExtensionSupported( const char* ext );
 
 //
 // Vertex2D

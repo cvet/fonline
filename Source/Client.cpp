@@ -643,9 +643,9 @@ void FOClient::UpdateFiles( bool early_call )
                     {
                         FileManager::ClearDataFiles();
                         #ifdef FO_OSX_IOS
-                        FileManager::InitDataFiles( "../../Documents/", true );
+                        FileManager::InitDataFiles( "../../Documents/" );
                         #endif
-                        FileManager::InitDataFiles( DIR_SLASH_SD CLIENT_DATA, true );
+                        FileManager::InitDataFiles( DIR_SLASH_SD CLIENT_DATA );
                     }
 
                     return;

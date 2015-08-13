@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -48,6 +48,11 @@ public:
 			* \param pW     The W component.
 			*/
 		FbxQuaternion(double pX, double pY, double pZ, double pW = 1.0);
+
+		/** From axis degree constructor
+		* \param pAxis The axis to rotate around.
+		* \param pDegree The amount of degree to rotate around the axis. */
+		FbxQuaternion(const FbxVector4& pAxis, double pDegree);
 		    
 		//! Destructor.
 		~FbxQuaternion();
@@ -254,13 +259,23 @@ public:
 		  */
 		void Inverse();
 
+		/** Set the quaternion rotation from an axis degree angle.
+		* \param pAxis The axis to rotate around.
+		* \param pDegree The amount of degree to rotate around the axis. */
+		void SetAxisAngle(const FbxVector4& pAxis, double pDegree);
+
+		/** Calculate a spherical linear interpolation quaternion.
+		* \param pOther The other quaternion to interpolate with.
+		* \param pWeight A value between 0.0 and 1.0 to specify the interpolation amount. */
+		FbxQuaternion Slerp(const FbxQuaternion& pOther, double pWeight) const;
+
 		/** Create a Quaternion equivalent to the supplied Euler XYZ in spherical coordinate.
-		  * \param pEuler   The Euler XYZ angle.
+		  * \param pEuler   The Euler XYZ angle (in degrees).
 		  */
 		void ComposeSphericalXYZ(const FbxVector4 pEuler);
 
 		/** Create an Euler XYZ equivalent to the current quaternion.
-		  * \return     The Euler XYZ equivalent to the current quaternion in spherical coordinate.
+		  * \return     The Euler XYZ angle (in degrees) equivalent to the current quaternion in spherical coordinate.
 		  */
 		FbxVector4 DecomposeSphericalXYZ() const;
     //@}

@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -704,73 +704,63 @@ public:
     //@}
 
 	//! \name Utility Functions.
-    //@{
+	//@{
 		/** Evaluate the camera position (eye).
-		  * \param pTime	The time at which the camera should be evaluated.
-		  * \return			The camera position evaluated from property value and animation. */
+		* \param pTime The time at which the camera should be evaluated.
+		* \return The camera position evaluated from property value and animation. */
 		FbxVector4 EvaluatePosition(const FbxTime& pTime=FBXSDK_TIME_ZERO) const;
 
 		/** Evaluate the camera target position (look at).
-		  * \param pTime	The time at which the camera should be evaluated.
-		  * \return			The camera target position evaluated from property value and animation. */
+		* \param pTime The time at which the camera should be evaluated.
+		* \return The camera target position evaluated from property value and animation. */
 		FbxVector4 EvaluateLookAtPosition(const FbxTime& pTime=FBXSDK_TIME_ZERO) const;
 
 		/** Evaluate the camera up direction, taking target up objects into consideration.
-		  * \param pCameraPosition	The camera current position. You can retrieve this with FbxCamera::EvaluatePosition().
-		  * \param pLookAtPosition	The camera target position. you can retrieve this with FbxCamera::EvaluateLookAtPosition().
-		  * \param pTime			The time at which the camera should be evaluated.
-		  * \return					The camera up direction vector based on provided information. */
+		* \param pCameraPosition The camera current position. You can retrieve this with FbxCamera::EvaluatePosition().
+		* \param pLookAtPosition The camera target position. you can retrieve this with FbxCamera::EvaluateLookAtPosition().
+		* \param pTime The time at which the camera should be evaluated.
+		* \return The camera up direction vector based on provided information. */
 		FbxVector4 EvaluateUpDirection(const FbxVector4& pCameraPosition, const FbxVector4& pLookAtPosition, const FbxTime& pTime=FBXSDK_TIME_ZERO) const;
 
 		/** Compute the camera projection matrix.
-		  * \param pWidth	The width of the output frame.
-		  * \param pHeight	The height of the output frame.
+		* \param pWidth The width of the output frame.
+		* \param pHeight The height of the output frame.
+		* \param pVerticalFOV Calculate FOV vertically (based on height) if true or horizontally (based on width) if false (Note: Only applicable in perspective proj).
 		* \return The camera projection matrix, or the default identity matrix in case of wrong camera parameters. */
-		FbxMatrix ComputeProjectionMatrix(const int pWidth, const int pHeight) const;
+		FbxMatrix ComputeProjectionMatrix(const int pWidth, const int pHeight, const bool pVerticalFOV = true) const;
 
-		/** Calculate the up vector. (DEPRECATED, please use EvaluateUpDirection instead)
-		  * \param pCameraPosition	The camera current position. You can retrieve this with FbxCamera::EvaluatePosition().
-		  * \param pLookAtPosition	The camera target position. you can retrieve this with FbxCamera::EvaluateLookAtPosition().
-		  * \return					The camera up vector based on provided information.
-		  * \remark					Deprecated function, please use EvaluateUpDirection instead.
-		  */
-		FBX_DEPRECATED FbxVector4 ComputeUpVector(const FbxVector4& pCameraPosition, const FbxVector4& pLookAtPosition) const;
-
-		/** Compute the perspective matrix for this camera. (DEPRECATED, please use ComputeProjectionMatrix instead)
-		  * Suitable for transforming camera space to normalized device coordinate space.
-		  * Also suitable for use as an OpenGL projection matrix. Note this fails if the
-		  * ProjectionType is not ePerspective. 
-		  * \param pPixelHeight            The pixel height of the output image.
-		  * \param pPixelWidth             The pixel width of the output image.
-		  * \param pIncludePostPerspective Indicate that post-projection transformations (offset, roll) are included in the output matrix.
-		  * \return A perspective matrix, or the identity matrix on error.
-		  */
-		FBX_DEPRECATED FbxMatrix ComputePerspective(int pPixelWidth, int pPixelHeight, bool pIncludePostPerspective) const;
-
-		/** Determine if the given bounding box is in the camera's view. 
-		  * The input points do not need to be ordered in any particular way.
-		  * \param pWorldToScreen The world to screen transformation. Please refer to FbxCamera::ComputeWorldToScreen.
+		/** Determine if the given bounding box is in the camera's view. The input points do not need to be ordered in any particular way.
+		* \param pWorldToScreen The world to screen transformation. Please refer to FbxCamera::ComputeWorldToScreen.
 		* \param pWorldToCamera The world to camera transformation. Inverse of the matrix returned from FbxAnimEvaluator::GetNodeGlobalTransform is suitable.
 		* Please refer to FbxScene::GetEvaluator and FbxAnimEvaluator::GetNodeGlobalTransform.
-		  * \param pPoints 8 corners of the bounding box.
+		* \param pPoints 8 corners of the bounding box.
 		* \return \c true if any of the given points are in the camera's view, \c false otherwise. */
 		bool IsBoundingBoxInView(const FbxMatrix& pWorldToScreen, const FbxMatrix& pWorldToCamera, const FbxVector4 pPoints[8]) const;
 
 		/** Determine if the given 3d point is in the camera's view. 
-		  * \param pWorldToScreen The world to screen transformation. Please refer to FbxCamera::ComputeWorldToScreen.
+		* \param pWorldToScreen The world to screen transformation. Please refer to FbxCamera::ComputeWorldToScreen.
 		* \param pWorldToCamera The world to camera transformation. Inverse of the matrix returned from FbxAnimEvaluator::GetNodeGlobalTransform is suitable.
 		* Please refer to FbxScene::GetEvaluator and FbxAnimEvaluator::GetNodeGlobalTransform.
-		  * \param pPoint World-space point to test.
+		* \param pPoint World-space point to test.
 		* \return \c true if the given point is in the camera's view, \c false otherwise. */
 		bool IsPointInView(const FbxMatrix& pWorldToScreen, const FbxMatrix& pWorldToCamera, const FbxVector4& pPoint) const;
 
 		/** Compute world space to screen space transformation matrix.
-		  * \param pPixelHeight   The pixel height of the output image.
-		  * \param pPixelWidth    The pixel height of the output image.
-		  * \param pWorldToCamera The world to camera affine transformation matrix.
+		* \param pPixelHeight The pixel height of the output image.
+		* \param pPixelWidth The pixel height of the output image.
+		* \param pWorldToCamera The world to camera affine transformation matrix.
 		* \return The world to screen space matrix, or the identity matrix on error. */
 		FbxMatrix ComputeWorldToScreen(int pPixelWidth, int pPixelHeight, const FbxAMatrix& pWorldToCamera) const;
-    //@}
+
+		/** Compute screen space to world space ray direction.
+		* \param pX The horizontal screen coordinate.
+		* \param pY The vertical screen coordinate.
+		* \param pWidth The width of the viewport in pixels.
+		* \param pHeight The height of the viewport in pixels.
+		* \param pTime The time to use to evaluate the camera's view matrix.
+		* \return a normalized vector corresponding to the ray direction. */
+		FbxVector4 ComputeScreenToWorld(float pX, float pY, float pWidth, float pHeight, const FbxTime& pTime=FBXSDK_TIME_INFINITE) const;
+	//@}
 
     //////////////////////////////////////////////////////////////////////////
     //
@@ -1883,11 +1873,7 @@ private:
     FbxString mForegroundMediaName;
     FbxString mForegroundFileName;
 
-    // for internal computations
-    int mUpSign;
-    FbxVector4 mLastUp;
-    friend class FbxCameraManipulator;
-
+	FbxVector4 mLastUp;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

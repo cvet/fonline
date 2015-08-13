@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -69,30 +69,14 @@ public:
 	  * \name Templated member management
 	  */
 	//@{
-        /** Returns the number of class T objects contained within the collection. (Deprecated, please use GetMemberCount<Type>() instead.)
-		  * \return The number of objects of class T the collection contains.
-		  */
-        template <class T> FBX_DEPRECATED inline int GetMemberCount(const T*) const { return GetSrcObjectCount<T>(); }
-
 		/** Returns the number of class T objects contained within the collection.
 		* \return The number of objects of class T the collection contains. */
 		template <class T> inline int GetMemberCount() const { return GetSrcObjectCount<T>(); }
-
-        /** Returns the member of class T at the given index in the collection. (Deprecated, please use GetMember<Type>() instead.)
-		  * \param pIndex The given index.
-		  * \return The member of class T at the given index.
-		  */
-        template <class T> FBX_DEPRECATED inline T* GetMember(const T*, int pIndex=0) const { return GetSrcObject<T>(pIndex); }
 
 		/** Returns the member of class T at the given index in the collection.
 		* \param pIndex The given index.
 		* \return The member of class T at the given index. */
 		template <class T> inline T* GetMember(int pIndex=0) const { return GetSrcObject<T>(pIndex); }
-
-        /** Searches for a member of class T. (Deprecated, please use FindMember<Type>() instead.)
-		  * \param pName Member name.
-		  */
-		template <class T> FBX_DEPRECATED inline T* FindMember(const T*, const char* pName) const { return FindSrcObject<T>(pName); }
 
 		/** Searches for a member of class T.
 		* \param pName Member name. */

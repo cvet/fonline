@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -27,6 +27,10 @@ class FbxNurbsSurface;
 class FbxNurbsCurve;
 class FbxWeightedMapping;
 class FbxSurfaceEvaluator;
+class FbxScene;
+class FbxNode;
+class FbxNodeAttribute;
+class FbxGeometry;
 
 /** 
 * This class provides the functionality to convert geometry nodes 
@@ -50,7 +54,8 @@ public:
 
 		/** Triangulate a node attribute, if supported, and preserve the skins and shapes animation channels.
 		* \param pNodeAttribute Pointer to the node containing the geometry to triangulate.
-		* \param pReplace If \c true, replace the original mesh with the new triangulated mesh on the nodes, and delete the original mesh. Otherwise, original mesh is left untouched and only return new mesh.
+		* \param pReplace If \c true, replace the original geometry with the new triangulated geometry on the nodes, and delete the original geometry.
+		*                 Otherwise, the original geometry is left untouched, the new one is added to the nodes, and becomes the default one.
 		* \param pLegacy If \c true, use legacy triangulation method that does not support holes in geometry. Provided for backward compatibility.
 		* \return The newly created node attribute if successful, otherwise NULL. If node attribute type is not supported by triangulation, it returns the original node attribute.
 		* \remark This function currently only supports node attribute of type eMesh, ePatch, eNurbs or eNurbsSurface. If the node attribute does not support triangulation,
@@ -65,37 +70,6 @@ public:
 		* \return \c true on success, \c false if the function fails to compute the correspondence.
 		* \remark Skins and shapes are also converted to fit the alternate geometry. */
 		bool ComputeGeometryControlPointsWeightedMapping(FbxGeometry* pSrcGeom, FbxGeometry* pDstGeom, FbxWeightedMapping* pSrcToDstWeightedMapping, bool pSwapUV=false);
-
-		/** Triangulate a basic mesh, without support for holes.
-		* \param pMesh Pointer to the mesh to triangulate.
-		* \return Pointer to the new triangulated mesh.
-		* \remark This method creates a new mesh, leaving the source mesh unchanged. This function is deprecated, please use Triangulate instead. */
-		FBX_DEPRECATED FbxMesh* TriangulateMesh(const FbxMesh* pMesh);
-
-		/** Triangulate a mesh with support for simple holes in polygons.
-		* \param pMesh Pointer to the mesh to triangulate.
-		* \return Pointer to the new triangulated mesh if successful, otherwise NULL.
-		* \remark This method creates a new mesh, leaving the source mesh unchanged. This function is deprecated, please use Triangulate instead. */
-		FBX_DEPRECATED FbxMesh* TriangulateMeshAdvance(const FbxMesh* pMesh);
-
-		/** Triangulate a patch.
-		* \param pPatch Pointer to the patch to triangulate.
-		* \return Pointer to the new triangulated mesh.
-		* \remark The current deformations (skins & shapes) on the patch are also converted and applied to the resulting mesh. This function is deprecated, please use Triangulate instead. */
-		FBX_DEPRECATED FbxMesh* TriangulatePatch(const FbxPatch* pPatch);
-
-		/** Triangulate a nurb.
-		* \param pNurbs Pointer to the nurb to triangulate.
-		* \return Pointer to the new triangulated mesh.
-		* \remark The current deformations (skins and shapes) on the nurb are also converted and applied to the resulting mesh. This function is deprecated, please use Triangulate instead. */
-		FBX_DEPRECATED FbxMesh* TriangulateNurbs(const FbxNurbs* pNurbs);
-
-		/** Triangulate the default mesh, patch or nurb contained in a node and preserve the skins and shapes animation channels.
-		* \param pNode Pointer to the node containing the geometry to triangulate.
-		* \return \c true on success, or \c false if the node attribute is not a mesh, a patch or a nurb.
-		* \remark This funciton will only triangulate the default node attribute found on the node. Also, see the remarks for functions TriangulateMesh(), TriangulatePatch() and TriangulateNurbs().
-		* This function is deprecated, please consider using Triangulate instead. */
-		FBX_DEPRECATED bool TriangulateInPlace(FbxNode* pNode);
     //@}
 
     /** 
@@ -251,14 +225,13 @@ public:
 		bool SplitMeshPerMaterial(FbxMesh* pMesh, bool pReplace);
 	//@}
 
-	/** Reset meshes geometry center to be at world center, if delta between the two is greater than threshold.
-	* Basically, this function calculates the scene bounding box in world coordinates, and test if the center of that bounding box distance from the world center is larger than the threshold.
-	* If this happen to be true, this function goes ahead and substracts the center's delta to the mesh's control points directly.
-	* \param pScene The scene to iterate through meshes to reset their world center.
-	* \param pThreshold If the scene center distance from world center is greater than the threshold, apply center offset to all meshes to reset them to world center.
-	* \return \c true only if any meshes were modified, otherwise \c false.
-	* \remark This function does not work on deformed geometry. */
-	bool ResetMeshesCenterToWorld(FbxScene* pScene, FbxDouble pThreshold);
+	/** Re-parent nodes at root node level under a new node to re-center them at world center.
+	* Basically, this function calculates the scene bounding box in world coordinates, and test if the center of that bounding box distance from the
+	* world center is larger or equal than the threshold. If true, a new node with the proper negative offset position will become the new parent of all nodes at root node level.
+	* \param pScene The scene to process.
+	* \param pThreshold Threshold at which all nodes will be re-centered.
+	* \return \c true if any nodes were re-centered, otherwise \c false. */
+	bool RecenterSceneToWorldCenter(FbxScene* pScene, FbxDouble pThreshold);
 
 	/**
 	* Merge multiple meshes to one mesh.
@@ -282,6 +255,14 @@ public:
 	*					 For meshes with skin binding, if the pose of frame 0 is different with bind pose, the new mesh will be distorted.
 	*/
 	FbxNode* MergeMeshes(FbxArray<FbxNode*>& pMeshNodes, const char* pNodeName, FbxScene* pScene);
+
+	/**
+	* Cleanup or remove degenerated meshes.
+	* \param pScene The scene to process.
+	* \param pAffectedNodes The list of nodes that have been affected by this operation.
+	* \remarks  If the cleaned-up mesh becomes invalid, it is removed entirely.
+	*/
+	void RemoveBadPolygonsFromMeshes(FbxScene* pScene, FbxArray<FbxNode*>* pAffectedNodes = NULL);
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **

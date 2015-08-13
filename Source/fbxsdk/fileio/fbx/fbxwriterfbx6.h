@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -139,25 +139,25 @@ private:
     bool            WriteShape(FbxShape& pShape, FbxString pShapeName, FbxGeometry& pGeometry);
     void            FindShapeValidIndices(FbxArray<FbxVector4>& pGeometryControlPoints, FbxArray<FbxVector4>& pShapeControlPoints, FbxArray<int>& lValidIndices);
 
-    bool            WriteFbxLayerElementNormals(FbxLayerContainer& pLayerContainer, FbxSet&);
-    bool            WriteFbxLayerElementBinormals(FbxLayerContainer& pLayerContainer, FbxSet&);
-    bool            WriteFbxLayerElementTangents(FbxLayerContainer& pLayerContainer, FbxSet&);
-    bool            WriteFbxLayerElementMaterials(FbxLayerContainer& pLayerContainer, FbxSet&);
-    bool            WriteFbxLayerElementTextures(FbxLayerContainer& pLayerContainer, FbxSet&);
-    bool            WriteFbxLayerElementTexturesChannel(FbxLayerContainer& pLayerContainer, FbxLayerElement::EType pTextureType, FbxSet& pLayerIndexSet);
-    bool            WriteFbxLayerElementUVsChannel(FbxLayerContainer& pLayerContainer, FbxLayerElement::EType pTextureType, FbxSet& pLayerIndexSet);
+    bool            WriteFbxLayerElementNormals(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
+    bool            WriteFbxLayerElementBinormals(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
+    bool            WriteFbxLayerElementTangents(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
+    bool            WriteFbxLayerElementMaterials(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
+    bool            WriteFbxLayerElementTextures(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
+    bool            WriteFbxLayerElementTexturesChannel(FbxLayerContainer& pLayerContainer, FbxLayerElement::EType pTextureType, FbxMultiMap& pLayerIndexSet);
+    bool            WriteFbxLayerElementUVsChannel(FbxLayerContainer& pLayerContainer, FbxLayerElement::EType pTextureType, FbxMultiMap& pLayerIndexSet);
 
-    bool            WriteFbxLayerElementPolygonGroups(FbxLayerContainer& pLayerContainer, FbxSet&);
-    bool            WriteFbxLayerElementVertexColors(FbxLayerContainer& pLayerContainer, FbxSet&);
-    bool            WriteFbxLayerElementUVs(FbxLayerContainer& pLayerContainer, FbxSet&);
-    bool            WriteFbxLayerElementSmoothing(FbxLayerContainer& pLayerContainer, FbxSet&);
-    bool            WriteFbxLayerElementUserData(FbxLayerContainer& pLayerContainer, FbxSet&);
-    bool            WriteFbxLayerElementVisibility(FbxLayerContainer& pLayerContainer, FbxSet&);
-    bool            WriteFbxLayerElementVertexCrease(FbxLayerContainer& pLayerContainer, FbxSet&);
-    bool            WriteFbxLayerElementEdgeCrease(FbxLayerContainer& pLayerContainer, FbxSet&);
-    bool            WriteFbxLayerElementHole(FbxLayerContainer& pLayerContainer, FbxSet&);
+    bool            WriteFbxLayerElementPolygonGroups(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
+    bool            WriteFbxLayerElementVertexColors(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
+    bool            WriteFbxLayerElementUVs(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
+    bool            WriteFbxLayerElementSmoothing(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
+    bool            WriteFbxLayerElementUserData(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
+    bool            WriteFbxLayerElementVisibility(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
+    bool            WriteFbxLayerElementVertexCrease(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
+    bool            WriteFbxLayerElementEdgeCrease(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
+    bool            WriteFbxLayerElementHole(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
 
-    bool            WriteLayers(FbxLayerContainer& pLayerContainer, FbxSet&);
+    bool            WriteLayers(FbxLayerContainer& pLayerContainer, FbxMultiMap&);
     int             MapLayeredTextureIndexToConnectionIndex(FbxNode* pNode, void* pLET, int pIndex);
 
     bool            WriteMaterials(FbxDocument* pDocument);
@@ -269,9 +269,9 @@ private:
     bool						mWriteEnhancedProperties;
     EExportMode					mExportMode;
 
-    FbxSet						mTextureAnimatedChannels;
-    FbxSet						mMaterialAnimatedChannels;
-	FbxSet						mTimeWarpsCurveNodes;
+    FbxMultiMap						mTextureAnimatedChannels;
+    FbxMultiMap						mMaterialAnimatedChannels;
+	FbxMultiMap						mTimeWarpsCurveNodes;
 
     struct TextureAnimatedChannels
     {

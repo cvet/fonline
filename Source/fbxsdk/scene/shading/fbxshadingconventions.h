@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -21,6 +21,7 @@
 #define FBXSDK_SHADING_LANGUAGE_HLSL	"HLSL"
 #define FBXSDK_SHADING_LANGUAGE_GLSL	"GLSL"
 #define FBXSDK_SHADING_LANGUAGE_CGFX	"CGFX"
+#define FBXSDK_SHADING_LANGUAGE_SFX		"SFX"
 #define FBXSDK_SHADING_LANGUAGE_MRSL	"MentalRaySL"
 
 //Predefined rendering APIs
@@ -33,6 +34,7 @@
 #define FBXSDK_IMPLEMENTATION_MENTALRAY	"ImplementationMentalRay"
 #define FBXSDK_IMPLEMENTATION_CGFX		"ImplementationCGFX"
 #define FBXSDK_IMPLEMENTATION_HLSL		"ImplementationHLSL"
+#define FBXSDK_IMPLEMENTATION_SFX	    "ImplementationSFX"
 #define FBXSDK_IMPLEMENTATION_OGS		"ImplementaitonOGS"
 #define FBXSDK_IMPLEMENTATION_NONE		"ImplementationNone"
 

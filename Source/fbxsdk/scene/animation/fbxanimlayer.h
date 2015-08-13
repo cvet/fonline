@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -171,7 +171,7 @@ public:
         /** Create a FbxAnimCurveNode based on the property data type.
           * \param pProperty The property that the created FbxAnimCurveNode will be connected to.
           * \return Pointer to the created FbxAnimCurveNode, or NULL if an error occurred.
-          * \remarks This function will fail if the property FbxPropertyAttr::eAnimatable flag is not set.
+          * \remarks This function will fail if the property FbxPropertyFlags::eAnimatable flag is not set.
           * \remarks This function sets the eAnimated flag of the property.
           * \remarks The newly created FbxAnimCurveNode is automatically connected to both
           *         this object and the property.

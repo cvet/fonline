@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -29,75 +29,51 @@ class FBXSDK_DLL FbxVertexCacheDeformer : public FbxDeformer
 	FBXSDK_OBJECT_DECLARE(FbxVertexCacheDeformer, FbxDeformer);
 
 public:
-	
+	//! Vertex cache deformer data type
+	enum ECacheChannelType
+	{
+		ePositions,		//!< This vertex cache deformer handles positions
+		eNormals,		//!< This vertex cache deformer handles normals
+		eUVs,			//!< This vertex cache deformer handles uvs
+		eTangents,		//!< This vertex cache deformer handles tangents
+		eBinormals,		//!< This vertex cache deformer handles binormals
+		eUserDefined	//!< This vertex cache deformer handles user specified data (the cache channel string can provide a hint)
+	};
+
 	/** Assign a cache object to be used by this deformer.
-	  * \param pCache     The cache object.
-	  */ 
-	void SetCache( FbxCache* pCache );
+	* \param pCache The cache object. */ 
+	void SetCache(FbxCache* pCache);
 
 	/** Get the cache object used by this deformer.
-	  * \return     A pointer to the cache object used by this deformer, or \c NULL if no cache object is assigned.
-	  */
+	* \return A pointer to the cache object used by this deformer, or \c NULL if no cache object is assigned. */
 	FbxCache* GetCache() const;
 
-	/** Select the cache channel by name.
-	  * \param pName     The name of channel to use within the cache object.
-	  */
-	void SetCacheChannel( const char* pName );
+	//! Indicate if the deformer is active or not.
+	FbxPropertyT<FbxBool> Active;
 
-	/** Get the name of the selected channel.
-      * \return     The name of the selected channel within the cache object.
-	  */
-	FbxString GetCacheChannel() const;
+	//! The channel name used in the cache file
+	FbxPropertyT<FbxString> Channel;
 
-	/** Activate the deformer.
-	  * \param pValue     Set to \c true to enable the deformer.
-	  */
-	void SetActive( bool pValue );
+	//! The cache set used by this vertex cache deformer
+	FbxPropertyT<FbxString> CacheSet;
 
-	/** Indicate if the deformer is active or not.
-	  * \return     The current state of the deformer.
-	  */
-	bool IsActive() const;
-
-	/** Get the deformer type.
-	  * \return     Deformer type identifier.
-	  */
-	virtual EDeformerType GetDeformerType() const { return FbxDeformer::eVertexCache; }
-
-protected:
-	/**
-	 * \name Properties
-	 */
-	//@{
-		FbxPropertyT<FbxBool>		Active;
-		FbxPropertyT<FbxString>	Channel;
-        FbxPropertyT<FbxString>    CacheSet;
-	//@}
+	//! The vertex cache deformer type
+	FbxPropertyT<ECacheChannelType> Type;
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-public:
-    void SetCacheSetName(const char*  pCacheSetName);
-    FbxString GetCacheSetName() const;
-
 	virtual FbxObject& Copy(const FbxObject& pObject);
-    
-	static const char* sChannelPropertyName;
-	static const char* sActivePropertyName;
-    static const char* sCacheSetPropertyName;
+	virtual EDeformerType GetDeformerType() const { return FbxDeformer::eVertexCache; }
     
 protected:
 	virtual void ConstructProperties(bool pForceSet);
-
-	virtual FbxStringList	GetTypeFlags() const;
-
-private:
-	void ClearCacheConnections();
+	virtual FbxStringList GetTypeFlags() const;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
+
+inline EFbxType FbxTypeOf(const FbxVertexCacheDeformer::ECacheChannelType&){ return eFbxEnum; }
 
 #include <fbxsdk/fbxsdk_nsend.h>
 

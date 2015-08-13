@@ -233,7 +233,12 @@ bool SpriteManager::Init()
 
     // Generate dummy animation
     if( !DummyAnimation )
-        DummyAnimation = AnyFrames::Create( 1, 100 );
+    {
+        DummyAnimation = (AnyFrames*) new uchar[ sizeof( AnyFrames ) ];
+        memzero( DummyAnimation, sizeof( AnyFrames ) );
+        DummyAnimation->CntFrm = 1;
+        DummyAnimation->Ticks = 100;
+    }
 
     WriteLog( "Sprite manager initialization complete.\n" );
     return true;
@@ -1093,6 +1098,7 @@ void SpriteManager::DestroyAtlases( int atlas_type )
                 }
             }
 
+            DeleteRenderTarget( atlas->RT );
             delete atlas;
             it = allAtlases.erase( it );
         }
@@ -1289,7 +1295,7 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, int path_type, bool 
         result = LoadAnimationMos( fname, path_type );
     else if( Str::CompareCase( ext, "bam" ) )
         result = LoadAnimationBam( fname, path_type );
-    else if( GraphicLoader::IsExtensionSupported( ext ) )
+    else if( Is3dExtensionSupported( ext ) )
         result = LoadAnimation3d( fname, path_type );
     else
         WriteLogF( _FUNC_, " - Unsupported image file format<%s>, file<%s>.\n", ext, fname );

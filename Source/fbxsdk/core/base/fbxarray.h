@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -23,14 +23,17 @@
 template <class T> class FbxArray
 {
 public:
+	//! Element compare function pointer definition
+	typedef int (*CompareFunc)(const void*, const void*);
+
 	//! Constructor.
 	FbxArray() : mSize(0), mCapacity(0), mArray(NULL){}
 
+	//! Reserve constructor.
+	FbxArray(const int pCapacity) : mSize(0), mCapacity(0), mArray(NULL){ if( pCapacity > 0 ) Reserve(pCapacity); }
+
 	//! Copy constructor.
 	FbxArray(const FbxArray& pArray) : mSize(0), mCapacity(0), mArray(NULL){ *this = pArray; }
-
-	//! Reserve constructor.
-	FbxArray(int pCapacity) : mSize(0), mCapacity(0), mArray(NULL){ if( pCapacity > 0 ) Reserve(pCapacity); }
 
 	/** Destructor.
 	* \remark The destructor for each element will not be called. */
@@ -39,23 +42,32 @@ public:
 	/** Insert an element at the given position, growing the array if capacity is not sufficient.
 	* \param pIndex Position where to insert the element. Must be a positive value.
 	* \param pElement Element to insert in the array.
+	* \param pCompact If \c true and capacity is exceeded, grow capacity by one, otherwise double capacity (default).
 	* \return -1 if insert failed, otherwise the position of the inserted element in the array.
-	* \remark If the given index is greater than Size(), the element is appended at the end. */
-	inline int InsertAt(const int pIndex, const T pElement)
+	* \remark If the given index is greater than Size(), the element is appended at the end. Use compact mode only if you need to save memory. */
+	inline int InsertAt(const int pIndex, const T& pElement, bool pCompact=false)
 	{
 		FBX_ASSERT_RETURN_VALUE(pIndex >= 0, -1);
 		int lIndex = FbxMin(pIndex, mSize);
 		if( mSize >= mCapacity )
 		{
-			int lNewCapacity = FbxMax(mCapacity * 2, 1);	//Double capacity
+			T lElement = pElement;	//Copy element because we might move memory
+			int lNewCapacity = FbxMax(pCompact ? mCapacity + 1 : mCapacity * 2, 1);	//We always double capacity when not compacting
 			T* lArray = Allocate(lNewCapacity);
 			FBX_ASSERT_RETURN_VALUE(lArray, -1);
 			mArray = lArray;
 			mCapacity = lNewCapacity;
+			return InsertAt(pIndex, lElement);	//Insert copied element because reference might be moved
 		}
 
 		if( lIndex < mSize )	//Move elements to leave a space open to insert the new element
 		{
+			//If pElement is inside memmove range, copy element and insert copy instead
+			if( (&pElement >= &mArray[lIndex]) && (&pElement < &mArray[mSize]) )
+			{
+				T lElement = pElement;
+				return InsertAt(pIndex, lElement);
+			}
 			memmove(&mArray[lIndex + 1], &mArray[lIndex], (mSize - lIndex) * sizeof(T));
 		}
 
@@ -65,21 +77,29 @@ public:
 		return lIndex;
 	}
 
-	/** Append an element at the end of the array, growing the array if capacity is not sufficient.
+	/** Append an element at the end of the array, doubling the array if capacity is not sufficient.
 	* \param pElement Element to append to the array.
 	* \return -1 if add failed, otherwise the position of the added element in the array. */
-	inline int Add(const T pElement)
+	inline int Add(const T& pElement)
 	{
 		return InsertAt(mSize, pElement);
 	}
 
-	/** Append an element at the end of array, if not already present, growing the array if capacity is not sufficient.
+	/** Append an element at the end of array, if not already present, doubling the array if capacity is not sufficient.
 	* \param pElement Element to append to the array.
 	* \return -1 if add failed, otherwise the position of the added element in the array. */
-	inline int AddUnique(const T pElement)
+	inline int AddUnique(const T& pElement)
 	{
 		int lIndex = Find(pElement);
 		return ( lIndex == -1 ) ? Add(pElement) : lIndex;
+	}
+
+	/** Append an element at the end of the array, growing the array by one element if capacity is not sufficient.
+	* \param pElement Element to append to the array.
+	* \return -1 if add failed, otherwise the position of the added element in the array. */
+	inline int AddCompact(const T& pElement)
+	{
+		return InsertAt(mSize, pElement, true);
 	}
 
 	/** Retrieve the number of element contained in the array. To increase the capacity without increasing the size, please use Reserve().
@@ -92,11 +112,11 @@ public:
 	* \remark The capacity will always be greater or equal to its size. */
 	inline int Capacity() const { return mCapacity; }
 
-	/** Retrieve the element at given index position in the array.
+	/** Retrieve a reference of the element at given index position in the array.
 	* \param pIndex Position of element in the array.
 	* \return A reference to the element at the specified position in the array.
 	* \remark No error will be thrown if the index is out of bounds. */
-	inline T& operator[](int pIndex) const
+	inline T& operator[](const int pIndex) const
 	{
 	#ifdef _DEBUG
 		FBX_ASSERT_MSG(pIndex >= 0, "Index is out of range!");
@@ -112,7 +132,7 @@ public:
 		return (T&)mArray[pIndex];
 	}
 
-	/** Returns the value of the element at given position in the array.
+	/** Retrieve a copy of the element at given index position in the array.
 	* \param pIndex Position of element in the array.
 	* \return The value of the element at the specified position in the array.
 	* \remark No error will be thrown if the index is out of bounds. */
@@ -121,16 +141,16 @@ public:
 		return operator[](pIndex);
 	}
 
-	/** Get the first element.
-	* \return The first element.
+	/** Retrieve a copy of the first element.
+	* \return Copy of the first element.
 	* \remark The array should have at least one element and no error will be thrown if the array is empty. */
 	inline T GetFirst() const
 	{
 		return GetAt(0);
 	}
 
-	/** Get the last element.
-	* \return The last element.
+	/** Retrieve a copy of the last element.
+	* \return Copy of the last element.
 	* \remark The array should have at least one element and no error will be thrown if the array is empty. */
 	inline T GetLast() const
 	{
@@ -141,12 +161,12 @@ public:
 	* \param pElement The element to be compared to each of the elements.
 	* \param pStartIndex The position to start searching from.
 	* \return Position of first matching element or -1 if there is no matching element. */
-	inline int Find(const T pElement, const int pStartIndex=0) const
+	inline int Find(const T& pElement, const int pStartIndex=0) const
 	{
 		FBX_ASSERT_RETURN_VALUE(pStartIndex >= 0, -1);
 		for( int i = pStartIndex; i < mSize; ++i )
 		{
-			if( GetAt(i) == pElement ) return i;
+			if( operator[](i) == pElement ) return i;
 		}
 		return -1;
 	}
@@ -155,11 +175,11 @@ public:
 	* \param pElement The element to be compared to each of the elements.
 	* \param pStartIndex The position to start searching from.
 	* \return Position of first matching element or -1 if there is no matching element. */
-	inline int FindReverse(const T pElement, const int pStartIndex=FBXSDK_INT_MAX) const
+	inline int FindReverse(const T& pElement, const int pStartIndex=FBXSDK_INT_MAX) const
 	{
 		for( int i = FbxMin(pStartIndex, mSize-1); i >= 0; --i )
 		{
-			if( GetAt(i) == pElement ) return i;
+			if( operator[](i) == pElement ) return i;
 		}
 		return -1;
 	}
@@ -189,20 +209,17 @@ public:
 	* \param pElement The new element.
 	* \remark If the index is outside range, and outside capacity, this call has no effect. However, if index is
 	* within capacity range, element count is increased such that Size() will become pIndex + 1. */
-	inline void SetAt(const int pIndex, const T pElement)
+	inline void SetAt(const int pIndex, const T& pElement)
 	{
-		if( pIndex >= mSize )
-		{
-			FBX_ASSERT_RETURN(pIndex < mCapacity);
-			mSize = pIndex + 1;
-		}
-		memcpy(&mArray[pIndex], &pElement, sizeof(T));
+		FBX_ASSERT_RETURN(pIndex < mCapacity);
+		if( pIndex >= mSize ) mSize = pIndex + 1;
+		if( mArray ) memcpy(&mArray[pIndex], &pElement, sizeof(T));
 	}
 
 	/** Set the value of the first element.
 	* \param pElement The new value of the last element.
 	* \remark The array should have at least one element and no error will be thrown if the array is empty. */
-	inline void SetFirst(const T pElement)
+	inline void SetFirst(const T& pElement)
 	{
 		SetAt(0, pElement);
 	}
@@ -210,7 +227,7 @@ public:
 	/** Set the value of the last element.
 	* \param pElement The new value of the last element.
 	* \remark The array should have at least one element and no error will be thrown if the array is empty. */
-	inline void SetLast(const T pElement)
+	inline void SetLast(const T& pElement)
 	{
 		SetAt(mSize-1, pElement);
 	}
@@ -249,7 +266,7 @@ public:
 	/** Remove first matching element in the array.
 	* \param pElement Element to be removed.
 	* \return \c true if a matching element is found and removed, \c false otherwise. */
-	inline bool RemoveIt(const T pElement)
+	inline bool RemoveIt(const T& pElement)
 	{
 		int Index = Find(pElement);
 		if( Index >= 0 )
@@ -260,12 +277,27 @@ public:
 		return false;
 	}
 
+	/** Remove a range of elements at the given position in the array.
+	* \param pIndex Begin position of the elements to remove.
+	* \param pCount The count of elements to remove.
+	* \return \c true if successful, otherwise \c false. */
+	inline void RemoveRange(const int pIndex, const int pCount)
+	{
+		if( pIndex + pCount < mSize )
+		{
+			memmove(&mArray[pIndex], &mArray[pIndex + pCount], (mSize - pIndex - pCount) * sizeof(T));
+		}
+		mSize -= pCount;
+	}
+
 	/** Inserts or erases elements at the end such that Size() becomes pSize, increasing capacity if needed. Please use SetAt() to initialize any new elements.
 	* \param pSize The new count of elements to set the array to. Must be greater or equal to zero.
 	* \return \c true if the memory (re)allocation succeeded, \c false otherwise.
 	* \remark If the requested element count is less than or equal to the current count, elements are freed from memory. Otherwise, the array grows and elements are unchanged. */
 	inline bool Resize(const int pSize)
 	{
+		if( pSize == mSize && mSize == mCapacity ) return true;
+
 		if( pSize == 0 )
 		{
 			Clear();
@@ -287,16 +319,30 @@ public:
 
 		mSize = pSize;
 		mCapacity = pSize;
-
 		return true;
 	}
 
-	/** Inserts elements at the end such that Size() will be increased to pSize, increasing capacity if needed. Please use SetAt() to initialize new elements.
-	* \param pSize The number of elements to insert into the array. Must be greater or equal to zero.
-	* \return \c true if the memory (re)allocation succeeded, \c false otherwise. */
+	/** Increase size of array by the specified size.
+	* \param pSize The size to add to the array size.
+	* \return \c true if operation succeeded, \c false otherwise. */
 	inline bool Grow(const int pSize)
 	{
 		return Resize(mSize + pSize);
+	}
+
+	/** Reduce size of array by the specified size.
+	* \param pSize The size to remove from the array size.
+	* \return \c true if operation succeeded, \c false otherwise. */
+	inline bool Shrink(const int pSize)
+	{
+		return Resize(mSize - pSize);
+	}
+
+	/** Compact the array so that its capacity is the same as its size.
+	* \return \c true if operation succeeded, \c false otherwise. */
+	inline bool Compact()
+	{
+		return Resize(mSize);
 	}
 
 	/** Reset the number of element to zero and free the memory allocated.
@@ -312,11 +358,18 @@ public:
 		}
 	}
 
+	/** Sort the array using the specified compare function pointer
+	* \param pCompareFunc The compare function to use to sort elements. */
+	inline void Sort(CompareFunc pCompareFunc)
+	{
+		qsort(mArray, mSize, sizeof(T), pCompareFunc);
+	}
+
 	//! Get pointer to internal array of elements.
 	inline T* GetArray() const { return mArray ? (T*)mArray : NULL; }
 
 	//! Cast operator.
-	inline operator T* (){ return (T*)mArray; }
+	inline operator T* (){ return mArray ? (T*)mArray : NULL; }
 
 	/** Append another array at the end of this array.
 	* \param pOther The other array to append to this array. */
@@ -362,15 +415,20 @@ public:
 		return *this;
 	}
 
+	/** Operator to compare elements of an array.
+	* \return \c true if the two arrays are equal, otherwise \c false. */
+	inline bool operator==(const FbxArray<T>& pOther) const
+	{
+		if( this == &pOther ) return true;
+		if( mSize != pOther.mSize ) return false;
+		return memcmp(mArray, pOther.mArray, sizeof(T) * mSize) == 0;
+	}
+
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 	inline int GetCount() const { return mSize; }
-	FBX_DEPRECATED inline void Empty(){ Clear(); }
-	FBX_DEPRECATED inline int FindAfter(int pAfterIndex, T pItem) const { return Find(pItem, pAfterIndex+1); }
-	FBX_DEPRECATED inline int FindBefore(int pBeforeIndex, T pItem) const { return FindReverse(pItem, pBeforeIndex-1); }
-	FBX_DEPRECATED inline void AddMultiple(int pItemCount){ Grow(pItemCount); }
 
 private:
 	inline T* Allocate(const int pCapacity)
@@ -378,8 +436,8 @@ private:
 		return (T*)FbxRealloc(mArray, pCapacity * sizeof(T));
 	}
 
-	int		mSize;
-	int		mCapacity;
+	int	mSize;
+	int	mCapacity;
 	T*	mArray;
 
 #if defined(FBXSDK_COMPILER_MSC)

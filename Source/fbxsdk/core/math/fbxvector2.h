@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -189,7 +189,6 @@ public:
 		/** Calculate the dot product of two vectors.
 		  * \param pVector The second vector.
 		  * \return The dot product value.
-		  * \remarks          pVector is considered a XYZ vector with fourth weight element, so only the first 3 elements are considered.
 		  */
 		double DotProduct(const FbxVector2& pVector) const;
 	//@}

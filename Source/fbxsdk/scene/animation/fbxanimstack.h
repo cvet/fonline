@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -117,20 +117,6 @@ public:
           * \param pTimeSpan The new reference time span.
           */
         void SetReferenceTimeSpan(FbxTimeSpan& pTimeSpan);
-
-        /** Get the thumbnail image associated to this animation stack.
-          * This method exists for legacy reasons. In the newer FBX files, there can only be one 
-          * thumbnail image and it belongs to the FbxDocument.
-          * \return Pointer to the document thumbnail.
-          */
-        FBX_DEPRECATED FbxThumbnail* GetTakeThumbnail();
-
-        /** Does nothing.
-          * This method exists for legacy reasons. In the newer FBX files, there can only be one 
-          * thumbnail image and it belongs to the FbxDocument.
-          * \param pTakeThumbnail The referenced thumbnail object.
-          */
-        FBX_DEPRECATED void SetTakeThumbnail(FbxThumbnail* pTakeThumbnail);
 
         /** Bake all the animation layers on the base layer.
           * This function will process all the properties on every animation layer and generate a re-sampled set of

@@ -131,12 +131,9 @@ source_group( Assimp FILES ${Assimp_SOURCE} )
 file( GLOB "fbxsdk_SOURCE fbxsdk/*.*" )
 source_group( fbxsdk FILES ${fbxsdk_SOURCE} )
 if( WIN32 )
-	set( FBXSDK "libfbxsdk" )
+	set( FBXSDK "libfbxsdk-mt" )
 else()
 	set( FBXSDK "libfbxsdk.a")
-endif()
-if( MSVC_IDE )
-	set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DELAYLOAD:libfbxsdk.dll" )
 endif()
 
 set( CURL_DIR "cURL" ) # curl-7.43.0
@@ -173,9 +170,11 @@ set( COMMON_SOURCE
 	Types.h
 )
 set( SERVER_CLIENT_MAPPER_SOURCE
+	${Assimp_SOURCE}
 	ConstantsManager.cpp ConstantsManager.h
 	CritterManager.h
 	CritterType.cpp CritterType.h
+	GraphicStructures.cpp GraphicStructures.h
 	Item.cpp Item.h
 	ItemManager.cpp ItemManager.h
 	LineTracer.h
@@ -197,15 +196,12 @@ set( SERVER_ASCOMPILER_SOURCE
 	DummyData.h
 )
 set( CLIENT_MAPPER_SOURCE
-	${Assimp_SOURCE}
-	${fbxsdk_SOURCE}
 	3dAnimation.h
 	3dStuff.cpp 3dStuff.h
 	CritterCl.cpp CritterCl.h
 	F2Palette.h
 	FlexRect.h
 	GraphicLoader.cpp GraphicLoader.h
-	GraphicStructures.cpp GraphicStructures.h
 	HexManager.cpp HexManager.h
 	ItemHex.cpp ItemHex.h
 	Keyboard.cpp Keyboard.h
@@ -221,6 +217,7 @@ set( SERVER_SOURCE
 	${SERVER_CLIENT_SOURCE}
 	${SERVER_MAPPER_SOURCE}
 	${SERVER_ASCOMPILER_SOURCE}
+	${fbxsdk_SOURCE}
 	AI.cpp AI.h
 	Critter.cpp Critter.h
 	CritterData.h
@@ -231,6 +228,7 @@ set( SERVER_SOURCE
 	Map.cpp Map.h
 	MapManager.cpp MapManager.h
 	Mutex.h
+	ResourceConverter.h ResourceConverter.cpp
 	Server.cpp Server.h
 	ServerClient.cpp
 	ServerItem.cpp
@@ -297,34 +295,34 @@ else()
 endif()
 
 add_executable( FOnline WIN32 ${CLIENT_SOURCE} "Client.rc" )
-set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/../SDK/Client/" )
+set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/../LFO/Client/" )
 set_target_properties( FOnline PROPERTIES ${RO1} ${CLIENT_OUTPUT} ${RO2} ${CLIENT_OUTPUT} ${RO3} ${CLIENT_OUTPUT} ${RO4} ${CLIENT_OUTPUT} )
 set_target_properties( FOnline PROPERTIES COMPILE_FLAGS "${CLIENT_DEFINES}" )
-target_link_libraries( FOnline "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SDL2main" "SDL2-static" "Acm" "SHA" "libcurl" "${NCODEHOOK}" "${GL}" "GLExt" "${FBXSDK}" "${CMAKE_DL_LIBS}" )
+target_link_libraries( FOnline "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SDL2main" "SDL2-static" "Acm" "SHA" "libcurl" "${NCODEHOOK}" "${GL}" "GLExt" "${CMAKE_DL_LIBS}" )
 
 if( NOT BUILD_ONLY_CLIENT )
 	add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} "Server.rc" )
-	set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../SDK/Server/" )
+	set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../LFO/Server/" )
 	set_target_properties( FOnlineServer PROPERTIES ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 	set_target_properties( FOnlineServer PROPERTIES COMPILE_FLAGS "${SERVER_DEFINES}" )
-	target_link_libraries( FOnlineServer "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SHA" "libcurl" "${NCODEHOOK}" "fltk" "${EVENT2}" "${EVENT2_PTHREADS}" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( FOnlineServer "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SHA" "libcurl" "${NCODEHOOK}" "fltk" "${EVENT2}" "${EVENT2_PTHREADS}" "${FBXSDK}" "${CMAKE_DL_LIBS}" )
 
 	if( NOT WIN32 )
 		add_executable( FOnlineServerDaemon ${SERVER_SOURCE} "Server.rc" )
-		set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../SDK/Server/" )
+		set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../LFO/Server/" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerDaemon PROPERTIES COMPILE_FLAGS "${SERVER_DEFINES} -DSERVER_DAEMON" )
-		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SHA" "libcurl" "${NCODEHOOK}" "${EVENT2}" "${EVENT2_PTHREADS}" "${CMAKE_DL_LIBS}" )
+		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SHA" "libcurl" "${NCODEHOOK}" "${EVENT2}" "${EVENT2_PTHREADS}" "${FBXSDK}" "${CMAKE_DL_LIBS}" )
 	endif()
 
 	add_executable( Mapper WIN32 ${MAPPER_SOURCE} "Mapper.rc" )
-	set( MAPPER_OUTPUT "${CMAKE_BINARY_DIR}/../SDK/Tools/Mapper/" )
+	set( MAPPER_OUTPUT "${CMAKE_BINARY_DIR}/../LFO/Tools/Mapper/" )
 	set_target_properties( Mapper PROPERTIES ${RO1} ${MAPPER_OUTPUT} ${RO2} ${MAPPER_OUTPUT} ${RO3} ${MAPPER_OUTPUT} ${RO4} ${MAPPER_OUTPUT} )
 	set_target_properties( Mapper PROPERTIES COMPILE_FLAGS "${MAPPER_DEFINES}" )
-	target_link_libraries( Mapper "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SDL2main" "SDL2-static" "SHA" "libcurl" "${NCODEHOOK}" "${GL}" "GLExt" "${FBXSDK}" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( Mapper "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SDL2main" "SDL2-static" "SHA" "libcurl" "${NCODEHOOK}" "${GL}" "GLExt" "${CMAKE_DL_LIBS}" )
 
 	add_executable( ASCompiler ${ASCOMPILER_SOURCE} )
-	set( ASCOMPILER_OUTPUT "${CMAKE_BINARY_DIR}/../SDK/Tools/ASCompiler/" )
+	set( ASCOMPILER_OUTPUT "${CMAKE_BINARY_DIR}/../LFO/Tools/ASCompiler/" )
 	set_target_properties( ASCompiler PROPERTIES ${RO1} ${ASCOMPILER_OUTPUT} ${RO2} ${ASCOMPILER_OUTPUT} ${RO3} ${ASCOMPILER_OUTPUT} ${RO4} ${ASCOMPILER_OUTPUT} )
 	set_target_properties( ASCompiler PROPERTIES COMPILE_FLAGS "${ASCPMPILER_DEFINES}" )
 	target_link_libraries( ASCompiler "Angelscript" "AngelscriptExt" "zlibstatic" "SHA" "${NCODEHOOK}" "${CMAKE_DL_LIBS}" )

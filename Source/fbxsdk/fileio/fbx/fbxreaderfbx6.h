@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -56,17 +56,6 @@ public:
       */
     bool MergeWithTemplate( FbxObject* pObject ) const;
 
-    class FbxClassIdCompare {
-    public:
-        inline int operator()(const FbxClassId& pKeyA, const FbxClassId& pKeyB) const
-        {
-            FbxHandle lA = reinterpret_cast<FbxHandle>( pKeyA.GetClassIdInfo() );
-            FbxHandle lB = reinterpret_cast<FbxHandle>( pKeyB.GetClassIdInfo() );
-
-            return (lA < lB) ? -1 : ((lB < lA) ? 1 : 0);
-        }
-    };
-
     /** Delete all FbxObject in template map
       *	
       */
@@ -81,7 +70,7 @@ private:
       * \return If the property has been modified return \c true, otherwise return \c false
       */
     bool HasModifiedFlags(FbxProperty lProp) const;
-    inline FbxPropertyAttr::EFlags IndexToFlag( int i ) const { return static_cast<FbxPropertyAttr::EFlags>(1 << i); }
+    inline FbxPropertyFlags::EFlags IndexToFlag( int i ) const { return static_cast<FbxPropertyFlags::EFlags>(1 << i); }
 };
 
 
@@ -376,7 +365,7 @@ private:
       * \param pTimeWarpSet     Time warp set to fill
 	  *	\param pScene           Scene holding the time warp curves.
       */
-    void ReadTimeWarps(FbxIO& pFileObject, FbxSet& pTimeWarpSet, FbxScene& pScene);
+    void ReadTimeWarps(FbxIO& pFileObject, FbxMultiMap& pTimeWarpSet, FbxScene& pScene);
 
     /** Read thumbnail
       *	\return A pointer of thumbnail. Return \c NULL if any error exist
@@ -1100,8 +1089,8 @@ private:
     FbxArray<FbxTakeInfo *> mTakeInfo;
     FbxDocumentInfo*        mSceneInfo;
     FbxAnimLayer*           mAnimLayer;
-	FbxSet					mNickToKFCurveNodeTimeWarpsSet;
-	FbxSet*					mNickToAnimCurveTimeWarpsSet;
+	FbxMultiMap					mNickToKFCurveNodeTimeWarpsSet;
+	FbxMultiMap*					mNickToAnimCurveTimeWarpsSet;
 
     Fbx6ClassTemplateMap    mClassTemplateMap;
     FbxProgress*            mProgress;

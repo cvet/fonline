@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -23,300 +23,299 @@
   * \nosubgrouping
   * \see FbxStaticArray
   */
-template <typename VALUE_TYPE, typename ALLOCATOR = FbxBaseAllocator> class FbxDynamicArray
+template <typename Type, typename Allocator=FbxBaseAllocator> class FbxDynamicArray
 {
 public:
-    //! Type of the elements in the array.
-    typedef VALUE_TYPE ValueType;
-    //! Type of the class used for allocating memory.
-    typedef ALLOCATOR AllocatorType;
+	//! Default constructor.
+	FbxDynamicArray() :
+		mArray(NULL),
+		mCapacity(0),
+		mSize(0),
+		mAllocator(sizeof(Type))
+	{
+	}
 
-    //! Default constructor.
-    FbxDynamicArray()
-        : mArray(NULL)
-        , mArrayCapacity(0)
-        , mValueCount(0)
-        , mAllocator(sizeof(ValueType))
-    {
-    }
+	/** Constructor.
+	* \param pInitialSize initial capacity of this array */
+	FbxDynamicArray(const size_t pInitialSize) :
+		mArray(NULL),
+		mCapacity(0),
+		mSize(0),
+		mAllocator(sizeof(Type))
+	{
+		Reserve(pInitialSize);
+	}
 
-    /** Constructor.
-    * \param pInitialSize initial capacity of this array
-     */
-    FbxDynamicArray(const size_t pInitialSize)
-        : mArray(NULL)
-        , mArrayCapacity(0)
-        , mValueCount(0)
-        , mAllocator(sizeof(ValueType))
-    {
-        Reserve(pInitialSize);
-    }
+	/** Copy constructor.
+	* \remarks The copy constructor of \c Type will be 
+	* invoked in order to copy the value of elements to the
+	* new array.
+	*/
+	FbxDynamicArray(const FbxDynamicArray& pArray) :
+		mArray(NULL),
+		mCapacity(0),
+		mSize(0),
+		mAllocator(sizeof(Type))
+	{
+		Reserve(pArray.mCapacity);
+		CopyArray(mArray, pArray.mArray, pArray.mSize);
+		mSize = pArray.mSize;
+	}
 
-    /** Copy constructor.
-    * \remarks The copy constructor of \c VALUE_TYPE will be 
-    * invoked in order to copy the value of elements to the
-    * new array.
-    */
-    FbxDynamicArray(const FbxDynamicArray& pArray)
-        : mArray(NULL)
-        , mArrayCapacity(0)
-        , mValueCount(0)
-        , mAllocator(sizeof(ValueType))
-    {
-        Reserve(pArray.mArrayCapacity);
-        CopyArray(mArray, pArray.mArray, pArray.mValueCount);
-        mValueCount = pArray.mValueCount;
-    }
+	//! Destructor.
+	~FbxDynamicArray()
+	{
+		for( size_t i = 0; i < mSize; ++i )
+		{
+			mArray[i].~Type();
+		}
+		mAllocator.FreeMemory(mArray);
+	}
 
-    //! Destructor.
-    ~FbxDynamicArray()
-    {        
-        for (size_t i = 0; i < mValueCount; i++)
-        {
-            mArray[i].~VALUE_TYPE();
-        }
+	//! Gets the current capacity of the array.
+	size_t Capacity() const
+	{
+		return mCapacity;
+	}
 
-        mAllocator.FreeMemory(mArray);
-    }
+	//! Gets the size of the array.
+	size_t Size() const
+	{
+		return mSize;
+	}
 
-    //! Gets the current capacity of the array.
-    size_t GetCapacity() const
-    {
-        return mArrayCapacity;
-    }
+	/** Assures that sufficient memory is allocated to hold n objects in the array, and increases the capacity if necessary.
+	* \param pCount Number of objects to reserve */
+	void Reserve(const size_t pCount)
+	{
+		if( pCount > mCapacity )
+		{
+			//We don't use mAllocator.PreAllocate, because we want our array to be continuous in memory.
+			Type* lNewArray = (Type*)mAllocator.AllocateRecords(pCount);
+			MoveArray(lNewArray, mArray, mSize);
+			mAllocator.FreeMemory(mArray);
+			mArray = lNewArray;
+			mCapacity = pCount;
+		}
+	}
 
-    //! Gets the size of the array.
-    size_t GetSize() const
-    {
-        return mValueCount;
-    }
+	/** Appends n objects at the end of the array.
+	* \param pItem object to append
+	* \param pNCopies number of copies to append */
+	void PushBack(const Type& pItem, const size_t pNCopies = 1)
+	{
+		if( mSize + pNCopies > mCapacity )
+		{
+			size_t lNewSize = mCapacity + mCapacity / 2;	//grow by 50%
+			if( mSize + pNCopies > lNewSize )
+			{
+				lNewSize = mSize + pNCopies;
+			}
+			Reserve(lNewSize);
+		}
+		FBX_ASSERT(mSize + pNCopies <= mCapacity);
+		Fill(mArray + mSize, pItem, pNCopies);
+		mSize += pNCopies;
+	}
 
-    /** Assures that sufficient memory is allocated to hold n objects
-    * in the array, and increases the capacity if necessary.
-    * \param pCount Number of objects to reserve
-    */
-    void Reserve(const size_t pCount)
-    {
-        if (pCount > mArrayCapacity)
-        {
-            // We don't use mAllocator.PreAllocate, because we want our array
-            // to be continuous in memory.
-            void* lBuffer = mAllocator.AllocateRecords(pCount);
-            ValueType* lNewArray = reinterpret_cast<ValueType*>(lBuffer);
+	/** Inserts n objects at the specified position.
+	* \param pIndex position index
+	* \param pItem object to insert
+	* \param pNCopies number of copies to append */
+	void Insert(const size_t pIndex, const Type& pItem, const size_t pNCopies=1)
+	{
+		FBX_ASSERT(pIndex >= 0);
+		FBX_ASSERT(pIndex <= mSize);
+		Type lValue = pItem; // in case pItem is in array
+		if( pNCopies == 0 )
+		{
+		}
+		else if( pIndex >= mSize )
+		{
+			PushBack(pItem, pNCopies);
+		}
+		else if( mSize + pNCopies > mCapacity )
+		{
+			size_t lNewSize = mCapacity + mCapacity / 2;	//not enough room, grow by 50%
+			if( mSize + pNCopies > lNewSize )
+			{
+				lNewSize = mSize + pNCopies;
+			}
 
-            MoveArray(lNewArray, mArray, mValueCount);
+			Type* lNewArray = (Type*)mAllocator.AllocateRecords(lNewSize);
+			MoveArray(lNewArray, mArray, pIndex); // copy prefix
+			Fill(lNewArray + pIndex, pItem, pNCopies); // copy values
+			MoveArray(lNewArray + pIndex + pNCopies, mArray + pIndex, mSize - pIndex); // copy suffix
+			mAllocator.FreeMemory(mArray);
+			mArray = lNewArray;
+			mSize += pNCopies;
+			mCapacity = lNewSize;
+		}
+		else
+		{
+			// copy suffix backwards
+			MoveArrayBackwards(mArray + pIndex + pNCopies, mArray + pIndex, mSize - pIndex);
+			Fill(mArray + pIndex, pItem, pNCopies); // copy values
+			mSize += pNCopies;
+		}
+	}
 
-            mAllocator.FreeMemory(mArray);
-            mArray = lNewArray;
-            mArrayCapacity = pCount;
-        }
-    }
+	/** Removes n objects at the end.
+	* \param pNElements number of objects to remove */
+	void PopBack(size_t pNElements=1)
+	{
+		FBX_ASSERT(pNElements <= mSize);
+		for( size_t i = mSize - pNElements; i < mSize; ++i )
+		{
+			mArray[i].~Type();
+		}
+		mSize -= pNElements;
+	}
 
-    /** Appends n objects at the end of the array.
-    * \param pValue object to append
-    * \param pNCopies number of copies to append
-    */
-    void PushBack(const ValueType& pValue, const size_t pNCopies = 1)
-    {
-        if (mValueCount + pNCopies > mArrayCapacity)
-        {
-            // grow by 50%
-            size_t lNewSize = mArrayCapacity + mArrayCapacity / 2;
+	/** Removes n objects at the specified position.
+	* \param pIndex position index
+	* \param pNElements number of objects to remove */
+	void Remove(const size_t pIndex, size_t pNElements=1)
+	{
+		FBX_ASSERT(pIndex >= 0);
+		FBX_ASSERT(pIndex <= mSize);
+		FBX_ASSERT(pIndex + pNElements <= mSize);
+		if( pIndex + pNElements >= mSize )
+		{
+			PopBack(pNElements);
+		}
+		else
+		{            
+			for( size_t i = pIndex; i < pIndex + pNElements; ++i )
+			{
+				mArray[i].~Type();
+			}
+			MoveOverlappingArray(&mArray[pIndex], &mArray[pIndex + pNElements], mSize - pIndex - pNElements);
+			mSize -= pNElements;
+		}
+	}
 
-            if (mValueCount + pNCopies > lNewSize)
-            {
-                lNewSize = mValueCount + pNCopies;
-            }
+	/** Gets nth object in the array.
+	* \param pIndex position index */
+	Type& operator[](const size_t pIndex)
+	{
+		return mArray[pIndex];
+	}
 
-            Reserve(lNewSize);
-        }
+	/** Gets nth object in the array.
+	* \param pIndex position index */
+	const Type& operator[](const size_t pIndex) const
+	{
+		return mArray[pIndex];
+	}
 
-        FBX_ASSERT(mValueCount + pNCopies <= mArrayCapacity);
+	/** Retrieve the first item in the array.
+	* \return The first item in the array. */
+	Type& First()
+	{
+		return operator[](0);
+	}
 
-        Fill(mArray + mValueCount, pValue, pNCopies);
+	/** Retrieve the first item in the array.
+	* \return The first item in the array. */
+	const Type& First() const
+	{
+		return operator[](0);
+	}
 
-        mValueCount += pNCopies;
-    }
+	/** Retrieve the last item in the array.
+	* \return The last item in the array. */
+	Type& Last()
+	{
+		return operator[](mSize-1);
+	}
 
-    /** Inserts n objects at the specified position.
-    * \param pIndex position index
-    * \param pValue object to insert
-    * \param pNCopies number of copies to append
-    */
-    void Insert(const size_t pIndex, const ValueType& pValue, const size_t pNCopies = 1)
-    {
-        FBX_ASSERT(pIndex >= 0);
-        FBX_ASSERT(pIndex <= mValueCount);
+	/** Retrieve the last item in the array.
+	* \return The last item in the array. */
+	const Type& Last() const
+	{
+		return operator[](mSize-1);
+	}
 
-        ValueType lValue = pValue; // in case pValue is in array
+	/** Find first matching element, from first to last.
+	* \param pItem The item to try to find in the array.
+	* \param pStartIndex The index to start searching from.
+	* \return Index of the first matching item, otherwise returns -1 (equivalent of SIZE_MAX for size_t). */
+	size_t Find(const Type& pItem, const size_t pStartIndex=0) const
+	{
+		for( size_t i = pStartIndex; i < mSize; ++i )
+		{
+			if( operator[](i) == pItem ) return i;
+		}
+		return -1;
+	}
 
-        if (pNCopies == 0)
-        {
-        }
-        else if (pIndex >= mValueCount)
-        {
-            PushBack(pValue, pNCopies);
-        }
-        else if (mValueCount + pNCopies > mArrayCapacity)
-        {
-            // not enough room
-            // grow by 50%
-            size_t lNewSize = mArrayCapacity + mArrayCapacity / 2;
-
-            if (mValueCount + pNCopies > lNewSize)
-            {
-                lNewSize = mValueCount + pNCopies;
-            }
-
-            void* lBuffer = mAllocator.AllocateRecords(lNewSize);
-            ValueType* lNewArray = reinterpret_cast<ValueType*>(lBuffer);
-
-            MoveArray(lNewArray, mArray, pIndex); // copy prefix
-            Fill(lNewArray + pIndex, pValue, pNCopies); // copy values
-            MoveArray(lNewArray + pIndex + pNCopies, mArray + pIndex, mValueCount - pIndex); // copy suffix
-
-            mAllocator.FreeMemory(mArray);
-            mArray = lNewArray;
-            mValueCount += pNCopies;
-            mArrayCapacity = lNewSize;
-        }
-        else
-        {
-            // copy suffix backwards
-            MoveArrayBackwards(mArray + pIndex + pNCopies, mArray + pIndex, mValueCount - pIndex);
-            Fill(mArray + pIndex, pValue, pNCopies); // copy values
-            mValueCount += pNCopies;
-        }
-    }
-
-    /** Removes n objects at the end.
-    * \param pNElements number of objects to remove
-    */
-    void PopBack(size_t pNElements = 1)
-    {
-        FBX_ASSERT(pNElements <= mValueCount);
-         
-        for (size_t i = mValueCount - pNElements; i < mValueCount; i++)
-        {
-            mArray[i].~VALUE_TYPE();
-        }
-
-        mValueCount -= pNElements;
-    }
-
-    /** Removes n objects at the specified position.
-    * \param pIndex position index
-    * \param pNElements number of objects to remove
-    */
-    void Remove(const size_t pIndex, size_t pNElements = 1)
-    {
-        FBX_ASSERT(pIndex >= 0);
-        FBX_ASSERT(pIndex <= mValueCount);
-        FBX_ASSERT(pIndex + pNElements <= mValueCount);
-
-        if (pIndex + pNElements >= mValueCount)
-        {
-            PopBack(pNElements);
-        }
-        else
-        {            
-            for (size_t i = pIndex; i < pIndex + pNElements; i++)
-            {
-                mArray[i].~VALUE_TYPE();
-            }
-
-            MoveOverlappingArray(mArray + pIndex, mArray + pIndex + pNElements, mValueCount - pNElements);
-
-            mValueCount -= pNElements;
-        }
-    }
-
-    /** Gets nth object in the array.
-    * \param pIndex position index
-    */
-    ValueType& operator[](const size_t pIndex)
-    {
-        return *(mArray + pIndex);
-    }
-
-    /** Gets nth object in the array.
-    * \param pIndex position index
-    */
-    ValueType const& operator[](const size_t pIndex) const
-    {
-        return *(mArray + pIndex);
-    }
-
-    /** Assignment operator.
-    * \remarks The copy constructor of \c VALUE_TYPE will be 
-    * invoked in order to copy the value of elements to the
-    * new array.
-    */
-    FbxDynamicArray& operator=(const FbxDynamicArray& pArray)
-    {
-        Reserve(pArray.mArrayCapacity);
-        CopyArray(mArray, pArray.mArray, pArray.mValueCount);
-        mValueCount = pArray.mValueCount;
-
-        return *this;
-    }
+	/** Assignment operator.
+	* \remarks The copy constructor of \c Type will be invoked in order to copy the value of elements to the new array. */
+	FbxDynamicArray& operator=(const FbxDynamicArray& pArray)
+	{
+		Reserve(pArray.mCapacity);
+		CopyArray(mArray, pArray.mArray, pArray.mSize);
+		mSize = pArray.mSize;
+		return *this;
+	}
 
 /*****************************************************************************************************************************
 ** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 private:
-    static void CopyArray(ValueType* pDest, const ValueType* pSrc, size_t pCount)
-    {
-        for( int i = 0; i < int(pCount); i++ )
-        {
-			new(&(pDest[i])) ValueType(pSrc[i]);	//in-place new won't allocate memory, so it is safe
-        }
-    }
-
-    static void MoveArray(ValueType* pDest, const ValueType* pSrc, size_t pCount)
-    {
-        for( int i = 0; i < int(pCount); i++ )
-        {
-			new(&(pDest[i])) ValueType(pSrc[i]);	//in-place new won't allocate memory, so it is safe
-        }
-
-        for( int i = 0; i < int(pCount); i++ )
-        {
-            pSrc[i].~VALUE_TYPE();
-        }
-    }
-
-    static void MoveOverlappingArray(ValueType* pDest, const ValueType* pSrc, size_t pCount)
-    {
+	static void CopyArray(Type* pDest, const Type* pSrc, size_t pCount)
+	{
 		for( int i = 0; i < int(pCount); i++ )
 		{
-			new(&(pDest[i])) ValueType(pSrc[i]);	//in-place new won't allocate memory, so it is safe
-			pSrc[i].~VALUE_TYPE();
+			new(&(pDest[i])) Type(pSrc[i]);	//in-place new won't allocate memory, so it is safe
 		}
-    }
+	}
 
-    static void MoveArrayBackwards(ValueType* pDest, const ValueType* pSrc, size_t pCount)
-    {
+	static void MoveArray(Type* pDest, const Type* pSrc, size_t pCount)
+	{
+		for( int i = 0; i < int(pCount); i++ )
+		{
+			new(&(pDest[i])) Type(pSrc[i]);	//in-place new won't allocate memory, so it is safe
+		}
+
+		for( int i = 0; i < int(pCount); i++ )
+		{
+			pSrc[i].~Type();
+		}
+	}
+
+	static void MoveOverlappingArray(Type* pDest, const Type* pSrc, size_t pCount)
+	{
+		for( int i = 0; i < int(pCount); i++ )
+		{
+			new(&(pDest[i])) Type(pSrc[i]);	//in-place new won't allocate memory, so it is safe
+			pSrc[i].~Type();
+		}
+	}
+
+	static void MoveArrayBackwards(Type* pDest, const Type* pSrc, size_t pCount)
+	{
 		for( int i = 0; i < int(pCount); ++i )
 		{
-			new(&(pDest[pCount-1-i])) ValueType(pSrc[pCount-1-i]);	//in-place new won't allocate memory, so it is safe
-			pSrc[pCount-1-i].~VALUE_TYPE();
+			new(&(pDest[pCount-1-i])) Type(pSrc[pCount-1-i]);	//in-place new won't allocate memory, so it is safe
+			pSrc[pCount-1-i].~Type();
 		}
-    }
+	}
 
-    static void Fill(ValueType* pDest, const ValueType& pValue, size_t pCount)
-    {
+	static void Fill(Type* pDest, const Type& pItem, size_t pCount)
+	{
 		for( int i = 0; i < int(pCount); i++ )
 		{
-			new(&(pDest[i])) ValueType(pValue);	//in-place new won't allocate memory, so it is safe
+			new(&(pDest[i])) Type(pItem);	//in-place new won't allocate memory, so it is safe
 		}
-    }
+	}
 
-    ValueType*		mArray;
-    size_t			mArrayCapacity;
-    size_t			mValueCount;
-    AllocatorType	mAllocator;
+    Type*		mArray;
+    size_t		mCapacity;
+    size_t		mSize;
+    Allocator	mAllocator;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

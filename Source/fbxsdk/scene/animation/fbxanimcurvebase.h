@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -159,7 +159,7 @@ public:
         /** Set pre-extrapolation mode.
           * \param pExtrapolation The pre-extrapolation mode to set.
           */
-        void SetPreExtrapolation(EExtrapolationType pExtrapolation) { mPreExtrapolation = pExtrapolation; }
+        void SetPreExtrapolation(EExtrapolationType pExtrapolation);
             
         /** Get pre-extrapolation mode.
           * \return The current pre-extrapolation mode.
@@ -170,7 +170,7 @@ public:
           * \param pCount Number of repetitions if pre-extrapolation mode is
           *       REPETITION or MIRROR_REPETITION.
           */
-        void SetPreExtrapolationCount(unsigned long pCount) { mPreExtrapolationCount = pCount; }
+        void SetPreExtrapolationCount(unsigned long pCount);
         
         /** Get pre-extrapolation count.
           * \return Number of repetitions if pre-extrapolation mode is
@@ -181,7 +181,7 @@ public:
         /** Set post-extrapolation mode.
           * \param pExtrapolation The post-extrapolation mode to set.
           */
-        void SetPostExtrapolation(EExtrapolationType pExtrapolation) { mPostExtrapolation = pExtrapolation; }
+        void SetPostExtrapolation(EExtrapolationType pExtrapolation);
         
         /** Get post-extrapolation mode.
           * \return The current post-extrapolation mode.
@@ -192,7 +192,7 @@ public:
           * \param pCount Number of repetitions if post-extrapolation mode is
           *               REPETITION or MIRROR_REPETITION.
           */
-        void SetPostExtrapolationCount(unsigned long pCount) { mPostExtrapolationCount = pCount; }
+        void SetPostExtrapolationCount(unsigned long pCount);
             
         /** Get post-extrapolation count.
           * \return Number of repetitions if post-extrapolation mode is
@@ -244,6 +244,7 @@ public:
     virtual FbxObject& Copy(const FbxObject& pObject);
     virtual bool Store(FbxIO* pFileObject, bool pLegacyVersion=false) = 0;
     virtual bool Retrieve(FbxIO* pFileObject) = 0;
+	virtual void ExtrapolationSyncCallback() = 0;
 
 protected:
 	virtual void Construct(const FbxObject* pFrom);

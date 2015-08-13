@@ -1691,7 +1691,7 @@ void FOMapper::RefreshTiles( int tab )
                 }
             }
             if( !format_aviable )
-                format_aviable = GraphicLoader::IsExtensionSupported( ext );
+                format_aviable = Is3dExtensionSupported( ext );
 
             if( format_aviable )
             {

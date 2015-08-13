@@ -78,7 +78,7 @@ FileManager::~FileManager()
     ClearOutBuf();
 }
 
-void FileManager::InitDataFiles( const char* path, bool base_path )
+void FileManager::InitDataFiles( const char* path )
 {
     // Redirect path
     void* redirection_link = FileOpen( ( string( path ) + "Redirection.link" ).c_str(), false );
@@ -89,18 +89,15 @@ void FileManager::InitDataFiles( const char* path, bool base_path )
         FileRead( redirection_link, link, len );
         link[ len ] = 0;
         FormatPath( link );
-        InitDataFiles( link, base_path );
+        InitDataFiles( link );
         return;
     }
 
     // Main read and write paths
-    if( base_path )
-    {
-        if( basePathes[ 0 ].empty() )
-            basePathes[ 0 ] = basePathes[ 1 ] = path;
-        else if( basePathes[ 0 ] == basePathes[ 1 ] )
-            basePathes[ 1 ] = path;
-    }
+    if( basePathes[ 0 ].empty() )
+        basePathes[ 0 ] = basePathes[ 1 ] = path;
+    else if( basePathes[ 0 ] == basePathes[ 1 ] )
+        basePathes[ 1 ] = path;
 
     // Process dir
     if( LoadDataFile( path ) )
@@ -125,7 +122,7 @@ void FileManager::InitDataFiles( const char* path, bool base_path )
         FileRead( extension_link, link, len );
         link[ len ] = 0;
         FormatPath( link );
-        InitDataFiles( link, false );
+        InitDataFiles( link );
     }
 }
 

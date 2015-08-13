@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -72,24 +72,12 @@ public:
 		  */
         inline void RootRootRemoveMember(FbxObject* pMember){ RemoveMember(pMember); Roots.DisconnectSrcObject(pMember); }
 
-        /** Find a member object in the document, that has the given type and name. (Deprecated, please use FindRootMember<Type>() instead.)
-		  * \param pfbxType Type information.
-		  * \param pName Member name.  
-		  */
-        template <class T> FBX_DEPRECATED inline T* FindRootMember(const T* pfbxType, char* pName){ return Roots.FindSrcObject<T>(pName); }
-
 		/** Find a member object in the document, that has the given type and name.
 		* \param pName Member name. */
 		template <class T> inline T* FindRootMember(char* pName){ return Roots.FindSrcObject<T>(pName); }
 
         //! Return the number of objects in the document.
         inline int GetRootMemberCount () const { return Roots.GetSrcObjectCount(); }
-
-        /** Return the number of objects of class T in the document. (Deprecated, please use GetRootMemberCount<Type>() instead.)
-          * \param pFBX_TYPE Type information.
-		  * \return The number of objects of class T in the document.
-		  */
-        template <class T> FBX_DEPRECATED inline int GetRootMemberCount(const T* pFBX_TYPE) const { return Roots.GetSrcObjectCount(T::ClassId); }
 
 		/** Return the number of objects of class T in the document.
 		* \return The number of objects of class T in the document. */
@@ -105,12 +93,6 @@ public:
 		  * \param pIndex Selection index.
 		  */
         inline FbxObject* GetRootMember(int pIndex=0) const { return Roots.GetSrcObject(pIndex); }
-
-        /** Return the member of class T of the document at given index. (Deprecated, please use GetRootMember<Type>() instead.)
-		  * \param pFBX_TYPE Type information.
-		  * \param pIndex Selection index.
-		  */
-        template <class T> FBX_DEPRECATED inline T* GetRootMember(const T* pFBX_TYPE, int pIndex=0) const  { return (T*)Roots.GetSrcObject(T::ClassId,pIndex); }
 
 		/** Return the member of class T of the document at given index.
 		* \param pIndex Selection index. */
@@ -304,6 +286,7 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 	virtual FbxObject& Copy(const FbxObject& pObject);
+	virtual void Compact();
 	void ConnectVideos();
 
 protected:

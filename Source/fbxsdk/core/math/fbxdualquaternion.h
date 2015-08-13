@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -255,8 +255,8 @@ public:
 		FbxDualQuaternion operator*(const FbxVector4 pVector) const;
 
 		/** Return dual quaternion product.
-		* \param pDualQuaternion     product dual quaternion.
-		* \return                This dual quaternion replace with the dual quaternion product.
+		* \param pDualQuaternion	Product dual quaternion.
+		* \return					The dual quaternion that is the product of this and pDualQuaternion.
 		*/
 		FbxDualQuaternion Product(const FbxDualQuaternion& pDualQuaternion) const;
 

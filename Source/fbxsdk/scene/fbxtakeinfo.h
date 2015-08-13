@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -123,18 +123,6 @@ public:
 	  * shift applied to all animation keys.
 	  */
 	EImportOffsetType mImportOffsetType;
-
-	/** Deprecated function. Alwyas rreturns NULL. 
-          * The thumbnail do not exist on a take anymore. There is only one
-	  * on the FbxSceneInfo object.
-	  */
-	FBX_DEPRECATED FbxThumbnail* GetTakeThumbnail();
-
-	/** Deprecated function.
-          * The thumbnail do not exist on a take anymore. There is only one
-	  * on the FbxSceneInfo object.
-          */
-	FBX_DEPRECATED void SetTakeThumbnail(FbxThumbnail* pTakeThumbnail);
 
     /** Copies the layer information from the take information.
       * \param pTakeInfo          The take information to be copied.

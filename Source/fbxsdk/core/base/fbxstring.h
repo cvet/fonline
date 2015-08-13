@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -361,8 +361,10 @@ public:
 		FbxString Pad(EPaddingType pPadding, size_t pLen, char pCar=' ') const;
 
 		/** Remove padding characters.
-		* \param pPadding The padding type. */
-		FbxString UnPad(EPaddingType pPadding) const;
+		* \param pPadding The padding type.
+		* \param pCar The character to be padded. 
+		* \remark If pCar == '\0' the function will remove all the characters that are tested by isspace(). */
+		FbxString UnPad(EPaddingType pPadding, char pCar='\0') const;
 	//@}
 
 	/**
@@ -472,31 +474,17 @@ FBXSDK_DLL FbxString operator+(const FbxString& pString, float pValue);
 //! Double concatenation.
 FBXSDK_DLL FbxString operator+(const FbxString& pString, double pValue);
 
-/** Functor class to compare FbxString, and is suitable for use in FbxMap. */
-class FbxStringCompare
-{
-public:
-	/** Compare two KStrings.
-	* \param pKeyA The first FbxString to compare.
-	* \param pKeyB The second FbxString to compare.
-	* \return -1 indicates pKeyA is greater than pKeyB, 1 indicates pKeyB is greater than pKeyA, zero indicates they are equal.
-	*/
-	inline int operator()(const FbxString& pKeyA, const FbxString& pKeyB) const
-	{
-		return (pKeyA < pKeyB) ? -1 : ((pKeyB < pKeyA) ? 1 : 0);
-	}
-};
+//! Functor to compare FbxString
+struct FbxStringCompare { inline int operator()(const FbxString& pKeyA, const FbxString& pKeyB) const { return pKeyA.Compare(pKeyB); } };
 
-/** Functor class to compare "C" strings. */
-class FbxCharCompare
-{
-public:
-	//! Compare two strings like "C" strcmp().
-	inline int operator()(const char* pKeyA, const char* pKeyB) const
-	{
-		return strcmp(pKeyA, pKeyB);
-	}
-};
+//! Functor to compare FbxString without case sensitivity
+struct FbxStringCompareNoCase { inline int operator()(const FbxString& pKeyA, const FbxString& pKeyB) const { return pKeyA.CompareNoCase(pKeyB); } };
+
+//! Functor to compare "C" strings
+struct FbxCharPtrCompare { inline int operator()(const char* pKeyA, const char* pKeyB) const { return strcmp(pKeyA, pKeyB); } };
+
+//! Functor to compare "C" strings without case sensitivity
+struct FbxCharPtrCompareNoCase { inline int operator()(const char* pKeyA, const char* pKeyB) const { return FBXSDK_stricmp(pKeyA, pKeyB); } };
 
 /** Remove the given char in the given string.
 * \param pString The given string.

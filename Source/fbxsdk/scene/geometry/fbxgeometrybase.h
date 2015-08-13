@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -21,6 +21,8 @@
 
 #include <fbxsdk/fbxsdk_nsbegin.h>
 
+class FbxStatus;
+
 /** This class is the base class for geometric object such as meshes, NURBS and patches.
   * Use the FbxGeometryBase class to manage the control points, normals, binormals and tangents of the
   * geometries. 
@@ -38,12 +40,11 @@
   * layers can be used. More information can be found in the FbxLayerContainer and FbxLayer classes description.
   * \nosubgrouping
   */
-class FbxStatus;
 class FBXSDK_DLL FbxGeometryBase : public FbxLayerContainer
 {
     FBXSDK_OBJECT_DECLARE(FbxGeometryBase, FbxLayerContainer);
-public:
 
+public:
     /**
       * \name Control Points, Normals, Binormals and Tangent Management.
       */
@@ -553,10 +554,12 @@ public:
     int GetElementVisibilityCount() const;
 
     /** Creates a UV geometry element for this geometry.
+      * \param pUVSetName       The UV geometry element name.
+      * \param pTypeIdentifier  The texture channel the UVIndex refers to.
       * \return                 A pointer to the newly created geometry element.
       * \remarks                The created geometry element is associated with this geometry automatically.
       */
-    FbxGeometryElementUV* CreateElementUV(const char* pUVSetName);
+    FbxGeometryElementUV* CreateElementUV(const char* pUVSetName, FbxLayerElement::EType pTypeIdentifier=FbxLayerElement::eTextureDiffuse);
 
     /** Remove the UV geometry element from this geometry.
       * \param pElementUV       A pointer to the UV element to be removed.
@@ -566,20 +569,29 @@ public:
 
     /** Returns this geometry's UV element.
       * \param pIndex           The UV geometry element index.
+      * \param pTypeIdentifier  The texture channel the UVIndex refers to.
       * \return                 A pointer to the geometry element or \c NULL if \e pIndex is out of range.
+      * \remarks                If \e pTypeIdentifier is not specified, the function will return the geometry element
+      *                         regardless of its texture type.
       */
-    FbxGeometryElementUV* GetElementUV(int pIndex = 0);
+    FbxGeometryElementUV* GetElementUV(int pIndex = 0, FbxLayerElement::EType pTypeIdentifier=FbxLayerElement::eUnknown);
 
     /** Returns this geometry's UV element.
       * \param pIndex           The UV geometry element index.
+      * \param pTypeIdentifier  The texture channel the UVIndex refers to.
       * \return                 A const pointer to the geometry element or \c NULL if \e pIndex is out of range.
+      * \remarks                If \e pTypeIdentifier is not specified, the function will return the geometry element
+      *                         regardless of its texture type.
       */
-    const FbxGeometryElementUV* GetElementUV(int pIndex = 0) const;
+    const FbxGeometryElementUV* GetElementUV(int pIndex = 0, FbxLayerElement::EType pTypeIdentifier=FbxLayerElement::eUnknown) const;
 
     /** Get the number of this geometry's UV geometry element.
+      * \param pTypeIdentifier  The texture channel the UVIndex refers to.
       * \return                 Total number of UV geometry elements for this geometry.
+      * \remarks                If \e pTypeIdentifier is not specified, the function will return the geometry element
+      *                         regardless of its texture type.      
       */
-    int GetElementUVCount() const;
+    int GetElementUVCount(FbxLayerElement::EType pTypeIdentifier=FbxLayerElement::eUnknown) const;
 
     /** Returns this geometry's UV element.
       * \param pUVSetName       The UV set name of the UV geometry element.
@@ -635,6 +647,7 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 	virtual FbxObject& Copy(const FbxObject& pObject);
+	virtual void Compact();
 
     FbxArray<FbxVector4> mControlPoints;
 

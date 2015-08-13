@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -52,33 +52,19 @@ public:
     };
 
     //! Comparer for PropertyUrlIndexSet, which outputs consistent partial orders for PropertyUrlIndex pairs
-    struct PropertyUrlIndexCompare
+    struct FbxPropertyUrlIndexCompare
     {
-        inline int operator()(const PropertyUrlIndex& pUrl1, const PropertyUrlIndex& pUrl2) const
+        inline int operator()(const PropertyUrlIndex& pKeyA, const PropertyUrlIndex& pKeyB) const
         {
-            if( pUrl1.mPropName < pUrl2.mPropName )
-            {
-                return -1;
-            }
-            if( pUrl2.mPropName < pUrl1.mPropName )
-            {
-                return 1;
-            }
-
-            if(pUrl1.mIndex < pUrl2.mIndex)
-            {
-                return -1;
-            }
-            if(pUrl2.mIndex < pUrl1.mIndex)
-            {
-                return 1;
-            }
-
+            if( pKeyA.mPropName < pKeyB.mPropName ) return -1;
+            if( pKeyB.mPropName < pKeyA.mPropName ) return 1;
+            if( pKeyA.mIndex < pKeyB.mIndex ) return -1;
+            if( pKeyB.mIndex < pKeyA.mIndex ) return 1;
             return 0;                
         }
     };
 
-    typedef FbxSet2<PropertyUrlIndex, PropertyUrlIndexCompare> PropertyUrlIndexSet;
+    typedef FbxSet<PropertyUrlIndex, FbxPropertyUrlIndexCompare> PropertyUrlIndexSet;
 
     typedef FbxMap<FbxObject*, PropertyUrlIndexSet> ObjectPropertyMap;
 
@@ -111,7 +97,7 @@ public:
     * \param pName              Name of this object.
     * \param pPropertyFilter    Reference to the property filter.
     */
-    FbxEmbeddedFilesAccumulator(FbxManager& pManager, const char* pName, FbxSet2<FbxString>& pPropertyFilter);
+    FbxEmbeddedFilesAccumulator(FbxManager& pManager, const char* pName, FbxSet<FbxString>& pPropertyFilter);
     virtual ~FbxEmbeddedFilesAccumulator();
 
 /*****************************************************************************************************************************
@@ -120,7 +106,7 @@ public:
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 private:
     virtual bool internal_ProcessObject(FbxObject* pObject);
-    FbxSet2<FbxString>   mPropertyFilter;
+    FbxSet<FbxString>   mPropertyFilter;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
 };
 

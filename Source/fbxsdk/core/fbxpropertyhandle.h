@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -124,25 +124,25 @@ public:
 		FbxPropertyHandle GetTypeInfo() const;
 
 		//! Get the property attribute state
-		FbxPropertyAttr::EFlags	GetFlags() const;
+		FbxPropertyFlags::EFlags	GetFlags() const;
 	
 		/**	Gets the inheritance type for the given flag. 
 		* \param pFlags The flag to query
 		* \param pCheckReferences Decide whether check instance. If it is true, check instance.
 		* \return The inheritance type */
-		FbxPropertyAttr::EInheritType GetFlagsInheritType(FbxPropertyAttr::EFlags pFlags, bool pCheckReferences) const;
+		FbxPropertyFlags::EInheritType GetFlagsInheritType(FbxPropertyFlags::EFlags pFlags, bool pCheckReferences) const;
 
 		/**	According the given parameter Change the attributes of the property.
 		* \param pFlags The given flags used as mask.
 		* \param pValue If pValue is true, set mask with given flags, otherwise unset mask with given flags.
 		* \return  If succeed, return true. */
-		bool ModifyFlags(FbxPropertyAttr::EFlags pFlags, bool pValue);
+		bool ModifyFlags(FbxPropertyFlags::EFlags pFlags, bool pValue);
 
 		/**Sets the inheritance type for the given flag
 		* \param pFlags The flag to set 
 		* \param pType The inheritance type to set 
 		* \return  If succeed, return true. */
-		bool SetFlagsInheritType(FbxPropertyAttr::EFlags pFlags, FbxPropertyAttr::EInheritType pType);
+		bool SetFlagsInheritType(FbxPropertyFlags::EFlags pFlags, FbxPropertyFlags::EInheritType pType);
 
 		//! Get the property user data.
 		void* GetUserData() const;
@@ -480,12 +480,12 @@ public:
 		/** Get value inherit type of this property.
 		* \param pCheckReferences   If it is true,check instance of this property page,otherwise,only check this page.
 		* \return The value inherit type of this property */
-		FbxPropertyAttr::EInheritType GetValueInheritType(bool pCheckReferences) const;
+		FbxPropertyFlags::EInheritType GetValueInheritType(bool pCheckReferences) const;
 
 		/** Set value inherit type for this property .
 		* \param pType  The given value inherit type.
 		* \return If set successfully, return true,otherwise, return false. */
-		bool SetValueInheritType(FbxPropertyAttr::EInheritType pType);
+		bool SetValueInheritType(FbxPropertyFlags::EInheritType pType);
 
 		/** Get default value and value type of this property .
 		* \param pValue  The gotten default value of this property.

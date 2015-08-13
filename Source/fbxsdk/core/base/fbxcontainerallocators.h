@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -18,7 +18,7 @@
 #include <fbxsdk/fbxsdk_nsbegin.h>
 
 /** An allocator class for use as a template parameter to one of the
-  * container class (FbxMap, FbxSet2, FbxDynamicArray...) must implement these.
+  * container class (FbxMap, FbxSet, FbxDynamicArray...) must implement these.
   */
 class FBXSDK_DLL FbxBaseAllocator
 {

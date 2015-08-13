@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -199,8 +199,8 @@ private:
   * FbxProperty myOption = ios->GetProperty( "Import|myOptionGroup|myOptionName" );
   * if(myOption.IsValid())
   * {
-  *		myOPtion.ModifyFlag(FbxPropertyAttr::eUIHidden, true);   // to make that option not visible to the UI
-  *		myOPtion.ModifyFlag(FbxPropertyAttr::eNotSavable, true); // to avoid the read/save of that option in XML file
+  *		myOPtion.ModifyFlag(FbxPropertyFlags::eUIHidden, true);   // to make that option not visible to the UI
+  *		myOPtion.ModifyFlag(FbxPropertyFlags::eNotSavable, true); // to avoid the read/save of that option in XML file
   * }
   * \endcode
   */
@@ -434,7 +434,7 @@ public:
 		  * \param pValue
 		  * \return Always true
 		  */
-	bool    SetFlag(const char* pName, FbxPropertyAttr::EFlags propFlag, bool pValue);
+	bool    SetFlag(const char* pName, FbxPropertyFlags::EFlags propFlag, bool pValue);
 
         /** Get a FbxString property value using the full path.
 		  * \param pName
@@ -461,7 +461,7 @@ public:
 		/** Write the settings values to an XML file.
 		  * \param path The path of the XML file.
           * \return \c True on success, \c false otherwise.
-		  * \remarks The flag of the property must be FbxPropertyAttr::eNotSavable == false
+		  * \remarks The flag of the property must be FbxPropertyFlags::eNotSavable == false
 		  */
 	virtual bool WriteXMLFile(const FbxString& path);
 

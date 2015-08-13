@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -128,7 +128,8 @@ public:
 		eRightFootRing,
 		eRightFootPinky,
 		eRightFootExtraFinger,
-		eNodeIdCount
+		eNodeIdCount,
+		eNodeIdInvalid=-1
 	};
 
 	//! Default constructor with uninitialized character node.
@@ -301,7 +302,7 @@ public:
 
     /** Get ID associated with an effector node name.
       * \param pEffectorNodeName     Effector node name.
-      * \return                      Effector node ID associated with the given effector node name, or -1 if
+      * \return                      Effector node ID associated with the given effector node name, or FbxEffector::eNodeIdInvalid (-1) if
       *                              no effector node with pEffectorNodeName exists.
       */
     static FbxEffector::ENodeId GetEffectorNodeId(char* pEffectorNodeName);

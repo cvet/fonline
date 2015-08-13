@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -90,7 +90,7 @@ public:
             return strcmp(mProperty.GetName(), pOther.mProperty.GetName()) < 0;
         }
     };
-    typedef FbxSet2<PropertyUpdate>           UpdateSet;
+    typedef FbxSet<PropertyUpdate>           UpdateSet;
     typedef FbxMap<FbxObject*, UpdateSet>    PropertyUpdateMap;
 
     /** All properties that were updated, with their original value.

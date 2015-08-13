@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -223,6 +223,7 @@ public :
     /** Find first matching item which has the same string as given parameter,not case sensitive.
     * \return the pointer of matching item found or NULL if  there is no
     * matching element.
+	* \remark To cast the returned pointer to the FbxStringListItem you need a double indirection: (FbxStringListItem**)
     */
 	void* FindEqual(const char* pString) const
     {
@@ -241,6 +242,7 @@ public :
 	/** Find first matching item which has the same string as given parameter, case sensitive.
     * \return the pointer of matching item found or NULL if  there is no
     * matching element.
+	* \remark To cast the returned pointer to the FbxStringListItem you need a double indirection: (FbxStringListItem**)
     */
 	void* FindCaseSensitive(const char* pString) const
 	{

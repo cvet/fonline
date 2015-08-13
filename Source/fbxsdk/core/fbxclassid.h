@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -148,6 +148,17 @@ private:
 
 	friend class FbxManager;
 #endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
+};
+
+//! Functor to compare FbxClassId
+struct FbxClassIdCompare
+{
+	inline int operator()(const FbxClassId& pKeyA, const FbxClassId& pKeyB) const
+	{
+		const FbxClassIdInfo* lKeyA = pKeyA.GetClassIdInfo();
+		const FbxClassIdInfo* lKeyB = pKeyB.GetClassIdInfo();
+		return lKeyA < lKeyB ? -1 : (lKeyA > lKeyB ? 1 : 0);
+	}
 };
 
 #include <fbxsdk/fbxsdk_nsend.h>

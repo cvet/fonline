@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -217,8 +217,8 @@ private:
     void ReadAnimation(FbxIO& pFileObject, void* pCurveNode);
 	void ReadAnimation(FbxIO& pFileObject, FbxObject*  pObj);
     
-    void ReadTimeWarps(FbxIO& pFileObject, FbxSet& pTimeWarpSet);
-	void DestroyTimeWarps(FbxSet& pTimeWarpSet);
+    void ReadTimeWarps(FbxIO& pFileObject, FbxMultiMap& pTimeWarpSet);
+	void DestroyTimeWarps(FbxMultiMap& pTimeWarpSet);
 
 	FbxNode* FindNode (char* pName);
 	int FindString(FbxString pString, FbxArray<FbxString*>& pStringArray);

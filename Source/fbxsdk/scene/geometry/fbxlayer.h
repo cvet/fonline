@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -489,7 +489,11 @@ public:
       *	                                 of the received buffer back into this object. Any other items that may have been added
       *	                                 using a realloc call are ignored.
 	  */    
-	template <class T> inline void Release(T** pDataPtr, T* dummy) { Release((void**)pDataPtr, FbxTypeOf(*dummy)); }
+	template <class T> inline void Release(T** pDataPtr, T* dummy) 
+	{ 
+		T*** voidPtr = &pDataPtr;
+        Release((void**)*voidPtr, FbxTypeOf(*dummy));
+	}
 
 	/** Returns the Stride size which equals the size of the data type of the data buffer.
 	  */
@@ -661,19 +665,31 @@ public:
       * \param pItem                Place to hold the value of the removed item.
       * \remarks The input index must be within valid range and no error will be thrown if it is invalid.
       */
-	template <class T> inline void RemoveAt(int pIndex, T* pItem)					 { RemoveAt(pIndex, (void**)&pItem, FbxTypeOf(*pItem)); }
+	template <class T> inline void RemoveAt(int pIndex, T* pItem)					 
+	{ 
+		T** voidPtr = &pItem;
+        RemoveAt(pIndex, (void**)voidPtr, FbxTypeOf(*pItem));
+	}
 
     /** Removes the last item from the data buffer.    
       * \param pItem                Place to hold the value of the removed item.
       * \remarks The array should contain at least one item and no error will be thrown if it is empty.
       */
-	template <class T> inline void RemoveLast(T* pItem)								 { RemoveLast((void**)&pItem, FbxTypeOf(*pItem)); }
+	template <class T> inline void RemoveLast(T* pItem)								 
+	{ 
+		T** voidPtr = &pItem;
+        RemoveLast((void**)voidPtr, FbxTypeOf(*pItem));
+	}
 
     /** Removes one item from the data buffer.    
       * \param pItem                The first item who equals pItem is to be removed
       * \return                     \c True if the item is removed successfully, \c false otherwise                     
       */
-	template <class T> inline bool RemoveIt(T* pItem)								 { return RemoveIt((void**)&pItem, FbxTypeOf(*pItem)); }
+	template <class T> inline bool RemoveIt(T* pItem)								 
+	{ 
+		T** voidPtr = &pItem;
+        return RemoveIt((void**)voidPtr, FbxTypeOf(*pItem));
+	}
 
     /** Returns the specified item's value.  
       * \param pIndex               Index of the item
@@ -681,19 +697,31 @@ public:
       * \return                     \c True if the item's value is returned successfully, \c false otherwise 
       * \remarks                    If the index is invalid, pItem is set to zero.
       */
-	template <class T> inline bool GetAt(int pIndex, T* pItem) const				 { return GetAt(pIndex, (void**)&pItem, FbxTypeOf(*pItem)); }
+	template <class T> inline bool GetAt(int pIndex, T* pItem) const				 
+	{ 
+		T** voidPtr = &pItem;
+        return GetAt(pIndex, (void**)voidPtr, FbxTypeOf(*pItem));
+	}
 
     /** Returns the first item's value.  
       * \param pItem                Place to hold the item's value
       * \return                     \c True if the item's value is returned successfully, \c false otherwise 
       */
-	template <class T> inline bool GetFirst(T* pItem) const							 { return GetFirst((void**)&pItem, FbxTypeOf(*pItem)); }
+	template <class T> inline bool GetFirst(T* pItem) const							 
+	{ 
+		T** voidPtr = &pItem;
+        return GetFirst((void**)voidPtr, FbxTypeOf(*pItem));
+	}
 
     /** Returns the last item's value.  
       * \param pItem                Place to hold the item's value
       * \return                     \c True if the item's value is returned successfully, \c false otherwise 
       */
-	template <class T> inline bool GetLast(T* pItem) const							 { return GetLast((void**)&pItem, FbxTypeOf(*pItem)); }
+	template <class T> inline bool GetLast(T* pItem) const							 
+	{ 
+		T** voidPtr = &pItem;
+        return GetLast((void**)voidPtr, FbxTypeOf(*pItem));
+	}
 
     /** Searches for an item in the data buffer.  
       * \param pItem                The value of the item for which to search.
@@ -1770,8 +1798,8 @@ public:
 			if( directArray[i] )
 				FbxDelete(directArray[i]);
 		}
-		GetDirectArray().Release((void**)&directArray);
-
+		FbxLayerElementArray*** ptr = &directArray;
+		GetDirectArray().Release((void**)ptr);
 		for( i = 0; i < mDataNames.GetCount(); ++i )
 		{
 			FBX_SAFE_DELETE(mDataNames[i]);
@@ -1912,12 +1940,13 @@ private:
 					case eFbxDouble:	dst[i] = (FbxHandle*)FbxNew< FbxLayerElementArrayTemplate<double> >(mDataTypes[i].GetType());	break;
 					default:
 						FBX_ASSERT_NOW("Trying to assign an unknown type" ); break;
-				}
-				GetDirectArray().Release((void**)&dst);
+				}	
+				FbxHandle*** ptr = &dst;
+				GetDirectArray().Release((void**)ptr);
 			}
 		}
 	}
-
+	
 	int mId;
 	FbxArray<FbxDataType> mDataTypes;
 	FbxArray<FbxString*> mDataNames;

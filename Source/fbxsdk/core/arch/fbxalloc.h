@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2013 Autodesk, Inc.
+   Copyright (C) 2015 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -138,6 +138,8 @@ public:
 };
 
 //! Deletion policy for pointer template classes that uses the FbxDelete() function.
+template<typename T> void FbxDelete(T* p);
+template<typename T> void FbxDelete(const T* p);
 template <class Type> class FbxDeletionPolicyDelete
 {
 public:
@@ -270,6 +272,147 @@ public:
 	//! Construct from a pointer.
     explicit FbxAutoDestroyPtr(Type* pPtr=0) : FbxAutoPtr<Type, FbxDeletionPolicyObject<Type> >(pPtr){}
 };
+
+
+/** FbxSharedPtr class describes an object that stores a pointer to a single allocated object of type 
+* Type* that ensures that the object to which it points gets destroyed automatically when the control 
+* leaves a scope and the reference count is 0. */
+class RefCount
+{
+public:
+ 	RefCount()	{ Init(); };
+	~RefCount() { Init(); };
+
+	void    Init()   { count = 0; }
+	void	IncRef() { count++; }
+	int	    DecRef() { count--; if (count < 0) count = 0; return count; }
+	
+private:
+	int  count;
+};
+
+template<class Type, class Policy=FbxDeletionPolicyDefault<Type> > class FbxSharedPtr
+{
+public:
+	// Default constructor.
+	FbxSharedPtr() : 
+		mPtr(0),
+		mRef(0)
+	{}
+
+	//! Construct from a pointer.
+	explicit FbxSharedPtr(Type* pPtr) : 
+		mPtr(pPtr),
+		mRef(0)
+	{ 
+		if (pPtr != 0) 
+		{
+			mRef = (RefCount*)FbxMalloc(sizeof(RefCount)); 
+			mRef->Init();
+			mRef->IncRef(); 
+		}
+	}
+
+	//! Copy constructor
+	FbxSharedPtr(const FbxSharedPtr& pSPtr) : 
+		mPtr(pSPtr.mPtr), 
+		mRef(pSPtr.mRef) 
+	{ 
+		if (pSPtr.mPtr != 0 && mRef != 0) 
+			mRef->IncRef(); 
+	}
+
+	// Assignment operator
+	FbxSharedPtr& operator=(const FbxSharedPtr& pSPtr)
+	{
+		if (this != &pSPtr) // avoid self assignment
+		{
+			Reset();
+
+			if (pSPtr.mPtr)
+			{
+				mPtr = pSPtr.mPtr;
+				mRef = pSPtr.mRef;
+				FBX_ASSERT(mRef != NULL);
+				mRef->IncRef();
+			}
+		}
+		return *this;
+	}
+
+	//! Destructor.
+	~FbxSharedPtr() { Destroy(); }
+
+	void Destroy() { Reset(); }
+
+	//! Retrieve the pointer it holds.
+	inline Type* Get() const { return mPtr; }
+
+	//! Member access operator.
+	inline Type* operator->() const { return mPtr; }
+
+	//! Convert to a Type pointer.
+	inline operator Type* () const { return mPtr; }
+
+	//! Dereference operator.
+	inline Type& operator*() const { return *mPtr; }
+
+	//! Logical not operator.
+	inline bool operator!() const { return mPtr == 0; }
+
+	//! Convert to boolean value.
+	inline operator bool () const { return mPtr != 0; }
+
+
+/*****************************************************************************************************************************
+** WARNING! Anything beyond these lines is for internal use, may not be documented and is subject to change without notice! **
+*****************************************************************************************************************************/
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+private:
+	void Reset() 
+	{		
+		if (mRef)
+		{
+			FBX_ASSERT(mPtr != 0);
+			if (mRef->DecRef() == 0)
+			{
+				Policy::DeleteIt(&mPtr); 
+				FbxFree(mRef);
+				mRef = NULL;
+			}
+		}
+	}
+
+	Type* mPtr;
+	RefCount* mRef;
+#endif /* !DOXYGEN_SHOULD_SKIP_THIS *****************************************************************************************/
+};
+
+//! Scoped pointer for FbxMalloc allocations, which call FbxFree() to deallocate.
+template <class Type> class FbxSharedFreePtr : public FbxSharedPtr<Type, FbxDeletionPolicyFree<Type> >
+{
+public:
+	//! Construct from a pointer.
+    explicit FbxSharedFreePtr(Type* pPtr=0) : FbxSharedPtr<Type, FbxDeletionPolicyFree<Type> >(pPtr){}
+};
+
+//! Scoped pointer for FbxNew allocations, which call FbxDelete() to deallocate.
+template <class Type> class FbxSharedDeletePtr : public FbxSharedPtr<Type, FbxDeletionPolicyDelete<Type> >
+{
+public:
+	//! Construct from a pointer.
+    explicit FbxSharedDeletePtr(Type* pPtr=0) : FbxSharedPtr<Type, FbxDeletionPolicyDelete<Type> >(pPtr){}
+};
+
+//! Scoped pointer for FbxObject derived classes, which call Destroy() to deallocate.
+template <class Type> class FbxSharedDestroyPtr : public FbxSharedPtr<Type, FbxDeletionPolicyObject<Type> >
+{
+public:
+	//! Construct from a pointer.
+    explicit FbxSharedDestroyPtr(Type* pPtr=0) : FbxSharedPtr<Type, FbxDeletionPolicyObject<Type> >(pPtr){}
+};
+
+
 
 #include <fbxsdk/fbxsdk_nsend.h>
 
