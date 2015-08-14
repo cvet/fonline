@@ -550,7 +550,7 @@ void FOClient::UpdateFiles( bool early_call )
             UpdateFilesWait( 10000 );
             continue;
         }
-        UpdateFilesAddText( STR_CONNECTION_ESTABLISHED, "Connection establihed." );
+        UpdateFilesAddText( STR_CONNECTION_ESTABLISHED, "Connection established." );
 
         // Data synchronization
         UpdateFilesAddText( STR_DATA_SYNCHRONIZATION, "Data Synchronization..." );
@@ -3101,7 +3101,7 @@ void FOClient::Net_SendRefereshMe()
 void FOClient::Net_OnWrongNetProto()
 {
     if( UpdateFilesInProgress )
-        UpdateFilesAbort( STR_CLIENT_OUTDATED, "CLIENT_OUTDATED" );
+        UpdateFilesAbort( STR_CLIENT_OUTDATED, "Client outdated!" );
     else
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_CLIENT_OUTDATED ) );
 }
@@ -6194,7 +6194,7 @@ void FOClient::Net_OnUpdateFileData()
     // Write data to temp file
     if( !FileWrite( UpdateFileTemp, data, MIN( update_file.RemaningSize, sizeof( data ) ) ) )
     {
-        UpdateFilesAbort( STR_FILESYSTEM_ERROR, "FILESYSTEM_ERROR1" );
+        UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't write update.temp file!" );
         return;
     }
 
@@ -6217,7 +6217,7 @@ void FOClient::Net_OnUpdateFileData()
             FileManager cache_data;
             if( !cache_data.LoadFile( FileManager::GetWritePath( "update.temp", PT_DATA ), PT_ROOT ) )
             {
-                UpdateFilesAbort( STR_FILESYSTEM_ERROR, "FILESYSTEM_ERROR3" );
+                UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't load update.temp file!" );
                 return;
             }
 
@@ -6232,7 +6232,7 @@ void FOClient::Net_OnUpdateFileData()
             FileManager::FormatPath( to_path );
             if( !FileManager::CopyFile( FileManager::GetWritePath( "update.temp", PT_DATA ), to_path ) )
             {
-                UpdateFilesAbort( STR_FILESYSTEM_ERROR, "FILESYSTEM_ERROR4" );
+                UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't copy update.temp file!" );
                 return;
             }
         }
