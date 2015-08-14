@@ -13,7 +13,6 @@ AnyFrames*    SpriteManager::DummyAnimation = NULL;
 #define ARRAY_BUFFERS_COUNT      ( 300 )
 
 #define FAST_FORMAT_SIGNATURE    ( 0xDEADBEEF ) // Must be really unique
-#define FAST_FORMAT_VERSION      ( 1 )
 
 bool OGL_version_2_0 = false;
 bool OGL_vertex_buffer_object = false;
@@ -3348,9 +3347,8 @@ bool SpriteManager::SaveAnimationInFastFormat( AnyFrames* anim, const char* fnam
 {
     FileManager fm;
     fm.SetBEUInt( FAST_FORMAT_SIGNATURE );
-    fm.SetBEUShort( FAST_FORMAT_VERSION );
     fm.SetBEUShort( anim->CntFrm );
-    fm.SetBEUShort( anim->Ticks );
+    fm.SetBEUInt( anim->Ticks );
     fm.SetBEUShort( anim->DirCount() );
     for( int dir = 0; dir < anim->DirCount(); dir++ )
     {
@@ -3380,44 +3378,32 @@ bool SpriteManager::TryLoadAnimationInFastFormat( const char* fname, int path_ty
         return true;
 
     // Check for fonline cached format
-    if( fm.GetFsize() >= 16 && fm.GetBEUInt() == FAST_FORMAT_SIGNATURE )
+    if( fm.GetFsize() >= 12 && fm.GetBEUInt() == FAST_FORMAT_SIGNATURE )
     {
-        ushort version = fm.GetBEUShort();
-        if( version == 1 )
-        {
-            ushort frames_count = fm.GetBEUShort();
-            uint   ticks = fm.GetBEUInt();
-            int    dirs = fm.GetBEUInt();
-            if( dirs != 1 && dirs != DIRS_COUNT )
-            {
-                WriteLogF( _FUNC_, " - Incorrect dirs count. \n" );
-                return true;
-            }
+        ushort frames_count = fm.GetBEUShort();
+        uint   ticks = fm.GetBEUInt();
+        ushort dirs = fm.GetBEUShort();
+        RUNTIME_ASSERT( dirs == 1 || dirs == DIRS_COUNT );
 
-            anim = AnyFrames::Create( frames_count, ticks );
-            if( dirs > 1 )
-                anim->CreateDirAnims();
-            for( int dir = 0; dir < dirs; dir++ )
-            {
-                AnyFrames* dir_anim = anim;
-                for( ushort i = 0; i < frames_count; i++ )
-                {
-                    SpriteInfo* si = new SpriteInfo();
-                    ushort      w = fm.GetBEUShort();
-                    ushort      h = fm.GetBEUShort();
-                    si->OffsX = fm.GetBEShort();
-                    si->OffsY = fm.GetBEShort();
-                    dir_anim->NextX[ i ] = fm.GetBEShort();
-                    dir_anim->NextY[ i ] = fm.GetBEShort();
-                    uchar* data = fm.GetCurBuf();
-                    dir_anim->Ind[ i ] = RequestFillAtlas( si, w, h, data );
-                    fm.GoForward( w * h * 4 );
-                }
-            }
-        }
-        else
+        anim = AnyFrames::Create( frames_count, ticks );
+        if( dirs > 1 )
+            anim->CreateDirAnims();
+        for( ushort dir = 0; dir < dirs; dir++ )
         {
-            WriteLogF( _FUNC_, " - Unknown fast format version<%d>.\n", version );
+            AnyFrames* dir_anim = anim;
+            for( ushort i = 0; i < frames_count; i++ )
+            {
+                SpriteInfo* si = new SpriteInfo();
+                ushort      w = fm.GetBEUShort();
+                ushort      h = fm.GetBEUShort();
+                si->OffsX = fm.GetBEShort();
+                si->OffsY = fm.GetBEShort();
+                dir_anim->NextX[ i ] = fm.GetBEShort();
+                dir_anim->NextY[ i ] = fm.GetBEShort();
+                uchar* data = fm.GetCurBuf();
+                dir_anim->Ind[ i ] = RequestFillAtlas( si, w, h, data );
+                fm.GoForward( w * h * 4 );
+            }
         }
         return true;
     }

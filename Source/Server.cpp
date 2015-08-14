@@ -4792,7 +4792,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
         bool            is_zip = ( Str::Length( res_name ) > 4 && Str::CompareCase( res_name + Str::Length( res_name ) - 4, ".zip" ) );
         FilesCollection resources( PT_SERVER_RESOURCES, res_name, NULL, true );
 
-        WriteLog( "Process resources '%s', files %u...\n", res_name, resources.GetFilesCount() );
+        WriteLog( "Build resource '%s', files %u...\n", res_name, resources.GetFilesCount() );
 
         if( is_zip )
         {
@@ -4829,6 +4829,12 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                         const char*  name;
                         FileManager& file = resources.GetNextFile( &name, true );
                         FileManager* converted_file = ResourceConverter::Convert( name, file );
+                        if( !converted_file )
+                        {
+                            WriteLog( "File '%s' conversation error.\n", name );
+                            continue;
+                        }
+
                         zip_fileinfo zfi;
                         memzero( &zfi, sizeof( zfi ) );
                         if( zipOpenNewFileInZip( zip, name, &zfi, NULL, 0, NULL, 0, NULL, Z_DEFLATED, Z_BEST_SPEED ) == S_OK )
@@ -4842,6 +4848,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                         {
                             WriteLog( "Can't open file '%s' in zip file '%s'.\n", name, zip_path.c_str() );
                         }
+
                         if( converted_file != &file )
                             delete converted_file;
                     }
@@ -4871,6 +4878,11 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                     from.append( name );
                     from = FileManager::GetDataPath( from.c_str(), PT_SERVER_RESOURCES );
                     FileManager* converted_file = ResourceConverter::Convert( name, file );
+                    if( !converted_file )
+                    {
+                        WriteLog( "File '%s' conversation error.\n", name );
+                        continue;
+                    }
                     converted_file->SaveOutBufToFile( name, PT_SERVER_UPDATE );
                     if( converted_file != &file )
                         delete converted_file;

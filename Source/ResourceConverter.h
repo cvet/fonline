@@ -9,7 +9,7 @@ public:
     static FileManager* Convert( const char* name, FileManager& file );
 
 private:
-    static FileManager* ConvertPNG( const char* name, FileManager& file );
+    static FileManager* ConvertImage( const char* name, FileManager& file );
     static FileManager* Convert3d( const char* name, FileManager& file );
 };
 

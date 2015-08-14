@@ -6,6 +6,9 @@
 #include "fbxsdk/fbxsdk.h"
 #include "png.h"
 
+static uchar* LoadPNG( const uchar* data, uint data_size, uint& result_width, uint& result_height );
+static uchar* LoadTGA( const uchar* data, uint data_size, uint& result_width, uint& result_height );
+
 // Assimp functions
 const aiScene* ( *Ptr_aiImportFileFromMemory )( const char* pBuffer, unsigned int pLength, unsigned int pFlags, const char* pHint );
 void           ( * Ptr_aiReleaseImport )( const aiScene* pScene );
@@ -128,11 +131,11 @@ public:
     }
 };
 
-Bone*  ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_all_nodes );
-void   ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node );
-Matrix ConvertFbxMatrix( const FbxAMatrix& m );
+static Bone*  ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_all_nodes );
+static void   ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node );
+static Matrix ConvertFbxMatrix( const FbxAMatrix& m );
 
-void FixTexCoord( float& x, float& y )
+static void FixTexCoord( float& x, float& y )
 {
     if( x < 0.0f )
         x = 1.0f - fmodf( -x, 1.0f );
@@ -147,18 +150,34 @@ void FixTexCoord( float& x, float& y )
 FileManager* ResourceConverter::Convert( const char* name, FileManager& file )
 {
     const char* ext = FileManager::GetExtension( name );
-    if( Str::CompareCase( ext, "png" ) )
-        return ConvertPNG( name, file );
+    if( Str::CompareCase( ext, "png" ) || Str::CompareCase( ext, "tga" ) )
+        return ConvertImage( name, file );
     if( Is3dExtensionSupported( ext ) && !Str::CompareCase( ext, "fo3d" ) )
         return Convert3d( name, file );
     file.SwitchToWrite();
     return &file;
 }
 
-FileManager* ResourceConverter::ConvertPNG( const char* name, FileManager& file )
+FileManager* ResourceConverter::ConvertImage( const char* name, FileManager& file )
 {
-    file.SwitchToWrite();
-    return &file;
+    uchar*      data;
+    uint        width, height;
+    const char* ext = FileManager::GetExtension( name );
+    if( Str::CompareCase( ext, "png" ) )
+        data = LoadPNG( file.GetBuf(), file.GetFsize(), width, height );
+    else
+        data = LoadTGA( file.GetBuf(), file.GetFsize(), width, height );
+    if( !data )
+        return NULL;
+
+    FileManager* converted_file = new FileManager();
+    converted_file->SetLEUInt( width );
+    converted_file->SetLEUInt( height );
+    converted_file->SetData( data, width * height * 4 );
+
+    delete[] data;
+
+    return converted_file;
 }
 
 FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
@@ -471,25 +490,25 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
     }
 
     // Make new file
-    FileManager* file_binary = new FileManager();
-    root_bone->Save( *file_binary );
-    file_binary->SetBEUInt( (uint) loaded_animations.size() );
+    FileManager* converted_file = new FileManager();
+    root_bone->Save( *converted_file );
+    converted_file->SetBEUInt( (uint) loaded_animations.size() );
     for( size_t i = 0; i < loaded_animations.size(); i++ )
-        ( (AnimSet*) loaded_animations[ i ] )->Save( *file_binary );
+        ( (AnimSet*) loaded_animations[ i ] )->Save( *converted_file );
 
     delete root_bone;
     for( size_t i = 0; i < loaded_animations.size(); i++ )
         delete loaded_animations[ i ];
 
-    return file_binary;
+    return converted_file;
 }
 
-Matrix AssimpGlobalTransform( aiNode* ai_node )
+static Matrix AssimpGlobalTransform( aiNode* ai_node )
 {
     return ( ai_node->mParent ? AssimpGlobalTransform( ai_node->mParent ) : Matrix() ) * ai_node->mTransformation;
 }
 
-Bone* ConvertAssimpPass1( aiScene* ai_scene, aiNode* ai_node )
+static Bone* ConvertAssimpPass1( aiScene* ai_scene, aiNode* ai_node )
 {
     Bone* bone = new Bone();
     bone->NameHash = Bone::GetHash( ai_node->mName.data );
@@ -504,7 +523,7 @@ Bone* ConvertAssimpPass1( aiScene* ai_scene, aiNode* ai_node )
     return bone;
 }
 
-void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene* ai_scene, aiNode* ai_node )
+static void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene* ai_scene, aiNode* ai_node )
 {
     for( uint m = 0; m < ai_node->mNumMeshes; m++ )
     {
@@ -670,7 +689,7 @@ void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene
         ConvertAssimpPass2( root_bone, bone, bone->Children[ i ], ai_scene, ai_node->mChildren[ i ] );
 }
 
-Bone* ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_all_nodes )
+static Bone* ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_all_nodes )
 {
     fbx_all_nodes.push_back( fbx_node );
 
@@ -688,7 +707,7 @@ Bone* ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_all_nodes )
 }
 
 template< class T, class T2 >
-T2 FbxGetElement( T* elements, int index, int* vertices )
+static T2 FbxGetElement( T* elements, int index, int* vertices )
 {
     if( elements->GetMappingMode() == FbxGeometryElement::eByPolygonVertex )
     {
@@ -709,7 +728,7 @@ T2 FbxGetElement( T* elements, int index, int* vertices )
     return elements->GetDirectArray().GetAt( 0 );
 }
 
-void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
+static void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
 {
     FbxMesh* fbx_mesh = fbx_node->GetMesh();
     if( fbx_mesh && fbx_node->Show && fbx_mesh->GetPolygonVertexCount() == fbx_mesh->GetPolygonCount() * 3 && fbx_mesh->GetPolygonCount() > 0 )
@@ -911,10 +930,240 @@ void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
         ConvertFbxPass2( root_bone, bone->Children[ i ], fbx_node->GetChild( i ) );
 }
 
-Matrix ConvertFbxMatrix( const FbxAMatrix& m )
+static Matrix ConvertFbxMatrix( const FbxAMatrix& m )
 {
     return Matrix( (float) m.Get( 0, 0 ), (float) m.Get( 1, 0 ), (float) m.Get( 2, 0 ), (float) m.Get( 3, 0 ),
                    (float) m.Get( 0, 1 ), (float) m.Get( 1, 1 ), (float) m.Get( 2, 1 ), (float) m.Get( 3, 1 ),
                    (float) m.Get( 0, 2 ), (float) m.Get( 1, 2 ), (float) m.Get( 2, 2 ), (float) m.Get( 3, 2 ),
                    (float) m.Get( 0, 3 ), (float) m.Get( 1, 3 ), (float) m.Get( 2, 3 ), (float) m.Get( 3, 3 ) );
+}
+
+static uchar* LoadPNG( const uchar* data, uint data_size, uint& result_width, uint& result_height )
+{
+    struct PNGMessage
+    {
+        static void Error( png_structp png_ptr, png_const_charp error_msg )
+        {
+            UNUSED_VARIABLE( png_ptr );
+            WriteLogF( _FUNC_, " - PNG error '%s'.\n", error_msg );
+        }
+        static void Warning( png_structp png_ptr, png_const_charp error_msg )
+        {
+            UNUSED_VARIABLE( png_ptr );
+            // WriteLogF( _FUNC_, " - PNG warning '%s'.\n", error_msg );
+        }
+    };
+
+    // Setup PNG reader
+    png_structp png_ptr = png_create_read_struct( PNG_LIBPNG_VER_STRING, NULL, NULL, NULL );
+    if( !png_ptr )
+        return NULL;
+
+    png_set_error_fn( png_ptr, png_get_error_ptr( png_ptr ), &PNGMessage::Error, &PNGMessage::Warning );
+
+    png_infop info_ptr = png_create_info_struct( png_ptr );
+    if( !info_ptr )
+    {
+        png_destroy_read_struct( &png_ptr, NULL, NULL );
+        return NULL;
+    }
+
+    if( setjmp( png_jmpbuf( png_ptr ) ) )
+    {
+        png_destroy_read_struct( &png_ptr, &info_ptr, NULL );
+        return NULL;
+    }
+
+    static const uchar* data_;
+    struct PNGReader
+    {
+        static void Read( png_structp png_ptr, png_bytep png_data, png_size_t length )
+        {
+            UNUSED_VARIABLE( png_ptr );
+            memcpy( png_data, data_, length );
+            data_ += length;
+        }
+    };
+    data_ = data;
+    png_set_read_fn( png_ptr, NULL, &PNGReader::Read );
+    png_read_info( png_ptr, info_ptr );
+
+    if( setjmp( png_jmpbuf( png_ptr ) ) )
+    {
+        png_destroy_read_struct( &png_ptr, &info_ptr, NULL );
+        return NULL;
+    }
+
+    // Get information
+    png_uint_32 width, height;
+    int         bit_depth;
+    int         color_type;
+    png_get_IHDR( png_ptr, info_ptr, (png_uint_32*) &width, (png_uint_32*) &height, &bit_depth, &color_type, NULL, NULL, NULL );
+
+    // Settings
+    png_set_strip_16( png_ptr );
+    png_set_packing( png_ptr );
+    if( color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8 )
+        png_set_expand( png_ptr );
+    if( color_type == PNG_COLOR_TYPE_PALETTE )
+        png_set_expand( png_ptr );
+    if( png_get_valid( png_ptr, info_ptr, PNG_INFO_tRNS ) )
+        png_set_expand( png_ptr );
+    png_set_filler( png_ptr, 0x000000ff, PNG_FILLER_AFTER );
+    png_read_update_info( png_ptr, info_ptr );
+
+    // Allocate row pointers
+    png_bytepp row_pointers = (png_bytepp) malloc( height * sizeof( png_bytep ) );
+    if( !row_pointers )
+    {
+        png_destroy_read_struct( &png_ptr, &info_ptr, NULL );
+        return NULL;
+    }
+
+    // Set the individual row_pointers to point at the correct offsets
+    uchar* result = new uchar[ width * height * 4 ];
+    for( uint i = 0; i < height; i++ )
+        row_pointers[ i ] = result + i * width * 4;
+
+    // Read image
+    png_read_image( png_ptr, row_pointers );
+
+    // Clean up
+    png_read_end( png_ptr, info_ptr );
+    png_destroy_read_struct( &png_ptr, &info_ptr, (png_infopp) NULL );
+    free( row_pointers );
+
+    // Return
+    result_width = width;
+    result_height = height;
+    return result;
+}
+
+static uchar* LoadTGA( const uchar* data, uint data_size, uint& result_width, uint& result_height )
+{
+    // Reading macros
+    bool read_error = false;
+    uint cur_pos = 0;
+    #define READ_TGA( x, len )                          \
+        if( !read_error && cur_pos + len <= data_size ) \
+        {                                               \
+            memcpy( x, data + cur_pos, len );           \
+            cur_pos += len;                             \
+        }                                               \
+        else                                            \
+        {                                               \
+            memset( x, 0, len );                        \
+            read_error = true;                          \
+        }
+
+    // Load header
+    unsigned char type, pixel_depth;
+    short int     width, height;
+    unsigned char unused_char;
+    short int     unused_short;
+    READ_TGA( &unused_char, 1 );
+    READ_TGA( &unused_char, 1 );
+    READ_TGA( &type, 1 );
+    READ_TGA( &unused_short, 2 );
+    READ_TGA( &unused_short, 2 );
+    READ_TGA( &unused_char, 1 );
+    READ_TGA( &unused_short, 2 );
+    READ_TGA( &unused_short, 2 );
+    READ_TGA( &width, 2 );
+    READ_TGA( &height, 2 );
+    READ_TGA( &pixel_depth, 1 );
+    READ_TGA( &unused_char, 1 );
+
+    // Check for errors when loading the header
+    if( read_error )
+        return NULL;
+
+    // Check if the image is color indexed
+    if( type == 1 )
+        return NULL;
+
+    // Check for TrueColor
+    if( type != 2 && type != 10 )
+        return NULL;
+
+    // Check for RGB(A)
+    if( pixel_depth != 24 && pixel_depth != 32 )
+        return NULL;
+
+    // Read
+    int    bpp = pixel_depth / 8;
+    uint   read_size = height * width * bpp;
+    uchar* read_data = new uchar[ read_size ];
+    if( type == 2 )
+    {
+        READ_TGA( read_data, read_size );
+    }
+    else
+    {
+        uint  bytes_read = 0, run_len, i, to_read;
+        uchar header, color[ 4 ];
+        int   c;
+        while( bytes_read < read_size )
+        {
+            READ_TGA( &header, 1 );
+            if( header & 0x00000080 )
+            {
+                header &= ~0x00000080;
+                READ_TGA( color, bpp );
+                if( read_error )
+                {
+                    delete[] read_data;
+                    return NULL;
+                }
+                run_len = ( header + 1 ) * bpp;
+                for( i = 0; i < run_len; i += bpp )
+                    for( c = 0; c < bpp && bytes_read + i + c < read_size; c++ )
+                        read_data[ bytes_read + i + c ] = color[ c ];
+                bytes_read += run_len;
+            }
+            else
+            {
+                run_len = ( header + 1 ) * bpp;
+                if( bytes_read + run_len > read_size )
+                    to_read = read_size - bytes_read;
+                else
+                    to_read = run_len;
+                READ_TGA( read_data + bytes_read, to_read );
+                if( read_error )
+                {
+                    delete[] read_data;
+                    return NULL;
+                }
+                bytes_read += run_len;
+                if( bytes_read + run_len > read_size )
+                    cur_pos += run_len - to_read;
+            }
+        }
+    }
+    if( read_error )
+    {
+        delete[] read_data;
+        return NULL;
+    }
+
+    // Copy data
+    uchar* result = new uchar[ width * height * 4 ];
+    for( short y = 0; y < height; y++ )
+    {
+        for( short x = 0; x < width; x++ )
+        {
+            int i = ( height - y - 1 ) * width + x;
+            int j = y * width + x;
+            result[ i * 4 + 0 ] = read_data[ j * bpp + 2 ];
+            result[ i * 4 + 1 ] = read_data[ j * bpp + 1 ];
+            result[ i * 4 + 2 ] = read_data[ j * bpp + 0 ];
+            result[ i * 4 + 3 ] = ( bpp == 4 ? read_data[ j * bpp + 3 ] : 0xFF );
+        }
+    }
+    delete[] read_data;
+
+    // Return data
+    result_width = width;
+    result_height = height;
+    return result;
 }
