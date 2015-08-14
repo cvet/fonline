@@ -313,7 +313,7 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define MAX_DLG_LEXEMS_TEXT          ( 1000 )
 #define MAX_BUF_LEN                  ( 4096 )
 #define PASS_HASH_SIZE               ( 32 )
-#define FILE_UPDATE_PORTION          ( 0x10000 )
+#define FILE_UPDATE_PORTION          ( 0x50000 )
 
 // Critters
 #define MAX_CRIT_TYPES               ( 1000 )
