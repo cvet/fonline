@@ -498,7 +498,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
 
     delete root_bone;
     for( size_t i = 0; i < loaded_animations.size(); i++ )
-        delete loaded_animations[ i ];
+        delete (AnimSet*) loaded_animations[ i ];
 
     return converted_file;
 }

@@ -4837,7 +4837,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
 
                         zip_fileinfo zfi;
                         memzero( &zfi, sizeof( zfi ) );
-                        if( zipOpenNewFileInZip( zip, name, &zfi, NULL, 0, NULL, 0, NULL, Z_DEFLATED, Z_BEST_SPEED ) == S_OK )
+                        if( zipOpenNewFileInZip( zip, name, &zfi, NULL, 0, NULL, 0, NULL, Z_DEFLATED, Z_BEST_SPEED ) == ZIP_OK )
                         {
                             if( zipWriteInFileInZip( zip, converted_file->GetOutBuf(), converted_file->GetOutBufLen() ) )
                                 WriteLog( "Can't write file '%s' in zip file '%s'.\n", name, zip_path.c_str() );
