@@ -4798,7 +4798,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
         {
             bool        skip_making_zip = true;
             FileManager zip_file;
-            if( zip_file.LoadFile( res_name, PT_SERVER_UPDATE_PACKS, true ) )
+            if( zip_file.LoadFile( res_name, PT_SERVER_UPDATE, true ) )
             {
                 while( resources.IsNextFile() )
                 {
@@ -4818,7 +4818,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
 
             if( !skip_making_zip )
             {
-                string  zip_path = FileManager::GetDataPath( res_name, PT_SERVER_UPDATE_PACKS );
+                string  zip_path = FileManager::GetDataPath( res_name, PT_SERVER_UPDATE );
                 CreateDirectoryTree( zip_path.c_str() );
                 zipFile zip = zipOpen( zip_path.c_str(), APPEND_STATUS_CREATE );
                 if( zip )
@@ -4860,9 +4860,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                 }
             }
 
-            string packs_fname = "packs" DIR_SLASH_S;
-            packs_fname.append( res_name );
-            update_file_names.insert( packs_fname );
+            update_file_names.insert( res_name );
         }
         else
         {

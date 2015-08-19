@@ -32,7 +32,9 @@ void GetFileNames_( const T& index_map, const char* path, bool include_subdirs, 
     {
         bool          add = false;
         const string& fname = ( *it ).first;
-        if( !fname.compare( 0, path_len, path_ ) && ( include_subdirs || fname.find_last_of( '\\' ) < path_len ) )
+        if( !fname.compare( 0, path_len, path_ ) && ( include_subdirs ||
+                                                      ( path_len > 0 && fname.find_last_of( '\\' ) < path_len ) ||
+                                                      ( path_len == 0 && fname.find_last_of( '\\' ) == string::npos ) ) )
         {
             if( ext && *ext )
             {

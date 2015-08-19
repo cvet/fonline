@@ -44,11 +44,10 @@
 #define PT_SERVER_DUMPS            ( 42 )
 #define PT_SERVER_PROFILER         ( 43 )
 #define PT_SERVER_UPDATE           ( 44 )
-#define PT_SERVER_UPDATE_PACKS     ( 45 )
-#define PT_SERVER_CACHE            ( 46 )
-#define PT_SERVER_CACHE_SCRIPTS    ( 47 )
-#define PT_SERVER_CACHE_MAPS       ( 48 )
-#define PT_SERVER_RESOURCES        ( 49 )
+#define PT_SERVER_CACHE            ( 45 )
+#define PT_SERVER_CACHE_SCRIPTS    ( 46 )
+#define PT_SERVER_CACHE_MAPS       ( 47 )
+#define PT_SERVER_RESOURCES        ( 48 )
 #define PATH_LIST_COUNT            ( 50 )
 extern const char* PathList[ PATH_LIST_COUNT ];
 

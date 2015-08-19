@@ -51,11 +51,11 @@ const char* PathList[ PATH_LIST_COUNT ] =
     "dumps" DIR_SLASH_S,
     "profiler" DIR_SLASH_S,
     "update" DIR_SLASH_S,
-    "update" DIR_SLASH_S "packs" DIR_SLASH_S,
     "cache" DIR_SLASH_S,
     "cache" DIR_SLASH_S "scripts" DIR_SLASH_S,
     "cache" DIR_SLASH_S "maps" DIR_SLASH_S,
     "resources" DIR_SLASH_S,
+    "",
 };
 
 DataFileVec FileManager::dataFiles;
@@ -109,9 +109,12 @@ void FileManager::InitDataFiles( const char* path )
     if( LoadDataFile( path ) )
     {
         StrVec files;
-        dataFiles[ dataFiles.size() - 1 ]->GetFileNames( "packs\\", true, "dat", files );
-        dataFiles[ dataFiles.size() - 1 ]->GetFileNames( "packs\\", true, "zip", files );
-        dataFiles[ dataFiles.size() - 1 ]->GetFileNames( "packs\\", true, "bos", files );
+        dataFiles.back()->GetFileNames( "", false, "dat", files );
+        dataFiles.back()->GetFileNames( "", false, "zip", files );
+        dataFiles.back()->GetFileNames( "", false, "bos", files );
+        dataFiles.back()->GetFileNames( "packs/", true, "dat", files );
+        dataFiles.back()->GetFileNames( "packs/", true, "zip", files );
+        dataFiles.back()->GetFileNames( "packs/", true, "bos", files );
 
         std::sort( files.begin(), files.end(), std::greater< string >() );
 
