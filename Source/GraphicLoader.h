@@ -33,6 +33,7 @@ private:
 public:
     static Effect* LoadEffect( const char* effect_name, bool use_in_2d, const char* defines = NULL, const char* model_path = NULL, EffectDefault* defaults = NULL, uint defaults_count = 0 );
     static void    EffectProcessVariables( EffectPass& effect_pass, bool start, float anim_proc = 0.0f, float anim_time = 0.0f, MeshTexture** textures = NULL );
+    static bool    LoadMinimalEffects();
     static bool    LoadDefaultEffects();
     static bool    Load3dEffects();
 

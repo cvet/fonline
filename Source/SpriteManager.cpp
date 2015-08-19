@@ -180,7 +180,7 @@ bool SpriteManager::Init()
         return false;
 
     // Default effects
-    if( !GraphicLoader::LoadDefaultEffects() )
+    if( !GraphicLoader::LoadMinimalEffects() )
         return false;
 
     // Render states

@@ -790,15 +790,29 @@ Effect* Effect::FlushFog, * Effect::FlushFogDefault;
 Effect* Effect::Font, * Effect::FontDefault;
 Effect* Effect::Skinned3d, * Effect::Skinned3dDefault;
 
+#define LOAD_EFFECT( effect_handle, effect_name, use_in_2d, defines )         \
+    effect_handle ## Default = LoadEffect( effect_name, use_in_2d, defines ); \
+    if( effect_handle ## Default )                                            \
+        effect_handle = new Effect( *effect_handle ## Default );              \
+    else                                                                      \
+        effect_errors++
+
+bool GraphicLoader::LoadMinimalEffects()
+{
+    uint effect_errors = 0;
+    LOAD_EFFECT( Effect::Font, "Font_Default", true, NULL );
+    LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, NULL );
+    if( effect_errors > 0 )
+    {
+        WriteLog( "Minimal effects not loaded.\n" );
+        return false;
+    }
+    return true;
+}
+
 bool GraphicLoader::LoadDefaultEffects()
 {
     // Default effects
-    #define LOAD_EFFECT( effect_handle, effect_name, use_in_2d, defines )         \
-        effect_handle ## Default = LoadEffect( effect_name, use_in_2d, defines ); \
-        if( effect_handle ## Default )                                            \
-            effect_handle = new Effect( *effect_handle ## Default );              \
-        else                                                                      \
-            effect_errors++
     uint effect_errors = 0;
     #ifndef DISABLE_EGG
     LOAD_EFFECT( Effect::Generic, "2D_Default", true, NULL );

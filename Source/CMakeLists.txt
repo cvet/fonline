@@ -60,10 +60,27 @@ else()
 	set( CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}" )
 endif()
 
-set( SERVER_DEFINES "-DFONLINE_SERVER")
-set( CLIENT_DEFINES "-DFONLINE_CLIENT")
-set( MAPPER_DEFINES "-DFONLINE_MAPPER")
-set( ASCPMPILER_DEFINES "-DFONLINE_SCRIPT_COMPILER")
+set( SERVER_DEFINES "-DFONLINE_SERVER" )
+set( CLIENT_DEFINES "-DFONLINE_CLIENT" )
+set( MAPPER_DEFINES "-DFONLINE_MAPPER" )
+set( ASCPMPILER_DEFINES "-DFONLINE_SCRIPT_COMPILER" )
+
+#
+# Resources generation
+#
+
+function( CreateResources dir output)
+    file( WRITE ${output} "" )
+    file( GLOB bins ${dir}/*.zip )
+    foreach( bin ${bins} )
+        string( REGEX MATCH "([^/]+)$" filename ${bin} )
+        string( REGEX REPLACE "\\.| " "_" filename ${filename} )
+        file( READ ${bin} filedata HEX )
+        string( REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1, " filedata ${filedata} )
+        file( APPEND ${output} "const unsigned char Resource_${filename}[] = { ${filedata}};\n" )
+    endforeach()
+endfunction()
+CreateResources( "Resources" "Resources/Resources.h" )
 
 #
 # Sources

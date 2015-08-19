@@ -80,6 +80,12 @@ FileManager::~FileManager()
 
 void FileManager::InitDataFiles( const char* path )
 {
+    // Init internal data file
+    #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+    if( dataFiles.empty() )
+        LoadDataFile( "$Basic" );
+    #endif
+
     // Redirect path
     void* redirection_link = FileOpen( ( string( path ) + "Redirection.link" ).c_str(), false );
     if( redirection_link )

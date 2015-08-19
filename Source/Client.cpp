@@ -344,6 +344,9 @@ bool FOClient::Init()
         return false;
     }
 
+    if( !GraphicLoader::LoadDefaultEffects() )
+        return false;
+
     // Cursor position
     int sw = 0, sh = 0;
     SDL_GetWindowSize( MainWindow, &sw, &sh );

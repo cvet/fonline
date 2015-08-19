@@ -2,6 +2,7 @@
 #include "DataFile.h"
 #include "minizip/unzip.h"
 #include "FileManager.h"
+#include "Resources/Resources.h"
 
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_MAPPER )
 # define DISABLE_FOLDER_CACHING
@@ -142,7 +143,7 @@ DataFile* OpenDataFile( const char* fname )
     }
 
     const char* ext = FileManager::GetExtension( fname );
-    if( ext && Str::CompareCase( ext, "dat" ) ) // Try open DAT
+    if( ext && Str::CompareCase( ext, "dat" ) )
     {
         FalloutDatFile* dat = new FalloutDatFile();
         if( !dat->Init( fname ) )
@@ -153,7 +154,7 @@ DataFile* OpenDataFile( const char* fname )
         }
         return dat;
     }
-    else if( ext && ( Str::CompareCase( ext, "zip" ) || Str::CompareCase( ext, "bos" ) ) ) // Try open ZIP, BOS
+    else if( ( ext && ( Str::CompareCase( ext, "zip" ) || Str::CompareCase( ext, "bos" ) ) ) || fname[ 0 ] == '$' )
     {
         ZipFile* zip = new ZipFile();
         if( !zip->Init( fname ) )
@@ -164,7 +165,7 @@ DataFile* OpenDataFile( const char* fname )
         }
         return zip;
     }
-    else     // Try open Folder
+    else
     {
         FolderFile* folder = new FolderFile();
         if( !folder->Init( fname ) )
@@ -573,41 +574,127 @@ bool ZipFile::Init( const char* fname )
     fileName = fname;
     zipHandle = NULL;
 
-    char path[ MAX_FOPATH ];
-    Str::Copy( path, fname );
-    if( !ResolvePath( path ) )
+    if( fname[ 0 ] != '$' )
     {
-        WriteLogF( _FUNC_, " - Can't retrieve file full path.\n" );
-        return false;
+        char path[ MAX_FOPATH ];
+        Str::Copy( path, fname );
+        if( !ResolvePath( path ) )
+        {
+            WriteLogF( _FUNC_, " - Can't retrieve file full path.\n" );
+            return false;
+        }
+
+        void* file = FileOpen( fname, false );
+        if( !file )
+        {
+            WriteLogF( _FUNC_, " - Cannot open file.\n" );
+            return false;
+        }
+
+        fileSize = FileGetSize( file );
+        writeTime = FileGetWriteTime( file );
+
+        FileClose( file );
+
+        #ifdef FO_WINDOWS
+        wchar_t path_wc[ MAX_FOPATH ];
+        if( MultiByteToWideChar( CP_UTF8, 0, path, -1, path_wc, MAX_FOPATH ) == 0 ||
+            WideCharToMultiByte( GetACP(), 0, path_wc, -1, path, MAX_FOPATH, NULL, NULL ) == 0 )
+        {
+            WriteLogF( _FUNC_, " - Code page conversion fail.\n" );
+            return false;
+        }
+        #endif
+
+        zipHandle = unzOpen( path );
+        if( !zipHandle )
+        {
+            WriteLogF( _FUNC_, " - Cannot open ZIP file.\n" );
+            return false;
+        }
     }
-
-    void* file = FileOpen( fname, false );
-    if( !file )
+    else
     {
-        WriteLogF( _FUNC_, " - Cannot open file.\n" );
-        return false;
-    }
+        fileSize = 0;
+        writeTime = 0;
 
-    fileSize = FileGetSize( file );
-    writeTime = FileGetWriteTime( file );
+        struct MemStream
+        {
+            const uchar* Buf;
+            uint         Length;
+            uint         Pos;
+        };
 
-    FileClose( file );
+        zlib_filefunc_def ffunc;
+        ffunc.zopen_file = [] ( voidpf opaque, const char* filename, int mode )->voidpf
+        {
+            #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+            if( Str::Compare( filename, "$Basic" ) )
+            {
+                MemStream* mem_stream = new MemStream();
+                mem_stream->Buf = Resource_Basic_zip;
+                mem_stream->Length = sizeof( Resource_Basic_zip );
+                mem_stream->Pos = 0;
+                return mem_stream;
+            }
+            #endif
+            return 0;
+        };
+        ffunc.zread_file = [] ( voidpf opaque, voidpf stream, void* buf, uLong size )->uLong
+        {
+            MemStream* mem_stream = (MemStream*) stream;
+            memcpy( buf, mem_stream->Buf + mem_stream->Pos, size );
+            mem_stream->Pos += (uint) size;
+            return size;
+        };
+        ffunc.zwrite_file = [] ( voidpf opaque, voidpf stream, const void* buf, uLong size )->uLong
+        {
+            return 0;
+        };
+        ffunc.ztell_file = [] ( voidpf opaque, voidpf stream )->long
+        {
+            MemStream* mem_stream = (MemStream*) stream;
+            return (long) mem_stream->Pos;
+        };
+        ffunc.zseek_file = [] ( voidpf opaque, voidpf stream, uLong offset, int origin )->long
+        {
+            MemStream* mem_stream = (MemStream*) stream;
+            switch( origin )
+            {
+            case ZLIB_FILEFUNC_SEEK_SET:
+                mem_stream->Pos = (uint) offset;
+                break;
+            case ZLIB_FILEFUNC_SEEK_CUR:
+                mem_stream->Pos += (uint) offset;
+                break;
+            case ZLIB_FILEFUNC_SEEK_END:
+                mem_stream->Pos = mem_stream->Length + offset;
+                break;
+            default:
+                return -1;
+            }
+            return 0;
+        };
+        ffunc.zclose_file = [] ( voidpf opaque, voidpf stream )->int
+        {
+            MemStream* mem_stream = new MemStream();
+            delete mem_stream;
+            return 0;
+        };
+        ffunc.zerror_file = [] ( voidpf opaque, voidpf stream )->int
+        {
+            if( stream == NULL )
+                return 1;
+            return 0;
+        };
+        ffunc.opaque = NULL;
 
-    #ifdef FO_WINDOWS
-    wchar_t path_wc[ MAX_FOPATH ];
-    if( MultiByteToWideChar( CP_UTF8, 0, path, -1, path_wc, MAX_FOPATH ) == 0 ||
-        WideCharToMultiByte( GetACP(), 0, path_wc, -1, path, MAX_FOPATH, NULL, NULL ) == 0 )
-    {
-        WriteLogF( _FUNC_, " - Code page conversion fail.\n" );
-        return false;
-    }
-    #endif
-
-    zipHandle = unzOpen( path );
-    if( !zipHandle )
-    {
-        WriteLogF( _FUNC_, " - Cannot open ZIP file.\n" );
-        return false;
+        zipHandle = unzOpen2( fname, &ffunc );
+        if( !zipHandle )
+        {
+            WriteLogF( _FUNC_, " - Cannot open ZIP file in memory.\n" );
+            return false;
+        }
     }
 
     if( !ReadTree() )
