@@ -80,6 +80,8 @@ FileManager::~FileManager()
 
 void FileManager::InitDataFiles( const char* path )
 {
+    RUNTIME_ASSERT( path && ( !path[ 0 ] || path[ Str::Length( path ) - 1 ] == DIR_SLASH_C ) );
+
     // Init internal data file
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
     if( dataFiles.empty() )
@@ -94,6 +96,7 @@ void FileManager::InitDataFiles( const char* path )
         uint len = FileGetSize( redirection_link );
         FileRead( redirection_link, link, len );
         link[ len ] = 0;
+        Str::Insert( link, path );
         FormatPath( link );
         InitDataFiles( link );
         return;
@@ -130,6 +133,7 @@ void FileManager::InitDataFiles( const char* path )
         uint len = FileGetSize( extension_link );
         FileRead( extension_link, link, len );
         link[ len ] = 0;
+        Str::Insert( link, path );
         FormatPath( link );
         InitDataFiles( link );
     }

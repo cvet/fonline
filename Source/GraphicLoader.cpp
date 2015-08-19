@@ -864,7 +864,8 @@ uchar* GraphicLoader::LoadPNG( const uchar* data, uint data_size, uint& result_w
 {
     result_width = *(uint*) data;
     result_height = *(uint*) ( data + 4 );
-    RUNTIME_ASSERT( result_width * result_height * 4 == data_size - 8 );
+    if( result_width * result_height * 4 != data_size - 8 )
+        return NULL;
     uchar* result = new uchar[ result_width * result_height * 4 ];
     memcpy( result, data + 8, result_width * result_height * 4 );
     return result;
@@ -935,7 +936,8 @@ uchar* GraphicLoader::LoadTGA( const uchar* data, uint data_size, uint& result_w
 {
     result_width = *(uint*) data;
     result_height = *(uint*) ( data + 4 );
-    RUNTIME_ASSERT( result_width * result_height * 4 == data_size - 8 );
+    if( result_width * result_height * 4 != data_size - 8 )
+        return NULL;
     uchar* result = new uchar[ result_width * result_height * 4 ];
     memcpy( result, data + 8, result_width * result_height * 4 );
     return result;

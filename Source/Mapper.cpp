@@ -120,6 +120,8 @@ bool FOMapper::Init()
     // Sprite manager
     if( !SprMngr.Init() )
         return false;
+    if( !GraphicLoader::LoadDefaultEffects() )
+        return false;
     SprMngr.PushAtlasType( RES_ATLAS_STATIC );
 
     // Fonts
