@@ -4789,16 +4789,18 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
     for( size_t r = 0; r < resources_dirs.size(); r++ )
     {
         const char*     res_name = resources_dirs[ r ].FileName;
-        bool            is_zip = ( Str::Length( res_name ) > 4 && Str::CompareCase( res_name + Str::Length( res_name ) - 4, ".zip" ) );
         FilesCollection resources( PT_SERVER_RESOURCES, res_name, NULL, true );
 
         WriteLog( "Build resource '%s', files %u...\n", res_name, resources.GetFilesCount() );
 
-        if( is_zip )
+        if( !Str::Substring( res_name, "_Raw" ) )
         {
+            string res_name_zip = res_name;
+            res_name_zip.append( ".zip" );
+
             bool        skip_making_zip = true;
             FileManager zip_file;
-            if( zip_file.LoadFile( res_name, PT_SERVER_UPDATE, true ) )
+            if( zip_file.LoadFile( res_name_zip.c_str(), PT_SERVER_UPDATE, true ) )
             {
                 while( resources.IsNextFile() )
                 {
@@ -4818,7 +4820,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
 
             if( !skip_making_zip )
             {
-                string  zip_path = FileManager::GetDataPath( res_name, PT_SERVER_UPDATE );
+                string  zip_path = FileManager::GetDataPath( res_name_zip.c_str(), PT_SERVER_UPDATE );
                 CreateDirectoryTree( zip_path.c_str() );
                 zipFile zip = zipOpen( zip_path.c_str(), APPEND_STATUS_CREATE );
                 if( zip )
@@ -4860,7 +4862,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                 }
             }
 
-            update_file_names.insert( res_name );
+            update_file_names.insert( res_name_zip );
         }
         else
         {
