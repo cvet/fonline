@@ -33,18 +33,17 @@ namespace InterfaceEditor
 				BindingFlags.SetProperty | BindingFlags.Instance | BindingFlags.NonPublic,
 				null, Design, new object[] { true });
 
-			// Setup data path
+			// Setup paths
+			Func<string, string> fixPath = delegate(string path)
+			{
+				path = path.Replace('/', '\\');
+				if (!path.EndsWith("\\"))
+					path += "\\";
+				return Path.GetFullPath(path);
+			};
 			IniFile config = new IniFile(".\\InterfaceEditor.cfg");
-			string dataPath = config.IniReadValue("Options", "ClientPath", "..\\..\\Client\\");
-			dataPath = dataPath.Replace('/', '\\');
-			if (!dataPath.EndsWith("\\"))
-				dataPath += "\\";
-			dataPath += "data\\";
-			dataPath = Path.GetFullPath(dataPath);
-			Utilites.DataPath = dataPath;
-
-			// Setup scripts path
-			Utilites.ScriptsPath = config.IniReadValue("Options", "ServerPath", "..\\..\\Server\\") + "scripts\\";
+			Utilites.ScriptsPath = fixPath(config.IniReadValue("Options", "ScriptsPath", @"..\..\Server\scripts\"));
+			Utilites.DataPath = fixPath(config.IniReadValue("Options", "ResourcesPath", @"..\..\Server\resources\Interface\"));
 
 			// Load default scheme
 			LoadScheme("gui\\default.foguischeme");
