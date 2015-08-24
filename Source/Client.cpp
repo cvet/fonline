@@ -1496,11 +1496,7 @@ void FOClient::ParseMouse()
     if( Timer::GetAcceleratorNum() != ACCELERATE_NONE && !IsCurMode( CUR_WAIT ) )
     {
         int iface_hold = IfaceHold;
-        if( Timer::ProcessAccelerator( ACCELERATE_SPLIT_UP ) )
-            SplitLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_SPLIT_DOWN ) )
-            SplitLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_PUP_SCRUP1 ) )
+        if( Timer::ProcessAccelerator( ACCELERATE_PUP_SCRUP1 ) )
             PupLMouseUp();
         else if( Timer::ProcessAccelerator( ACCELERATE_PUP_SCRDOWN1 ) )
             PupLMouseUp();
@@ -1611,17 +1607,7 @@ void ContainerWheelScroll( int items_count, int cont_height, int item_height, in
 void FOClient::ProcessMouseWheel( int data )
 {
     int screen = GetActiveScreen();
-    if( screen == SCREEN__SPLIT )
-    {
-        if( IsCurInRect( SplitWValue, SplitX, SplitY ) || IsCurInRect( SplitWItem, SplitX, SplitY ) )
-        {
-            if( data > 0 && SplitValue < SplitMaxValue )
-                SplitValue++;
-            else if( data < 0 && SplitValue > SplitMinValue )
-                SplitValue--;
-        }
-    }
-    else if( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW )
+    if( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW )
     {
         if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
         {
@@ -5778,10 +5764,8 @@ void FOClient::Net_OnPlayersBarter()
             auto  it_ = PtrCollectionFind( cont_o.begin(), cont_o.end(), param );
             if( it_ == cont_o.end() )
             {
-                citem->AddRef();
-                cont_o.push_back( citem );
-                it_ = cont_o.begin() + cont_o.size() - 1;
-                ( *it_ )->SetCount( param_ext );
+                cont_o.push_back( citem->Clone() );
+                cont_o.back()->SetCount( param_ext );
             }
             else
             {
@@ -5790,7 +5774,7 @@ void FOClient::Net_OnPlayersBarter()
             citem->ChangeCount( -(int) param_ext );
             if( !citem->GetCount() || !citem->IsStackable() )
             {
-                ( *it )->Release();
+                citem->Release();
                 cont.erase( it );
             }
         }
@@ -5830,10 +5814,8 @@ void FOClient::Net_OnPlayersBarter()
             auto  it_ = PtrCollectionFind( cont.begin(), cont.end(), param );
             if( it_ == cont.end() )
             {
-                citem->AddRef();
-                cont.push_back( citem );
-                it_ = cont.begin() + cont.size() - 1;
-                ( *it_ )->SetCount( param_ext );
+                cont.push_back( citem->Clone() );
+                cont.back()->SetCount( param_ext );
             }
             else
             {
@@ -5842,7 +5824,7 @@ void FOClient::Net_OnPlayersBarter()
             citem->ChangeCount( -(int) param_ext );
             if( !citem->GetCount() || !citem->IsStackable() )
             {
-                ( *it )->Release();
+                citem->Release();
                 cont_o.erase( it );
             }
         }
@@ -7266,7 +7248,6 @@ label_EndMove:
         uint  item_id = (uint) act.Param[ 0 ];
         uint  item_count = (uint) act.Param[ 1 ];
         int   to_slot = (int) act.Param[ 2 ];
-        bool  is_barter_cont = ( act.Param[ 3 ] != 0 );
         bool  is_second_try = ( act.Param[ 4 ] != 0 );
 
         Item* item = Chosen->GetItem( item_id );
@@ -7323,8 +7304,8 @@ label_EndMove:
                 if( allow1 && allow2 )
                 {
                     EraseFrontAction();
-                    AddActionFront( CHOSEN_MOVE_ITEM, item_id, item_count, to_slot, is_barter_cont, true );                        // Second
-                    AddActionFront( CHOSEN_MOVE_ITEM, item_swap->GetId(), item_swap->GetCount(), SLOT_INV, is_barter_cont, true ); // First
+                    AddActionFront( CHOSEN_MOVE_ITEM, item_id, item_count, to_slot, 0, true );                        // Second
+                    AddActionFront( CHOSEN_MOVE_ITEM, item_swap->GetId(), item_swap->GetCount(), SLOT_INV, 0, true ); // First
                     return;
                 }
             }
@@ -7386,24 +7367,8 @@ label_EndMove:
         }
 
         // Affect barter screen
-        if( to_slot == SLOT_GROUND && is_barter_cont && IsScreenPresent( SCREEN__BARTER ) )
-        {
-            auto it = PtrCollectionFind( BarterCont1oInit.begin(), BarterCont1oInit.end(), item_id );
-            if( it != BarterCont1oInit.end() )
-            {
-                Item* item_ = *it;
-                if( item_count >= item_->GetCount() )
-                {
-                    ( *it )->Release();
-                    BarterCont1oInit.erase( it );
-                }
-                else
-                {
-                    item_->ChangeCount( -(int) item_count );
-                }
-            }
+        if( to_slot == SLOT_GROUND )
             CollectContItems();
-        }
 
         // Light
         if( to_slot == SLOT_HAND1 || from_slot == SLOT_HAND1 )
@@ -7424,18 +7389,18 @@ label_EndMove:
     case CHOSEN_MOVE_ITEM_CONT:
     {
         uint item_id = (uint) act.Param[ 0 ];
-        uint cont = (uint) act.Param[ 1 ];
+        uint item_cont = (uint) act.Param[ 1 ];
         uint count = (uint) act.Param[ 2 ];
 
         CHECK_NEED_AP( Chosen->GetApCostMoveItemContainer() );
 
-        Item* item = GetContainerItem( cont == IFACE_PUP_CONT1 ? InvContInit : PupCont2Init, item_id );
+        Item* item = GetContainerItem( item_cont == ITEMS_PICKUP ? InvContInit : PupCont2Init, item_id );
         if( !item )
             break;
         if( count > item->GetCount() )
             break;
 
-        if( cont == IFACE_PUP_CONT2 )
+        if( item_cont == ITEMS_PICKUP_FROM )
         {
             if( Chosen->GetFreeWeight() < (int) ( item->GetWeight1st() * count ) )
             {
@@ -7449,8 +7414,8 @@ label_EndMove:
             }
         }
 
-        Chosen->Action( ACTION_OPERATE_CONTAINER, PupTransferType * 10 + ( cont == IFACE_PUP_CONT2 ? 0 : 2 ), item );
-        PupTransfer( item_id, cont, count );
+        Chosen->Action( ACTION_OPERATE_CONTAINER, PupTransferType * 10 + ( item_cont == ITEMS_PICKUP_FROM ? 0 : 2 ), item );
+        PupTransfer( item_id, item_cont, count );
         Chosen->SubAp( Chosen->GetApCostMoveItemContainer() );
     }
     break;
@@ -7836,9 +7801,6 @@ void FOClient::TryExit()
         {
         case SCREEN__TIMER:
             break;
-        case SCREEN__SPLIT:
-            SplitClose( false );
-            break;
         case SCREEN__TOWN_VIEW:
             Net_SendRefereshMe();
             break;
@@ -7866,6 +7828,7 @@ void FOClient::TryExit()
         case SCREEN__MENU_OPTION:
         case SCREEN__SAVE_LOAD:
         case SCREEN__CREDITS:
+        case SCREEN__SPLIT:
         default:
             ShowScreen( SCREEN_NONE );
             break;
@@ -9908,25 +9871,13 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         uint  item_id = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
         Item* item = Self->Chosen->GetItem( item_id );
         if( item )
-            Self->SplitStart( item, SLOT_GROUND );
+            Self->SplitStart( item_id, ITEMS_CHOSEN_ALL );
     }
-    else if( cmd == "SplitMagic" )
+    else if( cmd == "SplitItem" && args.size() == 3 )
     {
-        uint  item_id = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
-        int   magic = Str::AtoI( args.size() >= 3 ? args[ 2 ].c_str() : "0" );
-        Item* item = Self->Chosen->GetItem( item_id );
-        if( magic == 300 )
-        {
-            auto it = PtrCollectionFind( Self->PupCont1.begin(), Self->PupCont1.end(), item_id );
-            if( it != Self->PupCont1.end() )
-                Self->SplitStart( *it, magic );
-        }
-        else if( magic == 301 )
-        {
-            auto it = PtrCollectionFind( Self->PupCont2.begin(), Self->PupCont2.end(), item_id );
-            if( it != Self->PupCont2.end() )
-                Self->SplitStart( *it, magic );
-        }
+        uint item_id = Str::AtoI( args[ 1 ].c_str() );
+        int  item_cont = Str::AtoI( args[ 2 ].c_str() );
+        Self->SplitStart( item_id, item_cont );
     }
     else if( cmd == "IsLMenu" )
     {
@@ -10007,8 +9958,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
 //                      Str::EraseWords(cur_mess, '|', ' ');
 //                      fmt_log += MessBox[i].Time + string(cur_mess);
 //              }
-
-
     }
     else if( cmd == "DialogAnswer" && args.size() >= 4 )
     {
@@ -10023,8 +9972,16 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         uint talker_id = Str::AtoI( args[ 2 ].c_str() );
         Self->Net_SendSayNpc( is_npc, talker_id, args[ 3 ].c_str() );
     }
-    else if( cmd == "BarterOffer" && args.size() >= 2 )
+    else if( cmd == "BarterMoveItem" && args.size() == 4 )
     {
+        uint item_id = Str::AtoI( args[ 1 ].c_str() );
+        int  item_cont = Str::AtoI( args[ 2 ].c_str() );
+        int  count = Str::AtoI( args[ 3 ].c_str() );
+        Self->BarterTransfer( item_id, item_cont, count );
+    }
+    else if( cmd == "BarterOffer" )
+    {
+        Self->BarterTryOffer();
         // uint talker_id;
         // uint answer_index;
         // Self->Net_SendBarter(DlgIsNpc, DlgNpcId, DlgAnswers[DlgCurAnsw].AnswerNum);
@@ -10119,15 +10076,30 @@ Item* FOClient::SScriptFunc::Global_GetItem( uint item_id )
 {
     if( !item_id )
         SCRIPT_ERROR_R0( "Item id arg is zero." );
+
+    // On map
     Item* item = Self->GetItem( item_id );
+
+    // On Chosen
     if( !item && Self->Chosen )
         item = Self->Chosen->GetItem( item_id );
+
+    // In containers
+    #define FIND_IN_CONT( cont )    if( !item ) { auto it = PtrCollectionFind( cont.begin(), cont.end(), item_id ); item = ( it != cont.end() ? *it : NULL ); }
+    FIND_IN_CONT( Self->BarterCont1oInit );
+    FIND_IN_CONT( Self->BarterCont2Init );
+    FIND_IN_CONT( Self->BarterCont2oInit );
+    FIND_IN_CONT( Self->PupCont2Init );
+    #undef FIND_IN_CONT
+
+    // On other critters
     if( !item )
     {
         for( auto it = Self->HexMngr.GetCritters().begin(); !item && it != Self->HexMngr.GetCritters().end(); ++it )
             if( !it->second->IsChosen() )
                 item = it->second->GetItem( item_id );
     }
+
     if( !item || item->IsDestroyed )
         return NULL;
     return item;
@@ -11462,10 +11434,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
         x = Self->AimX;
         y = Self->AimY;
         break;
-    case SCREEN__SPLIT:
-        x = Self->SplitX;
-        y = Self->SplitY;
-        break;
     case SCREEN__DIALOGBOX:
         x = Self->DlgboxX;
         y = Self->DlgboxY;
@@ -11527,9 +11495,6 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
         break;
     case SCREEN__AIM:
         Self->AimDraw();
-        break;
-    case SCREEN__SPLIT:
-        Self->SplitDraw();
         break;
     case SCREEN__DIALOGBOX:
         Self->DlgboxDraw();
@@ -11645,14 +11610,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
         else if( move )
             Self->AimMouseMove();
         break;
-    case SCREEN__SPLIT:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->SplitLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->SplitLMouseUp();
-        else if( move )
-            Self->SplitMouseMove();
-        break;
     case SCREEN__DIALOGBOX:
         if( button == MOUSE_BUTTON_LEFT && down )
             Self->DlgboxLMouseDown();
@@ -11745,10 +11702,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenKey( int screen, uchar k
     case SCREEN__BARTER:
         if( down )
             Self->DlgKeyDown( false, key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__SPLIT:
-        if( down )
-            Self->SplitKeyDown( key, text ? text->c_str() : "" );
         break;
     case SCREEN__SAY:
         if( down )

@@ -1078,7 +1078,7 @@ public:
     void       PupLMouseDown();
     void       PupLMouseUp();
     void       PupRMouseDown();
-    void       PupTransfer( uint item_id, uint cont, uint count );
+    void       PupTransfer( uint item_id, int cont, uint count );
     CritVec&   PupGetLootCrits();
     CritterCl* PupGetLootCrit( int scroll );
 
@@ -1168,27 +1168,8 @@ public:
 /************************************************************************/
 /* Split                                                                */
 /************************************************************************/
-    #define MAX_SPLIT_VALUE            ( 100000 )
 
-    AnyFrames* SplitMainPic, * SplitPBUpDn, * SplitPBDnDn, * SplitPBAllDn, * SplitPBDoneDn,
-    * SplitPBCancelDn, * SplitItemPic;
-    uint       SplitItemColor;
-    int        SplitX, SplitY;
-    int        SplitVectX, SplitVectY;
-    Rect       SplitWMain, SplitWTitle, SplitWItem, SplitBUp, SplitBDown, SplitBAll,
-               SplitWValue, SplitBDone, SplitBCancel;
-    uint       SplitItemId, SplitCont;
-    int        SplitValue, SplitMinValue, SplitMaxValue;
-    bool       SplitValueKeyPressed;
-    int        SplitParentScreen;
-
-    void SplitStart( Item* item, int to_cont );
-    void SplitClose( bool change );
-    void SplitDraw();
-    void SplitKeyDown( uchar dik, const char* dik_text );
-    void SplitLMouseDown();
-    void SplitLMouseUp();
-    void SplitMouseMove();
+    void SplitStart( uint item_id, int item_cont );
 
 /************************************************************************/
 /* FixBoy                                                               */
@@ -1535,10 +1516,10 @@ public:
 #define IFACE_DLG_SAY                  ( 105 )
 #define IFACE_BARTER_OFFER             ( 106 )
 #define IFACE_BARTER_TALK              ( 107 )
-#define IFACE_BARTER_CONT1             ( 108 )
-#define IFACE_BARTER_CONT2             ( 109 )
-#define IFACE_BARTER_CONT1O            ( 110 )
-#define IFACE_BARTER_CONT2O            ( 111 )
+#define IFACE_BARTER_CONT1             ( 370 )
+#define IFACE_BARTER_CONT2             ( 371 )
+#define IFACE_BARTER_CONT1O            ( 372 )
+#define IFACE_BARTER_CONT2O            ( 373 )
 #define IFACE_BARTER_CONT1SU           ( 112 )
 #define IFACE_BARTER_CONT1SD           ( 113 )
 #define IFACE_BARTER_CONT2SU           ( 114 )
@@ -1597,12 +1578,6 @@ public:
 #define IFACE_SAY_OK                   ( 340 )
 #define IFACE_SAY_CANCEL               ( 341 )
 #define IFACE_SAY_MAIN                 ( 342 )
-#define IFACE_SPLIT_MAIN               ( 360 )
-#define IFACE_SPLIT_UP                 ( 361 )
-#define IFACE_SPLIT_DOWN               ( 362 )
-#define IFACE_SPLIT_ALL                ( 363 )
-#define IFACE_SPLIT_DONE               ( 364 )
-#define IFACE_SPLIT_CANCEL             ( 365 )
 #define IFACE_TIMER_MAIN               ( 380 )
 #define IFACE_TIMER_UP                 ( 381 )
 #define IFACE_TIMER_DOWN               ( 382 )
@@ -1630,8 +1605,6 @@ public:
 #define ACCELERATE_IBOX                ( 2 )
 #define ACCELERATE_PAGE_UP             ( 3 )
 #define ACCELERATE_PAGE_DOWN           ( 4 )
-#define ACCELERATE_SPLIT_UP            ( 6 )
-#define ACCELERATE_SPLIT_DOWN          ( 7 )
 #define ACCELERATE_TIMER_DOWN          ( 9 )
 #define ACCELERATE_PUP_SCRUP1          ( 14 )
 #define ACCELERATE_PUP_SCRDOWN1        ( 15 )

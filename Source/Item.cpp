@@ -305,6 +305,7 @@ void Item::SetProto( ProtoItem* proto )
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 Item* Item::Clone()
 {
+    RUNTIME_ASSERT( Type == EntityType::Item );
     Item* clone = new Item( Id, Proto );
     clone->Accessory = Accessory;
     memcpy( clone->AccBuffer, AccBuffer, sizeof( AccBuffer ) );

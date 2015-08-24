@@ -442,30 +442,6 @@ int FOClient::InitIface()
     SayType = DIALOGSAY_NONE;
     SayText = "";
 
-    // Split
-    IfaceLoadRect( SplitWMain, "SplitMain" );
-    IfaceLoadRect( SplitWTitle, "SplitTitle" );
-    IfaceLoadRect( SplitWItem, "SplitItem" );
-    IfaceLoadRect( SplitBUp, "SplitUp" );
-    IfaceLoadRect( SplitBDown, "SplitDown" );
-    IfaceLoadRect( SplitBAll, "SplitAll" );
-    IfaceLoadRect( SplitWValue, "SplitValue" );
-    IfaceLoadRect( SplitBDone, "SplitDone" );
-    IfaceLoadRect( SplitBCancel, "SplitCancel" );
-    SplitVectX = 0;
-    SplitVectY = 0;
-    SplitItemId = 0;
-    SplitCont = 0;
-    SplitValue = 0;
-    SplitMinValue = 0;
-    SplitMaxValue = 0;
-    SplitValueKeyPressed = false;
-    SplitX = ( GameOpt.ScreenWidth - SplitWMain.W() ) / 2;
-    SplitY = ( GameOpt.ScreenHeight - SplitWMain.H() ) / 2;
-    SplitItemPic = 0;
-    SplitItemColor = 0;
-    SplitParentScreen = SCREEN_NONE;
-
     // FixBoy
     IfaceLoadRect( FixWMain, "FixMain" );
     IfaceLoadRect( FixBScrUp, "FixScrUp" );
@@ -696,15 +672,6 @@ int FOClient::InitIface()
     IfaceLoadSpr( SayBOkPicDown, "SayOkPicDn" );
     IfaceLoadSpr( SayBCancelPicDown, "SayCancelPicDn" );
 
-    // Split
-    IfaceLoadSpr( SplitMainPic, "SplitMainPic" );
-    IfaceLoadSpr( SplitPBUpDn, "SplitUpPicDn" );
-    IfaceLoadSpr( SplitPBDnDn, "SplitDownPicDn" );
-    IfaceLoadSpr( SplitPBAllDn, "SplitAllPicDn" );
-    IfaceLoadSpr( SplitPBDoneDn, "SplitDonePic" );
-    IfaceLoadSpr( SplitPBCancelDn, "SplitCancelPic" );
-
-
     // FixBoy
     IfaceLoadSpr( FixMainPic, "FixMainPic" );
     IfaceLoadSpr( FixPBScrUpDn, "FixScrUpPicDn" );
@@ -830,8 +797,8 @@ void FOClient::CollectContItems()
     if( Chosen )
     {
         Chosen->GetInvItems( InvContInit );
-        for( auto it = InvContInit.begin(), end = InvContInit.end(); it != end; ++it )
-            ( *it )->AddRef();
+        for( size_t i = 0; i < InvContInit.size(); i++ )
+            InvContInit[ i ] = InvContInit[ i ]->Clone();
     }
 
     if( IsScreenPresent( SCREEN__BARTER ) )
@@ -843,7 +810,7 @@ void FOClient::CollectContItems()
             auto  it_ = PtrCollectionFind( InvContInit.begin(), InvContInit.end(), item->GetId() );
             if( it_ == InvContInit.end() || ( *it_ )->GetCount() < item->GetCount() )
             {
-                ( *it )->Release();
+                item->Release();
                 it = BarterCont1oInit.erase( it );
             }
             else
@@ -867,7 +834,7 @@ void FOClient::CollectContItems()
                     item->ChangeCount( -(int) item_->GetCount() );
                 if( !item->IsStackable() || !item->GetCount() )
                 {
-                    ( *it )->Release();
+                    item->Release();
                     it = InvContInit.erase( it );
                     continue;
                 }
@@ -890,33 +857,33 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
 {
     // Default result
     Item::ClearItems( result );
-    if( init_items.empty() )
-        return;
 
     // Prepare to call
     if( Script::PrepareContext( ClientFunctions.ItemsCollection, _FUNC_, "Game" ) )
     {
         // Create script array
         ScriptArray* arr = Script::CreateArray( "ItemCl@[]" );
-        if( arr )
+        RUNTIME_ASSERT( arr );
+
+        // Copy to script array
+        ItemVec items_clone = init_items;
+        for( size_t i = 0; i < items_clone.size(); i++ )
+            items_clone[ i ] = items_clone[ i ]->Clone();
+        Script::AppendVectorToArray( items_clone, arr );
+
+        // Call
+        Script::SetArgUInt( collection );
+        Script::SetArgObject( arr );
+        if( Script::RunPrepared() )
         {
-            // Copy to script array
-            Script::AppendVectorToArrayRef( init_items, arr );
-
-            // Call
-            Script::SetArgUInt( collection );
-            Script::SetArgObject( arr );
-            if( Script::RunPrepared() )
-            {
-                // Copy from script to std array
-                Script::AssignScriptArrayInVector( result, arr );
-                for( auto it = result.begin(), end = result.end(); it != end; ++it )
-                    ( *it )->AddRef();
-            }
-
-            // Release array
-            arr->Release();
+            // Copy from script to std array
+            Script::AssignScriptArrayInVector( result, arr );
+            for( auto it = result.begin(), end = result.end(); it != end; ++it )
+                ( *it )->AddRef();
         }
+
+        // Release array
+        arr->Release();
     }
 }
 
@@ -1621,9 +1588,9 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 {
                     Item* item = *it;
                     if( item->GetCount() > 1 )
-                        SplitStart( item, IFACE_BARTER_CONT1 );
+                        SplitStart( BarterHoldId, ITEMS_BARTER );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1, item->GetCount() );
+                        BarterTransfer( BarterHoldId, ITEMS_BARTER, item->GetCount() );
                 }
             }
         }
@@ -1636,9 +1603,9 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 {
                     Item* item = *it;
                     if( item->GetCount() > 1 )
-                        SplitStart( item, IFACE_BARTER_CONT2 );
+                        SplitStart( BarterHoldId, ITEMS_BARTER_OPPONENT );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2, item->GetCount() );
+                        BarterTransfer( BarterHoldId, ITEMS_BARTER_OPPONENT, item->GetCount() );
                 }
             }
         }
@@ -1651,9 +1618,9 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 {
                     Item* item = *it;
                     if( item->GetCount() > 1 )
-                        SplitStart( item, IFACE_BARTER_CONT1O );
+                        SplitStart( BarterHoldId, ITEMS_BARTER_OFFER );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT1O, item->GetCount() );
+                        BarterTransfer( BarterHoldId, ITEMS_BARTER_OFFER, item->GetCount() );
                 }
             }
         }
@@ -1666,9 +1633,9 @@ void FOClient::DlgLMouseUp( bool is_dialog )
                 {
                     Item* item = *it;
                     if( item->GetCount() > 1 )
-                        SplitStart( item, IFACE_BARTER_CONT2O );
+                        SplitStart( BarterHoldId, ITEMS_BARTER_OPPONENT_OFFER );
                     else
-                        BarterTransfer( BarterHoldId, IFACE_BARTER_CONT2O, item->GetCount() );
+                        BarterTransfer( BarterHoldId, ITEMS_BARTER_OPPONENT_OFFER, item->GetCount() );
                 }
             }
         }
@@ -1890,11 +1857,13 @@ void FOClient::BarterTryOffer()
     }
     else
     {
+        if( BarterCont1oInit.empty() && BarterCont2oInit.empty() )
+            return;
+
         uint c1, w1, v1, c2, w2, v2;
         ContainerCalcInfo( BarterCont1oInit, c1, w1, v1, -BarterK, true );
         ContainerCalcInfo( BarterCont2oInit, c2, w2, v2, Chosen->GetPerkMasterTrader() ? 0 : BarterK, false );
-        if( !c1 && !c2 && BarterK )
-            return;
+
         if( c1 < c2 && BarterK )
             BarterText = MsgGame->GetStr( STR_BARTER_BAD_OFFER );
         else if( Chosen->GetFreeWeight() + w1 < w2 )
@@ -1922,19 +1891,19 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
 
     switch( item_cont )
     {
-    case IFACE_BARTER_CONT1:
+    case ITEMS_BARTER:
         from_cont = &InvContInit;
         to_cont = &BarterCont1oInit;
         break;
-    case IFACE_BARTER_CONT2:
+    case ITEMS_BARTER_OPPONENT:
         from_cont = &BarterCont2Init;
         to_cont = &BarterCont2oInit;
         break;
-    case IFACE_BARTER_CONT1O:
+    case ITEMS_BARTER_OFFER:
         from_cont = &BarterCont1oInit;
         to_cont = &InvContInit;
         break;
-    case IFACE_BARTER_CONT2O:
+    case ITEMS_BARTER_OPPONENT_OFFER:
         from_cont = &BarterCont2oInit;
         to_cont = &BarterCont2Init;
         break;
@@ -1956,7 +1925,7 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
     {
         auto it_to = PtrCollectionFind( to_cont->begin(), to_cont->end(), item->GetId() );
         if( it_to != to_cont->end() )
-            to_item = ( *it_to );
+            to_item = *it_to;
     }
 
     if( to_item )
@@ -1965,41 +1934,41 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
     }
     else
     {
-        item->AddRef();
-        to_cont->push_back( item );
-        Item* last = ( *to_cont )[ to_cont->size() - 1 ];
-        last->SetCount( item_count );
+        to_cont->push_back( item->Clone() );
+        to_cont->back()->SetCount( item_count );
     }
 
     item->ChangeCount( -(int) item_count );
     if( !item->GetCount() || !item->IsStackable() )
     {
-        ( *it )->Release();
+        item->Release();
         from_cont->erase( it );
     }
-    CollectContItems();
 
     switch( item_cont )
     {
-    case IFACE_BARTER_CONT1:
+    case ITEMS_BARTER:
         if( BarterIsPlayers )
             Net_SendPlayersBarter( BARTER_SET_SELF, item_id, item_count );
         break;
-    case IFACE_BARTER_CONT2:
+    case ITEMS_BARTER_OPPONENT:
         if( BarterIsPlayers )
             Net_SendPlayersBarter( BARTER_SET_OPPONENT, item_id, item_count );
         break;
-    case IFACE_BARTER_CONT1O:
+    case ITEMS_BARTER_OFFER:
         if( BarterIsPlayers )
             Net_SendPlayersBarter( BARTER_UNSET_SELF, item_id, item_count );
         break;
-    case IFACE_BARTER_CONT2O:
+    case ITEMS_BARTER_OPPONENT_OFFER:
         if( BarterIsPlayers )
             Net_SendPlayersBarter( BARTER_UNSET_OPPONENT, item_id, item_count );
         break;
     default:
         break;
     }
+
+    if( Script::PrepareContext( ClientFunctions.ContainerChanged, _FUNC_, "Game" ) )
+        Script::RunPrepared();
 }
 
 void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint& volume, int barter_k, bool sell )
@@ -2965,9 +2934,9 @@ void FOClient::LMenuMouseUp()
             if( !Chosen->IsLife() || !Chosen->IsFree() )
                 break;
             if( cont_item->IsStackable() && cont_item->GetCount() > 1 )
-                SplitStart( cont_item, SLOT_GROUND | ( ( ( TargetSmth.GetParam() == 1 || TargetSmth.GetParam() == 3 ) ? 1 : 0 ) << 16 ) );
+                SplitStart( cont_item->GetId(), ITEMS_CHOSEN_ALL );
             else
-                AddActionBack( CHOSEN_MOVE_ITEM, cont_item->GetId(), cont_item->GetCount(), SLOT_GROUND, ( TargetSmth.GetParam() == 1 || TargetSmth.GetParam() == 3 ) ? 1 : 0 );
+                AddActionBack( CHOSEN_MOVE_ITEM, cont_item->GetId(), cont_item->GetCount(), SLOT_GROUND );
             break;
         case LMENU_NODE_UNLOAD:
             if( !inv_item )
@@ -4852,7 +4821,7 @@ void FOClient::PupLMouseUp()
         {
             Item* item = *it;
             if( item->GetCount() > 1 )
-                SplitStart( item, IFACE_PUP_CONT2 );
+                SplitStart( PupHoldId, IFACE_PUP_CONT2 );
             else
                 SetAction( CHOSEN_MOVE_ITEM_CONT, PupHoldId, IFACE_PUP_CONT2, 1 );
         }
@@ -4868,7 +4837,7 @@ void FOClient::PupLMouseUp()
         {
             Item* item = *it;
             if( item->GetCount() > 1 )
-                SplitStart( item, IFACE_PUP_CONT1 );
+                SplitStart( PupHoldId, IFACE_PUP_CONT1 );
             else
                 SetAction( CHOSEN_MOVE_ITEM_CONT, PupHoldId, IFACE_PUP_CONT1, 1 );
         }
@@ -4992,13 +4961,13 @@ void FOClient::PupRMouseDown()
     SetCurCastling( CUR_DEFAULT, CUR_HAND );
 }
 
-void FOClient::PupTransfer( uint item_id, uint cont, uint count )
+void FOClient::PupTransfer( uint item_id, int item_cont, uint count )
 {
     if( !count )
         return;
 
     // From Chosen to container
-    if( cont == IFACE_PUP_CONT1 )
+    if( item_cont == ITEMS_PICKUP )
     {
         Item* item = Chosen->GetItem( item_id );
         if( !item )
@@ -5009,7 +4978,7 @@ void FOClient::PupTransfer( uint item_id, uint cont, uint count )
         WaitPing();
     }
     // From container to Chosen
-    else if( cont == IFACE_PUP_CONT2 )
+    else if( item_cont == ITEMS_PICKUP_FROM )
     {
         auto it = PtrCollectionFind( PupCont2Init.begin(), PupCont2Init.end(), item_id );
         if( it == PupCont2Init.end() )
@@ -5639,260 +5608,51 @@ void FOClient::WaitDraw()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::SplitStart( Item* item, int to_cont )
+void FOClient::SplitStart( uint item_id, int item_cont )
 {
-    SplitItemId = item->GetId();
-    SplitCont = to_cont;
-    SplitValue = 1;
-    SplitMinValue = 1;
-    SplitMaxValue = item->GetCount();
-    SplitValueKeyPressed = false;
-    SplitItemPic = ResMngr.GetInvAnim( item->GetActualPicInv() );
-    SplitItemColor = item->GetInvColor();
-    SplitParentScreen = GetActiveScreen();
+    #define FIND_IN_CONT( cont )    { auto it = PtrCollectionFind( cont.begin(), cont.end(), item_id ); item = ( it != cont.end() ? *it : NULL ); }
+    Item* item = NULL;
+    switch( item_cont )
+    {
+    case ITEMS_CHOSEN_ALL:
+        item = ( Chosen ? Chosen->GetItem( item_id ) : NULL );
+        break;
+    case ITEMS_INVENTORY:
+        FIND_IN_CONT( InvContInit );
+        break;
+    case ITEMS_USE:
+        FIND_IN_CONT( InvContInit );
+        break;
+    case ITEMS_BARTER:
+        FIND_IN_CONT( InvContInit );
+        break;
+    case ITEMS_BARTER_OFFER:
+        FIND_IN_CONT( BarterCont1oInit );
+        break;
+    case ITEMS_BARTER_OPPONENT:
+        FIND_IN_CONT( BarterCont2Init );
+        break;
+    case ITEMS_BARTER_OPPONENT_OFFER:
+        FIND_IN_CONT( BarterCont2oInit );
+        break;
+    case ITEMS_PICKUP:
+        FIND_IN_CONT( InvContInit );
+        break;
+    case ITEMS_PICKUP_FROM:
+        FIND_IN_CONT( PupCont2Init );
+        break;
+    default:
+        return;
+    }
+    #undef FIND_IN_CONT
+    if( !item )
+        return;
 
     ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
-    dict->Set( "TargetItemId", &SplitItemId, asTYPEID_UINT32 );
-    dict->Set( "MagicNumber", &SplitCont, asTYPEID_INT32 );
+    dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
+    dict->Set( "ItemsCollection", &item_cont, asTYPEID_INT32 );
     ShowScreen( SCREEN__SPLIT, dict );
     dict->Release();
-}
-
-void FOClient::SplitClose( bool change )
-{
-    if( change && ( SplitValue < SplitMinValue || SplitValue > SplitMaxValue ) )
-        return;
-
-    if( ( SplitCont & 0xFFFF ) == 0xFF )
-        goto label_DropItems;
-    switch( SplitParentScreen )
-    {
-    case SCREEN__INVENTORY:
-        IfaceHold = IFACE_NONE;
-label_DropItems:
-        if( !change )
-            break;
-        AddActionBack( CHOSEN_MOVE_ITEM, SplitItemId, SplitValue, SplitCont & 0xFFFF, ( SplitCont >> 16 ) & 1 );
-        break;
-    case SCREEN__BARTER:
-        IfaceHold = IFACE_NONE;
-        BarterHoldId = 0;
-        if( !change )
-            break;
-        BarterTransfer( SplitItemId, SplitCont & 0xFFFF, SplitValue );
-        break;
-    case SCREEN__PICKUP:
-        IfaceHold = IFACE_NONE;
-        PupHoldId = 0;
-        if( !change )
-            break;
-        SetAction( CHOSEN_MOVE_ITEM_CONT, SplitItemId, SplitCont & 0xFFFF, SplitValue );
-        break;
-    default:
-        break;
-    }
-
-    SplitParentScreen = SCREEN_NONE;
-    ShowScreen( SCREEN_NONE, NULL );
-}
-
-void FOClient::SplitDraw()
-{
-    SprMngr.DrawSprite( SplitMainPic, SplitWMain[ 0 ] + SplitX, SplitWMain[ 1 ] + SplitY );
-
-    switch( IfaceHold )
-    {
-    case IFACE_SPLIT_UP:
-        SprMngr.DrawSprite( SplitPBUpDn, SplitBUp[ 0 ] + SplitX, SplitBUp[ 1 ] + SplitY );
-        break;
-    case IFACE_SPLIT_DOWN:
-        SprMngr.DrawSprite( SplitPBDnDn, SplitBDown[ 0 ] + SplitX, SplitBDown[ 1 ] + SplitY );
-        break;
-    case IFACE_SPLIT_ALL:
-        SprMngr.DrawSprite( SplitPBAllDn, SplitBAll[ 0 ] + SplitX, SplitBAll[ 1 ] + SplitY );
-        break;
-    case IFACE_SPLIT_DONE:
-        SprMngr.DrawSprite( SplitPBDoneDn, SplitBDone[ 0 ] + SplitX, SplitBDone[ 1 ] + SplitY );
-        break;
-    case IFACE_SPLIT_CANCEL:
-        SprMngr.DrawSprite( SplitPBCancelDn, SplitBCancel[ 0 ] + SplitX, SplitBCancel[ 1 ] + SplitY );
-        break;
-    default:
-        break;
-    }
-
-    if( SplitItemPic )
-        SprMngr.DrawSpriteSize( SplitItemPic, SplitWItem[ 0 ] + SplitX, SplitWItem[ 1 ] + SplitY, SplitWItem.W(), SplitWItem.H(), false, true, SplitItemColor );
-
-    SprMngr.DrawStr( Rect( SplitWTitle, SplitX, SplitY ), MsgGame->GetStr( STR_SPLIT_TITLE ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( SplitBAll, SplitX, SplitY - ( IfaceHold == IFACE_SPLIT_ALL ? 1 : 0 ) ), MsgGame->GetStr( STR_SPLIT_ALL ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( SplitWValue, SplitX, SplitY ), Str::FormatBuf( "%05d", SplitValue ), FT_NOBREAK, COLOR_IFACE, FONT_BIG_NUM );
-}
-
-void FOClient::SplitKeyDown( uchar dik, const char* dik_text )
-{
-    int add = 0;
-
-    switch( dik )
-    {
-    case DIK_RETURN:
-    case DIK_NUMPADENTER:
-        SplitClose( true );
-        return;
-    case DIK_ESCAPE:
-        SplitClose( false );
-        return;
-    case DIK_BACK:
-        add = -1;
-        break;
-    case DIK_DELETE:
-        add = -2;
-        break;
-    case DIK_0:
-    case DIK_NUMPAD0:
-        add = 0;
-        break;
-    case DIK_1:
-    case DIK_NUMPAD1:
-        add = 1;
-        break;
-    case DIK_2:
-    case DIK_NUMPAD2:
-        add = 2;
-        break;
-    case DIK_3:
-    case DIK_NUMPAD3:
-        add = 3;
-        break;
-    case DIK_4:
-    case DIK_NUMPAD4:
-        add = 4;
-        break;
-    case DIK_5:
-    case DIK_NUMPAD5:
-        add = 5;
-        break;
-    case DIK_6:
-    case DIK_NUMPAD6:
-        add = 6;
-        break;
-    case DIK_7:
-    case DIK_NUMPAD7:
-        add = 7;
-        break;
-    case DIK_8:
-    case DIK_NUMPAD8:
-        add = 8;
-        break;
-    case DIK_9:
-    case DIK_NUMPAD9:
-        add = 9;
-        break;
-    default:
-        return;
-    }
-
-    if( add == -1 )
-        SplitValue /= 10;
-    else if( add == -2 )
-        SplitValue = 0;
-    else if( !SplitValueKeyPressed )
-        SplitValue = add;
-    else
-        SplitValue = SplitValue * 10 + add;
-
-    SplitValueKeyPressed = true;
-    if( SplitValue >= MAX_SPLIT_VALUE )
-        SplitValue = SplitValue % MAX_SPLIT_VALUE;
-}
-
-void FOClient::SplitLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-
-    if( !IsCurInRect( SplitWMain, SplitX, SplitY ) )
-        return;
-
-    if( IsCurInRect( SplitBUp, SplitX, SplitY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_SPLIT_UP );
-        IfaceHold = IFACE_SPLIT_UP;
-    }
-    else if( IsCurInRect( SplitBDown, SplitX, SplitY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_SPLIT_DOWN );
-        IfaceHold = IFACE_SPLIT_DOWN;
-    }
-    else if( IsCurInRect( SplitBAll, SplitX, SplitY ) )
-        IfaceHold = IFACE_SPLIT_ALL;
-    else if( IsCurInRect( SplitBDone, SplitX, SplitY ) )
-        IfaceHold = IFACE_SPLIT_DONE;
-    else if( IsCurInRect( SplitBCancel, SplitX, SplitY ) )
-        IfaceHold = IFACE_SPLIT_CANCEL;
-    else
-    {
-        SplitVectX = GameOpt.MouseX - SplitX;
-        SplitVectY = GameOpt.MouseY - SplitY;
-        IfaceHold = IFACE_SPLIT_MAIN;
-    }
-}
-
-void FOClient::SplitLMouseUp()
-{
-    switch( IfaceHold )
-    {
-    case IFACE_SPLIT_UP:
-        if( !IsCurInRect( SplitBUp, SplitX, SplitY ) )
-            break;
-        if( SplitValue < SplitMaxValue )
-            SplitValue++;
-        break;
-    case IFACE_SPLIT_DOWN:
-        if( !IsCurInRect( SplitBDown, SplitX, SplitY ) )
-            break;
-        if( SplitValue > SplitMinValue )
-            SplitValue--;
-        break;
-    case IFACE_SPLIT_ALL:
-        if( !IsCurInRect( SplitBAll, SplitX, SplitY ) )
-            break;
-        SplitValue = SplitMaxValue;
-        if( SplitValue >= MAX_SPLIT_VALUE )
-            SplitValue = MAX_SPLIT_VALUE - 1;
-        break;
-    case IFACE_SPLIT_DONE:
-        if( !IsCurInRect( SplitBDone, SplitX, SplitY ) )
-            break;
-        SplitClose( true );
-        break;
-    case IFACE_SPLIT_CANCEL:
-        if( !IsCurInRect( SplitBCancel, SplitX, SplitY ) )
-            break;
-        SplitClose( false );
-        break;
-    default:
-        break;
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::SplitMouseMove()
-{
-    if( IfaceHold == IFACE_SPLIT_MAIN )
-    {
-        SplitX = GameOpt.MouseX - SplitVectX;
-        SplitY = GameOpt.MouseY - SplitVectY;
-
-        if( SplitX < 0 )
-            SplitX = 0;
-        if( SplitX + SplitWMain[ 2 ] > GameOpt.ScreenWidth )
-            SplitX = GameOpt.ScreenWidth - SplitWMain[ 2 ];
-        if( SplitY < 0 )
-            SplitY = 0;
-        if( SplitY + SplitWMain[ 3 ] > GameOpt.ScreenHeight )
-            SplitY = GameOpt.ScreenHeight - SplitWMain[ 3 ];
-    }
 }
 
 // ==============================================================================================================================
