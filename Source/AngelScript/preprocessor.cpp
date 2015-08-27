@@ -46,6 +46,7 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <string.h>
 
 namespace Preprocessor
 {
@@ -67,6 +68,8 @@ public:
 
         Entry& Search( unsigned int linenumber );
         void   AddLineRange( const std::string& file, unsigned int start_line, unsigned int offset );
+        void   Store( std::vector< unsigned char >& data );
+        void   Restore( const std::vector< unsigned char >& data );
     };
 
     /************************************************************************/
@@ -231,10 +234,60 @@ Preprocessor::LineNumberTranslator::Entry& Preprocessor::LineNumberTranslator::S
 void Preprocessor::LineNumberTranslator::AddLineRange( const std::string& file, unsigned int start_line, unsigned int offset )
 {
     Entry e;
-    e.File = file;
+    e.File = file.substr( 0, file.find_last_of( '.' ) );
     e.StartLine = start_line;
     e.Offset = offset;
     lines.push_back( e );
+}
+
+void Preprocessor::LineNumberTranslator::Store( std::vector< unsigned char >& data )
+{
+    // Calculate size
+    size_t size = sizeof( unsigned int );
+    for( size_t i = 0; i < lines.size(); i++ )
+    {
+        Entry& entry = lines[ i ];
+        size += sizeof( unsigned int ) * 3 + entry.File.length();
+    }
+
+    // Write data
+    data.resize( size );
+    unsigned char* cur = &data[ 0 ];
+    *(unsigned int*) cur = (unsigned int) lines.size();
+    cur += sizeof( unsigned int );
+    for( size_t i = 0; i < lines.size(); i++ )
+    {
+        Entry& entry = lines[ i ];
+        *(unsigned int*) cur = (unsigned int) entry.File.length();
+        cur += sizeof( unsigned int );
+        memcpy( cur, entry.File.c_str(), entry.File.length() );
+        cur += entry.File.length();
+        *(unsigned int*) cur = entry.StartLine;
+        cur += sizeof( unsigned int );
+        *(unsigned int*) cur = entry.Offset;
+        cur += sizeof( unsigned int );
+    }
+}
+
+void Preprocessor::LineNumberTranslator::Restore( const std::vector< unsigned char >& data )
+{
+    // Read data
+    const unsigned char* cur = &data[ 0 ];
+    unsigned int         count = *(unsigned int*) cur;
+    cur += sizeof( unsigned int );
+    lines.resize( count );
+    for( size_t i = 0; i < lines.size(); i++ )
+    {
+        Entry& entry = lines[ i ];
+        entry.File.resize( *(unsigned int*) cur );
+        cur += sizeof( unsigned int );
+        memcpy( &entry.File[ 0 ], cur, entry.File.length() );
+        cur += entry.File.length();
+        entry.StartLine = *(unsigned int*) cur;
+        cur += sizeof( unsigned int );
+        entry.Offset = *(unsigned int*) cur;
+        cur += sizeof( unsigned int );
+    }
 }
 
 /************************************************************************/
@@ -1110,13 +1163,30 @@ bool Preprocessor::IsDefined( const std::string& str )
 
 Preprocessor::LineNumberTranslator* Preprocessor::GetLineNumberTranslator()
 {
-    return LNT;
+    return new LineNumberTranslator( *LNT );
 }
 
-std::string Preprocessor::ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt )
+void Preprocessor::DeleteLineNumberTranslator( LineNumberTranslator* lnt )
+{
+    delete lnt;
+}
+
+void Preprocessor::StoreLineNumberTranslator( LineNumberTranslator* lnt, std::vector< unsigned char >& data )
+{
+    lnt->Store( data );
+}
+
+Preprocessor::LineNumberTranslator* Preprocessor::RestoreLineNumberTranslator( const std::vector< unsigned char >& data )
+{
+    LineNumberTranslator* lnt = new LineNumberTranslator();
+    lnt->Restore( data );
+    return lnt;
+}
+
+const char* Preprocessor::ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt )
 {
     lnt = ( lnt ? lnt : LNT );
-    return lnt ? lnt->Search( line_number ).File : "ERROR";
+    return lnt ? lnt->Search( line_number ).File.c_str() : "ERROR";
 }
 
 unsigned int Preprocessor::ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt )

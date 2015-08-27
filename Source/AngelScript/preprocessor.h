@@ -71,7 +71,10 @@ namespace Preprocessor
 
     // Post preprocess settings
     LineNumberTranslator*       GetLineNumberTranslator();
-    std::string                 ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt = NULL );
+    void                        DeleteLineNumberTranslator( LineNumberTranslator* lnt );
+    void                        StoreLineNumberTranslator( LineNumberTranslator* lnt, std::vector< unsigned char >& data );
+    LineNumberTranslator*       RestoreLineNumberTranslator( const std::vector< unsigned char >& data );
+    const char*                 ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt = NULL );
     unsigned int                ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt = NULL );
     std::vector< std::string >& GetFileDependencies();
     std::vector< std::string >& GetFilesPreprocessed();

@@ -43,32 +43,32 @@ const char* ContextStatesStr[] =
 
 void PrintContextCallstack( asIScriptContext* ctx )
 {
-    int                      line, column;
+    int                      line;
     const asIScriptFunction* func;
     int                      stack_size = ctx->GetCallstackSize();
-    WriteLog( "State<%s>, call stack<%d>:\n", ContextStatesStr[ (int) ctx->GetState() ], stack_size );
+    WriteLog( "State '%s', call stack:\n", ContextStatesStr[ (int) ctx->GetState() ] );
 
     // Print current function
     if( ctx->GetState() == asEXECUTION_EXCEPTION )
     {
-        line = ctx->GetExceptionLineNumber( &column );
+        line = ctx->GetExceptionLineNumber();
         func = ctx->GetExceptionFunction();
     }
     else
     {
-        line = ctx->GetLineNumber( 0, &column );
+        line = ctx->GetLineNumber( 0 );
         func = ctx->GetFunction( 0 );
     }
     if( func )
-        WriteLog( "  %d) %s : %s : %d, %d.\n", stack_size - 1, func->GetModuleName(), func->GetDeclaration(), line, column );
+        WriteLog( "  %d) %s : %s : %d.\n", stack_size - 1, Preprocessor::ResolveOriginalFile( line ), func->GetDeclaration(), Preprocessor::ResolveOriginalLine( line ) );
 
     // Print call stack
     for( int i = 1; i < stack_size; i++ )
     {
         func = ctx->GetFunction( i );
-        line = ctx->GetLineNumber( i, &column );
+        line = ctx->GetLineNumber( i );
         if( func )
-            WriteLog( "  %d) %s : %s : %d, %d.\n", stack_size - i - 1, func->GetModuleName(), func->GetDeclaration(), line, column );
+            WriteLog( "  %d) %s : %s : %d.\n", stack_size - i - 1, Preprocessor::ResolveOriginalFile( line ), func->GetDeclaration(), Preprocessor::ResolveOriginalLine( line ) );
     }
 }
 
@@ -126,7 +126,7 @@ void CallBack( const asSMessageInfo* msg, void* param )
     {
         if( msg->row )
         {
-            WriteLog( "%s(%d) : %s : %s.\n", Preprocessor::ResolveOriginalFile( msg->row ).c_str(), Preprocessor::ResolveOriginalLine( msg->row ), type, msg->message );
+            WriteLog( "%s(%d) : %s : %s.\n", Preprocessor::ResolveOriginalFile( msg->row ), Preprocessor::ResolveOriginalLine( msg->row ), type, msg->message );
         }
         else
         {
@@ -135,7 +135,7 @@ void CallBack( const asSMessageInfo* msg, void* param )
     }
     else
     {
-        WriteLog( "%s(%d) : %s : %s.\n", Preprocessor::ResolveOriginalFile( msg->row ).c_str(), Preprocessor::ResolveOriginalLine( msg->row ), type, msg->message );
+        WriteLog( "%s(%d) : %s : %s.\n", Preprocessor::ResolveOriginalFile( msg->row ), Preprocessor::ResolveOriginalLine( msg->row ), type, msg->message );
     }
 }
 

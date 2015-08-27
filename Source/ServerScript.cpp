@@ -360,12 +360,17 @@ bool FOServer::ReloadClientScripts()
                 errors++;
                 continue;
             }
-            std::vector< asBYTE >& buf = binary.GetBuf();
+            std::vector< asBYTE >&              buf = binary.GetBuf();
 
-            // Add module name and bytecode
+            UCharVec                            lnt_data;
+            Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) module->GetUserData();
+            Preprocessor::StoreLineNumberTranslator( lnt, lnt_data );
+
+            // Store data for client
             msg_script.AddStr( num, module->GetName() );
             msg_script.AddBinary( num + 1, (uchar*) &buf[ 0 ], (uint) buf.size() );
-            num += 2;
+            msg_script.AddBinary( num + 2, (uchar*) &lnt_data[ 0 ], (uint) lnt_data.size() );
+            num += 3;
         }
     }
     else

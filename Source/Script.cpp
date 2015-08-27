@@ -142,6 +142,12 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
     BindedFunctions.push_back( BindFunction() );     // Temp
     ScriptFuncBinds.clear();
 
+    Engine->SetModuleUserDataCleanupCallback([] ( asIScriptModule * module )
+                                             {
+                                                 Preprocessor::DeleteLineNumberTranslator( (Preprocessor::LineNumberTranslator*) module->GetUserData() );
+                                                 module->SetUserData( NULL );
+                                             } );
+
     while( FreeContexts.size() < 10 )
         CreateContext();
 
@@ -854,7 +860,7 @@ string Script::MakeContextTraceback( asIScriptContext* ctx, bool include_header,
     char                     buf[ MAX_FOTEXT ];
 
     ContextData*             ctx_data = (ContextData*) ctx->GetUserData();
-    int                      line, column;
+    int                      line;
     const asIScriptFunction* func;
     int                      stack_size = ctx->GetCallstackSize();
 
@@ -875,24 +881,30 @@ string Script::MakeContextTraceback( asIScriptContext* ctx, bool include_header,
     // Print current function
     if( ctx->GetState() == asEXECUTION_EXCEPTION )
     {
-        line = ctx->GetExceptionLineNumber( &column );
+        line = ctx->GetExceptionLineNumber();
         func = ctx->GetExceptionFunction();
     }
     else
     {
-        line = ctx->GetLineNumber( 0, &column );
+        line = ctx->GetLineNumber( 0 );
         func = ctx->GetFunction( 0 );
     }
     if( func )
-        result += Str::Format( buf, "  %s : %s : %d, %d\n", func->GetModuleName(), func->GetDeclaration(), line, column );
+    {
+        Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
+        result += Str::Format( buf, "  %s : %s : Line %d\n", Preprocessor::ResolveOriginalFile( line, lnt ), func->GetDeclaration(), Preprocessor::ResolveOriginalLine( line, lnt ) );
+    }
 
     // Print call stack
     for( int i = 1; i < stack_size; i++ )
     {
         func = ctx->GetFunction( i );
-        line = ctx->GetLineNumber( i, &column );
+        line = ctx->GetLineNumber( i );
         if( func )
-            result += Str::Format( buf, "  %s : %s : %d, %d\n", func->GetModuleName(), func->GetDeclaration(), line, column );
+        {
+            Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
+            result += Str::Format( buf, "  %s : %s : Line %d\n", Preprocessor::ResolveOriginalFile( line, lnt ), func->GetDeclaration(), Preprocessor::ResolveOriginalLine( line, lnt ) );
+        }
     }
 
     return result;
@@ -976,16 +988,6 @@ const char* Script::GetActiveFuncName()
     if( !func )
         return error;
     return func->GetName();
-}
-
-asIScriptModule* Script::GetModule( const char* name )
-{
-    return Engine->GetModule( name, asGM_ONLY_IF_EXISTS );
-}
-
-asIScriptModule* Script::CreateModule( const char* module_name )
-{
-    return Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
 }
 
 void ScriptWatcher( void* )
@@ -1136,6 +1138,11 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
                 pragmas.push_back( pragma );
             }
 
+            // Load line number translator data
+            uint     lnt_data_size = file_bin.GetBEUInt();
+            UCharVec lnt_data( lnt_data_size );
+            file_bin.CopyMem( &lnt_data[ 0 ], lnt_data_size );
+
             // Check for outdated
             uint64 last_write_bin = file_bin.GetWriteTime();
             // Main file
@@ -1176,6 +1183,9 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
                 asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
                 if( module )
                 {
+                    Preprocessor::LineNumberTranslator* lnt = Preprocessor::RestoreLineNumberTranslator( lnt_data );
+                    module->SetUserData( lnt );
+
                     for( size_t i = 0; i < pragmas.size(); i++ )
                         Preprocessor::CallPragma( pragmas[ i ] );
 
@@ -1268,6 +1278,12 @@ public:
         return false;
     }
 
+    // Store line number translator
+    Preprocessor::LineNumberTranslator* lnt = Preprocessor::GetLineNumberTranslator();
+    UCharVec                            lnt_data;
+    Preprocessor::StoreLineNumberTranslator( lnt, lnt_data );
+    module->SetUserData( lnt );
+
     int as_result = module->AddScriptSection( module_name, result.String.c_str() );
     if( as_result < 0 )
     {
@@ -1309,6 +1325,8 @@ public:
                 file_bin.SetStrNT( "%s", pragma.RootFile.c_str() );
                 file_bin.SetBEUInt( pragma.GlobalLine );
             }
+            file_bin.SetBEUInt( (uint) lnt_data.size() );
+            file_bin.SetData( &lnt_data[ 0 ], (uint) lnt_data.size() );
             file_bin.SetData( &data[ 0 ], (uint) data.size() );
 
             if( !file_bin.SaveOutBufToFile( Str::FormatBuf( "%sb", fname_script ), ScriptsPathCache ) )
@@ -1328,13 +1346,10 @@ public:
     return true;
 }
 
-bool Script::LoadScript( const char* module_name, const uchar* bytecode, uint len )
+bool Script::RestoreScript( const char* module_name, const UCharVec& bytecode, const UCharVec& lnt_data )
 {
-    if( !bytecode || !len )
-    {
-        WriteLogF( _FUNC_, " - Bytecode empty, module name<%s>.\n", module_name );
-        return false;
-    }
+    RUNTIME_ASSERT( !bytecode.empty() );
+    RUNTIME_ASSERT( !lnt_data.empty() );
 
     for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
     {
@@ -1354,8 +1369,11 @@ bool Script::LoadScript( const char* module_name, const uchar* bytecode, uint le
         return false;
     }
 
+    Preprocessor::LineNumberTranslator* lnt = Preprocessor::RestoreLineNumberTranslator( lnt_data );
+    module->SetUserData( lnt );
+
     CBytecodeStream binary;
-    binary.Write( bytecode, len );
+    binary.Write( &bytecode[ 0 ], (asUINT) bytecode.size() );
     int             result = module->LoadByteCode( &binary );
     if( result < 0 )
     {
@@ -2439,15 +2457,16 @@ void Script::Log( const char* str )
     }
     if( LogDebugInfo )
     {
-        int          line, column;
-        line = ctx->GetLineNumber( 0, &column );
-        ContextData* ctx_data = (ContextData*) ctx->GetUserData();
-        WriteLog( "Script callback: %s : %s : %s : %d, %d : %s.\n", str, func->GetModuleName(), func->GetDeclaration( true ), line, column, ctx_data->Info );
+        int                                 line = ctx->GetLineNumber( 0 );
+        Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
+        ContextData*                        ctx_data = (ContextData*) ctx->GetUserData();
+        WriteLog( "Script callback: %s : %s : %s : Line %d : %s.\n", str, Preprocessor::ResolveOriginalFile( line, lnt ), func->GetDeclaration( true ), Preprocessor::ResolveOriginalLine( line, lnt ), ctx_data->Info );
     }
     else
     {
-        const char* module_name = func->GetModuleName();
-        WriteLog( "%s : %s\n", module_name ? module_name : "<unknown>", str );
+        int                                 line = ctx->GetLineNumber( 0 );
+        Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
+        WriteLog( "%s : %s\n", Preprocessor::ResolveOriginalFile( line, lnt ), str );
     }
 }
 
@@ -2463,7 +2482,7 @@ void Script::CallbackMessage( const asSMessageInfo* msg, void* param )
         type = "Warning";
     else if( msg->type == asMSGTYPE_INFORMATION )
         type = "Info";
-    WriteLog( "%s : %s : %s : %d, %d.\n", msg->section, type, msg->message, msg->row, msg->col );
+    WriteLog( "%s : %s : %s : Line %d.\n", Preprocessor::ResolveOriginalFile( msg->row ), type, msg->message, Preprocessor::ResolveOriginalLine( msg->row ) );
 }
 
 void Script::CallbackException( asIScriptContext* ctx, void* param )

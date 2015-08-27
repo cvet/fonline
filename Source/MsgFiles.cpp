@@ -146,25 +146,19 @@ int FOMsg::GetInt( uint num )
     return Str::AtoI( ( *it ).second );
 }
 
-const uchar* FOMsg::GetBinary( uint num, uint& len )
+uint FOMsg::GetBinary( uint num, UCharVec& data  )
 {
-    if( !Count( num ) )
-        return NULL;
+    data.clear();
 
-    static THREAD UCharVec* binary = NULL;
-    if( !binary )
-        binary = new UCharVec();
+    if( !Count( num ) )
+        return 0;
 
     const char* str = GetStr( num );
-    binary->clear();
-    while( *str )
-    {
-        binary->push_back( Str::StrToHex( str ) );
-        str += 2;
-    }
-
-    len = (uint) binary->size();
-    return &( *binary )[ 0 ];
+    uint        len = Str::Length( str ) / 2;
+    data.resize( len );
+    for( uint i = 0; i < len; i++ )
+        data[ i ] = Str::StrToHex( &str[ i * 2 ] );
+    return len;
 }
 
 int FOMsg::Count( uint num )

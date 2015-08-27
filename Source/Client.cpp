@@ -8926,7 +8926,8 @@ bool FOClient::ReloadScripts()
 
     FOMsg& msg_script = CurLang.Msg[ TEXTMSG_INTERNAL ];
     if( !msg_script.Count( STR_INTERNAL_SCRIPT_MODULES ) ||
-        !msg_script.Count( STR_INTERNAL_SCRIPT_MODULES + 1 ) )
+        !msg_script.Count( STR_INTERNAL_SCRIPT_MODULES + 1 ) ||
+        !msg_script.Count( STR_INTERNAL_SCRIPT_MODULES + 2 ) )
     {
         WriteLog( "Main script section not found in MSG.\n" );
         AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
@@ -8972,10 +8973,9 @@ bool FOClient::ReloadScripts()
         if( !msg_script.Count( i ) || !msg_script.Count( i + 1 ) )
             break;
 
-        const char*  dll_name = msg_script.GetStr( i );
-        uint         len;
-        const uchar* dll_binary = msg_script.GetBinary( i + 1, len );
-        if( !dll_binary )
+        const char* dll_name = msg_script.GetStr( i );
+        UCharVec    dll_binary;
+        if( !msg_script.GetBinary( i + 1, dll_binary ) )
             break;
 
         // Fix slashes
@@ -8987,7 +8987,7 @@ bool FOClient::ReloadScripts()
 
         // Save to cache
         FileManager dll;
-        if( dll.LoadStream( dll_binary, len ) )
+        if( dll.LoadStream( &dll_binary[ 0 ], (uint) dll_binary.size() ) )
         {
             dll.SwitchToWrite();
             dll.SaveOutBufToFile( dll_name, PT_CACHE );
@@ -9011,18 +9011,23 @@ bool FOClient::ReloadScripts()
 
     // Load modules
     int errors = 0;
-    for( int i = STR_INTERNAL_SCRIPT_MODULES; ; i += 2 )
+    for( int i = STR_INTERNAL_SCRIPT_MODULES; ; i += 3 )
     {
-        if( !msg_script.Count( i ) || !msg_script.Count( i + 1 ) )
+        if( !msg_script.Count( i ) || !msg_script.Count( i + 1 ) || !msg_script.Count( i + 2 ) )
             break;
 
-        const char*  module_name = msg_script.GetStr( i );
-        uint         len;
-        const uchar* bytecode = msg_script.GetBinary( i + 1, len );
-        if( !bytecode )
-            break;
+        const char* module_name = msg_script.GetStr( i );
+        RUNTIME_ASSERT( module_name && module_name[ 0 ] );
 
-        if( !Script::LoadScript( module_name, bytecode, len ) )
+        UCharVec bytecode;
+        msg_script.GetBinary( i + 1, bytecode );
+        RUNTIME_ASSERT( !bytecode.empty() );
+
+        UCharVec lnt_data;
+        msg_script.GetBinary( i + 2, lnt_data );
+        RUNTIME_ASSERT( !lnt_data.empty() );
+
+        if( !Script::RestoreScript( module_name, bytecode, lnt_data ) )
         {
             WriteLog( "Load script<%s> fail.\n", module_name );
             errors++;

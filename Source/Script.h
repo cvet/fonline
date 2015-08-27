@@ -81,10 +81,8 @@ public:
     static PropertyRegistrator* FindEntityRegistrator( const char* class_name );
     static void                 RestoreEntity( const char* class_name, uint id, Properties& props );
 
-    static const char*      GetActiveModuleName();
-    static const char*      GetActiveFuncName();
-    static asIScriptModule* GetModule( const char* name );
-    static asIScriptModule* CreateModule( const char* module_name );
+    static const char* GetActiveModuleName();
+    static const char* GetActiveFuncName();
 
     static void Watcher();
     static void SetRunTimeout( uint abort_timeout, uint message_timeout );
@@ -93,7 +91,7 @@ public:
     static void Undef( const char* def );
     static void CallPragmas( const Pragmas& pragmas );
     static bool LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_prefix = NULL );
-    static bool LoadScript( const char* module_name, const uchar* bytecode, uint len );
+    static bool RestoreScript( const char* module_name, const UCharVec& bytecode, const UCharVec& lnt_data );
 
     static bool   BindImportedFunctions();
     static uint   Bind( const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log = false );

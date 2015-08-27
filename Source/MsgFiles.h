@@ -36,16 +36,16 @@ public:
     void AddStr( uint num, const string& str );
     void AddBinary( uint num, const uchar* binary, uint len );
 
-    const char*  GetStr( uint num );
-    const char*  GetStr( uint num, uint skip );
-    uint         GetStrNumUpper( uint num );
-    uint         GetStrNumLower( uint num );
-    int          GetInt( uint num );
-    const uchar* GetBinary( uint num, uint& len );
-    int          Count( uint num );
-    void         EraseStr( uint num );
-    uint         GetSize();
-    bool         IsIntersects( const FOMsg& other );
+    const char* GetStr( uint num );
+    const char* GetStr( uint num, uint skip );
+    uint        GetStrNumUpper( uint num );
+    uint        GetStrNumLower( uint num );
+    int         GetInt( uint num );
+    uint        GetBinary( uint num, UCharVec& data );
+    int         Count( uint num );
+    void        EraseStr( uint num );
+    uint        GetSize();
+    bool        IsIntersects( const FOMsg& other );
 
     // Serialization
     void GetBinaryData( UCharVec& data );
