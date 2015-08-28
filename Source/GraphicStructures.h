@@ -100,6 +100,7 @@ struct AnyFrames
     // Creation in pool
     static AnyFrames* Create( uint frames, uint ticks );
     static void       Destroy( AnyFrames* anim );
+    static void       SetDummy( AnyFrames* anim );
 
     // Disable constructors to avoid unnecessary calls
 private:

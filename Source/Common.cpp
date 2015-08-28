@@ -486,7 +486,13 @@ int64 ConvertParamValue( const char* str )
         #endif
     }
     if( !Str::IsNumber( str ) )
+    {
+        if( Str::CompareCase( str, "true" ) )
+            return 1;
+        else if( Str::CompareCase( str, "false" ) )
+            return 0;
         return Str::GetHash( str );
+    }
     return Str::AtoI64( str );
 }
 

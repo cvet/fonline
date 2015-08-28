@@ -237,6 +237,7 @@ bool SpriteManager::Init()
         memzero( DummyAnimation, sizeof( AnyFrames ) );
         DummyAnimation->CntFrm = 1;
         DummyAnimation->Ticks = 100;
+        AnyFrames::SetDummy( DummyAnimation );
     }
 
     WriteLog( "Sprite manager initialization complete.\n" );

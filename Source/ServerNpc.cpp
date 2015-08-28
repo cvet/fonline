@@ -1114,34 +1114,34 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
                 uint        slave_id = slave->GetId();
                 void*       pvalue = dict->GetDefault( &slave_id, NULL );
                 dict->Release();
-                if( !pvalue )
-                    break;
-
-                int value_type_id = prop->GetASObjectType()->GetSubTypeId( 1 );
-                if( value_type_id == asTYPEID_BOOL )
-                    val = (int) *(bool*) pvalue ? 1 : 0;
-                else if( value_type_id == asTYPEID_INT8 )
-                    val = (int) *(char*) pvalue;
-                else if( value_type_id == asTYPEID_INT16 )
-                    val = (int) *(short*) pvalue;
-                else if( value_type_id == asTYPEID_INT32 )
-                    val = (int) *(char*) pvalue;
-                else if( value_type_id == asTYPEID_INT64 )
-                    val = (int) *(int64*) pvalue;
-                else if( value_type_id == asTYPEID_UINT8 )
-                    val = (int) *(uchar*) pvalue;
-                else if( value_type_id == asTYPEID_UINT16 )
-                    val = (int) *(ushort*) pvalue;
-                else if( value_type_id == asTYPEID_UINT32 )
-                    val = (int) *(uint*) pvalue;
-                else if( value_type_id == asTYPEID_UINT64 )
-                    val = (int) *(uint64*) pvalue;
-                else if( value_type_id == asTYPEID_FLOAT )
-                    val = (int) *(float*) pvalue;
-                else if( value_type_id == asTYPEID_DOUBLE )
-                    val = (int) *(double*) pvalue;
-                else
-                    RUNTIME_ASSERT( false );
+                if( pvalue )
+                {
+                    int value_type_id = prop->GetASObjectType()->GetSubTypeId( 1 );
+                    if( value_type_id == asTYPEID_BOOL )
+                        val = (int) *(bool*) pvalue ? 1 : 0;
+                    else if( value_type_id == asTYPEID_INT8 )
+                        val = (int) *(char*) pvalue;
+                    else if( value_type_id == asTYPEID_INT16 )
+                        val = (int) *(short*) pvalue;
+                    else if( value_type_id == asTYPEID_INT32 )
+                        val = (int) *(char*) pvalue;
+                    else if( value_type_id == asTYPEID_INT64 )
+                        val = (int) *(int64*) pvalue;
+                    else if( value_type_id == asTYPEID_UINT8 )
+                        val = (int) *(uchar*) pvalue;
+                    else if( value_type_id == asTYPEID_UINT16 )
+                        val = (int) *(ushort*) pvalue;
+                    else if( value_type_id == asTYPEID_UINT32 )
+                        val = (int) *(uint*) pvalue;
+                    else if( value_type_id == asTYPEID_UINT64 )
+                        val = (int) *(uint64*) pvalue;
+                    else if( value_type_id == asTYPEID_FLOAT )
+                        val = (int) *(float*) pvalue;
+                    else if( value_type_id == asTYPEID_DOUBLE )
+                        val = (int) *(double*) pvalue;
+                    else
+                        RUNTIME_ASSERT( false );
+                }
             }
             else
             {

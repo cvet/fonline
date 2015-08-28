@@ -20,7 +20,8 @@ bool Is3dExtensionSupported( const char* ext )
 // AnyFrames
 //
 
-MemoryPool< sizeof( AnyFrames ), ANY_FRAMES_POOL_SIZE > AnyFramesPool;
+static MemoryPool< sizeof( AnyFrames ), ANY_FRAMES_POOL_SIZE > AnyFramesPool;
+static AnyFrames*                                              DummyAnim;
 
 AnyFrames* AnyFrames::Create( uint frames, uint ticks )
 {
@@ -34,11 +35,16 @@ AnyFrames* AnyFrames::Create( uint frames, uint ticks )
 
 void AnyFrames::Destroy( AnyFrames* anim )
 {
-    if( !anim )
+    if( !anim || anim == DummyAnim )
         return;
     for( int dir = 1; dir < anim->DirCount(); dir++ )
         AnyFramesPool.Put( anim->GetDir( dir ) );
     AnyFramesPool.Put( anim );
+}
+
+void AnyFrames::SetDummy( AnyFrames* anim )
+{
+    DummyAnim = anim;
 }
 
 void AnyFrames::CreateDirAnims()
