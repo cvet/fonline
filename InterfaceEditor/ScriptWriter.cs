@@ -291,7 +291,6 @@ namespace InterfaceEditor
 			if (obj is GUIItemView)
 			{
 				WriteClassFunction("int OnCheckItem( ItemCl@ item ) override", ((GUIItemView)obj).OnCheckItem);
-				WriteClassFunction("void OnScrollChanged() override", ((GUIItemView)obj).OnScrollChanged);
 			}
 
 			// Subtypes

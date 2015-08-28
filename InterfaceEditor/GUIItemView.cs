@@ -28,8 +28,6 @@ namespace InterfaceEditor
 
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnCheckItem { get; set; }
-		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
-		public string OnScrollChanged { get; set; }
 
 		public GUIItemView(GUIObject parent)
 			: base(parent)
