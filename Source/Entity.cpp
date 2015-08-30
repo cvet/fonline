@@ -10,7 +10,7 @@
 # include "CritterCl.h"
 #endif
 
-Entity::Entity( uint id, EntityType type, PropertyRegistrator* registartor ): Id( id ), Type( type ), Props( registartor )
+Entity::Entity( uint id, EntityType type, PropertyRegistrator* registartor ): Props( registartor ), Id( id ), Type( type )
 {
     RUNTIME_ASSERT( Type != EntityType::Invalid );
 

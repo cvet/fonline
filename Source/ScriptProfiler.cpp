@@ -124,7 +124,7 @@ void ScriptProfiler::Process( asIScriptContext* ctx )
 
     callStack.clear();
     asIScriptFunction* func;
-    int                line, column = 0;
+    int                line = 0;
     uint               stack_size = ctx->GetCallstackSize();
     for( uint j = 0; j < stack_size; j++ )
     {

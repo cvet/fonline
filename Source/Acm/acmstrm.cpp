@@ -395,7 +395,7 @@ int CACMUnpacker::t1_5bits (int pass, int ind) {
 // use it when P0 <= 1/3
 	for (int i=0; i<packAttrs2; i++) {
 		char bits = getBits (5) & 0x1f;
-		bits = Table1 [bits];
+		bits = Table1 [(unsigned char)bits];
 
 		someBuff [i*someSize + pass] = Buffer_Middle[-1 + (bits & 3)];
 			if ((++i) == packAttrs2) break;
@@ -464,7 +464,7 @@ int CACMUnpacker::t2_7bits (int pass, int ind) {
 // use it when p0 <= 1/3
 	for (int i=0; i<packAttrs2; i++) {
 		char bits = getBits (7) & 0x7f;
-		short val = Table2 [bits];
+		short val = Table2 [(unsigned char)bits];
 
 		someBuff [i*someSize + pass] = Buffer_Middle[-2 + (val & 7)];
 			if ((++i) == packAttrs2) break;
@@ -580,7 +580,7 @@ int CACMUnpacker::t3_7bits (int pass, int ind) {
 // эффективность: 7/2 бита на значение - всегда
 	for (int i=0; i<packAttrs2; i++) {
 		char bits = getBits (7) & 0x7f;
-		unsigned char val = Table3 [bits];
+		unsigned char val = Table3 [(unsigned char)bits];
 
 		someBuff [i*someSize + pass] = Buffer_Middle[-5 + (val & 0xF)];
 			if ((++i) == packAttrs2) break;

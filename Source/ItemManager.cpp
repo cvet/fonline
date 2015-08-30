@@ -104,7 +104,7 @@ bool ItemManager::LoadProtos()
 
             FOMsg* msg = new FOMsg();
             uint   str_num = 0;
-            while( str_num = temp_msg.GetStrNumUpper( str_num ) )
+            while( ( str_num = temp_msg.GetStrNumUpper( str_num ) ) )
             {
                 uint count = temp_msg.Count( str_num );
                 uint new_str_num = ITEM_STR_ID( proto->ProtoId, str_num );

@@ -695,7 +695,6 @@ void CritterCl::DrawStay( Rect r )
 
 void CritterCl::NextRateItem( bool prev )
 {
-    uchar old_rate = ItemSlotMain->GetMode();
     if( !ItemSlotMain->IsWeapon() )
     {
         if( ItemSlotMain->GetIsCanUse() || ItemSlotMain->GetIsCanUseOnSmth() )

@@ -9,16 +9,6 @@
 # include "AI.h"
 #endif
 
-HASH_IMPL( ITEM_DEF_SLOT, "default_weapon" );
-HASH_IMPL( ITEM_DEF_ARMOR, "default_armor" );
-HASH_IMPL( SP_SCEN_IBLOCK, "minimap_invisible_block" );
-HASH_IMPL( SP_SCEN_TRIGGER, "trigger" );
-HASH_IMPL( SP_WALL_BLOCK_LIGHT, "block_light" );
-HASH_IMPL( SP_WALL_BLOCK, "block" );
-HASH_IMPL( SP_GRID_EXITGRID, "exit_grid" );
-HASH_IMPL( SP_GRID_ENTIRE, "entrance" );
-HASH_IMPL( SP_MISC_SCRBLOCK, "scroll_block" );
-
 const char* ItemEventFuncName[ ITEM_EVENT_MAX ] =
 {
     "void %s(Item&,bool)",                             // ITEM_EVENT_FINISH

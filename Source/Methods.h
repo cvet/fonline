@@ -51,7 +51,7 @@ public:
     // void SetWatcher(asIScriptFunction* func, bool enable);
 
 private:
-    MethodRegistrator* registrator;
+    // MethodRegistrator* registrator;
     UIntVec            watcherBindIds;
 };
 

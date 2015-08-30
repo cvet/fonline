@@ -798,6 +798,17 @@ char* Str::GetBigBuf()
 #pragma RACE_CONDITION
 static map< hash, const char* > HashRawNames;
 static map< hash, const char* > HashFormattedNames;
+#define HASH_IMPL( var, name )        hash var = Str::GetHash( name )
+HASH_IMPL( ITEM_DEF_SLOT, "default_weapon" );
+HASH_IMPL( ITEM_DEF_ARMOR, "default_armor" );
+HASH_IMPL( SP_SCEN_IBLOCK, "minimap_invisible_block" );
+HASH_IMPL( SP_SCEN_TRIGGER, "trigger" );
+HASH_IMPL( SP_WALL_BLOCK_LIGHT, "block_light" );
+HASH_IMPL( SP_WALL_BLOCK, "block" );
+HASH_IMPL( SP_GRID_EXITGRID, "exit_grid" );
+HASH_IMPL( SP_GRID_ENTIRE, "entrance" );
+HASH_IMPL( SP_MISC_SCRBLOCK, "scroll_block" );
+
 static void AddNameHash( hash hash, const char* raw_name, const char* formatted_name )
 {
     auto ins = HashFormattedNames.insert( PAIR( hash, Str::Duplicate( formatted_name ) ) );

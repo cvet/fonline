@@ -516,7 +516,6 @@ bool Script::ReloadScripts( const char* target, bool skip_binaries, const char* 
     EngineData*     edata = (EngineData*) Engine->GetUserData();
 
     FilesCollection files = FilesCollection( ScriptsPath, "fos", true );
-    uint            files_loaded = 0;
     int             errors = 0;
     while( files.IsNextFile() )
     {
@@ -1678,7 +1677,8 @@ string Script::GetBindFuncName( uint bind_id )
 
 hash Script::GetFuncNum( asIScriptFunction* func )
 {
-    hash func_num = (hash) func->GetUserData();
+    uint64 h = (uint64) func->GetUserData();
+    hash func_num = (hash) h;
     if( !func_num )
     {
         char func_signature[ MAX_FOTEXT ];
@@ -1819,7 +1819,9 @@ static THREAD size_t            NativeFuncAddr = 0;
 static THREAD size_t            NativeArgs[ 256 ] = { 0 };
 static THREAD size_t            RetValue[ 2 ] = { 0 }; // EAX:EDX
 static THREAD size_t            CurrentArg = 0;
+#ifdef SCRIPT_MULTITHREADING
 static THREAD int               ExecutionRecursionCounter = 0;
+#endif
 
 #ifdef SCRIPT_MULTITHREADING
 static size_t     SynchronizeThreadId = 0;

@@ -761,8 +761,6 @@ void Property::SetPropRawData( Properties* properties, uchar* data, uint data_si
 
 void Property::SetData( Entity* entity, uchar* data, uint data_size )
 {
-    Properties* properties = &entity->Props;
-
     if( dataType == Property::POD )
     {
         RUNTIME_ASSERT( data_size == baseSize );

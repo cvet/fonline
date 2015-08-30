@@ -328,8 +328,6 @@ ScriptDict::ScriptDict( asIObjectType* ot, void* listBuffer )
     dictMap = new DictMap( DictMapComparator( keyTypeId ) );
 
     asIScriptEngine* engine = ot->GetEngine();
-    DictMap*         dict = (DictMap*) dictMap;
-
     asBYTE*          buffer = (asBYTE*) listBuffer;
     asUINT           length = *(asUINT*) buffer;
     buffer += 4;
