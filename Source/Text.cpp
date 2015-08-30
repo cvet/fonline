@@ -795,10 +795,11 @@ char* Str::GetBigBuf()
     return BigBuf;
 }
 
-#pragma RACE_CONDITION
+static Mutex                    HashNamesLocker;
 static map< hash, const char* > HashRawNames;
 static map< hash, const char* > HashFormattedNames;
-#define HASH_IMPL( var, name )        hash var = Str::GetHash( name )
+
+#define HASH_IMPL( var, name )    hash var = Str::GetHash( name )
 HASH_IMPL( ITEM_DEF_SLOT, "default_weapon" );
 HASH_IMPL( ITEM_DEF_ARMOR, "default_armor" );
 HASH_IMPL( SP_SCEN_IBLOCK, "minimap_invisible_block" );
@@ -811,6 +812,8 @@ HASH_IMPL( SP_MISC_SCRBLOCK, "scroll_block" );
 
 static void AddNameHash( hash hash, const char* raw_name, const char* formatted_name )
 {
+    SCOPE_LOCK( HashNamesLocker );
+
     auto ins = HashFormattedNames.insert( PAIR( hash, Str::Duplicate( formatted_name ) ) );
     if( !ins.second && !Str::Compare( ( *ins.first ).second, formatted_name ) )
         WriteLog( "Hash collision detected for names <%s> and <%s>, hash<%08X>.\n", formatted_name, ( *ins.first ).second, hash );
@@ -850,6 +853,8 @@ hash Str::GetHash( const char* name )
 
 const char* Str::GetName( hash h )
 {
+    SCOPE_LOCK( HashNamesLocker );
+
     auto it = HashRawNames.find( h );
     if( it == HashRawNames.end() )
     {
@@ -862,14 +867,17 @@ const char* Str::GetName( hash h )
 
 void Str::SaveHashes( void ( * save_func )( void*, size_t ) )
 {
+    SCOPE_LOCK( HashNamesLocker );
+
     for( auto it = HashRawNames.begin(); it != HashRawNames.end(); ++it )
     {
-        const string& name = it->second;
-        if( name.length() <= 255 )
+        const char* name = it->second;
+        uint        name_len = Str::Length( name );
+        if( name_len <= 255 )
         {
-            uchar name_len = (uchar) name.length();
-            save_func( &name_len, sizeof( name_len ) );
-            save_func( (void*) name.c_str(), name_len );
+            uchar name_len_ = (uchar) name_len;
+            save_func( &name_len_, sizeof( name_len_ ) );
+            save_func( (void*) name, name_len );
         }
     }
     uchar zero = 0;
