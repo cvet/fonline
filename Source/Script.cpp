@@ -1678,7 +1678,7 @@ string Script::GetBindFuncName( uint bind_id )
 hash Script::GetFuncNum( asIScriptFunction* func )
 {
     uint64 h = (uint64) func->GetUserData();
-    hash func_num = (hash) h;
+    hash   func_num = (hash) h;
     if( !func_num )
     {
         char func_signature[ MAX_FOTEXT ];

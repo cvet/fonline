@@ -52,7 +52,7 @@ public:
 
 private:
     // MethodRegistrator* registrator;
-    UIntVec            watcherBindIds;
+    UIntVec watcherBindIds;
 };
 
 class MethodRegistrator

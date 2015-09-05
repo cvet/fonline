@@ -4806,6 +4806,14 @@ void FOClient::Net_OnProperty( uint data_size )
         Script::SetArgObject( entity );
         Script::RunPrepared();
     }
+
+    if( type == NetProperty::ChosenItem )
+    {
+        CollectContItems();
+        Item* item = (Item*) entity;
+        item->AddRef();
+        OnItemInvChanged( item, item );
+    }
 }
 
 void FOClient::Net_OnChosenTalk()

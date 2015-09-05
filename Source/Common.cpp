@@ -1616,7 +1616,7 @@ void Thread::Finish()
 void Thread::Release()
 {
     isStarted = false;
-    threadId = NULL;
+    threadId = 0;
 }
 
 # if defined ( FO_WINDOWS )
