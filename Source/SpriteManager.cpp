@@ -109,12 +109,15 @@ bool SpriteManager::Init()
 
     // Calculate atlas size
     GLint max_texture_size;
+    GLint max_viewport_size[ 2 ];
     GL( glGetIntegerv( GL_MAX_TEXTURE_SIZE, &max_texture_size ) );
-    max_texture_size = MIN( max_texture_size, MAX_ATLAS_SIZE );
-    atlasWidth = atlasHeight = max_texture_size;
+    GL( glGetIntegerv( GL_MAX_VIEWPORT_DIMS, max_viewport_size ) );
+    atlasWidth = atlasHeight = MIN( max_texture_size, MAX_ATLAS_SIZE );
+    atlasWidth = MIN( max_viewport_size[ 0 ], atlasWidth );
+    atlasHeight = MIN( max_viewport_size[ 1 ], atlasHeight );
     #ifdef FO_OSX_IOS
-    atlasWidth = MIN( 2048, max_texture_size );
-    atlasHeight = MIN( 3584, max_texture_size );
+    atlasWidth = MIN( 2048, atlasWidth );
+    atlasHeight = MIN( 3584, atlasHeight );
     #endif
 
     // Initialize GLEW
