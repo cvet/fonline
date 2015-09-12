@@ -9099,6 +9099,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(CritterCl&,ItemCl&,uint8)" },
         { &ClientFunctions.CheckInterfaceHit, "check_interface_hit", "bool %s(int,int)" },
         { &ClientFunctions.GetContItem, "get_cont_item", "bool %s(uint&,bool&)" },
+        { &ClientFunctions.LMenuNodeSelect, "lmenu_node_select", "bool %s(int,CritterCl@,ItemCl@)" },
     };
     if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
         errors++;

@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 534 )
+#define FONLINE_VERSION                          ( 10021 )
 
 // Debugging
 // #define DEV_VERSION
@@ -326,6 +326,7 @@ struct ClientScriptFunctions
     int GetAttackDistantion;
     int CheckInterfaceHit;
     int GetContItem;
+    int LMenuNodeSelect;
 } extern ClientFunctions;
 
 struct MapperScriptFunctions

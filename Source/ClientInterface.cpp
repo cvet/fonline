@@ -2716,13 +2716,32 @@ void FOClient::LMenuMouseUp()
     auto it_l = LMenuCurNodes->begin();
     it_l += LMenuCurNode;
 
+    CritterCl* cr = NULL;
+    ItemHex*   item = NULL;
+    Item*      cont_item = NULL;
+    if( TargetSmth.IsCritter() )
+        cr = GetCritter( TargetSmth.GetId() );
+    else if( TargetSmth.IsItem() )
+        item = GetItem( TargetSmth.GetId() );
+    else if( TargetSmth.IsContItem() )
+        cont_item = GetTargetContItem();
+
+    if( Script::PrepareContext( ClientFunctions.LMenuNodeSelect, _FUNC_, "Game" ) )
+    {
+        Script::SetArgUInt( *it_l );
+        Script::SetArgObject( cr );
+        Script::SetArgObject( item ? item : cont_item );
+        if( Script::RunPrepared() && Script::GetReturnedBool() )
+        {
+            LMenuSet( LMENU_OFF );
+            return;
+        }
+    }
+
     switch( LMenuMode )
     {
     case LMENU_PLAYER:
     {
-        if( !TargetSmth.IsCritter() )
-            break;
-        CritterCl* cr = GetCritter( TargetSmth.GetId() );
         if( !cr )
             break;
 
@@ -2791,9 +2810,6 @@ void FOClient::LMenuMouseUp()
     break;
     case LMENU_NPC:
     {
-        if( !TargetSmth.IsCritter() )
-            break;
-        CritterCl* cr = GetCritter( TargetSmth.GetId() );
         if( !cr )
             break;
 
@@ -2847,9 +2863,6 @@ void FOClient::LMenuMouseUp()
     break;
     case LMENU_ITEM:
     {
-        if( !TargetSmth.IsItem() )
-            break;
-        ItemHex* item = GetItem( TargetSmth.GetId() );
         if( !item )
             break;
 
@@ -2894,7 +2907,6 @@ void FOClient::LMenuMouseUp()
     break;
     case LMENU_ITEM_INV:
     {
-        Item* cont_item = GetTargetContItem();
         if( !cont_item )
             break;
         Item* inv_item = Chosen->GetItem( cont_item->GetId() );
@@ -3015,9 +3027,6 @@ void FOClient::LMenuMouseUp()
     break;
     case LMENU_GMAP_CRIT:
     {
-        if( !TargetSmth.IsCritter() )
-            break;
-        CritterCl* cr = GetCritter( TargetSmth.GetId() );
         if( !cr )
             break;
 
