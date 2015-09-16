@@ -116,7 +116,7 @@ bool FOServer::InitScriptSystem()
     Script::Undef( NULL );
     Script::Define( "__SERVER" );
     Script::Define( "__VERSION %d", FONLINE_VERSION );
-    if( !Script::ReloadScripts( "Server", false ) )
+    if( !Script::ReloadScripts( "Server", "SERVER_" ) )
     {
         Script::Finish();
         WriteLog( "Reload scripts fail.\n" );
@@ -348,7 +348,7 @@ bool FOServer::ReloadClientScripts()
     FOMsg msg_script;
     int   num = STR_INTERNAL_SCRIPT_MODULES;
     int   errors = 0;
-    if( Script::ReloadScripts( "Client", false, "CLIENT_" ) )
+    if( Script::ReloadScripts( "Client", "CLIENT_" ) )
     {
         for( asUINT i = 0; i < engine->GetModuleCount(); i++ )
         {
@@ -573,7 +573,7 @@ bool FOServer::ReloadMapperScripts()
     Script::SetLoadLibraryCompiler( true );
 
     int errors = 0;
-    if( !Script::ReloadScripts( "Client", false, "MAPPER_" ) )
+    if( !Script::ReloadScripts( "Client", "MAPPER_" ) )
         errors++;
 
     // Imported functions
@@ -5656,9 +5656,10 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, ScriptString* image_na
         SCRIPT_ERROR_R0( "Wrong extension. Allowed only PNG." );
 
     // Load file to memory
-    FileManager fm;
-    if( !fm.LoadFile( image_name->c_str(), PT_SERVER_MAPS ) )
-        SCRIPT_ERROR_R0( "File not found." );
+    FilesCollection images( "png" );
+    FileManager&    fm = images.FindFile( image_name->c_str() );
+    if( !fm.IsLoaded() )
+        SCRIPT_ERROR_R0( "File '%s' not found.", image_name->c_str() );
 
     // Load PNG from memory
     png_structp pp = png_create_read_struct( PNG_LIBPNG_VER_STRING, NULL, NULL, NULL );

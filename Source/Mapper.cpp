@@ -5282,7 +5282,7 @@ bool FOMapper::InitScriptSystem()
     Script::Undef( NULL );
     Script::Define( "__MAPPER" );
     Script::Define( "__VERSION %d", FONLINE_VERSION );
-    Script::ReloadScripts( "Mapper", false, "MAPPER_" );
+    Script::ReloadScripts( "Mapper", "MAPPER_" );
     FileManager::SetWritePath( ClientWritePath );
 
     // Bind game functions
@@ -6053,12 +6053,12 @@ int FOMapper::SScriptFunc::Global_GetLoadedMaps( ScriptArray* maps )
 uint FOMapper::SScriptFunc::Global_GetMapFileNames( ScriptString* dir, ScriptArray* names )
 {
     FileManager::SetWritePath( ServerWritePath );
-    string dir_ = FileManager::GetReadPath( "", PT_SERVER_MAPS );
+    string dir_ = FileManager::GetReadPath( "", PT_SERVER_MODULES );
     uint   n = 0;
     if( dir )
         dir_ = dir->c_std_str();
 
-    FIND_DATA fd;
+    FindData fd;
     void*     h = FileFindFirst( dir_.c_str(), NULL, fd );
     if( !h )
     {

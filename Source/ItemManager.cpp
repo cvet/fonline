@@ -51,7 +51,7 @@ bool ItemManager::LoadProtos()
 {
     WriteLog( "Load item prototypes...\n" );
 
-    FilesCollection files = FilesCollection( PT_SERVER_PRO_ITEMS, "foitem", true );
+    FilesCollection files = FilesCollection( "foitem" );
     uint            files_loaded = 0;
     int             errors = 0;
     while( files.IsNextFile() )

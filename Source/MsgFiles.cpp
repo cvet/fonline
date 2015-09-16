@@ -416,20 +416,35 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
 {
     memcpy( NameStr, lang_name, 4 );
 
-    int errors = 0;
-    for( int i = 0; i < TEXTMSG_COUNT; i++ )
+    FilesCollection msg_files( "msg" );
+    while( msg_files.IsNextFile() )
     {
-        if( !Msg[ i ].LoadFromFile( Str::FormatBuf( "%s" DIR_SLASH_S "%s", NameStr, TextMsgFileName[ i ] ), PT_SERVER_TEXTS ) )
+        const char*  name, * name_with_path;
+        FileManager& msg_file = msg_files.GetNextFile( &name, &name_with_path );
+
+        // Check pattern '...Texts/lang/file'
+        StrVec dirs;
+        Str::ParseLine( name_with_path, DIR_SLASH_C, dirs, Str::ParseLineDummy );
+        if( dirs.size() >= 3 && dirs[ dirs.size() - 3 ] == "Texts" && dirs[ dirs.size() - 2 ] == lang_name )
         {
-            if( i != TEXTMSG_INTERNAL && i != TEXTMSG_DLG && i != TEXTMSG_LOCATIONS && i != TEXTMSG_ITEM )
+            for( int i = 0; i < TEXTMSG_COUNT; i++ )
             {
-                errors++;
-                WriteLogF( _FUNC_, " - Unable to load MSG<%s> from file.\n", TextMsgFileName[ i ] );
+                char name_[ MAX_FOPATH ];
+                Str::Copy( name_, TextMsgFileName[ i ] );
+                FileManager::EraseExtension( name_ );
+                if( Str::CompareCase( name_, name ) )
+                {
+                    Msg[ i ].LoadFromString( (char*) msg_file.GetBuf(), msg_file.GetFsize() );
+                    break;
+                }
             }
         }
     }
 
-    IsAllMsgLoaded = errors == 0;
+    if( Msg[ TEXTMSG_GAME ].GetSize() == 0 )
+        WriteLogF( _FUNC_, " - Unable to load '%s' from file.\n", TextMsgFileName[ TEXTMSG_GAME ] );
+
+    IsAllMsgLoaded = ( Msg[ TEXTMSG_GAME ].GetSize() > 0 );
     return IsAllMsgLoaded;
 }
 

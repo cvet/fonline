@@ -200,8 +200,8 @@ void FolderFile::CollectFilesTree( IndexMap& files_tree )
 {
     files_tree.clear();
 
-    StrVec              files;
-    vector< FIND_DATA > find_data;
+    StrVec      files;
+    FindDataVec find_data;
     FileManager::GetFolderFileNames( basePath.c_str(), true, NULL, files, &find_data );
 
     char name[ MAX_FOPATH ];
@@ -244,6 +244,7 @@ bool FolderFile::IsFilePresent( const char* fname, const char* original_fname, u
     void* f = FileOpen( fname_, false );
     if( !f )
         return false;
+    size = FileGetSize( f );
     write_time = FileGetWriteTime( f );
     FileClose( f );
     return true;
@@ -478,9 +479,13 @@ bool FalloutDatFile::IsFilePresent( const char* fname, const char* original_fnam
     if( !datHandle )
         return false;
 
-    size = fileSize;
-    write_time = writeTime;
-    return filesTree.find( fname ) != filesTree.end();
+    if( filesTree.find( fname ) != filesTree.end() )
+    {
+        size = fileSize;
+        write_time = writeTime;
+        return true;
+    }
+    return false;
 }
 
 uchar* FalloutDatFile::OpenFile( const char* fname, const char* original_fname, uint& size, uint64& write_time )
@@ -757,9 +762,13 @@ bool ZipFile::IsFilePresent( const char* fname, const char* original_fname, uint
     if( !zipHandle )
         return false;
 
-    size = fileSize;
-    write_time = writeTime;
-    return filesTree.find( fname ) != filesTree.end();
+    if( filesTree.find( fname ) != filesTree.end() )
+    {
+        size = fileSize;
+        write_time = writeTime;
+        return true;
+    }
+    return false;
 }
 
 uchar* ZipFile::OpenFile( const char* fname, const char* original_fname, uint& size, uint64& write_time )

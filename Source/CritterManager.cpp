@@ -44,7 +44,7 @@ bool CritterManager::LoadProtos()
 {
     WriteLog( "Load critter prototypes...\n" );
 
-    FilesCollection files = FilesCollection( PT_SERVER_PRO_CRITTERS, "focr", true );
+    FilesCollection files = FilesCollection( "focr" );
     uint            files_loaded = 0;
     int             errors = 0;
     while( files.IsNextFile() )

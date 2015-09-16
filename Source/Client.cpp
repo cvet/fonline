@@ -9035,7 +9035,7 @@ bool FOClient::ReloadScripts()
         msg_script.GetBinary( i + 2, lnt_data );
         RUNTIME_ASSERT( !lnt_data.empty() );
 
-        if( !Script::RestoreScript( module_name, bytecode, lnt_data ) )
+        if( !Script::RestoreModuleFromBinary( module_name, bytecode, lnt_data ) )
         {
             WriteLog( "Load script<%s> fail.\n", module_name );
             errors++;

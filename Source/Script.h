@@ -49,7 +49,7 @@ public:
     static void  SetLoadLibraryCompiler( bool enabled );
 
     static void UnloadScripts();
-    static bool ReloadScripts( const char* target, bool skip_binaries, const char* file_pefix = NULL );
+    static bool ReloadScripts( const char* target, const char* cache_pefix );
     static bool BindReservedFunctions( ReservedScriptFunction* bind_func, uint bind_func_count );
     static bool RunModuleInitFunctions();
 
@@ -90,8 +90,9 @@ public:
     static void Define( const char* def, ... );
     static void Undef( const char* def );
     static void CallPragmas( const Pragmas& pragmas );
-    static bool LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_prefix = NULL );
-    static bool RestoreScript( const char* module_name, const UCharVec& bytecode, const UCharVec& lnt_data );
+    static bool LoadModuleFromFile( const char* module_name, const char* dir, const char* cache_pefix );
+    static bool LoadModuleFromCache( const char* module_name, const char* cache_pefix );
+    static bool RestoreModuleFromBinary( const char* module_name, const UCharVec& bytecode, const UCharVec& lnt_data );
 
     static bool   BindImportedFunctions();
     static uint   Bind( const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log = false );

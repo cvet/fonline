@@ -52,7 +52,7 @@ private:
 
     ScriptProfiler();
     bool   Init( asIScriptEngine* engine, uint sample_time, bool save_to_file, bool dynamic_display );
-    void   AddModule( const char* module_name );
+    void   AddModule( int path_type, const char* module_name, const char* cache_prefix );
     void   EndModules();
     bool   IsNeedProcess();
     void   Process( asIScriptContext* ctx );

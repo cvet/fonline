@@ -115,9 +115,6 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define FIND_ONLY_NPC                ( 0x20 )
 #define FIND_ALL                     ( 0x0F )
 
-// Proto maps
-#define MAP_PROTO_EXT                ".fomap"
-
 // Type entires
 #define ENTIRE_DEFAULT               ( 0 )
 #define ENTIRE_LOG_OUT               ( 241 )

@@ -1028,8 +1028,8 @@ void ProtoMap::SaveCache( FileManager& fm )
 
     // Save
     char fname[ MAX_FOPATH ];
-    Str::Format( fname, "%s%sb", pmapName.c_str(), MAP_PROTO_EXT );
-    fm.SaveOutBufToFile( fname, PT_SERVER_CACHE_MAPS );
+    Str::Format( fname, "%s.fomapb", pmapName.c_str() );
+    fm.SaveOutBufToFile( fname, PT_SERVER_CACHE );
 }
 
 void ProtoMap::BindSceneryScript( MapObject* mobj )
@@ -1074,81 +1074,44 @@ void ProtoMap::BindSceneryScript( MapObject* mobj )
 
 bool ProtoMap::Refresh()
 {
-    // Read
-    string fname_txt = pmapName + MAP_PROTO_EXT;
-    string fname_bin = pmapName + string( MAP_PROTO_EXT ) + "b";
-    string fname_map = pmapName + ".map"; // Deprecated
-
-    #ifdef FONLINE_SERVER
-    // Cached binary
-    FileManager cached;
-    cached.LoadFile( fname_bin.c_str(), PT_SERVER_CACHE_MAPS );
-
     // Load text or binary
-    FileManager fm;
-    bool        text = true;
-    if( !fm.LoadFile( fname_txt.c_str(), PT_SERVER_MAPS ) )
+    FilesCollection maps( "fomap" );
+    const char* name_with_path;
+    FileManager& fm = maps.FindFile( pmapName.c_str(), &name_with_path );
+    if( !fm.IsLoaded() )
     {
-        text = false;
-        if( !fm.LoadFile( fname_map.c_str(), PT_SERVER_MAPS ) && !cached.IsLoaded() )
-        {
-            WriteLogF( _FUNC_, " - Load map<%s> fail.\n", pmapName.c_str() );
-            return false;
-        }
+        WriteLogF( _FUNC_, " - Map '%s' not found.\n", pmapName.c_str() );
+        return false;
     }
 
-    // Process cache
-    if( cached.IsLoaded() )
+    // Store path
+    char path[ MAX_FOPATH ];
+    FileManager::ExtractPath( name_with_path, path );
+    pmapPath = path;
+
+    // Load from cache
+    #ifdef FONLINE_SERVER
+    FileManager cached;
+    if( cached.LoadFile( ( pmapName + ".fomapb" ).c_str(), PT_SERVER_CACHE ) )
     {
         bool load_cache = true;
-        if( fm.IsLoaded() )
-        {
-            uint64 last_write = fm.GetWriteTime();
-            uint64 last_write_cache = cached.GetWriteTime();
-            if( last_write > last_write_cache )
-                load_cache = false;
-        }
+        uint64 last_write = fm.GetWriteTime();
+        uint64 last_write_cache = cached.GetWriteTime();
+        if( last_write > last_write_cache )
+            load_cache = false;
 
-        if( load_cache )
+        if( last_write_cache >= last_write )
         {
             if( LoadCache( cached ) )
                 return true;
+        }
+    }
+    #endif
 
-            if( !fm.IsLoaded() )
-            {
-                WriteLogF( _FUNC_, " - Map<%s>. Can't read cached map file.\n", pmapName.c_str() );
-                return false;
-            }
-        }
-    }
-    #endif // FONLINE_SERVER
-    #ifdef FONLINE_MAPPER
-    // Load binary or text
-    FileManager fm;
-    bool        text = true;
-    if( !fm.LoadFile( fname_txt.c_str(), PT_SERVER_MAPS ) )
+    // Load from file
+    if( !LoadTextFormat( (const char*) fm.GetBuf() ) )
     {
-        text = false;
-        if( !fm.LoadFile( fname_map.c_str(), PT_SERVER_MAPS ) )
-        {
-            WriteLogF( _FUNC_, " - Load map<%s> fail.\n", pmapName.c_str() );
-            return false;
-        }
-    }
-    #endif // FONLINE_MAPPER
-
-    // Load
-    if( text )
-    {
-        if( !LoadTextFormat( (const char*) fm.GetBuf() ) )
-        {
-            WriteLogF( _FUNC_, " - Map<%s>. Can't read text map format.\n", pmapName.c_str() );
-            return false;
-        }
-    }
-    else
-    {
-        WriteLogF( _FUNC_, " - Map<%s>. Binary format is not supported anymore, resave map in earliest version.\n", pmapName.c_str() );
+        WriteLogF( _FUNC_, " - Map<%s>. Can't read text map format.\n", pmapName.c_str() );
         return false;
     }
     fm.UnloadFile();
@@ -1535,8 +1498,6 @@ void ProtoMap::GenNew()
 
 bool ProtoMap::Save( const char* custom_name /* = NULL */ )
 {
-    string save_fname = ( custom_name && *custom_name ? string( custom_name ) : pmapName ) + MAP_PROTO_EXT;
-
     // Fill tiles from cached fields
     TilesField.resize( Header.MaxHexX * Header.MaxHexY );
     RoofsField.resize( Header.MaxHexX * Header.MaxHexY );
@@ -1574,13 +1535,15 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
             mobj->UID = 0;
     }
 
-    // Save
+    // Fill data
     FileManager fm;
     Header.Version = FO_MAP_VERSION_TEXT7;
     SaveTextFormat( fm );
     Tiles.clear();
 
-    if( !fm.SaveOutBufToFile( save_fname.c_str(), PT_SERVER_MAPS ) )
+    // Save
+    string save_fname = pmapPath + ( custom_name && *custom_name ? string( custom_name ) : pmapName ) + ".fomap";
+    if( !fm.SaveOutBufToFile( save_fname.c_str(), PT_SERVER_MODULES ) )
     {
         WriteLogF( _FUNC_, " - Unable write file.\n" );
         fm.ClearOutBuf();
@@ -1593,12 +1556,11 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
 
 bool ProtoMap::IsMapFile( const char* fname )
 {
-    char* ext = (char*) FileManager::GetExtension( fname );
+    const char* ext = FileManager::GetExtension( fname );
     if( !ext )
         return false;
-    ext--;
 
-    if( Str::CompareCase( ext, MAP_PROTO_EXT ) )
+    if( Str::CompareCase( ext, "fomap" ) )
     {
         // Check text format
         IniParser txt;

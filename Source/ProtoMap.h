@@ -339,6 +339,7 @@ public:
 
 private:
     string pmapName;
+    string pmapPath;
     hash   pmapPid;
 
 public:

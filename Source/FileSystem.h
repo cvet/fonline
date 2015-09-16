@@ -36,15 +36,16 @@ bool   FileExist( const char* fname );
 bool   FileRename( const char* fname, const char* new_fname );
 void   CreateDirectoryTree( const char* path );
 
-struct FIND_DATA
+struct FindData
 {
     char   FileName[ MAX_FOPATH ];
     uint   FileSize;
     uint64 WriteTime;
     bool   IsDirectory;
 };
-void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd );
-bool  FileFindNext( void* descriptor, FIND_DATA& fd );
+typedef vector< FindData > FindDataVec;
+void* FileFindFirst( const char* path, const char* extension, FindData& fd );
+bool  FileFindNext( void* descriptor, FindData& fd );
 void  FileFindClose( void* descriptor );
 
 bool  MakeDirectory( const char* path );

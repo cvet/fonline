@@ -157,7 +157,7 @@ bool MapManager::LoadLocationsProtos()
 {
     WriteLog( "Load location and map prototypes...\n" );
 
-    FilesCollection files = FilesCollection( PT_SERVER_MAPS, "foloc", false );
+    FilesCollection files = FilesCollection( "foloc" );
     uint            files_loaded = 0;
     while( files.IsNextFile() )
     {

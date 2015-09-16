@@ -1,12 +1,6 @@
 #include "ScriptProfiler.h"
 #include "Script.h"
 
-#ifndef FONLINE_CLIENT
-static int ScriptsPath = PT_SERVER_SCRIPTS;
-#else
-static int ScriptsPath = PT_CACHE;
-#endif
-
 ScriptProfiler::ScriptProfiler()
 {
     scriptEngine = NULL;
@@ -61,25 +55,19 @@ bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, bool save_
     return true;
 }
 
-void ScriptProfiler::AddModule( const char* module_name )
+void ScriptProfiler::AddModule( int path_type, const char* module_name, const char* cache_prefix )
 {
     RUNTIME_ASSERT( curStage == ProfilerInitialized );
 
     if( saveFileHandle )
     {
-        char fname_real[ MAX_FOPATH ];
-        Str::Copy( fname_real, module_name );
-        Str::Replacement( fname_real, '.', DIR_SLASH_C );
-        Str::Append( fname_real, ".fosp" );
-        FileManager::FormatPath( fname_real );
-
+        char        fname[ MAX_FOPATH ];
+        Str::Format( fname, "%s%s.fosp", cache_prefix, module_name );
         FileManager file;
-        file.LoadFile( fname_real, ScriptsPath );
-        if( file.IsLoaded() )
-        {
-            FileWrite( saveFileHandle, module_name, Str::Length( module_name ) + 1 );
-            FileWrite( saveFileHandle, file.GetBuf(), Str::Length( (char*) file.GetBuf() ) + 1 );
-        }
+        file.LoadFile( fname, path_type );
+        RUNTIME_ASSERT( file.IsLoaded() );
+        FileWrite( saveFileHandle, module_name, Str::Length( module_name ) + 1 );
+        FileWrite( saveFileHandle, file.GetBuf(), Str::Length( (char*) file.GetBuf() ) + 1 );
     }
 }
 

@@ -90,7 +90,7 @@ bool DialogManager::LoadDialogs()
     while( !dialogPacks.empty() )
         EraseDialog( dialogPacks.begin()->second->PackId );
 
-    FilesCollection files = FilesCollection( PT_SERVER_DIALOGS, "fodlg", false );
+    FilesCollection files = FilesCollection( "fodlg" );
     uint            files_loaded = 0;
     while( files.IsNextFile() )
     {

@@ -162,7 +162,7 @@ bool FileRename( const char* fname, const char* new_fname )
     return MoveFileW( MBtoWC( fname, wc1 ), MBtoWC( new_fname, wc2 ) ) != FALSE;
 }
 
-void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd )
+void* FileFindFirst( const char* path, const char* extension, FindData& fd )
 {
     char query[ MAX_FOPATH ];
     if( extension )
@@ -188,7 +188,7 @@ void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd )
     return h;
 }
 
-bool FileFindNext( void* descriptor, FIND_DATA& fd )
+bool FileFindNext( void* descriptor, FindData& fd )
 {
     WIN32_FIND_DATAW wfd;
     if( !FindNextFileW( (HANDLE) descriptor, &wfd ) )
@@ -400,7 +400,7 @@ struct FileFind
     char ext[ 32 ];
 };
 
-void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd )
+void* FileFindFirst( const char* path, const char* extension, FindData& fd )
 {
     char path_[ MAX_FOPATH ];
     SetRelativePath( path, path_ );
@@ -429,7 +429,7 @@ void* FileFindFirst( const char* path, const char* extension, FIND_DATA& fd )
     return ff;
 }
 
-bool FileFindNext( void* descriptor, FIND_DATA& fd )
+bool FileFindNext( void* descriptor, FindData& fd )
 {
     // Cast descriptor
     FileFind* ff = (FileFind*) descriptor;
