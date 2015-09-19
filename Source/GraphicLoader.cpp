@@ -128,7 +128,7 @@ MeshTexture* GraphicLoader::LoadTexture( const char* texture_name, const char* m
     {
         // After try load from file folder
         char path[ MAX_FOPATH ];
-        FileManager::ExtractPath( model_path, path );
+        FileManager::ExtractDir( model_path, path );
         Str::Append( path, texture_name );
         anim = SprMngr.LoadAnimation( path, PT_DATA );
     }
@@ -190,7 +190,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     {
         // Try load from model folder
         char path[ MAX_FOPATH ];
-        FileManager::ExtractPath( model_path, path );
+        FileManager::ExtractDir( model_path, path );
         Str::Append( path, fname );
         file.LoadFile( path, PT_DATA );
     }

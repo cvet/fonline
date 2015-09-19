@@ -696,67 +696,69 @@ public:
     {
         // Read all
         istrstream str( text.c_str() );
-        string     group, file_name;
-        str >> group >> file_name;
+        char       group[ MAX_FOTEXT ];
+        char       name[ MAX_FOTEXT ];
+        str >> group >> name;
         if( str.fail() )
         {
-            WriteLog( "Unable to parse 'content' pragma<%s>.\n", text.c_str() );
+            WriteLog( "Unable to parse 'content' pragma '%s'.\n", text.c_str() );
             return false;
         }
-
-        // Make hash
-        hash h = Str::GetHash( file_name.c_str() );
 
         // Verify file
         asIScriptEngine* engine = Script::GetEngine();
         int              group_index;
         const char*      ns;
-        if( Str::CompareCase( group.c_str(), "Dialog" ) )
+        if( Str::CompareCase( group, "Dialog" ) )
         {
             group_index = 0;
             ns = "Content::Dialog";
         }
-        else if( Str::CompareCase( group.c_str(), "Item" ) )
+        else if( Str::CompareCase( group, "Item" ) )
         {
             group_index = 1;
             ns = "Content::Item";
         }
-        else if( Str::CompareCase( group.c_str(), "Critter" ) )
+        else if( Str::CompareCase( group, "Critter" ) )
         {
             group_index = 2;
             ns = "Content::Critter";
         }
-        else if( Str::CompareCase( group.c_str(), "Location" ) )
+        else if( Str::CompareCase( group, "Location" ) )
         {
             group_index = 3;
             ns = "Content::Location";
         }
-        else if( Str::CompareCase( group.c_str(), "Map" ) )
+        else if( Str::CompareCase( group, "Map" ) )
         {
             group_index = 4;
             ns = "Content::Map";
         }
         else
         {
-            WriteLog( "Invalid group name in 'content' pragma<%s>.\n", text.c_str() );
+            WriteLog( "Invalid group name in 'content' pragma '%s'.\n", text.c_str() );
             return false;
         }
 
-        if( filesToCheck[ group_index ].count( file_name ) )
+        // Ignore redundant calls
+        if( filesToCheck[ group_index ].count( name ) )
             return true;
-        filesToCheck[ group_index ].insert( PAIR( file_name, h ) );
+
+        // Add to collection
+        hash h = Str::GetHash( name );
+        filesToCheck[ group_index ].insert( PAIR( string( name ), h ) );
 
         // Register file
-        dataStorage.push_back( h );
         engine->SetDefaultNamespace( "Content" );
         engine->SetDefaultNamespace( ns );
         char prop_name[ MAX_FOTEXT ];
-        Str::Format( prop_name, "const hash %s", file_name.c_str() );
-        int  result = engine->RegisterGlobalProperty( prop_name, &dataStorage.back() );
+        Str::Format( prop_name, "const hash %s", name );
+        dataStorage.push_back( h );
+        int result = engine->RegisterGlobalProperty( prop_name, &dataStorage.back() );
         engine->SetDefaultNamespace( "" );
         if( result < 0 )
         {
-            WriteLog( "Error in 'content' pragma<%s>, error<%d>.\n", text.c_str(), result );
+            WriteLog( "Error in 'content' pragma '%s', error %d.\n", text.c_str(), result );
             return false;
         }
 

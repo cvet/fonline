@@ -7,7 +7,7 @@
 typedef vector< ScriptString* > ScriptStringVec;
 
 // Generic
-#define MAPOBJ_SCRIPT_NAME    ( 25 )
+#define MAPOBJ_SCRIPT_NAME    ( 128 )
 
 // Map object types
 #define MAP_OBJECT_CRITTER    ( 0 )
@@ -37,8 +37,8 @@ public:
     uchar         LightDistance;
     char          LightIntensity;
 
-    char          ScriptName[ MAPOBJ_SCRIPT_NAME + 1 ];
-    char          FuncName[ MAPOBJ_SCRIPT_NAME + 1 ];
+    char          ScriptName[ MAPOBJ_SCRIPT_NAME ];
+    char          FuncName[ MAPOBJ_SCRIPT_NAME ];
 
     int           UserData[ 10 ];
 
@@ -243,8 +243,8 @@ public:
         uint   Version;
         ushort MaxHexX, MaxHexY;
         int    WorkHexX, WorkHexY;
-        char   ScriptModule[ MAX_SCRIPT_NAME + 1 ];
-        char   ScriptFunc[ MAX_SCRIPT_NAME + 1 ];
+        char   ScriptModule[ 65 ];
+        char   ScriptFunc[ 65 ];
         int    Time;
         bool   NoLogOut;
         int    DayTime[ 4 ];
@@ -339,7 +339,7 @@ public:
 
 private:
     string pmapName;
-    string pmapPath;
+    string pmapDir;
     hash   pmapPid;
 
 public:

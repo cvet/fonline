@@ -150,18 +150,22 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
     // Game options callback
     struct GameOptScript
     {
-        static bool ScriptLoadModule( const char* file_name )
+        static bool ScriptLoadModule( const char* module_name )
         {
-            char path[ MAX_FOPATH ];
-            char module_name[ MAX_FOPATH ];
-            FileManager::ExtractPath( file_name, path );
-            FileManager::ExtractFileName( file_name, module_name );
-            FileManager::EraseExtension( module_name );
-            return Script::LoadModuleFromFile( module_name, path, NULL );
+            FilesCollection scripts( "fos" );
+            const char*     path;
+            FileManager&    file = scripts.FindFile( module_name, &path );
+            if( file.IsLoaded() )
+            {
+                char dir[ MAX_FOPATH ];
+                FileManager::ExtractDir( path, dir );
+                return Script::LoadModuleFromFile( module_name, file, dir, NULL ) && Script::BindImportedFunctions();
+            }
+            return NULL;
         }
-        static uint ScriptBind( const char* module_name, const char* func_decl, bool temporary_id )
+        static uint ScriptBind( const char* script_name, const char* func_decl, bool temporary_id )
         {
-            return Script::Bind( module_name, func_decl, NULL, temporary_id, false );
+            return Script::BindByScriptName( script_name, func_decl, temporary_id, false );
         }
         static bool ScriptPrepare( uint bind_id )
         {
@@ -423,7 +427,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
 
     // Set current directory to DLL
     char new_path[ MAX_FOPATH ];
-    FileManager::ExtractPath( dll_path, new_path );
+    FileManager::ExtractDir( dll_path, new_path );
     ResolvePath( new_path );
     char cur_path[ MAX_FOPATH ];
     #ifdef FO_WINDOWS
@@ -616,27 +620,27 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
     // Load modules
     for( size_t i = 0; i < module_names.size(); i++ )
     {
-        const char* file_name = module_names[ i ].first.c_str();
-        const char* file_full_name = module_names[ i ].second.c_str();
+        const char* name = module_names[ i ].first.c_str();
+        const char* path = module_names[ i ].second.c_str();
 
         // Load module
         if( load_from_raw )
         {
-            char path[ MAX_FOPATH ];
-            FileManager::ExtractPath( file_full_name, path );
-            Str::Insert( path, FileManager::GetDataPath( "", PT_SERVER_MODULES ) );
-            if( !LoadModuleFromFile( file_name, path, cache_pefix ) )
+            char dir[ MAX_FOPATH ];
+            FileManager::ExtractDir( path, dir );
+            Str::Insert( dir, FileManager::GetWritePath( "", PT_SERVER_MODULES ) );
+            if( !LoadModuleFromFile( name, raw_files.FindFile( name ), dir, cache_pefix ) )
             {
-                WriteLog( "Load script '%s' from file fail.\n", file_name );
+                WriteLog( "Load module '%s' from file fail.\n", name );
                 errors++;
                 continue;
             }
         }
         else
         {
-            if( !LoadModuleFromCache( file_name, cache_pefix ) )
+            if( !LoadModuleFromCache( name, cache_pefix ) )
             {
-                WriteLog( "Load script '%s' from cache fail. Clear cache.\n", file_name );
+                WriteLog( "Load module '%s' from cache fail. Clear cache.\n", name );
                 errors++;
                 continue;
             }
@@ -647,9 +651,9 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
         {
             RUNTIME_ASSERT( cache_pefix );
             #ifdef FONLINE_SERVER
-            edata->Profiler->AddModule( PT_SERVER_CACHE, file_name, cache_pefix );
+            edata->Profiler->AddModule( PT_SERVER_CACHE, name, cache_pefix );
             #else
-            edata->Profiler->AddModule( PT_CACHE, file_name, cache_pefix );
+            edata->Profiler->AddModule( PT_CACHE, name, cache_pefix );
             #endif
         }
     }
@@ -705,28 +709,28 @@ bool Script::BindReservedFunctions( ReservedScriptFunction* bind_func, uint bind
         if( count == 1 )
         {
             asIScriptFunction* func = all_functions.find( bf->FuncName )->second;
-            int                bind_id = Bind( func->GetModuleName(), bf->FuncName, bf->FuncDecl, false );
+            int                bind_id = BindByFunc( func, false );
             if( bind_id > 0 )
             {
                 *bf->BindId = bind_id;
             }
             else
             {
-                WriteLog( "Bind reserved function fail, module<%s>, name<%s>.\n", func->GetModuleName(), bf->FuncName );
+                WriteLog( "Bind reserved function fail, module '%s', name '%s'.\n", func->GetModuleName(), bf->FuncName );
                 errors++;
             }
         }
         else if( count == 0 )
         {
-            WriteLog( "Function for reserved function<%s> not founded.\n", bf->FuncName );
+            WriteLog( "Function for reserved function '%s' not founded.\n", bf->FuncName );
             errors++;
         }
         else
         {
-            WriteLog( "Multiplied functions founded for reserved function<%s>.\n", bf->FuncName );
+            WriteLog( "Multiplied functions founded for reserved function '%s'.\n", bf->FuncName );
             auto it = all_functions.find( bf->FuncName );
             for( uint j = 0; j < count; j++, it++ )
-                WriteLog( "- In module<%s>.\n", it->second->GetModuleName() );
+                WriteLog( "- In module '%s'.\n", it->second->GetModuleName() );
             errors++;
         }
     }
@@ -746,9 +750,9 @@ bool Script::RunModuleInitFunctions()
     for( asUINT i = 0; i < Engine->GetModuleCount(); i++ )
     {
         asIScriptModule* module = Engine->GetModuleByIndex( i );
-        uint             bind_id = Script::Bind( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
+        uint             bind_id = Script::BindByScriptName( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
         if( !bind_id )
-            bind_id = Script::Bind( Str::FormatBuf( "%s@ModuleInit", module->GetName() ), "bool %s()", true, true );
+            bind_id = Script::BindByScriptName( Str::FormatBuf( "%s@ModuleInit", module->GetName() ), "bool %s()", true, true );
         if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Script" ) )
         {
             if( !Script::RunPrepared() )
@@ -1058,13 +1062,12 @@ void Script::RestoreEntity( const char* class_name, uint id, Properties& props )
 
 const char* Script::GetActiveModuleName()
 {
-    static const char error[] = "<error>";
     asIScriptContext* ctx = asGetActiveContext();
     if( !ctx )
-        return error;
+        return NULL;
     asIScriptFunction* func = ctx->GetFunction( 0 );
     if( !func )
-        return error;
+        return NULL;
     return func->GetModuleName();
 }
 
@@ -1148,15 +1151,12 @@ void Script::CallPragmas( const Pragmas& pragmas )
         Preprocessor::CallPragma( pragmas[ i ] );
 }
 
-bool Script::LoadModuleFromFile( const char* module_name, const char* dir, const char* cache_pefix )
+bool Script::LoadModuleFromFile( const char* module_name, FileManager& file, const char* dir, const char* cache_pefix )
 {
+    RUNTIME_ASSERT( file.IsLoaded() );
+
     // Binary version
     uint version = FONLINE_VERSION;
-
-    // Make script file name
-    char fname[ MAX_FOPATH ];
-    Str::Copy( fname, module_name );
-    Str::Append( fname, ".fos" );
 
     // Set current pragmas
     EngineData* edata = (EngineData*) Engine->GetUserData();
@@ -1166,15 +1166,23 @@ bool Script::LoadModuleFromFile( const char* module_name, const char* dir, const
     class MemoryFileLoader: public Preprocessor::FileLoader
     {
 public:
-        string InitialPath;
-        MemoryFileLoader( const char* path ): InitialPath( path ) {}
+        FileManager* InitialFile;
+        MemoryFileLoader( FileManager& file ): InitialFile( &file ) {}
         virtual ~MemoryFileLoader() {}
 
         virtual bool LoadFile( const std::string& dir, const std::string& file_name, std::vector< char >& data )
         {
+            if( InitialFile )
+            {
+                data.resize( InitialFile->GetFsize() );
+                if( !data.empty() )
+                    memcpy( &data[ 0 ], InitialFile->GetBuf(), data.size() );
+                InitialFile = NULL;
+                return true;
+            }
+
             char fname[ MAX_FOPATH ];
-            Str::Copy( fname, InitialPath.c_str() );
-            Str::Append( fname, dir.c_str() );
+            Str::Copy( fname, dir.c_str() );
             Str::Append( fname, file_name.c_str() );
             FileManager::FormatPath( fname );
 
@@ -1198,21 +1206,26 @@ public:
         }
     };
 
+    // Base script path
+    char path[ MAX_FOPATH ];
+    Str::Copy( path, dir );
+    Str::Append( path, module_name );
+
     // Preprocess
-    MemoryFileLoader              loader( dir );
+    MemoryFileLoader              loader( file );
     Preprocessor::StringOutStream result, errors;
-    int                           errors_count = Preprocessor::Preprocess( fname, result, &errors, &loader );
+    int                           errors_count = Preprocessor::Preprocess( path, result, &errors, &loader );
 
     if( errors.String != "" )
     {
         while( errors.String[ errors.String.length() - 1 ] == '\n' )
             errors.String.pop_back();
-        WriteLogF( _FUNC_, " - File '%s' preprocessor message '%s'.\n", fname, errors.String.c_str() );
+        WriteLogF( _FUNC_, " - Module '%s' preprocessor message '%s'.\n", module_name, errors.String.c_str() );
     }
 
     if( errors_count )
     {
-        WriteLogF( _FUNC_, " - Unable to preprocess file '%s'.\n", fname );
+        WriteLogF( _FUNC_, " - Unable to preprocess module '%s'.\n", module_name );
         return false;
     }
 
@@ -1440,7 +1453,7 @@ bool Script::BindImportedFunctions()
             asIScriptModule* mod = Engine->GetModule( name, asGM_ONLY_IF_EXISTS );
             if( !mod )
             {
-                WriteLog( "Module<%s> fail to bind: import %s from \"%s\" - source module does not exists.\n", module->GetName(), decl, name );
+                WriteLog( "Module '%s' fail to bind: import %s from \"%s\" - source module does not exists.\n", module->GetName(), decl, name );
                 errors++;
                 continue;
             }
@@ -1448,7 +1461,7 @@ bool Script::BindImportedFunctions()
             asIScriptFunction* func = mod->GetFunctionByDecl( decl );
             if( !func )
             {
-                WriteLog( "Module<%s> fail to bind: import %s from \"%s\" - source function does not exists.\n", module->GetName(), decl, name );
+                WriteLog( "Module '%s' fail to bind: import %s from \"%s\" - source function does not exists.\n", module->GetName(), decl, name );
                 errors++;
                 continue;
             }
@@ -1456,7 +1469,7 @@ bool Script::BindImportedFunctions()
             int r = module->BindImportedFunction( j, func );
             if( r < 0 )
             {
-                WriteLog( "Module<%s> fail to bind: import %s from \"%s\" - bind error<%d>.\n", module->GetName(), decl, name, r );
+                WriteLog( "Module '%s' fail to bind: import %s from \"%s\" - bind error %d.\n", module->GetName(), decl, name, r );
                 errors++;
                 continue;
             }
@@ -1474,7 +1487,7 @@ bool Script::BindImportedFunctions()
     return errors == 0;
 }
 
-uint Script::Bind( const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
+uint Script::BindByModuleFuncName( const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
 {
     #ifdef SCRIPT_MULTITHREADING
     SCOPE_LOCK( BindedFunctionsLocker );
@@ -1488,7 +1501,7 @@ uint Script::Bind( const char* module_name, const char* func_name, const char* d
         if( !module )
         {
             if( !disable_log )
-                WriteLogF( _FUNC_, " - Module<%s> not found.\n", module_name );
+                WriteLogF( _FUNC_, " - Module '%s' not found.\n", module_name );
             return 0;
         }
 
@@ -1502,7 +1515,7 @@ uint Script::Bind( const char* module_name, const char* func_name, const char* d
         if( !script_func )
         {
             if( !disable_log )
-                WriteLogF( _FUNC_, " - Function<%s> in module<%s> not found.\n", decl_, module_name );
+                WriteLogF( _FUNC_, " - Function '%s' in module '%s' not found.\n", decl_, module_name );
             return 0;
         }
 
@@ -1569,19 +1582,26 @@ uint Script::Bind( const char* module_name, const char* func_name, const char* d
     return (uint) BindedFunctions.size() - 1;
 }
 
-uint Script::Bind( const char* script_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
+uint Script::BindByScriptName( const char* script_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
 {
     char module_name[ MAX_FOTEXT ];
     char func_name[ MAX_FOTEXT ];
-    if( !ReparseScriptName( script_name, module_name, func_name, disable_log ) )
+    if( !ParseScriptName( script_name, module_name, func_name, disable_log ) )
     {
-        WriteLogF( _FUNC_, " - Parse script name<%s> fail.\n", script_name );
+        WriteLogF( _FUNC_, " - Parse script name '%s' fail.\n", script_name );
         return 0;
     }
-    return Bind( module_name, func_name, decl, is_temp, disable_log );
+    return BindByModuleFuncName( module_name, func_name, decl, is_temp, disable_log );
 }
 
-uint Script::Bind( asIScriptFunction* func, bool is_temp, bool disable_log /* = false */ )
+uint Script::BindByFuncNameInRuntime( const char* func_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
+{
+    char script_name[ MAX_FOTEXT ];
+    Script::MakeScriptNameInRuntime( func_name, script_name );
+    return BindByScriptName( script_name, decl, is_temp, disable_log );
+}
+
+uint Script::BindByFunc( asIScriptFunction* func, bool is_temp, bool disable_log /* = false */ )
 {
     // Save to temporary bind
     if( is_temp )
@@ -1605,7 +1625,7 @@ uint Script::Bind( asIScriptFunction* func, bool is_temp, bool disable_log /* = 
     return (uint) BindedFunctions.size() - 1;
 }
 
-uint Script::Bind( hash func_num, bool is_temp, bool disable_log /* = false */ )
+uint Script::BindByFuncNum( hash func_num, bool is_temp, bool disable_log /* = false */ )
 {
     asIScriptFunction* func = FindFunc( func_num );
     if( !func )
@@ -1615,7 +1635,7 @@ uint Script::Bind( hash func_num, bool is_temp, bool disable_log /* = false */ )
         return 0;
     }
 
-    return Bind( func, is_temp, disable_log );
+    return BindByFunc( func, is_temp, disable_log );
 }
 
 bool Script::RebindFunctions()
@@ -1633,10 +1653,10 @@ bool Script::RebindFunctions()
             if( bf.ScriptFunc )
                 bf.ScriptFunc->Release();
 
-            int bind_id = Bind( bf.ModuleName.c_str(), bf.FuncName.c_str(), NULL, true, false );
+            int bind_id = BindByModuleFuncName( bf.ModuleName.c_str(), bf.FuncName.c_str(), NULL, true, false );
             if( bind_id <= 0 )
             {
-                WriteLogF( _FUNC_, " - Unable to bind function, module<%s>, function<%s>.\n", bf.ModuleName.c_str(), bf.FuncName.c_str() );
+                WriteLogF( _FUNC_, " - Unable to bind function, module '%s', function '%s'.\n", bf.ModuleName.c_str(), bf.FuncName.c_str() );
                 bf.ScriptFunc = NULL;
                 errors++;
             }
@@ -1650,44 +1670,37 @@ bool Script::RebindFunctions()
     return errors == 0;
 }
 
-bool Script::ReparseScriptName( const char* script_name, char* module_name, char* func_name, bool disable_log /* = false */ )
+bool Script::ParseScriptName( const char* script_name, char* module_name, char* func_name, bool disable_log /* = false */ )
 {
-    if( !script_name || !module_name || !func_name )
+    RUNTIME_ASSERT( script_name );
+    RUNTIME_ASSERT( module_name );
+    RUNTIME_ASSERT( func_name );
+
+    if( !Str::Substring( script_name, "@" ) )
     {
-        WriteLogF( _FUNC_, " - Some name null ptr.\n" );
-        CreateDump( "ReparseScriptName" );
+        if( !disable_log )
+            WriteLogF( _FUNC_, " - Script name parse error, string '%s'.\n", script_name );
         return false;
     }
 
-    char script[ MAX_SCRIPT_NAME * 2 + 2 ];
-    Str::Copy( script, script_name );
-    Str::EraseChars( script, ' ' );
+    char str[ MAX_FOTEXT ];
+    Str::Copy( str, script_name );
+    Str::EraseChars( str, ' ' );
+    Str::CopyWord( module_name, str, '@' );
+    char* str_ = &str[ 0 ];
+    Str::GoTo( str_, '@', true );
+    Str::CopyWord( func_name, str_, 0 );
 
-    if( Str::Substring( script, "@" ) )
-    {
-        char* script_ptr = &script[ 0 ];
-        Str::CopyWord( module_name, script_ptr, '@' );
-        Str::GoTo( ( char* & )script_ptr, '@', true );
-        Str::CopyWord( func_name, script_ptr, '\0' );
-    }
-    else
-    {
-        Str::Copy( module_name, MAX_SCRIPT_NAME, GetActiveModuleName() );
-        Str::Copy( func_name, MAX_SCRIPT_NAME, script );
-    }
-
-    if( !Str::Length( module_name ) || Str::Compare( module_name, "<error>" ) )
+    if( !module_name[ 0 ] )
     {
         if( !disable_log )
-            WriteLogF( _FUNC_, " - Script name parse error, string<%s>.\n", script_name );
-        module_name[ 0 ] = func_name[ 0 ] = 0;
+            WriteLogF( _FUNC_, " - Module name parse error, string '%s'.\n", script_name );
         return false;
     }
-    if( !Str::Length( func_name ) )
+    if( !func_name[ 0 ] )
     {
         if( !disable_log )
-            WriteLogF( _FUNC_, " - Function name parse error, string<%s>.\n", script_name );
-        module_name[ 0 ] = func_name[ 0 ] = 0;
+            WriteLogF( _FUNC_, " - Function name parse error, string '%s'.\n", script_name );
         return false;
     }
     return true;
@@ -1711,6 +1724,25 @@ string Script::GetBindFuncName( uint bind_id )
     result += " : ";
     result += bf.FuncName;
     return result;
+}
+
+void Script::MakeScriptNameInRuntime( const char* func_name, char(&script_name)[ MAX_FOTEXT ] )
+{
+    RUNTIME_ASSERT( func_name );
+    const char* active_module_name = GetActiveModuleName();
+    RUNTIME_ASSERT( active_module_name );
+
+    // Copy base
+    if( script_name != func_name )
+        Str::Copy( script_name, func_name );
+
+    // Append module
+    const char* mod_separator = Str::Substring( func_name, "@" );
+    if( !mod_separator )
+    {
+        Str::Insert( script_name, "@" );
+        Str::Insert( script_name, active_module_name );
+    }
 }
 
 /************************************************************************/
@@ -1748,14 +1780,21 @@ asIScriptFunction* Script::FindFunc( hash func_num )
     return NULL;
 }
 
-hash Script::BindScriptFuncNum( const char* script_name, const char* decl )
+hash Script::BindScriptFuncNumByFuncNameInRuntime( const char* func_name, const char* decl )
+{
+    char script_name[ MAX_FOTEXT ];
+    Script::MakeScriptNameInRuntime( func_name, script_name );
+    return BindScriptFuncNumByScriptName( script_name, decl );
+}
+
+hash Script::BindScriptFuncNumByScriptName( const char* script_name, const char* decl )
 {
     #ifdef SCRIPT_MULTITHREADING
     SCOPE_LOCK( BindedFunctionsLocker );
     #endif
 
     // Bind function
-    int bind_id = Script::Bind( script_name, decl, false );
+    int bind_id = Script::BindByScriptName( script_name, decl, false );
     if( bind_id <= 0 )
         return 0;
 
@@ -1779,14 +1818,14 @@ hash Script::BindScriptFuncNum( const char* script_name, const char* decl )
     return func_num;
 }
 
-hash Script::BindScriptFuncNum( asIScriptFunction* func )
+hash Script::BindScriptFuncNumByFunc( asIScriptFunction* func )
 {
     #ifdef SCRIPT_MULTITHREADING
     SCOPE_LOCK( BindedFunctionsLocker );
     #endif
 
     // Bind function
-    int bind_id = Script::Bind( func, false );
+    int bind_id = Script::BindByFunc( func, false );
     if( bind_id <= 0 )
         return 0;
 
@@ -1825,7 +1864,7 @@ uint Script::GetScriptFuncBindId( hash func_num )
         return 0;
 
     // Bind
-    func_num = Script::BindScriptFuncNum( func );
+    func_num = Script::BindScriptFuncNumByFunc( func );
     if( func_num )
         return ScriptFuncBinds[ func_num ];
 

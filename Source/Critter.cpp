@@ -1890,15 +1890,15 @@ void Critter::ToDead( uint anim2, bool send_all )
     }
 }
 
-bool Critter::ParseScript( const char* script, bool first_time )
+bool Critter::SetScript( const char* script_name, bool first_time )
 {
     hash func_num = 0;
-    if( script && script[ 0 ] )
+    if( script_name && script_name[ 0 ] )
     {
-        func_num = Script::BindScriptFuncNum( script, "void %s(Critter&,bool)" );
+        func_num = Script::BindScriptFuncNumByScriptName( script_name, "void %s(Critter&,bool)" );
         if( !func_num )
         {
-            WriteLogF( _FUNC_, " - Script<%s> bind fail, critter<%s>.\n", script, GetInfo() );
+            WriteLogF( _FUNC_, " - Script '%s' bind fail, critter '%s'.\n", script_name, GetInfo() );
             return false;
         }
         SetScriptId( func_num );
@@ -4956,16 +4956,19 @@ void Client::Send_RunClientScript( const char* func_name, int p0, int p1, int p2
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    ushort func_name_len = Str::Length( func_name );
+    char script_name[ MAX_FOTEXT ];
+    Script::MakeScriptNameInRuntime( func_name, script_name );
+
+    ushort script_name_len = Str::Length( script_name );
     ushort p3len = ( p3 ? Str::Length( p3 ) : 0 );
     ushort p4size = (uint) p4.size();
-    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( func_name_len ) + func_name_len + sizeof( p0 ) + sizeof( p1 ) + sizeof( p2 ) + sizeof( p3len ) + p3len + sizeof( p4size ) + p4size * sizeof( uint );
+    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( script_name_len ) + script_name_len + sizeof( p0 ) + sizeof( p1 ) + sizeof( p2 ) + sizeof( p3len ) + p3len + sizeof( p4size ) + p4size * sizeof( uint );
 
     BOUT_BEGIN( this );
     Bout << NETMSG_RUN_CLIENT_SCRIPT;
     Bout << msg_len;
-    Bout << func_name_len;
-    Bout.Push( func_name, func_name_len );
+    Bout << script_name_len;
+    Bout.Push( script_name, script_name_len );
     Bout << p0;
     Bout << p1;
     Bout << p2;

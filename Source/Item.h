@@ -401,10 +401,10 @@ public:
     Item* Clone();
     #endif
 
-    bool operator==( const uint& id ) { return ( Id == id ); }
+    bool operator==( const uint& id ) { return Id == id; }
 
     #ifdef FONLINE_SERVER
-    bool ParseScript( const char* script, bool first_time );
+    bool SetScript( const char* script_name, bool first_time );
     bool PrepareScriptFunc( int num_scr_func );
     void EventFinish( bool deleted );
     bool EventAttack( Critter* cr, Critter* target );

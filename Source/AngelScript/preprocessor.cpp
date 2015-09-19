@@ -210,7 +210,6 @@ public:
     unsigned int               CurrentLine = 0;
     unsigned int               LinesThisFile = 0;
     bool                       SkipPragmas = false;
-    std::vector< std::string > FileDependencies;
     std::vector< std::string > FilesPreprocessed;
 }
 
@@ -869,7 +868,7 @@ void Preprocessor::ParsePragma( LexemList& args )
     PragmaInstance pi;
     pi.Name = p_name;
     pi.Text = p_args;
-    pi.CurrentFile = CurrentFile;
+    pi.CurrentFile = RootPath + CurrentFile;
     pi.CurrentFileLine = LinesThisFile;
     pi.RootFile = RootFile;
     pi.GlobalLine = CurrentLine;
@@ -1033,12 +1032,8 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
                 std::string  file_name;
                 ParseIf( directive, file_name );
 
-                std::string file_name_ = RemoveQuotes( file_name );
-                if( std::find( FileDependencies.begin(), FileDependencies.end(), file_name_ ) == FileDependencies.end() )
-                    FileDependencies.push_back( file_name_ );
-
                 LexemList next_file;
-                RecursivePreprocess( AddPaths( filename, file_name_ ), file_source, next_file, define_table );
+                RecursivePreprocess( AddPaths( filename, RemoveQuotes( file_name ) ), file_source, next_file, define_table );
                 lexems.splice( itr, next_file );
                 start_line = CurrentLine;
                 LinesThisFile = save_lines_this_file;
@@ -1102,7 +1097,6 @@ int Preprocessor::Preprocess( std::string file_path, OutStream& result, OutStrea
     Errors = ( errors ? errors : &null_stream );
     ErrorsCount = 0;
 
-    FileDependencies.clear();
     FilesPreprocessed.clear();
 
     SkipPragmas = skip_pragmas;
@@ -1123,6 +1117,9 @@ void Preprocessor::Define( const std::string& str )
 {
     if( str.length() == 0 )
         return;
+
+    Undef( str );
+
     std::string data = "#define ";
     data += str;
     char*       d_end = &data[ data.length() - 1 ];
@@ -1151,12 +1148,23 @@ void Preprocessor::UndefAll()
     CustomDefines.clear();
 }
 
-bool Preprocessor::IsDefined( const std::string& str )
+bool Preprocessor::IsDefined( const std::string& str, std::string* value /* = NULL */ )
 {
     for( DefineTable::iterator it = CustomDefines.begin(), end = CustomDefines.end(); it != end; ++it )
     {
-        if( ( *it ).first == str )
+        if( it->first == str )
+        {
+            if( value )
+            {
+                for( auto& lex : it->second.Lexems )
+                {
+                    if( !value->empty() )
+                        *value += " ";
+                    *value += lex.Value;
+                }
+            }
             return true;
+        }
     }
     return false;
 }
@@ -1193,11 +1201,6 @@ unsigned int Preprocessor::ResolveOriginalLine( unsigned int line_number, LineNu
 {
     lnt = ( lnt ? lnt : LNT );
     return lnt ? line_number - lnt->Search( line_number ).Offset : 0;
-}
-
-std::vector< std::string >& Preprocessor::GetFileDependencies()
-{
-    return FileDependencies;
 }
 
 std::vector< std::string >& Preprocessor::GetFilesPreprocessed()

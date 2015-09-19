@@ -185,7 +185,7 @@ void FOMsg::EraseStr( uint num )
 
 uint FOMsg::GetSize()
 {
-    return (uint) strData.size() - 1;
+    return (uint) strData.size();
 }
 
 bool FOMsg::IsIntersects( const FOMsg& other )
@@ -261,14 +261,11 @@ bool FOMsg::LoadFromFile( const char* fname, int path_type )
 {
     Clear();
 
-    FileManager fm;
-    if( !fm.LoadFile( fname, path_type ) )
+    FileManager file;
+    if( !file.LoadFile( fname, path_type ) )
         return false;
-    uint  buf_len = fm.GetFsize();
-    char* buf = (char*) fm.ReleaseBuffer();
 
-    LoadFromString( buf, buf_len );
-    SAFEDELA( buf );
+    LoadFromString( (char*) file.GetBuf(), file.GetFsize() );
     return true;
 }
 
@@ -429,7 +426,7 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
         {
             for( int i = 0; i < TEXTMSG_COUNT; i++ )
             {
-                char name_[ MAX_FOPATH ];
+                char name_[ MAX_FOTEXT ];
                 Str::Copy( name_, TextMsgFileName[ i ] );
                 FileManager::EraseExtension( name_ );
                 if( Str::CompareCase( name_, name ) )
@@ -475,7 +472,7 @@ bool LanguagePack::LoadFromCache( const char* lang_name )
     }
 
     if( errors )
-        WriteLogF( _FUNC_, " - Cached language<%s> not found.\n", NameStr );
+        WriteLogF( _FUNC_, " - Cached language '%s' not found.\n", NameStr );
 
     IsAllMsgLoaded = errors == 0;
     return IsAllMsgLoaded;

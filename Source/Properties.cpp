@@ -863,11 +863,11 @@ string Property::SetGetCallback( const char* script_func )
 
     char decl[ MAX_FOTEXT ];
     Str::Format( decl, "%s%s %s(%s&,%s)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
-    uint bind_id = Script::Bind( script_func, decl, false, true );
+    uint bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
     if( !bind_id )
     {
         Str::Format( decl, "%s%s %s(%s&)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str() );
-        bind_id = Script::Bind( script_func, decl, false, true );
+        bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
         if( !bind_id )
         {
             char buf[ MAX_FOTEXT ];
@@ -891,23 +891,23 @@ string Property::AddSetCallback( const char* script_func )
 
     char decl[ MAX_FOTEXT ];
     Str::Format( decl, "void %s(%s&,%s,%s&)", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str(), typeName.c_str() );
-    uint  bind_id = Script::Bind( script_func, decl, false, true );
+    uint  bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
     if( !bind_id )
     {
         Str::Format( decl, "void %s(%s&,%s&,%s)", "%s", registrator->scriptClassName.c_str(), typeName.c_str(), registrator->enumTypeName.c_str() );
-        bind_id = Script::Bind( script_func, decl, false, true );
+        bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
         if( !bind_id )
         {
             Str::Format( decl, "void %s(%s&,%s)", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
-            bind_id = Script::Bind( script_func, decl, false, true );
+            bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
             if( !bind_id )
             {
                 Str::Format( decl, "void %s(%s&,%s&)", "%s", registrator->scriptClassName.c_str(), typeName.c_str() );
-                bind_id = Script::Bind( script_func, decl, false, true );
+                bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
                 if( !bind_id )
                 {
                     Str::Format( decl, "void %s(%s&)", "%s", registrator->scriptClassName.c_str() );
-                    bind_id = Script::Bind( script_func, decl, false, true );
+                    bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
                     if( !bind_id )
                     {
                         char buf[ MAX_FOTEXT ];

@@ -190,7 +190,7 @@ private:
     bool PrepareScriptFunc( int num_scr_func );
 
 public:
-    bool ParseScript( const char* script, bool first_time );
+    bool SetScript( const char* script_name, bool first_time );
     void EventFinish( bool to_delete );
     void EventLoop( int loop_num );
     void EventInCritter( Critter* cr );

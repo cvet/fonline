@@ -296,7 +296,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */ )
     // Prototype script
     if( proto->ScriptName.length() > 0 )         // Only for new items
     {
-        item->ParseScript( proto->ScriptName.c_str(), true );
+        item->SetScript( proto->ScriptName.c_str(), true );
         if( item->IsDestroyed )
         {
             WriteLogF( _FUNC_, " - Item destroyed after prototype '%s' initialization.\n", HASH_STR( pid ) );

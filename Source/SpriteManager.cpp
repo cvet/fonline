@@ -1722,7 +1722,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
         }
 
         char  frm_fname[ MAX_FOPATH ];
-        FileManager::ExtractPath( fname, frm_fname );
+        FileManager::ExtractDir( fname, frm_fname );
         char* frm_name = frm_fname + Str::Length( frm_fname );
 
         uint  frames = 0;

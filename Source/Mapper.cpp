@@ -177,7 +177,7 @@ bool FOMapper::Init()
 
     char       lang_name[ MAX_FOTEXT ];
     cfg_server.GetStr( "Language_0", DEFAULT_LANGUAGE, lang_name );
-    if( strlen( lang_name ) != 4 )
+    if( Str::Length( lang_name ) != 4 )
         Str::Copy( lang_name, DEFAULT_LANGUAGE );
     Str::Lower( lang_name );
 
@@ -253,7 +253,7 @@ bool FOMapper::Init()
     if( Str::Substring( CommandLine, "-Map" ) )
     {
         char map_name[ MAX_FOPATH ];
-        sscanf( Str::Substring( CommandLine, "-Map" ) + strlen( "-Map" ) + 1, "%s", map_name );
+        sscanf( Str::Substring( CommandLine, "-Map" ) + Str::Length( "-Map" ) + 1, "%s", map_name );
 
         FileManager::SetWritePath( ServerWritePath );
 
@@ -1699,7 +1699,7 @@ void FOMapper::RefreshTiles( int tab )
             {
                 // Make primary collection name
                 char path_[ MAX_FOPATH ];
-                FileManager::ExtractPath( fname.c_str(), path_ );
+                FileManager::ExtractDir( fname.c_str(), path_ );
                 if( !path_[ 0 ] )
                     Str::Copy( path_, "root" );
                 uint path_index = PathIndex[ path_ ];
@@ -4885,22 +4885,17 @@ void FOMapper::ParseCommand( const char* cmd )
         cmd++;
         char func_name[ MAX_FOTEXT ];
         char str[ MAX_FOTEXT ] = { 0 };
-        if( sscanf( cmd, "%s", func_name ) != 1 || !strlen( func_name ) )
+        if( sscanf( cmd, "%s", func_name ) != 1 || !Str::Length( func_name ) )
         {
             AddMess( "Function name not typed." );
             return;
         }
-        Str::Copy( str, cmd + strlen( func_name ) );
+        Str::Copy( str, cmd + Str::Length( func_name ) );
         while( str[ 0 ] == ' ' )
             Str::CopyBack( str );
 
         // Reparse module
-        uint bind_id;
-        if( Str::Substring( func_name, "@" ) )
-            bind_id = Script::Bind( func_name, "string %s(string)", true );
-        else
-            bind_id = Script::Bind( "mapper_main", func_name, "string %s(string)", true );
-
+        uint bind_id = Script::BindByScriptName( func_name, "string %s(string)", true );
         if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Mapper" ) )
         {
             ScriptString* sstr = ScriptString::Create( str );

@@ -191,7 +191,7 @@ bool MethodRegistrator::FinishRegistration()
     {
         Method* method = registeredMethods[ i ];
         RUNTIME_ASSERT( method->bindFunc.length() > 0 );
-        method->callbackBindId = Script::Bind( method->bindFunc.c_str(), method->bindDecl.c_str(), false );
+        method->callbackBindId = Script::BindByScriptName( method->bindFunc.c_str(), method->bindDecl.c_str(), false );
         if( !method->callbackBindId )
             errors++;
     }

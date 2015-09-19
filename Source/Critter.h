@@ -301,7 +301,7 @@ protected:
 
 public:
     uint FuncId[ CRITTER_EVENT_MAX ];
-    bool ParseScript( const char* script, bool first_time );
+    bool SetScript( const char* script_name, bool first_time );
 
     void EventIdle();
     void EventFinish( bool deleted );

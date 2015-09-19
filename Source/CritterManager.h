@@ -30,7 +30,7 @@ public:
 
     #ifdef FONLINE_SERVER
 public:
-    Npc* CreateNpc( hash proto_id, IntVec* props_data, IntVec* items_data, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy );
+    Npc* CreateNpc( hash proto_id, IntVec* props_data, IntVec* items_data, const char* script_name, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy );
     bool RestoreNpc( uint id, CritData& data, Properties& props, Critter::CrTimeEventVec time_events );
     void DeleteNpc( Critter* cr );
 

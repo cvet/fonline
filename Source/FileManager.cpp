@@ -791,10 +791,10 @@ void FileManager::FormatPath( char* path )
     }
 }
 
-void FileManager::ExtractPath( const char* fname, char* path )
+void FileManager::ExtractDir( const char* path, char* dir )
 {
     char buf[ MAX_FOPATH ];
-    Str::Copy( buf, fname );
+    Str::Copy( buf, path );
     FormatPath( buf );
 
     const char* str = Str::Substring( buf, DIR_SLASH_S );
@@ -811,19 +811,19 @@ void FileManager::ExtractPath( const char* fname, char* path )
         }
         size_t len = str - buf;
         if( len )
-            memcpy( path, buf, len );
-        path[ len ] = 0;
+            memcpy( dir, buf, len );
+        dir[ len ] = 0;
     }
     else
     {
-        path[ 0 ] = 0;
+        dir[ 0 ] = 0;
     }
 }
 
-void FileManager::ExtractFileName( const char* fname, char* name )
+void FileManager::ExtractFileName( const char* path, char* name )
 {
     char buf[ MAX_FOPATH ];
-    Str::Copy( buf, fname );
+    Str::Copy( buf, path );
     FormatPath( buf );
 
     const char* str = Str::Substring( buf, DIR_SLASH_S );
@@ -845,7 +845,7 @@ void FileManager::ExtractFileName( const char* fname, char* name )
     }
     else
     {
-        Str::Copy( name, MAX_FOPATH, fname );
+        Str::Copy( name, MAX_FOPATH, path );
     }
 }
 
@@ -962,9 +962,9 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
     void*    h = FileFindFirst( path, NULL, fd );
     while( h )
     {
-        if( fd.FileName[ 0 ] != '_' )
+        if( fd.IsDirectory )
         {
-            if( fd.IsDirectory )
+            if( fd.FileName[ 0 ] != '_' )
             {
                 Str::Copy( path, cur_dir );
                 Str::Append( path, fd.FileName );
@@ -978,21 +978,13 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
                 if( include_subdirs )
                     RecursiveDirLook( base_dir, path, include_subdirs, ext, files_path, files, dirs_path, dirs );
             }
-            else
+        }
+        else
+        {
+            if( ext )
             {
-                if( ext )
-                {
-                    const char* ext_ = GetExtension( fd.FileName );
-                    if( ext_ && Str::CompareCase( ext, ext_ ) )
-                    {
-                        Str::Copy( path, cur_dir );
-                        Str::Append( path, fd.FileName );
-                        files_path.push_back( path );
-                        if( files )
-                            files->push_back( fd );
-                    }
-                }
-                else
+                const char* ext_ = GetExtension( fd.FileName );
+                if( ext_ && Str::CompareCase( ext, ext_ ) )
                 {
                     Str::Copy( path, cur_dir );
                     Str::Append( path, fd.FileName );
@@ -1000,6 +992,14 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
                     if( files )
                         files->push_back( fd );
                 }
+            }
+            else
+            {
+                Str::Copy( path, cur_dir );
+                Str::Append( path, fd.FileName );
+                files_path.push_back( path );
+                if( files )
+                    files->push_back( fd );
             }
         }
 
@@ -1044,15 +1044,15 @@ void FileManager::GetDataFileNames( const char* path, bool include_subdirs, cons
 FilesCollection::FilesCollection( const char* ext, int path_type /* = PT_SERVER_MODULES */, const char* dir /* = NULL */ )
 {
     curFileIndex = 0;
-    searchPath = FileManager::GetDataPath( dir ? dir : "", path_type );
+    searchPath = FileManager::GetWritePath( dir ? dir : "", path_type );
     if( searchPath.length() > 0 && searchPath[ searchPath.length() - 1 ] != DIR_SLASH_C )
         searchPath.append( DIR_SLASH_S );
 
-    FileManager::GetFolderFileNames( searchPath.c_str(), true, ext, fileFullNames );
-    for( size_t i = 0; i < fileFullNames.size(); i++ )
+    FileManager::GetFolderFileNames( searchPath.c_str(), true, ext, filePaths );
+    for( size_t i = 0; i < filePaths.size(); i++ )
     {
         char fname[ MAX_FOPATH ];
-        FileManager::ExtractFileName( fileFullNames[ i ].c_str(), fname );
+        FileManager::ExtractFileName( filePaths[ i ].c_str(), fname );
         FileManager::EraseExtension( fname );
         fileNames.push_back( fname );
     }
@@ -1063,27 +1063,27 @@ bool FilesCollection::IsNextFile()
     return curFileIndex < fileNames.size();
 }
 
-FileManager& FilesCollection::GetNextFile( const char** name /* = NULL */, const char** name_with_path /* = NULL */, bool no_read_data /* = false */ )
+FileManager& FilesCollection::GetNextFile( const char** name /* = NULL */, const char** path /* = NULL */, bool no_read_data /* = false */ )
 {
     curFileIndex++;
-    curFile.LoadFile( ( searchPath + fileFullNames[ curFileIndex - 1 ] ).c_str(), PT_DATA, no_read_data );
+    curFile.LoadFile( ( searchPath + filePaths[ curFileIndex - 1 ] ).c_str(), PT_DATA, no_read_data );
     if( name )
         *name = fileNames[ curFileIndex - 1 ].c_str();
-    if( name_with_path )
-        *name_with_path = fileFullNames[ curFileIndex - 1 ].c_str();
+    if( path )
+        *path = filePaths[ curFileIndex - 1 ].c_str();
     return curFile;
 }
 
-FileManager& FilesCollection::FindFile( const char* name, const char** name_with_path /* = NULL */ )
+FileManager& FilesCollection::FindFile( const char* name, const char** path /* = NULL */ )
 {
     curFile.UnloadFile();
     for( size_t i = 0; i < fileNames.size(); i++ )
     {
         if( fileNames[ i ] == name )
         {
-            curFile.LoadFile( ( searchPath + fileFullNames[ i ] ).c_str(), PT_DATA );
-            if( name_with_path )
-                *name_with_path = fileFullNames[ i ].c_str();
+            curFile.LoadFile( ( searchPath + filePaths[ i ] ).c_str(), PT_DATA );
+            if( path )
+                *path = filePaths[ i ].c_str();
             break;
         }
     }

@@ -13,9 +13,13 @@ namespace Str
     void Copy( char* to, uint size, const char* from );
     template< int Size >
     inline void Copy( char(&to)[ Size ], const char* from ) { return Copy( to, Size, from ); }
+    template< int Size >
+    inline void CopyCount( char(&to)[ Size ], const char* from, uint count ) { return Copy( to, Size < count + 1 ? Size : count + 1, from ); }
     void        Append( char* to, uint size, const char* from );
     template< int Size >
     inline void Append( char(&to)[ Size ], const char* from ) { return Append( to, Size, from ); }
+    template< int Size >
+    inline void AppendCount( char(&to)[ Size ], const char* from, uint count ) { return Append( to, Size < count + 1 ? Size : count + 1, from ); }
 
     char* Duplicate( const char* str );
 

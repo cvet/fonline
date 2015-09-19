@@ -1367,7 +1367,7 @@ bool Animation3dEntity::Load( const char* name )
 
         // Extract file path
         char path[ MAX_FOPATH ];
-        FileManager::ExtractPath( name, path );
+        FileManager::ExtractDir( name, path );
 
         // Parse
         char             model[ MAX_FOPATH ] = { 0 };

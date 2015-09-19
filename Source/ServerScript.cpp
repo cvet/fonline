@@ -444,6 +444,7 @@ bool FOServer::ReloadClientScripts()
     {
         if( pragmas[ i ].Name != "property" )
         {
+            // All pragmas exclude 'property'
             msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2, pragmas[ i ].Name.c_str() );
             msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2 + 1, pragmas[ i ].Text.c_str() );
             pragma_index++;
@@ -469,6 +470,7 @@ bool FOServer::ReloadClientScripts()
     }
     for( size_t i = 0; i < ServerPropertyPragmas.size(); i++ )
     {
+        // All 'property' pragmas
         msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2, ServerPropertyPragmas[ i ].Name.c_str() );
         msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2 + 1, ServerPropertyPragmas[ i ].Text.c_str() );
         pragma_index++;
@@ -669,7 +671,7 @@ AIDataPlane* FOServer::SScriptFunc::NpcPlane_GetChild( AIDataPlane* plane, uint 
 
 bool FOServer::SScriptFunc::NpcPlane_Misc_SetScript( AIDataPlane* plane, ScriptString& func_name )
 {
-    uint bind_id = Script::Bind( func_name.c_str(), "void %s(Critter&)", false );
+    uint bind_id = Script::BindByFuncNameInRuntime( func_name.c_str(), "void %s(Critter&)", false );
     if( !bind_id )
         SCRIPT_ERROR_R0( "Script not found." );
     plane->Misc.ScriptBindId = bind_id;
@@ -728,18 +730,21 @@ bool FOServer::SScriptFunc::Item_IsDeteriorable( Item* item )
     return item->IsDeteriorable();
 }
 
-bool FOServer::SScriptFunc::Item_SetScript( Item* item, ScriptString* script )
+bool FOServer::SScriptFunc::Item_SetScript( Item* item, ScriptString* func_name )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !script || !script->length() )
+
+    if( func_name && func_name->length() )
     {
-        item->SetScriptId( 0 );
+        char script_name[ MAX_FOTEXT ];
+        Script::MakeScriptNameInRuntime( func_name->c_str(), script_name );
+        if( !item->SetScript( script_name, true ) )
+            SCRIPT_ERROR_R0( "Script function not found." );
     }
     else
     {
-        if( !item->ParseScript( script->c_str(), true ) )
-            SCRIPT_ERROR_R0( "Script function not found." );
+        item->SetScriptId( 0 );
     }
     return true;
 }
@@ -757,11 +762,10 @@ bool FOServer::SScriptFunc::Item_SetEvent( Item* item, int event_type, ScriptStr
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( event_type < 0 || event_type >= ITEM_EVENT_MAX )
         SCRIPT_ERROR_R0( "Invalid event type arg." );
-    if( !func_name || !func_name->length() )
-        item->FuncId[ event_type ] = 0;
-    else
+
+    if( func_name && func_name->length() )
     {
-        item->FuncId[ event_type ] = Script::Bind( func_name->c_str(), ItemEventFuncName[ event_type ], false );
+        item->FuncId[ event_type ] = Script::BindByFuncNameInRuntime( func_name->c_str(), ItemEventFuncName[ event_type ], false );
         if( !item->FuncId[ event_type ] )
             SCRIPT_ERROR_R0( "Function not found." );
 
@@ -771,6 +775,10 @@ bool FOServer::SScriptFunc::Item_SetEvent( Item* item, int event_type, ScriptStr
             if( map )
                 map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_WALK_ITEM );
         }
+    }
+    else
+    {
+        item->FuncId[ event_type ] = 0;
     }
     return true;
 }
@@ -1261,13 +1269,16 @@ bool FOServer::SScriptFunc::Crit_SetEvent( Critter* cr, int event_type, ScriptSt
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( event_type < 0 || event_type >= CRITTER_EVENT_MAX )
         SCRIPT_ERROR_R0( "Invalid event type arg." );
-    if( !func_name || !func_name->length() )
-        cr->FuncId[ event_type ] = 0;
-    else
+
+    if( func_name && func_name->length() )
     {
-        cr->FuncId[ event_type ] = Script::Bind( func_name->c_str(), CritterEventFuncName[ event_type ], false );
+        cr->FuncId[ event_type ] = Script::BindByFuncNameInRuntime( func_name->c_str(), CritterEventFuncName[ event_type ], false );
         if( !cr->FuncId[ event_type ] )
             SCRIPT_ERROR_R0( "Function not found." );
+    }
+    else
+    {
+        cr->FuncId[ event_type ] = 0;
     }
     return true;
 }
@@ -2544,7 +2555,7 @@ void FOServer::SScriptFunc::Cl_ShowScreen( Critter* cl, int screen_type, uint pa
     uint bind_id = 0;
     if( func_name && func_name->length() )
     {
-        bind_id = Script::Bind( func_name->c_str(), "void %s(Critter&,uint,string&)", false );
+        bind_id = Script::BindByFuncNameInRuntime( func_name->c_str(), "void %s(Critter&,uint,string&)", false );
         if( !bind_id )
             SCRIPT_ERROR_R( "Function not found." );
     }
@@ -2580,18 +2591,21 @@ void FOServer::SScriptFunc::Cl_Disconnect( Critter* cl )
         cl_->Disconnect();
 }
 
-bool FOServer::SScriptFunc::Crit_SetScript( Critter* cr, ScriptString* script )
+bool FOServer::SScriptFunc::Crit_SetScript( Critter* cr, ScriptString* func_name )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !script || !script->length() )
+
+    if( func_name && func_name->length() )
     {
-        cr->SetScriptId( 0 );
+        char script_name[ MAX_FOTEXT ];
+        Script::MakeScriptNameInRuntime( func_name->c_str(), script_name );
+        if( !cr->SetScript( script_name, true ) )
+            SCRIPT_ERROR_R0( "Script function '%s' not found.", script_name );
     }
     else
     {
-        if( !cr->ParseScript( script->c_str(), true ) )
-            SCRIPT_ERROR_R0( "Script function not found." );
+        cr->SetScriptId( 0 );
     }
     return true;
 }
@@ -2699,9 +2713,11 @@ bool FOServer::SScriptFunc::Crit_AddTimeEvent( Critter* cr, ScriptString& func_n
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( !func_name.length() )
         SCRIPT_ERROR_R0( "Script name is empty." );
-    hash func_num = Script::BindScriptFuncNum( func_name.c_str(), "uint %s(Critter&,int,uint&)" );
+
+    hash func_num = Script::BindScriptFuncNumByFuncNameInRuntime( func_name.c_str(), "uint %s(Critter&,int,uint&)" );
     if( !func_num )
         SCRIPT_ERROR_R0( "Function not found." );
+
     cr->AddCrTimeEvent( func_num, 0, duration, identifier );
     return true;
 }
@@ -2712,9 +2728,11 @@ bool FOServer::SScriptFunc::Crit_AddTimeEventRate( Critter* cr, ScriptString& fu
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( !func_name.length() )
         SCRIPT_ERROR_R0( "Script name is empty." );
-    hash func_num = Script::BindScriptFuncNum( func_name.c_str(), "uint %s(Critter&,int,uint&)" );
+
+    hash func_num = Script::BindScriptFuncNumByFuncNameInRuntime( func_name.c_str(), "uint %s(Critter&,int,uint&)" );
     if( !func_num )
         SCRIPT_ERROR_R0( "Function not found." );
+
     cr->AddCrTimeEvent( func_num, rate, duration, identifier );
     return true;
 }
@@ -3325,18 +3343,21 @@ Location* FOServer::SScriptFunc::Map_GetLocation( Map* map )
     return map->GetLocation( true );
 }
 
-bool FOServer::SScriptFunc::Map_SetScript( Map* map, ScriptString* script )
+bool FOServer::SScriptFunc::Map_SetScript( Map* map, ScriptString* func_name )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !script || !script->length() )
+
+    if( func_name && func_name->length() )
     {
-        map->Data.ScriptId = 0;
+        char script_name[ MAX_FOTEXT ];
+        Script::MakeScriptNameInRuntime( func_name->c_str(), script_name );
+        if( !map->SetScript( script_name, true ) )
+            SCRIPT_ERROR_R0( "Script function not found." );
     }
     else
     {
-        if( !map->ParseScript( script->c_str(), true ) )
-            SCRIPT_ERROR_R0( "Script function not found." );
+        map->Data.ScriptId = 0;
     }
     return true;
 }
@@ -3354,10 +3375,11 @@ bool FOServer::SScriptFunc::Map_SetEvent( Map* map, int event_type, ScriptString
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( event_type < 0 || event_type >= MAP_EVENT_MAX )
         SCRIPT_ERROR_R0( "Invalid event type arg." );
-    if( !func_name || !func_name->length() )
-        map->FuncId[ event_type ] = 0;
+
+    if( func_name && func_name->length() )
+        map->FuncId[ event_type ] = Script::BindByFuncNameInRuntime( func_name->c_str(), MapEventFuncName[ event_type ], false );
     else
-        map->FuncId[ event_type ] = Script::Bind( func_name->c_str(), MapEventFuncName[ event_type ], false );
+        map->FuncId[ event_type ] = 0;
 
     if( event_type >= MAP_EVENT_LOOP_0 && event_type <= MAP_EVENT_LOOP_4 )
     {
@@ -3953,7 +3975,7 @@ uint FOServer::SScriptFunc::Map_GetPathLengthCr( Map* map, Critter* cr, ushort t
     return (uint) path.size();
 }
 
-Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, ScriptArray* params, ScriptArray* items, ScriptString* script )
+Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, ScriptArray* params, ScriptArray* items, ScriptString* func_name )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -3999,7 +4021,13 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
         }
     }
 
-    Critter* npc = CrMngr.CreateNpc( proto_id, &params_, &items_, script && script->length() ? script->c_str() : NULL, map, hx, hy, dir, false );
+    char script_name[ MAX_FOTEXT ];
+    if( func_name && func_name->length() )
+        Script::MakeScriptNameInRuntime( func_name->c_str(), script_name );
+    else
+        script_name[ 0 ] = 0;
+
+    Critter* npc = CrMngr.CreateNpc( proto_id, &params_, &items_, script_name[ 0 ] ? script_name : NULL, map, hx, hy, dir, false );
     if( !npc )
         SCRIPT_ERROR_R0( "Create npc fail." );
     return npc;
@@ -4423,10 +4451,11 @@ bool FOServer::SScriptFunc::Location_SetEvent( Location* loc, int event_type, Sc
         SCRIPT_ERROR_R0( "Location is destroyed." );
     if( event_type < 0 || event_type >= LOCATION_EVENT_MAX )
         SCRIPT_ERROR_R0( "Invalid event type arg for location." );
-    if( !func_name || !func_name->length() )
-        loc->FuncId[ event_type ] = 0;
+
+    if( func_name && func_name->length() )
+        loc->FuncId[ event_type ] = Script::BindByFuncNameInRuntime( func_name->c_str(), LocationEventFuncName[ event_type ], false );
     else
-        loc->FuncId[ event_type ] = Script::Bind( func_name->c_str(), LocationEventFuncName[ event_type ], false );
+        loc->FuncId[ event_type ] = 0;
 
     if( func_name && func_name->length() && !loc->FuncId[ event_type ] )
         SCRIPT_ERROR_R0( "Function not found." );
@@ -5030,12 +5059,12 @@ int64 FOServer::SScriptFunc::Global_WorldItemCount( hash pid )
     return ItemMngr.GetItemStatistics( pid );
 }
 
-bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, ScriptString& first_str, uint parameter, ScriptString& script_name )
+bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, ScriptString& first_str, uint parameter, ScriptString& func_name )
 {
     if( first_str.length() > TEXT_LISTEN_FIRST_STR_MAX_LEN )
         SCRIPT_ERROR_R0( "First string arg length greater than maximum." );
 
-    uint func_id = Script::Bind( script_name.c_str(), "void %s(Critter&,string&)", false );
+    uint func_id = Script::BindByFuncNameInRuntime( func_name.c_str(), "void %s(Critter&,string&)", false );
     if( !func_id )
         SCRIPT_ERROR_R0( "Unable to bind script function." );
 
@@ -5800,9 +5829,9 @@ uint FOServer::SScriptFunc::Global_GetImageColor( uint index, uint x, uint y )
     return result;
 }
 
-hash FOServer::SScriptFunc::Global_GetScriptId( ScriptString& script_name, ScriptString& func_decl )
+hash FOServer::SScriptFunc::Global_GetScriptId( ScriptString& func_name, ScriptString& func_decl )
 {
-    return Script::BindScriptFuncNum( script_name.c_str(), func_decl.c_str() );
+    return Script::BindScriptFuncNumByFuncNameInRuntime( func_name.c_str(), func_decl.c_str() );
 }
 
 void FOServer::SScriptFunc::Global_Synchronize()

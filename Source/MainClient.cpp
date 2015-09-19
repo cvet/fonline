@@ -44,7 +44,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     char path[ MAX_FOPATH ] = { 0 };
     char name[ MAX_FOPATH ] = { 0 };
     GetModuleFileName( NULL, full_path, MAX_FOPATH );
-    FileManager::ExtractPath( full_path, path );
+    FileManager::ExtractDir( full_path, path );
     FileManager::ExtractFileName( full_path, name );
     if( Str::Substring( name, "Singleplayer" ) || Str::Substring( CommandLine, "Singleplayer" ) )
     {

@@ -690,7 +690,7 @@ bool CraftManager::AddCraft( uint num, const char* str )
     #ifdef FONLINE_SERVER
     if( craft->Script->length() )
     {
-        craft->ScriptBindId = Script::Bind( craft->Script->c_str(), "int %s(Critter&, int, CraftItem&)", false );
+        craft->ScriptBindId = Script::BindByScriptName( craft->Script->c_str(), "int %s(Critter&, int, CraftItem&)", false );
         if( !craft->ScriptBindId )
         {
             delete craft;

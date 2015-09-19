@@ -62,7 +62,6 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType
     Data.MapPid = proto->GetPid();
     Data.MapTime = proto->Header.Time;
     Data.MapRain = 0;
-    Data.ScriptId = 0;
     Data.IsTurnBasedAviable = false;
 
     for( int i = 0; i < MAP_LOOP_FUNC_MAX; i++ )
@@ -126,26 +125,17 @@ bool Map::Generate()
         MapObject& mobj = *( *it );
 
         // Make script name
-        char script[ MAX_SCRIPT_NAME * 2 + 1 ] = { 0 };
-        if( mobj.ScriptName[ 0 ] )
-        {
-            if( mobj.FuncName[ 0 ] )
-            {
-                Str::Copy( script, mobj.ScriptName );
-                Str::Append( script, "@" );
-                Str::Append( script, mobj.FuncName );
-            }
-            else
-            {
-                WriteLog( "Map<%s> empty critter function, pos<%u><%u>, module<%s>.\n", Proto->GetName(), mobj.MapX, mobj.MapY, mobj.ScriptName );
-            }
-        }
+        char script_name[ MAX_FOTEXT ];
+        Str::Copy( script_name, mobj.ScriptName );
+        if( script_name[ 0 ] )
+            Str::Append( script_name, "@" );
+        Str::Append( script_name, mobj.FuncName );
 
         // Create npc
-        Npc* npc = CrMngr.CreateNpc( mobj.ProtoId, mobj.Props, NULL, script[ 0 ] ? script : NULL, this, mobj.MapX, mobj.MapY, (uchar) mobj.MCritter.Dir, true );
+        Npc* npc = CrMngr.CreateNpc( mobj.ProtoId, mobj.Props, NULL, script_name[ 0 ] ? script_name : NULL, this, mobj.MapX, mobj.MapY, (uchar) mobj.MCritter.Dir, true );
         if( !npc )
         {
-            WriteLogF( _FUNC_, " - Create npc<%s> on map<%s> failture - continue generate.\n", HASH_STR( mobj.ProtoId ), Proto->GetName() );
+            WriteLogF( _FUNC_, " - Create npc<%s> on map<%s> failture - continue generate.\n", HASH_STR( mobj.ProtoId ), GetName() );
             continue;
         }
 
@@ -203,7 +193,7 @@ bool Map::Generate()
         ProtoItem* proto = ItemMngr.GetProtoItem( pid );
         if( !proto )
         {
-            WriteLogF( _FUNC_, " - Proto object on map<%s> with pid<%s> not found, continue generate.\n", Proto->GetName(), HASH_STR( pid ) );
+            WriteLogF( _FUNC_, " - Proto object on map<%s> with pid<%s> not found, continue generate.\n", GetName(), HASH_STR( pid ) );
             continue;
         }
 
@@ -227,7 +217,7 @@ bool Map::Generate()
         Item* item = ItemMngr.CreateItem( pid );
         if( !item )
         {
-            WriteLogF( _FUNC_, " - Create item on map<%s> with pid<%u> failture, continue generate.\n", Proto->GetName(), pid );
+            WriteLogF( _FUNC_, " - Create item on map<%s> with pid<%u> failture, continue generate.\n", GetName(), pid );
             continue;
         }
 
@@ -285,20 +275,11 @@ bool Map::Generate()
             item->SetPicMap( mobj.MItem.PicMap );
 
         // Parse script
-        char script[ MAX_SCRIPT_NAME * 2 + 1 ] = { 0 };
-        if( mobj.ScriptName[ 0 ] )
-        {
-            if( mobj.FuncName[ 0 ] )
-            {
-                Str::Copy( script, mobj.ScriptName );
-                Str::Append( script, "@" );
-                Str::Append( script, mobj.FuncName );
-            }
-            else
-            {
-                WriteLog( "Map<%s> empty item function, pos<%u><%u>, module<%s>.\n", Proto->GetName(), mobj.MapX, mobj.MapY, mobj.ScriptName );
-            }
-        }
+        char script_name[ MAX_FOTEXT ] = { 0 };
+        Str::Copy( script_name, mobj.ScriptName );
+        if( script_name[ 0 ] )
+            Str::Append( script_name, "@" );
+        Str::Append( script_name, mobj.FuncName );
 
         // Store UID association
         if( mobj.UID )
@@ -327,15 +308,15 @@ bool Map::Generate()
         {
             if( !AddItem( item, mobj.MapX, mobj.MapY ) )
             {
-                WriteLogF( _FUNC_, " - Add item '%s' to map '%s' failture, continue generate.\n", HASH_STR( pid ), Proto->GetName() );
+                WriteLogF( _FUNC_, " - Add item '%s' to map '%s' failure, continue generate.\n", HASH_STR( pid ), GetName() );
                 ItemMngr.DeleteItem( item );
                 continue;
             }
         }
 
         // Script
-        if( script[ 0 ] )
-            item->ParseScript( script, true );
+        if( script_name[ 0 ] )
+            item->SetScript( script_name, true );
     }
 
     // Npc initialization
@@ -377,11 +358,11 @@ bool Map::Generate()
     // Map script
     if( Proto->Header.ScriptModule[ 0 ] && Proto->Header.ScriptFunc[ 0 ] )
     {
-        char script[ MAX_SCRIPT_NAME * 2 + 2 ];
-        Str::Copy( script, Proto->Header.ScriptModule );
-        Str::Append( script, "@" );
-        Str::Append( script, Proto->Header.ScriptFunc );
-        ParseScript( script, true );
+        char script_name[ MAX_FOTEXT ];
+        Str::Copy( script_name, Proto->Header.ScriptModule );
+        Str::Append( script_name, "@" );
+        Str::Append( script_name, Proto->Header.ScriptFunc );
+        SetScript( script_name, true );
     }
     return true;
 }
@@ -1665,14 +1646,14 @@ bool Map::PrepareScriptFunc( int num_scr_func )
     return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Map id<%u>, pid<%u>", GetId(), GetPid() ) );
 }
 
-bool Map::ParseScript( const char* script, bool first_time )
+bool Map::SetScript( const char* script_name, bool first_time )
 {
-    if( script && script[ 0 ] )
+    if( script_name && script_name[ 0 ] )
     {
-        hash func_num = Script::BindScriptFuncNum( script, "void %s(Map&,bool)" );
+        hash func_num = Script::BindScriptFuncNumByScriptName( script_name, "void %s(Map&,bool)" );
         if( !func_num )
         {
-            WriteLogF( _FUNC_, " - Script<%s> bind fail, map pid<%u>.\n", script, GetPid() );
+            WriteLogF( _FUNC_, " - Script '%s' bind fail, map '%s'.\n", script_name, GetName() );
             return false;
         }
         Data.ScriptId = func_num;

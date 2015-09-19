@@ -13,7 +13,7 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
 
     RUNTIME_ASSERT( func->GetReturnTypeId() == asTYPEID_VOID );
     uint func_num = Script::GetFuncNum( func );
-    uint bind_id = Script::Bind( func, false );
+    uint bind_id = Script::BindByFunc( func, false );
     RUNTIME_ASSERT( bind_id );
 
     DeferredCall call;
@@ -258,7 +258,7 @@ bool ScriptInvoker::LoadDeferredCalls( void* f, uint version )
             call.Values.clear();
         }
 
-        call.BindId = Script::Bind( call.FuncNum, false );
+        call.BindId = Script::BindByFuncNum( call.FuncNum, false );
         if( !call.BindId )
         {
             WriteLog( "Unable to bind script function '%s' for event %u. Skip event.\n", HASH_STR( call.FuncNum ), call.Id );

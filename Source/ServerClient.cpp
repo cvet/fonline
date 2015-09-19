@@ -2312,7 +2312,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             Script::RunPrepared();
         }
         if( !cl_old )
-            cl->ParseScript( NULL, false );
+            cl->SetScript( NULL, false );
         cl->DisableSend--;
     }
 
@@ -4159,7 +4159,7 @@ void FOServer::Process_RunServerScript( Client* cl )
     uint          msg_len;
     bool          unsafe = false;
     ushort        script_name_len;
-    char          script_name[ MAX_SCRIPT_NAME * 2 + 2 ] = { 0 };
+    char          script_name[ MAX_FOTEXT ];
     int           p0, p1, p2;
     ushort        p3len;
     char          p3str[ MAX_FOTEXT ];
@@ -4178,15 +4178,21 @@ void FOServer::Process_RunServerScript( Client* cl )
     }
 
     cl->Bin >> script_name_len;
-    if( script_name_len && script_name_len < MAX_SCRIPT_NAME * 2 + 2 )
+    if( script_name_len && script_name_len < MAX_FOTEXT )
     {
         cl->Bin.Pop( script_name, script_name_len );
         script_name[ script_name_len ] = 0;
     }
 
-    char module_name[ MAX_SCRIPT_NAME + 1 ] = { 0 };
-    char func_name[ MAX_SCRIPT_NAME + 1 ] = { 0 };
-    Script::ReparseScriptName( script_name, module_name, func_name );
+    char module_name[ MAX_FOTEXT ];
+    char func_name[ MAX_FOTEXT ];
+    if( !Script::ParseScriptName( script_name, module_name, func_name ) )
+    {
+        WriteLogF( _FUNC_, " - Attempt to execute invalid script '%s'. Client '%s'.\n", script_name, cl->GetInfo() );
+        cl->Send_Text( cl, "Access denied. Disconnect.", SAY_NETMSG );
+        cl->Disconnect();
+        return;
+    }
 
     if( unsafe && ( Str::Length( func_name ) <= 7 || !Str::CompareCount( func_name, "unsafe_", 7 ) ) ) // Check unsafe_ prefix
     {
@@ -4219,8 +4225,8 @@ void FOServer::Process_RunServerScript( Client* cl )
 
     CHECK_IN_BUFF_ERROR( cl );
 
-    uint bind_id = Script::Bind( module_name, func_name, "void %s(Critter&,int,int,int,string@,int[]@)", true );
-    if( bind_id && Script::PrepareContext( bind_id, _FUNC_, Str::FormatBuf( "Critter<%s>, func<%s@%s>", cl->GetInfo(), module_name, func_name ) ) )
+    uint bind_id = Script::BindByModuleFuncName( module_name, func_name, "void %s(Critter&,int,int,int,string@,int[]@)", true );
+    if( bind_id && Script::PrepareContext( bind_id, _FUNC_, cl->GetInfo() ) )
     {
         Script::SetArgObject( cl );
         Script::SetArgUInt( p0 );

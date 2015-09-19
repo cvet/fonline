@@ -2493,25 +2493,32 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     break;
     case CMD_LOADSCRIPT:
     {
-        char file_name[ MAX_SCRIPT_NAME + 1 ];
-        buf.Pop( file_name, MAX_SCRIPT_NAME );
-        file_name[ MAX_SCRIPT_NAME ] = 0;
+        char module_name[ MAX_FOTEXT ];
+        buf.Pop( module_name, MAX_FOTEXT );
+        module_name[ MAX_FOTEXT - 1 ] = 0;
 
         CHECK_ALLOW_COMMAND;
 
         SynchronizeLogicThreads();
 
-        char path[ MAX_FOPATH ];
-        char module_name[ MAX_FOPATH ];
-        FileManager::ExtractPath( file_name, path );
-        FileManager::ExtractFileName( file_name, module_name );
-        FileManager::EraseExtension( module_name );
-        if( Script::LoadModuleFromFile( module_name, path, "SERVER_" ) )
+        FilesCollection scripts( "fos" );
+        const char*     path;
+        FileManager&    file = scripts.FindFile( module_name, &path );
+        if( file.IsLoaded() )
         {
-            if( Script::BindImportedFunctions() )
-                logcb( "Complete." );
+            char dir[ MAX_FOPATH ];
+            FileManager::ExtractDir( path, dir );
+            if( Script::LoadModuleFromFile( module_name, file, dir, NULL ) )
+            {
+                if( Script::BindImportedFunctions() )
+                    logcb( "Complete." );
+                else
+                    logcb( Str::FormatBuf( "Complete, with errors." ) );
+            }
             else
-                logcb( Str::FormatBuf( "Complete, with errors." ) );
+            {
+                logcb( "Unable to compile script." );
+            }
         }
         else
         {
@@ -2537,13 +2544,13 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     break;
     case CMD_RUNSCRIPT:
     {
-        char module_name[ MAX_SCRIPT_NAME + 1 ];
-        char func_name[ MAX_SCRIPT_NAME + 1 ];
+        char module_name[ MAX_FOTEXT ];
+        char func_name[ MAX_FOTEXT ];
         uint param0, param1, param2;
-        buf.Pop( module_name, MAX_SCRIPT_NAME );
-        module_name[ MAX_SCRIPT_NAME ] = 0;
-        buf.Pop( func_name, MAX_SCRIPT_NAME );
-        func_name[ MAX_SCRIPT_NAME ] = 0;
+        buf.Pop( module_name, MAX_FOTEXT );
+        module_name[ MAX_FOTEXT - 1 ] = 0;
+        buf.Pop( func_name, MAX_FOTEXT );
+        func_name[ MAX_FOTEXT - 1 ] = 0;
         buf >> param0;
         buf >> param1;
         buf >> param2;
@@ -2559,7 +2566,9 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         if( !cl_ )
             SynchronizeLogicThreads();
 
-        uint bind_id = Script::Bind( module_name, func_name, "void %s(Critter&,int,int,int)", true );
+        char script_name[ MAX_FOTEXT ];
+        Str::Format( script_name, "%s@%s", module_name, func_name );
+        uint bind_id = Script::BindByScriptName( script_name, "void %s(Critter&,int,int,int)", true );
         if( !bind_id )
         {
             if( !cl_ )
@@ -4505,7 +4514,7 @@ bool FOServer::LoadWorld( const char* fname )
             f = FileOpen( auto_fname, false );
             if( f )
             {
-                WriteLog( "Load world from dump file<%s>.\n", auto_fname );
+                WriteLog( "Load world from dump file '%s'.\n", auto_fname );
                 SaveWorldIndex = i;
                 break;
             }
@@ -4523,11 +4532,11 @@ bool FOServer::LoadWorld( const char* fname )
         f = FileOpen( fname, false );
         if( !f )
         {
-            WriteLog( "World dump file<%s> not found.\n", fname );
+            WriteLog( "World dump file '%s' not found.\n", fname );
             return false;
         }
 
-        WriteLog( "Load world from dump file<%s>.\n", fname );
+        WriteLog( "Load world from dump file '%s'.\n", fname );
     }
 
     // File begin
@@ -4541,7 +4550,7 @@ bool FOServer::LoadWorld( const char* fname )
         version != WORLD_SAVE_V21 && version != WORLD_SAVE_V22 && version != WORLD_SAVE_V23 && version != WORLD_SAVE_V24 &&
         version != WORLD_SAVE_V25 && version != WORLD_SAVE_V26 )
     {
-        WriteLog( "Unknown version<%u> of world dump file.\n", version );
+        WriteLog( "Unknown version %u of world dump file.\n", version );
         FileClose( f );
         return false;
     }

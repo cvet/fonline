@@ -212,7 +212,7 @@ void CritterManager::DeleteNpc( Critter* cr )
     Job::DeferredRelease( cr );
 }
 
-Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items_data, const char* script, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy )
+Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items_data, const char* script_name, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy )
 {
     ProtoCritter* proto = GetProto( proto_id );
     if( !proto )
@@ -322,8 +322,8 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
         Script::SetArgBool( true );
         Script::RunPrepared();
     }
-    if( script )
-        npc->ParseScript( script, true );
+    if( script_name && script_name[ 0 ] )
+        npc->SetScript( script_name, true );
     map->AddCritterEvents( npc );
 
     npc->RefreshBag();

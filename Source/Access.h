@@ -394,19 +394,19 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     break;
     case CMD_LOADSCRIPT:
     {
-        char script_name[ MAX_SCRIPT_NAME + 1 ];
+        char script_name[ MAX_FOTEXT ];
         if( sscanf( args, "%s", script_name ) != 1 )
         {
             logcb( "Invalid arguments. Example: <loadscript name>." );
             break;
         }
-        script_name[ MAX_SCRIPT_NAME ] = 0;
-        msg_len += MAX_SCRIPT_NAME;
+        script_name[ MAX_FOTEXT - 1 ] = 0;
+        msg_len += MAX_FOTEXT;
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf.Push( script_name, MAX_SCRIPT_NAME );
+        buf.Push( script_name, MAX_FOTEXT );
     }
     break;
     case CMD_RELOAD_CLIENT_SCRIPTS:
@@ -418,23 +418,23 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     break;
     case CMD_RUNSCRIPT:
     {
-        char script_name[ MAX_SCRIPT_NAME + 1 ];
-        char func_name[ MAX_SCRIPT_NAME + 1 ];
+        char script_name[ MAX_FOTEXT ];
+        char func_name[ MAX_FOTEXT ];
         uint param0, param1, param2;
         if( sscanf( args, "%s%s%d%d%d", script_name, func_name, &param0, &param1, &param2 ) != 5 )
         {
             logcb( "Invalid arguments. Example: <runscript module func param0 param1 param2>." );
             break;
         }
-        script_name[ MAX_SCRIPT_NAME ] = 0;
-        func_name[ MAX_SCRIPT_NAME ] = 0;
-        msg_len += MAX_SCRIPT_NAME * 2 + sizeof( uint ) * 3;
+        script_name[ MAX_FOTEXT - 1 ] = 0;
+        func_name[ MAX_FOTEXT - 1 ] = 0;
+        msg_len += MAX_FOTEXT * 2 + sizeof( uint ) * 3;
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf.Push( script_name, MAX_SCRIPT_NAME );
-        buf.Push( func_name, MAX_SCRIPT_NAME );
+        buf.Push( script_name, MAX_FOTEXT );
+        buf.Push( func_name, MAX_FOTEXT );
         buf << param0;
         buf << param1;
         buf << param2;

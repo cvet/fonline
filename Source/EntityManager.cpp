@@ -397,7 +397,7 @@ void EntityManager::InitEntities()
         {
             Item* item = (Item*) entity;
             if( item->GetScriptId() )
-                item->ParseScript( NULL, false );
+                item->SetScript( NULL, false );
             if( !item->IsDestroyed && item->GetIsRadio() )
                 ItemMngr.RadioRegister( item, true );
         }
@@ -413,13 +413,13 @@ void EntityManager::InitEntities()
                 Script::RunPrepared();
             }
             if( !npc->IsDestroyed && npc->GetScriptId() )
-                npc->ParseScript( NULL, false );
+                npc->SetScript( NULL, false );
         }
         else if( entity->Type == EntityType::Map )
         {
             Map* map = (Map*) entity;
             if( map->Data.ScriptId )
-                map->ParseScript( NULL, false );
+                map->SetScript( NULL, false );
         }
     }
 }

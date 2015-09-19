@@ -6064,13 +6064,7 @@ void FOClient::Net_OnRunClientScript()
 
     CHECK_IN_BUFF_ERROR;
 
-    // Reparse module
-    uint bind_id;
-    if( Str::Substring( func_name->c_str(), "@" ) )
-        bind_id = Script::Bind( func_name->c_str(), "void %s(int,int,int,string@,int[]@)", true );
-    else
-        bind_id = Script::Bind( "client_main", func_name->c_str(), "void %s(int,int,int,string@,int[]@)", true );
-
+    uint bind_id = Script::BindByScriptName( func_name->c_str(), "void %s(int,int,int,string@,int[]@)", true );
     if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Game" ) )
     {
         Script::SetArgUInt( p0 );
@@ -8978,8 +8972,9 @@ bool FOClient::ReloadScripts()
     // Store dlls
     for( int i = STR_INTERNAL_SCRIPT_DLLS; ; i += 2 )
     {
-        if( !msg_script.Count( i ) || !msg_script.Count( i + 1 ) )
+        if( !msg_script.Count( i ) )
             break;
+        RUNTIME_ASSERT( msg_script.Count( i + 1 ) );
 
         const char* dll_name = msg_script.GetStr( i );
         UCharVec    dll_binary;
@@ -9006,12 +9001,14 @@ bool FOClient::ReloadScripts()
     Pragmas pragmas;
     for( int i = STR_INTERNAL_SCRIPT_PRAGMAS; ; i += 2 )
     {
-        if( !msg_script.Count( i ) || !msg_script.Count( i + 1 ) )
+        if( !msg_script.Count( i ) )
             break;
+        RUNTIME_ASSERT( msg_script.Count( i + 1 ) );
+
         Preprocessor::PragmaInstance pragma;
         pragma.Name = msg_script.GetStr( i );
         pragma.Text = msg_script.GetStr( i + 1 );
-        pragma.CurrentFile = "main";
+        pragma.CurrentFile = "Main";
         pragma.CurrentFileLine = i;
         pragmas.push_back( pragma );
     }
@@ -9021,8 +9018,10 @@ bool FOClient::ReloadScripts()
     int errors = 0;
     for( int i = STR_INTERNAL_SCRIPT_MODULES; ; i += 3 )
     {
-        if( !msg_script.Count( i ) || !msg_script.Count( i + 1 ) || !msg_script.Count( i + 2 ) )
+        if( !msg_script.Count( i ) )
             break;
+        RUNTIME_ASSERT( msg_script.Count( i + 1 ) );
+        RUNTIME_ASSERT( msg_script.Count( i + 2 ) );
 
         const char* module_name = msg_script.GetStr( i );
         RUNTIME_ASSERT( module_name && module_name[ 0 ] );
@@ -11055,7 +11054,9 @@ void FOClient::SScriptFunc::Global_RunServerScript( ScriptString& func_name, int
     UIntVec dw;
     if( p4 )
         Script::AssignScriptArrayInVector< uint >( dw, p4 );
-    Self->Net_SendRunScript( false, func_name.c_str(), p0, p1, p2, p3 ? p3->c_str() : NULL, dw );
+    char script_name[ MAX_FOTEXT ];
+    Script::MakeScriptNameInRuntime( func_name.c_str(), script_name );
+    Self->Net_SendRunScript( false, script_name, p0, p1, p2, p3 ? p3->c_str() : NULL, dw );
 }
 
 void FOClient::SScriptFunc::Global_RunServerScriptUnsafe( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 )
@@ -11063,7 +11064,9 @@ void FOClient::SScriptFunc::Global_RunServerScriptUnsafe( ScriptString& func_nam
     UIntVec dw;
     if( p4 )
         Script::AssignScriptArrayInVector< uint >( dw, p4 );
-    Self->Net_SendRunScript( true, func_name.c_str(), p0, p1, p2, p3 ? p3->c_str() : NULL, dw );
+    char script_name[ MAX_FOTEXT ];
+    Script::MakeScriptNameInRuntime( func_name.c_str(), script_name );
+    Self->Net_SendRunScript( true, script_name, p0, p1, p2, p3 ? p3->c_str() : NULL, dw );
 }
 
 uint FOClient::SScriptFunc::Global_LoadSprite( ScriptString& spr_name, int path_index )

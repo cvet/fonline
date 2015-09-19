@@ -65,7 +65,7 @@ namespace Preprocessor
     void Define( const std::string& str );
     void Undef( const std::string& str );
     void UndefAll();
-    bool IsDefined( const std::string& str );
+    bool IsDefined( const std::string& str, std::string* value = NULL );
     void SetPragmaCallback( PragmaCallback* callback );
     void CallPragma( const PragmaInstance& pragma );
 
@@ -76,7 +76,6 @@ namespace Preprocessor
     LineNumberTranslator*       RestoreLineNumberTranslator( const std::vector< unsigned char >& data );
     const char*                 ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt = NULL );
     unsigned int                ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt = NULL );
-    std::vector< std::string >& GetFileDependencies();
     std::vector< std::string >& GetFilesPreprocessed();
 
     /************************************************************************/

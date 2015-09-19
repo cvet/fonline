@@ -564,23 +564,23 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
             READ_SCRIPT_VALUE_( script_val[ 4 ] );
         if( values_count > 5 )
         {
-            WriteLog( "Invalid DR script values count<%d>.\n", values_count );
+            WriteLog( "Invalid DR script values count %d.\n", values_count );
             values_count = 0;
             errors++;
         }
 
         #ifdef FONLINE_SERVER
         // Bind function
-        # define BIND_D_FUNC( params )                                                \
-            do {                                                                      \
-                id = Script::Bind( name, "bool %s(Critter&,Critter@" params, false ); \
+        # define BIND_D_FUNC( params )                                                            \
+            do {                                                                                  \
+                id = Script::BindByScriptName( name, "bool %s(Critter&,Critter@" params, false ); \
             } while( 0 )
-        # define BIND_R_FUNC( params )                                                                   \
-            do {                                                                                         \
-                if( ( id = Script::Bind( name, "uint %s(Critter&,Critter@" params, false, true ) ) > 0 ) \
-                    ret_value = true;                                                                    \
-                else                                                                                     \
-                    id = Script::Bind( name, "void %s(Critter&,Critter@" params, false );                \
+        # define BIND_R_FUNC( params )                                                                               \
+            do {                                                                                                     \
+                if( ( id = Script::BindByScriptName( name, "uint %s(Critter&,Critter@" params, false, true ) ) > 0 ) \
+                    ret_value = true;                                                                                \
+                else                                                                                                 \
+                    id = Script::BindByScriptName( name, "void %s(Critter&,Critter@" params, false );                \
             } while( 0 )
         switch( values_count )
         {
@@ -623,7 +623,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         }
         if( !id )
         {
-            WriteLog( "Script<%s> bind error.\n", name );
+            WriteLog( "Script '%s' bind error.\n", name );
             return NULL;
         }
         #endif
@@ -678,20 +678,19 @@ uint DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
 
     if( Str::CompareCase( str, "NOT_ANSWER_CLOSE_DIALOG" ) || Str::CompareCase( str, "None" ) )
         return NOT_ANSWER_CLOSE_DIALOG;
-    else if( Str::CompareCase( str, "NOT_ANSWER_BEGIN_BATTLE" ) || Str::CompareCase( str, "Attack" ) )
+    if( Str::CompareCase( str, "NOT_ANSWER_BEGIN_BATTLE" ) || Str::CompareCase( str, "Attack" ) )
         return NOT_ANSWER_BEGIN_BATTLE;
+
     #ifdef FONLINE_SERVER
-    else
+    uint id = Script::BindByScriptName( str, "uint %s(Critter&,Critter@,string@)", false, true );
+    if( id )
     {
-        uint id = Script::Bind( str, "uint %s(Critter&,Critter@,string@)", false, true );
-        if( id )
-        {
-            ret_val = true;
-            return id;
-        }
-        return Script::Bind( str, "void %s(Critter&,Critter@,string@)", false );
+        ret_val = true;
+        return id;
     }
-    #endif // FONLINE_SERVER
+    return Script::BindByScriptName( str, "void %s(Critter&,Critter@,string@)", false );
+    #endif
+
     return 0;
 }
 

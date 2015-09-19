@@ -102,8 +102,8 @@ public:
     static void        SetWritePath( const char* path );
     static hash        GetPathHash( const char* fname, int path_type );
     static void        FormatPath( char* path );
-    static void        ExtractPath( const char* fname, char* path );
-    static void        ExtractFileName( const char* fname, char* name );
+    static void        ExtractDir( const char* path, char* dir );
+    static void        ExtractFileName( const char* path, char* name );
     static void        MakeFilePath( const char* name, const char* path, char* result );
     static const char* GetExtension( const char* fname ); // EXT without dot
     static char*       EraseExtension( char* fname );     // Erase EXT with dot
@@ -149,15 +149,15 @@ class FilesCollection
 public:
     FilesCollection( const char* ext, int path_type = PT_SERVER_MODULES, const char* dir = NULL );
     bool         IsNextFile();
-    FileManager& GetNextFile( const char** name = NULL, const char** name_with_path = NULL, bool no_read_data = false );
-    FileManager& FindFile( const char* name, const char** name_with_path = NULL );
+    FileManager& GetNextFile( const char** name = NULL, const char** path = NULL, bool no_read_data = false );
+    FileManager& FindFile( const char* name, const char** path = NULL );
     uint         GetFilesCount();
     void         ResetCounter();
 
 private:
     string      searchPath;
     StrVec      fileNames;
-    StrVec      fileFullNames;
+    StrVec      filePaths;
     uint        curFileIndex;
     FileManager curFile;
 };

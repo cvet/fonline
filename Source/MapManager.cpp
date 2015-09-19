@@ -161,15 +161,15 @@ bool MapManager::LoadLocationsProtos()
     uint            files_loaded = 0;
     while( files.IsNextFile() )
     {
-        const char*  file_name;
-        FileManager& file = files.GetNextFile( &file_name );
+        const char*  name;
+        FileManager& file = files.GetNextFile( &name );
         if( !file.IsLoaded() )
         {
-            WriteLog( "Unable to open file<%s>.\n", file_name );
+            WriteLog( "Unable to open location file '%s'.\n", name );
             continue;
         }
 
-        if( !LoadLocationProto( file_name, file ) )
+        if( !LoadLocationProto( name, file ) )
             continue;
 
         files_loaded++;
@@ -287,7 +287,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
     char script[ MAX_FOTEXT ];
     if( ploc_data.GetStr( "Main", "EntranceScript", "", script ) && script[ 0 ] != '-' )
     {
-        int bind_id = Script::Bind( script, "bool %s(Location&,Critter@[]&,uint8)", false );
+        int bind_id = Script::BindByScriptName( script, "bool %s(Location&,Critter@[]&,uint8)", false );
         if( bind_id <= 0 )
         {
             WriteLogF( "Function<%s> not found in location<%s>.\n", script, loc_name );

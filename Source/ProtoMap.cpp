@@ -1035,12 +1035,18 @@ void ProtoMap::SaveCache( FileManager& fm )
 void ProtoMap::BindSceneryScript( MapObject* mobj )
 {
 // ============================================================
-    # define BIND_SCENERY_FUNC( params )                                                                                                                     \
-        if( mobj->ProtoId != SP_SCEN_TRIGGER )                                                                                                               \
-            mobj->RunTime.BindScriptId = Script::Bind( mobj->ScriptName, mobj->FuncName, "bool %s(Critter&,Scenery&,CritterProperty,Item@" params, false );  \
-        else                                                                                                                                                 \
-            mobj->RunTime.BindScriptId = Script::Bind( mobj->ScriptName, mobj->FuncName, "void %s(Critter&,Scenery&,bool,uint8" params, false )
+    # define BIND_SCENERY_FUNC( params )                                                                                                            \
+        if( mobj->ProtoId != SP_SCEN_TRIGGER )                                                                                                      \
+            mobj->RunTime.BindScriptId = Script::BindByScriptName( script_name, "bool %s(Critter&,Scenery&,CritterProperty,Item@" params, false );  \
+        else                                                                                                                                        \
+            mobj->RunTime.BindScriptId = Script::BindByScriptName( script_name, "void %s(Critter&,Scenery&,bool,uint8" params, false )
 // ============================================================
+
+    char script_name[ MAX_FOTEXT ];
+    Str::Copy( script_name, mobj->ScriptName );
+    if( script_name[ 0 ] )
+        Str::Append( script_name, "@" );
+    Str::Append( script_name, mobj->FuncName );
 
     switch( mobj->MScenery.ParamsCount )
     {
@@ -1076,8 +1082,8 @@ bool ProtoMap::Refresh()
 {
     // Load text or binary
     FilesCollection maps( "fomap" );
-    const char* name_with_path;
-    FileManager& fm = maps.FindFile( pmapName.c_str(), &name_with_path );
+    const char* path;
+    FileManager& fm = maps.FindFile( pmapName.c_str(), &path );
     if( !fm.IsLoaded() )
     {
         WriteLogF( _FUNC_, " - Map '%s' not found.\n", pmapName.c_str() );
@@ -1085,9 +1091,9 @@ bool ProtoMap::Refresh()
     }
 
     // Store path
-    char path[ MAX_FOPATH ];
-    FileManager::ExtractPath( name_with_path, path );
-    pmapPath = path;
+    char dir[ MAX_FOPATH ];
+    FileManager::ExtractDir( path, dir );
+    pmapDir = dir;
 
     // Load from cache
     #ifdef FONLINE_SERVER
@@ -1318,13 +1324,8 @@ bool ProtoMap::Refresh()
                 // Bind script
                 if( proto_item->ScriptName.length() > 0 )
                 {
-                    char script_module[ MAX_SCRIPT_NAME + 1 ];
-                    char script_func[ MAX_SCRIPT_NAME + 1 ];
-                    if( Script::ReparseScriptName( proto_item->ScriptName.c_str(), script_module, script_func ) )
-                    {
-                        Str::Copy( mobj.ScriptName, script_module );
-                        Str::Copy( mobj.FuncName, script_func );
-                    }
+                    Str::Copy( mobj.ScriptName, proto_item->ScriptName.c_str() );
+                    Str::Copy( mobj.FuncName, "" );
                 }
 
                 mobj.RunTime.BindScriptId = 0;
@@ -1542,7 +1543,7 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
     Tiles.clear();
 
     // Save
-    string save_fname = pmapPath + ( custom_name && *custom_name ? string( custom_name ) : pmapName ) + ".fomap";
+    string save_fname = pmapDir + ( custom_name && *custom_name ? string( custom_name ) : pmapName ) + ".fomap";
     if( !fm.SaveOutBufToFile( save_fname.c_str(), PT_SERVER_MODULES ) )
     {
         WriteLogF( _FUNC_, " - Unable write file.\n" );
