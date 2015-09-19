@@ -55,7 +55,7 @@ const char* PathList[ PATH_LIST_COUNT ] =
     "",
     "",
     "",
-    "Content" DIR_SLASH_S,
+    "Modules" DIR_SLASH_S,
 };
 
 DataFileVec FileManager::dataFiles;
@@ -1041,7 +1041,7 @@ void FileManager::GetDataFileNames( const char* path, bool include_subdirs, cons
     }
 }
 
-FilesCollection::FilesCollection( const char* ext, int path_type /* = PT_SERVER_CONTENT */, const char* dir /* = NULL */ )
+FilesCollection::FilesCollection( const char* ext, int path_type /* = PT_SERVER_MODULES */, const char* dir /* = NULL */ )
 {
     curFileIndex = 0;
     searchPath = FileManager::GetWritePath( dir ? dir : "", path_type );

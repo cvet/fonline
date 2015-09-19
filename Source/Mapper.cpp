@@ -6048,7 +6048,7 @@ int FOMapper::SScriptFunc::Global_GetLoadedMaps( ScriptArray* maps )
 uint FOMapper::SScriptFunc::Global_GetMapFileNames( ScriptString* dir, ScriptArray* names )
 {
     FileManager::SetWritePath( ServerWritePath );
-    string dir_ = FileManager::GetReadPath( "", PT_SERVER_CONTENT );
+    string dir_ = FileManager::GetReadPath( "", PT_SERVER_MODULES );
     uint   n = 0;
     if( dir )
         dir_ = dir->c_std_str();
