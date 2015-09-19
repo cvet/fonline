@@ -868,7 +868,7 @@ void Preprocessor::ParsePragma( LexemList& args )
     PragmaInstance pi;
     pi.Name = p_name;
     pi.Text = p_args;
-    pi.CurrentFile = RootPath + CurrentFile;
+    pi.CurrentFile = CurrentFile;
     pi.CurrentFileLine = LinesThisFile;
     pi.RootFile = RootFile;
     pi.GlobalLine = CurrentLine;

@@ -5686,7 +5686,7 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, ScriptString* image_na
 
     // Load file to memory
     FilesCollection images( "png" );
-    FileManager&    fm = images.FindFile( image_name->c_str() );
+    FileManager&    fm = images.FindFile( image_name->c_std_str().substr( 0, image_name->c_std_str().find_last_of( '.' ) ).c_str() );
     if( !fm.IsLoaded() )
         SCRIPT_ERROR_R0( "File '%s' not found.", image_name->c_str() );
 

@@ -1210,6 +1210,7 @@ public:
     char path[ MAX_FOPATH ];
     Str::Copy( path, dir );
     Str::Append( path, module_name );
+    Str::Append( path, ".fos" );
 
     // Preprocess
     MemoryFileLoader              loader( file );
