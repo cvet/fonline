@@ -1544,7 +1544,7 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
 
     // Save
     string save_fname = pmapDir + ( custom_name && *custom_name ? string( custom_name ) : pmapName ) + ".fomap";
-    if( !fm.SaveOutBufToFile( save_fname.c_str(), PT_SERVER_MODULES ) )
+    if( !fm.SaveOutBufToFile( save_fname.c_str(), PT_SERVER_CONTENT ) )
     {
         WriteLogF( _FUNC_, " - Unable write file.\n" );
         fm.ClearOutBuf();

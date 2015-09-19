@@ -4795,7 +4795,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
     StrVec      dummy_vec;
     StrVec      all_dirs_path;
     FindDataVec all_dirs;
-    FileManager::GetFolderFileNames( FileManager::GetDataPath( "", PT_SERVER_MODULES ), true, NULL, dummy_vec, NULL, &all_dirs_path, &all_dirs );
+    FileManager::GetFolderFileNames( FileManager::GetDataPath( "", PT_SERVER_CONTENT ), true, NULL, dummy_vec, NULL, &all_dirs_path, &all_dirs );
     for( size_t d = 0; d < all_dirs.size(); d++ )
     {
         if( !Str::CompareCase( all_dirs[ d ].FileName, "Resources" ) )
@@ -4803,11 +4803,11 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
 
         StrVec      resources_dirs_path;
         FindDataVec resources_dirs;
-        FileManager::GetFolderFileNames( FileManager::GetDataPath( all_dirs_path[ d ].c_str(), PT_SERVER_MODULES ), false, NULL, dummy_vec, NULL, &resources_dirs_path, &resources_dirs );
+        FileManager::GetFolderFileNames( FileManager::GetDataPath( all_dirs_path[ d ].c_str(), PT_SERVER_CONTENT ), false, NULL, dummy_vec, NULL, &resources_dirs_path, &resources_dirs );
         for( size_t r = 0; r < resources_dirs.size(); r++ )
         {
             const char*     res_name = resources_dirs[ r ].FileName;
-            FilesCollection resources( NULL, PT_SERVER_MODULES, ( all_dirs_path[ d ] + res_name ).c_str() );
+            FilesCollection resources( NULL, PT_SERVER_CONTENT, ( all_dirs_path[ d ] + res_name ).c_str() );
 
             if( !Str::Substring( res_name, "_Raw" ) )
             {
@@ -4900,7 +4900,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                         string from = res_name;
                         from.append( DIR_SLASH_S );
                         from.append( name );
-                        from = FileManager::GetDataPath( from.c_str(), PT_SERVER_MODULES );
+                        from = FileManager::GetDataPath( from.c_str(), PT_SERVER_CONTENT );
                         FileManager* converted_file = ResourceConverter::Convert( name, file );
                         if( !converted_file )
                         {

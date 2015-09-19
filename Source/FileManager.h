@@ -39,7 +39,7 @@
 #define PT_SERVER_PROFILER    ( 43 )
 #define PT_SERVER_UPDATE      ( 44 )
 #define PT_SERVER_CACHE       ( 45 )
-#define PT_SERVER_MODULES     ( 49 )
+#define PT_SERVER_CONTENT     ( 49 )
 #define PATH_LIST_COUNT       ( 50 )
 extern const char* PathList[ PATH_LIST_COUNT ];
 
@@ -147,7 +147,7 @@ private:
 class FilesCollection
 {
 public:
-    FilesCollection( const char* ext, int path_type = PT_SERVER_MODULES, const char* dir = NULL );
+    FilesCollection( const char* ext, int path_type = PT_SERVER_CONTENT, const char* dir = NULL );
     bool         IsNextFile();
     FileManager& GetNextFile( const char** name = NULL, const char** path = NULL, bool no_read_data = false );
     FileManager& FindFile( const char* name, const char** path = NULL );

@@ -411,7 +411,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
         if( Str::CompareCase( dll_path, name ) )
         {
             founded = true;
-            Str::Copy( dll_path, FileManager::GetDataPath( path, PT_SERVER_MODULES ) );
+            Str::Copy( dll_path, FileManager::GetDataPath( path, PT_SERVER_CONTENT ) );
             break;
         }
     }
@@ -628,7 +628,7 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
         {
             char dir[ MAX_FOPATH ];
             FileManager::ExtractDir( path, dir );
-            Str::Insert( dir, FileManager::GetWritePath( "", PT_SERVER_MODULES ) );
+            Str::Insert( dir, FileManager::GetWritePath( "", PT_SERVER_CONTENT ) );
             if( !LoadModuleFromFile( name, raw_files.FindFile( name ), dir, cache_pefix ) )
             {
                 WriteLog( "Load module '%s' from file fail.\n", name );

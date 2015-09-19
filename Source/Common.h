@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 10024 )
+#define FONLINE_VERSION                          ( 537 )
 
 // Debugging
 // #define DEV_VERSION
