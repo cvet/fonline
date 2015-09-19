@@ -1268,7 +1268,7 @@ public:
     as_result = module->Build();
     if( as_result < 0 )
     {
-        WriteLogF( _FUNC_, " - Unable to Build module<%s>, result %d.\n", module_name, as_result );
+        WriteLogF( _FUNC_, " - Unable to Build module '%s', result %d.\n", module_name, as_result );
         module->Discard();
         return false;
     }
@@ -1318,7 +1318,7 @@ public:
         FormatPreprocessorOutput( result.String );
         file_prep.SetData( (void*) result.String.c_str(), (uint) result.String.length() );
         if( !file_prep.SaveOutBufToFile( prep_fname, PT_SERVER_CACHE ) )
-            WriteLogF( _FUNC_, " - Can't write preprocessed file, script<%s>.\n", module_name );
+            WriteLogF( _FUNC_, " - Can't write preprocessed file, module '%s'.\n", module_name );
     }
 
     return true;

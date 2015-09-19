@@ -268,6 +268,7 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     char target_define[ MAX_FOTEXT ];
     Str::Copy( target_define, "__" );
     Str::Append( target_define, target );
+    Preprocessor::Define( target_define );
     for( size_t i = 0; i < defines.size(); i++ )
         Preprocessor::Define( string( defines[ i ] ) );
 
