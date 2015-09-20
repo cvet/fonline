@@ -233,10 +233,7 @@ int FOClient::InitIface()
     LMenuHeightOffset = 0;
     LMenuSet( LMENU_OFF );
     LMenuNodeHeight = IfaceIni.GetInt( "LMenuNodeHeight", 40 );
-    LMenuCritNodes.push_back( LMENU_NODE_LOOK );
-    LMenuCritNodes.push_back( LMENU_NODE_BREAK );
-    LMenuScenNodes.push_back( LMENU_NODE_BREAK );
-    LMenuNodes.push_back( LMENU_NODE_BREAK );
+    LMenuNodes.push_back( LMENU_NODE_LOOK );
 
     // Minimap
     LmapX = IfaceIni.GetInt( "LmapX", 100 );
@@ -2434,7 +2431,9 @@ void FOClient::LMenuSet( uchar set_lmenu )
 {
     if( IsLMenu() )
         SetCurPos( LMenuRestoreCurX, LMenuRestoreCurY );
+
     LMenuMode = set_lmenu;
+    LMenuCurNodes = NULL;
 
     switch( LMenuMode )
     {
@@ -2456,7 +2455,7 @@ void FOClient::LMenuSet( uchar set_lmenu )
         if( !cr || !Chosen )
             break;
 
-        LMenuCritNodes.clear();
+        LMenuNodes.clear();
 
         if( Chosen->IsLife() )
         {
@@ -2464,14 +2463,14 @@ void FOClient::LMenuSet( uchar set_lmenu )
             {
                 // Npc
                 if( cr->IsCanTalk() )
-                    LMenuCritNodes.push_back( LMENU_NODE_TALK );
+                    LMenuNodes.push_back( LMENU_NODE_TALK );
                 if( cr->IsDead() && !cr->GetIsNoLoot() )
-                    LMenuCritNodes.push_back( LMENU_NODE_USE );
-                LMenuCritNodes.push_back( LMENU_NODE_LOOK );
+                    LMenuNodes.push_back( LMENU_NODE_USE );
+                LMenuNodes.push_back( LMENU_NODE_LOOK );
                 if( cr->IsLife() && !cr->GetIsNoPush() )
-                    LMenuCritNodes.push_back( LMENU_NODE_PUSH );
-                LMenuCritNodes.push_back( LMENU_NODE_BAG );
-                LMenuCritNodes.push_back( LMENU_NODE_SKILL );
+                    LMenuNodes.push_back( LMENU_NODE_PUSH );
+                LMenuNodes.push_back( LMENU_NODE_BAG );
+                LMenuNodes.push_back( LMENU_NODE_SKILL );
             }
             else
             {
@@ -2479,47 +2478,47 @@ void FOClient::LMenuSet( uchar set_lmenu )
                 {
                     // Player
                     if( cr->IsDead() && !cr->GetIsNoLoot() )
-                        LMenuCritNodes.push_back( LMENU_NODE_USE );
-                    LMenuCritNodes.push_back( LMENU_NODE_LOOK );
+                        LMenuNodes.push_back( LMENU_NODE_USE );
+                    LMenuNodes.push_back( LMENU_NODE_LOOK );
                     if( cr->IsLife() && !cr->GetIsNoPush() )
-                        LMenuCritNodes.push_back( LMENU_NODE_PUSH );
-                    LMenuCritNodes.push_back( LMENU_NODE_BAG );
-                    LMenuCritNodes.push_back( LMENU_NODE_SKILL );
-                    LMenuCritNodes.push_back( LMENU_NODE_GMFOLLOW );
+                        LMenuNodes.push_back( LMENU_NODE_PUSH );
+                    LMenuNodes.push_back( LMENU_NODE_BAG );
+                    LMenuNodes.push_back( LMENU_NODE_SKILL );
+                    LMenuNodes.push_back( LMENU_NODE_GMFOLLOW );
                     if( cr->IsLife() && cr->IsPlayer() && cr->IsOnline() && CheckDist( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY(), BARTER_DIST ) )
                     {
-                        LMenuCritNodes.push_back( LMENU_NODE_BARTER_OPEN );
-                        LMenuCritNodes.push_back( LMENU_NODE_BARTER_HIDE );
+                        LMenuNodes.push_back( LMENU_NODE_BARTER_OPEN );
+                        LMenuNodes.push_back( LMENU_NODE_BARTER_HIDE );
                     }
                     if( !Chosen->GetKarmaVoting() )
                     {
-                        LMenuCritNodes.push_back( LMENU_NODE_VOTE_UP );
-                        LMenuCritNodes.push_back( LMENU_NODE_VOTE_DOWN );
+                        LMenuNodes.push_back( LMENU_NODE_VOTE_UP );
+                        LMenuNodes.push_back( LMENU_NODE_VOTE_DOWN );
                     }
                 }
                 else
                 {
                     // Self
-                    LMenuCritNodes.push_back( LMENU_NODE_ROTATE );
-                    LMenuCritNodes.push_back( LMENU_NODE_LOOK );
-                    LMenuCritNodes.push_back( LMENU_NODE_BAG );
-                    LMenuCritNodes.push_back( LMENU_NODE_SKILL );
-                    LMenuCritNodes.push_back( LMENU_NODE_PICK_ITEM );
+                    LMenuNodes.push_back( LMENU_NODE_ROTATE );
+                    LMenuNodes.push_back( LMENU_NODE_LOOK );
+                    LMenuNodes.push_back( LMENU_NODE_BAG );
+                    LMenuNodes.push_back( LMENU_NODE_SKILL );
+                    LMenuNodes.push_back( LMENU_NODE_PICK_ITEM );
                 }
             }
         }
         else
         {
-            LMenuCritNodes.push_back( LMENU_NODE_LOOK );
+            LMenuNodes.push_back( LMENU_NODE_LOOK );
             if( LMenuMode != LMENU_NPC && cr != Chosen && !Chosen->GetKarmaVoting() )
             {
-                LMenuCritNodes.push_back( LMENU_NODE_VOTE_UP );
-                LMenuCritNodes.push_back( LMENU_NODE_VOTE_DOWN );
+                LMenuNodes.push_back( LMENU_NODE_VOTE_UP );
+                LMenuNodes.push_back( LMENU_NODE_VOTE_DOWN );
             }
         }
 
-        LMenuCritNodes.push_back( LMENU_NODE_BREAK );
-        LMenuCurNodes = &LMenuCritNodes;
+        LMenuNodes.push_back( LMENU_NODE_BREAK );
+        LMenuCurNodes = &LMenuNodes;
     }
     break;
     case LMENU_ITEM:
@@ -2629,6 +2628,31 @@ void FOClient::LMenuSet( uchar set_lmenu )
     break;
     default:
         break;
+    }
+
+    if( LMenuCurNodes )
+    {
+        CritterCl* cr = NULL;
+        ItemHex*   item = NULL;
+        Item*      cont_item = NULL;
+        if( TargetSmth.IsCritter() )
+            cr = GetCritter( TargetSmth.GetId() );
+        else if( TargetSmth.IsItem() )
+            item = GetItem( TargetSmth.GetId() );
+        else if( TargetSmth.IsContItem() )
+            cont_item = GetTargetContItem();
+
+        if( Script::PrepareContext( ClientFunctions.LMenuCollectNodes, _FUNC_, "Game" ) )
+        {
+            ScriptArray* arr = Script::CreateArray( "int[]" );
+            Script::AppendVectorToArray( LMenuNodes, arr );
+            Script::SetArgObject( cr );
+            Script::SetArgObject( item ? item : cont_item );
+            Script::SetArgObject( arr );
+            Script::RunPrepared();
+            Script::AssignScriptArrayInVector( LMenuNodes, arr );
+            arr->Release();
+        }
     }
 }
 

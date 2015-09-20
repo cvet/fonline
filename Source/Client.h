@@ -766,17 +766,17 @@ public:
     * LmenuPGmapKickOff, * LmenuPGmapKickOn, * LmenuPGmapRuleOff, * LmenuPGmapRuleOn,
     * LmenuPVoteUpOff, * LmenuPVoteUpOn, * LmenuPVoteDownOff, * LmenuPVoteDownOn;
 
-    bool      LMenuActive;
-    bool      LMenuTryActivated;
-    uint      LMenuStartTime;
-    int       LMenuX, LMenuY, LMenuRestoreCurX, LMenuRestoreCurY;
-    int       LMenuOX, LMenuOY;
-    int       LMenuHeightOffset;
-    int       LMenuNodeHeight;
-    UCharVec* LMenuCurNodes;
-    int       LMenuCurNode;
-    UCharVec  LMenuCritNodes, LMenuScenNodes, LMenuNodes;
-    int       LMenuMode;
+    bool     LMenuActive;
+    bool     LMenuTryActivated;
+    uint     LMenuStartTime;
+    int      LMenuX, LMenuY, LMenuRestoreCurX, LMenuRestoreCurY;
+    int      LMenuOX, LMenuOY;
+    int      LMenuHeightOffset;
+    int      LMenuNodeHeight;
+    UIntVec* LMenuCurNodes;
+    int      LMenuCurNode;
+    UIntVec  LMenuNodes;
+    int      LMenuMode;
 
     bool IsLMenu();
     void LMenuTryActivate();

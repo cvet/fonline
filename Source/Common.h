@@ -326,6 +326,7 @@ struct ClientScriptFunctions
     int GetAttackDistantion;
     int CheckInterfaceHit;
     int GetContItem;
+    int LMenuCollectNodes;
     int LMenuNodeSelect;
 } extern ClientFunctions;
 
