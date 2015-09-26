@@ -4886,10 +4886,12 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                 bool log_shown = false;
                 while( resources.IsNextFile() )
                 {
-                    const char*  name;
-                    FileManager& file = resources.GetNextFile( NULL, &name );
+                    const char*  path;
+                    FileManager& file = resources.GetNextFile( NULL, &path );
+                    char         fname[ MAX_FOTEXT ];
+                    FileManager::ExtractFileName( path, fname );
                     FileManager  update_file;
-                    if( !update_file.LoadFile( name, PT_SERVER_UPDATE, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
+                    if( !update_file.LoadFile( fname, PT_SERVER_UPDATE, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
                     {
                         if( !log_shown )
                         {
@@ -4897,22 +4899,18 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                             WriteLog( "Copy resource '%s', files %u...\n", res_name, resources.GetFilesCount() );
                         }
 
-                        string from = res_name;
-                        from.append( DIR_SLASH_S );
-                        from.append( name );
-                        from = FileManager::GetDataPath( from.c_str(), PT_SERVER_MODULES );
-                        FileManager* converted_file = ResourceConverter::Convert( name, file );
+                        FileManager* converted_file = ResourceConverter::Convert( fname, file );
                         if( !converted_file )
                         {
-                            WriteLog( "File '%s' conversation error.\n", name );
+                            WriteLog( "File '%s' conversation error.\n", fname );
                             continue;
                         }
-                        converted_file->SaveOutBufToFile( name, PT_SERVER_UPDATE );
+                        converted_file->SaveOutBufToFile( fname, PT_SERVER_UPDATE );
                         if( converted_file != &file )
                             delete converted_file;
                     }
 
-                    update_file_names.insert( name );
+                    update_file_names.insert( fname );
                 }
             }
         }
@@ -4979,40 +4977,27 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
     WriteData( UpdateFilesList, Crypt.Crc32( update_file.Data, update_file.Size ) );
 
     // Fill files
-    StrVec file_names, file_names_targets;
-    FileManager::GetFolderFileNames( FileManager::GetDataPath( "", PT_SERVER_UPDATE ), true, NULL, file_names );
-    for( size_t i = 0, j = file_names.size(); i < j; i++ )
+    StrVec file_paths;
+    FileManager::GetFolderFileNames( FileManager::GetDataPath( "", PT_SERVER_UPDATE ), true, NULL, file_paths );
+    for( size_t i = 0; i < file_paths.size(); i++ )
     {
-        string      file_name = file_names[ i ];
-        string      file_name_target = file_name;
+        string      file_path = file_paths[ i ];
+        string      file_name_target = file_path;
         uint        hash = 0;
 
-        const char* ext = FileManager::GetExtension( file_name.c_str() );
-        if( ext && Str::CompareCase( ext, "link" ) )
-        {
-            FileManager link;
-            if( !link.LoadFile( file_name.c_str(), PT_SERVER_UPDATE ) )
-            {
-                WriteLogF( _FUNC_, " - Can't load link file<%s>.\n", file_name.c_str() );
-                continue;
-            }
-
-            file_name = file_name.substr( 0, file_name.length() - 5 );
-            file_name.insert( 0, (char*) link.GetBuf() );
-            file_name_target = file_name_target.substr( 0, file_name_target.length() - 5 );
-        }
-        else if( ext && Str::CompareCase( ext, "crc" ) )
+        const char* ext = FileManager::GetExtension( file_path.c_str() );
+        if( ext && ( Str::CompareCase( ext, "crc" ) || Str::CompareCase( ext, "txt" ) || Str::CompareCase( ext, "lst" ) ) )
         {
             FileManager crc;
-            if( !crc.LoadFile( file_name.c_str(), PT_SERVER_UPDATE ) )
+            if( !crc.LoadFile( file_path.c_str(), PT_SERVER_UPDATE ) )
             {
-                WriteLogF( _FUNC_, " - Can't load file<%s>.\n", file_name.c_str() );
+                WriteLog( "Can't load file '%s'.\n", file_path.c_str() );
                 continue;
             }
 
             if( crc.GetFsize() == 0 )
             {
-                WriteLogF( _FUNC_, " - Can't calculate hash of empty file<%s>.\n", file_name.c_str() );
+                WriteLog( "Can't calculate hash of empty file '%s'.\n", file_path.c_str() );
                 continue;
             }
 
@@ -5020,25 +5005,10 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
             hash = Crypt.Crc32( crc.GetBuf(), crc.GetFsize() );
         }
 
-        bool duplicate = false;
-        for( size_t i = 0, j = file_names_targets.size(); i < j; i++ )
-        {
-            if( Str::Compare( file_names_targets[ i ].c_str(), file_name_target.c_str() ) )
-            {
-                duplicate = true;
-                break;
-            }
-        }
-        if( duplicate )
-        {
-            WriteLogF( _FUNC_, " - Duplicated file<%s> ignored.\n", file_name_target.c_str() );
-            continue;
-        }
-
         FileManager file;
-        if( !file.LoadFile( file_name.c_str(), PT_SERVER_UPDATE ) )
+        if( !file.LoadFile( file_path.c_str(), PT_SERVER_UPDATE ) )
         {
-            WriteLogF( _FUNC_, " - Can't load file<%s>.\n", file_name.c_str() );
+            WriteLog( "Can't load file '%s'.\n", file_path.c_str() );
             continue;
         }
 
@@ -5051,8 +5021,6 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
         WriteDataArr( UpdateFilesList, file_name_target.c_str(), (uint) file_name_target.length() );
         WriteData( UpdateFilesList, update_file.Size );
         WriteData( UpdateFilesList, hash );
-
-        file_names_targets.push_back( file_name_target );
     }
 
     // Complete files list

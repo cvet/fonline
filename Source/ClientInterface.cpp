@@ -3902,7 +3902,7 @@ void FOClient::GmapDraw()
     }
 
     // Empty tabs
-    while( true )
+    while( GmapTabNextX || GmapTabNextY )
     {
         if( cur_tabx > GmapWTabs[ 2 ] || cur_taby > GmapWTabs[ 3 ] )
             break;

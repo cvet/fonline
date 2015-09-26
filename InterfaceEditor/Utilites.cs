@@ -9,6 +9,7 @@ namespace InterfaceEditor
 {
 	static public class Utilites
 	{
+		static public string GuiPath;
 		static public string DataPath;
 		static public string ScriptsPath;
 

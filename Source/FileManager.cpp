@@ -1053,6 +1053,27 @@ FilesCollection::FilesCollection( const char* ext, int path_type /* = PT_SERVER_
     {
         char fname[ MAX_FOPATH ];
         FileManager::ExtractFileName( filePaths[ i ].c_str(), fname );
+
+        // Link to another file
+        const char* link_ext = FileManager::GetExtension( filePaths[ i ].c_str() );
+        if( link_ext && Str::CompareCase( link_ext, "link" ) )
+        {
+            FileManager link;
+            if( !link.LoadFile( ( searchPath + filePaths[ i ] ).c_str(), PT_DATA ) )
+            {
+                WriteLogF( _FUNC_, " - Can't read link file '%s'.\n", ( searchPath + filePaths[ i ] ).c_str() );
+                continue;
+            }
+
+            char new_path[ MAX_FOTEXT ];
+            FileManager::ExtractDir( filePaths[ i ].c_str(), new_path );
+            Str::Append( new_path, (char*) link.GetBuf() );
+            FileManager::FormatPath( new_path );
+            Str::Append( new_path, fname );
+            FileManager::EraseExtension( new_path );
+            filePaths[ i ] = new_path;
+        }
+
         FileManager::EraseExtension( fname );
         fileNames.push_back( fname );
     }

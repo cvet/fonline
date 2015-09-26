@@ -28,14 +28,14 @@
     <PlatformTarget>x86</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\..\sdk\Tools\InterfaceEditor\</OutputPath>
+    <OutputPath>..\..\LFO\Tools\InterfaceEditor\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="FastColoredTextBox">
-      <HintPath>packages\FCTB.2.16.1.1\lib\FastColoredTextBox.dll</HintPath>
+      <HintPath>packages\FCTB.2.16.11.0\lib\FastColoredTextBox.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>Json60r1\Bin\Net40\Newtonsoft.Json.dll</HintPath>

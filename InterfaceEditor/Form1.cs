@@ -42,11 +42,12 @@ namespace InterfaceEditor
 				return Path.GetFullPath(path);
 			};
 			IniFile config = new IniFile(".\\InterfaceEditor.cfg");
-			Utilites.ScriptsPath = fixPath(config.IniReadValue("Options", "ScriptsPath", @"..\..\Server\scripts\"));
-			Utilites.DataPath = fixPath(config.IniReadValue("Options", "ResourcesPath", @"..\..\Server\resources\Interface\"));
+			Utilites.GuiPath = fixPath(config.IniReadValue("Options", "GuiPath", @""));
+			Utilites.ScriptsPath = fixPath(config.IniReadValue("Options", "ScriptsPath", @""));
+			Utilites.DataPath = fixPath(config.IniReadValue("Options", "ResourcesPath", @""));
 
 			// Load default scheme
-			LoadScheme("gui\\default.foguischeme");
+			LoadScheme(Utilites.GuiPath + "Default.foguischeme");
 
 			// Hierarchy drag and drop
 			Hierarchy.ItemDrag += delegate(object sender, ItemDragEventArgs e)
@@ -307,7 +308,7 @@ namespace InterfaceEditor
 			{
 				OpenFileDialog fileDialog = new OpenFileDialog();
 				fileDialog.Filter = "FOnline GUI files (*.fogui) | *.fogui";
-				fileDialog.InitialDirectory = Path.GetDirectoryName(Application.ExecutablePath) + "\\gui";
+				fileDialog.InitialDirectory = Utilites.GuiPath;
 				if (fileDialog.ShowDialog() != DialogResult.OK)
 					return false;
 				TreeFileName = fileDialog.FileName;
@@ -316,7 +317,7 @@ namespace InterfaceEditor
 			{
 				SaveFileDialog fileDialog = new SaveFileDialog();
 				fileDialog.Filter = "FOnline GUI files (*.fogui) | *.fogui";
-				fileDialog.InitialDirectory = Path.GetDirectoryName(Application.ExecutablePath) + "\\gui";
+				fileDialog.InitialDirectory = Utilites.GuiPath;
 				if (fileDialog.ShowDialog() != DialogResult.OK)
 					return false;
 				TreeFileName = fileDialog.FileName;
@@ -328,7 +329,7 @@ namespace InterfaceEditor
 		{
 			OpenFileDialog fileDialog = new OpenFileDialog();
 			fileDialog.Filter = "FOnline GUI files (*.foguischeme) | *.foguischeme";
-			fileDialog.InitialDirectory = Path.GetDirectoryName(Application.ExecutablePath) + "\\gui";
+			fileDialog.InitialDirectory = Utilites.GuiPath;
 			if (fileDialog.ShowDialog() != DialogResult.OK)
 				return;
 
@@ -356,7 +357,7 @@ namespace InterfaceEditor
 		{
 			SaveFileDialog fileDialog = new SaveFileDialog();
 			fileDialog.Filter = "FOnline GUI files (*.foguischeme) | *.foguischeme";
-			fileDialog.InitialDirectory = Path.GetDirectoryName(Application.ExecutablePath) + "\\gui";
+			fileDialog.InitialDirectory = Utilites.GuiPath;
 			if (fileDialog.ShowDialog() != DialogResult.OK)
 				return;
 
@@ -385,13 +386,8 @@ namespace InterfaceEditor
 			initScript.AppendLine();
 			initScript.AppendLine("// GUI scheme name: " + SchemeName);
 			initScript.AppendLine();
-			initScript.AppendLine("#include \"_macros.fos\"");
-			initScript.AppendLine("#include \"_client_defines.fos\"");
-			initScript.AppendLine("#include \"_colors.fos\"");
-			initScript.AppendLine("#include \"_msgstr.fos\"");
-			initScript.AppendLine("#include \"input_h.fos\"");
-			initScript.AppendLine("#include \"gui_h.fos\"");
-			initScript.AppendLine("#include \"gui_screens_stuff.fos\"");
+			initScript.AppendLine("#include \"Core/Gui\"");
+			initScript.AppendLine("#include \"GuiScreensExt\"");
 			initScript.AppendLine();
 			initScript.AppendLine("void InitializeScreens()");
 			initScript.AppendLine("{");
@@ -403,7 +399,7 @@ namespace InterfaceEditor
 				string guiFile = (string)dataGridViewScheme.Rows[i].Cells[1].Value;
 				if (!string.IsNullOrEmpty(screen) && !string.IsNullOrEmpty(guiFile) && !guiFile.StartsWith("*"))
 				{
-					string guiFileFullPath = Path.GetDirectoryName(Application.ExecutablePath) + "\\gui\\" + guiFile;
+					string guiFileFullPath = Utilites.GuiPath + guiFile;
 					string scriptPrefix = Path.GetFileNameWithoutExtension(guiFile);
 					GUIObject root = LoadTree(guiFileFullPath);
 
@@ -430,9 +426,9 @@ namespace InterfaceEditor
 
 			initScript.AppendLine("}");
 
-			File.WriteAllText(Utilites.ScriptsPath + "gui_screens.fos", initScript.ToString() + contentScript.ToString(), Encoding.UTF8);
+			File.WriteAllText(Utilites.ScriptsPath + "GuiScreens.fos", initScript.ToString() + contentScript.ToString(), Encoding.UTF8);
 
-			Log.Write("Script \"gui_screens.fos\" generation complete.");
+			Log.Write("Script \"GuiScreens.fos\" generation complete.");
 		}
 
 		private void Design_Paint(object sender, PaintEventArgs e)
