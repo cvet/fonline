@@ -2009,11 +2009,11 @@ void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint&
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::FormatTags( char* text, uint text_len, CritterCl* player, CritterCl* npc, const char* lexems )
+void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, CritterCl* npc, const char* lexems )
 {
     if( Str::CompareCase( text, "error" ) )
     {
-        Str::Copy( text, text_len, "Text not found!" );
+        Str::Copy( text, "Text not found!" );
         return;
     }
 
@@ -2043,10 +2043,7 @@ void FOClient::FormatTags( char* text, uint text_len, CritterCl* player, Critter
                 if( sex )
                 {
                     if( sex == 1 )
-                    {
-                        if( Str::Length( str ) + Str::Length( tag ) < text_len )
-                            Str::Insert( &str[ i ], tag );
-                    }
+                        Str::Insert( &str[ i ], tag );
                     sex--;
                 }
                 continue;
@@ -2087,6 +2084,31 @@ void FOClient::FormatTags( char* text, uint text_len, CritterCl* player, Critter
                 sex = ( player ? player->GetGender() + 1 : 1 );
                 sex_tags = true;
                 continue;
+            }
+            // Random
+            else if( Str::CompareCase( tag, "rnd" ) )
+            {
+                char*           str_ = str + i;
+                Str::GoTo( str_, '|', false );
+                char*           last_separator = str_;
+                vector< char* > rnd;
+                while( *str_ )
+                {
+                    last_separator = str_;
+                    rnd.push_back( str_ );
+                    str_++;
+                    Str::GoTo( str_, '|', false );
+                }
+                if( !rnd.empty() )
+                    rnd.pop_back();
+                if( !rnd.empty() )
+                {
+                    char* rnd_str = rnd[ Random( 0, rnd.size() - 1 ) ];
+                    str_ = rnd_str + 1;
+                    Str::GoTo( str_, '|' );
+                    Str::CopyCount( tag, rnd_str + 1, (uint) ( str_ - rnd_str ) - 1 );
+                    Str::EraseInterval( str + i, (uint) ( last_separator - ( str + i ) ) + 1 );
+                }
             }
             // Lexems
             else if( Str::Length( tag ) > 4 && tag[ 0 ] == 'l' && tag[ 1 ] == 'e' && tag[ 2 ] == 'x' && tag[ 3 ] == ' ' )
@@ -2155,8 +2177,7 @@ void FOClient::FormatTags( char* text, uint text_len, CritterCl* player, Critter
                 Str::Copy( tag, "<error>" );
             }
 
-            if( Str::Length( str ) + Str::Length( tag ) < text_len )
-                Str::Insert( str + i, tag );
+            Str::Insert( str + i, tag );
         }
             continue;
         default:
@@ -2167,7 +2188,7 @@ void FOClient::FormatTags( char* text, uint text_len, CritterCl* player, Critter
     }
 
     dialogs.push_back( str );
-    Str::Copy( text, text_len, dialogs[ Random( 0, (uint) dialogs.size() - 1 ) ] );
+    Str::Copy( text, dialogs[ Random( 0, (uint) dialogs.size() - 1 ) ] );
 }
 
 // ==============================================================================================================================

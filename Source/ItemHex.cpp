@@ -4,6 +4,8 @@
 
 ItemHex::ItemHex( uint id, ProtoItem* proto, UCharVecVec* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut ): Item( id, proto )
 {
+    const_cast< EntityType& >( Type ) = EntityType::ItemHex;
+
     if( data )
         Props.RestoreData( *data );
 

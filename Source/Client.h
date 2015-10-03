@@ -544,7 +544,7 @@ public:
         static hash  Item_get_ProtoId( Item* item );
         static int   Item_get_Type( Item* item );
         static bool  Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
-        static void  Item_Animate( Item* item, uchar from_frame, uchar to_frame );
+        static void  Item_Animate( Item* item, uint from_frame, uint to_frame );
         static Item* Item_GetChild( Item* item, uint childIndex );
 
         static ScriptString* Global_CustomCall( ScriptString& command, ScriptString& separator );
@@ -842,7 +842,7 @@ public:
     void BarterTryOffer();
     void BarterTransfer( uint item_id, int item_cont, uint item_count );
     void ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint& volume, int barter_k, bool sell );
-    void FormatTags( char* text, uint text_len, CritterCl* player, CritterCl* npc, const char* lexems );
+    void FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl * player, CritterCl * npc, const char* lexems );
 
     void DlgDraw( bool is_dialog );
     void DlgMouseMove( bool is_dialog );

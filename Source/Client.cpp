@@ -3337,7 +3337,7 @@ void FOClient::Net_OnTextMsg( bool with_lexems )
     {
         char str[ MAX_FOTEXT ];
         Str::Copy( str, msg.GetStr( num_str ) );
-        FormatTags( str, MAX_FOTEXT, Chosen, GetCritter( crid ), lexems );
+        FormatTags( str, Chosen, GetCritter( crid ), lexems );
         OnText( str, crid, how_say, 10 );
     }
 }
@@ -3469,7 +3469,7 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
     if( ( how_say == SAY_DIALOG || how_say == SAY_APPEND ) && ( is_dialog || is_barter ) )
     {
         CritterCl* npc = GetCritter( DlgNpcId );
-        FormatTags( fstr, MAX_FOTEXT, Chosen, npc, "" );
+        FormatTags( fstr, Chosen, npc, "" );
 
         if( is_dialog )
         {
@@ -3645,7 +3645,7 @@ void FOClient::Net_OnMapTextMsg()
 
     static char str[ MAX_FOTEXT ];
     Str::Copy( str, CurLang.Msg[ msg_num ].GetStr( num_str ) );
-    FormatTags( str, MAX_FOTEXT, Chosen, NULL, "" );
+    FormatTags( str, Chosen, NULL, "" );
 
     OnMapText( str, hx, hy, color, 0 );
 }
@@ -3684,7 +3684,7 @@ void FOClient::Net_OnMapTextMsgLex()
 
     char str[ MAX_FOTEXT ];
     Str::Copy( str, CurLang.Msg[ msg_num ].GetStr( num_str ) );
-    FormatTags( str, MAX_FOTEXT, Chosen, NULL, lexems );
+    FormatTags( str, Chosen, NULL, lexems );
 
     OnMapText( str, hx, hy, color, 0 );
 }
@@ -4870,7 +4870,7 @@ void FOClient::Net_OnChosenTalk()
 
     char str[ MAX_FOTEXT ];
     Str::Copy( str, MsgDlg->GetStr( text_id ) );
-    FormatTags( str, MAX_FOTEXT, Chosen, npc, lexems );
+    FormatTags( str, Chosen, npc, lexems );
     DlgMainText = str;
     DlgMainTextCur = 0;
     DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, str );
@@ -4894,7 +4894,7 @@ void FOClient::Net_OnChosenTalk()
     for( size_t i = 0; i < answers_texts.size(); i++ )
     {
         Str::Copy( str, MsgDlg->GetStr( answers_texts[ i ] ) );
-        FormatTags( str, MAX_FOTEXT, Chosen, npc, lexems );
+        FormatTags( str, Chosen, npc, lexems );
         ScriptString* sstr = ScriptString::Create( str );
         answers_to_script->InsertLast( &sstr );
         sstr->Release();
@@ -4920,7 +4920,7 @@ void FOClient::Net_OnChosenTalk()
         }
 
         Str::Copy( str, MsgDlg->GetStr( answers_texts[ answ ] ) );
-        FormatTags( str, MAX_FOTEXT, Chosen, npc, lexems );
+        FormatTags( str, Chosen, npc, lexems );
         Str::Insert( str, answ_beg );      // TODO: GetStr
 
         height += SprMngr.GetLinesHeight( DlgAnswText.W(), 0, str );
@@ -9543,11 +9543,16 @@ bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
     return true;
 }
 
-void FOClient::SScriptFunc::Item_Animate( Item* item, uchar from_frame, uchar to_frame )
+void FOClient::SScriptFunc::Item_Animate( Item* item, uint from_frame, uint to_frame )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    #pragma MESSAGE("Implement Item_Animate.")
+
+    if( item->Type == EntityType::ItemHex )
+    {
+        ItemHex* item_hex = (ItemHex*) item;
+        item_hex->SetAnim( from_frame, to_frame );
+    }
 }
 
 Item* FOClient::SScriptFunc::Item_GetChild( Item* item, uint childIndex )
@@ -10412,27 +10417,9 @@ ScriptString* FOClient::SScriptFunc::Global_ReplaceTextInt( ScriptString& text, 
 
 ScriptString* FOClient::SScriptFunc::Global_FormatTags( ScriptString& text, ScriptString* lexems )
 {
-    static char* buf = NULL;
-    static uint  buf_len = 0;
-    if( !buf )
-    {
-        buf = new char[ MAX_FOTEXT ];
-        if( !buf )
-            SCRIPT_ERROR_R0( "Allocation fail." );
-        buf_len = MAX_FOTEXT;
-    }
-
-    if( buf_len < text.length() * 2 )
-    {
-        delete[] buf;
-        buf = new char[ text.length() * 2 ];
-        if( !buf )
-            SCRIPT_ERROR_R0( "Reallocation fail." );
-        buf_len = (uint) text.length() * 2;
-    }
-
-    Str::Copy( buf, buf_len, text.c_str() );
-    Self->FormatTags( buf, buf_len, Self->Chosen, NULL, lexems ? lexems->c_str() : NULL );
+    char buf[ MAX_FOTEXT ];
+    Str::Copy( buf, text.c_str() );
+    Self->FormatTags( buf, Self->Chosen, NULL, lexems ? lexems->c_str() : NULL );
     return ScriptString::Create( buf );
 }
 
