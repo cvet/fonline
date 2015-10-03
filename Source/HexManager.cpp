@@ -1363,6 +1363,10 @@ void HexManager::TraceLight( ushort from_hx, ushort from_hy, ushort& hx, ushort&
 
 void HexManager::ParseLightTriangleFan( LightSource& ls )
 {
+    // All dirs disabled
+    if( ( ls.Flags & 0x3F ) == 0x3F )
+        return;
+
     ushort hx = ls.HexX;
     ushort hy = ls.HexY;
 
