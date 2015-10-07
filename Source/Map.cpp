@@ -135,7 +135,7 @@ bool Map::Generate()
         Npc* npc = CrMngr.CreateNpc( mobj.ProtoId, mobj.Props, NULL, script_name[ 0 ] ? script_name : NULL, this, mobj.MapX, mobj.MapY, (uchar) mobj.MCritter.Dir, true );
         if( !npc )
         {
-            WriteLogF( _FUNC_, " - Create npc<%s> on map<%s> failture - continue generate.\n", HASH_STR( mobj.ProtoId ), GetName() );
+            WriteLogF( _FUNC_, " - Create npc '%s' on map '%s' fail, continue generate.\n", HASH_STR( mobj.ProtoId ), GetName() );
             continue;
         }
 
@@ -193,7 +193,7 @@ bool Map::Generate()
         ProtoItem* proto = ItemMngr.GetProtoItem( pid );
         if( !proto )
         {
-            WriteLogF( _FUNC_, " - Proto object on map<%s> with pid<%s> not found, continue generate.\n", GetName(), HASH_STR( pid ) );
+            WriteLogF( _FUNC_, " - Proto item '%s' on map '%s' not found, continue generate.\n", HASH_STR( pid ), GetName() );
             continue;
         }
 
@@ -217,7 +217,7 @@ bool Map::Generate()
         Item* item = ItemMngr.CreateItem( pid );
         if( !item )
         {
-            WriteLogF( _FUNC_, " - Create item on map<%s> with pid<%u> failture, continue generate.\n", GetName(), pid );
+            WriteLogF( _FUNC_, " - Create item '%s' on map '%s' fail, continue generate.\n", HASH_STR( pid ), GetName() );
             continue;
         }
 
@@ -659,11 +659,7 @@ void Map::SetItem( Item* item, ushort hx, ushort hy )
 
 void Map::EraseItem( uint item_id )
 {
-    if( !item_id )
-    {
-        WriteLogF( _FUNC_, " - Item id is zero, id<%u>.\n", item_id );
-        return;
-    }
+    RUNTIME_ASSERT( item_id );
 
     auto it = hexItems.begin();
     auto end = hexItems.end();
@@ -1551,7 +1547,7 @@ void Map::SetCritterCar( ushort hx, ushort hy, Critter* cr, Item* car )
     // Check
     if( hx >= GetMaxHexX() || hy >= GetMaxHexY() || !cr || !car || !car->IsCar() )
     {
-        WriteLogF( _FUNC_, " - Generic error, hx<%u>, hy<%u>, critter pointer<%p>, car pointer<%p>, is car<%d>.\n", hx, hy, cr, car, car && car->IsCar() ? 1 : 0 );
+        WriteLogF( _FUNC_, " - Generic error, hx %u, hy %u, critter pointer '%p', car pointer '%p', is car %d.\n", hx, hy, cr, car, car && car->IsCar() ? 1 : 0 );
         return;
     }
 
@@ -1643,7 +1639,7 @@ bool Map::PrepareScriptFunc( int num_scr_func )
 {
     if( FuncId[ num_scr_func ] <= 0 )
         return false;
-    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Map id<%u>, pid<%u>", GetId(), GetPid() ) );
+    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) );
 }
 
 bool Map::SetScript( const char* script_name, bool first_time )
@@ -1659,7 +1655,7 @@ bool Map::SetScript( const char* script_name, bool first_time )
         Data.ScriptId = func_num;
     }
 
-    if( Data.ScriptId && Script::PrepareScriptFuncContext( Data.ScriptId, _FUNC_, Str::FormatBuf( "Map id<%u>, pid<%u>", GetId(), GetPid() ) ) )
+    if( Data.ScriptId && Script::PrepareScriptFuncContext( Data.ScriptId, _FUNC_, Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) ) )
     {
         Script::SetArgObject( this );
         Script::SetArgBool( first_time );
@@ -1957,7 +1953,7 @@ void Map::BeginTurnBased( Critter* first_cr )
     IsTurnBasedTimeout = false;
 
     EventTurnBasedBegin();
-    if( Script::PrepareContext( ServerFunctions.TurnBasedBegin, _FUNC_, Str::FormatBuf( "Map id<%u>, pid<%u>", GetId(), GetPid() ) ) )
+    if( Script::PrepareContext( ServerFunctions.TurnBasedBegin, _FUNC_, Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) ) )
     {
         Script::SetArgObject( this );
         Script::RunPrepared();
@@ -1972,7 +1968,7 @@ void Map::BeginTurnBased( Critter* first_cr )
 void Map::EndTurnBased()
 {
     EventTurnBasedEnd();
-    if( Script::PrepareContext( ServerFunctions.TurnBasedEnd, _FUNC_, Str::FormatBuf( "Map id<%u>, pid<%u>", GetId(), GetPid() ) ) )
+    if( Script::PrepareContext( ServerFunctions.TurnBasedEnd, _FUNC_, Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) ) )
     {
         Script::SetArgObject( this );
         Script::RunPrepared();
@@ -2083,7 +2079,7 @@ void Map::NextCritterTurn()
         TurnBasedTurn = 0;
 
         EventTurnBasedBegin();
-        if( Script::PrepareContext( ServerFunctions.TurnBasedBegin, _FUNC_, Str::FormatBuf( "Map id<%u>, pid<%u>", GetId(), GetPid() ) ) )
+        if( Script::PrepareContext( ServerFunctions.TurnBasedBegin, _FUNC_, Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) ) )
         {
             Script::SetArgObject( this );
             Script::RunPrepared();
@@ -2167,7 +2163,7 @@ void Map::GenerateSequence( Critter* first_cr )
     Script::AppendVectorToArrayRef( critters, script_critters );
 
     // Pass to scripts
-    if( Script::PrepareContext( ServerFunctions.TurnBasedSequence, _FUNC_, Str::FormatBuf( "Map id<%u>, pid<%u>", GetId(), GetPid() ) ) )
+    if( Script::PrepareContext( ServerFunctions.TurnBasedSequence, _FUNC_, Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) ) )
     {
         Script::SetArgObject( this );
         Script::SetArgObject( script_critters );
@@ -2389,7 +2385,7 @@ bool Location::PrepareScriptFunc( int num_scr_func )
 {
     if( FuncId[ num_scr_func ] <= 0 )
         return false;
-    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Location id<%u>, pid<%u>", GetId(), GetPid() ) );
+    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Location '%s' (%u)", GetName(), GetId() ) );
 }
 
 void Location::EventFinish( bool to_delete )

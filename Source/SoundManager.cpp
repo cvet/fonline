@@ -83,7 +83,7 @@ bool SoundManager::Init()
     // SDL
     if( SDL_InitSubSystem( SDL_INIT_AUDIO ) )
     {
-        WriteLogF( _FUNC_, " - SDL Audio initialization fail, error<%s>.\n", SDL_GetError() );
+        WriteLogF( _FUNC_, " - SDL Audio initialization fail, error '%s'.\n", SDL_GetError() );
         return false;
     }
 
@@ -101,7 +101,7 @@ bool SoundManager::Init()
     DeviceID = SDL_OpenAudioDevice( NULL, 0, &desired, &SoundSpec, SDL_AUDIO_ALLOW_ANY_CHANGE );
     if( DeviceID < 2 )
     {
-        WriteLog( "SDL Open audio device fail, error<%s>.\n", SDL_GetError() );
+        WriteLog( "SDL Open audio device fail, error '%s'.\n", SDL_GetError() );
         return false;
     }
 
@@ -286,7 +286,7 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname, int path_type )
     uint dw_buf = fm.GetLEUInt();
     if( dw_buf != MAKEUINT( 'R', 'I', 'F', 'F' ) )
     {
-        WriteLogF( _FUNC_, " - <RIFF> not found.\n" );
+        WriteLogF( _FUNC_, " - 'RIFF' not found.\n" );
         return false;
     }
 
@@ -295,14 +295,14 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname, int path_type )
     dw_buf = fm.GetLEUInt();
     if( dw_buf != MAKEUINT( 'W', 'A', 'V', 'E' ) )
     {
-        WriteLogF( _FUNC_, " - <WAVE> not found.\n" );
+        WriteLogF( _FUNC_, " - 'WAVE' not found.\n" );
         return false;
     }
 
     dw_buf = fm.GetLEUInt();
     if( dw_buf != MAKEUINT( 'f', 'm', 't', ' ' ) )
     {
-        WriteLogF( _FUNC_, " - <fmt > not found.\n" );
+        WriteLogF( _FUNC_, " - 'fmt ' not found.\n" );
         return false;
     }
 
@@ -467,7 +467,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
     int error = ov_open_callbacks( fm, &sound->OggDescriptor, NULL, 0, callbacks );
     if( error )
     {
-        WriteLogF( _FUNC_, " - Open OGG file<%s> fail, error:\n", fname );
+        WriteLogF( _FUNC_, " - Open OGG file '%s' fail, error:\n", fname );
         switch( error )
         {
         case OV_EREAD:
@@ -585,7 +585,7 @@ bool SoundManager::ConvertData( Sound* sound )
                                         SoundSpec.format, SoundSpec.channels, SoundSpec.freq );
     if( r == -1 )
     {
-        WriteLogF( _FUNC_, " - SDL_BuildAudioCVT fail, error<%s>.\n", SDL_GetError() );
+        WriteLogF( _FUNC_, " - SDL_BuildAudioCVT fail, error '%s'.\n", SDL_GetError() );
         return false;
     }
     if( r == 1 )
@@ -595,7 +595,7 @@ bool SoundManager::ConvertData( Sound* sound )
         memcpy( cvt.buf, sound->BaseBuf, sound->BaseBufSize );
         if( SDL_ConvertAudio( &cvt ) )
         {
-            WriteLogF( _FUNC_, " - SDL_ConvertAudio fail, error<%s>.\n", SDL_GetError() );
+            WriteLogF( _FUNC_, " - SDL_ConvertAudio fail, error '%s'.\n", SDL_GetError() );
             return false;
         }
         sound->ConvertedBufCur = 0;

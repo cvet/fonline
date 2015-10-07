@@ -183,21 +183,21 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
     uLongf buf_len = data_len * mul_approx;
     if( buf_len > 100000000 ) // 100mb
     {
-        WriteLogF( _FUNC_, "Unpack - Buffer length is too large, data length<%u>, multiplier<%u>.\n", data_len, mul_approx );
+        WriteLogF( _FUNC_, "Unpack - Buffer length is too large, data length %u, multiplier %u.\n", data_len, mul_approx );
         return NULL;
     }
 
     AutoPtrArr< uchar > buf( new uchar[ buf_len ] );
     if( !buf.IsValid() )
     {
-        WriteLog( "Unpack - Bad alloc, size<%u>.\n", buf_len );
+        WriteLog( "Unpack - Bad alloc, size %u.\n", buf_len );
         return NULL;
     }
 
     AutoPtrArr< uchar > data_( new uchar[ data_len ] );
     if( !data_.IsValid() )
     {
-        WriteLog( "Unpack - Bad alloc, size<%u>.\n", data_len );
+        WriteLog( "Unpack - Bad alloc, size %u.\n", data_len );
         return NULL;
     }
 
@@ -223,13 +223,13 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
             buf.Reset( new uchar[ buf_len ] );
             if( !buf.IsValid() )
             {
-                WriteLog( "Unpack - Bad alloc, size<%u>.\n", buf_len );
+                WriteLog( "Unpack - Bad alloc, size %u.\n", buf_len );
                 return NULL;
             }
         }
         else if( result != Z_OK )
         {
-            WriteLog( "Unpack error<%d>.\n", result );
+            WriteLog( "Unpack error %d.\n", result );
             return NULL;
         }
         else

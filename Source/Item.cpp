@@ -318,7 +318,7 @@ bool Item::SetScript( const char* script_name, bool first_time )
         SetScriptId( func_num );
     }
 
-    if( GetScriptId() && Script::PrepareScriptFuncContext( GetScriptId(), _FUNC_, Str::FormatBuf( "Item id<%u>, pid<%u>", GetId(), GetProtoId() ) ) )
+    if( GetScriptId() && Script::PrepareScriptFuncContext( GetScriptId(), _FUNC_, Str::FormatBuf( "Item '%s' (%u)", HASH_STR( GetProtoId() ), GetId() ) ) )
     {
         Script::SetArgObject( this );
         Script::SetArgBool( first_time );
@@ -333,7 +333,7 @@ bool Item::PrepareScriptFunc( int num_scr_func )
         return false;
     if( !FuncId[ num_scr_func ] )
         return false;
-    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Item id<%u>, pid<%u>", GetId(), GetProtoId() ) );
+    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Item '%s' (%u)", HASH_STR( GetProtoId() ), GetId() ) );
 }
 
 void Item::EventFinish( bool deleted )
@@ -638,7 +638,7 @@ void Item::ContEraseItem( Item* item )
     if( it != ChildItems->end() )
         ChildItems->erase( it );
     else
-        WriteLogF( _FUNC_, " - Item not found, id<%u>, pid<%u>, container<%u>.\n", item->GetId(), item->GetProtoId(), GetId() );
+        WriteLogF( _FUNC_, " - Item '%s' not found, id %u, container id %u.\n", item->GetName(), item->GetId(), GetId() );
 
     item->Accessory = ITEM_ACCESSORY_NONE;
 

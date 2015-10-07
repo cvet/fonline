@@ -21,12 +21,12 @@ int GetPropEnumIndex( const char* str, bool is_demand, int& type, bool& is_hash 
     int       count = ( prop_global ? 1 : 0 ) + ( prop_critter ? 1 : 0 ) + ( prop_item ? 1 : 0 ) + ( prop_location ? 1 : 0 ) + ( prop_map ? 1 : 0 );
     if( count == 0 )
     {
-        WriteLog( "DR property<%s> not found in GlobalVars/Critter/Item/Location/Map.\n", str );
+        WriteLog( "DR property '%s' not found in GlobalVars/Critter/Item/Location/Map.\n", str );
         return -1;
     }
     else if( count > 1 )
     {
-        WriteLog( "DR property<%s> found multiple instances in GlobalVars/Critter/Item/Location/Map.\n", str );
+        WriteLog( "DR property '%s' found multiple instances in GlobalVars/Critter/Item/Location/Map.\n", str );
         return -1;
     }
 
@@ -47,7 +47,7 @@ int GetPropEnumIndex( const char* str, bool is_demand, int& type, bool& is_hash 
         type = DR_PROP_CRITTER_DICT;
         if( prop->GetASObjectType()->GetSubTypeId( 0 ) != asTYPEID_UINT32 )
         {
-            WriteLog( "DR property<%s> Dict must have 'uint' in key.\n", str );
+            WriteLog( "DR property '%s' Dict must have 'uint' in key.\n", str );
             return -1;
         }
     }
@@ -55,19 +55,19 @@ int GetPropEnumIndex( const char* str, bool is_demand, int& type, bool& is_hash 
     {
         if( !prop->IsPOD() )
         {
-            WriteLog( "DR property<%s> is not POD type.\n", str );
+            WriteLog( "DR property '%s' is not POD type.\n", str );
             return -1;
         }
     }
 
     if( is_demand && !prop->IsReadable() )
     {
-        WriteLog( "DR property<%s> is not readable.\n", str );
+        WriteLog( "DR property '%s' is not readable.\n", str );
         return -1;
     }
     else if( !is_demand && !prop->IsWritable() )
     {
-        WriteLog( "DR property<%s> is not writable.\n", str );
+        WriteLog( "DR property '%s' is not writable.\n", str );
         return -1;
     }
 
@@ -93,20 +93,20 @@ bool DialogManager::LoadDialogs()
         FileManager& file = files.GetNextFile( &file_name );
         if( !file.IsLoaded() )
         {
-            WriteLog( "Unable to open file<%s>.\n", file_name );
+            WriteLog( "Unable to open file '%s'.\n", file_name );
             continue;
         }
 
         DialogPack* pack = ParseDialog( file_name, (char*) file.GetBuf() );
         if( !pack )
         {
-            WriteLog( "Unable to parse dialog<%s>.\n", file_name );
+            WriteLog( "Unable to parse dialog '%s'.\n", file_name );
             continue;
         }
 
         if( !AddDialog( pack ) )
         {
-            WriteLog( "Unable to add dialog<%s>.\n", file_name );
+            WriteLog( "Unable to add dialog '%s'.\n", file_name );
             continue;
         }
 
@@ -121,7 +121,7 @@ bool DialogManager::AddDialog( DialogPack* pack )
 {
     if( dialogPacks.count( pack->PackId ) )
     {
-        WriteLog( "Dialog<%s> already added.\n", pack->PackName.c_str() );
+        WriteLog( "Dialog '%s' already added.\n", pack->PackName.c_str() );
         return false;
     }
 
@@ -131,7 +131,7 @@ bool DialogManager::AddDialog( DialogPack* pack )
         uint check_pack_id = ( *it ).first & DLGID_MASK;
         if( pack_id == check_pack_id )
         {
-            WriteLog( "Name hash collision for dialogs <%s> and <%s>.\n", pack->PackName.c_str(), ( *it ).second->PackName.c_str() );
+            WriteLog( "Name hash collision for dialogs  '%s' and  '%s'.\n", pack->PackName.c_str(), ( *it ).second->PackName.c_str() );
             return false;
         }
     }
@@ -184,7 +184,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     IniParser fodlg;
     fodlg.LoadFilePtr( data, Str::Length( data ) );
 
-    #define LOAD_FAIL( err )           { WriteLog( "Dialog<%s> - %s\n", pack_name, err ); goto load_false; }
+    #define LOAD_FAIL( err )           { WriteLog( "Dialog '%s' - %s\n", pack_name, err ); goto load_false; }
     #define VERIFY_STR_ID( str_id )    ( uint( str_id ) <= ~DLGID_MASK )
 
     DialogPack* pack = new DialogPack();
@@ -308,7 +308,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
         script = GetNotAnswerAction( read_str, ret_val );
         if( script < 0 )
         {
-            WriteLog( "Unable to parse<%s>.\n", read_str );
+            WriteLog( "Unable to parse '%s'.\n", read_str );
             LOAD_FAIL( "Invalid not answer action." );
         }
         #endif
@@ -406,7 +406,7 @@ load_done:
     return pack;
 
 load_false:
-    WriteLog( "Dialog<%s> - Bad node<%d>.\n", pack_name, dlg_id );
+    WriteLog( "Dialog '%s' - Bad node %d.\n", pack_name, dlg_id );
     delete pack;
     SAFEDELA( dlg_buf );
     SAFEDELA( lang_buf );
@@ -512,7 +512,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
             }
             else
             {
-                WriteLog( "Invalid DR item<%s>.\n", name );
+                WriteLog( "Invalid DR item '%s'.\n", name );
                 fail = true;
                 id = 0;
             }

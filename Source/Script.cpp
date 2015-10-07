@@ -454,7 +454,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     size_t* ptr = DLL_GetAddress( dll, edata->DllTarget.c_str() );
     if( !ptr )
     {
-        WriteLogF( _FUNC_, " - Wrong script DLL<%s>, expected target<%s>, but found<%s%s%s%s>.\n", dll_name, edata->DllTarget.c_str(),
+        WriteLogF( _FUNC_, " - Wrong script DLL '%s', expected target '%s', but found<%s%s%s%s>.\n", dll_name, edata->DllTarget.c_str(),
                    DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "",
                    !DLL_GetAddress( dll, "SERVER" ) && !DLL_GetAddress( dll, "CLIENT" ) && !DLL_GetAddress( dll, "MAPPER" ) ? "Nothing" : "" );
         DLL_Free( dll );
@@ -516,10 +516,10 @@ void Script::UnloadScripts()
         asIScriptModule* module = Engine->GetModuleByIndex( i );
         int              result = module->ResetGlobalVars();
         if( result < 0 )
-            WriteLogF( _FUNC_, " - Reset global vars fail, module<%s>, error<%d>.\n", module->GetName(), result );
+            WriteLogF( _FUNC_, " - Reset global vars fail, module '%s', error %d.\n", module->GetName(), result );
         result = module->UnbindAllImportedFunctions();
         if( result < 0 )
-            WriteLogF( _FUNC_, " - Unbind fail, module<%s>, error<%d>.\n", module->GetName(), result );
+            WriteLogF( _FUNC_, " - Unbind fail, module '%s', error %d.\n", module->GetName(), result );
     }
 
     while( Engine->GetModuleCount() > 0 )
@@ -759,13 +759,13 @@ bool Script::RunModuleInitFunctions()
         {
             if( !Script::RunPrepared() )
             {
-                WriteLog( "Error executing init function, module<%s>.\n", module->GetName() );
+                WriteLog( "Error executing init function, module '%s'.\n", module->GetName() );
                 return false;
             }
 
             if( !Script::GetReturnedBool() )
             {
-                WriteLog( "Initialization stopped by module<%s>.\n", module->GetName() );
+                WriteLog( "Initialization stopped by module '%s'.\n", module->GetName() );
                 return false;
             }
         }
@@ -1413,7 +1413,7 @@ bool Script::RestoreModuleFromBinary( const char* module_name, const UCharVec& b
         asIScriptModule* module = Engine->GetModuleByIndex( i );
         if( Str::Compare( module->GetName(), module_name ) )
         {
-            WriteLogF( _FUNC_, " - Warning, script for this name<%s> already exist. Discard it.\n", module_name );
+            WriteLogF( _FUNC_, " - Warning, script for this name '%s' already exist. Discard it.\n", module_name );
             module->Discard();
             break;
         }
@@ -1422,7 +1422,7 @@ bool Script::RestoreModuleFromBinary( const char* module_name, const UCharVec& b
     asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
     if( !module )
     {
-        WriteLogF( _FUNC_, " - Create module fail, script<%s>.\n", module_name );
+        WriteLogF( _FUNC_, " - Create module fail, script '%s'.\n", module_name );
         return false;
     }
 
@@ -1434,7 +1434,7 @@ bool Script::RestoreModuleFromBinary( const char* module_name, const UCharVec& b
     int             result = module->LoadByteCode( &binary );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Can't load binary, module<%s>, result<%d>.\n", module_name, result );
+        WriteLogF( _FUNC_, " - Can't load binary, module '%s', result %d.\n", module_name, result );
         module->Discard();
         return false;
     }
@@ -1549,7 +1549,7 @@ uint Script::BindByModuleFuncName( const char* module_name, const char* func_nam
         if( !dll )
         {
             if( !disable_log )
-                WriteLogF( _FUNC_, " - Dll<%s> not found in scripts folder, error<%s>.\n", module_name, DLL_Error() );
+                WriteLogF( _FUNC_, " - Dll '%s' not found in scripts folder, error '%s'.\n", module_name, DLL_Error() );
             return 0;
         }
 
@@ -1558,7 +1558,7 @@ uint Script::BindByModuleFuncName( const char* module_name, const char* func_nam
         if( !func )
         {
             if( !disable_log )
-                WriteLogF( _FUNC_, " - Function<%s> in dll<%s> not found, error<%s>.\n", func_name, module_name, DLL_Error() );
+                WriteLogF( _FUNC_, " - Function '%s' in dll '%s' not found, error '%s'.\n", func_name, module_name, DLL_Error() );
             return 0;
         }
 
@@ -1879,7 +1879,7 @@ bool Script::PrepareScriptFuncContext( hash func_num, const char* call_func, con
     uint bind_id = GetScriptFuncBindId( func_num );
     if( !bind_id )
     {
-        WriteLogF( _FUNC_, " - Function<%u><%s> not found. Context info<%s>, call func<%s>.\n", func_num, GetScriptFuncName( func_num ).c_str(), ctx_info, call_func );
+        WriteLogF( _FUNC_, " - Function %u '%s' not found. Context info '%s', call func '%s'.\n", func_num, GetScriptFuncName( func_num ).c_str(), ctx_info, call_func );
         return false;
     }
     return PrepareContext( bind_id, call_func, ctx_info );
@@ -2387,12 +2387,12 @@ bool Script::RunPrepared()
         }
         else if( RunTimeoutMessage && delta >= RunTimeoutMessage )
         {
-            WriteLog( "Script work time<%u> in context<%s>.\n", delta, ctx_data->Info );
+            WriteLog( "Script work time %u in context '%s'.\n", delta, ctx_data->Info );
         }
 
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Context<%s> execute error<%d>, state<%s>.\n", ctx_data->Info, result, ContextStatesStr[ (int) state ] );
+            WriteLogF( _FUNC_, " - Context '%s' execute error %d, state '%s'.\n", ctx_data->Info, result, ContextStatesStr[ (int) state ] );
             ctx->Abort();
             ReturnContext( ctx );
             EndExecution();

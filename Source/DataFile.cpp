@@ -150,7 +150,7 @@ DataFile* OpenDataFile( const char* fname )
         FalloutDatFile* dat = new FalloutDatFile();
         if( !dat->Init( fname ) )
         {
-            WriteLogF( _FUNC_, " - Unable to open DAT file<%s>.\n", fname );
+            WriteLogF( _FUNC_, " - Unable to open DAT file '%s'.\n", fname );
             delete dat;
             return NULL;
         }
@@ -161,7 +161,7 @@ DataFile* OpenDataFile( const char* fname )
         ZipFile* zip = new ZipFile();
         if( !zip->Init( fname ) )
         {
-            WriteLogF( _FUNC_, " - Unable to open ZIP file<%s>.\n", fname );
+            WriteLogF( _FUNC_, " - Unable to open ZIP file '%s'.\n", fname );
             delete zip;
             return NULL;
         }
@@ -172,7 +172,7 @@ DataFile* OpenDataFile( const char* fname )
         FolderFile* folder = new FolderFile();
         if( !folder->Init( fname ) )
         {
-            WriteLogF( _FUNC_, " - Unable to open Folder<%s>.\n", fname );
+            WriteLogF( _FUNC_, " - Unable to open folder '%s'.\n", fname );
             delete folder;
             return NULL;
         }

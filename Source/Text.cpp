@@ -846,7 +846,7 @@ static void AddNameHash( hash hash, const char* raw_name, const char* formatted_
 
     auto ins = HashFormattedNames.insert( PAIR( hash, Str::Duplicate( formatted_name ) ) );
     if( !ins.second && !Str::Compare( ( *ins.first ).second, formatted_name ) )
-        WriteLog( "Hash collision detected for names <%s> and <%s>, hash<%08X>.\n", formatted_name, ( *ins.first ).second, hash );
+        WriteLog( "Hash collision detected for names '%s' and '%s', hash %08X.\n", formatted_name, ( *ins.first ).second, hash );
     else if( ins.second )
         HashRawNames.insert( PAIR( hash, Str::Duplicate( raw_name ) ) );
 }

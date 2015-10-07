@@ -448,7 +448,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     }
     else
     {
-        Str::Format( mess, "Error while create dump file - Error create file, path<%s>, err<%d>.", dump_path, GetLastError() );
+        Str::Format( mess, "Error while create dump file - Error create file, path '%s', err %d.", dump_path, GetLastError() );
     }
 
     if( except )
@@ -490,14 +490,14 @@ LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
         }
         else
         {
-            Str::Format( mess, "Error while create dump file - File save error, path<%s>, err<%d>.", dump_path, GetLastError() );
+            Str::Format( mess, "Error while create dump file - File save error, path '%s', err %d.", dump_path, GetLastError() );
         }
 
         CloseHandle( f );
     }
     else
     {
-        Str::Format( mess, "Error while create dump file - Error create file, path<%s>, err<%d>.", dump_path, GetLastError() );
+        Str::Format( mess, "Error while create dump file - Error create file, path '%s', err %d.", dump_path, GetLastError() );
     }
 
     if( except )
@@ -695,7 +695,7 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     }
     else
     {
-        Str::Format( mess, "Error while create dump file - Error create file, path<%s>.", dump_path );
+        Str::Format( mess, "Error while create dump file - Error create file, path '%s'.", dump_path );
     }
 
     // if( siginfo )

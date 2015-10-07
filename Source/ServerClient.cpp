@@ -325,7 +325,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     {
         cr->Send_XY( cr );
         cr->Send_CustomCommand( cr, OTHER_YOU_TURN, 0 );
-        WriteLogF( _FUNC_, " - Is not critter<%s> turn.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cr->GetInfo() );
         return false;
     }
 
@@ -465,39 +465,39 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
 
     if( cr->GetId() == target_id )
     {
-        WriteLogF( _FUNC_, " - Critter<%s> self attack.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Critter '%s' self attack.\n", cr->GetInfo() );
         return false;
     }
 
     Map* map = MapMngr.GetMap( cr->GetMapId() );
     if( !map )
     {
-        WriteLogF( _FUNC_, " - Map not found, map id<%u>, critter<%s>.\n", cr->GetMapId(), cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Map not found, map id %u, critter '%s'.\n", cr->GetMapId(), cr->GetInfo() );
         return false;
     }
 
     if( !cr->CheckMyTurn( map ) )
     {
-        WriteLogF( _FUNC_, " - Is not critter<%s> turn.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cr->GetInfo() );
         return false;
     }
 
     Critter* t_cr = cr->GetCritSelf( target_id, true );
     if( !t_cr )
     {
-        WriteLogF( _FUNC_, " - Target critter not found, target id<%u>, critter<%s>.\n", target_id, cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Target critter not found, target id %u, critter '%s'.\n", target_id, cr->GetInfo() );
         return false;
     }
 
     if( cr->GetMapId() != t_cr->GetMapId() )
     {
-        WriteLogF( _FUNC_, " - Other maps, critter<%s>, target critter<%s>.\n", cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Other maps, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
     if( t_cr->IsDead() )
     {
-        // if(cr->IsPlayer()) WriteLogF(_FUNC_," - Target critter is dead, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
+        // if(cr->IsPlayer()) WriteLogF(_FUNC_," - Target critter is dead, critter '%s', target critter '%s'.\n",cr->GetInfo(),t_cr->GetInfo());
         cr->Send_AddCritter( t_cr );       // Refresh
         return false;
     }
@@ -511,25 +511,25 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     Item* weap = cr->ItemSlotMain;
     if( !weap->IsWeapon() )
     {
-        WriteLogF( _FUNC_, " - Critter item is not weapon, critter<%s>, target critter<%s>.\n", cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Critter item is not weapon, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
     if( weap->IsBroken() )
     {
-        WriteLogF( _FUNC_, " - Critter weapon is broken, critter<%s>, target critter<%s>.\n", cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Critter weapon is broken, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
     if( weap->Proto->GetWeapon_IsTwoHanded() && cr->IsDmgArm() )
     {
-        WriteLogF( _FUNC_, " - Critter is damaged arm on two hands weapon, critter<%s>, target critter<%s>.\n", cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Critter is damaged arm on two hands weapon, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
     if( cr->IsDmgTwoArm() && weap->GetId() )
     {
-        WriteLogF( _FUNC_, " - Critter is damaged two arms on armed attack, critter<%s>, target critter<%s>.\n", cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Critter is damaged two arms on armed attack, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
@@ -538,43 +538,43 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
 
     if( use >= MAX_USES )
     {
-        WriteLogF( _FUNC_, " - Use<%u> invalid value, critter<%s>, target critter<%s>.\n", use, cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Use %u invalid value, critter '%s', target critter '%s'.\n", use, cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
     if( !( weap->Proto->GetWeapon_ActiveUses() & ( 1 << use ) ) )
     {
-        WriteLogF( _FUNC_, " - Use<%u> is not aviable, critter<%s>, target critter<%s>.\n", use, cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Use %u is not aviable, critter '%s', target critter '%s'.\n", use, cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
     if( aim >= MAX_HIT_LOCATION )
     {
-        WriteLogF( _FUNC_, " - Aim<%u> invalid value, critter<%s>, target critter<%s>.\n", aim, cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Aim %u invalid value, critter '%s', target critter '%s'.\n", aim, cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
     if( aim && !CritType::IsCanAim( cr->GetCrType() ) )
     {
-        WriteLogF( _FUNC_, " - Aim is not available for this critter type, crtype<%u>, aim<%u>, critter<%s>, target critter<%s>.\n", cr->GetCrType(), aim, cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Aim is not available for this critter type, crtype %u, aim %u, critter '%s', target critter '%s'.\n", cr->GetCrType(), aim, cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
     if( aim && cr->GetIsNoAim() )
     {
-        WriteLogF( _FUNC_, " - Aim is not available with critter no aim mode, aim<%u>, critter<%s>, target critter<%s>.\n", aim, cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Aim is not available with critter no aim mode, aim %u, critter '%s', target critter '%s'.\n", aim, cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
     if( aim && !weap->WeapIsCanAim( use ) )
     {
-        WriteLogF( _FUNC_, " - Aim is not available for this weapon, aim<%u>, weapon pid<%u>, critter<%s>, target critter<%s>.\n", aim, weap->GetProtoId(), cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Aim is not available for this weapon, aim %u, weapon '%s', critter '%s', target critter '%s'.\n", aim, weap->GetName(), cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
     if( !CritType::IsAnim1( cr->GetCrType(), weap->Proto->GetWeapon_Anim1() ) )
     {
-        WriteLogF( _FUNC_, " - Anim1 is not available for this critter type, crtype<%u>, anim1<%d>, critter<%s>, target critter<%s>.\n", cr->GetCrType(), weap->Proto->GetWeapon_Anim1(), cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Anim1 is not available for this critter type, crtype %u, anim1 %d, critter '%s', target critter '%s'.\n", cr->GetCrType(), weap->Proto->GetWeapon_Anim1(), cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
@@ -605,7 +605,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     int ap_cost = cr->GetUseApCost( weap, rate_weap );
     if( cr->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
-        WriteLogF( _FUNC_, " - Not enough AP, critter<%s>, target critter<%s>.\n", cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Not enough AP, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
@@ -622,13 +622,13 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
 
         if( !ammo )
         {
-            WriteLogF( _FUNC_, " - Critter weapon ammo not found, critter<%s>, target critter<%s>.\n", cr->GetInfo(), t_cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Critter weapon ammo not found, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
             return false;
         }
 
         if( !ammo->IsAmmo() )
         {
-            WriteLogF( _FUNC_, " - Critter weapon ammo is not ammo type, critter<%s>, target critter<%s>.\n", cr->GetInfo(), t_cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Critter weapon ammo is not ammo type, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
             return false;
         }
     }
@@ -638,7 +638,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     {
         if( !weap->GetAmmoCount() )
         {
-            WriteLogF( _FUNC_, " - Critter bullets count is zero, critter<%s>.\n", cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Critter bullets count is zero, critter '%s'.\n", cr->GetInfo() );
             return false;
         }
     }
@@ -684,33 +684,33 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
 
     if( !cr->CheckMyTurn( NULL ) )
     {
-        WriteLogF( _FUNC_, " - Is not critter<%s> turn.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cr->GetInfo() );
         return false;
     }
 
     Item* weap = cr->GetItem( weap_id, true );
     if( !weap )
     {
-        WriteLogF( _FUNC_, " - Unable to find weapon, id<%u>, critter<%s>.\n", weap_id, cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Unable to find weapon, id %u, critter '%s'.\n", weap_id, cr->GetInfo() );
         return false;
     }
 
     if( !weap->IsWeapon() )
     {
-        WriteLogF( _FUNC_, " - Invalid type of weapon<%u>, critter<%s>.\n", weap->GetType(), cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Invalid type of weapon %u, critter '%s'.\n", weap->GetType(), cr->GetInfo() );
         return false;
     }
 
     if( !weap->WeapGetMaxAmmoCount() )
     {
-        WriteLogF( _FUNC_, " - Weapon is not have holder, id<%u>, critter<%s>.\n", weap_id, cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Weapon is not have holder, id %u, critter '%s'.\n", weap_id, cr->GetInfo() );
         return false;
     }
 
     int ap_cost = cr->GetUseApCost( weap, USE_RELOAD );
     if( cr->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
-        WriteLogF( _FUNC_, " - Not enough AP, critter<%s>.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Not enough AP, critter '%s'.\n", cr->GetInfo() );
         return false;
     }
     cr->SubAp( ap_cost );
@@ -718,19 +718,19 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
     Item* ammo = ( ammo_id ? cr->GetItem( ammo_id, true ) : NULL );
     if( ammo_id && !ammo )
     {
-        WriteLogF( _FUNC_, " - Unable to find ammo, id<%u>, critter<%s>.\n", ammo_id, cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Unable to find ammo, id %u, critter '%s'.\n", ammo_id, cr->GetInfo() );
         return false;
     }
 
     if( ammo && weap->WeapGetAmmoCaliber() != ammo->AmmoGetCaliber() )
     {
-        WriteLogF( _FUNC_, " - Different calibers, critter<%s>.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Different calibers, critter '%s'.\n", cr->GetInfo() );
         return false;
     }
 
     if( ammo && weap->WeapGetAmmoPid() == ammo->GetProtoId() && weap->WeapIsFull() )
     {
-        WriteLogF( _FUNC_, " - Weapon is full, id<%u>, critter<%s>.\n", weap_id, cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Weapon is full, id %u, critter '%s'.\n", weap_id, cr->GetInfo() );
         return false;
     }
 
@@ -757,7 +757,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     Map* map = MapMngr.GetMap( cr->GetMapId() );
     if( map && !cr->CheckMyTurn( map ) )
     {
-        WriteLogF( _FUNC_, " - Is not critter<%s> turn.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cr->GetInfo() );
         return false;
     }
 
@@ -767,7 +767,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         item = cr->GetItem( item_id, cr->IsPlayer() );
         if( !item )
         {
-            WriteLogF( _FUNC_, " - Item not found, id<%u>, critter<%s>.\n", item_id, cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Item not found, id %u, critter '%s'.\n", item_id, cr->GetInfo() );
             return false;
         }
     }
@@ -775,7 +775,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     int ap_cost = ( item_id ? cr->GetUseApCost( item, USE_USE ) : cr->GetApCostUseSkill() );
     if( cr->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
-        WriteLogF( _FUNC_, " - Not enough AP, critter<%s>.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Not enough AP, critter '%s'.\n", cr->GetInfo() );
         return false;
     }
     cr->SubAp( ap_cost );
@@ -793,7 +793,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
                 target_cr = cr->GetCritSelf( target_id, true );
                 if( !target_cr )
                 {
-                    WriteLogF( _FUNC_, " - Target critter not found, id<%u>, critter<%s>.\n", target_id, cr->GetInfo() );
+                    WriteLogF( _FUNC_, " - Target critter not found, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
                     return false;
                 }
 
@@ -801,7 +801,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
                 {
                     cr->Send_XY( cr );
                     cr->Send_XY( target_cr );
-                    WriteLogF( _FUNC_, " - Target critter too far, id<%u>, critter<%s>.\n", target_id, cr->GetInfo() );
+                    WriteLogF( _FUNC_, " - Target critter too far, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
                     return false;
                 }
             }
@@ -809,14 +809,14 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             {
                 if( !cr->GroupMove )
                 {
-                    WriteLogF( _FUNC_, " - Group move null ptr, critter<%s>.\n", cr->GetInfo() );
+                    WriteLogF( _FUNC_, " - Group move null ptr, critter '%s'.\n", cr->GetInfo() );
                     return false;
                 }
 
                 target_cr = cr->GroupMove->GetCritter( target_id );
                 if( !target_cr )
                 {
-                    WriteLogF( _FUNC_, " - Target critter not found, id<%u>, critter<%s>.\n", target_id, cr->GetInfo() );
+                    WriteLogF( _FUNC_, " - Target critter not found, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
                     return false;
                 }
             }
@@ -831,7 +831,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         target_item = cr->GetItem( target_id, cr->IsPlayer() );
         if( !target_item )
         {
-            WriteLogF( _FUNC_, " - Item not found in critter inventory, critter<%s>.\n", cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Item not found in critter inventory, critter '%s'.\n", cr->GetInfo() );
             return false;
         }
     }
@@ -839,33 +839,33 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     {
         if( !cr->GetMapId() )
         {
-            WriteLogF( _FUNC_, " - Can't get item, critter<%s> on global map.\n", cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Can't get item, critter '%s' on global map.\n", cr->GetInfo() );
             return false;
         }
 
         if( !map )
         {
-            WriteLogF( _FUNC_, " - Map not found, map id<%u>, critter<%s>.\n", cr->GetMapId(), cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Map not found, map id %u, critter '%s'.\n", cr->GetMapId(), cr->GetInfo() );
             return false;
         }
 
         target_item = map->GetItem( target_id );
         if( !target_item )
         {
-            WriteLogF( _FUNC_, " - Target item not found, id<%u>, critter<%s>.\n", target_id, cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Target item not found, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
             return false;
         }
 
         if( target_item->GetIsHidden() )
         {
-            WriteLogF( _FUNC_, " - Target item is hidden, id<%u>, critter<%s>.\n", target_id, cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Target item is hidden, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
             return false;
         }
 
         if( !CheckDist( cr->GetHexX(), cr->GetHexY(), target_item->AccHex.HexX, target_item->AccHex.HexY, cr->GetUseDist() ) )
         {
             cr->Send_XY( cr );
-            WriteLogF( _FUNC_, " - Target item too far, id<%u>, critter<%s>.\n", target_id, cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Target item too far, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
             return false;
         }
     }
@@ -873,13 +873,13 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     {
         if( !cr->GetMapId() )
         {
-            WriteLogF( _FUNC_, " - Can't get scenery, critter<%s> on global map.\n", cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Can't get scenery, critter '%s' on global map.\n", cr->GetInfo() );
             return false;
         }
 
         if( !map )
         {
-            WriteLogF( _FUNC_, " - Map not found_, map id<%u>, critter<%s>.\n", cr->GetMapId(), cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Map not found_, map id %u, critter '%s'.\n", cr->GetMapId(), cr->GetInfo() );
             return false;
         }
 
@@ -889,33 +889,33 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         if( !CheckDist( cr->GetHexX(), cr->GetHexY(), hx, hy, cr->GetUseDist() ) )
         {
             cr->Send_XY( cr );
-            WriteLogF( _FUNC_, " - Target scenery too far, critter<%s>, hx<%u>, hy<%u>.\n", cr->GetInfo(), hx, hy );
+            WriteLogF( _FUNC_, " - Target scenery too far, critter '%s', hx %u, hy %u.\n", cr->GetInfo(), hx, hy );
             return false;
         }
 
         ProtoItem* proto_scenery = ItemMngr.GetProtoItem( target_pid );
         if( !proto_scenery )
         {
-            WriteLogF( _FUNC_, " - Proto of scenery not find. Critter<%s>, pid<%u>.\n", cr->GetInfo(), target_pid );
+            WriteLogF( _FUNC_, " - Proto scenery '%s' not found, critter '%s'.\n", HASH_STR( target_pid ), cr->GetInfo() );
             return false;
         }
 
         if( !proto_scenery->IsScen() )
         {
-            WriteLogF( _FUNC_, " - Target scenery is not scenery. Critter<%s>.\n", cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Target scenery '%s' is not scenery, critter '%s'.\n", HASH_STR( target_pid ), cr->GetInfo() );
             return false;
         }
 
         target_scen = map->Proto->GetMapScenery( hx, hy, target_pid );
         if( !target_scen )
         {
-            WriteLogF( _FUNC_, " - Scenery not find. Critter<%s>.\n", cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Scenery '%s' not found on map, critter '%s'.\n", HASH_STR( target_pid ), cr->GetInfo() );
             return false;
         }
     }
     else
     {
-        WriteLogF( _FUNC_, " - Unknown target type<%d>, critter<%s>.\n", target_type, cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Unknown target type %d, critter '%s'.\n", target_type, cr->GetInfo() );
         return false;
     }
 
@@ -1030,14 +1030,14 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
 
     if( !cr->CheckMyTurn( map ) )
     {
-        WriteLogF( _FUNC_, " - Is not critter<%s> turn.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cr->GetInfo() );
         return false;
     }
 
     int ap_cost = cr->GetApCostPickItem();
     if( cr->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
-        WriteLogF( _FUNC_, " - Not enough AP, critter<%s>.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Not enough AP, critter '%s'.\n", cr->GetInfo() );
         return false;
     }
     cr->SubAp( ap_cost );
@@ -1047,7 +1047,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
 
     if( !CheckDist( cr->GetHexX(), cr->GetHexY(), hx, hy, cr->GetUseDist() ) )
     {
-        WriteLogF( _FUNC_, " - Wrong distance, critter<%s>.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Wrong distance, critter '%s'.\n", cr->GetInfo() );
         cr->Send_XY( cr );
         return false;
     }
@@ -1055,7 +1055,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
     ProtoItem* proto = ItemMngr.GetProtoItem( pid );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Proto not find, pid<%u>, critter<%s>.\n", pid, cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Proto item '%s' not found, critter '%s'.\n", HASH_STR( pid ), cr->GetInfo() );
         return false;
     }
 
@@ -1195,7 +1195,7 @@ void FOServer::RespawnCritter( Critter* cr )
     Map* map = MapMngr.GetMap( cr->GetMapId() );
     if( !map )
     {
-        WriteLogF( _FUNC_, " - Current map not found, continue dead. Critter<%s>.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Current map not found, continue dead. Critter '%s'.\n", cr->GetInfo() );
         return;
     }
 
@@ -1394,7 +1394,7 @@ void FOServer::Process_UpdateFile( Client* cl )
 
     if( file_index >= (uint) UpdateFiles.size() )
     {
-        WriteLogF( _FUNC_, " - Wrong file index<%u>, client ip<%s>.\n", file_index, cl->GetIpStr() );
+        WriteLogF( _FUNC_, " - Wrong file index %u, client ip '%s'.\n", file_index, cl->GetIpStr() );
         cl->Disconnect();
         return;
     }
@@ -1408,7 +1408,7 @@ void FOServer::Process_UpdateFileData( Client* cl )
 {
     if( cl->UpdateFileIndex == -1 )
     {
-        WriteLogF( _FUNC_, " - Wrong update call, client ip<%s>.\n", cl->GetIpStr() );
+        WriteLogF( _FUNC_, " - Wrong update call, client ip '%s'.\n", cl->GetIpStr() );
         cl->Disconnect();
         return;
     }
@@ -1475,7 +1475,7 @@ void FOServer::Process_CreateClient( Client* cl )
     cl->Bin >> proto_ver;
     if( proto_ver != FONLINE_VERSION )
     {
-        // WriteLogF(_FUNC_," - Wrong Protocol Version from SockId<%u>.\n",cl->Sock);
+        // WriteLogF(_FUNC_," - Wrong Protocol Version from SockId %u.\n", cl->Sock);
         cl->Send_TextMsg( cl, STR_NET_WRONG_NETPROTO, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
         return;
@@ -1522,7 +1522,7 @@ void FOServer::Process_CreateClient( Client* cl )
         Property* prop = Critter::PropertiesRegistrator->FindByEnum( enum_value );
         if( !prop || !prop->IsPOD() )
         {
-            WriteLogF( _FUNC_, " - Invalid allowed property<%s>.\n", prop ? prop->GetName() : Str::ItoA( enum_value ) );
+            WriteLogF( _FUNC_, " - Invalid allowed property '%s'.\n", prop ? prop->GetName() : Str::ItoA( enum_value ) );
             cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1872,7 +1872,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         if( !Str::IsValidUTF8( cl->Name ) || Str::Substring( cl->Name, "*" ) )
         {
-            // WriteLogF(_FUNC_," - Wrong chars: Name or Password, client<%s>.\n",cl->Name);
+            // WriteLogF(_FUNC_," - Wrong chars: Name or Password, client '%s'.\n",cl->Name);
             cl->Send_TextMsg( cl, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1889,7 +1889,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         ClientData* data_ = GetClientData( id );
         if( !data_ || memcmp( cl->PassHash, data_->ClientPassHash, PASS_HASH_SIZE ) )
         {
-            // WriteLogF(_FUNC_," - Wrong name<%s> or password.\n",cl->Name);
+            // WriteLogF(_FUNC_," - Wrong name '%s' or password.\n",cl->Name);
             cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1962,7 +1962,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 uid_zero++;
         if( uid_zero > 2 )
         {
-            WriteLogF( _FUNC_, " - Received more than two zero UIDs, client<%s>.\n", cl->Name );
+            WriteLogF( _FUNC_, " - Received more than two zero UIDs, client '%s'.\n", cl->Name );
             cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1974,7 +1974,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             ( uid[ 3 ] && ( !FLAG( uid[ 3 ], 0x80000000 ) || FLAG( uid[ 3 ], 0x40000000 ) ) ) ||
             ( uid[ 4 ] && ( !FLAG( uid[ 4 ], 0x00000800 ) || FLAG( uid[ 4 ], 0x00004000 ) ) ) )
         {
-            WriteLogF( _FUNC_, " - Invalid UIDs, client<%s>.\n", cl->Name );
+            WriteLogF( _FUNC_, " - Invalid UIDs, client '%s'.\n", cl->Name );
             cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1990,7 +1990,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         if( uidxor != uidxor_ || uidor != uidor_ || uidcalc != uidcalc_ )
         {
-            WriteLogF( _FUNC_, " - Invalid UIDs hash, client<%s>.\n", cl->Name );
+            WriteLogF( _FUNC_, " - Invalid UIDs hash, client '%s'.\n", cl->Name );
             cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -2027,7 +2027,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 }
                 else
                 {
-                    WriteLogF( _FUNC_, " - UID already used by critter<%s>, client<%s>.\n", cd->ClientName, cl->Name );
+                    WriteLogF( _FUNC_, " - UID already used by critter '%s', client '%s'.\n", cd->ClientName, cl->Name );
                     cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
                     cl->Disconnect();
                     return;
@@ -2049,7 +2049,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 }
                 else
                 {
-                    WriteLogF( _FUNC_, " - Different UID<%d>, client<%s>.\n", i, cl->Name );
+                    WriteLogF( _FUNC_, " - Different UID %d, client '%s'.\n", i, cl->Name );
                     cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
                     cl->Disconnect();
                     return;
@@ -2064,7 +2064,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     Client* cl_old = CrMngr.GetPlayer( id, true );
     if( cl == cl_old )
     {
-        WriteLogF( _FUNC_, " - Find same ptr, client<%s>.\n", cl->Name );
+        WriteLogF( _FUNC_, " - Find same ptr, client '%s'.\n", cl->Name );
         cl->Disconnect();
         return;
     }
@@ -2212,7 +2212,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         if( !cl_saved && !LoadClient( cl ) )
         {
-            WriteLogF( _FUNC_, " - Error load from data base, client<%s>.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Error load from data base, client '%s'.\n", cl->GetInfo() );
             cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             cl->SetMaps( 0, 0 );
@@ -2272,7 +2272,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         if( !MapMngr.AddCrToMap( cl, map, cl->GetHexX(), cl->GetHexY(), 1 ) )
         {
-            WriteLogF( _FUNC_, " - Error add critter to map, client<%s>.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Error add critter to map, client '%s'.\n", cl->GetInfo() );
             cl->Send_TextMsg( cl, STR_NET_HEXES_BUSY, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             cl->SetMaps( 0, 0 );
@@ -2427,7 +2427,7 @@ void FOServer::Process_SingleplayerSaveLoad( Client* cl )
         SYNC_LOCK( cl );
         if( !LoadWorld( fname ) )
         {
-            WriteLogF( _FUNC_, " - Unable load world from file<%s>.\n", fname );
+            WriteLogF( _FUNC_, " - Unable load world from file '%s'.\n", fname );
             cl->Send_TextMsg( cl, STR_SP_LOAD_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             ResynchronizeLogicThreads();
@@ -2479,7 +2479,7 @@ void FOServer::Process_ParseToGame( Client* cl )
     {
         if( !cl->GroupMove )
         {
-            WriteLogF( _FUNC_, " - Group nullptr, client<%s>.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Group nullptr, client '%s'.\n", cl->GetInfo() );
             cl->Disconnect();
             return;
         }
@@ -2503,7 +2503,7 @@ void FOServer::Process_ParseToGame( Client* cl )
     {
         if( !map )
         {
-            WriteLogF( _FUNC_, " - Map not found, client<%s>.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Map not found, client '%s'.\n", cl->GetInfo() );
             cl->Disconnect();
             return;
         }
@@ -2599,14 +2599,14 @@ void FOServer::Process_GiveMap( Client* cl )
     ProtoMap* pmap = MapMngr.GetProtoMap( map_pid );
     if( !pmap )
     {
-        WriteLogF( _FUNC_, " - Map prototype not found, client<%s>.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Map prototype not found, client '%s'.\n", cl->GetInfo() );
         cl->Disconnect();
         return;
     }
 
     if( !automap && map_pid != cl->GetMapProtoId() && cl->ViewMapPid != map_pid )
     {
-        WriteLogF( _FUNC_, " - Request for loading incorrect map, client<%s>.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Request for loading incorrect map, client '%s'.\n", cl->GetInfo() );
         return;
     }
 
@@ -2614,14 +2614,14 @@ void FOServer::Process_GiveMap( Client* cl )
     {
         if( !cl->CheckKnownLocById( loc_id ) )
         {
-            WriteLogF( _FUNC_, " - Request for loading unknown automap, client<%s>.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Request for loading unknown automap, client '%s'.\n", cl->GetInfo() );
             return;
         }
 
         Location* loc = MapMngr.GetLocation( loc_id );
         if( !loc || !loc->IsAutomap( map_pid ) )
         {
-            WriteLogF( _FUNC_, " - Request for loading incorrect automap, client<%s>.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Request for loading incorrect automap, client '%s'.\n", cl->GetInfo() );
             return;
         }
     }
@@ -2788,7 +2788,7 @@ void FOServer::Process_ChangeItem( Client* cl )
 
     if( !cl->CheckMyTurn( NULL ) )
     {
-        WriteLogF( _FUNC_, " - Is not client<%s> turn.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Is not client '%s' turn.\n", cl->GetInfo() );
         cl->Send_AddAllItems();
         return;
     }
@@ -2799,7 +2799,7 @@ void FOServer::Process_ChangeItem( Client* cl )
         ap_cost = cl->GetApCostDropItem();
     if( cl->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
-        WriteLogF( _FUNC_, " - Not enough AP, client<%s>.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Not enough AP, client '%s'.\n", cl->GetInfo() );
         cl->Send_AddAllItems();
         return;
     }
@@ -2812,7 +2812,7 @@ void FOServer::Process_ChangeItem( Client* cl )
     // Move
     if( !cl->MoveItem( from_slot, to_slot, item_id, count ) )
     {
-        WriteLogF( _FUNC_, " - Move item fail, from<%u>, to<%u>, item_id<%u>, client<%s>.\n", from_slot, to_slot, item_id, cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Move item fail, from %u, to %u, item_id %u, client '%s'.\n", from_slot, to_slot, item_id, cl->GetInfo() );
         cl->Send_AddAllItems();
     }
 }
@@ -2841,7 +2841,7 @@ void FOServer::Process_UseItem( Client* cl )
     Item* item = ( item_id ? cl->GetItem( item_id, true ) : cl->ItemSlotMain );
     if( !item )
     {
-        WriteLogF( _FUNC_, " - Item not found, item id<%u>, client<%s>.\n", item_id, cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Item not found, item id %u, client '%s'.\n", item_id, cl->GetInfo() );
         return;
     }
 
@@ -2912,14 +2912,14 @@ void FOServer::Process_PickCritter( Client* cl )
 
     if( !cl->CheckMyTurn( NULL ) )
     {
-        WriteLogF( _FUNC_, " - Is not critter<%s> turn.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cl->GetInfo() );
         return;
     }
 
     int ap_cost = cl->GetApCostPickCritter();
     if( cl->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
-        WriteLogF( _FUNC_, " - Not enough AP, critter<%s>.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Not enough AP, critter '%s'.\n", cl->GetInfo() );
         return;
     }
     cl->SubAp( ap_cost );
@@ -3017,13 +3017,13 @@ void FOServer::Process_ContainerItem( Client* cl )
 
     if( !cl->CheckMyTurn( NULL ) )
     {
-        WriteLogF( _FUNC_, " - Is not client<%s> turn.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Is not client '%s' turn.\n", cl->GetInfo() );
         return;
     }
 
     if( cl->AccessContainerId != cont_id )
     {
-        WriteLogF( _FUNC_, " - Try work with not accessed container, client<%s>.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Try work with not accessed container, client '%s'.\n", cl->GetInfo() );
         cl->Send_ContainerInfo();
         return;
     }
@@ -3032,7 +3032,7 @@ void FOServer::Process_ContainerItem( Client* cl )
     int ap_cost = cl->GetApCostMoveItemContainer();
     if( cl->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
-        WriteLogF( _FUNC_, " - Not enough AP, client<%s>.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Not enough AP, client '%s'.\n", cl->GetInfo() );
         cl->Send_ContainerInfo();
         return;
     }
@@ -3078,7 +3078,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             {
                 cl->Send_XY( cl );
                 cl->Send_ContainerInfo();
-                WriteLogF( _FUNC_, " - Transfer item container. Client<%s> distance more than allowed.\n", cl->GetInfo() );
+                WriteLogF( _FUNC_, " - Transfer item container. Client '%s' distance more than allowed.\n", cl->GetInfo() );
                 return;
             }
 
@@ -3264,7 +3264,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Cheat detected.", SAY_NETMSG );
-                WriteLogF( _FUNC_, " - Attempting to put in a container not from the inventory, client<%s>.", cl->GetInfo() );
+                WriteLogF( _FUNC_, " - Attempting to put in a container not from the inventory, client '%s'.", cl->GetInfo() );
                 return;
             }
 
@@ -3331,7 +3331,7 @@ void FOServer::Process_ContainerItem( Client* cl )
         if( cl == cr )
         {
             cl->Send_ContainerInfo();
-            WriteLogF( _FUNC_, " - Critter<%s> self pick.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Critter '%s' self pick.\n", cl->GetInfo() );
             return;
         }
 
@@ -3339,7 +3339,7 @@ void FOServer::Process_ContainerItem( Client* cl )
         if( is_steal && cr->GetIsNoSteal() )
         {
             cl->Send_ContainerInfo();
-            WriteLogF( _FUNC_, " - Critter has NoSteal flag, critter<%s>.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Critter has NoSteal flag, critter '%s'.\n", cl->GetInfo() );
             return;
         }
 
@@ -3349,7 +3349,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             cl->Send_XY( cl );
             cl->Send_XY( cr );
             cl->Send_ContainerInfo();
-            WriteLogF( _FUNC_, " - Transfer critter container. Client<%s> distance more than allowed.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Transfer critter container. Client '%s' distance more than allowed.\n", cl->GetInfo() );
             return;
         }
 
@@ -3544,7 +3544,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Cheat detected.", SAY_NETMSG );
-                WriteLogF( _FUNC_, " - Attempting to put in a container not from the inventory2, client<%s>.", cl->GetInfo() );
+                WriteLogF( _FUNC_, " - Attempting to put in a container not from the inventory2, client '%s'.", cl->GetInfo() );
                 return;
             }
 
@@ -3620,7 +3620,7 @@ void FOServer::Process_UseSkill( Client* cl )
 
     if( targ_type > TARGET_SCENERY )
     {
-        WriteLogF( _FUNC_, " - Invalid target type<%u>, client<%s>.\n", targ_type, cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Invalid target type %u, client '%s'.\n", targ_type, cl->GetInfo() );
         return;
     }
 
@@ -3658,7 +3658,7 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
     cl->Bin >> text_len;
     if( !title_len || !text_len || title_len > USER_HOLO_MAX_TITLE_LEN || text_len > USER_HOLO_MAX_LEN )
     {
-        WriteLogF( _FUNC_, " - Length of texts is greater of maximum or zero, title cur<%u>, title max<%u>, text cur<%u>, text max<%u>, client<%s>. Disconnect.\n", title_len, USER_HOLO_MAX_TITLE_LEN, text_len, USER_HOLO_MAX_LEN, cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Length of texts is greater of maximum or zero, title cur %u, title max %u, text cur %u, text max %u, client '%s'. Disconnect.\n", title_len, USER_HOLO_MAX_TITLE_LEN, text_len, USER_HOLO_MAX_LEN, cl->GetInfo() );
         cl->Disconnect();
         return;
     }
@@ -3673,7 +3673,7 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
     Item* holodisk = cl->GetItem( holodisk_id, true );
     if( !holodisk )
     {
-        WriteLogF( _FUNC_, " - Holodisk<%u> not found, client<%s>.\n", holodisk_id, cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Holodisk %u not found, client '%s'.\n", holodisk_id, cl->GetInfo() );
         cl->Send_TextMsg( cl, STR_HOLO_WRITE_FAIL, SAY_NETMSG, TEXTMSG_HOLO );
         return;
     }
@@ -3682,7 +3682,7 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
 
     #pragma MESSAGE("Check valid of received text.")
 //	int invalid_chars=CheckStr(text);
-//	if(invalid_chars>0) WriteLogF(_FUNC_," - Found invalid chars, count<%u>, client<%s>, changed on '_'.\n",invalid_chars,cl->GetInfo());
+//	if(invalid_chars>0) WriteLogF(_FUNC_," - Found invalid chars, count %u, client '%s', changed on '_'.\n",invalid_chars,cl->GetInfo());
 
     HolodiskLocker.Lock();
 
@@ -3715,7 +3715,7 @@ void FOServer::Process_GetUserHoloStr( Client* cl )
 
     if( str_num / 10 < USER_HOLO_START_NUM )
     {
-        WriteLogF( _FUNC_, " - String value is less than users holo numbers, str num<%u>, client<%s>.\n", str_num, cl->GetInfo() );
+        WriteLogF( _FUNC_, " - String value is less than users holo numbers, str num %u, client '%s'.\n", str_num, cl->GetInfo() );
         return;
     }
 
@@ -3774,7 +3774,7 @@ void FOServer::Process_CraftAsk( Client* cl )
     uint tick = Timer::FastTick();
     if( tick < cl->LastSendCraftTick + CRAFT_SEND_TIME )
     {
-        WriteLogF( _FUNC_, " - Client<%s> ignore send craft timeout.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Client '%s' ignore send craft timeout.\n", cl->GetInfo() );
         return;
     }
     cl->LastSendCraftTick = tick;
@@ -3843,7 +3843,7 @@ void FOServer::Process_Ping( Client* cl )
         ClientData* data = GetClientData( cl->GetId() );
         if( data )
         {
-            WriteLogF( _FUNC_, " - Wrong UID, client<%s>. Disconnect.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Wrong UID, client '%s'. Disconnect.\n", cl->GetInfo() );
             for( int i = 0; i < 5; i++ )
                 data->UID[ i ] = Random( 0, 10000 );
             data->UIDEndTick = Timer::FastTick() + GameOpt.AccountPlayTime * 1000;
@@ -3858,7 +3858,7 @@ void FOServer::Process_Ping( Client* cl )
     }
     else
     {
-        WriteLog( "Unknown ping<%u>, client<%s>.\n", ping, cl->GetInfo() );
+        WriteLog( "Unknown ping %u, client '%s'.\n", ping, cl->GetInfo() );
         return;
     }
 
@@ -4030,7 +4030,7 @@ label_EndOffer:
         if( barter_cl == opponent && opponent->BarterHide )
         {
             cl->Send_Text( cl, "Cheat fail.", SAY_NETMSG );
-            WriteLogF( _FUNC_, " - Player try operate opponent inventory in hide mode, player<%s>, opponent<%s>.\n", cl->GetInfo(), opponent->GetInfo() );
+            WriteLogF( _FUNC_, " - Player try operate opponent inventory in hide mode, player '%s', opponent '%s'.\n", cl->GetInfo(), opponent->GetInfo() );
             return;
         }
 
@@ -4101,7 +4101,7 @@ void FOServer::Process_ScreenAnswer( Client* cl )
 
     if( !cl->ScreenCallbackBindId )
     {
-        WriteLogF( _FUNC_, " - Client<%s> answered on not not specified screen.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Client '%s' answered on not not specified screen.\n", cl->GetInfo() );
         return;
     }
 
@@ -4131,7 +4131,7 @@ void FOServer::Process_Combat( Client* cl )
         Map* map = MapMngr.GetMap( cl->GetMapId() );
         if( !map )
         {
-            WriteLogF( _FUNC_, " - Map not found on end turn, client<%s>.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Map not found on end turn, client '%s'.\n", cl->GetInfo() );
             return;
         }
         if( map->IsTurnBasedOn && map->IsCritterTurn( cl ) )
@@ -4142,7 +4142,7 @@ void FOServer::Process_Combat( Client* cl )
         Map* map = MapMngr.GetMap( cl->GetMapId() );
         if( !map )
         {
-            WriteLogF( _FUNC_, " - Map not found on end combat, client<%s>.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Map not found on end combat, client '%s'.\n", cl->GetInfo() );
             return;
         }
         if( map->IsTurnBasedOn )
@@ -4150,7 +4150,7 @@ void FOServer::Process_Combat( Client* cl )
     }
     else
     {
-        WriteLogF( _FUNC_, " - Unknown type<%u>, value<%d>, client<%s>.\n", type, val, cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Unknown type %u, value %d, client '%s'.\n", type, val, cl->GetInfo() );
     }
 }
 
@@ -4366,7 +4366,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
         // Transit
         if( cl->LockMapTransfers )
         {
-            WriteLogF( _FUNC_, " - Transfers locked, critter<%s>.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Transfers locked, critter '%s'.\n", cl->GetInfo() );
             return;
         }
         if( !MapMngr.TransitToGlobal( cl, param1, 0, false ) )
@@ -4425,7 +4425,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
         uint tick = Timer::FastTick();
         if( cl->LastSendEntrancesLocId == loc_id && tick < cl->LastSendEntrancesTick + GM_ENTRANCES_SEND_TIME )
         {
-            WriteLogF( _FUNC_, " - Client<%s> ignore send entrances timeout.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Client '%s' ignore send entrances timeout.\n", cl->GetInfo() );
             break;
         }
         cl->LastSendEntrancesLocId = loc_id;
@@ -4525,7 +4525,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
     }
     break;
     default:
-        WriteLogF( _FUNC_, " - Unknown command<%u>, from client<%s>.\n", cl->GetInfo() );
+        WriteLogF( _FUNC_, " - Unknown command %u, from client '%s'.\n", cl->GetInfo() );
         break;
     }
 

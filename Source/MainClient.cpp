@@ -98,7 +98,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         Str::Format( command_line, "\"%s%s\" -singleplayer %p %p %s -logpath %s", server_path, server_exe, map_file, client_process, server_cmdline, path );
         if( !CreateProcess( NULL, command_line, NULL, NULL, TRUE, NORMAL_PRIORITY_CLASS, NULL, server_path, &sui, &server ) )
         {
-            WriteLog( "Can't start server process, error<%u>.\n", GetLastError() );
+            WriteLog( "Can't start server process, error %u.\n", GetLastError() );
             return 0;
         }
         CloseHandle( server.hProcess );

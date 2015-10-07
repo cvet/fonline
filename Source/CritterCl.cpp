@@ -1166,6 +1166,13 @@ void CritterCl::AnimateStay()
     }
     else
     {
+        int scale_factor = GetScaleFactor();
+        if( scale_factor != 0 )
+        {
+            float scale = (float) scale_factor / 1000.0f;
+            Anim3d->SetScale( scale, scale, scale );
+        }
+
         Anim3d->CheckAnimation( anim1, anim2 );
 
         ProcessAnim( true, false, anim1, anim2, NULL );
@@ -1566,7 +1573,7 @@ void CritterCl::GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int&
         else
             Str::Copy( str, Name->c_str() );
         if( GameOpt.ShowCritId )
-            Str::Append( str, Str::FormatBuf( " <%u>", GetId() ) );
+            Str::Append( str, Str::FormatBuf( "  %u", GetId() ) );
         if( FLAG( Flags, FCRIT_DISCONNECT ) )
             Str::Append( str, GameOpt.PlayerOffAppendix->c_str() );
     }
@@ -1608,7 +1615,7 @@ void CritterCl::DrawTextOnHead()
             else
                 Str::Copy( str, Name->c_str() );
             if( GameOpt.ShowCritId )
-                Str::Append( str, Str::FormatBuf( " <%u>", GetId() ) );
+                Str::Append( str, Str::FormatBuf( " (%u)", GetId() ) );
             if( FLAG( Flags, FCRIT_DISCONNECT ) )
                 Str::Append( str, GameOpt.PlayerOffAppendix->c_str() );
             color = ( NameColor ? NameColor : COLOR_CRITTER_NAME );

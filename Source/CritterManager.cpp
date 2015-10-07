@@ -52,7 +52,7 @@ bool CritterManager::LoadProtos()
         FileManager& file = files.GetNextFile( &file_name );
         if( !file.IsLoaded() )
         {
-            WriteLog( "Unable to open file<%s>.\n", file_name );
+            WriteLog( "Unable to open file '%s'.\n", file_name );
             errors++;
             continue;
         }
@@ -60,7 +60,7 @@ bool CritterManager::LoadProtos()
         uint pid = Str::GetHash( file_name );
         if( allProtos.count( pid ) )
         {
-            WriteLog( "Proto critter<%s> already loaded.\n", file_name );
+            WriteLog( "Proto critter '%s' already loaded.\n", file_name );
             errors++;
             continue;
         }
@@ -217,13 +217,13 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     ProtoCritter* proto = GetProto( proto_id );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Critter proto<%s> not found.\n", HASH_STR( proto_id ) );
+        WriteLogF( _FUNC_, " - Critter proto '%s' not found.\n", HASH_STR( proto_id ) );
         return NULL;
     }
 
     if( !map || hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
     {
-        WriteLogF( _FUNC_, " - Wrong map values, hx<%u>, hy<%u>, map is nullptr<%s>.\n", hx, hy, !map ? "true" : "false" );
+        WriteLogF( _FUNC_, " - Wrong map values, hx %u, hy %u, map is nullptr '%s'.\n", hx, hy, !map ? "true" : "false" );
         return NULL;
     }
 
@@ -231,7 +231,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     {
         if( accuracy )
         {
-            WriteLogF( _FUNC_, " - Accuracy position busy, map<%s>, hx<%u>, hy<%u>.\n", map->GetName(), hx, hy );
+            WriteLogF( _FUNC_, " - Accuracy position busy, map '%s', hx %u, hy %u.\n", map->GetName(), hx, hy );
             return NULL;
         }
 
@@ -246,7 +246,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
         {
             if( i >= 18 )
             {
-                WriteLogF( _FUNC_, " - All positions busy, map<%s>, hx<%u>, hy<%u>.\n", map->GetName(), hx, hy );
+                WriteLogF( _FUNC_, " - All positions busy, map '%s', hx %u, hy %u.\n", map->GetName(), hx, hy );
                 return NULL;
             }
             cur_step++;
@@ -337,7 +337,7 @@ bool CritterManager::RestoreNpc( uint id, CritData& data, Properties& props, Cri
     ProtoCritter* proto = GetProto( data.ProtoId );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Critter proto<%s> not found.\n", HASH_STR( data.ProtoId ) );
+        WriteLogF( _FUNC_, " - Critter proto '%s' not found.\n", HASH_STR( data.ProtoId ) );
         return false;
     }
 

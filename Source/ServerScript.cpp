@@ -109,7 +109,7 @@ bool FOServer::InitScriptSystem()
     asIScriptEngine* engine = Script::GetEngine();
     #define BIND_SERVER
     #define BIND_CLASS    FOServer::SScriptFunc::
-    #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line<%d>.\n", __LINE__ ); return false; }
+    #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line %d.\n", __LINE__ ); return false; }
     #include "ScriptBind.h"
 
     // Load script modules
@@ -260,7 +260,7 @@ bool FOServer::DialogScriptDemand( DemandResult& demand, Critter* master, Critte
 uint FOServer::DialogScriptResult( DemandResult& result, Critter* master, Critter* slave )
 {
     int bind_id = (int) result.ParamId;
-    if( !Script::PrepareContext( bind_id, _FUNC_, Str::FormatBuf( "Critter<%s>, func<%s>", master->GetInfo(), Script::GetBindFuncName( bind_id ).c_str() ) ) )
+    if( !Script::PrepareContext( bind_id, _FUNC_, Str::FormatBuf( "Critter '%s', func '%s'", master->GetInfo(), Script::GetBindFuncName( bind_id ).c_str() ) ) )
         return 0;
     Script::SetArgObject( master );
     Script::SetArgObject( slave );
@@ -280,7 +280,7 @@ uint FOServer::DialogScriptResult( DemandResult& result, Critter* master, Critte
 #undef BIND_ASSERT
 #define BIND_CLIENT
 #define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line<%d>.\n", __LINE__ ); bind_errors++; }
+#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line %d.\n", __LINE__ ); bind_errors++; }
 
 namespace ClientBind
 {
@@ -324,7 +324,7 @@ bool FOServer::ReloadClientScripts()
         if( !engine )
             WriteLogF( _FUNC_, " - asCreateScriptEngine fail.\n" );
         else
-            WriteLog( "Bind fail, errors<%d>.\n", bind_errors );
+            WriteLog( "Bind fail, errors %d.\n", bind_errors );
         Script::FinishEngine( engine );
 
         #ifdef MEMORY_DEBUG
@@ -356,7 +356,7 @@ bool FOServer::ReloadClientScripts()
             CBytecodeStream  binary;
             if( !module || module->SaveByteCode( &binary ) < 0 )
             {
-                WriteLogF( _FUNC_, " - Unable to save bytecode of client script<%s>.\n", module->GetName() );
+                WriteLogF( _FUNC_, " - Unable to save bytecode of client script '%s'.\n", module->GetName() );
                 errors++;
                 continue;
             }
@@ -407,7 +407,7 @@ bool FOServer::ReloadClientScripts()
             {
                 if( !d )
                 {
-                    WriteLogF( _FUNC_, " - Can't load dll<%s>.\n", dll_name.c_str() );
+                    WriteLogF( _FUNC_, " - Can't load dll '%s'.\n", dll_name.c_str() );
                     errors++;
                 }
                 continue;
@@ -509,7 +509,7 @@ bool FOServer::ReloadClientScripts()
 #undef BIND_ASSERT
 #define BIND_MAPPER
 #define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line<%d>.\n", __LINE__ ); bind_errors++; }
+#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line %d.\n", __LINE__ ); bind_errors++; }
 
 namespace MapperBind
 {
@@ -553,7 +553,7 @@ bool FOServer::ReloadMapperScripts()
         if( !engine )
             WriteLogF( _FUNC_, " - asCreateScriptEngine fail.\n" );
         else
-            WriteLog( "Bind fail, errors<%d>.\n", bind_errors );
+            WriteLog( "Bind fail, errors %d.\n", bind_errors );
         Script::FinishEngine( engine );
 
         #ifdef MEMORY_DEBUG
@@ -4800,7 +4800,7 @@ uint FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, usho
     Location* loc = MapMngr.CreateLocation( loc_pid, wx, wy, 0 );
     if( !loc )
     {
-        WriteLogF( _FUNC_, " - Unable to create location<%s>.\n", HASH_STR( loc_pid ) );
+        WriteLogF( _FUNC_, " - Unable to create location '%s'.\n", HASH_STR( loc_pid ) );
         SCRIPT_ERROR_R0( "Unable to create location." );
     }
 

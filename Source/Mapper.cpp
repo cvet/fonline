@@ -43,7 +43,7 @@ bool FOMapper::Init()
     // SDL
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
     {
-        WriteLogF( _FUNC_, " - SDL initialization fail, error<%s>.\n", SDL_GetError() );
+        WriteLogF( _FUNC_, " - SDL initialization fail, error '%s'.\n", SDL_GetError() );
         return false;
     }
 
@@ -155,7 +155,7 @@ bool FOMapper::Init()
     int res = InitIface();
     if( res != 0 )
     {
-        WriteLog( "Error<%d>.\n", res );
+        WriteLog( "Error %d.\n", res );
         return false;
     }
 
@@ -326,14 +326,14 @@ bool FOMapper::IfaceLoadRect( Rect& comp, const char* name )
     char res[ 256 ];
     if( !IfaceIni.GetStr( name, "", res ) )
     {
-        WriteLog( "Signature<%s> not found.\n", name );
+        WriteLog( "Signature '%s' not found.\n", name );
         return false;
     }
 
     if( sscanf( res, "%d%d%d%d", &comp[ 0 ], &comp[ 1 ], &comp[ 2 ], &comp[ 3 ] ) != 4 )
     {
         comp.Clear();
-        WriteLog( "Unable to parse signature<%s>.\n", name );
+        WriteLog( "Unable to parse signature '%s'.\n", name );
         return false;
     }
 
@@ -352,7 +352,7 @@ int FOMapper::InitIface()
 
     if( !ini.LoadFile( int_file, PT_DATA ) )
     {
-        WriteLog( "File<%s> not found.\n", int_file );
+        WriteLog( "File '%s' not found.\n", int_file );
         return __LINE__;
     }
 
@@ -2006,7 +2006,7 @@ void FOMapper::IntDraw()
         for( ; i < j; i++, x += w )
         {
             ProtoMap* pm = LoadedProtoMaps[ i ];
-            SprMngr.DrawStr( Rect( x, y, x + w, y + h ), Str::FormatBuf( "<%s>", pm->GetName() ), 0, pm == CurProtoMap ? COLOR_IFACE_RED : COLOR_TEXT );
+            SprMngr.DrawStr( Rect( x, y, x + w, y + h ), Str::FormatBuf( " '%s'", pm->GetName() ), 0, pm == CurProtoMap ? COLOR_IFACE_RED : COLOR_TEXT );
         }
     }
 
@@ -5037,7 +5037,7 @@ void FOMapper::ParseCommand( const char* cmd )
                         else
                         {
                             if( same )
-                                AddMessFormat( "%d duplicates of %u on %d:%d.", same, pids[ i ], hx, hy );
+                                AddMessFormat( "%d duplicates of %s on %d:%d.", same, HASH_STR( pids[ i ] ), hx, hy );
                             same = 0;
                         }
                     }
@@ -5259,7 +5259,7 @@ bool FOMapper::InitScriptSystem()
     asIScriptEngine* engine = Script::GetEngine();
     #define BIND_MAPPER
     #define BIND_CLASS    FOMapper::SScriptFunc::
-    #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line<%d>.\n", __LINE__ ); errors++; }
+    #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line %d.\n", __LINE__ ); errors++; }
     int errors = 0;
     #include <ScriptBind.h>
     if( errors )

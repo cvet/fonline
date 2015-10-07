@@ -87,19 +87,19 @@ bool SpriteManager::Init()
     MainWindow = SDL_CreateWindow( GetWindowName(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, GameOpt.ScreenWidth, GameOpt.ScreenHeight, window_create_flags );
     if( !MainWindow )
     {
-        WriteLog( "SDL Window not created, error<%s>.\n", SDL_GetError() );
+        WriteLog( "SDL Window not created, error '%s'.\n", SDL_GetError() );
         return false;
     }
 
     GLContext = SDL_GL_CreateContext( MainWindow );
     if( !GLContext )
     {
-        WriteLog( "OpenGL context not created, error<%s>.\n", SDL_GetError() );
+        WriteLog( "OpenGL context not created, error '%s'.\n", SDL_GetError() );
         return false;
     }
     if( SDL_GL_MakeCurrent( MainWindow, GLContext ) < 0 )
     {
-        WriteLog( "Can't set current context, error<%s>.\n", SDL_GetError() );
+        WriteLog( "Can't set current context, error '%s'.\n", SDL_GetError() );
         return false;
     }
 
@@ -125,7 +125,7 @@ bool SpriteManager::Init()
     GLenum glew_result = glewInit();
     if( glew_result != GLEW_OK )
     {
-        WriteLog( "GLEW not initialized, result<%u>.\n", glew_result );
+        WriteLog( "GLEW not initialized, result %u.\n", glew_result );
         return false;
     }
     OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
@@ -1271,7 +1271,7 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, int path_type, bool 
     const char* ext = FileManager::GetExtension( fname );
     if( !ext )
     {
-        WriteLogF( _FUNC_, " - Extension not found, file<%s>.\n", fname );
+        WriteLogF( _FUNC_, " - Extension not found, file '%s'.\n", fname );
         return dummy;
     }
 
@@ -1301,7 +1301,7 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, int path_type, bool 
     else if( Is3dExtensionSupported( ext ) )
         result = LoadAnimation3d( fname, path_type );
     else
-        WriteLogF( _FUNC_, " - Unsupported image file format<%s>, file<%s>.\n", ext, fname );
+        WriteLogF( _FUNC_, " - Unsupported image file format '%s', file '%s'.\n", ext, fname );
 
     return result ? result : dummy;
 }
@@ -1398,7 +1398,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, bo
             {
                 if( dir > 1 )
                 {
-                    WriteLogF( _FUNC_, " - File<%s> not found.\n", fname_ );
+                    WriteLogF( _FUNC_, " - File '%s' not found.\n", fname_ );
                     AnyFrames::Destroy( base_anim );
                     return NULL;
                 }
@@ -1417,7 +1417,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, bo
         {
             if( dir > 1 )
             {
-                WriteLogF( _FUNC_, " - FRM file<%s> truncated.\n", fname );
+                WriteLogF( _FUNC_, " - FRM file '%s' truncated.\n", fname );
                 AnyFrames::Destroy( base_anim );
                 return NULL;
             }
@@ -1710,7 +1710,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
 
             if( dir > 1 )
             {
-                WriteLogF( _FUNC_, " - FOFRM file<%s> invalid apps.\n", fname );
+                WriteLogF( _FUNC_, " - FOFRM file '%s' invalid apps.\n", fname );
                 AnyFrames::Destroy( base_anim );
                 return NULL;
             }
@@ -1757,7 +1757,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
             if( no_info && dir == 1 )
                 break;
 
-            WriteLogF( _FUNC_, " - FOFRM file<%s> invalid data.\n", fname );
+            WriteLogF( _FUNC_, " - FOFRM file '%s' invalid data.\n", fname );
             for( uint i = 0, j = (uint) anims.size(); i < j; i++ )
                 AnyFrames::Destroy( anims[ i ] );
             AnyFrames::Destroy( base_anim );
@@ -3798,7 +3798,7 @@ void SpriteManager::InitializeEgg( const char* egg_name )
     }
     else
     {
-        WriteLogF( _FUNC_, " - Load sprite<%s> fail. Egg disabled.\n", egg_name );
+        WriteLogF( _FUNC_, " - Load sprite '%s' fail. Egg disabled.\n", egg_name );
     }
     #endif
 }

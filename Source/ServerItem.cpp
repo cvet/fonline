@@ -73,7 +73,7 @@ bool FOServer::TransferAllItems()
             Critter* npc = CrMngr.GetNpc( item->AccCritter.Id, false );
             if( !npc )
             {
-                WriteLog( "Item<%u> npc not found, id<%u>.\n", item->GetId(), item->AccCritter.Id );
+                WriteLog( "Item '%s' (%u) npc not found, id %u.\n", item->GetName(), item->GetId(), item->AccCritter.Id );
                 bad_items.push_back( item );
                 continue;
             }
@@ -86,21 +86,21 @@ bool FOServer::TransferAllItems()
             Map* map = MapMngr.GetMap( item->AccHex.MapId, false );
             if( !map )
             {
-                WriteLog( "Item<%u> map not found, map id<%u>, hx<%u>, hy<%u>.\n", item->GetId(), item->AccHex.MapId, item->AccHex.HexX, item->AccHex.HexY );
+                WriteLog( "Item '%s' (%u) map not found, map id %u, hx %u, hy %u.\n", item->GetName(), item->GetId(), item->AccHex.MapId, item->AccHex.HexX, item->AccHex.HexY );
                 bad_items.push_back( item );
                 continue;
             }
 
             if( item->AccHex.HexX >= map->GetMaxHexX() || item->AccHex.HexY >= map->GetMaxHexY() )
             {
-                WriteLog( "Item<%u> invalid hex position, hx<%u>, hy<%u>.\n", item->GetId(), item->AccHex.HexX, item->AccHex.HexY );
+                WriteLog( "Item '%s' (%u) invalid hex position, hx %u, hy %u.\n", item->GetName(), item->GetId(), item->AccHex.HexX, item->AccHex.HexY );
                 bad_items.push_back( item );
                 continue;
             }
 
             if( !item->Proto->IsItem() )
             {
-                WriteLog( "Item<%u> is not item type<%u>.\n", item->GetId(), item->GetType() );
+                WriteLog( "Item '%s' (%u) is not item type %u.\n", item->GetName(), item->GetId(), item->GetType() );
                 bad_items.push_back( item );
                 continue;
             }
@@ -113,14 +113,14 @@ bool FOServer::TransferAllItems()
             Item* cont = ItemMngr.GetItem( item->AccContainer.ContainerId, false );
             if( !cont )
             {
-                WriteLog( "Item<%u> container not found, container id<%u>.\n", item->GetId(), item->AccContainer.ContainerId );
+                WriteLog( "Item '%s' (%u) container not found, container id %u.\n", item->GetName(), item->GetId(), item->AccContainer.ContainerId );
                 bad_items.push_back( item );
                 continue;
             }
 
             if( !cont->IsContainer() )
             {
-                WriteLog( "Find item is not container, id<%u>, type<%u>, id_cont<%u>, type_cont<%u>.\n", item->GetId(), item->GetType(), cont->GetId(), cont->GetType() );
+                WriteLog( "Find item is not container, item '%s' (%u), type %u, id_cont %u, type_cont %u.\n", item->GetName(), item->GetId(), item->GetType(), cont->GetId(), cont->GetType() );
                 bad_items.push_back( item );
                 continue;
             }
@@ -129,7 +129,7 @@ bool FOServer::TransferAllItems()
         }
         break;
         default:
-            WriteLog( "Unknown accessory id<%u>, acc<%u>.\n", item->Id, item->Accessory );
+            WriteLog( "Unknown accessory id '%s' (%u), acc %u.\n", item->GetName(), item->Id, item->Accessory );
             bad_items.push_back( item );
             continue;
         }

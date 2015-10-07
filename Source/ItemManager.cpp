@@ -59,7 +59,7 @@ bool ItemManager::LoadProtos()
         FileManager& file = files.GetNextFile( &file_name );
         if( !file.IsLoaded() )
         {
-            WriteLog( "Unable to open file<%s>.\n", file_name );
+            WriteLog( "Unable to open file '%s'.\n", file_name );
             errors++;
             continue;
         }
@@ -67,7 +67,7 @@ bool ItemManager::LoadProtos()
         uint pid = Str::GetHash( file_name );
         if( allProtos.count( pid ) )
         {
-            WriteLog( "Proto item<%s> already loaded.\n", file_name );
+            WriteLog( "Proto item '%s' already loaded.\n", file_name );
             errors++;
             continue;
         }
@@ -381,21 +381,21 @@ Item* ItemManager::SplitItem( Item* item, uint count )
 {
     if( !item->IsStackable() )
     {
-        WriteLogF( _FUNC_, " - Splitted item is not stackable, id<%u>, pid<%u>.\n", item->GetId(), item->GetProtoId() );
+        WriteLogF( _FUNC_, " - Splitted item '%s' is not stackable, id %u.\n", item->GetName(), item->GetId() );
         return NULL;
     }
 
     uint item_count = item->GetCount();
     if( !count || count >= item_count )
     {
-        WriteLogF( _FUNC_, " - Invalid count, id<%u>, pid<%u>, count<%u>, split count<%u>.\n", item->GetId(), item->GetProtoId(), item_count, count );
+        WriteLogF( _FUNC_, " - Invalid item '%s' count, id %u, count %u, split count %u.\n", item->GetName(), item->GetId(), item_count, count );
         return NULL;
     }
 
     Item* new_item = CreateItem( item->GetProtoId() ); // Ignore init script
     if( !new_item )
     {
-        WriteLogF( _FUNC_, " - Create item fail, pid<%u>, count<%u>.\n", item->GetProtoId(), count );
+        WriteLogF( _FUNC_, " - Create item '%s' fail, count %u.\n", item->GetName(), count );
         return NULL;
     }
 
@@ -705,7 +705,7 @@ bool ItemManager::MoveItemCritters( Critter* from_cr, Critter* to_cr, uint item_
             item_ = ItemMngr.CreateItem( item->GetProtoId(), count );
             if( !item_ )
             {
-                WriteLogF( _FUNC_, " - Create item fail, pid<%u>.\n", item->GetProtoId() );
+                WriteLogF( _FUNC_, " - Create item '%s' fail.\n", item->GetName() );
                 return false;
             }
 
@@ -747,7 +747,7 @@ bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint i
             item_ = ItemMngr.CreateItem( item->GetProtoId(), count );
             if( !item_ )
             {
-                WriteLogF( _FUNC_, " - Create item fail, pid<%u>.\n", item->GetProtoId() );
+                WriteLogF( _FUNC_, " - Create item '%s' fail.\n", item->GetName() );
                 return false;
             }
 
@@ -790,7 +790,7 @@ bool ItemManager::MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, uint
             item_ = ItemMngr.CreateItem( item->GetProtoId(), count );
             if( !item_ )
             {
-                WriteLogF( _FUNC_, " - Create item fail, pid<%u>.\n", item->GetProtoId() );
+                WriteLogF( _FUNC_, " - Create item '%s' fail.\n", item->GetName() );
                 return false;
             }
 

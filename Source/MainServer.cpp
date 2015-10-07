@@ -184,7 +184,7 @@ int main( int argc, char** argv )
 
     // Command line
     if( Str::Length( CommandLine ) > 0 )
-        WriteLog( "Command line<%s>.\n", CommandLine );
+        WriteLog( "Command line '%s'.\n", CommandLine );
 
     // Autostart
     if( Str::Substring( CommandLine, "-start" ) || Singleplayer )
@@ -937,7 +937,7 @@ int main( int argc, char** argv )
         pid_t parpid = fork();
         if( parpid < 0 )
         {
-            WriteLog( "Create child process (fork) fail, error<%s>.", ERRORSTR );
+            WriteLog( "Create child process (fork) fail, error '%s'.", ERRORSTR );
             return 1;
         }
         else if( parpid != 0 )
@@ -952,7 +952,7 @@ int main( int argc, char** argv )
 
         if( setsid() < 0 )
         {
-            WriteLog( "Generate process index (setsid) fail, error<%s>.\n", ERRORSTR );
+            WriteLog( "Generate process index (setsid) fail, error '%s'.\n", ERRORSTR );
             return 1;
         }
     }
@@ -996,7 +996,7 @@ int main( int argc, char** argv )
     // Log version
     WriteLog( "FOnline server daemon, version %d.\n", FONLINE_VERSION );
     if( Str::Length( CommandLine ) > 0 )
-        WriteLog( "Command line<%s>.\n", CommandLine );
+        WriteLog( "Command line '%s'.\n", CommandLine );
 
     // Update stuff
     if( !Singleplayer && Str::Substring( CommandLine, "-game" ) )

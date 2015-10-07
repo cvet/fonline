@@ -14,7 +14,7 @@ bool FOClient::IfaceLoadRect( Rect& comp, const char* name )
     if( sscanf( res, "%d%d%d%d", &comp[ 0 ], &comp[ 1 ], &comp[ 2 ], &comp[ 3 ] ) != 4 )
     {
         comp.Clear();
-        WriteLog( "Unable to parse signature<%s>.\n", name );
+        WriteLog( "Unable to parse signature '%s'.\n", name );
         return false;
     }
 
@@ -2720,7 +2720,7 @@ void FOClient::LMenuDraw()
             LMENU_DRAW_CASE( LMENU_NODE_VOTE_UP, LmenuPVoteUpOff, LmenuPVoteUpOn );
             LMENU_DRAW_CASE( LMENU_NODE_VOTE_DOWN, LmenuPVoteDownOff, LmenuPVoteDownOn );
         default:
-            WriteLogF( _FUNC_, " - Unknown node<%d>.\n", num_node );
+            WriteLogF( _FUNC_, " - Unknown node %d.\n", num_node );
             break;
         }
         if( !IsLMenu() )

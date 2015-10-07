@@ -1087,7 +1087,7 @@ void ProtoMap::BindSceneryScript( MapObject* mobj )
 
     if( !mobj->RunTime.BindScriptId )
     {
-        WriteLogF( _FUNC_, " - Map<%s>, Can't bind scenery function<%s> in module<%s>. Scenery hexX<%u>, hexY<%u>.\n",
+        WriteLogF( _FUNC_, " - Map '%s', Can't bind scenery function '%s' in module '%s'. Scenery hexX %u, hexY %u.\n",
                    pmapName.c_str(), mobj->FuncName, mobj->ScriptName, mobj->MapX, mobj->MapY );
     }
 }
@@ -1132,7 +1132,7 @@ bool ProtoMap::Refresh()
     // Load from file
     if( !LoadTextFormat( (const char*) fm.GetBuf() ) )
     {
-        WriteLogF( _FUNC_, " - Map<%s>. Can't read text map format.\n", pmapName.c_str() );
+        WriteLogF( _FUNC_, " - Map '%s'. Can't read text map format.\n", pmapName.c_str() );
         return false;
     }
     fm.UnloadFile();
@@ -1255,13 +1255,13 @@ bool ProtoMap::Refresh()
         ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
         if( !proto_item )
         {
-            WriteLogF( _FUNC_, " - Map<%s>, Unknown prototype<%u>, hexX<%u>, hexY<%u>.\n", pmapName.c_str(), pid, hx, hy );
+            WriteLogF( _FUNC_, " - Map '%s', unknown item '%s', hex x %u, hex y %u.\n", pmapName.c_str(), HASH_STR( pid ), hx, hy );
             continue;
         }
 
         if( hx >= maxhx || hy >= maxhy )
         {
-            WriteLogF( _FUNC_, " - Invalid object position on map<%s>, pid<%u>, hexX<%u>, hexY<%u>.\n", pmapName.c_str(), pid, hx, hy );
+            WriteLogF( _FUNC_, " - Invalid item '%s' position on map '%s', hex x %u, hex y %u.\n", HASH_STR( pid ), pmapName.c_str(), hx, hy );
             continue;
         }
 

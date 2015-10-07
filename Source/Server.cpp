@@ -382,7 +382,7 @@ void FOServer::DeleteClientFile( const char* client_name )
     // Rename
     if( !FileRename( old_client_fname, new_client_fname ) )
     {
-        WriteLogF( _FUNC_, " - Fail to rename from<%s> to<%s>.\n", old_client_fname, new_client_fname );
+        WriteLogF( _FUNC_, " - Fail to rename from '%s' to '%s'.\n", old_client_fname, new_client_fname );
         FileClose( FileOpen( "cache_fail", true ) );
     }
 }
@@ -430,7 +430,7 @@ void FOServer::MainLoop()
     Job::PushBack( JOB_SUSPENDED_CONTEXTS );
 
     // Start logic threads
-    WriteLog( "Starting logic threads, count<%u>.\n", LogicThreadCount );
+    WriteLog( "Starting logic threads, count %u.\n", LogicThreadCount );
     WriteLog( "***   Starting game loop   ***\n" );
 
     LogicThreads = new Thread[ LogicThreadCount ];
@@ -607,7 +607,7 @@ void FOServer::Logic_Work( void* data )
 
                 if( cl->GetOfflineTime() > 60 * 60 * 1000 )         // 1 hour
                 {
-                    WriteLogF( _FUNC_, " - Offline connection timeout, force shutdown. Ip<%s>, name<%s>.\n", cl->GetIpStr(), cl->GetName() );
+                    WriteLogF( _FUNC_, " - Offline connection timeout, force shutdown. Ip '%s', name '%s'.\n", cl->GetIpStr(), cl->GetName() );
                     cl->Shutdown();
                 }
             }
@@ -851,7 +851,7 @@ void FOServer::Net_Listen( void* )
                 break;
             #endif
 
-            WriteLogF( _FUNC_, " - Listen error<%s>. Continue listening.\n", GetLastSocketError() );
+            WriteLogF( _FUNC_, " - Listen error '%s'. Continue listening.\n", GetLastSocketError() );
             continue;
         }
 
@@ -869,11 +869,11 @@ void FOServer::Net_Listen( void* )
             #ifdef FO_WINDOWS
             int optval = 1;
             if( setsockopt( sock, IPPROTO_TCP, TCP_NODELAY, (char*) &optval, sizeof( optval ) ) )
-                WriteLogF( _FUNC_, " - Can't set TCP_NODELAY (disable Nagle) to socket, error<%s>.\n", GetLastSocketError() );
+                WriteLogF( _FUNC_, " - Can't set TCP_NODELAY (disable Nagle) to socket, error '%s'.\n", GetLastSocketError() );
             #else
             // socklen_t optval = 1;
             // if( setsockopt( sock, IPPROTO_TCP, 1, &optval, sizeof( optval ) ) )
-            //    WriteLogF( _FUNC_, " - Can't set TCP_NODELAY (disable Nagle) to socket, error<%s>.\n", GetLastSocketError() );
+            //    WriteLogF( _FUNC_, " - Can't set TCP_NODELAY (disable Nagle) to socket, error '%s'.\n", GetLastSocketError() );
             #endif
         }
 
@@ -912,7 +912,7 @@ void FOServer::Net_Listen( void* )
         // CompletionPort
         if( !CreateIoCompletionPort( (HANDLE) sock, NetIOCompletionPort, 0, 0 ) )
         {
-            WriteLogF( _FUNC_, " - CreateIoCompletionPort fail, error<%u>.\n", GetLastError() );
+            WriteLogF( _FUNC_, " - CreateIoCompletionPort fail, error %u.\n", GetLastError() );
             closesocket( sock );
             delete cl;
             continue;
@@ -922,7 +922,7 @@ void FOServer::Net_Listen( void* )
         DWORD bytes;
         if( WSARecv( cl->Sock, &cl->NetIOIn->Buffer, 1, &bytes, &cl->NetIOIn->Flags, &cl->NetIOIn->OV, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
         {
-            WriteLogF( _FUNC_, " - First recv fail, error<%s>.\n", GetLastSocketError() );
+            WriteLogF( _FUNC_, " - First recv fail, error '%s'.\n", GetLastSocketError() );
             closesocket( sock );
             delete cl;
             continue;
@@ -1263,7 +1263,7 @@ void FOServer::NetIO_Input( Client::NetIOArg* io )
     DWORD bytes;
     if( WSARecv( cl->Sock, &io->Buffer, 1, &bytes, &io->Flags, &io->OV, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
     {
-        WriteLogF( _FUNC_, " - Recv fail, error<%s>.\n", GetLastSocketError() );
+        WriteLogF( _FUNC_, " - Recv fail, error '%s'.\n", GetLastSocketError() );
         InterlockedExchange( &io->Operation, WSAOP_FREE );
         cl->Disconnect();
     }
@@ -1331,7 +1331,7 @@ void FOServer::NetIO_Output( Client::NetIOArg* io )
     DWORD bytes;
     if( WSASend( cl->Sock, &io->Buffer, 1, &bytes, 0, (LPOVERLAPPED) io, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
     {
-        WriteLogF( _FUNC_, " - Send fail, error<%s>.\n", GetLastSocketError() );
+        WriteLogF( _FUNC_, " - Send fail, error '%s'.\n", GetLastSocketError() );
         InterlockedExchange( &io->Operation, WSAOP_FREE );
         cl->Disconnect();
     }
@@ -1438,7 +1438,7 @@ void FOServer::Process( ClientPtr& cl )
 
         if( cl->GameState == STATE_CONNECTED && cl->LastActivityTime && Timer::FastTick() - cl->LastActivityTime > PING_CLIENT_LIFE_TIME ) // Kick bot
         {
-            WriteLogF( _FUNC_, " - Connection timeout, client kicked, maybe bot. Ip<%s>.\n", cl->GetIpStr() );
+            WriteLogF( _FUNC_, " - Connection timeout, client kicked, maybe bot. Ip '%s'.\n", cl->GetIpStr() );
             cl->Disconnect();
         }
     }
@@ -1861,7 +1861,7 @@ void FOServer::Process_Text( Client* cl )
 
     if( !len || len >= sizeof( str ) )
     {
-        WriteLogF( _FUNC_, " - Buffer zero sized or too large, length<%u>. Disconnect.\n", len );
+        WriteLogF( _FUNC_, " - Buffer zero sized or too large, length %u. Disconnect.\n", len );
         cl->Disconnect();
         return;
     }
@@ -1878,7 +1878,7 @@ void FOServer::Process_Text( Client* cl )
         cl->LastSayEqualCount++;
         if( cl->LastSayEqualCount >= 10 )
         {
-            WriteLogF( _FUNC_, " - Flood detected, client<%s>. Disconnect.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Flood detected, client '%s'. Disconnect.\n", cl->GetInfo() );
             cl->Disconnect();
             return;
         }
@@ -3539,7 +3539,7 @@ bool FOServer::InitReal()
             if( update_port )
                 port = update_port;
         }
-        WriteLog( "Starting server on port<%u>.\n", port );
+        WriteLog( "Starting server on port %u.\n", port );
     }
     else
     {
@@ -3567,7 +3567,7 @@ bool FOServer::InitReal()
             closesocket( ListenSock );
             return false;
         }
-        WriteLog( "Taked port<%u>.\n", sin.sin_port );
+        WriteLog( "Taked port %u.\n", sin.sin_port );
     }
 
     if( listen( ListenSock, SOMAXCONN ) == SOCKET_ERROR )
@@ -3585,11 +3585,11 @@ bool FOServer::InitReal()
     // Net IO events initialization
     struct ELCB
     {
-        static void Callback( int severity, const char* msg ) { WriteLog( "Libevent - severity<%d>, msg<%s>.\n", severity, msg ); }
+        static void Callback( int severity, const char* msg ) { WriteLog( "Libevent - severity %d, msg '%s'.\n", severity, msg ); }
     };
     struct EFCB
     {
-        static void Callback( int err ) { WriteLog( "Libevent - error<%d>.\n", err ); }
+        static void Callback( int err ) { WriteLog( "Libevent - error %d.\n", err ); }
     };
     event_set_log_callback( ELCB::Callback );
     event_set_fatal_callback( EFCB::Callback );
@@ -3616,7 +3616,7 @@ bool FOServer::InitReal()
         return false;
     }
     NetIOThread.Start( NetIO_Loop, "NetLoop" );
-    WriteLog( "Network IO threads started, count<%u>.\n", NetIOThreadsCount );
+    WriteLog( "Network IO threads started, count %u.\n", NetIOThreadsCount );
 
     // Listen
     ListenThread.Start( Net_Listen, "NetListen" );
@@ -3629,7 +3629,7 @@ bool FOServer::InitReal()
     NetIOCompletionPort = CreateIoCompletionPort( INVALID_HANDLE_VALUE, NULL, NULL, NetIOThreadsCount );
     if( !NetIOCompletionPort )
     {
-        WriteLogF( NULL, "Can't create IO Completion Port, error<%u>.\n", GetLastError() );
+        WriteLogF( NULL, "Can't create IO Completion Port, error %u.\n", GetLastError() );
         shutdown( ListenSock, SD_BOTH );
         closesocket( ListenSock );
         return false;
@@ -3638,7 +3638,7 @@ bool FOServer::InitReal()
     WriteLogF( NULL, "Starting net listen thread.\n" );
     ListenThread.Start( Net_Listen, "NetListen" );
 
-    WriteLogF( NULL, "Starting net work threads, count<%u>.\n", NetIOThreadsCount );
+    WriteLogF( NULL, "Starting net work threads, count %u.\n", NetIOThreadsCount );
     NetIOThreads = new Thread[ NetIOThreadsCount ];
     for( uint i = 0; i < NetIOThreadsCount; i++ )
     {
@@ -3673,17 +3673,17 @@ bool FOServer::InitReal()
                 if( Str::Compare( type_decl, "bool" ) )
                 {
                     *(bool*) pointer = atoi( cmd_name + Str::Length( name ) + 1 ) != 0;
-                    WriteLog( "Global var<%s> changed to<%s>.\n", name, *(bool*) pointer ? "true" : "false" );
+                    WriteLog( "Global var '%s' changed to '%s'.\n", name, *(bool*) pointer ? "true" : "false" );
                 }
                 else if( Str::Compare( type_decl, "string" ) )
                 {
                     *(string*) pointer = cmd_name + Str::Length( name ) + 1;
-                    WriteLog( "Global var<%s> changed to<%s>.\n", name, ( *(string*) pointer ).c_str() );
+                    WriteLog( "Global var '%s' changed to '%s'.\n", name, ( *(string*) pointer ).c_str() );
                 }
                 else
                 {
                     *(int*) pointer = atoi( cmd_name + Str::Length( name ) + 1 );
-                    WriteLog( "Global var<%s> changed to<%d>.\n", name, *(int*) pointer );
+                    WriteLog( "Global var '%s' changed to %d.\n", name, *(int*) pointer );
                 }
             }
         }
@@ -3737,7 +3737,7 @@ bool FOServer::InitCrafts( LangPackVec& lang_packs )
         {
             if( !MrFixit.LoadCrafts( lang.Msg[ TEXTMSG_CRAFT ] ) )
             {
-                WriteLogF( _FUNC_, " - Unable to load crafts from<%s>.\n", lang.NameStr );
+                WriteLogF( _FUNC_, " - Unable to load crafts from '%s'.\n", lang.NameStr );
                 return false;
             }
             main_lang = &lang;
@@ -3747,13 +3747,13 @@ bool FOServer::InitCrafts( LangPackVec& lang_packs )
         CraftManager mr_fixit;
         if( !mr_fixit.LoadCrafts( lang.Msg[ TEXTMSG_CRAFT ] ) )
         {
-            WriteLogF( _FUNC_, " - Unable to load crafts from<%s>.\n", lang.NameStr );
+            WriteLogF( _FUNC_, " - Unable to load crafts from '%s'.\n", lang.NameStr );
             return false;
         }
 
         if( !( MrFixit == mr_fixit ) )
         {
-            WriteLogF( _FUNC_, " - Compare crafts fail. <%s>with<%s>.\n", main_lang->NameStr, lang.NameStr );
+            WriteLogF( _FUNC_, " - Compare crafts fail: '%s' with '%s'.\n", main_lang->NameStr, lang.NameStr );
             return false;
         }
     }
@@ -3786,14 +3786,14 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
         uint pack_id = *(uint*) &lang_name;
         if( std::find( lang_packs.begin(), lang_packs.end(), pack_id ) != lang_packs.end() )
         {
-            WriteLog( "Language pack<%u> is already initialized.\n", cur_lang );
+            WriteLog( "Language pack %u is already initialized.\n", cur_lang );
             return false;
         }
 
         LanguagePack lang;
         if( !lang.LoadFromFiles( lang_name ) )
         {
-            WriteLog( "Unable to init Language pack<%u>.\n", cur_lang );
+            WriteLog( "Unable to init Language pack %u.\n", cur_lang );
             return false;
         }
 
@@ -3801,7 +3801,7 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
         cur_lang++;
     }
 
-    WriteLog( "Load language packs complete, loaded<%u> packs.\n", cur_lang );
+    WriteLog( "Load language packs complete, loaded %u packs.\n", cur_lang );
     return cur_lang > 0;
 }
 
@@ -3823,7 +3823,7 @@ bool FOServer::InitLangPacksDialogs( LangPackVec& lang_packs )
                     continue;
 
                 if( lang.Msg[ TEXTMSG_DLG ].IsIntersects( *proto->Texts[ i ] ) )
-                    WriteLog( "Warning! Proto item<%s> text intersection detected, send notification about this to developers.\n", proto->GetName() );
+                    WriteLog( "Warning! Proto item '%s' text intersection detected, send notification about this to developers.\n", proto->GetName() );
 
                 lang.Msg[ TEXTMSG_DLG ] += *proto->Texts[ i ];
             }
@@ -3843,7 +3843,7 @@ bool FOServer::InitLangPacksDialogs( LangPackVec& lang_packs )
                     continue;
 
                 if( lang.Msg[ TEXTMSG_DLG ].IsIntersects( *pack->Texts[ i ] ) )
-                    WriteLog( "Warning! Dialog<%s> text intersection detected, send notification about this to developers.\n", pack->PackName.c_str() );
+                    WriteLog( "Warning! Dialog '%s' text intersection detected, send notification about this to developers.\n", pack->PackName.c_str() );
 
                 lang.Msg[ TEXTMSG_DLG ] += *pack->Texts[ i ];
             }
@@ -3871,7 +3871,7 @@ bool FOServer::InitLangPacksLocations( LangPackVec& lang_packs )
                     continue;
 
                 if( lang.Msg[ TEXTMSG_LOCATIONS ].IsIntersects( *ploc->Texts[ i ] ) )
-                    WriteLog( "Warning! Location<%s> text intersection detected, send notification about this to developers.\n", ploc->Name.c_str() );
+                    WriteLog( "Warning! Location '%s' text intersection detected, send notification about this to developers.\n", ploc->Name.c_str() );
 
                 lang.Msg[ TEXTMSG_LOCATIONS ] += *ploc->Texts[ i ];
             }
@@ -3899,7 +3899,7 @@ bool FOServer::InitLangPacksItems( LangPackVec& lang_packs )
                     continue;
 
                 if( lang.Msg[ TEXTMSG_ITEM ].IsIntersects( *proto->Texts[ i ] ) )
-                    WriteLog( "Warning! Proto item<%s> text intersection detected, send notification about this to developers.\n", proto->GetName() );
+                    WriteLog( "Warning! Proto item '%s' text intersection detected, send notification about this to developers.\n", proto->GetName() );
 
                 lang.Msg[ TEXTMSG_ITEM ] += *proto->Texts[ i ];
             }
@@ -4003,7 +4003,7 @@ void FOServer::SaveBan( ClientBanned& ban, bool expired )
     const char* fname = ( expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE );
     if( !fm.LoadFile( fname, PT_SERVER_BANS ) )
     {
-        WriteLogF( _FUNC_, " - Can't open file<%s>.\n", FileManager::GetDataPath( fname, PT_SERVER_BANS ) );
+        WriteLogF( _FUNC_, " - Can't open file '%s'.\n", FileManager::GetDataPath( fname, PT_SERVER_BANS ) );
         return;
     }
     fm.SwitchToWrite();
@@ -4022,7 +4022,7 @@ void FOServer::SaveBan( ClientBanned& ban, bool expired )
     fm.SetStr( "\n" );
 
     if( !fm.SaveOutBufToFile( fname, PT_SERVER_BANS ) )
-        WriteLogF( _FUNC_, " - Unable to save file<%s>.\n", FileManager::GetWritePath( fname, PT_SERVER_BANS ) );
+        WriteLogF( _FUNC_, " - Unable to save file '%s'.\n", FileManager::GetWritePath( fname, PT_SERVER_BANS ) );
 }
 
 void FOServer::SaveBans()
@@ -4048,7 +4048,7 @@ void FOServer::SaveBans()
     }
 
     if( !fm.SaveOutBufToFile( BANS_FNAME_ACTIVE, PT_SERVER_BANS ) )
-        WriteLogF( _FUNC_, " - Unable to save file<%s>.\n", FileManager::GetWritePath( BANS_FNAME_ACTIVE, PT_SERVER_BANS ) );
+        WriteLogF( _FUNC_, " - Unable to save file '%s'.\n", FileManager::GetWritePath( BANS_FNAME_ACTIVE, PT_SERVER_BANS ) );
 }
 
 void FOServer::LoadBans()
@@ -4182,7 +4182,7 @@ bool FOServer::LoadClientsData()
         const char* ext = FileManager::GetExtension( client_name );
         if( cache_str && ( !ext || !Str::CompareCase( ext, "foclient" ) ) )
         {
-            WriteLog( "Wrong name<%s> of client file in cache.\n", client_name );
+            WriteLog( "Wrong name '%s' of client file in cache.\n", client_name );
             errors++;
             continue;
         }
@@ -4195,7 +4195,7 @@ bool FOServer::LoadClientsData()
         void* f = FileOpen( client_fname, false );
         if( !f )
         {
-            WriteLog( "Unable to open client save file<%s>.\n", client_fname );
+            WriteLog( "Unable to open client save file '%s'.\n", client_fname );
             errors++;
             continue;
         }
@@ -4204,7 +4204,7 @@ bool FOServer::LoadClientsData()
         char header[ 4 + PASS_HASH_SIZE + sizeof( uint ) ];
         if( !FileRead( f, header, sizeof( header ) ) )
         {
-            WriteLog( "Unable to read header of client save file<%s>.\n", client_fname );
+            WriteLog( "Unable to read header of client save file '%s'.\n", client_fname );
             errors++;
             FileClose( f );
             continue;
@@ -4215,13 +4215,13 @@ bool FOServer::LoadClientsData()
         int version = header[ 3 ];
         if( !( header[ 0 ] == 'F' && header[ 1 ] == 'O' && header[ 2 ] == 0 ) )
         {
-            WriteLog( "Save file<%s> file truncated.\n", client_fname );
+            WriteLog( "Save file '%s' file truncated.\n", client_fname );
             errors++;
             continue;
         }
         if( version < CLIENT_SAVE_V4 )
         {
-            WriteLog( "Save file<%s> format not supported.\n", client_fname );
+            WriteLog( "Save file '%s' format not supported.\n", client_fname );
             errors++;
             continue;
         }
@@ -4238,7 +4238,7 @@ bool FOServer::LoadClientsData()
         auto it = ClientsData.find( id );
         if( it != ClientsData.end() )
         {
-            WriteLog( "Collisions of user id for client<%s> and client<%s>.\n", name, it->second->ClientName );
+            WriteLog( "Collisions of user id for client '%s' and client '%s'.\n", name, it->second->ClientName );
             errors++;
             continue;
         }
@@ -4275,7 +4275,7 @@ bool FOServer::LoadClientsData()
     SAFEDEL( cache_str );
     SAFEDELA( cache_buf );
 
-    WriteLog( "Indexing complete, clients found<%u>.\n", ClientsData.size() );
+    WriteLog( "Indexing complete, clients found %u.\n", ClientsData.size() );
     return true;
 }
 
@@ -4308,7 +4308,7 @@ bool FOServer::SaveClient( Client* cl, bool deferred )
         void* f = FileOpen( fname, true );
         if( !f )
         {
-            WriteLogF( _FUNC_, " - Unable to open client save file<%s>.\n", fname );
+            WriteLogF( _FUNC_, " - Unable to open client save file '%s'.\n", fname );
             return false;
         }
 
@@ -4343,7 +4343,7 @@ bool FOServer::LoadClient( Client* cl )
     void* f = FileOpen( fname, false );
     if( !f )
     {
-        WriteLogF( _FUNC_, " - Unable to open client save file<%s>.\n", fname );
+        WriteLogF( _FUNC_, " - Unable to open client save file '%s'.\n", fname );
         return false;
     }
 
@@ -4371,7 +4371,7 @@ bool FOServer::LoadClient( Client* cl )
     return true;
 
 label_FileTruncated:
-    WriteLogF( _FUNC_, " - Client save file<%s> truncated.\n", fname );
+    WriteLogF( _FUNC_, " - Client save file '%s' truncated.\n", fname );
     FileClose( f );
     return false;
 }
@@ -4422,7 +4422,7 @@ void FOServer::SaveWorld( const char* fname )
         DumpFile = FileOpen( fname ? fname : auto_fname, true );
         if( !DumpFile )
         {
-            WriteLog( "Can't create dump file<%s>.\n", fname ? fname : auto_fname );
+            WriteLog( "Can't create dump file '%s'.\n", fname ? fname : auto_fname );
             return;
         }
     }
@@ -4724,7 +4724,7 @@ void FOServer::Dump_Work( void* data )
         }
         else
         {
-            WriteLogF( _FUNC_, " - Can't create world dump file<%s>.\n", fname );
+            WriteLogF( _FUNC_, " - Can't create world dump file '%s'.\n", fname );
         }
 
         // Save clients data
@@ -4737,7 +4737,7 @@ void FOServer::Dump_Work( void* data )
             void*           fc = FileOpen( fname, true );
             if( !fc )
             {
-                WriteLogF( _FUNC_, " - Unable to open client save file<%s>.\n", fname );
+                WriteLogF( _FUNC_, " - Unable to open client save file '%s'.\n", fname );
                 continue;
             }
 

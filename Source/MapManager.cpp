@@ -214,7 +214,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         {
             if( len == 1 )
             {
-                WriteLog( "Invalid map name for index<%d> in location<%s>.\n", map_index, loc_name );
+                WriteLog( "Invalid map name for index %d in location '%s'.\n", map_index, loc_name );
                 break;
             }
             is_automap = true;
@@ -224,7 +224,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         hash map_pid = Str::GetHash( map_name );
         if( !map_pid )
         {
-            WriteLog( "Invalid hash for map name<%s> in location<%s>.\n", map_name, loc_name );
+            WriteLog( "Invalid hash for map name '%s' in location '%s'.\n", map_name, loc_name );
             return false;
         }
 
@@ -233,7 +233,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
             ProtoMap* pmap = new ProtoMap();
             if( !pmap->Init( map_name ) || pmap->GetPid() != map_pid )
             {
-                WriteLog( "Load proto map<%s> in location<%s> fail.\n", map_name, loc_name );
+                WriteLog( "Load proto map '%s' in location '%s' fail.\n", map_name, loc_name );
                 delete pmap;
                 return false;
             }
@@ -263,7 +263,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         char entire_name[ MAX_FOTEXT ];
         if( sscanf( entrance_text, "%s%s", map_name, entire_name ) != 2 )
         {
-            WriteLog( "Can't parse entrance data<%s> in location<%s>.\n", entrance_text, loc_name );
+            WriteLog( "Can't parse entrance data '%s' in location '%s'.\n", entrance_text, loc_name );
             return false;
         }
 
@@ -271,7 +271,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         auto it = std::find( ploc->ProtoMapPids.begin(), ploc->ProtoMapPids.end(), map_hash );
         if( it == ploc->ProtoMapPids.end() )
         {
-            WriteLog( "Invalid entrance proto map<%s> in location<%s>.\n", map_name, loc_name );
+            WriteLog( "Invalid entrance proto map '%s' in location '%s'.\n", map_name, loc_name );
             return false;
         }
 
@@ -291,7 +291,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         int bind_id = Script::BindByScriptName( script, "bool %s(Location&,Critter@[]&,uint8)", false );
         if( bind_id <= 0 )
         {
-            WriteLog( "Function<%s> not found in location<%s>.\n", script, loc_name );
+            WriteLog( "Function '%s' not found in location '%s'.\n", script, loc_name );
             return false;
         }
 
@@ -494,13 +494,13 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
     ProtoLocation* loc_proto = GetProtoLocation( loc_pid );
     if( !loc_proto )
     {
-        WriteLogF( _FUNC_, " - Location proto<%s> is not loaded.\n", HASH_STR( loc_pid ) );
+        WriteLogF( _FUNC_, " - Location proto '%s' is not loaded.\n", HASH_STR( loc_pid ) );
         return NULL;
     }
 
     if( !wx || !wy || wx >= GM__MAXZONEX * GameOpt.GlobalMapZoneLength || wy >= GM__MAXZONEY * GameOpt.GlobalMapZoneLength )
     {
-        WriteLogF( _FUNC_, " - Invalid location<%s> coordinates.\n", HASH_STR( loc_pid ) );
+        WriteLogF( _FUNC_, " - Invalid location '%s' coordinates.\n", HASH_STR( loc_pid ) );
         return NULL;
     }
 
@@ -514,7 +514,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
             Map* map = CreateMap( map_pid, loc, 0 );
             if( !map )
             {
-                WriteLogF( _FUNC_, " - Create map<%s> fail.\n", HASH_STR( map_pid ) );
+                WriteLogF( _FUNC_, " - Create map '%s' fail.\n", HASH_STR( map_pid ) );
                 MapVec& maps = loc->GetMapsNoLock();
                 for( auto it = maps.begin(); it != maps.end(); ++it )
                     ( *it )->Release();
@@ -538,7 +538,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
         Map* map = *it;
         if( !map->Generate() )
         {
-            WriteLogF( _FUNC_, " - Generate map<%s> fail.\n", HASH_STR( map->GetPid() ) );
+            WriteLogF( _FUNC_, " - Generate map '%s' fail.\n", HASH_STR( map->GetPid() ) );
             loc->Data.ToGarbage = true;
             MapMngr.RunGarbager();
             return NULL;
@@ -553,7 +553,7 @@ Map* MapManager::CreateMap( hash map_pid, Location* loc, uint map_id )
     ProtoMap* proto_map = GetProtoMap( map_pid );
     if( !proto_map )
     {
-        WriteLogF( _FUNC_, " - Proto map<%s> is not loaded.\n", HASH_STR( map_pid ) );
+        WriteLogF( _FUNC_, " - Proto map '%s' is not loaded.\n", HASH_STR( map_pid ) );
         return NULL;
     }
 
@@ -828,7 +828,7 @@ void MapManager::GM_GlobalProcess( Critter* cr, GlobalMapGroup* group, int type 
     static THREAD int recursion_depth = 0;
     if( ++recursion_depth > 100 )
     {
-        WriteLogF( _FUNC_, " - Recursion depth is greater than 100, abort. Critter<%s>.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Recursion depth is greater than 100, abort. Critter '%s'.\n", cr->GetInfo() );
         recursion_depth--;
         return;
     }
@@ -1077,7 +1077,7 @@ ScriptArray* MapManager::GM_CreateGroupArray( GlobalMapGroup* group )
         Critter** p = (Critter**) arr->At( ind );
         if( !p )
         {
-            WriteLogF( _FUNC_, " - Critical bug, rule critter<%s>, not valid<%d>.\n", group->Rule->GetInfo(), group->Rule->IsDestroyed );
+            WriteLogF( _FUNC_, " - Critical bug, rule critter '%s', not valid %d.\n", group->Rule->GetInfo(), group->Rule->IsDestroyed );
             return NULL;
         }
         *p = cr;
@@ -1091,7 +1091,7 @@ void MapManager::GM_GroupStartMove( Critter* cr )
 {
     if( cr->GetMapId() )
     {
-        WriteLogF( _FUNC_, " - Critter<%s> is on map.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Critter '%s' is on map.\n", cr->GetInfo() );
         TransitToGlobal( cr, 0, 0, false );
         return;
     }
@@ -1262,7 +1262,7 @@ bool MapManager::GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, us
         car_owner = group->GetCritter( car->AccCritter.Id );
         if( !car_owner )
         {
-            WriteLogF( _FUNC_, " - Car owner not found, rule<%s>.\n", rule->GetInfo() );
+            WriteLogF( _FUNC_, " - Car owner not found, rule '%s'.\n", rule->GetInfo() );
             car = NULL;
         }
     }
@@ -1348,13 +1348,13 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
 
     if( rule != rule->GroupMove->Rule )
     {
-        WriteLogF( _FUNC_, " - Critter<%s> is not rule.\n", rule->GetInfo() );
+        WriteLogF( _FUNC_, " - Critter '%s' is not rule.\n", rule->GetInfo() );
         return false;
     }
 
     if( !force && !rule->CheckKnownLocById( loc_id ) )
     {
-        WriteLogF( _FUNC_, " - Critter<%s> is not known location.\n", rule->GetInfo() );
+        WriteLogF( _FUNC_, " - Critter '%s' is not known location.\n", rule->GetInfo() );
         return false;
     }
 
@@ -1386,13 +1386,13 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
     {
         if( rule->IsPlayer() )
             ( (Client*) rule )->EraseKnownLoc( loc_id );
-        WriteLogF( _FUNC_, " - Location is empty, critter<%s>.\n", rule->GetInfo() );
+        WriteLogF( _FUNC_, " - Location is empty, critter '%s'.\n", rule->GetInfo() );
         return false;
     }
 
     if( entrance >= loc->Proto->Entrance.size() )
     {
-        WriteLogF( _FUNC_, " - Invalid entrance, critter<%s>.\n", rule->GetInfo() );
+        WriteLogF( _FUNC_, " - Invalid entrance, critter '%s'.\n", rule->GetInfo() );
         return false;
     }
 
@@ -1405,7 +1405,7 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
         group->Release();
         if( !result )
         {
-            WriteLogF( _FUNC_, " - Can't enter in entrance, critter<%s>.\n", rule->GetInfo() );
+            WriteLogF( _FUNC_, " - Can't enter in entrance, critter '%s'.\n", rule->GetInfo() );
             return false;
         }
     }
@@ -1426,7 +1426,7 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
     {
         if( rule->IsPlayer() )
             ( (Client*) rule )->EraseKnownLoc( loc_id );
-        WriteLogF( _FUNC_, " - Map not found in location, critter<%s>.\n", rule->GetInfo() );
+        WriteLogF( _FUNC_, " - Map not found in location, critter '%s'.\n", rule->GetInfo() );
         return false;
     }
 
@@ -2305,7 +2305,7 @@ bool MapManager::TryTransitCrGrid( Critter* cr, Map* map, ushort hx, ushort hy, 
 {
     if( cr->LockMapTransfers )
     {
-        WriteLogF( _FUNC_, " - Transfers locked, critter<%s>.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Transfers locked, critter '%s'.\n", cr->GetInfo() );
         return false;
     }
 
@@ -2352,7 +2352,7 @@ bool MapManager::TransitToGlobal( Critter* cr, uint rule, uchar follow_type, boo
 {
     if( cr->LockMapTransfers )
     {
-        WriteLogF( _FUNC_, " - Transfers locked, critter<%s>.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Transfers locked, critter '%s'.\n", cr->GetInfo() );
         return false;
     }
 
@@ -2365,14 +2365,14 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
     Location* loc = ( map ? map->GetLocation( true ) : NULL );
     if( loc && loc->Data.ToGarbage )
     {
-        WriteLogF( _FUNC_, " - Transfer to deleted location, critter<%s>.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Transfer to deleted location, critter '%s'.\n", cr->GetInfo() );
         return false;
     }
 
     // Maybe critter already in transfer
     if( cr->LockMapTransfers )
     {
-        WriteLogF( _FUNC_, " - Transfers locked, critter<%s>.\n", cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Transfers locked, critter '%s'.\n", cr->GetInfo() );
         return false;
     }
 

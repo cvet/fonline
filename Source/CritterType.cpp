@@ -135,7 +135,7 @@ bool CritType::InitFromFile( FOMsg* fill_msg )
     FileManager file;
     if( !file.LoadFile( CRTYPE_FILE_NAME, PT_SERVER_CONFIGS ) )
     {
-        WriteLogF( _FUNC_, " - File<%s> not found.\n", FileManager::GetDataPath( CRTYPE_FILE_NAME, PT_SERVER_CONFIGS ) );
+        WriteLogF( _FUNC_, " - File '%s' not found.\n", FileManager::GetDataPath( CRTYPE_FILE_NAME, PT_SERVER_CONFIGS ) );
         return false;
     }
 
@@ -149,7 +149,7 @@ bool CritType::InitFromFile( FOMsg* fill_msg )
     {
         if( prev_fail )
         {
-            WriteLogF( _FUNC_, " - Bad data for critter type information, number<%d>.\n", number );
+            WriteLogF( _FUNC_, " - Bad data for critter type information, number %d.\n", number );
             prev_fail = false;
             errors++;
         }
@@ -301,7 +301,7 @@ bool CritType::InitFromFile( FOMsg* fill_msg )
         }
     }
 
-    WriteLog( "Load critter types complete, count<%d>.\n", success );
+    WriteLog( "Load critter types complete, count %d.\n", success );
     return true;
 }
 
@@ -344,7 +344,7 @@ bool CritType::InitFromMsg( FOMsg* msg )
                     &MoveWalkReserved[ i ][ 0 ], &MoveWalkReserved[ i ][ 1 ], &MoveWalkReserved[ i ][ 2 ], &MoveWalkReserved[ i ][ 3 ],
                     sound_name ) != 41 )
         {
-            WriteLogF( _FUNC_, " - Bad data for critter type information, number<%d>, line<%s>.\n", i, str );
+            WriteLogF( _FUNC_, " - Bad data for critter type information, number %d, line '%s'.\n", i, str );
             errors++;
             continue;
         }
@@ -376,6 +376,6 @@ bool CritType::InitFromMsg( FOMsg* msg )
 
     memcpy( CrTypes, CrTypesReserved.Get(), sizeof( CrTypes ) );
     memcpy( MoveWalk, MoveWalkReserved, sizeof( MoveWalk ) );
-    WriteLog( "Loaded<%d> critter types.\n", success );
+    WriteLog( "Loaded %d critter types.\n", success );
     return true;
 }

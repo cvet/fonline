@@ -561,8 +561,8 @@ bool CraftManager::operator==( const CraftManager& r )
         CraftItem* craft = ( *it ).second;
         CraftItem* rcraft = ( *it_ ).second;
 
-        #define COMPARE_CRAFT( p )                                                                                              \
-            if( craft->p != rcraft->p ) { WriteLogF( _FUNC_, " - Different<" # p ">, craft<%u>.\n", craft->Num ); return false; \
+        #define COMPARE_CRAFT( p )                                                                                             \
+            if( craft->p != rcraft->p ) { WriteLogF( _FUNC_, " - Different<" # p ">, craft %u.\n", craft->Num ); return false; \
             }
         COMPARE_CRAFT( Num );
         COMPARE_CRAFT( ShowPNum );
@@ -632,7 +632,7 @@ bool CraftManager::LoadCrafts( FOMsg& msg )
 
         if( !AddCraft( num, str ) )
         {
-            WriteLogF( _FUNC_, " - Craft<%d> string<%s> load fail.\n", num, str );
+            WriteLogF( _FUNC_, " - Craft %d string '%s' load fail.\n", num, str );
             load_fail++;
             continue;
         }

@@ -153,7 +153,7 @@ bool FileManager::LoadDataFile( const char* path )
     DataFile* data_file = OpenDataFile( path );
     if( !data_file )
     {
-        WriteLogF( _FUNC_, " - Load data<%s> fail.\n", path );
+        WriteLogF( _FUNC_, " - Load data '%s' fail.\n", path );
         return false;
     }
 
@@ -266,7 +266,7 @@ bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data 
     }
     else
     {
-        WriteLogF( _FUNC_, " - Invalid path<%d>.\n", path_type );
+        WriteLogF( _FUNC_, " - Invalid path %d.\n", path_type );
         return false;
     }
 
@@ -548,7 +548,7 @@ bool FileManager::SaveOutBufToFile( const char* fname, int path_type )
     }
     else
     {
-        WriteLogF( _FUNC_, " - Invalid path<%d>.\n", path_type );
+        WriteLogF( _FUNC_, " - Invalid path %d.\n", path_type );
         return false;
     }
     FormatPath( fpath );

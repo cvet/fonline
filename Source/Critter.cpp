@@ -1245,7 +1245,7 @@ void Critter::AddItem( Item*& item, bool send )
     // Check
     if( !item || !item->Proto )
     {
-        WriteLogF( _FUNC_, " - Item null ptr, critter<%s>.\n", GetInfo() );
+        WriteLogF( _FUNC_, " - Item null ptr, critter '%s'.\n", GetInfo() );
         return;
     }
 
@@ -1288,7 +1288,7 @@ void Critter::SetItem( Item* item )
 {
     if( !item || !item->Proto )
     {
-        WriteLogF( _FUNC_, " - Item null ptr, critter<%s>.\n", GetInfo() );
+        WriteLogF( _FUNC_, " - Item null ptr, critter '%s'.\n", GetInfo() );
         return;
     }
 
@@ -1339,7 +1339,7 @@ void Critter::EraseItem( Item* item, bool send )
 {
     if( !item )
     {
-        WriteLogF( _FUNC_, " - Item null ptr, critter<%s>.\n", GetInfo() );
+        WriteLogF( _FUNC_, " - Item null ptr, critter '%s'.\n", GetInfo() );
         return;
     }
 
@@ -1347,7 +1347,7 @@ void Critter::EraseItem( Item* item, bool send )
     if( it != invItems.end() )
         invItems.erase( it );
     else
-        WriteLogF( _FUNC_, " - Item not found, id<%u>, pid<%u>, critter<%s>.\n", item->GetId(), item->GetProtoId(), GetInfo() );
+		WriteLogF( _FUNC_, " - Item '%s' (%u) not found, critter '%s'.\n", item->GetName(), item->GetId(), GetInfo() );
 
     if( !GetMapId() && GroupMove && GroupMove->CarId == item->GetId() )
     {
@@ -1619,26 +1619,26 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
 
     if( !item_id )
     {
-        WriteLogF( _FUNC_, " - Item id is zero, from slot<%u>, to slot<%u>, critter<%s>.\n", from_slot, to_slot, GetInfo() );
+        WriteLogF( _FUNC_, " - Item id is zero, from slot %u, to slot %u, critter '%s'.\n", from_slot, to_slot, GetInfo() );
         return false;
     }
 
     Item* item = GetItem( item_id, IsPlayer() );
     if( !item )
     {
-        WriteLogF( _FUNC_, " - Item not found, item id<%u>, critter<%s>.\n", item_id, GetInfo() );
+        WriteLogF( _FUNC_, " - Item not found, item id %u, critter '%s'.\n", item_id, GetInfo() );
         return false;
     }
 
     if( item->AccCritter.Slot != from_slot || from_slot == to_slot )
     {
-        WriteLogF( _FUNC_, " - Wrong slots, from slot<%u>, from slot real<%u>, to slot<%u>, item id<%u>, critter<%s>.\n", from_slot, item->AccCritter.Slot, to_slot, item_id, GetInfo() );
+        WriteLogF( _FUNC_, " - Wrong slots, from slot %u, from slot real %u, to slot %u, item id %u, critter '%s'.\n", from_slot, item->AccCritter.Slot, to_slot, item_id, GetInfo() );
         return false;
     }
 
     if( to_slot != SLOT_GROUND && !SlotEnabled[ to_slot ] )
     {
-        WriteLogF( _FUNC_, " - Slot<%u> is not allowed, critter<%s>.\n", to_slot, GetInfo() );
+        WriteLogF( _FUNC_, " - Slot %u is not allowed, critter '%s'.\n", to_slot, GetInfo() );
         return false;
     }
 
@@ -1658,7 +1658,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         if( IsPlayer() )
         {
             Send_AddItem( item );
-            WriteLogF( _FUNC_, " - Can't move item with pid<%u> to slot<%u>, player<%s>.\n", item->GetProtoId(), to_slot, GetInfo() );
+            WriteLogF( _FUNC_, " - Can't move item with pid %u to slot %u, player '%s'.\n", item->GetProtoId(), to_slot, GetInfo() );
         }
         return false;
     }
@@ -1706,7 +1706,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         Map* map = MapMngr.GetMap( GetMapId() );
         if( !map )
         {
-            WriteLogF( _FUNC_, " - Map not found, map id<%u>, critter<%s>.\n", GetMapId(), GetInfo() );
+            WriteLogF( _FUNC_, " - Map not found, map id %u, critter '%s'.\n", GetMapId(), GetInfo() );
             ItemMngr.DeleteItem( item );
             return true;
         }
@@ -1923,7 +1923,7 @@ bool Critter::PrepareScriptFunc( int num_scr_func )
         return false;
     if( FuncId[ num_scr_func ] <= 0 )
         return false;
-    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Critter<%s>, func<%s>", GetInfo(), Script::GetBindFuncName( FuncId[ num_scr_func ] ).c_str() ) );
+    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Critter '%s', func '%s'", GetInfo(), Script::GetBindFuncName( FuncId[ num_scr_func ] ).c_str() ) );
 }
 
 void Critter::EventIdle()
