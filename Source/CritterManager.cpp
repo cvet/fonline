@@ -113,7 +113,7 @@ bool CritterManager::LoadProtos()
         files_loaded++;
     }
 
-    WriteLog( "Load critter prototypes complete, loaded %u/%u.\n", files_loaded, files.GetFilesCount() );
+    WriteLog( "Load critter prototypes complete, count %u.\n", files_loaded );
     return errors == 0;
 }
 

@@ -175,7 +175,7 @@ bool MapManager::LoadLocationsProtos()
         files_loaded++;
     }
 
-    WriteLog( "Load location and map prototypes complete, loaded %u/%u.\n", files_loaded, files.GetFilesCount() );
+    WriteLog( "Load location and map prototypes complete, count %u.\n", files_loaded );
     return files_loaded == files.GetFilesCount();
 }
 

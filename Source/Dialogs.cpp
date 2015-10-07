@@ -113,7 +113,7 @@ bool DialogManager::LoadDialogs()
         files_loaded++;
     }
 
-    WriteLog( "Load dialogs complete, loaded %u/%u.\n", files_loaded, files.GetFilesCount() );
+    WriteLog( "Load dialogs complete, count %u.\n", files_loaded );
     return files_loaded == files.GetFilesCount();
 }
 

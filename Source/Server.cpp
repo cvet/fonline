@@ -3801,7 +3801,7 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
         cur_lang++;
     }
 
-    WriteLog( "Load language packs complete, loaded %u packs.\n", cur_lang );
+    WriteLog( "Load language packs complete, count %u.\n", cur_lang );
     return cur_lang > 0;
 }
 
@@ -4091,7 +4091,7 @@ void FOServer::LoadBans()
 
 bool FOServer::LoadClientsData()
 {
-    WriteLog( "Indexing client data.\n" );
+    WriteLog( "Indexing client data...\n" );
 
     char client_name[ MAX_FOPATH ];
     char clients_path[ MAX_FOPATH ];
@@ -4275,7 +4275,7 @@ bool FOServer::LoadClientsData()
     SAFEDEL( cache_str );
     SAFEDELA( cache_buf );
 
-    WriteLog( "Indexing complete, clients found %u.\n", ClientsData.size() );
+    WriteLog( "Indexing client data complete, count %u.\n", ClientsData.size() );
     return true;
 }
 

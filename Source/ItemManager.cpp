@@ -164,7 +164,7 @@ bool ItemManager::LoadProtos()
         files_loaded++;
     }
 
-    WriteLog( "Load item prototypes complete, loaded %u/%u.\n", files_loaded, files.GetFilesCount() );
+    WriteLog( "Load item prototypes complete, count %u.\n", files_loaded );
     return errors == 0;
 }
 
