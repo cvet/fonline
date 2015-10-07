@@ -233,6 +233,36 @@ const char* Str::Substring( const char* str, const char* sub_str )
     return strstr( str, sub_str );
 }
 
+char* Str::LastSubstring( char* str, const char* sub_str )
+{
+    uint  len = Length( sub_str );
+    char* last = NULL;
+    while( true )
+    {
+        str = strstr( str, sub_str );
+        if( !str )
+            break;
+        last = str;
+        str += len;
+    }
+    return last;
+}
+
+const char* Str::LastSubstring( const char* str, const char* sub_str )
+{
+    uint        len = Length( sub_str );
+    const char* last = NULL;
+    while( true )
+    {
+        str = strstr( str, sub_str );
+        if( !str )
+            break;
+        last = str;
+        str += len;
+    }
+    return last;
+}
+
 bool Str::IsValidUTF8( uint ucs )
 {
     return ucs != 0xFFFD /* Unicode REPLACEMENT CHARACTER */ && ucs <= 0x10FFFF;

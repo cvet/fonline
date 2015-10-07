@@ -1,6 +1,5 @@
 #include "Common.h"
 #include "ItemManager.h"
-#include "ConstantsManager.h"
 #include "IniParser.h"
 #include "MsgFiles.h"
 

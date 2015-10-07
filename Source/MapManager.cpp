@@ -259,8 +259,6 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         if( !ploc_data.GetStr( "Main", key, "", entrance_text ) )
             break;
 
-        load_entrances_fail = true;
-
         char map_name[ MAX_FOTEXT ];
         char entire_name[ MAX_FOTEXT ];
         if( sscanf( entrance_text, "%s%s", map_name, entire_name ) != 2 )
@@ -278,9 +276,12 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         }
 
         uint map_index = ( uint ) std::distance( ploc->ProtoMapPids.begin(), it );
-        ploc->Entrance.push_back( PAIR( map_index, (uint) ConvertParamValue( entire_name ) ) );
-
-        load_entrances_fail = false;
+        ploc->Entrance.push_back( PAIR( map_index, (uint) ConvertParamValue( entire_name, load_entrances_fail ) ) );
+    }
+    if( load_entrances_fail )
+    {
+        WriteLog( "Load location '%s' entrances fail.\n", loc_name );
+        return false;
     }
 
     // Entrance function
@@ -290,7 +291,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         int bind_id = Script::BindByScriptName( script, "bool %s(Location&,Critter@[]&,uint8)", false );
         if( bind_id <= 0 )
         {
-            WriteLogF( "Function<%s> not found in location<%s>.\n", script, loc_name );
+            WriteLog( "Function<%s> not found in location<%s>.\n", script, loc_name );
             return false;
         }
 
@@ -302,6 +303,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
     }
 
     // Texts
+    bool    load_texts_fail = false;
     ploc_data.CacheApps();
     StrSet& apps = ploc_data.GetCachedApps();
     for( auto it = apps.begin(), end = apps.end(); it != end; ++it )
@@ -312,7 +314,8 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
 
         char* app_content = ploc_data.GetApp( app_name.c_str() );
         FOMsg temp_msg;
-        temp_msg.LoadFromString( app_content, Str::Length( app_content ) );
+        if( !temp_msg.LoadFromString( app_content, Str::Length( app_content ) ) )
+            load_texts_fail = true;
         SAFEDELA( app_content );
 
         FOMsg* msg = new FOMsg();
@@ -327,6 +330,11 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
 
         ploc->TextsLang.push_back( *(uint*) app_name.substr( 5 ).c_str() );
         ploc->Texts.push_back( msg );
+    }
+    if( load_texts_fail )
+    {
+        WriteLog( "Load location '%s' text fail.\n", loc_name );
+        return false;
     }
 
     // Add to collection

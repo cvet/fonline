@@ -4653,7 +4653,8 @@ void HexManager::AffectCritter( MapObject* mobj, CritterCl* cr )
     {
         for( size_t i = 0, j = mobj->Props->size() / 2; i < j; i++ )
         {
-            int value = (int) ConvertParamValue( mobj->Props->at( i * 2 + 1 )->c_str() );
+            bool dummy;
+            int  value = ConvertParamValue( mobj->Props->at( i * 2 + 1 )->c_str(), dummy );
             Properties::SetValueAsIntByName( cr, mobj->Props->at( i * 2 )->c_str(), value );
         }
     }

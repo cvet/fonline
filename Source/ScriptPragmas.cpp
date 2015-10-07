@@ -1,7 +1,6 @@
 #include "Common.h"
 #include "ScriptPragmas.h"
 #include "angelscript.h"
-#include "ConstantsManager.h"
 #include "Script.h"
 
 // #pragma ignore "other_pragma"
@@ -47,7 +46,7 @@ public:
 
         if( decl == "" )
         {
-            WriteLog( "Global var name not found, pragma<%s>.\n", text.c_str() );
+            WriteLog( "Global var name not found, pragma '%s'.\n", text.c_str() );
             return false;
         }
 
@@ -59,43 +58,43 @@ public:
         if( type == "int8" || type == "int16" || type == "int32" || type == "int" || type == "uint8" || type == "uint16" || type == "uint32" || type == "uint" )
         {
             auto it = intArray.insert( intArray.begin(), int_value );
-            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register integer global var, pragma<%s>.\n", text.c_str() );
+            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register integer global var, pragma '%s'.\n", text.c_str() );
         }
         else if( type == "int64" || type == "uint64" )
         {
             auto it = int64Array.insert( int64Array.begin(), int_value );
-            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register integer64 global var, pragma<%s>.\n", text.c_str() );
+            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register integer64 global var, pragma '%s'.\n", text.c_str() );
         }
         else if( type == "string" )
         {
             if( value != "" ) value = text.substr( text.find( value ), string::npos );
             auto it = stringArray.insert( stringArray.begin(), ScriptString::Create( value ) );
-            if( engine->RegisterGlobalProperty( name.c_str(), ( *it ) ) < 0 ) WriteLog( "Unable to register string global var, pragma<%s>.\n", text.c_str() );
+            if( engine->RegisterGlobalProperty( name.c_str(), ( *it ) ) < 0 ) WriteLog( "Unable to register string global var, pragma '%s'.\n", text.c_str() );
         }
         else if( type == "float" )
         {
             auto it = floatArray.insert( floatArray.begin(), (float) float_value );
-            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register float global var, pragma<%s>.\n", text.c_str() );
+            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register float global var, pragma '%s'.\n", text.c_str() );
         }
         else if( type == "double" )
         {
             auto it = doubleArray.insert( doubleArray.begin(), float_value );
-            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register double global var, pragma<%s>.\n", text.c_str() );
+            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register double global var, pragma '%s'.\n", text.c_str() );
         }
         else if( type == "bool" )
         {
             value = ( ch == '=' ? value : "false" );
             if( value != "true" && value != "false" )
             {
-                WriteLog( "Invalid start value of boolean type, pragma<%s>.\n", text.c_str() );
+                WriteLog( "Invalid start value of boolean type, pragma '%s'.\n", text.c_str() );
                 return false;
             }
             auto it = boolArray.insert( boolArray.begin(), value == "true" ? true : false );
-            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register boolean global var, pragma<%s>.\n", text.c_str() );
+            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register boolean global var, pragma '%s'.\n", text.c_str() );
         }
         else
         {
-            WriteLog( "Global var not registered, unknown type, pragma<%s>.\n", text.c_str() );
+            WriteLog( "Global var not registered, unknown type, pragma '%s'.\n", text.c_str() );
         }
         return true;
     }
@@ -125,14 +124,14 @@ public:
 
         if( str.fail() )
         {
-            WriteLog( "Error in 'bindfunc' pragma<%s>, parse fail.\n", text.c_str() );
+            WriteLog( "Error in 'bindfunc' pragma '%s', parse fail.\n", text.c_str() );
             return false;
         }
 
         void* dll = Script::LoadDynamicLibrary( dll_name.c_str() );
         if( !dll )
         {
-            WriteLog( "Error in 'bindfunc' pragma<%s>, dll not found, error<%s>.\n", text.c_str(), DLL_Error() );
+            WriteLog( "Error in 'bindfunc' pragma '%s', dll not found, error '%s'.\n", text.c_str(), DLL_Error() );
             return false;
         }
 
@@ -140,7 +139,7 @@ public:
         size_t* func = DLL_GetAddress( dll, func_dll_name.c_str() );
         if( !func )
         {
-            WriteLog( "Error in 'bindfunc' pragma<%s>, function not found, error<%s>.\n", text.c_str(), DLL_Error() );
+            WriteLog( "Error in 'bindfunc' pragma '%s', function not found, error '%s'.\n", text.c_str(), DLL_Error() );
             return false;
         }
 
@@ -157,7 +156,7 @@ public:
             string::size_type j = func_name.find( "::" );
             if( i == string::npos || i + 1 >= j )
             {
-                WriteLog( "Error in 'bindfunc' pragma<%s>, parse class name fail.\n", text.c_str() );
+                WriteLog( "Error in 'bindfunc' pragma '%s', parse class name fail.\n", text.c_str() );
                 return false;
             }
             i++;
@@ -168,7 +167,7 @@ public:
         }
         if( result < 0 )
         {
-            WriteLog( "Error in 'bindfunc' pragma<%s>, script registration fail, error<%d>.\n", text.c_str(), result );
+            WriteLog( "Error in 'bindfunc' pragma '%s', script registration fail, error '%d'.\n", text.c_str(), result );
             return false;
         }
         return true;
@@ -415,7 +414,7 @@ public:
 
         if( str.fail() )
         {
-            WriteLog( "Error in 'property' pragma<%s>.\n", text.c_str() );
+            WriteLog( "Error in 'property' pragma '%s'.\n", text.c_str() );
             return false;
         }
 
@@ -454,12 +453,13 @@ public:
                 access = Property::VirtualProtected;
             if( access == (Property::AccessType) 0 )
             {
-                WriteLog( "Error in 'property' pragma<%s>, invalid access type<%s>.\n", text.c_str(), access_str.c_str() );
+                WriteLog( "Error in 'property' pragma '%s', invalid access type '%s'.\n", text.c_str(), access_str.c_str() );
                 return false;
             }
         }
 
         // Parse options
+        bool   fail = false;
         string group;
         bool   generate_random_value = false;
         bool   set_default_value = false;
@@ -478,13 +478,12 @@ public:
             Str::ParseLine( opt_entries[ i ].c_str(), '=', opt_entry, Str::ParseLineDummy );
             if( opt_entry.size() != 2 )
             {
-                WriteLog( "Error in 'property' pragma<%s>, invalid options entry.\n", text.c_str() );
+                WriteLog( "Error in 'property' pragma '%s', invalid options entry.\n", text.c_str() );
                 return false;
             }
 
             const char*   opt_name = opt_entry[ 0 ].c_str();
             const string& opt_svalue = opt_entry[ 1 ];
-            int64         opt_ivalue = ConvertParamValue( opt_svalue.c_str() );
 
             if( Str::CompareCase( opt_name, "Group" ) )
             {
@@ -493,21 +492,21 @@ public:
             else if( Str::CompareCase( opt_name, "Default" ) )
             {
                 set_default_value = true;
-                default_value = opt_ivalue;
+                default_value = ConvertParamValue( opt_svalue.c_str(), fail );
             }
             else if( Str::CompareCase( opt_name, "Min" ) )
             {
                 check_min_value = true;
-                min_value = opt_ivalue;
+                min_value = ConvertParamValue( opt_svalue.c_str(), fail );
             }
             else if( Str::CompareCase( opt_name, "Max" ) )
             {
                 check_max_value = true;
-                max_value = opt_ivalue;
+                max_value = ConvertParamValue( opt_svalue.c_str(), fail );
             }
             else if( Str::CompareCase( opt_name, "Random" ) )
             {
-                generate_random_value = ( opt_ivalue != 0 );
+                generate_random_value = ( ConvertParamValue( opt_svalue.c_str(), fail ) != 0 );
             }
             else if( Str::CompareCase( opt_name, "GetCallabck" ) )
             {
@@ -517,6 +516,11 @@ public:
             {
                 set_callbacks.push_back( opt_svalue );
             }
+        }
+        if( fail )
+        {
+            WriteLog( "Error in 'property' pragma '%s', value conversation failed.\n", text.c_str() );
+            return false;
         }
 
         // Choose registrator
@@ -536,7 +540,7 @@ public:
         else if( entitiesRegistrators->entityCreators.count( class_name ) )
             registrator = entitiesRegistrators->entityCreators[ class_name ]->Registrator;
         else
-            WriteLog( "Invalid class in 'property' pragma<%s>.\n", text.c_str() );
+            WriteLog( "Invalid class in 'property' pragma '%s'.\n", text.c_str() );
         if( !registrator )
             return false;
 
@@ -547,7 +551,7 @@ public:
                                         group.length() > 0 ? group.c_str() : NULL, generate_random_value ? &generate_random_value : NULL,
                                         set_default_value ? &default_value : NULL, check_min_value ? &min_value : NULL, check_max_value ? &max_value : NULL ) )
             {
-                WriteLog( "Unable to register 'property' pragma<%s>.\n", text.c_str() );
+                WriteLog( "Unable to register 'property' pragma '%s'.\n", text.c_str() );
                 return false;
             }
         }
@@ -657,7 +661,7 @@ public:
         // else if (entitiesRegistrators->entityCreators.count(class_name))
         //	registrator = entitiesRegistrators->entityCreators[class_name]->Registrator;
         else
-            WriteLog( "Invalid class in 'property' pragma<%s>.\n", text.c_str() );
+            WriteLog( "Invalid class in 'property' pragma '%s'.\n", text.c_str() );
         if( !registrator )
             return false;
 
@@ -814,6 +818,65 @@ public:
     }
 };
 
+// #pragma enum EnumName ValueName [= value]
+class EnumPragma
+{
+public:
+    bool Call( const string& text )
+    {
+        // Read all
+        istrstream str( text.c_str() );
+        char       enum_name[ MAX_FOTEXT ];
+        char       value_name[ MAX_FOTEXT ];
+        str >> enum_name >> value_name;
+        if( str.fail() )
+        {
+            WriteLog( "Unable to parse 'enum' pragma '%s'.\n", text.c_str() );
+            return false;
+        }
+        char other[ MAX_FOTEXT ];
+        str.getline( other, MAX_FOTEXT );
+
+        asIScriptEngine* engine = Script::GetEngine();
+        int              result = engine->RegisterEnum( enum_name );
+        if( result < 0 && result != asALREADY_REGISTERED )
+        {
+            WriteLog( "Error in 'enum' pragma '%s', register enum error %d.\n", text.c_str(), result );
+            return false;
+        }
+
+        int         value;
+        const char* assign = Str::Substring( other, "=" );
+        if( assign )
+        {
+            bool fail = false;
+            char buf[ MAX_FOTEXT ];
+            Str::Copy( buf, assign + 1 );
+            Str::Trim( buf );
+            value = ConvertParamValue( buf, fail );
+            if( fail )
+            {
+                WriteLog( "Error in 'enum' pragma '%s', value conversation error.\n", text.c_str() );
+                return false;
+            }
+        }
+        else
+        {
+            char buf[ MAX_FOTEXT ];
+            value = Str::GetHash( Str::Format( buf, "%s::%s", enum_name, value_name ) );
+        }
+
+        result = engine->RegisterEnumValue( enum_name, value_name, value );
+        if( result < 0 )
+        {
+            WriteLog( "Error in 'enum' pragma '%s', register enum value error %d.\n", text.c_str(), result );
+            return false;
+        }
+
+        return true;
+    }
+};
+
 ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
 {
     isError = false;
@@ -828,6 +891,7 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
     propertyPragma = NULL;
     methodPragma = NULL;
     contentPragma = NULL;
+    enumPragma = NULL;
 
     if( pragmaType != PRAGMA_UNKNOWN )
     {
@@ -838,6 +902,7 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
         propertyPragma = new PropertyPragma( pragmaType, entityPragma );
         methodPragma = new MethodPragma( pragmaType, entityPragma );
         contentPragma = new ContentPragma();
+        enumPragma = new EnumPragma();
     }
 }
 
@@ -850,6 +915,7 @@ ScriptPragmaCallback::~ScriptPragmaCallback()
     SAFEDEL( propertyPragma );
     SAFEDEL( methodPragma );
     SAFEDEL( contentPragma );
+    SAFEDEL( enumPragma );
 }
 
 void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragma )
@@ -877,8 +943,10 @@ void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragm
         ok = entityPragma->Call( pragma.Text );
     else if( Str::CompareCase( pragma.Name.c_str(), "content" ) && contentPragma )
         ok = contentPragma->Call( pragma.Text );
+    else if( Str::CompareCase( pragma.Name.c_str(), "enum" ) && enumPragma )
+        ok = enumPragma->Call( pragma.Text );
     else
-        WriteLog( "Unknown pragma instance, name<%s> text<%s>.\n", pragma.Name.c_str(), pragma.Text.c_str() ), ok = false;
+        WriteLog( "Unknown pragma instance, name '%s' text '%s'.\n", pragma.Name.c_str(), pragma.Text.c_str() ), ok = false;
 
     if( ok )
         processedPragmas.push_back( pragma );

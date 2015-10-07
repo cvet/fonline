@@ -1375,6 +1375,7 @@ bool Animation3dEntity::Load( const char* name )
         char             render_anim[ MAX_FOPATH ] = { 0 };
         vector< size_t > anim_indexes;
         bool             disable_animation_interpolation = false;
+        bool             convert_value_fail = false;
 
         uint             mesh = 0;
         int              layer = -1;
@@ -1448,7 +1449,7 @@ bool Animation3dEntity::Load( const char* name )
                 FileManager fo3d_ex;
                 if( !fo3d_ex.LoadFile( fname, PT_DATA ) )
                 {
-                    WriteLogF( _FUNC_, " - Include file<%s> not found.\n", fname );
+                    WriteLogF( _FUNC_, " - Include file '%s' not found.\n", fname );
                     continue;
                 }
 
@@ -1497,7 +1498,7 @@ bool Animation3dEntity::Load( const char* name )
                     link = &animDataDefault;
                 else if( !layer_val )
                 {
-                    WriteLogF( _FUNC_, " - Wrong layer<%d> zero value.\n", layer );
+                    WriteLogF( _FUNC_, " - Wrong layer '%d' zero value.\n", layer );
                     link = &dummy_link;
                 }
                 else
@@ -1529,9 +1530,9 @@ bool Animation3dEntity::Load( const char* name )
             {
                 ( *istr ) >> buf;
                 if( Str::CompareCase( token, "Layer" ) )
-                    layer = (int) ConvertParamValue( buf );
+                    layer = (int) ConvertParamValue( buf, convert_value_fail );
                 else
-                    layer_val = (int) ConvertParamValue( buf );
+                    layer_val = (int) ConvertParamValue( buf, convert_value_fail );
 
                 link = &dummy_link;
                 mesh = 0;
@@ -1585,7 +1586,7 @@ bool Animation3dEntity::Load( const char* name )
                     Str::ParseLine( buf, '-', layers, Str::ParseLineDummy );
                     for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                     {
-                        int layer = (int) ConvertParamValue( layers[ m ].c_str() );
+                        int layer = (int) ConvertParamValue( layers[ m ].c_str(), convert_value_fail );
                         if( Str::Compare( layers[ m ].c_str(), "All" ) )
                             layer = -1;
                         cut->Layers.push_back( layer );
@@ -1627,7 +1628,11 @@ bool Animation3dEntity::Load( const char* name )
                 }
                 else
                 {
-                    WriteLogF( _FUNC_, " - Cur file<%s> not found.\n", fname );
+                    WriteLogF( _FUNC_, " - Cut file '%s' not found.\n", fname );
+                    ( *istr ) >> buf;
+                    ( *istr ) >> buf;
+                    ( *istr ) >> buf;
+                    ( *istr ) >> buf;
                 }
             }
             else if( Str::CompareCase( token, "RotX" ) )
@@ -1776,7 +1781,7 @@ bool Animation3dEntity::Load( const char* name )
                 Str::ParseLine( buf, '-', layers, Str::ParseLineDummy );
                 for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                 {
-                    int layer = (int) ConvertParamValue( layers[ m ].c_str() );
+                    int layer = (int) ConvertParamValue( layers[ m ].c_str(), convert_value_fail );
                     if( layer >= 0 && layer < LAYERS3D_COUNT )
                     {
                         int* tmp = link->DisabledLayers;
@@ -1816,7 +1821,7 @@ bool Animation3dEntity::Load( const char* name )
             else if( Str::CompareCase( token, "Texture" ) )
             {
                 ( *istr ) >> buf;
-                int index = (int) ConvertParamValue( buf );
+                int index = (int) ConvertParamValue( buf, convert_value_fail );
                 ( *istr ) >> buf;
                 if( index >= 0 && index < EFFECT_TEXTURES )
                 {
@@ -1902,7 +1907,7 @@ bool Animation3dEntity::Load( const char* name )
                     type = EffectDefault::Dword;
                     data_len = sizeof( uint );
                     data = new uchar[ data_len ];
-                    *( (uint*) data ) = (uint) ConvertParamValue( def_value );
+                    *( (uint*) data ) = (uint) ConvertParamValue( def_value, convert_value_fail );
                 }
                 else
                     continue;
@@ -1925,9 +1930,9 @@ bool Animation3dEntity::Load( const char* name )
                 // Index animation
                 int ind1 = 0, ind2 = 0;
                 ( *istr ) >> buf;
-                ind1 = (int) ConvertParamValue( buf );
+                ind1 = (int) ConvertParamValue( buf, convert_value_fail );
                 ( *istr ) >> buf;
-                ind2 = (int) ConvertParamValue( buf );
+                ind2 = (int) ConvertParamValue( buf, convert_value_fail );
 
                 if( Str::CompareCase( token, "Anim" ) || Str::CompareCase( token, "AnimExt" ) )
                 {
@@ -1965,15 +1970,15 @@ bool Animation3dEntity::Load( const char* name )
             {
                 int ind1 = 0, ind2 = 0;
                 ( *istr ) >> buf;
-                ind1 = (int) ConvertParamValue( buf );
+                ind1 = (int) ConvertParamValue( buf, convert_value_fail );
                 ( *istr ) >> buf;
-                ind2 = (int) ConvertParamValue( buf );
+                ind2 = (int) ConvertParamValue( buf, convert_value_fail );
 
                 int layer = 0, value = 0;
                 ( *istr ) >> buf;
-                layer = (int) ConvertParamValue( buf );
+                layer = (int) ConvertParamValue( buf, convert_value_fail );
                 ( *istr ) >> buf;
-                value = (int) ConvertParamValue( buf );
+                value = (int) ConvertParamValue( buf, convert_value_fail );
 
                 uint index = ( ind1 << 16 ) | ind2;
                 if( !animLayerValues.count( index ) )
@@ -1991,9 +1996,9 @@ bool Animation3dEntity::Load( const char* name )
 
                 int ind1 = 0, ind2 = 0;
                 ( *istr ) >> buf;
-                ind1 = (int) ConvertParamValue( buf );
+                ind1 = (int) ConvertParamValue( buf, convert_value_fail );
                 ( *istr ) >> buf;
-                ind2 = (int) ConvertParamValue( buf );
+                ind2 = (int) ConvertParamValue( buf, convert_value_fail );
 
                 if( valuei == 1 )
                     anim1Equals.insert( PAIR( ind1, ind2 ) );
@@ -2027,7 +2032,7 @@ bool Animation3dEntity::Load( const char* name )
             {
                 ( *istr ) >> buf;
 
-                renderAnimDir = (int) ConvertParamValue( buf );
+                renderAnimDir = (int) ConvertParamValue( buf, convert_value_fail );
             }
             else if( Str::CompareCase( token, "DisableShadow" ) )
             {
@@ -2037,9 +2042,9 @@ bool Animation3dEntity::Load( const char* name )
             {
                 int w = 0, h = 0;
                 ( *istr ) >> buf;
-                w = (int) ConvertParamValue( buf );
+                w = (int) ConvertParamValue( buf, convert_value_fail );
                 ( *istr ) >> buf;
-                h = (int) ConvertParamValue( buf );
+                h = (int) ConvertParamValue( buf, convert_value_fail );
 
                 drawWidth = w;
                 drawHeight = h;
@@ -2050,14 +2055,21 @@ bool Animation3dEntity::Load( const char* name )
             }
             else
             {
-                WriteLogF( _FUNC_, " - Unknown token<%s> in file<%s>.\n", token, name );
+                WriteLogF( _FUNC_, " - Unknown token '%s' in file '%s'.\n", token, name );
             }
         }
 
         // Process pathes
         if( !model[ 0 ] )
         {
-            WriteLogF( _FUNC_, " - 'Model' section not found in file<%s>.\n", name );
+            WriteLogF( _FUNC_, " - 'Model' section not found in file '%s'.\n", name );
+            return false;
+        }
+
+        // Check for correct param values
+        if( convert_value_fail )
+        {
+            WriteLogF( _FUNC_, " - Invalid param values for file '%s'.\n", name );
             return false;
         }
 
@@ -2083,7 +2095,7 @@ bool Animation3dEntity::Load( const char* name )
         {
             animController = AnimController::Create( 2 );
             if( !animController )
-                WriteLogF( _FUNC_, " - Unable to create animation controller, file<%s>.\n", name );
+                WriteLogF( _FUNC_, " - Unable to create animation controller, file '%s'.\n", name );
         }
 
         // Parse animations
@@ -2114,7 +2126,7 @@ bool Animation3dEntity::Load( const char* name )
                 }
                 else
                 {
-                    // WriteLogF( _FUNC_, " - Animation<%s><%s> not found.\n", anim_path, anim_name );
+                    // WriteLogF( _FUNC_, " - Animation '%s'/'%s' not found.\n", anim_path, anim_name );
                 }
 
                 delete[] anim_fname;
@@ -2343,14 +2355,14 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
         Bone* root_bone = GraphicLoader::LoadModel( xname );
         if( !root_bone )
         {
-            WriteLogF( _FUNC_, " - Unable to load 3d file<%s>.\n", xname );
+            WriteLogF( _FUNC_, " - Unable to load 3d file '%s'.\n", xname );
             return NULL;
         }
 
         xfile = new Animation3dXFile();
         if( !xfile )
         {
-            WriteLogF( _FUNC_, " - Allocation fail, x file<%s>.\n", xname );
+            WriteLogF( _FUNC_, " - Allocation fail, x file '%s'.\n", xname );
             return NULL;
         }
 
@@ -2402,7 +2414,7 @@ MeshTexture* Animation3dXFile::GetTexture( const char* tex_name )
 {
     MeshTexture* texture = GraphicLoader::LoadTexture( tex_name, fileName.c_str() );
     if( !texture )
-        WriteLogF( _FUNC_, " - Can't load texture<%s>.\n", tex_name ? tex_name : "nullptr" );
+        WriteLogF( _FUNC_, " - Can't load texture '%s'.\n", tex_name ? tex_name : "nullptr" );
     return texture;
 }
 
@@ -2410,10 +2422,6 @@ Effect* Animation3dXFile::GetEffect( EffectInstance* effect_inst )
 {
     Effect* effect = GraphicLoader::LoadEffect( effect_inst->EffectFilename, false, NULL, fileName.c_str(), effect_inst->Defaults, effect_inst->DefaultsCount );
     if( !effect )
-        WriteLogF( _FUNC_, " - Can't load effect<%s>.\n", effect_inst && effect_inst->EffectFilename ? effect_inst->EffectFilename : "nullptr" );
+        WriteLogF( _FUNC_, " - Can't load effect '%s'.\n", effect_inst && effect_inst->EffectFilename ? effect_inst->EffectFilename : "nullptr" );
     return effect;
 }
-
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/

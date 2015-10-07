@@ -469,31 +469,29 @@ uint GetDoubleClickTicks()
     #endif
 }
 
-#if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
-# include "ConstantsManager.h"
-#endif
-int64 ConvertParamValue( const char* str )
+int ConvertParamValue( const char* str, bool& fail )
 {
     if( !str[ 0 ] )
+    {
+        WriteLog( "Empty parameter value.\n" );
+        fail = true;
+        return false;
+    }
+
+    if( str[ 0 ] == '@' && str[ 1 ] )
+        return Str::GetHash( str + 1 );
+    if( Str::IsNumber( str ) )
+        return Str::AtoI( str );
+    if( Str::CompareCase( str, "true" ) )
+        return 1;
+    if( Str::CompareCase( str, "false" ) )
         return 0;
 
-    if( str[ 0 ] == '$' )
-    {
-        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
-        return ConstantsManager::GetDefineValue( str + 1 );
-        #else
-        return 0;
-        #endif
-    }
-    if( !Str::IsNumber( str ) )
-    {
-        if( Str::CompareCase( str, "true" ) )
-            return 1;
-        else if( Str::CompareCase( str, "false" ) )
-            return 0;
-        return Str::GetHash( str );
-    }
-    return Str::AtoI64( str );
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+    return Script::GetEnumValue( str, fail );
+    #else
+    return 0;
+    #endif
 }
 
 /************************************************************************/

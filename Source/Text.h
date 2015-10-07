@@ -32,6 +32,8 @@ namespace Str
 
     char*       Substring( char* str, const char* sub_str );
     const char* Substring( const char* str, const char* sub_str );
+    char*       LastSubstring( char* str, const char* sub_str );
+    const char* LastSubstring( const char* str, const char* sub_str );
 
     bool IsValidUTF8( uint ucs );
     bool IsValidUTF8( const char* str );

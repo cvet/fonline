@@ -1,6 +1,5 @@
 #include "Common.h"
 #include "CritterManager.h"
-#include "ConstantsManager.h"
 #include "ItemManager.h"
 #include "IniParser.h"
 
@@ -88,7 +87,8 @@ bool CritterManager::LoadProtos()
 
             char* app_content = focr.GetApp( app_name.c_str() );
             FOMsg temp_msg;
-            temp_msg.LoadFromString( app_content, Str::Length( app_content ) );
+            if( !temp_msg.LoadFromString( app_content, Str::Length( app_content ) ) )
+                errors++;
             SAFEDELA( app_content );
 
             FOMsg* msg = new FOMsg();

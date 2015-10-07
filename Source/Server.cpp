@@ -3434,7 +3434,6 @@ bool FOServer::InitReal()
         SaveClients.reserve( MAX_CLIENTS_IN_GAME );
     }
 
-    ConstantsManager::Initialize( PT_SERVER_CONFIGS ); // Generate name of defines
     if( !InitScriptSystem() )
         return false;                                  // Script system
     if( !InitLangPacks( LangPacks ) )

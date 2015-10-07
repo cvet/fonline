@@ -3,7 +3,6 @@
 #include "ItemManager.h"
 #include "CritterManager.h"
 #include "Crypt.h"
-#include "ConstantsManager.h"
 #include <strstream>
 #include "IniParser.h"
 
@@ -305,11 +304,14 @@ bool ProtoMap::LoadTextFormat( const char* buf )
     char* objects_str = map_ini.GetApp( APP_OBJECTS );
     if( objects_str )
     {
-        int        errors = 0;
+        bool       fail = false;
         istrstream istr( objects_str );
         string     field;
         char       svalue[ MAX_FOTEXT ];
         int        ivalue;
+        #ifndef FONLINE_MAPPER
+        Property*  cur_prop = NULL;
+        #endif
         while( !istr.eof() && !istr.fail() )
         {
             istr >> field;
@@ -351,12 +353,12 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                         if( mobj.MapObjType == MAP_OBJECT_CRITTER && !CrMngr.GetProto( mobj.ProtoId ) )
                         {
                             WriteLog( "Critter prototype '%s' (%u) not found.\n", proto_name, ivalue );
-                            errors++;
+                            fail = true;
                         }
                         else if( mobj.MapObjType != MAP_OBJECT_CRITTER && !ItemMngr.GetProtoItem( mobj.ProtoId ) )
                         {
                             WriteLog( "Item prototype '%s' (%u) not found.\n", proto_name, ivalue );
-                            errors++;
+                            fail = true;
                         }
                     }
                     else if( field == "ProtoName" )
@@ -368,12 +370,12 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                         if( mobj.MapObjType == MAP_OBJECT_CRITTER && !CrMngr.GetProto( mobj.ProtoId ) )
                         {
                             WriteLog( "Critter prototype '%s' not found.\n", svalue );
-                            errors++;
+                            fail = true;
                         }
                         else if( mobj.MapObjType != MAP_OBJECT_CRITTER && !ItemMngr.GetProtoItem( mobj.ProtoId ) )
                         {
                             WriteLog( "Item prototype '%s' not found.\n", svalue );
-                            errors++;
+                            fail = true;
                         }
                     }
                     else if( field == "MapX" )
@@ -440,12 +442,12 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                                 if( !mobj.Props )
                                     mobj.AllocateProps();
                                 #ifndef FONLINE_MAPPER
-                                Property* prop = Critter::PropertiesRegistrator->Find( svalue );
-                                mobj.Props->push_back( prop ? prop->GetEnumValue() : -1 );
-                                if( !prop )
+                                cur_prop = Critter::PropertiesRegistrator->Find( svalue );
+                                mobj.Props->push_back( cur_prop ? cur_prop->GetEnumValue() : -1 );
+                                if( !cur_prop )
                                 {
-                                    WriteLog( "Critter property<%s> not found.\n", svalue );
-                                    errors++;
+                                    WriteLog( "Critter property '%s' not found.\n", svalue );
+                                    fail = true;
                                 }
                                 #else
                                 mobj.Props->push_back( ScriptString::Create( svalue ) );
@@ -454,7 +456,20 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                             else if( mobj.Props && mobj.Props->size() % 2 == 1 )
                             {
                                 #ifndef FONLINE_MAPPER
-                                mobj.Props->push_back( (int) ConvertParamValue( svalue ) );
+                                if( cur_prop )
+                                {
+                                    if( cur_prop->IsHash() )
+                                        mobj.Props->push_back( Str::GetHash( svalue ) );
+                                    else if( cur_prop->IsEnum() )
+                                        mobj.Props->push_back( Script::GetEnumValue( cur_prop->GetTypeName(), svalue, fail ) );
+                                    else
+                                        mobj.Props->push_back( ConvertParamValue( svalue, fail ) );
+                                    cur_prop = NULL;
+                                }
+                                else
+                                {
+                                    mobj.Props->push_back( 0 );
+                                }
                                 #else
                                 mobj.Props->push_back( ScriptString::Create( svalue ) );
                                 #endif
@@ -498,7 +513,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                                 mobj.MItem.ItemSlot = ivalue;
                             else if( field == "Item_AmmoPid" )
                             #ifndef FONLINE_MAPPER
-                                mobj.MItem.AmmoPid = (hash) ConvertParamValue( svalue );
+                                mobj.MItem.AmmoPid = Str::GetHash( svalue );
                             #else
                                 mobj.MItem.AmmoPid = ScriptString::Create( svalue );
                             #endif
@@ -565,7 +580,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                                 mobj.MScenery.Param[ 4 ] = ivalue;
                             else if( field == "Scenery_ToMap" || field == "Scenery_ToMapPid" )
                             #ifndef FONLINE_MAPPER
-                                mobj.MScenery.ToMap = (hash) ConvertParamValue( svalue );
+                                mobj.MScenery.ToMap = Str::GetHash( svalue );
                             #else
                                 mobj.MScenery.ToMap = ScriptString::Create( svalue );
                             #endif
@@ -581,7 +596,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             }
         }
         delete[] objects_str;
-        if( errors )
+        if( fail )
             return false;
     }
 

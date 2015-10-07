@@ -51,7 +51,7 @@ public:
     void GetBinaryData( UCharVec& data );
     bool LoadFromBinaryData( const UCharVec& data );
     bool LoadFromFile( const char* fname, int path_type );
-    void LoadFromString( const char* str, uint str_len );
+    bool LoadFromString( const char* str, uint str_len );
     bool SaveToFile( const char* fname, int path_type );
     void Clear();
 

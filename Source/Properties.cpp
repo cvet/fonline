@@ -672,6 +672,11 @@ const char* Property::GetName()
     return propName.c_str();
 }
 
+const char* Property::GetTypeName()
+{
+    return typeName.c_str();
+}
+
 uint Property::GetRegIndex()
 {
     return regIndex;
@@ -705,6 +710,16 @@ bool Property::IsPOD()
 bool Property::IsDict()
 {
     return dataType == Property::Dict;
+}
+
+bool Property::IsHash()
+{
+    return isHash;
+}
+
+bool Property::IsEnum()
+{
+    return isEnumDataType;
 }
 
 bool Property::IsReadable()
@@ -1239,7 +1254,7 @@ bool Properties::Load( void* file, uint version )
     return true;
 }
 
-bool Properties::LoadFromText( const char* text, hash* pid /* = NULL */ )
+bool Properties::LoadFromText( const char* text )
 {
     bool      is_error = false;
     IniParser ini;
@@ -1251,12 +1266,6 @@ bool Properties::LoadFromText( const char* text, hash* pid /* = NULL */ )
         const char* key = it->c_str();
         char        value[ MAX_FOTEXT ];
         ini.GetStr( key, "", value );
-
-        if( pid && !*pid && Str::Compare( key, "ProtoId" ) )
-        {
-            *pid = (hash) ConvertParamValue( value );
-            continue;
-        }
 
         Property* prop = registrator->Find( key );
         if( !prop )
@@ -1271,45 +1280,24 @@ bool Properties::LoadFromText( const char* text, hash* pid /* = NULL */ )
             uchar pod[ 8 ];
             if( prop->isEnumDataType )
             {
-                int              enum_value = 0;
-                bool             enum_found = false;
-                asIScriptEngine* engine = Script::GetEngine();
-                RUNTIME_ASSERT( engine );
-                for( asUINT i = 0, j = engine->GetEnumCount(); i < j; i++ )
-                {
-                    int         enum_type_id;
-                    const char* enum_name = engine->GetEnumByIndex( i, &enum_type_id );
-                    if( Str::Compare( enum_name, prop->typeName.c_str() ) )
-                    {
-                        for( asUINT k = 0, l = engine->GetEnumValueCount( enum_type_id ); k < l; k++ )
-                        {
-                            const char* enum_value_name = engine->GetEnumValueByIndex( enum_type_id, k, &enum_value );
-                            if( Str::Compare( enum_value_name, value ) )
-                            {
-                                enum_found = true;
-                                break;
-                            }
-                        }
-                        break;
-                    }
-                }
-                if( !enum_found )
-                {
+                *(int*) pod = Script::GetEnumValue( prop->typeName.c_str(), value, is_error );
+                if( is_error )
                     WriteLog( "Value '%s' of enum '%s' in property '%s' not found.\n", value, prop->typeName.c_str(), key );
-                    is_error = true;
-                }
-                *(int*) pod = enum_value;
+            }
+            else if( prop->isHash )
+            {
+                *(hash*) pod = Str::GetHash( value );
             }
             else
             {
                 if( prop->baseSize == 1 )
-                    *(char*) pod = (char) ConvertParamValue( value );
+                    *(char*) pod = (char) ConvertParamValue( value, is_error );
                 else if( prop->baseSize == 2 )
-                    *(short*) pod = (short) ConvertParamValue( value );
+                    *(short*) pod = (short) ConvertParamValue( value, is_error );
                 else if( prop->baseSize == 4 )
-                    *(int*) pod = (int) ConvertParamValue( value );
+                    *(int*) pod = (int) ConvertParamValue( value, is_error );
                 else if( prop->baseSize == 8 )
-                    *(int64*) pod = (int64) ConvertParamValue( value );
+                    *(int64*) pod = (int64) ConvertParamValue( value, is_error );
                 else
                     RUNTIME_ASSERT( !"Unreachable place" );
             }
@@ -1420,14 +1408,14 @@ bool PropertyRegistrator::Init()
     int result = engine->RegisterEnum( enum_type.c_str() );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register entity property enum<%s> fail, error<%d>.\n", enum_type.c_str(), result );
+        WriteLogF( _FUNC_, " - Register entity property enum '%s' fail, error %d.\n", enum_type.c_str(), result );
         return false;
     }
 
     result = engine->RegisterEnumValue( enum_type.c_str(), "Invalid", 0 );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register entity property enum<%s::Invalid> zero value fail, error<%d>.\n", enum_type.c_str(), result );
+        WriteLogF( _FUNC_, " - Register entity property enum '%s::Invalid' zero value fail, error %d.\n", enum_type.c_str(), result );
         return false;
     }
 
@@ -1436,7 +1424,7 @@ bool PropertyRegistrator::Init()
     result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Properties::GetValueAsInt ), asCALL_CDECL_OBJFIRST );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register entity method<%s> fail, error<%d>.\n", decl, result );
+        WriteLogF( _FUNC_, " - Register entity method '%s' fail, error %d.\n", decl, result );
         return false;
     }
 
@@ -1444,7 +1432,7 @@ bool PropertyRegistrator::Init()
     result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Properties::SetValueAsInt ), asCALL_CDECL_OBJFIRST );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register entity method<%s> fail, error<%d>.\n", decl, result );
+        WriteLogF( _FUNC_, " - Register entity method '%s' fail, error %d.\n", decl, result );
         return false;
     }
 
@@ -1483,7 +1471,7 @@ Property* PropertyRegistrator::Register(
     int type_id = engine->GetTypeIdByDecl( type_name );
     if( type_id < 0 )
     {
-        WriteLogF( _FUNC_, " - Invalid type<%s>.\n", type_name );
+        WriteLogF( _FUNC_, " - Invalid type '%s'.\n", type_name );
         return NULL;
     }
 
@@ -1501,7 +1489,7 @@ Property* PropertyRegistrator::Register(
     bool               is_dict_of_array_of_string = false;
     if( type_id & asTYPEID_OBJHANDLE )
     {
-        WriteLogF( _FUNC_, " - Invalid property type<%s>, handles not allowed.\n", type_name );
+        WriteLogF( _FUNC_, " - Invalid property type '%s', handles not allowed.\n", type_name );
         return NULL;
     }
     else if( !( type_id & asTYPEID_MASK_OBJECT ) )
@@ -1512,14 +1500,14 @@ Property* PropertyRegistrator::Register(
         int primitive_size = engine->GetSizeOfPrimitiveType( type_id );
         if( primitive_size <= 0 )
         {
-            WriteLogF( _FUNC_, " - Invalid property POD type<%s>.\n", type_name );
+            WriteLogF( _FUNC_, " - Invalid property POD type '%s'.\n", type_name );
             return NULL;
         }
 
         data_size = (uint) primitive_size;
         if( data_size != 1 && data_size != 2 && data_size != 4 && data_size != 8 )
         {
-            WriteLogF( _FUNC_, " - Invalid size of property POD type<%s>, size<%d>.\n", type_name, data_size );
+            WriteLogF( _FUNC_, " - Invalid size of property POD type '%s', size %d.\n", type_name, data_size );
             return NULL;
         }
 
@@ -1543,7 +1531,7 @@ Property* PropertyRegistrator::Register(
         is_array_of_string = ( !is_array_of_pod && Str::Compare( as_obj_type->GetSubType()->GetName(), "string" ) );
         if( !is_array_of_pod && !is_array_of_string )
         {
-            WriteLogF( _FUNC_, " - Invalid property type<%s>, array elements must have POD/string type.\n", type_name );
+            WriteLogF( _FUNC_, " - Invalid property type '%s', array elements must have POD/string type.\n", type_name );
             return NULL;
         }
     }
@@ -1554,7 +1542,7 @@ Property* PropertyRegistrator::Register(
 
         if( as_obj_type->GetSubTypeId( 0 ) & asTYPEID_MASK_OBJECT )
         {
-            WriteLogF( _FUNC_, " - Invalid property type<%s>, dict key must have POD type.\n", type_name );
+            WriteLogF( _FUNC_, " - Invalid property type '%s', dict key must have POD type.\n", type_name );
             return NULL;
         }
 
@@ -1568,14 +1556,14 @@ Property* PropertyRegistrator::Register(
             bool is_dict_array_of_pod = !( value_sub_type->GetSubTypeId() & asTYPEID_MASK_OBJECT );
             if( !is_dict_of_string && !is_dict_array_of_pod && !is_dict_of_array_of_string )
             {
-                WriteLogF( _FUNC_, " - Invalid property type<%s>, dict value must have POD/string type or array of POD/string type.\n", type_name );
+                WriteLogF( _FUNC_, " - Invalid property type '%s', dict value must have POD/string type or array of POD/string type.\n", type_name );
                 return NULL;
             }
         }
     }
     else
     {
-        WriteLogF( _FUNC_, " - Invalid property type<%s>.\n", type_name );
+        WriteLogF( _FUNC_, " - Invalid property type '%s'.\n", type_name );
         return NULL;
     }
 
@@ -1588,7 +1576,7 @@ Property* PropertyRegistrator::Register(
         ot->GetProperty( i, &n );
         if( Str::Compare( n, name ) )
         {
-            WriteLogF( _FUNC_, " - Trying to register already registered property<%s>.\n", name );
+            WriteLogF( _FUNC_, " - Trying to register already registered property '%s'.\n", name );
             return NULL;
         }
     }
@@ -1630,7 +1618,7 @@ Property* PropertyRegistrator::Register(
             result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< int64 >, (Entity*), int64 ), asCALL_THISCALL_OBJFIRST, prop );
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Register entity property<%s> getter fail, error<%d>.\n", name, result );
+            WriteLogF( _FUNC_, " - Register entity property '%s' getter fail, error %d.\n", name, result );
             return NULL;
         }
     }
@@ -1653,7 +1641,7 @@ Property* PropertyRegistrator::Register(
             result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< int64 >, ( Entity *, int64 ), void ), asCALL_THISCALL_OBJFIRST, prop );
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Register entity property<%s> setter fail, error<%d>.\n", name, result );
+            WriteLogF( _FUNC_, " - Register entity property '%s' setter fail, error %d.\n", name, result );
             return NULL;
         }
     }
@@ -1665,7 +1653,7 @@ Property* PropertyRegistrator::Register(
     int  result = engine->RegisterEnumValue( enumTypeName.c_str(), name, enum_value );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register entity property enum<%s::%s> value<%d> fail, error<%d>.\n", enumTypeName.c_str(), name, enum_value, result );
+        WriteLogF( _FUNC_, " - Register entity property enum '%s::%s' value %d fail, error %d.\n", enumTypeName.c_str(), name, enum_value, result );
         return NULL;
     }
 
@@ -1686,21 +1674,21 @@ Property* PropertyRegistrator::Register(
             asIObjectType* enum_array_type = engine->GetObjectTypeByDecl( decl );
             if( !enum_array_type )
             {
-                WriteLogF( _FUNC_, " - Invalid type for property group<%s>.\n", decl );
+                WriteLogF( _FUNC_, " - Invalid type for property group '%s'.\n", decl );
                 return NULL;
             }
 
             group_array = ScriptArray::Create( enum_array_type );
             if( !enum_array_type )
             {
-                WriteLogF( _FUNC_, " - Can not create array type for property group<%s>.\n", decl );
+                WriteLogF( _FUNC_, " - Can not create array type for property group '%s'.\n", decl );
                 return NULL;
             }
 
             int result = engine->RegisterGlobalProperty( full_decl, group_array );
             if( result < 0 )
             {
-                WriteLogF( _FUNC_, " - Register entity property group<%s> fail, error<%d>.\n", full_decl, result );
+                WriteLogF( _FUNC_, " - Register entity property group '%s' fail, error %d.\n", full_decl, result );
                 return NULL;
             }
 
@@ -1791,6 +1779,7 @@ Property* PropertyRegistrator::Register(
     prop->dataType = data_type;
     prop->accessType = access;
     prop->asObjType = as_obj_type;
+    prop->isHash = Str::Compare( type_name, "hash" );
     prop->isIntDataType = is_int_data_type;
     prop->isSignedIntDataType = is_signed_int_data_type;
     prop->isFloatDataType = is_float_data_type;

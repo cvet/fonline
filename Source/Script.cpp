@@ -671,6 +671,8 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
         errors++;
     #endif
 
+    CacheEnumValues();
+
     if( errors )
     {
         WriteLog( "Reload scripts fail.\n" );
@@ -1889,6 +1891,79 @@ string Script::GetScriptFuncName( hash func_num )
     if( !func )
         return "";
     return string( func->GetModuleName() ).append( "@" ).append( func->GetName() );
+}
+
+bool Script::CacheEnumValues()
+{
+    EngineData* edata = (EngineData*) Engine->GetUserData();
+    auto&       cached_enums = edata->CachedEnums;
+    cached_enums.clear();
+    for( asUINT i = 0, j = Engine->GetEnumCount(); i < j; i++ )
+    {
+        int                enum_type_id;
+        const char*        enum_name = Engine->GetEnumByIndex( i, &enum_type_id );
+        map< string, int > enum_values;
+        for( asUINT k = 0, l = Engine->GetEnumValueCount( enum_type_id ); k < l; k++ )
+        {
+            int         value;
+            const char* value_name = Engine->GetEnumValueByIndex( enum_type_id, k, &value );
+            enum_values.insert( PAIR( string( value_name ), value ) );
+        }
+        cached_enums.insert( PAIR( string( enum_name ), enum_values ) );
+    }
+
+    return true;
+}
+
+int Script::GetEnumValue( const char* enum_value_name, bool& fail )
+{
+    // Parse
+    const char* separator = Str::LastSubstring( enum_value_name, "::" );
+    if( !separator )
+    {
+        WriteLog( "Enum value separator '::' not found in '%s'.\n", enum_value_name );
+        fail = true;
+        return 0;
+    }
+
+    // Split to name
+    char enum_name[ MAX_FOTEXT ];
+    char value_name[ MAX_FOTEXT ];
+    Str::CopyCount( enum_name, enum_value_name, (uint) ( separator - enum_value_name ) );
+    Str::Copy( value_name, separator + 2 );
+    Str::Trim( enum_name );
+    Str::Trim( value_name );
+    if( !enum_name[ 0 ] || !value_name[ 0 ] )
+    {
+        WriteLog( "Invalid enum value '%s'.\n", enum_value_name );
+        fail = true;
+        return 0;
+    }
+
+    return GetEnumValue( enum_name, value_name, fail );
+}
+
+int Script::GetEnumValue( const char* enum_name, const char* value_name, bool& fail )
+{
+    EngineData* edata = (EngineData*) Engine->GetUserData();
+    const auto& cached_enums = edata->CachedEnums;
+
+    auto        it = cached_enums.find( enum_name );
+    if( it == cached_enums.end() )
+    {
+        WriteLog( "Enum '%s' not found.\n", enum_name );
+        fail = true;
+        return 0;
+    }
+
+    auto it_ = it->second.find( value_name );
+    if( it_ == it->second.end() )
+    {
+        WriteLog( "Value '%s' in enum '%s' not found.\n", value_name, enum_name );
+        fail = true;
+        return 0;
+    }
+    return it_->second;
 }
 
 /************************************************************************/

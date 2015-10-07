@@ -13,7 +13,6 @@
 #include "BufferManager.h"
 #include "Text.h"
 #include "CraftManager.h"
-#include "ConstantsManager.h"
 #include "ResourceManager.h"
 #include "CritterType.h"
 #include "DataMask.h"
@@ -585,7 +584,6 @@ public:
         static ScriptString* Global_ReplaceTextStr( ScriptString& text, ScriptString& replace, ScriptString& str );
         static ScriptString* Global_ReplaceTextInt( ScriptString& text, ScriptString& replace, int i );
         static ScriptString* Global_FormatTags( ScriptString& text, ScriptString* lexems );
-        static int           Global_GetSomeValue( int var );
         static void          Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop );
         static void          Global_LockScreenScroll( CritterCl* cr, bool unlock_if_same );
         static int           Global_GetFog( ushort zone_x, ushort zone_y );
@@ -602,10 +600,6 @@ public:
         static void          Global_AllowSlot( uchar index, bool enable_send );
         static void          Global_AddRegistrationProperty( int cr_prop );
         static bool          Global_LoadDataFile( ScriptString& dat_name );
-        static int           Global_GetConstantValue( int const_collection, ScriptString* name );
-        static ScriptString* Global_GetConstantName( int const_collection, int value );
-        static void          Global_AddConstant( int const_collection, ScriptString* name, int value );
-        static bool          Global_LoadConstants( int const_collection, ScriptString* file_name, int path_type );
         static bool          Global_IsCritterCanWalk( uint cr_type );
         static bool          Global_IsCritterCanRun( uint cr_type );
         static bool          Global_IsCritterCanRotate( uint cr_type );

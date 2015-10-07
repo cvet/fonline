@@ -1,6 +1,5 @@
 #include "Common.h"
 #include "CraftManager.h"
-#include "ConstantsManager.h"
 #include "FileManager.h"
 
 #ifdef FONLINE_SERVER
@@ -338,7 +337,10 @@ int CraftItem::SetStrParam( const char*& pstr_in, UIntVec& num_vec, IntVec& val_
         else if( *pstr_in == MRFIXIT_AND || *pstr_in == MRFIXIT_OR || *pstr_in == MRFIXIT_NEXT )
         {
             *pstr = '\0';
-            prop_value = (int) ConvertParamValue( str );
+            bool fail = false;
+            prop_value = ConvertParamValue( str, fail );
+            if( fail )
+                return -4;
 
             num_vec.push_back( prop_index );
             val_vec.push_back( prop_value );

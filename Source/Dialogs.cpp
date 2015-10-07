@@ -4,19 +4,13 @@
 #include "IniParser.h"
 #ifdef FONLINE_SERVER
 # include "Script.h"
-# include "ConstantsManager.h"
 # include "Critter.h"
 # include "Map.h"
 #endif
 
 DialogManager DlgMngr;
 
-int ReadValue( const char* str )
-{
-    return (int) ConvertParamValue( str );
-}
-
-int GetPropEnumIndex( const char* str, bool is_demand, int& type )
+int GetPropEnumIndex( const char* str, bool is_demand, int& type, bool& is_hash )
 {
     #ifdef FONLINE_SERVER
     Property* prop_global = GlobalVars::PropertiesRegistrator->Find( str );
@@ -77,6 +71,7 @@ int GetPropEnumIndex( const char* str, bool is_demand, int& type )
         return -1;
     }
 
+    is_hash = prop->IsHash();
     return prop->GetRegIndex();
     #else
     return 0;
@@ -230,7 +225,8 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
             LOAD_FAIL( "One of the lang section not found." );
 
         FOMsg temp_msg;
-        temp_msg.LoadFromString( lang_buf, Str::Length( lang_buf ) );
+        if( !temp_msg.LoadFromString( lang_buf, Str::Length( lang_buf ) ) )
+            LOAD_FAIL( "Load MSG fail." );
         SAFEDELA( lang_buf );
 
         if( temp_msg.GetStrNumUpper( 100000000 + ~DLGID_MASK ) )
@@ -419,7 +415,7 @@ load_false:
 
 DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand )
 {
-    int   errors = 0;
+    bool  fail = false;
     char  who = DR_WHO_PLAYER;
     char  oper = '=';
     int   values_count = 0;
@@ -431,12 +427,10 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     bool  no_recheck = false;
     bool  ret_value = false;
 
-    #define READ_VALUE    input >> svalue; ivalue = ReadValue( svalue )
-
     #ifdef FONLINE_NPCEDITOR
     string script_val[ 5 ];
     #else
-    int script_val[ 5 ] = { 0, 0, 0, 0, 0 };
+    int    script_val[ 5 ] = { 0, 0, 0, 0, 0 };
     #endif
 
     input >> type_str;
@@ -469,25 +463,30 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         if( who == DR_WHO_NONE )
         {
             WriteLog( "Invalid DR property who<%c>.\n", who );
-            errors++;
+            fail = true;
         }
 
         // Name
         input >> name;
-        id = (max_t) GetPropEnumIndex( name, is_demand, type );
+        bool is_hash = false;
+        id = (max_t) GetPropEnumIndex( name, is_demand, type, is_hash );
         if( id == (max_t) -1 )
-            errors++;
+            fail = true;
 
         // Operator
         input >> oper;
         if( !CheckOper( oper ) )
         {
             WriteLog( "Invalid DR property oper<%c>.\n", oper );
-            errors++;
+            fail = true;
         }
 
         // Value
-        READ_VALUE;
+        input >> svalue;
+        if( is_hash )
+            ivalue = (int) Str::GetHash( svalue );
+        else
+            ivalue = ConvertParamValue( svalue, fail );
     }
     break;
     case DR_ITEM:
@@ -498,7 +497,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         if( who == DR_WHO_NONE )
         {
             WriteLog( "Invalid DR item who<%c>.\n", who );
-            errors++;
+            fail = true;
         }
 
         // Name
@@ -514,7 +513,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
             else
             {
                 WriteLog( "Invalid DR item<%s>.\n", name );
-                errors++;
+                fail = true;
                 id = 0;
             }
         }
@@ -528,11 +527,12 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         if( !CheckOper( oper ) )
         {
             WriteLog( "Invalid DR item oper<%c>.\n", oper );
-            errors++;
+            fail = true;
         }
 
         // Value
-        READ_VALUE;
+        input >> svalue;
+        ivalue = (int) Str::GetHash( svalue );
     }
     break;
     case DR_SCRIPT:
@@ -549,7 +549,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
             { input >> value_str; val = value_str; \
             }
         #else
-        # define READ_SCRIPT_VALUE_( val )    { input >> value_str; val = ReadValue( value_str ); }
+        # define READ_SCRIPT_VALUE_( val )    { input >> value_str; val = ConvertParamValue( value_str, fail ); }
         #endif
         char value_str[ MAX_FOTEXT ];
         if( values_count > 0 )
@@ -566,7 +566,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         {
             WriteLog( "Invalid DR script values count %d.\n", values_count );
             values_count = 0;
-            errors++;
+            fail = true;
         }
 
         #ifdef FONLINE_SERVER
@@ -639,7 +639,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     if( input.fail() )
     {
         WriteLog( "DR parse fail.\n" );
-        errors++;
+        fail = true;
     }
 
     // Fill
@@ -666,7 +666,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     result.ValueExt[ 2 ] = script_val[ 2 ];
     result.ValueExt[ 3 ] = script_val[ 3 ];
     result.ValueExt[ 4 ] = script_val[ 4 ];
-    if( errors )
+    if( fail )
         return NULL;
     #endif
     return &result;

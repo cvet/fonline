@@ -146,11 +146,6 @@ bool FOMapper::Init()
     SprMngr.BuildFonts();
     SprMngr.SetDefaultFont( FONT_DEFAULT, COLOR_TEXT );
 
-    // Names
-    FileManager::SetWritePath( ServerWritePath );
-    ConstantsManager::Initialize( PT_SERVER_CONFIGS );
-    FileManager::SetWritePath( ClientWritePath );
-
     // Resource manager
     ResMngr.Refresh();
 
@@ -6617,40 +6612,6 @@ bool FOMapper::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
         return true;
     }
     return false;
-}
-
-int FOMapper::SScriptFunc::Global_GetConstantValue( int const_collection, ScriptString* name )
-{
-    if( !ConstantsManager::IsCollectionInit( const_collection ) )
-        SCRIPT_ERROR_R0( "Invalid namesFile arg." );
-    if( !name || !name->length() )
-        SCRIPT_ERROR_R0( "Invalid name arg." );
-    return ConstantsManager::GetValue( const_collection, name->c_str() );
-}
-
-ScriptString* FOMapper::SScriptFunc::Global_GetConstantName( int const_collection, int value )
-{
-    if( !ConstantsManager::IsCollectionInit( const_collection ) )
-        SCRIPT_ERROR_R0( "Invalid namesFile arg." );
-    return ScriptString::Create( ConstantsManager::GetName( const_collection, value ) );
-}
-
-void FOMapper::SScriptFunc::Global_AddConstant( int const_collection, ScriptString* name, int value )
-{
-    if( !ConstantsManager::IsCollectionInit( const_collection ) )
-        SCRIPT_ERROR_R( "Invalid namesFile arg." );
-    if( !name || !name->length() )
-        SCRIPT_ERROR_R( "Invalid name arg." );
-    ConstantsManager::AddConstant( const_collection, name->c_str(), value );
-}
-
-bool FOMapper::SScriptFunc::Global_LoadConstants( int const_collection, ScriptString* file_name, int path_type )
-{
-    if( const_collection < 0 || const_collection > 1000 )
-        SCRIPT_ERROR_R0( "Invalid namesFile arg." );
-    if( !file_name || !file_name->length() )
-        SCRIPT_ERROR_R0( "Invalid fileName arg." );
-    return ConstantsManager::AddCollection( const_collection, file_name->c_str(), path_type );
 }
 
 bool FOMapper::SScriptFunc::Global_LoadFont( int font_index, ScriptString& font_fname )

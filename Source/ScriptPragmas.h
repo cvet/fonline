@@ -20,6 +20,7 @@ class EntityPragma;
 class PropertyPragma;
 class MethodPragma;
 class ContentPragma;
+class EnumPragma;
 
 typedef vector< Preprocessor::PragmaInstance > Pragmas;
 
@@ -37,6 +38,7 @@ private:
     PropertyPragma*  propertyPragma;
     MethodPragma*    methodPragma;
     ContentPragma*   contentPragma;
+    EnumPragma*      enumPragma;
 
 public:
     ScriptPragmaCallback( int pragma_type );

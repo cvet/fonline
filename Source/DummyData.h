@@ -747,7 +747,6 @@ struct BindClass
     static void Global_MessageType()            {}
     static void Global_MessageMsgType()         {}
     static void Global_FormatTags()             {}
-    static void Global_GetSomeValue()           {}
     static void Global_LockScreenScroll()       {}
     static void Global_GetFog()                 {}
     static void Global_RefreshItemsCollection() {}
@@ -948,13 +947,9 @@ struct BindClass
     static void Global_ChangeZoom()         {}
     #endif
 
-    static void Global_GetProtoItem()     {}
-    static void Global_LoadDataFile()     {}
-    static void Global_GetConstantValue() {}
-    static void Global_GetConstantName()  {}
-    static void Global_AddConstant()      {}
-    static void Global_LoadConstants()    {}
-    static void Global_AllowSlot()        {}
+    static void Global_GetProtoItem() {}
+    static void Global_LoadDataFile() {}
+    static void Global_AllowSlot()    {}
 };
 
 #include "ScriptFunctions.h"

@@ -220,10 +220,11 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     }
 
     // Find passes count
+    bool fail = false;
     uint passes = 1;
     for( size_t i = 0; i < commands.size(); i++ )
         if( commands[ i ].size() >= 2 && Str::CompareCase( commands[ i ][ 0 ].c_str(), "Passes" ) )
-            passes = (uint) ConvertParamValue( commands[ i ][ 1 ].c_str() );
+            passes = ConvertParamValue( commands[ i ][ 1 ].c_str(), fail );
 
     // New effect
     Effect effect;
@@ -236,7 +237,6 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
             return NULL;
 
     // Process commands
-    int set_errors = 0;
     for( size_t i = 0; i < commands.size(); i++ )
     {
         static auto get_gl_blend_func = [] (const char* s)
@@ -291,7 +291,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         StrVec& tokens = commands[ i ];
         if( tokens[ 0 ] == "Pass" && tokens.size() >= 3 )
         {
-            uint pass = (uint) ConvertParamValue( tokens[ 1 ].c_str() );
+            uint pass = ConvertParamValue( tokens[ 1 ].c_str(), fail );
             if( pass < passes )
             {
                 EffectPass& effect_pass = effect.Passes[ pass ];
@@ -301,14 +301,14 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
                     effect_pass.BlendFuncParam1 = get_gl_blend_func( tokens[ 3 ].c_str() );
                     effect_pass.BlendFuncParam2 = get_gl_blend_func( tokens[ 4 ].c_str() );
                     if( effect_pass.BlendFuncParam1 == -1 || effect_pass.BlendFuncParam2 == -1 )
-                        set_errors++;
+                        fail = true;
                 }
                 else if( tokens[ 2 ] == "BlendEquation" && tokens.size() >= 4 )
                 {
                     effect_pass.IsNeedProcess = effect_pass.IsChangeStates = true;
                     effect_pass.BlendEquation = get_gl_blend_equation( tokens[ 3 ].c_str() );
                     if( effect_pass.BlendEquation == -1 )
-                        set_errors++;
+                        fail = true;
                 }
                 else if( tokens[ 2 ] == "Shadow" )
                 {
@@ -316,16 +316,16 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
                 }
                 else
                 {
-                    set_errors++;
+                    fail = true;
                 }
             }
             else
             {
-                set_errors++;
+                fail = true;
             }
         }
     }
-    if( set_errors )
+    if( fail )
     {
         WriteLogF( _FUNC_, " - Invalid commands in effect '%s'.\n", fname );
         return NULL;

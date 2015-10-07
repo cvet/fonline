@@ -83,6 +83,7 @@ public:
     };
 
     const char*    GetName();
+    const char*    GetTypeName();
     uint           GetRegIndex();
     int            GetEnumValue();
     AccessType     GetAccess();
@@ -90,6 +91,8 @@ public:
     asIObjectType* GetASObjectType();
     bool           IsPOD();
     bool           IsDict();
+    bool           IsHash();
+    bool           IsEnum();
     bool           IsReadable();
     bool           IsWritable();
     void           SetSendIgnore( Entity* entity );
@@ -141,6 +144,7 @@ private:
     string         typeName;
     DataType       dataType;
     asIObjectType* asObjType;
+    bool           isHash;
     bool           isIntDataType;
     bool           isSignedIntDataType;
     bool           isFloatDataType;
@@ -196,7 +200,7 @@ public:
     void        RestoreData( UCharVecVec& all_data );
     void        Save( void ( * save_func )( void*, size_t ) );
     bool        Load( void* file, uint version );
-    bool        LoadFromText( const char* text, hash* pid = NULL );
+    bool        LoadFromText( const char* text );
     static int  GetValueAsInt( Entity* entity, int enum_value );
     static void SetValueAsInt( Entity* entity, int enum_value, int value );
     static bool SetValueAsIntByName( Entity* entity, const char* enum_name, int value );

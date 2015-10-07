@@ -11,7 +11,6 @@
 #include "ItemManager.h"
 #include "Dialogs.h"
 #include "CraftManager.h"
-#include "ConstantsManager.h"
 #include "CritterType.h"
 #include "NetProtocol.h"
 #include "Access.h"
@@ -812,10 +811,6 @@ public:
         static void          Global_AllowSlot( uchar index, bool enable_send );
         static void          Global_AddRegistrationProperty( int cr_prop );
         static bool          Global_LoadDataFile( ScriptString& dat_name );
-        static int           Global_GetConstantValue( int const_collection, ScriptString* name );
-        static ScriptString* Global_GetConstantName( int const_collection, int value );
-        static void          Global_AddConstant( int const_collection, ScriptString* name, int value );
-        static bool          Global_LoadConstants( int const_collection, ScriptString* file_name, int path_type );
         // static uint Global_GetVersion();
         static bool          Global_IsCritterCanWalk( uint cr_type );
         static bool          Global_IsCritterCanRun( uint cr_type );

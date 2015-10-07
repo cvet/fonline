@@ -9,7 +9,6 @@
 #include "Item.h"
 #include "CritterCl.h"
 #include "Text.h"
-#include "ConstantsManager.h"
 #include "CritterData.h"
 #include "CritterManager.h"
 #include "ResourceManager.h"
@@ -488,10 +487,6 @@ public:
         static void          Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
         static ScriptString* Global_GetIfaceIniStr( ScriptString& key );
         static bool          Global_LoadDataFile( ScriptString& dat_name );
-        static int           Global_GetConstantValue( int const_collection, ScriptString* name );
-        static ScriptString* Global_GetConstantName( int const_collection, int value );
-        static void          Global_AddConstant( int const_collection, ScriptString* name, int value );
-        static bool          Global_LoadConstants( int const_collection, ScriptString* file_name, int path_type );
         static bool          Global_LoadFont( int font, ScriptString& font_fname );
         static void          Global_SetDefaultFont( int font, uint color );
         static void          Global_MouseClick( int x, int y, int button, int cursor );

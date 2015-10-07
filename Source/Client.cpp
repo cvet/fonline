@@ -369,9 +369,6 @@ bool FOClient::Init()
     WaitDraw();
     SprMngr.EndScene();
 
-    // Constants
-    ConstantsManager::Initialize( PT_DATA );
-
     // Base ini options
     if( !AppendIfaceIni( NULL ) )
         return false;
@@ -9046,6 +9043,7 @@ bool FOClient::ReloadScripts()
         errors++;
     if( !Script::RebindFunctions() )
         errors++;
+    Script::CacheEnumValues();
 
     // Bind reserved functions
     ReservedScriptFunction BindGameFunc[] =
@@ -10423,17 +10421,6 @@ ScriptString* FOClient::SScriptFunc::Global_FormatTags( ScriptString& text, Scri
     return ScriptString::Create( buf );
 }
 
-int FOClient::SScriptFunc::Global_GetSomeValue( int var )
-{
-    switch( var )
-    {
-    case 0:
-    case 1:
-        break;
-    }
-    return 0;
-}
-
 void FOClient::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop )
 {
     if( hx >= Self->HexMngr.GetMaxHexX() || hy >= Self->HexMngr.GetMaxHexY() )
@@ -10926,45 +10913,9 @@ bool FOClient::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
     if( FileManager::LoadDataFile( dat_name.c_str() ) )
     {
         ResMngr.Refresh();
-        ConstantsManager::Initialize( PT_DATA );
         return true;
     }
     return false;
-}
-
-int FOClient::SScriptFunc::Global_GetConstantValue( int const_collection, ScriptString* name )
-{
-    if( !ConstantsManager::IsCollectionInit( const_collection ) )
-        SCRIPT_ERROR_R0( "Invalid namesFile arg." );
-    if( !name || !name->length() )
-        SCRIPT_ERROR_R0( "Invalid name arg." );
-    return ConstantsManager::GetValue( const_collection, name->c_str() );
-}
-
-ScriptString* FOClient::SScriptFunc::Global_GetConstantName( int const_collection, int value )
-{
-    if( !ConstantsManager::IsCollectionInit( const_collection ) )
-        SCRIPT_ERROR_R0( "Invalid namesFile arg." );
-    const char* name = ConstantsManager::GetName( const_collection, value );
-    return ScriptString::Create( name ? name : "" );
-}
-
-void FOClient::SScriptFunc::Global_AddConstant( int const_collection, ScriptString* name, int value )
-{
-    if( !ConstantsManager::IsCollectionInit( const_collection ) )
-        SCRIPT_ERROR_R( "Invalid namesFile arg." );
-    if( !name || !name->length() )
-        SCRIPT_ERROR_R( "Invalid name arg." );
-    ConstantsManager::AddConstant( const_collection, name->c_str(), value );
-}
-
-bool FOClient::SScriptFunc::Global_LoadConstants( int const_collection, ScriptString* file_name, int path_type )
-{
-    if( const_collection < 0 || const_collection > 1000 )
-        SCRIPT_ERROR_R0( "Invalid namesFile arg." );
-    if( !file_name || !file_name->length() )
-        SCRIPT_ERROR_R0( "Invalid fileName arg." );
-    return ConstantsManager::AddCollection( const_collection, file_name->c_str(), path_type );
 }
 
 bool FOClient::SScriptFunc::Global_IsCritterCanWalk( uint cr_type )

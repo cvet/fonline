@@ -136,24 +136,24 @@ void SetCommandLine( uint argc, char** argv );
 extern Randomizer DefaultRandomizer;
 int Random( int minimum, int maximum );
 
-int   Procent( int full, int peace );
-uint  NumericalNumber( uint num );
-uint  DistSqrt( int x1, int y1, int x2, int y2 );
-uint  DistGame( int x1, int y1, int x2, int y2 );
-int   GetNearDir( int x1, int y1, int x2, int y2 );
-int   GetFarDir( int x1, int y1, int x2, int y2 );
-int   GetFarDir( int x1, int y1, int x2, int y2, float offset );
-bool  CheckDist( ushort x1, ushort y1, ushort x2, ushort y2, uint dist );
-int   ReverseDir( int dir );
-void  GetStepsXY( float& sx, float& sy, int x1, int y1, int x2, int y2 );
-void  ChangeStepsXY( float& sx, float& sy, float deq );
-bool  MoveHexByDir( ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy );
-void  MoveHexByDirUnsafe( int& hx, int& hy, uchar dir );
-bool  IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, int y2 );
-void  RestoreMainDirectory();
-void  ShowMessage( const char* message );
-uint  GetDoubleClickTicks();
-int64 ConvertParamValue( const char* str );
+int  Procent( int full, int peace );
+uint NumericalNumber( uint num );
+uint DistSqrt( int x1, int y1, int x2, int y2 );
+uint DistGame( int x1, int y1, int x2, int y2 );
+int  GetNearDir( int x1, int y1, int x2, int y2 );
+int  GetFarDir( int x1, int y1, int x2, int y2 );
+int  GetFarDir( int x1, int y1, int x2, int y2, float offset );
+bool CheckDist( ushort x1, ushort y1, ushort x2, ushort y2, uint dist );
+int  ReverseDir( int dir );
+void GetStepsXY( float& sx, float& sy, int x1, int y1, int x2, int y2 );
+void ChangeStepsXY( float& sx, float& sy, float deq );
+bool MoveHexByDir( ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy );
+void MoveHexByDirUnsafe( int& hx, int& hy, uchar dir );
+bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, int y2 );
+void RestoreMainDirectory();
+void ShowMessage( const char* message );
+uint GetDoubleClickTicks();
+int  ConvertParamValue( const char* str, bool& fail );
 
 // Containers comparator template
 template< class T >

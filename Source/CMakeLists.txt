@@ -191,7 +191,6 @@ set( COMMON_SOURCE
 )
 set( SERVER_CLIENT_MAPPER_SOURCE
 	${Assimp_SOURCE}
-	ConstantsManager.cpp ConstantsManager.h
 	CritterManager.h
 	CritterType.cpp CritterType.h
 	GraphicStructures.cpp GraphicStructures.h

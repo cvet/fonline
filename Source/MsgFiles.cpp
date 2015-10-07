@@ -265,12 +265,13 @@ bool FOMsg::LoadFromFile( const char* fname, int path_type )
     if( !file.LoadFile( fname, path_type ) )
         return false;
 
-    LoadFromString( (char*) file.GetBuf(), file.GetFsize() );
-    return true;
+    return LoadFromString( (char*) file.GetBuf(), file.GetFsize() );
 }
 
-void FOMsg::LoadFromString( const char* str, uint str_len )
+bool FOMsg::LoadFromString( const char* str, uint str_len )
 {
+    bool  fail = false;
+
     char* str_copy = new char[ str_len + 1 ];
     memcpy( str_copy, str, str_len );
     str_copy[ str_len ] = 0;
@@ -305,7 +306,7 @@ void FOMsg::LoadFromString( const char* str, uint str_len )
         pbuf++;
 
         // Parse number
-        uint num1 = (uint) ConvertParamValue( num1_begin );
+        uint num1 = (uint) ( Str::IsNumber( num1_begin ) ? Str::AtoI( num1_begin ) : Str::GetHash( num1_begin ) );
 
         // Skip '{'
         Str::GoTo( pbuf, '{', true );
@@ -321,7 +322,7 @@ void FOMsg::LoadFromString( const char* str, uint str_len )
         pbuf++;
 
         // Parse number
-        uint num2 = ( num2_begin[ 0 ] ? (uint) ConvertParamValue( num2_begin ) : 0 );
+        uint num2 = ( num2_begin[ 0 ] ? ( Str::IsNumber( num2_begin ) ? Str::AtoI( num2_begin ) : Str::GetHash( num2_begin ) ) : 0 );
 
         // Goto '{'
         Str::GoTo( pbuf, '{', true );
@@ -342,6 +343,7 @@ void FOMsg::LoadFromString( const char* str, uint str_len )
     }
 
     SAFEDELA( str_copy );
+    return !fail;
 }
 
 bool FOMsg::SaveToFile( const char* fname, int path_type )
@@ -412,6 +414,7 @@ LanguagePack::LanguagePack()
 bool LanguagePack::LoadFromFiles( const char* lang_name )
 {
     memcpy( NameStr, lang_name, 4 );
+    bool            fail = false;
 
     FilesCollection msg_files( "msg" );
     while( msg_files.IsNextFile() )
@@ -431,7 +434,11 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
                 FileManager::EraseExtension( name_ );
                 if( Str::CompareCase( name_, name ) )
                 {
-                    Msg[ i ].LoadFromString( (char*) msg_file.GetBuf(), msg_file.GetFsize() );
+                    if( !Msg[ i ].LoadFromString( (char*) msg_file.GetBuf(), msg_file.GetFsize() ) )
+                    {
+                        WriteLogF( _FUNC_, " - Invalid MSG file '%s'.\n", name_with_path );
+                        fail = true;
+                    }
                     break;
                 }
             }
@@ -441,7 +448,7 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
     if( Msg[ TEXTMSG_GAME ].GetSize() == 0 )
         WriteLogF( _FUNC_, " - Unable to load '%s' from file.\n", TextMsgFileName[ TEXTMSG_GAME ] );
 
-    IsAllMsgLoaded = ( Msg[ TEXTMSG_GAME ].GetSize() > 0 );
+    IsAllMsgLoaded = ( Msg[ TEXTMSG_GAME ].GetSize() > 0 && !fail );
     return IsAllMsgLoaded;
 }
 

@@ -42,7 +42,7 @@ public:
     CLASS_PROPERTY( hash, HandsItemProtoId );
     CLASS_PROPERTY( uchar, HandsItemMode );
     // Exclude
-    CLASS_PROPERTY( hash, BaseCrType );         // Mapper character base type
+    CLASS_PROPERTY( int, BaseCrType );          // Mapper character base type
     CLASS_PROPERTY( int, Experience );          // Craft
     CLASS_PROPERTY( uint, TimeoutSkScience );   // Craft
     CLASS_PROPERTY( uint, TimeoutSkRepair );    // Craft
