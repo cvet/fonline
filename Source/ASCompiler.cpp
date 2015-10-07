@@ -21,7 +21,7 @@ int Compile( const char* target, FileManager& file, const char* path, const char
 // Server
 #define BIND_SERVER
 #define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line<" # x ">.\n" ); bind_errors++; }
+#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line " # x ".\n" ); bind_errors++; }
 namespace ServerBind
 {
     #include "DummyData.h"
@@ -39,7 +39,7 @@ namespace ServerBind
 #undef BIND_ASSERT
 #define BIND_CLIENT
 #define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line<" # x ">.\n" ); bind_errors++; }
+#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line " # x ".\n" ); bind_errors++; }
 namespace ClientBind
 {
     #include "DummyData.h"
@@ -57,7 +57,7 @@ namespace ClientBind
 #undef BIND_ASSERT
 #define BIND_MAPPER
 #define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line<" # x ">.\n" ); bind_errors++; }
+#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line " # x ".\n" ); bind_errors++; }
 namespace MapperBind
 {
     #include "DummyData.h"

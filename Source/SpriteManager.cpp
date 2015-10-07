@@ -499,7 +499,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         GL( status = glCheckFramebufferStatus( GL_FRAMEBUFFER ) );
         if( status != GL_FRAMEBUFFER_COMPLETE )
         {
-            WriteLogF( _FUNC_, " - Framebuffer not created, status<%08X>.\n", status );
+            WriteLogF( _FUNC_, " - Framebuffer not created, status %08X.\n", status );
             return NULL;
         }
     }
@@ -509,7 +509,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         GL( status = glCheckFramebufferStatusEXT( GL_FRAMEBUFFER_EXT ) );
         if( status != GL_FRAMEBUFFER_COMPLETE_EXT )
         {
-            WriteLogF( _FUNC_, " - FramebufferExt not created, status<%08X>.\n", status );
+            WriteLogF( _FUNC_, " - FramebufferExt not created, status %08X.\n", status );
             return NULL;
         }
     }

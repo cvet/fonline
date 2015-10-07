@@ -471,22 +471,22 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
         switch( error )
         {
         case OV_EREAD:
-            WriteLog( "<A read from media returned an error>.\n" );
+            WriteLog( "A read from media returned an error.\n" );
             break;
         case OV_ENOTVORBIS:
-            WriteLog( "<Bitstream does not contain any Vorbis data>.\n" );
+            WriteLog( "Bitstream does not contain any Vorbis data.\n" );
             break;
         case OV_EVERSION:
-            WriteLog( "<Vorbis version mismatch>.\n" );
+            WriteLog( "Vorbis version mismatch.\n" );
             break;
         case OV_EBADHEADER:
-            WriteLog( "<Invalid Vorbis bitstream header>.\n" );
+            WriteLog( "Invalid Vorbis bitstream header.\n" );
             break;
         case OV_EFAULT:
-            WriteLog( "<Internal logic fault; indicates a bug or heap/stack corruption>.\n" );
+            WriteLog( "Internal logic fault; indicates a bug or heap/stack corruption.\n" );
             break;
         default:
-            WriteLog( "<Unknown error code %d>.\n", error );
+            WriteLog( "Unknown error code %d.\n", error );
             break;
         }
         return false;

@@ -149,7 +149,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         int type;
         if( sscanf( args, "%d", &type ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <~gameinfo type>." );
+            logcb( "Invalid arguments. Example: gameinfo type." );
             break;
         }
         msg_len += sizeof( type );
@@ -165,7 +165,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char name[ MAX_FOTEXT ];
         if( sscanf( args, "%s", name ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <id name>." );
+            logcb( "Invalid arguments. Example: id name." );
             break;
         }
         uint name_size_utf8 = UTF8_BUF_SIZE( MAX_NAME );
@@ -185,7 +185,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         ushort hex_y;
         if( sscanf( args, "%u%hu%hu", &crid, &hex_x, &hex_y ) != 3 )
         {
-            logcb( "Invalid arguments. Example: <move crid hx hy>." );
+            logcb( "Invalid arguments. Example: move crid hx hy." );
             break;
         }
         msg_len += sizeof( crid ) + sizeof( hex_x ) + sizeof( hex_y );
@@ -203,7 +203,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         uint crid;
         if( sscanf( args, "%u", &crid ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <kill crid>." );
+            logcb( "Invalid arguments. Example: kill crid." );
             break;
         }
         msg_len += sizeof( crid );
@@ -219,7 +219,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         uint crid;
         if( sscanf( args, "%u", &crid ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <disconnect crid>." );
+            logcb( "Invalid arguments. Example: disconnect crid." );
             break;
         }
         msg_len += sizeof( crid );
@@ -242,7 +242,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         uint crid;
         if( sscanf( args, "%u", &crid ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <respawn crid>." );
+            logcb( "Invalid arguments. Example: respawn crid." );
             break;
         }
         msg_len += sizeof( crid );
@@ -260,7 +260,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         int  property_value;
         if( sscanf( args, "%u%s%d", &crid, property_name, &property_value ) != 3 )
         {
-            logcb( "Invalid arguments. Example: <prop crid prop_name value>." );
+            logcb( "Invalid arguments. Example: prop crid prop_name value." );
             break;
         }
         msg_len += sizeof( uint ) + sizeof( property_name ) + sizeof( int );
@@ -279,7 +279,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char pasw_access[ MAX_FOTEXT ];
         if( sscanf( args, "%s%s", name_access, pasw_access ) != 2 )
         {
-            logcb( "Invalid arguments. Example: <getaccess name password>." );
+            logcb( "Invalid arguments. Example: getaccess name password." );
             break;
         }
         Str::Replacement( name_access, '*', ' ' );
@@ -307,7 +307,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         uint   count;
         if( sscanf( args, "%hu%hu%s%u", &hex_x, &hex_y, proto_name, &count ) != 4 )
         {
-            logcb( "Invalid arguments. Example: <additem hx hy name count>." );
+            logcb( "Invalid arguments. Example: additem hx hy name count." );
             break;
         }
         hash pid = Str::GetHash( proto_name );
@@ -328,7 +328,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         uint count;
         if( sscanf( args, "%s%u", proto_name, &count ) != 2 )
         {
-            logcb( "Invalid arguments. Example: <additemself name count>." );
+            logcb( "Invalid arguments. Example: additemself name count." );
             break;
         }
         hash pid = Str::GetHash( proto_name );
@@ -349,7 +349,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char   proto_name[ MAX_FOTEXT ];
         if( sscanf( args, "%hd%hd%hhd%s", &hex_x, &hex_y, &dir, proto_name ) != 4 )
         {
-            logcb( "Invalid arguments. Example: <addnpc hx hy dir name>." );
+            logcb( "Invalid arguments. Example: addnpc hx hy dir name." );
             break;
         }
         hash pid = Str::GetHash( proto_name );
@@ -371,7 +371,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char   proto_name[ MAX_FOTEXT ];
         if( sscanf( args, "%hd%hd%s", &wx, &wy, proto_name ) != 3 )
         {
-            logcb( "Invalid arguments. Example: <addloc wx wy name>." );
+            logcb( "Invalid arguments. Example: addloc wx wy name." );
             break;
         }
         hash pid = Str::GetHash( proto_name );
@@ -397,7 +397,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char script_name[ MAX_FOTEXT ];
         if( sscanf( args, "%s", script_name ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <loadscript name>." );
+            logcb( "Invalid arguments. Example: loadscript name." );
             break;
         }
         script_name[ MAX_FOTEXT - 1 ] = 0;
@@ -423,7 +423,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         uint param0, param1, param2;
         if( sscanf( args, "%s%s%d%d%d", script_name, func_name, &param0, &param1, &param2 ) != 5 )
         {
-            logcb( "Invalid arguments. Example: <runscript module func param0 param1 param2>." );
+            logcb( "Invalid arguments. Example: runscript module func param0 param1 param2." );
             break;
         }
         script_name[ MAX_FOTEXT - 1 ] = 0;
@@ -452,7 +452,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char loc_name[ MAX_FOPATH ];
         if( sscanf( args, "%s", loc_name ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <loadlocation loc_name>." );
+            logcb( "Invalid arguments. Example: loadlocation loc_name." );
             break;
         }
         msg_len += sizeof( loc_name );
@@ -475,7 +475,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char map_name[ MAX_FOPATH ];
         if( sscanf( args, "%s", map_name ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <loadmap map_name>." );
+            logcb( "Invalid arguments. Example: loadmap map_name." );
             break;
         }
         msg_len += sizeof( map_name );
@@ -505,7 +505,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char dlg_name[ 128 ];
         if( sscanf( args, "%s", dlg_name ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <loaddialog name>." );
+            logcb( "Invalid arguments. Example: loaddialog name." );
             break;
         }
         dlg_name[ 127 ] = 0;
@@ -542,7 +542,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         int second;
         if( sscanf( args, "%d%d%d%d%d%d%d", &multiplier, &year, &month, &day, &hour, &minute, &second ) != 7 )
         {
-            logcb( "Invalid arguments. Example: <settime tmul year month day hour minute second>." );
+            logcb( "Invalid arguments. Example: settime tmul year month day hour minute second." );
             break;
         }
         msg_len += sizeof( multiplier ) + sizeof( year ) + sizeof( month ) + sizeof( day ) + sizeof( hour ) + sizeof( minute ) + sizeof( second );
@@ -575,7 +575,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
             Str::Copy( info, str_.str() );
         if( !Str::CompareCase( params, "add" ) && !Str::CompareCase( params, "add+" ) && !Str::CompareCase( params, "delete" ) && !Str::CompareCase( params, "list" ) )
         {
-            logcb( "Invalid arguments. Example: <ban [add,add+,delete,list] [user] [hours] [comment]>." );
+            logcb( "Invalid arguments. Example: ban [add,add+,delete,list] [user] [hours] [comment]." );
             break;
         }
         Str::Replacement( name, '*', ' ' );
@@ -612,7 +612,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char pass[ 128 ];
         if( sscanf( args, "%s", pass ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <deleteself user_password>." );
+            logcb( "Invalid arguments. Example: deleteself user_password." );
             break;
         }
         Str::Replacement( pass, '*', ' ' );
@@ -638,7 +638,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char new_pass[ MAX_FOTEXT ];
         if( sscanf( args, "%s%s", pass, new_pass ) != 2 )
         {
-            logcb( "Invalid arguments. Example: <changepassword current_password new_password>." );
+            logcb( "Invalid arguments. Example: changepassword current_password new_password." );
             break;
         }
         Str::Replacement( pass, '*', ' ' );
@@ -677,7 +677,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char flags[ 128 ];
         if( sscanf( args, "%s", flags ) != 1 )
         {
-            logcb( "Invalid arguments. Example: <log flag>. Valid flags: '+' attach, '-' detach, '--' detach all." );
+            logcb( "Invalid arguments. Example: log flag. Valid flags: '+' attach, '-' detach, '--' detach all." );
             break;
         }
         msg_len += 16;

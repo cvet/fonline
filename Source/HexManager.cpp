@@ -4061,7 +4061,7 @@ bool HexManager::ParseScenery( SceneryCl& scen )
 
     if( hx >= maxHexX || hy >= maxHexY )
     {
-        WriteLogF( _FUNC_, " - Invalid coord<%d,%d>.\n", hx, hy );
+        WriteLogF( _FUNC_, " - Invalid coord %d:%d.\n", hx, hy );
         return false;
     }
 

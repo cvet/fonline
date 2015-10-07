@@ -890,7 +890,7 @@ void FOServer::Net_Listen( void* )
         int result = deflateInit( &cl->Zstrm, Z_BEST_SPEED );
         if( result != Z_OK )
         {
-            WriteLogF( _FUNC_, " - Client Zlib deflateInit fail, error<%d, %s>.\n", result, zError( result ) );
+            WriteLogF( _FUNC_, " - Client Zlib deflateInit fail, error %d '%s'.\n", result, zError( result ) );
             closesocket( sock );
             delete cl;
             continue;

@@ -244,7 +244,7 @@ const char* GetWindowName();
 #  pragma comment( lib, "Winmm.lib" )
 #  pragma comment( lib, "Imm32.lib" )
 # endif
-# define GL( expr )             { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error<0x%08X>.\n", err__ ); ExitProcess( 0 ); } } }
+# define GL( expr )             { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLogF( _FUNC_, " - " # expr ", error 0x%08X.\n", err__ ); ExitProcess( 0 ); } } }
 
 extern bool OGL_version_2_0;
 extern bool OGL_vertex_buffer_object;

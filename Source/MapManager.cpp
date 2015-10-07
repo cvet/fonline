@@ -175,7 +175,7 @@ bool MapManager::LoadLocationsProtos()
         files_loaded++;
     }
 
-    WriteLog( "Load location and map prototypes complete, loaded<%u/%u>.\n", files_loaded, files.GetFilesCount() );
+    WriteLog( "Load location and map prototypes complete, loaded %u/%u.\n", files_loaded, files.GetFilesCount() );
     return files_loaded == files.GetFilesCount();
 }
 
@@ -1246,7 +1246,7 @@ bool MapManager::GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, us
 {
     if( !map || !map->GetId() )
     {
-        WriteLogF( _FUNC_, " - Map null ptr or zero id, pointer<%p>.\n", map );
+        WriteLogF( _FUNC_, " - Map null ptr or zero id, pointer '%p'.\n", map );
         return false;
     }
 

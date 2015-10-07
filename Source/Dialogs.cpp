@@ -113,7 +113,7 @@ bool DialogManager::LoadDialogs()
         files_loaded++;
     }
 
-    WriteLog( "Load dialogs complete, loaded<%u/%u>.\n", files_loaded, files.GetFilesCount() );
+    WriteLog( "Load dialogs complete, loaded %u/%u.\n", files_loaded, files.GetFilesCount() );
     return files_loaded == files.GetFilesCount();
 }
 
@@ -462,7 +462,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         who = GetWho( who );
         if( who == DR_WHO_NONE )
         {
-            WriteLog( "Invalid DR property who<%c>.\n", who );
+            WriteLog( "Invalid DR property who '%c'.\n", who );
             fail = true;
         }
 
@@ -477,7 +477,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         input >> oper;
         if( !CheckOper( oper ) )
         {
-            WriteLog( "Invalid DR property oper<%c>.\n", oper );
+            WriteLog( "Invalid DR property oper '%c'.\n", oper );
             fail = true;
         }
 
@@ -496,7 +496,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         who = GetWho( who );
         if( who == DR_WHO_NONE )
         {
-            WriteLog( "Invalid DR item who<%c>.\n", who );
+            WriteLog( "Invalid DR item who '%c'.\n", who );
             fail = true;
         }
 
@@ -526,7 +526,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         input >> oper;
         if( !CheckOper( oper ) )
         {
-            WriteLog( "Invalid DR item oper<%c>.\n", oper );
+            WriteLog( "Invalid DR item oper '%c'.\n", oper );
             fail = true;
         }
 

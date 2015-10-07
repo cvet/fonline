@@ -151,7 +151,7 @@ int main( int argc, char** argv )
         HANDLE      map_file = NULL;
         if( sscanf( ptr, "%p%p", &map_file, &SingleplayerClientProcess ) != 2 || !SingleplayerData.Attach( map_file ) )
         {
-            WriteLog( "Can't attach to mapped file<%p>.\n", map_file );
+            WriteLog( "Can't attach to mapped file '%p'.\n", map_file );
             return 0;
         }
         # else
