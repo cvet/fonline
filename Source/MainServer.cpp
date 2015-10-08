@@ -72,7 +72,7 @@ void ServiceMain( bool as_service );
 // Main
 int main( int argc, char** argv )
 {
-    RestoreMainDirectory();
+    FileManager::ResetCurrentDir();
 
     // Threading
     Thread::SetCurrentName( "GUI" );
@@ -961,7 +961,7 @@ int main( int argc, char** argv )
 
     // Stuff
     setlocale( LC_ALL, "Russian" );
-    RestoreMainDirectory();
+    FileManager::ResetCurrentDir();
 
     // Threading
     Thread::SetCurrentName( "Daemon" );

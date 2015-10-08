@@ -651,11 +651,11 @@ IniParser& IniParser::GetClientConfig()
     cfg_client.AppendToBegin( cfg_name, PT_CACHE );
     #else
     IniParser& cfg_mapper = GetMapperConfig();
-    char       buf[ MAX_FOPATH ];
-    cfg_mapper.GetStr( "ClientName", "FOnline", buf );
-    Str::Append( buf, ".cfg" );
-    cfg_client.LoadFile( ( GameOpt.ClientPath->c_std_str() + buf ).c_str(), PT_ROOT );
-    cfg_client.AppendToBegin( buf, PT_CACHE );
+    char       cfg_name[ MAX_FOPATH ];
+    cfg_mapper.GetStr( "ClientName", "FOnline", cfg_name );
+    Str::Append( cfg_name, ".cfg" );
+    cfg_client.LoadFile( cfg_name, PT_ROOT );
+    cfg_client.AppendToBegin( cfg_name, PT_CACHE );
     #endif
 
     return cfg_client;
@@ -669,9 +669,9 @@ IniParser& IniParser::GetServerConfig()
     cfg_server.LoadFile( GetConfigFileName(), PT_ROOT );
     #else
     IniParser& cfg_mapper = GetMapperConfig();
-    char       buf[ MAX_FOTEXT ];
-    cfg_mapper.GetStr( "ServerName", "FOnline", buf );
-    cfg_server.LoadFile( ( GameOpt.ServerPath->c_std_str() + buf + ".cfg" ).c_str(), PT_ROOT );
+    char       cfg_name[ MAX_FOTEXT ];
+    cfg_mapper.GetStr( "ServerName", "FOnline", cfg_name );
+    cfg_server.LoadFile( cfg_name, PT_ROOT );
     #endif
 
     return cfg_server;

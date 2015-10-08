@@ -4491,13 +4491,13 @@ void Client::Send_Talk()
         Bout << is_npc;
         Bout << talk_id;
         Bout << all_answers;
-        Bout << (ushort) Talk.Lexems.length();                                      // Lexems length
+        Bout << (ushort) Talk.Lexems.length();                                  // Lexems length
         if( Talk.Lexems.length() )
-            Bout.Push( Talk.Lexems.c_str(), (uint) Talk.Lexems.length() );          // Lexems string
-        Bout << Talk.CurDialog.TextId;                                              // Main text_id
+            Bout.Push( Talk.Lexems.c_str(), (uint) Talk.Lexems.length() );      // Lexems string
+        Bout << Talk.CurDialog.TextId;                                          // Main text_id
         for( auto it = Talk.CurDialog.Answers.begin(), end = Talk.CurDialog.Answers.end(); it != end; ++it )
             Bout << it->TextId;                                                 // Answers text_id
-        Bout << uint( Talk.TalkTime - ( Timer::GameTick() - Talk.StartTick ) );     // Talk time
+        Bout << uint( Talk.TalkTime - ( Timer::GameTick() - Talk.StartTick ) ); // Talk time
     }
     BOUT_END( this );
 }

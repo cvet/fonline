@@ -407,35 +407,6 @@ bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, in
     return a + b + c < 0;
 }
 
-void RestoreMainDirectory()
-{
-    #if defined ( FO_WINDOWS )
-    char path[ MAX_FOPATH ];
-    GetModuleFileName( GetModuleHandle( NULL ), path, sizeof( path ) );
-    char dir[ MAX_FOPATH ];
-    FileManager::ExtractDir( path, dir );
-    SetCurrentDirectory( dir );
-    #elif defined ( FO_LINUX )
-    // Read symlink to executable
-    char buf[ MAX_FOPATH ];
-    if( readlink( "/proc/self/exe", buf, MAX_FOPATH ) != -1 ||    // Linux
-        readlink( "/proc/curproc/file", buf, MAX_FOPATH ) != -1 ) // FreeBSD
-    {
-        string            sbuf = buf;
-        string::size_type pos = sbuf.find_last_of( '/' );
-        if( pos != string::npos )
-        {
-            buf[ pos ] = 0;
-            chdir( buf );
-        }
-    }
-    #elif defined ( FO_OSX_MAC )
-    chdir( "./FOnline.app/Contents/Resources/Client" );
-    #elif defined ( FO_OSX_IOS )
-    chdir( "./Client" );
-    #endif
-}
-
 void ShowMessage( const char* message )
 {
     #if defined ( FO_CLIENT ) || defined ( FO_MAPPER )
@@ -791,8 +762,11 @@ void GetClientOptions()
         *GameOpt.ServerPath += "/";
 
     // Server and client data
-    FileManager::InitDataFiles( GameOpt.ServerPath->c_str() );
-    FileManager::InitDataFiles( ( GameOpt.ClientPath->c_std_str() + CLIENT_DATA ).c_str() );
+    FileManager::SetCurrentDir( GameOpt.ClientPath->c_str(), CLIENT_DATA );
+    FileManager::InitDataFiles( CLIENT_DATA );
+    FileManager::SetCurrentDir( GameOpt.ServerPath->c_str(), "./" );
+    FileManager::InitDataFiles( "./" );
+    FileManager::SetCurrentDir( GameOpt.ClientPath->c_str(), CLIENT_DATA );
     # endif
 
     // Client config

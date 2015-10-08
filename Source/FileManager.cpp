@@ -27,9 +27,9 @@ const char* PathList[ PATH_LIST_COUNT ] =
     "scripts/",
     "video/",
     "text/",
-    "save/",
+    "Save/",
     "fonts/",
-    "cache/",
+    "Cache/",
     "",
     "",
     "",
@@ -59,7 +59,7 @@ const char* PathList[ PATH_LIST_COUNT ] =
 };
 
 DataFileVec FileManager::dataFiles;
-string      FileManager::basePathes[ 2 ];
+string      FileManager::writeDir;
 
 FileManager::FileManager()
 {
@@ -102,11 +102,9 @@ void FileManager::InitDataFiles( const char* path )
         return;
     }
 
-    // Main read and write paths
-    if( basePathes[ 0 ].empty() )
-        basePathes[ 0 ] = basePathes[ 1 ] = path;
-    else if( basePathes[ 0 ] == basePathes[ 1 ] )
-        basePathes[ 1 ] = path;
+    // Write path first
+    if( writeDir.empty() )
+        writeDir = path;
 
     // Process dir
     if( LoadDataFile( path ) )
@@ -184,11 +182,11 @@ uchar* FileManager::ReleaseBuffer()
     return tmp;
 }
 
-bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data /* = false */  )
+bool FileManager::LoadFile( const char* path, int path_type, bool no_read_data /* = false */  )
 {
     UnloadFile();
 
-    if( !fname || !fname[ 0 ] )
+    if( !path || !path[ 0 ] )
         return false;
 
     if( path_type >= 0 && path_type < PATH_LIST_COUNT )
@@ -196,7 +194,7 @@ bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data 
         // Make data path
         char data_path[ MAX_FOPATH ];
         Str::Copy( data_path, PathList[ path_type ] );
-        Str::Append( data_path, fname );
+        Str::Append( data_path, path );
         FormatPath( data_path );
 
         // Find file in every data file
@@ -222,7 +220,7 @@ bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data 
     else if( path_type == PT_ROOT )
     {
         char folder_path[ MAX_FOPATH ] = { 0 };
-        Str::Copy( folder_path, fname );
+        Str::Copy( folder_path, path );
         FormatPath( folder_path );
 
         void* file = FileOpen( folder_path, false );
@@ -653,6 +651,53 @@ void FileManager::SetLEUInt( uint data )
         endOutBuf = posOutBuf;
 }
 
+void FileManager::ResetCurrentDir()
+{
+    #if defined ( FO_WINDOWS )
+    char path[ MAX_FOPATH ];
+    GetModuleFileName( GetModuleHandle( NULL ), path, sizeof( path ) );
+    char dir[ MAX_FOPATH ];
+    FileManager::ExtractDir( path, dir );
+    SetCurrentDirectory( dir );
+    #elif defined ( FO_LINUX )
+    // Read symlink to executable
+    char buf[ MAX_FOPATH ];
+    if( readlink( "/proc/self/exe", buf, MAX_FOPATH ) != -1 ||    // Linux
+        readlink( "/proc/curproc/file", buf, MAX_FOPATH ) != -1 ) // FreeBSD
+    {
+        string            sbuf = buf;
+        string::size_type pos = sbuf.find_last_of( '/' );
+        if( pos != string::npos )
+        {
+            buf[ pos ] = 0;
+            chdir( buf );
+        }
+    }
+    #elif defined ( FO_OSX_MAC )
+    chdir( "./FOnline.app/Contents/Resources/Client" );
+    #elif defined ( FO_OSX_IOS )
+    chdir( "./Client" );
+    #endif
+}
+
+void FileManager::SetCurrentDir( const char* dir, const char* write_dir )
+{
+    FileManager::ResetCurrentDir();
+
+    char dir_[ MAX_FOPATH ];
+    Str::Copy( dir_, dir );
+    FormatPath( dir_ );
+    ResolvePath( dir_ );
+
+    #ifdef FO_WINDOWS
+    SetCurrentDirectory( dir_ );
+    #else
+    chdir( dir_ );
+    #endif
+
+    writeDir = write_dir;
+}
+
 const char* FileManager::GetDataPath( const char* fname, int path_type )
 {
     #pragma RACE_CONDITION
@@ -667,26 +712,11 @@ void FileManager::GetDataPath( const char* fname, int path_type, char* result )
     Str::Copy( result, MAX_FOPATH, GetDataPath( fname, path_type ) );
 }
 
-const char* FileManager::GetReadPath( const char* fname, int path_type )
-{
-    #pragma RACE_CONDITION
-    static char path[ MAX_FOPATH ];
-    Str::Copy( path, basePathes[ 1 ].c_str() );
-    Str::Append( path, path_type >= 0 && path_type < PATH_LIST_COUNT ? PathList[ path_type ] : "" );
-    Str::Append( path, fname );
-    return path;
-}
-
-void FileManager::GetReadPath( const char* fname, int path_type, char* result )
-{
-    Str::Copy( result, MAX_FOPATH, GetReadPath( fname, path_type ) );
-}
-
 const char* FileManager::GetWritePath( const char* fname, int path_type )
 {
     #pragma RACE_CONDITION
     static char path[ MAX_FOPATH ];
-    Str::Copy( path, basePathes[ 0 ].c_str() );
+    Str::Copy( path, writeDir.c_str() );
     Str::Append( path, path_type >= 0 && path_type < PATH_LIST_COUNT ? PathList[ path_type ] : "" );
     Str::Append( path, fname );
     return path;
@@ -695,11 +725,6 @@ const char* FileManager::GetWritePath( const char* fname, int path_type )
 void FileManager::GetWritePath( const char* fname, int path_type, char* result )
 {
     Str::Copy( result, MAX_FOPATH, GetWritePath( fname, path_type ) );
-}
-
-void FileManager::SetWritePath( const char* path )
-{
-    basePathes[ 0 ] = path;
 }
 
 hash FileManager::GetPathHash( const char* fname, int path_type )
@@ -1021,7 +1046,7 @@ void FileManager::GetDataFileNames( const char* path, bool include_subdirs, cons
 FilesCollection::FilesCollection( const char* ext, int path_type /* = PT_SERVER_MODULES */, const char* dir /* = NULL */ )
 {
     curFileIndex = 0;
-    searchPath = FileManager::GetWritePath( dir ? dir : "", path_type );
+    searchPath = FileManager::GetDataPath( dir ? dir : "", path_type );
     if( searchPath.length() > 0 && searchPath[ searchPath.length() - 1 ] != '/' && searchPath[ searchPath.length() - 1 ] != '\\' )
         searchPath.append( "/" );
 

@@ -9,7 +9,7 @@
 
 extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
-    RestoreMainDirectory();
+    FileManager::ResetCurrentDir();
 
     // Threading
     Thread::SetCurrentName( "Main" );
@@ -36,7 +36,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     #ifdef FO_OSX_IOS
     FileManager::InitDataFiles( "../../Documents/" );
     #endif
-    FileManager::InitDataFiles( "./" CLIENT_DATA );
+    FileManager::InitDataFiles( CLIENT_DATA );
 
     // Singleplayer mode initialization
     #ifdef FO_WINDOWS

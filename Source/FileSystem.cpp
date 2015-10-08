@@ -240,6 +240,9 @@ bool ResolvePath( char* path )
         return false;
     char mb[ MAX_FOPATH ];
     Str::Copy( path, MAX_FOPATH, WCtoMB( path_, mb ) );
+    for( char* s = path; *s; s++ )
+        if( *s == '/' )
+            *s = '\\';
     return true;
 }
 

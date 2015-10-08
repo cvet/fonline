@@ -150,7 +150,6 @@ void ChangeStepsXY( float& sx, float& sy, float deq );
 bool MoveHexByDir( ushort& hx, ushort& hy, uchar dir, ushort maxhx, ushort maxhy );
 void MoveHexByDirUnsafe( int& hx, int& hy, uchar dir );
 bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, int y2 );
-void RestoreMainDirectory();
 void ShowMessage( const char* message );
 uint GetDoubleClickTicks();
 int  ConvertParamValue( const char* str, bool& fail );

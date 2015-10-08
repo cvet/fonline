@@ -298,8 +298,8 @@ static uint                         MemoryAllocRecursion;
         auto it = PtrStackInfoSize.find( (size_t) ptr ); \
         if( it != PtrStackInfoSize.end() )               \
         {                                                \
-            StackInfo* si = it->second.first;        \
-            si->Size -= it->second.second;           \
+            StackInfo* si = it->second.first;            \
+            si->Size -= it->second.second;               \
             si->Chunks--;                                \
             PtrStackInfoSize.erase( it );                \
         }                                                \

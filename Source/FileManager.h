@@ -50,7 +50,7 @@ public:
     static bool LoadDataFile( const char* path );
     static void ClearDataFiles();
 
-    bool   LoadFile( const char* fname, int path_type, bool no_read_data = false );
+    bool   LoadFile( const char* path, int path_type, bool no_read_data = false );
     bool   LoadStream( const uchar* stream, uint length );
     void   UnloadFile();
     uchar* ReleaseBuffer();
@@ -93,13 +93,12 @@ public:
     void SetBEUInt( uint data );
     void SetLEUInt( uint data );
 
+    static void        ResetCurrentDir();
+    static void        SetCurrentDir( const char* dir, const char* write_dir );
     static const char* GetDataPath( const char* fname, int path_type );
     static void        GetDataPath( const char* fname, int path_type, char* result );
-    static const char* GetReadPath( const char* fname, int path_type );
-    static void        GetReadPath( const char* fname, int path_type, char* result );
     static const char* GetWritePath( const char* fname, int path_type );
     static void        GetWritePath( const char* fname, int path_type, char* result );
-    static void        SetWritePath( const char* path );
     static hash        GetPathHash( const char* fname, int path_type );
     static void        FormatPath( char* path );
     static void        ExtractDir( const char* path, char* dir );
@@ -128,7 +127,7 @@ public:
 
 private:
     static DataFileVec dataFiles;
-    static string      basePathes[ 2 ];     // Write and read
+    static string      writeDir;
 
     uint               fileSize;
     uchar*             fileBuf;

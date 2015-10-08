@@ -4095,7 +4095,7 @@ bool FOServer::LoadClientsData()
 
     char client_name[ MAX_FOPATH ];
     char clients_path[ MAX_FOPATH ];
-    FileManager::GetReadPath( "", PT_SERVER_CLIENTS, clients_path );
+    FileManager::GetDataPath( "", PT_SERVER_CLIENTS, clients_path );
 
     // Get cache for clients
     istrstream* cache_str = NULL;

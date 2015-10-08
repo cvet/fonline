@@ -5,7 +5,7 @@
 
 int main( int argc, char** argv )
 {
-    RestoreMainDirectory();
+    FileManager::ResetCurrentDir();
 
     // Threading
     Thread::SetCurrentName( "GUI" );
@@ -23,7 +23,7 @@ int main( int argc, char** argv )
     LogToFile( "FOMapper.log" );
 
     // Data files
-    FileManager::InitDataFiles( "./" MAPPER_DATA );
+    FileManager::InitDataFiles( "./" );
 
     // Options
     GetClientOptions();

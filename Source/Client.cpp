@@ -236,7 +236,7 @@ bool FOClient::Init()
 
     // Cache
     if( !FileExist( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
-        FileManager::CopyFile( FileManager::GetReadPath( "default.cache", PT_DATA ), FileManager::GetWritePath( "default.cache", PT_CACHE ) );
+        FileManager::CopyFile( FileManager::GetDataPath( "default.cache", PT_DATA ), FileManager::GetWritePath( "default.cache", PT_CACHE ) );
     if( !Crypt.SetCacheTable( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
     {
         WriteLogF( _FUNC_, " - Can't set default cache.\n" );
@@ -645,7 +645,7 @@ void FOClient::UpdateFiles( bool early_call )
                         #ifdef FO_OSX_IOS
                         FileManager::InitDataFiles( "../../Documents/" );
                         #endif
-                        FileManager::InitDataFiles( "./" CLIENT_DATA );
+                        FileManager::InitDataFiles( CLIENT_DATA );
                     }
 
                     return;

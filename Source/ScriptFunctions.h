@@ -98,7 +98,7 @@ ScriptString* Global_EncodeUTF8( uint ucs )
 ScriptString* Global_GetFilePath( int path_type )
 {
     char path[ MAX_FOPATH ];
-    FileManager::GetReadPath( "", path_type, path );
+    FileManager::GetDataPath( "", path_type, path );
     FileManager::FormatPath( path );
 
     return ScriptString::Create( path );

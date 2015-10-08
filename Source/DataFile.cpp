@@ -137,32 +137,32 @@ public:
 /* Manage                                                               */
 /************************************************************************/
 
-DataFile* OpenDataFile( const char* fname )
+DataFile* OpenDataFile( const char* path )
 {
-    if( !fname || !fname[ 0 ] )
+    if( !path || !path[ 0 ] )
     {
         WriteLogF( _FUNC_, " - Invalid file name, empty or nullptr.\n" );
         return NULL;
     }
 
-    const char* ext = FileManager::GetExtension( fname );
+    const char* ext = FileManager::GetExtension( path );
     if( ext && Str::CompareCase( ext, "dat" ) )
     {
         FalloutDatFile* dat = new FalloutDatFile();
-        if( !dat->Init( fname ) )
+        if( !dat->Init( path ) )
         {
-            WriteLogF( _FUNC_, " - Unable to open DAT file '%s'.\n", fname );
+            WriteLogF( _FUNC_, " - Unable to open DAT file '%s'.\n", path );
             delete dat;
             return NULL;
         }
         return dat;
     }
-    else if( ( ext && ( Str::CompareCase( ext, "zip" ) || Str::CompareCase( ext, "bos" ) ) ) || fname[ 0 ] == '$' )
+    else if( ( ext && ( Str::CompareCase( ext, "zip" ) || Str::CompareCase( ext, "bos" ) ) ) || path[ 0 ] == '$' )
     {
         ZipFile* zip = new ZipFile();
-        if( !zip->Init( fname ) )
+        if( !zip->Init( path ) )
         {
-            WriteLogF( _FUNC_, " - Unable to open ZIP file '%s'.\n", fname );
+            WriteLogF( _FUNC_, " - Unable to open ZIP file '%s'.\n", path );
             delete zip;
             return NULL;
         }
@@ -171,9 +171,9 @@ DataFile* OpenDataFile( const char* fname )
     else
     {
         FolderFile* folder = new FolderFile();
-        if( !folder->Init( fname ) )
+        if( !folder->Init( path ) )
         {
-            WriteLogF( _FUNC_, " - Unable to open folder '%s'.\n", fname );
+            WriteLogF( _FUNC_, " - Unable to open folder '%s'.\n", path );
             delete folder;
             return NULL;
         }
@@ -205,7 +205,6 @@ void FolderFile::CollectFilesTree( IndexMap& files_tree )
     FindDataVec find_data;
     FileManager::GetFolderFileNames( basePath.c_str(), true, NULL, files, &find_data );
 
-    char name[ MAX_FOPATH ];
     for( size_t i = 0, j = files.size(); i < j; i++ )
     {
         FileEntry fe;

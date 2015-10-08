@@ -3876,7 +3876,7 @@ void HexManager::UnloadMap()
 
 void HexManager::GetMapHash( hash map_pid, uint& hash_tiles, uint& hash_walls, uint& hash_scen )
 {
-    WriteLog( "Get hash of map '%s'...", Str::GetName( map_pid ) );
+    WriteLog( "Get map info..." );
 
     hash_tiles = 0;
     hash_walls = 0;
