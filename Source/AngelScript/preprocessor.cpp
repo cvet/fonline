@@ -1134,7 +1134,7 @@ void Preprocessor::Undef( const std::string& str )
 {
     for( DefineTable::iterator it = CustomDefines.begin(), end = CustomDefines.end(); it != end; ++it )
     {
-        if( ( *it ).first == str )
+        if( it->first == str )
         {
             CustomDefines.erase( it );
             Undef( str );

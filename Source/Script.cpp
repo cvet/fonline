@@ -128,7 +128,7 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
     }
 
     for( auto it = BindedFunctions.begin(), end = BindedFunctions.end(); it != end; ++it )
-        ( *it ).Clear();
+        it->Clear();
     BindedFunctions.clear();
     BindedFunctions.reserve( 10000 );
     BindedFunctions.push_back( BindFunction() );     // None
@@ -332,7 +332,7 @@ void Script::Finish()
     ScriptWatcherThread.Wait();
 
     for( auto it = BindedFunctions.begin(), end = BindedFunctions.end(); it != end; ++it )
-        ( *it ).Clear();
+        it->Clear();
     BindedFunctions.clear();
     ScriptFuncBinds.clear();
 
@@ -377,7 +377,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     #endif
     auto it = edata->LoadedDlls.find( dll_name_lower );
     if( it != edata->LoadedDlls.end() )
-        return ( *it ).second.second;
+        return it->second.second;
 
     // Make path
     char dll_path[ MAX_FOPATH ];
@@ -821,7 +821,7 @@ void Script::FinishEngine( asIScriptEngine*& engine )
         EngineData* edata = (EngineData*) engine->SetUserData( NULL );
         delete edata->PragmaCB;
         for( auto it = edata->LoadedDlls.begin(), end = edata->LoadedDlls.end(); it != end; ++it )
-            DLL_Free( ( *it ).second.second );
+            DLL_Free( it->second.second );
         delete edata;
         engine->ShutDownAndRelease();
         engine = NULL;
@@ -1811,7 +1811,7 @@ hash Script::BindScriptFuncNumByScriptName( const char* script_name, const char*
 
     // Duplicate checking
     auto it = ScriptFuncBinds.find( func_num );
-    if( it != ScriptFuncBinds.end() && ( *it ).second != bind_id )
+    if( it != ScriptFuncBinds.end() && it->second != bind_id )
         return 0;
 
     // Store
@@ -1837,7 +1837,7 @@ hash Script::BindScriptFuncNumByFunc( asIScriptFunction* func )
 
     // Duplicate checking
     auto it = ScriptFuncBinds.find( func_num );
-    if( it != ScriptFuncBinds.end() && ( *it ).second != bind_id )
+    if( it != ScriptFuncBinds.end() && it->second != bind_id )
         return 0;
 
     // Store
@@ -1859,7 +1859,7 @@ uint Script::GetScriptFuncBindId( hash func_num )
     // Indexing by hash
     auto it = ScriptFuncBinds.find( func_num );
     if( it != ScriptFuncBinds.end() )
-        return ( *it ).second;
+        return it->second;
 
     // Function not binded, try find and bind it
     asIScriptFunction* func = FindFunc( func_num );

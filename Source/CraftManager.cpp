@@ -558,7 +558,7 @@ bool CraftManager::operator==( const CraftManager& r )
     auto it_ = const_cast< CraftManager& >( r ).itemCraft.begin();
     for( ; it != end; ++it, ++it_ )
     {
-        CraftItem* craft = ( *it ).second;
+        CraftItem* craft = it->second;
         CraftItem* rcraft = ( *it_ ).second;
 
         #define COMPARE_CRAFT( p )                                                                                             \
@@ -604,7 +604,7 @@ bool CraftManager::SaveCrafts( const char* path )
     string     str;
     for( ; it != it_end; ++it )
     {
-        craft = ( *it ).second;
+        craft = it->second;
         msg.AddStr( craft->Num, string( craft->GetStr( false ) ) );
     }
 
@@ -655,7 +655,7 @@ void CraftManager::GenerateNames( FOMsg& msg_game, FOMsg& msg_item )
 
     for( ; it != it_end; ++it )
     {
-        ( *it ).second->SetName( msg_game, msg_item );
+        it->second->SetName( msg_game, msg_item );
     }
 }
 #endif // FONLINE_CLIENT
@@ -666,7 +666,7 @@ void CraftManager::Finish()
     auto it_end = itemCraft.end();
 
     for( ; it != it_end; ++it )
-        delete ( *it ).second;
+        delete it->second;
     itemCraft.clear();
 }
 
@@ -729,7 +729,7 @@ bool CraftManager::AddCraft( CraftItem* craft, bool make_copy )
 CraftItem* CraftManager::GetCraft( uint num )
 {
     auto it = itemCraft.find( num );
-    return it != itemCraft.end() ? ( *it ).second : NULL;
+    return it != itemCraft.end() ? it->second : NULL;
 }
 
 bool CraftManager::IsCraftExist( uint num )
@@ -795,8 +795,8 @@ void CraftManager::GetShowCrafts( Critter* cr, CraftItemVec& craft_vec )
     craft_vec.clear();
     for( auto it = itemCraft.begin(), end = itemCraft.end(); it != end; ++it )
     {
-        if( IsShowCraft( cr, ( *it ).first ) )
-            craft_vec.push_back( ( *it ).second );
+        if( IsShowCraft( cr, it->first ) )
+            craft_vec.push_back( it->second );
     }
 }
 # endif
@@ -806,8 +806,8 @@ void CraftManager::GetShowCrafts( CritterCl* cr, CraftItemVec& craft_vec )
     craft_vec.clear();
     for( auto it = itemCraft.begin(), end = itemCraft.end(); it != end; ++it )
     {
-        if( IsShowCraft( cr, ( *it ).first ) )
-            craft_vec.push_back( ( *it ).second );
+        if( IsShowCraft( cr, it->first ) )
+            craft_vec.push_back( it->second );
     }
 }
 # endif
@@ -843,8 +843,8 @@ void CraftManager::GetTrueCrafts( Critter* cr, CraftItemVec& craft_vec )
     auto it_end = itemCraft.end();
     for( ; it != it_end; ++it )
     {
-        if( IsTrueCraft( cr, ( *it ).first ) )
-            craft_vec.push_back( ( *it ).second );
+        if( IsTrueCraft( cr, it->first ) )
+            craft_vec.push_back( it->second );
     }
 }
 # endif
@@ -856,8 +856,8 @@ void CraftManager::GetTrueCrafts( CritterCl* cr, CraftItemVec& craft_vec )
     auto it_end = itemCraft.end();
     for( ; it != it_end; ++it )
     {
-        if( IsTrueCraft( cr, ( *it ).first ) )
-            craft_vec.push_back( ( *it ).second );
+        if( IsTrueCraft( cr, it->first ) )
+            craft_vec.push_back( it->second );
     }
 }
 # endif

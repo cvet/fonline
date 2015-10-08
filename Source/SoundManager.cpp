@@ -628,7 +628,7 @@ bool SoundManager::PlaySound( const char* name )
     StrMap& names = ResMngr.GetSoundNames();
     auto    it = names.find( name_ );
     if( it != names.end() )
-        return Load( ( *it ).second.c_str(), PT_SND_SFX ) != NULL;
+        return Load( it->second.c_str(), PT_SND_SFX ) != NULL;
 
     // Check random pattern 'NAME_X'
     uint count = 0;
@@ -701,7 +701,7 @@ bool SoundManager::PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar 
         return false;
 
     // Play
-    return PlaySound( ( *it ).second.c_str() );
+    return PlaySound( it->second.c_str() );
 }
 
 bool SoundManager::PlayMusic( const char* fname, uint pos, uint repeat )

@@ -1090,7 +1090,7 @@ Critter* Critter::GetCritSelf( uint crid, bool sync_lock )
 
     auto     it = VisCrSelfMap.find( crid );
     if( it != VisCrSelfMap.end() )
-        cr = ( *it ).second;
+        cr = it->second;
 
     if( cr && sync_lock )
     {
@@ -4496,7 +4496,7 @@ void Client::Send_Talk()
             Bout.Push( Talk.Lexems.c_str(), (uint) Talk.Lexems.length() );          // Lexems string
         Bout << Talk.CurDialog.TextId;                                              // Main text_id
         for( auto it = Talk.CurDialog.Answers.begin(), end = Talk.CurDialog.Answers.end(); it != end; ++it )
-            Bout << ( *it ).TextId;                                                 // Answers text_id
+            Bout << it->TextId;                                                 // Answers text_id
         Bout << uint( Talk.TalkTime - ( Timer::GameTick() - Talk.StartTick ) );     // Talk time
     }
     BOUT_END( this );
@@ -5357,13 +5357,13 @@ void Npc::RefreshBag()
         uint need_count = Random( 2, 4 );
         for( auto it = pids.begin(), end = pids.end(); it != end; ++it )
         {
-            if( ( *it ).second <= need_count )
+            if( it->second <= need_count )
                 continue;
-            ProtoItem* proto_item = ItemMngr.GetProtoItem( ( *it ).first );
+            ProtoItem* proto_item = ItemMngr.GetProtoItem( it->first );
             if( !proto_item || proto_item->GetStackable() )
                 continue;
-            ItemMngr.SetItemCritter( this, ( *it ).first, need_count );
-            ( *it ).second = need_count;
+            ItemMngr.SetItemCritter( this, it->first, need_count );
+            it->second = need_count;
             need_count = Random( 2, 4 );
         }
     }
@@ -5384,7 +5384,7 @@ void Npc::RefreshBag()
         {
             uint count = *(uint*) item_count->At( k );
             auto it = pids.find( *(uint*) item_pid->At( k ) );
-            if( it != pids.end() && ( *it ).second > count )
+            if( it != pids.end() && it->second > count )
                 continue;
             ItemMngr.SetItemCritter( this, *(uint*) item_pid->At( k ), count );
             drop_last_weapon = true;
@@ -5419,7 +5419,7 @@ void Npc::RefreshBag()
                 {
                     NpcBagItem& item = items[ l ];
                     auto        it = pids.find( item.ItemPid );
-                    if( it != pids.end() && ( *it ).second > 0 )
+                    if( it != pids.end() && it->second > 0 )
                     {
                         // Update cur items
                         for( uint k = 0; k < items.size(); k++ )

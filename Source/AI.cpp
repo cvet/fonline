@@ -185,7 +185,7 @@ bool NpcAIMngr::LoadNpcBags()
                 it = loaded_comb.find( c );
             }
 
-            cur_bag.push_back( ( *it ).second );
+            cur_bag.push_back( it->second );
         }
 
         bag_count++;

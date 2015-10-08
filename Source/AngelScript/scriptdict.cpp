@@ -537,7 +537,7 @@ void* ScriptDict::Get( void* key )
         return NULL;
     }
 
-    return ( *it ).second;
+    return it->second;
 }
 
 void* ScriptDict::GetDefault( void* key, void* defaultValue )
@@ -548,7 +548,7 @@ void* ScriptDict::GetDefault( void* key, void* defaultValue )
     if( it == dict->end() )
         return defaultValue;
 
-    return ( *it ).second;
+    return it->second;
 }
 
 void* ScriptDict::GetKey( uint index )
@@ -567,7 +567,7 @@ void* ScriptDict::GetKey( uint index )
     while( index-- )
         it++;
 
-    return ( *it ).first;
+    return it->first;
 }
 
 void* ScriptDict::GetValue( uint index )
@@ -586,7 +586,7 @@ void* ScriptDict::GetValue( uint index )
     while( index-- )
         it++;
 
-    return ( *it ).second;
+    return it->second;
 }
 
 bool ScriptDict::Exists( void* key ) const
@@ -641,9 +641,9 @@ void ScriptDict::EnumReferences( asIScriptEngine* engine )
         for( auto it = dict->begin(), end = dict->end(); it != end; ++it )
         {
             if( keysHandle )
-                engine->GCEnumCallback( ( *it ).first );
+                engine->GCEnumCallback( it->first );
             if( valuesHandle )
-                engine->GCEnumCallback( ( *it ).second );
+                engine->GCEnumCallback( it->second );
         }
     }
 }

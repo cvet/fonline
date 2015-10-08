@@ -109,7 +109,7 @@ public:
     static HoloInfo* GetHoloInfo( uint id )
     {
         auto it = HolodiskInfo.find( id );
-        return it != HolodiskInfo.end() ? ( *it ).second : NULL;
+        return it != HolodiskInfo.end() ? it->second : NULL;
     }
     static void AddPlayerHoloInfo( Critter* cr, uint holo_num, bool send );
     static void ErasePlayerHoloInfo( Critter* cr, uint index, bool send );

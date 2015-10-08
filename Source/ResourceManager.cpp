@@ -41,7 +41,7 @@ void ResourceManager::Refresh()
             char name[ MAX_FOPATH ];
             for( auto it = sounds.begin(), end = sounds.end(); it != end; ++it )
             {
-                FileManager::ExtractFileName( ( *it ).c_str(), fname );
+                FileManager::ExtractFileName( it->c_str(), fname );
                 Str::Copy( name, fname );
                 Str::Upper( name );
                 char* ext = (char*) FileManager::GetExtension( name );
@@ -69,10 +69,10 @@ void ResourceManager::FreeResources( int type )
     SprMngr.DestroyAtlases( type );
     for( auto it = loadedAnims.begin(); it != loadedAnims.end();)
     {
-        int res_type = ( *it ).second.ResType;
+        int res_type = it->second.ResType;
         if( res_type == type )
         {
-            AnyFrames::Destroy( ( *it ).second.Anim );
+            AnyFrames::Destroy( it->second.Anim );
             it = loadedAnims.erase( it );
         }
         else
@@ -90,7 +90,7 @@ void ResourceManager::FreeResources( int type )
     {
         // 2D critters
         for( auto it = critterFrames.begin(), end = critterFrames.end(); it != end; ++it )
-            AnyFrames::Destroy( ( *it ).second );
+            AnyFrames::Destroy( it->second );
         critterFrames.clear();
 
         // 3D textures
@@ -117,7 +117,7 @@ AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
     // Find already loaded
     auto it = loadedAnims.find( name_hash );
     if( it != loadedAnims.end() )
-        return ( *it ).second.Anim;
+        return it->second.Anim;
 
     // Load new animation
     const char* fname = Str::GetName( name_hash );
@@ -156,7 +156,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
     // Check already loaded
     auto it = critterFrames.find( id );
     if( it != critterFrames.end() )
-        return ( *it ).second ? ( *it ).second->GetDir( dir ) : NULL;
+        return it->second ? it->second->GetDir( dir ) : NULL;
 
     // Process loading
     uint       crtype_base = crtype, anim1_base = anim1, anim2_base = anim2;
@@ -465,7 +465,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint an
 {
     auto it = critterFrames.find( AnimMapId( crtype, anim1, anim2, true ) );
     if( it != critterFrames.end() )
-        return ( *it ).second;
+        return it->second;
 
     // Load file
     static char frm_ind[] = "_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

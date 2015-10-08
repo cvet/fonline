@@ -127,7 +127,7 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
     }
 
     for( auto it = sections.begin(), end = sections.end(); it != end; ++it )
-        IfaceIni.AppendPtrToBegin( ( *it ).second.first, ( *it ).second.second );
+        IfaceIni.AppendPtrToBegin( it->second.first, it->second.second );
 }
 
 int FOClient::InitIface()
@@ -914,7 +914,7 @@ void FOClient::GameDraw()
     // Critters
     for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++ )
     {
-        CritterCl* cr = ( *it ).second;
+        CritterCl* cr = it->second;
 
         // Follow pic
         if( GameOpt.ShowGroups && cr->SprDrawValid && Chosen )
@@ -2428,7 +2428,7 @@ void FOClient::LMenuCollect()
             int pos = 0;
             for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++, pos++ )
             {
-                CritterCl* cr = ( *it ).second;
+                CritterCl* cr = it->second;
                 if( !IsCurInRect( Rect( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ) ) )
                     continue;
                 TargetSmth.SetCritter( cr->GetId() );
@@ -3878,7 +3878,7 @@ void FOClient::GmapDraw()
     static PointVec gt;
     gt.clear();
     for( auto it = GmapTrace.begin(), end = GmapTrace.end(); it != end; ++it )
-        gt.push_back( PrepPoint( (int) ( ( *it ).first / GmapZoom ) + GmapOffsetX, (int) ( ( *it ).second / GmapZoom ) + GmapOffsetY, 0xFFFF0000 ) );
+        gt.push_back( PrepPoint( (int) ( it->first / GmapZoom ) + GmapOffsetX, (int) ( it->second / GmapZoom ) + GmapOffsetY, 0xFFFF0000 ) );
     SprMngr.DrawPoints( gt, PRIMITIVE_POINTLIST );
 
     // Script draw
@@ -3985,7 +3985,7 @@ void FOClient::GmapDraw()
     int pos = 0;
     for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++, pos++ )
     {
-        CritterCl* cr = ( *it ).second;
+        CritterCl* cr = it->second;
         SprMngr.DrawStr( Rect( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ), cr->GetName(), FT_NOBREAK | FT_CENTERY, cr->IsGmapRule() ? COLOR_TEXT_DGREEN : COLOR_TEXT );
         SprMngr.DrawStr( Rect( GmapWName, GmapWNameStepX * pos, GmapWNameStepY * pos ), cr->IsOffline() ? "offline" : "online", FT_NOBREAK | FT_CENTERR, cr->IsOffline() ? COLOR_TEXT_DDRED : COLOR_TEXT_DDGREEN, FONT_SPECIAL );
     }

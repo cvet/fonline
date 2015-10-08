@@ -748,14 +748,14 @@ void FOClient::Finish()
 
     for( auto it = IntellectWords.begin(), end = IntellectWords.end(); it != end; ++it )
     {
-        delete[] ( *it ).first;
-        delete[] ( *it ).second;
+        delete[] it->first;
+        delete[] it->second;
     }
     IntellectWords.clear();
     for( auto it = IntellectSymbols.begin(), end = IntellectSymbols.end(); it != end; ++it )
     {
-        delete[] ( *it ).first;
-        delete[] ( *it ).second;
+        delete[] it->first;
+        delete[] it->second;
     }
     IntellectSymbols.clear();
     FileManager::ClearDataFiles();
@@ -4108,7 +4108,7 @@ void FOClient::Net_OnCustomCommand()
             CritMap crits = HexMngr.GetCritters();
             for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
             {
-                CritterCl* cr = ( *it ).second;
+                CritterCl* cr = it->second;
                 if( cr != Chosen )
                     DeleteCritter( cr->GetId() );
             }
@@ -6513,7 +6513,7 @@ Item* FOClient::GetTargetContItem()
         {
             CritMap& critters = HexMngr.GetCritters();
             for( auto it = critters.begin(), end = critters.end(); it != end && !item; ++it )
-                item = ( *it ).second->GetItem( item_id );
+                item = it->second->GetItem( item_id );
         }
         if( !item )
             TargetSmth.Clear();
@@ -6643,7 +6643,7 @@ void FOClient::CrittersProcess()
 /************************************************************************/
     for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end();)
     {
-        CritterCl* crit = ( *it ).second;
+        CritterCl* crit = it->second;
         ++it;
 
         crit->Process();
@@ -8091,7 +8091,7 @@ PCharPairVec::iterator FOClient::FindIntellectWord( const char* word, PCharPairV
     auto end = text.end();
     for( ; it != end; ++it )
     {
-        if( Str::CompareCaseUTF8( word, ( *it ).first ) )
+        if( Str::CompareCaseUTF8( word, it->first ) )
             break;
     }
 
@@ -8102,7 +8102,7 @@ PCharPairVec::iterator FOClient::FindIntellectWord( const char* word, PCharPairV
         int  cnt = 0;
         for( ; it != end; ++it )
         {
-            if( Str::CompareCaseUTF8( ( *it_ ).first, ( *it ).first ) )
+            if( Str::CompareCaseUTF8( ( *it_ ).first, it->first ) )
                 cnt++;
             else
                 break;
@@ -8176,8 +8176,8 @@ void FOClient::FmtTextIntellect( char* str, ushort intellect )
             if( it != IntellectWords.end() && rnd.Random( 1, 100 ) <= word_proc )
             {
                 Str::EraseInterval( str - len, len );
-                Str::Insert( str - len, ( *it ).second );
-                str = str - len + Str::Length( ( *it ).second );
+                Str::Insert( str - len, it->second );
+                str = str - len + Str::Length( it->second );
             }
             else
             {
@@ -8194,10 +8194,10 @@ void FOClient::FmtTextIntellect( char* str, ushort intellect )
                     it = FindIntellectWord( word, IntellectSymbols, rnd );
                     if( it != IntellectSymbols.end() )
                     {
-                        uint f_len = Str::Length( ( *it ).first );
-                        uint s_len = Str::Length( ( *it ).second );
+                        uint f_len = Str::Length( it->first );
+                        uint s_len = Str::Length( it->second );
                         Str::EraseInterval( s, f_len );
-                        Str::Insert( s, ( *it ).second );
+                        Str::Insert( s, it->second );
                         str -= f_len;
                         str += s_len;
                     }
@@ -10150,7 +10150,7 @@ uint FOClient::SScriptFunc::Global_GetCritters( ushort hx, ushort hy, uint radiu
     CritVec  cr_vec;
     for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
-        CritterCl* cr = ( *it ).second;
+        CritterCl* cr = it->second;
         if( cr->CheckFind( find_type ) && CheckDist( hx, hy, cr->GetHexX(), cr->GetHexY(), radius ) )
             cr_vec.push_back( cr );
     }
@@ -10171,7 +10171,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersByPids( hash pid, int find_type, S
     {
         for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
         {
-            CritterCl* cr = ( *it ).second;
+            CritterCl* cr = it->second;
             if( cr->CheckFind( find_type ) )
                 cr_vec.push_back( cr );
         }
@@ -10180,7 +10180,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersByPids( hash pid, int find_type, S
     {
         for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
         {
-            CritterCl* cr = ( *it ).second;
+            CritterCl* cr = it->second;
             if( cr->IsNpc() && cr->Pid == pid && cr->CheckFind( find_type ) )
                 cr_vec.push_back( cr );
         }

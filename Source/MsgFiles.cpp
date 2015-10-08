@@ -27,7 +27,7 @@ FOMsg::FOMsg( const FOMsg& other )
 {
     Clear();
     for( auto it = other.strData.begin(), end = other.strData.end(); it != end; ++it )
-        AddStr( ( *it ).first, ( *it ).second );
+        AddStr( it->first, it->second );
 }
 
 FOMsg::~FOMsg()
@@ -39,7 +39,7 @@ FOMsg& FOMsg::operator=( const FOMsg& other )
 {
     Clear();
     for( auto it = other.strData.begin(), end = other.strData.end(); it != end; ++it )
-        AddStr( ( *it ).first, ( *it ).second );
+        AddStr( it->first, it->second );
     return *this;
 }
 
@@ -47,8 +47,8 @@ FOMsg& FOMsg::operator+=( const FOMsg& other )
 {
     for( auto it = other.strData.begin(), end = other.strData.end(); it != end; ++it )
     {
-        EraseStr( ( *it ).first );
-        AddStr( ( *it ).first, ( *it ).second );
+        EraseStr( it->first );
+        AddStr( it->first, it->second );
     }
     return *this;
 }
@@ -94,7 +94,7 @@ const char* FOMsg::GetStr( uint num )
         break;
     }
 
-    return ( *it ).second;
+    return it->second;
 }
 
 const char* FOMsg::GetStr( uint num, uint skip )
@@ -107,7 +107,7 @@ const char* FOMsg::GetStr( uint num, uint skip )
     for( uint i = 0; i < skip; i++ )
         ++it;
 
-    return ( *it ).second;
+    return it->second;
 }
 
 uint FOMsg::GetStrNumUpper( uint num )
@@ -115,7 +115,7 @@ uint FOMsg::GetStrNumUpper( uint num )
     auto it = strData.upper_bound( num );
     if( it == strData.end() )
         return 0;
-    return ( *it ).first;
+    return it->first;
 }
 
 uint FOMsg::GetStrNumLower( uint num )
@@ -123,7 +123,7 @@ uint FOMsg::GetStrNumLower( uint num )
     auto it = strData.lower_bound( num );
     if( it == strData.end() )
         return 0;
-    return ( *it ).first;
+    return it->first;
 }
 
 int FOMsg::GetInt( uint num )
@@ -143,7 +143,7 @@ int FOMsg::GetInt( uint num )
         break;
     }
 
-    return Str::AtoI( ( *it ).second );
+    return Str::AtoI( it->second );
 }
 
 uint FOMsg::GetBinary( uint num, UCharVec& data  )
@@ -173,7 +173,7 @@ void FOMsg::EraseStr( uint num )
         auto it = strData.find( num );
         if( it != strData.end() )
         {
-            SAFEDELA( ( *it ).second );
+            SAFEDELA( it->second );
             strData.erase( it );
         }
         else
@@ -204,8 +204,8 @@ void FOMsg::GetBinaryData( UCharVec& data )
     memcpy( &data[ 0 ], &count, sizeof( count ) );
     for( auto it = strData.begin(), end = strData.end(); it != end; ++it )
     {
-        uint        num = ( *it ).first;
-        const char* str = ( *it ).second;
+        uint        num = it->first;
+        const char* str = it->second;
         uint        str_len = ( str ? Str::Length( str ) : 0 );
 
         data.resize( data.size() + sizeof( num ) + sizeof( str_len ) + str_len );
@@ -352,9 +352,9 @@ bool FOMsg::SaveToFile( const char* fname, int path_type )
     for( auto it = strData.begin(), end = strData.end(); it != end; it++ )
     {
         str += "{";
-        str += Str::UItoA( ( *it ).first );
+        str += Str::UItoA( it->first );
         str += "}{}{";
-        str += ( *it ).second;
+        str += it->second;
         str += "}\n";
     }
 
@@ -372,7 +372,7 @@ bool FOMsg::SaveToFile( const char* fname, int path_type )
 void FOMsg::Clear()
 {
     for( auto it = strData.begin(), end = strData.end(); it != end; ++it )
-        SAFEDELA( ( *it ).second );
+        SAFEDELA( it->second );
     strData.clear();
 }
 

@@ -209,8 +209,8 @@ bool Map::Generate()
             auto it = UIDtoPtr.find( mobj.ContainerUID );
             if( it == UIDtoPtr.end() )
                 continue;
-            cr_cont = ( *it ).second.npc;
-            item_cont = ( *it ).second.item;
+            cr_cont = it->second.npc;
+            item_cont = it->second.item;
         }
 
         // Create item

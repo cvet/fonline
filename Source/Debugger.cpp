@@ -298,8 +298,8 @@ static uint                         MemoryAllocRecursion;
         auto it = PtrStackInfoSize.find( (size_t) ptr ); \
         if( it != PtrStackInfoSize.end() )               \
         {                                                \
-            StackInfo* si = ( *it ).second.first;        \
-            si->Size -= ( *it ).second.second;           \
+            StackInfo* si = it->second.first;        \
+            si->Size -= it->second.second;           \
             si->Chunks--;                                \
             PtrStackInfoSize.erase( it );                \
         }                                                \
@@ -329,7 +329,7 @@ StackInfo* GetStackInfo( HANDLE heap )
 
     auto   it = StackHashStackInfo.find( (size_t) hash );
     if( it != StackHashStackInfo.end() )
-        return ( *it ).second;
+        return it->second;
 
     string str;
     str.reserve( 16384 );
@@ -560,7 +560,7 @@ StackInfo* GetStackInfo( const void* caller )
 {
     auto it = StackHashStackInfo.find( (size_t) caller );
     if( it != StackHashStackInfo.end() )
-        return ( *it ).second;
+        return it->second;
 
     string str;
     str.reserve( 16384 );
@@ -669,7 +669,7 @@ string Debugger::GetTraceMemory()
     vector< StackInfo* > blocks_chunks;
     for( auto it = StackHashStackInfo.begin(), end = StackHashStackInfo.end(); it != end; ++it )
     {
-        StackInfo* si = ( *it ).second;
+        StackInfo* si = it->second;
         if( si->Size )
         {
             blocks_chunks.push_back( si );

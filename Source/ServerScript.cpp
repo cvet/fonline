@@ -62,7 +62,7 @@ void ASDeepDebugFree( void* ptr )
         auto it = ASDbgMemoryPtr.find( ptr_ );
         if( it != ASDbgMemoryPtr.end() )
         {
-            MEMORY_PROCESS_STR( ( *it ).second.c_str(), -(int) size );
+            MEMORY_PROCESS_STR( it->second.c_str(), -(int) size );
             ASDbgMemoryPtr.erase( it );
         }
     }
@@ -383,8 +383,8 @@ bool FOServer::ReloadClientScripts()
     EngineData* ed = (EngineData*) engine->GetUserData();
     for( auto it = ed->LoadedDlls.begin(), end = ed->LoadedDlls.end(); it != end; ++it )
     {
-        const string& dll_name = ( *it ).first;
-        const string& dll_path = ( *it ).second.first;
+        const string& dll_name = it->first;
+        const string& dll_path = it->second.first;
 
         // Load libraries for all platforms
         // Windows, Linux

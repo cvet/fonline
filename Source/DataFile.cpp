@@ -32,7 +32,7 @@ void GetFileNames_( const T& index_map, const char* path, bool include_subdirs, 
     for( auto it = index_map.begin(), end = index_map.end(); it != end; ++it )
     {
         bool          add = false;
-        const string& fname = ( *it ).first;
+        const string& fname = it->first;
         if( !fname.compare( 0, len, path_ ) && ( include_subdirs ||
                                                  ( len > 0 && fname.find_last_of( '/' ) < len ) ||
                                                  ( len == 0 && fname.find_last_of( '/' ) == string::npos ) ) )
@@ -225,7 +225,7 @@ bool FolderFile::IsFilePresent( const char* path, uint& size, uint64& write_time
     if( it == filesTree.end() )
         return NULL;
 
-    FileEntry& fe = ( *it ).second;
+    FileEntry& fe = it->second;
     size = fe.FileSize;
     write_time = fe.WriteTime;
     return true;
@@ -251,7 +251,7 @@ uchar* FolderFile::OpenFile( const char* path, uint& size, uint64& write_time )
     if( it == filesTree.end() )
         return NULL;
 
-    FileEntry& fe = ( *it ).second;
+    FileEntry& fe = it->second;
     void*      f = FileOpen( fe.FileName.c_str(), false );
     if( !f )
         return NULL;
@@ -491,7 +491,7 @@ uchar* FalloutDatFile::OpenFile( const char* path, uint& size, uint64& write_tim
     if( it == filesTree.end() )
         return NULL;
 
-    uchar* ptr = ( *it ).second;
+    uchar* ptr = it->second;
     uchar  type = *ptr;
     uint   real_size = *(uint*) ( ptr + 1 );
     uint   packed_size = *(uint*) ( ptr + 5 );
@@ -771,7 +771,7 @@ uchar* ZipFile::OpenFile( const char* path, uint& size, uint64& write_time )
     if( it == filesTree.end() )
         return NULL;
 
-    ZipFileInfo& info = ( *it ).second;
+    ZipFileInfo& info = it->second;
 
     if( unzGoToFilePos( zipHandle, &info.Pos ) != UNZ_OK )
         return NULL;

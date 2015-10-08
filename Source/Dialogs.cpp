@@ -128,10 +128,10 @@ bool DialogManager::AddDialog( DialogPack* pack )
     uint pack_id = pack->PackId & DLGID_MASK;
     for( auto it = dialogPacks.begin(), end = dialogPacks.end(); it != end; ++it )
     {
-        uint check_pack_id = ( *it ).first & DLGID_MASK;
+        uint check_pack_id = it->first & DLGID_MASK;
         if( pack_id == check_pack_id )
         {
-            WriteLog( "Name hash collision for dialogs  '%s' and  '%s'.\n", pack->PackName.c_str(), ( *it ).second->PackName.c_str() );
+            WriteLog( "Name hash collision for dialogs  '%s' and  '%s'.\n", pack->PackName.c_str(), it->second->PackName.c_str() );
             return false;
         }
     }
@@ -143,7 +143,7 @@ bool DialogManager::AddDialog( DialogPack* pack )
 DialogPack* DialogManager::GetDialog( hash pack_id )
 {
     auto it = dialogPacks.find( pack_id );
-    return it != dialogPacks.end() ? ( *it ).second : NULL;
+    return it != dialogPacks.end() ? it->second : NULL;
 }
 
 DialogPack* DialogManager::GetDialogByIndex( uint index )
@@ -151,7 +151,7 @@ DialogPack* DialogManager::GetDialogByIndex( uint index )
     auto it = dialogPacks.begin();
     while( index-- && it != dialogPacks.end() )
         ++it;
-    return it != dialogPacks.end() ? ( *it ).second : NULL;
+    return it != dialogPacks.end() ? it->second : NULL;
 }
 
 void DialogManager::EraseDialog( hash pack_id )
@@ -160,7 +160,7 @@ void DialogManager::EraseDialog( hash pack_id )
     if( it == dialogPacks.end() )
         return;
 
-    delete ( *it ).second;
+    delete it->second;
     dialogPacks.erase( it );
 }
 

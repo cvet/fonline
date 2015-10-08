@@ -198,7 +198,7 @@ bool FOMapper::Init()
     ProtoCritterMap& cr_protos = CrMngr.GetAllProtos();
     for( auto it = cr_protos.begin(), end = cr_protos.end(); it != end; ++it )
     {
-        ProtoCritter* proto = ( *it ).second;
+        ProtoCritter* proto = it->second;
         Tabs[ INT_MODE_CRIT ][ DEFAULT_SUB_TAB ].NpcProtos.push_back( proto );
         Tabs[ INT_MODE_CRIT ][ proto->CollectionName ].NpcProtos.push_back( proto );
     }
@@ -206,7 +206,7 @@ bool FOMapper::Init()
     ProtoItemMap& item_protos = ItemMngr.GetAllProtos();
     for( auto it = item_protos.begin(), end = item_protos.end(); it != end; ++it )
     {
-        ProtoItem* proto = ( *it ).second;
+        ProtoItem* proto = it->second;
         Tabs[ INT_MODE_ITEM ][ DEFAULT_SUB_TAB ].ItemProtos.push_back( proto );
         Tabs[ INT_MODE_ITEM ][ proto->CollectionName ].ItemProtos.push_back( proto );
     }
@@ -1469,7 +1469,7 @@ void FOMapper::MainLoop()
     {
         for( auto it = HexMngr.GetCritters().begin(), end = HexMngr.GetCritters().end(); it != end; ++it )
         {
-            CritterCl* cr = ( *it ).second;
+            CritterCl* cr = it->second;
             cr->Process();
 
             //	if(cr->IsNeedReSet())
@@ -1536,7 +1536,7 @@ void FOMapper::MainLoop()
         {
             for( auto it = HexMngr.GetCritters().begin(), end = HexMngr.GetCritters().end(); it != end; ++it )
             {
-                CritterCl* cr = ( *it ).second;
+                CritterCl* cr = it->second;
                 if( cr->SprDrawValid )
                 {
                     MapObject* mobj = FindMapObject( cr->GetHexX(), cr->GetHexY(), MAP_OBJECT_CRITTER, cr->Pid, false );
@@ -1625,7 +1625,7 @@ void FOMapper::RefreshTiles( int tab )
     // Clear old tile names
     for( auto it = Tabs[ tab ].begin(); it != Tabs[ tab ].end();)
     {
-        SubTab& stab = ( *it ).second;
+        SubTab& stab = it->second;
         if( stab.TileNames.size() )
         {
             if( TabsActive[ tab ] == &stab )
@@ -2031,8 +2031,8 @@ void FOMapper::IntDraw()
             if( i - 1 < TabsScroll[ SubTabsActiveTab ] )
                 continue;
 
-            string  name = ( *it ).first;
-            SubTab& stab = ( *it ).second;
+            string  name = it->first;
+            SubTab& stab = it->second;
 
             uint    color = ( TabsActive[ SubTabsActiveTab ] == &stab ? COLOR_TEXT_WHITE : COLOR_TEXT );
             Rect    r = Rect( SubTabsRect.L + SubTabsX + 5, SubTabsRect.T + SubTabsY + posy,
@@ -2656,8 +2656,8 @@ void FOMapper::IntLMouseDown()
                 if( i - 1 < TabsScroll[ SubTabsActiveTab ] )
                     continue;
 
-                const string& name = ( *it ).first;
-                SubTab&       stab = ( *it ).second;
+                const string& name = it->first;
+                SubTab&       stab = it->second;
 
                 Rect          r = Rect( SubTabsRect.L + SubTabsX + 5, SubTabsRect.T + SubTabsY + posy,
                                         SubTabsRect.L + SubTabsX + 5 + SubTabsRect.W(), SubTabsRect.T + SubTabsY + posy + line_height - 1 );
@@ -3842,7 +3842,7 @@ void FOMapper::SelectAll()
     {
         CritMap& crits = HexMngr.GetCritters();
         for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
-            SelectAddCrit( ( *it ).second );
+            SelectAddCrit( it->second );
     }
 
     HexMngr.RefreshMap();
@@ -4949,7 +4949,7 @@ void FOMapper::ParseCommand( const char* cmd )
             CritMap& crits = HexMngr.GetCritters();
             for( auto it = crits.begin(); it != crits.end(); ++it )
             {
-                CritterCl* cr = ( *it ).second;
+                CritterCl* cr = it->second;
                 cr->ClearAnim();
                 for( uint j = 0; j < anims.size() / 2; j++ )
                     cr->Animate( anims[ j * 2 ], anims[ j * 2 + 1 ], NULL );
@@ -6257,7 +6257,7 @@ void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, ScriptString* sub_ta
         auto it = Self->Tabs[ tab ].find( sub_tab->c_std_str() );
         if( it != Self->Tabs[ tab ].end() )
         {
-            if( Self->TabsActive[ tab ] == &( *it ).second )
+            if( Self->TabsActive[ tab ] == &it->second )
                 Self->TabsActive[ tab ] = NULL;
             Self->Tabs[ tab ].erase( it );
         }
@@ -6268,7 +6268,7 @@ void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, ScriptString* sub_ta
     stab_default.ItemProtos.clear();
     for( auto it = Self->Tabs[ tab ].begin(), end = Self->Tabs[ tab ].end(); it != end; ++it )
     {
-        SubTab& stab = ( *it ).second;
+        SubTab& stab = it->second;
         if( &stab == &stab_default )
             continue;
         for( uint i = 0, j = (uint) stab.ItemProtos.size(); i < j; i++ )
@@ -6313,7 +6313,7 @@ void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, ScriptString* sub
         auto it = Self->Tabs[ tab ].find( sub_tab->c_std_str() );
         if( it != Self->Tabs[ tab ].end() )
         {
-            if( Self->TabsActive[ tab ] == &( *it ).second )
+            if( Self->TabsActive[ tab ] == &it->second )
                 Self->TabsActive[ tab ] = NULL;
             Self->Tabs[ tab ].erase( it );
         }
@@ -6324,7 +6324,7 @@ void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, ScriptString* sub
     stab_default.NpcProtos.clear();
     for( auto it = Self->Tabs[ tab ].begin(), end = Self->Tabs[ tab ].end(); it != end; ++it )
     {
-        SubTab& stab = ( *it ).second;
+        SubTab& stab = it->second;
         if( &stab == &stab_default )
             continue;
         for( uint i = 0, j = (uint) stab.NpcProtos.size(); i < j; i++ )
@@ -6361,7 +6361,7 @@ void FOMapper::SScriptFunc::Global_TabSelect( int tab, ScriptString* sub_tab, bo
 
     auto it = Self->Tabs[ tab ].find( sub_tab && sub_tab->length() ? sub_tab->c_std_str() : DEFAULT_SUB_TAB );
     if( it != Self->Tabs[ tab ].end() )
-        Self->TabsActive[ tab ] = &( *it ).second;
+        Self->TabsActive[ tab ] = &it->second;
 }
 
 void FOMapper::SScriptFunc::Global_TabSetName( int tab, ScriptString* tab_name )

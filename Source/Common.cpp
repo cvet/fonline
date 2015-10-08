@@ -1649,7 +1649,7 @@ const char* Thread::FindName( uint thread_id )
 {
     SCOPE_LOCK( threadNamesLocker );
     auto it = threadNames.find( thread_id );
-    return it != threadNames.end() ? ( *it ).second.c_str() : NULL;
+    return it != threadNames.end() ? it->second.c_str() : NULL;
 }
 
 void Thread::Sleep( uint ms )

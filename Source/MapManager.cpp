@@ -352,7 +352,7 @@ int MapManager::ReloadMaps( const char* map_name )
         ProtoMapMap proto_maps = protoMaps;
         for( auto it = proto_maps.begin(); it != proto_maps.end(); ++it )
         {
-            const char* map_name = ( *it ).second->GetName();
+            const char* map_name = it->second->GetName();
             ProtoMap*   pmap = new ProtoMap();
             if( pmap->Init( map_name ) )
             {
@@ -478,7 +478,7 @@ bool MapManager::GenerateWorld()
 ProtoLocation* MapManager::GetProtoLocation( hash loc_pid )
 {
     auto it = protoLoc.find( loc_pid );
-    return it != protoLoc.end() ? ( *it ).second : NULL;
+    return it != protoLoc.end() ? it->second : NULL;
 }
 
 ProtoLocation* MapManager::GetProtoLocationByIndex( uint index )
@@ -486,7 +486,7 @@ ProtoLocation* MapManager::GetProtoLocationByIndex( uint index )
     auto it = protoLoc.begin();
     while( index-- && it != protoLoc.end() )
         ++it;
-    return it != protoLoc.end() ? ( *it ).second : NULL;
+    return it != protoLoc.end() ? it->second : NULL;
 }
 
 Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint loc_id )
@@ -609,7 +609,7 @@ uint MapManager::GetMapsCount()
 ProtoMap* MapManager::GetProtoMap( hash map_pid )
 {
     auto it = protoMaps.find( map_pid );
-    return it != protoMaps.end() ? ( *it ).second : NULL;
+    return it != protoMaps.end() ? it->second : NULL;
 }
 
 bool MapManager::IsProtoMapNoLogOut( hash map_pid )

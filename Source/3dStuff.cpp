@@ -208,8 +208,8 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                     {
                         uint disabled_mesh_name_hash = link.DisabledMesh[ j ];
                         for( auto it = allMeshes.begin(), end = allMeshes.end(); it != end; ++it )
-                            if( !disabled_mesh_name_hash || disabled_mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
-                                ( *it ).Disabled = true;
+                            if( !disabled_mesh_name_hash || disabled_mesh_name_hash == it->Mesh->Owner->NameHash )
+                                it->Disabled = true;
                     }
                 }
             }
@@ -225,8 +225,8 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
             {
                 uint disabled_mesh_name_hash = animLink.DisabledMesh[ j ];
                 for( auto it = allMeshes.begin(), end_ = allMeshes.end(); it != end_; ++it )
-                    if( !disabled_mesh_name_hash || disabled_mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
-                        ( *it ).Disabled = true;
+                    if( !disabled_mesh_name_hash || disabled_mesh_name_hash == it->Mesh->Owner->NameHash )
+                        it->Disabled = true;
             }
         }
 
@@ -568,8 +568,8 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
                         mesh_name++;
                     uint mesh_name_hash = ( *mesh_name ? Bone::GetHash( mesh_name ) : 0 );
                     for( auto it = parentAnimation->allMeshes.begin(), end = parentAnimation->allMeshes.end(); it != end && !texture; ++it )
-                        if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
-                            texture = ( *it ).CurTexures[ data.TextureNum[ i ] ];
+                        if( !mesh_name_hash || mesh_name_hash == it->Mesh->Owner->NameHash )
+                            texture = it->CurTexures[ data.TextureNum[ i ] ];
                 }
             }
             else
@@ -581,8 +581,8 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
             int  texture_num = data.TextureNum[ i ];
             uint mesh_name_hash = data.TextureMesh[ i ];
             for( auto it = allMeshes.begin(), end = allMeshes.end(); it != end; ++it )
-                if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
-                    ( *it ).CurTexures[ texture_num ] = texture;
+                if( !mesh_name_hash || mesh_name_hash == it->Mesh->Owner->NameHash )
+                    it->CurTexures[ texture_num ] = texture;
         }
     }
 
@@ -613,8 +613,8 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
                         mesh_name++;
                     uint mesh_name_hash = ( *mesh_name ? Bone::GetHash( mesh_name ) : 0 );
                     for( auto it = parentAnimation->allMeshes.begin(), end = parentAnimation->allMeshes.end(); it != end && !effect; ++it )
-                        if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
-                            effect = ( *it ).CurEffect;
+                        if( !mesh_name_hash || mesh_name_hash == it->Mesh->Owner->NameHash )
+                            effect = it->CurEffect;
                 }
             }
             else
@@ -625,8 +625,8 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
             // Assign it
             uint mesh_name_hash = data.EffectMesh[ i ];
             for( auto it = allMeshes.begin(), end = allMeshes.end(); it != end; ++it )
-                if( !mesh_name_hash || mesh_name_hash == ( *it ).Mesh->Owner->NameHash )
-                    ( *it ).CurEffect = effect;
+                if( !mesh_name_hash || mesh_name_hash == it->Mesh->Owner->NameHash )
+                    it->CurEffect = effect;
         }
     }
 
@@ -2262,7 +2262,7 @@ int Animation3dEntity::GetAnimationIndexEx( uint anim1, uint anim2, float* speed
     {
         auto it = animSpeed.find( ii );
         if( it != animSpeed.end() )
-            *speed = ( *it ).second;
+            *speed = it->second;
         else
             *speed = 1.0f;
     }
@@ -2270,7 +2270,7 @@ int Animation3dEntity::GetAnimationIndexEx( uint anim1, uint anim2, float* speed
     // Find number of animation
     auto it = animIndexes.find( ii );
     if( it != animIndexes.end() )
-        return ( *it ).second;
+        return it->second;
 
     return -1;
 }
@@ -2390,7 +2390,7 @@ void Animation3dXFile::SetupBones()
 
     for( auto it = bones.begin(), end = bones.end(); it != end; ++it )
     {
-        Bone* bone = ( *it ).second;
+        Bone* bone = it->second;
         allBones.push_back( bone );
         if( bone->Mesh )
             allDrawBones.push_back( bone );

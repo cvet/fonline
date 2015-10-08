@@ -171,7 +171,7 @@ bool ItemManager::LoadProtos()
 ProtoItem* ItemManager::GetProtoItem( hash pid )
 {
     auto it = allProtos.find( pid );
-    return it != allProtos.end() ? ( *it ).second : NULL;
+    return it != allProtos.end() ? it->second : NULL;
 }
 
 ProtoItemMap& ItemManager::GetAllProtos()

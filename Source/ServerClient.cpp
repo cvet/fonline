@@ -140,8 +140,8 @@ void FOServer::SaveHoloInfoFile()
     AddWorldSaveData( &count, sizeof( count ) );
     for( auto it = HolodiskInfo.begin(), end = HolodiskInfo.end(); it != end; ++it )
     {
-        uint      id = ( *it ).first;
-        HoloInfo* hi = ( *it ).second;
+        uint      id = it->first;
+        HoloInfo* hi = it->second;
         AddWorldSaveData( &id, sizeof( id ) );
         AddWorldSaveData( &hi->CanRewrite, sizeof( hi->CanRewrite ) );
         ushort title_len = (ushort) hi->Title.length();
@@ -1588,7 +1588,7 @@ void FOServer::Process_CreateClient( Client* cl )
         auto it = RegIp.find( ip );
         if( it != RegIp.end() )
         {
-            uint& last_reg = ( *it ).second;
+            uint& last_reg = it->second;
             uint  tick = Timer::FastTick();
             if( tick - last_reg < reg_tick )
             {

@@ -173,7 +173,7 @@ void SpriteManager::BuildFont( int index )
     int         max_h = 0;
     for( LetterMapIt it = font.Letters.begin(), end = font.Letters.end(); it != end; ++it )
     {
-        Letter& l = ( *it ).second;
+        Letter& l = it->second;
         float   x = (float) l.PosX;
         float   y = (float) l.PosY;
         float   w = (float) l.W;
@@ -276,7 +276,7 @@ void SpriteManager::BuildFont( int index )
         image_y = tex_h * si_bordered->SprRect.T;
         for( LetterMapIt it = font.Letters.begin(), end = font.Letters.end(); it != end; ++it )
         {
-            Letter& l = ( *it ).second;
+            Letter& l = it->second;
             float   x = (float) l.PosX;
             float   y = (float) l.PosY;
             float   w = (float) l.W;
@@ -435,8 +435,8 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
         font_cache += sizeof( uint );
         for( LetterMapIt it = font.Letters.begin(), end = font.Letters.end(); it != end; ++it )
         {
-            Letter& l = ( *it ).second;
-            *(int*) font_cache = ( *it ).first;
+            Letter& l = it->second;
+            *(int*) font_cache = it->first;
             font_cache += sizeof( uint );
             *(short*) font_cache = l.PosX;
             font_cache += sizeof( short );
@@ -786,7 +786,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         default:
             LetterMapIt it = font->Letters.find( letter );
             if( it != font->Letters.end() )
-                x_advance = ( *it ).second.XAdvance;
+                x_advance = it->second.XAdvance;
             else
                 x_advance = 0;
             break;
@@ -1062,7 +1062,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         default:
             LetterMapIt it = font->Letters.find( letter );
             if( it != font->Letters.end() )
-                curx += ( *it ).second.XAdvance;
+                curx += it->second.XAdvance;
             // if(curx>fi.LineWidth[curstr]) fi.LineWidth[curstr]=curx;
             can_count = true;
             break;
@@ -1182,7 +1182,7 @@ bool SpriteManager::DrawStr( const Rect& r, const char* str, uint flags, uint co
             if( it == font->Letters.end() )
                 continue;
 
-            Letter& l = ( *it ).second;
+            Letter& l = it->second;
 
             int     pos = curDrawQuad * 4;
             int     x = curx - l.OffsX - 1;

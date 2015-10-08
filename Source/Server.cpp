@@ -3980,7 +3980,7 @@ void FOServer::ProcessBans()
     Timer::GetCurrentDateTime( time );
     for( auto it = Banned.begin(); it != Banned.end();)
     {
-        DateTimeStamp& ban_time = ( *it ).EndTime;
+        DateTimeStamp& ban_time = it->EndTime;
         if( time.Year >= ban_time.Year && time.Month >= ban_time.Month && time.Day >= ban_time.Day &&
             time.Hour >= ban_time.Hour && time.Minute >= ban_time.Minute )
         {
@@ -4927,7 +4927,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
 
     // Clear collections
     for( auto it = UpdateFiles.begin(), end = UpdateFiles.end(); it != end; ++it )
-        SAFEDELA( ( *it ).Data );
+        SAFEDELA( it->Data );
     UpdateFiles.clear();
     UpdateFilesList.clear();
 

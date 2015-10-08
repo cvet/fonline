@@ -120,7 +120,7 @@ bool CritterManager::LoadProtos()
 ProtoCritter* CritterManager::GetProto( hash proto_id )
 {
     auto it = allProtos.find( proto_id );
-    return it != allProtos.end() ? ( *it ).second : NULL;
+    return it != allProtos.end() ? it->second : NULL;
 }
 
 ProtoCritterMap& CritterManager::GetAllProtos()

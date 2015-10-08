@@ -1563,7 +1563,7 @@ void HexManager::CollectLightSources()
     // Items in critters slots
     for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
     {
-        CritterCl* cr = ( *it ).second;
+        CritterCl* cr = it->second;
         bool       added = false;
         for( auto it_ = cr->InvItems.begin(), end_ = cr->InvItems.end(); it_ != end_; ++it_ )
         {
@@ -2553,7 +2553,7 @@ CritterCl* HexManager::GetCritter( uint crid )
     if( !crid )
         return NULL;
     auto it = allCritters.find( crid );
-    return it != allCritters.end() ? ( *it ).second : NULL;
+    return it != allCritters.end() ? it->second : NULL;
 }
 
 CritterCl* HexManager::GetChosen()
@@ -2561,7 +2561,7 @@ CritterCl* HexManager::GetChosen()
     if( !chosenId )
         return NULL;
     auto it = allCritters.find( chosenId );
-    return it != allCritters.end() ? ( *it ).second : NULL;
+    return it != allCritters.end() ? it->second : NULL;
 }
 
 void HexManager::AddCritter( CritterCl* cr )
@@ -2579,7 +2579,7 @@ void HexManager::DeleteCritter( uint crid )
     auto it = allCritters.find( crid );
     if( it == allCritters.end() )
         return;
-    CritterCl* cr = ( *it ).second;
+    CritterCl* cr = it->second;
     if( cr->IsChosen() )
         chosenId = 0;
     RemoveCritter( cr );
@@ -2593,7 +2593,7 @@ void HexManager::DeleteCritters()
 {
     for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
     {
-        CritterCl* cr = ( *it ).second;
+        CritterCl* cr = it->second;
         RemoveCritter( cr );
         cr->DeleteAllItems();
         cr->IsDestroyed = true;
@@ -2646,7 +2646,7 @@ void HexManager::SetCrittersContour( int contour )
     crittersContour = contour;
     for( auto it = allCritters.begin(), end = allCritters.end(); it != end; it++ )
     {
-        CritterCl* cr = ( *it ).second;
+        CritterCl* cr = it->second;
         if( !cr->IsChosen() && cr->SprDrawValid && !cr->IsDead() && cr->GetId() != critterContourCrId )
             cr->SprDraw->SetContour( contour );
     }
@@ -2896,7 +2896,7 @@ CritterCl* HexManager::GetCritterPixel( int x, int y, bool ignore_dead_and_chose
     CritVec crits;
     for( auto it = allCritters.begin(); it != allCritters.end(); it++ )
     {
-        CritterCl* cr = ( *it ).second;
+        CritterCl* cr = it->second;
         if( !cr->Visible || cr->IsFinishing() || !cr->SprDrawValid )
             continue;
         if( ignore_dead_and_chosen && ( cr->IsDead() || cr->IsChosen() ) )

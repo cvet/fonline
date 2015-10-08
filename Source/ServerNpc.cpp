@@ -1234,7 +1234,7 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
         bool or_mod = false;
         for( ; it != end; ++it )
         {
-            if( ( *it ).Type == DR_OR )
+            if( it->Type == DR_OR )
             {
                 or_mod = true;
                 break;
